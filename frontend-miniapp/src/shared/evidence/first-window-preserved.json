@@ -1,0 +1,17 @@
+[
+  {
+    "file": "frontend-miniapp/src/shared/evidence/platform-smoke.json",
+    "unchanged": true,
+    "sha256": "beb8e6e512acf567ae795b7a00162c762a70c073f8be735efdf89bdd6ce481d1"
+  },
+  {
+    "file": "frontend-miniapp/src/shared/evidence/platform-shell.png",
+    "unchanged": true,
+    "sha256": "20b654299f975ee7e643f70832f0810650684d03fd0da4c5850a834dd070ddfe"
+  },
+  {
+    "file": "frontend-miniapp/src/shared/evidence/platform-diagnostics.png",
+    "unchanged": true,
+    "sha256": "4996f050ed434b62be7e972ff46130ad527839dcbebf49a93f38a32c4aaba877"
+  }
+]

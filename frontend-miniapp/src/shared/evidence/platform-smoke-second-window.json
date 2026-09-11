@@ -1,0 +1,48 @@
+{
+  "status": "PASS_SINGLE_SIMULATOR_WINDOW",
+  "source": "WeChat DevTools simulator",
+  "eventMethod": "App.evaluate invokes the real Taro page native tap callback; no state replacement or mocked wx API",
+  "physicalClickVerified": false,
+  "checks": [
+    "real simulator initial render and React local counter",
+    "real navigateTo, fixture sample rendering, context clear removes visible sample, reentry",
+    "current simulator viewport horizontal bounds"
+  ],
+  "exceptions": [],
+  "environment": {
+    "SDKVersion": "3.17.2",
+    "version": "8.0.5",
+    "platform": "devtools",
+    "model": "iPhone 6/7/8 Plus",
+    "system": "iOS 10.0.1",
+    "windowWidth": 414,
+    "windowHeight": 672,
+    "pixelRatio": 3,
+    "safeArea": {
+      "top": 20,
+      "left": 0,
+      "right": 414,
+      "bottom": 736,
+      "width": 414,
+      "height": 716
+    }
+  },
+  "requiredDifferentFromWidth": 390,
+  "stage": "verify-bounds",
+  "bounds": [
+    [
+      {
+        "id": "_At",
+        "dataset": {
+          "sid": "_At"
+        },
+        "left": 0,
+        "right": 414,
+        "top": 0,
+        "bottom": 312,
+        "width": 414,
+        "height": 312
+      }
+    ]
+  ]
+}
