@@ -1,0 +1,34 @@
+
+added 33 packages in 17s
+
+9 packages are looking for funding
+  run `npm fund` for details
+
+> pet-platform-admin@0.1.0 typecheck
+> tsc --noEmit
+
+
+> pet-platform-admin@0.1.0 build
+> npm run typecheck && vite build
+
+
+> pet-platform-admin@0.1.0 typecheck
+> tsc --noEmit
+
+vite v8.3.0 building client environment for production...
+transforming...
+✓ 16 modules transformed.
+rendering chunks...
+computing gzip size...
+dist/index.html                   0.37 kB │ gzip:  0.30 kB
+dist/assets/index-CbbjO76R.css    0.82 kB │ gzip:  0.46 kB
+dist/assets/index-GjrdzEn2.js   219.72 kB │ gzip: 68.74 kB
+
+✓ built in 1.62s
+
+> pet-platform-admin@0.1.0 check:boundaries
+> node scripts/check-boundaries.mjs
+
+PASS: frontend-admin source imports stay inside its scope; no miniapp platform APIs; default production JavaScript excludes private fixtures.
+Scope: A-001 frontend boundary check only. Does not replace backend ARCH-001..005 or integrated CI.
+PASS: web-build configured commands only. Node fixture/package checks are not platform acceptance. Lint not configured by C-001/A-001. Runtime, real API, permission/payment and VIS acceptance: NOT_EXECUTED.

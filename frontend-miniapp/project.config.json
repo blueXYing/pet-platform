@@ -1,0 +1,14 @@
+{
+  "description": "C-001 internal engineering fixture only",
+  "miniprogramRoot": "dist/",
+  "projectname": "pet-platform-miniapp",
+  "appid": "touristappid",
+  "compileType": "miniprogram",
+  "libVersion": "3.17.2",
+  "setting": {
+    "es6": true,
+    "minified": true,
+    "urlCheck": true,
+    "minifyWXML": true
+  }
+}

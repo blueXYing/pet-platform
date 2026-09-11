@@ -1,0 +1,121 @@
+name: CI
+on:
+  pull_request:
+    branches: [develop, main, 'chore/GOV-001-repository-baseline']
+  push:
+    branches: [develop]
+
+permissions:
+  contents: read
+
+jobs:
+  backend:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+          cache: maven
+      - name: Check module dependencies
+        run: python backend/tools/check-module-deps.py
+      - name: Architecture source gate and negative fixtures
+        run: |
+          python -m unittest discover -s backend/tools -p 'test_*.py' -v
+          python backend/tools/check-display-status.py
+      - name: Maven verify
+        run: mvn -B -f backend/pom.xml clean verify
+      - name: Preserve actual backend evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: backend-test-reports
+          path: backend/**/target/surefire-reports/
+          if-no-files-found: error
+
+  frontend-inventory:
+    runs-on: ubuntu-latest
+    outputs:
+      web: ${{ steps.inventory.outputs.web }}
+      miniapp: ${{ steps.inventory.outputs.miniapp }}
+    steps:
+      - uses: actions/checkout@v4
+      - id: inventory
+        shell: bash
+        run: |
+          for pair in web:frontend-admin miniapp:frontend-miniapp; do
+            kind=${pair%%:*}
+            directory=${pair#*:}
+            if test -f "$directory/package.json"; then
+              echo "$kind=true" >> "$GITHUB_OUTPUT"
+            else
+              echo "$kind=false" >> "$GITHUB_OUTPUT"
+              echo "### $kind: NOT_IMPLEMENTED — build/typecheck did not run" >> "$GITHUB_STEP_SUMMARY"
+            fi
+          done
+          echo 'Inventory only. Web fixture Playwright results are reported by web-build. WeChat runtime and VIS are not executed in Linux CI; see QA-001 provenance for existing same-source platform evidence.' >> "$GITHUB_STEP_SUMMARY"
+
+  web-build:
+    needs: frontend-inventory
+    if: needs.frontend-inventory.outputs.web == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22.23.1'
+      - run: npm install --global npm@10.9.8
+      - run: python backend/tools/run-frontend-gate.py web-build
+      - name: Install Playwright Chromium
+        working-directory: frontend-admin
+        run: npx playwright install --with-deps chromium
+      - name: WEB-001 WEB-002 PERM-005 private fixture smoke
+        working-directory: frontend-admin
+        run: npm test
+      - name: Record Web fixture scope
+        run: echo 'PASS Web Playwright fixture smoke. Real Java API, RBAC, data scope and audit are NOT_EXECUTED.' >> "$GITHUB_STEP_SUMMARY"
+      - name: Preserve Web test evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: web-fixture-test-results
+          path: frontend-admin/test-results/
+          if-no-files-found: error
+
+  miniapp-weapp-build:
+    needs: frontend-inventory
+    if: needs.frontend-inventory.outputs.miniapp == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22.23.1'
+      - run: npm install --global npm@10.9.8
+      - run: python backend/tools/run-frontend-gate.py miniapp-build
+
+  repository-policy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Reject deprecated late-payment recovery design
+        shell: bash
+        run: |
+          ! grep -R --exclude='*.docx' --exclude-dir='.git' -n "WAITING_APPOINTMENT_RESELECTION" backend docs/00-ssot docs/02-architecture docs/04-api docs/05-events docs/06-scheduler
+
+  contract-smoke:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: python -m pip install -r e2e/requirements.txt
+      - run: python e2e/contract_smoke.py
+      - run: python -m unittest discover -s e2e -p 'test_*.py' -v
+      - name: Record exact tested ref and tree
+        run: |
+          echo "PR head: ${{ github.event.pull_request.head.sha }}" >> "$GITHUB_STEP_SUMMARY"
+          echo "Checkout commit: $(git rev-parse HEAD)" >> "$GITHUB_STEP_SUMMARY"
+          echo "Checkout tree: $(git rev-parse HEAD^{tree})" >> "$GITHUB_STEP_SUMMARY"

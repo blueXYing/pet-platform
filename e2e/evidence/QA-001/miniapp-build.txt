@@ -1,0 +1,336 @@
+npm warn deprecated inflight@1.0.6: This module is not supported, and leaks memory. Do not use it. Check out lru-cache if you want a good and tested way to coalesce async requests by a key value, which is much more comprehensive and powerful.
+npm warn deprecated phin@2.9.3: Package no longer supported. Contact Support at https://www.npmjs.com/support for more info.
+npm warn deprecated @humanwhocodes/config-array@0.11.14: Use @eslint/config-array instead
+npm warn deprecated phin@3.7.1: Package no longer supported. Contact Support at https://www.npmjs.com/support for more info.
+npm warn deprecated rimraf@3.0.2: Rimraf versions prior to v4 are no longer supported
+npm warn deprecated acorn-import-assertions@1.9.0: package has been renamed to acorn-import-attributes
+npm warn deprecated glob@7.2.3: Glob versions prior to v9 are no longer supported
+npm warn deprecated glob@7.2.3: Glob versions prior to v9 are no longer supported
+npm warn deprecated glob@7.2.3: Glob versions prior to v9 are no longer supported
+npm warn deprecated whatwg-encoding@3.1.1: Use @exodus/bytes instead for a more spec-conformant and faster implementation
+npm warn deprecated @humanwhocodes/object-schema@2.0.3: Use @eslint/object-schema instead
+npm warn deprecated @swc/register@0.1.10: Use @swc-node/register instead
+npm warn deprecated webpack-chain@6.5.1: Package no longer supported. Contact Support at https://www.npmjs.com/support for more info.
+npm warn deprecated mkdirp@0.5.1: Legacy versions of mkdirp are no longer supported. Please update to mkdirp 1.x. (Note that the API surface has changed to use Promises in 1.x.)
+npm warn deprecated eslint@8.41.0: This version is no longer supported. Please see https://eslint.org/version-support for other options.
+npm warn deprecated core-js@2.6.12: core-js@<3.23.3 is no longer maintained and not recommended for usage due to the number of issues. Because of the V8 engine whims, feature detection in old core-js versions could cause a slowdown up to 100x even if nothing is polyfilled. Some versions have web compatibility issues. Please, upgrade your dependencies to the actual version of core-js.
+npm warn deprecated core-js@2.6.12: core-js@<3.23.3 is no longer maintained and not recommended for usage due to the number of issues. Because of the V8 engine whims, feature detection in old core-js versions could cause a slowdown up to 100x even if nothing is polyfilled. Some versions have web compatibility issues. Please, upgrade your dependencies to the actual version of core-js.
+npm warn deprecated core-js@2.6.12: core-js@<3.23.3 is no longer maintained and not recommended for usage due to the number of issues. Because of the V8 engine whims, feature detection in old core-js versions could cause a slowdown up to 100x even if nothing is polyfilled. Some versions have web compatibility issues. Please, upgrade your dependencies to the actual version of core-js.
+npm warn deprecated core-js@2.6.12: core-js@<3.23.3 is no longer maintained and not recommended for usage due to the number of issues. Because of the V8 engine whims, feature detection in old core-js versions could cause a slowdown up to 100x even if nothing is polyfilled. Some versions have web compatibility issues. Please, upgrade your dependencies to the actual version of core-js.
+npm warn deprecated core-js@2.6.12: core-js@<3.23.3 is no longer maintained and not recommended for usage due to the number of issues. Because of the V8 engine whims, feature detection in old core-js versions could cause a slowdown up to 100x even if nothing is polyfilled. Some versions have web compatibility issues. Please, upgrade your dependencies to the actual version of core-js.
+npm warn deprecated core-js@2.6.12: core-js@<3.23.3 is no longer maintained and not recommended for usage due to the number of issues. Because of the V8 engine whims, feature detection in old core-js versions could cause a slowdown up to 100x even if nothing is polyfilled. Some versions have web compatibility issues. Please, upgrade your dependencies to the actual version of core-js.
+npm warn deprecated core-js@2.6.12: core-js@<3.23.3 is no longer maintained and not recommended for usage due to the number of issues. Because of the V8 engine whims, feature detection in old core-js versions could cause a slowdown up to 100x even if nothing is polyfilled. Some versions have web compatibility issues. Please, upgrade your dependencies to the actual version of core-js.
+npm warn deprecated core-js@2.6.12: core-js@<3.23.3 is no longer maintained and not recommended for usage due to the number of issues. Because of the V8 engine whims, feature detection in old core-js versions could cause a slowdown up to 100x even if nothing is polyfilled. Some versions have web compatibility issues. Please, upgrade your dependencies to the actual version of core-js.
+npm warn deprecated core-js@2.6.12: core-js@<3.23.3 is no longer maintained and not recommended for usage due to the number of issues. Because of the V8 engine whims, feature detection in old core-js versions could cause a slowdown up to 100x even if nothing is polyfilled. Some versions have web compatibility issues. Please, upgrade your dependencies to the actual version of core-js.
+npm warn deprecated core-js@2.6.12: core-js@<3.23.3 is no longer maintained and not recommended for usage due to the number of issues. Because of the V8 engine whims, feature detection in old core-js versions could cause a slowdown up to 100x even if nothing is polyfilled. Some versions have web compatibility issues. Please, upgrade your dependencies to the actual version of core-js.
+npm warn deprecated core-js@2.6.12: core-js@<3.23.3 is no longer maintained and not recommended for usage due to the number of issues. Because of the V8 engine whims, feature detection in old core-js versions could cause a slowdown up to 100x even if nothing is polyfilled. Some versions have web compatibility issues. Please, upgrade your dependencies to the actual version of core-js.
+npm warn deprecated core-js@2.6.12: core-js@<3.23.3 is no longer maintained and not recommended for usage due to the number of issues. Because of the V8 engine whims, feature detection in old core-js versions could cause a slowdown up to 100x even if nothing is polyfilled. Some versions have web compatibility issues. Please, upgrade your dependencies to the actual version of core-js.
+npm warn deprecated core-js@2.6.12: core-js@<3.23.3 is no longer maintained and not recommended for usage due to the number of issues. Because of the V8 engine whims, feature detection in old core-js versions could cause a slowdown up to 100x even if nothing is polyfilled. Some versions have web compatibility issues. Please, upgrade your dependencies to the actual version of core-js.
+npm warn deprecated core-js@2.6.12: core-js@<3.23.3 is no longer maintained and not recommended for usage due to the number of issues. Because of the V8 engine whims, feature detection in old core-js versions could cause a slowdown up to 100x even if nothing is polyfilled. Some versions have web compatibility issues. Please, upgrade your dependencies to the actual version of core-js.
+npm warn deprecated core-js@2.6.12: core-js@<3.23.3 is no longer maintained and not recommended for usage due to the number of issues. Because of the V8 engine whims, feature detection in old core-js versions could cause a slowdown up to 100x even if nothing is polyfilled. Some versions have web compatibility issues. Please, upgrade your dependencies to the actual version of core-js.
+npm warn deprecated core-js@2.6.12: core-js@<3.23.3 is no longer maintained and not recommended for usage due to the number of issues. Because of the V8 engine whims, feature detection in old core-js versions could cause a slowdown up to 100x even if nothing is polyfilled. Some versions have web compatibility issues. Please, upgrade your dependencies to the actual version of core-js.
+npm warn deprecated core-js@2.6.12: core-js@<3.23.3 is no longer maintained and not recommended for usage due to the number of issues. Because of the V8 engine whims, feature detection in old core-js versions could cause a slowdown up to 100x even if nothing is polyfilled. Some versions have web compatibility issues. Please, upgrade your dependencies to the actual version of core-js.
+npm warn deprecated core-js@2.6.12: core-js@<3.23.3 is no longer maintained and not recommended for usage due to the number of issues. Because of the V8 engine whims, feature detection in old core-js versions could cause a slowdown up to 100x even if nothing is polyfilled. Some versions have web compatibility issues. Please, upgrade your dependencies to the actual version of core-js.
+npm warn deprecated core-js@2.6.12: core-js@<3.23.3 is no longer maintained and not recommended for usage due to the number of issues. Because of the V8 engine whims, feature detection in old core-js versions could cause a slowdown up to 100x even if nothing is polyfilled. Some versions have web compatibility issues. Please, upgrade your dependencies to the actual version of core-js.
+npm warn deprecated core-js@2.6.12: core-js@<3.23.3 is no longer maintained and not recommended for usage due to the number of issues. Because of the V8 engine whims, feature detection in old core-js versions could cause a slowdown up to 100x even if nothing is polyfilled. Some versions have web compatibility issues. Please, upgrade your dependencies to the actual version of core-js.
+npm warn deprecated core-js@2.6.12: core-js@<3.23.3 is no longer maintained and not recommended for usage due to the number of issues. Because of the V8 engine whims, feature detection in old core-js versions could cause a slowdown up to 100x even if nothing is polyfilled. Some versions have web compatibility issues. Please, upgrade your dependencies to the actual version of core-js.
+npm warn deprecated core-js@2.6.12: core-js@<3.23.3 is no longer maintained and not recommended for usage due to the number of issues. Because of the V8 engine whims, feature detection in old core-js versions could cause a slowdown up to 100x even if nothing is polyfilled. Some versions have web compatibility issues. Please, upgrade your dependencies to the actual version of core-js.
+npm warn deprecated core-js@2.6.12: core-js@<3.23.3 is no longer maintained and not recommended for usage due to the number of issues. Because of the V8 engine whims, feature detection in old core-js versions could cause a slowdown up to 100x even if nothing is polyfilled. Some versions have web compatibility issues. Please, upgrade your dependencies to the actual version of core-js.
+npm warn deprecated core-js@2.6.12: core-js@<3.23.3 is no longer maintained and not recommended for usage due to the number of issues. Because of the V8 engine whims, feature detection in old core-js versions could cause a slowdown up to 100x even if nothing is polyfilled. Some versions have web compatibility issues. Please, upgrade your dependencies to the actual version of core-js.
+npm warn deprecated core-js@2.6.12: core-js@<3.23.3 is no longer maintained and not recommended for usage due to the number of issues. Because of the V8 engine whims, feature detection in old core-js versions could cause a slowdown up to 100x even if nothing is polyfilled. Some versions have web compatibility issues. Please, upgrade your dependencies to the actual version of core-js.
+npm warn deprecated core-js@2.6.12: core-js@<3.23.3 is no longer maintained and not recommended for usage due to the number of issues. Because of the V8 engine whims, feature detection in old core-js versions could cause a slowdown up to 100x even if nothing is polyfilled. Some versions have web compatibility issues. Please, upgrade your dependencies to the actual version of core-js.
+npm warn deprecated core-js@2.6.12: core-js@<3.23.3 is no longer maintained and not recommended for usage due to the number of issues. Because of the V8 engine whims, feature detection in old core-js versions could cause a slowdown up to 100x even if nothing is polyfilled. Some versions have web compatibility issues. Please, upgrade your dependencies to the actual version of core-js.
+npm warn deprecated core-js@2.6.12: core-js@<3.23.3 is no longer maintained and not recommended for usage due to the number of issues. Because of the V8 engine whims, feature detection in old core-js versions could cause a slowdown up to 100x even if nothing is polyfilled. Some versions have web compatibility issues. Please, upgrade your dependencies to the actual version of core-js.
+
+added 1237 packages in 4m
+
+189 packages are looking for funding
+  run `npm fund` for details
+
+> pet-platform-miniapp@0.1.0 typecheck
+> tsc --noEmit
+
+
+> pet-platform-miniapp@0.1.0 test
+> tsx --test src/shared/tests/*.test.ts
+
+TAP version 13
+# Subtest: MINI-003 workspace: old success and cache cannot cross context
+ok 1 - MINI-003 workspace: old success and cache cannot cross context
+  ---
+  duration_ms: 1.0009
+  type: 'test'
+  ...
+# Subtest: MINI-003 user: old success and cache cannot cross context
+ok 2 - MINI-003 user: old success and cache cannot cross context
+  ---
+  duration_ms: 0.1621
+  type: 'test'
+  ...
+# Subtest: MINI-003 merchant: old success and cache cannot cross context
+ok 3 - MINI-003 merchant: old success and cache cannot cross context
+  ---
+  duration_ms: 0.1175
+  type: 'test'
+  ...
+# Subtest: MINI-003 store: old success and cache cannot cross context
+ok 4 - MINI-003 store: old success and cache cannot cross context
+  ---
+  duration_ms: 0.0878
+  type: 'test'
+  ...
+# Subtest: MINI-003 logout: old success and cache cannot cross context
+ok 5 - MINI-003 logout: old success and cache cannot cross context
+  ---
+  duration_ms: 0.1156
+  type: 'test'
+  ...
+# Subtest: MINI-003 revocation: old success and cache cannot cross context
+ok 6 - MINI-003 revocation: old success and cache cannot cross context
+  ---
+  duration_ms: 0.0671
+  type: 'test'
+  ...
+# Subtest: MINI-003 sameContextReentry: old success and cache cannot cross context
+ok 7 - MINI-003 sameContextReentry: old success and cache cannot cross context
+  ---
+  duration_ms: 0.1111
+  type: 'test'
+  ...
+# Subtest: MINI-003 delayed rejection is stale; current context success remains available
+ok 8 - MINI-003 delayed rejection is stale; current context success remains available
+  ---
+  duration_ms: 0.1567
+  type: 'test'
+  ...
+# Subtest: MINI-003 logout then same user login cannot revive pending response
+ok 9 - MINI-003 logout then same user login cannot revive pending response
+  ---
+  duration_ms: 0.2358
+  type: 'test'
+  ...
+# Subtest: MINI-004 injected transport preserves string ID, amount, remote state/actions and write requestId
+ok 10 - MINI-004 injected transport preserves string ID, amount, remote state/actions and write requestId
+  ---
+  duration_ms: 1.1283
+  type: 'test'
+  ...
+# Subtest: MINI-004 all write verbs require requestId, cross-workspace and encoded traversal fail before transport
+ok 11 - MINI-004 all write verbs require requestId, cross-workspace and encoded traversal fail before transport
+  ---
+  duration_ms: 0.3374
+  type: 'test'
+  ...
+# Subtest: MINI-004 malformed IDs/amounts/actions rejected, unknown server displayStatus is not recomputed
+ok 12 - MINI-004 malformed IDs/amounts/actions rejected, unknown server displayStatus is not recomputed
+  ---
+  duration_ms: 0.4425
+  type: 'test'
+  ...
+# Subtest: MINI-004 real mode blocked by unapproved CCR; errors use code rather than message
+ok 13 - MINI-004 real mode blocked by unapproved CCR; errors use code rather than message
+  ---
+  duration_ms: 0.5586
+  type: 'test'
+  ...
+# Subtest: MINI-004 platform request port mock captures URL, headers, data, timeout; network failure propagates
+ok 14 - MINI-004 platform request port mock captures URL, headers, data, timeout; network failure propagates
+  ---
+  duration_ms: 1.0341
+  type: 'test'
+  ...
+1..14
+# tests 14
+# suites 0
+# pass 14
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 564.0566
+
+> pet-platform-miniapp@0.1.0 build:weapp
+> taro build --type weapp --disable-global-config
+
+👽 Taro v4.1.5
+
+Tips:
+1. 建议开启持久化缓存功能，能有效提升二次编译速度，详情请参考: https://docs.taro.zone/docs/config-detail#cache。
+
+
+
+● Webpack █████████████████████████  (0%)  
+ 
+
+[2K[1A[2K[1A[2K[1A[2K[1A[2K[G
+● Webpack █████████████████████████ setup (9%) compilation 
+ mini-css-extract-plugin
+
+[2K[1A[2K[1A[2K[1A[2K[1A[2K[G
+● Webpack █████████████████████████ building (10%) 0/6 entries 6/6 dependencie
+s 0/6 modules 1 active 
+ babel-loader › src\app.config.ts
+
+[2K[1A[2K[1A[2K[1A[2K[1A[2K[1A[2K[G
+● Webpack █████████████████████████ building (10%) 0/6 entries 6/6 dependencie
+s 0/6 modules 1 active 
+ babel-loader › src\app.config.ts
+
+[2K[1A[2K[1A[2K[1A[2K[1A[2K[1A[2K[G
+● Webpack █████████████████████████ building (10%) 0/6 entries 6/6 dependencie
+s 0/6 modules 2 active 
+ babel-loader › src\app.tsx
+
+[2K[1A[2K[1A[2K[1A[2K[1A[2K[1A[2K[G
+● Webpack █████████████████████████ building (10%) 0/6 entries 6/6 dependencie
+s 1/6 modules 5 active 
+ ...l-loader › node_modules\@tarojs\webpack5-runner\dist\template\custom-wrapp
+er.js
+
+[2K[1A[2K[1A[2K[1A[2K[1A[2K[1A[2K[1A[2K[G
+● Webpack █████████████████████████ building (19%) 1/6 entries 29/35 dependenc
+ies 1/19 modules 16 active 
+ node_modules\react\jsx-runtime.js
+
+[2K[1A[2K[1A[2K[1A[2K[1A[2K[1A[2K[G
+● Webpack █████████████████████████ building (19%) 1/6 entries 36/81 dependenc
+ies 1/22 modules 19 active 
+ css-loader › postcss-loader › src\app.css
+
+[2K[1A[2K[1A[2K[1A[2K[1A[2K[1A[2K[G
+● Webpack █████████████████████████ building (19%)  
+ import loader .\node_modules\postcss-loader\dist\cjs.js
+
+[2K[1A[2K[1A[2K[1A[2K[1A[2K[G
+● Webpack █████████████████████████ building (19%) 1/6 entries 36/81 dependenc
+ies 1/22 modules 19 active 
+ css-loader › postcss-loader › src\app.css
+
+[2K[1A[2K[1A[2K[1A[2K[1A[2K[1A[2K[G
+● Webpack █████████████████████████ building (19%) 1/6 entries 36/82 dependenc
+ies 1/22 modules 20 active 
+ babel-loader › src\shared\workspace.ts
+
+[2K[1A[2K[1A[2K[1A[2K[1A[2K[1A[2K[G
+● Webpack █████████████████████████ building (19%) 1/6 entries 81/93 dependenc
+ies 2/61 modules 33 active 
+ babel-loader › node_modules\@tarojs\runtime\dist\dom-external\index.js
+
+[2K[1A[2K[1A[2K[1A[2K[1A[2K[1A[2K[G
+● Webpack █████████████████████████ building (19%) 1/6 entries 101/122 depende
+ncies 6/68 modules 56 active 
+ ...V1.0\frontend-miniapp\node_modules\@babel\runtime\helpers\esm\defineProper
+ty.js
+
+[2K[1A[2K[1A[2K[1A[2K[1A[2K[1A[2K[1A[2K[G
+● Webpack █████████████████████████ building (19%) 1/6 entries 171/255 depende
+ncies 10/72 modules 59 active 
+ ...0\frontend-miniapp\node_modules\@babel\runtime\helpers\esm\toConsumableArr
+ay.js
+
+[2K[1A[2K[1A[2K[1A[2K[1A[2K[1A[2K[1A[2K[G
+● Webpack █████████████████████████ building (19%) 1/6 entries 241/284 depende
+ncies 11/77 modules 59 active 
+ node_modules\react\cjs\react.production.min.js
+
+[2K[1A[2K[1A[2K[1A[2K[1A[2K[1A[2K[G
+● Webpack █████████████████████████ building (19%) 1/6 entries 324/344 depende
+ncies 22/104 modules 68 active 
+ ...V1.0\frontend-miniapp\node_modules\@babel\runtime\helpers\esm\arrayWithHol
+es.js
+
+[2K[1A[2K[1A[2K[1A[2K[1A[2K[1A[2K[1A[2K[G
+● Webpack █████████████████████████ building (19%) 1/6 entries 335/352 depende
+ncies 24/108 modules 81 active 
+ ...s\71bf\宠物平台V1.0\frontend-miniapp\node_modules\@babel\runtime\helpers\e
+sm\get.js
+
+[2K[1A[2K[1A[2K[1A[2K[1A[2K[1A[2K[1A[2K[G
+● Webpack █████████████████████████ building (19%) 1/6 entries 344/361 depende
+ncies 25/109 modules 84 active 
+ ...s\71bf\宠物平台V1.0\frontend-miniapp\node_modules\@babel\runtime\helpers\e
+sm\set.js
+
+[2K[1A[2K[1A[2K[1A[2K[1A[2K[1A[2K[1A[2K[G
+● Webpack █████████████████████████ building (19%) 1/6 entries 384/398 depende
+ncies 49/123 modules 62 active 
+ babel-loader › node_modules\@tarojs\shared\dist\components.js
+
+[2K[1A[2K[1A[2K[1A[2K[1A[2K[1A[2K[G
+● Webpack █████████████████████████ building (19%) 1/6 entries 397/400 depende
+ncies 50/129 modules 77 active 
+ ...bel-loader › node_modules\@tarojs\runtime\dist\dom-external\inner-html\sty
+le.js
+
+[2K[1A[2K[1A[2K[1A[2K[1A[2K[1A[2K[1A[2K[G
+● Webpack █████████████████████████ building (19%) 1/6 entries 400/420 depende
+ncies 53/130 modules 77 active 
+ babel-loader › node_modules\@tarojs\api\dist\index.js
+
+[2K[1A[2K[1A[2K[1A[2K[1A[2K[1A[2K[G
+● Webpack █████████████████████████ building (28%) 2/6 entries 433/435 depende
+ncies 118/130 modules 12 active 
+ babel-loader › node_modules\@tarojs\api\dist\index.js
+
+[2K[1A[2K[1A[2K[1A[2K[1A[2K[1A[2K[G
+● Webpack █████████████████████████ building (46%) 4/6 entries 443/443 depende
+ncies 121/137 modules 16 active 
+ babel-loader › node_modules\@tarojs\api\dist\interceptor\chain.js
+
+[2K[1A[2K[1A[2K[1A[2K[1A[2K[1A[2K[G
+● Webpack █████████████████████████ building (46%) 4/6 entries 451/452 depende
+ncies 124/137 modules 13 active 
+ babel-loader › node_modules\@tarojs\api\dist\interceptor\index.js
+
+[2K[1A[2K[1A[2K[1A[2K[1A[2K[1A[2K[G
+● Webpack █████████████████████████ building (55%) 5/6 entries 453/454 depende
+ncies 130/139 modules 8 active 
+ node_modules\css-loader\dist\runtime\noSourceMaps.js
+
+[2K[1A[2K[1A[2K[1A[2K[1A[2K[1A[2K[G
+● Webpack █████████████████████████ building (55%) 5/6 entries 460/460 depende
+ncies 137/142 modules 5 active 
+ node_modules\scheduler\index.js
+
+[2K[1A[2K[1A[2K[1A[2K[1A[2K[1A[2K[G
+● Webpack █████████████████████████ sealing (78%)  
+ chunk modules optimization
+
+[2K[1A[2K[1A[2K[1A[2K[1A[2K[G
+● Webpack █████████████████████████ sealing (88%)  
+ runtime requirements
+
+[2K[1A[2K[1A[2K[1A[2K[1A[2K[G
+● Webpack █████████████████████████ sealing (92%) asset processing 
+ CssMinimizerPlugin
+
+[2K[1A[2K[1A[2K[1A[2K[1A[2K[G
+● Webpack █████████████████████████ sealing (92%) asset processing 
+ RealContentHashPlugin
+
+[2K[1A[2K[1A[2K[1A[2K[1A[2K[G
+√ Webpack
+  Compiled successfully in 22.60s
+
+
+> pet-platform-miniapp@0.1.0 check:package
+> node package-check.cjs
+
+{
+  "test": "MINI-005 static inventory only",
+  "mainBytes": 311632,
+  "subpackages": {},
+  "totalBytes": 311632,
+  "ordinarySubpackageCount": 0,
+  "fileCount": 21,
+  "internalBudgetBytes": 2097152,
+  "platformLimitVerified": true,
+  "platformLimitSource": "https://developers.weixin.qq.com/miniprogram/dev/framework/subpackages.html",
+  "platformLimitCheckedOn": "2026-09-11",
+  "totalBudgetBytes": 20971520,
+  "totalBudgetReason": "conservative service-provider cap; standard total cap is 30M",
+  "platformUploadVerified": false,
+  "deviceWindowsVerified": false,
+  "imageClarityVerified": false
+}
+PASS: miniapp-build configured commands only. Node fixture/package checks are not platform acceptance. Lint not configured by C-001/A-001. Runtime, real API, permission/payment and VIS acceptance: NOT_EXECUTED.

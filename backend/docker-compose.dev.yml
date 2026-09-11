@@ -1,0 +1,26 @@
+services:
+  mysql:
+    image: mysql:8.4
+    environment:
+      MYSQL_DATABASE: pet_platform
+      MYSQL_USER: pet
+      MYSQL_PASSWORD: pet
+      MYSQL_ROOT_PASSWORD: root
+    ports:
+      - "3306:3306"
+    command:
+      - --character-set-server=utf8mb4
+      - --collation-server=utf8mb4_0900_ai_ci
+    volumes:
+      - pet_mysql:/var/lib/mysql
+
+  redis:
+    image: redis:7.4-alpine
+    ports:
+      - "6379:6379"
+    volumes:
+      - pet_redis:/data
+
+volumes:
+  pet_mysql:
+  pet_redis:

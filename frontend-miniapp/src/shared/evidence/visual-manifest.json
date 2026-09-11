@@ -1,0 +1,11 @@
+{
+  "issue": "C-001",
+  "status": "NOT_APPLICABLE_TO_NEUTRAL_SHELL_NO_PRODUCT_DESIGN_REFERENCED",
+  "referenceDesign": { "fileKey": "bp2vpcjjA5vZbHvtKkA8wl", "baselineVersion": "2397539525915641008", "retrievedInThisIssue": false },
+  "productPages": [],
+  "assets": [],
+  "screenshots": [],
+  "requiredPageFields": ["designVersion", "nodeId", "v1Source", "route", "state", "assets", "screenshot", "confirmedDifferences"],
+  "requiredAssetFields": ["sourceNode", "originalFile", "scale", "width", "height", "format", "sha256", "derivedFile", "referencedBy"],
+  "requiredScreenshotFields": ["route", "window", "pixelRatio", "baseLibrary", "device", "dataState", "scroll", "animation", "image", "overlay", "differenceApproval"]
+}

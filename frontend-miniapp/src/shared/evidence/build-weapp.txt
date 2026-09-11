@@ -1,0 +1,145 @@
+
+> pet-platform-miniapp@0.1.0 build:weapp
+> taro build --type weapp --disable-global-config
+
+👽 Taro v4.1.5
+
+Tips:
+1. 建议开启持久化缓存功能，能有效提升二次编译速度，详情请参考: https://docs.taro.zone/docs/config-detail#cache。
+
+
+
+● Webpack █████████████████████████  (0%)  
+ 
+
+[2K[1A[2K[1A[2K[1A[2K[1A[2K[G
+● Webpack █████████████████████████ building (10%) 0/6 entries 6/6 dependencie
+s 0/6 modules 1 active 
+ babel-loader › src\app.config.ts
+
+[2K[1A[2K[1A[2K[1A[2K[1A[2K[1A[2K[G
+● Webpack █████████████████████████ building (10%) 0/6 entries 6/6 dependencie
+s 0/6 modules 1 active 
+ babel-loader › src\app.config.ts
+
+[2K[1A[2K[1A[2K[1A[2K[1A[2K[1A[2K[G
+● Webpack █████████████████████████ building (10%) 0/6 entries 6/6 dependencie
+s 1/6 modules 5 active 
+ ...l-loader › node_modules\@tarojs\webpack5-runner\dist\template\custom-wrapp
+er.js
+
+[2K[1A[2K[1A[2K[1A[2K[1A[2K[1A[2K[1A[2K[G
+● Webpack █████████████████████████ building (19%) 1/6 entries 28/35 dependenc
+ies 1/18 modules 16 active 
+ node_modules\react\index.js
+
+[2K[1A[2K[1A[2K[1A[2K[1A[2K[1A[2K[G
+● Webpack █████████████████████████ building (19%) 1/6 entries 40/81 dependenc
+ies 1/26 modules 20 active 
+ babel-loader › node_modules\@tarojs\runtime\dist\next-tick.js
+
+[2K[1A[2K[1A[2K[1A[2K[1A[2K[1A[2K[G
+● Webpack █████████████████████████ building (19%)  
+ import loader .\node_modules\postcss-loader\dist\cjs.js
+
+[2K[1A[2K[1A[2K[1A[2K[1A[2K[G
+● Webpack █████████████████████████ building (19%) 1/6 entries 40/81 dependenc
+ies 1/26 modules 23 active 
+ css-loader › postcss-loader › src\app.css
+
+[2K[1A[2K[1A[2K[1A[2K[1A[2K[1A[2K[G
+● Webpack █████████████████████████ building (19%) 1/6 entries 40/82 dependenc
+ies 1/26 modules 24 active 
+ babel-loader › node_modules\@tarojs\runtime\dist\current.js
+
+[2K[1A[2K[1A[2K[1A[2K[1A[2K[1A[2K[G
+● Webpack █████████████████████████ building (19%) 1/6 entries 81/82 dependenc
+ies 1/61 modules 57 active 
+ ...物平台V1.0\frontend-miniapp\node_modules\@babel\runtime\helpers\esm\regene
+rator.js
+
+[2K[1A[2K[1A[2K[1A[2K[1A[2K[1A[2K[1A[2K[G
+● Webpack █████████████████████████ building (19%) 1/6 entries 93/106 dependen
+cies 4/63 modules 57 active 
+ ...86f\宠物平台V1.0\frontend-miniapp\node_modules\@babel\runtime\helpers\esm\
+typeof.js
+
+[2K[1A[2K[1A[2K[1A[2K[1A[2K[1A[2K[1A[2K[G
+● Webpack █████████████████████████ building (19%) 1/6 entries 239/281 depende
+ncies 11/72 modules 51 active 
+ ...物平台V1.0\frontend-miniapp\node_modules\@babel\runtime\helpers\esm\create
+Class.js
+
+[2K[1A[2K[1A[2K[1A[2K[1A[2K[1A[2K[1A[2K[G
+● Webpack █████████████████████████ building (19%) 1/6 entries 272/293 depende
+ncies 11/83 modules 72 active 
+ ...abel-loader › node_modules\@tarojs\runtime\dist\dom-external\inner-html\ht
+ml.js
+
+[2K[1A[2K[1A[2K[1A[2K[1A[2K[1A[2K[1A[2K[G
+● Webpack █████████████████████████ building (19%) 1/6 entries 299/339 depende
+ncies 22/91 modules 68 active 
+ ...台V1.0\frontend-miniapp\node_modules\@babel\runtime\helpers\esm\readOnlyEr
+ror.js
+
+[2K[1A[2K[1A[2K[1A[2K[1A[2K[1A[2K[1A[2K[G
+● Webpack █████████████████████████ building (19%) 1/6 entries 314/361 depende
+ncies 23/96 modules 69 active 
+ ...d-miniapp\node_modules\@babel\runtime\helpers\esm\unsupportedIterableToArr
+ay.js
+
+[2K[1A[2K[1A[2K[1A[2K[1A[2K[1A[2K[1A[2K[G
+● Webpack █████████████████████████ building (19%) 1/6 entries 362/379 depende
+ncies 27/119 modules 91 active 
+ babel-loader › node_modules\@tarojs\shared\dist\native-apis.js
+
+[2K[1A[2K[1A[2K[1A[2K[1A[2K[1A[2K[G
+● Webpack █████████████████████████ building (19%) 1/6 entries 414/426 depende
+ncies 54/130 modules 76 active 
+ babel-loader › node_modules\@tarojs\api\dist\index.js
+
+[2K[1A[2K[1A[2K[1A[2K[1A[2K[1A[2K[G
+● Webpack █████████████████████████ building (28%) 2/6 entries 433/435 depende
+ncies 118/130 modules 12 active 
+ babel-loader › node_modules\@tarojs\api\dist\index.js
+
+[2K[1A[2K[1A[2K[1A[2K[1A[2K[1A[2K[G
+● Webpack █████████████████████████ building (46%) 4/6 entries 440/440 depende
+ncies 120/136 modules 15 active 
+ babel-loader › node_modules\@tarojs\api\dist\interceptor\index.js
+
+[2K[1A[2K[1A[2K[1A[2K[1A[2K[1A[2K[G
+● Webpack █████████████████████████ building (46%) 4/6 entries 446/449 depende
+ncies 123/136 modules 13 active 
+ babel-loader › node_modules\@tarojs\api\dist\interceptor\index.js
+
+[2K[1A[2K[1A[2K[1A[2K[1A[2K[1A[2K[G
+● Webpack █████████████████████████ building (55%) 5/6 entries 452/454 depende
+ncies 130/138 modules 8 active 
+ node_modules\scheduler\index.js
+
+[2K[1A[2K[1A[2K[1A[2K[1A[2K[1A[2K[G
+● Webpack █████████████████████████ building (55%) 5/6 entries 458/458 depende
+ncies 133/142 modules 9 active 
+ css-loader › postcss-loader › src\app.css|0|||}}
+
+[2K[1A[2K[1A[2K[1A[2K[1A[2K[1A[2K[G
+● Webpack █████████████████████████ sealing (78%)  
+ chunk modules optimization
+
+[2K[1A[2K[1A[2K[1A[2K[1A[2K[G
+● Webpack █████████████████████████ sealing (88%)  
+ runtime requirements
+
+[2K[1A[2K[1A[2K[1A[2K[1A[2K[G
+● Webpack █████████████████████████ sealing (92%) asset processing 
+ CssMinimizerPlugin
+
+[2K[1A[2K[1A[2K[1A[2K[1A[2K[G
+● Webpack █████████████████████████ sealing (92%) asset processing 
+ RealContentHashPlugin
+
+[2K[1A[2K[1A[2K[1A[2K[1A[2K[G
+√ Webpack
+  Compiled successfully in 41.92s
+

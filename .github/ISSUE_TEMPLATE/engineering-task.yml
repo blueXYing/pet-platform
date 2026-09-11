@@ -1,0 +1,31 @@
+name: Engineering Task
+description: 可交给 Codex 的开发任务
+title: "[TASK] "
+labels: ["engineering"]
+body:
+  - type: input
+    id: owner
+    attributes: {label: Owner Role}
+    validations: {required: true}
+  - type: input
+    id: dependencies
+    attributes: {label: Dependencies}
+  - type: textarea
+    id: source
+    attributes: {label: SSOT / PRD / Contract Source}
+    validations: {required: true}
+  - type: textarea
+    id: allowed
+    attributes: {label: Allowed Modules}
+    validations: {required: true}
+  - type: textarea
+    id: forbidden
+    attributes: {label: Forbidden Modules}
+  - type: textarea
+    id: acceptance
+    attributes: {label: Acceptance Criteria}
+    validations: {required: true}
+  - type: textarea
+    id: tests
+    attributes: {label: Required Tests}
+    validations: {required: true}

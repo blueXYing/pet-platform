@@ -1,0 +1,2 @@
+ARCH-001 scanned 40 reactor modules, 17 biz POMs
+PASS: no biz -> biz dependencies
