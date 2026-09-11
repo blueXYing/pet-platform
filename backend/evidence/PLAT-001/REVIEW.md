@@ -56,3 +56,11 @@ Production import asserted all 39 modules and counted 294 classes including pack
 The initial remote baseline 404 was resolved by GOV-001 publishing `5fb3950d3ac214dab2db5cc90deaf35a09ca7967`. PLAT branch `codex/plat-001-backend-core` was created from that fixed base and only its own POM/evidence files overlaid. Initial remote head `7b66fb641c0cc3956f9ceaf6e6d790278102da46` was compared to base: 11 files changed, no deletions, behind 0; GOV-001 governance additions preserved. Later commits update only PLAT evidence.
 
 Draft PR: https://github.com/blueXYing/pet-platform/pull/2 . Base: `chore/GOV-001-repository-baseline`, not main/develop. Connector-created remote commit IDs differ from local commit IDs; the two POM changes correspond to local implementation `6cfefa8799a6c1bcba8c48a35940215e1a6c4f7d`. The integration result requires the separately owned fixed GOV-002 rules, and must not be misrepresented as execution of those rules by the standalone remote PLAT tree.
+
+## Final follow-up verification
+
+Adopted GOV-002 follow-up `8a98f52b4246ddfdc42c1e3075bd8808e4e072c5` unchanged as local `7787d4e34eb3ba20a8c7efe9dcfc912c8229a108`. Its only rule change distinguishes a legitimate Contract DTO getter from prohibited display-status derivation, with both positive and negative fixtures. The five QA-owned changed files are not part of PLAT's remote diff.
+
+Repeated `mvn -B -ntp -f backend/pom.xml clean verify` on that final integration: exit 0, all 41 projects SUCCESS, 22 JUnit tests with 0 failures/errors/skips, 13 embedded Python tests PASS; production counts remain 39 modules / 294 total / 50 meaningful / 0 controller / 0 domain. See final-integration-maven-verify.txt. This is the latest independent local result; earlier logs are preserved as historical evidence.
+
+Remote PR #2 has no Actions run at its checked head `5ba6ffa0cd3392e326252a464bcde2e9396b46b0`: the original baseline workflow filters pull requests to `[develop, main]`, while the approved target is the GOV-001 branch. PLAT did not alter QA workflow files or retarget the PR to bypass this constraint. GOV-002 separately reported a successful backend run on PR #5; that is not a PLAT PR #2 CI execution. Root Work owns final acceptance of the stacked CI evidence and human-review handoff.
