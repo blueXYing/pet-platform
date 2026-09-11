@@ -1,0 +1,9 @@
+test_broken_reference_rejected (test_contract_smoke.ContractSmokeRegressions) ... ok
+test_duplicate_operation_rejected (test_contract_smoke.ContractSmokeRegressions) ... ok
+test_numeric_http_id_rejected (test_contract_smoke.ContractSmokeRegressions) ... ok
+test_write_without_request_id_rejected (test_contract_smoke.ContractSmokeRegressions) ... ok
+
+----------------------------------------------------------------------
+Ran 4 tests in 0.117s
+
+OK

@@ -1,0 +1,38 @@
+{
+  "route": "consumer/pages/diagnostics/index",
+  "screenHeight": 736,
+  "windowHeight": 672,
+  "windowWidth": 414,
+  "safeArea": {
+    "top": 20,
+    "left": 0,
+    "right": 414,
+    "bottom": 736,
+    "width": 414,
+    "height": 716
+  },
+  "nodes": [
+    {
+      "left": 0,
+      "right": 414,
+      "top": 0,
+      "bottom": 312,
+      "width": 414,
+      "height": 312,
+      "padding-bottom": "17px",
+      "box-sizing": "border-box",
+      "overflow-wrap": "anywhere"
+    },
+    {
+      "id": "",
+      "dataset": {},
+      "scrollLeft": 0,
+      "scrollTop": 0,
+      "scrollWidth": 414,
+      "scrollHeight": 672
+    }
+  ],
+  "safeBottomInViewport": 672,
+  "withinSafeBottom": true,
+  "withinWidth": true
+}

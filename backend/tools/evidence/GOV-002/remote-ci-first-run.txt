@@ -1,0 +1,14 @@
+PR: https://github.com/blueXYing/pet-platform/pull/5
+Run: https://github.com/blueXYing/pet-platform/actions/runs/34559172769
+Head: 70bab18db29b1fb2a705cabe8a189f11542ca719
+Base: 5fb3950d3ac214dab2db5cc90deaf35a09ca7967
+backend=success; repository-policy=success; frontend-inventory=success
+web-build=skipped; miniapp-weapp-build=skipped (no manifests in this tree)
+No frontend runtime or VIS acceptance inferred.
+2026-09-11T03:38:07.5943715Z HEAD is now at fd8337e Merge 70bab18db29b1fb2a705cabe8a189f11542ca719 into 5fb3950d3ac214dab2db5cc90deaf35a09ca7967
+2026-09-11T03:38:50.6066034Z [INFO] Tests run: 15, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 4.722 s -- in com.petplatform.architecture.ArchitectureRulesFixtureTest
+2026-09-11T03:38:52.3348913Z ARCH-COVERAGE total: 39 modules / 294 classes
+2026-09-11T03:38:52.3349703Z ARCH-COVERAGE meaningful classes: 50; controllers: 0; domain classes: 0
+2026-09-11T03:38:53.0520340Z [INFO] Tests run: 7, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 2.488 s -- in com.petplatform.architecture.ArchitectureRulesTest
+2026-09-11T03:38:53.0856064Z [INFO] Tests run: 22, Failures: 0, Errors: 0, Skipped: 0
+2026-09-11T03:38:53.1163063Z [INFO] BUILD SUCCESS

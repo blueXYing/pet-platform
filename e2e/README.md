@@ -1,5 +1,11 @@
-# e2e
+# QA-001 integration evidence
 
-跨端 E2E/并发/故障测试工作区，由 QA Role 管理。
+Run `python -m pip install -r e2e/requirements.txt` then `python e2e/contract_smoke.py` at repository root. This checks the existing OpenAPI document's local references, operation IDs, request-id headers, string ID/amount declarations and path parameters. It is not a live HTTP test, complete OpenAPI schema validator, or approval of missing contracts. Real session/RBAC integration remains blocked by `planning/ccr/CCR-ACR-001.md` and `CCR-PERM-001.md`. Contract changes require CCR; no public fixture DTO/SDK is generated.
 
-ACR-001批准后分为Web（Playwright）、微信小程序（开发者工具自动化/真机）和原稿视觉对照。测试定义见21号补充；不在文档同步阶段生成测试实现。
+Web: use `python backend/tools/run-frontend-gate.py web-build`, then in `frontend-admin` run `npx playwright install chromium` and `npm test`. Keep the production `dist` from the build: the tests start independent dev and production servers on 4173/4174. Six owner tests exercise private fixtures/intercepted HTTP, including denial and production fixture exclusion; no real Java authorization is claimed.
+
+Miniapp: `python backend/tools/run-frontend-gate.py miniapp-build` performs clean install, typecheck, 14 tests, WeChat compilation and package budget check. These commands do not run WeChat. Existing C-001 platform evidence is referenced only after full directory tree equality with its fixed commit; see the integration review. Re-execution uses the owner's `npm run test:platform` in an available WeChat DevTools session. Changed application source requires C-End revalidation.
+
+VIS evidence entry: reuse `frontend-miniapp/src/shared/evidence/visual-manifest.json`. Required fields cover design version/node/V1 source/route/state/assets, original and derived asset hashes, fixed window/DPR/SDK/data/scroll/animation, screenshot/overlay/difference approval. Current neutral shell has zero product pages or assets: VIS-001~004 are N/A for this integration, not PASS. Future C/M page owners populate this manifest and obtain documented exceptions; no one-to-one restoration claim is made here.
+
+`evidence/QA-001/` records local execution and exact source provenance. Final remote CI evidence belongs to its actual head and merge ref; old PR runs cannot certify a new integration head. Linux CI does not execute WeChat/device/VIS, payment or cross-user E2E-01~08.

@@ -1,0 +1,6 @@
+
+> pet-platform-admin@0.1.0 check:boundaries
+> node scripts/check-boundaries.mjs
+
+PASS: frontend-admin source imports stay inside its scope; no miniapp platform APIs; default production JavaScript excludes private fixtures.
+Scope: A-001 frontend boundary check only. Does not replace backend ARCH-001..005 or integrated CI.

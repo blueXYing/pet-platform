@@ -1,0 +1,11 @@
+pet-platform-admin@0.1.0 C:\Users\Administrator\.codex\worktrees\9b9e\宠物平台V1.0\frontend-admin
+├── @playwright/test@1.63.0
+├── @types/node@22.19.15
+├── @types/react-dom@19.2.3
+├── @types/react@19.2.14
+├── @vitejs/plugin-react@6.1.1
+├── react-dom@19.3.0
+├── react-router-dom@7.18.3
+├── react@19.3.0
+├── typescript@7.0.2
+└── vite@8.3.0

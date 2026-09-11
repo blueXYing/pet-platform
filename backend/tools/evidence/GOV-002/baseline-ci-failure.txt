@@ -1,0 +1,376 @@
+Source: https://github.com/blueXYing/pet-platform/actions/runs/34558509473
+Job: backend / 103136206100
+Read via connected GitHub workflow job logs; error-only extract, no credentials.
+Cause: internal com.petplatform dependency versions missing; model parsing failed before compile/tests.
+2026-09-11T03:27:41.8493649Z ##[group]Run mvn -B -f backend/pom.xml verify
+2026-09-11T03:27:51.8631064Z [ERROR] [ERROR] Some problems were encountered while processing the POMs:
+2026-09-11T03:27:51.8656655Z [ERROR] 'dependencies.dependency.version' for com.petplatform:pet-common:jar is missing. @ line 16, column 21
+2026-09-11T03:27:51.8676825Z [ERROR] 'dependencies.dependency.version' for com.petplatform:pet-common:jar is missing. @ line 16, column 21
+2026-09-11T03:27:51.8707048Z [ERROR] 'dependencies.dependency.version' for com.petplatform:pet-event-api:jar is missing. @ line 20, column 21
+2026-09-11T03:27:51.8726268Z [ERROR] 'dependencies.dependency.version' for com.petplatform:pet-common:jar is missing. @ line 16, column 21
+2026-09-11T03:27:51.8746503Z [ERROR] 'dependencies.dependency.version' for com.petplatform:pet-common:jar is missing. @ line 16, column 21
+2026-09-11T03:27:51.8786455Z [ERROR] 'dependencies.dependency.version' for com.petplatform:pet-common:jar is missing. @ line 16, column 21
+2026-09-11T03:27:51.8826450Z [ERROR] 'dependencies.dependency.version' for com.petplatform:pet-event-api:jar is missing. @ line 20, column 21
+2026-09-11T03:27:51.8840479Z [ERROR] 'dependencies.dependency.version' for com.petplatform:pet-user-api:jar is missing. @ line 24, column 21
+2026-09-11T03:27:51.8856437Z [ERROR] 'dependencies.dependency.version' for com.petplatform:pet-common:jar is missing. @ line 16, column 21
+2026-09-11T03:27:51.8876516Z [ERROR] 'dependencies.dependency.version' for com.petplatform:pet-common:jar is missing. @ line 16, column 21
+2026-09-11T03:27:51.8900622Z [ERROR] 'dependencies.dependency.version' for com.petplatform:pet-event-api:jar is missing. @ line 20, column 21
+2026-09-11T03:27:51.8902969Z [ERROR] 'dependencies.dependency.version' for com.petplatform:pet-merchant-api:jar is missing. @ line 24, column 21
+2026-09-11T03:27:51.8906802Z [ERROR] 'dependencies.dependency.version' for com.petplatform:pet-common:jar is missing. @ line 16, column 21
+2026-09-11T03:27:51.8909603Z [ERROR] 'dependencies.dependency.version' for com.petplatform:pet-common:jar is missing. @ line 16, column 21
+2026-09-11T03:27:51.8911295Z [ERROR] 'dependencies.dependency.version' for com.petplatform:pet-event-api:jar is missing. @ line 20, column 21
+2026-09-11T03:27:51.8912900Z [ERROR] 'dependencies.dependency.version' for com.petplatform:pet-service-api:jar is missing. @ line 24, column 21
+2026-09-11T03:27:51.8914548Z [ERROR] 'dependencies.dependency.version' for com.petplatform:pet-merchant-api:jar is missing. @ line 28, column 21
+2026-09-11T03:27:51.8916518Z [ERROR] 'dependencies.dependency.version' for com.petplatform:pet-common:jar is missing. @ line 16, column 21
+2026-09-11T03:27:51.8918043Z [ERROR] 'dependencies.dependency.version' for com.petplatform:pet-common:jar is missing. @ line 16, column 21
+2026-09-11T03:27:51.8919562Z [ERROR] 'dependencies.dependency.version' for com.petplatform:pet-event-api:jar is missing. @ line 20, column 21
+2026-09-11T03:27:51.8921148Z [ERROR] 'dependencies.dependency.version' for com.petplatform:pet-schedule-api:jar is missing. @ line 24, column 21
+2026-09-11T03:27:51.8922331Z [ERROR] 'dependencies.dependency.version' for com.petplatform:pet-merchant-api:jar is missing. @ line 28, column 21
+2026-09-11T03:27:51.8923284Z [ERROR] 'dependencies.dependency.version' for com.petplatform:pet-service-api:jar is missing. @ line 32, column 21
+2026-09-11T03:27:51.8924521Z [ERROR] 'dependencies.dependency.version' for com.petplatform:pet-task-core:jar is missing. @ line 53, column 21
+2026-09-11T03:27:51.8925751Z [ERROR] 'dependencies.dependency.version' for com.petplatform:pet-common:jar is missing. @ line 16, column 21
+2026-09-11T03:27:51.8927828Z [ERROR] 'dependencies.dependency.version' for com.petplatform:pet-common:jar is missing. @ line 16, column 21
+2026-09-11T03:27:51.8929284Z [ERROR] 'dependencies.dependency.version' for com.petplatform:pet-event-api:jar is missing. @ line 20, column 21
+2026-09-11T03:27:51.8930256Z [ERROR] 'dependencies.dependency.version' for com.petplatform:pet-order-api:jar is missing. @ line 24, column 21
+2026-09-11T03:27:51.8931170Z [ERROR] 'dependencies.dependency.version' for com.petplatform:pet-user-api:jar is missing. @ line 28, column 21
+2026-09-11T03:27:51.8932092Z [ERROR] 'dependencies.dependency.version' for com.petplatform:pet-merchant-api:jar is missing. @ line 32, column 21
+2026-09-11T03:27:51.8933026Z [ERROR] 'dependencies.dependency.version' for com.petplatform:pet-service-api:jar is missing. @ line 36, column 21
+2026-09-11T03:27:51.8933940Z [ERROR] 'dependencies.dependency.version' for com.petplatform:pet-schedule-api:jar is missing. @ line 40, column 21
+2026-09-11T03:27:51.8935646Z [ERROR] 'dependencies.dependency.version' for com.petplatform:pet-payment-api:jar is missing. @ line 44, column 21
+2026-09-11T03:27:51.8937340Z [ERROR] 'dependencies.dependency.version' for com.petplatform:pet-coupon-api:jar is missing. @ line 48, column 21
+2026-09-11T03:27:51.8938850Z [ERROR] 'dependencies.dependency.version' for com.petplatform:pet-task-core:jar is missing. @ line 65, column 21
+2026-09-11T03:27:51.8940194Z [ERROR] 'dependencies.dependency.version' for com.petplatform:pet-common:jar is missing. @ line 16, column 21
+2026-09-11T03:27:51.8941506Z [ERROR] 'dependencies.dependency.version' for com.petplatform:pet-common:jar is missing. @ line 16, column 21
+2026-09-11T03:27:51.8942532Z [ERROR] 'dependencies.dependency.version' for com.petplatform:pet-event-api:jar is missing. @ line 20, column 21
+2026-09-11T03:27:51.8943435Z [ERROR] 'dependencies.dependency.version' for com.petplatform:pet-payment-api:jar is missing. @ line 24, column 21
+2026-09-11T03:27:51.8944292Z [ERROR] 'dependencies.dependency.version' for com.petplatform:pet-task-core:jar is missing. @ line 45, column 21
+2026-09-11T03:27:51.8945129Z [ERROR] 'dependencies.dependency.version' for com.petplatform:pet-common:jar is missing. @ line 16, column 21
+2026-09-11T03:27:51.8946624Z [ERROR] 'dependencies.dependency.version' for com.petplatform:pet-common:jar is missing. @ line 16, column 21
+2026-09-11T03:27:51.8947468Z [ERROR] 'dependencies.dependency.version' for com.petplatform:pet-event-api:jar is missing. @ line 20, column 21
+2026-09-11T03:27:51.8948315Z [ERROR] 'dependencies.dependency.version' for com.petplatform:pet-refund-api:jar is missing. @ line 24, column 21
+2026-09-11T03:27:51.8949177Z [ERROR] 'dependencies.dependency.version' for com.petplatform:pet-order-api:jar is missing. @ line 28, column 21
+2026-09-11T03:27:51.8950037Z [ERROR] 'dependencies.dependency.version' for com.petplatform:pet-payment-api:jar is missing. @ line 32, column 21
+2026-09-11T03:27:51.8950890Z [ERROR] 'dependencies.dependency.version' for com.petplatform:pet-task-core:jar is missing. @ line 49, column 21
+2026-09-11T03:27:51.8951733Z [ERROR] 'dependencies.dependency.version' for com.petplatform:pet-common:jar is missing. @ line 16, column 21
+2026-09-11T03:27:51.8952548Z [ERROR] 'dependencies.dependency.version' for com.petplatform:pet-common:jar is missing. @ line 16, column 21
+2026-09-11T03:27:51.8953371Z [ERROR] 'dependencies.dependency.version' for com.petplatform:pet-event-api:jar is missing. @ line 20, column 21
+2026-09-11T03:27:51.8954248Z [ERROR] 'dependencies.dependency.version' for com.petplatform:pet-verification-api:jar is missing. @ line 24, column 21
+2026-09-11T03:27:51.8955131Z [ERROR] 'dependencies.dependency.version' for com.petplatform:pet-order-api:jar is missing. @ line 28, column 21
+2026-09-11T03:27:51.8956574Z [ERROR] 'dependencies.dependency.version' for com.petplatform:pet-common:jar is missing. @ line 16, column 21
+2026-09-11T03:27:51.8957411Z [ERROR] 'dependencies.dependency.version' for com.petplatform:pet-common:jar is missing. @ line 16, column 21
+2026-09-11T03:27:51.8958383Z [ERROR] 'dependencies.dependency.version' for com.petplatform:pet-event-api:jar is missing. @ line 20, column 21
+2026-09-11T03:27:51.8959250Z [ERROR] 'dependencies.dependency.version' for com.petplatform:pet-aftersale-api:jar is missing. @ line 24, column 21
+2026-09-11T03:27:51.8960113Z [ERROR] 'dependencies.dependency.version' for com.petplatform:pet-order-api:jar is missing. @ line 28, column 21
+2026-09-11T03:27:51.8960962Z [ERROR] 'dependencies.dependency.version' for com.petplatform:pet-refund-api:jar is missing. @ line 32, column 21
+2026-09-11T03:27:51.8961808Z [ERROR] 'dependencies.dependency.version' for com.petplatform:pet-common:jar is missing. @ line 16, column 21
+2026-09-11T03:27:51.8962648Z [ERROR] 'dependencies.dependency.version' for com.petplatform:pet-common:jar is missing. @ line 16, column 21
+2026-09-11T03:27:51.8963485Z [ERROR] 'dependencies.dependency.version' for com.petplatform:pet-event-api:jar is missing. @ line 20, column 21
+2026-09-11T03:27:51.8964341Z [ERROR] 'dependencies.dependency.version' for com.petplatform:pet-coupon-api:jar is missing. @ line 24, column 21
+2026-09-11T03:27:51.8965391Z [ERROR] 'dependencies.dependency.version' for com.petplatform:pet-common:jar is missing. @ line 16, column 21
+2026-09-11T03:27:51.8966250Z [ERROR] 'dependencies.dependency.version' for com.petplatform:pet-common:jar is missing. @ line 16, column 21
+2026-09-11T03:27:51.8967090Z [ERROR] 'dependencies.dependency.version' for com.petplatform:pet-event-api:jar is missing. @ line 20, column 21
+2026-09-11T03:27:51.8967935Z [ERROR] 'dependencies.dependency.version' for com.petplatform:pet-points-api:jar is missing. @ line 24, column 21
+2026-09-11T03:27:51.8968769Z [ERROR] 'dependencies.dependency.version' for com.petplatform:pet-common:jar is missing. @ line 16, column 21
+2026-09-11T03:27:51.8969596Z [ERROR] 'dependencies.dependency.version' for com.petplatform:pet-common:jar is missing. @ line 16, column 21
+2026-09-11T03:27:51.8970430Z [ERROR] 'dependencies.dependency.version' for com.petplatform:pet-event-api:jar is missing. @ line 20, column 21
+2026-09-11T03:27:51.8971298Z [ERROR] 'dependencies.dependency.version' for com.petplatform:pet-review-api:jar is missing. @ line 24, column 21
+2026-09-11T03:27:51.8972150Z [ERROR] 'dependencies.dependency.version' for com.petplatform:pet-order-api:jar is missing. @ line 28, column 21
+2026-09-11T03:27:51.8972976Z [ERROR] 'dependencies.dependency.version' for com.petplatform:pet-common:jar is missing. @ line 16, column 21
+2026-09-11T03:27:51.8973791Z [ERROR] 'dependencies.dependency.version' for com.petplatform:pet-common:jar is missing. @ line 16, column 21
+2026-09-11T03:27:51.8974648Z [ERROR] 'dependencies.dependency.version' for com.petplatform:pet-event-api:jar is missing. @ line 20, column 21
+2026-09-11T03:27:51.8975878Z [ERROR] 'dependencies.dependency.version' for com.petplatform:pet-notification-api:jar is missing. @ line 24, column 21
+2026-09-11T03:27:51.8976779Z [ERROR] 'dependencies.dependency.version' for com.petplatform:pet-task-core:jar is missing. @ line 45, column 21
+2026-09-11T03:27:51.8977621Z [ERROR] 'dependencies.dependency.version' for com.petplatform:pet-common:jar is missing. @ line 16, column 21
+2026-09-11T03:27:51.8978441Z [ERROR] 'dependencies.dependency.version' for com.petplatform:pet-common:jar is missing. @ line 16, column 21
+2026-09-11T03:27:51.8979264Z [ERROR] 'dependencies.dependency.version' for com.petplatform:pet-event-api:jar is missing. @ line 20, column 21
+2026-09-11T03:27:51.8980130Z [ERROR] 'dependencies.dependency.version' for com.petplatform:pet-community-api:jar is missing. @ line 24, column 21
+2026-09-11T03:27:51.8980993Z [ERROR] 'dependencies.dependency.version' for com.petplatform:pet-user-api:jar is missing. @ line 28, column 21
+2026-09-11T03:27:51.8981983Z [ERROR] 'dependencies.dependency.version' for com.petplatform:pet-common:jar is missing. @ line 16, column 21
+2026-09-11T03:27:51.8982810Z [ERROR] 'dependencies.dependency.version' for com.petplatform:pet-common:jar is missing. @ line 16, column 21
+2026-09-11T03:27:51.8983761Z [ERROR] 'dependencies.dependency.version' for com.petplatform:pet-event-api:jar is missing. @ line 20, column 21
+2026-09-11T03:27:51.8984630Z [ERROR] 'dependencies.dependency.version' for com.petplatform:pet-thirdparty-api:jar is missing. @ line 24, column 21
+2026-09-11T03:27:51.8985839Z [ERROR] 'dependencies.dependency.version' for com.petplatform:pet-merchant-api:jar is missing. @ line 28, column 21
+2026-09-11T03:27:51.8986701Z [ERROR] 'dependencies.dependency.version' for com.petplatform:pet-task-core:jar is missing. @ line 49, column 21
+2026-09-11T03:27:51.8987531Z [ERROR] 'dependencies.dependency.version' for com.petplatform:pet-common:jar is missing. @ line 16, column 21
+2026-09-11T03:27:51.8988343Z [ERROR] 'dependencies.dependency.version' for com.petplatform:pet-common:jar is missing. @ line 16, column 21
+2026-09-11T03:27:51.8989177Z [ERROR] 'dependencies.dependency.version' for com.petplatform:pet-event-api:jar is missing. @ line 20, column 21
+2026-09-11T03:27:51.8990094Z [ERROR] 'dependencies.dependency.version' for com.petplatform:pet-customer-service-api:jar is missing. @ line 24, column 21
+2026-09-11T03:27:51.8990986Z [ERROR] 'dependencies.dependency.version' for com.petplatform:pet-common:jar is missing. @ line 16, column 21
+2026-09-11T03:27:51.8991800Z [ERROR] 'dependencies.dependency.version' for com.petplatform:pet-common:jar is missing. @ line 16, column 21
+2026-09-11T03:27:51.8992626Z [ERROR] 'dependencies.dependency.version' for com.petplatform:pet-event-api:jar is missing. @ line 20, column 21
+2026-09-11T03:27:51.8993467Z [ERROR] 'dependencies.dependency.version' for com.petplatform:pet-admin-api:jar is missing. @ line 24, column 21
+2026-09-11T03:27:51.8994322Z [ERROR] 'dependencies.dependency.version' for com.petplatform:pet-merchant-api:jar is missing. @ line 28, column 21
+2026-09-11T03:27:51.8995439Z [ERROR] 'dependencies.dependency.version' for com.petplatform:pet-order-api:jar is missing. @ line 32, column 21
+2026-09-11T03:27:51.8996312Z [ERROR] 'dependencies.dependency.version' for com.petplatform:pet-refund-api:jar is missing. @ line 36, column 21
+2026-09-11T03:27:51.8997179Z [ERROR] 'dependencies.dependency.version' for com.petplatform:pet-aftersale-api:jar is missing. @ line 40, column 21
+2026-09-11T03:27:51.8998046Z [ERROR] 'dependencies.dependency.version' for com.petplatform:pet-review-api:jar is missing. @ line 44, column 21
+2026-09-11T03:27:51.8998903Z [ERROR] 'dependencies.dependency.version' for com.petplatform:pet-coupon-api:jar is missing. @ line 48, column 21
+2026-09-11T03:27:51.8999757Z [ERROR] 'dependencies.dependency.version' for com.petplatform:pet-points-api:jar is missing. @ line 52, column 21
+2026-09-11T03:27:51.9000635Z [ERROR] 'dependencies.dependency.version' for com.petplatform:pet-notification-api:jar is missing. @ line 56, column 21
+2026-09-11T03:27:51.9001500Z [ERROR] 'dependencies.dependency.version' for com.petplatform:pet-common:jar is missing. @ line 20, column 21
+2026-09-11T03:27:51.9002332Z [ERROR] 'dependencies.dependency.version' for com.petplatform:pet-event-api:jar is missing. @ line 24, column 21
+2026-09-11T03:27:51.9003176Z [ERROR] 'dependencies.dependency.version' for com.petplatform:pet-event-core:jar is missing. @ line 28, column 21
+2026-09-11T03:27:51.9004019Z [ERROR] 'dependencies.dependency.version' for com.petplatform:pet-task-core:jar is missing. @ line 32, column 21
+2026-09-11T03:27:51.9004864Z [ERROR] 'dependencies.dependency.version' for com.petplatform:pet-user-api:jar is missing. @ line 36, column 21
+2026-09-11T03:27:51.9005828Z [ERROR] 'dependencies.dependency.version' for com.petplatform:pet-user-biz:jar is missing. @ line 40, column 21
+2026-09-11T03:27:51.9006691Z [ERROR] 'dependencies.dependency.version' for com.petplatform:pet-merchant-api:jar is missing. @ line 44, column 21
+2026-09-11T03:27:51.9007720Z [ERROR] 'dependencies.dependency.version' for com.petplatform:pet-merchant-biz:jar is missing. @ line 48, column 21
+2026-09-11T03:27:51.9008599Z [ERROR] 'dependencies.dependency.version' for com.petplatform:pet-service-api:jar is missing. @ line 52, column 21
+2026-09-11T03:27:51.9009576Z [ERROR] 'dependencies.dependency.version' for com.petplatform:pet-service-biz:jar is missing. @ line 56, column 21
+2026-09-11T03:27:51.9010942Z [ERROR] 'dependencies.dependency.version' for com.petplatform:pet-schedule-api:jar is missing. @ line 60, column 21
+2026-09-11T03:27:51.9013756Z [ERROR] 'dependencies.dependency.version' for com.petplatform:pet-schedule-biz:jar is missing. @ line 64, column 21
+2026-09-11T03:27:51.9015167Z [ERROR] 'dependencies.dependency.version' for com.petplatform:pet-order-api:jar is missing. @ line 68, column 21
+2026-09-11T03:27:51.9016770Z [ERROR] 'dependencies.dependency.version' for com.petplatform:pet-order-biz:jar is missing. @ line 72, column 21
+2026-09-11T03:27:51.9018192Z [ERROR] 'dependencies.dependency.version' for com.petplatform:pet-payment-api:jar is missing. @ line 76, column 21
+2026-09-11T03:27:51.9019604Z [ERROR] 'dependencies.dependency.version' for com.petplatform:pet-payment-biz:jar is missing. @ line 80, column 21
+2026-09-11T03:27:51.9021016Z [ERROR] 'dependencies.dependency.version' for com.petplatform:pet-refund-api:jar is missing. @ line 84, column 21
+2026-09-11T03:27:51.9022416Z [ERROR] 'dependencies.dependency.version' for com.petplatform:pet-refund-biz:jar is missing. @ line 88, column 21
+2026-09-11T03:27:51.9023847Z [ERROR] 'dependencies.dependency.version' for com.petplatform:pet-verification-api:jar is missing. @ line 92, column 21
+2026-09-11T03:27:51.9025467Z [ERROR] 'dependencies.dependency.version' for com.petplatform:pet-verification-biz:jar is missing. @ line 96, column 21
+2026-09-11T03:27:51.9026921Z [ERROR] 'dependencies.dependency.version' for com.petplatform:pet-aftersale-api:jar is missing. @ line 100, column 21
+2026-09-11T03:27:51.9028250Z [ERROR] 'dependencies.dependency.version' for com.petplatform:pet-aftersale-biz:jar is missing. @ line 104, column 21
+2026-09-11T03:27:51.9029699Z [ERROR] 'dependencies.dependency.version' for com.petplatform:pet-coupon-api:jar is missing. @ line 108, column 21
+2026-09-11T03:27:51.9031102Z [ERROR] 'dependencies.dependency.version' for com.petplatform:pet-coupon-biz:jar is missing. @ line 112, column 21
+2026-09-11T03:27:51.9032490Z [ERROR] 'dependencies.dependency.version' for com.petplatform:pet-points-api:jar is missing. @ line 116, column 21
+2026-09-11T03:27:51.9033867Z [ERROR] 'dependencies.dependency.version' for com.petplatform:pet-points-biz:jar is missing. @ line 120, column 21
+2026-09-11T03:27:51.9035466Z [ERROR] 'dependencies.dependency.version' for com.petplatform:pet-review-api:jar is missing. @ line 124, column 21
+2026-09-11T03:27:51.9036851Z [ERROR] 'dependencies.dependency.version' for com.petplatform:pet-review-biz:jar is missing. @ line 128, column 21
+2026-09-11T03:27:51.9038295Z [ERROR] 'dependencies.dependency.version' for com.petplatform:pet-notification-api:jar is missing. @ line 132, column 21
+2026-09-11T03:27:51.9039775Z [ERROR] 'dependencies.dependency.version' for com.petplatform:pet-notification-biz:jar is missing. @ line 136, column 21
+2026-09-11T03:27:51.9041245Z [ERROR] 'dependencies.dependency.version' for com.petplatform:pet-community-api:jar is missing. @ line 140, column 21
+2026-09-11T03:27:51.9042665Z [ERROR] 'dependencies.dependency.version' for com.petplatform:pet-community-biz:jar is missing. @ line 144, column 21
+2026-09-11T03:27:51.9044095Z [ERROR] 'dependencies.dependency.version' for com.petplatform:pet-thirdparty-api:jar is missing. @ line 148, column 21
+2026-09-11T03:27:51.9045790Z [ERROR] 'dependencies.dependency.version' for com.petplatform:pet-thirdparty-biz:jar is missing. @ line 152, column 21
+2026-09-11T03:27:51.9047300Z [ERROR] 'dependencies.dependency.version' for com.petplatform:pet-customer-service-api:jar is missing. @ line 156, column 21
+2026-09-11T03:27:51.9049095Z [ERROR] 'dependencies.dependency.version' for com.petplatform:pet-customer-service-biz:jar is missing. @ line 160, column 21
+2026-09-11T03:27:51.9050578Z [ERROR] 'dependencies.dependency.version' for com.petplatform:pet-admin-api:jar is missing. @ line 164, column 21
+2026-09-11T03:27:51.9052095Z [ERROR] 'dependencies.dependency.version' for com.petplatform:pet-admin-biz:jar is missing. @ line 168, column 21
+2026-09-11T03:27:51.9053430Z [ERROR] 'dependencies.dependency.version' for com.petplatform:pet-boot:jar is missing. @ line 19, column 21
+2026-09-11T03:27:51.9054680Z [ERROR] The build could not read 39 projects -> [Help 1]
+2026-09-11T03:27:51.9055825Z [ERROR]
+2026-09-11T03:27:51.9056860Z [ERROR]   The project com.petplatform:pet-event-api:0.1.0-SNAPSHOT (/home/runner/work/pet-platform/pet-platform/backend/pet-event-api/pom.xml) has 1 error
+2026-09-11T03:27:51.9058451Z [ERROR]     'dependencies.dependency.version' for com.petplatform:pet-common:jar is missing. @ line 16, column 21
+2026-09-11T03:27:51.9059315Z [ERROR]
+2026-09-11T03:27:51.9060339Z [ERROR]   The project com.petplatform:pet-event-core:0.1.0-SNAPSHOT (/home/runner/work/pet-platform/pet-platform/backend/pet-event-core/pom.xml) has 2 errors
+2026-09-11T03:27:51.9061946Z [ERROR]     'dependencies.dependency.version' for com.petplatform:pet-common:jar is missing. @ line 16, column 21
+2026-09-11T03:27:51.9063279Z [ERROR]     'dependencies.dependency.version' for com.petplatform:pet-event-api:jar is missing. @ line 20, column 21
+2026-09-11T03:27:51.9064187Z [ERROR]
+2026-09-11T03:27:51.9065155Z [ERROR]   The project com.petplatform:pet-task-core:0.1.0-SNAPSHOT (/home/runner/work/pet-platform/pet-platform/backend/pet-task-core/pom.xml) has 1 error
+2026-09-11T03:27:51.9066843Z [ERROR]     'dependencies.dependency.version' for com.petplatform:pet-common:jar is missing. @ line 16, column 21
+2026-09-11T03:27:51.9067738Z [ERROR]
+2026-09-11T03:27:51.9068752Z [ERROR]   The project com.petplatform:pet-user-api:0.1.0-SNAPSHOT (/home/runner/work/pet-platform/pet-platform/backend/pet-user-api/pom.xml) has 1 error
+2026-09-11T03:27:51.9070340Z [ERROR]     'dependencies.dependency.version' for com.petplatform:pet-common:jar is missing. @ line 16, column 21
+2026-09-11T03:27:51.9071174Z [ERROR]
+2026-09-11T03:27:51.9072132Z [ERROR]   The project com.petplatform:pet-user-biz:0.1.0-SNAPSHOT (/home/runner/work/pet-platform/pet-platform/backend/pet-user-biz/pom.xml) has 3 errors
+2026-09-11T03:27:51.9073659Z [ERROR]     'dependencies.dependency.version' for com.petplatform:pet-common:jar is missing. @ line 16, column 21
+2026-09-11T03:27:51.9075070Z [ERROR]     'dependencies.dependency.version' for com.petplatform:pet-event-api:jar is missing. @ line 20, column 21
+2026-09-11T03:27:51.9076679Z [ERROR]     'dependencies.dependency.version' for com.petplatform:pet-user-api:jar is missing. @ line 24, column 21
+2026-09-11T03:27:51.9077577Z [ERROR]
+2026-09-11T03:27:51.9078619Z [ERROR]   The project com.petplatform:pet-merchant-api:0.1.0-SNAPSHOT (/home/runner/work/pet-platform/pet-platform/backend/pet-merchant-api/pom.xml) has 1 error
+2026-09-11T03:27:51.9080238Z [ERROR]     'dependencies.dependency.version' for com.petplatform:pet-common:jar is missing. @ line 16, column 21
+2026-09-11T03:27:51.9081130Z [ERROR]
+2026-09-11T03:27:51.9082174Z [ERROR]   The project com.petplatform:pet-merchant-biz:0.1.0-SNAPSHOT (/home/runner/work/pet-platform/pet-platform/backend/pet-merchant-biz/pom.xml) has 3 errors
+2026-09-11T03:27:51.9083810Z [ERROR]     'dependencies.dependency.version' for com.petplatform:pet-common:jar is missing. @ line 16, column 21
+2026-09-11T03:27:51.9085163Z [ERROR]     'dependencies.dependency.version' for com.petplatform:pet-event-api:jar is missing. @ line 20, column 21
+2026-09-11T03:27:51.9086868Z [ERROR]     'dependencies.dependency.version' for com.petplatform:pet-merchant-api:jar is missing. @ line 24, column 21
+2026-09-11T03:27:51.9087787Z [ERROR]
+2026-09-11T03:27:51.9089031Z [ERROR]   The project com.petplatform:pet-service-api:0.1.0-SNAPSHOT (/home/runner/work/pet-platform/pet-platform/backend/pet-service-api/pom.xml) has 1 error
+2026-09-11T03:27:51.9090638Z [ERROR]     'dependencies.dependency.version' for com.petplatform:pet-common:jar is missing. @ line 16, column 21
+2026-09-11T03:27:51.9091702Z [ERROR]
+2026-09-11T03:27:51.9092757Z [ERROR]   The project com.petplatform:pet-service-biz:0.1.0-SNAPSHOT (/home/runner/work/pet-platform/pet-platform/backend/pet-service-biz/pom.xml) has 4 errors
+2026-09-11T03:27:51.9094369Z [ERROR]     'dependencies.dependency.version' for com.petplatform:pet-common:jar is missing. @ line 16, column 21
+2026-09-11T03:27:51.9095959Z [ERROR]     'dependencies.dependency.version' for com.petplatform:pet-event-api:jar is missing. @ line 20, column 21
+2026-09-11T03:27:51.9097389Z [ERROR]     'dependencies.dependency.version' for com.petplatform:pet-service-api:jar is missing. @ line 24, column 21
+2026-09-11T03:27:51.9098812Z [ERROR]     'dependencies.dependency.version' for com.petplatform:pet-merchant-api:jar is missing. @ line 28, column 21
+2026-09-11T03:27:51.9099768Z [ERROR]
+2026-09-11T03:27:51.9100827Z [ERROR]   The project com.petplatform:pet-schedule-api:0.1.0-SNAPSHOT (/home/runner/work/pet-platform/pet-platform/backend/pet-schedule-api/pom.xml) has 1 error
+2026-09-11T03:27:51.9102494Z [ERROR]     'dependencies.dependency.version' for com.petplatform:pet-common:jar is missing. @ line 16, column 21
+2026-09-11T03:27:51.9103354Z [ERROR]
+2026-09-11T03:27:51.9104379Z [ERROR]   The project com.petplatform:pet-schedule-biz:0.1.0-SNAPSHOT (/home/runner/work/pet-platform/pet-platform/backend/pet-schedule-biz/pom.xml) has 6 errors
+2026-09-11T03:27:51.9106220Z [ERROR]     'dependencies.dependency.version' for com.petplatform:pet-common:jar is missing. @ line 16, column 21
+2026-09-11T03:27:51.9107574Z [ERROR]     'dependencies.dependency.version' for com.petplatform:pet-event-api:jar is missing. @ line 20, column 21
+2026-09-11T03:27:51.9108929Z [ERROR]     'dependencies.dependency.version' for com.petplatform:pet-schedule-api:jar is missing. @ line 24, column 21
+2026-09-11T03:27:51.9110356Z [ERROR]     'dependencies.dependency.version' for com.petplatform:pet-merchant-api:jar is missing. @ line 28, column 21
+2026-09-11T03:27:51.9143441Z [ERROR]     'dependencies.dependency.version' for com.petplatform:pet-service-api:jar is missing. @ line 32, column 21
+2026-09-11T03:27:51.9144950Z [ERROR]     'dependencies.dependency.version' for com.petplatform:pet-task-core:jar is missing. @ line 53, column 21
+2026-09-11T03:27:51.9146180Z [ERROR]
+2026-09-11T03:27:51.9147503Z [ERROR]   The project com.petplatform:pet-order-api:0.1.0-SNAPSHOT (/home/runner/work/pet-platform/pet-platform/backend/pet-order-api/pom.xml) has 1 error
+2026-09-11T03:27:51.9149157Z [ERROR]     'dependencies.dependency.version' for com.petplatform:pet-common:jar is missing. @ line 16, column 21
+2026-09-11T03:27:51.9150072Z [ERROR]
+2026-09-11T03:27:51.9151137Z [ERROR]   The project com.petplatform:pet-order-biz:0.1.0-SNAPSHOT (/home/runner/work/pet-platform/pet-platform/backend/pet-order-biz/pom.xml) has 10 errors
+2026-09-11T03:27:51.9152221Z [ERROR]     'dependencies.dependency.version' for com.petplatform:pet-common:jar is missing. @ line 16, column 21
+2026-09-11T03:27:51.9153128Z [ERROR]     'dependencies.dependency.version' for com.petplatform:pet-event-api:jar is missing. @ line 20, column 21
+2026-09-11T03:27:51.9154003Z [ERROR]     'dependencies.dependency.version' for com.petplatform:pet-order-api:jar is missing. @ line 24, column 21
+2026-09-11T03:27:51.9154879Z [ERROR]     'dependencies.dependency.version' for com.petplatform:pet-user-api:jar is missing. @ line 28, column 21
+2026-09-11T03:27:51.9156155Z [ERROR]     'dependencies.dependency.version' for com.petplatform:pet-merchant-api:jar is missing. @ line 32, column 21
+2026-09-11T03:27:51.9157067Z [ERROR]     'dependencies.dependency.version' for com.petplatform:pet-service-api:jar is missing. @ line 36, column 21
+2026-09-11T03:27:51.9158160Z [ERROR]     'dependencies.dependency.version' for com.petplatform:pet-schedule-api:jar is missing. @ line 40, column 21
+2026-09-11T03:27:51.9159082Z [ERROR]     'dependencies.dependency.version' for com.petplatform:pet-payment-api:jar is missing. @ line 44, column 21
+2026-09-11T03:27:51.9160085Z [ERROR]     'dependencies.dependency.version' for com.petplatform:pet-coupon-api:jar is missing. @ line 48, column 21
+2026-09-11T03:27:51.9160957Z [ERROR]     'dependencies.dependency.version' for com.petplatform:pet-task-core:jar is missing. @ line 65, column 21
+2026-09-11T03:27:51.9161530Z [ERROR]
+2026-09-11T03:27:51.9162209Z [ERROR]   The project com.petplatform:pet-payment-api:0.1.0-SNAPSHOT (/home/runner/work/pet-platform/pet-platform/backend/pet-payment-api/pom.xml) has 1 error
+2026-09-11T03:27:51.9163255Z [ERROR]     'dependencies.dependency.version' for com.petplatform:pet-common:jar is missing. @ line 16, column 21
+2026-09-11T03:27:51.9163818Z [ERROR]
+2026-09-11T03:27:51.9164487Z [ERROR]   The project com.petplatform:pet-payment-biz:0.1.0-SNAPSHOT (/home/runner/work/pet-platform/pet-platform/backend/pet-payment-biz/pom.xml) has 4 errors
+2026-09-11T03:27:51.9165880Z [ERROR]     'dependencies.dependency.version' for com.petplatform:pet-common:jar is missing. @ line 16, column 21
+2026-09-11T03:27:51.9166762Z [ERROR]     'dependencies.dependency.version' for com.petplatform:pet-event-api:jar is missing. @ line 20, column 21
+2026-09-11T03:27:51.9167638Z [ERROR]     'dependencies.dependency.version' for com.petplatform:pet-payment-api:jar is missing. @ line 24, column 21
+2026-09-11T03:27:51.9168530Z [ERROR]     'dependencies.dependency.version' for com.petplatform:pet-task-core:jar is missing. @ line 45, column 21
+2026-09-11T03:27:51.9169113Z [ERROR]
+2026-09-11T03:27:51.9169780Z [ERROR]   The project com.petplatform:pet-refund-api:0.1.0-SNAPSHOT (/home/runner/work/pet-platform/pet-platform/backend/pet-refund-api/pom.xml) has 1 error
+2026-09-11T03:27:51.9170816Z [ERROR]     'dependencies.dependency.version' for com.petplatform:pet-common:jar is missing. @ line 16, column 21
+2026-09-11T03:27:51.9171388Z [ERROR]
+2026-09-11T03:27:51.9172043Z [ERROR]   The project com.petplatform:pet-refund-biz:0.1.0-SNAPSHOT (/home/runner/work/pet-platform/pet-platform/backend/pet-refund-biz/pom.xml) has 6 errors
+2026-09-11T03:27:51.9173064Z [ERROR]     'dependencies.dependency.version' for com.petplatform:pet-common:jar is missing. @ line 16, column 21
+2026-09-11T03:27:51.9173915Z [ERROR]     'dependencies.dependency.version' for com.petplatform:pet-event-api:jar is missing. @ line 20, column 21
+2026-09-11T03:27:51.9174794Z [ERROR]     'dependencies.dependency.version' for com.petplatform:pet-refund-api:jar is missing. @ line 24, column 21
+2026-09-11T03:27:51.9175921Z [ERROR]     'dependencies.dependency.version' for com.petplatform:pet-order-api:jar is missing. @ line 28, column 21
+2026-09-11T03:27:51.9176811Z [ERROR]     'dependencies.dependency.version' for com.petplatform:pet-payment-api:jar is missing. @ line 32, column 21
+2026-09-11T03:27:51.9177725Z [ERROR]     'dependencies.dependency.version' for com.petplatform:pet-task-core:jar is missing. @ line 49, column 21
+2026-09-11T03:27:51.9178292Z [ERROR]
+2026-09-11T03:27:51.9179006Z [ERROR]   The project com.petplatform:pet-verification-api:0.1.0-SNAPSHOT (/home/runner/work/pet-platform/pet-platform/backend/pet-verification-api/pom.xml) has 1 error
+2026-09-11T03:27:51.9180091Z [ERROR]     'dependencies.dependency.version' for com.petplatform:pet-common:jar is missing. @ line 16, column 21
+2026-09-11T03:27:51.9180657Z [ERROR]
+2026-09-11T03:27:51.9181363Z [ERROR]   The project com.petplatform:pet-verification-biz:0.1.0-SNAPSHOT (/home/runner/work/pet-platform/pet-platform/backend/pet-verification-biz/pom.xml) has 4 errors
+2026-09-11T03:27:51.9182430Z [ERROR]     'dependencies.dependency.version' for com.petplatform:pet-common:jar is missing. @ line 16, column 21
+2026-09-11T03:27:51.9183292Z [ERROR]     'dependencies.dependency.version' for com.petplatform:pet-event-api:jar is missing. @ line 20, column 21
+2026-09-11T03:27:51.9184339Z [ERROR]     'dependencies.dependency.version' for com.petplatform:pet-verification-api:jar is missing. @ line 24, column 21
+2026-09-11T03:27:51.9185553Z [ERROR]     'dependencies.dependency.version' for com.petplatform:pet-order-api:jar is missing. @ line 28, column 21
+2026-09-11T03:27:51.9186455Z [ERROR]
+2026-09-11T03:27:51.9187171Z [ERROR]   The project com.petplatform:pet-aftersale-api:0.1.0-SNAPSHOT (/home/runner/work/pet-platform/pet-platform/backend/pet-aftersale-api/pom.xml) has 1 error
+2026-09-11T03:27:51.9188247Z [ERROR]     'dependencies.dependency.version' for com.petplatform:pet-common:jar is missing. @ line 16, column 21
+2026-09-11T03:27:51.9188818Z [ERROR]
+2026-09-11T03:27:51.9189506Z [ERROR]   The project com.petplatform:pet-aftersale-biz:0.1.0-SNAPSHOT (/home/runner/work/pet-platform/pet-platform/backend/pet-aftersale-biz/pom.xml) has 5 errors
+2026-09-11T03:27:51.9190558Z [ERROR]     'dependencies.dependency.version' for com.petplatform:pet-common:jar is missing. @ line 16, column 21
+2026-09-11T03:27:51.9191420Z [ERROR]     'dependencies.dependency.version' for com.petplatform:pet-event-api:jar is missing. @ line 20, column 21
+2026-09-11T03:27:51.9192313Z [ERROR]     'dependencies.dependency.version' for com.petplatform:pet-aftersale-api:jar is missing. @ line 24, column 21
+2026-09-11T03:27:51.9193200Z [ERROR]     'dependencies.dependency.version' for com.petplatform:pet-order-api:jar is missing. @ line 28, column 21
+2026-09-11T03:27:51.9194064Z [ERROR]     'dependencies.dependency.version' for com.petplatform:pet-refund-api:jar is missing. @ line 32, column 21
+2026-09-11T03:27:51.9194638Z [ERROR]
+2026-09-11T03:27:51.9195521Z [ERROR]   The project com.petplatform:pet-coupon-api:0.1.0-SNAPSHOT (/home/runner/work/pet-platform/pet-platform/backend/pet-coupon-api/pom.xml) has 1 error
+2026-09-11T03:27:51.9196545Z [ERROR]     'dependencies.dependency.version' for com.petplatform:pet-common:jar is missing. @ line 16, column 21
+2026-09-11T03:27:51.9197099Z [ERROR]
+2026-09-11T03:27:51.9197753Z [ERROR]   The project com.petplatform:pet-coupon-biz:0.1.0-SNAPSHOT (/home/runner/work/pet-platform/pet-platform/backend/pet-coupon-biz/pom.xml) has 3 errors
+2026-09-11T03:27:51.9198772Z [ERROR]     'dependencies.dependency.version' for com.petplatform:pet-common:jar is missing. @ line 16, column 21
+2026-09-11T03:27:51.9199622Z [ERROR]     'dependencies.dependency.version' for com.petplatform:pet-event-api:jar is missing. @ line 20, column 21
+2026-09-11T03:27:51.9200498Z [ERROR]     'dependencies.dependency.version' for com.petplatform:pet-coupon-api:jar is missing. @ line 24, column 21
+2026-09-11T03:27:51.9201070Z [ERROR]
+2026-09-11T03:27:51.9201713Z [ERROR]   The project com.petplatform:pet-points-api:0.1.0-SNAPSHOT (/home/runner/work/pet-platform/pet-platform/backend/pet-points-api/pom.xml) has 1 error
+2026-09-11T03:27:51.9202752Z [ERROR]     'dependencies.dependency.version' for com.petplatform:pet-common:jar is missing. @ line 16, column 21
+2026-09-11T03:27:51.9203320Z [ERROR]
+2026-09-11T03:27:51.9203978Z [ERROR]   The project com.petplatform:pet-points-biz:0.1.0-SNAPSHOT (/home/runner/work/pet-platform/pet-platform/backend/pet-points-biz/pom.xml) has 3 errors
+2026-09-11T03:27:51.9205001Z [ERROR]     'dependencies.dependency.version' for com.petplatform:pet-common:jar is missing. @ line 16, column 21
+2026-09-11T03:27:51.9206168Z [ERROR]     'dependencies.dependency.version' for com.petplatform:pet-event-api:jar is missing. @ line 20, column 21
+2026-09-11T03:27:51.9207040Z [ERROR]     'dependencies.dependency.version' for com.petplatform:pet-points-api:jar is missing. @ line 24, column 21
+2026-09-11T03:27:51.9207615Z [ERROR]
+2026-09-11T03:27:51.9208258Z [ERROR]   The project com.petplatform:pet-review-api:0.1.0-SNAPSHOT (/home/runner/work/pet-platform/pet-platform/backend/pet-review-api/pom.xml) has 1 error
+2026-09-11T03:27:51.9209262Z [ERROR]     'dependencies.dependency.version' for com.petplatform:pet-common:jar is missing. @ line 16, column 21
+2026-09-11T03:27:51.9209814Z [ERROR]
+2026-09-11T03:27:51.9210692Z [ERROR]   The project com.petplatform:pet-review-biz:0.1.0-SNAPSHOT (/home/runner/work/pet-platform/pet-platform/backend/pet-review-biz/pom.xml) has 4 errors
+2026-09-11T03:27:51.9211836Z [ERROR]     'dependencies.dependency.version' for com.petplatform:pet-common:jar is missing. @ line 16, column 21
+2026-09-11T03:27:51.9212682Z [ERROR]     'dependencies.dependency.version' for com.petplatform:pet-event-api:jar is missing. @ line 20, column 21
+2026-09-11T03:27:51.9213545Z [ERROR]     'dependencies.dependency.version' for com.petplatform:pet-review-api:jar is missing. @ line 24, column 21
+2026-09-11T03:27:51.9214414Z [ERROR]     'dependencies.dependency.version' for com.petplatform:pet-order-api:jar is missing. @ line 28, column 21
+2026-09-11T03:27:51.9214983Z [ERROR]
+2026-09-11T03:27:51.9215959Z [ERROR]   The project com.petplatform:pet-notification-api:0.1.0-SNAPSHOT (/home/runner/work/pet-platform/pet-platform/backend/pet-notification-api/pom.xml) has 1 error
+2026-09-11T03:27:51.9217071Z [ERROR]     'dependencies.dependency.version' for com.petplatform:pet-common:jar is missing. @ line 16, column 21
+2026-09-11T03:27:51.9217636Z [ERROR]
+2026-09-11T03:27:51.9218357Z [ERROR]   The project com.petplatform:pet-notification-biz:0.1.0-SNAPSHOT (/home/runner/work/pet-platform/pet-platform/backend/pet-notification-biz/pom.xml) has 4 errors
+2026-09-11T03:27:51.9219433Z [ERROR]     'dependencies.dependency.version' for com.petplatform:pet-common:jar is missing. @ line 16, column 21
+2026-09-11T03:27:51.9220292Z [ERROR]     'dependencies.dependency.version' for com.petplatform:pet-event-api:jar is missing. @ line 20, column 21
+2026-09-11T03:27:51.9221201Z [ERROR]     'dependencies.dependency.version' for com.petplatform:pet-notification-api:jar is missing. @ line 24, column 21
+2026-09-11T03:27:51.9222103Z [ERROR]     'dependencies.dependency.version' for com.petplatform:pet-task-core:jar is missing. @ line 45, column 21
+2026-09-11T03:27:51.9222675Z [ERROR]
+2026-09-11T03:27:51.9223348Z [ERROR]   The project com.petplatform:pet-community-api:0.1.0-SNAPSHOT (/home/runner/work/pet-platform/pet-platform/backend/pet-community-api/pom.xml) has 1 error
+2026-09-11T03:27:51.9224390Z [ERROR]     'dependencies.dependency.version' for com.petplatform:pet-common:jar is missing. @ line 16, column 21
+2026-09-11T03:27:51.9224950Z [ERROR]
+2026-09-11T03:27:51.9225896Z [ERROR]   The project com.petplatform:pet-community-biz:0.1.0-SNAPSHOT (/home/runner/work/pet-platform/pet-platform/backend/pet-community-biz/pom.xml) has 4 errors
+2026-09-11T03:27:51.9226953Z [ERROR]     'dependencies.dependency.version' for com.petplatform:pet-common:jar is missing. @ line 16, column 21
+2026-09-11T03:27:51.9227801Z [ERROR]     'dependencies.dependency.version' for com.petplatform:pet-event-api:jar is missing. @ line 20, column 21
+2026-09-11T03:27:51.9228694Z [ERROR]     'dependencies.dependency.version' for com.petplatform:pet-community-api:jar is missing. @ line 24, column 21
+2026-09-11T03:27:51.9229581Z [ERROR]     'dependencies.dependency.version' for com.petplatform:pet-user-api:jar is missing. @ line 28, column 21
+2026-09-11T03:27:51.9230154Z [ERROR]
+2026-09-11T03:27:51.9230837Z [ERROR]   The project com.petplatform:pet-thirdparty-api:0.1.0-SNAPSHOT (/home/runner/work/pet-platform/pet-platform/backend/pet-thirdparty-api/pom.xml) has 1 error
+2026-09-11T03:27:51.9231886Z [ERROR]     'dependencies.dependency.version' for com.petplatform:pet-common:jar is missing. @ line 16, column 21
+2026-09-11T03:27:51.9232442Z [ERROR]
+2026-09-11T03:27:51.9233125Z [ERROR]   The project com.petplatform:pet-thirdparty-biz:0.1.0-SNAPSHOT (/home/runner/work/pet-platform/pet-platform/backend/pet-thirdparty-biz/pom.xml) has 5 errors
+2026-09-11T03:27:51.9234176Z [ERROR]     'dependencies.dependency.version' for com.petplatform:pet-common:jar is missing. @ line 16, column 21
+2026-09-11T03:27:51.9235067Z [ERROR]     'dependencies.dependency.version' for com.petplatform:pet-event-api:jar is missing. @ line 20, column 21
+2026-09-11T03:27:51.9236314Z [ERROR]     'dependencies.dependency.version' for com.petplatform:pet-thirdparty-api:jar is missing. @ line 24, column 21
+2026-09-11T03:27:51.9237224Z [ERROR]     'dependencies.dependency.version' for com.petplatform:pet-merchant-api:jar is missing. @ line 28, column 21
+2026-09-11T03:27:51.9238223Z [ERROR]     'dependencies.dependency.version' for com.petplatform:pet-task-core:jar is missing. @ line 49, column 21
+2026-09-11T03:27:51.9238788Z [ERROR]
+2026-09-11T03:27:51.9239534Z [ERROR]   The project com.petplatform:pet-customer-service-api:0.1.0-SNAPSHOT (/home/runner/work/pet-platform/pet-platform/backend/pet-customer-service-api/pom.xml) has 1 error
+2026-09-11T03:27:51.9240639Z [ERROR]     'dependencies.dependency.version' for com.petplatform:pet-common:jar is missing. @ line 16, column 21
+2026-09-11T03:27:51.9241195Z [ERROR]
+2026-09-11T03:27:51.9241932Z [ERROR]   The project com.petplatform:pet-customer-service-biz:0.1.0-SNAPSHOT (/home/runner/work/pet-platform/pet-platform/backend/pet-customer-service-biz/pom.xml) has 3 errors
+2026-09-11T03:27:51.9243040Z [ERROR]     'dependencies.dependency.version' for com.petplatform:pet-common:jar is missing. @ line 16, column 21
+2026-09-11T03:27:51.9243907Z [ERROR]     'dependencies.dependency.version' for com.petplatform:pet-event-api:jar is missing. @ line 20, column 21
+2026-09-11T03:27:51.9244828Z [ERROR]     'dependencies.dependency.version' for com.petplatform:pet-customer-service-api:jar is missing. @ line 24, column 21
+2026-09-11T03:27:51.9245771Z [ERROR]
+2026-09-11T03:27:51.9246418Z [ERROR]   The project com.petplatform:pet-admin-api:0.1.0-SNAPSHOT (/home/runner/work/pet-platform/pet-platform/backend/pet-admin-api/pom.xml) has 1 error
+2026-09-11T03:27:51.9247423Z [ERROR]     'dependencies.dependency.version' for com.petplatform:pet-common:jar is missing. @ line 16, column 21
+2026-09-11T03:27:51.9247987Z [ERROR]
+2026-09-11T03:27:51.9248624Z [ERROR]   The project com.petplatform:pet-admin-biz:0.1.0-SNAPSHOT (/home/runner/work/pet-platform/pet-platform/backend/pet-admin-biz/pom.xml) has 11 errors
+2026-09-11T03:27:51.9249639Z [ERROR]     'dependencies.dependency.version' for com.petplatform:pet-common:jar is missing. @ line 16, column 21
+2026-09-11T03:27:51.9250490Z [ERROR]     'dependencies.dependency.version' for com.petplatform:pet-event-api:jar is missing. @ line 20, column 21
+2026-09-11T03:27:51.9251356Z [ERROR]     'dependencies.dependency.version' for com.petplatform:pet-admin-api:jar is missing. @ line 24, column 21
+2026-09-11T03:27:51.9252236Z [ERROR]     'dependencies.dependency.version' for com.petplatform:pet-merchant-api:jar is missing. @ line 28, column 21
+2026-09-11T03:27:51.9253105Z [ERROR]     'dependencies.dependency.version' for com.petplatform:pet-order-api:jar is missing. @ line 32, column 21
+2026-09-11T03:27:51.9253967Z [ERROR]     'dependencies.dependency.version' for com.petplatform:pet-refund-api:jar is missing. @ line 36, column 21
+2026-09-11T03:27:51.9254851Z [ERROR]     'dependencies.dependency.version' for com.petplatform:pet-aftersale-api:jar is missing. @ line 40, column 21
+2026-09-11T03:27:51.9255954Z [ERROR]     'dependencies.dependency.version' for com.petplatform:pet-review-api:jar is missing. @ line 44, column 21
+2026-09-11T03:27:51.9256827Z [ERROR]     'dependencies.dependency.version' for com.petplatform:pet-coupon-api:jar is missing. @ line 48, column 21
+2026-09-11T03:27:51.9257686Z [ERROR]     'dependencies.dependency.version' for com.petplatform:pet-points-api:jar is missing. @ line 52, column 21
+2026-09-11T03:27:51.9258585Z [ERROR]     'dependencies.dependency.version' for com.petplatform:pet-notification-api:jar is missing. @ line 56, column 21
+2026-09-11T03:27:51.9259185Z [ERROR]
+2026-09-11T03:27:51.9259790Z [ERROR]   The project com.petplatform:pet-boot:0.1.0-SNAPSHOT (/home/runner/work/pet-platform/pet-platform/backend/pet-boot/pom.xml) has 38 errors
+2026-09-11T03:27:51.9260765Z [ERROR]     'dependencies.dependency.version' for com.petplatform:pet-common:jar is missing. @ line 20, column 21
+2026-09-11T03:27:51.9261758Z [ERROR]     'dependencies.dependency.version' for com.petplatform:pet-event-api:jar is missing. @ line 24, column 21
+2026-09-11T03:27:51.9262639Z [ERROR]     'dependencies.dependency.version' for com.petplatform:pet-event-core:jar is missing. @ line 28, column 21
+2026-09-11T03:27:51.9263643Z [ERROR]     'dependencies.dependency.version' for com.petplatform:pet-task-core:jar is missing. @ line 32, column 21
+2026-09-11T03:27:51.9264500Z [ERROR]     'dependencies.dependency.version' for com.petplatform:pet-user-api:jar is missing. @ line 36, column 21
+2026-09-11T03:27:51.9265605Z [ERROR]     'dependencies.dependency.version' for com.petplatform:pet-user-biz:jar is missing. @ line 40, column 21
+2026-09-11T03:27:51.9266493Z [ERROR]     'dependencies.dependency.version' for com.petplatform:pet-merchant-api:jar is missing. @ line 44, column 21
+2026-09-11T03:27:51.9267381Z [ERROR]     'dependencies.dependency.version' for com.petplatform:pet-merchant-biz:jar is missing. @ line 48, column 21
+2026-09-11T03:27:51.9268267Z [ERROR]     'dependencies.dependency.version' for com.petplatform:pet-service-api:jar is missing. @ line 52, column 21
+2026-09-11T03:27:51.9269140Z [ERROR]     'dependencies.dependency.version' for com.petplatform:pet-service-biz:jar is missing. @ line 56, column 21
+2026-09-11T03:27:51.9270014Z [ERROR]     'dependencies.dependency.version' for com.petplatform:pet-schedule-api:jar is missing. @ line 60, column 21
+2026-09-11T03:27:51.9270893Z [ERROR]     'dependencies.dependency.version' for com.petplatform:pet-schedule-biz:jar is missing. @ line 64, column 21
+2026-09-11T03:27:51.9271763Z [ERROR]     'dependencies.dependency.version' for com.petplatform:pet-order-api:jar is missing. @ line 68, column 21
+2026-09-11T03:27:51.9272620Z [ERROR]     'dependencies.dependency.version' for com.petplatform:pet-order-biz:jar is missing. @ line 72, column 21
+2026-09-11T03:27:51.9273478Z [ERROR]     'dependencies.dependency.version' for com.petplatform:pet-payment-api:jar is missing. @ line 76, column 21
+2026-09-11T03:27:51.9274353Z [ERROR]     'dependencies.dependency.version' for com.petplatform:pet-payment-biz:jar is missing. @ line 80, column 21
+2026-09-11T03:27:51.9275445Z [ERROR]     'dependencies.dependency.version' for com.petplatform:pet-refund-api:jar is missing. @ line 84, column 21
+2026-09-11T03:27:51.9276385Z [ERROR]     'dependencies.dependency.version' for com.petplatform:pet-refund-biz:jar is missing. @ line 88, column 21
+2026-09-11T03:27:51.9277283Z [ERROR]     'dependencies.dependency.version' for com.petplatform:pet-verification-api:jar is missing. @ line 92, column 21
+2026-09-11T03:27:51.9278229Z [ERROR]     'dependencies.dependency.version' for com.petplatform:pet-verification-biz:jar is missing. @ line 96, column 21
+2026-09-11T03:27:51.9279169Z [ERROR]     'dependencies.dependency.version' for com.petplatform:pet-aftersale-api:jar is missing. @ line 100, column 21
+2026-09-11T03:27:51.9280072Z [ERROR]     'dependencies.dependency.version' for com.petplatform:pet-aftersale-biz:jar is missing. @ line 104, column 21
+2026-09-11T03:27:51.9280960Z [ERROR]     'dependencies.dependency.version' for com.petplatform:pet-coupon-api:jar is missing. @ line 108, column 21
+2026-09-11T03:27:51.9281837Z [ERROR]     'dependencies.dependency.version' for com.petplatform:pet-coupon-biz:jar is missing. @ line 112, column 21
+2026-09-11T03:27:51.9282710Z [ERROR]     'dependencies.dependency.version' for com.petplatform:pet-points-api:jar is missing. @ line 116, column 21
+2026-09-11T03:27:51.9283584Z [ERROR]     'dependencies.dependency.version' for com.petplatform:pet-points-biz:jar is missing. @ line 120, column 21
+2026-09-11T03:27:51.9284457Z [ERROR]     'dependencies.dependency.version' for com.petplatform:pet-review-api:jar is missing. @ line 124, column 21
+2026-09-11T03:27:51.9285557Z [ERROR]     'dependencies.dependency.version' for com.petplatform:pet-review-biz:jar is missing. @ line 128, column 21
+2026-09-11T03:27:51.9286476Z [ERROR]     'dependencies.dependency.version' for com.petplatform:pet-notification-api:jar is missing. @ line 132, column 21
+2026-09-11T03:27:51.9287587Z [ERROR]     'dependencies.dependency.version' for com.petplatform:pet-notification-biz:jar is missing. @ line 136, column 21
+2026-09-11T03:27:51.9288646Z [ERROR]     'dependencies.dependency.version' for com.petplatform:pet-community-api:jar is missing. @ line 140, column 21
+2026-09-11T03:27:51.9289553Z [ERROR]     'dependencies.dependency.version' for com.petplatform:pet-community-biz:jar is missing. @ line 144, column 21
+2026-09-11T03:27:51.9290454Z [ERROR]     'dependencies.dependency.version' for com.petplatform:pet-thirdparty-api:jar is missing. @ line 148, column 21
+2026-09-11T03:27:51.9291364Z [ERROR]     'dependencies.dependency.version' for com.petplatform:pet-thirdparty-biz:jar is missing. @ line 152, column 21
+2026-09-11T03:27:51.9292311Z [ERROR]     'dependencies.dependency.version' for com.petplatform:pet-customer-service-api:jar is missing. @ line 156, column 21
+2026-09-11T03:27:51.9293293Z [ERROR]     'dependencies.dependency.version' for com.petplatform:pet-customer-service-biz:jar is missing. @ line 160, column 21
+2026-09-11T03:27:51.9294218Z [ERROR]     'dependencies.dependency.version' for com.petplatform:pet-admin-api:jar is missing. @ line 164, column 21
+2026-09-11T03:27:51.9295101Z [ERROR]     'dependencies.dependency.version' for com.petplatform:pet-admin-biz:jar is missing. @ line 168, column 21
+2026-09-11T03:27:51.9295808Z [ERROR]
+2026-09-11T03:27:51.9296542Z [ERROR]   The project com.petplatform:pet-architecture-test:0.1.0-SNAPSHOT (/home/runner/work/pet-platform/pet-platform/backend/pet-architecture-test/pom.xml) has 1 error
+2026-09-11T03:27:51.9297629Z [ERROR]     'dependencies.dependency.version' for com.petplatform:pet-boot:jar is missing. @ line 19, column 21
+2026-09-11T03:27:51.9298188Z [ERROR]
+2026-09-11T03:27:51.9298543Z [ERROR] To see the full stack trace of the errors, re-run Maven with the -e switch.
+2026-09-11T03:27:51.9299106Z [ERROR] Re-run Maven using the -X switch to enable full debug logging.
+2026-09-11T03:27:51.9299504Z [ERROR]
+2026-09-11T03:27:51.9299969Z [ERROR] For more information about the errors and possible solutions, please read the following articles:
+2026-09-11T03:27:51.9300734Z [ERROR] [Help 1] http://cwiki.apache.org/confluence/display/MAVEN/ProjectBuildingException
+2026-09-11T03:27:51.9305407Z ##[error]Process completed with exit code 1.

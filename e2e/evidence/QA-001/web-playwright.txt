@@ -1,0 +1,23 @@
+
+> pet-platform-admin@0.1.0 test
+> playwright test
+
+[WebServer] (node:51008) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+[WebServer] (Use `node --trace-warnings ...` to show where the warning was created)
+[WebServer] (node:36544) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+[WebServer] (Use `node --trace-warnings ...` to show where the warning was created)
+
+Running 6 tests using 2 workers
+
+(node:39340) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:42992) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ok 1 tests\shell.spec.ts:22:1 › WEB-002 direct route, menus, buttons and fail-closed session (2.9s)
+  ok 2 tests\shell.spec.ts:3:1 › WEB-001 routes, independent Mock and string values (3.3s)
+  ok 4 tests\shell.spec.ts:56:1 › WEB-001 request protocol, HTTP errors and stale context isolation (265ms)
+  ok 3 tests\shell.spec.ts:40:1 › PERM-005 fixture only: finance follows explicit grants, transport rejects bypass (696ms)
+  ok 6 tests\shell.spec.ts:108:1 › WEB-001 production build stays closed without fixture identity (146ms)
+  ok 5 tests\shell.spec.ts:86:1 › WEB-001 real fetch transport with intercepted HTTP contract (292ms)
+
+  6 passed (13.8s)

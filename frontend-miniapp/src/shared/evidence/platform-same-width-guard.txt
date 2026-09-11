@@ -1,0 +1,32 @@
+
+> pet-platform-miniapp@0.1.0 test:platform
+> node platform-smoke.cjs
+
+{
+  "status": "FAIL",
+  "source": "WeChat DevTools simulator",
+  "eventMethod": "App.evaluate invokes the real Taro page native tap callback; no state replacement or mocked wx API",
+  "physicalClickVerified": false,
+  "checks": [],
+  "exceptions": [],
+  "environment": {
+    "SDKVersion": "3.17.2",
+    "version": "8.0.5",
+    "platform": "devtools",
+    "model": "iPhone 12/13 (Pro)",
+    "system": "iOS 10.0.1",
+    "windowWidth": 390,
+    "windowHeight": 753,
+    "pixelRatio": 3,
+    "safeArea": {
+      "top": 47,
+      "left": 0,
+      "right": 390,
+      "bottom": 810,
+      "width": 390,
+      "height": 763
+    }
+  },
+  "requiredDifferentFromWidth": 390,
+  "error": "AssertionError [ERR_ASSERTION]: Actual simulator width has not changed; second-window verification refused"
+}

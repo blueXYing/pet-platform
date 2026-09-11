@@ -1,0 +1,18 @@
+test_miniapp_plan_never_uses_web_build (test_architecture_gates.CapabilityGateTest) ... ok
+test_missing_app_cannot_pass (test_architecture_gates.CapabilityGateTest) ... ok
+test_missing_script_cannot_pass (test_architecture_gates.CapabilityGateTest) ... ok
+test_unknown_runtime_cannot_pass (test_architecture_gates.CapabilityGateTest) ... ok
+test_arch005_allows_contract_pass_through_labels_and_snapshot_fixture (test_architecture_gates.DisplayGateTest) ... ok
+test_arch005_allows_order_owner (test_architecture_gates.DisplayGateTest) ... ok
+test_arch005_rejects_frontend_priority_ternary_switch_and_lookup (test_architecture_gates.DisplayGateTest) ... ok
+test_arch005_rejects_present_frontend_with_empty_source_scan (test_architecture_gates.DisplayGateTest) ... ok
+test_arch005_scans_real_backend_and_both_frontend_paths (test_architecture_gates.DisplayGateTest) ... ok
+test_arch001_allows_api (test_architecture_gates.ModuleGateTest) ... ok
+test_arch001_rejects_biz_in_normal_test_and_profile_dependencies (test_architecture_gates.ModuleGateTest) ... ok
+test_arch001_rejects_empty_reactor (test_architecture_gates.ModuleGateTest) ... ok
+test_arch001_rejects_unlisted_module (test_architecture_gates.ModuleGateTest) ... ok
+
+----------------------------------------------------------------------
+Ran 13 tests in 1.256s
+
+OK

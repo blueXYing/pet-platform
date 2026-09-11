@@ -1,0 +1,5 @@
+page { background: #f5f5f5; color: #202020; font-size: 28px; }
+.shell { box-sizing: border-box; padding: 32px; padding-bottom: calc(32px + env(safe-area-inset-bottom)); overflow-wrap: anywhere; }
+.panel { background: #fff; padding: 24px; margin-bottom: 24px; }
+.line { display: block; margin-bottom: 16px; }
+button { margin-top: 16px; }

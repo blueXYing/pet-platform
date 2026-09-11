@@ -1,0 +1,24 @@
+{
+  "status": "FAILED_TIMEOUT",
+  "source": "WeChat DevTools simulator",
+  "checks": [],
+  "exceptions": [],
+  "environment": {
+    "SDKVersion": "3.17.2",
+    "version": "8.0.5",
+    "platform": "devtools",
+    "model": "iPhone 12/13 (Pro)",
+    "system": "iOS 10.0.1",
+    "windowWidth": 390,
+    "windowHeight": 753,
+    "pixelRatio": 3,
+    "safeArea": {
+      "top": 47,
+      "left": 0,
+      "right": 390,
+      "bottom": 810,
+      "width": 390,
+      "height": 763
+    }
+  }
+}

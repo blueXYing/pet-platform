@@ -1,0 +1,9 @@
+{
+  "fetchedAt": "2026-09-11T11:50:29.7452392+08:00",
+  "statusCode": 200,
+  "source": "https://developers.weixin.qq.com/miniprogram/dev/framework/subpackages.html",
+  "rules": [
+    "整个小程序所有分包大小不超过 30M（服务商代开发的小程序不超过 20M）",
+    "单个分包/主包大小不能超过 2M"
+  ]
+}

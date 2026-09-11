@@ -1,0 +1,42 @@
+ARCH-005 pet-common: 5 source files
+ARCH-005 pet-event-api: 2 source files
+ARCH-005 pet-event-core: 1 source files
+ARCH-005 pet-task-core: 3 source files
+ARCH-005 pet-user-api: 6 source files
+ARCH-005 pet-user-biz: 10 source files
+ARCH-005 pet-merchant-api: 6 source files
+ARCH-005 pet-merchant-biz: 10 source files
+ARCH-005 pet-service-api: 6 source files
+ARCH-005 pet-service-biz: 10 source files
+ARCH-005 pet-schedule-api: 6 source files
+ARCH-005 pet-schedule-biz: 10 source files
+ARCH-005 pet-order-api: 6 source files
+ARCH-005 pet-order-biz: 10 source files
+ARCH-005 pet-payment-api: 6 source files
+ARCH-005 pet-payment-biz: 10 source files
+ARCH-005 pet-refund-api: 6 source files
+ARCH-005 pet-refund-biz: 10 source files
+ARCH-005 pet-verification-api: 6 source files
+ARCH-005 pet-verification-biz: 10 source files
+ARCH-005 pet-aftersale-api: 6 source files
+ARCH-005 pet-aftersale-biz: 10 source files
+ARCH-005 pet-coupon-api: 6 source files
+ARCH-005 pet-coupon-biz: 10 source files
+ARCH-005 pet-points-api: 6 source files
+ARCH-005 pet-points-biz: 10 source files
+ARCH-005 pet-review-api: 6 source files
+ARCH-005 pet-review-biz: 10 source files
+ARCH-005 pet-notification-api: 6 source files
+ARCH-005 pet-notification-biz: 10 source files
+ARCH-005 pet-community-api: 6 source files
+ARCH-005 pet-community-biz: 10 source files
+ARCH-005 pet-thirdparty-api: 6 source files
+ARCH-005 pet-thirdparty-biz: 10 source files
+ARCH-005 pet-customer-service-api: 6 source files
+ARCH-005 pet-customer-service-biz: 10 source files
+ARCH-005 pet-admin-api: 6 source files
+ARCH-005 pet-admin-biz: 10 source files
+ARCH-005 pet-boot: 7 source files
+ARCH-005 frontend-admin: 0 source files (NOT_IMPLEMENTED; no runtime coverage)
+ARCH-005 frontend-miniapp: 0 source files (NOT_IMPLEMENTED; no runtime coverage)
+PASS: no duplicate display derivation patterns in existing sources
