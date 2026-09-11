@@ -1,0 +1,24 @@
+name: Explicit frontend capability gate
+on:
+  workflow_dispatch:
+    inputs:
+      capability:
+        description: Build is separate from browser / WeChat runtime / visual acceptance
+        required: true
+        type: choice
+        options: [web-build, miniapp-build, web-runtime, wechat-runtime, visual]
+permissions:
+  contents: read
+jobs:
+  capability:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22.23.1'
+      - run: npm install --global npm@10.9.8
+      - name: Execute only implemented capability; missing capability fails
+        env:
+          CAPABILITY: ${{ inputs.capability }}
+        run: python backend/tools/run-frontend-gate.py "$CAPABILITY"

@@ -1,9 +1,12 @@
 name: CI
 on:
   pull_request:
-    branches: [develop, main]
+    branches: [develop, main, 'chore/GOV-001-repository-baseline']
   push:
     branches: [develop]
+
+permissions:
+  contents: read
 
 jobs:
   backend:
@@ -17,8 +20,65 @@ jobs:
           cache: maven
       - name: Check module dependencies
         run: python backend/tools/check-module-deps.py
+      - name: Architecture source gate and negative fixtures
+        run: |
+          python -m unittest discover -s backend/tools -p 'test_*.py' -v
+          python backend/tools/check-display-status.py
       - name: Maven verify
-        run: mvn -B -f backend/pom.xml verify
+        run: mvn -B -f backend/pom.xml clean verify
+      - name: Preserve actual backend evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: backend-test-reports
+          path: backend/**/target/surefire-reports/
+          if-no-files-found: error
+
+  frontend-inventory:
+    runs-on: ubuntu-latest
+    outputs:
+      web: ${{ steps.inventory.outputs.web }}
+      miniapp: ${{ steps.inventory.outputs.miniapp }}
+    steps:
+      - uses: actions/checkout@v4
+      - id: inventory
+        shell: bash
+        run: |
+          for pair in web:frontend-admin miniapp:frontend-miniapp; do
+            kind=${pair%%:*}
+            directory=${pair#*:}
+            if test -f "$directory/package.json"; then
+              echo "$kind=true" >> "$GITHUB_OUTPUT"
+            else
+              echo "$kind=false" >> "$GITHUB_OUTPUT"
+              echo "### $kind: NOT_IMPLEMENTED — build/typecheck did not run" >> "$GITHUB_STEP_SUMMARY"
+            fi
+          done
+          echo 'Web Playwright, WeChat developer-tools/device and VIS tests: NOT_EXECUTED (QA-001 / later business Issues). Build results do not certify these capabilities.' >> "$GITHUB_STEP_SUMMARY"
+
+  web-build:
+    needs: frontend-inventory
+    if: needs.frontend-inventory.outputs.web == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22.23.1'
+      - run: npm install --global npm@10.9.8
+      - run: python backend/tools/run-frontend-gate.py web-build
+
+  miniapp-weapp-build:
+    needs: frontend-inventory
+    if: needs.frontend-inventory.outputs.miniapp == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22.23.1'
+      - run: npm install --global npm@10.9.8
+      - run: python backend/tools/run-frontend-gate.py miniapp-build
 
   repository-policy:
     runs-on: ubuntu-latest
