@@ -1,0 +1,4 @@
+-------------------------------------------------------------------------------
+Test set: com.petplatform.architecture.ArchitectureRulesFixtureTest
+-------------------------------------------------------------------------------
+Tests run: 15, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 4.043 s -- in com.petplatform.architecture.ArchitectureRulesFixtureTest
