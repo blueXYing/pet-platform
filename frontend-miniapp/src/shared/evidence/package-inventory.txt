@@ -10,7 +10,11 @@
   "ordinarySubpackageCount": 0,
   "fileCount": 21,
   "internalBudgetBytes": 2097152,
-  "platformLimitVerified": false,
+  "platformLimitVerified": true,
+  "platformLimitSource": "https://developers.weixin.qq.com/miniprogram/dev/framework/subpackages.html",
+  "platformLimitCheckedOn": "2026-09-11",
+  "totalBudgetBytes": 20971520,
+  "totalBudgetReason": "conservative service-provider cap; standard total cap is 30M",
   "platformUploadVerified": false,
   "deviceWindowsVerified": false,
   "imageClarityVerified": false

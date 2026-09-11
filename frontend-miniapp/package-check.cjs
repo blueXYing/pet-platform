@@ -1,4 +1,4 @@
-// Raw output byte inventory is a conservative engineering budget, not WeChat upload/package verification.
+// Raw output byte inventory checked against documented caps, not WeChat upload/package verification.
 const fs = require('node:fs')
 const path = require('node:path')
 const assert = require('node:assert/strict')
@@ -21,8 +21,11 @@ const totalBytes = files.reduce((n, f) => n + f.bytes, 0)
 const report = { test: 'MINI-005 static inventory only', mainBytes, subpackages: sizes, totalBytes,
   ordinarySubpackageCount: packages.length, fileCount: files.length,
   internalBudgetBytes: 2 * 1024 * 1024,
-  platformLimitVerified: false, platformUploadVerified: false,
+  platformLimitVerified: true, platformLimitSource: 'https://developers.weixin.qq.com/miniprogram/dev/framework/subpackages.html',
+  platformLimitCheckedOn: '2026-09-11', totalBudgetBytes: 20 * 1024 * 1024,
+  totalBudgetReason: 'conservative service-provider cap; standard total cap is 30M', platformUploadVerified: false,
   deviceWindowsVerified: false, imageClarityVerified: false }
 console.log(JSON.stringify(report, null, 2))
 assert.ok(mainBytes < report.internalBudgetBytes, 'Internal main budget exceeded')
 for (const bytes of Object.values(sizes)) assert.ok(bytes < report.internalBudgetBytes)
+assert.ok(totalBytes < report.totalBudgetBytes, 'Total package budget exceeded')

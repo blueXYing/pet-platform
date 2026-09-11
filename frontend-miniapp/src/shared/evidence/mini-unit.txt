@@ -6,85 +6,85 @@ TAP version 13
 # Subtest: MINI-003 workspace: old success and cache cannot cross context
 ok 1 - MINI-003 workspace: old success and cache cannot cross context
   ---
-  duration_ms: 1.1062
+  duration_ms: 1.0396
   type: 'test'
   ...
 # Subtest: MINI-003 user: old success and cache cannot cross context
 ok 2 - MINI-003 user: old success and cache cannot cross context
   ---
-  duration_ms: 0.1402
+  duration_ms: 0.1274
   type: 'test'
   ...
 # Subtest: MINI-003 merchant: old success and cache cannot cross context
 ok 3 - MINI-003 merchant: old success and cache cannot cross context
   ---
-  duration_ms: 0.2595
+  duration_ms: 0.1647
   type: 'test'
   ...
 # Subtest: MINI-003 store: old success and cache cannot cross context
 ok 4 - MINI-003 store: old success and cache cannot cross context
   ---
-  duration_ms: 0.6957
+  duration_ms: 0.5214
   type: 'test'
   ...
 # Subtest: MINI-003 logout: old success and cache cannot cross context
 ok 5 - MINI-003 logout: old success and cache cannot cross context
   ---
-  duration_ms: 0.1433
+  duration_ms: 0.1369
   type: 'test'
   ...
 # Subtest: MINI-003 revocation: old success and cache cannot cross context
 ok 6 - MINI-003 revocation: old success and cache cannot cross context
   ---
-  duration_ms: 0.0711
+  duration_ms: 0.0722
   type: 'test'
   ...
 # Subtest: MINI-003 sameContextReentry: old success and cache cannot cross context
 ok 7 - MINI-003 sameContextReentry: old success and cache cannot cross context
   ---
-  duration_ms: 0.0675
+  duration_ms: 0.0684
   type: 'test'
   ...
 # Subtest: MINI-003 delayed rejection is stale; current context success remains available
 ok 8 - MINI-003 delayed rejection is stale; current context success remains available
   ---
-  duration_ms: 0.1557
+  duration_ms: 0.157
   type: 'test'
   ...
 # Subtest: MINI-003 logout then same user login cannot revive pending response
 ok 9 - MINI-003 logout then same user login cannot revive pending response
   ---
-  duration_ms: 0.2371
+  duration_ms: 0.3377
   type: 'test'
   ...
 # Subtest: MINI-004 injected transport preserves string ID, amount, remote state/actions and write requestId
 ok 10 - MINI-004 injected transport preserves string ID, amount, remote state/actions and write requestId
   ---
-  duration_ms: 1.3751
+  duration_ms: 1.655
   type: 'test'
   ...
 # Subtest: MINI-004 all write verbs require requestId, cross-workspace and encoded traversal fail before transport
 ok 11 - MINI-004 all write verbs require requestId, cross-workspace and encoded traversal fail before transport
   ---
-  duration_ms: 0.3574
+  duration_ms: 0.35
   type: 'test'
   ...
 # Subtest: MINI-004 malformed IDs/amounts/actions rejected, unknown server displayStatus is not recomputed
 ok 12 - MINI-004 malformed IDs/amounts/actions rejected, unknown server displayStatus is not recomputed
   ---
-  duration_ms: 0.268
+  duration_ms: 0.2181
   type: 'test'
   ...
 # Subtest: MINI-004 real mode blocked by unapproved CCR; errors use code rather than message
 ok 13 - MINI-004 real mode blocked by unapproved CCR; errors use code rather than message
   ---
-  duration_ms: 0.3359
+  duration_ms: 0.3241
   type: 'test'
   ...
 # Subtest: MINI-004 platform request port mock captures URL, headers, data, timeout; network failure propagates
 ok 14 - MINI-004 platform request port mock captures URL, headers, data, timeout; network failure propagates
   ---
-  duration_ms: 0.5591
+  duration_ms: 0.5281
   type: 'test'
   ...
 1..14
@@ -95,4 +95,4 @@ ok 14 - MINI-004 platform request port mock captures URL, headers, data, timeout
 # cancelled 0
 # skipped 0
 # todo 0
-# duration_ms 1148.8992
+# duration_ms 320.5378

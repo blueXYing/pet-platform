@@ -1,6 +1,6 @@
 {
   "issue": "C-001",
-  "status": "NOT_PASSED_NO_PRODUCT_ASSETS_OR_PLATFORM_SCREENSHOTS",
+  "status": "NOT_APPLICABLE_TO_NEUTRAL_SHELL_NO_PRODUCT_DESIGN_REFERENCED",
   "referenceDesign": { "fileKey": "bp2vpcjjA5vZbHvtKkA8wl", "baselineVersion": "2397539525915641008", "retrievedInThisIssue": false },
   "productPages": [],
   "assets": [],

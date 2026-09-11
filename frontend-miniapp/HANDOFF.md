@@ -1,4 +1,6 @@
-# C-001 公共壳交接（未完成平台验收）
+# C-001 公共壳交接（单窗口已验证，多窗口待补）
+
+最新平台结论见 src/shared/evidence/PLATFORM-FOLLOWUP.md：真实开发工具/SDK3.17.2单窗口冒烟通过；MINI-005另一窗口及安全区验证待补。未引用产品原稿的工程示例无产品视觉交付，原始素材验收留给对应业务页Issue。
 
 唯一编辑者：C-End Frontend。源资料基线 e8654c30b4dfe2cfc9e3c050110322d2a18bb6a1；按 EX-W1-001 独立推进，不代表 GOV-001 完成。固定代码提交由最终交接消息给出。
 
@@ -8,7 +10,7 @@
 
 在本目录执行 npm ci、npm run typecheck、npm test、npm run build:weapp、npm run check:package。开发命令 npm run dev:weapp。微信开发者工具导入本目录的 project.config.json，游客 AppID 仅供工程导入，不代表已具备真实账号、合法域名、登录或支付能力；真实 AppID 在获授权环境配置。没有 H5/App 构建命令。
 
-src/shared/evidence 承载实际日志和视觉清单。包体脚本只统计本地构建字节与内部预算，不等于微信上传后的包体/兼容验证。当前平台规则原始页面访问失败，不能声称已核验现行上限。
+src/shared/evidence 承载实际日志和视觉清单。包体脚本只统计本地构建字节并按已读取的官方2M单包/30M总包（代开发20M）配额采用保守预算，不等于微信上传后的包体/兼容验证。来源快照见 wechat-package-rules.json。
 
 ## Merchant 普通分包接入约定
 

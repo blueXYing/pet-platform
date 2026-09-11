@@ -11,7 +11,8 @@
     "build:weapp": "taro build --type weapp --disable-global-config",
     "dev:weapp": "taro build --type weapp --watch --disable-global-config",
     "test": "tsx --test src/shared/tests/*.test.ts",
-    "check:package": "node package-check.cjs"
+    "check:package": "node package-check.cjs",
+    "test:platform": "node platform-smoke.cjs"
   },
   "dependencies": {
     "@tarojs/components": "4.1.5",
@@ -32,6 +33,7 @@
     "@types/node": "22.13.10",
     "@types/react": "18.3.18",
     "babel-preset-taro": "4.1.5",
+    "miniprogram-automator": "0.12.1",
     "tsx": "4.19.3",
     "typescript": "5.7.3",
     "webpack": "5.91.0"
