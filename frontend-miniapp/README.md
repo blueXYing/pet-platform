@@ -1,8 +1,10 @@
-# frontend-miniapp
+# 统一微信小程序 · C-001 工程壳
 
-唯一微信小程序工程，技术方案已由ACR-001批准：Taro + React + TypeScript。用户和商家共用一个AppID与构建入口，切换身份；无本期用户Web或App。
+Taro + React + TypeScript，唯一微信入口，无 H5/App 或第二个商家应用。当前只有中性工程示例与内部 fixture；不是产品页面还原或真实登录/权限接入。
 
-当前仅建立目录说明，尚无脚手架或业务代码；开发须等待Wave 1批准。
+Node 22.23.1、npm 10.9.8；运行 `npm ci`、`npm run typecheck`、`npm test`、`npm run build:weapp`、`npm run check:package`。详细版本见 package.json/package-lock.json，证据见 src/shared/evidence。无 lint 脚本。
+
+普通分包、共享文件唯一所有权、CCR-ACR-001 和未通过项见 [HANDOFF.md](HANDOFF.md)。缺少平台证据时不声称 Issue 完成。原始 Figma 切图未获取，产品视觉验收未通过。
 
 - C-001：根配置、config/**、src/app*、src/consumer/**、src/shared/**，由C-End维护。
 - M-001：src/merchant/**商家工作区，依赖C-001，不创建独立应用壳。共享文件由C-End作为唯一编辑者协作。

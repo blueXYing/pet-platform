@@ -1,0 +1,39 @@
+{
+  "name": "pet-platform-miniapp",
+  "version": "0.1.0",
+  "private": true,
+  "packageManager": "npm@10.9.8",
+  "engines": {
+    "node": "22.x"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit",
+    "build:weapp": "taro build --type weapp --disable-global-config",
+    "dev:weapp": "taro build --type weapp --watch --disable-global-config",
+    "test": "tsx --test src/shared/tests/*.test.ts",
+    "check:package": "node package-check.cjs"
+  },
+  "dependencies": {
+    "@tarojs/components": "4.1.5",
+    "@tarojs/helper": "4.1.5",
+    "@tarojs/plugin-framework-react": "4.1.5",
+    "@tarojs/plugin-platform-weapp": "4.1.5",
+    "@tarojs/react": "4.1.5",
+    "@tarojs/runtime": "4.1.5",
+    "@tarojs/shared": "4.1.5",
+    "@tarojs/taro": "4.1.5",
+    "react": "18.3.1"
+  },
+  "devDependencies": {
+    "@babel/core": "7.26.10",
+    "@babel/preset-react": "7.26.3",
+    "@tarojs/cli": "4.1.5",
+    "@tarojs/webpack5-runner": "4.1.5",
+    "@types/node": "22.13.10",
+    "@types/react": "18.3.18",
+    "babel-preset-taro": "4.1.5",
+    "tsx": "4.19.3",
+    "typescript": "5.7.3",
+    "webpack": "5.91.0"
+  }
+}

@@ -1,0 +1,11 @@
+{
+  "issue": "C-001",
+  "status": "NOT_PASSED_NO_PRODUCT_ASSETS_OR_PLATFORM_SCREENSHOTS",
+  "referenceDesign": { "fileKey": "bp2vpcjjA5vZbHvtKkA8wl", "baselineVersion": "2397539525915641008", "retrievedInThisIssue": false },
+  "productPages": [],
+  "assets": [],
+  "screenshots": [],
+  "requiredPageFields": ["designVersion", "nodeId", "v1Source", "route", "state", "assets", "screenshot", "confirmedDifferences"],
+  "requiredAssetFields": ["sourceNode", "originalFile", "scale", "width", "height", "format", "sha256", "derivedFile", "referencedBy"],
+  "requiredScreenshotFields": ["route", "window", "pixelRatio", "baseLibrary", "device", "dataState", "scroll", "animation", "image", "overlay", "differenceApproval"]
+}
