@@ -16,6 +16,9 @@ Adopted PLAT-001 implementation `6cfefa8799a6c1bcba8c48a35940215e1a6c4f7d` throu
 - First local run detected an exact domain-package matching omission in the new rule; `maven-first-attempt.txt` records its fixture failure. The rule was corrected to cover the root package and children; no test was skipped to pass.
 - Baseline PR #1 run [34558509473](https://github.com/blueXYing/pet-platform/actions/runs/34558509473), backend job 103136206100: actual connected GitHub logs show missing internal dependency versions and ProjectBuildingException before compile/tests. `baseline-ci-failure.txt` preserves the error-only extract. The adopted PLAT fix resolves this model error locally; remote GOV-002 CI must be checked independently.
 - PLAT-001 independently ran the real Maven Enforcer refund-biz→order-biz mutation at its fixed evidence commit `f33d7c241887ae37a84ab6cbe6101df20c2249ee` (`backend/evidence/PLAT-001/arch-001-negative.txt`). This is explicitly attributed dependency evidence, not a GOV-002 execution claim.
+- First GOV-002 remote PR #5 CI passed on head `70bab18` / base `5fb3950`: run `34559172769`, backend job `103138164693`, 22 JUnit and source fixtures passed. Both frontend build jobs were explicitly skipped; see `remote-ci-first-run.txt`.
+- Final review added a legitimate mixed-fact/display DTO getter positive case and a forbidden direct orderStage-to-displayStatus projection case. Full local clean verify was rerun successfully after this correction; the final remote head is checked separately in the handoff.
+- PLAT-001 independently integrated GOV-002 `79180f3` and confirmed the same 41-project/22-JUnit/13-Python result at its evidence commit `cae2c51c25f818b95fd4f3f87fc001dbbf804b38`. This does not substitute for validation of later GOV-002 changes.
 
 ## Delivery / risks
 

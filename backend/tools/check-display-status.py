@@ -30,7 +30,11 @@ def violations(source, order_owned=False):
     raw_branch = re.search(r"\b" + FACT + r"\b\s*(?:[!=]=|\)|\?|&&|\|\|)|\[\s*['\"]" + FACT + r"['\"]\s*\]", code)
     nested_fact = re.search(r"\b(?:refund|payment|active_refund_application|active_aftersale|verification)\s*\.\s*(?:status|type)\b", code)
     output = re.search(DISPLAY + r"|['\"]" + STATUSES + r"['\"]", code)
-    if (raw_read or raw_branch or nested_fact) and output:
+    decision = re.search(r"\b(?:if|switch)\s*\(|\?(?![.:])|==|!=|&&|\|\||\[[^\]\n]*(?:" + FACT + r"|\.\s*status)\b", code)
+    direct_projection = re.search(DISPLAY + r"\s*[:=]\s*[^;\n]*(?:\.\s*" + FACT + r"\b|get(?:OrderStage|PaymentStatus|RefundStatus)\s*\()", code)
+    # Contract DTO getters may legitimately carry both raw facts and server displayStatus.
+    # Their declarations/field copies are not priority computation.
+    if (raw_read or raw_branch or nested_fact) and output and (decision or direct_projection):
         reasons.append("raw order facts and display output coexist outside order; delegate derivation to order")
     if re.search(r"\b(?:calculate|compute|derive|resolve|map|build|to)(?:DisplayOrderStatus|DisplayStatus)\s*(?:=|\(|:)", code, re.I):
         reasons.append("display-status calculator declared outside order")

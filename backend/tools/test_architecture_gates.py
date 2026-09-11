@@ -97,6 +97,7 @@ class DisplayGateTest(unittest.TestCase):
             "DisplayOrderStatus decide() { return DisplayOrderStatus.REFUNDED; }",
             "if (refund.type == PARTIAL && refund.status == SUCCESS) return 'PARTIAL_REFUND';",
             "if (order_stage == CANCELED) return 'CANCELED';",
+            "const displayStatus = order.orderStage;",
         ]
         for code in examples:
             with self.subTest(code=code):
@@ -112,6 +113,7 @@ class DisplayGateTest(unittest.TestCase):
             "if (order.displayStatus === 'REFUNDED') showRefundBadge();",
             "type Status = 'REFUNDED' | 'PENDING_SERVICE'; interface Order { displayStatus: Status; refundStatus: string; }",
             "const mock = { displayStatus: 'PENDING_PAYMENT', paymentStatus: 'UNPAID' };",
+            "class OrderSnapshotDTO { String displayStatus; String refundStatus; String getRefundStatus() { return this.refundStatus; } String getDisplayStatus() { return this.displayStatus; } }",
             "// const calculateDisplayStatus = () => o.refundStatus;\nreturn order.displayStatus;",
         ]:
             with self.subTest(code=code):
