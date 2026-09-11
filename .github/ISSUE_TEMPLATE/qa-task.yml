@@ -1,0 +1,17 @@
+name: QA Task
+description: QA/并发/E2E/故障测试任务
+title: "[QA] "
+labels: ["qa"]
+body:
+  - type: input
+    id: target
+    attributes: {label: Target Issue/Feature}
+    validations: {required: true}
+  - type: textarea
+    id: invariant
+    attributes: {label: Business Invariants}
+    validations: {required: true}
+  - type: textarea
+    id: cases
+    attributes: {label: Test Case IDs}
+    validations: {required: true}

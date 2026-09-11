@@ -1,0 +1,135 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <parent>
+        <groupId>org.springframework.boot</groupId>
+        <artifactId>spring-boot-starter-parent</artifactId>
+        <version>4.1.1</version>
+        <relativePath/>
+    </parent>
+
+    <groupId>com.petplatform</groupId>
+    <artifactId>pet-platform-backend</artifactId>
+    <version>0.1.0-SNAPSHOT</version>
+    <packaging>pom</packaging>
+
+    <name>pet-platform-backend</name>
+    <description>Pet Platform V1.0 modular monolith backend</description>
+
+    <properties>
+        <java.version>21</java.version>
+        <maven.compiler.release>21</maven.compiler.release>
+        <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+
+        <mybatis-spring-boot.version>4.1.0</mybatis-spring-boot.version>
+        <archunit.version>1.4.2</archunit.version>
+        <testcontainers.version>2.0.5</testcontainers.version>
+        <maven-enforcer.version>3.6.2</maven-enforcer.version>
+
+        <!-- boot / architecture-test need to depend on biz modules intentionally -->
+        <pet.ban-biz-dependencies.skip>false</pet.ban-biz-dependencies.skip>
+    </properties>
+
+    <modules>
+        <module>pet-common</module>
+        <module>pet-event-api</module>
+        <module>pet-event-core</module>
+        <module>pet-task-core</module>
+        <module>pet-user-api</module>
+        <module>pet-user-biz</module>
+        <module>pet-merchant-api</module>
+        <module>pet-merchant-biz</module>
+        <module>pet-service-api</module>
+        <module>pet-service-biz</module>
+        <module>pet-schedule-api</module>
+        <module>pet-schedule-biz</module>
+        <module>pet-order-api</module>
+        <module>pet-order-biz</module>
+        <module>pet-payment-api</module>
+        <module>pet-payment-biz</module>
+        <module>pet-refund-api</module>
+        <module>pet-refund-biz</module>
+        <module>pet-verification-api</module>
+        <module>pet-verification-biz</module>
+        <module>pet-aftersale-api</module>
+        <module>pet-aftersale-biz</module>
+        <module>pet-coupon-api</module>
+        <module>pet-coupon-biz</module>
+        <module>pet-points-api</module>
+        <module>pet-points-biz</module>
+        <module>pet-review-api</module>
+        <module>pet-review-biz</module>
+        <module>pet-notification-api</module>
+        <module>pet-notification-biz</module>
+        <module>pet-community-api</module>
+        <module>pet-community-biz</module>
+        <module>pet-thirdparty-api</module>
+        <module>pet-thirdparty-biz</module>
+        <module>pet-customer-service-api</module>
+        <module>pet-customer-service-biz</module>
+        <module>pet-admin-api</module>
+        <module>pet-admin-biz</module>
+        <module>pet-boot</module>
+        <module>pet-architecture-test</module>
+    </modules>
+
+    <dependencyManagement>
+        <dependencies>
+            <dependency>
+                <groupId>org.testcontainers</groupId>
+                <artifactId>testcontainers-bom</artifactId>
+                <version>${testcontainers.version}</version>
+                <type>pom</type>
+                <scope>import</scope>
+            </dependency>
+        </dependencies>
+    </dependencyManagement>
+
+    <build>
+        <plugins>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-enforcer-plugin</artifactId>
+                <version>${maven-enforcer.version}</version>
+                <executions>
+                    <execution>
+                        <id>baseline</id>
+                        <goals><goal>enforce</goal></goals>
+                        <configuration>
+                            <rules>
+                                <requireJavaVersion>
+                                    <version>[21,)</version>
+                                </requireJavaVersion>
+                                <requireMavenVersion>
+                                    <version>[3.9,)</version>
+                                </requireMavenVersion>
+                                <dependencyConvergence/>
+                            </rules>
+                        </configuration>
+                    </execution>
+                    <execution>
+                        <id>ban-cross-biz-dependencies</id>
+                        <goals><goal>enforce</goal></goals>
+                        <configuration>
+                            <skip>${pet.ban-biz-dependencies.skip}</skip>
+                            <rules>
+                                <bannedDependencies>
+                                    <searchTransitive>false</searchTransitive>
+                                    <excludes>
+                                        <exclude>com.petplatform:pet-*-biz</exclude>
+                                    </excludes>
+                                    <message>
+                                        Domain modules must depend on another module's *-api only; biz -> biz is forbidden.
+                                    </message>
+                                </bannedDependencies>
+                            </rules>
+                        </configuration>
+                    </execution>
+                </executions>
+            </plugin>
+        </plugins>
+    </build>
+</project>

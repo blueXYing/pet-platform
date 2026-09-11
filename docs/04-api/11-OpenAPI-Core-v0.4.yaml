@@ -1,0 +1,789 @@
+openapi: 3.0.3
+info:
+  title: Pet Platform V1.0 Core API
+  version: 0.4.0
+  description: '宠物平台 V1.0 核心交易 OpenAPI 草案。 完整业务语义以产品 SSOT、技术基线与 HTTP Controller Contract
+    为准。
+
+    '
+servers:
+- url: /api/v1
+tags:
+- name: C-Order
+- name: C-Refund
+- name: C-Aftersale
+- name: C-Review
+- name: Merchant-Order
+- name: Merchant-Refund
+- name: Merchant-Verification
+- name: Admin-Aftersale
+- name: Admin-Order
+paths:
+  /c/orders:
+    post:
+      tags:
+      - C-Order
+      summary: 创建预约订单
+      operationId: createOrder
+      security:
+      - bearerAuth: []
+      parameters:
+      - $ref: '#/components/parameters/RequestId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateOrderRequest'
+      responses:
+        '201':
+          description: 创建成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CreateOrderResponseEnvelope'
+        '409':
+          $ref: '#/components/responses/Conflict'
+    get:
+      tags:
+      - C-Order
+      summary: 我的订单
+      operationId: listMyOrders
+      security:
+      - bearerAuth: []
+      parameters:
+      - name: displayStatus
+        in: query
+        schema:
+          $ref: '#/components/schemas/DisplayOrderStatus'
+      - $ref: '#/components/parameters/Page'
+      - $ref: '#/components/parameters/PageSize'
+      responses:
+        '200':
+          description: 成功
+  /c/orders/{orderId}:
+    get:
+      tags:
+      - C-Order
+      summary: 订单详情
+      operationId: getMyOrder
+      security:
+      - bearerAuth: []
+      parameters:
+      - $ref: '#/components/parameters/OrderId'
+      responses:
+        '200':
+          description: 成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OrderDetailResponseEnvelope'
+        '404':
+          $ref: '#/components/responses/NotFound'
+  /c/orders/{orderId}/payments:
+    post:
+      tags:
+      - C-Order
+      summary: 发起微信支付
+      operationId: createOrderPayment
+      security:
+      - bearerAuth: []
+      parameters:
+      - $ref: '#/components/parameters/OrderId'
+      - $ref: '#/components/parameters/RequestId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+              - channel
+              properties:
+                channel:
+                  type: string
+                  enum:
+                  - WECHAT_MINI_PROGRAM
+      responses:
+        '200':
+          description: 成功
+        '409':
+          $ref: '#/components/responses/Conflict'
+  /c/orders/{orderId}/reschedule:
+    post:
+      tags:
+      - C-Order
+      summary: 改期
+      operationId: rescheduleOrder
+      security:
+      - bearerAuth: []
+      parameters:
+      - $ref: '#/components/parameters/OrderId'
+      - $ref: '#/components/parameters/RequestId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RescheduleRequest'
+      responses:
+        '200':
+          description: 成功
+        '409':
+          $ref: '#/components/responses/Conflict'
+  /c/orders/{orderId}/refund-applications:
+    post:
+      tags:
+      - C-Refund
+      summary: 申请退款
+      operationId: applyRefund
+      security:
+      - bearerAuth: []
+      parameters:
+      - $ref: '#/components/parameters/OrderId'
+      - $ref: '#/components/parameters/RequestId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RefundApplyRequest'
+      responses:
+        '201':
+          description: 申请创建成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RefundApplicationResponseEnvelope'
+        '409':
+          $ref: '#/components/responses/Conflict'
+  /c/orders/{orderId}/aftersales:
+    post:
+      tags:
+      - C-Aftersale
+      summary: 发起售后
+      operationId: createAftersale
+      security:
+      - bearerAuth: []
+      parameters:
+      - $ref: '#/components/parameters/OrderId'
+      - $ref: '#/components/parameters/RequestId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateAftersaleRequest'
+      responses:
+        '201':
+          description: 创建成功
+        '409':
+          $ref: '#/components/responses/Conflict'
+  /c/orders/{orderId}/review-eligibility:
+    get:
+      tags:
+      - C-Review
+      summary: 查询评价资格
+      operationId: getReviewEligibility
+      security:
+      - bearerAuth: []
+      parameters:
+      - $ref: '#/components/parameters/OrderId'
+      responses:
+        '200':
+          description: 成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ReviewEligibilityResponseEnvelope'
+  /c/orders/{orderId}/reviews:
+    post:
+      tags:
+      - C-Review
+      summary: 提交评价
+      operationId: createReview
+      security:
+      - bearerAuth: []
+      parameters:
+      - $ref: '#/components/parameters/OrderId'
+      - $ref: '#/components/parameters/RequestId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateReviewRequest'
+      responses:
+        '201':
+          description: 创建成功
+        '409':
+          $ref: '#/components/responses/Conflict'
+  /merchant/orders/{orderId}/confirm:
+    post:
+      tags:
+      - Merchant-Order
+      summary: 商家接单
+      operationId: merchantConfirmOrder
+      security:
+      - bearerAuth: []
+      parameters:
+      - $ref: '#/components/parameters/OrderId'
+      - $ref: '#/components/parameters/RequestId'
+      responses:
+        '200':
+          description: 成功
+        '409':
+          $ref: '#/components/responses/Conflict'
+  /merchant/orders/{orderId}/reject:
+    post:
+      tags:
+      - Merchant-Order
+      summary: 商家拒单
+      operationId: merchantRejectOrder
+      security:
+      - bearerAuth: []
+      parameters:
+      - $ref: '#/components/parameters/OrderId'
+      - $ref: '#/components/parameters/RequestId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/MerchantRejectOrderRequest'
+      responses:
+        '200':
+          description: 成功
+        '409':
+          $ref: '#/components/responses/Conflict'
+  /merchant/refund-applications/{applicationId}/approve:
+    post:
+      tags:
+      - Merchant-Refund
+      summary: 商家同意全额退款
+      operationId: merchantApproveRefund
+      security:
+      - bearerAuth: []
+      parameters:
+      - $ref: '#/components/parameters/ApplicationId'
+      - $ref: '#/components/parameters/RequestId'
+      responses:
+        '200':
+          description: 成功
+        '409':
+          $ref: '#/components/responses/Conflict'
+  /merchant/refund-applications/{applicationId}/reject:
+    post:
+      tags:
+      - Merchant-Refund
+      summary: 商家拒绝退款
+      operationId: merchantRejectRefund
+      security:
+      - bearerAuth: []
+      parameters:
+      - $ref: '#/components/parameters/ApplicationId'
+      - $ref: '#/components/parameters/RequestId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/MerchantRejectRefundRequest'
+      responses:
+        '200':
+          description: 成功
+        '409':
+          $ref: '#/components/responses/Conflict'
+  /merchant/orders/{orderId}/verification:
+    post:
+      tags:
+      - Merchant-Verification
+      summary: 平台订单核销
+      operationId: verifyPlatformOrder
+      security:
+      - bearerAuth: []
+      parameters:
+      - $ref: '#/components/parameters/OrderId'
+      - $ref: '#/components/parameters/RequestId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+              - verificationCode
+              properties:
+                verificationCode:
+                  type: string
+      responses:
+        '200':
+          description: 核销成功
+        '409':
+          $ref: '#/components/responses/Conflict'
+  /admin/aftersales/{afterSaleId}/decision:
+    post:
+      tags:
+      - Admin-Aftersale
+      summary: 运营售后终局裁决
+      operationId: decideAftersale
+      security:
+      - bearerAuth: []
+      parameters:
+      - $ref: '#/components/parameters/AfterSaleId'
+      - $ref: '#/components/parameters/RequestId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AftersaleDecisionRequest'
+      responses:
+        '200':
+          description: 裁决成功
+        '409':
+          $ref: '#/components/responses/Conflict'
+  /admin/orders/{orderId}/abnormal-close:
+    post:
+      tags:
+      - Admin-Order
+      summary: 运营异常关闭并退款
+      operationId: abnormalCloseOrder
+      security:
+      - bearerAuth: []
+      parameters:
+      - $ref: '#/components/parameters/OrderId'
+      - $ref: '#/components/parameters/RequestId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+              - reason
+              properties:
+                reasonCode:
+                  type: string
+                reason:
+                  type: string
+                  maxLength: 500
+      responses:
+        '200':
+          description: 成功
+        '409':
+          $ref: '#/components/responses/Conflict'
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+  parameters:
+    RequestId:
+      name: X-Request-Id
+      in: header
+      required: true
+      schema:
+        type: string
+        maxLength: 64
+    OrderId:
+      name: orderId
+      in: path
+      required: true
+      schema:
+        type: string
+    ApplicationId:
+      name: applicationId
+      in: path
+      required: true
+      schema:
+        type: string
+    AfterSaleId:
+      name: afterSaleId
+      in: path
+      required: true
+      schema:
+        type: string
+    Page:
+      name: page
+      in: query
+      schema:
+        type: integer
+        minimum: 1
+        default: 1
+    PageSize:
+      name: pageSize
+      in: query
+      schema:
+        type: integer
+        minimum: 1
+        maximum: 100
+        default: 20
+  responses:
+    Conflict:
+      description: 业务状态、并发或幂等冲突
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorEnvelope'
+    NotFound:
+      description: 资源不存在
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorEnvelope'
+  schemas:
+    DisplayOrderStatus:
+      type: string
+      enum:
+      - PENDING_PAYMENT
+      - PENDING_CONFIRM
+      - PENDING_SERVICE
+      - COMPLETED
+      - CANCELED
+      - REFUND_PENDING_CONFIRM
+      - REFUNDING
+      - REFUNDED
+      - PARTIAL_REFUND
+      - AFTERSALE
+    FulfillmentType:
+      type: string
+      enum:
+      - IN_STORE
+      - PICKUP_DELIVERY
+    DecimalAmount:
+      type: string
+      pattern: ^\d+(\.\d{1,2})?$
+      example: '128.00'
+    CreateOrderRequest:
+      type: object
+      required:
+      - storeId
+      - serviceId
+      - petId
+      - fulfillmentType
+      - appointmentStart
+      - appointmentEnd
+      properties:
+        storeId:
+          type: string
+        serviceId:
+          type: string
+        petId:
+          type: string
+        fulfillmentType:
+          $ref: '#/components/schemas/FulfillmentType'
+        appointmentStart:
+          type: string
+          format: date-time
+        appointmentEnd:
+          type: string
+          format: date-time
+        pickupStart:
+          type: string
+          format: date-time
+          nullable: true
+        returnStart:
+          type: string
+          format: date-time
+          nullable: true
+        couponInstanceId:
+          type: string
+          nullable: true
+        remark:
+          type: string
+          maxLength: 500
+    CreateOrderData:
+      type: object
+      properties:
+        orderId:
+          type: string
+        orderNo:
+          type: string
+        displayStatus:
+          $ref: '#/components/schemas/DisplayOrderStatus'
+        payAmount:
+          $ref: '#/components/schemas/DecimalAmount'
+        paymentExpireAt:
+          type: string
+          format: date-time
+    RescheduleRequest:
+      type: object
+      required:
+      - appointmentStart
+      - appointmentEnd
+      properties:
+        appointmentStart:
+          type: string
+          format: date-time
+        appointmentEnd:
+          type: string
+          format: date-time
+        pickupStart:
+          type: string
+          format: date-time
+          nullable: true
+        returnStart:
+          type: string
+          format: date-time
+          nullable: true
+    RefundApplyRequest:
+      type: object
+      required:
+      - reasonCode
+      properties:
+        reasonCode:
+          type: string
+          maxLength: 64
+        reasonText:
+          type: string
+          maxLength: 500
+    RefundApplicationData:
+      type: object
+      properties:
+        applicationId:
+          type: string
+        applicationStatus:
+          type: string
+          enum:
+          - PENDING_MERCHANT
+          - APPROVED
+          - AUTO_APPROVED
+          - REJECTED
+        route:
+          type: string
+          enum:
+          - AUTO_FULL_BEFORE_SERVICE
+          - MERCHANT_CONFIRM_AFTER_SERVICE
+          - AFTERSALE_DECISION
+        merchantDeadline:
+          type: string
+          format: date-time
+          nullable: true
+        refundOrderId:
+          type: string
+          nullable: true
+        displayStatus:
+          $ref: '#/components/schemas/DisplayOrderStatus'
+    CreateAftersaleRequest:
+      type: object
+      required:
+      - type
+      - description
+      properties:
+        type:
+          type: string
+        description:
+          type: string
+          maxLength: 2000
+        requestedAmount:
+          $ref: '#/components/schemas/DecimalAmount'
+        evidenceFileIds:
+          type: array
+          items:
+            type: string
+    ReviewEligibilityData:
+      type: object
+      required:
+      - eligible
+      - scoreIncluded
+      properties:
+        eligible:
+          type: boolean
+        scoreIncluded:
+          type: boolean
+        reviewDeadline:
+          type: string
+          format: date-time
+          nullable: true
+        rejectCode:
+          type: string
+          nullable: true
+    CreateReviewRequest:
+      type: object
+      required:
+      - storeScore
+      - serviceScore
+      - staffScore
+      properties:
+        storeScore:
+          type: integer
+          minimum: 1
+          maximum: 5
+        serviceScore:
+          type: integer
+          minimum: 1
+          maximum: 5
+        staffScore:
+          type: integer
+          minimum: 1
+          maximum: 5
+        content:
+          type: string
+          maxLength: 2000
+        mediaFileIds:
+          type: array
+          items:
+            type: string
+    MerchantRejectOrderRequest:
+      type: object
+      required:
+      - reasonText
+      properties:
+        reasonCode:
+          type: string
+          maxLength: 64
+        reasonText:
+          type: string
+          minLength: 1
+          maxLength: 500
+    MerchantRejectRefundRequest:
+      type: object
+      required:
+      - reasonText
+      properties:
+        reasonText:
+          type: string
+          minLength: 1
+          maxLength: 500
+    AftersaleDecisionRequest:
+      type: object
+      required:
+      - decisionType
+      - reason
+      properties:
+        decisionType:
+          type: string
+          enum:
+          - FULL_REFUND
+          - PARTIAL_REFUND
+          - REJECT
+          - RESERVICE
+          - OTHER
+        refundAmount:
+          allOf:
+          - $ref: '#/components/schemas/DecimalAmount'
+          nullable: true
+        reason:
+          type: string
+          minLength: 1
+          maxLength: 2000
+    OrderDetailData:
+      type: object
+      properties:
+        orderId:
+          type: string
+        orderNo:
+          type: string
+        displayStatus:
+          $ref: '#/components/schemas/DisplayOrderStatus'
+        orderStage:
+          type: string
+          enum:
+          - PENDING_PAYMENT
+          - PENDING_CONFIRM
+          - PENDING_SERVICE
+          - COMPLETED
+          - CANCELED
+        paymentStatus:
+          type: string
+          enum:
+          - INIT
+          - PAYING
+          - PAID
+          - FAILED
+          - CLOSED
+        verificationStatus:
+          type: string
+          enum:
+          - UNVERIFIED
+          - VERIFIED
+        refundApplicationStatus:
+          type: string
+          nullable: true
+        refundStatus:
+          type: string
+          nullable: true
+        afterSaleStatus:
+          type: string
+          nullable: true
+        payAmount:
+          $ref: '#/components/schemas/DecimalAmount'
+        appointmentStart:
+          type: string
+          format: date-time
+        appointmentEnd:
+          type: string
+          format: date-time
+        verifiedAt:
+          type: string
+          format: date-time
+          nullable: true
+        actions:
+          $ref: '#/components/schemas/OrderActions'
+    OrderActions:
+      type: object
+      properties:
+        canPay:
+          type: boolean
+        canReschedule:
+          type: boolean
+        canApplyRefund:
+          type: boolean
+        canShowVerificationCode:
+          type: boolean
+        canReview:
+          type: boolean
+        canApplyAfterSale:
+          type: boolean
+    BaseEnvelope:
+      type: object
+      required:
+      - success
+      - code
+      - message
+      - traceId
+      properties:
+        success:
+          type: boolean
+        code:
+          type: string
+        message:
+          type: string
+        traceId:
+          type: string
+    ErrorEnvelope:
+      allOf:
+      - $ref: '#/components/schemas/BaseEnvelope'
+      - type: object
+        properties:
+          data:
+            nullable: true
+    CreateOrderResponseEnvelope:
+      allOf:
+      - $ref: '#/components/schemas/BaseEnvelope'
+      - type: object
+        properties:
+          data:
+            $ref: '#/components/schemas/CreateOrderData'
+    RefundApplicationResponseEnvelope:
+      allOf:
+      - $ref: '#/components/schemas/BaseEnvelope'
+      - type: object
+        properties:
+          data:
+            $ref: '#/components/schemas/RefundApplicationData'
+    ReviewEligibilityResponseEnvelope:
+      allOf:
+      - $ref: '#/components/schemas/BaseEnvelope'
+      - type: object
+        properties:
+          data:
+            $ref: '#/components/schemas/ReviewEligibilityData'
+    OrderDetailResponseEnvelope:
+      allOf:
+      - $ref: '#/components/schemas/BaseEnvelope'
+      - type: object
+        properties:
+          data:
+            $ref: '#/components/schemas/OrderDetailData'

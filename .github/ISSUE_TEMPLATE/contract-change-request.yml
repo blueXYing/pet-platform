@@ -1,0 +1,27 @@
+name: Contract Change Request
+description: API/Schema/Event等共享契约变更
+title: "[CCR] "
+labels: ["contract-change"]
+body:
+  - type: input
+    id: related
+    attributes: {label: Related Issue}
+    validations: {required: true}
+  - type: textarea
+    id: problem
+    attributes: {label: Current Contract Problem}
+    validations: {required: true}
+  - type: textarea
+    id: source
+    attributes: {label: Existing SSOT/PRD Support}
+    validations: {required: true}
+  - type: textarea
+    id: impact
+    attributes: {label: Impacted Modules / API / DB / Event / Frontend / Tests}
+    validations: {required: true}
+  - type: dropdown
+    id: product
+    attributes:
+      label: Does this require a product ruling?
+      options: ["NO - technical contract omission", "YES - product behavior is unclear"]
+    validations: {required: true}

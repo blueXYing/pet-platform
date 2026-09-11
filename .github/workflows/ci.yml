@@ -1,0 +1,30 @@
+name: CI
+on:
+  pull_request:
+    branches: [develop, main]
+  push:
+    branches: [develop]
+
+jobs:
+  backend:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+          cache: maven
+      - name: Check module dependencies
+        run: python backend/tools/check-module-deps.py
+      - name: Maven verify
+        run: mvn -B -f backend/pom.xml verify
+
+  repository-policy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Reject deprecated late-payment recovery design
+        shell: bash
+        run: |
+          ! grep -R --exclude='*.docx' --exclude-dir='.git' -n "WAITING_APPOINTMENT_RESELECTION" backend docs/00-ssot docs/02-architecture docs/04-api docs/05-events docs/06-scheduler

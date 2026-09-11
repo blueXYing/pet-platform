@@ -1,2 +1,11 @@
-# pet-platform
-宠物服务平台｜C端、商家端、运营端与模块化单体后端
+# Pet Platform V1.0
+
+AI-native multi-agent development repository bootstrap.
+
+Start with:
+- `00-START-HERE.md`
+- `01-WORK-FIRST-PROMPT.md`
+- `WORK_STATE.md`
+- `AGENTS.md`
+
+Do not implement product behavior by guessing. SSOT is authoritative.
