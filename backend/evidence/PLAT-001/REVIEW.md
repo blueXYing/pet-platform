@@ -1,6 +1,6 @@
 # PLAT-001 review evidence
 
-Status: implementation committed; full ARCH-001–003 acceptance pending GOV-002 rule integration. Do not mark the Issue DONE from the baseline test result alone.
+Status: implementation committed and local ARCH-001–003 integration verification PASS. Draft PR #2 is available for review. Remote CI and human review remain separate gates; no merge or Issue DONE is claimed.
 
 ## Scope and provenance
 
@@ -28,17 +28,31 @@ Use task-process `JAVA_HOME=D:/soft/Android Studio/jbr` and prepend its `bin` to
 | ARCH-001 static dependency check | PASS | arch-001-static.txt |
 | ARCH-001 Enforcer mutation | PASS: deliberately adding refund-biz → order-biz causes exit 1 at ban-cross-biz-dependencies; original POM restored byte-for-byte | arch-001-negative.txt |
 | Ordinary / executable boot archive shape | PASS: regular class entries / BOOT-INF main class respectively | boot-library-jar.txt, boot-executable-jar.txt |
-| ARCH-002 cross-module persistence | NOT COMPLETE: original test suite has no such rule; await GOV-002 | integration evidence to follow |
-| ARCH-003 API framework boundary | Baseline positive rule passes; complete negative fixtures await GOV-002 | architecture-baseline.txt |
+| ARCH-002 cross-module persistence | PASS after adopting fixed GOV-002 rules, including cross-module Repository/Mapper/DO/Entity negative fixtures | integration-maven-verify.txt, integration-fixtures.txt |
+| ARCH-003 API framework boundary | PASS after adopting fixed GOV-002 rules and API purity negative fixtures | integration-production-gates.txt, integration-fixtures.txt |
 
 The preserved first build log, maven-verify-before-boot-fix.txt, documents the Web package empty-scan failure after only the root version fix. No failing check was skipped or weakened.
 
 ## PR description / impact
 
-Issue: PLAT-001. Fix the Maven skeleton's missing internal dependency versions and preserve the boot library artifact for architecture tests. Java 21 compilation and baseline verification now pass; integration with GOV-002 is still required to accept ARCH-001–003 fully.
+Issue: PLAT-001. Fix the Maven skeleton's missing internal dependency versions and preserve the boot library artifact for architecture tests. Java 21 compilation, baseline verification and independent integration with GOV-002 now pass.
 
 SSOT/API/DB/Event impact: none. No new business implementation, HTTP endpoints, DTOs, provider mocks, fixtures pretending to be real APIs, or transaction behavior. Existing String ID contexts/events remain unchanged; no amount calculation was introduced.
 
 Concurrency risk: no runtime behavior change; only PLAT-001-owned POM files changed. Compatibility: dependency graph and pinned external versions unchanged; executable filename gains `-exec`. Rollback: revert the implementation commit, which also restores the original build defects. No database rollback is involved.
 
-Known risks: skeleton success does not establish application startup, database/provider integration, transaction correctness, or future implementation coverage. Remote CI/review have not run. The connected GitHub branch listing showed main and chore/GOV-001-repository-baseline, but fetching backend/pom.xml from the latter returned 404; the complete local input commit is not proven remotely available. No remote branch/PR is claimed. Prepared PR awaits an available remote baseline and approved publishing path; any merge requires blueXYing human review.
+Known risks: skeleton success does not establish application startup, database/provider integration, transaction correctness, or future implementation coverage. Remote CI/review have not been accepted by this local evidence. Any merge requires blueXYing human review.
+
+## Independent integration on 2026-09-11
+
+GOV-002's fixed commit `79180f30c39dcd8f5d2d2a0e4f24746da9c39f1a` was adopted without edits as local cherry-pick `1db73ba2c79402d6a1f23a53bee7ea7d2c451b72`, on top of PLAT implementation and evidence. It contains 18 QA-owned files and is explicitly a dependency, not PLAT implementation. The local branch includes that integration dependency; the remote PLAT PR intentionally does not upload these QA-owned files.
+
+On that integrated tree, process-local OpenJDK 21.0.5 / Maven 3.9.12 ran `mvn -B -ntp -f backend/pom.xml clean verify`: all 41 projects SUCCESS, exit 0, 22 JUnit tests (15 independent Java fixture tests + 7 production/source gates), zero failures/errors/skips, and 13 embedded Python tests PASS. Evidence: integration-maven-verify.txt, integration-production-gates.txt and integration-fixtures.txt.
+
+Production import asserted all 39 modules and counted 294 classes including package-info, 50 non-package-info classes, zero real controllers, and zero real domain implementation classes. Synthetic negative fixtures are separate from this production scan. This establishes the skeleton and gate behavior, not transaction feature correctness. ARCH-001–005 ran through Maven; ARCH-001–003 satisfy this Issue's local architecture requirements.
+
+## Remote delivery
+
+The initial remote baseline 404 was resolved by GOV-001 publishing `5fb3950d3ac214dab2db5cc90deaf35a09ca7967`. PLAT branch `codex/plat-001-backend-core` was created from that fixed base and only its own POM/evidence files overlaid. Initial remote head `7b66fb641c0cc3956f9ceaf6e6d790278102da46` was compared to base: 11 files changed, no deletions, behind 0; GOV-001 governance additions preserved. Later commits update only PLAT evidence.
+
+Draft PR: https://github.com/blueXYing/pet-platform/pull/2 . Base: `chore/GOV-001-repository-baseline`, not main/develop. Connector-created remote commit IDs differ from local commit IDs; the two POM changes correspond to local implementation `6cfefa8799a6c1bcba8c48a35940215e1a6c4f7d`. The integration result requires the separately owned fixed GOV-002 rules, and must not be misrepresented as execution of those rules by the standalone remote PLAT tree.
