@@ -1,0 +1,1 @@
+OK: no biz -> biz Maven dependencies
