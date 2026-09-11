@@ -1,0 +1,211 @@
+[INFO] Scanning for projects...
+[INFO] ------------------------------------------------------------------------
+[INFO] Reactor Build Order:
+[INFO] 
+[INFO] pet-platform-backend                                               [pom]
+[INFO] pet-common                                                         [jar]
+[INFO] pet-event-api                                                      [jar]
+[INFO] pet-task-core                                                      [jar]
+[INFO] pet-user-api                                                       [jar]
+[INFO] pet-merchant-api                                                   [jar]
+[INFO] pet-service-api                                                    [jar]
+[INFO] pet-schedule-api                                                   [jar]
+[INFO] pet-order-api                                                      [jar]
+[INFO] pet-payment-api                                                    [jar]
+[INFO] pet-coupon-api                                                     [jar]
+[INFO] pet-order-biz                                                      [jar]
+[INFO] pet-refund-api                                                     [jar]
+[INFO] pet-refund-biz                                                     [jar]
+[INFO] 
+[INFO] ----------------< com.petplatform:pet-platform-backend >----------------
+[INFO] Building pet-platform-backend 0.1.0-SNAPSHOT                      [1/14]
+[INFO]   from pom.xml
+[INFO] --------------------------------[ pom ]---------------------------------
+[INFO] 
+[INFO] --- enforcer:3.6.2:enforce (baseline) @ pet-platform-backend ---
+[INFO] Rule 0: org.apache.maven.enforcer.rules.version.RequireJavaVersion passed
+[INFO] Rule 1: org.apache.maven.enforcer.rules.version.RequireMavenVersion passed
+[INFO] Rule 2: org.apache.maven.enforcer.rules.dependency.DependencyConvergence passed
+[INFO] 
+[INFO] --- enforcer:3.6.2:enforce (ban-cross-biz-dependencies) @ pet-platform-backend ---
+[INFO] Rule 0: org.apache.maven.enforcer.rules.dependency.BannedDependencies passed
+[INFO] 
+[INFO] ---------------------< com.petplatform:pet-common >---------------------
+[INFO] Building pet-common 0.1.0-SNAPSHOT                                [2/14]
+[INFO]   from pet-common\pom.xml
+[INFO] --------------------------------[ jar ]---------------------------------
+[INFO] 
+[INFO] --- enforcer:3.6.2:enforce (baseline) @ pet-common ---
+[INFO] Rule 2: org.apache.maven.enforcer.rules.dependency.DependencyConvergence passed
+[INFO] 
+[INFO] --- enforcer:3.6.2:enforce (ban-cross-biz-dependencies) @ pet-common ---
+[INFO] Rule 0: org.apache.maven.enforcer.rules.dependency.BannedDependencies passed
+[INFO] 
+[INFO] -------------------< com.petplatform:pet-event-api >--------------------
+[INFO] Building pet-event-api 0.1.0-SNAPSHOT                             [3/14]
+[INFO]   from pet-event-api\pom.xml
+[INFO] --------------------------------[ jar ]---------------------------------
+[INFO] 
+[INFO] --- enforcer:3.6.2:enforce (baseline) @ pet-event-api ---
+[INFO] Rule 2: org.apache.maven.enforcer.rules.dependency.DependencyConvergence passed
+[INFO] 
+[INFO] --- enforcer:3.6.2:enforce (ban-cross-biz-dependencies) @ pet-event-api ---
+[INFO] Rule 0: org.apache.maven.enforcer.rules.dependency.BannedDependencies passed
+[INFO] 
+[INFO] -------------------< com.petplatform:pet-task-core >--------------------
+[INFO] Building pet-task-core 0.1.0-SNAPSHOT                             [4/14]
+[INFO]   from pet-task-core\pom.xml
+[INFO] --------------------------------[ jar ]---------------------------------
+[INFO] 
+[INFO] --- enforcer:3.6.2:enforce (baseline) @ pet-task-core ---
+[INFO] Rule 2: org.apache.maven.enforcer.rules.dependency.DependencyConvergence passed
+[INFO] 
+[INFO] --- enforcer:3.6.2:enforce (ban-cross-biz-dependencies) @ pet-task-core ---
+[INFO] Rule 0: org.apache.maven.enforcer.rules.dependency.BannedDependencies passed
+[INFO] 
+[INFO] --------------------< com.petplatform:pet-user-api >--------------------
+[INFO] Building pet-user-api 0.1.0-SNAPSHOT                              [5/14]
+[INFO]   from pet-user-api\pom.xml
+[INFO] --------------------------------[ jar ]---------------------------------
+[INFO] 
+[INFO] --- enforcer:3.6.2:enforce (baseline) @ pet-user-api ---
+[INFO] Rule 2: org.apache.maven.enforcer.rules.dependency.DependencyConvergence passed
+[INFO] 
+[INFO] --- enforcer:3.6.2:enforce (ban-cross-biz-dependencies) @ pet-user-api ---
+[INFO] Rule 0: org.apache.maven.enforcer.rules.dependency.BannedDependencies passed
+[INFO] 
+[INFO] ------------------< com.petplatform:pet-merchant-api >------------------
+[INFO] Building pet-merchant-api 0.1.0-SNAPSHOT                          [6/14]
+[INFO]   from pet-merchant-api\pom.xml
+[INFO] --------------------------------[ jar ]---------------------------------
+[INFO] 
+[INFO] --- enforcer:3.6.2:enforce (baseline) @ pet-merchant-api ---
+[INFO] Rule 2: org.apache.maven.enforcer.rules.dependency.DependencyConvergence passed
+[INFO] 
+[INFO] --- enforcer:3.6.2:enforce (ban-cross-biz-dependencies) @ pet-merchant-api ---
+[INFO] Rule 0: org.apache.maven.enforcer.rules.dependency.BannedDependencies passed
+[INFO] 
+[INFO] ------------------< com.petplatform:pet-service-api >-------------------
+[INFO] Building pet-service-api 0.1.0-SNAPSHOT                           [7/14]
+[INFO]   from pet-service-api\pom.xml
+[INFO] --------------------------------[ jar ]---------------------------------
+[INFO] 
+[INFO] --- enforcer:3.6.2:enforce (baseline) @ pet-service-api ---
+[INFO] Rule 2: org.apache.maven.enforcer.rules.dependency.DependencyConvergence passed
+[INFO] 
+[INFO] --- enforcer:3.6.2:enforce (ban-cross-biz-dependencies) @ pet-service-api ---
+[INFO] Rule 0: org.apache.maven.enforcer.rules.dependency.BannedDependencies passed
+[INFO] 
+[INFO] ------------------< com.petplatform:pet-schedule-api >------------------
+[INFO] Building pet-schedule-api 0.1.0-SNAPSHOT                          [8/14]
+[INFO]   from pet-schedule-api\pom.xml
+[INFO] --------------------------------[ jar ]---------------------------------
+[INFO] 
+[INFO] --- enforcer:3.6.2:enforce (baseline) @ pet-schedule-api ---
+[INFO] Rule 2: org.apache.maven.enforcer.rules.dependency.DependencyConvergence passed
+[INFO] 
+[INFO] --- enforcer:3.6.2:enforce (ban-cross-biz-dependencies) @ pet-schedule-api ---
+[INFO] Rule 0: org.apache.maven.enforcer.rules.dependency.BannedDependencies passed
+[INFO] 
+[INFO] -------------------< com.petplatform:pet-order-api >--------------------
+[INFO] Building pet-order-api 0.1.0-SNAPSHOT                             [9/14]
+[INFO]   from pet-order-api\pom.xml
+[INFO] --------------------------------[ jar ]---------------------------------
+[INFO] 
+[INFO] --- enforcer:3.6.2:enforce (baseline) @ pet-order-api ---
+[INFO] Rule 2: org.apache.maven.enforcer.rules.dependency.DependencyConvergence passed
+[INFO] 
+[INFO] --- enforcer:3.6.2:enforce (ban-cross-biz-dependencies) @ pet-order-api ---
+[INFO] Rule 0: org.apache.maven.enforcer.rules.dependency.BannedDependencies passed
+[INFO] 
+[INFO] ------------------< com.petplatform:pet-payment-api >-------------------
+[INFO] Building pet-payment-api 0.1.0-SNAPSHOT                          [10/14]
+[INFO]   from pet-payment-api\pom.xml
+[INFO] --------------------------------[ jar ]---------------------------------
+[INFO] 
+[INFO] --- enforcer:3.6.2:enforce (baseline) @ pet-payment-api ---
+[INFO] Rule 2: org.apache.maven.enforcer.rules.dependency.DependencyConvergence passed
+[INFO] 
+[INFO] --- enforcer:3.6.2:enforce (ban-cross-biz-dependencies) @ pet-payment-api ---
+[INFO] Rule 0: org.apache.maven.enforcer.rules.dependency.BannedDependencies passed
+[INFO] 
+[INFO] -------------------< com.petplatform:pet-coupon-api >-------------------
+[INFO] Building pet-coupon-api 0.1.0-SNAPSHOT                           [11/14]
+[INFO]   from pet-coupon-api\pom.xml
+[INFO] --------------------------------[ jar ]---------------------------------
+[INFO] 
+[INFO] --- enforcer:3.6.2:enforce (baseline) @ pet-coupon-api ---
+[INFO] Rule 2: org.apache.maven.enforcer.rules.dependency.DependencyConvergence passed
+[INFO] 
+[INFO] --- enforcer:3.6.2:enforce (ban-cross-biz-dependencies) @ pet-coupon-api ---
+[INFO] Rule 0: org.apache.maven.enforcer.rules.dependency.BannedDependencies passed
+[INFO] 
+[INFO] -------------------< com.petplatform:pet-order-biz >--------------------
+[INFO] Building pet-order-biz 0.1.0-SNAPSHOT                            [12/14]
+[INFO]   from pet-order-biz\pom.xml
+[INFO] --------------------------------[ jar ]---------------------------------
+[INFO] 
+[INFO] --- enforcer:3.6.2:enforce (baseline) @ pet-order-biz ---
+[INFO] Rule 2: org.apache.maven.enforcer.rules.dependency.DependencyConvergence passed
+[INFO] 
+[INFO] --- enforcer:3.6.2:enforce (ban-cross-biz-dependencies) @ pet-order-biz ---
+[INFO] Rule 0: org.apache.maven.enforcer.rules.dependency.BannedDependencies passed
+[INFO] 
+[INFO] -------------------< com.petplatform:pet-refund-api >-------------------
+[INFO] Building pet-refund-api 0.1.0-SNAPSHOT                           [13/14]
+[INFO]   from pet-refund-api\pom.xml
+[INFO] --------------------------------[ jar ]---------------------------------
+[INFO] 
+[INFO] --- enforcer:3.6.2:enforce (baseline) @ pet-refund-api ---
+[INFO] Rule 2: org.apache.maven.enforcer.rules.dependency.DependencyConvergence passed
+[INFO] 
+[INFO] --- enforcer:3.6.2:enforce (ban-cross-biz-dependencies) @ pet-refund-api ---
+[INFO] Rule 0: org.apache.maven.enforcer.rules.dependency.BannedDependencies passed
+[INFO] 
+[INFO] -------------------< com.petplatform:pet-refund-biz >-------------------
+[INFO] Building pet-refund-biz 0.1.0-SNAPSHOT                           [14/14]
+[INFO]   from pet-refund-biz\pom.xml
+[INFO] --------------------------------[ jar ]---------------------------------
+[INFO] 
+[INFO] --- enforcer:3.6.2:enforce (baseline) @ pet-refund-biz ---
+[INFO] Rule 2: org.apache.maven.enforcer.rules.dependency.DependencyConvergence passed
+[INFO] 
+[INFO] --- enforcer:3.6.2:enforce (ban-cross-biz-dependencies) @ pet-refund-biz ---
+[INFO] ------------------------------------------------------------------------
+[INFO] Reactor Summary for pet-platform-backend 0.1.0-SNAPSHOT:
+[INFO] 
+[INFO] pet-platform-backend ............................... SUCCESS [  0.211 s]
+[INFO] pet-common ......................................... SUCCESS [  0.012 s]
+[INFO] pet-event-api ...................................... SUCCESS [  0.019 s]
+[INFO] pet-task-core ...................................... SUCCESS [  0.031 s]
+[INFO] pet-user-api ....................................... SUCCESS [  0.007 s]
+[INFO] pet-merchant-api ................................... SUCCESS [  0.007 s]
+[INFO] pet-service-api .................................... SUCCESS [  0.006 s]
+[INFO] pet-schedule-api ................................... SUCCESS [  0.008 s]
+[INFO] pet-order-api ...................................... SUCCESS [  0.006 s]
+[INFO] pet-payment-api .................................... SUCCESS [  0.009 s]
+[INFO] pet-coupon-api ..................................... SUCCESS [  0.017 s]
+[INFO] pet-order-biz ...................................... SUCCESS [  0.189 s]
+[INFO] pet-refund-api ..................................... SUCCESS [  0.004 s]
+[INFO] pet-refund-biz ..................................... FAILURE [  0.013 s]
+[INFO] ------------------------------------------------------------------------
+[INFO] BUILD FAILURE
+[INFO] ------------------------------------------------------------------------
+[INFO] Total time:  0.937 s
+[INFO] Finished at: 2026-09-11T11:24:19+08:00
+[INFO] ------------------------------------------------------------------------
+[ERROR] Failed to execute goal org.apache.maven.plugins:maven-enforcer-plugin:3.6.2:enforce (ban-cross-biz-dependencies) on project pet-refund-biz: 
+[ERROR] Rule 0: org.apache.maven.enforcer.rules.dependency.BannedDependencies failed with message:
+[ERROR] Domain modules must depend on another module's *-api only; biz -> biz is forbidden.
+[ERROR] 
+[ERROR] com.petplatform:pet-order-biz:jar:0.1.0-SNAPSHOT <--- banned via the exclude/include list
+[ERROR] -> [Help 1]
+[ERROR] 
+[ERROR] To see the full stack trace of the errors, re-run Maven with the -e switch.
+[ERROR] Re-run Maven using the -X switch to enable full debug logging.
+[ERROR] 
+[ERROR] For more information about the errors and possible solutions, please read the following articles:
+[ERROR] [Help 1] http://cwiki.apache.org/confluence/display/MAVEN/MojoExecutionException
+[ERROR] 
+[ERROR] After correcting the problems, you can resume the build with the command
+[ERROR]   mvn <args> -rf :pet-refund-biz
