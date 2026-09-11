@@ -1,0 +1,372 @@
+[INFO] Scanning for projects...
+[ERROR] [ERROR] Some problems were encountered while processing the POMs:
+[ERROR] 'dependencies.dependency.version' for com.petplatform:pet-common:jar is missing. @ line 16, column 21
+[ERROR] 'dependencies.dependency.version' for com.petplatform:pet-common:jar is missing. @ line 16, column 21
+[ERROR] 'dependencies.dependency.version' for com.petplatform:pet-event-api:jar is missing. @ line 20, column 21
+[ERROR] 'dependencies.dependency.version' for com.petplatform:pet-common:jar is missing. @ line 16, column 21
+[ERROR] 'dependencies.dependency.version' for com.petplatform:pet-common:jar is missing. @ line 16, column 21
+[ERROR] 'dependencies.dependency.version' for com.petplatform:pet-common:jar is missing. @ line 16, column 21
+[ERROR] 'dependencies.dependency.version' for com.petplatform:pet-event-api:jar is missing. @ line 20, column 21
+[ERROR] 'dependencies.dependency.version' for com.petplatform:pet-user-api:jar is missing. @ line 24, column 21
+[ERROR] 'dependencies.dependency.version' for com.petplatform:pet-common:jar is missing. @ line 16, column 21
+[ERROR] 'dependencies.dependency.version' for com.petplatform:pet-common:jar is missing. @ line 16, column 21
+[ERROR] 'dependencies.dependency.version' for com.petplatform:pet-event-api:jar is missing. @ line 20, column 21
+[ERROR] 'dependencies.dependency.version' for com.petplatform:pet-merchant-api:jar is missing. @ line 24, column 21
+[ERROR] 'dependencies.dependency.version' for com.petplatform:pet-common:jar is missing. @ line 16, column 21
+[ERROR] 'dependencies.dependency.version' for com.petplatform:pet-common:jar is missing. @ line 16, column 21
+[ERROR] 'dependencies.dependency.version' for com.petplatform:pet-event-api:jar is missing. @ line 20, column 21
+[ERROR] 'dependencies.dependency.version' for com.petplatform:pet-service-api:jar is missing. @ line 24, column 21
+[ERROR] 'dependencies.dependency.version' for com.petplatform:pet-merchant-api:jar is missing. @ line 28, column 21
+[ERROR] 'dependencies.dependency.version' for com.petplatform:pet-common:jar is missing. @ line 16, column 21
+[ERROR] 'dependencies.dependency.version' for com.petplatform:pet-common:jar is missing. @ line 16, column 21
+[ERROR] 'dependencies.dependency.version' for com.petplatform:pet-event-api:jar is missing. @ line 20, column 21
+[ERROR] 'dependencies.dependency.version' for com.petplatform:pet-schedule-api:jar is missing. @ line 24, column 21
+[ERROR] 'dependencies.dependency.version' for com.petplatform:pet-merchant-api:jar is missing. @ line 28, column 21
+[ERROR] 'dependencies.dependency.version' for com.petplatform:pet-service-api:jar is missing. @ line 32, column 21
+[ERROR] 'dependencies.dependency.version' for com.petplatform:pet-task-core:jar is missing. @ line 53, column 21
+[ERROR] 'dependencies.dependency.version' for com.petplatform:pet-common:jar is missing. @ line 16, column 21
+[ERROR] 'dependencies.dependency.version' for com.petplatform:pet-common:jar is missing. @ line 16, column 21
+[ERROR] 'dependencies.dependency.version' for com.petplatform:pet-event-api:jar is missing. @ line 20, column 21
+[ERROR] 'dependencies.dependency.version' for com.petplatform:pet-order-api:jar is missing. @ line 24, column 21
+[ERROR] 'dependencies.dependency.version' for com.petplatform:pet-user-api:jar is missing. @ line 28, column 21
+[ERROR] 'dependencies.dependency.version' for com.petplatform:pet-merchant-api:jar is missing. @ line 32, column 21
+[ERROR] 'dependencies.dependency.version' for com.petplatform:pet-service-api:jar is missing. @ line 36, column 21
+[ERROR] 'dependencies.dependency.version' for com.petplatform:pet-schedule-api:jar is missing. @ line 40, column 21
+[ERROR] 'dependencies.dependency.version' for com.petplatform:pet-payment-api:jar is missing. @ line 44, column 21
+[ERROR] 'dependencies.dependency.version' for com.petplatform:pet-coupon-api:jar is missing. @ line 48, column 21
+[ERROR] 'dependencies.dependency.version' for com.petplatform:pet-task-core:jar is missing. @ line 65, column 21
+[ERROR] 'dependencies.dependency.version' for com.petplatform:pet-common:jar is missing. @ line 16, column 21
+[ERROR] 'dependencies.dependency.version' for com.petplatform:pet-common:jar is missing. @ line 16, column 21
+[ERROR] 'dependencies.dependency.version' for com.petplatform:pet-event-api:jar is missing. @ line 20, column 21
+[ERROR] 'dependencies.dependency.version' for com.petplatform:pet-payment-api:jar is missing. @ line 24, column 21
+[ERROR] 'dependencies.dependency.version' for com.petplatform:pet-task-core:jar is missing. @ line 45, column 21
+[ERROR] 'dependencies.dependency.version' for com.petplatform:pet-common:jar is missing. @ line 16, column 21
+[ERROR] 'dependencies.dependency.version' for com.petplatform:pet-common:jar is missing. @ line 16, column 21
+[ERROR] 'dependencies.dependency.version' for com.petplatform:pet-event-api:jar is missing. @ line 20, column 21
+[ERROR] 'dependencies.dependency.version' for com.petplatform:pet-refund-api:jar is missing. @ line 24, column 21
+[ERROR] 'dependencies.dependency.version' for com.petplatform:pet-order-api:jar is missing. @ line 28, column 21
+[ERROR] 'dependencies.dependency.version' for com.petplatform:pet-payment-api:jar is missing. @ line 32, column 21
+[ERROR] 'dependencies.dependency.version' for com.petplatform:pet-task-core:jar is missing. @ line 49, column 21
+[ERROR] 'dependencies.dependency.version' for com.petplatform:pet-common:jar is missing. @ line 16, column 21
+[ERROR] 'dependencies.dependency.version' for com.petplatform:pet-common:jar is missing. @ line 16, column 21
+[ERROR] 'dependencies.dependency.version' for com.petplatform:pet-event-api:jar is missing. @ line 20, column 21
+[ERROR] 'dependencies.dependency.version' for com.petplatform:pet-verification-api:jar is missing. @ line 24, column 21
+[ERROR] 'dependencies.dependency.version' for com.petplatform:pet-order-api:jar is missing. @ line 28, column 21
+[ERROR] 'dependencies.dependency.version' for com.petplatform:pet-common:jar is missing. @ line 16, column 21
+[ERROR] 'dependencies.dependency.version' for com.petplatform:pet-common:jar is missing. @ line 16, column 21
+[ERROR] 'dependencies.dependency.version' for com.petplatform:pet-event-api:jar is missing. @ line 20, column 21
+[ERROR] 'dependencies.dependency.version' for com.petplatform:pet-aftersale-api:jar is missing. @ line 24, column 21
+[ERROR] 'dependencies.dependency.version' for com.petplatform:pet-order-api:jar is missing. @ line 28, column 21
+[ERROR] 'dependencies.dependency.version' for com.petplatform:pet-refund-api:jar is missing. @ line 32, column 21
+[ERROR] 'dependencies.dependency.version' for com.petplatform:pet-common:jar is missing. @ line 16, column 21
+[ERROR] 'dependencies.dependency.version' for com.petplatform:pet-common:jar is missing. @ line 16, column 21
+[ERROR] 'dependencies.dependency.version' for com.petplatform:pet-event-api:jar is missing. @ line 20, column 21
+[ERROR] 'dependencies.dependency.version' for com.petplatform:pet-coupon-api:jar is missing. @ line 24, column 21
+[ERROR] 'dependencies.dependency.version' for com.petplatform:pet-common:jar is missing. @ line 16, column 21
+[ERROR] 'dependencies.dependency.version' for com.petplatform:pet-common:jar is missing. @ line 16, column 21
+[ERROR] 'dependencies.dependency.version' for com.petplatform:pet-event-api:jar is missing. @ line 20, column 21
+[ERROR] 'dependencies.dependency.version' for com.petplatform:pet-points-api:jar is missing. @ line 24, column 21
+[ERROR] 'dependencies.dependency.version' for com.petplatform:pet-common:jar is missing. @ line 16, column 21
+[ERROR] 'dependencies.dependency.version' for com.petplatform:pet-common:jar is missing. @ line 16, column 21
+[ERROR] 'dependencies.dependency.version' for com.petplatform:pet-event-api:jar is missing. @ line 20, column 21
+[ERROR] 'dependencies.dependency.version' for com.petplatform:pet-review-api:jar is missing. @ line 24, column 21
+[ERROR] 'dependencies.dependency.version' for com.petplatform:pet-order-api:jar is missing. @ line 28, column 21
+[ERROR] 'dependencies.dependency.version' for com.petplatform:pet-common:jar is missing. @ line 16, column 21
+[ERROR] 'dependencies.dependency.version' for com.petplatform:pet-common:jar is missing. @ line 16, column 21
+[ERROR] 'dependencies.dependency.version' for com.petplatform:pet-event-api:jar is missing. @ line 20, column 21
+[ERROR] 'dependencies.dependency.version' for com.petplatform:pet-notification-api:jar is missing. @ line 24, column 21
+[ERROR] 'dependencies.dependency.version' for com.petplatform:pet-task-core:jar is missing. @ line 45, column 21
+[ERROR] 'dependencies.dependency.version' for com.petplatform:pet-common:jar is missing. @ line 16, column 21
+[ERROR] 'dependencies.dependency.version' for com.petplatform:pet-common:jar is missing. @ line 16, column 21
+[ERROR] 'dependencies.dependency.version' for com.petplatform:pet-event-api:jar is missing. @ line 20, column 21
+[ERROR] 'dependencies.dependency.version' for com.petplatform:pet-community-api:jar is missing. @ line 24, column 21
+[ERROR] 'dependencies.dependency.version' for com.petplatform:pet-user-api:jar is missing. @ line 28, column 21
+[ERROR] 'dependencies.dependency.version' for com.petplatform:pet-common:jar is missing. @ line 16, column 21
+[ERROR] 'dependencies.dependency.version' for com.petplatform:pet-common:jar is missing. @ line 16, column 21
+[ERROR] 'dependencies.dependency.version' for com.petplatform:pet-event-api:jar is missing. @ line 20, column 21
+[ERROR] 'dependencies.dependency.version' for com.petplatform:pet-thirdparty-api:jar is missing. @ line 24, column 21
+[ERROR] 'dependencies.dependency.version' for com.petplatform:pet-merchant-api:jar is missing. @ line 28, column 21
+[ERROR] 'dependencies.dependency.version' for com.petplatform:pet-task-core:jar is missing. @ line 49, column 21
+[ERROR] 'dependencies.dependency.version' for com.petplatform:pet-common:jar is missing. @ line 16, column 21
+[ERROR] 'dependencies.dependency.version' for com.petplatform:pet-common:jar is missing. @ line 16, column 21
+[ERROR] 'dependencies.dependency.version' for com.petplatform:pet-event-api:jar is missing. @ line 20, column 21
+[ERROR] 'dependencies.dependency.version' for com.petplatform:pet-customer-service-api:jar is missing. @ line 24, column 21
+[ERROR] 'dependencies.dependency.version' for com.petplatform:pet-common:jar is missing. @ line 16, column 21
+[ERROR] 'dependencies.dependency.version' for com.petplatform:pet-common:jar is missing. @ line 16, column 21
+[ERROR] 'dependencies.dependency.version' for com.petplatform:pet-event-api:jar is missing. @ line 20, column 21
+[ERROR] 'dependencies.dependency.version' for com.petplatform:pet-admin-api:jar is missing. @ line 24, column 21
+[ERROR] 'dependencies.dependency.version' for com.petplatform:pet-merchant-api:jar is missing. @ line 28, column 21
+[ERROR] 'dependencies.dependency.version' for com.petplatform:pet-order-api:jar is missing. @ line 32, column 21
+[ERROR] 'dependencies.dependency.version' for com.petplatform:pet-refund-api:jar is missing. @ line 36, column 21
+[ERROR] 'dependencies.dependency.version' for com.petplatform:pet-aftersale-api:jar is missing. @ line 40, column 21
+[ERROR] 'dependencies.dependency.version' for com.petplatform:pet-review-api:jar is missing. @ line 44, column 21
+[ERROR] 'dependencies.dependency.version' for com.petplatform:pet-coupon-api:jar is missing. @ line 48, column 21
+[ERROR] 'dependencies.dependency.version' for com.petplatform:pet-points-api:jar is missing. @ line 52, column 21
+[ERROR] 'dependencies.dependency.version' for com.petplatform:pet-notification-api:jar is missing. @ line 56, column 21
+[ERROR] 'dependencies.dependency.version' for com.petplatform:pet-common:jar is missing. @ line 20, column 21
+[ERROR] 'dependencies.dependency.version' for com.petplatform:pet-event-api:jar is missing. @ line 24, column 21
+[ERROR] 'dependencies.dependency.version' for com.petplatform:pet-event-core:jar is missing. @ line 28, column 21
+[ERROR] 'dependencies.dependency.version' for com.petplatform:pet-task-core:jar is missing. @ line 32, column 21
+[ERROR] 'dependencies.dependency.version' for com.petplatform:pet-user-api:jar is missing. @ line 36, column 21
+[ERROR] 'dependencies.dependency.version' for com.petplatform:pet-user-biz:jar is missing. @ line 40, column 21
+[ERROR] 'dependencies.dependency.version' for com.petplatform:pet-merchant-api:jar is missing. @ line 44, column 21
+[ERROR] 'dependencies.dependency.version' for com.petplatform:pet-merchant-biz:jar is missing. @ line 48, column 21
+[ERROR] 'dependencies.dependency.version' for com.petplatform:pet-service-api:jar is missing. @ line 52, column 21
+[ERROR] 'dependencies.dependency.version' for com.petplatform:pet-service-biz:jar is missing. @ line 56, column 21
+[ERROR] 'dependencies.dependency.version' for com.petplatform:pet-schedule-api:jar is missing. @ line 60, column 21
+[ERROR] 'dependencies.dependency.version' for com.petplatform:pet-schedule-biz:jar is missing. @ line 64, column 21
+[ERROR] 'dependencies.dependency.version' for com.petplatform:pet-order-api:jar is missing. @ line 68, column 21
+[ERROR] 'dependencies.dependency.version' for com.petplatform:pet-order-biz:jar is missing. @ line 72, column 21
+[ERROR] 'dependencies.dependency.version' for com.petplatform:pet-payment-api:jar is missing. @ line 76, column 21
+[ERROR] 'dependencies.dependency.version' for com.petplatform:pet-payment-biz:jar is missing. @ line 80, column 21
+[ERROR] 'dependencies.dependency.version' for com.petplatform:pet-refund-api:jar is missing. @ line 84, column 21
+[ERROR] 'dependencies.dependency.version' for com.petplatform:pet-refund-biz:jar is missing. @ line 88, column 21
+[ERROR] 'dependencies.dependency.version' for com.petplatform:pet-verification-api:jar is missing. @ line 92, column 21
+[ERROR] 'dependencies.dependency.version' for com.petplatform:pet-verification-biz:jar is missing. @ line 96, column 21
+[ERROR] 'dependencies.dependency.version' for com.petplatform:pet-aftersale-api:jar is missing. @ line 100, column 21
+[ERROR] 'dependencies.dependency.version' for com.petplatform:pet-aftersale-biz:jar is missing. @ line 104, column 21
+[ERROR] 'dependencies.dependency.version' for com.petplatform:pet-coupon-api:jar is missing. @ line 108, column 21
+[ERROR] 'dependencies.dependency.version' for com.petplatform:pet-coupon-biz:jar is missing. @ line 112, column 21
+[ERROR] 'dependencies.dependency.version' for com.petplatform:pet-points-api:jar is missing. @ line 116, column 21
+[ERROR] 'dependencies.dependency.version' for com.petplatform:pet-points-biz:jar is missing. @ line 120, column 21
+[ERROR] 'dependencies.dependency.version' for com.petplatform:pet-review-api:jar is missing. @ line 124, column 21
+[ERROR] 'dependencies.dependency.version' for com.petplatform:pet-review-biz:jar is missing. @ line 128, column 21
+[ERROR] 'dependencies.dependency.version' for com.petplatform:pet-notification-api:jar is missing. @ line 132, column 21
+[ERROR] 'dependencies.dependency.version' for com.petplatform:pet-notification-biz:jar is missing. @ line 136, column 21
+[ERROR] 'dependencies.dependency.version' for com.petplatform:pet-community-api:jar is missing. @ line 140, column 21
+[ERROR] 'dependencies.dependency.version' for com.petplatform:pet-community-biz:jar is missing. @ line 144, column 21
+[ERROR] 'dependencies.dependency.version' for com.petplatform:pet-thirdparty-api:jar is missing. @ line 148, column 21
+[ERROR] 'dependencies.dependency.version' for com.petplatform:pet-thirdparty-biz:jar is missing. @ line 152, column 21
+[ERROR] 'dependencies.dependency.version' for com.petplatform:pet-customer-service-api:jar is missing. @ line 156, column 21
+[ERROR] 'dependencies.dependency.version' for com.petplatform:pet-customer-service-biz:jar is missing. @ line 160, column 21
+[ERROR] 'dependencies.dependency.version' for com.petplatform:pet-admin-api:jar is missing. @ line 164, column 21
+[ERROR] 'dependencies.dependency.version' for com.petplatform:pet-admin-biz:jar is missing. @ line 168, column 21
+[ERROR] 'dependencies.dependency.version' for com.petplatform:pet-boot:jar is missing. @ line 19, column 21
+ @
+[ERROR] The build could not read 39 projects -> [Help 1]
+[ERROR]
+[ERROR]   The project com.petplatform:pet-event-api:0.1.0-SNAPSHOT (C:\Users\Administrator\Desktop\wt-gov-001\backend\pet-event-api\pom.xml) has 1 error
+[ERROR]     'dependencies.dependency.version' for com.petplatform:pet-common:jar is missing. @ line 16, column 21
+[ERROR]
+[ERROR]   The project com.petplatform:pet-event-core:0.1.0-SNAPSHOT (C:\Users\Administrator\Desktop\wt-gov-001\backend\pet-event-core\pom.xml) has 2 errors
+[ERROR]     'dependencies.dependency.version' for com.petplatform:pet-common:jar is missing. @ line 16, column 21
+[ERROR]     'dependencies.dependency.version' for com.petplatform:pet-event-api:jar is missing. @ line 20, column 21
+[ERROR]
+[ERROR]   The project com.petplatform:pet-task-core:0.1.0-SNAPSHOT (C:\Users\Administrator\Desktop\wt-gov-001\backend\pet-task-core\pom.xml) has 1 error
+[ERROR]     'dependencies.dependency.version' for com.petplatform:pet-common:jar is missing. @ line 16, column 21
+[ERROR]
+[ERROR]   The project com.petplatform:pet-user-api:0.1.0-SNAPSHOT (C:\Users\Administrator\Desktop\wt-gov-001\backend\pet-user-api\pom.xml) has 1 error
+[ERROR]     'dependencies.dependency.version' for com.petplatform:pet-common:jar is missing. @ line 16, column 21
+[ERROR]
+[ERROR]   The project com.petplatform:pet-user-biz:0.1.0-SNAPSHOT (C:\Users\Administrator\Desktop\wt-gov-001\backend\pet-user-biz\pom.xml) has 3 errors
+[ERROR]     'dependencies.dependency.version' for com.petplatform:pet-common:jar is missing. @ line 16, column 21
+[ERROR]     'dependencies.dependency.version' for com.petplatform:pet-event-api:jar is missing. @ line 20, column 21
+[ERROR]     'dependencies.dependency.version' for com.petplatform:pet-user-api:jar is missing. @ line 24, column 21
+[ERROR]
+[ERROR]   The project com.petplatform:pet-merchant-api:0.1.0-SNAPSHOT (C:\Users\Administrator\Desktop\wt-gov-001\backend\pet-merchant-api\pom.xml) has 1 error
+[ERROR]     'dependencies.dependency.version' for com.petplatform:pet-common:jar is missing. @ line 16, column 21
+[ERROR]
+[ERROR]   The project com.petplatform:pet-merchant-biz:0.1.0-SNAPSHOT (C:\Users\Administrator\Desktop\wt-gov-001\backend\pet-merchant-biz\pom.xml) has 3 errors
+[ERROR]     'dependencies.dependency.version' for com.petplatform:pet-common:jar is missing. @ line 16, column 21
+[ERROR]     'dependencies.dependency.version' for com.petplatform:pet-event-api:jar is missing. @ line 20, column 21
+[ERROR]     'dependencies.dependency.version' for com.petplatform:pet-merchant-api:jar is missing. @ line 24, column 21
+[ERROR]
+[ERROR]   The project com.petplatform:pet-service-api:0.1.0-SNAPSHOT (C:\Users\Administrator\Desktop\wt-gov-001\backend\pet-service-api\pom.xml) has 1 error
+[ERROR]     'dependencies.dependency.version' for com.petplatform:pet-common:jar is missing. @ line 16, column 21
+[ERROR]
+[ERROR]   The project com.petplatform:pet-service-biz:0.1.0-SNAPSHOT (C:\Users\Administrator\Desktop\wt-gov-001\backend\pet-service-biz\pom.xml) has 4 errors
+[ERROR]     'dependencies.dependency.version' for com.petplatform:pet-common:jar is missing. @ line 16, column 21
+[ERROR]     'dependencies.dependency.version' for com.petplatform:pet-event-api:jar is missing. @ line 20, column 21
+[ERROR]     'dependencies.dependency.version' for com.petplatform:pet-service-api:jar is missing. @ line 24, column 21
+[ERROR]     'dependencies.dependency.version' for com.petplatform:pet-merchant-api:jar is missing. @ line 28, column 21
+[ERROR]
+[ERROR]   The project com.petplatform:pet-schedule-api:0.1.0-SNAPSHOT (C:\Users\Administrator\Desktop\wt-gov-001\backend\pet-schedule-api\pom.xml) has 1 error
+[ERROR]     'dependencies.dependency.version' for com.petplatform:pet-common:jar is missing. @ line 16, column 21
+[ERROR]
+[ERROR]   The project com.petplatform:pet-schedule-biz:0.1.0-SNAPSHOT (C:\Users\Administrator\Desktop\wt-gov-001\backend\pet-schedule-biz\pom.xml) has 6 errors
+[ERROR]     'dependencies.dependency.version' for com.petplatform:pet-common:jar is missing. @ line 16, column 21
+[ERROR]     'dependencies.dependency.version' for com.petplatform:pet-event-api:jar is missing. @ line 20, column 21
+[ERROR]     'dependencies.dependency.version' for com.petplatform:pet-schedule-api:jar is missing. @ line 24, column 21
+[ERROR]     'dependencies.dependency.version' for com.petplatform:pet-merchant-api:jar is missing. @ line 28, column 21
+[ERROR]     'dependencies.dependency.version' for com.petplatform:pet-service-api:jar is missing. @ line 32, column 21
+[ERROR]     'dependencies.dependency.version' for com.petplatform:pet-task-core:jar is missing. @ line 53, column 21
+[ERROR]
+[ERROR]   The project com.petplatform:pet-order-api:0.1.0-SNAPSHOT (C:\Users\Administrator\Desktop\wt-gov-001\backend\pet-order-api\pom.xml) has 1 error
+[ERROR]     'dependencies.dependency.version' for com.petplatform:pet-common:jar is missing. @ line 16, column 21
+[ERROR]
+[ERROR]   The project com.petplatform:pet-order-biz:0.1.0-SNAPSHOT (C:\Users\Administrator\Desktop\wt-gov-001\backend\pet-order-biz\pom.xml) has 10 errors
+[ERROR]     'dependencies.dependency.version' for com.petplatform:pet-common:jar is missing. @ line 16, column 21
+[ERROR]     'dependencies.dependency.version' for com.petplatform:pet-event-api:jar is missing. @ line 20, column 21
+[ERROR]     'dependencies.dependency.version' for com.petplatform:pet-order-api:jar is missing. @ line 24, column 21
+[ERROR]     'dependencies.dependency.version' for com.petplatform:pet-user-api:jar is missing. @ line 28, column 21
+[ERROR]     'dependencies.dependency.version' for com.petplatform:pet-merchant-api:jar is missing. @ line 32, column 21
+[ERROR]     'dependencies.dependency.version' for com.petplatform:pet-service-api:jar is missing. @ line 36, column 21
+[ERROR]     'dependencies.dependency.version' for com.petplatform:pet-schedule-api:jar is missing. @ line 40, column 21
+[ERROR]     'dependencies.dependency.version' for com.petplatform:pet-payment-api:jar is missing. @ line 44, column 21
+[ERROR]     'dependencies.dependency.version' for com.petplatform:pet-coupon-api:jar is missing. @ line 48, column 21
+[ERROR]     'dependencies.dependency.version' for com.petplatform:pet-task-core:jar is missing. @ line 65, column 21
+[ERROR]
+[ERROR]   The project com.petplatform:pet-payment-api:0.1.0-SNAPSHOT (C:\Users\Administrator\Desktop\wt-gov-001\backend\pet-payment-api\pom.xml) has 1 error
+[ERROR]     'dependencies.dependency.version' for com.petplatform:pet-common:jar is missing. @ line 16, column 21
+[ERROR]
+[ERROR]   The project com.petplatform:pet-payment-biz:0.1.0-SNAPSHOT (C:\Users\Administrator\Desktop\wt-gov-001\backend\pet-payment-biz\pom.xml) has 4 errors
+[ERROR]     'dependencies.dependency.version' for com.petplatform:pet-common:jar is missing. @ line 16, column 21
+[ERROR]     'dependencies.dependency.version' for com.petplatform:pet-event-api:jar is missing. @ line 20, column 21
+[ERROR]     'dependencies.dependency.version' for com.petplatform:pet-payment-api:jar is missing. @ line 24, column 21
+[ERROR]     'dependencies.dependency.version' for com.petplatform:pet-task-core:jar is missing. @ line 45, column 21
+[ERROR]
+[ERROR]   The project com.petplatform:pet-refund-api:0.1.0-SNAPSHOT (C:\Users\Administrator\Desktop\wt-gov-001\backend\pet-refund-api\pom.xml) has 1 error
+[ERROR]     'dependencies.dependency.version' for com.petplatform:pet-common:jar is missing. @ line 16, column 21
+[ERROR]
+[ERROR]   The project com.petplatform:pet-refund-biz:0.1.0-SNAPSHOT (C:\Users\Administrator\Desktop\wt-gov-001\backend\pet-refund-biz\pom.xml) has 6 errors
+[ERROR]     'dependencies.dependency.version' for com.petplatform:pet-common:jar is missing. @ line 16, column 21
+[ERROR]     'dependencies.dependency.version' for com.petplatform:pet-event-api:jar is missing. @ line 20, column 21
+[ERROR]     'dependencies.dependency.version' for com.petplatform:pet-refund-api:jar is missing. @ line 24, column 21
+[ERROR]     'dependencies.dependency.version' for com.petplatform:pet-order-api:jar is missing. @ line 28, column 21
+[ERROR]     'dependencies.dependency.version' for com.petplatform:pet-payment-api:jar is missing. @ line 32, column 21
+[ERROR]     'dependencies.dependency.version' for com.petplatform:pet-task-core:jar is missing. @ line 49, column 21
+[ERROR]
+[ERROR]   The project com.petplatform:pet-verification-api:0.1.0-SNAPSHOT (C:\Users\Administrator\Desktop\wt-gov-001\backend\pet-verification-api\pom.xml) has 1 error
+[ERROR]     'dependencies.dependency.version' for com.petplatform:pet-common:jar is missing. @ line 16, column 21
+[ERROR]
+[ERROR]   The project com.petplatform:pet-verification-biz:0.1.0-SNAPSHOT (C:\Users\Administrator\Desktop\wt-gov-001\backend\pet-verification-biz\pom.xml) has 4 errors
+[ERROR]     'dependencies.dependency.version' for com.petplatform:pet-common:jar is missing. @ line 16, column 21
+[ERROR]     'dependencies.dependency.version' for com.petplatform:pet-event-api:jar is missing. @ line 20, column 21
+[ERROR]     'dependencies.dependency.version' for com.petplatform:pet-verification-api:jar is missing. @ line 24, column 21
+[ERROR]     'dependencies.dependency.version' for com.petplatform:pet-order-api:jar is missing. @ line 28, column 21
+[ERROR]
+[ERROR]   The project com.petplatform:pet-aftersale-api:0.1.0-SNAPSHOT (C:\Users\Administrator\Desktop\wt-gov-001\backend\pet-aftersale-api\pom.xml) has 1 error
+[ERROR]     'dependencies.dependency.version' for com.petplatform:pet-common:jar is missing. @ line 16, column 21
+[ERROR]
+[ERROR]   The project com.petplatform:pet-aftersale-biz:0.1.0-SNAPSHOT (C:\Users\Administrator\Desktop\wt-gov-001\backend\pet-aftersale-biz\pom.xml) has 5 errors
+[ERROR]     'dependencies.dependency.version' for com.petplatform:pet-common:jar is missing. @ line 16, column 21
+[ERROR]     'dependencies.dependency.version' for com.petplatform:pet-event-api:jar is missing. @ line 20, column 21
+[ERROR]     'dependencies.dependency.version' for com.petplatform:pet-aftersale-api:jar is missing. @ line 24, column 21
+[ERROR]     'dependencies.dependency.version' for com.petplatform:pet-order-api:jar is missing. @ line 28, column 21
+[ERROR]     'dependencies.dependency.version' for com.petplatform:pet-refund-api:jar is missing. @ line 32, column 21
+[ERROR]
+[ERROR]   The project com.petplatform:pet-coupon-api:0.1.0-SNAPSHOT (C:\Users\Administrator\Desktop\wt-gov-001\backend\pet-coupon-api\pom.xml) has 1 error
+[ERROR]     'dependencies.dependency.version' for com.petplatform:pet-common:jar is missing. @ line 16, column 21
+[ERROR]
+[ERROR]   The project com.petplatform:pet-coupon-biz:0.1.0-SNAPSHOT (C:\Users\Administrator\Desktop\wt-gov-001\backend\pet-coupon-biz\pom.xml) has 3 errors
+[ERROR]     'dependencies.dependency.version' for com.petplatform:pet-common:jar is missing. @ line 16, column 21
+[ERROR]     'dependencies.dependency.version' for com.petplatform:pet-event-api:jar is missing. @ line 20, column 21
+[ERROR]     'dependencies.dependency.version' for com.petplatform:pet-coupon-api:jar is missing. @ line 24, column 21
+[ERROR]
+[ERROR]   The project com.petplatform:pet-points-api:0.1.0-SNAPSHOT (C:\Users\Administrator\Desktop\wt-gov-001\backend\pet-points-api\pom.xml) has 1 error
+[ERROR]     'dependencies.dependency.version' for com.petplatform:pet-common:jar is missing. @ line 16, column 21
+[ERROR]
+[ERROR]   The project com.petplatform:pet-points-biz:0.1.0-SNAPSHOT (C:\Users\Administrator\Desktop\wt-gov-001\backend\pet-points-biz\pom.xml) has 3 errors
+[ERROR]     'dependencies.dependency.version' for com.petplatform:pet-common:jar is missing. @ line 16, column 21
+[ERROR]     'dependencies.dependency.version' for com.petplatform:pet-event-api:jar is missing. @ line 20, column 21
+[ERROR]     'dependencies.dependency.version' for com.petplatform:pet-points-api:jar is missing. @ line 24, column 21
+[ERROR]
+[ERROR]   The project com.petplatform:pet-review-api:0.1.0-SNAPSHOT (C:\Users\Administrator\Desktop\wt-gov-001\backend\pet-review-api\pom.xml) has 1 error
+[ERROR]     'dependencies.dependency.version' for com.petplatform:pet-common:jar is missing. @ line 16, column 21
+[ERROR]
+[ERROR]   The project com.petplatform:pet-review-biz:0.1.0-SNAPSHOT (C:\Users\Administrator\Desktop\wt-gov-001\backend\pet-review-biz\pom.xml) has 4 errors
+[ERROR]     'dependencies.dependency.version' for com.petplatform:pet-common:jar is missing. @ line 16, column 21
+[ERROR]     'dependencies.dependency.version' for com.petplatform:pet-event-api:jar is missing. @ line 20, column 21
+[ERROR]     'dependencies.dependency.version' for com.petplatform:pet-review-api:jar is missing. @ line 24, column 21
+[ERROR]     'dependencies.dependency.version' for com.petplatform:pet-order-api:jar is missing. @ line 28, column 21
+[ERROR]
+[ERROR]   The project com.petplatform:pet-notification-api:0.1.0-SNAPSHOT (C:\Users\Administrator\Desktop\wt-gov-001\backend\pet-notification-api\pom.xml) has 1 error
+[ERROR]     'dependencies.dependency.version' for com.petplatform:pet-common:jar is missing. @ line 16, column 21
+[ERROR]
+[ERROR]   The project com.petplatform:pet-notification-biz:0.1.0-SNAPSHOT (C:\Users\Administrator\Desktop\wt-gov-001\backend\pet-notification-biz\pom.xml) has 4 errors
+[ERROR]     'dependencies.dependency.version' for com.petplatform:pet-common:jar is missing. @ line 16, column 21
+[ERROR]     'dependencies.dependency.version' for com.petplatform:pet-event-api:jar is missing. @ line 20, column 21
+[ERROR]     'dependencies.dependency.version' for com.petplatform:pet-notification-api:jar is missing. @ line 24, column 21
+[ERROR]     'dependencies.dependency.version' for com.petplatform:pet-task-core:jar is missing. @ line 45, column 21
+[ERROR]
+[ERROR]   The project com.petplatform:pet-community-api:0.1.0-SNAPSHOT (C:\Users\Administrator\Desktop\wt-gov-001\backend\pet-community-api\pom.xml) has 1 error
+[ERROR]     'dependencies.dependency.version' for com.petplatform:pet-common:jar is missing. @ line 16, column 21
+[ERROR]
+[ERROR]   The project com.petplatform:pet-community-biz:0.1.0-SNAPSHOT (C:\Users\Administrator\Desktop\wt-gov-001\backend\pet-community-biz\pom.xml) has 4 errors
+[ERROR]     'dependencies.dependency.version' for com.petplatform:pet-common:jar is missing. @ line 16, column 21
+[ERROR]     'dependencies.dependency.version' for com.petplatform:pet-event-api:jar is missing. @ line 20, column 21
+[ERROR]     'dependencies.dependency.version' for com.petplatform:pet-community-api:jar is missing. @ line 24, column 21
+[ERROR]     'dependencies.dependency.version' for com.petplatform:pet-user-api:jar is missing. @ line 28, column 21
+[ERROR]
+[ERROR]   The project com.petplatform:pet-thirdparty-api:0.1.0-SNAPSHOT (C:\Users\Administrator\Desktop\wt-gov-001\backend\pet-thirdparty-api\pom.xml) has 1 error
+[ERROR]     'dependencies.dependency.version' for com.petplatform:pet-common:jar is missing. @ line 16, column 21
+[ERROR]
+[ERROR]   The project com.petplatform:pet-thirdparty-biz:0.1.0-SNAPSHOT (C:\Users\Administrator\Desktop\wt-gov-001\backend\pet-thirdparty-biz\pom.xml) has 5 errors
+[ERROR]     'dependencies.dependency.version' for com.petplatform:pet-common:jar is missing. @ line 16, column 21
+[ERROR]     'dependencies.dependency.version' for com.petplatform:pet-event-api:jar is missing. @ line 20, column 21
+[ERROR]     'dependencies.dependency.version' for com.petplatform:pet-thirdparty-api:jar is missing. @ line 24, column 21
+[ERROR]     'dependencies.dependency.version' for com.petplatform:pet-merchant-api:jar is missing. @ line 28, column 21
+[ERROR]     'dependencies.dependency.version' for com.petplatform:pet-task-core:jar is missing. @ line 49, column 21
+[ERROR]
+[ERROR]   The project com.petplatform:pet-customer-service-api:0.1.0-SNAPSHOT (C:\Users\Administrator\Desktop\wt-gov-001\backend\pet-customer-service-api\pom.xml) has 1 error
+[ERROR]     'dependencies.dependency.version' for com.petplatform:pet-common:jar is missing. @ line 16, column 21
+[ERROR]
+[ERROR]   The project com.petplatform:pet-customer-service-biz:0.1.0-SNAPSHOT (C:\Users\Administrator\Desktop\wt-gov-001\backend\pet-customer-service-biz\pom.xml) has 3 errors
+[ERROR]     'dependencies.dependency.version' for com.petplatform:pet-common:jar is missing. @ line 16, column 21
+[ERROR]     'dependencies.dependency.version' for com.petplatform:pet-event-api:jar is missing. @ line 20, column 21
+[ERROR]     'dependencies.dependency.version' for com.petplatform:pet-customer-service-api:jar is missing. @ line 24, column 21
+[ERROR]
+[ERROR]   The project com.petplatform:pet-admin-api:0.1.0-SNAPSHOT (C:\Users\Administrator\Desktop\wt-gov-001\backend\pet-admin-api\pom.xml) has 1 error
+[ERROR]     'dependencies.dependency.version' for com.petplatform:pet-common:jar is missing. @ line 16, column 21
+[ERROR]
+[ERROR]   The project com.petplatform:pet-admin-biz:0.1.0-SNAPSHOT (C:\Users\Administrator\Desktop\wt-gov-001\backend\pet-admin-biz\pom.xml) has 11 errors
+[ERROR]     'dependencies.dependency.version' for com.petplatform:pet-common:jar is missing. @ line 16, column 21
+[ERROR]     'dependencies.dependency.version' for com.petplatform:pet-event-api:jar is missing. @ line 20, column 21
+[ERROR]     'dependencies.dependency.version' for com.petplatform:pet-admin-api:jar is missing. @ line 24, column 21
+[ERROR]     'dependencies.dependency.version' for com.petplatform:pet-merchant-api:jar is missing. @ line 28, column 21
+[ERROR]     'dependencies.dependency.version' for com.petplatform:pet-order-api:jar is missing. @ line 32, column 21
+[ERROR]     'dependencies.dependency.version' for com.petplatform:pet-refund-api:jar is missing. @ line 36, column 21
+[ERROR]     'dependencies.dependency.version' for com.petplatform:pet-aftersale-api:jar is missing. @ line 40, column 21
+[ERROR]     'dependencies.dependency.version' for com.petplatform:pet-review-api:jar is missing. @ line 44, column 21
+[ERROR]     'dependencies.dependency.version' for com.petplatform:pet-coupon-api:jar is missing. @ line 48, column 21
+[ERROR]     'dependencies.dependency.version' for com.petplatform:pet-points-api:jar is missing. @ line 52, column 21
+[ERROR]     'dependencies.dependency.version' for com.petplatform:pet-notification-api:jar is missing. @ line 56, column 21
+[ERROR]
+[ERROR]   The project com.petplatform:pet-boot:0.1.0-SNAPSHOT (C:\Users\Administrator\Desktop\wt-gov-001\backend\pet-boot\pom.xml) has 38 errors
+[ERROR]     'dependencies.dependency.version' for com.petplatform:pet-common:jar is missing. @ line 20, column 21
+[ERROR]     'dependencies.dependency.version' for com.petplatform:pet-event-api:jar is missing. @ line 24, column 21
+[ERROR]     'dependencies.dependency.version' for com.petplatform:pet-event-core:jar is missing. @ line 28, column 21
+[ERROR]     'dependencies.dependency.version' for com.petplatform:pet-task-core:jar is missing. @ line 32, column 21
+[ERROR]     'dependencies.dependency.version' for com.petplatform:pet-user-api:jar is missing. @ line 36, column 21
+[ERROR]     'dependencies.dependency.version' for com.petplatform:pet-user-biz:jar is missing. @ line 40, column 21
+[ERROR]     'dependencies.dependency.version' for com.petplatform:pet-merchant-api:jar is missing. @ line 44, column 21
+[ERROR]     'dependencies.dependency.version' for com.petplatform:pet-merchant-biz:jar is missing. @ line 48, column 21
+[ERROR]     'dependencies.dependency.version' for com.petplatform:pet-service-api:jar is missing. @ line 52, column 21
+[ERROR]     'dependencies.dependency.version' for com.petplatform:pet-service-biz:jar is missing. @ line 56, column 21
+[ERROR]     'dependencies.dependency.version' for com.petplatform:pet-schedule-api:jar is missing. @ line 60, column 21
+[ERROR]     'dependencies.dependency.version' for com.petplatform:pet-schedule-biz:jar is missing. @ line 64, column 21
+[ERROR]     'dependencies.dependency.version' for com.petplatform:pet-order-api:jar is missing. @ line 68, column 21
+[ERROR]     'dependencies.dependency.version' for com.petplatform:pet-order-biz:jar is missing. @ line 72, column 21
+[ERROR]     'dependencies.dependency.version' for com.petplatform:pet-payment-api:jar is missing. @ line 76, column 21
+[ERROR]     'dependencies.dependency.version' for com.petplatform:pet-payment-biz:jar is missing. @ line 80, column 21
+[ERROR]     'dependencies.dependency.version' for com.petplatform:pet-refund-api:jar is missing. @ line 84, column 21
+[ERROR]     'dependencies.dependency.version' for com.petplatform:pet-refund-biz:jar is missing. @ line 88, column 21
+[ERROR]     'dependencies.dependency.version' for com.petplatform:pet-verification-api:jar is missing. @ line 92, column 21
+[ERROR]     'dependencies.dependency.version' for com.petplatform:pet-verification-biz:jar is missing. @ line 96, column 21
+[ERROR]     'dependencies.dependency.version' for com.petplatform:pet-aftersale-api:jar is missing. @ line 100, column 21
+[ERROR]     'dependencies.dependency.version' for com.petplatform:pet-aftersale-biz:jar is missing. @ line 104, column 21
+[ERROR]     'dependencies.dependency.version' for com.petplatform:pet-coupon-api:jar is missing. @ line 108, column 21
+[ERROR]     'dependencies.dependency.version' for com.petplatform:pet-coupon-biz:jar is missing. @ line 112, column 21
+[ERROR]     'dependencies.dependency.version' for com.petplatform:pet-points-api:jar is missing. @ line 116, column 21
+[ERROR]     'dependencies.dependency.version' for com.petplatform:pet-points-biz:jar is missing. @ line 120, column 21
+[ERROR]     'dependencies.dependency.version' for com.petplatform:pet-review-api:jar is missing. @ line 124, column 21
+[ERROR]     'dependencies.dependency.version' for com.petplatform:pet-review-biz:jar is missing. @ line 128, column 21
+[ERROR]     'dependencies.dependency.version' for com.petplatform:pet-notification-api:jar is missing. @ line 132, column 21
+[ERROR]     'dependencies.dependency.version' for com.petplatform:pet-notification-biz:jar is missing. @ line 136, column 21
+[ERROR]     'dependencies.dependency.version' for com.petplatform:pet-community-api:jar is missing. @ line 140, column 21
+[ERROR]     'dependencies.dependency.version' for com.petplatform:pet-community-biz:jar is missing. @ line 144, column 21
+[ERROR]     'dependencies.dependency.version' for com.petplatform:pet-thirdparty-api:jar is missing. @ line 148, column 21
+[ERROR]     'dependencies.dependency.version' for com.petplatform:pet-thirdparty-biz:jar is missing. @ line 152, column 21
+[ERROR]     'dependencies.dependency.version' for com.petplatform:pet-customer-service-api:jar is missing. @ line 156, column 21
+[ERROR]     'dependencies.dependency.version' for com.petplatform:pet-customer-service-biz:jar is missing. @ line 160, column 21
+[ERROR]     'dependencies.dependency.version' for com.petplatform:pet-admin-api:jar is missing. @ line 164, column 21
+[ERROR]     'dependencies.dependency.version' for com.petplatform:pet-admin-biz:jar is missing. @ line 168, column 21
+[ERROR]
+[ERROR]   The project com.petplatform:pet-architecture-test:0.1.0-SNAPSHOT (C:\Users\Administrator\Desktop\wt-gov-001\backend\pet-architecture-test\pom.xml) has 1 error
+[ERROR]     'dependencies.dependency.version' for com.petplatform:pet-boot:jar is missing. @ line 19, column 21
+[ERROR]
+[ERROR] To see the full stack trace of the errors, re-run Maven with the -e switch.
+[ERROR] Re-run Maven using the -X switch to enable full debug logging.
+[ERROR]
+[ERROR] For more information about the errors and possible solutions, please read the following articles:
+[ERROR] [Help 1] http://cwiki.apache.org/confluence/display/MAVEN/ProjectBuildingException

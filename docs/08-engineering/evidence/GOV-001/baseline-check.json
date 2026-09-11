@@ -1,0 +1,19 @@
+{
+  "original_file_count": 430,
+  "changed_original_files": [
+    "README.md"
+  ],
+  "unexpected_original_changes": [],
+  "missing_directories": [],
+  "maven_module_count": 40,
+  "missing_module_poms": [],
+  "ARCH-001_static_positive": {
+    "exit": 0,
+    "output": "OK: no biz -> biz Maven dependencies"
+  },
+  "ARCH-001_static_negative": {
+    "exit": 1,
+    "output": "Forbidden biz -> biz dependencies:\n  pet-refund-biz -> pet-order-biz"
+  },
+  "limitation": "Static checker only. Full ARCH-001 Maven negative and ARCH-002 remain unpassed; see report."
+}
