@@ -1,5 +1,9 @@
 # Hutool 适配评审例子 v0.2
 
+**当前状态：SDK_SELECTED / ADAPTER_ACCEPTED / PENDING_CONTRACT_SYNC。** 2026-09-14人工接受 **e81c6bcaba360a192001167823c30f2afa24a92a** 新增适配方案/参数，见[主文回执](../CCR-W2-IDEMP-001.md)。以下例子逐字保持批准版本；ADAPTER_PROPOSED/待审是历史，不表示再次请求批准。
+
+方案接受不把样例变成已执行测试；适配器/生产唯一性/DB灾难/实际JVM退出能力仍未验收，Contract/DDL/部署未同步。通用业务幂等表/旧key迁移门禁继续保留，CCR与完整Issue不关闭，PR13未获合并授权。
+
 状态：**SDK_SELECTED / ADAPTER_PROPOSED**。对应[当前设计](s2-id-provider-design.md)。本页替代d5acc3a自研算法例子作为PR13当前候选；旧版本仍从Git读取。以下都是规范推演，不是适配器/实际SDK冻结/数据库恢复测试。
 
 ## H01 显式构造参数与S1接口

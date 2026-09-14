@@ -1,5 +1,9 @@
 # S2 Hutool 接入：一页评审指南
 
+**当前状态：SDK_SELECTED / ADAPTER_ACCEPTED / PENDING_CONTRACT_SYNC。** 2026-09-14人工已接受PR13 **e81c6bcaba360a192001167823c30f2afa24a92a** 的新增适配/失效恢复及本页初始参数包，详见[主文批准回执](../CCR-W2-IDEMP-001.md)。SDK和原两项不重问，新适配包也无需再次批准。
+
+当前只待文档PR13合并审批；方案接受不等Contract/DDL/部署已同步或实现完成，实际旧JVM退出确认与DB恢复前提仍需验证，通用业务幂等表/旧key迁移另待设计，CCR及完整Issue未关闭。**以下指南/参数原文保持e81c6bc版本，ADAPTER_PROPOSED和“待审”均为批准前历史，不代表当前状态。**
+
 状态：**SDK_SELECTED / ADAPTER_PROPOSED**。2026-09-14。人工已选择 cn.hutool:hutool-core:5.8.47，**不再审批是否采用Hutool**。旧d5acc3a的自研发号方案未批准，保留为Git历史，当前PR13改以本适配方案评审。
 
 **推荐：Hutool承担雪花算法；薄适配器承担节点授权、冷重启安全及对外超时保护。SDK生成的是候选，通过保护检查后才交给业务。** 保留S1接口，仅引hutool-core，不引hutool-all，不新建独立平台服务。

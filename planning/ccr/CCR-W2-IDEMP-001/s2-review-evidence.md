@@ -1,5 +1,11 @@
 # Hutool S2 修订来源与审阅回执
 
+**当前状态：SDK_SELECTED / ADAPTER_ACCEPTED / PENDING_CONTRACT_SYNC。** 2026-09-14人工接受新增适配包，批准对象 **e81c6bcaba360a192001167823c30f2afa24a92a**，tree **b49fc1c126fc15b672186c0130da9f444eea2456**。根任务明确确认用户该回复对应协调/候选发布/1秒失效/旧JVM确认终止后恢复及指南初始参数；不再请求SDK/旧两项/本适配包的相同批准。
+
+本次仅5Markdown状态/回执行政同步，以下原审阅、参数与样例结论不变；原ADAPTER_PROPOSED/待审保留为历史。本专用分支无冲突合入develop643f05cd3a9357772bb3029ff97b750afeebb1ca，AUTH/取消MFA文件与新base一致；不编辑根dirty或产品正文。旧CI34822297593受测base bcb269c2仅是历史，新head/新base的真实CI另记PR13正文。
+
+适配接受不等权威Contract同步、DDL/部署或实现验收完成；实际宿主退出确认、DB持久/恢复前提仍需落实，通用业务幂等物理表与旧业务键迁移仍待后续设计。CCR非RESOLVED，PLAT002/004非DONE，PR13合并尚待人工批准。以下为批准前证据快照。
+
 状态：**SDK_SELECTED / ADAPTER_PROPOSED**。本次只修5份S2 CCR Markdown，原两项公共约定与S1代码不变。旧d5acc3a自研方案未获批准，以Git历史保留，不把其只读审阅当当前适配批准。
 
 ## 1. 授权与Writer

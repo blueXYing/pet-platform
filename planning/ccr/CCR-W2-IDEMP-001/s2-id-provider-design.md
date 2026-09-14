@@ -1,5 +1,9 @@
 # S2 Hutool 5.8.47 最小生产适配设计 v0.2
 
+**当前状态：SDK_SELECTED / ADAPTER_ACCEPTED / PENDING_CONTRACT_SYNC。** 2026-09-14人工已接受提交 **e81c6bcaba360a192001167823c30f2afa24a92a** 的新增适配方案及指南初始参数，见[主文回执](../CCR-W2-IDEMP-001.md)。本次只记录批准，以下技术正文/参数不变；原ADAPTER_PROPOSED/待审措辞保留为历史。
+
+权威Contract同步、具体DDL/部署/实现验收均未完成；实际宿主退出确认能力与DB恢复前提仍需落实，通用业务幂等表/旧key迁移仍未定，CCR非RESOLVED、PLAT002/004非DONE。PR13合并未授权；当前分支已集成643f05cd新基线，原正文bcb269c2指批准对象当时的分析基线。
+
 状态：**SDK_SELECTED / ADAPTER_PROPOSED**。人工已选cn.hutool:hutool-core:5.8.47；协调/发布闸门/超时恢复是新增适配建议，尚待审。旧d5acc3a未获批准、仅Git历史，不继续自写生成算法。本阶段仅修订对应CCR五份Markdown，不改权威docs/S1/pom/SQL/环境。
 
 基线develop bcb269c2adc9405e669747d9b3bedfae2bf5ccbd；原9dd6及PR13分支。根制品/比较报告只读；[来源证据](s2-review-evidence.md)、[指南](s2-review-guide.md)、[例子](s2-examples.md)。原布局/epoch/String/金额/Context不重裁。
