@@ -1,5 +1,13 @@
 # AUTH-001 来源、缺口和影响
 
+## 最新权威同步阶段
+
+当前输入为PR14合并develop `643f05cd3a9357772bb3029ff97b750afeebb1ca`，工作分支codex/auth-001-contract-sync。下面旧“合并未授权”等为先前回执，当前阶段以本节及[同步交接](contract-sync-handoff.md)为准。
+
+07/10/11/12正在交付已批准D1/D2和取消MFA的同步候选，未合并/未上线；Schema/Provider/冻结未明写动作门禁不变。07只同步已批准语义，完整内部PrincipalRef/ResourceScope/versions及方法签名仍在planning待审。[存储提案](storage-design.md)单列新增表列、索引、密码/密钥、回执介质/保守时间窗口及审计恢复，不将其混为原D1/D2批准。
+
+验证外部依据：OAS3.0.3官方规范用于nullable/oneOf/security标准校验；OWASP密码/加密存储指南仅用于存储推荐，具体参数由本提案另审。原16交易operation对象及已批准sessions/admission/rbac/examples四源文件保持不变。AUTH新36操作按显式清单测试，不以总数52替代覆盖。
+
 **PROPOSAL_ACCEPTED / PENDING_CONTRACT_SYNC · AUTH-001-draft-v2**。原阅读基线develop `bcb269c2adc9405e669747d9b3bedfae2bf5ccbd`，本修订继承根产品裁决commit`9cdc8eeac94fbe673fef420cc7767caddf1ba219`（本分支cherry-pick为`7e1c36e`）。根最新持续授权及正式Writer交接优先旧“Wave2未启动”记录。未更改根dirty台账；根4份产品文件原样继承，AUTH只编辑原9份规范。
 
 批准回执（2026-09-14）：用户明确批准“D1其他参数和D2”，对象为取消MFA后的AUTH-001-draft-v2，head `2963e3918bbd62afdfdeb55c60bb2e2221c67ca1`，tree `9761eb9f1c5da0fde70ab6be466ad3f63eb6ce09`。仅同步接受状态，不改变技术参数、正文样例或枚举；MFA继续取消。OD002、冻结未明确写动作、真实主认证Provider及Schema/实现门禁保留，PR14合并未授权；两CCR不RESOLVED、Issue不DONE。

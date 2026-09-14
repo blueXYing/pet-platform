@@ -1,5 +1,36 @@
 # AUTH-001 审阅和交付证据
 
+## 最新阶段：契约同步候选与存储提案
+
+基线develop `643f05cd3a9357772bb3029ff97b750afeebb1ca`（PR14已合并），分支`codex/auth-001-contract-sync`。下方旧“PR14未批准合并”等保留历史，不覆盖最新事实。D1/D2和取消MFA已接受；本阶段权威同步候选未合并/未实现，存储新方案待审。
+
+### Owner与变更
+
+BackendCore只写07/10/11/12及两个CCR、本目录contract-sync-handoff/storage-design/review-evidence/sources-and-gaps；QA独占contract_smoke.py、test_contract_smoke.py、test_auth_contract.py及S1ContractMappingTest.java并已固定释放。没有SQL/DDL/migration、应用源码/POM/boot/前端/CI、SSOT/PRD、23号或S2变更；已接受sessions/admission/rbac/examples四源文件逐字不变，原16交易operation对象逐对象不变。
+
+### 复审与修正
+
+- C/M确认36操作/phone-binding/refresh、安全边界和存量例外；发现准入Schema跨字段遗漏，已改OWNER/STAFF×ALLOWED/LIMITED/DENIED六分支，UNKNOWN不能ALLOWED，拒绝/受限有原因，LIMITED有已确认动作；不是断言真实签约成功。
+- Admin存储复审提出匿名创建稳定去重域、不可覆盖cacheRef/commit未知、时间锚点、bootstrap锁序、备份撤权恢复、UTF-8查找键容量和captcha/proof独立时刻；全部修订并只读复核闭合。存储参数及窗口/故障边界仍PROPOSED，不被此复审自动批准。
+- QA保留原28回归、原16操作/13写/4创建；新增36操作精确method/path/security清单，两个匿名bootstrap与refresh-body专用例外分开。新24写接口、10批准JSON、严格错误data:null及准入联合正反例完整覆盖，不粗删原安全门禁。
+
+### 实际本地验证（2026-09-14）
+
+| 检查 | 结果 | 证明边界 |
+|---|---|---|
+| Java21全Maven clean verify | Temurin21.0.11，118 JUnit、0失败/错误/跳过，BUILD SUCCESS | 含74公共、22真实MySQL task-core、22架构；不是AUTH存储实现测试 |
+| Python合同回归 | 80测试PASS，原28完整保留 | 离线契约/Schema子集实例，不是实时API |
+| Contract smoke | 52操作、37写；legacy16/13/4与AUTH36独立清单PASS | 新36不是仅把魔数改52；原10JSON为假名示例 |
+| 独立标准OAS校验 | openapi-spec-validator0.7.2文档PASS；openapi-schema-validator0.6.3 OAS30Validator执行21组实例测试，332接受/430拒绝PASS | 使用实际标准validator，不只JSON解析或自编子集；无Provider成功事实声明 |
+| 架构脚本 | 13 Python测试PASS，check-module-deps/check-display-status PASS | 未新增跨biz或重复DisplayOrderStatus派生 |
+| 范围/文档 | 明确白名单、git diff --check、局部链接/围栏及已批源文档不变检查通过 | QA与主Writer文件隔离；无未披露权威Schema或代码改动 |
+
+标准validator安装在任务临时依赖路径，未改项目requirements/POM/CI。标准实例检查复用test_auth_contract.AuthSchemaInstances的正反输入，但替换验证入口为OAS30Validator，并保留format checker与RefResolver；CI的自足子集检查器明确不冒充完整标准实现。
+
+隔离MySQL8.4.9：本任务新目录`D:/Temp/auth001-mysql-ff85/data`、回环端口33441，无现有业务库URL或凭据。旧MySQL84服务和PLAT004旧目录只读；新helper只建并删除自己成功创建的随机plat004_test_*库。测试完成检查仅剩系统库，本任务实例已关闭，原MySQL84服务保持运行。递归删除临时datadir的命令被自动审批策略拒绝（仅返回blocked by policy），未绕过删除；已关闭的数据目录及验证日志保留在本任务临时目录，不提交仓库。缺数据库不skip。
+
+最终commit/tree、Draft PR及新head实际CI由交付回执记录，不拿旧PR14或旧测试head代替。此阶段CCR保留未完成子域，AUTH-001非DONE，不merge、不自动进入Web代码。用户只需审[新存储三建议](storage-design.md)及[未定内部字段映射](contract-sync-handoff.md)，无需重复D1/D2/MFA决定。
+
 状态：**PROPOSAL_ACCEPTED / PENDING_CONTRACT_SYNC · AUTH-001-draft-v2**。此文记录规范阶段检查，不作为真实认证或业务验收。
 
 批准回执（2026-09-14）：用户明确批准“D1其他参数和D2”，对象为取消MFA后的AUTH-001-draft-v2，head `2963e3918bbd62afdfdeb55c60bb2e2221c67ca1`，tree `9761eb9f1c5da0fde70ab6be466ad3f63eb6ce09`。仅同步接受状态，不改变技术参数、正文样例或枚举；MFA继续取消。OD002、冻结未明确写动作、真实主认证Provider及Schema/实现门禁保留，PR14合并未授权；两CCR不RESOLVED、Issue不DONE。

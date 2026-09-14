@@ -1,5 +1,13 @@
 # CCR-PERM-001：单运营RBAC技术映射
 
+## 最新阶段：权威映射候选与存储提案
+
+PR14已按人工批准合入develop `643f05cd3a9357772bb3029ff97b750afeebb1ca`；下方旧合并门禁是历史记录。D1/D2、单运营及取消MFA不重复审批。
+
+当前为 **ACCEPTED_MAPPING / SYNC_CANDIDATE_NOT_IMPLEMENTED**：外部RBAC/账号/角色/scope/extra授予/错误Schema候选同步至10/11/12，07只同步可信主体和D2原子快照/最终检查语义；尚未合并或上线。完整内部新字段/签名只在[映射附录](AUTH-001/contract-sync-handoff.md)待审。
+
+[存储设计](AUTH-001/storage-design.md)的表列索引、密码算法/回执介质与故障/恢复机制是新增提案，不是已批准DDL。实际Web切片须后续精确授权、存储和S2生产ID等依赖就绪。未知领域动作/OD001资金范围不因此CONTRACT_READY，仍不RESOLVED或Issue DONE；[一页交接](AUTH-001/contract-sync-handoff.md)只请审新增存储/字段决定。
+
 状态：**PROPOSAL_ACCEPTED / PENDING_CONTRACT_SYNC**。产品规则已批准，见SSOT §24与22-运营权限人工裁决补充-v1.0.md。AUTH-001-draft-v2的D1/D2技术方案已接受、待权威Contract同步，无需再次裁决是否单运营。
 
 批准回执（2026-09-14）：用户明确批准“D1其他参数和D2”，对象为取消MFA后的AUTH-001-draft-v2，head `2963e3918bbd62afdfdeb55c60bb2e2221c67ca1`，tree `9761eb9f1c5da0fde70ab6be466ad3f63eb6ce09`。仅同步接受状态，不改变技术参数、正文样例或枚举；MFA继续取消。OD002、冻结未明确写动作、真实主认证Provider及Schema/实现门禁保留，PR14合并未授权；两CCR不RESOLVED、Issue不DONE。

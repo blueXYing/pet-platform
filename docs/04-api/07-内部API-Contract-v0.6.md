@@ -1450,3 +1450,28 @@ LatePaymentReselectAppointmentCommand
 late_payment_recovery 表
 预约重选恢复流程
 ```
+
+
+## 27. AUTH-001已接受语义同步候选
+
+状态：ACCEPTED_MAPPING / SYNC_CANDIDATE_NOT_IMPLEMENTED；尚未合并或实现。来源：已接受2963e391/draft-v2与PR14合并643f05cd，SSOT§24/25及22/24号补充。D1/D2不重新审批。
+
+### 27.1 信任与模块边界
+
+CommandContext仍为requestId/traceId/operatorType/operatorId/source五字段，QueryContext与OperatorType不扩展；source、客户端userId/staffId/workspace/角色名均不授予权限。认证适配器用真实会话解析可信主体，API调用方不能用HTTP自报DTO冒充Principal。pet-user只拥有小程序用户、认证尝试/凭据及会话；pet-admin拥有运营账号、角色/extra授予/scope、Web账号密码凭据/会话及审计。商家成员及申请/签约资格由merchant模块API提供，不能跨Repository。
+
+需要的内部能力仅同步已批准职责：解析当前会话身份；列本人商家/门店成员关系；检查正常/受限/拒绝准入；执行动作或读取旧成功回执时检查当前身份、动作、资源范围和用途。主账号到可执行员工身份、Principal引用、ResourceScope、versions完整结构及新方法签名尚未在原方案逐字段冻结，具体新字段仅放[planning映射附录](../../planning/ccr/AUTH-001/contract-sync-handoff.md)，本节不伪造Java接口定义。
+
+### 27.2 当前授权与并发边界
+
+入口初检后，23号业务Admission及Execution锁规则保持；未成功写入须在取得业务/幂等锁后、首个业务修改前检查当前权威授权。Owner在自己的短只读事务原子读取事实与单调版本；跨Owner收集后按相同顺序复核版本，变化最多重取3次/总2秒，不能稳定则503关闭，版本不能回退或ABA，不借业务RR旧快照/缓存allow降级放行。最终检查完成后发生长等待、失锁或事务重试，必须重新检查；检查到首写预算2秒。相关Owner未提供原子快照/版本能力前保持实现门禁。
+
+撤权先于最终检查的权威观察时点提交则拒绝；检查先通过的短本地事务可以完成，不承诺撤权追溯取消所有在途commit，不跨biz持锁。审计记录实际采用的版本与检查时点。成功回执、敏感数据发送/下载另检查当前身份/动作/结果范围/用途并脱敏；无权401/403/防枚举404不带旧data，依赖失败503。重放不再次检查已消耗的一次性执行业务资格，也不把旧actions当授权。可靠已受理退款等SYSTEM任务按原业务承诺继续，不因原操作员撤权取消渠道退款。
+
+### 27.3 准入及认证专用幂等
+
+MerchantOrderEligibilityDTO及checkOrderEligibility仍只管新订单；OFFLINE禁止新单但保持存量履约/售后，不能把新单资格当全工作台准入。冻结明确读取/处罚申诉保持，冻结核销/退款处理/补证写动作仍待明确。Provider未知绝不当签约成功；客户端phone/userId不生成staff授权。
+
+认证前没有USER主体，AuthAttempt为认证模块专用证明交换与幂等边界，不假冒SYSTEM或扩OperatorType，也不直接复用通用业务执行器。真实证明完成后的会话/账号事实与最小回执由所属Owner原子提交；短期秘密恢复需原attempt秘密或refresh秘密与原key且满足当前身份/期限，永不只凭requestId重放token。具体加密存储/物理Schema/迁移在planning存储提案待审，不因本节而成为已批准DDL。
+
+V1无额外MFA，所有运营角色仅普通主认证；图形captcha/原短信主登录/手机号校验和密码重置证明、RBAC/用途/审计/同人业务确认保留。
