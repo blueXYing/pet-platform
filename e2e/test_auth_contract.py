@@ -16,6 +16,7 @@ import yaml
 
 from contract_smoke import (
     ANONYMOUS_ATTEMPTS, AUTH_OPERATIONS, LEGACY_OPERATIONS, ROOT, SPEC, WEB_ATTEMPT_OPERATIONS,
+    WEB_IMPLEMENTATION_CANDIDATES,
     check, dereference,
 )
 
@@ -362,6 +363,24 @@ class AuthSurfaceRegressions(unittest.TestCase):
 
     def test_added_operations_do_not_claim_backend_implementation(self):
         self.operation('cAuthLogout')['x-contract-status'] = 'IMPLEMENTED'
+        with self.rejected('AUTH implementation status changed'):
+            check(self.spec)
+
+    def test_remaining_26_operations_cannot_claim_web_implementation_candidate_status(self):
+        self.assertEqual(len(WEB_IMPLEMENTATION_CANDIDATES), 10)
+        remaining = AUTH_OPERATIONS.keys() - WEB_IMPLEMENTATION_CANDIDATES
+        self.assertEqual(len(remaining), 26)
+        for name in sorted(remaining):
+            with self.subTest(operation=name):
+                operation = self.operation(name)
+                original = operation['x-contract-status']
+                operation['x-contract-status'] = 'CONTRACT_SYNCED_IMPLEMENTATION_CANDIDATE'
+                with self.rejected('AUTH implementation status changed'):
+                    check(self.spec)
+                operation['x-contract-status'] = original
+
+    def test_web_implementation_candidate_is_not_a_completed_implementation_claim(self):
+        self.operation('adminAuthLogin')['x-contract-status'] = 'IMPLEMENTED'
         with self.rejected('AUTH implementation status changed'):
             check(self.spec)
 

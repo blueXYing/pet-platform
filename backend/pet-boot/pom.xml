@@ -212,6 +212,7 @@
             <artifactId>spring-boot-starter-test</artifactId>
             <scope>test</scope>
         </dependency>
+        <dependency><groupId>com.petplatform</groupId><artifactId>pet-id-core</artifactId></dependency>
     </dependencies>
 
     <build>

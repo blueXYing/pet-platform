@@ -1475,3 +1475,16 @@ MerchantOrderEligibilityDTO及checkOrderEligibility仍只管新订单；OFFLINE�
 认证前没有USER主体，AuthAttempt为认证模块专用证明交换与幂等边界，不假冒SYSTEM或扩OperatorType，也不直接复用通用业务执行器。真实证明完成后的会话/账号事实与最小回执由所属Owner原子提交；短期秘密恢复需原attempt秘密或refresh秘密与原key且满足当前身份/期限，永不只凭requestId重放token。具体加密存储/物理Schema/迁移在planning存储提案待审，不因本节而成为已批准DDL。
 
 V1无额外MFA，所有运营角色仅普通主认证；图形captcha/原短信主登录/手机号校验和密码重置证明、RBAC/用途/审计/同人业务确认保留。
+
+
+## 28. AUTH最小Web内部字段与B1实现映射
+
+本段基于已接受D1/D2、A/B1/C及Admin/QA团队字段复核，只定稿本Owner的Web查询边界。C/M成员、签约、跨Owner ResourceScope与通用versions新结构仍按planning具体待定，不被本节泛化。
+
+- AdminSessionQueryApi.resolveSession(String accessToken)为本地可信适配入口，返回AdminSessionView；原始秘密不进入Context/Principal、日志或异常。返回只是当次权威解析结果，调用者不能构造一个Principal来代替检查。
+- AdminSessionPrincipal：audience固定ADMIN_WEB，sessionId/operatorId为正Long十进制String，sessionGeneration为非负long；映射已有CommandContext时operatorType固定PLATFORM_OPERATOR，不增加第六字段。
+- AdminDataScope：mode=ALL/CITY/MERCHANT/NONE，cityCodes/merchantIds非null防御复制、去重约束并稳定排序；ALL/NONE空集合，CITY非空≤100且无merchant，MERCHANT非空≤1000且无city；NONE仅计算响应，不授予。词法不证明资源存在。
+- AdminPermissionSnapshot：operatorId、authzVersion=epoch:revision、checkedAt毫秒OffsetDateTime、roles(roleId/roleCode/displayName)、dataScope、actionCodes；全部在同一Owner短读事务取得。AdminSessionView包含principal、expiresAt和permissions；HTTP按原CurrentSession或PermissionSnapshot明确投影，不泄露token或更名dataScope。
+- 第一切片只有本人主认证/会话/权限自查询，生产可执行领域动作目录为空，仍返回真实角色及范围；超管也不被赋予未实现订单/退款占位动作。
+
+B1秘密回执：以最终成功SQL事务提交前DB时间锚点固定anchor+60秒，commit确认后按剩余TTL不可覆盖发布；缓存I/O后用新事务核当前身份/generation/证明消费/同一resultRef及截止，禁止沿用旧RR快照。缓存/密钥不可用503不重签，已过期/撤销401；窗口不改变Web30分钟idle等原会话期限。

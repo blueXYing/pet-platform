@@ -1898,7 +1898,7 @@ paths:
       tags:
       - AUTH-Admin
       summary: adminAuthCreateAttempt
-      description: 'AUTH-001 accepted draft-v2 mapping; sync candidate, not implemented. '
+      description: "Accepted AUTH Web component candidate; disabled by default. Production host, secrets and migration enablement remain gated. "
       security: []
       parameters:
       - $ref: '#/components/parameters/RequestId'
@@ -2008,7 +2008,7 @@ paths:
                 $ref: '#/components/schemas/AdminAuthCreateAttemptResponse'
       x-auth-mode: anonymous-bootstrap
       x-auth-audience: ADMIN_WEB
-      x-contract-status: SYNC_CANDIDATE_NOT_IMPLEMENTED
+      x-contract-status: CONTRACT_SYNCED_IMPLEMENTATION_CANDIDATE
       x-approval-source: 2963e3918bbd62afdfdeb55c60bb2e2221c67ca1
       requestBody:
         required: true
@@ -2023,8 +2023,7 @@ paths:
       tags:
       - AUTH-Admin
       summary: adminAuthLogin
-      description: AUTH-001 accepted draft-v2 mapping; sync candidate, not implemented. All roles complete ordinary
-        password authentication; no additional factor. New session/generation atomically invalidates older login.
+      description: "Accepted AUTH Web component candidate; disabled by default. Production host, secrets and migration enablement remain gated. All roles complete ordinary password authentication; no additional factor. New session/generation atomically invalidates older login. B1 secret recovery expires at pre-commit database anchor plus 60 seconds, possibly less than 60 seconds after commit. Cache/key loss returns 503; expired or revoked proof returns 401; never reissue or extend the session."
       security:
       - authAttempt: []
         adminBinding: []
@@ -2130,7 +2129,7 @@ paths:
                 $ref: '#/components/schemas/AdminAuthLoginResponse'
       x-auth-mode: admin-attempt
       x-auth-audience: ADMIN_WEB
-      x-contract-status: SYNC_CANDIDATE_NOT_IMPLEMENTED
+      x-contract-status: CONTRACT_SYNCED_IMPLEMENTATION_CANDIDATE
       x-approval-source: 2963e3918bbd62afdfdeb55c60bb2e2221c67ca1
       requestBody:
         required: true
@@ -2144,7 +2143,7 @@ paths:
       tags:
       - AUTH-Admin
       summary: adminAuthGetRequirements
-      description: 'AUTH-001 accepted draft-v2 mapping; sync candidate, not implemented. '
+      description: "Accepted AUTH Web component candidate; disabled by default. Production host, secrets and migration enablement remain gated. "
       security:
       - authAttempt: []
         adminBinding: []
@@ -2254,7 +2253,7 @@ paths:
                 $ref: '#/components/schemas/AdminAuthGetRequirementsResponse'
       x-auth-mode: admin-attempt
       x-auth-audience: ADMIN_WEB
-      x-contract-status: SYNC_CANDIDATE_NOT_IMPLEMENTED
+      x-contract-status: CONTRACT_SYNCED_IMPLEMENTATION_CANDIDATE
       x-approval-source: 2963e3918bbd62afdfdeb55c60bb2e2221c67ca1
   /admin/auth/captcha/challenges:
     post:
@@ -2262,7 +2261,7 @@ paths:
       tags:
       - AUTH-Admin
       summary: adminAuthCreateCaptcha
-      description: 'AUTH-001 accepted draft-v2 mapping; sync candidate, not implemented. '
+      description: "Accepted AUTH Web component candidate; disabled by default. Production host, secrets and migration enablement remain gated. "
       security:
       - authAttempt: []
         adminBinding: []
@@ -2368,7 +2367,7 @@ paths:
                 $ref: '#/components/schemas/AdminAuthCreateCaptchaResponse'
       x-auth-mode: admin-attempt
       x-auth-audience: ADMIN_WEB
-      x-contract-status: SYNC_CANDIDATE_NOT_IMPLEMENTED
+      x-contract-status: CONTRACT_SYNCED_IMPLEMENTATION_CANDIDATE
       x-approval-source: 2963e3918bbd62afdfdeb55c60bb2e2221c67ca1
       requestBody:
         required: true
@@ -2382,7 +2381,7 @@ paths:
       tags:
       - AUTH-Admin
       summary: adminAuthVerifyCaptcha
-      description: 'AUTH-001 accepted draft-v2 mapping; sync candidate, not implemented. '
+      description: "Accepted AUTH Web component candidate; disabled by default. Production host, secrets and migration enablement remain gated.  B1 secret recovery expires at pre-commit database anchor plus 60 seconds, possibly less than 60 seconds after commit. Cache/key loss returns 503; expired or revoked proof returns 401; never reissue or extend the session."
       security:
       - authAttempt: []
         adminBinding: []
@@ -2488,7 +2487,7 @@ paths:
                 $ref: '#/components/schemas/AdminAuthVerifyCaptchaResponse'
       x-auth-mode: admin-attempt
       x-auth-audience: ADMIN_WEB
-      x-contract-status: SYNC_CANDIDATE_NOT_IMPLEMENTED
+      x-contract-status: CONTRACT_SYNCED_IMPLEMENTATION_CANDIDATE
       x-approval-source: 2963e3918bbd62afdfdeb55c60bb2e2221c67ca1
       requestBody:
         required: true
@@ -2502,7 +2501,7 @@ paths:
       tags:
       - AUTH-Admin
       summary: adminAuthGetSession
-      description: 'AUTH-001 accepted draft-v2 mapping; sync candidate, not implemented. '
+      description: "Accepted AUTH Web component candidate; disabled by default. Production host, secrets and migration enablement remain gated. "
       security:
       - bearerAuth: []
       parameters: []
@@ -2605,7 +2604,7 @@ paths:
                 $ref: '#/components/schemas/AdminAuthGetSessionResponse'
       x-auth-mode: bearer
       x-auth-audience: ADMIN_WEB
-      x-contract-status: SYNC_CANDIDATE_NOT_IMPLEMENTED
+      x-contract-status: CONTRACT_SYNCED_IMPLEMENTATION_CANDIDATE
       x-approval-source: 2963e3918bbd62afdfdeb55c60bb2e2221c67ca1
   /admin/auth/attempts/{attemptId}/result:
     get:
@@ -2613,7 +2612,7 @@ paths:
       tags:
       - AUTH-Admin
       summary: adminAuthGetAttemptResult
-      description: 'AUTH-001 accepted draft-v2 mapping; sync candidate, not implemented. '
+      description: "Accepted AUTH Web component candidate; disabled by default. Production host, secrets and migration enablement remain gated.  B1 secret recovery expires at pre-commit database anchor plus 60 seconds, possibly less than 60 seconds after commit. Cache/key loss returns 503; expired or revoked proof returns 401; never reissue or extend the session."
       security:
       - authAttempt: []
         adminBinding: []
@@ -2724,7 +2723,7 @@ paths:
                 $ref: '#/components/schemas/AdminAuthGetAttemptResultResponse'
       x-auth-mode: admin-attempt
       x-auth-audience: ADMIN_WEB
-      x-contract-status: SYNC_CANDIDATE_NOT_IMPLEMENTED
+      x-contract-status: CONTRACT_SYNCED_IMPLEMENTATION_CANDIDATE
       x-approval-source: 2963e3918bbd62afdfdeb55c60bb2e2221c67ca1
   /admin/auth/logout:
     post:
@@ -2732,7 +2731,7 @@ paths:
       tags:
       - AUTH-Admin
       summary: adminAuthLogout
-      description: 'AUTH-001 accepted draft-v2 mapping; sync candidate, not implemented. '
+      description: "Accepted AUTH Web component candidate; disabled by default. Production host, secrets and migration enablement remain gated. "
       security:
       - bearerAuth: []
       parameters:
@@ -2836,7 +2835,7 @@ paths:
                 $ref: '#/components/schemas/AdminAuthLogoutResponse'
       x-auth-mode: bearer
       x-auth-audience: ADMIN_WEB
-      x-contract-status: SYNC_CANDIDATE_NOT_IMPLEMENTED
+      x-contract-status: CONTRACT_SYNCED_IMPLEMENTATION_CANDIDATE
       x-approval-source: 2963e3918bbd62afdfdeb55c60bb2e2221c67ca1
       requestBody:
         required: true
@@ -2850,8 +2849,7 @@ paths:
       tags:
       - AUTH-Admin
       summary: adminAuthActivity
-      description: AUTH-001 accepted draft-v2 mapping; sync candidate, not implemented. Only foreground interaction
-        updates idle expiry; polling or same-key replay does not extend it. Expired sessions cannot be revived.
+      description: "Accepted AUTH Web component candidate; disabled by default. Production host, secrets and migration enablement remain gated. Only foreground interaction updates idle expiry; polling or same-key replay does not extend it. Expired sessions cannot be revived."
       security:
       - bearerAuth: []
       parameters:
@@ -2955,7 +2953,7 @@ paths:
                 $ref: '#/components/schemas/AdminAuthActivityResponse'
       x-auth-mode: bearer
       x-auth-audience: ADMIN_WEB
-      x-contract-status: SYNC_CANDIDATE_NOT_IMPLEMENTED
+      x-contract-status: CONTRACT_SYNCED_IMPLEMENTATION_CANDIDATE
       x-approval-source: 2963e3918bbd62afdfdeb55c60bb2e2221c67ca1
       requestBody:
         required: true
@@ -3205,7 +3203,7 @@ paths:
       tags:
       - AUTH-Admin
       summary: adminAuthGetPermissions
-      description: 'AUTH-001 accepted draft-v2 mapping; sync candidate, not implemented. '
+      description: "Accepted AUTH Web component candidate; disabled by default. Production host, secrets and migration enablement remain gated. "
       security:
       - bearerAuth: []
       parameters: []
@@ -3308,7 +3306,7 @@ paths:
                 $ref: '#/components/schemas/AdminAuthGetPermissionsResponse'
       x-auth-mode: bearer
       x-auth-audience: ADMIN_WEB
-      x-contract-status: SYNC_CANDIDATE_NOT_IMPLEMENTED
+      x-contract-status: CONTRACT_SYNCED_IMPLEMENTATION_CANDIDATE
       x-approval-source: 2963e3918bbd62afdfdeb55c60bb2e2221c67ca1
   /admin/permission-actions:
     get:

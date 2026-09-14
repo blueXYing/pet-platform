@@ -24,6 +24,15 @@ jobs:
           --health-interval=10s
           --health-timeout=5s
           --health-retries=12
+      auth-redis:
+        image: redis:7.4-alpine
+        ports:
+          - 16379:6379
+        options: >-
+          --health-cmd "redis-cli -e CONFIG SET save '' appendonly no && redis-cli -e ping"
+          --health-interval=5s
+          --health-timeout=3s
+          --health-retries=12
     env:
       PLAT004_MYSQL_URL: jdbc:mysql://127.0.0.1:3306/
       PLAT004_MYSQL_USER: root
@@ -31,6 +40,11 @@ jobs:
       PLAT002_ID_MYSQL_URL: jdbc:mysql://127.0.0.1:3306/
       PLAT002_ID_MYSQL_USER: root
       PLAT002_ID_MYSQL_PASSWORD: plat004-ci-isolated
+      AUTH_MYSQL_URL: jdbc:mysql://127.0.0.1:3306/
+      AUTH_MYSQL_USER: root
+      AUTH_MYSQL_PASSWORD: plat004-ci-isolated
+      AUTH_REDIS_HOST: 127.0.0.1
+      AUTH_REDIS_PORT: 16379
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-java@v4

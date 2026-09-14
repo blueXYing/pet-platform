@@ -80,12 +80,20 @@ WEB_ATTEMPT_OPERATIONS = {
     'adminAuthLogin', 'adminAuthGetRequirements', 'adminAuthCreateCaptcha',
     'adminAuthVerifyCaptcha', 'adminAuthGetAttemptResult',
 }
+WEB_IMPLEMENTATION_CANDIDATES = {
+    'adminAuthCreateAttempt', 'adminAuthLogin', 'adminAuthGetRequirements',
+    'adminAuthCreateCaptcha', 'adminAuthVerifyCaptcha', 'adminAuthGetSession',
+    'adminAuthGetAttemptResult', 'adminAuthLogout', 'adminAuthActivity',
+    'adminAuthGetPermissions',
+}
 
 
 def check_auth_security(spec, operation, parameters):
     """Check exact OAS OR/AND structure; body refresh is an explicit exception."""
     name = operation['operationId']
-    assert operation.get('x-contract-status') == 'SYNC_CANDIDATE_NOT_IMPLEMENTED', f'AUTH implementation status changed: {name}'
+    expected_status = ('CONTRACT_SYNCED_IMPLEMENTATION_CANDIDATE' if name in WEB_IMPLEMENTATION_CANDIDATES
+                       else 'SYNC_CANDIDATE_NOT_IMPLEMENTED')
+    assert operation.get('x-contract-status') == expected_status, f'AUTH implementation status changed: {name}'
     if name in ANONYMOUS_ATTEMPTS:
         expected = []
         assert operation.get('x-auth-mode') == 'anonymous-bootstrap', f'Missing bootstrap annotation: {name}'
