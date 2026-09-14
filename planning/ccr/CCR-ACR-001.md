@@ -1,5 +1,15 @@
 # CCR-ACR-001：统一小程序会话与工作台上下文契约
 
+批准回执（2026-09-14）：用户明确回复“可以 按照你描述的进行”，接受PR15/head `d42fdf3c260b612ef7ee4786f442b13bcb58000c`、tree `ac58dedd3ac18f425779da0ced38da165f94bb97` 中已交付的存储A、B1、C；B0未选。仅记录已批准范围，不改表结构、参数、样例或权威API，不执行SQL/实现。内部尚未完整字段/签名仍待具体审阅；PR15合并未授权，继续Draft。
+
+## 最新阶段：权威映射候选与存储批准回执
+
+PR14已按人工批准合入develop `643f05cd3a9357772bb3029ff97b750afeebb1ca`，下方“PR14未授权合并”仅历史回执，不覆盖最新事实。D1/D2及取消MFA均已批准。
+
+当前为 **ACCEPTED_MAPPING / SYNC_CANDIDATE_NOT_IMPLEMENTED**：07同步已批准内部语义；10/11/12同步外部36操作/字段/错误与安全组合候选，尚未合并或实现。内部PrincipalRef/ResourceScope/versions及新签名未完整冻结，仅放[映射附录](AUTH-001/contract-sync-handoff.md)待审；不把Merchant新单资格当工作台准入。
+
+[存储设计](AUTH-001/storage-design.md)中已交付A/B1/C方案已接受，B0未选；待后续存储契约同步/迁移实施，无DDL执行。OD002、冻结未明写动作、成员绑定/主账号员工映射、真实主认证Provider及业务验收仍保留；本CCR非RESOLVED，AUTH-001非DONE。必看[一页交接](AUTH-001/contract-sync-handoff.md)，不重复D1/D2审批。
+
 状态：**PROPOSAL_ACCEPTED / PENDING_CONTRACT_SYNC**。方向批准：2026-09-11人工确认ACR-001 R4。AUTH-001-draft-v2的D1其它参数及D2方案已接受，待权威Contract同步；本记录不是可直接实现的HTTP契约，也不解除真实签约/鉴权门禁。
 
 批准回执（2026-09-14）：用户明确批准“D1其他参数和D2”，对象为取消MFA后的AUTH-001-draft-v2，head `2963e3918bbd62afdfdeb55c60bb2e2221c67ca1`，tree `9761eb9f1c5da0fde70ab6be466ad3f63eb6ce09`。仅同步接受状态，不改变技术参数、正文样例或枚举；MFA继续取消。OD002、冻结未明确写动作、真实主认证Provider及Schema/实现门禁保留，PR14合并未授权；两CCR不RESOLVED、Issue不DONE。

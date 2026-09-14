@@ -15,8 +15,9 @@ class ContractSmokeRegressions(unittest.TestCase):
 
     def test_current_document_passes(self):
         result = check(self.spec)
-        self.assertEqual(result['operations'], 16)
-        self.assertEqual(result['writesWithRequestId'], 13)
+        self.assertEqual(result['legacyOperations'], 16)
+        self.assertEqual(result['legacyWrites'], 13)
+        self.assertEqual(result['legacyCreates'], 4)
         self.assertGreater(result['stringIdProperties'], 0)
 
     def test_local_reference_chain_and_allof_string_pass(self):

@@ -188,3 +188,22 @@ HTTP 映射只属于 Adapter 层；内部 Java API 通过稳定 code 表达同�
 5. 渠道“未知”与“失败”必须区分。
 6. 安全相关错误对外可统一文案，但内部日志保留具体 code。
 ```
+
+
+## AUTH-001错误映射同步候选
+
+状态：ACCEPTED_MAPPING / SYNC_CANDIDATE_NOT_IMPLEMENTED，尚未合并/实现；映射已接受D1/D2及取消MFA，无新增全局错误码。具体操作及严格error data:null见OpenAPI的AuthErrorEnvelope。
+
+| 情况 | HTTP / 已有码 | 消费限制 |
+|---|---|---|
+| 未认证、失效/撤销/跨audience凭据 | 401 COMMON_UNAUTHORIZED | 当前小程序access401至多single-flight刷新一次；旧epoch错误不得清新会话；Web或refresh拒绝清该端凭据 |
+| 动作未授予 | 403 COMMON_FORBIDDEN | 不自动注销仍有效身份；清授权缓存并重新查询；无旧敏感data |
+| 他人资源/attempt枚举 | 404 COMMON_NOT_FOUND或既定不暴露存在性的401 | 固定策略，不按中文message判断授权 |
+| 密码错/未设密码/账号不存在、证明验证失败 | 401 COMMON_UNAUTHORIZED | 统一错误语义，不暴露password_enabled或账号存在性 |
+| 参数/未知字段/凭据组合与body不匹配 | 400 COMMON_INVALID_ARGUMENT | 不自动换key重试 |
+| 同key异参 | 409 IDEMPOTENCY_KEY_CONFLICT | 不覆盖旧绑定 |
+| 原attempt创建秘密响应丢失、只凭UUID重试；CAS或明确并发忙 | 409 COMMON_CONFLICT | 不重发bootstrap秘密；各具体分支依操作说明，不能所有409自动重试 |
+| 频控或失败锁定 | 429 COMMON_RATE_LIMITED | 遵守Retry-After/窗口；captcha不是登录后的额外因素 |
+| 认证/权限/Provider/旧回执读取依赖不可用 | 503 COMMON_DEPENDENCY_UNAVAILABLE | 失败关闭，不能读缓存allow，不默认签约成功，不因未知发送换key重发 |
+
+200 SmsIntentStatus.UNKNOWN是成功读取“原发送意图未知”的事实，不是发送成功；数据库不可查才503。签约NOT_SIGNED/SIGNING/SIGNED/FAILED/UNKNOWN、准入reasonCodes均是成功资格查询DTO状态，不注册成全局错误码；缺实际签约Provider映射仍BLOCKED。当前登录有效且已获权不得因不存在额外MFA证明返回错误。

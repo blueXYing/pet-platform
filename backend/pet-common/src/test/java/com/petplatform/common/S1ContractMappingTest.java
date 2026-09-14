@@ -8,6 +8,7 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.List;
+import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
 import java.util.regex.Pattern;
@@ -19,6 +20,20 @@ import org.yaml.snakeyaml.constructor.SafeConstructor;
 
 /** Static affected-contract checks; neither live HTTP nor database idempotency tests. */
 class S1ContractMappingTest {
+    private static final Set<String> LEGACY_OPERATIONS = Set.of(
+            "createOrder", "listMyOrders", "getMyOrder", "createOrderPayment", "rescheduleOrder",
+            "applyRefund", "createAftersale", "getReviewEligibility", "createReview",
+            "merchantConfirmOrder", "merchantRejectOrder", "merchantApproveRefund", "merchantRejectRefund",
+            "verifyPlatformOrder", "decideAftersale", "abnormalCloseOrder");
+    private static final Set<String> LEGACY_CREATES = Set.of(
+            "createOrder", "applyRefund", "createAftersale", "createReview");
+    private static final Set<String> LEGACY_SCHEMAS = Set.of(
+            "DisplayOrderStatus", "FulfillmentType", "PublicId", "DecimalAmount", "DecimalAmountOutput",
+            "CreateOrderRequest", "CreateOrderData", "RescheduleRequest", "RefundApplyRequest",
+            "RefundApplicationData", "CreateAftersaleRequest", "ReviewEligibilityData", "CreateReviewRequest",
+            "MerchantRejectOrderRequest", "MerchantRejectRefundRequest", "AftersaleDecisionRequest",
+            "OrderDetailData", "OrderActions", "BaseEnvelope", "ErrorEnvelope", "CreateOrderResponseEnvelope",
+            "RefundApplicationResponseEnvelope", "ReviewEligibilityResponseEnvelope", "OrderDetailResponseEnvelope");
     private static Map<String, Object> api;
     private static Path root;
 
@@ -56,11 +71,17 @@ class S1ContractMappingTest {
         int writes = 0;
         int operations = 0;
         int creates = 0;
+        Set<String> seen = new HashSet<>();
+        Set<String> seenCreates = new HashSet<>();
         for (Object path : at(api, "paths").values()) {
             for (var method : map(path).entrySet()) {
                 if (!Set.of("get", "post", "put", "patch", "delete").contains(method.getKey())) continue;
-                operations++;
                 Map<String, Object> operation = map(method.getValue());
+                String operationId = (String) operation.get("operationId");
+                if (!LEGACY_OPERATIONS.contains(operationId)) continue;
+                assertTrue(seen.add(operationId), "Duplicate legacy operation: " + operationId);
+                operations++;
+                assertEquals(List.of(Map.of("bearerAuth", List.of())), operation.get("security"));
                 List<?> parameters = (List<?>) operation.getOrDefault("parameters", List.of());
                 boolean hasRequestId = parameters.stream().anyMatch(p -> "#/components/parameters/RequestId".equals(map(p).get("$ref")));
                 if (method.getKey().equals("get")) {
@@ -73,12 +94,20 @@ class S1ContractMappingTest {
                     assertFalse(responses.containsKey("202"), "Do not turn synchronous success into generic acceptance");
                     if (responses.containsKey("201")) {
                         creates++;
-                        assertEquals(map(responses.get("201")).get("content"), map(responses.get("200")).get("content"));
+                        seenCreates.add(operationId);
+                        Object created = resolve(map(responses.get("201"))).get("content");
+                        Object replayed = resolve(map(responses.get("200"))).get("content");
+                        assertEquals(created, replayed);
+                        if (Set.of("createOrder", "applyRefund").contains(operationId)) {
+                            assertNotNull(created, "Keep the existing concrete response schemas");
+                        }
                     }
                 }
             }
         }
-        assertEquals(16, operations, "No new business operation is authorized by S1");
+        assertEquals(LEGACY_OPERATIONS, seen, "AUTH additions must preserve every S1 business operation");
+        assertEquals(LEGACY_CREATES, seenCreates);
+        assertEquals(16, operations, "The protected S1 subset remains 16 operations");
         assertEquals(13, writes);
         assertEquals(4, creates);
     }
@@ -102,7 +131,7 @@ class S1ContractMappingTest {
             checkIdShape(resolve(at(api, "components", "parameters", parameter, "schema")));
         }
         int usages = 0;
-        for (Object schema : at(api, "components", "schemas").values()) {
+        for (Object schema : legacySchemas()) {
             for (var property : map(map(schema).getOrDefault("properties", Map.of())).entrySet()) {
                 String name = property.getKey();
                 if ((name.endsWith("Id") && !name.equals("traceId")) || name.equals("orderNo")) {
@@ -153,7 +182,7 @@ class S1ContractMappingTest {
     @Test
     void timeAndReferenceMappingsAreCompleteAndAuthorityFilesUseSuccessWording() throws IOException {
         int timeFields = 0;
-        for (Object schema : at(api, "components", "schemas").values()) {
+        for (Object schema : legacySchemas()) {
             for (Object field : map(map(schema).getOrDefault("properties", Map.of())).values()) {
                 if ("date-time".equals(map(field).get("format"))) {
                     timeFields++;
@@ -179,6 +208,14 @@ class S1ContractMappingTest {
         assertEquals(19, schema.get("maxLength"));
         assertEquals("9223372036854775807", schema.get("x-maximum-decimal"));
         assertFalse(matchesSchemaPattern(schema, "01"));
+    }
+
+    private static List<Map<String, Object>> legacySchemas() {
+        Map<String, Object> schemas = at(api, "components", "schemas");
+        assertTrue(schemas.keySet().containsAll(LEGACY_SCHEMAS), "Keep every pre-AUTH S1 schema");
+        // AUTH contains UUID requestId and opaque credentials, not only Snowflake IDs.
+        // Its actual schemas and examples are independently checked by e2e/test_auth_contract.py.
+        return LEGACY_SCHEMAS.stream().map(name -> map(schemas.get(name))).toList();
     }
 
     private static boolean matchesSchemaPattern(Map<String, Object> schema, String value) {
