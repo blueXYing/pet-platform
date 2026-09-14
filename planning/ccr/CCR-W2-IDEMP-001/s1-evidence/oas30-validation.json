@@ -1,0 +1,117 @@
+{
+  "validator": "openapi-schema-validator",
+  "version": "0.6.3",
+  "python": "3.9.10 (tags/v3.9.10:f2f3f53, Jan 17 2022, 15:14:21) [MSC v.1929 64 bit (AMD64)]",
+  "schemaDialect": "OAS30Validator for OpenAPI 3.0.3",
+  "scalarCases": [
+    {
+      "owner": "CreateOrderRequest",
+      "field": "couponInstanceId",
+      "value": null,
+      "expected": true,
+      "actual": true
+    },
+    {
+      "owner": "CreateOrderRequest",
+      "field": "couponInstanceId",
+      "value": "9007199254740993",
+      "expected": true,
+      "actual": true
+    },
+    {
+      "owner": "CreateOrderRequest",
+      "field": "couponInstanceId",
+      "value": 128,
+      "expected": false,
+      "actual": false
+    },
+    {
+      "owner": "CreateOrderRequest",
+      "field": "couponInstanceId",
+      "value": "01",
+      "expected": false,
+      "actual": false
+    },
+    {
+      "owner": "CreateOrderRequest",
+      "field": "couponInstanceId",
+      "value": "1\n",
+      "expected": false,
+      "actual": false
+    },
+    {
+      "owner": "RefundApplicationData",
+      "field": "refundOrderId",
+      "value": null,
+      "expected": true,
+      "actual": true
+    },
+    {
+      "owner": "RefundApplicationData",
+      "field": "refundOrderId",
+      "value": "9007199254740993",
+      "expected": true,
+      "actual": true
+    },
+    {
+      "owner": "RefundApplicationData",
+      "field": "refundOrderId",
+      "value": 128,
+      "expected": false,
+      "actual": false
+    },
+    {
+      "owner": "RefundApplicationData",
+      "field": "refundOrderId",
+      "value": "01",
+      "expected": false,
+      "actual": false
+    },
+    {
+      "owner": "RefundApplicationData",
+      "field": "refundOrderId",
+      "value": "1\n",
+      "expected": false,
+      "actual": false
+    },
+    {
+      "owner": "AftersaleDecisionRequest",
+      "field": "refundAmount",
+      "value": null,
+      "expected": true,
+      "actual": true
+    },
+    {
+      "owner": "AftersaleDecisionRequest",
+      "field": "refundAmount",
+      "value": "128.00",
+      "expected": true,
+      "actual": true
+    },
+    {
+      "owner": "AftersaleDecisionRequest",
+      "field": "refundAmount",
+      "value": 128,
+      "expected": false,
+      "actual": false
+    },
+    {
+      "owner": "AftersaleDecisionRequest",
+      "field": "refundAmount",
+      "value": "01",
+      "expected": false,
+      "actual": false
+    },
+    {
+      "owner": "AftersaleDecisionRequest",
+      "field": "refundAmount",
+      "value": "128.001",
+      "expected": false,
+      "actual": false
+    }
+  ],
+  "fullRejectNullAccepted": true,
+  "fullRejectNumberRejected": true,
+  "legacyAllOfNullRejected": true,
+  "scope": "Actual affected schemas only; not HTTP, DB or generator runtime"
+}

@@ -35,6 +35,8 @@ HTTP 映射只属于 Adapter 层；内部 Java API 通过稳定 code 表达同�
 | COMMON_DEPENDENCY_UNAVAILABLE | 依赖服务不可用 | 503 |
 | IDEMPOTENCY_KEY_CONFLICT | 相同 requestId 对应不同参数 | 409 |
 
+公共幂等沿用这些既有码，具体边界见[23号补充§5～7](23-公共接口与幂等契约补充-v0.1.md)：已绑定异参使用IDEMPOTENCY_KEY_CONFLICT；有界争锁仍忙使用COMMON_CONFLICT且data:null，不能所有409自动重试；DB/旧结果版本读取不可用使用COMMON_DEPENDENCY_UNAVAILABLE，不重做旧业务。当前会话/权限失败使用COMMON_UNAUTHORIZED/COMMON_FORBIDDEN（或既有防枚举NOT_FOUND），不带旧敏感data。ID/金额/requestId/精度字段非法由HTTP适配器映射COMMON_INVALID_ARGUMENT；S1纯Java检查不构成该适配器或真实鉴权实现。不新增幂等busy/过期专码，不用这些错误替代原业务失败。
+
 ## 3. ORDER
 
 | Code | 含义 |

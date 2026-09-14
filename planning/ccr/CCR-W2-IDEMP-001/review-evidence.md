@@ -1,5 +1,7 @@
 # 来源、只读协作与检查回执
 
+当前阶段：**CONTRACT_SYNCED_IN_PR / S1_REVIEW_READY / S2_PENDING_DESIGN**。§1～5保留原规范/批准历史；PR10已合并，当前新PR和S1独立证据见[s1-handoff.md](s1-handoff.md)与§6。没有以历史CI或原只读审阅冒充新源码验证。
+
 状态：**PROPOSAL_ACCEPTED / PENDING_CONTRACT_SYNC**。2026-09-14人工已接受`a9856c14fd596304611496cf794c935ec4d1243e`版两项建议，回执见§5及[主文](../CCR-W2-IDEMP-001.md)。基线develop `e882dc3c2cadd6474ad52ca5f6301e7e80df2743`。行号指此基线，章节语义优先；相对链接可在PR直接打开。主文与附属文件唯一编辑者Backend Core；下面岗位仅发送只读意见，未写文件，未创建额外用户任务。
 
 历史状态：PROPOSED / PENDING_REVIEW。§1～4保留首次交付的来源、审阅与当时未批准记录；这些只读审阅本身仍不构成批准，人工批准另据§5登记。具体Contract同步/DDL/迁移/实现门禁不因方案接受自动解除。
@@ -72,3 +74,11 @@
 当前为PROPOSAL_ACCEPTED / PENDING_CONTRACT_SYNC。权威Contract未同步、具体DDL/迁移未审、组件未实现/未验证；CCR尚不能RESOLVED，完整Issue实现门禁仍有效，不是DONE。PR10合并未获授权，是当前剩余人工审批；不重复请求相同两项方案接受，不启动后续任务。
 
 原a9856c14的CI run34802737566六job成功保留为历史证据，不冒充本回执新head结果；新的固定head及CI、差异核验在PR10正文登记。CI仍只说明现有基线未被文档变更破坏。
+
+## 6. Contract 同步与 S1 实测阶段
+
+新阶段从已合并develop c5a1847建立codex/plat-002-contract-s1，原工作区9dd6；已向根Work登记逐文件Owner。Backend Core写权威公共Contract、pet-common与对应阶段文档，QA获根Work补授权独占e2e/contract_smoke.py和e2e/test_contract_smoke.py，完成后释放；其他岗位只读。
+
+Transaction复审07/10/12/23无阻断，补明requestId的512字节与同库同事务管理器；三端复审提出原refundAmount可空schema需与既有REJECT/null一致，已修为显式type+nullable并用OAS30Validator真实验证。QA修复前实测Smoke失败Non-string ID: storeId，原4负例绿灯未覆盖正基线；修复后28正反回归通过，16操作/13写/132解析引用/13 ID字段离线Smoke成功。QA只读pet-common/23无阻断，未冒称其运行Java测试。
+
+Backend Core执行Java21完整reactor，新增74公共JUnit及原22架构JUnit/13 Python fixture通过；修正受影响nullable金额后再次完整验证，日志/最终回执见S1交接和s1-evidence。独立OAS30验证15标量+2payload及1旧写法反例通过。公共组件范围、权威同步范围与未实现S2分别记录，最终head CI在新PR正文固定，不反复改head转述结果。

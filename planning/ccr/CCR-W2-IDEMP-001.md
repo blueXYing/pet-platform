@@ -1,9 +1,15 @@
 # CCR-W2-IDEMP-001：公共约定与持久化幂等提案
 
-状态：**PROPOSAL_ACCEPTED / PENDING_CONTRACT_SYNC**。规范版本：0.1（技术内容不变，本次仅批准回执）。日期：2026-09-14。
+状态：**CONTRACT_SYNCED_IN_PR / S1_REVIEW_READY / S2_PENDING_DESIGN**。规范版本：0.1，日期：2026-09-14；本阶段同步已接受内容并交付S1，不关闭完整CCR/Issue。
 提出方/唯一编辑者：Backend Core。关联既有 Issue：PLAT-002 / EPIC-01 / ST-PLAT-02。只读审阅：Transaction Backend、QA、C-End、Merchant、Admin。批准人：人工 CTO / Contract Owner **blueXYing**。
 
-## 当前批准回执与下一步
+## 当前 S1 交付与下一步
+
+人工已批准两项方案和PR10合并（实际develop合并`c5a184736c58ddfbaf60c5064b48a97bfb7eff3f`），随后明确启动本Issue权威公共契约同步及S1接口交接。本阶段权威条款见[23号补充](../../docs/04-api/23-公共接口与幂等契约补充-v0.1.md)，一页阅读指南/逐文件Owner/测试证据/下游边界见[S1交接](CCR-W2-IDEMP-001/s1-handoff.md)。
+
+S1已提供纯Snowflake接口、ID/金额接口及确定性转换、时间/requestId基础检查和测试专用替身；不是生产Snowflake或数据库幂等实现。权威同步位于本阶段新PR、尚未合并，旧Schema兼容、具体物理表/迁移/存储/fencing等S2仍待定。完整PLAT-002非DONE，CCR非RESOLVED，不自行启动PLAT-004。当前需审阅本阶段新PR合并，不重复询问两项方案或PR10批准。
+
+## 历史批准回执（PR10合并前，保留当时下一步）
 
 2026-09-14，人工明确回复 **“接受两项建议”**。根任务 `01a08e29-e8c2-70d0-94ba-18df3e14d948` 转交批准并记录于根 WORK_STATE“PLAT002方案人工批准回执”。批准对象严格为已交付提交 **`a9856c14fd596304611496cf794c935ec4d1243e`** 的0.1版主文两项决定及其原有边界：
 
