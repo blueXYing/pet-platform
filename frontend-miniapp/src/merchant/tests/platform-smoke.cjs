@@ -9,9 +9,10 @@ fs.mkdirSync(evidence, { recursive: true })
 const label = process.env.WECHAT_EVIDENCE_LABEL || 'merchant'
 assert.match(label, /^[a-zA-Z0-9_-]+$/)
 const artifact = name => path.join(evidence, `${label}-${name}`)
+const captureScreenshots = process.env.WECHAT_CAPTURE_SCREENSHOTS !== '0'
 const report = { status: 'RUNNING', source: 'WeChat DevTools simulator',
   eventMethod: 'App.evaluate invokes real Taro native tap callback; no setData or mocked wx API',
-  physicalClickVerified: false, checks: [], exceptions: [] }
+  physicalClickVerified: false, captureScreenshots, screenshots: [], checks: [], exceptions: [] }
 let mini
 function save() { fs.writeFileSync(artifact('platform.json'), JSON.stringify(report, null, 2)) }
 function stage(name) { report.stage = name; save(); console.log(name) }
@@ -20,19 +21,26 @@ const settle = (ms = 250) => new Promise(resolve => setTimeout(resolve, ms))
 async function content() {
   return mini.evaluate(() => {
     function text(n) { return n ? (n.v || '') + (n.cn || []).map(text).join('') : '' }
-    return text(getCurrentPages().at(-1).data.root)
+    return text(getCurrentPages().at(-1)?.data?.root)
   })
 }
 async function waitText(fragment) {
-  const until = Date.now() + 8000
-  while (!(await content()).includes(fragment)) {
+  const until = Date.now() + 15000
+  while (true) {
+    // DevTools can reject read-only evaluation while its app service changes page.
+    // Retry reads only; never replay the native event itself.
+    try { if ((await content()).includes(fragment)) return } catch (error) {
+      report.transientReadErrors = [...(report.transientReadErrors || []), String(error)]
+    }
     if (Date.now() > until) throw new Error('Render timeout: ' + fragment)
     await settle()
   }
 }
 async function tap(label) {
+  stage('tap: ' + label)
   await waitText(label)
-  await mini.evaluate(label => {
+  const eventResult = await mini.evaluate(label => {
+    try {
     const page = getCurrentPages().at(-1)
     const nodes = []
     function visit(n) { nodes.push(n); (n.cn || []).forEach(visit) }
@@ -43,10 +51,24 @@ async function tap(label) {
     const target = { id: button.sid, dataset: {} }
     page.eh({ type: 'tap', timeStamp: Date.now(), target, currentTarget: target,
       detail: {}, touches: [], changedTouches: [] })
+    return { ok: true }
+    } catch (error) { return { ok: false, error: String(error) } }
   }, label)
-  await settle()
+  assert.equal(eventResult.ok, true, eventResult.error)
+  await settle(400)
 }
 const noSample = async () => assert.doesNotMatch(await content(), /INTERNAL_SAMPLE|128\.00|"inspect"/)
+async function screenshot(name) {
+  if (!captureScreenshots) return
+  stage('capture-' + name)
+  let timer
+  try {
+    await Promise.race([mini.screenshot({ path: artifact(name + '.png') }), new Promise((_, reject) => {
+      timer = setTimeout(() => reject(new Error('Screenshot channel timed out: ' + name)), 20000)
+    })])
+  } finally { clearTimeout(timer) }
+  report.screenshots.push(name + '.png')
+}
 async function layout(name) {
   const bounds = await mini.evaluate(() => new Promise(resolve => {
     wx.createSelectorQuery().selectAll('.shell, button').boundingClientRect()
@@ -55,6 +77,10 @@ async function layout(name) {
   assert.ok(bounds[0]?.length, 'Native layout bounds required')
   for (const rect of bounds[0]) assert.ok(rect.left >= -1 && rect.right <= report.environment.windowWidth + 1, 'horizontal overflow')
   report.layouts = { ...report.layouts, [name]: bounds }
+  const info = report.environment
+  const safeBottom = Math.min(info.windowHeight, info.safeArea.bottom - (info.screenHeight - info.windowHeight))
+  assert.ok(bounds[0][0].bottom <= safeBottom, 'Engineering shell exceeds current safe viewport')
+  report.safeViewportBottom = safeBottom
 }
 ;(async () => {
   try {
@@ -75,6 +101,18 @@ async function layout(name) {
       'screenWidth', 'screenHeight', 'windowWidth', 'windowHeight', 'pixelRatio', 'safeArea'].map(k => [k, info[k]]))
     stage('consumer-to-ordinary-merchant-subpackage')
     await mini.callWxMethod('reLaunch', { url: '/consumer/pages/shell/index' })
+    await settle(400)
+    await tap('增加计数')
+    await waitText('局部计数：1')
+    await tap('打开隔离验证页')
+    await tap('重新注入样本上下文')
+    await tap('读取内部样本')
+    await waitText('INTERNAL_SAMPLE')
+    await tap('清除上下文和缓存')
+    await waitText('已清除'); await noSample()
+    await tap('重新注入样本上下文')
+    await mini.callWxMethod('reLaunch', { url: '/consumer/pages/shell/index' })
+    report.checks.push('Shared C-001 regression: native counter/navigation, sample display, clear and fixture reinjection')
     await tap('进入商家工作区（内部 fixture）')
     await waitText('内部样本：拒绝')
     assert.equal(await mini.evaluate(() => getCurrentPages().at(-1).route), 'merchant/pages/workspace/index')
@@ -88,19 +126,19 @@ async function layout(name) {
     await waitText('INTERNAL_SAMPLE')
     assert.match(await content(), /9007199254740993/)
     await layout('allowed')
-    await mini.screenshot({ path: artifact('allowed.png') })
+    await screenshot('allowed')
     stage('deny-error-retry')
     await tap('注入拒绝样本')
     await waitText('内部样本：拒绝'); await noSample()
     assert.doesNotMatch(await content(), /样本门店：/)
-    await mini.screenshot({ path: artifact('denied.png') })
+    await screenshot('denied')
     await tap('注入查询失败')
     await waitText('查询失败，未放行'); await noSample()
     await tap('重新校验')
     await waitText('查询失败，未放行')
     assert.match(await content(), /当前工作区：consumer/)
     await layout('error')
-    await mini.screenshot({ path: artifact('error.png') })
+    await screenshot('error')
     report.checks.push('MINI-002 allow renders only after injection; deny/error clear data; retry failure remains closed')
     stage('late-result-after-store-switch')
     await tap('注入允许样本')
@@ -130,10 +168,10 @@ async function layout(name) {
     await tap('注入允许样本'); await waitText('内部样本：允许')
     await mini.callWxMethod('reLaunch', { url: forged })
     await waitText('内部样本：拒绝'); await noSample()
-    await mini.screenshot({ path: artifact('deep-link.png') })
+    await screenshot('deep-link')
     report.checks.push('MINI-002 forged deep-link query never grants admission; deep-link allow/deny/error controls recheck; fresh reentry resets to deny')
     assert.equal(report.exceptions.length, 0)
-    report.status = 'PASS_MERCHANT_REAL_SIMULATOR'
+    report.status = captureScreenshots ? 'PASS_MERCHANT_REAL_SIMULATOR' : 'PASS_RUNTIME_SCREENSHOTS_NOT_CAPTURED'
   } catch (error) {
     report.status = 'FAIL'; report.error = String(error); process.exitCode = 1
   } finally {

@@ -1,0 +1,131 @@
+
+> pet-platform-miniapp@0.1.0 build:weapp
+> taro build --type weapp --disable-global-config
+
+👽 Taro v4.1.5
+
+Tips:
+1. 建议开启持久化缓存功能，能有效提升二次编译速度，详情请参考: https://docs.taro.zone/docs/config-detail#cache。
+
+
+
+● Webpack █████████████████████████  (0%)  
+ 
+
+[2K[1A[2K[1A[2K[1A[2K[1A[2K[G
+● Webpack █████████████████████████ setup (9%) compilation 
+ mini-css-extract-plugin
+
+[2K[1A[2K[1A[2K[1A[2K[1A[2K[G
+● Webpack █████████████████████████ building (10%) 0/7 entries 7/7 dependencie
+s 0/7 modules 1 active 
+ babel-loader › src\app.config.ts
+
+[2K[1A[2K[1A[2K[1A[2K[1A[2K[1A[2K[G
+● Webpack █████████████████████████ building (10%) 0/7 entries 7/7 dependencie
+s 0/7 modules 1 active 
+ babel-loader › src\app.config.ts
+
+[2K[1A[2K[1A[2K[1A[2K[1A[2K[1A[2K[G
+● Webpack █████████████████████████ building (10%) 0/7 entries 7/7 dependencie
+s 0/7 modules 3 active 
+ babel-loader › src\consumer\pages\shell\index.tsx
+
+[2K[1A[2K[1A[2K[1A[2K[1A[2K[1A[2K[G
+● Webpack █████████████████████████ building (10%) 0/7 entries 7/7 dependencie
+s 1/7 modules 6 active 
+ ...l-loader › node_modules\@tarojs\webpack5-runner\dist\template\custom-wrapp
+er.js
+
+[2K[1A[2K[1A[2K[1A[2K[1A[2K[1A[2K[1A[2K[G
+● Webpack █████████████████████████ building (17%) 1/7 entries 38/50 dependenc
+ies 1/22 modules 20 active 
+ node_modules\react\jsx-runtime.js
+
+[2K[1A[2K[1A[2K[1A[2K[1A[2K[1A[2K[G
+● Webpack █████████████████████████ building (17%)  
+ import loader .\node_modules\css-loader\dist\cjs.js
+
+[2K[1A[2K[1A[2K[1A[2K[1A[2K[G
+● Webpack █████████████████████████ building (17%)  
+ import loader .\node_modules\postcss-loader\dist\cjs.js
+
+[2K[1A[2K[1A[2K[1A[2K[1A[2K[G
+● Webpack █████████████████████████ building (17%) 1/7 entries 49/72 dependenc
+ies 1/26 modules 23 active 
+ css-loader › postcss-loader › src\app.css
+
+[2K[1A[2K[1A[2K[1A[2K[1A[2K[1A[2K[G
+● Webpack █████████████████████████ building (17%) 1/7 entries 49/73 dependenc
+ies 1/26 modules 24 active 
+ css-loader › postcss-loader › src\merchant\pages\workspace\index.css
+
+[2K[1A[2K[1A[2K[1A[2K[1A[2K[1A[2K[G
+● Webpack █████████████████████████ building (17%) 1/7 entries 89/130 dependen
+cies 3/47 modules 36 active 
+ node_modules\react\cjs\react.production.min.js
+
+[2K[1A[2K[1A[2K[1A[2K[1A[2K[1A[2K[G
+● Webpack █████████████████████████ building (17%) 1/7 entries 142/200 depende
+ncies 14/77 modules 63 active 
+ ...1.0\frontend-miniapp\node_modules\@babel\runtime\helpers\esm\wrapNativeSup
+er.js
+
+[2K[1A[2K[1A[2K[1A[2K[1A[2K[1A[2K[1A[2K[G
+● Webpack █████████████████████████ building (17%) 1/7 entries 327/340 depende
+ncies 22/105 modules 83 active 
+ ...abel-loader › node_modules\@tarojs\runtime\dist\dom-external\inner-html\ht
+ml.js
+
+[2K[1A[2K[1A[2K[1A[2K[1A[2K[1A[2K[1A[2K[G
+● Webpack █████████████████████████ building (17%) 1/7 entries 373/388 depende
+ncies 47/117 modules 64 active 
+ ...物平台V1.0\frontend-miniapp\node_modules\@babel\runtime\helpers\esm\toPrim
+itive.js
+
+[2K[1A[2K[1A[2K[1A[2K[1A[2K[1A[2K[1A[2K[G
+● Webpack █████████████████████████ building (17%) 1/7 entries 384/404 depende
+ncies 51/120 modules 68 active 
+ node_modules\react-reconciler\constants.js
+
+[2K[1A[2K[1A[2K[1A[2K[1A[2K[1A[2K[G
+● Webpack █████████████████████████ building (17%) 1/7 entries 407/427 depende
+ncies 65/130 modules 57 active 
+ babel-loader › node_modules\@tarojs\shared\dist\constants.js
+
+[2K[1A[2K[1A[2K[1A[2K[1A[2K[1A[2K[G
+● Webpack █████████████████████████ building (17%) 1/7 entries 450/461 depende
+ncies 96/136 modules 40 active 
+ ...abel-loader › node_modules\@tarojs\runtime\dist\dom-external\inner-html\ta
+gs.js
+
+[2K[1A[2K[1A[2K[1A[2K[1A[2K[1A[2K[1A[2K[G
+● Webpack █████████████████████████ building (41%) 4/7 entries 472/475 depende
+ncies 124/143 modules 19 active 
+ babel-loader › node_modules\@tarojs\api\dist\interceptor\chain.js
+
+[2K[1A[2K[1A[2K[1A[2K[1A[2K[1A[2K[G
+● Webpack █████████████████████████ building (49%) 5/7 entries 478/480 depende
+ncies 132/144 modules 12 active 
+ node_modules\scheduler\index.js
+
+[2K[1A[2K[1A[2K[1A[2K[1A[2K[1A[2K[G
+● Webpack █████████████████████████ sealing (75%) chunk optimization 
+ SplitChunksPlugin
+
+[2K[1A[2K[1A[2K[1A[2K[1A[2K[G
+● Webpack █████████████████████████ sealing (88%)  
+ runtime requirements
+
+[2K[1A[2K[1A[2K[1A[2K[1A[2K[G
+● Webpack █████████████████████████ sealing (92%) asset processing 
+ CssMinimizerPlugin
+
+[2K[1A[2K[1A[2K[1A[2K[1A[2K[G
+● Webpack █████████████████████████ sealing (92%) asset processing 
+ RealContentHashPlugin
+
+[2K[1A[2K[1A[2K[1A[2K[1A[2K[G
+√ Webpack
+  Compiled successfully in 17.23s
+

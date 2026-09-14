@@ -1,0 +1,23 @@
+
+> pet-platform-miniapp@0.1.0 check:package
+> node package-check.cjs
+
+{
+  "test": "MINI-005 static inventory only",
+  "mainBytes": 312004,
+  "subpackages": {
+    "merchant": 7180
+  },
+  "totalBytes": 319184,
+  "ordinarySubpackageCount": 1,
+  "fileCount": 25,
+  "internalBudgetBytes": 2097152,
+  "platformLimitVerified": true,
+  "platformLimitSource": "https://developers.weixin.qq.com/miniprogram/dev/framework/subpackages.html",
+  "platformLimitCheckedOn": "2026-09-11",
+  "totalBudgetBytes": 20971520,
+  "totalBudgetReason": "conservative service-provider cap; standard total cap is 30M",
+  "platformUploadVerified": false,
+  "deviceWindowsVerified": false,
+  "imageClarityVerified": false
+}
