@@ -35,6 +35,7 @@
 
     <modules>
         <module>pet-common</module>
+        <module>pet-id-core</module>
         <module>pet-event-api</module>
         <module>pet-event-core</module>
         <module>pet-task-core</module>
@@ -79,6 +80,11 @@
     <dependencyManagement>
         <dependencies>
             <!-- Keep reactor dependencies on the same version as their parent. -->
+            <dependency>
+                <groupId>com.petplatform</groupId>
+                <artifactId>pet-id-core</artifactId>
+                <version>${project.version}</version>
+            </dependency>
             <dependency>
                 <groupId>com.petplatform</groupId>
                 <artifactId>pet-common</artifactId>
