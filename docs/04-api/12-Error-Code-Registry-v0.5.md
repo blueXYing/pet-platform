@@ -207,3 +207,6 @@ HTTP 映射只属于 Adapter 层；内部 Java API 通过稳定 code 表达同�
 | 认证/权限/Provider/旧回执读取依赖不可用 | 503 COMMON_DEPENDENCY_UNAVAILABLE | 失败关闭，不能读缓存allow，不默认签约成功，不因未知发送换key重发 |
 
 200 SmsIntentStatus.UNKNOWN是成功读取“原发送意图未知”的事实，不是发送成功；数据库不可查才503。签约NOT_SIGNED/SIGNING/SIGNED/FAILED/UNKNOWN、准入reasonCodes均是成功资格查询DTO状态，不注册成全局错误码；缺实际签约Provider映射仍BLOCKED。当前登录有效且已获权不得因不存在额外MFA证明返回错误。
+
+
+AUTH Web切片B1说明：恢复窗口按成功提交前DB锚点+60秒，不保证commit后完整60秒；窗口内缓存/密钥/发布缺失503，截止或当前会话/证明撤销401，不重新签发、不延长会话。密码与不存在账号统一401；登录反机器人锁定/有界资源额度429。无额外MFA错误码。真实代码异常回执始终data:null，不回显请求/SQL/凭据。
