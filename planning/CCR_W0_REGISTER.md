@@ -6,7 +6,7 @@
 
 ## CCR-W0-001 — Outbox 恢复字段与持久化契约
 
-- 状态：SPEC_DRAFTED / 待 Architect 与 Contract Owner 评审；逐字段映射与事务方案草案已由PLAT-003规范阶段交付，见[CCR-W0-001主文](ccr/CCR-W0-001.md)及其附页（field-mapping / transaction-recovery-design / review-evidence），基线develop ba782653。
+- 状态：PROPOSAL_ACCEPTED / CONTRACT_SYNCED_IN_PR（2026-09-14两项建议决定经人工明确批准“两项也批准”，批准对象为PR18/581e740主文；06号Schema字段/注释/索引已在codex/plat-003-contract-sync分支按决定1同步，待PR合并；迁移未执行）。逐字段映射与事务方案见[CCR-W0-001主文](ccr/CCR-W0-001.md)及其附页（field-mapping / transaction-recovery-design / review-evidence），规范阶段基线develop ba782653。
 - 提出方：W0 审计；规范阶段编辑：Backend Core（PLAT-003）；影响：event-core、task/调度、QA。
 - 当前 Contract：核心 Schema 第752~769行；Event Catalog 第354~367行；Scheduler 第876~885行。
 - 问题：核心 Outbox 表未提供 Scheduler 所要求的 PUBLISHING 租约恢复字段（lease_until 等），事件存储字段也需逐项对应。

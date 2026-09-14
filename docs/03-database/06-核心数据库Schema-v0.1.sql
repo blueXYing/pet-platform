@@ -755,16 +755,22 @@ CREATE TABLE integration_event_outbox (
     aggregate_type        VARCHAR(64)  NOT NULL,
     aggregate_id          BIGINT       NOT NULL,
     event_type            VARCHAR(128) NOT NULL,
+    event_version         INT          NOT NULL DEFAULT 1,
     payload               JSON         NOT NULL,
-    status                VARCHAR(16)  NOT NULL DEFAULT 'NEW' COMMENT 'NEW/PUBLISHED/FAILED',
+    occurred_at           DATETIME(3)  NOT NULL COMMENT '业务事实发生时间(信封occurredAt),重发保持原值',
+    status                VARCHAR(16)  NOT NULL DEFAULT 'NEW' COMMENT 'NEW/PUBLISHING/PUBLISHED/FAILED',
     retry_count           INT          NOT NULL DEFAULT 0,
     next_retry_at         DATETIME(3)  NULL,
+    lease_owner           VARCHAR(128) NULL COMMENT '发布租约归属,对齐async_task约定',
+    lease_until           DATETIME(3)  NULL COMMENT '租约期限,过期允许其他Worker接管(Scheduler §22)',
+    trace_id              VARCHAR(64)  NULL,
     created_at            DATETIME(3)  NOT NULL,
-    published_at          DATETIME(3)  NULL,
+    published_at          DATETIME(3) NULL,
     PRIMARY KEY (id),
     UNIQUE KEY uk_outbox_event (event_id),
     KEY idx_outbox_publish (status, next_retry_at, created_at),
-    KEY idx_outbox_aggregate (aggregate_type, aggregate_id, created_at)
+    KEY idx_outbox_aggregate (aggregate_type, aggregate_id, created_at),
+    KEY idx_outbox_lease (status, lease_until)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
 CREATE TABLE integration_event_consume_log (
@@ -774,7 +780,8 @@ CREATE TABLE integration_event_consume_log (
     event_type            VARCHAR(128) NOT NULL,
     consumed_at           DATETIME(3)  NOT NULL,
     PRIMARY KEY (id),
-    UNIQUE KEY uk_consumer_event (consumer_name, event_id)
+    UNIQUE KEY uk_consumer_event (consumer_name, event_id),
+    KEY idx_consume_log_event (event_id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
 -- ============================================================
