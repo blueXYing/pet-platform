@@ -1,145 +1,111 @@
-# S2 生产 Snowflake / Clock 具体设计 v0.1
+# S2 Hutool 5.8.47 最小生产适配设计 v0.2
 
-状态：**PROPOSED / PENDING_REVIEW**。属于CCR-W2-IDEMP-001 / PLAT-002的新增实现机制决定，不是原提案自动已批。唯一Writer Backend Core；Transaction/QA独立只读审时序，三端只核ID/业务边界。本阶段仅planning文档，不改原已接受正文、权威docs、源码、DDL或环境。
+状态：**SDK_SELECTED / ADAPTER_PROPOSED**。人工已选cn.hutool:hutool-core:5.8.47；协调/发布闸门/超时恢复是新增适配建议，尚待审。旧d5acc3a未获批准、仅Git历史，不继续自写生成算法。本阶段仅修订对应CCR五份Markdown，不改权威docs/S1/pom/SQL/环境。
 
-初始输入develop `0cc7d0151cdae3500185957d2a35088d0b31e37f`；根批准PR12合并后，本设计分支已快进到交付基线`bcb269c2adc9405e669747d9b3bedfae2bf5ccbd`。已接受方案a9856c14、批准回执3c7b529、S1交付7c484371不变。只读PLAT-004工作区44dc固定提交`c641794119063706d3ab468a90898d3694ed26d8`的task-core/HANDOFF/README及注入点，已合并组件不等于本S2生产实现。来源/审阅证据见[s2-review-evidence.md](s2-review-evidence.md)，人工入口见[s2-review-guide.md](s2-review-guide.md)。
+基线develop bcb269c2adc9405e669747d9b3bedfae2bf5ccbd；原9dd6及PR13分支。根制品/比较报告只读；[来源证据](s2-review-evidence.md)、[指南](s2-review-guide.md)、[例子](s2-examples.md)。原布局/epoch/String/金额/Context不重裁。
 
-## 1. 保持不变与待批准范围
+## 1. 精确SDK配置与已核源码
 
-保持正Long Snowflake：符号位0、相对毫秒41位、worker10位、序号12位，epoch=`2026-01-01T00:00:00Z`；API/JSON/TS ID String；Clock使用java.time.Clock，业务Zone初始Asia/Shanghai；nextId总等待预算1秒。不能凭ID解码代替业务时间、顺序、状态或权限；不能用ID代替requestId/task_key。
+5.8.47完整构造器参数固定：Date(epoch2026), workerId=node & 31, dataCenterId=node >>> 5, useSystemClock=false, timeOffset=0, randomSequenceLimit=0。node显式分配0～1023，5+5拼接等于原10bit node，不改1/41/10/12。禁止默认构造器/epoch=null、IdUtil默认缓存节点、IP/MAC取模；关闭默认2000ms回拨容忍及随机起始序号。依赖只用hutool-core。
 
-本次新增推荐：MySQL持久高水位、worker授权/续租、只增不回收时间区间、本地许可检查与故障恢复、具体参数、技术表与实现模块归属、装配门禁。原通用业务幂等表/旧request_id迁移另案继续待设计；不借发号器表一并审批。
+同版源码事实：nextId在SDK实例上同步，sequence/lastTimestamp在内存；genTime与tilNextMillis私有；后者时间不变时循环、无deadline/interrupt检查。false取System.currentTimeMillis，不接受外部java.time.Clock。SDK是Serializable，但序列化恢复/克隆会复制生成状态，不是持久重启安全方案。SDK拼位没有本项目完整的epoch/41位域保护。
 
-## 2. 选型与证明边界
+根已用Java21.0.11同实例8线程十万ID验证正Long唯一、epoch/node解码，反射注入未来lastTimestamp在timeOffset=0时报错，并实际发现同node两个全新实例可重复。这里只引用其有限证据，没有重跑、改OS时钟或安装到项目。
 
-| 实际可行方案 | 取舍 | 结论 |
-|---|---|---|
-| A 每worker在MySQL预留时间范围，本地发号 | 每次扩窗持久commit，平时本地序列；需不可回退H与单实例内存，允许废弃空洞和接管等待 | **推荐**，利用已有DB，不新增网络服务 |
-| B 每一个ID都在MySQL锁行分配timestamp/sequence并commit后返回 | 同Snowflake布局可行，状态集中证明直接；每ID一次持久事务，吞吐/延迟/DB不可用敏感且挤占1秒预算 | 可行替代，不选默认；即便如此DB回滚丢历史仍不安全 |
-| C 静态worker + 本地持久WAL/磁盘高水位 | 单机可行；容器重建、共享磁盘、磁盘丢失/快照/双启动隔离约束更多 | 不选默认，不把“静态worker+进程lastTimestamp”当充分方案 |
-| Redis锁/租约或随机ID降级 | 仅锁没有不可复用区间，暂停/重启可重用；随机/自增替换已接受Snowflake | 不作为本次方案 |
+## 2. 删除哪些旧自研，仍保留什么
 
-**唯一性前提**：同一ID域只有一个权威MySQL写入谱系，所有已确认的H更新永久保留；无双主/丢提交切主/回滚H；每个已授权区间只交给一个不可克隆的JVM状态机。发生备份回滚、谱系不明、进程/VM内存克隆时停发，按§8恢复，不声称算法能抵抗丢失其唯一持久事实。
-
-“独占”是DB中唯一当前owner可续租/扩窗。不能保证失去租约的旧进程在任意真实时刻绝无返回；本地检查与返回之间仍可能暂停。本文保证在上述前提下不重复，**不保证即时远程撤销、全局ID顺序或已返回号无空洞**。
-
-## 3. 逻辑持久记录与Owner（非DDL）
-
-推荐一张技术表，暂名`雪花worker状态 / snowflake_worker_state`。以配置的workerId作主键，无需先调用Snowflake生成该行主键，避免启动循环。一个ID域最多1024行，不按业务模块/订单表另开同worker命名空间；测试域与生产不得混库/事后合并产生相同业务ID的数据。
-
-| 逻辑字段 | 约束 |
+| 旧设计组成 | 当前处理与理由 |
 |---|---|
-| workerId | 0～1023、主键唯一、部署显式配置；不自动抢另一个worker或从门店/机器IP推导 |
-| formatIdentity | 固定epoch+1/41/10/12签名；不匹配即拒绝，不以新format行绕过旧H |
-| reservedThrough H | 相对epoch毫秒，单调只增、不回收；初始未用可为-1但须完成存量证明；范围-1～2^41-1 |
-| grantStart L / grantThrough U | 当前incarnation已确认授权的连续边界，L≤U≤H；同owner扩窗只增加U，H=最新授权上界；不代表已实际发到U |
-| ownerIncarnation | 每次进程启动/重新取得许可都新标识，只用于诊断/CAS；不能凭相同owner字符串恢复旧序列；标识可UUID，非业务ID降级 |
-| fence | 每次新授权严格+1，旧fence无法续租/扩窗；不得回绕；不编码入Snowflake，不能单独解决本地重用 |
-| leaseUntil / updatedAt | DB UTC时间；租约只控制新授权/续租，不决定已预留范围可被回收 |
-| enabled / initializedEvidenceRef | 缺记录/未审初始化/禁用即拒绝；初始化依据和变更审计可追踪 |
+| 自写位拼接、序列递增、4096等待循环 | **删除**，全部交原版Hutool；不fork/抄源码/反射修改其私有状态 |
+| 本地lastSequence/作为生成状态的lastTimestamp | **删除**；适配器不分配序号或修补候选ID |
+| 同JVM回拨追平后手动恢复旧序列 | **删除**；SDK异常/不明结果失败关闭，恢复走新JVM+新grant |
+| 预调用检查能控制SDK取时/等待的假设 | **删除**；SDK时钟私有，改为返回后的候选发布检查 |
+| 持久H、node owner/fence/grant | 仍必要：SDK没有跨进程/冷重启协调；不说明这一点就照搬旧方案不成立 |
+| lastPublishedId及许可/操作状态 | 仅输出安全守卫，不是另一套算法；防回退/重复/窗外候选交业务 |
+| 超时执行模型 | 新增唯一SDK通道与非阻塞终态仲裁，不声称Future取消会终止SDK |
+| pet-id-core | 仍仅建议单体薄适配模块：容纳SDK依赖及协调，common保持纯接口、boot只装配；不增加独立平台服务 |
+| 通用业务幂等物理表/旧key迁移 | 不纳入本次，不能因选SDK附带批准 |
 
-H、grant边界、owner、fence、lease在同一短InnoDB事务原子改变，worker主键行锁串行。物理列型/索引/权限账号/备份配置/可执行迁移脚本需后续设计评审与实测，本阶段没有DDL。续留类更新须同时检查owner+fence+未过期；只比owner不合格。新grant按§5.1的无owner/已过期路径，不要求旧owner仍有效。行不存在时运行进程不能自建低H。
+零协调的静态node+单例只适合受控单JVM实验，不满足原生产保证。SDK独立子进程可加强资源隔离，但增加IPC/进程治理成本，本次不选默认；给SDK增加Clock/deadline需维护受控分支，不是直接采用原版5.8.47。本方案如实保留无法由SDK消除的代价。
 
-建议后续新建**同一单体内技术实现模块pet-id-core**承载MySQL授权适配、生产生成状态机和配置类型，依赖pet-common的既有SnowflakeIdGenerator接口；不新增独立服务/新Issue。pet-common保持纯接口/S1转换，pet-boot仅装配。新增模块/root POM注册、必要JDBC依赖、迁移文件与boot配置是本次提案的后续影响，现阶段均不改；根Work按文件登记Owner后才实施。通用业务幂等持久化Owner不因此被指派到该模块。
+## 3. 最小MySQL协调（待审，非DDL）
 
-## 4. 推荐参数和时钟分工
+建议一张node状态表（暂名snowflake_worker_state）：nodeId主键、immutable formatIdentity、enabled/初始化依据、ownerIncarnation、单增fence、leaseUntil、grantStart L/grantThrough U、永久reservedThrough H及审计时间。node作主键无需发号自举；同ID域不能各模块独立复用同node。H/fence禁止回退/删除/回绕。
 
-| 名称 | 值 | 状态/说明 |
-|---|---:|---|
-| 单次nextId总预算B | 1000ms | 沿用已接受1秒；包括连接、锁、commit ACK、追时间和序号等待 |
-| 窗口W | 5000ms | 新建议，启动预留5秒物理时间范围 |
-| 扩窗触发R | 剩余≤1000ms | 一次最多补到DB当前时间后约W，不批量预取多个窗 |
-| DB租约T | 10000ms | 新建议，独立于Task的60秒租约 |
-| 续租周期P | 2000ms | 新建议；每个provider最多一个DB授权操作在途 |
-| 本地安全余量G | 1000ms | 新建议，许可截止从请求发出前mono算T-G=9秒 |
-| 时钟采样容差S | 250ms | 新建议，应用UTC包围DB采样的合理容差；超差停发 |
-| 最大超前A | 10000ms | 新建议，任何新U必须满足U-D≤A，防重复启动烧向远未来 |
+冷启动全新incarnation，不恢复旧SDK对象。先锁单一权威MySQL node行，再新语句取DB UTC相对epoch毫秒D；enabled/format/初始化有效且无owner或leaseUntil≤D才可新授权。读取旧H，L=max(H+1,D)，U=L+5000-1，校验41位、fence和U-D≤10000，原子写新owner/fence+1/L/U/H=U/leaseUntil=D+10000。明确commit ACK后才安装本地许可；时间未到L则等待或按单次预算失败，不把L合成为SDK当前时间。
 
-应用UTC墙钟Wnow取Clock.systemUTC（未来以资格校验后的注入实例装配），编码时间t直接来自真实采样相对epoch毫秒，**不能t=max(now,L/lastTimestamp)造未来时间**。业务Zone只用于显示/业务解释，不参与ID位运算。数据库UTC D只决定授权/窗口/lease，不能借它替代PLAT004的DB lease时钟；Task继续由自己的DB NOW(3)决定claim/重试/complete，注入Clock只给Handler context。
+续租/扩窗每次重新核enabled/format/初始化、owner+fence、leaseUntil>D和H/U/L与本地已确认值一致。纯续租不改H；剩余窗≤1000ms时newU=max(U+1,D+5000-1)，在范围与超前上限内原子推进H/U，ACK前不能启用新上界。一个待用grant不反复再分配多个未来窗；本地许可截止从请求前mono算9秒，不从迟到ACK时刻续满10秒。
 
-等待预算、续租本地截止及跳变观测用进程内monotonic elapsed（Java nanoTime差值），不把其绝对值跨JVM持久化。DB往返取应用UTC前后样本、mono起止；若D不在[UTCbefore-S, UTCafter+S]、往返超过B或检测墙钟/elapsed明显不一致，则许可不启用/停发。每次调用检查墙钟回拨及明显跳变，不能只有后台检查。
+H定义为已授权“可向业务发布”的时间上界，不是SDK最近生成时间。SDK可内部计算不合格候选，但未过发布闸门不得交业务；不能把未经确认范围内的内部值当成功。旧incarnation全部可发布范围≤旧H，新grant严格在其后。
 
-文中的m0+(T-G)只表示逻辑到期点，未来Java实现以`elapsed = nanoNow - m0`与T-G比较，不能直接比较可能溢出的绝对nanoTime加法；调用预算同理。使用同一JVM有符号long差值，采样间隔须小于2^63纳秒；负差/超出可解释采样范围失败，不能因计数符号跨界误放行。正常正负边界环绕例子见E11。所有相对毫秒和窗口加法在41位边界内作checked计算。
+DB失败/ACK未知也使本incarnation终态失败：整旧窗停用，H不减少；迟到DB ACK不刷新本地许可/不复活。请求超时不证明服务器事务取消，它仍可晚commit H/lease。新进程须等旧锁/租约并在主库锁下读最终H取得新区间，不能查到同owner就恢复旧序列。真实旧JVM终止是本适配恢复的附加门禁，不由DBlease证明。
 
-这些超时/偏差检查是保守失效机制，不是假定所有机器时钟永远准确；唯一性还依赖永久区间互斥，即使暂停/DB时钟跳变导致lease判断失真也不能重分旧范围。机器暂停无法调度期间不承诺1秒内回包，恢复后超过预算拒绝新分配。
+## 4. 一秒预算与独占SDK执行通道
 
-## 5. 取得许可、续租、扩窗与未知提交
+原版私有tilNextMillis可能无界spin。调用前限流/看一眼时钟不能证明避开：外部检查与内部genTime之间仍可变化；不依赖继承private方法、Thread.interrupt或Future.cancel终止它。
 
-### 5.1 新启动或接管
+每JVM一个provider、一个私有SDK实例、一个专用SDK执行线程；最多一个SDK调用在途，无SDK待发队列，无自动补建通道。不能直接用“单线程Executor”这个名称就认为满足：实现期须验证无积压、无自动替换卡死实例/线程的具体机制。
 
-初态NOT_READY，无可用旧区间。先连接权威主库，**取得worker行锁后，在新语句中取DB UTC D并检查lease**；不能用等锁前的NOW（PLAT004已有对应故障证据）。仅enabled/format/初始化有效且旧lease已过期（leaseUntil≤D，或已受控清空owner）才能取得新授权；与续租要求leaseUntil>D互补。
+每次nextId从入口共用1000ms预算，覆盖竞争通道、必要DB操作、SDK等待、输出验证。未取得串行资格且尚未启动任何SDK/不明DB操作的调用，预算耗尽只返回本次不可用，不越权提交任务；**SDK已启动/授权结果不明后的超时则终止整个provider**。不按每步骤各等1秒，也不为每个重试新建线程。
 
-锁下读取旧H，候选`L=max(H+1,D)`，`U=L+W-1`；检查整数精度、41位范围、U-D≤A、fence不溢出。任何检查不通过不修改H。原子写新incarnation/fence+1/L/U/H=U及leaseUntil=D+T，commit明确成功后才安装本地许可。新fence从不采用前一进程的lastTimestamp/sequence；所有t≤旧H永久弃用，包括未发出的槽位。
+终态/成功发布须由**不依赖SDK monitor或可被暂停线程持有互斥锁的原子状态仲裁**决定。推荐把生命周期、incarnation/许可版、当前操作token/结果、lastPublishedId纳入明确CAS状态转换或经证明等价机制。绝不能持发布锁调用SDK/等Future/访问DB；所谓“短锁”也不自动给超时路径1秒上界。
 
-DB请求前记录m0；明确ACK回来仍须检查此次预算、UTC采样、许可截止`m0+(T-G)`、关停状态，才能使用。ACK太晚即弃本次授权，不使用其范围；H仍保留。如本地UTC<L，处于WARMING而非ACTIVE，只等待真实时间（单次最多B）或返回不可用；未到L不能连续再申请新窗。同一个进程最多一个待用grant，启动重试不每次盲抬H。
+可能阻塞的DB连接/授权和SDK调用放在同一有界隔离执行路径，由独立、不做阻塞I/O的调用/计时控制端观察剩余预算并完成终态仲裁；不能把DB同步阻塞留在超时控制线程上却声称总预算覆盖。后台续租也采用同一单飞路径和独立截止观察，无新待发队列；繁忙时不堆积后台工作，下一发号须先满足有效许可。具体执行器/计时器关闭与不补线程行为须在实现期实测，不仅依赖API名称。
 
-### 5.2 当前owner续租/扩窗
+流程：
 
-本地单飞串行DB授权操作。**每次续租/扩窗/安全复核都重新校验enabled、formatIdentity、初始化证据和锁下H/U/L与本地已确认许可一致**；禁用、格式不符、异常记录或不明状态即ABANDONED，不因已持owner绕过。取得行锁后新语句采样D，CAS校验owner+fence+leaseUntil>D；过期即使owner字符串相同也不能续旧许可。纯续租不变H/L/U，只延长DBlease，本地截止仍从本次请求前mono采样保守计算。禁用变更在下一次许可核验被观测后关闭，不能承诺DB改enabled的瞬间撤销所有已经线性化/尚未观测的本地调用。
+1. 获串行资格，原子检查当前许可/预算/UTC，登记PENDING操作token及已确认grant快照。授权DB操作和SDK在途不并行修改许可；都不得阻塞终态仲裁。
+2. 专用通道运行原版SDK.nextId得到内部候选或异常；只把内部候选送回控制层，SDK Future/实例不交业务。
+3. 调用方/超时控制与候选验证竞争该token的最终结果。通过§5校验后一次仲裁记SUCCEEDED及lastPublishedId；否则FAILED并在需要时将provider置FAIL_CLOSED。结果不可从FAILED再改SUCCEEDED，迟到完成不能触发旁路业务回调。
+4. 超时先获胜：对外失败、停止接收SDK任务/后续续租，所有旧候选/旧ACK丢弃。发布先获胜：该操作只交同一已仲裁结果，不再另外报告它超时。操作结果须保留到调用方可观察，不能新token覆盖旧结果造成双结论。
+5. SDK异常、已启动调用超时、错node/非法/重复/窗外候选、close/失权/不明提交使provider终态失败。停止续租不否认已有DB在途commit；本地不接受其迟到ACK。
 
-当已确认U与真实UTC差≤R时可附带扩窗：`newU=max(U+1,D+W-1)`；保留当前L，新增授予的只可能是`[旧H+1,newU]`且要求旧H=本许可U。检查newU-D≤A和41位边界，原子推进H/U后commit。ACK前不能使用newU；正常扩窗不重置sequence或lastTimestamp。若D/本地钟跳远超当前窗口，先通过时钟安全复核再扩窗，不临时伪造timestamp；无法在B内完成则失败。
+**Future取消仅清理请求，不是底层停止证据。** 超时后最多保留一个不可响应SDK线程，provider保持不可用并报警；禁止同JVM重建SDK/线程/恢复grant。宿主必须确认旧JVM真正退出，才能冷启动新进程+新grant；现在没有实现或假定已部署此退出/恢复能力。不能把lease过期、连接断开、Future.isCancelled或interrupt当死亡证明。
 
-本地发号、许可发布、状态失效/close使用同一线性化状态机；DB操作在途时发号许可关闭（或等待，仍计入B），避免发号和关闭状态交错。不能建两个provider对象各用同一grant且sequence独立；Spring以单实例装配、构造/配置防重复，启动双进程也要各自走新授权流程。
+原1秒是对外nextId操作/发布预算。不可调度暂停期间无法承诺现实1秒回包；恢复核预算和线性化边界沿用原约定。当前不承诺所有底层计算资源也在1秒内停止；若要求该额外语义，原版SDK不能直接满足，须另审隔离进程/受控SDK修改或明确资源时限条款，不能默默降级。该失效/恢复模型本身仍待人工评审与并发实测。
 
-### 5.3 失败和COMMIT ACK未知（推荐保守分支）
+## 5. 返回后候选检查与安全证明
 
-任何DB授权操作超时/连接失效/ACK未知/fence冲突，使当前incarnation进入终止的ABANDONED：**停用全部本地grant，包括此前已确认部分**。不从“查到同owner/同H”猜成功，也不恢复旧grant序号。迟到ACK不能重新启用已终止状态；每次操作有本地递增编号，用于丢弃旧回调，不能用网络回包覆盖新incarnation。
+调用前Clock检查不能决定SDK内部再次取时，所以候选必须返回后全部校验：
 
-恢复必须重新从主库锁行读取最终H，等待旧事务释放锁与lease到期（或受控安全关闭），取得更高fence和全新不重叠grant并收到明确commit ACK；无论未知事务实际提交还是回滚，后续都以**锁下已确认H**为准。未确定主库事实不得启动，副本读或客户端超时都不是回滚证明。这样无需把不确定旧授权恢复出来，代价是更长停发和空洞。
+- token仍属于当前incarnation、未超时/关闭/失权，DB授权明确，mono调用预算和本地许可仍有效。
+- 正Long；SDK公开getWorkerId/getDataCenterId解码匹配显式5+5；getGenerateDateTime解码的相对t在已确认[L,U]。
+- 独立校验调用前后实际OS UTC相对epoch处于合法41位范围，与候选编码时间相容、无已观测回拨/明显跳变；不能只用解码掩码检查，因为SDK移位溢出可能被getter掩码隐藏。注入业务Clock不是SDK真实时钟，不可拿fixed Clock伪造这些采样。
+- id严格大于本incarnation的lastPublishedId（初次无值）；此字段只拒绝候选，不产生序列、不修正位、不改SDK状态。候选失败不能先交业务再异步扩窗/补H，也不能事后授予区间追认。
+- 最后成功仲裁一次更新lastPublishedId及操作结果。返回SDK异常不暴露Hutool类型为业务DTO，后续HTTP映射由原Owner按既有错误处理。
 
-已明确失败也按同样保守策略终止而不继续剩余旧窗，降低状态组合。客户端预算超时不代表DB事务已经取消，它仍可能迟到commit并消耗区间；本地先终止许可并丢弃迟到回包，新授权仍等待该锁释放后查权威H。接管频繁时A上界阻止无限超前；失败不自动切worker、换算法或本地延长H。停机可先在本地线性化close，再条件清空DB owner/缩短lease但**永不减少H**；DB不可达则等lease，不强行复用。关闭前已线性化生成的ID仍可能迟到返回，见§6。
+采样不等式明确为：OSbefore≤candidateAbsoluteMillis≤OSafter；OSbefore、OSafter均位于[epoch, epoch+2^41-1]且OSafter≥OSbefore；墙钟历时与同次mono历时毫秒差的绝对值≤S。DB授权另取OSbeforeDB/OSafterDB，要求Dabsolute∈[OSbeforeDB-S, OSafterDB+S]且授权往返未超剩余预算。S=250ms是DB/时钟跳变容差，不用于放宽SDK候选到调用采样区间之外。原始OS采样与SDK实际同源，不以业务fixed Clock冒充；对完全未被采样观测的瞬时钟故障不作检测完备性承诺，区间/严格发布单调性仍独立保护输出不重用。
 
-## 6. 本地每次发号与暂停/回拨
+仍有不可消除的调度边界：暂停可在最终UTC/deadline检查与成功仲裁/返回之间。超时终态先仲裁则候选必丢；成功先仲裁的在途返回可能迟到，不能声称任意墙钟时刻以后绝无旧返回。不得锁住超时路径来“保证”发布。输出来自此前SDK真实采样，但并不等于业务发生/返回时刻。
 
-每个provider唯一mutex/等价原子状态，保存已确认[L,U]、incarnation/fence、本地许可截止、lastIssuedTimestamp、lastSequence、maxObservedUtc及状态。每次nextId从方法入口计B，进临界区与真正分配前重新核：未close/ABANDONED、无不确定DB操作、mono预算/许可未过、真实UTC未回拨/明显跳变、t处于已确认[L,U]。
+在单写持久H不丢不回退、不可克隆状态前提下：不同node位不同；同node不同incarnation可发布时间范围不交叠；同incarnation唯一SDK加单一发布仲裁确保已发布id严格递增。由此不向业务重复返回ID。库内部未发布候选不构成业务成功，也不占据“已返回ID”的契约含义。
 
-- t>lastIssuedTimestamp：序号从0开始；t=lastIssuedTimestamp：序号递增；t<lastIssuedTimestamp或低于此前maxObservedUtc即CLOCK_UNSAFE，不通过回退lastTimestamp恢复。
-- 同毫秒序号0～4095用尽后，只等真实UTC下一毫秒并重做全部检查，或B耗尽失败；不能sequence绕0，也不能timestamp++跳未来。等待释放本地锁但恢复须重新验状态。
-- t>U必须先成功持久扩窗；t<L等待/失败，不从L造当前时间。U/H/fence将溢出则永久不可继续自动发号并告警。
-- 编码`(t << 22) | (workerId << 12) | sequence`，所有分量先界限检查。epoch瞬间t=0/worker0/seq0结果0，跳过该序号，不能返回0；最大值仍为Long.MAX_VALUE。
-- 在临界区最后许可检查后**更新timestamp/sequence即本地序号分配线性化点**。暂停既可在更新后返回前，也可在最后检查与更新之间发生；本地mutex只排除同状态机并发，不把时钟读取与序号更新变成跨进程不可暂停动作。恢复后的在途调用可能才分配/返回此前采样t和旧grant中的ID，不能称“租约过期后绝无旧分配/返回”。该调用持同一本地锁、只消费旧grant内唯一序号，安全仍由区间互斥保证；若新增检查发现失效可丢ID形成空洞，但任何有限检查也不是远程即时撤销证明。
+冷重启不恢复SDK对象或lastPublished；只有新grant在旧H之后时清空新实例发布状态才安全。H丢失/双主重叠/SDK及适配器热克隆仍能破坏证明；Serializable不是安全恢复许可。SDK选择不能删除这些前提。
 
-CLOCK_UNSAFE期间停发。若incarnation仍有效，只有真实UTC追上maxObservedUtc和lastIssuedTimestamp、通过新的DB许可复核/续租ACK、仍在已授权窗口且预算可满足才恢复；timestamp/sequence不重置，同毫秒继续旧sequence。若期间租约/本地截止过期、DB不明或进程重启，则ABANDONED，按新grant恢复，不能拿回旧窗。
+## 6. 回拨、Clock与参数责任
 
-**暂停恢复的安全重点**：fence拒绝旧进程再续租/扩窗；本地时间/截止复核通常使旧调用失败，但即使旧进程在最后检查后暂停导致迟到返回，旧grant的t≤H_old，新grant的t≥H_old+1，仍不可能相同。不能用“旧实例必然死亡”“Future.cancel已停止”代替这个不变量。
+SDK负责其内存lastTimestamp回拨检查，timeOffset=0不允许容忍钳制；SDK异常或外部发现时钟不安全使适配器失败关闭。删除旧方案“同JVM追平后手动恢复序号”分支。新进程取得新区间且实际UTC追上、OS/DB时钟采样合法后才可发布，单次等待不扩大到5秒窗。
 
-## 7. 不重用证明及反例边界
+保留业务java.time.Clock/Zone原约定，SDK自身用System.currentTimeMillis；不能声称以业务fixed Clock驱动SDK故障测试。Task继续DB NOW决定claim/lease/重试，Clock仅供Handler context。时间位只用于内部候选校验，三端不可推断订单时间/状态/权限。
 
-在§2前提下，持久事务依worker行锁串行形成授权序列。每次新授权L>旧H，每次扩窗只把此前未授权的(旧H,newH]交给同一incarnation；H严格只增，任何旧窗即便未用也不回收。因此不同incarnation同worker的timestamp范围不交叠。
+建议W5000/R1000/DB lease10000/renew2000/local margin1000/skew250/max ahead10000毫秒仍待适配包审批；nextId总预算1000毫秒已接受、保持。mono比较同JVM差值nanoNow-start，采样间隔<2^63ns，异常负差拒绝，不比较易溢出的绝对nano截止。DB先锁后新语句取时；H/U计算checked，41位末端/fence溢出停发。
 
-同一incarnation内单状态机使同t的sequence严格递增、t不回退，失败/耗尽不能绕回；重启绝不复用旧grant。不同worker的10位不同。三者结合Snowflake位拼接的一一映射，推出ID不重复。fence不是位的一部分，mono/UTC偏差阈值也不是区间不交叠的替代证明。
+SDK在epoch瞬间node0可能返回0：丢弃并失败关闭，不自写跳序列。未来若选择重新调用库重试，须另外说明总预算/失效策略，本稿不暗加恢复分支。版本升级必须复核这些private行为，不只改pom版本号。
 
-这是有前提的设计推导，非机器证明或已运行故障测试。高水位恢复到旧值、两个可写DB谱系同时分相同区间、克隆已初始化内存状态，都能构造重复；这些明确反例不能藏成“无限高可用保证”，详见E09。
+## 7. 持久与部署约束/具体差距
 
-## 8. 持久性、迁移、恢复与运维代价
+单一权威MySQL谱系、确认H不丢不回退、显式node、不透明克隆SDK/整个适配器。建议后续核验InnoDB/binlog持久设置与存储兑现flush，并验证切主不丢确认H；本轮不改配置。旧备份恢复/丢提交切主/双主须隔离旧发布者并恢复可信最大授权上界；无法证明则停发，不只查业务表max(id)/当前时间猜上界。
 
-MySQL需单一权威写库、InnoDB提交可靠落盘；建议后续部署校验innodb_flush_log_at_trx_commit=1、启binlog时sync_binlog=1及存储兑现flush。**不在本阶段改这些配置**；本机持久性参数不自动保证任意异步副本零丢失，故障切换必须证明所有已确认H还在。官方来源见证据表。
+初始化不能假设空库，需盘点历史发号/节点/未落业务表的授权。不能删除H/fence从0重建。滚动发布新进程须新owner/fence/grant；本推荐在当前provider故障恢复时另要求宿主确认旧JVM真实退出。若宿主无此确认能力，就不具备推荐恢复流程，保持not-ready并补部署设计，不以SDK/DB租约代替。
 
-新增表属于技术Schema变化，后续须由指定Owner审DDL/迁移、最小更新权限、备份/恢复演练、根POM/模块与boot装配。首次不能假定空库：盘点已有Snowflake生成器、worker映射、历史数据/未落业务表的发号及未用预留；仅查业务表max(id)不是充分上界。未能证明worker从未使用或取得可信旧高水位，禁用该worker，不能初始化H=-1碰碰运气。此次不分配生产worker值。
+未来pet-id-core只隐藏SDK和必要协调/生命周期适配，common不引Hutool类型，boot只装配；具体模块注册/pom/JDBC/表迁移及宿主退出机制需要原Owner后续落实。本轮无依赖/代码/DDL/环境改动。相比旧方案确实删算法，但不能声称协调和资源治理成本全部消失。
 
-H/fence记录禁止DELETE/TRUNCATE/回退、不得重建主库后从0启动。灾难恢复若可能丢H，先隔离所有旧生成器和一切授权写入口；核实原持久记录/授权日志等可信上界与DB谱系，再以不低于所有旧授权上界恢复H并按新incarnation取得更高grant。若无法证明最大旧预留上界，保持停发并升级恢复决策，不能用当前UTC或业务max(id)推断安全。**fence更大也不能修复丢失的H。**
+## 8. PLAT-004与验收边界
 
-禁止复制/热恢复包含已初始化provider内存的VM快照/进程checkpoint，两个副本会复制同grant+sequence；普通DBfence和nanoTime不能检测共用凭据的克隆。合法机器重启须全新JVM状态；若运维必须恢复快照，要在恢复时禁止旧进程执行并销毁原内存状态、验证DB谱系后冷启动新incarnation。本设计不声称支持透明活进程克隆。
+保持S1接口，已合PR12的JdbcAsyncTaskRepository(DataSource,SnowflakeIdGenerator)在claim(owner,leaseDuration)锁前申请attemptId；适配成功才交合法ID，失败不占task锁，未用ID不回收。TaskRegistration的Clock与DB时钟职责保持；完整Worker仍缺真实S2/装配以及原producer/告警等DoD，不能因选库DONE。
 
-容量代价：正常每实例约2秒一次续租、约4秒一次扩窗（可合并）；真实吞吐和DB负担后测，不写QPS保证。废弃的是编码空间中的时间/序列，不是删除业务事实；允许空洞。DB/时钟不安全时返回不可用，需告警worker/fence/窗口剩余/失败原因，不记录敏感业务内容。
+C/M/Admin继续全程ID String、金额/Context与原错误/权限契约；发号超时或结果未知时，不得本地造业务ID、伪造成功、自动换requestId/UUID重投。先依服务端事实和原意图处理，SDK私有时间不决定业务时间/状态/权限；没有新增端上SDK或恢复身份体系。
 
-## 9. Clock 装配与 PLAT-004 精确交接
+后续必须验证精确参数、5+5/epoch、候选越界/回退/0/OS时间溢出拒绝、1秒发布仲裁与迟到候选/ACK、无积压/无通道补建、真实JVM终止后新grant、DB ACK未知与冷重启/恢复拒绝。阻塞调用替身只能测试适配控制层，不能证明Hutool真实冻结/不可中断行为的灾难实测；fixed Clock也不控制SDK私有时间。
 
-只读44dc的`JdbcAsyncTaskRepository(DataSource,SnowflakeIdGenerator)`明确非null provider；`claim(String owner, Duration leaseDuration)`在拿task锁前调用nextId分配attemptId，发号失败不会持有领取事务锁（本次读取c641794）；该流程允许废弃未用attempt ID，不能要求发号回滚复用。`AsyncTaskWorker`显式接收java.time.Clock，任务DB NOW决定lease/重试，Clock只供Handler context。
-
-后续推荐pet-id-core的生产实现实现既有接口；MySQL授权使用自己的基础设施连接/短事务，不能加入调用方业务事务、不能把发号区间分配回滚随业务回滚。仅boot装配受资格检查的Clock.systemUTC、业务Zone配置和单例provider，再注入task-core；缺配置/未初始化表/不可用许可时Worker保持未启用或停止领取，不注册固定ID兜底Bean。common纯codec不因此变HTTP/auth组件。
-
-| 后续Owner | 精确交接内容/门禁 |
-|---|---|
-| PLAT-002 Backend Core | 获批设计版本→pet-id-core具体文件/配置/表迁移提案/生产ID实现与生命周期；根Work登记root POM、boot及Schema文件唯一Writer后再写 |
-| QA | 在原Issue中获独占测试文件后做MySQL两进程/暂停点/ACK未知/重启/恢复/内存复制拒绝等真实测试；当前只有规范例子 |
-| PLAT-004原Owner | 固定c641794需求为输入，不在task-core实现第二套ID。与S2固定实现提交集成后验证attemptId、无锁失败、Clock不改DB租约；producer/告警/reconciliation等其他缺口仍在原Issue |
-| 三端 | ID全程String；时间/状态/actions/权限读显式业务字段；生成不可用不能造ID/伪造成功/自动换requestId |
-
-批准设计不自动授权或完成这些代码。完整Worker生产DoD须S2真实提供器/boot装配/故障证据和PLAT004自身全部AC，不能以本CCR文档或原Worker测试替代。
-
-## 10. 当前验证与审批出口
-
-本阶段仅结构/来源检查、边界算术和独立只读审阅；[时序例子](s2-examples.md)是评审样例，未实现发号器、未建表/改服务/改环境，未运行生产唯一性或MySQL灾难测试。已有CI只说明文档没有破坏已有基线，不证明S2算法已通过实际运行。
-
-提交一个设计决定包：推荐A及§4参数/§3模块和逻辑表/安全门禁。若批准，下一步由根Work安排权威同步及具体实现/迁移审查；若提出替代选择，在本CCR修订，不新拆Issue。本CCR仍非RESOLVED、完整PLAT002非DONE，通用幂等物理表与业务迁移没有被本包审批。
+当前证据仅源码/制品核对、已存在的根实验与有限算术，新增适配尚无实现测试。SDK_SELECTED / ADAPTER_PROPOSED，CCR非RESOLVED/完整Issue非DONE。通用业务幂等物理表、旧业务key迁移、AUTH/渠道业务语义不在本包批准中。

@@ -1,10 +1,10 @@
 # CCR-W2-IDEMP-001：公共约定与持久化幂等提案
 
-## 当前新增阶段：S2 生产发号器具体设计
+## 当前新增阶段：S2 Hutool生产适配设计
 
-**S2新增决定状态：PROPOSED / PENDING_REVIEW。** S1接口/公共条款已通过PR11合入，PLAT004组件PR12也已合入develop；当前继续原PLAT002的生产worker授权/重启高水位/fencing/Clock装配设计，不是重复S1，也不是S2实现。
+**状态：SDK_SELECTED / ADAPTER_PROPOSED。** 人工已选择cn.hutool:hutool-core:5.8.47，不重复询问SDK选型。原d5acc3a自研发号整包未批准，保留Git历史；PR13当前改为Hutool承担算法、薄适配器承担必要协调/候选发布/超时失败关闭的待审方案。S1/PLAT004组件已合入，不是重复S1或开始S2代码。
 
-人工先读[S2一页审批指南](CCR-W2-IDEMP-001/s2-review-guide.md)，只需审一个新增设计包；详细方案见[s2-id-provider-design.md](CCR-W2-IDEMP-001/s2-id-provider-design.md)，故障时序见[s2-examples.md](CCR-W2-IDEMP-001/s2-examples.md)，来源与独立审阅见[s2-review-evidence.md](CCR-W2-IDEMP-001/s2-review-evidence.md)。本次仅planning文档，不写代码/DDL/改环境。原已接受Snowflake布局/epoch/ID String/金额/幂等两项不重问；通用幂等物理表及业务旧key迁移不包含于本次新决定，CCR非RESOLVED，完整Issue非DONE。
+人工先读[S2一页评审指南](CCR-W2-IDEMP-001/s2-review-guide.md)，只审新增适配/失效恢复包，原两项与Hutool选择均不重问；详细方案见[s2-id-provider-design.md](CCR-W2-IDEMP-001/s2-id-provider-design.md)，例子见[s2-examples.md](CCR-W2-IDEMP-001/s2-examples.md)，证据见[s2-review-evidence.md](CCR-W2-IDEMP-001/s2-review-evidence.md)。保留原1秒对外预算与重启唯一性，不以Future超时冒称SDK线程停止；底层截止差距明确披露。本次只5份Markdown，不改权威docs/pom/代码/DDL/环境或AUTH/产品文件。通用业务幂等物理表与旧key迁移另待设计，CCR非RESOLVED，完整Issue非DONE。
 
 ## S1及原审批历史（以下已接受正文保持原样）
 
