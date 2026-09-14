@@ -1,5 +1,11 @@
 # CCR-PERM-001：单运营RBAC技术映射
 
+## 最新实现阶段：本人权限查询候选
+
+PR15已批准合入ab351ee。最小Web后端候选真实读取账号、有效角色/额外授予、范围及同Owner版本；本阶段生产领域动作目录为空，超管也不获未实现订单/退款占位动作，本人session/permissions正常鉴权。没有MFA、第二管理员或账号管理CRUD；默认Auth及迁移关闭。
+
+代码be09654的CI34835331012真实MySQL/独立Redis/HTTP及原S2/Task组合196JUnit、82合同通过；最终head/CI以[Web交接](AUTH-001/web-login-handoff.md)及PR17回执为准。文件审计为可观察持久组件，生产不可篡改部署和宿主/迁移仍有门禁。此为本切片交付，不把全部27行治理或完整AUTH标DONE/CCR全RESOLVED，不merge。
+
 批准回执（2026-09-14）：用户明确回复“可以 按照你描述的进行”，接受PR15/head `d42fdf3c260b612ef7ee4786f442b13bcb58000c`、tree `ac58dedd3ac18f425779da0ced38da165f94bb97` 中已交付的存储A、B1、C；B0未选。仅记录已批准范围，不改表结构、参数、样例或权威API，不执行SQL/实现。内部尚未完整字段/签名仍待具体审阅；PR15合并未授权，继续Draft。
 
 ## 最新阶段：权威映射候选与存储批准回执
