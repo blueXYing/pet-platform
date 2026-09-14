@@ -1,6 +1,8 @@
 # 可复现规范样例与故障时序 v0.1
 
-状态：PROPOSED / PENDING_REVIEW。全部是**评审例子**，不是业务API新增契约或测试实现。真实组件/MySQL/Provider/E2E均 **NOT_EXECUTED**。这里只做静态推演及UTF-8摘要核对；没有发起请求或运行数据库。
+状态：**PROPOSAL_ACCEPTED / PENDING_CONTRACT_SYNC**。2026-09-14人工接受[主文](../CCR-W2-IDEMP-001.md)两项建议，批准版本为`a9856c14fd596304611496cf794c935ec4d1243e`；没有新增或修改下面技术样例。全部是**评审例子**，不是业务API新增契约或测试实现。真实组件/MySQL/Provider/E2E均 **NOT_EXECUTED**。这里只做静态推演及UTF-8摘要核对；没有发起请求或运行数据库。
+
+历史状态：PROPOSED / PENDING_REVIEW。原正文“待批”等是首次交付措辞；两项建议已接受，权威Contract同步、具体DDL/迁移审查和实现门禁仍未完成。批准不把例子变成测试PASS，不使CCR RESOLVED或Issue DONE，不授权PR10合并/后续任务。
 
 ## E01 大 ID 与金额（ORD-011 / W2-IDEM-001/002）
 

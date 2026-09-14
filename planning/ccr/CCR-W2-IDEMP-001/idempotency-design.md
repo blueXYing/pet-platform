@@ -1,6 +1,8 @@
 # 持久化幂等技术提案 v0.1
 
-状态：PROPOSED / PENDING_REVIEW。隶属[CCR-W2-IDEMP-001](../CCR-W2-IDEMP-001.md)，所有“建议”待批；来源缩写见[证据表](review-evidence.md)。本文件无可执行DDL，不改变权威Contract。
+状态：**PROPOSAL_ACCEPTED / PENDING_CONTRACT_SYNC**。隶属[CCR-W2-IDEMP-001](../CCR-W2-IDEMP-001.md)。2026-09-14人工“接受两项建议”，严格对应`a9856c14fd596304611496cf794c935ec4d1243e`版本；批准范围和门禁见主文当前回执。本文件无可执行DDL，不改变权威Contract。
+
+历史状态：PROPOSED / PENDING_REVIEW。以下原0.1版技术正文保持不变，“建议待批/待批解释”等为原审批前措辞；两项建议已接受，等待Contract同步。具体DDL/迁移和原文未定实现设计仍需后续审查；不表示组件已实现、测试通过或CCR RESOLVED/Issue DONE，不授权PR10合并或后续任务。来源缩写见[证据表](review-evidence.md)。
 
 ## 1. 持久化选型
 

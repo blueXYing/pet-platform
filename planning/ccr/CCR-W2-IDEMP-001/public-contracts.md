@@ -1,6 +1,8 @@
 # 公共 ID / Clock / 金额 / Context 与 PLAT-004 交接 v0.1
 
-状态：PROPOSED / PENDING_REVIEW；[所属CCR](../CCR-W2-IDEMP-001.md)。下面接口只在Markdown中表达，不是Java源文件，不是实现或装配。
+状态：**PROPOSAL_ACCEPTED / PENDING_CONTRACT_SYNC**；[所属CCR](../CCR-W2-IDEMP-001.md)。2026-09-14人工“接受两项建议”，已接受`a9856c14fd596304611496cf794c935ec4d1243e`版公共ID/Snowflake、Clock、金额及数据库幂等方案和失败/旧回执澄清，未新增技术决定。下面接口只在Markdown中表达，不是Java源文件，不是实现或装配。
+
+历史状态：PROPOSED / PENDING_REVIEW。以下原0.1版正文不变，“待批”等保留当时措辞，当前两项方案接受状态以主文回执为准。权威Contract尚未同步，具体worker独占/高水位等原未定设计、DDL/迁移仍待审，组件/真实DB验证未完成；CCR不RESOLVED、Issue不DONE，PR10合并与后续任务未授权。
 
 ## 1. 已定约定与现状
 

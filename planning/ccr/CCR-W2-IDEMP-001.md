@@ -1,7 +1,20 @@
 # CCR-W2-IDEMP-001：公共约定与持久化幂等提案
 
-状态：**PROPOSED / PENDING_REVIEW**。规范版本：0.1。日期：2026-09-14。
+状态：**PROPOSAL_ACCEPTED / PENDING_CONTRACT_SYNC**。规范版本：0.1（技术内容不变，本次仅批准回执）。日期：2026-09-14。
 提出方/唯一编辑者：Backend Core。关联既有 Issue：PLAT-002 / EPIC-01 / ST-PLAT-02。只读审阅：Transaction Backend、QA、C-End、Merchant、Admin。批准人：人工 CTO / Contract Owner **blueXYing**。
+
+## 当前批准回执与下一步
+
+2026-09-14，人工明确回复 **“接受两项建议”**。根任务 `01a08e29-e8c2-70d0-94ba-18df3e14d948` 转交批准并记录于根 WORK_STATE“PLAT002方案人工批准回执”。批准对象严格为已交付提交 **`a9856c14fd596304611496cf794c935ec4d1243e`** 的0.1版主文两项决定及其原有边界：
+
+1. **已接受**数据库幂等记录、事务方案及公共 ID/Snowflake、Clock、金额接口提案。
+2. **已接受**失败与旧回执技术澄清：固定第一次成功回执、未成功同参可重试、已绑定键不可改参数、去重事实不自动删除、旧回执仍受当前权限约束。
+
+本次没有增加技术决定，也没有批准原文明确留待后续设计/审查的具体实现选项。**方案接受不等于权威Contract已同步、具体DDL/迁移已审、组件已实现/已测试或Issue DONE。** CCR尚不能RESOLVED，完整PLAT-002实现门禁仍有效；根Work继续负责调度台账。当前剩余人工步骤是**文档PR10合并审批**，该合并尚未获授权；不再询问相同两项方案批准。本回执不启动PLAT-004/AUTH等后续任务，不写代码/DDL或修改权威docs。
+
+## 历史提案快照（a9856c14，保留原审批前措辞）
+
+以下正文与附属文件技术内容沿用原0.1版。原“PROPOSED / PENDING_REVIEW”“未获具体方案批准”“待批”等属于首次交付时状态；两项建议的当前批准状态以上方回执为准。原文列出的Contract同步、具体迁移/Provider/身份/实现设计门禁仍有效，不被本批准自动解除。
 
 基线：develop `e882dc3c2cadd6474ad52ca5f6301e7e80df2743`（fetch后核实）；分支 `codex/plat-002-spec`；任务 `01a09de1-d112-7f20-9beb-f6df6e5fd41d`；专用工作区 `C:/Users/Administrator/.codex/worktrees/9dd6/宠物平台V1.0`。根 WORK_STATE 1.9 和最新执行记录只读。本次人工启动授权覆盖历史“未启动”措辞，仅放行本规范阶段；完整 Issue 仍 **BLOCKED**，本 CCR 未获具体方案批准，非 RESOLVED、非 Issue DONE。
 
