@@ -1,5 +1,13 @@
 # CCR-W2-IDEMP-001：公共约定与持久化幂等提案
 
+## 当前新增阶段：S2 生产发号器具体设计
+
+**S2新增决定状态：PROPOSED / PENDING_REVIEW。** S1接口/公共条款已通过PR11合入，PLAT004组件PR12也已合入develop；当前继续原PLAT002的生产worker授权/重启高水位/fencing/Clock装配设计，不是重复S1，也不是S2实现。
+
+人工先读[S2一页审批指南](CCR-W2-IDEMP-001/s2-review-guide.md)，只需审一个新增设计包；详细方案见[s2-id-provider-design.md](CCR-W2-IDEMP-001/s2-id-provider-design.md)，故障时序见[s2-examples.md](CCR-W2-IDEMP-001/s2-examples.md)，来源与独立审阅见[s2-review-evidence.md](CCR-W2-IDEMP-001/s2-review-evidence.md)。本次仅planning文档，不写代码/DDL/改环境。原已接受Snowflake布局/epoch/ID String/金额/幂等两项不重问；通用幂等物理表及业务旧key迁移不包含于本次新决定，CCR非RESOLVED，完整Issue非DONE。
+
+## S1及原审批历史（以下已接受正文保持原样）
+
 状态：**CONTRACT_SYNCED_IN_PR / S1_REVIEW_READY / S2_PENDING_DESIGN**。规范版本：0.1，日期：2026-09-14；本阶段同步已接受内容并交付S1，不关闭完整CCR/Issue。
 提出方/唯一编辑者：Backend Core。关联既有 Issue：PLAT-002 / EPIC-01 / ST-PLAT-02。只读审阅：Transaction Backend、QA、C-End、Merchant、Admin。批准人：人工 CTO / Contract Owner **blueXYing**。
 
