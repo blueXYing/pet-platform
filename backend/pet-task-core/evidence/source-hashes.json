@@ -1,0 +1,54 @@
+[
+  {
+    "path": "backend/pet-task-core/src/main/java/com/petplatform/task/core/AsyncTaskWorker.java",
+    "sha256": "13b6ce50eef0b36fec88c335b9f3e4d43a1b16b0e31cace9d59ead6ef1cdee7c"
+  },
+  {
+    "path": "backend/pet-task-core/src/main/java/com/petplatform/task/core/JdbcAsyncTaskRepository.java",
+    "sha256": "ca0f348eaad2a62a8a9c5d367dbb9cf1109c5a0e90f58e7438b757dcfe757afa"
+  },
+  {
+    "path": "backend/pet-task-core/src/main/java/com/petplatform/task/core/TaskExecutionContext.java",
+    "sha256": "9eaa3a8cda80ec1ae5cfc0bde91fbaf788f208498fc493f953b8d96096aa4b52"
+  },
+  {
+    "path": "backend/pet-task-core/src/main/java/com/petplatform/task/core/TaskExecutionResult.java",
+    "sha256": "3d9d118663006d7af933bdcc3f16816578408ad08f030cc1af41439ba2935cd4"
+  },
+  {
+    "path": "backend/pet-task-core/src/main/java/com/petplatform/task/core/TaskHandler.java",
+    "sha256": "e70be15d99b77d513ceceee935ab358edd1714d5c576c8bfea722b040426c265"
+  },
+  {
+    "path": "backend/pet-task-core/src/main/java/com/petplatform/task/core/TaskLease.java",
+    "sha256": "0d8ea1a591694f8813cff9fe6cf0e5770b7416fefb4b76e9b8b367ae163632e8"
+  },
+  {
+    "path": "backend/pet-task-core/src/main/java/com/petplatform/task/core/TaskRegistration.java",
+    "sha256": "0b9e17f05eafe6d62f4c4da8a840856800ae6a61a48ec2c25f4be17ced1e5085"
+  },
+  {
+    "path": "backend/pet-task-core/src/main/java/com/petplatform/task/core/TaskRetryDelays.java",
+    "sha256": "3dd0055b0547a0b4e7aa4793d615eafffef4f31dc85cec0a8335f6a250d4115f"
+  },
+  {
+    "path": "backend/pet-task-core/src/main/java/com/petplatform/task/core/TaskWorkerSettings.java",
+    "sha256": "9566c791bea66bca6731fac17ec716b578b160595036b54926fa313c0f79fabe"
+  },
+  {
+    "path": "backend/pet-task-core/src/test/java/com/petplatform/task/core/AsyncTaskWorkerMySqlTest.java",
+    "sha256": "e65b5f8b66b05157ab3120d3ac4a550810a4ecd86ae1f55df75e3aa799f52537"
+  },
+  {
+    "path": "backend/pet-task-core/src/test/java/com/petplatform/task/core/MySqlTaskRepositoryTest.java",
+    "sha256": "13ca5b2c7a9878ca4969f12b37d9e87a75e7cc4429e281da7e80561a6d163f02"
+  },
+  {
+    "path": "backend/pet-task-core/src/test/java/com/petplatform/task/core/MySqlTestDatabase.java",
+    "sha256": "6a4758ec20cb3b451aae42a24f3fa7427e7fb41d7cfaa88d29ced5b39b42c783"
+  },
+  {
+    "path": "backend/pet-task-core/src/test/java/com/petplatform/task/core/WorkerProcessProbe.java",
+    "sha256": "3a5a1f69e1388db7956d1d640be4d9970a2909bd9d7afe325a4413047735a1bc"
+  }
+]

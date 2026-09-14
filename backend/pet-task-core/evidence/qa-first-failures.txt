@@ -1,0 +1,23 @@
+PLAT-004 initial real-MySQL QA failures, 2026-09-14
+Environment: Java 21.0.11, MySQL 8.4.9, isolated localhost:33440.
+Command: mvn -B -f backend/pom.xml -pl pet-task-core -am test -Dtest=MySqlTaskRepositoryTest -Dsurefire.failIfNoSpecifiedTests=false
+
+Run 1 (14:39:39 +08:00), selected console excerpts transcribed from tool output:
+Tests run: 10, Failures: 1, Errors: 0, Skipped: 0
+multipleWorkersClaimEveryTaskOnceAndTaskKeyIsUnique
+org.opentest4j.AssertionFailedError: expected: <12> but was: <1>
+Interpretation: the initial test incorrectly assumed a single concurrent claim round
+would drain all due tasks. SKIP LOCKED can return empty during another transaction's
+scan. The test was corrected to model bounded worker polling, retaining unique claims.
+
+Run 2 (14:40:13 +08:00), selected console excerpts transcribed from tool output:
+Tests run: 10, Failures: 0, Errors: 1, Skipped: 0
+multipleWorkersClaimEveryTaskOnceAndTaskKeyIsUnique
+org.springframework.dao.CannotAcquireLockException: PreparedStatementCallback;
+SQL [INSERT INTO async_task_attempt
+(id,task_id,attempt_no,instance_id,started_at,created_at)
+VALUES (?,?,?,?,NOW(3),NOW(3))
+]; Deadlock found when trying to get lock; try restarting transaction
+This exposed a production transaction isolation defect rather than a test skip.
+Source Owner changed the short infrastructure transactions to READ_COMMITTED.
+Full raw Surefire report for run 2 is preserved in qa-deadlock-original.txt.
