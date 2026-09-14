@@ -1,8 +1,10 @@
 # AUTH-001 审阅和交付证据
 
+批准回执（2026-09-14）：用户明确回复“可以 按照你描述的进行”，接受PR15/head `d42fdf3c260b612ef7ee4786f442b13bcb58000c`、tree `ac58dedd3ac18f425779da0ced38da165f94bb97` 中已交付的存储A、B1、C；B0未选。仅记录已批准范围，不改表结构、参数、样例或权威API，不执行SQL/实现。内部尚未完整字段/签名仍待具体审阅；PR15合并未授权，继续Draft。
+
 ## 最新阶段：契约同步候选与存储提案
 
-基线develop `643f05cd3a9357772bb3029ff97b750afeebb1ca`（PR14已合并），分支`codex/auth-001-contract-sync`。下方旧“PR14未批准合并”等保留历史，不覆盖最新事实。D1/D2和取消MFA已接受；本阶段权威同步候选未合并/未实现，存储新方案待审。
+基线develop `643f05cd3a9357772bb3029ff97b750afeebb1ca`（PR14已合并），分支`codex/auth-001-contract-sync`。下方旧“PR14未批准合并”等保留历史，不覆盖最新事实。D1/D2和取消MFA已接受；本阶段权威同步候选未合并/未实现；存储A/B1/C已按最新回执接受，B0未选。
 
 ### Owner与变更
 
@@ -11,7 +13,7 @@ BackendCore只写07/10/11/12及两个CCR、本目录contract-sync-handoff/storag
 ### 复审与修正
 
 - C/M确认36操作/phone-binding/refresh、安全边界和存量例外；发现准入Schema跨字段遗漏，已改OWNER/STAFF×ALLOWED/LIMITED/DENIED六分支，UNKNOWN不能ALLOWED，拒绝/受限有原因，LIMITED有已确认动作；不是断言真实签约成功。
-- Admin存储复审提出匿名创建稳定去重域、不可覆盖cacheRef/commit未知、时间锚点、bootstrap锁序、备份撤权恢复、UTF-8查找键容量和captcha/proof独立时刻；全部修订并只读复核闭合。存储参数及窗口/故障边界仍PROPOSED，不被此复审自动批准。
+- Admin存储复审提出匿名创建稳定去重域、不可覆盖cacheRef/commit未知、时间锚点、bootstrap锁序、备份撤权恢复、UTF-8查找键容量和captcha/proof独立时刻；全部修订并只读复核闭合。当时复审只确认问题修正，未自动批准方案；存储参数及B1窗口/C故障边界现由用户另行明确接受。
 - QA保留原28回归、原16操作/13写/4创建；新增36操作精确method/path/security清单，两个匿名bootstrap与refresh-body专用例外分开。新24写接口、10批准JSON、严格错误data:null及准入联合正反例完整覆盖，不粗删原安全门禁。
 
 ### 实际本地验证（2026-09-14）
@@ -29,7 +31,7 @@ BackendCore只写07/10/11/12及两个CCR、本目录contract-sync-handoff/storag
 
 隔离MySQL8.4.9：本任务新目录`D:/Temp/auth001-mysql-ff85/data`、回环端口33441，无现有业务库URL或凭据。旧MySQL84服务和PLAT004旧目录只读；新helper只建并删除自己成功创建的随机plat004_test_*库。测试完成检查仅剩系统库，本任务实例已关闭，原MySQL84服务保持运行。递归删除临时datadir的命令被自动审批策略拒绝（仅返回blocked by policy），未绕过删除；已关闭的数据目录及验证日志保留在本任务临时目录，不提交仓库。缺数据库不skip。
 
-最终commit/tree、Draft PR及新head实际CI由交付回执记录，不拿旧PR14或旧测试head代替。此阶段CCR保留未完成子域，AUTH-001非DONE，不merge、不自动进入Web代码。用户只需审[新存储三建议](storage-design.md)及[未定内部字段映射](contract-sync-handoff.md)，无需重复D1/D2/MFA决定。
+最终commit/tree、Draft PR及新head实际CI由交付回执记录，不拿旧PR14或旧测试head代替。此阶段CCR保留未完成子域，AUTH-001非DONE，不merge、不自动进入Web代码。用户已接受[存储A/B1/C](storage-design.md)；[未定内部字段映射](contract-sync-handoff.md)仍须具体定稿，PR15合并仍未授权；不重复D1/D2/MFA或A/B1/C决定。
 
 状态：**PROPOSAL_ACCEPTED / PENDING_CONTRACT_SYNC · AUTH-001-draft-v2**。此文记录规范阶段检查，不作为真实认证或业务验收。
 
@@ -93,3 +95,11 @@ BackendCore只写07/10/11/12及两个CCR、本目录contract-sync-handoff/storag
 批准对象原CI34821292524六job成功只对应2963e391；本回执新head须独立核验，结果回报PR正文与根，不沿用旧CI。PR14继续Draft，合并未授权；OD002、冻结未明确写动作、真实SMS/手机号Provider及Schema/实现仍是门禁。两个CCR为PROPOSAL_ACCEPTED/PENDING_CONTRACT_SYNC，非RESOLVED，完整AUTH-001非DONE。
 
 回执静态检查实际结果：`PASS_APPROVAL_RECEIPT_ONLY`，9份Markdown状态同步，10段JSON/code block逐段与批准head相同，31个本地链接有效；会话/准入/RBAC/样例四份技术正文除批准状态用语外相同，PROPOSED_ONLY等技术枚举未变；4根产品blob不变，仅9MD修改，git diff --check通过。QA只读核对确认批准对象准确、无超范围修改及门禁扩大。此为行政记录验证，非真实鉴权测试；提交后CI另核。
+
+## 存储A/B1/C人工接受回执
+
+用户原话“可以 按照你描述的进行”，批准对象为PR15/d42fdf3已交付参数和边界，A、B1、C接受，B0未选。通俗含义见交接入口；B1是找回登录结果的短时窗口，不是会话60秒到期。当前仅行政状态/回执，表列、密码参数、算法、缓存/锁序/恢复技术说明及JSON样例不改变；权威API、QA测试、根产品/S2文件均不动。Internal未完整字段/签名仍具体待审，不因认可存储通俗描述被泛化批准。PR15保持Draft，合并未授权，存储未实现。
+
+原CI34825728629只证明d42fdf3；回执新head需独立核验并在PR正文记录，不用旧run冒充。回执固定后结束源编辑，不影响Hutool技术Writer。
+
+本次实际检查：PASS_STORAGE_APPROVAL_RECEIPT_ONLY，仅6份planning/CCR变动；存储表列/索引章节及全部代码块与d42fdf3相同，4份权威API与4份QA测试逐字不变，局部链接和git diff --check通过。QA限定只读复核确认无参数/技术方案变化、无泛化Internal批准。未重复运行未改变的实现测试，新回执head由CI独立验证。

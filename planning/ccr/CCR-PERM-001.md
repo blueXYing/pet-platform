@@ -1,12 +1,14 @@
 # CCR-PERM-001：单运营RBAC技术映射
 
-## 最新阶段：权威映射候选与存储提案
+批准回执（2026-09-14）：用户明确回复“可以 按照你描述的进行”，接受PR15/head `d42fdf3c260b612ef7ee4786f442b13bcb58000c`、tree `ac58dedd3ac18f425779da0ced38da165f94bb97` 中已交付的存储A、B1、C；B0未选。仅记录已批准范围，不改表结构、参数、样例或权威API，不执行SQL/实现。内部尚未完整字段/签名仍待具体审阅；PR15合并未授权，继续Draft。
+
+## 最新阶段：权威映射候选与存储批准回执
 
 PR14已按人工批准合入develop `643f05cd3a9357772bb3029ff97b750afeebb1ca`；下方旧合并门禁是历史记录。D1/D2、单运营及取消MFA不重复审批。
 
 当前为 **ACCEPTED_MAPPING / SYNC_CANDIDATE_NOT_IMPLEMENTED**：外部RBAC/账号/角色/scope/extra授予/错误Schema候选同步至10/11/12，07只同步可信主体和D2原子快照/最终检查语义；尚未合并或上线。完整内部新字段/签名只在[映射附录](AUTH-001/contract-sync-handoff.md)待审。
 
-[存储设计](AUTH-001/storage-design.md)的表列索引、密码算法/回执介质与故障/恢复机制是新增提案，不是已批准DDL。实际Web切片须后续精确授权、存储和S2生产ID等依赖就绪。未知领域动作/OD001资金范围不因此CONTRACT_READY，仍不RESOLVED或Issue DONE；[一页交接](AUTH-001/contract-sync-handoff.md)只请审新增存储/字段决定。
+[存储设计](AUTH-001/storage-design.md)中已交付A/B1/C表列索引、密码算法/回执介质与故障/恢复方案已接受，B0未选；不是已执行DDL或已实现存储。实际Web切片须后续精确授权、存储和S2生产ID等依赖就绪。未知领域动作/OD001资金范围不因此CONTRACT_READY，仍不RESOLVED或Issue DONE；[一页交接](AUTH-001/contract-sync-handoff.md)记录A/B1/C已批准，内部未完整字段仍需具体审阅，不泛化批准。
 
 状态：**PROPOSAL_ACCEPTED / PENDING_CONTRACT_SYNC**。产品规则已批准，见SSOT §24与22-运营权限人工裁决补充-v1.0.md。AUTH-001-draft-v2的D1/D2技术方案已接受、待权威Contract同步，无需再次裁决是否单运营。
 

@@ -1,12 +1,14 @@
 # AUTH-001 来源、缺口和影响
 
+批准回执（2026-09-14）：用户明确回复“可以 按照你描述的进行”，接受PR15/head `d42fdf3c260b612ef7ee4786f442b13bcb58000c`、tree `ac58dedd3ac18f425779da0ced38da165f94bb97` 中已交付的存储A、B1、C；B0未选。仅记录已批准范围，不改表结构、参数、样例或权威API，不执行SQL/实现。内部尚未完整字段/签名仍待具体审阅；PR15合并未授权，继续Draft。
+
 ## 最新权威同步阶段
 
 当前输入为PR14合并develop `643f05cd3a9357772bb3029ff97b750afeebb1ca`，工作分支codex/auth-001-contract-sync。下面旧“合并未授权”等为先前回执，当前阶段以本节及[同步交接](contract-sync-handoff.md)为准。
 
-07/10/11/12正在交付已批准D1/D2和取消MFA的同步候选，未合并/未上线；Schema/Provider/冻结未明写动作门禁不变。07只同步已批准语义，完整内部PrincipalRef/ResourceScope/versions及方法签名仍在planning待审。[存储提案](storage-design.md)单列新增表列、索引、密码/密钥、回执介质/保守时间窗口及审计恢复，不将其混为原D1/D2批准。
+07/10/11/12正在交付已批准D1/D2和取消MFA的同步候选，未合并/未上线；Schema/Provider/冻结未明写动作门禁不变。07只同步已批准语义，完整内部PrincipalRef/ResourceScope/versions及方法签名仍在planning待审。[存储方案](storage-design.md)的已交付A/B1/C表列/索引、密码/密钥、回执介质/保守窗口及审计恢复现已明确接受，B0未选；依据为本次独立批准，不混为原D1/D2批准。
 
-验证外部依据：OAS3.0.3官方规范用于nullable/oneOf/security标准校验；OWASP密码/加密存储指南仅用于存储推荐，具体参数由本提案另审。原16交易operation对象及已批准sessions/admission/rbac/examples四源文件保持不变。AUTH新36操作按显式清单测试，不以总数52替代覆盖。
+验证外部依据：OAS3.0.3官方规范用于nullable/oneOf/security标准校验；OWASP密码/加密存储指南仅用于存储推荐，相关存储参数按本次A/B1/C接受；不由外部指南自动授权。原16交易operation对象及已批准sessions/admission/rbac/examples四源文件保持不变。AUTH新36操作按显式清单测试，不以总数52替代覆盖。
 
 **PROPOSAL_ACCEPTED / PENDING_CONTRACT_SYNC · AUTH-001-draft-v2**。原阅读基线develop `bcb269c2adc9405e669747d9b3bedfae2bf5ccbd`，本修订继承根产品裁决commit`9cdc8eeac94fbe673fef420cc7767caddf1ba219`（本分支cherry-pick为`7e1c36e`）。根最新持续授权及正式Writer交接优先旧“Wave2未启动”记录。未更改根dirty台账；根4份产品文件原样继承，AUTH只编辑原9份规范。
 
