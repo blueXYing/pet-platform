@@ -1,0 +1,88 @@
+{
+  "issues": 63,
+  "stories": 42,
+  "catalogEpics": 21,
+  "issueMappedEpics": 20,
+  "unmappedEpic": [
+    "EPIC-19"
+  ],
+  "wave1Done": 7,
+  "wave1Metadata": "PASS",
+  "dependencyReferences": "PASS",
+  "laterStoryEpicMismatches": [
+    {
+      "issue": "C-002",
+      "issueEpic": "EPIC-02",
+      "story": "ST-FE-C-01",
+      "storyEpic": "EPIC-20"
+    },
+    {
+      "issue": "C-003",
+      "issueEpic": "EPIC-04",
+      "story": "ST-FE-C-01",
+      "storyEpic": "EPIC-20"
+    },
+    {
+      "issue": "C-004",
+      "issueEpic": "EPIC-06",
+      "story": "ST-FE-C-01",
+      "storyEpic": "EPIC-20"
+    },
+    {
+      "issue": "C-005",
+      "issueEpic": "EPIC-11",
+      "story": "ST-FE-C-01",
+      "storyEpic": "EPIC-20"
+    },
+    {
+      "issue": "C-006",
+      "issueEpic": "EPIC-16",
+      "story": "ST-FE-C-01",
+      "storyEpic": "EPIC-20"
+    },
+    {
+      "issue": "M-002",
+      "issueEpic": "EPIC-03",
+      "story": "ST-FE-M-01",
+      "storyEpic": "EPIC-20"
+    },
+    {
+      "issue": "M-003",
+      "issueEpic": "EPIC-08",
+      "story": "ST-FE-M-01",
+      "storyEpic": "EPIC-20"
+    },
+    {
+      "issue": "M-004",
+      "issueEpic": "EPIC-11",
+      "story": "ST-FE-M-01",
+      "storyEpic": "EPIC-20"
+    },
+    {
+      "issue": "A-002",
+      "issueEpic": "EPIC-18",
+      "story": "ST-FE-A-01",
+      "storyEpic": "EPIC-20"
+    },
+    {
+      "issue": "A-003",
+      "issueEpic": "EPIC-18",
+      "story": "ST-FE-A-01",
+      "storyEpic": "EPIC-20"
+    },
+    {
+      "issue": "A-004",
+      "issueEpic": "EPIC-18",
+      "story": "ST-FE-A-01",
+      "storyEpic": "EPIC-20"
+    },
+    {
+      "issue": "A-005",
+      "issueEpic": "EPIC-18",
+      "story": "ST-FE-A-01",
+      "storyEpic": "EPIC-20"
+    }
+  ],
+  "productContractsDiff": "EMPTY",
+  "scope": "Wave1 passes; later mapping findings must be resolved before affected dispatch"
+}
