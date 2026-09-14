@@ -1,0 +1,7 @@
+
+> pet-platform-miniapp@0.1.0 test:merchant-platform
+> node src/merchant/tests/platform-smoke.cjs
+
+consumer-to-ordinary-merchant-subpackage
+fixture-allow-and-real-react-sample
+capture-allowed

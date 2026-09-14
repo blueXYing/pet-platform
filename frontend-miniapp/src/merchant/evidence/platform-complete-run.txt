@@ -1,0 +1,135 @@
+
+> pet-platform-miniapp@0.1.0 test:merchant-platform
+> node src/merchant/tests/platform-smoke.cjs
+
+consumer-to-ordinary-merchant-subpackage
+tap: 增加计数
+tap: 打开隔离验证页
+tap: 重新注入样本上下文
+tap: 读取内部样本
+tap: 清除上下文和缓存
+tap: 重新注入样本上下文
+tap: 进入商家工作区（内部 fixture）
+fixture-allow-and-real-react-sample
+tap: 注入允许样本
+tap: 读取延迟样本
+deny-error-retry
+tap: 注入拒绝样本
+tap: 注入查询失败
+tap: 重新校验
+late-result-after-store-switch
+tap: 注入允许样本
+tap: 读取延迟样本
+tap: 切换样本门店
+late-result-after-return-to-consumer
+tap: 读取延迟样本
+tap: 返回用户工作区
+{
+  "status": "FAIL",
+  "source": "WeChat DevTools simulator",
+  "eventMethod": "App.evaluate invokes real Taro native tap callback; no setData or mocked wx API",
+  "physicalClickVerified": false,
+  "captureScreenshots": false,
+  "screenshots": [],
+  "checks": [
+    "Shared C-001 regression: native counter/navigation, sample display, clear and fixture reinjection",
+    "MINI-001/002 ordinary merchant subpackage loads through actual consumer navigateTo; default deny",
+    "MINI-002 allow renders only after injection; deny/error clear data; retry failure remains closed"
+  ],
+  "exceptions": [],
+  "compiledApp": {
+    "sha256": "3c13f215e64a8f0edc8125f689359a86678b95de0e896fff326828cc8a68c0ec",
+    "config": {
+      "pages": [
+        "consumer/pages/shell/index",
+        "consumer/pages/diagnostics/index"
+      ],
+      "window": {
+        "navigationBarTitleText": "工程验证",
+        "backgroundColor": "#f5f5f5"
+      },
+      "subPackages": [
+        {
+          "root": "merchant",
+          "pages": [
+            "pages/workspace/index"
+          ]
+        }
+      ]
+    }
+  },
+  "compiledMerchantSha256": "37fb057f2b3178fdf9999541c2f37e0ef6509532463d7b391cb55e5af139a3e9",
+  "environment": {
+    "SDKVersion": "3.17.2",
+    "version": "8.0.5",
+    "platform": "devtools",
+    "model": "iPhone 12/13 (Pro)",
+    "system": "iOS 10.0.1",
+    "screenWidth": 390,
+    "screenHeight": 844,
+    "windowWidth": 390,
+    "windowHeight": 753,
+    "pixelRatio": 3,
+    "safeArea": {
+      "top": 47,
+      "left": 0,
+      "right": 390,
+      "bottom": 810,
+      "width": 390,
+      "height": 763
+    }
+  },
+  "stage": "tap: 返回用户工作区",
+  "layouts": {
+    "allowed": [
+      [
+        {
+          "id": "_Cv",
+          "dataset": {
+            "sid": "_Cv"
+          },
+          "left": 0,
+          "right": 390,
+          "top": 0,
+          "bottom": 461,
+          "width": 390,
+          "height": 461
+        }
+      ],
+      {
+        "id": "",
+        "dataset": {},
+        "scrollLeft": 0,
+        "scrollTop": 0,
+        "scrollWidth": 390,
+        "scrollHeight": 753
+      }
+    ],
+    "error": [
+      [
+        {
+          "id": "_Cv",
+          "dataset": {
+            "sid": "_Cv"
+          },
+          "left": 0,
+          "right": 390,
+          "top": 0,
+          "bottom": 287,
+          "width": 390,
+          "height": 287
+        }
+      ],
+      {
+        "id": "",
+        "dataset": {},
+        "scrollLeft": 0,
+        "scrollTop": 0,
+        "scrollWidth": 390,
+        "scrollHeight": 753
+      }
+    ]
+  },
+  "safeViewportBottom": 719,
+  "error": "Error: Render timeout: C-001 工程示例"
+}

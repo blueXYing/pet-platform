@@ -1,0 +1,9 @@
+{
+  "status": "FAIL",
+  "source": "WeChat DevTools simulator",
+  "eventMethod": "App.evaluate invokes real Taro native tap callback; no setData or mocked wx API",
+  "physicalClickVerified": false,
+  "checks": [],
+  "exceptions": [],
+  "error": "Error: ENOENT: no such file or directory, open 'C:\\Users\\Administrator\\.codex\\worktrees\\b082\\宠物平台V1.0\\dist\\app.json'"
+}

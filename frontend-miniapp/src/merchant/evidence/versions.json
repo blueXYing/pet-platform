@@ -1,0 +1,13 @@
+{
+  "checkedAt": "2026-09-14T09:38:42.6984372+08:00",
+  "node": "v22.23.1",
+  "npm": "10.9.8",
+  "devToolsVersion": "2.01.2510280",
+  "toolPath": "D:/soft/微信web开发者工具/cli.bat",
+  "httpPort": 38259,
+  "automationPort": 19421,
+  "appid": "touristappid",
+  "sharedBase": "2487d7302383d004ac6e6b3c5ef8260abf32df17",
+  "cEndCommit": "b1b67133dc42c7155c8fc0f28ec7258ba0c911c1",
+  "implementationCommit": "a401c56ecdafd41cefb0aa1bc397d5651ccce5e3"
+}

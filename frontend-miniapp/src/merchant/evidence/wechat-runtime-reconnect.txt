@@ -1,0 +1,7 @@
+- initialize
+
+√ IDE server has started, listening on http://127.0.0.1:38259
+- preparing
+- Fetching AppID () permissions
+√ Using AppID: touristappid
+√ auto

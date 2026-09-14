@@ -6,7 +6,14 @@ const root = path.join(__dirname, 'dist')
 const app = JSON.parse(fs.readFileSync(path.join(root, 'app.json'), 'utf8'))
 assert.deepEqual(app.pages, ['consumer/pages/shell/index', 'consumer/pages/diagnostics/index'])
 const packages = app.subPackages || app.subpackages || []
+assert.deepEqual(packages.map(p => ({ root: p.root, pages: p.pages })), [
+  { root: 'merchant', pages: ['pages/workspace/index'] },
+], 'M-001 merchant route must be registered in the single app')
 assert.ok(packages.every(p => !p.independent), 'Only ordinary subpackages allowed')
+for (const extension of ['js', 'json', 'wxml']) {
+  assert.ok(fs.existsSync(path.join(root, 'merchant/pages/workspace/index.' + extension)),
+    'Merchant page build artifact missing: ' + extension)
+}
 function walk(dir) { return fs.readdirSync(dir, { withFileTypes: true }).flatMap(e => e.isDirectory()
   ? walk(path.join(dir, e.name)) : [path.join(dir, e.name)]) }
 const files = walk(root).map(file => ({ file: path.relative(root, file).replaceAll('\\', '/'), bytes: fs.statSync(file).size }))

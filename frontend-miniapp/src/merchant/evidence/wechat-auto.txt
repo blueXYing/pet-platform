@@ -1,0 +1,3 @@
+- initialize
+
+× IDE server has started on http://127.0.0.1:38259 and must be restarted on port 9420 first

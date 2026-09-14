@@ -3,7 +3,9 @@ const automator = require('miniprogram-automator')
 const assert = require('node:assert/strict')
 const fs = require('node:fs')
 const path = require('node:path')
-const evidence = path.join(__dirname, 'src/shared/evidence')
+// M-001 integration runs use src/merchant/evidence without overwriting C-001 history.
+const evidence = path.resolve(__dirname, process.env.WECHAT_EVIDENCE_DIR || 'src/shared/evidence')
+fs.mkdirSync(evidence, { recursive: true })
 const label = process.env.WECHAT_EVIDENCE_LABEL || ''
 if (!/^[a-zA-Z0-9_-]*$/.test(label)) throw new Error('Invalid evidence label')
 const baselineWidth = process.env.WECHAT_BASELINE_WIDTH || (label === 'second-window' ? '390' : '')

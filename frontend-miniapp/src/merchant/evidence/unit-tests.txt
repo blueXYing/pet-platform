@@ -1,0 +1,218 @@
+
+> pet-platform-miniapp@0.1.0 test
+> tsx --test src/shared/tests/*.test.ts src/merchant/tests/*.test.ts
+
+TAP version 13
+# Subtest: MINI-002 allow preserves user; return clears merchant context and cache
+ok 1 - MINI-002 allow preserves user; return clears merchant context and cache
+  ---
+  duration_ms: 1.6287
+  type: 'test'
+  ...
+# Subtest: MINI-002 deny after allow removes admission and data; retry rechecks
+ok 2 - MINI-002 deny after allow removes admission and data; retry rechecks
+  ---
+  duration_ms: 0.2352
+  type: 'test'
+  ...
+# Subtest: MINI-002 error after allow removes admission and data; retry rechecks
+ok 3 - MINI-002 error after allow removes admission and data; retry rechecks
+  ---
+  duration_ms: 0.2517
+  type: 'test'
+  ...
+# Subtest: MINI-002 every entry checks afresh and hides admitted content during query
+ok 4 - MINI-002 every entry checks afresh and hides admitted content during query
+  ---
+  duration_ms: 0.1973
+  type: 'test'
+  ...
+# Subtest: MINI-003 pending admission cannot revive after return
+ok 5 - MINI-003 pending admission cannot revive after return
+  ---
+  duration_ms: 0.2604
+  type: 'test'
+  ...
+# Subtest: MINI-003 pending admission cannot revive after logout
+ok 6 - MINI-003 pending admission cannot revive after logout
+  ---
+  duration_ms: 0.0879
+  type: 'test'
+  ...
+# Subtest: MINI-003 pending admission cannot revive after revocation
+ok 7 - MINI-003 pending admission cannot revive after revocation
+  ---
+  duration_ms: 0.0677
+  type: 'test'
+  ...
+# Subtest: MINI-003 pending admission cannot revive after user-switch
+ok 8 - MINI-003 pending admission cannot revive after user-switch
+  ---
+  duration_ms: 0.0736
+  type: 'test'
+  ...
+# Subtest: MINI-003 pending admission cannot revive after dispose
+ok 9 - MINI-003 pending admission cannot revive after dispose
+  ---
+  duration_ms: 0.2141
+  type: 'test'
+  ...
+# Subtest: MINI-003 older successful or failing admission cannot replace newest verdict
+ok 10 - MINI-003 older successful or failing admission cannot replace newest verdict
+  ---
+  duration_ms: 0.476
+  type: 'test'
+  ...
+# Subtest: MINI-003 delayed merchant result/cache cannot survive return
+ok 11 - MINI-003 delayed merchant result/cache cannot survive return
+  ---
+  duration_ms: 0.3562
+  type: 'test'
+  ...
+# Subtest: MINI-003 delayed merchant result/cache cannot survive store-switch
+ok 12 - MINI-003 delayed merchant result/cache cannot survive store-switch
+  ---
+  duration_ms: 0.2761
+  type: 'test'
+  ...
+# Subtest: MINI-003 delayed merchant result/cache cannot survive deny
+ok 13 - MINI-003 delayed merchant result/cache cannot survive deny
+  ---
+  duration_ms: 0.3132
+  type: 'test'
+  ...
+# Subtest: MINI-003 delayed merchant result/cache cannot survive error
+ok 14 - MINI-003 delayed merchant result/cache cannot survive error
+  ---
+  duration_ms: 0.295
+  type: 'test'
+  ...
+# Subtest: MINI-003 delayed merchant result/cache cannot survive logout
+ok 15 - MINI-003 delayed merchant result/cache cannot survive logout
+  ---
+  duration_ms: 0.1584
+  type: 'test'
+  ...
+# Subtest: MINI-003 delayed merchant result/cache cannot survive revocation
+ok 16 - MINI-003 delayed merchant result/cache cannot survive revocation
+  ---
+  duration_ms: 0.1459
+  type: 'test'
+  ...
+# Subtest: MINI-003 delayed merchant result/cache cannot survive dispose
+ok 17 - MINI-003 delayed merchant result/cache cannot survive dispose
+  ---
+  duration_ms: 0.1757
+  type: 'test'
+  ...
+# Subtest: MINI-002 missing shared session does not query or invent login
+ok 18 - MINI-002 missing shared session does not query or invent login
+  ---
+  duration_ms: 0.1184
+  type: 'test'
+  ...
+# Subtest: MINI-003 old page hide/dispose does not revoke a newer page admission or query
+ok 19 - MINI-003 old page hide/dispose does not revoke a newer page admission or query
+  ---
+  duration_ms: 1.0686
+  type: 'test'
+  ...
+# Subtest: MINI-004 real admission is blocked by CCR; internal data preserves string values and actions
+ok 20 - MINI-004 real admission is blocked by CCR; internal data preserves string values and actions
+  ---
+  duration_ms: 0.5722
+  type: 'test'
+  ...
+# Subtest: MINI-003 workspace: old success and cache cannot cross context
+ok 21 - MINI-003 workspace: old success and cache cannot cross context
+  ---
+  duration_ms: 1.1183
+  type: 'test'
+  ...
+# Subtest: MINI-003 user: old success and cache cannot cross context
+ok 22 - MINI-003 user: old success and cache cannot cross context
+  ---
+  duration_ms: 0.1578
+  type: 'test'
+  ...
+# Subtest: MINI-003 merchant: old success and cache cannot cross context
+ok 23 - MINI-003 merchant: old success and cache cannot cross context
+  ---
+  duration_ms: 0.1174
+  type: 'test'
+  ...
+# Subtest: MINI-003 store: old success and cache cannot cross context
+ok 24 - MINI-003 store: old success and cache cannot cross context
+  ---
+  duration_ms: 0.1014
+  type: 'test'
+  ...
+# Subtest: MINI-003 logout: old success and cache cannot cross context
+ok 25 - MINI-003 logout: old success and cache cannot cross context
+  ---
+  duration_ms: 0.1206
+  type: 'test'
+  ...
+# Subtest: MINI-003 revocation: old success and cache cannot cross context
+ok 26 - MINI-003 revocation: old success and cache cannot cross context
+  ---
+  duration_ms: 0.0678
+  type: 'test'
+  ...
+# Subtest: MINI-003 sameContextReentry: old success and cache cannot cross context
+ok 27 - MINI-003 sameContextReentry: old success and cache cannot cross context
+  ---
+  duration_ms: 0.114
+  type: 'test'
+  ...
+# Subtest: MINI-003 delayed rejection is stale; current context success remains available
+ok 28 - MINI-003 delayed rejection is stale; current context success remains available
+  ---
+  duration_ms: 0.1939
+  type: 'test'
+  ...
+# Subtest: MINI-003 logout then same user login cannot revive pending response
+ok 29 - MINI-003 logout then same user login cannot revive pending response
+  ---
+  duration_ms: 0.2907
+  type: 'test'
+  ...
+# Subtest: MINI-004 injected transport preserves string ID, amount, remote state/actions and write requestId
+ok 30 - MINI-004 injected transport preserves string ID, amount, remote state/actions and write requestId
+  ---
+  duration_ms: 1.2445
+  type: 'test'
+  ...
+# Subtest: MINI-004 all write verbs require requestId, cross-workspace and encoded traversal fail before transport
+ok 31 - MINI-004 all write verbs require requestId, cross-workspace and encoded traversal fail before transport
+  ---
+  duration_ms: 0.3636
+  type: 'test'
+  ...
+# Subtest: MINI-004 malformed IDs/amounts/actions rejected, unknown server displayStatus is not recomputed
+ok 32 - MINI-004 malformed IDs/amounts/actions rejected, unknown server displayStatus is not recomputed
+  ---
+  duration_ms: 0.2329
+  type: 'test'
+  ...
+# Subtest: MINI-004 real mode blocked by unapproved CCR; errors use code rather than message
+ok 33 - MINI-004 real mode blocked by unapproved CCR; errors use code rather than message
+  ---
+  duration_ms: 0.3361
+  type: 'test'
+  ...
+# Subtest: MINI-004 platform request port mock captures URL, headers, data, timeout; network failure propagates
+ok 34 - MINI-004 platform request port mock captures URL, headers, data, timeout; network failure propagates
+  ---
+  duration_ms: 0.5425
+  type: 'test'
+  ...
+1..34
+# tests 34
+# suites 0
+# pass 34
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 315.255
