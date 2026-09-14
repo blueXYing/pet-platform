@@ -1,6 +1,6 @@
 # AUTH-001 单运营RBAC提案
 
-**PROPOSED / PENDING_REVIEW · AUTH-001-draft-v1**。产品规则已由SSOT§24及22号补充批准；本文件只提出稳定标识、动作映射、数据范围和执行协议。新权限码/接口/持久化均待Contract Owner审批。
+**PROPOSED / PENDING_REVIEW · AUTH-001-draft-v2**。产品规则已由SSOT§24及22号补充批准；本文件只提出稳定标识、动作映射、数据范围和执行协议。新权限码/接口/持久化均待Contract Owner审批。V1取消MFA已按SSOT§25及[24号补充](../../../docs/01-prd/24-取消MFA人工裁决补充-v1.0.md)批准，覆盖旧第二因素门禁；D1其余/D2仍待审。
 
 ## 1. 角色和目录
 
@@ -15,7 +15,7 @@
 
 角色code不可变，展示名可变；权限只取服务端已登记actionCode及真实授予。roleId为String主键，roleCode不能被普通角色编辑成超管；超级管理员身份由受控授予关系决定，不由名称或请求中的superuser=true决定。角色不可删除，仅停用。六角色是模板，不要求六人；不设计第二审批者、内部审批队列或本人复核隔离。
 
-目录条目提案：`{actionCode,label,resourceType,riskLevel,requiresPurpose,requiresConfirmation,requiresSensitivePolicy,requiresMfa,delegable,availability}`。actionCode小写ASCII字母/数字/点/连字符，1–100字符；label1–100字符、resourceType1–64稳定ASCII标识；riskLevel=READ/NORMAL/HIGH；requires*及delegable为Boolean；availability=PROPOSED_ONLY/CONTRACT_READY。requiresMfa在HIGH/敏感动作固定true，其他由Owner明确；delegable默认false，只有Contract Owner在已批准业务动作清单显式标true才可普通转授，管理/超管类固定false。本包所有新增码均PROPOSED_ONLY，只有对应业务Contract获批并同步后可注册到生产可授予目录。后台不接受客户端上传新权限码；未知码拒绝400，未知实际业务动作默认403。不能把未决资金码注册后靠按钮隐藏。
+目录条目提案：`{actionCode,label,resourceType,riskLevel,requiresPurpose,requiresConfirmation,requiresSensitivePolicy,delegable,availability}`。actionCode小写ASCII字母/数字/点/连字符，1–100字符；label1–100字符、resourceType1–64稳定ASCII标识；riskLevel=READ/NORMAL/HIGH；requires*及delegable为Boolean；availability=PROPOSED_ONLY/CONTRACT_READY。delegable默认false，只有Contract Owner在已批准业务动作清单显式标true才可普通转授，管理/超管类固定false。本包所有新增码均PROPOSED_ONLY，只有对应业务Contract获批并同步后可注册到生产可授予目录。后台不接受客户端上传新权限码；未知码拒绝400，未知实际业务动作默认403。不能把未决资金码注册后靠按钮隐藏。
 
 ## 2. 原27行矩阵逐行映射
 
@@ -65,13 +65,13 @@ Scope提案：`{mode,cityCodes,merchantIds}`。授予请求mode=ALL/CITY/MERCHAN
 
 列表/计数/看板/导出先做权限过滤再分页/total，不能查全平台后前端过滤。请求筛选条件与scope取交集，不扩大授权。单资源在范围外统一404 COMMON_NOT_FOUND避免枚举；没有该动作权403。全平台资源（系统参数、全局字典、账号角色管理）需要ALL范围；CITY/MERCHANT不能通过资源空merchantId绕过。这是本版推荐保守分配方案，可由Contract Owner审阅，不按角色名称自动放行。
 
-以下全是**新增路径提案**，统一ADMIN_WEB Bearer、写X-Request-Id，管理接口高权限/MFA已完成、用途/原因/同人确认按动作元数据。
+以下全是**新增路径提案**，统一ADMIN_WEB Bearer、写X-Request-Id，管理接口核当前动作/范围/账号状态，用途/原因/同人确认按动作元数据；不追加认证因素。
 
 | 路径 | 请求 | 成功data / 权限 |
 |---|---|---|
 | GET /api/v1/admin/auth/permissions | 无body | PermissionSnapshot；所有有效Web账号只查自己 |
 | GET /api/v1/admin/permission-actions | page/pageSize、resourceType? | Page<ActionDefinition>；grant.read；只返回CONTRACT_READY目录，提案环境可显式查看PROPOSED_ONLY但禁止写入生产 |
-| GET /api/v1/admin/operator-accounts | page/pageSize、status?、roleId? | Page<OperatorAccount>；operator-account.read、ALL；不返回密码/因素秘密 |
+| GET /api/v1/admin/operator-accounts | page/pageSize、status?、roleId? | Page<OperatorAccount>；operator-account.read、ALL；不返回密码或认证秘密 |
 | POST /api/v1/admin/operator-accounts | CreateAccount | 201 OperatorAccount；operator-account.create |
 | PUT /api/v1/admin/operator-accounts/{operatorId} | `{displayName,expectedVersion,reason}` | 200 OperatorAccount；operator-account.update |
 | PUT /api/v1/admin/operator-accounts/{operatorId}/authorization | `{roleIds,extraActionCodes,dataScope,expectedVersion,reason,confirmed}` | 200 OperatorAccount；grant.configure；角色/额外动作/scope整体原子替换并递增authzVersion |
@@ -87,13 +87,13 @@ Scope提案：`{mode,cityCodes,merchantIds}`。授予请求mode=ALL/CITY/MERCHAN
 
 字段定义：
 
-- CreateAccount=`{account,displayName,initialPassword,roleIds,extraActionCodes,dataScope,reason,confirmed}`。account登记一种别名，1–128字符，手机号/邮箱/工号校验；displayName1–64；initialPassword8–64且至少大小写/数字/特殊字符中三类（PRD）；roleIds非空唯一String数组最多6；extraActionCodes必填唯一排序数组可空/最多500，码约束同目录；reason1–500字符、不可全空白；confirmed必须true仅同人确认，不证明动作获权。因素绑定资料通过受控运维流程，未完成所需MFA投递配置不能启用高权限登录。
+- CreateAccount=`{account,displayName,initialPassword,roleIds,extraActionCodes,dataScope,reason,confirmed}`。account登记一种别名，1–128字符，手机号/邮箱/工号校验；displayName1–64；initialPassword8–64且至少大小写/数字/特殊字符中三类（PRD）；roleIds非空唯一String数组最多6；extraActionCodes必填唯一排序数组可空/最多500，码约束同目录；reason1–500字符、不可全空白；confirmed必须true仅同人确认，不证明动作获权。账号启用及密码初始化按当前权限和状态策略执行，不配置额外认证因素。
 - OperatorAccount=`{operatorId,accountMasked,displayName,roleIds,extraActionCodes,dataScope,status,lastLoginAt,version}`；status=ENABLED/DISABLED，lastLoginAt可null，version=非负十进制String；登录别名在普通列表脱敏，受控详情展示仍需用途和审计。roleCode仅Role中返回。
 - Role=`{roleId,roleCode,displayName,status,actionCodes,version}`；status=ENABLED/DISABLED；actionCodes唯一排序。固定模板初始化映射由本节/§2给出建议，不允许客户端导入通配码。
 - PermissionSnapshot=`{operatorId,authzVersion,checkedAt,roles:[{roleId,roleCode,displayName}],dataScope,actionCodes}`；只返回当前有效授予；没有业务资源资格，不能代替订单actions。
 - expectedVersion非负十进制String；状态变更CAS不匹配409 COMMON_CONFLICT，当前key同参重放仍先核当前权限；不能用版本“最新”替代requestId。
 
-本版账号管理是ALL资源，只有ALL范围管理者能调用；普通获权管理者仍只能授自己当前拥有且delegable=true的非管理动作及自身scope子集。创建/授权/启用/角色启用/密码重置等所有管理路径均核目标最终有效动作/范围，普通管理者不能接管、重置或启停超管/含非转授管理权的账号，也不能修改自身或反向提升自身权限。普通grant.configure可设置目标extraActionCodes；角色增删只有其整个有效动作集合均满足可转授子集才允许，不能借FINANCE角色名绕过MFA要求。角色模板修改、管理类动作授予及超管授予仅有效超管可操作，普通账号不得编辑全局角色actionCodes。所有路径同用防提权策略，不能借新建/启用绕过授权接口。超管可单人管理自身权限，但不得停用/移除最后一个可恢复的启用超管；这是防锁死技术建议，不要求第二账号。初始化/因素丢失恢复在部署手册后续设计，不把缺第二人作为失败。
+本版账号管理是ALL资源，只有ALL范围管理者能调用；普通获权管理者仍只能授自己当前拥有且delegable=true的非管理动作及自身scope子集。创建/授权/启用/角色启用/密码重置等所有管理路径均核目标最终有效动作/范围，普通管理者不能接管、重置或启停超管/含非转授管理权的账号，也不能修改自身或反向提升自身权限。普通grant.configure可设置目标extraActionCodes；角色增删只有其整个有效动作集合均满足可转授子集才允许，不能借FINANCE角色名绕过动作与数据范围检查。角色模板修改、管理类动作授予及超管授予仅有效超管可操作，普通账号不得编辑全局角色actionCodes。所有路径同用防提权策略，不能借新建/启用绕过授权接口。超管可单人管理自身权限，但不得停用/移除最后一个可恢复的启用超管；这是防锁死技术建议，不要求第二账号。账号初始化/密码恢复在部署手册后续设计，不增加额外因素恢复或第二人要求。
 
 ## 4. 敏感信息、导出与审计
 
@@ -132,4 +132,4 @@ Scope提案：`{mode,cityCodes,merchantIds}`。授予请求mode=ALL/CITY/MERCHAN
 
 ## 6. 实现前影响
 
-pet-admin承担运营账号/角色/授予/scope/授权版本、Web会话/认证attempt/MFA凭据及运营审计逻辑Owner，使Web账号generation与签发可在本Owner原子处理；pet-user仅承担小程序用户/会话/认证attempt/凭据。两Owner使用公共纯接口而不共享持久化Repository。商家成员来源通过merchant-api交接，不读merchant表。Schema06缺这些持久化定义，需后续DDL/索引/CAS/恢复迁移审查，尤其authzVersion按授权事实原子更新、禁用旧session不可复活。同步权威07/10/11/12及必要Schema前本包不成为生产许可；此阶段不实现Auth Filter、不改boot、不引入认证依赖。
+pet-admin承担运营账号/角色/授予/scope/授权版本、Web会话/认证attempt/账号密码凭据及运营审计逻辑Owner，使Web账号generation与签发可在本Owner原子处理；pet-user仅承担小程序用户/会话/认证attempt/凭据。两Owner使用公共纯接口而不共享持久化Repository。商家成员来源通过merchant-api交接，不读merchant表。Schema06缺这些持久化定义，需后续DDL/索引/CAS/恢复迁移审查，尤其authzVersion按授权事实原子更新、禁用旧session不可复活。同步权威07/10/11/12及必要Schema前本包不成为生产许可；此阶段不实现Auth Filter、不改boot、不引入认证依赖。

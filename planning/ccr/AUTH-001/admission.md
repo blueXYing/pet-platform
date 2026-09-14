@@ -1,6 +1,6 @@
 # AUTH-001 商家工作台准入提案
 
-**PROPOSED / PENDING_REVIEW · AUTH-001-draft-v1**。以下HTTP/字段/枚举均为提案，不从现有fixture推定已批准。产品来源：商家PRD§5.2/5.6/5.7/5.9/6.6、SSOT§15；签约事实仍受OD-W0-002约束。
+**PROPOSED / PENDING_REVIEW · AUTH-001-draft-v2**。以下HTTP/字段/枚举均为提案，不从现有fixture推定已批准。产品来源：商家PRD§5.2/5.6/5.7/5.9/6.6、SSOT§15；签约事实仍受OD-W0-002约束。
 
 ## 1. 选择与授权分开
 
@@ -62,7 +62,7 @@ CurrentSession.merchantEntry提案：`{kind,applicationId?}`；kind=APPLY/APPLIC
 
 缓存键至少包含audience/sessionId/userId/workspace/merchantId/storeId/本地epoch，业务查询再加资源/过滤；角色/范围/authzVersion变化失效该范围。scope标签由客户端用于隔离，不作服务端许可。请求发出时捕获epoch，成功和错误回包均比较，旧401/403不能清掉新的不同会话。页面卸载的旧清理回调也不得撤销新页面准入。
 
-深链仅存白名单路由和String ID。未认证先登录，已认证仍调用准入和资源检查；不根据深链中staffId/workspace设权。重新授权后恢复原页仅在当前关系和资源仍有权时进行，不能恢复旧业务草稿中的秘密、MFA码或自动执行原写动作。
+深链仅存白名单路由和String ID。未认证先登录，已认证仍调用准入和资源检查；不根据深链中staffId/workspace设权。重新授权后恢复原页仅在当前关系和资源仍有权时进行，不能恢复旧业务草稿中的密码、主登录/重置验证码等秘密，或自动执行原写动作。
 
 ## 5. 内部边界与门禁
 

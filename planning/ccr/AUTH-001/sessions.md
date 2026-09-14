@@ -1,6 +1,8 @@
 # AUTH-001 会话提案
 
-**PROPOSED / PENDING_REVIEW · AUTH-001-draft-v1**。所有新增路径、字段、枚举、超时与存储选择均为技术提案。既有产品约束及待输入见[来源](sources-and-gaps.md)，商家资格见[准入](admission.md)。本文不生成SDK。
+**PROPOSED / PENDING_REVIEW · AUTH-001-draft-v2**。所有新增路径、字段、枚举、超时与存储选择均为技术提案。既有产品约束及待输入见[来源](sources-and-gaps.md)，商家资格见[准入](admission.md)。本文不生成SDK。
+
+已批准产品变更：V1取消额外MFA，依SSOT§25及[24号补充](../../../docs/01-prd/24-取消MFA人工裁决补充-v1.0.md)覆盖旧Word和draft-v1的第二因素要求。所有运营角色完成普通账号密码登录后即可建立会话；高权限动作仍核RBAC/范围/状态/用途/审计，不追加因素证明或升级认证。D1其它参数、D2尚未获批。
 
 ## 1. 已定规则与提案边界
 
@@ -22,11 +24,11 @@ SSOT允许微信快捷登录、手机验证码、手机密码；首次验证码/
 | refreshToken / refreshExpiresAt | 仅小程序有；随机独立秘密，建议30天绝对有效期、不因刷新延长；Web无此字段 |
 | sessionId / userId | String；会话记录及完成验证的用户账号ID；Web改为operatorId且不返回userId |
 | audience | MINIAPP或ADMIN_WEB，来自服务端配置，不接受请求指定以升级 |
-| CurrentSession | sessionId、userId或operatorId、audience、expiresAt；小程序另有phoneMasked(String)、merchantEntry(见准入)；Web另有idleExpiresAt、mfaVerified(Boolean) |
-| AuthAttempt | 创建响应含attemptId(String)、attemptToken(秘密)、expiresAt、nextStep；后续进度响应不再含attemptToken。建议尝试绝对有效10分钟，MFA challenge最多5分钟且不超过attempt期限；nextStep=PROVE_IDENTITY/VERIFY_PHONE/MFA/COMPLETED。不是业务Bearer，不返回商家授权 |
+| CurrentSession | sessionId、userId或operatorId、audience、expiresAt；小程序另有phoneMasked(String)、merchantEntry(见准入)；Web另有idleExpiresAt |
+| AuthAttempt | 创建响应含attemptId(String)、attemptToken(秘密)、expiresAt、nextStep；后续进度响应不再含attemptToken。建议尝试绝对有效10分钟；nextStep=PROVE_IDENTITY/VERIFY_PHONE/COMPLETED。Web只用PROVE_IDENTITY/COMPLETED；小程序VERIFY_PHONE仅原微信主登录手机号验证流程。不是业务Bearer，不返回商家授权 |
 | phone | 依原PRD11位ASCII手机号，提案模式`^1[0-9]{10}$`；真实证明来自微信/SMS，不信任输入号码；不接受任意国际号码作为隐式扩展 |
 
-所有敏感响应`Cache-Control: no-store`，禁止缓存access/refresh/attempt秘密到通用业务查询缓存、URL、遥测。Web access只存内存；同源Secure/HttpOnly/SameSite=Strict绑定cookie配合Origin校验保护MFA/刷新会话交互，cookie本身不是业务Bearer。跨域部署须另行评审CORS/CSRF，不假设配置已存在。小程序使用平台受控本地存储，退出清理；两端退出不是注销账号。
+所有敏感响应`Cache-Control: no-store`，禁止缓存access/refresh/attempt秘密到通用业务查询缓存、URL、遥测。Web access只存内存；同源Secure/HttpOnly/SameSite=Strict绑定cookie配合Origin校验保护普通登录交互，cookie本身不是业务Bearer，也不是用户额外认证因素。跨域部署须另行评审CORS/CSRF，不假设配置已存在。小程序使用平台受控本地存储，退出清理；两端退出不是注销账号。
 
 ## 3. 路径、请求与状态
 
@@ -49,9 +51,9 @@ SSOT允许微信快捷登录、手机验证码、手机密码；首次验证码/
 
 短信默认要求Provider确认接受发送后200，否则503并查原发送意图；不把受理当短信已送达或认证成功。投递成功也不等验证码验证成功。challengeId为String；建议SMS验证码6位/5分钟，重发间隔60秒，最多5次错误后该challenge失效；实际Provider上限若更严须按能力评审，不静默放宽。purpose必须和attempt创建目的相符，不能用LOGIN验证码重置密码。
 
-AttemptResult必填attemptId、nextStep、expiresAt；可选commandResult仅当请求requestId属于该attempt已绑定命令且结果允许当前读取时返回，结构`{requestId,kind,data}`，kind=SESSION_GRANT/PASSWORD_RESET/SMS_ACCEPTED/MFA_CHALLENGE，data对应上表/下表成功data。没有指定requestId只返回流程进度，不能枚举所有敏感历史结果。未完成且无确定结果返回503；VERIFY_PHONE进度可200；SESSION_GRANT秘密恢复窗口关闭401，不再次签发；PASSWORD_RESET最小updated事实在attempt有效期内仍可读取。接收phoneCode是新的明确验证步骤，用新requestId，不修改原wechat-login同key已绑定的参数。Bearer换绑不属于attempt结果，按原phone-binding接口/原key/原参数及当前有效Bearer重放最小phoneMasked回执。
+AttemptResult必填attemptId、nextStep、expiresAt；可选commandResult仅当请求requestId属于该attempt已绑定命令且结果允许当前读取时返回，结构`{requestId,kind,data}`，kind=SESSION_GRANT/PASSWORD_RESET/SMS_ACCEPTED，data对应上表/下表成功data。没有指定requestId只返回流程进度，不能枚举所有敏感历史结果。未完成且无确定结果返回503；VERIFY_PHONE进度可200；SESSION_GRANT秘密恢复窗口关闭401，不再次签发；PASSWORD_RESET最小updated事实在attempt有效期内仍可读取。接收phoneCode是新的明确验证步骤，用新requestId，不修改原wechat-login同key已绑定的参数。Bearer换绑不属于attempt结果，按原phone-binding接口/原key/原参数及当前有效Bearer重放最小phoneMasked回执。
 
-用途绑定矩阵：WECHAT_LOGIN仅wechat-login/初绑；SMS_LOGIN仅sms-codes(purpose=LOGIN)/sms-login；PASSWORD_LOGIN仅password-login；PASSWORD_RESET仅sms-codes(purpose=RESET_PASSWORD)/password-reset。Web attempt由其独立路径固定ADMIN_LOGIN，仅login/captcha/MFA。SMS challenge同时绑定attemptId、经过服务端规范化的同一phone、purpose及有效期，不能跨attempt/phone/purpose复用；不匹配统一验证失败。发送POST未定或Provider拒绝均503，但客户端从上述sms-intents读取明确机器状态，不解析中文决定重发。
+用途绑定矩阵：WECHAT_LOGIN仅wechat-login/初绑；SMS_LOGIN仅sms-codes(purpose=LOGIN)/sms-login；PASSWORD_LOGIN仅password-login；PASSWORD_RESET仅sms-codes(purpose=RESET_PASSWORD)/password-reset。Web attempt由其独立路径固定ADMIN_LOGIN，仅login/captcha。SMS challenge同时绑定attemptId、经过服务端规范化的同一phone、purpose及有效期，不能跨attempt/phone/purpose复用；不匹配统一验证失败。发送POST未定或Provider拒绝均503，但客户端从上述sms-intents读取明确机器状态，不解析中文决定重发。短信仅上述原主登录/重置用途，不提供Web登录后的追加校验或高权限升级用途。
 
 SmsIntentStatus=`{requestId,status,nextAction,challengeId?,expiresAt?,resendAfterAt?}`。status=PENDING/UNKNOWN时nextAction=QUERY_SAME_REQUEST，后三字段禁止返回；ACCEPTED时nextAction=ENTER_CODE且后三字段必填String ID/时间（原有效期，不续期）；REJECTED时nextAction=START_NEW_ATTEMPT，后三字段禁止。REJECTED只表示Provider明确拒绝且无成功投递事实，不表示账号不存在；UNKNOWN不能变为REJECTED。200 UNKNOWN表示数据库已知意图未知，查询数据库失败则503/data=null。禁止客户端用新attempt绕过未决原发送意图：服务端按受保护phone/purpose及有效窗口关联未决发送并限流，未知须查证或人工处理，不自动二次发送。验证码已过期的ACCEPTED可读原expiresAt但不能继续验证，新的发送须明确新意图并受间隔约束。
 
@@ -63,17 +65,15 @@ phone-binding初次绑定与换绑必须分目的和已验证主体；Bearer换�
 
 本版“同设备绑定”不采用客户端deviceId：小程序以该refresh秘密所绑定的服务端session/family为认证边界；Web使用服务端随机绑定cookie，不承诺硬件设备身份。refresh恢复直接重试refresh接口，携原refreshToken和原X-Request-Id，不走AuthAttempt查询。60秒从首次轮换提交起算，读取不续期。
 
-轮换与logout在同一family/session记录原子CAS排序，并核账号generation及ACTIVE；密码重置/账号禁用递增账号generation并与该Owner的签发/轮换检查串行化。撤销先提交，后轮换不能生成可用token；轮换先提交，退出撤销该family新旧所有凭据。禁用/重置后旧generation签发必须失败。Web完整认证最终提交也核当前账号/MFA要求/generation，防止密码验证后授权变化绕过MFA；新会话签发及踢旧generation原子提交。事务/唯一键/跨记录锁顺序须后续Schema审查，不跨biz实施。
+轮换与logout在同一family/session记录原子CAS排序，并核账号generation及ACTIVE；密码重置/账号禁用递增账号generation并与该Owner的签发/轮换检查串行化。撤销先提交，后轮换不能生成可用token；轮换先提交，退出撤销该family新旧所有凭据。禁用/重置后旧generation签发必须失败。Web账号密码验证后的签发最终提交仍核当前账号状态/generation，防止在途签发复活已禁用账号；新会话签发及踢旧generation原子提交。事务/唯一键/跨记录锁顺序须后续Schema审查，不跨biz实施。
 
 Web复用Bearer标准，但独立以下新增提案接口：
 
 | HTTP路径 | body / 约束 | 响应 |
 |---|---|---|
 | POST /api/v1/admin/auth/attempts | `{}`；匿名限流，X-Request-Id | 201 AuthAttempt及受限绑定cookie |
-| POST /api/v1/admin/auth/login | `{attemptId,account,password,captchaProof?}`；X-Auth-Attempt+绑定cookie/Origin；account=1–128字符的手机/邮箱/工号；password8–64，不归一密码；服务端按登记的账号别名规则查找 | 非高权限验证完成200 Web SessionGrant；高权限200 `{attemptId,nextStep:"MFA",challengeId,expiresAt,deliveryHint}`，绝无业务Bearer；deliveryHint仅实际通道存在时返回脱敏值 |
-| POST /api/v1/admin/auth/mfa/verify | `{attemptId,challengeId,code}`；6位ASCII，X-Auth-Attempt+绑定cookie | 200 Web SessionGrant，服务端确认后创建新generation并撤销同账号旧Web会话 |
-| POST /api/v1/admin/auth/mfa/resend | `{attemptId,challengeId}`；X-Auth-Attempt+绑定cookie/Origin，已验证密码的attempt未过期且满足60秒间隔 | 200新的MFA challenge结构同login分支，增加resendAfterAt；同key不再次发送，替换成功后旧challenge失效；投递未知不自动重发 |
-| GET /api/v1/admin/auth/attempts/{attemptId}/requirements | X-Auth-Attempt+绑定cookie/Origin | 200 `{requiredVerification}`，枚举NONE/CAPTCHA/MFA；状态按同形失败策略计算，未知账号也有同类限流 |
+| POST /api/v1/admin/auth/login | `{attemptId,account,password,captchaProof?}`；X-Auth-Attempt+绑定cookie/Origin；account=1–128字符的手机/邮箱/工号；password8–64，不归一密码；服务端按登记的账号别名规则查找 | 所有角色普通账号密码验证完成后200 Web SessionGrant；无角色分流的额外认证步骤 |
+| GET /api/v1/admin/auth/attempts/{attemptId}/requirements | X-Auth-Attempt+绑定cookie/Origin | 200 `{requiredVerification}`，枚举NONE/CAPTCHA；仅登录反机器人条件，按同形失败策略计算，未知账号也有同类限流 |
 | POST /api/v1/admin/auth/captcha/challenges | `{attemptId}`；X-Auth-Attempt+绑定cookie/Origin | 200 `{captchaId,imageDataUrl,expiresAt}`；captchaId String，imageDataUrl受限PNG data URL≤256KiB，120秒；实际生成器未装配503 |
 | POST /api/v1/admin/auth/captcha/verify | `{attemptId,captchaId,answer}`；answer1–32字符，X-Auth-Attempt+绑定cookie/Origin | 200 `{captchaProof,expiresAt}`；proof为opaque120秒一次性、绑定attempt，供login条件必填字段，不是业务权限 |
 | GET /api/v1/admin/auth/session | ADMIN_WEB Bearer | 200 CurrentSession及当前authzVersion(String版本标签，不是授权凭证) |
@@ -83,9 +83,9 @@ Web复用Bearer标准，但独立以下新增提案接口：
 
 已有30分钟无操作由服务端lastInteractiveAt执行，前端计时仅提示。activity仅可在未过期时延后，重复key不能重复延后；查询轮询不重置。Web access有效至当前idleExpiresAt并以每次会话事实核验为准，activity只延长同一有效会话的服务器期限，业务Bearer不依JWT静态exp；响应expiresAt是当时期限快照，不是允许离线验证的永久声明。会话查询返回最新期限。页面刷新丢内存Bearer则重新登录，不从cookie生成业务权限。
 
-账号禁用/密码重置立即使后续身份检查失效；权限变更刷新authzVersion；高权限新增到原未MFA会话时撤销该Web会话，重登完成MFA后才可用。MFA判定提案：有效roleCode属于REVIEWER/OPERATIONS_ADMIN/FINANCE_READER/PLATFORM_SUPER_ADMIN，或任何当前有效动作的requiresMfa=true（高风险/敏感动作目录必须true），则必需MFA。展示名不参与；超管必需MFA。角色停用撤销对应授权，是否完全退出按账号身份仍有效与否区分。
+账号禁用/密码重置立即使后续身份检查失效；权限变更刷新authzVersion并使旧授权缓存/在途结果失效。新增高权限角色或extraAction不触发额外认证因素；下一次动作按当前角色、动作、范围及业务资格重新检查。角色停用撤销对应授权，是否完全退出按账号身份仍有效与否区分，不因角色名称要求第二步登录。
 
-建议Web密码连续5次失败需图形验证码，10次/15分钟暂锁15分钟；未知账号采用等形限流避免枚举，同时以IP/尝试防滥用。C密码路径本版仅429频控，不套用Web图形验证码要求；其失败阈值建议10次/15分钟锁15分钟。MFA每challenge5次错误失效，另按账号+因素累计10次/15分钟锁15分钟，新attempt或重发不重置累计计数；重发间隔60秒且使旧challenge失效。MFA建议密码验证后发随机6位OTP至管理员预先登记并验证的手机号，5分钟有效、一次消费；投递/验真通道未配置503不跳过。普通运维不得从日志查看OTP。账号可用邮箱/工号登录，但MFA投递目标不由此次请求指定。阈值/短信建议是技术提案，实际Provider、验证码证明和单运营因素绑定/恢复仍BLOCKED；不能用固定验证码宣称接入。没有自助找回或第二管理员审批。
+建议Web密码连续5次失败需图形验证码，10次/15分钟暂锁15分钟；未知账号采用等形限流避免枚举，同时以IP/尝试防滥用。C密码路径本版仅429频控，不套用Web图形验证码要求；其失败阈值建议10次/15分钟锁15分钟。上述阈值仍是D1技术提案；图形验证码是登录反机器人措施，不作为已登录高权限动作的额外证明。原C端短信主登录/密码重置的Provider、验证码证明仍需实际接入，不能用固定验证码宣称成功。Web仍无自助找回，按原规则联系管理员处理账号密码；不配置额外因素、因素绑定或丢失恢复。
 
 ## 5. 错误、刷新和页面恢复
 
@@ -111,7 +111,7 @@ Web复用Bearer标准，但独立以下新增提案接口：
 1. attempts创建先持久绑定requestId和用途，生成不可预测attemptId/attemptToken；限流依据不是业务权限。无业务账号写入；原请求重复不再新建attempt。首次响应秘密若丢失，原key只返回409重新开始提示，不能凭requestId重放秘密；用户显式新尝试可换key，旧尝试过期。不能通过此例外类推业务写入换key。
 2. 后续调用须attemptId+attemptToken（Web另需cookie/Origin），服务端定位已验证身份；requestId只去重，不是秘密。微信/SMS一次性凭据在同attempt同key绑定后不可换参复用；Provider交换未知保留原意图查证，不能凭网络失败新建用户。没有上游查证能力的短期凭据失败应重新证明，持久业务唯一约束仍避免重复账号。
 3. 完整身份验证成功后，账号创建/绑定、会话事实和最小完成回执在所属模块本地事务内一次提交；Phone唯一、微信(appId,openId)唯一均由DB兜底。若两个已存在账号证明相冲突拒绝，不自动合并。登录成功日志按原PRD故障降级告警，不能因日志不可用把身份猜成功。
-4. 最小永久回执不含原密码、OTP、wechatCode、access/refresh秘密，仅保存结果标识与安全墓碑；短期秘密响应加密、最小读取权限，首次成功提交后60秒销毁密文，读取不续期。SESSION_GRANT窗口内持原attempt秘密同key且新签发会话仍有效才可恢复；窗口外/撤销401，不再次签发。PASSWORD_RESET只允许仍有效受限attempt取得原key最小updated事实，不要求旧登录会话有效或一次性证明尚未消费；不返回新的登录能力，attempt到期后401。PHONE_BOUND换绑通过当前有效Bearer和原命令重放，不经attempt。MFA_CHALLENGE只含不敏感投递提示与期限，重放不能重发/延期或恢复失效challenge。新认证须新证明。参数等值使用受保护摘要，不保存明文密码或易枚举OTP裸hash；采用服务端密钥HMAC及最小必要加密记录，密钥策略为实现门禁。
-5. refresh、密码重置、绑定、MFA验证均有自身稳定namespace和可信主体/attempt作用域；完成后重放仍核当前身份/敏感可读性。不能重放密码或旧MFA状态来获得新授权；重置成功不把重置码再次当有效一次性证明。
+4. 最小永久回执不含原密码、主登录/重置OTP、wechatCode、access/refresh秘密，仅保存结果标识与安全墓碑；短期秘密响应加密、最小读取权限，首次成功提交后60秒销毁密文，读取不续期。SESSION_GRANT窗口内持原attempt秘密同key且新签发会话仍有效才可恢复；窗口外/撤销401，不再次签发。PASSWORD_RESET只允许仍有效受限attempt取得原key最小updated事实，不要求旧登录会话有效或一次性证明尚未消费；不返回新的登录能力，attempt到期后401。PHONE_BOUND换绑通过当前有效Bearer和原命令重放，不经attempt。新主认证须新证明。参数等值使用受保护摘要，不保存明文密码或易枚举OTP裸hash；采用服务端密钥HMAC及最小必要加密记录，密钥策略为实现门禁。
+5. refresh、密码重置、手机号绑定均有自身稳定namespace和可信主体/attempt作用域；完成后重放仍核当前身份/敏感可读性。不能重放密码来获得新授权；重置成功不把重置码再次当有效一次性证明。
 
 逐命令持久化、Provider未知恢复、短期加密/清载荷仍须后续设计和组件验证；这份协议提案没有实现公共幂等/S2，不能宣称登录重试已验收。

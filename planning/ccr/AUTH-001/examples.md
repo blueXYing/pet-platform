@@ -1,6 +1,6 @@
 # AUTH-001 正反样例与验收提案
 
-**PROPOSED / PENDING_REVIEW · AUTH-001-draft-v1**。所有ID为虚构String、所有秘密为不可用占位符；没有真实用户/令牌/手机号。JSON是协议设计例子，不是已批准公共Mock，也不证明服务已运行。以下响应展示完整ApiResponse；省略的HTTP头按[会话](sessions.md)定义。
+**PROPOSED / PENDING_REVIEW · AUTH-001-draft-v2**。所有ID为虚构String、所有秘密为不可用占位符；没有真实用户/令牌/手机号。JSON是协议设计例子，不是已批准公共Mock，也不证明服务已运行。以下响应展示完整ApiResponse；省略的HTTP头按[会话](sessions.md)定义。
 
 ## 1. 微信已验证、手机号未完成：不签发业务会话
 
@@ -49,17 +49,11 @@ POST `/api/v1/c/auth/wechat-login`，X-Request-Id=`aaaaaaaa-aaaa-4aaa-8aaa-aaaaa
 | 原子账号已停用、伪造历史staffId | 拒绝，保留历史审计但不保留该主体授权 | 已定角色/启用约束 |
 | 当前用户不属于目标store、深链附workspace=merchant | 403或固定防枚举404，不能返回Membership/旧data | 已定越权拒绝 |
 
-## 5. Web MFA未完成
+## 5. Web普通主认证完成
 
-只有实际投递通道存在且Provider接受时才返回challenge；不可用则503，不回显虚构投递目标。
+按SSOT§25及[24号补充](../../../docs/01-prd/24-取消MFA人工裁决补充-v1.0.md)，取消额外MFA。所有角色的账号密码主认证完成后直接签发Web SessionGrant；没有额外因素输入、投递或绑定。反机器人图形验证码仅在密码登录失败阈值触发时按原规则执行，不成为高权限动作的追加认证。
 
-```json
-{"code":"SUCCESS","message":"请完成二次验证","data":{"attemptId":"4001","nextStep":"MFA","challengeId":"4002","expiresAt":"2026-09-14T15:05:00.000+08:00","deliveryHint":"EXAMPLE_ONLY_MASKED_DESTINATION"},"traceId":"example-trace-05"}
-```
-
-没有accessToken/operator业务权限。验证码跨attempt、过期、错误次数超限、缺绑定cookie/Origin均拒绝；这不是添加第二运营审批。新登录只有完整验证成功才使旧Web会话失效，避免攻击者只提交账号就踢下线。
-
-高权限MFA完整验证后的Web SessionGrant示例，无refreshToken/userId：
+Web SessionGrant示例，无refreshToken/userId。新登录只有账号密码完整验证成功才使旧Web会话失效，避免攻击者只提交账号就踢下线。
 
 ```json
 {"code":"SUCCESS","message":"成功","data":{"sessionId":"4101","operatorId":"5001","audience":"ADMIN_WEB","tokenType":"Bearer","accessToken":"EXAMPLE_ONLY_WEB_ACCESS_NOT_VALID","expiresAt":"2026-09-14T15:30:00.000+08:00"},"traceId":"example-trace-web-grant"}
@@ -68,18 +62,20 @@ POST `/api/v1/c/auth/wechat-login`，X-Request-Id=`aaaaaaaa-aaaa-4aaa-8aaa-aaaaa
 Web CurrentSession示例：
 
 ```json
-{"code":"SUCCESS","message":"成功","data":{"sessionId":"4101","operatorId":"5001","audience":"ADMIN_WEB","expiresAt":"2026-09-14T15:30:00.000+08:00","idleExpiresAt":"2026-09-14T15:30:00.000+08:00","mfaVerified":true,"authzVersion":"example-v7"},"traceId":"example-trace-web-session"}
+{"code":"SUCCESS","message":"成功","data":{"sessionId":"4101","operatorId":"5001","audience":"ADMIN_WEB","expiresAt":"2026-09-14T15:30:00.000+08:00","idleExpiresAt":"2026-09-14T15:30:00.000+08:00","authzVersion":"example-v7"},"traceId":"example-trace-web-session"}
 ```
 
 | Web触发 | 预期 |
 |---|---|
-| 非高权限账号密码完整验证后重复登录 | 新generation签发并踢旧；不必额外等待不要求的MFA |
-| 高权限密码通过但MFA未完成 | 只有challenge，不踢旧、不签业务Bearer |
+| 任意角色账号密码完整验证后重复登录 | 新generation签发并踢旧，无角色专属第二认证步骤 |
+| 高权限账号仅提交账号、密码未验证通过 | 不签业务Bearer、不踢旧；不能以“取消额外因素”为由省略密码验证 |
 | 15:10真实交互提交activity新key | idleExpiresAt延至15:40；此为新的交互意图 |
 | 15:15重放15:10 activity原key | 回原15:40，不再延至15:45；后台轮询也不延长 |
 | idleExpiresAt已过后activity | 401，不能续命 |
-| 旧未MFA会话后来获高权限角色或extraAction | 撤销旧会话，重登MFA后可用 |
-| MFA失败累计10次/15分钟后新建attempt | 仍锁定15分钟，新challenge不能重置账号因素计数 |
+| 有效会话后来获高权限角色或extraAction | 更新authzVersion、失效旧授权缓存；后续动作重新核权限/范围/业务资格，无额外认证要求 |
+| 有效登录且获权的超管执行高风险动作 | 按用途/同人确认/业务资格/审计执行，不因未提供第二因素而拒绝 |
+| 已登录但无动作权或跨范围 | 仍403或既定防枚举404，业务无变化并审计；与FLT-020取消额外因素前置后的定义一致 |
+| 客户端发送已删除的额外认证字段或访问旧额外认证路径 | 不在当前契约：字段按未知参数400，路径不提供；不能借旧证明绕过RBAC |
 
 ## 6. 真实权限与显示名无关
 
@@ -134,7 +130,7 @@ HTTP403；不返回旧退款金额/渠道敏感数据或旧actions。若身份�
 | 同refresh不同key并发 | 只一次轮换，旧token复用按family撤销策略，客户端应single-flight |
 | logout先提交、refresh后CAS | 刷新失败，无可用新token |
 | refresh先提交、logout后提交 | 退出撤销同family新旧全部token |
-| 禁用/密码重置与在途登录签发交错 | 当前generation/状态/MFA最终核验，旧generation不可签发有效会话 |
+| 禁用/密码重置与在途登录签发交错 | 当前generation/账号状态最终核验，旧generation不可签发有效会话 |
 | SMS发送超时 | UNKNOWN/503、查原意图，不再次发码、不默认送达 |
 | 验证码过期后原key重放 | 不延长有效期、不再投递 |
 | 密码重置提交前失败 | 密码及证明消费一并回滚或可恢复，无半提交 |
@@ -152,6 +148,6 @@ HTTP403；不返回旧退款金额/渠道敏感数据或旧actions。若身份�
 
 ## 10. 原测试ID与执行界限
 
-W2-AUTH-001：登录/会话/过期/撤销/MFA与规范样例；W2-AUTH-002：深链/跨身份/旧响应/失败关闭；W2-AUTH-003：六角色/数据范围/单运营/PERM-001～006/WEB-002；W2-AUTH-004：每次准入、冻结下线及签约独立门禁。MINI-002～004必须在真实微信平台接入后另验，浏览器壳测试不互代。交易P0由真实订单/退款服务另举证，本文没有运行这些测试。
+W2-AUTH-001：登录/会话/过期/撤销与规范样例；W2-AUTH-002：深链/跨身份/旧响应/失败关闭；W2-AUTH-003：六角色/数据范围/单运营/PERM-001～006/WEB-002，并按24号补充验证无额外因素前置仍严格授权；W2-AUTH-004：每次准入、冻结下线及签约独立门禁。MINI-002～004必须在真实微信平台接入后另验，浏览器壳测试不互代。交易P0由真实订单/退款服务另举证，本文没有运行这些测试。
 
 已知测试修订影响：e2e/contract_smoke.py当前要求operation.security非空，会错拒匿名security:[]；e2e/test_contract_smoke.py及S1ContractMappingTest固定16操作。获批同步新操作时由Owner改覆盖与匿名白名单/继承语义。本次不改这些代码，也不拿现有CI绿灯证明新接口。

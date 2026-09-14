@@ -1,14 +1,16 @@
 # CCR-PERM-001：单运营RBAC技术映射
 
-状态：**PROPOSED / PENDING_REVIEW**。产品规则已批准，见SSOT §24与22-运营权限人工裁决补充-v1.0.md。AUTH-001-draft-v1技术映射待审，无需再次裁决是否单运营。
+状态：**PROPOSED / PENDING_REVIEW**。产品规则已批准，见SSOT §24与22-运营权限人工裁决补充-v1.0.md。AUTH-001-draft-v2技术映射待审，无需再次裁决是否单运营。
 
-## 当前审阅入口（2026-09-14）
+## 当前审阅入口（2026-09-14取消MFA修订）
 
-先读[一页审阅指南](AUTH-001/review-guide.md)。[RBAC提案](AUTH-001/rbac.md)包含六角色稳定码、原27行矩阵、账号动作/数据范围、具体请求响应、敏感信息和撤权时点；[会话](AUTH-001/sessions.md)包含独立Web登录/MFA/30分钟无操作/后登录踢旧协议。[正反例](AUTH-001/examples.md)、[来源与影响](AUTH-001/sources-and-gaps.md)、[审阅证据](AUTH-001/review-evidence.md)区分已定规则与未批准字段。
+V1取消额外MFA的产品决定已批准，执行SSOT§25及[24号补充](../../docs/01-prd/24-取消MFA人工裁决补充-v1.0.md)。所有角色普通主认证完成后可进入会话，获权高风险动作不再要求第二因素；RBAC/范围/用途/审计/同人业务确认保留。D1其它参数和D2仍待审。根产品commit`9cdc8eeac94fbe673fef420cc7767caddf1ba219`已原样cherry-pick为`7e1c36e`，AUTH不编辑其4文件内容。
+
+先读[一页审阅指南](AUTH-001/review-guide.md)。[RBAC提案](AUTH-001/rbac.md)包含六角色稳定码、原27行矩阵、账号动作/数据范围、具体请求响应、敏感信息和撤权时点；[会话](AUTH-001/sessions.md)包含独立Web账号密码登录/30分钟无操作/后登录踢旧协议。[正反例](AUTH-001/examples.md)、[来源与影响](AUTH-001/sources-and-gaps.md)、[审阅证据](AUTH-001/review-evidence.md)区分已定规则与未批准字段。
 
 推荐D2按当前可信动作/范围逐次检查，最终检查通过的短事务可完成；不承诺撤权追溯取消全部在途业务，不扩五字段Context或跨biz持锁。建议角色动作并集应用账号同一scope，超管仅已批准目录闭包。普通403不自动注销身份；敏感回执返回前仍核当前授权。
 
-单人、编辑直发、超管范围不重裁，不新增secondApprover。财务默认读、已有执行显式授权，OD-W0-001资金范围不进入活动目录。Schema06缺账号/角色/会话等持久化定义，MFA实际通道与恢复、API/Schema同步和真实权限测试均未交付。本次只写规划Markdown，不把新权限码变成生产允许清单，不关闭CCR/完整Issue。
+单人、编辑直发、超管范围不重裁，不新增secondApprover。财务默认读、已有执行显式授权，OD-W0-001资金范围不进入活动目录。Schema06缺账号/角色/会话等持久化定义，原主认证Provider、API/Schema同步和真实权限测试均未交付。本次仅继承根4个产品裁决文件并修订原9个规范Markdown，不把新权限码变成生产允许清单，不关闭CCR/完整Issue。
 
 两CCR可分别阶段审查；后续重大Contract/同步/实现及PR合入按协议，未merge。根Work已正式释放并交接AUTH Writer，源基线为develop `bcb269c2adc9405e669747d9b3bedfae2bf5ccbd`。
 
