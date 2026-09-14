@@ -43,20 +43,20 @@ ADM-001,运营商家/服务治理API,Backend Core,EPIC-18,ST-ADM-01,P0,"MER-001,
 ADM-002,运营订单/退款/核销查询与异常处置API,Transaction Backend,EPIC-18,ST-ADM-02,P0,"REF-003,VER-001",backend/pet-admin-* backend/pet-order-api backend/pet-refund-api,"运营P0,PERM-002,PERM-004~PERM-006",7,BLOCKED
 ADM-003,运营售后/评价治理API,Transaction Backend,EPIC-18,ST-ADM-03,P0,"AFS-002,REV-001",backend/pet-admin-*,"AFS/REV运营验收,PERM-001,PERM-005,PERM-006",8,BLOCKED
 C-001,统一微信小程序壳、用户路由、状态与平台Mock,C-End Frontend,EPIC-20,ST-FE-C-01,P0,GOV-001,frontend-miniapp/* frontend-miniapp/config/** frontend-miniapp/src/app* frontend-miniapp/src/consumer/** frontend-miniapp/src/shared/**,"typecheck,MINI-001,MINI-003,MINI-004,MINI-005",1,DONE
-C-002,C端登录/个人中心/宠物档案,C-End Frontend,EPIC-02,ST-FE-C-01,P0,C-001,frontend-miniapp/src/consumer/**,"C端登录/宠物E2E,MINI-004,VIS-001~VIS-004",2,BLOCKED
-C-003,C端首页/商家服务/商家详情/预约页,C-End Frontend,EPIC-04,ST-FE-C-01,P0,C-001,frontend-miniapp/src/consumer/**,"Mock UI + contract,MINI-004,VIS-001~VIS-004",2,BLOCKED
-C-004,C端订单确认/支付/订单列表详情/核销码,C-End Frontend,EPIC-06,ST-FE-C-01,P0,C-001,frontend-miniapp/src/consumer/**,"E2E-01,E2E-02,MINI-004,VIS-001~VIS-004",3,BLOCKED
-C-005,C端改期/退款/售后/评价,C-End Frontend,EPIC-11,ST-FE-C-01,P0,C-001,frontend-miniapp/src/consumer/**,"E2E-03~E2E-07,MINI-004,VIS-001~VIS-004",4,BLOCKED
-C-006,C端优惠券/积分/消息/社区/百科,C-End Frontend,EPIC-16,ST-FE-C-01,P1,C-001,frontend-miniapp/src/consumer/**,"页面/契约验收,MINI-004,VIS-001~VIS-004",5,BLOCKED
+C-002,C端登录/个人中心/宠物档案,C-End Frontend,EPIC-02,ST-ID-01,P0,C-001,frontend-miniapp/src/consumer/**,"C端登录/宠物E2E,MINI-004,VIS-001~VIS-004",2,BLOCKED
+C-003,C端首页/商家服务/商家详情/预约页,C-End Frontend,EPIC-04,ST-SVC-01,P0,C-001,frontend-miniapp/src/consumer/**,"Mock UI + contract,MINI-004,VIS-001~VIS-004",2,BLOCKED
+C-004,C端订单确认/支付/订单列表详情/核销码,C-End Frontend,EPIC-06,ST-ORD-01,P0,C-001,frontend-miniapp/src/consumer/**,"E2E-01,E2E-02,MINI-004,VIS-001~VIS-004",3,BLOCKED
+C-005,C端改期/退款/售后/评价,C-End Frontend,EPIC-11,ST-AFS-01,P0,C-001,frontend-miniapp/src/consumer/**,"E2E-03~E2E-07,MINI-004,VIS-001~VIS-004",4,BLOCKED
+C-006,C端优惠券/积分/消息/社区/百科,C-End Frontend,EPIC-16,ST-COM-01,P1,C-001,frontend-miniapp/src/consumer/**,"页面/契约验收,MINI-004,VIS-001~VIS-004",5,BLOCKED
 M-001,同一小程序商家工作区、分包路由与Mock,Merchant Frontend,EPIC-20,ST-FE-M-01,P0,"GOV-001,C-001",frontend-miniapp/src/merchant/**,"typecheck,MINI-001,MINI-002,MINI-003,MINI-004",1,DONE
-M-002,商家登录/首页/店铺/服务/员工/排期,Merchant Frontend,EPIC-03,ST-FE-M-01,P0,M-001,frontend-miniapp/src/merchant/**,"Mock UI + contract,MINI-002~MINI-004,VIS-001~VIS-004",2,BLOCKED
-M-003,商家订单接单/拒单/改期承接,Merchant Frontend,EPIC-08,ST-FE-M-01,P0,M-001,frontend-miniapp/src/merchant/**,"CONF/RES UI,MINI-002~MINI-004,VIS-001~VIS-004",3,BLOCKED
-M-004,商家退款/核销/售后/评价/第三方核销/消息,Merchant Frontend,EPIC-11,ST-FE-M-01,P0,M-001,frontend-miniapp/src/merchant/**,"退款核销E2E,MINI-002~MINI-004,VIS-001~VIS-004",4,BLOCKED
+M-002,商家登录/首页/店铺/服务/员工/排期,Merchant Frontend,EPIC-03,ST-MER-01,P0,M-001,frontend-miniapp/src/merchant/**,"Mock UI + contract,MINI-002~MINI-004,VIS-001~VIS-004",2,BLOCKED
+M-003,商家订单接单/拒单/改期承接,Merchant Frontend,EPIC-08,ST-CONF-01,P0,M-001,frontend-miniapp/src/merchant/**,"CONF/RES UI,MINI-002~MINI-004,VIS-001~VIS-004",3,BLOCKED
+M-004,商家退款/核销/售后/评价/第三方核销/消息,Merchant Frontend,EPIC-11,ST-AFS-01,P0,M-001,frontend-miniapp/src/merchant/**,"退款核销E2E,MINI-002~MINI-004,VIS-001~VIS-004",4,BLOCKED
 A-001,React运营网页壳、路由、权限与Mock,Admin Frontend,EPIC-20,ST-FE-A-01,P0,GOV-001,frontend-admin/**,"typecheck,WEB-001,WEB-002,PERM-005",1,DONE
-A-002,运营商家/服务/排期/员工治理页面,Admin Frontend,EPIC-18,ST-FE-A-01,P0,A-001,frontend-admin/**,"Mock UI + contract,WEB-002,PERM-002,PERM-005",2,BLOCKED
-A-003,运营订单/退款/核销页面,Admin Frontend,EPIC-18,ST-FE-A-01,P0,A-001,frontend-admin/**,"交易运营E2E,WEB-002,PERM-002,PERM-004~PERM-006",3,BLOCKED
-A-004,运营售后终裁/评价申诉页面,Admin Frontend,EPIC-18,ST-FE-A-01,P0,A-001,frontend-admin/**,"AFS/REV运营E2E,WEB-002,PERM-001,PERM-004~PERM-006",4,BLOCKED
-A-005,运营优惠券/积分/社区/百科/台账/系统设置,Admin Frontend,EPIC-18,ST-FE-A-01,P1,A-001,frontend-admin/**,"运营P1,WEB-002,PERM-002~PERM-006",5,BLOCKED
+A-002,运营商家/服务/排期/员工治理页面,Admin Frontend,EPIC-18,ST-ADM-01,P0,A-001,frontend-admin/**,"Mock UI + contract,WEB-002,PERM-002,PERM-005",2,BLOCKED
+A-003,运营订单/退款/核销页面,Admin Frontend,EPIC-18,ST-ADM-02,P0,A-001,frontend-admin/**,"交易运营E2E,WEB-002,PERM-002,PERM-004~PERM-006",3,BLOCKED
+A-004,运营售后终裁/评价申诉页面,Admin Frontend,EPIC-18,ST-ADM-03,P0,A-001,frontend-admin/**,"AFS/REV运营E2E,WEB-002,PERM-001,PERM-004~PERM-006",4,BLOCKED
+A-005,运营优惠券/积分/社区/百科/台账/系统设置,Admin Frontend,EPIC-18,ST-ADM-04,P1,A-001,frontend-admin/**,"运营P1,WEB-002,PERM-002~PERM-006",5,BLOCKED
 QA-001,测试框架、ArchUnit、Contract Smoke、CI首轮,QA,EPIC-20,ST-QA-01,P0,GOV-001,e2e/** backend/pet-architecture-test .github/workflows,ARCH-001~ARCH-005,1,DONE
 QA-002,Schedule容量/优惠券冻结并发测试,QA,EPIC-20,ST-QA-02,P0,"SCH-003,CPN-001",e2e/** backend/**/src/test,CON-001~CON-003,6,BLOCKED
 QA-003,支付超时×回调/迟到支付并发测试,QA,EPIC-20,ST-QA-02,P0,PAY-004,e2e/** backend/**/src/test,"CON-014,CON-015,FLT-003~FLT-005",7,BLOCKED
