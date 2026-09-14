@@ -11,6 +11,23 @@ permissions:
 jobs:
   backend:
     runs-on: ubuntu-latest
+    services:
+      mysql:
+        image: mysql:8.4
+        env:
+          MYSQL_ROOT_PASSWORD: plat004-ci-isolated
+          MYSQL_ROOT_HOST: '%'
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd="mysqladmin ping -h 127.0.0.1 -uroot -pplat004-ci-isolated"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=12
+    env:
+      PLAT004_MYSQL_URL: jdbc:mysql://127.0.0.1:3306/
+      PLAT004_MYSQL_USER: root
+      PLAT004_MYSQL_PASSWORD: plat004-ci-isolated
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-java@v4

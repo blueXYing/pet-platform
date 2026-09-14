@@ -1,0 +1,27 @@
+{
+  "stage": "PLAT-004 Worker/Lease component, not full production DoD",
+  "baseline": "0cc7d0151cdae3500185957d2a35088d0b31e37f",
+  "java": "Temurin 21.0.11+10-LTS",
+  "maven": "3.9.12",
+  "mysql": "8.4.9",
+  "databaseEnvironment": "Dedicated local mysqld, loopback port 33440, UTC, fresh random database per test; existing MySQL84 service untouched",
+  "schema": "docs/03-database/13-Async-Infra-Schema-v0.1.sql (read directly, unchanged)",
+  "mavenCommand": "mvn -B -f backend/pom.xml clean verify",
+  "mavenCompletedAt": "2026-09-14T14:44:33+08:00",
+  "reactorProjects": 41,
+  "junit": { "tests": 118, "failures": 0, "errors": 0, "skipped": 0, "taskMysqlTests": 22 },
+  "architecturePython": { "tests": 13, "result": "PASS" },
+  "contractPython": { "tests": 28, "result": "PASS" },
+  "contractSmoke": { "result": "PASS_OFFLINE_DOCUMENT_SMOKE", "operations": 16, "writesWithRequestId": 13, "resolvedRefs": 132, "stringIdProperties": 13 },
+  "transactionReview": "Read-only agent reviewed final source and tests: no outstanding component blocker; dispatch permission linearization and production gaps retained",
+  "qaReview": "Separate QA writer authored repository tests and backend-only CI service; reproduced gap-lock failure, then verified READ_COMMITTED fix and real lock-wait expiry tests",
+  "productionNotAccepted": [
+    "PLAT-002 S2 production Snowflake ownership/high-watermark/fencing provider and boot wiring",
+    "Producer scheduling API and business generation mapping",
+    "DEAD reconciliation plus alerting and metrics closure",
+    "Payment/reservation/order/refund business handlers and business E2E"
+  ],
+  "remoteCi": "Final head/CI run and job receipts are recorded in the PR body after commit; local results do not imply remote CI success",
+  "newContractOrSchemaChange": false,
+  "mergeAuthorized": false
+}
