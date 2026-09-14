@@ -1,0 +1,56 @@
+package com.petplatform.boot.config;
+
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.petplatform.common.SnowflakeIdGenerator;
+import com.petplatform.event.api.IntegrationEventConsumer;
+import com.petplatform.event.core.JdbcOutboxConsumeGuard;
+import com.petplatform.event.core.OutboxDispatcher;
+import com.petplatform.event.core.OutboxDispatchSettings;
+import com.petplatform.event.core.OutboxRetryDelays;
+import com.petplatform.event.core.TransactionalOutboxPublisher;
+import java.time.Duration;
+import java.util.List;
+import javax.sql.DataSource;
+import org.springframework.beans.factory.ObjectProvider;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnBean;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
+
+/**
+ * PLAT-003 outbox assembly, default OFF and additionally gated on a production
+ * SnowflakeIdGenerator bean (PLAT-002 S2 enablement is a separate decision).
+ * No business consumers exist yet; an empty registration keeps the dispatcher idle.
+ * Turning this on also requires the outbox tables to exist — no migration is
+ * executed or implied here.
+ */
+@Configuration(proxyBeanMethods = false)
+@ConditionalOnProperty(prefix = "pet.outbox", name = "enabled", havingValue = "true")
+@ConditionalOnBean(SnowflakeIdGenerator.class)
+public class EventOutboxConfiguration {
+
+    @Bean
+    TransactionalOutboxPublisher transactionalOutboxPublisher(DataSource dataSource,
+            SnowflakeIdGenerator ids, ObjectProvider<ObjectMapper> objectMapper) {
+        return new TransactionalOutboxPublisher(dataSource, ids,
+                objectMapper.getIfAvailable(ObjectMapper::new));
+    }
+
+    @Bean
+    JdbcOutboxConsumeGuard outboxConsumeGuard(DataSource dataSource, SnowflakeIdGenerator ids) {
+        return new JdbcOutboxConsumeGuard(dataSource, ids);
+    }
+
+    @Bean(destroyMethod = "close")
+    OutboxDispatcher outboxDispatcher(DataSource dataSource,
+            ObjectProvider<IntegrationEventConsumer> consumers,
+            @org.springframework.beans.factory.annotation.Value("${pet.outbox.owner:boot-outbox-1}") String owner) {
+        OutboxDispatcher dispatcher = new OutboxDispatcher(dataSource, owner,
+                OutboxDispatchSettings.defaults(),
+                new OutboxRetryDelays(List.of(Duration.ofSeconds(1), Duration.ofSeconds(2),
+                        Duration.ofSeconds(5), Duration.ofSeconds(30), Duration.ofSeconds(300))),
+                consumers.orderedStream().toList());
+        dispatcher.start();
+        return dispatcher;
+    }
+}
