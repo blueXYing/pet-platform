@@ -25,6 +25,8 @@
 
 ### 2.1 CommandContext
 
+公共字段细化按[23号补充§1～3](23-公共接口与幂等契约补充-v0.1.md)。本record保持五字段；可信actor/scope由真实适配器解析，source不授予权限。S1仅具备字段检查，未实现认证、授权或持久化幂等。
+
 ```java
 public record CommandContext(
     String requestId,
@@ -70,6 +72,8 @@ String          // 所有 ID
 ```
 
 金额禁止 `double/float`。
+
+ID按ASCII正Long十进制String传输；Money定点输入/两位输出与无舍入规则、Clock注入及时间毫秒精度见23号补充§1～2。内部BigDecimal可精确格式化，不把HTTP字符串词法与已解析数值混同。业务负数/零资格、比例与积分舍入不由公共Codec决定。
 
 ### 2.4 本地调用与未来 Feign
 
@@ -1239,6 +1243,8 @@ Outbox
 
 ## 21. 幂等规范
 
+本节按已接受CCR-W2-IDEMP-001同步，完整作用域/摘要/事务/保留与实现门禁见[23号补充§3～9](23-公共接口与幂等契约补充-v0.1.md)。规范生效不代表旧Schema已兼容或服务已实现。
+
 所有写接口必须有 `requestId`。
 
 建议来源：
@@ -1262,6 +1268,12 @@ Outbox
 相同 requestId + 不同业务参数
 → IDEMPOTENCY_KEY_CONFLICT
 ```
+
+上面requestId须在`(commandNamespace, actorType, actorId, authorityScope)`中比较，主体来自可信身份。内部确定性串不强制终端UUID；requestId最多512 UTF-8字节、禁止控制字符、不trim/改大小写。规范参数含写入相关路径/查询/body、用途与敏感业务码，排除追踪/身份传输凭证；旧绑定按旧schema/canonical版本解释，不覆盖摘要。
+
+先无业务副作用的Admission短独立事务绑定RESERVED与参数，再由Execution持记录锁，把本模块业务/首次成功回执/必要后置意图同顶层本地commit；失败整笔回滚业务但保留绑定，同参可重新检查重试、异参仍冲突。RESERVED不是租约，不按TTL删除；成功最终commit后才返回。并发忙有界等待（默认建议2秒）后COMMON_CONFLICT；commit未知查主库原key，不盲重做。
+
+成功重放每次仍检查当前权限、结果资源范围与脱敏，不重跑已消耗的一次性业务执行资格；V1不自动删除去重事实。不同requestId仍受业务unique/CAS/guard约束。五处旧全局request_id及事务表64字符映射未迁移前不宣称可直接接入。Provider同步成功（如createPayment支付参数）不能替为受理回执；未完成23号§7分阶段映射的命令不接入公共成功重放。不扩五字段Context或跨模块大事务。
 
 ---
 

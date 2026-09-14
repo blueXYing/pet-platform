@@ -1,5 +1,7 @@
 # 持久化幂等技术提案 v0.1
 
+当前阶段：**CONTRACT_SYNCED_IN_PR / S1_REVIEW_READY / S2_PENDING_DESIGN**。本提案已接受部分已同步[23号权威补充](../../../docs/04-api/23-公共接口与幂等契约补充-v0.1.md)，本阶段新PR尚未合并；下文仍是原提案/批准时快照。S1仅纯接口/转换交付，DB幂等/旧key迁移/物理适配等原未定项未实现；详见[s1-handoff.md](s1-handoff.md)，不关闭CCR或完整Issue。
+
 状态：**PROPOSAL_ACCEPTED / PENDING_CONTRACT_SYNC**。隶属[CCR-W2-IDEMP-001](../CCR-W2-IDEMP-001.md)。2026-09-14人工“接受两项建议”，严格对应`a9856c14fd596304611496cf794c935ec4d1243e`版本；批准范围和门禁见主文当前回执。本文件无可执行DDL，不改变权威Contract。
 
 历史状态：PROPOSED / PENDING_REVIEW。以下原0.1版技术正文保持不变，“建议待批/待批解释”等为原审批前措辞；两项建议已接受，等待Contract同步。具体DDL/迁移和原文未定实现设计仍需后续审查；不表示组件已实现、测试通过或CCR RESOLVED/Issue DONE，不授权PR10合并或后续任务。来源缩写见[证据表](review-evidence.md)。

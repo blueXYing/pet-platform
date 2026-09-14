@@ -1,5 +1,7 @@
 # 可复现规范样例与故障时序 v0.1
 
+当前阶段：**CONTRACT_SYNCED_IN_PR / S1_REVIEW_READY / S2_PENDING_DESIGN**。S1已把大ID/金额/字段词法/时间精度部分变成真实pet-common合同测试，执行证据与局限见[s1-handoff.md](s1-handoff.md)。下文保留原规范期样例和当时NOT_EXECUTED记录；完整ORD-011/013业务、W2-IDEM-003～005真实DB/权限/Provider、Snowflake生产并发/回拨仍未执行，不因S1纯组件通过报业务PASS。新阶段PR尚未合并。
+
 状态：**PROPOSAL_ACCEPTED / PENDING_CONTRACT_SYNC**。2026-09-14人工接受[主文](../CCR-W2-IDEMP-001.md)两项建议，批准版本为`a9856c14fd596304611496cf794c935ec4d1243e`；没有新增或修改下面技术样例。全部是**评审例子**，不是业务API新增契约或测试实现。真实组件/MySQL/Provider/E2E均 **NOT_EXECUTED**。这里只做静态推演及UTF-8摘要核对；没有发起请求或运行数据库。
 
 历史状态：PROPOSED / PENDING_REVIEW。原正文“待批”等是首次交付措辞；两项建议已接受，权威Contract同步、具体DDL/迁移审查和实现门禁仍未完成。批准不把例子变成测试PASS，不使CCR RESOLVED或Issue DONE，不授权PR10合并/后续任务。

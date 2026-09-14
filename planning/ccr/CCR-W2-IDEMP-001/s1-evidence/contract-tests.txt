@@ -1,0 +1,33 @@
+test_amount_ref_still_requires_string (test_contract_smoke.ContractSmokeRegressions) ... ok
+test_broken_reference_rejected (test_contract_smoke.ContractSmokeRegressions) ... ok
+test_current_document_passes (test_contract_smoke.ContractSmokeRegressions) ... ok
+test_cycle_through_allof_rejected (test_contract_smoke.ContractSmokeRegressions) ... ok
+test_cyclic_reference_rejected (test_contract_smoke.ContractSmokeRegressions) ... ok
+test_duplicate_operation_rejected (test_contract_smoke.ContractSmokeRegressions) ... ok
+test_escaped_json_pointer_passes (test_contract_smoke.ContractSmokeRegressions) ... ok
+test_external_reference_rejected (test_contract_smoke.ContractSmokeRegressions) ... ok
+test_inline_nested_id_rejected (test_contract_smoke.ContractSmokeRegressions) ... ok
+test_inline_nullable_id_passes (test_contract_smoke.ContractSmokeRegressions) ... ok
+test_local_reference_chain_and_allof_string_pass (test_contract_smoke.ContractSmokeRegressions) ... ok
+test_missing_type_allof_rejected (test_contract_smoke.ContractSmokeRegressions) ... ok
+test_non_string_union_not_treated_as_string (test_contract_smoke.ContractSmokeRegressions) ... ok
+test_nullable_cannot_override_nonnullable_allof_reference (test_contract_smoke.ContractSmokeRegressions) ... ok
+test_nullable_id_array_item_rejected (test_contract_smoke.ContractSmokeRegressions) ... ok
+test_nullable_must_be_boolean (test_contract_smoke.ContractSmokeRegressions) ... ok
+test_nullable_path_id_rejected (test_contract_smoke.ContractSmokeRegressions) ... ok
+test_nullable_ref_sibling_rejected (test_contract_smoke.ContractSmokeRegressions) ... ok
+test_nullable_string_allof_passes (test_contract_smoke.ContractSmokeRegressions) ... ok
+test_nullable_without_explicit_type_rejected (test_contract_smoke.ContractSmokeRegressions) ... ok
+test_numeric_allof_branch_cannot_be_hidden_by_string (test_contract_smoke.ContractSmokeRegressions) ... ok
+test_numeric_http_id_rejected (test_contract_smoke.ContractSmokeRegressions) ... ok
+test_numeric_id_array_item_rejected (test_contract_smoke.ContractSmokeRegressions) ... ok
+test_numeric_id_behind_reference_rejected (test_contract_smoke.ContractSmokeRegressions) ... ok
+test_numeric_path_id_rejected (test_contract_smoke.ContractSmokeRegressions) ... ok
+test_ref_sibling_cannot_override_numeric_target (test_contract_smoke.ContractSmokeRegressions) ... ok
+test_request_id_ref_still_requires_string (test_contract_smoke.ContractSmokeRegressions) ... ok
+test_write_without_request_id_rejected (test_contract_smoke.ContractSmokeRegressions) ... ok
+
+----------------------------------------------------------------------
+Ran 28 tests in 1.020s
+
+OK

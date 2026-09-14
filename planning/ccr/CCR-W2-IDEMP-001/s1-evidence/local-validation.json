@@ -1,0 +1,36 @@
+{
+  "pet-common": {
+    "tests": 74,
+    "failures": 0,
+    "errors": 0,
+    "skipped": 0
+  },
+  "pet-architecture-test": {
+    "tests": 22,
+    "failures": 0,
+    "errors": 0,
+    "skipped": 0
+  },
+  "baseline": "c5a184736c58ddfbaf60c5064b48a97bfb7eff3f",
+  "java": "21.0.5",
+  "maven": "3.9.12",
+  "sourceHashes": {
+    "backend/pet-common/src/main/java/com/petplatform/common/ApiMarker.java": "eb483844543ee36e6b52e6ad02c22c919876e83b622cd6bc503a72c546ba20e1",
+    "backend/pet-common/src/main/java/com/petplatform/common/CommandContext.java": "8d1f98f1a449da9442a4c9996db683d4deadd8a3ff6f72277427b27e48baa720",
+    "backend/pet-common/src/main/java/com/petplatform/common/DecimalPublicIdCodec.java": "22dd881e4db23a5829c020e471d3f3975f5515f1681d92921ed767ca50ecb131",
+    "backend/pet-common/src/main/java/com/petplatform/common/FixedDecimalMoneyCodec.java": "08e4456997f1827d004af5403cafca22e3084ce4b004da603a69a2f2e6fc8e38",
+    "backend/pet-common/src/main/java/com/petplatform/common/MoneyCodec.java": "532ee6f88f44e541ca56e8dcd5546e3d9c82a4e0c18c6f5404bdd92e0476c187",
+    "backend/pet-common/src/main/java/com/petplatform/common/OperatorType.java": "44cc92fcebd69a12a8a09501794653eafd8a52f3133d174b2b44281ef05d25d0",
+    "backend/pet-common/src/main/java/com/petplatform/common/PageResult.java": "32b092053993d75c079080e302a3831f5dca9d8156f24e48984c28b2e160960e",
+    "backend/pet-common/src/main/java/com/petplatform/common/PublicContractChecks.java": "7fd49c2d8fa06ea1a1e3a413773cedc96d5b7c28b46894bceeb467b3193b630b",
+    "backend/pet-common/src/main/java/com/petplatform/common/PublicIdCodec.java": "4ad9c66aef2986e18cf1e0c9eae9b08a5dd1714e1e2b789d9610a4bc6f7090b6",
+    "backend/pet-common/src/main/java/com/petplatform/common/QueryContext.java": "7df4b17aa58eb59e2827e32b22fcd0f6bae1cdfb42070af9a97ce410d6e8c826",
+    "backend/pet-common/src/main/java/com/petplatform/common/SnowflakeIdGenerator.java": "4bc681f9e556fa3f59d29e169aa9e05a9df08ccb91e78ee06a271ce7a32acdef",
+    "backend/pet-common/src/test/java/com/petplatform/common/MoneyCodecTest.java": "9eba7ac2044dec2bbff8a8e8027d661693ad56bcd1ab86118d2a78812df1c832",
+    "backend/pet-common/src/test/java/com/petplatform/common/PublicContractChecksTest.java": "faf4a06252aa1a3b8d85aba039bec76b82fd358d8d7977b829b572b998a7940e",
+    "backend/pet-common/src/test/java/com/petplatform/common/PublicIdCodecTest.java": "e6345955efa80e6fbde648bc171ac3bba1a14885c2102ebea3c6b6d1d54c143a",
+    "backend/pet-common/src/test/java/com/petplatform/common/S1ContractMappingTest.java": "f60bd8b6537e2ea6ce458ace1b8594207a28bd6ac8ff416e89e06d3a599bd21a",
+    "backend/pet-common/src/test/java/com/petplatform/common/support/SequenceIdStub.java": "afb0e863e5ffb8ece6fc5f476c20471de96f722d7c61ed80b82c12a032337d13"
+  },
+  "productionJarContainsTestStub": false
+}

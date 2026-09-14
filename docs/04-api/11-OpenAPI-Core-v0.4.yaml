@@ -36,6 +36,18 @@ paths:
             schema:
               $ref: '#/components/schemas/CreateOrderRequest'
       responses:
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '503':
+          $ref: '#/components/responses/DependencyUnavailable'
+        '200':
+          description: 幂等成功，当前权限通过后返回首次成功业务回执
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CreateOrderResponseEnvelope'
         '201':
           description: 创建成功
           content:
@@ -105,6 +117,12 @@ paths:
                   enum:
                   - WECHAT_MINI_PROGRAM
       responses:
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '503':
+          $ref: '#/components/responses/DependencyUnavailable'
         '200':
           description: 成功
         '409':
@@ -127,6 +145,12 @@ paths:
             schema:
               $ref: '#/components/schemas/RescheduleRequest'
       responses:
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '503':
+          $ref: '#/components/responses/DependencyUnavailable'
         '200':
           description: 成功
         '409':
@@ -149,6 +173,18 @@ paths:
             schema:
               $ref: '#/components/schemas/RefundApplyRequest'
       responses:
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '503':
+          $ref: '#/components/responses/DependencyUnavailable'
+        '200':
+          description: 幂等成功，当前权限通过后返回首次成功业务回执
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RefundApplicationResponseEnvelope'
         '201':
           description: 申请创建成功
           content:
@@ -175,6 +211,14 @@ paths:
             schema:
               $ref: '#/components/schemas/CreateAftersaleRequest'
       responses:
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '503':
+          $ref: '#/components/responses/DependencyUnavailable'
+        '200':
+          description: 幂等成功，当前权限通过后返回首次成功业务回执
         '201':
           description: 创建成功
         '409':
@@ -214,6 +258,14 @@ paths:
             schema:
               $ref: '#/components/schemas/CreateReviewRequest'
       responses:
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '503':
+          $ref: '#/components/responses/DependencyUnavailable'
+        '200':
+          description: 幂等成功，当前权限通过后返回首次成功业务回执
         '201':
           description: 创建成功
         '409':
@@ -230,6 +282,12 @@ paths:
       - $ref: '#/components/parameters/OrderId'
       - $ref: '#/components/parameters/RequestId'
       responses:
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '503':
+          $ref: '#/components/responses/DependencyUnavailable'
         '200':
           description: 成功
         '409':
@@ -252,6 +310,12 @@ paths:
             schema:
               $ref: '#/components/schemas/MerchantRejectOrderRequest'
       responses:
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '503':
+          $ref: '#/components/responses/DependencyUnavailable'
         '200':
           description: 成功
         '409':
@@ -268,6 +332,12 @@ paths:
       - $ref: '#/components/parameters/ApplicationId'
       - $ref: '#/components/parameters/RequestId'
       responses:
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '503':
+          $ref: '#/components/responses/DependencyUnavailable'
         '200':
           description: 成功
         '409':
@@ -290,6 +360,12 @@ paths:
             schema:
               $ref: '#/components/schemas/MerchantRejectRefundRequest'
       responses:
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '503':
+          $ref: '#/components/responses/DependencyUnavailable'
         '200':
           description: 成功
         '409':
@@ -317,6 +393,12 @@ paths:
                 verificationCode:
                   type: string
       responses:
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '503':
+          $ref: '#/components/responses/DependencyUnavailable'
         '200':
           description: 核销成功
         '409':
@@ -339,6 +421,12 @@ paths:
             schema:
               $ref: '#/components/schemas/AftersaleDecisionRequest'
       responses:
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '503':
+          $ref: '#/components/responses/DependencyUnavailable'
         '200':
           description: 裁决成功
         '409':
@@ -369,6 +457,12 @@ paths:
                   type: string
                   maxLength: 500
       responses:
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '503':
+          $ref: '#/components/responses/DependencyUnavailable'
         '200':
           description: 成功
         '409':
@@ -385,25 +479,29 @@ components:
       required: true
       schema:
         type: string
-        maxLength: 64
+        format: uuid
+        minLength: 36
+        maxLength: 36
+        pattern: '^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}(?![\s\S])'
+      description: 终端完整UUID原值保留；同意图重试复用，不trim或改大小写；内部确定性串不适用本header。
     OrderId:
       name: orderId
       in: path
       required: true
       schema:
-        type: string
+        $ref: '#/components/schemas/PublicId'
     ApplicationId:
       name: applicationId
       in: path
       required: true
       schema:
-        type: string
+        $ref: '#/components/schemas/PublicId'
     AfterSaleId:
       name: afterSaleId
       in: path
       required: true
       schema:
-        type: string
+        $ref: '#/components/schemas/PublicId'
     Page:
       name: page
       in: query
@@ -421,7 +519,25 @@ components:
         default: 20
   responses:
     Conflict:
-      description: 业务状态、并发或幂等冲突
+      description: 业务状态/并发/幂等冲突。异参IDEMPOTENCY_KEY_CONFLICT不得覆盖；争锁忙COMMON_CONFLICT且data为null，原key稍后重试，不将所有409自动重试。
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorEnvelope'
+    Unauthorized:
+      description: 当前会话无效；不返回旧回执data。
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorEnvelope'
+    Forbidden:
+      description: 当前动作或数据范围无权；不返回旧敏感data。
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorEnvelope'
+    DependencyUnavailable:
+      description: 数据库或旧回执设施不可用；保留原key，不重做业务。
       content:
         application/json:
           schema:
@@ -451,9 +567,23 @@ components:
       enum:
       - IN_STORE
       - PICKUP_DELIVERY
+    PublicId:
+      type: string
+      minLength: 1
+      maxLength: 19
+      pattern: '^[1-9][0-9]{0,18}(?![\s\S])'
+      x-maximum-decimal: '9223372036854775807'
+      description: 正Long ASCII String；pattern只校验词法和位数，Long上界由服务端PublicIdCodec检查，禁止JS Number。
+      example: '9007199254740993'
     DecimalAmount:
       type: string
-      pattern: ^\d+(\.\d{1,2})?$
+      pattern: '^(?:0|[1-9][0-9]{0,15})(?:\.[0-9]{1,2})?(?![\s\S])'
+      description: 既有业务非负金额输入；最多16位整数，不舍入；正数及退款上限仍按业务资格。
+      example: '128.00'
+    DecimalAmountOutput:
+      type: string
+      pattern: '^(?:0|[1-9][0-9]{0,15})\.[0-9]{2}(?![\s\S])'
+      description: 既有业务非负金额输出固定两位；公共Codec负数支持不放宽业务字段。
       example: '128.00'
     CreateOrderRequest:
       type: object
@@ -466,29 +596,41 @@ components:
       - appointmentEnd
       properties:
         storeId:
-          type: string
+          $ref: '#/components/schemas/PublicId'
         serviceId:
-          type: string
+          $ref: '#/components/schemas/PublicId'
         petId:
-          type: string
+          $ref: '#/components/schemas/PublicId'
         fulfillmentType:
           $ref: '#/components/schemas/FulfillmentType'
         appointmentStart:
           type: string
           format: date-time
+          x-precision: milliseconds
+          description: 带偏移ISO-8601；服务端拒绝非零亚毫秒，不截断或舍入。
         appointmentEnd:
           type: string
           format: date-time
+          x-precision: milliseconds
+          description: 带偏移ISO-8601；服务端拒绝非零亚毫秒，不截断或舍入。
         pickupStart:
           type: string
           format: date-time
+          x-precision: milliseconds
+          description: 带偏移ISO-8601；服务端拒绝非零亚毫秒，不截断或舍入。
           nullable: true
         returnStart:
           type: string
           format: date-time
+          x-precision: milliseconds
+          description: 带偏移ISO-8601；服务端拒绝非零亚毫秒，不截断或舍入。
           nullable: true
         couponInstanceId:
           type: string
+          minLength: 1
+          maxLength: 19
+          pattern: '^[1-9][0-9]{0,18}(?![\s\S])'
+          x-maximum-decimal: '9223372036854775807'
           nullable: true
         remark:
           type: string
@@ -497,16 +639,18 @@ components:
       type: object
       properties:
         orderId:
-          type: string
+          $ref: '#/components/schemas/PublicId'
         orderNo:
-          type: string
+          $ref: '#/components/schemas/PublicId'
         displayStatus:
           $ref: '#/components/schemas/DisplayOrderStatus'
         payAmount:
-          $ref: '#/components/schemas/DecimalAmount'
+          $ref: '#/components/schemas/DecimalAmountOutput'
         paymentExpireAt:
           type: string
           format: date-time
+          x-precision: milliseconds
+          description: 带偏移ISO-8601；服务端拒绝非零亚毫秒，不截断或舍入。
     RescheduleRequest:
       type: object
       required:
@@ -516,16 +660,24 @@ components:
         appointmentStart:
           type: string
           format: date-time
+          x-precision: milliseconds
+          description: 带偏移ISO-8601；服务端拒绝非零亚毫秒，不截断或舍入。
         appointmentEnd:
           type: string
           format: date-time
+          x-precision: milliseconds
+          description: 带偏移ISO-8601；服务端拒绝非零亚毫秒，不截断或舍入。
         pickupStart:
           type: string
           format: date-time
+          x-precision: milliseconds
+          description: 带偏移ISO-8601；服务端拒绝非零亚毫秒，不截断或舍入。
           nullable: true
         returnStart:
           type: string
           format: date-time
+          x-precision: milliseconds
+          description: 带偏移ISO-8601；服务端拒绝非零亚毫秒，不截断或舍入。
           nullable: true
     RefundApplyRequest:
       type: object
@@ -542,7 +694,7 @@ components:
       type: object
       properties:
         applicationId:
-          type: string
+          $ref: '#/components/schemas/PublicId'
         applicationStatus:
           type: string
           enum:
@@ -559,9 +711,15 @@ components:
         merchantDeadline:
           type: string
           format: date-time
+          x-precision: milliseconds
+          description: 带偏移ISO-8601；服务端拒绝非零亚毫秒，不截断或舍入。
           nullable: true
         refundOrderId:
           type: string
+          minLength: 1
+          maxLength: 19
+          pattern: '^[1-9][0-9]{0,18}(?![\s\S])'
+          x-maximum-decimal: '9223372036854775807'
           nullable: true
         displayStatus:
           $ref: '#/components/schemas/DisplayOrderStatus'
@@ -581,7 +739,7 @@ components:
         evidenceFileIds:
           type: array
           items:
-            type: string
+            $ref: '#/components/schemas/PublicId'
     ReviewEligibilityData:
       type: object
       required:
@@ -595,6 +753,8 @@ components:
         reviewDeadline:
           type: string
           format: date-time
+          x-precision: milliseconds
+          description: 带偏移ISO-8601；服务端拒绝非零亚毫秒，不截断或舍入。
           nullable: true
         rejectCode:
           type: string
@@ -624,7 +784,7 @@ components:
         mediaFileIds:
           type: array
           items:
-            type: string
+            $ref: '#/components/schemas/PublicId'
     MerchantRejectOrderRequest:
       type: object
       required:
@@ -661,8 +821,9 @@ components:
           - RESERVICE
           - OTHER
         refundAmount:
-          allOf:
-          - $ref: '#/components/schemas/DecimalAmount'
+          type: string
+          pattern: '^(?:0|[1-9][0-9]{0,15})(?:\.[0-9]{1,2})?(?![\s\S])'
+          description: 可空非负业务金额输入；REJECT等原非退款动作允许null，退款金额资格仍按HTTP契约。
           nullable: true
         reason:
           type: string
@@ -672,9 +833,9 @@ components:
       type: object
       properties:
         orderId:
-          type: string
+          $ref: '#/components/schemas/PublicId'
         orderNo:
-          type: string
+          $ref: '#/components/schemas/PublicId'
         displayStatus:
           $ref: '#/components/schemas/DisplayOrderStatus'
         orderStage:
@@ -708,16 +869,22 @@ components:
           type: string
           nullable: true
         payAmount:
-          $ref: '#/components/schemas/DecimalAmount'
+          $ref: '#/components/schemas/DecimalAmountOutput'
         appointmentStart:
           type: string
           format: date-time
+          x-precision: milliseconds
+          description: 带偏移ISO-8601；服务端拒绝非零亚毫秒，不截断或舍入。
         appointmentEnd:
           type: string
           format: date-time
+          x-precision: milliseconds
+          description: 带偏移ISO-8601；服务端拒绝非零亚毫秒，不截断或舍入。
         verifiedAt:
           type: string
           format: date-time
+          x-precision: milliseconds
+          description: 带偏移ISO-8601；服务端拒绝非零亚毫秒，不截断或舍入。
           nullable: true
         actions:
           $ref: '#/components/schemas/OrderActions'
