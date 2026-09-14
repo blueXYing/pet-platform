@@ -1,5 +1,23 @@
 # CCR-W2-IDEMP-001：公共约定与持久化幂等提案
 
+## 当前批准回执：Hutool新增适配方案已接受
+
+**当前状态：SDK_SELECTED / ADAPTER_ACCEPTED / PENDING_CONTRACT_SYNC。** 2026-09-14人工明确接受Hutool新增适配方案，批准对象严格为PR13提交 **e81c6bcaba360a192001167823c30f2afa24a92a** 中的节点协调、候选发布、1秒超时失效、确认旧JVM实际终止后恢复及一页指南初始参数包；由根任务01a08e29-e8c2-70d0-94ba-18df3e14d948明确转交。SDK5.8.47及原两项已批，不再请求相同批准。
+
+本次仅行政回执，原技术方案/参数/例子保持不变；原ADAPTER_PROPOSED及“待审”措辞在下方保留为批准前历史。**此批准不是PR13合并批准，不是权威Contract已同步、DDL/部署已审或实现验收完成。** 实际宿主退出确认能力、DB持久/恢复前提仍需落实验证，通用业务幂等表/旧key迁移仍待后续设计；CCR不RESOLVED，完整PLAT002/004不DONE。当前剩余人工步骤是文档PR13合并审批。
+
+已在本专用分支集成最新develop **643f05cd3a9357772bb3029ff97b750afeebb1ca**，保留AUTH及取消MFA产品变更；没有编辑这些文件或根dirty台账。新head与该新base的CI须重新核验，不以旧base bcb269c2的绿灯代替。最终固定提交/CI在PR13正文记录。
+
+## 以下为已批准版本原文（含当时待审状态，保留追溯）
+
+## 当前新增阶段：S2 Hutool生产适配设计
+
+**状态：SDK_SELECTED / ADAPTER_PROPOSED。** 人工已选择cn.hutool:hutool-core:5.8.47，不重复询问SDK选型。原d5acc3a自研发号整包未批准，保留Git历史；PR13当前改为Hutool承担算法、薄适配器承担必要协调/候选发布/超时失败关闭的待审方案。S1/PLAT004组件已合入，不是重复S1或开始S2代码。
+
+人工先读[S2一页评审指南](CCR-W2-IDEMP-001/s2-review-guide.md)，只审新增适配/失效恢复包，原两项与Hutool选择均不重问；详细方案见[s2-id-provider-design.md](CCR-W2-IDEMP-001/s2-id-provider-design.md)，例子见[s2-examples.md](CCR-W2-IDEMP-001/s2-examples.md)，证据见[s2-review-evidence.md](CCR-W2-IDEMP-001/s2-review-evidence.md)。保留原1秒对外预算与重启唯一性，不以Future超时冒称SDK线程停止；底层截止差距明确披露。本次只5份Markdown，不改权威docs/pom/代码/DDL/环境或AUTH/产品文件。通用业务幂等物理表与旧key迁移另待设计，CCR非RESOLVED，完整Issue非DONE。
+
+## S1及原审批历史（以下已接受正文保持原样）
+
 状态：**CONTRACT_SYNCED_IN_PR / S1_REVIEW_READY / S2_PENDING_DESIGN**。规范版本：0.1，日期：2026-09-14；本阶段同步已接受内容并交付S1，不关闭完整CCR/Issue。
 提出方/唯一编辑者：Backend Core。关联既有 Issue：PLAT-002 / EPIC-01 / ST-PLAT-02。只读审阅：Transaction Backend、QA、C-End、Merchant、Admin。批准人：人工 CTO / Contract Owner **blueXYing**。
 
