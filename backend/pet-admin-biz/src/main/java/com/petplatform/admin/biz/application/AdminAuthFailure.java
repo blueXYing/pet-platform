@@ -1,7 +1,7 @@
 package com.petplatform.admin.biz.application;
 
 /** Sanitized public failure; underlying SQL/credentials are deliberately not included. */
-public final class AdminAuthFailure extends RuntimeException {
+public class AdminAuthFailure extends RuntimeException {
   private final int status;
   private final String code;
 

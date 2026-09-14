@@ -13,9 +13,9 @@ public final class AdminAuthStore {
     T apply(Tx tx) throws SQLException;
   }
 
-  public static final class CommitUnknown extends RuntimeException {
+  public static final class CommitUnknown extends AdminAuthFailure {
     public CommitUnknown() {
-      super("AUTH_COMMIT_ACK_UNKNOWN", null, false, false);
+      super(503, "COMMON_DEPENDENCY_UNAVAILABLE");
     }
   }
 
@@ -158,7 +158,7 @@ public final class AdminAuthStore {
         throw new CommitUnknown();
       }
       return result;
-    } catch (CommitUnknown | AdminAuthFailure e) {
+    } catch (AdminAuthFailure e) {
       throw e;
     } catch (SQLException e) {
       throw AdminAuthFailure.unavailable();

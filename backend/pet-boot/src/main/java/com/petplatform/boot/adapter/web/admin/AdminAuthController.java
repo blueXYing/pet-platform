@@ -70,14 +70,18 @@ public class AdminAuthController {
     }
   }
 
-  private ResponseEntity<Envelope> result(AdminSecretResult value, HttpServletRequest req) {
-    return ResponseEntity.ok()
-        .cacheControl(CacheControl.noStore())
-        .body(new Envelope("SUCCESS", "成功", value.data(), trace(req)));
+  private Envelope result(AdminSecretResult value, HttpServletRequest req) {
+    return new Envelope("SUCCESS", "成功", value.data(), trace(req));
+  }
+
+  @ModelAttribute
+  public void responseHeaders(HttpServletResponse response) {
+    response.setHeader("Cache-Control", "no-store");
   }
 
   @PostMapping("/attempts")
-  public ResponseEntity<Envelope> attempts(@RequestBody Request body, HttpServletRequest req) {
+  public Envelope attempts(
+      @RequestBody Request body, HttpServletRequest req, HttpServletResponse response) {
     try (body) {
       body.require(Set.of());
       origin(req);
@@ -91,15 +95,14 @@ public class AdminAuthController {
               .maxAge(600)
               .build()
               .toString();
-      return ResponseEntity.status(201)
-          .header(HttpHeaders.SET_COOKIE, cookie)
-          .cacheControl(CacheControl.noStore())
-          .body(new Envelope("SUCCESS", "成功", value.data(), trace(req)));
+      response.setStatus(201);
+      response.setHeader(HttpHeaders.SET_COOKIE, cookie);
+      return new Envelope("SUCCESS", "成功", value.data(), trace(req));
     }
   }
 
   @PostMapping("/login")
-  public ResponseEntity<Envelope> login(@RequestBody Request body, HttpServletRequest req) {
+  public Envelope login(@RequestBody Request body, HttpServletRequest req) {
     try (body) {
       body.require(
           Set.of("attemptId", "account", "password", "captchaProof"),
@@ -120,13 +123,12 @@ public class AdminAuthController {
   }
 
   @GetMapping("/attempts/{attemptId}/requirements")
-  public ResponseEntity<Envelope> requirements(
-      @PathVariable String attemptId, HttpServletRequest req) {
+  public Envelope requirements(@PathVariable String attemptId, HttpServletRequest req) {
     return result(auth.requirements(id(attemptId), attemptSecret(req), cookie(req)), req);
   }
 
   @PostMapping("/captcha/challenges")
-  public ResponseEntity<Envelope> captcha(@RequestBody Request body, HttpServletRequest req) {
+  public Envelope captcha(@RequestBody Request body, HttpServletRequest req) {
     try (body) {
       body.require(Set.of("attemptId"), "attemptId");
       return result(
@@ -135,7 +137,7 @@ public class AdminAuthController {
   }
 
   @PostMapping("/captcha/verify")
-  public ResponseEntity<Envelope> verifyCaptcha(@RequestBody Request body, HttpServletRequest req) {
+  public Envelope verifyCaptcha(@RequestBody Request body, HttpServletRequest req) {
     try (body) {
       body.require(Set.of("attemptId", "captchaId", "answer"), "attemptId", "captchaId", "answer");
       return result(
@@ -151,7 +153,7 @@ public class AdminAuthController {
   }
 
   @GetMapping("/attempts/{attemptId}/result")
-  public ResponseEntity<Envelope> attemptResult(
+  public Envelope attemptResult(
       @PathVariable String attemptId,
       @RequestParam(required = false) String requestId,
       HttpServletRequest req) {
@@ -167,7 +169,7 @@ public class AdminAuthController {
   }
 
   @GetMapping("/session")
-  public ResponseEntity<Envelope> session(HttpServletRequest req) {
+  public Envelope session(HttpServletRequest req) {
     AdminSessionView s = view(req);
     String expiry =
         new DateTimeFormatterBuilder().appendInstant(3).toFormatter().format(s.expiresAt());
@@ -190,7 +192,7 @@ public class AdminAuthController {
   }
 
   @GetMapping("/permissions")
-  public ResponseEntity<Envelope> permissions(HttpServletRequest req) {
+  public Envelope permissions(HttpServletRequest req) {
     var p = view(req).permissions();
     String checked =
         new DateTimeFormatterBuilder().appendInstant(3).toFormatter().format(p.checkedAt());
@@ -213,7 +215,7 @@ public class AdminAuthController {
   }
 
   @PostMapping("/logout")
-  public ResponseEntity<Envelope> logout(@RequestBody Request body, HttpServletRequest req) {
+  public Envelope logout(@RequestBody Request body, HttpServletRequest req) {
     try (body) {
       body.require(Set.of());
       return result(auth.logout(rid(req), AdminBearerAuthenticationFilter.bearer(req)), req);
@@ -221,7 +223,7 @@ public class AdminAuthController {
   }
 
   @PostMapping("/activity")
-  public ResponseEntity<Envelope> activity(@RequestBody Request body, HttpServletRequest req) {
+  public Envelope activity(@RequestBody Request body, HttpServletRequest req) {
     try (body) {
       body.require(Set.of());
       return result(auth.activity(rid(req), AdminBearerAuthenticationFilter.bearer(req)), req);

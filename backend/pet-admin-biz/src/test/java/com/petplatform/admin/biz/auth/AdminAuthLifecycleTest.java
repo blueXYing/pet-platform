@@ -1,10 +1,12 @@
 package com.petplatform.admin.biz.auth;
 
 import com.petplatform.admin.biz.application.*;
+import com.petplatform.admin.biz.infrastructure.provider.AdminGrantCache;
 import java.nio.charset.StandardCharsets;
 import java.time.*;
 import java.util.*;
 import java.util.concurrent.*;
+import java.util.concurrent.atomic.AtomicBoolean;
 import org.junit.jupiter.api.*;
 import static org.junit.jupiter.api.Assertions.*;
 import static com.petplatform.admin.biz.auth.AuthTestDatabase.*;
@@ -97,6 +99,39 @@ class AdminAuthLifecycleTest {
             Callable<Map<String,Object>> call=()->{start.await();return db.login(service,a,key).data();};
             var one=pool.submit(call);var two=pool.submit(call);start.countDown();
             assertEquals(one.get(15,TimeUnit.SECONDS),two.get(15,TimeUnit.SECONDS));assertEquals(1,db.count("admin_web_session"));
+        }
+    }
+    @Test void sameKeyReplayWaitsForDelayedPublicationOfTheCommittedGrant()throws Exception{
+        var a=db.attempt(service);String key=request();
+        var putEntered=new CountDownLatch(1);var emptyRead=new CountDownLatch(1);var allowPublication=new CountDownLatch(1);
+        var firstPut=new AtomicBoolean();
+        AdminGrantCache delayed=new AdminGrantCache(){
+            public void verifyVolatileConfiguration(){db.cache.verifyVolatileConfiguration();}
+            public void putIfAbsent(String ref,byte[] value,Duration ttl){
+                if(firstPut.compareAndSet(false,true)){
+                    putEntered.countDown();
+                    try{if(!allowPublication.await(5,TimeUnit.SECONDS))throw new AssertionError("Publication barrier was not released");}
+                    catch(InterruptedException e){Thread.currentThread().interrupt();throw new AssertionError(e);}
+                }
+                db.cache.putIfAbsent(ref,value,ttl);
+            }
+            public Optional<byte[]> get(String ref){var value=db.cache.get(ref);if(value.isEmpty())emptyRead.countDown();return value;}
+        };
+        var auth=db.service(db.source,db.codec,delayed);
+        try(var pool=Executors.newFixedThreadPool(2);var timer=Executors.newSingleThreadScheduledExecutor()){
+            try{
+                var winner=pool.submit(()->db.login(auth,a,key).data());
+                assertTrue(putEntered.await(10,TimeUnit.SECONDS),"Winner must commit before publication is paused");
+                assertEquals(1,db.count("admin_web_session"));
+                assertEquals("SUCCEEDED",db.jdbc.queryForObject("SELECT state FROM admin_auth_command WHERE namespace='LOGIN'",String.class));
+                var replay=pool.submit(()->db.login(auth,a,key).data());
+                assertTrue(emptyRead.await(5,TimeUnit.SECONDS),"Replay must observe the unpublished cacheRef");
+                // The latches establish the race; the timer injects the requested 100 ms latency.
+                timer.schedule(allowPublication::countDown,100,TimeUnit.MILLISECONDS);
+                assertEquals(winner.get(10,TimeUnit.SECONDS),replay.get(10,TimeUnit.SECONDS));
+                assertEquals(1,db.count("admin_web_session"));
+                assertEquals(1L,db.jdbc.queryForObject("SELECT COUNT(DISTINCT cache_ref) FROM admin_auth_command WHERE namespace='LOGIN'",Long.class));
+            }finally{allowPublication.countDown();}
         }
     }
 }

@@ -1,6 +1,6 @@
 # AUTH-001：真实运营登录切片
 
-状态：**IMPLEMENTATION_CANDIDATE / VALIDATION_IN_PROGRESS**。本阶段只做运营账号密码登录、会话及本人权限查询，不做商家/短信/微信接入，不开放账号管理或其他业务动作。默认不启用Auth、不迁移、不创建账号。D1/D2、取消MFA和存储A/B1/C均已接受，不重复审批。
+状态：**COMPONENT_REVIEW_CANDIDATE / PRODUCTION_ENABLEMENT_BLOCKED**。本阶段只做运营账号密码登录、会话及本人权限查询，不做商家/短信/微信接入，不开放账号管理或其他业务动作。默认不启用Auth、不迁移、不创建账号。D1/D2、取消MFA和存储A/B1/C均已接受，不重复审批。最终固定head/CI及真实测试计数以PR17最新回执为准，候选文档本身不宣称已生产启用。
 
 ## 用户先看这里
 
@@ -39,4 +39,6 @@ BackendCore唯一写：admin-api五个DTO/查询接口；admin-biz实际服务/S
 
 ## 当前验证
 
-主代码及测试编译通过；QA本地组件测试与原合同回归已通过，完整MySQL+Redis/HTTP和S2/Worker组合必须以最终CI结果为准。当前仍VALIDATION_IN_PROGRESS，未固定最终交付、不merge、完整AUTH其余范围非DONE。之后用户只审批最终PR或真正新增CCR，不重复已接受方案。
+主代码及测试编译通过；本地15个组件/默认关闭测试、22架构规则测试及82个Python合同回归通过，真实MySQL+Redis/HTTP组合本地仍未执行。首轮CI34834432080真实运行了S2/Task与新admin测试，发现同key已提交结果尚未发布的并发窗口；已增加最多250ms只等待同一不可变cacheRef，不重签/不延时。QA加入确定性100ms延迟发布和缓存读取期间退出/重登反例；原并发和503断言不放宽。
+
+HTTP层已去除持久化异常引用，使用直接响应包及Servlet状态/头设置，遵守原架构门禁而非修改测试规则。完整MySQL+Redis/HTTP和154原S2/Worker组合必须在最终CI实际运行且零skip；PR17最新回执记录结果，旧失败和本地编译不作为通过证明。未merge，生产Enablement与完整AUTH其余范围仍非DONE。之后用户只审批最终PR或真正新增CCR，不重复已接受方案。

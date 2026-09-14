@@ -50,6 +50,38 @@ class AdminAuthFailureRecoveryTest {
         var keyFault=db.service(db.source,codec,db.cache);absent.set(true);
         failure(503,()->keyFault.attemptResult(a.id(),a.token(),a.cookie(),key));assertEquals(1,db.count("admin_web_session"));
     }
+    @Test void readResultRechecksAfterCacheReadWhenLogoutOrNewLoginCommits()throws Exception{
+        for(boolean replaceByNewLogin:List.of(false,true)){
+            var a=db.attempt(service);String loginKey=request();String old=db.login(service,a,loginKey).data().get("accessToken").toString();
+            var cacheRead=new CountDownLatch(1);var revocationCommitted=new CountDownLatch(1);var paused=new AtomicBoolean();
+            AdminGrantCache blocked=new AdminGrantCache(){
+                public void verifyVolatileConfiguration(){db.cache.verifyVolatileConfiguration();}
+                public void putIfAbsent(String ref,byte[] value,Duration ttl){db.cache.putIfAbsent(ref,value,ttl);}
+                public Optional<byte[]> get(String ref){
+                    var value=db.cache.get(ref);
+                    if(paused.compareAndSet(false,true)){
+                        assertTrue(value.isPresent(),"Read a real encrypted receipt before revocation");cacheRead.countDown();
+                        try{if(!revocationCommitted.await(10,TimeUnit.SECONDS))throw new AssertionError("Revocation barrier was not released");}
+                        catch(InterruptedException e){Thread.currentThread().interrupt();throw new AssertionError(e);}
+                    }
+                    return value;
+                }
+            };
+            var reader=db.service(db.source,db.codec,blocked);
+            try(var pool=Executors.newSingleThreadExecutor()){
+                try{
+                    var pending=pool.submit(()->reader.attemptResult(a.id(),a.token(),a.cookie(),loginKey));
+                    assertTrue(cacheRead.await(5,TimeUnit.SECONDS));
+                    String replacement=null;
+                    if(replaceByNewLogin)replacement=db.loginToken(service);else service.logout(request(),old);
+                    failure(401,()->service.resolveSession(old));revocationCommitted.countDown();
+                    var failed=assertThrows(ExecutionException.class,()->pending.get(10,TimeUnit.SECONDS));
+                    assertEquals(401,assertInstanceOf(AdminAuthFailure.class,failed.getCause()).status(),"READ_RESULT must not use a pre-cache transaction snapshot");
+                    if(replacement!=null)assertNotNull(service.resolveSession(replacement));
+                }finally{revocationCommitted.countDown();}
+            }
+        }
+    }
     @Test void b1UsesDatabasePrecommitAnchorAndCacheNeverContainsPlainTokenOrOverwrites(){
         var a=db.attempt(service);String key=request();var result=db.login(service,a,key);
         var row=db.jdbc.queryForMap("SELECT cache_ref,receipt_window_anchor_at,secret_expires_at,completed_at,result_expires_at FROM admin_auth_command WHERE namespace='LOGIN'");

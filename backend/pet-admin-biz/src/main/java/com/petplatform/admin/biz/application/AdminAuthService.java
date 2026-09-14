@@ -374,7 +374,7 @@ public final class AdminAuthService implements AdminSessionQueryApi {
         cache.putIfAbsent(
             c.text("cache_ref"), encrypted, Duration.between(now, c.time("secret_expires_at")));
       }
-      byte[] encrypted = cache.get(c.text("cache_ref")).orElseThrow(AdminAuthFailure::unavailable);
+      byte[] encrypted = awaitPublication(c.text("cache_ref"));
       body = secrets.decrypt(c.text("mac_key_id"), aad(c), encrypted);
       // A fresh transaction after cache I/O: a previous RR snapshot cannot hide
       // logout/relogin/revocation.
@@ -418,6 +418,19 @@ public final class AdminAuthService implements AdminSessionQueryApi {
               });
     }
     return new AdminSecretResult(body);
+  }
+
+  private byte[] awaitPublication(String reference) {
+    // The same-key winner may have committed immediately before publishing. Never re-sign.
+    long deadline = System.nanoTime() + java.util.concurrent.TimeUnit.MILLISECONDS.toNanos(250);
+    do {
+      var value = cache.get(reference);
+      if (value.isPresent()) return value.get();
+      if (Thread.currentThread().isInterrupted()) throw AdminAuthFailure.unavailable();
+      java.util.concurrent.locks.LockSupport.parkNanos(
+          java.util.concurrent.TimeUnit.MILLISECONDS.toNanos(5));
+    } while (System.nanoTime() < deadline);
+    throw AdminAuthFailure.unavailable();
   }
 
   public AdminSecretResult createAttempt(String requestId, String remoteIp) {
