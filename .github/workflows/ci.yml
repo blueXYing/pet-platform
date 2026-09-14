@@ -28,6 +28,9 @@ jobs:
       PLAT004_MYSQL_URL: jdbc:mysql://127.0.0.1:3306/
       PLAT004_MYSQL_USER: root
       PLAT004_MYSQL_PASSWORD: plat004-ci-isolated
+      PLAT002_ID_MYSQL_URL: jdbc:mysql://127.0.0.1:3306/
+      PLAT002_ID_MYSQL_USER: root
+      PLAT002_ID_MYSQL_PASSWORD: plat004-ci-isolated
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-java@v4

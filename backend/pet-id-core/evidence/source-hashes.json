@@ -1,0 +1,21 @@
+{
+  "backend/pet-id-core/src/main/java/com/petplatform/id/core/HutoolSnowflakeIdProvider.java": "ced2979392fb098d929d7ba3bdabd7f0600c20354b308af59297dc4c79f51d6c",
+  "backend/pet-id-core/src/main/java/com/petplatform/id/core/JdbcSnowflakeNodeStore.java": "ee02cc44fdb2bb431a8ebb7772028036bbd62177e8a3ec94307cc943ff349551",
+  "backend/pet-id-core/src/main/java/com/petplatform/id/core/PreviousJvmExitVerifier.java": "94177c0ff7c182f9f7d4630543a63d9d0f98acbc87087c95335b5c6817c16b37",
+  "backend/pet-id-core/src/main/java/com/petplatform/id/core/SingleFlightLane.java": "4864aa665b543693265c09e094e90d2526322b88d9a96309e51c4976816cb44c",
+  "backend/pet-id-core/src/main/java/com/petplatform/id/core/SnowflakeNodeGrant.java": "494ede66375f750f1fa3c956749b82230a9dec31fca8eff0f6c30b1b61546020",
+  "backend/pet-id-core/src/main/java/com/petplatform/id/core/SnowflakeProviderSettings.java": "22659c82d14a1a5e24d8a750dc5c11c588b6f56606f5ba51b5c628c48a9c2940",
+  "backend/pet-id-core/src/test/java/com/petplatform/id/core/CommitAckLossDataSource.java": "df97e00a0e6f2be5899d58182c64150fe1e6b137a552540a9f9bc1b29e837004",
+  "backend/pet-id-core/src/test/java/com/petplatform/id/core/HutoolSnowflakeIdProviderMySqlTest.java": "be48be40add4ce92cbdcc2058290cc1924fbbbddb5329da8f5cd8239b5728c80",
+  "backend/pet-id-core/src/test/java/com/petplatform/id/core/IdProviderProcessMySqlTest.java": "775c6f0970407eed044c6bf86116ba3fdad397522ea0d0b6a3492ceab9a12f95",
+  "backend/pet-id-core/src/test/java/com/petplatform/id/core/IdProviderProcessProbe.java": "7d514cdd50f6850fc455f24f9766d9db6c2e0ce0d5559b3751b342b1fb8f3b4e",
+  "backend/pet-id-core/src/test/java/com/petplatform/id/core/JdbcSnowflakeNodeStoreMySqlTest.java": "1e364d17f70de46ad248f5690bfbfceee6c2a6372e59575ad489347bc4debb27",
+  "backend/pet-id-core/src/test/java/com/petplatform/id/core/MySqlIdTestDatabase.java": "de132bd5181a599064a00b1135b2e7d0039fd8cdb0ff682b92e31e4dda9831ab",
+  "backend/pet-id-core/src/test/java/com/petplatform/id/core/SingleFlightLaneTest.java": "2e445b21692f3202255cb0fab5caf7b96f9b9fb4d97d79dea1dbf1c2a0fa5df1",
+  "backend/pet-id-core/src/test/java/com/petplatform/id/core/SnowflakeSchemaMySqlTest.java": "213aa9d90a262a136a1a35f7a801c8c8a108f5215d2a227655134d379e52be21",
+  "backend/pet-id-core/src/test/java/com/petplatform/id/core/SnowflakeSettingsTest.java": "6407916e06b5817b75bff49224e60b6428300160fabedc3b182ac43f70cba2bc",
+  "backend/pom.xml": "59a65936decac19d81d9a7f0189a572b067aa91c20b71feade84e317b3788e01",
+  "backend/pet-id-core/pom.xml": "16bcaac51508fb30214353740b96c5ada504004cc8256b3a236d572441e65078",
+  "docs/03-database/25-Snowflake-Worker-Schema-v0.1.sql": "2dbff5ad1845fdbca8056ca732287c4bcb8538a5538c352286902f6d21ee62fa",
+  ".github/workflows/ci.yml": "d19413b199d7871d7307f10dca3515c91c1e4ba22dff2199d0411d6b84556433"
+}

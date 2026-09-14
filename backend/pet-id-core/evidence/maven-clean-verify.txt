@@ -1,0 +1,1757 @@
+[INFO] Scanning for projects...
+[INFO] ------------------------------------------------------------------------
+[INFO] Reactor Build Order:
+[INFO]
+[INFO] pet-platform-backend                                               [pom]
+[INFO] pet-common                                                         [jar]
+[INFO] pet-id-core                                                        [jar]
+[INFO] pet-event-api                                                      [jar]
+[INFO] pet-event-core                                                     [jar]
+[INFO] pet-task-core                                                      [jar]
+[INFO] pet-user-api                                                       [jar]
+[INFO] pet-user-biz                                                       [jar]
+[INFO] pet-merchant-api                                                   [jar]
+[INFO] pet-merchant-biz                                                   [jar]
+[INFO] pet-service-api                                                    [jar]
+[INFO] pet-service-biz                                                    [jar]
+[INFO] pet-schedule-api                                                   [jar]
+[INFO] pet-schedule-biz                                                   [jar]
+[INFO] pet-order-api                                                      [jar]
+[INFO] pet-payment-api                                                    [jar]
+[INFO] pet-coupon-api                                                     [jar]
+[INFO] pet-order-biz                                                      [jar]
+[INFO] pet-payment-biz                                                    [jar]
+[INFO] pet-refund-api                                                     [jar]
+[INFO] pet-refund-biz                                                     [jar]
+[INFO] pet-verification-api                                               [jar]
+[INFO] pet-verification-biz                                               [jar]
+[INFO] pet-aftersale-api                                                  [jar]
+[INFO] pet-aftersale-biz                                                  [jar]
+[INFO] pet-coupon-biz                                                     [jar]
+[INFO] pet-points-api                                                     [jar]
+[INFO] pet-points-biz                                                     [jar]
+[INFO] pet-review-api                                                     [jar]
+[INFO] pet-review-biz                                                     [jar]
+[INFO] pet-notification-api                                               [jar]
+[INFO] pet-notification-biz                                               [jar]
+[INFO] pet-community-api                                                  [jar]
+[INFO] pet-community-biz                                                  [jar]
+[INFO] pet-thirdparty-api                                                 [jar]
+[INFO] pet-thirdparty-biz                                                 [jar]
+[INFO] pet-customer-service-api                                           [jar]
+[INFO] pet-customer-service-biz                                           [jar]
+[INFO] pet-admin-api                                                      [jar]
+[INFO] pet-admin-biz                                                      [jar]
+[INFO] pet-boot                                                           [jar]
+[INFO] pet-architecture-test                                              [jar]
+[INFO]
+[INFO] ----------------< com.petplatform:pet-platform-backend >----------------
+[INFO] Building pet-platform-backend 0.1.0-SNAPSHOT                      [1/42]
+[INFO]   from pom.xml
+[INFO] --------------------------------[ pom ]---------------------------------
+[INFO]
+[INFO] --- clean:3.5.0:clean (default-clean) @ pet-platform-backend ---
+[INFO]
+[INFO] --- enforcer:3.6.2:enforce (baseline) @ pet-platform-backend ---
+[INFO] Rule 0: org.apache.maven.enforcer.rules.version.RequireJavaVersion passed
+[INFO] Rule 1: org.apache.maven.enforcer.rules.version.RequireMavenVersion passed
+[INFO] Rule 2: org.apache.maven.enforcer.rules.dependency.DependencyConvergence passed
+[INFO]
+[INFO] --- enforcer:3.6.2:enforce (ban-cross-biz-dependencies) @ pet-platform-backend ---
+[INFO] Rule 0: org.apache.maven.enforcer.rules.dependency.BannedDependencies passed
+[INFO]
+[INFO] ---------------------< com.petplatform:pet-common >---------------------
+[INFO] Building pet-common 0.1.0-SNAPSHOT                                [2/42]
+[INFO]   from pet-common\pom.xml
+[INFO] --------------------------------[ jar ]---------------------------------
+[INFO]
+[INFO] --- clean:3.5.0:clean (default-clean) @ pet-common ---
+[INFO] Deleting C:\Users\Administrator\.codex\worktrees\9dd6\����ƽ̨V1.0\backend\pet-common\target
+[INFO]
+[INFO] --- enforcer:3.6.2:enforce (baseline) @ pet-common ---
+[INFO] Rule 2: org.apache.maven.enforcer.rules.dependency.DependencyConvergence passed
+[INFO]
+[INFO] --- enforcer:3.6.2:enforce (ban-cross-biz-dependencies) @ pet-common ---
+[INFO] Rule 0: org.apache.maven.enforcer.rules.dependency.BannedDependencies passed
+[INFO]
+[INFO] --- resources:3.5.0:resources (default-resources) @ pet-common ---
+[INFO] skip non existing resourceDirectory C:\Users\Administrator\.codex\worktrees\9dd6\����ƽ̨V1.0\backend\pet-common\src\main\resources
+[INFO] skip non existing resourceDirectory C:\Users\Administrator\.codex\worktrees\9dd6\����ƽ̨V1.0\backend\pet-common\src\main\resources
+[INFO]
+[INFO] --- compiler:3.15.0:compile (default-compile) @ pet-common ---
+[INFO] Recompiling the module because of changed source code.
+[INFO] Compiling 11 source files with javac [debug parameters release 21] to target\classes
+[INFO]
+[INFO] --- resources:3.5.0:testResources (default-testResources) @ pet-common ---
+[INFO] skip non existing resourceDirectory C:\Users\Administrator\.codex\worktrees\9dd6\����ƽ̨V1.0\backend\pet-common\src\test\resources
+[INFO]
+[INFO] --- compiler:3.15.0:testCompile (default-testCompile) @ pet-common ---
+[INFO] Recompiling the module because of changed dependency.
+[INFO] Compiling 5 source files with javac [debug parameters release 21] to target\test-classes
+[INFO]
+[INFO] --- surefire:3.5.6:test (default-test) @ pet-common ---
+[INFO] Using auto detected provider org.apache.maven.surefire.junitplatform.JUnitPlatformProvider
+[INFO]
+[INFO] -------------------------------------------------------
+[INFO]  T E S T S
+[INFO] -------------------------------------------------------
+[INFO] Running com.petplatform.common.MoneyCodecTest
+[INFO] Tests run: 28, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.123 s -- in com.petplatform.common.MoneyCodecTest
+[INFO] Running com.petplatform.common.PublicContractChecksTest
+[INFO] Tests run: 20, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.040 s -- in com.petplatform.common.PublicContractChecksTest
+[INFO] Running com.petplatform.common.PublicIdCodecTest
+[INFO] Tests run: 22, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.031 s -- in com.petplatform.common.PublicIdCodecTest
+[INFO] Running com.petplatform.common.S1ContractMappingTest
+[INFO] Tests run: 4, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.127 s -- in com.petplatform.common.S1ContractMappingTest
+[INFO]
+[INFO] Results:
+[INFO]
+[INFO] Tests run: 74, Failures: 0, Errors: 0, Skipped: 0
+[INFO]
+[INFO]
+[INFO] --- jar:3.5.1:jar (default-jar) @ pet-common ---
+[INFO] Building jar: C:\Users\Administrator\.codex\worktrees\9dd6\����ƽ̨V1.0\backend\pet-common\target\pet-common-0.1.0-SNAPSHOT.jar
+[INFO]
+[INFO] --------------------< com.petplatform:pet-id-core >---------------------
+[INFO] Building pet-id-core 0.1.0-SNAPSHOT                               [3/42]
+[INFO]   from pet-id-core\pom.xml
+[INFO] --------------------------------[ jar ]---------------------------------
+[INFO]
+[INFO] --- clean:3.5.0:clean (default-clean) @ pet-id-core ---
+[INFO] Deleting C:\Users\Administrator\.codex\worktrees\9dd6\����ƽ̨V1.0\backend\pet-id-core\target
+[INFO]
+[INFO] --- enforcer:3.6.2:enforce (baseline) @ pet-id-core ---
+[INFO] Rule 2: org.apache.maven.enforcer.rules.dependency.DependencyConvergence passed
+[INFO]
+[INFO] --- enforcer:3.6.2:enforce (ban-cross-biz-dependencies) @ pet-id-core ---
+[INFO] Rule 0: org.apache.maven.enforcer.rules.dependency.BannedDependencies passed
+[INFO]
+[INFO] --- resources:3.5.0:resources (default-resources) @ pet-id-core ---
+[INFO] skip non existing resourceDirectory C:\Users\Administrator\.codex\worktrees\9dd6\����ƽ̨V1.0\backend\pet-id-core\src\main\resources
+[INFO] skip non existing resourceDirectory C:\Users\Administrator\.codex\worktrees\9dd6\����ƽ̨V1.0\backend\pet-id-core\src\main\resources
+[INFO]
+[INFO] --- compiler:3.15.0:compile (default-compile) @ pet-id-core ---
+[INFO] Recompiling the module because of changed dependency.
+[INFO] Compiling 6 source files with javac [debug parameters release 21] to target\classes
+[WARNING] /C:/Users/Administrator/.codex/worktrees/9dd6/����ƽ̨V1.0/backend/pet-id-core/src/main/java/com/petplatform/id/core/SingleFlightLane.java:[122,40] java.lang �е� java.lang.ThreadDeath �ѹ�ʱ, �ұ��Ϊ��ɾ��
+[INFO]
+[INFO] --- resources:3.5.0:testResources (default-testResources) @ pet-id-core ---
+[INFO] skip non existing resourceDirectory C:\Users\Administrator\.codex\worktrees\9dd6\����ƽ̨V1.0\backend\pet-id-core\src\test\resources
+[INFO]
+[INFO] --- compiler:3.15.0:testCompile (default-testCompile) @ pet-id-core ---
+[INFO] Recompiling the module because of changed dependency.
+[INFO] Compiling 9 source files with javac [debug parameters release 21] to target\test-classes
+[INFO]
+[INFO] --- surefire:3.5.6:test (default-test) @ pet-id-core ---
+[INFO] Using auto detected provider org.apache.maven.surefire.junitplatform.JUnitPlatformProvider
+[INFO]
+[INFO] -------------------------------------------------------
+[INFO]  T E S T S
+[INFO] -------------------------------------------------------
+[INFO] Running com.petplatform.id.core.HutoolSnowflakeIdProviderMySqlTest
+PLAT-002 real MySQL 8.4.9; new isolated database plat002_id_test_ada8934d778241c8ada31179a83b109b
+9�� 14, 2026 5:28:39 ���� com.petplatform.id.core.HutoolSnowflakeIdProvider maintainPermission
+����: Snowflake provider failed closed: ACTION_FAILED
+PLAT-002 real MySQL 8.4.9; new isolated database plat002_id_test_589e3d4d67b14b5f8f40a0e4bdc8bec1
+9�� 14, 2026 5:28:39 ���� com.petplatform.id.core.HutoolSnowflakeIdProvider maintainPermission
+����: Snowflake provider failed closed: ACTION_FAILED
+PLAT-002 real MySQL 8.4.9; new isolated database plat002_id_test_d717b8866b364f85aa1a66dfc8bb48aa
+9�� 14, 2026 5:28:39 ���� com.petplatform.id.core.HutoolSnowflakeIdProvider maintainPermission
+����: Snowflake provider failed closed: ACTION_FAILED
+PLAT-002 real MySQL 8.4.9; new isolated database plat002_id_test_5aa3f8867bc14963ab41f97582108d45
+9�� 14, 2026 5:28:39 ���� com.petplatform.id.core.HutoolSnowflakeIdProvider maintainPermission
+����: Snowflake provider failed closed: ACTION_FAILED
+PLAT-002 real MySQL 8.4.9; new isolated database plat002_id_test_45e53c0af73745d09feaf2cc07a2ee20
+9�� 14, 2026 5:28:39 ���� com.petplatform.id.core.HutoolSnowflakeIdProvider maintainPermission
+����: Snowflake provider failed closed: ACTION_FAILED
+PLAT-002 real MySQL 8.4.9; new isolated database plat002_id_test_ae11c8917f5f4e4f939fdf40cd0aa4cb
+9�� 14, 2026 5:28:39 ���� com.petplatform.id.core.HutoolSnowflakeIdProvider maintainPermission
+����: Snowflake provider failed closed: ACTION_FAILED
+PLAT-002 real MySQL 8.4.9; new isolated database plat002_id_test_1fea0b31deb44c6696499cd34ecfd7e8
+PLAT-002 real MySQL 8.4.9; new isolated database plat002_id_test_1523282e6a7b4292ab0b1d41f8e25daf
+9�� 14, 2026 5:28:45 ���� com.petplatform.id.core.HutoolSnowflakeIdProvider maintainPermission
+����: Snowflake provider failed closed: ACTION_FAILED
+PLAT-002 real MySQL 8.4.9; new isolated database plat002_id_test_b5e49004e91249c5a85217b6b1e44eca
+9�� 14, 2026 5:28:46 ���� com.petplatform.id.core.HutoolSnowflakeIdProvider maintainPermission
+����: Snowflake provider failed closed: OPERATION_TIMEOUT
+PLAT-002 real MySQL 8.4.9; new isolated database plat002_id_test_ff8934ba3efe49e5887f1a87ca8206b5
+PLAT-002 real MySQL 8.4.9; new isolated database plat002_id_test_c5db696bf7dd46689ff652137a1b4545
+PLAT-002 real MySQL 8.4.9; new isolated database plat002_id_test_0df68d35902b45e9a9aa72ad1587cf76
+9�� 14, 2026 5:28:48 ���� com.petplatform.id.core.HutoolSnowflakeIdProvider maintainPermission
+����: Snowflake provider failed closed: ACTION_FAILED
+PLAT-002 real MySQL 8.4.9; new isolated database plat002_id_test_42a96eaa42f14bb48da12614dd4956b9
+9�� 14, 2026 5:28:49 ���� com.petplatform.id.core.HutoolSnowflakeIdProvider maintainPermission
+����: Snowflake provider failed closed: ACTION_FAILED
+[INFO] Tests run: 13, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 10.01 s -- in com.petplatform.id.core.HutoolSnowflakeIdProviderMySqlTest
+[INFO] Running com.petplatform.id.core.IdProviderProcessMySqlTest
+PLAT-002 real MySQL 8.4.9; new isolated database plat002_id_test_ca44e3b279784e1b976762742cc6e50f
+ID_PROCESS READY hold 27324 2026-09-14T09:28:49.079Z 48089907-aef5-45a5-ac3b-3acdc9e31280 1 22152529432 22152534431 92914442840379392
+ID_PROCESS VERIFY 48089907-aef5-45a5-ac3b-3acdc9e31280 1 22152534431
+ID_PROCESS WARMING 1be3baeb-e488-43cd-a993-bfb1e82bf4a1 22152534432 22152539431
+ID_PROCESS READY recover 49476 2026-09-14T09:28:49.472Z 1be3baeb-e488-43cd-a993-bfb1e82bf4a1 2 22152534432 22152539431 92914463874813952
+REAL_JVM_EXIT_BOUND oldPid=27324 start=2026-09-14T09:28:49.079Z oldIncarnation=48089907-aef5-45a5-ac3b-3acdc9e31280 halt=23 freshPid=49476
+[INFO] Tests run: 1, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 5.448 s -- in com.petplatform.id.core.IdProviderProcessMySqlTest
+[INFO] Running com.petplatform.id.core.JdbcSnowflakeNodeStoreMySqlTest
+PLAT-002 real MySQL 8.4.9; new isolated database plat002_id_test_edf66508c74c499c84a1027310376bda
+PLAT-002 real MySQL 8.4.9; new isolated database plat002_id_test_59aeea6c7fc04b9aafba646b4d3d4af8
+PLAT-002 real MySQL 8.4.9; new isolated database plat002_id_test_0f1d5f9daf2946de8b411f8941be1607
+PLAT-002 real MySQL 8.4.9; new isolated database plat002_id_test_b69a19691f4c4264a839ce08daa8659f
+PLAT-002 real MySQL 8.4.9; new isolated database plat002_id_test_e4273d2272c54e59aa806f700a6249d3
+PLAT-002 real MySQL 8.4.9; new isolated database plat002_id_test_2bf606ae225a43e3a6af2216ad4e828c
+PLAT-002 real MySQL 8.4.9; new isolated database plat002_id_test_5747b61d7c154f77a31ef83b98ccec3f
+[INFO] Tests run: 7, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.788 s -- in com.petplatform.id.core.JdbcSnowflakeNodeStoreMySqlTest
+[INFO] Running com.petplatform.id.core.SingleFlightLaneTest
+[INFO] Tests run: 6, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 1.029 s -- in com.petplatform.id.core.SingleFlightLaneTest
+[INFO] Running com.petplatform.id.core.SnowflakeSchemaMySqlTest
+PLAT-002 real MySQL 8.4.9; new isolated database plat002_id_test_ed038ae1aa8547ac9ead427666688e9c
+[INFO] Tests run: 1, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.144 s -- in com.petplatform.id.core.SnowflakeSchemaMySqlTest
+[INFO] Running com.petplatform.id.core.SnowflakeSettingsTest
+[INFO] Tests run: 3, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.003 s -- in com.petplatform.id.core.SnowflakeSettingsTest
+[INFO]
+[INFO] Results:
+[INFO]
+[INFO] Tests run: 31, Failures: 0, Errors: 0, Skipped: 0
+[INFO]
+[INFO]
+[INFO] --- jar:3.5.1:jar (default-jar) @ pet-id-core ---
+[INFO] Building jar: C:\Users\Administrator\.codex\worktrees\9dd6\����ƽ̨V1.0\backend\pet-id-core\target\pet-id-core-0.1.0-SNAPSHOT.jar
+[INFO]
+[INFO] -------------------< com.petplatform:pet-event-api >--------------------
+[INFO] Building pet-event-api 0.1.0-SNAPSHOT                             [4/42]
+[INFO]   from pet-event-api\pom.xml
+[INFO] --------------------------------[ jar ]---------------------------------
+[INFO]
+[INFO] --- clean:3.5.0:clean (default-clean) @ pet-event-api ---
+[INFO] Deleting C:\Users\Administrator\.codex\worktrees\9dd6\����ƽ̨V1.0\backend\pet-event-api\target
+[INFO]
+[INFO] --- enforcer:3.6.2:enforce (baseline) @ pet-event-api ---
+[INFO] Rule 2: org.apache.maven.enforcer.rules.dependency.DependencyConvergence passed
+[INFO]
+[INFO] --- enforcer:3.6.2:enforce (ban-cross-biz-dependencies) @ pet-event-api ---
+[INFO] Rule 0: org.apache.maven.enforcer.rules.dependency.BannedDependencies passed
+[INFO]
+[INFO] --- resources:3.5.0:resources (default-resources) @ pet-event-api ---
+[INFO] skip non existing resourceDirectory C:\Users\Administrator\.codex\worktrees\9dd6\����ƽ̨V1.0\backend\pet-event-api\src\main\resources
+[INFO] skip non existing resourceDirectory C:\Users\Administrator\.codex\worktrees\9dd6\����ƽ̨V1.0\backend\pet-event-api\src\main\resources
+[INFO]
+[INFO] --- compiler:3.15.0:compile (default-compile) @ pet-event-api ---
+[INFO] Recompiling the module because of changed dependency.
+[INFO] Compiling 2 source files with javac [debug parameters release 21] to target\classes
+[INFO]
+[INFO] --- resources:3.5.0:testResources (default-testResources) @ pet-event-api ---
+[INFO] skip non existing resourceDirectory C:\Users\Administrator\.codex\worktrees\9dd6\����ƽ̨V1.0\backend\pet-event-api\src\test\resources
+[INFO]
+[INFO] --- compiler:3.15.0:testCompile (default-testCompile) @ pet-event-api ---
+[INFO] No sources to compile
+[INFO]
+[INFO] --- surefire:3.5.6:test (default-test) @ pet-event-api ---
+[INFO] No tests to run.
+[INFO]
+[INFO] --- jar:3.5.1:jar (default-jar) @ pet-event-api ---
+[INFO] Building jar: C:\Users\Administrator\.codex\worktrees\9dd6\����ƽ̨V1.0\backend\pet-event-api\target\pet-event-api-0.1.0-SNAPSHOT.jar
+[INFO]
+[INFO] -------------------< com.petplatform:pet-event-core >-------------------
+[INFO] Building pet-event-core 0.1.0-SNAPSHOT                            [5/42]
+[INFO]   from pet-event-core\pom.xml
+[INFO] --------------------------------[ jar ]---------------------------------
+[INFO]
+[INFO] --- clean:3.5.0:clean (default-clean) @ pet-event-core ---
+[INFO] Deleting C:\Users\Administrator\.codex\worktrees\9dd6\����ƽ̨V1.0\backend\pet-event-core\target
+[INFO]
+[INFO] --- enforcer:3.6.2:enforce (baseline) @ pet-event-core ---
+[INFO] Rule 2: org.apache.maven.enforcer.rules.dependency.DependencyConvergence passed
+[INFO]
+[INFO] --- enforcer:3.6.2:enforce (ban-cross-biz-dependencies) @ pet-event-core ---
+[INFO] Rule 0: org.apache.maven.enforcer.rules.dependency.BannedDependencies passed
+[INFO]
+[INFO] --- resources:3.5.0:resources (default-resources) @ pet-event-core ---
+[INFO] skip non existing resourceDirectory C:\Users\Administrator\.codex\worktrees\9dd6\����ƽ̨V1.0\backend\pet-event-core\src\main\resources
+[INFO] skip non existing resourceDirectory C:\Users\Administrator\.codex\worktrees\9dd6\����ƽ̨V1.0\backend\pet-event-core\src\main\resources
+[INFO]
+[INFO] --- compiler:3.15.0:compile (default-compile) @ pet-event-core ---
+[INFO] Recompiling the module because of changed dependency.
+[INFO] Compiling 1 source file with javac [debug parameters release 21] to target\classes
+[INFO]
+[INFO] --- resources:3.5.0:testResources (default-testResources) @ pet-event-core ---
+[INFO] skip non existing resourceDirectory C:\Users\Administrator\.codex\worktrees\9dd6\����ƽ̨V1.0\backend\pet-event-core\src\test\resources
+[INFO]
+[INFO] --- compiler:3.15.0:testCompile (default-testCompile) @ pet-event-core ---
+[INFO] No sources to compile
+[INFO]
+[INFO] --- surefire:3.5.6:test (default-test) @ pet-event-core ---
+[INFO] No tests to run.
+[INFO]
+[INFO] --- jar:3.5.1:jar (default-jar) @ pet-event-core ---
+[INFO] Building jar: C:\Users\Administrator\.codex\worktrees\9dd6\����ƽ̨V1.0\backend\pet-event-core\target\pet-event-core-0.1.0-SNAPSHOT.jar
+[INFO]
+[INFO] -------------------< com.petplatform:pet-task-core >--------------------
+[INFO] Building pet-task-core 0.1.0-SNAPSHOT                             [6/42]
+[INFO]   from pet-task-core\pom.xml
+[INFO] --------------------------------[ jar ]---------------------------------
+[INFO]
+[INFO] --- clean:3.5.0:clean (default-clean) @ pet-task-core ---
+[INFO] Deleting C:\Users\Administrator\.codex\worktrees\9dd6\����ƽ̨V1.0\backend\pet-task-core\target
+[INFO]
+[INFO] --- enforcer:3.6.2:enforce (baseline) @ pet-task-core ---
+[INFO] Rule 2: org.apache.maven.enforcer.rules.dependency.DependencyConvergence passed
+[INFO]
+[INFO] --- enforcer:3.6.2:enforce (ban-cross-biz-dependencies) @ pet-task-core ---
+[INFO] Rule 0: org.apache.maven.enforcer.rules.dependency.BannedDependencies passed
+[INFO]
+[INFO] --- resources:3.5.0:resources (default-resources) @ pet-task-core ---
+[INFO] skip non existing resourceDirectory C:\Users\Administrator\.codex\worktrees\9dd6\����ƽ̨V1.0\backend\pet-task-core\src\main\resources
+[INFO] skip non existing resourceDirectory C:\Users\Administrator\.codex\worktrees\9dd6\����ƽ̨V1.0\backend\pet-task-core\src\main\resources
+[INFO]
+[INFO] --- compiler:3.15.0:compile (default-compile) @ pet-task-core ---
+[INFO] Recompiling the module because of changed dependency.
+[INFO] Compiling 9 source files with javac [debug parameters release 21] to target\classes
+[WARNING] /C:/Users/Administrator/.codex/worktrees/9dd6/����ƽ̨V1.0/backend/pet-task-core/src/main/java/com/petplatform/task/core/AsyncTaskWorker.java:[62,82] java.lang �е� java.lang.ThreadDeath �ѹ�ʱ, �ұ��Ϊ��ɾ��
+[INFO]
+[INFO] --- resources:3.5.0:testResources (default-testResources) @ pet-task-core ---
+[INFO] skip non existing resourceDirectory C:\Users\Administrator\.codex\worktrees\9dd6\����ƽ̨V1.0\backend\pet-task-core\src\test\resources
+[INFO]
+[INFO] --- compiler:3.15.0:testCompile (default-testCompile) @ pet-task-core ---
+[INFO] Recompiling the module because of changed dependency.
+[INFO] Compiling 4 source files with javac [debug parameters release 21] to target\test-classes
+[INFO]
+[INFO] --- surefire:3.5.6:test (default-test) @ pet-task-core ---
+[INFO] Using auto detected provider org.apache.maven.surefire.junitplatform.JUnitPlatformProvider
+[INFO]
+[INFO] -------------------------------------------------------
+[INFO]  T E S T S
+[INFO] -------------------------------------------------------
+[INFO] Running com.petplatform.task.core.AsyncTaskWorkerMySqlTest
+PLAT-004 real MySQL 8.4.9; new database plat004_test_e22c4ddba9e04cf5935ea79c5570e7a4
+PLAT-004 real MySQL 8.4.9; new database plat004_test_7fce911e5c1c4f5382ab756c7d41b661
+PLAT-004 real MySQL 8.4.9; new database plat004_test_19f9a337f8a247c9a28d22fc5bb1fcb7
+PLAT-004 real MySQL 8.4.9; new database plat004_test_64eff8e4fb804ffe9ef49dc3e6f40a21
+PLAT-004 real MySQL 8.4.9; new database plat004_test_c8ba7118122f48fea2b4a9fc12fab476
+W2-TASK-002 actual JVM halt exit=17; restart exit=0; attempt RETRY/SUCCESS
+PLAT-004 real MySQL 8.4.9; new database plat004_test_0c6731dc8b36449f84437b13c489c462
+PLAT-004 real MySQL 8.4.9; new database plat004_test_08005e87ca6f4892a03fdd9ff9c207f6
+PLAT-004 real MySQL 8.4.9; new database plat004_test_58f6a8b20cd94ca59b442fea15109021
+PLAT-004 real MySQL 8.4.9; new database plat004_test_f162a6ba5f454a9f9d845662895abe5b
+9�� 14, 2026 5:29:03 ���� com.petplatform.task.core.AsyncTaskWorker lambda$start$2
+����: Task poll error: AssertionError
+PLAT-004 real MySQL 8.4.9; new database plat004_test_203a42752fc04316a96f259cb73def08
+[INFO] Tests run: 10, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 7.090 s -- in com.petplatform.task.core.AsyncTaskWorkerMySqlTest
+[INFO] Running com.petplatform.task.core.MySqlTaskRepositoryTest
+PLAT-004 real MySQL 8.4.9; new database plat004_test_e7b04becd8e84a9b8f1f4e6bce0f7ff2
+PLAT-004 real MySQL 8.4.9; new database plat004_test_da6e73aa7a0a4eeab15a40377112a0e3
+PLAT-004 real MySQL 8.4.9; new database plat004_test_3b7b197894cf4f519fbe439d3a4d7c3d
+PLAT-004 real MySQL 8.4.9; new database plat004_test_ce89117135d4496983d0f896bc452d5f
+PLAT-004 real MySQL 8.4.9; new database plat004_test_e5f23ec9d1db4abeaec11d6b9c27eb40
+PLAT-004 real MySQL 8.4.9; new database plat004_test_c8a50f2c99cc4dd99452727733265125
+PLAT-004 real MySQL 8.4.9; new database plat004_test_f496d77ca3fb47cd90153e5ce5e104ad
+PLAT-004 real MySQL 8.4.9; new database plat004_test_b1efb3da4ce242b6b9ed0d8ed0a3e8d0
+PLAT-004 real MySQL 8.4.9; new database plat004_test_51b67b8758144c64bffd4ebd7abc76bf
+PLAT-004 real MySQL 8.4.9; new database plat004_test_801e0ee2c1234c559e716f65cf627ee9
+PLAT-004 real MySQL 8.4.9; new database plat004_test_22e078968c4f4514af5153cd82a43bfc
+PLAT-004 real MySQL 8.4.9; new database plat004_test_8051e958897c481597f22a43317b503e
+[INFO] Tests run: 12, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 7.263 s -- in com.petplatform.task.core.MySqlTaskRepositoryTest
+[INFO]
+[INFO] Results:
+[INFO]
+[INFO] Tests run: 22, Failures: 0, Errors: 0, Skipped: 0
+[INFO]
+[INFO]
+[INFO] --- jar:3.5.1:jar (default-jar) @ pet-task-core ---
+[INFO] Building jar: C:\Users\Administrator\.codex\worktrees\9dd6\����ƽ̨V1.0\backend\pet-task-core\target\pet-task-core-0.1.0-SNAPSHOT.jar
+[INFO]
+[INFO] --------------------< com.petplatform:pet-user-api >--------------------
+[INFO] Building pet-user-api 0.1.0-SNAPSHOT                              [7/42]
+[INFO]   from pet-user-api\pom.xml
+[INFO] --------------------------------[ jar ]---------------------------------
+[INFO]
+[INFO] --- clean:3.5.0:clean (default-clean) @ pet-user-api ---
+[INFO] Deleting C:\Users\Administrator\.codex\worktrees\9dd6\����ƽ̨V1.0\backend\pet-user-api\target
+[INFO]
+[INFO] --- enforcer:3.6.2:enforce (baseline) @ pet-user-api ---
+[INFO] Rule 2: org.apache.maven.enforcer.rules.dependency.DependencyConvergence passed
+[INFO]
+[INFO] --- enforcer:3.6.2:enforce (ban-cross-biz-dependencies) @ pet-user-api ---
+[INFO] Rule 0: org.apache.maven.enforcer.rules.dependency.BannedDependencies passed
+[INFO]
+[INFO] --- resources:3.5.0:resources (default-resources) @ pet-user-api ---
+[INFO] skip non existing resourceDirectory C:\Users\Administrator\.codex\worktrees\9dd6\����ƽ̨V1.0\backend\pet-user-api\src\main\resources
+[INFO] skip non existing resourceDirectory C:\Users\Administrator\.codex\worktrees\9dd6\����ƽ̨V1.0\backend\pet-user-api\src\main\resources
+[INFO]
+[INFO] --- compiler:3.15.0:compile (default-compile) @ pet-user-api ---
+[INFO] Recompiling the module because of changed dependency.
+[INFO] Compiling 6 source files with javac [debug parameters release 21] to target\classes
+[INFO]
+[INFO] --- resources:3.5.0:testResources (default-testResources) @ pet-user-api ---
+[INFO] skip non existing resourceDirectory C:\Users\Administrator\.codex\worktrees\9dd6\����ƽ̨V1.0\backend\pet-user-api\src\test\resources
+[INFO]
+[INFO] --- compiler:3.15.0:testCompile (default-testCompile) @ pet-user-api ---
+[INFO] No sources to compile
+[INFO]
+[INFO] --- surefire:3.5.6:test (default-test) @ pet-user-api ---
+[INFO] No tests to run.
+[INFO]
+[INFO] --- jar:3.5.1:jar (default-jar) @ pet-user-api ---
+[INFO] Building jar: C:\Users\Administrator\.codex\worktrees\9dd6\����ƽ̨V1.0\backend\pet-user-api\target\pet-user-api-0.1.0-SNAPSHOT.jar
+[INFO]
+[INFO] --------------------< com.petplatform:pet-user-biz >--------------------
+[INFO] Building pet-user-biz 0.1.0-SNAPSHOT                              [8/42]
+[INFO]   from pet-user-biz\pom.xml
+[INFO] --------------------------------[ jar ]---------------------------------
+[INFO]
+[INFO] --- clean:3.5.0:clean (default-clean) @ pet-user-biz ---
+[INFO] Deleting C:\Users\Administrator\.codex\worktrees\9dd6\����ƽ̨V1.0\backend\pet-user-biz\target
+[INFO]
+[INFO] --- enforcer:3.6.2:enforce (baseline) @ pet-user-biz ---
+[INFO] Rule 2: org.apache.maven.enforcer.rules.dependency.DependencyConvergence passed
+[INFO]
+[INFO] --- enforcer:3.6.2:enforce (ban-cross-biz-dependencies) @ pet-user-biz ---
+[INFO] Rule 0: org.apache.maven.enforcer.rules.dependency.BannedDependencies passed
+[INFO]
+[INFO] --- resources:3.5.0:resources (default-resources) @ pet-user-biz ---
+[INFO] skip non existing resourceDirectory C:\Users\Administrator\.codex\worktrees\9dd6\����ƽ̨V1.0\backend\pet-user-biz\src\main\resources
+[INFO] skip non existing resourceDirectory C:\Users\Administrator\.codex\worktrees\9dd6\����ƽ̨V1.0\backend\pet-user-biz\src\main\resources
+[INFO]
+[INFO] --- compiler:3.15.0:compile (default-compile) @ pet-user-biz ---
+[INFO] Recompiling the module because of changed dependency.
+[INFO] Compiling 10 source files with javac [debug parameters release 21] to target\classes
+[INFO]
+[INFO] --- resources:3.5.0:testResources (default-testResources) @ pet-user-biz ---
+[INFO] skip non existing resourceDirectory C:\Users\Administrator\.codex\worktrees\9dd6\����ƽ̨V1.0\backend\pet-user-biz\src\test\resources
+[INFO]
+[INFO] --- compiler:3.15.0:testCompile (default-testCompile) @ pet-user-biz ---
+[INFO] No sources to compile
+[INFO]
+[INFO] --- surefire:3.5.6:test (default-test) @ pet-user-biz ---
+[INFO] No tests to run.
+[INFO]
+[INFO] --- jar:3.5.1:jar (default-jar) @ pet-user-biz ---
+[INFO] Building jar: C:\Users\Administrator\.codex\worktrees\9dd6\����ƽ̨V1.0\backend\pet-user-biz\target\pet-user-biz-0.1.0-SNAPSHOT.jar
+[INFO]
+[INFO] ------------------< com.petplatform:pet-merchant-api >------------------
+[INFO] Building pet-merchant-api 0.1.0-SNAPSHOT                          [9/42]
+[INFO]   from pet-merchant-api\pom.xml
+[INFO] --------------------------------[ jar ]---------------------------------
+[INFO]
+[INFO] --- clean:3.5.0:clean (default-clean) @ pet-merchant-api ---
+[INFO] Deleting C:\Users\Administrator\.codex\worktrees\9dd6\����ƽ̨V1.0\backend\pet-merchant-api\target
+[INFO]
+[INFO] --- enforcer:3.6.2:enforce (baseline) @ pet-merchant-api ---
+[INFO] Rule 2: org.apache.maven.enforcer.rules.dependency.DependencyConvergence passed
+[INFO]
+[INFO] --- enforcer:3.6.2:enforce (ban-cross-biz-dependencies) @ pet-merchant-api ---
+[INFO] Rule 0: org.apache.maven.enforcer.rules.dependency.BannedDependencies passed
+[INFO]
+[INFO] --- resources:3.5.0:resources (default-resources) @ pet-merchant-api ---
+[INFO] skip non existing resourceDirectory C:\Users\Administrator\.codex\worktrees\9dd6\����ƽ̨V1.0\backend\pet-merchant-api\src\main\resources
+[INFO] skip non existing resourceDirectory C:\Users\Administrator\.codex\worktrees\9dd6\����ƽ̨V1.0\backend\pet-merchant-api\src\main\resources
+[INFO]
+[INFO] --- compiler:3.15.0:compile (default-compile) @ pet-merchant-api ---
+[INFO] Recompiling the module because of changed dependency.
+[INFO] Compiling 6 source files with javac [debug parameters release 21] to target\classes
+[INFO]
+[INFO] --- resources:3.5.0:testResources (default-testResources) @ pet-merchant-api ---
+[INFO] skip non existing resourceDirectory C:\Users\Administrator\.codex\worktrees\9dd6\����ƽ̨V1.0\backend\pet-merchant-api\src\test\resources
+[INFO]
+[INFO] --- compiler:3.15.0:testCompile (default-testCompile) @ pet-merchant-api ---
+[INFO] No sources to compile
+[INFO]
+[INFO] --- surefire:3.5.6:test (default-test) @ pet-merchant-api ---
+[INFO] No tests to run.
+[INFO]
+[INFO] --- jar:3.5.1:jar (default-jar) @ pet-merchant-api ---
+[INFO] Building jar: C:\Users\Administrator\.codex\worktrees\9dd6\����ƽ̨V1.0\backend\pet-merchant-api\target\pet-merchant-api-0.1.0-SNAPSHOT.jar
+[INFO]
+[INFO] ------------------< com.petplatform:pet-merchant-biz >------------------
+[INFO] Building pet-merchant-biz 0.1.0-SNAPSHOT                         [10/42]
+[INFO]   from pet-merchant-biz\pom.xml
+[INFO] --------------------------------[ jar ]---------------------------------
+[INFO]
+[INFO] --- clean:3.5.0:clean (default-clean) @ pet-merchant-biz ---
+[INFO] Deleting C:\Users\Administrator\.codex\worktrees\9dd6\����ƽ̨V1.0\backend\pet-merchant-biz\target
+[INFO]
+[INFO] --- enforcer:3.6.2:enforce (baseline) @ pet-merchant-biz ---
+[INFO] Rule 2: org.apache.maven.enforcer.rules.dependency.DependencyConvergence passed
+[INFO]
+[INFO] --- enforcer:3.6.2:enforce (ban-cross-biz-dependencies) @ pet-merchant-biz ---
+[INFO] Rule 0: org.apache.maven.enforcer.rules.dependency.BannedDependencies passed
+[INFO]
+[INFO] --- resources:3.5.0:resources (default-resources) @ pet-merchant-biz ---
+[INFO] skip non existing resourceDirectory C:\Users\Administrator\.codex\worktrees\9dd6\����ƽ̨V1.0\backend\pet-merchant-biz\src\main\resources
+[INFO] skip non existing resourceDirectory C:\Users\Administrator\.codex\worktrees\9dd6\����ƽ̨V1.0\backend\pet-merchant-biz\src\main\resources
+[INFO]
+[INFO] --- compiler:3.15.0:compile (default-compile) @ pet-merchant-biz ---
+[INFO] Recompiling the module because of changed dependency.
+[INFO] Compiling 10 source files with javac [debug parameters release 21] to target\classes
+[INFO]
+[INFO] --- resources:3.5.0:testResources (default-testResources) @ pet-merchant-biz ---
+[INFO] skip non existing resourceDirectory C:\Users\Administrator\.codex\worktrees\9dd6\����ƽ̨V1.0\backend\pet-merchant-biz\src\test\resources
+[INFO]
+[INFO] --- compiler:3.15.0:testCompile (default-testCompile) @ pet-merchant-biz ---
+[INFO] No sources to compile
+[INFO]
+[INFO] --- surefire:3.5.6:test (default-test) @ pet-merchant-biz ---
+[INFO] No tests to run.
+[INFO]
+[INFO] --- jar:3.5.1:jar (default-jar) @ pet-merchant-biz ---
+[INFO] Building jar: C:\Users\Administrator\.codex\worktrees\9dd6\����ƽ̨V1.0\backend\pet-merchant-biz\target\pet-merchant-biz-0.1.0-SNAPSHOT.jar
+[INFO]
+[INFO] ------------------< com.petplatform:pet-service-api >-------------------
+[INFO] Building pet-service-api 0.1.0-SNAPSHOT                          [11/42]
+[INFO]   from pet-service-api\pom.xml
+[INFO] --------------------------------[ jar ]---------------------------------
+[INFO]
+[INFO] --- clean:3.5.0:clean (default-clean) @ pet-service-api ---
+[INFO] Deleting C:\Users\Administrator\.codex\worktrees\9dd6\����ƽ̨V1.0\backend\pet-service-api\target
+[INFO]
+[INFO] --- enforcer:3.6.2:enforce (baseline) @ pet-service-api ---
+[INFO] Rule 2: org.apache.maven.enforcer.rules.dependency.DependencyConvergence passed
+[INFO]
+[INFO] --- enforcer:3.6.2:enforce (ban-cross-biz-dependencies) @ pet-service-api ---
+[INFO] Rule 0: org.apache.maven.enforcer.rules.dependency.BannedDependencies passed
+[INFO]
+[INFO] --- resources:3.5.0:resources (default-resources) @ pet-service-api ---
+[INFO] skip non existing resourceDirectory C:\Users\Administrator\.codex\worktrees\9dd6\����ƽ̨V1.0\backend\pet-service-api\src\main\resources
+[INFO] skip non existing resourceDirectory C:\Users\Administrator\.codex\worktrees\9dd6\����ƽ̨V1.0\backend\pet-service-api\src\main\resources
+[INFO]
+[INFO] --- compiler:3.15.0:compile (default-compile) @ pet-service-api ---
+[INFO] Recompiling the module because of changed dependency.
+[INFO] Compiling 6 source files with javac [debug parameters release 21] to target\classes
+[INFO]
+[INFO] --- resources:3.5.0:testResources (default-testResources) @ pet-service-api ---
+[INFO] skip non existing resourceDirectory C:\Users\Administrator\.codex\worktrees\9dd6\����ƽ̨V1.0\backend\pet-service-api\src\test\resources
+[INFO]
+[INFO] --- compiler:3.15.0:testCompile (default-testCompile) @ pet-service-api ---
+[INFO] No sources to compile
+[INFO]
+[INFO] --- surefire:3.5.6:test (default-test) @ pet-service-api ---
+[INFO] No tests to run.
+[INFO]
+[INFO] --- jar:3.5.1:jar (default-jar) @ pet-service-api ---
+[INFO] Building jar: C:\Users\Administrator\.codex\worktrees\9dd6\����ƽ̨V1.0\backend\pet-service-api\target\pet-service-api-0.1.0-SNAPSHOT.jar
+[INFO]
+[INFO] ------------------< com.petplatform:pet-service-biz >-------------------
+[INFO] Building pet-service-biz 0.1.0-SNAPSHOT                          [12/42]
+[INFO]   from pet-service-biz\pom.xml
+[INFO] --------------------------------[ jar ]---------------------------------
+[INFO]
+[INFO] --- clean:3.5.0:clean (default-clean) @ pet-service-biz ---
+[INFO] Deleting C:\Users\Administrator\.codex\worktrees\9dd6\����ƽ̨V1.0\backend\pet-service-biz\target
+[INFO]
+[INFO] --- enforcer:3.6.2:enforce (baseline) @ pet-service-biz ---
+[INFO] Rule 2: org.apache.maven.enforcer.rules.dependency.DependencyConvergence passed
+[INFO]
+[INFO] --- enforcer:3.6.2:enforce (ban-cross-biz-dependencies) @ pet-service-biz ---
+[INFO] Rule 0: org.apache.maven.enforcer.rules.dependency.BannedDependencies passed
+[INFO]
+[INFO] --- resources:3.5.0:resources (default-resources) @ pet-service-biz ---
+[INFO] skip non existing resourceDirectory C:\Users\Administrator\.codex\worktrees\9dd6\����ƽ̨V1.0\backend\pet-service-biz\src\main\resources
+[INFO] skip non existing resourceDirectory C:\Users\Administrator\.codex\worktrees\9dd6\����ƽ̨V1.0\backend\pet-service-biz\src\main\resources
+[INFO]
+[INFO] --- compiler:3.15.0:compile (default-compile) @ pet-service-biz ---
+[INFO] Recompiling the module because of changed dependency.
+[INFO] Compiling 10 source files with javac [debug parameters release 21] to target\classes
+[INFO]
+[INFO] --- resources:3.5.0:testResources (default-testResources) @ pet-service-biz ---
+[INFO] skip non existing resourceDirectory C:\Users\Administrator\.codex\worktrees\9dd6\����ƽ̨V1.0\backend\pet-service-biz\src\test\resources
+[INFO]
+[INFO] --- compiler:3.15.0:testCompile (default-testCompile) @ pet-service-biz ---
+[INFO] No sources to compile
+[INFO]
+[INFO] --- surefire:3.5.6:test (default-test) @ pet-service-biz ---
+[INFO] No tests to run.
+[INFO]
+[INFO] --- jar:3.5.1:jar (default-jar) @ pet-service-biz ---
+[INFO] Building jar: C:\Users\Administrator\.codex\worktrees\9dd6\����ƽ̨V1.0\backend\pet-service-biz\target\pet-service-biz-0.1.0-SNAPSHOT.jar
+[INFO]
+[INFO] ------------------< com.petplatform:pet-schedule-api >------------------
+[INFO] Building pet-schedule-api 0.1.0-SNAPSHOT                         [13/42]
+[INFO]   from pet-schedule-api\pom.xml
+[INFO] --------------------------------[ jar ]---------------------------------
+[INFO]
+[INFO] --- clean:3.5.0:clean (default-clean) @ pet-schedule-api ---
+[INFO] Deleting C:\Users\Administrator\.codex\worktrees\9dd6\����ƽ̨V1.0\backend\pet-schedule-api\target
+[INFO]
+[INFO] --- enforcer:3.6.2:enforce (baseline) @ pet-schedule-api ---
+[INFO] Rule 2: org.apache.maven.enforcer.rules.dependency.DependencyConvergence passed
+[INFO]
+[INFO] --- enforcer:3.6.2:enforce (ban-cross-biz-dependencies) @ pet-schedule-api ---
+[INFO] Rule 0: org.apache.maven.enforcer.rules.dependency.BannedDependencies passed
+[INFO]
+[INFO] --- resources:3.5.0:resources (default-resources) @ pet-schedule-api ---
+[INFO] skip non existing resourceDirectory C:\Users\Administrator\.codex\worktrees\9dd6\����ƽ̨V1.0\backend\pet-schedule-api\src\main\resources
+[INFO] skip non existing resourceDirectory C:\Users\Administrator\.codex\worktrees\9dd6\����ƽ̨V1.0\backend\pet-schedule-api\src\main\resources
+[INFO]
+[INFO] --- compiler:3.15.0:compile (default-compile) @ pet-schedule-api ---
+[INFO] Recompiling the module because of changed dependency.
+[INFO] Compiling 6 source files with javac [debug parameters release 21] to target\classes
+[INFO]
+[INFO] --- resources:3.5.0:testResources (default-testResources) @ pet-schedule-api ---
+[INFO] skip non existing resourceDirectory C:\Users\Administrator\.codex\worktrees\9dd6\����ƽ̨V1.0\backend\pet-schedule-api\src\test\resources
+[INFO]
+[INFO] --- compiler:3.15.0:testCompile (default-testCompile) @ pet-schedule-api ---
+[INFO] No sources to compile
+[INFO]
+[INFO] --- surefire:3.5.6:test (default-test) @ pet-schedule-api ---
+[INFO] No tests to run.
+[INFO]
+[INFO] --- jar:3.5.1:jar (default-jar) @ pet-schedule-api ---
+[INFO] Building jar: C:\Users\Administrator\.codex\worktrees\9dd6\����ƽ̨V1.0\backend\pet-schedule-api\target\pet-schedule-api-0.1.0-SNAPSHOT.jar
+[INFO]
+[INFO] ------------------< com.petplatform:pet-schedule-biz >------------------
+[INFO] Building pet-schedule-biz 0.1.0-SNAPSHOT                         [14/42]
+[INFO]   from pet-schedule-biz\pom.xml
+[INFO] --------------------------------[ jar ]---------------------------------
+[INFO]
+[INFO] --- clean:3.5.0:clean (default-clean) @ pet-schedule-biz ---
+[INFO] Deleting C:\Users\Administrator\.codex\worktrees\9dd6\����ƽ̨V1.0\backend\pet-schedule-biz\target
+[INFO]
+[INFO] --- enforcer:3.6.2:enforce (baseline) @ pet-schedule-biz ---
+[INFO] Rule 2: org.apache.maven.enforcer.rules.dependency.DependencyConvergence passed
+[INFO]
+[INFO] --- enforcer:3.6.2:enforce (ban-cross-biz-dependencies) @ pet-schedule-biz ---
+[INFO] Rule 0: org.apache.maven.enforcer.rules.dependency.BannedDependencies passed
+[INFO]
+[INFO] --- resources:3.5.0:resources (default-resources) @ pet-schedule-biz ---
+[INFO] skip non existing resourceDirectory C:\Users\Administrator\.codex\worktrees\9dd6\����ƽ̨V1.0\backend\pet-schedule-biz\src\main\resources
+[INFO] skip non existing resourceDirectory C:\Users\Administrator\.codex\worktrees\9dd6\����ƽ̨V1.0\backend\pet-schedule-biz\src\main\resources
+[INFO]
+[INFO] --- compiler:3.15.0:compile (default-compile) @ pet-schedule-biz ---
+[INFO] Recompiling the module because of changed dependency.
+[INFO] Compiling 10 source files with javac [debug parameters release 21] to target\classes
+[INFO]
+[INFO] --- resources:3.5.0:testResources (default-testResources) @ pet-schedule-biz ---
+[INFO] skip non existing resourceDirectory C:\Users\Administrator\.codex\worktrees\9dd6\����ƽ̨V1.0\backend\pet-schedule-biz\src\test\resources
+[INFO]
+[INFO] --- compiler:3.15.0:testCompile (default-testCompile) @ pet-schedule-biz ---
+[INFO] No sources to compile
+[INFO]
+[INFO] --- surefire:3.5.6:test (default-test) @ pet-schedule-biz ---
+[INFO] No tests to run.
+[INFO]
+[INFO] --- jar:3.5.1:jar (default-jar) @ pet-schedule-biz ---
+[INFO] Building jar: C:\Users\Administrator\.codex\worktrees\9dd6\����ƽ̨V1.0\backend\pet-schedule-biz\target\pet-schedule-biz-0.1.0-SNAPSHOT.jar
+[INFO]
+[INFO] -------------------< com.petplatform:pet-order-api >--------------------
+[INFO] Building pet-order-api 0.1.0-SNAPSHOT                            [15/42]
+[INFO]   from pet-order-api\pom.xml
+[INFO] --------------------------------[ jar ]---------------------------------
+[INFO]
+[INFO] --- clean:3.5.0:clean (default-clean) @ pet-order-api ---
+[INFO] Deleting C:\Users\Administrator\.codex\worktrees\9dd6\����ƽ̨V1.0\backend\pet-order-api\target
+[INFO]
+[INFO] --- enforcer:3.6.2:enforce (baseline) @ pet-order-api ---
+[INFO] Rule 2: org.apache.maven.enforcer.rules.dependency.DependencyConvergence passed
+[INFO]
+[INFO] --- enforcer:3.6.2:enforce (ban-cross-biz-dependencies) @ pet-order-api ---
+[INFO] Rule 0: org.apache.maven.enforcer.rules.dependency.BannedDependencies passed
+[INFO]
+[INFO] --- resources:3.5.0:resources (default-resources) @ pet-order-api ---
+[INFO] skip non existing resourceDirectory C:\Users\Administrator\.codex\worktrees\9dd6\����ƽ̨V1.0\backend\pet-order-api\src\main\resources
+[INFO] skip non existing resourceDirectory C:\Users\Administrator\.codex\worktrees\9dd6\����ƽ̨V1.0\backend\pet-order-api\src\main\resources
+[INFO]
+[INFO] --- compiler:3.15.0:compile (default-compile) @ pet-order-api ---
+[INFO] Recompiling the module because of changed dependency.
+[INFO] Compiling 6 source files with javac [debug parameters release 21] to target\classes
+[INFO]
+[INFO] --- resources:3.5.0:testResources (default-testResources) @ pet-order-api ---
+[INFO] skip non existing resourceDirectory C:\Users\Administrator\.codex\worktrees\9dd6\����ƽ̨V1.0\backend\pet-order-api\src\test\resources
+[INFO]
+[INFO] --- compiler:3.15.0:testCompile (default-testCompile) @ pet-order-api ---
+[INFO] No sources to compile
+[INFO]
+[INFO] --- surefire:3.5.6:test (default-test) @ pet-order-api ---
+[INFO] No tests to run.
+[INFO]
+[INFO] --- jar:3.5.1:jar (default-jar) @ pet-order-api ---
+[INFO] Building jar: C:\Users\Administrator\.codex\worktrees\9dd6\����ƽ̨V1.0\backend\pet-order-api\target\pet-order-api-0.1.0-SNAPSHOT.jar
+[INFO]
+[INFO] ------------------< com.petplatform:pet-payment-api >-------------------
+[INFO] Building pet-payment-api 0.1.0-SNAPSHOT                          [16/42]
+[INFO]   from pet-payment-api\pom.xml
+[INFO] --------------------------------[ jar ]---------------------------------
+[INFO]
+[INFO] --- clean:3.5.0:clean (default-clean) @ pet-payment-api ---
+[INFO] Deleting C:\Users\Administrator\.codex\worktrees\9dd6\����ƽ̨V1.0\backend\pet-payment-api\target
+[INFO]
+[INFO] --- enforcer:3.6.2:enforce (baseline) @ pet-payment-api ---
+[INFO] Rule 2: org.apache.maven.enforcer.rules.dependency.DependencyConvergence passed
+[INFO]
+[INFO] --- enforcer:3.6.2:enforce (ban-cross-biz-dependencies) @ pet-payment-api ---
+[INFO] Rule 0: org.apache.maven.enforcer.rules.dependency.BannedDependencies passed
+[INFO]
+[INFO] --- resources:3.5.0:resources (default-resources) @ pet-payment-api ---
+[INFO] skip non existing resourceDirectory C:\Users\Administrator\.codex\worktrees\9dd6\����ƽ̨V1.0\backend\pet-payment-api\src\main\resources
+[INFO] skip non existing resourceDirectory C:\Users\Administrator\.codex\worktrees\9dd6\����ƽ̨V1.0\backend\pet-payment-api\src\main\resources
+[INFO]
+[INFO] --- compiler:3.15.0:compile (default-compile) @ pet-payment-api ---
+[INFO] Recompiling the module because of changed dependency.
+[INFO] Compiling 6 source files with javac [debug parameters release 21] to target\classes
+[INFO]
+[INFO] --- resources:3.5.0:testResources (default-testResources) @ pet-payment-api ---
+[INFO] skip non existing resourceDirectory C:\Users\Administrator\.codex\worktrees\9dd6\����ƽ̨V1.0\backend\pet-payment-api\src\test\resources
+[INFO]
+[INFO] --- compiler:3.15.0:testCompile (default-testCompile) @ pet-payment-api ---
+[INFO] No sources to compile
+[INFO]
+[INFO] --- surefire:3.5.6:test (default-test) @ pet-payment-api ---
+[INFO] No tests to run.
+[INFO]
+[INFO] --- jar:3.5.1:jar (default-jar) @ pet-payment-api ---
+[INFO] Building jar: C:\Users\Administrator\.codex\worktrees\9dd6\����ƽ̨V1.0\backend\pet-payment-api\target\pet-payment-api-0.1.0-SNAPSHOT.jar
+[INFO]
+[INFO] -------------------< com.petplatform:pet-coupon-api >-------------------
+[INFO] Building pet-coupon-api 0.1.0-SNAPSHOT                           [17/42]
+[INFO]   from pet-coupon-api\pom.xml
+[INFO] --------------------------------[ jar ]---------------------------------
+[INFO]
+[INFO] --- clean:3.5.0:clean (default-clean) @ pet-coupon-api ---
+[INFO] Deleting C:\Users\Administrator\.codex\worktrees\9dd6\����ƽ̨V1.0\backend\pet-coupon-api\target
+[INFO]
+[INFO] --- enforcer:3.6.2:enforce (baseline) @ pet-coupon-api ---
+[INFO] Rule 2: org.apache.maven.enforcer.rules.dependency.DependencyConvergence passed
+[INFO]
+[INFO] --- enforcer:3.6.2:enforce (ban-cross-biz-dependencies) @ pet-coupon-api ---
+[INFO] Rule 0: org.apache.maven.enforcer.rules.dependency.BannedDependencies passed
+[INFO]
+[INFO] --- resources:3.5.0:resources (default-resources) @ pet-coupon-api ---
+[INFO] skip non existing resourceDirectory C:\Users\Administrator\.codex\worktrees\9dd6\����ƽ̨V1.0\backend\pet-coupon-api\src\main\resources
+[INFO] skip non existing resourceDirectory C:\Users\Administrator\.codex\worktrees\9dd6\����ƽ̨V1.0\backend\pet-coupon-api\src\main\resources
+[INFO]
+[INFO] --- compiler:3.15.0:compile (default-compile) @ pet-coupon-api ---
+[INFO] Recompiling the module because of changed dependency.
+[INFO] Compiling 6 source files with javac [debug parameters release 21] to target\classes
+[INFO]
+[INFO] --- resources:3.5.0:testResources (default-testResources) @ pet-coupon-api ---
+[INFO] skip non existing resourceDirectory C:\Users\Administrator\.codex\worktrees\9dd6\����ƽ̨V1.0\backend\pet-coupon-api\src\test\resources
+[INFO]
+[INFO] --- compiler:3.15.0:testCompile (default-testCompile) @ pet-coupon-api ---
+[INFO] No sources to compile
+[INFO]
+[INFO] --- surefire:3.5.6:test (default-test) @ pet-coupon-api ---
+[INFO] No tests to run.
+[INFO]
+[INFO] --- jar:3.5.1:jar (default-jar) @ pet-coupon-api ---
+[INFO] Building jar: C:\Users\Administrator\.codex\worktrees\9dd6\����ƽ̨V1.0\backend\pet-coupon-api\target\pet-coupon-api-0.1.0-SNAPSHOT.jar
+[INFO]
+[INFO] -------------------< com.petplatform:pet-order-biz >--------------------
+[INFO] Building pet-order-biz 0.1.0-SNAPSHOT                            [18/42]
+[INFO]   from pet-order-biz\pom.xml
+[INFO] --------------------------------[ jar ]---------------------------------
+[INFO]
+[INFO] --- clean:3.5.0:clean (default-clean) @ pet-order-biz ---
+[INFO] Deleting C:\Users\Administrator\.codex\worktrees\9dd6\����ƽ̨V1.0\backend\pet-order-biz\target
+[INFO]
+[INFO] --- enforcer:3.6.2:enforce (baseline) @ pet-order-biz ---
+[INFO] Rule 2: org.apache.maven.enforcer.rules.dependency.DependencyConvergence passed
+[INFO]
+[INFO] --- enforcer:3.6.2:enforce (ban-cross-biz-dependencies) @ pet-order-biz ---
+[INFO] Rule 0: org.apache.maven.enforcer.rules.dependency.BannedDependencies passed
+[INFO]
+[INFO] --- resources:3.5.0:resources (default-resources) @ pet-order-biz ---
+[INFO] skip non existing resourceDirectory C:\Users\Administrator\.codex\worktrees\9dd6\����ƽ̨V1.0\backend\pet-order-biz\src\main\resources
+[INFO] skip non existing resourceDirectory C:\Users\Administrator\.codex\worktrees\9dd6\����ƽ̨V1.0\backend\pet-order-biz\src\main\resources
+[INFO]
+[INFO] --- compiler:3.15.0:compile (default-compile) @ pet-order-biz ---
+[INFO] Recompiling the module because of changed dependency.
+[INFO] Compiling 10 source files with javac [debug parameters release 21] to target\classes
+[INFO]
+[INFO] --- resources:3.5.0:testResources (default-testResources) @ pet-order-biz ---
+[INFO] skip non existing resourceDirectory C:\Users\Administrator\.codex\worktrees\9dd6\����ƽ̨V1.0\backend\pet-order-biz\src\test\resources
+[INFO]
+[INFO] --- compiler:3.15.0:testCompile (default-testCompile) @ pet-order-biz ---
+[INFO] No sources to compile
+[INFO]
+[INFO] --- surefire:3.5.6:test (default-test) @ pet-order-biz ---
+[INFO] No tests to run.
+[INFO]
+[INFO] --- jar:3.5.1:jar (default-jar) @ pet-order-biz ---
+[INFO] Building jar: C:\Users\Administrator\.codex\worktrees\9dd6\����ƽ̨V1.0\backend\pet-order-biz\target\pet-order-biz-0.1.0-SNAPSHOT.jar
+[INFO]
+[INFO] ------------------< com.petplatform:pet-payment-biz >-------------------
+[INFO] Building pet-payment-biz 0.1.0-SNAPSHOT                          [19/42]
+[INFO]   from pet-payment-biz\pom.xml
+[INFO] --------------------------------[ jar ]---------------------------------
+[INFO]
+[INFO] --- clean:3.5.0:clean (default-clean) @ pet-payment-biz ---
+[INFO] Deleting C:\Users\Administrator\.codex\worktrees\9dd6\����ƽ̨V1.0\backend\pet-payment-biz\target
+[INFO]
+[INFO] --- enforcer:3.6.2:enforce (baseline) @ pet-payment-biz ---
+[INFO] Rule 2: org.apache.maven.enforcer.rules.dependency.DependencyConvergence passed
+[INFO]
+[INFO] --- enforcer:3.6.2:enforce (ban-cross-biz-dependencies) @ pet-payment-biz ---
+[INFO] Rule 0: org.apache.maven.enforcer.rules.dependency.BannedDependencies passed
+[INFO]
+[INFO] --- resources:3.5.0:resources (default-resources) @ pet-payment-biz ---
+[INFO] skip non existing resourceDirectory C:\Users\Administrator\.codex\worktrees\9dd6\����ƽ̨V1.0\backend\pet-payment-biz\src\main\resources
+[INFO] skip non existing resourceDirectory C:\Users\Administrator\.codex\worktrees\9dd6\����ƽ̨V1.0\backend\pet-payment-biz\src\main\resources
+[INFO]
+[INFO] --- compiler:3.15.0:compile (default-compile) @ pet-payment-biz ---
+[INFO] Recompiling the module because of changed dependency.
+[INFO] Compiling 10 source files with javac [debug parameters release 21] to target\classes
+[INFO]
+[INFO] --- resources:3.5.0:testResources (default-testResources) @ pet-payment-biz ---
+[INFO] skip non existing resourceDirectory C:\Users\Administrator\.codex\worktrees\9dd6\����ƽ̨V1.0\backend\pet-payment-biz\src\test\resources
+[INFO]
+[INFO] --- compiler:3.15.0:testCompile (default-testCompile) @ pet-payment-biz ---
+[INFO] No sources to compile
+[INFO]
+[INFO] --- surefire:3.5.6:test (default-test) @ pet-payment-biz ---
+[INFO] No tests to run.
+[INFO]
+[INFO] --- jar:3.5.1:jar (default-jar) @ pet-payment-biz ---
+[INFO] Building jar: C:\Users\Administrator\.codex\worktrees\9dd6\����ƽ̨V1.0\backend\pet-payment-biz\target\pet-payment-biz-0.1.0-SNAPSHOT.jar
+[INFO]
+[INFO] -------------------< com.petplatform:pet-refund-api >-------------------
+[INFO] Building pet-refund-api 0.1.0-SNAPSHOT                           [20/42]
+[INFO]   from pet-refund-api\pom.xml
+[INFO] --------------------------------[ jar ]---------------------------------
+[INFO]
+[INFO] --- clean:3.5.0:clean (default-clean) @ pet-refund-api ---
+[INFO] Deleting C:\Users\Administrator\.codex\worktrees\9dd6\����ƽ̨V1.0\backend\pet-refund-api\target
+[INFO]
+[INFO] --- enforcer:3.6.2:enforce (baseline) @ pet-refund-api ---
+[INFO] Rule 2: org.apache.maven.enforcer.rules.dependency.DependencyConvergence passed
+[INFO]
+[INFO] --- enforcer:3.6.2:enforce (ban-cross-biz-dependencies) @ pet-refund-api ---
+[INFO] Rule 0: org.apache.maven.enforcer.rules.dependency.BannedDependencies passed
+[INFO]
+[INFO] --- resources:3.5.0:resources (default-resources) @ pet-refund-api ---
+[INFO] skip non existing resourceDirectory C:\Users\Administrator\.codex\worktrees\9dd6\����ƽ̨V1.0\backend\pet-refund-api\src\main\resources
+[INFO] skip non existing resourceDirectory C:\Users\Administrator\.codex\worktrees\9dd6\����ƽ̨V1.0\backend\pet-refund-api\src\main\resources
+[INFO]
+[INFO] --- compiler:3.15.0:compile (default-compile) @ pet-refund-api ---
+[INFO] Recompiling the module because of changed dependency.
+[INFO] Compiling 6 source files with javac [debug parameters release 21] to target\classes
+[INFO]
+[INFO] --- resources:3.5.0:testResources (default-testResources) @ pet-refund-api ---
+[INFO] skip non existing resourceDirectory C:\Users\Administrator\.codex\worktrees\9dd6\����ƽ̨V1.0\backend\pet-refund-api\src\test\resources
+[INFO]
+[INFO] --- compiler:3.15.0:testCompile (default-testCompile) @ pet-refund-api ---
+[INFO] No sources to compile
+[INFO]
+[INFO] --- surefire:3.5.6:test (default-test) @ pet-refund-api ---
+[INFO] No tests to run.
+[INFO]
+[INFO] --- jar:3.5.1:jar (default-jar) @ pet-refund-api ---
+[INFO] Building jar: C:\Users\Administrator\.codex\worktrees\9dd6\����ƽ̨V1.0\backend\pet-refund-api\target\pet-refund-api-0.1.0-SNAPSHOT.jar
+[INFO]
+[INFO] -------------------< com.petplatform:pet-refund-biz >-------------------
+[INFO] Building pet-refund-biz 0.1.0-SNAPSHOT                           [21/42]
+[INFO]   from pet-refund-biz\pom.xml
+[INFO] --------------------------------[ jar ]---------------------------------
+[INFO]
+[INFO] --- clean:3.5.0:clean (default-clean) @ pet-refund-biz ---
+[INFO] Deleting C:\Users\Administrator\.codex\worktrees\9dd6\����ƽ̨V1.0\backend\pet-refund-biz\target
+[INFO]
+[INFO] --- enforcer:3.6.2:enforce (baseline) @ pet-refund-biz ---
+[INFO] Rule 2: org.apache.maven.enforcer.rules.dependency.DependencyConvergence passed
+[INFO]
+[INFO] --- enforcer:3.6.2:enforce (ban-cross-biz-dependencies) @ pet-refund-biz ---
+[INFO] Rule 0: org.apache.maven.enforcer.rules.dependency.BannedDependencies passed
+[INFO]
+[INFO] --- resources:3.5.0:resources (default-resources) @ pet-refund-biz ---
+[INFO] skip non existing resourceDirectory C:\Users\Administrator\.codex\worktrees\9dd6\����ƽ̨V1.0\backend\pet-refund-biz\src\main\resources
+[INFO] skip non existing resourceDirectory C:\Users\Administrator\.codex\worktrees\9dd6\����ƽ̨V1.0\backend\pet-refund-biz\src\main\resources
+[INFO]
+[INFO] --- compiler:3.15.0:compile (default-compile) @ pet-refund-biz ---
+[INFO] Recompiling the module because of changed dependency.
+[INFO] Compiling 10 source files with javac [debug parameters release 21] to target\classes
+[INFO]
+[INFO] --- resources:3.5.0:testResources (default-testResources) @ pet-refund-biz ---
+[INFO] skip non existing resourceDirectory C:\Users\Administrator\.codex\worktrees\9dd6\����ƽ̨V1.0\backend\pet-refund-biz\src\test\resources
+[INFO]
+[INFO] --- compiler:3.15.0:testCompile (default-testCompile) @ pet-refund-biz ---
+[INFO] No sources to compile
+[INFO]
+[INFO] --- surefire:3.5.6:test (default-test) @ pet-refund-biz ---
+[INFO] No tests to run.
+[INFO]
+[INFO] --- jar:3.5.1:jar (default-jar) @ pet-refund-biz ---
+[INFO] Building jar: C:\Users\Administrator\.codex\worktrees\9dd6\����ƽ̨V1.0\backend\pet-refund-biz\target\pet-refund-biz-0.1.0-SNAPSHOT.jar
+[INFO]
+[INFO] ----------------< com.petplatform:pet-verification-api >----------------
+[INFO] Building pet-verification-api 0.1.0-SNAPSHOT                     [22/42]
+[INFO]   from pet-verification-api\pom.xml
+[INFO] --------------------------------[ jar ]---------------------------------
+[INFO]
+[INFO] --- clean:3.5.0:clean (default-clean) @ pet-verification-api ---
+[INFO] Deleting C:\Users\Administrator\.codex\worktrees\9dd6\����ƽ̨V1.0\backend\pet-verification-api\target
+[INFO]
+[INFO] --- enforcer:3.6.2:enforce (baseline) @ pet-verification-api ---
+[INFO] Rule 2: org.apache.maven.enforcer.rules.dependency.DependencyConvergence passed
+[INFO]
+[INFO] --- enforcer:3.6.2:enforce (ban-cross-biz-dependencies) @ pet-verification-api ---
+[INFO] Rule 0: org.apache.maven.enforcer.rules.dependency.BannedDependencies passed
+[INFO]
+[INFO] --- resources:3.5.0:resources (default-resources) @ pet-verification-api ---
+[INFO] skip non existing resourceDirectory C:\Users\Administrator\.codex\worktrees\9dd6\����ƽ̨V1.0\backend\pet-verification-api\src\main\resources
+[INFO] skip non existing resourceDirectory C:\Users\Administrator\.codex\worktrees\9dd6\����ƽ̨V1.0\backend\pet-verification-api\src\main\resources
+[INFO]
+[INFO] --- compiler:3.15.0:compile (default-compile) @ pet-verification-api ---
+[INFO] Recompiling the module because of changed dependency.
+[INFO] Compiling 6 source files with javac [debug parameters release 21] to target\classes
+[INFO]
+[INFO] --- resources:3.5.0:testResources (default-testResources) @ pet-verification-api ---
+[INFO] skip non existing resourceDirectory C:\Users\Administrator\.codex\worktrees\9dd6\����ƽ̨V1.0\backend\pet-verification-api\src\test\resources
+[INFO]
+[INFO] --- compiler:3.15.0:testCompile (default-testCompile) @ pet-verification-api ---
+[INFO] No sources to compile
+[INFO]
+[INFO] --- surefire:3.5.6:test (default-test) @ pet-verification-api ---
+[INFO] No tests to run.
+[INFO]
+[INFO] --- jar:3.5.1:jar (default-jar) @ pet-verification-api ---
+[INFO] Building jar: C:\Users\Administrator\.codex\worktrees\9dd6\����ƽ̨V1.0\backend\pet-verification-api\target\pet-verification-api-0.1.0-SNAPSHOT.jar
+[INFO]
+[INFO] ----------------< com.petplatform:pet-verification-biz >----------------
+[INFO] Building pet-verification-biz 0.1.0-SNAPSHOT                     [23/42]
+[INFO]   from pet-verification-biz\pom.xml
+[INFO] --------------------------------[ jar ]---------------------------------
+[INFO]
+[INFO] --- clean:3.5.0:clean (default-clean) @ pet-verification-biz ---
+[INFO] Deleting C:\Users\Administrator\.codex\worktrees\9dd6\����ƽ̨V1.0\backend\pet-verification-biz\target
+[INFO]
+[INFO] --- enforcer:3.6.2:enforce (baseline) @ pet-verification-biz ---
+[INFO] Rule 2: org.apache.maven.enforcer.rules.dependency.DependencyConvergence passed
+[INFO]
+[INFO] --- enforcer:3.6.2:enforce (ban-cross-biz-dependencies) @ pet-verification-biz ---
+[INFO] Rule 0: org.apache.maven.enforcer.rules.dependency.BannedDependencies passed
+[INFO]
+[INFO] --- resources:3.5.0:resources (default-resources) @ pet-verification-biz ---
+[INFO] skip non existing resourceDirectory C:\Users\Administrator\.codex\worktrees\9dd6\����ƽ̨V1.0\backend\pet-verification-biz\src\main\resources
+[INFO] skip non existing resourceDirectory C:\Users\Administrator\.codex\worktrees\9dd6\����ƽ̨V1.0\backend\pet-verification-biz\src\main\resources
+[INFO]
+[INFO] --- compiler:3.15.0:compile (default-compile) @ pet-verification-biz ---
+[INFO] Recompiling the module because of changed dependency.
+[INFO] Compiling 10 source files with javac [debug parameters release 21] to target\classes
+[INFO]
+[INFO] --- resources:3.5.0:testResources (default-testResources) @ pet-verification-biz ---
+[INFO] skip non existing resourceDirectory C:\Users\Administrator\.codex\worktrees\9dd6\����ƽ̨V1.0\backend\pet-verification-biz\src\test\resources
+[INFO]
+[INFO] --- compiler:3.15.0:testCompile (default-testCompile) @ pet-verification-biz ---
+[INFO] No sources to compile
+[INFO]
+[INFO] --- surefire:3.5.6:test (default-test) @ pet-verification-biz ---
+[INFO] No tests to run.
+[INFO]
+[INFO] --- jar:3.5.1:jar (default-jar) @ pet-verification-biz ---
+[INFO] Building jar: C:\Users\Administrator\.codex\worktrees\9dd6\����ƽ̨V1.0\backend\pet-verification-biz\target\pet-verification-biz-0.1.0-SNAPSHOT.jar
+[INFO]
+[INFO] -----------------< com.petplatform:pet-aftersale-api >------------------
+[INFO] Building pet-aftersale-api 0.1.0-SNAPSHOT                        [24/42]
+[INFO]   from pet-aftersale-api\pom.xml
+[INFO] --------------------------------[ jar ]---------------------------------
+[INFO]
+[INFO] --- clean:3.5.0:clean (default-clean) @ pet-aftersale-api ---
+[INFO] Deleting C:\Users\Administrator\.codex\worktrees\9dd6\����ƽ̨V1.0\backend\pet-aftersale-api\target
+[INFO]
+[INFO] --- enforcer:3.6.2:enforce (baseline) @ pet-aftersale-api ---
+[INFO] Rule 2: org.apache.maven.enforcer.rules.dependency.DependencyConvergence passed
+[INFO]
+[INFO] --- enforcer:3.6.2:enforce (ban-cross-biz-dependencies) @ pet-aftersale-api ---
+[INFO] Rule 0: org.apache.maven.enforcer.rules.dependency.BannedDependencies passed
+[INFO]
+[INFO] --- resources:3.5.0:resources (default-resources) @ pet-aftersale-api ---
+[INFO] skip non existing resourceDirectory C:\Users\Administrator\.codex\worktrees\9dd6\����ƽ̨V1.0\backend\pet-aftersale-api\src\main\resources
+[INFO] skip non existing resourceDirectory C:\Users\Administrator\.codex\worktrees\9dd6\����ƽ̨V1.0\backend\pet-aftersale-api\src\main\resources
+[INFO]
+[INFO] --- compiler:3.15.0:compile (default-compile) @ pet-aftersale-api ---
+[INFO] Recompiling the module because of changed dependency.
+[INFO] Compiling 6 source files with javac [debug parameters release 21] to target\classes
+[INFO]
+[INFO] --- resources:3.5.0:testResources (default-testResources) @ pet-aftersale-api ---
+[INFO] skip non existing resourceDirectory C:\Users\Administrator\.codex\worktrees\9dd6\����ƽ̨V1.0\backend\pet-aftersale-api\src\test\resources
+[INFO]
+[INFO] --- compiler:3.15.0:testCompile (default-testCompile) @ pet-aftersale-api ---
+[INFO] No sources to compile
+[INFO]
+[INFO] --- surefire:3.5.6:test (default-test) @ pet-aftersale-api ---
+[INFO] No tests to run.
+[INFO]
+[INFO] --- jar:3.5.1:jar (default-jar) @ pet-aftersale-api ---
+[INFO] Building jar: C:\Users\Administrator\.codex\worktrees\9dd6\����ƽ̨V1.0\backend\pet-aftersale-api\target\pet-aftersale-api-0.1.0-SNAPSHOT.jar
+[INFO]
+[INFO] -----------------< com.petplatform:pet-aftersale-biz >------------------
+[INFO] Building pet-aftersale-biz 0.1.0-SNAPSHOT                        [25/42]
+[INFO]   from pet-aftersale-biz\pom.xml
+[INFO] --------------------------------[ jar ]---------------------------------
+[INFO]
+[INFO] --- clean:3.5.0:clean (default-clean) @ pet-aftersale-biz ---
+[INFO] Deleting C:\Users\Administrator\.codex\worktrees\9dd6\����ƽ̨V1.0\backend\pet-aftersale-biz\target
+[INFO]
+[INFO] --- enforcer:3.6.2:enforce (baseline) @ pet-aftersale-biz ---
+[INFO] Rule 2: org.apache.maven.enforcer.rules.dependency.DependencyConvergence passed
+[INFO]
+[INFO] --- enforcer:3.6.2:enforce (ban-cross-biz-dependencies) @ pet-aftersale-biz ---
+[INFO] Rule 0: org.apache.maven.enforcer.rules.dependency.BannedDependencies passed
+[INFO]
+[INFO] --- resources:3.5.0:resources (default-resources) @ pet-aftersale-biz ---
+[INFO] skip non existing resourceDirectory C:\Users\Administrator\.codex\worktrees\9dd6\����ƽ̨V1.0\backend\pet-aftersale-biz\src\main\resources
+[INFO] skip non existing resourceDirectory C:\Users\Administrator\.codex\worktrees\9dd6\����ƽ̨V1.0\backend\pet-aftersale-biz\src\main\resources
+[INFO]
+[INFO] --- compiler:3.15.0:compile (default-compile) @ pet-aftersale-biz ---
+[INFO] Recompiling the module because of changed dependency.
+[INFO] Compiling 10 source files with javac [debug parameters release 21] to target\classes
+[INFO]
+[INFO] --- resources:3.5.0:testResources (default-testResources) @ pet-aftersale-biz ---
+[INFO] skip non existing resourceDirectory C:\Users\Administrator\.codex\worktrees\9dd6\����ƽ̨V1.0\backend\pet-aftersale-biz\src\test\resources
+[INFO]
+[INFO] --- compiler:3.15.0:testCompile (default-testCompile) @ pet-aftersale-biz ---
+[INFO] No sources to compile
+[INFO]
+[INFO] --- surefire:3.5.6:test (default-test) @ pet-aftersale-biz ---
+[INFO] No tests to run.
+[INFO]
+[INFO] --- jar:3.5.1:jar (default-jar) @ pet-aftersale-biz ---
+[INFO] Building jar: C:\Users\Administrator\.codex\worktrees\9dd6\����ƽ̨V1.0\backend\pet-aftersale-biz\target\pet-aftersale-biz-0.1.0-SNAPSHOT.jar
+[INFO]
+[INFO] -------------------< com.petplatform:pet-coupon-biz >-------------------
+[INFO] Building pet-coupon-biz 0.1.0-SNAPSHOT                           [26/42]
+[INFO]   from pet-coupon-biz\pom.xml
+[INFO] --------------------------------[ jar ]---------------------------------
+[INFO]
+[INFO] --- clean:3.5.0:clean (default-clean) @ pet-coupon-biz ---
+[INFO] Deleting C:\Users\Administrator\.codex\worktrees\9dd6\����ƽ̨V1.0\backend\pet-coupon-biz\target
+[INFO]
+[INFO] --- enforcer:3.6.2:enforce (baseline) @ pet-coupon-biz ---
+[INFO] Rule 2: org.apache.maven.enforcer.rules.dependency.DependencyConvergence passed
+[INFO]
+[INFO] --- enforcer:3.6.2:enforce (ban-cross-biz-dependencies) @ pet-coupon-biz ---
+[INFO] Rule 0: org.apache.maven.enforcer.rules.dependency.BannedDependencies passed
+[INFO]
+[INFO] --- resources:3.5.0:resources (default-resources) @ pet-coupon-biz ---
+[INFO] skip non existing resourceDirectory C:\Users\Administrator\.codex\worktrees\9dd6\����ƽ̨V1.0\backend\pet-coupon-biz\src\main\resources
+[INFO] skip non existing resourceDirectory C:\Users\Administrator\.codex\worktrees\9dd6\����ƽ̨V1.0\backend\pet-coupon-biz\src\main\resources
+[INFO]
+[INFO] --- compiler:3.15.0:compile (default-compile) @ pet-coupon-biz ---
+[INFO] Recompiling the module because of changed dependency.
+[INFO] Compiling 10 source files with javac [debug parameters release 21] to target\classes
+[INFO]
+[INFO] --- resources:3.5.0:testResources (default-testResources) @ pet-coupon-biz ---
+[INFO] skip non existing resourceDirectory C:\Users\Administrator\.codex\worktrees\9dd6\����ƽ̨V1.0\backend\pet-coupon-biz\src\test\resources
+[INFO]
+[INFO] --- compiler:3.15.0:testCompile (default-testCompile) @ pet-coupon-biz ---
+[INFO] No sources to compile
+[INFO]
+[INFO] --- surefire:3.5.6:test (default-test) @ pet-coupon-biz ---
+[INFO] No tests to run.
+[INFO]
+[INFO] --- jar:3.5.1:jar (default-jar) @ pet-coupon-biz ---
+[INFO] Building jar: C:\Users\Administrator\.codex\worktrees\9dd6\����ƽ̨V1.0\backend\pet-coupon-biz\target\pet-coupon-biz-0.1.0-SNAPSHOT.jar
+[INFO]
+[INFO] -------------------< com.petplatform:pet-points-api >-------------------
+[INFO] Building pet-points-api 0.1.0-SNAPSHOT                           [27/42]
+[INFO]   from pet-points-api\pom.xml
+[INFO] --------------------------------[ jar ]---------------------------------
+[INFO]
+[INFO] --- clean:3.5.0:clean (default-clean) @ pet-points-api ---
+[INFO] Deleting C:\Users\Administrator\.codex\worktrees\9dd6\����ƽ̨V1.0\backend\pet-points-api\target
+[INFO]
+[INFO] --- enforcer:3.6.2:enforce (baseline) @ pet-points-api ---
+[INFO] Rule 2: org.apache.maven.enforcer.rules.dependency.DependencyConvergence passed
+[INFO]
+[INFO] --- enforcer:3.6.2:enforce (ban-cross-biz-dependencies) @ pet-points-api ---
+[INFO] Rule 0: org.apache.maven.enforcer.rules.dependency.BannedDependencies passed
+[INFO]
+[INFO] --- resources:3.5.0:resources (default-resources) @ pet-points-api ---
+[INFO] skip non existing resourceDirectory C:\Users\Administrator\.codex\worktrees\9dd6\����ƽ̨V1.0\backend\pet-points-api\src\main\resources
+[INFO] skip non existing resourceDirectory C:\Users\Administrator\.codex\worktrees\9dd6\����ƽ̨V1.0\backend\pet-points-api\src\main\resources
+[INFO]
+[INFO] --- compiler:3.15.0:compile (default-compile) @ pet-points-api ---
+[INFO] Recompiling the module because of changed dependency.
+[INFO] Compiling 6 source files with javac [debug parameters release 21] to target\classes
+[INFO]
+[INFO] --- resources:3.5.0:testResources (default-testResources) @ pet-points-api ---
+[INFO] skip non existing resourceDirectory C:\Users\Administrator\.codex\worktrees\9dd6\����ƽ̨V1.0\backend\pet-points-api\src\test\resources
+[INFO]
+[INFO] --- compiler:3.15.0:testCompile (default-testCompile) @ pet-points-api ---
+[INFO] No sources to compile
+[INFO]
+[INFO] --- surefire:3.5.6:test (default-test) @ pet-points-api ---
+[INFO] No tests to run.
+[INFO]
+[INFO] --- jar:3.5.1:jar (default-jar) @ pet-points-api ---
+[INFO] Building jar: C:\Users\Administrator\.codex\worktrees\9dd6\����ƽ̨V1.0\backend\pet-points-api\target\pet-points-api-0.1.0-SNAPSHOT.jar
+[INFO]
+[INFO] -------------------< com.petplatform:pet-points-biz >-------------------
+[INFO] Building pet-points-biz 0.1.0-SNAPSHOT                           [28/42]
+[INFO]   from pet-points-biz\pom.xml
+[INFO] --------------------------------[ jar ]---------------------------------
+[INFO]
+[INFO] --- clean:3.5.0:clean (default-clean) @ pet-points-biz ---
+[INFO] Deleting C:\Users\Administrator\.codex\worktrees\9dd6\����ƽ̨V1.0\backend\pet-points-biz\target
+[INFO]
+[INFO] --- enforcer:3.6.2:enforce (baseline) @ pet-points-biz ---
+[INFO] Rule 2: org.apache.maven.enforcer.rules.dependency.DependencyConvergence passed
+[INFO]
+[INFO] --- enforcer:3.6.2:enforce (ban-cross-biz-dependencies) @ pet-points-biz ---
+[INFO] Rule 0: org.apache.maven.enforcer.rules.dependency.BannedDependencies passed
+[INFO]
+[INFO] --- resources:3.5.0:resources (default-resources) @ pet-points-biz ---
+[INFO] skip non existing resourceDirectory C:\Users\Administrator\.codex\worktrees\9dd6\����ƽ̨V1.0\backend\pet-points-biz\src\main\resources
+[INFO] skip non existing resourceDirectory C:\Users\Administrator\.codex\worktrees\9dd6\����ƽ̨V1.0\backend\pet-points-biz\src\main\resources
+[INFO]
+[INFO] --- compiler:3.15.0:compile (default-compile) @ pet-points-biz ---
+[INFO] Recompiling the module because of changed dependency.
+[INFO] Compiling 10 source files with javac [debug parameters release 21] to target\classes
+[INFO]
+[INFO] --- resources:3.5.0:testResources (default-testResources) @ pet-points-biz ---
+[INFO] skip non existing resourceDirectory C:\Users\Administrator\.codex\worktrees\9dd6\����ƽ̨V1.0\backend\pet-points-biz\src\test\resources
+[INFO]
+[INFO] --- compiler:3.15.0:testCompile (default-testCompile) @ pet-points-biz ---
+[INFO] No sources to compile
+[INFO]
+[INFO] --- surefire:3.5.6:test (default-test) @ pet-points-biz ---
+[INFO] No tests to run.
+[INFO]
+[INFO] --- jar:3.5.1:jar (default-jar) @ pet-points-biz ---
+[INFO] Building jar: C:\Users\Administrator\.codex\worktrees\9dd6\����ƽ̨V1.0\backend\pet-points-biz\target\pet-points-biz-0.1.0-SNAPSHOT.jar
+[INFO]
+[INFO] -------------------< com.petplatform:pet-review-api >-------------------
+[INFO] Building pet-review-api 0.1.0-SNAPSHOT                           [29/42]
+[INFO]   from pet-review-api\pom.xml
+[INFO] --------------------------------[ jar ]---------------------------------
+[INFO]
+[INFO] --- clean:3.5.0:clean (default-clean) @ pet-review-api ---
+[INFO] Deleting C:\Users\Administrator\.codex\worktrees\9dd6\����ƽ̨V1.0\backend\pet-review-api\target
+[INFO]
+[INFO] --- enforcer:3.6.2:enforce (baseline) @ pet-review-api ---
+[INFO] Rule 2: org.apache.maven.enforcer.rules.dependency.DependencyConvergence passed
+[INFO]
+[INFO] --- enforcer:3.6.2:enforce (ban-cross-biz-dependencies) @ pet-review-api ---
+[INFO] Rule 0: org.apache.maven.enforcer.rules.dependency.BannedDependencies passed
+[INFO]
+[INFO] --- resources:3.5.0:resources (default-resources) @ pet-review-api ---
+[INFO] skip non existing resourceDirectory C:\Users\Administrator\.codex\worktrees\9dd6\����ƽ̨V1.0\backend\pet-review-api\src\main\resources
+[INFO] skip non existing resourceDirectory C:\Users\Administrator\.codex\worktrees\9dd6\����ƽ̨V1.0\backend\pet-review-api\src\main\resources
+[INFO]
+[INFO] --- compiler:3.15.0:compile (default-compile) @ pet-review-api ---
+[INFO] Recompiling the module because of changed dependency.
+[INFO] Compiling 6 source files with javac [debug parameters release 21] to target\classes
+[INFO]
+[INFO] --- resources:3.5.0:testResources (default-testResources) @ pet-review-api ---
+[INFO] skip non existing resourceDirectory C:\Users\Administrator\.codex\worktrees\9dd6\����ƽ̨V1.0\backend\pet-review-api\src\test\resources
+[INFO]
+[INFO] --- compiler:3.15.0:testCompile (default-testCompile) @ pet-review-api ---
+[INFO] No sources to compile
+[INFO]
+[INFO] --- surefire:3.5.6:test (default-test) @ pet-review-api ---
+[INFO] No tests to run.
+[INFO]
+[INFO] --- jar:3.5.1:jar (default-jar) @ pet-review-api ---
+[INFO] Building jar: C:\Users\Administrator\.codex\worktrees\9dd6\����ƽ̨V1.0\backend\pet-review-api\target\pet-review-api-0.1.0-SNAPSHOT.jar
+[INFO]
+[INFO] -------------------< com.petplatform:pet-review-biz >-------------------
+[INFO] Building pet-review-biz 0.1.0-SNAPSHOT                           [30/42]
+[INFO]   from pet-review-biz\pom.xml
+[INFO] --------------------------------[ jar ]---------------------------------
+[INFO]
+[INFO] --- clean:3.5.0:clean (default-clean) @ pet-review-biz ---
+[INFO] Deleting C:\Users\Administrator\.codex\worktrees\9dd6\����ƽ̨V1.0\backend\pet-review-biz\target
+[INFO]
+[INFO] --- enforcer:3.6.2:enforce (baseline) @ pet-review-biz ---
+[INFO] Rule 2: org.apache.maven.enforcer.rules.dependency.DependencyConvergence passed
+[INFO]
+[INFO] --- enforcer:3.6.2:enforce (ban-cross-biz-dependencies) @ pet-review-biz ---
+[INFO] Rule 0: org.apache.maven.enforcer.rules.dependency.BannedDependencies passed
+[INFO]
+[INFO] --- resources:3.5.0:resources (default-resources) @ pet-review-biz ---
+[INFO] skip non existing resourceDirectory C:\Users\Administrator\.codex\worktrees\9dd6\����ƽ̨V1.0\backend\pet-review-biz\src\main\resources
+[INFO] skip non existing resourceDirectory C:\Users\Administrator\.codex\worktrees\9dd6\����ƽ̨V1.0\backend\pet-review-biz\src\main\resources
+[INFO]
+[INFO] --- compiler:3.15.0:compile (default-compile) @ pet-review-biz ---
+[INFO] Recompiling the module because of changed dependency.
+[INFO] Compiling 10 source files with javac [debug parameters release 21] to target\classes
+[INFO]
+[INFO] --- resources:3.5.0:testResources (default-testResources) @ pet-review-biz ---
+[INFO] skip non existing resourceDirectory C:\Users\Administrator\.codex\worktrees\9dd6\����ƽ̨V1.0\backend\pet-review-biz\src\test\resources
+[INFO]
+[INFO] --- compiler:3.15.0:testCompile (default-testCompile) @ pet-review-biz ---
+[INFO] No sources to compile
+[INFO]
+[INFO] --- surefire:3.5.6:test (default-test) @ pet-review-biz ---
+[INFO] No tests to run.
+[INFO]
+[INFO] --- jar:3.5.1:jar (default-jar) @ pet-review-biz ---
+[INFO] Building jar: C:\Users\Administrator\.codex\worktrees\9dd6\����ƽ̨V1.0\backend\pet-review-biz\target\pet-review-biz-0.1.0-SNAPSHOT.jar
+[INFO]
+[INFO] ----------------< com.petplatform:pet-notification-api >----------------
+[INFO] Building pet-notification-api 0.1.0-SNAPSHOT                     [31/42]
+[INFO]   from pet-notification-api\pom.xml
+[INFO] --------------------------------[ jar ]---------------------------------
+[INFO]
+[INFO] --- clean:3.5.0:clean (default-clean) @ pet-notification-api ---
+[INFO] Deleting C:\Users\Administrator\.codex\worktrees\9dd6\����ƽ̨V1.0\backend\pet-notification-api\target
+[INFO]
+[INFO] --- enforcer:3.6.2:enforce (baseline) @ pet-notification-api ---
+[INFO] Rule 2: org.apache.maven.enforcer.rules.dependency.DependencyConvergence passed
+[INFO]
+[INFO] --- enforcer:3.6.2:enforce (ban-cross-biz-dependencies) @ pet-notification-api ---
+[INFO] Rule 0: org.apache.maven.enforcer.rules.dependency.BannedDependencies passed
+[INFO]
+[INFO] --- resources:3.5.0:resources (default-resources) @ pet-notification-api ---
+[INFO] skip non existing resourceDirectory C:\Users\Administrator\.codex\worktrees\9dd6\����ƽ̨V1.0\backend\pet-notification-api\src\main\resources
+[INFO] skip non existing resourceDirectory C:\Users\Administrator\.codex\worktrees\9dd6\����ƽ̨V1.0\backend\pet-notification-api\src\main\resources
+[INFO]
+[INFO] --- compiler:3.15.0:compile (default-compile) @ pet-notification-api ---
+[INFO] Recompiling the module because of changed dependency.
+[INFO] Compiling 6 source files with javac [debug parameters release 21] to target\classes
+[INFO]
+[INFO] --- resources:3.5.0:testResources (default-testResources) @ pet-notification-api ---
+[INFO] skip non existing resourceDirectory C:\Users\Administrator\.codex\worktrees\9dd6\����ƽ̨V1.0\backend\pet-notification-api\src\test\resources
+[INFO]
+[INFO] --- compiler:3.15.0:testCompile (default-testCompile) @ pet-notification-api ---
+[INFO] No sources to compile
+[INFO]
+[INFO] --- surefire:3.5.6:test (default-test) @ pet-notification-api ---
+[INFO] No tests to run.
+[INFO]
+[INFO] --- jar:3.5.1:jar (default-jar) @ pet-notification-api ---
+[INFO] Building jar: C:\Users\Administrator\.codex\worktrees\9dd6\����ƽ̨V1.0\backend\pet-notification-api\target\pet-notification-api-0.1.0-SNAPSHOT.jar
+[INFO]
+[INFO] ----------------< com.petplatform:pet-notification-biz >----------------
+[INFO] Building pet-notification-biz 0.1.0-SNAPSHOT                     [32/42]
+[INFO]   from pet-notification-biz\pom.xml
+[INFO] --------------------------------[ jar ]---------------------------------
+[INFO]
+[INFO] --- clean:3.5.0:clean (default-clean) @ pet-notification-biz ---
+[INFO] Deleting C:\Users\Administrator\.codex\worktrees\9dd6\����ƽ̨V1.0\backend\pet-notification-biz\target
+[INFO]
+[INFO] --- enforcer:3.6.2:enforce (baseline) @ pet-notification-biz ---
+[INFO] Rule 2: org.apache.maven.enforcer.rules.dependency.DependencyConvergence passed
+[INFO]
+[INFO] --- enforcer:3.6.2:enforce (ban-cross-biz-dependencies) @ pet-notification-biz ---
+[INFO] Rule 0: org.apache.maven.enforcer.rules.dependency.BannedDependencies passed
+[INFO]
+[INFO] --- resources:3.5.0:resources (default-resources) @ pet-notification-biz ---
+[INFO] skip non existing resourceDirectory C:\Users\Administrator\.codex\worktrees\9dd6\����ƽ̨V1.0\backend\pet-notification-biz\src\main\resources
+[INFO] skip non existing resourceDirectory C:\Users\Administrator\.codex\worktrees\9dd6\����ƽ̨V1.0\backend\pet-notification-biz\src\main\resources
+[INFO]
+[INFO] --- compiler:3.15.0:compile (default-compile) @ pet-notification-biz ---
+[INFO] Recompiling the module because of changed dependency.
+[INFO] Compiling 10 source files with javac [debug parameters release 21] to target\classes
+[INFO]
+[INFO] --- resources:3.5.0:testResources (default-testResources) @ pet-notification-biz ---
+[INFO] skip non existing resourceDirectory C:\Users\Administrator\.codex\worktrees\9dd6\����ƽ̨V1.0\backend\pet-notification-biz\src\test\resources
+[INFO]
+[INFO] --- compiler:3.15.0:testCompile (default-testCompile) @ pet-notification-biz ---
+[INFO] No sources to compile
+[INFO]
+[INFO] --- surefire:3.5.6:test (default-test) @ pet-notification-biz ---
+[INFO] No tests to run.
+[INFO]
+[INFO] --- jar:3.5.1:jar (default-jar) @ pet-notification-biz ---
+[INFO] Building jar: C:\Users\Administrator\.codex\worktrees\9dd6\����ƽ̨V1.0\backend\pet-notification-biz\target\pet-notification-biz-0.1.0-SNAPSHOT.jar
+[INFO]
+[INFO] -----------------< com.petplatform:pet-community-api >------------------
+[INFO] Building pet-community-api 0.1.0-SNAPSHOT                        [33/42]
+[INFO]   from pet-community-api\pom.xml
+[INFO] --------------------------------[ jar ]---------------------------------
+[INFO]
+[INFO] --- clean:3.5.0:clean (default-clean) @ pet-community-api ---
+[INFO] Deleting C:\Users\Administrator\.codex\worktrees\9dd6\����ƽ̨V1.0\backend\pet-community-api\target
+[INFO]
+[INFO] --- enforcer:3.6.2:enforce (baseline) @ pet-community-api ---
+[INFO] Rule 2: org.apache.maven.enforcer.rules.dependency.DependencyConvergence passed
+[INFO]
+[INFO] --- enforcer:3.6.2:enforce (ban-cross-biz-dependencies) @ pet-community-api ---
+[INFO] Rule 0: org.apache.maven.enforcer.rules.dependency.BannedDependencies passed
+[INFO]
+[INFO] --- resources:3.5.0:resources (default-resources) @ pet-community-api ---
+[INFO] skip non existing resourceDirectory C:\Users\Administrator\.codex\worktrees\9dd6\����ƽ̨V1.0\backend\pet-community-api\src\main\resources
+[INFO] skip non existing resourceDirectory C:\Users\Administrator\.codex\worktrees\9dd6\����ƽ̨V1.0\backend\pet-community-api\src\main\resources
+[INFO]
+[INFO] --- compiler:3.15.0:compile (default-compile) @ pet-community-api ---
+[INFO] Recompiling the module because of changed dependency.
+[INFO] Compiling 6 source files with javac [debug parameters release 21] to target\classes
+[INFO]
+[INFO] --- resources:3.5.0:testResources (default-testResources) @ pet-community-api ---
+[INFO] skip non existing resourceDirectory C:\Users\Administrator\.codex\worktrees\9dd6\����ƽ̨V1.0\backend\pet-community-api\src\test\resources
+[INFO]
+[INFO] --- compiler:3.15.0:testCompile (default-testCompile) @ pet-community-api ---
+[INFO] No sources to compile
+[INFO]
+[INFO] --- surefire:3.5.6:test (default-test) @ pet-community-api ---
+[INFO] No tests to run.
+[INFO]
+[INFO] --- jar:3.5.1:jar (default-jar) @ pet-community-api ---
+[INFO] Building jar: C:\Users\Administrator\.codex\worktrees\9dd6\����ƽ̨V1.0\backend\pet-community-api\target\pet-community-api-0.1.0-SNAPSHOT.jar
+[INFO]
+[INFO] -----------------< com.petplatform:pet-community-biz >------------------
+[INFO] Building pet-community-biz 0.1.0-SNAPSHOT                        [34/42]
+[INFO]   from pet-community-biz\pom.xml
+[INFO] --------------------------------[ jar ]---------------------------------
+[INFO]
+[INFO] --- clean:3.5.0:clean (default-clean) @ pet-community-biz ---
+[INFO] Deleting C:\Users\Administrator\.codex\worktrees\9dd6\����ƽ̨V1.0\backend\pet-community-biz\target
+[INFO]
+[INFO] --- enforcer:3.6.2:enforce (baseline) @ pet-community-biz ---
+[INFO] Rule 2: org.apache.maven.enforcer.rules.dependency.DependencyConvergence passed
+[INFO]
+[INFO] --- enforcer:3.6.2:enforce (ban-cross-biz-dependencies) @ pet-community-biz ---
+[INFO] Rule 0: org.apache.maven.enforcer.rules.dependency.BannedDependencies passed
+[INFO]
+[INFO] --- resources:3.5.0:resources (default-resources) @ pet-community-biz ---
+[INFO] skip non existing resourceDirectory C:\Users\Administrator\.codex\worktrees\9dd6\����ƽ̨V1.0\backend\pet-community-biz\src\main\resources
+[INFO] skip non existing resourceDirectory C:\Users\Administrator\.codex\worktrees\9dd6\����ƽ̨V1.0\backend\pet-community-biz\src\main\resources
+[INFO]
+[INFO] --- compiler:3.15.0:compile (default-compile) @ pet-community-biz ---
+[INFO] Recompiling the module because of changed dependency.
+[INFO] Compiling 10 source files with javac [debug parameters release 21] to target\classes
+[INFO]
+[INFO] --- resources:3.5.0:testResources (default-testResources) @ pet-community-biz ---
+[INFO] skip non existing resourceDirectory C:\Users\Administrator\.codex\worktrees\9dd6\����ƽ̨V1.0\backend\pet-community-biz\src\test\resources
+[INFO]
+[INFO] --- compiler:3.15.0:testCompile (default-testCompile) @ pet-community-biz ---
+[INFO] No sources to compile
+[INFO]
+[INFO] --- surefire:3.5.6:test (default-test) @ pet-community-biz ---
+[INFO] No tests to run.
+[INFO]
+[INFO] --- jar:3.5.1:jar (default-jar) @ pet-community-biz ---
+[INFO] Building jar: C:\Users\Administrator\.codex\worktrees\9dd6\����ƽ̨V1.0\backend\pet-community-biz\target\pet-community-biz-0.1.0-SNAPSHOT.jar
+[INFO]
+[INFO] -----------------< com.petplatform:pet-thirdparty-api >-----------------
+[INFO] Building pet-thirdparty-api 0.1.0-SNAPSHOT                       [35/42]
+[INFO]   from pet-thirdparty-api\pom.xml
+[INFO] --------------------------------[ jar ]---------------------------------
+[INFO]
+[INFO] --- clean:3.5.0:clean (default-clean) @ pet-thirdparty-api ---
+[INFO] Deleting C:\Users\Administrator\.codex\worktrees\9dd6\����ƽ̨V1.0\backend\pet-thirdparty-api\target
+[INFO]
+[INFO] --- enforcer:3.6.2:enforce (baseline) @ pet-thirdparty-api ---
+[INFO] Rule 2: org.apache.maven.enforcer.rules.dependency.DependencyConvergence passed
+[INFO]
+[INFO] --- enforcer:3.6.2:enforce (ban-cross-biz-dependencies) @ pet-thirdparty-api ---
+[INFO] Rule 0: org.apache.maven.enforcer.rules.dependency.BannedDependencies passed
+[INFO]
+[INFO] --- resources:3.5.0:resources (default-resources) @ pet-thirdparty-api ---
+[INFO] skip non existing resourceDirectory C:\Users\Administrator\.codex\worktrees\9dd6\����ƽ̨V1.0\backend\pet-thirdparty-api\src\main\resources
+[INFO] skip non existing resourceDirectory C:\Users\Administrator\.codex\worktrees\9dd6\����ƽ̨V1.0\backend\pet-thirdparty-api\src\main\resources
+[INFO]
+[INFO] --- compiler:3.15.0:compile (default-compile) @ pet-thirdparty-api ---
+[INFO] Recompiling the module because of changed dependency.
+[INFO] Compiling 6 source files with javac [debug parameters release 21] to target\classes
+[INFO]
+[INFO] --- resources:3.5.0:testResources (default-testResources) @ pet-thirdparty-api ---
+[INFO] skip non existing resourceDirectory C:\Users\Administrator\.codex\worktrees\9dd6\����ƽ̨V1.0\backend\pet-thirdparty-api\src\test\resources
+[INFO]
+[INFO] --- compiler:3.15.0:testCompile (default-testCompile) @ pet-thirdparty-api ---
+[INFO] No sources to compile
+[INFO]
+[INFO] --- surefire:3.5.6:test (default-test) @ pet-thirdparty-api ---
+[INFO] No tests to run.
+[INFO]
+[INFO] --- jar:3.5.1:jar (default-jar) @ pet-thirdparty-api ---
+[INFO] Building jar: C:\Users\Administrator\.codex\worktrees\9dd6\����ƽ̨V1.0\backend\pet-thirdparty-api\target\pet-thirdparty-api-0.1.0-SNAPSHOT.jar
+[INFO]
+[INFO] -----------------< com.petplatform:pet-thirdparty-biz >-----------------
+[INFO] Building pet-thirdparty-biz 0.1.0-SNAPSHOT                       [36/42]
+[INFO]   from pet-thirdparty-biz\pom.xml
+[INFO] --------------------------------[ jar ]---------------------------------
+[INFO]
+[INFO] --- clean:3.5.0:clean (default-clean) @ pet-thirdparty-biz ---
+[INFO] Deleting C:\Users\Administrator\.codex\worktrees\9dd6\����ƽ̨V1.0\backend\pet-thirdparty-biz\target
+[INFO]
+[INFO] --- enforcer:3.6.2:enforce (baseline) @ pet-thirdparty-biz ---
+[INFO] Rule 2: org.apache.maven.enforcer.rules.dependency.DependencyConvergence passed
+[INFO]
+[INFO] --- enforcer:3.6.2:enforce (ban-cross-biz-dependencies) @ pet-thirdparty-biz ---
+[INFO] Rule 0: org.apache.maven.enforcer.rules.dependency.BannedDependencies passed
+[INFO]
+[INFO] --- resources:3.5.0:resources (default-resources) @ pet-thirdparty-biz ---
+[INFO] skip non existing resourceDirectory C:\Users\Administrator\.codex\worktrees\9dd6\����ƽ̨V1.0\backend\pet-thirdparty-biz\src\main\resources
+[INFO] skip non existing resourceDirectory C:\Users\Administrator\.codex\worktrees\9dd6\����ƽ̨V1.0\backend\pet-thirdparty-biz\src\main\resources
+[INFO]
+[INFO] --- compiler:3.15.0:compile (default-compile) @ pet-thirdparty-biz ---
+[INFO] Recompiling the module because of changed dependency.
+[INFO] Compiling 10 source files with javac [debug parameters release 21] to target\classes
+[INFO]
+[INFO] --- resources:3.5.0:testResources (default-testResources) @ pet-thirdparty-biz ---
+[INFO] skip non existing resourceDirectory C:\Users\Administrator\.codex\worktrees\9dd6\����ƽ̨V1.0\backend\pet-thirdparty-biz\src\test\resources
+[INFO]
+[INFO] --- compiler:3.15.0:testCompile (default-testCompile) @ pet-thirdparty-biz ---
+[INFO] No sources to compile
+[INFO]
+[INFO] --- surefire:3.5.6:test (default-test) @ pet-thirdparty-biz ---
+[INFO] No tests to run.
+[INFO]
+[INFO] --- jar:3.5.1:jar (default-jar) @ pet-thirdparty-biz ---
+[INFO] Building jar: C:\Users\Administrator\.codex\worktrees\9dd6\����ƽ̨V1.0\backend\pet-thirdparty-biz\target\pet-thirdparty-biz-0.1.0-SNAPSHOT.jar
+[INFO]
+[INFO] --------------< com.petplatform:pet-customer-service-api >--------------
+[INFO] Building pet-customer-service-api 0.1.0-SNAPSHOT                 [37/42]
+[INFO]   from pet-customer-service-api\pom.xml
+[INFO] --------------------------------[ jar ]---------------------------------
+[INFO]
+[INFO] --- clean:3.5.0:clean (default-clean) @ pet-customer-service-api ---
+[INFO] Deleting C:\Users\Administrator\.codex\worktrees\9dd6\����ƽ̨V1.0\backend\pet-customer-service-api\target
+[INFO]
+[INFO] --- enforcer:3.6.2:enforce (baseline) @ pet-customer-service-api ---
+[INFO] Rule 2: org.apache.maven.enforcer.rules.dependency.DependencyConvergence passed
+[INFO]
+[INFO] --- enforcer:3.6.2:enforce (ban-cross-biz-dependencies) @ pet-customer-service-api ---
+[INFO] Rule 0: org.apache.maven.enforcer.rules.dependency.BannedDependencies passed
+[INFO]
+[INFO] --- resources:3.5.0:resources (default-resources) @ pet-customer-service-api ---
+[INFO] skip non existing resourceDirectory C:\Users\Administrator\.codex\worktrees\9dd6\����ƽ̨V1.0\backend\pet-customer-service-api\src\main\resources
+[INFO] skip non existing resourceDirectory C:\Users\Administrator\.codex\worktrees\9dd6\����ƽ̨V1.0\backend\pet-customer-service-api\src\main\resources
+[INFO]
+[INFO] --- compiler:3.15.0:compile (default-compile) @ pet-customer-service-api ---
+[INFO] Recompiling the module because of changed dependency.
+[INFO] Compiling 6 source files with javac [debug parameters release 21] to target\classes
+[INFO]
+[INFO] --- resources:3.5.0:testResources (default-testResources) @ pet-customer-service-api ---
+[INFO] skip non existing resourceDirectory C:\Users\Administrator\.codex\worktrees\9dd6\����ƽ̨V1.0\backend\pet-customer-service-api\src\test\resources
+[INFO]
+[INFO] --- compiler:3.15.0:testCompile (default-testCompile) @ pet-customer-service-api ---
+[INFO] No sources to compile
+[INFO]
+[INFO] --- surefire:3.5.6:test (default-test) @ pet-customer-service-api ---
+[INFO] No tests to run.
+[INFO]
+[INFO] --- jar:3.5.1:jar (default-jar) @ pet-customer-service-api ---
+[INFO] Building jar: C:\Users\Administrator\.codex\worktrees\9dd6\����ƽ̨V1.0\backend\pet-customer-service-api\target\pet-customer-service-api-0.1.0-SNAPSHOT.jar
+[INFO]
+[INFO] --------------< com.petplatform:pet-customer-service-biz >--------------
+[INFO] Building pet-customer-service-biz 0.1.0-SNAPSHOT                 [38/42]
+[INFO]   from pet-customer-service-biz\pom.xml
+[INFO] --------------------------------[ jar ]---------------------------------
+[INFO]
+[INFO] --- clean:3.5.0:clean (default-clean) @ pet-customer-service-biz ---
+[INFO] Deleting C:\Users\Administrator\.codex\worktrees\9dd6\����ƽ̨V1.0\backend\pet-customer-service-biz\target
+[INFO]
+[INFO] --- enforcer:3.6.2:enforce (baseline) @ pet-customer-service-biz ---
+[INFO] Rule 2: org.apache.maven.enforcer.rules.dependency.DependencyConvergence passed
+[INFO]
+[INFO] --- enforcer:3.6.2:enforce (ban-cross-biz-dependencies) @ pet-customer-service-biz ---
+[INFO] Rule 0: org.apache.maven.enforcer.rules.dependency.BannedDependencies passed
+[INFO]
+[INFO] --- resources:3.5.0:resources (default-resources) @ pet-customer-service-biz ---
+[INFO] skip non existing resourceDirectory C:\Users\Administrator\.codex\worktrees\9dd6\����ƽ̨V1.0\backend\pet-customer-service-biz\src\main\resources
+[INFO] skip non existing resourceDirectory C:\Users\Administrator\.codex\worktrees\9dd6\����ƽ̨V1.0\backend\pet-customer-service-biz\src\main\resources
+[INFO]
+[INFO] --- compiler:3.15.0:compile (default-compile) @ pet-customer-service-biz ---
+[INFO] Recompiling the module because of changed dependency.
+[INFO] Compiling 10 source files with javac [debug parameters release 21] to target\classes
+[INFO]
+[INFO] --- resources:3.5.0:testResources (default-testResources) @ pet-customer-service-biz ---
+[INFO] skip non existing resourceDirectory C:\Users\Administrator\.codex\worktrees\9dd6\����ƽ̨V1.0\backend\pet-customer-service-biz\src\test\resources
+[INFO]
+[INFO] --- compiler:3.15.0:testCompile (default-testCompile) @ pet-customer-service-biz ---
+[INFO] No sources to compile
+[INFO]
+[INFO] --- surefire:3.5.6:test (default-test) @ pet-customer-service-biz ---
+[INFO] No tests to run.
+[INFO]
+[INFO] --- jar:3.5.1:jar (default-jar) @ pet-customer-service-biz ---
+[INFO] Building jar: C:\Users\Administrator\.codex\worktrees\9dd6\����ƽ̨V1.0\backend\pet-customer-service-biz\target\pet-customer-service-biz-0.1.0-SNAPSHOT.jar
+[INFO]
+[INFO] -------------------< com.petplatform:pet-admin-api >--------------------
+[INFO] Building pet-admin-api 0.1.0-SNAPSHOT                            [39/42]
+[INFO]   from pet-admin-api\pom.xml
+[INFO] --------------------------------[ jar ]---------------------------------
+[INFO]
+[INFO] --- clean:3.5.0:clean (default-clean) @ pet-admin-api ---
+[INFO] Deleting C:\Users\Administrator\.codex\worktrees\9dd6\����ƽ̨V1.0\backend\pet-admin-api\target
+[INFO]
+[INFO] --- enforcer:3.6.2:enforce (baseline) @ pet-admin-api ---
+[INFO] Rule 2: org.apache.maven.enforcer.rules.dependency.DependencyConvergence passed
+[INFO]
+[INFO] --- enforcer:3.6.2:enforce (ban-cross-biz-dependencies) @ pet-admin-api ---
+[INFO] Rule 0: org.apache.maven.enforcer.rules.dependency.BannedDependencies passed
+[INFO]
+[INFO] --- resources:3.5.0:resources (default-resources) @ pet-admin-api ---
+[INFO] skip non existing resourceDirectory C:\Users\Administrator\.codex\worktrees\9dd6\����ƽ̨V1.0\backend\pet-admin-api\src\main\resources
+[INFO] skip non existing resourceDirectory C:\Users\Administrator\.codex\worktrees\9dd6\����ƽ̨V1.0\backend\pet-admin-api\src\main\resources
+[INFO]
+[INFO] --- compiler:3.15.0:compile (default-compile) @ pet-admin-api ---
+[INFO] Recompiling the module because of changed dependency.
+[INFO] Compiling 6 source files with javac [debug parameters release 21] to target\classes
+[INFO]
+[INFO] --- resources:3.5.0:testResources (default-testResources) @ pet-admin-api ---
+[INFO] skip non existing resourceDirectory C:\Users\Administrator\.codex\worktrees\9dd6\����ƽ̨V1.0\backend\pet-admin-api\src\test\resources
+[INFO]
+[INFO] --- compiler:3.15.0:testCompile (default-testCompile) @ pet-admin-api ---
+[INFO] No sources to compile
+[INFO]
+[INFO] --- surefire:3.5.6:test (default-test) @ pet-admin-api ---
+[INFO] No tests to run.
+[INFO]
+[INFO] --- jar:3.5.1:jar (default-jar) @ pet-admin-api ---
+[INFO] Building jar: C:\Users\Administrator\.codex\worktrees\9dd6\����ƽ̨V1.0\backend\pet-admin-api\target\pet-admin-api-0.1.0-SNAPSHOT.jar
+[INFO]
+[INFO] -------------------< com.petplatform:pet-admin-biz >--------------------
+[INFO] Building pet-admin-biz 0.1.0-SNAPSHOT                            [40/42]
+[INFO]   from pet-admin-biz\pom.xml
+[INFO] --------------------------------[ jar ]---------------------------------
+[INFO]
+[INFO] --- clean:3.5.0:clean (default-clean) @ pet-admin-biz ---
+[INFO] Deleting C:\Users\Administrator\.codex\worktrees\9dd6\����ƽ̨V1.0\backend\pet-admin-biz\target
+[INFO]
+[INFO] --- enforcer:3.6.2:enforce (baseline) @ pet-admin-biz ---
+[INFO] Rule 2: org.apache.maven.enforcer.rules.dependency.DependencyConvergence passed
+[INFO]
+[INFO] --- enforcer:3.6.2:enforce (ban-cross-biz-dependencies) @ pet-admin-biz ---
+[INFO] Rule 0: org.apache.maven.enforcer.rules.dependency.BannedDependencies passed
+[INFO]
+[INFO] --- resources:3.5.0:resources (default-resources) @ pet-admin-biz ---
+[INFO] skip non existing resourceDirectory C:\Users\Administrator\.codex\worktrees\9dd6\����ƽ̨V1.0\backend\pet-admin-biz\src\main\resources
+[INFO] skip non existing resourceDirectory C:\Users\Administrator\.codex\worktrees\9dd6\����ƽ̨V1.0\backend\pet-admin-biz\src\main\resources
+[INFO]
+[INFO] --- compiler:3.15.0:compile (default-compile) @ pet-admin-biz ---
+[INFO] Recompiling the module because of changed dependency.
+[INFO] Compiling 10 source files with javac [debug parameters release 21] to target\classes
+[INFO]
+[INFO] --- resources:3.5.0:testResources (default-testResources) @ pet-admin-biz ---
+[INFO] skip non existing resourceDirectory C:\Users\Administrator\.codex\worktrees\9dd6\����ƽ̨V1.0\backend\pet-admin-biz\src\test\resources
+[INFO]
+[INFO] --- compiler:3.15.0:testCompile (default-testCompile) @ pet-admin-biz ---
+[INFO] No sources to compile
+[INFO]
+[INFO] --- surefire:3.5.6:test (default-test) @ pet-admin-biz ---
+[INFO] No tests to run.
+[INFO]
+[INFO] --- jar:3.5.1:jar (default-jar) @ pet-admin-biz ---
+[INFO] Building jar: C:\Users\Administrator\.codex\worktrees\9dd6\����ƽ̨V1.0\backend\pet-admin-biz\target\pet-admin-biz-0.1.0-SNAPSHOT.jar
+[INFO]
+[INFO] ----------------------< com.petplatform:pet-boot >----------------------
+[INFO] Building pet-boot 0.1.0-SNAPSHOT                                 [41/42]
+[INFO]   from pet-boot\pom.xml
+[INFO] --------------------------------[ jar ]---------------------------------
+[INFO]
+[INFO] --- clean:3.5.0:clean (default-clean) @ pet-boot ---
+[INFO] Deleting C:\Users\Administrator\.codex\worktrees\9dd6\����ƽ̨V1.0\backend\pet-boot\target
+[INFO]
+[INFO] --- enforcer:3.6.2:enforce (baseline) @ pet-boot ---
+[INFO] Rule 2: org.apache.maven.enforcer.rules.dependency.DependencyConvergence passed
+[INFO]
+[INFO] --- enforcer:3.6.2:enforce (ban-cross-biz-dependencies) @ pet-boot ---
+[INFO] Skipping Rule Enforcement.
+[INFO]
+[INFO] --- resources:3.5.0:resources (default-resources) @ pet-boot ---
+[INFO] Copying 1 resource from src\main\resources to target\classes
+[INFO] Copying 1 resource from src\main\resources to target\classes
+[INFO]
+[INFO] --- compiler:3.15.0:compile (default-compile) @ pet-boot ---
+[INFO] Recompiling the module because of changed dependency.
+[INFO] Compiling 7 source files with javac [debug parameters release 21] to target\classes
+[INFO]
+[INFO] --- resources:3.5.0:testResources (default-testResources) @ pet-boot ---
+[INFO] skip non existing resourceDirectory C:\Users\Administrator\.codex\worktrees\9dd6\����ƽ̨V1.0\backend\pet-boot\src\test\resources
+[INFO]
+[INFO] --- compiler:3.15.0:testCompile (default-testCompile) @ pet-boot ---
+[INFO] No sources to compile
+[INFO]
+[INFO] --- surefire:3.5.6:test (default-test) @ pet-boot ---
+[INFO] No tests to run.
+[INFO]
+[INFO] --- jar:3.5.1:jar (default-jar) @ pet-boot ---
+[INFO] Building jar: C:\Users\Administrator\.codex\worktrees\9dd6\����ƽ̨V1.0\backend\pet-boot\target\pet-boot-0.1.0-SNAPSHOT.jar
+[INFO]
+[INFO] --- spring-boot:4.1.1:repackage (repackage) @ pet-boot ---
+[INFO] Attaching repackaged archive C:\Users\Administrator\.codex\worktrees\9dd6\����ƽ̨V1.0\backend\pet-boot\target\pet-boot-0.1.0-SNAPSHOT-exec.jar with classifier exec
+[INFO]
+[INFO] ---------------< com.petplatform:pet-architecture-test >----------------
+[INFO] Building pet-architecture-test 0.1.0-SNAPSHOT                    [42/42]
+[INFO]   from pet-architecture-test\pom.xml
+[INFO] --------------------------------[ jar ]---------------------------------
+[INFO]
+[INFO] --- clean:3.5.0:clean (default-clean) @ pet-architecture-test ---
+[INFO] Deleting C:\Users\Administrator\.codex\worktrees\9dd6\����ƽ̨V1.0\backend\pet-architecture-test\target
+[INFO]
+[INFO] --- enforcer:3.6.2:enforce (baseline) @ pet-architecture-test ---
+[INFO] Rule 2: org.apache.maven.enforcer.rules.dependency.DependencyConvergence passed
+[INFO]
+[INFO] --- enforcer:3.6.2:enforce (ban-cross-biz-dependencies) @ pet-architecture-test ---
+[INFO] Skipping Rule Enforcement.
+[INFO]
+[INFO] --- resources:3.5.0:resources (default-resources) @ pet-architecture-test ---
+[INFO] skip non existing resourceDirectory C:\Users\Administrator\.codex\worktrees\9dd6\����ƽ̨V1.0\backend\pet-architecture-test\src\main\resources
+[INFO] skip non existing resourceDirectory C:\Users\Administrator\.codex\worktrees\9dd6\����ƽ̨V1.0\backend\pet-architecture-test\src\main\resources
+[INFO]
+[INFO] --- compiler:3.15.0:compile (default-compile) @ pet-architecture-test ---
+[INFO] No sources to compile
+[INFO]
+[INFO] --- resources:3.5.0:testResources (default-testResources) @ pet-architecture-test ---
+[INFO] skip non existing resourceDirectory C:\Users\Administrator\.codex\worktrees\9dd6\����ƽ̨V1.0\backend\pet-architecture-test\src\test\resources
+[INFO]
+[INFO] --- compiler:3.15.0:testCompile (default-testCompile) @ pet-architecture-test ---
+[INFO] Recompiling the module because of changed dependency.
+[INFO] Compiling 3 source files with javac [debug parameters release 21] to target\test-classes
+[INFO]
+[INFO] --- surefire:3.5.6:test (default-test) @ pet-architecture-test ---
+[INFO] Using auto detected provider org.apache.maven.surefire.junitplatform.JUnitPlatformProvider
+[INFO]
+[INFO] -------------------------------------------------------
+[INFO]  T E S T S
+[INFO] -------------------------------------------------------
+[INFO] Running com.petplatform.architecture.ArchitectureRulesFixtureTest
+17:29:20.057 [main] INFO com.tngtech.archunit.core.PluginLoader -- Detected Java version 21.0.11
+[INFO] Tests run: 15, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 3.633 s -- in com.petplatform.architecture.ArchitectureRulesFixtureTest
+[INFO] Running com.petplatform.architecture.ArchitectureRulesTest
+ARCH-COVERAGE pet-common: 11 production classes
+ARCH-COVERAGE pet-id-core: 16 production classes
+ARCH-COVERAGE pet-event-api: 2 production classes
+ARCH-COVERAGE pet-event-core: 1 production classes
+ARCH-COVERAGE pet-task-core: 15 production classes
+ARCH-COVERAGE pet-user-api: 6 production classes
+ARCH-COVERAGE pet-user-biz: 10 production classes
+ARCH-COVERAGE pet-merchant-api: 6 production classes
+ARCH-COVERAGE pet-merchant-biz: 10 production classes
+ARCH-COVERAGE pet-service-api: 6 production classes
+ARCH-COVERAGE pet-service-biz: 10 production classes
+ARCH-COVERAGE pet-schedule-api: 6 production classes
+ARCH-COVERAGE pet-schedule-biz: 10 production classes
+ARCH-COVERAGE pet-order-api: 6 production classes
+ARCH-COVERAGE pet-order-biz: 10 production classes
+ARCH-COVERAGE pet-payment-api: 6 production classes
+ARCH-COVERAGE pet-payment-biz: 10 production classes
+ARCH-COVERAGE pet-refund-api: 6 production classes
+ARCH-COVERAGE pet-refund-biz: 10 production classes
+ARCH-COVERAGE pet-verification-api: 6 production classes
+ARCH-COVERAGE pet-verification-biz: 10 production classes
+ARCH-COVERAGE pet-aftersale-api: 6 production classes
+ARCH-COVERAGE pet-aftersale-biz: 10 production classes
+ARCH-COVERAGE pet-coupon-api: 6 production classes
+ARCH-COVERAGE pet-coupon-biz: 10 production classes
+ARCH-COVERAGE pet-points-api: 6 production classes
+ARCH-COVERAGE pet-points-biz: 10 production classes
+ARCH-COVERAGE pet-review-api: 6 production classes
+ARCH-COVERAGE pet-review-biz: 10 production classes
+ARCH-COVERAGE pet-notification-api: 6 production classes
+ARCH-COVERAGE pet-notification-biz: 10 production classes
+ARCH-COVERAGE pet-community-api: 6 production classes
+ARCH-COVERAGE pet-community-biz: 10 production classes
+ARCH-COVERAGE pet-thirdparty-api: 6 production classes
+ARCH-COVERAGE pet-thirdparty-biz: 10 production classes
+ARCH-COVERAGE pet-customer-service-api: 6 production classes
+ARCH-COVERAGE pet-customer-service-biz: 10 production classes
+ARCH-COVERAGE pet-admin-api: 6 production classes
+ARCH-COVERAGE pet-admin-biz: 10 production classes
+ARCH-COVERAGE pet-boot: 7 production classes
+ARCH-COVERAGE total: 40 modules / 324 classes
+ARCH-COVERAGE meaningful classes: 80; controllers: 0; domain classes: 0
+test_miniapp_plan_never_uses_web_build (test_architecture_gates.CapabilityGateTest) ... ok
+test_missing_app_cannot_pass (test_architecture_gates.CapabilityGateTest) ... ok
+test_missing_script_cannot_pass (test_architecture_gates.CapabilityGateTest) ... ok
+test_unknown_runtime_cannot_pass (test_architecture_gates.CapabilityGateTest) ... ok
+test_arch005_allows_contract_pass_through_labels_and_snapshot_fixture (test_architecture_gates.DisplayGateTest) ... ok
+test_arch005_allows_order_owner (test_architecture_gates.DisplayGateTest) ... ok
+test_arch005_rejects_frontend_priority_ternary_switch_and_lookup (test_architecture_gates.DisplayGateTest) ... ok
+test_arch005_rejects_present_frontend_with_empty_source_scan (test_architecture_gates.DisplayGateTest) ... ok
+test_arch005_scans_real_backend_and_both_frontend_paths (test_architecture_gates.DisplayGateTest) ... ok
+test_arch001_allows_api (test_architecture_gates.ModuleGateTest) ... ok
+test_arch001_rejects_biz_in_normal_test_and_profile_dependencies (test_architecture_gates.ModuleGateTest) ... ok
+test_arch001_rejects_empty_reactor (test_architecture_gates.ModuleGateTest) ... ok
+test_arch001_rejects_unlisted_module (test_architecture_gates.ModuleGateTest) ... ok
+
+----------------------------------------------------------------------
+Ran 13 tests in 2.103s
+
+OK
+ARCH-001 scanned 41 reactor modules, 17 biz POMs
+PASS: no biz -> biz dependencies
+ARCH-005 pet-common: 11 source files
+ARCH-005 pet-id-core: 6 source files
+ARCH-005 pet-event-api: 2 source files
+ARCH-005 pet-event-core: 1 source files
+ARCH-005 pet-task-core: 9 source files
+ARCH-005 pet-user-api: 6 source files
+ARCH-005 pet-user-biz: 10 source files
+ARCH-005 pet-merchant-api: 6 source files
+ARCH-005 pet-merchant-biz: 10 source files
+ARCH-005 pet-service-api: 6 source files
+ARCH-005 pet-service-biz: 10 source files
+ARCH-005 pet-schedule-api: 6 source files
+ARCH-005 pet-schedule-biz: 10 source files
+ARCH-005 pet-order-api: 6 source files
+ARCH-005 pet-order-biz: 10 source files
+ARCH-005 pet-payment-api: 6 source files
+ARCH-005 pet-payment-biz: 10 source files
+ARCH-005 pet-refund-api: 6 source files
+ARCH-005 pet-refund-biz: 10 source files
+ARCH-005 pet-verification-api: 6 source files
+ARCH-005 pet-verification-biz: 10 source files
+ARCH-005 pet-aftersale-api: 6 source files
+ARCH-005 pet-aftersale-biz: 10 source files
+ARCH-005 pet-coupon-api: 6 source files
+ARCH-005 pet-coupon-biz: 10 source files
+ARCH-005 pet-points-api: 6 source files
+ARCH-005 pet-points-biz: 10 source files
+ARCH-005 pet-review-api: 6 source files
+ARCH-005 pet-review-biz: 10 source files
+ARCH-005 pet-notification-api: 6 source files
+ARCH-005 pet-notification-biz: 10 source files
+ARCH-005 pet-community-api: 6 source files
+ARCH-005 pet-community-biz: 10 source files
+ARCH-005 pet-thirdparty-api: 6 source files
+ARCH-005 pet-thirdparty-biz: 10 source files
+ARCH-005 pet-customer-service-api: 6 source files
+ARCH-005 pet-customer-service-biz: 10 source files
+ARCH-005 pet-admin-api: 6 source files
+ARCH-005 pet-admin-biz: 10 source files
+ARCH-005 pet-boot: 7 source files
+ARCH-005 frontend-admin: 4 source files
+ARCH-005 frontend-miniapp: 17 source files
+PASS: no duplicate display derivation patterns in existing sources
+[INFO] Tests run: 7, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 3.501 s -- in com.petplatform.architecture.ArchitectureRulesTest
+[INFO]
+[INFO] Results:
+[INFO]
+[INFO] Tests run: 22, Failures: 0, Errors: 0, Skipped: 0
+[INFO]
+[INFO]
+[INFO] --- jar:3.5.1:jar (default-jar) @ pet-architecture-test ---
+[WARNING] JAR will be empty - no content was marked for inclusion!
+[INFO] Building jar: C:\Users\Administrator\.codex\worktrees\9dd6\����ƽ̨V1.0\backend\pet-architecture-test\target\pet-architecture-test-0.1.0-SNAPSHOT.jar
+[INFO] ------------------------------------------------------------------------
+[INFO] Reactor Summary for pet-platform-backend 0.1.0-SNAPSHOT:
+[INFO]
+[INFO] pet-platform-backend ............................... SUCCESS [  0.382 s]
+[INFO] pet-common ......................................... SUCCESS [  2.913 s]
+[INFO] pet-id-core ........................................ SUCCESS [ 18.451 s]
+[INFO] pet-event-api ...................................... SUCCESS [  0.057 s]
+[INFO] pet-event-core ..................................... SUCCESS [  0.136 s]
+[INFO] pet-task-core ...................................... SUCCESS [ 15.191 s]
+[INFO] pet-user-api ....................................... SUCCESS [  0.085 s]
+[INFO] pet-user-biz ....................................... SUCCESS [  0.981 s]
+[INFO] pet-merchant-api ................................... SUCCESS [  0.058 s]
+[INFO] pet-merchant-biz ................................... SUCCESS [  0.122 s]
+[INFO] pet-service-api .................................... SUCCESS [  0.058 s]
+[INFO] pet-service-biz .................................... SUCCESS [  0.129 s]
+[INFO] pet-schedule-api ................................... SUCCESS [  0.079 s]
+[INFO] pet-schedule-biz ................................... SUCCESS [  0.717 s]
+[INFO] pet-order-api ...................................... SUCCESS [  0.067 s]
+[INFO] pet-payment-api .................................... SUCCESS [  0.056 s]
+[INFO] pet-coupon-api ..................................... SUCCESS [  0.056 s]
+[INFO] pet-order-biz ...................................... SUCCESS [  0.122 s]
+[INFO] pet-payment-biz .................................... SUCCESS [  0.133 s]
+[INFO] pet-refund-api ..................................... SUCCESS [  0.058 s]
+[INFO] pet-refund-biz ..................................... SUCCESS [  0.118 s]
+[INFO] pet-verification-api ............................... SUCCESS [  0.075 s]
+[INFO] pet-verification-biz ............................... SUCCESS [  0.106 s]
+[INFO] pet-aftersale-api .................................. SUCCESS [  0.065 s]
+[INFO] pet-aftersale-biz .................................. SUCCESS [  0.113 s]
+[INFO] pet-coupon-biz ..................................... SUCCESS [  0.129 s]
+[INFO] pet-points-api ..................................... SUCCESS [  0.051 s]
+[INFO] pet-points-biz ..................................... SUCCESS [  0.120 s]
+[INFO] pet-review-api ..................................... SUCCESS [  0.056 s]
+[INFO] pet-review-biz ..................................... SUCCESS [  0.106 s]
+[INFO] pet-notification-api ............................... SUCCESS [  0.053 s]
+[INFO] pet-notification-biz ............................... SUCCESS [  0.109 s]
+[INFO] pet-community-api .................................. SUCCESS [  0.075 s]
+[INFO] pet-community-biz .................................. SUCCESS [  0.109 s]
+[INFO] pet-thirdparty-api ................................. SUCCESS [  0.056 s]
+[INFO] pet-thirdparty-biz ................................. SUCCESS [  0.116 s]
+[INFO] pet-customer-service-api ........................... SUCCESS [  0.058 s]
+[INFO] pet-customer-service-biz ........................... SUCCESS [  0.104 s]
+[INFO] pet-admin-api ...................................... SUCCESS [  0.050 s]
+[INFO] pet-admin-biz ...................................... SUCCESS [  0.117 s]
+[INFO] pet-boot ........................................... SUCCESS [  1.769 s]
+[INFO] pet-architecture-test .............................. SUCCESS [  8.488 s]
+[INFO] ------------------------------------------------------------------------
+[INFO] BUILD SUCCESS
+[INFO] ------------------------------------------------------------------------
+[INFO] Total time:  52.291 s
+[INFO] Finished at: 2026-09-14T17:29:26+08:00
+[INFO] ------------------------------------------------------------------------

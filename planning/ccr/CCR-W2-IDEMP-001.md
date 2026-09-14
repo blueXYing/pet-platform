@@ -1,5 +1,11 @@
 # CCR-W2-IDEMP-001：公共约定与持久化幂等提案
 
+## 当前S2组件阶段
+
+**COMPONENT_REVIEW_CANDIDATE / PRODUCTION_ENABLEMENT_BLOCKED。** PR13及Hutool/适配包已经批准合入develop6a559bc，当前已交付最小可注入Hutool＋MySQL协调组件候选；不重复SDK/适配包审批。最新ab351ee基线上42项目/154 JUnit、13架构Python及80契约回归通过；代码/Schema候选、Owner、实际验证与生产限制见[组件一页交接](../../backend/pet-id-core/HANDOFF.md)，权威23号仅增加§10实施映射。新PR仍待人工合并。
+
+本阶段root注册pet-id-core、6个main类与QA独占测试/3个CI环境变量、仅节点技术表SQL25；common/task-core/boot及默认Flyway目录没有改动。真实宿主退出验证默认拒绝，生产初始化/写谱系/恢复/告警和装配仍未完成；全Issue非DONE、CCR非RESOLVED，通用业务幂等表/旧key迁移未扩大进来。以下为已接受方案与原审批/规划历史，当前组件交付状态以上述HANDOFF为准。
+
 ## 当前批准回执：Hutool新增适配方案已接受
 
 **当前状态：SDK_SELECTED / ADAPTER_ACCEPTED / PENDING_CONTRACT_SYNC。** 2026-09-14人工明确接受Hutool新增适配方案，批准对象严格为PR13提交 **e81c6bcaba360a192001167823c30f2afa24a92a** 中的节点协调、候选发布、1秒超时失效、确认旧JVM实际终止后恢复及一页指南初始参数包；由根任务01a08e29-e8c2-70d0-94ba-18df3e14d948明确转交。SDK5.8.47及原两项已批，不再请求相同批准。

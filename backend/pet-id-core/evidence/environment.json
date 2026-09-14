@@ -1,0 +1,15 @@
+{
+  "mysqlVersion": "8.4.9",
+  "port": 33442,
+  "serverUuid": "54d847c9-b01c-11f1-89bd-00155d052ebc",
+  "dataDirectory": "D:\\Temp\\plat002-id-mysql-9dd6\\data",
+  "processesBeforeShutdown": [
+    34244,
+    33836
+  ],
+  "processesAfterShutdown": [],
+  "temporaryTestDatabasesRemaining": 0,
+  "shutdownVerified": true,
+  "directoryRetainedForReproduction": true,
+  "productionServiceModified": false
+}
