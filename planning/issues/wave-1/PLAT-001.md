@@ -6,7 +6,7 @@ Epic: EPIC-01
 Story: ST-PLAT-01
 Priority: P0
 Wave: 1
-Status: READY
+Status: DONE
 Dependencies: GOV-001
 
 ## Allowed Modules
@@ -34,3 +34,7 @@ Dependencies: GOV-001
 - CI/相关测试通过；
 - 无未披露 Contract/Schema/Event 变化；
 - PR 可供 Review。
+
+## 当前交付（2026-09-14）
+
+工程壳Scope已通过PR6合入develop，最终审查提交fb024226898ae38923ddbfa2f55602280a9fd5a8，合并后CI34797686952六项通过。Source/AC/Test定义不变，证据归属及真实业务/截图/平台限制见WAVE_1_CLOSEOUT_REVIEW.md。DONE不表示业务V1或真实契约已验收。
