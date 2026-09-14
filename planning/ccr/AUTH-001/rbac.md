@@ -1,6 +1,8 @@
 # AUTH-001 单运营RBAC提案
 
-**PROPOSED / PENDING_REVIEW · AUTH-001-draft-v2**。产品规则已由SSOT§24及22号补充批准；本文件只提出稳定标识、动作映射、数据范围和执行协议。新权限码/接口/持久化均待Contract Owner审批。V1取消MFA已按SSOT§25及[24号补充](../../../docs/01-prd/24-取消MFA人工裁决补充-v1.0.md)批准，覆盖旧第二因素门禁；D1其余/D2仍待审。
+**PROPOSAL_ACCEPTED / PENDING_CONTRACT_SYNC · AUTH-001-draft-v2**。产品规则已由SSOT§24及22号补充批准；本文件只提出稳定标识、动作映射、数据范围和执行协议。D1/D2技术方案已接受；新权限码/接口待权威Contract同步，具体Schema/持久化实现仍需后续审查。V1取消MFA已按SSOT§25及[24号补充](../../../docs/01-prd/24-取消MFA人工裁决补充-v1.0.md)批准，覆盖旧第二因素门禁；D1其余及D2已接受，尚未同步权威Contract。
+
+批准回执（2026-09-14）：用户明确批准“D1其他参数和D2”，对象为取消MFA后的AUTH-001-draft-v2，head `2963e3918bbd62afdfdeb55c60bb2e2221c67ca1`，tree `9761eb9f1c5da0fde70ab6be466ad3f63eb6ce09`。仅同步接受状态，不改变技术参数、正文样例或枚举；MFA继续取消。OD002、冻结未明确写动作、真实主认证Provider及Schema/实现门禁保留，PR14合并未授权；两CCR不RESOLVED、Issue不DONE。
 
 ## 1. 角色和目录
 

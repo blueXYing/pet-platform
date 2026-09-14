@@ -1,6 +1,8 @@
 # AUTH-001 审阅和交付证据
 
-状态：**PROPOSED / PENDING_REVIEW · AUTH-001-draft-v2**。此文记录规范阶段检查，不作为真实认证或业务验收。
+状态：**PROPOSAL_ACCEPTED / PENDING_CONTRACT_SYNC · AUTH-001-draft-v2**。此文记录规范阶段检查，不作为真实认证或业务验收。
+
+批准回执（2026-09-14）：用户明确批准“D1其他参数和D2”，对象为取消MFA后的AUTH-001-draft-v2，head `2963e3918bbd62afdfdeb55c60bb2e2221c67ca1`，tree `9761eb9f1c5da0fde70ab6be466ad3f63eb6ce09`。仅同步接受状态，不改变技术参数、正文样例或枚举；MFA继续取消。OD002、冻结未明确写动作、真实主认证Provider及Schema/实现门禁保留，PR14合并未授权；两CCR不RESOLVED、Issue不DONE。
 
 ## 1. Owner与范围
 
@@ -39,7 +41,7 @@
 
 ## 4. 交付和后续
 
-本次draft-v2固定后更新原Draft PR14并报告新head/base/tree/最后CI；不merge。取消MFA产品规则已批准，不再请求批准；D1其它参数/D2仍PROPOSED/PENDING_REVIEW。源文档固定及复审完成后释放Writer交回S2，仅CI回执不继续修改head。两CCR不RESOLVED，完整AUTH-001不DONE。
+本次draft-v2固定后更新原Draft PR14并报告新head/base/tree/最后CI；不merge。取消MFA产品规则已批准，不再请求批准；D1其它参数/D2已在下述新增人工回执中接受，待权威Contract同步。源文档固定及复审完成后释放Writer交回S2，仅CI回执不继续修改head。两CCR不RESOLVED，完整AUTH-001不DONE。
 
 ## 5. draft-v2取消MFA修订
 
@@ -52,3 +54,11 @@
 2026-09-14新修订实际结构结果：`PASS_DRAFT_V2_STRUCTURE_ONLY`，9个规范Markdown、10段JSON、31个本地链接；状态/围栏/严格JSON与重复键/ID String/毫秒时间/秘密占位/错误码登记检查通过；活动规范无已删除的额外因素字段、路径或状态。4个产品文件当前blob与根commit逐个一致；仅原9规范dirty、无范围外文件，git diff --check通过。此为新文本检查，旧11JSON/CI不用于本版本。
 
 固定后原PR14应恰为4产品+9AUTH共13文件；新head实际CI另在PR回执及根交付消息记录，不为追加CI结果继续改head。真实认证、业务权限及Provider验收均未运行。
+
+## 6. D1/D2人工接受回执（仅行政状态同步）
+
+2026-09-14用户明确批准D1其它参数及D2，准确对象为`2963e3918bbd62afdfdeb55c60bb2e2221c67ca1`/draft-v2，取消MFA保持。根WORK_STATE3.4已登记；随后根授权此9MD行政记录更新为单主写排程的窄例外，不开展新增设计或实现。技术正文、JSON样例、权限/状态枚举和参数不变；根4产品文件、S2、API/Schema/代码均不改。
+
+批准对象原CI34821292524六job成功只对应2963e391；本回执新head须独立核验，结果回报PR正文与根，不沿用旧CI。PR14继续Draft，合并未授权；OD002、冻结未明确写动作、真实SMS/手机号Provider及Schema/实现仍是门禁。两个CCR为PROPOSAL_ACCEPTED/PENDING_CONTRACT_SYNC，非RESOLVED，完整AUTH-001非DONE。
+
+回执静态检查实际结果：`PASS_APPROVAL_RECEIPT_ONLY`，9份Markdown状态同步，10段JSON/code block逐段与批准head相同，31个本地链接有效；会话/准入/RBAC/样例四份技术正文除批准状态用语外相同，PROPOSED_ONLY等技术枚举未变；4根产品blob不变，仅9MD修改，git diff --check通过。QA只读核对确认批准对象准确、无超范围修改及门禁扩大。此为行政记录验证，非真实鉴权测试；提交后CI另核。

@@ -1,6 +1,8 @@
 # AUTH-001 商家工作台准入提案
 
-**PROPOSED / PENDING_REVIEW · AUTH-001-draft-v2**。以下HTTP/字段/枚举均为提案，不从现有fixture推定已批准。产品来源：商家PRD§5.2/5.6/5.7/5.9/6.6、SSOT§15；签约事实仍受OD-W0-002约束。
+**PROPOSAL_ACCEPTED / PENDING_CONTRACT_SYNC · AUTH-001-draft-v2**。以下HTTP/字段/枚举仍保留原方案文本；D1/D2范围已明确接受，待权威Contract同步，不从现有fixture推定已实现。产品来源：商家PRD§5.2/5.6/5.7/5.9/6.6、SSOT§15；签约事实仍受OD-W0-002约束。
+
+批准回执（2026-09-14）：用户明确批准“D1其他参数和D2”，对象为取消MFA后的AUTH-001-draft-v2，head `2963e3918bbd62afdfdeb55c60bb2e2221c67ca1`，tree `9761eb9f1c5da0fde70ab6be466ad3f63eb6ce09`。仅同步接受状态，不改变技术参数、正文样例或枚举；MFA继续取消。OD002、冻结未明确写动作、真实主认证Provider及Schema/实现门禁保留，PR14合并未授权；两CCR不RESOLVED、Issue不DONE。
 
 ## 1. 选择与授权分开
 

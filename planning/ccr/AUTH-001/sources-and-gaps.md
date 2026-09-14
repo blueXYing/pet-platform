@@ -1,8 +1,10 @@
 # AUTH-001 来源、缺口和影响
 
-**PROPOSED / PENDING_REVIEW · AUTH-001-draft-v2**。原阅读基线develop `bcb269c2adc9405e669747d9b3bedfae2bf5ccbd`，本修订继承根产品裁决commit`9cdc8eeac94fbe673fef420cc7767caddf1ba219`（本分支cherry-pick为`7e1c36e`）。根最新持续授权及正式Writer交接优先旧“Wave2未启动”记录。未更改根dirty台账；根4份产品文件原样继承，AUTH只编辑原9份规范。
+**PROPOSAL_ACCEPTED / PENDING_CONTRACT_SYNC · AUTH-001-draft-v2**。原阅读基线develop `bcb269c2adc9405e669747d9b3bedfae2bf5ccbd`，本修订继承根产品裁决commit`9cdc8eeac94fbe673fef420cc7767caddf1ba219`（本分支cherry-pick为`7e1c36e`）。根最新持续授权及正式Writer交接优先旧“Wave2未启动”记录。未更改根dirty台账；根4份产品文件原样继承，AUTH只编辑原9份规范。
 
-当前产品规则：V1取消额外MFA，SSOT§25及[24号补充](../../../docs/01-prd/24-取消MFA人工裁决补充-v1.0.md)覆盖原Word和draft-v1中的要求；D1其它技术参数/D2仍待审。原Word和旧审阅证据保留历史，不再据其恢复额外因素功能。
+批准回执（2026-09-14）：用户明确批准“D1其他参数和D2”，对象为取消MFA后的AUTH-001-draft-v2，head `2963e3918bbd62afdfdeb55c60bb2e2221c67ca1`，tree `9761eb9f1c5da0fde70ab6be466ad3f63eb6ce09`。仅同步接受状态，不改变技术参数、正文样例或枚举；MFA继续取消。OD002、冻结未明确写动作、真实主认证Provider及Schema/实现门禁保留，PR14合并未授权；两CCR不RESOLVED、Issue不DONE。
+
+当前产品规则：V1取消额外MFA，SSOT§25及[24号补充](../../../docs/01-prd/24-取消MFA人工裁决补充-v1.0.md)覆盖原Word和draft-v1中的要求；D1其它技术参数及D2已由用户明确接受，待权威Contract同步。原Word和旧审阅证据保留历史，不再据其恢复额外因素功能。
 
 ## 1. 已读资料与准确定位
 
@@ -73,7 +75,7 @@ merchant.status没有完整入驻审核四态，provider_merchant_no没有签约
 
 ## 6. 源文件指纹
 
-只读SHA-256如下。原Word与既有22/23号指纹保持；旧SSOT指纹明确只对应draft-v1阅读基线，新SSOT/24/AGENTS/FLT-020对应根批准产品commit。D1其它参数和D2不会因指纹固定自动获批。
+只读SHA-256如下。原Word与既有22/23号指纹保持；旧SSOT指纹明确只对应draft-v1阅读基线，新SSOT/24/AGENTS/FLT-020对应根批准产品commit。指纹本身不构成批准；D1其它参数与D2的接受依据为本文件所列人工回执。
 
 | 源文件（路径见§1） | SHA-256 |
 |---|---|

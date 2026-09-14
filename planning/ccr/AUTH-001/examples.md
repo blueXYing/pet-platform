@@ -1,6 +1,8 @@
 # AUTH-001 正反样例与验收提案
 
-**PROPOSED / PENDING_REVIEW · AUTH-001-draft-v2**。所有ID为虚构String、所有秘密为不可用占位符；没有真实用户/令牌/手机号。JSON是协议设计例子，不是已批准公共Mock，也不证明服务已运行。以下响应展示完整ApiResponse；省略的HTTP头按[会话](sessions.md)定义。
+**PROPOSAL_ACCEPTED / PENDING_CONTRACT_SYNC · AUTH-001-draft-v2**。所有ID为虚构String、所有秘密为不可用占位符；没有真实用户/令牌/手机号。JSON保持被接受方案的原设计例子，尚未转为同步权威Schema的公共Mock，也不证明服务已运行。以下响应展示完整ApiResponse；省略的HTTP头按[会话](sessions.md)定义。
+
+批准回执（2026-09-14）：用户明确批准“D1其他参数和D2”，对象为取消MFA后的AUTH-001-draft-v2，head `2963e3918bbd62afdfdeb55c60bb2e2221c67ca1`，tree `9761eb9f1c5da0fde70ab6be466ad3f63eb6ce09`。仅同步接受状态，不改变技术参数、正文样例或枚举；MFA继续取消。OD002、冻结未明确写动作、真实主认证Provider及Schema/实现门禁保留，PR14合并未授权；两CCR不RESOLVED、Issue不DONE。
 
 ## 1. 微信已验证、手机号未完成：不签发业务会话
 
