@@ -1,6 +1,22 @@
 # CCR-ACR-001：统一小程序会话与工作台上下文契约
 
-状态：OPEN_SPEC_REQUIRED。方向批准：2026-09-11人工确认ACR-001 R4。具体公共DTO/API规范尚未批准，本记录不是可直接实现的HTTP契约。
+状态：**PROPOSAL_ACCEPTED / PENDING_CONTRACT_SYNC**。方向批准：2026-09-11人工确认ACR-001 R4。AUTH-001-draft-v2的D1其它参数及D2方案已接受，待权威Contract同步；本记录不是可直接实现的HTTP契约，也不解除真实签约/鉴权门禁。
+
+批准回执（2026-09-14）：用户明确批准“D1其他参数和D2”，对象为取消MFA后的AUTH-001-draft-v2，head `2963e3918bbd62afdfdeb55c60bb2e2221c67ca1`，tree `9761eb9f1c5da0fde70ab6be466ad3f63eb6ce09`。仅同步接受状态，不改变技术参数、正文样例或枚举；MFA继续取消。OD002、冻结未明确写动作、真实主认证Provider及Schema/实现门禁保留，PR14合并未授权；两CCR不RESOLVED、Issue不DONE。
+
+## 当前审阅入口（2026-09-14取消MFA修订）
+
+V1取消额外MFA的产品决定已批准，来源为根Work固定`9cdc8eeac94fbe673fef420cc7767caddf1ba219`，本分支cherry-pick为`7e1c36e`；执行SSOT§25及[24号补充](../../docs/01-prd/24-取消MFA人工裁决补充-v1.0.md)。普通登录/手机号校验/密码重置证明保留；D1其它参数及D2已由后续明确批准接受，依据见本页回执。
+
+先读[一页审阅指南](AUTH-001/review-guide.md)，D1推荐共享小程序可撤销会话、客户端选择加每次服务端准入查询；D2推荐最终授权检查时点及旧回执当前权限复核。请求响应/字段/匿名认证与秘密重试见[会话](AUTH-001/sessions.md)，商家/门店/子账号/存量例外见[准入](AUTH-001/admission.md)，[样例](AUTH-001/examples.md)、[来源与影响](AUTH-001/sources-and-gaps.md)、[审阅证据](AUTH-001/review-evidence.md)可独立检查。
+
+源基线develop `bcb269c2adc9405e669747d9b3bedfae2bf5ccbd`。根Work已在PLAT002 S2固定提交并释放Writer后正式交接AUTH规范主写；初版只改两个CCR及AUTH-001附属Markdown。本修订按根明确授权继承4个产品裁决文件，AUTH仅编辑原9个规范Markdown；未自行编辑根产品内容，不改API/Schema/代码/SDK。以下旧登记中的“此次不派发”是原历史阶段记录，不覆盖最新交接。
+
+OD-W0-002签约Provider、成功/待签/失败/未知事实仍BLOCKED；冻结核销/退款/售后补证等未明确动作另列B-FROZEN-WRITE。已定冻结读取/申诉与下线存量履约保持，不统一禁入。微信登录手机号绑定规则已实际读取，临时认证attempt不是业务登录。主账号/登录员工身份映射、原C端SMS主登录/重置Provider、Schema持久化仍有后续门禁；不因独立章节可审而整包RESOLVED。
+
+本阶段仅已接受方案的状态记录及结构/样例检查，未运行真实登录/鉴权/签约及业务E2E。方案接受、文档合入、权威契约同步和实现分阶段授权，完整AUTH-001不DONE。
+
+## 原缺口与解锁要求（保留）
 
 提出方：ACR-001。关联Issue：AUTH-001（负责建立契约）、C-001/M-001（壳与内部fixture）、C-002/M-002及后续真实接入。责任：Backend Core提出完整规范，Architect/Contract Owner评审；C-End、Merchant、QA参加对应Issue协作。此次不创建开发任务或派发评审。
 
