@@ -1,0 +1,18 @@
+# CCR-W2-API-001：首批业务查询/写入与页面DTO缺口
+
+状态：OPEN_SPEC_REQUIRED；可按下表域独立评审关闭，整个CCR不得因一个域完成而全部RESOLVED。不新增Issue，不生成公共SDK，不在本草案选择具体字段/路径/Provider。
+
+证据：HTTP10 §3.1～3.3、§4/§5多为路由和行为列表；内部API07 §3～5若干Query/DTO仅名称引用；OpenAPI11当前16个交易核心操作不覆盖完整登录/宠物/商家服务/人员排期/运营CRUD。Wave1 Contract Smoke绿灯不能证明本CCR已完整。
+
+| 域 | 规范责任Issue | 消费者 | 缺口及关联门禁 |
+|---|---|---|---|
+| 会话/准入/权限 | AUTH-001 | C002/M002/A002 | 复用CCR-ACR/PERM，不另造第二套会话；签约OD002仍有效 |
+| 用户/宠物/个人资料 | USR-001，AUTH协作 | C002、TX001 | UserIdQuery/PetSnapshotQuery、宠物写入/查询/校验、归属/删除与历史快照 |
+| 商家/门店/人员 | MER-001 | C003/M002/ADM001 | MerchantStoreDTO/MerchantStaffDTO/Query、真实资格事实、分页/过滤/错误与范围 |
+| 服务/快照/资格 | SVC-001 | C003/M002/ADM001 | ServiceBookabilityDTO/Query与页面响应；不提前实现排期/订单 |
+| 可用性/排期管理 | SCH-001/002及原所属Owner | C003/M002/A002 | 对既有可用时间契约补页面所需未定义内容；原Wave3依赖不强拉到本波 |
+| 运营治理 | ADM-001，AUTH协作 | A002 | 商家/服务/员工/排期操作及动作权限、数据范围、错误；原后置依赖保留 |
+
+每域交付：逐个现有操作来源与Scope、请求/响应/校验/分页/错误/鉴权、ID金额String、写requestId、示例及正反Mock、Schema/Event影响、审批记录。真实后端是权限事实源，前端选择工作区不授权。受保护HTTP/OpenAPI/Internal/Schema修改须在草案获批后由明确Owner执行。
+
+前端可提交页面消费需求和差异，不能把内部工程fixture升级为已批准DTO。Contract Owner确认该域契约后可先做业务Mock阶段；完整Issue DONE仍需原AC/E2E、平台和VIS验收。

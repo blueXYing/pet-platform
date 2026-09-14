@@ -1,0 +1,29 @@
+{
+  "status": "PASS_PLANNING_STRUCTURE_NOT_EXECUTION",
+  "base": "aa470322ce425e2f6f51cd68033177f2a576cb57",
+  "issues": 63,
+  "stories": 42,
+  "epics": 21,
+  "wave1Done": 7,
+  "wave2Candidates": 11,
+  "newIssues": 0,
+  "primaryStoryFixes": [
+    "C-002",
+    "C-003",
+    "C-004",
+    "C-005",
+    "C-006",
+    "M-002",
+    "M-003",
+    "M-004",
+    "A-002",
+    "A-003",
+    "A-004",
+    "A-005"
+  ],
+  "remainingPrimaryEpicMismatches": 0,
+  "secondaryLinks": 49,
+  "dependencyGraph": "ACYCLIC",
+  "fullWave2IssuesReady": 0,
+  "note": "Phase readiness is conditional; no contract approved or implementation/test executed. EPIC19 remains an open planning decision."
+}

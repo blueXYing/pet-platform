@@ -9,7 +9,7 @@
 | 既有Issue | 已批准范围调整与执行要求 |
 |---|---|
 | C-001 | 一个Taro React小程序壳、consumer/shared、根配置与平台Mock；版本组合需验证；不生成用户Web/App |
-| M-001 | 在同一应用内建立merchant普通分包；依赖GOV-001与C-001，现为BLOCKED；不写根配置/共享代码 |
+| M-001 | 在同一应用内建立merchant普通分包；依赖GOV-001与C-001（Wave1已满足并完成）；不写根配置/共享代码 |
 | A-001 | React/TypeScript/Vite/React Router运营网页壳；通用权限fixture不代表生产矩阵 |
 | AUTH-001 | 保持原后台模块范围，先承接CCR-ACR-001完整会话/工作台规范，再实现批准部分；禁止只靠前端角色切换授权 |
 | C-002～006 | 只写consumer/**；共享配置、素材、请求变更由C-End在关联Issue明确唯一编辑者与Allowed授权后处理；使用真实小程序测试，获准V1页按Figma节点/原始切图/差异记录验收 |
@@ -31,3 +31,7 @@
 ## OD-W0-003后续产品裁决
 
 2026-09-11权限产品规则已定，见SSOT §24和22号正式PRD补充。AUTH-001建立CCR-PERM-001具体权限码/DTO；A-001及后续运营任务不得实现双人/内部审批，获权编辑直接发布，超管默认全已批准V1权限。普通角色由实际RBAC控制；执行PERM-001～006，业务硬规则不变。
+
+## Wave2规划索引
+
+当前阶段以WORK_STATE为准。11个既有候选的完整AC/阶段门禁见planning/issues/wave-2及READY_QUEUE_WAVE_2.md，主/次Story见ISSUE_STORY_LINKS.csv。历史原型方向批准不是具体会话/DTO批准。

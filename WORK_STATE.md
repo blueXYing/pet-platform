@@ -1,17 +1,17 @@
 # Work State
 
 PROJECT: 宠物平台 V1.0
-STATE_VERSION: 1.5
+STATE_VERSION: 1.7
 UPDATED_AT: 2026-09-14
 
-CURRENT_PHASE: W3_INTEGRATION_REVIEW
-CURRENT_STATUS: REVIEW_PASSED_PENDING_DOC_SYNC
-NEXT_PHASE: W4_NEXT_WAVE_PLANNING
+CURRENT_PHASE: W4_NEXT_WAVE_PLANNING
+CURRENT_STATUS: WAVE_2_PLAN_AWAITING_REVIEW
+NEXT_PHASE: W1_EXECUTION_READY
 NEXT_PHASE_APPROVED: NO
 
 ## 当前结论
 
-Wave 1七个既有Issue的工程壳范围全部通过并已合入develop。W3代码、合并后CI和范围审查通过；状态文档收尾PR尚待人工合并，完成后才使用同步基线进入下一阶段规划。未启动Wave 2，未发布main。
+Wave 1七个既有Issue的工程壳范围全部通过并已合入develop。W3代码、合并后CI和范围审查通过；收尾文档PR8已按人工批准合入develop，状态同步完成，可以进入W4规划。未启动Wave 2，未发布main。
 
 - 实际审查develop：fb024226898ae38923ddbfa2f55602280a9fd5a8。
 - 受测树：95e2ac9502f7b80218bc8121d4a86021ff531944。
@@ -39,3 +39,18 @@ GOV-001、GOV-002、PLAT-001、C-001、M-001、A-001、QA-001均DONE，仅代表
 ## 历史记录
 
 原WORK_STATE逐次追加的暂停/未批准/进行中段落已归档至planning/history/WORK_STATE_THROUGH_WAVE_1.md，均不覆盖本文当前状态。原始PRD、SSOT、Schema/API/Event/Scheduler未在收尾审查修改。
+
+## PR8合并回执
+
+2026-09-14人工明确批准，PR8实际merge aa470322ce425e2f6f51cd68033177f2a576cb57。批准head7e7cafd4ab87b3fde3b430744ec9c338bdae4ce2及base fb024226未变，CI34798267872六job全部success；合并tree d6001339727af1004b37e8e1d5f7fca272fca4cf与候选相同。远端PR8正文记录本回执，原文档中待同步条件已满足。不启动Wave2，不发布main。
+
+
+## 最新规划：Wave 2候选（未启动）
+
+用户已要求规划下一波。基线develop aa470322ce425e2f6f51cd68033177f2a576cb57；Wave1七项不变，63Issue/42Story/21Epic保持。计划见planning/WAVE_2_PLAN.md；阶段队列见READY_QUEUE_WAVE_2.md；11个原Wave2候选补充正文和测试定义。
+
+首要是PLAT002公共约定/幂等规范，AUTH会话RBAC及Outbox规范；PLAT004在ID/Clock接口交接后可开始，完整生产交付需实际公共提供器。全部11个完整Issue仍BLOCKED，SPEC_READY仅规范阶段，不代表整项实现批准。前端真实页面需获批业务DTO和V1原图/差异输入；不制造新的空壳任务。
+
+W3的12项Epic/Story关系已用现有业务主Story修正，原工程和跨域Story保存在ISSUE_STORY_LINKS.csv，未减少复合Scope。客服EPIC19仍待承载原决定及任务映射。新增CCR-W2-IDEMP-001/CCR-W2-API-001是缺口登记，不修改权威Contract、不宣布任何审批通过。
+
+本次规划文档需人工审阅并按协议合入develop；Wave2启动仍需明确批准，不能因本计划存在而派发。main未改动，不发布、不执行数据库迁移、不启动开发任务。

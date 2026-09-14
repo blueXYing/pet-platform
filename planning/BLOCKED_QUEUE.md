@@ -26,3 +26,9 @@ Java21构建已在CI验证；仓库/审核人blueXYing已落实，PR6/7已合入
 ## W3新增后续追踪门禁
 
 W3-TRACE-001：EPIC-19客服承载待既有产品决定，未分配Issue，W4补跟踪。W3-TRACE-002：C-002～006、M-002～004、A-002～005共12项Issue的Epic与Story归属不一致；受影响条目在派发前修正/明确跨Epic映射。本次不新增或重拆任务，详情见WAVE_1_CLOSEOUT_CHECKS.json。
+
+## W4规划更新：以本段覆盖追踪门禁历史
+
+W3-TRACE-002的12项主链已按现有业务Story修正，次级关联见ISSUE_STORY_LINKS.csv；结构门禁可解除，但页面API/原图/真实依赖未因此解除。EPIC-19仍待客服承载原决定，不新增Issue。
+
+新增CCR-W2-IDEMP-001限制公共持久化幂等，新增CCR-W2-API-001按域限制首批业务DTO；现有CCR不关闭。PLAT004已存在AsyncTask表结构，不登记虚假“缺Schema”，但须等公共ID/Clock固定交接。11个Wave2候选的完整Issue状态仍BLOCKED，阶段就绪详见READY_QUEUE_WAVE_2.md，计划/阶段通过不等于实现或整项DONE。
