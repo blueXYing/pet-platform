@@ -55,8 +55,16 @@ public final class PetService implements PetCommandApi, PetQueryApi {
         execution.setTimeout(10);
     }
 
+    /** First-create versus idempotent-replay distinction for the HTTP adapter (23 §5: 201/200). */
+    public record CommandOutcome<R>(R receipt, boolean replayed) {}
+
     @Override
     public PetView createPet(CreatePet command) {
+        return createPetOutcome(command).receipt();
+    }
+
+    /** Same execution as {@link #createPet} plus the replay flag for status mapping. */
+    public CommandOutcome<PetView> createPetOutcome(CreatePet command) {
         CommandContext context = trustedUserContext(command.context());
         validateCreate(command);
         long userId = actorUserId(context);
@@ -71,7 +79,7 @@ public final class PetService implements PetCommandApi, PetQueryApi {
         params.put("sterilizationStatus", command.sterilizationStatus());
         params.put("vaccineStatus", command.vaccineStatus());
         params.put("weightKg", command.weightKg() == null ? null : command.weightKg().toPlainString());
-        return withIdempotency("pet.create", context, params, PetView.class,
+        Idempotent<PetView> outcome = withIdempotencyOutcome("pet.create", context, params, PetView.class,
                 ignored -> {
                     long petId = freshId();
                     String sex = command.sex() == null ? "UNKNOWN" : command.sex();
@@ -86,6 +94,7 @@ public final class PetService implements PetCommandApi, PetQueryApi {
                     requireActiveUser(userId);
                     return null;
                 });
+        return new CommandOutcome<>(outcome.value(), outcome.replayed());
     }
 
     @Override
@@ -159,9 +168,19 @@ public final class PetService implements PetCommandApi, PetQueryApi {
 
     // --- idempotency frame (supplement 23 §5) ---
 
+    private record Idempotent<R>(R value, boolean replayed) {}
+
     private <R> R withIdempotency(String namespace, CommandContext context, Map<String, Object> params,
                                   Class<R> receiptType, Function<Void, R> executionBody,
                                   Function<R, Void> replayRevalidation) {
+        return withIdempotencyOutcome(namespace, context, params, receiptType,
+                executionBody, replayRevalidation).value();
+    }
+
+    private <R> Idempotent<R> withIdempotencyOutcome(String namespace, CommandContext context,
+                                                     Map<String, Object> params, Class<R> receiptType,
+                                                     Function<Void, R> executionBody,
+                                                     Function<R, Void> replayRevalidation) {
         String requestKey = namespace + "|USER|" + context.operatorId() + "|USER_SELF|" + context.requestId();
         CanonicalParams.Canonical canonical = CanonicalParams.of(params);
         Optional<String> replay;
@@ -173,16 +192,16 @@ public final class PetService implements PetCommandApi, PetQueryApi {
         if (replay.isPresent()) {
             R receipt = deserialize(replay.orElseThrow(), receiptType);
             replayRevalidation.apply(receipt);
-            return receipt;
+            return new Idempotent<>(receipt, true);
         }
-        return execution.execute(status -> {
+        return new Idempotent<>(execution.execute(status -> {
             jdbc.execute("SET SESSION time_zone = '+00:00'");
             jdbc.execute("SET SESSION innodb_lock_wait_timeout = 2");
             idempotency.lockForExecution(requestKey);
             R result = executionBody.apply(null);
             idempotency.succeed(requestKey, serialize(result));
             return result;
-        });
+        }), false);
     }
 
     // --- guards and helpers ---

@@ -85,9 +85,10 @@ public class AdminAuthSecurityConfiguration {
 
   /**
    * Adding an admin chain must not accidentally leave all other, unimplemented routes unprotected.
+   * Order 3: the C-end chain (order 2) was inserted ahead of this catch-all without changing it.
    */
   @Bean
-  @Order(2)
+  @Order(3)
   SecurityFilterChain otherRoutes(HttpSecurity http) throws Exception {
     http.csrf(c -> c.disable())
         .httpBasic(c -> c.disable())
