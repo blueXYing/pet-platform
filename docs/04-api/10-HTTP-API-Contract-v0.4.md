@@ -246,6 +246,32 @@ DELETE /api/v1/c/pets/{petId}
 
 删除宠物不得物理删除历史订单中的 `order_pet_snapshot`。
 
+字段与校验（CCR-W2-API-001用户域0.1已批）：
+
+```text
+PetView: petId/name/petType(DOG|CAT|OTHER)/breedName?/birthDate?(yyyy-MM-dd不得晚于当天)/
+         sex(MALE|FEMALE|UNKNOWN)/weightKg?(两位小数0.01~999.99十进制String)/
+         sterilizationStatus?(INTACT|NEUTERED|UNKNOWN)/vaccineStatus?(NONE|PARTIAL|COMPLETE|UNKNOWN)/
+         healthNote?(≤1000)/avatarUrl?/isDefault/status(ACTIVE|DISABLED)
+写操作：POST 201、PUT 200、DELETE 200软删除(status=DISABLED)；petType创建后不可改；
+归属反例（不存在/他人/已删除）统一404 COMMON_NOT_FOUND防枚举；会话主体取登录态；
+写操作X-Request-Id幂等按23号；冻结用户写操作403 USER_FROZEN；每用户至多一只默认宠物，
+置默认与取消旧默认同事务，删除默认后无默认直至再设置。
+```
+
+## 3.2.1 用户资料（新增，CCR-W2-API-001用户域0.1已批）
+
+```text
+GET /api/v1/c/profile
+PUT /api/v1/c/profile
+```
+
+```text
+GET 200: {userId, nickname, avatarUrl, phoneMasked, passwordEnabled}
+PUT 请求: {nickname?(1~64), avatarUrl?(≤512,https)}；幂等X-Request-Id；403 USER_FROZEN。
+不包含手机号换绑/注销（AUTH后续）。
+```
+
 ---
 
 ## 3.3 商家与服务

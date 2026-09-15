@@ -147,6 +147,9 @@ public record PetSnapshotDTO(
 - order 模块只能拿创建订单需要的宠物快照字段。
 - 不允许 order 模块查询 `user_pet` 表。
 - 健康备注属于订单快照时，只保存下单时的必要副本。
+- getPetSnapshot（CCR-W2-API-001用户域0.1已批）：PetSnapshotQuery必须携带ownerUserId做归属校验；
+  不存在/DISABLED/归属不符统一抛稳定码PET_NOT_FOUND；返回即时副本，调用方须自行持久化快照，
+  后续主数据变化不影响已存副本。existsEnabledUser：FROZEN/CANCELED返回false。
 
 ---
 
