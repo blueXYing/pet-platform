@@ -29,6 +29,6 @@ $javaHome = "C:/Program Files/Eclipse Adoptium/jdk-21.0.11.10-hotspot"
 if (Test-Path $javaHome) { $env:JAVA_HOME = $javaHome }
 Write-Host "== OSS 一键同步:大切图(>=$MinBytes 字节)与原图 → S3 + 注册表 =="
 mvn -q -f (Join-Path $root "backend/pom.xml") -pl pet-thirdparty-biz -am `
-  exec:java "-Dexec.mainClass=com.petplatform.thirdparty.biz.application.OssAssetSyncCli" `
+  exec:java "-Dexec.classpathScope=test" "-Dexec.mainClass=com.petplatform.thirdparty.biz.application.OssAssetSyncCli" `
   "-Dexec.args=$DbJdbcUrl $DbUser $DbPass c002-assets=$designRoot/C-002-design-inputs/handoff/assets c002-originals=$designRoot/C-002-design-inputs/original-fills m002-assets=$designRoot/M-002-design-inputs/handoff/assets m002-originals=$designRoot/M-002-design-inputs/original-fills"
 Write-Host "== 完成。注册表(asset_registry)已同步;重复执行为幂等无副作用 =="

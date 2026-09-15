@@ -15,6 +15,8 @@ public record OssConnection(String endpoint, String region, String bucket,
         Objects.requireNonNull(bucket, "OSS_BUCKET");
         Objects.requireNonNull(accessKeyId, "OSS_ACCESS_KEY_ID");
         Objects.requireNonNull(secretAccessKey, "OSS_SECRET_ACCESS_KEY");
+        // Accept bare endpoints like oss-cn-hangzhou.aliyuncs.com; the SDK needs a scheme.
+        endpoint = endpoint.strip().startsWith("http") ? endpoint.strip() : "https://" + endpoint.strip();
     }
 
     public static OssConnection fromEnv() {

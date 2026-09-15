@@ -19,6 +19,9 @@ public final class S3OssAssetClient implements AutoCloseable, OssAssetClient {
                 .region(Region.of(connection.region()))
                 .credentialsProvider(StaticCredentialsProvider.create(
                         AwsBasicCredentials.create(connection.accessKeyId(), connection.secretAccessKey())))
+                // Aliyun's S3-compatible gateway rejects aws-chunked payloads.
+                .serviceConfiguration(software.amazon.awssdk.services.s3.S3Configuration.builder()
+                        .chunkedEncodingEnabled(false).build())
                 .build();
     }
 
