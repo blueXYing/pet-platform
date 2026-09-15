@@ -43,6 +43,9 @@ jobs:
       USR001_MYSQL_URL: jdbc:mysql://127.0.0.1:3306/
       USR001_MYSQL_USER: root
       USR001_MYSQL_PASSWORD: plat004-ci-isolated
+      OSSTEST_MYSQL_URL: jdbc:mysql://127.0.0.1:3306/
+      OSSTEST_MYSQL_USER: root
+      OSSTEST_MYSQL_PASSWORD: plat004-ci-isolated
       PLAT002_ID_MYSQL_URL: jdbc:mysql://127.0.0.1:3306/
       PLAT002_ID_MYSQL_USER: root
       PLAT002_ID_MYSQL_PASSWORD: plat004-ci-isolated
