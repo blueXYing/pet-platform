@@ -27,6 +27,7 @@
         <mybatis-spring-boot.version>4.1.0</mybatis-spring-boot.version>
         <archunit.version>1.4.2</archunit.version>
         <testcontainers.version>2.0.5</testcontainers.version>
+        <awssdk.version>2.31.9</awssdk.version>
         <maven-enforcer.version>3.6.2</maven-enforcer.version>
 
         <!-- boot / architecture-test need to depend on biz modules intentionally -->
@@ -289,6 +290,13 @@
                 <groupId>org.testcontainers</groupId>
                 <artifactId>testcontainers-bom</artifactId>
                 <version>${testcontainers.version}</version>
+                <type>pom</type>
+                <scope>import</scope>
+            </dependency>
+            <dependency>
+                <groupId>software.amazon.awssdk</groupId>
+                <artifactId>bom</artifactId>
+                <version>${awssdk.version}</version>
                 <type>pom</type>
                 <scope>import</scope>
             </dependency>
