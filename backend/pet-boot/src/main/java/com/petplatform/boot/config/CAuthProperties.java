@@ -20,6 +20,29 @@ public class CAuthProperties {
     private int grantWindowSeconds = 60;
     private int attemptCreatePerMinute = 30;
     private int attemptFailureLimit = 10;
+    private final Wechat wechat = new Wechat();
+
+    /** Real-provider credentials; values only ever come from deployment configuration. */
+    public static class Wechat {
+        private String appId;
+        private String appSecret;
+        private String apiBase = "https://api.weixin.qq.com";
+
+        public String getAppId() { return appId; }
+        public void setAppId(String v) { appId = v; }
+        public String getAppSecret() { return appSecret; }
+        public void setAppSecret(String v) { appSecret = v; }
+        public String getApiBase() { return apiBase; }
+        public void setApiBase(String v) { apiBase = v; }
+
+        public boolean configured() {
+            return appId != null && !appId.isBlank() && appSecret != null && !appSecret.isBlank();
+        }
+
+        @Override public String toString() { return "Wechat[REDACTED]"; }
+    }
+
+    public Wechat getWechat() { return wechat; }
 
     public boolean isEnabled() { return enabled; }
     public void setEnabled(boolean v) { enabled = v; }

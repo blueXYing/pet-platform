@@ -28,3 +28,17 @@ management:
 logging:
   pattern:
     level: "%5p [traceId=%X{traceId:-} requestId=%X{requestId:-}]"
+
+# C-end (mini-program) auth slice. Off by default; when pet.auth.c.enabled=true the real
+# WeChat provider additionally needs app-id/app-secret. Fill them in the git-ignored
+# application-local.yml (copy application-local.yml.example) or via the environment
+# variables below at deployment time. Never commit real credentials.
+pet:
+  auth:
+    c:
+      enabled: ${AUTH_C_ENABLED:false}
+      redis-host: ${AUTH_C_REDIS_HOST:}
+      redis-port: ${AUTH_C_REDIS_PORT:6379}
+      wechat:
+        app-id: ${AUTH_WECHAT_APP_ID:}
+        app-secret: ${AUTH_WECHAT_APP_SECRET:}
