@@ -1,0 +1,327 @@
+{
+  "sourceVersion": "2397539525915641008",
+  "scale": 2,
+  "note": "Raw 2x design exports copied byte-identically from the C-002 design handoff; do not edit in place.",
+  "assets": [
+    {
+      "file": "entry-chevron.png",
+      "nodes": "245:4216",
+      "nodeName": "I-27",
+      "placement": "337.391,343 14.594x20 宠物百科 chevron",
+      "bytes": 309,
+      "sha256": "ae214ef28504fc3a6c9d67073c6ce983557a139da8f323b211e968d1166b9dfe",
+      "source": "C-002-design-inputs/handoff/assets/245-4216@2x.png",
+      "sourceByteIdentical": "UNVERIFIED"
+    },
+    {
+      "file": "entry-paw.png",
+      "nodes": "245:4211",
+      "nodeName": "I-23",
+      "placement": "270.797,343 14.594x20 宠物百科 paw icon",
+      "bytes": 437,
+      "sha256": "dc2fe1e813ad2d0dcb3a96fa53146cfc1e8a7fff60358a73dec220ac68b3d985",
+      "source": "C-002-design-inputs/handoff/assets/245-4211@2x.png",
+      "sourceByteIdentical": "UNVERIFIED"
+    },
+    {
+      "file": "form-chevron.png",
+      "nodes": "95:1747",
+      "nodeName": "I-239",
+      "placement": "338,133 20.844x28",
+      "bytes": 508,
+      "sha256": "32bd68d6a7e02661496594d37395a3e5a4e523d3ce4e258d68da410b4ed4ce53",
+      "source": "C-002-design-inputs/handoff/assets/95-1747@2x.png",
+      "sourceByteIdentical": "UNVERIFIED"
+    },
+    {
+      "file": "icon-add.png",
+      "nodes": "79:3527 / 82:3601",
+      "nodeName": "I-95/149",
+      "placement": "308,486 14.594x20 plus icon",
+      "bytes": 335,
+      "sha256": "7274f1119bd26dc243abb2bc8c84ba668efafad0df6c5c5580abf7b802922610",
+      "source": "C-002-design-inputs/handoff/assets/79-3527@2x.png",
+      "sourceByteIdentical": "UNVERIFIED"
+    },
+    {
+      "file": "icon-calendar.png",
+      "nodes": "78:3385",
+      "nodeName": "Group",
+      "placement": "135.25,177.25 10x10",
+      "bytes": 250,
+      "sha256": "7c608dcd063d4b03c08b18daee981b414b5ae11f757e095dfdce7f645bd77944",
+      "source": "C-002-design-inputs/handoff/assets/78-3385@2x.png",
+      "sourceByteIdentical": "UNVERIFIED"
+    },
+    {
+      "file": "icon-date.png",
+      "nodes": "95:1801",
+      "nodeName": "date-281",
+      "placement": "340,571.5 16x15",
+      "bytes": 404,
+      "sha256": "3dc95d08ed7a973247efe460c0d55f25faafd3605f4c465cb6dcc7a30b778d0f",
+      "source": "C-002-design-inputs/handoff/assets/95-1801@2x.png",
+      "sourceByteIdentical": "UNVERIFIED"
+    },
+    {
+      "file": "icon-weight.png",
+      "nodes": "78:3391",
+      "nodeName": "Group",
+      "placement": "259,177.5 10.32x9.5",
+      "bytes": 596,
+      "sha256": "60d9aea783e7d54814f020c1757cc46fc2892433554224fdf941ed91571c1fe3",
+      "source": "C-002-design-inputs/handoff/assets/78-3391@2x.png",
+      "sourceByteIdentical": "UNVERIFIED"
+    },
+    {
+      "file": "nav-back.png",
+      "nodes": "78:3352 / 95:1584",
+      "nodeName": "Group",
+      "placement": "41,49.739 8.858x14.523",
+      "bytes": 413,
+      "sha256": "ec22f2d80b8b2ea0c3574d53a061ef3d3ca67b64094496d9698b3ed79c2309bf",
+      "source": "C-002-design-inputs/handoff/assets/78-3352@2x.png",
+      "sourceByteIdentical": "UNVERIFIED"
+    },
+    {
+      "file": "nav-edit.png",
+      "nodes": "78:3356 / 95:1581",
+      "nodeName": "Group",
+      "placement": "348.49,49.515 13.5x14.97",
+      "bytes": 399,
+      "sha256": "d4b8630b43493e15884670f243f5dea8e37c2d4bb95de69af9236310ceb1bf8e",
+      "source": "C-002-design-inputs/handoff/assets/78-3356@2x.png",
+      "sourceByteIdentical": "UNVERIFIED"
+    },
+    {
+      "file": "panel-basic.png",
+      "nodes": "78:3513",
+      "nodeName": "Group 7",
+      "placement": "21,100.125 363x386.307 torn-paper panel",
+      "bytes": 7689,
+      "sha256": "b5f990d5c57548b7fd8da1bc0e71a4363a536173223defe4068d30c3f57ce7b3",
+      "source": "C-002-design-inputs/handoff/assets/78-3513@2x.png",
+      "sourceByteIdentical": "UNVERIFIED"
+    },
+    {
+      "file": "panel-list-backing.png",
+      "nodes": "78:2839",
+      "nodeName": "Vector 2",
+      "placement": "18,292 338x302 torn-paper backing",
+      "bytes": 8587,
+      "sha256": "c75ea9bb846d60f6591e5155fe61ef5d16740bedb5708eb7467ecb6f243705c1",
+      "source": "C-002-design-inputs/handoff/assets/78-2839@2x.png",
+      "sourceByteIdentical": "UNVERIFIED"
+    },
+    {
+      "file": "panel-list-sheet.png",
+      "nodes": "78:2840",
+      "nodeName": "Vector 3",
+      "placement": "5,282 392.267x304.413 torn-paper sheet",
+      "bytes": 4605,
+      "sha256": "7f5ea2642c67b25b8dceeade12552b56b2605dfbb1d82ba614073e72a84e15d2",
+      "source": "C-002-design-inputs/handoff/assets/78-2840@2x.png",
+      "sourceByteIdentical": "UNVERIFIED"
+    },
+    {
+      "file": "panel-lower.png",
+      "nodes": "82:3593",
+      "nodeName": "Group 9",
+      "placement": "-14,779 429x408.788 torn-paper panel",
+      "bytes": 9592,
+      "sha256": "d0ef49450c7e26af2f21580a8092b6bdec98b061b476dda5294d819bb2ee30a4",
+      "source": "C-002-design-inputs/handoff/assets/82-3593@2x.png",
+      "sourceByteIdentical": "UNVERIFIED"
+    },
+    {
+      "file": "panel-vaccine.png",
+      "nodes": "82:3590",
+      "nodeName": "Group 8",
+      "placement": "-10,429 429x393 torn-paper panel",
+      "bytes": 9867,
+      "sha256": "daee7711ffd956a0aa7132771488ee754174fb55fe581e682e0589fd4f04bbb0",
+      "source": "C-002-design-inputs/handoff/assets/82-3590@2x.png",
+      "sourceByteIdentical": "UNVERIFIED"
+    },
+    {
+      "file": "pet-photo-detail.png",
+      "nodes": "78:3377",
+      "nodeName": "huaban-7000785516 1",
+      "placement": "59,132 65x54 STRETCH",
+      "bytes": 19687,
+      "sha256": "d4609972d707f6c76f2d0e9026077ed471f36af3a29480c39e492d5c520b1c08",
+      "source": "C-002-design-inputs/handoff/assets/78-3377@2x.png",
+      "sourceByteIdentical": "UNVERIFIED"
+    },
+    {
+      "file": "pet-photo-list-doudou.png",
+      "nodes": "78:2932",
+      "nodeName": "huaban-7000785516 1",
+      "placement": "57,389 55x46 STRETCH",
+      "bytes": 15086,
+      "sha256": "18397706be28f35c5d906422a1ff143ebf073175e044562b1c6d318c43ef8f59",
+      "source": "C-002-design-inputs/handoff/assets/78-2932@2x.png",
+      "sourceByteIdentical": "UNVERIFIED"
+    },
+    {
+      "file": "pet-photo-list-mimi.png",
+      "nodes": "78:2933",
+      "nodeName": "m 1",
+      "placement": "63,474 45x47 STRETCH",
+      "bytes": 16164,
+      "sha256": "f82612bda91714780a7ceadd740ecc69fd49580b70cf0a6a0a1417df817fd994",
+      "source": "C-002-design-inputs/handoff/assets/78-2933@2x.png",
+      "sourceByteIdentical": "UNVERIFIED"
+    },
+    {
+      "file": "record-icon-deworm.png",
+      "nodes": "82:3608 / 82:3624",
+      "nodeName": "DIV-155/170",
+      "placement": "48,873 40x40 shield circle",
+      "bytes": 2073,
+      "sha256": "b1bd291e5dad143dd83330856d39730841cd61f284d803063e20b4d0e4abbb6e",
+      "source": "C-002-design-inputs/handoff/assets/82-3608@2x.png",
+      "sourceByteIdentical": "UNVERIFIED"
+    },
+    {
+      "file": "record-icon-vaccine.png",
+      "nodes": "79:3534 / 79:3549 / 79:3564",
+      "nodeName": "DIV-101/115/129",
+      "placement": "48,538 40x40 syringe circle",
+      "bytes": 1980,
+      "sha256": "92a6208333ddcb3457c02c40700417dc1669a933112d8edc22f62897aa249075",
+      "source": "C-002-design-inputs/handoff/assets/79-3534@2x.png",
+      "sourceByteIdentical": "UNVERIFIED"
+    },
+    {
+      "file": "strip-detail-bottom.png",
+      "nodes": "79:3520",
+      "nodeName": "huaban-5913185224 2",
+      "placement": "0,789 402x459 STRETCH backdrop",
+      "bytes": 379222,
+      "sha256": "fdbd25835a7ab75ec0255346619d762e727309989cd762dd12e81f68df5855c1",
+      "source": "C-002-design-inputs/handoff/assets/79-3520@2x.png",
+      "sourceByteIdentical": "UNVERIFIED"
+    },
+    {
+      "file": "strip-form-bottom.png",
+      "nodes": "95:1843 / 95:1846",
+      "nodeName": "huaban-5913185224 1",
+      "placement": "0,821 402x227 STRETCH backdrop",
+      "bytes": 191366,
+      "sha256": "a4351282f3f4b19ee4007ed3ad935a2d7d20236e6ecab2da4e90e5956d79acb9",
+      "source": "C-002-design-inputs/handoff/assets/95-1843@2x.png",
+      "sourceByteIdentical": "UNVERIFIED"
+    },
+    {
+      "file": "strip-main.png",
+      "nodes": "78:2818 / 78:3380 / 95:1482",
+      "nodeName": "huaban-5913185224 1",
+      "placement": "0,35 402x787 STRETCH backdrop",
+      "bytes": 648981,
+      "sha256": "e26665d6b4b571bdaa51dd7c24741d4cef6030b650797b839256d1ee8f40f760",
+      "source": "C-002-design-inputs/handoff/assets/78-2818@2x.png",
+      "sourceByteIdentical": "UNVERIFIED"
+    },
+    {
+      "file": "tab-balloon.png",
+      "nodes": "203:19 / 95:1543",
+      "nodeName": "SPAN-477",
+      "placement": "175,1176 53x53 community balloon",
+      "bytes": 2526,
+      "sha256": "25353cd2ef603da1eb22a5611c14457408dadbe1d6e6eed6c4941275e915b0fc",
+      "source": "C-002-design-inputs/handoff/assets/203-19@2x.png",
+      "sourceByteIdentical": "UNVERIFIED"
+    },
+    {
+      "file": "tab-home.png",
+      "nodes": "203:52 / 95:1576",
+      "nodeName": "home-2",
+      "placement": "30,1200 19.478x16.481",
+      "bytes": 1204,
+      "sha256": "30108cc3537e49b810098e6c67ec3dcc6709d5010c7bded0e69721a5ee8ca3f0",
+      "source": "C-002-design-inputs/handoff/assets/203-52@2x.png",
+      "sourceByteIdentical": "UNVERIFIED"
+    },
+    {
+      "file": "tab-messages.png",
+      "nodes": "203:39 / 95:1563",
+      "nodeName": "chat-bubble",
+      "placement": "273,1200 17.313x17.313",
+      "bytes": 935,
+      "sha256": "9f9030c1d68d9757ffc92a33be53a402f2cad68dcdcc142afb42b30cfcc6a3d6",
+      "source": "C-002-design-inputs/handoff/assets/203-39@2x.png",
+      "sourceByteIdentical": "UNVERIFIED"
+    },
+    {
+      "file": "tab-mine.png",
+      "nodes": "203:44 / 95:1568",
+      "nodeName": "cat-2",
+      "placement": "354,1200 17.321x17.321",
+      "bytes": 1401,
+      "sha256": "ae14104b4c88a9806050c4a6205954c8dbca124bf730746ce3b5ba81270fef8d",
+      "source": "C-002-design-inputs/handoff/assets/203-44@2x.png",
+      "sourceByteIdentical": "UNVERIFIED"
+    },
+    {
+      "file": "tab-services.png",
+      "nodes": "203:27 / 95:1551",
+      "nodeName": "airship",
+      "placement": "110,1200 21.069x17.832",
+      "bytes": 1646,
+      "sha256": "cf6a44ee30f8318f1e1616c4f9dd17d2fada7bd8cc827f88fa2af9c77c9228ad",
+      "source": "C-002-design-inputs/handoff/assets/203-27@2x.png",
+      "sourceByteIdentical": "UNVERIFIED"
+    },
+    {
+      "file": "tag-icon-deworm.png",
+      "nodes": "78:2872",
+      "nodeName": "I-59",
+      "placement": "266.578,479 10.422x15 deworm pill icon (orange pill)",
+      "bytes": 588,
+      "sha256": "7d8dee7e3c2d94f3820953f213699b6fa8346760eb376def787e669bd98b8076",
+      "source": "C-002-design-inputs/handoff/assets/78-2872@2x.png",
+      "sourceByteIdentical": "UNVERIFIED"
+    },
+    {
+      "file": "tag-icon-vaccine-blue.png",
+      "nodes": "78:3369",
+      "nodeName": "I-37",
+      "placement": "263,132 10.422x15 vaccine pill icon (blue pill)",
+      "bytes": 570,
+      "sha256": "fd6109e9266d2c55c26d86875aafdb626de26329d145311c8c723df0bcb4f992",
+      "source": "C-002-design-inputs/handoff/assets/78-3369@2x.png",
+      "sourceByteIdentical": "UNVERIFIED"
+    },
+    {
+      "file": "tag-icon-vaccine.png",
+      "nodes": "78:2853",
+      "nodeName": "I-37",
+      "placement": "266.578,393 10.422x15 vaccine pill icon (green pill)",
+      "bytes": 562,
+      "sha256": "94b008a64d4bb960d42d567c8b09f12d22201b5bb73c1e89d9fa145475d5afa0",
+      "source": "C-002-design-inputs/handoff/assets/78-2853@2x.png",
+      "sourceByteIdentical": "UNVERIFIED"
+    },
+    {
+      "file": "tape-a.png",
+      "nodes": "78:2841 / 82:3592",
+      "nodeName": "huaban-6727256158 1",
+      "placement": "19,282 57x57 washi tape",
+      "bytes": 7291,
+      "sha256": "5d9e8e564b28f93ef612d88d815463765c54d9786d83583d5a40833c6fb23fa9",
+      "source": "C-002-design-inputs/handoff/assets/78-2841@2x.png",
+      "sourceByteIdentical": "UNVERIFIED"
+    },
+    {
+      "file": "tape-b.png",
+      "nodes": "83:3638",
+      "nodeName": "huaban-6727256158 2",
+      "placement": "48,760 57x57 washi tape",
+      "bytes": 7478,
+      "sha256": "2ceae8f02e89d35756babba688dd8b60d0fd05067d815f18059d197cbc8c0213",
+      "source": "C-002-design-inputs/handoff/assets/83-3638@2x.png",
+      "sourceByteIdentical": "UNVERIFIED"
+    }
+  ]
+}

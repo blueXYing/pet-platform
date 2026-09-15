@@ -1,0 +1,49 @@
+@import './tabbar.css';
+@import './canvas.css';
+
+/* Nodes 95:1481 (brother, 402x1066) / 95:1844 (sister, 402x1067). All values are exact spec.json pageBounds. */
+.pet-form-design { min-height: calc(var(--pet-unit) * 1066); }
+.pet-form-strip1 { left: 0; top: calc(var(--pet-unit) * 35); width: calc(var(--pet-unit) * 402); height: calc(var(--pet-unit) * 787); }
+.pet-form-strip2 { left: 0; top: calc(var(--pet-unit) * 821); width: calc(var(--pet-unit) * 402); height: calc(var(--pet-unit) * 227); }
+.pet-form-header { left: 0; top: 0; width: calc(var(--pet-unit) * 402); height: calc(var(--pet-unit) * 86); background: #fff6e5; }
+.pet-form-cardshadow { left: calc(var(--pet-unit) * 22); top: calc(var(--pet-unit) * 106); width: calc(var(--pet-unit) * 358); height: calc(var(--pet-unit) * 87); background: #85d2f3; }
+.pet-form-card { left: calc(var(--pet-unit) * 22); top: calc(var(--pet-unit) * 103); width: calc(var(--pet-unit) * 358); height: calc(var(--pet-unit) * 87); background: #f0fbff; }
+.pet-form-panel { left: calc(var(--pet-unit) * 22); top: calc(var(--pet-unit) * 191); width: calc(var(--pet-unit) * 358); height: calc(var(--pet-unit) * 786); background: #f0fbff; }
+.pet-form-back { left: calc(var(--pet-unit) * 31); top: calc(var(--pet-unit) * 39.739); width: calc(var(--pet-unit) * 28.8); height: calc(var(--pet-unit) * 34.5); display: flex; align-items: center; justify-content: center; z-index: 4; }
+.pet-form-back image { width: calc(var(--pet-unit) * 8.8575439453125); height: calc(var(--pet-unit) * 14.522697448730469); }
+.pet-form-navtitle { left: calc(var(--pet-unit) * 167.732421875); top: calc(var(--pet-unit) * 45); font-size: calc(var(--pet-unit) * 16); line-height: calc(var(--pet-unit) * 24); font-weight: 700; color: #3c3c3c; z-index: 2; }
+.pet-form-navedit { left: calc(var(--pet-unit) * 348.490234375); top: calc(var(--pet-unit) * 49.515); width: calc(var(--pet-unit) * 13.5); height: calc(var(--pet-unit) * 14.97); }
+.pet-form-title { left: calc(var(--pet-unit) * 41); top: calc(var(--pet-unit) * 135); font-size: calc(var(--pet-unit) * 16); line-height: calc(var(--pet-unit) * 24); font-weight: 700; color: #1d0d07; }
+.pet-form-chevron { left: calc(var(--pet-unit) * 338); top: calc(var(--pet-unit) * 133); width: calc(var(--pet-unit) * 20.84375); height: calc(var(--pet-unit) * 28); }
+.pet-form-state { position: absolute; top: calc(var(--pet-unit) * 160); left: 0; right: 0; z-index: 6; }
+.pet-form-field { position: absolute; left: calc(var(--pet-unit) * 29); width: calc(var(--pet-unit) * 343); }
+.pet-form-label { display: block; font-size: calc(var(--pet-unit) * 12); line-height: calc(var(--pet-unit) * 16); color: #7b5b4a; height: calc(var(--pet-unit) * 16); }
+.pet-form-input { box-sizing: border-box; margin-top: calc(var(--pet-unit) * 6); width: calc(var(--pet-unit) * 343); height: calc(var(--pet-unit) * 42); background: #cdeede; border: calc(var(--pet-unit) * 1) solid #98c4af; border-radius: calc(var(--pet-unit) * 8); padding: calc(var(--pet-unit) * 10) calc(var(--pet-unit) * 13) calc(var(--pet-unit) * 10) calc(var(--pet-unit) * 14); font-size: calc(var(--pet-unit) * 14); line-height: calc(var(--pet-unit) * 20); color: #2e1d16; font-family: "C002 Pet Roboto", "C002 Pet CJK", "C002 Pet SC", Roboto, "Noto Sans SC", sans-serif; }
+.pet-form-staticbox { box-sizing: border-box; margin-top: calc(var(--pet-unit) * 6); width: calc(var(--pet-unit) * 343); height: calc(var(--pet-unit) * 42); background: #cdeede; border: calc(var(--pet-unit) * 1) solid #98c4af; border-radius: calc(var(--pet-unit) * 8); position: relative; }
+.pet-form-staticvalue { position: absolute; left: calc(var(--pet-unit) * 14); top: calc(var(--pet-unit) * 11); width: calc(var(--pet-unit) * 317); height: calc(var(--pet-unit) * 20); font-size: calc(var(--pet-unit) * 14); line-height: calc(var(--pet-unit) * 20); color: #2e1d16; white-space: nowrap; }
+.pet-form-staticvalue.is-placeholder { color: #b89682; font-weight: 500; }
+.pet-form-field-name { top: calc(var(--pet-unit) * 213); }
+.pet-form-field-breed { top: calc(var(--pet-unit) * 293); }
+.pet-form-field-sex { top: calc(var(--pet-unit) * 373); }
+.pet-form-field-age { top: calc(var(--pet-unit) * 455); }
+.pet-form-field-birth { top: calc(var(--pet-unit) * 535); }
+.pet-form-field-weight { top: calc(var(--pet-unit) * 617); }
+.pet-form-field-chip { top: calc(var(--pet-unit) * 697); }
+.pet-form-field-note { top: calc(var(--pet-unit) * 777); }
+/* Sex control: the selected option is always the left button, per both source frames. */
+.pet-form-sexwrap { margin-top: calc(var(--pet-unit) * 6); width: calc(var(--pet-unit) * 343); height: calc(var(--pet-unit) * 44); border-radius: calc(var(--pet-unit) * 9999); background: #cdeede; position: relative; }
+.pet-form-sexbtn { position: absolute; top: calc(var(--pet-unit) * 4); left: calc(var(--pet-unit) * 171.5); width: calc(var(--pet-unit) * 167.5); height: calc(var(--pet-unit) * 36); border-radius: calc(var(--pet-unit) * 9999); font-size: calc(var(--pet-unit) * 14) !important; line-height: calc(var(--pet-unit) * 20) !important; font-weight: 500 !important; color: #7b5b4a !important; }
+.pet-form-sexbtn.sex-male { left: calc(var(--pet-unit) * 4); }
+.pet-form-sexbtn.is-selected.sex-male { background: #c0ecff !important; color: #3c3c3c !important; }
+.pet-form-sexbtn.is-selected.sex-female { background: #ffcfba !important; color: #9e7660 !important; }
+.pet-form-field-birth .pet-form-pickerbox { box-sizing: border-box; margin-top: calc(var(--pet-unit) * 6); width: calc(var(--pet-unit) * 343); height: calc(var(--pet-unit) * 44); background: #cdeede; border: calc(var(--pet-unit) * 1) solid #98c4af; border-radius: calc(var(--pet-unit) * 8); position: relative; }
+.pet-form-field-birth .pet-form-staticvalue { top: calc(var(--pet-unit) * 12); }
+.pet-form-dateicon { position: absolute; left: calc(var(--pet-unit) * 311); top: calc(var(--pet-unit) * 14.5); width: calc(var(--pet-unit) * 16); height: calc(var(--pet-unit) * 15); }
+.pet-form-textarea { box-sizing: border-box; margin-top: calc(var(--pet-unit) * 6); width: calc(var(--pet-unit) * 343); height: calc(var(--pet-unit) * 82); background: #cdeede; border: calc(var(--pet-unit) * 1) solid #98c4af; border-radius: calc(var(--pet-unit) * 8); padding: calc(var(--pet-unit) * 11) calc(var(--pet-unit) * 13) calc(var(--pet-unit) * 9) calc(var(--pet-unit) * 14); font-size: calc(var(--pet-unit) * 14); line-height: calc(var(--pet-unit) * 20); color: #2e1d16; font-family: "C002 Pet Roboto", "C002 Pet CJK", "C002 Pet SC", Roboto, "Noto Sans SC", sans-serif; }
+.pet-form-cancel { position: absolute; left: calc(var(--pet-unit) * 29); top: calc(var(--pet-unit) * 907); width: calc(var(--pet-unit) * 165.5); height: calc(var(--pet-unit) * 40); border-radius: calc(var(--pet-unit) * 9999); background: #c0ecff !important; display: flex; align-items: center; justify-content: center; z-index: 3; }
+.pet-form-cancel-label { font-size: calc(var(--pet-unit) * 14); line-height: calc(var(--pet-unit) * 20); font-weight: 500; color: #2e1d16; }
+.pet-form-save { position: absolute; left: calc(var(--pet-unit) * 206.5); top: calc(var(--pet-unit) * 907); width: calc(var(--pet-unit) * 165.5); height: calc(var(--pet-unit) * 40); border-radius: calc(var(--pet-unit) * 9999); background: #ffe2bd !important; display: flex; align-items: center; justify-content: center; z-index: 3; }
+.pet-form-save-label { font-size: calc(var(--pet-unit) * 14); line-height: calc(var(--pet-unit) * 20); font-weight: 500; color: #3c3c3c; }
+/* Validation/save notices have no drawn slot in the frame; they use the sample page's text styles in the gap under the buttons. */
+.pet-form-notice { left: calc(var(--pet-unit) * 29); top: calc(var(--pet-unit) * 951); width: calc(var(--pet-unit) * 343); }
+.pet-form-notice-error { color: #b42318; }

@@ -9,10 +9,17 @@ for (const extension of ['js', 'json', 'wxml', 'wxss']) {
   assert.ok(fs.existsSync(path.join(root, 'consumer/pages/profile-edit/index.' + extension)),
     'C-002 profile page artifact missing: ' + extension)
 }
+for (const page of ['index', 'detail', 'form']) {
+  for (const extension of ['js', 'json', 'wxml', 'wxss']) {
+    assert.ok(fs.existsSync(path.join(root, `consumer/pages/pet-archive/${page}.` + extension)),
+      `C-002 pet page artifact missing: ${page}.${extension}`)
+  }
+}
 const packages = app.subPackages || app.subpackages || []
 assert.deepEqual(packages.map(p => ({ root: p.root, pages: p.pages })), [
   { root: 'merchant', pages: ['pages/workspace/index'] },
-], 'M-001 merchant route must be registered in the single app')
+  { root: 'consumer/pages/pet-archive', pages: ['index', 'detail', 'form'] },
+], 'M-001 merchant route and C-002 pet archive subpackage must be registered in the single app')
 assert.ok(packages.every(p => !p.independent), 'Only ordinary subpackages allowed')
 for (const extension of ['js', 'json', 'wxml']) {
   assert.ok(fs.existsSync(path.join(root, 'merchant/pages/workspace/index.' + extension)),

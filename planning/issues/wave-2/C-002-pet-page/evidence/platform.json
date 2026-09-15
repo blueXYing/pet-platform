@@ -1,0 +1,16 @@
+{
+  "status": "PASS_PREVIEW_INTERACTIONS",
+  "source": "real WeChat DevTools simulator via wechatide CLI",
+  "dataMode": "explicit in-memory visual preview; no backend session or save",
+  "eventMethod": "native Taro page event handlers via automator element actions",
+  "tests": [
+    "form validation blocks save and surfaces field messages",
+    "form save succeeds in preview repository with explicit preview notice",
+    "failed save preserves draft; explicit retry succeeds",
+    "list load failure and retry use real page state transitions",
+    "list card opens detail with contract-backed fields",
+    "detail edit action opens the form for the selected pet",
+    "non-preview entry does not leak fixture or pretend real data"
+  ],
+  "exceptions": []
+}

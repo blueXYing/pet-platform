@@ -1,0 +1,13 @@
+/* Shared bottom tab bar for pet pages; geometry from nodes 78:3076 / 95:1481 / 95:1844 (bar top 1191 / 990 / 991).
+   Icons use the raw node exports, so left/top/size are the exact spec pageBounds relative to each 20% tab column. */
+.pet-tabbar { position: fixed; left: 0; bottom: 0; width: 100%; height: calc(var(--pet-unit) * 62 + env(safe-area-inset-bottom)); padding-bottom: env(safe-area-inset-bottom); z-index: 10; }
+.pet-tabbar-line { position: absolute; left: 0; top: 0; width: 100%; height: calc(var(--pet-unit) * 1); background: #cdeede; }
+.pet-tab { position: absolute; top: 0; width: 20%; height: calc(var(--pet-unit) * 61); }
+.pet-tab image { position: absolute; top: calc(var(--pet-unit) * 9); }
+.pet-tab text { position: absolute; top: calc(var(--pet-unit) * 31); left: 0; width: 100%; text-align: center; font-size: calc(var(--pet-unit) * 10); line-height: calc(var(--pet-unit) * 15); font-weight: 500; color: #3c3c3c; }
+.pet-tab-home image { left: calc(var(--pet-unit) * 30); width: calc(var(--pet-unit) * 19.477567672729492); height: calc(var(--pet-unit) * 16.481008529663086); }
+.pet-tab-services image { left: calc(var(--pet-unit) * 29.6); width: calc(var(--pet-unit) * 21.06932258605957); height: calc(var(--pet-unit) * 17.831932067871094); }
+.pet-tab-community image { left: calc(var(--pet-unit) * 14.2); top: calc(var(--pet-unit) * -15); width: calc(var(--pet-unit) * 53); height: calc(var(--pet-unit) * 53); }
+.pet-tab-community text { top: calc(var(--pet-unit) * 40); }
+.pet-tab-messages image { left: calc(var(--pet-unit) * 31.8); top: calc(var(--pet-unit) * 9); width: calc(var(--pet-unit) * 17.313247680664062); height: calc(var(--pet-unit) * 17.313247680664062); }
+.pet-tab-mine image { left: calc(var(--pet-unit) * 32.4); top: calc(var(--pet-unit) * 9); width: calc(var(--pet-unit) * 17.32148551940918); height: calc(var(--pet-unit) * 17.3215274810791); }

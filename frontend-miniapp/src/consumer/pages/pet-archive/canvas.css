@@ -1,0 +1,10 @@
+/* wx-button ships a built-in margin-top that the tag reset cannot override; keep absolute
+   placements exact by forcing it off for every pet page button. */
+.pet-page button { margin: 0 !important; }
+/* Shared reference-canvas mode: the exact 402 design-px component canvas inside the real simulator.
+   The width arrives as a runtime CSS variable because the compiler rewrites literal px to rpx.
+   Height stays per page (312 / 1252 / 1066 / 1067); the tab bar becomes absolutely positioned inside
+   the canvas so scroll-stitched captures never duplicate it. */
+.pet-reference-canvas { width: var(--pet-canvas-width); min-height: 0; }
+.pet-reference-canvas .pet-status-area { height: 0; }
+.pet-reference-canvas .pet-tabbar { position: absolute; bottom: auto; top: var(--pet-tabbar-top); height: calc(var(--pet-unit) * 62); padding-bottom: 0; }
