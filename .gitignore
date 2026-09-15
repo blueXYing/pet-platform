@@ -24,3 +24,6 @@ logs/
 
 # Worktrees should live outside this repo
 wt-*/
+# CCR-OSS-001 local secrets (never commit)
+ops/*.env.local
+ops/*.local
