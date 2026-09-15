@@ -4,11 +4,13 @@ import static com.petplatform.boot.adapter.web.admin.AdminAuthHttpModels.Envelop
 
 import com.petplatform.admin.biz.application.AdminAuthFailure;
 import jakarta.servlet.http.HttpServletRequest;
+import org.springframework.core.annotation.Order;
 import org.springframework.http.*;
 import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.web.bind.annotation.*;
 
 @RestControllerAdvice(assignableTypes = AdminAuthController.class)
+@Order(0)
 public class AdminAuthExceptionHandler {
   private final org.springframework.beans.factory.ObjectProvider<
           com.petplatform.admin.biz.application.AdminAuthService>
