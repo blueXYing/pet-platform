@@ -1,0 +1,13 @@
+
+> pet-platform-miniapp@0.1.0 test:profile-platform
+> node src/consumer/tests/profile-platform.cjs
+
+native initial render: two gender options, masked phone, source signature count
+native input/gender/save callback updates preview; no backend success claim
+invalid nickname prevents save and keeps form visible
+failed save preserves draft; explicit retry succeeds in preview repository
+load failure and retry use real page state transitions
+expired and non-preview entry do not leak fixture or pretend real profile save
+native measured form bounds stay inside actual viewport
+real shared scope invalidation clears the mounted profile and its draft
+PASS_PREVIEW_INTERACTIONS_SINGLE_WINDOW

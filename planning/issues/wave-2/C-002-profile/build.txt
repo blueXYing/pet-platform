@@ -1,0 +1,121 @@
+
+> pet-platform-miniapp@0.1.0 build:weapp
+> taro build --type weapp --disable-global-config
+
+👽 Taro v4.1.5
+
+Tips:
+1. 建议开启持久化缓存功能，能有效提升二次编译速度，详情请参考: https://docs.taro.zone/docs/config-detail#cache。
+
+
+
+● Webpack █████████████████████████  (0%)  
+ 
+
+
+● Webpack █████████████████████████ building (10%) 0/9 entries 9/9 dependencie
+s 0/9 modules 1 active 
+ babel-loader › src\app.config.ts
+
+
+● Webpack █████████████████████████ building (10%) 0/9 entries 9/9 dependencie
+s 0/9 modules 1 active 
+ babel-loader › src\app.config.ts
+
+
+● Webpack █████████████████████████ building (16%) 1/9 entries 9/9 dependencie
+s 1/9 modules 8 active 
+ ...l-loader › node_modules\@tarojs\webpack5-runner\dist\template\custom-wrapp
+er.js
+
+
+● Webpack █████████████████████████ building (22%) 2/9 entries 58/75 dependenc
+ies 2/35 modules 31 active 
+ babel-loader › node_modules\@tarojs\taro\index.js
+
+
+● Webpack █████████████████████████ building (22%) 2/9 entries 84/131 dependen
+cies 2/47 modules 35 active 
+ ...file\frontend-miniapp\node_modules\@babel\runtime\helpers\esm\defineProper
+ty.js
+
+
+● Webpack █████████████████████████ building (22%)  
+ import loader .\node_modules\postcss-loader\dist\cjs.js
+
+
+● Webpack █████████████████████████ building (22%) 2/9 entries 136/143 depende
+ncies 10/83 modules 45 active 
+ babel-loader › node_modules\@tarojs\runtime\dist\dom-external\index.js
+
+
+● Webpack █████████████████████████ building (22%) 2/9 entries 161/172 depende
+ncies 14/90 modules 74 active 
+ ...2-profile\frontend-miniapp\node_modules\@babel\runtime\helpers\esm\callSup
+er.js
+
+
+● Webpack █████████████████████████ building (22%) 2/9 entries 296/352 depende
+ncies 20/101 modules 71 active 
+ babel-loader › node_modules\@tarojs\shared\dist\index.js
+
+
+● Webpack █████████████████████████ building (22%) 2/9 entries 398/420 depende
+ncies 34/129 modules 91 active 
+ ...wt-c002-profile\frontend-miniapp\node_modules\@babel\runtime\helpers\esm\g
+et.js
+
+
+● Webpack █████████████████████████ building (22%) 2/9 entries 463/494 depende
+ncies 80/152 modules 72 active 
+ babel-loader › node_modules\@tarojs\api\dist\index.js
+
+
+● Webpack █████████████████████████ building (40%) 5/9 entries 498/502 depende
+ncies 132/156 modules 23 active 
+ babel-loader › node_modules\@tarojs\api\dist\env.js
+
+
+● Webpack █████████████████████████ building (46%) 6/9 entries 516/516 depende
+ncies 147/163 modules 15 active 
+ node_modules\css-loader\dist\runtime\noSourceMaps.js
+
+
+● Webpack █████████████████████████ building (52%) 7/9 entries 533/536 depende
+ncies 155/174 modules 15 active 
+ ...AFpdGFsATIAAgAGABIAHgABAAAAAgEnAGQAAAABAAEAAAEvArwAAAADAAIAAgEoAAAAAAABAAA
+AAA==
+
+
+● Webpack █████████████████████████ sealing (78%)  
+ chunk modules optimization
+
+
+● Webpack █████████████████████████ sealing (88%)  
+ runtime requirements
+
+
+● Webpack █████████████████████████ sealing (92%) asset processing 
+ CssMinimizerPlugin
+
+
+● Webpack █████████████████████████ sealing (92%) asset processing 
+ RealContentHashPlugin
+
+
+✔ Webpack
+  Compiled successfully in 3.23s
+
+⚠️ Warnings: 
+
+AssetsOverSizeLimitWarning: asset size limit: The following asset(s) exceed the recommended size limit (244 KiB).
+This can impact web performance.
+Assets: 
+  consumer/pages/profile-edit/index.wxss (334 KiB)
+    at Generator.next (<anonymous>)
+
+NoAsyncChunksWarning: webpack performance recommendations: 
+You can limit the size of your bundles by using import() or require.ensure to lazy load some parts of your application.
+For more info visit https://webpack.js.org/guides/code-splitting/
+    at Generator.next (<anonymous>)
+

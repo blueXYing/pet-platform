@@ -1,0 +1,260 @@
+{
+  "pathsRelativeTo": "repository root",
+  "sourceVersion": "2397539525915641008",
+  "assets": [
+    {
+      "nodeId": "127:1682",
+      "nodeName": "SPAN-477",
+      "assetKey": "e3822c37e561d33cef1be27e7b165f900f6b995d828fa85e4ebc509fa37b1216",
+      "file": "frontend-miniapp/src/consumer/assets/profile/community.png",
+      "scale": 2,
+      "version": "2397539525915641008",
+      "status": "DOWNLOADED",
+      "sourceBounds": {
+        "x": 175.0,
+        "y": 736.0,
+        "width": 53.0,
+        "height": 53.0
+      },
+      "bitmapPlacementBounds": {
+        "x": 175.0,
+        "y": 736.0,
+        "width": 53.0,
+        "height": 53.0
+      },
+      "useAbsoluteBounds": true,
+      "sha256": "25353cd2ef603da1eb22a5611c14457408dadbe1d6e6eed6c4941275e915b0fc",
+      "originalImages": [],
+      "pixelWidth": 106,
+      "pixelHeight": 106
+    },
+    {
+      "nodeId": "127:1690",
+      "nodeName": "airship",
+      "assetKey": "add89df255097a58ff46f01eae5af2404d8694142fca9d41bde6600cef1cb1f1",
+      "file": "frontend-miniapp/src/consumer/assets/profile/services-full.png",
+      "scale": 2,
+      "version": "2397539525915641008",
+      "status": "DOWNLOADED",
+      "sourceBounds": {
+        "x": 110.0,
+        "y": 760.0,
+        "width": 21.06932258605957,
+        "height": 17.831932067871094
+      },
+      "bitmapPlacementBounds": {
+        "x": 110.0,
+        "y": 760.0,
+        "width": 21.06932258605957,
+        "height": 17.831932067871094
+      },
+      "useAbsoluteBounds": false,
+      "sha256": "c110afd746db407cab2d5fc4430461f7d61e4f0226552cef2c604031c8b738c1",
+      "originalImages": [],
+      "sourceRenderBounds": {
+        "x": 109.5,
+        "y": 759.5,
+        "width": 22.0693359375,
+        "height": 18.83203125
+      },
+      "pixelWidth": 45,
+      "pixelHeight": 38,
+      "rasterDisplaySizeAtDesignWidth": {
+        "width": 22.5,
+        "height": 19.0
+      }
+    },
+    {
+      "nodeId": "127:1702",
+      "nodeName": "chat-bubble-text-square--messages-message-bubble-text-square-chat",
+      "assetKey": "b427e24426ad0d23b059ff2a57df54e82b9e1c231fc89dc128b1c133fd137660",
+      "file": "frontend-miniapp/src/consumer/assets/profile/messages-full.png",
+      "scale": 2,
+      "version": "2397539525915641008",
+      "status": "DOWNLOADED",
+      "sourceBounds": {
+        "x": 273.0,
+        "y": 760.0,
+        "width": 17.313247680664062,
+        "height": 17.313247680664062
+      },
+      "bitmapPlacementBounds": {
+        "x": 273.0,
+        "y": 760.0,
+        "width": 17.313247680664062,
+        "height": 17.313247680664062
+      },
+      "useAbsoluteBounds": false,
+      "sha256": "1b7b467308dcc28b7d2fc3aa05b89b99a3466359b3d99c3a04a9a01a6c50715a",
+      "originalImages": [],
+      "sourceRenderBounds": {
+        "x": 272.5,
+        "y": 759.5,
+        "width": 18.3134765625,
+        "height": 18.5859375
+      },
+      "pixelWidth": 37,
+      "pixelHeight": 38,
+      "rasterDisplaySizeAtDesignWidth": {
+        "width": 18.5,
+        "height": 19.0
+      }
+    },
+    {
+      "nodeId": "127:1707",
+      "nodeName": "cat-2--nature-head-cat-pet-animals-felyne",
+      "assetKey": "81a7702b4379eeca1240145eda514f6b0e5c1816146bb7d2ace5d7a95d64b5f7",
+      "file": "frontend-miniapp/src/consumer/assets/profile/mine-full.png",
+      "scale": 2,
+      "version": "2397539525915641008",
+      "status": "DOWNLOADED",
+      "sourceBounds": {
+        "x": 354.0,
+        "y": 760.0,
+        "width": 17.32148551940918,
+        "height": 17.3215274810791
+      },
+      "bitmapPlacementBounds": {
+        "x": 354.0,
+        "y": 760.0,
+        "width": 17.32148551940918,
+        "height": 17.3215274810791
+      },
+      "useAbsoluteBounds": false,
+      "sha256": "2fe46554e2c1e822ec528534dc44f3526f00e6b7b875e0e324e7f6be8fd27625",
+      "originalImages": [],
+      "sourceRenderBounds": {
+        "x": 353.5,
+        "y": 759.4970703125,
+        "width": 18.3212890625,
+        "height": 18.32421875
+      },
+      "pixelWidth": 37,
+      "pixelHeight": 37,
+      "rasterDisplaySizeAtDesignWidth": {
+        "width": 18.5,
+        "height": 18.5
+      }
+    },
+    {
+      "nodeId": "127:1715",
+      "nodeName": "home-2--door-entrance-home-house-roof-round-shelter",
+      "assetKey": "28524bb27cb7b41593277f9f160281d55efdba2a3c04836086e6aeac14076cce",
+      "file": "frontend-miniapp/src/consumer/assets/profile/home-full.png",
+      "scale": 2,
+      "version": "2397539525915641008",
+      "status": "DOWNLOADED",
+      "sourceBounds": {
+        "x": 30.0,
+        "y": 760.0,
+        "width": 19.477567672729492,
+        "height": 16.481008529663086
+      },
+      "bitmapPlacementBounds": {
+        "x": 30.0,
+        "y": 760.0,
+        "width": 19.477567672729492,
+        "height": 16.481008529663086
+      },
+      "useAbsoluteBounds": false,
+      "sha256": "e66f4441956fbe52af1b5fbddf8baae8e806caeeeb88e34d1167fa1248cd3584",
+      "originalImages": [],
+      "sourceRenderBounds": {
+        "x": 28.98974609375,
+        "y": 759.0,
+        "width": 21.498046875,
+        "height": 18.48095703125
+      },
+      "pixelWidth": 43,
+      "pixelHeight": 37,
+      "rasterDisplaySizeAtDesignWidth": {
+        "width": 21.5,
+        "height": 18.5
+      }
+    },
+    {
+      "nodeId": "127:1884",
+      "nodeName": "A-6",
+      "assetKey": "e150ae00a58b4fa5a08049f6ccda028bf0be3c105c2264202aa5b7e5d39a8094",
+      "file": "frontend-miniapp/src/consumer/assets/profile/back.png",
+      "scale": 2,
+      "version": "2397539525915641008",
+      "status": "DOWNLOADED",
+      "sourceBounds": {
+        "x": 19.0,
+        "y": 8.0,
+        "width": 32.0,
+        "height": 32.0
+      },
+      "bitmapPlacementBounds": {
+        "x": 19.0,
+        "y": 8.0,
+        "width": 32.0,
+        "height": 32.0
+      },
+      "useAbsoluteBounds": true,
+      "sha256": "e1e55550e2e34a41ef4a089583dec69d6422fb62a11f8ff1c24aac865be49fbf",
+      "originalImages": [],
+      "pixelWidth": 64,
+      "pixelHeight": 64
+    },
+    {
+      "nodeId": "127:1897",
+      "nodeName": "IMG-19",
+      "assetKey": "0f5e3470306ea88a7823e20e6b3a70be1566ad82f3c362aea64669d10857fc9a",
+      "file": "frontend-miniapp/src/consumer/assets/profile/avatar.png",
+      "scale": 2,
+      "version": "2397539525915641008",
+      "status": "DOWNLOADED",
+      "sourceBounds": {
+        "x": 275.15625,
+        "y": 79.0,
+        "width": 56.0,
+        "height": 56.0
+      },
+      "bitmapPlacementBounds": {
+        "x": 275.15625,
+        "y": 79.0,
+        "width": 56.0,
+        "height": 56.0
+      },
+      "useAbsoluteBounds": true,
+      "sha256": "dc34edad62aca51cc6f33e0248446a2ecfe20b2d91f4b631b8e1c2cdcf95b70e",
+      "originalImages": [
+        {
+          "imageRef": "2c819ee867da87550279ec46aec8e15c00ed06e0",
+          "file": "planning/issues/wave-2/C-002-profile/source/avatar-original.jpg",
+          "sha256": "a19558b24ebf0b79bd96697d947920dc40a2e9d1e7eb087d496e9ffd41fee333"
+        }
+      ],
+      "pixelWidth": 112,
+      "pixelHeight": 112
+    },
+    {
+      "nodeId": "127:1898",
+      "nodeName": "I-20",
+      "assetKey": "02b03c58d0faadf07694146a2af157b0ae3376fd138091f3d8e06cfa7fe794d1",
+      "file": "frontend-miniapp/src/consumer/assets/profile/chevron.png",
+      "scale": 2,
+      "version": "2397539525915641008",
+      "status": "DOWNLOADED",
+      "sourceBounds": {
+        "x": 339.15625,
+        "y": 93.0,
+        "width": 20.84375,
+        "height": 28.0
+      },
+      "bitmapPlacementBounds": {
+        "x": 339.15625,
+        "y": 93.0,
+        "width": 20.84375,
+        "height": 28.0
+      },
+      "useAbsoluteBounds": true,
+      "sha256": "ee50bdb62605958cbb18b6369d7102eb39c89a4888929e6cfb028aaa9f11846a",
+      "originalImages": [],
+      "pixelWidth": 42,
+      "pixelHeight": 56
+    }
+  ]
+}

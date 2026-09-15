@@ -10,9 +10,10 @@
     "typecheck": "tsc --noEmit",
     "build:weapp": "taro build --type weapp --disable-global-config",
     "dev:weapp": "taro build --type weapp --watch --disable-global-config",
-    "test": "tsx --test src/shared/tests/*.test.ts src/merchant/tests/*.test.ts",
+    "test": "tsx --test src/shared/tests/*.test.ts src/merchant/tests/*.test.ts src/consumer/tests/*.test.ts",
     "check:package": "node package-check.cjs",
     "test:platform": "node platform-smoke.cjs",
+    "test:profile-platform": "node src/consumer/tests/profile-platform.cjs",
     "test:merchant-platform": "node src/merchant/tests/platform-smoke.cjs"
   },
   "dependencies": {

@@ -1,0 +1,40 @@
+[
+  [
+    {
+      "id": "_BD",
+      "dataset": {
+        "sid": "_BD"
+      },
+      "left": 0,
+      "right": 402,
+      "top": 0,
+      "bottom": 811.984375,
+      "width": 402,
+      "height": 811.984375
+    },
+    {
+      "id": "_Ad",
+      "dataset": {
+        "sid": "_Ad"
+      },
+      "left": 0,
+      "right": 402,
+      "top": 0,
+      "bottom": 48.984375,
+      "width": 402,
+      "height": 48.984375
+    },
+    {
+      "id": "_BB",
+      "dataset": {
+        "sid": "_BB"
+      },
+      "left": 0,
+      "right": 402,
+      "top": 749.984375,
+      "bottom": 811.984375,
+      "width": 402,
+      "height": 62
+    }
+  ]
+]

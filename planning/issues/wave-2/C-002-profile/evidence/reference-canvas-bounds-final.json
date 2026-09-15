@@ -1,0 +1,112 @@
+[
+  [
+    {
+      "id": "_BD",
+      "dataset": {
+        "sid": "_BD"
+      },
+      "left": 0,
+      "right": 402,
+      "top": 0,
+      "bottom": 812,
+      "width": 402,
+      "height": 812
+    },
+    {
+      "id": "_Ad",
+      "dataset": {
+        "sid": "_Ad"
+      },
+      "left": 0,
+      "right": 402,
+      "top": 0,
+      "bottom": 49,
+      "width": 402,
+      "height": 49
+    },
+    {
+      "id": "_BK",
+      "dataset": {
+        "sid": "_BK"
+      },
+      "left": 29,
+      "right": 372,
+      "top": 65,
+      "bottom": 147,
+      "width": 343,
+      "height": 82
+    },
+    {
+      "id": "_BO",
+      "dataset": {
+        "sid": "_BO"
+      },
+      "left": 29,
+      "right": 372,
+      "top": 163,
+      "bottom": 209,
+      "width": 343,
+      "height": 46
+    },
+    {
+      "id": "_BW",
+      "dataset": {
+        "sid": "_BW"
+      },
+      "left": 29,
+      "right": 372,
+      "top": 225,
+      "bottom": 275,
+      "width": 343,
+      "height": 50
+    },
+    {
+      "id": "_Be",
+      "dataset": {
+        "sid": "_Be"
+      },
+      "left": 29,
+      "right": 372,
+      "top": 291,
+      "bottom": 337,
+      "width": 343,
+      "height": 46
+    },
+    {
+      "id": "_Bl",
+      "dataset": {
+        "sid": "_Bl"
+      },
+      "left": 29,
+      "right": 372,
+      "top": 353,
+      "bottom": 516.5,
+      "width": 343,
+      "height": 163.5
+    },
+    {
+      "id": "profile-save",
+      "dataset": {
+        "sid": "_Bo"
+      },
+      "left": 29,
+      "right": 372,
+      "top": 532.5,
+      "bottom": 576.5,
+      "width": 343,
+      "height": 44
+    },
+    {
+      "id": "_BB",
+      "dataset": {
+        "sid": "_BB"
+      },
+      "left": 0,
+      "right": 402,
+      "top": 750,
+      "bottom": 812,
+      "width": 402,
+      "height": 62
+    }
+  ]
+]

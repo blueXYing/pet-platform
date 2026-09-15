@@ -4,7 +4,11 @@ const path = require('node:path')
 const assert = require('node:assert/strict')
 const root = path.join(__dirname, 'dist')
 const app = JSON.parse(fs.readFileSync(path.join(root, 'app.json'), 'utf8'))
-assert.deepEqual(app.pages, ['consumer/pages/shell/index', 'consumer/pages/diagnostics/index'])
+assert.deepEqual(app.pages, ['consumer/pages/shell/index', 'consumer/pages/diagnostics/index', 'consumer/pages/profile-edit/index'])
+for (const extension of ['js', 'json', 'wxml', 'wxss']) {
+  assert.ok(fs.existsSync(path.join(root, 'consumer/pages/profile-edit/index.' + extension)),
+    'C-002 profile page artifact missing: ' + extension)
+}
 const packages = app.subPackages || app.subpackages || []
 assert.deepEqual(packages.map(p => ({ root: p.root, pages: p.pages })), [
   { root: 'merchant', pages: ['pages/workspace/index'] },
