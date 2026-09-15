@@ -17,16 +17,21 @@ import org.springframework.jdbc.datasource.DriverManagerDataSource;
 public final class OssAssetSyncCli {
 
     public static void main(String[] args) throws Exception {
-        if (args.length < 3 || (args.length - 3) % 2 != 0) {
-            System.err.println("usage: OssAssetSyncCli <jdbcUrl> <dbUser> <dbPass> [category=dir ...]");
+        if (args.length < 4) {
+            System.err.println("usage: OssAssetSyncCli <jdbcUrl> <dbUser> <dbPass> category=dir [category=dir ...]");
             System.exit(2);
         }
         DataSource dataSource = new DriverManagerDataSource(args[0], args[1], args[2]);
         OssConnection connection = OssConnection.fromEnv();
         SnowflakeIdGenerator ids = new LocalSequenceIdGenerator();
         Map<String, Path> roots = new LinkedHashMap<>();
-        for (int i = 3; i < args.length; i += 2) {
-            roots.put(args[i], Path.of(args[i + 1]));
+        for (int i = 3; i < args.length; i++) {
+            String pair = args[i];
+            int eq = pair.indexOf('=');
+            if (eq <= 0 || eq == pair.length() - 1) {
+                throw new IllegalArgumentException("bad root pair (expected category=dir): " + pair);
+            }
+            roots.put(pair.substring(0, eq), Path.of(pair.substring(eq + 1)));
         }
         long minBytes = Long.parseLong(System.getenv().getOrDefault("OSS_SYNC_MIN_BYTES", "51200"));
         try (S3OssAssetClient client = new S3OssAssetClient(connection)) {

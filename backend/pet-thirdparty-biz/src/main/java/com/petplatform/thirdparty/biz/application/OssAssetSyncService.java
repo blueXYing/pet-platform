@@ -79,7 +79,8 @@ public final class OssAssetSyncService {
                         registry.upsertActive(new AssetRegistryJdbcStore.AssetRow(
                                 assetKey, objectKey, client.publicUrl(objectKey), sha, size, category));
                     } catch (RuntimeException error) {
-                        errors.add(file + ": " + error.getClass().getSimpleName());
+                        errors.add(file + ": " + error.getClass().getSimpleName() + ": "
+                                + String.valueOf(error.getMessage()).lines().findFirst().orElse(""));
                     }
                 }
             } catch (IOException error) {
