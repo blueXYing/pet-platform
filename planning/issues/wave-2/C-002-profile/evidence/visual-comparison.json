@@ -47,5 +47,6 @@
       "fractionPixelsWithAnyChannelDifferenceOver16": 0.0488143697098921
     }
   },
-  "visualAcceptance": "PENDING_REVIEW; metrics locate differences, do not define a relaxed similarity threshold"
+  "visualAcceptance": "ACCEPTED_BY_USER_FOR_RECORDED_NORMAL_STATE",
+  "acceptanceRecord": "../VISUAL_ACCEPTANCE.json"
 }

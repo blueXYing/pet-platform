@@ -1,0 +1,20 @@
+{
+  "status": "ACCEPTED_BY_USER",
+  "recordedAt": "2026-09-15T05:43:38.398877+00:00",
+  "userStatement": "视觉接受",
+  "acceptedCodeCommit": "565f1d4343d9db0e49d27fb1f99350c96980cce1",
+  "figmaNode": "127:1652",
+  "figmaVersion": "2397539525915641008",
+  "scope": "编辑资料已展示的正常态视觉样板，包含已确认的删除保密选项及文字抗锯齿、位图缩放边缘差异",
+  "files": {
+    "source/figma-reference-402x812.png": "e3e3846cf61fa8672cef54e74c2d76a2c0d29c521b16758c229777381f084ec0",
+    "evidence/reference-canvas-final-raw.png": "867ecf448db6ed91c6617dfdf3f331f20dae854ff8e799da251056436a53bd2e",
+    "evidence/source-and-actual.png": "ce1329aaba553714d89f6d1c406a27eb2747120bbfaa051376df5cc344b7c926"
+  },
+  "notApprovedByThisRecord": [
+    "真实登录/上传/资料保存或数据库验收",
+    "完整C-002 DONE",
+    "其他页面或未来变更的视觉验收",
+    "PR合并/发布/生产迁移"
+  ]
+}
