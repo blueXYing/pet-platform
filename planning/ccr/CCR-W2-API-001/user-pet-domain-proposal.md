@@ -1,6 +1,6 @@
 # CCR-W2-API-001 用户/宠物域契约提案(草案)
 
-状态:**PROPOSAL / PENDING_REVIEW**。规范版本:0.1,日期:2026-09-15。
+状态:**PROPOSAL_ACCEPTED / CONTRACT_SYNCED_IN_PR**。规范版本:0.1,日期:2026-09-15。2026-09-15人工批准"三项批准,合并PR22":归属404防枚举、user_pet补avatar_url、年龄按birthDate,及两条用户资料新路由;权威06/10/12/07同步在本分支codex/usr-001-contract-sync(待PR合并)。实现未开始,USR-001非DONE。
 提出方/唯一编辑者:Backend Core(USR-001 规范阶段)。关联 Issue:USR-001 / EPIC-02 / ST-PET-01。只读审阅:Transaction、QA、C-End、AUTH协作。批准人:人工 CTO / Contract Owner **blueXYing**。
 
 基线:develop `903225cf07a9775fa99aef7d7744275e30d5d5d2`;分支 `codex/usr-001-contract-spec`。本草案只做规范,不写实现代码、不改权威HTTP10/07/12/Schema;获批后由Owner同步权威文档再派发实现。

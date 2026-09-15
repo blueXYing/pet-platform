@@ -7,7 +7,7 @@
 | 域 | 规范责任Issue | 消费者 | 缺口及关联门禁 |
 |---|---|---|---|
 | 会话/准入/权限 | AUTH-001 | C002/M002/A002 | 复用CCR-ACR/PERM，不另造第二套会话；签约OD002仍有效 |
-| 用户/宠物/个人资料 | USR-001，AUTH协作 | C002、TX001 | **规范草案已交付**：见[用户宠物域提案](CCR-W2-API-001/user-pet-domain-proposal.md)（PROPOSAL/PENDING_REVIEW，2026-09-15，基线903225c）。三项建议决定（归属404防枚举/宠物头像补列/年龄按出生日期）与两条新路由候选待人工批准；获批后同步HTTP10/07/12/06 |
+| 用户/宠物/个人资料 | USR-001，AUTH协作 | C002、TX001 | **规范草案已交付**：见[用户宠物域提案](CCR-W2-API-001/user-pet-domain-proposal.md)（PROPOSAL_ACCEPTED/CONTRACT_SYNCED_IN_PR：2026-09-15三项决定+新路由已人工批准，权威HTTP10/07/12/06同步在codex/usr-001-contract-sync分支待PR合并；实现阶段待派发，W2-USR-001~004验收） |
 | 商家/门店/人员 | MER-001 | C003/M002/ADM001 | MerchantStoreDTO/MerchantStaffDTO/Query、真实资格事实、分页/过滤/错误与范围 |
 | 服务/快照/资格 | SVC-001 | C003/M002/ADM001 | ServiceBookabilityDTO/Query与页面响应；不提前实现排期/订单 |
 | 可用性/排期管理 | SCH-001/002及原所属Owner | C003/M002/A002 | 对既有可用时间契约补页面所需未定义内容；原Wave3依赖不强拉到本波 |

@@ -178,6 +178,13 @@ HTTP 映射只属于 Adapter 层；内部 Java API 通过稳定 code 表达同�
 | THIRD_PARTY_CHANNEL_TIMEOUT | 上游渠道超时 |
 | THIRD_PARTY_RESULT_UNKNOWN | 上游结果未知，需查单 |
 
+## 13.1 USER / PET
+
+| Code | 含义 | 建议 HTTP |
+|---|---|---:|
+| USER_FROZEN | 用户账号冻结/注销，拒绝写入 | 403 |
+| PET_NOT_FOUND | 宠物不存在/已删除/归属不符（防枚举统一语义，内部与HTTP同义） | 404 |
+
 ## 14. 使用规则
 
 ```text
