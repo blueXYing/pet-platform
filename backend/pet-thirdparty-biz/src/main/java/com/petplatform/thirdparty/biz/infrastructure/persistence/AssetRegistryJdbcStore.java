@@ -51,6 +51,14 @@ public final class AssetRegistryJdbcStore {
         return gone.size();
     }
 
+    /** Object key of an ACTIVE asset, or null (presign/issuance path). */
+    public String activeObjectKey(String assetKey) {
+        var rows = jdbc.query(
+                "SELECT s3_object_key FROM asset_registry WHERE asset_key=? AND status='ACTIVE'",
+                (rs, row) -> rs.getString(1), assetKey);
+        return rows.isEmpty() ? null : rows.getFirst();
+    }
+
     public int countActive(String category) {
         return jdbc.queryForObject(
                 "SELECT COUNT(*) FROM asset_registry WHERE category=? AND status='ACTIVE'",

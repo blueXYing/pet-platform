@@ -17,6 +17,10 @@ import org.springframework.jdbc.datasource.DriverManagerDataSource;
 public final class OssAssetSyncCli {
 
     public static void main(String[] args) throws Exception {
+        if (args.length > 1 && "--presign".equals(args[0])) {
+            presign(args);
+            return;
+        }
         if (args.length < 4) {
             System.err.println("usage: OssAssetSyncCli <jdbcUrl> <dbUser> <dbPass> category=dir [category=dir ...]");
             System.exit(2);
@@ -41,6 +45,24 @@ public final class OssAssetSyncCli {
                     + " retired=" + report.retired() + " errors=" + report.errors().size());
             report.errors().forEach(error -> System.out.println("  error: " + error));
             if (!report.errors().isEmpty()) System.exit(1);
+        }
+    }
+
+    /** --presign <jdbcUrl> <dbUser> <dbPass> <assetKey...>: print a signed URL per key. */
+    private static void presign(String[] args) throws Exception {
+        if (args.length < 5) {
+            System.err.println("usage: OssAssetSyncCli --presign <jdbcUrl> <dbUser> <dbPass> <assetKey...>");
+            System.exit(2);
+        }
+        DataSource dataSource = new org.springframework.jdbc.datasource.DriverManagerDataSource(args[1], args[2], args[3]);
+        long window = Long.parseLong(System.getenv().getOrDefault("OSS_PRESIGN_WINDOW_SECONDS", "86400"));
+        try (var service = new PresignedAssetUrlService(OssConnection.fromEnv(), dataSource,
+                new LocalSequenceIdGenerator(), java.time.Clock.systemUTC(), window)) {
+            for (int i = 4; i < args.length; i++) {
+                var signed = service.presign(args[i]);
+                System.out.println(signed.assetKey() + " | expiresAt=" + signed.expiresAtEpochSeconds()
+                        + " | " + signed.url());
+            }
         }
     }
 
