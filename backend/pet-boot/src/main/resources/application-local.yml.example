@@ -1,0 +1,21 @@
+# 本地填写模板 —— 复制本文件为同目录下的 application-local.yml 并填入真实值。
+# application-local.yml 已被 .gitignore 忽略,不会被提交;请勿把真实值写进本模板或其他入库文件。
+#
+# 使用前提(微信侧):
+#   1. 小程序为企业主体,且已在微信后台开通「手机号快速验证组件」(按次计费,约0.03元/次);
+#   2. 服务器可出网访问 https://api.weixin.qq.com(若微信后台开启IP白名单,需将出口IP加入);
+#   3. 如需 unionid,小程序须绑定微信开放平台同主体,否则该字段为空(不阻塞登录)。
+#
+# 填好后本地启动示例(还需 MySQL/Redis/PLAT-002 等其余装配,生产以部署环境变量为准):
+#   AUTH_C_REDIS_HOST=127.0.0.1 AUTH_C_REDIS_PORT=16379
+pet:
+  auth:
+    c:
+      enabled: true
+      redis-host: 127.0.0.1
+      redis-port: 16379
+      cache-prefix: auth001c:
+      wechat:
+        app-id: "在这里填小程序appid(wx开头)"
+        app-secret: "在这里填小程序AppSecret"
+        # api-base: https://api.weixin.qq.com   # 默认官方地址,一般不改

@@ -6,6 +6,7 @@ import com.petplatform.user.biz.application.UserAuthService;
 import com.petplatform.user.biz.application.UserProfileService;
 import com.petplatform.user.biz.application.WechatSessionProvider;
 import com.petplatform.user.biz.infrastructure.provider.MiniAuthVolatileStore;
+import com.petplatform.user.biz.infrastructure.provider.WechatMiniApiProvider;
 import com.petplatform.user.biz.infrastructure.provider.RedisMiniAuthVolatileStore;
 import java.time.Clock;
 import java.util.Objects;
@@ -50,6 +51,18 @@ public class CAuthConfiguration {
                 p.getRedisUsername(),
                 p.getRedisPassword() == null ? null : p.getRedisPassword().toCharArray(),
                 p.getCachePrefix());
+    }
+
+    @Bean
+    @ConditionalOnMissingBean(WechatSessionProvider.class)
+    WechatSessionProvider wechatSessionProvider(CAuthProperties p) {
+        if (!p.getWechat().configured()) {
+            throw new IllegalStateException(
+                    "pet.auth.c.wechat.app-id / app-secret must be configured (deployment"
+                            + " environment) to assemble the real WeChat provider");
+        }
+        return new WechatMiniApiProvider(new WechatMiniApiProvider.Settings(
+                p.getWechat().getAppId(), p.getWechat().getAppSecret(), p.getWechat().getApiBase()));
     }
 
     @Bean

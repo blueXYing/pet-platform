@@ -61,6 +61,8 @@ class CAuthHttpTest {
         props.put("pet.auth.c.redis-port", fixture.redisPort);
         props.put("pet.auth.c.cache-prefix", fixture.prefix);
         try {
+            // Command-line args outrank application.yml; plain properties() are defaults and
+            // would lose against the yml's explicit pet.auth.c block.
             context = new SpringApplicationBuilder(PetPlatformApplication.class).properties(props)
                     .initializers(c -> {
                         var beans = (GenericApplicationContext) c;
@@ -68,7 +70,10 @@ class CAuthHttpTest {
                         beans.registerBean("qaCHutool", SnowflakeIdGenerator.class, () -> fixture.ids);
                         beans.registerBean("qaCWechat", WechatSessionProvider.class,
                                 FixedWechatProvider::new);
-                    }).run();
+                    }).run("--pet.auth.c.enabled=true",
+                            "--pet.auth.c.redis-host=" + fixture.redisHost,
+                            "--pet.auth.c.redis-port=" + fixture.redisPort,
+                            "--pet.auth.c.cache-prefix=" + fixture.prefix);
             base = "http://127.0.0.1:" + context.getEnvironment().getProperty("local.server.port")
                     + "/api/v1/c";
         } catch (Exception failure) {
