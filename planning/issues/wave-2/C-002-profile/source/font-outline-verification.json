@@ -1,0 +1,11 @@
+{
+  "sourceNode": "127:1895",
+  "font": "Noto Sans SC VF, static weight400 rounded to TrueType units",
+  "method": "bidirectional distance between densely sampled outline paths, baseline15 at14px",
+  "pointCount": 28063,
+  "maxDistanceDesignPx": 0.7955749643298426,
+  "meanDistanceDesignPx": 0.10871564665570418,
+  "p99DistanceDesignPx": 0.4760635859696437,
+  "status": "REVIEW_REQUIRED",
+  "qualification": "Not raster/pixel equivalence or proof for every character."
+}

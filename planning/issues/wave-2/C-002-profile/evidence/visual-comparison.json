@@ -1,0 +1,51 @@
+{
+  "sourceSha256": "e3e3846cf61fa8672cef54e74c2d76a2c0d29c521b16758c229777381f084ec0",
+  "rawScreenshotSha256": "867ecf448db6ed91c6617dfdf3f331f20dae854ff8e799da251056436a53bd2e",
+  "rawScreenshotSize": [
+    414,
+    896
+  ],
+  "comparisonCanvas": [
+    0,
+    0,
+    402,
+    812
+  ],
+  "comparisonMethod": "Crop only, no rescaling or stretching of the actual screenshot. Raw actual simulator screenshot retained.",
+  "approvedDifference": "User removed UNDISCLOSED/保密; no inferred gender default",
+  "regions": {
+    "header": {
+      "meanAbsoluteChannelDifference": 3.502064507394998,
+      "fractionPixelsWithAnyChannelDifferenceOver16": 0.040308660777743935
+    },
+    "avatar": {
+      "meanAbsoluteChannelDifference": 0.6064969541823698,
+      "fractionPixelsWithAnyChannelDifferenceOver16": 0.014043945104174074
+    },
+    "nickname": {
+      "meanAbsoluteChannelDifference": 2.3239320572949675,
+      "fractionPixelsWithAnyChannelDifferenceOver16": 0.04106984408670301
+    },
+    "gender": {
+      "meanAbsoluteChannelDifference": 0.755130074600055,
+      "fractionPixelsWithAnyChannelDifferenceOver16": 0.02447219932796551
+    },
+    "phone": {
+      "meanAbsoluteChannelDifference": 2.4561414627962987,
+      "fractionPixelsWithAnyChannelDifferenceOver16": 0.05634427684117125
+    },
+    "signature": {
+      "meanAbsoluteChannelDifference": 1.2623314134015975,
+      "fractionPixelsWithAnyChannelDifferenceOver16": 0.03256773092512266
+    },
+    "save": {
+      "meanAbsoluteChannelDifference": 2.116531692041896,
+      "fractionPixelsWithAnyChannelDifferenceOver16": 0.06167800453514739
+    },
+    "tabbar": {
+      "meanAbsoluteChannelDifference": 2.5716977881156984,
+      "fractionPixelsWithAnyChannelDifferenceOver16": 0.0488143697098921
+    }
+  },
+  "visualAcceptance": "PENDING_REVIEW; metrics locate differences, do not define a relaxed similarity threshold"
+}

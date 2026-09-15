@@ -1,0 +1,81 @@
+/* Source measures use 402 design px. A runtime pixel unit avoids rpx rounding and CSS calc coefficient truncation. */
+.profile-page { --profile-status-top: 0px; --profile-design-width: 100vw; min-height: 100vh; background: #f0fbff; color: #1d0d07; font-family: "C002 Roboto", "C002 Noto CJK", "C002 Noto SC", Roboto, "Noto Sans SC", sans-serif; }
+.profile-page view, .profile-page button, .profile-page input, .profile-page textarea { box-sizing: border-box; }
+.profile-page button { padding: 0; margin: 0; border: 0; border-radius: 0; background: transparent; font: inherit; line-height: normal; }
+.profile-page button::after { border: 0; }
+.profile-page button[disabled] { opacity: .65; color: inherit; }
+.profile-status-area { height: var(--profile-status-top); background: #fff6e5; }
+.profile-design { --profile-content-bottom: calc(var(--profile-unit) * 76.112); min-height: calc(100vh - var(--profile-status-top)); position: relative; padding-bottom: calc(var(--profile-content-bottom) + env(safe-area-inset-bottom)); }
+.profile-header { height: calc(var(--profile-unit) * 49); position: relative; background: #fff6e5; border-bottom: calc(var(--profile-unit) * 2) solid #cdeede; }
+.profile-back { position: absolute; left: calc(var(--profile-unit) * 19); top: calc(var(--profile-unit) * 8); width: calc(var(--profile-unit) * 32); height: calc(var(--profile-unit) * 32); }
+.profile-back image { width: 100%; height: 100%; display: block; }
+.profile-title { position: absolute; left: calc(var(--profile-unit) * 59); top: calc(var(--profile-unit) * 12); font-family: "C002 Noto CJK", "C002 Noto SC", Outfit, "Noto Sans SC", sans-serif; font-size: calc(var(--profile-unit) * 16); font-weight: 700; line-height: calc(var(--profile-unit) * 24); }
+.profile-form { width: calc(var(--profile-unit) * 343); margin-left: calc(var(--profile-unit) * 29); padding-top: calc(var(--profile-unit) * 16); }
+.profile-card { width: 100%; margin-bottom: calc(var(--profile-unit) * 16); background: #e4f6f3; border: calc(var(--profile-unit) * 1) solid #cdeede; border-radius: calc(var(--profile-unit) * 12); padding: calc(var(--profile-unit) * 13); display: flex; align-items: center; justify-content: space-between; position: relative; }
+.profile-label { font-family: "C002 Roboto", "C002 Noto CJK", "C002 Noto SC", Roboto, "Noto Sans SC", sans-serif; font-size: calc(var(--profile-unit) * 14); line-height: calc(var(--profile-unit) * 20); font-weight: 400; color: #402e26; flex-shrink: 0; }
+.profile-avatar-card { height: calc(var(--profile-unit) * 82); }
+.profile-avatar-action { display: flex; align-items: center; width: calc(var(--profile-unit) * 84.84375); height: calc(var(--profile-unit) * 56); gap: calc(var(--profile-unit) * 8); }
+.profile-avatar-image { width: calc(var(--profile-unit) * 56); height: calc(var(--profile-unit) * 56); border-radius: 50%; display: block; flex-shrink: 0; }
+.profile-chevron { width: calc(var(--profile-unit) * 20.84375); height: calc(var(--profile-unit) * 28); flex-shrink: 0; }
+.profile-nickname-card, .profile-phone-card { height: calc(var(--profile-unit) * 46); }
+.profile-nickname { flex: 1; min-width: 0; margin-left: calc(var(--profile-unit) * 12); height: calc(var(--profile-unit) * 20); font-size: calc(var(--profile-unit) * 14); line-height: calc(var(--profile-unit) * 20); text-align: right; color: #1d0d07; font-family: "C002 Roboto", "C002 Noto CJK", "C002 Noto SC", Roboto, "Noto Sans SC", sans-serif; }
+.profile-gender-card { height: calc(var(--profile-unit) * 50); }
+.profile-genders { display: flex; align-items: center; gap: calc(var(--profile-unit) * 8); }
+.profile-gender { font-size: calc(var(--profile-unit) * 12) !important; line-height: calc(var(--profile-unit) * 16) !important; padding: calc(var(--profile-unit) * 4) calc(var(--profile-unit) * 12) !important; height: calc(var(--profile-unit) * 24); border-radius: calc(var(--profile-unit) * 5359.464) !important; color: #402e26; white-space: nowrap; }
+.profile-gender.is-selected { background: #53bfee; color: #e4f6f3; }
+.profile-phone { display: flex; align-items: center; font-size: calc(var(--profile-unit) * 12); line-height: calc(var(--profile-unit) * 16); color: #402e26; gap: calc(var(--profile-unit) * 4); }
+.profile-bound { font-size: calc(var(--profile-unit) * 10); color: #53bfee; }
+.profile-signature-card { height: calc(var(--profile-unit) * 163.5); display: block; padding-top: calc(var(--profile-unit) * 14); }
+.profile-signature-card > .profile-label { display: block; }
+.profile-signature { width: calc(var(--profile-unit) * 317); height: calc(var(--profile-unit) * 82); margin-top: calc(var(--profile-unit) * 8); padding: calc(var(--profile-unit) * 11) calc(var(--profile-unit) * 13); border: calc(var(--profile-unit) * 1) solid #cdeede; border-radius: calc(var(--profile-unit) * 8); background: #f0fbff; font-family: "C002 Roboto", "C002 Noto CJK", "C002 Noto SC", Roboto, "Noto Sans SC", sans-serif; font-size: calc(var(--profile-unit) * 14); line-height: calc(var(--profile-unit) * 20); color: #1d0d07; }
+.profile-count { display: block; width: 100%; margin-top: calc(var(--profile-unit) * 4); text-align: right; color: #53bfee; font-size: calc(var(--profile-unit) * 11); line-height: calc(var(--profile-unit) * 16.5); }
+.profile-save { display: flex; align-items: center; justify-content: center; width: 100%; height: calc(var(--profile-unit) * 44); border-radius: calc(var(--profile-unit) * 12) !important; background: #53bfee !important; color: #e4f6f3 !important; font-size: calc(var(--profile-unit) * 14) !important; font-weight: 500 !important; line-height: calc(var(--profile-unit) * 20) !important; }
+.profile-field-error, .profile-notice { display: block; font-size: calc(var(--profile-unit) * 12); line-height: calc(var(--profile-unit) * 18); margin: calc(var(--profile-unit) * 8) 0; }
+.profile-field-error { color: #b42318; }
+.profile-notice { color: #402e26; }
+.profile-state { padding: calc(var(--profile-unit) * 42.88) calc(var(--profile-unit) * 29); font-size: calc(var(--profile-unit) * 14); line-height: calc(var(--profile-unit) * 24); }
+.profile-state-action { margin-top: calc(var(--profile-unit) * 16.08) !important; color: #167fab !important; }
+.profile-tabbar { --profile-tab-height: calc(var(--profile-unit) * 62); position: fixed; left: 0; bottom: 0; width: 100%; height: calc(var(--profile-tab-height) + env(safe-area-inset-bottom)); padding-bottom: env(safe-area-inset-bottom); border-top: calc(var(--profile-unit) * 1) solid #cdeede; background: #f0fbff; display: flex; z-index: 10; }
+.profile-tab { width: 20%; height: calc(var(--profile-unit) * 61); position: relative; overflow: visible; }
+.profile-tab image { position: absolute; top: calc(var(--profile-unit) * 8); left: 50%; transform: translateX(-50%); }
+.profile-tab text { position: absolute; top: calc(var(--profile-unit) * 30); left: 0; width: 100%; text-align: center; font-family: "C002 Roboto", "C002 Noto CJK", "C002 Noto SC", Roboto, "Noto Sans SC", sans-serif; font-size: calc(var(--profile-unit) * 10); line-height: calc(var(--profile-unit) * 15); font-weight: 500; color: #3c3c3c; }
+.profile-tab-home image { width: calc(var(--profile-unit) * 19.47756785); height: calc(var(--profile-unit) * 16.4810084); }
+.profile-tab-services image { width: calc(var(--profile-unit) * 21.06932277); height: calc(var(--profile-unit) * 17.83193208); }
+.profile-tab-community image { width: calc(var(--profile-unit) * 53); height: calc(var(--profile-unit) * 53); top: calc(var(--profile-unit) * -15); }
+.profile-tab-community text { top: calc(var(--profile-unit) * 40); }
+.profile-tab-messages image, .profile-tab-mine image { width: calc(var(--profile-unit) * 17.32200044); height: calc(var(--profile-unit) * 17.32200044); }
+
+/* Imported Figma cards use an asymmetric content box; coordinates follow their child nodes. */
+.profile-card:not(.profile-signature-card) { padding-right: calc(var(--profile-unit) * 11); }
+.profile-avatar-card > .profile-label, .profile-nickname-card > .profile-label, .profile-gender-card > .profile-label, .profile-phone-card > .profile-label, .profile-avatar-action, .profile-nickname, .profile-genders, .profile-phone { position: relative; top: calc(var(--profile-unit) * 1); }
+.profile-nickname { min-height: 0; padding: 0; }
+.profile-signature-card > .profile-label { position: absolute; top: calc(var(--profile-unit) * 15.5); left: calc(var(--profile-unit) * 13); }
+.profile-signature { position: absolute; top: calc(var(--profile-unit) * 42); left: calc(var(--profile-unit) * 13); margin: 0; }
+.profile-count { position: absolute; top: calc(var(--profile-unit) * 127.75); left: calc(var(--profile-unit) * 13); width: calc(var(--profile-unit) * 317); height: calc(var(--profile-unit) * 17); margin: 0; }
+.profile-tab image { transform: none; top: calc(var(--profile-unit) * 9); }
+.profile-tab-home image { left: calc(var(--profile-unit) * 30); }
+.profile-tab-services image { left: calc(var(--profile-unit) * 29.6); }
+.profile-tab-community image { left: calc(var(--profile-unit) * 14.2); top: calc(var(--profile-unit) * -15); }
+.profile-tab-messages image { left: calc(var(--profile-unit) * 31.8); }
+.profile-tab-mine image { left: calc(var(--profile-unit) * 32.4); }
+.profile-reference-canvas { width: var(--profile-design-width); min-height: 0; height: calc(var(--profile-unit) * 812); overflow: hidden; position: relative; }
+.profile-reference-canvas .profile-design { min-height: 0; height: 100%; padding-bottom: 0; }
+.profile-reference-canvas .profile-status-area { height: 0; }
+.profile-reference-canvas .profile-tabbar { position: absolute; width: var(--profile-design-width); height: calc(var(--profile-unit) * 62); padding-bottom: 0; }
+/* Text baselines follow source glyph placement; the input box itself is unchanged. */
+.profile-avatar-card > .profile-label, .profile-nickname-card > .profile-label, .profile-gender-card > .profile-label, .profile-phone-card > .profile-label, .profile-phone { top: calc(var(--profile-unit) * 2); }
+.profile-signature-card > .profile-label { top: calc(var(--profile-unit) * 16.5); }
+.profile-signature { padding-top: calc(var(--profile-unit) * 12); }
+.profile-count { top: calc(var(--profile-unit) * 128.75); left: calc(var(--profile-unit) * 12); }
+.profile-save-label { position: relative; top: calc(var(--profile-unit) * 1); }
+.profile-tab text { top: calc(var(--profile-unit) * 31); line-height: calc(var(--profile-unit) * 16); }
+.profile-tab-community text { top: calc(var(--profile-unit) * 40); }
+/* Full render bounds include the original vector strokes; display PNGs at their 2x raster scale. */
+.profile-tab-home image { left: calc(var(--profile-unit) * 28.9897461); top: calc(var(--profile-unit) * 8); width: calc(var(--profile-unit) * 21.5); height: calc(var(--profile-unit) * 18.5); }
+.profile-tab-services image { left: calc(var(--profile-unit) * 29.1); top: calc(var(--profile-unit) * 8.5); width: calc(var(--profile-unit) * 22.5); height: calc(var(--profile-unit) * 19); }
+.profile-tab-messages image { left: calc(var(--profile-unit) * 31.3); top: calc(var(--profile-unit) * 8.5); width: calc(var(--profile-unit) * 18.5); height: calc(var(--profile-unit) * 19); }
+.profile-tab-mine image { left: calc(var(--profile-unit) * 31.9); top: calc(var(--profile-unit) * 8.49707031); width: calc(var(--profile-unit) * 18.5); height: calc(var(--profile-unit) * 18.5); }
+
+.profile-gender { color: #3c3c3c; }
+.profile-gender.is-selected { color: #e4f6f3; }
+.profile-phone { color: #3c3c3c; }

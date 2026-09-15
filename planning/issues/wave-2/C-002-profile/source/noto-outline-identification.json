@@ -1,0 +1,85 @@
+{
+  "font": "C:\\Windows\\Fonts\\NotoSansSC-VF.ttf",
+  "sourceSha256": "763146584cf0710223441356b4395e279021b0806c196614377a7a0174ae074a",
+  "weight": 400,
+  "unitsPerEm": 1000,
+  "headGlyphFirstCommands": [
+    [
+      "moveTo",
+      [
+        [
+          529,
+          830
+        ]
+      ]
+    ],
+    [
+      "lineTo",
+      [
+        [
+          606,
+          830
+        ]
+      ]
+    ],
+    [
+      "qCurveTo",
+      [
+        [
+          605,
+          716
+        ],
+        [
+          599,
+          510
+        ],
+        [
+          573,
+          331
+        ],
+        [
+          512,
+          177
+        ],
+        [
+          401,
+          52
+        ],
+        [
+          227,
+          -44
+        ],
+        [
+          100,
+          -76
+        ]
+      ]
+    ],
+    [
+      "qCurveTo",
+      [
+        [
+          94,
+          -62
+        ],
+        [
+          68,
+          -25
+        ],
+        [
+          56,
+          -13
+        ]
+      ]
+    ]
+  ],
+  "FigmaLabel": "127:1895",
+  "FigmaFirstPoint": [
+    7.406,
+    3.38
+  ],
+  "scale": 0.014,
+  "fallbackBaseline": 15,
+  "firstPointMatches": true,
+  "qualification": "First contour and follow-up segments match; this identifies the Chinese fallback family, not whole-page visual acceptance"
+}

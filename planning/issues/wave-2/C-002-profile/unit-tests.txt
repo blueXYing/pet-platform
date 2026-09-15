@@ -1,0 +1,248 @@
+
+> pet-platform-miniapp@0.1.0 test
+> tsx --test src/shared/tests/*.test.ts src/merchant/tests/*.test.ts src/consumer/tests/*.test.ts
+
+TAP version 13
+# Subtest: draft validation counts Unicode code points and preserves literal content
+ok 1 - draft validation counts Unicode code points and preserves literal content
+  ---
+  duration_ms: 0.8963
+  type: 'test'
+  ...
+# Subtest: preview keeps changes across repository reads and never mutates original fixture
+ok 2 - preview keeps changes across repository reads and never mutates original fixture
+  ---
+  duration_ms: 0.2574
+  type: 'test'
+  ...
+# Subtest: preview write retry preserves receipt and rejects same identity with different content
+ok 3 - preview write retry preserves receipt and rejects same identity with different content
+  ---
+  duration_ms: 0.401
+  type: 'test'
+  ...
+# Subtest: load failure can be retried without inventing a successful response
+ok 4 - load failure can be retried without inventing a successful response
+  ---
+  duration_ms: 0.2784
+  type: 'test'
+  ...
+# Subtest: late profile response is rejected after account or workspace revision changes
+ok 5 - late profile response is rejected after account or workspace revision changes
+  ---
+  duration_ms: 0.3476
+  type: 'test'
+  ...
+# Subtest: MINI-002 allow preserves user; return clears merchant context and cache
+ok 6 - MINI-002 allow preserves user; return clears merchant context and cache
+  ---
+  duration_ms: 2.136
+  type: 'test'
+  ...
+# Subtest: MINI-002 deny after allow removes admission and data; retry rechecks
+ok 7 - MINI-002 deny after allow removes admission and data; retry rechecks
+  ---
+  duration_ms: 0.2618
+  type: 'test'
+  ...
+# Subtest: MINI-002 error after allow removes admission and data; retry rechecks
+ok 8 - MINI-002 error after allow removes admission and data; retry rechecks
+  ---
+  duration_ms: 0.2281
+  type: 'test'
+  ...
+# Subtest: MINI-002 every entry checks afresh and hides admitted content during query
+ok 9 - MINI-002 every entry checks afresh and hides admitted content during query
+  ---
+  duration_ms: 0.181
+  type: 'test'
+  ...
+# Subtest: MINI-003 pending admission cannot revive after return
+ok 10 - MINI-003 pending admission cannot revive after return
+  ---
+  duration_ms: 0.2754
+  type: 'test'
+  ...
+# Subtest: MINI-003 pending admission cannot revive after logout
+ok 11 - MINI-003 pending admission cannot revive after logout
+  ---
+  duration_ms: 0.0827
+  type: 'test'
+  ...
+# Subtest: MINI-003 pending admission cannot revive after revocation
+ok 12 - MINI-003 pending admission cannot revive after revocation
+  ---
+  duration_ms: 0.0646
+  type: 'test'
+  ...
+# Subtest: MINI-003 pending admission cannot revive after user-switch
+ok 13 - MINI-003 pending admission cannot revive after user-switch
+  ---
+  duration_ms: 0.0677
+  type: 'test'
+  ...
+# Subtest: MINI-003 pending admission cannot revive after dispose
+ok 14 - MINI-003 pending admission cannot revive after dispose
+  ---
+  duration_ms: 0.2022
+  type: 'test'
+  ...
+# Subtest: MINI-003 older successful or failing admission cannot replace newest verdict
+ok 15 - MINI-003 older successful or failing admission cannot replace newest verdict
+  ---
+  duration_ms: 0.3588
+  type: 'test'
+  ...
+# Subtest: MINI-003 delayed merchant result/cache cannot survive return
+ok 16 - MINI-003 delayed merchant result/cache cannot survive return
+  ---
+  duration_ms: 0.273
+  type: 'test'
+  ...
+# Subtest: MINI-003 delayed merchant result/cache cannot survive store-switch
+ok 17 - MINI-003 delayed merchant result/cache cannot survive store-switch
+  ---
+  duration_ms: 0.1727
+  type: 'test'
+  ...
+# Subtest: MINI-003 delayed merchant result/cache cannot survive deny
+ok 18 - MINI-003 delayed merchant result/cache cannot survive deny
+  ---
+  duration_ms: 0.1777
+  type: 'test'
+  ...
+# Subtest: MINI-003 delayed merchant result/cache cannot survive error
+ok 19 - MINI-003 delayed merchant result/cache cannot survive error
+  ---
+  duration_ms: 0.1711
+  type: 'test'
+  ...
+# Subtest: MINI-003 delayed merchant result/cache cannot survive logout
+ok 20 - MINI-003 delayed merchant result/cache cannot survive logout
+  ---
+  duration_ms: 0.101
+  type: 'test'
+  ...
+# Subtest: MINI-003 delayed merchant result/cache cannot survive revocation
+ok 21 - MINI-003 delayed merchant result/cache cannot survive revocation
+  ---
+  duration_ms: 0.0931
+  type: 'test'
+  ...
+# Subtest: MINI-003 delayed merchant result/cache cannot survive dispose
+ok 22 - MINI-003 delayed merchant result/cache cannot survive dispose
+  ---
+  duration_ms: 0.1008
+  type: 'test'
+  ...
+# Subtest: MINI-002 missing shared session does not query or invent login
+ok 23 - MINI-002 missing shared session does not query or invent login
+  ---
+  duration_ms: 0.0852
+  type: 'test'
+  ...
+# Subtest: MINI-003 old page hide/dispose does not revoke a newer page admission or query
+ok 24 - MINI-003 old page hide/dispose does not revoke a newer page admission or query
+  ---
+  duration_ms: 0.1632
+  type: 'test'
+  ...
+# Subtest: MINI-004 real admission is blocked by CCR; internal data preserves string values and actions
+ok 25 - MINI-004 real admission is blocked by CCR; internal data preserves string values and actions
+  ---
+  duration_ms: 0.3792
+  type: 'test'
+  ...
+# Subtest: MINI-003 workspace: old success and cache cannot cross context
+ok 26 - MINI-003 workspace: old success and cache cannot cross context
+  ---
+  duration_ms: 0.9826
+  type: 'test'
+  ...
+# Subtest: MINI-003 user: old success and cache cannot cross context
+ok 27 - MINI-003 user: old success and cache cannot cross context
+  ---
+  duration_ms: 0.1191
+  type: 'test'
+  ...
+# Subtest: MINI-003 merchant: old success and cache cannot cross context
+ok 28 - MINI-003 merchant: old success and cache cannot cross context
+  ---
+  duration_ms: 0.1579
+  type: 'test'
+  ...
+# Subtest: MINI-003 store: old success and cache cannot cross context
+ok 29 - MINI-003 store: old success and cache cannot cross context
+  ---
+  duration_ms: 0.09
+  type: 'test'
+  ...
+# Subtest: MINI-003 logout: old success and cache cannot cross context
+ok 30 - MINI-003 logout: old success and cache cannot cross context
+  ---
+  duration_ms: 0.2523
+  type: 'test'
+  ...
+# Subtest: MINI-003 revocation: old success and cache cannot cross context
+ok 31 - MINI-003 revocation: old success and cache cannot cross context
+  ---
+  duration_ms: 0.1003
+  type: 'test'
+  ...
+# Subtest: MINI-003 sameContextReentry: old success and cache cannot cross context
+ok 32 - MINI-003 sameContextReentry: old success and cache cannot cross context
+  ---
+  duration_ms: 0.084
+  type: 'test'
+  ...
+# Subtest: MINI-003 delayed rejection is stale; current context success remains available
+ok 33 - MINI-003 delayed rejection is stale; current context success remains available
+  ---
+  duration_ms: 0.1785
+  type: 'test'
+  ...
+# Subtest: MINI-003 logout then same user login cannot revive pending response
+ok 34 - MINI-003 logout then same user login cannot revive pending response
+  ---
+  duration_ms: 0.2505
+  type: 'test'
+  ...
+# Subtest: MINI-004 injected transport preserves string ID, amount, remote state/actions and write requestId
+ok 35 - MINI-004 injected transport preserves string ID, amount, remote state/actions and write requestId
+  ---
+  duration_ms: 1.1717
+  type: 'test'
+  ...
+# Subtest: MINI-004 all write verbs require requestId, cross-workspace and encoded traversal fail before transport
+ok 36 - MINI-004 all write verbs require requestId, cross-workspace and encoded traversal fail before transport
+  ---
+  duration_ms: 0.5018
+  type: 'test'
+  ...
+# Subtest: MINI-004 malformed IDs/amounts/actions rejected, unknown server displayStatus is not recomputed
+ok 37 - MINI-004 malformed IDs/amounts/actions rejected, unknown server displayStatus is not recomputed
+  ---
+  duration_ms: 0.249
+  type: 'test'
+  ...
+# Subtest: MINI-004 real mode blocked by unapproved CCR; errors use code rather than message
+ok 38 - MINI-004 real mode blocked by unapproved CCR; errors use code rather than message
+  ---
+  duration_ms: 0.361
+  type: 'test'
+  ...
+# Subtest: MINI-004 platform request port mock captures URL, headers, data, timeout; network failure propagates
+ok 39 - MINI-004 platform request port mock captures URL, headers, data, timeout; network failure propagates
+  ---
+  duration_ms: 0.9386
+  type: 'test'
+  ...
+1..39
+# tests 39
+# suites 0
+# pass 39
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 317.1652

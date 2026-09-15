@@ -1,0 +1,11 @@
+{
+  "status": "PASS_EVIDENCE_INTEGRITY_AND_GEOMETRY",
+  "assetCount": 8,
+  "fontFiles": 9,
+  "sourceVersion": "2397539525915641008",
+  "canvasGeometry": "Nine measured boxes exactly match source coordinates and dimensions",
+  "deviceApiMocked": false,
+  "productVisualAcceptance": "PENDING_USER_REVIEW",
+  "realBackendProfileSave": "NOT_CONNECTED",
+  "scope": "C-002 representative visual/preview interaction stage only"
+}

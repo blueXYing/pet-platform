@@ -1,0 +1,19 @@
+{
+  "sourceNode": "127:1895",
+  "sourceVersion": "2397539525915641008",
+  "method": "Bidirectional dense outline sample distance, 14px size / baseline15; no screenshot manipulation.",
+  "selectedFonts": [
+    {
+      "character": "头",
+      "family": "C002 Noto SC"
+    },
+    {
+      "character": "像",
+      "family": "C002 Noto CJK"
+    }
+  ],
+  "maxDistanceDesignPx": 0.009899494936613715,
+  "meanDistanceDesignPx": 0.0015366262809602725,
+  "p99DistanceDesignPx": 0.007722891519407576,
+  "scope": "Identifies source glyph fallback chain for the audited label, not all user text or raster equality."
+}

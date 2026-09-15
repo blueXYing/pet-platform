@@ -1,0 +1,194 @@
+{
+  "method": "isolated Figma label alpha compared with local font masks; evidence for investigation, not resolved-font proof",
+  "results": [
+    {
+      "font": "Deng.ttf",
+      "size": 14,
+      "offset": [
+        0,
+        3
+      ],
+      "mae": 0.08557513493202158
+    },
+    {
+      "font": "NotoSansSC-VF.ttf",
+      "size": 14,
+      "offset": [
+        0,
+        3
+      ],
+      "mae": 0.0927117237138758
+    },
+    {
+      "font": "Noto Sans SC (TrueType).otf",
+      "size": 14,
+      "offset": [
+        0,
+        3
+      ],
+      "mae": 0.10155536482885838
+    },
+    {
+      "font": "simhei.ttf",
+      "size": 13,
+      "offset": [
+        1,
+        3
+      ],
+      "mae": 0.10719589909134386
+    },
+    {
+      "font": "Noto Sans SC (TrueType).otf",
+      "size": 13,
+      "offset": [
+        1,
+        3
+      ],
+      "mae": 0.1079680262348842
+    },
+    {
+      "font": "simhei.ttf",
+      "size": 14,
+      "offset": [
+        0,
+        3
+      ],
+      "mae": 0.11210248855639818
+    },
+    {
+      "font": "simhei.ttf",
+      "size": 15,
+      "offset": [
+        -1,
+        2
+      ],
+      "mae": 0.11895793195326913
+    },
+    {
+      "font": "msjh.ttc",
+      "size": 15,
+      "offset": [
+        -1,
+        2
+      ],
+      "mae": 0.11988775022204001
+    },
+    {
+      "font": "msyh.ttc",
+      "size": 14,
+      "offset": [
+        0,
+        4
+      ],
+      "mae": 0.1219017387442782
+    },
+    {
+      "font": "NotoSansSC-VF.ttf",
+      "size": 15,
+      "offset": [
+        -1,
+        3
+      ],
+      "mae": 0.13037259171961466
+    },
+    {
+      "font": "msjh.ttc",
+      "size": 13,
+      "offset": [
+        1,
+        3
+      ],
+      "mae": 0.13144409715105554
+    },
+    {
+      "font": "msyh.ttc",
+      "size": 13,
+      "offset": [
+        1,
+        4
+      ],
+      "mae": 0.1314655581744893
+    },
+    {
+      "font": "Deng.ttf",
+      "size": 15,
+      "offset": [
+        -1,
+        2
+      ],
+      "mae": 0.13381817483090797
+    },
+    {
+      "font": "Deng.ttf",
+      "size": 13,
+      "offset": [
+        1,
+        3
+      ],
+      "mae": 0.1344422525107604
+    },
+    {
+      "font": "NotoSansSC-VF.ttf",
+      "size": 13,
+      "offset": [
+        1,
+        3
+      ],
+      "mae": 0.13518798251007716
+    },
+    {
+      "font": "msyh.ttc",
+      "size": 15,
+      "offset": [
+        -1,
+        3
+      ],
+      "mae": 0.13876280146204822
+    },
+    {
+      "font": "Noto Sans SC (TrueType).otf",
+      "size": 15,
+      "offset": [
+        -1,
+        2
+      ],
+      "mae": 0.1447339191774271
+    },
+    {
+      "font": "msjh.ttc",
+      "size": 14,
+      "offset": [
+        0,
+        2
+      ],
+      "mae": 0.14895996447359433
+    },
+    {
+      "font": "simsun.ttc",
+      "size": 15,
+      "offset": [
+        -2,
+        3
+      ],
+      "mae": 0.1536062717770035
+    },
+    {
+      "font": "simsun.ttc",
+      "size": 14,
+      "offset": [
+        0,
+        3
+      ],
+      "mae": 0.16454457026713123
+    },
+    {
+      "font": "simsun.ttc",
+      "size": 13,
+      "offset": [
+        1,
+        4
+      ],
+      "mae": 0.17946355981416956
+    }
+  ]
+}

@@ -1,0 +1,56 @@
+{
+  "status": "CAPTURED",
+  "source": "actual WeChat DevTools simulator",
+  "environment": {
+    "brand": "devtools",
+    "model": "iPhone XR",
+    "system": "iOS 10.0.1",
+    "platform": "devtools",
+    "benchmarkLevel": -1,
+    "pixelRatio": 2,
+    "screenWidth": 414,
+    "screenHeight": 896,
+    "windowWidth": 414,
+    "windowHeight": 808,
+    "statusBarHeight": 44,
+    "safeArea": {
+      "top": 44,
+      "left": 0,
+      "right": 414,
+      "bottom": 862,
+      "width": 414,
+      "height": 818
+    },
+    "language": "zh_CN",
+    "version": "8.0.5",
+    "fontSizeSetting": 16,
+    "SDKVersion": "3.17.2",
+    "host": {
+      "env": "WeChat"
+    },
+    "enableDebug": false,
+    "mode": "default",
+    "deviceOrientation": "portrait",
+    "bluetoothEnabled": true,
+    "locationEnabled": true,
+    "wifiEnabled": true,
+    "albumAuthorized": true,
+    "cameraAuthorized": true,
+    "locationAuthorized": true,
+    "microphoneAuthorized": true,
+    "notificationAuthorized": true,
+    "notificationAlertAuthorized": true,
+    "notificationBadgeAuthorized": true,
+    "notificationSoundAuthorized": true,
+    "phoneCalendarAuthorized": true,
+    "bluetoothAuthorized": true,
+    "locationReducedAccuracy": true,
+    "devicePixelRatio": 2
+  },
+  "canvas": {
+    "width": 402,
+    "height": 812,
+    "mode": "same component in fixed design canvas; device APIs unmodified"
+  },
+  "visualAcceptance": "REQUIRES_COMPARISON_AND_REVIEW"
+}
