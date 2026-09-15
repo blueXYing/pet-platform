@@ -39,3 +39,5 @@ CCR-ACR-001/PERM-001及相关Schema/API未批，签约事实受OD-W0-002约束�
 ## 交付与DoD
 
 交付固定commit/工作区/PR、规范版本/审批、正反测试结果、未验收范围与风险。所有原AC、Contract及所需测试满足后才DONE；真实E2E未具备服务就保留未完成。Schema/Event变化显式披露，重大Contract和合入develop仍需人工批准。预计阶段顺序与本波承诺见READY_QUEUE_WAVE_2.md，不自动转到后续Wave。
+
+2026-09-15阶段派发:C端微信登录链路任务见[AUTH-001-c-login.md](AUTH-001-c-login.md),并行提示词见planning/prompts/;SMS/密码登录仍为后续门禁。
