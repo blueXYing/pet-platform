@@ -18,48 +18,32 @@ public final class AdminAuditDelivery {
   public int deliverPending(int limit) {
     if (limit < 1 || limit > 1000)
       throw new IllegalArgumentException("Audit batch 1..1000 required");
-    var rows =
-        store.read(
-            tx ->
-                tx.rows(
-                    "SELECT id FROM admin_audit_intent WHERE delivery_state='PENDING' AND"
-                        + " next_attempt_at<=UTC_TIMESTAMP(3) ORDER BY id LIMIT ?",
-                    limit));
+    var ids = store.read(tx -> tx.auth().selectPendingAuditIds(limit));
     int count = 0;
-    for (var candidate : rows) {
+    for (var id : ids) {
       try {
         Boolean delivered =
             store.write(
                 tx -> {
-                  var row =
-                      tx.one(
-                          "SELECT * FROM admin_audit_intent WHERE id=? FOR UPDATE",
-                          candidate.number("id"));
-                  if (!"PENDING".equals(row.text("delivery_state"))) return false;
+                  var row = tx.auth().selectAuditIntentForUpdate(id);
+                  if (row == null) throw com.petplatform.admin.biz.application.AdminAuthFailure.unavailable();
+                  if (!"PENDING".equals(row.deliveryState)) return false;
                   try {
                     sink.append(
                         new AdminAuditSink.Entry(
-                            row.number("id"),
-                            row.number("actor_id") == 0 ? null : row.number("actor_id"),
-                            row.number("attempt_id") == 0 ? null : row.number("attempt_id"),
-                            row.text("action_code"),
-                            row.number("resource_id") == 0 ? null : row.number("resource_id"),
-                            row.text("outcome"),
-                            row.text("reason"),
-                            row.time("occurred_at"),
-                            row.text("actor_reference")));
-                    tx.update(
-                        "UPDATE admin_audit_intent SET"
-                            + " delivery_state='DELIVERED',delivered_at=UTC_TIMESTAMP(3),attempt_count=attempt_count+1"
-                            + " WHERE id=?",
-                        row.number("id"));
+                            row.id,
+                            row.actorId,
+                            row.attemptId,
+                            row.actionCode,
+                            row.resourceId,
+                            row.outcome,
+                            row.reason,
+                            row.occurredAt,
+                            row.actorReference));
+                    tx.auth().markAuditDelivered(row.id);
                     return true;
                   } catch (RuntimeException e) {
-                    tx.update(
-                        "UPDATE admin_audit_intent SET"
-                            + " attempt_count=attempt_count+1,next_attempt_at=TIMESTAMPADD(SECOND,5,UTC_TIMESTAMP(3))"
-                            + " WHERE id=?",
-                        row.number("id"));
+                    tx.auth().deferAuditRetry(row.id);
                     LOG.log(
                         System.Logger.Level.WARNING,
                         "Admin audit delivery unavailable; persistent intent retained");
