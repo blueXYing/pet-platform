@@ -7,9 +7,15 @@ Priority: P0
 Wave: 2
 Status: BLOCKED
 Dependencies: PLAT-001
-Phase Readiness: SPEC_READY
+Phase Readiness: AUTH_SLICES_MERGED_INTEGRATION_PENDING
 
-仅规划候选，未获Wave2启动批准。BLOCKED是完整Issue实现门禁；Phase Readiness仅表示批准后可进行明确阶段。阶段完成不等于整个Issue DONE。
+已按逐阶段授权推进，当前阶段以以下合并记录为准；原Status表示完整Issue尚未验收关闭。既有AC、Required Tests和Allowed/Forbidden保持，不将阶段合并等同于整项DONE。
+
+## 2026-09-16 当前阶段
+
+PR14/15规范、PR17运营Web登录、PR31 C端会话/HTTP、PR33真实微信Provider代码均已合入。真实小程序code联调、SMS/密码/刷新及商家准入等剩余范围未完成；不把Provider代码测试写成真实微信联调通过。
+
+证据见[合并台账](../../progress/2026-09-16/PROGRESS_SYNC.md)；本次只同步事实，不扩大原Scope或启动新的实现阶段。
 
 ## Allowed / Forbidden
 

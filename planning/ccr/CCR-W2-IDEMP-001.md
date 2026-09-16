@@ -1,5 +1,7 @@
 # CCR-W2-IDEMP-001：公共约定与持久化幂等提案
 
+> 2026-09-16 状态同步：PR10/11/13/16及USR的PR24已合入相关公共约定、组件与领域幂等落地；生产ID启用、完整公共幂等及各业务范围继续按原条款核验。CCR不整体RESOLVED。 下文保留提案/交付时点的记录，本段只更新当前阶段事实，不改技术约定。
+
 ## 当前S2组件阶段
 
 **COMPONENT_REVIEW_CANDIDATE / PRODUCTION_ENABLEMENT_BLOCKED。** PR13及Hutool/适配包已经批准合入develop6a559bc，当前已交付最小可注入Hutool＋MySQL协调组件候选；不重复SDK/适配包审批。最新ab351ee基线上42项目/154 JUnit、13架构Python及80契约回归通过；代码/Schema候选、Owner、实际验证与生产限制见[组件一页交接](../../backend/pet-id-core/HANDOFF.md)，权威23号仅增加§10实施映射。新PR仍待人工合并。

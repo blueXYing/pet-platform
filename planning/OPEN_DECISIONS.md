@@ -26,4 +26,4 @@ Preliminary Audit A-003 已核实对应原第4项“人工客服具体承载方�
 
 纯技术契约遗漏另见 CCR_W0_REGISTER.md，不与产品范围裁决混为一项。
 
-OD-W0-003已由人工明确裁决，历史问题见[原草案](PRODUCTION_PERMISSION_DECISIONS_DRAFT.md)，正式规则见docs/01-prd/22-运营权限人工裁决补充-v1.0.md。权限产品门禁已解除，Wave 1工程壳已完成；具体权限API仍未冻结。
+OD-W0-003已由人工明确裁决，历史问题见[原草案](PRODUCTION_PERMISSION_DECISIONS_DRAFT.md)，正式规则见docs/01-prd/22-运营权限人工裁决补充-v1.0.md。权限产品门禁已解除；PR15/17已合入运营认证与本人权限查询的契约/实现，其他业务权限范围仍按CCR-PERM-001及对应Owner处理，不能概括为“全部权限API尚未冻结”或“所有业务权限已完成”。本次未修改任何产品裁决，阶段事实见[同步报告](progress/2026-09-16/PROGRESS_SYNC.md)。

@@ -1,0 +1,375 @@
+{
+  "verifiedAt": "2026-09-16T05:54:12.614835+00:00",
+  "repository": "blueXYing/pet-platform",
+  "baseline": "e576837f7f2789bccdc059bbea46da0daf0be8ef",
+  "source": "GitHub PR/run read-only queries; every listed merge commit verified as ancestor of baseline",
+  "pullRequests": [
+    {
+      "baseRefName": "develop",
+      "headRefOid": "d8c7d471c8f60a50f60e152a247223623d854c90",
+      "mergeCommit": {
+        "oid": "2487d7302383d004ac6e6b3c5ef8260abf32df17"
+      },
+      "mergedAt": "2026-09-11T06:14:21Z",
+      "number": 6,
+      "title": "test(QA-001): validate integrated Wave 1 backend and frontend shells",
+      "url": "https://github.com/blueXYing/pet-platform/pull/6"
+    },
+    {
+      "baseRefName": "develop",
+      "headRefOid": "4fd3940cf8f8a4abe1731373eab5acf32fefcfd5",
+      "mergeCommit": {
+        "oid": "fb024226898ae38923ddbfa2f55602280a9fd5a8"
+      },
+      "mergedAt": "2026-09-14T01:59:24Z",
+      "number": 7,
+      "title": "feat(M-001): merchant ordinary subpackage and isolated fixture workspace",
+      "url": "https://github.com/blueXYing/pet-platform/pull/7"
+    },
+    {
+      "baseRefName": "develop",
+      "headRefOid": "7e7cafd4ab87b3fde3b430744ec9c338bdae4ce2",
+      "mergeCommit": {
+        "oid": "aa470322ce425e2f6f51cd68033177f2a576cb57"
+      },
+      "mergedAt": "2026-09-14T02:13:55Z",
+      "number": 8,
+      "title": "docs: Wave 1 收尾审查与执行状态同步",
+      "url": "https://github.com/blueXYing/pet-platform/pull/8"
+    },
+    {
+      "baseRefName": "develop",
+      "headRefOid": "5367e51d84756aef79255c7dada95ddf3f479f04",
+      "mergeCommit": {
+        "oid": "e882dc3c2cadd6474ad52ca5f6301e7e80df2743"
+      },
+      "mergedAt": "2026-09-14T02:33:03Z",
+      "number": 9,
+      "title": "docs: Wave 2 公共基础与契约规划候选",
+      "url": "https://github.com/blueXYing/pet-platform/pull/9"
+    },
+    {
+      "baseRefName": "develop",
+      "headRefOid": "3c7b52996563de4f57a38a731d115ae3cff981e6",
+      "mergeCommit": {
+        "oid": "c5a184736c58ddfbaf60c5064b48a97bfb7eff3f"
+      },
+      "mergedAt": "2026-09-14T05:49:13Z",
+      "number": 10,
+      "title": "docs(PLAT-002): 公共约定与幂等方案已接受，待Contract同步",
+      "url": "https://github.com/blueXYing/pet-platform/pull/10"
+    },
+    {
+      "baseRefName": "develop",
+      "headRefOid": "7c484371d7454b7d4091d349ae3874b37b140cb5",
+      "mergeCommit": {
+        "oid": "0cc7d0151cdae3500185957d2a35088d0b31e37f"
+      },
+      "mergedAt": "2026-09-14T06:27:12Z",
+      "number": 11,
+      "title": "feat(PLAT-002): 同步公共契约并交付 S1 接口与转换",
+      "url": "https://github.com/blueXYing/pet-platform/pull/11"
+    },
+    {
+      "baseRefName": "develop",
+      "headRefOid": "c641794119063706d3ab468a90898d3694ed26d8",
+      "mergeCommit": {
+        "oid": "bcb269c2adc9405e669747d9b3bedfae2bf5ccbd"
+      },
+      "mergedAt": "2026-09-14T06:56:47Z",
+      "number": 12,
+      "title": "PLAT-004: fenced MySQL Worker/Lease component with real recovery tests",
+      "url": "https://github.com/blueXYing/pet-platform/pull/12"
+    },
+    {
+      "baseRefName": "develop",
+      "headRefOid": "5fb3eedf98f7b3b884927a5fbac84a092bc3d711",
+      "mergeCommit": {
+        "oid": "6a559bc0621093ad27c54fdbef794881c5703608"
+      },
+      "mergedAt": "2026-09-14T08:36:15Z",
+      "number": 13,
+      "title": "docs(PLAT-002): Hutool 适配方案已接受，待契约同步",
+      "url": "https://github.com/blueXYing/pet-platform/pull/13"
+    },
+    {
+      "baseRefName": "develop",
+      "headRefOid": "e588369fc37f855d82af30a1fe41b1691a93f062",
+      "mergeCommit": {
+        "oid": "643f05cd3a9357772bb3029ff97b750afeebb1ca"
+      },
+      "mergedAt": "2026-09-14T08:23:04Z",
+      "number": 14,
+      "title": "docs(AUTH-001): 记录已批准D1/D2及取消V1 MFA规范",
+      "url": "https://github.com/blueXYing/pet-platform/pull/14"
+    },
+    {
+      "baseRefName": "develop",
+      "headRefOid": "66713e2a5507be61707a496dd29e60d1f2df4705",
+      "mergeCommit": {
+        "oid": "ab351ee836b323afe2f5f84fef05530db612f47d"
+      },
+      "mergedAt": "2026-09-14T09:21:13Z",
+      "number": 15,
+      "title": "docs(AUTH-001): 记录A/B1/C批准并交付认证契约同步",
+      "url": "https://github.com/blueXYing/pet-platform/pull/15"
+    },
+    {
+      "baseRefName": "develop",
+      "headRefOid": "58b79efd9656c3eb7bc85a529bddc4d0d90cc233",
+      "mergeCommit": {
+        "oid": "3a35432798550c7c2359313309d8fb196645595f"
+      },
+      "mergedAt": "2026-09-14T09:56:30Z",
+      "number": 16,
+      "title": "feat(PLAT-002): Hutool 节点授权与失败关闭组件",
+      "url": "https://github.com/blueXYing/pet-platform/pull/16"
+    },
+    {
+      "baseRefName": "develop",
+      "headRefOid": "c1006d7ecc5e86cf5a7d5041098baf03bcf9336f",
+      "mergeCommit": {
+        "oid": "ba782653bfbdd139795438378b6335c7d0d99211"
+      },
+      "mergedAt": "2026-09-14T12:42:32Z",
+      "number": 17,
+      "title": "feat(AUTH-001): 真实运营Web登录与本人权限查询",
+      "url": "https://github.com/blueXYing/pet-platform/pull/17"
+    },
+    {
+      "baseRefName": "develop",
+      "headRefOid": "581e74037f62ab7bcc969f03d5eb20df5099c833",
+      "mergeCommit": {
+        "oid": "ec82d08f559cb28a2e30c736cb83176495223c62"
+      },
+      "mergedAt": "2026-09-14T13:11:21Z",
+      "number": 18,
+      "title": "docs(PLAT-003): CCR-W0-001 outbox field mapping and transaction design spec",
+      "url": "https://github.com/blueXYing/pet-platform/pull/18"
+    },
+    {
+      "baseRefName": "develop",
+      "headRefOid": "5f21df2e65cda2f921ec60c1cb645e8673dbe89e",
+      "mergeCommit": {
+        "oid": "a002b58fc6ff98aea31e34dc1665002c84de5f07"
+      },
+      "mergedAt": "2026-09-14T13:23:47Z",
+      "number": 19,
+      "title": "docs(PLAT-003): sync outbox schema per approved CCR-W0-001 decisions",
+      "url": "https://github.com/blueXYing/pet-platform/pull/19"
+    },
+    {
+      "baseRefName": "develop",
+      "headRefOid": "0739ab6b2dd1c653e313a4f4e145348a41cbabf8",
+      "mergeCommit": {
+        "oid": "be8b32f565d9104d9a5ef631861682acdbc8b1ee"
+      },
+      "mergedAt": "2026-09-14T13:53:31Z",
+      "number": 20,
+      "title": "feat(PLAT-003): outbox publisher, dispatcher and recovery with isolated MySQL tests",
+      "url": "https://github.com/blueXYing/pet-platform/pull/20"
+    },
+    {
+      "baseRefName": "develop",
+      "headRefOid": "c45506b669ceefd3575c6fc06f616803eafecccf",
+      "mergeCommit": {
+        "oid": "903225cf07a9775fa99aef7d7744275e30d5d5d2"
+      },
+      "mergedAt": "2026-09-15T01:34:57Z",
+      "number": 21,
+      "title": "feat(PLAT-005): trace MDC filter, global exception handler and api envelope",
+      "url": "https://github.com/blueXYing/pet-platform/pull/21"
+    },
+    {
+      "baseRefName": "develop",
+      "headRefOid": "ab248f70ec6142b978d6edcf9cc817c1ad279e6b",
+      "mergeCommit": {
+        "oid": "cea82a3e659db8d582412c62ed22049a1031e22b"
+      },
+      "mergedAt": "2026-09-15T01:44:22Z",
+      "number": 22,
+      "title": "docs(USR-001): user/pet domain contract proposal for CCR-W2-API-001",
+      "url": "https://github.com/blueXYing/pet-platform/pull/22"
+    },
+    {
+      "baseRefName": "develop",
+      "headRefOid": "3523992193358682048b82cc20e8e6dba4191ac9",
+      "mergeCommit": {
+        "oid": "4e3e298487806fdc0664c59cf3d7e86dd1f0847f"
+      },
+      "mergedAt": "2026-09-15T01:56:18Z",
+      "number": 23,
+      "title": "docs(USR-001): sync authoritative contracts per approved user/pet proposal",
+      "url": "https://github.com/blueXYing/pet-platform/pull/23"
+    },
+    {
+      "baseRefName": "develop",
+      "headRefOid": "7af7442d9769e24f8720f8d6e634c3115f97a3ab",
+      "mergeCommit": {
+        "oid": "1ecf821cc9c12ead583b22c9d58f875206dc412f"
+      },
+      "mergedAt": "2026-09-15T02:27:18Z",
+      "number": 24,
+      "title": "feat(USR-001): pet archive service with ownership, snapshots and idempotent writes",
+      "url": "https://github.com/blueXYing/pet-platform/pull/24"
+    },
+    {
+      "baseRefName": "develop",
+      "headRefOid": "a021b7669c48b4f8fb1114642575689bf101b5c1",
+      "mergeCommit": {
+        "oid": "0e314cffe5e5085ad13386410002e59f43afaa0a"
+      },
+      "mergedAt": "2026-09-15T05:49:34Z",
+      "number": 25,
+      "title": "feat(C-002): 编辑资料代表页与原稿视觉验证",
+      "url": "https://github.com/blueXYing/pet-platform/pull/25"
+    },
+    {
+      "baseRefName": "develop",
+      "headRefOid": "884abaea32513c8ac785586407a268da0e1b4843",
+      "mergeCommit": {
+        "oid": "c99ab9d6ae70f80c12a4d8e50a27f23d0f4c2a0e"
+      },
+      "mergedAt": "2026-09-15T06:15:06Z",
+      "number": 26,
+      "title": "docs: dispatch C-002 pet page and AUTH-001 C-login parallel tasks",
+      "url": "https://github.com/blueXYing/pet-platform/pull/26"
+    },
+    {
+      "baseRefName": "develop",
+      "headRefOid": "5da87ef26951d5eb7b3f0922a035e321a8dfda9b",
+      "mergeCommit": {
+        "oid": "076680aba2b122e187fcf1885eecc6c43e24e7bc"
+      },
+      "mergedAt": "2026-09-15T06:32:37Z",
+      "number": 27,
+      "title": "docs: propose CCR-OSS-001 oss asset management",
+      "url": "https://github.com/blueXYing/pet-platform/pull/27"
+    },
+    {
+      "baseRefName": "develop",
+      "headRefOid": "56255fabd93ae1922d09c266f6059777c05e00c6",
+      "mergeCommit": {
+        "oid": "916d99e13985b7e7ee4048fffc2875e41cc76fa6"
+      },
+      "mergedAt": "2026-09-15T07:11:58Z",
+      "number": 28,
+      "title": "feat(CCR-OSS-001): asset registry, s3 sync service and one-click re-import",
+      "url": "https://github.com/blueXYing/pet-platform/pull/28"
+    },
+    {
+      "baseRefName": "develop",
+      "headRefOid": "a2a9ce90e60a095b61af2b5e6a89bb3b30f0f946",
+      "mergeCommit": {
+        "oid": "803400fbf5dea017ff6e54e752ff5eb7367bc400"
+      },
+      "mergedAt": "2026-09-15T07:12:21Z",
+      "number": 29,
+      "title": "docs: mybatis-only persistence decision and PLAT-006 migration plan",
+      "url": "https://github.com/blueXYing/pet-platform/pull/29"
+    },
+    {
+      "baseRefName": "develop",
+      "headRefOid": "b4617555336afd3450f8e738cfd941fbb3b8e61b",
+      "mergeCommit": {
+        "oid": "43cdfa0b4d78493e40f634f982a3a1b6146b4dde"
+      },
+      "mergedAt": "2026-09-15T07:56:55Z",
+      "number": 30,
+      "title": "fix(CCR-OSS-001): make one-click sync work against real aliyun oss",
+      "url": "https://github.com/blueXYing/pet-platform/pull/30"
+    },
+    {
+      "baseRefName": "develop",
+      "headRefOid": "b45fc175189bcbaf29ab64c828fb2a01f05bf7b5",
+      "mergeCommit": {
+        "oid": "94f52c0be8d589ff1399a0b6d382d25ea243b49b"
+      },
+      "mergedAt": "2026-09-15T07:57:25Z",
+      "number": 31,
+      "title": "feat(auth): C端微信登录链路+C端会话(AUTH-001 c-login阶段,PR24宠物/资料接通)",
+      "url": "https://github.com/blueXYing/pet-platform/pull/31"
+    },
+    {
+      "baseRefName": "develop",
+      "headRefOid": "e473a7354e605924db0eb14be5b7022a3636b208",
+      "mergeCommit": {
+        "oid": "e576837f7f2789bccdc059bbea46da0daf0be8ef"
+      },
+      "mergedAt": "2026-09-16T04:00:15Z",
+      "number": 32,
+      "title": "feat(CCR-OSS-001): presigned urls with quantized expiry for private bucket",
+      "url": "https://github.com/blueXYing/pet-platform/pull/32"
+    },
+    {
+      "baseRefName": "develop",
+      "headRefOid": "eb0ff8f6f8ea65b01aaa7ad3d8a5e3b0ba4f779b",
+      "mergeCommit": {
+        "oid": "d9fe4818653ed7f6acfcd235736b12f6e55c75f6"
+      },
+      "mergedAt": "2026-09-15T08:29:58Z",
+      "number": 33,
+      "title": "feat(auth): 真实微信Provider装配与凭据配置字段(AUTH-001 c-login补充)",
+      "url": "https://github.com/blueXYing/pet-platform/pull/33"
+    },
+    {
+      "baseRefName": "develop",
+      "headRefOid": "80b5536ae03e45dd84f0dcf082b0dac504de55f6",
+      "mergeCommit": {
+        "oid": "e8cce0ff5b59a3f836421437761f3e47ccd3295d"
+      },
+      "mergedAt": "2026-09-16T03:57:45Z",
+      "number": 34,
+      "title": "feat(C-002): pet archive pages with shared consumer navigation",
+      "url": "https://github.com/blueXYing/pet-platform/pull/34"
+    }
+  ],
+  "baselineCI": {
+    "conclusion": "success",
+    "databaseId": 35053918620,
+    "headSha": "e576837f7f2789bccdc059bbea46da0daf0be8ef",
+    "jobs": [
+      {
+        "name": "frontend-inventory",
+        "status": "completed",
+        "conclusion": "success",
+        "url": "https://github.com/blueXYing/pet-platform/actions/runs/35053918620/job/104659964238"
+      },
+      {
+        "name": "contract-smoke",
+        "status": "completed",
+        "conclusion": "success",
+        "url": "https://github.com/blueXYing/pet-platform/actions/runs/35053918620/job/104659964344"
+      },
+      {
+        "name": "backend",
+        "status": "completed",
+        "conclusion": "success",
+        "url": "https://github.com/blueXYing/pet-platform/actions/runs/35053918620/job/104659964353"
+      },
+      {
+        "name": "repository-policy",
+        "status": "completed",
+        "conclusion": "success",
+        "url": "https://github.com/blueXYing/pet-platform/actions/runs/35053918620/job/104659964354"
+      },
+      {
+        "name": "miniapp-weapp-build",
+        "status": "completed",
+        "conclusion": "success",
+        "url": "https://github.com/blueXYing/pet-platform/actions/runs/35053918620/job/104659993560"
+      },
+      {
+        "name": "web-build",
+        "status": "completed",
+        "conclusion": "success",
+        "url": "https://github.com/blueXYing/pet-platform/actions/runs/35053918620/job/104659993616"
+      }
+    ],
+    "status": "completed",
+    "url": "https://github.com/blueXYing/pet-platform/actions/runs/35053918620"
+  },
+  "limits": [
+    "CI build, automated tests and source/contract checks only; not a fresh physical-device or full business E2E acceptance"
+  ]
+}

@@ -1,5 +1,7 @@
 # PLAT-004 Worker / Lease 组件阶段交接
 
+> 2026-09-16 状态同步：PR12已合入；以下是Worker/Lease组件交付时快照。PR16后已有ID组件代码，但生产启用、producer及DEAD等原缺口仍有效。
+
 **组件阶段可 Review；完整 PLAT-004 非 DONE，生产 Worker 未放行。**
 
 任务 `01a09e9d-6178-70b1-98b8-27bc536ddae3`；分支 `codex/plat-004-worker-lease`；独立工作区 `C:/Users/Administrator/.codex/worktrees/44dc/宠物平台V1.0`。输入 develop / PR11 合并提交 `0cc7d0151cdae3500185957d2a35088d0b31e37f`。本阶段承接根 WORK_STATE 最新持续推进授权，不采用旧规划“未启动”文字作为阻断。

@@ -7,9 +7,15 @@ Priority: P0
 Wave: 2
 Status: BLOCKED
 Dependencies: PLAT-001
-Phase Readiness: SPEC_READY
+Phase Readiness: COMPONENT_MERGED_PRODUCTION_PENDING
 
-仅规划候选，未获Wave2启动批准。BLOCKED是完整Issue实现门禁；Phase Readiness仅表示批准后可进行明确阶段。阶段完成不等于整个Issue DONE。
+已按逐阶段授权推进，当前阶段以以下合并记录为准；原Status表示完整Issue尚未验收关闭。既有AC、Required Tests和Allowed/Forbidden保持，不将阶段合并等同于整项DONE。
+
+## 2026-09-16 当前阶段
+
+PR18/19 完成规范与权威映射，PR20 已合入 Outbox 组件。业务生产者/消费者、生产迁移与默认关闭装配的启用、对账告警/归档仍待完成。
+
+证据见[合并台账](../../progress/2026-09-16/PROGRESS_SYNC.md)；本次只同步事实，不扩大原Scope或启动新的实现阶段。
 
 ## Allowed / Forbidden
 

@@ -1,0 +1,133 @@
+{
+  "baseline": "e576837f7f2789bccdc059bbea46da0daf0be8ef",
+  "localBackupCounts": {
+    "alreadyInDevelop": 33,
+    "different": 22,
+    "localOnly": 2,
+    "figmaLocalOnly": 1620
+  },
+  "reviewedFiles": [
+    {
+      "path": "05-开发流程与文档阅读指南.md",
+      "decision": "add_guide",
+      "reason": "纳入通用阅读/沟通指南，补目录和资料管理说明；模板不构成新授权。"
+    },
+    {
+      "path": "WORK_STATE.md",
+      "decision": "rewrite_current_and_archive",
+      "reason": "依据已合并阶段重写当前状态；本地5.6和远端1.7均保留历史，不直接覆盖。"
+    },
+    {
+      "path": "docs/02-architecture/20-前端技术基线-v0.7.md",
+      "decision": "merge_source_metadata",
+      "reason": "同步商家Figma已提供的事实，改指向可入库的设计来源说明，不上传素材。"
+    },
+    {
+      "path": "planning/BLOCKED_QUEUE.md",
+      "decision": "rewrite_current",
+      "reason": "去除已解除的旧阻断，保留生产、真实接入、资金/签约与VIS限制。"
+    },
+    {
+      "path": "planning/ISSUE_CATALOG.csv",
+      "decision": "keep_remote",
+      "reason": "本地缺少已合入的PLAT-005/006两行；保留远端原表，本PR不变更完整Issue状态。"
+    },
+    {
+      "path": "planning/READY_QUEUE_WAVE_2.md",
+      "decision": "rewrite_current",
+      "reason": "按已合入阶段和未完成条件更新，不自动派发新实现。"
+    },
+    {
+      "path": "planning/SNOWFLAKE_SDK_COMPARISON.md",
+      "decision": "archive_as_history",
+      "reason": "归档到planning/history/SNOWFLAKE_SDK_COMPARISON_20260914.md；顶部补PR13/16现状，原评估不充当当前待办。"
+    },
+    {
+      "path": "planning/WAVE_1_EXECUTION_LOG.md",
+      "decision": "archive_local_history",
+      "reason": "远端Wave1日志保留；本地后续记录另存历史，并增加当前台账入口。"
+    },
+    {
+      "path": "planning/WAVE_2_PLAN.md",
+      "decision": "label_original_plan_and_update_sources",
+      "reason": "保留PR9原规划目标，标明已逐阶段执行，并解除商家原稿缺失的旧提示。"
+    },
+    {
+      "path": "planning/ccr/AUTH-001/review-evidence.md",
+      "decision": "keep_remote",
+      "reason": "本地缺少远端新增证据，不回填。"
+    },
+    {
+      "path": "planning/ccr/AUTH-001/sources-and-gaps.md",
+      "decision": "keep_remote",
+      "reason": "本地缺少远端新增权威同步记录，不回填。"
+    },
+    {
+      "path": "planning/ccr/CCR-ACR-001.md",
+      "decision": "keep_remote_add_merge_receipt",
+      "reason": "保留远端更完整条款/证据，仅补当前阶段合并说明。"
+    },
+    {
+      "path": "planning/ccr/CCR-PERM-001.md",
+      "decision": "keep_remote_add_merge_receipt",
+      "reason": "保留远端更完整条款/证据，仅补当前阶段合并说明。"
+    },
+    {
+      "path": "planning/ccr/CCR-W2-API-001.md",
+      "decision": "keep_remote_update_domain_progress",
+      "reason": "保留远端用户域提案链接，按PR22/23/24/31更新已交付事实；其他域门禁保留。"
+    },
+    {
+      "path": "planning/ccr/CCR-W2-IDEMP-001.md",
+      "decision": "keep_remote_add_merge_receipt",
+      "reason": "不恢复旧S1待同步状态；只补已有组件/领域落地的合并事实，完整CCR不关闭。"
+    },
+    {
+      "path": "planning/ccr/CCR-W2-IDEMP-001/examples.md",
+      "decision": "keep_remote",
+      "reason": "远端增加了S1证据，不回填缺段的本地副本。"
+    },
+    {
+      "path": "planning/ccr/CCR-W2-IDEMP-001/idempotency-design.md",
+      "decision": "keep_remote",
+      "reason": "保留远端技术正文和S1来源；不修改幂等规则。"
+    },
+    {
+      "path": "planning/ccr/CCR-W2-IDEMP-001/public-contracts.md",
+      "decision": "keep_remote",
+      "reason": "保留远端已接受契约与来源；不修改公共约定。"
+    },
+    {
+      "path": "planning/ccr/CCR-W2-IDEMP-001/review-evidence.md",
+      "decision": "keep_remote",
+      "reason": "远端证据更完整，不回填本地旧副本。"
+    },
+    {
+      "path": "planning/issues/wave-2/AUTH-001.md",
+      "decision": "rewrite_stage_only",
+      "reason": "本地旧规范状态已过时；据PR17/31/33登记真实后端切片和未验收范围。"
+    },
+    {
+      "path": "planning/issues/wave-2/C-002.md",
+      "decision": "merge_stage_only",
+      "reason": "保留远端PR25视觉接受，补PR34预览/导航/添加标题及独立编辑设计缺口。"
+    },
+    {
+      "path": "planning/issues/wave-2/M-002.md",
+      "decision": "merge_design_input_fact",
+      "reason": "记录已提供原稿，保留合同/布局/签约/真实业务门禁。"
+    },
+    {
+      "path": "planning/issues/wave-2/PLAT-002.md",
+      "decision": "rewrite_stage_only",
+      "reason": "不恢复本地“仍在S2设计”旧状态；组件已由PR16合入，生产门禁仍在。"
+    },
+    {
+      "path": "planning/issues/wave-2/PLAT-004.md",
+      "decision": "merge_stage_only",
+      "reason": "保留PR12组件合并事实；不会把完整Worker生产范围标为DONE。"
+    }
+  ],
+  "figmaUploaded": false,
+  "fullIssueStatusChanged": false
+}

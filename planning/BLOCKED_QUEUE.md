@@ -1,34 +1,31 @@
 # Blocked Queue
 
-## Wave 1收尾（2026-09-14）
+更新：2026-09-16，基线 develop `e576837`。本页只列当前未解决或未验收范围；已合入阶段详见[Ready Queue](READY_QUEUE_WAVE_2.md)和[合并台账](progress/2026-09-16/PROGRESS_SYNC.md)。不再把“Wave2未启动、无公共ID接口、商家Figma尚未提供”等历史事实作为当前阻断。
 
-七个工程壳Issue均已合入develop；M-001不再BLOCKED。W3未发现工程壳封板代码阻断。收尾文档同步PR待人工合并，下一波尚未启动。以下均为对应后续范围的有效门禁，不将其变成已批准公共契约或业务需求。
+## 仍需处理的范围
 
-| 范围 | 未解决项 | Owner与解除条件 |
+| 范围 | 剩余项 | Owner与解除条件 |
 |---|---|---|
-| 会话/工作台真实准入、C/M真实接入 | CCR-ACR-001 | AUTH-001建立规范，Contract Owner审批；内部fixture不得冒充后端授权 |
-| 真实RBAC权限码/DTO/数据范围/撤权 | CCR-PERM-001 | AUTH-001建立技术映射；单运营产品决策已定，不重复审批产品 |
-| Outbox持久化/租约恢复 | CCR-W0-001 | PLAT-003前由Architect/Contract Owner明确权威字段映射 |
-| 迟到支付退款来源 | CCR-W0-002 | REF-003/PAY-004/CPN-002前统一存储/API/Event来源映射 |
-| 关闭原因/确认轮次事实 | CCR-W0-003 | TX-001/PAY-003/PAY-004/ORD-002/003前明确权威事实 |
-| 资金冻结/分账/提现/保证金 | OD-W0-001 | 产品提供资金基线及V1有效范围，相关业务实现前裁决 |
-| 入驻签约/工作台准入 | OD-W0-002 | 产品/Contract Owner明确Provider接口和状态映射 |
-| 商家产品页/用户设计范围与素材 | 原型及切图门禁 | 对应页面取得原稿、原始资产和V1映射；删减布局差异须确认 |
+| ID及基础设施生产启用 | Hutool组件已合入；真实宿主退出证明、节点/高水位恢复、生产初始化/迁移/装配仍待验收 | PLAT-002；按[组件交接](../backend/pet-id-core/HANDOFF.md)保留默认拒绝和生产限制 |
+| Durable AsyncTask完整范围 | Worker/Lease已合入；producer、DEAD对账告警、真实业务Handler及生产装配尚缺 | PLAT-004和业务Owner；见[任务组件交接](../backend/pet-task-core/HANDOFF.md) |
+| Outbox完整范围 | 契约与组件已合入；生产迁移、启用、业务生产者/消费者、对账告警/归档尚缺 | PLAT-003及各域Owner；见[实现交接](ccr/CCR-W0-001/implementation-handoff.md) |
+| 真实认证接入与商家准入 | 已有运营/C端后端切片；小程序真实code联调、未实现认证端点、商家身份/签约等仍未完成 | AUTH-001、C/M/A及各域；CCR-ACR/PERM不因局部交付整体关闭 |
+| 宠物/资料页面真实业务 | PetService、带会话HTTP已合入；前端仍显式预览，真实登录/上传/保存/全链验收未接通 | C-002与AUTH/USR；生产数据、权限、ID和迁移条件分别核验 |
+| 宠物独立编辑页和展示字段 | 独立编辑稿未提供；旧入口仍复用添加表单；芯片/疫苗驱虫明细不在当前PetView | C-002与USR；见[标题修正](issues/wave-2/C-002-pet-page/ADD-PET-TITLE-CORRECTION.md)及[字段CCR](issues/wave-2/C-002-pet-page/CCR-C002-PET-DISPLAY-001.md) |
+| 用户/商家页面VIS与布局 | 原稿已提供，素材本地保留；V1删减、完整状态/字体、真机与跨设备验证仍须逐页完成 | C/M Owner；[设计来源](DESIGN_SOURCES.md)，原始素材不上传GitHub |
+| 商家/服务/排期与运营治理接口 | CCR-W2-API-001各域未全部交付，MER/SVC/SCH/ADM事实不能由fixture代替 | 原各域Owner按[域清单](ccr/CCR-W2-API-001.md)推进 |
+| OSS业务消费与运营全流程 | 注册表、同步与私有签名URL代码已合入；前端接入/临期刷新与后台运营全流程仍需证据 | 原Owner；凭据本地/环境配置，代码合并不等于生产启用 |
+| MyBatis统一迁移 | 裁决已合入，C登录前置已完成；迁移尚未实施 | PLAT-006；逐模块确定Owner及既有回归，不改Schema或业务规则 |
+| 迟到支付退款来源 | CCR-W0-002 | REF-003/PAY-004/CPN-002实现前统一存储/API/Event来源映射 |
+| 关闭原因/确认轮次事实 | CCR-W0-003 | TX-001/PAY-003/PAY-004/ORD-002/003实现前明确权威事实 |
+| 资金冻结/分账/提现/保证金 | OD-W0-001 | 提供权威资金基线并明确V1范围，不以售后7天自行构造资金规则 |
+| 入驻签约/工作台准入 | OD-W0-002 | 产品/Contract Owner提供Provider接口与状态映射，不默认签约成功 |
+| 人工客服承载 | OPEN_DECISIONS原第4项 / EPIC-19 | 保持既有未决，不自行新增IM/AI客服或重拆Issue |
 
-## 真实未验收能力
+## 验收边界
 
-MINI-006真实微信授权/支付/扫码/上传、真机、业务E2E、生产数据权限及产品VIS均未通过，不因工程壳CI绿而解除。M-001截图未取得、只有390窗口行为/布局证据，仍需后续页面按21号持续验证；中性壳不新增产品VIS门禁。
+基线CI通过只证明实际执行的构建/自动化/架构与契约检查。MINI-006支付/扫码/上传、物理真机、全业务E2E及产品VIS未因组件或Mock检查自动通过。PR25视觉接受仍绑定原证据；PR34真机/键盘限制保留。
 
-## 执行环境
+W3-TRACE-002的12项前端主链已在PR9按现有Story修正，次级关联保留在ISSUE_STORY_LINKS.csv；不再作为“未修复追踪关系”重复阻断，也不因此解除API和真实业务门禁。
 
-Java21构建已在CI验证；仓库/审核人blueXYing已落实，PR6/7已合入develop。旧“无Git/Java17/缺Owner/等待Wave启动”等启动快照不再是当前阻断。
-
-## W3新增后续追踪门禁
-
-W3-TRACE-001：EPIC-19客服承载待既有产品决定，未分配Issue，W4补跟踪。W3-TRACE-002：C-002～006、M-002～004、A-002～005共12项Issue的Epic与Story归属不一致；受影响条目在派发前修正/明确跨Epic映射。本次不新增或重拆任务，详情见WAVE_1_CLOSEOUT_CHECKS.json。
-
-## W4规划更新：以本段覆盖追踪门禁历史
-
-W3-TRACE-002的12项主链已按现有业务Story修正，次级关联见ISSUE_STORY_LINKS.csv；结构门禁可解除，但页面API/原图/真实依赖未因此解除。EPIC-19仍待客服承载原决定，不新增Issue。
-
-新增CCR-W2-IDEMP-001限制公共持久化幂等，新增CCR-W2-API-001按域限制首批业务DTO；现有CCR不关闭。PLAT004已存在AsyncTask表结构，不登记虚假“缺Schema”，但须等公共ID/Clock固定交接。11个Wave2候选的完整Issue状态仍BLOCKED，阶段就绪详见READY_QUEUE_WAVE_2.md，计划/阶段通过不等于实现或整项DONE。
+本次没有新产品裁决、未执行迁移或生产发布、未关闭完整CCR，也没有按规划文字自动启动下一波任务。

@@ -7,9 +7,15 @@ Priority: P0
 Wave: 2
 Status: BLOCKED
 Dependencies: PLAT-001
-Phase Readiness: SPEC_READY
+Phase Readiness: COMPONENT_MERGED_PRODUCTION_PENDING
 
-仅规划候选，未获Wave2启动批准。BLOCKED是完整Issue实现门禁；Phase Readiness仅表示批准后可进行明确阶段。阶段完成不等于整个Issue DONE。
+已按逐阶段授权推进，当前阶段以以下合并记录为准；原Status表示完整Issue尚未验收关闭。既有AC、Required Tests和Allowed/Forbidden保持，不将阶段合并等同于整项DONE。
+
+## 2026-09-16 当前阶段
+
+PR10/11/13/16 已合入，公共接口、Hutool适配及节点协调组件已有源码与测试。生产宿主退出证明、高水位恢复、迁移/装配和完整幂等范围仍保留门禁；不重新起草已接受方案。
+
+证据见[合并台账](../../progress/2026-09-16/PROGRESS_SYNC.md)；本次只同步事实，不扩大原Scope或启动新的实现阶段。
 
 ## Allowed / Forbidden
 
