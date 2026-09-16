@@ -23,7 +23,7 @@
 .pet-list-state { position: absolute; top: calc(var(--pet-unit) * 90); left: 0; right: 0; }
 .pet-list-head { position: absolute; left: 0; top: 0; width: 100%; height: calc(var(--pet-unit) * 28); z-index: 4; }
 .pet-list-title { position: absolute; left: calc(var(--pet-unit) * 51); top: calc(var(--pet-unit) * 57); font-size: calc(var(--pet-unit) * 18); line-height: calc(var(--pet-unit) * 28); font-weight: 700; color: #1d0d07; }
-.pet-list-count { position: absolute; left: calc(var(--pet-unit) * 131); top: calc(var(--pet-unit) * 62.5); height: calc(var(--pet-unit) * 17); font-size: calc(var(--pet-unit) * 11); line-height: calc(var(--pet-unit) * 16.5); color: #53bfee; white-space: pre; }
+.pet-list-count { position: absolute; left: calc(var(--pet-unit) * 131); top: calc(var(--pet-unit) * 57); height: calc(var(--pet-unit) * 28); display: flex; align-items: center; font-size: calc(var(--pet-unit) * 11); line-height: calc(var(--pet-unit) * 16.5); color: #53bfee; white-space: pre; }
 .pet-list-encyc { position: absolute; left: calc(var(--pet-unit) * 270.796875); top: calc(var(--pet-unit) * 61); width: calc(var(--pet-unit) * 81.203125); height: calc(var(--pet-unit) * 20); display: flex; align-items: center; }
 .pet-list-encyc-paw { width: calc(var(--pet-unit) * 14.59375); height: calc(var(--pet-unit) * 20); flex-shrink: 0; }
 .pet-list-encyc-label { font-size: calc(var(--pet-unit) * 12); line-height: calc(var(--pet-unit) * 18); color: #53bfee; margin-left: calc(var(--pet-unit) * 2); }

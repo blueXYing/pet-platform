@@ -7,7 +7,7 @@
       "reference": "reference-list-402x312.png",
       "referenceIsOfficialFrameRender": false,
       "referenceSha256": "8514bed35ff555f83d307b0a46e549bf68864ed0d6781b721cae49673bd41315",
-      "stitchedActualSha256": "6e5099240ed1e3c22895e62d1c8deb6ce541dd149bff5fd63a29a4afefbf4cdb",
+      "stitchedActualSha256": "9817729727064c2f7bd92c5e30fb33e72b8aee6702bd00c0676df5411ea89a37",
       "regions": {
         "header": {
           "excluded": "device-chrome rows"
@@ -30,7 +30,7 @@
       "reference": "reference-detail-402x1252.png",
       "referenceIsOfficialFrameRender": true,
       "referenceSha256": "0440d7e9b488a60544d266120bf1cab51edf39e1568724ccf9dcd2fb0d35147c",
-      "stitchedActualSha256": "c935ddae41590f12496c22e950906f8826df16a877b8a9dc46320a8144672f03",
+      "stitchedActualSha256": "84f0dbecbc9bc70c55e6cb2bd74d3f946563086657ae22cefb93aef4e43224fb",
       "regions": {
         "header": {
           "excluded": "device-chrome rows"
@@ -60,7 +60,7 @@
           "fractionPixelsWithAnyChannelDifferenceOver16": 0.5095060412224591
         },
         "full": {
-          "meanAbsoluteChannelDifference": 16.98406593241522,
+          "meanAbsoluteChannelDifference": 16.984083207152644,
           "fractionPixelsWithAnyChannelDifferenceOver16": 0.7239143954142332
         }
       }
@@ -69,7 +69,7 @@
       "reference": "reference-form-brother-402x1066.png",
       "referenceIsOfficialFrameRender": false,
       "referenceSha256": "49438009ef0e965d93bc10cbb7a180e48f3d95c4649165246879fc262b5340de",
-      "stitchedActualSha256": "07facf9135672a477da05ebb9272122374f3af63d6a9a74641d693b2ee22807a",
+      "stitchedActualSha256": "a0423872926ddb5b7a313b4ef26ab43761bc603da898fdba5cd78f9b60318dff",
       "regions": {
         "title": {
           "meanAbsoluteChannelDifference": 20.022060669570248,
@@ -104,7 +104,7 @@
           "fractionPixelsWithAnyChannelDifferenceOver16": 0.5326048329779673
         },
         "full": {
-          "meanAbsoluteChannelDifference": 12.447901198437732,
+          "meanAbsoluteChannelDifference": 12.447998749896126,
           "fractionPixelsWithAnyChannelDifferenceOver16": 0.5282086300523526
         }
       }
@@ -113,7 +113,7 @@
       "reference": "reference-form-sister-402x1067.png",
       "referenceIsOfficialFrameRender": false,
       "referenceSha256": "e71264ac4b146021ee006e22cc1858898e8d11bd2e08da1b03c0baf9f28de40a",
-      "stitchedActualSha256": "f292eafd02c8bf0b39515b12d32899e1afc8f01cce4a2bce6836c97ab7ad4cc1",
+      "stitchedActualSha256": "fa31b230172b404322a213b53db87826a1f3abcb1b58c5e5db5d213e84527f4c",
       "regions": {
         "title": {
           "meanAbsoluteChannelDifference": 20.022060669570248,
@@ -148,7 +148,7 @@
           "fractionPixelsWithAnyChannelDifferenceOver16": 0.5204335465529495
         },
         "full": {
-          "meanAbsoluteChannelDifference": 12.084110640125452,
+          "meanAbsoluteChannelDifference": 12.084214401333918,
           "fractionPixelsWithAnyChannelDifferenceOver16": 0.5158456899398546
         }
       }
