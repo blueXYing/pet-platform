@@ -5,6 +5,7 @@ import com.petplatform.common.ApiException;
 import com.petplatform.common.CommonApiCodes;
 import com.petplatform.common.PublicContractChecks;
 import com.petplatform.common.SnowflakeIdGenerator;
+import com.petplatform.user.biz.infrastructure.persistence.SessionControl;
 import com.petplatform.user.biz.infrastructure.persistence.UserAuthStore;
 import com.petplatform.user.biz.infrastructure.provider.MiniAuthVolatileStore;
 import java.nio.charset.StandardCharsets;
@@ -23,7 +24,6 @@ import java.util.Objects;
 import java.util.regex.Pattern;
 import javax.sql.DataSource;
 import org.springframework.dao.DuplicateKeyException;
-import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.datasource.DataSourceTransactionManager;
 import org.springframework.transaction.TransactionDefinition;
 import org.springframework.transaction.support.TransactionTemplate;
@@ -68,7 +68,7 @@ public final class UserAuthService {
     private final WechatSessionProvider wechat;
     private final MiniAuthVolatileStore volatileStore;
     private final MiniAuthPolicy policy;
-    private final JdbcTemplate jdbc;
+    private final SessionControl sessionControl;
     private final TransactionTemplate execution;
 
     public UserAuthService(DataSource dataSource, SnowflakeIdGenerator ids, Clock clock,
@@ -80,7 +80,7 @@ public final class UserAuthService {
         this.wechat = Objects.requireNonNull(wechat, "An authorized WechatSessionProvider is required");
         this.volatileStore = Objects.requireNonNull(volatileStore);
         this.policy = Objects.requireNonNull(policy);
-        this.jdbc = new JdbcTemplate(dataSource);
+        this.sessionControl = new SessionControl(dataSource);
         this.execution = new TransactionTemplate(new DataSourceTransactionManager(dataSource));
         execution.setPropagationBehavior(TransactionDefinition.PROPAGATION_REQUIRES_NEW);
         execution.setIsolationLevel(TransactionDefinition.ISOLATION_READ_COMMITTED);
@@ -158,8 +158,7 @@ public final class UserAuthService {
         String phone = phoneCode == null ? null : exchangePhone(attempt, phoneCode);
 
         long userId = execution.execute(status -> {
-            jdbc.execute("SET SESSION time_zone = '+00:00'");
-            jdbc.execute("SET SESSION innodb_lock_wait_timeout = 2");
+            sessionControl.applyExecutionDefaults();
             UserAuthStore.IdentityRow row = store.findIdentity(identity.appId(), identity.openId());
             long id;
             if (row == null) {
@@ -212,8 +211,7 @@ public final class UserAuthService {
         String phone = exchangePhone(attempt, phoneCode);
         long userId = Long.parseLong(String.valueOf(attempt.get("userId")));
         execution.executeWithoutResult(status -> {
-            jdbc.execute("SET SESSION time_zone = '+00:00'");
-            jdbc.execute("SET SESSION innodb_lock_wait_timeout = 2");
+            sessionControl.applyExecutionDefaults();
             finishIdentityProof(userId, phone);
         });
         return completeLogin(commandKey, paramsSha, attempt, userId);
@@ -233,8 +231,7 @@ public final class UserAuthService {
         String phone = exchangePhone(null, phoneCode);
         long userId = Long.parseLong(session.userId());
         execution.executeWithoutResult(status -> {
-            jdbc.execute("SET SESSION time_zone = '+00:00'");
-            jdbc.execute("SET SESSION innodb_lock_wait_timeout = 2");
+            sessionControl.applyExecutionDefaults();
             UserAuthStore.AccountRow account = store.findAccount(userId, true);
             if (account == null) throw unauthorized();
             if ("FROZEN".equals(account.status())) throw frozen();

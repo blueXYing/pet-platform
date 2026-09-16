@@ -2,11 +2,14 @@ package com.petplatform.user.biz.infrastructure.persistence;
 
 import com.petplatform.common.SnowflakeIdGenerator;
 import com.petplatform.user.biz.application.CanonicalParams;
+import com.petplatform.user.biz.infrastructure.persistence.entity.CommandIdempotencyEntity;
+import com.petplatform.user.biz.infrastructure.persistence.mapper.CommandIdempotencyMapper;
+import com.petplatform.user.biz.infrastructure.persistence.mapper.SessionControlMapper;
 import java.util.Objects;
 import java.util.Optional;
 import javax.sql.DataSource;
+import org.mybatis.spring.SqlSessionTemplate;
 import org.springframework.dao.DuplicateKeyException;
-import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.datasource.DataSourceTransactionManager;
 import org.springframework.transaction.TransactionDefinition;
 import org.springframework.transaction.support.TransactionTemplate;
@@ -26,13 +29,13 @@ public final class CommandIdempotencyStore {
         public ParamsConflict() { super("same requestId with different parameters"); }
     }
 
-    private final JdbcTemplate jdbc;
+    private final SqlSessionTemplate template;
     private final TransactionTemplate admission;
     private final TransactionTemplate execution;
     private final SnowflakeIdGenerator ids;
 
     public CommandIdempotencyStore(DataSource dataSource, SnowflakeIdGenerator ids) {
-        this.jdbc = new JdbcTemplate(Objects.requireNonNull(dataSource));
+        this.template = UserMybatis.template(dataSource);
         this.ids = Objects.requireNonNull(ids, "PLAT-002 ID provider is required");
         var manager = new DataSourceTransactionManager(dataSource);
         this.admission = new TransactionTemplate(manager);
@@ -52,16 +55,12 @@ public final class CommandIdempotencyStore {
      */
     public Optional<String> admit(String requestKey, CanonicalParams.Canonical canonical) {
         return admission.execute(status -> {
-            jdbc.execute("SET SESSION time_zone = '+00:00'");
-            jdbc.execute("SET SESSION innodb_lock_wait_timeout = 2");
+            session().setTimeZoneUtc();
+            session().setLockWaitTimeout2Seconds();
             long id = ids.nextId();
             if (id <= 0) throw new IllegalStateException("Invalid ID from provider");
             try {
-                jdbc.update("""
-                        INSERT INTO command_idempotency
-                        (id,request_key,canonical_version,params_sha256,params_canonical,status,created_at)
-                        VALUES (?,?,?,?,?,'RESERVED',NOW(3))
-                        """, id, requestKey, canonical.version, canonical.sha256, canonical.bytes);
+                bindings().insertBinding(id, requestKey, canonical.version, canonical.sha256, canonical.bytes);
                 return Optional.<String>empty();
             } catch (DuplicateKeyException bound) {
                 Binding existing = requireBinding(requestKey);
@@ -84,22 +83,25 @@ public final class CommandIdempotencyStore {
     }
 
     public void succeed(String requestKey, String receiptJson) {
-        int changed = jdbc.update("""
-                UPDATE command_idempotency SET status='SUCCEEDED',receipt_json=?,succeeded_at=NOW(3)
-                WHERE request_key=? AND status='RESERVED'
-                """, receiptJson, requestKey);
+        int changed = bindings().markSucceeded(requestKey, receiptJson);
         if (changed != 1) throw new IllegalStateException("Binding completion pairing violated; transaction rolled back");
     }
 
     private Binding requireBinding(String requestKey) {
         // The admission/execution transaction holds the row lock from this SELECT.
-        return jdbc.query("""
-                SELECT id,request_key,canonical_version,params_sha256,params_canonical,status,receipt_json
-                FROM command_idempotency WHERE request_key=? FOR UPDATE
-                """, (rs, row) -> new Binding(rs.getLong("id"), rs.getString("request_key"),
-                rs.getString("canonical_version"), rs.getString("params_sha256"),
-                rs.getBytes("params_canonical"), rs.getString("status"), rs.getString("receipt_json")),
-                requestKey).stream().findFirst()
-                .orElseThrow(() -> new IllegalStateException("Idempotency binding disappeared; transaction rolled back"));
+        CommandIdempotencyEntity row = bindings().selectBindingForUpdate(requestKey);
+        if (row == null) {
+            throw new IllegalStateException("Idempotency binding disappeared; transaction rolled back");
+        }
+        return new Binding(row.getId(), row.getRequestKey(), row.getCanonicalVersion(),
+                row.getParamsSha256(), row.getParamsCanonical(), row.getStatus(), row.getReceiptJson());
+    }
+
+    private CommandIdempotencyMapper bindings() {
+        return template.getMapper(CommandIdempotencyMapper.class);
+    }
+
+    private SessionControlMapper session() {
+        return template.getMapper(SessionControlMapper.class);
     }
 }
