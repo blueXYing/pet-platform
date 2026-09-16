@@ -135,8 +135,8 @@ async function captureCanvas(name, canvasHeight, tileName) {
   const states = [
     { name: 'list', page: 'consumer/pages/pet-archive/index', query: 'preview=1&referenceCanvas=1', marker: '宠物档案', canvas: 312 },
     { name: 'detail', page: 'consumer/pages/pet-archive/detail', query: 'preview=1&petId=30001&referenceCanvas=1', marker: '基本信息', canvas: 1252 },
-    { name: 'form-brother', page: 'consumer/pages/pet-archive/form', query: 'preview=1&scenario=form-brother&referenceCanvas=1', marker: '编辑宠物信息', canvas: 1066 },
-    { name: 'form-sister', page: 'consumer/pages/pet-archive/form', query: 'preview=1&scenario=form-sister&referenceCanvas=1', marker: '编辑宠物信息', canvas: 1067 },
+    { name: 'form-brother', page: 'consumer/pages/pet-archive/form', query: 'preview=1&scenario=form-brother&referenceCanvas=1', marker: '添加宠物信息', canvas: 1066 },
+    { name: 'form-sister', page: 'consumer/pages/pet-archive/form', query: 'preview=1&scenario=form-sister&referenceCanvas=1', marker: '添加宠物信息', canvas: 1067 },
   ]
   for (const state of states) {
     if (process.env.PET_CAPTURE_MODE === 'device') continue
@@ -156,9 +156,9 @@ async function captureCanvas(name, canvasHeight, tileName) {
     { name: `list-empty-${width}`, page: 'consumer/pages/pet-archive/index', query: 'preview=1&scenario=list-empty', marker: '还没有宠物档案' },
     { name: `list-load-error-${width}`, page: 'consumer/pages/pet-archive/index', query: 'preview=1&scenario=load-error', marker: '加载失败' },
     { name: `normal-detail-${width}`, page: 'consumer/pages/pet-archive/detail', query: 'preview=1&petId=30001', marker: '基本信息' },
-    { name: `normal-form-brother-${width}`, page: 'consumer/pages/pet-archive/form', query: 'preview=1&scenario=form-brother', marker: '编辑宠物信息' },
-    { name: `normal-form-sister-${width}`, page: 'consumer/pages/pet-archive/form', query: 'preview=1&scenario=form-sister', marker: '编辑宠物信息' },
-    { name: `form-create-${width}`, page: 'consumer/pages/pet-archive/form', query: 'preview=1', marker: '编辑宠物信息' },
+    { name: `normal-form-brother-${width}`, page: 'consumer/pages/pet-archive/form', query: 'preview=1&scenario=form-brother', marker: '添加宠物信息' },
+    { name: `normal-form-sister-${width}`, page: 'consumer/pages/pet-archive/form', query: 'preview=1&scenario=form-sister', marker: '添加宠物信息' },
+    { name: `form-create-${width}`, page: 'consumer/pages/pet-archive/form', query: 'preview=1', marker: '添加宠物信息' },
   ]
   for (const state of plain) {
     if (process.env.PET_CAPTURE_MODE === 'reference') continue

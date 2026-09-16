@@ -151,7 +151,7 @@ export default function PetArchiveForm() {
         {phase === 'load-error' && <Button id='pet-retry-load' className='pet-state-action' onClick={() => void load()}>重新加载</Button>}
       </View>}
       {editable && <>
-        <Text className='pet-abs pet-form-title'>编辑宠物信息</Text>
+        <Text className='pet-abs pet-form-title'>添加宠物信息</Text>
         <Image className='pet-abs pet-form-chevron' src={formChevron} mode='scaleToFill' />
         <View className='pet-abs pet-form-field pet-form-field-name'>
           <Text className='pet-form-label'>宠物名字</Text>

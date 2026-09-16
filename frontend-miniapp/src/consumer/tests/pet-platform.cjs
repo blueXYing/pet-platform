@@ -68,7 +68,7 @@ function rects(selectors) {
   try {
   fs.mkdirSync(out, { recursive: true })
   // 1. form: validation errors block save and keep the form visible
-  await launch('consumer/pages/pet-archive/form', 'preview=1&scenario=form-brother', '编辑宠物信息')
+  await launch('consumer/pages/pet-archive/form', 'preview=1&scenario=form-brother', '添加宠物信息')
   const formRects = rects(['.pet-form-design', '#pet-form-name', '#pet-tab-home', '#pet-tab-services', '#pet-tab-mine'])
   const scale = formRects[0].width / 402
   if (Math.abs(formRects[1].top - formRects[0].top - 235 * scale) > 2) throw new Error('direct form entry lost base positioning')
@@ -98,7 +98,7 @@ function rects(selectors) {
   check('form save succeeds in preview repository with explicit preview notice')
 
   // 3. form: failed save preserves the draft; retry succeeds
-  await launch('consumer/pages/pet-archive/form', 'preview=1&scenario=save-error', '编辑宠物信息')
+  await launch('consumer/pages/pet-archive/form', 'preview=1&scenario=save-error', '添加宠物信息')
   element('input', '#pet-form-name', ['--value', '豆豆'])
   await sleep(300)
   element('input', '#pet-form-note', ['--value', '失败后保留的备注'])
@@ -132,7 +132,7 @@ function rects(selectors) {
   // 6. detail: edit icon navigates to the form with the pet loaded
   element('tap', '#pet-detail-edit')
   await sleep(1800)
-  assertIncludes(content(), '编辑宠物信息', 'edit opens form')
+  assertIncludes(JSON.stringify(element('value', '#pet-form-name')), '豆豆', 'legacy edit entry loads selected pet; separate edit design pending')
   check('detail edit action opens the form for the selected pet')
 
   // Cross-page mutations, including long text, must be visible after navigating back.
