@@ -1,3 +1,15 @@
+.pet-page { --pet-status-top: 0px; min-height: 100vh; background: #fff; color: #1d0d07; font-family: "C002 Pet Roboto", "C002 Pet CJK", "C002 Pet SC", Roboto, "Noto Sans SC", sans-serif; }
+.pet-page view, .pet-page button, .pet-page input, .pet-page textarea { box-sizing: border-box; }
+button { padding: 0; margin: 0; border: 0; border-radius: 0; background: transparent; font: inherit; line-height: normal; }
+.pet-page button::after { border: 0; }
+.pet-page button[disabled] { opacity: .65; color: inherit; }
+.pet-status-area { height: var(--pet-status-top); background: #fff; }
+.pet-design { position: relative; overflow: hidden; }
+.pet-abs { position: absolute; margin: 0; }
+.pet-state { padding: calc(var(--pet-unit) * 42.88) calc(var(--pet-unit) * 29); font-size: calc(var(--pet-unit) * 14); line-height: calc(var(--pet-unit) * 24); position: relative; z-index: 5; }
+.pet-state-action { margin-top: calc(var(--pet-unit) * 16.08) !important; color: #167fab !important; }
+.pet-notice { display: block; position: absolute; z-index: 6; font-size: calc(var(--pet-unit) * 12); line-height: calc(var(--pet-unit) * 18); color: #402e26; }
+
 /* wx-button ships a built-in margin-top that the tag reset cannot override; keep absolute
    placements exact by forcing it off for every pet page button. */
 .pet-page button { margin: 0 !important; }
@@ -8,3 +20,4 @@
 .pet-reference-canvas { width: var(--pet-canvas-width); min-height: 0; }
 .pet-reference-canvas .pet-status-area { height: 0; }
 .pet-reference-canvas .pet-tabbar { position: absolute; bottom: auto; top: var(--pet-tabbar-top); height: calc(var(--pet-unit) * 62); padding-bottom: 0; }
+.pet-avatar-empty { display: flex; align-items: center; justify-content: center; background: #c0ecff; color: #3c3c3c; font-size: calc(var(--pet-unit) * 20); }

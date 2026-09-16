@@ -1,6 +1,9 @@
 {
   "status": "PENDING_REVIEW",
-  "recordedAt": "2026-09-15",
+  "recordedAt": "2026-09-16",
+  "currentReview": "TAKEOVER-REVIEW.md",
+  "currentEvidence": "evidence/takeover-validation.json; evidence/takeover/ (390 final, 414 intermediate)",
+  "historicalEvidenceWarning": "The original capture metadata assumed scroll offsets and squeezed 414px into 402px; original metrics must not establish current visual acceptance. Current capture resets scroll, verifies actual offsets and crops the design canvas width.",
   "scope": "宠物档案页阶段：列表入口(78:2817 宠物档案模块区)、详情(78:3076)、填写表单(95:1481/95:1844)。本记录不自行判定通过；叠图/差分/指标仅用于定位差异，视觉接受权在用户。",
   "figmaNodes": ["78:2817(模块区 y282..594)", "78:3076", "95:1481", "95:1844"],
   "figmaVersion": "2397539525915641008",

@@ -2,7 +2,7 @@ import assert from 'node:assert/strict'
 import test from 'node:test'
 import {
   PreviewPetRepository, breedAgeLine, deriveAgeLabel, fixturePets, formatWeightDisplay,
-  sexLabel, validateDraft, weightContractToInput, weightInputToContract, type PetDraft,
+  sexLabel, validateDraft, weightContractToInput, weightInputToContract, previewRepository, previewSupplement, type PetDraft,
 } from '../pet/model'
 import { WorkspaceScope, StaleContextError } from '../../shared/workspace'
 
@@ -106,4 +106,36 @@ test('late pet responses are rejected after account or workspace revision change
   release()
   await assert.rejects(pending, StaleContextError)
   assert.equal(scope.read('pet'), undefined)
+})
+
+test('list, form and detail share mutations only within one preview workspace revision', async () => {
+  const scope = new WorkspaceScope()
+  const list = previewRepository(scope, 'normal')
+  const form = previewRepository(scope, 'normal')
+  await form.save('30001', { ...draft, name: '更新后的名字' }, 'edit-shared')
+  assert.equal((await list.load())[0].name, '更新后的名字')
+  const created = await form.save(null, { ...draft, name: '新宠' }, 'create-shared')
+  assert.equal((await previewRepository(scope, 'normal').load()).at(-1)?.petId, created.petId)
+  await form.remove(created.petId, 'delete-shared')
+  assert.equal((await list.load()).some(pet => pet.petId === created.petId), false)
+  assert.equal((await previewRepository(scope, 'list-empty').load()).length, 0)
+  scope.replace(null)
+  assert.equal((await previewRepository(scope, 'normal').load())[0].name, '豆豆')
+  assert.notEqual(previewRepository(new WorkspaceScope(), 'normal'), list)
+})
+
+test('visual record fixtures never assign dog medical records or chip to other pets', () => {
+  assert.equal(previewSupplement('30001').vaccineRecords.length, 3)
+  for (const id of ['30002', 'preview-1', undefined]) {
+    assert.equal(previewSupplement(id).chipNumber, null)
+    assert.deepEqual(previewSupplement(id).vaccineRecords, [])
+    assert.deepEqual(previewSupplement(id).dewormRecords, [])
+  }
+})
+
+test('impossible calendar dates are rejected instead of deriving an age', () => {
+  assert.ok(validateDraft({ ...draft, birthDate: '2025-02-29' }, today).birthDate)
+  assert.ok(validateDraft({ ...draft, birthDate: '2024-04-31' }, today).birthDate)
+  assert.equal(validateDraft({ ...draft, birthDate: '2024-02-29' }, today).birthDate, undefined)
+  assert.equal(deriveAgeLabel('2025-02-29', today), '')
 })

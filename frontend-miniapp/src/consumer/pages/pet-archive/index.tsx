@@ -1,8 +1,8 @@
 import { Button, Image, Text, View } from '@tarojs/components'
-import Taro, { useRouter } from '@tarojs/taro'
+import Taro, { useRouter, useDidShow } from '@tarojs/taro'
 import { useCallback, useEffect, useRef, useState, type CSSProperties } from 'react'
 import { useWorkspace } from '../../../shared/workspace-react'
-import { isPreviewScenario, PreviewPetRepository, breedAgeLine, sexLabel, type PetPhase, type PetView } from '../../pet/model'
+import { isPreviewScenario, PreviewPetRepository, previewRepository, previewSupplement, breedAgeLine, sexLabel, type PetPhase, type PetView } from '../../pet/model'
 import stripMain from './assets/strip-main.png'
 import backing from './assets/panel-list-backing.png'
 import sheet from './assets/panel-list-sheet.png'
@@ -16,18 +16,12 @@ import tagDeworm from './assets/tag-icon-deworm.png'
 import './fonts.css'
 import './list.css'
 
-// Design cutouts per fixture pet; user-uploaded avatars need the upload contract (registered gap).
+// Source cutouts are fallbacks for the preview pets; avatarUrl takes precedence.
 const petPhotos: Record<string, { src: string; x: number; y: number; w: number; h: number }> = {
   '30001': { src: petDoudou, x: 7, y: 12, w: 55, h: 46 },
   '30002': { src: petMimi, x: 13, y: 12, w: 45, h: 47 },
 }
-const listTags: Record<string, { pill: 'vaccine' | 'deworm'; name: string; date: string }> = {
-  '30001': { pill: 'vaccine', name: '犬窝咳疫苗', date: '疫苗 · 2026-10-08' },
-  '30002': { pill: 'deworm', name: '拜耳内虫逃', date: '驱虫 · 2026-08-01' },
-}
-
 // Node 78:2817 is the home frame; this page implements only its pet-archive module region (y 282..594).
-const MODULE_TOP = 282
 export default function PetArchiveList() {
   const route = useRouter()
   const preview = route.params.preview === '1'
@@ -58,10 +52,10 @@ export default function PetArchiveList() {
       if (mounted.current && current === sequence.current && currentRevision === scope.revision) setPhase('load-error')
     }
   }, [preview, scenario, scope])
-  const repository = useRef(new PreviewPetRepository(scenario === 'list-empty' ? [] : undefined, scenario === 'list-empty' ? 'normal' : scenario))
+  const repository = useRef(previewRepository(scope, scenario))
+  useDidShow(() => { void load() })
   useEffect(() => {
     mounted.current = true
-    void load()
     return () => { mounted.current = false; sequence.current++ }
   }, [load])
   useEffect(() => {
@@ -84,11 +78,11 @@ export default function PetArchiveList() {
   }
   function openDetail(pet: PetView) {
     if (!requirePreview()) return
-    Taro.navigateTo({ url: `/consumer/pages/pet-archive/detail?preview=1&petId=${pet.petId}` }).catch(() => setNotice('页面跳转失败，请重试'))
+    Taro.navigateTo({ url: `/consumer/pages/pet-archive/detail?preview=1&scenario=${scenario}&petId=${encodeURIComponent(pet.petId)}` }).catch(() => setNotice('页面跳转失败，请重试'))
   }
   function openForm() {
     if (!requirePreview()) return
-    Taro.navigateTo({ url: '/consumer/pages/pet-archive/form?preview=1' }).catch(() => setNotice('页面跳转失败，请重试'))
+    Taro.navigateTo({ url: `/consumer/pages/pet-archive/form?preview=1&scenario=${scenario}` }).catch(() => setNotice('页面跳转失败，请重试'))
   }
   async function removePet(pet: PetView) {
     if (!requirePreview() || phase !== 'ready') return
@@ -107,10 +101,11 @@ export default function PetArchiveList() {
     if (!requirePreview()) return
     setNotice(`“${label}”页面尚未接入本次预览`)
   }
+  const extraRows = Math.max(0, pets.length - 2) * 85
   const ready = phase === 'ready'
   return <View className={`pet-page pet-list-page${referenceCanvas ? ' pet-reference-canvas' : ''}`} style={style}>
     <View className='pet-status-area' />
-    <View className='pet-design pet-list-design' data-phase={phase}>
+    <View className='pet-design pet-list-design' data-phase={phase} style={{ '--pet-list-extra': `${extraRows * unit}px` } as CSSProperties}>
       <Image className='pet-list-strip' src={stripMain} mode='scaleToFill' />
       <Image className='pet-list-blob pet-list-blob-backing' src={backing} mode='scaleToFill' />
       <Image className='pet-list-blob pet-list-blob-sheet' src={sheet} mode='scaleToFill' />
@@ -120,7 +115,7 @@ export default function PetArchiveList() {
         {phase === 'load-error' && <Button id='pet-retry-load' className='pet-state-action' onClick={() => void load()}>重新加载</Button>}
       </View>}
       {ready && pets.length === 0 && <View className='pet-state pet-list-state' role='status'>
-        <Text>还没有宠物档案，点击「2 只萌宠 +」添加</Text>
+        <Text>还没有宠物档案，点击上方「+」添加</Text>
       </View>}
       {ready && <View className='pet-list-head'>
         <Text className='pet-list-title'>宠物档案</Text>
@@ -133,12 +128,12 @@ export default function PetArchiveList() {
       </View>}
       {ready && pets.map((pet, index) => {
         const photo = petPhotos[pet.petId]
-        const tag = listTags[pet.petId]
+        const tag = previewSupplement(pet.petId).tag
         const top = 95 + index * 85
         return <Button key={pet.petId} id={`pet-card-${pet.petId}`} className='pet-list-card' style={{ top: `calc(var(--pet-unit) * ${top})` }} ariaLabel={`${pet.name}的档案`} onClick={() => openDetail(pet)} onLongPress={() => void removePet(pet)}>
-          {photo && <Image className='pet-list-photo' src={photo.src} mode='scaleToFill' style={{ left: `calc(var(--pet-unit) * ${photo.x})`, top: `calc(var(--pet-unit) * ${photo.y})`, width: `calc(var(--pet-unit) * ${photo.w})`, height: `calc(var(--pet-unit) * ${photo.h})` }} />}
-          <Text className='pet-list-name'>{pet.name}</Text>
-          {sexLabel(pet.sex) && <View className={`pet-list-sex${pet.sex === 'FEMALE' ? ' pet-list-sex-female' : ''}`}><Text>{sexLabel(pet.sex)}</Text></View>}
+          {pet.avatarUrl ? <Image className='pet-list-photo pet-list-avatar' src={pet.avatarUrl} mode='aspectFill' /> : photo ? <Image className='pet-list-photo' src={photo.src} mode='scaleToFill' style={{ left: `calc(var(--pet-unit) * ${photo.x})`, top: `calc(var(--pet-unit) * ${photo.y})`, width: `calc(var(--pet-unit) * ${photo.w})`, height: `calc(var(--pet-unit) * ${photo.h})` }} /> : <View className='pet-list-photo pet-list-avatar pet-avatar-empty'><Text>{pet.name.slice(0, 1)}</Text></View>}
+          <View className='pet-list-identity'><Text className='pet-list-name'>{pet.name}</Text>
+          {sexLabel(pet.sex) && <View className={`pet-list-sex${pet.sex === 'FEMALE' ? ' pet-list-sex-female' : ''}`}><Text>{sexLabel(pet.sex)}</Text></View>}</View>
           <Text className='pet-list-breed'>{breedAgeLine(pet, todayISO())}</Text>
           {tag && <View className={`pet-list-tag pet-list-tag-${tag.pill}`}>
             <View className='pet-list-tag-pill'>

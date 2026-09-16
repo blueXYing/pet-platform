@@ -18,7 +18,7 @@ const tabs = [
 export function AppTabbar({ barTop, unit, onLeave }: { barTop: number; unit: number; onLeave: (label: string) => void }) {
   return <View className='pet-tabbar' style={{ '--pet-tabbar-top': `${unit * barTop}px` } as CSSProperties}>
     <View className='pet-tabbar-line' />
-    {tabs.map(tab => <Button key={tab.key} id={`pet-tab-${tab.key}`} className={`pet-tab pet-tab-${tab.key}`} ariaLabel={tab.label} onClick={() => onLeave(tab.label)}>
+    {tabs.map((tab, index) => <Button key={tab.key} id={`pet-tab-${tab.key}`} className={`pet-tab pet-tab-${tab.key}`} style={{ left: `${index * 20}%` }} ariaLabel={tab.label} onClick={() => onLeave(tab.label)}>
       <Image src={tab.icon} mode='scaleToFill' />
       <Text>{tab.label}</Text>
     </Button>)}

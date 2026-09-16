@@ -11,12 +11,13 @@ and keeps raw tiles alongside the stitched image.
 from pathlib import Path
 import hashlib
 import json
+import os
 from PIL import Image, ImageChops, ImageEnhance
 import numpy as np
 
 HERE = Path(__file__).resolve().parent
 SOURCE = HERE / 'source'
-EVIDENCE = HERE / 'evidence'
+EVIDENCE = Path(os.environ.get('PET_EVIDENCE_DIR', str(HERE / 'evidence')))
 
 STATES = [
     {'name': 'list', 'reference': 'reference-list-402x312.png', 'canvas': (402, 312),
@@ -51,13 +52,14 @@ def stitch(state_name, width, canvas_w, canvas_h):
         # the window (402 <= windowWidth) — reference canvases are therefore captured at the 414
         # window; at 390 the viewport would clip the canvas's last 12 CSS columns.
         k = shot_w / meta['windowWidth']
-        effective = min(tile['scrollTop'], canvas_h - meta['layout'])
+        effective = tile['scrollTop']
         top_css = effective + tile['cropTopCss']
         rows_css = tile['cropBottomCss'] - tile['cropTopCss']
         top_shot = round(tile['canvasTopInScreenshot'] * k) + round(tile['cropTopCss'] * k)
         h_shot = round(rows_css * k)
-        crop = image.crop((0, top_shot, image.width, top_shot + h_shot))
-        crop = crop.resize((canvas_w, round(h_shot / k)), Image.LANCZOS)
+        visible_w = min(canvas_w, meta['windowWidth'])
+        crop = image.crop((0, top_shot, round(visible_w * k), top_shot + h_shot))
+        crop = crop.resize((visible_w, round(h_shot / k)), Image.LANCZOS)
         stitched.paste(crop, (0, round(top_css)))
     out = EVIDENCE / f'reference-{state_name}-stitched-{width}.png'
     stitched.save(out)

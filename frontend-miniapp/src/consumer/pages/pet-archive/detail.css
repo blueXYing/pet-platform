@@ -3,7 +3,7 @@
 
 /* Node 78:3076 (402x1252). All values are exact spec.json pageBounds; the runtime unit avoids rounding drift. */
 .pet-detail-page { background: #c0ecff; }
-.pet-detail-design { height: calc(var(--pet-unit) * 1252); }
+.pet-detail-design { min-height: calc(var(--pet-unit) * 1252); padding-bottom: calc(var(--pet-unit) * 80); }
 .pet-detail-strip1 { left: 0; top: calc(var(--pet-unit) * 35); width: calc(var(--pet-unit) * 402); height: calc(var(--pet-unit) * 787); }
 .pet-detail-strip2 { left: 0; top: calc(var(--pet-unit) * 789); width: calc(var(--pet-unit) * 402); height: calc(var(--pet-unit) * 459); }
 .pet-detail-bottombar { left: 0; top: calc(var(--pet-unit) * 1190); width: calc(var(--pet-unit) * 402); height: calc(var(--pet-unit) * 86); background: #cdeede; }
@@ -92,3 +92,17 @@
 .pet-detail-health { left: calc(var(--pet-unit) * 49); top: calc(var(--pet-unit) * 1093); width: calc(var(--pet-unit) * 300); font-size: calc(var(--pet-unit) * 12); line-height: calc(var(--pet-unit) * 19.5); color: #7b5b4a; }
 .pet-detail-state { position: absolute; top: calc(var(--pet-unit) * 120); left: 0; right: 0; z-index: 6; }
 .pet-detail-notice { left: calc(var(--pet-unit) * 29); top: calc(var(--pet-unit) * 92); right: calc(var(--pet-unit) * 29); }
+.pet-detail-identity-line { left: calc(var(--pet-unit) * 134); top: calc(var(--pet-unit) * 130.75); width: calc(var(--pet-unit) * 115); display: flex; align-items: center; gap: calc(var(--pet-unit) * 8); }
+.pet-detail-identity-line .pet-detail-name { position: static; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.pet-detail-identity-line .pet-detail-sexpill { position: static; flex-shrink: 0; }
+.pet-detail-sexpill-female { background: #ffceba; }
+.pet-detail-sexpill-female text { color: #774b00; }
+.pet-detail-breed { width: calc(var(--pet-unit) * 115); overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+.pet-detail-value { width: calc(var(--pet-unit) * 106); overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+.pet-detail-record-empty { left: calc(var(--pet-unit) * 49); font-size: calc(var(--pet-unit) * 12); line-height: calc(var(--pet-unit) * 20); color: #9e7660; }
+.pet-detail-vaccine-empty { top: calc(var(--pet-unit) * 548); }
+.pet-detail-deworm-empty { top: calc(var(--pet-unit) * 883); }
+.pet-detail-health-panel { position: relative; margin-top: calc(var(--pet-unit) * 1044); margin-left: calc(var(--pet-unit) * 21); width: calc(var(--pet-unit) * 356); min-height: calc(var(--pet-unit) * 128); padding: calc(var(--pet-unit) * 21) calc(var(--pet-unit) * 28) calc(var(--pet-unit) * 20); background: #f0fbff; }
+.pet-detail-health-panel > text { display: block; }
+.pet-detail-health-panel .pet-detail-health { position: static; margin-top: calc(var(--pet-unit) * 8); width: 100%; overflow-wrap: anywhere; word-break: break-all; }
+.pet-detail-page.pet-reference-canvas .pet-tabbar { top: auto; bottom: 0; height: calc(var(--pet-unit) * 61); }

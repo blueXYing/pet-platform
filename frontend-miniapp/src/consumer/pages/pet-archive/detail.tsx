@@ -1,8 +1,8 @@
 import { Button, Image, Text, View } from '@tarojs/components'
-import Taro, { useRouter } from '@tarojs/taro'
+import Taro, { useRouter, useDidShow } from '@tarojs/taro'
 import { useCallback, useEffect, useRef, useState, type CSSProperties } from 'react'
 import { useWorkspace } from '../../../shared/workspace-react'
-import { designSamples, deriveAgeLabel, formatWeightDisplay, isPreviewScenario, PreviewPetRepository, sexLabel, breedAgeLine, type PetPhase, type PetView } from '../../pet/model'
+import { deriveAgeLabel, formatWeightDisplay, isPreviewScenario, PreviewPetRepository, previewRepository, previewSupplement, sexLabel, breedAgeLine, type PetPhase, type PetView } from '../../pet/model'
 import stripMain from './assets/strip-main.png'
 import stripBottom from './assets/strip-detail-bottom.png'
 import panelBasic from './assets/panel-basic.png'
@@ -11,9 +11,11 @@ import panelLower from './assets/panel-lower.png'
 import tapeA from './assets/tape-a.png'
 import tapeB from './assets/tape-b.png'
 import petPhoto from './assets/pet-photo-detail.png'
+import catPhoto from './assets/pet-photo-list-mimi.png'
 import navBack from './assets/nav-back.png'
 import navEdit from './assets/nav-edit.png'
 import tagIconVaccine from './assets/tag-icon-vaccine-blue.png'
+import tagIconDeworm from './assets/tag-icon-deworm.png'
 import iconCalendar from './assets/icon-calendar.png'
 import iconWeight from './assets/icon-weight.png'
 import iconAdd from './assets/icon-add.png'
@@ -36,7 +38,7 @@ export default function PetArchiveDetail() {
   const mounted = useRef(true)
   const sequence = useRef(0)
   const previousRevision = useRef(revision)
-  const repository = useRef(new PreviewPetRepository(undefined, scenario))
+  const repository = useRef(previewRepository(scope, scenario))
   const [platformInfo, setPlatformInfo] = useState(() => Taro.getWindowInfo())
   const unit = referenceCanvas ? 1 : platformInfo.windowWidth / 402
   const style = { '--pet-status-top': `${referenceCanvas ? 0 : platformInfo.statusBarHeight || 0}px`, '--pet-unit': `${unit}px`, '--pet-canvas-width': referenceCanvas ? '402px' : '100vw' } as CSSProperties
@@ -58,9 +60,9 @@ export default function PetArchiveDetail() {
       if (mounted.current && current === sequence.current && currentRevision === scope.revision) setPhase('load-error')
     }
   }, [preview, scenario, scope, petId])
+  useDidShow(() => { void load() })
   useEffect(() => {
     mounted.current = true
-    void load()
     return () => { mounted.current = false; sequence.current++ }
   }, [load])
   useEffect(() => {
@@ -83,13 +85,15 @@ export default function PetArchiveDetail() {
   }
   function editPet() {
     if (!pet) return
-    Taro.navigateTo({ url: `/consumer/pages/pet-archive/form?preview=1&petId=${pet.petId}` }).catch(() => setNotice('页面跳转失败，请重试'))
+    Taro.navigateTo({ url: `/consumer/pages/pet-archive/form?preview=1&scenario=${scenario}&petId=${encodeURIComponent(pet.petId)}` }).catch(() => setNotice('页面跳转失败，请重试'))
   }
   function notWired(label: string) {
     setNotice(`“${label}”页面尚未接入本次预览`)
   }
   const ready = phase === 'ready' && pet
-  const tag = ready ? designSamples.listTags[pet.petId] : undefined
+  const supplement = previewSupplement(ready ? pet.petId : undefined)
+  const tag = supplement.tag
+  const photo = ready ? pet.avatarUrl || (pet.petId === '30001' ? petPhoto : pet.petId === '30002' ? catPhoto : null) : null
   return <View className={`pet-page pet-detail-page${referenceCanvas ? ' pet-reference-canvas' : ''}`} style={style}>
     <View className='pet-status-area' />
     <View className='pet-design pet-detail-design' data-phase={phase}>
@@ -100,21 +104,21 @@ export default function PetArchiveDetail() {
       <Image className='pet-abs pet-detail-panel-vaccine' src={panelVaccine} mode='scaleToFill' />
       <Image className='pet-abs pet-detail-panel-lower' src={panelLower} mode='scaleToFill' />
       <Image className='pet-abs pet-detail-panel-basic' src={panelBasic} mode='scaleToFill' />
+        <Button id='pet-detail-back' className='pet-abs pet-detail-back' ariaLabel='返回' onClick={() => void leave()}><Image src={navBack} mode='scaleToFill' /></Button>
+        <Text className='pet-abs pet-detail-navtitle'>宠物信息</Text>
+        <Button id='pet-detail-edit' className='pet-abs pet-detail-edit' ariaLabel='编辑宠物信息' disabled={!ready} onClick={editPet}><Image src={navEdit} mode='scaleToFill' /></Button>
       {!ready && <View className='pet-state pet-detail-state' role='status'>
-        <Text>{notice || (phase === 'loading' ? '正在加载宠物档案…' : phase === 'expired' ? '登录已失效，请重新登录' : '加载失败，请重试')}</Text>
+        <Text>{notice || (phase === 'loading' ? '正在加载宠物档案…' : phase === 'expired' ? '登录已失效，请重新登录' : phase === 'unavailable' ? '宠物服务暂不可用，请稍后再试' : '加载失败，请重试')}</Text>
         {phase === 'load-error' && <Button id='pet-retry-load' className='pet-state-action' onClick={() => void load()}>重新加载</Button>}
       </View>}
       {ready && <>
         <View className='pet-abs pet-detail-identity' />
-        <Image className='pet-abs pet-detail-photo' src={petPhoto} mode='scaleToFill' />
-        <Button id='pet-detail-back' className='pet-abs pet-detail-back' ariaLabel='返回' onClick={() => void leave()}><Image src={navBack} mode='scaleToFill' /></Button>
-        <Text className='pet-abs pet-detail-navtitle'>宠物信息</Text>
-        <Button id='pet-detail-edit' className='pet-abs pet-detail-edit' ariaLabel='编辑宠物信息' onClick={editPet}><Image src={navEdit} mode='scaleToFill' /></Button>
-        <Text className='pet-abs pet-detail-name'>{pet.name}</Text>
-        <View className='pet-abs pet-detail-sexpill'><Text>{sexLabel(pet.sex)}</Text></View>
+        {photo ? <Image className='pet-abs pet-detail-photo' src={photo} mode={pet.avatarUrl ? 'aspectFill' : 'aspectFit'} /> : <View className='pet-abs pet-detail-photo pet-avatar-empty'><Text>{pet.name.slice(0, 1)}</Text></View>}
+        <View className='pet-abs pet-detail-identity-line'><Text className='pet-detail-name'>{pet.name}</Text>
+        {sexLabel(pet.sex) && <View className={`pet-detail-sexpill${pet.sex === 'FEMALE' ? ' pet-detail-sexpill-female' : ''}`}><Text>{sexLabel(pet.sex)}</Text></View>}</View>
         <Text className='pet-abs pet-detail-breed'>{breedAgeLine(pet, today)}</Text>
         {tag && <View className='pet-abs pet-detail-tagpill'>
-          <Image className='pet-detail-tagicon' src={tagIconVaccine} mode='scaleToFill' />
+          <Image className='pet-detail-tagicon' src={tag.pill === 'vaccine' ? tagIconVaccine : tagIconDeworm} mode='scaleToFill' />
           <Text className='pet-detail-tagname'>{tag.name}</Text>
         </View>}
         {tag && <Text className='pet-abs pet-detail-tagdate'>{tag.date}</Text>}
@@ -136,7 +140,7 @@ export default function PetArchiveDetail() {
         <Text className='pet-abs pet-detail-label pet-detail-label-weight'>体重</Text>
         <Text className='pet-abs pet-detail-value pet-detail-value-weight'>{formatWeightDisplay(pet.weightKg)}</Text>
         <Text className='pet-abs pet-detail-label pet-detail-label-chip'>宠物芯片</Text>
-        <Text className='pet-abs pet-detail-value pet-detail-value-chip'>{designSamples.chipNumber}</Text>
+        <Text className='pet-abs pet-detail-value pet-detail-value-chip'>{supplement.chipNumber || '—'}</Text>
         <Text className='pet-abs pet-detail-label pet-detail-label-age'>年龄</Text>
         <Text className='pet-abs pet-detail-value pet-detail-value-age'>{deriveAgeLabel(pet.birthDate, today)}</Text>
         <Image className='pet-abs pet-detail-tape-a' src={tapeA} mode='scaleToFill' />
@@ -149,7 +153,8 @@ export default function PetArchiveDetail() {
         <View className='pet-abs pet-detail-line pet-detail-line-r2' />
         <View className='pet-abs pet-detail-line pet-detail-line-r3' />
         <View className='pet-abs pet-detail-line pet-detail-line-r4' />
-        {designSamples.vaccineRecords.map((record, index) => {
+        {!supplement.vaccineRecords.length && <Text className='pet-abs pet-detail-record-empty pet-detail-vaccine-empty'>暂无记录</Text>}
+        {supplement.vaccineRecords.map((record, index) => {
           const circle = [538, 614, 697.5][index]
           const expiring = record.status === '即将到期'
           return <View key={record.name} className={`pet-detail-record pet-detail-record-${index}`} style={{ top: `calc(var(--pet-unit) * ${circle})` }}>
@@ -170,7 +175,8 @@ export default function PetArchiveDetail() {
         <View className='pet-abs pet-detail-line pet-detail-line-d1' />
         <View className='pet-abs pet-detail-line pet-detail-line-d2' />
         <View className='pet-abs pet-detail-line pet-detail-line-d3' />
-        {designSamples.dewormRecords.map((record, index) => {
+        {!supplement.dewormRecords.length && <Text className='pet-abs pet-detail-record-empty pet-detail-deworm-empty'>暂无记录</Text>}
+        {supplement.dewormRecords.map((record, index) => {
           const base = [873, 949][index]
           return <View key={record.name} className='pet-detail-record' style={{ top: `calc(var(--pet-unit) * ${base})` }}>
             <Image className='pet-detail-record-icon' src={recordDeworm} mode='scaleToFill' />
@@ -181,8 +187,10 @@ export default function PetArchiveDetail() {
             <Text className='pet-detail-record-date'>{record.date}</Text>
           </View>
         })}
-        <Text className='pet-abs pet-detail-section pet-detail-section-health'>健康备注</Text>
-        <Text className='pet-abs pet-detail-health'>{pet.healthNote || ''}</Text>
+        <View className='pet-detail-health-panel'>
+          <Text className='pet-detail-section'>健康备注</Text>
+          <Text className='pet-detail-health'>{pet.healthNote || '—'}</Text>
+        </View>
       </>}
       {ready && <AppTabbar barTop={1191} unit={unit} onLeave={notWired} />}
       {notice && ready && <Text id='pet-notice' className='pet-notice pet-detail-notice'>{notice}</Text>}

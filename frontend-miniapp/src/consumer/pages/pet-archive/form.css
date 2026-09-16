@@ -30,10 +30,11 @@
 .pet-form-field-weight { top: calc(var(--pet-unit) * 617); }
 .pet-form-field-chip { top: calc(var(--pet-unit) * 697); }
 .pet-form-field-note { top: calc(var(--pet-unit) * 777); }
-/* Sex control: the selected option is always the left button, per both source frames. */
+/* Sex options keep their own position when selection changes. */
 .pet-form-sexwrap { margin-top: calc(var(--pet-unit) * 6); width: calc(var(--pet-unit) * 343); height: calc(var(--pet-unit) * 44); border-radius: calc(var(--pet-unit) * 9999); background: #cdeede; position: relative; }
 .pet-form-sexbtn { position: absolute; top: calc(var(--pet-unit) * 4); left: calc(var(--pet-unit) * 171.5); width: calc(var(--pet-unit) * 167.5); height: calc(var(--pet-unit) * 36); border-radius: calc(var(--pet-unit) * 9999); font-size: calc(var(--pet-unit) * 14) !important; line-height: calc(var(--pet-unit) * 20) !important; font-weight: 500 !important; color: #7b5b4a !important; }
 .pet-form-sexbtn.sex-male { left: calc(var(--pet-unit) * 4); }
+.pet-form-sexbtn { display: flex; align-items: center; justify-content: center; }
 .pet-form-sexbtn.is-selected.sex-male { background: #c0ecff !important; color: #3c3c3c !important; }
 .pet-form-sexbtn.is-selected.sex-female { background: #ffcfba !important; color: #9e7660 !important; }
 .pet-form-field-birth .pet-form-pickerbox { box-sizing: border-box; margin-top: calc(var(--pet-unit) * 6); width: calc(var(--pet-unit) * 343); height: calc(var(--pet-unit) * 44); background: #cdeede; border: calc(var(--pet-unit) * 1) solid #98c4af; border-radius: calc(var(--pet-unit) * 8); position: relative; }
@@ -47,3 +48,5 @@
 /* Validation/save notices have no drawn slot in the frame; they use the sample page's text styles in the gap under the buttons. */
 .pet-form-notice { left: calc(var(--pet-unit) * 29); top: calc(var(--pet-unit) * 951); width: calc(var(--pet-unit) * 343); }
 .pet-form-notice-error { color: #b42318; }
+/* WeChat centers its native input text vertically; vertical padding offsets that text twice. */
+.pet-form-input { padding-top: 0; padding-bottom: 0; }

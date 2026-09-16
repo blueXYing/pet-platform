@@ -5,9 +5,9 @@ const fs = require('node:fs')
 const path = require('node:path')
 
 const WECHATIDE = process.env.WECHATIDE || 'D:/soft/微信web开发者工具/wechatide.cmd'
-const CLIENT = process.env.WECHATIDE_CLIENT || 'zcode-c002-pet'
+const CLIENT = process.env.WECHATIDE_CLIENT || 'Codex'
 const PROJECT = path.resolve(__dirname, '../../..')
-const out = path.resolve(__dirname, '../../../../planning/issues/wave-2/C-002-pet-page/evidence')
+const out = process.env.PET_EVIDENCE_DIR || path.resolve(__dirname, '../../../../planning/issues/wave-2/C-002-pet-page/evidence')
 const width = process.env.PET_WINDOW_WIDTH || '390'
 
 function ide(args, options = {}) {
@@ -65,6 +65,11 @@ async function launch(page, query, marker) {
   }
   // Native rendering and font/image decoding follow the React data update.
   await new Promise(resolve => setTimeout(resolve, 1500))
+  await scrollTo(0)
+}
+
+async function scrollTo(top) {
+  ideJson(['automation_evaluate', '--project', PROJECT, '--fn-source', `function(){return new Promise(resolve=>wx.pageScrollTo({scrollTop:${top},duration:0,success:()=>setTimeout(()=>resolve(true),300)}))}`])
 }
 
 function canvasRect() {
@@ -81,7 +86,8 @@ function windowInfo() {
 function screenshot(name) {
   const file = path.join(out, name)
   const payload = ideJson(['simulator_screenshot', '--project', PROJECT, '--path', file, '--optimize', 'false'])
-  const recorded = payload.imageWidth ? { w: payload.imageWidth, h: payload.imageHeight } : {}
+  const result = payload.result || payload
+  const recorded = result.imageWidth ? { w: result.imageWidth, h: result.imageHeight } : {}
   return recorded
 }
 
@@ -99,7 +105,7 @@ async function captureCanvas(name, canvasHeight, tileName) {
   // Screen rows below the layout viewport are device area, not canvas, and are never cropped.
   const layout = info.windowHeight
   const chromeTop = 100 // notch + status text + menu capsule overlay the first ~90 screen rows
-  const maxScroll = canvasHeight - layout
+  const maxScroll = Math.max(0, canvasHeight - layout)
   const scrolls = [0]
   let desired = layout - chromeTop
   while (desired < maxScroll && desired !== scrolls[scrolls.length - 1]) {
@@ -111,15 +117,14 @@ async function captureCanvas(name, canvasHeight, tileName) {
   for (const index of scrolls.keys()) {
     const scroll = scrolls[index]
     const last = index === scrolls.length - 1
-    if (scroll > 0) {
-      ideJson(['automation_viewport_action', '--project', PROJECT, '--action', 'pageScrollTo', '--scroll-top', String(scroll)])
-      await new Promise(resolve => setTimeout(resolve, 500))
-    }
+    await scrollTo(scroll)
     const rect = canvasRect()
+    const actualScroll = Math.max(0, -rect.y)
+    if (Math.abs(actualScroll - scroll) > 2) throw new Error(`requested scroll ${scroll}, observed ${actualScroll}`)
     const file = `${tileName}-tile${index}.png`
     const size = screenshot(file)
     const cropTopCss = scroll === 0 ? 0 : chromeTop
-    tiles.push({ file, scrollTop: scroll, cropTopCss, cropBottomCss: layout, canvasTopInScreenshot: Math.max(0, Math.round(rect.y)), screenshotWidth: size.w || 0, screenshotHeight: size.h || 0 })
+    tiles.push({ file, scrollTop: actualScroll, cropTopCss, cropBottomCss: layout, canvasTopInScreenshot: Math.max(0, Math.round(rect.y)), screenshotWidth: size.w || 0, screenshotHeight: size.h || 0 })
   }
   fs.writeFileSync(path.join(out, `${tileName}-tiles.json`), JSON.stringify({ canvasHeight, layout, windowWidth: info.windowWidth, chromeTop, tiles }, null, 2))
 }
@@ -133,10 +138,13 @@ async function captureCanvas(name, canvasHeight, tileName) {
     { name: 'form-sister', page: 'consumer/pages/pet-archive/form', query: 'preview=1&scenario=form-sister&referenceCanvas=1', marker: '编辑宠物信息', canvas: 1067 },
   ]
   for (const state of states) {
+    if (process.env.PET_CAPTURE_MODE === 'device') continue
     await launch(state.page, state.query, state.marker)
+    if (windowInfo().windowWidth !== Number(width)) throw new Error(`actual window width does not match requested ${width}`)
     const rect = await canvasRectWithRetry()
     if (Math.round(rect.width) !== 402) throw new Error(`${state.name} reference canvas width ${rect.width} != 402 (rect=${JSON.stringify(rect)})`)
     fs.writeFileSync(path.join(out, `reference-canvas-bounds-${state.name}-${width}.json`), JSON.stringify({ state: state.name, canvas: rect, design: state.canvas }, null, 2))
+    if (Math.abs(rect.height - state.canvas) > 1) throw new Error(`${state.name} height ${rect.height} != ${state.canvas}`)
     console.log('capture reference canvas', state.name)
     await captureCanvas(state.name, state.canvas, `reference-${state.name}-raw-${width}`)
   }
@@ -150,6 +158,7 @@ async function captureCanvas(name, canvasHeight, tileName) {
     { name: `form-create-${width}`, page: 'consumer/pages/pet-archive/form', query: 'preview=1', marker: '编辑宠物信息' },
   ]
   for (const state of plain) {
+    if (process.env.PET_CAPTURE_MODE === 'reference') continue
     await launch(state.page, state.query, state.marker)
     console.log('capture', state.name)
     screenshot(state.name + '.png')

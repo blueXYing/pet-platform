@@ -1,0 +1,131 @@
+
+> pet-platform-miniapp@0.1.0 build:weapp
+> taro build --type weapp --disable-global-config
+
+👽 Taro v4.1.5
+
+Tips:
+1. 建议开启持久化缓存功能，能有效提升二次编译速度，详情请参考: https://docs.taro.zone/docs/config-detail#cache。
+
+
+
+● Webpack █████████████████████████  (0%)
+
+
+
+● Webpack █████████████████████████ building (10%) 0/15 entries 15/15 dependen
+cies 0/15 modules 1 active
+ babel-loader › src\app.config.ts
+
+
+● Webpack █████████████████████████ building (10%) 0/15 entries 15/15 dependen
+cies 0/15 modules 2 active
+ babel-loader › src\app.tsx
+
+
+● Webpack █████████████████████████ building (10%) 0/15 entries 15/15 dependen
+cies 1/15 modules 14 active
+ ...l-loader › node_modules\@tarojs\webpack5-runner\dist\template\custom-wrapp
+er.js
+
+
+● Webpack █████████████████████████ building (28%) 5/15 entries 80/158 depende
+ncies 5/57 modules 20 active
+ babel-loader › node_modules\@tarojs\plugin-framework-react\dist\runtime.js
+
+
+● Webpack █████████████████████████ building (28%) 5/15 entries 148/174 depend
+encies 22/79 modules 52 active
+ babel-loader › node_modules\@tarojs\react\dist\react.esm.js
+
+
+● Webpack █████████████████████████ building (28%) 5/15 entries 167/186 depend
+encies 40/87 modules 40 active
+ css-loader › postcss-loader › src\app.css
+
+
+● Webpack █████████████████████████ building (28%)
+ import loader .\node_modules\postcss-loader\dist\cjs.js
+
+
+● Webpack █████████████████████████ building (28%) 5/15 entries 182/194 depend
+encies 40/94 modules 48 active
+ babel-loader › src\shared\workspace.ts
+
+
+● Webpack █████████████████████████ building (28%) 5/15 entries 262/290 depend
+encies 49/144 modules 93 active
+ node_modules\react\cjs\react.production.min.js
+
+
+● Webpack █████████████████████████ building (28%) 5/15 entries 425/473 depend
+encies 63/162 modules 82 active
+ babel-loader › node_modules\@tarojs\shared\dist\index.js
+
+
+● Webpack █████████████████████████ building (28%) 5/15 entries 503/527 depend
+encies 93/182 modules 85 active
+ ...ontend-miniapp\node_modules\@babel\runtime\helpers\esm\assertThisInitializ
+ed.js
+
+
+● Webpack █████████████████████████ building (28%) 5/15 entries 562/562 depend
+encies 113/205 modules 91 active
+ ...s
+
+
+● Webpack █████████████████████████ building (32%) 6/15 entries 594/594 depend
+encies 167/205 modules 38 active
+ node_modules\react-reconciler\cjs\react-reconciler.production.min.js
+
+
+● Webpack █████████████████████████ building (39%) 8/15 entries 599/602 depend
+encies 169/207 modules 37 active
+ babel-loader › node_modules\@tarojs\api\dist\env.js
+
+
+● Webpack █████████████████████████ building (43%) 9/15 entries 616/616 depend
+encies 184/214 modules 29 active
+ node_modules\css-loader\dist\runtime\noSourceMaps.js
+
+
+● Webpack █████████████████████████ building (46%) 10/15 entries 633/648 depen
+dencies 192/225 modules 24 active
+ ...wAoADgALAAuACoATgBqAF8AVAAkAAQAQQBwAC0AZQK3AC4CZwAiABgAGAKFAPQAdwLyACEAJQA
+qAAA=
+
+
+● Webpack █████████████████████████ sealing (70%)
+ plugins
+
+
+● Webpack █████████████████████████ sealing (88%)
+ runtime requirements
+
+
+● Webpack █████████████████████████ sealing (92%) asset processing
+ CssMinimizerPlugin
+
+
+● Webpack █████████████████████████ sealing (92%) asset processing
+ RealContentHashPlugin
+
+
+√ Webpack
+  Compiled successfully in 3.78s
+
+⚠️ Warnings:
+
+AssetsOverSizeLimitWarning: asset size limit: The following asset(s) exceed the recommended size limit (244 KiB).
+This can impact web performance.
+Assets:
+  consumer/pages/profile-edit/index.wxss (334 KiB)
+  consumer/pages/pet-archive/assets/strip-detail-bottom.png (370 KiB)
+  consumer/pages/pet-archive/sub-vendors.wxss (401 KiB)
+  consumer/pages/pet-archive/assets/strip-main.png (634 KiB)
+    at Generator.next (<anonymous>)
+
+NoAsyncChunksWarning: webpack performance recommendations:
+You can limit the size of your bundles by using import() or require.ensure to lazy load some parts of your application.
+For more info visit https://webpack.js.org/guides/code-splitting/
+    at Generator.next (<anonymous>)

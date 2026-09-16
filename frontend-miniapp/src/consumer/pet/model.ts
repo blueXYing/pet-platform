@@ -18,6 +18,11 @@ export type PetDraft = Readonly<{
 export type PetPhase = 'loading' | 'ready' | 'saving' | 'load-error' | 'save-error' | 'expired' | 'unavailable'
 export const codePointLength = (value: string) => Array.from(value).length
 export const ISO_DATE = /^\d{4}-\d{2}-\d{2}$/
+export function isCalendarDate(value: string): boolean {
+  if (!ISO_DATE.test(value)) return false
+  const date = new Date(`${value}T00:00:00Z`)
+  return !Number.isNaN(date.getTime()) && date.toISOString().slice(0, 10) === value
+}
 
 // The form input keeps the designed "28.5kg" text shape; the contract value is a two-decimal string.
 export function weightInputToContract(input: string): string | null {
@@ -38,7 +43,7 @@ export function formatWeightDisplay(weightKg: string | null): string {
 }
 // Contract decision 3: age is derived on the client from birthDate, never stored.
 export function deriveAgeLabel(birthDate: string | null, todayISO: string): string {
-  if (!birthDate || !ISO_DATE.test(birthDate) || !ISO_DATE.test(todayISO)) return ''
+  if (!birthDate || !isCalendarDate(birthDate) || !isCalendarDate(todayISO)) return ''
   if (birthDate > todayISO) return ''
   const birth = birthDate.split('-').map(Number) as [number, number, number]
   const today = todayISO.split('-').map(Number) as [number, number, number]
@@ -59,7 +64,8 @@ export function validateDraft(draft: PetDraft, todayISO: string): PetDraftErrors
   else if (codePointLength(draft.name) > 64) errors.name = '名字最多64字'
   if (codePointLength(draft.breedName) > 64) errors.breedName = '品种最多64字'
   if (draft.birthDate) {
-    if (!ISO_DATE.test(draft.birthDate) || draft.birthDate > todayISO) errors.birthDate = '出生日期不能晚于今天'
+    if (!isCalendarDate(draft.birthDate)) errors.birthDate = '请选择有效的出生日期'
+    else if (draft.birthDate > todayISO) errors.birthDate = '出生日期不能晚于今天'
   }
   if (draft.weightInput.trim() && !weightInputToContract(draft.weightInput)) errors.weightInput = '体重格式应如28.5kg'
   if (codePointLength(draft.healthNote) > 1000) errors.healthNote = '健康备注最多1000字'
@@ -121,6 +127,33 @@ export const formFixture: PetDraft = {
   weightInput: '28.5kg', healthNote: '性格温顺粘人，喜欢球类玩具。对鸡肉不过敏，注意控制零食量。',
 }
 export const emptyDraft: PetDraft = { name: '', breedName: '', birthDate: '', sex: 'UNKNOWN', weightInput: '', healthNote: '' }
+
+// These visual-only records belong to the specific source fixture, never every pet.
+// This is NOT a new HTTP DTO: record/chip contracts still require CCR approval.
+export function previewSupplement(petId?: string) {
+  return {
+    tag: petId ? designSamples.listTags[petId] : undefined,
+    chipNumber: petId === '30001' ? designSamples.chipNumber : null,
+    vaccineRecords: petId === '30001' ? designSamples.vaccineRecords : [],
+    dewormRecords: petId === '30001' ? designSamples.dewormRecords : [],
+  }
+}
+
+// Share preview mutations across pages, but never across workspace revisions.
+const previewStores = new WeakMap<object, { revision: number; repositories: Map<PreviewScenario, PreviewPetRepository> }>()
+export function previewRepository(scope: { revision: number }, scenario: PreviewScenario): PreviewPetRepository {
+  let entry = previewStores.get(scope)
+  if (!entry || entry.revision !== scope.revision) {
+    entry = { revision: scope.revision, repositories: new Map() }
+    previewStores.set(scope, entry)
+  }
+  let repository = entry.repositories.get(scenario)
+  if (!repository) {
+    repository = new PreviewPetRepository(scenario === 'list-empty' ? [] : fixturePets, scenario)
+    entry.repositories.set(scenario, repository)
+  }
+  return repository
+}
 
 // Explicit preview repository: no network, no session, no durable user data.
 export class PreviewPetRepository {

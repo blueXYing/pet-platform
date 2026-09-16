@@ -3,8 +3,8 @@ import Taro, { useRouter } from '@tarojs/taro'
 import { useCallback, useEffect, useRef, useState, type CSSProperties } from 'react'
 import { useWorkspace } from '../../../shared/workspace-react'
 import {
-  deriveAgeLabel, designSamples, emptyDraft, formFixture, isPreviewScenario,
-  PreviewPetRepository, sameDraft, validateDraft, weightContractToInput, type PetDraft, type PetPhase, type PetSex,
+  deriveAgeLabel, emptyDraft, formFixture, isPreviewScenario,
+  PreviewPetRepository, previewRepository, previewSupplement, sameDraft, validateDraft, weightContractToInput, type PetDraft, type PetPhase, type PetSex,
 } from '../../pet/model'
 import stripMain from './assets/strip-main.png'
 import stripFormBottom from './assets/strip-form-bottom.png'
@@ -40,7 +40,8 @@ export default function PetArchiveForm() {
   const mounted = useRef(true)
   const sequence = useRef(0)
   const previousRevision = useRef(revision)
-  const repository = useRef(new PreviewPetRepository(undefined, scenario === 'form-brother' || scenario === 'form-sister' ? 'normal' : scenario))
+  const repository = useRef(previewRepository(scope, scenario))
+  const savedPetId = useRef(petId || null)
   const saving = useRef(false)
   const request = useRef<{ id: string; draft: PetDraft } | null>(null)
   const [platformInfo, setPlatformInfo] = useState(() => Taro.getWindowInfo())
@@ -112,8 +113,9 @@ export default function PetArchiveForm() {
     }
     const pending = request.current
     try {
-      await scope.run(undefined, () => repository.current.save(petId || null, pending.draft, pending.id))
+      const saved = await scope.run(undefined, () => repository.current.save(savedPetId.current, pending.draft, pending.id))
       if (!mounted.current || currentRevision !== scope.revision) return
+      savedPetId.current = saved.petId
       setBaseline(pending.draft); setPhase('ready'); setNoticeKind('info'); setNotice('预览数据已更新'); request.current = null
     } catch {
       if (mounted.current && currentRevision === scope.revision) { setPhase('save-error'); setNoticeKind('error'); setNotice('保存失败，请重试；已填写内容保留') }
@@ -143,7 +145,7 @@ export default function PetArchiveForm() {
       <Text className='pet-abs pet-form-navtitle'>宠物信息</Text>
       <Image className='pet-abs pet-form-navedit' src={navEdit} mode='scaleToFill' />
       {!editable && <View className='pet-state pet-form-state' role='status'>
-        <Text>{phase === 'loading' ? '正在加载宠物档案…' : phase === 'expired' ? '登录已失效，请重新登录' : '加载失败，请重试'}</Text>
+        <Text>{phase === 'loading' ? '正在加载宠物档案…' : phase === 'expired' ? '登录已失效，请重新登录' : phase === 'unavailable' ? '宠物服务暂不可用，请稍后再试' : '加载失败，请重试'}</Text>
         {phase === 'load-error' && <Button id='pet-retry-load' className='pet-state-action' onClick={() => void load()}>重新加载</Button>}
       </View>}
       {editable && <>
@@ -160,7 +162,7 @@ export default function PetArchiveForm() {
         <View className='pet-abs pet-form-field pet-form-field-sex'>
           <Text className='pet-form-label'>性别</Text>
           <View className='pet-form-sexwrap'>
-            {(['MALE', 'FEMALE'] as PetSex[]).map(sex => <Button key={sex} id={`pet-form-sex-${sex}`} className={`pet-form-sexbtn${draft.sex === sex ? ` is-selected sex-${sex.toLowerCase()}` : ''}`} ariaLabel={`${sex === 'MALE' ? '弟弟' : '妹妹'}${draft.sex === sex ? '，已选择' : ''}`} disabled={phase === 'saving'} onClick={() => pickSex(sex)}>{sex === 'MALE' ? '弟弟' : '妹妹'}</Button>)}
+            {(['MALE', 'FEMALE'] as PetSex[]).map(sex => <Button key={sex} id={`pet-form-sex-${sex}`} className={`pet-form-sexbtn sex-${sex.toLowerCase()}${draft.sex === sex ? ' is-selected' : ''}`} ariaLabel={`${sex === 'MALE' ? '弟弟' : '妹妹'}${draft.sex === sex ? '，已选择' : ''}`} disabled={phase === 'saving'} onClick={() => pickSex(sex)}>{sex === 'MALE' ? '弟弟' : '妹妹'}</Button>)}
           </View>
         </View>
         <View className='pet-abs pet-form-field pet-form-field-age'>
@@ -185,7 +187,7 @@ export default function PetArchiveForm() {
         <View className='pet-abs pet-form-field pet-form-field-chip'>
           <Text className='pet-form-label'>宠物芯片号</Text>
           <View className='pet-form-staticbox'>
-            <Text className='pet-form-staticvalue'>{designSamples.chipNumber}</Text>
+            <Text className='pet-form-staticvalue'>{previewSupplement(petId || (scenario === 'form-brother' || scenario === 'form-sister' ? '30001' : undefined)).chipNumber || '—'}</Text>
           </View>
         </View>
         <View className='pet-abs pet-form-field pet-form-field-note'>

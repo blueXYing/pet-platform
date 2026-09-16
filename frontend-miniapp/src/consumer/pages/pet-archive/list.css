@@ -2,23 +2,11 @@
 
 /* Source measures use 402 design px; a runtime pixel unit avoids rpx rounding and calc coefficient truncation.
    List page implements only the pet-archive module region of node 78:2817 (design y 282..594 → 0..312). */
-.pet-page { --pet-status-top: 0px; min-height: 100vh; background: #fff; color: #1d0d07; font-family: "C002 Pet Roboto", "C002 Pet CJK", "C002 Pet SC", Roboto, "Noto Sans SC", sans-serif; }
-.pet-page view, .pet-page button, .pet-page input, .pet-page textarea { box-sizing: border-box; }
-.pet-page button { padding: 0; margin: 0; border: 0; border-radius: 0; background: transparent; font: inherit; line-height: normal; }
-.pet-page button::after { border: 0; }
-.pet-page button[disabled] { opacity: .65; color: inherit; }
-.pet-status-area { height: var(--pet-status-top); background: #fff; }
-.pet-design { position: relative; overflow: hidden; }
-.pet-abs { position: absolute; margin: 0; }
-.pet-state { padding: calc(var(--pet-unit) * 42.88) calc(var(--pet-unit) * 29); font-size: calc(var(--pet-unit) * 14); line-height: calc(var(--pet-unit) * 24); position: relative; z-index: 5; }
-.pet-state-action { margin-top: calc(var(--pet-unit) * 16.08) !important; color: #167fab !important; }
-.pet-notice { display: block; position: absolute; z-index: 6; font-size: calc(var(--pet-unit) * 12); line-height: calc(var(--pet-unit) * 18); color: #402e26; }
-
-.pet-list-design { height: calc(var(--pet-unit) * 312); }
+.pet-list-design { height: calc(var(--pet-unit) * 312 + var(--pet-list-extra, 0px)); }
 .pet-list-strip { position: absolute; left: 0; top: calc(var(--pet-unit) * -247); width: calc(var(--pet-unit) * 402); height: calc(var(--pet-unit) * 787); }
 .pet-list-blob { position: absolute; }
-.pet-list-blob-backing { left: calc(var(--pet-unit) * 18); top: calc(var(--pet-unit) * 10); width: calc(var(--pet-unit) * 338); height: calc(var(--pet-unit) * 302); }
-.pet-list-blob-sheet { left: calc(var(--pet-unit) * 5); top: 0; width: calc(var(--pet-unit) * 392.26735729359507); height: calc(var(--pet-unit) * 304.4132399271116); }
+.pet-list-blob-backing { left: calc(var(--pet-unit) * 18); top: calc(var(--pet-unit) * 10); width: calc(var(--pet-unit) * 338); height: calc(var(--pet-unit) * 302 + var(--pet-list-extra, 0px)); }
+.pet-list-blob-sheet { left: calc(var(--pet-unit) * 5); top: 0; width: calc(var(--pet-unit) * 392.26735729359507); height: calc(var(--pet-unit) * 304.4132399271116 + var(--pet-list-extra, 0px)); }
 .pet-list-tape { position: absolute; left: calc(var(--pet-unit) * 19); top: 0; width: calc(var(--pet-unit) * 57); height: calc(var(--pet-unit) * 57); z-index: 3; }
 .pet-list-state { position: absolute; top: calc(var(--pet-unit) * 90); left: 0; right: 0; }
 .pet-list-head { position: absolute; left: 0; top: 0; width: 100%; height: calc(var(--pet-unit) * 28); z-index: 4; }
@@ -43,4 +31,9 @@
 .pet-list-tag-name { font-size: calc(var(--pet-unit) * 10); line-height: calc(var(--pet-unit) * 15); color: #003226; margin-left: calc(var(--pet-unit) * 4.578125); white-space: nowrap; }
 .pet-list-tag-deworm .pet-list-tag-name { color: #312621; }
 .pet-list-tag-date { position: absolute; left: calc(var(--pet-unit) * 1.421875); top: calc(var(--pet-unit) * 23); font-size: calc(var(--pet-unit) * 10); line-height: calc(var(--pet-unit) * 15); color: #b89682; white-space: nowrap; }
-.pet-list-notice { left: calc(var(--pet-unit) * 29); top: calc(var(--pet-unit) * 288); right: calc(var(--pet-unit) * 29); }
+.pet-list-notice { left: calc(var(--pet-unit) * 29); top: calc(var(--pet-unit) * 288 + var(--pet-list-extra, 0px)); right: calc(var(--pet-unit) * 29); }
+.pet-list-identity { position: absolute; left: calc(var(--pet-unit) * 74); top: calc(var(--pet-unit) * 14.75); width: calc(var(--pet-unit) * 127); display: flex; align-items: center; gap: calc(var(--pet-unit) * 8); }
+.pet-list-identity .pet-list-name { position: static; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.pet-list-identity .pet-list-sex { position: static; flex-shrink: 0; }
+.pet-list-breed { width: calc(var(--pet-unit) * 127); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.pet-list-avatar { left: calc(var(--pet-unit) * 7); top: calc(var(--pet-unit) * 12); width: calc(var(--pet-unit) * 55); height: calc(var(--pet-unit) * 46); border-radius: calc(var(--pet-unit) * 8); }
