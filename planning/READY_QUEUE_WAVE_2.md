@@ -1,12 +1,12 @@
 # Ready Queue — Wave 2 当前阶段台账
 
-更新：2026-09-16，核验基线 develop `e576837`。Wave2 已有逐阶段实现与合并；旧“PLAN_REVIEW，未启动”不再描述当前情况。下表区分已合入阶段与剩余范围，不直接把 Catalog 的完整Issue状态改为 DONE，也不因本次文档同步自动派发新开发任务。
+更新：2026-09-16，核验基线 develop `b91a014`（PR36后）。Wave2 已有逐阶段实现与合并；旧“PLAN_REVIEW，未启动”不再描述当前情况。下表区分已合入阶段与剩余范围，不直接把 Catalog 的完整Issue状态改为 DONE，也不因本次文档同步自动派发新开发任务。发号器池化时区/续租核查与本次验证边界见[整合收尾报告](progress/2026-09-16/ID_INTEGRATION_CLOSEOUT.md)。
 
 | Issue / Owner | 已合入阶段 | 下一步需明确的范围/前置条件 | 原验收映射 |
 |---|---|---|---|
 | PLAT-002 / Backend Core | PR10/11公共约定与S1，PR13/16 Hutool适配与组件 | 真实宿主退出证明、节点/高水位恢复、迁移/生产装配；完整幂等范围逐项确认 | ORD-011/013；W2-IDEM-001～005 |
 | PLAT-004 / Backend Core | PR12 Worker/Lease组件 | producer调度、DEAD对账/告警、业务Handler及生产装配；不再说ID接口尚未交接 | TASK-001/002；W2-TASK-001～004 |
-| AUTH-001 / Backend Core | PR14/15规范，PR17运营Web，PR31 C会话/HTTP，PR33微信Provider代码 | 前端真实wx.login code联调、环境配置；SMS/密码/刷新与商家准入另按既有门禁处理 | MINI002～004、WEB002/PERM；W2-AUTH-001～004 |
+| AUTH-001 / Backend Core | PR14/15规范，PR17运营Web，PR31 C会话/HTTP，PR33微信Provider；PR36真实微信/手机号/会话/宠物查询/登出历史冒烟与配置修复 | C端页面真实接入及完整E2E、正式发号宿主/环境门禁；SMS/密码/刷新与商家准入另按既有门禁处理 | MINI002～004、WEB002/PERM；W2-AUTH-001～004 |
 | PLAT-003 / Backend Core | PR18/19规范与权威映射，PR20 Outbox组件 | 生产ID/迁移、业务事件生产者/消费者、对账告警和归档策略；装配默认关闭 | TASK005/CON020/FLT012；W2-OUTBOX-001～003 |
 | USR-001 / Backend Core | PR22/23契约、PR24宠物域与幂等服务；PR31接入HTTP | 生产ID/迁移启用；前端真实联调、订单等后续完整业务验收 | W2-USR-001～004；宠物快照前置 |
 | MER-001 / Backend Core | 本轮未发现对应实现PR | 商家/门店/人员契约、准入/签约事实与Owner交接；OD-W0-002仍有效 | MER001/ORD009/010；W2-MER-001～003 |
