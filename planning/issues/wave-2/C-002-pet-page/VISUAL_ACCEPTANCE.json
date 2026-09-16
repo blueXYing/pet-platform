@@ -1,0 +1,36 @@
+{
+  "status": "PENDING_REVIEW",
+  "recordedAt": "2026-09-16",
+  "currentReview": "NAVIGATION-REFACTOR.md; TAKEOVER-REVIEW.md (prior bug fixes)",
+  "currentEvidence": "evidence/navigation/navigation-validation.json; evidence/navigation/ (current shared-navigation 390px); evidence/takeover/ is prior commit evidence",
+  "historicalEvidenceWarning": "The original capture metadata assumed scroll offsets and squeezed 414px into 402px; original metrics must not establish current visual acceptance. Current capture resets scroll, verifies actual offsets and crops the design canvas width.",
+  "scope": "宠物档案页阶段：列表入口(78:2817 宠物档案模块区)、详情(78:3076)、填写表单(95:1481/95:1844)。本记录不自行判定通过；叠图/差分/指标仅用于定位差异，视觉接受权在用户。",
+  "figmaNodes": ["78:2817(模块区 y282..594)", "78:3076", "95:1481", "95:1844"],
+  "figmaVersion": "2397539525915641008",
+  "acceptedCodeBaseline": "develop c99ab9d (PR26 合并后)",
+  "referenceBasis": {
+    "detail": "官方整帧渲染 reference-frames/78-3076@1x.png 原样复制",
+    "listAndForms": "无官方整帧渲染，使用 source/build-reference.py 以 spec.json 几何 + 官方 2x 切图 + 交付字体子集合成的规格基准图(已登记局限)",
+    "limitations": "合成基准的文本由 PIL 以交付字体子集绘制，与微信渲染存在字距/抗锯齿差异；指标因此整体偏高，仅作差异定位"
+  },
+  "captureEnvironment": {
+    "channel": "wechatide-skill CLI (开发者工具 2.02.2608060)；旧 miniprogram-automator/服务端口通道随本次开发者工具更新失效",
+    "windows": ["iPhone 12/13 (Pro) 390x844", "iPhone XR 414x896"],
+    "referenceCanvasAt": "414 窗口(402 画布需 ≤ 视口宽才完整可见；390 会裁掉末 12 列，已登记)",
+    "screenshotScale": "simulator_screenshot 按模拟器面板适配缩放输出(无 1:1 通道)，拼接时按 k=shotW/windowWidth 一致重采样到 402 设计宽",
+    "chromeExclusion": "刘海/状态栏文字/胶囊(顶部约 100 行)与 Home 指示区不属设计稿，排除于指标"
+  },
+  "files": {
+    "evidence/visual-comparison-414.json": "分区指标+基准与拼接图 SHA-256",
+    "evidence/visual-comparison-390.json": "390 窗口同口径指标(画布右缘 12 列无信号，已掩膜)",
+    "evidence/overlay-*.png": "50% 叠图",
+    "evidence/difference-x4-*.png": "4x 对比度差分",
+    "evidence/source-and-actual-*.png": "基准|实际并排",
+    "evidence/reference-*-stitched-*.png": "滚动拼接后的实际画布(原始瓦片与 tiles.json 同目录保留)"
+  },
+  "notApprovedByThisRecord": [
+    "真实登录/宠物 HTTP 增删改查或数据库验收",
+    "完整 C-002 DONE 或其他页面",
+    "PR 合并/发布/生产迁移"
+  ]
+}

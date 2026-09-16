@@ -1,0 +1,39 @@
+@import './canvas.css';
+
+/* Source measures use 402 design px; a runtime pixel unit avoids rpx rounding and calc coefficient truncation.
+   List page implements only the pet-archive module region of node 78:2817 (design y 282..594 → 0..312). */
+.pet-list-design { height: calc(var(--pet-unit) * 312 + var(--pet-list-extra, 0px)); }
+.pet-list-strip { position: absolute; left: 0; top: calc(var(--pet-unit) * -247); width: calc(var(--pet-unit) * 402); height: calc(var(--pet-unit) * 787); }
+.pet-list-blob { position: absolute; }
+.pet-list-blob-backing { left: calc(var(--pet-unit) * 18); top: calc(var(--pet-unit) * 10); width: calc(var(--pet-unit) * 338); height: calc(var(--pet-unit) * 302 + var(--pet-list-extra, 0px)); }
+.pet-list-blob-sheet { left: calc(var(--pet-unit) * 5); top: 0; width: calc(var(--pet-unit) * 392.26735729359507); height: calc(var(--pet-unit) * 304.4132399271116 + var(--pet-list-extra, 0px)); }
+.pet-list-tape { position: absolute; left: calc(var(--pet-unit) * 19); top: 0; width: calc(var(--pet-unit) * 57); height: calc(var(--pet-unit) * 57); z-index: 3; }
+.pet-list-state { position: absolute; top: calc(var(--pet-unit) * 90); left: 0; right: 0; }
+.pet-list-head { position: absolute; left: 0; top: 0; width: 100%; height: calc(var(--pet-unit) * 28); z-index: 4; }
+.pet-list-title { position: absolute; left: calc(var(--pet-unit) * 51); top: calc(var(--pet-unit) * 57); font-size: calc(var(--pet-unit) * 18); line-height: calc(var(--pet-unit) * 28); font-weight: 700; color: #1d0d07; }
+.pet-list-count { position: absolute; left: calc(var(--pet-unit) * 131); top: calc(var(--pet-unit) * 58); height: calc(var(--pet-unit) * 28); font-size: calc(var(--pet-unit) * 11); line-height: calc(var(--pet-unit) * 28); color: #53bfee; white-space: pre; }
+.pet-list-encyc { position: absolute; left: calc(var(--pet-unit) * 270.796875); top: calc(var(--pet-unit) * 61); width: calc(var(--pet-unit) * 81.203125); height: calc(var(--pet-unit) * 20); display: flex; align-items: center; }
+.pet-list-encyc-paw { width: calc(var(--pet-unit) * 14.59375); height: calc(var(--pet-unit) * 20); flex-shrink: 0; }
+.pet-list-encyc-label { font-size: calc(var(--pet-unit) * 12); line-height: calc(var(--pet-unit) * 18); color: #53bfee; margin-left: calc(var(--pet-unit) * 2); }
+.pet-list-encyc-chevron { width: calc(var(--pet-unit) * 14.59375); height: calc(var(--pet-unit) * 20); flex-shrink: 0; }
+.pet-list-card { box-sizing: border-box; position: absolute; left: calc(var(--pet-unit) * 50); width: calc(var(--pet-unit) * 302); height: calc(var(--pet-unit) * 69); border: calc(var(--pet-unit) * 1) solid #c0ecff; border-radius: calc(var(--pet-unit) * 9); z-index: 2; display: block; text-align: left; }
+.pet-list-photo { position: absolute; }
+.pet-list-name { position: absolute; left: calc(var(--pet-unit) * 74); top: calc(var(--pet-unit) * 14.75); font-size: calc(var(--pet-unit) * 14); line-height: calc(var(--pet-unit) * 20); font-weight: 700; color: #1d0d07; }
+.pet-list-sex { position: absolute; left: calc(var(--pet-unit) * 110); top: calc(var(--pet-unit) * 15.25); width: calc(var(--pet-unit) * 32); height: calc(var(--pet-unit) * 19); border-radius: calc(var(--pet-unit) * 9999); background: #c0ecff; display: flex; align-items: center; justify-content: center; }
+.pet-list-sex text { font-size: calc(var(--pet-unit) * 10); line-height: calc(var(--pet-unit) * 15); color: #774b00; }
+.pet-list-sex-female { background: #ffceba; }
+.pet-list-breed { position: absolute; left: calc(var(--pet-unit) * 74); top: calc(var(--pet-unit) * 36.5); font-size: calc(var(--pet-unit) * 11); line-height: calc(var(--pet-unit) * 16.5); color: #9e7660; }
+.pet-list-tag { position: absolute; left: calc(var(--pet-unit) * 208.578125); top: calc(var(--pet-unit) * 14); width: calc(var(--pet-unit) * 80.421875); height: calc(var(--pet-unit) * 40); }
+.pet-list-tag-pill { position: absolute; left: 0; top: 0; width: calc(var(--pet-unit) * 80.421875); height: calc(var(--pet-unit) * 19); border-radius: calc(var(--pet-unit) * 9999); background: #cdeddd; display: flex; align-items: center; }
+.pet-list-tag-vaccine .pet-list-tag-pill { background: #cdeddd; }
+.pet-list-tag-deworm .pet-list-tag-pill { background: #ffcfba; }
+.pet-list-tag-icon { width: calc(var(--pet-unit) * 10.421875); height: calc(var(--pet-unit) * 15); margin-left: calc(var(--pet-unit) * 8); flex-shrink: 0; }
+.pet-list-tag-name { font-size: calc(var(--pet-unit) * 10); line-height: calc(var(--pet-unit) * 15); color: #003226; margin-left: calc(var(--pet-unit) * 4.578125); white-space: nowrap; }
+.pet-list-tag-deworm .pet-list-tag-name { color: #312621; }
+.pet-list-tag-date { position: absolute; left: calc(var(--pet-unit) * 1.421875); top: calc(var(--pet-unit) * 23); font-size: calc(var(--pet-unit) * 10); line-height: calc(var(--pet-unit) * 15); color: #b89682; white-space: nowrap; }
+.pet-list-notice { left: calc(var(--pet-unit) * 29); top: calc(var(--pet-unit) * 288 + var(--pet-list-extra, 0px)); right: calc(var(--pet-unit) * 29); }
+.pet-list-identity { position: absolute; left: calc(var(--pet-unit) * 74); top: calc(var(--pet-unit) * 14.75); width: calc(var(--pet-unit) * 127); display: flex; align-items: center; gap: calc(var(--pet-unit) * 8); }
+.pet-list-identity .pet-list-name { position: static; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.pet-list-identity .pet-list-sex { position: static; flex-shrink: 0; }
+.pet-list-breed { width: calc(var(--pet-unit) * 127); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.pet-list-avatar { left: calc(var(--pet-unit) * 7); top: calc(var(--pet-unit) * 12); width: calc(var(--pet-unit) * 55); height: calc(var(--pet-unit) * 46); border-radius: calc(var(--pet-unit) * 8); }

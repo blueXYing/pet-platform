@@ -1,0 +1,14 @@
+/* Original full render-bound exports from the accepted profile design; shared by all C pages. */
+.consumer-bottom-nav { position: fixed; left: 0; bottom: 0; width: 100%; height: calc(var(--consumer-nav-unit) * 62 + env(safe-area-inset-bottom)); padding-bottom: env(safe-area-inset-bottom); border-top: calc(var(--consumer-nav-unit) * 1) solid #cdeede; background: #f0fbff; display: flex; z-index: 10; box-sizing: border-box; }
+.consumer-bottom-nav .consumer-nav-item { box-sizing: border-box; width: 20%; height: calc(var(--consumer-nav-unit) * 61); position: relative; overflow: visible; flex: 0 0 20%; padding: 0; margin: 0 !important; border: 0; border-radius: 0; background: transparent; font: inherit; line-height: normal; }
+.consumer-bottom-nav .consumer-nav-item::after { border: 0; }
+.consumer-bottom-nav .consumer-nav-item[disabled] { opacity: .65; }
+.consumer-nav-icon { position: absolute; display: block; }
+.consumer-bottom-nav .consumer-nav-label { position: absolute; top: calc(var(--consumer-nav-unit) * 31); left: 0; width: 100%; text-align: center; font-family: inherit; font-size: calc(var(--consumer-nav-unit) * 10); line-height: calc(var(--consumer-nav-unit) * 16); font-weight: 500; color: #3c3c3c; }
+.consumer-nav-home .consumer-nav-icon { left: calc(var(--consumer-nav-unit) * 28.9897461); top: calc(var(--consumer-nav-unit) * 8); width: calc(var(--consumer-nav-unit) * 21.5); height: calc(var(--consumer-nav-unit) * 18.5); }
+.consumer-nav-services .consumer-nav-icon { left: calc(var(--consumer-nav-unit) * 29.1); top: calc(var(--consumer-nav-unit) * 8.5); width: calc(var(--consumer-nav-unit) * 22.5); height: calc(var(--consumer-nav-unit) * 19); }
+.consumer-nav-community .consumer-nav-icon { left: calc(var(--consumer-nav-unit) * 14.2); top: calc(var(--consumer-nav-unit) * -15); width: calc(var(--consumer-nav-unit) * 53); height: calc(var(--consumer-nav-unit) * 53); }
+.consumer-bottom-nav .consumer-nav-community .consumer-nav-label { top: calc(var(--consumer-nav-unit) * 40); }
+.consumer-nav-messages .consumer-nav-icon { left: calc(var(--consumer-nav-unit) * 31.3); top: calc(var(--consumer-nav-unit) * 8.5); width: calc(var(--consumer-nav-unit) * 18.5); height: calc(var(--consumer-nav-unit) * 19); }
+.consumer-nav-mine .consumer-nav-icon { left: calc(var(--consumer-nav-unit) * 31.9); top: calc(var(--consumer-nav-unit) * 8.49707031); width: calc(var(--consumer-nav-unit) * 18.5); height: calc(var(--consumer-nav-unit) * 18.5); }
+.consumer-bottom-nav-reference { height: calc(var(--consumer-nav-unit) * 62); padding-bottom: 0; }

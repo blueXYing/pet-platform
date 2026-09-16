@@ -1,0 +1,17 @@
+{
+  "canvasHeight": 312,
+  "layout": 844,
+  "windowWidth": 390,
+  "chromeTop": 100,
+  "tiles": [
+    {
+      "file": "reference-list-raw-390-tile0.png",
+      "scrollTop": 0,
+      "cropTopCss": 0,
+      "cropBottomCss": 844,
+      "canvasTopInScreenshot": 0,
+      "screenshotWidth": 383,
+      "screenshotHeight": 828
+    }
+  ]
+}

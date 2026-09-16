@@ -1,0 +1,58 @@
+{
+  "recordedAt": "2026-09-16",
+  "status": "PASS_LOCAL_CHECKS_VISUAL_PENDING",
+  "sourceSha256": {
+    "frontend-miniapp/src/consumer/pages/pet-archive/app-tabbar.tsx": "30edc98538517b703befc3eeb855be1e06e1efd15b7913df2103087897427938",
+    "frontend-miniapp/src/consumer/pages/pet-archive/canvas.css": "80f3798e9fb9631d9b3ef34328958d3fa7474412a3de6cfeee3456bcb58a68ac",
+    "frontend-miniapp/src/consumer/pages/pet-archive/detail.config.ts": "45e366dbf77f74af359ceac738ba932846ea6b0e7aecf4ebe6515b43d00c7e87",
+    "frontend-miniapp/src/consumer/pages/pet-archive/detail.css": "d4644ac0ec4e533b3384a167904a538c2a8edb77537a3589c8ed1411821b5aff",
+    "frontend-miniapp/src/consumer/pages/pet-archive/detail.tsx": "cdf1505149f0196001a65f1cc3c1018aaf6751816cc42bf3af17754865d07f93",
+    "frontend-miniapp/src/consumer/pages/pet-archive/fonts.css": "bd6926776423cdc10429f42777a042042f1e0e9d4d4ccd2d495696ee5b160b5e",
+    "frontend-miniapp/src/consumer/pages/pet-archive/form.config.ts": "cdc5e8760dc1ae88191f7284f061cd641477a1554b5cb8f938b2fea27fe8089f",
+    "frontend-miniapp/src/consumer/pages/pet-archive/form.css": "a221957a26f0c106cbd00ad7fdfbf1bda9f84b1fae01430e9a14b0406c89c5aa",
+    "frontend-miniapp/src/consumer/pages/pet-archive/form.tsx": "bee9f2de0f5f79dd495b3618439e989a0625b0b3dc31d83b43e0234c9a90363a",
+    "frontend-miniapp/src/consumer/pages/pet-archive/index.config.ts": "cdc5e8760dc1ae88191f7284f061cd641477a1554b5cb8f938b2fea27fe8089f",
+    "frontend-miniapp/src/consumer/pages/pet-archive/index.tsx": "38be83db34a82ba806ff3a94d9e9851c402d3ddae4a3d2e31d4728f7389b77cb",
+    "frontend-miniapp/src/consumer/pages/pet-archive/list.css": "c14ccf6233b0369f38e78533971bed547ec9a800756fc7c8e94c8f79a4552d9a",
+    "frontend-miniapp/src/consumer/pages/pet-archive/tabbar.css": "7a21abb388b090eeccfc964647d67c217f71e3909ca0d54cd367dd3355341362",
+    "frontend-miniapp/src/consumer/pet/model.ts": "98595e345cbf5f98727a5ea091cc95e4f2dbc52c7c4aaa17dbed115847b5ef9d"
+  },
+  "checks": {
+    "typecheck": "PASS",
+    "unitTests": {
+      "pass": 52,
+      "fail": 0
+    },
+    "weappBuild": "PASS",
+    "package": {
+      "mainBytes": 710183,
+      "petSubpackageBytes": 1831721,
+      "budgetBytes": 2097152
+    },
+    "architectureDependencies": "PASS",
+    "displayStatusSourceGate": "PASS",
+    "simulator": {
+      "status": "PASS_PREVIEW_INTERACTIONS",
+      "tests": 14,
+      "device": "iPhone 12/13 (Pro)",
+      "windowWidth": 390,
+      "pixelRatio": 3,
+      "devtools": "2.02.2608060",
+      "baseLibrary": "3.17.2"
+    }
+  },
+  "visual": {
+    "status": "PENDING_USER_REVIEW",
+    "sourceVersion": "2397539525915641008",
+    "onlineFigma": "NOT_AVAILABLE_IN_THIS_SESSION",
+    "reference414": "INTERMEDIATE before final input/tabbar refinements",
+    "final390": "see takeover/ captures; 402 reference canvas clips rightmost 12px, normal layouts fit actual 390px"
+  },
+  "notVerified": [
+    "real HTTP/database/CRUD",
+    "avatar upload",
+    "physical device and native authorization",
+    "latest live Figma version"
+  ],
+  "contractChange": "none; display gaps proposed in CCR-C002-PET-DISPLAY-001"
+}

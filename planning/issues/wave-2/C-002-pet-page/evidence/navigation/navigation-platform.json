@@ -1,0 +1,287 @@
+{
+  "status": "PASS_SHARED_NAVIGATION",
+  "source": "real WeChat DevTools simulator via wechatide CLI",
+  "dataMode": "explicit in-memory visual preview; no backend session or save",
+  "eventMethod": "native Taro page event handlers via automator element actions",
+  "tests": [
+    "list-navigation: one shared bar, five distinct items, viewport bottom and safe area",
+    "unimplemented top-level route gives a notice and stays on the current page",
+    "detail-navigation: one shared bar, five distinct items, viewport bottom and safe area",
+    "form-navigation: one shared bar, five distinct items, viewport bottom and safe area",
+    "pet form keeps its unsaved-change confirmation when using shared navigation (mock modal responses)",
+    "page layout reserves space so the pet form save button is not covered",
+    "profile-navigation: one shared bar, five distinct items, viewport bottom and safe area",
+    "profile keeps its draft and leave guard after adopting the same navigation"
+  ],
+  "exceptions": [],
+  "window": {
+    "pixelRatio": 3,
+    "safeArea": {
+      "top": 47,
+      "left": 0,
+      "right": 390,
+      "bottom": 810,
+      "width": 390,
+      "height": 763
+    },
+    "screenWidth": 390,
+    "screenHeight": 844,
+    "screenTop": 0,
+    "windowWidth": 390,
+    "windowHeight": 844,
+    "statusBarHeight": 47
+  },
+  "geometry": {
+    "list-navigation": [
+      {
+        "id": "_Ak",
+        "dataset": {
+          "sid": "_Ak"
+        },
+        "left": 0,
+        "right": 390,
+        "top": 0,
+        "bottom": 844,
+        "width": 390,
+        "height": 844
+      },
+      {
+        "id": "_Aj",
+        "dataset": {
+          "sid": "_Aj"
+        },
+        "left": 0,
+        "right": 390,
+        "top": 749.859375,
+        "bottom": 844,
+        "width": 390,
+        "height": 94.140625
+      },
+      {
+        "id": "pet-tab-home",
+        "dataset": {
+          "sid": "_AS"
+        },
+        "left": 0,
+        "right": 78,
+        "top": 750.859375,
+        "bottom": 810.03125,
+        "width": 78,
+        "height": 59.171875
+      },
+      {
+        "id": "pet-tab-services",
+        "dataset": {
+          "sid": "_AW"
+        },
+        "left": 78,
+        "right": 156,
+        "top": 750.859375,
+        "bottom": 810.03125,
+        "width": 78,
+        "height": 59.171875
+      },
+      {
+        "id": "pet-tab-mine",
+        "dataset": {
+          "sid": "_Ai"
+        },
+        "left": 312,
+        "right": 390,
+        "top": 750.859375,
+        "bottom": 810.03125,
+        "width": 78,
+        "height": 59.171875
+      }
+    ],
+    "detail-navigation": [
+      {
+        "id": "_CV",
+        "dataset": {
+          "sid": "_CV"
+        },
+        "left": 0,
+        "right": 390,
+        "top": 0,
+        "bottom": 1295.609375,
+        "width": 390,
+        "height": 1295.609375
+      },
+      {
+        "id": "_CU",
+        "dataset": {
+          "sid": "_CU"
+        },
+        "left": 0,
+        "right": 390,
+        "top": 749.859375,
+        "bottom": 844,
+        "width": 390,
+        "height": 94.140625
+      },
+      {
+        "id": "pet-tab-home",
+        "dataset": {
+          "sid": "_CD"
+        },
+        "left": 0,
+        "right": 78,
+        "top": 750.859375,
+        "bottom": 810.03125,
+        "width": 78,
+        "height": 59.171875
+      },
+      {
+        "id": "pet-tab-services",
+        "dataset": {
+          "sid": "_CH"
+        },
+        "left": 78,
+        "right": 156,
+        "top": 750.859375,
+        "bottom": 810.03125,
+        "width": 78,
+        "height": 59.171875
+      },
+      {
+        "id": "pet-tab-mine",
+        "dataset": {
+          "sid": "_CT"
+        },
+        "left": 312,
+        "right": 390,
+        "top": 750.859375,
+        "bottom": 810.03125,
+        "width": 78,
+        "height": 59.171875
+      }
+    ],
+    "form-navigation": [
+      {
+        "id": "_Fb",
+        "dataset": {
+          "sid": "_Fb"
+        },
+        "left": 0,
+        "right": 390,
+        "top": 0,
+        "bottom": 1192.78125,
+        "width": 390,
+        "height": 1192.78125
+      },
+      {
+        "id": "_Fa",
+        "dataset": {
+          "sid": "_Fa"
+        },
+        "left": 0,
+        "right": 390,
+        "top": 749.859375,
+        "bottom": 844,
+        "width": 390,
+        "height": 94.140625
+      },
+      {
+        "id": "pet-tab-home",
+        "dataset": {
+          "sid": "_FJ"
+        },
+        "left": 0,
+        "right": 78,
+        "top": 750.859375,
+        "bottom": 810.03125,
+        "width": 78,
+        "height": 59.171875
+      },
+      {
+        "id": "pet-tab-services",
+        "dataset": {
+          "sid": "_FN"
+        },
+        "left": 78,
+        "right": 156,
+        "top": 750.859375,
+        "bottom": 810.03125,
+        "width": 78,
+        "height": 59.171875
+      },
+      {
+        "id": "pet-tab-mine",
+        "dataset": {
+          "sid": "_FZ"
+        },
+        "left": 312,
+        "right": 390,
+        "top": 750.859375,
+        "bottom": 810.03125,
+        "width": 78,
+        "height": 59.171875
+      }
+    ],
+    "profile-navigation": [
+      {
+        "id": "_Al",
+        "dataset": {
+          "sid": "_Al"
+        },
+        "left": 0,
+        "right": 390,
+        "top": 0,
+        "bottom": 844,
+        "width": 390,
+        "height": 844
+      },
+      {
+        "id": "_Ak",
+        "dataset": {
+          "sid": "_Ak"
+        },
+        "left": 0,
+        "right": 390,
+        "top": 749.859375,
+        "bottom": 844,
+        "width": 390,
+        "height": 94.140625
+      },
+      {
+        "id": "profile-tab-home",
+        "dataset": {
+          "sid": "_AT"
+        },
+        "left": 0,
+        "right": 78,
+        "top": 750.859375,
+        "bottom": 810.03125,
+        "width": 78,
+        "height": 59.171875
+      },
+      {
+        "id": "profile-tab-services",
+        "dataset": {
+          "sid": "_AX"
+        },
+        "left": 78,
+        "right": 156,
+        "top": 750.859375,
+        "bottom": 810.03125,
+        "width": 78,
+        "height": 59.171875
+      },
+      {
+        "id": "profile-tab-mine",
+        "dataset": {
+          "sid": "_Aj"
+        },
+        "left": 312,
+        "right": 390,
+        "top": 750.859375,
+        "bottom": 810.03125,
+        "width": 78,
+        "height": 59.171875
+      }
+    ]
+  },
+  "notVerified": [
+    "Physical keyboard show/hide: DevTools rejects mock wx.onKeyboardHeightChange; requires device validation"
+  ]
+}

@@ -1,0 +1,69 @@
+{
+  "recordedAt": "2026-09-16",
+  "status": "PASS_ENGINEERING_CHECKS_VISUAL_REVIEW_PENDING",
+  "baseCommit": "f7e64286a565cccb20adbe25755ed02125b914cf",
+  "sourceSha256": {
+    "frontend-miniapp/package-check.cjs": "c006827d38563cdd534d250e5b4a49a2083e44d383ec85615687887af90902dd",
+    "frontend-miniapp/src/app.config.ts": "0ca06a02f2b12e86f29436448eb9da0df8cc724fc45aa72a1371e4c119fcf4a3",
+    "frontend-miniapp/src/consumer/assets/navigation/manifest.json": "6eee458b6e963bdbebe2afe541b6307c5265de9c1e469e3184fc80e468586758",
+    "frontend-miniapp/src/consumer/components/navigation/index.tsx": "13991ba5bcde7e5259fafae911d91708c88750bd9c8aef3db6a60d528c995796",
+    "frontend-miniapp/src/consumer/components/navigation/model.ts": "0b09b750b5aff97cc835c5d289186c078f94e9b6f3ddf7f0566b7131713101d9",
+    "frontend-miniapp/src/consumer/components/navigation/style.css": "f1f6acf45ff5d7c149df150c614f3ef7e11dfbe0387e553de6254ae347dd817c",
+    "frontend-miniapp/src/consumer/components/page-layout/index.tsx": "3098ca538909bbaa0547119e37670e37fc66e0151df650fa26f153922fc7fb59",
+    "frontend-miniapp/src/consumer/components/page-layout/style.css": "3b457f8d6faeea27216fe40b8ceed71f8a6b37b834db2906cefd7e9156d4f202",
+    "frontend-miniapp/src/consumer/pages/pet-archive/assets/fonts/manifest.json": "bea7a654405f04180ff1e3f176cd4e488415a20837c6dfa7bdd2a730697a2b61",
+    "frontend-miniapp/src/consumer/pages/pet-archive/assets/manifest.json": "12a4db01e2587d906ceee590eeaef6d9b8972294325c8f2c3222893c77b548cc",
+    "frontend-miniapp/src/consumer/pages/pet-archive/canvas.css": "183d925884bcdba3f0fad27700443a4a96abfc5643826e532c4ab33a424be5e5",
+    "frontend-miniapp/src/consumer/pages/pet-archive/detail.config.ts": "45e366dbf77f74af359ceac738ba932846ea6b0e7aecf4ebe6515b43d00c7e87",
+    "frontend-miniapp/src/consumer/pages/pet-archive/detail.css": "6d905fb866999b6c2cd0c598e7cd93ed6db9f9d47901f3aa783ead1df1d636dd",
+    "frontend-miniapp/src/consumer/pages/pet-archive/detail.tsx": "d91fa624089f5728661641e100c4e6793434174e6be3645f665f9772f232be03",
+    "frontend-miniapp/src/consumer/pages/pet-archive/fonts.css": "bd6926776423cdc10429f42777a042042f1e0e9d4d4ccd2d495696ee5b160b5e",
+    "frontend-miniapp/src/consumer/pages/pet-archive/form.config.ts": "cdc5e8760dc1ae88191f7284f061cd641477a1554b5cb8f938b2fea27fe8089f",
+    "frontend-miniapp/src/consumer/pages/pet-archive/form.css": "900e2ba99d6dc5125ddebe2ee036b358394f6c2b2861fe03d6d055a4cf984387",
+    "frontend-miniapp/src/consumer/pages/pet-archive/form.tsx": "a935a9ff963f03ec246f32a9af90586614565bc07f8781d98da421e477d9370d",
+    "frontend-miniapp/src/consumer/pages/pet-archive/index.config.ts": "cdc5e8760dc1ae88191f7284f061cd641477a1554b5cb8f938b2fea27fe8089f",
+    "frontend-miniapp/src/consumer/pages/pet-archive/index.tsx": "f07b150f287bdedb553745e660c256513ea9b59ad944c7ada103dfe345891257",
+    "frontend-miniapp/src/consumer/pages/pet-archive/list.css": "c14ccf6233b0369f38e78533971bed547ec9a800756fc7c8e94c8f79a4552d9a",
+    "frontend-miniapp/src/consumer/pages/profile-edit/fonts.css": "849ae8f3ccdf84833a1b57e859eccccd642cc11758df8711cfb5712e0d6f3c55",
+    "frontend-miniapp/src/consumer/pages/profile-edit/index.config.ts": "e65bf0c1ec8143cb7fbe9db6482c35cfe526171743c5e07ad716adb79002f127",
+    "frontend-miniapp/src/consumer/pages/profile-edit/index.tsx": "69fdfb15b2fa1b1c0bcb6a8679a3f6b4778b9a2c5fcffec83d0815b65f5eeee2",
+    "frontend-miniapp/src/consumer/pages/profile-edit/profile.css": "81be81fc84921d7bab5b7d5d5205a9b0ea9efb145d67fc1473357eb7545fcb56"
+  },
+  "typecheck": "PASS",
+  "unitTests": {
+    "pass": 52,
+    "fail": 0
+  },
+  "buildWeapp": "PASS",
+  "architectureSourceGates": "PASS",
+  "package": {
+    "status": "PASS",
+    "mainBytes": 711734,
+    "petBytes": 1818265,
+    "merchantBytes": 7180,
+    "totalBytes": 2537179,
+    "budgetPerPackage": 2097152,
+    "mainDelta": 1551,
+    "petDelta": -13456,
+    "totalDelta": -11905,
+    "sharedNavigationInMain": true,
+    "petAssetsRemainInSubpackage": true,
+    "noDuplicateNavigationBytesInSubpackages": true
+  },
+  "platform": {
+    "navigationTests": 8,
+    "petRegressionTests": 14,
+    "windowWidth": 390,
+    "devtools": "2.02.2608060",
+    "baseLibrary": "3.17.2",
+    "modalResponses": "explicit mock; real page handlers"
+  },
+  "notVerified": [
+    "Physical keyboard show/hide: DevTools rejects mock wx.onKeyboardHeightChange; requires device validation",
+    "fresh 414px validation for this refactor",
+    "physical device",
+    "real business API",
+    "user visual acceptance"
+  ],
+  "contractChange": "none; authorized frontend engineering scope expansion recorded in NAVIGATION-REFACTOR.md"
+}

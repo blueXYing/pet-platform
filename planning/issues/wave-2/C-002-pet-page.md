@@ -11,6 +11,8 @@ Status: DISPATCHED
 
 ## Allowed / Forbidden
 
+2026-09-16 用户在 PR34 接手任务中授权统一 C 端底栏并保留分包结构；本阶段增加轻量导航/页面容器、公共导航素材、profile-edit 的底栏接入，以及包体依赖检查。唯一 Writer 仍为 C-End，本次不触及 shared/merchant/backend 或公共接口。范围、理由和验收见 [NAVIGATION-REFACTOR.md](C-002-pet-page/NAVIGATION-REFACTOR.md)。
+
 - 允许:`frontend-miniapp/src/consumer/pages/pet-archive/**`、`src/consumer/pet/**`(数据模型)、`src/consumer/tests/pet-*.cjs/ts`、`src/app.config.ts`(页面注册,C-End唯一编辑者)、`planning/issues/wave-2/C-002-pet-page/`(验收证据目录,新建)。
 - 禁止:`src/merchant/**`、`src/shared/**`(公共改动需另行登记)、backend/**、fonts/shared素材复制、提交design-inputs素材包本体。
 - 设计规范只读来源:`C:/Users/Administrator/Desktop/宠物平台V1.0/planning/issues/wave-2/C-002-design-inputs/handoff/pages/`(本机绝对路径,该包untracked不入库,引用其节点ID/哈希即可)。

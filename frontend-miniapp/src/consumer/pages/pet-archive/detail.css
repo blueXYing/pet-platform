@@ -1,0 +1,107 @@
+@import './canvas.css';
+
+/* Node 78:3076 (402x1252). All values are exact spec.json pageBounds; the runtime unit avoids rounding drift. */
+.pet-detail-page { background: #c0ecff; }
+.pet-detail-design { min-height: calc(var(--pet-unit) * 1172); }
+.pet-reference-canvas .pet-detail-design { min-height: calc(var(--pet-unit) * 1252); padding-bottom: calc(var(--pet-unit) * 80); }
+.pet-detail-strip1 { left: 0; top: calc(var(--pet-unit) * 35); width: calc(var(--pet-unit) * 402); height: calc(var(--pet-unit) * 787); }
+.pet-detail-strip2 { left: 0; top: calc(var(--pet-unit) * 789); width: calc(var(--pet-unit) * 402); height: calc(var(--pet-unit) * 459); }
+.pet-detail-bottombar { left: 0; top: calc(var(--pet-unit) * 1190); width: calc(var(--pet-unit) * 402); height: calc(var(--pet-unit) * 86); background: #cdeede; }
+.pet-detail-header { left: 0; top: 0; width: calc(var(--pet-unit) * 402); height: calc(var(--pet-unit) * 86); background: #fff6e5; }
+.pet-detail-panel-vaccine { left: calc(var(--pet-unit) * -10); top: calc(var(--pet-unit) * 429); width: calc(var(--pet-unit) * 429); height: calc(var(--pet-unit) * 393); }
+.pet-detail-panel-lower { left: calc(var(--pet-unit) * -14); top: calc(var(--pet-unit) * 779); width: calc(var(--pet-unit) * 429); height: calc(var(--pet-unit) * 408.7879638671875); }
+.pet-detail-panel-basic { left: calc(var(--pet-unit) * 21); top: calc(var(--pet-unit) * 100.125); width: calc(var(--pet-unit) * 363); height: calc(var(--pet-unit) * 386.307373046875); }
+/* Rectangle 16 declares no corner radius in spec.json while the pinned reference frame renders rounded corners; 9 matches the visible rounding (registered in HANDOFF). */
+.pet-detail-identity { box-sizing: border-box; left: calc(var(--pet-unit) * 53); top: calc(var(--pet-unit) * 105); width: calc(var(--pet-unit) * 302); height: calc(var(--pet-unit) * 108); background: #f0fbff; border: calc(var(--pet-unit) * 1) solid #c0ecff; border-radius: calc(var(--pet-unit) * 9); }
+.pet-detail-photo { left: calc(var(--pet-unit) * 59); top: calc(var(--pet-unit) * 132); width: calc(var(--pet-unit) * 65); height: calc(var(--pet-unit) * 54); }
+.pet-detail-back { left: calc(var(--pet-unit) * 31); top: calc(var(--pet-unit) * 39.739); width: calc(var(--pet-unit) * 28.8); height: calc(var(--pet-unit) * 34.5); display: flex; align-items: center; justify-content: center; z-index: 4; }
+.pet-detail-back image { width: calc(var(--pet-unit) * 8.8575439453125); height: calc(var(--pet-unit) * 14.522697448730469); }
+.pet-detail-navtitle { left: calc(var(--pet-unit) * 167.732421875); top: calc(var(--pet-unit) * 45); font-size: calc(var(--pet-unit) * 16); line-height: calc(var(--pet-unit) * 24); font-weight: 700; color: #3c3c3c; z-index: 2; }
+.pet-detail-edit { left: calc(var(--pet-unit) * 338.49); top: calc(var(--pet-unit) * 39.515); width: calc(var(--pet-unit) * 34); height: calc(var(--pet-unit) * 34.97); display: flex; align-items: center; justify-content: center; z-index: 4; }
+.pet-detail-edit image { width: calc(var(--pet-unit) * 13.5); height: calc(var(--pet-unit) * 14.97); }
+.pet-detail-name { left: calc(var(--pet-unit) * 134); top: calc(var(--pet-unit) * 130.75); font-size: calc(var(--pet-unit) * 14); line-height: calc(var(--pet-unit) * 20); font-weight: 700; color: #1d0d07; }
+.pet-detail-sexpill { left: calc(var(--pet-unit) * 170); top: calc(var(--pet-unit) * 131.25); width: calc(var(--pet-unit) * 32); height: calc(var(--pet-unit) * 19); border-radius: calc(var(--pet-unit) * 9999); background: #c0ecff; display: flex; align-items: center; justify-content: center; }
+.pet-detail-sexpill text { font-size: calc(var(--pet-unit) * 10); line-height: calc(var(--pet-unit) * 15); color: #53bfee; }
+.pet-detail-breed { left: calc(var(--pet-unit) * 134); top: calc(var(--pet-unit) * 152.5); font-size: calc(var(--pet-unit) * 11); line-height: calc(var(--pet-unit) * 16.5); color: #9e7660; }
+.pet-detail-tagpill { left: calc(var(--pet-unit) * 255); top: calc(var(--pet-unit) * 130); width: calc(var(--pet-unit) * 80.421875); height: calc(var(--pet-unit) * 19); border-radius: calc(var(--pet-unit) * 9999); background: #c0ecff; display: flex; align-items: center; }
+.pet-detail-tagicon { width: calc(var(--pet-unit) * 10.421875); height: calc(var(--pet-unit) * 15); margin-left: calc(var(--pet-unit) * 8); flex-shrink: 0; }
+.pet-detail-tagname { font-size: calc(var(--pet-unit) * 10); line-height: calc(var(--pet-unit) * 15); color: #53bfee; margin-left: calc(var(--pet-unit) * 4); white-space: nowrap; }
+.pet-detail-tagdate { left: calc(var(--pet-unit) * 256.421875); top: calc(var(--pet-unit) * 153); font-size: calc(var(--pet-unit) * 10); line-height: calc(var(--pet-unit) * 15); color: #b89682; }
+.pet-detail-icon-calendar { left: calc(var(--pet-unit) * 135.25); top: calc(var(--pet-unit) * 177.25); width: calc(var(--pet-unit) * 10); height: calc(var(--pet-unit) * 10); }
+.pet-detail-birth { left: calc(var(--pet-unit) * 159); top: calc(var(--pet-unit) * 173.75); font-size: calc(var(--pet-unit) * 11); line-height: calc(var(--pet-unit) * 16.5); color: #b89682; }
+.pet-detail-icon-weight { left: calc(var(--pet-unit) * 259); top: calc(var(--pet-unit) * 177.5); width: calc(var(--pet-unit) * 10.32); height: calc(var(--pet-unit) * 9.5); }
+.pet-detail-weight { left: calc(var(--pet-unit) * 285); top: calc(var(--pet-unit) * 173.75); font-size: calc(var(--pet-unit) * 11); line-height: calc(var(--pet-unit) * 16.5); color: #b89682; }
+.pet-detail-basic-title { left: calc(var(--pet-unit) * 98); top: calc(var(--pet-unit) * 234); font-size: calc(var(--pet-unit) * 14); line-height: calc(var(--pet-unit) * 20); font-weight: 700; color: #1d0d07; }
+.pet-detail-line { background: #c0ecff; height: calc(var(--pet-unit) * 1); width: calc(var(--pet-unit) * 287); left: calc(var(--pet-unit) * 68); }
+.pet-detail-line-h1 { top: calc(var(--pet-unit) * 263); }
+.pet-detail-line-h2 { top: calc(var(--pet-unit) * 320); }
+.pet-detail-line-h3 { top: calc(var(--pet-unit) * 381); }
+.pet-detail-line-v { left: calc(var(--pet-unit) * 211.15362069749153); top: calc(var(--pet-unit) * 262.5); width: calc(var(--pet-unit) * 0.6930589900084669); height: calc(var(--pet-unit) * 188); }
+.pet-detail-label { font-size: calc(var(--pet-unit) * 10); line-height: calc(var(--pet-unit) * 15); color: #b89682; }
+.pet-detail-value { font-size: calc(var(--pet-unit) * 12); line-height: calc(var(--pet-unit) * 16); color: #2e1d16; }
+.pet-detail-label-breed, .pet-detail-label-birth, .pet-detail-label-chip { left: calc(var(--pet-unit) * 98); }
+.pet-detail-label-sex, .pet-detail-label-weight, .pet-detail-label-age { left: calc(var(--pet-unit) * 254); }
+.pet-detail-label-breed { top: calc(var(--pet-unit) * 274); }
+.pet-detail-label-sex { top: calc(var(--pet-unit) * 274); }
+.pet-detail-label-birth { top: calc(var(--pet-unit) * 334); }
+.pet-detail-label-weight { top: calc(var(--pet-unit) * 334); }
+.pet-detail-label-chip { top: calc(var(--pet-unit) * 394); }
+.pet-detail-label-age { top: calc(var(--pet-unit) * 394); }
+.pet-detail-value-breed, .pet-detail-value-birth, .pet-detail-value-chip { left: calc(var(--pet-unit) * 98); }
+.pet-detail-value-sex, .pet-detail-value-weight, .pet-detail-value-age { left: calc(var(--pet-unit) * 254); }
+.pet-detail-value-breed { top: calc(var(--pet-unit) * 293); }
+.pet-detail-value-sex { top: calc(var(--pet-unit) * 293); }
+.pet-detail-value-birth { top: calc(var(--pet-unit) * 353); }
+.pet-detail-value-weight { top: calc(var(--pet-unit) * 353); }
+.pet-detail-value-chip { top: calc(var(--pet-unit) * 413); }
+.pet-detail-value-age { top: calc(var(--pet-unit) * 413); }
+.pet-detail-tape-a { left: calc(var(--pet-unit) * 302); top: calc(var(--pet-unit) * 416); width: calc(var(--pet-unit) * 57); height: calc(var(--pet-unit) * 57); }
+.pet-detail-section { font-size: calc(var(--pet-unit) * 14); line-height: calc(var(--pet-unit) * 20); font-weight: 700; color: #1d0d07; }
+.pet-detail-section-vaccine { left: calc(var(--pet-unit) * 49); top: calc(var(--pet-unit) * 486); }
+.pet-detail-section-deworm { left: calc(var(--pet-unit) * 49); top: calc(var(--pet-unit) * 828); }
+.pet-detail-section-health { left: calc(var(--pet-unit) * 49); top: calc(var(--pet-unit) * 1065); }
+.pet-detail-add { display: flex; align-items: center; height: calc(var(--pet-unit) * 20); }
+.pet-detail-add-vaccine { left: calc(var(--pet-unit) * 308); top: calc(var(--pet-unit) * 486); }
+.pet-detail-add-deworm { left: calc(var(--pet-unit) * 308); top: calc(var(--pet-unit) * 828); }
+.pet-detail-add-icon { width: calc(var(--pet-unit) * 14.59375); height: calc(var(--pet-unit) * 20); }
+.pet-detail-add-label { font-size: calc(var(--pet-unit) * 11); line-height: calc(var(--pet-unit) * 13.2); color: #945b00; margin-left: calc(var(--pet-unit) * 2); }
+.pet-detail-line-r1 { left: calc(var(--pet-unit) * 34); top: calc(var(--pet-unit) * 521); width: calc(var(--pet-unit) * 342); }
+.pet-detail-line-r2 { left: calc(var(--pet-unit) * 30); top: calc(var(--pet-unit) * 596); width: calc(var(--pet-unit) * 342); }
+.pet-detail-line-r3 { left: calc(var(--pet-unit) * 30); top: calc(var(--pet-unit) * 673); width: calc(var(--pet-unit) * 342); }
+.pet-detail-line-r4 { left: calc(var(--pet-unit) * 30); top: calc(var(--pet-unit) * 764); width: calc(var(--pet-unit) * 342); }
+.pet-detail-line-d1 { left: calc(var(--pet-unit) * 30); top: calc(var(--pet-unit) * 861); width: calc(var(--pet-unit) * 342); }
+.pet-detail-line-d2 { left: calc(var(--pet-unit) * 31); top: calc(var(--pet-unit) * 930); width: calc(var(--pet-unit) * 342); }
+.pet-detail-line-d3 { left: calc(var(--pet-unit) * 31); top: calc(var(--pet-unit) * 1004); width: calc(var(--pet-unit) * 342); }
+.pet-detail-record { position: absolute; left: 0; width: calc(var(--pet-unit) * 402); height: 0; z-index: 2; }
+.pet-detail-record-icon { position: absolute; left: calc(var(--pet-unit) * 48); top: 0; width: calc(var(--pet-unit) * 40); height: calc(var(--pet-unit) * 40); }
+.pet-detail-record-name { position: absolute; left: calc(var(--pet-unit) * 100); top: calc(var(--pet-unit) * 0.75); font-size: calc(var(--pet-unit) * 14); line-height: calc(var(--pet-unit) * 20); font-weight: 500; color: #1d0d07; }
+.pet-detail-record-date { position: absolute; left: calc(var(--pet-unit) * 100); top: calc(var(--pet-unit) * 22.5); font-size: calc(var(--pet-unit) * 11); line-height: calc(var(--pet-unit) * 16.5); color: #9e7660; white-space: nowrap; }
+.pet-detail-record-titlerow { position: absolute; left: calc(var(--pet-unit) * 100); top: calc(var(--pet-unit) * 0.75); display: flex; align-items: baseline; }
+.pet-detail-record-titlerow .pet-detail-record-name { position: static; }
+.pet-detail-record-brand { font-size: calc(var(--pet-unit) * 10); line-height: calc(var(--pet-unit) * 15); color: #b89682; margin-left: calc(var(--pet-unit) * 8); }
+.pet-detail-record-pill { position: absolute; left: calc(var(--pet-unit) * 308); top: calc(var(--pet-unit) * 8.5); min-width: calc(var(--pet-unit) * 46); height: calc(var(--pet-unit) * 23); border-radius: calc(var(--pet-unit) * 9999); background: #ffe2bd; display: flex; align-items: center; justify-content: center; padding: 0 calc(var(--pet-unit) * 8); }
+.pet-detail-record-pill text { font-size: calc(var(--pet-unit) * 10); line-height: calc(var(--pet-unit) * 15); color: #774b00; }
+.pet-detail-record-pill-expiring { background: #c0ecff; }
+.pet-detail-record-pill-expiring text { color: #003227; }
+/* Record 3 (犬窝咳疫苗) uses its own internal offsets in the source frame. */
+.pet-detail-record-2 .pet-detail-record-icon { top: calc(var(--pet-unit) * 7.5); }
+.pet-detail-record-2 .pet-detail-record-name { top: calc(var(--pet-unit) * 0); }
+.pet-detail-record-2 .pet-detail-record-date { top: calc(var(--pet-unit) * 22); }
+.pet-detail-record-2 .pet-detail-record-pill { left: calc(var(--pet-unit) * 298); top: calc(var(--pet-unit) * 16); }
+.pet-detail-tape-b { left: calc(var(--pet-unit) * 48); top: calc(var(--pet-unit) * 760); width: calc(var(--pet-unit) * 57); height: calc(var(--pet-unit) * 57); }
+.pet-detail-health { left: calc(var(--pet-unit) * 49); top: calc(var(--pet-unit) * 1093); width: calc(var(--pet-unit) * 300); font-size: calc(var(--pet-unit) * 12); line-height: calc(var(--pet-unit) * 19.5); color: #7b5b4a; }
+.pet-detail-state { position: absolute; top: calc(var(--pet-unit) * 120); left: 0; right: 0; z-index: 6; }
+.pet-detail-notice { left: calc(var(--pet-unit) * 29); top: calc(var(--pet-unit) * 92); right: calc(var(--pet-unit) * 29); }
+.pet-detail-identity-line { left: calc(var(--pet-unit) * 134); top: calc(var(--pet-unit) * 130.75); width: calc(var(--pet-unit) * 115); display: flex; align-items: center; gap: calc(var(--pet-unit) * 8); }
+.pet-detail-identity-line .pet-detail-name { position: static; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.pet-detail-identity-line .pet-detail-sexpill { position: static; flex-shrink: 0; }
+.pet-detail-sexpill-female { background: #ffceba; }
+.pet-detail-sexpill-female text { color: #774b00; }
+.pet-detail-breed { width: calc(var(--pet-unit) * 115); overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+.pet-detail-value { width: calc(var(--pet-unit) * 106); overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+.pet-detail-record-empty { left: calc(var(--pet-unit) * 49); font-size: calc(var(--pet-unit) * 12); line-height: calc(var(--pet-unit) * 20); color: #9e7660; }
+.pet-detail-vaccine-empty { top: calc(var(--pet-unit) * 548); }
+.pet-detail-deworm-empty { top: calc(var(--pet-unit) * 883); }
+.pet-detail-health-panel { position: relative; margin-top: calc(var(--pet-unit) * 1044); margin-left: calc(var(--pet-unit) * 21); width: calc(var(--pet-unit) * 356); min-height: calc(var(--pet-unit) * 128); padding: calc(var(--pet-unit) * 21) calc(var(--pet-unit) * 28) calc(var(--pet-unit) * 20); background: #f0fbff; }
+.pet-detail-health-panel > text { display: block; }
+.pet-detail-health-panel .pet-detail-health { position: static; margin-top: calc(var(--pet-unit) * 8); width: 100%; overflow-wrap: anywhere; word-break: break-all; }

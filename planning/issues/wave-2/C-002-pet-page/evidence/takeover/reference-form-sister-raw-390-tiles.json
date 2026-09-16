@@ -1,0 +1,26 @@
+{
+  "canvasHeight": 1067,
+  "layout": 844,
+  "windowWidth": 390,
+  "chromeTop": 100,
+  "tiles": [
+    {
+      "file": "reference-form-sister-raw-390-tile0.png",
+      "scrollTop": 0,
+      "cropTopCss": 0,
+      "cropBottomCss": 844,
+      "canvasTopInScreenshot": 0,
+      "screenshotWidth": 383,
+      "screenshotHeight": 828
+    },
+    {
+      "file": "reference-form-sister-raw-390-tile1.png",
+      "scrollTop": 223,
+      "cropTopCss": 100,
+      "cropBottomCss": 844,
+      "canvasTopInScreenshot": 0,
+      "screenshotWidth": 383,
+      "screenshotHeight": 828
+    }
+  ]
+}

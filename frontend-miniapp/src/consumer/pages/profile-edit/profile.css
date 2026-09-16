@@ -5,7 +5,7 @@
 .profile-page button::after { border: 0; }
 .profile-page button[disabled] { opacity: .65; color: inherit; }
 .profile-status-area { height: var(--profile-status-top); background: #fff6e5; }
-.profile-design { --profile-content-bottom: calc(var(--profile-unit) * 76.112); min-height: calc(100vh - var(--profile-status-top)); position: relative; padding-bottom: calc(var(--profile-content-bottom) + env(safe-area-inset-bottom)); }
+.profile-design { min-height: calc(100vh - var(--profile-status-top) - var(--consumer-nav-reserve)); position: relative; }
 .profile-header { height: calc(var(--profile-unit) * 49); position: relative; background: #fff6e5; border-bottom: calc(var(--profile-unit) * 2) solid #cdeede; }
 .profile-back { position: absolute; left: calc(var(--profile-unit) * 19); top: calc(var(--profile-unit) * 8); width: calc(var(--profile-unit) * 32); height: calc(var(--profile-unit) * 32); }
 .profile-back image { width: 100%; height: 100%; display: block; }
@@ -35,15 +35,6 @@
 .profile-notice { color: #402e26; }
 .profile-state { padding: calc(var(--profile-unit) * 42.88) calc(var(--profile-unit) * 29); font-size: calc(var(--profile-unit) * 14); line-height: calc(var(--profile-unit) * 24); }
 .profile-state-action { margin-top: calc(var(--profile-unit) * 16.08) !important; color: #167fab !important; }
-.profile-tabbar { --profile-tab-height: calc(var(--profile-unit) * 62); position: fixed; left: 0; bottom: 0; width: 100%; height: calc(var(--profile-tab-height) + env(safe-area-inset-bottom)); padding-bottom: env(safe-area-inset-bottom); border-top: calc(var(--profile-unit) * 1) solid #cdeede; background: #f0fbff; display: flex; z-index: 10; }
-.profile-tab { width: 20%; height: calc(var(--profile-unit) * 61); position: relative; overflow: visible; }
-.profile-tab image { position: absolute; top: calc(var(--profile-unit) * 8); left: 50%; transform: translateX(-50%); }
-.profile-tab text { position: absolute; top: calc(var(--profile-unit) * 30); left: 0; width: 100%; text-align: center; font-family: "C002 Roboto", "C002 Noto CJK", "C002 Noto SC", Roboto, "Noto Sans SC", sans-serif; font-size: calc(var(--profile-unit) * 10); line-height: calc(var(--profile-unit) * 15); font-weight: 500; color: #3c3c3c; }
-.profile-tab-home image { width: calc(var(--profile-unit) * 19.47756785); height: calc(var(--profile-unit) * 16.4810084); }
-.profile-tab-services image { width: calc(var(--profile-unit) * 21.06932277); height: calc(var(--profile-unit) * 17.83193208); }
-.profile-tab-community image { width: calc(var(--profile-unit) * 53); height: calc(var(--profile-unit) * 53); top: calc(var(--profile-unit) * -15); }
-.profile-tab-community text { top: calc(var(--profile-unit) * 40); }
-.profile-tab-messages image, .profile-tab-mine image { width: calc(var(--profile-unit) * 17.32200044); height: calc(var(--profile-unit) * 17.32200044); }
 
 /* Imported Figma cards use an asymmetric content box; coordinates follow their child nodes. */
 .profile-card:not(.profile-signature-card) { padding-right: calc(var(--profile-unit) * 11); }
@@ -52,29 +43,16 @@
 .profile-signature-card > .profile-label { position: absolute; top: calc(var(--profile-unit) * 15.5); left: calc(var(--profile-unit) * 13); }
 .profile-signature { position: absolute; top: calc(var(--profile-unit) * 42); left: calc(var(--profile-unit) * 13); margin: 0; }
 .profile-count { position: absolute; top: calc(var(--profile-unit) * 127.75); left: calc(var(--profile-unit) * 13); width: calc(var(--profile-unit) * 317); height: calc(var(--profile-unit) * 17); margin: 0; }
-.profile-tab image { transform: none; top: calc(var(--profile-unit) * 9); }
-.profile-tab-home image { left: calc(var(--profile-unit) * 30); }
-.profile-tab-services image { left: calc(var(--profile-unit) * 29.6); }
-.profile-tab-community image { left: calc(var(--profile-unit) * 14.2); top: calc(var(--profile-unit) * -15); }
-.profile-tab-messages image { left: calc(var(--profile-unit) * 31.8); }
-.profile-tab-mine image { left: calc(var(--profile-unit) * 32.4); }
 .profile-reference-canvas { width: var(--profile-design-width); min-height: 0; height: calc(var(--profile-unit) * 812); overflow: hidden; position: relative; }
 .profile-reference-canvas .profile-design { min-height: 0; height: 100%; padding-bottom: 0; }
 .profile-reference-canvas .profile-status-area { height: 0; }
-.profile-reference-canvas .profile-tabbar { position: absolute; width: var(--profile-design-width); height: calc(var(--profile-unit) * 62); padding-bottom: 0; }
 /* Text baselines follow source glyph placement; the input box itself is unchanged. */
 .profile-avatar-card > .profile-label, .profile-nickname-card > .profile-label, .profile-gender-card > .profile-label, .profile-phone-card > .profile-label, .profile-phone { top: calc(var(--profile-unit) * 2); }
 .profile-signature-card > .profile-label { top: calc(var(--profile-unit) * 16.5); }
 .profile-signature { padding-top: calc(var(--profile-unit) * 12); }
 .profile-count { top: calc(var(--profile-unit) * 128.75); left: calc(var(--profile-unit) * 12); }
 .profile-save-label { position: relative; top: calc(var(--profile-unit) * 1); }
-.profile-tab text { top: calc(var(--profile-unit) * 31); line-height: calc(var(--profile-unit) * 16); }
-.profile-tab-community text { top: calc(var(--profile-unit) * 40); }
 /* Full render bounds include the original vector strokes; display PNGs at their 2x raster scale. */
-.profile-tab-home image { left: calc(var(--profile-unit) * 28.9897461); top: calc(var(--profile-unit) * 8); width: calc(var(--profile-unit) * 21.5); height: calc(var(--profile-unit) * 18.5); }
-.profile-tab-services image { left: calc(var(--profile-unit) * 29.1); top: calc(var(--profile-unit) * 8.5); width: calc(var(--profile-unit) * 22.5); height: calc(var(--profile-unit) * 19); }
-.profile-tab-messages image { left: calc(var(--profile-unit) * 31.3); top: calc(var(--profile-unit) * 8.5); width: calc(var(--profile-unit) * 18.5); height: calc(var(--profile-unit) * 19); }
-.profile-tab-mine image { left: calc(var(--profile-unit) * 31.9); top: calc(var(--profile-unit) * 8.49707031); width: calc(var(--profile-unit) * 18.5); height: calc(var(--profile-unit) * 18.5); }
 
 .profile-gender { color: #3c3c3c; }
 .profile-gender.is-selected { color: #e4f6f3; }
