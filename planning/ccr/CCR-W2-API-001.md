@@ -18,3 +18,7 @@
 每域交付：逐个现有操作来源与Scope、请求/响应/校验/分页/错误/鉴权、ID金额String、写requestId、示例及正反Mock、Schema/Event影响、审批记录。真实后端是权限事实源，前端选择工作区不授权。受保护HTTP/OpenAPI/Internal/Schema修改须在草案获批后由明确Owner执行。
 
 前端可提交页面消费需求和差异，不能把内部工程fixture升级为已批准DTO。Contract Owner确认该域契约后可先做业务Mock阶段；完整Issue DONE仍需原AC/E2E、平台和VIS验收。
+
+## 2026-09-16 C端接入字段差异回执
+
+本轮不扩展契约。芯片号、疫苗/驱虫记录名称及日期、头像上传仍缺公共协议，真实模式仅显示未接通；设计样例只在显式预览。petType已是创建必填且不可改的已批字段，但原表单没有选择控件，本轮在创建前用原生action sheet明确选择DOG/CAT/OTHER，不沿用预览默认值。后续需对该原生交互及缺字段状态作视觉/真机确认。资料性别/签名仍归CCR-C002-PROFILE-001，不隐式丢字段后称整页保存成功。见[C端接入报告](../progress/2026-09-16/C_REAL_API_INTEGRATION.md)。

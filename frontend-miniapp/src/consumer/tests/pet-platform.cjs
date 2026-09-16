@@ -32,7 +32,8 @@ function unwrap(payload) {
 }
 function evalJs(source) { return unwrap(ide(['automation_evaluate', '--project', PROJECT, '--fn-source', source]).result) }
 function element(action, selector, extra = []) {
-  return ide(['automation_element_action', '--project', PROJECT, '--action', action, '--selector', selector, ...extra])
+  ide(['automation_runtime_info', '--project', PROJECT, '--action', 'currentPage'])
+  return ide(['automation_element_action', '--project', PROJECT, '--action', action, '--selector', selector, '--wait-for-selector', selector, ...extra])
 }
 function sleep(ms) { return new Promise(resolve => setTimeout(resolve, ms)) }
 function content() {
@@ -206,8 +207,8 @@ function rects(selectors) {
   check('direct detail entry retains layout without visiting list first')
 
   // 7. non-preview entry refuses fixture data
-  await launch('consumer/pages/pet-archive/index', '', '宠物服务暂不可用')
-  assertIncludes(content(), '宠物服务暂不可用', 'non-preview guard')
+  await launch('consumer/pages/pet-archive/index', '', '登录已失效')
+  assertIncludes(content(), '登录已失效', 'non-preview guard')
   check('non-preview entry does not leak fixture or pretend real data')
 
   report.status = 'PASS_PREVIEW_INTERACTIONS'

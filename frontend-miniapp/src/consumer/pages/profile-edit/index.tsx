@@ -4,6 +4,9 @@ import { Button, Image, Input, Text, Textarea, View } from '@tarojs/components'
 import Taro, { useRouter } from '@tarojs/taro'
 import { useCallback, useEffect, useRef, useState, type CSSProperties } from 'react'
 import { useWorkspace } from '../../../shared/workspace-react'
+import { consumerApi } from '../../../shared/consumer-runtime'
+import { integrationMessage } from '../../../shared/consumer-api'
+import { RealProfileRepository } from '../../api/repositories'
 import { isPreviewScenario, PreviewProfileRepository, sameDraft, validateDraft, codePointLength, type Gender, type ProfileDraft, type ProfilePhase } from '../../profile/model'
 import back from '../../assets/profile/back.png'
 import chevron from '../../assets/profile/chevron.png'
@@ -20,13 +23,13 @@ export default function ProfileEdit() {
   // A real 402x812 component canvas inside the actual simulator; no spoofed device APIs.
   const referenceCanvas = preview && route.params.referenceCanvas === '1'
   const scenario = isPreviewScenario(route.params.scenario) ? route.params.scenario : 'normal'
-  const { scope, revision, context } = useWorkspace()
-  const [phase, setPhase] = useState<ProfilePhase>(preview ? 'loading' : 'unavailable')
+  const { scope, revision, context } = useWorkspace(preview ? 'preview' : 'real')
+  const [phase, setPhase] = useState<ProfilePhase>('loading')
   const [draft, setDraft] = useState<ProfileDraft>(initial)
   const [baseline, setBaseline] = useState<ProfileDraft>(initial)
   const [errors, setErrors] = useState<ReturnType<typeof validateDraft>>({})
   const [notice, setNotice] = useState('')
-  const repository = useRef(new PreviewProfileRepository(scenario === 'empty' ? { ...initial, nickname: '', signature: '' } : initial, scenario, sleep))
+  const repository = useRef(preview ? new PreviewProfileRepository(scenario === 'empty' ? { ...initial, nickname: '', signature: '' } : initial, scenario, sleep) : new RealProfileRepository(consumerApi))
   const request = useRef<{ id: string; draft: ProfileDraft } | null>(null)
   const saving = useRef(false)
   const mounted = useRef(true)
@@ -39,15 +42,16 @@ export default function ProfileEdit() {
   const style = { '--profile-status-top': `${referenceCanvas ? 0 : topInset}px`, '--profile-design-width': referenceCanvas ? '402px' : '100vw', '--profile-unit': `${referenceCanvas ? 1 : platformInfo.windowWidth / 402}px` } as CSSProperties
 
   const load = useCallback(async () => {
-    if (!preview) return
     const currentRevision = scope.revision
     const current = ++sequence.current
     setPhase('loading'); setNotice(''); setErrors({})
-    if (scenario === 'expired' || !scope.current || scope.current.workspace !== 'consumer') { setPhase('expired'); return }
+    if ((preview && scenario === 'expired') || !scope.current || scope.current.workspace !== 'consumer') { setPhase('expired'); return }
     try {
       const value = await scope.run(undefined, () => repository.current.load())
       if (!mounted.current || current !== sequence.current || currentRevision !== scope.revision) return
-      setDraft(value); setBaseline(value); request.current = null; setPhase('ready')
+      const pending = !preview && consumerApi.pendingCommand('profile')
+      setDraft(pending ? { ...value, nickname: String(pending.data?.nickname || '') } : value); setBaseline(value); request.current = null; setPhase('ready')
+      if (!preview) setNotice(pending ? '上次保存结果尚未确认，请重试原操作' : '本次可保存昵称；性别、签名和头像上传尚未接通')
     } catch {
       if (mounted.current && current === sequence.current && currentRevision === scope.revision) setPhase('load-error')
     }
@@ -63,22 +67,23 @@ export default function ProfileEdit() {
       sequence.current++; request.current = null; saving.current = false
       const empty: ProfileDraft = { nickname: '', signature: '', avatarUrl: '', phoneMasked: '', gender: null }
       setDraft(empty); setBaseline(empty); setNotice(''); setErrors({})
-      repository.current = new PreviewProfileRepository(empty, 'normal', sleep)
+      repository.current = preview ? new PreviewProfileRepository(empty, 'normal', sleep) : new RealProfileRepository(consumerApi)
       setPhase('expired')
+      if (!preview && context?.workspace === 'consumer') void load()
     }
-  }, [revision, context])
+  }, [revision, context, preview, load])
   useEffect(() => {
     const handler = () => setPlatformInfo(Taro.getWindowInfo())
     Taro.onWindowResize(handler)
     return () => Taro.offWindowResize(handler)
   }, [])
   function edit<K extends keyof ProfileDraft>(key: K, value: ProfileDraft[K]) {
-    if (saving.current) return
+    if (saving.current || (!preview && consumerApi.pendingCommand('profile'))) return
     setDraft(old => ({ ...old, [key]: value })); setNotice(''); setErrors({})
     if (phase === 'save-error') setPhase('ready')
   }
   async function save() {
-    if (!preview || saving.current || !['ready', 'save-error'].includes(phase)) return
+    if (saving.current || !['ready', 'save-error'].includes(phase)) return
     const invalid = validateDraft(draft); setErrors(invalid)
     if (Object.keys(invalid).length) return
     saving.current = true; setPhase('saving'); setNotice('')
@@ -91,12 +96,13 @@ export default function ProfileEdit() {
     try {
       const saved = await scope.run(undefined, () => repository.current.save(pending.draft, pending.id))
       if (!mounted.current || currentRevision !== scope.revision) return
-      setDraft(saved); setBaseline(saved); setPhase('ready'); setNotice('预览数据已更新'); request.current = null
-    } catch {
-      if (mounted.current && currentRevision === scope.revision) { setPhase('save-error'); setNotice('保存失败，请重试；已填写内容保留') }
+      setDraft(saved); setBaseline(saved); setPhase('ready'); setNotice(preview ? '预览数据已更新' : '昵称已保存'); request.current = null
+    } catch (error) {
+      if (mounted.current && currentRevision === scope.revision) { setPhase('save-error'); setNotice(preview ? '保存失败，请重试；已填写内容保留' : integrationMessage(error)) }
     } finally { saving.current = false }
   }
   async function chooseAvatar() {
+    if (!preview) { setNotice('头像上传尚未接通'); return }
     if (saving.current) return
     const currentRevision = scope.revision
     try {
@@ -132,28 +138,29 @@ export default function ProfileEdit() {
       {!editable && <View className='profile-state' role='status'>
         <Text>{phase === 'loading' ? '正在加载资料…' : phase === 'expired' ? '登录已失效，请重新登录' : phase === 'load-error' ? '加载失败，请重试' : '资料服务暂不可用，请稍后再试'}</Text>
         {phase === 'load-error' && <Button id='profile-retry-load' className='profile-state-action' onClick={() => void load()}>重新加载</Button>}
+        {!preview && phase === 'expired' && <Button className='profile-state-action' onClick={() => Taro.redirectTo({ url: '/consumer/pages/shell/index' })}>去登录</Button>}
       </View>}
       {editable && <View className='profile-form'>
         <View className='profile-card profile-avatar-card'>
           <Text className='profile-label'>头像</Text>
           <Button id='profile-avatar' className='profile-avatar-action' ariaLabel='更换头像' disabled={phase === 'saving'} onClick={() => void chooseAvatar()}>
-            <Image className='profile-avatar-image' src={draft.avatarUrl} mode='aspectFill' />
+            {draft.avatarUrl && <Image className='profile-avatar-image' src={draft.avatarUrl} mode='aspectFill' />}
             <Image className='profile-chevron' src={chevron} mode='scaleToFill' />
           </Button>
         </View>
         <View className='profile-card profile-nickname-card'>
           <Text className='profile-label'>昵称</Text>
-          <Input id='profile-nickname' className='profile-nickname' value={draft.nickname} maxlength={-1} disabled={phase === 'saving'} ariaLabel='昵称' onInput={event => edit('nickname', event.detail.value)} adjustPosition />
+          <Input id='profile-nickname' className='profile-nickname' value={draft.nickname} maxlength={-1} disabled={phase === 'saving' || (!preview && !!consumerApi.pendingCommand('profile'))} ariaLabel='昵称' onInput={event => edit('nickname', event.detail.value)} adjustPosition />
         </View>
         {errors.nickname && <Text className='profile-field-error'>{errors.nickname}</Text>}
         <View className='profile-card profile-gender-card'>
           <Text className='profile-label'>性别</Text>
-          <View className='profile-genders'>{genderOptions.map(([value, label]) => <Button key={value} id={`profile-gender-${value}`} className={`profile-gender${draft.gender === value ? ' is-selected' : ''}`} ariaLabel={`${label}${draft.gender === value ? '，已选择' : ''}`} disabled={phase === 'saving'} onClick={() => edit('gender', value)}>{label}</Button>)}</View>
+          <View className='profile-genders'>{genderOptions.map(([value, label]) => <Button key={value} id={`profile-gender-${value}`} className={`profile-gender${draft.gender === value ? ' is-selected' : ''}`} ariaLabel={`${label}${draft.gender === value ? '，已选择' : ''}`} disabled={!preview || phase === 'saving'} onClick={() => edit('gender', value)}>{label}</Button>)}</View>
         </View>
         <View className='profile-card profile-phone-card'><Text className='profile-label'>手机号</Text><View className='profile-phone'><Text>{draft.phoneMasked}</Text><Text className='profile-bound'>（已绑定）</Text></View></View>
         <View className='profile-card profile-signature-card'>
           <Text className='profile-label'>个性签名</Text>
-          <Textarea id='profile-signature' className='profile-signature' value={draft.signature} maxlength={-1} disabled={phase === 'saving'} ariaLabel='个性签名' onInput={event => edit('signature', event.detail.value)} adjustPosition showConfirmBar={false} />
+          <Textarea id='profile-signature' className='profile-signature' value={draft.signature} maxlength={-1} disabled={!preview || phase === 'saving'} placeholder={preview ? '' : '暂未接通'} ariaLabel='个性签名' onInput={event => edit('signature', event.detail.value)} adjustPosition showConfirmBar={false} />
           <Text id='profile-signature-count' className='profile-count'>{codePointLength(draft.signature)}/60</Text>
         </View>
         {errors.signature && <Text className='profile-field-error'>{errors.signature}</Text>}

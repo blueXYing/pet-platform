@@ -1,7 +1,7 @@
 # Work State
 
 PROJECT: 宠物平台 V1.0
-STATE_VERSION: 6.1
+STATE_VERSION: 6.2
 UPDATED_AT: 2026-09-16
 
 CURRENT_PHASE: W2_WAVE_IN_PROGRESS
@@ -11,9 +11,9 @@ NEXT_PHASE_APPROVED: NO
 
 ## 当前结论
 
-Wave1 工程壳已经完成；Wave2 已按后续逐阶段授权实施，不能再以“尚未启动Wave2”重新派发已交付任务。2026-09-16 重新查询 GitHub：PR6～36 已合入 develop；本次核验基线为 `b91a0146b7d768f38ab7288cb0c3bd56788b2e55`，包含 PR35 状态整理、PR36 凭据文件构建排除与模板 YAML 修复。尚未发布 main 或生产环境。
+Wave1 工程壳已经完成；Wave2 已按后续逐阶段授权实施，不能再以“尚未启动Wave2”重新派发已交付任务。2026-09-16 重新查询 GitHub：PR6～37 已合入 develop；本次核验基线为 `3dfb253e642880daecc815976d373f69e6df5e21`，包含 PR35 状态整理、PR36 凭据构建排除与 PR37 发号器回归核查。尚未发布 main 或生产环境。
 
-此次同步只整理已发生事实、历史和剩余事项，不批准下一波开发、不更改产品规则、不新增契约、不把阶段合并直接改成完整Issue DONE。Catalog 的原Status保留，阶段进展看下表及 Ready Queue。
+本次用户已授权“C端登录、资料与宠物真实接口接入”有限切片，已实施候选代码与隔离验证，待本轮PR审阅。未更改产品规则、公共契约或生产发号安全门禁；不将切片交付标为完整Issue DONE。
 
 ## 已合入的阶段
 
@@ -38,11 +38,11 @@ PR6～34证据及逐PR合并提交见[历史同步报告](planning/progress/2026
 2. 可继续的阶段及前置检查见[Ready Queue](planning/READY_QUEUE_WAVE_2.md)；未解决项见[Blocked Queue](planning/BLOCKED_QUEUE.md)。
 3. 用户/商家Figma来源已具备，原始素材只存本地；见[设计来源与保管规则](planning/DESIGN_SOURCES.md)。不重复索取已有链接或把原始资料整包上传。
 
-下一步候选为C端登录、资料与宠物已批接口接入；可做范围确认和接入开发，完整真实业务验收仍受可信发号宿主退出证明、节点/高水位恢复与迁移启用等门禁约束。不能沿用PR36临时放行作为正式环境。本轮未授权或启动此下一阶段、MyBatis迁移、商家或交易开发。生产发布仍需单独授权。
+当前候选已接入微信登录/手机号授权、会话查询/受保护请求/登出、资料查询及昵称保存、宠物列表/详情/新增/编辑/删除。详见[C端接入交接](planning/progress/2026-09-16/C_REAL_API_INTEGRATION.md)。性别/签名、芯片/医疗记录及头像上传继续沿用CCR；完整真实业务验收仍受可信退出证明、节点/高水位恢复与迁移启用门禁约束。本轮没有重跑真实微信或使用PR36临时放行；MyBatis全量迁移、商家、交易及生产发布不在范围。
 
 ## 验证与边界
 
-- 最新已合并基线 b91a014 的 **push / 合并后** [CI 35070404547](https://github.com/blueXYing/pet-platform/actions/runs/35070404547)六项成功；PR36 的 **pull_request / 合并前** [CI 35069725733](https://github.com/blueXYing/pet-platform/actions/runs/35069725733)也六项成功，两者不得混用。本轮分支的验证结果单列于整合收尾报告及PR。
+- 最新已合并基线 3dfb253 的 **push / 合并后** [CI 35074218261](https://github.com/blueXYing/pet-platform/actions/runs/35074218261)六项成功。本轮分支验证单列于[C端接入报告](planning/progress/2026-09-16/C_REAL_API_INTEGRATION.md)及PR，不能用历史CI代替。
 - PR36的池化连接时区推测未在当前基线复现：SET、查询和写入已处于同一个事务绑定连接。新增真实Hikari多连接、非UTC会话及发号/续租回归；没有虚构生产代码修复。受控续租ACK延迟触发OPERATION_TIMEOUT并保持fail-closed，历史Docker偶发卡顿根因仍未确定，1秒预算不变。
 - CI通过不等于真实微信端到端、物理设备键盘/授权、全产品VIS、资金/支付退款闭环或生产启用通过。各Owner原交接中的未验收项保留，并按后续PR补齐事实解释。
 - PR25 原视觉接受只绑定当时页面与证据；PR34 后续底栏改造、标题修正和差异见[C端最新交接](planning/issues/wave-2/C-002-pet-page/HANDOFF.md)，不扩写为全部C端验收完成。
@@ -52,4 +52,4 @@ PR6～34证据及逐PR合并提交见[历史同步报告](planning/progress/2026
 
 旧远端状态见[历史快照](planning/history/WORK_STATE_BEFORE_20260916_SYNC.md)，未推送的本地阶段记录见[本地历史快照](planning/history/WORK_STATE_LOCAL_THROUGH_20260915.md)。历史中的“尚未批准/待merge”等不得覆盖本页当前事实。
 
-本轮唯一Writer为当前整合收尾任务，独立分支 `codex/id-timezone-integration-closeout-20260916`，从最新origin/develop b91a014创建。范围为发号器时区/续租调查、回归验证、状态及必要交接同步；无子代理或其他开发会话。未更改生产持久层实现、产品规则、Schema/API/Event/Scheduler或Issue AC；遵循MyBatis裁决，不新增JDBC持久层，不展开PLAT-006迁移。主目录用户现有 `frontend-miniapp/project.config.json` 修改保留。完整AUTH-001、PLAT-002及相关CCR未标记完成；本轮PR不自行合并。
+本轮唯一Writer为当前C端接入任务，独立分支 `codex/c-real-api-integration-20260916`，从最新 origin/develop 3dfb253 创建。范围限已批接口的现有页面接入、隔离回归与交接；无子代理或其他开发会话。未更改后端生产实现、Schema/API/Event/Scheduler或Issue AC，未新增JDBC持久层。主目录用户现有 `frontend-miniapp/project.config.json` 修改保留。AUTH-001、USR-001、PLAT-002、C-002及相关CCR不整体完成；本轮PR不自行合并。

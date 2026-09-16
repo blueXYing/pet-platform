@@ -6,5 +6,6 @@ export default defineConfig<'webpack5'>({
   sourceRoot: 'src', outputRoot: 'dist', framework: 'react',
   compiler: { type: 'webpack5', errorLevel: 1, prebundle: { enable: false } },
   plugins: ['@tarojs/plugin-platform-weapp'],
+  defineConstants: { C_API_ORIGIN: JSON.stringify(process.env.PET_C_API_ORIGIN || '') },
   mini: {},
 })

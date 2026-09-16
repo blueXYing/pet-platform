@@ -67,6 +67,13 @@ jobs:
         run: |
           python -m unittest discover -s backend/tools -p 'test_*.py' -v
           python backend/tools/check-display-status.py
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22.23.1'
+      - run: npm install --global npm@10.9.8
+      - name: Prepare frontend client for real backend integration test
+        working-directory: frontend-miniapp
+        run: npm ci
       - name: Maven verify
         run: mvn -B -f backend/pom.xml clean verify
       - name: Preserve actual backend evidence

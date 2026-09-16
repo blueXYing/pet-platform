@@ -172,6 +172,11 @@ export class PreviewPetRepository {
     if (this.failLoad) { this.failLoad = false; throw new Error('PREVIEW_LOAD_FAILED') }
     return this.pets.filter(pet => pet.status === 'ACTIVE').map(pet => ({ ...pet }))
   }
+  async get(petId: string): Promise<PetView> {
+    const found = (await this.load()).find(pet => pet.petId === petId)
+    if (!found) throw new Error('PET_NOT_FOUND')
+    return found
+  }
   async save(petId: string | null, draft: PetDraft, requestId: string): Promise<PetView> {
     await this.pause()
     if (Object.keys(validateDraft(draft, '9999-12-31')).length) throw new Error('INVALID_DRAFT')

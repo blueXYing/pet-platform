@@ -4,6 +4,9 @@ import { Button, Image, Text, View } from '@tarojs/components'
 import Taro, { useRouter, useDidShow } from '@tarojs/taro'
 import { useCallback, useEffect, useRef, useState, type CSSProperties } from 'react'
 import { useWorkspace } from '../../../shared/workspace-react'
+import { consumerApi } from '../../../shared/consumer-runtime'
+import { integrationMessage } from '../../../shared/consumer-api'
+import { realPetRepository } from '../../api/page-repository'
 import { isPreviewScenario, PreviewPetRepository, previewRepository, previewSupplement, breedAgeLine, sexLabel, type PetPhase, type PetView } from '../../pet/model'
 import stripMain from './assets/strip-main.png'
 import backing from './assets/panel-list-backing.png'
@@ -28,24 +31,24 @@ export default function PetArchiveList() {
   const route = useRouter()
   const preview = route.params.preview === '1'
   const referenceCanvas = preview && route.params.referenceCanvas === '1'
-  const scenario = isPreviewScenario(route.params.scenario) ? route.params.scenario : 'normal'
-  const { scope, revision, context } = useWorkspace()
-  const [phase, setPhase] = useState<PetPhase>(preview ? 'loading' : 'unavailable')
+  const scenario = preview && isPreviewScenario(route.params.scenario) ? route.params.scenario : 'normal'
+  const { scope, revision, context } = useWorkspace(preview ? 'preview' : 'real')
+  const [phase, setPhase] = useState<PetPhase>('loading')
   const [pets, setPets] = useState<PetView[]>([])
   const [notice, setNotice] = useState('')
   const mounted = useRef(true)
   const sequence = useRef(0)
+  const deleting = useRef(false)
   const previousRevision = useRef(revision)
   const [platformInfo, setPlatformInfo] = useState(() => Taro.getWindowInfo())
   const unit = referenceCanvas ? 1 : platformInfo.windowWidth / 402
   const style = { '--pet-status-top': `${referenceCanvas ? 0 : platformInfo.statusBarHeight || 0}px`, '--pet-unit': `${unit}px`, '--pet-canvas-width': referenceCanvas ? '402px' : '100vw' } as CSSProperties
 
   const load = useCallback(async () => {
-    if (!preview) return
     const currentRevision = scope.revision
     const current = ++sequence.current
     setPhase('loading'); setNotice('')
-    if (scenario === 'expired' || !scope.current || scope.current.workspace !== 'consumer') { setPhase('expired'); return }
+    if ((preview && scenario === 'expired') || !scope.current || scope.current.workspace !== 'consumer') { setPhase('expired'); return }
     try {
       const value = await scope.run(undefined, () => repository.current.load())
       if (!mounted.current || current !== sequence.current || currentRevision !== scope.revision) return
@@ -54,7 +57,7 @@ export default function PetArchiveList() {
       if (mounted.current && current === sequence.current && currentRevision === scope.revision) setPhase('load-error')
     }
   }, [preview, scenario, scope])
-  const repository = useRef(previewRepository(scope, scenario))
+  const repository = useRef(preview ? previewRepository(scope, scenario) : realPetRepository())
   useDidShow(() => { void load() })
   useEffect(() => {
     mounted.current = true
@@ -65,43 +68,57 @@ export default function PetArchiveList() {
       previousRevision.current = revision
       sequence.current++
       setPets([]); setNotice('')
-      repository.current = new PreviewPetRepository([])
+      repository.current = preview ? new PreviewPetRepository([]) : realPetRepository()
       setPhase('expired')
+      if (!preview && context?.workspace === 'consumer') void load()
     }
-  }, [revision, context])
+  }, [revision, context, preview, load])
   useEffect(() => {
     const handler = () => setPlatformInfo(Taro.getWindowInfo())
     Taro.onWindowResize(handler)
     return () => Taro.offWindowResize(handler)
   }, [])
-  function requirePreview() {
-    if (!preview) { setNotice('宠物服务暂不可用，请稍后再试'); return false }
-    return true
+  function canInteract() {
+    return phase === 'ready' && !!scope.current && !deleting.current
   }
   function openDetail(pet: PetView) {
-    if (!requirePreview()) return
-    Taro.navigateTo({ url: `/consumer/pages/pet-archive/detail?preview=1&scenario=${scenario}&petId=${encodeURIComponent(pet.petId)}` }).catch(() => setNotice('页面跳转失败，请重试'))
+    if (!canInteract()) return
+    Taro.navigateTo({ url: `/consumer/pages/pet-archive/detail?preview=${preview ? '1' : '0'}&scenario=${scenario}&petId=${encodeURIComponent(pet.petId)}` }).catch(() => setNotice('页面跳转失败，请重试'))
   }
   function openForm() {
-    if (!requirePreview()) return
-    Taro.navigateTo({ url: `/consumer/pages/pet-archive/form?preview=1&scenario=${scenario}` }).catch(() => setNotice('页面跳转失败，请重试'))
+    if (!canInteract()) return
+    Taro.navigateTo({ url: `/consumer/pages/pet-archive/form?preview=${preview ? '1' : '0'}&scenario=${scenario}` }).catch(() => setNotice('页面跳转失败，请重试'))
   }
   async function removePet(pet: PetView) {
-    if (!requirePreview() || phase !== 'ready') return
-    const result = await Taro.showModal({ title: '删除宠物档案？', content: `确定删除“${pet.name}”吗？删除后不可恢复。`, confirmText: '删除', cancelText: '取消' })
-    if (!result.confirm || !mounted.current) return
+    if (!canInteract()) return
     const currentRevision = scope.revision
+    deleting.current = true
     try {
+      const result = await Taro.showModal({ title: '删除宠物档案？', content: `确定删除“${pet.name}”吗？删除后不可恢复。`, confirmText: '删除', cancelText: '取消' })
+      if (!result.confirm || !mounted.current || currentRevision !== scope.revision) return
       await scope.run(undefined, () => repository.current.remove(pet.petId, `preview-delete-${Date.now()}`))
       if (!mounted.current || currentRevision !== scope.revision) return
-      setNotice('预览数据已更新')
+      setNotice(preview ? '预览数据已更新' : '已保存')
       await load()
-    } catch { if (mounted.current && currentRevision === scope.revision) setNotice('删除失败，请重试') }
+    } catch (error) { if (mounted.current && currentRevision === scope.revision) setNotice(preview ? '删除失败，请重试' : integrationMessage(error)) }
+    finally { deleting.current = false }
+  }
+  async function retryDelete() {
+    if (preview || deleting.current) return
+    const currentRevision = scope.revision
+    deleting.current = true
+    try {
+      for (const petId of consumerApi.pendingDeletes()) {
+        await scope.run(undefined, () => repository.current.remove(petId, ''))
+      }
+      if (mounted.current && currentRevision === scope.revision) await load()
+    } catch (error) { if (mounted.current && currentRevision === scope.revision) setNotice(integrationMessage(error)) }
+    finally { deleting.current = false }
   }
   // Out-of-scope entries stay explicit no-ops; the encyclopedia node is a later C-002 page.
   function notWired(label: string) {
-    if (!requirePreview()) return
-    setNotice(`“${label}”页面尚未接入本次预览`)
+    if (!canInteract()) return
+    setNotice(preview ? `“${label}”页面尚未接入本次预览` : `“${label}”功能尚未接通`)
   }
   const extraRows = Math.max(0, pets.length - 2) * 85
   const ready = phase === 'ready'
@@ -114,10 +131,15 @@ export default function PetArchiveList() {
       <Image className='pet-list-tape' src={tape} mode='scaleToFill' />
       {!ready && <View className='pet-state pet-list-state' role='status'>
         <Text>{phase === 'loading' ? '正在加载宠物档案…' : phase === 'expired' ? '登录已失效，请重新登录' : phase === 'load-error' ? '加载失败，请重试' : '宠物服务暂不可用，请稍后再试'}</Text>
+        {!preview && phase === 'expired' && <Button className='pet-state-action' onClick={() => Taro.redirectTo({ url: '/consumer/pages/shell/index' })}>去登录</Button>}
         {phase === 'load-error' && <Button id='pet-retry-load' className='pet-state-action' onClick={() => void load()}>重新加载</Button>}
       </View>}
       {ready && pets.length === 0 && <View className='pet-state pet-list-state' role='status'>
         <Text>还没有宠物档案，点击上方「+」添加</Text>
+      </View>}
+      {ready && !preview && consumerApi.pendingDeletes().length > 0 && <View className='pet-state pet-list-state'>
+        <Text>上次删除结果尚未确认</Text>
+        <Button id='pet-retry-delete' className='pet-state-action' onClick={() => void retryDelete()}>重试原删除请求</Button>
       </View>}
       {ready && <View className='pet-list-head'>
         <Text className='pet-list-title'>宠物档案</Text>
@@ -129,8 +151,8 @@ export default function PetArchiveList() {
         </Button>
       </View>}
       {ready && pets.map((pet, index) => {
-        const photo = petPhotos[pet.petId]
-        const tag = previewSupplement(pet.petId).tag
+        const photo = (preview ? petPhotos[pet.petId] : undefined)
+        const tag = previewSupplement(preview ? pet.petId : undefined).tag
         const top = 95 + index * 85
         return <Button key={pet.petId} id={`pet-card-${pet.petId}`} className='pet-list-card' style={{ top: `calc(var(--pet-unit) * ${top})` }} ariaLabel={`${pet.name}的档案`} onClick={() => openDetail(pet)} onLongPress={() => void removePet(pet)}>
           {pet.avatarUrl ? <Image className='pet-list-photo pet-list-avatar' src={pet.avatarUrl} mode='aspectFill' /> : photo ? <Image className='pet-list-photo' src={photo.src} mode='scaleToFill' style={{ left: `calc(var(--pet-unit) * ${photo.x})`, top: `calc(var(--pet-unit) * ${photo.y})`, width: `calc(var(--pet-unit) * ${photo.w})`, height: `calc(var(--pet-unit) * ${photo.h})` }} /> : <View className='pet-list-photo pet-list-avatar pet-avatar-empty'><Text>{pet.name.slice(0, 1)}</Text></View>}
