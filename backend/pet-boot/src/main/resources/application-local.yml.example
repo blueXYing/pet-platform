@@ -14,7 +14,7 @@ pet:
       enabled: true
       redis-host: 127.0.0.1
       redis-port: 16379
-      cache-prefix: auth001c:
+      cache-prefix: "auth001c:"
       wechat:
         app-id: "在这里填小程序appid(wx开头)"
         app-secret: "在这里填小程序AppSecret"
