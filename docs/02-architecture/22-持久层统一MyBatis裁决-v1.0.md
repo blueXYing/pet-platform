@@ -28,3 +28,16 @@
 ## 4. 不变项
 
 Redis 易失存储(会话/attempt/缓存)不是持久层,不迁;`*-api` 模块禁 Mapper/实体(基线05);ARCH-002 跨模块持久化红线不变;CCR-OSS-001 的 S3/注册表语义不变。
+
+## 5. 阶段进展(2026-09-16,不改裁决规则)
+
+六模块已按 §3 顺序完成迁移并各自提交 PR,均携带迁移前基线与迁移后同套回归全绿、ArchUnit/模块依赖检查通过;整合组合验证通过。状态:**PR 待人工合入,PLAT-006 未 DONE**。逐项证据与生产直接 SQL 前后盘点见[迁移报告](../../planning/progress/2026-09-16/PLAT006_MIGRATION_REPORT.md);合入后在本节登记完成回执。
+
+| 模块 | PR | 状态 |
+|---|---|---|
+| pet-thirdparty-biz | #39 | PR待审 |
+| pet-user-biz | #40 | PR待审 |
+| pet-event-core | #41 | PR待审 |
+| pet-task-core | #42 | PR待审 |
+| pet-id-core | #43 | PR待审 |
+| pet-admin-biz | #44 | PR待审 |
