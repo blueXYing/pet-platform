@@ -18,6 +18,12 @@ table nor inserts/enables node slots. Production schema installation, initializa
 node assignment, exit verification and durable database lineage are deployment gates.
 
 The store uses short REQUIRES_NEW, READ_COMMITTED transactions and explicit UTC sessions.
+`DataSourceTransactionManager` and `JdbcTemplate` use the same DataSource: the UTC SET,
+row read, fresh time sample and update reuse the transaction-bound connection. A pool may
+choose a different physical connection for the next transaction; that transaction sets UTC again.
+Do not move SET outside the transaction or rely on a connection having been initialized by a
+previous borrower. `PooledSnowflakeMySqlTest` exercises this with multiple real Hikari connections,
+non-UTC sessions and different JVM/driver time zones, without forcing UTC through the JDBC URL.
 It reads a prior-owner snapshot, performs host verification without a row lock, then locks and
 rechecks that snapshot before obtaining database time in a new statement. H/fence/grant/lease
 updates are atomic and checked against the prior values. CHECK constraints validate a row;
@@ -56,6 +62,13 @@ production alert routing is not implemented here. `isClosed`, `failureReason`, `
 `lastPublishedId` and `incarnation` are infrastructure diagnostics, not authentication/HTTP DTOs.
 After terminal failure, use a new JVM and new grant only after trusted exit verification; never
 reset/deserialize a generator in the same process. Lifecycle/VM memory cloning is unsupported.
+
+The Spring transaction timeout and the single-flight publication deadline are separate protections.
+`OPERATION_TIMEOUT` identifies the latter; it alone does not prove a Spring transaction timeout,
+row lock, pool starvation or Docker pause. A test holds the acknowledgement after a real renewal
+commit and verifies terminal closure and rejection of its late grant. This is controlled fault
+injection, not reproduction of the spontaneous stall reported in PR36. See the
+[2026-09-16 investigation](../../planning/progress/2026-09-16/ID_INTEGRATION_CLOSEOUT.md).
 
 ## Component tests
 

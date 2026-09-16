@@ -1,0 +1,387 @@
+{
+  "baseline": "b91a0146b7d768f38ab7288cb0c3bd56788b2e55",
+  "production_id_source_changed": false,
+  "pr36_pre_merge_ci": {
+    "run": 35069725733,
+    "event": "pull_request",
+    "head": "16aafa4cbef84461eaf6500d6f8240c1a34b10ef",
+    "jobs_succeeded": 6
+  },
+  "develop_post_merge_ci": {
+    "run": 35070404547,
+    "event": "push",
+    "head": "b91a0146b7d768f38ab7288cb0c3bd56788b2e55",
+    "jobs_succeeded": 6
+  },
+  "environment": {
+    "java": "JBR 21.0.10",
+    "maven": "3.9.12",
+    "targeted_mysql": "Docker 8.4.11, global +08:00",
+    "final_mysql": "native 8.4.9, global +00:00, innodb_flush_log_at_trx_commit=1, sync_binlog=1",
+    "redis": "7.4, RDB/AOF disabled",
+    "final_http_test_process_server_port": 0
+  },
+  "final_local_verify": {
+    "command": "mvn -B -f backend/pom.xml clean verify",
+    "finished_at": "2026-09-16T16:21:51+08:00",
+    "reactor_projects_succeeded": 42,
+    "totals": {
+      "tests": 260,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    },
+    "suites": [
+      {
+        "module": "pet-admin-biz",
+        "name": "com.petplatform.admin.biz.auth.AdminAuthFailureRecoveryTest",
+        "tests": 11,
+        "failures": 0,
+        "errors": 0,
+        "skipped": 0
+      },
+      {
+        "module": "pet-admin-biz",
+        "name": "com.petplatform.admin.biz.auth.AdminAuthLifecycleTest",
+        "tests": 11,
+        "failures": 0,
+        "errors": 0,
+        "skipped": 0
+      },
+      {
+        "module": "pet-admin-biz",
+        "name": "com.petplatform.admin.biz.auth.AdminAuthPrimitivesTest",
+        "tests": 12,
+        "failures": 0,
+        "errors": 0,
+        "skipped": 0
+      },
+      {
+        "module": "pet-architecture-test",
+        "name": "com.petplatform.architecture.ArchitectureRulesFixtureTest",
+        "tests": 15,
+        "failures": 0,
+        "errors": 0,
+        "skipped": 0
+      },
+      {
+        "module": "pet-architecture-test",
+        "name": "com.petplatform.architecture.ArchitectureRulesTest",
+        "tests": 7,
+        "failures": 0,
+        "errors": 0,
+        "skipped": 0
+      },
+      {
+        "module": "pet-boot",
+        "name": "com.petplatform.boot.auth.AdminAuthDisabledTest",
+        "tests": 3,
+        "failures": 0,
+        "errors": 0,
+        "skipped": 0
+      },
+      {
+        "module": "pet-boot",
+        "name": "com.petplatform.boot.auth.AdminAuthHttpTest",
+        "tests": 5,
+        "failures": 0,
+        "errors": 0,
+        "skipped": 0
+      },
+      {
+        "module": "pet-boot",
+        "name": "com.petplatform.boot.auth.CAuthDisabledTest",
+        "tests": 2,
+        "failures": 0,
+        "errors": 0,
+        "skipped": 0
+      },
+      {
+        "module": "pet-boot",
+        "name": "com.petplatform.boot.auth.CAuthHttpTest",
+        "tests": 7,
+        "failures": 0,
+        "errors": 0,
+        "skipped": 0
+      },
+      {
+        "module": "pet-boot",
+        "name": "com.petplatform.boot.web.GlobalApiHandlerTest",
+        "tests": 4,
+        "failures": 0,
+        "errors": 0,
+        "skipped": 0
+      },
+      {
+        "module": "pet-boot",
+        "name": "com.petplatform.boot.web.TraceContextFilterTest",
+        "tests": 3,
+        "failures": 0,
+        "errors": 0,
+        "skipped": 0
+      },
+      {
+        "module": "pet-common",
+        "name": "com.petplatform.common.ApiEnvelopeTest",
+        "tests": 5,
+        "failures": 0,
+        "errors": 0,
+        "skipped": 0
+      },
+      {
+        "module": "pet-common",
+        "name": "com.petplatform.common.MoneyCodecTest",
+        "tests": 28,
+        "failures": 0,
+        "errors": 0,
+        "skipped": 0
+      },
+      {
+        "module": "pet-common",
+        "name": "com.petplatform.common.PublicContractChecksTest",
+        "tests": 20,
+        "failures": 0,
+        "errors": 0,
+        "skipped": 0
+      },
+      {
+        "module": "pet-common",
+        "name": "com.petplatform.common.PublicIdCodecTest",
+        "tests": 22,
+        "failures": 0,
+        "errors": 0,
+        "skipped": 0
+      },
+      {
+        "module": "pet-common",
+        "name": "com.petplatform.common.S1ContractMappingTest",
+        "tests": 4,
+        "failures": 0,
+        "errors": 0,
+        "skipped": 0
+      },
+      {
+        "module": "pet-event-core",
+        "name": "com.petplatform.event.core.OutboxConsumeIdempotencyMySqlTest",
+        "tests": 3,
+        "failures": 0,
+        "errors": 0,
+        "skipped": 0
+      },
+      {
+        "module": "pet-event-core",
+        "name": "com.petplatform.event.core.OutboxRecoveryMySqlTest",
+        "tests": 3,
+        "failures": 0,
+        "errors": 0,
+        "skipped": 0
+      },
+      {
+        "module": "pet-event-core",
+        "name": "com.petplatform.event.core.OutboxSameTransactionMySqlTest",
+        "tests": 4,
+        "failures": 0,
+        "errors": 0,
+        "skipped": 0
+      },
+      {
+        "module": "pet-id-core",
+        "name": "com.petplatform.id.core.HutoolSnowflakeIdProviderMySqlTest",
+        "tests": 13,
+        "failures": 0,
+        "errors": 0,
+        "skipped": 0
+      },
+      {
+        "module": "pet-id-core",
+        "name": "com.petplatform.id.core.IdProviderProcessMySqlTest",
+        "tests": 1,
+        "failures": 0,
+        "errors": 0,
+        "skipped": 0
+      },
+      {
+        "module": "pet-id-core",
+        "name": "com.petplatform.id.core.JdbcSnowflakeNodeStoreMySqlTest",
+        "tests": 11,
+        "failures": 0,
+        "errors": 0,
+        "skipped": 0
+      },
+      {
+        "module": "pet-id-core",
+        "name": "com.petplatform.id.core.PooledSnowflakeMySqlTest",
+        "tests": 5,
+        "failures": 0,
+        "errors": 0,
+        "skipped": 0
+      },
+      {
+        "module": "pet-id-core",
+        "name": "com.petplatform.id.core.SingleFlightLaneTest",
+        "tests": 6,
+        "failures": 0,
+        "errors": 0,
+        "skipped": 0
+      },
+      {
+        "module": "pet-id-core",
+        "name": "com.petplatform.id.core.SnowflakeSchemaMySqlTest",
+        "tests": 1,
+        "failures": 0,
+        "errors": 0,
+        "skipped": 0
+      },
+      {
+        "module": "pet-id-core",
+        "name": "com.petplatform.id.core.SnowflakeSettingsTest",
+        "tests": 4,
+        "failures": 0,
+        "errors": 0,
+        "skipped": 0
+      },
+      {
+        "module": "pet-task-core",
+        "name": "com.petplatform.task.core.AsyncTaskWorkerMySqlTest",
+        "tests": 10,
+        "failures": 0,
+        "errors": 0,
+        "skipped": 0
+      },
+      {
+        "module": "pet-task-core",
+        "name": "com.petplatform.task.core.MySqlTaskRepositoryTest",
+        "tests": 12,
+        "failures": 0,
+        "errors": 0,
+        "skipped": 0
+      },
+      {
+        "module": "pet-thirdparty-biz",
+        "name": "com.petplatform.thirdparty.biz.OssAssetSyncMySqlTest",
+        "tests": 1,
+        "failures": 0,
+        "errors": 0,
+        "skipped": 0
+      },
+      {
+        "module": "pet-thirdparty-biz",
+        "name": "com.petplatform.thirdparty.biz.PresignedAssetUrlTest",
+        "tests": 3,
+        "failures": 0,
+        "errors": 0,
+        "skipped": 0
+      },
+      {
+        "module": "pet-user-biz",
+        "name": "com.petplatform.user.biz.UserAuthServiceMySqlTest",
+        "tests": 13,
+        "failures": 0,
+        "errors": 0,
+        "skipped": 0
+      },
+      {
+        "module": "pet-user-biz",
+        "name": "com.petplatform.user.biz.UserPetDomainMySqlTest",
+        "tests": 5,
+        "failures": 0,
+        "errors": 0,
+        "skipped": 0
+      },
+      {
+        "module": "pet-user-biz",
+        "name": "com.petplatform.user.biz.WechatMiniApiProviderTest",
+        "tests": 6,
+        "failures": 0,
+        "errors": 0,
+        "skipped": 0
+      }
+    ]
+  },
+  "earlier_runs": [
+    {
+      "run": "pooled-baseline",
+      "tests": 4,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "production_source": "unchanged"
+    },
+    {
+      "run": "id-regression",
+      "common_tests": 79,
+      "id_tests": 41,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    },
+    {
+      "run": "timezone-negative-control",
+      "mutation": "temporarily remove UTC SET only, then restore",
+      "tests": 4,
+      "errors": 4,
+      "maven_exit": 1,
+      "message": "Database and OS UTC sample mismatch",
+      "committed": false
+    },
+    {
+      "run": "full-verify Docker",
+      "result": "FAIL",
+      "errors": 2,
+      "location": "AdminAuthFailureRecoveryTest teardown AuthTestDatabase.close DROP DATABASE",
+      "cause": "SocketTimeoutException after 5 seconds",
+      "unexecuted_reactor": [
+        "pet-boot",
+        "pet-architecture-test"
+      ]
+    },
+    {
+      "run": "full-verify native first",
+      "result": "FAIL",
+      "errors": 2,
+      "location": "AdminAuthHttpTest / CAuthHttpTest context start",
+      "cause": "Port 8080 already in use",
+      "unexecuted_reactor": [
+        "pet-architecture-test"
+      ]
+    }
+  ],
+  "other_local_checks": {
+    "architecture_python_negative_tests": 13,
+    "module_dependency_gate": "PASS",
+    "display_status_gate": "PASS",
+    "contract_python_tests": 82,
+    "contract_smoke": {
+      "operations": 52,
+      "writes": 37,
+      "resolved_refs": 630,
+      "string_id_properties": 118
+    }
+  },
+  "targeted_witness_lines": [
+    "REAL_JVM_EXIT_BOUND oldPid=8940 start=2026-09-16T08:04:29.122Z oldIncarnation=1ff0380b-f215-451d-ad71-3b2ba85db1a3 halt=23 freshPid=47160",
+    "POOL UTC: JVM=UTC driver=UTC resetSession=+08:00 physicalIds=[443, 445, 443, 443, 443, 443, 443, 443, 443, 443, 443, 443, 443, 443] renewals=12",
+    "POOL UTC: JVM=Asia/Shanghai driver=UTC resetSession=+08:00 physicalIds=[453, 455, 453, 453, 453, 453, 453, 453, 453, 453, 453, 453, 453, 453] renewals=12",
+    "POOL UTC: JVM=Asia/Shanghai driver=Asia/Shanghai resetSession=+08:00 physicalIds=[463, 465, 463, 463, 463, 463, 463, 463, 463, 463, 463, 463, 463, 463] renewals=12",
+    "POOL UTC: JVM=UTC driver=Asia/Shanghai resetSession=-05:30 physicalIds=[473, 475, 473, 473, 473, 473, 473, 473, 473, 473, 473, 473, 473, 473] renewals=12",
+    "RENEWAL: real commit + held ACK -> OPERATION_TIMEOUT; late ACK did not revive provider"
+  ],
+  "sha256": {
+    "backend/pet-id-core/src/test/java/com/petplatform/id/core/PooledSnowflakeMySqlTest.java": "c5ffe9516c38fbf10f1de21ee46f60e89fe7cd62232c47141d3375c7f9f86c45",
+    "backend/pet-id-core/pom.xml": "fa47db5ec91f41c33a97d98c637325f133036c83360639df8535901e20da79e6",
+    "pooled-baseline.log": "6480ad6bd7c5e9a4de1d006e5a1e609019bba6d03ca863a9c2e5de0621a7d134",
+    "id-regression.log": "074e06f3bbc5c7e82571e987324061478b63b3b243608a7f1d70c3e2a3d88b0f",
+    "timezone-negative-control.log": "4d76ca44665f251dfac68136ac0269845d956d9e3b7e3ee086771876ef85ca6c",
+    "full-verify.log": "4b15380a0574c249f364f870e9a52fe3f03800a5b34591824b90d9266eca7322",
+    "full-verify-native.log": "ba9e7690137c1068baf7627f5645ed0ee53fc82c1dc0b4c083bfdc5c3fc10b36",
+    "full-verify-final.log": "19f9acc0d580b04d4febf06aeec0b83130d753c0e2a9067b4159dc3be09cee8c",
+    "contract-tests.log": "f2864b72663ea89a9a10006d3c6c97c518311fa17004ee8d08be462598f31885"
+  },
+  "not_executed": [
+    "real WeChat or phone binding rerun",
+    "C frontend real business E2E",
+    "production host exit integration",
+    "production Linux long-running load/recovery"
+  ],
+  "historical_only": "PR36 real WeChat smoke receipt; not rerun here"
+}
