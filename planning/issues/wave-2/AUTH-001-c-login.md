@@ -1,10 +1,12 @@
 # AUTH-001 C端登录链路阶段(微信登录先行)
 
+> 2026-09-16 状态同步：PR31及PR33已合入。PR31交付C会话/HTTP链路，PR33补齐真实微信Provider和环境配置字段；凭据不入仓库，真实小程序code联调仍需执行。下文范围描述保留首阶段来由，不重复请求已经合并的阶段。
+
 Owner Role: Backend Core
 关联 Issue: AUTH-001(本文件为其阶段任务;SMS/密码登录为后续门禁,不在本阶段)
 Priority: P0
 Wave: 2
-Status: DISPATCHED
+Status: STAGE_MERGED
 基线: develop `0e314cffe5e5085ad13386410002e59f43afaa0a`
 
 2026-09-15用户批准并行推进;提示词见 planning/prompts/AUTH-C-LOGIN-PROMPT.md。

@@ -7,9 +7,15 @@ Priority: P0
 Wave: 2
 Status: BLOCKED
 Dependencies: PLAT-001
-Phase Readiness: CONDITIONAL
+Phase Readiness: COMPONENT_MERGED_PRODUCTION_PENDING
 
-仅规划候选，未获Wave2启动批准。BLOCKED是完整Issue实现门禁；Phase Readiness仅表示批准后可进行明确阶段。阶段完成不等于整个Issue DONE。
+已按逐阶段授权推进，当前阶段以以下合并记录为准；原Status表示完整Issue尚未验收关闭。既有AC、Required Tests和Allowed/Forbidden保持，不将阶段合并等同于整项DONE。
+
+## 2026-09-16 当前阶段
+
+PR12 Worker/Lease 已合入；PR16 已补齐可注入的生产ID组件代码，但不等于生产启用已完成。producer、DEAD对账/告警、业务Handler和生产装配仍缺。
+
+证据见[合并台账](../../progress/2026-09-16/PROGRESS_SYNC.md)；本次只同步事实，不扩大原Scope或启动新的实现阶段。
 
 ## Allowed / Forbidden
 

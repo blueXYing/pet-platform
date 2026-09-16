@@ -7,9 +7,15 @@ Priority: P0
 Wave: 2
 Status: IN_PROGRESS
 Dependencies: PLAT-001
-Phase Readiness: SPEC_READY
+Phase Readiness: BASELINE_MERGED_DOD_REVIEW
 
 2026-09-15用户明确批准先做本基座再开USR-001。本Issue为用户直接授权新增，非扩大既有Issue范围；实现既有契约（HTTP10响应包裹/§2.4 Trace、Error12的ApiError与通用映射、技术基线"password/code/token不进普通日志"），不新增产品行为。
+
+## 2026-09-16 当前阶段
+
+PR21可观测与统一异常基座已合入。Catalog原IN_PROGRESS保留，按原AC/证据核对整项DoD后登记关闭；不能把已合入基座重新派作实现，也不把运维采集扩为本Issue新范围。
+
+证据见[合并台账](../../progress/2026-09-16/PROGRESS_SYNC.md)；本次只同步事实，不扩大原Scope或启动新的实现阶段。
 
 ## Allowed / Forbidden
 

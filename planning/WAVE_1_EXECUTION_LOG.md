@@ -158,3 +158,8 @@ M001最终固定head4fd3940cf8f8a4abe1731373eab5acf32fefcfd5/tree95e2ac9502f7b80
 用户批准已落实；根Work重新核验PR7 head4fd3940/base2487d730及run34797086491六job全部success，受测merge4680cb17父与目标匹配、tree95e2ac9一致。退出Draft后以expected_head合并成功，merge fb024226898ae38923ddbfa2f55602280a9fd5a8；远端develop已核验指向merge、tree不变，main仍8c1aea5。M001改DONE，7个Wave1任务已合入；W3收尾审查待进行，不启动Wave2/不发布main。原平台截图与真实业务/CCR未验收限制不变。
 
 W4规划回执：PR8已由人工批准合入develop aa470322；其待同步条件已满足。2026-09-14用户要求Wave2规划，本轮未启动开发，规划与追踪修正见WAVE_2_PLAN.md。
+
+
+## 2026-09-16 后续记录入口
+
+本文件保留Wave1发生时记录。此前只在本地的后续日志已归档到[本地执行日志历史](history/WAVE_2_LOCAL_EXECUTION_LOG_THROUGH_20260915.md)；PR6～34的当前合并事实与未验收范围见[同步报告](progress/2026-09-16/PROGRESS_SYNC.md)，不把旧“未启动Wave2”当当前状态。

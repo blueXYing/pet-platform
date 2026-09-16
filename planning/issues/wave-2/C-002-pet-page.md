@@ -1,10 +1,12 @@
 # C-002 宠物档案页阶段(逐页推进第2页)
 
+> 2026-09-16 状态同步：PR34最新head 80b5536已合入，添加页标题固定为“添加宠物信息”，独立编辑页尚无稿；现有旧入口复用问题仍待拆分。公共底栏、分包与预览业务回归已有证据，真实HTTP/真机等限制保留。
+
 Owner Role: C-End Frontend
 关联 Issue: C-002(本文件为其阶段任务,不替代原Issue Scope)
 Priority: P0
 Wave: 2
-Status: DISPATCHED
+Status: STAGE_MERGED
 基线: develop `0e314cffe5e5085ad13386410002e59f43afaa0a`(PR25合并后)
 
 2026-09-15用户批准以编辑资料页样板(PR25)为标准逐页推进,本阶段为宠物档案页;并行会话执行,提示词见 planning/prompts/C-002-PET-PAGE-PROMPT.md。

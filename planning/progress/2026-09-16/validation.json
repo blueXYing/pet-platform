@@ -1,0 +1,94 @@
+{
+  "status": "PASS",
+  "baseline": "e576837f7f2789bccdc059bbea46da0daf0be8ef",
+  "scope": "Documentation and narrowly scoped raw-design ignore rules only",
+  "changedFiles": 40,
+  "relativeLinksChecked": 138,
+  "issueAcceptancePreserved": [
+    "planning/issues/wave-2/AUTH-001-c-login.md",
+    "planning/issues/wave-2/AUTH-001.md",
+    "planning/issues/wave-2/C-002-pet-page.md",
+    "planning/issues/wave-2/C-002.md",
+    "planning/issues/wave-2/M-002.md",
+    "planning/issues/wave-2/PLAT-002.md",
+    "planning/issues/wave-2/PLAT-003.md",
+    "planning/issues/wave-2/PLAT-004.md",
+    "planning/issues/wave-2/PLAT-005.md",
+    "planning/issues/wave-2/PLAT-006-mybatis-migration.md",
+    "planning/issues/wave-2/USR-001.md"
+  ],
+  "issueCatalogCount": 65,
+  "mergedPRsVerified": 29,
+  "baselineCI": "6/6 success (not candidate-head CI)",
+  "figmaFilesAdded": 0,
+  "ignoreRules": [
+    {
+      "path": "planning/issues/wave-2/C-002-design-inputs/README.md",
+      "source": ".gitignore:35:/planning/issues/wave-2/C-002-design-inputs/"
+    },
+    {
+      "path": "planning/issues/wave-2/M-002-design-inputs/README.md",
+      "source": ".gitignore:36:/planning/issues/wave-2/M-002-design-inputs/"
+    },
+    {
+      "path": "本地工作区说明.md",
+      "source": ".gitignore:37:/本地工作区说明.md"
+    }
+  ],
+  "protectedFilesUnchanged": [
+    "AGENTS.md",
+    "planning/ISSUE_CATALOG.csv",
+    "planning/ISSUE_STORY_LINKS.csv",
+    "planning/TRACEABILITY_MATRIX.md"
+  ],
+  "errors": [],
+  "limitations": [
+    "No new physical-device, live provider or production acceptance",
+    "Historical archives retain historical assertions; current state is explicitly separate"
+  ],
+  "fileSha256": {
+    ".gitignore": "ae23f4fd55f987e1acefdff0a9692843d2354c6802757ee22a32ce0b389cb970",
+    "05-开发流程与文档阅读指南.md": "04984e7a50af2ebae90b38a16e6de2b0d3c13e5241691e8d28a2ffb2fa6b5f51",
+    "README.md": "4436cbaff854a5e8295368e2b22a2a75f1f27ae34d609c26be7ffb7da2d5d164",
+    "WORK_STATE.md": "3101ff7ed00914536a31abee151de6444fa088b386969db2caf3fe0e21d29456",
+    "backend/pet-id-core/HANDOFF.md": "2ed7f50d9d79b9d4dfb1df9483d298da7e52e963dc8210be57a13d21d9099e73",
+    "backend/pet-task-core/HANDOFF.md": "47581a0d734074b3030a15f1d976042963c19d2d2863dad0ae1340520019b62d",
+    "docs/02-architecture/20-前端技术基线-v0.7.md": "615d9fa88b58f2772c2feb5464fab4bbd0c1e8b5cd1557d1d3db3d393a08f696",
+    "planning/BLOCKED_QUEUE.md": "7c9e67f108e6bd4d73ae756fbef7718978a2cbece7f28442973c7b7160b99ed3",
+    "planning/DESIGN_SOURCES.md": "13d85dec2a875e2d9de6d49375b6a02e00c8397ef4b672f146ecf553076af0dc",
+    "planning/OPEN_DECISIONS.md": "296efc73e3925e07d10f6cd9e3b28d5e8ccc67c54d22258fee6561fd17d895a0",
+    "planning/READY_QUEUE_WAVE_2.md": "297c2cd37db733b0161b3ac1072f3ffab133332d82c383bcc1ab603fe51799e1",
+    "planning/WAVE_1_EXECUTION_LOG.md": "7a9d27aae1084980c37d0409db7ab238c79798e05bc1324960afb5e658867d9f",
+    "planning/WAVE_2_PLAN.md": "f8dccd638a3467789eaa3491f11b4bc9e84e1b303d63edd78bb79f1e6e3f4703",
+    "planning/ccr/AUTH-001/web-login-handoff.md": "fbd1455b20819a59c2de9714f709795df87ec6d44f4d2229801195523e5233ca",
+    "planning/ccr/CCR-ACR-001.md": "1a6accf2de9a350d6de8cce3bcff66a336417372fcdf5a25f30d322178b6b78b",
+    "planning/ccr/CCR-OSS-001.md": "bd4508f3ff257fb9a50f54395615c6005170409d94a61a6a79d57e018d2ecc0c",
+    "planning/ccr/CCR-PERM-001.md": "ca26581ed625b248b91359c9f2352c452146efe272797ffbb6fbbef24b747019",
+    "planning/ccr/CCR-W0-001.md": "6e548d6c7fc1682dbd248be1d0370deb25749da104406f7e9b434de6392e286c",
+    "planning/ccr/CCR-W0-001/implementation-handoff.md": "85b72d7b8b026c2014c1566ae8b7d7963c15bbd9ee6c56924748445bda480421",
+    "planning/ccr/CCR-W2-API-001.md": "34f189bcff95ec79da0428264cd7aafc3ad2734afcfb9906fd38e6da5cc697ce",
+    "planning/ccr/CCR-W2-IDEMP-001.md": "c8c6ddfa9deea9203d08f37b9df0f66c19f5819aaf56d779b1c4cdb55f8a85fa",
+    "planning/history/SNOWFLAKE_SDK_COMPARISON_20260914.md": "5fd0ec01483f2b0818feac423d7ce571296f782e71dabaea6674442e2dd1da02",
+    "planning/history/WAVE_2_LOCAL_EXECUTION_LOG_THROUGH_20260915.md": "e81a136bbebe9b989c29650d17f9153c0a96d1618a8b1e6e6b9770326d15abec",
+    "planning/history/WORK_STATE_BEFORE_20260916_SYNC.md": "77a72acdaf59e2d91d7dd82374ba6bca717011f6bc9dc58b981a3be2aeb2f82b",
+    "planning/history/WORK_STATE_LOCAL_THROUGH_20260915.md": "5054e883c40829dcec1b3f98dbb60ed825778208aab53419f94240fa4f4f0d73",
+    "planning/issues/wave-2/AUTH-001-c-login.md": "828e8ed4bfcb2be184e1ef5b68a5704e7ded239dd5cd16812b24c4f514c57d2c",
+    "planning/issues/wave-2/AUTH-001.md": "efd466f9de49d5c9ed7930b4a964efef311756f3b2afbdc481e19fb94ad092b4",
+    "planning/issues/wave-2/C-002-pet-page.md": "371184ba1d94ac14a3d4a5a0f9e1e55ba3e62b925c436b42d8f0b882ae424226",
+    "planning/issues/wave-2/C-002.md": "0ef161fd02a28b4fe1a663e5d1fef25afafe2018e1af356b7dfe3bde077e4897",
+    "planning/issues/wave-2/M-002.md": "c704b153343d5162bfcbff58a5d3e6d77d1793ae5b36d9983dddf03d4740f97f",
+    "planning/issues/wave-2/PLAT-002.md": "62971b8333582319643d4dc59f460abd1571ef973395ebe55679bf9ee68aa24b",
+    "planning/issues/wave-2/PLAT-003.md": "9ec9d9e2ce5bcf8528884ec82a74ba3b7dc879dfd666b1542f85ba5788aa6cbd",
+    "planning/issues/wave-2/PLAT-004.md": "9a6e484129f8c0511da86e7e7905a3f9e815976896ec307061c2118a87f93e1b",
+    "planning/issues/wave-2/PLAT-005.md": "e24ed595fcf0490ee5673a9e3cbd07492a7c813f1a4425105bd36909a10f323a",
+    "planning/issues/wave-2/PLAT-006-mybatis-migration.md": "ae05244cd69cf51cae3917ad399efe7bde28cfb35879708ed8d9530187643713",
+    "planning/issues/wave-2/USR-001.md": "03915bf0037e17c84330021957104b9fbe2a5438981e8fb9015095b3fe02fa9b",
+    "planning/progress/2026-09-16/PROGRESS_SYNC.md": "6397a912cf957644bc3e4653f48d85c80d341429269ec20b0b653ba9b7dd5820",
+    "planning/progress/2026-09-16/local-document-disposition.json": "a278d54c90c86ce9fb7e508a64818cfcb3d4dc539896a56eefdee22202aa596a",
+    "planning/progress/2026-09-16/merged-pr-evidence.json": "5db444c4c672657ab18b12838b28d8a6bb65718e1f72cc7a0502272711c9393e"
+  },
+  "architectureSourceGates": {
+    "moduleDependencies": "PASS",
+    "displayOrderStatus": "PASS"
+  }
+}

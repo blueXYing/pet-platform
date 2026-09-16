@@ -1,13 +1,15 @@
 # CCR-W2-API-001：首批业务查询/写入与页面DTO缺口
 
+> 2026-09-16 状态同步：用户域已经历契约同步与后端/HTTP交付；不能恢复本地旧副本的“尚未交付”表述。其他域仍按下表独立评审，整个CCR不因用户域进展而RESOLVED。
+
 状态：OPEN_SPEC_REQUIRED；可按下表域独立评审关闭，整个CCR不得因一个域完成而全部RESOLVED。不新增Issue，不生成公共SDK，不在本草案选择具体字段/路径/Provider。
 
-证据：HTTP10 §3.1～3.3、§4/§5多为路由和行为列表；内部API07 §3～5若干Query/DTO仅名称引用；OpenAPI11当前16个交易核心操作不覆盖完整登录/宠物/商家服务/人员排期/运营CRUD。Wave1 Contract Smoke绿灯不能证明本CCR已完整。
+证据：HTTP10 §3.1～3.3、§4/§5多为路由和行为列表；内部API07 §3～5若干Query/DTO仅名称引用；原Wave1盘点时OpenAPI11的16个交易核心操作不覆盖完整登录/宠物/商家服务/人员排期/运营CRUD。Wave1 Contract Smoke绿灯不能证明本CCR已完整。
 
 | 域 | 规范责任Issue | 消费者 | 缺口及关联门禁 |
 |---|---|---|---|
 | 会话/准入/权限 | AUTH-001 | C002/M002/A002 | 复用CCR-ACR/PERM，不另造第二套会话；签约OD002仍有效 |
-| 用户/宠物/个人资料 | USR-001，AUTH协作 | C002、TX001 | **规范草案已交付**：见[用户宠物域提案](CCR-W2-API-001/user-pet-domain-proposal.md)（PROPOSAL_ACCEPTED/CONTRACT_SYNCED_IN_PR：2026-09-15三项决定+新路由已人工批准，权威HTTP10/07/12/06同步在codex/usr-001-contract-sync分支待PR合并；实现阶段待派发，W2-USR-001~004验收） |
+| 用户/宠物/个人资料 | USR-001，AUTH协作 | C002、TX001 | [用户域提案](CCR-W2-API-001/user-pet-domain-proposal.md)及权威同步已由PR22/23合入，PR24领域实现、PR31 C会话/HTTP接入已合入；前端真实联调、生产启用及尚缺展示字段按原Owner继续，其他域不自动解除 |
 | 商家/门店/人员 | MER-001 | C003/M002/ADM001 | MerchantStoreDTO/MerchantStaffDTO/Query、真实资格事实、分页/过滤/错误与范围 |
 | 服务/快照/资格 | SVC-001 | C003/M002/ADM001 | ServiceBookabilityDTO/Query与页面响应；不提前实现排期/订单 |
 | 可用性/排期管理 | SCH-001/002及原所属Owner | C003/M002/A002 | 对既有可用时间契约补页面所需未定义内容；原Wave3依赖不强拉到本波 |

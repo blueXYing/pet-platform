@@ -30,3 +30,8 @@ wt-*/
 # CCR-OSS-001 local secrets (never commit)
 ops/*.env.local
 ops/*.local
+
+# Local Figma source archives and machine-only workspace notes
+/planning/issues/wave-2/C-002-design-inputs/
+/planning/issues/wave-2/M-002-design-inputs/
+/本地工作区说明.md
