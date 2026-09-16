@@ -6,7 +6,7 @@ import com.petplatform.common.ApiException;
 import com.petplatform.thirdparty.biz.application.LocalSequenceIdGenerator;
 import com.petplatform.thirdparty.biz.application.PresignedAssetUrlService;
 import com.petplatform.thirdparty.biz.infrastructure.oss.OssConnection;
-import com.petplatform.thirdparty.biz.infrastructure.persistence.AssetRegistryJdbcStore;
+import com.petplatform.thirdparty.biz.infrastructure.persistence.AssetRegistryStore;
 import java.time.Clock;
 import java.time.Instant;
 import java.time.ZoneOffset;
@@ -20,9 +20,9 @@ class PresignedAssetUrlTest {
                 "test-bucket", "ak", "sk", null);
     }
 
-    private static AssetRegistryJdbcStore seed(MySqlAssetRegistryTestDatabase db, String assetKey, String objectKey) {
-        var store = new AssetRegistryJdbcStore(db.dataSource(), new LocalSequenceIdGenerator());
-        store.upsertActive(new AssetRegistryJdbcStore.AssetRow(assetKey, objectKey,
+    private static AssetRegistryStore seed(MySqlAssetRegistryTestDatabase db, String assetKey, String objectKey) {
+        var store = new AssetRegistryStore(db.dataSource(), new LocalSequenceIdGenerator());
+        store.upsertActive(new AssetRegistryStore.AssetRow(assetKey, objectKey,
                 "https://canonical/" + objectKey, "a".repeat(64), 60000, "test"));
         return store;
     }

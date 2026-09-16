@@ -2,7 +2,7 @@ package com.petplatform.thirdparty.biz.application;
 
 import com.petplatform.common.SnowflakeIdGenerator;
 import com.petplatform.thirdparty.biz.infrastructure.oss.OssAssetClient;
-import com.petplatform.thirdparty.biz.infrastructure.persistence.AssetRegistryJdbcStore;
+import com.petplatform.thirdparty.biz.infrastructure.persistence.AssetRegistryStore;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -34,11 +34,11 @@ public final class OssAssetSyncService {
     }
 
     private final OssAssetClient client;
-    private final AssetRegistryJdbcStore registry;
+    private final AssetRegistryStore registry;
 
     public OssAssetSyncService(OssAssetClient client, DataSource dataSource, SnowflakeIdGenerator ids) {
         this.client = client;
-        this.registry = new AssetRegistryJdbcStore(dataSource, ids);
+        this.registry = new AssetRegistryStore(dataSource, ids);
     }
 
     /** @param roots category → directory; every supported image ≥ minBytes inside is a candidate. */
@@ -76,7 +76,7 @@ public final class OssAssetSyncService {
                             client.put(objectKey, content, CONTENT_TYPES.get(ext));
                             uploaded++;
                         }
-                        registry.upsertActive(new AssetRegistryJdbcStore.AssetRow(
+                        registry.upsertActive(new AssetRegistryStore.AssetRow(
                                 assetKey, objectKey, client.publicUrl(objectKey), sha, size, category));
                     } catch (RuntimeException error) {
                         errors.add(file + ": " + error.getClass().getSimpleName() + ": "
