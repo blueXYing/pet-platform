@@ -1,3 +1,5 @@
+import { ConsumerPageLayout } from '../../components/page-layout'
+import { navigationUnavailableMessage, type ConsumerNavigationKey } from '../../components/navigation/model'
 import { Button, Image, Input, Text, Textarea, View } from '@tarojs/components'
 import Taro, { useRouter } from '@tarojs/taro'
 import { useCallback, useEffect, useRef, useState, type CSSProperties } from 'react'
@@ -6,17 +8,11 @@ import { isPreviewScenario, PreviewProfileRepository, sameDraft, validateDraft, 
 import back from '../../assets/profile/back.png'
 import chevron from '../../assets/profile/chevron.png'
 import avatar from '../../assets/profile/avatar.png'
-import home from '../../assets/profile/home-full.png'
-import services from '../../assets/profile/services-full.png'
-import community from '../../assets/profile/community.png'
-import messages from '../../assets/profile/messages-full.png'
-import mine from '../../assets/profile/mine-full.png'
 import './fonts.css'
 import './profile.css'
 
 const initial: ProfileDraft = { nickname: '宠友小白', gender: null, signature: '爱宠物的铲屎官一枚～', avatarUrl: avatar, phoneMasked: '138****5678' }
 const genderOptions: [Gender, string][] = [['MALE', '男'], ['FEMALE', '女']]
-const tabs = [{ key: 'home', label: '首页', icon: home }, { key: 'services', label: '服务', icon: services }, { key: 'community', label: '宠友圈', icon: community }, { key: 'messages', label: '消息', icon: messages }, { key: 'mine', label: '我的', icon: mine }]
 const sleep = () => new Promise<void>(resolve => setTimeout(resolve, 450))
 export default function ProfileEdit() {
   const route = useRouter()
@@ -30,7 +26,6 @@ export default function ProfileEdit() {
   const [baseline, setBaseline] = useState<ProfileDraft>(initial)
   const [errors, setErrors] = useState<ReturnType<typeof validateDraft>>({})
   const [notice, setNotice] = useState('')
-  const [keyboardHeight, setKeyboardHeight] = useState(0)
   const repository = useRef(new PreviewProfileRepository(scenario === 'empty' ? { ...initial, nickname: '', signature: '' } : initial, scenario, sleep))
   const request = useRef<{ id: string; draft: ProfileDraft } | null>(null)
   const saving = useRef(false)
@@ -73,11 +68,6 @@ export default function ProfileEdit() {
     }
   }, [revision, context])
   useEffect(() => {
-    const handler = (result: { height: number }) => setKeyboardHeight(result.height)
-    Taro.onKeyboardHeightChange(handler)
-    return () => Taro.offKeyboardHeightChange(handler)
-  }, [])
-  useEffect(() => {
     const handler = () => setPlatformInfo(Taro.getWindowInfo())
     Taro.onWindowResize(handler)
     return () => Taro.offWindowResize(handler)
@@ -119,7 +109,7 @@ export default function ProfileEdit() {
       if (!String((error as { errMsg?: string }).errMsg).includes('cancel') && mounted.current && currentRevision === scope.revision) setNotice('未能选择头像，请检查相册权限后重试')
     }
   }
-  async function leave(label?: string) {
+  async function leave(tab?: ConsumerNavigationKey) {
     if (saving.current) return
     const currentRevision = scope.revision
     if (!sameDraft(draft, baseline)) {
@@ -127,12 +117,12 @@ export default function ProfileEdit() {
       if (!result.confirm) return
     }
     if (!mounted.current || currentRevision !== scope.revision) return
-    if (label) { setNotice(`“${label}”页面尚未接入本次预览`); return }
+    if (tab) { setNotice(navigationUnavailableMessage(tab)); return }
     if (Taro.getCurrentPages().length > 1) await Taro.navigateBack()
     else await Taro.redirectTo({ url: '/consumer/pages/shell/index' })
   }
   const editable = ['ready', 'saving', 'save-error'].includes(phase)
-  return <View className={`profile-page${referenceCanvas ? ' profile-reference-canvas' : ''}`} style={style}>
+  return <ConsumerPageLayout page='profileEdit' unit={referenceCanvas ? 1 : platformInfo.windowWidth / 402} navigation={{ idPrefix: 'profile', disabled: phase === 'saving', onSelect: key => leave(key), referencePlacement: referenceCanvas ? { bottom: 0 } : undefined }} className={`profile-page${referenceCanvas ? ' profile-reference-canvas' : ''}`} style={style}>
     <View className='profile-status-area' />
     <View className='profile-design' data-phase={phase}>
       <View className='profile-header'>
@@ -170,7 +160,6 @@ export default function ProfileEdit() {
         <Button id='profile-save' className='profile-save' disabled={phase === 'saving'} onClick={() => void save()}><Text className='profile-save-label'>{phase === 'saving' ? '保存中…' : '保存'}</Text></Button>
         {notice && <Text id='profile-notice' className='profile-notice'>{notice}</Text>}
       </View>}
-      {keyboardHeight === 0 && <View className='profile-tabbar'>{tabs.map(tab => <Button key={tab.key} id={`profile-tab-${tab.key}`} className={`profile-tab profile-tab-${tab.key}`} ariaLabel={tab.label} disabled={phase === 'saving'} onClick={() => void leave(tab.label)}><Image src={tab.icon} mode='scaleToFill' /><Text>{tab.label}</Text></Button>)}</View>}
     </View>
-  </View>
+  </ConsumerPageLayout>
 }

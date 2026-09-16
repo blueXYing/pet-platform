@@ -224,56 +224,6 @@
       "sourceByteIdentical": "UNVERIFIED"
     },
     {
-      "file": "tab-balloon.png",
-      "nodes": "203:19 / 95:1543",
-      "nodeName": "SPAN-477",
-      "placement": "175,1176 53x53 community balloon",
-      "bytes": 2526,
-      "sha256": "25353cd2ef603da1eb22a5611c14457408dadbe1d6e6eed6c4941275e915b0fc",
-      "source": "C-002-design-inputs/handoff/assets/203-19@2x.png",
-      "sourceByteIdentical": "UNVERIFIED"
-    },
-    {
-      "file": "tab-home.png",
-      "nodes": "203:52 / 95:1576",
-      "nodeName": "home-2",
-      "placement": "30,1200 19.478x16.481",
-      "bytes": 1204,
-      "sha256": "30108cc3537e49b810098e6c67ec3dcc6709d5010c7bded0e69721a5ee8ca3f0",
-      "source": "C-002-design-inputs/handoff/assets/203-52@2x.png",
-      "sourceByteIdentical": "UNVERIFIED"
-    },
-    {
-      "file": "tab-messages.png",
-      "nodes": "203:39 / 95:1563",
-      "nodeName": "chat-bubble",
-      "placement": "273,1200 17.313x17.313",
-      "bytes": 935,
-      "sha256": "9f9030c1d68d9757ffc92a33be53a402f2cad68dcdcc142afb42b30cfcc6a3d6",
-      "source": "C-002-design-inputs/handoff/assets/203-39@2x.png",
-      "sourceByteIdentical": "UNVERIFIED"
-    },
-    {
-      "file": "tab-mine.png",
-      "nodes": "203:44 / 95:1568",
-      "nodeName": "cat-2",
-      "placement": "354,1200 17.321x17.321",
-      "bytes": 1401,
-      "sha256": "ae14104b4c88a9806050c4a6205954c8dbca124bf730746ce3b5ba81270fef8d",
-      "source": "C-002-design-inputs/handoff/assets/203-44@2x.png",
-      "sourceByteIdentical": "UNVERIFIED"
-    },
-    {
-      "file": "tab-services.png",
-      "nodes": "203:27 / 95:1551",
-      "nodeName": "airship",
-      "placement": "110,1200 21.069x17.832",
-      "bytes": 1646,
-      "sha256": "cf6a44ee30f8318f1e1616c4f9dd17d2fada7bd8cc827f88fa2af9c77c9228ad",
-      "source": "C-002-design-inputs/handoff/assets/203-27@2x.png",
-      "sourceByteIdentical": "UNVERIFIED"
-    },
-    {
       "file": "tag-icon-deworm.png",
       "nodes": "78:2872",
       "nodeName": "I-59",
@@ -323,5 +273,6 @@
       "source": "C-002-design-inputs/handoff/assets/83-3638@2x.png",
       "sourceByteIdentical": "UNVERIFIED"
     }
-  ]
+  ],
+  "sharedNavigation": "consumer/assets/navigation/manifest.json; full source render bounds shared with profile-edit"
 }

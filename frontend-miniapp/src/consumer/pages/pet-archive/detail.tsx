@@ -1,3 +1,5 @@
+import { ConsumerPageLayout } from '../../components/page-layout'
+import { navigationUnavailableMessage } from '../../components/navigation/model'
 import { Button, Image, Text, View } from '@tarojs/components'
 import Taro, { useRouter, useDidShow } from '@tarojs/taro'
 import { useCallback, useEffect, useRef, useState, type CSSProperties } from 'react'
@@ -21,7 +23,6 @@ import iconWeight from './assets/icon-weight.png'
 import iconAdd from './assets/icon-add.png'
 import recordVaccine from './assets/record-icon-vaccine.png'
 import recordDeworm from './assets/record-icon-deworm.png'
-import { AppTabbar } from './app-tabbar'
 import './fonts.css'
 import './detail.css'
 
@@ -94,7 +95,7 @@ export default function PetArchiveDetail() {
   const supplement = previewSupplement(ready ? pet.petId : undefined)
   const tag = supplement.tag
   const photo = ready ? pet.avatarUrl || (pet.petId === '30001' ? petPhoto : pet.petId === '30002' ? catPhoto : null) : null
-  return <View className={`pet-page pet-detail-page${referenceCanvas ? ' pet-reference-canvas' : ''}`} style={style}>
+  return <ConsumerPageLayout page='petDetail' unit={unit} navigation={{ idPrefix: 'pet', disabled: phase !== 'ready', onSelect: key => { setNotice(navigationUnavailableMessage(key)) }, referencePlacement: referenceCanvas ? { bottom: 0, height: 61 } : undefined }} className={`pet-page pet-detail-page${referenceCanvas ? ' pet-reference-canvas' : ''}`} style={style}>
     <View className='pet-status-area' />
     <View className='pet-design pet-detail-design' data-phase={phase}>
       <Image className='pet-abs pet-detail-strip1' src={stripMain} mode='scaleToFill' />
@@ -192,10 +193,9 @@ export default function PetArchiveDetail() {
           <Text className='pet-detail-health'>{pet.healthNote || '—'}</Text>
         </View>
       </>}
-      {ready && <AppTabbar barTop={1191} unit={unit} onLeave={notWired} />}
       {notice && ready && <Text id='pet-notice' className='pet-notice pet-detail-notice'>{notice}</Text>}
     </View>
-  </View>
+  </ConsumerPageLayout>
 }
 function todayISO() {
   const now = new Date()

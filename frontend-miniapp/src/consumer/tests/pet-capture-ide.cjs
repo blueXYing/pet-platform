@@ -72,9 +72,10 @@ async function scrollTo(top) {
   ideJson(['automation_evaluate', '--project', PROJECT, '--fn-source', `function(){return new Promise(resolve=>wx.pageScrollTo({scrollTop:${top},duration:0,success:()=>setTimeout(()=>resolve(true),300)}))}`])
 }
 
+let canvasSelector = '.pet-page'
 function canvasRect() {
   const payload = ideJson(['automation_evaluate', '--project', PROJECT,
-    '--fn-source', 'function(){return new Promise(resolve=>{wx.createSelectorQuery().select(\'.pet-page\').boundingClientRect(r=>resolve(r?{x:r.left,y:r.top,width:r.width,height:r.height}:null)).exec()})}'])
+    '--fn-source', `function(){return new Promise(resolve=>{wx.createSelectorQuery().select('${canvasSelector}').boundingClientRect(r=>resolve(r?{x:r.left,y:r.top,width:r.width,height:r.height}:null)).exec()})}`])
   return JSON.parse(unwrap(payload.result))
 }
 
@@ -139,6 +140,8 @@ async function captureCanvas(name, canvasHeight, tileName) {
   ]
   for (const state of states) {
     if (process.env.PET_CAPTURE_MODE === 'device') continue
+    // The list is an embedded home section; compare the original 312px content, not its page navigation.
+    canvasSelector = state.name === 'list' ? '.pet-list-design' : '.pet-page'
     await launch(state.page, state.query, state.marker)
     if (windowInfo().windowWidth !== Number(width)) throw new Error(`actual window width does not match requested ${width}`)
     const rect = await canvasRectWithRetry()

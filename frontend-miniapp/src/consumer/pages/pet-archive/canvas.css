@@ -19,5 +19,4 @@ button { padding: 0; margin: 0; border: 0; border-radius: 0; background: transpa
    the canvas so scroll-stitched captures never duplicate it. */
 .pet-reference-canvas { width: var(--pet-canvas-width); min-height: 0; }
 .pet-reference-canvas .pet-status-area { height: 0; }
-.pet-reference-canvas .pet-tabbar { position: absolute; bottom: auto; top: var(--pet-tabbar-top); height: calc(var(--pet-unit) * 62); padding-bottom: 0; }
 .pet-avatar-empty { display: flex; align-items: center; justify-content: center; background: #c0ecff; color: #3c3c3c; font-size: calc(var(--pet-unit) * 20); }

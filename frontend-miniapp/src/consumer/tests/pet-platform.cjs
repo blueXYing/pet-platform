@@ -8,7 +8,7 @@ const path = require('node:path')
 const WECHATIDE = process.env.WECHATIDE || 'D:/soft/微信web开发者工具/wechatide.cmd'
 const CLIENT = process.env.WECHATIDE_CLIENT || 'Codex'
 const PROJECT = path.resolve(__dirname, '../../..')
-const out = path.resolve(__dirname, '../../../../planning/issues/wave-2/C-002-pet-page/evidence')
+const out = process.env.PET_EVIDENCE_DIR || path.resolve(__dirname, '../../../../planning/issues/wave-2/C-002-pet-page/evidence')
 
 const report = { status: 'RUNNING', source: 'real WeChat DevTools simulator via wechatide CLI', dataMode: 'explicit in-memory visual preview; no backend session or save', eventMethod: 'native Taro page event handlers via automator element actions', tests: [], exceptions: [] }
 const timeout = setTimeout(() => { report.status = 'TIMEOUT'; save(); process.exit(1) }, 600000)

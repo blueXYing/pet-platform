@@ -1,0 +1,2 @@
+.consumer-page-layout { position: relative; box-sizing: border-box; --consumer-nav-reserve: calc(var(--consumer-nav-unit) * 80 + env(safe-area-inset-bottom)); padding-bottom: var(--consumer-nav-reserve); }
+.consumer-page-layout-reference, .consumer-page-layout-without-navigation { --consumer-nav-reserve: 0px; padding-bottom: 0; }

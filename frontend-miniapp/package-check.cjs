@@ -28,6 +28,38 @@ for (const extension of ['js', 'json', 'wxml']) {
 function walk(dir) { return fs.readdirSync(dir, { withFileTypes: true }).flatMap(e => e.isDirectory()
   ? walk(path.join(dir, e.name)) : [path.join(dir, e.name)]) }
 const files = walk(root).map(file => ({ file: path.relative(root, file).replaceAll('\\', '/'), bytes: fs.statSync(file).size }))
+// Shared C navigation belongs to the main package; business visuals/fonts stay in their subpackage.
+const sourceRoot = path.join(__dirname, 'src')
+const componentRoot = path.join(sourceRoot, 'consumer/components')
+const navigationAssets = 'consumer/assets/navigation/'
+const navManifest = JSON.parse(fs.readFileSync(path.join(sourceRoot, navigationAssets, 'manifest.json'), 'utf8'))
+const crypto = require('node:crypto')
+const sharedNavigationCode = fs.readFileSync(path.join(root, 'common.js'), 'utf8')
+for (const asset of navManifest.assets) {
+  const file = path.join(__dirname, '..', asset.file)
+  const bytes = fs.readFileSync(file)
+  assert.equal(crypto.createHash('sha256').update(bytes).digest('hex'), asset.sha256, 'Navigation must use original image bytes')
+  const outputPath = `${navigationAssets}${path.basename(file)}`
+  // Taro inlines very small PNGs; those exact bytes must be in the shared main chunk.
+  assert.ok(sharedNavigationCode.includes(outputPath) || sharedNavigationCode.includes(bytes.toString('base64')),
+    `Navigation asset must be emitted or inlined in the main shared chunk: ${outputPath}`)
+  for (const bundle of files.filter(file => file.file.endsWith('.js') && packages.some(pack => file.file.startsWith(pack.root + '/')))) {
+    assert.ok(!fs.readFileSync(path.join(root, bundle.file), 'utf8').includes(bytes.toString('base64')),
+      `Navigation icon bytes must not be duplicated in a subpackage: ${bundle.file}`)
+  }
+}
+for (const file of ['navigation', 'page-layout'].flatMap(dir => walk(path.join(componentRoot, dir))).filter(file => /\.(tsx?|css)$/.test(file))) {
+  const text = fs.readFileSync(file, 'utf8')
+  for (const match of text.matchAll(/(?:from\s+|import\s*)['"]([^'"]+)['"]/g)) {
+    if (!match[1].startsWith('.')) continue
+    const dependency = path.resolve(path.dirname(file), match[1])
+    assert.ok(dependency.startsWith(componentRoot + path.sep) || dependency.startsWith(path.join(sourceRoot, navigationAssets)),
+      `Shared consumer component must not depend on business pages or subpackages: ${file} -> ${match[1]}`)
+  }
+}
+assert.ok(!files.some(file => /\/assets\/tab-(home|services|balloon|messages|mine)\.png$/.test(file.file)), 'Duplicate pet tab icons must not be packaged')
+assert.ok(!files.some(file => !file.file.startsWith('consumer/pages/pet-archive/') && /(?:strip-(?:main|form-bottom|detail-bottom)\.png|c002-pet-)/.test(file.file)),
+  'Pet backgrounds and fonts must stay in the pet subpackage')
 const sizes = Object.fromEntries(packages.map(p => [p.root, 0]))
 let mainBytes = 0
 for (const file of files) {

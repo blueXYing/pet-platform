@@ -1,9 +1,9 @@
-@import './tabbar.css';
 @import './canvas.css';
 
 /* Node 78:3076 (402x1252). All values are exact spec.json pageBounds; the runtime unit avoids rounding drift. */
 .pet-detail-page { background: #c0ecff; }
-.pet-detail-design { min-height: calc(var(--pet-unit) * 1252); padding-bottom: calc(var(--pet-unit) * 80); }
+.pet-detail-design { min-height: calc(var(--pet-unit) * 1172); }
+.pet-reference-canvas .pet-detail-design { min-height: calc(var(--pet-unit) * 1252); padding-bottom: calc(var(--pet-unit) * 80); }
 .pet-detail-strip1 { left: 0; top: calc(var(--pet-unit) * 35); width: calc(var(--pet-unit) * 402); height: calc(var(--pet-unit) * 787); }
 .pet-detail-strip2 { left: 0; top: calc(var(--pet-unit) * 789); width: calc(var(--pet-unit) * 402); height: calc(var(--pet-unit) * 459); }
 .pet-detail-bottombar { left: 0; top: calc(var(--pet-unit) * 1190); width: calc(var(--pet-unit) * 402); height: calc(var(--pet-unit) * 86); background: #cdeede; }
@@ -105,4 +105,3 @@
 .pet-detail-health-panel { position: relative; margin-top: calc(var(--pet-unit) * 1044); margin-left: calc(var(--pet-unit) * 21); width: calc(var(--pet-unit) * 356); min-height: calc(var(--pet-unit) * 128); padding: calc(var(--pet-unit) * 21) calc(var(--pet-unit) * 28) calc(var(--pet-unit) * 20); background: #f0fbff; }
 .pet-detail-health-panel > text { display: block; }
 .pet-detail-health-panel .pet-detail-health { position: static; margin-top: calc(var(--pet-unit) * 8); width: 100%; overflow-wrap: anywhere; word-break: break-all; }
-.pet-detail-page.pet-reference-canvas .pet-tabbar { top: auto; bottom: 0; height: calc(var(--pet-unit) * 61); }

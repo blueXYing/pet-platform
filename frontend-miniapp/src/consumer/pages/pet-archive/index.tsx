@@ -1,3 +1,5 @@
+import { ConsumerPageLayout } from '../../components/page-layout'
+import { navigationUnavailableMessage } from '../../components/navigation/model'
 import { Button, Image, Text, View } from '@tarojs/components'
 import Taro, { useRouter, useDidShow } from '@tarojs/taro'
 import { useCallback, useEffect, useRef, useState, type CSSProperties } from 'react'
@@ -103,7 +105,7 @@ export default function PetArchiveList() {
   }
   const extraRows = Math.max(0, pets.length - 2) * 85
   const ready = phase === 'ready'
-  return <View className={`pet-page pet-list-page${referenceCanvas ? ' pet-reference-canvas' : ''}`} style={style}>
+  return <ConsumerPageLayout page='petList' unit={unit} navigation={{ idPrefix: 'pet', disabled: phase !== 'ready', onSelect: key => { setNotice(navigationUnavailableMessage(key)) }, referencePlacement: undefined }} className={`pet-page pet-list-page${referenceCanvas ? ' pet-reference-canvas' : ''}`} style={style}>
     <View className='pet-status-area' />
     <View className='pet-design pet-list-design' data-phase={phase} style={{ '--pet-list-extra': `${extraRows * unit}px` } as CSSProperties}>
       <Image className='pet-list-strip' src={stripMain} mode='scaleToFill' />
@@ -146,7 +148,7 @@ export default function PetArchiveList() {
       })}
       {notice && <Text id='pet-notice' className='pet-notice pet-list-notice'>{notice}</Text>}
     </View>
-  </View>
+  </ConsumerPageLayout>
 }
 function todayISO() {
   const now = new Date()

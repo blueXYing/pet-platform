@@ -2,6 +2,8 @@
 
 > 2026-09-16 接手复核：下文保留原交付历史；当前修复、证据有效性及未完成项以 [TAKEOVER-REVIEW.md](TAKEOVER-REVIEW.md) 为准。原版存在深链样式缺失、底栏/性别按钮重叠和跨页预览保存不一致，旧截图不能代表修复后的验收。
 
+> 同日后续：用户授权 C 端底栏统一与分包依赖改造，最新导航实现及证据以 [NAVIGATION-REFACTOR.md](NAVIGATION-REFACTOR.md) 为准；所有页面的底栏不再各自还原。
+
 Owner Role: C-End Frontend。基线 develop `c99ab9d`(PR26 合并后)，分支 `codex/c-002-pet-pages`，工作区 `C:/Users/Administrator/Desktop/wt-c002-pet`。任务文件 `C-002-pet-page.md`。
 
 ## 交付范围

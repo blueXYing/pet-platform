@@ -1,0 +1,143 @@
+
+> pet-platform-miniapp@0.1.0 build:weapp
+> taro build --type weapp --disable-global-config
+
+👽 Taro v4.1.5
+
+Tips:
+1. 建议开启持久化缓存功能，能有效提升二次编译速度，详情请参考: https://docs.taro.zone/docs/config-detail#cache。
+
+
+
+● Webpack █████████████████████████  (0%)
+
+
+
+● Webpack █████████████████████████ building (10%) 0/15 entries 15/15 dependen
+cies 0/15 modules 1 active
+ babel-loader › src\app.config.ts
+
+
+● Webpack █████████████████████████ building (10%) 0/15 entries 15/15 dependen
+cies 0/15 modules 1 active
+ babel-loader › src\app.config.ts
+
+
+● Webpack █████████████████████████ building (10%) 0/15 entries 15/16 dependen
+cies 0/15 modules 15 active
+ ...l-loader › node_modules\@tarojs\webpack5-runner\dist\template\custom-wrapp
+er.js
+
+
+● Webpack █████████████████████████ building (28%) 5/15 entries 76/159 depende
+ncies 5/56 modules 20 active
+ babel-loader › node_modules\@tarojs\plugin-framework-react\dist\runtime.js
+
+
+● Webpack █████████████████████████ building (28%) 5/15 entries 150/215 depend
+encies 14/76 modules 56 active
+ babel-loader › node_modules\@tarojs\react\dist\react.esm.js
+
+
+● Webpack █████████████████████████ building (28%) 5/15 entries 176/215 depend
+encies 14/84 modules 60 active
+ ...-pet\frontend-miniapp\node_modules\@babel\runtime\helpers\esm\defineProper
+ty.js
+
+
+● Webpack █████████████████████████ building (28%)
+ import loader .\node_modules\postcss-loader\dist\cjs.js
+
+
+● Webpack █████████████████████████ building (28%) 5/15 entries 207/223 depend
+encies 20/114 modules 65 active
+ babel-loader › node_modules\@tarojs\runtime\dist\current.js
+
+
+● Webpack █████████████████████████ building (28%) 5/15 entries 367/427 depend
+encies 43/141 modules 87 active
+ ...t\frontend-miniapp\node_modules\@babel\runtime\helpers\esm\toConsumableArr
+ay.js
+
+
+● Webpack █████████████████████████ building (28%) 5/15 entries 413/456 depend
+encies 46/144 modules 96 active
+ node_modules\react\cjs\react.production.min.js
+
+
+● Webpack █████████████████████████ building (28%) 5/15 entries 474/500 depend
+encies 55/162 modules 107 active
+ ...2-pet\frontend-miniapp\node_modules\@babel\runtime\helpers\esm\toPropertyK
+ey.js
+
+
+● Webpack █████████████████████████ building (28%) 5/15 entries 514/535 depend
+encies 68/178 modules 107 active
+ ...et\frontend-miniapp\node_modules\@babel\runtime\helpers\esm\isNativeFuncti
+on.js
+
+
+● Webpack █████████████████████████ building (28%) 5/15 entries 598/601 depend
+encies 136/204 modules 68 active
+ babel-loader › node_modules\@tarojs\api\dist\index.js
+
+
+● Webpack █████████████████████████ building (32%) 6/15 entries 607/609 depend
+encies 160/204 modules 44 active
+ babel-loader › node_modules\@tarojs\api\dist\index.js
+
+
+● Webpack █████████████████████████ building (39%) 8/15 entries 613/617 depend
+encies 164/208 modules 43 active
+ babel-loader › node_modules\@tarojs\api\dist\env.js
+
+
+● Webpack █████████████████████████ building (42%) 9/15 entries 631/631 depend
+encies 179/215 modules 35 active
+ node_modules\css-loader\dist\runtime\api.js
+
+
+● Webpack █████████████████████████ building (46%) 10/15 entries 651/664 depen
+dencies 188/227 modules 29 active
+ ...ss-loader › postcss-loader › src\consumer\pages\profile-edit\profile.css|0
+|||}}
+
+
+● Webpack █████████████████████████ sealing (70%) finish module graph
+ InnerGraphPlugin
+
+
+● Webpack █████████████████████████ sealing (87%)
+ code generation
+
+
+● Webpack █████████████████████████ sealing (88%)
+ runtime requirements
+
+
+● Webpack █████████████████████████ sealing (92%) asset processing
+ CssMinimizerPlugin
+
+
+● Webpack █████████████████████████ sealing (92%) asset processing
+ RealContentHashPlugin
+
+
+√ Webpack
+  Compiled successfully in 4.51s
+
+⚠️ Warnings:
+
+AssetsOverSizeLimitWarning: asset size limit: The following asset(s) exceed the recommended size limit (244 KiB).
+This can impact web performance.
+Assets:
+  consumer/pages/profile-edit/index.wxss (331 KiB)
+  consumer/pages/pet-archive/assets/strip-detail-bottom.png (370 KiB)
+  consumer/pages/pet-archive/sub-vendors.wxss (401 KiB)
+  consumer/pages/pet-archive/assets/strip-main.png (634 KiB)
+    at Generator.next (<anonymous>)
+
+NoAsyncChunksWarning: webpack performance recommendations:
+You can limit the size of your bundles by using import() or require.ensure to lazy load some parts of your application.
+For more info visit https://webpack.js.org/guides/code-splitting/
+    at Generator.next (<anonymous>)

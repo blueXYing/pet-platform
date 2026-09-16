@@ -1,3 +1,5 @@
+import { ConsumerPageLayout } from '../../components/page-layout'
+import { navigationUnavailableMessage, type ConsumerNavigationKey } from '../../components/navigation/model'
 import { Button, Image, Input, Picker, Text, Textarea, View } from '@tarojs/components'
 import Taro, { useRouter } from '@tarojs/taro'
 import { useCallback, useEffect, useRef, useState, type CSSProperties } from 'react'
@@ -12,7 +14,6 @@ import navBack from './assets/nav-back.png'
 import navEdit from './assets/nav-edit.png'
 import formChevron from './assets/form-chevron.png'
 import iconDate from './assets/icon-date.png'
-import { AppTabbar } from './app-tabbar'
 import './fonts.css'
 import './form.css'
 
@@ -121,18 +122,19 @@ export default function PetArchiveForm() {
       if (mounted.current && currentRevision === scope.revision) { setPhase('save-error'); setNoticeKind('error'); setNotice('保存失败，请重试；已填写内容保留') }
     } finally { saving.current = false }
   }
-  async function leave() {
+  async function leave(tab?: ConsumerNavigationKey) {
     if (saving.current) return
     if (!sameDraft(draft, baseline)) {
       const result = await Taro.showModal({ title: '放弃修改？', content: '尚未保存的修改将不会保留。', confirmText: '放弃修改', cancelText: '继续编辑' })
       if (!result.confirm) return
     }
     if (!mounted.current) return
+    if (tab) { setNotice(navigationUnavailableMessage(tab)); return }
     if (Taro.getCurrentPages().length > 1) await Taro.navigateBack()
     else await Taro.redirectTo({ url: '/consumer/pages/shell/index' })
   }
   const editable = ['ready', 'saving', 'save-error'].includes(phase)
-  return <View className={`pet-page pet-form-page${referenceCanvas ? ' pet-reference-canvas' : ''}`} style={style}>
+  return <ConsumerPageLayout page='petForm' unit={unit} navigation={{ idPrefix: 'pet', disabled: !editable || phase === 'saving', onSelect: key => leave(key), referencePlacement: referenceCanvas ? { top: designHeight === 1067 ? 991 : 990 } : undefined }} className={`pet-page pet-form-page${referenceCanvas ? ' pet-reference-canvas' : ''}`} style={style}>
     <View className='pet-status-area' />
     <View className='pet-design pet-form-design' data-phase={phase} style={{ height: `calc(var(--pet-unit) * ${designHeight})` }}>
       <Image className='pet-abs pet-form-strip1' src={stripMain} mode='scaleToFill' />
@@ -198,9 +200,8 @@ export default function PetArchiveForm() {
         <Button id='pet-form-save' className='pet-abs pet-form-save' disabled={phase === 'saving'} onClick={() => void save()}><Text className='pet-form-save-label'>{phase === 'saving' ? '保存中…' : '保存'}</Text></Button>
         {notice && <Text id='pet-notice' className={`pet-notice pet-form-notice${noticeKind === 'error' ? ' pet-form-notice-error' : ''}`}>{notice}</Text>}
       </>}
-      {editable && <AppTabbar barTop={designHeight === 1067 ? 991 : 990} unit={unit} onLeave={label => setNotice(`“${label}”页面尚未接入本次预览`)} />}
     </View>
-  </View>
+  </ConsumerPageLayout>
 }
 function todayISO() {
   const now = new Date()
