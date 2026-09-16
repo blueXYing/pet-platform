@@ -30,7 +30,7 @@
       "reference": "reference-detail-402x1252.png",
       "referenceIsOfficialFrameRender": true,
       "referenceSha256": "0440d7e9b488a60544d266120bf1cab51edf39e1568724ccf9dcd2fb0d35147c",
-      "stitchedActualSha256": "5aa7fdf2eb3e0c881b787b77541ab05281b1211fc07a1f44d01ae508bab7fcc6",
+      "stitchedActualSha256": "ea09c85064d3add17710564f0bb8da3059e6850589ba62b29a10a70a052c8649",
       "regions": {
         "header": {
           "excluded": "device-chrome rows"
@@ -69,7 +69,7 @@
       "reference": "reference-form-brother-402x1066.png",
       "referenceIsOfficialFrameRender": false,
       "referenceSha256": "49438009ef0e965d93bc10cbb7a180e48f3d95c4649165246879fc262b5340de",
-      "stitchedActualSha256": "b19cd053a5bce57a4fa29553cf883204f6e4b7d927be4f6f4c40c3559b5c4fc3",
+      "stitchedActualSha256": "09702777ca00c60df0cc673dec59c57a79b004e6ccd9aadd0be242fd2978ed88",
       "regions": {
         "title": {
           "meanAbsoluteChannelDifference": 20.022060669570248,
@@ -113,7 +113,7 @@
       "reference": "reference-form-sister-402x1067.png",
       "referenceIsOfficialFrameRender": false,
       "referenceSha256": "e71264ac4b146021ee006e22cc1858898e8d11bd2e08da1b03c0baf9f28de40a",
-      "stitchedActualSha256": "a9d653f57fbc71298069e0f412f07a6738951de473fa051379ae3d19f93ba622",
+      "stitchedActualSha256": "d3fd0826962ab516f6079ef0d5fb82d5d5b8c7bdc34dbe43695b52bc47aebb44",
       "regions": {
         "title": {
           "meanAbsoluteChannelDifference": 20.022060669570248,
