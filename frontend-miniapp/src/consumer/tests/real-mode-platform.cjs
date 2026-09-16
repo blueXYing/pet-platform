@@ -8,7 +8,7 @@ const out = process.env.C_EVIDENCE_DIR
 if (!out) throw new Error('C_EVIDENCE_DIR required')
 fs.mkdirSync(out, { recursive: true })
 const idePath = process.env.WECHATIDE || 'D:/soft/微信web开发者工具/wechatide.cmd'
-const report = { mode: 'WeChat DevTools real page path; wx.login/request Provider TEST DOUBLES; no real WeChat or backend claim', checks: [], status: 'RUNNING' }
+const report = { mode: 'WeChat DevTools real page path; wx.login/request Provider TEST DOUBLES; no real WeChat or backend claim', eventMethod: 'automator trigger tap/input callbacks; not physical pointer or keyboard validation', checks: [], status: 'RUNNING' }
 function ide(args) {
   const command = [idePath, '-c', 'Codex', ...args].map(x => `"${String(x).replace(/\r?\n/g, ' ').replaceAll('"', '\\"')}"`).join(' ')
   const raw = execSync(command, { encoding: 'utf8', windowsHide: true, timeout: 60000 })
@@ -19,7 +19,7 @@ function ide(args) {
   return result
 }
 function evaluate(source) { return ide(['automation_evaluate', '--project', project, '--fn-source', source]) }
-function element(action, selector, ...args) { ide(['automation_runtime_info', '--project', project, '--action', 'currentPage']); return ide(['automation_element_action', '--project', project, '--action', action, '--selector', selector, '--wait-for-selector', selector, '--wait', '0.5', ...args]) }
+function element(action, selector, ...args) { if (action === 'tap' || action === 'longpress') { args = ['--type', action, ...args]; action = 'trigger' } ide(['automation_runtime_info', '--project', project, '--action', 'currentPage']); return ide(['automation_element_action', '--project', project, '--action', action, '--selector', selector, '--wait-for-selector', selector, '--wait', '0.5', ...args]) }
 function text() { return evaluate("function(){function read(n){return n?(n.v||'')+(n.cn||[]).map(read).join(''):''}return read(getCurrentPages().at(-1).data.root)}") }
 const sleep = ms => new Promise(resolve => setTimeout(resolve, ms))
 async function expect(fragment) {
@@ -36,6 +36,7 @@ async function run() {
   ide(['simulator_open_page', '--project', project, '--page', 'consumer/pages/shell/index'])
   await sleep(5000) // simulator_open_page reports dispatch, not compilation completion
   await expect('真实接口接入验证')
+  report.runtime = evaluate('function(){var i=wx.getSystemInfoSync();return {SDKVersion:i.SDKVersion,platform:i.platform,model:i.model,windowWidth:i.windowWidth,windowHeight:i.windowHeight,pixelRatio:i.pixelRatio,system:i.system}}')
   // Mock holds no real secret. Its state is isolated in the automation runtime and removed below.
   mock('login', { code: 'test-only-wx-proof' })
   mock('showActionSheet', { tapIndex: 1 })
@@ -61,7 +62,7 @@ async function run() {
     }else{var pet=s.pets.find(function(v){return p.endsWith('/'+v.petId)});if(!pet)return {statusCode:404,data:{code:'COMMON_NOT_FOUND',data:null}};if(m==='DELETE'){s.pets=[];data={petId:pet.petId,status:'DISABLED'}}else if(m==='PUT'){Object.assign(pet,d);data=pet}else data=pet}
     if(k)s.receipts[k]=data;
     s.calls[s.calls.length-1].responsePetName=data && data.name;
-    return {statusCode:200,data:{code:'SUCCESS',data:data}};
+    return JSON.parse(JSON.stringify({statusCode:200,data:{code:'SUCCESS',data:data}}));
   }`])
   element('tap', '#c-login'); await expect('授权手机号并完成登录')
   const denied = path.join(out, 'phone-denied.json'); fs.writeFileSync(denied, JSON.stringify({errMsg:'getPhoneNumber:fail user deny'}))
@@ -76,6 +77,7 @@ run().then(async () => {
   element('tap', '#c-profile'); await expect('本次可保存昵称')
   element('input', '#profile-nickname', '--value', '接口保存昵称')
   element('tap', '#profile-save'); await expect('昵称已保存'); shot('real-profile.png')
+  report.profileGeometry = evaluate("function(){return new Promise(function(resolve){var q=wx.createSelectorQuery();['.profile-design','.profile-avatar-card','.profile-nickname-card','.profile-gender-card','.profile-phone-card','.profile-signature-card','#profile-save'].forEach(function(s){q.select(s).boundingClientRect()});q.exec(resolve)})}")
   element('tap', '#profile-back'); element('tap', '#c-profile'); await expect('本次可保存昵称')
   const value = element('value', '#profile-nickname')
   if (!JSON.stringify(value).includes('接口保存昵称')) throw new Error('Profile did not reload saved value')

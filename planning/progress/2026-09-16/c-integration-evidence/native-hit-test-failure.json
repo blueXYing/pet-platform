@@ -1,0 +1,50 @@
+{
+  "mode": "WeChat DevTools real page path; wx.login/request Provider TEST DOUBLES; no real WeChat or backend claim",
+  "checks": [
+    "phone denial leaves unauthenticated state",
+    "login + phone callback publishes server principal"
+  ],
+  "status": "FAIL",
+  "runtime": {
+    "SDKVersion": "3.17.2",
+    "platform": "devtools",
+    "model": "iPhone 12/13 (Pro)",
+    "windowWidth": 390,
+    "windowHeight": 753,
+    "pixelRatio": 3,
+    "system": "iOS 10.0.1"
+  },
+  "error": "Error: Missing visible text: 昵称已保存",
+  "page": "编辑资料头像昵称性别男女手机号138****1234（已绑定）个性签名0/60保存“首页”页面尚未接入本次预览首页服务宠友圈消息我的",
+  "pets": [],
+  "wire": [
+    {
+      "path": "/api/v1/c/auth/attempts",
+      "method": "POST",
+      "key": "e146cb06-cfb5-4b2c-800b-f6f5ee0f3bdc"
+    },
+    {
+      "path": "/api/v1/c/auth/wechat-login",
+      "method": "POST",
+      "key": "aaeeba26-679c-43c9-968b-163d8daabf68"
+    },
+    {
+      "path": "/api/v1/c/account/phone-binding",
+      "method": "POST",
+      "key": "66e71e38-0cd0-4c2f-82f7-69086a71269f"
+    },
+    {
+      "path": "/api/v1/c/auth/session",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/c/profile",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/c/profile",
+      "method": "PUT",
+      "key": "0748ce12-7912-4b84-bc01-4973710e27ee"
+    }
+  ]
+}

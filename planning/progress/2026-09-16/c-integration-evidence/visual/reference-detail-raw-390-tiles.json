@@ -1,0 +1,26 @@
+{
+  "canvasHeight": 1252,
+  "layout": 844,
+  "windowWidth": 390,
+  "chromeTop": 100,
+  "tiles": [
+    {
+      "file": "reference-detail-raw-390-tile0.png",
+      "scrollTop": 0,
+      "cropTopCss": 0,
+      "cropBottomCss": 844,
+      "canvasTopInScreenshot": 0,
+      "screenshotWidth": 359,
+      "screenshotHeight": 777
+    },
+    {
+      "file": "reference-detail-raw-390-tile1.png",
+      "scrollTop": 408,
+      "cropTopCss": 100,
+      "cropBottomCss": 844,
+      "canvasTopInScreenshot": 0,
+      "screenshotWidth": 359,
+      "screenshotHeight": 777
+    }
+  ]
+}

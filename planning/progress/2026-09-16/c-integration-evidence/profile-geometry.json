@@ -1,0 +1,112 @@
+{
+  "source": "planning/issues/wave-2/C-002-profile/HANDOFF.md accepted source measurements; 402 design scaled to actual 390 viewport",
+  "runtime": {
+    "SDKVersion": "3.17.2",
+    "platform": "devtools",
+    "model": "iPhone 12/13 (Pro)",
+    "windowWidth": 390,
+    "windowHeight": 753,
+    "pixelRatio": 3,
+    "system": "iOS 10.0.1"
+  },
+  "mode": "real page path / Provider doubles / actual native geometry",
+  "rows": [
+    {
+      "name": "avatar",
+      "expected": {
+        "left": 28.134328358208958,
+        "top": 110.05970149253731,
+        "width": 332.76119402985074,
+        "height": 79.55223880597015
+      },
+      "actual": {
+        "left": 28.125,
+        "top": 110.046875,
+        "width": 332.75,
+        "height": 79.546875
+      },
+      "maxAbsoluteCssPxDelta": 0.012826492537314493
+    },
+    {
+      "name": "nickname",
+      "expected": {
+        "left": 28.134328358208958,
+        "top": 205.13432835820896,
+        "width": 332.76119402985074,
+        "height": 44.626865671641795
+      },
+      "actual": {
+        "left": 28.125,
+        "top": 205.109375,
+        "width": 332.75,
+        "height": 44.625
+      },
+      "maxAbsoluteCssPxDelta": 0.024953358208961163
+    },
+    {
+      "name": "gender",
+      "expected": {
+        "left": 28.134328358208958,
+        "top": 265.2835820895523,
+        "width": 332.76119402985074,
+        "height": 48.507462686567166
+      },
+      "actual": {
+        "left": 28.125,
+        "top": 265.25,
+        "width": 332.75,
+        "height": 48.5
+      },
+      "maxAbsoluteCssPxDelta": 0.03358208955228292
+    },
+    {
+      "name": "phone",
+      "expected": {
+        "left": 28.134328358208958,
+        "top": 329.3134328358209,
+        "width": 332.76119402985074,
+        "height": 44.626865671641795
+      },
+      "actual": {
+        "left": 28.125,
+        "top": 329.265625,
+        "width": 332.75,
+        "height": 44.625
+      },
+      "maxAbsoluteCssPxDelta": 0.04780783582089043
+    },
+    {
+      "name": "signature",
+      "expected": {
+        "left": 28.134328358208958,
+        "top": 389.4626865671642,
+        "width": 332.76119402985074,
+        "height": 158.61940298507463
+      },
+      "actual": {
+        "left": 28.125,
+        "top": 389.40625,
+        "width": 332.75,
+        "height": 158.609375
+      },
+      "maxAbsoluteCssPxDelta": 0.05643656716421219
+    },
+    {
+      "name": "save",
+      "expected": {
+        "left": 28.134328358208958,
+        "top": 563.6044776119403,
+        "width": 332.76119402985074,
+        "height": 42.6865671641791
+      },
+      "actual": {
+        "left": 28.125,
+        "top": 563.53125,
+        "width": 332.75,
+        "height": 42.671875
+      },
+      "maxAbsoluteCssPxDelta": 0.07322761194029681
+    }
+  ],
+  "note": "Geometry only; not complete pixel/VIS or physical keyboard acceptance"
+}

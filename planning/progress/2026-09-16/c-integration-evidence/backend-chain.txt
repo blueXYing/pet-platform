@@ -1,0 +1,1 @@
+PASS frontend ConsumerApi/repositories → real Boot HTTP/MySQL/Redis: login, phone denial/binding, session, profile persistence, pet CRUD/persistence, lost-ACK same-key recovery, duplicate write, cross-user 404, logout. WeChat Provider=FIXED TEST DOUBLE; ID=isolated virgin node with original lease protections.

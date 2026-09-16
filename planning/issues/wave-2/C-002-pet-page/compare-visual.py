@@ -4,9 +4,9 @@ References: the detail page uses the official 1x frame render copied from the de
 the list module region and both form frames use spec-composited references (build-reference.py)
 because the package contains no official render for those nodes — this gap is registered.
 
-Actuals: scroll-stitched 402-wide reference-canvas captures produced by pet-capture.cjs; the
-stitch crops every tile at the measured canvas position, never rescales the simulator output,
-and keeps raw tiles alongside the stitched image.
+Actuals: scroll-stitched reference-canvas captures produced by pet-capture-ide.cjs. DevTools
+panel screenshots are resampled back to measured CSS coordinates; raw tiles are retained.
+System chrome and viewport-clipped columns are excluded explicitly, not counted as a pass.
 """
 from pathlib import Path
 import hashlib
@@ -67,7 +67,7 @@ def stitch(state_name, width, canvas_w, canvas_h):
 
 
 def main(width):
-    report = {'windowWidth': width, 'method': 'Crop-only comparison of the stitched reference canvas; raw tiles retained. '
+    report = {'windowWidth': width, 'method': 'DevTools panel-scale resampling and scroll stitching to the reference canvas; raw tiles retained. Device-chrome rows and clipped right columns are excluded as recorded in tile metadata. '
               'Detail reference is the official handoff frame render; list and form references are spec composites '
               '(registered gap). Metrics locate differences; no similarity threshold defines a pass.',
               'visualAcceptance': 'PENDING_REVIEW', 'states': {}}

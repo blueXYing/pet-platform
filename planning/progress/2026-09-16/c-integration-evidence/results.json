@@ -1,0 +1,351 @@
+{
+  "baseline": "3dfb253e642880daecc815976d373f69e6df5e21",
+  "runtimeImplementationCommit": "7e8c6cb46e0cde36dd672464526b1eb667cbe429",
+  "frontend": {
+    "typecheck": "PASS",
+    "unitTests": 64,
+    "failed": 0,
+    "skipped": 0,
+    "build": "PASS_WEAPP",
+    "node": "22.23.1",
+    "npm": "10.9.8",
+    "packageDefault": {
+      "test": "MINI-005 static inventory only",
+      "mainBytes": 741597,
+      "subpackages": {
+        "merchant": 7180,
+        "consumer/pages/pet-archive": 1814753
+      },
+      "totalBytes": 2563530,
+      "ordinarySubpackageCount": 2,
+      "fileCount": 61,
+      "internalBudgetBytes": 2097152,
+      "platformLimitVerified": true,
+      "platformLimitSource": "https://developers.weixin.qq.com/miniprogram/dev/framework/subpackages.html",
+      "platformLimitCheckedOn": "2026-09-11",
+      "totalBudgetBytes": 20971520,
+      "totalBudgetReason": "conservative service-provider cap; standard total cap is 30M",
+      "platformUploadVerified": false,
+      "deviceWindowsVerified": false,
+      "imageClarityVerified": false
+    },
+    "packageTestOrigin": {
+      "test": "MINI-005 static inventory only",
+      "mainBytes": 742105,
+      "subpackages": {
+        "merchant": 7180,
+        "consumer/pages/pet-archive": 1814753
+      },
+      "totalBytes": 2564038,
+      "ordinarySubpackageCount": 2,
+      "fileCount": 61,
+      "internalBudgetBytes": 2097152,
+      "platformLimitVerified": true,
+      "platformLimitSource": "https://developers.weixin.qq.com/miniprogram/dev/framework/subpackages.html",
+      "platformLimitCheckedOn": "2026-09-11",
+      "totalBudgetBytes": 20971520,
+      "totalBudgetReason": "conservative service-provider cap; standard total cap is 30M",
+      "platformUploadVerified": false,
+      "deviceWindowsVerified": false,
+      "imageClarityVerified": false
+    }
+  },
+  "backend": {
+    "environment": "Windows / JBR21.0.10 / Maven3.9.12 / isolated native MySQL8.4.9 port33449 / Redis7.4 port16448 RDB+AOF disabled",
+    "wechatProvider": "FIXED TEST DOUBLE",
+    "idProvider": "real Hutool provider with existing strict virgin-node fixture, no production host proof",
+    "command": "mvn -B -f backend/pom.xml clean verify; SERVER_PORT=0 and isolated test database variables",
+    "totals": {
+      "tests": 261,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    },
+    "suites": [
+      {
+        "name": "com.petplatform.admin.biz.auth.AdminAuthFailureRecoveryTest",
+        "tests": 11,
+        "failures": 0,
+        "errors": 0,
+        "skipped": 0
+      },
+      {
+        "name": "com.petplatform.admin.biz.auth.AdminAuthLifecycleTest",
+        "tests": 11,
+        "failures": 0,
+        "errors": 0,
+        "skipped": 0
+      },
+      {
+        "name": "com.petplatform.admin.biz.auth.AdminAuthPrimitivesTest",
+        "tests": 12,
+        "failures": 0,
+        "errors": 0,
+        "skipped": 0
+      },
+      {
+        "name": "com.petplatform.architecture.ArchitectureRulesFixtureTest",
+        "tests": 15,
+        "failures": 0,
+        "errors": 0,
+        "skipped": 0
+      },
+      {
+        "name": "com.petplatform.architecture.ArchitectureRulesTest",
+        "tests": 7,
+        "failures": 0,
+        "errors": 0,
+        "skipped": 0
+      },
+      {
+        "name": "com.petplatform.boot.auth.AdminAuthDisabledTest",
+        "tests": 3,
+        "failures": 0,
+        "errors": 0,
+        "skipped": 0
+      },
+      {
+        "name": "com.petplatform.boot.auth.AdminAuthHttpTest",
+        "tests": 5,
+        "failures": 0,
+        "errors": 0,
+        "skipped": 0
+      },
+      {
+        "name": "com.petplatform.boot.auth.CAuthDisabledTest",
+        "tests": 2,
+        "failures": 0,
+        "errors": 0,
+        "skipped": 0
+      },
+      {
+        "name": "com.petplatform.boot.auth.CAuthHttpTest",
+        "tests": 7,
+        "failures": 0,
+        "errors": 0,
+        "skipped": 0
+      },
+      {
+        "name": "com.petplatform.boot.auth.CFrontendHttpTest",
+        "tests": 1,
+        "failures": 0,
+        "errors": 0,
+        "skipped": 0
+      },
+      {
+        "name": "com.petplatform.boot.web.GlobalApiHandlerTest",
+        "tests": 4,
+        "failures": 0,
+        "errors": 0,
+        "skipped": 0
+      },
+      {
+        "name": "com.petplatform.boot.web.TraceContextFilterTest",
+        "tests": 3,
+        "failures": 0,
+        "errors": 0,
+        "skipped": 0
+      },
+      {
+        "name": "com.petplatform.common.ApiEnvelopeTest",
+        "tests": 5,
+        "failures": 0,
+        "errors": 0,
+        "skipped": 0
+      },
+      {
+        "name": "com.petplatform.common.MoneyCodecTest",
+        "tests": 28,
+        "failures": 0,
+        "errors": 0,
+        "skipped": 0
+      },
+      {
+        "name": "com.petplatform.common.PublicContractChecksTest",
+        "tests": 20,
+        "failures": 0,
+        "errors": 0,
+        "skipped": 0
+      },
+      {
+        "name": "com.petplatform.common.PublicIdCodecTest",
+        "tests": 22,
+        "failures": 0,
+        "errors": 0,
+        "skipped": 0
+      },
+      {
+        "name": "com.petplatform.common.S1ContractMappingTest",
+        "tests": 4,
+        "failures": 0,
+        "errors": 0,
+        "skipped": 0
+      },
+      {
+        "name": "com.petplatform.event.core.OutboxConsumeIdempotencyMySqlTest",
+        "tests": 3,
+        "failures": 0,
+        "errors": 0,
+        "skipped": 0
+      },
+      {
+        "name": "com.petplatform.event.core.OutboxRecoveryMySqlTest",
+        "tests": 3,
+        "failures": 0,
+        "errors": 0,
+        "skipped": 0
+      },
+      {
+        "name": "com.petplatform.event.core.OutboxSameTransactionMySqlTest",
+        "tests": 4,
+        "failures": 0,
+        "errors": 0,
+        "skipped": 0
+      },
+      {
+        "name": "com.petplatform.id.core.HutoolSnowflakeIdProviderMySqlTest",
+        "tests": 13,
+        "failures": 0,
+        "errors": 0,
+        "skipped": 0
+      },
+      {
+        "name": "com.petplatform.id.core.IdProviderProcessMySqlTest",
+        "tests": 1,
+        "failures": 0,
+        "errors": 0,
+        "skipped": 0
+      },
+      {
+        "name": "com.petplatform.id.core.JdbcSnowflakeNodeStoreMySqlTest",
+        "tests": 11,
+        "failures": 0,
+        "errors": 0,
+        "skipped": 0
+      },
+      {
+        "name": "com.petplatform.id.core.PooledSnowflakeMySqlTest",
+        "tests": 5,
+        "failures": 0,
+        "errors": 0,
+        "skipped": 0
+      },
+      {
+        "name": "com.petplatform.id.core.SingleFlightLaneTest",
+        "tests": 6,
+        "failures": 0,
+        "errors": 0,
+        "skipped": 0
+      },
+      {
+        "name": "com.petplatform.id.core.SnowflakeSchemaMySqlTest",
+        "tests": 1,
+        "failures": 0,
+        "errors": 0,
+        "skipped": 0
+      },
+      {
+        "name": "com.petplatform.id.core.SnowflakeSettingsTest",
+        "tests": 4,
+        "failures": 0,
+        "errors": 0,
+        "skipped": 0
+      },
+      {
+        "name": "com.petplatform.task.core.AsyncTaskWorkerMySqlTest",
+        "tests": 10,
+        "failures": 0,
+        "errors": 0,
+        "skipped": 0
+      },
+      {
+        "name": "com.petplatform.task.core.MySqlTaskRepositoryTest",
+        "tests": 12,
+        "failures": 0,
+        "errors": 0,
+        "skipped": 0
+      },
+      {
+        "name": "com.petplatform.thirdparty.biz.OssAssetSyncMySqlTest",
+        "tests": 1,
+        "failures": 0,
+        "errors": 0,
+        "skipped": 0
+      },
+      {
+        "name": "com.petplatform.thirdparty.biz.PresignedAssetUrlTest",
+        "tests": 3,
+        "failures": 0,
+        "errors": 0,
+        "skipped": 0
+      },
+      {
+        "name": "com.petplatform.user.biz.UserAuthServiceMySqlTest",
+        "tests": 13,
+        "failures": 0,
+        "errors": 0,
+        "skipped": 0
+      },
+      {
+        "name": "com.petplatform.user.biz.UserPetDomainMySqlTest",
+        "tests": 5,
+        "failures": 0,
+        "errors": 0,
+        "skipped": 0
+      },
+      {
+        "name": "com.petplatform.user.biz.WechatMiniApiProviderTest",
+        "tests": 6,
+        "failures": 0,
+        "errors": 0,
+        "skipped": 0
+      }
+    ]
+  },
+  "architecture": {
+    "sourceGates": "PASS",
+    "negativeFixtureTests": 13,
+    "archunitTests": 22
+  },
+  "contract": {
+    "offlineSmoke": "PASS",
+    "operations": 52,
+    "writes": 37,
+    "tests": 82,
+    "note": "not live contract E2E"
+  },
+  "realWechatThisRun": "NOT_EXECUTED_ENVIRONMENT_BLOCKED",
+  "productionEnablement": "NOT_EXECUTED",
+  "historicalWechat": "PR36 receipt only; not repeated",
+  "firstPRCI": {
+    "runId": 35079061781,
+    "head": "7e8c6cb46e0cde36dd672464526b1eb667cbe429",
+    "conclusion": "success",
+    "jobs": 6
+  },
+  "sourceHashes": {
+    "frontend-miniapp/src/shared/consumer-api.ts": "bb75cf53cf820abbdd648701a1ecabcc09a84864f1784bcd21442504b8c3f727",
+    "frontend-miniapp/src/shared/consumer-runtime.ts": "e92fa681cf99338ef6f0bec10f13ce72c8ebdb2c9b2976a2bd26a6c011feb9c3",
+    "frontend-miniapp/src/consumer/api/page-repository.ts": "16f08d6a0ca00d6d48b2ed746929ff1728a32a1e8c8d686eefa4ec3fac80db09",
+    "frontend-miniapp/src/consumer/api/repositories.ts": "d6b3d47bb495f3a04d454e2c8beaef02b98187945ebba108d2a0574225ab9f07",
+    "frontend-miniapp/src/consumer/pages/pet-archive/detail.tsx": "e6382451e97daaa1babc05301074e3f4448eb5e162ec73e4db4ec99a9e4c58fe",
+    "frontend-miniapp/src/consumer/pages/pet-archive/form.tsx": "4ab8d64b1781a90ba8c5b679d3677d8240e8eecda23ee26d9889e36cefd3f558",
+    "frontend-miniapp/src/consumer/pages/pet-archive/index.tsx": "18edf645c6786d696e3ba30b1799141f9ec142df59509824b614bb32e748aa3e",
+    "frontend-miniapp/src/consumer/pages/profile-edit/index.tsx": "498f72a264d49809316294c236392624ad8b289f3ff5085c235306046996acd1",
+    "frontend-miniapp/src/consumer/pages/shell/index.tsx": "ca61dca8c3bf6c1dc660a8a6d9bcd1794e10ac30f905ca8768740ef924c7bb82"
+  },
+  "compiledRuntimeHashes": {
+    "frontend-miniapp/dist/common.js": "d8af811a2c6aeb32a1645b6046404e7252de23bb4621c297fdea903569a214ae",
+    "frontend-miniapp/dist/app.js": "2ea11e0d4ab957523ca55b7b73069c1a7f3a4c05c8ddcd6787382e1e1d554f33",
+    "frontend-miniapp/dist/consumer/pages/shell/index.js": "53b7c148a0f7b5fc93b3d77f8a9748af37d2d7093f2effe48dab4ed0da514e2f"
+  },
+  "runtime": {
+    "realMode": "PASS_PROVIDER_DOUBLES",
+    "physicalInput": "NOT_VERIFIED",
+    "realWechat": "NOT_EXECUTED",
+    "visual": "4 reference canvases at 390; overlays/diffs produced; PENDING_REVIEW, not a full VIS pass",
+    "previewMode": "PASS_PREVIEW_INTERACTIONS",
+    "previewChecks": 14
+  },
+  "assessment": "APPROVED_SLICE_IMPLEMENTED_AND_ISOLATED_TESTED; FORMAL_REAL_WECHAT_BUSINESS_ACCEPTANCE_BLOCKED; FULL_VIS_PENDING"
+}

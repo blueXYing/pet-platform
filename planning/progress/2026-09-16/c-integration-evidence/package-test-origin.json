@@ -1,0 +1,20 @@
+{
+  "test": "MINI-005 static inventory only",
+  "mainBytes": 742105,
+  "subpackages": {
+    "merchant": 7180,
+    "consumer/pages/pet-archive": 1814753
+  },
+  "totalBytes": 2564038,
+  "ordinarySubpackageCount": 2,
+  "fileCount": 61,
+  "internalBudgetBytes": 2097152,
+  "platformLimitVerified": true,
+  "platformLimitSource": "https://developers.weixin.qq.com/miniprogram/dev/framework/subpackages.html",
+  "platformLimitCheckedOn": "2026-09-11",
+  "totalBudgetBytes": 20971520,
+  "totalBudgetReason": "conservative service-provider cap; standard total cap is 30M",
+  "platformUploadVerified": false,
+  "deviceWindowsVerified": false,
+  "imageClarityVerified": false
+}
