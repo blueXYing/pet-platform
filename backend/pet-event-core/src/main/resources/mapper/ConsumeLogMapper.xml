@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.petplatform.event.core.mapper.ConsumeLogMapper">
+
+    <!-- integration_event_consume_log statements, SQL kept verbatim (Event Catalog §15/§21). -->
+
+    <insert id="insertClaim">
+        INSERT INTO integration_event_consume_log
+        (id,consumer_name,event_id,event_type,consumed_at)
+        VALUES (#{id},#{consumerName},#{eventId},#{eventType},NOW(3))
+    </insert>
+
+    <select id="selectConsumerNames" resultType="string">
+        SELECT consumer_name FROM integration_event_consume_log WHERE event_id=#{eventId}
+    </select>
+
+</mapper>

@@ -4,9 +4,10 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.petplatform.common.SnowflakeIdGenerator;
 import com.petplatform.event.api.IntegrationEvent;
 import com.petplatform.event.api.IntegrationEventPublisher;
+import com.petplatform.event.core.mapper.OutboxMapper;
 import java.util.Objects;
 import javax.sql.DataSource;
-import org.springframework.jdbc.core.JdbcTemplate;
+import org.mybatis.spring.SqlSessionTemplate;
 import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 /**
@@ -16,12 +17,12 @@ import org.springframework.transaction.support.TransactionSynchronizationManager
  * "commit business first, insert outbox later" pattern is forbidden.
  */
 public final class TransactionalOutboxPublisher implements IntegrationEventPublisher {
-    private final JdbcTemplate jdbc;
+    private final SqlSessionTemplate template;
     private final SnowflakeIdGenerator ids;
     private final ObjectMapper payloadCodec;
 
     public TransactionalOutboxPublisher(DataSource dataSource, SnowflakeIdGenerator ids, ObjectMapper payloadCodec) {
-        this.jdbc = new JdbcTemplate(Objects.requireNonNull(dataSource));
+        this.template = EventMybatis.template(dataSource);
         this.ids = Objects.requireNonNull(ids, "PLAT-002 ID provider is required");
         this.payloadCodec = Objects.requireNonNull(payloadCodec);
     }
@@ -48,13 +49,8 @@ public final class TransactionalOutboxPublisher implements IntegrationEventPubli
         }
         long rowId = ids.nextId();
         if (rowId <= 0) throw new IllegalStateException("Invalid ID from provider");
-        jdbc.update("""
-                INSERT INTO integration_event_outbox
-                (id,event_id,aggregate_type,aggregate_id,event_type,event_version,payload,
-                 occurred_at,status,retry_count,trace_id,created_at)
-                VALUES (?,?,?,?,?,?,?,?, 'NEW',0,?,NOW(3))
-                """, rowId, eventId, aggregateType, aggregateId, eventType, event.eventVersion(),
-                payloadJson, event.occurredAt(), traceId);
+        template.getMapper(OutboxMapper.class).insertOutbox(rowId, eventId, aggregateType, aggregateId,
+                eventType, event.eventVersion(), payloadJson, event.occurredAt(), traceId);
     }
 
     private static String text(String value, int maxLength, String field) {

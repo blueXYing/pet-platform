@@ -2,10 +2,11 @@ package com.petplatform.event.core;
 
 import com.petplatform.common.SnowflakeIdGenerator;
 import com.petplatform.event.api.DispatchedEvent;
+import com.petplatform.event.core.mapper.ConsumeLogMapper;
 import java.util.Objects;
 import javax.sql.DataSource;
+import org.mybatis.spring.SqlSessionTemplate;
 import org.springframework.dao.DuplicateKeyException;
-import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 /**
@@ -16,11 +17,11 @@ import org.springframework.transaction.support.TransactionSynchronizationManager
  * The unique key (consumer_name, event_id), not the id column, is the dedup fact.
  */
 public final class JdbcOutboxConsumeGuard {
-    private final JdbcTemplate jdbc;
+    private final SqlSessionTemplate template;
     private final SnowflakeIdGenerator ids;
 
     public JdbcOutboxConsumeGuard(DataSource dataSource, SnowflakeIdGenerator ids) {
-        this.jdbc = new JdbcTemplate(Objects.requireNonNull(dataSource));
+        this.template = EventMybatis.template(dataSource);
         this.ids = Objects.requireNonNull(ids, "PLAT-002 ID provider is required");
     }
 
@@ -37,11 +38,8 @@ public final class JdbcOutboxConsumeGuard {
         long claimId = ids.nextId();
         if (claimId <= 0) throw new IllegalStateException("Invalid ID from provider");
         try {
-            jdbc.update("""
-                    INSERT INTO integration_event_consume_log
-                    (id,consumer_name,event_id,event_type,consumed_at)
-                    VALUES (?,?,?,?,NOW(3))
-                    """, claimId, name, event.eventId(), event.eventType());
+            template.getMapper(ConsumeLogMapper.class)
+                    .insertClaim(claimId, name, event.eventId(), event.eventType());
             return true;
         } catch (DuplicateKeyException alreadyConsumed) {
             return false;

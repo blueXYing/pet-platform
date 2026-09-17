@@ -1,0 +1,61 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.petplatform.event.core.mapper.OutboxMapper">
+
+    <!-- integration_event_outbox statements, SQL kept verbatim (Schema 06 §12, Scheduler §21/§22). -->
+
+    <update id="setTimeZoneUtc">SET SESSION time_zone = '+00:00'</update>
+
+    <select id="selectClaimCandidate" resultType="com.petplatform.event.core.mapper.OutboxRowEntity">
+        SELECT id,event_id,event_type,event_version,occurred_at,aggregate_type,
+               aggregate_id,trace_id,payload,retry_count
+        FROM integration_event_outbox
+        WHERE status = 'NEW'
+           OR (status = 'FAILED' AND next_retry_at &lt;= NOW(3))
+           OR (status = 'PUBLISHING' AND lease_until &lt; NOW(3))
+        ORDER BY created_at ASC, id ASC
+        LIMIT 1 FOR UPDATE SKIP LOCKED
+    </select>
+
+    <update id="updateClaim">
+        UPDATE integration_event_outbox SET status='PUBLISHING',lease_owner=#{owner},
+        lease_until=TIMESTAMPADD(MICROSECOND,#{micros},NOW(3))
+        WHERE id=#{id}
+    </update>
+
+    <update id="updateHeartbeat">
+        UPDATE integration_event_outbox SET lease_until=TIMESTAMPADD(MICROSECOND,#{micros},NOW(3))
+        WHERE id=#{id} AND status='PUBLISHING' AND lease_owner=#{owner} AND lease_until&gt;=NOW(3)
+    </update>
+
+    <update id="updateMarkPublished">
+        UPDATE integration_event_outbox SET status='PUBLISHED',published_at=NOW(3),
+        lease_owner=NULL,lease_until=NULL
+        WHERE id=#{id} AND status='PUBLISHING' AND lease_owner=#{owner} AND lease_until&gt;=NOW(3)
+    </update>
+
+    <update id="updateMarkFailed">
+        UPDATE integration_event_outbox SET status='FAILED',
+        retry_count=retry_count+1,next_retry_at=TIMESTAMPADD(MICROSECOND,#{micros},NOW(3)),
+        lease_owner=NULL,lease_until=NULL
+        WHERE id=#{id} AND status='PUBLISHING' AND lease_owner=#{owner} AND lease_until&gt;=NOW(3)
+    </update>
+
+    <update id="updateRelease">
+        UPDATE integration_event_outbox SET status='NEW',lease_owner=NULL,lease_until=NULL
+        WHERE id=#{id} AND status='PUBLISHING' AND lease_owner=#{owner} AND lease_until&gt;=NOW(3)
+    </update>
+
+    <select id="selectIdForUpdate" resultType="long">
+        SELECT id FROM integration_event_outbox WHERE id=#{id} FOR UPDATE
+    </select>
+
+    <insert id="insertOutbox">
+        INSERT INTO integration_event_outbox
+        (id,event_id,aggregate_type,aggregate_id,event_type,event_version,payload,
+         occurred_at,status,retry_count,trace_id,created_at)
+        VALUES (#{rowId},#{eventId},#{aggregateType},#{aggregateId},#{eventType},#{eventVersion},#{payload},
+         #{occurredAt},'NEW',0,#{traceId},NOW(3))
+    </insert>
+
+</mapper>
