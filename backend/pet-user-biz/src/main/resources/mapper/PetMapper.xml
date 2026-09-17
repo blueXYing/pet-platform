@@ -1,0 +1,54 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.petplatform.user.biz.infrastructure.persistence.mapper.PetMapper">
+
+    <!-- user_pet plus the user_account guard read; SQL kept verbatim (PLAT-006). -->
+
+    <select id="selectUserById" resultType="com.petplatform.user.biz.infrastructure.persistence.entity.UserAccountEntity">
+        SELECT id,phone,nickname,status FROM user_account WHERE id=#{userId}
+    </select>
+
+    <select id="selectPetById" resultType="com.petplatform.user.biz.infrastructure.persistence.entity.PetEntity">
+        SELECT id,user_id,name,pet_type,breed_name,birth_date,sex,weight_kg,
+               sterilization_status,vaccine_status,health_note,avatar_url,is_default,status
+        FROM user_pet WHERE id=#{petId}
+    </select>
+
+    <select id="selectPetByIdForUpdate" resultType="com.petplatform.user.biz.infrastructure.persistence.entity.PetEntity">
+        SELECT id,user_id,name,pet_type,breed_name,birth_date,sex,weight_kg,
+               sterilization_status,vaccine_status,health_note,avatar_url,is_default,status
+        FROM user_pet WHERE id=#{petId} FOR UPDATE
+    </select>
+
+    <select id="selectActivePetsByOwner" resultType="com.petplatform.user.biz.infrastructure.persistence.entity.PetEntity">
+        SELECT id,user_id,name,pet_type,breed_name,birth_date,sex,weight_kg,
+               sterilization_status,vaccine_status,health_note,avatar_url,is_default,status
+        FROM user_pet WHERE user_id=#{ownerUserId} AND status='ACTIVE'
+        ORDER BY created_at DESC, id DESC
+    </select>
+
+    <insert id="insertPet" parameterType="com.petplatform.user.biz.infrastructure.persistence.entity.PetEntity">
+        INSERT INTO user_pet
+        (id,user_id,name,pet_type,breed_name,birth_date,sex,weight_kg,
+         sterilization_status,vaccine_status,health_note,avatar_url,is_default,status,version,created_at,updated_at)
+        VALUES (#{id},#{userId},#{name},#{petType},#{breedName},#{birthDate},#{sex},#{weightKg},
+         #{sterilizationStatus},#{vaccineStatus},#{healthNote},#{avatarUrl},#{isDefault},'ACTIVE',0,NOW(3),NOW(3))
+    </insert>
+
+    <update id="updatePetFields" parameterType="com.petplatform.user.biz.infrastructure.persistence.entity.PetEntity">
+        UPDATE user_pet SET name=#{name},breed_name=#{breedName},birth_date=#{birthDate},sex=#{sex},weight_kg=#{weightKg},
+        sterilization_status=#{sterilizationStatus},vaccine_status=#{vaccineStatus},health_note=#{healthNote},avatar_url=#{avatarUrl},is_default=#{isDefault},
+        version=version+1,updated_at=NOW(3)
+        WHERE id=#{id} AND user_id=#{userId} AND status='ACTIVE'
+    </update>
+
+    <update id="softDeletePet">
+        UPDATE user_pet SET status='DISABLED',is_default=0,version=version+1,updated_at=NOW(3)
+        WHERE id=#{petId} AND user_id=#{ownerUserId} AND status='ACTIVE'
+    </update>
+
+    <update id="clearDefaultExcept">
+        UPDATE user_pet SET is_default=0,updated_at=NOW(3) WHERE user_id=#{ownerUserId} AND is_default=1 AND id&lt;&gt;#{keepPetId}
+    </update>
+
+</mapper>

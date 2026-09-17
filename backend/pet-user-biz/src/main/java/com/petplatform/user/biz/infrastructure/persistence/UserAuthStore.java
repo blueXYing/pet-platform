@@ -1,8 +1,10 @@
 package com.petplatform.user.biz.infrastructure.persistence;
 
-import java.util.Objects;
+import com.petplatform.user.biz.infrastructure.persistence.entity.UserAccountEntity;
+import com.petplatform.user.biz.infrastructure.persistence.entity.UserAuthIdentityEntity;
+import com.petplatform.user.biz.infrastructure.persistence.mapper.UserAuthMapper;
 import javax.sql.DataSource;
-import org.springframework.jdbc.core.JdbcTemplate;
+import org.mybatis.spring.SqlSessionTemplate;
 
 /**
  * Only this Owner's tables (user_account, user_auth_identity, Schema 06 §1). First-time WeChat
@@ -17,68 +19,59 @@ public final class UserAuthStore {
             long id, String phone, String nickname, String avatarUrl,
             boolean passwordEnabled, String status) {}
 
-    private final JdbcTemplate jdbc;
+    private final SqlSessionTemplate template;
 
     public UserAuthStore(DataSource dataSource) {
-        this.jdbc = new JdbcTemplate(Objects.requireNonNull(dataSource));
+        this.template = UserMybatis.template(dataSource);
     }
 
     public IdentityRow findIdentity(String appId, String openId) {
-        return jdbc.query("""
-                SELECT id,user_id,app_id,open_id,union_id FROM user_auth_identity
-                WHERE identity_type='WECHAT_MINI' AND app_id=? AND open_id=?
-                """, (rs, row) -> new IdentityRow(rs.getLong("id"), rs.getLong("user_id"),
-                rs.getString("app_id"), rs.getString("open_id"), rs.getString("union_id")),
-                appId, openId).stream().findFirst().orElse(null);
+        UserAuthIdentityEntity row = auth().selectIdentity(appId, openId);
+        return row == null ? null : new IdentityRow(row.getId(), row.getUserId(),
+                row.getAppId(), row.getOpenId(), row.getUnionId());
     }
 
     public void insertIdentity(long identityId, long userId, String appId, String openId, String unionId) {
-        int changed = jdbc.update("""
-                INSERT INTO user_auth_identity
-                (id,user_id,identity_type,app_id,open_id,union_id,created_at,updated_at)
-                VALUES (?,?,'WECHAT_MINI',?,?,?,NOW(3),NOW(3))
-                """, identityId, userId, appId, openId, unionId);
+        int changed = auth().insertIdentity(identityId, userId, appId, openId, unionId);
         if (changed != 1) throw new IllegalStateException("Identity insert failed; transaction rolled back");
     }
 
     public void insertAccount(long userId) {
-        int changed = jdbc.update("""
-                INSERT INTO user_account (id,phone,nickname,avatar_url,password_hash,password_enabled,status,created_at,updated_at)
-                VALUES (?,NULL,NULL,NULL,NULL,0,'ACTIVE',NOW(3),NOW(3))
-                """, userId);
+        int changed = auth().insertAccount(userId);
         if (changed != 1) throw new IllegalStateException("Account insert failed; transaction rolled back");
     }
 
     public AccountRow findAccount(long userId, boolean forUpdate) {
-        return jdbc.query("""
-                SELECT id,phone,nickname,avatar_url,password_enabled,status FROM user_account
-                WHERE id=?""" + (forUpdate ? " FOR UPDATE" : ""),
-                (rs, row) -> new AccountRow(rs.getLong("id"), rs.getString("phone"),
-                        rs.getString("nickname"), rs.getString("avatar_url"),
-                        rs.getInt("password_enabled") != 0, rs.getString("status")),
-                userId).stream().findFirst().orElse(null);
+        UserAccountEntity row = forUpdate
+                ? auth().selectAccountByIdForUpdate(userId)
+                : auth().selectAccountById(userId);
+        return row == null ? null : toRow(row);
     }
 
     public Long findAccountIdByPhone(String phone) {
-        return jdbc.query("SELECT id FROM user_account WHERE phone=?",
-                (rs, row) -> rs.getLong("id"), phone).stream().findFirst().orElse(null);
+        return auth().selectAccountIdByPhone(phone);
     }
 
     public void setPhone(long userId, String phone) {
-        int changed = jdbc.update(
-                "UPDATE user_account SET phone=?,updated_at=NOW(3) WHERE id=?", phone, userId);
+        int changed = auth().updatePhone(userId, phone);
         if (changed != 1) throw new IllegalStateException("Phone binding failed; transaction rolled back");
     }
 
     public void touchLogin(long userId) {
-        jdbc.update("UPDATE user_account SET last_login_at=NOW(3),updated_at=NOW(3) WHERE id=?", userId);
+        auth().touchLogin(userId);
     }
 
     public void updateProfile(long userId, String nickname, String avatarUrl) {
-        int changed = jdbc.update("""
-                UPDATE user_account SET nickname=COALESCE(?,nickname),avatar_url=COALESCE(?,avatar_url),
-                       version=version+1,updated_at=NOW(3) WHERE id=?
-                """, nickname, avatarUrl, userId);
+        int changed = auth().updateProfile(userId, nickname, avatarUrl);
         if (changed != 1) throw new IllegalStateException("Profile update failed; transaction rolled back");
+    }
+
+    private UserAuthMapper auth() {
+        return template.getMapper(UserAuthMapper.class);
+    }
+
+    private static AccountRow toRow(UserAccountEntity row) {
+        return new AccountRow(row.getId(), row.getPhone(), row.getNickname(), row.getAvatarUrl(),
+                Boolean.TRUE.equals(row.getPasswordEnabled()), row.getStatus());
     }
 }

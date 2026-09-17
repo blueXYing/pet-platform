@@ -7,6 +7,7 @@ import com.petplatform.common.OperatorType;
 import com.petplatform.common.PublicContractChecks;
 import com.petplatform.common.SnowflakeIdGenerator;
 import com.petplatform.user.biz.infrastructure.persistence.CommandIdempotencyStore;
+import com.petplatform.user.biz.infrastructure.persistence.SessionControl;
 import com.petplatform.user.biz.infrastructure.persistence.UserAuthStore;
 import java.util.LinkedHashMap;
 import java.util.Map;
@@ -14,7 +15,6 @@ import java.util.Objects;
 import java.util.Optional;
 import java.util.function.Function;
 import javax.sql.DataSource;
-import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.datasource.DataSourceTransactionManager;
 import org.springframework.transaction.TransactionDefinition;
 import org.springframework.transaction.support.TransactionTemplate;
@@ -33,13 +33,13 @@ public final class UserProfileService {
 
     private final UserAuthStore store;
     private final CommandIdempotencyStore idempotency;
-    private final JdbcTemplate jdbc;
+    private final SessionControl sessionControl;
     private final TransactionTemplate execution;
 
     public UserProfileService(DataSource dataSource, SnowflakeIdGenerator ids) {
         this.store = new UserAuthStore(dataSource);
         this.idempotency = new CommandIdempotencyStore(dataSource, ids);
-        this.jdbc = new JdbcTemplate(dataSource);
+        this.sessionControl = new SessionControl(dataSource);
         this.execution = new TransactionTemplate(new DataSourceTransactionManager(dataSource));
         execution.setPropagationBehavior(TransactionDefinition.PROPAGATION_REQUIRES_NEW);
         execution.setIsolationLevel(TransactionDefinition.ISOLATION_READ_COMMITTED);
@@ -107,8 +107,7 @@ public final class UserProfileService {
             return receipt;
         }
         return execution.execute(status -> {
-            jdbc.execute("SET SESSION time_zone = '+00:00'");
-            jdbc.execute("SET SESSION innodb_lock_wait_timeout = 2");
+            sessionControl.applyExecutionDefaults();
             idempotency.lockForExecution(requestKey);
             ProfileView result = body.apply(null);
             idempotency.succeed(requestKey, serialize(result));

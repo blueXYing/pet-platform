@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.petplatform.user.biz.infrastructure.persistence.mapper.CommandIdempotencyMapper">
+
+    <!-- command_idempotency binding statements (SQL 14, supplement 23 §5); SQL kept verbatim. -->
+
+    <insert id="insertBinding">
+        INSERT INTO command_idempotency
+        (id,request_key,canonical_version,params_sha256,params_canonical,status,created_at)
+        VALUES (#{id},#{requestKey},#{canonicalVersion},#{paramsSha256},#{paramsCanonical},'RESERVED',NOW(3))
+    </insert>
+
+    <select id="selectBindingForUpdate" resultType="com.petplatform.user.biz.infrastructure.persistence.entity.CommandIdempotencyEntity">
+        SELECT id,request_key,canonical_version,params_sha256,params_canonical,status,receipt_json
+        FROM command_idempotency WHERE request_key=#{requestKey} FOR UPDATE
+    </select>
+
+    <update id="markSucceeded">
+        UPDATE command_idempotency SET status='SUCCEEDED',receipt_json=#{receiptJson},succeeded_at=NOW(3)
+        WHERE request_key=#{requestKey} AND status='RESERVED'
+    </update>
+
+</mapper>

@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.petplatform.user.biz.infrastructure.persistence.mapper.SessionControlMapper">
+
+    <!-- Session-level statements executed on the caller's transaction connection before the
+         binding insert and the execution body (SQL kept verbatim, PLAT-006). -->
+
+    <update id="setTimeZoneUtc">SET SESSION time_zone = '+00:00'</update>
+
+    <update id="setLockWaitTimeout2Seconds">SET SESSION innodb_lock_wait_timeout = 2</update>
+
+</mapper>

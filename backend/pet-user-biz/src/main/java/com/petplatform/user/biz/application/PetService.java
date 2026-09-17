@@ -16,6 +16,7 @@ import com.petplatform.user.api.dto.PetView;
 import com.petplatform.user.api.query.PetQueryApi;
 import com.petplatform.user.biz.infrastructure.persistence.CommandIdempotencyStore;
 import com.petplatform.user.biz.infrastructure.persistence.PetStore;
+import com.petplatform.user.biz.infrastructure.persistence.SessionControl;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -23,7 +24,6 @@ import java.util.Objects;
 import java.util.Optional;
 import java.util.function.Function;
 import javax.sql.DataSource;
-import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.datasource.DataSourceTransactionManager;
 import org.springframework.transaction.TransactionDefinition;
 import org.springframework.transaction.support.TransactionTemplate;
@@ -41,14 +41,14 @@ public final class PetService implements PetCommandApi, PetQueryApi {
     private final PetStore store;
     private final CommandIdempotencyStore idempotency;
     private final SnowflakeIdGenerator ids;
-    private final JdbcTemplate jdbc;
+    private final SessionControl sessionControl;
     private final TransactionTemplate execution;
 
     public PetService(DataSource dataSource, SnowflakeIdGenerator ids) {
         this.store = new PetStore(dataSource);
         this.idempotency = new CommandIdempotencyStore(dataSource, ids);
         this.ids = Objects.requireNonNull(ids, "PLAT-002 ID provider is required");
-        this.jdbc = new JdbcTemplate(dataSource);
+        this.sessionControl = new SessionControl(dataSource);
         this.execution = new TransactionTemplate(new DataSourceTransactionManager(dataSource));
         execution.setPropagationBehavior(TransactionDefinition.PROPAGATION_REQUIRES_NEW);
         execution.setIsolationLevel(TransactionDefinition.ISOLATION_READ_COMMITTED);
@@ -195,8 +195,7 @@ public final class PetService implements PetCommandApi, PetQueryApi {
             return new Idempotent<>(receipt, true);
         }
         return new Idempotent<>(execution.execute(status -> {
-            jdbc.execute("SET SESSION time_zone = '+00:00'");
-            jdbc.execute("SET SESSION innodb_lock_wait_timeout = 2");
+            sessionControl.applyExecutionDefaults();
             idempotency.lockForExecution(requestKey);
             R result = executionBody.apply(null);
             idempotency.succeed(requestKey, serialize(result));

@@ -1,0 +1,50 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.petplatform.user.biz.infrastructure.persistence.mapper.UserAuthMapper">
+
+    <!-- user_auth_identity / user_account auth statements; SQL kept verbatim (Schema 06 §1). -->
+
+    <select id="selectIdentity" resultType="com.petplatform.user.biz.infrastructure.persistence.entity.UserAuthIdentityEntity">
+        SELECT id,user_id,app_id,open_id,union_id FROM user_auth_identity
+        WHERE identity_type='WECHAT_MINI' AND app_id=#{appId} AND open_id=#{openId}
+    </select>
+
+    <insert id="insertIdentity">
+        INSERT INTO user_auth_identity
+        (id,user_id,identity_type,app_id,open_id,union_id,created_at,updated_at)
+        VALUES (#{identityId},#{userId},'WECHAT_MINI',#{appId},#{openId},#{unionId},NOW(3),NOW(3))
+    </insert>
+
+    <insert id="insertAccount">
+        INSERT INTO user_account (id,phone,nickname,avatar_url,password_hash,password_enabled,status,created_at,updated_at)
+        VALUES (#{userId},NULL,NULL,NULL,NULL,0,'ACTIVE',NOW(3),NOW(3))
+    </insert>
+
+    <select id="selectAccountById" resultType="com.petplatform.user.biz.infrastructure.persistence.entity.UserAccountEntity">
+        SELECT id,phone,nickname,avatar_url,password_enabled,status FROM user_account
+        WHERE id=#{userId}
+    </select>
+
+    <select id="selectAccountByIdForUpdate" resultType="com.petplatform.user.biz.infrastructure.persistence.entity.UserAccountEntity">
+        SELECT id,phone,nickname,avatar_url,password_enabled,status FROM user_account
+        WHERE id=#{userId} FOR UPDATE
+    </select>
+
+    <select id="selectAccountIdByPhone" resultType="long">
+        SELECT id FROM user_account WHERE phone=#{phone}
+    </select>
+
+    <update id="updatePhone">
+        UPDATE user_account SET phone=#{phone},updated_at=NOW(3) WHERE id=#{userId}
+    </update>
+
+    <update id="touchLogin">
+        UPDATE user_account SET last_login_at=NOW(3),updated_at=NOW(3) WHERE id=#{userId}
+    </update>
+
+    <update id="updateProfile">
+        UPDATE user_account SET nickname=COALESCE(#{nickname},nickname),avatar_url=COALESCE(#{avatarUrl},avatar_url),
+               version=version+1,updated_at=NOW(3) WHERE id=#{userId}
+    </update>
+
+</mapper>
