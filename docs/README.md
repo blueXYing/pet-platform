@@ -5,7 +5,7 @@
 | 层级 | 权威目录/文件 |
 |---|---|
 | SSOT | [01最终业务基线](00-ssot/01-SSOT-宠物平台V1.0-最终业务基线.md)，包含§24运营权限裁决 |
-| 最终PRD | 01-prd/ 中02 C端、03商家端、04运营端Word原件，以及[22运营权限补充](01-prd/22-运营权限人工裁决补充-v1.0.md) |
+| 最终PRD | 01-prd/ 中02 C端、03商家端、04运营端Word原件，以及[22运营权限补充](01-prd/22-运营权限人工裁决补充-v1.0.md)、[26申请审核裁决](01-prd/26-商家申请审核人工裁决补充-v1.0.md) |
 | 技术基线 | [05后端v0.6](02-architecture/05-技术基线-v0.6.md)、[20前端v0.7](02-architecture/20-前端技术基线-v0.7.md)、17 Maven骨架设计 |
 | Schema | 03-database/06核心Schema、13 Async Infra Schema；[27商家域存储映射](03-database/27-Merchant-Domain-Storage-v0.1.md)、[28协议四表DDL](03-database/28-Merchant-Agreement-Schema-v0.1.sql)（隔离验证，未生产迁移；申请/成员DDL待交付） |
 | API | 04-api/07内部API v0.6、10 HTTP v0.4、11 OpenAPI v0.4、12错误码v0.5；[27商家域契约补充](04-api/27-Merchant-Domain-Contract-v0.1.md)（契约已批，业务未实现） |

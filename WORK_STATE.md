@@ -1,7 +1,7 @@
 # Work State
 
 PROJECT: 宠物平台 V1.0
-STATE_VERSION: 6.8
+STATE_VERSION: 6.9
 UPDATED_AT: 2026-09-17
 
 CURRENT_PHASE: W3_INTEGRATION_REVIEW
@@ -10,6 +10,8 @@ NEXT_PHASE: MER-001 协议组件验收及申请审核CCR审阅
 NEXT_PHASE_APPROVED: NO
 
 ## 当前结论
+
+2026-09-17申请审核四项已确认：用户明确“四项建议确认”，已同步SSOT §27与PRD26。门店照片必填1～6张；OCR失败可待人工核验但已知过期拦截/未核验不可通过；补正映射REJECTED并修改重提；APPROVE建档ACTIVE但未SIGNED不开新业务。以下四项“待确认”描述已过时，不再重复索取决定。申请接口/Schema/Event细化同步继续由原Owner推进；当前NEXT_PHASE_APPROVED:NO保留未完成技术契约冻结的边界，不表示四项产品规则未批准。PR52未获合并授权，仍未合入。
 
 2026-09-17最新：按用户“按照建议继续”已合入PR51（`5ee8f75`），合并后CI 35202619408成功。PR50此前已合入0ade8bc；本地主目录develop也已快进到5ee8f75，用户project.config.json哈希保持不变。当前独立分支`codex/mer001-agreement-20260917`继续[协议存储/S3派发](planning/issues/wave-2/MER-001-s3/DISPATCH.md)：SQL28四表及协议同意域组件、真实协议读取和幂等已进入整合验证。申请审核真实来源仍缺具体契约，已形成[候选方案](planning/ccr/CCR-W2-API-001/merchant-application-review-proposal.md)，未在未批选择上生成APPROVED。其照片/OCR例外/补正状态/审核建档映射待审，不重复已批签约决定；新PR不自动合并。
 
