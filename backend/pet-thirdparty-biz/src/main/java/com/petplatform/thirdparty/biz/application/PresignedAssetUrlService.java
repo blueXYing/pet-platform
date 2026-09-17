@@ -3,7 +3,7 @@ package com.petplatform.thirdparty.biz.application;
 import com.petplatform.common.ApiException;
 import com.petplatform.common.CommonApiCodes;
 import com.petplatform.thirdparty.biz.infrastructure.oss.OssConnection;
-import com.petplatform.thirdparty.biz.infrastructure.persistence.AssetRegistryJdbcStore;
+import com.petplatform.thirdparty.biz.infrastructure.persistence.AssetRegistryStore;
 import java.io.UnsupportedEncodingException;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
@@ -27,7 +27,7 @@ public final class PresignedAssetUrlService implements AutoCloseable {
 
     public record SignedUrl(String assetKey, String url, long expiresAtEpochSeconds, String objectKey) {}
 
-    private final AssetRegistryJdbcStore registry;
+    private final AssetRegistryStore registry;
     private final S3Presigner presigner;
     private final OssConnection connection;
     private final Clock clock;
@@ -36,7 +36,7 @@ public final class PresignedAssetUrlService implements AutoCloseable {
     public PresignedAssetUrlService(OssConnection connection, DataSource dataSource,
                                     com.petplatform.common.SnowflakeIdGenerator ids,
                                     Clock clock, long windowSeconds) {
-        this.registry = new AssetRegistryJdbcStore(dataSource, ids);
+        this.registry = new AssetRegistryStore(dataSource, ids);
         this.connection = Objects.requireNonNull(connection);
         this.clock = Objects.requireNonNull(clock);
         if (windowSeconds < 600) throw new IllegalArgumentException("window must be at least 600s");
