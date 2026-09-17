@@ -1,0 +1,63 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.petplatform.merchant.biz.infrastructure.persistence.mapper.MerchantReadMapper">
+
+    <select id="selectOwnedStore"
+            resultType="com.petplatform.merchant.biz.infrastructure.persistence.entity.MerchantStoreReadEntity">
+        SELECT m.id AS merchant_id,
+               m.owner_user_id,
+               m.merchant_name,
+               m.status AS merchant_status,
+               s.id AS store_id,
+               s.store_name,
+               s.address,
+               s.longitude,
+               s.latitude,
+               s.phone,
+               s.status AS store_status,
+               s.version AS store_version
+        FROM merchant_store s
+        INNER JOIN merchant m ON m.id = s.merchant_id
+        WHERE s.id = #{storeId}
+          AND m.owner_user_id = #{ownerUserId}
+    </select>
+
+    <select id="selectOwnedEligibilityBase"
+            resultType="com.petplatform.merchant.biz.infrastructure.persistence.entity.MerchantEligibilityBaseEntity">
+        SELECT m.id AS merchant_id,
+               m.owner_user_id,
+               m.status AS merchant_status,
+               s.id AS store_id,
+               s.status AS store_status
+        FROM merchant m
+        INNER JOIN merchant_store s ON s.merchant_id = m.id
+        WHERE m.id = #{merchantId}
+          AND s.id = #{storeId}
+          AND m.owner_user_id = #{ownerUserId}
+    </select>
+
+    <select id="selectOwnedStaff"
+            resultType="com.petplatform.merchant.biz.infrastructure.persistence.entity.MerchantStaffReadEntity">
+        SELECT m.id AS merchant_id,
+               m.owner_user_id,
+               m.status AS merchant_status,
+               s.id AS store_id,
+               s.status AS store_status,
+               st.id AS staff_id,
+               st.staff_name,
+               st.phone,
+               st.employment_status,
+               st.service_enabled,
+               st.version AS staff_version
+        FROM merchant_staff st
+        INNER JOIN merchant_store s
+                ON s.id = st.store_id
+               AND s.merchant_id = st.merchant_id
+        INNER JOIN merchant m ON m.id = st.merchant_id
+        WHERE m.id = #{merchantId}
+          AND s.id = #{storeId}
+          AND st.id = #{staffId}
+          AND m.owner_user_id = #{ownerUserId}
+    </select>
+
+</mapper>
