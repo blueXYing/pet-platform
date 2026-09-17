@@ -28,3 +28,18 @@
 ## 4. 不变项
 
 Redis 易失存储(会话/attempt/缓存)不是持久层,不迁;`*-api` 模块禁 Mapper/实体(基线05);ARCH-002 跨模块持久化红线不变;CCR-OSS-001 的 S3/注册表语义不变。
+
+## 5. 阶段进展与完成回执(2026-09-17,不改裁决规则)
+
+六模块已按 §3 顺序完成迁移并各自提交 PR,均携带迁移前基线与迁移后同套回归全绿、ArchUnit/模块依赖检查通过;整合组合验证通过。逐项证据与生产直接 SQL 前后盘点见[迁移报告](../../planning/progress/2026-09-16/PLAT006_MIGRATION_REPORT.md)。
+
+**完成回执(2026-09-17,经用户授权按序合并)**:六模块 PR 已全部合入 develop,AC1～AC4 均已满足——7 处持久化全部转为 MyBatis Mapper(SQL 位于各模块 resources/mapper/*.xml,锁/事务 SQL 原样保留);各模块既有测试原样全绿且 ArchUnit/依赖检查通过;全仓生产主代码无手写 JDBC(admin 原生 JDBC 清零,仅余 boot Flyway 目标校验一处装配基础设施);本回执即 AC4 登记。PLAT-006 随之标记 DONE;生产启用、数据库迁移与 PLAT-002 门禁不因此解除。
+
+| 模块 | PR | 合并提交 | 状态 |
+|---|---|---|---|
+| pet-thirdparty-biz | #39 | ee4fd05 | 已合入 |
+| pet-user-biz | #40 | d8b623c | 已合入 |
+| pet-event-core | #41 | b6f6088 | 已合入 |
+| pet-task-core | #42 | 809a443 | 已合入 |
+| pet-id-core | #43 | ba54ef5 | 已合入 |
+| pet-admin-biz | #44 | 19b15d0 | 已合入 |
