@@ -19,7 +19,7 @@ final class IdMybatis {
         factoryBean.setDataSource(Objects.requireNonNull(dataSource));
         try {
             factoryBean.setMapperLocations(new org.springframework.core.io.support.PathMatchingResourcePatternResolver()
-                    .getResources("classpath:mapper/*.xml"));
+                    .getResources("classpath*:mapper/*.xml"));
             SqlSessionFactory factory = factoryBean.getObject();
             factory.getConfiguration().setMapUnderscoreToCamelCase(true);
             return new SqlSessionTemplate(factory);
