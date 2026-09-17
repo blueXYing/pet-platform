@@ -72,7 +72,7 @@ public final class AssetRegistryStore {
         factoryBean.setDataSource(dataSource);
         try {
             factoryBean.setMapperLocations(new org.springframework.core.io.support.PathMatchingResourcePatternResolver()
-                    .getResources("classpath:mapper/*.xml"));
+                    .getResources("classpath*:mapper/*.xml"));
             return factoryBean.getObject();
         } catch (Exception failure) {
             throw new IllegalStateException("asset_registry SqlSessionFactory build failed", failure);
