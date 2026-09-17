@@ -1,13 +1,14 @@
 package com.petplatform.task.core;
 
 import com.petplatform.common.SnowflakeIdGenerator;
+import com.petplatform.task.core.mapper.AsyncTaskMapper;
+import com.petplatform.task.core.mapper.AsyncTaskRowEntity;
 import java.time.Duration;
-import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.function.Supplier;
 import javax.sql.DataSource;
-import org.springframework.jdbc.core.JdbcTemplate;
+import org.mybatis.spring.SqlSessionTemplate;
 import org.springframework.jdbc.datasource.DataSourceTransactionManager;
 import org.springframework.transaction.TransactionDefinition;
 import org.springframework.transaction.support.TransactionTemplate;
@@ -17,12 +18,12 @@ import org.springframework.transaction.support.TransactionTemplate;
  * No ID bean is created here: production requires the PLAT-002 provider.
  */
 public final class JdbcAsyncTaskRepository {
-    private final JdbcTemplate jdbc;
+    private final SqlSessionTemplate template;
     private final TransactionTemplate transaction;
     private final SnowflakeIdGenerator ids;
 
     public JdbcAsyncTaskRepository(DataSource dataSource, SnowflakeIdGenerator ids) {
-        this.jdbc = new JdbcTemplate(Objects.requireNonNull(dataSource));
+        this.template = TaskMybatis.template(dataSource);
         this.ids = Objects.requireNonNull(ids, "PLAT-002 ID provider is required");
         transaction = new TransactionTemplate(new DataSourceTransactionManager(dataSource));
         transaction.setPropagationBehavior(TransactionDefinition.PROPAGATION_REQUIRES_NEW);
@@ -34,9 +35,13 @@ public final class JdbcAsyncTaskRepository {
 
     private <T> T inTransaction(Supplier<T> action) {
         return transaction.execute(status -> {
-            jdbc.execute("SET SESSION time_zone = '+00:00'");
+            tasks().setTimeZoneUtc();
             return action.get();
         });
+    }
+
+    private AsyncTaskMapper tasks() {
+        return template.getMapper(AsyncTaskMapper.class);
     }
 
     public Optional<TaskLease> claim(String owner, Duration leaseDuration) {
@@ -47,43 +52,18 @@ public final class JdbcAsyncTaskRepository {
         long attemptId = ids.nextId(); // Do not hold claim locks while waiting for an ID.
         if (attemptId <= 0) throw new IllegalStateException("Invalid ID from provider");
         return inTransaction(() -> {
-            List<TaskLease> candidates = jdbc.query("""
-                    SELECT * FROM async_task
-                    WHERE (status IN ('READY','RETRY_WAIT') AND execute_at <= NOW(3))
-                       OR (status = 'RUNNING' AND lease_until < NOW(3))
-                    ORDER BY priority DESC, execute_at ASC, id ASC
-                    LIMIT 1 FOR UPDATE SKIP LOCKED
-                    """, (rs, row) -> new TaskLease(rs.getLong("id"), rs.getString("task_key"),
-                    rs.getString("task_type"), rs.getLong("biz_id"),
-                    rs.getObject("expected_version", Long.class), rs.getString("payload_json"),
-                    owner, Math.addExact(rs.getLong("version"), 1), attemptId, 0,
-                    rs.getInt("retry_count"), rs.getInt("max_retry_count"), rs.getString("retry_policy")));
-            if (candidates.isEmpty()) return Optional.empty();
-            TaskLease candidate = candidates.getFirst();
-            Integer prior = jdbc.queryForObject(
-                    "SELECT COALESCE(MAX(attempt_no),0) FROM async_task_attempt WHERE task_id=?",
-                    Integer.class, candidate.taskId());
-            int attemptNo = Math.addExact(Objects.requireNonNull(prior), 1);
+            AsyncTaskRowEntity candidate = tasks().selectClaimCandidate();
+            if (candidate == null) return Optional.empty();
+            int attemptNo = Math.addExact(tasks().selectMaxAttemptNo(candidate.getId()), 1);
             // An abandoned attempt is an interrupted delivery, not a business failure.
-            jdbc.update("""
-                    UPDATE async_task_attempt SET result='RETRY', error_code='LEASE_EXPIRED',
-                    finished_at=NOW(3), duration_ms=GREATEST(0,TIMESTAMPDIFF(MICROSECOND,started_at,NOW(3)) DIV 1000)
-                    WHERE task_id=? AND finished_at IS NULL
-                    """, candidate.taskId());
-            requireOne(jdbc.update("""
-                    UPDATE async_task SET status='RUNNING',lease_owner=?,
-                    lease_until=TIMESTAMPADD(MICROSECOND,?,NOW(3)), version=?, updated_at=NOW(3)
-                    WHERE id=?
-                    """, owner, micros, candidate.version(), candidate.taskId()));
-            requireOne(jdbc.update("""
-                    INSERT INTO async_task_attempt
-                    (id,task_id,attempt_no,instance_id,started_at,created_at)
-                    VALUES (?,?,?,?,NOW(3),NOW(3))
-                    """, attemptId, candidate.taskId(), attemptNo, owner));
-            return Optional.of(new TaskLease(candidate.taskId(), candidate.taskKey(), candidate.taskType(),
-                    candidate.bizId(), candidate.expectedVersion(), candidate.payloadJson(), owner,
-                    candidate.version(), attemptId, attemptNo, candidate.retryCount(),
-                    candidate.maxRetryCount(), candidate.retryPolicy()));
+            tasks().expireAbandonedAttempts(candidate.getId());
+            long nextVersion = Math.addExact(candidate.getVersion(), 1);
+            requireOne(tasks().updateClaim(owner, micros, nextVersion, candidate.getId()));
+            requireOne(tasks().insertAttempt(attemptId, candidate.getId(), attemptNo, owner));
+            return Optional.of(new TaskLease(candidate.getId(), candidate.getTaskKey(),
+                    candidate.getTaskType(), candidate.getBizId(), candidate.getExpectedVersion(),
+                    candidate.getPayloadJson(), owner, nextVersion, attemptId, attemptNo,
+                    candidate.getRetryCount(), candidate.getMaxRetryCount(), candidate.getRetryPolicy()));
         });
     }
 
@@ -91,10 +71,7 @@ public final class JdbcAsyncTaskRepository {
         long micros = positiveMillis(duration) * 1000;
         return inTransaction(() -> {
             lockTask(lease.taskId());
-            return jdbc.update("""
-                UPDATE async_task SET lease_until=TIMESTAMPADD(MICROSECOND,?,NOW(3)), updated_at=NOW(3)
-                WHERE id=? AND status='RUNNING' AND lease_owner=? AND version=? AND lease_until>=NOW(3)
-                """, micros, lease.taskId(), lease.owner(), lease.version()) == 1;
+            return tasks().updateHeartbeat(micros, lease.taskId(), lease.owner(), lease.version()) == 1;
         });
     }
 
@@ -134,21 +111,11 @@ public final class JdbcAsyncTaskRepository {
         long finalDelay = delayMicros;
         return inTransaction(() -> {
             lockTask(lease.taskId());
-            int changed = jdbc.update("""
-                    UPDATE async_task SET status=?,retry_count=?,last_result_code=?,last_error_code=?,
-                    last_error_message=NULL,lease_owner=NULL,lease_until=NULL,updated_at=NOW(3),
-                    execute_at=IF(?='RETRY_WAIT',TIMESTAMPADD(MICROSECOND,?,NOW(3)),execute_at),
-                    finished_at=IF(?='RETRY_WAIT',NULL,NOW(3))
-                    WHERE id=? AND status='RUNNING' AND lease_owner=? AND version=? AND lease_until>=NOW(3)
-                    """, finalState, finalRetries, finalResultCode, finalErrorCode, finalState, finalDelay,
-                    finalState, lease.taskId(), lease.owner(), lease.version());
+            int changed = tasks().updateComplete(finalState, finalRetries, finalResultCode, finalErrorCode,
+                    finalDelay, lease.taskId(), lease.owner(), lease.version());
             if (changed == 0) return false;
-            requireOne(jdbc.update("""
-                    UPDATE async_task_attempt SET result=?,error_code=?,finished_at=NOW(3),
-                    duration_ms=GREATEST(0,TIMESTAMPDIFF(MICROSECOND,started_at,NOW(3)) DIV 1000)
-                    WHERE id=? AND task_id=? AND attempt_no=? AND instance_id=? AND finished_at IS NULL
-                    """, finalAttempt, finalErrorCode, lease.attemptId(), lease.taskId(),
-                    lease.attemptNo(), lease.owner()));
+            requireOne(tasks().updateAttemptResult(finalAttempt, finalErrorCode, lease.attemptId(),
+                    lease.taskId(), lease.attemptNo(), lease.owner()));
             return true;
         });
     }
@@ -156,8 +123,7 @@ public final class JdbcAsyncTaskRepository {
     private void lockTask(long taskId) {
         // NOW is fixed at statement start in MySQL. Acquire a contended lock first,
         // then evaluate lease validity in a fresh UPDATE statement after any wait.
-        jdbc.query("SELECT id FROM async_task WHERE id=? FOR UPDATE",
-                (rs, row) -> rs.getLong(1), taskId);
+        tasks().selectIdForUpdate(taskId);
     }
 
     static long positiveMillis(Duration value) {
