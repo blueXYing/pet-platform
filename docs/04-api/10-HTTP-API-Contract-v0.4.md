@@ -1956,3 +1956,9 @@ Scope提案：`{mode,cityCodes,merchantIds}`。授予请求mode=ALL/CITY/MERCHAN
 ## 商家域已批准同步（2026-09-17）
 
 员工六操作、协议读取与同意两操作、请求/响应/状态码/幂等/当前权限检查，以[27号商家域契约](27-Merchant-Domain-Contract-v0.1.md)为准，OpenAPI11已同步八操作。下线后存量履约/退款/售后继续；原“签约外链/Provider未定”描述不再适用于V1电子协议。首次签署不依赖ALLOWED工作台准入。成员绑定与员工在途守卫仍属未完成依赖，不能默认成功。
+
+## 商家申请审核HTTP同步候选（2026-09-17）
+
+[30号补充](30-Merchant-Application-Contract-v0.1.md)与OpenAPI11新增本人申请4操作、运营审核6操作，全部标CONTRACT_SYNC_CANDIDATE_NOT_IMPLEMENTED。申请人仅看本人；运营仅看已提交版本并先过滤scope再分页。人工核验/释放/决定必须当前领取人，不能构造内部双人审批。
+
+applicationId等主键使用Snowflake String；applicationNo按原PRD为SQ+YYYYMMDD+8位随机码，首次提交生成、重提不变，不套PublicId数字词法。revisionNo为正序号String。默认详情仅脱敏，不接受GET reveal参数，不在URL放敏感用途；原件读取依赖独立私有资产授权契约。无新的运行时路由或Provider就绪声明。

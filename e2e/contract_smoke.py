@@ -82,6 +82,18 @@ MERCHANT_OPERATIONS = {
     'merchantGetAgreement': ('get', '/merchant/agreement'),
     'merchantConsentAgreement': ('post', '/merchant/agreement/consent'),
 }
+APPLICATION_OPERATIONS = {
+    'cGetCurrentMerchantApplication': ('get', '/c/merchant-applications/current'),
+    'cCreateMerchantApplication': ('post', '/c/merchant-applications'),
+    'cSaveMerchantApplicationDraft': ('put', '/c/merchant-applications/{applicationId}/draft'),
+    'cSubmitMerchantApplication': ('post', '/c/merchant-applications/{applicationId}/submit'),
+    'adminListMerchantApplications': ('get', '/admin/merchant-applications'),
+    'adminGetMerchantApplication': ('get', '/admin/merchant-applications/{applicationId}'),
+    'adminClaimMerchantApplication': ('post', '/admin/merchant-applications/{applicationId}/claim'),
+    'adminReleaseMerchantApplication': ('post', '/admin/merchant-applications/{applicationId}/release'),
+    'adminVerifyMerchantApplication': ('post', '/admin/merchant-applications/{applicationId}/manual-verification'),
+    'adminDecideMerchantApplication': ('post', '/admin/merchant-applications/{applicationId}/decision'),
+}
 MINI_ATTEMPT_OPERATIONS = {
     'cAuthWechatLogin', 'cAuthSendSms', 'cAuthSmsLogin', 'cAuthPasswordLogin',
     'cAccountResetPassword', 'cAuthGetAttemptResult', 'cAuthGetSmsIntent',
@@ -265,6 +277,23 @@ def check(spec):
                 if operation_id in {'merchantCreateStaff', 'merchantConsentAgreement'}:
                     assert '201' in responses, f'Merchant create response missing: {operation_id}'
                     assert responses['201']['content'] == responses['200']['content'], f'Merchant replay changed: {operation_id}'
+            if operation_id in APPLICATION_OPERATIONS:
+                assert (method, path) == APPLICATION_OPERATIONS[operation_id], f'Application operation moved: {operation_id}'
+                assert operation.get('security') == [{'bearerAuth': []}], f'Application security changed: {operation_id}'
+                assert operation.get('x-contract-status') == 'CONTRACT_SYNC_CANDIDATE_NOT_IMPLEMENTED', f'Application implementation status changed: {operation_id}'
+                expected_audience = 'ADMIN_WEB' if operation_id.startswith('admin') else 'MINIAPP'
+                assert operation.get('x-audience') == expected_audience, f'Application audience changed: {operation_id}'
+                if operation_id.startswith('admin'):
+                    expected_actions = ['merchant.application.read'] if method == 'get' else ['merchant.application.decide']
+                    if operation_id == 'adminVerifyMerchantApplication':
+                        expected_actions.append('merchant.identity.reveal')
+                    assert operation.get('x-required-actions') == expected_actions, f'Application action gate changed: {operation_id}'
+                if operation_id in {'adminReleaseMerchantApplication', 'adminVerifyMerchantApplication', 'adminDecideMerchantApplication'}:
+                    assert operation.get('x-requires-current-claimant') is True, f'Application claimant gate missing: {operation_id}'
+                responses = operation['responses']
+                assert {'200', '400', '401', '403', '404', '409', '503'} <= responses.keys(), f'Application response missing: {operation_id}'
+                if operation_id == 'cCreateMerchantApplication':
+                    assert '201' in responses and responses['201']['content'] == responses['200']['content'], 'Application create replay changed'
             if method in {'post', 'put', 'patch', 'delete'}:
                 assert {'$ref': '#/components/parameters/RequestId'} in parameters, f'Missing request ID: {operation_id}'
                 writes += 1
@@ -278,7 +307,7 @@ def check(spec):
     assert legacy_seen == LEGACY_OPERATIONS.keys(), f'Legacy operations missing: {LEGACY_OPERATIONS.keys() - legacy_seen}'
     assert legacy_writes == 13, 'Legacy write surface changed'
     assert legacy_creates == LEGACY_CREATES, 'Legacy create surface changed'
-    assert operations == LEGACY_OPERATIONS.keys() | AUTH_OPERATIONS.keys() | MERCHANT_OPERATIONS.keys(), 'Unexpected or missing reviewed operations'
+    assert operations == LEGACY_OPERATIONS.keys() | AUTH_OPERATIONS.keys() | MERCHANT_OPERATIONS.keys() | APPLICATION_OPERATIONS.keys(), 'Unexpected or missing reviewed operations'
     schemes = spec['components']['securitySchemes']
     assert schemes['bearerAuth']['type'] == 'http' and schemes['bearerAuth']['scheme'] == 'bearer'
     for scheme, location, name in [('authAttempt', 'header', 'X-Auth-Attempt'),
@@ -311,6 +340,7 @@ def check(spec):
             'legacyOperations': len(legacy_seen), 'legacyWrites': legacy_writes,
             'legacyCreates': len(legacy_creates), 'authOperations': len(operations & AUTH_OPERATIONS.keys()),
             'merchantOperations': len(operations & MERCHANT_OPERATIONS.keys()),
+            'applicationOperations': len(operations & APPLICATION_OPERATIONS.keys()),
             'resolvedRefs': len(refs), 'stringIdProperties': ids}
 
 
