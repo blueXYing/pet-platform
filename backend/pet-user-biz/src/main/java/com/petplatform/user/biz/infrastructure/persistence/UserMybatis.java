@@ -1,9 +1,5 @@
 package com.petplatform.user.biz.infrastructure.persistence;
 
-import com.petplatform.user.biz.infrastructure.persistence.mapper.CommandIdempotencyMapper;
-import com.petplatform.user.biz.infrastructure.persistence.mapper.PetMapper;
-import com.petplatform.user.biz.infrastructure.persistence.mapper.SessionControlMapper;
-import com.petplatform.user.biz.infrastructure.persistence.mapper.UserAuthMapper;
 import java.util.Objects;
 import javax.sql.DataSource;
 import org.apache.ibatis.session.SqlSessionFactory;
@@ -22,12 +18,10 @@ final class UserMybatis {
         SqlSessionFactoryBean factoryBean = new SqlSessionFactoryBean();
         factoryBean.setDataSource(Objects.requireNonNull(dataSource));
         try {
+            factoryBean.setMapperLocations(new org.springframework.core.io.support.PathMatchingResourcePatternResolver()
+                    .getResources("classpath:mapper/*.xml"));
             SqlSessionFactory factory = factoryBean.getObject();
             factory.getConfiguration().setMapUnderscoreToCamelCase(true);
-            factory.getConfiguration().addMapper(PetMapper.class);
-            factory.getConfiguration().addMapper(UserAuthMapper.class);
-            factory.getConfiguration().addMapper(CommandIdempotencyMapper.class);
-            factory.getConfiguration().addMapper(SessionControlMapper.class);
             return new SqlSessionTemplate(factory);
         } catch (Exception failure) {
             throw new IllegalStateException("user domain SqlSessionFactory build failed", failure);
