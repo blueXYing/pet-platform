@@ -16,7 +16,7 @@
 | M-002 / Merchant | 商家原稿已提供，导出保存在本地；无产品页交付证据 | V1布局/状态修订、AUTH/MER/SVC/SCH接口、签约事实及VIS | MINI002～004/VIS；W2-FE |
 | A-002 / Admin | 运营工程壳之外无本轮治理页交付证据 | CCR-PERM治理动作及ADM接口，签约子项OD-W0-002；不新增内部双人审批 | WEB002/PERM002/005；W2-FE |
 | PLAT-005 / Backend Core | PR21 Trace/MDC及统一响应/异常基座 | 不重做已合入基座；按原AC/证据核对整项DoD关闭，运维采集不是新增Issue范围 | ARCH001～005、PLAT005-FILTER/HANDLER |
-| PLAT-006 / Backend Core | PR29统一MyBatis裁决；C登录前置已合入；六模块迁移已提交 PR #39～#44 | 人工审阅合入六个模块 PR；合入后登记22号裁决完成回执 | ARCH001～005及既有MySQL回归（已按[迁移报告](progress/2026-09-16/PLAT006_MIGRATION_REPORT.md)逐模块执行） |
+| PLAT-006 / Backend Core | PR29裁决；六模块迁移 PR #39～#44 已合入，22号裁决回执已登记，DONE | 生产数据库迁移/启用与 PLAT-002 门禁另行授权 | ARCH001～005及既有MySQL回归（见[迁移报告](progress/2026-09-16/PLAT006_MIGRATION_REPORT.md)） |
 
 原规划的11个候选仍保留；PLAT-005/006来自已合并PR21/29的后续人工授权，不是此次新增任务。OSS阶段见[同步报告](progress/2026-09-16/PROGRESS_SYNC.md)，不自行新增一个Catalog Issue。
 
