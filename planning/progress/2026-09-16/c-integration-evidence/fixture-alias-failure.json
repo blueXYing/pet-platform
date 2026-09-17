@@ -1,0 +1,99 @@
+{
+  "mode": "WeChat DevTools real page path; wx.login/request Provider TEST DOUBLES; no real WeChat or backend claim",
+  "checks": [
+    "phone denial leaves unauthenticated state",
+    "login + phone callback publishes server principal",
+    "profile saves and reloads through real repository with unsupported fields disabled"
+  ],
+  "status": "FAIL",
+  "error": "Error: Missing visible text: 接口修改宠物",
+  "page": "宠物信息接接口新增宠物基本信息品种性别出生日期体重宠物芯片—年龄疫苗记录添加记录功能尚未接通驱虫记录添加记录功能尚未接通健康备注—首页服务宠友圈消息我的",
+  "pets": [
+    {
+      "petId": "501",
+      "petType": "CAT",
+      "breedName": null,
+      "birthDate": null,
+      "sex": "UNKNOWN",
+      "weightKg": null,
+      "sterilizationStatus": null,
+      "vaccineStatus": null,
+      "healthNote": null,
+      "avatarUrl": null,
+      "isDefault": false,
+      "status": "ACTIVE",
+      "name": "接口修改宠物"
+    }
+  ],
+  "wire": [
+    {
+      "path": "/api/v1/c/auth/attempts",
+      "method": "POST",
+      "key": "7d2bbfbb-53d4-440a-8326-d3d93dbe3faa"
+    },
+    {
+      "path": "/api/v1/c/auth/wechat-login",
+      "method": "POST",
+      "key": "5eb61aa3-c8f0-4d7c-882d-df03bbbbfde9"
+    },
+    {
+      "path": "/api/v1/c/account/phone-binding",
+      "method": "POST",
+      "key": "5b007d83-2c9a-430d-9edc-3a5cab5e8e09"
+    },
+    {
+      "path": "/api/v1/c/auth/session",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/c/profile",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/c/profile",
+      "method": "PUT",
+      "key": "e72f04db-96bd-489b-a2f7-c23459184980"
+    },
+    {
+      "path": "/api/v1/c/profile",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/c/pets",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/c/pets",
+      "method": "POST",
+      "key": "200d82d8-2401-4617-9d5e-7cfca0edbe97",
+      "petName": "接口新增宠物",
+      "responsePetName": "接口新增宠物"
+    },
+    {
+      "path": "/api/v1/c/pets",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/c/pets/501",
+      "method": "GET",
+      "responsePetName": "接口新增宠物"
+    },
+    {
+      "path": "/api/v1/c/pets/501",
+      "method": "GET",
+      "responsePetName": "接口新增宠物"
+    },
+    {
+      "path": "/api/v1/c/pets/501",
+      "method": "PUT",
+      "key": "b7d9b116-c04a-40f1-9463-eb556d27265b",
+      "petName": "接口修改宠物",
+      "responsePetName": "接口修改宠物"
+    },
+    {
+      "path": "/api/v1/c/pets/501",
+      "method": "GET",
+      "responsePetName": "接口修改宠物"
+    }
+  ]
+}

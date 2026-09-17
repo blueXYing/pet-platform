@@ -1,0 +1,198 @@
+{
+  "mode": "WeChat DevTools real page path; wx.login/request Provider TEST DOUBLES; no real WeChat or backend claim",
+  "eventMethod": "automator trigger tap/input callbacks; not physical pointer or keyboard validation",
+  "checks": [
+    "phone denial leaves unauthenticated state",
+    "login + phone callback publishes server principal",
+    "profile saves and reloads through real repository with unsupported fields disabled",
+    "pet create/detail/update/delete and page reload; no chip/medical fixture leakage",
+    "logout clears real context"
+  ],
+  "status": "PASS_PROVIDER_DOUBLES",
+  "runtime": {
+    "SDKVersion": "3.17.2",
+    "platform": "devtools",
+    "model": "iPhone 12/13 (Pro)",
+    "windowWidth": 390,
+    "windowHeight": 753,
+    "pixelRatio": 3,
+    "system": "iOS 10.0.1"
+  },
+  "profileGeometry": [
+    {
+      "id": "_BC",
+      "dataset": {
+        "sid": "_BC"
+      },
+      "left": 0,
+      "right": 390,
+      "top": 47,
+      "bottom": 732.375,
+      "width": 390,
+      "height": 685.375
+    },
+    {
+      "id": "_Be",
+      "dataset": {
+        "sid": "_Be"
+      },
+      "left": 28.125,
+      "right": 360.875,
+      "top": 110.046875,
+      "bottom": 189.59375,
+      "width": 332.75,
+      "height": 79.546875
+    },
+    {
+      "id": "_Bi",
+      "dataset": {
+        "sid": "_Bi"
+      },
+      "left": 28.125,
+      "right": 360.875,
+      "top": 205.109375,
+      "bottom": 249.734375,
+      "width": 332.75,
+      "height": 44.625
+    },
+    {
+      "id": "_Bq",
+      "dataset": {
+        "sid": "_Bq"
+      },
+      "left": 28.125,
+      "right": 360.875,
+      "top": 265.25,
+      "bottom": 313.75,
+      "width": 332.75,
+      "height": 48.5
+    },
+    {
+      "id": "_By",
+      "dataset": {
+        "sid": "_By"
+      },
+      "left": 28.125,
+      "right": 360.875,
+      "top": 329.265625,
+      "bottom": 373.890625,
+      "width": 332.75,
+      "height": 44.625
+    },
+    {
+      "id": "_CF",
+      "dataset": {
+        "sid": "_CF"
+      },
+      "left": 28.125,
+      "right": 360.875,
+      "top": 389.40625,
+      "bottom": 548.015625,
+      "width": 332.75,
+      "height": 158.609375
+    },
+    {
+      "id": "profile-save",
+      "dataset": {
+        "sid": "_CI"
+      },
+      "left": 28.125,
+      "right": 360.875,
+      "top": 563.53125,
+      "bottom": 606.203125,
+      "width": 332.75,
+      "height": 42.671875
+    }
+  ],
+  "page": "C-001 工程示例非产品页面 · 预览入口与真实接口验证分别标注真实接口接入验证（沿用工程入口）未登录微信登录取消登录查询当前会话编辑真实资料管理真实宠物档案退出登录 / 重试退出已退出登录局部计数：0增加计数打开隔离验证页C-002 编辑资料视觉预览（仅本地数据）进入商家工作区（内部 fixture）",
+  "pets": [],
+  "wire": [
+    {
+      "path": "/api/v1/c/auth/attempts",
+      "method": "POST",
+      "key": "fbc43ac4-10a9-4812-8452-12caeba2deb4"
+    },
+    {
+      "path": "/api/v1/c/auth/wechat-login",
+      "method": "POST",
+      "key": "06114af8-120f-47a7-8cdb-3aa6019dfe56"
+    },
+    {
+      "path": "/api/v1/c/account/phone-binding",
+      "method": "POST",
+      "key": "d289b38c-9f99-4568-9eec-7d283f0ea3e6"
+    },
+    {
+      "path": "/api/v1/c/auth/session",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/c/profile",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/c/profile",
+      "method": "PUT",
+      "key": "2d8d2fa9-e8d1-4683-aa13-c47f30613830"
+    },
+    {
+      "path": "/api/v1/c/profile",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/c/pets",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/c/pets",
+      "method": "POST",
+      "key": "66d8bfd6-6f6d-4147-93ae-c15c2a267841",
+      "petName": "接口新增宠物",
+      "responsePetName": "接口新增宠物"
+    },
+    {
+      "path": "/api/v1/c/pets",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/c/pets/501",
+      "method": "GET",
+      "responsePetName": "接口新增宠物"
+    },
+    {
+      "path": "/api/v1/c/pets/501",
+      "method": "GET",
+      "responsePetName": "接口新增宠物"
+    },
+    {
+      "path": "/api/v1/c/pets/501",
+      "method": "PUT",
+      "key": "da71216c-2439-40cd-b484-4278f7ad53f5",
+      "petName": "接口修改宠物",
+      "responsePetName": "接口修改宠物"
+    },
+    {
+      "path": "/api/v1/c/pets/501",
+      "method": "GET",
+      "responsePetName": "接口修改宠物"
+    },
+    {
+      "path": "/api/v1/c/pets",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/c/pets/501",
+      "method": "DELETE",
+      "key": "2c44ff85-d4c9-4dca-9861-1e066a663767"
+    },
+    {
+      "path": "/api/v1/c/pets",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/c/auth/logout",
+      "method": "POST",
+      "key": "7483aa21-ca12-4f69-a71b-ae2b8fe2f328"
+    }
+  ]
+}

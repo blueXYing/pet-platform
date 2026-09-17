@@ -1,0 +1,157 @@
+{
+  "windowWidth": "390",
+  "method": "DevTools panel-scale resampling and scroll stitching to the reference canvas; raw tiles retained. Device-chrome rows and clipped right columns are excluded as recorded in tile metadata. Detail reference is the official handoff frame render; list and form references are spec composites (registered gap). Metrics locate differences; no similarity threshold defines a pass.",
+  "visualAcceptance": "PENDING_REVIEW",
+  "states": {
+    "list": {
+      "reference": "reference-list-402x312.png",
+      "referenceIsOfficialFrameRender": false,
+      "referenceSha256": "8514bed35ff555f83d307b0a46e549bf68864ed0d6781b721cae49673bd41315",
+      "stitchedActualSha256": "427ddd2ad199ad01fd72318b1c00137bf0209f10d04603323479c9ef2f78c316",
+      "regions": {
+        "header": {
+          "excluded": "device-chrome rows"
+        },
+        "card1": {
+          "meanAbsoluteChannelDifference": 10.457505518763798,
+          "fractionPixelsWithAnyChannelDifferenceOver16": 0.19246688741721854
+        },
+        "card2": {
+          "meanAbsoluteChannelDifference": 10.748504335028953,
+          "fractionPixelsWithAnyChannelDifferenceOver16": 0.21273634705825895
+        },
+        "full": {
+          "meanAbsoluteChannelDifference": 7.048311444652908,
+          "fractionPixelsWithAnyChannelDifferenceOver16": 0.13813320825515948
+        }
+      }
+    },
+    "detail": {
+      "reference": "reference-detail-402x1252.png",
+      "referenceIsOfficialFrameRender": true,
+      "referenceSha256": "0440d7e9b488a60544d266120bf1cab51edf39e1568724ccf9dcd2fb0d35147c",
+      "stitchedActualSha256": "2dbf99384abf6e0a1b62850a62269055e8954d22fce4789a39d9a9adbd49be22",
+      "regions": {
+        "header": {
+          "excluded": "device-chrome rows"
+        },
+        "identity": {
+          "meanAbsoluteChannelDifference": 4.5140830676150765,
+          "fractionPixelsWithAnyChannelDifferenceOver16": 0.12668628893794456
+        },
+        "basic-info": {
+          "meanAbsoluteChannelDifference": 5.207129455909944,
+          "fractionPixelsWithAnyChannelDifferenceOver16": 0.10388635754489413
+        },
+        "vaccine-records": {
+          "meanAbsoluteChannelDifference": 5.240490212228537,
+          "fractionPixelsWithAnyChannelDifferenceOver16": 0.11930648216786097
+        },
+        "deworm-records": {
+          "meanAbsoluteChannelDifference": 2.985306450881726,
+          "fractionPixelsWithAnyChannelDifferenceOver16": 0.08659730722154223
+        },
+        "health-note": {
+          "meanAbsoluteChannelDifference": 3.9425073099415204,
+          "fractionPixelsWithAnyChannelDifferenceOver16": 0.0935672514619883
+        },
+        "tabbar": {
+          "meanAbsoluteChannelDifference": 4.135164835164836,
+          "fractionPixelsWithAnyChannelDifferenceOver16": 0.123992673992674
+        },
+        "full": {
+          "meanAbsoluteChannelDifference": 3.292029759692803,
+          "fractionPixelsWithAnyChannelDifferenceOver16": 0.0789599591230026
+        }
+      }
+    },
+    "form-brother": {
+      "reference": "reference-form-brother-402x1066.png",
+      "referenceIsOfficialFrameRender": false,
+      "referenceSha256": "49438009ef0e965d93bc10cbb7a180e48f3d95c4649165246879fc262b5340de",
+      "stitchedActualSha256": "932ccd89e532d0766eeb1ac505201689ae91174e063c8235470b3e47817d24db",
+      "regions": {
+        "title": {
+          "meanAbsoluteChannelDifference": 3.744506664046894,
+          "fractionPixelsWithAnyChannelDifferenceOver16": 0.04964469332285424
+        },
+        "name-breed": {
+          "meanAbsoluteChannelDifference": 4.639557013281503,
+          "fractionPixelsWithAnyChannelDifferenceOver16": 0.08284742468415938
+        },
+        "sex": {
+          "meanAbsoluteChannelDifference": 2.658362046117148,
+          "fractionPixelsWithAnyChannelDifferenceOver16": 0.06268221574344024
+        },
+        "age-birth": {
+          "meanAbsoluteChannelDifference": 3.2797036622868325,
+          "fractionPixelsWithAnyChannelDifferenceOver16": 0.07296617277047805
+        },
+        "weight-chip": {
+          "meanAbsoluteChannelDifference": 5.461383759853147,
+          "fractionPixelsWithAnyChannelDifferenceOver16": 0.09616942014901199
+        },
+        "note": {
+          "meanAbsoluteChannelDifference": 9.86661807580175,
+          "fractionPixelsWithAnyChannelDifferenceOver16": 0.1531453240636914
+        },
+        "buttons": {
+          "meanAbsoluteChannelDifference": 2.9953352769679302,
+          "fractionPixelsWithAnyChannelDifferenceOver16": 0.06865889212827989
+        },
+        "tabbar": {
+          "meanAbsoluteChannelDifference": 14.571947496947496,
+          "fractionPixelsWithAnyChannelDifferenceOver16": 0.5472527472527473
+        },
+        "full": {
+          "meanAbsoluteChannelDifference": 4.331431204960617,
+          "fractionPixelsWithAnyChannelDifferenceOver16": 0.09088598402323893
+        }
+      }
+    },
+    "form-sister": {
+      "reference": "reference-form-sister-402x1067.png",
+      "referenceIsOfficialFrameRender": false,
+      "referenceSha256": "e71264ac4b146021ee006e22cc1858898e8d11bd2e08da1b03c0baf9f28de40a",
+      "stitchedActualSha256": "74241c080227ec2687ff98f29c57366f82c8fdd59f0a40a0b64d870db1e3841a",
+      "regions": {
+        "title": {
+          "meanAbsoluteChannelDifference": 3.744506664046894,
+          "fractionPixelsWithAnyChannelDifferenceOver16": 0.04964469332285424
+        },
+        "name-breed": {
+          "meanAbsoluteChannelDifference": 4.656941744951949,
+          "fractionPixelsWithAnyChannelDifferenceOver16": 0.08280693229672821
+        },
+        "sex": {
+          "meanAbsoluteChannelDifference": 2.6440056542097357,
+          "fractionPixelsWithAnyChannelDifferenceOver16": 0.06250552168919515
+        },
+        "age-birth": {
+          "meanAbsoluteChannelDifference": 3.327888493949439,
+          "fractionPixelsWithAnyChannelDifferenceOver16": 0.08586604896361676
+        },
+        "weight-chip": {
+          "meanAbsoluteChannelDifference": 5.503887269193392,
+          "fractionPixelsWithAnyChannelDifferenceOver16": 0.10252672497570457
+        },
+        "note": {
+          "meanAbsoluteChannelDifference": 10.033546385587202,
+          "fractionPixelsWithAnyChannelDifferenceOver16": 0.1522482619421395
+        },
+        "buttons": {
+          "meanAbsoluteChannelDifference": 3.0359572400388726,
+          "fractionPixelsWithAnyChannelDifferenceOver16": 0.06800291545189505
+        },
+        "tabbar": {
+          "meanAbsoluteChannelDifference": 14.607661782661783,
+          "fractionPixelsWithAnyChannelDifferenceOver16": 0.5491758241758242
+        },
+        "full": {
+          "meanAbsoluteChannelDifference": 4.36198859778838,
+          "fractionPixelsWithAnyChannelDifferenceOver16": 0.09248346865321838
+        }
+      }
+    }
+  }
+}

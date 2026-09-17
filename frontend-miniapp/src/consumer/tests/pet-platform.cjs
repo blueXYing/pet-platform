@@ -10,7 +10,7 @@ const CLIENT = process.env.WECHATIDE_CLIENT || 'Codex'
 const PROJECT = path.resolve(__dirname, '../../..')
 const out = process.env.PET_EVIDENCE_DIR || path.resolve(__dirname, '../../../../planning/issues/wave-2/C-002-pet-page/evidence')
 
-const report = { status: 'RUNNING', source: 'real WeChat DevTools simulator via wechatide CLI', dataMode: 'explicit in-memory visual preview; no backend session or save', eventMethod: 'native Taro page event handlers via automator element actions', tests: [], exceptions: [] }
+const report = { status: 'RUNNING', source: 'real WeChat DevTools simulator via wechatide CLI', dataMode: 'explicit in-memory visual preview; no backend session or save', eventMethod: 'Taro native callbacks via automator trigger/input; not physical pointer/keyboard validation', tests: [], exceptions: [] }
 const timeout = setTimeout(() => { report.status = 'TIMEOUT'; save(); process.exit(1) }, 600000)
 function save() { fs.writeFileSync(path.join(out, 'platform.json'), JSON.stringify(report, null, 2)) }
 function check(name) { report.tests.push(name); console.log('CHECK', name); save() }
@@ -31,8 +31,11 @@ function unwrap(payload) {
   return typeof v === 'string' ? v : JSON.stringify(v)
 }
 function evalJs(source) { return unwrap(ide(['automation_evaluate', '--project', PROJECT, '--fn-source', source]).result) }
-function element(action, selector, extra = []) {
-  return ide(['automation_element_action', '--project', PROJECT, '--action', action, '--selector', selector, ...extra])
+async function element(action, selector, extra = []) {
+  await sleep(500) // wait for native navigation before binding a Page handle
+  if (action === 'tap') { extra = ['--type', 'tap', ...extra]; action = 'trigger' }
+  ide(['automation_runtime_info', '--project', PROJECT, '--action', 'currentPage'])
+  return ide(['automation_element_action', '--project', PROJECT, '--action', action, '--selector', selector, '--wait-for-selector', selector, ...extra])
 }
 function sleep(ms) { return new Promise(resolve => setTimeout(resolve, ms)) }
 function content() {
@@ -75,38 +78,38 @@ function rects(selectors) {
   if (!(formRects[2].left < formRects[3].left && formRects[3].left < formRects[4].left)) throw new Error('tab buttons overlap')
   screenshot('takeover-form-direct.png')
   check('direct form entry positions fields and separates all five tabs')
-  element('input', '#pet-form-weight', ['--value', 'heavy'])
+  await element('input', '#pet-form-weight', ['--value', 'heavy'])
   await sleep(300)
-  element('tap', '#pet-form-save')
+  await element('tap', '#pet-form-save')
   await sleep(800)
   assertIncludes(content(), '体重格式应如28.5kg', 'bad weight validation')
   check('form validation blocks save and surfaces field messages')
 
   // 2. form: valid edit saves through the preview repository and reports preview-only success
-  element('input', '#pet-form-name', ['--value', '豆豆'])
+  await element('input', '#pet-form-name', ['--value', '豆豆'])
   await sleep(300)
-  element('input', '#pet-form-weight', ['--value', '28.5kg'])
+  await element('input', '#pet-form-weight', ['--value', '28.5kg'])
   await sleep(300)
-  element('tap', '#pet-form-sex-FEMALE')
+  await element('tap', '#pet-form-sex-FEMALE')
   await sleep(400)
   const sexRects = rects(['#pet-form-sex-MALE', '#pet-form-sex-FEMALE'])
   if (sexRects[0].right > sexRects[1].left + 1) throw new Error('sex options overlap after selecting female')
   check('switching sex keeps brother and sister in distinct positions')
-  element('tap', '#pet-form-save')
+  await element('tap', '#pet-form-save')
   await sleep(1200)
   assertIncludes(content(), '预览数据已更新', 'preview save success notice')
   check('form save succeeds in preview repository with explicit preview notice')
 
   // 3. form: failed save preserves the draft; retry succeeds
   await launch('consumer/pages/pet-archive/form', 'preview=1&scenario=save-error', '添加宠物信息')
-  element('input', '#pet-form-name', ['--value', '豆豆'])
+  await element('input', '#pet-form-name', ['--value', '豆豆'])
   await sleep(300)
-  element('input', '#pet-form-note', ['--value', '失败后保留的备注'])
+  await element('input', '#pet-form-note', ['--value', '失败后保留的备注'])
   await sleep(300)
-  element('tap', '#pet-form-save')
+  await element('tap', '#pet-form-save')
   await sleep(1000)
   assertIncludes(content(), '保存失败，请重试；已填写内容保留', 'save failure notice')
-  element('tap', '#pet-form-save')
+  await element('tap', '#pet-form-save')
   await sleep(1200)
   assertIncludes(content(), '预览数据已更新', 'retry success')
   check('failed save preserves draft; explicit retry succeeds')
@@ -114,14 +117,14 @@ function rects(selectors) {
   // 4. list: load failure and retry
   await launch('consumer/pages/pet-archive/index', 'preview=1&scenario=load-error', '加载失败')
   ide(['simulator_screenshot', '--project', PROJECT, '--path', path.join(out, 'platform-list-load-failure.png'), '--optimize', 'false'])
-  element('tap', '#pet-retry-load')
+  await element('tap', '#pet-retry-load')
   await sleep(1500)
   assertIncludes(content(), '豆豆', 'list loads after retry')
   check('list load failure and retry use real page state transitions')
 
   // 5. list: card navigates to detail; detail renders contract fields
   await launch('consumer/pages/pet-archive/index', 'preview=1', '宠物档案')
-  element('tap', '#pet-card-30001')
+  await element('tap', '#pet-card-30001')
   await sleep(1800)
   const detailText = content()
   assertIncludes(detailText, '基本信息', 'detail renders')
@@ -130,19 +133,19 @@ function rects(selectors) {
   check('list card opens detail with contract-backed fields')
 
   // 6. detail: edit icon navigates to the form with the pet loaded
-  element('tap', '#pet-detail-edit')
+  await element('tap', '#pet-detail-edit')
   await sleep(1800)
-  assertIncludes(JSON.stringify(element('value', '#pet-form-name')), '豆豆', 'legacy edit entry loads selected pet; separate edit design pending')
+  assertIncludes(JSON.stringify(await element('value', '#pet-form-name')), '豆豆', 'legacy edit entry loads selected pet; separate edit design pending')
   check('detail edit action opens the form for the selected pet')
 
   // Cross-page mutations, including long text, must be visible after navigating back.
   const editedName = '一只名字特别长的金毛豆豆'
-  element('input', '#pet-form-name', ['--value', editedName])
-  element('input', '#pet-form-weight', ['--value', '30.25kg'])
-  element('input', '#pet-form-note', ['--value', '健康备注需要完整展示。'.repeat(35)])
-  element('tap', '#pet-form-save')
+  await element('input', '#pet-form-name', ['--value', editedName])
+  await element('input', '#pet-form-weight', ['--value', '30.25kg'])
+  await element('input', '#pet-form-note', ['--value', '健康备注需要完整展示。'.repeat(35)])
+  await element('tap', '#pet-form-save')
   await sleep(500)
-  element('tap', '#pet-form-back')
+  await element('tap', '#pet-form-back')
   await sleep(1000)
   assertIncludes(content(), editedName, 'detail refresh after edit')
   assertIncludes(content(), '30.25kg', 'detail updated weight')
@@ -150,12 +153,12 @@ function rects(selectors) {
   if (detailRects[2].right > detailRects[3].left + 1) throw new Error('long name overlaps sex badge')
   if (detailRects[4].bottom > detailRects[0].bottom) throw new Error('long health note clipped by canvas')
   screenshot('takeover-detail-edited.png')
-  element('tap', '#pet-detail-back')
+  await element('tap', '#pet-detail-back')
   await sleep(1000)
   assertIncludes(content(), editedName, 'list refresh after edit')
   check('saved text refreshes detail and list; long name and health note fit the layout')
 
-  element('tap', '#pet-card-30002')
+  await element('tap', '#pet-card-30002')
   await sleep(1000)
   assertIncludes(content(), '咪咪', 'selected cat detail')
   assertNotIncludes(content(), '狂犬疫苗', 'cat must not inherit dog records')
@@ -165,32 +168,32 @@ function rects(selectors) {
 
   // Newly created IDs must remain stable across repeated saves and be navigable from the list.
   await launch('consumer/pages/pet-archive/index', 'preview=1&scenario=list-empty', '还没有宠物档案')
-  element('tap', '#pet-list-count')
+  await element('tap', '#pet-list-count')
   await sleep(800)
-  element('input', '#pet-form-name', ['--value', '新宠'])
-  element('tap', '#pet-form-save')
+  await element('input', '#pet-form-name', ['--value', '新宠'])
+  await element('tap', '#pet-form-save')
   await sleep(500)
-  element('input', '#pet-form-name', ['--value', '新宠第二次保存'])
-  element('tap', '#pet-form-save')
+  await element('input', '#pet-form-name', ['--value', '新宠第二次保存'])
+  await element('tap', '#pet-form-save')
   await sleep(500)
-  element('tap', '#pet-form-back')
+  await element('tap', '#pet-form-back')
   await sleep(800)
   assertIncludes(content(), '1 只萌宠', 'one creation after repeated saves')
   assertIncludes(content(), '新宠第二次保存', 'created pet list label')
-  element('tap', '#pet-card-preview-1')
+  await element('tap', '#pet-card-preview-1')
   await sleep(800)
   assertIncludes(content(), '新宠第二次保存', 'created pet can open detail')
   check('create from empty list and repeated save produce one navigable pet')
 
-  element('tap', '#pet-detail-back')
+  await element('tap', '#pet-detail-back')
   await sleep(500)
   for (let i = 2; i <= 4; i++) {
-    element('tap', '#pet-list-count')
+    await element('tap', '#pet-list-count')
     await sleep(500)
-    element('input', '#pet-form-name', ['--value', `第${i}只宠物`])
-    element('tap', '#pet-form-save')
+    await element('input', '#pet-form-name', ['--value', `第${i}只宠物`])
+    await element('tap', '#pet-form-save')
     await sleep(400)
-    element('tap', '#pet-form-back')
+    await element('tap', '#pet-form-back')
     await sleep(500)
   }
   assertIncludes(content(), '4 只萌宠', 'dynamic count')
@@ -206,8 +209,8 @@ function rects(selectors) {
   check('direct detail entry retains layout without visiting list first')
 
   // 7. non-preview entry refuses fixture data
-  await launch('consumer/pages/pet-archive/index', '', '宠物服务暂不可用')
-  assertIncludes(content(), '宠物服务暂不可用', 'non-preview guard')
+  await launch('consumer/pages/pet-archive/index', '', '登录已失效')
+  assertIncludes(content(), '登录已失效', 'non-preview guard')
   check('non-preview entry does not leak fixture or pretend real data')
 
   report.status = 'PASS_PREVIEW_INTERACTIONS'

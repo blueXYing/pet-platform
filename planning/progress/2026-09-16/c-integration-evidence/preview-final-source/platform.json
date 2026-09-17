@@ -1,0 +1,23 @@
+{
+  "status": "PASS_PREVIEW_INTERACTIONS",
+  "source": "real WeChat DevTools simulator via wechatide CLI",
+  "dataMode": "explicit in-memory visual preview; no backend session or save",
+  "eventMethod": "Taro native callbacks via automator trigger/input; not physical pointer/keyboard validation",
+  "tests": [
+    "direct form entry positions fields and separates all five tabs",
+    "form validation blocks save and surfaces field messages",
+    "switching sex keeps brother and sister in distinct positions",
+    "form save succeeds in preview repository with explicit preview notice",
+    "failed save preserves draft; explicit retry succeeds",
+    "list load failure and retry use real page state transitions",
+    "list card opens detail with contract-backed fields",
+    "detail edit action opens the form for the selected pet",
+    "saved text refreshes detail and list; long name and health note fit the layout",
+    "switching pets does not copy dog records or chip into cat details",
+    "create from empty list and repeated save produce one navigable pet",
+    "four pets expand the list canvas and keep the last card visible",
+    "direct detail entry retains layout without visiting list first",
+    "non-preview entry does not leak fixture or pretend real data"
+  ],
+  "exceptions": []
+}

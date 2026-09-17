@@ -1,0 +1,14 @@
+{
+  "status": "CAPTURED",
+  "source": "actual WeChat DevTools simulator via wechatide-skill CLI",
+  "channel": "wechatide (DevTools 2.02); legacy miniprogram-automator ws path retired by the update",
+  "deviceWindowWidth": "390",
+  "states": [
+    "list",
+    "detail",
+    "form-brother",
+    "form-sister"
+  ],
+  "visualAcceptance": "REQUIRES_COMPARISON_AND_REVIEW",
+  "captureMode": "reference"
+}

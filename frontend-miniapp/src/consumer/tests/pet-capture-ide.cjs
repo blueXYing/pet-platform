@@ -166,6 +166,6 @@ async function captureCanvas(name, canvasHeight, tileName) {
     console.log('capture', state.name)
     screenshot(state.name + '.png')
   }
-  fs.writeFileSync(path.join(out, `capture-final-${width}.json`), JSON.stringify({ status: 'CAPTURED', source: 'actual WeChat DevTools simulator via wechatide-skill CLI', channel: 'wechatide (DevTools 2.02); legacy miniprogram-automator ws path retired by the update', deviceWindowWidth: width, states: states.map(s => s.name).concat(plain.map(p => p.name)), visualAcceptance: 'REQUIRES_COMPARISON_AND_REVIEW' }, null, 2))
+  fs.writeFileSync(path.join(out, `capture-final-${width}.json`), JSON.stringify({ status: 'CAPTURED', source: 'actual WeChat DevTools simulator via wechatide-skill CLI', channel: 'wechatide (DevTools 2.02); legacy miniprogram-automator ws path retired by the update', deviceWindowWidth: width, captureMode: process.env.PET_CAPTURE_MODE || 'all', states: process.env.PET_CAPTURE_MODE === 'reference' ? states.map(s => s.name) : process.env.PET_CAPTURE_MODE === 'device' ? plain.map(p => p.name) : states.map(s => s.name).concat(plain.map(p => p.name)), visualAcceptance: 'REQUIRES_COMPARISON_AND_REVIEW' }, null, 2))
   console.log(`Captured reference canvases and device states at window width ${width}.`)
 })().catch(error => { console.error(error); process.exit(1) })
