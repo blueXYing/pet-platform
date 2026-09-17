@@ -100,7 +100,9 @@ pet-boot `AdminAuthConfiguration` 的 Flyway 迁移目标校验（`getConnection
 - Mapper 接口只保留方法签名与 `@Param` 参数名；全部 SQL 移入各模块
   `src/main/resources/mapper/*.xml`（8 个 XML：thirdparty 1、user 4、event 2、task 1、id 1、admin 1），
   SQL 文本与迁移版逐字一致（仅 XML 转义 `<`，如 `&lt;=`、`id&lt;&gt;`）；
-- 装配改为 `SqlSessionFactoryBean.setMapperLocations(classpath:mapper/*.xml)`（XML 命名空间注册接口），
+- 装配改为 `SqlSessionFactoryBean.setMapperLocations(classpath*:mapper/*.xml)`（XML 命名空间注册接口；
+  `classpath*:` 跨所有 classpath 根扫描——单根 `classpath:` 在多模块各自携带 `resources/mapper` 的组合场景下
+  只解析第一个根，整合树曾因此报 SnowflakeNodeMapper 未注册，已修复并回归），
   其余（SpringManagedTransactionFactory、mapUnderscoreToCamelCase、admin defaultStatementTimeout=5）不变；
 - 已核实 XML 进入构建产物（target/classes/mapper）；每模块同套测试全绿 + 全后端 clean verify 绿
   （thirdparty 4/4、user 24/24+boot 24/24、event 10/10、task 22/22、id 41/41、admin 34/34+boot 24/24），
