@@ -71,9 +71,9 @@ public final class AssetRegistryStore {
         SqlSessionFactoryBean factoryBean = new SqlSessionFactoryBean();
         factoryBean.setDataSource(dataSource);
         try {
-            SqlSessionFactory factory = factoryBean.getObject();
-            factory.getConfiguration().addMapper(AssetRegistryMapper.class);
-            return factory;
+            factoryBean.setMapperLocations(new org.springframework.core.io.support.PathMatchingResourcePatternResolver()
+                    .getResources("classpath:mapper/*.xml"));
+            return factoryBean.getObject();
         } catch (Exception failure) {
             throw new IllegalStateException("asset_registry SqlSessionFactory build failed", failure);
         }
