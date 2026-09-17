@@ -1,6 +1,8 @@
 # MER-001 商家域契约提案 v0.1
 
-状态：**REVIEW_REQUIRED / NOT_ACCEPTED**。日期：2026-09-17。
+状态：**PRODUCT_DECISIONS_ACCEPTED / CONTRACT_REVIEW_REQUIRED**。日期：2026-09-17。
+
+最新回执：用户已确认“不新增强制重签”“旧订单继续履约”，见[产品决定回执](merchant-product-decisions.md)。以下第2/3项的产品语义已确认，不再待用户重复决定；字段/接口/存储等技术契约尚未明确批准，PR未获合并授权。
 关联：MER-001 / EPIC-03 / ST-MER-01 / CCR-W2-API-001 商家域。
 基线：develop `609153bd4584d538e32cf828aae06efaba8f9ce5`（PR49）。
 分支：`codex/mer001-contract-20260917`。唯一 Writer：当前根任务，兼任 Backend Core 契约编写；没有其他 Worker。

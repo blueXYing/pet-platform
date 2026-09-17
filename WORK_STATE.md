@@ -11,6 +11,8 @@ NEXT_PHASE_APPROVED: NO
 
 ## 当前结论
 
+2026-09-17 MER-001产品确认：用户已明确“不新增强制重签”“下线后旧订单继续履约”，已登记[决定回执](planning/ccr/CCR-W2-API-001/merchant-product-decisions.md)，覆盖下方关于这两项仍待确认的阶段描述。冻结写动作仍未决；技术契约尚未明确批准，PR50保持草稿且未获合并授权。SSOT/PRD文字同步尚未执行，不重复索取已确认的产品决定。
+
 2026-09-17最新推进：用户已授权开始MER-001，从远端develop `609153b`（PR49）创建独立分支 `codex/mer001-contract-20260917`，唯一Writer为当前任务。已形成[商家域契约审阅包](planning/ccr/CCR-W2-API-001/merchant-domain-proposal.md)：三查询/员工接口、成员与服务人员分离、电子协议、存储映射、错误/幂等和22项未来验收设计。状态REVIEW_REQUIRED，尚未修改权威Contract或业务代码。需确认协议换版政策，以及SSOT §26“下线仅可查看”与§15存量履约/售后继续的冲突；OD-W0-002外部签约阻塞不恢复。当前NEXT_PHASE_APPROVED:NO指尚未批准的新Contract同步/实施，不否定本次契约阶段的启动授权。主目录用户project.config.json保持原样。
 
 Wave1 工程壳已完成；Wave2 已按逐阶段授权实施完毕（PR6～#44 全部合入）。2026-09-17 W3 整合验收已执行：核验基线 **develop `37350d0`**（PR45 合并后，CI 六项成功，无在途 PR）；后端全量 261 项 JUnit（34 套件，含 22 项 ArchUnit）0 失败/跳过，逐模块计数与各 PR 合入证据一致；MyBatis 迁移组合事实（10 个 mapper XML 入构建产物、classpath*: 装配、生产主代码仅剩 boot Flyway 校验一处 java.sql）与 22 号裁决回执相符；生产门禁（pet.auth.c/admin、pet.outbox、task 装配、Snowflake rejecting、默认 Flyway 目录）全部确认默认关闭。验收详情见[W3 整合验收报告](planning/progress/2026-09-17/W3_INTEGRATION_ACCEPTANCE.md)（分支 `codex/w3-integration-acceptance-20260917` 的 PR 待人工审阅合并）。
