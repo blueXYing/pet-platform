@@ -1,0 +1,311 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.petplatform.admin.biz.infrastructure.persistence.mapper.AdminAuthMapper">
+
+    <!-- Admin auth statements (Schema 26). The SQL text is the pre-MyBatis code verbatim except that
+         JDBC question-mark placeholders are expressed as named #{} bindings (PLAT-006). -->
+
+    <update id="setTimeZoneUtc">SET SESSION time_zone='+00:00'</update>
+
+    <update id="setLockWaitTimeout2Seconds">SET SESSION innodb_lock_wait_timeout=2</update>
+
+    <select id="selectUtcClock" resultType="java.time.Instant">SELECT UTC_TIMESTAMP(3) AS clock</select>
+
+    <!-- admin_bootstrap -->
+
+    <select id="selectBootstrap" resultType="com.petplatform.admin.biz.infrastructure.persistence.entity.AdminEntities$Bootstrap">
+        SELECT * FROM admin_bootstrap WHERE id=1
+    </select>
+
+    <select id="selectBootstrapForUpdate" resultType="com.petplatform.admin.biz.infrastructure.persistence.entity.AdminEntities$Bootstrap">
+        SELECT * FROM admin_bootstrap WHERE id=1 FOR UPDATE
+    </select>
+
+    <update id="completeBootstrap">
+        UPDATE admin_bootstrap SET bootstrap_complete=TRUE,maintenance_mode=FALSE,version=version+1,completed_at=#{completedAt} WHERE id=1
+    </update>
+
+    <update id="enableMaintenance">
+        UPDATE admin_bootstrap SET maintenance_mode=TRUE,version=version+1 WHERE id=1
+    </update>
+
+    <update id="disableMaintenance">
+        UPDATE admin_bootstrap SET maintenance_mode=FALSE,version=version+1 WHERE id=1
+    </update>
+
+    <!-- admin_auth_attempt -->
+
+    <select id="selectAttempt" resultType="com.petplatform.admin.biz.infrastructure.persistence.entity.AdminEntities$AuthAttempt">
+        SELECT * FROM admin_auth_attempt WHERE id=#{id}
+    </select>
+
+    <select id="selectAttemptForUpdate" resultType="com.petplatform.admin.biz.infrastructure.persistence.entity.AdminEntities$AuthAttempt">
+        SELECT * FROM admin_auth_attempt WHERE id=#{id} FOR UPDATE
+    </select>
+
+    <insert id="insertAttempt">
+        INSERT INTO admin_auth_attempt(id,secret_digest,binding_digest,expires_at,created_at,source_ip_digest)
+        VALUES(#{id},#{secretDigest},#{bindingDigest},#{expiresAt},#{createdAt},#{sourceIpDigest})
+    </insert>
+
+    <update id="updateAttemptRisk">
+        UPDATE admin_auth_attempt SET risk_lookup_digest=#{riskLookupDigest} WHERE id=#{id}
+    </update>
+
+    <update id="completeAttempt">
+        UPDATE admin_auth_attempt SET status='COMPLETED',account_id=#{accountId},credential_version=#{credentialVersion},completed_result_id=#{completedResultId} WHERE id=#{id}
+    </update>
+
+    <!-- admin_audit_intent -->
+
+    <insert id="insertAuditIntent">
+        INSERT INTO admin_audit_intent(id,actor_id,actor_reference,attempt_id,action_code,resource_id,request_id,trace_ref,outcome,reason,occurred_at,next_attempt_at)
+        VALUES(#{id},#{actorId},#{actorReference},#{attemptId},#{actionCode},#{resourceId},#{requestId},#{traceRef},#{outcome},#{reason},#{occurredAt},#{nextAttemptAt})
+    </insert>
+
+    <select id="selectPendingAuditIds" resultType="long">
+        SELECT id FROM admin_audit_intent WHERE delivery_state='PENDING' AND next_attempt_at&lt;=UTC_TIMESTAMP(3) ORDER BY id LIMIT #{limit}
+    </select>
+
+    <select id="selectAuditIntentForUpdate" resultType="com.petplatform.admin.biz.infrastructure.persistence.entity.AdminEntities$AuditIntent">
+        SELECT * FROM admin_audit_intent WHERE id=#{id} FOR UPDATE
+    </select>
+
+    <update id="markAuditDelivered">
+        UPDATE admin_audit_intent SET delivery_state='DELIVERED',delivered_at=UTC_TIMESTAMP(3),attempt_count=attempt_count+1 WHERE id=#{id}
+    </update>
+
+    <update id="deferAuditRetry">
+        UPDATE admin_audit_intent SET attempt_count=attempt_count+1,next_attempt_at=TIMESTAMPADD(SECOND,5,UTC_TIMESTAMP(3)) WHERE id=#{id}
+    </update>
+
+    <!-- admin_auth_command -->
+
+    <select id="selectCommandByScope" resultType="com.petplatform.admin.biz.infrastructure.persistence.entity.AdminEntities$AuthCommand">
+        SELECT * FROM admin_auth_command WHERE scope_key=#{scopeKey} AND namespace=#{namespace} AND request_id=#{requestId}
+    </select>
+
+    <select id="selectCommandByScopeForUpdate" resultType="com.petplatform.admin.biz.infrastructure.persistence.entity.AdminEntities$AuthCommand">
+        SELECT * FROM admin_auth_command WHERE scope_key=#{scopeKey} AND namespace=#{namespace} AND request_id=#{requestId} FOR UPDATE
+    </select>
+
+    <select id="selectCommand" resultType="com.petplatform.admin.biz.infrastructure.persistence.entity.AdminEntities$AuthCommand">
+        SELECT * FROM admin_auth_command WHERE id=#{id}
+    </select>
+
+    <select id="selectCommandForUpdate" resultType="com.petplatform.admin.biz.infrastructure.persistence.entity.AdminEntities$AuthCommand">
+        SELECT * FROM admin_auth_command WHERE id=#{id} FOR UPDATE
+    </select>
+
+    <select id="selectCommandByAttemptAndRequest" resultType="com.petplatform.admin.biz.infrastructure.persistence.entity.AdminEntities$AuthCommand">
+        SELECT * FROM admin_auth_command WHERE attempt_id=#{attemptId} AND request_id=#{requestId} AND namespace='LOGIN'
+    </select>
+
+    <insert id="insertCommandForAttempt">
+        INSERT INTO admin_auth_command(id,scope_key,attempt_id,namespace,request_id,parameter_mac,mac_key_id)
+        VALUES(#{id},#{scopeKey},#{attemptId},#{namespace},#{requestId},#{parameterMac},#{macKeyId}) ON DUPLICATE KEY UPDATE id=id
+    </insert>
+
+    <insert id="insertCommandForSession">
+        INSERT INTO admin_auth_command(id,scope_key,session_id,namespace,request_id,parameter_mac,mac_key_id)
+        VALUES(#{id},#{scopeKey},#{sessionId},#{namespace},#{requestId},#{parameterMac},#{macKeyId})
+    </insert>
+
+    <update id="completeCommand">
+        UPDATE admin_auth_command SET state='SUCCEEDED',result_kind=#{resultKind},result_id=#{resultId},execution_ref=#{executionRef},cache_ref=#{cacheRef},completed_at=#{completedAt},receipt_window_anchor_at=#{receiptWindowAnchorAt},secret_expires_at=#{secretExpiresAt},result_expires_at=#{resultExpiresAt}
+        WHERE id=#{id} AND state='RESERVED'
+    </update>
+
+    <update id="markFailureCounted">
+        UPDATE admin_auth_command SET failure_counted=TRUE WHERE id=#{id}
+    </update>
+
+    <!-- admin_web_session -->
+
+    <select id="selectSession" resultType="com.petplatform.admin.biz.infrastructure.persistence.entity.AdminEntities$WebSession">
+        SELECT * FROM admin_web_session WHERE id=#{id}
+    </select>
+
+    <select id="selectSessionForUpdate" resultType="com.petplatform.admin.biz.infrastructure.persistence.entity.AdminEntities$WebSession">
+        SELECT * FROM admin_web_session WHERE id=#{id} FOR UPDATE
+    </select>
+
+    <select id="selectSessionByTokenDigest" resultType="com.petplatform.admin.biz.infrastructure.persistence.entity.AdminEntities$WebSession">
+        SELECT * FROM admin_web_session WHERE token_digest=#{tokenDigest}
+    </select>
+
+    <insert id="insertSession">
+        INSERT INTO admin_web_session(id,account_id,token_digest,generation,issued_at,last_interactive_at,idle_expires_at)
+        VALUES(#{id},#{accountId},#{tokenDigest},#{generation},#{issuedAt},#{lastInteractiveAt},#{idleExpiresAt})
+    </insert>
+
+    <update id="revokeSession">
+        UPDATE admin_web_session SET status='REVOKED',revoked_at=#{revokedAt} WHERE id=#{id}
+    </update>
+
+    <update id="refreshSessionIdle">
+        UPDATE admin_web_session SET last_interactive_at=#{lastInteractiveAt},idle_expires_at=#{idleExpiresAt} WHERE id=#{id}
+    </update>
+
+    <!-- admin_account -->
+
+    <select id="selectAccount" resultType="com.petplatform.admin.biz.infrastructure.persistence.entity.AdminEntities$Account">
+        SELECT * FROM admin_account WHERE id=#{id}
+    </select>
+
+    <select id="selectAccountForUpdate" resultType="com.petplatform.admin.biz.infrastructure.persistence.entity.AdminEntities$Account">
+        SELECT * FROM admin_account WHERE id=#{id} FOR UPDATE
+    </select>
+
+    <select id="selectAccountByLookup" resultType="com.petplatform.admin.biz.infrastructure.persistence.entity.AdminEntities$Account">
+        SELECT * FROM admin_account WHERE account_lookup=#{accountLookup}
+    </select>
+
+    <select id="countAccounts" resultType="long">SELECT COUNT(*) AS n FROM admin_account</select>
+
+    <insert id="insertBootstrapAccount">
+        INSERT INTO admin_account(id,account_display,account_lookup,display_name,password_hash,created_at,updated_at)
+        VALUES(#{id},#{accountDisplay},#{accountLookup},#{displayName},#{passwordHash},#{createdAt},#{updatedAt})
+    </insert>
+
+    <update id="updateLoginSession">
+        UPDATE admin_account SET session_generation=#{sessionGeneration},last_login_at=#{lastLoginAt},updated_at=#{updatedAt} WHERE id=#{id}
+    </update>
+
+    <update id="updateRecoveredAccount">
+        UPDATE admin_account SET password_hash=#{passwordHash},credential_version=credential_version+1,session_generation=session_generation+1,status='ENABLED',version=version+1,updated_at=#{updatedAt}
+        WHERE id=#{id}
+    </update>
+
+    <!-- admin_captcha -->
+
+    <select id="selectCaptcha" resultType="com.petplatform.admin.biz.infrastructure.persistence.entity.AdminEntities$Captcha">
+        SELECT * FROM admin_captcha WHERE id=#{id}
+    </select>
+
+    <select id="selectCaptchaByProofForUpdate" resultType="com.petplatform.admin.biz.infrastructure.persistence.entity.AdminEntities$Captcha">
+        SELECT * FROM admin_captcha WHERE attempt_id=#{attemptId} AND proof_digest=#{proofDigest} FOR UPDATE
+    </select>
+
+    <select id="selectCaptchaForVerification" resultType="com.petplatform.admin.biz.infrastructure.persistence.entity.AdminEntities$Captcha">
+        SELECT * FROM admin_captcha WHERE id=#{id} AND attempt_id=#{attemptId} FOR UPDATE
+    </select>
+
+    <select id="countCaptchasByAttempt" resultType="long">
+        SELECT COUNT(*) AS n FROM admin_captcha WHERE attempt_id=#{attemptId}
+    </select>
+
+    <insert id="insertCaptcha">
+        INSERT INTO admin_captcha(id,attempt_id,answer_mac,mac_key_id,image_png,challenge_created_at,challenge_expires_at)
+        VALUES(#{id},#{attemptId},#{answerMac},#{macKeyId},#{imagePng},#{challengeCreatedAt},#{challengeExpiresAt})
+    </insert>
+
+    <update id="consumeStaleCaptchaChallenges">
+        UPDATE admin_captcha SET challenge_consumed_at=COALESCE(challenge_consumed_at,#{challengeConsumedAt}),proof_consumed_at=CASE WHEN proof_digest IS NOT NULL THEN COALESCE(proof_consumed_at,#{proofConsumedAt}) ELSE NULL END WHERE attempt_id=#{attemptId}
+    </update>
+
+    <update id="bumpCaptchaFailure">
+        UPDATE admin_captcha SET failure_count=failure_count+1 WHERE id=#{id}
+    </update>
+
+    <update id="issueCaptchaProof">
+        UPDATE admin_captcha SET challenge_consumed_at=#{challengeConsumedAt},proof_digest=#{proofDigest},proof_issued_at=#{proofIssuedAt},proof_expires_at=#{proofExpiresAt} WHERE id=#{id}
+    </update>
+
+    <update id="markCaptchaProofConsumed">
+        UPDATE admin_captcha SET proof_consumed_at=#{proofConsumedAt} WHERE id=#{id}
+    </update>
+
+    <!-- admin_attempt_creation -->
+
+    <select id="selectAttemptCreation" resultType="long">
+        SELECT attempt_id FROM admin_attempt_creation WHERE namespace='ADMIN_LOGIN_CREATE' AND request_id=#{requestId}
+    </select>
+
+    <insert id="insertAttemptCreation">
+        INSERT INTO admin_attempt_creation(namespace,request_id,attempt_id,created_at) VALUES('ADMIN_LOGIN_CREATE',#{requestId},#{attemptId},#{createdAt})
+    </insert>
+
+    <!-- admin_login_failure -->
+
+    <select id="selectLoginFailure" resultType="com.petplatform.admin.biz.infrastructure.persistence.entity.AdminEntities$LoginFailure">
+        SELECT * FROM admin_login_failure WHERE lookup_digest=#{lookupDigest}
+    </select>
+
+    <select id="selectLoginFailureForUpdate" resultType="com.petplatform.admin.biz.infrastructure.persistence.entity.AdminEntities$LoginFailure">
+        SELECT * FROM admin_login_failure WHERE lookup_digest=#{lookupDigest} FOR UPDATE
+    </select>
+
+    <insert id="insertLoginFailureSeed">
+        INSERT INTO admin_login_failure(lookup_digest,window_start,count,version) VALUES(#{lookupDigest},#{windowStart},0,0) ON DUPLICATE KEY UPDATE lookup_digest=lookup_digest
+    </insert>
+
+    <update id="updateLoginFailureWindow">
+        UPDATE admin_login_failure SET window_start=#{windowStart},count=#{count},version=version+1 WHERE lookup_digest=#{lookupDigest}
+    </update>
+
+    <update id="updateLoginFailureCount">
+        UPDATE admin_login_failure SET window_start=#{windowStart},count=#{count},locked_until=#{lockedUntil},version=version+1 WHERE lookup_digest=#{lookupDigest}
+    </update>
+
+    <delete id="deleteLoginFailure">
+        DELETE FROM admin_login_failure WHERE lookup_digest=#{lookupDigest}
+    </delete>
+
+    <!-- authorization snapshot -->
+
+    <select id="selectAuthzRevision" resultType="com.petplatform.admin.biz.infrastructure.persistence.entity.AdminEntities$AuthzRevision">
+        SELECT * FROM admin_authz_revision WHERE id=1
+    </select>
+
+    <select id="selectAuthzRevisionForUpdate" resultType="com.petplatform.admin.biz.infrastructure.persistence.entity.AdminEntities$AuthzRevision">
+        SELECT * FROM admin_authz_revision WHERE id=1 FOR UPDATE
+    </select>
+
+    <update id="bumpAuthzRevision">
+        UPDATE admin_authz_revision SET revision=revision+1 WHERE id=1
+    </update>
+
+    <select id="selectAccountScope" resultType="com.petplatform.admin.biz.infrastructure.persistence.entity.AdminEntities$AccountScope">
+        SELECT * FROM admin_account_scope WHERE account_id=#{accountId}
+    </select>
+
+    <select id="selectScopeCities" resultType="string">
+        SELECT city_code FROM admin_scope_city WHERE account_id=#{accountId}
+    </select>
+
+    <select id="selectScopeMerchants" resultType="long">
+        SELECT merchant_id FROM admin_scope_merchant WHERE account_id=#{accountId}
+    </select>
+
+    <select id="selectEnabledRoles" resultType="com.petplatform.admin.biz.infrastructure.persistence.entity.AdminEntities$Role">
+        SELECT r.* FROM admin_role r JOIN admin_account_role ar ON ar.role_id=r.id
+        WHERE ar.account_id=#{accountId} AND r.status='ENABLED' ORDER BY r.role_code
+    </select>
+
+    <select id="selectActionGrants" resultType="string">
+        SELECT ra.action_code FROM admin_role_action ra JOIN admin_role r ON r.id=ra.role_id
+        JOIN admin_account_role ar ON ar.role_id=r.id WHERE ar.account_id=#{accountId} AND r.status='ENABLED'
+        UNION SELECT action_code FROM admin_extra_grant WHERE account_id=#{accountId}
+    </select>
+
+    <select id="countSuperAdminGrants" resultType="long">
+        SELECT COUNT(*) AS n FROM admin_account_role ar JOIN admin_role r ON r.id=ar.role_id
+        WHERE ar.account_id=#{accountId} AND r.role_code='PLATFORM_SUPER_ADMIN' AND r.status='ENABLED'
+    </select>
+
+    <!-- bootstrap data -->
+
+    <insert id="insertRole">
+        INSERT INTO admin_role(id,role_code,display_name) VALUES(#{id},#{roleCode},#{displayName})
+    </insert>
+
+    <insert id="insertAccountRole">
+        INSERT INTO admin_account_role(account_id,role_id,granted_by,granted_at) VALUES(#{accountId},#{roleId},#{grantedBy},#{grantedAt})
+    </insert>
+
+    <insert id="insertAccountScopeAll">
+        INSERT INTO admin_account_scope(account_id,mode) VALUES(#{accountId},'ALL')
+    </insert>
+
+</mapper>
