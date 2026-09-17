@@ -1,0 +1,62 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.petplatform.task.core.mapper.AsyncTaskMapper">
+
+    <!-- async_task / async_task_attempt statements, SQL kept verbatim (SQL13, PLAT-006). -->
+
+    <update id="setTimeZoneUtc">SET SESSION time_zone = '+00:00'</update>
+
+    <select id="selectClaimCandidate" resultType="com.petplatform.task.core.mapper.AsyncTaskRowEntity">
+        SELECT * FROM async_task
+        WHERE (status IN ('READY','RETRY_WAIT') AND execute_at &lt;= NOW(3))
+           OR (status = 'RUNNING' AND lease_until &lt; NOW(3))
+        ORDER BY priority DESC, execute_at ASC, id ASC
+        LIMIT 1 FOR UPDATE SKIP LOCKED
+    </select>
+
+    <select id="selectMaxAttemptNo" resultType="int">
+        SELECT COALESCE(MAX(attempt_no),0) FROM async_task_attempt WHERE task_id=#{taskId}
+    </select>
+
+    <update id="expireAbandonedAttempts">
+        UPDATE async_task_attempt SET result='RETRY', error_code='LEASE_EXPIRED',
+        finished_at=NOW(3), duration_ms=GREATEST(0,TIMESTAMPDIFF(MICROSECOND,started_at,NOW(3)) DIV 1000)
+        WHERE task_id=#{taskId} AND finished_at IS NULL
+    </update>
+
+    <update id="updateClaim">
+        UPDATE async_task SET status='RUNNING',lease_owner=#{owner},
+        lease_until=TIMESTAMPADD(MICROSECOND,#{micros},NOW(3)), version=#{version}, updated_at=NOW(3)
+        WHERE id=#{taskId}
+    </update>
+
+    <insert id="insertAttempt">
+        INSERT INTO async_task_attempt
+        (id,task_id,attempt_no,instance_id,started_at,created_at)
+        VALUES (#{attemptId},#{taskId},#{attemptNo},#{instanceId},NOW(3),NOW(3))
+    </insert>
+
+    <update id="updateHeartbeat">
+        UPDATE async_task SET lease_until=TIMESTAMPADD(MICROSECOND,#{micros},NOW(3)), updated_at=NOW(3)
+        WHERE id=#{taskId} AND status='RUNNING' AND lease_owner=#{owner} AND version=#{version} AND lease_until&gt;=NOW(3)
+    </update>
+
+    <update id="updateComplete">
+        UPDATE async_task SET status=#{state},retry_count=#{retryCount},last_result_code=#{resultCode},
+        last_error_code=#{errorCode},last_error_message=NULL,lease_owner=NULL,lease_until=NULL,updated_at=NOW(3),
+        execute_at=IF(#{state}='RETRY_WAIT',TIMESTAMPADD(MICROSECOND,#{delayMicros},NOW(3)),execute_at),
+        finished_at=IF(#{state}='RETRY_WAIT',NULL,NOW(3))
+        WHERE id=#{taskId} AND status='RUNNING' AND lease_owner=#{owner} AND version=#{version} AND lease_until&gt;=NOW(3)
+    </update>
+
+    <update id="updateAttemptResult">
+        UPDATE async_task_attempt SET result=#{attemptResult},error_code=#{errorCode},finished_at=NOW(3),
+        duration_ms=GREATEST(0,TIMESTAMPDIFF(MICROSECOND,started_at,NOW(3)) DIV 1000)
+        WHERE id=#{attemptId} AND task_id=#{taskId} AND attempt_no=#{attemptNo} AND instance_id=#{instanceId} AND finished_at IS NULL
+    </update>
+
+    <select id="selectIdForUpdate" resultType="long">
+        SELECT id FROM async_task WHERE id=#{taskId} FOR UPDATE
+    </select>
+
+</mapper>
