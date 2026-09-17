@@ -1,11 +1,11 @@
 # Work State
 
 PROJECT: 宠物平台 V1.0
-STATE_VERSION: 6.3
+STATE_VERSION: 6.4
 UPDATED_AT: 2026-09-17
 
 CURRENT_PHASE: W3_INTEGRATION_REVIEW
-CURRENT_STATUS: W3_ACCEPTANCE_DONE_PR_PENDING
+CURRENT_STATUS: W3_ACCEPTANCE_MERGED_MER001_DISPATCHABLE
 NEXT_PHASE: MER/SVC 前置裁决与 W3 后续阶段派发
 NEXT_PHASE_APPROVED: NO
 
@@ -16,6 +16,8 @@ Wave1 工程壳已完成；Wave2 已按逐阶段授权实施完毕（PR6～#44 �
 小程序 PR38 链路模拟器联调（W3 新证据）：真实凭据下真实 wx.login→code2session→账号/身份落库链路验证通过（证据类型 A）；后端固定 code 替身下登录会话/恢复/失效、昵称保存、宠物读改写全链路、底栏导航、后端不可用错误态、登出全部 UI→HTTP→DB 验证通过（证据类型 C）。模拟器无法唤起 getPhoneNumber 原生授权，真机验收继续挂账；替身证据不表述为真实微信链路通过。
 
 PLAT-005 DoD 按原 AC 与 PR21 证据逐项核对：全部满足，**可关闭**（见验收报告 §5）。验收代码零改动；主目录用户本地 `frontend-miniapp/project.config.json` 保留未动。
+
+2026-09-17 合并回执：经用户指示，[PR46](https://github.com/blueXYing/pet-platform/pull/46)（W3 验收文档，合并提交 426ed3b）与 [PR47](https://github.com/blueXYing/pet-platform/pull/47)（OD-W0-002 商家入驻签约裁决：电子协议+勾选同意，合并提交 fd1fca3，含与 #46 的相邻行冲突本地解决）已先后合入 develop；两合并头 CI 六项均 success，**当前基线 `fd1fca3`**。OD-W0-002 RESOLVED，MER-001/M-002/A-002 的签约阻塞解除，MER-001 可派发（契约冻结按 CCR，协议版本管理子项随 MER-001 契约确认）。
 
 尚未发布 main 或生产环境；PLAT-002 生产启用、数据库迁移与 PLAT-002 门禁不因 W3 验收解除。
 
