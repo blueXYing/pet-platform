@@ -1,6 +1,6 @@
 # Blocked Queue
 
-更新：2026-09-16，基线 develop `e576837`。本页只列当前未解决或未验收范围；已合入阶段详见[Ready Queue](READY_QUEUE_WAVE_2.md)和[合并台账](progress/2026-09-16/PROGRESS_SYNC.md)。不再把“Wave2未启动、无公共ID接口、商家Figma尚未提供”等历史事实作为当前阻断。
+更新：2026-09-17，W3 验收基线 develop `37350d0`（PR38～#45 合入后）。本页只列当前未解决或未验收范围；已合入阶段详见[Ready Queue](READY_QUEUE_WAVE_2.md)和[合并台账](progress/2026-09-16/PROGRESS_SYNC.md)。不再把“Wave2未启动、无公共ID接口、商家Figma尚未提供”等历史事实作为当前阻断。
 
 ## 仍需处理的范围
 
@@ -9,8 +9,8 @@
 | ID及基础设施生产启用 | Hutool组件已合入；真实宿主退出证明、节点/高水位恢复、生产初始化/迁移/装配仍待验收 | PLAT-002；按[组件交接](../backend/pet-id-core/HANDOFF.md)保留默认拒绝和生产限制 |
 | Durable AsyncTask完整范围 | Worker/Lease已合入；producer、DEAD对账告警、真实业务Handler及生产装配尚缺 | PLAT-004和业务Owner；见[任务组件交接](../backend/pet-task-core/HANDOFF.md) |
 | Outbox完整范围 | 契约与组件已合入；生产迁移、启用、业务生产者/消费者、对账告警/归档尚缺 | PLAT-003及各域Owner；见[实现交接](ccr/CCR-W0-001/implementation-handoff.md) |
-| 真实认证接入与商家准入 | 已有运营/C端后端切片；小程序真实code联调、未实现认证端点、商家身份/签约等仍未完成 | AUTH-001、C/M/A及各域；CCR-ACR/PERM不因局部交付整体关闭 |
-| 宠物/资料页面真实业务 | PetService、带会话HTTP已合入；前端仍显式预览，真实登录/上传/保存/全链验收未接通 | C-002与AUTH/USR；生产数据、权限、ID和迁移条件分别核验 |
+| 真实认证接入与商家准入 | 已有运营/C端后端切片与PR38页面接入；W3已验真实wx.login→code2session→落库及替身全链路（模拟器）；真机getPhoneNumber/键盘/授权、正式环境链路、未实现认证端点、商家身份/签约等仍未完成 | AUTH-001、C/M/A及各域；CCR-ACR/PERM不因局部交付整体关闭；证据类型边界见[W3验收 §4.2](progress/2026-09-17/W3_INTEGRATION_ACCEPTANCE.md) |
+| 宠物/资料页面真实业务 | PR38页面已接真实接口，W3模拟器完成昵称/宠物读改写UI→HTTP→DB联调（替身后端）；上传、独立编辑页、完整VIS与真机仍未完成 | C-002与AUTH/USR；生产数据、权限、ID和迁移条件分别核验 |
 | 宠物独立编辑页和展示字段 | 独立编辑稿未提供；旧入口仍复用添加表单；芯片/疫苗驱虫明细不在当前PetView | C-002与USR；见[标题修正](issues/wave-2/C-002-pet-page/ADD-PET-TITLE-CORRECTION.md)及[字段CCR](issues/wave-2/C-002-pet-page/CCR-C002-PET-DISPLAY-001.md) |
 | 用户/商家页面VIS与布局 | 原稿已提供，素材本地保留；V1删减、完整状态/字体、真机与跨设备验证仍须逐页完成 | C/M Owner；[设计来源](DESIGN_SOURCES.md)，原始素材不上传GitHub |
 | 商家/服务/排期与运营治理接口 | CCR-W2-API-001各域未全部交付，MER/SVC/SCH/ADM事实不能由fixture代替 | 原各域Owner按[域清单](ccr/CCR-W2-API-001.md)推进 |

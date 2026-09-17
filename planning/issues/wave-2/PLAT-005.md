@@ -5,11 +5,15 @@ Epic: EPIC-01
 Story: ST-PLAT-02
 Priority: P0
 Wave: 2
-Status: IN_PROGRESS
+Status: READY_TO_CLOSE
 Dependencies: PLAT-001
-Phase Readiness: BASELINE_MERGED_DOD_REVIEW
+Phase Readiness: DOD_VERIFIED_W3_CLOSABLE
 
 2026-09-15用户明确批准先做本基座再开USR-001。本Issue为用户直接授权新增，非扩大既有Issue范围；实现既有契约（HTTP10响应包裹/§2.4 Trace、Error12的ApiError与通用映射、技术基线"password/code/token不进普通日志"），不新增产品行为。
+
+## 2026-09-17 W3 DoD 核对结论
+
+按本 Issue 原 AC 与 PR21 合入证据逐项核对（详见[W3 整合验收报告 §5](../../progress/2026-09-17/W3_INTEGRATION_ACCEPTANCE.md)）：AC1～AC4、Required Tests、21号补充合入、CI 六项、ARCH001～005 与人工合并条件全部满足；W3 联调中实测 401/500 包裹体、X-Trace-Id 回显与日志仅记异常类名。**结论：可关闭**（Status 置 READY_TO_CLOSE，Catalog 关闭由用户/Owner 确认执行）。缺口清单：无（生产日志采集/告警按原 Issue 不属于本 Issue 范围）。
 
 ## 2026-09-16 当前阶段
 
