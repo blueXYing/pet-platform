@@ -1,15 +1,19 @@
 # Work State
 
 PROJECT: 宠物平台 V1.0
-STATE_VERSION: 6.6
+STATE_VERSION: 6.7
 UPDATED_AT: 2026-09-17
 
 CURRENT_PHASE: W3_INTEGRATION_REVIEW
-CURRENT_STATUS: MER001_CONTRACT_SYNCED_PENDING_MERGE
-NEXT_PHASE: MER-001 已批范围领域实施与依赖交接
+CURRENT_STATUS: MER001_S2_REVIEW_CANDIDATE
+NEXT_PHASE: MER-001 S2 基础查询整合验收
 NEXT_PHASE_APPROVED: YES
 
 ## 当前结论
+
+2026-09-17最新：用户已批准合入PR50，合并提交`0ade8bc`，合并后CI 35198466155六项成功；以下“PR50未获合并授权/待合入”均为历史阶段描述。用户随后明确启动下一任务并授权按复杂度采用Sol medium/Luna xhigh子代理。已从该基线建立`codex/mer001-foundation-20260917`，按[派发记录](planning/issues/wave-2/MER-001-s2/DISPATCH.md)开展S2只读基础、依赖方案与独立QA。新PR合并/生产启用不因本次启动自动获准。MER-001整体仍IN_PROGRESS；本轮先交付现有表读取与归属，不伪造未具备的审核/成员/在途事实。
+
+S2候选已完成本地整合验证：[商家基础查询交接](planning/issues/wave-2/MER-001-s2/HANDOFF.md)。真实Schema06读取与USER-owner归属校验、字段/隐私保护、内部资格策略已实现；默认资格事实源未具备仍503，无HTTP/boot/生产装配。全后端clean verify成功，271项JUnit（含22架构、10项商家新增）、91项离线契约和13项架构工具回归通过。独立审查发现的异常脱敏/坏库状态保护已修复并复测；本轮自建测试服务已清理，原服务与用户配置保持原样。新PR尚未合入，不标整项MER-001完成。
 
 2026-09-17 MER-001三项确认齐备：用户依次明确“不新增强制重签”“下线后旧订单继续履约”“技术契约 确认”，见[批准回执](planning/ccr/CCR-W2-API-001/merchant-product-decisions.md)。已同步SSOT §26、PRD25、[27号接口契约](docs/04-api/27-Merchant-Domain-Contract-v0.1.md)、[存储映射](docs/03-database/27-Merchant-Domain-Storage-v0.1.md)、07/10/11/12；OpenAPI新增8项已批操作，实际实现状态明确NOT_IMPLEMENTED。NEXT_PHASE_APPROVED:YES限用户已授权的MER-001已批范围，不授权合并、生产发布或未决依赖放行。PR50未获合并授权。冻结写动作、成员绑定、申请/审核事实、主账号核销映射、人员停用在途指派守卫仍保留；实际DDL和迁移尚未交付。
 
