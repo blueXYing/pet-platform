@@ -1,8 +1,9 @@
 package com.petplatform.boot.auth;
 
-import com.petplatform.boot.PetPlatformApplication;
+import static org.junit.jupiter.api.Assertions.*;
 import com.petplatform.admin.biz.application.AdminAuthService;
 import com.petplatform.admin.biz.infrastructure.provider.AdminSecretCodec;
+import com.petplatform.boot.PetPlatformApplication;
 import com.petplatform.common.SnowflakeIdGenerator;
 import com.petplatform.id.core.*;
 import io.lettuce.core.RedisClient;
@@ -22,7 +23,6 @@ import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.datasource.DriverManagerDataSource;
 import org.springframework.jdbc.datasource.init.ScriptUtils;
 import tools.jackson.databind.json.JsonMapper;
-import static org.junit.jupiter.api.Assertions.*;
 
 /** Actual loopback HTTP + production Boot/controller/service + real MySQL/Redis/Hutool. */
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
@@ -89,7 +89,7 @@ class AdminAuthHttpTest {
         String token=granted.data().get("accessToken").toString();
         assertEquals(200,send("GET","/attempts/"+a.id+"/result?requestId="+rid,null,attemptHeaders(a)).status);
         assertEquals(200,send("GET","/session",null,bearer(token)).status);
-        var permission=send("GET","/permissions",null,bearer(token));assertEquals(200,permission.status);assertEquals(List.of(),permission.data().get("actionCodes"));
+        var permission=send("GET","/permissions",null,bearer(token));assertEquals(200,permission.status);assertEquals(List.of("merchant.application.decide", "merchant.application.read", "merchant.identity.reveal"),permission.data().get("actionCodes"));
         var activityHeaders=bearer(token);var activity=send("POST","/activity",Map.of(),activityHeaders);assertEquals(200,activity.status);assertEquals(activity.data(),send("POST","/activity",Map.of(),activityHeaders).data());
         var logoutHeaders=bearer(token);assertEquals(200,send("POST","/logout",Map.of(),logoutHeaders).status);assertEquals(200,send("POST","/logout",Map.of(),logoutHeaders).status);
         assertEquals(401,send("GET","/session",null,bearer(token)).status);
@@ -140,7 +140,9 @@ class AdminAuthHttpTest {
             try {
                 if(!admin.queryForObject("SELECT VERSION()",String.class).startsWith("8."))throw new IllegalStateException("Real MySQL 8 required");
                 Path root=root();try(var c=source.getConnection();var files=Files.list(root.resolve("docs/03-database"))){Path idSchema=files.filter(p->p.getFileName().toString().startsWith("25-")&&p.toString().endsWith(".sql")).findFirst().orElseThrow();ScriptUtils.executeSqlScript(c,new FileSystemResource(idSchema));ScriptUtils.executeSqlScript(c,new FileSystemResource(root.resolve("docs/03-database/26-Admin-Auth-Schema-v0.1.sql")));}
-                String evidence="qa-auth-http-virgin:"+name;jdbc.update("INSERT INTO snowflake_worker_state(node_id,format_identity,enabled,initialization_ref,created_at,updated_at) VALUES(18,?,TRUE,?,NOW(3),NOW(3))",SnowflakeProviderSettings.FORMAT_IDENTITY,evidence);
+                String evidence="qa-auth-http-virgin:"+name;jdbc.update("INSERT INTO"
+                + " snowflake_worker_state(node_id,format_identity,enabled,initialization_ref,created_at,updated_at)"
+                + " VALUES(18,?,TRUE,?,NOW(3),NOW(3))",SnowflakeProviderSettings.FORMAT_IDENTITY,evidence);
                 ids=new HutoolSnowflakeIdProvider(new JdbcSnowflakeNodeStore(source),new SnowflakeProviderSettings(18),old->{if(!created||old.nodeId()!=18||old.incarnation()!=null||old.fence()!=0||old.reservedThrough()!=-1||!evidence.equals(old.initializationRef()))throw new IllegalStateException("Not this fixture's virgin node");});
                 long deadline=System.nanoTime()+Duration.ofSeconds(5).toNanos();while(true){try{ids.nextId();break;}catch(IllegalStateException e){if(!e.getMessage().contains("WARMING")||System.nanoTime()>=deadline)throw e;Thread.sleep(20);}}
             }catch(Exception e){close();throw e;}

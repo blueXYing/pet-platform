@@ -437,7 +437,7 @@ refund_amount = channelPaidAmount
 
 若退款暂时异常，继续使用 Retry / Channel Query / Reconciliation 完成退款。
 
-## 商家申请审核结果事件（S4技术同步候选，尚未发布/消费）
+## 商家申请审核结果事件（S5组件实现，默认未启用）
 
 新增审阅定义：eventType固定MerchantApplicationReviewedEvent.v1，eventVersion=1，aggregateType=MERCHANT_APPLICATION，aggregateId=applicationId；沿用标准IntegrationEvent envelope，eventId为Snowflake String，occurredAt/decidedAt为毫秒OffsetDateTime，traceId只在envelope。
 
@@ -445,4 +445,4 @@ payload字段：applicationId、applicationNo（SQ+YYYYMMDD+8位随机码）、o
 
 MER审核决定、状态、审计、Outbox意图在同一事务；回滚均无事件，成功重放不产生新事件。notification按(eventId,consumerName)去重，并在本域同事务写消费日志与ownerUserId的真实站内消息。私有字段不能透传；通知持久化失败必须重试，不可先标已消费。查询页面不能代替强制站内通知。
 
-对应严格payload schema见OpenAPI11的MerchantApplicationReviewedPayload（仅共享数据定义，不是HTTP endpoint）。当前仅同步契约，无事件生产者/消费者注册，无Scheduler改动；真正通知交付仍需业务与跨域测试，不因本段存在而解除MER-001 DoD。
+对应严格payload schema见OpenAPI11的MerchantApplicationReviewedPayload（仅共享数据定义，不是HTTP endpoint）。S5在申请决定事务中调用IntegrationEventPublisher，并实现notification域消费者：严格payload校验、同事务消费去重/站内消息写入、UTC DATETIME存储及失败重试。消费者受Outbox和申请通知两个显式开关控制，默认未启用，无Scheduler改动。外部微信推送、真实用户消息页面和受控跳转仍未交付；组件测试不等于MER-001完整DoD。

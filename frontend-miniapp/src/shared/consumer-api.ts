@@ -14,7 +14,7 @@ export const object = (value: unknown): Record<string, any> => {
   return value as Record<string, any>
 }
 export const id = (value: unknown): string => {
-  if (typeof value !== 'string' || !/^[1-9][0-9]{0,18}$/.test(value) || BigInt(value) > 9223372036854775807n) throw new Error('INVALID_RESPONSE')
+  if (typeof value !== 'string' || !/^[1-9][0-9]{0,18}(?![\s\S])/.test(value) || BigInt(value) > 9223372036854775807n) throw new Error('INVALID_RESPONSE')
   return value
 }
 function session(value: unknown): Session {
@@ -31,7 +31,7 @@ export function definiteRejection(error: unknown) {
   return error instanceof ApiError && [400, 401, 403, 404, 422].includes(error.statusCode)
 }
 
-/** Approved C slice only. No refresh, merchant admission, or fixture fallback. */
+/** MINIAPP session transport. Merchant access is limited to the two agreement routes. */
 export class ConsumerApi {
   readonly scope = new WorkspaceScope()
   private credential: Grant | null = null
@@ -53,11 +53,15 @@ export class ConsumerApi {
     if (logout) { this.logoutCommand = object(logout) as { command: Command; token: string }; this.credential = null; store.remove(SESSION_KEY) }
   }
   private async send(spec: RequestSpec, headers: Record<string, string> = {}) {
-    if (!/^\/api\/v1\/c\/[a-z0-9/-]+$/.test(spec.path)) throw new Error('INVALID_PATH')
+    const agreementPath = (spec.path === '/api/v1/merchant/agreement' && spec.method === 'GET') ||
+      (spec.path === '/api/v1/merchant/agreement/consent' && spec.method === 'POST')
+    if (!/^\/api\/v1\/c\/[a-z0-9/-]+$/.test(spec.path) && !agreementPath) throw new Error('INVALID_PATH')
     if (spec.method !== 'GET' && !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(spec.requestId || '')) throw new Error('REQUEST_ID_REQUIRED')
     const response = await this.transport({ ...spec, headers: { 'Content-Type': 'application/json', ...(spec.requestId ? { 'X-Request-Id': spec.requestId } : {}), ...headers } })
     const body = object(response.data)
     if (response.statusCode < 200 || response.statusCode >= 300 || body.code !== 'SUCCESS') throw new ApiError(typeof body.code === 'string' ? body.code : 'INVALID_RESPONSE', response.statusCode)
+    const applicationPath = /^\/api\/v1\/c\/merchant-applications(?:\/|$)/.test(spec.path)
+    if ((agreementPath || applicationPath) && body.success !== true) throw new Error('INVALID_RESPONSE')
     return body.data
   }
   private clear() {
@@ -145,7 +149,11 @@ export class ConsumerApi {
   }
   async request<T>(spec: RequestSpec, decode: (data: unknown) => T): Promise<T> {
     const ticket = this.scope.capture()
-    if (!this.credential || ticket.context.workspace !== 'consumer') throw new ApiError('COMMON_UNAUTHORIZED', 401)
+    if (!this.credential || !this.currentSession || this.currentSession.userId !== ticket.context.userId) throw new ApiError('COMMON_UNAUTHORIZED', 401)
+    const merchantRequest = spec.path.startsWith('/api/v1/merchant/')
+    if (merchantRequest) {
+      if (ticket.context.workspace !== 'merchant' || !ticket.context.merchantId || spec.data?.merchantId !== ticket.context.merchantId) throw new Error('WORKSPACE_PATH_MISMATCH')
+    } else if (ticket.context.workspace !== 'consumer') throw new Error('WORKSPACE_PATH_MISMATCH')
     try {
       const value = await this.send(spec, { Authorization: `Bearer ${this.credential.accessToken}` })
       ticket.assertCurrent()
@@ -163,6 +171,8 @@ export class ConsumerApi {
   pendingDeletes() { return Object.keys(this.pending).filter(key => key.startsWith('delete:') && this.pendingCommand(key)).map(key => key.slice(7)) }
   /** Same operation survives page remount and app restart. Unknown results lock payload/key. */
   write<T>(slot: string, spec: Omit<RequestSpec, 'requestId'>, decode: (data: unknown) => T): Promise<T> {
+    // Snapshot before UUID allocation: caller edits must not change an in-flight intent.
+    spec = JSON.parse(JSON.stringify(spec)) as Omit<RequestSpec, 'requestId'>
     const existing = this.writes.get(slot)
     const fingerprint = JSON.stringify(spec)
     if (existing) return this.writeSpecs.get(slot) === fingerprint ? existing as Promise<T> : Promise.reject(new Error('PENDING_WRITE_CHANGED'))
@@ -217,6 +227,8 @@ export function integrationMessage(error: unknown): string {
     if (error.code === 'USER_FROZEN' || error.statusCode === 403) return '当前账号无权执行此操作'
     if (error.statusCode === 404) return '记录不存在或已删除，请重新加载'
     if (error.statusCode === 400) return '提交内容无效，请检查后重试'
+    if (error.statusCode === 409) return '资料或状态已变化，请重新读取核对；不要更换请求编号盲目重试'
+    if (error.statusCode === 503) return '服务暂不可用，结果尚未确认，请保留原操作后重试'
   }
   if (error instanceof Error && error.message === 'PHONE_AUTH_DENIED') return '未获得手机号授权，尚未登录'
   if (error instanceof Error && error.message === 'PENDING_WRITE_CHANGED') return '上次保存结果尚未确认，请先重试原操作'

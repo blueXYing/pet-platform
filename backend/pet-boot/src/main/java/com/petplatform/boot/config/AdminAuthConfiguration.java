@@ -114,6 +114,11 @@ public class AdminAuthConfiguration {
   }
 
   @Bean
+  AdminAuthorizationService adminAuthorizationService(DataSource source) {
+    return new AdminAuthorizationService(source);
+  }
+
+  @Bean
   @ConditionalOnMissingBean
   AdminAuditSink adminAuditSink(AdminAuthProperties p) {
     if (p.getAuditPath() == null || p.getAuditPath().isBlank())

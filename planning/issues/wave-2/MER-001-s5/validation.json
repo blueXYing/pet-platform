@@ -1,0 +1,172 @@
+{
+  "baseline": "9d6b828b23e62f058f1ae255824916ed86805c1e",
+  "status": "LOCAL_FINAL_TARGETED_PASS_REMOTE_FULL_CI_REQUIRED",
+  "targetedJUnit": 95,
+  "targetedSuites": [
+    {
+      "tests": 1,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "suite": "com.petplatform.merchant.api.MerchantDtoSerializationTest"
+    },
+    {
+      "tests": 18,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "suite": "com.petplatform.merchant.biz.MerchantAgreementApiMySqlTest"
+    },
+    {
+      "tests": 4,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "suite": "com.petplatform.merchant.biz.MerchantApplicationIdempotencyMySqlTest"
+    },
+    {
+      "tests": 3,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "suite": "com.petplatform.merchant.biz.MerchantApplicationRuntimeMySqlTest"
+    },
+    {
+      "tests": 10,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "suite": "com.petplatform.merchant.biz.MerchantApplicationSafetyMySqlTest"
+    },
+    {
+      "tests": 5,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "suite": "com.petplatform.merchant.biz.MerchantApplicationSchemaMySqlTest"
+    },
+    {
+      "tests": 9,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "suite": "com.petplatform.merchant.biz.MerchantQueryApiMySqlTest"
+    },
+    {
+      "tests": 6,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "suite": "com.petplatform.notification.biz.MerchantApplicationReviewedConsumerMySqlTest"
+    },
+    {
+      "tests": 7,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "suite": "com.petplatform.admin.biz.auth.AdminAuthorizationCurrentReadTest"
+    },
+    {
+      "tests": 5,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "suite": "com.petplatform.boot.auth.AdminAuthHttpTest"
+    },
+    {
+      "tests": 3,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "suite": "com.petplatform.boot.config.MerchantApplicationAuthorizationAdapterTest"
+    },
+    {
+      "tests": 2,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "suite": "com.petplatform.boot.config.MerchantApplicationRuntimeConfigurationTest"
+    },
+    {
+      "tests": 15,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "suite": "com.petplatform.architecture.ArchitectureRulesFixtureTest"
+    },
+    {
+      "tests": 7,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "suite": "com.petplatform.architecture.ArchitectureRulesTest"
+    }
+  ],
+  "offlineContractTests": 99,
+  "architectureToolTests": 13,
+  "miniappTests": 77,
+  "miniappTypecheck": true,
+  "miniappWeappBuild": true,
+  "miniappPackageCheck": true,
+  "fullLocalAttempts": "Two earlier full runs found the old admin permission assertion and cross-module persistence constructors. Both were fixed; final targeted verification includes the affected HTTP, boot, merchant, notification and architecture suites. Final full result is the PR latest-head CI.",
+  "sourceSha256": {
+    "backend/pet-admin-api/src/main/java/com/petplatform/admin/api/dto/AdminActionCheckQuery.java": "f224ab9b487b3c33cc0063baeed8ff142fab164f83022cedd238ea68b836e6c3",
+    "backend/pet-admin-api/src/main/java/com/petplatform/admin/api/dto/AdminActionDecision.java": "08a33b46b7ecef68e5bd7ba6698f9a724170e2a82707b3bb06b617ff8e8d0387",
+    "backend/pet-admin-api/src/main/java/com/petplatform/admin/api/dto/AdminCollectionActionCheckQuery.java": "b3af1325cef84a38fe8048ada59d6744120903ba63bc7d2a464577e13b135abe",
+    "backend/pet-admin-api/src/main/java/com/petplatform/admin/api/dto/AdminResourceScope.java": "32acb3bb8e14f1619ff6ed148632d7fac74a367c52a46bb9693cab1b6f54358c",
+    "backend/pet-admin-api/src/main/java/com/petplatform/admin/api/query/AdminAuthorizationQueryApi.java": "683f2e61d5839fa1ff701b11f662d6dfee8c7fb1a4b8c36f0621e08d06e51d46",
+    "backend/pet-admin-biz/src/main/java/com/petplatform/admin/biz/application/AdminAuthorizationService.java": "3b33554e275197272afdce23a049adcd381cff28a2cdffb0b368a78935792b6d",
+    "backend/pet-admin-biz/src/main/java/com/petplatform/admin/biz/domain/service/AdminPermissionEvaluator.java": "6b34a9086078c2f890c7cce9b3c710f846d1e0116c40e714538d4b7b3ed89724",
+    "backend/pet-admin-biz/src/main/java/com/petplatform/admin/biz/infrastructure/persistence/AdminAuthStore.java": "a6a4cde8caa12f3ad887f08f8a6dab0dc8b1fbf7b3ae4ba8231f4bbf62c8a5f6",
+    "backend/pet-admin-biz/src/main/java/com/petplatform/admin/biz/infrastructure/persistence/mapper/AdminAuthMapper.java": "1fbb619ef0dc15044e24cd4b817712f349a91b0795d77e0f60c0fe3f231f09ca",
+    "backend/pet-admin-biz/src/main/resources/mapper/AdminAuthMapper.xml": "63163ee6e70df99ab147646e7bb25b615fa6721ba552201893643a315ae42a19",
+    "backend/pet-admin-biz/src/test/java/com/petplatform/admin/biz/auth/AdminAuthLifecycleTest.java": "0ff9b766bb40136767c90e485bbc0dc555ede6fa8f3427d1fd33e103365920a9",
+    "backend/pet-admin-biz/src/test/java/com/petplatform/admin/biz/auth/AdminAuthPrimitivesTest.java": "a04fbddfa393106fed7834452ad61f27b15b0a6cb035759bb6afee97ea55dd21",
+    "backend/pet-admin-biz/src/test/java/com/petplatform/admin/biz/auth/AdminAuthorizationCurrentReadTest.java": "257636f587487a6aa3875d5900cac933a6496ef824b1128d082f239d8282a282",
+    "backend/pet-admin-biz/src/test/java/com/petplatform/admin/biz/auth/AuthTestDatabase.java": "2416bfcd572aa3df2e44be83171db9956072606bfd250726d8e2c08751fcc8e8",
+    "backend/pet-boot/src/main/java/com/petplatform/boot/config/AdminAuthConfiguration.java": "50b2f03e3c88379e8136b57d6a0c6bb3c3a251a36a5ef98dda547bd9835fb0f1",
+    "backend/pet-boot/src/main/java/com/petplatform/boot/config/EventOutboxConfiguration.java": "f3cba765256557e200c618c0b324d68771a546727a5062ccde1468d7d67efbbe",
+    "backend/pet-boot/src/main/java/com/petplatform/boot/config/MerchantApplicationAuthorizationAdapter.java": "8d24d00ab8e5073ce6cdc91b8cdf80ffc6cac4cdc69ff85da9512d55b1c76697",
+    "backend/pet-boot/src/main/java/com/petplatform/boot/config/MerchantApplicationRuntimeConfiguration.java": "b71ff342452a99a0c8c6a182be76d06d314cbd0d5dccca715c6ee6339e9fc006",
+    "backend/pet-boot/src/test/java/com/petplatform/boot/auth/AdminAuthHttpTest.java": "353af1e5c376ee9523eddf4cb59f0498333636f5c154641f9c30b00cd95b391e",
+    "backend/pet-boot/src/test/java/com/petplatform/boot/config/MerchantApplicationAuthorizationAdapterTest.java": "a6919b1a18fff641da178b61f613a849d80b3452b30a35e22cbd6557f4b09eef",
+    "backend/pet-boot/src/test/java/com/petplatform/boot/config/MerchantApplicationRuntimeConfigurationTest.java": "31286a36e0e06a0ff14891cae1084bedd8b33dae416f629c4ca0cd0e40631f34",
+    "backend/pet-merchant-api/src/main/java/com/petplatform/merchant/api/command/MerchantApplicationCommandApi.java": "aa4f85e6eeb7b8c581d07e01d234a17d470bb144a5e8c4d67bf1e89633c71277",
+    "backend/pet-merchant-api/src/main/java/com/petplatform/merchant/api/dto/MerchantApplicationTypes.java": "c285f6481a94161f9e75ae320bb0dc74501c53d3e4bd3dec253e82cc3fdd1463",
+    "backend/pet-merchant-api/src/main/java/com/petplatform/merchant/api/query/MerchantApplicationQueryApi.java": "8c28bfbb9e1336b212997e9f0ab33ff95c8484ed500d9b7e699cc72110952145",
+    "backend/pet-merchant-biz/pom.xml": "3e260a6f6d72c22756b961674e542cf868c18f1643f0248d32371978e283b598",
+    "backend/pet-merchant-biz/src/main/java/com/petplatform/merchant/biz/apiimpl/MerchantApplicationApiImpl.java": "47e7b660e5d42ec5d30349b101b75f89b5f22a26afe8f6eabf7dcca6605f5108",
+    "backend/pet-merchant-biz/src/main/java/com/petplatform/merchant/biz/application/ApplicationFinalAuthorizationPort.java": "2e52fb920e6f2de5d66368b3f0fd627abbb2393342caebd83df2c5373816a7de",
+    "backend/pet-merchant-biz/src/main/java/com/petplatform/merchant/biz/application/ApplicationReviewFactsReader.java": "e6d07fd0716cd9e461ccda413d99dacd64fe3610bdc83da6dcd5b463ac145fab",
+    "backend/pet-merchant-biz/src/main/java/com/petplatform/merchant/biz/application/ApplicationValidationPorts.java": "66a00b61ab29dc5909fd1fa493934748549173c180d5845dce26948cbda909cd",
+    "backend/pet-merchant-biz/src/main/java/com/petplatform/merchant/biz/application/MerchantApplicationDependencies.java": "8ee188c7c9b001f551b3ddb3c876c27959c3ab9b2e60ca9203ed51ccd3f448ad",
+    "backend/pet-merchant-biz/src/main/java/com/petplatform/merchant/biz/application/MerchantApplicationService.java": "bc595fc783b17dd28a04741dc95039ea2132c7039c504ae36e4cfbd5eb26abc9",
+    "backend/pet-merchant-biz/src/main/java/com/petplatform/merchant/biz/application/PersistentApplicationReviewFactsReader.java": "942823fc13868ee29c8c286493f3a0bf11ae6ded9ce9ac8a9086eae5f2d3cab2",
+    "backend/pet-merchant-biz/src/main/java/com/petplatform/merchant/biz/application/PrivateAssetQueryPort.java": "9d59ac2169fee5bad13cb72a0c4d575733fe83915d66004963ca82481ed2262b",
+    "backend/pet-merchant-biz/src/main/java/com/petplatform/merchant/biz/application/SubjectCredentialPort.java": "1369d99fc5621e08e489c2531018b107026c22fca1230715b2fc16fc4c6571ab",
+    "backend/pet-merchant-biz/src/main/java/com/petplatform/merchant/biz/infrastructure/persistence/MerchantApplicationStore.java": "4a4c001efe8496c63a7fb6e23852eaa586eaeb84ad6a948aa82508b805fb18e9",
+    "backend/pet-merchant-biz/src/main/java/com/petplatform/merchant/biz/infrastructure/persistence/entity/MerchantApplicationEntity.java": "e214e8c7eb8b9bc645e59d6ecf23e10eeecfbeeb8fb7915e6b728c17317094e4",
+    "backend/pet-merchant-biz/src/main/java/com/petplatform/merchant/biz/infrastructure/persistence/entity/MerchantApplicationRevisionEntity.java": "e2435420841571b3440c3b63f7abe87ad809ffa5c38b3a9e3d947f76bda8b364",
+    "backend/pet-merchant-biz/src/main/java/com/petplatform/merchant/biz/infrastructure/persistence/entity/MerchantClaimEntity.java": "9de36c064ad981ea6294d78ca5aab101f5da84cc75320be5534fb9fa8257dcf5",
+    "backend/pet-merchant-biz/src/main/java/com/petplatform/merchant/biz/infrastructure/persistence/entity/MerchantDecisionEntity.java": "c779d2f789184999641ca7c4772ba1d0a81cfefeb72e471be413ff7919d2cb5a",
+    "backend/pet-merchant-biz/src/main/java/com/petplatform/merchant/biz/infrastructure/persistence/entity/MerchantEvidenceEntity.java": "eda00e8cd432bf1ff09985864c974f621c1ed9945f19637f4692af009bd8f753",
+    "backend/pet-merchant-biz/src/main/java/com/petplatform/merchant/biz/infrastructure/persistence/entity/MerchantMaterialEntity.java": "761e384297688c7f6327b2d1c7631162762953ec7d73d75e03b926964a7e6a1f",
+    "backend/pet-merchant-biz/src/main/java/com/petplatform/merchant/biz/infrastructure/persistence/entity/MerchantReviewTaskEntity.java": "fc349c983057221ad03f2ada4900eb0b6f14caac0b7fce7795428197c1b48631",
+    "backend/pet-merchant-biz/src/main/java/com/petplatform/merchant/biz/infrastructure/persistence/mapper/MerchantApplicationMapper.java": "5221d2ec927fb4039c350c19a93aa64a4fbe661e764ebff17ccf870696505823",
+    "backend/pet-merchant-biz/src/main/resources/mapper/MerchantApplicationMapper.xml": "ed7b344378281e952377e0db4ea20a23df6b430406c6a6f8ac7d89ded387e6a8",
+    "backend/pet-merchant-biz/src/test/java/com/petplatform/merchant/biz/MerchantApplicationIdempotencyMySqlTest.java": "12596e775dfe7eed6f4c376ad109dfd8c0b47bf1e68171a636a310447d9ee062",
+    "backend/pet-merchant-biz/src/test/java/com/petplatform/merchant/biz/MerchantApplicationRuntimeMySqlTest.java": "c57d3af6e4fd54545ba9740efb20d6d4ef92351d352ecb6c44d2c0adfa9157ba",
+    "backend/pet-merchant-biz/src/test/java/com/petplatform/merchant/biz/MerchantApplicationSafetyMySqlTest.java": "d450e94cd1d1e290911b71093e766eb17b730ccd706c401f0eda6e868e7baaf8",
+    "backend/pet-merchant-biz/src/test/java/com/petplatform/merchant/biz/MySqlMerchantApplicationSchemaTestDatabase.java": "24de6f3593b276db4714d3be703c8b10283d9e74743d99bf2b94af6370b82061",
+    "backend/pet-notification-biz/pom.xml": "09e67eafac16e914ac2dfe26745ad44920b32ea2aac1aeaf3c786cda4cbb0cce",
+    "backend/pet-notification-biz/src/main/java/com/petplatform/notification/biz/event/MerchantApplicationReviewedConsumer.java": "e3cc085a3deb8c370384a81f857450b3b0c5d0e79d8d34a30366e506c5ba8192",
+    "backend/pet-notification-biz/src/main/java/com/petplatform/notification/biz/infrastructure/persistence/MerchantReviewNotificationStore.java": "a4a9120a034138a09ddb69adc6df175ee46e1a4e0656b97b8ffc93d2b40a0805",
+    "backend/pet-notification-biz/src/main/java/com/petplatform/notification/biz/infrastructure/persistence/mapper/NotificationMerchantReviewMapper.java": "253252670da5dec40bdb2253ff1f8542d65ddba7dab4ae02e3bec444a5040db5",
+    "backend/pet-notification-biz/src/main/resources/mapper/NotificationMerchantReviewMapper.xml": "e40da3c78a8d152e892a4fce945c037bb5117986db24c07facf608eb8ac24714",
+    "backend/pet-notification-biz/src/test/java/com/petplatform/notification/biz/MerchantApplicationReviewedConsumerMySqlTest.java": "044776bef02c12127153041f4a8bda9fa4f629545a08e98fe02204a6cc63da9f",
+    "backend/pet-notification-biz/src/test/java/com/petplatform/notification/biz/MySqlNotificationTestDatabase.java": "50cbe018be36e9c7b5ce55f768a05a1a773ea54f1b89f0d4cb42537886f8ca15",
+    "frontend-miniapp/src/shared/consumer-api.ts": "aef0f8d921764164be0ad44549108758ad67bb554df5bf4c9e03956a5badf606",
+    "frontend-miniapp/src/shared/merchant-repositories.ts": "88fec294ab9244d4a24dcf84a0cacf739685a532954c65a8d2908bd1259951e7",
+    "frontend-miniapp/src/shared/tests/merchant-repositories.test.ts": "1d073c739a7f22f66b85df37fc988fb215b365dfb80aa57d956bb1667dbe5243"
+  }
+}
