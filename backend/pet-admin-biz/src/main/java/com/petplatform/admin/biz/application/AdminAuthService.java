@@ -4,8 +4,13 @@ import com.petplatform.admin.api.dto.*;
 import com.petplatform.admin.api.query.AdminSessionQueryApi;
 import com.petplatform.admin.biz.domain.service.AdminPermissionEvaluator;
 import com.petplatform.admin.biz.infrastructure.persistence.AdminAuthStore;
-import com.petplatform.admin.biz.infrastructure.persistence.AdminAuthStore.Row;
 import com.petplatform.admin.biz.infrastructure.persistence.AdminAuthStore.Tx;
+import com.petplatform.admin.biz.infrastructure.persistence.entity.AdminEntities.AuthAttempt;
+import com.petplatform.admin.biz.infrastructure.persistence.entity.AdminEntities.AuthCommand;
+import com.petplatform.admin.biz.infrastructure.persistence.entity.AdminEntities.Captcha;
+import com.petplatform.admin.biz.infrastructure.persistence.entity.AdminEntities.LoginFailure;
+import com.petplatform.admin.biz.infrastructure.persistence.entity.AdminEntities.WebSession;
+import com.petplatform.admin.biz.infrastructure.persistence.mapper.AdminAuthMapper;
 import com.petplatform.admin.biz.infrastructure.provider.*;
 import com.petplatform.common.PublicContractChecks;
 import com.petplatform.common.SnowflakeIdGenerator;
@@ -14,7 +19,6 @@ import java.awt.image.BufferedImage;
 import java.io.ByteArrayOutputStream;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
-import java.sql.SQLException;
 import java.time.*;
 import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeFormatterBuilder;
@@ -22,6 +26,7 @@ import java.util.*;
 import java.util.List;
 import javax.imageio.ImageIO;
 import javax.sql.DataSource;
+import org.springframework.dao.DuplicateKeyException;
 
 /** Real Web authentication only. No business CRUD, miniapp proof or signing provider shortcuts. */
 public final class AdminAuthService implements AdminSessionQueryApi {
@@ -117,21 +122,19 @@ public final class AdminAuthService implements AdminSessionQueryApi {
     return value.atOffset(ZoneOffset.UTC);
   }
 
-  private void active(Tx tx) throws SQLException {
-    Row b = tx.one("SELECT * FROM admin_bootstrap WHERE id=1");
-    if (!b.bool("bootstrap_complete") || b.bool("maintenance_mode"))
+  private void active(Tx tx) {
+    var b = tx.auth().selectBootstrap();
+    if (b == null || !b.bootstrapComplete || b.maintenanceMode)
       throw AdminAuthFailure.unavailable();
   }
 
-  private Row attempt(Tx tx, long attemptId, String token, String binding, boolean lock)
-      throws SQLException {
-    Row a =
-        tx.optional(
-            "SELECT * FROM admin_auth_attempt WHERE id=?" + (lock ? " FOR UPDATE" : ""), attemptId);
+  private AuthAttempt attempt(Tx tx, long attemptId, String token, String binding, boolean lock) {
+    AuthAttempt a =
+        lock ? tx.auth().selectAttemptForUpdate(attemptId) : tx.auth().selectAttempt(attemptId);
     if (a == null
-        || !MessageDigest.isEqual(a.bytes("secret_digest"), AdminSecretCodec.digest(token))
-        || !MessageDigest.isEqual(a.bytes("binding_digest"), AdminSecretCodec.digest(binding))
-        || !a.time("expires_at").isAfter(tx.now())) throw AdminAuthFailure.unauthorized();
+        || !MessageDigest.isEqual(a.secretDigest, AdminSecretCodec.digest(token))
+        || !MessageDigest.isEqual(a.bindingDigest, AdminSecretCodec.digest(binding))
+        || !a.expiresAt.isAfter(tx.now())) throw AdminAuthFailure.unauthorized();
     return a;
   }
 
@@ -143,8 +146,7 @@ public final class AdminAuthService implements AdminSessionQueryApi {
       Long resource,
       String rid,
       String outcome,
-      String reason)
-      throws SQLException {
+      String reason) {
     boolean host = Set.of("AUTH_BOOTSTRAP", "AUTH_RECOVERY", "AUTH_MAINTENANCE").contains(action);
     String actorReference =
         host
@@ -154,22 +156,20 @@ public final class AdminAuthService implements AdminSessionQueryApi {
                 + ProcessHandle.current().pid()
             : actor == null ? "ANONYMOUS" : "OPERATOR:" + actor;
     Instant now = tx.now();
-    tx.update(
-        "INSERT INTO"
-            + " admin_audit_intent(id,actor_id,actor_reference,attempt_id,action_code,resource_id,request_id,trace_ref,outcome,reason,occurred_at,next_attempt_at)"
-            + " VALUES(?,?,?,?,?,?,?,?,?,?,?,?)",
-        id(),
-        host ? null : actor,
-        actorReference,
-        attempt,
-        action,
-        resource,
-        rid == null ? null : key(rid),
-        Objects.requireNonNullElseGet(REQUEST_TRACE.get(), () -> UUID.randomUUID().toString()),
-        outcome,
-        text(reason, 500),
-        now,
-        now);
+    tx.auth()
+        .insertAuditIntent(
+            id(),
+            host ? null : actor,
+            actorReference,
+            attempt,
+            action,
+            resource,
+            rid == null ? null : key(rid),
+            Objects.requireNonNullElseGet(REQUEST_TRACE.get(), () -> UUID.randomUUID().toString()),
+            outcome,
+            text(reason, 500),
+            now,
+            now);
   }
 
   /** Fixed event names only; callers must never pass a raw URL, password or token as the reason. */
@@ -197,17 +197,13 @@ public final class AdminAuthService implements AdminSessionQueryApi {
     }
   }
 
-  private Row command(Tx tx, String scope, String namespace, String rid, boolean lock)
-      throws SQLException {
-    return tx.optional(
-        "SELECT * FROM admin_auth_command WHERE scope_key=? AND namespace=? AND request_id=?"
-            + (lock ? " FOR UPDATE" : ""),
-        key(scope),
-        namespace,
-        key(rid));
+  private AuthCommand command(Tx tx, String scope, String namespace, String rid, boolean lock) {
+    return lock
+        ? tx.auth().selectCommandByScopeForUpdate(key(scope), namespace, key(rid))
+        : tx.auth().selectCommandByScope(key(scope), namespace, key(rid));
   }
 
-  private Row bind(
+  private AuthCommand bind(
       long attemptId,
       String token,
       String cookie,
@@ -220,13 +216,11 @@ public final class AdminAuthService implements AdminSessionQueryApi {
     try {
       return store.write(
           tx -> {
+            AdminAuthMapper m = tx.auth();
             active(tx);
             attempt(tx, attemptId, token, cookie, true);
             String scope = "A:" + attemptId;
-            tx.update(
-                "INSERT INTO"
-                    + " admin_auth_command(id,scope_key,attempt_id,namespace,request_id,parameter_mac,mac_key_id)"
-                    + " VALUES(?,?,?,?,?,?,?) ON DUPLICATE KEY UPDATE id=id",
+            m.insertCommandForAttempt(
                 commandId,
                 key(scope),
                 attemptId,
@@ -234,9 +228,9 @@ public final class AdminAuthService implements AdminSessionQueryApi {
                 key(rid),
                 secrets.mac(current, parameters),
                 current);
-            Row c = command(tx, scope, namespace, rid, true);
-            if (!MessageDigest.isEqual(
-                c.bytes("parameter_mac"), secrets.mac(c.text("mac_key_id"), parameters)))
+            AuthCommand c = command(tx, scope, namespace, rid, true);
+            if (c == null) throw AdminAuthFailure.unavailable();
+            if (!MessageDigest.isEqual(c.parameterMac, secrets.mac(c.macKeyId, parameters)))
               throw new AdminAuthFailure(409, "IDEMPOTENCY_KEY_CONFLICT");
             return c;
           });
@@ -245,144 +239,144 @@ public final class AdminAuthService implements AdminSessionQueryApi {
           tx -> {
             active(tx);
             attempt(tx, attemptId, token, cookie, false);
-            Row c = command(tx, "A:" + attemptId, namespace, rid, false);
+            AuthCommand c = command(tx, "A:" + attemptId, namespace, rid, false);
             if (c == null) throw AdminAuthFailure.unavailable();
-            if (!MessageDigest.isEqual(
-                c.bytes("parameter_mac"), secrets.mac(c.text("mac_key_id"), parameters)))
+            if (!MessageDigest.isEqual(c.parameterMac, secrets.mac(c.macKeyId, parameters)))
               throw new AdminAuthFailure(409, "IDEMPOTENCY_KEY_CONFLICT");
             return c;
           });
     }
   }
 
-  private Row lockCommand(Tx tx, long id) throws SQLException {
-    return tx.one("SELECT * FROM admin_auth_command WHERE id=? FOR UPDATE", id);
+  private AuthCommand lockCommand(Tx tx, long id) {
+    AuthCommand c = tx.auth().selectCommandForUpdate(id);
+    if (c == null) throw AdminAuthFailure.unavailable();
+    return c;
   }
 
-  private Row readCommand(long id) {
-    return store.read(tx -> tx.one("SELECT * FROM admin_auth_command WHERE id=?", id));
+  private AuthCommand readCommand(long id) {
+    AuthCommand c = store.read(tx -> tx.auth().selectCommand(id));
+    if (c == null) throw AdminAuthFailure.unavailable();
+    return c;
   }
 
-  private static boolean succeeded(Row c) {
-    return "SUCCEEDED".equals(c.text("state"));
+  private static boolean succeeded(AuthCommand c) {
+    return "SUCCEEDED".equals(c.state);
   }
 
   private void complete(
-      Tx tx, long commandId, String kind, long resultId, Instant resultExpires, String cacheRef)
-      throws SQLException {
+      Tx tx, long commandId, String kind, long resultId, Instant resultExpires, String cacheRef) {
     Instant anchor = tx.now();
     int changed =
-        tx.update(
-            "UPDATE admin_auth_command SET"
-                + " state='SUCCEEDED',result_kind=?,result_id=?,execution_ref=?,cache_ref=?,completed_at=?,receipt_window_anchor_at=?,secret_expires_at=?,result_expires_at=?"
-                + " WHERE id=? AND state='RESERVED'",
-            kind,
-            resultId,
-            UUID.randomUUID().toString(),
-            cacheRef,
-            anchor,
-            cacheRef == null ? null : anchor,
-            cacheRef == null ? null : anchor.plusSeconds(60),
-            resultExpires,
-            commandId);
+        tx.auth()
+            .completeCommand(
+                kind,
+                resultId,
+                UUID.randomUUID().toString(),
+                cacheRef,
+                anchor,
+                cacheRef == null ? null : anchor,
+                cacheRef == null ? null : anchor.plusSeconds(60),
+                resultExpires,
+                commandId);
     if (changed != 1) throw AdminAuthFailure.conflict();
   }
 
-  private static String aad(Row c) {
+  private static String aad(AuthCommand c) {
     return "ADMIN_WEB|"
-        + c.number("id")
+        + c.id
         + "|"
-        + c.text("namespace")
+        + c.namespace
         + "|"
-        + c.number("result_id")
+        + c.resultId
         + "|"
-        + c.text("cache_ref")
+        + c.cacheRef
         + "|"
-        + c.time("secret_expires_at").toEpochMilli();
+        + c.secretExpiresAt.toEpochMilli();
   }
 
-  private Row validSession(Tx tx, long sessionId, boolean lock) throws SQLException {
-    Row session =
-        tx.optional(
-            "SELECT * FROM admin_web_session WHERE id=?" + (lock ? " FOR UPDATE" : ""), sessionId);
+  private WebSession validSession(Tx tx, long sessionId, boolean lock) {
+    WebSession session =
+        lock ? tx.auth().selectSessionForUpdate(sessionId) : tx.auth().selectSession(sessionId);
     if (session == null) throw AdminAuthFailure.unauthorized();
-    Row a = tx.optional("SELECT * FROM admin_account WHERE id=?", session.number("account_id"));
+    var a = tx.auth().selectAccount(session.accountId);
     if (a == null
-        || !"ENABLED".equals(a.text("status"))
-        || a.number("session_generation") != session.number("generation")
-        || !"ACTIVE".equals(session.text("status"))
-        || !session.time("idle_expires_at").isAfter(tx.now()))
+        || !"ENABLED".equals(a.status)
+        || a.sessionGeneration.longValue() != session.generation.longValue()
+        || !"ACTIVE".equals(session.status)
+        || !session.idleExpiresAt.isAfter(tx.now()))
       throw AdminAuthFailure.unauthorized();
     return session;
   }
 
-  private void readableResult(Tx tx, Row c) throws SQLException {
+  private void readableResult(Tx tx, AuthCommand c) {
     active(tx);
     if (!succeeded(c)) throw AdminAuthFailure.unavailable();
-    if (c.text("cache_ref") != null && !c.time("secret_expires_at").isAfter(tx.now()))
+    if (c.cacheRef != null && !c.secretExpiresAt.isAfter(tx.now()))
       throw AdminAuthFailure.unauthorized();
-    if ("SESSION_GRANT".equals(c.text("result_kind")) || "ACTIVITY".equals(c.text("result_kind")))
-      validSession(tx, c.number("result_id"), false);
-    if ("CAPTCHA_PROOF".equals(c.text("result_kind"))) {
-      Row cap = tx.one("SELECT * FROM admin_captcha WHERE id=?", c.number("result_id"));
-      if (cap.time("proof_consumed_at") != null
-          || cap.time("proof_expires_at") == null
-          || !cap.time("proof_expires_at").isAfter(tx.now())) throw AdminAuthFailure.unauthorized();
+    if ("SESSION_GRANT".equals(c.resultKind) || "ACTIVITY".equals(c.resultKind))
+      validSession(tx, c.resultId, false);
+    if ("CAPTCHA_PROOF".equals(c.resultKind)) {
+      Captcha cap = tx.auth().selectCaptcha(c.resultId);
+      if (cap.proofConsumedAt != null
+          || cap.proofExpiresAt == null
+          || !cap.proofExpiresAt.isAfter(tx.now())) throw AdminAuthFailure.unauthorized();
     }
   }
 
-  private boolean ownSecret(Tx tx, Row c, Map<String, Object> body) throws SQLException {
+  private boolean ownSecret(Tx tx, AuthCommand c, Map<String, Object> body) {
     if (body == null || body.isEmpty()) return false;
-    if ("SESSION_GRANT".equals(c.text("result_kind"))) {
+    if ("SESSION_GRANT".equals(c.resultKind)) {
       if (!body.keySet()
           .equals(
               Set.of(
                   "sessionId", "operatorId", "audience", "tokenType", "accessToken", "expiresAt")))
         return false;
-      Row session = tx.one("SELECT * FROM admin_web_session WHERE id=?", c.number("result_id"));
-      return Long.toString(session.number("id")).equals(body.get("sessionId"))
-          && Long.toString(session.number("account_id")).equals(body.get("operatorId"))
+      WebSession session = tx.auth().selectSession(c.resultId);
+      return String.valueOf(session.id).equals(body.get("sessionId"))
+          && String.valueOf(session.accountId).equals(body.get("operatorId"))
           && MessageDigest.isEqual(
-              session.bytes("token_digest"),
+              session.tokenDigest,
               AdminSecretCodec.digest((String) body.get("accessToken")));
     }
-    if ("CAPTCHA_PROOF".equals(c.text("result_kind"))) {
+    if ("CAPTCHA_PROOF".equals(c.resultKind)) {
       if (!body.keySet().equals(Set.of("captchaProof", "expiresAt"))) return false;
-      Row cap = tx.one("SELECT * FROM admin_captcha WHERE id=?", c.number("result_id"));
+      Captcha cap = tx.auth().selectCaptcha(c.resultId);
       return MessageDigest.isEqual(
-          cap.bytes("proof_digest"), AdminSecretCodec.digest((String) body.get("captchaProof")));
+          cap.proofDigest, AdminSecretCodec.digest((String) body.get("captchaProof")));
     }
     return false;
   }
 
-  private AdminSecretResult render(Row command, Map<String, Object> freshlyCreated) {
-    Row c =
+  private AdminSecretResult render(AuthCommand command, Map<String, Object> freshlyCreated) {
+    AuthCommand c =
         store.read(
             tx -> {
-              Row current =
-                  tx.one("SELECT * FROM admin_auth_command WHERE id=?", command.number("id"));
+              AuthCommand current = tx.auth().selectCommand(command.id);
+              if (current == null) throw AdminAuthFailure.unavailable();
               readableResult(tx, current);
               return current;
             });
     Map<String, Object> body;
-    if (c.text("cache_ref") != null) {
+    if (c.cacheRef != null) {
       boolean own = store.read(tx -> ownSecret(tx, c, freshlyCreated));
       if (own) {
         Instant now = store.read(Tx::now);
-        if (!c.time("secret_expires_at").isAfter(now)) throw AdminAuthFailure.unauthorized();
-        byte[] encrypted = secrets.encrypt(c.text("mac_key_id"), aad(c), freshlyCreated);
+        if (!c.secretExpiresAt.isAfter(now)) throw AdminAuthFailure.unauthorized();
+        byte[] encrypted = secrets.encrypt(c.macKeyId, aad(c), freshlyCreated);
         cache.putIfAbsent(
-            c.text("cache_ref"), encrypted, Duration.between(now, c.time("secret_expires_at")));
+            c.cacheRef, encrypted, Duration.between(now, c.secretExpiresAt));
       }
-      byte[] encrypted = awaitPublication(c.text("cache_ref"));
-      body = secrets.decrypt(c.text("mac_key_id"), aad(c), encrypted);
+      byte[] encrypted = awaitPublication(c.cacheRef);
+      body = secrets.decrypt(c.macKeyId, aad(c), encrypted);
       // A fresh transaction after cache I/O: a previous RR snapshot cannot hide
       // logout/relogin/revocation.
       store.read(
           tx -> {
-            Row current = tx.one("SELECT * FROM admin_auth_command WHERE id=?", c.number("id"));
+            AuthCommand current = tx.auth().selectCommand(c.id);
+            if (current == null) throw AdminAuthFailure.unavailable();
             readableResult(tx, current);
-            if (!Objects.equals(current.text("cache_ref"), c.text("cache_ref"))
+            if (!Objects.equals(current.cacheRef, c.cacheRef)
                 || !ownSecret(tx, current, body)) throw AdminAuthFailure.unavailable();
             return null;
           });
@@ -390,29 +384,30 @@ public final class AdminAuthService implements AdminSessionQueryApi {
       body =
           store.read(
               tx -> {
-                Row current = tx.one("SELECT * FROM admin_auth_command WHERE id=?", c.number("id"));
+                AdminAuthMapper m = tx.auth();
+                AuthCommand current = m.selectCommand(command.id);
+                if (current == null) throw AdminAuthFailure.unavailable();
                 readableResult(tx, current);
-                return switch (current.text("result_kind")) {
+                return switch (current.resultKind) {
                   case "CAPTCHA_CHALLENGE" -> {
-                    Row cap =
-                        tx.one(
-                            "SELECT * FROM admin_captcha WHERE id=?", current.number("result_id"));
-                    if (cap.time("challenge_consumed_at") != null
-                        || !cap.time("challenge_expires_at").isAfter(tx.now()))
+                    Captcha cap = m.selectCaptcha(current.resultId);
+                    if (cap == null
+                        || cap.challengeConsumedAt != null
+                        || !cap.challengeExpiresAt.isAfter(tx.now()))
                       throw AdminAuthFailure.unauthorized();
                     yield Map.<String, Object>of(
                         "captchaId",
-                        Long.toString(cap.number("id")),
+                        Long.toString(cap.id),
                         "imageDataUrl",
                         "data:image/png;base64,"
-                            + Base64.getEncoder().encodeToString(cap.bytes("image_png")),
+                            + Base64.getEncoder().encodeToString(cap.imagePng),
                         "expiresAt",
-                        time(cap.time("challenge_expires_at")));
+                        time(cap.challengeExpiresAt));
                   }
                   case "LOGGED_OUT" -> Map.<String, Object>of("loggedOut", true);
                   case "ACTIVITY" ->
                       Map.<String, Object>of(
-                          "idleExpiresAt", time(current.time("result_expires_at")));
+                          "idleExpiresAt", time(current.resultExpiresAt));
                   default -> throw AdminAuthFailure.unavailable();
                 };
               });
@@ -440,12 +435,9 @@ public final class AdminAuthService implements AdminSessionQueryApi {
     try {
       return store.write(
           tx -> {
+            AdminAuthMapper m = tx.auth();
             active(tx);
-            if (tx.optional(
-                    "SELECT attempt_id FROM admin_attempt_creation WHERE"
-                        + " namespace='ADMIN_LOGIN_CREATE' AND request_id=?",
-                    key(requestId))
-                != null) throw AdminAuthFailure.conflict();
+            if (m.selectAttemptCreation(key(requestId)) != null) throw AdminAuthFailure.conflict();
             Instant now = tx.now();
             byte[] ip =
                 secrets.mac(
@@ -455,25 +447,15 @@ public final class AdminAuthService implements AdminSessionQueryApi {
                     secrets.currentKeyId(),
                     "BOOTSTRAP_IP",
                     Objects.requireNonNullElse(remoteIp, "unknown"));
-            tx.update(
-                "INSERT INTO admin_login_failure(lookup_digest,window_start,count,version)"
-                    + " VALUES(?,?,0,0) ON DUPLICATE KEY UPDATE lookup_digest=lookup_digest",
-                creationRisk,
-                now);
-            Row creation = failures(tx, creationRisk, true);
-            boolean freshWindow = !creation.time("window_start").plusSeconds(60).isAfter(now);
-            long attempts = freshWindow ? 0 : creation.number("count");
+            m.insertLoginFailureSeed(creationRisk, now);
+            LoginFailure creation = m.selectLoginFailureForUpdate(creationRisk);
+            if (creation == null) throw AdminAuthFailure.unavailable();
+            boolean freshWindow = !creation.windowStart.plusSeconds(60).isAfter(now);
+            long attempts = freshWindow ? 0 : creation.count;
             if (attempts >= 30) throw new AdminAuthFailure(429, "COMMON_RATE_LIMITED");
-            tx.update(
-                "UPDATE admin_login_failure SET window_start=?,count=?,version=version+1 WHERE"
-                    + " lookup_digest=?",
-                freshWindow ? now : creation.time("window_start"),
-                attempts + 1,
-                creationRisk);
-            tx.update(
-                "INSERT INTO"
-                    + " admin_auth_attempt(id,secret_digest,binding_digest,expires_at,created_at,source_ip_digest)"
-                    + " VALUES(?,?,?,?,?,?)",
+            m.updateLoginFailureWindow(
+                freshWindow ? now : creation.windowStart, attempts + 1, creationRisk);
+            m.insertAttempt(
                 aid,
                 AdminSecretCodec.digest(token),
                 AdminSecretCodec.digest(cookie),
@@ -481,15 +463,9 @@ public final class AdminAuthService implements AdminSessionQueryApi {
                 now,
                 ip);
             try {
-              tx.update(
-                  "INSERT INTO admin_attempt_creation(namespace,request_id,attempt_id,created_at)"
-                      + " VALUES('ADMIN_LOGIN_CREATE',?,?,?)",
-                  key(requestId),
-                  aid,
-                  now);
-            } catch (SQLException e) {
-              if ("23000".equals(e.getSQLState())) throw AdminAuthFailure.conflict();
-              throw e;
+              m.insertAttemptCreation(key(requestId), aid, now);
+            } catch (DuplicateKeyException e) {
+              throw AdminAuthFailure.conflict();
             }
             return new AdminSecretResult(
                 Map.of(
@@ -508,34 +484,29 @@ public final class AdminAuthService implements AdminSessionQueryApi {
     }
   }
 
-  private Row failures(Tx tx, byte[] digest, boolean lock) throws SQLException {
-    return tx.optional(
-        "SELECT * FROM admin_login_failure WHERE lookup_digest=?" + (lock ? " FOR UPDATE" : ""),
-        digest);
+  private LoginFailure failures(Tx tx, byte[] digest, boolean lock) {
+    return lock
+        ? tx.auth().selectLoginFailureForUpdate(digest)
+        : tx.auth().selectLoginFailure(digest);
   }
 
-  private boolean locked(Row f, Instant now) {
-    return f != null && f.time("locked_until") != null && f.time("locked_until").isAfter(now);
+  private boolean locked(LoginFailure f, Instant now) {
+    return f != null && f.lockedUntil != null && f.lockedUntil.isAfter(now);
   }
 
-  private int failureCount(Row f, Instant now) {
-    return f == null || !f.time("window_start").plusSeconds(900).isAfter(now)
+  private int failureCount(LoginFailure f, Instant now) {
+    return f == null || !f.windowStart.plusSeconds(900).isAfter(now)
         ? 0
-        : (int) f.number("count");
+        : f.count.intValue();
   }
 
-  private void countFailure(Tx tx, byte[] digest, Instant now) throws SQLException {
-    tx.update(
-        "INSERT INTO admin_login_failure(lookup_digest,window_start,count,version) VALUES(?,?,0,0)"
-            + " ON DUPLICATE KEY UPDATE lookup_digest=lookup_digest",
-        digest,
-        now);
-    Row f = failures(tx, digest, true);
+  private void countFailure(Tx tx, byte[] digest, Instant now) {
+    AdminAuthMapper m = tx.auth();
+    m.insertLoginFailureSeed(digest, now);
+    LoginFailure f = m.selectLoginFailureForUpdate(digest);
     int n = failureCount(f, now) + 1;
-    tx.update(
-        "UPDATE admin_login_failure SET window_start=?,count=?,locked_until=?,version=version+1"
-            + " WHERE lookup_digest=?",
-        failureCount(f, now) == 0 ? now : f.time("window_start"),
+    m.updateLoginFailureCount(
+        failureCount(f, now) == 0 || f == null ? now : f.windowStart,
         n,
         n >= 10 ? now.plusSeconds(900) : null,
         digest);
@@ -545,13 +516,13 @@ public final class AdminAuthService implements AdminSessionQueryApi {
     return store.read(
         tx -> {
           active(tx);
-          Row a = attempt(tx, aid, token, cookie, false);
+          AuthAttempt a = attempt(tx, aid, token, cookie, false);
           Instant now = tx.now();
-          Row f = failures(tx, a.bytes("source_ip_digest"), false),
+          LoginFailure f = failures(tx, a.sourceIpDigest, false),
               accountRisk =
-                  a.bytes("risk_lookup_digest") == null
+                  a.riskLookupDigest == null
                       ? null
-                      : failures(tx, a.bytes("risk_lookup_digest"), false);
+                      : failures(tx, a.riskLookupDigest, false);
           if (locked(f, now) || locked(accountRisk, now))
             throw new AdminAuthFailure(429, "COMMON_RATE_LIMITED");
           return new AdminSecretResult(
@@ -576,34 +547,34 @@ public final class AdminAuthService implements AdminSessionQueryApi {
     String[] params = {
       "LOGIN", accountKey, new String(password), Objects.requireNonNullElse(captchaProof, "")
     };
-    Row bound = bind(aid, token, cookie, "LOGIN", requestId, params);
+    AuthCommand bound = bind(aid, token, cookie, "LOGIN", requestId, params);
     if (succeeded(bound)) return render(bound, null);
-    Row observed;
+    com.petplatform.admin.biz.infrastructure.persistence.entity.AdminEntities.Account observed;
     try {
       observed =
           store.read(
               tx -> {
+                AdminAuthMapper m = tx.auth();
                 active(tx);
-                Row at = attempt(tx, aid, token, cookie, false);
+                AuthAttempt at = attempt(tx, aid, token, cookie, false);
                 Instant now = tx.now();
-                Row
+                LoginFailure
                     af =
                         failures(
                             tx,
-                            secrets.mac(bound.text("mac_key_id"), "ACCOUNT", accountKey),
+                            secrets.mac(bound.macKeyId, "ACCOUNT", accountKey),
                             false),
-                    ipf = failures(tx, at.bytes("source_ip_digest"), false);
+                    ipf = failures(tx, at.sourceIpDigest, false);
                 if (locked(af, now) || locked(ipf, now))
-                  throw new AdminAuthFailure(429, "COMMON_RATE_LIMITED");
-                return tx.optional(
-                    "SELECT * FROM admin_account WHERE account_lookup=?", key(accountKey));
+                    throw new AdminAuthFailure(429, "COMMON_RATE_LIMITED");
+                return m.selectAccountByLookup(key(accountKey));
               });
     } catch (AdminAuthFailure failure) {
       if (failure.status() == 429) recordRejected("AUTH_LOCKED", requestId);
       throw failure;
     }
     boolean matched =
-        passwords.matches(password, observed == null ? null : observed.text("password_hash"));
+        passwords.matches(password, observed == null ? null : observed.passwordHash);
     long sid = id();
     String access = secrets.token("aw"), cacheRef = UUID.randomUUID().toString();
     Map<String, Object> fresh = new LinkedHashMap<>();
@@ -612,26 +583,20 @@ public final class AdminAuthService implements AdminSessionQueryApi {
       outcome =
           store.write(
               tx -> {
+                AdminAuthMapper m = tx.auth();
                 active(tx);
-                Row a =
-                    observed == null
-                        ? null
-                        : tx.optional(
-                            "SELECT * FROM admin_account WHERE id=? FOR UPDATE",
-                            observed.number("id"));
-                Row at = attempt(tx, aid, token, cookie, true);
-                Row c = lockCommand(tx, bound.number("id"));
+                com.petplatform.admin.biz.infrastructure.persistence.entity.AdminEntities.Account a =
+                    observed == null ? null : m.selectAccountForUpdate(observed.id);
+                AuthAttempt at = attempt(tx, aid, token, cookie, true);
+                AuthCommand c = lockCommand(tx, bound.id);
                 if (succeeded(c)) return 2;
-                if (!"PROVE_IDENTITY".equals(at.text("status")))
+                if (!"PROVE_IDENTITY".equals(at.status))
                   throw AdminAuthFailure.unauthorized();
                 Instant now = tx.now();
-                byte[] accountDigest = secrets.mac(c.text("mac_key_id"), "ACCOUNT", accountKey);
-                tx.update(
-                    "UPDATE admin_auth_attempt SET risk_lookup_digest=? WHERE id=?",
-                    accountDigest,
-                    aid);
-                Row af = failures(tx, accountDigest, false),
-                    ipf = failures(tx, at.bytes("source_ip_digest"), false);
+                byte[] accountDigest = secrets.mac(c.macKeyId, "ACCOUNT", accountKey);
+                m.updateAttemptRisk(accountDigest, aid);
+                LoginFailure af = failures(tx, accountDigest, false),
+                    ipf = failures(tx, at.sourceIpDigest, false);
                 if (locked(af, now) || locked(ipf, now)) {
                   audit(
                       tx,
@@ -645,32 +610,26 @@ public final class AdminAuthService implements AdminSessionQueryApi {
                   return 429;
                 }
                 boolean captchaRequired = failureCount(af, now) >= 5 || failureCount(ipf, now) >= 5;
-                Row proof =
+                Captcha proof =
                     captchaProof == null
                         ? null
-                        : tx.optional(
-                            "SELECT * FROM admin_captcha WHERE attempt_id=? AND proof_digest=? FOR"
-                                + " UPDATE",
-                            aid,
-                            AdminSecretCodec.digest(captchaProof));
+                        : m.selectCaptchaByProofForUpdate(aid, AdminSecretCodec.digest(captchaProof));
                 boolean proofOk =
                     proof != null
-                        && proof.time("proof_consumed_at") == null
-                        && proof.time("proof_expires_at") != null
-                        && proof.time("proof_expires_at").isAfter(now);
+                        && proof.proofConsumedAt == null
+                        && proof.proofExpiresAt != null
+                        && proof.proofExpiresAt.isAfter(now);
                 boolean identityOk =
                     matched
                         && a != null
-                        && "ENABLED".equals(a.text("status"))
-                        && a.number("credential_version") == observed.number("credential_version")
-                        && a.number("session_generation") == observed.number("session_generation");
+                        && "ENABLED".equals(a.status)
+                        && a.credentialVersion.longValue() == observed.credentialVersion.longValue()
+                        && a.sessionGeneration.longValue() == observed.sessionGeneration.longValue();
                 if (!identityOk || (captchaRequired && !proofOk)) {
-                  if (!c.bool("failure_counted")) {
+                  if (!c.failureCounted) {
                     countFailure(tx, accountDigest, now);
-                    countFailure(tx, at.bytes("source_ip_digest"), now);
-                    tx.update(
-                        "UPDATE admin_auth_command SET failure_counted=TRUE WHERE id=?",
-                        c.number("id"));
+                    countFailure(tx, at.sourceIpDigest, now);
+                    m.markFailureCounted(c.id);
                     audit(
                         tx,
                         null,
@@ -683,43 +642,16 @@ public final class AdminAuthService implements AdminSessionQueryApi {
                   }
                   return 401;
                 }
-                if (proofOk)
-                  tx.update(
-                      "UPDATE admin_captcha SET proof_consumed_at=? WHERE id=?",
-                      now,
-                      proof.number("id"));
-                long generation = Math.addExact(a.number("session_generation"), 1);
+                if (proofOk) m.markCaptchaProofConsumed(now, proof.id);
+                long generation = Math.addExact(a.sessionGeneration, 1);
                 Instant expires = now.plusSeconds(1800);
-                tx.update(
-                    "UPDATE admin_account SET session_generation=?,last_login_at=?,updated_at=?"
-                        + " WHERE id=?",
-                    generation,
-                    now,
-                    now,
-                    a.number("id"));
-                tx.update(
-                    "INSERT INTO"
-                        + " admin_web_session(id,account_id,token_digest,generation,issued_at,last_interactive_at,idle_expires_at)"
-                        + " VALUES(?,?,?,?,?,?,?)",
-                    sid,
-                    a.number("id"),
-                    AdminSecretCodec.digest(access),
-                    generation,
-                    now,
-                    now,
-                    expires);
-                tx.update(
-                    "UPDATE admin_auth_attempt SET"
-                        + " status='COMPLETED',account_id=?,credential_version=?,completed_result_id=?"
-                        + " WHERE id=?",
-                    a.number("id"),
-                    a.number("credential_version"),
-                    sid,
-                    aid);
-                complete(tx, c.number("id"), "SESSION_GRANT", sid, expires, cacheRef);
+                m.updateLoginSession(generation, now, now, a.id);
+                m.insertSession(sid, a.id, AdminSecretCodec.digest(access), generation, now, now, expires);
+                m.completeAttempt(a.id, a.credentialVersion, sid, aid);
+                complete(tx, c.id, "SESSION_GRANT", sid, expires, cacheRef);
                 audit(
                     tx,
-                    a.number("id"),
+                    a.id,
                     aid,
                     "AUTH_LOGIN",
                     sid,
@@ -731,7 +663,7 @@ public final class AdminAuthService implements AdminSessionQueryApi {
                         "sessionId",
                         Long.toString(sid),
                         "operatorId",
-                        Long.toString(a.number("id")),
+                        Long.toString(a.id),
                         "audience",
                         "ADMIN_WEB",
                         "tokenType",
@@ -743,24 +675,24 @@ public final class AdminAuthService implements AdminSessionQueryApi {
                 return 1;
               });
     } catch (AdminAuthStore.CommitUnknown e) {
-      Row confirmed = readCommand(bound.number("id"));
-      if (!succeeded(confirmed) || confirmed.number("result_id") != sid)
+      AuthCommand confirmed = readCommand(bound.id);
+      if (!succeeded(confirmed) || confirmed.resultId != sid)
         throw AdminAuthFailure.unavailable();
       outcome = 1;
     }
     if (outcome == 401) throw AdminAuthFailure.unauthorized();
     if (outcome == 429) throw new AdminAuthFailure(429, "COMMON_RATE_LIMITED");
-    return render(readCommand(bound.number("id")), outcome == 1 ? fresh : null);
+    return render(readCommand(bound.id), outcome == 1 ? fresh : null);
   }
 
   public AdminSecretResult createCaptcha(String requestId, long aid, String token, String cookie) {
-    Row bound =
+    AuthCommand bound =
         bind(aid, token, cookie, "CAPTCHA_CREATE", requestId, "CAPTCHA_CREATE", Long.toString(aid));
     if (succeeded(bound)) return render(bound, null);
     store.read(
         tx -> {
-          if (tx.one("SELECT COUNT(*) AS n FROM admin_captcha WHERE attempt_id=?", aid).number("n")
-              >= 10) throw new AdminAuthFailure(429, "COMMON_RATE_LIMITED");
+          if (tx.auth().countCaptchasByAttempt(aid) >= 10)
+            throw new AdminAuthFailure(429, "COMMON_RATE_LIMITED");
           return null;
         });
     String answer = secrets.captchaAnswer(), keyId = secrets.currentKeyId();
@@ -769,27 +701,17 @@ public final class AdminAuthService implements AdminSessionQueryApi {
     try {
       store.write(
           tx -> {
+            AdminAuthMapper m = tx.auth();
             active(tx);
-            Row a = attempt(tx, aid, token, cookie, true);
-            if (!"PROVE_IDENTITY".equals(a.text("status"))) throw AdminAuthFailure.unauthorized();
-            Row c = lockCommand(tx, bound.number("id"));
+            AuthAttempt a = attempt(tx, aid, token, cookie, true);
+            if (!"PROVE_IDENTITY".equals(a.status)) throw AdminAuthFailure.unauthorized();
+            AuthCommand c = lockCommand(tx, bound.id);
             if (succeeded(c)) return null;
             Instant now = tx.now();
-            if (tx.one("SELECT COUNT(*) AS n FROM admin_captcha WHERE attempt_id=?", aid)
-                    .number("n")
-                >= 10) throw new AdminAuthFailure(429, "COMMON_RATE_LIMITED");
-            tx.update(
-                "UPDATE admin_captcha SET"
-                    + " challenge_consumed_at=COALESCE(challenge_consumed_at,?),proof_consumed_at=CASE"
-                    + " WHEN proof_digest IS NOT NULL THEN COALESCE(proof_consumed_at,?) ELSE NULL"
-                    + " END WHERE attempt_id=?",
-                now,
-                now,
-                aid);
-            tx.update(
-                "INSERT INTO"
-                    + " admin_captcha(id,attempt_id,answer_mac,mac_key_id,image_png,challenge_created_at,challenge_expires_at)"
-                    + " VALUES(?,?,?,?,?,?,?)",
+            if (m.countCaptchasByAttempt(aid) >= 10)
+              throw new AdminAuthFailure(429, "COMMON_RATE_LIMITED");
+            m.consumeStaleCaptchaChallenges(now, now, aid);
+            m.insertCaptcha(
                 cid,
                 aid,
                 secrets.mac(keyId, "CAPTCHA", answer),
@@ -797,13 +719,13 @@ public final class AdminAuthService implements AdminSessionQueryApi {
                 image,
                 now,
                 now.plusSeconds(120));
-            complete(tx, c.number("id"), "CAPTCHA_CHALLENGE", cid, now.plusSeconds(120), null);
+            complete(tx, c.id, "CAPTCHA_CHALLENGE", cid, now.plusSeconds(120), null);
             return null;
           });
     } catch (AdminAuthStore.CommitUnknown e) {
-      if (!succeeded(readCommand(bound.number("id")))) throw AdminAuthFailure.unavailable();
+      if (!succeeded(readCommand(bound.id))) throw AdminAuthFailure.unavailable();
     }
-    return render(readCommand(bound.number("id")), null);
+    return render(readCommand(bound.id), null);
   }
 
   private static byte[] image(String answer) {
@@ -828,7 +750,7 @@ public final class AdminAuthService implements AdminSessionQueryApi {
       String requestId, long aid, String token, String cookie, long captchaId, char[] answer) {
     if (answer == null || answer.length < 1 || answer.length > 32) throw AdminAuthFailure.invalid();
     String supplied = new String(answer);
-    Row bound =
+    AuthCommand bound =
         bind(aid, token, cookie, "CAPTCHA_VERIFY", requestId, Long.toString(captchaId), supplied);
     if (succeeded(bound)) return render(bound, null);
     String proof = secrets.token("cp"), cacheRef = UUID.randomUUID().toString();
@@ -838,32 +760,24 @@ public final class AdminAuthService implements AdminSessionQueryApi {
       result =
           store.write(
               tx -> {
+                AdminAuthMapper m = tx.auth();
                 active(tx);
-                Row at = attempt(tx, aid, token, cookie, true);
-                Row c = lockCommand(tx, bound.number("id"));
+                AuthAttempt at = attempt(tx, aid, token, cookie, true);
+                AuthCommand c = lockCommand(tx, bound.id);
                 if (succeeded(c)) return 2;
-                if (!"PROVE_IDENTITY".equals(at.text("status")))
+                if (!"PROVE_IDENTITY".equals(at.status))
                   throw AdminAuthFailure.unauthorized();
-                Row cap =
-                    tx.optional(
-                        "SELECT * FROM admin_captcha WHERE id=? AND attempt_id=? FOR UPDATE",
-                        captchaId,
-                        aid);
+                Captcha cap = m.selectCaptchaForVerification(captchaId, aid);
                 Instant now = tx.now();
                 if (cap == null
-                    || cap.time("challenge_consumed_at") != null
-                    || !cap.time("challenge_expires_at").isAfter(now)
-                    || cap.number("failure_count") >= 5) throw AdminAuthFailure.unauthorized();
+                    || cap.challengeConsumedAt != null
+                    || !cap.challengeExpiresAt.isAfter(now)
+                    || cap.failureCount >= 5) throw AdminAuthFailure.unauthorized();
                 if (!MessageDigest.isEqual(
-                    cap.bytes("answer_mac"),
-                    secrets.mac(cap.text("mac_key_id"), "CAPTCHA", supplied))) {
-                  if (!c.bool("failure_counted")) {
-                    tx.update(
-                        "UPDATE admin_captcha SET failure_count=failure_count+1 WHERE id=?",
-                        captchaId);
-                    tx.update(
-                        "UPDATE admin_auth_command SET failure_counted=TRUE WHERE id=?",
-                        c.number("id"));
+                    cap.answerMac, secrets.mac(cap.macKeyId, "CAPTCHA", supplied))) {
+                  if (!c.failureCounted) {
+                    m.bumpCaptchaFailure(captchaId);
+                    m.markFailureCounted(c.id);
                     audit(
                         tx,
                         null,
@@ -877,30 +791,22 @@ public final class AdminAuthService implements AdminSessionQueryApi {
                   return 401;
                 }
                 Instant expires = now.plusSeconds(120);
-                tx.update(
-                    "UPDATE admin_captcha SET"
-                        + " challenge_consumed_at=?,proof_digest=?,proof_issued_at=?,proof_expires_at=?"
-                        + " WHERE id=?",
-                    now,
-                    AdminSecretCodec.digest(proof),
-                    now,
-                    expires,
-                    captchaId);
-                complete(tx, c.number("id"), "CAPTCHA_PROOF", captchaId, expires, cacheRef);
+                m.issueCaptchaProof(now, AdminSecretCodec.digest(proof), now, expires, captchaId);
+                complete(tx, c.id, "CAPTCHA_PROOF", captchaId, expires, cacheRef);
                 fresh.putAll(Map.of("captchaProof", proof, "expiresAt", time(expires)));
                 return 1;
               });
     } catch (AdminAuthStore.CommitUnknown e) {
-      if (!succeeded(readCommand(bound.number("id")))) throw AdminAuthFailure.unavailable();
+      if (!succeeded(readCommand(bound.id))) throw AdminAuthFailure.unavailable();
       result = 1;
     }
     if (result == 401) throw AdminAuthFailure.unauthorized();
-    return render(readCommand(bound.number("id")), result == 1 ? fresh : null);
+    return render(readCommand(bound.id), result == 1 ? fresh : null);
   }
 
   public AdminSecretResult attemptResult(
       long aid, String token, String cookie, String originalRequestId) {
-    Row a =
+    AuthAttempt a =
         store.read(
             tx -> {
               active(tx);
@@ -912,19 +818,13 @@ public final class AdminAuthService implements AdminSessionQueryApi {
                 "attemptId",
                 Long.toString(aid),
                 "nextStep",
-                a.text("status"),
+                a.status,
                 "expiresAt",
-                time(a.time("expires_at"))));
+                time(a.expiresAt)));
     if (originalRequestId != null) {
       request(originalRequestId);
-      Row c =
-          store.read(
-              tx ->
-                  tx.optional(
-                      "SELECT * FROM admin_auth_command WHERE attempt_id=? AND request_id=? AND"
-                          + " namespace='LOGIN'",
-                      aid,
-                      key(originalRequestId)));
+      AuthCommand c =
+          store.read(tx -> tx.auth().selectCommandByAttemptAndRequest(aid, key(originalRequestId)));
       if (c == null || !succeeded(c)) throw AdminAuthFailure.unavailable();
       body.put(
           "commandResult",
@@ -944,55 +844,35 @@ public final class AdminAuthService implements AdminSessionQueryApi {
     byte[] digest = AdminSecretCodec.digest(accessToken);
     return store.read(
         tx -> {
+          AdminAuthMapper m = tx.auth();
           active(tx);
-          Row s = tx.optional("SELECT * FROM admin_web_session WHERE token_digest=?", digest);
+          WebSession s = m.selectSessionByTokenDigest(digest);
           if (s == null) throw AdminAuthFailure.unauthorized();
-          validSession(tx, s.number("id"), false);
-          long actor = s.number("account_id");
-          Row revision = tx.one("SELECT * FROM admin_authz_revision WHERE id=1");
+          validSession(tx, s.id, false);
+          long actor = s.accountId;
+          var revision = m.selectAuthzRevision();
+          if (revision == null) throw AdminAuthFailure.unavailable();
           List<AdminPermissionSnapshot.Role> roles =
-              tx
-                  .rows(
-                      "SELECT r.* FROM admin_role r JOIN admin_account_role ar ON ar.role_id=r.id"
-                          + " WHERE ar.account_id=? AND r.status='ENABLED' ORDER BY r.role_code",
-                      actor)
-                  .stream()
+              m.selectEnabledRoles(actor).stream()
                   .map(
                       r ->
                           new AdminPermissionSnapshot.Role(
-                              Long.toString(r.number("id")),
-                              r.text("role_code"),
-                              r.text("display_name")))
+                              Long.toString(r.id), r.roleCode, r.displayName))
                   .toList();
           boolean superAdmin =
               roles.stream().anyMatch(r -> r.roleCode().equals("PLATFORM_SUPER_ADMIN"));
-          Row scopeRow = tx.optional("SELECT * FROM admin_account_scope WHERE account_id=?", actor);
+          var scopeRow = m.selectAccountScope(actor);
           if (scopeRow == null) throw AdminAuthFailure.unavailable();
-          List<String> cities =
-              tx.rows("SELECT city_code FROM admin_scope_city WHERE account_id=?", actor).stream()
-                  .map(r -> r.text("city_code"))
-                  .toList();
+          List<String> cities = m.selectScopeCities(actor);
           List<String> merchants =
-              tx
-                  .rows("SELECT merchant_id FROM admin_scope_merchant WHERE account_id=?", actor)
-                  .stream()
-                  .map(r -> Long.toString(r.number("merchant_id")))
-                  .toList();
-          AdminDataScope scope = new AdminDataScope(scopeRow.text("mode"), cities, merchants);
+              m.selectScopeMerchants(actor).stream().map(String::valueOf).toList();
+          AdminDataScope scope = new AdminDataScope(scopeRow.mode, cities, merchants);
           if (superAdmin) scope = new AdminDataScope("ALL", List.of(), List.of());
-          List<String> grants = new ArrayList<>();
-          for (Row r :
-              tx.rows(
-                  "SELECT ra.action_code FROM admin_role_action ra JOIN admin_role r ON"
-                      + " r.id=ra.role_id JOIN admin_account_role ar ON ar.role_id=r.id WHERE"
-                      + " ar.account_id=? AND r.status='ENABLED' UNION SELECT action_code FROM"
-                      + " admin_extra_grant WHERE account_id=?",
-                  actor,
-                  actor)) grants.add(r.text("action_code"));
+          List<String> grants = new ArrayList<>(m.selectActionGrants(actor));
           var permissions =
               new AdminPermissionSnapshot(
                   Long.toString(actor),
-                  revision.text("recovery_epoch") + ":" + revision.number("revision"),
+                  revision.recoveryEpoch + ":" + revision.revision,
                   date(tx.now()),
                   roles,
                   scope,
@@ -1001,10 +881,10 @@ public final class AdminAuthService implements AdminSessionQueryApi {
           return new AdminSessionView(
               new AdminSessionPrincipal(
                   "ADMIN_WEB",
-                  Long.toString(s.number("id")),
+                  Long.toString(s.id),
                   Long.toString(actor),
-                  s.number("generation")),
-              date(s.time("idle_expires_at")),
+                  s.generation),
+              date(s.idleExpiresAt),
               permissions);
         });
   }
@@ -1012,79 +892,66 @@ public final class AdminAuthService implements AdminSessionQueryApi {
   private AdminSecretResult sessionCommand(String requestId, String accessToken, boolean logout) {
     request(requestId);
     byte[] digest = AdminSecretCodec.digest(accessToken);
-    Row observed =
+    WebSession observed =
         store.read(
             tx -> {
               active(tx);
-              Row s = tx.optional("SELECT * FROM admin_web_session WHERE token_digest=?", digest);
+              WebSession s = tx.auth().selectSessionByTokenDigest(digest);
               if (s == null) throw AdminAuthFailure.unauthorized();
               return s;
             });
     long cid = id();
     String namespace = logout ? "LOGOUT" : "ACTIVITY",
-        scope = "S:" + observed.number("id"),
+        scope = "S:" + observed.id,
         keyId = secrets.currentKeyId();
     try {
       store.write(
           tx -> {
+            AdminAuthMapper m = tx.auth();
             active(tx);
-            Row account =
-                tx.one(
-                    "SELECT * FROM admin_account WHERE id=? FOR UPDATE",
-                    observed.number("account_id"));
-            if (!"ENABLED".equals(account.text("status"))
-                || account.number("session_generation") != observed.number("generation"))
+            var account = m.selectAccountForUpdate(observed.accountId);
+            if (account == null
+                || !"ENABLED".equals(account.status)
+                || account.sessionGeneration.longValue() != observed.generation.longValue())
               throw AdminAuthFailure.unauthorized();
-            Row existing = command(tx, scope, namespace, requestId, true);
+            AuthCommand existing = command(tx, scope, namespace, requestId, true);
             if (existing != null && succeeded(existing)) {
-              if (!logout) validSession(tx, observed.number("id"), false);
+              if (!logout) validSession(tx, observed.id, false);
               return null;
             }
-            validSession(tx, observed.number("id"), false);
-            tx.update(
-                "INSERT INTO"
-                    + " admin_auth_command(id,scope_key,session_id,namespace,request_id,parameter_mac,mac_key_id)"
-                    + " VALUES(?,?,?,?,?,?,?)",
+            validSession(tx, observed.id, false);
+            m.insertCommandForSession(
                 cid,
                 key(scope),
-                observed.number("id"),
+                observed.id,
                 namespace,
                 key(requestId),
                 secrets.mac(keyId, namespace),
                 keyId);
-            Row s =
-                tx.one(
-                    "SELECT * FROM admin_web_session WHERE id=? FOR UPDATE", observed.number("id"));
+            WebSession s = m.selectSessionForUpdate(observed.id);
+            if (s == null) throw AdminAuthFailure.unavailable();
             Instant now = tx.now(),
-                expiry = logout ? s.time("idle_expires_at") : now.plusSeconds(1800);
-            if (logout)
-              tx.update(
-                  "UPDATE admin_web_session SET status='REVOKED',revoked_at=? WHERE id=?",
-                  now,
-                  s.number("id"));
-            else
-              tx.update(
-                  "UPDATE admin_web_session SET last_interactive_at=?,idle_expires_at=? WHERE id=?",
-                  now,
-                  expiry,
-                  s.number("id"));
-            complete(tx, cid, logout ? "LOGGED_OUT" : "ACTIVITY", s.number("id"), expiry, null);
+                expiry = logout ? s.idleExpiresAt : now.plusSeconds(1800);
+            if (logout) m.revokeSession(now, s.id);
+            else m.refreshSessionIdle(now, expiry, s.id);
+            complete(tx, cid, logout ? "LOGGED_OUT" : "ACTIVITY", s.id, expiry, null);
             audit(
                 tx,
-                account.number("id"),
+                account.id,
                 null,
                 namespace,
-                s.number("id"),
+                s.id,
                 requestId,
                 "ALLOWED",
                 logout ? "Session logout" : "Foreground activity");
             return null;
           });
     } catch (AdminAuthStore.CommitUnknown e) {
-      Row c = store.read(tx -> command(tx, scope, namespace, requestId, false));
+      AuthCommand c = store.read(tx -> command(tx, scope, namespace, requestId, false));
       if (c == null || !succeeded(c)) throw AdminAuthFailure.unavailable();
     }
-    Row c = store.read(tx -> command(tx, scope, namespace, requestId, false));
+    AuthCommand c = store.read(tx -> command(tx, scope, namespace, requestId, false));
+    if (c == null) throw AdminAuthFailure.unavailable();
     return render(c, null);
   }
 
@@ -1107,44 +974,21 @@ public final class AdminAuthService implements AdminSessionQueryApi {
     for (int i = 0; i < 6; i++) roleIds[i] = id();
     return store.write(
         tx -> {
-          Row rev = tx.one("SELECT * FROM admin_authz_revision WHERE id=1 FOR UPDATE");
-          Row b = tx.one("SELECT * FROM admin_bootstrap WHERE id=1 FOR UPDATE");
-          if (b.bool("bootstrap_complete")
-              || !b.bool("maintenance_mode")
-              || tx.one("SELECT COUNT(*) AS n FROM admin_account").number("n") != 0)
+          AdminAuthMapper m = tx.auth();
+          if (m.selectAuthzRevisionForUpdate() == null) throw AdminAuthFailure.unavailable();
+          var b = m.selectBootstrapForUpdate();
+          if (b == null) throw AdminAuthFailure.unavailable();
+          if (b.bootstrapComplete
+              || !b.maintenanceMode
+              || m.countAccounts() != 0)
             throw AdminAuthFailure.conflict();
           Instant now = tx.now();
-          tx.update(
-              "INSERT INTO"
-                  + " admin_account(id,account_display,account_lookup,display_name,password_hash,created_at,updated_at)"
-                  + " VALUES(?,?,?,?,?,?,?)",
-              actor,
-              account,
-              key(normalized),
-              displayName,
-              hash,
-              now,
-              now);
-          for (int i = 0; i < 6; i++)
-            tx.update(
-                "INSERT INTO admin_role(id,role_code,display_name) VALUES(?,?,?)",
-                roleIds[i],
-                ROLES[i],
-                ROLE_NAMES[i]);
-          tx.update(
-              "INSERT INTO admin_account_role(account_id,role_id,granted_by,granted_at)"
-                  + " VALUES(?,?,?,?)",
-              actor,
-              roleIds[5],
-              actor,
-              now);
-          tx.update("INSERT INTO admin_account_scope(account_id,mode) VALUES(?,'ALL')", actor);
-          tx.update("UPDATE admin_authz_revision SET revision=revision+1 WHERE id=1");
-          tx.update(
-              "UPDATE admin_bootstrap SET"
-                  + " bootstrap_complete=TRUE,maintenance_mode=FALSE,version=version+1,completed_at=?"
-                  + " WHERE id=1",
-              now);
+          m.insertBootstrapAccount(actor, account, key(normalized), displayName, hash, now, now);
+          for (int i = 0; i < 6; i++) m.insertRole(roleIds[i], ROLES[i], ROLE_NAMES[i]);
+          m.insertAccountRole(actor, roleIds[5], actor, now);
+          m.insertAccountScopeAll(actor);
+          m.bumpAuthzRevision();
+          m.completeBootstrap(now);
           audit(tx, actor, null, "AUTH_BOOTSTRAP", actor, null, "ALLOWED", reason);
           return actor;
         });
@@ -1154,10 +998,10 @@ public final class AdminAuthService implements AdminSessionQueryApi {
     text(reason, 500);
     store.write(
         tx -> {
-          tx.one("SELECT * FROM admin_authz_revision WHERE id=1 FOR UPDATE");
-          tx.one("SELECT * FROM admin_bootstrap WHERE id=1 FOR UPDATE");
-          tx.update(
-              "UPDATE admin_bootstrap SET maintenance_mode=TRUE,version=version+1 WHERE id=1");
+          AdminAuthMapper m = tx.auth();
+          if (m.selectAuthzRevisionForUpdate() == null) throw AdminAuthFailure.unavailable();
+          if (m.selectBootstrapForUpdate() == null) throw AdminAuthFailure.unavailable();
+          m.enableMaintenance();
           audit(tx, null, null, "AUTH_MAINTENANCE", null, null, "ALLOWED", reason);
           return null;
         });
@@ -1169,35 +1013,23 @@ public final class AdminAuthService implements AdminSessionQueryApi {
     String hash = passwords.encode(password);
     store.write(
         tx -> {
-          tx.one("SELECT * FROM admin_authz_revision WHERE id=1 FOR UPDATE");
-          Row b = tx.one("SELECT * FROM admin_bootstrap WHERE id=1 FOR UPDATE");
-          if (!b.bool("maintenance_mode")) throw AdminAuthFailure.conflict();
-          Row a = tx.one("SELECT * FROM admin_account WHERE id=? FOR UPDATE", actor);
-          if (tx.one(
-                      "SELECT COUNT(*) AS n FROM admin_account_role ar JOIN admin_role r ON"
-                          + " r.id=ar.role_id WHERE ar.account_id=? AND"
-                          + " r.role_code='PLATFORM_SUPER_ADMIN' AND r.status='ENABLED'",
-                      actor)
-                  .number("n")
-              == 0) throw new AdminAuthFailure(403, "COMMON_FORBIDDEN");
+          AdminAuthMapper m = tx.auth();
+          if (m.selectAuthzRevisionForUpdate() == null) throw AdminAuthFailure.unavailable();
+          var b = m.selectBootstrapForUpdate();
+          if (b == null || !b.maintenanceMode) throw AdminAuthFailure.conflict();
+          var a = m.selectAccountForUpdate(actor);
+          if (a == null) throw AdminAuthFailure.unavailable();
+          if (m.countSuperAdminGrants(actor) == 0) throw new AdminAuthFailure(403, "COMMON_FORBIDDEN");
           Instant now = tx.now();
-          tx.update(
-              "UPDATE admin_account SET"
-                  + " password_hash=?,credential_version=credential_version+1,session_generation=session_generation+1,status='ENABLED',version=version+1,updated_at=?"
-                  + " WHERE id=?",
-              hash,
-              now,
-              actor);
-          tx.update("UPDATE admin_authz_revision SET revision=revision+1 WHERE id=1");
-          tx.update(
-              "DELETE FROM admin_login_failure WHERE lookup_digest=?",
+          m.updateRecoveredAccount(hash, now, actor);
+          m.bumpAuthzRevision();
+          m.deleteLoginFailure(
               secrets.mac(
                   secrets.currentKeyId(),
                   "ACCOUNT",
-                  new String(a.bytes("account_lookup"), StandardCharsets.UTF_8)));
+                  new String(a.accountLookup, StandardCharsets.UTF_8)));
           audit(tx, actor, null, "AUTH_RECOVERY", actor, null, "ALLOWED", reason);
-          tx.update(
-              "UPDATE admin_bootstrap SET maintenance_mode=FALSE,version=version+1 WHERE id=1");
+          m.disableMaintenance();
           return null;
         });
   }
