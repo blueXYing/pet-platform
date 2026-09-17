@@ -1,16 +1,15 @@
 package com.petplatform.id.core;
 
+import com.petplatform.id.core.mapper.SnowflakeNodeMapper;
+import com.petplatform.id.core.mapper.SnowflakeNodeRowEntity;
 import java.nio.ByteBuffer;
-import java.sql.ResultSet;
-import java.sql.SQLException;
 import java.time.LocalDateTime;
 import java.time.ZoneOffset;
 import java.util.Objects;
 import java.util.UUID;
 import java.util.function.Supplier;
 import javax.sql.DataSource;
-import org.springframework.jdbc.core.JdbcTemplate;
-import org.springframework.jdbc.core.RowMapper;
+import org.mybatis.spring.SqlSessionTemplate;
 import org.springframework.jdbc.datasource.DataSourceTransactionManager;
 import org.springframework.transaction.TransactionDefinition;
 import org.springframework.transaction.support.TransactionTemplate;
@@ -19,7 +18,7 @@ import static com.petplatform.id.core.SnowflakeProviderSettings.*;
 
 /** Own short UTC transactions, never runtime-initialize rows or reclaim a previously granted range. */
 public final class JdbcSnowflakeNodeStore {
-    private final JdbcTemplate jdbc;
+    private final SqlSessionTemplate template;
     private final TransactionTemplate transaction;
 
     private record Row(int node, String format, boolean enabled, String initialization,
@@ -27,7 +26,7 @@ public final class JdbcSnowflakeNodeStore {
 
     public JdbcSnowflakeNodeStore(DataSource dataSource) {
         Objects.requireNonNull(dataSource);
-        jdbc = new JdbcTemplate(dataSource);
+        this.template = IdMybatis.template(dataSource);
         transaction = new TransactionTemplate(new DataSourceTransactionManager(dataSource));
         transaction.setPropagationBehavior(TransactionDefinition.PROPAGATION_REQUIRES_NEW);
         transaction.setIsolationLevel(TransactionDefinition.ISOLATION_READ_COMMITTED);
@@ -60,13 +59,8 @@ public final class JdbcSnowflakeNodeStore {
             long fence = Math.addExact(current.fence, 1);
             long lease = Math.addExact(absoluteNow, LEASE_MILLIS);
             requireBudget(started);
-            int changed = jdbc.update("""
-                    UPDATE snowflake_worker_state
-                    SET owner_incarnation=?, fence=?, grant_start=?, grant_through=?, reserved_through=?,
-                        lease_until=?, updated_at=NOW(3)
-                    WHERE node_id=? AND fence=? AND reserved_through=?
-                    """, bytes(incarnation), fence, start, through, through, dateTime(lease),
-                    settings.nodeId(), current.fence, current.high);
+            int changed = nodes().updateAcquired(bytes(incarnation), fence, start, through, through,
+                    dateTime(lease), settings.nodeId(), current.fence, current.high);
             requireOne(changed);
             requireBudget(started);
             return new SnowflakeNodeGrant(settings.nodeId(), incarnation, fence, start, through,
@@ -103,12 +97,8 @@ public final class JdbcSnowflakeNodeStore {
             requireRange(through, now);
             long lease = Math.addExact(absoluteNow, LEASE_MILLIS);
             requireBudget(started);
-            requireOne(jdbc.update("""
-                    UPDATE snowflake_worker_state
-                    SET grant_through=?, reserved_through=?, lease_until=?, updated_at=NOW(3)
-                    WHERE node_id=? AND owner_incarnation=? AND fence=? AND reserved_through=?
-                    """, through, through, dateTime(lease), settings.nodeId(), bytes(expected.incarnation()),
-                    expected.fence(), expected.throughMillis()));
+            requireOne(nodes().updateRenewed(through, through, dateTime(lease), settings.nodeId(),
+                    bytes(expected.incarnation()), expected.fence(), expected.throughMillis()));
             requireBudget(started);
             return new SnowflakeNodeGrant(settings.nodeId(), expected.incarnation(), expected.fence(),
                     expected.startMillis(), through, lease, started, absoluteNow);
@@ -119,21 +109,28 @@ public final class JdbcSnowflakeNodeStore {
 
     private <T> T inTransaction(Supplier<T> action) {
         return transaction.execute(status -> {
-            jdbc.execute("SET SESSION time_zone = '+00:00'");
+            nodes().setTimeZoneUtc();
             return action.get();
         });
     }
 
+    private SnowflakeNodeMapper nodes() {
+        return template.getMapper(SnowflakeNodeMapper.class);
+    }
+
     private Row read(int node, boolean lock) {
-        var rows = jdbc.query("SELECT * FROM snowflake_worker_state WHERE node_id=?"
-                + (lock ? " FOR UPDATE" : ""), ROW_MAPPER, node);
-        if (rows.size() != 1) throw unavailable("Audited node row is missing");
-        return rows.getFirst();
+        SnowflakeNodeRowEntity row = lock ? nodes().selectByNodeForUpdate(node) : nodes().selectByNode(node);
+        if (row == null) throw unavailable("Audited node row is missing");
+        return new Row(row.getNodeId(), row.getFormatIdentity(), Boolean.TRUE.equals(row.getEnabled()),
+                row.getInitializationRef(), uuid(row.getOwnerIncarnation()), row.getFence(),
+                row.getReservedThrough(), row.getGrantStart(), row.getGrantThrough(),
+                row.getLeaseUntil() == null ? null
+                        : row.getLeaseUntil().toInstant(ZoneOffset.UTC).toEpochMilli());
     }
 
     private long sampleDbTime() {
         long before = System.currentTimeMillis();
-        LocalDateTime sampled = jdbc.queryForObject("SELECT NOW(3)", LocalDateTime.class);
+        LocalDateTime sampled = nodes().sampleNow();
         long after = System.currentTimeMillis();
         long millis = Objects.requireNonNull(sampled).toInstant(ZoneOffset.UTC).toEpochMilli();
         relativeMillis(before);
@@ -185,12 +182,4 @@ public final class JdbcSnowflakeNodeStore {
         ByteBuffer buffer = ByteBuffer.wrap(bytes);
         return new UUID(buffer.getLong(), buffer.getLong());
     }
-    private static Long millis(ResultSet rs, String name) throws SQLException {
-        LocalDateTime value = rs.getObject(name, LocalDateTime.class);
-        return value == null ? null : value.toInstant(ZoneOffset.UTC).toEpochMilli();
-    }
-    private static final RowMapper<Row> ROW_MAPPER = (rs, index) -> new Row(rs.getInt("node_id"),
-            rs.getString("format_identity"), rs.getBoolean("enabled"), rs.getString("initialization_ref"),
-            uuid(rs.getBytes("owner_incarnation")), rs.getLong("fence"), rs.getLong("reserved_through"),
-            rs.getObject("grant_start", Long.class), rs.getObject("grant_through", Long.class), millis(rs, "lease_until"));
 }
