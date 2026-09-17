@@ -217,3 +217,7 @@ HTTP 映射只属于 Adapter 层；内部 Java API 通过稳定 code 表达同�
 
 
 AUTH Web切片B1说明：恢复窗口按成功提交前DB锚点+60秒，不保证commit后完整60秒；窗口内缓存/密钥/发布缺失503，截止或当前会话/证明撤销401，不重新签发、不延长会话。密码与不存在账号统一401；登录反机器人锁定/有界资源额度429。无额外MFA错误码。真实代码异常回执始终data:null，不回显请求/SQL/凭据。
+
+## 商家域错误映射（2026-09-17）
+
+27号商家域契约复用现有码：非法字段400 COMMON_INVALID_ARGUMENT；无会话401 COMMON_UNAUTHORIZED；无动作权403 COMMON_FORBIDDEN；范围外/不存在404 COMMON_NOT_FOUND；状态/版本冲突409 COMMON_CONFLICT；异参重放409 IDEMPOTENCY_KEY_CONFLICT；事实或回执不可用503 COMMON_DEPENDENCY_UNAVAILABLE。原MERCHANT_NOT_FOUND/MERCHANT_DISABLED保留原消费语义，不全局替换交易错误。

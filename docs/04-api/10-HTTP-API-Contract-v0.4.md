@@ -1952,3 +1952,7 @@ Scope提案：`{mode,cityCodes,merchantIds}`。授予请求mode=ALL/CITY/MERCHAN
 
 
 内部新DTO/签名没有因HTTP同步自动冻结；严格按07号同步的语义边界与planning映射附录待审字段交接。
+
+## 商家域已批准同步（2026-09-17）
+
+员工六操作、协议读取与同意两操作、请求/响应/状态码/幂等/当前权限检查，以[27号商家域契约](27-Merchant-Domain-Contract-v0.1.md)为准，OpenAPI11已同步八操作。下线后存量履约/退款/售后继续；原“签约外链/Provider未定”描述不再适用于V1电子协议。首次签署不依赖ALLOWED工作台准入。成员绑定与员工在途守卫仍属未完成依赖，不能默认成功。
