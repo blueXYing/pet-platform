@@ -92,3 +92,18 @@ pet-boot `AdminAuthConfiguration` 的 Flyway 迁移目标校验（`getConnection
 - 22号裁决 AC4 完成回执：待六 PR 合入后由最终文档提交登记 DONE 收讫。
 - PLAT-002 生产门禁不因本迁移解除；真实微信联调、生产启用、生产数据库迁移均不在本次范围。
 - 残留 java.sql 1 处（boot Flyway 目标校验）已审计为装配基础设施；如后续裁决要求彻底清零可另行处理。
+
+## 8. 2026-09-17 修订：SQL 全部改为 XML mapper（审阅反馈）
+
+用户审阅反馈不采用注解内联 SQL。六模块 PR 均已追加提交完成转换：
+
+- Mapper 接口只保留方法签名与 `@Param` 参数名；全部 SQL 移入各模块
+  `src/main/resources/mapper/*.xml`（8 个 XML：thirdparty 1、user 4、event 2、task 1、id 1、admin 1），
+  SQL 文本与迁移版逐字一致（仅 XML 转义 `<`，如 `&lt;=`、`id&lt;&gt;`）；
+- 装配改为 `SqlSessionFactoryBean.setMapperLocations(classpath:mapper/*.xml)`（XML 命名空间注册接口），
+  其余（SpringManagedTransactionFactory、mapUnderscoreToCamelCase、admin defaultStatementTimeout=5）不变；
+- 已核实 XML 进入构建产物（target/classes/mapper）；每模块同套测试全绿 + 全后端 clean verify 绿
+  （thirdparty 4/4、user 24/24+boot 24/24、event 10/10、task 22/22、id 41/41、admin 34/34+boot 24/24），
+  整合组合重新合并六分支后 clean verify 全绿。
+- 环境备注：2026-09-17 晨本机隔离 Redis（16379）随宿主机重启丢失，按 CI 同款易失配置
+  （`--save '' --appendonly no` 容器）重建后全部恢复；此为测试环境事实，与迁移代码无关。

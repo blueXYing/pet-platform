@@ -32,6 +32,8 @@ PR29裁决已合入，前置C登录PR31/33及宠物阶段PR34均已合入；旧�
 
 整合组合：codex/plat006-integration-validation（六分支依次合并，clean verify 全绿；仅为验证，不代表合入）。
 
+2026-09-17 审阅反馈修订：六 PR 均已追加提交，把注解内联 SQL 全部改为各模块 `resources/mapper/*.xml`（接口仅留签名与 @Param，装配改 mapperLocations），SQL 逐字不变，各模块与组合验证重新全绿。详见迁移报告 §8。
+
 ## Allowed / Forbidden
 
 逐模块转换对应 `infrastructure/persistence|provider|oss` 内持久化类与其 Mapper(新增 `infrastructure.persistence.mapper` 包);不改业务语义、不改表结构、不改权威契约、不动 Redis 易失存储、不动前端。公共 mybatis 版本/依赖调整按 17号骨架逐文件登记。
