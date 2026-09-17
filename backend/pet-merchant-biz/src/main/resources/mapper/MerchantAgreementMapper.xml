@@ -1,0 +1,117 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.petplatform.merchant.biz.infrastructure.persistence.mapper.MerchantAgreementMapper">
+
+    <update id="setTimeZoneUtc">SET time_zone = '+00:00'</update>
+
+    <update id="setLockWaitTimeout2Seconds">SET innodb_lock_wait_timeout = 2</update>
+
+    <select id="selectOwnedMerchant"
+            resultType="com.petplatform.merchant.biz.infrastructure.persistence.entity.MerchantOwnerEntity">
+        SELECT id,status
+        FROM merchant
+        WHERE id = #{merchantId}
+          AND owner_user_id = #{ownerUserId}
+    </select>
+
+    <select id="selectOwnedMerchantForUpdate"
+            resultType="com.petplatform.merchant.biz.infrastructure.persistence.entity.MerchantOwnerEntity">
+        SELECT id,status
+        FROM merchant
+        WHERE id = #{merchantId}
+          AND owner_user_id = #{ownerUserId}
+        FOR UPDATE
+    </select>
+
+    <select id="selectAcceptedAgreements"
+            resultType="com.petplatform.merchant.biz.infrastructure.persistence.entity.MerchantAgreementDocumentEntity">
+        SELECT v.id AS version_id,
+               v.agreement_version,
+               v.content,
+               v.content_sha256,
+               a.content_sha256 AS accepted_content_sha256,
+               a.accepted_at
+        FROM merchant_agreement_acceptance a
+        INNER JOIN merchant_agreement_version v ON v.id = a.agreement_version_id
+        WHERE a.merchant_id = #{merchantId}
+        ORDER BY a.id ASC
+        LIMIT 2
+    </select>
+
+    <select id="selectAcceptedAgreementsForUpdate"
+            resultType="com.petplatform.merchant.biz.infrastructure.persistence.entity.MerchantAgreementDocumentEntity">
+        SELECT v.id AS version_id,
+               v.agreement_version,
+               v.content,
+               v.content_sha256,
+               a.content_sha256 AS accepted_content_sha256,
+               a.accepted_at
+        FROM merchant_agreement_acceptance a
+        INNER JOIN merchant_agreement_version v ON v.id = a.agreement_version_id
+        WHERE a.merchant_id = #{merchantId}
+        ORDER BY a.id ASC
+        LIMIT 2
+        FOR UPDATE
+    </select>
+
+    <select id="countAcceptances" resultType="int">
+        SELECT COUNT(*)
+        FROM merchant_agreement_acceptance
+        WHERE merchant_id = #{merchantId}
+    </select>
+
+    <select id="selectCurrentAgreement"
+            resultType="com.petplatform.merchant.biz.infrastructure.persistence.entity.MerchantAgreementDocumentEntity">
+        SELECT v.id AS version_id,
+               v.agreement_version,
+               v.content,
+               v.content_sha256
+        FROM merchant_agreement_current c
+        INNER JOIN merchant_agreement_version v ON v.id = c.agreement_version_id
+        WHERE c.agreement_key = 'MERCHANT'
+    </select>
+
+    <select id="selectCurrentAgreementForUpdate"
+            resultType="com.petplatform.merchant.biz.infrastructure.persistence.entity.MerchantAgreementDocumentEntity">
+        SELECT v.id AS version_id,
+               v.agreement_version,
+               v.content,
+               v.content_sha256
+        FROM merchant_agreement_current c
+        INNER JOIN merchant_agreement_version v ON v.id = c.agreement_version_id
+        WHERE c.agreement_key = 'MERCHANT'
+        FOR UPDATE
+    </select>
+
+    <insert id="insertAcceptance">
+        INSERT INTO merchant_agreement_acceptance
+        (id,merchant_id,agreement_version_id,accepted_by_user_id,accepted_at,content_sha256)
+        VALUES
+        (#{id},#{merchantId},#{agreementVersionId},#{acceptedByUserId},#{acceptedAt},#{contentSha256})
+    </insert>
+
+    <insert id="insertBinding">
+        INSERT INTO merchant_command_idempotency
+        (id,request_key,canonical_version,params_sha256,params_canonical,status,receipt_json,trace_id,created_at,succeeded_at)
+        VALUES
+        (#{id},#{requestKey},#{canonicalVersion},#{paramsSha256},#{paramsCanonical},'RESERVED',NULL,#{traceId},UTC_TIMESTAMP(3),NULL)
+    </insert>
+
+    <select id="selectBindingForUpdate"
+            resultType="com.petplatform.merchant.biz.infrastructure.persistence.entity.MerchantCommandBindingEntity">
+        SELECT id,canonical_version,params_sha256,params_canonical,status,receipt_json
+        FROM merchant_command_idempotency
+        WHERE request_key = #{requestKey}
+        FOR UPDATE
+    </select>
+
+    <update id="markBindingSucceeded">
+        UPDATE merchant_command_idempotency
+        SET status = 'SUCCEEDED',
+            receipt_json = #{receiptJson},
+            succeeded_at = UTC_TIMESTAMP(3)
+        WHERE request_key = #{requestKey}
+          AND status = 'RESERVED'
+    </update>
+
+</mapper>

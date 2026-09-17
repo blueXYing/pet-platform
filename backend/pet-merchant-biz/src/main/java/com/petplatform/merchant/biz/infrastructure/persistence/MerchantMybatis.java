@@ -15,7 +15,7 @@ final class MerchantMybatis {
         factoryBean.setDataSource(Objects.requireNonNull(dataSource, "dataSource is required"));
         try {
             factoryBean.setMapperLocations(new PathMatchingResourcePatternResolver()
-                    .getResources("classpath*:mapper/MerchantReadMapper.xml"));
+                    .getResources("classpath*:mapper/Merchant*Mapper.xml"));
             SqlSessionFactory factory = Objects.requireNonNull(factoryBean.getObject());
             factory.getConfiguration().setMapUnderscoreToCamelCase(true);
             return new SqlSessionTemplate(factory);

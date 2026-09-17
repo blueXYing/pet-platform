@@ -1,6 +1,8 @@
 # 商家域存储映射 v0.1
 
-状态：ACCEPTED_STORAGE_DESIGN / DDL_NOT_DELIVERED。2026-09-17用户确认技术契约后从PR50提案同步。与[商家域接口契约](../04-api/27-Merchant-Domain-Contract-v0.1.md)配套；实际建表脚本、索引/约束验证、初始化与生产迁移尚未交付，不添加默认Flyway、不声明表已存在。下文明确留待其他Owner交接的依赖不因设计批准自动完成。
+状态：ACCEPTED_STORAGE_DESIGN / AGREEMENT_DDL_DELIVERED / OTHER_DDL_PENDING。2026-09-17用户确认技术契约后从PR50提案同步，与[商家域接口契约](../04-api/27-Merchant-Domain-Contract-v0.1.md)配套。协议四表脚本已交付供隔离验证；申请审核、成员等其余DDL及所有生产迁移仍未交付，不添加默认Flyway、不声明生产表已存在。其他Owner交接依赖不因设计批准自动完成。
+
+2026-09-17 S3更新：已批准的协议版本/当前指针/同意记录及merchant独立幂等表已落为[SQL28](28-Merchant-Agreement-Schema-v0.1.sql)，仅在隔离测试库验证，未执行生产迁移。请求键采用VARBINARY(1024)做严格字节比较并容纳公共512-byte requestId与作用域前缀；trace_id为可空且最多128 UTF-8字节的审计字段，无业务规则新增。
 
 ## 1. 现有实体
 

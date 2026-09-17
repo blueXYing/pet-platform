@@ -9,7 +9,7 @@
 | AUTH-001 / Backend Core | PR14/15规范，PR17运营Web，PR31 C会话/HTTP，PR33微信Provider，PR38页面接入；PR36历史冒烟+W3模拟器真实wx.login/code2session落库（A类）与替身全链路（C类） | 真机getPhoneNumber/键盘/授权、正式发号宿主/环境门禁；SMS/密码/刷新与商家准入另按既有门禁处理 | MINI002～004、WEB002/PERM；W2-AUTH-001～004 |
 | PLAT-003 / Backend Core | PR18/19规范与权威映射，PR20 Outbox组件 | 生产ID/迁移、业务事件生产者/消费者、对账告警和归档策略；装配默认关闭 | TASK005/CON020/FLT012；W2-OUTBOX-001～003 |
 | USR-001 / Backend Core | PR22/23契约、PR24宠物域与幂等服务；PR31接入HTTP；W3模拟器昵称/宠物读改写 UI→HTTP→DB 联调通过（替身后端） | 生产ID/迁移启用；完整真实业务E2E与真机 | W2-USR-001～004；宠物快照前置 |
-| MER-001 / Backend Core | PR50已合入0ade8bc且合并CI通过；S2已实现USER-owner商家/门店/人员只读基础与资格策略候选，见[交接](issues/wave-2/MER-001-s2/HANDOFF.md) | 本轮整合验证/实现PR；申请审核和协议真实来源、成员绑定、在途指派守卫按[依赖交接](ccr/CCR-W2-API-001/merchant-s2-dependency-handoff.md)继续，缺reader默认503，不标完整MER完成 | MER001/ORD009/010；W2-MER-001～003 |
+| MER-001 / Backend Core | PR50/51已合入；S3协议四表、真实存储/同意/幂等组件通过289项全后端回归，见[交接](issues/wave-2/MER-001-s3/HANDOFF.md)；申请审核四项产品规则已确认并同步SSOT §27/PRD26 | PR52待合入；[申请审核CCR](ccr/CCR-W2-API-001/merchant-application-review-proposal.md)继续细化接口/存储/事件，申请真实源/发布/HTTP/成员和在途守卫尚缺，不重复四项确认、不标完整MER完成 | MER001/ORD009/010；W2-MER-001～003 |
 | SVC-001 / Backend Core | 本轮未发现对应实现PR | MER交接、服务域契约及资格事实；不提前实现预约交易 | ORD008；W2-SVC-001～003 |
 | C-002 / C-End | PR25编辑资料；PR34宠物页、公共底栏、分包和标题修正；PR38真实接口接入（W3模拟器联调通过，替身后端） | 独立编辑页设计、芯片/记录字段CCR、上传/更多页面与真机/VIS | MINI004/VIS001～004；W2-FE-001～005 |
 | C-003 / C-End | 本轮未发现产品页交付PR | C-End文件所有权释放、商家/服务/可用性契约和原图；真实查询需MER/SVC/SCH | MINI004/VIS；不做C004支付 |

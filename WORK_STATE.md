@@ -1,15 +1,21 @@
 # Work State
 
 PROJECT: 宠物平台 V1.0
-STATE_VERSION: 6.7
+STATE_VERSION: 6.9
 UPDATED_AT: 2026-09-17
 
 CURRENT_PHASE: W3_INTEGRATION_REVIEW
-CURRENT_STATUS: MER001_S2_REVIEW_CANDIDATE
-NEXT_PHASE: MER-001 S2 基础查询整合验收
-NEXT_PHASE_APPROVED: YES
+CURRENT_STATUS: MER001_S3_AGREEMENT_REVIEW_CANDIDATE
+NEXT_PHASE: MER-001 协议组件验收及申请审核CCR审阅
+NEXT_PHASE_APPROVED: NO
 
 ## 当前结论
+
+2026-09-17申请审核四项已确认：用户明确“四项建议确认”，已同步SSOT §27与PRD26。门店照片必填1～6张；OCR失败可待人工核验但已知过期拦截/未核验不可通过；补正映射REJECTED并修改重提；APPROVE建档ACTIVE但未SIGNED不开新业务。以下四项“待确认”描述已过时，不再重复索取决定。申请接口/Schema/Event细化同步继续由原Owner推进；当前NEXT_PHASE_APPROVED:NO保留未完成技术契约冻结的边界，不表示四项产品规则未批准。PR52未获合并授权，仍未合入。
+
+2026-09-17最新：按用户“按照建议继续”已合入PR51（`5ee8f75`），合并后CI 35202619408成功。PR50此前已合入0ade8bc；本地主目录develop也已快进到5ee8f75，用户project.config.json哈希保持不变。当前独立分支`codex/mer001-agreement-20260917`继续[协议存储/S3派发](planning/issues/wave-2/MER-001-s3/DISPATCH.md)：SQL28四表及协议同意域组件、真实协议读取和幂等已进入整合验证。申请审核真实来源仍缺具体契约，已形成[候选方案](planning/ccr/CCR-W2-API-001/merchant-application-review-proposal.md)，未在未批选择上生成APPROVED。其照片/OCR例外/补正状态/审核建档映射待审，不重复已批签约决定；新PR不自动合并。
+
+S3本地整合已通过：[交接](planning/issues/wave-2/MER-001-s3/HANDOFF.md)，37套件/289项JUnit（含18项新协议、22项架构），0失败/错误/跳过；91项离线契约与13项架构工具回归通过。NEXT_PHASE_APPROVED:NO仅指新增申请审核CCR的四项待确认及其未冻结接口，不否定当前已批协议组件实施。完整申请审核/协议发布/HTTP/生产装配尚未交付，当前组件默认缺申请源仍503，不标整项MER-001完成。
 
 2026-09-17最新：用户已批准合入PR50，合并提交`0ade8bc`，合并后CI 35198466155六项成功；以下“PR50未获合并授权/待合入”均为历史阶段描述。用户随后明确启动下一任务并授权按复杂度采用Sol medium/Luna xhigh子代理。已从该基线建立`codex/mer001-foundation-20260917`，按[派发记录](planning/issues/wave-2/MER-001-s2/DISPATCH.md)开展S2只读基础、依赖方案与独立QA。新PR合并/生产启用不因本次启动自动获准。MER-001整体仍IN_PROGRESS；本轮先交付现有表读取与归属，不伪造未具备的审核/成员/在途事实。
 
