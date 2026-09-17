@@ -1,0 +1,18 @@
+{
+  "baseline": "609153bd4584d538e32cf828aae06efaba8f9ce5",
+  "files": {
+    "AGENTS.md": "ed37c0277ccfc4237bd25bc22ee04949f2fe2666fd6b3d377abe5dcee65550ca",
+    "WORK_EXECUTION_PROTOCOL.md": "c7993dd8e98efc49c4d90aea203d1f8173d5711df5e64cd93672df69842cf913",
+    "planning/WAVE_2_TEST_ACCEPTANCE.md": "9bd5f5d53445dd353bc1981fb36695211586c34409cbe9918cc9d116aa5cfa2c",
+    "docs/00-ssot/01-SSOT-宠物平台V1.0-最终业务基线.md": "71ccf52ab004957431563f47dd3e977212dc53d1058f17b7aa7f60838daa14e2",
+    "docs/01-prd/02-PRD-C端用户-V1.0-最终基线.docx": "d4277076820cc8953ccbce9e672827f1b4d7a9a4ec4cb3081eb661aab7d66ff0",
+    "docs/01-prd/03-PRD-商家端-V1.0-最终基线.docx": "fd1a60ad64b42cc1191567a9961242a359688a99e6750dabb8a7224147b2753b",
+    "docs/01-prd/25-商家入驻签约人工裁决补充-v1.0.md": "971ece27e0f7890afa52c10cc9ca3545978a5d4501e5333cfaef89bb0a7fe59b",
+    "docs/03-database/06-核心数据库Schema-v0.1.sql": "c04aa9306e1123926d98737ab069badefb22e42989b17d9fa015a90bd936d64a",
+    "docs/04-api/07-内部API-Contract-v0.6.md": "314ade180b72d3ddb40c6bee138f148fac6de5cab35791d84973bee9e862cf6c",
+    "docs/04-api/10-HTTP-API-Contract-v0.4.md": "62d6ac61e88ac4d21c3a0d2f25f39019bc708dd9c8421fb67f853b6d216cc555",
+    "docs/04-api/12-Error-Code-Registry-v0.5.md": "092fc04414ff83bde98d84ee458ae5f4a8ec22ae9a70e16e7b99d66f159b05c3",
+    "docs/04-api/23-公共接口与幂等契约补充-v0.1.md": "d1841cb9fa2e6dfc35b2635a9072872795a7858de242d16a6d431666a3855e46",
+    "docs/05-events/08-Integration-Event-Catalog-v0.6.md": "0f90793941a222a2621726b1265fd733a8550b11bcaa61c5abd44853891986cd"
+  }
+}

@@ -20,7 +20,906 @@ tags:
 - name: Admin-Order
 - name: AUTH-Miniapp
 - name: AUTH-Admin
+- name: Merchant-Profile
 paths:
+  /merchant/staff:
+    get:
+      tags:
+      - Merchant-Profile
+      summary: merchantListStaff
+      operationId: merchantListStaff
+      x-contract-status: ACCEPTED_CONTRACT_NOT_IMPLEMENTED
+      x-audience: MINIAPP
+      x-authorization: Current OWNER of the requested merchant; no client identity assertion.
+      security:
+      - bearerAuth: []
+      parameters:
+      - name: merchantId
+        in: query
+        required: true
+        schema:
+          $ref: '#/components/schemas/PublicId'
+      - name: storeId
+        in: query
+        required: true
+        schema:
+          $ref: '#/components/schemas/PublicId'
+      - $ref: '#/components/parameters/Page'
+      - $ref: '#/components/parameters/PageSize'
+      - name: employmentStatus
+        in: query
+        required: false
+        schema:
+          type: string
+          enum:
+          - ACTIVE
+          - INACTIVE
+      - name: serviceEnabled
+        in: query
+        required: false
+        schema:
+          type: boolean
+      responses:
+        '200':
+          description: Query/update or authorized replay of the first successful receipt.
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                enum:
+                - no-store
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MerStaffPageEnvelope'
+        '400':
+          description: Contract 27 error mapping; no previous sensitive data.
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                enum:
+                - no-store
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MerErrorEnvelope'
+        '401':
+          description: Contract 27 error mapping; no previous sensitive data.
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                enum:
+                - no-store
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MerErrorEnvelope'
+        '403':
+          description: Contract 27 error mapping; no previous sensitive data.
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                enum:
+                - no-store
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MerErrorEnvelope'
+        '404':
+          description: Contract 27 error mapping; no previous sensitive data.
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                enum:
+                - no-store
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MerErrorEnvelope'
+        '409':
+          description: Contract 27 error mapping; no previous sensitive data.
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                enum:
+                - no-store
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MerErrorEnvelope'
+        '503':
+          description: Contract 27 error mapping; no previous sensitive data.
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                enum:
+                - no-store
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MerErrorEnvelope'
+    post:
+      tags:
+      - Merchant-Profile
+      summary: merchantCreateStaff
+      operationId: merchantCreateStaff
+      x-contract-status: ACCEPTED_CONTRACT_NOT_IMPLEMENTED
+      x-audience: MINIAPP
+      x-authorization: Current OWNER of the requested merchant; no client identity assertion.
+      security:
+      - bearerAuth: []
+      parameters:
+      - $ref: '#/components/parameters/RequestId'
+      responses:
+        '200':
+          description: Query/update or authorized replay of the first successful receipt.
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                enum:
+                - no-store
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MerStaffViewEnvelope'
+        '201':
+          description: First successful creation only; replay returns 200.
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                enum:
+                - no-store
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MerStaffViewEnvelope'
+        '400':
+          description: Contract 27 error mapping; no previous sensitive data.
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                enum:
+                - no-store
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MerErrorEnvelope'
+        '401':
+          description: Contract 27 error mapping; no previous sensitive data.
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                enum:
+                - no-store
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MerErrorEnvelope'
+        '403':
+          description: Contract 27 error mapping; no previous sensitive data.
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                enum:
+                - no-store
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MerErrorEnvelope'
+        '404':
+          description: Contract 27 error mapping; no previous sensitive data.
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                enum:
+                - no-store
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MerErrorEnvelope'
+        '409':
+          description: Contract 27 error mapping; no previous sensitive data.
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                enum:
+                - no-store
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MerErrorEnvelope'
+        '503':
+          description: Contract 27 error mapping; no previous sensitive data.
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                enum:
+                - no-store
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MerErrorEnvelope'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/MerStaffCreateRequest'
+  /merchant/staff/{staffId}:
+    get:
+      tags:
+      - Merchant-Profile
+      summary: merchantGetStaff
+      operationId: merchantGetStaff
+      x-contract-status: ACCEPTED_CONTRACT_NOT_IMPLEMENTED
+      x-audience: MINIAPP
+      x-authorization: Current OWNER of the requested merchant; no client identity assertion.
+      security:
+      - bearerAuth: []
+      parameters:
+      - name: staffId
+        in: path
+        required: true
+        schema:
+          $ref: '#/components/schemas/PublicId'
+      - name: merchantId
+        in: query
+        required: true
+        schema:
+          $ref: '#/components/schemas/PublicId'
+      - name: storeId
+        in: query
+        required: true
+        schema:
+          $ref: '#/components/schemas/PublicId'
+      responses:
+        '200':
+          description: Query/update or authorized replay of the first successful receipt.
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                enum:
+                - no-store
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MerStaffViewEnvelope'
+        '400':
+          description: Contract 27 error mapping; no previous sensitive data.
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                enum:
+                - no-store
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MerErrorEnvelope'
+        '401':
+          description: Contract 27 error mapping; no previous sensitive data.
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                enum:
+                - no-store
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MerErrorEnvelope'
+        '403':
+          description: Contract 27 error mapping; no previous sensitive data.
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                enum:
+                - no-store
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MerErrorEnvelope'
+        '404':
+          description: Contract 27 error mapping; no previous sensitive data.
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                enum:
+                - no-store
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MerErrorEnvelope'
+        '409':
+          description: Contract 27 error mapping; no previous sensitive data.
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                enum:
+                - no-store
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MerErrorEnvelope'
+        '503':
+          description: Contract 27 error mapping; no previous sensitive data.
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                enum:
+                - no-store
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MerErrorEnvelope'
+    put:
+      tags:
+      - Merchant-Profile
+      summary: merchantUpdateStaff
+      operationId: merchantUpdateStaff
+      x-contract-status: ACCEPTED_CONTRACT_NOT_IMPLEMENTED
+      x-audience: MINIAPP
+      x-authorization: Current OWNER of the requested merchant; no client identity assertion.
+      security:
+      - bearerAuth: []
+      parameters:
+      - name: staffId
+        in: path
+        required: true
+        schema:
+          $ref: '#/components/schemas/PublicId'
+      - $ref: '#/components/parameters/RequestId'
+      responses:
+        '200':
+          description: Query/update or authorized replay of the first successful receipt.
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                enum:
+                - no-store
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MerStaffViewEnvelope'
+        '400':
+          description: Contract 27 error mapping; no previous sensitive data.
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                enum:
+                - no-store
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MerErrorEnvelope'
+        '401':
+          description: Contract 27 error mapping; no previous sensitive data.
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                enum:
+                - no-store
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MerErrorEnvelope'
+        '403':
+          description: Contract 27 error mapping; no previous sensitive data.
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                enum:
+                - no-store
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MerErrorEnvelope'
+        '404':
+          description: Contract 27 error mapping; no previous sensitive data.
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                enum:
+                - no-store
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MerErrorEnvelope'
+        '409':
+          description: Contract 27 error mapping; no previous sensitive data.
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                enum:
+                - no-store
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MerErrorEnvelope'
+        '503':
+          description: Contract 27 error mapping; no previous sensitive data.
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                enum:
+                - no-store
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MerErrorEnvelope'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/MerStaffUpdateRequest'
+  /merchant/staff/{staffId}/enable:
+    post:
+      tags:
+      - Merchant-Profile
+      summary: merchantEnableStaff
+      operationId: merchantEnableStaff
+      x-contract-status: ACCEPTED_CONTRACT_NOT_IMPLEMENTED
+      x-audience: MINIAPP
+      x-authorization: Current OWNER of the requested merchant; no client identity assertion.
+      security:
+      - bearerAuth: []
+      parameters:
+      - name: staffId
+        in: path
+        required: true
+        schema:
+          $ref: '#/components/schemas/PublicId'
+      - $ref: '#/components/parameters/RequestId'
+      responses:
+        '200':
+          description: Query/update or authorized replay of the first successful receipt.
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                enum:
+                - no-store
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MerStaffViewEnvelope'
+        '400':
+          description: Contract 27 error mapping; no previous sensitive data.
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                enum:
+                - no-store
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MerErrorEnvelope'
+        '401':
+          description: Contract 27 error mapping; no previous sensitive data.
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                enum:
+                - no-store
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MerErrorEnvelope'
+        '403':
+          description: Contract 27 error mapping; no previous sensitive data.
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                enum:
+                - no-store
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MerErrorEnvelope'
+        '404':
+          description: Contract 27 error mapping; no previous sensitive data.
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                enum:
+                - no-store
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MerErrorEnvelope'
+        '409':
+          description: Contract 27 error mapping; no previous sensitive data.
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                enum:
+                - no-store
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MerErrorEnvelope'
+        '503':
+          description: Contract 27 error mapping; no previous sensitive data.
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                enum:
+                - no-store
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MerErrorEnvelope'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/MerStaffStateRequest'
+  /merchant/staff/{staffId}/disable:
+    post:
+      tags:
+      - Merchant-Profile
+      summary: merchantDisableStaff
+      operationId: merchantDisableStaff
+      x-contract-status: ACCEPTED_CONTRACT_NOT_IMPLEMENTED
+      x-audience: MINIAPP
+      x-authorization: Current OWNER of the requested merchant; no client identity assertion.
+      security:
+      - bearerAuth: []
+      parameters:
+      - name: staffId
+        in: path
+        required: true
+        schema:
+          $ref: '#/components/schemas/PublicId'
+      - $ref: '#/components/parameters/RequestId'
+      responses:
+        '200':
+          description: Query/update or authorized replay of the first successful receipt.
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                enum:
+                - no-store
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MerStaffViewEnvelope'
+        '400':
+          description: Contract 27 error mapping; no previous sensitive data.
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                enum:
+                - no-store
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MerErrorEnvelope'
+        '401':
+          description: Contract 27 error mapping; no previous sensitive data.
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                enum:
+                - no-store
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MerErrorEnvelope'
+        '403':
+          description: Contract 27 error mapping; no previous sensitive data.
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                enum:
+                - no-store
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MerErrorEnvelope'
+        '404':
+          description: Contract 27 error mapping; no previous sensitive data.
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                enum:
+                - no-store
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MerErrorEnvelope'
+        '409':
+          description: Contract 27 error mapping; no previous sensitive data.
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                enum:
+                - no-store
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MerErrorEnvelope'
+        '503':
+          description: Contract 27 error mapping; no previous sensitive data.
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                enum:
+                - no-store
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MerErrorEnvelope'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/MerStaffStateRequest'
+      x-implementation-blocker: Order assignment/in-flight guard and concurrency contract
+        missing; never assume zero orders.
+  /merchant/agreement:
+    get:
+      tags:
+      - Merchant-Profile
+      summary: merchantGetAgreement
+      operationId: merchantGetAgreement
+      x-contract-status: ACCEPTED_CONTRACT_NOT_IMPLEMENTED
+      x-audience: MINIAPP
+      x-authorization: Current OWNER of the requested merchant; no client identity assertion.
+      security:
+      - bearerAuth: []
+      parameters:
+      - name: merchantId
+        in: query
+        required: true
+        schema:
+          $ref: '#/components/schemas/PublicId'
+      responses:
+        '200':
+          description: Query/update or authorized replay of the first successful receipt.
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                enum:
+                - no-store
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MerAgreementViewEnvelope'
+        '400':
+          description: Contract 27 error mapping; no previous sensitive data.
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                enum:
+                - no-store
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MerErrorEnvelope'
+        '401':
+          description: Contract 27 error mapping; no previous sensitive data.
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                enum:
+                - no-store
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MerErrorEnvelope'
+        '403':
+          description: Contract 27 error mapping; no previous sensitive data.
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                enum:
+                - no-store
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MerErrorEnvelope'
+        '404':
+          description: Contract 27 error mapping; no previous sensitive data.
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                enum:
+                - no-store
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MerErrorEnvelope'
+        '409':
+          description: Contract 27 error mapping; no previous sensitive data.
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                enum:
+                - no-store
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MerErrorEnvelope'
+        '503':
+          description: Contract 27 error mapping; no previous sensitive data.
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                enum:
+                - no-store
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MerErrorEnvelope'
+  /merchant/agreement/consent:
+    post:
+      tags:
+      - Merchant-Profile
+      summary: merchantConsentAgreement
+      operationId: merchantConsentAgreement
+      x-contract-status: ACCEPTED_CONTRACT_NOT_IMPLEMENTED
+      x-audience: MINIAPP
+      x-authorization: Current OWNER of the requested merchant; no client identity assertion.
+      security:
+      - bearerAuth: []
+      parameters:
+      - $ref: '#/components/parameters/RequestId'
+      responses:
+        '200':
+          description: Query/update or authorized replay of the first successful receipt.
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                enum:
+                - no-store
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MerConsentViewEnvelope'
+        '201':
+          description: First successful creation only; replay returns 200.
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                enum:
+                - no-store
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MerConsentViewEnvelope'
+        '400':
+          description: Contract 27 error mapping; no previous sensitive data.
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                enum:
+                - no-store
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MerErrorEnvelope'
+        '401':
+          description: Contract 27 error mapping; no previous sensitive data.
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                enum:
+                - no-store
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MerErrorEnvelope'
+        '403':
+          description: Contract 27 error mapping; no previous sensitive data.
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                enum:
+                - no-store
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MerErrorEnvelope'
+        '404':
+          description: Contract 27 error mapping; no previous sensitive data.
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                enum:
+                - no-store
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MerErrorEnvelope'
+        '409':
+          description: Contract 27 error mapping; no previous sensitive data.
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                enum:
+                - no-store
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MerErrorEnvelope'
+        '503':
+          description: Contract 27 error mapping; no previous sensitive data.
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                enum:
+                - no-store
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MerErrorEnvelope'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/MerConsentRequest'
+      description: Requires real owner and approved application; does not require ALLOWED
+        workspace. Existing signed merchants retain their accepted version; V1 adds
+        no re-signing flow. Revalidate identity/scope on replay.
   /c/orders:
     post:
       tags:
@@ -4901,6 +5800,374 @@ components:
           schema:
             $ref: '#/components/schemas/ErrorEnvelope'
   schemas:
+    MerVersion:
+      type: string
+      pattern: '^(0|[1-9][0-9]{0,18})(?![\s\S])'
+      description: Nonnegative Long as String; server checks <=9223372036854775807.
+    MerAgreementVersion:
+      type: string
+      pattern: '^[A-Za-z0-9][A-Za-z0-9._-]{0,63}(?![\s\S])'
+      minLength: 1
+      maxLength: 64
+    MerContentHash:
+      type: string
+      pattern: ^[a-f0-9]{64}$
+      minLength: 64
+      maxLength: 64
+    MerPhone:
+      type: string
+      nullable: true
+      pattern: '^1[0-9]{10}(?![\s\S])'
+      minLength: 11
+      maxLength: 11
+      description: Explicit null or omission on PUT clears phone; never binds an account.
+    MerStaffView:
+      type: object
+      additionalProperties: false
+      required:
+      - merchantId
+      - storeId
+      - staffId
+      - staffName
+      - phoneMasked
+      - employmentStatus
+      - serviceEnabled
+      - version
+      properties:
+        merchantId: &id001
+          $ref: '#/components/schemas/PublicId'
+        storeId: &id002
+          $ref: '#/components/schemas/PublicId'
+        staffId:
+          $ref: '#/components/schemas/PublicId'
+        staffName: &id003
+          type: string
+          minLength: 1
+          maxLength: 64
+          pattern: \S
+        phoneMasked:
+          type: string
+          nullable: true
+          maxLength: 32
+        employmentStatus: &id004
+          type: string
+          enum:
+          - ACTIVE
+          - INACTIVE
+        serviceEnabled:
+          type: boolean
+        version:
+          $ref: '#/components/schemas/MerVersion'
+    MerStaffCreateRequest:
+      type: object
+      additionalProperties: false
+      required:
+      - merchantId
+      - storeId
+      - staffName
+      - employmentStatus
+      - serviceEnabled
+      properties:
+        merchantId: *id001
+        storeId: *id002
+        staffName: *id003
+        phone:
+          $ref: '#/components/schemas/MerPhone'
+        employmentStatus: *id004
+        serviceEnabled:
+          type: boolean
+      not:
+        type: object
+        additionalProperties: true
+        required:
+        - employmentStatus
+        - serviceEnabled
+        properties:
+          employmentStatus:
+            type: string
+            enum:
+            - INACTIVE
+          serviceEnabled:
+            type: boolean
+            enum:
+            - true
+    MerStaffUpdateRequest:
+      type: object
+      additionalProperties: false
+      required:
+      - merchantId
+      - storeId
+      - staffName
+      - expectedVersion
+      properties:
+        merchantId: *id001
+        storeId: *id002
+        staffName: *id003
+        phone:
+          $ref: '#/components/schemas/MerPhone'
+        expectedVersion:
+          $ref: '#/components/schemas/MerVersion'
+    MerStaffStateRequest:
+      type: object
+      additionalProperties: false
+      required:
+      - merchantId
+      - storeId
+      - expectedVersion
+      properties:
+        merchantId: *id001
+        storeId: *id002
+        expectedVersion:
+          $ref: '#/components/schemas/MerVersion'
+    MerConsentRequest:
+      type: object
+      additionalProperties: false
+      required:
+      - merchantId
+      - agreementVersion
+      - contentSha256
+      - accepted
+      properties:
+        merchantId:
+          $ref: '#/components/schemas/PublicId'
+        agreementVersion:
+          $ref: '#/components/schemas/MerAgreementVersion'
+        contentSha256:
+          $ref: '#/components/schemas/MerContentHash'
+        accepted:
+          type: boolean
+          enum:
+          - true
+    MerConsentView:
+      type: object
+      additionalProperties: false
+      required:
+      - merchantId
+      - agreementVersion
+      - acceptedAt
+      - signingStatus
+      properties:
+        merchantId:
+          $ref: '#/components/schemas/PublicId'
+        agreementVersion:
+          $ref: '#/components/schemas/MerAgreementVersion'
+        acceptedAt:
+          $ref: '#/components/schemas/AuthTimestamp'
+        signingStatus:
+          type: string
+          enum:
+          - SIGNED
+    MerAgreementView:
+      oneOf:
+      - type: object
+        additionalProperties: false
+        required:
+        - merchantId
+        - agreementVersion
+        - content
+        - contentSha256
+        - signingStatus
+        properties:
+          merchantId: &id005
+            $ref: '#/components/schemas/PublicId'
+          agreementVersion: &id006
+            $ref: '#/components/schemas/MerAgreementVersion'
+          content: &id007
+            type: string
+            minLength: 1
+            maxLength: 65535
+            description: UTF-8 plain text; server additionally enforces <=65535 bytes.
+          contentSha256: &id008
+            $ref: '#/components/schemas/MerContentHash'
+          signingStatus:
+            type: string
+            enum:
+            - NOT_SIGNED
+      - type: object
+        additionalProperties: false
+        required:
+        - merchantId
+        - agreementVersion
+        - content
+        - contentSha256
+        - signingStatus
+        - acceptedVersion
+        - acceptedAt
+        properties:
+          merchantId: *id005
+          agreementVersion: *id006
+          content: *id007
+          contentSha256: *id008
+          signingStatus:
+            type: string
+            enum:
+            - SIGNED
+          acceptedVersion:
+            $ref: '#/components/schemas/MerAgreementVersion'
+          acceptedAt:
+            $ref: '#/components/schemas/AuthTimestamp'
+    MerStaffPage:
+      type: object
+      additionalProperties: false
+      required:
+      - items
+      - page
+      - pageSize
+      - total
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/MerStaffView'
+        page:
+          type: integer
+          minimum: 1
+        pageSize:
+          type: integer
+          minimum: 1
+          maximum: 100
+        total:
+          type: integer
+          minimum: 0
+    MerStaffViewEnvelope:
+      type: object
+      additionalProperties: false
+      required:
+      - success
+      - code
+      - message
+      - data
+      - traceId
+      properties:
+        success:
+          type: boolean
+          enum:
+          - true
+        code:
+          type: string
+          enum:
+          - SUCCESS
+        message:
+          type: string
+          minLength: 1
+        data:
+          $ref: '#/components/schemas/MerStaffView'
+        traceId:
+          type: string
+          minLength: 1
+    MerStaffPageEnvelope:
+      type: object
+      additionalProperties: false
+      required:
+      - success
+      - code
+      - message
+      - data
+      - traceId
+      properties:
+        success:
+          type: boolean
+          enum:
+          - true
+        code:
+          type: string
+          enum:
+          - SUCCESS
+        message:
+          type: string
+          minLength: 1
+        data:
+          $ref: '#/components/schemas/MerStaffPage'
+        traceId:
+          type: string
+          minLength: 1
+    MerAgreementViewEnvelope:
+      type: object
+      additionalProperties: false
+      required:
+      - success
+      - code
+      - message
+      - data
+      - traceId
+      properties:
+        success:
+          type: boolean
+          enum:
+          - true
+        code:
+          type: string
+          enum:
+          - SUCCESS
+        message:
+          type: string
+          minLength: 1
+        data:
+          $ref: '#/components/schemas/MerAgreementView'
+        traceId:
+          type: string
+          minLength: 1
+    MerConsentViewEnvelope:
+      type: object
+      additionalProperties: false
+      required:
+      - success
+      - code
+      - message
+      - data
+      - traceId
+      properties:
+        success:
+          type: boolean
+          enum:
+          - true
+        code:
+          type: string
+          enum:
+          - SUCCESS
+        message:
+          type: string
+          minLength: 1
+        data:
+          $ref: '#/components/schemas/MerConsentView'
+        traceId:
+          type: string
+          minLength: 1
+    MerErrorEnvelope:
+      type: object
+      additionalProperties: false
+      required:
+      - success
+      - code
+      - message
+      - data
+      - traceId
+      properties:
+        success:
+          type: boolean
+          enum:
+          - false
+        code:
+          type: string
+          enum:
+          - COMMON_INVALID_ARGUMENT
+          - COMMON_UNAUTHORIZED
+          - COMMON_FORBIDDEN
+          - COMMON_NOT_FOUND
+          - COMMON_CONFLICT
+          - IDEMPOTENCY_KEY_CONFLICT
+          - COMMON_DEPENDENCY_UNAVAILABLE
+        message:
+          type: string
+          minLength: 1
+        data:
+          type: object
+          nullable: true
+          enum:
+          - null
+        traceId:
+          type: string
+          minLength: 1
     DisplayOrderStatus:
       type: string
       enum:

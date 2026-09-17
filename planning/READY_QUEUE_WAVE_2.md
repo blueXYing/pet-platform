@@ -9,7 +9,7 @@
 | AUTH-001 / Backend Core | PR14/15规范，PR17运营Web，PR31 C会话/HTTP，PR33微信Provider，PR38页面接入；PR36历史冒烟+W3模拟器真实wx.login/code2session落库（A类）与替身全链路（C类） | 真机getPhoneNumber/键盘/授权、正式发号宿主/环境门禁；SMS/密码/刷新与商家准入另按既有门禁处理 | MINI002～004、WEB002/PERM；W2-AUTH-001～004 |
 | PLAT-003 / Backend Core | PR18/19规范与权威映射，PR20 Outbox组件 | 生产ID/迁移、业务事件生产者/消费者、对账告警和归档策略；装配默认关闭 | TASK005/CON020/FLT012；W2-OUTBOX-001～003 |
 | USR-001 / Backend Core | PR22/23契约、PR24宠物域与幂等服务；PR31接入HTTP；W3模拟器昵称/宠物读改写 UI→HTTP→DB 联调通过（替身后端） | 生产ID/迁移启用；完整真实业务E2E与真机 | W2-USR-001～004；宠物快照前置 |
-| MER-001 / Backend Core | 本轮未发现对应实现PR | 商家/门店/人员契约与准入实施可启动；签约按OD-W0-002裁决（电子协议+勾选同意，SSOT §26）设计，协议版本管理子项随契约确认 | MER001/ORD009/010；W2-MER-001～003 |
+| MER-001 / Backend Core | 三项已批准并完成权威契约同步，OpenAPI新增8操作；业务未实现 | 按27号契约继续领域实现与申请事实/成员绑定/在途守卫交接；PR50待合入，不重复索取已批决定 | MER001/ORD009/010；W2-MER-001～003 |
 | SVC-001 / Backend Core | 本轮未发现对应实现PR | MER交接、服务域契约及资格事实；不提前实现预约交易 | ORD008；W2-SVC-001～003 |
 | C-002 / C-End | PR25编辑资料；PR34宠物页、公共底栏、分包和标题修正；PR38真实接口接入（W3模拟器联调通过，替身后端） | 独立编辑页设计、芯片/记录字段CCR、上传/更多页面与真机/VIS | MINI004/VIS001～004；W2-FE-001～005 |
 | C-003 / C-End | 本轮未发现产品页交付PR | C-End文件所有权释放、商家/服务/可用性契约和原图；真实查询需MER/SVC/SCH | MINI004/VIS；不做C004支付 |

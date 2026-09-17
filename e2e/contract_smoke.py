@@ -72,6 +72,16 @@ AUTH_OPERATIONS = {
     'adminEnableRole': ('post', '/admin/roles/{roleId}/enable'),
 }
 ANONYMOUS_ATTEMPTS = {'cAuthCreateAttempt', 'adminAuthCreateAttempt'}
+MERCHANT_OPERATIONS = {
+    'merchantListStaff': ('get', '/merchant/staff'),
+    'merchantCreateStaff': ('post', '/merchant/staff'),
+    'merchantGetStaff': ('get', '/merchant/staff/{staffId}'),
+    'merchantUpdateStaff': ('put', '/merchant/staff/{staffId}'),
+    'merchantEnableStaff': ('post', '/merchant/staff/{staffId}/enable'),
+    'merchantDisableStaff': ('post', '/merchant/staff/{staffId}/disable'),
+    'merchantGetAgreement': ('get', '/merchant/agreement'),
+    'merchantConsentAgreement': ('post', '/merchant/agreement/consent'),
+}
 MINI_ATTEMPT_OPERATIONS = {
     'cAuthWechatLogin', 'cAuthSendSms', 'cAuthSmsLogin', 'cAuthPasswordLogin',
     'cAccountResetPassword', 'cAuthGetAttemptResult', 'cAuthGetSmsIntent',
@@ -244,6 +254,17 @@ def check(spec):
                         if operation_id in LEGACY_CREATE_SCHEMAS:
                             expected_ref = '#/components/schemas/' + LEGACY_CREATE_SCHEMAS[operation_id]
                             assert created == {'application/json': {'schema': {'$ref': expected_ref}}}, f'Legacy create schema missing: {operation_id}'
+            if operation_id in MERCHANT_OPERATIONS:
+                assert (method, path) == MERCHANT_OPERATIONS[operation_id], f'Merchant operation moved: {operation_id}'
+                assert operation.get('security') == [{'bearerAuth': []}], f'Merchant security changed: {operation_id}'
+                assert operation.get('x-contract-status') == 'ACCEPTED_CONTRACT_NOT_IMPLEMENTED', f'Merchant implementation status changed: {operation_id}'
+                responses = operation['responses']
+                assert {'200', '400', '401', '403', '404', '409', '503'} <= responses.keys(), f'Merchant responses missing: {operation_id}'
+                for code in ('400', '401', '403', '404', '409', '503'):
+                    assert dereference(spec, responses[code])['content']['application/json']['schema'] == {'$ref': '#/components/schemas/MerErrorEnvelope'}, f'Merchant error data unsafe: {operation_id}'
+                if operation_id in {'merchantCreateStaff', 'merchantConsentAgreement'}:
+                    assert '201' in responses, f'Merchant create response missing: {operation_id}'
+                    assert responses['201']['content'] == responses['200']['content'], f'Merchant replay changed: {operation_id}'
             if method in {'post', 'put', 'patch', 'delete'}:
                 assert {'$ref': '#/components/parameters/RequestId'} in parameters, f'Missing request ID: {operation_id}'
                 writes += 1
@@ -257,7 +278,7 @@ def check(spec):
     assert legacy_seen == LEGACY_OPERATIONS.keys(), f'Legacy operations missing: {LEGACY_OPERATIONS.keys() - legacy_seen}'
     assert legacy_writes == 13, 'Legacy write surface changed'
     assert legacy_creates == LEGACY_CREATES, 'Legacy create surface changed'
-    assert operations == LEGACY_OPERATIONS.keys() | AUTH_OPERATIONS.keys(), 'Unexpected or missing reviewed operations'
+    assert operations == LEGACY_OPERATIONS.keys() | AUTH_OPERATIONS.keys() | MERCHANT_OPERATIONS.keys(), 'Unexpected or missing reviewed operations'
     schemes = spec['components']['securitySchemes']
     assert schemes['bearerAuth']['type'] == 'http' and schemes['bearerAuth']['scheme'] == 'bearer'
     for scheme, location, name in [('authAttempt', 'header', 'X-Auth-Attempt'),
@@ -289,6 +310,7 @@ def check(spec):
     return {'operations': len(operations), 'writesWithRequestId': writes,
             'legacyOperations': len(legacy_seen), 'legacyWrites': legacy_writes,
             'legacyCreates': len(legacy_creates), 'authOperations': len(operations & AUTH_OPERATIONS.keys()),
+            'merchantOperations': len(operations & MERCHANT_OPERATIONS.keys()),
             'resolvedRefs': len(refs), 'stringIdProperties': ids}
 
 

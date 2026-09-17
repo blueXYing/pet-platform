@@ -1,15 +1,19 @@
 # Work State
 
 PROJECT: 宠物平台 V1.0
-STATE_VERSION: 6.4
+STATE_VERSION: 6.6
 UPDATED_AT: 2026-09-17
 
 CURRENT_PHASE: W3_INTEGRATION_REVIEW
-CURRENT_STATUS: W3_ACCEPTANCE_MERGED_MER001_DISPATCHABLE
-NEXT_PHASE: MER/SVC 前置裁决与 W3 后续阶段派发
-NEXT_PHASE_APPROVED: NO
+CURRENT_STATUS: MER001_CONTRACT_SYNCED_PENDING_MERGE
+NEXT_PHASE: MER-001 已批范围领域实施与依赖交接
+NEXT_PHASE_APPROVED: YES
 
 ## 当前结论
+
+2026-09-17 MER-001三项确认齐备：用户依次明确“不新增强制重签”“下线后旧订单继续履约”“技术契约 确认”，见[批准回执](planning/ccr/CCR-W2-API-001/merchant-product-decisions.md)。已同步SSOT §26、PRD25、[27号接口契约](docs/04-api/27-Merchant-Domain-Contract-v0.1.md)、[存储映射](docs/03-database/27-Merchant-Domain-Storage-v0.1.md)、07/10/11/12；OpenAPI新增8项已批操作，实际实现状态明确NOT_IMPLEMENTED。NEXT_PHASE_APPROVED:YES限用户已授权的MER-001已批范围，不授权合并、生产发布或未决依赖放行。PR50未获合并授权。冻结写动作、成员绑定、申请/审核事实、主账号核销映射、人员停用在途指派守卫仍保留；实际DDL和迁移尚未交付。
+
+本轮基线develop `609153b`（PR49），独立分支 `codex/mer001-contract-20260917`，唯一Writer为当前任务，负责获批权威文档和配套离线契约测试；无其他Worker。原提案22项未来业务验收设计仍不标PASS；本轮新增9项OpenAPI反例回归，91项离线回归通过。没有新增业务实现、实际DDL/迁移或生产启用，主目录用户project.config.json保持原样。
 
 Wave1 工程壳已完成；Wave2 已按逐阶段授权实施完毕（PR6～#44 全部合入）。2026-09-17 W3 整合验收已执行：核验基线 **develop `37350d0`**（PR45 合并后，CI 六项成功，无在途 PR）；后端全量 261 项 JUnit（34 套件，含 22 项 ArchUnit）0 失败/跳过，逐模块计数与各 PR 合入证据一致；MyBatis 迁移组合事实（10 个 mapper XML 入构建产物、classpath*: 装配、生产主代码仅剩 boot Flyway 校验一处 java.sql）与 22 号裁决回执相符；生产门禁（pet.auth.c/admin、pet.outbox、task 装配、Snowflake rejecting、默认 Flyway 目录）全部确认默认关闭。验收详情见[W3 整合验收报告](planning/progress/2026-09-17/W3_INTEGRATION_ACCEPTANCE.md)（分支 `codex/w3-integration-acceptance-20260917` 的 PR 待人工审阅合并）。
 
