@@ -5802,11 +5802,11 @@ components:
   schemas:
     MerVersion:
       type: string
-      pattern: ^(0|[1-9][0-9]{0,18})$
+      pattern: '^(0|[1-9][0-9]{0,18})(?![\s\S])'
       description: Nonnegative Long as String; server checks <=9223372036854775807.
     MerAgreementVersion:
       type: string
-      pattern: ^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$
+      pattern: '^[A-Za-z0-9][A-Za-z0-9._-]{0,63}(?![\s\S])'
       minLength: 1
       maxLength: 64
     MerContentHash:
@@ -5817,7 +5817,9 @@ components:
     MerPhone:
       type: string
       nullable: true
-      pattern: ^1[0-9]{10}$
+      pattern: '^1[0-9]{10}(?![\s\S])'
+      minLength: 11
+      maxLength: 11
       description: Explicit null or omission on PUT clears phone; never binds an account.
     MerStaffView:
       type: object

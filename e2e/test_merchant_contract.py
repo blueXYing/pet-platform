@@ -34,6 +34,7 @@ class MerchantContract(unittest.TestCase):
         self.valid('MerConsentRequest', valid)
         for field, value in [('accepted', False), ('accepted', 1), ('accepted', None),
                              ('contentSha256', 'bad'), ('agreementVersion', ''),
+                             ('agreementVersion', 'merchant-v1\n'),
                              ('merchantId', 9007199254740993)]:
             with self.subTest(field=field, value=value):
                 self.invalid('MerConsentRequest', {**valid, field: value})
@@ -53,6 +54,7 @@ class MerchantContract(unittest.TestCase):
         self.invalid('MerStaffCreateRequest', {**staff, 'userId': '789'})
         self.invalid('MerStaffCreateRequest', {**staff, 'employmentStatus': 'INACTIVE'})
         self.invalid('MerStaffCreateRequest', {**staff, 'staffName': '   '})
+        self.invalid('MerStaffCreateRequest', {**staff, 'phone': '13800138000\n'})
         self.valid('MerStaffCreateRequest', {**staff, 'employmentStatus': 'INACTIVE', 'serviceEnabled': False})
 
     def test_staff_update_rejects_undeclared_mutations_and_numeric_versions(self):
@@ -62,6 +64,7 @@ class MerchantContract(unittest.TestCase):
         self.invalid('MerStaffUpdateRequest', {**update, 'serviceEnabled': True})
         self.invalid('MerStaffUpdateRequest', {**update, 'expectedVersion': 0})
         self.invalid('MerStaffUpdateRequest', {**update, 'expectedVersion': '-1'})
+        self.invalid('MerStaffUpdateRequest', {**update, 'expectedVersion': '0\n'})
 
     def test_agreement_response_distinguishes_signed_from_not_signed(self):
         view = self.consent()
