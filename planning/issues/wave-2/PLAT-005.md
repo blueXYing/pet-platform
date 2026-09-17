@@ -5,7 +5,7 @@ Epic: EPIC-01
 Story: ST-PLAT-02
 Priority: P0
 Wave: 2
-Status: READY_TO_CLOSE
+Status: DONE
 Dependencies: PLAT-001
 Phase Readiness: DOD_VERIFIED_W3_CLOSABLE
 
@@ -14,6 +14,10 @@ Phase Readiness: DOD_VERIFIED_W3_CLOSABLE
 ## 2026-09-17 W3 DoD 核对结论
 
 按本 Issue 原 AC 与 PR21 合入证据逐项核对（详见[W3 整合验收报告 §5](../../progress/2026-09-17/W3_INTEGRATION_ACCEPTANCE.md)）：AC1～AC4、Required Tests、21号补充合入、CI 六项、ARCH001～005 与人工合并条件全部满足；W3 联调中实测 401/500 包裹体、X-Trace-Id 回显与日志仅记异常类名。**结论：可关闭**（Status 置 READY_TO_CLOSE，Catalog 关闭由用户/Owner 确认执行）。缺口清单：无（生产日志采集/告警按原 Issue 不属于本 Issue 范围）。
+
+## 2026-09-17 关闭登记
+
+用户于 2026-09-17 指示“追踪矩阵+Catalog 状态刷新”维护任务，确认按 W3 验收结论关闭本 Issue：Catalog Status → DONE（W3 核对记录见上方小节与[验收报告 §5](../../progress/2026-09-17/W3_INTEGRATION_ACCEPTANCE.md)，PR46 已合入）。
 
 ## 2026-09-16 当前阶段
 

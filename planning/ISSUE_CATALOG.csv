@@ -2,12 +2,12 @@ IssueID,Title,Role,Epic,Story,Priority,Dependencies,AllowedModules,Tests,Wave,St
 GOV-001,初始化统一仓库目录与最终 docs 基线,Backend Core,EPIC-00,ST-GOV-01,P0,,root docs .ai .github scripts,"ARCH-001,ARCH-002",1,DONE
 GOV-002,启用架构边界检查与基础 CI Gate,QA,EPIC-00,ST-GOV-01,P0,GOV-001,.github backend/pet-architecture-test backend/tools,ARCH-001~ARCH-005,1,DONE
 PLAT-001,验证并修复 Maven 后端骨架可构建,Backend Core,EPIC-01,ST-PLAT-01,P0,GOV-001,backend/**,ARCH-001~ARCH-003,1,DONE
-PLAT-002,公共 ID/时间/金额/CommandContext/幂等基线,Backend Core,EPIC-01,ST-PLAT-02,P0,PLAT-001,backend/pet-common backend/*-api,"ORD-011,ORD-013",2,BLOCKED
-PLAT-003,Transactional Outbox 基础实现,Backend Core,EPIC-01,ST-PLAT-02,P0,PLAT-001,backend/pet-event-* backend/pet-boot,TASK-005,2,BLOCKED
-PLAT-004,Durable AsyncTask Worker/Lease 基础实现,Backend Core,EPIC-01,ST-PLAT-02,P0,PLAT-001,backend/pet-task-core backend/pet-boot,"TASK-001,TASK-002",2,BLOCKED
-AUTH-001,登录认证/RBAC与同小程序身份契约和实现,Backend Core,EPIC-02,ST-ID-01,P0,PLAT-001,backend/pet-user-* backend/pet-admin-* backend/pet-boot,"权限/登录P0,MINI-002~MINI-004,WEB-002,PERM-001~PERM-006",2,BLOCKED
-USR-001,用户与宠物档案领域实现,Backend Core,EPIC-02,ST-PET-01,P0,PLAT-002,backend/pet-user-*,订单宠物快照前置,2,BLOCKED
-MER-001,商家/门店基础领域与新单资格,Backend Core,EPIC-03,ST-MER-01,P0,PLAT-002,backend/pet-merchant-*,"MER-001,ORD-009,ORD-010",2,BLOCKED
+PLAT-002,公共 ID/时间/金额/CommandContext/幂等基线,Backend Core,EPIC-01,ST-PLAT-02,P0,PLAT-001,backend/pet-common backend/*-api,"ORD-011,ORD-013",2,IN_PROGRESS
+PLAT-003,Transactional Outbox 基础实现,Backend Core,EPIC-01,ST-PLAT-02,P0,PLAT-001,backend/pet-event-* backend/pet-boot,TASK-005,2,IN_PROGRESS
+PLAT-004,Durable AsyncTask Worker/Lease 基础实现,Backend Core,EPIC-01,ST-PLAT-02,P0,PLAT-001,backend/pet-task-core backend/pet-boot,"TASK-001,TASK-002",2,IN_PROGRESS
+AUTH-001,登录认证/RBAC与同小程序身份契约和实现,Backend Core,EPIC-02,ST-ID-01,P0,PLAT-001,backend/pet-user-* backend/pet-admin-* backend/pet-boot,"权限/登录P0,MINI-002~MINI-004,WEB-002,PERM-001~PERM-006",2,IN_PROGRESS
+USR-001,用户与宠物档案领域实现,Backend Core,EPIC-02,ST-PET-01,P0,PLAT-002,backend/pet-user-*,订单宠物快照前置,2,IN_PROGRESS
+MER-001,商家/门店基础领域与新单资格,Backend Core,EPIC-03,ST-MER-01,P0,PLAT-002,backend/pet-merchant-*,"MER-001,ORD-009,ORD-010",2,PLANNED
 SVC-001,服务项目领域、可预约资格与订单快照查询,Backend Core,EPIC-04,ST-SVC-01,P0,MER-001,backend/pet-service-*,ORD-008,2,BLOCKED
 SCH-001,分钟级 Availability Query,Backend Core,EPIC-05,ST-SCH-01,P0,SVC-001,backend/pet-schedule-*,"ORD-006,ORD-007",3,BLOCKED
 SCH-002,"effectiveCapacity=min(configured,availableStaff)",Backend Core,EPIC-05,ST-SCH-01,P0,SCH-001,backend/pet-schedule-* backend/pet-merchant-api,"ORD-004,ORD-005,CON-001,CON-002",3,BLOCKED
@@ -43,7 +43,7 @@ ADM-001,运营商家/服务治理API,Backend Core,EPIC-18,ST-ADM-01,P0,"MER-001,
 ADM-002,运营订单/退款/核销查询与异常处置API,Transaction Backend,EPIC-18,ST-ADM-02,P0,"REF-003,VER-001",backend/pet-admin-* backend/pet-order-api backend/pet-refund-api,"运营P0,PERM-002,PERM-004~PERM-006",7,BLOCKED
 ADM-003,运营售后/评价治理API,Transaction Backend,EPIC-18,ST-ADM-03,P0,"AFS-002,REV-001",backend/pet-admin-*,"AFS/REV运营验收,PERM-001,PERM-005,PERM-006",8,BLOCKED
 C-001,统一微信小程序壳、用户路由、状态与平台Mock,C-End Frontend,EPIC-20,ST-FE-C-01,P0,GOV-001,frontend-miniapp/* frontend-miniapp/config/** frontend-miniapp/src/app* frontend-miniapp/src/consumer/** frontend-miniapp/src/shared/**,"typecheck,MINI-001,MINI-003,MINI-004,MINI-005",1,DONE
-C-002,C端登录/个人中心/宠物档案,C-End Frontend,EPIC-02,ST-ID-01,P0,C-001,frontend-miniapp/src/consumer/**,"C端登录/宠物E2E,MINI-004,VIS-001~VIS-004",2,BLOCKED
+C-002,C端登录/个人中心/宠物档案,C-End Frontend,EPIC-02,ST-ID-01,P0,C-001,frontend-miniapp/src/consumer/**,"C端登录/宠物E2E,MINI-004,VIS-001~VIS-004",2,IN_PROGRESS
 C-003,C端首页/商家服务/商家详情/预约页,C-End Frontend,EPIC-04,ST-SVC-01,P0,C-001,frontend-miniapp/src/consumer/**,"Mock UI + contract,MINI-004,VIS-001~VIS-004",2,BLOCKED
 C-004,C端订单确认/支付/订单列表详情/核销码,C-End Frontend,EPIC-06,ST-ORD-01,P0,C-001,frontend-miniapp/src/consumer/**,"E2E-01,E2E-02,MINI-004,VIS-001~VIS-004",3,BLOCKED
 C-005,C端改期/退款/售后/评价,C-End Frontend,EPIC-11,ST-AFS-01,P0,C-001,frontend-miniapp/src/consumer/**,"E2E-03~E2E-07,MINI-004,VIS-001~VIS-004",4,BLOCKED
@@ -62,5 +62,5 @@ QA-002,Schedule容量/优惠券冻结并发测试,QA,EPIC-20,ST-QA-02,P0,"SCH-00
 QA-003,支付超时×回调/迟到支付并发测试,QA,EPIC-20,ST-QA-02,P0,PAY-004,e2e/** backend/**/src/test,"CON-014,CON-015,FLT-003~FLT-005",7,BLOCKED
 QA-004,CREATE_REFUND×VERIFY真实数据库并发测试,QA,EPIC-20,ST-QA-02,P0,VER-002,e2e/** backend/**/src/test,"CON-007,CON-008",7,BLOCKED
 QA-005,小程序用户/商家与运营Web主链路E2E,QA,EPIC-20,ST-QA-03,P0,"C-005,M-004,A-004,AFS-002",e2e/**,"E2E-01~E2E-08,MINI-002~MINI-006,WEB-002,VIS-001~VIS-004,PERM-001~PERM-006",9,BLOCKED
-PLAT-005,可观测与统一异常基座(MDC/全局异常/统一包裹),Backend Core,EPIC-01,ST-PLAT-02,P0,PLAT-001,pet-common pet-boot,"ARCH-001~005,PLAT005-FILTER/HANDLER",2,IN_PROGRESS
-PLAT-006,持久层统一MyBatis迁移(22号裁决),Backend Core,EPIC-01,ST-PLAT-02,P1,AUTH-001-c-login交付,pet-*持久层与mapper,"ARCH001~005,既有MySQL测试回归",2,PLANNED
+PLAT-005,可观测与统一异常基座(MDC/全局异常/统一包裹),Backend Core,EPIC-01,ST-PLAT-02,P0,PLAT-001,pet-common pet-boot,"ARCH-001~005,PLAT005-FILTER/HANDLER",2,DONE
+PLAT-006,持久层统一MyBatis迁移(22号裁决),Backend Core,EPIC-01,ST-PLAT-02,P1,AUTH-001-c-login交付,pet-*持久层与mapper,"ARCH001~005,既有MySQL测试回归",2,DONE
