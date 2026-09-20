@@ -1,0 +1,10 @@
+{
+  "scope": "Real WeChat DevTools filesystem, task-owned 4-byte diagnostic file; removed after read",
+  "statSize": 4,
+  "readResultConstructor": "ArrayBuffer",
+  "readResultByteLength": 4,
+  "instanceofCurrentRealmArrayBuffer": false,
+  "consequence": "Existing instanceof guard rejects a valid native binary result before upload",
+  "backendUploadRequestsBeforeFix": 0,
+  "credentialsOrUserFileBytesCaptured": false
+}

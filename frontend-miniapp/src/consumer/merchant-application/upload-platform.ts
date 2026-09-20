@@ -2,6 +2,7 @@ import Taro from '@tarojs/taro'
 import { sha256 } from '@noble/hashes/sha256'
 import { bytesToHex } from '@noble/hashes/utils'
 import type { UploadFiles } from './upload'
+import { privateUploadBytes } from './upload-bytes'
 
 export function privateUploadFiles(): UploadFiles {
   const fs = Taro.getFileSystemManager()
@@ -16,9 +17,7 @@ export function privateUploadFiles(): UploadFiles {
     async save(path, requestId) {
       const info = fs.statSync(path)
       if (Array.isArray(info) || info.size < 1 || info.size > 10485760) throw new Error('UPLOAD_FILE_INVALID')
-      const data = fs.readFileSync(path)
-      if (!(data instanceof ArrayBuffer)) throw new Error('UPLOAD_FILE_INVALID')
-      const bytes = new Uint8Array(data)
+      const bytes = privateUploadBytes(fs.readFileSync(path))
       const png = [137, 80, 78, 71, 13, 10, 26, 10].every((byte, index) => bytes[index] === byte)
       const jpeg = bytes[0] === 255 && bytes[1] === 216 && bytes[2] === 255
       if (!png && !jpeg) throw new Error('UPLOAD_FILE_INVALID')
@@ -31,9 +30,8 @@ export function privateUploadFiles(): UploadFiles {
     async inspect(path) {
       const info = fs.statSync(path)
       if (Array.isArray(info) || info.size < 1 || info.size > 10485760) throw new Error('UPLOAD_FILE_INVALID')
-      const data = fs.readFileSync(path)
-      if (!(data instanceof ArrayBuffer) || data.byteLength < 1 || data.byteLength > 10485760) throw new Error('UPLOAD_FILE_INVALID')
-      return { sha256: bytesToHex(sha256(new Uint8Array(data))), bytes: data.byteLength }
+      const bytes = privateUploadBytes(fs.readFileSync(path))
+      return { sha256: bytesToHex(sha256(bytes)), bytes: bytes.byteLength }
     },
     async remove(path) {
       if (!path.startsWith(root) || !owns(path, path.slice(root.length, -4))) throw new Error('UPLOAD_JOURNAL_INVALID')
