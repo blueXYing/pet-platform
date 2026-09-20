@@ -1,0 +1,33 @@
+{
+  "baseline": "c04df900cd7085ee16a68eb93a7951b51080ae5d",
+  "scope": "documentation only; no business or device tests rerun",
+  "checks": {
+    "relative_links": {
+      "result": "PASS",
+      "count": 33
+    },
+    "markdown_tables": {
+      "result": "PASS",
+      "count": 6
+    },
+    "state_catalog_consistency": "PASS",
+    "history_original_text_preserved": "PASS",
+    "documentation_only": "PASS",
+    "git_diff_check": "PASS",
+    "architecture_module_dependencies": "PASS (41 reactor modules, 17 biz POMs)",
+    "architecture_display_status": "PASS",
+    "user_config_unchanged": "6A1814D6B2C0F733193F57354761268A398EC128588E955F08983DFBF7C95561",
+    "baseline_ci": "35502420044: 6/6 success"
+  },
+  "files": [
+    "WORK_STATE.md",
+    "planning/BLOCKED_QUEUE.md",
+    "planning/OPEN_DECISIONS.md",
+    "planning/READY_QUEUE_WAVE_2.md",
+    "planning/history/WORK_STATE_BEFORE_20260920_LEDGER_SYNC.md",
+    "planning/progress/2026-09-20/PROGRESS_LEDGER_SYNC.md",
+    "planning/progress/2026-09-20/baseline-ci.json",
+    "planning/progress/2026-09-20/merged-pr-snapshot.json",
+    "planning/progress/2026-09-20/validation.json"
+  ]
+}

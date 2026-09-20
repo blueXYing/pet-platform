@@ -1,0 +1,37 @@
+{
+  "conclusion": "success",
+  "headSha": "c04df900cd7085ee16a68eb93a7951b51080ae5d",
+  "jobs": [
+    {
+      "conclusion": "success",
+      "name": "repository-policy",
+      "status": "completed"
+    },
+    {
+      "conclusion": "success",
+      "name": "backend",
+      "status": "completed"
+    },
+    {
+      "conclusion": "success",
+      "name": "frontend-inventory",
+      "status": "completed"
+    },
+    {
+      "conclusion": "success",
+      "name": "contract-smoke",
+      "status": "completed"
+    },
+    {
+      "conclusion": "success",
+      "name": "web-build",
+      "status": "completed"
+    },
+    {
+      "conclusion": "success",
+      "name": "miniapp-weapp-build",
+      "status": "completed"
+    }
+  ],
+  "url": "https://github.com/blueXYing/pet-platform/actions/runs/35502420044"
+}

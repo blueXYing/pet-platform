@@ -1,0 +1,90 @@
+[
+  {
+    "headRefName": "codex/mer001-private-assets-20260920",
+    "mergeCommit": {
+      "oid": "c04df900cd7085ee16a68eb93a7951b51080ae5d"
+    },
+    "mergedAt": "2026-09-20T09:28:50Z",
+    "number": 57,
+    "state": "MERGED",
+    "title": "feat(mer001): 私有材料与本地微信联调",
+    "url": "https://github.com/blueXYing/pet-platform/pull/57"
+  },
+  {
+    "headRefName": "codex/mer001-integration-20260920",
+    "mergeCommit": {
+      "oid": "8644db2496995127068dd53a8f2a55709f33d17f"
+    },
+    "mergedAt": "2026-09-20T09:21:14Z",
+    "number": 56,
+    "state": "MERGED",
+    "title": "MER-001 S7: connect application HTTP, Chengdu catalog and durable recovery",
+    "url": "https://github.com/blueXYing/pet-platform/pull/56"
+  },
+  {
+    "headRefName": "codex/mer001-pages-20260920",
+    "mergeCommit": {
+      "oid": "632ced7a1c3699b262f5ffc287c7b15c94bf56fa"
+    },
+    "mergedAt": "2026-09-20T01:54:03Z",
+    "number": 55,
+    "state": "MERGED",
+    "title": "MER-001 S6: implement Figma merchant application page",
+    "url": "https://github.com/blueXYing/pet-platform/pull/55"
+  },
+  {
+    "headRefName": "codex/mer001-application-runtime-20260917",
+    "mergeCommit": {
+      "oid": "06134f9ad041900353a29773c4888efabd32291c"
+    },
+    "mergedAt": "2026-09-20T01:53:38Z",
+    "number": 54,
+    "state": "MERGED",
+    "title": "MER-001 S5: implement application review transactions and reliable inbox",
+    "url": "https://github.com/blueXYing/pet-platform/pull/54"
+  },
+  {
+    "headRefName": "codex/mer001-application-20260917",
+    "mergeCommit": {
+      "oid": "8fa642d20dc06ce97b128255c486bf32d0789371"
+    },
+    "mergedAt": "2026-09-20T01:53:18Z",
+    "number": 53,
+    "state": "MERGED",
+    "title": "MER-001 S4: define application review contracts and tested storage",
+    "url": "https://github.com/blueXYing/pet-platform/pull/53"
+  },
+  {
+    "headRefName": "codex/mer001-agreement-20260917",
+    "mergeCommit": {
+      "oid": "65df1c3cf57d40b591b5930941673c17b648d762"
+    },
+    "mergedAt": "2026-09-17T10:00:50Z",
+    "number": 52,
+    "state": "MERGED",
+    "title": "feat(mer001): 协议同意持久化与申请审核CCR候选",
+    "url": "https://github.com/blueXYing/pet-platform/pull/52"
+  },
+  {
+    "headRefName": "codex/mer001-foundation-20260917",
+    "mergeCommit": {
+      "oid": "5ee8f750f6f5c5f26f344fc82d1538ad3dd8359d"
+    },
+    "mergedAt": "2026-09-17T08:58:57Z",
+    "number": 51,
+    "state": "MERGED",
+    "title": "feat(mer001): 商家主账号只读基础与真实MySQL回归",
+    "url": "https://github.com/blueXYing/pet-platform/pull/51"
+  },
+  {
+    "headRefName": "codex/mer001-contract-20260917",
+    "mergeCommit": {
+      "oid": "0ade8bc8d0deec77f6719d031629102a959511c0"
+    },
+    "mergedAt": "2026-09-17T08:12:36Z",
+    "number": 50,
+    "state": "MERGED",
+    "title": "docs(mer001): 同步已批准商家域契约与产品裁决",
+    "url": "https://github.com/blueXYing/pet-platform/pull/50"
+  }
+]
