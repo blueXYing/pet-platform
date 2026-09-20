@@ -9,6 +9,18 @@ test('native foreign-realm ArrayBuffer is accepted without instanceof and preser
   assert.deepEqual([...privateUploadBytes(foreign)], [137, 80, 78, 71])
   assert.deepEqual([...privateUploadBytes(new Uint8Array([1, 2]).buffer)], [1, 2])
 })
+test('optional diagnostics expose only bounded type and length facts, never the source object', () => {
+  const facts: unknown[] = []
+  const foreign = runInNewContext('new ArrayBuffer(4)')
+  privateUploadBytes(foreign, value => facts.push(value))
+  assert.deepEqual(facts, [
+    { stage: 'native-length', nativeByteLength: 4, valueType: 'object' },
+    { stage: 'byte-view', nativeByteLength: 4, viewByteLength: 4, valueType: 'object' },
+  ])
+  const invalidFacts: unknown[] = []
+  assert.throws(() => privateUploadBytes({ byteLength: 4, privateContent: 'never-log' }, value => invalidFacts.push(value)))
+  assert.deepEqual(invalidFacts.at(-1), { stage: 'invalid', valueType: 'object' })
+})
 
 test('byteLength, constructor, toStringTag and prototype forgeries cannot impersonate buffers', () => {
   for (const forged of [null, undefined, 'test', [1, 2, 3, 4], new Uint8Array(4), new DataView(new ArrayBuffer(4)), { byteLength: 4 }, { byteLength: 4, constructor: { name: 'ArrayBuffer' }, [Symbol.toStringTag]: 'ArrayBuffer' }, Object.create(ArrayBuffer.prototype), new Proxy(new ArrayBuffer(4), {}), new SharedArrayBuffer(4)]) {

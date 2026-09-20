@@ -1,0 +1,21 @@
+{
+  "scope": "Real WeChat DevTools UI selection with real authenticated session, LAN HTTP backend, MySQL, private OSS and ClamAV",
+  "pageNotice": "材料已上传，请保存草稿。",
+  "sourceBytes": 18816,
+  "sourceIsPng": true,
+  "nativeBufferByteLength": 18816,
+  "typedViewByteLength": 18816,
+  "sourceDigestValidated": true,
+  "assetStatus": "READY",
+  "assetMediaType": "image/png",
+  "assetBytes": 18816,
+  "scannerResult": "CLEAN",
+  "assetCount": 1,
+  "uploadRequestCount": 1,
+  "pendingUploadJournalCountAfterAcknowledgement": 0,
+  "ownedUploadCopiesAfterAcknowledgement": 0,
+  "mockedLoginOrUpload": false,
+  "applicationSubmitted": false,
+  "restartAndLostResponseUiAcceptance": "NOT_EXECUTED",
+  "physicalPhoneAcceptance": "NOT_EXECUTED"
+}
