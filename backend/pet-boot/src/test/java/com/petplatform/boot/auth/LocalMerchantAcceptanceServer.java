@@ -44,6 +44,7 @@ public final class LocalMerchantAcceptanceServer {
     if (!fixture.adopted) PrivateAssetLiveSupport.initializePrivateSchemas(fixture.source);
     ConfigurableApplicationContext context = null;
     try {
+      ensureSubjectLookupPolicy(fixture.jdbc, "CN-ID15-18-USCC18-v1");
       WechatSessionProvider wechat =
           new WechatMiniApiProvider(
               WechatMiniApiProvider.Settings.production(
@@ -109,6 +110,31 @@ public final class LocalMerchantAcceptanceServer {
 
   private static String auditPath(AcceptanceFixture fixture) {
     return fixture.directory.resolve("admin-audit.ndjson").toAbsolutePath().toString();
+  }
+
+  static void ensureSubjectLookupPolicy(JdbcTemplate jdbc, String version) {
+    new org.springframework.transaction.support.TransactionTemplate(
+            new org.springframework.jdbc.datasource.DataSourceTransactionManager(
+                Objects.requireNonNull(jdbc.getDataSource())))
+        .executeWithoutResult(status -> {
+          var policies = jdbc.queryForList(
+              "SELECT key_version,algorithm FROM merchant_subject_lookup_policy WHERE policy_slot=1 FOR UPDATE");
+          if (!policies.isEmpty()) {
+            var policy = policies.getFirst();
+            if (!version.equals(policy.get("key_version"))
+                || !"HMAC-SHA-256".equals(policy.get("algorithm"))) {
+              throw new IllegalStateException("Local fixture subject lookup policy mismatch; refusing overwrite");
+            }
+            return;
+          }
+          Long evidence = jdbc.queryForObject("SELECT COUNT(*) FROM merchant_credential_evidence", Long.class);
+          Long claims = jdbc.queryForObject("SELECT COUNT(*) FROM merchant_subject_claim", Long.class);
+          if (!Long.valueOf(0).equals(evidence) || !Long.valueOf(0).equals(claims)) {
+            throw new IllegalStateException("Missing local lookup policy with existing credential data; refusing initialization");
+          }
+          jdbc.update("INSERT INTO merchant_subject_lookup_policy"
+              + "(policy_slot,key_version,algorithm,created_at) VALUES(1,?,'HMAC-SHA-256',UTC_TIMESTAMP(3))", version);
+        });
   }
 
   private static String adminCachePrefix(AcceptanceFixture fixture) {

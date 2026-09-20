@@ -24,3 +24,11 @@ JPEG/PNG与水印9项、HTTP8项、异常回归1项、架构22项，共40项定�
 MerchantApplicationLiveAcceptance在独立随机测试库内使用真实OSS、ClamAV、MySQL、Redis和默认位置输入校验，完成四份合成材料上传、申请提交、审核任务领取、单次水印读取及重复读取拒绝、人工审核通过、协议SIGNED、站内通知落库。精确清理自身测试对象失败数为0；不改用户现有草稿。该自动验收的微信身份入口使用FixedWechatProvider，不能等同于真实手机完整提交审核验收。位置Provider与装配4项及完整链路1项均通过。
 
 生产开关保持关闭；本记录不代表PR已合并或生产已部署。
+
+## 真机提交503与本地策略初始化修复
+
+手机提交返回COMMON_DEPENDENCY_UNAVAILABLE，提示credential HMAC policy缺失或不匹配。核对原测试库：merchant_subject_lookup_policy为空，申请仍DRAFT/v2，审核任务0，证件证据/主体占用均0；失败没有半提交。
+
+LocalMerchantAcceptanceServer现于启动时初始化空白测试库的固定策略版本，已有匹配策略保持不变，不匹配则拒绝覆盖；缺策略但已有证件数据也拒绝初始化。只涉及test scope，不改变生产校验、密钥或用户申请状态。完整真实依赖验收新增同版本重复初始化及版本冲突拒绝断言后通过，完整提交/审核/签约/通知及测试对象清理再次通过。
+
+本地原MySQL数据恢复，服务以未用node23接续，策略版本与实际Provider一致；LAN代理session检查返回预期未登录401。等待用户重试原提交，再核对真实申请REVIEWING及审核任务；不能将配置修复视为用户提交已成功。

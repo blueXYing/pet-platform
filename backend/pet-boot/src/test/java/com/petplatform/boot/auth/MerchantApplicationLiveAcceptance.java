@@ -57,11 +57,10 @@ class MerchantApplicationLiveAcceptance {
         new AesGcmProtectedValueProvider("live-synthetic-v1", protectedAes, protectedHmac);
     try {
       PrivateAssetLiveSupport.initializePrivateSchemas(db.source);
-      db.jdbc.update(
-          "INSERT INTO merchant_subject_lookup_policy"
-              + "(policy_slot,key_version,algorithm,created_at) VALUES(1,?,?,UTC_TIMESTAMP(3))",
-          "live-synthetic-v1",
-          "HMAC-SHA-256");
+      LocalMerchantAcceptanceServer.ensureSubjectLookupPolicy(db.jdbc, "live-synthetic-v1");
+      LocalMerchantAcceptanceServer.ensureSubjectLookupPolicy(db.jdbc, "live-synthetic-v1");
+      org.junit.jupiter.api.Assertions.assertThrows(IllegalStateException.class,
+          () -> LocalMerchantAcceptanceServer.ensureSubjectLookupPolicy(db.jdbc, "different-version"));
       context =
           new SpringApplicationBuilder(PetPlatformApplication.class)
               .initializers(
