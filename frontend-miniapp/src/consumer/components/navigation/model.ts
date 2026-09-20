@@ -16,6 +16,6 @@ export function navigationUnavailableMessage(key: ConsumerNavigationKey): string
 }
 
 export const consumerPageSections = {
-  profileEdit: 'mine', petList: 'home', petDetail: 'home', petForm: 'home',
+  profileEdit: 'mine', petList: 'home', petDetail: 'home', petForm: 'home', merchantApplication: 'mine',
 } as const satisfies Record<string, ConsumerNavigationKey>
 export type ConsumerNavigationPage = keyof typeof consumerPageSections
