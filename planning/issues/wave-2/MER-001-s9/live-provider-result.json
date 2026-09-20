@@ -1,0 +1,21 @@
+{
+  "generatedImageBytes": 3308,
+  "scannerVersion": "ClamAV 1.5.4/28128/Sat Sep 19 06:24:24 2026",
+  "cleanImageAccepted": true,
+  "standardAntivirusTestDetected": true,
+  "privateAclAccepted": true,
+  "uploadSucceeded": true,
+  "versionKind": "etag",
+  "downloadHashMatches": true,
+  "downloadBytesMatch": true,
+  "replayVersionStable": true,
+  "differentContentRejected": true,
+  "watermarkChangesBytes": true,
+  "serverSideOverwriteBlocked": true,
+  "anonymousReadHttpStatus": 403,
+  "ownSyntheticObjectDeleted": true,
+  "previousMatchingSyntheticObjectsDeleted": 1,
+  "status": "PASS",
+  "scope": "Real configured private OSS plus local real ClamAV; production provider classes; synthetic PNG only",
+  "scannerImageDigest": "sha256:9cb27d7660bdf66e9878c832cb433dd8aa152cfbe16f3c2c0084c80b04ae22b4"
+}

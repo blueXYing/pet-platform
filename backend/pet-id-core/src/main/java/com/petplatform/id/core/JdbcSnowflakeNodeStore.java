@@ -7,6 +7,7 @@ import java.time.LocalDateTime;
 import java.time.ZoneOffset;
 import java.util.Objects;
 import java.util.UUID;
+import java.util.function.LongSupplier;
 import java.util.function.Supplier;
 import javax.sql.DataSource;
 import org.mybatis.spring.SqlSessionTemplate;
@@ -20,12 +21,19 @@ import static com.petplatform.id.core.SnowflakeProviderSettings.*;
 public final class JdbcSnowflakeNodeStore {
     private final SqlSessionTemplate template;
     private final TransactionTemplate transaction;
+    private final LongSupplier monotonicNanos;
 
     private record Row(int node, String format, boolean enabled, String initialization,
                        UUID owner, long fence, long high, Long start, Long through, Long lease) {}
 
     public JdbcSnowflakeNodeStore(DataSource dataSource) {
+        this(dataSource, System::nanoTime);
+    }
+
+    /** Package-private clock seam keeps UTC/pool tests independent from shared-runner scheduling. */
+    JdbcSnowflakeNodeStore(DataSource dataSource, LongSupplier monotonicNanos) {
         Objects.requireNonNull(dataSource);
+        this.monotonicNanos = Objects.requireNonNull(monotonicNanos);
         this.template = IdMybatis.template(dataSource);
         transaction = new TransactionTemplate(new DataSourceTransactionManager(dataSource));
         transaction.setPropagationBehavior(TransactionDefinition.PROPAGATION_REQUIRES_NEW);
@@ -38,7 +46,7 @@ public final class JdbcSnowflakeNodeStore {
         Objects.requireNonNull(settings);
         Objects.requireNonNull(incarnation);
         Objects.requireNonNull(verifier);
-        long started = System.nanoTime();
+        long started = monotonicNanos.getAsLong();
         Row observed = inTransaction(() -> read(settings.nodeId(), false));
         requireUsable(observed);
         // Host I/O must not hold the node row lock. Recheck the entire observation after locking.
@@ -74,7 +82,7 @@ public final class JdbcSnowflakeNodeStore {
         Objects.requireNonNull(settings);
         Objects.requireNonNull(expected);
         if (settings.nodeId() != expected.nodeId()) throw unavailable("Node mismatch");
-        long started = System.nanoTime();
+        long started = monotonicNanos.getAsLong();
         expected.requireLocallyValid(started);
         SnowflakeNodeGrant grant = inTransaction(() -> {
             Row current = read(settings.nodeId(), true);
@@ -88,7 +96,7 @@ public final class JdbcSnowflakeNodeStore {
             }
             long absoluteNow = sampleDbTime(); // Do not use the timestamp of the waiting SELECT.
             if (current.lease <= absoluteNow) throw unavailable("Expired node permission cannot renew");
-            expected.requireLocallyValid(System.nanoTime());
+            expected.requireLocallyValid(monotonicNanos.getAsLong());
             long now = relativeMillis(absoluteNow);
             long through = current.high;
             if (through - now <= REFILL_MILLIS) {
@@ -160,8 +168,8 @@ public final class JdbcSnowflakeNodeStore {
         }
     }
 
-    private static void requireBudget(long started) {
-        long elapsed = System.nanoTime() - started;
+    private void requireBudget(long started) {
+        long elapsed = monotonicNanos.getAsLong() - started;
         if (elapsed < 0 || elapsed >= BUDGET_MILLIS * 1_000_000L) throw unavailable("Node operation budget exceeded");
     }
 

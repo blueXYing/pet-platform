@@ -273,6 +273,31 @@ public final class MerchantApplicationTypes {
       String submittedRevisionId,
       String scopeVersion) {}
 
+  /**
+   * Trusted input for proving that an admin may inspect one submitted private material. The
+   * implementation joins the caller's transaction and locks the current application/task.
+   */
+  public record MerchantPrivateMaterialAccessQuery(
+      String applicationId, String submittedRevisionId, String privateAssetId, String operatorId) {}
+
+  /** No object key, public URL, protected subject value, or bearer token is exposed here. */
+  public record MerchantPrivateMaterialAccessFact(
+      String applicationId,
+      String merchantId,
+      String cityCode,
+      String ownerUserId,
+      String scopeVersion,
+      String materialId,
+      String privateAssetId,
+      String materialSha256,
+      String materialType,
+      String mediaType,
+      int bytes,
+      String submittedRevisionId,
+      String taskStatus,
+      String claimantOperatorId,
+      String taskVersion) {}
+
   public record MerchantApplicationEligibilityFact(
       String applicationId,
       String merchantId,

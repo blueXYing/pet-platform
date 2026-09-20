@@ -1,0 +1,88 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.petplatform.thirdparty.biz.infrastructure.persistence.mapper.PrivateAssetMapper">
+  <update id="setSessionTimeZoneUtc">SET SESSION time_zone = '+00:00'</update>
+
+  <insert id="insertAsset">
+    INSERT INTO private_asset
+      (id,owner_user_id,purpose,source_object_key,object_key,source_sha256,status,version,created_at)
+    VALUES
+      (#{id},#{ownerUserId},#{purpose},#{sourceKey},#{objectKey},#{sourceSha256},'UPLOADING',0,NOW(3))
+  </insert>
+  <insert id="insertUploadBinding">
+    INSERT INTO private_asset_upload_request
+      (id,owner_user_id,request_id,request_hash,asset_id,created_at)
+    VALUES (#{id},#{ownerUserId},#{requestId},#{requestHash},#{assetId},NOW(3))
+  </insert>
+  <select id="selectUploadBindingForUpdate" resultType="com.petplatform.thirdparty.biz.infrastructure.persistence.entity.PrivateAssetUploadBindingEntity">
+    SELECT asset_id,request_hash FROM private_asset_upload_request
+    WHERE owner_user_id=#{ownerUserId} AND request_id=#{requestId} FOR UPDATE
+  </select>
+  <select id="selectAsset" resultType="com.petplatform.thirdparty.biz.infrastructure.persistence.entity.PrivateAssetEntity">
+    SELECT * FROM private_asset WHERE id=#{assetId}
+  </select>
+  <select id="selectAssetForUpdate" resultType="com.petplatform.thirdparty.biz.infrastructure.persistence.entity.PrivateAssetEntity">
+    SELECT * FROM private_asset WHERE id=#{assetId} FOR UPDATE
+  </select>
+  <select id="selectOwned" resultType="com.petplatform.thirdparty.biz.infrastructure.persistence.entity.PrivateAssetEntity">
+    SELECT * FROM private_asset
+    WHERE owner_user_id=#{ownerUserId} AND purpose=#{purpose} AND id IN
+    <foreach collection="assetIds" item="id" open="(" separator="," close=")">#{id}</foreach>
+    ORDER BY id
+  </select>
+  <update id="updateSourceStored">
+    UPDATE private_asset SET source_object_version_ref=#{versionRef},version=version+1
+    WHERE id=#{assetId} AND status IN ('UPLOADING','SCANNING')
+  </update>
+  <update id="updateScanning">
+    UPDATE private_asset SET status='SCANNING',version=version+1
+    WHERE id=#{assetId} AND status='UPLOADING'
+  </update>
+  <update id="updateRejected">
+    UPDATE private_asset SET status=#{status},scan_provider_version=#{providerVersion},
+      scan_result_code=#{resultCode},version=version+1
+    WHERE id=#{assetId} AND status IN ('UPLOADING','SCANNING')
+  </update>
+  <update id="updateReady">
+    UPDATE private_asset SET status='READY',object_version_ref=#{versionRef},
+      object_sha256=#{objectSha256},media_type=#{mediaType},bytes=#{bytes},
+      scan_provider_version=#{providerVersion},scan_result_code=#{resultCode},
+      ready_at=NOW(3),version=version+1
+    WHERE id=#{assetId} AND status IN ('UPLOADING','SCANNING')
+  </update>
+
+  <select id="selectGrantByRequestForUpdate" resultType="com.petplatform.thirdparty.biz.infrastructure.persistence.entity.PrivateAssetGrantEntity">
+    SELECT *, (expires_at&lt;=NOW(3)) AS expired FROM private_asset_read_grant
+    WHERE operator_id=#{operatorId} AND request_id=#{requestId} FOR UPDATE
+  </select>
+  <select id="selectGrantByDigestForUpdate" resultType="com.petplatform.thirdparty.biz.infrastructure.persistence.entity.PrivateAssetGrantEntity">
+    SELECT *, (expires_at&lt;=NOW(3)) AS expired FROM private_asset_read_grant
+    WHERE token_digest=#{tokenDigest} FOR UPDATE
+  </select>
+  <insert id="insertGrant">
+    INSERT INTO private_asset_read_grant
+      (id,token_digest,token_proof,token_key_version,asset_id,application_id,revision_id,material_id,
+       material_type,object_sha256,operator_id,session_id_digest,session_generation,purpose_code,
+       reason_protected,request_id,request_hash,authz_version,scope_version,status,issued_at,expires_at)
+    VALUES
+      (#{id},#{tokenDigest},#{tokenProof},#{keyVersion},#{assetId},#{applicationId},#{revisionId},#{materialId},
+       #{materialType},#{objectSha256},#{operatorId},#{sessionDigest},#{sessionGeneration},#{purposeCode},
+       #{reasonProtected},#{requestId},#{requestHash},#{authzVersion},#{scopeVersion},'ISSUED',NOW(3),
+       TIMESTAMPADD(MINUTE,5,NOW(3)))
+  </insert>
+  <update id="consumeGrant">
+    UPDATE private_asset_read_grant SET status='CONSUMED',consumed_at=NOW(3)
+    WHERE id=#{id} AND status='ISSUED' AND expires_at&gt;NOW(3)
+  </update>
+  <update id="expireGrant">
+    UPDATE private_asset_read_grant SET status='EXPIRED' WHERE id=#{id} AND status='ISSUED'
+  </update>
+  <insert id="insertAudit">
+    INSERT INTO private_asset_read_audit
+      (id,grant_id,action,result,operator_id,application_id,revision_id,asset_id,purpose_code,
+       request_id,authz_version,scope_version,occurred_at)
+    VALUES
+      (#{id},#{grantId},#{action},#{result},#{operatorId},#{applicationId},#{revisionId},#{assetId},
+       #{purposeCode},#{requestId},#{authzVersion},#{scopeVersion},NOW(3))
+  </insert>
+</mapper>

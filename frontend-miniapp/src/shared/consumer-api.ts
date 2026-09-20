@@ -6,6 +6,13 @@ export type Session = { sessionId: string; userId: string; audience: 'MINIAPP'; 
 type Grant = Session & { accessToken: string; tokenType: 'Bearer' }
 type Attempt = { attemptId: string; attemptToken: string; nextStep: string }
 export type Command = RequestSpec & { requestId: string }
+export type PrivateUploadTransport = (input: { filePath: string; requestId: string; authorization: string }) => Promise<{ statusCode: number; data: unknown }>
+export type PrivateAssetReceipt = { assetId: string; status: 'READY'; objectSha256: string; mediaType: 'image/jpeg' | 'image/png'; bytes: number }
+export function decodePrivateAsset(value: unknown): PrivateAssetReceipt {
+  const v = object(value)
+  if (Object.keys(v).sort().join(',') !== 'assetId,bytes,mediaType,objectSha256,status' || v.status !== 'READY' || !/^[a-f0-9]{64}$/.test(v.objectSha256) || !['image/jpeg', 'image/png'].includes(v.mediaType) || !Number.isSafeInteger(v.bytes) || v.bytes < 1 || v.bytes > 10485760) throw new Error('INVALID_RESPONSE')
+  return { assetId: id(v.assetId), status: 'READY', objectSha256: v.objectSha256, mediaType: v.mediaType, bytes: v.bytes }
+}
 const SESSION_KEY = 'pet.c.session.v1'
 const WRITE_KEY = 'pet.c.pending.v1'
 const LOGOUT_KEY = 'pet.c.logout.v1'
@@ -45,7 +52,7 @@ export class ConsumerApi {
   private pending: Record<string, { userId: string; command?: Command; intent?: unknown }> = {}
   currentSession: Session | null = null
   authStep: 'idle' | 'phone' | 'retry' | 'authenticated' = 'idle'
-  constructor(private transport: Transport, private store: LocalStore, readonly uuid: () => Promise<string>) {
+  constructor(private transport: Transport, private store: LocalStore, readonly uuid: () => Promise<string>, private uploadTransport?: PrivateUploadTransport) {
     try { const saved = store.get(SESSION_KEY); if (saved) this.credential = grant(saved) } catch { store.remove(SESSION_KEY) }
     // Persistent pending commands never authorize a user. They are selected only after GET session.
     try { const saved = store.get(WRITE_KEY); if (saved) this.pending = object(saved) } catch { store.remove(WRITE_KEY) }
@@ -167,6 +174,28 @@ export class ConsumerApi {
   pendingCommand(slot: string): Command | undefined {
     const saved = this.pending[slot]
     return saved?.userId === this.currentSession?.userId && saved?.userId === this.scope.current?.userId ? saved.command : undefined
+  }
+  /** Only this typed operation can use the MINIAPP credential for multipart upload. */
+  async uploadPrivateAsset(input: { filePath: string; requestId: string; ownerUserId: string }): Promise<PrivateAssetReceipt> {
+    const ticket = this.scope.capture()
+    const credential = this.credential
+    if (!credential || !this.currentSession || credential.sessionId !== this.currentSession.sessionId || credential.userId !== this.currentSession.userId || input.ownerUserId !== this.currentSession.userId || ticket.context.userId !== input.ownerUserId) throw new ApiError('COMMON_UNAUTHORIZED', 401)
+    if (ticket.context.workspace !== 'consumer') throw new Error('WORKSPACE_PATH_MISMATCH')
+    if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(input.requestId)) throw new Error('REQUEST_ID_REQUIRED')
+    if (!this.uploadTransport) throw new Error('UPLOAD_NOT_CONNECTED')
+    try {
+      const response = await this.uploadTransport({ filePath: input.filePath, requestId: input.requestId, authorization: `Bearer ${credential.accessToken}` })
+      ticket.assertCurrent()
+      if (this.credential !== credential || this.currentSession?.sessionId !== credential.sessionId) throw new StaleContextError()
+      const body = object(typeof response.data === 'string' ? JSON.parse(response.data) : response.data)
+      if (![200, 201].includes(response.statusCode) || body.code !== 'SUCCESS') throw new ApiError(typeof body.code === 'string' ? body.code : 'INVALID_RESPONSE', response.statusCode)
+      if (body.success !== true) throw new Error('INVALID_RESPONSE')
+      return decodePrivateAsset(body.data)
+    } catch (error) {
+      ticket.assertCurrent()
+      if (error instanceof ApiError && error.statusCode === 401) this.clear()
+      throw error
+    }
   }
   pendingDeletes() { return Object.keys(this.pending).filter(key => key.startsWith('delete:') && this.pendingCommand(key)).map(key => key.slice(7)) }
   pendingCommands(prefix: string) {

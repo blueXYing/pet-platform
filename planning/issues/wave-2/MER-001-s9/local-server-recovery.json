@@ -1,0 +1,18 @@
+{
+  "scope": "Manual local acceptance server only; existing test database and Redis namespaces preserved",
+  "incident": "Snowflake renewal acknowledgement exceeded the unchanged 1-second production budget; provider failed closed",
+  "firstFailureLocalTime": "2026-09-20T15:12:58.762+08:00",
+  "oldNode": {"nodeId": 19, "fence": 1, "reservedThrough": 22662780732},
+  "previousJvmExitVerified": true,
+  "shutdownDropHookNotExecuted": true,
+  "oldNodeHighWaterNotReset": true,
+  "recoveryNodeId": 20,
+  "recoveryNodeWasPreviouslyAbsent": true,
+  "databaseLifecycleAfterRecovery": "PRESERVE",
+  "preservedApplication": {"count": 1, "status": "DRAFT", "version": 3},
+  "preservedReadyMaterials": 2,
+  "postRecoveryCreateLoginAttempt": {"status": 201, "code": "SUCCESS"},
+  "productionBudgetChanged": false,
+  "phoneBrowserConnectivity": "User confirmed COMMON_UNAUTHORIZED from session endpoint",
+  "physicalPhoneLogin": "NOT_YET_PASSED"
+}

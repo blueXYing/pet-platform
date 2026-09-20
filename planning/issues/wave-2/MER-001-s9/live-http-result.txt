@@ -1,0 +1,7 @@
+LIVE_ACCEPTANCE stage=auth-boundary result=FIXED_WECHAT_TEST_DOUBLE
+LIVE_ACCEPTANCE stage=fixed-auth result=PASS
+LIVE_ACCEPTANCE stage=real-oss-clam-upload result=PASS
+LIVE_ACCEPTANCE stage=idempotent-replay result=PASS
+LIVE_ACCEPTANCE stage=exact-object-cleanup failures=0
+[INFO] Tests run: 1, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 15.04 s -- in com.petplatform.boot.auth.PrivateAssetLiveAcceptance
+[INFO] BUILD SUCCESS

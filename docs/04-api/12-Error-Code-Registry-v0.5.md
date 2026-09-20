@@ -225,3 +225,13 @@ AUTH Web切片B1说明：恢复窗口按成功提交前DB锚点+60秒，不保�
 ## 商家申请审核错误映射（S4技术同步候选）
 
 沿用既有码：400 COMMON_INVALID_ARGUMENT；401 COMMON_UNAUTHORIZED；403 COMMON_FORBIDDEN；404 COMMON_NOT_FOUND（不存在/越scope统一）；409 COMMON_CONFLICT（版本/状态/领取/主体重复/材料待核）；同requestId异参409 IDEMPOTENCY_KEY_CONFLICT；真实授权、资产、证据、密钥或存储不可用503 COMMON_DEPENDENCY_UNAVAILABLE。不得将不支持字段/未知证据当已核验，主体冲突不暴露他人申请号、证件或联系方式。新HTTP操作未实现。
+
+## 私有商家材料（S8，CCR-MER-PRIVATE-001 已批准）
+
+| Code | HTTP | 语义 |
+|---|---:|---|
+| PRIVATE_ASSET_NOT_READY | 409 | 原上传意图尚未收敛为 READY；保留同 requestId 与原文件恢复，不换 key 重传 |
+| PRIVATE_ASSET_REJECTED | 422 | 已绑定上传意图最终为 REJECTED/QUARANTINED；同 key 重放仍返回此终态；用户明确重选可清理原本地副本并使用新 UUID，data 为 null |
+| PRIVATE_ASSET_GRANT_GONE | 410 | 一次性读取授权已消费、过期或失效，不重放图片回执 |
+
+其余复用 COMMON_INVALID_ARGUMENT、COMMON_UNAUTHORIZED、COMMON_FORBIDDEN、COMMON_NOT_FOUND、COMMON_CONFLICT、IDEMPOTENCY_KEY_CONFLICT 和 COMMON_DEPENDENCY_UNAVAILABLE。不得在错误正文中暴露 token、对象 key、扫描签名、SQL、私有图片或明文原因。

@@ -1,0 +1,154 @@
+
+> pet-platform-miniapp@0.1.0 build:weapp
+> taro build --type weapp --disable-global-config
+
+👽 Taro v4.1.5
+
+Tips:
+1. 建议开启持久化缓存功能，能有效提升二次编译速度，详情请参考: https://docs.taro.zone/docs/config-detail#cache。
+
+
+
+● Webpack █████████████████████████  (0%)  
+ 
+
+[2K[1A[2K[1A[2K[1A[2K[1A[2K[G
+● Webpack █████████████████████████ setup (9%) compilation 
+ InnerGraphPlugin
+
+[2K[1A[2K[1A[2K[1A[2K[1A[2K[G
+● Webpack █████████████████████████ building (10%) 0/17 entries 17/17 dependen
+cies 0/17 modules 1 active 
+ babel-loader › src\app.config.ts
+
+[2K[1A[2K[1A[2K[1A[2K[1A[2K[1A[2K[G
+● Webpack █████████████████████████ building (10%) 0/17 entries 17/17 dependen
+cies 1/17 modules 16 active 
+ ...l-loader › node_modules\@tarojs\webpack5-runner\dist\template\custom-wrapp
+er.js
+
+[2K[1A[2K[1A[2K[1A[2K[1A[2K[1A[2K[1A[2K[G
+● Webpack █████████████████████████ building (29%) 6/17 entries 122/196 depend
+encies 6/72 modules 21 active 
+ babel-loader › node_modules\@tarojs\runtime\dist\index.js
+
+[2K[1A[2K[1A[2K[1A[2K[1A[2K[1A[2K[G
+● Webpack █████████████████████████ building (29%) 6/17 entries 196/220 depend
+encies 22/96 modules 67 active 
+ css-loader › postcss-loader › src\app.css
+
+[2K[1A[2K[1A[2K[1A[2K[1A[2K[1A[2K[G
+● Webpack █████████████████████████ building (29%)  
+ import loader .\node_modules\postcss-loader\dist\cjs.js
+
+[2K[1A[2K[1A[2K[1A[2K[1A[2K[G
+● Webpack █████████████████████████ building (29%) 6/17 entries 228/264 depend
+encies 36/110 modules 61 active 
+ css-loader › postcss-loader › src\app.css
+
+[2K[1A[2K[1A[2K[1A[2K[1A[2K[1A[2K[G
+● Webpack █████████████████████████ building (29%) 6/17 entries 291/356 depend
+encies 38/112 modules 73 active 
+ css-loader › postcss-loader › src\consumer\components\page-layout\style.css
+
+[2K[1A[2K[1A[2K[1A[2K[1A[2K[1A[2K[G
+● Webpack █████████████████████████ building (29%) 6/17 entries 315/357 depend
+encies 38/124 modules 75 active 
+ babel-loader › node_modules\@tarojs\runtime\dist\current.js
+
+[2K[1A[2K[1A[2K[1A[2K[1A[2K[1A[2K[G
+● Webpack █████████████████████████ building (29%) 6/17 entries 404/446 depend
+encies 48/171 modules 114 active 
+ ...vate\frontend-miniapp\node_modules\@babel\runtime\helpers\esm\arrayWithHol
+es.js
+
+[2K[1A[2K[1A[2K[1A[2K[1A[2K[1A[2K[1A[2K[G
+● Webpack █████████████████████████ building (29%) 6/17 entries 601/629 depend
+encies 77/191 modules 95 active 
+ ...nd-miniapp\node_modules\@babel\runtime\helpers\esm\possibleConstructorRetu
+rn.js
+
+[2K[1A[2K[1A[2K[1A[2K[1A[2K[1A[2K[1A[2K[G
+● Webpack █████████████████████████ building (29%) 6/17 entries 601/631 depend
+encies 77/191 modules 111 active 
+ ...rivate\frontend-miniapp\node_modules\@babel\runtime\helpers\esm\superPropG
+et.js
+
+[2K[1A[2K[1A[2K[1A[2K[1A[2K[1A[2K[1A[2K[G
+● Webpack █████████████████████████ building (29%) 6/17 entries 657/680 depend
+encies 99/213 modules 109 active 
+ ...-mer001-private\frontend-miniapp\node_modules\@babel\runtime\helpers\esm\g
+et.js
+
+[2K[1A[2K[1A[2K[1A[2K[1A[2K[1A[2K[1A[2K[G
+● Webpack █████████████████████████ building (29%) 6/17 entries 675/694 depend
+encies 111/214 modules 103 active 
+ ...ivate\frontend-miniapp\node_modules\@babel\runtime\helpers\esm\readOnlyErr
+or.js
+
+[2K[1A[2K[1A[2K[1A[2K[1A[2K[1A[2K[1A[2K[G
+● Webpack █████████████████████████ building (29%) 6/17 entries 749/753 depend
+encies 173/234 modules 61 active 
+ node_modules\react-reconciler\cjs\react-reconciler.production.min.js
+
+[2K[1A[2K[1A[2K[1A[2K[1A[2K[1A[2K[G
+● Webpack █████████████████████████ building (42%) 10/17 entries 774/774 depen
+dencies 202/245 modules 43 active 
+ node_modules\scheduler\index.js
+
+[2K[1A[2K[1A[2K[1A[2K[1A[2K[1A[2K[G
+● Webpack █████████████████████████ building (42%) 10/17 entries 779/779 depen
+dencies 209/248 modules 39 active 
+ css-loader › postcss-loader › src\app.css|0|||}}
+
+[2K[1A[2K[1A[2K[1A[2K[1A[2K[1A[2K[G
+● Webpack █████████████████████████ building (45%) 11/17 entries 790/807 depen
+dencies 213/257 modules 36 active 
+ ...wAoADgALAAuACoATgBqAF8AVAAkAAQAQQBwAC0AZQK3AC4CZwAiABgAGAKFAPQAdwLyACEAJQA
+qAAA=
+
+[2K[1A[2K[1A[2K[1A[2K[1A[2K[1A[2K[1A[2K[G
+● Webpack █████████████████████████ building (55%) 14/17 entries 823/827 depen
+dencies 263/274 modules 11 active 
+ css-loader › postcss-loader › src\consumer\pages\pet-archive\detail.css
+
+[2K[1A[2K[1A[2K[1A[2K[1A[2K[1A[2K[G
+● Webpack █████████████████████████ sealing (78%)  
+ chunk modules optimization
+
+[2K[1A[2K[1A[2K[1A[2K[1A[2K[G
+● Webpack █████████████████████████ sealing (88%)  
+ runtime requirements
+
+[2K[1A[2K[1A[2K[1A[2K[1A[2K[G
+● Webpack █████████████████████████ sealing (92%) asset processing 
+ CssMinimizerPlugin
+
+[2K[1A[2K[1A[2K[1A[2K[1A[2K[G
+● Webpack █████████████████████████ sealing (92%) asset processing 
+ RealContentHashPlugin
+
+[2K[1A[2K[1A[2K[1A[2K[1A[2K[G
+● Webpack █████████████████████████ sealing (92%) asset processing 
+ TaroMiniPlugin
+
+[2K[1A[2K[1A[2K[1A[2K[1A[2K[G
+√ Webpack
+  Compiled successfully in 5.65s
+
+⚠️ Warnings: 
+
+AssetsOverSizeLimitWarning: asset size limit: The following asset(s) exceed the recommended size limit (244 KiB).
+This can impact web performance.
+Assets: 
+  consumer/pages/profile-edit/index.wxss (331 KiB)
+  consumer/pages/pet-archive/assets/strip-detail-bottom.png (370 KiB)
+  consumer/pages/pet-archive/sub-vendors.wxss (401 KiB)
+  consumer/pages/pet-archive/assets/strip-main.png (634 KiB)
+    at Generator.next (<anonymous>)
+
+NoAsyncChunksWarning: webpack performance recommendations: 
+You can limit the size of your bundles by using import() or require.ensure to lazy load some parts of your application.
+For more info visit https://webpack.js.org/guides/code-splitting/
+    at Generator.next (<anonymous>)
+

@@ -2,12 +2,12 @@ package com.petplatform.boot.config;
 
 import com.petplatform.admin.biz.application.AdminAuthService;
 import org.springframework.beans.factory.ObjectProvider;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnWebApplication;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.annotation.*;
 import org.springframework.core.annotation.Order;
 import org.springframework.http.HttpMethod;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
@@ -27,8 +27,11 @@ public class AdminAuthSecurityConfiguration {
   @Bean
   @Order(1)
   SecurityFilterChain adminSecurity(
-      HttpSecurity http, AdminAuthProperties p, ObjectProvider<AdminAuthService> services,
-      @Value("${pet.merchant.application.enabled:false}") boolean merchantApplicationEnabled)
+      HttpSecurity http,
+      AdminAuthProperties p,
+      ObjectProvider<AdminAuthService> services,
+      @Value("${pet.merchant.application.enabled:false}") boolean merchantApplicationEnabled,
+      @Value("${pet.private-assets.enabled:false}") boolean privateAssetsEnabled)
       throws Exception {
     http.securityMatcher("/api/v1/admin/**")
         .csrf(c -> c.disable())
@@ -50,6 +53,10 @@ public class AdminAuthSecurityConfiguration {
             if (merchantApplicationEnabled) {
               a.requestMatchers("/api/v1/admin/merchant-applications/**").permitAll();
               a.requestMatchers("/api/v1/admin/merchant-applications").permitAll();
+            }
+            if (privateAssetsEnabled) {
+              a.requestMatchers(HttpMethod.GET, "/api/v1/admin/private-asset-read-grants/*")
+                  .permitAll();
             }
             a.requestMatchers(
                     HttpMethod.GET,
@@ -81,12 +88,17 @@ public class AdminAuthSecurityConfiguration {
     if (service != null) service.recordRejected("AUTH_FORBIDDEN", req.getHeader("X-Request-Id"));
     res.setStatus(403);
     res.setContentType("application/json");
-    res.setHeader("Cache-Control", "no-store");
+    res.setHeader("Cache-Control", "no-store, private");
+    res.setHeader("Pragma", "no-cache");
+    res.setHeader("X-Content-Type-Options", "nosniff");
     res.getWriter()
         .write(
             "{"
                 + (req.getRequestURI().startsWith("/api/v1/admin/merchant-applications")
-                    ? "\"success\":false," : "")
+                        || req.getRequestURI()
+                            .startsWith("/api/v1/admin/private-asset-read-grants/")
+                    ? "\"success\":false,"
+                    : "")
                 + "\"code\":\"COMMON_FORBIDDEN\",\"message\":\"Forbidden\",\"data\":null,\"traceId\":\""
                 + com.petplatform.boot.adapter.web.admin.AdminAuthController.trace(req)
                 + "\"}");

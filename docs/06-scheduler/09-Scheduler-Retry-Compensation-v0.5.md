@@ -1527,3 +1527,16 @@ notification_delivery
 11. 接监控告警
 12. 再进入全链路测试矩阵
 ```
+
+## 42. PRIVATE_ASSET_RECONCILE（CCR-MER-PRIVATE-001）
+
+2026-09-20 用户批准私有商家材料上传与检查方案。thirdparty 在提交材料意图、owner/requestId 绑定的同一 DataSource 事务中通过 `JdbcAsyncTaskSubmitter` 写 SQL13 `async_task`，禁止跨模块访问任务 Mapper 或独立提交任务。
+
+- task_key：`PRIVATE_ASSET_RECONCILE:{assetId}`；owner_module：THIRDPARTY；biz_type：PRIVATE_ASSET；biz_id：assetId；expected_version：0。
+- payload 只含十进制 String assetId，不含证件、对象 key、token、密钥或图片字节；task handler 核对 payload ID 与 biz_id。
+- 使用既有 AsyncTaskWorker claim/lease/heartbeat/attempt/retry。对象 PUT 回执丢失后按固定 key HEAD/GET 验证真实摘要，再扫描、解码、标准化并条件写入最终对象。
+- 业务副作用按不可变源摘要与对象 key 幂等；资产行锁和终态 CAS 防止过期任务覆盖 READY/REJECTED/QUARANTINED。没有额外的模块内任务队列。
+- Provider 不可用使用 30 秒 Retry，最多 20 次；原始字节未送达也保持未就绪。到 DEAD 仍保留原绑定，不能换 assetId 伪装成功；需要恢复 Provider 后按原上传 requestId/原文件恢复或人工重放原任务。
+- 启动开关默认关闭。Boot worker 收集所有注册 handler，不能让一个私有材料专用 worker 误领其他模块任务。
+
+本次不新增跨模块业务事件；意图与任务原子写入已覆盖该本模块收敛，不新增无消费者的 outbox 事件。自动删除和保留期限仍待单独裁决。

@@ -1,0 +1,16 @@
+{
+  "status": "PASS_OFFLINE_DOCUMENT_SMOKE",
+  "operations": 74,
+  "writesWithRequestId": 51,
+  "legacyOperations": 16,
+  "legacyWrites": 13,
+  "legacyCreates": 4,
+  "authOperations": 36,
+  "merchantOperations": 8,
+  "applicationOperations": 11,
+  "privateAssetOperations": 3,
+  "resolvedRefs": 972,
+  "stringIdProperties": 203
+}
+NOT_EXECUTED: live HTTP, DTO serialization, semantic breaking-change approval, business E2E.
+BLOCKED real session/RBAC integration: existing CCR-ACR-001 and CCR-PERM-001. No SDK generated.

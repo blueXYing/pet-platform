@@ -1,0 +1,14 @@
+[INFO] Tests run: 2, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.048 s -- in com.petplatform.merchant.biz.infrastructure.provider.LocationInputValidationProviderTest
+[INFO] Tests run: 2, Failures: 0, Errors: 0, Skipped: 0
+MERCHANT_LIVE stage=wechat-boundary result=FIXED_WECHAT_TEST_DOUBLE
+MERCHANT_LIVE stage=location-boundary result=LOCAL_INPUT_VALIDATION_ONLY
+MERCHANT_LIVE stage=private-assets result=PASS count=4
+MERCHANT_LIVE stage=location-input-submit result=PASS externalMapCall=false
+MERCHANT_LIVE stage=one-time-watermarked-read result=PASS
+MERCHANT_LIVE stage=manual-review-approval result=PASS
+MERCHANT_LIVE stage=agreement-consent result=PASS
+MERCHANT_LIVE stage=approval-inbox-notification result=PASS
+MERCHANT_LIVE stage=exact-object-cleanup failures=0
+[INFO] Tests run: 1, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 17.43 s -- in com.petplatform.boot.auth.MerchantApplicationLiveAcceptance
+[INFO] Tests run: 2, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.032 s -- in com.petplatform.boot.config.MerchantLocationInputValidationConfigurationTest
+[INFO] BUILD SUCCESS

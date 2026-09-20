@@ -8,7 +8,9 @@ export default defineConfig<'webpack5'>({
   plugins: ['@tarojs/plugin-platform-weapp'],
   defineConstants: {
     C_API_ORIGIN: JSON.stringify(process.env.PET_C_API_ORIGIN || ''),
+    ALLOW_LOCAL_HTTP: JSON.stringify(process.env.NODE_ENV === 'development' && process.env.PET_ALLOW_LOCAL_HTTP === 'true'),
     MERCHANT_APPLICATION_ENABLED: JSON.stringify(process.env.PET_MERCHANT_APPLICATION_ENABLED === 'true' && !!process.env.PET_C_API_ORIGIN),
+    PRIVATE_MATERIAL_UPLOAD_ENABLED: JSON.stringify(process.env.PET_PRIVATE_MATERIAL_UPLOAD_ENABLED === 'true' && !!process.env.PET_C_API_ORIGIN),
   },
   mini: {},
 })

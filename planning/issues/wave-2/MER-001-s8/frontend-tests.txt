@@ -1,0 +1,710 @@
+
+> pet-platform-miniapp@0.1.0 test
+> tsx --test src/shared/tests/*.test.ts src/merchant/tests/*.test.ts src/consumer/tests/*.test.ts
+
+TAP version 13
+# Subtest: page/process restart after lost save ACK restores original payload/key then submits decoded receipt
+ok 1 - page/process restart after lost save ACK restores original payload/key then submits decoded receipt
+  ---
+  duration_ms: 3.8928
+  type: 'test'
+  ...
+# Subtest: lost submit ACK after restart only retries submit and never saves another revision
+ok 2 - lost submit ACK after restart only retries submit and never saves another revision
+  ---
+  duration_ms: 0.8434
+  type: 'test'
+  ...
+# Subtest: lost create ACK restores original create identity and ignores newly edited inputs
+ok 3 - lost create ACK restores original create identity and ignores newly edited inputs
+  ---
+  duration_ms: 0.6062
+  type: 'test'
+  ...
+# Subtest: ACK checkpoint survives destruction immediately after persistence, before submit starts
+ok 4 - ACK checkpoint survives destruction immediately after persistence, before submit starts
+  ---
+  duration_ms: 0.6997
+  type: 'test'
+  ...
+# Subtest: completed receipt survives restart and does not send another write
+ok 5 - completed receipt survives restart and does not send another write
+  ---
+  duration_ms: 0.3458
+  type: 'test'
+  ...
+# Subtest: pre-UI-journal commands recover original save and submit parameters
+ok 6 - pre-UI-journal commands recover original save and submit parameters
+  ---
+  duration_ms: 1.4582
+  type: 'test'
+  ...
+# Subtest: unknown rejection and platform cancel retain intent; definite rejection unlocks it
+ok 7 - unknown rejection and platform cancel retain intent; definite rejection unlocks it
+  ---
+  duration_ms: 0.8975
+  type: 'test'
+  ...
+# Subtest: logout clears private intent and an old late response cannot checkpoint into a new identity
+ok 8 - logout clears private intent and an old late response cannot checkpoint into a new identity
+  ---
+  duration_ms: 3.0851
+  type: 'test'
+  ...
+# Subtest: a forged workspace identity cannot read another principal journal
+ok 9 - a forged workspace identity cannot read another principal journal
+  ---
+  duration_ms: 0.4765
+  type: 'test'
+  ...
+# Subtest: definite submit rejection retains acknowledged save receipt for continued editing
+ok 10 - definite submit rejection retains acknowledged save receipt for continued editing
+  ---
+  duration_ms: 0.5482
+  type: 'test'
+  ...
+# Subtest: invalid server receipt cannot advance stage or clear original request
+ok 11 - invalid server receipt cannot advance stage or clear original request
+  ---
+  duration_ms: 0.2639
+  type: 'test'
+  ...
+# Subtest: approved fields, six merchant options, hospital license and 1–6 photos
+ok 12 - approved fields, six merchant options, hospital license and 1–6 photos
+  ---
+  duration_ms: 1.2247
+  type: 'test'
+  ...
+# Subtest: only draft/rejected are editable; reviewing and approved cannot edit
+ok 13 - only draft/rejected are editable; reviewing and approved cannot edit
+  ---
+  duration_ms: 0.1107
+  type: 'test'
+  ...
+# Subtest: unavailable integrations fail closed and do not return fake assets or receipts
+ok 14 - unavailable integrations fail closed and do not return fake assets or receipts
+  ---
+  duration_ms: 0.5313
+  type: 'test'
+  ...
+# Subtest: save captures input, coalesces identical actions and rejects changed in-flight intent
+ok 15 - save captures input, coalesces identical actions and rejects changed in-flight intent
+  ---
+  duration_ms: 0.6336
+  type: 'test'
+  ...
+# Subtest: save rejects late response after logout or identity switch
+ok 16 - save rejects late response after logout or identity switch
+  ---
+  duration_ms: 0.2585
+  type: 'test'
+  ...
+# Subtest: submit uses saved server version and revision without converting string IDs
+ok 17 - submit uses saved server version and revision without converting string IDs
+  ---
+  duration_ms: 0.2022
+  type: 'test'
+  ...
+# Subtest: permission, conflict and unavailable errors remain distinct from success
+ok 18 - permission, conflict and unavailable errors remain distinct from success
+  ---
+  duration_ms: 0.2749
+  type: 'test'
+  ...
+# Subtest: native picker preserves GCJ-02 coordinates as decimal strings without inventing cityCode
+ok 19 - native picker preserves GCJ-02 coordinates as decimal strings without inventing cityCode
+  ---
+  duration_ms: 1.3853
+  type: 'test'
+  ...
+# Subtest: cancel returns no location while denial and invalid coordinates remain errors
+ok 20 - cancel returns no location while denial and invalid coordinates remain errors
+  ---
+  duration_ms: 0.6229
+  type: 'test'
+  ...
+# Subtest: weight input keeps the designed kg shape and serializes to the two-decimal contract string
+ok 21 - weight input keeps the designed kg shape and serializes to the two-decimal contract string
+  ---
+  duration_ms: 0.9927
+  type: 'test'
+  ...
+# Subtest: age is derived from birthDate at view time and never stored
+ok 22 - age is derived from birthDate at view time and never stored
+  ---
+  duration_ms: 1.0354
+  type: 'test'
+  ...
+# Subtest: validation mirrors the approved PetView field contract
+ok 23 - validation mirrors the approved PetView field contract
+  ---
+  duration_ms: 0.64
+  type: 'test'
+  ...
+# Subtest: breed/age and sex labels follow the design copy
+ok 24 - breed/age and sex labels follow the design copy
+  ---
+  duration_ms: 0.148
+  type: 'test'
+  ...
+# Subtest: preview repository save is idempotent per request and replay with other content conflicts
+ok 25 - preview repository save is idempotent per request and replay with other content conflicts
+  ---
+  duration_ms: 0.5643
+  type: 'test'
+  ...
+# Subtest: preview edit keeps contract-managed fields and create leaves petType unresolved
+ok 26 - preview edit keeps contract-managed fields and create leaves petType unresolved
+  ---
+  duration_ms: 0.244
+  type: 'test'
+  ...
+# Subtest: preview delete is soft, replayable, and hides the pet from later loads
+ok 27 - preview delete is soft, replayable, and hides the pet from later loads
+  ---
+  duration_ms: 0.1928
+  type: 'test'
+  ...
+# Subtest: load failure stays failed until an explicit retry succeeds
+ok 28 - load failure stays failed until an explicit retry succeeds
+  ---
+  duration_ms: 0.1958
+  type: 'test'
+  ...
+# Subtest: failed save preserves the draft and the retry succeeds with the same request identity
+ok 29 - failed save preserves the draft and the retry succeeds with the same request identity
+  ---
+  duration_ms: 0.3026
+  type: 'test'
+  ...
+# Subtest: late pet responses are rejected after account or workspace revision changes
+ok 30 - late pet responses are rejected after account or workspace revision changes
+  ---
+  duration_ms: 0.5327
+  type: 'test'
+  ...
+# Subtest: list, form and detail share mutations only within one preview workspace revision
+ok 31 - list, form and detail share mutations only within one preview workspace revision
+  ---
+  duration_ms: 0.3351
+  type: 'test'
+  ...
+# Subtest: visual record fixtures never assign dog medical records or chip to other pets
+ok 32 - visual record fixtures never assign dog medical records or chip to other pets
+  ---
+  duration_ms: 0.1705
+  type: 'test'
+  ...
+# Subtest: impossible calendar dates are rejected instead of deriving an age
+ok 33 - impossible calendar dates are rejected instead of deriving an age
+  ---
+  duration_ms: 0.1345
+  type: 'test'
+  ...
+# Subtest: SHA256 matches standard vectors including large image-sized input
+ok 34 - SHA256 matches standard vectors including large image-sized input
+  ---
+  duration_ms: 54.4201
+  type: 'test'
+  ...
+# Subtest: multipart transport fixes endpoint/purpose/file field and preserves header UUID without JSON Content-Type
+ok 35 - multipart transport fixes endpoint/purpose/file field and preserves header UUID without JSON Content-Type
+  ---
+  duration_ms: 1.0755
+  type: 'test'
+  ...
+# Subtest: saved copy and UUID survive restart and timeout; object hash may differ after sanitization
+ok 36 - saved copy and UUID survive restart and timeout; object hash may differ after sanitization
+  ---
+  duration_ms: 1.7818
+  type: 'test'
+  ...
+# Subtest: double tap coalesces selection and network; different material cannot replace unknown intent
+ok 37 - double tap coalesces selection and network; different material cannot replace unknown intent
+  ---
+  duration_ms: 0.3972
+  type: 'test'
+  ...
+# Subtest: changed saved bytes cannot be sent with a previously bound request ID
+ok 38 - changed saved bytes cannot be sent with a previously bound request ID
+  ---
+  duration_ms: 0.3933
+  type: 'test'
+  ...
+# Subtest: 401 expires session without deleting owner upload journal; new identity cannot access it
+ok 39 - 401 expires session without deleting owner upload journal; new identity cannot access it
+  ---
+  duration_ms: 0.4292
+  type: 'test'
+  ...
+# Subtest: late response after scope replacement never creates a receipt
+ok 40 - late response after scope replacement never creates a receipt
+  ---
+  duration_ms: 0.3976
+  type: 'test'
+  ...
+# Subtest: forged response fields, IDs, hashes, status and envelope cannot publish materials
+ok 41 - forged response fields, IDs, hashes, status and envelope cannot publish materials
+  ---
+  duration_ms: 1.4143
+  type: 'test'
+  ...
+# Subtest: cancel chooser creates no journal/network; invalid saved path cannot be retried or deleted
+ok 42 - cancel chooser creates no journal/network; invalid saved path cannot be retried or deleted
+  ---
+  duration_ms: 0.3039
+  type: 'test'
+  ...
+# Subtest: explicit new selection is available only after definite rejection; unknown outcomes cannot discard
+ok 43 - explicit new selection is available only after definite rejection; unknown outcomes cannot discard
+  ---
+  duration_ms: 0.9295
+  type: 'test'
+  ...
+# Subtest: 5xx retry preserves exact descriptor and original UUID until confirmed READY
+ok 44 - 5xx retry preserves exact descriptor and original UUID until confirmed READY
+  ---
+  duration_ms: 0.3702
+  type: 'test'
+  ...
+# Subtest: unknown upload then explicit terminal rejection permits new file and UUID; status or code alone does not
+ok 45 - unknown upload then explicit terminal rejection permits new file and UUID; status or code alone does not
+  ---
+  duration_ms: 0.7201
+  type: 'test'
+  ...
+# Subtest: old epoch 401 cannot clear the new identity or delete the old upload journal
+ok 46 - old epoch 401 cannot clear the new identity or delete the old upload journal
+  ---
+  duration_ms: 0.3368
+  type: 'test'
+  ...
+# Subtest: draft validation counts Unicode code points and preserves literal content
+ok 47 - draft validation counts Unicode code points and preserves literal content
+  ---
+  duration_ms: 0.9778
+  type: 'test'
+  ...
+# Subtest: preview keeps changes across repository reads and never mutates original fixture
+ok 48 - preview keeps changes across repository reads and never mutates original fixture
+  ---
+  duration_ms: 0.2473
+  type: 'test'
+  ...
+# Subtest: preview write retry preserves receipt and rejects same identity with different content
+ok 49 - preview write retry preserves receipt and rejects same identity with different content
+  ---
+  duration_ms: 0.3934
+  type: 'test'
+  ...
+# Subtest: load failure can be retried without inventing a successful response
+ok 50 - load failure can be retried without inventing a successful response
+  ---
+  duration_ms: 0.1616
+  type: 'test'
+  ...
+# Subtest: late profile response is rejected after account or workspace revision changes
+ok 51 - late profile response is rejected after account or workspace revision changes
+  ---
+  duration_ms: 0.2768
+  type: 'test'
+  ...
+# Subtest: MINI-002 allow preserves user; return clears merchant context and cache
+ok 52 - MINI-002 allow preserves user; return clears merchant context and cache
+  ---
+  duration_ms: 1.9857
+  type: 'test'
+  ...
+# Subtest: MINI-002 deny after allow removes admission and data; retry rechecks
+ok 53 - MINI-002 deny after allow removes admission and data; retry rechecks
+  ---
+  duration_ms: 0.2312
+  type: 'test'
+  ...
+# Subtest: MINI-002 error after allow removes admission and data; retry rechecks
+ok 54 - MINI-002 error after allow removes admission and data; retry rechecks
+  ---
+  duration_ms: 0.24
+  type: 'test'
+  ...
+# Subtest: MINI-002 every entry checks afresh and hides admitted content during query
+ok 55 - MINI-002 every entry checks afresh and hides admitted content during query
+  ---
+  duration_ms: 0.2023
+  type: 'test'
+  ...
+# Subtest: MINI-003 pending admission cannot revive after return
+ok 56 - MINI-003 pending admission cannot revive after return
+  ---
+  duration_ms: 0.2285
+  type: 'test'
+  ...
+# Subtest: MINI-003 pending admission cannot revive after logout
+ok 57 - MINI-003 pending admission cannot revive after logout
+  ---
+  duration_ms: 0.0844
+  type: 'test'
+  ...
+# Subtest: MINI-003 pending admission cannot revive after revocation
+ok 58 - MINI-003 pending admission cannot revive after revocation
+  ---
+  duration_ms: 0.072
+  type: 'test'
+  ...
+# Subtest: MINI-003 pending admission cannot revive after user-switch
+ok 59 - MINI-003 pending admission cannot revive after user-switch
+  ---
+  duration_ms: 0.0706
+  type: 'test'
+  ...
+# Subtest: MINI-003 pending admission cannot revive after dispose
+ok 60 - MINI-003 pending admission cannot revive after dispose
+  ---
+  duration_ms: 0.3415
+  type: 'test'
+  ...
+# Subtest: MINI-003 older successful or failing admission cannot replace newest verdict
+ok 61 - MINI-003 older successful or failing admission cannot replace newest verdict
+  ---
+  duration_ms: 0.42
+  type: 'test'
+  ...
+# Subtest: MINI-003 delayed merchant result/cache cannot survive return
+ok 62 - MINI-003 delayed merchant result/cache cannot survive return
+  ---
+  duration_ms: 0.3336
+  type: 'test'
+  ...
+# Subtest: MINI-003 delayed merchant result/cache cannot survive store-switch
+ok 63 - MINI-003 delayed merchant result/cache cannot survive store-switch
+  ---
+  duration_ms: 0.2159
+  type: 'test'
+  ...
+# Subtest: MINI-003 delayed merchant result/cache cannot survive deny
+ok 64 - MINI-003 delayed merchant result/cache cannot survive deny
+  ---
+  duration_ms: 0.1895
+  type: 'test'
+  ...
+# Subtest: MINI-003 delayed merchant result/cache cannot survive error
+ok 65 - MINI-003 delayed merchant result/cache cannot survive error
+  ---
+  duration_ms: 0.1801
+  type: 'test'
+  ...
+# Subtest: MINI-003 delayed merchant result/cache cannot survive logout
+ok 66 - MINI-003 delayed merchant result/cache cannot survive logout
+  ---
+  duration_ms: 0.1089
+  type: 'test'
+  ...
+# Subtest: MINI-003 delayed merchant result/cache cannot survive revocation
+ok 67 - MINI-003 delayed merchant result/cache cannot survive revocation
+  ---
+  duration_ms: 0.0993
+  type: 'test'
+  ...
+# Subtest: MINI-003 delayed merchant result/cache cannot survive dispose
+ok 68 - MINI-003 delayed merchant result/cache cannot survive dispose
+  ---
+  duration_ms: 0.1073
+  type: 'test'
+  ...
+# Subtest: MINI-002 missing shared session does not query or invent login
+ok 69 - MINI-002 missing shared session does not query or invent login
+  ---
+  duration_ms: 0.0947
+  type: 'test'
+  ...
+# Subtest: MINI-003 old page hide/dispose does not revoke a newer page admission or query
+ok 70 - MINI-003 old page hide/dispose does not revoke a newer page admission or query
+  ---
+  duration_ms: 0.1738
+  type: 'test'
+  ...
+# Subtest: MINI-004 real admission is blocked by CCR; internal data preserves string values and actions
+ok 71 - MINI-004 real admission is blocked by CCR; internal data preserves string values and actions
+  ---
+  duration_ms: 0.4045
+  type: 'test'
+  ...
+# Subtest: HTTP requires explicit local development exception; HTTPS stays default
+ok 72 - HTTP requires explicit local development exception; HTTPS stays default
+  ---
+  duration_ms: 1.1106
+  type: 'test'
+  ...
+# Subtest: exception cannot admit public hosts, DNS aliases, userinfo, alternate IP spellings or URL suffixes
+ok 73 - exception cannot admit public hosts, DNS aliases, userinfo, alternate IP spellings or URL suffixes
+  ---
+  duration_ms: 0.3135
+  type: 'test'
+  ...
+# Subtest: request and multipart enforce the same origin policy and retain fixed route/header semantics
+ok 74 - request and multipart enforce the same origin policy and retain fixed route/header semantics
+  ---
+  duration_ms: 0.3453
+  type: 'test'
+  ...
+# Subtest: real client uses approved two-step login and server session; no client principal in requests
+ok 75 - real client uses approved two-step login and server session; no client principal in requests
+  ---
+  duration_ms: 2.4156
+  type: 'test'
+  ...
+# Subtest: platform cancellation/empty code/network failure and phone denial never log in
+ok 76 - platform cancellation/empty code/network failure and phone denial never log in
+  ---
+  duration_ms: 1.1013
+  type: 'test'
+  ...
+# Subtest: expired code is rejected and a cancelled in-flight login cannot publish a principal
+ok 77 - expired code is rejected and a cancelled in-flight login cannot publish a principal
+  ---
+  duration_ms: 0.4127
+  type: 'test'
+  ...
+# Subtest: login duplicate clicks are single flight; grant is not trusted when session query fails
+ok 78 - login duplicate clicks are single flight; grant is not trusted when session query fails
+  ---
+  duration_ms: 0.3845
+  type: 'test'
+  ...
+# Subtest: 401 clears secrets/context/cache; stale 401 cannot clear a later identity
+ok 79 - 401 clears secrets/context/cache; stale 401 cannot clear a later identity
+  ---
+  duration_ms: 0.546
+  type: 'test'
+  ...
+# Subtest: logout invalidates immediately, persists original revocation request for explicit retry, and blocks new login
+ok 80 - logout invalidates immediately, persists original revocation request for explicit retry, and blocks new login
+  ---
+  duration_ms: 0.5679
+  type: 'test'
+  ...
+# Subtest: late business success after logout cannot update data
+ok 81 - late business success after logout cannot update data
+  ---
+  duration_ms: 0.4444
+  type: 'test'
+  ...
+# Subtest: lost write ACK preserves original key/body across process restart; changed payload cannot be resubmitted
+ok 82 - lost write ACK preserves original key/body across process restart; changed payload cannot be resubmitted
+  ---
+  duration_ms: 0.6739
+  type: 'test'
+  ...
+# Subtest: duplicate business clicks share one write; different in-flight payload is rejected
+ok 83 - duplicate business clicks share one write; different in-flight payload is rejected
+  ---
+  duration_ms: 1.2172
+  type: 'test'
+  ...
+# Subtest: profile sends nickname only; real pet edit preserves non-form fields, string weight and immutable type
+ok 84 - profile sends nickname only; real pet edit preserves non-form fields, string weight and immutable type
+  ---
+  duration_ms: 1.2166
+  type: 'test'
+  ...
+# Subtest: real pet creation requires explicit approved type, never inherits design samples; no fallback on bad responses
+ok 85 - real pet creation requires explicit approved type, never inherits design samples; no fallback on bad responses
+  ---
+  duration_ms: 0.5297
+  type: 'test'
+  ...
+# Subtest: another server identity cannot restore stored credentials or recover another user pending command
+ok 86 - another server identity cannot restore stored credentials or recover another user pending command
+  ---
+  duration_ms: 0.4158
+  type: 'test'
+  ...
+# Subtest: MINI-003 workspace: old success and cache cannot cross context
+ok 87 - MINI-003 workspace: old success and cache cannot cross context
+  ---
+  duration_ms: 1.0802
+  type: 'test'
+  ...
+# Subtest: MINI-003 user: old success and cache cannot cross context
+ok 88 - MINI-003 user: old success and cache cannot cross context
+  ---
+  duration_ms: 0.2551
+  type: 'test'
+  ...
+# Subtest: MINI-003 merchant: old success and cache cannot cross context
+ok 89 - MINI-003 merchant: old success and cache cannot cross context
+  ---
+  duration_ms: 0.199
+  type: 'test'
+  ...
+# Subtest: MINI-003 store: old success and cache cannot cross context
+ok 90 - MINI-003 store: old success and cache cannot cross context
+  ---
+  duration_ms: 0.0993
+  type: 'test'
+  ...
+# Subtest: MINI-003 logout: old success and cache cannot cross context
+ok 91 - MINI-003 logout: old success and cache cannot cross context
+  ---
+  duration_ms: 0.1373
+  type: 'test'
+  ...
+# Subtest: MINI-003 revocation: old success and cache cannot cross context
+ok 92 - MINI-003 revocation: old success and cache cannot cross context
+  ---
+  duration_ms: 0.1258
+  type: 'test'
+  ...
+# Subtest: MINI-003 sameContextReentry: old success and cache cannot cross context
+ok 93 - MINI-003 sameContextReentry: old success and cache cannot cross context
+  ---
+  duration_ms: 0.7733
+  type: 'test'
+  ...
+# Subtest: MINI-003 delayed rejection is stale; current context success remains available
+ok 94 - MINI-003 delayed rejection is stale; current context success remains available
+  ---
+  duration_ms: 0.2407
+  type: 'test'
+  ...
+# Subtest: MINI-003 logout then same user login cannot revive pending response
+ok 95 - MINI-003 logout then same user login cannot revive pending response
+  ---
+  duration_ms: 0.3645
+  type: 'test'
+  ...
+# Subtest: city catalog strictly decodes server-owned opaque codes and names without hardcoded city choices
+ok 96 - city catalog strictly decodes server-owned opaque codes and names without hardcoded city choices
+  ---
+  duration_ms: 1.9644
+  type: 'test'
+  ...
+# Subtest: city catalog uses authenticated GET and requires the application success envelope
+ok 97 - city catalog uses authenticated GET and requires the application success envelope
+  ---
+  duration_ms: 1.2986
+  type: 'test'
+  ...
+# Subtest: application decoder enforces string IDs, version range, number format and unknown field rejection
+ok 98 - application decoder enforces string IDs, version range, number format and unknown field rejection
+  ---
+  duration_ms: 0.442
+  type: 'test'
+  ...
+# Subtest: owner detail rejects sensitive fields, inconsistent revision and unsupported decision states
+ok 99 - owner detail rejects sensitive fields, inconsistent revision and unsupported decision states
+  ---
+  duration_ms: 0.6421
+  type: 'test'
+  ...
+# Subtest: draft preserves clear semantics while rejecting duplicate/private invented inputs and invalid decimal coordinates
+ok 100 - draft preserves clear semantics while rejecting duplicate/private invented inputs and invalid decimal coordinates
+  ---
+  duration_ms: 0.305
+  type: 'test'
+  ...
+# Subtest: application read/create/save/submit uses exact candidate endpoints and optimistic version payloads
+ok 101 - application read/create/save/submit uses exact candidate endpoints and optimistic version payloads
+  ---
+  duration_ms: 1.4142
+  type: 'test'
+  ...
+# Subtest: unknown write survives restart with identical requestId and blocks modified intent
+ok 102 - unknown write survives restart with identical requestId and blocks modified intent
+  ---
+  duration_ms: 0.5296
+  type: 'test'
+  ...
+# Subtest: agreement recovery replays original explicit consent after process restart without re-signing new content
+ok 103 - agreement recovery replays original explicit consent after process restart without re-signing new content
+  ---
+  duration_ms: 0.8866
+  type: 'test'
+  ...
+# Subtest: draft mutation after command start cannot change persisted/sent payload
+ok 104 - draft mutation after command start cannot change persisted/sent payload
+  ---
+  duration_ms: 0.5488
+  type: 'test'
+  ...
+# Subtest: agreement decoder checks signed evidence, hash, version, unknown fields and UTF-8 byte limit
+ok 105 - agreement decoder checks signed evidence, hash, version, unknown fields and UTF-8 byte limit
+  ---
+  duration_ms: 5.1571
+  type: 'test'
+  ...
+# Subtest: agreement requires merchant workspace, matching merchant and explicit consent; server receives bearer
+ok 106 - agreement requires merchant workspace, matching merchant and explicit consent; server receives bearer
+  ---
+  duration_ms: 0.6521
+  type: 'test'
+  ...
+# Subtest: merchant access is narrowly path/method bound; session user cannot be replaced with fixture identity
+ok 107 - merchant access is narrowly path/method bound; session user cannot be replaced with fixture identity
+  ---
+  duration_ms: 0.343
+  type: 'test'
+  ...
+# Subtest: old merchant response cannot enter switched workspace
+ok 108 - old merchant response cannot enter switched workspace
+  ---
+  duration_ms: 0.2199
+  type: 'test'
+  ...
+# Subtest: 403 never becomes consent success; 409/503 preserve original consent for explicit retry
+ok 109 - 403 never becomes consent success; 409/503 preserve original consent for explicit retry
+  ---
+  duration_ms: 0.7103
+  type: 'test'
+  ...
+# Subtest: agreement wrong-merchant receipt is invalid and remains unresolved
+ok 110 - agreement wrong-merchant receipt is invalid and remains unresolved
+  ---
+  duration_ms: 0.2581
+  type: 'test'
+  ...
+# Subtest: application success envelope must be true; malformed success keeps write unresolved
+ok 111 - application success envelope must be true; malformed success keeps write unresolved
+  ---
+  duration_ms: 0.3229
+  type: 'test'
+  ...
+# Subtest: MINI-004 injected transport preserves string ID, amount, remote state/actions and write requestId
+ok 112 - MINI-004 injected transport preserves string ID, amount, remote state/actions and write requestId
+  ---
+  duration_ms: 1.1035
+  type: 'test'
+  ...
+# Subtest: MINI-004 all write verbs require requestId, cross-workspace and encoded traversal fail before transport
+ok 113 - MINI-004 all write verbs require requestId, cross-workspace and encoded traversal fail before transport
+  ---
+  duration_ms: 0.3349
+  type: 'test'
+  ...
+# Subtest: MINI-004 malformed IDs/amounts/actions rejected, unknown server displayStatus is not recomputed
+ok 114 - MINI-004 malformed IDs/amounts/actions rejected, unknown server displayStatus is not recomputed
+  ---
+  duration_ms: 0.2206
+  type: 'test'
+  ...
+# Subtest: MINI-004 real mode blocked by unapproved CCR; errors use code rather than message
+ok 115 - MINI-004 real mode blocked by unapproved CCR; errors use code rather than message
+  ---
+  duration_ms: 0.3188
+  type: 'test'
+  ...
+# Subtest: MINI-004 platform request port mock captures URL, headers, data, timeout; network failure propagates
+ok 116 - MINI-004 platform request port mock captures URL, headers, data, timeout; network failure propagates
+  ---
+  duration_ms: 0.5881
+  type: 'test'
+  ...
+1..116
+# tests 116
+# suites 0
+# pass 116
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 590.438

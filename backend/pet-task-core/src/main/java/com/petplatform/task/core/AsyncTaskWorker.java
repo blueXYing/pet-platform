@@ -18,6 +18,19 @@ import org.springframework.transaction.support.TransactionSynchronizationManager
  * A lost lease only fences infrastructure writes. Business side effects must be idempotent.
  */
 public final class AsyncTaskWorker implements AutoCloseable {
+  /** Composition entry point; the SQL13 persistence implementation remains owned by task-core. */
+  public static AsyncTaskWorker create(
+      javax.sql.DataSource source,
+      com.petplatform.common.SnowflakeIdGenerator ids,
+      String owner,
+      Clock clock,
+      TaskWorkerSettings settings,
+      TaskRetryDelays retryDelays,
+      Collection<TaskRegistration<?>> handlers) {
+    return new AsyncTaskWorker(
+        new JdbcAsyncTaskRepository(source, ids), owner, clock, settings, retryDelays, handlers);
+  }
+
     public enum Outcome { EMPTY, COMPLETED, LEASE_LOST, ABANDONED }
     private static final System.Logger LOG = System.getLogger(AsyncTaskWorker.class.getName());
     private final JdbcAsyncTaskRepository repository;

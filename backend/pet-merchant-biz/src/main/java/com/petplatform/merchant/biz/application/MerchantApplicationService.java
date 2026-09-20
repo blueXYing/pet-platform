@@ -66,45 +66,46 @@ public final class MerchantApplicationService {
     Map<String, Object> p = new LinkedHashMap<>();
     p.put("command", "create-draft");
     p.put("draft", draft.canonical());
-    Execution<MerchantApplicationResult> outcome = commandOutcome(
-        "merchant.application.create-draft",
-        ctx,
-        "OWNER:" + ctx.operatorId(),
-        p,
-        m -> {
-          MerchantApplicationEntity existing = m.selectByOwner(principal(ctx));
-          if (existing != null) conflict("the owner already has an application");
-          long id = store.nextId(), merchantId = store.nextId();
-          LocalDateTime now = now();
-          try {
-            one(m.insertApplication(id, principal(ctx), merchantId, now));
-          } catch (DuplicateKeyException duplicateOwner) {
-            conflict("the owner already has an application");
-          }
-          if (draft.present()) {
-            long revisionId = store.nextId();
-            insertRevision(m, id, revisionId, 1, draft, principal(ctx), now);
-            one(m.pointCurrentRevision(id, revisionId, 0, now));
-            insertMaterials(m, id, revisionId, draft, principal(ctx), now);
-            one(
-                m.insertAudit(
-                    store.nextId(),
-                    id,
-                    revisionId,
-                    "USER",
-                    principal(ctx),
-                    "DRAFT_SAVE",
-                    "DRAFT",
-                    "DRAFT",
-                    bytes(ctx.requestId()),
-                    ctx.traceId(),
-                    null,
-                    now));
-          }
-          return result(m, required(m.selectById(id)), true);
-        },
-        MerchantApplicationResult.class,
-        null);
+    Execution<MerchantApplicationResult> outcome =
+        commandOutcome(
+            "merchant.application.create-draft",
+            ctx,
+            "OWNER:" + ctx.operatorId(),
+            p,
+            m -> {
+              MerchantApplicationEntity existing = m.selectByOwner(principal(ctx));
+              if (existing != null) conflict("the owner already has an application");
+              long id = store.nextId(), merchantId = store.nextId();
+              LocalDateTime now = now();
+              try {
+                one(m.insertApplication(id, principal(ctx), merchantId, now));
+              } catch (DuplicateKeyException duplicateOwner) {
+                conflict("the owner already has an application");
+              }
+              if (draft.present()) {
+                long revisionId = store.nextId();
+                insertRevision(m, id, revisionId, 1, draft, principal(ctx), now);
+                one(m.pointCurrentRevision(id, revisionId, 0, now));
+                insertMaterials(m, id, revisionId, draft, principal(ctx), now);
+                one(
+                    m.insertAudit(
+                        store.nextId(),
+                        id,
+                        revisionId,
+                        "USER",
+                        principal(ctx),
+                        "DRAFT_SAVE",
+                        "DRAFT",
+                        "DRAFT",
+                        bytes(ctx.requestId()),
+                        ctx.traceId(),
+                        null,
+                        now));
+              }
+              return result(m, required(m.selectById(id)), true);
+            },
+            MerchantApplicationResult.class,
+            null);
     return new ApplicationCommandOutcome(outcome.value(), outcome.created());
   }
 
@@ -703,23 +704,46 @@ public final class MerchantApplicationService {
 
   public OwnerApplicationDetail currentDetail(CurrentMerchantApplicationQuery query) {
     long owner = queryUser(query == null ? null : query.context());
-    return store.read(mapper -> {
-      MerchantApplicationEntity application = owned(mapper.selectByOwner(owner), owner);
-      MerchantApplicationResult base = result(mapper, application, true);
-      MerchantApplicationRevisionEntity revision = requiredRevision(
-          mapper.selectRevision(application.getId(), application.getCurrentRevisionId()));
-      RevisionView view = base.currentRevision();
-      DraftRevisionInput draft = new DraftRevisionInput(view.merchantName(), view.contactName(),
-          revealOwnerField("merchant-application-contact-phone", revision.getContactPhoneProtected()),
-          revealOwnerField("merchant-application-contact-email", revision.getEmailProtected()),
-          view.merchantTypeCode(), view.cityCode(), view.address(), view.longitude(), view.latitude(),
-          view.introduction(), view.storePhotoAssetIds(), view.businessLicenseAssetId(),
-          view.idCardFrontAssetId(), view.idCardBackAssetId(), view.industryLicenseAssetId());
-      return new OwnerApplicationDetail(base.applicationId(), base.applicationNo(), base.reservedMerchantId(),
-          base.status(), base.version(), view.revisionId(),
-          new OwnerRevisionView(view.revisionId(), view.revisionNo(), draft, view.createdAt()),
-          base.submittedAt(), base.reviewedAt(), base.latestDecision(), base.subjectVerificationStatus());
-    });
+    return store.read(
+        mapper -> {
+          MerchantApplicationEntity application = owned(mapper.selectByOwner(owner), owner);
+          MerchantApplicationResult base = result(mapper, application, true);
+          MerchantApplicationRevisionEntity revision =
+              requiredRevision(
+                  mapper.selectRevision(application.getId(), application.getCurrentRevisionId()));
+          RevisionView view = base.currentRevision();
+          DraftRevisionInput draft =
+              new DraftRevisionInput(
+                  view.merchantName(),
+                  view.contactName(),
+                  revealOwnerField(
+                      "merchant-application-contact-phone", revision.getContactPhoneProtected()),
+                  revealOwnerField(
+                      "merchant-application-contact-email", revision.getEmailProtected()),
+                  view.merchantTypeCode(),
+                  view.cityCode(),
+                  view.address(),
+                  view.longitude(),
+                  view.latitude(),
+                  view.introduction(),
+                  view.storePhotoAssetIds(),
+                  view.businessLicenseAssetId(),
+                  view.idCardFrontAssetId(),
+                  view.idCardBackAssetId(),
+                  view.industryLicenseAssetId());
+          return new OwnerApplicationDetail(
+              base.applicationId(),
+              base.applicationNo(),
+              base.reservedMerchantId(),
+              base.status(),
+              base.version(),
+              view.revisionId(),
+              new OwnerRevisionView(view.revisionId(), view.revisionNo(), draft, view.createdAt()),
+              base.submittedAt(),
+              base.reviewedAt(),
+              base.latestDecision(),
+              base.subjectVerificationStatus());
+        });
   }
 
   private String revealOwnerField(String purpose, byte[] value) {
@@ -825,6 +849,84 @@ public final class MerchantApplicationService {
               IDS.toApi(a.getOwnerUserId()),
               IDS.toApi(a.getSubmittedRevisionId()),
               Long.toString(a.getVersion()));
+        });
+  }
+
+  /**
+   * Revalidates the exact submitted material and current claimant under the transaction opened by
+   * the private-asset owner. Keeping the application and review-task rows locked until that owner
+   * commits prevents a release, reassignment, or resubmission racing grant issue/consumption.
+   */
+  public MerchantPrivateMaterialAccessFact provePrivateMaterialAccess(
+      MerchantPrivateMaterialAccessQuery q) {
+    if (q == null) invalid("query is required");
+    long applicationId = id(q.applicationId(), "applicationId");
+    long revisionId = id(q.submittedRevisionId(), "submittedRevisionId");
+    long privateAssetId = id(q.privateAssetId(), "privateAssetId");
+    long operatorId = id(q.operatorId(), "operatorId");
+    return store.joinCurrentTransaction(
+        m -> {
+          MerchantApplicationEntity a = required(m.selectByIdForUpdate(applicationId));
+          strict(a);
+          if (a.getSubmittedRevisionId() == null
+              || a.getSubmittedRevisionId() != revisionId
+              || a.getCurrentReviewTaskId() == null
+              || !"REVIEWING".equals(a.getStatus())) {
+            conflict("submitted application facts changed; reload before reading the material");
+          }
+          MerchantReviewTaskEntity task =
+              m.selectTaskForUpdate(applicationId, a.getCurrentReviewTaskId());
+          if (task == null
+              || !"CLAIMED".equals(task.getStatus())
+              || task.getSubmittedRevisionId() == null
+              || task.getSubmittedRevisionId() != revisionId
+              || task.getClaimedByOperatorId() == null
+              || task.getClaimedByOperatorId() != operatorId) {
+            throw new ApiException(
+                CommonApiCodes.FORBIDDEN, "the review task is not claimed by this operator");
+          }
+          MerchantApplicationRevisionEntity revision =
+              requiredRevision(m.selectRevision(applicationId, revisionId));
+          MerchantMaterialEntity material =
+              m.selectRevisionMaterialByAsset(applicationId, revisionId, privateAssetId);
+          if (material == null) notFound();
+          if (material.getId() == null
+              || material.getId() <= 0
+              || material.getPrivateAssetId() == null
+              || material.getPrivateAssetId() != privateAssetId
+              || material.getSha256() == null
+              || !SHA.matcher(material.getSha256()).matches()
+              || material.getMaterialType() == null
+              || !Set.of(
+                      "STORE_PHOTO",
+                      "BUSINESS_LICENSE",
+                      "ID_CARD_FRONT",
+                      "ID_CARD_BACK",
+                      "INDUSTRY_LICENSE")
+                  .contains(material.getMaterialType())
+              || material.getMediaType() == null
+              || !Set.of("image/jpeg", "image/png").contains(material.getMediaType())
+              || material.getBytes() == null
+              || material.getBytes() < 1
+              || material.getBytes() > 10 * 1024 * 1024) {
+            unavailable("submitted material facts are damaged");
+          }
+          return new MerchantPrivateMaterialAccessFact(
+              IDS.toApi(applicationId),
+              IDS.toApi(a.getReservedMerchantId()),
+              revision.getCityCode(),
+              IDS.toApi(a.getOwnerUserId()),
+              a.getVersion() + ":" + task.getVersion(),
+              IDS.toApi(material.getId()),
+              IDS.toApi(material.getPrivateAssetId()),
+              material.getSha256(),
+              material.getMaterialType(),
+              material.getMediaType(),
+              material.getBytes(),
+              IDS.toApi(revisionId),
+              task.getStatus(),
+              IDS.toApi(task.getClaimedByOperatorId()),
+              Long.toString(task.getVersion()));
         });
   }
 
@@ -1083,7 +1185,9 @@ public final class MerchantApplicationService {
               i.validTo(),
               p.validityBasisProtected(),
               hex(subjectToken.equalityToken()),
-              basisToken == null ? null : hex(basisToken.equalityToken()), i.materialId(), i.materialSha256()));
+              basisToken == null ? null : hex(basisToken.equalityToken()),
+              i.materialId(),
+              i.materialSha256()));
     }
     if (!credentials.containsAll(Set.of("CREDIT_CODE", "IDENTITY_NUMBER")))
       invalid("business and identity evidence are both required");
@@ -1352,7 +1456,12 @@ public final class MerchantApplicationService {
     DecisionView dv =
         d == null
             ? null
-            : new DecisionView(d.getDecisionType(), d.getOpinion(), utc(d.getDecidedAt()), IDS.toApi(d.getId()), IDS.toApi(d.getSubmittedRevisionId()));
+            : new DecisionView(
+                d.getDecisionType(),
+                d.getOpinion(),
+                utc(d.getDecidedAt()),
+                IDS.toApi(d.getId()),
+                IDS.toApi(d.getSubmittedRevisionId()));
     return new MerchantApplicationResult(
         IDS.toApi(a.getId()),
         a.getApplicationNo(),
@@ -1378,7 +1487,12 @@ public final class MerchantApplicationService {
     DecisionView dv =
         d == null
             ? null
-            : new DecisionView(d.getDecisionType(), d.getOpinion(), utc(d.getDecidedAt()), IDS.toApi(d.getId()), IDS.toApi(d.getSubmittedRevisionId()));
+            : new DecisionView(
+                d.getDecisionType(),
+                d.getOpinion(),
+                utc(d.getDecidedAt()),
+                IDS.toApi(d.getId()),
+                IDS.toApi(d.getSubmittedRevisionId()));
     return new MerchantApplicationResult(
         IDS.toApi(a.getId()),
         a.getApplicationNo(),
@@ -1419,7 +1533,8 @@ public final class MerchantApplicationService {
         asset(ms, "BUSINESS_LICENSE"),
         asset(ms, "ID_CARD_FRONT"),
         asset(ms, "ID_CARD_BACK"),
-        asset(ms, "INDUSTRY_LICENSE"), utc(r.getCreatedAt()));
+        asset(ms, "INDUSTRY_LICENSE"),
+        utc(r.getCreatedAt()));
   }
 
   private static java.math.BigDecimal decimal(java.math.BigDecimal value) {
@@ -1445,7 +1560,9 @@ public final class MerchantApplicationService {
         s(r, "merchantTypeCode"),
         s(r, "cityCode"),
         utc((LocalDateTime) r.get("submittedAt")),
-        s(r, "taskStatus"), s(r, "submittedRevisionId"), s(r, "subjectVerificationStatus"));
+        s(r, "taskStatus"),
+        s(r, "submittedRevisionId"),
+        s(r, "subjectVerificationStatus"));
   }
 
   private static String s(Map<String, Object> r, String key) {
@@ -1460,7 +1577,8 @@ public final class MerchantApplicationService {
         t.getStatus(),
         t.getVersion(),
         t.getClaimedByOperatorId() == null ? null : IDS.toApi(t.getClaimedByOperatorId()),
-        utc(t.getClaimedAt()), IDS.toApi(t.getSubmittedRevisionId()));
+        utc(t.getClaimedAt()),
+        IDS.toApi(t.getSubmittedRevisionId()));
   }
 
   private static void strict(MerchantApplicationEntity a) {
@@ -1853,7 +1971,9 @@ public final class MerchantApplicationService {
       LocalDate validTo,
       byte[] validityBasisProtected,
       String subjectToken,
-      String validityBasisToken, String materialId, String materialSha256) {
+      String validityBasisToken,
+      String materialId,
+      String materialSha256) {
     Map<String, Object> canonical() {
       Map<String, Object> value = new LinkedHashMap<>();
       value.put("materialType", materialType);

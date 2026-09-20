@@ -1,0 +1,24 @@
+{
+  "scope": "Actual WeChat UI upload with real OSS/ClamAV/MySQL; one post-commit HTTP 503 injected by a temporary LAN proxy",
+  "materialsBeforeTest": 1,
+  "faultResponse": {
+    "requestIdSha256": "059ec22981bdeb94de967d35e1b6c07ff1974f7e6ccb14efeae77a425e36d9f3",
+    "upstreamStatus": 201,
+    "clientStatus": 503
+  },
+  "afterFault": {"readyMaterials": 2, "uploadRequests": 2, "pendingJournals": 1, "localCopies": 1},
+  "projectWindowClosedAndReopened": true,
+  "restoredNotice": "已恢复门店照片上传记录，请点击该材料上传入口确认原操作结果。",
+  "userConfirmedRetryWithoutChoosingAnotherFile": true,
+  "retryResponse": {
+    "requestIdSha256": "059ec22981bdeb94de967d35e1b6c07ff1974f7e6ccb14efeae77a425e36d9f3",
+    "upstreamStatus": 200,
+    "clientStatus": 200
+  },
+  "successNotice": "材料已上传，请保存草稿。",
+  "afterRetry": {"readyMaterials": 2, "uploadRequests": 2, "pendingJournals": 0, "localCopies": 0},
+  "duplicateMaterialCreated": false,
+  "subsequentDraftSave": {"status": "DRAFT", "version": 3, "applications": 1, "revisions": 3, "totalRevisionMaterialLinks": 4},
+  "mockedWechatSessionOrStorage": false,
+  "applicationSubmitted": false
+}

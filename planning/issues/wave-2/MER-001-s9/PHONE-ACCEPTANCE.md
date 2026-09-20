@@ -1,0 +1,44 @@
+# 手机真实验收与后续修复
+
+## 已确认事实
+
+- 手机浏览器可访问 LAN session 接口，返回预期的未登录401；手机小程序随后实际微信登录和会话查询均200，代理只记录状态/安全code与LAN范围，不记录凭据或个人内容。
+- 当前后台有两个平台用户，电脑原草稿属于先前用户。手机用户最初没有申请；GET current 按契约返回404，前端错误地展示服务故障提示。修复限定该查询的404 COMMON_NOT_FOUND为空表单，其余错误不吞。另保证未确认上传不阻止加载已有申请ID，避免重试上传后错误新建申请。
+- 手机真实 JPEG 上传到后台：源1280039字节、3072×4096、病毒扫描通过。旧实现强制转PNG超过10MiB，边界异常被PNG writer清理时的IndexOutOfBoundsException遮蔽，因此进入了错误重试。
+- 修复保留JPEG/PNG编码，JPEG quality0.95且清除元数据/纠正EXIF；不缩小分辨率，不放宽10MiB/16M像素限制。PNG输出边界在缓存写入前检查，超限稳定作为无效材料处理。水印HTTP只允许JPEG/PNG并同步契约。
+- 同一手机原图用实际Provider重新检查：规范化JPEG2747052字节，尺寸不变、再次扫描CLEAN。服务采用此前不存在的node21保留原DB/Redis加载修复；仅在隔离测试库将原已耗尽任务重新排队，保留21次重试历史，不直接改材料状态，不创建新上传请求。真实worker随后将原记录转READY并完成原任务。
+- 用户在手机确认原上传后报告“材料上传确认成功，草稿已保存”。数据库印证：电脑草稿仍DRAFT/v3，手机新增独立DRAFT/v1；申请owner共2个，材料共3条READY/CLEAN，上传请求仍3条，未新增重复上传。
+
+## 验证
+
+JPEG/PNG与水印9项、HTTP8项、异常回归1项、架构22项，共40项定向Java测试通过。私有契约14项通过。首次无申请与已有申请/未确认上传恢复修复后，前端126项、typecheck和18081开发构建通过。
+
+手机原图、对象key、原始hash、手机号和token未提交到仓库。只记录处理结果与计数，见phone-jpeg-processing-result.json、phone-original-task-recovery.json。
+
+用户已确认手机重新读取后“草稿和照片都还在”。真实手机上传、保存、重新读取已通过；未将用户的DRAFT标为REVIEWING或APPROVED，也未对业务申请手工改状态。
+
+## 最新位置裁决与完整链路
+
+用户明确确认“不对位置进行限制”。默认后端只校验地址必填/长度与合法经纬度，不核验城市边界、地址匹配或距离，不调用腾讯WebService，不再要求Key。开放城市目录仍单独保持成都。规则已同步SSOT §28、PRD26、API30/32与CCR-MER-MAP-001。
+
+MerchantApplicationLiveAcceptance在独立随机测试库内使用真实OSS、ClamAV、MySQL、Redis和默认位置输入校验，完成四份合成材料上传、申请提交、审核任务领取、单次水印读取及重复读取拒绝、人工审核通过、协议SIGNED、站内通知落库。精确清理自身测试对象失败数为0；不改用户现有草稿。该自动验收的微信身份入口使用FixedWechatProvider，不能等同于真实手机完整提交审核验收。位置Provider与装配4项及完整链路1项均通过。
+
+生产开关保持关闭；本记录不代表PR已合并或生产已部署。
+
+## 真机提交503与本地策略初始化修复
+
+手机提交返回COMMON_DEPENDENCY_UNAVAILABLE，提示credential HMAC policy缺失或不匹配。核对原测试库：merchant_subject_lookup_policy为空，申请仍DRAFT/v2，审核任务0，证件证据/主体占用均0；失败没有半提交。
+
+LocalMerchantAcceptanceServer现于启动时初始化空白测试库的固定策略版本，已有匹配策略保持不变，不匹配则拒绝覆盖；缺策略但已有证件数据也拒绝初始化。只涉及test scope，不改变生产校验、密钥或用户申请状态。完整真实依赖验收新增同版本重复初始化及版本冲突拒绝断言后通过，完整提交/审核/签约/通知及测试对象清理再次通过。
+
+本地原MySQL数据恢复，服务以未用node23接续，策略版本与实际Provider一致；LAN代理session检查返回预期未登录401。等待用户重试原提交，再核对真实申请REVIEWING及审核任务；不能将配置修复视为用户提交已成功。
+
+## 第二次提交503与本地常驻连接恢复
+
+用户重试得到merchant application persistence is unavailable。服务日志确认node23的ID Provider于16:53:15触发OPERATION_TIMEOUT并持续fail closed；核对申请仍DRAFT/v2、审核任务0。没有修改业务状态、重置高水位或放宽生产1秒保护预算。
+
+本地adopt服务原使用每次新建物理连接的DriverManagerDataSource，现改为Hikari连接池（最小4、最大8），减少常驻worker与续租的建连开销。旧JVM退出后使用此前不存在的node24保留原库恢复。编译通过；恢复后连续120秒、每15秒共9次实际匿名登录attempt接口请求全部201，ID高水位每次采样均推进，未再记录fail closed。见local-pool-stability.json；这证明观察窗口内持续发号/续租正常，不等于已经证明最初超时的底层原因或长期稳定性。用户原提交仍需正常重试并验收。
+
+## 手机提交落库验收通过
+
+用户随后确认已提交。只读核对原申请：REVIEWING/v4，当前材料版本与提交版本一致；审核任务仅1条、submission_no=1、AVAILABLE且未领取，申请的任务指针一致；SUBMIT审计仅1条（DRAFT→REVIEWING），审核决定0条。该提交版本包含门店照片、营业执照、身份证正面及反面各1项，4项材料上传账号均与申请owner一致。未通过SQL代提交或修改状态；本次确认手机真实提交及审核队列落库，运营页面、人工审核通过及手机签署不包含在此次验收中。

@@ -99,6 +99,95 @@ MINI_ATTEMPT_OPERATIONS = {
     'cAuthWechatLogin', 'cAuthSendSms', 'cAuthSmsLogin', 'cAuthPasswordLogin',
     'cAccountResetPassword', 'cAuthGetAttemptResult', 'cAuthGetSmsIntent',
 }
+PRIVATE_ASSET_OPERATIONS = {
+    'uploadPrivateAsset': ('post', '/c/private-assets'),
+    'issuePrivateAssetReadGrant': ('post', '/admin/merchant-applications/{applicationId}/private-assets/{assetId}/read-grants'),
+    'consumePrivateAssetReadGrant': ('get', '/admin/private-asset-read-grants/{token}'),
+}
+
+
+def check_private_assets(spec, operation):
+    name = operation['operationId']
+    assert operation.get('security') == [{'bearerAuth': []}], f'Private asset security changed: {name}'
+    assert operation.get('x-default-enabled') is False, 'Private asset must remain default off'
+    assert operation.get('x-contract-status') == 'APPROVED_IMPLEMENTATION_CANDIDATE'
+    assert operation.get('x-audience') == ('MINIAPP' if name == 'uploadPrivateAsset' else 'ADMIN_WEB')
+    if name != 'uploadPrivateAsset':
+        assert operation.get('x-single-use') is True, 'Private grant must be single use'
+        assert operation.get('x-grant-ttl-seconds') == 300, 'Private grant TTL changed'
+        assert operation.get('x-recheck-current-authorization') is True, 'Private grant must recheck current authorization'
+    schemas = spec['components']['schemas']
+
+    def strict(schema, fields):
+        value = dereference(spec, schema)
+        assert value.get('type') == 'object' and value.get('additionalProperties') is False, 'Private asset object must be closed'
+        assert set(value.get('required', [])) == set(fields) and set(value.get('properties', {})) == set(fields), 'Private asset fields changed'
+        assert not any(key in value for key in ('allOf', 'oneOf', 'anyOf', 'nullable')), 'Private asset schema composition changed'
+        return value['properties']
+
+    result = strict(schemas['PrivateAssetUploadResult'], ['assetId', 'status', 'objectSha256', 'mediaType', 'bytes'])
+    assert result['assetId'] == {'$ref': '#/components/schemas/PublicId'}
+    assert result['status'] == {'type': 'string', 'enum': ['READY']}
+    assert result['objectSha256'] == {'type': 'string', 'pattern': '^[0-9a-f]{64}$'}
+    assert result['mediaType'] in ({'type': 'string', 'enum': ['image/png', 'image/jpeg']}, {'type': 'string', 'enum': ['image/jpeg', 'image/png']})
+    assert result['bytes'] == {'type': 'integer', 'format': 'int64', 'minimum': 1, 'maximum': 10485760}
+    grant = strict(schemas['PrivateAssetGrantRequest'], ['submissionRevisionId', 'purposeCode', 'reason', 'confirmed'])
+    assert grant['submissionRevisionId'] == {'$ref': '#/components/schemas/PublicId'}
+    assert grant['purposeCode'] == {'type': 'string', 'pattern': '^[A-Z][A-Z0-9_]{0,63}$'}
+    assert grant['reason'] == {'type': 'string', 'minLength': 10, 'maxLength': 500}
+    assert grant['confirmed'] == {'type': 'boolean', 'enum': [True]}
+    grant_result = strict(schemas['PrivateAssetGrantResult'], ['readUrl', 'expiresAt'])
+    assert grant_result['readUrl'] == {'type': 'string', 'pattern': '^/api/v1/admin/private-asset-read-grants/[A-Za-z0-9_-]+$'}
+    assert grant_result['expiresAt'] == {'type': 'string', 'format': 'date-time'}
+    for envelope, data in [('PrivateAssetUploadEnvelope', 'PrivateAssetUploadResult'), ('PrivateAssetGrantEnvelope', 'PrivateAssetGrantResult'), ('PrivateAssetErrorEnvelope', None)]:
+        fields = strict(schemas[envelope], ['success', 'code', 'message', 'data', 'traceId'])
+        assert fields['success'] == {'type': 'boolean', 'enum': [data is not None]}
+        assert fields['message'] == fields['traceId'] == {'type': 'string', 'minLength': 1}
+        if data:
+            assert fields['code'] == {'type': 'string', 'enum': ['SUCCESS']}
+            assert fields['data'] == {'$ref': '#/components/schemas/' + data}
+        else:
+            assert fields['data'] == {'type': 'object', 'nullable': True, 'enum': [None]}, 'Private error must not expose data'
+            assert set(fields['code']) == {'type', 'enum'} and fields['code']['type'] == 'string'
+            assert set(fields['code'].get('enum', [])) == {'COMMON_INVALID_ARGUMENT', 'COMMON_UNAUTHORIZED', 'COMMON_FORBIDDEN', 'COMMON_NOT_FOUND', 'COMMON_CONFLICT', 'IDEMPOTENCY_KEY_CONFLICT', 'COMMON_DEPENDENCY_UNAVAILABLE', 'PRIVATE_ASSET_NOT_READY', 'PRIVATE_ASSET_REJECTED', 'PRIVATE_ASSET_GRANT_GONE'}
+    responses = operation['responses']
+    successes = {'200', '201'} if name == 'uploadPrivateAsset' else {'200'}
+    errors = {'400', '401', '403', '404', '409', '503'} | ({'413', '415', '422'} if name == 'uploadPrivateAsset' else {'410'})
+    assert set(responses) == successes | errors, 'Private asset response status changed'
+    for status in errors:
+        assert dereference(spec, responses[status])['content'] == {'application/json': {'schema': {'$ref': '#/components/schemas/PrivateAssetErrorEnvelope'}}}
+    for status in successes:
+        response = dereference(spec, responses[status])
+        cache = dereference(spec, response['headers']['Cache-Control'])['schema']
+        assert cache in ({'type': 'string', 'enum': ['no-store, private']}, {'type': 'string', 'example': 'no-store, private'}), 'Private asset caching changed'
+        if name == 'consumePrivateAssetReadGrant':
+            assert response['content'] == {
+                'image/png': {'schema': {'type': 'string', 'format': 'binary'}},
+                'image/jpeg': {'schema': {'type': 'string', 'format': 'binary'}},
+            }, 'Private proxy must expose exactly watermarked JPEG and PNG'
+            for header, value in [('Pragma', 'no-cache'), ('X-Content-Type-Options', 'nosniff')]:
+                assert response['headers'][header]['schema'] == {'type': 'string', 'enum': [value]}
+        else:
+            expected = 'PrivateAssetUploadEnvelope' if name == 'uploadPrivateAsset' else 'PrivateAssetGrantEnvelope'
+            assert response['content'] == {'application/json': {'schema': {'$ref': '#/components/schemas/' + expected}}}
+    if name == 'uploadPrivateAsset':
+        assert 'PRIVATE_ASSET_REJECTED' in responses['422']['description'] and 'new UUID' in responses['422']['description'], 'Private upload terminal rejection semantics changed'
+        body = dereference(spec, operation['requestBody'])
+        assert body.get('required') is True and set(body['content']) == {'multipart/form-data'}
+        fields = strict(body['content']['multipart/form-data']['schema'], ['purpose', 'file'])
+        assert fields['purpose'] == {'type': 'string', 'enum': ['MERCHANT_APPLICATION_MATERIAL']}
+        assert fields['file'].get('type') == 'string' and fields['file'].get('format') == 'binary'
+        assert set(fields['file']) <= {'type', 'format', 'description'}
+    elif name == 'issuePrivateAssetReadGrant':
+        assert operation['requestBody'] == {'required': True, 'content': {'application/json': {'schema': {'$ref': '#/components/schemas/PrivateAssetGrantRequest'}}}}
+        for boundary in ['Current CLAIMED task claimant', 'current submission revision', 'merchant.identity.reveal + merchant.application.decide', 'scope', 'final same-transaction check']:
+            assert boundary in operation.get('x-authorization', ''), 'Private grant authorization changed'
+    else:
+        for boundary in ['current session generation, actions, scope, claimant and linked material', 'TTL five minutes', 'Consumed grant cannot replay', 'Never log raw token path', 'No OSS URL']:
+            assert boundary in operation.get('description', ''), 'Private grant consumption semantics changed'
+        token = next(dereference(spec, p) for p in operation['parameters'] if dereference(spec, p).get('name') == 'token')
+        assert token == {'name': 'token', 'in': 'path', 'required': True, 'schema': {'type': 'string', 'minLength': 32, 'maxLength': 512, 'pattern': '^[A-Za-z0-9_-]+$'}}
+        assert 'requestBody' not in operation
 WEB_ATTEMPT_OPERATIONS = {
     'adminAuthLogin', 'adminAuthGetRequirements', 'adminAuthCreateCaptcha',
     'adminAuthVerifyCaptcha', 'adminAuthGetAttemptResult',
@@ -245,6 +334,9 @@ def check(spec):
             operations.add(operation_id)
             assert operation['responses'], f'Missing responses: {operation_id}'
             parameters = operation.get('parameters', []) + item.get('parameters', [])
+            if operation_id in PRIVATE_ASSET_OPERATIONS:
+                assert (method, path) == PRIVATE_ASSET_OPERATIONS[operation_id], f'Private asset operation moved: {operation_id}'
+                check_private_assets(spec, operation)
             if operation_id in AUTH_OPERATIONS:
                 assert (method, path) == AUTH_OPERATIONS[operation_id], f'AUTH operation moved: {operation_id}'
                 check_auth_security(spec, operation, parameters)
@@ -309,7 +401,7 @@ def check(spec):
     assert legacy_seen == LEGACY_OPERATIONS.keys(), f'Legacy operations missing: {LEGACY_OPERATIONS.keys() - legacy_seen}'
     assert legacy_writes == 13, 'Legacy write surface changed'
     assert legacy_creates == LEGACY_CREATES, 'Legacy create surface changed'
-    assert operations == LEGACY_OPERATIONS.keys() | AUTH_OPERATIONS.keys() | MERCHANT_OPERATIONS.keys() | APPLICATION_OPERATIONS.keys(), 'Unexpected or missing reviewed operations'
+    assert operations == LEGACY_OPERATIONS.keys() | AUTH_OPERATIONS.keys() | MERCHANT_OPERATIONS.keys() | APPLICATION_OPERATIONS.keys() | PRIVATE_ASSET_OPERATIONS.keys(), 'Unexpected or missing reviewed operations'
     schemes = spec['components']['securitySchemes']
     assert schemes['bearerAuth']['type'] == 'http' and schemes['bearerAuth']['scheme'] == 'bearer'
     for scheme, location, name in [('authAttempt', 'header', 'X-Auth-Attempt'),
@@ -343,6 +435,7 @@ def check(spec):
             'legacyCreates': len(legacy_creates), 'authOperations': len(operations & AUTH_OPERATIONS.keys()),
             'merchantOperations': len(operations & MERCHANT_OPERATIONS.keys()),
             'applicationOperations': len(operations & APPLICATION_OPERATIONS.keys()),
+            'privateAssetOperations': len(operations & PRIVATE_ASSET_OPERATIONS.keys()),
             'resolvedRefs': len(refs), 'stringIdProperties': ids}
 
 
