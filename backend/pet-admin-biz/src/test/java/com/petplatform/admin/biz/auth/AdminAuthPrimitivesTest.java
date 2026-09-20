@@ -1,5 +1,7 @@
 package com.petplatform.admin.biz.auth;
 
+import static org.junit.jupiter.api.Assertions.*;
+
 import com.petplatform.admin.api.dto.AdminDataScope;
 import com.petplatform.admin.biz.application.*;
 import com.petplatform.admin.biz.domain.service.AdminPermissionEvaluator;
@@ -10,7 +12,6 @@ import java.time.Instant;
 import java.util.*;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
-import static org.junit.jupiter.api.Assertions.*;
 
 class AdminAuthPrimitivesTest {
     @TempDir Path directory;
@@ -53,9 +54,12 @@ class AdminAuthPrimitivesTest {
         assertThrows(IllegalArgumentException.class,()->new AdminDataScope("MERCHANT",List.of(),List.of("01")));
         assertEquals("NONE",new AdminDataScope("NONE",List.of(),List.of()).mode());
     }
-    @Test void emptyProductionActionCatalogDoesNotGrantUnknownActionsToSuperadmin() {
-        assertTrue(AdminPermissionEvaluator.DEPLOYED_ACTIONS.isEmpty());
-        assertEquals(List.of(),AdminPermissionEvaluator.evaluate(true,List.of("refund.retry"),AdminPermissionEvaluator.DEPLOYED_ACTIONS));
+    @Test void productionActionCatalogOnlyGrantsActionsWithImplementedEnforcementPoints() {
+        assertEquals(
+        Set.of(
+            "merchant.application.read", "merchant.application.decide", "merchant.identity.reveal"),
+        AdminPermissionEvaluator.DEPLOYED_ACTIONS);
+    assertEquals(AdminPermissionEvaluator.DEPLOYED_ACTIONS.stream().sorted().toList(),AdminPermissionEvaluator.evaluate(true,List.of("refund.retry"),AdminPermissionEvaluator.DEPLOYED_ACTIONS));
         assertEquals(List.of(),AdminPermissionEvaluator.evaluate(false,List.of("refund.retry"),AdminPermissionEvaluator.DEPLOYED_ACTIONS));
         // Pure template behavior; this test does not register a production action.
         assertEquals(List.of("test.read"),AdminPermissionEvaluator.evaluate(false,List.of("test.read","test.read","unknown"),Set.of("test.read")));

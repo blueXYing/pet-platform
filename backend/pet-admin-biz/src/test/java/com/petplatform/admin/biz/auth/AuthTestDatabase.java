@@ -51,7 +51,9 @@ final class AuthTestDatabase implements AutoCloseable {
                 ScriptUtils.executeSqlScript(c, new FileSystemResource(root.resolve("docs/03-database/26-Admin-Auth-Schema-v0.1.sql")));
             }
             String evidence = "qa-auth-virgin:" + name;
-            jdbc.update("INSERT INTO snowflake_worker_state(node_id,format_identity,enabled,initialization_ref,created_at,updated_at) VALUES(17,?,TRUE,?,NOW(3),NOW(3))", SnowflakeProviderSettings.FORMAT_IDENTITY, evidence);
+            jdbc.update("INSERT INTO"
+              + " snowflake_worker_state(node_id,format_identity,enabled,initialization_ref,created_at,updated_at)"
+              + " VALUES(17,?,TRUE,?,NOW(3),NOW(3))", SnowflakeProviderSettings.FORMAT_IDENTITY, evidence);
             ids = new HutoolSnowflakeIdProvider(new JdbcSnowflakeNodeStore(source), new SnowflakeProviderSettings(17), old -> {
                 if (!created || old.nodeId()!=17 || old.incarnation()!=null || old.fence()!=0 || old.reservedThrough()!=-1 || !evidence.equals(old.initializationRef()))
                     throw new IllegalStateException("Not this fixture's specifically initialized virgin row");
@@ -75,7 +77,11 @@ final class AuthTestDatabase implements AutoCloseable {
         long deadline=System.nanoTime()+Duration.ofSeconds(5).toNanos();
         while(true) { try { ids.nextId(); return; } catch(IllegalStateException e) { if(!e.getMessage().contains("WARMING")||System.nanoTime()>=deadline)throw e; Thread.sleep(20); } }
     }
-    AdminAuthService service() { return service(source, codec, cache); }
+    AdminAuthService service() { return service(source, codec, cache);
+  }
+
+  AdminAuthorizationService authorization() {
+    return new AdminAuthorizationService(source); }
     AdminAuthService service(DataSource ds, AdminSecretCodec keys, AdminGrantCache grants) { return new AdminAuthService(ds,ids,Clock.systemUTC(),hasher,keys,grants); }
     long bootstrap(AdminAuthService service) { return service.bootstrap("qa-owner","QA Owner",PASSWORD.toCharArray(),"Isolated test initialization"); }
     record Attempt(long id,String token,String cookie) { @Override public String toString(){return "Attempt[REDACTED]";} }

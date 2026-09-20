@@ -11,10 +11,10 @@ import org.springframework.transaction.TransactionDefinition;
 import org.springframework.transaction.support.TransactionTemplate;
 
 /**
- * Only this Owner's tables, accessed through {@link AdminAuthMapper}. Reads run REPEATABLE
- * READ, writes READ_COMMITTED, each transaction opened with the UTC session statements and a
- * 5-second per-statement timeout; a lost commit acknowledgement still surfaces as
- * {@link CommitUnknown} so the recovery flows can re-read the committed result.
+ * Only this Owner's tables, accessed through {@link AdminAuthMapper}. Reads run REPEATABLE READ,
+ * writes READ_COMMITTED, each transaction opened with the UTC session statements and a 5-second
+ * per-statement timeout; a lost commit acknowledgement still surfaces as {@link CommitUnknown} so
+ * the recovery flows can re-read the committed result.
  */
 public final class AdminAuthStore {
   @FunctionalInterface
@@ -49,6 +49,9 @@ public final class AdminAuthStore {
   private final TransactionTemplate readTransaction;
   private final TransactionTemplate writeTransaction;
 
+  private final TransactionTemplate currentAuthorizationTransaction;
+  private final TransactionTemplate isolatedCurrentAuthorizationTransaction;
+
   public AdminAuthStore(DataSource source) {
     Objects.requireNonNull(source);
     this.template = AdminMybatis.template(source);
@@ -59,6 +62,16 @@ public final class AdminAuthStore {
     this.writeTransaction = new TransactionTemplate(manager);
     writeTransaction.setPropagationBehavior(TransactionDefinition.PROPAGATION_REQUIRES_NEW);
     writeTransaction.setIsolationLevel(TransactionDefinition.ISOLATION_READ_COMMITTED);
+  this.currentAuthorizationTransaction = new TransactionTemplate(manager);
+    currentAuthorizationTransaction.setPropagationBehavior(
+        TransactionDefinition.PROPAGATION_REQUIRED);
+    currentAuthorizationTransaction.setIsolationLevel(
+        TransactionDefinition.ISOLATION_READ_COMMITTED);
+    this.isolatedCurrentAuthorizationTransaction = new TransactionTemplate(manager);
+    isolatedCurrentAuthorizationTransaction.setPropagationBehavior(
+        TransactionDefinition.PROPAGATION_REQUIRES_NEW);
+    isolatedCurrentAuthorizationTransaction.setIsolationLevel(
+        TransactionDefinition.ISOLATION_READ_COMMITTED);
   }
 
   public <T> T read(Work<T> work) {
@@ -67,6 +80,17 @@ public final class AdminAuthStore {
 
   public <T> T write(Work<T> work) {
     return run(work, writeTransaction);
+  }
+
+  /**
+   * Uses locking current reads. Execute checks join a caller transaction on the same DataSource;
+   * result-read checks use an isolated read/write transaction so they remain valid when their
+   * caller is read-only.
+   */
+  public <T> T currentAuthorization(Work<T> work, boolean joinCaller) {
+    return run(
+        work,
+        joinCaller ? currentAuthorizationTransaction : isolatedCurrentAuthorizationTransaction);
   }
 
   private <T> T run(Work<T> work, TransactionTemplate transaction) {

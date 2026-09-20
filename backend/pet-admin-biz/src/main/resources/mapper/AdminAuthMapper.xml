@@ -270,12 +270,24 @@
         SELECT * FROM admin_account_scope WHERE account_id=#{accountId}
     </select>
 
+    <select id="selectAccountScopeForUpdate" resultType="com.petplatform.admin.biz.infrastructure.persistence.entity.AdminEntities$AccountScope">
+        SELECT * FROM admin_account_scope WHERE account_id=#{accountId} FOR UPDATE
+    </select>
+
     <select id="selectScopeCities" resultType="string">
         SELECT city_code FROM admin_scope_city WHERE account_id=#{accountId}
     </select>
 
+    <select id="selectScopeCitiesForUpdate" resultType="string">
+        SELECT city_code FROM admin_scope_city WHERE account_id=#{accountId} ORDER BY city_code FOR UPDATE
+    </select>
+
     <select id="selectScopeMerchants" resultType="long">
         SELECT merchant_id FROM admin_scope_merchant WHERE account_id=#{accountId}
+    </select>
+
+    <select id="selectScopeMerchantsForUpdate" resultType="long">
+        SELECT merchant_id FROM admin_scope_merchant WHERE account_id=#{accountId} ORDER BY merchant_id FOR UPDATE
     </select>
 
     <select id="selectEnabledRoles" resultType="com.petplatform.admin.biz.infrastructure.persistence.entity.AdminEntities$Role">
@@ -283,10 +295,25 @@
         WHERE ar.account_id=#{accountId} AND r.status='ENABLED' ORDER BY r.role_code
     </select>
 
+    <select id="selectEnabledRolesForUpdate" resultType="com.petplatform.admin.biz.infrastructure.persistence.entity.AdminEntities$Role">
+        SELECT r.* FROM admin_role r JOIN admin_account_role ar ON ar.role_id=r.id
+        WHERE ar.account_id=#{accountId} AND r.status='ENABLED' ORDER BY r.role_code FOR UPDATE
+    </select>
+
     <select id="selectActionGrants" resultType="string">
         SELECT ra.action_code FROM admin_role_action ra JOIN admin_role r ON r.id=ra.role_id
         JOIN admin_account_role ar ON ar.role_id=r.id WHERE ar.account_id=#{accountId} AND r.status='ENABLED'
         UNION SELECT action_code FROM admin_extra_grant WHERE account_id=#{accountId}
+    </select>
+
+    <select id="selectRoleActionGrantsForUpdate" resultType="string">
+        SELECT ra.action_code FROM admin_role_action ra JOIN admin_role r ON r.id=ra.role_id
+        JOIN admin_account_role ar ON ar.role_id=r.id
+        WHERE ar.account_id=#{accountId} AND r.status='ENABLED' ORDER BY ra.action_code FOR UPDATE
+    </select>
+
+    <select id="selectExtraActionGrantsForUpdate" resultType="string">
+        SELECT action_code FROM admin_extra_grant WHERE account_id=#{accountId} ORDER BY action_code FOR UPDATE
     </select>
 
     <select id="countSuperAdminGrants" resultType="long">

@@ -4,10 +4,11 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.petplatform.common.SnowflakeIdGenerator;
 import com.petplatform.event.api.IntegrationEventConsumer;
 import com.petplatform.event.core.JdbcOutboxConsumeGuard;
-import com.petplatform.event.core.OutboxDispatcher;
 import com.petplatform.event.core.OutboxDispatchSettings;
+import com.petplatform.event.core.OutboxDispatcher;
 import com.petplatform.event.core.OutboxRetryDelays;
 import com.petplatform.event.core.TransactionalOutboxPublisher;
+import com.petplatform.notification.biz.event.MerchantApplicationReviewedConsumer;
 import java.time.Duration;
 import java.util.List;
 import javax.sql.DataSource;
@@ -18,11 +19,10 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
 /**
- * PLAT-003 outbox assembly, default OFF and additionally gated on a production
- * SnowflakeIdGenerator bean (PLAT-002 S2 enablement is a separate decision).
- * No business consumers exist yet; an empty registration keeps the dispatcher idle.
- * Turning this on also requires the outbox tables to exist — no migration is
- * executed or implied here.
+ * PLAT-003 outbox assembly, default OFF and additionally gated on a production SnowflakeIdGenerator
+ * bean (PLAT-002 S2 enablement is a separate decision). Application-review notifications are
+ * separately opt-in; an empty registration keeps the dispatcher idle. Turning this on also requires
+ * the outbox tables to exist — no migration is executed or implied here.
  */
 @Configuration(proxyBeanMethods = false)
 @ConditionalOnProperty(prefix = "pet.outbox", name = "enabled", havingValue = "true")
@@ -39,6 +39,16 @@ public class EventOutboxConfiguration {
     @Bean
     JdbcOutboxConsumeGuard outboxConsumeGuard(DataSource dataSource, SnowflakeIdGenerator ids) {
         return new JdbcOutboxConsumeGuard(dataSource, ids);
+  }
+
+  @Bean
+  @ConditionalOnProperty(
+      prefix = "pet.merchant.application",
+      name = "notifications-enabled",
+      havingValue = "true")
+  MerchantApplicationReviewedConsumer merchantApplicationReviewedConsumer(
+      DataSource dataSource, SnowflakeIdGenerator ids, JdbcOutboxConsumeGuard guard) {
+    return new MerchantApplicationReviewedConsumer(dataSource, ids, guard::tryClaim);
     }
 
     @Bean(destroyMethod = "close")

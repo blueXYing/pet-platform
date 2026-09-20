@@ -61,7 +61,11 @@ final class MySqlMerchantApplicationSchemaTestDatabase implements AutoCloseable 
         return jdbc;
     }
 
-    private void execute(Path script) throws Exception {
+    DataSource dataSource() {
+    return dataSource;
+  }
+
+  private void execute(Path script) throws Exception {
         if (!Files.exists(script)) {
             throw new IllegalStateException("Authoritative schema was not found: " + script);
         }

@@ -1,6 +1,6 @@
-# 商家申请审核契约补充 v0.1（技术同步候选）
+# 商家申请审核契约补充 v0.1（已批准，分阶段实现）
 
-状态：CONTRACT_SYNC_CANDIDATE / NOT_IMPLEMENTED。基线PR52合并65df1c3。用户已确认四项业务规则并授权按“契约→后端→准入→前端联调”顺序推进；本文件把原CCR具体化用于同一PR审阅，不引入新的产品选择，不宣称真实审核已经交付。
+状态：APPROVED / DOMAIN_COMPONENTS_IMPLEMENTED / HTTP_NOT_WIRED。用户在PR53技术契约包说明后明确“那么请你实施”，批准本轮实现。基线为PR53 `9d6b828`（承接PR52合并65df1c3）。本文件下文“候选/建议/未批准”的历史措辞不再要求重复产品确认，但接口定义不等于已经部署；实际交付与验证见S5交接，OpenAPI操作在HTTP装配完成前仍保留未实现标记。
 
 产品依据为SSOT §27、PRD26；存储依据为[SQL29](../03-database/29-Merchant-Application-Schema-v0.1.sql)及其存储说明。现有07/10/11/12与Event08只作兼容增量；审批、私人材料/授权、通知实现仍按验收交接，字段定义不代替真实Provider事实。
 
@@ -280,3 +280,13 @@ payload:
 - 审核结果事件仍须 Event Owner 批准并同步 Event08；在此之前§10只是精确提案。MER 不得借普通日志或直接跨库写消息，C端权威查询也不能替代强制站内通知。
 - 审核任务超时自动释放、审核 SLA scheduler、管理员强制转派、已通过资料变更、资质到期处罚均没有本 CCR 足够规则，不进入最小写实现。
 - 不因此解除成员绑定、主账号核销 staff 映射、员工停用与订单指派并发或冻结写动作门禁。
+
+## 13. S5 实施映射与未装配边界
+
+实现位于 merchant-api / merchant-biz 的 `MerchantApplicationCommandApi`、`MerchantApplicationQueryApi` 与 MyBatis application mapper。内部 command/result records 用于本域调用，不能直接作为 HTTP DTO；OpenAPI 的 String version、Owner/Admin 两类投影、create 首次201/重放200等仍须专门 HTTP 适配验证。当前不注册这些 HTTP 路由。
+
+运营最终复核由 admin-api 的 `AdminAuthorizationQueryApi` 提供。另增加只读集合入口 `checkCollection(AdminCollectionActionCheckQuery)`，参数为 sessionId、sessionGeneration、operatorId、actionCode、purpose、phase；只支持 `merchant.application.read` 与 `READ_RESULT`。它先检查当前会话/账号/动作，之后逐资源检查真实scope再计算total/page，不使用伪造applicationId证明列表权限。缺实现默认失败关闭。列表分批读取避免一次加载全表，但仍逐行复核；大数据量下的SQL范围下推是公开启用前的性能缺口。
+
+私有材料、已开通城市、地图合理性、受保护字段与证件规范化仍通过显式端口提供，未提供真实默认Provider。字段保护端口的内部解密仅用于已授权事务内完整提交校验，不能据此开放敏感原件GET。幂等规范化保存稳定的保护令牌，不保存证件/联系人明文，也不依赖随机加密nonce形成请求摘要。
+
+`pet.merchant.application.enabled` 默认未开启；显式开启时必须具有真实DataSource、发号器、上述Provider、AdminAuthorizationQueryApi和事务Outbox。此开关仅装配内部领域API、真实审核事实与协议/新单资格组合，不创建HTTP路由、数据库迁移、密钥或模拟数据。通知消费者另需 `pet.outbox.enabled` 与 `pet.merchant.application.notifications-enabled`，默认均不因本轮提交开启。具体运行验证见[S5交接](../../planning/issues/wave-2/MER-001-s5/HANDOFF.md)。

@@ -2,10 +2,10 @@ package com.petplatform.admin.biz.infrastructure.persistence.mapper;
 
 import com.petplatform.admin.biz.infrastructure.persistence.entity.AdminEntities.Account;
 import com.petplatform.admin.biz.infrastructure.persistence.entity.AdminEntities.AccountScope;
+import com.petplatform.admin.biz.infrastructure.persistence.entity.AdminEntities.AuditIntent;
 import com.petplatform.admin.biz.infrastructure.persistence.entity.AdminEntities.AuthAttempt;
 import com.petplatform.admin.biz.infrastructure.persistence.entity.AdminEntities.AuthCommand;
 import com.petplatform.admin.biz.infrastructure.persistence.entity.AdminEntities.AuthzRevision;
-import com.petplatform.admin.biz.infrastructure.persistence.entity.AdminEntities.AuditIntent;
 import com.petplatform.admin.biz.infrastructure.persistence.entity.AdminEntities.Bootstrap;
 import com.petplatform.admin.biz.infrastructure.persistence.entity.AdminEntities.Captcha;
 import com.petplatform.admin.biz.infrastructure.persistence.entity.AdminEntities.LoginFailure;
@@ -183,13 +183,25 @@ public interface AdminAuthMapper {
 
     AccountScope selectAccountScope(@Param("accountId") long accountId);
 
-    List<String> selectScopeCities(@Param("accountId") long accountId);
+    AccountScope selectAccountScopeForUpdate(@Param("accountId") long accountId);
+
+  List<String> selectScopeCities(@Param("accountId") long accountId);
+
+  List<String> selectScopeCitiesForUpdate(@Param("accountId") long accountId);
 
     List<Long> selectScopeMerchants(@Param("accountId") long accountId);
 
-    List<Role> selectEnabledRoles(@Param("accountId") long accountId);
+    List<Long> selectScopeMerchantsForUpdate(@Param("accountId") long accountId);
 
-    List<String> selectActionGrants(@Param("accountId") long accountId);
+  List<Role> selectEnabledRoles(@Param("accountId") long accountId);
+
+    List<Role> selectEnabledRolesForUpdate(@Param("accountId") long accountId);
+
+  List<String> selectActionGrants(@Param("accountId") long accountId);
+
+  List<String> selectRoleActionGrantsForUpdate(@Param("accountId") long accountId);
+
+  List<String> selectExtraActionGrantsForUpdate(@Param("accountId") long accountId);
 
     long countSuperAdminGrants(@Param("accountId") long accountId);
 
