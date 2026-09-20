@@ -2,3 +2,27 @@
 body { margin: 0; } header { display: flex; justify-content: space-between; padding: 24px 32px; background: #fff; border-bottom: 1px solid #dce2eb; } header span { color: #775318; }
 .layout { display: grid; grid-template-columns: 260px 1fr; min-height: 65vh; } aside { padding: 28px 24px; border-right: 1px solid #dce2eb; } label, select, nav a { display: block; margin-bottom: 16px; } select { width: 100%; padding: 8px; } nav { margin-top: 32px; } a { color: #2459a8; } main { padding: 32px; } h1, h2 { font-size: 26px; } p { line-height: 1.8; } button { margin: 12px 16px 12px 0; padding: 10px 18px; cursor: pointer; } output { display: block; padding-top: 20px; } footer { padding: 24px 32px; color: #566379; } :focus-visible { outline: 3px solid #367ac7; outline-offset: 3px; }
 @media (max-width: 720px) { .layout { grid-template-columns: 1fr; } aside { border-right: 0; } }
+
+/* A-002 merchant application review pages */
+main.login { max-width: 420px; margin: 8vh auto; padding: 32px; background: #fff; border: 1px solid #dce2eb; border-radius: 8px; }
+main.login input { display: block; width: 100%; padding: 8px; margin-bottom: 16px; box-sizing: border-box; }
+main.login img { display: block; margin-bottom: 8px; border: 1px solid #dce2eb; }
+main > header button { margin-left: 16px; }
+form.filters { display: flex; flex-wrap: wrap; gap: 16px; align-items: end; background: #fff; padding: 16px; border: 1px solid #dce2eb; border-radius: 8px; }
+form.filters label { display: flex; flex-direction: column; margin: 0; font-size: 14px; gap: 6px; }
+form.filters input { padding: 8px; min-width: 160px; }
+table { border-collapse: collapse; width: 100%; background: #fff; margin-top: 16px; }
+th, td { border: 1px solid #dce2eb; padding: 10px 12px; text-align: left; font-size: 14px; }
+thead th { background: #f4f6fa; }
+.pager { display: flex; gap: 16px; align-items: center; margin-top: 16px; }
+dl.snapshot { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 8px 24px; background: #fff; padding: 16px; border: 1px solid #dce2eb; border-radius: 8px; }
+dl.snapshot div { display: flex; gap: 8px; } dl.snapshot dt { color: #566379; min-width: 96px; } dl.snapshot dd { margin: 0; overflow-wrap: anywhere; }
+ul.materials { list-style: none; padding: 0; } ul.materials li { background: #fff; border: 1px solid #dce2eb; border-radius: 8px; padding: 12px 16px; margin-bottom: 8px; display: flex; flex-wrap: wrap; gap: 12px; align-items: center; }
+ul.materials img { border: 1px solid #dce2eb; border-radius: 4px; }
+.hint { color: #566379; font-size: 14px; }
+section { margin-top: 32px; } section label { display: block; margin: 8px 0; font-size: 14px; }
+section input:not([type="checkbox"]), section select, section textarea { display: block; padding: 8px; min-width: 320px; margin-top: 4px; }
+section input[type="date"] { display: inline-block; min-width: 0; margin: 0 4px 0 0; }
+table.evidence td input { min-width: 120px; display: inline-block; margin: 0; }
+code { background: #f4f6fa; padding: 2px 6px; border-radius: 4px; font-size: 13px; overflow-wrap: anywhere; }
+[role="alert"] { color: #a33400; } [role="status"] { color: #2459a8; }
