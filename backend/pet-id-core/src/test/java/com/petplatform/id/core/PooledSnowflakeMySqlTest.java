@@ -38,7 +38,11 @@ class PooledSnowflakeMySqlTest {
         try (var db = new MySqlIdTestDatabase(); var pool = pool(db, driverZone)) {
             db.seedVirgin(17);
             var source = new ResetSessionDataSource(pool, sessionZone);
-            var store = new JdbcSnowflakeNodeStore(source);
+            // This parameterized case owns UTC/session reset semantics, not the wall-clock SLA.
+            // Freeze only the store's package-private monotonic seam so a shared CI runner pause
+            // cannot turn a valid timezone transaction into the separately tested 1s fail-close.
+            // Production and the delayed commit-ACK test below retain System.nanoTime.
+            var store = new JdbcSnowflakeNodeStore(source, () -> 0L);
             List<Connection> held = new ArrayList<>();
             SnowflakeNodeGrant grant;
             long before = System.currentTimeMillis();

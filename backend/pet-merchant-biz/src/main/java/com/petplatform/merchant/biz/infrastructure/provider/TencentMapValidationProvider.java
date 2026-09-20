@@ -186,13 +186,17 @@ public final class TencentMapValidationProvider implements MapValidationPort {
   private static boolean reverseCity(JsonNode result) {
     JsonNode parts = result.path("address_component");
     JsonNode ad = result.path("ad_info");
-    String adcode = code(ad, "adcode"), cityCode = code(ad, "city_code");
+    String adcode = digits(ad, "adcode", 6),
+        nationCode = digits(ad, "nation_code", 3),
+        cityCode = digits(ad, "city_code", 6, 9);
     return "中国".equals(text(parts, "nation"))
         && "四川省".equals(text(parts, "province"))
         && "成都市".equals(text(parts, "city"))
         && adcode != null
         && adcode.matches("5101[0-9]{2}")
-        && "510100".equals(cityCode);
+        && "156".equals(nationCode)
+        && cityCode != null
+        && ("510100".equals(cityCode) || "156510100".equals(cityCode));
   }
 
   private static int integer(JsonNode node, String field) {
@@ -217,13 +221,18 @@ public final class TencentMapValidationProvider implements MapValidationPort {
   }
 
   private static String code(JsonNode node, String field) {
+    return digits(node, field, 6);
+  }
+
+  private static String digits(JsonNode node, String field, int... lengths) {
     JsonNode value = node.get(field);
     if (value == null) return null;
-    if (value.isTextual() && value.textValue().matches("[0-9]{6}")) return value.textValue();
-    if (value.isIntegralNumber() && value.canConvertToInt()) {
-      int number = value.intValue();
-      return number >= 100000 && number <= 999999 ? Integer.toString(number) : null;
-    }
+    String result = null;
+    if (value.isTextual() && value.textValue().matches("[0-9]+")) result = value.textValue();
+    if (value.isIntegralNumber() && value.canConvertToLong() && value.longValue() >= 0)
+      result = Long.toString(value.longValue());
+    if (result == null) return null;
+    for (int length : lengths) if (result.length() == length) return result;
     return null;
   }
 

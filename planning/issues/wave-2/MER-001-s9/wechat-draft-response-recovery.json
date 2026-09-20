@@ -1,0 +1,21 @@
+{
+  "scope": "Real WeChat UI and temporary LAN HTTP reverse proxy; actual backend commit followed by one-shot injected 503",
+  "before": {"status": "DRAFT", "version": 1, "applications": 1, "revisions": 1},
+  "fault": {
+    "method": "PUT",
+    "pathTemplate": "/api/v1/c/merchant-applications/{applicationId}/draft",
+    "upstreamStatus": 200,
+    "clientStatus": 503,
+    "injectionCount": 1,
+    "requestIdSha256": "9c814838b6cf8f374d89589bd53d6f879fa619119a9bc96e244c6c941fe29421"
+  },
+  "afterCommittedButUnconfirmed": {"status": "DRAFT", "version": 2, "applications": 1, "revisions": 2},
+  "projectWindowClosedAndReopened": true,
+  "restoredNotice": "已恢复上次未确认的操作，请重试原操作以确认结果。",
+  "retryButton": "重试原操作",
+  "retryNotice": "草稿已保存。",
+  "afterRetry": {"status": "DRAFT", "version": 2, "applications": 1, "revisions": 2, "revisionMaterialLinks": 2},
+  "duplicateRevisionCreated": false,
+  "mockedSessionOrDatabase": false,
+  "applicationSubmitted": false
+}

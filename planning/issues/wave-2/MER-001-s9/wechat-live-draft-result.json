@@ -1,0 +1,17 @@
+{
+  "scope": "Real WeChat DevTools UI, authenticated LAN backend, real MySQL and previously uploaded private OSS material",
+  "saveNotice": "草稿已保存。",
+  "databaseApplicationStatus": "DRAFT",
+  "applicationCount": 1,
+  "applicationVersionAfterFirstSave": 1,
+  "revisionCountAfterFirstSave": 1,
+  "materialLinkCount": 1,
+  "explicitReloadMaterialText": "照片 1已上传移除",
+  "projectWindowClosedAndReopened": true,
+  "sessionRestoredViaNormalQueryButton": true,
+  "afterRestartMaterialText": "照片 1已上传移除",
+  "applicationCountAfterRestart": 1,
+  "revisionCountAfterRestart": 1,
+  "mockedSessionOrApi": false,
+  "applicationSubmitted": false
+}

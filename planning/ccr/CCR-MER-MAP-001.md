@@ -18,7 +18,7 @@
 
 通过必须同时满足：
 
-- 正向明确返回四川省/成都市，逆向明确返回中国/四川省/成都市；adcode 属于 `5101xx`，逆向 city_code 为 `510100`；
+- 正向明确返回四川省/成都市，逆向明确返回中国/四川省/成都市；adcode 属于 `5101xx`。腾讯现行官方协议定义逆向 `city_code` 为 9 位“国家码 + 城市级行政区划码”，成都规范值为 `156510100`。兼容官方技能旧样例中的 6 位 `510100` 时，必须同时由 `nation=中国`、`nation_code=156`、`adcode=5101xx`、四川省和成都市交叉确证；
 - 正向 `reliability >= 7`、`level >= 9`。这是腾讯地址服务说明中“较为准确”和“门址/POI 精度”的技术质量线；
 - 腾讯返回的正向 `deviation` 不超过批准的距离策略；
 - 正向坐标与用户提交坐标的 Haversine 球面距离不超过同一距离策略。
@@ -41,7 +41,8 @@
 
 ## 5. 依据与验收边界
 
-- 腾讯位置服务地址服务：<https://lbs.qq.com/service/webService/webServiceGuide/webServiceGcoder>
+- 腾讯位置服务逆地址解析（现行 `city_code` 字段定义）：<https://lbs.qq.com/service/webService/webServiceGuide/address/Gcoder>
+- 腾讯位置服务地址解析：<https://lbs.qq.com/service/webService/webServiceGuide/address/Geocoder>
 - 腾讯位置服务 WebService 概览：<https://lbs.qq.com/service/webService/webServiceGuide/webServiceOverview>
 - 外部技能：`tencentmap-webservice-skill` 1.0.4（腾讯位置服务团队发布；仅用于协议指导）。
 

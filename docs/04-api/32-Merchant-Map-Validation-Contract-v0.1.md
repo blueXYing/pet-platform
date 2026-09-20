@@ -14,7 +14,7 @@
 
 ## 成功规则
 
-正向与逆向响应都必须 `status=0`、字段类型完整。正向必须证明四川省成都市，逆向必须证明中国、四川省、成都市；两者都须提供成都行政代码。正向结果另须 `reliability>=7`、`level>=9`，Provider deviation 和正向坐标到提交坐标的 Haversine 距离都不得超过显式批准距离。
+正向与逆向响应都必须 `status=0`、字段类型完整。正向必须证明四川省成都市，逆向必须证明中国、`nation_code=156`、四川省、成都市；两者都须提供 `5101xx` 成都区县行政代码。腾讯现行官方协议将逆向 `city_code` 定义为 9 位“国家码 + 城市级行政区划码”，规范成都值为 `156510100`。兼容 6 位 `510100` 时仍必须满足上述 nation/nation_code/adcode/province/city 全部事实；其他 6/9 位值均拒绝。正向结果另须 `reliability>=7`、`level>=9`，Provider deviation 和正向坐标到提交坐标的 Haversine 距离都不得超过显式批准距离。
 
 业务无结果、城市/质量/距离不符返回 false；依赖错误抛 `COMMON_DEPENDENCY_UNAVAILABLE`。调用者沿用既有提交语义：false 为位置不合理冲突，依赖异常为 503，不把依赖故障伪装成用户地址错误。
 

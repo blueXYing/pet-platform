@@ -20,6 +20,17 @@
 
 ## 启动与持久性
 
+## 草稿与响应丢失的真实 UI 验收
+
+后续已继续执行，不再停留在上传成功：
+
+- 页面保存草稿成功，材料与revision绑定；主动重新读取、关闭并重新打开项目后，经正常会话恢复仍显示原照片。见wechat-live-draft-result.json。
+- 临时LAN代理在真实草稿PUT已返回200后单次向页面返回503。后台version1→2；重开页面恢复原未确认操作并重试后仍version2/revision2，没有第三版。见wechat-draft-response-recovery.json。
+- 临时代理在真实材料POST已返回201后单次返回503。小程序保留1份原文件与1条journal；重开后恢复上传，用户确认重试，无重新选图。同requestId摘要得到200，后台材料/请求总数保持2（含之前正常上传的1条），ACK后副本与journal归零。随后保存第二张照片至草稿version3。见wechat-upload-response-recovery.json。
+- 手机预览码已生成（主包743884字节、总计2629563字节），等待用户实际扫码/登录/操作。二维码生成不是手机验收完成。
+
+最新CI还出现了既有UTC连接池时区测试与1秒真实调度预算耦合的失败。修复仅提供package-private单调时钟测试接口，让UTC测试不承担共享runner的墙钟SLA；public构造仍System.nanoTime，生产1秒预算、事务超时、真实Provider与迟到commit ACK测试未放宽，也未加失败自动重试。5项定向MySQL用例通过；新CI另行确认。
+
 常驻入口在 test scope：LocalMerchantAcceptanceServer；环境变量名称与人工命令见 LIVE-PROVIDERS.md。开发密钥仅保存在仓库外，服务器原有生产配置未迁移。临时数据库在服务关闭时删除；小程序未确认上传须先恢复/核对，避免关闭测试服务后误以为记录仍对应可用测试申请。
 
 微信本地 AppID 和 project.private.config 的域名校验配置用于当前联调，不纳入生产提交。测试服务器保持本地LAN监听，未建立公网隧道。

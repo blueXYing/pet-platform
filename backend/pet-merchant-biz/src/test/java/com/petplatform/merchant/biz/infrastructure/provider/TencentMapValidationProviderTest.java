@@ -28,7 +28,7 @@ class TencentMapValidationProviderTest {
     calls = new AtomicInteger();
     queries = Collections.synchronizedList(new ArrayList<>());
     forwardResponse = forward(30.6570, 104.0650, "四川省", "成都市", "510104", 9, 10, 30);
-    reverseResponse = reverse("中国", "四川省", "成都市", "510104", "510100");
+    reverseResponse = reverse("中国", "四川省", "成都市", "156", "510104", "156510100");
     statusCode = 200;
     server = HttpServer.create(new InetSocketAddress(InetAddress.getLoopbackAddress(), 0), 0);
     server.createContext(
@@ -65,7 +65,8 @@ class TencentMapValidationProviderTest {
     reverseResponse =
         reverseResponse
             .replace("\"adcode\":\"510104\"", "\"adcode\":510104")
-            .replace("\"city_code\":\"510100\"", "\"city_code\":510100");
+            .replace("\"nation_code\":\"156\"", "\"nation_code\":156")
+            .replace("\"city_code\":\"156510100\"", "\"city_code\":156510100");
     assertTrue(
         provider.isReasonable(
             "chengdu",
@@ -96,7 +97,7 @@ class TencentMapValidationProviderTest {
 
     calls.set(0);
     forwardResponse = forward(30.657, 104.065, "四川省", "成都市", "510104", 9, 10, 30);
-    reverseResponse = reverse("中国", "四川省", "绵阳市", "510703", "510700");
+    reverseResponse = reverse("中国", "四川省", "绵阳市", "156", "510703", "156510700");
     assertFalse(
         provider.isReasonable(
             "chengdu", "人民路1号", new BigDecimal("104.065"), new BigDecimal("30.657")));
@@ -111,6 +112,24 @@ class TencentMapValidationProviderTest {
         provider.isReasonable(
             "chengdu", "人民路1号", new BigDecimal("104.065"), new BigDecimal("30.657")));
     forwardResponse = forward(30.657, 104.065, "四川省", "成都市", "510104", 9, 10, 1_001);
+    assertFalse(
+        provider.isReasonable(
+            "chengdu", "人民路1号", new BigDecimal("104.065"), new BigDecimal("30.657")));
+  }
+
+  @Test
+  void acceptsConfirmedSixDigitLegacyCityCodeButRejectsWrongNationPrefix() {
+    TencentMapValidationProvider provider = provider(1_000, 2_000);
+    reverseResponse = reverse("中国", "四川省", "成都市", "156", "510104", "510100");
+    assertTrue(
+        provider.isReasonable(
+            "chengdu", "人民路1号", new BigDecimal("104.065"), new BigDecimal("30.657")));
+
+    reverseResponse = reverse("中国", "四川省", "成都市", "840", "510104", "510100");
+    assertFalse(
+        provider.isReasonable(
+            "chengdu", "人民路1号", new BigDecimal("104.065"), new BigDecimal("30.657")));
+    reverseResponse = reverse("中国", "四川省", "成都市", "840", "510104", "840510100");
     assertFalse(
         provider.isReasonable(
             "chengdu", "人民路1号", new BigDecimal("104.065"), new BigDecimal("30.657")));
@@ -217,14 +236,21 @@ class TencentMapValidationProviderTest {
   }
 
   private static String reverse(
-      String nation, String province, String city, String adcode, String cityCode) {
+      String nation,
+      String province,
+      String city,
+      String nationCode,
+      String adcode,
+      String cityCode) {
     return "{\"status\":0,\"result\":{\"address_component\":{\"nation\":\""
         + nation
         + "\",\"province\":\""
         + province
         + "\",\"city\":\""
         + city
-        + "\"},\"ad_info\":{\"adcode\":\""
+        + "\"},\"ad_info\":{\"nation_code\":\""
+        + nationCode
+        + "\",\"adcode\":\""
         + adcode
         + "\",\"city_code\":\""
         + cityCode
