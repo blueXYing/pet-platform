@@ -1,0 +1,59 @@
+{
+  "result": "PASS",
+  "samples": [
+    {
+      "sample": 0,
+      "elapsedSeconds": 0,
+      "highWater": 22669283461,
+      "attemptHttpStatus": 201
+    },
+    {
+      "sample": 1,
+      "elapsedSeconds": 15,
+      "highWater": 22669299562,
+      "attemptHttpStatus": 201
+    },
+    {
+      "sample": 2,
+      "elapsedSeconds": 30,
+      "highWater": 22669315647,
+      "attemptHttpStatus": 201
+    },
+    {
+      "sample": 3,
+      "elapsedSeconds": 45,
+      "highWater": 22669327709,
+      "attemptHttpStatus": 201
+    },
+    {
+      "sample": 4,
+      "elapsedSeconds": 60,
+      "highWater": 22669344249,
+      "attemptHttpStatus": 201
+    },
+    {
+      "sample": 5,
+      "elapsedSeconds": 75,
+      "highWater": 22669360356,
+      "attemptHttpStatus": 201
+    },
+    {
+      "sample": 6,
+      "elapsedSeconds": 90,
+      "highWater": 22669376443,
+      "attemptHttpStatus": 201
+    },
+    {
+      "sample": 7,
+      "elapsedSeconds": 105,
+      "highWater": 22669388528,
+      "attemptHttpStatus": 201
+    },
+    {
+      "sample": 8,
+      "elapsedSeconds": 120,
+      "highWater": 22669404687,
+      "attemptHttpStatus": 201
+    }
+  ]
+}

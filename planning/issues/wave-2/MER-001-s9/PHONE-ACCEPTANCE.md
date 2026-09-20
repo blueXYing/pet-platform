@@ -32,3 +32,9 @@ MerchantApplicationLiveAcceptance在独立随机测试库内使用真实OSS、Cl
 LocalMerchantAcceptanceServer现于启动时初始化空白测试库的固定策略版本，已有匹配策略保持不变，不匹配则拒绝覆盖；缺策略但已有证件数据也拒绝初始化。只涉及test scope，不改变生产校验、密钥或用户申请状态。完整真实依赖验收新增同版本重复初始化及版本冲突拒绝断言后通过，完整提交/审核/签约/通知及测试对象清理再次通过。
 
 本地原MySQL数据恢复，服务以未用node23接续，策略版本与实际Provider一致；LAN代理session检查返回预期未登录401。等待用户重试原提交，再核对真实申请REVIEWING及审核任务；不能将配置修复视为用户提交已成功。
+
+## 第二次提交503与本地常驻连接恢复
+
+用户重试得到merchant application persistence is unavailable。服务日志确认node23的ID Provider于16:53:15触发OPERATION_TIMEOUT并持续fail closed；核对申请仍DRAFT/v2、审核任务0。没有修改业务状态、重置高水位或放宽生产1秒保护预算。
+
+本地adopt服务原使用每次新建物理连接的DriverManagerDataSource，现改为Hikari连接池（最小4、最大8），减少常驻worker与续租的建连开销。旧JVM退出后使用此前不存在的node24保留原库恢复。编译通过；恢复后连续120秒、每15秒共9次实际匿名登录attempt接口请求全部201，ID高水位每次采样均推进，未再记录fail closed。见local-pool-stability.json；这证明观察窗口内持续发号/续租正常，不等于已经证明最初超时的底层原因或长期稳定性。用户原提交仍需正常重试并验收。

@@ -21,7 +21,6 @@ import org.springframework.boot.builder.SpringApplicationBuilder;
 import org.springframework.context.ConfigurableApplicationContext;
 import org.springframework.context.support.GenericApplicationContext;
 import org.springframework.jdbc.core.JdbcTemplate;
-import org.springframework.jdbc.datasource.DriverManagerDataSource;
 
 /**
  * Manual local-LAN server for a real WeChat DevTools login and private upload acceptance.
@@ -255,14 +254,21 @@ public final class LocalMerchantAcceptanceServer {
       if (!server.matches("jdbc:mysql://(127\\.0\\.0\\.1|localhost):[0-9]+/")) {
         throw new IllegalArgumentException("Dedicated local MySQL is required");
       }
-      DataSource source =
-          new DriverManagerDataSource(
-              server
+      // This is a long-running manual server: reuse established connections rather than
+      // opening a physical connection for every short lease transaction and worker poll.
+      var poolConfig = new com.zaxxer.hikari.HikariConfig();
+      poolConfig.setJdbcUrl(server
                   + database
                   + "?allowPublicKeyRetrieval=true&useSSL=false&connectionTimeZone=UTC"
-                  + "&connectTimeout=1000&socketTimeout=5000",
-              System.getenv().getOrDefault("AUTH_MYSQL_USER", "root"),
-              System.getenv().getOrDefault("AUTH_MYSQL_PASSWORD", ""));
+                  + "&connectTimeout=1000&socketTimeout=5000");
+      poolConfig.setUsername(System.getenv().getOrDefault("AUTH_MYSQL_USER", "root"));
+      poolConfig.setPassword(System.getenv().getOrDefault("AUTH_MYSQL_PASSWORD", ""));
+      poolConfig.setPoolName("local-merchant-acceptance");
+      poolConfig.setMinimumIdle(4);
+      poolConfig.setMaximumPoolSize(8);
+      poolConfig.setConnectionTimeout(500);
+      poolConfig.setValidationTimeout(250);
+      DataSource source = new com.zaxxer.hikari.HikariDataSource(poolConfig);
       JdbcTemplate jdbc = new JdbcTemplate(source);
       Integer databaseExists =
           jdbc.queryForObject("SELECT COUNT(*) FROM information_schema.schemata WHERE schema_name=?", Integer.class, database);
@@ -327,6 +333,8 @@ public final class LocalMerchantAcceptanceServer {
           closeable.close();
         } catch (Exception ignored) {
           // The database and Redis namespace are intentionally preserved for further recovery.
+        } finally {
+          if (source instanceof com.zaxxer.hikari.HikariDataSource pool) pool.close();
         }
       }
     }
