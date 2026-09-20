@@ -52,7 +52,8 @@ public final class ImageIoPrivateAssetWatermarkRenderer implements PrivateAssetW
           }
         }
       }
-      return new RenderedImage(ImageIoPrivateAssetImageNormalizer.encode(image), "image/png");
+      return new RenderedImage(
+          ImageIoPrivateAssetImageNormalizer.encode(image, mediaType), mediaType);
     } finally {
       graphics.dispose();
       image.flush();

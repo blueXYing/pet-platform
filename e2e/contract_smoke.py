@@ -161,7 +161,10 @@ def check_private_assets(spec, operation):
         cache = dereference(spec, response['headers']['Cache-Control'])['schema']
         assert cache in ({'type': 'string', 'enum': ['no-store, private']}, {'type': 'string', 'example': 'no-store, private'}), 'Private asset caching changed'
         if name == 'consumePrivateAssetReadGrant':
-            assert response['content'] == {'image/png': {'schema': {'type': 'string', 'format': 'binary'}}}
+            assert response['content'] == {
+                'image/png': {'schema': {'type': 'string', 'format': 'binary'}},
+                'image/jpeg': {'schema': {'type': 'string', 'format': 'binary'}},
+            }, 'Private proxy must expose exactly watermarked JPEG and PNG'
             for header, value in [('Pragma', 'no-cache'), ('X-Content-Type-Options', 'nosniff')]:
                 assert response['headers'][header]['schema'] == {'type': 'string', 'enum': [value]}
         else:

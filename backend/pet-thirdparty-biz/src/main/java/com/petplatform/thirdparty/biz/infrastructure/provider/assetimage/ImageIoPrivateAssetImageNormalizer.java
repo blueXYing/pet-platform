@@ -11,7 +11,7 @@ import javax.imageio.ImageIO;
 import javax.imageio.ImageReader;
 import javax.imageio.stream.MemoryCacheImageInputStream;
 
-/** Bounded JPEG/PNG decode and metadata-free canonical PNG encoding. */
+/** Bounded JPEG/PNG decode and metadata-free same-format encoding. */
 public final class ImageIoPrivateAssetImageNormalizer implements PrivateAssetImageNormalizer {
   static final int MAX_BYTES = 10 * 1024 * 1024;
 
@@ -25,6 +25,21 @@ public final class ImageIoPrivateAssetImageNormalizer implements PrivateAssetIma
       decoded.flush();
       throw invalidMetadata;
     }
+    BufferedImage clean;
+    try {
+      clean = orient(decoded, orientation);
+    } finally {
+      decoded.flush();
+    }
+    try {
+      return new NormalizedImage(
+          encode(clean, declaredMediaType), declaredMediaType, clean.getWidth(), clean.getHeight());
+    } finally {
+      clean.flush();
+    }
+  }
+
+  static BufferedImage orient(BufferedImage decoded, int orientation) {
     int width = decoded.getWidth(), height = decoded.getHeight();
     boolean transpose = orientation >= 5;
     BufferedImage clean =
@@ -48,13 +63,8 @@ public final class ImageIoPrivateAssetImageNormalizer implements PrivateAssetIma
       graphics.drawImage(decoded, 0, 0, null);
     } finally {
       graphics.dispose();
-      decoded.flush();
     }
-    try {
-      return new NormalizedImage(encode(clean), "image/png", clean.getWidth(), clean.getHeight());
-    } finally {
-      clean.flush();
-    }
+    return clean;
   }
 
   static BufferedImage decode(byte[] source, String mediaType) {
@@ -104,33 +114,54 @@ public final class ImageIoPrivateAssetImageNormalizer implements PrivateAssetIma
     }
   }
 
-  static byte[] encode(BufferedImage image) {
-    var bytes =
-        new ByteArrayOutputStream() {
+  static byte[] encode(BufferedImage image, String mediaType) {
+    String format =
+        switch (mediaType) {
+          case "image/jpeg" -> "jpeg";
+          case "image/png" -> "png";
+          default -> throw invalid();
+        };
+    var bytes = new ByteArrayOutputStream();
+    try (var output =
+        new javax.imageio.stream.MemoryCacheImageOutputStream(bytes) {
+          private void requireRoom(int length) throws IOException {
+            if (length < 0 || getStreamPosition() > MAX_BYTES - (long) length) {
+              throw new javax.imageio.IIOException("Normalized image exceeds byte limit");
+            }
+          }
+
           @Override
-          public synchronized void write(int value) {
-            if (count >= MAX_BYTES) throw invalid();
+          public void write(int value) throws IOException {
+            requireRoom(1);
             super.write(value);
           }
 
           @Override
-          public synchronized void write(byte[] value, int offset, int length) {
-            if (length > MAX_BYTES - count) throw invalid();
+          public void write(byte[] value, int offset, int length) throws IOException {
+            java.util.Objects.checkFromIndexSize(offset, length, value.length);
+            requireRoom(length);
             super.write(value, offset, length);
           }
-        };
-    try (var output = new javax.imageio.stream.MemoryCacheImageOutputStream(bytes)) {
-      var writer = ImageIO.getImageWritersByFormatName("png").next();
+        }) {
+      var writers = ImageIO.getImageWritersByFormatName(format);
+      if (!writers.hasNext()) throw invalid();
+      var writer = writers.next();
       try {
         writer.setOutput(output);
+        var parameters = writer.getDefaultWriteParam();
+        if ("image/jpeg".equals(mediaType)) {
+          if (!parameters.canWriteCompressed()) throw invalid();
+          parameters.setCompressionMode(javax.imageio.ImageWriteParam.MODE_EXPLICIT);
+          parameters.setCompressionQuality(0.95f);
+        }
         writer.write(
-            null, new javax.imageio.IIOImage(image, null, null), writer.getDefaultWriteParam());
+            null, new javax.imageio.IIOImage(image, null, null), parameters);
         output.flush();
       } finally {
         writer.dispose();
       }
       return bytes.toByteArray();
-    } catch (IOException failure) {
+    } catch (IOException | IndexOutOfBoundsException failure) {
       throw invalid();
     }
   }

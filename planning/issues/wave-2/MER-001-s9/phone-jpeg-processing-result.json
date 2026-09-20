@@ -1,0 +1,13 @@
+{
+  "sourceBytes": 1280039,
+  "sourceMediaType": "image/jpeg",
+  "sourceClean": true,
+  "normalizedBytes": 2747052,
+  "normalizedType": "image/jpeg",
+  "width": 3072,
+  "height": 4096,
+  "normalizedClean": true,
+  "finalObjectPresent": false,
+  "result": "PASS_READ_ONLY",
+  "scope": "Read-only processing validation of the one pending phone upload; no image, path or digest recorded"
+}

@@ -1,31 +1,23 @@
-# 商家申请地图核验契约 v0.1
+# 商家申请位置输入检查契约 v0.1
 
-授权与状态：CCR-MER-MAP-001 已授权补齐真实后端地图 Provider，具体距离阈值仍待用户选择。本契约处于 `IMPLEMENTATION_READY_DISTANCE_POLICY_PENDING`，不能据此启用生产。适用 MER-001 商家申请提交；开放城市仍只有 `chengdu / 成都`。
+批准来源：CCR-MER-MAP-001。用户已明确裁决“不对位置进行限制”。本文描述位置输入格式检查，不称其为地图核验。
 
-`MapValidationPort.isReasonable(cityCode,address,longitude,latitude)` 是服务端可信边界。生产 adapter 使用腾讯位置服务正向与逆向地理编码，不接受 bounding box、客户端城市文本或经纬度数值范围作为成功替代。
+## 输入规则
 
-## 输入与腾讯协议
+`MapValidationPort.isReasonable(cityCode,address,longitude,latitude)` 当前兼容接口由 `LocationInputValidationProvider` 实现，只返回以下条件的合取结果：
 
-- `cityCode` 只接受 `chengdu`；其他值返回 false 且不调用 Provider。
-- address、longitude、latitude 来自已保存的申请 revision；坐标为 GCJ-02。
-- 正向：`GET /ws/geocoder/v1/?address=...&region=成都&output=json&key=...`。
-- 逆向：`GET /ws/geocoder/v1/?location={latitude},{longitude}&get_poi=0&output=json&key=...`。
-- 不跟随重定向；响应最多 256 KiB；单次请求使用覆盖 headers 与完整 body 的整体 deadline，超时主动取消 body subscription。
+- address 非 null、非空白、Unicode code point 数不超过 255；
+- longitude 非 null，且用 BigDecimal 精确比较位于闭区间 `[-180,180]`；
+- latitude 非 null，且用 BigDecimal 精确比较位于闭区间 `[-90,90]`。
 
-## 成功规则
+validator 不读取 cityCode 的地理含义，不根据地址推断城市，不比较地址与坐标，不限制坐标落点，不调用外部服务。成都申请携带任何地球合法坐标均可通过本检查。
 
-正向与逆向响应都必须 `status=0`、字段类型完整。正向必须证明四川省成都市，逆向必须证明中国、`nation_code=156`、四川省、成都市；两者都须提供 `5101xx` 成都区县行政代码。腾讯现行官方协议将逆向 `city_code` 定义为 9 位“国家码 + 城市级行政区划码”，规范成都值为 `156510100`。兼容 6 位 `510100` 时仍必须满足上述 nation/nation_code/adcode/province/city 全部事实；其他 6/9 位值均拒绝。正向结果另须 `reliability>=7`、`level>=9`，Provider deviation 和正向坐标到提交坐标的 Haversine 距离都不得超过显式批准距离。
+## 城市开放边界
 
-业务无结果、城市/质量/距离不符返回 false；依赖错误抛 `COMMON_DEPENDENCY_UNAVAILABLE`。调用者沿用既有提交语义：false 为位置不合理冲突，依赖异常为 503，不把依赖故障伪装成用户地址错误。
+调用顺序仍由 MER 保持：先用独立 `OpenCityReader` 检查 cityCode，再检查位置输入。首期开通目录仍只有 `chengdu / 成都`；其他 cityCode 会被开放城市守卫拒绝，与坐标位置无关。
 
-## 启用
+## 装配
 
-默认关闭。启用要求：
+当 `pet.merchant.application.enabled=true` 时，boot 默认提供 `LocationInputValidationProvider`，并允许测试或未来明确裁决后的实现通过 `@ConditionalOnMissingBean(MapValidationPort.class)` 替换。不需要地图 Key、endpoint、timeout 或距离配置。
 
-- `pet.merchant.map.enabled=true`
-- `TMAP_WEBSERVICE_KEY` 非空
-- `pet.merchant.map.max-distance-meters` 显式正数
-- 可选 `pet.merchant.map.timeout-millis`（默认 3000，允许 100～10000）
-- endpoint 默认且生产只允许 `https://apis.map.qq.com`；loopback HTTP 只用于受控协议测试
-
-代码不保存 Key，不记录地址、Key、完整 URI 或腾讯原始错误。工程候选距离 1000 米记录于 CCR，但尚未批准且未被设为产品默认；正式启用前必须由用户明确选择该值或提供替代值。
+原腾讯位置服务、正反地理编码、行政区匹配和最大偏差方案已由最新用户裁决取消。地址和 GCJ-02 坐标仍按申请 revision 保存，但服务端不声称这些事实经过地图真实性验证。

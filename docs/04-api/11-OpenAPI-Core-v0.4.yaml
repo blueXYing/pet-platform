@@ -234,7 +234,7 @@ paths:
       x-single-use: true
       x-grant-ttl-seconds: 300
       x-recheck-current-authorization: true
-      summary: Consume single-use grant and return watermarked PNG
+      summary: Consume single-use grant and return watermarked JPEG or PNG
       x-audience: ADMIN_WEB
       description: Recheck current session generation, actions, scope, claimant and linked material. TTL five minutes.
         Consumed grant cannot replay. Never log raw token path. No OSS URL.
@@ -249,7 +249,7 @@ paths:
           pattern: ^[A-Za-z0-9_-]+$
       responses:
         '200':
-          description: Watermarked PNG, no raw material bytes.
+          description: Watermarked JPEG/PNG preserving the normalized object encoding; no raw material bytes.
           headers:
             Cache-Control:
               schema:
@@ -268,6 +268,10 @@ paths:
                 - nosniff
           content:
             image/png:
+              schema:
+                type: string
+                format: binary
+            image/jpeg:
               schema:
                 type: string
                 format: binary

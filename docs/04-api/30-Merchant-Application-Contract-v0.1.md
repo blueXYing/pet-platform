@@ -52,7 +52,7 @@ APPROVED
 | PUT `/api/v1/c/merchant-applications/{applicationId}/draft` | `{expectedVersion,draft:DraftRevisionInput}`，完整替换草稿 | 200 DRAFT；仅本人且状态 DRAFT/REJECTED |
 | POST `/api/v1/c/merchant-applications/{applicationId}/submit` | `{expectedVersion,revisionId}` | 200 REVIEWING；DRAFT 首交或 REJECTED 重提 |
 
-`DraftRevisionInput` 字段：`merchantName,contactName,contactPhone,email?,merchantTypeCode,cityCode,address,longitude,latitude,introduction?,storePhotoAssetIds[],businessLicenseAssetId,idCardFrontAssetId,idCardBackAssetId,industryLicenseAssetId?`。草稿允许字段缺失；submit 统一验证必填、格式、材料数量和资产归属，不把草稿保存成功等同可提交。提交词法直接取运营原字段表：merchantName 2～50字、contactName 2～20字中文、contactPhone 11位手机号、introduction 0～500字、cityCode 必须指向当时已开通城市；merchantTypeCode 必须映射且只映射“宠物生活馆/宠物医院/宠物美容院/宠物寄养中心/宠物训练机构/其他”六个已批字典项。address 与经纬度在申请提交时均必填并做地图合理性校验；这里不套用正式门店 DTO 可空坐标的兼容读取规则。APPROVE 还必须确认 merchantName 与已验证营业执照主体名称一致，不能只验证名称非空。
+`DraftRevisionInput` 字段：`merchantName,contactName,contactPhone,email?,merchantTypeCode,cityCode,address,longitude,latitude,introduction?,storePhotoAssetIds[],businessLicenseAssetId,idCardFrontAssetId,idCardBackAssetId,industryLicenseAssetId?`。草稿允许字段缺失；submit 统一验证必填、格式、材料数量和资产归属，不把草稿保存成功等同可提交。提交词法直接取运营原字段表：merchantName 2～50字、contactName 2～20字中文、contactPhone 11位手机号、introduction 0～500字、cityCode 必须指向当时已开通城市；merchantTypeCode 必须映射且只映射“宠物生活馆/宠物医院/宠物美容院/宠物寄养中心/宠物训练机构/其他”六个已批字典项。address 与经纬度在申请提交时均必填；按SSOT §28只做地址长度、经纬度合法数值校验，不做地理匹配、距离阈值或位置围栏拦截，不依赖外部地图Key；这里不套用正式门店 DTO 可空坐标的兼容读取规则。APPROVE 还必须确认 merchantName 与已验证营业执照主体名称一致，不能只验证名称非空。
 
 `MerchantApplicationDetail` 至少含 applicationId/applicationNo/reservedMerchantId/status/version/currentRevision（敏感编号不回显明文）、submittedAt?/reviewedAt?、latestDecision 的申请人可见 `decisionType/opinion/decidedAt`、`subjectVerificationStatus`。不返回内部备注、审核员登录账号、原始 OCR 包或长期原件 URL。
 
@@ -287,7 +287,7 @@ payload:
 
 运营最终复核由 admin-api 的 `AdminAuthorizationQueryApi` 提供。另增加只读集合入口 `checkCollection(AdminCollectionActionCheckQuery)`，参数为 sessionId、sessionGeneration、operatorId、actionCode、purpose、phase；只支持 `merchant.application.read` 与 `READ_RESULT`。它先检查当前会话/账号/动作，之后逐资源检查真实scope再计算total/page，不使用伪造applicationId证明列表权限。缺实现默认失败关闭。列表分批读取避免一次加载全表，但仍逐行复核；大数据量下的SQL范围下推是公开启用前的性能缺口。
 
-私有材料、已开通城市、地图合理性、受保护字段与证件规范化仍通过显式端口提供，未提供真实默认Provider。字段保护端口的内部解密仅用于已授权事务内完整提交校验，不能据此开放敏感原件GET。幂等规范化保存稳定的保护令牌，不保存证件/联系人明文，也不依赖随机加密nonce形成请求摘要。
+私有材料、已开通城市、位置输入格式、受保护字段与证件规范化通过显式端口提供。按SSOT §28，位置端口只校验基本格式，不作为外部地图真实性证明，且不依赖地图Key。字段保护端口的内部解密仅用于已授权事务内完整提交校验，不能据此开放敏感原件GET。幂等规范化保存稳定的保护令牌，不保存证件/联系人明文，也不依赖随机加密nonce形成请求摘要。
 
 `pet.merchant.application.enabled` 默认未开启；显式开启时必须具有真实DataSource、发号器、上述Provider、AdminAuthorizationQueryApi和事务Outbox。此开关仅装配内部领域API、真实审核事实与协议/新单资格组合，不创建HTTP路由、数据库迁移、密钥或模拟数据。通知消费者另需 `pet.outbox.enabled` 与 `pet.merchant.application.notifications-enabled`，默认均不因本轮提交开启。具体运行验证见[S5交接](../../planning/issues/wave-2/MER-001-s5/HANDOFF.md)。
 
@@ -298,7 +298,7 @@ payload:
 - 原10个申请接口及2个协议接口均已有默认关闭的HTTP适配；身份只能来自真实MINIAPP/ADMIN_WEB会话。未知/重复JSON、数值ID/版本、越权scope拒绝；所有版本转十进制String，时间按毫秒UTC下发。
 - 本人详情增加独立可编辑投影，仅在校验当前owner后解密联系人字段，不放入审核详情、幂等回执或事件。运营详情仍脱敏，只读已提交版本。新增审核/版本ID均来自数据库事实，不由HTTP编造。
 - 人工核验在内部API和HTTP均强制materialId/materialSha256，锁内匹配本submitted revision。LONG_TERM是当前领取人confirmed=true对所见原件长期有效的明确声明，服务端留存带材料ID/hash的受保护声明依据；不是服务端自动认定原件真实，也不是供应商核验证据。
-- 新增只读 `GET /api/v1/c/merchant-application-cities`，MINIAPP Bearer，无请求参数。success envelope data为 `{items:[{cityCode,cityName}]}`；code为1～32位小写ASCII字母开头、其后字母/数字/下划线/连字符，name为1～64字。重复code/name无效。无配置返回503；首次部署配置为 `chengdu / 成都`，不是擅自使用行政区划代码或从地址推测城市。服务端启动配置 `pet.merchant.application.open-cities` 是开放目录，后续扩城市须产品决定。客户端从该目录选择；微信选点只提供GCJ-02坐标和地址，仍不替代后端地图合理性校验。
+- 新增只读 `GET /api/v1/c/merchant-application-cities`，MINIAPP Bearer，无请求参数。success envelope data为 `{items:[{cityCode,cityName}]}`；code为1～32位小写ASCII字母开头、其后字母/数字/下划线/连字符，name为1～64字。重复code/name无效。无配置返回503；首次部署配置为 `chengdu / 成都`，不是擅自使用行政区划代码或从地址推测城市。服务端启动配置 `pet.merchant.application.open-cities` 是开放目录，后续扩城市须产品决定。客户端从该目录选择；微信选点提供GCJ-02坐标和地址。按SSOT §28，后端仅检查地址/坐标输入格式，不额外执行地理匹配或距离限制。
 - 配置值与城市目录必须来自可信部署源，配置缺失不开放任意城市。机密配置只通过外部secret注入。字段保护与证件lookup使用独立密钥，不能暗中轮换固定policy；实现不会生成生产密钥。
 - 证件适配按GB11643/GB32100规范化大陆15/18位居民身份证和18位统一社会信用代码；15位转换保留校验同一性。规范化、日期和校验位正确不等于身份真实，原件/人工核验及主体去重仍必需。
 - 当前允许测试环境用显式外部替身验证真实HTTP、会话、数据库、AES、Outbox与站内消息，不将替身结果称为真实OSS上传、地图后端校验或商家身份核验验收。私有上传/水印授权读取的新增契约另见CCR-MER-PRIVATE-001，尚未实施。

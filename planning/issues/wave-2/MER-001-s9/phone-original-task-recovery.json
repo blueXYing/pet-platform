@@ -1,0 +1,16 @@
+{
+  "scope": "isolated local acceptance database only",
+  "originalTaskRequeued": true,
+  "retryHistoryPreserved": true,
+  "priorRetryCount": 21,
+  "businessAssetStateDirectlyChanged": false,
+  "newUploadRequestCreated": false,
+  "afterWorkerProcessing": {
+    "assetStatus": "READY",
+    "mediaType": "image/jpeg",
+    "bytes": 2747052,
+    "scanResult": "CLEAN",
+    "originalTaskStatus": "SUCCEEDED",
+    "totalUploadRequests": 3
+  }
+}

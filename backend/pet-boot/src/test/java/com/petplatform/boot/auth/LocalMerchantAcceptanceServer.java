@@ -4,7 +4,6 @@ import com.petplatform.admin.biz.infrastructure.provider.AdminSecretCodec;
 import com.petplatform.boot.PetPlatformApplication;
 import com.petplatform.common.*;
 import com.petplatform.id.core.*;
-import com.petplatform.merchant.biz.application.ApplicationValidationPorts.MapValidationPort;
 import com.petplatform.thirdparty.biz.infrastructure.oss.*;
 import com.petplatform.user.biz.application.WechatSessionProvider;
 import com.petplatform.user.biz.infrastructure.provider.WechatMiniApiProvider;
@@ -63,15 +62,6 @@ public final class LocalMerchantAcceptanceServer {
                     beans.registerBean("localAcceptanceIds", SnowflakeIdGenerator.class, () -> fixture.ids);
                     beans.registerBean("localAcceptanceWechat", WechatSessionProvider.class, () -> wechat);
                     beans.registerBean("localAcceptanceAdminSecrets", AdminSecretCodec.class, () -> adminSecrets);
-                    beans.registerBean(
-                        "localAcceptanceMapFailClosed",
-                        MapValidationPort.class,
-                        () ->
-                            (city, address, longitude, latitude) -> {
-                              throw new ApiException(
-                                  CommonApiCodes.DEPENDENCY_UNAVAILABLE,
-                                  "地图校验未配置，商家申请提交保持关闭");
-                            });
                   })
               .run(
                   "--server.address=" + bindAddress,
@@ -104,13 +94,12 @@ public final class LocalMerchantAcceptanceServer {
                   "--pet.merchant.subject.enabled=true",
                   "--MERCHANT_PROTECTED_KEY_VERSION=local-acceptance-v1",
                   "--MERCHANT_SUBJECT_POLICY_VERSION=CN-ID15-18-USCC18-v1",
-                  "--pet.outbox.enabled=true",
-                  "--pet.merchant.map.enabled=false");
+                  "--pet.outbox.enabled=true");
       writeMetadata(fixture, bindAddress, port);
       ConfigurableApplicationContext running = context;
       Runtime.getRuntime().addShutdownHook(new Thread(() -> close(running, fixture), "local-acceptance-cleanup"));
       System.out.println("LOCAL_ACCEPTANCE result=READY endpoint=http://" + bindAddress + ":" + port);
-      System.out.println("LOCAL_ACCEPTANCE map=FAIL_CLOSED wechat=REAL oss=REAL clamav=REAL database=TEMPORARY");
+      System.out.println("LOCAL_ACCEPTANCE location=INPUT_FORMAT_ONLY wechat=REAL oss=REAL clamav=REAL database=LOCAL_TEST");
       new CountDownLatch(1).await();
     } catch (Throwable failure) {
       close(context, fixture);
@@ -138,8 +127,8 @@ public final class LocalMerchantAcceptanceServer {
             + "databaseLifecycle=" + (fixture.adopted ? "PRESERVE" : "DROP_ON_PROCESS_SHUTDOWN")
             + System.lineSeparator()
             + "processId=" + ProcessHandle.current().pid() + System.lineSeparator()
-            + "snowflakeNodeId=" + (fixture.adopted ? 20 : 19) + System.lineSeparator()
-            + "mapValidation=FAIL_CLOSED" + System.lineSeparator(),
+            + "snowflakeNodeId=" + fixture.nodeId + System.lineSeparator()
+            + "locationValidation=INPUT_FORMAT_ONLY" + System.lineSeparator(),
         StandardCharsets.UTF_8,
         StandardOpenOption.CREATE,
         StandardOpenOption.TRUNCATE_EXISTING);
@@ -167,9 +156,8 @@ public final class LocalMerchantAcceptanceServer {
   }
 
   private static final class AcceptanceFixture implements AutoCloseable {
-    private static final int RECOVERY_NODE_ID = 20;
     final String name, prefix, redisHost;
-    final int redisPort;
+    final int redisPort, nodeId;
     final Path directory;
     final DataSource source;
     final JdbcTemplate jdbc;
@@ -187,6 +175,7 @@ public final class LocalMerchantAcceptanceServer {
       source = fresh.source;
       jdbc = fresh.jdbc;
       ids = fresh.ids;
+      nodeId = 19;
       adopted = false;
     }
 
@@ -197,7 +186,8 @@ public final class LocalMerchantAcceptanceServer {
         Path directory,
         DataSource source,
         JdbcTemplate jdbc,
-        SnowflakeIdGenerator ids) {
+        SnowflakeIdGenerator ids,
+        int nodeId) {
       this.fresh = null;
       this.name = name;
       this.prefix = name + ":";
@@ -207,6 +197,7 @@ public final class LocalMerchantAcceptanceServer {
       this.source = source;
       this.jdbc = jdbc;
       this.ids = ids;
+      this.nodeId = nodeId;
       this.adopted = true;
     }
 
@@ -217,6 +208,11 @@ public final class LocalMerchantAcceptanceServer {
     }
 
     private static AcceptanceFixture adopt(String database) throws Exception {
+      int recoveryNodeId = Integer.parseInt(
+          System.getenv().getOrDefault("LOCAL_ACCEPTANCE_RECOVERY_NODE_ID", "20"));
+      if (recoveryNodeId < 0 || recoveryNodeId > 1023) {
+        throw new IllegalArgumentException("Recovery node must be an explicitly selected valid unused node");
+      }
       if (!database.matches("auth001c_http_[0-9a-f]{32}")) {
         throw new IllegalArgumentException("Recovery database must be an exact local fixture name");
       }
@@ -247,25 +243,25 @@ public final class LocalMerchantAcceptanceServer {
       if (!Integer.valueOf(1).equals(databaseExists)) throw new IllegalStateException("Recovery database is missing");
       Integer nodeExists =
           jdbc.queryForObject(
-              "SELECT COUNT(*) FROM snowflake_worker_state WHERE node_id=?", Integer.class, RECOVERY_NODE_ID);
+              "SELECT COUNT(*) FROM snowflake_worker_state WHERE node_id=?", Integer.class, recoveryNodeId);
       if (!Integer.valueOf(0).equals(nodeExists)) {
         throw new IllegalStateException("Recovery Snowflake node must be previously unused");
       }
       String initialization =
-          "local-recovery:node20:previous-pid=" + previousPid + ":database=" + database;
+          "local-recovery:node" + recoveryNodeId + ":previous-pid=" + previousPid + ":database=" + database;
       jdbc.update(
           "INSERT INTO snowflake_worker_state"
               + "(node_id,format_identity,enabled,initialization_ref,created_at,updated_at)"
               + " VALUES(?,?,TRUE,?,UTC_TIMESTAMP(3),UTC_TIMESTAMP(3))",
-          RECOVERY_NODE_ID,
+          recoveryNodeId,
           SnowflakeProviderSettings.FORMAT_IDENTITY,
           initialization);
       var ids =
           new HutoolSnowflakeIdProvider(
               new JdbcSnowflakeNodeStore(source),
-              new SnowflakeProviderSettings(RECOVERY_NODE_ID),
+              new SnowflakeProviderSettings(recoveryNodeId),
               old -> {
-                if (old.nodeId() != RECOVERY_NODE_ID
+                if (old.nodeId() != recoveryNodeId
                     || old.incarnation() != null
                     || old.fence() != 0
                     || old.reservedThrough() != -1
@@ -293,7 +289,8 @@ public final class LocalMerchantAcceptanceServer {
           metadata.toAbsolutePath().getParent(),
           source,
           jdbc,
-          ids);
+          ids,
+          recoveryNodeId);
     }
 
     @Override

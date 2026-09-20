@@ -12,7 +12,7 @@
 - `PrivateAssetRef` 提供当前 owner/hash/MIME/bytes/status，MER 只保存 opaque assetId/hash，并在保存、提交、批准时重读；
 - 上传、恶意文件与图片解码检查、授权读取和生命周期必须有 Contract；
 - 证件规范化由受信证据适配契约定义，不得擅自限定 18 位或选择 OCR 厂商；
-- cityCode 来自已开通城市字典，地址/坐标须做地图合理性校验；
+- cityCode 来自已开通城市字典；按最新SSOT §28，地址/坐标只做输入合法性校验，不再执行地理匹配或距离拦截；
 - key policy 缺失、版本不匹配或 secret service 不可用时依赖失败关闭。
 
 ## 2. 只读审计（基线 `632ced7`）
@@ -58,7 +58,7 @@ record PrivateAssetFact(
 1. Owner 返回当前强一致事实；未知、重复、跨 owner、错误 purpose 不伪装成功，依赖失败不返回部分列表。
 2. thirdparty 状态为 `UPLOADING/SCANNING/READY/REJECTED/QUARANTINED/RETIRED`。MER adapter 仅接受 `READY` 并保留既有端口的 `READY`；其他状态被 MER 拒绝。
 3. `sourceSha256` 是流式接收的原始字节摘要；`objectSha256` 是最终对象摘要；`objectVersionRef` 固定不可变版本。安全处理若改变字节，两种 hash 分别保存。MER material 使用 `objectSha256`，后续 current read 匹配同一 version/hash。
-4. MIME 来自服务端解码，只允许 `image/jpeg`、`image/png`；bytes 为最终对象长度，1..10 MiB。`READY` 保证对象存在、事实一致、恶意文件检查和完整解码通过。
+4. MIME 来自服务端解码，只允许 `image/jpeg`、`image/png`；bytes 为最终对象长度，1..10 MiB。JPEG 纠正 EXIF 朝向、清除元数据并以 quality 0.95 保留 JPEG 编码，PNG 清除元数据并保留 PNG 编码；不得因统一转 PNG 使合法 JPEG 膨胀越界。`READY` 保证对象存在、事实一致、恶意文件检查和完整解码通过。
 
 私有资产Owner必须保证assetId只对应一个不可变对象版本。现有SQL29的assetId/hash可以据此核对当前对象事实；是否另冗余object_version_ref须在Schema同步时决定，不能把推测的字段增量冒充已批准要求。
 
@@ -82,7 +82,7 @@ record PrivateAssetFact(
 1. `POST /api/v1/admin/merchant-applications/{applicationId}/private-assets/{assetId}/read-grants`，body 含 `submissionRevisionId,purposeCode,reason,confirmed:true` 和 `X-Request-Id`。
 2. 解析真实 ADMIN_WEB 会话；检查 `identity.reveal`/scope；核对当前 CLAIMED task 的 claimant、submitted revision、revision/material/asset 关系；执行 READ_RESULT 最终授权。
 3. 同事务写 grant audit 和单次 token 摘要。响应返回后端代理 URL `/api/v1/admin/private-asset-read-grants/{token}` 与 `expiresAt`；token 原文不入库/日志。
-4. 代理 GET 原子消费 token，再重查 session generation、授权版本、material 关系；服务端读 OSS；按 operatorId、applicationId、读取时间生成动态水印后输出。
+4. 代理 GET 原子消费 token，再重查 session generation、授权版本、material 关系；服务端读 OSS；按 operatorId、applicationId、读取时间生成动态水印，保持标准化对象 JPEG/PNG 编码类别后输出。终端只接受 `image/jpeg` 或 `image/png`、1..10 MiB，不返回其他格式。
 5. 默认 TTL 5 分钟，一次消费；响应 `Cache-Control: no-store, private`、`Pragma: no-cache`、`X-Content-Type-Options: nosniff`。审计保存 operator、application/revision/asset、purpose、受保护 reason、request/authz/scope 版本及签发/消费结果。
 
 S3 预签名 URL 不能即时撤销、不能保证一次消费、不能可靠加水印，因此不满足此契约。
@@ -153,7 +153,7 @@ Schema 同步还须定义上传 request binding、durable task/outbox及grant/as
 
 ## 8. 城市与地图
 
-用户已选择首推城市成都，前端使用微信原生地图能力，但客户端结果不能代替后端信任边界。S7已实现服务端可信启动目录 `pet.merchant.application.open-cities` 和受MINIAPP会话保护的查询，首次配置 `chengdu / 成都`；未配置时503。客户端不能由地图地址推断开放城市。`MapValidationPort` 仍需后端校验微信地图返回的坐标/地址/城市一致性、结果版本、允许偏差及失败语义；只做数值范围判断不满足“地图合理性校验”。服务端地图一致性适配仍缺失，完成前不得用坐标范围校验伪装成功。
+用户已选择首推城市成都，前端使用微信原生选点，开放城市仍来自服务端目录。后续用户明确“不对位置进行限制”（SSOT §28）：取消原先的地址/坐标地理匹配、距离阈值、位置围栏与腾讯WebService Key依赖。后端保留地址长度及经纬度合法范围校验，不能把这个格式检查称为地理真实性核验。`MapValidationPort`仅保留内部兼容名称，实际默认实现是`LocationInputValidationProvider`，不发外部地图请求。
 
 ## 9. 密钥与配置名称
 
@@ -169,8 +169,8 @@ Schema 同步还须定义上传 request binding、durable task/outbox及grant/as
 
 1. **保留期限**：未引用、被拒绝、历史 revision、已批准材料和读取审计各保留多久；裁决前只保留且不自动删除，不发明天数。
 
-地图/城市/扫描 Provider 是技术选型；真实服务未配置时阻塞生产验收。
+城市目录及扫描等仍按各自真实依赖验收；外部地图Provider及Key门禁已由SSOT §28取消。
 
 ## 11. 本次交付与门禁
 
-S7 已交付 `ProtectedValuePort` AES-256-GCM + HMAC-SHA-256 adapter、单元测试和本 CCR。S8 根据本次确认实施新增私有资产 API、服务端上传、代理水印读取及表结构；精确实现与状态见 `docs/04-api/31-Private-Asset-Contract-v0.1.md`、SQL31/Storage31。运行配置仍默认关闭，真实 Provider 不可用时失败关闭。保留期限和后端地图核验不在本次批准内。
+S7 已交付 `ProtectedValuePort` AES-256-GCM + HMAC-SHA-256 adapter、单元测试和本 CCR。S8 根据本次确认实施新增私有资产 API、服务端上传、代理水印读取及表结构；精确实现与状态见 `docs/04-api/31-Private-Asset-Contract-v0.1.md`、SQL31/Storage31。运行配置仍默认关闭，真实 Provider 不可用时失败关闭。保留期限仍待裁决；位置限制按后续SSOT §28裁决取消。

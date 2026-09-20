@@ -7,6 +7,7 @@ import type { ApplicationResult, DraftInput } from '../../../shared/merchant-rep
 import { id, definiteRejection } from '../../../shared/consumer-api'
 import { ApplicationCommands, applicationMessage, editableApplication, emptyDraft, validateApplication, type City, type FieldErrors, type MaterialKind } from '../../merchant-application/model'
 import { applicationRuntime } from '../../merchant-application/runtime'
+import { noCurrentApplicationNotice, readCurrentApplication } from '../../merchant-application/current'
 import { MerchantApplicationView } from './view'
 
 const materialLabels: Record<MaterialKind, string> = { storePhotoAssetIds: '门店照片', businessLicenseAssetId: '营业执照', idCardFrontAssetId: '身份证人像面', idCardBackAssetId: '身份证国徽面', industryLicenseAssetId: '行业许可证' }
@@ -56,6 +57,7 @@ function ApplicationScreen({ preview, reference, scope }: { preview: boolean; re
       const answer = await Taro.showModal({ title: '重新读取申请？', content: '重新读取会替换本页尚未保存的修改。', confirmText: '重新读取', cancelText: '继续编辑' })
       if (!answer.confirm || !live()) return
     }
+    if (!live() || running.current || pending.current) return
     if (preview) { setNotice('当前为交互预览，没有读取真实申请。'); return }
     if (!loggedIn) return
     setLoading(true)
@@ -67,8 +69,15 @@ function ApplicationScreen({ preview, reference, scope }: { preview: boolean; re
         setNotice('已恢复上次未确认的操作，请重试原操作以确认结果。')
         return
       }
-      const current = await deps.application.current()
-      if (!live()) return
+      const loaded = await readCurrentApplication(deps.application, () => live() && !pending.current, () => !uploads?.pending())
+      if (loaded.kind === 'ignored') return
+      if (loaded.kind === 'empty') {
+        setResult(null); setDraft(emptyDraft()); setOpinion(null); setCityName(''); setErrors({}); setLocked(false)
+        setCities(null); setTypeOpen(false); dirty.current = false
+        setNotice(noCurrentApplicationNotice)
+        return
+      }
+      const current = loaded.current
       setResult(current); setDraft(current.currentRevision.draft); setCityName(current.currentRevision.draft.cityCode ? `已选城市（${current.currentRevision.draft.cityCode}）` : ''); setOpinion(current.latestDecision?.opinion || null); dirty.current = false
     })
     if (live()) {

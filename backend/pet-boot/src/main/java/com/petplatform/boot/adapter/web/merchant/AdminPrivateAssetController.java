@@ -16,6 +16,8 @@ import org.springframework.web.bind.annotation.*;
 @RestController
 @ConditionalOnProperty(prefix = "pet.private-assets", name = "enabled", havingValue = "true")
 public final class AdminPrivateAssetController {
+  private static final Set<String> RENDERED_MEDIA_TYPES = Set.of("image/jpeg", "image/png");
+  private static final long MAX_RENDERED_BYTES = 10L * 1024 * 1024;
   private final PrivateAssetApi assets;
 
   public AdminPrivateAssetController(PrivateAssetApi assets) {
@@ -82,10 +84,12 @@ public final class AdminPrivateAssetController {
                     OperatorType.PLATFORM_OPERATOR,
                     session.principal().operatorId(),
                     "ADMIN_WEB")));
-    byte[] rendered = result.content();
-    if (!"image/png".equals(result.mediaType())
+    byte[] rendered = result == null ? null : result.content();
+    if (result == null
+        || !RENDERED_MEDIA_TYPES.contains(result.mediaType())
         || rendered == null
         || rendered.length < 1
+        || rendered.length > MAX_RENDERED_BYTES
         || result.bytes() != rendered.length
         || result.objectSha256() == null
         || !result.objectSha256().matches("[0-9a-f]{64}")) {
@@ -96,7 +100,7 @@ public final class AdminPrivateAssetController {
     response.setStatus(200);
     response.setHeader(
         HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"private-material\"");
-    response.setContentType(MediaType.IMAGE_PNG_VALUE);
+    response.setContentType(result.mediaType());
     response.setContentLengthLong(result.bytes());
     response.getOutputStream().write(rendered);
   }

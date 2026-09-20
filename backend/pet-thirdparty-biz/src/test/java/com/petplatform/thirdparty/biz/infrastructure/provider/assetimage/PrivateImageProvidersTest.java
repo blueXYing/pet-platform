@@ -13,6 +13,7 @@ import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.time.OffsetDateTime;
 import java.util.Arrays;
+import java.util.SplittableRandom;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 import javax.imageio.ImageIO;
@@ -36,8 +37,10 @@ class PrivateImageProvidersTest {
         byte[] tagged = withOrientation(jpeg, orientation, little);
         var normalized = new ImageIoPrivateAssetImageNormalizer().normalize(tagged, "image/jpeg");
         var actual = ImageIO.read(new ByteArrayInputStream(normalized.content()));
+        var exact = ImageIoPrivateAssetImageNormalizer.orient(raw, orientation);
         assertEquals(orientation >= 5 ? 32 : 48, actual.getWidth());
         assertEquals(orientation >= 5 ? 48 : 32, actual.getHeight());
+        long channelDelta = 0;
         for (int y = 0; y < 32; y++)
           for (int x = 0; x < 48; x++) {
             int targetX =
@@ -54,9 +57,13 @@ class PrivateImageProvidersTest {
                   case 7, 8 -> 47 - x;
                   default -> y;
                 };
-            assertEquals(
-                raw.getRGB(x, y), actual.getRGB(targetX, targetY), "orientation " + orientation);
+            assertEquals(raw.getRGB(x, y), exact.getRGB(targetX, targetY), "orientation " + orientation);
+            int expected = raw.getRGB(x, y), rendered = actual.getRGB(targetX, targetY);
+            for (int shift : new int[] {0, 8, 16})
+              channelDelta += Math.abs(((expected >> shift) & 255) - ((rendered >> shift) & 255));
           }
+        exact.flush();
+        assertTrue(channelDelta / (48.0 * 32.0 * 3.0) < 6.0, "JPEG quality/geometry drift");
         assertFalse(new String(normalized.content(), StandardCharsets.ISO_8859_1).contains("Exif"));
       }
   }
@@ -111,14 +118,17 @@ class PrivateImageProvidersTest {
     byte[] source = Arrays.copyOf(jpeg, jpeg.length + 40);
     Arrays.fill(source, jpeg.length, source.length, (byte) 65);
     var result = new ImageIoPrivateAssetImageNormalizer().normalize(source, "image/jpeg");
-    assertEquals("image/png", result.mediaType());
+    assertEquals("image/jpeg", result.mediaType());
     assertEquals(640, result.width());
     assertEquals(480, result.height());
     assertNotNull(ImageIO.read(new ByteArrayInputStream(result.content())));
     var renderer = new ImageIoPrivateAssetWatermarkRenderer();
     var at = OffsetDateTime.parse("2026-09-20T10:00:00Z");
-    var first = renderer.render(result.content(), "image/png", new Watermark("100", "300", at));
-    var second = renderer.render(result.content(), "image/png", new Watermark("200", "300", at));
+    var first =
+        renderer.render(result.content(), result.mediaType(), new Watermark("100", "300", at));
+    var second =
+        renderer.render(result.content(), result.mediaType(), new Watermark("200", "300", at));
+    assertEquals("image/jpeg", first.mediaType());
     assertFalse(Arrays.equals(result.content(), first.content()));
     assertFalse(Arrays.equals(first.content(), second.content()));
     assertNotNull(ImageIO.read(new ByteArrayInputStream(first.content())));
@@ -146,6 +156,44 @@ class PrivateImageProvidersTest {
     hugeHeader[17] = (byte) 0xff;
     assertThrows(
         IllegalArgumentException.class, () -> normalizer.normalize(hugeHeader, "image/png"));
+  }
+
+  @Test
+  void highEntropyJpegRemainsJpegAndWithinTenMiB() throws Exception {
+    int width = 2048, height = 2048;
+    var image = new BufferedImage(width, height, BufferedImage.TYPE_INT_RGB);
+    int[] pixels = new int[width * height];
+    var random = new SplittableRandom(20260920L);
+    for (int index = 0; index < pixels.length; index++) pixels[index] = random.nextInt();
+    image.setRGB(0, 0, width, height, pixels, 0, width);
+    var encoded = new ByteArrayOutputStream();
+    assertTrue(ImageIO.write(image, "jpeg", encoded));
+    image.flush();
+    byte[] source = encoded.toByteArray();
+    assertTrue(source.length < 10 * 1024 * 1024, "source must remain upload-eligible");
+
+    var normalized = new ImageIoPrivateAssetImageNormalizer().normalize(source, "image/jpeg");
+    assertEquals("image/jpeg", normalized.mediaType());
+    assertTrue(normalized.content().length > 0 && normalized.content().length <= 10 * 1024 * 1024);
+    assertNotNull(ImageIO.read(new ByteArrayInputStream(normalized.content())));
+  }
+
+  @Test
+  void rgbPngEncodingOverTenMiBFailsAsInvalidMaterialWithoutMaskedWriterException() {
+    int width = 2048, height = 2048;
+    var image = new BufferedImage(width, height, BufferedImage.TYPE_INT_RGB);
+    int[] pixels = new int[width * height];
+    var random = new SplittableRandom(20260921L);
+    for (int index = 0; index < pixels.length; index++) pixels[index] = random.nextInt();
+    image.setRGB(0, 0, width, height, pixels, 0, width);
+
+    IllegalArgumentException rejected =
+        assertThrows(
+            IllegalArgumentException.class,
+            () -> ImageIoPrivateAssetImageNormalizer.encode(image, "image/png"));
+    image.flush();
+    assertEquals(
+        "Private material must be a complete bounded JPEG or PNG image", rejected.getMessage());
   }
 
   @Test

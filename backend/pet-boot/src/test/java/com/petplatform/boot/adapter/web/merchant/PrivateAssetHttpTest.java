@@ -228,6 +228,41 @@ class PrivateAssetHttpTest {
     assertEquals(3, consumed.getValue().sessionGeneration());
   }
 
+  @Test
+  void consumeAllowsWatermarkedJpegAndRejectsOtherOrOversizedFormats() throws Exception {
+    String path = "/api/v1/admin/private-asset-read-grants/abcdefghijklmnopqrstuvwxyzABCDEF";
+    byte[] jpeg = new byte[] {(byte) 0xff, (byte) 0xd8, (byte) 0xff, 1, 2, 3};
+    when(assets.consumeReadGrant(any()))
+        .thenReturn(new PrivateAssetContent(jpeg, "image/jpeg", "c".repeat(64), jpeg.length));
+    admin
+        .perform(
+            get(path).requestAttr(AdminBearerAuthenticationFilter.VIEW, adminSession()))
+        .andExpect(status().isOk())
+        .andExpect(content().contentType("image/jpeg"))
+        .andExpect(content().bytes(jpeg));
+
+    reset(assets);
+    when(assets.consumeReadGrant(any()))
+        .thenReturn(new PrivateAssetContent(new byte[] {1}, "image/gif", "d".repeat(64), 1));
+    admin
+        .perform(
+            get(path).requestAttr(AdminBearerAuthenticationFilter.VIEW, adminSession()))
+        .andExpect(status().isServiceUnavailable())
+        .andExpect(jsonPath("$.code").value("COMMON_DEPENDENCY_UNAVAILABLE"));
+
+    reset(assets);
+    byte[] oversized = new byte[10 * 1024 * 1024 + 1];
+    when(assets.consumeReadGrant(any()))
+        .thenReturn(
+            new PrivateAssetContent(
+                oversized, "image/png", "e".repeat(64), oversized.length));
+    admin
+        .perform(
+            get(path).requestAttr(AdminBearerAuthenticationFilter.VIEW, adminSession()))
+        .andExpect(status().isServiceUnavailable())
+        .andExpect(jsonPath("$.code").value("COMMON_DEPENDENCY_UNAVAILABLE"));
+  }
+
   private static MiniSessionView mini(String userId) {
     return new MiniSessionView(
         "601", userId, Instant.now().plusSeconds(60), "138****0000", "ACTIVE");

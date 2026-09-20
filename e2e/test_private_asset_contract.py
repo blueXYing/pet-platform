@@ -90,12 +90,22 @@ class PrivateAssetContractRegressions(unittest.TestCase):
     def test_claimant_and_revision_authorization_cannot_disappear(self):
         self.reject(lambda: self.operation('issuePrivateAssetReadGrant').pop('x-authorization'))
 
-    def test_proxy_no_cache_nosniff_png_and_consumed_failure_required(self):
+    def test_proxy_no_cache_nosniff_jpeg_png_and_consumed_failure_required(self):
         for header in ['Cache-Control', 'Pragma', 'X-Content-Type-Options']:
             self.spec = copy.deepcopy(self.baseline)
             self.reject(lambda: self.operation('consumePrivateAssetReadGrant')['responses']['200']['headers'].pop(header))
-        self.spec = copy.deepcopy(self.baseline)
-        self.reject(lambda: self.operation('consumePrivateAssetReadGrant')['responses']['200'].__setitem__('content', {'image/jpeg': {'schema': {'type': 'string', 'format': 'binary'}}}))
+        for content in [
+            {'image/png': {'schema': {'type': 'string', 'format': 'binary'}}},
+            {'image/jpeg': {'schema': {'type': 'string', 'format': 'binary'}}},
+            {
+                'image/png': {'schema': {'type': 'string', 'format': 'binary'}},
+                'image/jpeg': {'schema': {'type': 'string', 'format': 'binary'}},
+                'image/gif': {'schema': {'type': 'string', 'format': 'binary'}},
+            },
+        ]:
+            with self.subTest(content=content):
+                self.spec = copy.deepcopy(self.baseline)
+                self.reject(lambda: self.operation('consumePrivateAssetReadGrant')['responses']['200'].__setitem__('content', content))
         self.spec = copy.deepcopy(self.baseline)
         self.reject(lambda: self.operation('consumePrivateAssetReadGrant')['responses'].pop('410'))
 
