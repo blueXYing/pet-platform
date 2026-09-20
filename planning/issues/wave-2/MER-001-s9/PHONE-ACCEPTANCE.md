@@ -38,3 +38,7 @@ LocalMerchantAcceptanceServer现于启动时初始化空白测试库的固定策
 用户重试得到merchant application persistence is unavailable。服务日志确认node23的ID Provider于16:53:15触发OPERATION_TIMEOUT并持续fail closed；核对申请仍DRAFT/v2、审核任务0。没有修改业务状态、重置高水位或放宽生产1秒保护预算。
 
 本地adopt服务原使用每次新建物理连接的DriverManagerDataSource，现改为Hikari连接池（最小4、最大8），减少常驻worker与续租的建连开销。旧JVM退出后使用此前不存在的node24保留原库恢复。编译通过；恢复后连续120秒、每15秒共9次实际匿名登录attempt接口请求全部201，ID高水位每次采样均推进，未再记录fail closed。见local-pool-stability.json；这证明观察窗口内持续发号/续租正常，不等于已经证明最初超时的底层原因或长期稳定性。用户原提交仍需正常重试并验收。
+
+## 手机提交落库验收通过
+
+用户随后确认已提交。只读核对原申请：REVIEWING/v4，当前材料版本与提交版本一致；审核任务仅1条、submission_no=1、AVAILABLE且未领取，申请的任务指针一致；SUBMIT审计仅1条（DRAFT→REVIEWING），审核决定0条。该提交版本包含门店照片、营业执照、身份证正面及反面各1项，4项材料上传账号均与申请owner一致。未通过SQL代提交或修改状态；本次确认手机真实提交及审核队列落库，运营页面、人工审核通过及手机签署不包含在此次验收中。
