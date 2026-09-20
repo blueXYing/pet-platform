@@ -61,6 +61,24 @@ class S3PrivateObjectStoreTest {
     verify(s3).putObject(request.capture(), any(RequestBody.class));
     assertEquals("*", request.getValue().ifNoneMatch());
     assertNull(request.getValue().acl());
+    assertTrue(request.getValue().overrideConfiguration().isEmpty());
+  }
+
+  @Test
+  void aliyunUsesItsAtomicGuardWithoutUnsupportedS3IfNoneMatch() throws Exception {
+    var s3 = client();
+    when(s3.headObject(any(HeadObjectRequest.class)))
+        .thenThrow(NoSuchKeyException.builder().statusCode(404).build());
+    when(s3.putObject(any(PutObjectRequest.class), any(RequestBody.class)))
+        .thenReturn(PutObjectResponse.builder().eTag(ETAG).build());
+    var store = new S3PrivateObjectStore(new OssConnection("https://oss-cn-chengdu.aliyuncs.com",
+        "cn-chengdu", "test", "test", "test", null), s3);
+    byte[] bytes = {1,2,3};
+    store.putIfAbsent(KEY, bytes, "image/png", hash(bytes));
+    var request = ArgumentCaptor.forClass(PutObjectRequest.class);
+    verify(s3).putObject(request.capture(), any(RequestBody.class));
+    assertNull(request.getValue().ifNoneMatch());
+    assertNull(request.getValue().acl());
     assertEquals(
         "true",
         request

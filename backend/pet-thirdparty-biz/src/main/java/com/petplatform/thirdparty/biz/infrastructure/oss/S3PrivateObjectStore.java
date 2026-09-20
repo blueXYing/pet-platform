@@ -66,17 +66,20 @@ public final class S3PrivateObjectStore implements PrivateObjectStore, AutoClose
       Optional<StoredObject> prior = head(objectKey);
       if (prior.isPresent())
         return verifyExisting(objectKey, prior.get(), content, mediaType, sha256);
-      PutObjectResponse response =
-          s3.putObject(
-              PutObjectRequest.builder()
+      PutObjectRequest.Builder put = PutObjectRequest.builder()
                   .bucket(connection.bucket())
                   .key(objectKey)
                   .contentType(mediaType)
-                  .metadata(Map.of("sha256", sha256))
-                  .ifNoneMatch("*")
-                  .overrideConfiguration(c -> c.putHeader("x-oss-forbid-overwrite", "true"))
-                  .build(),
-              RequestBody.fromBytes(content));
+                  .metadata(Map.of("sha256", sha256));
+      String host = URI.create(connection.endpoint()).getHost();
+      if (host != null && (host.endsWith(".aliyuncs.com") || host.endsWith(".aliyuncs.com.cn"))) {
+        // OSS rejects the S3 If-None-Match PUT header with NotImplemented. Its native atomic
+        // overwrite guard is supported through the S3-compatible endpoint (live verified).
+        put.overrideConfiguration(c -> c.putHeader("x-oss-forbid-overwrite", "true"));
+      } else {
+        put.ifNoneMatch("*");
+      }
+      PutObjectResponse response = s3.putObject(put.build(), RequestBody.fromBytes(content));
       return new StoredObject(
           version(response.versionId(), response.eTag()), sha256, content.length, mediaType);
     } catch (S3Exception failure) {

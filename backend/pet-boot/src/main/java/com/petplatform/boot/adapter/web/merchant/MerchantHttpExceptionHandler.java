@@ -68,10 +68,10 @@ public final class MerchantHttpExceptionHandler {
     return error(413, CommonApiCodes.INVALID_ARGUMENT, "上传文件超过10MiB限制", response);
   }
 
-  @ExceptionHandler({
-    org.springframework.dao.DataAccessException.class,
-    org.springframework.transaction.TransactionException.class
-  })
+  // DataAccessException and TransactionException both extend this non-persistence Spring base.
+  // Keeping the web boundary on the base preserves fail-closed 503 mapping without coupling a
+  // controller advice to repository/JDBC exception types (ARCH-004).
+  @ExceptionHandler(org.springframework.core.NestedRuntimeException.class)
   Map<String, Object> unavailable(Exception ignored, HttpServletResponse response) {
     return error(503, CommonApiCodes.DEPENDENCY_UNAVAILABLE, "依赖暂不可用，请保留原请求编号重试", response);
   }
