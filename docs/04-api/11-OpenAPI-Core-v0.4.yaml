@@ -706,7 +706,7 @@ paths:
       - Merchant-Profile
       summary: merchantGetAgreement
       operationId: merchantGetAgreement
-      x-contract-status: ACCEPTED_CONTRACT_NOT_IMPLEMENTED
+      x-contract-status: IMPLEMENTED_DEFAULT_OFF_REQUIRES_PROVIDERS
       x-audience: MINIAPP
       x-authorization: Current OWNER of the requested merchant; no client identity assertion.
       security:
@@ -808,7 +808,7 @@ paths:
       - Merchant-Profile
       summary: merchantConsentAgreement
       operationId: merchantConsentAgreement
-      x-contract-status: ACCEPTED_CONTRACT_NOT_IMPLEMENTED
+      x-contract-status: IMPLEMENTED_DEFAULT_OFF_REQUIRES_PROVIDERS
       x-audience: MINIAPP
       x-authorization: Current OWNER of the requested merchant; no client identity assertion.
       security:
@@ -5689,13 +5689,109 @@ paths:
           application/json:
             schema:
               $ref: '#/components/schemas/AuthVersionedCommand'
+  /c/merchant-application-cities:
+    get:
+      tags:
+      - Merchant-Application
+      operationId: cListMerchantApplicationCities
+      summary: List currently configured merchant application cities
+      x-contract-status: IMPLEMENTED_DEFAULT_OFF_REQUIRES_PROVIDERS
+      x-audience: MINIAPP
+      security:
+      - bearerAuth: []
+      parameters: []
+      responses:
+        '200':
+          description: Current authorized result or idempotent replay.
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                enum:
+                - no-store
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AppCitiesEnvelope'
+        '400':
+          description: Contract 30; never includes old sensitive data.
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                enum:
+                - no-store
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MerErrorEnvelope'
+        '401':
+          description: Contract 30; never includes old sensitive data.
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                enum:
+                - no-store
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MerErrorEnvelope'
+        '403':
+          description: Contract 30; never includes old sensitive data.
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                enum:
+                - no-store
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MerErrorEnvelope'
+        '404':
+          description: Contract 30; never includes old sensitive data.
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                enum:
+                - no-store
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MerErrorEnvelope'
+        '409':
+          description: Contract 30; never includes old sensitive data.
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                enum:
+                - no-store
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MerErrorEnvelope'
+        '503':
+          description: Contract 30; never includes old sensitive data.
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                enum:
+                - no-store
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MerErrorEnvelope'
   /c/merchant-applications/current:
     get:
       tags:
       - Merchant-Application
       operationId: cGetCurrentMerchantApplication
       summary: cGetCurrentMerchantApplication
-      x-contract-status: CONTRACT_SYNC_CANDIDATE_NOT_IMPLEMENTED
+      x-contract-status: IMPLEMENTED_DEFAULT_OFF_REQUIRES_PROVIDERS
       x-audience: MINIAPP
       security:
       - bearerAuth: []
@@ -5791,7 +5887,7 @@ paths:
       - Merchant-Application
       operationId: cCreateMerchantApplication
       summary: cCreateMerchantApplication
-      x-contract-status: CONTRACT_SYNC_CANDIDATE_NOT_IMPLEMENTED
+      x-contract-status: IMPLEMENTED_DEFAULT_OFF_REQUIRES_PROVIDERS
       x-audience: MINIAPP
       security:
       - bearerAuth: []
@@ -5906,7 +6002,7 @@ paths:
       - Merchant-Application
       operationId: cSaveMerchantApplicationDraft
       summary: cSaveMerchantApplicationDraft
-      x-contract-status: CONTRACT_SYNC_CANDIDATE_NOT_IMPLEMENTED
+      x-contract-status: IMPLEMENTED_DEFAULT_OFF_REQUIRES_PROVIDERS
       x-audience: MINIAPP
       security:
       - bearerAuth: []
@@ -6014,7 +6110,7 @@ paths:
       - Merchant-Application
       operationId: cSubmitMerchantApplication
       summary: cSubmitMerchantApplication
-      x-contract-status: CONTRACT_SYNC_CANDIDATE_NOT_IMPLEMENTED
+      x-contract-status: IMPLEMENTED_DEFAULT_OFF_REQUIRES_PROVIDERS
       x-audience: MINIAPP
       security:
       - bearerAuth: []
@@ -6122,7 +6218,7 @@ paths:
       - Merchant-Application
       operationId: adminListMerchantApplications
       summary: adminListMerchantApplications
-      x-contract-status: CONTRACT_SYNC_CANDIDATE_NOT_IMPLEMENTED
+      x-contract-status: IMPLEMENTED_DEFAULT_OFF_REQUIRES_PROVIDERS
       x-audience: ADMIN_WEB
       security:
       - bearerAuth: []
@@ -6258,7 +6354,7 @@ paths:
       - Merchant-Application
       operationId: adminGetMerchantApplication
       summary: adminGetMerchantApplication
-      x-contract-status: CONTRACT_SYNC_CANDIDATE_NOT_IMPLEMENTED
+      x-contract-status: IMPLEMENTED_DEFAULT_OFF_REQUIRES_PROVIDERS
       x-audience: ADMIN_WEB
       security:
       - bearerAuth: []
@@ -6361,7 +6457,7 @@ paths:
       - Merchant-Application
       operationId: adminClaimMerchantApplication
       summary: adminClaimMerchantApplication
-      x-contract-status: CONTRACT_SYNC_CANDIDATE_NOT_IMPLEMENTED
+      x-contract-status: IMPLEMENTED_DEFAULT_OFF_REQUIRES_PROVIDERS
       x-audience: ADMIN_WEB
       security:
       - bearerAuth: []
@@ -6471,7 +6567,7 @@ paths:
       - Merchant-Application
       operationId: adminReleaseMerchantApplication
       summary: adminReleaseMerchantApplication
-      x-contract-status: CONTRACT_SYNC_CANDIDATE_NOT_IMPLEMENTED
+      x-contract-status: IMPLEMENTED_DEFAULT_OFF_REQUIRES_PROVIDERS
       x-audience: ADMIN_WEB
       security:
       - bearerAuth: []
@@ -6582,7 +6678,7 @@ paths:
       - Merchant-Application
       operationId: adminVerifyMerchantApplication
       summary: adminVerifyMerchantApplication
-      x-contract-status: CONTRACT_SYNC_CANDIDATE_NOT_IMPLEMENTED
+      x-contract-status: IMPLEMENTED_DEFAULT_OFF_REQUIRES_PROVIDERS
       x-audience: ADMIN_WEB
       security:
       - bearerAuth: []
@@ -6694,7 +6790,7 @@ paths:
       - Merchant-Application
       operationId: adminDecideMerchantApplication
       summary: adminDecideMerchantApplication
-      x-contract-status: CONTRACT_SYNC_CANDIDATE_NOT_IMPLEMENTED
+      x-contract-status: IMPLEMENTED_DEFAULT_OFF_REQUIRES_PROVIDERS
       x-audience: ADMIN_WEB
       security:
       - bearerAuth: []
@@ -11915,6 +12011,57 @@ components:
             type: string
             minLength: 10
             maxLength: 500
+    AppCities:
+      type: object
+      additionalProperties: false
+      required:
+      - items
+      properties:
+        items:
+          type: array
+          minItems: 1
+          maxItems: 100
+          items:
+            type: object
+            additionalProperties: false
+            required:
+            - cityCode
+            - cityName
+            properties:
+              cityCode:
+                type: string
+                pattern: ^[a-z][a-z0-9_-]{0,31}(?![\s\S])
+                maxLength: 32
+              cityName:
+                type: string
+                minLength: 1
+                maxLength: 64
+    AppCitiesEnvelope:
+      type: object
+      additionalProperties: false
+      required:
+      - success
+      - code
+      - message
+      - data
+      - traceId
+      properties:
+        success:
+          type: boolean
+          enum:
+          - true
+        code:
+          type: string
+          enum:
+          - SUCCESS
+        message:
+          type: string
+          minLength: 1
+        data:
+          $ref: '#/components/schemas/AppCities'
+        traceId:
+          type: string
+          minLength: 1
   examples:
     AuthApprovedExample1:
       summary: Accepted AUTH example; fictional data, no Provider success claim

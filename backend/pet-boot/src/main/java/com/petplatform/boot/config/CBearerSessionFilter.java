@@ -40,7 +40,13 @@ public final class CBearerSessionFilter extends OncePerRequestFilter {
     }
 
     static boolean protectedPath(String path) {
-        return PROTECTED_EXACT.contains(path) || path.startsWith("/api/v1/c/pets/");
+        return PROTECTED_EXACT.contains(path)
+                || path.startsWith("/api/v1/c/pets/")
+                || path.equals("/api/v1/c/merchant-application-cities")
+                || path.equals("/api/v1/c/merchant-applications")
+                || path.startsWith("/api/v1/c/merchant-applications/")
+                || path.equals("/api/v1/merchant/agreement")
+                || path.equals("/api/v1/merchant/agreement/consent");
     }
 
     @Override
@@ -56,15 +62,23 @@ public final class CBearerSessionFilter extends OncePerRequestFilter {
             UserAuthService service = services.getIfAvailable();
             if (service == null) throw new IllegalArgumentException("auth disabled");
             req.setAttribute(VIEW, service.resolveSession(token));
-            chain.doFilter(req, res);
         } catch (RuntimeException invalid) {
             res.setStatus(401);
             res.setContentType("application/json");
             res.setHeader("Cache-Control", "no-store");
-            res.getWriter().write("{\"code\":\"" + CommonApiCodes.UNAUTHORIZED + "\","
+            String success = merchantPath(req.getRequestURI()) ? "\"success\":false," : "";
+            res.getWriter().write("{" + success + "\"code\":\"" + CommonApiCodes.UNAUTHORIZED + "\","
                     + "\"message\":\"登录已失效，请重新登录\",\"data\":null,"
                     + "\"traceId\":" + traceJson(req) + "}");
+            return;
         }
+        chain.doFilter(req, res);
+    }
+
+    private static boolean merchantPath(String path) {
+        return path.equals("/api/v1/c/merchant-application-cities")
+                || path.startsWith("/api/v1/c/merchant-applications")
+                || path.startsWith("/api/v1/merchant/agreement");
     }
 
     private static String traceJson(HttpServletRequest req) {

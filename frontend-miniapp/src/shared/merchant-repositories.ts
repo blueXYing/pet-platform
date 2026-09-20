@@ -88,30 +88,47 @@ export function decodeApplicationDetail(value: unknown) {
   return { ...base, currentRevision, submittedAt, reviewedAt, latestDecision, subjectVerificationStatus }
 }
 export type ApplicationDetail = ReturnType<typeof decodeApplicationDetail>
-/** Candidate contract client only; intentionally not registered in production pages. */
+export function decodeApplicationCities(value: unknown) {
+  const v = exact(value, ['items'])
+  if (!Array.isArray(v.items) || v.items.length < 1 || v.items.length > 100) invalid()
+  const codes = new Set<string>(), names = new Set<string>()
+  return v.items.map((item: unknown) => {
+    const city = exact(item, ['cityCode', 'cityName'])
+    const cityCode = text(city.cityCode, 32, 1), cityName = text(city.cityName, 64, 1)
+    if (!/^[a-z][a-z0-9_-]{0,31}(?![\s\S])/.test(cityCode) || !cityName.trim() || codes.has(cityCode) || names.has(cityName)) invalid()
+    codes.add(cityCode); names.add(cityName)
+    return { cityCode, cityName }
+  }) as { cityCode: string; cityName: string }[]
+}
+export type ApplicationCheckpoint = { slot: string; value: (result: ApplicationResult) => unknown }
+/** Approved OAS30 client; enabled explicitly by deployment capability. */
 export class MerchantApplicationRepository {
   constructor(private api: ConsumerApi) {}
+  pending() { return this.api.pendingCommands('merchant-application:') }
+  intent() { return this.api.intent('merchant-application') }
+  saveIntent(value: unknown) { this.api.saveIntent('merchant-application', value) }
+  cities() { return this.api.request({ path: '/api/v1/c/merchant-application-cities', method: 'GET' }, decodeApplicationCities) }
   current(): Promise<ApplicationDetail> { return this.api.request({ path: '/api/v1/c/merchant-applications/current', method: 'GET' }, decodeApplicationDetail) }
-  create(draft: DraftInput = {}): Promise<ApplicationResult> {
+  create(draft: DraftInput = {}, checkpoint?: ApplicationCheckpoint): Promise<ApplicationResult> {
     return this.api.write('merchant-application:create', { path: '/api/v1/c/merchant-applications', method: 'POST', data: decodeDraft(draft) }, value => {
       const result = decodeApplicationResult(value)
       if (result.status !== 'DRAFT') invalid()
       return result
-    })
+    }, checkpoint)
   }
-  save(applicationId: string, expectedVersion: string, draft: DraftInput): Promise<ApplicationResult> {
+  save(applicationId: string, expectedVersion: string, draft: DraftInput, checkpoint?: ApplicationCheckpoint): Promise<ApplicationResult> {
     return this.api.write(`merchant-application:${id(applicationId)}:save`, { path: `/api/v1/c/merchant-applications/${id(applicationId)}/draft`, method: 'PUT', data: { expectedVersion: decodeVersion(expectedVersion), draft: decodeDraft(draft) } }, value => {
       const result = decodeApplicationResult(value)
       if (result.applicationId !== applicationId || !['DRAFT', 'REJECTED'].includes(result.status)) invalid()
       return result
-    })
+    }, checkpoint)
   }
-  submit(applicationId: string, expectedVersion: string, revisionId: string): Promise<ApplicationResult> {
+  submit(applicationId: string, expectedVersion: string, revisionId: string, checkpoint?: ApplicationCheckpoint): Promise<ApplicationResult> {
     return this.api.write(`merchant-application:${id(applicationId)}:submit`, { path: `/api/v1/c/merchant-applications/${id(applicationId)}/submit`, method: 'POST', data: { expectedVersion: decodeVersion(expectedVersion), revisionId: id(revisionId) } }, value => {
       const result = decodeApplicationResult(value)
       if (result.applicationId !== applicationId || result.currentRevisionId !== revisionId || result.status !== 'REVIEWING') invalid()
       return result
-    })
+    }, checkpoint)
   }
 }
 function agreementVersion(value: unknown): string {
@@ -143,6 +160,23 @@ export function decodeConsent(value: unknown) {
 }
 export class MerchantAgreementRepository {
   constructor(private api: ConsumerApi) {}
+  pendingConsent(merchantId: string) {
+    merchantId = id(merchantId)
+    const command = this.api.pendingCommand(`merchant-agreement:${merchantId}:consent`)
+    if (!command) return null
+    const data = exact(command.data, ['merchantId', 'agreementVersion', 'contentSha256', 'accepted'])
+    if (command.path !== '/api/v1/merchant/agreement/consent' || command.method !== 'POST' || data.merchantId !== merchantId || data.accepted !== true) invalid()
+    return { merchantId, agreementVersion: agreementVersion(data.agreementVersion), contentSha256: contentHash(data.contentSha256), accepted: true }
+  }
+  retryConsent(merchantId: string) {
+    const pending = this.pendingConsent(merchantId)
+    if (!pending) throw new Error('NO_PENDING_CONSENT')
+    return this.api.write(`merchant-agreement:${pending.merchantId}:consent`, { path: '/api/v1/merchant/agreement/consent', method: 'POST', data: pending }, value => {
+      const result = decodeConsent(value)
+      if (result.merchantId !== pending.merchantId || result.agreementVersion !== pending.agreementVersion) invalid()
+      return result
+    })
+  }
   read(merchantId: string): Promise<Agreement> {
     merchantId = id(merchantId)
     return this.api.request({ path: '/api/v1/merchant/agreement', method: 'GET', data: { merchantId } }, value => {

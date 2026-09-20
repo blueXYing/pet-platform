@@ -463,9 +463,10 @@ class CAuthHttpTest {
         /** Teardown-only retry over a fresh connection: local container proxies drop idle links. */
         void dropDatabase() {
             try {
-                admin.execute("DROP DATABASE `" + name + "`");
+                admin.execute("DROP DATABASE IF EXISTS `" + name + "`");
             } catch (org.springframework.dao.RecoverableDataAccessException retry) {
-                admin.execute("DROP DATABASE `" + name + "`");
+                // A lost ACK may follow a successful DROP. Retry only this fixture's random database.
+                admin.execute("DROP DATABASE IF EXISTS `" + name + "`");
             }
         }
 

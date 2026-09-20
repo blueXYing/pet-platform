@@ -17,7 +17,7 @@ export type ApplicationViewProps = {
   onSave: () => void; onSubmit: () => void; onReload: () => void; onLogin: () => void; opinion?: string | null
 }
 export function MerchantApplicationView(p: ApplicationViewProps) {
-  const actionDisabled = p.busy || p.loading || !editableApplication(p.result) || (!p.preview && !p.loggedIn)
+  const actionDisabled = p.busy || p.loading || (!p.locked && !editableApplication(p.result)) || (!p.preview && !p.loggedIn)
   const disabled = actionDisabled || !!p.locked
   const error = (key: keyof DraftInput) => p.errors[key] ? <View className='application-error' role='alert'>{p.errors[key]}</View> : null
   const input = (key: keyof DraftInput, label: string, placeholder: string, max: number, type: 'text' | 'number' = 'text') => <View className='application-field'>

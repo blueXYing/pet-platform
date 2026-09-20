@@ -4,6 +4,7 @@ import com.petplatform.merchant.api.dto.MerchantApplicationTypes.*;
 
 public interface MerchantApplicationCommandApi {
   MerchantApplicationResult createDraft(CreateMerchantApplicationCommand command);
+  ApplicationCommandOutcome createDraftOutcome(CreateMerchantApplicationCommand command);
 
   MerchantApplicationResult saveDraft(SaveMerchantApplicationDraftCommand command);
 

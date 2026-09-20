@@ -54,7 +54,7 @@ test('save rejects late response after logout or identity switch', async () => {
 })
 test('submit uses saved server version and revision without converting string IDs', async () => {
   let args: string[] = []
-  const repo = { submit: async (...values: string[]) => { args = values; return { ...result, status: 'REVIEWING' as const } } } as ApplicationRepository
+  const repo = { submit: async (applicationId: string, version: string, revisionId: string) => { args = [applicationId, version, revisionId]; return { ...result, status: 'REVIEWING' as const } } } as ApplicationRepository
   await new ApplicationCommands(repo, scope()).submit(result)
   assert.deepEqual(args, ['1', '0', '3'])
 })

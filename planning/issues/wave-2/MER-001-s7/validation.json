@@ -1,0 +1,126 @@
+{
+  "baseline": "632ced7a1c3699b262f5ffc287c7b15c94bf56fa",
+  "status": "FINAL_TARGETED_PASS_FULL_CI_PENDING",
+  "junitTargeted": 47,
+  "suites": [
+    {
+      "tests": 6,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "suite": "com.petplatform.merchant.biz.infrastructure.provider.AesGcmProtectedValueProviderTest"
+    },
+    {
+      "tests": 7,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "suite": "com.petplatform.merchant.biz.infrastructure.provider.MainlandSubjectCredentialProviderTest"
+    },
+    {
+      "tests": 3,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "suite": "com.petplatform.boot.adapter.web.merchant.MerchantApplicationCityHttpTest"
+    },
+    {
+      "tests": 5,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "suite": "com.petplatform.boot.adapter.web.merchant.MerchantApplicationHttpTest"
+    },
+    {
+      "tests": 1,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "suite": "com.petplatform.boot.auth.MerchantApplicationLifecycleHttpTest"
+    },
+    {
+      "tests": 3,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "suite": "com.petplatform.boot.config.MerchantApplicationCityCatalogTest"
+    },
+    {
+      "tests": 15,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "suite": "com.petplatform.architecture.ArchitectureRulesFixtureTest"
+    },
+    {
+      "tests": 7,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "suite": "com.petplatform.architecture.ArchitectureRulesTest"
+    }
+  ],
+  "frontendTests": 100,
+  "offlineContractTests": 100,
+  "architectureToolTests": 13,
+  "ossReadOnlyAcl": {
+    "httpStatus": 200,
+    "acl": "private",
+    "remoteWrites": false
+  },
+  "realTcpLifecycle": "PASS: real auth/SQL/Redis/AES/credential normalization/configured cities/Outbox/inbox and frontend response decoding; external identity/private-material/map adapters are test-only",
+  "sourceSha256": {
+    "backend/pet-boot/src/main/java/com/petplatform/boot/adapter/web/merchant/MerchantAgreementController.java": "7645ec56710a00c0e07418540ec070a707157d05a7db86e43689b11a680b525f",
+    "backend/pet-boot/src/main/java/com/petplatform/boot/adapter/web/merchant/MerchantApplicationAdminController.java": "381d0af07a9991baf1450ad2ce415c829bb90d0db69af061205538718ab0badc",
+    "backend/pet-boot/src/main/java/com/petplatform/boot/adapter/web/merchant/MerchantApplicationCityController.java": "b8e901ba8e2c8c55602be8679df2937fc58ddebcd41041e694ceb55f5c61b6dc",
+    "backend/pet-boot/src/main/java/com/petplatform/boot/adapter/web/merchant/MerchantApplicationController.java": "4eb6762bc4b6beec1227591691372184cfc8ea48102744398a37dd727a54e45e",
+    "backend/pet-boot/src/main/java/com/petplatform/boot/adapter/web/merchant/MerchantHttpExceptionHandler.java": "fc638e39f8e5fa544570cf31ab920a112e3d622a316019356e7dbcac781b8241",
+    "backend/pet-boot/src/main/java/com/petplatform/boot/adapter/web/merchant/MerchantHttpRequests.java": "3ae687d946314c4813eb6c960ea15571d02a1f0dadbab09e86bbca94d4ae2f19",
+    "backend/pet-boot/src/main/java/com/petplatform/boot/adapter/web/merchant/MerchantHttpSupport.java": "ce5a735b220c11dde8a621dd49255a6b35e45ffd8eeb5cec7525aad5309afa19",
+    "backend/pet-boot/src/main/java/com/petplatform/boot/config/AdminAuthSecurityConfiguration.java": "2dcb7d3ae1fe74ba83510a5be5ebc641487355af373dcbee97bda8df869e2baa",
+    "backend/pet-boot/src/main/java/com/petplatform/boot/config/AdminBearerAuthenticationFilter.java": "b1b4396e093c6d135c39bc41141536cec90ef08e243e765d7e8ab7a321f89711",
+    "backend/pet-boot/src/main/java/com/petplatform/boot/config/CBearerSessionFilter.java": "fd09c717d7eb72fc9b9d746a3e7b82d4760b076370c54b73b2591fdd169dccdb",
+    "backend/pet-boot/src/main/java/com/petplatform/boot/config/CSessionSecurityConfiguration.java": "d408d6e7ce3a0da62ce24035aea7307ff04e02c5d18d8b3fc3fc056c6d25c923",
+    "backend/pet-boot/src/main/java/com/petplatform/boot/config/MerchantApplicationCityCatalog.java": "94b224dc6d7de0e97c116b81fd0859c791c3f5db32bf41eeb7daf52fd2dd79df",
+    "backend/pet-boot/src/main/java/com/petplatform/boot/config/MerchantApplicationCityConfiguration.java": "8741dca90e5aabc2ddce98df4ba382b85087dc305aa7d9f8ca28f016bb610d1e",
+    "backend/pet-boot/src/main/java/com/petplatform/boot/config/MerchantApplicationCityProperties.java": "c9c153cb3e2ab979dccf24db6784a53182d2810d6b3d1f20fae1f5417a1b10c7",
+    "backend/pet-boot/src/main/java/com/petplatform/boot/config/MerchantApplicationRuntimeConfiguration.java": "f39172d82794b00e69416a045dd1a2aab9f056557e2bafe38881e3fe50f1d0f4",
+    "backend/pet-boot/src/main/java/com/petplatform/boot/config/MerchantJsonReaderFactory.java": "2b7c916b7fc8a051c7c2b1efc5b7fc72090d5cf9a7a7690c8d400d94e3775d47",
+    "backend/pet-boot/src/test/java/com/petplatform/boot/adapter/web/merchant/MerchantApplicationCityHttpTest.java": "a220a7636fad6fc06ce9b52951ea4dba36e77f6267da047ad49b41f55a18957f",
+    "backend/pet-boot/src/test/java/com/petplatform/boot/adapter/web/merchant/MerchantApplicationHttpTest.java": "57993c90267fd92a88ce42ffa43bf54b7020d9b67fa9c2b86cda46362088f2de",
+    "backend/pet-boot/src/test/java/com/petplatform/boot/auth/CAuthHttpTest.java": "0eab54f5ae736202c5bccc87f5a643411f68b9eb65079b843ca2279cca0870ea",
+    "backend/pet-boot/src/test/java/com/petplatform/boot/auth/MerchantApplicationLifecycleHttpTest.java": "2a0cbf6b3e5be23238d08ed786a4f0547b50a350e41af3b2fb331657e6c0843e",
+    "backend/pet-boot/src/test/java/com/petplatform/boot/config/MerchantApplicationCityCatalogTest.java": "a2c06aca3832c6e4b7018c5374e55ea269cccbde7944d6e7d8fde9e8b2458257",
+    "backend/pet-merchant-api/src/main/java/com/petplatform/merchant/api/command/MerchantApplicationCommandApi.java": "e74fc987b45ce5a6bdc20e16b455413fd3054547e57165d4c49f0260e798b154",
+    "backend/pet-merchant-api/src/main/java/com/petplatform/merchant/api/dto/MerchantApplicationTypes.java": "816ff3c128de33bcef57313758b6e71a30f916ea1822f4172d228a0e3fc335c8",
+    "backend/pet-merchant-api/src/main/java/com/petplatform/merchant/api/query/MerchantApplicationQueryApi.java": "07517126e9607a990ebaa6e41db3688604570e523c4df26b9528eda84a570294",
+    "backend/pet-merchant-biz/src/main/java/com/petplatform/merchant/biz/apiimpl/MerchantApplicationApiImpl.java": "f2dc24e19316adbbe562060e0a856439e46a2fd88aded6c1484dd11c41307704",
+    "backend/pet-merchant-biz/src/main/java/com/petplatform/merchant/biz/application/MerchantApplicationService.java": "6d6a46c2f5bfe56619f7396fc6cc608f7c04ba3c490ae4f9b6df4e795733bd4c",
+    "backend/pet-merchant-biz/src/main/java/com/petplatform/merchant/biz/infrastructure/persistence/entity/MerchantDecisionEntity.java": "75ea34c52e57e9586c89dfa7eda1e1c21559d4563a0b80f41b0ebf6f79df6322",
+    "backend/pet-merchant-biz/src/main/java/com/petplatform/merchant/biz/infrastructure/provider/AesGcmProtectedValueProvider.java": "781487523460ffc34457d444429078310b49020ad681f41842401725167156bb",
+    "backend/pet-merchant-biz/src/main/java/com/petplatform/merchant/biz/infrastructure/provider/MainlandSubjectCredentialProvider.java": "32e7acd9dac64bbfc91b33e0f370d41cf496268ca410a883b24f037d99405dd1",
+    "backend/pet-merchant-biz/src/main/resources/mapper/MerchantApplicationMapper.xml": "659421ea0714893d73a288b26a6f771bdef8d61a560c38fc0244e08770b2921b",
+    "backend/pet-merchant-biz/src/test/java/com/petplatform/merchant/biz/MerchantApplicationHttpProjectionMySqlTest.java": "b28473ce6aafa023b913e21c01520c2045cf16ca557c718cd2a749b176663088",
+    "backend/pet-merchant-biz/src/test/java/com/petplatform/merchant/biz/MerchantApplicationRuntimeMySqlTest.java": "9f153fbde4443c9d46d15c2612b99806bfc2ffb8ef4b1c98098cc56f47b80047",
+    "backend/pet-merchant-biz/src/test/java/com/petplatform/merchant/biz/MerchantApplicationSafetyMySqlTest.java": "877b2a1f3521327750ff94444c86aeb3a14d19796d8121db39a3b382c6ae37d2",
+    "backend/pet-merchant-biz/src/test/java/com/petplatform/merchant/biz/infrastructure/provider/AesGcmProtectedValueProviderTest.java": "b8d165de46f4b90dbf2e3db8d7a2a3874cbce2fcb42760f60572e7ed595f5e53",
+    "backend/pet-merchant-biz/src/test/java/com/petplatform/merchant/biz/infrastructure/provider/MainlandSubjectCredentialProviderTest.java": "ae0bc6a192c7c8bde85d36972158b7534878b319bff576f7d170884ab7c916bb",
+    "e2e/contract_smoke.py": "9130dd77eb8e27cd4d88b50dbc15a14a5087448526bbc35b91c0b1e606119823",
+    "e2e/test_merchant_application_contract.py": "96d00f40f466090f998cef47074a01d3e3458f710be2766577315dde3c6eb076",
+    "frontend-miniapp/config/index.ts": "b057493d498c43b79750cf0da106bc965f22bebcb178a941617cb786d843bed9",
+    "frontend-miniapp/src/app.config.ts": "ebf97a5fe2b1b528aeeb7f7d8e7d4dd15186ad9efed2a8b366d8c70a63eaafe1",
+    "frontend-miniapp/src/consumer/merchant-application/location.ts": "6258a12fb5c8ce458454f287ddd39de8df65d75a2c37d1a38f51d5eb6f35c10f",
+    "frontend-miniapp/src/consumer/merchant-application/model.ts": "c99c5d4690dbbeabc4e519c9d30f6295af4cc6efaced857ad61fb550387caf41",
+    "frontend-miniapp/src/consumer/merchant-application/recovery.ts": "9f1fb263c11233c675784985180b14367a527d074a02789e034c4204fa8244f8",
+    "frontend-miniapp/src/consumer/merchant-application/runtime.ts": "55713bce545b9b3299cd3c9599b310e6e1ca80de9d5c6912b2d61a6ec5e6dfcc",
+    "frontend-miniapp/src/consumer/pages/merchant-application/index.tsx": "5a7724d34291af3579a00d8fac1e6ef9b03e27dac74e2f956b7193b17b22764a",
+    "frontend-miniapp/src/consumer/pages/merchant-application/view.tsx": "acdefe92b19a5d054853030bd8b218535fc73b0893dfd75b57c6cb786e8a5833",
+    "frontend-miniapp/src/consumer/tests/merchant-application-recovery.test.ts": "5cf16ddd5b9c8e869a4b5228755899ccefb73f248ba96d3c7a4d14f7d7cf1db9",
+    "frontend-miniapp/src/consumer/tests/merchant-application.test.ts": "d3c713df31f9d2025f3116d72682d8ae0520ffc44b013afe91655392d2c85af2",
+    "frontend-miniapp/src/consumer/tests/merchant-location.test.ts": "8d9c25f3ecd60bcc07ef7735bebd080060de2a57d57f94406bdf5ae7a8071b0c",
+    "frontend-miniapp/src/shared/consumer-api.ts": "ca4680a7aaf3de9abf8398582dcf2cde4a15778789184abda1bbfc1145d7dbcf",
+    "frontend-miniapp/src/shared/merchant-repositories.ts": "fc4ae4c8e3281d54a3b952e9ee9139f13b1f73a9fa6889098d16819325b9607b",
+    "frontend-miniapp/src/shared/tests/merchant-http-integration.ts": "33f82e7cb23ba383dc8bd8e2ab55b7c560421734008c3f733be8fbabbe0d8ea9",
+    "frontend-miniapp/src/shared/tests/merchant-repositories.test.ts": "9d4fb50b16999f4dc995e06e743de74490763bb4bae9a68616aad9fca8ba9632"
+  }
+}
