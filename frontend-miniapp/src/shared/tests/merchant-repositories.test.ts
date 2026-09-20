@@ -3,7 +3,7 @@ import assert from 'node:assert/strict'
 import { randomUUID } from 'node:crypto'
 import { ConsumerApi, type LocalStore, integrationMessage } from '../consumer-api'
 import { ApiError, type Transport, type WireRequest } from '../request'
-import { MerchantApplicationRepository, MerchantAgreementRepository, decodeApplicationDetail, decodeApplicationResult, decodeDraft, decodeAgreement, decodeVersion } from '../merchant-repositories'
+import { MerchantApplicationRepository, MerchantAgreementRepository, decodeApplicationDetail, decodeApplicationResult, decodeDraft, decodeAgreement, decodeVersion, decodeApplicationCities } from '../merchant-repositories'
 const time = '2026-09-17T00:00:00.000Z'
 const principal = { userId: '101', sessionId: '201', audience: 'MINIAPP', expiresAt: '2099-01-01T00:00:00.000Z' }
 const result = { applicationId: '301', reservedMerchantId: '401', currentRevisionId: '501', version: '0', status: 'DRAFT', applicationNo: null }
@@ -20,6 +20,39 @@ async function setup(handler: Transport, existing?: Map<string, unknown>) {
   return { api, calls, values, application: new MerchantApplicationRepository(api), agreement: new MerchantAgreementRepository(api) }
 }
 function merchant(api: ConsumerApi) { api.scope.replace({ userId: '101', workspace: 'merchant', merchantId: '401', storeId: null }) }
+
+test('city catalog strictly decodes server-owned opaque codes and names without hardcoded city choices', () => {
+  const items = [{ cityCode: 'chengdu', cityName: '成都' }, { cityCode: 'future_city-2', cityName: '未来城市' }]
+  assert.deepEqual(decodeApplicationCities({ items }), items)
+  assert.throws(() => decodeApplicationCities({ items: [] }), /INVALID_RESPONSE/)
+  assert.throws(() => decodeApplicationCities({ items: Array.from({ length: 101 }, (_, i) => ({ cityCode: `city_${i}`, cityName: `城市${i}` })) }), /INVALID_RESPONSE/)
+  for (const input of [null, {}, { items: {} }, { items, fallback: 'chengdu' }, { items: [null] },
+    { items: [{ cityCode: 510100, cityName: '成都' }] }, { items: [{ cityCode: '510100', cityName: '成都' }] },
+    { items: [{ cityCode: 'Chengdu', cityName: '成都' }] }, { items: [{ cityCode: 'chengdu\n', cityName: '成都' }] },
+    { items: [{ cityCode: '', cityName: '成都' }] }, { items: [{ cityCode: 'a'.repeat(33), cityName: '成都' }] },
+    { items: [{ cityCode: 'chengdu', cityName: '' }] }, { items: [{ cityCode: 'chengdu', cityName: '  ' }] },
+    { items: [{ cityCode: 'chengdu', cityName: 1 }] }, { items: [{ cityCode: 'chengdu', cityName: '成'.repeat(65) }] },
+    { items: [{ cityCode: 'chengdu' }] }, { items: [{ code: 'chengdu', name: '成都' }] },
+    { items: [{ ...items[0], id: '1' }] }, { items: [items[0], items[0]] },
+    { items: [items[0], { cityCode: 'other', cityName: '成都' }] }, { items: [items[0], { cityCode: 'chengdu', cityName: '其他' }] },
+  ]) assert.throws(() => decodeApplicationCities(input), /INVALID_RESPONSE/)
+})
+
+test('city catalog uses authenticated GET and requires the application success envelope', async () => {
+  const items = [{ cityCode: 'chengdu', cityName: '成都' }]
+  const h = await setup(async () => ok({ items }))
+  assert.deepEqual(await h.application.cities(), items)
+  assert.equal(h.calls.at(-1)?.path, '/api/v1/c/merchant-application-cities')
+  assert.equal(h.calls.at(-1)?.method, 'GET')
+  assert.equal(h.calls.at(-1)?.headers.Authorization, 'Bearer test-secret')
+  assert.equal(h.calls.at(-1)?.requestId, undefined)
+  const missingEnvelope = await setup(async () => ({ statusCode: 200, data: { code: 'SUCCESS', data: { items } } }))
+  await assert.rejects(missingEnvelope.application.cities(), /INVALID_RESPONSE/)
+  const unavailable = await setup(async () => { throw new ApiError('CITY_NOT_CONFIGURED', 503) })
+  await assert.rejects(unavailable.application.cities(), error => error instanceof ApiError && error.statusCode === 503)
+  merchant(h.api)
+  await assert.rejects(h.application.cities(), /WORKSPACE_PATH_MISMATCH/)
+})
 
 test('application decoder enforces string IDs, version range, number format and unknown field rejection', () => {
   assert.deepEqual(decodeApplicationResult(result), result)
@@ -49,6 +82,17 @@ test('unknown write survives restart with identical requestId and blocks modifie
   await assert.rejects(restored.application.save('301', '0', { merchantName: 'changed' }), /PENDING_WRITE_CHANGED/)
   await restored.application.save('301', '0', { merchantName: 'original' })
   assert.deepEqual(restored.calls.at(-1), original)
+})
+
+test('agreement recovery replays original explicit consent after process restart without re-signing new content', async () => {
+  const h = await setup(async () => { throw new Error('lost consent ACK') }); merchant(h.api)
+  await assert.rejects(h.agreement.consent(decodeAgreement(agreement), true))
+  const restarted = await setup(async () => ok(consent), h.values); merchant(restarted.api)
+  assert.equal(restarted.agreement.pendingConsent('401')?.agreementVersion, 'v1')
+  assert.deepEqual(await restarted.agreement.retryConsent('401'), consent)
+  assert.deepEqual(restarted.calls.at(-1), h.calls.at(-1))
+  assert.equal(restarted.agreement.pendingConsent('401'), null)
+  assert.throws(() => restarted.agreement.retryConsent('401'), /NO_PENDING_CONSENT/)
 })
 test('draft mutation after command start cannot change persisted/sent payload', async () => {
   const h = await setup(async () => ok(result))

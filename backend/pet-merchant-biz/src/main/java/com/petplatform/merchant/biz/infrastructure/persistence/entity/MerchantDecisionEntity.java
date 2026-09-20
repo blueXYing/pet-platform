@@ -3,7 +3,10 @@ package com.petplatform.merchant.biz.infrastructure.persistence.entity;
 import java.time.LocalDateTime;
 
 public class MerchantDecisionEntity {
-  private Long id;
+  private Long id, submittedRevisionId;
+
+  public Long getSubmittedRevisionId() { return submittedRevisionId; }
+  public void setSubmittedRevisionId(Long value) { submittedRevisionId = value; }
   private String decisionType, opinion;
   private LocalDateTime decidedAt;
 

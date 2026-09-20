@@ -38,6 +38,14 @@ public final class MerchantApplicationApiImpl
     return service.create(c);
   }
 
+  @Override public ApplicationCommandOutcome createDraftOutcome(CreateMerchantApplicationCommand c) {
+    return service.createOutcome(c);
+  }
+
+  @Override public OwnerApplicationDetail getCurrentDetail(CurrentMerchantApplicationQuery q) {
+    return service.currentDetail(q);
+  }
+
   @Override
   public MerchantApplicationResult saveDraft(SaveMerchantApplicationDraftCommand c) {
     return service.save(c);

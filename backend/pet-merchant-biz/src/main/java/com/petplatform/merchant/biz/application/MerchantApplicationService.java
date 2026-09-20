@@ -57,12 +57,16 @@ public final class MerchantApplicationService {
   }
 
   public MerchantApplicationResult create(CreateMerchantApplicationCommand c) {
+    return createOutcome(c).receipt();
+  }
+
+  public ApplicationCommandOutcome createOutcome(CreateMerchantApplicationCommand c) {
     CommandContext ctx = user(c == null ? null : c.context());
     PreparedDraft draft = prepare(c.draft(), principal(ctx), false);
     Map<String, Object> p = new LinkedHashMap<>();
     p.put("command", "create-draft");
     p.put("draft", draft.canonical());
-    return command(
+    Execution<MerchantApplicationResult> outcome = commandOutcome(
         "merchant.application.create-draft",
         ctx,
         "OWNER:" + ctx.operatorId(),
@@ -101,12 +105,16 @@ public final class MerchantApplicationService {
         },
         MerchantApplicationResult.class,
         null);
+    return new ApplicationCommandOutcome(outcome.value(), outcome.created());
   }
 
   public MerchantApplicationResult save(SaveMerchantApplicationDraftCommand c) {
     if (c == null) invalid("command is required");
     CommandContext ctx = user(c.context());
     long id = id(c.applicationId(), "applicationId");
+    // Reject another owner's application before resolving any submitted private asset metadata.
+    // The execution transaction repeats ownership under its row lock before writing.
+    store.read(mapper -> owned(mapper.selectById(id), principal(ctx)));
     PreparedDraft draft = prepare(c.draft(), principal(ctx), false);
     Map<String, Object> p = new LinkedHashMap<>();
     p.put("applicationId", c.applicationId());
@@ -386,6 +394,9 @@ public final class MerchantApplicationService {
               unavailable("credential HMAC policy does not match the persisted policy");
             MerchantMaterialEntity mat = byType.get(e.materialType());
             if (mat == null) conflict("evidence material is not in the submitted revision");
+            if (!e.materialId().equals(IDS.toApi(mat.getId()))
+                || !e.materialSha256().equals(mat.getSha256()))
+              conflict("evidence material reference does not match the submitted revision");
             long evidenceId = store.nextId();
             one(
                 m.insertEvidence(
@@ -690,6 +701,39 @@ public final class MerchantApplicationService {
         });
   }
 
+  public OwnerApplicationDetail currentDetail(CurrentMerchantApplicationQuery query) {
+    long owner = queryUser(query == null ? null : query.context());
+    return store.read(mapper -> {
+      MerchantApplicationEntity application = owned(mapper.selectByOwner(owner), owner);
+      MerchantApplicationResult base = result(mapper, application, true);
+      MerchantApplicationRevisionEntity revision = requiredRevision(
+          mapper.selectRevision(application.getId(), application.getCurrentRevisionId()));
+      RevisionView view = base.currentRevision();
+      DraftRevisionInput draft = new DraftRevisionInput(view.merchantName(), view.contactName(),
+          revealOwnerField("merchant-application-contact-phone", revision.getContactPhoneProtected()),
+          revealOwnerField("merchant-application-contact-email", revision.getEmailProtected()),
+          view.merchantTypeCode(), view.cityCode(), view.address(), view.longitude(), view.latitude(),
+          view.introduction(), view.storePhotoAssetIds(), view.businessLicenseAssetId(),
+          view.idCardFrontAssetId(), view.idCardBackAssetId(), view.industryLicenseAssetId());
+      return new OwnerApplicationDetail(base.applicationId(), base.applicationNo(), base.reservedMerchantId(),
+          base.status(), base.version(), view.revisionId(),
+          new OwnerRevisionView(view.revisionId(), view.revisionNo(), draft, view.createdAt()),
+          base.submittedAt(), base.reviewedAt(), base.latestDecision(), base.subjectVerificationStatus());
+    });
+  }
+
+  private String revealOwnerField(String purpose, byte[] value) {
+    if (value == null) return null;
+    try {
+      String revealed = deps.protectedValues().reveal(purpose, value);
+      if (revealed == null) unavailable("owner field protection is unavailable");
+      return revealed;
+    } catch (RuntimeException failure) {
+      unavailable("owner field protection is unavailable");
+      return null;
+    }
+  }
+
   public MerchantApplicationPage list(MerchantApplicationReviewListQuery q) {
     if (q == null || q.page() < 1 || q.pageSize() < 1 || q.pageSize() > 100)
       invalid("page or pageSize is invalid");
@@ -812,6 +856,19 @@ public final class MerchantApplicationService {
       Function<MerchantApplicationMapper, T> action,
       Class<T> type,
       ReplayGuard replay) {
+    return commandOutcome(namespace, ctx, authority, params, action, type, replay).value();
+  }
+
+  private record Execution<T>(T value, boolean created) {}
+
+  private <T> Execution<T> commandOutcome(
+      String namespace,
+      CommandContext ctx,
+      String authority,
+      Map<String, Object> params,
+      Function<MerchantApplicationMapper, T> action,
+      Class<T> type,
+      ReplayGuard replay) {
     if (TransactionSynchronizationManager.isActualTransactionActive()) {
       throw new IllegalStateException(
           "application command admission must not run inside an existing transaction");
@@ -828,12 +885,12 @@ public final class MerchantApplicationService {
             MerchantApplicationStore.same(b, canonical);
             if ("SUCCEEDED".equals(b.status())) {
               if (replay != null) replay.check(m, b);
-              return read(b.receiptJson(), type);
+              return new Execution<>(read(b.receiptJson(), type), false);
             }
             T result = action.apply(m);
             String json = write(result);
             one(m.markBindingSucceeded(key, json));
-            return result;
+            return new Execution<>(result, true);
           });
     } catch (MerchantApplicationStore.CommitUnknown first) {
       try {
@@ -843,11 +900,11 @@ public final class MerchantApplicationService {
               MerchantApplicationStore.same(b, canonical);
               if ("SUCCEEDED".equals(b.status())) {
                 if (replay != null) replay.check(m, b);
-                return read(b.receiptJson(), type);
+                return new Execution<>(read(b.receiptJson(), type), false);
               }
               T result = action.apply(m);
               one(m.markBindingSucceeded(key, write(result)));
-              return result;
+              return new Execution<>(result, true);
             });
       } catch (MerchantApplicationStore.CommitUnknown second) {
         unavailable("application commit result remains unknown");
@@ -991,6 +1048,10 @@ public final class MerchantApplicationService {
           || ("LONG_TERM".equals(i.validityKind())
               && (i.validTo() != null || i.validityBasis() == null || i.validityBasis().isBlank())))
         invalid("verified credential validity is invalid");
+      if (i.materialId() == null || i.materialSha256() == null)
+        invalid("manual evidence material reference is required");
+      id(i.materialId(), "materialId");
+      if (!SHA.matcher(i.materialSha256()).matches()) invalid("invalid material hash");
       SubjectCredentialPort.ProtectedCredential p =
           deps.credentials().protect(type, i.subjectName(), i.identifier(), i.validityBasis());
       ProtectedValue subjectToken =
@@ -1022,7 +1083,7 @@ public final class MerchantApplicationService {
               i.validTo(),
               p.validityBasisProtected(),
               hex(subjectToken.equalityToken()),
-              basisToken == null ? null : hex(basisToken.equalityToken())));
+              basisToken == null ? null : hex(basisToken.equalityToken()), i.materialId(), i.materialSha256()));
     }
     if (!credentials.containsAll(Set.of("CREDIT_CODE", "IDENTITY_NUMBER")))
       invalid("business and identity evidence are both required");
@@ -1291,7 +1352,7 @@ public final class MerchantApplicationService {
     DecisionView dv =
         d == null
             ? null
-            : new DecisionView(d.getDecisionType(), d.getOpinion(), utc(d.getDecidedAt()));
+            : new DecisionView(d.getDecisionType(), d.getOpinion(), utc(d.getDecidedAt()), IDS.toApi(d.getId()), IDS.toApi(d.getSubmittedRevisionId()));
     return new MerchantApplicationResult(
         IDS.toApi(a.getId()),
         a.getApplicationNo(),
@@ -1317,7 +1378,7 @@ public final class MerchantApplicationService {
     DecisionView dv =
         d == null
             ? null
-            : new DecisionView(d.getDecisionType(), d.getOpinion(), utc(d.getDecidedAt()));
+            : new DecisionView(d.getDecisionType(), d.getOpinion(), utc(d.getDecidedAt()), IDS.toApi(d.getId()), IDS.toApi(d.getSubmittedRevisionId()));
     return new MerchantApplicationResult(
         IDS.toApi(a.getId()),
         a.getApplicationNo(),
@@ -1358,7 +1419,7 @@ public final class MerchantApplicationService {
         asset(ms, "BUSINESS_LICENSE"),
         asset(ms, "ID_CARD_FRONT"),
         asset(ms, "ID_CARD_BACK"),
-        asset(ms, "INDUSTRY_LICENSE"));
+        asset(ms, "INDUSTRY_LICENSE"), utc(r.getCreatedAt()));
   }
 
   private static java.math.BigDecimal decimal(java.math.BigDecimal value) {
@@ -1384,7 +1445,7 @@ public final class MerchantApplicationService {
         s(r, "merchantTypeCode"),
         s(r, "cityCode"),
         utc((LocalDateTime) r.get("submittedAt")),
-        s(r, "taskStatus"));
+        s(r, "taskStatus"), s(r, "submittedRevisionId"), s(r, "subjectVerificationStatus"));
   }
 
   private static String s(Map<String, Object> r, String key) {
@@ -1399,7 +1460,7 @@ public final class MerchantApplicationService {
         t.getStatus(),
         t.getVersion(),
         t.getClaimedByOperatorId() == null ? null : IDS.toApi(t.getClaimedByOperatorId()),
-        utc(t.getClaimedAt()));
+        utc(t.getClaimedAt()), IDS.toApi(t.getSubmittedRevisionId()));
   }
 
   private static void strict(MerchantApplicationEntity a) {
@@ -1792,7 +1853,7 @@ public final class MerchantApplicationService {
       LocalDate validTo,
       byte[] validityBasisProtected,
       String subjectToken,
-      String validityBasisToken) {
+      String validityBasisToken, String materialId, String materialSha256) {
     Map<String, Object> canonical() {
       Map<String, Object> value = new LinkedHashMap<>();
       value.put("materialType", materialType);
@@ -1805,6 +1866,8 @@ public final class MerchantApplicationService {
       value.put("validTo", validTo == null ? null : validTo.toString());
       value.put("subjectToken", subjectToken);
       value.put("validityBasisToken", validityBasisToken);
+      value.put("materialId", materialId);
+      value.put("materialSha256", materialSha256);
       return value;
     }
   }

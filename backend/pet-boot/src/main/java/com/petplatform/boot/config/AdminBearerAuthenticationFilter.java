@@ -36,7 +36,9 @@ public final class AdminBearerAuthenticationFilter extends OncePerRequestFilter 
       String path = req.getRequestURI();
       if (path.equals("/api/v1/admin/auth/session")
           || path.equals("/api/v1/admin/auth/permissions")
-          || path.equals("/api/v1/admin/auth/activity")) {
+          || path.equals("/api/v1/admin/auth/activity")
+          || path.equals("/api/v1/admin/merchant-applications")
+          || path.startsWith("/api/v1/admin/merchant-applications/")) {
         try {
           AdminAuthService service = services.getIfAvailable();
           if (service == null) throw AdminAuthFailure.unavailable();
@@ -51,7 +53,10 @@ public final class AdminBearerAuthenticationFilter extends OncePerRequestFilter 
           res.setHeader("Cache-Control", "no-store");
           res.getWriter()
               .write(
-                  "{\"code\":\""
+                  "{"
+                      + (path.startsWith("/api/v1/admin/merchant-applications")
+                          ? "\"success\":false," : "")
+                      + "\"code\":\""
                       + a.code()
                       + "\",\"message\":\"Authentication unavailable or"
                       + " invalid\",\"data\":null,\"traceId\":\""

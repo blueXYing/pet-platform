@@ -5,7 +5,8 @@ import { navigationUnavailableMessage } from '../../components/navigation/model'
 import { useWorkspace } from '../../../shared/workspace-react'
 import type { ApplicationResult, DraftInput } from '../../../shared/merchant-repositories'
 import { id, definiteRejection } from '../../../shared/consumer-api'
-import { ApplicationCommands, applicationMessage, editableApplication, emptyDraft, unavailableDependencies, validateApplication, type City, type FieldErrors, type MaterialKind } from '../../merchant-application/model'
+import { ApplicationCommands, applicationMessage, editableApplication, emptyDraft, validateApplication, type City, type FieldErrors, type MaterialKind } from '../../merchant-application/model'
+import { applicationRuntime } from '../../merchant-application/runtime'
 import { MerchantApplicationView } from './view'
 
 export default function MerchantApplicationPage() {
@@ -16,7 +17,7 @@ export default function MerchantApplicationPage() {
   return <ApplicationScreen key={`${preview}:${revision}`} preview={preview} reference={preview && route.params.referenceCanvas === '1'} scope={scope} />
 }
 function ApplicationScreen({ preview, reference, scope }: { preview: boolean; reference: boolean; scope: ReturnType<typeof useWorkspace>['scope'] }) {
-  const [deps] = useState(unavailableDependencies)
+  const [{ dependencies: deps, recovery }] = useState(() => applicationRuntime(preview))
   const [commands] = useState(() => new ApplicationCommands(deps.application, scope))
   const [draft, setDraft] = useState<DraftInput>(emptyDraft)
   const [result, setResult] = useState<ApplicationResult | null>(null)
@@ -57,6 +58,13 @@ function ApplicationScreen({ preview, reference, scope }: { preview: boolean; re
     if (!loggedIn) return
     setLoading(true)
     await perform(async () => {
+      const restored = recovery?.restore()
+      if (restored) {
+        setDraft(restored.draft); setResult(restored.receipt || null); setLocked(true)
+        pending.current = { submit: restored.submit, current: null, draft: restored.draft }
+        setNotice('已恢复上次未确认的操作，请重试原操作以确认结果。')
+        return
+      }
       const current = await deps.application.current()
       if (!live()) return
       setResult(current); setDraft(current.currentRevision.draft); setCityName(current.currentRevision.draft.cityCode ? `已选城市（${current.currentRevision.draft.cityCode}）` : ''); setOpinion(current.latestDecision?.opinion || null); dirty.current = false
@@ -70,7 +78,7 @@ function ApplicationScreen({ preview, reference, scope }: { preview: boolean; re
     setErrors(previous => ({ ...previous, [key]: undefined })); if (key === 'merchantTypeCode') setTypeOpen(false)
   }
   async function write(submit: boolean) {
-    if (running.current || !editableApplication(result) || (!preview && !loggedIn)) return
+    if (running.current || (!pending.current && !editableApplication(result)) || (!preview && !loggedIn)) return
     if (submit && !pending.current) { const next = validateApplication(draft); setErrors(next); if (Object.keys(next).length) { setNotice('请完善标记的必填信息后再提交。'); void Taro.showToast({ title: '请完善标记的必填信息', icon: 'none' }); return } }
     if (preview) { setNotice('交互预览不会保存或提交申请。'); return }
     if (!pending.current) pending.current = { submit, current: result, draft: JSON.parse(JSON.stringify(draft)) as DraftInput }
@@ -78,6 +86,14 @@ function ApplicationScreen({ preview, reference, scope }: { preview: boolean; re
     await perform(async () => {
       const intent = pending.current!
       try {
+        if (recovery) {
+          const original = recovery.begin(intent.current, intent.draft, intent.submit)
+          const receipt = await recovery.retry()
+          if (!live()) return
+          setResult(receipt); dirty.current = false; pending.current = null; setLocked(false)
+          setNotice(original.submit ? '申请已提交，请等待审核。' : '草稿已保存。')
+          return
+        }
         const saved = intent.saved || await commands.save(intent.current, intent.draft)
         if (!live()) return
         intent.saved = saved; setResult(saved); dirty.current = false
@@ -85,7 +101,10 @@ function ApplicationScreen({ preview, reference, scope }: { preview: boolean; re
         else setNotice('草稿已保存。')
         pending.current = null; setLocked(false)
       } catch (error) {
-        if (live() && (definiteRejection(error) || (error instanceof Error && error.message === 'APPLICATION_NOT_CONNECTED'))) { pending.current = null; setLocked(false) }
+        if (live() && (definiteRejection(error) || (error instanceof Error && error.message === 'APPLICATION_NOT_CONNECTED'))) {
+          if (recovery?.lastReceipt) setResult(recovery.lastReceipt)
+          pending.current = null; setLocked(false)
+        }
         throw error
       }
     })

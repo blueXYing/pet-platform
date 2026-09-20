@@ -24,6 +24,17 @@ class MerchantApplicationContract(unittest.TestCase):
         with self.assertRaises(InstanceMismatch):
             self.valid(name, value)
 
+    def test_city_directory_is_explicit_nonempty_typed_and_not_an_admin_code_guess(self):
+        self.valid('AppCities', {'items': [{'cityCode': 'chengdu', 'cityName': '成都'}]})
+        for value in ({'items': []}, {'items': [{'cityCode': 510100, 'cityName': '成都'}]},
+                      {'items': [{'cityCode': '510100', 'cityName': '成都'}]},
+                      {'items': [{'cityCode': 'chengdu', 'cityName': '成都', 'secret': 'forbidden'}]},
+                      {'items': [{'cityCode': 'Chengdu', 'cityName': '成都'}]}):
+            self.invalid('AppCities', value)
+        operation = self.spec['paths']['/c/merchant-application-cities']['get']
+        self.assertEqual([{'bearerAuth': []}], operation['security'])
+        self.assertEqual('IMPLEMENTED_DEFAULT_OFF_REQUIRES_PROVIDERS', operation['x-contract-status'])
+
     @staticmethod
     def draft():
         return {

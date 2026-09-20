@@ -1,6 +1,6 @@
 # 商家申请审核契约补充 v0.1（已批准，分阶段实现）
 
-状态：APPROVED / DOMAIN_COMPONENTS_IMPLEMENTED / HTTP_NOT_WIRED。用户在PR53技术契约包说明后明确“那么请你实施”，批准本轮实现。基线为PR53 `9d6b828`（承接PR52合并65df1c3）。本文件下文“候选/建议/未批准”的历史措辞不再要求重复产品确认，但接口定义不等于已经部署；实际交付与验证见S5交接，OpenAPI操作在HTTP装配完成前仍保留未实现标记。
+状态：APPROVED / HTTP_IMPLEMENTED_DEFAULT_OFF_REQUIRES_PROVIDERS。用户在PR53技术契约包说明后明确“那么请你实施”，随后批准S7多线接通。申请/协议HTTP已实施，默认关闭且真实外部依赖不可缺失。下文历史“候选/未装配”以§14当前交付说明覆盖；接口存在不代表私有材料或生产部署已完成。
 
 产品依据为SSOT §27、PRD26；存储依据为[SQL29](../03-database/29-Merchant-Application-Schema-v0.1.sql)及其存储说明。现有07/10/11/12与Event08只作兼容增量；审批、私人材料/授权、通知实现仍按验收交接，字段定义不代替真实Provider事实。
 
@@ -290,3 +290,15 @@ payload:
 私有材料、已开通城市、地图合理性、受保护字段与证件规范化仍通过显式端口提供，未提供真实默认Provider。字段保护端口的内部解密仅用于已授权事务内完整提交校验，不能据此开放敏感原件GET。幂等规范化保存稳定的保护令牌，不保存证件/联系人明文，也不依赖随机加密nonce形成请求摘要。
 
 `pet.merchant.application.enabled` 默认未开启；显式开启时必须具有真实DataSource、发号器、上述Provider、AdminAuthorizationQueryApi和事务Outbox。此开关仅装配内部领域API、真实审核事实与协议/新单资格组合，不创建HTTP路由、数据库迁移、密钥或模拟数据。通知消费者另需 `pet.outbox.enabled` 与 `pet.merchant.application.notifications-enabled`，默认均不因本轮提交开启。具体运行验证见[S5交接](../../planning/issues/wave-2/MER-001-s5/HANDOFF.md)。
+
+## 14. S7 HTTP与首批城市/证件接通
+
+2026-09-20用户批准按后端依赖/HTTP/前端恢复三线实施，并确认复用本地OSS、前端用微信原生选点、首批只开放成都、身份证件仅接受大陆居民身份证。此决策不自动部署或合并后续PR。
+
+- 原10个申请接口及2个协议接口均已有默认关闭的HTTP适配；身份只能来自真实MINIAPP/ADMIN_WEB会话。未知/重复JSON、数值ID/版本、越权scope拒绝；所有版本转十进制String，时间按毫秒UTC下发。
+- 本人详情增加独立可编辑投影，仅在校验当前owner后解密联系人字段，不放入审核详情、幂等回执或事件。运营详情仍脱敏，只读已提交版本。新增审核/版本ID均来自数据库事实，不由HTTP编造。
+- 人工核验在内部API和HTTP均强制materialId/materialSha256，锁内匹配本submitted revision。LONG_TERM是当前领取人confirmed=true对所见原件长期有效的明确声明，服务端留存带材料ID/hash的受保护声明依据；不是服务端自动认定原件真实，也不是供应商核验证据。
+- 新增只读 `GET /api/v1/c/merchant-application-cities`，MINIAPP Bearer，无请求参数。success envelope data为 `{items:[{cityCode,cityName}]}`；code为1～32位小写ASCII字母开头、其后字母/数字/下划线/连字符，name为1～64字。重复code/name无效。无配置返回503；首次部署配置为 `chengdu / 成都`，不是擅自使用行政区划代码或从地址推测城市。服务端启动配置 `pet.merchant.application.open-cities` 是开放目录，后续扩城市须产品决定。客户端从该目录选择；微信选点只提供GCJ-02坐标和地址，仍不替代后端地图合理性校验。
+- 配置值与城市目录必须来自可信部署源，配置缺失不开放任意城市。机密配置只通过外部secret注入。字段保护与证件lookup使用独立密钥，不能暗中轮换固定policy；实现不会生成生产密钥。
+- 证件适配按GB11643/GB32100规范化大陆15/18位居民身份证和18位统一社会信用代码；15位转换保留校验同一性。规范化、日期和校验位正确不等于身份真实，原件/人工核验及主体去重仍必需。
+- 当前允许测试环境用显式外部替身验证真实HTTP、会话、数据库、AES、Outbox与站内消息，不将替身结果称为真实OSS上传、地图后端校验或商家身份核验验收。私有上传/水印授权读取的新增契约另见CCR-MER-PRIVATE-001，尚未实施。

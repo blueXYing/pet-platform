@@ -30,7 +30,7 @@ class MerchantApplicationSafetyMySqlTest {
       var firstApi = fixtures.new Fixture(db, true).api();
       var first = submit(firstApi, draft(), OWNER);
       var firstTask = claim(firstApi, first, OPERATOR);
-      var firstProof = verify(firstApi, first, firstTask);
+      var firstProof = verify(db, firstApi, first, firstTask);
       var correction =
           firstApi.decide(
               new DecideMerchantApplicationCommand(
@@ -79,7 +79,7 @@ class MerchantApplicationSafetyMySqlTest {
                   context(OWNER, OperatorType.USER)));
       var nextTask = claim(replacementApi, submitted, OPERATOR);
       var changed =
-          evidence().stream()
+          bindEvidence(db, submitted.applicationId(), evidence()).stream()
               .map(
                   e ->
                       new ManualEvidenceItem(
@@ -89,7 +89,9 @@ class MerchantApplicationSafetyMySqlTest {
                           e.validityKind(),
                           e.validFrom(),
                           e.validTo(),
-                          e.validityBasis()))
+                          e.validityBasis(),
+                          e.materialId(),
+                          e.materialSha256()))
               .toList();
       var nextProof =
           replacementApi.recordManualVerification(
@@ -303,7 +305,7 @@ class MerchantApplicationSafetyMySqlTest {
               app.currentRevision().revisionId(),
               app.version(),
               task.version(),
-              evidence(),
+              bindEvidence(db, app.applicationId(), evidence()),
               "已检查原始申请材料",
               true,
               auth(),
@@ -345,7 +347,7 @@ class MerchantApplicationSafetyMySqlTest {
       var firstApi = fixtures.new Fixture(db, true).api();
       var first = submit(firstApi, draft(), OWNER);
       var firstTask = claim(firstApi, first, OPERATOR);
-      verify(firstApi, first, firstTask);
+      verify(db, firstApi, first, firstTask);
 
       var secondApi = fixtures.new Fixture(db, true, OWNER + 1, 201).api();
       var d = draft();
@@ -368,7 +370,8 @@ class MerchantApplicationSafetyMySqlTest {
               "205");
       var second = submit(secondApi, secondDraft, OWNER + 1);
       var secondTask = claim(secondApi, second, OPERATOR);
-      var failure = assertThrows(ApiException.class, () -> verify(secondApi, second, secondTask));
+      var failure =
+          assertThrows(ApiException.class, () -> verify(db, secondApi, second, secondTask));
       assertEquals(CommonApiCodes.CONFLICT, failure.code());
       assertFalse(failure.getMessage().contains(first.applicationId()));
       assertEquals(
@@ -395,7 +398,7 @@ class MerchantApplicationSafetyMySqlTest {
       var api = fixture.api();
       var app = submit(api, draft(), OWNER);
       var task = claim(api, app, OPERATOR);
-      var verified = verify(api, app, task);
+      var verified = verify(db, api, app, task);
       var rejected =
           api.decide(
               new DecideMerchantApplicationCommand(
@@ -456,7 +459,7 @@ class MerchantApplicationSafetyMySqlTest {
               "UPDATE merchant_subject_lookup_policy SET key_version='key-v2' WHERE policy_slot=1");
       assertEquals(
           CommonApiCodes.DEPENDENCY_UNAVAILABLE,
-          assertThrows(ApiException.class, () -> verify(api, app, task)).code());
+          assertThrows(ApiException.class, () -> verify(db, api, app, task)).code());
       assertEquals(
           0,
           db.jdbc()
@@ -555,14 +558,17 @@ class MerchantApplicationSafetyMySqlTest {
   }
 
   private static MerchantApplicationResult verify(
-      MerchantApplicationApiImpl api, MerchantApplicationResult app, ReviewTaskResult task) {
+      MySqlMerchantApplicationSchemaTestDatabase db,
+      MerchantApplicationApiImpl api,
+      MerchantApplicationResult app,
+      ReviewTaskResult task) {
     return api.recordManualVerification(
         new VerifyMerchantSubjectCommand(
             app.applicationId(),
             app.currentRevision().revisionId(),
             app.version(),
             task.version(),
-            evidence(),
+            bindEvidence(db, app.applicationId(), evidence()),
             "已逐项检查原始证件材料",
             true,
             auth(),

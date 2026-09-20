@@ -61,7 +61,66 @@ public final class MerchantApplicationTypes {
       String validityKind,
       LocalDate validFrom,
       LocalDate validTo,
-      String validityBasis) {}
+      String validityBasis,
+      String materialId,
+      String materialSha256) {
+    public ManualEvidenceItem(
+        String materialType,
+        String subjectName,
+        String identifier,
+        String validityKind,
+        LocalDate validFrom,
+        LocalDate validTo,
+        String validityBasis) {
+      this(
+          materialType,
+          subjectName,
+          identifier,
+          validityKind,
+          validFrom,
+          validTo,
+          validityBasis,
+          null,
+          null);
+    }
+
+    public static ManualEvidenceItem fromReference(
+        String materialId,
+        String materialSha256,
+        String credentialType,
+        String subjectName,
+        String identifier,
+        String validityKind,
+        LocalDate validFrom,
+        LocalDate validTo) {
+      String materialType =
+          switch (credentialType) {
+            case "CREDIT_CODE" -> "BUSINESS_LICENSE";
+            case "IDENTITY_NUMBER" -> "ID_CARD_BACK";
+            case "INDUSTRY_LICENSE" -> "INDUSTRY_LICENSE";
+            default -> throw new IllegalArgumentException("unsupported credential type");
+          };
+      String basis =
+          "LONG_TERM".equals(validityKind)
+              ? "MANUAL_LONG_TERM_ATTESTATION:" + materialId + ":" + materialSha256
+              : null;
+      return new ManualEvidenceItem(
+          materialType,
+          subjectName,
+          identifier,
+          validityKind,
+          validFrom,
+          validTo,
+          basis,
+          materialId,
+          materialSha256);
+    }
+
+    @Override
+    public String toString() {
+      return "ManualEvidenceItem[REDACTED]";
+    }
+  }
 
   public record VerifyMerchantSubjectCommand(
       String applicationId,
@@ -124,9 +183,46 @@ public final class MerchantApplicationTypes {
       String businessLicenseAssetId,
       String idCardFrontAssetId,
       String idCardBackAssetId,
-      String industryLicenseAssetId) {}
+      String industryLicenseAssetId,
+      OffsetDateTime createdAt) {}
 
-  public record DecisionView(String decisionType, String opinion, OffsetDateTime decidedAt) {}
+  public record DecisionView(
+      String decisionType,
+      String opinion,
+      OffsetDateTime decidedAt,
+      String reviewDecisionId,
+      String submittedRevisionId) {}
+
+  /**
+   * Owner-only editable projection; never persisted in an idempotency receipt or exposed to admin.
+   */
+  public record OwnerRevisionView(
+      String revisionId, String revisionNo, DraftRevisionInput draft, OffsetDateTime createdAt) {
+    @Override
+    public String toString() {
+      return "OwnerRevisionView[REDACTED]";
+    }
+  }
+
+  public record OwnerApplicationDetail(
+      String applicationId,
+      String applicationNo,
+      String reservedMerchantId,
+      String status,
+      long version,
+      String currentRevisionId,
+      OwnerRevisionView currentRevision,
+      OffsetDateTime submittedAt,
+      OffsetDateTime reviewedAt,
+      DecisionView latestDecision,
+      String subjectVerificationStatus) {
+    @Override
+    public String toString() {
+      return "OwnerApplicationDetail[REDACTED]";
+    }
+  }
+
+  public record ApplicationCommandOutcome(MerchantApplicationResult receipt, boolean created) {}
 
   public record MerchantApplicationResult(
       String applicationId,
@@ -146,7 +242,8 @@ public final class MerchantApplicationTypes {
       String status,
       long version,
       String claimedByOperatorId,
-      OffsetDateTime claimedAt) {}
+      OffsetDateTime claimedAt,
+      String submittedRevisionId) {}
 
   public record MerchantApplicationSummary(
       String applicationId,
@@ -158,7 +255,9 @@ public final class MerchantApplicationTypes {
       String merchantTypeCode,
       String cityCode,
       OffsetDateTime submittedAt,
-      String taskStatus) {}
+      String taskStatus,
+      String submittedRevisionId,
+      String subjectVerificationStatus) {}
 
   public record MerchantApplicationReviewDetail(
       MerchantApplicationResult application, ReviewTaskResult task) {}

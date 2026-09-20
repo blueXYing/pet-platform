@@ -8,7 +8,7 @@
 | 最终PRD | 01-prd/ 中02 C端、03商家端、04运营端Word原件，以及[22运营权限补充](01-prd/22-运营权限人工裁决补充-v1.0.md)、[26申请审核裁决](01-prd/26-商家申请审核人工裁决补充-v1.0.md) |
 | 技术基线 | [05后端v0.6](02-architecture/05-技术基线-v0.6.md)、[20前端v0.7](02-architecture/20-前端技术基线-v0.7.md)、17 Maven骨架设计 |
 | Schema | 03-database/06核心Schema、13 Async Infra Schema；[27商家域存储映射](03-database/27-Merchant-Domain-Storage-v0.1.md)、[28协议DDL](03-database/28-Merchant-Agreement-Schema-v0.1.sql)、[29申请审核DDL审阅包](03-database/29-Merchant-Application-Storage-v0.1.md)（隔离验证，未生产迁移） |
-| API | 04-api/07内部API v0.6、10 HTTP v0.4、11 OpenAPI v0.4、12错误码v0.5；[27商家域契约](04-api/27-Merchant-Domain-Contract-v0.1.md)、[30申请审核技术同步候选](04-api/30-Merchant-Application-Contract-v0.1.md)（无申请HTTP运行实现声明） |
+| API | 04-api/07内部API v0.6、10 HTTP v0.4、11 OpenAPI v0.4、12错误码v0.5；[27商家域契约](04-api/27-Merchant-Domain-Contract-v0.1.md)、[30申请审核契约及S7 HTTP](04-api/30-Merchant-Application-Contract-v0.1.md)（默认关闭，真实外部依赖仍须就绪） |
 | Event/Scheduler | 05-events/08事件v0.6、06-scheduler/09调度重试补偿v0.5 |
 | 测试 | 07-testing/14全链路、15并发故障、16发布门禁、21前端与小程序验收补充 |
 | 协作 | 08-engineering/18与19、根AGENTS/WORK_EXECUTION_PROTOCOL、repository-policy.md |

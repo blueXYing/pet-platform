@@ -42,7 +42,7 @@ export class ConsumerApi {
   private writes = new Map<string, Promise<unknown>>()
   private writeSpecs = new Map<string, string>()
   private logoutFlight: Promise<void> | null = null
-  private pending: Record<string, { userId: string; command: Command }> = {}
+  private pending: Record<string, { userId: string; command?: Command; intent?: unknown }> = {}
   currentSession: Session | null = null
   authStep: 'idle' | 'phone' | 'retry' | 'authenticated' = 'idle'
   constructor(private transport: Transport, private store: LocalStore, readonly uuid: () => Promise<string>) {
@@ -60,7 +60,7 @@ export class ConsumerApi {
     const response = await this.transport({ ...spec, headers: { 'Content-Type': 'application/json', ...(spec.requestId ? { 'X-Request-Id': spec.requestId } : {}), ...headers } })
     const body = object(response.data)
     if (response.statusCode < 200 || response.statusCode >= 300 || body.code !== 'SUCCESS') throw new ApiError(typeof body.code === 'string' ? body.code : 'INVALID_RESPONSE', response.statusCode)
-    const applicationPath = /^\/api\/v1\/c\/merchant-applications(?:\/|$)/.test(spec.path)
+    const applicationPath = /^\/api\/v1\/c\/merchant-applications(?:\/|$)/.test(spec.path) || spec.path === '/api/v1/c/merchant-application-cities'
     if ((agreementPath || applicationPath) && body.success !== true) throw new Error('INVALID_RESPONSE')
     return body.data
   }
@@ -166,11 +166,29 @@ export class ConsumerApi {
   }
   pendingCommand(slot: string): Command | undefined {
     const saved = this.pending[slot]
-    return saved?.userId === this.scope.current?.userId ? saved.command : undefined
+    return saved?.userId === this.currentSession?.userId && saved?.userId === this.scope.current?.userId ? saved.command : undefined
   }
   pendingDeletes() { return Object.keys(this.pending).filter(key => key.startsWith('delete:') && this.pendingCommand(key)).map(key => key.slice(7)) }
+  pendingCommands(prefix: string) {
+    return Object.keys(this.pending).filter(key => key.startsWith(prefix)).flatMap(slot => {
+      const command = this.pendingCommand(slot)
+      return command ? [{ slot, command: JSON.parse(JSON.stringify(command)) as Command }] : []
+    })
+  }
+  intent(slot: string): unknown {
+    const saved = this.pending[`intent:${slot}`]
+    return saved?.userId === this.currentSession?.userId && saved?.userId === this.scope.current?.userId
+      ? saved.intent && JSON.parse(JSON.stringify(saved.intent)) : undefined
+  }
+  saveIntent(slot: string, value: unknown) {
+    const ticket = this.scope.capture()
+    if (this.currentSession?.userId !== ticket.context.userId) throw new ApiError('COMMON_UNAUTHORIZED', 401)
+    if (value == null) delete this.pending[`intent:${slot}`]
+    else this.pending[`intent:${slot}`] = { userId: ticket.context.userId, intent: JSON.parse(JSON.stringify(value)) }
+    this.store.set(WRITE_KEY, this.pending)
+  }
   /** Same operation survives page remount and app restart. Unknown results lock payload/key. */
-  write<T>(slot: string, spec: Omit<RequestSpec, 'requestId'>, decode: (data: unknown) => T): Promise<T> {
+  write<T>(slot: string, spec: Omit<RequestSpec, 'requestId'>, decode: (data: unknown) => T, checkpoint?: { slot: string; value: (result: T) => unknown }): Promise<T> {
     // Snapshot before UUID allocation: caller edits must not change an in-flight intent.
     spec = JSON.parse(JSON.stringify(spec)) as Omit<RequestSpec, 'requestId'>
     const existing = this.writes.get(slot)
@@ -188,7 +206,10 @@ export class ConsumerApi {
       this.store.set(WRITE_KEY, this.pending) // must durably journal before every explicit send
       try {
         const value = await this.request(command, decode)
-        ticket.assertCurrent(); delete this.pending[slot]; this.store.set(WRITE_KEY, this.pending)
+        ticket.assertCurrent()
+        // Receipt and workflow stage commit in the same storage write as journal removal.
+        if (checkpoint) this.pending[`intent:${checkpoint.slot}`] = { userId: ticket.context.userId, intent: checkpoint.value(value) }
+        delete this.pending[slot]; this.store.set(WRITE_KEY, this.pending)
         return value
       } catch (error) {
         ticket.assertCurrent()

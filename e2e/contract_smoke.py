@@ -83,6 +83,7 @@ MERCHANT_OPERATIONS = {
     'merchantConsentAgreement': ('post', '/merchant/agreement/consent'),
 }
 APPLICATION_OPERATIONS = {
+    'cListMerchantApplicationCities': ('get', '/c/merchant-application-cities'),
     'cGetCurrentMerchantApplication': ('get', '/c/merchant-applications/current'),
     'cCreateMerchantApplication': ('post', '/c/merchant-applications'),
     'cSaveMerchantApplicationDraft': ('put', '/c/merchant-applications/{applicationId}/draft'),
@@ -269,7 +270,8 @@ def check(spec):
             if operation_id in MERCHANT_OPERATIONS:
                 assert (method, path) == MERCHANT_OPERATIONS[operation_id], f'Merchant operation moved: {operation_id}'
                 assert operation.get('security') == [{'bearerAuth': []}], f'Merchant security changed: {operation_id}'
-                assert operation.get('x-contract-status') == 'ACCEPTED_CONTRACT_NOT_IMPLEMENTED', f'Merchant implementation status changed: {operation_id}'
+                expected_status = 'IMPLEMENTED_DEFAULT_OFF_REQUIRES_PROVIDERS' if operation_id in {'merchantGetAgreement', 'merchantConsentAgreement'} else 'ACCEPTED_CONTRACT_NOT_IMPLEMENTED'
+                assert operation.get('x-contract-status') == expected_status, f'Merchant implementation status changed: {operation_id}'
                 responses = operation['responses']
                 assert {'200', '400', '401', '403', '404', '409', '503'} <= responses.keys(), f'Merchant responses missing: {operation_id}'
                 for code in ('400', '401', '403', '404', '409', '503'):
@@ -280,7 +282,7 @@ def check(spec):
             if operation_id in APPLICATION_OPERATIONS:
                 assert (method, path) == APPLICATION_OPERATIONS[operation_id], f'Application operation moved: {operation_id}'
                 assert operation.get('security') == [{'bearerAuth': []}], f'Application security changed: {operation_id}'
-                assert operation.get('x-contract-status') == 'CONTRACT_SYNC_CANDIDATE_NOT_IMPLEMENTED', f'Application implementation status changed: {operation_id}'
+                assert operation.get('x-contract-status') == 'IMPLEMENTED_DEFAULT_OFF_REQUIRES_PROVIDERS', f'Application implementation status changed: {operation_id}'
                 expected_audience = 'ADMIN_WEB' if operation_id.startswith('admin') else 'MINIAPP'
                 assert operation.get('x-audience') == expected_audience, f'Application audience changed: {operation_id}'
                 if operation_id.startswith('admin'):

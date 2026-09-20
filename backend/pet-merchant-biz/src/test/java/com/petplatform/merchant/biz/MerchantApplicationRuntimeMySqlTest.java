@@ -68,7 +68,7 @@ class MerchantApplicationRuntimeMySqlTest {
                   submitted.currentRevision().revisionId(),
                   submitted.version(),
                   claimed.version(),
-                  evidence(),
+                  bindEvidence(db, submitted.applicationId(), evidence()),
                   "已逐项核对原件",
                   true,
                   auth(),
@@ -255,7 +255,7 @@ class MerchantApplicationRuntimeMySqlTest {
                           submitted.currentRevision().revisionId(),
                           submitted.version(),
                           claimed.version(),
-                          evidence(),
+                          bindEvidence(db, submitted.applicationId(), evidence()),
                           "已逐项核对原件",
                           true,
                           auth(),
@@ -537,6 +537,41 @@ class MerchantApplicationRuntimeMySqlTest {
             LocalDate.of(2020, 1, 1),
             LocalDate.of(2030, 1, 1),
             null));
+  }
+
+  static List<ManualEvidenceItem> bindEvidence(
+      MySqlMerchantApplicationSchemaTestDatabase db,
+      String applicationId,
+      List<ManualEvidenceItem> items) {
+    return items.stream()
+        .map(
+            item -> {
+              Map<String, Object> row =
+                  db.jdbc()
+                      .queryForMap(
+                          "SELECT m.id,m.sha256 FROM merchant_application_material m "
+                              + "JOIN merchant_application_revision_material rm ON rm.application_id=m.application_id AND rm.material_id=m.id "
+                              + "JOIN merchant_application a ON a.id=m.application_id AND a.submitted_revision_id=rm.revision_id "
+                              + "WHERE m.application_id=? AND m.material_type=?",
+                          Long.parseLong(applicationId),
+                          item.materialType());
+              String credential =
+                  switch (item.materialType()) {
+                    case "BUSINESS_LICENSE" -> "CREDIT_CODE";
+                    case "ID_CARD_BACK" -> "IDENTITY_NUMBER";
+                    default -> "INDUSTRY_LICENSE";
+                  };
+              return ManualEvidenceItem.fromReference(
+                  row.get("id").toString(),
+                  row.get("sha256").toString(),
+                  credential,
+                  item.subjectName(),
+                  item.identifier(),
+                  item.validityKind(),
+                  item.validFrom(),
+                  item.validTo());
+            })
+        .toList();
   }
 
   static CommandContext user(String request) {

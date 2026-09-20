@@ -1,15 +1,17 @@
 # Work State
 
 PROJECT: 宠物平台 V1.0
-STATE_VERSION: 7.2
+STATE_VERSION: 7.3
 UPDATED_AT: 2026-09-20
 
 CURRENT_PHASE: W3_INTEGRATION_REVIEW
-CURRENT_STATUS: MER001_S6_APPLICATION_PAGE_LOCAL_VERIFIED
-NEXT_PHASE: MER-001 申请审核事务、真实依赖和前端接入验证
+CURRENT_STATUS: MER001_S7_HTTP_INTEGRATION_REVIEW_CANDIDATE
+NEXT_PHASE: 私有材料CCR审阅、真实上传与后端地图核验
 NEXT_PHASE_APPROVED: YES
 
 ## 当前结论
+
+2026-09-20 S7最新：PR53/54/55已依次合入develop（632ced7），三次合并CI均成功，本地主目录保留用户配置。用户批准三线接通并明确本地OSS、微信原生选点、首推成都和大陆身份证。已实现申请/协议HTTP、本人可编辑与运营脱敏投影、真实AES/大陆证件规范化、服务端成都目录与原请求跨重启恢复；范围和验证见[S7交接](planning/issues/wave-2/MER-001-s7/HANDOFF.md)。真实TCP联合测试已完成申请—补正—重提—审核—签约—通知，外部材料/地图及微信身份交换仍为测试适配器，不能升级为真实外部链路验收。默认关闭生产装配。私有桶ACL只读确认private，上传/扫描/水印读取新增契约与后端地图服务仍待完成；完整MER-001保持IN_PROGRESS。
 
 2026-09-20 S6：用户安装Figma并要求推进页面，已实际读取在线132:862/132:1170，由GPT-6 medium实现申请页分包/入口、原始图标、六类与医院许可证条件显示、字段校验及失败关闭。84项小程序测试、类型/构建/包体通过，微信模拟器实际验证填写、选择、上传/定位/城市失败提示、预览不写业务及未登录态，见[S6交接](planning/issues/wave-2/MER-001-s6/HANDOFF.md)。Figma安装阻塞已解除；真实HTTP/私有材料、强制重启后待决意图恢复、签约页设计和完整VIS仍未交付。GitHub当前连接中断，未据此声称远端PR合入或最新CI通过。
 

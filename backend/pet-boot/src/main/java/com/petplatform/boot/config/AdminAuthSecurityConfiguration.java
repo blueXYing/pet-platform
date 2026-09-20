@@ -7,6 +7,7 @@ import org.springframework.boot.context.properties.EnableConfigurationProperties
 import org.springframework.context.annotation.*;
 import org.springframework.core.annotation.Order;
 import org.springframework.http.HttpMethod;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
@@ -26,7 +27,8 @@ public class AdminAuthSecurityConfiguration {
   @Bean
   @Order(1)
   SecurityFilterChain adminSecurity(
-      HttpSecurity http, AdminAuthProperties p, ObjectProvider<AdminAuthService> services)
+      HttpSecurity http, AdminAuthProperties p, ObjectProvider<AdminAuthService> services,
+      @Value("${pet.merchant.application.enabled:false}") boolean merchantApplicationEnabled)
       throws Exception {
     http.securityMatcher("/api/v1/admin/**")
         .csrf(c -> c.disable())
@@ -45,6 +47,10 @@ public class AdminAuthSecurityConfiguration {
                     "/api/v1/admin/auth/logout",
                     "/api/v1/admin/auth/activity")
                 .permitAll();
+            if (merchantApplicationEnabled) {
+              a.requestMatchers("/api/v1/admin/merchant-applications/**").permitAll();
+              a.requestMatchers("/api/v1/admin/merchant-applications").permitAll();
+            }
             a.requestMatchers(
                     HttpMethod.GET,
                     "/api/v1/admin/auth/session",
@@ -78,7 +84,10 @@ public class AdminAuthSecurityConfiguration {
     res.setHeader("Cache-Control", "no-store");
     res.getWriter()
         .write(
-            "{\"code\":\"COMMON_FORBIDDEN\",\"message\":\"Forbidden\",\"data\":null,\"traceId\":\""
+            "{"
+                + (req.getRequestURI().startsWith("/api/v1/admin/merchant-applications")
+                    ? "\"success\":false," : "")
+                + "\"code\":\"COMMON_FORBIDDEN\",\"message\":\"Forbidden\",\"data\":null,\"traceId\":\""
                 + com.petplatform.boot.adapter.web.admin.AdminAuthController.trace(req)
                 + "\"}");
   }

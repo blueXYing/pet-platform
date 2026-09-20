@@ -10,6 +10,7 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.core.annotation.Order;
 import org.springframework.http.HttpMethod;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
@@ -28,9 +29,10 @@ public class CSessionSecurityConfiguration {
     @Bean
     @Order(2)
     SecurityFilterChain cSecurity(
-            HttpSecurity http, CAuthProperties p, ObjectProvider<UserAuthService> services)
+            HttpSecurity http, CAuthProperties p, ObjectProvider<UserAuthService> services,
+            @Value("${pet.merchant.application.enabled:false}") boolean merchantApplicationEnabled)
             throws Exception {
-        http.securityMatcher("/api/v1/c/**")
+        http.securityMatcher("/api/v1/c/**", "/api/v1/merchant/**")
                 .csrf(c -> c.disable())
                 .httpBasic(c -> c.disable())
                 .formLogin(c -> c.disable())
@@ -50,6 +52,14 @@ public class CSessionSecurityConfiguration {
                 a.requestMatchers(HttpMethod.POST, "/api/v1/c/pets", "/api/v1/c/profile").permitAll();
                 a.requestMatchers(HttpMethod.PUT, "/api/v1/c/pets/*", "/api/v1/c/profile").permitAll();
                 a.requestMatchers(HttpMethod.DELETE, "/api/v1/c/pets/*").permitAll();
+                if (merchantApplicationEnabled) {
+                    a.requestMatchers(HttpMethod.GET, "/api/v1/c/merchant-application-cities")
+                            .permitAll();
+                    a.requestMatchers("/api/v1/c/merchant-applications/**").permitAll();
+                    a.requestMatchers("/api/v1/c/merchant-applications").permitAll();
+                    a.requestMatchers("/api/v1/merchant/agreement", "/api/v1/merchant/agreement/consent")
+                            .permitAll();
+                }
             }
             a.anyRequest().denyAll();
         });
@@ -73,7 +83,11 @@ public class CSessionSecurityConfiguration {
         if (trace == null || !trace.matches("[A-Za-z0-9._:-]{1,64}")) {
             trace = java.util.UUID.randomUUID().toString();
         }
-        res.getWriter().write("{\"code\":\"COMMON_FORBIDDEN\",\"message\":\"Forbidden\","
+        String success = req.getRequestURI().equals("/api/v1/c/merchant-application-cities")
+                || req.getRequestURI().startsWith("/api/v1/c/merchant-applications")
+                || req.getRequestURI().startsWith("/api/v1/merchant/agreement")
+                ? "\"success\":false," : "";
+        res.getWriter().write("{" + success + "\"code\":\"COMMON_FORBIDDEN\",\"message\":\"Forbidden\","
                 + "\"data\":null,\"traceId\":\"" + trace + "\"}");
     }
 }
