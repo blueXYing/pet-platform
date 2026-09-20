@@ -9,6 +9,7 @@ export default defineConfig<'webpack5'>({
   defineConstants: {
     C_API_ORIGIN: JSON.stringify(process.env.PET_C_API_ORIGIN || ''),
     MERCHANT_APPLICATION_ENABLED: JSON.stringify(process.env.PET_MERCHANT_APPLICATION_ENABLED === 'true' && !!process.env.PET_C_API_ORIGIN),
+    PRIVATE_MATERIAL_UPLOAD_ENABLED: JSON.stringify(process.env.PET_PRIVATE_MATERIAL_UPLOAD_ENABLED === 'true' && !!process.env.PET_C_API_ORIGIN),
   },
   mini: {},
 })

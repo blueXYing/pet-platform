@@ -7,6 +7,30 @@ public interface AsyncTaskMapper {
 
     void setTimeZoneUtc();
 
+  int insertSubmission(
+      @Param("id") long id,
+      @Param("taskKey") String taskKey,
+      @Param("ownerModule") String ownerModule,
+      @Param("taskType") String taskType,
+      @Param("bizType") String bizType,
+      @Param("bizId") long bizId,
+      @Param("expectedVersion") Long expectedVersion,
+      @Param("payloadJson") String payloadJson,
+      @Param("maxRetryCount") int maxRetryCount,
+      @Param("retryPolicy") String retryPolicy);
+
+  Long selectMatchingSubmission(
+      @Param("taskKey") String taskKey,
+      @Param("ownerModule") String ownerModule,
+      @Param("taskType") String taskType,
+      @Param("bizType") String bizType,
+      @Param("bizId") long bizId,
+      @Param("expectedVersion") Long expectedVersion,
+      @Param("payloadJson") String payloadJson,
+      @Param("maxRetryCount") int maxRetryCount,
+      @Param("retryPolicy") String retryPolicy);
+
+
     AsyncTaskRowEntity selectClaimCandidate();
 
     int selectMaxAttemptNo(@Param("taskId") long taskId);

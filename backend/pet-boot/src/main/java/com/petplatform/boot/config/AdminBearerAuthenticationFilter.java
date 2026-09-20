@@ -34,11 +34,13 @@ public final class AdminBearerAuthenticationFilter extends OncePerRequestFilter 
     AdminAuthService.bindTrace(trace);
     try {
       String path = req.getRequestURI();
+      // A read-grant token is a path credential. It is used for routing only and never logged.
       if (path.equals("/api/v1/admin/auth/session")
           || path.equals("/api/v1/admin/auth/permissions")
           || path.equals("/api/v1/admin/auth/activity")
           || path.equals("/api/v1/admin/merchant-applications")
-          || path.startsWith("/api/v1/admin/merchant-applications/")) {
+          || path.startsWith("/api/v1/admin/merchant-applications/")
+          || path.startsWith("/api/v1/admin/private-asset-read-grants/")) {
         try {
           AdminAuthService service = services.getIfAvailable();
           if (service == null) throw AdminAuthFailure.unavailable();
@@ -50,12 +52,16 @@ public final class AdminBearerAuthenticationFilter extends OncePerRequestFilter 
             service.recordRejected("AUTH_CREDENTIAL_REJECTED", req.getHeader("X-Request-Id"));
           res.setStatus(a.status());
           res.setContentType("application/json");
-          res.setHeader("Cache-Control", "no-store");
+          res.setHeader("Cache-Control", "no-store, private");
+          res.setHeader("Pragma", "no-cache");
+          res.setHeader("X-Content-Type-Options", "nosniff");
           res.getWriter()
               .write(
                   "{"
                       + (path.startsWith("/api/v1/admin/merchant-applications")
-                          ? "\"success\":false," : "")
+                              || path.startsWith("/api/v1/admin/private-asset-read-grants/")
+                          ? "\"success\":false,"
+                          : "")
                       + "\"code\":\""
                       + a.code()
                       + "\",\"message\":\"Authentication unavailable or"

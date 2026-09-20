@@ -17,6 +17,7 @@
     "test:merchant-platform": "node src/merchant/tests/platform-smoke.cjs"
   },
   "dependencies": {
+    "@noble/hashes": "1.8.0",
     "@tarojs/components": "4.1.5",
     "@tarojs/helper": "4.1.5",
     "@tarojs/plugin-framework-react": "4.1.5",

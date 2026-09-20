@@ -38,11 +38,13 @@ public final class MerchantApplicationApiImpl
     return service.create(c);
   }
 
-  @Override public ApplicationCommandOutcome createDraftOutcome(CreateMerchantApplicationCommand c) {
+  @Override
+  public ApplicationCommandOutcome createDraftOutcome(CreateMerchantApplicationCommand c) {
     return service.createOutcome(c);
   }
 
-  @Override public OwnerApplicationDetail getCurrentDetail(CurrentMerchantApplicationQuery q) {
+  @Override
+  public OwnerApplicationDetail getCurrentDetail(CurrentMerchantApplicationQuery q) {
     return service.currentDetail(q);
   }
 
@@ -94,6 +96,12 @@ public final class MerchantApplicationApiImpl
   @Override
   public MerchantApplicationScopeFact getScope(MerchantApplicationScopeQuery q) {
     return service.scope(q);
+  }
+
+  @Override
+  public MerchantPrivateMaterialAccessFact provePrivateMaterialAccess(
+      MerchantPrivateMaterialAccessQuery q) {
+    return service.provePrivateMaterialAccess(q);
   }
 
   @Override

@@ -11,11 +11,14 @@ import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.web.bind.MissingRequestValueException;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
+import org.springframework.web.multipart.MaxUploadSizeExceededException;
 
 @RestControllerAdvice(
     assignableTypes = {
       MerchantApplicationController.class,
       MerchantApplicationAdminController.class,
+      CPrivateAssetController.class,
+      AdminPrivateAssetController.class,
       MerchantAgreementController.class,
       MerchantApplicationCityController.class
     })
@@ -36,7 +39,13 @@ public final class MerchantHttpExceptionHandler {
           CommonApiCodes.IDEMPOTENCY_KEY_CONFLICT,
           409,
           CommonApiCodes.DEPENDENCY_UNAVAILABLE,
-          503);
+          503,
+          com.petplatform.thirdparty.api.PrivateAssetApiCodes.ASSET_NOT_READY,
+          409,
+          com.petplatform.thirdparty.api.PrivateAssetApiCodes.ASSET_REJECTED,
+          422,
+          com.petplatform.thirdparty.api.PrivateAssetApiCodes.GRANT_GONE,
+          410);
 
   @ExceptionHandler(ApiException.class)
   Map<String, Object> api(ApiException error, HttpServletResponse response) {
@@ -54,10 +63,30 @@ public final class MerchantHttpExceptionHandler {
     return error(400, CommonApiCodes.INVALID_ARGUMENT, "请求参数不合法", response);
   }
 
+  @ExceptionHandler(MaxUploadSizeExceededException.class)
+  Map<String, Object> tooLarge(Exception ignored, HttpServletResponse response) {
+    return error(413, CommonApiCodes.INVALID_ARGUMENT, "上传文件超过10MiB限制", response);
+  }
+
+  @ExceptionHandler({
+    org.springframework.dao.DataAccessException.class,
+    org.springframework.transaction.TransactionException.class
+  })
+  Map<String, Object> unavailable(Exception ignored, HttpServletResponse response) {
+    return error(503, CommonApiCodes.DEPENDENCY_UNAVAILABLE, "依赖暂不可用，请保留原请求编号重试", response);
+  }
+
+  @ExceptionHandler(CPrivateAssetController.UnsupportedPrivateAssetMediaType.class)
+  Map<String, Object> unsupportedMedia(Exception ignored, HttpServletResponse response) {
+    return error(415, CommonApiCodes.INVALID_ARGUMENT, "仅支持JPEG或PNG图片", response);
+  }
+
   private Map<String, Object> error(
       int status, String code, String message, HttpServletResponse response) {
     response.setStatus(status);
-    response.setHeader("Cache-Control", "no-store");
+    response.setHeader("Cache-Control", "no-store, private");
+    response.setHeader("Pragma", "no-cache");
+    response.setHeader("X-Content-Type-Options", "nosniff");
     Map<String, Object> out = new LinkedHashMap<>();
     out.put("success", false);
     out.put("code", code);

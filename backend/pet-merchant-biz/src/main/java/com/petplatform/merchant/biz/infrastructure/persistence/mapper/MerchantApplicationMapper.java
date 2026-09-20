@@ -29,6 +29,11 @@ public interface MerchantApplicationMapper {
   MerchantMaterialEntity selectMaterialByAsset(
       @Param("applicationId") long applicationId, @Param("privateAssetId") long privateAssetId);
 
+  MerchantMaterialEntity selectRevisionMaterialByAsset(
+      @Param("applicationId") long applicationId,
+      @Param("revisionId") long revisionId,
+      @Param("privateAssetId") long privateAssetId);
+
   MerchantReviewTaskEntity selectTask(
       @Param("applicationId") long applicationId, @Param("taskId") long taskId);
 

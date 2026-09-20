@@ -1,0 +1,62 @@
+PASS: no duplicate display derivation patterns in existing sources
+[INFO] Tests run: 7, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 5.568 s -- in com.petplatform.architecture.ArchitectureRulesTest
+[INFO] 
+[INFO] Results:
+[INFO] 
+[INFO] Tests run: 22, Failures: 0, Errors: 0, Skipped: 0
+[INFO] 
+[INFO] 
+[INFO] --- jar:3.5.1:jar (default-jar) @ pet-architecture-test ---
+[WARNING] JAR will be empty - no content was marked for inclusion!
+[INFO] Building jar: C:\Users\Administrator\Desktop\wt-mer001-private\backend\pet-architecture-test\target\pet-architecture-test-0.1.0-SNAPSHOT.jar
+[INFO] ------------------------------------------------------------------------
+[INFO] Reactor Summary for pet-platform-backend 0.1.0-SNAPSHOT:
+[INFO] 
+[INFO] pet-platform-backend ............................... SUCCESS [  0.339 s]
+[INFO] pet-common ......................................... SUCCESS [  2.318 s]
+[INFO] pet-id-core ........................................ SUCCESS [ 31.135 s]
+[INFO] pet-event-api ...................................... SUCCESS [  0.064 s]
+[INFO] pet-event-core ..................................... SUCCESS [ 27.663 s]
+[INFO] pet-task-core ...................................... SUCCESS [ 16.653 s]
+[INFO] pet-user-api ....................................... SUCCESS [  0.117 s]
+[INFO] pet-user-biz ....................................... SUCCESS [ 35.370 s]
+[INFO] pet-merchant-api ................................... SUCCESS [  0.748 s]
+[INFO] pet-merchant-biz ................................... SUCCESS [03:22 min]
+[INFO] pet-service-api .................................... SUCCESS [  0.055 s]
+[INFO] pet-service-biz .................................... SUCCESS [  0.103 s]
+[INFO] pet-schedule-api ................................... SUCCESS [  0.056 s]
+[INFO] pet-schedule-biz ................................... SUCCESS [  0.147 s]
+[INFO] pet-order-api ...................................... SUCCESS [  0.060 s]
+[INFO] pet-payment-api .................................... SUCCESS [  0.057 s]
+[INFO] pet-coupon-api ..................................... SUCCESS [  0.058 s]
+[INFO] pet-order-biz ...................................... SUCCESS [  0.132 s]
+[INFO] pet-payment-biz .................................... SUCCESS [  0.105 s]
+[INFO] pet-refund-api ..................................... SUCCESS [  0.063 s]
+[INFO] pet-refund-biz ..................................... SUCCESS [  0.108 s]
+[INFO] pet-verification-api ............................... SUCCESS [  0.049 s]
+[INFO] pet-verification-biz ............................... SUCCESS [  0.100 s]
+[INFO] pet-aftersale-api .................................. SUCCESS [  0.050 s]
+[INFO] pet-aftersale-biz .................................. SUCCESS [  0.143 s]
+[INFO] pet-coupon-biz ..................................... SUCCESS [  0.121 s]
+[INFO] pet-points-api ..................................... SUCCESS [  0.045 s]
+[INFO] pet-points-biz ..................................... SUCCESS [  0.097 s]
+[INFO] pet-review-api ..................................... SUCCESS [  0.047 s]
+[INFO] pet-review-biz ..................................... SUCCESS [  0.099 s]
+[INFO] pet-notification-api ............................... SUCCESS [  0.048 s]
+[INFO] pet-notification-biz ............................... SUCCESS [ 12.216 s]
+[INFO] pet-community-api .................................. SUCCESS [  0.046 s]
+[INFO] pet-community-biz .................................. SUCCESS [  0.097 s]
+[INFO] pet-thirdparty-api ................................. SUCCESS [  0.087 s]
+[INFO] pet-thirdparty-biz ................................. SUCCESS [  6.830 s]
+[INFO] pet-customer-service-api ........................... SUCCESS [  0.048 s]
+[INFO] pet-customer-service-biz ........................... SUCCESS [  0.094 s]
+[INFO] pet-admin-api ...................................... SUCCESS [  0.073 s]
+[INFO] pet-admin-biz ...................................... SUCCESS [ 38.300 s]
+[INFO] pet-boot ........................................... SUCCESS [ 56.783 s]
+[INFO] pet-architecture-test .............................. SUCCESS [ 10.511 s]
+[INFO] ------------------------------------------------------------------------
+[INFO] BUILD SUCCESS
+[INFO] ------------------------------------------------------------------------
+[INFO] Total time:  07:23 min
+[INFO] Finished at: 2026-09-20T12:02:02+08:00
+[INFO] ------------------------------------------------------------------------

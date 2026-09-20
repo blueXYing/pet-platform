@@ -1,8 +1,8 @@
 # CCR-MER-PRIVATE-001：商家申请私有材料与 Provider 契约
 
-状态：`READY_FOR_CONTRACT_REVIEW / NOT_IMPLEMENTED`
+状态：`APPROVED / IMPLEMENTED_CANDIDATE_LOCAL_VERIFIED`
 日期：2026-09-20
-范围：MER001 生产依赖。本 CCR 给出具体推荐方案；批准并同步权威 Contract/Schema 前不实现新增 HTTP、Schema 或生产装配。
+范围：MER001 生产依赖。用户于 2026-09-20 对私有材料登记、服务端上传检查、短时一次性水印读取方案回复“确认”。本次同步 31 号 API/Storage/Schema 后实施；该确认不代表生产启用、数据迁移、地图验收或 PR 合入已完成。
 
 ## 1. 权威约束
 
@@ -173,4 +173,4 @@ Schema 同步还须定义上传 request binding、durable task/outbox及grant/as
 
 ## 11. 本次交付与门禁
 
-本分支交付 `ProtectedValuePort` AES-256-GCM + HMAC-SHA-256 adapter、离线单元测试和本 CCR。CCR 获批并同步 Contract/Schema 后，方可实现新增私有资产 API、服务端上传、代理水印读取、表结构和生产装配。现有已批准商家申请 HTTP/前端可继续；门禁仅针对本文新增 contract。
+S7 已交付 `ProtectedValuePort` AES-256-GCM + HMAC-SHA-256 adapter、单元测试和本 CCR。S8 根据本次确认实施新增私有资产 API、服务端上传、代理水印读取及表结构；精确实现与状态见 `docs/04-api/31-Private-Asset-Contract-v0.1.md`、SQL31/Storage31。运行配置仍默认关闭，真实 Provider 不可用时失败关闭。保留期限和后端地图核验不在本次批准内。

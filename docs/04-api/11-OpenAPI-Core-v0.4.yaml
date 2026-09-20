@@ -22,7 +22,297 @@ tags:
 - name: AUTH-Admin
 - name: Merchant-Profile
 - name: Merchant-Application
+- name: Private-Asset
 paths:
+  /c/private-assets:
+    post:
+      tags:
+      - Private-Asset
+      security:
+      - bearerAuth: []
+      x-contract-status: APPROVED_IMPLEMENTATION_CANDIDATE
+      x-default-enabled: false
+      operationId: uploadPrivateAsset
+      summary: Upload private merchant application material
+      x-audience: MINIAPP
+      parameters:
+      - $ref: '#/components/parameters/RequestId'
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              additionalProperties: false
+              required:
+              - purpose
+              - file
+              properties:
+                purpose:
+                  type: string
+                  enum:
+                  - MERCHANT_APPLICATION_MATERIAL
+                file:
+                  type: string
+                  format: binary
+                  description: JPEG/PNG, original and normalized object each <=10MiB; actual decode and malware check
+                    required.
+      responses:
+        '200':
+          description: Current authorized receipt; no private object location.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PrivateAssetUploadEnvelope'
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                example: no-store, private
+        '201':
+          description: Current authorized receipt; no private object location.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PrivateAssetUploadEnvelope'
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                example: no-store, private
+        '400':
+          description: Invalid upload or confirmation
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PrivateAssetErrorEnvelope'
+        '401':
+          description: Current session required
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PrivateAssetErrorEnvelope'
+        '403':
+          description: Action denied
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PrivateAssetErrorEnvelope'
+        '404':
+          description: Resource unavailable in current scope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PrivateAssetErrorEnvelope'
+        '409':
+          description: Conflict or upload awaiting reconciliation
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PrivateAssetErrorEnvelope'
+        '413':
+          description: Upload too large
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PrivateAssetErrorEnvelope'
+        '415':
+          description: Unsupported content type
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PrivateAssetErrorEnvelope'
+        '422':
+          description: PRIVATE_ASSET_REJECTED; bound upload is terminal REJECTED or QUARANTINED. Explicit reselection uses a new UUID; never overwrites the original binding.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PrivateAssetErrorEnvelope'
+        '503':
+          description: Dependency unavailable; fail closed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PrivateAssetErrorEnvelope'
+  /admin/merchant-applications/{applicationId}/private-assets/{assetId}/read-grants:
+    post:
+      tags:
+      - Private-Asset
+      security:
+      - bearerAuth: []
+      x-contract-status: APPROVED_IMPLEMENTATION_CANDIDATE
+      x-default-enabled: false
+      operationId: issuePrivateAssetReadGrant
+      x-single-use: true
+      x-grant-ttl-seconds: 300
+      x-recheck-current-authorization: true
+      summary: Issue single-use watermarked material read grant
+      x-audience: ADMIN_WEB
+      x-authorization: Current CLAIMED task claimant; current submission revision; merchant.identity.reveal + merchant.application.decide
+        and scope; final same-transaction check.
+      parameters:
+      - name: applicationId
+        in: path
+        required: true
+        schema:
+          $ref: '#/components/schemas/PublicId'
+      - name: assetId
+        in: path
+        required: true
+        schema:
+          $ref: '#/components/schemas/PublicId'
+      - $ref: '#/components/parameters/RequestId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PrivateAssetGrantRequest'
+      responses:
+        '200':
+          description: Current authorized receipt; no private object location.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PrivateAssetGrantEnvelope'
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                example: no-store, private
+        '400':
+          description: Invalid upload or confirmation
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PrivateAssetErrorEnvelope'
+        '401':
+          description: Current session required
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PrivateAssetErrorEnvelope'
+        '403':
+          description: Action denied
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PrivateAssetErrorEnvelope'
+        '404':
+          description: Resource unavailable in current scope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PrivateAssetErrorEnvelope'
+        '409':
+          description: Conflict or upload awaiting reconciliation
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PrivateAssetErrorEnvelope'
+        '410':
+          description: Grant expired or consumed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PrivateAssetErrorEnvelope'
+        '503':
+          description: Dependency unavailable; fail closed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PrivateAssetErrorEnvelope'
+  /admin/private-asset-read-grants/{token}:
+    get:
+      tags:
+      - Private-Asset
+      security:
+      - bearerAuth: []
+      x-contract-status: APPROVED_IMPLEMENTATION_CANDIDATE
+      x-default-enabled: false
+      operationId: consumePrivateAssetReadGrant
+      x-single-use: true
+      x-grant-ttl-seconds: 300
+      x-recheck-current-authorization: true
+      summary: Consume single-use grant and return watermarked PNG
+      x-audience: ADMIN_WEB
+      description: Recheck current session generation, actions, scope, claimant and linked material. TTL five minutes.
+        Consumed grant cannot replay. Never log raw token path. No OSS URL.
+      parameters:
+      - name: token
+        in: path
+        required: true
+        schema:
+          type: string
+          minLength: 32
+          maxLength: 512
+          pattern: ^[A-Za-z0-9_-]+$
+      responses:
+        '200':
+          description: Watermarked PNG, no raw material bytes.
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                enum:
+                - no-store, private
+            Pragma:
+              schema:
+                type: string
+                enum:
+                - no-cache
+            X-Content-Type-Options:
+              schema:
+                type: string
+                enum:
+                - nosniff
+          content:
+            image/png:
+              schema:
+                type: string
+                format: binary
+        '400':
+          description: Invalid upload or confirmation
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PrivateAssetErrorEnvelope'
+        '401':
+          description: Current session required
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PrivateAssetErrorEnvelope'
+        '403':
+          description: Action denied
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PrivateAssetErrorEnvelope'
+        '404':
+          description: Resource unavailable in current scope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PrivateAssetErrorEnvelope'
+        '409':
+          description: Conflict or upload awaiting reconciliation
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PrivateAssetErrorEnvelope'
+        '410':
+          description: Grant expired or consumed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PrivateAssetErrorEnvelope'
+        '503':
+          description: Dependency unavailable; fail closed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PrivateAssetErrorEnvelope'
   /merchant/staff:
     get:
       tags:
@@ -7007,6 +7297,160 @@ components:
           schema:
             $ref: '#/components/schemas/ErrorEnvelope'
   schemas:
+    PrivateAssetUploadResult:
+      type: object
+      additionalProperties: false
+      required:
+      - assetId
+      - status
+      - objectSha256
+      - mediaType
+      - bytes
+      properties:
+        assetId:
+          $ref: '#/components/schemas/PublicId'
+        status:
+          type: string
+          enum:
+          - READY
+        objectSha256:
+          type: string
+          pattern: ^[0-9a-f]{64}$
+        mediaType:
+          type: string
+          enum:
+          - image/png
+          - image/jpeg
+        bytes:
+          type: integer
+          format: int64
+          minimum: 1
+          maximum: 10485760
+    PrivateAssetUploadEnvelope:
+      type: object
+      additionalProperties: false
+      required:
+      - success
+      - code
+      - message
+      - data
+      - traceId
+      properties:
+        success:
+          type: boolean
+          enum:
+          - true
+        code:
+          type: string
+          enum:
+          - SUCCESS
+        message:
+          type: string
+          minLength: 1
+        data:
+          $ref: '#/components/schemas/PrivateAssetUploadResult'
+        traceId:
+          type: string
+          minLength: 1
+    PrivateAssetGrantRequest:
+      type: object
+      additionalProperties: false
+      required:
+      - submissionRevisionId
+      - purposeCode
+      - reason
+      - confirmed
+      properties:
+        submissionRevisionId:
+          $ref: '#/components/schemas/PublicId'
+        purposeCode:
+          type: string
+          pattern: ^[A-Z][A-Z0-9_]{0,63}$
+        reason:
+          type: string
+          minLength: 10
+          maxLength: 500
+        confirmed:
+          type: boolean
+          enum:
+          - true
+    PrivateAssetGrantResult:
+      type: object
+      additionalProperties: false
+      required:
+      - readUrl
+      - expiresAt
+      properties:
+        readUrl:
+          type: string
+          pattern: ^/api/v1/admin/private-asset-read-grants/[A-Za-z0-9_-]+$
+        expiresAt:
+          type: string
+          format: date-time
+    PrivateAssetGrantEnvelope:
+      type: object
+      additionalProperties: false
+      required:
+      - success
+      - code
+      - message
+      - data
+      - traceId
+      properties:
+        success:
+          type: boolean
+          enum:
+          - true
+        code:
+          type: string
+          enum:
+          - SUCCESS
+        message:
+          type: string
+          minLength: 1
+        data:
+          $ref: '#/components/schemas/PrivateAssetGrantResult'
+        traceId:
+          type: string
+          minLength: 1
+    PrivateAssetErrorEnvelope:
+      type: object
+      additionalProperties: false
+      required:
+      - success
+      - code
+      - message
+      - data
+      - traceId
+      properties:
+        success:
+          type: boolean
+          enum:
+          - false
+        code:
+          type: string
+          enum:
+          - COMMON_INVALID_ARGUMENT
+          - COMMON_UNAUTHORIZED
+          - COMMON_FORBIDDEN
+          - COMMON_NOT_FOUND
+          - COMMON_CONFLICT
+          - IDEMPOTENCY_KEY_CONFLICT
+          - COMMON_DEPENDENCY_UNAVAILABLE
+          - PRIVATE_ASSET_NOT_READY
+          - PRIVATE_ASSET_REJECTED
+          - PRIVATE_ASSET_GRANT_GONE
+        message:
+          type: string
+          minLength: 1
+        data:
+          type: object
+          nullable: true
+          enum:
+          - null
+        traceId:
+          type: string
+          minLength: 1
     MerVersion:
       type: string
       pattern: '^(0|[1-9][0-9]{0,18})(?![\s\S])'

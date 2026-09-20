@@ -1,6 +1,22 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
 <mapper namespace="com.petplatform.task.core.mapper.AsyncTaskMapper">
+    <insert id="insertSubmission">
+        INSERT INTO async_task (id,task_no,task_key,owner_module,task_type,biz_type,biz_id,
+          status,execute_at,expected_version,payload_json,max_retry_count,retry_policy,created_at,updated_at)
+        VALUES (#{id},#{id},#{taskKey},#{ownerModule},#{taskType},#{bizType},#{bizId},
+          'READY',UTC_TIMESTAMP(3),#{expectedVersion},CAST(#{payloadJson} AS JSON),
+          #{maxRetryCount},#{retryPolicy},UTC_TIMESTAMP(3),UTC_TIMESTAMP(3))
+        ON DUPLICATE KEY UPDATE id=id
+    </insert>
+    <select id="selectMatchingSubmission" resultType="long">
+        SELECT id FROM async_task WHERE BINARY task_key=BINARY #{taskKey}
+          AND BINARY owner_module=BINARY #{ownerModule} AND BINARY task_type=BINARY #{taskType}
+          AND BINARY biz_type=BINARY #{bizType} AND biz_id=#{bizId}
+          AND expected_version &lt;=&gt; #{expectedVersion} AND payload_json=CAST(#{payloadJson} AS JSON)
+          AND max_retry_count=#{maxRetryCount} AND BINARY retry_policy=BINARY #{retryPolicy}
+        FOR UPDATE
+    </select>
 
     <!-- async_task / async_task_attempt statements, SQL kept verbatim (SQL13, PLAT-006). -->
 

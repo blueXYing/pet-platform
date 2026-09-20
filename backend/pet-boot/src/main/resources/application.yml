@@ -12,12 +12,23 @@ spring:
       host: ${REDIS_HOST:localhost}
       port: ${REDIS_PORT:6379}
       password: ${REDIS_PASSWORD:}
+  servlet:
+    multipart:
+      max-file-size: 10MB
+      max-request-size: 11MB
+      # This is the only servlet multipart endpoint. Keep bounded evidence bytes out of the
+      # container's ordinary temp directory; the controller/core enforce the same 10 MiB ceiling.
+      file-size-threshold: 10MB
   flyway:
     enabled: true
     locations: classpath:db/migration
 
 server:
   port: ${SERVER_PORT:8080}
+  # Read-grant tokens are path credentials and must never enter container access logs.
+  tomcat:
+    accesslog:
+      enabled: false
 
 management:
   endpoints:
@@ -34,6 +45,8 @@ logging:
 # application-local.yml (copy application-local.yml.example) or via the environment
 # variables below at deployment time. Never commit real credentials.
 pet:
+  private-assets:
+    enabled: ${PRIVATE_ASSETS_ENABLED:false}
   auth:
     c:
       enabled: ${AUTH_C_ENABLED:false}

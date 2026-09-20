@@ -9,6 +9,8 @@ import { ApplicationCommands, applicationMessage, editableApplication, emptyDraf
 import { applicationRuntime } from '../../merchant-application/runtime'
 import { MerchantApplicationView } from './view'
 
+const materialLabels: Record<MaterialKind, string> = { storePhotoAssetIds: '门店照片', businessLicenseAssetId: '营业执照', idCardFrontAssetId: '身份证人像面', idCardBackAssetId: '身份证国徽面', industryLicenseAssetId: '行业许可证' }
+
 export default function MerchantApplicationPage() {
   const route = useRouter()
   const preview = route.params.preview === '1'
@@ -17,7 +19,7 @@ export default function MerchantApplicationPage() {
   return <ApplicationScreen key={`${preview}:${revision}`} preview={preview} reference={preview && route.params.referenceCanvas === '1'} scope={scope} />
 }
 function ApplicationScreen({ preview, reference, scope }: { preview: boolean; reference: boolean; scope: ReturnType<typeof useWorkspace>['scope'] }) {
-  const [{ dependencies: deps, recovery }] = useState(() => applicationRuntime(preview))
+  const [{ dependencies: deps, recovery, uploads }] = useState(() => applicationRuntime(preview))
   const [commands] = useState(() => new ApplicationCommands(deps.application, scope))
   const [draft, setDraft] = useState<DraftInput>(emptyDraft)
   const [result, setResult] = useState<ApplicationResult | null>(null)
@@ -69,7 +71,11 @@ function ApplicationScreen({ preview, reference, scope }: { preview: boolean; re
       if (!live()) return
       setResult(current); setDraft(current.currentRevision.draft); setCityName(current.currentRevision.draft.cityCode ? `已选城市（${current.currentRevision.draft.cityCode}）` : ''); setOpinion(current.latestDecision?.opinion || null); dirty.current = false
     })
-    if (live()) setLoading(false)
+    if (live()) {
+      setLoading(false)
+      try { const uploadPending = uploads?.pending(); if (uploadPending) setNotice(`已恢复${materialLabels[uploadPending.kind]}上传记录，请点击该材料上传入口确认原操作结果。`) }
+      catch { /* session/loading error is already surfaced by perform */ }
+    }
   }
   useEffect(() => { mounted.current = true; if (!preview) void load(); return () => { mounted.current = false } }, [])
   function edit(key: keyof DraftInput, value: DraftInput[keyof DraftInput]) {
@@ -79,6 +85,8 @@ function ApplicationScreen({ preview, reference, scope }: { preview: boolean; re
   }
   async function write(submit: boolean) {
     if (running.current || (!pending.current && !editableApplication(result)) || (!preview && !loggedIn)) return
+    try { if (uploads?.pending()) { setNotice('有材料上传结果尚未确认，请点击原材料上传入口重试；不要重新选择文件。'); return } }
+    catch (error) { setNotice(applicationMessage(error)); return }
     if (submit && !pending.current) { const next = validateApplication(draft); setErrors(next); if (Object.keys(next).length) { setNotice('请完善标记的必填信息后再提交。'); void Taro.showToast({ title: '请完善标记的必填信息', icon: 'none' }); return } }
     if (preview) { setNotice('交互预览不会保存或提交申请。'); return }
     if (!pending.current) pending.current = { submit, current: result, draft: JSON.parse(JSON.stringify(draft)) as DraftInput }
@@ -110,11 +118,23 @@ function ApplicationScreen({ preview, reference, scope }: { preview: boolean; re
     })
   }
   async function upload(kind: MaterialKind) {
+    if (running.current || pending.current || !editableApplication(result) || (!preview && !loggedIn)) return
     await perform(async () => {
+      const pendingUpload = uploads?.pending()
+      if (kind === 'storePhotoAssetIds' && (draft.storePhotoAssetIds?.length || 0) >= 6 && !pendingUpload) { setNotice('门店照片最多6张。'); return }
+      if (pendingUpload && pendingUpload.kind !== kind) { setNotice(`请先点击${materialLabels[pendingUpload.kind]}上传入口确认上次结果。`); return }
+      if (pendingUpload) {
+        const rejected = pendingUpload.rejected
+        const decision = await Taro.showModal({ title: rejected ? '重新选择材料？' : '重试原材料上传？', content: rejected ? '服务端已拒绝原文件。重新选择会清理本地副本并创建新的上传请求。' : '将使用已保留的原文件和请求编号确认结果。选择稍后处理会保留记录，不会取消已发出的上传。', confirmText: rejected ? '重新选择' : '重试上传', cancelText: '稍后处理' })
+        if (!decision.confirm || !live()) return
+        if (rejected) await uploads!.discardRejected()
+      }
       const asset = await deps.upload(kind)
       if (!asset || !live()) return
       const assetId = id(asset.assetId)
       setDraft(previous => kind === 'storePhotoAssetIds' ? { ...previous, storePhotoAssetIds: [...new Set([...(previous.storePhotoAssetIds || []), assetId])].slice(0, 6) } : { ...previous, [kind]: assetId }); dirty.current = true
+      await uploads?.acknowledge(assetId)
+      if (live()) setNotice('材料已上传，请保存草稿。')
     })
   }
   async function leave() {

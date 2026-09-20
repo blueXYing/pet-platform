@@ -46,6 +46,13 @@
     FROM merchant_application_material
     WHERE application_id=#{applicationId} AND private_asset_id=#{privateAssetId}
   </select>
+  <select id="selectRevisionMaterialByAsset" resultType="com.petplatform.merchant.biz.infrastructure.persistence.entity.MerchantMaterialEntity">
+    SELECT m.id,m.private_asset_id,m.material_type,m.sha256,m.media_type,m.bytes,rm.position
+    FROM merchant_application_revision_material rm
+    JOIN merchant_application_material m ON m.application_id=rm.application_id AND m.id=rm.material_id
+    WHERE rm.application_id=#{applicationId} AND rm.revision_id=#{revisionId}
+      AND m.private_asset_id=#{privateAssetId}
+  </select>
   <select id="selectTask" resultType="com.petplatform.merchant.biz.infrastructure.persistence.entity.MerchantReviewTaskEntity">SELECT id,application_id,submitted_revision_id,submission_no,status,claimed_by_operator_id,claimed_at,version FROM merchant_application_review_task WHERE application_id=#{applicationId} AND id=#{taskId}</select>
   <select id="selectTaskForUpdate" resultType="com.petplatform.merchant.biz.infrastructure.persistence.entity.MerchantReviewTaskEntity">SELECT id,application_id,submitted_revision_id,submission_no,status,claimed_by_operator_id,claimed_at,version FROM merchant_application_review_task WHERE application_id=#{applicationId} AND id=#{taskId} FOR UPDATE</select>
   <select id="selectDecision" resultType="com.petplatform.merchant.biz.infrastructure.persistence.entity.MerchantDecisionEntity">SELECT id,submitted_revision_id,decision_type,opinion,decided_at FROM merchant_application_review_decision WHERE application_id=#{applicationId} AND id=#{decisionId}</select>
