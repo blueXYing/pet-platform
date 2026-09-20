@@ -1,0 +1,68 @@
+{
+  "fileKey": "bp2vpcjjA5vZbHvtKkA8wl",
+  "navigation": "Existing consumer/components/navigation and assets/navigation reused; one navigation owner",
+  "excluded": "Off-canvas community card and hidden input are not visible application content",
+  "pageNodes": [
+    "132:862",
+    "132:1170"
+  ],
+  "retrievedAt": "2026-09-20",
+  "assets": [
+    {
+      "source": "back.svg",
+      "raster": "back.png",
+      "density": 288,
+      "width": 26,
+      "height": 42,
+      "sourceSha256": "b21b2938f1351383451054ce123240acd0f550ab1e633d292cd9e42023d535e4",
+      "rasterSha256": "1fdc977435e7575f13fbf20e15c20e2b8e12bb7b3e22a10e666ed31aed682025",
+      "sourceUrl": "https://www.figma.com/api/mcp/asset/cef553af-0ad7-4c90-af7b-48494e28a44e.svg",
+      "nodeId": "132:885"
+    },
+    {
+      "source": "document.svg",
+      "raster": "document.png",
+      "density": 288,
+      "width": 66,
+      "height": 59,
+      "sourceSha256": "4c9ff8041cbd291a4fadc71fac9b14a5828b64505ba6c5b52a583cef58e15cfc",
+      "rasterSha256": "1a4d8443bc545abd9a93ee845d8d8493545b530cd4704aa8273549247fca77a0",
+      "sourceUrl": "https://www.figma.com/api/mcp/asset/bccf756c-31f8-431d-9e4c-9f301708c7db.svg",
+      "nodeId": "132:1127"
+    },
+    {
+      "source": "location.svg",
+      "raster": "location.png",
+      "density": 288,
+      "width": 40,
+      "height": 48,
+      "sourceSha256": "899243b32548e78cac2e105c6a247906a088f32ce445d54323cf7d3ec0f6e721",
+      "rasterSha256": "84c5321fdbdbf49c2c44ecbde481d405658bcb3686de0c123dde66d90e679f35",
+      "sourceUrl": "https://www.figma.com/api/mcp/asset/aa8ec5ee-7dff-4873-8f17-103b977d733f.svg",
+      "nodeId": "132:1093"
+    },
+    {
+      "source": "photo.svg",
+      "raster": "photo.png",
+      "density": 288,
+      "width": 66,
+      "height": 59,
+      "sourceSha256": "d209ad4d9383fa7d2f8f77d3315c7a9f5cf1559a5dea8ea262589abb84428199",
+      "rasterSha256": "2f0258fe8cc5acf0266f4beec0ffab24792f2985175ac74142f7ea697dd33d64",
+      "sourceUrl": "https://www.figma.com/api/mcp/asset/5b652f5f-1c54-4b5f-9b7d-563c7b08deee.svg",
+      "nodeId": "132:1113"
+    },
+    {
+      "source": "select.svg",
+      "raster": "select.png",
+      "density": 288,
+      "width": 44,
+      "height": 44,
+      "sourceSha256": "6021fa009067698742abf5800f48c1b4a46fdfb2d90ba06faa7014d0626e4e83",
+      "rasterSha256": "27eab4153ba3ca38a980d499051d985259a30622b5ad6c1f5037267b316e8d06",
+      "sourceUrl": "https://www.figma.com/api/mcp/asset/2146b605-6769-4b30-8c14-3363f80e8bb4.svg",
+      "nodeId": "132:1075"
+    }
+  ],
+  "rasterization": "sharp SVG density 288, exact source bytes, CSS preserves original mirrored transform"
+}

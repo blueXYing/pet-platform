@@ -19,7 +19,12 @@ const packages = app.subPackages || app.subpackages || []
 assert.deepEqual(packages.map(p => ({ root: p.root, pages: p.pages })), [
   { root: 'merchant', pages: ['pages/workspace/index'] },
   { root: 'consumer/pages/pet-archive', pages: ['index', 'detail', 'form'] },
-], 'M-001 merchant route and C-002 pet archive subpackage must be registered in the single app')
+  { root: 'consumer/pages/merchant-application', pages: ['index'] },
+], 'Merchant workspace, pet archive and merchant application must be registered in the single app')
+for (const extension of ['js', 'json', 'wxml', 'wxss']) {
+  assert.ok(fs.existsSync(path.join(root, 'consumer/pages/merchant-application/index.' + extension)),
+    'MER-001 application page artifact missing: ' + extension)
+}
 assert.ok(packages.every(p => !p.independent), 'Only ordinary subpackages allowed')
 for (const extension of ['js', 'json', 'wxml']) {
   assert.ok(fs.existsSync(path.join(root, 'merchant/pages/workspace/index.' + extension)),

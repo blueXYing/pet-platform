@@ -1,15 +1,17 @@
 # Work State
 
 PROJECT: 宠物平台 V1.0
-STATE_VERSION: 7.1
-UPDATED_AT: 2026-09-17
+STATE_VERSION: 7.2
+UPDATED_AT: 2026-09-20
 
 CURRENT_PHASE: W3_INTEGRATION_REVIEW
-CURRENT_STATUS: MER001_S5_RUNTIME_REVIEW_CANDIDATE
+CURRENT_STATUS: MER001_S6_APPLICATION_PAGE_LOCAL_VERIFIED
 NEXT_PHASE: MER-001 申请审核事务、真实依赖和前端接入验证
 NEXT_PHASE_APPROVED: YES
 
 ## 当前结论
+
+2026-09-20 S6：用户安装Figma并要求推进页面，已实际读取在线132:862/132:1170，由GPT-6 medium实现申请页分包/入口、原始图标、六类与医院许可证条件显示、字段校验及失败关闭。84项小程序测试、类型/构建/包体通过，微信模拟器实际验证填写、选择、上传/定位/城市失败提示、预览不写业务及未登录态，见[S6交接](planning/issues/wave-2/MER-001-s6/HANDOFF.md)。Figma安装阻塞已解除；真实HTTP/私有材料、强制重启后待决意图恢复、签约页设计和完整VIS仍未交付。GitHub当前连接中断，未据此声称远端PR合入或最新CI通过。
 
 2026-09-17 S5：用户在PR53技术同步包说明后明确“那么请你实施”，已批准按该契约进入实现。由PR53 head `9d6b828` 建立 `codex/mer001-application-runtime-20260917`，尚未合并PR53或本轮实现，也未部署生产。申请审核事务、最终运营鉴权、审核通知持久化、协议资格真实读取和小程序契约客户端已形成[S5审阅包](planning/issues/wave-2/MER-001-s5/HANDOFF.md)。95项最终针对性复测（含22项架构）、99项离线契约、13项架构工具回归和77项小程序测试通过；全后端最终结果与远端CI以本轮PR最新head检查为准。历史记录中的技术契约待批准不再阻止本轮实施，不代表缺失的真实Provider、HTTP、页面或生产准入已解除。
 
