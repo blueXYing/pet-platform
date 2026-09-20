@@ -1,0 +1,338 @@
+{
+  "baseline": "65df1c3cf57d40b591b5930941673c17b648d762",
+  "status": "PASS_LOCAL_CONTRACT_AND_SCHEMA_VERIFY",
+  "mavenExitCode": 0,
+  "junit": {
+    "tests": 294,
+    "failures": 0,
+    "errors": 0,
+    "skipped": 0
+  },
+  "suiteCount": 38,
+  "newMySqlSchemaTests": 5,
+  "offlineContractTests": 99,
+  "oldOpenApiSurfacePreserved": true,
+  "sourceSha256": {
+    "docs/03-database/29-Merchant-Application-Schema-v0.1.sql": "75e31ee6e6622a7a1a8d707af4284c4c1e5fb00250c5b9acf5d48ffb7884d4c3",
+    "docs/04-api/11-OpenAPI-Core-v0.4.yaml": "aeb99ac868731489bba1aa1e97ed7a68f014412fcca5f348eb93671a8e7067cb",
+    "e2e/contract_smoke.py": "1f05a2797ed541dc325ba2649db2c76747fa2806fb60a7054be752f6be840cf7",
+    "e2e/test_merchant_application_contract.py": "a89b39e92b5a341c956f0d0d1d507095e40ec0bf2de88cfd45e42363851fd040",
+    "backend/pet-merchant-biz/src/test/java/com/petplatform/merchant/biz/MerchantApplicationSchemaMySqlTest.java": "e9c0ecb0e0471bf86eca6d590ddddbd960d5ed0c21f4966a6915fd2cf484db1c",
+    "backend/pet-merchant-biz/src/test/java/com/petplatform/merchant/biz/MySqlMerchantApplicationSchemaTestDatabase.java": "401ad7be4c31595c6d094e28685979d23134a6ff1d6b4ad745deed02106b8f01"
+  },
+  "suites": [
+    {
+      "module": "pet-admin-biz",
+      "suite": "com.petplatform.admin.biz.auth.AdminAuthFailureRecoveryTest",
+      "tests": 11,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    },
+    {
+      "module": "pet-admin-biz",
+      "suite": "com.petplatform.admin.biz.auth.AdminAuthLifecycleTest",
+      "tests": 11,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    },
+    {
+      "module": "pet-admin-biz",
+      "suite": "com.petplatform.admin.biz.auth.AdminAuthPrimitivesTest",
+      "tests": 12,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    },
+    {
+      "module": "pet-architecture-test",
+      "suite": "com.petplatform.architecture.ArchitectureRulesFixtureTest",
+      "tests": 15,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    },
+    {
+      "module": "pet-architecture-test",
+      "suite": "com.petplatform.architecture.ArchitectureRulesTest",
+      "tests": 7,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    },
+    {
+      "module": "pet-boot",
+      "suite": "com.petplatform.boot.auth.AdminAuthDisabledTest",
+      "tests": 3,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    },
+    {
+      "module": "pet-boot",
+      "suite": "com.petplatform.boot.auth.AdminAuthHttpTest",
+      "tests": 5,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    },
+    {
+      "module": "pet-boot",
+      "suite": "com.petplatform.boot.auth.CAuthDisabledTest",
+      "tests": 2,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    },
+    {
+      "module": "pet-boot",
+      "suite": "com.petplatform.boot.auth.CAuthHttpTest",
+      "tests": 7,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    },
+    {
+      "module": "pet-boot",
+      "suite": "com.petplatform.boot.auth.CFrontendHttpTest",
+      "tests": 1,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    },
+    {
+      "module": "pet-boot",
+      "suite": "com.petplatform.boot.web.GlobalApiHandlerTest",
+      "tests": 4,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    },
+    {
+      "module": "pet-boot",
+      "suite": "com.petplatform.boot.web.TraceContextFilterTest",
+      "tests": 3,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    },
+    {
+      "module": "pet-common",
+      "suite": "com.petplatform.common.ApiEnvelopeTest",
+      "tests": 5,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    },
+    {
+      "module": "pet-common",
+      "suite": "com.petplatform.common.MoneyCodecTest",
+      "tests": 28,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    },
+    {
+      "module": "pet-common",
+      "suite": "com.petplatform.common.PublicContractChecksTest",
+      "tests": 20,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    },
+    {
+      "module": "pet-common",
+      "suite": "com.petplatform.common.PublicIdCodecTest",
+      "tests": 22,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    },
+    {
+      "module": "pet-common",
+      "suite": "com.petplatform.common.S1ContractMappingTest",
+      "tests": 4,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    },
+    {
+      "module": "pet-event-core",
+      "suite": "com.petplatform.event.core.OutboxConsumeIdempotencyMySqlTest",
+      "tests": 3,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    },
+    {
+      "module": "pet-event-core",
+      "suite": "com.petplatform.event.core.OutboxRecoveryMySqlTest",
+      "tests": 3,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    },
+    {
+      "module": "pet-event-core",
+      "suite": "com.petplatform.event.core.OutboxSameTransactionMySqlTest",
+      "tests": 4,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    },
+    {
+      "module": "pet-id-core",
+      "suite": "com.petplatform.id.core.HutoolSnowflakeIdProviderMySqlTest",
+      "tests": 13,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    },
+    {
+      "module": "pet-id-core",
+      "suite": "com.petplatform.id.core.IdProviderProcessMySqlTest",
+      "tests": 1,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    },
+    {
+      "module": "pet-id-core",
+      "suite": "com.petplatform.id.core.JdbcSnowflakeNodeStoreMySqlTest",
+      "tests": 11,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    },
+    {
+      "module": "pet-id-core",
+      "suite": "com.petplatform.id.core.PooledSnowflakeMySqlTest",
+      "tests": 5,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    },
+    {
+      "module": "pet-id-core",
+      "suite": "com.petplatform.id.core.SingleFlightLaneTest",
+      "tests": 6,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    },
+    {
+      "module": "pet-id-core",
+      "suite": "com.petplatform.id.core.SnowflakeSchemaMySqlTest",
+      "tests": 1,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    },
+    {
+      "module": "pet-id-core",
+      "suite": "com.petplatform.id.core.SnowflakeSettingsTest",
+      "tests": 4,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    },
+    {
+      "module": "pet-merchant-api",
+      "suite": "com.petplatform.merchant.api.MerchantDtoSerializationTest",
+      "tests": 1,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    },
+    {
+      "module": "pet-merchant-biz",
+      "suite": "com.petplatform.merchant.biz.MerchantAgreementApiMySqlTest",
+      "tests": 18,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    },
+    {
+      "module": "pet-merchant-biz",
+      "suite": "com.petplatform.merchant.biz.MerchantApplicationSchemaMySqlTest",
+      "tests": 5,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    },
+    {
+      "module": "pet-merchant-biz",
+      "suite": "com.petplatform.merchant.biz.MerchantQueryApiMySqlTest",
+      "tests": 9,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    },
+    {
+      "module": "pet-task-core",
+      "suite": "com.petplatform.task.core.AsyncTaskWorkerMySqlTest",
+      "tests": 10,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    },
+    {
+      "module": "pet-task-core",
+      "suite": "com.petplatform.task.core.MySqlTaskRepositoryTest",
+      "tests": 12,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    },
+    {
+      "module": "pet-thirdparty-biz",
+      "suite": "com.petplatform.thirdparty.biz.OssAssetSyncMySqlTest",
+      "tests": 1,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    },
+    {
+      "module": "pet-thirdparty-biz",
+      "suite": "com.petplatform.thirdparty.biz.PresignedAssetUrlTest",
+      "tests": 3,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    },
+    {
+      "module": "pet-user-biz",
+      "suite": "com.petplatform.user.biz.UserAuthServiceMySqlTest",
+      "tests": 13,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    },
+    {
+      "module": "pet-user-biz",
+      "suite": "com.petplatform.user.biz.UserPetDomainMySqlTest",
+      "tests": 5,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    },
+    {
+      "module": "pet-user-biz",
+      "suite": "com.petplatform.user.biz.WechatMiniApiProviderTest",
+      "tests": 6,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    }
+  ],
+  "frontend": "Historical design mapping only; Figma plugin not connected, no UI implementation/VIS pass",
+  "notDelivered": [
+    "application business handlers",
+    "HTTP/Auth final-check adapter",
+    "private assets/OCR provider",
+    "review Outbox and notification consumer",
+    "frontend pages",
+    "production migration"
+  ]
+}

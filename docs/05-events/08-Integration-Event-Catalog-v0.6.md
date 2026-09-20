@@ -436,3 +436,13 @@ refund_amount = channelPaidAmount
 ```
 
 若退款暂时异常，继续使用 Retry / Channel Query / Reconciliation 完成退款。
+
+## 商家申请审核结果事件（S4技术同步候选，尚未发布/消费）
+
+新增审阅定义：eventType固定MerchantApplicationReviewedEvent.v1，eventVersion=1，aggregateType=MERCHANT_APPLICATION，aggregateId=applicationId；沿用标准IntegrationEvent envelope，eventId为Snowflake String，occurredAt/decidedAt为毫秒OffsetDateTime，traceId只在envelope。
+
+payload字段：applicationId、applicationNo（SQ+YYYYMMDD+8位随机码）、ownerUserId、reservedMerchantId、submittedRevisionId、reviewDecisionId、decisionType、applicationStatus、applicantVisibleOpinion、decidedAt。APPROVE对应APPROVED，REJECT/REQUEST_CORRECTION对应REJECTED；后两者意见10～500字符必填，通过意见可空。结构不含internalNote、证件原文、手机号、OCR原包、审核员登录账号或长期URL；意见也不得粘贴敏感原文。
+
+MER审核决定、状态、审计、Outbox意图在同一事务；回滚均无事件，成功重放不产生新事件。notification按(eventId,consumerName)去重，并在本域同事务写消费日志与ownerUserId的真实站内消息。私有字段不能透传；通知持久化失败必须重试，不可先标已消费。查询页面不能代替强制站内通知。
+
+对应严格payload schema见OpenAPI11的MerchantApplicationReviewedPayload（仅共享数据定义，不是HTTP endpoint）。当前仅同步契约，无事件生产者/消费者注册，无Scheduler改动；真正通知交付仍需业务与跨域测试，不因本段存在而解除MER-001 DoD。

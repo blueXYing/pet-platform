@@ -1495,3 +1495,9 @@ B1秘密回执：以最终成功SQL事务提交前DB时间锚点固定anchor+60�
 ## 商家域已批准同步（2026-09-17）
 
 MerchantQueryApi三查询的参数/DTO、原五字段资格DTO、新成员事实API与普通主账号USER操作者映射，以[27号商家域契约](27-Merchant-Domain-Contract-v0.1.md)§4～5为准。新单资格不替代存量资格。原外部签约Provider依赖被SSOT §26电子协议裁决覆盖；冻结写动作与主账号核销staff映射仍未解除。
+
+## 商家申请审核接口同步候选（2026-09-17）
+
+申请查询/草稿/提交/领取/核验/决定按[30号补充](30-Merchant-Application-Contract-v0.1.md)定义，当前无业务实现。申请业务DTO只由merchant-api拥有；admin-api的最终授权查询必须采用自身通用AdminResourceScope，不依赖merchant-api类型。
+
+AdminResourceScope字段为resourceType、resourceId、merchantId、cityCode、scopeVersion，均为String；对申请资源type固定MERCHANT_APPLICATION、merchantId为服务端reservedMerchantId，cityCode来自已提交revision。AdminActionCheckQuery的sessionId/sessionGeneration/operatorId来自真实AdminSessionPrincipal，actionCode取服务端动作，phase=EXECUTE/READ_RESULT；权限快照不是长期执行许可。每次检查当前会话、动作和scope，依赖失败关闭。此为跨模块兼容增量审阅定义，不注册新生产授权端点。

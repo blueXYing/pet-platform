@@ -1,15 +1,19 @@
 # Work State
 
 PROJECT: 宠物平台 V1.0
-STATE_VERSION: 6.9
+STATE_VERSION: 7.0
 UPDATED_AT: 2026-09-17
 
 CURRENT_PHASE: W3_INTEGRATION_REVIEW
-CURRENT_STATUS: MER001_S3_AGREEMENT_REVIEW_CANDIDATE
-NEXT_PHASE: MER-001 协议组件验收及申请审核CCR审阅
+CURRENT_STATUS: MER001_S4_CONTRACT_DDL_REVIEW_CANDIDATE
+NEXT_PHASE: MER-001 申请审核业务实现与前端接入
 NEXT_PHASE_APPROVED: NO
 
 ## 当前结论
+
+2026-09-17最新：用户授权等CI后合入52并按顺序继续，PR52已在最新37b781b六项检查成功后合入develop（65df1c3），合并CI 35208225200成功；主目录已同步且用户配置不变。已按第1步完成[S4接口/数据基础包](planning/issues/wave-2/MER-001-s4/HANDOFF.md)：SQL29十一表、10申请/审核OpenAPI操作和审核通知事件同步候选，5项真实MySQL约束、99项离线契约及294项全后端JUnit通过。当前只完成契约/DDL验证，不标业务handler/真实审核/通知已完成；新PR不自动合并。
+
+前端已按指定GPT-6 Astra medium完成历史原稿/素材/组件映射，24引用哈希通过；Figma插件经查询未安装，已提出安装。用户说的token类型已询问但未收到澄清，先列可核实文件key，不编造或泄露个人访问令牌。插件实际连接与在线原稿核对前未修改页面，不声称已用Figma工具或VIS通过。设计地址与key见[S4前端准备](planning/issues/wave-2/MER-001-s4/FRONTEND-READINESS.md)。
 
 2026-09-17申请审核四项已确认：用户明确“四项建议确认”，已同步SSOT §27与PRD26。门店照片必填1～6张；OCR失败可待人工核验但已知过期拦截/未核验不可通过；补正映射REJECTED并修改重提；APPROVE建档ACTIVE但未SIGNED不开新业务。以下四项“待确认”描述已过时，不再重复索取决定。申请接口/Schema/Event细化同步继续由原Owner推进；当前NEXT_PHASE_APPROVED:NO保留未完成技术契约冻结的边界，不表示四项产品规则未批准。PR52未获合并授权，仍未合入。
 

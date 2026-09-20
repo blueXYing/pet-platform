@@ -21,6 +21,7 @@ tags:
 - name: AUTH-Miniapp
 - name: AUTH-Admin
 - name: Merchant-Profile
+- name: Merchant-Application
 paths:
   /merchant/staff:
     get:
@@ -5688,6 +5689,1116 @@ paths:
           application/json:
             schema:
               $ref: '#/components/schemas/AuthVersionedCommand'
+  /c/merchant-applications/current:
+    get:
+      tags:
+      - Merchant-Application
+      operationId: cGetCurrentMerchantApplication
+      summary: cGetCurrentMerchantApplication
+      x-contract-status: CONTRACT_SYNC_CANDIDATE_NOT_IMPLEMENTED
+      x-audience: MINIAPP
+      security:
+      - bearerAuth: []
+      parameters: []
+      responses:
+        '200':
+          description: Current authorized result or idempotent replay.
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                enum:
+                - no-store
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AppOwnerDetailEnvelope'
+        '400':
+          description: Contract 30; never includes old sensitive data.
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                enum:
+                - no-store
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MerErrorEnvelope'
+        '401':
+          description: Contract 30; never includes old sensitive data.
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                enum:
+                - no-store
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MerErrorEnvelope'
+        '403':
+          description: Contract 30; never includes old sensitive data.
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                enum:
+                - no-store
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MerErrorEnvelope'
+        '404':
+          description: Contract 30; never includes old sensitive data.
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                enum:
+                - no-store
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MerErrorEnvelope'
+        '409':
+          description: Contract 30; never includes old sensitive data.
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                enum:
+                - no-store
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MerErrorEnvelope'
+        '503':
+          description: Contract 30; never includes old sensitive data.
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                enum:
+                - no-store
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MerErrorEnvelope'
+  /c/merchant-applications:
+    post:
+      tags:
+      - Merchant-Application
+      operationId: cCreateMerchantApplication
+      summary: cCreateMerchantApplication
+      x-contract-status: CONTRACT_SYNC_CANDIDATE_NOT_IMPLEMENTED
+      x-audience: MINIAPP
+      security:
+      - bearerAuth: []
+      parameters:
+      - $ref: '#/components/parameters/RequestId'
+      responses:
+        '200':
+          description: Current authorized result or idempotent replay.
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                enum:
+                - no-store
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AppResultEnvelope'
+        '201':
+          description: First draft creation only.
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                enum:
+                - no-store
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AppResultEnvelope'
+        '400':
+          description: Contract 30; never includes old sensitive data.
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                enum:
+                - no-store
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MerErrorEnvelope'
+        '401':
+          description: Contract 30; never includes old sensitive data.
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                enum:
+                - no-store
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MerErrorEnvelope'
+        '403':
+          description: Contract 30; never includes old sensitive data.
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                enum:
+                - no-store
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MerErrorEnvelope'
+        '404':
+          description: Contract 30; never includes old sensitive data.
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                enum:
+                - no-store
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MerErrorEnvelope'
+        '409':
+          description: Contract 30; never includes old sensitive data.
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                enum:
+                - no-store
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MerErrorEnvelope'
+        '503':
+          description: Contract 30; never includes old sensitive data.
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                enum:
+                - no-store
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MerErrorEnvelope'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AppDraftInput'
+  /c/merchant-applications/{applicationId}/draft:
+    put:
+      tags:
+      - Merchant-Application
+      operationId: cSaveMerchantApplicationDraft
+      summary: cSaveMerchantApplicationDraft
+      x-contract-status: CONTRACT_SYNC_CANDIDATE_NOT_IMPLEMENTED
+      x-audience: MINIAPP
+      security:
+      - bearerAuth: []
+      parameters:
+      - name: applicationId
+        in: path
+        required: true
+        schema:
+          $ref: '#/components/schemas/PublicId'
+      - $ref: '#/components/parameters/RequestId'
+      responses:
+        '200':
+          description: Current authorized result or idempotent replay.
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                enum:
+                - no-store
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AppResultEnvelope'
+        '400':
+          description: Contract 30; never includes old sensitive data.
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                enum:
+                - no-store
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MerErrorEnvelope'
+        '401':
+          description: Contract 30; never includes old sensitive data.
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                enum:
+                - no-store
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MerErrorEnvelope'
+        '403':
+          description: Contract 30; never includes old sensitive data.
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                enum:
+                - no-store
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MerErrorEnvelope'
+        '404':
+          description: Contract 30; never includes old sensitive data.
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                enum:
+                - no-store
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MerErrorEnvelope'
+        '409':
+          description: Contract 30; never includes old sensitive data.
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                enum:
+                - no-store
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MerErrorEnvelope'
+        '503':
+          description: Contract 30; never includes old sensitive data.
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                enum:
+                - no-store
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MerErrorEnvelope'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AppSaveRequest'
+  /c/merchant-applications/{applicationId}/submit:
+    post:
+      tags:
+      - Merchant-Application
+      operationId: cSubmitMerchantApplication
+      summary: cSubmitMerchantApplication
+      x-contract-status: CONTRACT_SYNC_CANDIDATE_NOT_IMPLEMENTED
+      x-audience: MINIAPP
+      security:
+      - bearerAuth: []
+      parameters:
+      - name: applicationId
+        in: path
+        required: true
+        schema:
+          $ref: '#/components/schemas/PublicId'
+      - $ref: '#/components/parameters/RequestId'
+      responses:
+        '200':
+          description: Current authorized result or idempotent replay.
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                enum:
+                - no-store
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AppResultEnvelope'
+        '400':
+          description: Contract 30; never includes old sensitive data.
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                enum:
+                - no-store
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MerErrorEnvelope'
+        '401':
+          description: Contract 30; never includes old sensitive data.
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                enum:
+                - no-store
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MerErrorEnvelope'
+        '403':
+          description: Contract 30; never includes old sensitive data.
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                enum:
+                - no-store
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MerErrorEnvelope'
+        '404':
+          description: Contract 30; never includes old sensitive data.
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                enum:
+                - no-store
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MerErrorEnvelope'
+        '409':
+          description: Contract 30; never includes old sensitive data.
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                enum:
+                - no-store
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MerErrorEnvelope'
+        '503':
+          description: Contract 30; never includes old sensitive data.
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                enum:
+                - no-store
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MerErrorEnvelope'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AppSubmitRequest'
+  /admin/merchant-applications:
+    get:
+      tags:
+      - Merchant-Application
+      operationId: adminListMerchantApplications
+      summary: adminListMerchantApplications
+      x-contract-status: CONTRACT_SYNC_CANDIDATE_NOT_IMPLEMENTED
+      x-audience: ADMIN_WEB
+      security:
+      - bearerAuth: []
+      parameters:
+      - $ref: '#/components/parameters/Page'
+      - $ref: '#/components/parameters/PageSize'
+      - name: status
+        in: query
+        required: false
+        schema:
+          type: string
+          enum:
+          - REVIEWING
+          - APPROVED
+          - REJECTED
+      - name: merchantTypeCode
+        in: query
+        required: false
+        schema:
+          $ref: '#/components/schemas/AppMerchantType'
+      - name: cityCode
+        in: query
+        required: false
+        schema:
+          $ref: '#/components/schemas/AppCityCode'
+      - name: submittedFrom
+        in: query
+        required: false
+        schema:
+          $ref: '#/components/schemas/AuthTimestamp'
+      - name: submittedTo
+        in: query
+        required: false
+        schema:
+          $ref: '#/components/schemas/AuthTimestamp'
+      - name: keyword
+        in: query
+        required: false
+        schema:
+          type: string
+          minLength: 1
+          maxLength: 128
+      responses:
+        '200':
+          description: Current authorized result or idempotent replay.
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                enum:
+                - no-store
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AppReviewPageEnvelope'
+        '400':
+          description: Contract 30; never includes old sensitive data.
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                enum:
+                - no-store
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MerErrorEnvelope'
+        '401':
+          description: Contract 30; never includes old sensitive data.
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                enum:
+                - no-store
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MerErrorEnvelope'
+        '403':
+          description: Contract 30; never includes old sensitive data.
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                enum:
+                - no-store
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MerErrorEnvelope'
+        '404':
+          description: Contract 30; never includes old sensitive data.
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                enum:
+                - no-store
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MerErrorEnvelope'
+        '409':
+          description: Contract 30; never includes old sensitive data.
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                enum:
+                - no-store
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MerErrorEnvelope'
+        '503':
+          description: Contract 30; never includes old sensitive data.
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                enum:
+                - no-store
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MerErrorEnvelope'
+      x-required-actions:
+      - merchant.application.read
+  /admin/merchant-applications/{applicationId}:
+    get:
+      tags:
+      - Merchant-Application
+      operationId: adminGetMerchantApplication
+      summary: adminGetMerchantApplication
+      x-contract-status: CONTRACT_SYNC_CANDIDATE_NOT_IMPLEMENTED
+      x-audience: ADMIN_WEB
+      security:
+      - bearerAuth: []
+      parameters:
+      - name: applicationId
+        in: path
+        required: true
+        schema:
+          $ref: '#/components/schemas/PublicId'
+      responses:
+        '200':
+          description: Current authorized result or idempotent replay.
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                enum:
+                - no-store
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AppReviewDetailEnvelope'
+        '400':
+          description: Contract 30; never includes old sensitive data.
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                enum:
+                - no-store
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MerErrorEnvelope'
+        '401':
+          description: Contract 30; never includes old sensitive data.
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                enum:
+                - no-store
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MerErrorEnvelope'
+        '403':
+          description: Contract 30; never includes old sensitive data.
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                enum:
+                - no-store
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MerErrorEnvelope'
+        '404':
+          description: Contract 30; never includes old sensitive data.
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                enum:
+                - no-store
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MerErrorEnvelope'
+        '409':
+          description: Contract 30; never includes old sensitive data.
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                enum:
+                - no-store
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MerErrorEnvelope'
+        '503':
+          description: Contract 30; never includes old sensitive data.
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                enum:
+                - no-store
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MerErrorEnvelope'
+      x-required-actions:
+      - merchant.application.read
+  /admin/merchant-applications/{applicationId}/claim:
+    post:
+      tags:
+      - Merchant-Application
+      operationId: adminClaimMerchantApplication
+      summary: adminClaimMerchantApplication
+      x-contract-status: CONTRACT_SYNC_CANDIDATE_NOT_IMPLEMENTED
+      x-audience: ADMIN_WEB
+      security:
+      - bearerAuth: []
+      parameters:
+      - name: applicationId
+        in: path
+        required: true
+        schema:
+          $ref: '#/components/schemas/PublicId'
+      - $ref: '#/components/parameters/RequestId'
+      responses:
+        '200':
+          description: Current authorized result or idempotent replay.
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                enum:
+                - no-store
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AppTaskResultEnvelope'
+        '400':
+          description: Contract 30; never includes old sensitive data.
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                enum:
+                - no-store
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MerErrorEnvelope'
+        '401':
+          description: Contract 30; never includes old sensitive data.
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                enum:
+                - no-store
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MerErrorEnvelope'
+        '403':
+          description: Contract 30; never includes old sensitive data.
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                enum:
+                - no-store
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MerErrorEnvelope'
+        '404':
+          description: Contract 30; never includes old sensitive data.
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                enum:
+                - no-store
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MerErrorEnvelope'
+        '409':
+          description: Contract 30; never includes old sensitive data.
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                enum:
+                - no-store
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MerErrorEnvelope'
+        '503':
+          description: Contract 30; never includes old sensitive data.
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                enum:
+                - no-store
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MerErrorEnvelope'
+      x-required-actions:
+      - merchant.application.decide
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AppTaskVersionRequest'
+  /admin/merchant-applications/{applicationId}/release:
+    post:
+      tags:
+      - Merchant-Application
+      operationId: adminReleaseMerchantApplication
+      summary: adminReleaseMerchantApplication
+      x-contract-status: CONTRACT_SYNC_CANDIDATE_NOT_IMPLEMENTED
+      x-audience: ADMIN_WEB
+      security:
+      - bearerAuth: []
+      parameters:
+      - name: applicationId
+        in: path
+        required: true
+        schema:
+          $ref: '#/components/schemas/PublicId'
+      - $ref: '#/components/parameters/RequestId'
+      responses:
+        '200':
+          description: Current authorized result or idempotent replay.
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                enum:
+                - no-store
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AppTaskResultEnvelope'
+        '400':
+          description: Contract 30; never includes old sensitive data.
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                enum:
+                - no-store
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MerErrorEnvelope'
+        '401':
+          description: Contract 30; never includes old sensitive data.
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                enum:
+                - no-store
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MerErrorEnvelope'
+        '403':
+          description: Contract 30; never includes old sensitive data.
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                enum:
+                - no-store
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MerErrorEnvelope'
+        '404':
+          description: Contract 30; never includes old sensitive data.
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                enum:
+                - no-store
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MerErrorEnvelope'
+        '409':
+          description: Contract 30; never includes old sensitive data.
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                enum:
+                - no-store
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MerErrorEnvelope'
+        '503':
+          description: Contract 30; never includes old sensitive data.
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                enum:
+                - no-store
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MerErrorEnvelope'
+      x-required-actions:
+      - merchant.application.decide
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AppTaskVersionRequest'
+      x-requires-current-claimant: true
+  /admin/merchant-applications/{applicationId}/manual-verification:
+    post:
+      tags:
+      - Merchant-Application
+      operationId: adminVerifyMerchantApplication
+      summary: adminVerifyMerchantApplication
+      x-contract-status: CONTRACT_SYNC_CANDIDATE_NOT_IMPLEMENTED
+      x-audience: ADMIN_WEB
+      security:
+      - bearerAuth: []
+      parameters:
+      - name: applicationId
+        in: path
+        required: true
+        schema:
+          $ref: '#/components/schemas/PublicId'
+      - $ref: '#/components/parameters/RequestId'
+      responses:
+        '200':
+          description: Current authorized result or idempotent replay.
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                enum:
+                - no-store
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AppResultEnvelope'
+        '400':
+          description: Contract 30; never includes old sensitive data.
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                enum:
+                - no-store
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MerErrorEnvelope'
+        '401':
+          description: Contract 30; never includes old sensitive data.
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                enum:
+                - no-store
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MerErrorEnvelope'
+        '403':
+          description: Contract 30; never includes old sensitive data.
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                enum:
+                - no-store
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MerErrorEnvelope'
+        '404':
+          description: Contract 30; never includes old sensitive data.
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                enum:
+                - no-store
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MerErrorEnvelope'
+        '409':
+          description: Contract 30; never includes old sensitive data.
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                enum:
+                - no-store
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MerErrorEnvelope'
+        '503':
+          description: Contract 30; never includes old sensitive data.
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                enum:
+                - no-store
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MerErrorEnvelope'
+      x-required-actions:
+      - merchant.application.decide
+      - merchant.identity.reveal
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AppManualVerifyRequest'
+      x-requires-current-claimant: true
+  /admin/merchant-applications/{applicationId}/decision:
+    post:
+      tags:
+      - Merchant-Application
+      operationId: adminDecideMerchantApplication
+      summary: adminDecideMerchantApplication
+      x-contract-status: CONTRACT_SYNC_CANDIDATE_NOT_IMPLEMENTED
+      x-audience: ADMIN_WEB
+      security:
+      - bearerAuth: []
+      parameters:
+      - name: applicationId
+        in: path
+        required: true
+        schema:
+          $ref: '#/components/schemas/PublicId'
+      - $ref: '#/components/parameters/RequestId'
+      responses:
+        '200':
+          description: Current authorized result or idempotent replay.
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                enum:
+                - no-store
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AppResultEnvelope'
+        '400':
+          description: Contract 30; never includes old sensitive data.
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                enum:
+                - no-store
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MerErrorEnvelope'
+        '401':
+          description: Contract 30; never includes old sensitive data.
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                enum:
+                - no-store
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MerErrorEnvelope'
+        '403':
+          description: Contract 30; never includes old sensitive data.
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                enum:
+                - no-store
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MerErrorEnvelope'
+        '404':
+          description: Contract 30; never includes old sensitive data.
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                enum:
+                - no-store
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MerErrorEnvelope'
+        '409':
+          description: Contract 30; never includes old sensitive data.
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                enum:
+                - no-store
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MerErrorEnvelope'
+        '503':
+          description: Contract 30; never includes old sensitive data.
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                enum:
+                - no-store
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MerErrorEnvelope'
+      x-required-actions:
+      - merchant.application.decide
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AppDecisionRequest'
+      x-requires-current-claimant: true
 components:
   securitySchemes:
     bearerAuth:
@@ -9599,6 +10710,1211 @@ components:
         traceId:
           type: string
           minLength: 1
+    AppStatus:
+      type: string
+      enum:
+      - DRAFT
+      - REVIEWING
+      - APPROVED
+      - REJECTED
+    AppApplicationNo:
+      type: string
+      pattern: ^SQ[0-9]{8}[A-Za-z0-9]{8}(?![\s\S])
+      minLength: 18
+      maxLength: 18
+      description: PRD human-readable SQ + YYYYMMDD + 8-character random code; generated
+        on first submit, not a Snowflake ID.
+    AppMerchantType:
+      type: string
+      enum:
+      - PET_LIFE_STORE
+      - PET_HOSPITAL
+      - PET_GROOMING
+      - PET_BOARDING
+      - PET_TRAINING
+      - OTHER
+    AppCityCode:
+      type: string
+      minLength: 1
+      maxLength: 32
+      description: Opaque key from the enabled city directory; checked server-side.
+    AppCoordinate:
+      type: string
+      pattern: ^-?(0|[1-9][0-9]{0,2})(\.[0-9]{1,7})?(?![\s\S])
+      description: Decimal String, at most 7 places; runtime bounds longitude [-180,180],
+        latitude [-90,90].
+    AppDraftInput:
+      type: object
+      additionalProperties: false
+      required: []
+      properties:
+        merchantName:
+          type: string
+          nullable: true
+          maxLength: 50
+          default: null
+        contactName:
+          type: string
+          nullable: true
+          maxLength: 20
+          default: null
+        contactPhone:
+          type: string
+          nullable: true
+          maxLength: 11
+          default: null
+        email:
+          type: string
+          nullable: true
+          maxLength: 254
+          default: null
+        merchantTypeCode:
+          type: string
+          nullable: true
+          enum:
+          - PET_LIFE_STORE
+          - PET_HOSPITAL
+          - PET_GROOMING
+          - PET_BOARDING
+          - PET_TRAINING
+          - OTHER
+          - null
+          default: null
+        cityCode:
+          type: string
+          nullable: true
+          maxLength: 32
+          default: null
+        address:
+          type: string
+          nullable: true
+          maxLength: 255
+          default: null
+        longitude:
+          type: string
+          pattern: ^-?(0|[1-9][0-9]{0,2})(\.[0-9]{1,7})?(?![\s\S])
+          description: Decimal String, at most 7 places; runtime bounds longitude [-180,180],
+            latitude [-90,90].
+          nullable: true
+          default: null
+        latitude:
+          type: string
+          pattern: ^-?(0|[1-9][0-9]{0,2})(\.[0-9]{1,7})?(?![\s\S])
+          description: Decimal String, at most 7 places; runtime bounds longitude [-180,180],
+            latitude [-90,90].
+          nullable: true
+          default: null
+        introduction:
+          type: string
+          nullable: true
+          maxLength: 500
+          default: null
+        storePhotoAssetIds:
+          type: array
+          items:
+            $ref: '#/components/schemas/PublicId'
+          maxItems: 6
+          uniqueItems: true
+          default: []
+        businessLicenseAssetId:
+          type: string
+          minLength: 1
+          maxLength: 19
+          pattern: ^[1-9][0-9]{0,18}(?![\s\S])
+          x-maximum-decimal: '9223372036854775807'
+          description: 正Long ASCII String；pattern只校验词法和位数，Long上界由服务端PublicIdCodec检查，禁止JS
+            Number。
+          example: '9007199254740993'
+          nullable: true
+          default: null
+        idCardFrontAssetId:
+          type: string
+          minLength: 1
+          maxLength: 19
+          pattern: ^[1-9][0-9]{0,18}(?![\s\S])
+          x-maximum-decimal: '9223372036854775807'
+          description: 正Long ASCII String；pattern只校验词法和位数，Long上界由服务端PublicIdCodec检查，禁止JS
+            Number。
+          example: '9007199254740993'
+          nullable: true
+          default: null
+        idCardBackAssetId:
+          type: string
+          minLength: 1
+          maxLength: 19
+          pattern: ^[1-9][0-9]{0,18}(?![\s\S])
+          x-maximum-decimal: '9223372036854775807'
+          description: 正Long ASCII String；pattern只校验词法和位数，Long上界由服务端PublicIdCodec检查，禁止JS
+            Number。
+          example: '9007199254740993'
+          nullable: true
+          default: null
+        industryLicenseAssetId:
+          type: string
+          minLength: 1
+          maxLength: 19
+          pattern: ^[1-9][0-9]{0,18}(?![\s\S])
+          x-maximum-decimal: '9223372036854775807'
+          description: 正Long ASCII String；pattern只校验词法和位数，Long上界由服务端PublicIdCodec检查，禁止JS
+            Number。
+          example: '9007199254740993'
+          nullable: true
+          default: null
+      description: Full replacement; omission/null clears fields, omitted photo list becomes
+        empty. Draft save permits incomplete data; submit enforces PRD requirements and
+        trusted asset facts.
+    AppSaveRequest:
+      type: object
+      additionalProperties: false
+      required:
+      - expectedVersion
+      - draft
+      properties:
+        expectedVersion:
+          $ref: '#/components/schemas/MerVersion'
+        draft:
+          $ref: '#/components/schemas/AppDraftInput'
+    AppSubmitRequest:
+      type: object
+      additionalProperties: false
+      required:
+      - expectedVersion
+      - revisionId
+      properties:
+        expectedVersion:
+          $ref: '#/components/schemas/MerVersion'
+        revisionId:
+          $ref: '#/components/schemas/PublicId'
+    AppTaskVersionRequest:
+      type: object
+      additionalProperties: false
+      required:
+      - expectedTaskVersion
+      properties:
+        expectedTaskVersion:
+          $ref: '#/components/schemas/MerVersion'
+    AppManualEvidenceInput:
+      oneOf:
+      - type: object
+        additionalProperties: false
+        required:
+        - materialId
+        - materialSha256
+        - credentialType
+        - subjectName
+        - identifier
+        - validFrom
+        - validityKind
+        - validTo
+        properties:
+          materialId:
+            $ref: '#/components/schemas/PublicId'
+          materialSha256:
+            $ref: '#/components/schemas/MerContentHash'
+          credentialType:
+            type: string
+            enum:
+            - CREDIT_CODE
+            - IDENTITY_NUMBER
+            - INDUSTRY_LICENSE
+          subjectName:
+            type: string
+            minLength: 1
+            maxLength: 256
+            writeOnly: true
+          identifier:
+            type: string
+            minLength: 1
+            maxLength: 128
+            writeOnly: true
+          validFrom:
+            type: string
+            format: date
+          validityKind:
+            type: string
+            enum:
+            - DATED
+          validTo:
+            type: string
+            format: date
+      - type: object
+        additionalProperties: false
+        required:
+        - materialId
+        - materialSha256
+        - credentialType
+        - subjectName
+        - identifier
+        - validFrom
+        - validityKind
+        properties:
+          materialId:
+            $ref: '#/components/schemas/PublicId'
+          materialSha256:
+            $ref: '#/components/schemas/MerContentHash'
+          credentialType:
+            type: string
+            enum:
+            - CREDIT_CODE
+            - IDENTITY_NUMBER
+            - INDUSTRY_LICENSE
+          subjectName:
+            type: string
+            minLength: 1
+            maxLength: 256
+            writeOnly: true
+          identifier:
+            type: string
+            minLength: 1
+            maxLength: 128
+            writeOnly: true
+          validFrom:
+            type: string
+            format: date
+          validityKind:
+            type: string
+            enum:
+            - LONG_TERM
+      description: Current claimant confirms original materials of this submitted revision.
+        Never accepts client evidenceStatus or actor IDs. Raw identifier is encrypted/protected
+        and absent from receipts/logs.
+    AppManualVerifyRequest:
+      type: object
+      additionalProperties: false
+      required:
+      - submissionRevisionId
+      - expectedVersion
+      - expectedTaskVersion
+      - evidenceItems
+      - reason
+      - confirmed
+      properties:
+        submissionRevisionId:
+          $ref: '#/components/schemas/PublicId'
+        expectedVersion:
+          $ref: '#/components/schemas/MerVersion'
+        expectedTaskVersion:
+          $ref: '#/components/schemas/MerVersion'
+        evidenceItems:
+          type: array
+          items:
+            $ref: '#/components/schemas/AppManualEvidenceInput'
+          minItems: 1
+          maxItems: 4
+        reason:
+          type: string
+          minLength: 10
+          maxLength: 500
+        confirmed:
+          type: boolean
+          enum:
+          - true
+    AppDecisionRequest:
+      oneOf:
+      - type: object
+        additionalProperties: false
+        required:
+        - submissionRevisionId
+        - expectedVersion
+        - expectedTaskVersion
+        - confirmed
+        - decisionType
+        properties:
+          submissionRevisionId:
+            $ref: '#/components/schemas/PublicId'
+          expectedVersion:
+            $ref: '#/components/schemas/MerVersion'
+          expectedTaskVersion:
+            $ref: '#/components/schemas/MerVersion'
+          internalNote:
+            type: string
+            nullable: true
+            maxLength: 500
+            writeOnly: true
+          confirmed:
+            type: boolean
+            enum:
+            - true
+          decisionType:
+            type: string
+            enum:
+            - APPROVE
+          opinion:
+            type: string
+            nullable: true
+            maxLength: 500
+      - type: object
+        additionalProperties: false
+        required:
+        - submissionRevisionId
+        - expectedVersion
+        - expectedTaskVersion
+        - confirmed
+        - decisionType
+        - opinion
+        properties:
+          submissionRevisionId:
+            $ref: '#/components/schemas/PublicId'
+          expectedVersion:
+            $ref: '#/components/schemas/MerVersion'
+          expectedTaskVersion:
+            $ref: '#/components/schemas/MerVersion'
+          internalNote:
+            type: string
+            nullable: true
+            maxLength: 500
+            writeOnly: true
+          confirmed:
+            type: boolean
+            enum:
+            - true
+          decisionType:
+            type: string
+            enum:
+            - REJECT
+            - REQUEST_CORRECTION
+          opinion:
+            type: string
+            minLength: 10
+            maxLength: 500
+    AppResult:
+      type: object
+      additionalProperties: false
+      required:
+      - applicationId
+      - applicationNo
+      - reservedMerchantId
+      - status
+      - version
+      - currentRevisionId
+      properties:
+        applicationId:
+          $ref: '#/components/schemas/PublicId'
+        applicationNo:
+          type: string
+          pattern: ^SQ[0-9]{8}[A-Za-z0-9]{8}(?![\s\S])
+          minLength: 18
+          maxLength: 18
+          description: PRD human-readable SQ + YYYYMMDD + 8-character random code; generated
+            on first submit, not a Snowflake ID.
+          nullable: true
+        reservedMerchantId:
+          $ref: '#/components/schemas/PublicId'
+        status:
+          $ref: '#/components/schemas/AppStatus'
+        version:
+          $ref: '#/components/schemas/MerVersion'
+        currentRevisionId:
+          $ref: '#/components/schemas/PublicId'
+      oneOf:
+      - type: object
+        properties:
+          status:
+            type: string
+            enum:
+            - DRAFT
+          applicationNo:
+            type: string
+            pattern: ^SQ[0-9]{8}[A-Za-z0-9]{8}(?![\s\S])
+            minLength: 18
+            maxLength: 18
+            description: PRD human-readable SQ + YYYYMMDD + 8-character random code; generated
+              on first submit, not a Snowflake ID.
+            nullable: true
+            enum:
+            - null
+      - type: object
+        properties:
+          status:
+            type: string
+            enum:
+            - REVIEWING
+            - APPROVED
+            - REJECTED
+          applicationNo:
+            $ref: '#/components/schemas/AppApplicationNo'
+    AppTaskResult:
+      type: object
+      additionalProperties: false
+      required:
+      - applicationId
+      - taskId
+      - submittedRevisionId
+      - status
+      - version
+      - claimedByOperatorId
+      properties:
+        applicationId:
+          $ref: '#/components/schemas/PublicId'
+        taskId:
+          $ref: '#/components/schemas/PublicId'
+        submittedRevisionId:
+          $ref: '#/components/schemas/PublicId'
+        status:
+          type: string
+          enum:
+          - AVAILABLE
+          - CLAIMED
+          - CLOSED
+        version:
+          $ref: '#/components/schemas/MerVersion'
+        claimedByOperatorId:
+          type: string
+          minLength: 1
+          maxLength: 19
+          pattern: ^[1-9][0-9]{0,18}(?![\s\S])
+          x-maximum-decimal: '9223372036854775807'
+          description: 正Long ASCII String；pattern只校验词法和位数，Long上界由服务端PublicIdCodec检查，禁止JS
+            Number。
+          example: '9007199254740993'
+          nullable: true
+      oneOf:
+      - type: object
+        properties:
+          status:
+            type: string
+            enum:
+            - AVAILABLE
+          claimedByOperatorId:
+            type: string
+            minLength: 1
+            maxLength: 19
+            pattern: ^[1-9][0-9]{0,18}(?![\s\S])
+            x-maximum-decimal: '9223372036854775807'
+            description: 正Long ASCII String；pattern只校验词法和位数，Long上界由服务端PublicIdCodec检查，禁止JS
+              Number。
+            nullable: true
+            enum:
+            - null
+      - type: object
+        properties:
+          status:
+            type: string
+            enum:
+            - CLAIMED
+            - CLOSED
+          claimedByOperatorId:
+            $ref: '#/components/schemas/PublicId'
+    AppApplicantDecision:
+      type: object
+      additionalProperties: false
+      required:
+      - reviewDecisionId
+      - submittedRevisionId
+      - decisionType
+      - opinion
+      - decidedAt
+      properties:
+        reviewDecisionId:
+          $ref: '#/components/schemas/PublicId'
+        submittedRevisionId:
+          $ref: '#/components/schemas/PublicId'
+        decisionType:
+          type: string
+          enum:
+          - APPROVE
+          - REJECT
+          - REQUEST_CORRECTION
+        opinion:
+          type: string
+          nullable: true
+          maxLength: 500
+        decidedAt:
+          $ref: '#/components/schemas/AuthTimestamp'
+      nullable: true
+      oneOf:
+      - type: object
+        nullable: true
+        enum:
+        - null
+      - type: object
+        properties:
+          decisionType:
+            type: string
+            enum:
+            - APPROVE
+      - type: object
+        properties:
+          decisionType:
+            type: string
+            enum:
+            - REJECT
+            - REQUEST_CORRECTION
+          opinion:
+            type: string
+            minLength: 10
+            maxLength: 500
+    AppRevisionNo:
+      type: string
+      pattern: ^[1-9][0-9]{0,9}(?![\s\S])
+      description: Positive revision sequence encoded as String; server checks INT UNSIGNED
+        upper bound.
+    AppOwnerRevision:
+      type: object
+      additionalProperties: false
+      required:
+      - revisionId
+      - revisionNo
+      - draft
+      - createdAt
+      properties:
+        revisionId:
+          $ref: '#/components/schemas/PublicId'
+        revisionNo:
+          $ref: '#/components/schemas/AppRevisionNo'
+        draft:
+          $ref: '#/components/schemas/AppDraftInput'
+        createdAt:
+          $ref: '#/components/schemas/AuthTimestamp'
+    AppOwnerDetail:
+      type: object
+      additionalProperties: false
+      required:
+      - applicationId
+      - applicationNo
+      - reservedMerchantId
+      - status
+      - version
+      - currentRevisionId
+      - currentRevision
+      - submittedAt
+      - reviewedAt
+      - latestDecision
+      - subjectVerificationStatus
+      properties:
+        applicationId:
+          $ref: '#/components/schemas/PublicId'
+        applicationNo:
+          type: string
+          pattern: ^SQ[0-9]{8}[A-Za-z0-9]{8}(?![\s\S])
+          minLength: 18
+          maxLength: 18
+          description: PRD human-readable SQ + YYYYMMDD + 8-character random code; generated
+            on first submit, not a Snowflake ID.
+          nullable: true
+        reservedMerchantId:
+          $ref: '#/components/schemas/PublicId'
+        status:
+          $ref: '#/components/schemas/AppStatus'
+        version:
+          $ref: '#/components/schemas/MerVersion'
+        currentRevisionId:
+          $ref: '#/components/schemas/PublicId'
+        currentRevision:
+          $ref: '#/components/schemas/AppOwnerRevision'
+        submittedAt:
+          type: string
+          minLength: 1
+          format: date-time
+          pattern: ^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}(Z|[+-]\d{2}:\d{2})$
+          nullable: true
+        reviewedAt:
+          type: string
+          minLength: 1
+          format: date-time
+          pattern: ^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}(Z|[+-]\d{2}:\d{2})$
+          nullable: true
+        latestDecision:
+          $ref: '#/components/schemas/AppApplicantDecision'
+        subjectVerificationStatus:
+          type: string
+          enum:
+          - PENDING
+          - VERIFIED
+      oneOf:
+      - type: object
+        properties:
+          status:
+            type: string
+            enum:
+            - DRAFT
+          applicationNo:
+            type: string
+            pattern: ^SQ[0-9]{8}[A-Za-z0-9]{8}(?![\s\S])
+            minLength: 18
+            maxLength: 18
+            description: PRD human-readable SQ + YYYYMMDD + 8-character random code; generated
+              on first submit, not a Snowflake ID.
+            nullable: true
+            enum:
+            - null
+          submittedAt:
+            type: string
+            minLength: 1
+            format: date-time
+            pattern: ^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}(Z|[+-]\d{2}:\d{2})$
+            nullable: true
+            enum:
+            - null
+          reviewedAt:
+            type: string
+            minLength: 1
+            format: date-time
+            pattern: ^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}(Z|[+-]\d{2}:\d{2})$
+            nullable: true
+            enum:
+            - null
+          latestDecision:
+            type: object
+            nullable: true
+            enum:
+            - null
+      - type: object
+        properties:
+          status:
+            type: string
+            enum:
+            - REVIEWING
+          applicationNo:
+            $ref: '#/components/schemas/AppApplicationNo'
+          submittedAt:
+            $ref: '#/components/schemas/AuthTimestamp'
+          reviewedAt:
+            type: string
+            minLength: 1
+            format: date-time
+            pattern: ^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}(Z|[+-]\d{2}:\d{2})$
+            nullable: true
+            enum:
+            - null
+      - type: object
+        properties:
+          status:
+            type: string
+            enum:
+            - APPROVED
+          applicationNo:
+            $ref: '#/components/schemas/AppApplicationNo'
+          submittedAt:
+            $ref: '#/components/schemas/AuthTimestamp'
+          reviewedAt:
+            $ref: '#/components/schemas/AuthTimestamp'
+          latestDecision:
+            type: object
+            properties:
+              decisionType:
+                type: string
+                enum:
+                - APPROVE
+      - type: object
+        properties:
+          status:
+            type: string
+            enum:
+            - REJECTED
+          applicationNo:
+            $ref: '#/components/schemas/AppApplicationNo'
+          submittedAt:
+            $ref: '#/components/schemas/AuthTimestamp'
+          reviewedAt:
+            $ref: '#/components/schemas/AuthTimestamp'
+          latestDecision:
+            type: object
+            properties:
+              decisionType:
+                type: string
+                enum:
+                - REJECT
+                - REQUEST_CORRECTION
+    AppReviewSummary:
+      type: object
+      additionalProperties: false
+      required:
+      - applicationId
+      - applicationNo
+      - reservedMerchantId
+      - status
+      - version
+      - merchantName
+      - merchantTypeCode
+      - cityCode
+      - submittedRevisionId
+      - submittedAt
+      - subjectVerificationStatus
+      properties:
+        applicationId:
+          $ref: '#/components/schemas/PublicId'
+        applicationNo:
+          $ref: '#/components/schemas/AppApplicationNo'
+        reservedMerchantId:
+          $ref: '#/components/schemas/PublicId'
+        status:
+          type: string
+          enum:
+          - REVIEWING
+          - APPROVED
+          - REJECTED
+        version:
+          $ref: '#/components/schemas/MerVersion'
+        merchantName:
+          type: string
+          minLength: 2
+          maxLength: 50
+        merchantTypeCode:
+          $ref: '#/components/schemas/AppMerchantType'
+        cityCode:
+          $ref: '#/components/schemas/AppCityCode'
+        submittedRevisionId:
+          $ref: '#/components/schemas/PublicId'
+        submittedAt:
+          $ref: '#/components/schemas/AuthTimestamp'
+        subjectVerificationStatus:
+          type: string
+          enum:
+          - PENDING
+          - VERIFIED
+    AppReviewRevision:
+      type: object
+      additionalProperties: false
+      required:
+      - revisionId
+      - revisionNo
+      - snapshot
+      - createdAt
+      properties:
+        revisionId:
+          $ref: '#/components/schemas/PublicId'
+        revisionNo:
+          $ref: '#/components/schemas/AppRevisionNo'
+        snapshot:
+          type: object
+          additionalProperties: false
+          required: []
+          properties:
+            merchantName:
+              type: string
+              nullable: true
+              maxLength: 50
+            merchantTypeCode:
+              type: string
+              nullable: true
+              enum:
+              - PET_LIFE_STORE
+              - PET_HOSPITAL
+              - PET_GROOMING
+              - PET_BOARDING
+              - PET_TRAINING
+              - OTHER
+              - null
+            cityCode:
+              type: string
+              nullable: true
+              maxLength: 32
+            address:
+              type: string
+              nullable: true
+              maxLength: 255
+            longitude:
+              type: string
+              pattern: ^-?(0|[1-9][0-9]{0,2})(\.[0-9]{1,7})?(?![\s\S])
+              description: Decimal String, at most 7 places; runtime bounds longitude
+                [-180,180], latitude [-90,90].
+              nullable: true
+            latitude:
+              type: string
+              pattern: ^-?(0|[1-9][0-9]{0,2})(\.[0-9]{1,7})?(?![\s\S])
+              description: Decimal String, at most 7 places; runtime bounds longitude
+                [-180,180], latitude [-90,90].
+              nullable: true
+            introduction:
+              type: string
+              nullable: true
+              maxLength: 500
+            storePhotoAssetIds:
+              type: array
+              items:
+                $ref: '#/components/schemas/PublicId'
+              maxItems: 6
+              uniqueItems: true
+            businessLicenseAssetId:
+              type: string
+              minLength: 1
+              maxLength: 19
+              pattern: ^[1-9][0-9]{0,18}(?![\s\S])
+              x-maximum-decimal: '9223372036854775807'
+              description: 正Long ASCII String；pattern只校验词法和位数，Long上界由服务端PublicIdCodec检查，禁止JS
+                Number。
+              example: '9007199254740993'
+              nullable: true
+            idCardFrontAssetId:
+              type: string
+              minLength: 1
+              maxLength: 19
+              pattern: ^[1-9][0-9]{0,18}(?![\s\S])
+              x-maximum-decimal: '9223372036854775807'
+              description: 正Long ASCII String；pattern只校验词法和位数，Long上界由服务端PublicIdCodec检查，禁止JS
+                Number。
+              example: '9007199254740993'
+              nullable: true
+            idCardBackAssetId:
+              type: string
+              minLength: 1
+              maxLength: 19
+              pattern: ^[1-9][0-9]{0,18}(?![\s\S])
+              x-maximum-decimal: '9223372036854775807'
+              description: 正Long ASCII String；pattern只校验词法和位数，Long上界由服务端PublicIdCodec检查，禁止JS
+                Number。
+              example: '9007199254740993'
+              nullable: true
+            industryLicenseAssetId:
+              type: string
+              minLength: 1
+              maxLength: 19
+              pattern: ^[1-9][0-9]{0,18}(?![\s\S])
+              x-maximum-decimal: '9223372036854775807'
+              description: 正Long ASCII String；pattern只校验词法和位数，Long上界由服务端PublicIdCodec检查，禁止JS
+                Number。
+              example: '9007199254740993'
+              nullable: true
+            contactNameMasked:
+              type: string
+              nullable: true
+              maxLength: 20
+            contactPhoneMasked:
+              type: string
+              nullable: true
+              maxLength: 32
+            emailMasked:
+              type: string
+              nullable: true
+              maxLength: 254
+        createdAt:
+          $ref: '#/components/schemas/AuthTimestamp'
+    AppReviewDetail:
+      type: object
+      additionalProperties: false
+      required:
+      - applicationId
+      - applicationNo
+      - reservedMerchantId
+      - status
+      - version
+      - merchantName
+      - merchantTypeCode
+      - cityCode
+      - submittedRevisionId
+      - submittedAt
+      - subjectVerificationStatus
+      - submittedRevision
+      - task
+      - latestDecision
+      properties:
+        applicationId:
+          $ref: '#/components/schemas/PublicId'
+        applicationNo:
+          $ref: '#/components/schemas/AppApplicationNo'
+        reservedMerchantId:
+          $ref: '#/components/schemas/PublicId'
+        status:
+          type: string
+          enum:
+          - REVIEWING
+          - APPROVED
+          - REJECTED
+        version:
+          $ref: '#/components/schemas/MerVersion'
+        merchantName:
+          type: string
+          minLength: 2
+          maxLength: 50
+        merchantTypeCode:
+          $ref: '#/components/schemas/AppMerchantType'
+        cityCode:
+          $ref: '#/components/schemas/AppCityCode'
+        submittedRevisionId:
+          $ref: '#/components/schemas/PublicId'
+        submittedAt:
+          $ref: '#/components/schemas/AuthTimestamp'
+        subjectVerificationStatus:
+          type: string
+          enum:
+          - PENDING
+          - VERIFIED
+        submittedRevision:
+          $ref: '#/components/schemas/AppReviewRevision'
+        task:
+          $ref: '#/components/schemas/AppTaskResult'
+        latestDecision:
+          $ref: '#/components/schemas/AppApplicantDecision'
+      oneOf:
+      - type: object
+        properties:
+          status:
+            type: string
+            enum:
+            - REVIEWING
+          task:
+            type: object
+            properties:
+              status:
+                type: string
+                enum:
+                - AVAILABLE
+                - CLAIMED
+      - type: object
+        properties:
+          status:
+            type: string
+            enum:
+            - APPROVED
+          task:
+            type: object
+            properties:
+              status:
+                type: string
+                enum:
+                - CLOSED
+          latestDecision:
+            type: object
+            properties:
+              decisionType:
+                type: string
+                enum:
+                - APPROVE
+      - type: object
+        properties:
+          status:
+            type: string
+            enum:
+            - REJECTED
+          task:
+            type: object
+            properties:
+              status:
+                type: string
+                enum:
+                - CLOSED
+          latestDecision:
+            type: object
+            properties:
+              decisionType:
+                type: string
+                enum:
+                - REJECT
+                - REQUEST_CORRECTION
+    AppReviewPage:
+      type: object
+      additionalProperties: false
+      required:
+      - items
+      - page
+      - pageSize
+      - total
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/AppReviewSummary'
+        page:
+          type: integer
+          minimum: 1
+        pageSize:
+          type: integer
+          minimum: 1
+          maximum: 100
+        total:
+          type: integer
+          minimum: 0
+    AppResultEnvelope:
+      type: object
+      additionalProperties: false
+      required:
+      - success
+      - code
+      - message
+      - data
+      - traceId
+      properties:
+        success:
+          type: boolean
+          enum:
+          - true
+        code:
+          type: string
+          enum:
+          - SUCCESS
+        message:
+          type: string
+          minLength: 1
+        data:
+          $ref: '#/components/schemas/AppResult'
+        traceId:
+          type: string
+          minLength: 1
+    AppTaskResultEnvelope:
+      type: object
+      additionalProperties: false
+      required:
+      - success
+      - code
+      - message
+      - data
+      - traceId
+      properties:
+        success:
+          type: boolean
+          enum:
+          - true
+        code:
+          type: string
+          enum:
+          - SUCCESS
+        message:
+          type: string
+          minLength: 1
+        data:
+          $ref: '#/components/schemas/AppTaskResult'
+        traceId:
+          type: string
+          minLength: 1
+    AppOwnerDetailEnvelope:
+      type: object
+      additionalProperties: false
+      required:
+      - success
+      - code
+      - message
+      - data
+      - traceId
+      properties:
+        success:
+          type: boolean
+          enum:
+          - true
+        code:
+          type: string
+          enum:
+          - SUCCESS
+        message:
+          type: string
+          minLength: 1
+        data:
+          $ref: '#/components/schemas/AppOwnerDetail'
+        traceId:
+          type: string
+          minLength: 1
+    AppReviewDetailEnvelope:
+      type: object
+      additionalProperties: false
+      required:
+      - success
+      - code
+      - message
+      - data
+      - traceId
+      properties:
+        success:
+          type: boolean
+          enum:
+          - true
+        code:
+          type: string
+          enum:
+          - SUCCESS
+        message:
+          type: string
+          minLength: 1
+        data:
+          $ref: '#/components/schemas/AppReviewDetail'
+        traceId:
+          type: string
+          minLength: 1
+    AppReviewPageEnvelope:
+      type: object
+      additionalProperties: false
+      required:
+      - success
+      - code
+      - message
+      - data
+      - traceId
+      properties:
+        success:
+          type: boolean
+          enum:
+          - true
+        code:
+          type: string
+          enum:
+          - SUCCESS
+        message:
+          type: string
+          minLength: 1
+        data:
+          $ref: '#/components/schemas/AppReviewPage'
+        traceId:
+          type: string
+          minLength: 1
+    MerchantApplicationReviewedPayload:
+      type: object
+      additionalProperties: false
+      required:
+      - applicationId
+      - ownerUserId
+      - reservedMerchantId
+      - submittedRevisionId
+      - reviewDecisionId
+      - applicationNo
+      - decisionType
+      - applicationStatus
+      - applicantVisibleOpinion
+      - decidedAt
+      properties:
+        applicationId:
+          $ref: '#/components/schemas/PublicId'
+        ownerUserId:
+          $ref: '#/components/schemas/PublicId'
+        reservedMerchantId:
+          $ref: '#/components/schemas/PublicId'
+        submittedRevisionId:
+          $ref: '#/components/schemas/PublicId'
+        reviewDecisionId:
+          $ref: '#/components/schemas/PublicId'
+        applicationNo:
+          $ref: '#/components/schemas/AppApplicationNo'
+        decisionType:
+          type: string
+          enum:
+          - APPROVE
+          - REJECT
+          - REQUEST_CORRECTION
+        applicationStatus:
+          type: string
+          enum:
+          - APPROVED
+          - REJECTED
+        applicantVisibleOpinion:
+          type: string
+          nullable: true
+          maxLength: 500
+        decidedAt:
+          $ref: '#/components/schemas/AuthTimestamp'
+      oneOf:
+      - type: object
+        properties:
+          decisionType:
+            type: string
+            enum:
+            - APPROVE
+          applicationStatus:
+            type: string
+            enum:
+            - APPROVED
+      - type: object
+        properties:
+          decisionType:
+            type: string
+            enum:
+            - REJECT
+            - REQUEST_CORRECTION
+          applicationStatus:
+            type: string
+            enum:
+            - REJECTED
+          applicantVisibleOpinion:
+            type: string
+            minLength: 10
+            maxLength: 500
   examples:
     AuthApprovedExample1:
       summary: Accepted AUTH example; fictional data, no Provider success claim
