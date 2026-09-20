@@ -4,6 +4,7 @@ import { createWechatTransport } from './platform'
 import { createPrivateUploadTransport } from './private-upload-transport'
 
 declare const C_API_ORIGIN: string
+declare const ALLOW_LOCAL_HTTP: boolean
 export const consumerStorage: LocalStore = {
   get: key => Taro.getStorageSync(`${C_API_ORIGIN}:${key}`),
   set: (key, value) => Taro.setStorageSync(`${C_API_ORIGIN}:${key}`, value),
@@ -17,8 +18,8 @@ export async function requestUuid() {
   return `${hex.slice(0, 8)}-${hex.slice(8, 12)}-${hex.slice(12, 16)}-${hex.slice(16, 20)}-${hex.slice(20)}`
 }
 // Public deployment origin only. No secret and no implicit localhost/fixture fallback.
-const transport = C_API_ORIGIN ? createWechatTransport(C_API_ORIGIN) : async () => { throw new Error('API_NOT_CONFIGURED') }
+const transport = C_API_ORIGIN ? createWechatTransport(C_API_ORIGIN, ALLOW_LOCAL_HTTP) : async () => { throw new Error('API_NOT_CONFIGURED') }
 export const consumerApi = new ConsumerApi(transport, consumerStorage, requestUuid, C_API_ORIGIN ? createPrivateUploadTransport(C_API_ORIGIN, async options => {
   const result = await Taro.uploadFile(options)
   return { statusCode: result.statusCode, data: result.data }
-}) : undefined)
+}, ALLOW_LOCAL_HTTP) : undefined)

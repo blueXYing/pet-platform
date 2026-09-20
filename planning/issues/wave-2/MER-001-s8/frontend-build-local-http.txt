@@ -1,0 +1,210 @@
+
+> pet-platform-miniapp@0.1.0 build:weapp
+> taro build --type weapp --disable-global-config
+
+👽 Taro v4.1.5
+
+Tips:
+1. 预览模式生成的文件较大，设置 NODE_ENV 为 production 可以开启压缩。
+Example:
+$ set NODE_ENV=production && taro build --type weapp --watch
+2. 建议开启持久化缓存功能，能有效提升二次编译速度，详情请参考: https://docs.taro.zone/docs/config-detail#cache。
+
+
+
+● Webpack █████████████████████████  (0%)
+
+
+[2K[1A[2K[1A[2K[1A[2K[1A[2K[G
+● Webpack █████████████████████████ setup (9%) compilation
+ mini-css-extract-plugin
+
+[2K[1A[2K[1A[2K[1A[2K[1A[2K[G
+● Webpack █████████████████████████ building (10%) 0/17 entries 17/17 dependen
+cies 0/17 modules 1 active
+ babel-loader › src\app.config.ts
+
+[2K[1A[2K[1A[2K[1A[2K[1A[2K[1A[2K[G
+● Webpack █████████████████████████ building (10%) 0/17 entries 17/17 dependen
+cies 0/17 modules 1 active
+ babel-loader › src\app.config.ts
+
+[2K[1A[2K[1A[2K[1A[2K[1A[2K[1A[2K[G
+● Webpack █████████████████████████ building (10%) 0/17 entries 17/17 dependen
+cies 0/17 modules 4 active
+ babel-loader › src\consumer\pages\profile-edit\index.tsx
+
+[2K[1A[2K[1A[2K[1A[2K[1A[2K[1A[2K[G
+● Webpack █████████████████████████ building (10%) 0/17 entries 17/18 dependen
+cies 0/17 modules 17 active
+ ...l-loader › node_modules\@tarojs\webpack5-runner\dist\template\custom-wrapp
+er.js
+
+[2K[1A[2K[1A[2K[1A[2K[1A[2K[1A[2K[1A[2K[G
+● Webpack █████████████████████████ building (29%) 6/17 entries 119/196 depend
+encies 6/71 modules 22 active
+ babel-loader › node_modules\@tarojs\plugin-platform-weapp\dist\runtime.js
+
+[2K[1A[2K[1A[2K[1A[2K[1A[2K[1A[2K[G
+● Webpack █████████████████████████ building (29%) 6/17 entries 138/196 depend
+encies 6/74 modules 44 active
+ babel-loader › src\consumer\api\page-repository.ts
+
+[2K[1A[2K[1A[2K[1A[2K[1A[2K[1A[2K[G
+● Webpack █████████████████████████ building (29%) 6/17 entries 185/230 depend
+encies 6/87 modules 63 active
+ ...rivate\frontend-miniapp\src\consumer\pages\pet-archive\assets\icon-calenda
+r.png
+
+[2K[1A[2K[1A[2K[1A[2K[1A[2K[1A[2K[1A[2K[G
+● Webpack █████████████████████████ building (29%) 6/17 entries 196/230 depend
+encies 6/96 modules 77 active
+ ...private\frontend-miniapp\node_modules\@babel\runtime\helpers\esm\regenerat
+or.js
+
+[2K[1A[2K[1A[2K[1A[2K[1A[2K[1A[2K[1A[2K[G
+● Webpack █████████████████████████ building (29%)
+ import loader .\node_modules\postcss-loader\dist\cjs.js
+
+[2K[1A[2K[1A[2K[1A[2K[1A[2K[G
+● Webpack █████████████████████████ building (29%) 6/17 entries 196/230 depend
+encies 6/96 modules 83 active
+ css-loader › postcss-loader › src\app.css
+
+[2K[1A[2K[1A[2K[1A[2K[1A[2K[1A[2K[G
+● Webpack █████████████████████████ building (29%) 6/17 entries 196/231 depend
+encies 6/96 modules 84 active
+ css-loader › postcss-loader › src\consumer\pages\pet-archive\fonts.css
+
+[2K[1A[2K[1A[2K[1A[2K[1A[2K[1A[2K[G
+● Webpack █████████████████████████ building (29%) 6/17 entries 263/300 depend
+encies 34/136 modules 96 active
+ ...vate\frontend-miniapp\node_modules\@babel\runtime\helpers\esm\classCallChe
+ck.js
+
+[2K[1A[2K[1A[2K[1A[2K[1A[2K[1A[2K[1A[2K[G
+● Webpack █████████████████████████ building (29%) 6/17 entries 293/301 depend
+encies 34/144 modules 103 active
+ babel-loader › node_modules\@tarojs\runtime\dist\constants\index.js
+
+[2K[1A[2K[1A[2K[1A[2K[1A[2K[1A[2K[G
+● Webpack █████████████████████████ building (29%) 6/17 entries 400/503 depend
+encies 43/155 modules 104 active
+ css-loader › postcss-loader › src\consumer\components\page-layout\style.css
+
+[2K[1A[2K[1A[2K[1A[2K[1A[2K[1A[2K[G
+● Webpack █████████████████████████ building (29%) 6/17 entries 507/549 depend
+encies 49/170 modules 99 active
+ babel-loader › node_modules\@tarojs\shared\dist\index.js
+
+[2K[1A[2K[1A[2K[1A[2K[1A[2K[1A[2K[G
+● Webpack █████████████████████████ building (29%) 6/17 entries 529/577 depend
+encies 52/177 modules 119 active
+ ...abel-loader › node_modules\@tarojs\runtime\dist\dom-external\inner-html\ht
+ml.js
+
+[2K[1A[2K[1A[2K[1A[2K[1A[2K[1A[2K[1A[2K[G
+● Webpack █████████████████████████ building (29%) 6/17 entries 628/662 depend
+encies 69/198 modules 124 active
+ ...ktop\wt-mer001-private\frontend-miniapp\src\consumer\assets\navigation\hom
+e.png
+
+[2K[1A[2K[1A[2K[1A[2K[1A[2K[1A[2K[1A[2K[G
+● Webpack █████████████████████████ building (29%)
+ import loader .\node_modules\sass-loader\dist\cjs.js
+
+[2K[1A[2K[1A[2K[1A[2K[1A[2K[G
+● Webpack █████████████████████████ building (29%) 6/17 entries 650/672 depend
+encies 78/207 modules 121 active
+ ...vate\frontend-miniapp\node_modules\@babel\runtime\helpers\esm\setPrototype
+Of.js
+
+[2K[1A[2K[1A[2K[1A[2K[1A[2K[1A[2K[1A[2K[G
+● Webpack █████████████████████████ building (29%) 6/17 entries 660/681 depend
+encies 89/210 modules 119 active
+ ...e-url-loader › sass-loader › src\consumer\pages\merchant-application\index
+.scss
+
+[2K[1A[2K[1A[2K[1A[2K[1A[2K[1A[2K[1A[2K[G
+● Webpack █████████████████████████ building (29%) 6/17 entries 686/714 depend
+encies 100/221 modules 113 active
+ babel-loader › node_modules\@tarojs\shared\dist\components.js
+
+[2K[1A[2K[1A[2K[1A[2K[1A[2K[1A[2K[G
+● Webpack █████████████████████████ building (29%) 6/17 entries 700/716 depend
+encies 102/223 modules 120 active
+ ...ivate\frontend-miniapp\node_modules\@babel\runtime\helpers\esm\superPropBa
+se.js
+
+[2K[1A[2K[1A[2K[1A[2K[1A[2K[1A[2K[1A[2K[G
+● Webpack █████████████████████████ building (29%) 6/17 entries 714/737 depend
+encies 115/230 modules 115 active
+ ...tor\Desktop\wt-mer001-private\frontend-miniapp\node_modules\tslib\tslib.es
+6.mjs
+
+[2K[1A[2K[1A[2K[1A[2K[1A[2K[1A[2K[1A[2K[G
+● Webpack █████████████████████████ building (29%) 6/17 entries 741/751 depend
+encies 163/233 modules 70 active
+ babel-loader › node_modules\@tarojs\api\dist\index.js
+
+[2K[1A[2K[1A[2K[1A[2K[1A[2K[1A[2K[G
+● Webpack █████████████████████████ building (39%) 9/17 entries 766/770 depend
+encies 188/243 modules 55 active
+ ...esktop\wt-mer001-private\frontend-miniapp\node_modules\@noble\hashes\esm\_
+md.js
+
+[2K[1A[2K[1A[2K[1A[2K[1A[2K[1A[2K[1A[2K[G
+● Webpack █████████████████████████ building (42%) 10/17 entries 777/779 depen
+dencies 203/246 modules 43 active
+ node_modules\scheduler\index.js
+
+[2K[1A[2K[1A[2K[1A[2K[1A[2K[1A[2K[G
+● Webpack █████████████████████████ building (42%) 10/17 entries 804/808 depen
+dencies 208/266 modules 41 active
+ ...wAoADgALAAuACoATgBqAF8AVAAkAAQAQQBwAC0AZQK3AC4CZwAiABgAGAKFAPQAdwLyACEAJQA
+qAAA=
+
+[2K[1A[2K[1A[2K[1A[2K[1A[2K[1A[2K[1A[2K[G
+● Webpack █████████████████████████ building (55%) 14/17 entries 828/830 depen
+dencies 265/275 modules 10 active
+ css-loader › postcss-loader › src\consumer\pages\pet-archive\form.css
+
+[2K[1A[2K[1A[2K[1A[2K[1A[2K[1A[2K[G
+● Webpack █████████████████████████ sealing (78%)
+ chunk modules optimization
+
+[2K[1A[2K[1A[2K[1A[2K[1A[2K[G
+● Webpack █████████████████████████ sealing (88%)
+ runtime requirements
+
+[2K[1A[2K[1A[2K[1A[2K[1A[2K[G
+● Webpack █████████████████████████ sealing (92%) asset processing
+ CssMinimizerPlugin
+
+[2K[1A[2K[1A[2K[1A[2K[1A[2K[G
+● Webpack █████████████████████████ sealing (92%) asset processing
+ RealContentHashPlugin
+
+[2K[1A[2K[1A[2K[1A[2K[1A[2K[G
+● Webpack █████████████████████████ sealing (92%) asset processing
+ TaroMiniPlugin
+
+[2K[1A[2K[1A[2K[1A[2K[1A[2K[G
+√ Webpack
+  Compiled successfully in 21.51s
+
+⚠️ Warnings:
+
+AssetsOverSizeLimitWarning: asset size limit: The following asset(s) exceed the recommended size limit (244 KiB).
+This can impact web performance.
+Assets:
+  consumer/pages/profile-edit/index.wxss (331 KiB)
+  consumer/pages/pet-archive/assets/strip-detail-bottom.png (370 KiB)
+  consumer/pages/pet-archive/sub-vendors.wxss (401 KiB)
+  consumer/pages/pet-archive/assets/strip-main.png (634 KiB)
+    at Generator.next (<anonymous>)
+
+NoAsyncChunksWarning: webpack performance recommendations:
+You can limit the size of your bundles by using import() or require.ensure to lazy load some parts of your application.
+For more info visit https://webpack.js.org/guides/code-splitting/
+    at Generator.next (<anonymous>)

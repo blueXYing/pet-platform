@@ -47,6 +47,13 @@ logging:
 pet:
   private-assets:
     enabled: ${PRIVATE_ASSETS_ENABLED:false}
+  merchant:
+    map:
+      enabled: ${TENCENT_MAP_ENABLED:false}
+      endpoint: ${TENCENT_MAP_ENDPOINT:https://apis.map.qq.com}
+      timeout-millis: ${TENCENT_MAP_TIMEOUT_MILLIS:3000}
+      # No product default: production enablement requires an explicitly approved deviation policy.
+      max-distance-meters: ${TENCENT_MAP_MAX_DISTANCE_METERS:0}
   auth:
     c:
       enabled: ${AUTH_C_ENABLED:false}

@@ -1,0 +1,18 @@
+[wechatide] skill-call: client=Codex tool=automation_evaluate
+{
+  "ok": true,
+  "tool": "automation_evaluate",
+  "clientName": "Codex",
+  "result": {
+    "success": true,
+    "result": {
+      "result": {
+        "chooseMedia": "function",
+        "chooseLocation": "function",
+        "uploadFile": "function",
+        "getPrivacySetting": "function",
+        "privateFilesystem": true
+      }
+    }
+  }
+}
