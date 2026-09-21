@@ -1,0 +1,37 @@
+{
+  "conclusion": "success",
+  "headSha": "54cf51e534038d024521fe2210e999d6c42f2d77",
+  "jobs": [
+    {
+      "conclusion": "success",
+      "name": "contract-smoke",
+      "status": "completed"
+    },
+    {
+      "conclusion": "success",
+      "name": "repository-policy",
+      "status": "completed"
+    },
+    {
+      "conclusion": "success",
+      "name": "frontend-inventory",
+      "status": "completed"
+    },
+    {
+      "conclusion": "success",
+      "name": "backend",
+      "status": "completed"
+    },
+    {
+      "conclusion": "success",
+      "name": "miniapp-weapp-build",
+      "status": "completed"
+    },
+    {
+      "conclusion": "success",
+      "name": "web-build",
+      "status": "completed"
+    }
+  ],
+  "status": "completed"
+}
