@@ -6,6 +6,13 @@
 
 **审核页面候选已完成：材料引用投影（CCR-A002-MATERIAL-REF-001，PR60 后端交付）已接入、人工核验提交已恢复；登录链路已按 PR60 受控代理方向完成真实浏览器→真实后端联调；含申请数据的详情/材料水印读取/核验/决定真实流程尚未联调（本地无 C 端播种通道）——审核工作台在上述范围内可用，整体不标 DONE。**
 
+## 评审修复轮五（2026-09-21，用户复核 6656ace/6aa572f 后三项残留）
+
+1. **快照不得解除未决（P1，已修）**：撤销轮四的 `machineVerdict` 快照终态判定——申请快照与命令无 requestId 关联（可能读到陈旧状态、原请求可能仍在排队或迟到提交、状态可能来自其它操作），"自动猜测"不优于人工猜测。未决解除唯一路径=以同一 requestId 重放取得幂等回执；刷新仅更新展示。新增并发测试：刷新读到陈旧 AVAILABLE → 原请求迟到落地（刷新再见 CLAIMED）→ 快照仍不解除 → 同 requestId 重放解除（两次 /claim 断言同一 x-request-id）。
+2. **入口 Host 统一预检（P2，已修）**：`decideProxyOrigin` 将入口 Host 精确校验置于一切转发/注入决策之前，覆盖已携带合法 Origin 的分支（评审复现"允许 Origin + 错误 Host 仍达上游"已封堵）。单测新增合法 Origin 搭配错误 Host、无 Origin 白名单 GET 搭配错误 Host、业务 GET 搭配错误 Host 均拒绝。
+3. **一次性 token 不得入日志（P2，已修）**：弃用 vite http-proxy 接线（其默认 error 日志在 `proxyReq.destroy()` 时打印含 token 的完整路径），改为自研转发中间件 `api-proxy-middleware.ts`：拒绝发生在创建任何上游请求之前；全路径零日志（拒绝/转发/上游连接失败，502 响应不含路径与 token）；清除外来转发身份头；Set-Cookie 多值透传。接线单测（tests/api-proxy-middleware.spec.ts）断言：拒绝路径 fetch 从未被调用、控制台无任何输出包含合成 token、注入分支 Origin 正确、转发保头保体剥 X-Forwarded-*、上游失败 502 脱敏。
+4. **状态纠正（按用户回执）**：材料引用 CCR-A002-MATERIAL-REF-001 **已获批准且后端已在 PR60 `4f00914` 交付**；当前状态是"前端已接入、等待含该实现的联调基线上的联合验收"，不是"等待批准"。PR60 未合并；后续含申请数据的真实联调须使用包含该实现的基线。
+
 ## 评审修复轮四（2026-09-21，按 PR60 BACKEND-HANDOFF 接入并联调）
 
 1. **材料引用接入（已交付）**：`ReviewDetail` 消费 `submittedRevision.materialReferences`；证据组由权威引用动态构建（身份证正反面合并一条 ID_CARD_BACK 绑定；行业许可证按申请类型存在才要求）；提交逐字引用登记 materialId/materialSha256；`validateMaterialReferences` 失败关闭（投影缺失/空/编号摘要枚举位置非法/必需类型缺失→禁用并说明，不替代、不当空数组）。未决恢复新增 `verify` 意图的机器判定（VERIFIED/PENDING 均为权威终态）。
@@ -51,8 +58,8 @@
 ## 验证（本地，Windows）
 
 - `npm run typecheck` 通过；`npm run build`（生产）与 `npm run build:fixture` 通过；`npm run check:boundaries` 通过（生产 JS 无 fixture 标记）。
-- `npm test`（build+Playwright，dev:4173 / preview:4174）：**23 通过 + 1 门控跳过**（`tests/live.spec.ts` 仅 `LIVE_JOINT_BASE` 存在时执行）——契约测试 11 项（未登录深链零业务调用、真实登录协议（空 JSON 体 + X-Auth-Attempt 逐跳 + **无验证码时省略 captchaProof**）、无权限关闭面板、列表契约渲染与分页、领取→单次水印读取（正反面合并解锁）→**权威 materialReferences 引用提交核验**→**投影缺失（旧后端）禁用且零调用**→**损坏摘要禁用**→未核验直接补正决定、connectionreset 与 503 均复用同一 requestId 重试、未决期间新写入禁用、权威快照机器判定解除未决（零写）、grant 刷新不解除仅幂等重试恢复、401 失效返回登录、409 版本冲突提示）、代理守卫单测 5 组、原 6 项壳测试保持。
-- 真实联调：`LIVE_JOINT_BASE=http://127.0.0.1:18082 npx playwright test tests/live.spec.ts` 1/1 通过（真实 PR60 后端 + 生产构建 + 真实 Chromium，详见评审修复轮四）。
+- `npm test`（build+Playwright，dev:4173 / preview:4174）：**26 通过 + 1 门控跳过**（`tests/live.spec.ts` 仅 `LIVE_JOINT_BASE` 存在时执行）——契约测试 11 项（含**陈旧读+迟到落地快照不解除、同 requestId 重放解除**）、代理守卫单测（入口 Host 统一预检含合法 Origin 分支）、**转发中间件接线单测 3 项**（拒绝先于上游+零 token 日志、保头保体剥转发头+Set-Cookie 透传、注入+上游失败 502 脱敏）、原 6 项壳测试保持。
+- 真实联调：`LIVE_JOINT_BASE=http://127.0.0.1:18082 npx playwright test tests/live.spec.ts` 1/1 通过（真实 PR60 后端 + 生产构建 + 真实 Chromium，详见评审修复轮四；轮五代理改自研中间件后该链路语义不变，复跑以含申请数据联调时一并执行）。
 - 未运行：真实后端联调、真机、微信端（不在本轮范围）。模拟接口测试不能替代真实契约联调（本轮评审即证明）。
 
 ## 披露与遗留

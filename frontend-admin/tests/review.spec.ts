@@ -310,17 +310,25 @@ test('503 dependency-unavailable is unknown outcome: retry kept, new writes bloc
   expect(claimCallsRecorded[1].requestId).toBe(claimCallsRecorded[0].requestId);
 });
 
-test('authoritative snapshot resolves a pending claim (machine verdict, zero extra writes)', async ({ page }) => {
+test('refresh never clears a pending intent (stale read then late landing); only same-requestId replay resolves', async ({ page }) => {
   const calls = recorder(page);
   await grantLogin(page);
   let claimCalls = 0;
+  let detailCalls = 0;
   await page.route('**/api/v1/admin/merchant-applications**', (route: Route) => {
     const path = new URL(route.request().url()).pathname;
     if (path === '/api/v1/admin/merchant-applications') route.fulfill(unified({ items: [SUMMARY], page: 1, pageSize: 20, total: 1 }));
-    else if (path === `/api/v1/admin/merchant-applications/${APPLICATION_ID}`) route.fulfill(unified(detail({ taskStatus: claimCalls > 0 ? 'CLAIMED' : 'AVAILABLE', taskVersion: claimCalls > 0 ? '3' : '2' })));
+    else if (path === `/api/v1/admin/merchant-applications/${APPLICATION_ID}`) {
+      detailCalls += 1;
+      // The original claim "lands" only after the second read: the first refresh
+      // observes the stale pre-command state, exactly the reviewer's race.
+      const landed = claimCalls > 0 && detailCalls >= 2;
+      route.fulfill(unified(detail({ taskStatus: landed ? 'CLAIMED' : 'AVAILABLE', taskVersion: landed ? '3' : '2' })));
+    }
     else if (path.endsWith('/claim')) {
       claimCalls += 1;
-      route.fulfill(failure('COMMON_DEPENDENCY_UNAVAILABLE', 503));
+      if (claimCalls === 1) route.fulfill(failure('COMMON_DEPENDENCY_UNAVAILABLE', 503));
+      else route.fulfill(unified({ ...detail().task, status: 'CLAIMED', version: '3', claimedByOperatorId: '9001' }));
     } else route.fulfill(unified(detail()));
   });
 
@@ -328,16 +336,26 @@ test('authoritative snapshot resolves a pending claim (machine verdict, zero ext
   await page.getByRole('link', { name: '打开' }).click();
   await page.getByRole('button', { name: '领取任务' }).click();
   await expect(page.getByRole('button', { name: /重试原操作/ })).toBeVisible();
-  await expect(page.getByRole('button', { name: '领取任务' })).toBeDisabled();
 
-  // Refresh yields the authoritative terminal state (CLAIMED): the pending intent
-  // is cleared by machine verdict — no operator confirmation, no extra write.
-  const writesBefore = calls.filter(call => call.method === 'POST').length;
+  // Refresh #1 returns the STALE state (task still AVAILABLE): pending must stay.
   await page.getByRole('button', { name: '刷新申请状态' }).click();
-  await expect(page.getByText(/权威状态确认：任务已领取/)).toBeVisible();
+  await expect(page.getByRole('button', { name: /重试原操作/ })).toBeVisible();
+  await expect(page.getByText('任务状态：待领取')).toBeVisible();
+
+  // Refresh #2 now sees the landed CLAIMED state — the snapshot has NO
+  // requestId correlation, so it still must NOT clear the pending intent.
+  await page.getByRole('button', { name: '刷新申请状态' }).click();
+  await expect(page.getByText('任务状态：已领取').first()).toBeVisible();
+  await expect(page.getByRole('button', { name: /重试原操作/ })).toBeVisible();
+  expect(calls.filter(call => call.path.endsWith('/claim'))).toHaveLength(1);
+
+  // Only replaying the SAME requestId resolves the intent via the idempotent receipt.
+  await page.getByRole('button', { name: /重试原操作/ }).click();
+  await expect(page.getByText('任务已领取')).toBeVisible();
   await expect(page.getByRole('button', { name: /重试原操作/ })).toHaveCount(0);
-  await expect(page.getByRole('button', { name: '释放任务' })).toBeEnabled();
-  expect(calls.filter(call => call.method === 'POST').length).toBe(writesBefore);
+  const claimCallsRecorded = calls.filter(call => call.path.endsWith('/claim'));
+  expect(claimCallsRecorded).toHaveLength(2);
+  expect(claimCallsRecorded[1].requestId).toBe(claimCallsRecorded[0].requestId);
 });
 
 test('grant issuance stays pending: snapshot cannot determine it, only idempotent retry recovers', async ({ page }) => {
@@ -361,7 +379,7 @@ test('grant issuance stays pending: snapshot cannot determine it, only idempoten
   await page.getByRole('link', { name: '打开' }).click();
   await page.locator('ul.materials li', { hasText: '营业执照' }).getByRole('button', { name: '申请一次性查看' }).click();
   await expect(page.getByRole('alert').first()).toContainText('结果未知');
-  await expect(page.getByText('材料授权结果无法由申请快照判定，仅可通过重试原操作（幂等回执）恢复。')).toBeVisible();
+  await expect(page.getByText(/材料授权结果无法由申请快照判定/)).toBeVisible();
 
   // An authoritative refresh must NOT clear this intent…
   await page.getByRole('button', { name: '刷新申请状态' }).click();

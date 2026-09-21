@@ -44,32 +44,12 @@ function unknownOutcome(error: unknown) {
 
 type PendingKind = 'claim' | 'release' | 'decide' | 'grant' | 'verify';
 
-// Machine-verifiable terminal verdicts from the authoritative snapshot. Operator
-// confirmation is never a substitute: the pending intent is kept until the
-// snapshot proves the command's outcome, or — for grants, which the application
-// snapshot cannot determine — until the same requestId is replayed.
-function machineVerdict(kind: PendingKind, next: ReviewDetail): string | null {
-  switch (kind) {
-    case 'claim':
-      if (next.task.status === 'CLAIMED') return '权威状态确认：任务已领取，原操作已生效，未决解除。';
-      if (next.task.status === 'AVAILABLE') return '权威状态确认：任务当前待领取（原领取未生效或此后已被释放），未决解除，可重新领取。';
-      return null;
-    case 'release':
-      if (next.task.status === 'AVAILABLE') return '权威状态确认：任务已释放，原操作已生效，未决解除。';
-      if (next.task.status === 'CLAIMED') return '权威状态确认：任务仍为已领取（原释放未生效），未决解除，可重新释放。';
-      return null;
-    case 'decide':
-      return next.status !== 'REVIEWING'
-        ? `权威状态确认：申请已离开审核中（${next.status}），决定已生效，未决解除。`
-        : '权威状态确认：申请仍在审核中（原决定未生效），未决解除，可重新提交。';
-    case 'verify':
-      return next.subjectVerificationStatus === 'VERIFIED'
-        ? '权威状态确认：主体核验已完成，原操作已生效，未决解除。'
-        : '权威状态确认：主体核验仍未完成（原核验未生效），未决解除，可重新提交。';
-    default:
-      return null;
-  }
-}
+// A pending intent is resolved ONLY by replaying the SAME requestId: the
+// idempotent receipt is the authoritative command outcome. The application
+// snapshot carries no per-command correlation (an observed state may predate
+// the in-flight request, may still land afterwards, or may belong to another
+// operation), so a refresh never clears the pending intent — it only updates
+// what is displayed.
 
 export default function ReviewDetailPage({ client, canOperate, onAuthLost }: { client: Client; canOperate: boolean; onAuthLost: () => void }) {
   const { applicationId = '' } = useParams();
@@ -98,15 +78,7 @@ export default function ReviewDetailPage({ client, canOperate, onAuthLost }: { c
     setBusy(true);
     setError('');
     client.get(applicationId)
-      .then(data => {
-        setDetail(data);
-        const pending = retryRef.current;
-        if (pending) {
-          const verdict = machineVerdict(pending.kind, data);
-          if (verdict !== null) { updateRetry(null); setNotice(verdict); }
-        }
-        setBusy(false);
-      })
+      .then(data => { setDetail(data); setBusy(false); })
       .catch((caught: unknown) => {
         setBusy(false);
         const text = failureText(caught, '加载申请失败');
@@ -237,9 +209,9 @@ export default function ReviewDetailPage({ client, canOperate, onAuthLost }: { c
     {retry && <p>
       <button onClick={() => void retry.run()} disabled={busy}>重试原操作（复用原请求标识）</button>
       <button onClick={() => void load()} disabled={busy}>刷新申请状态</button>
-      {retry.kind === 'grant'
-        ? <span>材料授权结果无法由申请快照判定，仅可通过重试原操作（幂等回执）恢复。</span>
-        : <span>刷新后将按权威状态自动判定本操作终态并解除未决；判定不了会保持未决。</span>}
+      <span>{retry.kind === 'grant'
+        ? '材料授权结果无法由申请快照判定；'
+        : '申请快照与本次命令无 requestId 关联，不能证明其已终结；'}仅可通过重试原操作以同一请求标识取得幂等回执解除未决；刷新仅更新当前展示。</span>
     </p>}
 
     <section aria-labelledby="snapshot-heading">
