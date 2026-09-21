@@ -233,15 +233,18 @@ test('503 dependency-unavailable is unknown outcome: retry kept, new writes bloc
   expect(claimCallsRecorded[1].requestId).toBe(claimCallsRecorded[0].requestId);
 });
 
-test('operator-confirmed resolution via authoritative read clears the pending intent', async ({ page }) => {
+test('authoritative snapshot resolves a pending claim (machine verdict, zero extra writes)', async ({ page }) => {
   const calls = recorder(page);
   await grantLogin(page);
+  let claimCalls = 0;
   await page.route('**/api/v1/admin/merchant-applications**', (route: Route) => {
     const path = new URL(route.request().url()).pathname;
     if (path === '/api/v1/admin/merchant-applications') route.fulfill(unified({ items: [SUMMARY], page: 1, pageSize: 20, total: 1 }));
-    else if (path === `/api/v1/admin/merchant-applications/${APPLICATION_ID}`) route.fulfill(unified(detail()));
-    else if (path.endsWith('/claim')) route.fulfill(failure('COMMON_DEPENDENCY_UNAVAILABLE', 503));
-    else route.fulfill(unified(detail()));
+    else if (path === `/api/v1/admin/merchant-applications/${APPLICATION_ID}`) route.fulfill(unified(detail({ taskStatus: claimCalls > 0 ? 'CLAIMED' : 'AVAILABLE', taskVersion: claimCalls > 0 ? '3' : '2' })));
+    else if (path.endsWith('/claim')) {
+      claimCalls += 1;
+      route.fulfill(failure('COMMON_DEPENDENCY_UNAVAILABLE', 503));
+    } else route.fulfill(unified(detail()));
   });
 
   await login(page);
@@ -250,15 +253,48 @@ test('operator-confirmed resolution via authoritative read clears the pending in
   await expect(page.getByRole('button', { name: /重试原操作/ })).toBeVisible();
   await expect(page.getByRole('button', { name: '领取任务' })).toBeDisabled();
 
-  // Refresh (authoritative read) then operator-confirmed clear re-enables writes;
-  // no additional write request is issued by the resolution itself.
+  // Refresh yields the authoritative terminal state (CLAIMED): the pending intent
+  // is cleared by machine verdict — no operator confirmation, no extra write.
   const writesBefore = calls.filter(call => call.method === 'POST').length;
   await page.getByRole('button', { name: '刷新申请状态' }).click();
-  await expect(page.getByRole('button', { name: '刷新申请状态' })).toBeEnabled();
-  await page.getByRole('button', { name: '我已核实结果，清除未决操作' }).click();
-  await expect(page.getByText('已按权威查询清除未决操作', { exact: false })).toBeVisible();
-  await expect(page.getByRole('button', { name: '领取任务' })).toBeEnabled();
+  await expect(page.getByText(/权威状态确认：任务已领取/)).toBeVisible();
+  await expect(page.getByRole('button', { name: /重试原操作/ })).toHaveCount(0);
+  await expect(page.getByRole('button', { name: '释放任务' })).toBeEnabled();
   expect(calls.filter(call => call.method === 'POST').length).toBe(writesBefore);
+});
+
+test('grant issuance stays pending: snapshot cannot determine it, only idempotent retry recovers', async ({ page }) => {
+  const calls = recorder(page);
+  await grantLogin(page);
+  let grantCalls = 0;
+  await page.route('**/api/v1/admin/merchant-applications**', (route: Route) => {
+    const path = new URL(route.request().url()).pathname;
+    if (path === '/api/v1/admin/merchant-applications') route.fulfill(unified({ items: [SUMMARY], page: 1, pageSize: 20, total: 1 }));
+    else route.fulfill(unified(detail()));
+  });
+  await page.route(/\/private-assets\/6011\d+\/read-grants$/, route => {
+    grantCalls += 1;
+    if (grantCalls === 1) route.fulfill(failure('COMMON_DEPENDENCY_UNAVAILABLE', 503));
+    else route.fulfill(unified({ readUrl: `/api/v1/admin/private-asset-read-grants/token${grantCalls}_aaaaaaaaaaaaaaaaaaaaaaaaaaaa`, expiresAt: '2026-09-20T17:00:00.000Z' }));
+  });
+  await page.route(/\/private-asset-read-grants\/.+/, route =>
+    route.fulfill({ status: 200, headers: { 'Content-Type': 'image/png' }, body: Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==', 'base64') }));
+
+  await login(page);
+  await page.getByRole('link', { name: '打开' }).click();
+  await page.locator('ul.materials li', { hasText: '营业执照' }).getByRole('button', { name: '申请一次性查看' }).click();
+  await expect(page.getByRole('alert').first()).toContainText('结果未知');
+  await expect(page.getByText('材料授权结果无法由申请快照判定，仅可通过重试原操作（幂等回执）恢复。')).toBeVisible();
+
+  // An authoritative refresh must NOT clear this intent…
+  await page.getByRole('button', { name: '刷新申请状态' }).click();
+  await expect(page.getByRole('button', { name: /重试原操作/ })).toBeVisible();
+  // …only replaying the SAME requestId recovers.
+  await page.getByRole('button', { name: /重试原操作/ }).click();
+  await expect(page.locator('ul.materials li', { hasText: '营业执照' }).getByRole('img')).toBeVisible();
+  const grantCallsRecorded = calls.filter(call => call.path.includes('/read-grants') && call.path.includes('/private-assets/'));
+  expect(grantCallsRecorded).toHaveLength(2);
+  expect(grantCallsRecorded[1].requestId).toBe(grantCallsRecorded[0].requestId);
 });
 
 test('stale auth (401 on business query) fails closed and returns to login', async ({ page }) => {

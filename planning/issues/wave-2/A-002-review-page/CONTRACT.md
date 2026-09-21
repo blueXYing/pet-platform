@@ -31,9 +31,14 @@
 ## 4. 已知缝隙与假设（待 Contract Owner/联调确认）
 
 1. **envelope 不一致**：`/auth/*` 响应为 `{code,message,data,traceId}`（无 `success`），商家/材料接口为统一 `{success,...}`。前端客户端按"有 `success` 用 `success`，否则 `code==='SUCCESS'`"兼容；建议后续按 23 号统一，前端再收紧。
-2. **登录来源校验冲突（阻断性集成事实，非环境备注）**：浏览器对同源 fetch **GET 不携带 Origin**（且 Origin 属禁止手动设置的请求头），而后端 `AdminAuthController.cookie()` 对 requirements 等 attempt 绑定调用要求 `pet.auth.admin.origin` 精确匹配，缺失即 403。因此仅"HTTPS + Origin 配置一致"不足以让网页登录成功。已提供两条解决路径供裁决：(a) 部署信任边界内的反向代理统一注入受控 Origin（本仓库 vite dev/preview 已内置该代理，`ADMIN_API_PROXY_TARGET`/`ADMIN_API_PROXY_ORIGIN` 环境变量配置，后端校验原样执行不放宽）；(b) 后端 CCR 调整浏览器 GET 的来源校验方式。真实浏览器→真实后端验证前，登录链路保持"未联调通过"结论。
+2. **登录来源校验冲突（阻断性集成事实，非环境备注）**：浏览器对同源 fetch **GET 不携带 Origin**（且 Origin 属禁止手动设置的请求头），而后端 `AdminAuthController.cookie()` 对 requirements 等 attempt 绑定调用要求 `pet.auth.admin.origin` 精确匹配，缺失即 403。因此仅"HTTPS + Origin 配置一致"不足以让网页登录成功。已按[PR60 交接](../A-002-contract-review/DECISIONS-AND-HANDOFF.md)批准的"同一 HTTPS 入口 + 受控代理"方向实施 dev/preview 受控代理（`vite.config.ts` + `proxy-guard.ts`）：
+   - 显式配置（`ADMIN_API_PROXY_TARGET`/`ADMIN_API_PROXY_ORIGIN`）成对出现，缺失或不完整即不启用代理，无默认转发目标；
+   - 已携带 Origin 的请求仅放行唯一允许值，其它值（含 `null`）**拒绝且绝不覆盖**；
+   - 仅对白名单 attempt 绑定 GET（auth requirements/result）在缺 Origin 时注入，且须先核实同源浏览器上下文（`Sec-Fetch-Site: same-origin` 且 Host 匹配入口），否则失败关闭；
+   - 清除外来转发身份头（X-Forwarded-*/Forwarded），代理不新增其它可信头；不记录敏感头/体；
+   - 判定逻辑为纯函数并单测覆盖（tests/proxy-guard.spec.ts）；浏览器级注入到真实后端仍属联调验收项，dev/preview 代理不等于生产入口已部署或验收。生产入口需按同一基线落实（或走后端 CCR），并按 PR60 必需集成验收清单以真实浏览器/后端验证。
 3. **材料引用契约缺口（已确认，走 CCR）**：审核详情投影不提供提交版本 merchant_material 的编号与登记摘要，而后端核验强制比对二者。前端不得以 assetId 或水印读取字节摘要替代（动态水印会改变字节，且 assetId≠materialId）。已按后端实现确认，非待验证假设；需 Contract Owner 经 CCR 补充权威投影（含 materialId、materialSha256、materialType）后，前端方可接入人工核验提交。当前页面呈现证据录入候选但禁用提交。
-4. **写操作重试幂等**：领取/释放/决定/材料授权均为公共幂等写；结果未知（网络错误、坏响应、5xx 含 503 COMMON_DEPENDENCY_UNAVAILABLE——后端在提交结果未知时返回依赖不可用，不能据此认定未执行）时页面保留原 requestId 与参数并提供"重试原操作"，复用同一请求标识取得幂等回执。**未决操作存在期间阻止一切新写入**（各操作按钮禁用且入口拒绝），只允许：重试原操作、刷新权威状态、或运营员确认核实后清除未决意图；确定性 4xx 契约错误不进入未决状态。
+4. **写操作重试幂等与未决恢复**：领取/释放/决定/材料授权均为公共幂等写；结果未知（网络错误、坏响应、5xx 含 503 COMMON_DEPENDENCY_UNAVAILABLE——后端在提交结果未知时返回依赖不可用，不能据此认定未执行）时页面保留原 requestId 与参数并提供"重试原操作"，复用同一请求标识取得幂等回执。**未决操作存在期间阻止一切新写入**（各操作按钮禁用且入口拒绝）。未决的解除必须**机器可验证**（不以操作者确认替代）：claim/release/decide 在刷新后的权威快照能判定命令终态（已生效/未生效）时自动解除并说明判定依据；材料授权（grant）的签发结果无法由申请快照判定，**仅**可通过重试原操作（幂等回执）恢复，刷新不解除。确定性 4xx 契约错误不进入未决状态。
 5. 登录 `accessToken` 内存持有、刷新即重登；不引入持久化会话存储（PRD 未批准 remember-me）。
 
 ## 5. 硬规则落点（引用，不重定义）

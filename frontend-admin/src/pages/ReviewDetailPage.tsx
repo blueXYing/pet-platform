@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { RequestFailure } from '../request';
 import {
@@ -41,6 +41,31 @@ function unknownOutcome(error: unknown) {
   return true;
 }
 
+type PendingKind = 'claim' | 'release' | 'decide' | 'grant';
+
+// Machine-verifiable terminal verdicts from the authoritative snapshot. Operator
+// confirmation is never a substitute: the pending intent is kept until the
+// snapshot proves the command's outcome, or — for grants, which the application
+// snapshot cannot determine — until the same requestId is replayed.
+function machineVerdict(kind: PendingKind, next: ReviewDetail): string | null {
+  switch (kind) {
+    case 'claim':
+      if (next.task.status === 'CLAIMED') return '权威状态确认：任务已领取，原操作已生效，未决解除。';
+      if (next.task.status === 'AVAILABLE') return '权威状态确认：任务当前待领取（原领取未生效或此后已被释放），未决解除，可重新领取。';
+      return null;
+    case 'release':
+      if (next.task.status === 'AVAILABLE') return '权威状态确认：任务已释放，原操作已生效，未决解除。';
+      if (next.task.status === 'CLAIMED') return '权威状态确认：任务仍为已领取（原释放未生效），未决解除，可重新释放。';
+      return null;
+    case 'decide':
+      return next.status !== 'REVIEWING'
+        ? `权威状态确认：申请已离开审核中（${next.status}），决定已生效，未决解除。`
+        : '权威状态确认：申请仍在审核中（原决定未生效），未决解除，可重新提交。';
+    default:
+      return null;
+  }
+}
+
 export default function ReviewDetailPage({ client, canOperate, onAuthLost }: { client: Client; canOperate: boolean; onAuthLost: () => void }) {
   const { applicationId = '' } = useParams();
   const [detail, setDetail] = useState<ReviewDetail>();
@@ -55,13 +80,26 @@ export default function ReviewDetailPage({ client, canOperate, onAuthLost }: { c
   const [decisionConfirmed, setDecisionConfirmed] = useState(false);
   const [drafts, setDrafts] = useState<Record<string, EvidenceDraft>>({});
   // Survives an unknown-outcome write so retry reuses the SAME requestId (idempotent receipt).
-  const [retry, setRetry] = useState<{ label: string; run: () => Promise<void> } | null>(null);
+  const [retry, setRetry] = useState<{ kind: PendingKind; label: string; run: () => Promise<void> } | null>(null);
+  const retryRef = useRef<{ kind: PendingKind; label: string; run: () => Promise<void> } | null>(null);
+  const updateRetry = (value: { kind: PendingKind; label: string; run: () => Promise<void> } | null) => {
+    retryRef.current = value;
+    setRetry(value);
+  };
 
   const load = useCallback(() => {
     setBusy(true);
     setError('');
     client.get(applicationId)
-      .then(data => { setDetail(data); setBusy(false); })
+      .then(data => {
+        setDetail(data);
+        const pending = retryRef.current;
+        if (pending) {
+          const verdict = machineVerdict(pending.kind, data);
+          if (verdict !== null) { updateRetry(null); setNotice(verdict); }
+        }
+        setBusy(false);
+      })
       .catch((caught: unknown) => {
         setBusy(false);
         const text = failureText(caught, '加载申请失败');
@@ -75,45 +113,46 @@ export default function ReviewDetailPage({ client, canOperate, onAuthLost }: { c
     setDrafts(current => ({ ...current, [group]: { ...(current[group] ?? EMPTY_DRAFT), ...patch } }));
   }
 
-  async function attemptWrite(requestId: string, invoke: (id: string) => Promise<unknown>, successText: string, reload: boolean) {
+  async function attemptWrite(kind: PendingKind, requestId: string, invoke: (id: string) => Promise<unknown>, successText: string, reload: boolean) {
     setBusy(true);
     setError('');
     setNotice('');
     try {
       await invoke(requestId);
-      setRetry(null);
+      updateRetry(null);
       setNotice(successText);
       if (reload) load(); else setBusy(false);
     } catch (caught) {
       setBusy(false);
       if (caught instanceof RequestFailure && (caught.code === 'UNAUTHENTICATED' || caught.code === 'STALE_CONTEXT')) { onAuthLost(); return; }
       if (!unknownOutcome(caught)) {
-        setRetry(null);
+        updateRetry(null);
         setError(failureText(caught, '操作失败'));
         return;
       }
-      setError('结果未知：后台可能已执行该操作；重试将复用原请求标识以取得幂等回执。');
-      setRetry({
+      setError('结果未知：后台可能已执行该操作；重试将复用原请求标识以取得幂等回执，刷新后将按权威状态判定终态。');
+      updateRetry({
+        kind,
         label: successText,
-        run: () => attemptWrite(requestId, invoke, successText, reload),
+        run: () => attemptWrite(kind, requestId, invoke, successText, reload),
       });
     }
   }
 
-  function runWrite(invoke: (requestId: string) => Promise<unknown>, successText: string, reload = true) {
+  function runWrite(kind: PendingKind, invoke: (requestId: string) => Promise<unknown>, successText: string, reload = true) {
     // An unresolved write keeps its original requestId; conflicting new writes are
-    // refused until the operator retries the original or resolves it via an
-    // authoritative read, so a second UUID can never displace the pending intent.
-    if (retry) {
-      setError('存在结果未知的操作：请先重试原操作（复用原请求标识），或刷新状态核实结果后清除未决操作。');
+    // refused until the operator retries the original or a machine-verifiable
+    // terminal verdict clears it via an authoritative read.
+    if (retryRef.current) {
+      setError('存在结果未知的操作：请先重试原操作（复用原请求标识），或刷新状态取得权威终态判定。');
       return Promise.resolve();
     }
-    return attemptWrite(crypto.randomUUID(), invoke, successText, reload);
+    return attemptWrite(kind, crypto.randomUUID(), invoke, successText, reload);
   }
 
   const viewMaterial = (assetId: string) => {
     if (!detail) return;
-    void runWrite(async requestId => {
+    void runWrite('grant', async requestId => {
       if (viewReason.trim().length < 10) throw new RequestFailure('REASON_REQUIRED', 0);
       const grant = await client.issueReadGrant(applicationId, assetId, {
         submissionRevisionId: detail.submittedRevisionId,
@@ -126,9 +165,9 @@ export default function ReviewDetailPage({ client, canOperate, onAuthLost }: { c
     }, '材料已通过一次性水印读取展示；如需再次查看须重新申请', false);
   };
 
-  const claim = () => detail && void runWrite(id => client.claim(applicationId, detail.task.version, id), '任务已领取');
-  const release = () => detail && void runWrite(id => client.release(applicationId, detail.task.version, id), '任务已释放，回到待领取');
-  const submitDecision = () => detail && void runWrite(id => client.decide(applicationId, {
+  const claim = () => detail && void runWrite('claim', id => client.claim(applicationId, detail.task.version, id), '任务已领取');
+  const release = () => detail && void runWrite('release', id => client.release(applicationId, detail.task.version, id), '任务已释放，回到待领取');
+  const submitDecision = () => detail && void runWrite('decide', id => client.decide(applicationId, {
     decisionType,
     submissionRevisionId: detail.submittedRevisionId,
     expectedVersion: detail.version,
@@ -163,7 +202,9 @@ export default function ReviewDetailPage({ client, canOperate, onAuthLost }: { c
     {retry && <p>
       <button onClick={() => void retry.run()} disabled={busy}>重试原操作（复用原请求标识）</button>
       <button onClick={() => void load()} disabled={busy}>刷新申请状态</button>
-      <button onClick={() => { setRetry(null); setError(''); setNotice('已按权威查询清除未决操作；如操作实际已执行，请以刷新后的状态为准。'); }} disabled={busy}>我已核实结果，清除未决操作</button>
+      {retry.kind === 'grant'
+        ? <span>材料授权结果无法由申请快照判定，仅可通过重试原操作（幂等回执）恢复。</span>
+        : <span>刷新后将按权威状态自动判定本操作终态并解除未决；判定不了会保持未决。</span>}
     </p>}
 
     <section aria-labelledby="snapshot-heading">
