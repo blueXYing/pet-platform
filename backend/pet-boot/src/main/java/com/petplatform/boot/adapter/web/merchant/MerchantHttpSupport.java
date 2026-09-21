@@ -270,6 +270,18 @@ final class MerchantHttpSupport {
     revision.put("revisionId", r.revisionId());
     revision.put("revisionNo", r.revisionNo());
     revision.put("snapshot", snapshot);
+    revision.put(
+        "materialReferences",
+        d.materialReferences().stream()
+            .map(
+                reference ->
+                    Map.of(
+                        "materialId", reference.materialId(),
+                        "assetId", reference.assetId(),
+                        "materialSha256", reference.materialSha256(),
+                        "materialType", reference.materialType(),
+                        "position", reference.position()))
+            .toList());
     revision.put("createdAt", time(r.createdAt()));
     Map<String, Object> out = new LinkedHashMap<>();
     out.put("applicationId", a.applicationId());

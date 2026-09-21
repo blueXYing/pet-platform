@@ -1,0 +1,87 @@
+{
+  "full_reactor_before_final_read_lock": {
+    "suites": 64,
+    "tests": 403,
+    "failures": 0,
+    "errors": 0,
+    "skipped": 0,
+    "result": "PASS",
+    "note": "Final read-lock/concurrency addition is verified separately after this full reactor run."
+  },
+  "final_focused": {
+    "result": "PASS",
+    "tests": 45,
+    "failures": 0,
+    "errors": 0,
+    "skipped": 0,
+    "suites": [
+      {
+        "name": "com.petplatform.architecture.ArchitectureRulesFixtureTest",
+        "tests": "15",
+        "failures": "0",
+        "errors": "0",
+        "skipped": "0"
+      },
+      {
+        "name": "com.petplatform.architecture.ArchitectureRulesTest",
+        "tests": "7",
+        "failures": "0",
+        "errors": "0",
+        "skipped": "0"
+      },
+      {
+        "name": "com.petplatform.boot.adapter.web.merchant.MerchantApplicationHttpTest",
+        "tests": "5",
+        "failures": "0",
+        "errors": "0",
+        "skipped": "0"
+      },
+      {
+        "name": "com.petplatform.boot.auth.MerchantApplicationLifecycleHttpTest",
+        "tests": "1",
+        "failures": "0",
+        "errors": "0",
+        "skipped": "0"
+      },
+      {
+        "name": "com.petplatform.merchant.biz.MerchantApplicationHttpProjectionMySqlTest",
+        "tests": "2",
+        "failures": "0",
+        "errors": "0",
+        "skipped": "0"
+      },
+      {
+        "name": "com.petplatform.merchant.biz.MerchantApplicationRuntimeMySqlTest",
+        "tests": "5",
+        "failures": "0",
+        "errors": "0",
+        "skipped": "0"
+      },
+      {
+        "name": "com.petplatform.merchant.biz.MerchantApplicationSafetyMySqlTest",
+        "tests": "10",
+        "failures": "0",
+        "errors": "0",
+        "skipped": "0"
+      }
+    ]
+  },
+  "offline_contract_tests": {
+    "result": "PASS",
+    "tests": 115
+  },
+  "architecture_source_checks": "PASS",
+  "contract_schema_event_changes": "Approved API07/API30/OpenAPI response addition only; no Schema/DDL/Event changes.",
+  "not_executed": [
+    "browser HTTPS proxy integration",
+    "ZCODE frontend integration",
+    "production migration/deployment"
+  ],
+  "source_sha256": {
+    "backend/pet-boot/src/main/java/com/petplatform/boot/adapter/web/merchant/MerchantHttpSupport.java": "61570b16d142ff00f1526e63e7cf7f58cde693b0d8369a96bf3ef2e78400b866",
+    "backend/pet-boot/src/test/java/com/petplatform/boot/auth/MerchantApplicationLifecycleHttpTest.java": "7bab3ca90209a9e965b20e415de6a2a2b862cedfcbbb03c37cfe372d1c27ba4f",
+    "backend/pet-merchant-api/src/main/java/com/petplatform/merchant/api/dto/MerchantApplicationTypes.java": "ffa79af0899ad4bdcc298871734dcfdb69063db8955764ae800177bbb44e6e1b",
+    "backend/pet-merchant-biz/src/main/java/com/petplatform/merchant/biz/application/MerchantApplicationService.java": "1815e521cd1132afd3317e0abe75f2e90a5efd52c1246dbd5c28996126a4489c",
+    "backend/pet-merchant-biz/src/test/java/com/petplatform/merchant/biz/MerchantApplicationRuntimeMySqlTest.java": "e8879333df428d440976fb0cc5f57aa7011162a1f5673e85b37484fb1583ff12"
+  }
+}

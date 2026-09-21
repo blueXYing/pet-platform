@@ -330,7 +330,7 @@ class MerchantApplicationRuntimeMySqlTest {
               draft().longitude(),
               draft().latitude(),
               draft().introduction(),
-              draft().storePhotoAssetIds(),
+              List.of("106"),
               draft().businessLicenseAssetId(),
               draft().idCardFrontAssetId(),
               draft().idCardBackAssetId(),
@@ -344,6 +344,19 @@ class MerchantApplicationRuntimeMySqlTest {
                   user(UUID.randomUUID().toString())));
       assertNotEquals(
           submitted.currentRevision().revisionId(), saved.currentRevision().revisionId());
+      var historicalReview =
+          api.getForReview(
+              new MerchantApplicationReviewQuery(
+                  submitted.applicationId(), auth(), queryOperator()));
+      assertEquals(
+          submitted.currentRevision().revisionId(),
+          historicalReview.application().currentRevision().revisionId());
+      assertTrue(
+          historicalReview.materialReferences().stream()
+              .anyMatch(ref -> ref.assetId().equals("101")));
+      assertFalse(
+          historicalReview.materialReferences().stream()
+              .anyMatch(ref -> ref.assetId().equals("106")));
       MerchantApplicationResult resubmitted =
           api.submit(
               new SubmitMerchantApplicationCommand(
@@ -351,6 +364,16 @@ class MerchantApplicationRuntimeMySqlTest {
                   saved.version(),
                   saved.currentRevision().revisionId(),
                   user(UUID.randomUUID().toString())));
+      var currentReview =
+          api.getForReview(
+              new MerchantApplicationReviewQuery(
+                  submitted.applicationId(), auth(), queryOperator()));
+      assertEquals(
+          saved.currentRevision().revisionId(), currentReview.task().submittedRevisionId());
+      assertTrue(
+          currentReview.materialReferences().stream().anyMatch(ref -> ref.assetId().equals("106")));
+      assertFalse(
+          currentReview.materialReferences().stream().anyMatch(ref -> ref.assetId().equals("101")));
       assertEquals("REVIEWING", resubmitted.status());
       assertEquals(submitted.applicationNo(), resubmitted.applicationNo());
       assertEquals(
@@ -368,6 +391,124 @@ class MerchantApplicationRuntimeMySqlTest {
                       + " application_id=?",
                   Integer.class,
                   Long.parseLong(created.applicationId())));
+    }
+  }
+
+  @Test
+  void reviewReferencesAreRegisteredImmutableAndAuthorizationScoped() throws Exception {
+    try (var db = new MySqlMerchantApplicationSchemaTestDatabase()) {
+      seedPolicy(db);
+      Fixture fixture = new Fixture(db, true);
+      var api = fixture.api();
+      var created =
+          api.createDraft(
+              new CreateMerchantApplicationCommand(draft(), user(UUID.randomUUID().toString())));
+      var submitted =
+          api.submit(
+              new SubmitMerchantApplicationCommand(
+                  created.applicationId(),
+                  created.version(),
+                  created.currentRevision().revisionId(),
+                  user(UUID.randomUUID().toString())));
+      var query =
+          new MerchantApplicationReviewQuery(submitted.applicationId(), auth(), queryOperator());
+      var detail = api.getForReview(query);
+      assertEquals(5, detail.materialReferences().size());
+      assertEquals(
+          List.of(
+              "BUSINESS_LICENSE",
+              "ID_CARD_BACK",
+              "ID_CARD_FRONT",
+              "INDUSTRY_LICENSE",
+              "STORE_PHOTO"),
+          detail.materialReferences().stream().map(MaterialReference::materialType).toList());
+      for (var ref : detail.materialReferences()) {
+        assertNotEquals(ref.assetId(), ref.materialId());
+        assertEquals(sha("asset-" + ref.assetId()), ref.materialSha256());
+        assertNotEquals(sha("watermarked-" + ref.assetId()), ref.materialSha256());
+      }
+      assertThrows(UnsupportedOperationException.class, () -> detail.materialReferences().clear());
+      fixture.rowAccess = resource -> false;
+      assertThrows(ApiException.class, () -> api.getForReview(query));
+      fixture.rowAccess = resource -> true;
+      fixture.allowed.set(false);
+      assertThrows(ApiException.class, () -> api.getForReview(query));
+      fixture.allowed.set(true);
+      // The database rejects a malformed hash; the read also rejects an incomplete relation set.
+      assertThrows(
+          org.springframework.dao.DataAccessException.class,
+          () ->
+              db.jdbc()
+                  .update(
+                      "UPDATE merchant_application_material SET sha256=? WHERE id=?",
+                      "Z".repeat(64),
+                      Long.parseLong(detail.materialReferences().getFirst().materialId())));
+      db.jdbc()
+          .update(
+              "DELETE FROM merchant_application_revision_material WHERE application_id=? AND"
+                  + " material_type='BUSINESS_LICENSE'",
+              Long.parseLong(submitted.applicationId()));
+      assertThrows(ApiException.class, () -> api.getForReview(query));
+    }
+  }
+
+  @Test
+  void reviewKeepsApplicationVersionStableWhileProjectingMaterials() throws Exception {
+    try (var db = new MySqlMerchantApplicationSchemaTestDatabase()) {
+      seedPolicy(db);
+      Fixture fixture = new Fixture(db, true);
+      var api = fixture.api();
+      var created =
+          api.createDraft(
+              new CreateMerchantApplicationCommand(draft(), user(UUID.randomUUID().toString())));
+      var submitted =
+          api.submit(
+              new SubmitMerchantApplicationCommand(
+                  created.applicationId(),
+                  created.version(),
+                  created.currentRevision().revisionId(),
+                  user(UUID.randomUUID().toString())));
+      var entered = new java.util.concurrent.CountDownLatch(1);
+      var proceed = new java.util.concurrent.CountDownLatch(1);
+      fixture.rowAccess =
+          resource -> {
+            entered.countDown();
+            try {
+              return proceed.await(8, java.util.concurrent.TimeUnit.SECONDS);
+            } catch (InterruptedException e) {
+              Thread.currentThread().interrupt();
+              return false;
+            }
+          };
+      try (var executor = java.util.concurrent.Executors.newSingleThreadExecutor()) {
+        var reading =
+            executor.submit(
+                () ->
+                    api.getForReview(
+                        new MerchantApplicationReviewQuery(
+                            submitted.applicationId(), auth(), queryOperator())));
+        try {
+          assertTrue(entered.await(5, java.util.concurrent.TimeUnit.SECONDS));
+          try (var connection = db.dataSource().getConnection();
+              var statement = connection.createStatement()) {
+            statement.execute("SET SESSION innodb_lock_wait_timeout=1");
+            var blocked =
+                assertThrows(
+                    java.sql.SQLException.class,
+                    () ->
+                        statement.executeUpdate(
+                            "UPDATE merchant_application SET version=version+1 WHERE id="
+                                + submitted.applicationId()));
+            assertEquals(1205, blocked.getErrorCode());
+          }
+        } finally {
+          proceed.countDown();
+        }
+        var result = reading.get(5, java.util.concurrent.TimeUnit.SECONDS);
+        assertEquals(submitted.version(), result.application().version());
+        assertEquals(submitted.currentRevision().revisionId(), result.task().submittedRevisionId());
+        assertEquals(5, result.materialReferences().size());
+      }
     }
   }
 
@@ -401,7 +542,7 @@ class MerchantApplicationRuntimeMySqlTest {
 
     MerchantApplicationApiImpl api(Clock runtimeClock) {
       Map<Long, PrivateAssetQueryPort.PrivateAssetRef> assets = new HashMap<>();
-      for (long id = assetBase; id < assetBase + 5; id++)
+      for (long id = assetBase; id < assetBase + 6; id++)
         assets.put(
             id,
             new PrivateAssetQueryPort.PrivateAssetRef(
@@ -549,10 +690,12 @@ class MerchantApplicationRuntimeMySqlTest {
               Map<String, Object> row =
                   db.jdbc()
                       .queryForMap(
-                          "SELECT m.id,m.sha256 FROM merchant_application_material m "
-                              + "JOIN merchant_application_revision_material rm ON rm.application_id=m.application_id AND rm.material_id=m.id "
-                              + "JOIN merchant_application a ON a.id=m.application_id AND a.submitted_revision_id=rm.revision_id "
-                              + "WHERE m.application_id=? AND m.material_type=?",
+                          "SELECT m.id,m.sha256 FROM merchant_application_material m JOIN"
+                              + " merchant_application_revision_material rm ON"
+                              + " rm.application_id=m.application_id AND rm.material_id=m.id JOIN"
+                              + " merchant_application a ON a.id=m.application_id AND"
+                              + " a.submitted_revision_id=rm.revision_id WHERE m.application_id=?"
+                              + " AND m.material_type=?",
                           Long.parseLong(applicationId),
                           item.materialType());
               String credential =

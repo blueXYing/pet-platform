@@ -12007,6 +12007,25 @@ components:
           enum:
           - PENDING
           - VERIFIED
+    AppReviewMaterialReference:
+      type: object
+      additionalProperties: false
+      required: [materialId, assetId, materialSha256, materialType, position]
+      properties:
+        materialId:
+          $ref: '#/components/schemas/PublicId'
+        assetId:
+          $ref: '#/components/schemas/PublicId'
+        materialSha256:
+          type: string
+          pattern: '^[0-9a-f]{64}$'
+        materialType:
+          type: string
+          enum: [STORE_PHOTO, BUSINESS_LICENSE, ID_CARD_FRONT, ID_CARD_BACK, INDUSTRY_LICENSE]
+        position:
+          type: integer
+          minimum: 0
+      description: Registered material ID and standardized object hash of the submitted revision, not the watermarked response hash. CCR-A002-MATERIAL-REF-001 approved 2026-09-21.
     AppReviewRevision:
       type: object
       additionalProperties: false
@@ -12015,7 +12034,14 @@ components:
       - revisionNo
       - snapshot
       - createdAt
+      - materialReferences
       properties:
+        materialReferences:
+          type: array
+          minItems: 4
+          maxItems: 10
+          items:
+            $ref: '#/components/schemas/AppReviewMaterialReference'
         revisionId:
           $ref: '#/components/schemas/PublicId'
         revisionNo:

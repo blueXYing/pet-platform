@@ -302,3 +302,12 @@ payload:
 - 配置值与城市目录必须来自可信部署源，配置缺失不开放任意城市。机密配置只通过外部secret注入。字段保护与证件lookup使用独立密钥，不能暗中轮换固定policy；实现不会生成生产密钥。
 - 证件适配按GB11643/GB32100规范化大陆15/18位居民身份证和18位统一社会信用代码；15位转换保留校验同一性。规范化、日期和校验位正确不等于身份真实，原件/人工核验及主体去重仍必需。
 - 当前允许测试环境用显式外部替身验证真实HTTP、会话、数据库、AES、Outbox与站内消息，不将替身结果称为真实OSS上传、地图后端校验或商家身份核验验收。私有上传/水印授权读取的新增契约另见CCR-MER-PRIVATE-001，尚未实施。
+
+
+## 2026-09-21 已批准：提交版本材料引用
+
+[CCR-A002-MATERIAL-REF-001](../../planning/ccr/CCR-A002-MATERIAL-REF-001.md)已由用户批准。运营详情新增必需的`submittedRevision.materialReferences`数组（4～10项）。元素严格包含`materialId`、`assetId`（十进制String）、`materialSha256`（登记的标准化对象摘要，小写64位十六进制）、`materialType`（STORE_PHOTO/BUSINESS_LICENSE/ID_CARD_FRONT/ID_CARD_BACK/INDUSTRY_LICENSE）、`position`（版本槽位非负整数）。按类型字典序、position、materialId数值序稳定排序；不能用资产编号或动态水印摘要替代登记材料引用。
+
+内部`MerchantApplicationReviewDetail`新增不可变`List<MaterialReference>`。同一事务快照读取提交版本、任务及材料集合，拒绝不一致的引用，不混入之后尚未提交的补正草稿。沿用read权限、数据范围及核验命令锁内最终检查；元数据不授予原件读取权限，也不证明操作者已查看材料。
+
+C端详情、列表、写入回执、Schema/DDL、迁移和Event均不变。运营端严格解码客户端需协调此响应字段扩展；缺引用时保持人工核验提交禁用。身份证正反面都应查看，但仅以ID_CARD_BACK引用提交一条IDENTITY_NUMBER证据。默认生产门禁不解除。
