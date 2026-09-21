@@ -320,9 +320,9 @@ test('refresh never clears a pending intent (stale read then late landing); only
     if (path === '/api/v1/admin/merchant-applications') route.fulfill(unified({ items: [SUMMARY], page: 1, pageSize: 20, total: 1 }));
     else if (path === `/api/v1/admin/merchant-applications/${APPLICATION_ID}`) {
       detailCalls += 1;
-      // The original claim "lands" only after the second read: the first refresh
-      // observes the stale pre-command state, exactly the reviewer's race.
-      const landed = claimCalls > 0 && detailCalls >= 2;
+      // The original claim "lands" only on the third read (initial load, stale
+      // refresh #1, landed refresh #2) — exactly the reviewer's race.
+      const landed = claimCalls > 0 && detailCalls >= 3;
       route.fulfill(unified(detail({ taskStatus: landed ? 'CLAIMED' : 'AVAILABLE', taskVersion: landed ? '3' : '2' })));
     }
     else if (path.endsWith('/claim')) {
