@@ -33,7 +33,8 @@ async function verify() {
   assert.equal(agreement.acceptedVersion, agreement.agreementVersion)
   assert.ok(agreement.acceptedAt)
   // A signed agreement can never be re-signed from this client, even with the checkbox path.
-  await assert.rejects(agreements.consent(agreement, true), /EXPLICIT_AGREEMENT_REQUIRED/)
+  // The repository guard throws synchronously; wrap it so assert.rejects validates the rejection.
+  await assert.rejects(async () => agreements.consent(agreement, true), /EXPLICIT_AGREEMENT_REQUIRED/)
   api.scope.replace({ userId: api.currentSession!.userId, workspace: 'consumer', merchantId: null, storeId: null })
   console.log('MER frontend decoders passed against real authorized HTTP application/city/agreement responses')
 }
