@@ -34,7 +34,7 @@
 
 1. **注入单测**（本机通过）：`src/consumer/tests/merchant-signing.test.ts` 9 项——工作区切换与读取、勾选门槛与回执签署、未知结果恢复重放（同载荷同 requestId 语义）、409 退休后新版本重签、已签快照不清除未决、错误映射（403/401/503/无效ID）、leave 归属守卫、预览失败关闭、消息文案。全套 `npm test`：135 通过 0 失败。
 2. **工程门**（本机通过）：`npm run typecheck`、`npm run build:weapp`（signing 页 wxml/wxss/js/json 产物生成）、`npm run check:package`（分包登记与包体预算，exit 0）。
-3. **真实 Boot 联调**：扩展后的 `merchant-http-integration.ts` 由 `MerchantApplicationLifecycleHttpTest`（真实 MySQL/Redis + 真实授权链路）在 CI 执行；本机无 JDK 21（仅 17/8/11，后端 enforcer 强制 21），未本地复跑，**待 PR CI 证据回填**。
+3. **真实 Boot 联调**（PR CI 通过）：PR #61（head `771c327`）六项检查全绿；`MerchantApplicationLifecycleHttpTest` 1/1 通过（run 35580246833），扩展后的 `merchant-http-integration.ts` 在真实 MySQL/Redis 与真实授权链路中执行已签读取（acceptedVersion/acceptedAt）与客户端防重签守卫。首轮 CI（`128ec87`）曾失败：`assert.rejects` 对仓库同步 throw 直接 reject，已修复为 async 包裹并在复跑验证。
 4. **模拟器/真机/VIS**：未执行。本页无 Figma 原稿（设计登记表 §4），按 PLAN §6 裁决 (b) 沿用申请页（132:862 交付版）页面语言与 design tokens 实现，**不声称一比一还原，VIS 不适用**；补稿后按 21 号验收补充对齐。
 
 ## 边界与不包含
@@ -45,5 +45,5 @@
 
 ## 遗留
 
-- PR CI 六项结果回填后本交接才视为完成 DoD。
+- 模拟器预览与真机走查（审核通过→签约→已签回显）仍未执行，留待工作台准入切片联调时一并取证。
 - 用户本地未提交修改 `frontend-miniapp/project.config.json` 与未跟踪 `.zcodeignore`、`docs/08-engineering/20-设计源登记表-figma-map.md` 不在本分支提交范围。
