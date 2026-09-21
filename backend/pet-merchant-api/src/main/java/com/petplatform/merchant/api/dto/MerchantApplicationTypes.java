@@ -259,8 +259,22 @@ public final class MerchantApplicationTypes {
       String submittedRevisionId,
       String subjectVerificationStatus) {}
 
+  /** Registered object references for one submitted revision; never watermarked content hashes. */
+  public record MaterialReference(
+      String materialId,
+      String assetId,
+      String materialSha256,
+      String materialType,
+      int position) {}
+
   public record MerchantApplicationReviewDetail(
-      MerchantApplicationResult application, ReviewTaskResult task) {}
+      MerchantApplicationResult application,
+      ReviewTaskResult task,
+      List<MaterialReference> materialReferences) {
+    public MerchantApplicationReviewDetail {
+      materialReferences = List.copyOf(materialReferences);
+    }
+  }
 
   public record MerchantApplicationPage(
       int page, int pageSize, long total, List<MerchantApplicationSummary> items) {}

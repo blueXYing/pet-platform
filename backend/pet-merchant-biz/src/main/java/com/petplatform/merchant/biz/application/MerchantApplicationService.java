@@ -687,7 +687,7 @@ public final class MerchantApplicationService {
     long id = id(q.applicationId(), "applicationId");
     return store.execute(
         m -> {
-          MerchantApplicationEntity a = required(m.selectById(id));
+          MerchantApplicationEntity a = required(m.selectByIdForUpdate(id));
           authorize(
               q.authorization(),
               ctx,
@@ -697,8 +697,26 @@ public final class MerchantApplicationService {
               "APPLICATION_READ",
               Phase.READ_RESULT);
           if ("DRAFT".equals(a.getStatus())) notFound();
-          return new MerchantApplicationReviewDetail(
-              resultAtRevision(m, a, a.getSubmittedRevisionId()), taskView(task(m, a, false)));
+          if (a.getSubmittedRevisionId() == null) unavailable("submitted revision is unavailable");
+          ReviewTaskResult reviewTask = taskView(task(m, a, false));
+          if (!IDS.toApi(a.getSubmittedRevisionId()).equals(reviewTask.submittedRevisionId()))
+            unavailable("review task revision is inconsistent");
+          List<MerchantMaterialEntity> materials =
+              m.selectRevisionMaterials(id, a.getSubmittedRevisionId());
+          List<MaterialReference> references = materialReferences(materials);
+          MerchantApplicationResult submitted =
+              resultAtRevision(m, a, a.getSubmittedRevisionId(), materials);
+          long photos = count(materials, "STORE_PHOTO");
+          if (photos < 1
+              || photos > 6
+              || count(materials, "BUSINESS_LICENSE") != 1
+              || count(materials, "ID_CARD_FRONT") != 1
+              || count(materials, "ID_CARD_BACK") != 1
+              || count(materials, "INDUSTRY_LICENSE") > 1
+              || ("PET_HOSPITAL".equals(submitted.currentRevision().merchantTypeCode())
+                  && count(materials, "INDUSTRY_LICENSE") != 1))
+            unavailable("submitted material set is incomplete");
+          return new MerchantApplicationReviewDetail(submitted, reviewTask, references);
         });
   }
 
@@ -1477,9 +1495,17 @@ public final class MerchantApplicationService {
 
   private MerchantApplicationResult resultAtRevision(
       MerchantApplicationMapper m, MerchantApplicationEntity a, long revisionId) {
+    return resultAtRevision(m, a, revisionId, m.selectRevisionMaterials(a.getId(), revisionId));
+  }
+
+  private MerchantApplicationResult resultAtRevision(
+      MerchantApplicationMapper m,
+      MerchantApplicationEntity a,
+      long revisionId,
+      List<MerchantMaterialEntity> materials) {
     strict(a);
     MerchantApplicationRevisionEntity r = requiredRevision(m.selectRevision(a.getId(), revisionId));
-    RevisionView rv = revision(r, m.selectRevisionMaterials(a.getId(), revisionId), true);
+    RevisionView rv = revision(r, materials, true);
     MerchantDecisionEntity d =
         a.getCurrentDecisionId() == null
             ? null
@@ -1504,6 +1530,51 @@ public final class MerchantApplicationService {
         utc(a.getReviewedAt()),
         dv,
         a.getSubjectVerificationStatus());
+  }
+
+  private static List<MaterialReference> materialReferences(
+      List<MerchantMaterialEntity> materials) {
+    if (materials == null || materials.isEmpty())
+      unavailable("submitted materials are unavailable");
+    Set<Long> ids = new HashSet<>(), assets = new HashSet<>();
+    Set<String> slots = new HashSet<>();
+    List<MaterialReference> references = new ArrayList<>();
+    for (MerchantMaterialEntity material : materials) {
+      if (material == null
+          || material.getId() == null
+          || material.getId() <= 0
+          || material.getPrivateAssetId() == null
+          || material.getPrivateAssetId() <= 0
+          || material.getMaterialType() == null
+          || !Set.of(
+                  "STORE_PHOTO",
+                  "BUSINESS_LICENSE",
+                  "ID_CARD_FRONT",
+                  "ID_CARD_BACK",
+                  "INDUSTRY_LICENSE")
+              .contains(material.getMaterialType())
+          || material.getSha256() == null
+          || !SHA.matcher(material.getSha256()).matches()
+          || material.getPosition() == null
+          || material.getPosition() < 0
+          || !ids.add(material.getId())
+          || !assets.add(material.getPrivateAssetId())
+          || !slots.add(material.getMaterialType() + ":" + material.getPosition()))
+        unavailable("submitted material reference is inconsistent");
+      references.add(
+          new MaterialReference(
+              IDS.toApi(material.getId()),
+              IDS.toApi(material.getPrivateAssetId()),
+              material.getSha256(),
+              material.getMaterialType(),
+              material.getPosition()));
+    }
+    return references.stream()
+        .sorted(
+            Comparator.comparing(MaterialReference::materialType)
+                .thenComparingInt(MaterialReference::position)
+                .thenComparingLong(value -> Long.parseLong(value.materialId())))
+        .toList();
   }
 
   private static RevisionView revision(

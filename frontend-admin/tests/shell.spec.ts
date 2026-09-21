@@ -105,11 +105,13 @@ test('WEB-001 real fetch transport with intercepted HTTP contract', async ({ pag
   expect(data).toEqual({ id: '2019267812367810561', amount: '128.00', displayStatus: 'server-only', actions: [] });
 });
 
-test('WEB-001 production build stays closed without fixture identity', async ({ page }) => {
+test('WEB-001 production build renders the real app without fixture identity', async ({ page }) => {
   const modules: string[] = [];
   page.on('request', request => modules.push(request.url()));
+  // Since A-002 the production entry is the real operations app; deep links
+  // redirect to login and the fixture demo stays out of the bundle.
   await page.goto('http://127.0.0.1:4174/example');
-  await expect(page.getByRole('heading', { name: '运营服务尚未接入' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: '运营登录' })).toBeVisible();
   await expect(page.getByLabel('测试身份')).toHaveCount(0);
   expect(modules.some(url => url.includes('FixtureApp'))).toBe(false);
 });

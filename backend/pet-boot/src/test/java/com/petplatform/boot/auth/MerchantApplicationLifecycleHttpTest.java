@@ -308,18 +308,25 @@ class MerchantApplicationLifecycleHttpTest {
     assertEquals(200, newClaim.status(), newClaim.redacted());
     List<Map<String, Object>> evidence = new ArrayList<>();
     for (String type : List.of("BUSINESS_LICENSE", "ID_CARD_BACK")) {
+      List<?> refs =
+          (List<?>) map(newReview.data().get("submittedRevision")).get("materialReferences");
+      assertEquals(4, refs.size());
       Map<String, Object> row =
-          db.jdbc.queryForMap(
-              "SELECT id,sha256 FROM merchant_application_material WHERE application_id=? AND"
-                  + " material_type=?",
-              Long.parseLong(appId),
-              type);
+          refs.stream()
+              .map(MerchantApplicationLifecycleHttpTest::map)
+              .filter(value -> type.equals(value.get("materialType")))
+              .findFirst()
+              .orElseThrow();
+      assertEquals(
+          Set.of("materialId", "assetId", "materialSha256", "materialType", "position"),
+          row.keySet());
+      assertNotEquals(row.get("assetId"), row.get("materialId"));
       evidence.add(
           Map.of(
               "materialId",
-              row.get("id").toString(),
+              row.get("materialId").toString(),
               "materialSha256",
-              row.get("sha256").toString(),
+              row.get("materialSha256").toString(),
               "credentialType",
               type.equals("BUSINESS_LICENSE") ? "CREDIT_CODE" : "IDENTITY_NUMBER",
               "subjectName",
@@ -330,6 +337,42 @@ class MerchantApplicationLifecycleHttpTest {
               "2020-01-01",
               "validityKind",
               "LONG_TERM"));
+    }
+    // Public references must be used verbatim: asset IDs and rendered hashes cannot substitute.
+    for (String invalidField : List.of("materialId", "materialSha256")) {
+      var changedEvidence = new ArrayList<>(evidence);
+      var changedItem = new LinkedHashMap<>(evidence.getFirst());
+      var references =
+          (List<?>) map(newReview.data().get("submittedRevision")).get("materialReferences");
+      var firstReference =
+          references.stream()
+              .map(MerchantApplicationLifecycleHttpTest::map)
+              .filter(value -> "BUSINESS_LICENSE".equals(value.get("materialType")))
+              .findFirst()
+              .orElseThrow();
+      changedItem.put(
+          invalidField,
+          "materialId".equals(invalidField) ? firstReference.get("assetId") : "f".repeat(64));
+      changedEvidence.set(0, changedItem);
+      Reply invalidReference =
+          send(
+              "POST",
+              reviewPath + "/manual-verification",
+              Map.of(
+                  "submissionRevisionId",
+                  str(resubmitted.data(), "currentRevisionId"),
+                  "expectedVersion",
+                  str(resubmitted.data(), "version"),
+                  "expectedTaskVersion",
+                  str(newClaim.data(), "version"),
+                  "evidenceItems",
+                  changedEvidence,
+                  "reason",
+                  "Material reference negative verification",
+                  "confirmed",
+                  true),
+              bearer(admin));
+      assertEquals(409, invalidReference.status(), invalidReference.redacted());
     }
     Reply verified =
         send(
