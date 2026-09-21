@@ -4,7 +4,7 @@
 - 基线：develop `c04df90`（PR57 合并后）
 - 分支/工作区：`feat/a002-review-page-20260920` @ `../wt-A-002-review-page`
 - 授权来源：用户在 2026-09-20 会话中明确指示"现在你开始推进 A-002"，范围为该会话与 PR58 更新的 Ready Queue 一致确认的切片：**真实运营登录与商家申请审核业务页接入**（"运营审核页面、手机签约和通知跳转联调"中的运营页面部分；手机端联合验收不在本轮）。
-- 唯一 Writer：本任务。本轮写入 `frontend-admin/src/**`（新增业务文件）、`frontend-admin/tests/**`、`frontend-admin/src/request.ts` 与 `frontend-admin/src/main.tsx`（A-001 工程壳共享文件，本轮登记借用，仅做下述最小改动）、`planning/issues/wave-2/A-002-review-page/**`。
+- 唯一 Writer：本任务。本轮写入 `frontend-admin/src/**`（新增业务文件）、`frontend-admin/tests/**`、`frontend-admin/src/request.ts`、`frontend-admin/src/main.tsx`、`frontend-admin/vite.config.ts`（以上 A-001 工程壳共享文件，本轮登记借用，仅做登记范围内的最小改动）、`frontend-admin/package.json`（test 前置 build）、`planning/issues/wave-2/A-002-review-page/**`。
 - 不写入：`WORK_STATE.md`、Ready/Blocked Queue（归属根 Work 调度任务，PR58 在途）；后端任何模块；权威 SSOT/PRD/Schema/API 文档；小程序与商家端目录。
 
 ## 范围

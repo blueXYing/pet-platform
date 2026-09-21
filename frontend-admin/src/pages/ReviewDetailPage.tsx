@@ -29,8 +29,15 @@ function failureText(error: unknown, fallback: string) {
 }
 
 // Unknown outcome = the request may or may not have been applied server-side.
+// 5xx (incl. 503 COMMON_DEPENDENCY_UNAVAILABLE returned on unknown commit) and
+// unparseable responses are unknown; client-side rejections (INVALID_ADMIN_PATH)
+// and definitive 4xx contract answers are not.
 function unknownOutcome(error: unknown) {
-  if (error instanceof RequestFailure) return error.code === 'INVALID_RESPONSE' || error.code === 'INVALID_ADMIN_PATH';
+  if (error instanceof RequestFailure) {
+    if (error.code === 'INVALID_ADMIN_PATH') return false;
+    if (error.code === 'INVALID_RESPONSE') return true;
+    return error.status >= 500;
+  }
   return true;
 }
 
@@ -94,6 +101,13 @@ export default function ReviewDetailPage({ client, canOperate, onAuthLost }: { c
   }
 
   function runWrite(invoke: (requestId: string) => Promise<unknown>, successText: string, reload = true) {
+    // An unresolved write keeps its original requestId; conflicting new writes are
+    // refused until the operator retries the original or resolves it via an
+    // authoritative read, so a second UUID can never displace the pending intent.
+    if (retry) {
+      setError('存在结果未知的操作：请先重试原操作（复用原请求标识），或刷新状态核实结果后清除未决操作。');
+      return Promise.resolve();
+    }
     return attemptWrite(crypto.randomUUID(), invoke, successText, reload);
   }
 
@@ -146,7 +160,11 @@ export default function ReviewDetailPage({ client, canOperate, onAuthLost }: { c
     </p>
     {notice && <p role="status">{notice}</p>}
     {error && <p role="alert">{error}</p>}
-    {retry && <p><button onClick={() => void retry.run()} disabled={busy}>重试原操作（复用原请求标识）</button></p>}
+    {retry && <p>
+      <button onClick={() => void retry.run()} disabled={busy}>重试原操作（复用原请求标识）</button>
+      <button onClick={() => void load()} disabled={busy}>刷新申请状态</button>
+      <button onClick={() => { setRetry(null); setError(''); setNotice('已按权威查询清除未决操作；如操作实际已执行，请以刷新后的状态为准。'); }} disabled={busy}>我已核实结果，清除未决操作</button>
+    </p>}
 
     <section aria-labelledby="snapshot-heading">
       <h2 id="snapshot-heading">提交版本（第 {detail.submittedRevision.revisionNo} 版 · {detail.submittedRevision.createdAt}）</h2>
@@ -172,7 +190,7 @@ export default function ReviewDetailPage({ client, canOperate, onAuthLost }: { c
           <span>{item.label}</span> <code>{item.assetId}</code>
           {canOperate && (previews[item.assetId]
             ? <img src={previews[item.assetId]} alt={`${item.label} 水印读取结果`} height={160} />
-            : <button disabled={busy || viewReason.trim().length < 10} onClick={() => viewMaterial(item.assetId)}>申请一次性查看</button>)}
+            : <button disabled={busy || retry !== null || viewReason.trim().length < 10} onClick={() => viewMaterial(item.assetId)}>申请一次性查看</button>)}
           {!canOperate && <span className="hint">需审核权限</span>}
         </li>)}
       </ul>
@@ -181,8 +199,8 @@ export default function ReviewDetailPage({ client, canOperate, onAuthLost }: { c
     <section aria-labelledby="task-heading">
       <h2 id="task-heading">审核任务</h2>
       <p>任务状态：{detail.task.status === 'AVAILABLE' ? '待领取' : `已领取（任务 ${detail.task.taskId}）`} · 任务版本 {detail.task.version}</p>
-      {canOperate && !taskClaimed && <button disabled={busy} onClick={() => void claim()}>领取任务</button>}
-      {canOperate && taskClaimed && <button disabled={busy} onClick={() => void release()}>释放任务</button>}
+      {canOperate && !taskClaimed && <button disabled={busy || retry !== null} onClick={() => void claim()}>领取任务</button>}
+      {canOperate && taskClaimed && <button disabled={busy || retry !== null} onClick={() => void release()}>释放任务</button>}
       {detail.latestDecision && <p>最近决定：{decisionLabel(detail.latestDecision.decisionType)} · {detail.latestDecision.decidedAt} · {detail.latestDecision.opinion}</p>}
     </section>
 
@@ -232,7 +250,7 @@ export default function ReviewDetailPage({ client, canOperate, onAuthLost }: { c
       <label>审核意见{decisionNeedsOpinion ? '（必填）' : ''}<textarea value={opinion} onChange={event => setOpinion(event.target.value)} rows={3} /></label>
       <label>内部备注（仅运营可见）<textarea value={internalNote} onChange={event => setInternalNote(event.target.value)} rows={2} /></label>
       <label><input type="checkbox" checked={decisionConfirmed} onChange={event => setDecisionConfirmed(event.target.checked)} /> 我确认本决定基于已查看的材料与核验结果</label>
-      <button disabled={busy || !decisionReady} onClick={() => void submitDecision()}>提交审核决定</button>
+      <button disabled={busy || retry !== null || !decisionReady} onClick={() => void submitDecision()}>提交审核决定</button>
     </section>}
   </main>;
 }

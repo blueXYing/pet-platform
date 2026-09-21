@@ -200,6 +200,67 @@ test('unknown-outcome write retries reuse the SAME requestId for an idempotent r
   expect(claimCallsRecorded[1].requestId).toBe(claimCallsRecorded[0].requestId);
 });
 
+test('503 dependency-unavailable is unknown outcome: retry kept, new writes blocked until resolved', async ({ page }) => {
+  const calls = recorder(page);
+  await grantLogin(page);
+  let claimCalls = 0;
+  await page.route('**/api/v1/admin/merchant-applications**', (route: Route) => {
+    const path = new URL(route.request().url()).pathname;
+    if (path === '/api/v1/admin/merchant-applications') route.fulfill(unified({ items: [SUMMARY], page: 1, pageSize: 20, total: 1 }));
+    else if (path === `/api/v1/admin/merchant-applications/${APPLICATION_ID}`) route.fulfill(unified(detail({ taskStatus: claimCalls > 0 ? 'CLAIMED' : 'AVAILABLE', taskVersion: claimCalls > 0 ? '3' : '2' })));
+    else if (path.endsWith('/claim')) {
+      claimCalls += 1;
+      // Backend returns 503 COMMON_DEPENDENCY_UNAVAILABLE when the commit outcome is unknown.
+      if (claimCalls === 1) route.fulfill(failure('COMMON_DEPENDENCY_UNAVAILABLE', 503));
+      else route.fulfill(unified({ ...detail().task, status: 'CLAIMED', version: '3', claimedByOperatorId: '9001' }));
+    } else route.fulfill(unified(detail()));
+  });
+
+  await login(page);
+  await page.getByRole('link', { name: '打开' }).click();
+  await page.getByRole('button', { name: '领取任务' }).click();
+  await expect(page.getByRole('alert').first()).toContainText('结果未知');
+  await expect(page.getByRole('button', { name: /重试原操作/ })).toBeVisible();
+
+  // While the intent is unresolved, conflicting writes stay disabled…
+  await expect(page.getByRole('button', { name: '领取任务' })).toBeDisabled();
+  await expect(page.locator('ul.materials li').first().getByRole('button', { name: '申请一次性查看' })).toBeDisabled();
+  // …and resolving via retry reuses the SAME requestId.
+  await page.getByRole('button', { name: /重试原操作/ }).click();
+  await expect(page.getByText('任务已领取')).toBeVisible();
+  const claimCallsRecorded = calls.filter(call => call.path.endsWith('/claim'));
+  expect(claimCallsRecorded).toHaveLength(2);
+  expect(claimCallsRecorded[1].requestId).toBe(claimCallsRecorded[0].requestId);
+});
+
+test('operator-confirmed resolution via authoritative read clears the pending intent', async ({ page }) => {
+  const calls = recorder(page);
+  await grantLogin(page);
+  await page.route('**/api/v1/admin/merchant-applications**', (route: Route) => {
+    const path = new URL(route.request().url()).pathname;
+    if (path === '/api/v1/admin/merchant-applications') route.fulfill(unified({ items: [SUMMARY], page: 1, pageSize: 20, total: 1 }));
+    else if (path === `/api/v1/admin/merchant-applications/${APPLICATION_ID}`) route.fulfill(unified(detail()));
+    else if (path.endsWith('/claim')) route.fulfill(failure('COMMON_DEPENDENCY_UNAVAILABLE', 503));
+    else route.fulfill(unified(detail()));
+  });
+
+  await login(page);
+  await page.getByRole('link', { name: '打开' }).click();
+  await page.getByRole('button', { name: '领取任务' }).click();
+  await expect(page.getByRole('button', { name: /重试原操作/ })).toBeVisible();
+  await expect(page.getByRole('button', { name: '领取任务' })).toBeDisabled();
+
+  // Refresh (authoritative read) then operator-confirmed clear re-enables writes;
+  // no additional write request is issued by the resolution itself.
+  const writesBefore = calls.filter(call => call.method === 'POST').length;
+  await page.getByRole('button', { name: '刷新申请状态' }).click();
+  await expect(page.getByRole('button', { name: '刷新申请状态' })).toBeEnabled();
+  await page.getByRole('button', { name: '我已核实结果，清除未决操作' }).click();
+  await expect(page.getByText('已按权威查询清除未决操作', { exact: false })).toBeVisible();
+  await expect(page.getByRole('button', { name: '领取任务' })).toBeEnabled();
+  expect(calls.filter(call => call.method === 'POST').length).toBe(writesBefore);
+});
+
 test('stale auth (401 on business query) fails closed and returns to login', async ({ page }) => {
   await grantLogin(page);
   let calls = 0;

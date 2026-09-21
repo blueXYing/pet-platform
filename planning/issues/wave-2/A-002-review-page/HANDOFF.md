@@ -4,9 +4,17 @@
 
 ## 当前定性
 
-**审核页面候选和模拟接口测试已完成；人工核验提交因材料引用契约缺口（§4.3，需 CCR）暂不可用；真实后端联调未执行——尚不能认定为可用审核工作台。**
+**审核页面候选和模拟接口测试已完成；人工核验提交因材料引用契约缺口（§4.3，需 CCR）暂不可用；登录来源校验冲突（§4.2）为阻断性集成事实，可信代理方案已内置但未经真实浏览器→真实后端验证——尚不能认定为可用审核工作台。**
 
-## 评审修复轮（2026-09-21）
+## 评审修复轮二（2026-09-21 第二批）
+
+用户复核 `76404bf`（CI 六项、13/13 复跑通过）后指出三项残留，已修复：
+
+1. **requirements 同源 GET 与 Origin 校验冲突（P1）**：确认后端 `cookie()` 对 attempt 绑定调用强制精确 Origin 匹配，而浏览器同源 fetch GET 不携带 Origin（禁止手动设置）。前端无法单方面修复；已内置可信反向代理（vite dev/preview，`ADMIN_API_PROXY_TARGET`/`ADMIN_API_PROXY_ORIGIN`）注入受控 Origin、后端校验原样执行，并将该冲突升级为阻断性集成事实（CONTRACT.md §4.2），等待代理方案或后端 CCR 裁决 + 真实浏览器验证。
+2. **503 误判为确定失败（P1）**：`unknownOutcome` 修订——5xx（含 503 COMMON_DEPENDENCY_UNAVAILABLE）与坏响应一律视为结果未知并保留原 requestId/参数；仅客户端前置拒绝（INVALID_ADMIN_PATH）与确定性 4xx 视为已知失败。新增测试覆盖 503→重试复用同一 requestId。
+3. **未决操作被新写入顶替（P2）**：存在未决意图时，领取/释放/决定/材料授权按钮全部禁用且 `runWrite` 入口拒绝新 UUID；只允许重试原操作（复用原标识）、刷新权威状态、或运营员确认核实后清除未决意图。新增测试覆盖按钮禁用与清除恢复（清除本身不产生任何写请求）。
+
+## 评审修复轮一（2026-09-21 第一批）
 
 用户以真实客户端请求捕获复核提交 `375425f`，指出五项问题；已逐项对照后端源码确认并修复：
 
@@ -27,13 +35,13 @@
 ## 验证（本地，Windows）
 
 - `npm run typecheck` 通过；`npm run build`（生产）与 `npm run build:fixture` 通过；`npm run check:boundaries` 通过（生产 JS 无 fixture 标记）。
-- `npm test`（build+Playwright，dev:4173 / preview:4174）：**13/13 通过**——`tests/review.spec.ts` 7 项契约测试（未登录深链零业务调用、**真实登录协议（空 JSON 体 + X-Auth-Attempt 逐跳断言）**、无权限关闭面板、列表契约渲染与分页、领取→单次水印读取（正反面合并解锁）→**核验提交待契约关闭且零调用**→**未核验直接补正决定**、**结果未知重试复用同一 requestId**、401 失效返回登录、409 版本冲突提示），原 6 项壳测试全部保持通过。
+- `npm test`（build+Playwright，dev:4173 / preview:4174）：**15/15 通过**——`tests/review.spec.ts` 9 项契约测试（未登录深链零业务调用、真实登录协议（空 JSON 体 + X-Auth-Attempt 逐跳断言）、无权限关闭面板、列表契约渲染与分页、领取→单次水印读取（正反面合并解锁）→核验提交待契约关闭且零调用→未核验直接补正决定、connectionreset 重试复用同一 requestId、**503 依赖不可用视为结果未知并复用同一 requestId**、**未决期间新写入禁用**、**权威查询清除未决意图（零额外写请求）**、401 失效返回登录、409 版本冲突提示），原 6 项壳测试全部保持通过。
 - 未运行：真实后端联调、真机、微信端（不在本轮范围）。模拟接口测试不能替代真实契约联调（本轮评审即证明）。
 
 ## 披露与遗留
 
 1. `/auth/*` envelope 无 `success` 字段（PR17 时期实现）与商家/材料接口的统一信封并存；前端按二者其一判定，建议 Contract Owner 后续统一（CONTRACT.md §4.1）。
-2. 登录 attempt 流同时依赖 `__Host-pet-admin-attempt` Secure Cookie、`X-Auth-Attempt` 头与 Origin 校验：真实联调需 HTTPS 源且 Origin 与后端配置一致。
+2. **登录来源校验冲突（阻断）**：同源 GET 无 Origin 与后端精确匹配校验冲突（CONTRACT.md §4.2）；已内置可信代理注入受控 Origin（后端校验不放宽），等待部署裁决/后端 CCR 并以真实浏览器到真实后端验证。HTTPS/`__Host` Cookie/`X-Auth-Attempt` 等其余联调条件不变。
 3. **人工核验提交待 CCR**：详情投影需补充 merchant_material 的 materialId/materialSha256/materialType（CONTRACT.md §4.3）；补齐前页面禁用提交，不得用替代值。
 4. 后续未完成：材料引用 CCR、真实服务器联调（LocalMerchantAcceptanceServer/生产测试环境）、手机端协议签署与通知跳转联合验收、A-002 其余治理页面与整项 AC、运营规范视觉验收。本轮不标 A-002 任何 DONE。
 
