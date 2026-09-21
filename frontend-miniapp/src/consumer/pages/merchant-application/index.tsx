@@ -158,7 +158,11 @@ function ApplicationScreen({ preview, reference, scope }: { preview: boolean; re
       onBack={() => void leave()} onTypes={() => setTypeOpen(value => !value)} onCity={() => void perform(async () => { const values = await deps.cities(); if (live()) setCities(values) })}
       onCitySelect={city => { if (running.current || pending.current || !editableApplication(result)) return; edit('cityCode', city.code); setCityName(city.name); setCities(null) }}
       onLocation={() => void perform(async () => { const value = await deps.location(); if (value && live()) { setDraft(previous => ({ ...previous, ...value })); dirty.current = true } })}
-      onUpload={kind => void upload(kind)} onRemove={(kind, assetId) => edit(kind, kind === 'storePhotoAssetIds' ? (draft.storePhotoAssetIds || []).filter(value => value !== assetId) : null)}
-      onSave={() => void write(false)} onSubmit={() => void write(true)} onReload={() => void load()} onLogin={() => void Taro.redirectTo({ url: '/consumer/pages/shell/index' })} />
+      onUpload={kind => void upload(kind)} onRemove={(kind, assetId) => edit(kind, kind === 'storePhotoAssetIds' ? (draft.storePhotoAssetIds || []).filter(value => value !== assetId) : null)}      onSave={() => void write(false)} onSubmit={() => void write(true)} onReload={() => void load()} onLogin={() => void Taro.redirectTo({ url: '/consumer/pages/shell/index' })}
+      onSigning={() => {
+        if (running.current || pending.current) { setNotice('当前有操作结果尚未确认，请先重试原操作后再进入签署。'); return }
+        if (result?.status !== 'APPROVED' || !result.reservedMerchantId) return
+        void Taro.navigateTo({ url: `/consumer/pages/merchant-application/signing?merchantId=${result.reservedMerchantId}` })
+      }} />
   </ConsumerPageLayout>
 }

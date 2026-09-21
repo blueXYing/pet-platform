@@ -9,6 +9,6 @@ export default defineAppConfig({
   subPackages: [
     { root: 'merchant', pages: ['pages/workspace/index'] },
     { root: 'consumer/pages/pet-archive', pages: ['index', 'detail', 'form'] },
-    { root: 'consumer/pages/merchant-application', pages: ['index'] },
+    { root: 'consumer/pages/merchant-application', pages: ['index', 'signing'] },
   ],
 })
