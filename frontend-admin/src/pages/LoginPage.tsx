@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { RequestFailure } from '../request';
-import type { createAuthClient, CaptchaChallenge } from '../api/adminAuth';
+import type { createAuthClient, Attempt, CaptchaChallenge } from '../api/adminAuth';
 
 type AuthClient = ReturnType<typeof createAuthClient>;
 
@@ -14,7 +14,7 @@ function failureText(error: unknown) {
 export default function LoginPage({ auth, onAuthenticated }: { auth: AuthClient; onAuthenticated: (token: string) => void }) {
   const [account, setAccount] = useState('');
   const [password, setPassword] = useState('');
-  const [attemptId, setAttemptId] = useState('');
+  const [attempt, setAttempt] = useState<Attempt>();
   const [captcha, setCaptcha] = useState<CaptchaChallenge>();
   const [answer, setAnswer] = useState('');
   const [busy, setBusy] = useState(false);
@@ -28,22 +28,23 @@ export default function LoginPage({ auth, onAuthenticated }: { auth: AuthClient;
     finally { setBusy(false); }
   }
 
-  // One attempt per form submission; the binding cookie travels with /auth/* calls only.
+  // One attempt per form submission; the attempt token (X-Auth-Attempt) and the
+  // binding cookie travel with every /auth/* call of this flow.
   const beginLogin = () => run(async () => {
-    const attempt = await auth.createAttempt();
-    setAttemptId(attempt.attemptId);
-    const { requiredVerification } = await auth.requirements(attempt.attemptId);
-    if (requiredVerification === 'CAPTCHA') setCaptcha(await auth.createCaptcha(attempt.attemptId));
+    const next = await auth.createAttempt();
+    setAttempt(next);
+    const { requiredVerification } = await auth.requirements(next);
+    if (requiredVerification === 'CAPTCHA') setCaptcha(await auth.createCaptcha(next));
     else {
-      const result = await auth.login(attempt.attemptId, account, password, '');
+      const result = await auth.login(next, account, password, '');
       onAuthenticated(result.accessToken);
     }
   });
 
   const finishCaptcha = () => run(async () => {
-    if (!captcha) return;
-    const proof = await auth.verifyCaptcha(attemptId, captcha.captchaId, answer);
-    const result = await auth.login(attemptId, account, password, proof.captchaProof);
+    if (!attempt || !captcha) return;
+    const proof = await auth.verifyCaptcha(attempt, captcha.captchaId, answer);
+    const result = await auth.login(attempt, account, password, proof.captchaProof);
     onAuthenticated(result.accessToken);
   });
 

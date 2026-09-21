@@ -72,16 +72,14 @@ export function createMerchantApplicationClient(transport: Transport = fetch) {
   return {
     resetContext(nextToken?: string) { base.resetContext(nextToken); token = nextToken; },
     setToken(nextToken: string) { base.resetContext(nextToken); token = nextToken; },
-    // Single-use watermarked read: raw bytes, not the JSON envelope; the digest binds
-    // manual-verification evidence to exactly what this operator inspected (CONTRACT.md §4.3).
-    async consumeReadGrant(readUrl: string): Promise<{ blob: Blob; sha256: string }> {
+    // Single-use watermarked read: raw bytes, not the JSON envelope. The rendered
+    // bytes are display-only; registered material digests are NOT derived here.
+    async consumeReadGrant(readUrl: string): Promise<Blob> {
       if (!readUrl.startsWith('/api/v1/admin/private-asset-read-grants/') || !token) throw new Error('GRANT_UNAVAILABLE');
       const response = await fetch(new URL(readUrl, window.location.origin), { headers: { Authorization: `Bearer ${token}` }, credentials: 'omit', redirect: 'error' });
       if (!response.ok) throw new RequestFailure(response.status === 404 ? 'GRANT_NOT_FOUND' : response.status === 409 ? 'GRANT_ALREADY_USED' : 'PRIVATE_ASSET_UNAVAILABLE', response.status);
       const buffer = await response.arrayBuffer();
-      const digest = await crypto.subtle.digest('SHA-256', buffer);
-      const sha256 = Array.from(new Uint8Array(digest), byte => byte.toString(16).padStart(2, '0')).join('');
-      return { blob: new Blob([buffer], { type: response.headers.get('Content-Type') ?? 'application/octet-stream' }), sha256 };
+      return new Blob([buffer], { type: response.headers.get('Content-Type') ?? 'application/octet-stream' });
     },
     async list(filters: ListFilters) {
       const query = new URLSearchParams();
@@ -90,20 +88,22 @@ export function createMerchantApplicationClient(transport: Transport = fetch) {
       return base.request<{ items: ApplicationSummary[]; page: number; pageSize: number; total: number }>(`${root}${suffix}`);
     },
     get: (applicationId: string) => base.request<ReviewDetail>(`${root}/${applicationId}`),
-    claim: (applicationId: string, expectedTaskVersion: string) =>
-      base.request<ReviewTaskView>(`${root}/${applicationId}/claim`, { method: 'POST', body: { expectedTaskVersion } }),
-    release: (applicationId: string, expectedTaskVersion: string) =>
-      base.request<ReviewTaskView>(`${root}/${applicationId}/release`, { method: 'POST', body: { expectedTaskVersion } }),
+    claim: (applicationId: string, expectedTaskVersion: string, requestId?: string) =>
+      base.request<ReviewTaskView>(`${root}/${applicationId}/claim`, { method: 'POST', body: { expectedTaskVersion }, requestId }),
+    release: (applicationId: string, expectedTaskVersion: string, requestId?: string) =>
+      base.request<ReviewTaskView>(`${root}/${applicationId}/release`, { method: 'POST', body: { expectedTaskVersion }, requestId }),
     recordManualVerification: (
       applicationId: string,
       input: { submissionRevisionId: string; expectedVersion: string; expectedTaskVersion: string; evidenceItems: ManualEvidence[]; reason: string; confirmed: boolean },
-    ) => base.request<ApplicationReceipt>(`${root}/${applicationId}/manual-verification`, { method: 'POST', body: input }),
+      requestId?: string,
+    ) => base.request<ApplicationReceipt>(`${root}/${applicationId}/manual-verification`, { method: 'POST', body: input, requestId }),
     decide: (
       applicationId: string,
       input: { decisionType: DecisionType; submissionRevisionId: string; expectedVersion: string; expectedTaskVersion: string; opinion: string; internalNote?: string; confirmed: boolean },
-    ) => base.request<ApplicationReceipt>(`${root}/${applicationId}/decision`, { method: 'POST', body: input }),
-    issueReadGrant: (applicationId: string, assetId: string, input: { submissionRevisionId: string; purposeCode: string; reason: string; confirmed: boolean }) =>
-      base.request<ReadGrant>(`${root}/${applicationId}/private-assets/${assetId}/read-grants`, { method: 'POST', body: input }),
+      requestId?: string,
+    ) => base.request<ApplicationReceipt>(`${root}/${applicationId}/decision`, { method: 'POST', body: input, requestId }),
+    issueReadGrant: (applicationId: string, assetId: string, input: { submissionRevisionId: string; purposeCode: string; reason: string; confirmed: boolean }, requestId?: string) =>
+      base.request<ReadGrant>(`${root}/${applicationId}/private-assets/${assetId}/read-grants`, { method: 'POST', body: input, requestId }),
   };
 }
 

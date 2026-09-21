@@ -25,15 +25,16 @@
 - 列表 Summary：applicationId/applicationNo/reservedMerchantId/status/version/merchantName/merchantTypeCode/cityCode/submittedRevisionId/submittedAt/subjectVerificationStatus（ID/版本一律 String）。
 - 详情：上表 + submittedRevision{revisionId,revisionNo,createdAt,snapshot{...脱敏联系人字段原样展示}} + task + latestDecision。
 - 决定表单：decisionType∈{APPROVE,REJECT,REQUEST_CORRECTION}；opinion（REJECT/REQUEST_CORRECTION 必填）、internalNote、confirmed 必勾。
-- 人工核验：submissionRevisionId、expectedVersion/expectedTaskVersion、evidenceItems[{materialId,materialSha256,credentialType∈{CREDIT_CODE,IDENTITY_NUMBER,INDUSTRY_LICENSE},subjectName,identifier,validFrom,validityKind∈{LONG_TERM,DATED},validTo}]、reason、confirmed。
+- 人工核验（**提交暂不可用，待契约**，见 §4.3）：submissionRevisionId、expectedVersion/expectedTaskVersion、evidenceItems、reason、confirmed。后端语义（MerchantApplicationService.verify）：每类证件一条证据；`IDENTITY_NUMBER` 绑定 `ID_CARD_BACK` 单条（正反面均须查看，合并为一条主体证据，重复类型被拒）；`LONG_TERM` 的 validityBasis 由服务端派生。证据行的 materialId/materialSha256 必须引用提交版本登记的 merchant_material 编号与摘要。
 - 材料查看：purposeCode（界面固定 `MERCHANT_APPLICATION_REVIEW`）、reason（10–500 字）、confirmed；readUrl 为单次使用，消费后按钮回到"申请查看"，不得缓存复用。
 
 ## 4. 已知缝隙与假设（待 Contract Owner/联调确认）
 
 1. **envelope 不一致**：`/auth/*` 响应为 `{code,message,data,traceId}`（无 `success`），商家/材料接口为统一 `{success,...}`。前端客户端按"有 `success` 用 `success`，否则 `code==='SUCCESS'`"兼容；建议后续按 23 号统一，前端再收紧。
 2. **attempt 绑定 Cookie**：登录流程依赖 `__Host-pet-admin-attempt`（Secure/Strict），真实联调需 HTTPS 源；前端仅对 `/auth/*` 开启 credentials，业务请求保持 `omit` + Bearer。
-3. **materialSha256 来源**：详情响应不含材料摘要。前端假设其应为**水印读取响应字节的 SHA-256**（消费 read-grant 时以 crypto.subtle 计算），作为"核验所见即所交"的绑定；若权威语义不同需 30/31 号补充明确，或详情响应提供摘要。
-4. 登录 `accessToken` 内存持有、刷新即重登；不引入持久化会话存储（PRD 未批准 remember-me）。
+3. **材料引用契约缺口（已确认，走 CCR）**：审核详情投影不提供提交版本 merchant_material 的编号与登记摘要，而后端核验强制比对二者。前端不得以 assetId 或水印读取字节摘要替代（动态水印会改变字节，且 assetId≠materialId）。已按后端实现确认，非待验证假设；需 Contract Owner 经 CCR 补充权威投影（含 materialId、materialSha256、materialType）后，前端方可接入人工核验提交。当前页面呈现证据录入候选但禁用提交。
+4. **写操作重试幂等**：领取/释放/决定/材料授权均为公共幂等写；结果未知（网络错误/坏响应）时页面保留原 requestId 与参数并提供"重试原操作"，复用同一请求标识取得幂等回执；确定性失败（4xx 契约错误）不提供复用重试。自动携带请求头本身不构成重试幂等，须按操作意图保留标识。
+5. 登录 `accessToken` 内存持有、刷新即重登；不引入持久化会话存储（PRD 未批准 remember-me）。
 
 ## 5. 硬规则落点（引用，不重定义）
 
