@@ -4,7 +4,15 @@
 
 ## 当前定性
 
-**审核页面候选已完成：材料引用投影（CCR-A002-MATERIAL-REF-001，PR60 后端交付）已接入、人工核验提交已恢复；登录链路已按 PR60 受控代理方向完成真实浏览器→真实后端联调；含申请数据的详情/材料水印读取/核验/决定真实流程尚未联调（本地无 C 端播种通道）——审核工作台在上述范围内可用，整体不标 DONE。**
+**审核工作台核心链路已在真实后端全流程验证通过（2026-09-21 方案 b 联调）：登录→列表→详情（materialReferences 投影）→材料单次水印读取（真实 OSS）→人工核验（权威引用提交）→APPROVE 决定→建档 ACTIVE→站内通知落库。** 生产入口部署与验收、手机协议签署/通知跳转联合验收、A-002 其余治理页面仍待；整体不标 DONE。
+
+## 评审修复轮七（2026-09-21，方案 b：复用后端测试能力的完整联调）
+
+1. **对接方式**：按用户指示优先方案 b——不新增生产播种接口、不以改库代替审核。复用 PR60（`4f00914`）交付的测试能力组装本地启动器 `JointestServer`（测试源、未入库，副本归档 `D:/Temp/a002-jointest/JointestServer.java`）：S8/S9 验收同款 bean 组合（`CAuthHttpTest.FixedWechatProvider` 固定 code 微信替身、`AesGcmProtectedValueProvider`/`MainlandSubjectCredentialProvider` 测试密钥、`HttpFixture` 隔离 MySQL/挥发 Redis、真实 OSS/ClamAV、`AdminAuthService.bootstrap` 管理员）。
+2. **合成申请经正常业务流程创建**：C 端 HTTP 链（attempts→wechat-login 固定 code→4×private-assets 真实上传 READY/CLEAN→draft→create→submit），申请 `95407502044246016`（联调合成宠物生活馆，PET_LIFE_STORE/成都）进入 REVIEWING；无任何业务状态直写。
+3. **浏览器审核全流程通过**（`tests/live.spec.ts` 扩展为幂等全流程，`LIVE_JOINT_BASE` 门控，CI 跳过）：受控入口代理（127.0.0.1:18082 生产构建 → 服务器 127.0.0.1:19082，注入 Origin）+ 真实 Chromium：登录→列表见申请→详情渲染 materialReferences→领取任务→四材料单次水印读取（真实 OSS）→人工核验（引用登记 materialId/materialSha256；身份证正反面合并单条 ID_CARD_BACK；生活馆无行业证自动两组证据）→APPROVE。**数据库终态**：申请 APPROVED/v4、核验 VERIFIED、决定 APPROVE（留痕意见）、证件证据 2 条、商家建档 ACTIVE、站内通知 1 条落库（outbox 真实消费）。
+4. **联调中发现并修正的测试侧问题**（非产品缺陷）：证件号须过大陆校验位（复用 PR60 同款生成算法：身份证 `510104199001010019`、USCC `91510100MA0000000H`）；流程测试改为状态幂等（部分运行后可续跑）。服务器曾出现 ID Provider fail-closed（S9 已知不自愈模式），重启新库一次性完成全链。真实微信入口按既有 S9 证据单独记录，本轮证据不与其混同。
+5. **本地验证**：npm test 27 通过 + 2 门控跳过（live 两项）；联调环境已完全拆除（优雅停机自删库、容器/worktree/端口清理，凭据未入库）。
 
 ## 评审修复轮六（2026-09-21，用户复核 873c0e4/4f00914 后两项残留）
 
@@ -64,8 +72,8 @@
 ## 验证（本地，Windows）
 
 - `npm run typecheck` 通过；`npm run build`（生产）与 `npm run build:fixture` 通过；`npm run check:boundaries` 通过（生产 JS 无 fixture 标记）。
-- `npm test`（build+Playwright，dev:4173 / preview:4174）：**27 通过 + 1 门控跳过**（轮六新增长期证件日期规则专项）（`tests/live.spec.ts` 仅 `LIVE_JOINT_BASE` 存在时执行）——契约测试 11 项（含**陈旧读+迟到落地快照不解除、同 requestId 重放解除**）、代理守卫单测（入口 Host 统一预检含合法 Origin 分支）、**转发中间件接线单测 3 项**（拒绝先于上游+零 token 日志、保头保体剥转发头+Set-Cookie 透传、注入+上游失败 502 脱敏）、原 6 项壳测试保持。
-- 真实联调：`LIVE_JOINT_BASE=http://127.0.0.1:18082 npx playwright test tests/live.spec.ts` 1/1 通过（真实 PR60 后端 + 生产构建 + 真实 Chromium，详见评审修复轮四；轮五代理改自研中间件后该链路语义不变，复跑以含申请数据联调时一并执行）。
+- `npm test`（build+Playwright，dev:4173 / preview:4174）：**27 通过 + 2 门控跳过**（live 两项门控；轮六新增长期证件日期规则专项）（`tests/live.spec.ts` 仅 `LIVE_JOINT_BASE` 存在时执行）——契约测试 11 项（含**陈旧读+迟到落地快照不解除、同 requestId 重放解除**）、代理守卫单测（入口 Host 统一预检含合法 Origin 分支）、**转发中间件接线单测 3 项**（拒绝先于上游+零 token 日志、保头保体剥转发头+Set-Cookie 透传、注入+上游失败 502 脱敏）、原 6 项壳测试保持。
+- 真实联调：live 两项 2/2 通过（轮四登录链路 + 轮七方案 b 含申请数据全流程，详见对应轮次记录）。
 - 未运行：真实后端联调、真机、微信端（不在本轮范围）。模拟接口测试不能替代真实契约联调（本轮评审即证明）。
 
 ## 披露与遗留
