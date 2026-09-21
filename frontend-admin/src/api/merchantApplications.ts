@@ -46,7 +46,10 @@ export type ReviewDetail = {
 
 const MATERIAL_SHA_PATTERN = /^[0-9a-f]{64}$/;
 const MATERIAL_ID_PATTERN = /^[1-9][0-9]{0,18}$/;
-const KNOWN_MATERIAL_TYPES = new Set(['BUSINESS_LICENSE', 'ID_CARD_BACK', 'INDUSTRY_LICENSE', 'STORE_PHOTO']);
+// Full backend projection enum (PR60 4f00914): ID_CARD_FRONT is returned for the
+// identity front side — it must be ACCEPTED and viewable, while the single
+// identity evidence row stays bound to ID_CARD_BACK.
+const KNOWN_MATERIAL_TYPES = new Set(['BUSINESS_LICENSE', 'ID_CARD_BACK', 'ID_CARD_FRONT', 'INDUSTRY_LICENSE', 'STORE_PHOTO']);
 
 // Fail-closed validation per the backend handoff: missing fields, unknown enums or
 // invalid digests/ids keep verification disabled — corruption is never treated as

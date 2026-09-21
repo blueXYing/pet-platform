@@ -186,9 +186,13 @@ export default function ReviewDetailPage({ client, canOperate, onAuthLost }: { c
   const referenceByType = (type: string) => detail.submittedRevision.materialReferences?.find(item => item.materialType === type);
   const evidenceGroups: EvidenceGroup[] | null = references.ok ? buildEvidenceGroups(snapshot, referenceByType) : null;
   const groupViewed = (group: EvidenceGroup) => group.viewAssetIds.length > 0 && group.viewAssetIds.every(assetId => previews[assetId] !== undefined);
+  // Backend date rules mirrored at the gate: validFrom required for every
+  // credential; DATED requires validTo; LONG_TERM requires validTo == null.
+  const draftComplete = (draft: EvidenceDraft | undefined) =>
+    (draft?.subjectName ?? '') !== '' && (draft?.identifier ?? '') !== ''
+    && draft?.validFrom != null && (draft.validityKind === 'LONG_TERM' ? draft.validTo == null : draft.validTo != null);
   const verificationReady = evidenceGroups !== null && verifyConfirmed && verifyReason.trim().length >= 10
-    && evidenceGroups.every(group => groupViewed(group)
-      && (drafts[group.credentialType]?.subjectName ?? '') !== '' && (drafts[group.credentialType]?.identifier ?? '') !== '');
+    && evidenceGroups.every(group => groupViewed(group) && draftComplete(drafts[group.credentialType]));
 
   const materials = [
     ...snapshot.storePhotoAssetIds.map(id => ({ label: `门店照片 ${id}`, assetId: id })),
@@ -265,16 +269,18 @@ export default function ReviewDetailPage({ client, canOperate, onAuthLost }: { c
                 <th>{group.label}</th>
                 <td><input aria-label={`${group.label} 证件主体`} value={draft?.subjectName ?? ''} disabled={!viewed} onChange={event => patchDraft(group.credentialType, { subjectName: event.target.value })} /></td>
                 <td><input aria-label={`${group.label} 证号`} value={draft?.identifier ?? ''} disabled={!viewed} onChange={event => patchDraft(group.credentialType, { identifier: event.target.value })} /></td>
-                <td>
-                  <select aria-label={`${group.label} 有效期类型`} value={draft?.validityKind ?? 'DATED'} disabled={!viewed} onChange={event => patchDraft(group.credentialType, { validityKind: event.target.value as EvidenceDraft['validityKind'] })}>
-                    <option value="DATED">有期限</option>
-                    <option value="LONG_TERM">长期</option>
-                  </select>
-                  {draft?.validityKind !== 'LONG_TERM' && <>
-                    <input type="date" aria-label={`${group.label} 生效日`} value={draft?.validFrom ?? ''} disabled={!viewed} onChange={event => patchDraft(group.credentialType, { validFrom: event.target.value || null })} />
-                    <input type="date" aria-label={`${group.label} 到期日`} value={draft?.validTo ?? ''} disabled={!viewed} onChange={event => patchDraft(group.credentialType, { validTo: event.target.value || null })} />
-                  </>}
-                </td>
+              <td>
+                <select aria-label={`${group.label} 有效期类型`} value={draft?.validityKind ?? 'DATED'} disabled={!viewed} onChange={event => patchDraft(group.credentialType, event.target.value === 'LONG_TERM'
+                  // Backend rules: validFrom is required for every credential and
+                  // LONG_TERM requires validTo == null — switching clears it.
+                  ? { validityKind: 'LONG_TERM', validTo: null }
+                  : { validityKind: 'DATED' })}>
+                  <option value="DATED">有期限</option>
+                  <option value="LONG_TERM">长期</option>
+                </select>
+                <input type="date" aria-label={`${group.label} 生效日`} value={draft?.validFrom ?? ''} disabled={!viewed} onChange={event => patchDraft(group.credentialType, { validFrom: event.target.value || null })} />
+                {draft?.validityKind !== 'LONG_TERM' && <input type="date" aria-label={`${group.label} 到期日`} value={draft?.validTo ?? ''} disabled={!viewed} onChange={event => patchDraft(group.credentialType, { validTo: event.target.value || null })} />}
+              </td>
                 <td>{viewed ? '已查看' : '未查看'}</td>
               </tr>;
             })}

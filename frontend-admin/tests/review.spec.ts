@@ -19,11 +19,12 @@ const SUMMARY = {
 const SHA = (suffix: string) => suffix.padEnd(64, '0').slice(0, 64);
 const PNG_BYTES = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==', 'base64');
 const MATERIAL_REFERENCES = [
-  { materialId: '9001000000000000001', assetId: '6011000000000000001', materialSha256: SHA('aa'), materialType: 'STORE_PHOTO', position: 1 },
-  { materialId: '9001000000000000002', assetId: '6011000000000000002', materialSha256: SHA('bb'), materialType: 'STORE_PHOTO', position: 2 },
   { materialId: '9001000000000000003', assetId: '6011000000000000003', materialSha256: SHA('cc'), materialType: 'BUSINESS_LICENSE', position: 1 },
   { materialId: '9001000000000000004', assetId: '6011000000000000005', materialSha256: SHA('dd'), materialType: 'ID_CARD_BACK', position: 1 },
+  { materialId: '9001000000000000006', assetId: '6011000000000000004', materialSha256: SHA('ff'), materialType: 'ID_CARD_FRONT', position: 1 },
   { materialId: '9001000000000000005', assetId: '6011000000000000006', materialSha256: SHA('ee'), materialType: 'INDUSTRY_LICENSE', position: 1 },
+  { materialId: '9001000000000000001', assetId: '6011000000000000001', materialSha256: SHA('aa'), materialType: 'STORE_PHOTO', position: 1 },
+  { materialId: '9001000000000000002', assetId: '6011000000000000002', materialSha256: SHA('bb'), materialType: 'STORE_PHOTO', position: 2 },
 ];
 function detail(options: { taskStatus?: 'AVAILABLE' | 'CLAIMED'; taskVersion?: string; verification?: 'PENDING' | 'VERIFIED'; materialReferences?: unknown[]; omitReferences?: boolean } = {}) {
   const references = 'materialReferences' in options ? options.materialReferences : options.omitReferences ? undefined : MATERIAL_REFERENCES;
@@ -176,6 +177,9 @@ test('claim, single-use reads, manual verification quotes authoritative referenc
   await page.getByLabel('营业执照 证件主体').fill('星河宠物医院有限公司');
   await page.getByLabel('营业执照 证号').fill('91310101TEST0001X');
   await page.getByLabel('营业执照 生效日').fill('2020-01-01');
+  await page.getByLabel('营业执照 到期日').fill('2030-01-01');
+  await page.getByLabel('营业执照 有效期类型').selectOption('LONG_TERM');
+  await expect(page.getByLabel('营业执照 到期日')).toHaveCount(0);
   await page.getByLabel('身份证（正反面合并核验） 证件主体').fill('张三');
   await page.getByLabel('身份证（正反面合并核验） 证号').fill('310101199001010010');
   await page.getByLabel('身份证（正反面合并核验） 生效日').fill('2015-01-01');
@@ -191,7 +195,7 @@ test('claim, single-use reads, manual verification quotes authoritative referenc
   const verificationCall = calls.find(call => call.path.endsWith('/manual-verification'));
   expect(verificationCall?.body).toMatchObject({ submissionRevisionId: SUMMARY.submittedRevisionId, expectedVersion: '4', expectedTaskVersion: '3', reason: '已逐项核对证件原件、主体、编号与有效期一致', confirmed: true });
   expect((verificationCall?.body as { evidenceItems: unknown[] }).evidenceItems).toEqual([
-    { materialId: '9001000000000000003', materialSha256: SHA('cc'), credentialType: 'CREDIT_CODE', subjectName: '星河宠物医院有限公司', identifier: '91310101TEST0001X', validityKind: 'DATED', validFrom: '2020-01-01', validTo: null },
+    { materialId: '9001000000000000003', materialSha256: SHA('cc'), credentialType: 'CREDIT_CODE', subjectName: '星河宠物医院有限公司', identifier: '91310101TEST0001X', validityKind: 'LONG_TERM', validFrom: '2020-01-01', validTo: null },
     { materialId: '9001000000000000004', materialSha256: SHA('dd'), credentialType: 'IDENTITY_NUMBER', subjectName: '张三', identifier: '310101199001010010', validityKind: 'DATED', validFrom: '2015-01-01', validTo: '2035-01-01' },
     { materialId: '9001000000000000005', materialSha256: SHA('ee'), credentialType: 'INDUSTRY_LICENSE', subjectName: '星河宠物医院有限公司', identifier: 'DY-2026-001', validityKind: 'DATED', validFrom: '2026-01-01', validTo: '2028-01-01' },
   ]);
@@ -356,6 +360,58 @@ test('refresh never clears a pending intent (stale read then late landing); only
   const claimCallsRecorded = calls.filter(call => call.path.endsWith('/claim'));
   expect(claimCallsRecorded).toHaveLength(2);
   expect(claimCallsRecorded[1].requestId).toBe(claimCallsRecorded[0].requestId);
+});
+
+test('LONG_TERM evidence follows backend date rules: validFrom required, validTo cleared on switch', async ({ page }) => {
+  const calls = recorder(page);
+  await grantLogin(page);
+  let taskStatus: 'AVAILABLE' | 'CLAIMED' = 'AVAILABLE';
+  await page.route('**/api/v1/admin/merchant-applications**', (route: Route) => {
+    const path = new URL(route.request().url()).pathname;
+    if (path === '/api/v1/admin/merchant-applications') route.fulfill(unified({ items: [SUMMARY], page: 1, pageSize: 20, total: 1 }));
+    else if (path === `/api/v1/admin/merchant-applications/${APPLICATION_ID}`) route.fulfill(unified(detail({ taskStatus })));
+    else if (path.endsWith('/claim')) { taskStatus = 'CLAIMED'; route.fulfill(unified({ ...detail().task, status: 'CLAIMED', version: '3', claimedByOperatorId: '9001' })); }
+    else if (path.endsWith('/manual-verification')) route.fulfill(unified(RECEIPT));
+    else route.fulfill(failure('NOT_FOUND', 404));
+  });
+  await page.route(/\/private-assets\/6011\d+\/read-grants$/, route =>
+    route.fulfill(unified({ readUrl: `/api/v1/admin/private-asset-read-grants/token_${'a'.repeat(40)}`, expiresAt: '2026-09-21T17:00:00.000Z' })));
+  await page.route(/\/private-asset-read-grants\/.+/, route =>
+    route.fulfill({ status: 200, headers: { 'Content-Type': 'image/png' }, body: PNG_BYTES }));
+
+  await login(page);
+  await page.getByRole('link', { name: '打开' }).click();
+  await page.getByRole('button', { name: '领取任务' }).click();
+  for (const label of ['营业执照', '身份证（人像面）', '身份证（国徽面）', '行业许可证']) {
+    await page.locator('ul.materials li', { hasText: label }).getByRole('button', { name: '申请一次性查看' }).click();
+    await expect(page.locator('ul.materials li', { hasText: label }).getByRole('img')).toBeVisible();
+  }
+
+  await page.getByLabel('身份证（正反面合并核验） 证件主体').fill('张三');
+  await page.getByLabel('身份证（正反面合并核验） 证号').fill('310101199001010010');
+  await page.getByLabel('身份证（正反面合并核验） 生效日').fill('2015-01-01');
+  await page.getByLabel('身份证（正反面合并核验） 到期日').fill('2035-01-01');
+  await page.getByLabel('行业许可证 证件主体').fill('星河宠物医院有限公司');
+  await page.getByLabel('行业许可证 证号').fill('DY-2026-001');
+  await page.getByLabel('行业许可证 生效日').fill('2026-01-01');
+  await page.getByLabel('行业许可证 到期日').fill('2028-01-01');
+  // Pathological path from review: fill the expiry FIRST, then switch to LONG_TERM.
+  await page.getByLabel('营业执照 证件主体').fill('星河宠物医院有限公司');
+  await page.getByLabel('营业执照 证号').fill('91310101TEST0001X');
+  await page.getByLabel('营业执照 到期日').fill('2030-01-01');
+  await page.getByLabel('营业执照 有效期类型').selectOption('LONG_TERM');
+  await expect(page.getByLabel('营业执照 到期日')).toHaveCount(0);
+  await page.getByPlaceholder('如：已核对证件原件与主体一致，编号与有效期无误').fill('已逐项核对证件原件、主体、编号与有效期一致');
+  await page.getByLabel('我已逐项核对上述证件信息与所见材料一致').check();
+  // validFrom missing → backend rule blocks submission.
+  await expect(page.getByRole('button', { name: '提交人工核验' })).toBeDisabled();
+  await page.getByLabel('营业执照 生效日').fill('2020-01-01');
+  await page.getByRole('button', { name: '提交人工核验' }).click();
+  const verificationCall = calls.find(call => call.path.endsWith('/manual-verification'));
+  const items = (verificationCall?.body as { evidenceItems: Record<string, unknown>[] }).evidenceItems;
+  expect(items.find(item => item.credentialType === 'CREDIT_CODE')).toMatchObject({ validityKind: 'LONG_TERM', validFrom: '2020-01-01', validTo: null });
+  expect(items.find(item => item.credentialType === 'IDENTITY_NUMBER')).toMatchObject({ validityKind: 'DATED', validFrom: '2015-01-01', validTo: '2035-01-01' });
+  expect(items).toHaveLength(3);
 });
 
 test('grant issuance stays pending: snapshot cannot determine it, only idempotent retry recovers', async ({ page }) => {
