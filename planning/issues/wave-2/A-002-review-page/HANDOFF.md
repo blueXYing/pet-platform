@@ -4,7 +4,14 @@
 
 ## 当前定性
 
-**审核页面候选和模拟接口测试已完成；人工核验提交因材料引用契约缺口（§4.3，CCR 待批准）暂不可用；登录来源校验冲突（§4.2）已按 PR60 批准的受控代理方向实现 dev/preview 侧基线，但真实浏览器→真实后端集成验收未执行——尚不能认定为可用审核工作台。**
+**审核页面候选已完成：材料引用投影（CCR-A002-MATERIAL-REF-001，PR60 后端交付）已接入、人工核验提交已恢复；登录链路已按 PR60 受控代理方向完成真实浏览器→真实后端联调；含申请数据的详情/材料水印读取/核验/决定真实流程尚未联调（本地无 C 端播种通道）——审核工作台在上述范围内可用，整体不标 DONE。**
+
+## 评审修复轮四（2026-09-21，按 PR60 BACKEND-HANDOFF 接入并联调）
+
+1. **材料引用接入（已交付）**：`ReviewDetail` 消费 `submittedRevision.materialReferences`；证据组由权威引用动态构建（身份证正反面合并一条 ID_CARD_BACK 绑定；行业许可证按申请类型存在才要求）；提交逐字引用登记 materialId/materialSha256；`validateMaterialReferences` 失败关闭（投影缺失/空/编号摘要枚举位置非法/必需类型缺失→禁用并说明，不替代、不当空数组）。未决恢复新增 `verify` 意图的机器判定（VERIFIED/PENDING 均为权威终态）。
+2. **登录缺陷修复（联调发现）**：无验证码时前端发送 `captchaProof: ""`，而后端 `AdminSecretCodec.digest` 对空白 proof 判 unauthorized（写阶段回滚、审计 AUTH_REQUEST_REJECTED）——此前全部 401 的根因。已改为无验证码时整体省略该字段；curl 直连与真实浏览器双重验证 200。
+3. **真实浏览器→真实后端联调（通过，范围如定性）**：PR60 分支后端以 JDK21 于本机构建并运行（`LocalMerchantAcceptanceServer`：真实 MySQL/挥发 Redis/真实 OSS/ClamAV，绑定 192.168.1.44:18082）；入口=生产构建 preview 127.0.0.1:18082，受控代理注入 Origin（`ADMIN_API_PROXY_TARGET/PROXY_ORIGIN`）；管理员账号按 bootstrap 语义 SQL 播种（Argon2 哈希由项目同版本 spring-security-crypto 生成）。`tests/live.spec.ts`（`LIVE_JOINT_BASE` 门控，CI/常规套件不执行）真实 Chromium 全链通过：attempts 201、requirements GET 经代理注入 200、`__Host-` Secure Cookie 回环接受并回传、登录/会话/权限/列表（空）/登出、零页面错误。联调环境已完全拆除（服务器优雅关闭自删库、容器/测试库/临时脚本/worktree/分支清理，凭据仅本地内存未入库）。
+4. **联调边界**：含申请数据的流程未联调——该服务器 C 端为真实微信 Provider（需真实小程序凭据/手机），无法本地播种合成申请；待 PR60 合入后以真实申请数据执行（详情渲染 materialReferences、单次水印读取、核验提交、决定、PR60 必需集成验收清单其余项）。PR60 对 PR59 的其余评审点（代理受控校验、未决机器判定）已于轮三修复并有单测；本轮真实联调进一步实证代理注入链路。
 
 ## 评审修复轮三（2026-09-21，按 PR60 交接）
 
@@ -44,7 +51,8 @@
 ## 验证（本地，Windows）
 
 - `npm run typecheck` 通过；`npm run build`（生产）与 `npm run build:fixture` 通过；`npm run check:boundaries` 通过（生产 JS 无 fixture 标记）。
-- `npm test`（build+Playwright，dev:4173 / preview:4174）：**21/21 通过**——契约测试 11 项（未登录深链零业务调用、真实登录协议（空 JSON 体 + X-Auth-Attempt 逐跳断言）、无权限关闭面板、列表契约渲染与分页、领取→单次水印读取（正反面合并解锁）→核验提交待契约关闭且零调用→未核验直接补正决定、connectionreset 与 503 均复用同一 requestId 重试、未决期间新写入禁用、**权威快照机器判定解除未决（零写）**、**grant 刷新不解除仅幂等重试恢复**、401 失效返回登录、409 版本冲突提示）、**代理守卫单测 5 组**（允许值放行/非法与 null 拒绝不覆盖/白名单 GET 同源上下文注入/跨站·异 Host·缺失 Fetch Metadata 失败关闭/白名单外路径不注入），原 6 项壳测试全部保持通过。
+- `npm test`（build+Playwright，dev:4173 / preview:4174）：**23 通过 + 1 门控跳过**（`tests/live.spec.ts` 仅 `LIVE_JOINT_BASE` 存在时执行）——契约测试 11 项（未登录深链零业务调用、真实登录协议（空 JSON 体 + X-Auth-Attempt 逐跳 + **无验证码时省略 captchaProof**）、无权限关闭面板、列表契约渲染与分页、领取→单次水印读取（正反面合并解锁）→**权威 materialReferences 引用提交核验**→**投影缺失（旧后端）禁用且零调用**→**损坏摘要禁用**→未核验直接补正决定、connectionreset 与 503 均复用同一 requestId 重试、未决期间新写入禁用、权威快照机器判定解除未决（零写）、grant 刷新不解除仅幂等重试恢复、401 失效返回登录、409 版本冲突提示）、代理守卫单测 5 组、原 6 项壳测试保持。
+- 真实联调：`LIVE_JOINT_BASE=http://127.0.0.1:18082 npx playwright test tests/live.spec.ts` 1/1 通过（真实 PR60 后端 + 生产构建 + 真实 Chromium，详见评审修复轮四）。
 - 未运行：真实后端联调、真机、微信端（不在本轮范围）。模拟接口测试不能替代真实契约联调（本轮评审即证明）。
 
 ## 披露与遗留

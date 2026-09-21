@@ -13,11 +13,25 @@ const SUMMARY = {
   status: 'REVIEWING', version: '4', merchantName: '星河宠物医院', merchantTypeCode: 'PET_HOSPITAL', cityCode: 'CHENGDU',
   submittedRevisionId: '5012345678901234567', submittedAt: '2026-09-20T10:00:00.000Z', subjectVerificationStatus: 'PENDING',
 };
-function detail(options: { taskStatus?: 'AVAILABLE' | 'CLAIMED'; taskVersion?: string; verification?: 'PENDING' | 'VERIFIED' } = {}) {
+// Authoritative submitted-material references (CCR-A002-MATERIAL-REF-001):
+// registered material ids and digests differ from asset ids; watermarked bytes
+// are never substitutes.
+const SHA = (suffix: string) => suffix.padEnd(64, '0').slice(0, 64);
+const PNG_BYTES = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==', 'base64');
+const MATERIAL_REFERENCES = [
+  { materialId: '9001000000000000001', assetId: '6011000000000000001', materialSha256: SHA('aa'), materialType: 'STORE_PHOTO', position: 1 },
+  { materialId: '9001000000000000002', assetId: '6011000000000000002', materialSha256: SHA('bb'), materialType: 'STORE_PHOTO', position: 2 },
+  { materialId: '9001000000000000003', assetId: '6011000000000000003', materialSha256: SHA('cc'), materialType: 'BUSINESS_LICENSE', position: 1 },
+  { materialId: '9001000000000000004', assetId: '6011000000000000005', materialSha256: SHA('dd'), materialType: 'ID_CARD_BACK', position: 1 },
+  { materialId: '9001000000000000005', assetId: '6011000000000000006', materialSha256: SHA('ee'), materialType: 'INDUSTRY_LICENSE', position: 1 },
+];
+function detail(options: { taskStatus?: 'AVAILABLE' | 'CLAIMED'; taskVersion?: string; verification?: 'PENDING' | 'VERIFIED'; materialReferences?: unknown[]; omitReferences?: boolean } = {}) {
+  const references = 'materialReferences' in options ? options.materialReferences : options.omitReferences ? undefined : MATERIAL_REFERENCES;
   return {
     ...SUMMARY, subjectVerificationStatus: options.verification ?? 'PENDING',
     submittedRevision: {
       revisionId: SUMMARY.submittedRevisionId, revisionNo: 1, createdAt: '2026-09-20T09:30:00.000Z',
+      ...(references === undefined ? {} : { materialReferences: references }),
       snapshot: {
         merchantName: SUMMARY.merchantName, merchantTypeCode: SUMMARY.merchantTypeCode, cityCode: SUMMARY.cityCode,
         address: '成都市高新区示例街道1号', longitude: '104.065735', latitude: '30.659462', introduction: '社区宠物医疗服务',
@@ -90,7 +104,8 @@ test('real login protocol: empty JSON body and X-Auth-Attempt on every bound cal
   expect(requirements?.attemptHeader).toBe(ATTEMPT_TOKEN);
   const loginCall = calls.find(call => call.path.endsWith('/auth/login'));
   expect(loginCall?.attemptHeader).toBe(ATTEMPT_TOKEN);
-  expect(loginCall?.body).toEqual({ attemptId: '801', account: 'ops', password: 'secret-password', captchaProof: '' });
+  // captchaProof is OMITTED when unused: the backend digest() rejects blank proofs.
+  expect(loginCall?.body).toEqual({ attemptId: '801', account: 'ops', password: 'secret-password' });
   expect(loginCall?.requestId).toBeTruthy();
 });
 
@@ -111,18 +126,20 @@ test('review list renders contract summaries and paginates server-side', async (
   expect(requestedPage).toBe(2);
 });
 
-test('claim, single-use watermarked reads; verification submit closed pending contract; correction allowed unverified', async ({ page }) => {
+test('claim, single-use reads, manual verification quotes authoritative references, then decision', async ({ page }) => {
   const calls = recorder(page);
   await grantLogin(page);
   let taskStatus: 'AVAILABLE' | 'CLAIMED' = 'AVAILABLE';
   let taskVersion = '2';
+  let verification: 'PENDING' | 'VERIFIED' = 'PENDING';
   let grantSerial = 0;
   const usedTokens = new Set<string>();
   await page.route('**/api/v1/admin/merchant-applications**', (route: Route) => {
     const path = new URL(route.request().url()).pathname;
     if (path === '/api/v1/admin/merchant-applications') route.fulfill(unified({ items: [SUMMARY], page: 1, pageSize: 20, total: 1 }));
-    else if (path === `/api/v1/admin/merchant-applications/${APPLICATION_ID}`) route.fulfill(unified(detail({ taskStatus, taskVersion })));
+    else if (path === `/api/v1/admin/merchant-applications/${APPLICATION_ID}`) route.fulfill(unified(detail({ taskStatus, taskVersion, verification })));
     else if (path.endsWith('/claim')) { taskStatus = 'CLAIMED'; taskVersion = '3'; route.fulfill(unified({ ...detail().task, status: 'CLAIMED', version: '3', claimedByOperatorId: '9001' })); }
+    else if (path.endsWith('/manual-verification')) { verification = 'VERIFIED'; route.fulfill(unified(RECEIPT)); }
     else if (path.endsWith('/decision')) route.fulfill(unified(RECEIPT));
     else route.fulfill(failure('NOT_FOUND', 404));
   });
@@ -133,7 +150,7 @@ test('claim, single-use watermarked reads; verification submit closed pending co
   await page.route(/\/private-asset-read-grants\/.+/, route => {
     const token = new URL(route.request().url()).pathname.split('/').pop()!;
     if (usedTokens.has(token)) route.fulfill(failure('GRANT_ALREADY_USED', 409));
-    else { usedTokens.add(token); route.fulfill({ status: 200, headers: { 'Content-Type': 'image/png' }, body: Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==', 'base64') }); }
+    else { usedTokens.add(token); route.fulfill({ status: 200, headers: { 'Content-Type': 'image/png' }, body: PNG_BYTES }); }
   });
 
   await login(page);
@@ -155,13 +172,34 @@ test('claim, single-use watermarked reads; verification submit closed pending co
   expect(grantBody).toMatchObject({ submissionRevisionId: SUMMARY.submittedRevisionId, purposeCode: 'MERCHANT_APPLICATION_REVIEW', confirmed: true });
   expect(String(grantBody?.reason ?? '').length).toBeGreaterThanOrEqual(10);
 
-  // Manual-verification submission stays closed: material references are not in the detail projection.
-  await expect(page.getByText('材料引用契约待补')).toBeVisible();
-  await expect(page.getByRole('button', { name: /提交人工核验/ })).toBeDisabled();
-  expect(calls.some(call => call.path.endsWith('/manual-verification'))).toBe(false);
+  // Evidence quotes the REGISTERED materialId + materialSha256, never asset ids or read bytes.
+  await page.getByLabel('营业执照 证件主体').fill('星河宠物医院有限公司');
+  await page.getByLabel('营业执照 证号').fill('91310101TEST0001X');
+  await page.getByLabel('营业执照 生效日').fill('2020-01-01');
+  await page.getByLabel('身份证（正反面合并核验） 证件主体').fill('张三');
+  await page.getByLabel('身份证（正反面合并核验） 证号').fill('310101199001010010');
+  await page.getByLabel('身份证（正反面合并核验） 生效日').fill('2015-01-01');
+  await page.getByLabel('身份证（正反面合并核验） 到期日').fill('2035-01-01');
+  await page.getByLabel('行业许可证 证件主体').fill('星河宠物医院有限公司');
+  await page.getByLabel('行业许可证 证号').fill('DY-2026-001');
+  await page.getByLabel('行业许可证 生效日').fill('2026-01-01');
+  await page.getByLabel('行业许可证 到期日').fill('2028-01-01');
+  await expect(page.getByRole('button', { name: '提交人工核验' })).toBeDisabled();
+  await page.getByPlaceholder('如：已核对证件原件与主体一致，编号与有效期无误').fill('已逐项核对证件原件、主体、编号与有效期一致');
+  await page.getByLabel('我已逐项核对上述证件信息与所见材料一致').check();
+  await page.getByRole('button', { name: '提交人工核验' }).click();
+  const verificationCall = calls.find(call => call.path.endsWith('/manual-verification'));
+  expect(verificationCall?.body).toMatchObject({ submissionRevisionId: SUMMARY.submittedRevisionId, expectedVersion: '4', expectedTaskVersion: '3', reason: '已逐项核对证件原件、主体、编号与有效期一致', confirmed: true });
+  expect((verificationCall?.body as { evidenceItems: unknown[] }).evidenceItems).toEqual([
+    { materialId: '9001000000000000003', materialSha256: SHA('cc'), credentialType: 'CREDIT_CODE', subjectName: '星河宠物医院有限公司', identifier: '91310101TEST0001X', validityKind: 'DATED', validFrom: '2020-01-01', validTo: null },
+    { materialId: '9001000000000000004', materialSha256: SHA('dd'), credentialType: 'IDENTITY_NUMBER', subjectName: '张三', identifier: '310101199001010010', validityKind: 'DATED', validFrom: '2015-01-01', validTo: '2035-01-01' },
+    { materialId: '9001000000000000005', materialSha256: SHA('ee'), credentialType: 'INDUSTRY_LICENSE', subjectName: '星河宠物医院有限公司', identifier: 'DY-2026-001', validityKind: 'DATED', validFrom: '2026-01-01', validTo: '2028-01-01' },
+  ]);
+  expect(verificationCall?.requestId).toBeTruthy();
 
-  // PENDING verification blocks only APPROVE; REQUEST_CORRECTION goes through without verification.
-  await expect(page.getByRole('option', { name: /通过（建立商家档案）/ })).toHaveAttribute('disabled');
+  // VERIFIED unlocks APPROVE only then; REQUEST_CORRECTION is checked afterwards.
+  await expect(page.getByText('已核验').first()).toBeVisible();
+  await expect(page.getByRole('option', { name: /通过（建立商家档案）/ })).not.toHaveAttribute('disabled');
   await page.getByLabel('决定类型').selectOption('REQUEST_CORRECTION');
   await expect(page.getByRole('button', { name: '提交审核决定' })).toBeDisabled();
   await page.getByLabel(/审核意见/).fill('请补充三个月内水电费单据作为经营地址证明');
@@ -170,6 +208,45 @@ test('claim, single-use watermarked reads; verification submit closed pending co
   const decision = calls.find(call => call.path.endsWith('/decision'));
   expect(decision?.body).toMatchObject({ decisionType: 'REQUEST_CORRECTION', submissionRevisionId: SUMMARY.submittedRevisionId, expectedVersion: '4', expectedTaskVersion: '3', opinion: '请补充三个月内水电费单据作为经营地址证明', confirmed: true });
   expect(decision?.requestId).toBeTruthy();
+});
+
+test('absent materialReferences (older backend) keeps verification closed, correction still available', async ({ page }) => {
+  const calls = recorder(page);
+  await grantLogin(page);
+  await page.route('**/api/v1/admin/merchant-applications**', (route: Route) => {
+    const path = new URL(route.request().url()).pathname;
+    if (path === '/api/v1/admin/merchant-applications') route.fulfill(unified({ items: [SUMMARY], page: 1, pageSize: 20, total: 1 }));
+    else if (path === `/api/v1/admin/merchant-applications/${APPLICATION_ID}`) route.fulfill(unified(detail({ taskStatus: 'CLAIMED', materialReferences: undefined })));
+    else route.fulfill(failure('NOT_FOUND', 404));
+  });
+
+  await login(page);
+  await page.getByRole('link', { name: '打开' }).click();
+  await expect(page.getByText('详情未返回材料引用投影（后端未含已批准契约或版本过旧），人工核验提交保持禁用。')).toBeVisible();
+  await expect(page.getByRole('button', { name: '提交人工核验（材料引用不可用）' })).toBeDisabled();
+  expect(calls.some(call => call.path.endsWith('/manual-verification'))).toBe(false);
+  // Approve stays gated; correction path remains usable without verification.
+  await expect(page.getByRole('option', { name: /通过（建立商家档案）/ })).toHaveAttribute('disabled');
+  await page.getByLabel('决定类型').selectOption('REQUEST_CORRECTION');
+  await page.getByLabel(/审核意见/).fill('材料投影缺失，先要求补正');
+  await page.getByLabel('我确认本决定基于已查看的材料与核验结果').check();
+  await expect(page.getByRole('button', { name: '提交审核决定' })).toBeEnabled();
+});
+
+test('corrupt material reference digest fails closed', async ({ page }) => {
+  await grantLogin(page);
+  const corrupted = MATERIAL_REFERENCES.map(item => item.materialType === 'ID_CARD_BACK' ? { ...item, materialSha256: 'not-a-sha' } : item);
+  await page.route('**/api/v1/admin/merchant-applications**', (route: Route) => {
+    const path = new URL(route.request().url()).pathname;
+    if (path === '/api/v1/admin/merchant-applications') route.fulfill(unified({ items: [SUMMARY], page: 1, pageSize: 20, total: 1 }));
+    else if (path === `/api/v1/admin/merchant-applications/${APPLICATION_ID}`) route.fulfill(unified(detail({ taskStatus: 'CLAIMED', materialReferences: corrupted })));
+    else route.fulfill(failure('NOT_FOUND', 404));
+  });
+
+  await login(page);
+  await page.getByRole('link', { name: '打开' }).click();
+  await expect(page.getByText(/材料引用摘要不合法/)).toBeVisible();
+  await expect(page.getByRole('button', { name: '提交人工核验（材料引用不可用）' })).toBeDisabled();
 });
 
 test('unknown-outcome write retries reuse the SAME requestId for an idempotent receipt', async ({ page }) => {

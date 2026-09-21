@@ -20,7 +20,14 @@ export function createAuthClient(transport: Transport = fetch) {
     requirements: (attempt: Attempt) => base.request<AttemptRequirements>(`/api/v1/admin/auth/attempts/${attempt.attemptId}/requirements`, bound(attempt)),
     createCaptcha: (attempt: Attempt) => base.request<CaptchaChallenge>('/api/v1/admin/auth/captcha/challenges', { method: 'POST', body: { attemptId: attempt.attemptId }, ...bound(attempt) }),
     verifyCaptcha: (attempt: Attempt, captchaId: string, answer: string) => base.request<CaptchaProof>('/api/v1/admin/auth/captcha/verify', { method: 'POST', body: { attemptId: attempt.attemptId, captchaId, answer }, ...bound(attempt) }),
-    login: (attempt: Attempt, account: string, password: string, captchaProof: string) => base.request<LoginResult>('/api/v1/admin/auth/login', { method: 'POST', body: { attemptId: attempt.attemptId, account, password, captchaProof }, ...bound(attempt) }),
+    // captchaProof must be OMITTED when unused: the backend's digest("") rejects
+    // blank proofs with unauthorized (AdminSecretCodec.digest).
+    login: (attempt: Attempt, account: string, password: string, captchaProof: string) =>
+      base.request<LoginResult>('/api/v1/admin/auth/login', {
+        method: 'POST',
+        body: { attemptId: attempt.attemptId, account, password, ...(captchaProof ? { captchaProof } : {}) },
+        ...bound(attempt),
+      }),
   };
 }
 

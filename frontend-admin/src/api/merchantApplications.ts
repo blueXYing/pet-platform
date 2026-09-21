@@ -27,13 +27,44 @@ export type ApplicationSnapshot = {
   contactNameMasked: string; contactPhoneMasked: string; emailMasked: string;
 };
 
+// Authoritative submitted-material references (CCR-A002-MATERIAL-REF-001, PR60 backend).
+// materialId/materialSha256 must be quoted verbatim in manual verification; the
+// rendered watermarked bytes and assetIds are never substitutes.
+export type MaterialReference = {
+  materialId: string; assetId: string; materialSha256: string;
+  materialType: 'BUSINESS_LICENSE' | 'ID_CARD_BACK' | 'INDUSTRY_LICENSE' | 'STORE_PHOTO' | string;
+  position: number;
+};
+
 export type ReviewDetail = {
   applicationId: string; applicationNo: string; reservedMerchantId: string; status: ApplicationStatus;
   version: string; merchantName: string; merchantTypeCode: string; cityCode: string;
   submittedRevisionId: string; submittedAt: string; subjectVerificationStatus: SubjectVerification;
-  submittedRevision: { revisionId: string; revisionNo: number; snapshot: ApplicationSnapshot; createdAt: string };
+  submittedRevision: { revisionId: string; revisionNo: number; snapshot: ApplicationSnapshot; createdAt: string; materialReferences?: MaterialReference[] };
   task: ReviewTaskView; latestDecision: DecisionView;
 };
+
+const MATERIAL_SHA_PATTERN = /^[0-9a-f]{64}$/;
+const MATERIAL_ID_PATTERN = /^[1-9][0-9]{0,18}$/;
+const KNOWN_MATERIAL_TYPES = new Set(['BUSINESS_LICENSE', 'ID_CARD_BACK', 'INDUSTRY_LICENSE', 'STORE_PHOTO']);
+
+// Fail-closed validation per the backend handoff: missing fields, unknown enums or
+// invalid digests/ids keep verification disabled — corruption is never treated as
+// an empty list, and an absent projection (older backend) stays closed as well.
+export function validateMaterialReferences(references: MaterialReference[] | undefined): { ok: boolean; issue: string } {
+  if (references === undefined) return { ok: false, issue: '详情未返回材料引用投影（后端未含已批准契约或版本过旧），人工核验提交保持禁用。' };
+  if (!Array.isArray(references) || references.length === 0) return { ok: false, issue: '材料引用投影为空或格式不合法，人工核验提交保持禁用。' };
+  for (const reference of references) {
+    if (!MATERIAL_ID_PATTERN.test(reference.materialId) || !MATERIAL_ID_PATTERN.test(reference.assetId)) return { ok: false, issue: `材料引用编号不合法（materialId=${reference.materialId}），人工核验提交保持禁用。` };
+    if (!MATERIAL_SHA_PATTERN.test(reference.materialSha256)) return { ok: false, issue: `材料引用摘要不合法（materialId=${reference.materialId}），人工核验提交保持禁用。` };
+    if (!KNOWN_MATERIAL_TYPES.has(reference.materialType)) return { ok: false, issue: `材料引用类型未知（${reference.materialType}），人工核验提交保持禁用。` };
+    if (!Number.isInteger(reference.position) || reference.position < 1) return { ok: false, issue: '材料引用位置不合法，人工核验提交保持禁用。' };
+  }
+  for (const requiredType of ['BUSINESS_LICENSE', 'ID_CARD_BACK'] as const) {
+    if (!references.some(reference => reference.materialType === requiredType)) return { ok: false, issue: `缺少必需材料引用（${requiredType}），人工核验提交保持禁用。` };
+  }
+  return { ok: true, issue: '' };
+}
 
 export type ApplicationReceipt = {
   applicationId: string; applicationNo: string; reservedMerchantId: string;

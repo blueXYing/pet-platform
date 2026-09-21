@@ -2,21 +2,22 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { RequestFailure } from '../request';
 import {
-  decisionLabel, merchantTypeLabel, statusLabel, verificationLabel,
-  type ApplicationSnapshot, type DecisionType, type ReviewDetail,
+  decisionLabel, merchantTypeLabel, statusLabel, validateMaterialReferences, verificationLabel,
+  type MaterialReference, type ReviewDetail,
 } from '../api/merchantApplications';
 
 type Client = ReturnType<typeof import('../api/merchantApplications').createMerchantApplicationClient>;
 
 // Backend manual-verification semantics: one evidence row per credential type,
-// IDENTITY_NUMBER is bound to ID_CARD_BACK only, and references must quote the
-// revision's registered merchant_material id+sha256 (MerchantApplicationService.verify).
-const EVIDENCE_GROUPS: readonly { credentialType: 'CREDIT_CODE' | 'IDENTITY_NUMBER' | 'INDUSTRY_LICENSE'; label: string; assetKeys: readonly (keyof ApplicationSnapshot)[] }[] = [
-  { credentialType: 'CREDIT_CODE', label: '营业执照', assetKeys: ['businessLicenseAssetId'] },
-  { credentialType: 'IDENTITY_NUMBER', label: '身份证（正反面合并核验）', assetKeys: ['idCardFrontAssetId', 'idCardBackAssetId'] },
-  { credentialType: 'INDUSTRY_LICENSE', label: '行业许可证', assetKeys: ['industryLicenseAssetId'] },
-];
-
+// IDENTITY_NUMBER is bound to ID_CARD_BACK only, and every row quotes the
+// revision's registered merchant_material id+sha256 verbatim
+// (MerchantApplicationService.verify; CCR-A002-MATERIAL-REF-001).
+type EvidenceGroup = {
+  credentialType: 'CREDIT_CODE' | 'IDENTITY_NUMBER' | 'INDUSTRY_LICENSE';
+  label: string;
+  reference: MaterialReference;
+  viewAssetIds: string[];
+};
 type EvidenceDraft = { subjectName: string; identifier: string; validityKind: 'DATED' | 'LONG_TERM'; validFrom: string | null; validTo: string | null };
 const EMPTY_DRAFT: EvidenceDraft = { subjectName: '', identifier: '', validityKind: 'DATED', validFrom: null, validTo: null };
 
@@ -41,7 +42,7 @@ function unknownOutcome(error: unknown) {
   return true;
 }
 
-type PendingKind = 'claim' | 'release' | 'decide' | 'grant';
+type PendingKind = 'claim' | 'release' | 'decide' | 'grant' | 'verify';
 
 // Machine-verifiable terminal verdicts from the authoritative snapshot. Operator
 // confirmation is never a substitute: the pending intent is kept until the
@@ -61,6 +62,10 @@ function machineVerdict(kind: PendingKind, next: ReviewDetail): string | null {
       return next.status !== 'REVIEWING'
         ? `权威状态确认：申请已离开审核中（${next.status}），决定已生效，未决解除。`
         : '权威状态确认：申请仍在审核中（原决定未生效），未决解除，可重新提交。';
+    case 'verify':
+      return next.subjectVerificationStatus === 'VERIFIED'
+        ? '权威状态确认：主体核验已完成，原操作已生效，未决解除。'
+        : '权威状态确认：主体核验仍未完成（原核验未生效），未决解除，可重新提交。';
     default:
       return null;
   }
@@ -74,10 +79,12 @@ export default function ReviewDetailPage({ client, canOperate, onAuthLost }: { c
   const [busy, setBusy] = useState(false);
   const [previews, setPreviews] = useState<Record<string, string>>({});
   const [viewReason, setViewReason] = useState('商家入驻申请人工审核，逐项核对申请材料内容');
-  const [decisionType, setDecisionType] = useState<DecisionType>('APPROVE');
+  const [decisionType, setDecisionType] = useState<DecisionTypeValue>('APPROVE');
   const [opinion, setOpinion] = useState('');
   const [internalNote, setInternalNote] = useState('');
   const [decisionConfirmed, setDecisionConfirmed] = useState(false);
+  const [verifyReason, setVerifyReason] = useState('');
+  const [verifyConfirmed, setVerifyConfirmed] = useState(false);
   const [drafts, setDrafts] = useState<Record<string, EvidenceDraft>>({});
   // Survives an unknown-outcome write so retry reuses the SAME requestId (idempotent receipt).
   const [retry, setRetry] = useState<{ kind: PendingKind; label: string; run: () => Promise<void> } | null>(null);
@@ -167,6 +174,20 @@ export default function ReviewDetailPage({ client, canOperate, onAuthLost }: { c
 
   const claim = () => detail && void runWrite('claim', id => client.claim(applicationId, detail.task.version, id), '任务已领取');
   const release = () => detail && void runWrite('release', id => client.release(applicationId, detail.task.version, id), '任务已释放，回到待领取');
+
+  const submitVerification = () => detail && evidenceGroups && void runWrite('verify', id => client.recordManualVerification(applicationId, {
+    submissionRevisionId: detail.submittedRevisionId,
+    expectedVersion: detail.version,
+    expectedTaskVersion: detail.task.version,
+    evidenceItems: evidenceGroups.map(group => ({
+      materialId: group.reference.materialId,
+      materialSha256: group.reference.materialSha256,
+      credentialType: group.credentialType,
+      ...drafts[group.credentialType] ?? EMPTY_DRAFT,
+    })),
+    reason: verifyReason.trim(),
+    confirmed: verifyConfirmed,
+  }, id), '人工核验已提交');
   const submitDecision = () => detail && void runWrite('decide', id => client.decide(applicationId, {
     decisionType,
     submissionRevisionId: detail.submittedRevisionId,
@@ -186,10 +207,24 @@ export default function ReviewDetailPage({ client, canOperate, onAuthLost }: { c
   const decisionNeedsOpinion = decisionType !== 'APPROVE';
   // Only APPROVE requires completed subject verification (26号裁决); REJECT/REQUEST_CORRECTION stay available.
   const decisionReady = decisionConfirmed && (!decisionNeedsOpinion || opinion.trim().length > 0) && (decisionType !== 'APPROVE' || !approveBlocked);
-  const assetsFor = (assetKeys: readonly (keyof ApplicationSnapshot)[]) =>
-    assetKeys.map(key => ({ key, assetId: snapshot[key] as string | null })).filter(item => item.assetId);
-  const groupViewed = (assetKeys: readonly (keyof ApplicationSnapshot)[]) =>
-    assetsFor(assetKeys).length > 0 && assetsFor(assetKeys).every(item => previews[item.assetId!] !== undefined);
+
+  // Evidence rows come exclusively from the authoritative material references;
+  // identity requires BOTH sides viewed, evidence quotes materialId+sha verbatim.
+  const references = validateMaterialReferences(detail.submittedRevision.materialReferences);
+  const referenceByType = (type: string) => detail.submittedRevision.materialReferences?.find(item => item.materialType === type);
+  const evidenceGroups: EvidenceGroup[] | null = references.ok ? buildEvidenceGroups(snapshot, referenceByType) : null;
+  const groupViewed = (group: EvidenceGroup) => group.viewAssetIds.length > 0 && group.viewAssetIds.every(assetId => previews[assetId] !== undefined);
+  const verificationReady = evidenceGroups !== null && verifyConfirmed && verifyReason.trim().length >= 10
+    && evidenceGroups.every(group => groupViewed(group)
+      && (drafts[group.credentialType]?.subjectName ?? '') !== '' && (drafts[group.credentialType]?.identifier ?? '') !== '');
+
+  const materials = [
+    ...snapshot.storePhotoAssetIds.map(id => ({ label: `门店照片 ${id}`, assetId: id })),
+    ...(snapshot.businessLicenseAssetId ? [{ label: '营业执照', assetId: snapshot.businessLicenseAssetId }] : []),
+    ...(snapshot.idCardFrontAssetId ? [{ label: '身份证（人像面）', assetId: snapshot.idCardFrontAssetId }] : []),
+    ...(snapshot.idCardBackAssetId ? [{ label: '身份证（国徽面）', assetId: snapshot.idCardBackAssetId }] : []),
+    ...(snapshot.industryLicenseAssetId ? [{ label: '行业许可证', assetId: snapshot.industryLicenseAssetId }] : []),
+  ];
 
   return <main>
     <h1>申请 {detail.applicationNo}</h1>
@@ -222,12 +257,7 @@ export default function ReviewDetailPage({ client, canOperate, onAuthLost }: { c
       <p className="hint">查看材料会记入审计；每次授权仅可读取一次并带水印，重复查看需再次说明理由。</p>
       {canOperate && <label>查看理由（10～500字）<input value={viewReason} onChange={event => setViewReason(event.target.value)} /></label>}
       <ul className="materials">
-        {snapshot.storePhotoAssetIds.map(id => ({ kind: 'storePhoto', label: `门店照片 ${id}`, assetId: id })).concat(
-          assetsFor(['businessLicenseAssetId']).map(item => ({ kind: 'businessLicense', label: '营业执照', assetId: item.assetId! })),
-          assetsFor(['idCardFrontAssetId']).map(item => ({ kind: 'idCardFront', label: '身份证（人像面）', assetId: item.assetId! })),
-          assetsFor(['idCardBackAssetId']).map(item => ({ kind: 'idCardBack', label: '身份证（国徽面）', assetId: item.assetId! })),
-          assetsFor(['industryLicenseAssetId']).map(item => ({ kind: 'industryLicense', label: '行业许可证', assetId: item.assetId! })),
-        ).map(item => <li key={item.assetId}>
+        {materials.map(item => <li key={item.assetId}>
           <span>{item.label}</span> <code>{item.assetId}</code>
           {canOperate && (previews[item.assetId]
             ? <img src={previews[item.assetId]} alt={`${item.label} 水印读取结果`} height={160} />
@@ -247,42 +277,48 @@ export default function ReviewDetailPage({ client, canOperate, onAuthLost }: { c
 
     {canOperate && taskClaimed && <section aria-labelledby="verify-heading">
       <h2 id="verify-heading">人工核验（主体/证件）</h2>
-      <p className="hint">身份证须正反面都查看后合并为一条主体核验；每类证件一条证据，重复类型会被后端拒绝。</p>
-      <p role="alert">材料引用契约待补：详情接口未提供提交版本的 merchant_material 编号与登记摘要（materialId/materialSha256），
-        前端不得以资产编号或读取字节摘要替代，须由契约 Owner 补充权威投影（CCR）后接入提交。以下录入先行为候选。</p>
-      <table className="evidence">
-        <thead><tr><th>证件</th><th>证件主体</th><th>证号/信用代码</th><th>有效期</th><th>查看状态</th></tr></thead>
-        <tbody>
-          {EVIDENCE_GROUPS.map(group => {
-            const draft = drafts[group.credentialType];
-            const viewed = groupViewed(group.assetKeys);
-            return <tr key={group.credentialType}>
-              <th>{group.label}</th>
-              <td><input aria-label={`${group.label} 证件主体`} value={draft?.subjectName ?? ''} disabled={!viewed} onChange={event => patchDraft(group.credentialType, { subjectName: event.target.value })} /></td>
-              <td><input aria-label={`${group.label} 证号`} value={draft?.identifier ?? ''} disabled={!viewed} onChange={event => patchDraft(group.credentialType, { identifier: event.target.value })} /></td>
-              <td>
-                <select aria-label={`${group.label} 有效期类型`} value={draft?.validityKind ?? 'DATED'} disabled={!viewed} onChange={event => patchDraft(group.credentialType, { validityKind: event.target.value as EvidenceDraft['validityKind'] })}>
-                  <option value="DATED">有期限</option>
-                  <option value="LONG_TERM">长期</option>
-                </select>
-                {draft?.validityKind !== 'LONG_TERM' && <>
-                  <input type="date" aria-label={`${group.label} 生效日`} value={draft?.validFrom ?? ''} disabled={!viewed} onChange={event => patchDraft(group.credentialType, { validFrom: event.target.value || null })} />
-                  <input type="date" aria-label={`${group.label} 到期日`} value={draft?.validTo ?? ''} disabled={!viewed} onChange={event => patchDraft(group.credentialType, { validTo: event.target.value || null })} />
-                </>}
-              </td>
-              <td>{viewed ? '已查看' : '未查看'}</td>
-            </tr>;
-          })}
-        </tbody>
-      </table>
-      <button disabled aria-disabled="true">提交人工核验（待材料引用契约，暂不可提交）</button>
+      {!references.ok || evidenceGroups === null ? <>
+        <p role="alert">{references.issue}</p>
+        <p className="hint">核验证据必须引用提交版本登记的材料编号与摘要；投影缺失或不合法时提交保持禁用，不以资产编号或读取字节替代。</p>
+        <button disabled aria-disabled="true">提交人工核验（材料引用不可用）</button>
+      </> : <>
+        <p className="hint">身份证须正反面都查看后合并为一条主体核验；每类证件一条证据，材料编号与摘要取自权威引用，重复类型会被后端拒绝。</p>
+        <table className="evidence">
+          <thead><tr><th>证件</th><th>证件主体</th><th>证号/信用代码</th><th>有效期</th><th>查看状态</th></tr></thead>
+          <tbody>
+            {evidenceGroups.map(group => {
+              const draft = drafts[group.credentialType];
+              const viewed = groupViewed(group);
+              return <tr key={group.credentialType}>
+                <th>{group.label}</th>
+                <td><input aria-label={`${group.label} 证件主体`} value={draft?.subjectName ?? ''} disabled={!viewed} onChange={event => patchDraft(group.credentialType, { subjectName: event.target.value })} /></td>
+                <td><input aria-label={`${group.label} 证号`} value={draft?.identifier ?? ''} disabled={!viewed} onChange={event => patchDraft(group.credentialType, { identifier: event.target.value })} /></td>
+                <td>
+                  <select aria-label={`${group.label} 有效期类型`} value={draft?.validityKind ?? 'DATED'} disabled={!viewed} onChange={event => patchDraft(group.credentialType, { validityKind: event.target.value as EvidenceDraft['validityKind'] })}>
+                    <option value="DATED">有期限</option>
+                    <option value="LONG_TERM">长期</option>
+                  </select>
+                  {draft?.validityKind !== 'LONG_TERM' && <>
+                    <input type="date" aria-label={`${group.label} 生效日`} value={draft?.validFrom ?? ''} disabled={!viewed} onChange={event => patchDraft(group.credentialType, { validFrom: event.target.value || null })} />
+                    <input type="date" aria-label={`${group.label} 到期日`} value={draft?.validTo ?? ''} disabled={!viewed} onChange={event => patchDraft(group.credentialType, { validTo: event.target.value || null })} />
+                  </>}
+                </td>
+                <td>{viewed ? '已查看' : '未查看'}</td>
+              </tr>;
+            })}
+          </tbody>
+        </table>
+        <label>核验说明（≥10字）<input value={verifyReason} onChange={event => setVerifyReason(event.target.value)} placeholder="如：已核对证件原件与主体一致，编号与有效期无误" /></label>
+        <label><input type="checkbox" checked={verifyConfirmed} onChange={event => setVerifyConfirmed(event.target.checked)} /> 我已逐项核对上述证件信息与所见材料一致</label>
+        <button disabled={busy || retry !== null || !verificationReady} onClick={() => void submitVerification()}>提交人工核验</button>
+      </>}
     </section>}
 
     {canOperate && taskClaimed && <section aria-labelledby="decision-heading">
       <h2 id="decision-heading">审核决定</h2>
       {approveBlocked && <p role="alert">主体核验未完成：仅“通过”需先完成人工核验；材料有问题时可正常选择拒绝或要求补正。</p>}
       <label>决定类型
-        <select value={decisionType} onChange={event => setDecisionType(event.target.value as DecisionType)}>
+        <select value={decisionType} onChange={event => setDecisionType(event.target.value as DecisionTypeValue)}>
           <option value="APPROVE" disabled={approveBlocked}>通过（建立商家档案）</option>
           <option value="REQUEST_CORRECTION">要求补正（申请人修改后重新提交）</option>
           <option value="REJECT">拒绝</option>
@@ -294,4 +330,23 @@ export default function ReviewDetailPage({ client, canOperate, onAuthLost }: { c
       <button disabled={busy || retry !== null || !decisionReady} onClick={() => void submitDecision()}>提交审核决定</button>
     </section>}
   </main>;
+}
+
+type DecisionTypeValue = 'APPROVE' | 'REJECT' | 'REQUEST_CORRECTION';
+
+function buildEvidenceGroups(
+  snapshot: import('../api/merchantApplications').ApplicationSnapshot,
+  referenceByType: (type: string) => MaterialReference | undefined,
+): EvidenceGroup[] {
+  const groups: EvidenceGroup[] = [];
+  const businessLicense = referenceByType('BUSINESS_LICENSE');
+  if (businessLicense) groups.push({ credentialType: 'CREDIT_CODE', label: '营业执照', reference: businessLicense, viewAssetIds: [businessLicense.assetId] });
+  const idCardBack = referenceByType('ID_CARD_BACK');
+  if (idCardBack) groups.push({
+    credentialType: 'IDENTITY_NUMBER', label: '身份证（正反面合并核验）', reference: idCardBack,
+    viewAssetIds: [snapshot.idCardFrontAssetId, snapshot.idCardBackAssetId].filter((id): id is string => id !== null),
+  });
+  const industryLicense = referenceByType('INDUSTRY_LICENSE');
+  if (industryLicense) groups.push({ credentialType: 'INDUSTRY_LICENSE', label: '行业许可证', reference: industryLicense, viewAssetIds: [industryLicense.assetId] });
+  return groups;
 }

@@ -6,7 +6,7 @@
 
 | 路由 | 页面 | 所需动作 | 数据来源（已批准操作） |
 |---|---|---|---|
-| `/login` | 运营登录 | 未登录可访问 | POST `/api/v1/admin/auth/attempts` → GET `.../attempts/{id}/requirements` →（CAPTCHA 时）POST `.../captcha/challenges` + `.../captcha/verify` → POST `.../auth/login` |
+| `/login` | 运营登录 | 未登录可访问 | POST `/api/v1/admin/auth/attempts`（JSON 体 `{}`）→ GET `.../attempts/{id}/requirements` →（CAPTCHA 时）POST `.../captcha/challenges` + `.../captcha/verify` → POST `.../auth/login`。attempt 绑定调用均携带 `X-Auth-Attempt`；**无验证码时 `captchaProof` 必须整体省略**（后端 `AdminSecretCodec.digest` 对空白 proof 判 unauthorized，真实联调证实）。 |
 | `/` | 重定向 `/merchant-applications` | — | — |
 | `/merchant-applications` | 审核队列表 | `merchant.application.read` | GET `/api/v1/admin/merchant-applications`（page/pageSize/status/merchantTypeCode/cityCode/submittedFrom/submittedTo/keyword） |
 | `/merchant-applications/:id` | 审核详情+操作 | 读=`merchant.application.read`；领取/释放/决定/核验/材料授权=`merchant.application.decide` +（核验与材料）`merchant.identity.reveal` | GET `.../{id}`；POST `.../{id}/claim|release|manual-verification|decision`；POST `.../{id}/private-assets/{assetId}/read-grants`；GET `/api/v1/admin/private-asset-read-grants/{token}` |
@@ -31,13 +31,8 @@
 ## 4. 已知缝隙与假设（待 Contract Owner/联调确认）
 
 1. **envelope 不一致**：`/auth/*` 响应为 `{code,message,data,traceId}`（无 `success`），商家/材料接口为统一 `{success,...}`。前端客户端按"有 `success` 用 `success`，否则 `code==='SUCCESS'`"兼容；建议后续按 23 号统一，前端再收紧。
-2. **登录来源校验冲突（阻断性集成事实，非环境备注）**：浏览器对同源 fetch **GET 不携带 Origin**（且 Origin 属禁止手动设置的请求头），而后端 `AdminAuthController.cookie()` 对 requirements 等 attempt 绑定调用要求 `pet.auth.admin.origin` 精确匹配，缺失即 403。因此仅"HTTPS + Origin 配置一致"不足以让网页登录成功。已按[PR60 交接](../A-002-contract-review/DECISIONS-AND-HANDOFF.md)批准的"同一 HTTPS 入口 + 受控代理"方向实施 dev/preview 受控代理（`vite.config.ts` + `proxy-guard.ts`）：
-   - 显式配置（`ADMIN_API_PROXY_TARGET`/`ADMIN_API_PROXY_ORIGIN`）成对出现，缺失或不完整即不启用代理，无默认转发目标；
-   - 已携带 Origin 的请求仅放行唯一允许值，其它值（含 `null`）**拒绝且绝不覆盖**；
-   - 仅对白名单 attempt 绑定 GET（auth requirements/result）在缺 Origin 时注入，且须先核实同源浏览器上下文（`Sec-Fetch-Site: same-origin` 且 Host 匹配入口），否则失败关闭；
-   - 清除外来转发身份头（X-Forwarded-*/Forwarded），代理不新增其它可信头；不记录敏感头/体；
-   - 判定逻辑为纯函数并单测覆盖（tests/proxy-guard.spec.ts）；浏览器级注入到真实后端仍属联调验收项，dev/preview 代理不等于生产入口已部署或验收。生产入口需按同一基线落实（或走后端 CCR），并按 PR60 必需集成验收清单以真实浏览器/后端验证。
-3. **材料引用契约缺口（已确认，走 CCR）**：审核详情投影不提供提交版本 merchant_material 的编号与登记摘要，而后端核验强制比对二者。前端不得以 assetId 或水印读取字节摘要替代（动态水印会改变字节，且 assetId≠materialId）。已按后端实现确认，非待验证假设；需 Contract Owner 经 CCR 补充权威投影（含 materialId、materialSha256、materialType）后，前端方可接入人工核验提交。当前页面呈现证据录入候选但禁用提交。
+2. **登录来源校验冲突（已按受控代理方向完成首轮真实联调）**：浏览器对同源 fetch **GET 不携带 Origin**（且 Origin 属禁止手动设置的请求头），而后端 `AdminAuthController.cookie()` 对 attempt 绑定调用要求 `pet.auth.admin.origin` 精确匹配，缺失即 403。已按[PR60 交接](../A-002-contract-review/DECISIONS-AND-HANDOFF.md)批准的"同一 HTTPS 入口 + 受控代理"方向实施 dev/preview 受控代理（`vite.config.ts` + `proxy-guard.ts`，规则与约束见下）并于 2026-09-21 完成真实后端联调：PR60 分支后端（真实 MySQL/Redis/OSS/ClamAV，本机 192.168.1.44:18082）+ 入口（127.0.0.1:18082 生产构建）+ 真实 Chromium，`tests/live.spec.ts`（LIVE_JOINT_BASE 门控，CI 不执行）全链通过——attempts 201、**requirements GET 经代理注入 Origin 后 200**（Sec-Fetch-Site=same-origin + 入口 Host 核实）、`__Host-` Secure Cookie 在回环地址被 Chromium 接受并回传、登录/会话/权限/列表/登出全部真实通过、零页面错误。同轮联调发现并修复前端缺陷：无验证码时 `captchaProof` 必须省略而非空串（§1）。**未覆盖**：含申请数据的详情/材料水印读取/人工核验/决定的真实后端流程——本地验收服务器无 C 端播种通道（真实微信 Provider），待后续以真实申请数据联调。代理规则：显式成对配置（缺失即不启用）；已携带 Origin 仅放行唯一允许值，非法/null 拒绝且绝不覆盖；仅白名单 attempt 绑定 GET（requirements/result）缺 Origin 时注入；清除外来转发身份头；不记录敏感信息（单测 5 组覆盖）。生产入口按同一基线另行部署验收。
+3. **材料引用投影（CCR-A002-MATERIAL-REF-001 已批准，PR60 后端已交付，前端已接入）**：`GET .../{id}` 的 `submittedRevision.materialReferences` 提供 `{materialId, assetId, materialSha256, materialType, position}`；人工核验证据逐字引用登记的 materialId/materialSha256（身份证正反面均须查看但合并为一条 ID_CARD_BACK 绑定证据；每类一条，重复类型后端拒绝）。前端 `validateMaterialReferences` 失败关闭：投影缺失（旧后端）、空/非数组、编号/摘要/枚举/位置非法、必需类型缺失时提交保持禁用并说明原因，不以 assetId 或水印字节替代。含申请数据的真实后端核验流程尚未联调（见 §4.2 未覆盖项）。
 4. **写操作重试幂等与未决恢复**：领取/释放/决定/材料授权均为公共幂等写；结果未知（网络错误、坏响应、5xx 含 503 COMMON_DEPENDENCY_UNAVAILABLE——后端在提交结果未知时返回依赖不可用，不能据此认定未执行）时页面保留原 requestId 与参数并提供"重试原操作"，复用同一请求标识取得幂等回执。**未决操作存在期间阻止一切新写入**（各操作按钮禁用且入口拒绝）。未决的解除必须**机器可验证**（不以操作者确认替代）：claim/release/decide 在刷新后的权威快照能判定命令终态（已生效/未生效）时自动解除并说明判定依据；材料授权（grant）的签发结果无法由申请快照判定，**仅**可通过重试原操作（幂等回执）恢复，刷新不解除。确定性 4xx 契约错误不进入未决状态。
 5. 登录 `accessToken` 内存持有、刷新即重登；不引入持久化会话存储（PRD 未批准 remember-me）。
 
