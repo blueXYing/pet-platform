@@ -1,6 +1,6 @@
 # CCR-A002-MATERIAL-REF-001：运营审核提交版本材料引用
 
-状态：DRAFT_FOR_REVIEW。2026-09-21用户已批准由当前根任务起草契约及评审、ZCODE负责前端；本字段方案为据此形成的具体审阅稿，尚未批准为权威Contract，未实施。
+状态：APPROVED / BACKEND_IMPLEMENTED_LOCAL_VERIFIED。2026-09-21用户在本CCR五字段方案说明后明确回复“批准”，授权同步契约并实施后端。后端投影及契约已交付，准确验证见[后端交接](../issues/wave-2/A-002-contract-review/BACKEND-HANDOFF.md)。当前根任务负责后端/契约，ZCODE负责前端；不授权合并或生产部署。
 
 ## 问题与已有依据
 
@@ -42,7 +42,7 @@ Backend Core在merchant-api定义只读引用DTO，通过本域查询服务/Mapp
 
 ## 实施与验收清单
 
-- Contract Owner批准此具体方案后同步API30、OpenAPI11及内部查询契约，登记兼容性和准确字段；本稿不改变权威正文。
+- 本方案已由用户批准，实施同步API30、OpenAPI11及内部查询契约，登记兼容性和准确字段。
 - 后端真实MySQL/HTTP：assetId不同于materialId；watermarked hash不同于登记hash；本次提交与补正草稿分离；跨申请/跨revision伪造拒绝；权限与范围正反例；旧版本冲突；正确引用核验与随后审批成功。
 - 身份证前后同时查看但单条主体证据、重复credential拒绝、DATED/LONG_TERM校验，保持原反例。
 - 前端覆盖缺字段零提交、严格String ID/摘要校验、原请求幂等、撤权隔离；真实浏览器到真实后端完成核验/补正/审批，不用拦截响应代替集成证据。

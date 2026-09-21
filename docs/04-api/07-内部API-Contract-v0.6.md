@@ -1501,3 +1501,12 @@ MerchantQueryApi三查询的参数/DTO、原五字段资格DTO、新成员事实
 申请查询/草稿/提交/领取/核验/决定按[30号补充](30-Merchant-Application-Contract-v0.1.md)定义，当前无业务实现。申请业务DTO只由merchant-api拥有；admin-api的最终授权查询必须采用自身通用AdminResourceScope，不依赖merchant-api类型。
 
 AdminResourceScope字段为resourceType、resourceId、merchantId、cityCode、scopeVersion，均为String；对申请资源type固定MERCHANT_APPLICATION、merchantId为服务端reservedMerchantId，cityCode来自已提交revision。AdminActionCheckQuery的sessionId/sessionGeneration/operatorId来自真实AdminSessionPrincipal，actionCode取服务端动作，phase=EXECUTE/READ_RESULT；权限快照不是长期执行许可。每次检查当前会话、动作和scope，依赖失败关闭。此为跨模块兼容增量审阅定义，不注册新生产授权端点。
+
+
+## 2026-09-21 已批准：提交版本材料引用
+
+[CCR-A002-MATERIAL-REF-001](../../planning/ccr/CCR-A002-MATERIAL-REF-001.md)已由用户批准。运营详情新增必需的`submittedRevision.materialReferences`数组（4～10项）。元素严格包含`materialId`、`assetId`（十进制String）、`materialSha256`（登记的标准化对象摘要，小写64位十六进制）、`materialType`（STORE_PHOTO/BUSINESS_LICENSE/ID_CARD_FRONT/ID_CARD_BACK/INDUSTRY_LICENSE）、`position`（版本槽位非负整数）。按类型字典序、position、materialId数值序稳定排序；不能用资产编号或动态水印摘要替代登记材料引用。
+
+内部`MerchantApplicationReviewDetail`新增不可变`List<MaterialReference>`。同一事务快照读取提交版本、任务及材料集合，拒绝不一致的引用，不混入之后尚未提交的补正草稿。沿用read权限、数据范围及核验命令锁内最终检查；元数据不授予原件读取权限，也不证明操作者已查看材料。
+
+C端详情、列表、写入回执、Schema/DDL、迁移和Event均不变。运营端严格解码客户端需协调此响应字段扩展；缺引用时保持人工核验提交禁用。身份证正反面都应查看，但仅以ID_CARD_BACK引用提交一条IDENTITY_NUMBER证据。默认生产门禁不解除。

@@ -152,6 +152,7 @@ class MerchantApplicationContract(unittest.TestCase):
             'subjectVerificationStatus': 'PENDING',
             'submittedRevision': {
                 'revisionId': '301', 'revisionNo': '1', 'createdAt': timestamp,
+                'materialReferences': [dict(materialId=str(8001+i), assetId=str(7001+i), materialSha256='a'*64, materialType=t, position=1) for i,t in enumerate(['BUSINESS_LICENSE','ID_CARD_FRONT','ID_CARD_BACK','STORE_PHOTO'])],
                 'snapshot': {'merchantName': '示例宠物医院', 'merchantTypeCode': 'PET_HOSPITAL',
                              'cityCode': '310100', 'contactNameMasked': '张*',
                              'contactPhoneMasked': '138****8000',
@@ -212,6 +213,20 @@ class MerchantApplicationContract(unittest.TestCase):
         for private in ('internalNote', 'identifier', 'contactPhone', 'ocrPayload',
                         'decidedByOperatorId', 'privateAssetUrl'):
             self.invalid('MerchantApplicationReviewedPayload', {**approved, private: 'secret'})
+
+
+    def test_material_reference_projection_is_strict(self):
+        ref = dict(materialId='8001', assetId='7001', materialSha256='a'*64,
+                   materialType='ID_CARD_BACK', position=1)
+        self.valid('AppReviewMaterialReference', ref)
+        for key, value in [('materialId', 8001), ('assetId', 7001),
+                           ('materialSha256', 'A'*64), ('materialType', 'UNKNOWN'),
+                           ('position', -1), ('objectKey', 'secret')]:
+            self.invalid('AppReviewMaterialReference', {**ref, key: value})
+        for key in ref:
+            changed = dict(ref); del changed[key]
+            self.invalid('AppReviewMaterialReference', changed)
+        self.assertIn('materialReferences', self.spec['components']['schemas']['AppReviewRevision']['required'])
 
 
 if __name__ == '__main__':
