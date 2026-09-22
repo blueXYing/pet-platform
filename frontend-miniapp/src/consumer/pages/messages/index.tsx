@@ -1,6 +1,6 @@
 import { Button, Text, View } from '@tarojs/components'
 import Taro, { useDidShow } from '@tarojs/taro'
-import { useEffect, useState, useSyncExternalStore } from 'react'
+import { useEffect, useState, useSyncExternalStore, type CSSProperties } from 'react'
 import { ConsumerPageLayout } from '../../components/page-layout'
 import { MessagesController, routeForNotification } from '../../notifications/messages'
 import { realNotificationDeps } from '../../notifications/messages-runtime'
@@ -24,7 +24,11 @@ export default function MessagesPage() {
     if (url) void Taro.navigateTo({ url })
     else void Taro.showToast({ title: '该消息无需跳转', icon: 'none' })
   }
-  return <ConsumerPageLayout page='profileEdit' unit={1} className='messages-page messages-subpage' style={{}}>
+  // Custom navigation: the page renders under the OS status bar, so reserve its real height
+  // (env(safe-area-inset-top) is 0 in WeChat) the same way the application and signing pages do.
+  const [windowInfo] = useState(() => Taro.getWindowInfo())
+  const style = { '--messages-top': `${windowInfo.statusBarHeight || 0}px` } as CSSProperties
+  return <ConsumerPageLayout page='profileEdit' unit={1} className='messages-page messages-subpage' style={style}>
     <View className='messages-design' data-state={state.status}>
       <View className='messages-header'>
         <Button id='messages-back' ariaLabel='返回' onClick={() => void back()}>返回</Button>

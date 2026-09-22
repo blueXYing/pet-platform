@@ -5,7 +5,7 @@
 .messages-header { height: 88rpx; background: #fff6e5; border-bottom: 2rpx solid #c0ecff; display: flex; align-items: center; gap: 16rpx; font-size: 32rpx; font-weight: 700; }
 .messages-header button { margin-left: 38rpx; color: #3185ba; background: transparent; font-size: 28rpx; }
 .messages-body { padding: 24rpx 32rpx 64rpx; display: flex; flex-direction: column; gap: 20rpx; }
-.messages-subpage { padding-top: env(safe-area-inset-top); }
+.messages-subpage { padding-top: var(--messages-top, 0px); }
 .messages-item-meta, .messages-meta { word-break: break-all; }
 .messages-item { width: 100%; box-sizing: border-box; }
 .messages-line { color: #577683; font-size: 28rpx; }
