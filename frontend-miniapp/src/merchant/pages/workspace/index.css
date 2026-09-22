@@ -1,3 +1,20 @@
-.merchant-example .fixture-controls { display: flex; flex-wrap: wrap; gap: 12px; }
-.merchant-example .fixture-controls button { width: calc(50% - 6px); margin: 0; }
-.merchant-example button { font-size: 26px; margin-bottom: 16px; }
+/* No Figma original for admission states (design registry §4); tokens follow the application page. */
+.merchant-workbench { min-height: 100vh; background: #f0fbff; color: #1d0d07; font-family: Roboto, Arial, 'Microsoft YaHei', sans-serif; }
+.merchant-workbench button { margin: 0; padding: 0; border: 0; line-height: normal; font-weight: normal; }
+.merchant-workbench button::after { border: 0; }
+.workbench-header { height: 88rpx; background: #fff6e5; border-bottom: 2rpx solid #c0ecff; display: flex; align-items: center; gap: 16rpx; font-size: 32rpx; font-weight: 700; }
+.workbench-header .workbench-back { margin-left: 38rpx; color: #3185ba; background: transparent; font-size: 28rpx; }
+.workbench-body { padding: 24rpx 32rpx 48rpx; display: flex; flex-direction: column; gap: 20rpx; }
+.workbench-line { color: #577683; font-size: 28rpx; }
+.workbench-card { background: #fff; border: 2rpx solid #c0ecff; border-radius: 18rpx; padding: 28rpx; display: flex; flex-direction: column; gap: 16rpx; }
+.workbench-error { border-color: #a83232; color: #a83232; }
+.workbench-error button, .workbench-card > button { align-self: flex-start; color: #fff; background: #5baae8; border-radius: 100rpx; padding: 12rpx 36rpx; font-size: 28rpx; }
+.workbench-title { font-size: 34rpx; font-weight: 700; }
+.workbench-hint { color: #577683; font-size: 24rpx; line-height: 1.6; }
+.workbench-reasons { display: flex; flex-direction: column; gap: 8rpx; color: #7a4a1d; font-size: 27rpx; }
+.workbench-actions { display: flex; flex-wrap: wrap; gap: 12rpx; }
+.workbench-chip { background: #eaf6fd; border: 2rpx solid #c0ecff; border-radius: 100rpx; padding: 6rpx 18rpx; font-size: 22rpx; color: #3185ba; }
+.workbench-steps { display: flex; flex-direction: column; gap: 12rpx; }
+.workbench-steps button { color: #3185ba; background: transparent; font-size: 28rpx; padding: 8rpx 0; align-self: flex-start; }
+.workbench-store { display: flex; flex-direction: column; align-items: flex-start; gap: 4rpx; background: #eaf6fd; border: 2rpx solid #c0ecff; border-radius: 18rpx; padding: 20rpx 24rpx; font-size: 30rpx; }
+.workbench-meta { color: #9bb3bd; font-size: 22rpx; word-break: break-all; }
