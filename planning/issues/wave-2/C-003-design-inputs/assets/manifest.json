@@ -1,0 +1,32 @@
+{
+  "sourceVersion": "2401180846436413285",
+  "fileKey": "bp2vpcjjA5vZbHvtKkA8wl",
+  "scale": 2,
+  "note": "Raw 2x design exports downloaded byte-identically from Figma REST image renders; do not edit in place. Node-level cutouts of frame 690:6660 (服务-商家详情页).",
+  "cutouts": [
+    { "file": "690-6661-bg-huaban@2x.png", "node": "690:6661", "designBox": [0, 13, 402, 787], "mode": "STRETCH", "placement": "页面花卉背景", "bytes": 648981, "sha256": "e26665d6b4b571bdaa51dd7c24741d4cef6030b650797b839256d1ee8f40f760" },
+    { "file": "690-6908-store-banner@2x.png", "node": "690:6908", "designBox": [13, 75, 375, 180], "mode": "FILL", "placement": "店铺头图", "bytes": 488663, "sha256": "9e64f468172c95bfe4a6e382cd86fedb5a3c38b2d54cc8d10780e1a974ab14ef" },
+    { "file": "690-6709-store-avatar@2x.png", "node": "690:6709", "designBox": [47, 289, 56, 56], "mode": "FILL r12", "placement": "店铺信息卡头像", "bytes": 15947, "sha256": "0836db9882e564989b7f3f4edfa05bca5f0e67ab531e7f24b477ad5926cc0dd9" },
+    { "file": "690-6722-star-orange@2x.png", "node": "690:6722", "designBox": [115.4, 322.5, 10, 9], "mode": "VECTOR #FF9500", "placement": "评分星", "bytes": 460, "sha256": "dfa284cda875fdc283c69f2a315225b85c0bb512b41cfbc7151ec1c6e0ee5ba9" },
+    { "file": "690-6889-star-blue@2x.png", "node": "690:6889", "designBox": [89.4, 1219, 10, 9], "mode": "VECTOR #5BAAE8", "placement": "评价星（蓝）", "bytes": 538, "sha256": "be0701a12a082a7dcad3d27b94892028341248254b4c2e7958024c93e82694cd" },
+    { "file": "690-6750-icon-location@2x.png", "node": "690:6750", "designBox": [49.3, 501.8, 12, 14], "mode": "VECTOR #577683", "placement": "门店信息-地址", "bytes": 988, "sha256": "8dcf895dbc34f877d6a7736137b095992ca07610541599cd4d9b678c36a1250b" },
+    { "file": "690-6758-icon-clock@2x.png", "node": "690:6758", "designBox": [48.7, 536.3, 13, 13], "mode": "VECTOR #577683", "placement": "门店信息-营业时间", "bytes": 965, "sha256": "8db1a60ff78add1dc092353fadf74300f7946f0b82fae9dca68724880a3e9268" },
+    { "file": "690-6766-icon-phone@2x.png", "node": "690:6766", "designBox": [49.3, 571, 12, 12], "mode": "VECTOR #577683", "placement": "门店信息-电话", "bytes": 836, "sha256": "1d5d309e7098d01f083433024b7dbdd179221860c4188d57d279c152e67febb4" },
+    { "file": "690-6706-nav-back@2x.png", "node": "690:6706", "designBox": [18, 26.7, 9, 15], "mode": "VECTOR #3C3C3C", "placement": "导航返回箭头", "bytes": 401, "sha256": "50b22e06008a8d147b980606ac0ad54709ba8fb8abbbb0f9faf770510500c6ec" },
+    { "file": "690-6844-reviewer-1@2x.png", "node": "690:6844", "designBox": [47, 1112, 32, 32], "mode": "FILL r9999", "placement": "用户评价头像1（林小姐）", "bytes": 8585, "sha256": "ad5ceab95a45791d33e368689560cce00919a84f0094dedf4e67724ee6083402" },
+    { "file": "690-6877-reviewer-2@2x.png", "node": "690:6877", "designBox": [47, 1196, 32, 32], "mode": "FILL r9999", "placement": "用户评价头像2（王女士）", "bytes": 8712, "sha256": "8c3c2d44b08d1cb5cf7e74995e2199106e09972e6e23ea61c688b8485ce34f05" }
+  ],
+  "screenshots": [
+    { "file": "user-110-480@2x.png", "node": "110:480", "bytes": 761068, "sha256": "b6383802dd54f24d8b74142dfffcd3d43eae8e5980132ab9c6e020b3b034d8ea" },
+    { "file": "user-690-6370@2x.png", "node": "690:6370", "bytes": 470296, "sha256": "fee8d289c88af76a070f3855d929123de24e952ec8a05a70a92b28270d34424a" },
+    { "file": "user-690-6660@2x.png", "node": "690:6660", "bytes": 671665, "sha256": "e0d9693b8a470bf8af6ce4e788a0f1bf889485133c97c389266c952d6b9e985f" },
+    { "file": "user-690-2025@2x.png", "node": "690:2025", "bytes": 671672, "sha256": "9c45ef57563a323f5176045318908f4e73af092c1e788bb4b70b0cc7b784bf9c" },
+    { "file": "user-690-4205@2x.png", "node": "690:4205", "bytes": 664343, "sha256": "f5e1df0a3bd84742bf75a659c251641fe381db92b39d40a5c0f7a67a2c235f5a" },
+    { "file": "user-238-2356@2x.png", "node": "238:2356", "bytes": 551524, "sha256": "91cd741c58dc1aa61c3b6fbfc15931b8e71267450f7abc802f09e2a91e239b84" },
+    { "file": "user-690-7877@2x.png", "node": "690:7877", "bytes": 506486, "sha256": "ccfe7d27fe05f5c1ee5a32bb51436a14d93ce1687bed0f45cb168a274381dc51" },
+    { "file": "user-690-8107@2x.png", "node": "690:8107", "bytes": 492367, "sha256": "13958269808a066b8d227c436491aa3f24b13df1e70ce69f26046a1ded5fa596" },
+    { "file": "user-690-8337@2x.png", "node": "690:8337", "bytes": 366000, "sha256": "4f27eef8c54bc2fa88e58748687171e2b654fd83a32755b5bd1169688dd02a66" },
+    { "file": "mer-10-5255@2x.png", "node": "10:5255", "fileKey": "Usvn3d6UCVCAlDxou5KAK8", "bytes": 119312, "sha256": "1decfa1ff0a9e069f715c48d673cc4d27011cc9b911bb4c95d79ddce4ac0fd48" },
+    { "file": "mer-11-5768@2x.png", "node": "11:5768", "fileKey": "Usvn3d6UCVCAlDxou5KAK8", "bytes": 521707, "sha256": "48c19405920eeac7ef8c1de913cc55a01ec3bc36c964a10ff5e8eb47394e750d" }
+  ]
+}
