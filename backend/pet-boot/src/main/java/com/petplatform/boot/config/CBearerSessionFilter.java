@@ -46,7 +46,9 @@ public final class CBearerSessionFilter extends OncePerRequestFilter {
         || path.equals("/api/v1/c/merchant-applications")
         || path.startsWith("/api/v1/c/merchant-applications/")
         || path.equals("/api/v1/merchant/agreement")
-        || path.equals("/api/v1/merchant/agreement/consent");
+        || path.equals("/api/v1/merchant/agreement/consent")
+        || path.equals("/api/v1/c/auth/merchant-memberships")
+        || path.equals("/api/v1/merchant/auth/admission");
   }
 
   @Override

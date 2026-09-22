@@ -19,6 +19,13 @@ public interface MerchantReadMapper {
             @Param("ownerUserId") long ownerUserId
     );
 
+    java.util.List<MerchantStoreReadEntity> selectOwnedStores(
+            @Param("ownerUserId") long ownerUserId,
+            @Param("limit") int limit,
+            @Param("offset") int offset);
+
+    long countOwnedStores(@Param("ownerUserId") long ownerUserId);
+
     MerchantStaffReadEntity selectOwnedStaff(
             @Param("merchantId") long merchantId,
             @Param("storeId") long storeId,

@@ -67,6 +67,12 @@ public class CSessionSecurityConfiguration {
               a.requestMatchers("/api/v1/c/merchant-applications").permitAll();
               a.requestMatchers("/api/v1/merchant/agreement", "/api/v1/merchant/agreement/consent")
                   .permitAll();
+              // Admission surfaces (CCR-W2-ADMISSION-001): MINIAPP Bearer is enforced by the
+              // CBearerSessionFilter protectedPath list, not by permitAll itself.
+              a.requestMatchers(
+                      "/api/v1/c/auth/merchant-memberships",
+                      "/api/v1/merchant/auth/admission")
+                  .permitAll();
             }
             if (privateAssetsEnabled) {
               a.requestMatchers(HttpMethod.POST, "/api/v1/c/private-assets").permitAll();
