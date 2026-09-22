@@ -22,7 +22,7 @@ import org.springframework.web.method.annotation.MethodArgumentTypeMismatchExcep
 @RestControllerAdvice(assignableTypes = {
         CAuthController.class, CAccountController.class, CPetController.class,
         CProfileController.class, CMerchantMembershipController.class,
-        CNotificationController.class})
+        CNotificationController.class, CServiceController.class})
 @Order(0)
 public class CServiceExceptionHandler {
 

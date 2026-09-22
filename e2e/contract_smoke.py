@@ -104,6 +104,10 @@ PRIVATE_ASSET_OPERATIONS = {
     'issuePrivateAssetReadGrant': ('post', '/admin/merchant-applications/{applicationId}/private-assets/{assetId}/read-grants'),
     'consumePrivateAssetReadGrant': ('get', '/admin/private-asset-read-grants/{token}'),
 }
+SERVICE_CATALOG_OPERATIONS = {
+    'cListStoreServices': ('get', '/c/stores/{storeId}/services'),
+    'cGetService': ('get', '/c/services/{serviceId}'),
+}
 
 
 def check_private_assets(spec, operation):
@@ -337,6 +341,10 @@ def check(spec):
             if operation_id in PRIVATE_ASSET_OPERATIONS:
                 assert (method, path) == PRIVATE_ASSET_OPERATIONS[operation_id], f'Private asset operation moved: {operation_id}'
                 check_private_assets(spec, operation)
+            if operation_id in SERVICE_CATALOG_OPERATIONS:
+                assert (method, path) == SERVICE_CATALOG_OPERATIONS[operation_id], f'Service catalog operation moved: {operation_id}'
+                assert operation.get('x-contract-status') == 'ACCEPTED_CONTRACT_NOT_IMPLEMENTED', f'Service catalog contract status changed: {operation_id}'
+                assert operation.get('security') == [{'bearerAuth': []}], f'Service catalog security changed: {operation_id}'
             if operation_id in AUTH_OPERATIONS:
                 assert (method, path) == AUTH_OPERATIONS[operation_id], f'AUTH operation moved: {operation_id}'
                 check_auth_security(spec, operation, parameters)
@@ -401,7 +409,7 @@ def check(spec):
     assert legacy_seen == LEGACY_OPERATIONS.keys(), f'Legacy operations missing: {LEGACY_OPERATIONS.keys() - legacy_seen}'
     assert legacy_writes == 13, 'Legacy write surface changed'
     assert legacy_creates == LEGACY_CREATES, 'Legacy create surface changed'
-    assert operations == LEGACY_OPERATIONS.keys() | AUTH_OPERATIONS.keys() | MERCHANT_OPERATIONS.keys() | APPLICATION_OPERATIONS.keys() | PRIVATE_ASSET_OPERATIONS.keys(), 'Unexpected or missing reviewed operations'
+    assert operations == LEGACY_OPERATIONS.keys() | AUTH_OPERATIONS.keys() | MERCHANT_OPERATIONS.keys() | APPLICATION_OPERATIONS.keys() | PRIVATE_ASSET_OPERATIONS.keys() | SERVICE_CATALOG_OPERATIONS.keys(), 'Unexpected or missing reviewed operations'
     schemes = spec['components']['securitySchemes']
     assert schemes['bearerAuth']['type'] == 'http' and schemes['bearerAuth']['scheme'] == 'bearer'
     for scheme, location, name in [('authAttempt', 'header', 'X-Auth-Attempt'),
@@ -436,6 +444,7 @@ def check(spec):
             'merchantOperations': len(operations & MERCHANT_OPERATIONS.keys()),
             'applicationOperations': len(operations & APPLICATION_OPERATIONS.keys()),
             'privateAssetOperations': len(operations & PRIVATE_ASSET_OPERATIONS.keys()),
+            'serviceCatalogOperations': len(operations & SERVICE_CATALOG_OPERATIONS.keys()),
             'resolvedRefs': len(refs), 'stringIdProperties': ids}
 
 

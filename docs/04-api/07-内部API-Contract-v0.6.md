@@ -186,6 +186,34 @@ public record MerchantOrderEligibilityDTO(
 - 已存在存量订单继续履约，不由此接口否决存量订单处理。
 - “商家下线但存量订单继续履约”属于订单侧按订单快照与存量关系判断。
 
+
+### 4.2 MerchantDisplayEligibilityApi（CCR-W2-API-001 服务域 SVC-D5，2026-09-22 已批）
+
+```java
+public interface MerchantDisplayEligibilityApi {
+
+    MerchantDisplayEligibilityDTO checkDisplayEligibility(
+        MerchantDisplayEligibilityQuery query
+    );
+}
+```
+
+```java
+public record MerchantDisplayEligibilityQuery(
+    String merchantId, String storeId, QueryContext context
+) {}
+
+public record MerchantDisplayEligibilityDTO(
+    String merchantId, String storeId,
+    boolean merchantEnabled, boolean storeEnabled, boolean acceptsNewOrders
+) {}
+```
+
+- 仅供 C 端展示聚合消费：只读布尔事实，不授予任何商家操作权限（权威面仍是 4.1 三查询）。
+- 不做所有者前提过滤；QueryContext 仅承载 requestId/traceId 链路信息，调用方不得借其冒充商家主体（自报 DTO 不构成 Principal）。
+- 与 4.1 使用同一资格策略与同一 repeatable-read 事务快照，语义一致（含失败关闭）。
+- 错误语义：确认不存在的商家/门店对 → NOT_FOUND（调用方按不可见处理）；事实源故障、读取失败或状态未知 → DEPENDENCY_UNAVAILABLE（调用方 503）；两者不得混同。
+
 ---
 
 ## 5. pet-service-api
@@ -198,6 +226,11 @@ public interface ServiceQueryApi {
     ServiceSnapshotDTO getServiceSnapshot(ServiceSnapshotQuery query);
 
     ServiceBookabilityDTO checkBookable(ServiceBookabilityQuery query);
+
+    // CCR-W2-API-001 服务域（2026-09-22 已批）新增两条：
+    ServiceSnapshotPageDTO getStoreServiceSnapshots(StoreServiceSnapshotQuery query);
+
+    ServiceSnapshotDTO getVisibleService(ServiceSnapshotQuery query);
 }
 ```
 
@@ -224,6 +257,44 @@ PICKUP_DELIVERY
 ```
 
 V1.0 API 契约不包含套餐、次卡、普通商品或无需履约类型。
+
+
+#### 5.1.1 查询与资格形状（CCR-W2-API-001 服务域 v0.2 已批，2026-09-22）
+
+```java
+public record ServiceSnapshotQuery(String serviceId, QueryContext context) {}
+
+public record StoreServiceSnapshotQuery(
+    String storeId, int page, int pageSize, QueryContext context
+) {}
+
+
+public record ServiceBookabilityQuery(
+    String serviceId, String storeId, QueryContext context
+) {}
+```
+
+```java
+public record ServiceBookabilityDTO(
+    String serviceId, String merchantId, String storeId,
+    boolean bookable,
+    java.util.List<String> reasonCodes
+) {}
+```
+
+```java
+public record ServiceSnapshotPageDTO(
+    java.util.List<ServiceSnapshotDTO> items, int page, int pageSize, long total
+) {}
+```
+
+`getStoreServiceSnapshots`：门店分页（created_at DESC, id DESC；page 1..10000、pageSize 1..50），仅返回可见门店的 ACTIVE 服务；门店隐藏（四条件任一不满足或确认不存在）返回空页。`getVisibleService`：C 可见性规则，不可见一律 NOT_FOUND。
+
+- `bookable = service.status=ACTIVE ∧ merchantEnabled ∧ storeEnabled ∧ acceptsNewOrders`；商家/门店事实经 §4.2 展示资格查询在同一 repeatable-read 事务内读取。
+- `reasonCodes` ∈ {MERCHANT_DISABLED, STORE_DISABLED, MERCHANT_NOT_ACCEPTING_ORDERS, SERVICE_OFFLINE}，多项可并列；仅供内部 ORD/SCH 消费，C 端 HTTP 响应不携带 bookability（可见性规则见 10 号 §3.3.1）。
+- 快照为查询时值拷贝：主数据后续修改不改变已返回副本。
+- 失败关闭：事实源故障、读取失败或状态未知 → DEPENDENCY_UNAVAILABLE；确认不存在 → NOT_FOUND；不得混同。
+- 此判断仅为服务侧基本资格，不代表所选时间有空位或下单成功。
 
 ---
 
