@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.petplatform.notification.biz.infrastructure.persistence.mapper.NotificationInboxMapper">
+    <select id="selectInboxItem" resultType="com.petplatform.notification.biz.infrastructure.persistence.entity.NotificationInboxEntity">
+        SELECT id, receiver_type, receiver_id, category, message_type, biz_type, biz_id,
+               title, content, mandatory_inbox, read_at, created_at
+        FROM notification
+        WHERE id = #{id} AND receiver_type = 'USER' AND receiver_id = #{receiverId}
+    </select>
+    <select id="countInbox" resultType="long">
+        SELECT COUNT(*) FROM notification
+        WHERE receiver_type = 'USER' AND receiver_id = #{receiverId}
+    </select>
+    <select id="selectInboxPage" resultType="com.petplatform.notification.biz.infrastructure.persistence.entity.NotificationInboxEntity">
+        SELECT id, receiver_type, receiver_id, category, message_type, biz_type, biz_id,
+               title, content, mandatory_inbox, read_at, created_at
+        FROM notification
+        WHERE receiver_type = 'USER' AND receiver_id = #{receiverId}
+        ORDER BY created_at DESC, id DESC
+        LIMIT #{limit} OFFSET #{offset}
+    </select>
+    <update id="markReadIfUnread">
+        UPDATE notification SET read_at = #{readAt}
+        WHERE id = #{id} AND receiver_type = 'USER' AND receiver_id = #{receiverId} AND read_at IS NULL
+    </update>
+</mapper>

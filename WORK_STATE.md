@@ -1,16 +1,19 @@
 # Work State
 
 PROJECT: 宠物平台 V1.0
-STATE_VERSION: 7.5
-UPDATED_AT: 2026-09-21
+STATE_VERSION: 7.6
+UPDATED_AT: 2026-09-22
 
 CURRENT_PHASE: W3_INTEGRATION_REVIEW
-CURRENT_STATUS: A002_REVIEW_SLICE_MERGED_INTEGRATION_VERIFIED
-VERIFIED_BASELINE: develop 54cf51e534038d024521fe2210e999d6c42f2d77
-NEXT_PHASE: 手机协议签署、工作台准入与通知跳转联合验收
+CURRENT_STATUS: M002_SIGNING_ADMISSION_CHAIN_MERGED
+VERIFIED_BASELINE: develop 12bdc382a9c44f18a2f7ab9a1f8ee08ff4d2b6ac9
+NEXT_PHASE: 通知读取与受控跳转（NTF-001/C-006），随后 SVC-001 服务域
 NEXT_PHASE_APPROVED: YES（沿用既有范围；先完成本次合并核验，不自动扩大Issue或生产发布）
 
 ## 当前结论
+
+2026-09-22用户确认设计裁决(b)后连续交付并合入三个切片：PR61（MS-1手机签约页+申请页签约入口）、PR62（MS-2准入契约CCR-W2-ADMISSION-001冻结+memberships/admission OWNER实现）、PR63（MS-3工作台前端接真实准入）。三PR各自CI六项全绿；MS-1与MS-3另经模拟器真实链路人工验收（登录→申请→审批APPROVED→签署→工作台ALLOWED，真实微信/OSS/ClamAV/MySQL/Redis），证据在M-002-mobile-signing各交接文档分层记录。"审核通过→手机签署→按真实资格进入工作台"主链闭环；工作台业务（订单/服务/排期）、子账号、STAFF、merchantEntry、冻结写动作维持未交付。仓库已于当日转public，CI分钟限制解除。
+
 
 2026-09-21用户授权按顺序推进最终核验及收尾。PR60（材料引用后端，head 4f00914）先合入00eceff，PR59（运营审核页面，head 30d2b61）随后合入54cf51e。两PR合并前六项CI均成功，组合无冲突；本轮前端复跑27通过、2个live门控跳过。合并后CI与精确证据见[合并回执](planning/progress/2026-09-21/A002_MERGE_CLOSEOUT.md)。PR58为本轮台账分支，不冒充已经合入。
 
@@ -32,9 +35,9 @@ SSOT §28已批准取消入驻地址/坐标地理匹配、距离和围栏限制�
 | PLAT-002 | ID节点协调及幂等基础；本地受控联调使用真实发号器 | 正式宿主退出证明、节点/高水位恢复、生产迁移与启用、完整公共幂等范围 |
 | PLAT-003 / PLAT-004 | Outbox、Durable AsyncTask；申请审核通知及私有材料任务已有业务接入 | 其余业务接入、DEAD对账/告警、归档与生产运维闭环 |
 | AUTH-001 / USR-001 / C-002 | 运营/C端认证后端；资料与宠物接口；模拟器资料/宠物联调；S9实际微信手机号授权及手机登录证据 | 未实现的SMS/密码/刷新范围、完整商家身份/准入页面、资料宠物全量真机与VIS、生产配置 |
-| MER-001 S2～S7 / PR50～56 | 主账号只读基础、协议存储、申请审核事务、可靠通知、申请页、精确HTTP、字段保护、成都目录及原请求恢复；PR60补齐运营材料引用 | 手机签约页面、工作台准入及通知跳转联调；成员绑定、主账号核销映射、停用在途守卫、冻结写动作等既有未完成范围 |
+| MER-001 S2～S7 / PR50～56、PR61～63 | 主账号只读基础、协议存储、申请审核事务、可靠通知、申请页、精确HTTP、字段保护、成都目录、原请求恢复、材料引用；MS-1签约页、MS-2准入两端点（CCR-W2-ADMISSION-001）、MS-3工作台真实准入均已合入 develop 12bdc38 | 通知读取/消息页/受控跳转（NTF-001/C-006 切片）；成员绑定、核销映射、停用在途守卫、冻结写动作等既有范围 |
 | MER-001 S8/S9 / PR57 | 私有上传/扫描/归属/水印读取；真实OSS/ClamAV；手机上传、草稿保存/重读、提交与审核队列落库 | 真实手机审核至签约的完整闭环、全故障恢复/跨设备/VIS；RAM最小权限、正式运维与生产准入；材料/审计保留期限待裁决 |
-| A-002 / M-002 | PR59运营入驻审核核心页面已交付，方案b合成申请浏览器核验/批准链路通过；PR60权威材料引用已交付 | A-002其他治理页、生产HTTPS入口及完整视觉验收；独立手机签约、完整工作台与通知跳转。完整Issue不标DONE |
+| A-002 / M-002 | PR59/60运营审核页与材料引用已交付；PR61～63手机签约+工作台准入主链闭环（方案b人工验收含在内） | A-002其他治理页、生产HTTPS入口及完整视觉验收；M-002完整工作台业务页。完整Issue不标DONE |
 | CCR-OSS-001 | 公开运营素材注册/同步/私有签名URL；私有证照另走已批准CCR-MER-PRIVATE-001 | 公开素材前端完整消费/缓存刷新及运营全流程，与私有证照验收分别记录 |
 | PLAT-005 / PLAT-006 | PLAT-005原AC核对通过，Catalog已DONE；MyBatis六模块迁移已DONE | 运维采集按原范围；生产数据库迁移与PLAT-002门禁不因DONE解除 |
 | 服务/排期/交易/治理其余范围 | 以各Issue证据为准，未因以上合并自动完成 | 契约、业务实现与端到端验收按依赖推进 |

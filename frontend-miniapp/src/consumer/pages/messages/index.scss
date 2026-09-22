@@ -1,0 +1,22 @@
+/* No Figma original for the message center; tokens follow the application page. */
+.messages-page { min-height: 100vh; background: #f0fbff; color: #1d0d07; font-family: Roboto, Arial, 'Microsoft YaHei', sans-serif; }
+.messages-design button { margin: 0; padding: 0; border: 0; line-height: normal; font-weight: normal; }
+.messages-design button::after { border: 0; }
+.messages-header { height: 88rpx; background: #fff6e5; border-bottom: 2rpx solid #c0ecff; display: flex; align-items: center; gap: 16rpx; font-size: 32rpx; font-weight: 700; }
+.messages-header button { margin-left: 38rpx; color: #3185ba; background: transparent; font-size: 28rpx; }
+.messages-body { padding: 24rpx 32rpx 64rpx; display: flex; flex-direction: column; gap: 20rpx; }
+.messages-subpage { padding-top: var(--messages-top, 0px); }
+.messages-item-meta, .messages-meta { word-break: break-all; }
+.messages-item { width: 100%; box-sizing: border-box; }
+.messages-line { color: #577683; font-size: 28rpx; }
+.messages-card, .messages-item { background: #fff; border: 2rpx solid #c0ecff; border-radius: 18rpx; padding: 24rpx; display: flex; flex-direction: column; gap: 12rpx; text-align: left; }
+.messages-list { display: flex; flex-direction: column; gap: 16rpx; }
+.messages-item-head { display: flex; align-items: center; gap: 12rpx; }
+.messages-item-title { font-size: 30rpx; font-weight: 700; flex: 1; }
+.messages-dot { width: 16rpx; height: 16rpx; border-radius: 100%; background: #5baae8; }
+.messages-item-content { color: #577683; font-size: 26rpx; line-height: 1.6; overflow: hidden; text-overflow: ellipsis; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
+.messages-item-meta { color: #9bb3bd; font-size: 22rpx; }
+.messages-title { font-size: 34rpx; font-weight: 700; }
+.messages-meta { color: #9bb3bd; font-size: 22rpx; }
+.messages-content { color: #1d0d07; font-size: 28rpx; line-height: 1.7; }
+.messages-card > button { align-self: flex-start; color: #3185ba; background: transparent; font-size: 28rpx; padding: 8rpx 0; }
