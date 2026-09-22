@@ -63,13 +63,19 @@ export class ConsumerApi {
     const agreementPath = (spec.path === '/api/v1/merchant/agreement' && spec.method === 'GET') ||
       (spec.path === '/api/v1/merchant/agreement/consent' && spec.method === 'POST')
     const admissionPath = spec.path === '/api/v1/merchant/auth/admission' && spec.method === 'GET'
-    if (!/^\/api\/v1\/c\/[a-z0-9/-]+$/.test(spec.path) && !agreementPath && !admissionPath) throw new Error('INVALID_PATH')
+    // M-002 service management family (service-write contract basis, principle-approved
+    // 2026-09-22; backend by role A). Read of the ENABLED category dictionary carries no
+    // per-target ids; the other routes target the caller's merchant/store coordinates.
+    const categoryPath = spec.path === '/api/v1/merchant/service-categories' && spec.method === 'GET'
+    const serviceCommandPath = /^\/api\/v1\/merchant\/services(\/[1-9][0-9]{0,18}(\/online|\/offline)?)?$/.test(spec.path) &&
+      ['GET', 'POST', 'PUT'].includes(spec.method)
+    if (!/^\/api\/v1\/c\/[a-z0-9/-]+$/.test(spec.path) && !agreementPath && !admissionPath && !categoryPath && !serviceCommandPath) throw new Error('INVALID_PATH')
     if (spec.method !== 'GET' && !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(spec.requestId || '')) throw new Error('REQUEST_ID_REQUIRED')
     const response = await this.transport({ ...spec, headers: { 'Content-Type': 'application/json', ...(spec.requestId ? { 'X-Request-Id': spec.requestId } : {}), ...headers } })
     const body = object(response.data)
     if (response.statusCode < 200 || response.statusCode >= 300 || body.code !== 'SUCCESS') throw new ApiError(typeof body.code === 'string' ? body.code : 'INVALID_RESPONSE', response.statusCode)
     const applicationPath = /^\/api\/v1\/c\/merchant-applications(?:\/|$)/.test(spec.path) || spec.path === '/api/v1/c/merchant-application-cities'
-    if ((agreementPath || applicationPath || admissionPath) && body.success !== true) throw new Error('INVALID_RESPONSE')
+    if ((agreementPath || applicationPath || admissionPath || categoryPath || serviceCommandPath) && body.success !== true) throw new Error('INVALID_RESPONSE')
     return body.data
   }
   private clear() {
@@ -160,7 +166,12 @@ export class ConsumerApi {
     if (!this.credential || !this.currentSession || this.currentSession.userId !== ticket.context.userId) throw new ApiError('COMMON_UNAUTHORIZED', 401)
     const merchantRequest = spec.path.startsWith('/api/v1/merchant/')
     if (merchantRequest) {
-      if (ticket.context.workspace !== 'merchant' || !ticket.context.merchantId || spec.data?.merchantId !== ticket.context.merchantId) throw new Error('WORKSPACE_PATH_MISMATCH')
+      if (ticket.context.workspace !== 'merchant' || !ticket.context.merchantId) throw new Error('WORKSPACE_PATH_MISMATCH')
+      // The category dictionary is target-free; every other merchant route must address the
+      // caller's own merchantId (body for commands, data/query otherwise).
+      const targetFree = spec.path === '/api/v1/merchant/service-categories'
+      const target = (spec.data?.merchantId ?? spec.query?.merchantId) as unknown
+      if (!targetFree && target !== ticket.context.merchantId) throw new Error('WORKSPACE_PATH_MISMATCH')
     } else if (ticket.context.workspace !== 'consumer') throw new Error('WORKSPACE_PATH_MISMATCH')
     try {
       const value = await this.send(spec, { Authorization: `Bearer ${this.credential.accessToken}` })
@@ -175,6 +186,17 @@ export class ConsumerApi {
   pendingCommand(slot: string): Command | undefined {
     const saved = this.pending[slot]
     return saved?.userId === this.currentSession?.userId && saved?.userId === this.scope.current?.userId ? saved.command : undefined
+  }
+  /** Store-catalog reads are anonymous-browsable (user adjudication 2026-09-22 on the
+   *  /c/stores contract): no credential, no session requirement, and no workspace context
+   *  needed; anything else keeps the authenticated request() path. When a context does
+   *  exist, a scope ticket still guards stale context switches. */
+  async anonymousRequest<T>(spec: RequestSpec, decode: (data: unknown) => T): Promise<T> {
+    if (spec.method !== 'GET' || !/^\/api\/v1\/c\/stores(\/[1-9][0-9]{0,18})?$/.test(spec.path)) throw new Error('INVALID_PATH')
+    const ticket = this.scope.current ? this.scope.capture() : null
+    const value = await this.send(spec)
+    if (ticket) ticket.assertCurrent()
+    return decode(value)
   }
   /** Only this typed operation can use the MINIAPP credential for multipart upload. */
   async uploadPrivateAsset(input: { filePath: string; requestId: string; ownerUserId: string }): Promise<PrivateAssetReceipt> {
