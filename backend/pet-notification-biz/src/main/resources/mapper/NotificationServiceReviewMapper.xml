@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.petplatform.notification.biz.infrastructure.persistence.mapper.NotificationServiceReviewMapper">
+    <update id="setTimeZoneUtc">SET SESSION time_zone = '+00:00'</update>
+    <insert id="insert">
+        INSERT INTO notification
+            (id, receiver_type, receiver_id, category, message_type, biz_type, biz_id,
+             title, content, mandatory_inbox, read_at, created_at)
+        VALUES (#{id}, 'USER', #{ownerId}, 'SYSTEM', 'SERVICE_REVIEWED',
+                'SERVICE', #{serviceId}, #{title}, #{content}, 1, NULL, #{createdAt})
+    </insert>
+</mapper>
