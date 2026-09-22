@@ -287,6 +287,43 @@ GET /api/v1/c/services/{serviceId}
 
 存量订单详情读取订单快照，不实时依赖当前服务是否已下线。
 
+## 3.3.1 门店服务列表与服务详情（新增，CCR-W2-API-001 服务域 v0.3 已批；补齐 PR#65 漏同步）
+
+```text
+GET /api/v1/c/stores/{storeId}/services?page&pageSize
+GET /api/v1/c/services/{serviceId}
+```
+
+会话：C 端登录态；未登录 `COMMON_UNAUTHORIZED`/401。读操作无 requestId 幂等要求（23 号）。
+
+可见性（SVC-D1b）：C 端可见性 = `service.status=ACTIVE` ∧ 商家 `merchantEnabled` ∧ 门店 `storeEnabled` ∧ `acceptsNewOrders` 四条件合取，同事务判定。任一条件不满足：列表中不出现；详情返回 404 `SERVICE_NOT_FOUND`，与"服务不存在"同响应、不区分原因（防探测），与"只展示当前允许新预约的商家/门店/服务"（§3.3）一致，避免"列表隐藏了、详情链接还能打开"。HTTP 详情响应不携带 bookability 子对象（可见即基本资格合格）；资格原因细分仅保留在内部 `checkBookable` 的 `reasonCodes`，供 ORD/SCH 使用。此"可预约"仅指基本资格合格，不代表所选时间还有空位，更不代表订单预约成功（空位查询 §3.4 与下单 §3.5 由排期/订单域另行检查）。
+
+| 操作 | 成功 | 关键错误 |
+|---|---|---|
+| GET `/api/v1/c/stores/{storeId}/services?page&pageSize` | 200 分页 `StoreServiceItemView[]`；仅返回 D1b 可见性合取通过的服务 | 400 参数；401 未登录 |
+| GET `/api/v1/c/services/{serviceId}` | 200 `ServiceDetailView`（可见即资格合格，D1b） | 404 `SERVICE_NOT_FOUND`（不存在 / OFFLINE / DRAFT / 商家或门店停用或不接新单——一律同响应不区分原因）；400；401 |
+
+失败关闭：任何事实源异常/未知（查询失败、字段缺失、状态值非法）→ C 端不可见或整体 503 `COMMON_DEPENDENCY_UNAVAILABLE`，绝不降级为可见/可预约；确认不存在或不可见（404 `SERVICE_NOT_FOUND`）与事实源故障（503）不得混同。
+
+列表归属语义：`storeId` 不存在或不可见 → 200 空列表（页面显示"暂无服务"，不暴露门店状态细节，不与"门店存在但无服务"区分探测）；详情不可见一律 404（D1b）。
+
+服务详情 `ServiceDetailView` 示例：
+
+```json
+{
+  "serviceId": "20001", "merchantId": "957001", "storeId": "957002",
+  "serviceName": "宠物美容-基础洗护", "categoryId": "957003", "categoryName": "美容",
+  "salePrice": "128.00", "durationMinutes": 45,
+  "fulfillmentType": "IN_STORE", "description": "含洗护、吹干、基础梳理"
+}
+```
+
+门店服务列表项 `StoreServiceItemView`：详情字段去掉 `description`（列表不显全文）；不暴露 `version`；分页信封 `items/page/pageSize/total`，排序 `created_at DESC, id DESC`，`page` 1..10000、`pageSize` 1..50（与通知列表一致）。
+
+校验（违规 `COMMON_INVALID_ARGUMENT`/400，details 指明字段）：`serviceId`/`storeId` 为雪花 ID 字符串（公共 ID Codec），路径参数非法即 400；`fulfillmentType` 仅 IN_STORE/PICKUP_DELIVERY，存储值非法时读侧失败关闭（503）。
+
+金额与快照（SVC-D3）：HTTP 投影 `salePrice` 为十进制字符串两位小数（如 `"128.00"`，纯传输格式防精度损失）；快照为查询时值拷贝，主数据后续修改不改变已返回副本；存量订单展示旧价格/旧资料走订单域订单快照，不经本接口。
+
 ---
 
 ## 3.4 可预约时间查询

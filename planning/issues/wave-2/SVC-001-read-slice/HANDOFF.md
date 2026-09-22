@@ -27,3 +27,16 @@
 - ORD008 本阶段仅提交服务快照模块证据（值拷贝），不声明完整订单历史。
 - 门店两条读路由（`/c/stores`、`/c/stores/{storeId}`）由 MER-001 后续门店读侧切片承接；服务写入方登记于 ADM-001"服务操作"范围（M-002 消费）。
 - `pet.service.query.enabled` 默认关闭；本地/生产启用需 C 会话与商家装配同时在场。
+
+## 勘误（2026-09-22，契约符合性修复切片）
+
+本节为事后勘误，不改写上方原始交接叙述与批准回执；缺口经角色D（QA）d4 契约符合性抽检三方独立印证（QA 证据：`planning/progress/2026-09-22/qa/d4-contract-conformance.md`，wt-qa-svc-stores worktree；本分支提交核验与下述结论一致）：
+
+1. **HTTP10 §3.3.1 漏同步**：本文件"交付"第 1 条与提交 50f7ff4、决定回执"权威同步"清单均声称 10 号 §3.3.1 已落盘，但 PR#65 实际 diff 未含 `docs/04-api/10-HTTP-API-Contract-v0.4.md`，该节不存在；07 号 §5.1.1 与 11 号两操作描述中"HTTP contract 10 section 3.3.1"为悬空引用。
+2. **详情 404 错误码漂移**：已批文案（提案 v0.3 §3 与决定回执第 1 条 SVC-D1b）要求 404 `SERVICE_NOT_FOUND`；实现 `ServiceQueryService.notFound()` 实抛 `COMMON_NOT_FOUND`。`ServiceQueryHttpTest` 当时仅断言 HTTP 404 状态码、未断言响应 body 的 `code` 字段，故 CI 未能拦截。
+
+修复（分支 `codex/svc-conformance-fix-20260922`，基于 develop 52a1c45，用户 2026-09-22 裁决"按已批契约修复、独立提交单独小 PR"）：
+
+- 实现提交 `049a9c6`：`notFound()` 改抛 `SERVICE_NOT_FOUND`（12 号 §12 既有条目，无需新增）；`CServiceExceptionHandler` 登记 `SERVICE_NOT_FOUND→404`；事实源故障仍 503 `COMMON_DEPENDENCY_UNAVAILABLE` 不变；测试补强为状态码与 body code 双断言（不存在 ID/OFFLINE/DRAFT/商家 OFFLINE/门店 FROZEN → 404+SERVICE_NOT_FOUND；事实源故障 → 503+COMMON_DEPENDENCY_UNAVAILABLE）。
+- 文档提交（本提交）：10 号补写 §3.3.1（内容逐字取自已批提案 v0.3 的路由契约/可见性规则/响应示例，无新规则）；11 号两操作 404 描述补注 `code SERVICE_NOT_FOUND`；07 号 §5.1.1 引用随 §3.3.1 落盘自然消解，未改动。
+- 验证：`ServiceQueryHttpTest` 1/1 通过（真实 MySQL 127.0.0.1:33452 / Redis 16383）；e2e `contract_smoke.py` PASS（`PASS_OFFLINE_DOCUMENT_SMOKE`，serviceCatalogOperations=2）；更大范围回归结果见 `planning/progress/2026-09-22/svc-conformance-fix/`。

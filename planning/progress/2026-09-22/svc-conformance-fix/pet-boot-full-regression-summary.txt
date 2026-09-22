@@ -1,0 +1,29 @@
+pet-boot full reactor regression (mvn -pl pet-boot -am test) — summary extract
+Date: 2026-09-22 18:05:59 +08:00  Result: BUILD SUCCESS  Total time: 07:57 min
+
+== per-module final test totals (modules with tests) ==
+[INFO] Tests run: 79, Failures: 0, Errors: 0, Skipped: 0
+[INFO] Tests run: 41, Failures: 0, Errors: 0, Skipped: 0
+[INFO] Tests run: 10, Failures: 0, Errors: 0, Skipped: 0
+[INFO] Tests run: 24, Failures: 0, Errors: 0, Skipped: 0
+[INFO] Tests run: 24, Failures: 0, Errors: 0, Skipped: 0
+[INFO] Tests run: 1, Failures: 0, Errors: 0, Skipped: 0
+[INFO] Tests run: 68, Failures: 0, Errors: 0, Skipped: 0
+[INFO] Tests run: 6, Failures: 0, Errors: 0, Skipped: 0
+[INFO] Tests run: 24, Failures: 0, Errors: 0, Skipped: 0
+[INFO] Tests run: 41, Failures: 0, Errors: 0, Skipped: 0
+[INFO] Tests run: 67, Failures: 0, Errors: 0, Skipped: 0
+
+== ServiceQueryHttpTest ==
+[INFO] Tests run: 1, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 5.614 s -- in com.petplatform.boot.auth.ServiceQueryHttpTest
+
+== reactor ==
+[INFO] pet-community-biz .................................. SUCCESS [  0.023 s]
+[INFO] pet-thirdparty-api ................................. SUCCESS [  0.012 s]
+[INFO] pet-thirdparty-biz ................................. SUCCESS [  8.333 s]
+[INFO] pet-customer-service-api ........................... SUCCESS [  0.012 s]
+[INFO] pet-customer-service-biz ........................... SUCCESS [  0.024 s]
+[INFO] pet-admin-api ...................................... SUCCESS [  0.010 s]
+[INFO] pet-admin-biz ...................................... SUCCESS [ 40.991 s]
+[INFO] pet-boot ........................................... SUCCESS [01:20 min]
+(all 42 modules SUCCESS; full log kept locally, *.log gitignored)
