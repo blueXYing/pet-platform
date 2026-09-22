@@ -3,6 +3,7 @@ import assert from 'node:assert/strict'
 import { randomUUID } from 'node:crypto'
 import { ConsumerApi, type LocalStore } from '../consumer-api'
 import { MerchantApplicationRepository, MerchantAgreementRepository, MerchantAdmissionRepository } from '../merchant-repositories'
+import { NotificationRepository } from '../notification-repositories'
 
 async function verify() {
   const origin = process.env.MERCHANT_TEST_ORIGIN || ''
@@ -58,7 +59,24 @@ async function verify() {
   assert.deepEqual(admission.nextSteps, [])
   assert.ok(admission.allowedActions.length >= 1)
   api.scope.replace({ userId: api.currentSession!.userId, workspace: 'consumer', merchantId: null, storeId: null })
-  console.log('MER frontend decoders passed against real authorized HTTP application/city/agreement/admission responses')
+  // CCR-W2-NOTIFICATION-001 live chain: the approval notification is visible, readable and
+  // read-marking is idempotent for the owner.
+  const inbox = new NotificationRepository(api)
+  const notifications = await inbox.list(1, 20)
+  assert.equal(notifications.total, 1)
+  const message = notifications.items[0]!
+  assert.equal(message.messageType, 'MERCHANT_APPLICATION_REVIEWED')
+  assert.equal(message.bizType, 'MERCHANT_APPLICATION')
+  assert.equal(message.readAt, null)
+  const messageDetail = await inbox.detail(message.id)
+  assert.equal(messageDetail.title, message.title)
+  const readOnce = await inbox.markRead(message.id)
+  assert.ok(readOnce.readAt)
+  const readAgain = await inbox.markRead(message.id)
+  assert.equal(readAgain.readAt, readOnce.readAt)
+  const afterRead = await inbox.list(1, 20)
+  assert.equal(afterRead.items[0]!.readAt, readOnce.readAt)
+  console.log('MER frontend decoders passed against real authorized HTTP application/city/agreement/admission/inbox responses')
 }
 
 void verify().catch(error => {

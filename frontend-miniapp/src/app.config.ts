@@ -1,5 +1,5 @@
 export default defineAppConfig({
-  pages: ['consumer/pages/shell/index', 'consumer/pages/diagnostics/index', 'consumer/pages/profile-edit/index'],
+  pages: ['consumer/pages/shell/index', 'consumer/pages/diagnostics/index', 'consumer/pages/profile-edit/index', 'consumer/pages/messages/index'],
   window: { navigationBarTitleText: '工程验证', backgroundColor: '#f5f5f5' },
   permission: { 'scope.userLocation': { desc: '用于选择入驻店铺的位置与地址' } },
   requiredPrivateInfos: ['chooseLocation'],

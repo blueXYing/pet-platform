@@ -4,10 +4,14 @@ const path = require('node:path')
 const assert = require('node:assert/strict')
 const root = path.join(__dirname, 'dist')
 const app = JSON.parse(fs.readFileSync(path.join(root, 'app.json'), 'utf8'))
-assert.deepEqual(app.pages, ['consumer/pages/shell/index', 'consumer/pages/diagnostics/index', 'consumer/pages/profile-edit/index'])
+assert.deepEqual(app.pages, ['consumer/pages/shell/index', 'consumer/pages/diagnostics/index', 'consumer/pages/profile-edit/index', 'consumer/pages/messages/index'])
 for (const extension of ['js', 'json', 'wxml', 'wxss']) {
   assert.ok(fs.existsSync(path.join(root, 'consumer/pages/profile-edit/index.' + extension)),
     'C-002 profile page artifact missing: ' + extension)
+}
+for (const extension of ['js', 'json', 'wxml', 'wxss']) {
+  assert.ok(fs.existsSync(path.join(root, 'consumer/pages/messages/index.' + extension)),
+    'C-006 messages page artifact missing: ' + extension)
 }
 for (const page of ['index', 'detail', 'form']) {
   for (const extension of ['js', 'json', 'wxml', 'wxss']) {

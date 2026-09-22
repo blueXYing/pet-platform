@@ -41,5 +41,6 @@ export default function Shell() {
     <Button onClick={() => platform.navigate('/consumer/pages/profile-edit/index?preview=1')}>C-002 编辑资料视觉预览（仅本地数据）</Button>
     <Button id='c-merchant-application-preview' onClick={() => platform.navigate('/consumer/pages/merchant-application/index?preview=1')}>成为商家交互预览（不提交真实申请）</Button>
     <Button onClick={() => platform.navigate('/merchant/pages/workspace/index')}>进入商家工作区</Button>
+      <Button id='c-messages' onClick={() => platform.navigate('/consumer/pages/messages/index')}>消息中心</Button>
   </View>
 }
