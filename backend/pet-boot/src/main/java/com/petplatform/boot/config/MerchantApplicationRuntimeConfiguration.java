@@ -138,4 +138,12 @@ public class MerchantApplicationRuntimeConfiguration {
     return new MerchantQueryApiImpl(
         source, new MerchantAgreementEligibilityFactsAdapter(source, applications));
   }
+
+  /** SVC-D5 consumer-display eligibility facts; display-only, never grants merchant authority. */
+  @Bean
+  com.petplatform.merchant.biz.apiimpl.MerchantDisplayEligibilityApiImpl merchantDisplayEligibilityApi(
+      DataSource source, ApplicationReviewFactsReader applications) {
+    return new com.petplatform.merchant.biz.apiimpl.MerchantDisplayEligibilityApiImpl(
+        source, new MerchantAgreementEligibilityFactsAdapter(source, applications));
+  }
 }

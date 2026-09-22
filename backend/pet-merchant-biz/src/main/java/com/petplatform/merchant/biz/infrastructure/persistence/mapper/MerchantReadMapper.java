@@ -19,6 +19,12 @@ public interface MerchantReadMapper {
             @Param("ownerUserId") long ownerUserId
     );
 
+    /** SVC-D5 display eligibility base; same projection without the ownership predicate. */
+    MerchantEligibilityBaseEntity selectDisplayEligibilityBase(
+            @Param("merchantId") long merchantId,
+            @Param("storeId") long storeId
+    );
+
     java.util.List<MerchantStoreReadEntity> selectOwnedStores(
             @Param("ownerUserId") long ownerUserId,
             @Param("limit") int limit,

@@ -64,6 +64,20 @@
           AND m.owner_user_id = #{ownerUserId}
     </select>
 
+    <!-- SVC-D5 consumer-display eligibility: identical projection, no ownership predicate. -->
+    <select id="selectDisplayEligibilityBase"
+            resultType="com.petplatform.merchant.biz.infrastructure.persistence.entity.MerchantEligibilityBaseEntity">
+        SELECT m.id AS merchant_id,
+               m.owner_user_id,
+               m.status AS merchant_status,
+               s.id AS store_id,
+               s.status AS store_status
+        FROM merchant m
+        INNER JOIN merchant_store s ON s.merchant_id = m.id
+        WHERE m.id = #{merchantId}
+          AND s.id = #{storeId}
+    </select>
+
     <select id="selectOwnedStaff"
             resultType="com.petplatform.merchant.biz.infrastructure.persistence.entity.MerchantStaffReadEntity">
         SELECT m.id AS merchant_id,

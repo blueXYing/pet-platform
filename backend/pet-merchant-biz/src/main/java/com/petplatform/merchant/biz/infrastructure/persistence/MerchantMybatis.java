@@ -7,10 +7,19 @@ import org.mybatis.spring.SqlSessionFactoryBean;
 import org.mybatis.spring.SqlSessionTemplate;
 import org.springframework.core.io.support.PathMatchingResourcePatternResolver;
 
-final class MerchantMybatis {
+public final class MerchantMybatis {
     private MerchantMybatis() {}
 
     static SqlSessionTemplate template(DataSource dataSource) {
+        return build(dataSource);
+    }
+
+    /** Joining template for callers that must read within their active Spring transaction. */
+    public static SqlSessionTemplate joiningTemplate(DataSource dataSource) {
+        return build(dataSource);
+    }
+
+    private static SqlSessionTemplate build(DataSource dataSource) {
         SqlSessionFactoryBean factoryBean = new SqlSessionFactoryBean();
         factoryBean.setDataSource(Objects.requireNonNull(dataSource, "dataSource is required"));
         try {
