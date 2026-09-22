@@ -158,9 +158,10 @@ export function decodeConsent(value: unknown) {
   const v = exact(value, ['merchantId', 'agreementVersion', 'acceptedAt', 'signingStatus'])
   return { merchantId: id(v.merchantId), agreementVersion: agreementVersion(v.agreementVersion), acceptedAt: timestamp(v.acceptedAt), signingStatus: oneOf(v.signingStatus, ['SIGNED'] as const) }
 }
+export type ConsentIntent = { merchantId: string; agreementVersion: string; contentSha256: string; accepted: true }
 export class MerchantAgreementRepository {
   constructor(private api: ConsumerApi) {}
-  pendingConsent(merchantId: string) {
+  pendingConsent(merchantId: string): ConsentIntent | null {
     merchantId = id(merchantId)
     const command = this.api.pendingCommand(`merchant-agreement:${merchantId}:consent`)
     if (!command) return null
@@ -194,5 +195,12 @@ export class MerchantAgreementRepository {
       if (result.merchantId !== merchantId || result.agreementVersion !== agreementVersion) invalid()
       return result
     })
+  }
+  /** Only for a consent the server answered with a definitive CONFLICT; unknown results stay journaled. */
+  retireConsent(merchantId: string, rejected: { agreementVersion: string; contentSha256: string }) {
+    merchantId = id(merchantId)
+    const pending = this.pendingConsent(merchantId)
+    if (!pending || pending.agreementVersion !== rejected.agreementVersion || pending.contentSha256 !== rejected.contentSha256) throw new Error('PENDING_WRITE_CHANGED')
+    this.api.retireRejectedCommand(`merchant-agreement:${merchantId}:consent`, { path: '/api/v1/merchant/agreement/consent', method: 'POST', data: { merchantId, agreementVersion: pending.agreementVersion, contentSha256: pending.contentSha256, accepted: true } })
   }
 }

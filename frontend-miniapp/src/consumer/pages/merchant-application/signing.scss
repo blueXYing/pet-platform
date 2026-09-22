@@ -1,0 +1,10 @@
+/* Signing screen has no Figma original (design registry §4); tokens follow the application page. */
+.signing-agreement { box-sizing: border-box; width: 100%; background: #fff; border: calc(var(--application-unit) * 1.099) solid #c0ecff; border-radius: calc(var(--application-unit) * 8.795); padding: calc(var(--application-unit) * 12); margin: calc(var(--application-unit) * 12) 0; }
+.signing-agreement-meta { display: flex; flex-direction: column; gap: calc(var(--application-unit) * 2); padding-bottom: calc(var(--application-unit) * 8); border-bottom: calc(var(--application-unit) * 1) solid #eaf6fd; margin-bottom: calc(var(--application-unit) * 8); color: #577683; font-size: calc(var(--application-unit) * 10.994); line-height: 1.6; }
+.signing-agreement-hash { word-break: break-all; }
+.signing-agreement-content { max-height: calc(var(--application-unit) * 340); overflow-y: auto; white-space: pre-wrap; word-break: break-word; font-size: calc(var(--application-unit) * 13.192); line-height: calc(var(--application-unit) * 21.438); color: #1d0d07; }
+.signing-check-row { display: flex; align-items: flex-start; gap: calc(var(--application-unit) * 8); margin: calc(var(--application-unit) * 4) 0 calc(var(--application-unit) * 8); }
+.signing-page .signing-checkbox { flex: none; width: calc(var(--application-unit) * 18); height: calc(var(--application-unit) * 18); margin: calc(var(--application-unit) * 1) 0 0; border: calc(var(--application-unit) * 1.5) solid #53bfee; border-radius: calc(var(--application-unit) * 4); background: #fff; color: #fff; font-size: calc(var(--application-unit) * 12); line-height: 1; display: flex; align-items: center; justify-content: center; padding: 0; }
+.signing-page .signing-checkbox-checked { background: #5baae8; border-color: #5baae8; }
+.signing-check-label { flex: 1; color: #3c3c3c; font-size: calc(var(--application-unit) * 13.192); line-height: calc(var(--application-unit) * 17.59); }
+.signing-signed { border-color: #9fd8a8; }

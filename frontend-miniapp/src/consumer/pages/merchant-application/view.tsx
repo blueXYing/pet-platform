@@ -14,7 +14,7 @@ export type ApplicationViewProps = {
   edit: (key: keyof DraftInput, value: DraftInput[keyof DraftInput]) => void
   onBack: () => void; onTypes: () => void; onCity: () => void; onCitySelect: (city: City) => void
   onLocation: () => void; onUpload: (kind: MaterialKind) => void; onRemove: (kind: MaterialKind, assetId?: string) => void
-  onSave: () => void; onSubmit: () => void; onReload: () => void; onLogin: () => void; opinion?: string | null
+  onSave: () => void; onSubmit: () => void; onReload: () => void; onLogin: () => void; onSigning: () => void; opinion?: string | null
 }
 export function MerchantApplicationView(p: ApplicationViewProps) {
   const actionDisabled = p.busy || p.loading || (!p.locked && !editableApplication(p.result)) || (!p.preview && !p.loggedIn)
@@ -37,7 +37,8 @@ export function MerchantApplicationView(p: ApplicationViewProps) {
       <Text className='application-intro'>加入宠灵工，让你的店铺被更多宠友看见，获取海量服务订单。填写以下信息即可提交入驻申请。</Text>
       {p.loading && <View className='application-state' role='status'>正在读取申请…</View>}
       {!p.preview && !p.loggedIn && <View className='application-state'><Text>请先登录后继续申请</Text><Button onClick={p.onLogin}>去登录</Button></View>}
-      {p.result && p.result.status !== 'DRAFT' && <View className='application-state' role='status'><Text>{p.result.status === 'REVIEWING' ? '申请审核中，请耐心等待' : p.result.status === 'APPROVED' ? '申请已审核通过，签约入口暂未接通' : '申请需修改，请根据审核意见完善后重新提交'}</Text>{p.opinion && <Text className='application-opinion'>{p.opinion}</Text>}<Text className='application-opinion'>{p.result.applicationNo}</Text></View>}
+      {p.result && p.result.status !== 'DRAFT' && <View className='application-state' role='status'><Text>{p.result.status === 'REVIEWING' ? '申请审核中，请耐心等待' : p.result.status === 'APPROVED' ? '申请已审核通过，请阅读并签署商家协议' : '申请需修改，请根据审核意见完善后重新提交'}</Text>{p.opinion && <Text className='application-opinion'>{p.opinion}</Text>}<Text className='application-opinion'>{p.result.applicationNo}</Text>
+        {p.result.status === 'APPROVED' && p.result.reservedMerchantId && <Button id='application-signing-entry' className='application-signing-entry' disabled={p.busy || p.loading} onClick={p.onSigning}>去签署协议</Button>}</View>}
       <View className='application-form'>
         {input('merchantName', '商家名称 *', '请输入商家/店铺名称', 50)}
         <View className='application-row'>{input('contactName', '联系人 *', '姓名', 20)}{input('contactPhone', '联系电话 *', '手机号', 11, 'number')}</View>

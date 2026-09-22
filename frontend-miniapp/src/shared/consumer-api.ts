@@ -209,6 +209,15 @@ export class ConsumerApi {
     return saved?.userId === this.currentSession?.userId && saved?.userId === this.scope.current?.userId
       ? saved.intent && JSON.parse(JSON.stringify(saved.intent)) : undefined
   }
+  /** Retire a journaled command only after the server definitively rejected that exact payload
+   *  (e.g. an agreement CONFLICT). Unknown or lost outcomes must never pass through here. */
+  retireRejectedCommand(slot: string, rejected: RequestSpec) {
+    const saved = this.pending[slot]
+    if (!saved?.command || saved.command.path !== rejected.path || saved.command.method !== rejected.method
+      || JSON.stringify(saved.command.data) !== JSON.stringify(rejected.data)) throw new Error('PENDING_WRITE_CHANGED')
+    delete this.pending[slot]
+    this.store.set(WRITE_KEY, this.pending)
+  }
   saveIntent(slot: string, value: unknown) {
     const ticket = this.scope.capture()
     if (this.currentSession?.userId !== ticket.context.userId) throw new ApiError('COMMON_UNAUTHORIZED', 401)
