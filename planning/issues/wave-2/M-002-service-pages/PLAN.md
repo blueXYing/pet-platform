@@ -1,7 +1,7 @@
 # M-002 服务项目管理页 — 实施方案（PLAN v1）
 
 日期：2026-09-22。角色：Merchant Frontend（M-002）＋ C-End 协作。
-状态：**方案落档待批；本轮不写业务代码**（写入契约未批，见 §1 门禁）。设计输入已核验并共享（见 §2）。
+状态更新（2026-09-22 实施轮）：§5 六项裁决建议已获用户裁决（设计源=10:5255/11:5768、直接售卖/套餐包含裁剪、履约按契约两值、统一字典、状态机按写入方契约 DRAFT/REVIEWING/ACTIVE/OFFLINE/REJECTED、标题"服务管理"+缺失字段补齐）；服务写入契约 v0.2 已原则批准（角色A实现中），**本 PLAN 切片 B/C/D 已实施**——交付见本目录 [HANDOFF.md](HANDOFF.md) 与 [NAVIGATION-BASIS.md](NAVIGATION-BASIS.md)，差异登记见 ../C-003-design-inputs/INVENTORY.md §6。原文留档如下。
 
 ## 1. 门禁与依赖
 
