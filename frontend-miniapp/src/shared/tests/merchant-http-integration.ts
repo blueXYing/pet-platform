@@ -2,7 +2,7 @@
 import assert from 'node:assert/strict'
 import { randomUUID } from 'node:crypto'
 import { ConsumerApi, type LocalStore } from '../consumer-api'
-import { MerchantApplicationRepository, MerchantAgreementRepository } from '../merchant-repositories'
+import { MerchantApplicationRepository, MerchantAgreementRepository, MerchantAdmissionRepository } from '../merchant-repositories'
 
 async function verify() {
   const origin = process.env.MERCHANT_TEST_ORIGIN || ''
@@ -35,8 +35,30 @@ async function verify() {
   // A signed agreement can never be re-signed from this client, even with the checkbox path.
   // The repository guard throws synchronously; wrap it so assert.rejects validates the rejection.
   await assert.rejects(async () => agreements.consent(agreement, true), /EXPLICIT_AGREEMENT_REQUIRED/)
+  // CCR-W2-ADMISSION-001 live chain: owner memberships on consumer coordinates, then the
+  // five-condition ALLOWED admission on the selected merchant coordinates.
   api.scope.replace({ userId: api.currentSession!.userId, workspace: 'consumer', merchantId: null, storeId: null })
-  console.log('MER frontend decoders passed against real authorized HTTP application/city/agreement responses')
+  const admissionClient = new MerchantAdmissionRepository(api)
+  const memberships = await admissionClient.memberships(1, 20)
+  assert.equal(memberships.total, 1)
+  assert.equal(memberships.items.length, 1)
+  const entry = memberships.items[0]!
+  assert.equal(entry.membershipKind, 'OWNER')
+  assert.ok(entry.merchantName)
+  api.scope.replace({ userId: api.currentSession!.userId, workspace: 'merchant', merchantId: entry.merchantId, storeId: entry.storeId })
+  const admission = await admissionClient.admission(entry.merchantId, entry.storeId)
+  assert.equal(admission.admission, 'ALLOWED')
+  assert.equal(admission.membershipKind, 'OWNER')
+  assert.equal(admission.facts.application?.status, 'APPROVED')
+  assert.equal(admission.facts.signing.status, 'SIGNED')
+  assert.equal(admission.facts.storeStatus, 'ACTIVE')
+  assert.equal(admission.facts.merchantStatus, 'ACTIVE')
+  assert.equal(admission.facts.staffEnabled, null)
+  assert.deepEqual(admission.reasonCodes, [])
+  assert.deepEqual(admission.nextSteps, [])
+  assert.ok(admission.allowedActions.length >= 1)
+  api.scope.replace({ userId: api.currentSession!.userId, workspace: 'consumer', merchantId: null, storeId: null })
+  console.log('MER frontend decoders passed against real authorized HTTP application/city/agreement/admission responses')
 }
 
 void verify().catch(error => {

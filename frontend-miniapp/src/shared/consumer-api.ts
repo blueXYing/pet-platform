@@ -38,7 +38,7 @@ export function definiteRejection(error: unknown) {
   return error instanceof ApiError && [400, 401, 403, 404, 422].includes(error.statusCode)
 }
 
-/** MINIAPP session transport. Merchant access is limited to the two agreement routes. */
+/** MINIAPP session transport. Merchant access is limited to the agreement and admission routes. */
 export class ConsumerApi {
   readonly scope = new WorkspaceScope()
   private credential: Grant | null = null
@@ -62,13 +62,14 @@ export class ConsumerApi {
   private async send(spec: RequestSpec, headers: Record<string, string> = {}) {
     const agreementPath = (spec.path === '/api/v1/merchant/agreement' && spec.method === 'GET') ||
       (spec.path === '/api/v1/merchant/agreement/consent' && spec.method === 'POST')
-    if (!/^\/api\/v1\/c\/[a-z0-9/-]+$/.test(spec.path) && !agreementPath) throw new Error('INVALID_PATH')
+    const admissionPath = spec.path === '/api/v1/merchant/auth/admission' && spec.method === 'GET'
+    if (!/^\/api\/v1\/c\/[a-z0-9/-]+$/.test(spec.path) && !agreementPath && !admissionPath) throw new Error('INVALID_PATH')
     if (spec.method !== 'GET' && !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(spec.requestId || '')) throw new Error('REQUEST_ID_REQUIRED')
     const response = await this.transport({ ...spec, headers: { 'Content-Type': 'application/json', ...(spec.requestId ? { 'X-Request-Id': spec.requestId } : {}), ...headers } })
     const body = object(response.data)
     if (response.statusCode < 200 || response.statusCode >= 300 || body.code !== 'SUCCESS') throw new ApiError(typeof body.code === 'string' ? body.code : 'INVALID_RESPONSE', response.statusCode)
     const applicationPath = /^\/api\/v1\/c\/merchant-applications(?:\/|$)/.test(spec.path) || spec.path === '/api/v1/c/merchant-application-cities'
-    if ((agreementPath || applicationPath) && body.success !== true) throw new Error('INVALID_RESPONSE')
+    if ((agreementPath || applicationPath || admissionPath) && body.success !== true) throw new Error('INVALID_RESPONSE')
     return body.data
   }
   private clear() {

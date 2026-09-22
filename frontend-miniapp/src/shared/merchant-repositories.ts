@@ -204,3 +204,71 @@ export class MerchantAgreementRepository {
     this.api.retireRejectedCommand(`merchant-agreement:${merchantId}:consent`, { path: '/api/v1/merchant/agreement/consent', method: 'POST', data: { merchantId, agreementVersion: pending.agreementVersion, contentSha256: pending.contentSha256, accepted: true } })
   }
 }
+function admissionAction(value: unknown): string {
+  if (typeof value !== 'string' || !/^merchant\.[a-z]+(\.[a-z]+)?$/.test(value)) invalid()
+  return value as string
+}
+function stepType(value: unknown): string {
+  if (typeof value !== 'string' || !/^[A-Z_]{2,32}$/.test(value)) invalid()
+  return value as string
+}
+export function decodeMembership(value: unknown) {
+  const v = exact(value, ['merchantId', 'merchantName', 'storeId', 'storeName', 'membershipKind', 'staffId'])
+  const base = { merchantId: id(v.merchantId), merchantName: text(v.merchantName, 128, 1), storeId: id(v.storeId), storeName: text(v.storeName, 128, 1), membershipKind: oneOf(v.membershipKind, ['OWNER', 'STAFF'] as const) }
+  if (base.membershipKind === 'STAFF') return { ...base, staffId: v.staffId === undefined ? invalid() : id(v.staffId) }
+  if ('staffId' in v) invalid()
+  return base
+}
+export type MerchantMembership = ReturnType<typeof decodeMembership>
+export function decodeMembershipPage(value: unknown) {
+  const v = exact(value, ['items', 'page', 'pageSize', 'total'])
+  if (!Array.isArray(v.items) || v.items.length > 50) invalid()
+  const page = decodeVersion(String(v.page)), pageSize = decodeVersion(String(v.pageSize))
+  if (+page < 1 || +page > 10000 || +pageSize < 1 || +pageSize > 50) invalid()
+  const total = decodeVersion(String(v.total))
+  return { items: v.items.map(decodeMembership), page: +page, pageSize: +pageSize, total: +total }
+}
+export function decodeAdmission(value: unknown) {
+  const v = exact(value, ['merchantId', 'storeId', 'membershipKind', 'admission', 'checkedAt', 'authzVersion', 'facts', 'allowedActions', 'reasonCodes', 'nextSteps'])
+  const facts = exact(v.facts, ['application', 'signing', 'storeStatus', 'merchantStatus', 'staffEnabled'])
+  const application = facts.application === null ? null
+    : (() => { const a = exact(facts.application, ['status']); return { status: oneOf(a.status, ['DRAFT', 'REVIEWING', 'APPROVED', 'REJECTED'] as const) } })()
+  const decoded = {
+    merchantId: id(v.merchantId), storeId: id(v.storeId),
+    membershipKind: oneOf(v.membershipKind, ['OWNER', 'STAFF'] as const),
+    admission: oneOf(v.admission, ['ALLOWED', 'LIMITED', 'DENIED'] as const),
+    checkedAt: timestamp(v.checkedAt),
+    authzVersion: typeof v.authzVersion === 'string' && /^[0-9a-f]{16}$/.test(v.authzVersion) ? v.authzVersion : invalid(),
+    facts: {
+      application,
+      signing: { status: oneOf(exact(facts.signing, ['status']).status, ['NOT_SIGNED', 'SIGNING', 'SIGNED', 'FAILED', 'UNKNOWN'] as const) },
+      storeStatus: oneOf(facts.storeStatus, ['ACTIVE', 'OFFLINE', 'FROZEN'] as const),
+      merchantStatus: oneOf(facts.merchantStatus, ['APPLYING', 'ACTIVE', 'OFFLINE', 'FROZEN', 'CANCELED'] as const),
+      staffEnabled: facts.staffEnabled === null ? null : typeof facts.staffEnabled === 'boolean' && facts.staffEnabled,
+    },
+    allowedActions: (Array.isArray(v.allowedActions) ? v.allowedActions : invalid()).map(admissionAction),
+    reasonCodes: (Array.isArray(v.reasonCodes) ? v.reasonCodes : invalid()).map(stepType),
+    nextSteps: (Array.isArray(v.nextSteps) ? v.nextSteps : invalid()).map(step => ({ type: stepType(exact(step, ['type']).type) })),
+  }
+  if (decoded.membershipKind === 'OWNER' && decoded.facts.staffEnabled !== null) invalid()
+  if (new Set(decoded.allowedActions).size !== decoded.allowedActions.length) invalid()
+  if (JSON.stringify(decoded.allowedActions) !== JSON.stringify([...decoded.allowedActions].sort())) invalid()
+  if (decoded.admission === 'ALLOWED' && (decoded.reasonCodes.length || decoded.nextSteps.length)) invalid()
+  return decoded
+}
+export type MerchantAdmission = ReturnType<typeof decodeAdmission>
+/** CCR-W2-ADMISSION-001 client: own memberships (consumer workspace) and per-entry admission. */
+export class MerchantAdmissionRepository {
+  constructor(private api: ConsumerApi) {}
+  memberships(page = 1, pageSize = 20): Promise<{ items: MerchantMembership[]; page: number; pageSize: number; total: number }> {
+    return this.api.request({ path: '/api/v1/c/auth/merchant-memberships', method: 'GET', data: { page, pageSize } }, decodeMembershipPage)
+  }
+  admission(merchantId: string, storeId: string): Promise<MerchantAdmission> {
+    merchantId = id(merchantId); storeId = id(storeId)
+    return this.api.request({ path: '/api/v1/merchant/auth/admission', method: 'GET', data: { merchantId, storeId } }, value => {
+      const result = decodeAdmission(value)
+      if (result.merchantId !== merchantId || result.storeId !== storeId) invalid()
+      return result
+    })
+  }
+}

@@ -155,3 +155,38 @@ test('application success envelope must be true; malformed success keeps write u
     assert.ok(h.api.pendingCommand('merchant-application:create'))
   }
 })
+import { MerchantAdmissionRepository, decodeAdmission, decodeMembershipPage } from '../merchant-repositories'
+
+const admission = {
+  merchantId: '401', storeId: '402', membershipKind: 'OWNER', admission: 'ALLOWED',
+  checkedAt: time, authzVersion: '0123456789abcdef',
+  facts: { application: { status: 'APPROVED' }, signing: { status: 'SIGNED' }, storeStatus: 'ACTIVE', merchantStatus: 'ACTIVE', staffEnabled: null },
+  allowedActions: ['merchant.aftersale.read', 'merchant.order.read'], reasonCodes: [], nextSteps: [],
+}
+test('admission decoder enforces the CCR shape, enum domains and sorted actions', () => {
+  assert.equal(decodeAdmission(admission).admission, 'ALLOWED')
+  for (const patch of [
+    { authzVersion: '0123456789ABCDEF' }, { admission: 'MAYBE' },
+    { allowedActions: ['merchant.order.read', 'merchant.aftersale.read'] },
+    { allowedActions: ['merchant.order.read', 'merchant.order.read'] },
+    { reasonCodes: ['ANY'], membershipKind: 'OWNER' },
+    { facts: { ...admission.facts, staffEnabled: true } },
+    { facts: { ...admission.facts, storeStatus: 'DELETED' } },
+    { extra: 1 },
+  ]) assert.throws(() => decodeAdmission({ ...admission, ...patch }))
+  const denied = decodeAdmission({ ...admission, admission: 'DENIED', reasonCodes: ['SIGNING_REQUIRED'], nextSteps: [{ type: 'COMPLETE_SIGNING' }], allowedActions: [] })
+  assert.deepEqual(denied.nextSteps, [{ type: 'COMPLETE_SIGNING' }])
+})
+test('membership page decoder keeps owner rows without staffId and bounds paging', () => {
+  const page = decodeMembershipPage({ items: [{ merchantId: '401', merchantName: '商家', storeId: '402', storeName: '门店', membershipKind: 'OWNER' }], page: 1, pageSize: 20, total: 1 })
+  assert.equal(page.items[0]!.membershipKind, 'OWNER')
+  for (const bad of [{ page: 0 }, { pageSize: 51 }, { items: [] , page: 'x' }]) assert.throws(() => decodeMembershipPage({ items: [], pageSize: 20, total: 0, ...bad }))
+})
+test('admission client uses the approved endpoints and echoes target identity', async () => {
+  const h = await setup(async req => ok(req.method === 'GET' && req.path === '/api/v1/merchant/auth/admission' ? admission : { items: [], page: 1, pageSize: 20, total: 0 }))
+  await assert.rejects(new MerchantAdmissionRepository(h.api).admission('401', '402'), /WORKSPACE_PATH_MISMATCH/)
+  merchant(h.api)
+  const view = await new MerchantAdmissionRepository(h.api).admission('401', '402')
+  assert.equal(view.admission, 'ALLOWED')
+  await assert.rejects(new MerchantAdmissionRepository(h.api).admission('401', '403'), /INVALID_RESPONSE/)
+})
