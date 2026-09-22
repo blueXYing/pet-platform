@@ -2,7 +2,6 @@ import { Button, Text, View } from '@tarojs/components'
 import Taro, { useDidShow } from '@tarojs/taro'
 import { useEffect, useState, useSyncExternalStore } from 'react'
 import { ConsumerPageLayout } from '../../components/page-layout'
-import { navigationUnavailableMessage } from '../../components/navigation/model'
 import { MessagesController, routeForNotification } from '../../notifications/messages'
 import { realNotificationDeps } from '../../notifications/messages-runtime'
 import './index.scss'
@@ -25,7 +24,7 @@ export default function MessagesPage() {
     if (url) void Taro.navigateTo({ url })
     else void Taro.showToast({ title: '该消息无需跳转', icon: 'none' })
   }
-  return <ConsumerPageLayout page='profileEdit' unit={1} className='messages-page' style={{}} navigation={{ idPrefix: 'messages', disabled: false, onSelect: key => void Taro.showToast({ title: navigationUnavailableMessage(key), icon: 'none' }) }}>
+  return <ConsumerPageLayout page='profileEdit' unit={1} className='messages-page messages-subpage' style={{}}>
     <View className='messages-design' data-state={state.status}>
       <View className='messages-header'>
         <Button id='messages-back' ariaLabel='返回' onClick={() => void back()}>返回</Button>
