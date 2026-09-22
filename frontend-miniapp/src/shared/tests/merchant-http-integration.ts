@@ -3,7 +3,7 @@ import assert from 'node:assert/strict'
 import { randomUUID } from 'node:crypto'
 import { ConsumerApi, type LocalStore } from '../consumer-api'
 import { MerchantApplicationRepository, MerchantAgreementRepository, MerchantAdmissionRepository } from '../merchant-repositories'
-import { NotificationRepository } from '../notification-repositories'
+import { NotificationRepository, type InboxNotification } from '../notification-repositories'
 
 async function verify() {
   const origin = process.env.MERCHANT_TEST_ORIGIN || ''
@@ -60,12 +60,19 @@ async function verify() {
   assert.ok(admission.allowedActions.length >= 1)
   api.scope.replace({ userId: api.currentSession!.userId, workspace: 'consumer', merchantId: null, storeId: null })
   // CCR-W2-NOTIFICATION-001 live chain: the approval notification is visible, readable and
-  // read-marking is idempotent for the owner.
+  // read-marking is idempotent for the owner. Outbox delivery is asynchronous and a second
+  // owner notification follows the consent, so locate the reviewed message by type instead of
+  // assuming the inbox holds exactly one item, and tolerate delivery latency with a bounded poll.
   const inbox = new NotificationRepository(api)
-  const notifications = await inbox.list(1, 20)
-  assert.equal(notifications.total, 1)
-  const message = notifications.items[0]!
-  assert.equal(message.messageType, 'MERCHANT_APPLICATION_REVIEWED')
+  const deadline = Date.now() + 15_000
+  let page = await inbox.list(1, 20)
+  const isReviewed = (candidate: InboxNotification) => candidate.messageType === 'MERCHANT_APPLICATION_REVIEWED'
+  while (!page.items.some(isReviewed) && Date.now() < deadline) {
+    await new Promise(resolve => setTimeout(resolve, 250))
+    page = await inbox.list(1, 20)
+  }
+  const message = page.items.find(isReviewed)
+  if (!message) throw new Error('REVIEWED_NOTIFICATION_NOT_DELIVERED')
   assert.equal(message.bizType, 'MERCHANT_APPLICATION')
   assert.equal(message.readAt, null)
   const messageDetail = await inbox.detail(message.id)
@@ -75,7 +82,8 @@ async function verify() {
   const readAgain = await inbox.markRead(message.id)
   assert.equal(readAgain.readAt, readOnce.readAt)
   const afterRead = await inbox.list(1, 20)
-  assert.equal(afterRead.items[0]!.readAt, readOnce.readAt)
+  const sameMessage = (candidate: InboxNotification) => candidate.id === message.id
+  assert.equal(afterRead.items.find(sameMessage)?.readAt, readOnce.readAt)
   console.log('MER frontend decoders passed against real authorized HTTP application/city/agreement/admission/inbox responses')
 }
 
