@@ -22,6 +22,10 @@
 - 真实链路 harness 扩展：consent 后 memberships(1)→admission ALLOWED（含 facts/动作/空原因码断言），随 Java 生命周期测试在 CI 执行。
 - typecheck / build:weapp / check:package 全绿。
 
+## 模拟器人工验收（2026-09-22，已通过）
+
+真实链路终验于本 worktree 环境（真实微信登录/手机号授权、真实 OSS/ClamAV、隔离 MySQL/挥发 Redis、真实审批 API）：登录 → 申请填写/上传/提交 → 管理端审批 APPROVED（商家 ACTIVE、通知落库）→ 申请页重读 APPROVED → 签约页勾选签署成功 → 首页"进入商家工作区" → 单门店自动选中 → "工作台已就绪"（动作码提示、checkedAt/authzVersion 展示、工作区坐标切换 merchant）。子账号/多门店/受限态与真机走查未做（多门店与 FROZEN 受限展示有自动化覆盖）。
+
 ## 边界
 
 - 完整工作台业务（订单/服务/排期/核销）不在本切片；LIMITED 的存量入口按钮仅提示"后续切片提供"。
