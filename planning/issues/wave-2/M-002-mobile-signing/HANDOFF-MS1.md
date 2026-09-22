@@ -35,7 +35,8 @@
 1. **注入单测**（本机通过）：`src/consumer/tests/merchant-signing.test.ts` 9 项——工作区切换与读取、勾选门槛与回执签署、未知结果恢复重放（同载荷同 requestId 语义）、409 退休后新版本重签、已签快照不清除未决、错误映射（403/401/503/无效ID）、leave 归属守卫、预览失败关闭、消息文案。全套 `npm test`：135 通过 0 失败。
 2. **工程门**（本机通过）：`npm run typecheck`、`npm run build:weapp`（signing 页 wxml/wxss/js/json 产物生成）、`npm run check:package`（分包登记与包体预算，exit 0）。
 3. **真实 Boot 联调**（PR CI 通过）：PR #61（head `771c327`）六项检查全绿；`MerchantApplicationLifecycleHttpTest` 1/1 通过（run 35580246833），扩展后的 `merchant-http-integration.ts` 在真实 MySQL/Redis 与真实授权链路中执行已签读取（acceptedVersion/acceptedAt）与客户端防重签守卫。首轮 CI（`128ec87`）曾失败：`assert.rejects` 对仓库同步 throw 直接 reject，已修复为 async 包裹并在复跑验证。
-4. **模拟器/真机/VIS**：未执行。本页无 Figma 原稿（设计登记表 §4），按 PLAN §6 裁决 (b) 沿用申请页（132:862 交付版）页面语言与 design tokens 实现，**不声称一比一还原，VIS 不适用**；补稿后按 21 号验收补充对齐。
+4. **模拟器/真机/VIS**：**2026-09-22 模拟器人工验收已完成**——微信开发者工具（真实 AppID + 真实微信登录与手机号授权）→ 成为商家页真实填写/真实 OSS 上传/ClamAV 扫描/提交 → 管理端真实审批 API（领取→人工核验→APPROVE，商户建档 ACTIVE）→ 申请页重读显示 APPROVED → 签约入口进入 → 阅读协议（版本/正文/SHA-256）→ 勾选 → 同意并签署成功；服务端留痕：`merchant_agreement_acceptance` 记录 merchant-local-v1 版本、内容哈希、accepted_at=2026-09-22T01:52:58.331Z、本人 owner 账号。真机走查与跨设备场景仍未执行；本页无 Figma 原稿（设计登记表 §4），按 PLAN §6 裁决 (b) 沿用申请页（132:862 交付版）页面语言与 design tokens 实现，**不声称一比一还原，VIS 不适用**；补稿后按 21 号验收补充对齐。
+5. **本地验收环境说明（D:/Temp/ms1-local 归档，测试源不入库）**：MS1LocalServer/MS1Approve 两个测试类组装 S8/S9 同款真实依赖（真实微信 Provider、真实 OSS、真实 ClamAV 容器、隔离 MySQL、挥发 Redis）。两条经验：HttpFixture 的逐查询新建连接会使 Snowflake 单飞行道在首次周期续租（约 2-3 分钟）卡死并按设计永久失败关闭，长跑必须用 Hikari 连接池（AcceptanceFixture 同款，已修复并跨 4.5 分钟稳定性验证）；审批工具需兼容任务已领取的 409 采纳与"已核验仅决定"幂等分支。
 
 ## 边界与不包含
 
