@@ -1,0 +1,97 @@
+/* Base page rules + design measures. Source measures use 402 design px; a runtime pixel unit
+   avoids rpx rounding and calc coefficient truncation (C-002 precedent). All values are exact
+   frame-summaries.json measures of node 690:6660 (服务-商家详情页) unless commented otherwise. */
+.svc-page { --svc-status-top: 0px; min-height: 100vh; background: #f8f5ee; color: #1d0d07; font-family: Roboto, "Noto Sans SC", sans-serif; }
+.svc-page view, .svc-page button, .svc-page image, .svc-page text { box-sizing: border-box; }
+button { padding: 0; margin: 0; border: 0; border-radius: 0; background: transparent; font: inherit; line-height: normal; }
+.svc-page button::after { border: 0; }
+.svc-page button[disabled] { opacity: .65; color: inherit; }
+.svc-status-area { height: var(--svc-status-top); }
+.svc-design { position: relative; overflow: hidden; }
+.svc-abs { position: absolute; margin: 0; }
+.svc-state { padding: calc(var(--svc-unit) * 42.88) calc(var(--svc-unit) * 29); font-size: calc(var(--svc-unit) * 14); line-height: calc(var(--svc-unit) * 24); position: relative; z-index: 5; }
+.svc-state-action { margin-top: calc(var(--svc-unit) * 16.08) !important; color: #167fab !important; }
+.svc-notice { display: block; position: absolute; z-index: 6; font-size: calc(var(--svc-unit) * 12); line-height: calc(var(--svc-unit) * 18); color: #402e26; }
+/* wx-button ships a built-in margin-top that the tag reset cannot override. */
+.svc-page button { margin: 0 !important; }
+
+/* Page chrome: stacked background rects + flower cutout (690:6661) per the frame. */
+.svc-bg-blue { left: 0; top: 0; width: calc(var(--svc-unit) * 402); height: calc(var(--svc-unit) * 75); background: #acd6e8; }
+.svc-bg-cream { left: 0; top: 0; width: calc(var(--svc-unit) * 402); height: calc(var(--svc-unit) * 74); background: #fff6e5; }
+.svc-bg-flower { left: 0; top: calc(var(--svc-unit) * 13); width: calc(var(--svc-unit) * 402); height: calc(var(--svc-unit) * 787); }
+.svc-bg-base { left: 0; top: calc(var(--svc-unit) * 75); width: calc(var(--svc-unit) * 402); height: calc(var(--svc-unit) * 1231); background: #f8f5ee; }
+.svc-nav-back { left: calc(var(--svc-unit) * 10); top: calc(var(--svc-unit) * 18); width: calc(var(--svc-unit) * 25); height: calc(var(--svc-unit) * 42); display: flex; align-items: center; justify-content: center; z-index: 4; }
+.svc-nav-back image { width: calc(var(--svc-unit) * 9); height: calc(var(--svc-unit) * 15); }
+.svc-nav-title { left: calc(var(--svc-unit) * 50); top: calc(var(--svc-unit) * 22); font-size: calc(var(--svc-unit) * 16); line-height: calc(var(--svc-unit) * 24); font-weight: 700; color: #3c3c3c; z-index: 2; }
+.svc-banner { left: calc(var(--svc-unit) * 13); top: calc(var(--svc-unit) * 75); width: calc(var(--svc-unit) * 375); height: calc(var(--svc-unit) * 180); }
+
+/* 店铺信息卡 (design sample region: /c/stores contract not frozen, fields not bound). */
+.svc-store-card { left: calc(var(--svc-unit) * 29); top: calc(var(--svc-unit) * 271); width: calc(var(--svc-unit) * 343); height: calc(var(--svc-unit) * 160); background: #f0fbff; border: calc(var(--svc-unit) * 1) solid #c0ecff; border-radius: calc(var(--svc-unit) * 12); }
+.svc-store-avatar { left: calc(var(--svc-unit) * 18); top: calc(var(--svc-unit) * 18); width: calc(var(--svc-unit) * 56); height: calc(var(--svc-unit) * 56); border-radius: calc(var(--svc-unit) * 12); border: calc(var(--svc-unit) * 1) solid #acd5e8; }
+.svc-store-head { position: absolute; left: calc(var(--svc-unit) * 86); top: calc(var(--svc-unit) * 18); width: calc(var(--svc-unit) * 241); }
+.svc-store-name { display: flex; align-items: center; gap: calc(var(--svc-unit) * 8); height: calc(var(--svc-unit) * 24); }
+.svc-store-name-text { font-size: calc(var(--svc-unit) * 16); line-height: calc(var(--svc-unit) * 24); font-weight: 700; color: #1d0d07; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: calc(var(--svc-unit) * 112); }
+.svc-store-type-tag { flex-shrink: 0; min-width: calc(var(--svc-unit) * 50); height: calc(var(--svc-unit) * 19); padding: calc(var(--svc-unit) * 2) calc(var(--svc-unit) * 6); border-radius: calc(var(--svc-unit) * 4); background: #c0ecff; display: flex; align-items: center; }
+.svc-store-type-tag text { font-size: calc(var(--svc-unit) * 10); line-height: calc(var(--svc-unit) * 15); color: #5f4739; }
+.svc-store-stats { margin-top: calc(var(--svc-unit) * 4); height: calc(var(--svc-unit) * 20); display: flex; align-items: center; gap: calc(var(--svc-unit) * 8); }
+.svc-store-stats image { width: calc(var(--svc-unit) * 10); height: calc(var(--svc-unit) * 9); }
+.svc-store-rating { font-size: calc(var(--svc-unit) * 14); line-height: calc(var(--svc-unit) * 20); font-weight: 700; color: #ff9500; }
+.svc-store-meta { font-size: calc(var(--svc-unit) * 10); line-height: calc(var(--svc-unit) * 15); color: #577683; }
+.svc-store-tags { margin-top: calc(var(--svc-unit) * 8); height: calc(var(--svc-unit) * 19); display: flex; gap: calc(var(--svc-unit) * 4); }
+.svc-store-tag { width: calc(var(--svc-unit) * 32); height: calc(var(--svc-unit) * 19); padding: calc(var(--svc-unit) * 2) calc(var(--svc-unit) * 6); border-radius: calc(var(--svc-unit) * 4); background: #c0ecff; display: flex; align-items: center; }
+.svc-store-tag text { font-size: calc(var(--svc-unit) * 10); line-height: calc(var(--svc-unit) * 15); color: #577683; }
+.svc-store-intro { position: absolute; left: calc(var(--svc-unit) * 18); top: calc(var(--svc-unit) * 105); width: calc(var(--svc-unit) * 300); font-size: calc(var(--svc-unit) * 12); line-height: calc(var(--svc-unit) * 19.5); color: #577683; }
+
+/* 门店信息卡 (design sample region). */
+.svc-info-card { left: calc(var(--svc-unit) * 29); top: calc(var(--svc-unit) * 447); width: calc(var(--svc-unit) * 343); height: calc(var(--svc-unit) * 158); background: #f8f5ee; border: calc(var(--svc-unit) * 1) solid #c0ecff; border-radius: calc(var(--svc-unit) * 12); }
+.svc-info-title { position: absolute; left: calc(var(--svc-unit) * 18); top: calc(var(--svc-unit) * 18); font-size: calc(var(--svc-unit) * 14); line-height: calc(var(--svc-unit) * 20); font-weight: 700; color: #1d0d07; }
+.svc-info-row { position: absolute; left: calc(var(--svc-unit) * 18); height: calc(var(--svc-unit) * 24); display: flex; align-items: center; gap: calc(var(--svc-unit) * 10); }
+.svc-info-row image { width: calc(var(--svc-unit) * 13); height: calc(var(--svc-unit) * 13); margin-left: calc(var(--svc-unit) * 1); }
+.svc-info-row text { font-size: calc(var(--svc-unit) * 12); line-height: calc(var(--svc-unit) * 16); color: #577683; }
+
+/* 促销条 (design sample; V1 has no merchant marketing tools). */
+.svc-promo { left: calc(var(--svc-unit) * 29); top: calc(var(--svc-unit) * 621); width: calc(var(--svc-unit) * 343); height: calc(var(--svc-unit) * 75); background: #f0fbff; border-radius: calc(var(--svc-unit) * 12); }
+.svc-promo-badge { position: absolute; left: calc(var(--svc-unit) * 16); top: calc(var(--svc-unit) * 16.5); min-width: calc(var(--svc-unit) * 16); height: calc(var(--svc-unit) * 19); padding: calc(var(--svc-unit) * 2) calc(var(--svc-unit) * 6); border-radius: calc(var(--svc-unit) * 4); background: #5baae8; display: flex; align-items: center; }
+.svc-promo-badge text { font-size: calc(var(--svc-unit) * 10); line-height: calc(var(--svc-unit) * 15); color: #f8f5ee; }
+.svc-promo-title { position: absolute; left: calc(var(--svc-unit) * 51.6); top: calc(var(--svc-unit) * 16); font-size: calc(var(--svc-unit) * 14); line-height: calc(var(--svc-unit) * 20); font-weight: 500; color: #577683; }
+.svc-promo-sub { position: absolute; left: calc(var(--svc-unit) * 16); top: calc(var(--svc-unit) * 42); font-size: calc(var(--svc-unit) * 11); line-height: calc(var(--svc-unit) * 17); color: #577683; }
+
+/* 团购套餐（服务项目列表）— contract-bound region. Card height grows with row count. */
+.svc-list-card { left: calc(var(--svc-unit) * 29); top: calc(var(--svc-unit) * 711.5); width: calc(var(--svc-unit) * 343); background: #f8f5ee; border: calc(var(--svc-unit) * 1) solid #c0ecff; border-radius: calc(var(--svc-unit) * 12); }
+.svc-list-title { position: absolute; left: calc(var(--svc-unit) * 18); top: calc(var(--svc-unit) * 18); font-size: calc(var(--svc-unit) * 14); line-height: calc(var(--svc-unit) * 20); font-weight: 700; color: #1d0d07; }
+.svc-list-rows { position: absolute; left: calc(var(--svc-unit) * 18); top: calc(var(--svc-unit) * 50); width: calc(var(--svc-unit) * 309); }
+.svc-service-row { position: relative; display: block; width: calc(var(--svc-unit) * 309); height: calc(var(--svc-unit) * 82); background: #f0fbff; border-radius: calc(var(--svc-unit) * 8); padding: calc(var(--svc-unit) * 12); margin-bottom: calc(var(--svc-unit) * 11.5); text-align: left; }
+.svc-service-row:last-child { margin-bottom: calc(var(--svc-unit) * 12); }
+.svc-service-main { position: absolute; left: calc(var(--svc-unit) * 12); top: calc(var(--svc-unit) * 12); width: calc(var(--svc-unit) * 225); }
+.svc-service-name { font-size: calc(var(--svc-unit) * 14); line-height: calc(var(--svc-unit) * 20); color: #1d0d07; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.svc-service-desc { margin-top: calc(var(--svc-unit) * 2); font-size: calc(var(--svc-unit) * 11); line-height: calc(var(--svc-unit) * 17); color: #577683; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.svc-service-sold { margin-top: calc(var(--svc-unit) * 4); font-size: calc(var(--svc-unit) * 10); line-height: calc(var(--svc-unit) * 15); color: #5baae8; }
+.svc-service-side { position: absolute; left: calc(var(--svc-unit) * 249); top: calc(var(--svc-unit) * 12); width: calc(var(--svc-unit) * 48); display: flex; flex-direction: column; align-items: flex-end; gap: calc(var(--svc-unit) * 8); }
+.svc-service-price { font-size: calc(var(--svc-unit) * 16); line-height: calc(var(--svc-unit) * 24); font-weight: 700; color: #5baae8; }
+.svc-service-book { width: calc(var(--svc-unit) * 48); height: calc(var(--svc-unit) * 24); padding: calc(var(--svc-unit) * 4) calc(var(--svc-unit) * 12); border-radius: calc(var(--svc-unit) * 9999); background: #5baae8; display: flex; align-items: center; justify-content: center; }
+.svc-service-book text { font-size: calc(var(--svc-unit) * 12); line-height: calc(var(--svc-unit) * 16); color: #f8f5ee; }
+.svc-list-empty { padding: calc(var(--svc-unit) * 12) 0 calc(var(--svc-unit) * 16); font-size: calc(var(--svc-unit) * 12); line-height: calc(var(--svc-unit) * 18); color: #577683; text-align: center; }
+
+/* 用户评价 (design sample region). */
+.svc-review-card { left: calc(var(--svc-unit) * 29); width: calc(var(--svc-unit) * 343); background: #f8f5ee; border: calc(var(--svc-unit) * 1) solid #c0ecff; border-radius: calc(var(--svc-unit) * 12); }
+.svc-review-head { position: absolute; left: calc(var(--svc-unit) * 18); top: calc(var(--svc-unit) * 18); display: flex; align-items: baseline; width: calc(var(--svc-unit) * 309); }
+.svc-review-title { font-size: calc(var(--svc-unit) * 14); line-height: calc(var(--svc-unit) * 20); font-weight: 700; color: #1d0d07; }
+.svc-review-count { margin-left: auto; font-size: calc(var(--svc-unit) * 12); line-height: calc(var(--svc-unit) * 16); color: #577683; }
+.svc-review-item { position: absolute; left: calc(var(--svc-unit) * 18); width: calc(var(--svc-unit) * 309); }
+.svc-review-avatar { position: absolute; left: 0; top: 0; width: calc(var(--svc-unit) * 32); height: calc(var(--svc-unit) * 32); border-radius: calc(var(--svc-unit) * 9999); }
+.svc-review-body { margin-left: calc(var(--svc-unit) * 42); }
+.svc-review-line { height: calc(var(--svc-unit) * 16); display: flex; align-items: center; }
+.svc-review-name { font-size: calc(var(--svc-unit) * 12); line-height: calc(var(--svc-unit) * 16); font-weight: 500; color: #2e1d16; }
+.svc-review-time { margin-left: auto; font-size: calc(var(--svc-unit) * 10); line-height: calc(var(--svc-unit) * 15); color: #5baae8; }
+.svc-review-stars { margin-top: calc(var(--svc-unit) * 4); height: calc(var(--svc-unit) * 10); display: flex; gap: calc(var(--svc-unit) * 2); }
+.svc-review-stars image { width: calc(var(--svc-unit) * 10); height: calc(var(--svc-unit) * 9); }
+.svc-review-text { margin-top: calc(var(--svc-unit) * 3); width: calc(var(--svc-unit) * 267); font-size: calc(var(--svc-unit) * 12); line-height: calc(var(--svc-unit) * 16.5); color: #577683; }
+
+/* 底部操作栏 (拨打电话/立即预约 out of this slice; explicit no-ops with notice).
+   Fixed above the shared bottom navigation — the design frame overlays it on scrolling
+   content at y1160; draft tabbar diff D1 recorded in the design inventory. */
+.svc-bottombar { position: fixed; left: 0; bottom: calc(var(--consumer-nav-unit) * 62 + env(safe-area-inset-bottom)); width: 100%; height: calc(var(--svc-unit) * 85); background: #f0fbff; z-index: 8; }
+.svc-bottom-call { position: absolute; left: calc(var(--svc-unit) * 30); top: calc(var(--svc-unit) * 20); width: calc(var(--svc-unit) * 169); height: calc(var(--svc-unit) * 46); border-radius: calc(var(--svc-unit) * 23); background: #ffffff; border: calc(var(--svc-unit) * 1) solid #85d2f3; display: flex; align-items: center; justify-content: center; }
+.svc-bottom-call text { font-size: calc(var(--svc-unit) * 14); line-height: calc(var(--svc-unit) * 20); font-weight: 500; color: #577683; }
+.svc-bottom-book { position: absolute; left: calc(var(--svc-unit) * 207); top: calc(var(--svc-unit) * 20); width: calc(var(--svc-unit) * 169); height: calc(var(--svc-unit) * 46); border-radius: calc(var(--svc-unit) * 23); background: #c0ecff; display: flex; align-items: center; justify-content: center; }
+.svc-bottom-book text { font-size: calc(var(--svc-unit) * 14); line-height: calc(var(--svc-unit) * 20); font-weight: 500; color: #577683; }

@@ -24,11 +24,18 @@ assert.deepEqual(packages.map(p => ({ root: p.root, pages: p.pages })), [
   { root: 'merchant', pages: ['pages/workspace/index'] },
   { root: 'consumer/pages/pet-archive', pages: ['index', 'detail', 'form'] },
   { root: 'consumer/pages/merchant-application', pages: ['index', 'signing'] },
+  { root: 'consumer/pages/store-services', pages: ['index', 'service-detail'] },
 ], 'Merchant workspace, pet archive and merchant application must be registered in the single app')
 for (const page of ['index', 'signing']) {
   for (const extension of ['js', 'json', 'wxml', 'wxss']) {
     assert.ok(fs.existsSync(path.join(root, `consumer/pages/merchant-application/${page}.` + extension)),
       `MER-001 application page artifact missing: ${page}.${extension}`)
+  }
+}
+for (const page of ['index', 'service-detail']) {
+  for (const extension of ['js', 'json', 'wxml', 'wxss']) {
+    assert.ok(fs.existsSync(path.join(root, `consumer/pages/store-services/${page}.` + extension)),
+      `C-003 store-services page artifact missing: ${page}.${extension}`)
   }
 }
 assert.ok(packages.every(p => !p.independent), 'Only ordinary subpackages allowed')
