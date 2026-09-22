@@ -40,8 +40,11 @@ export default function Shell() {
     <Button onClick={() => platform.navigate('/consumer/pages/diagnostics/index')}>打开隔离验证页</Button>
     <Button onClick={() => platform.navigate('/consumer/pages/profile-edit/index?preview=1')}>C-002 编辑资料视觉预览（仅本地数据）</Button>
       <Button id='c-merchant-application-preview' onClick={() => platform.navigate('/consumer/pages/merchant-application/index?preview=1')}>成为商家交互预览（不提交真实申请）</Button>
-      <Button id='c-store-services-preview' onClick={() => platform.navigate('/consumer/pages/store-services/index?preview=1')}>商家服务列表视觉预览（契约 Mock，不联调）</Button>
-      <Button id='c-store-services' disabled={!context || busy} onClick={() => platform.navigate('/consumer/pages/store-services/index?storeId=957002')}>商家服务列表（真实契约接口）</Button>
+    <Button id='c-store-directory-preview' onClick={() => platform.navigate('/consumer/pages/store-services/stores?preview=1')}>门店列表视觉预览（/c/stores 契约 Mock，不联调）</Button>
+    <Button id='c-store-directory' onClick={() => platform.navigate('/consumer/pages/store-services/stores')}>门店列表（真实契约接口，匿名可浏览）</Button>
+    <Button id='c-store-services-preview' onClick={() => platform.navigate('/consumer/pages/store-services/index?preview=1')}>商家服务列表视觉预览（契约 Mock，不联调）</Button>
+    <Button id='c-store-services' disabled={!context || busy} onClick={() => platform.navigate('/consumer/pages/store-services/index?storeId=957002')}>商家服务列表（真实契约接口）</Button>
+    <Button id='c-merchant-services-preview' onClick={() => platform.navigate('/merchant/pages/services/index?preview=1')}>商家服务管理视觉预览（契约 Mock，不联调）</Button>
     <Button onClick={() => platform.navigate('/merchant/pages/workspace/index')}>进入商家工作区</Button>
       <Button id='c-messages' onClick={() => platform.navigate('/consumer/pages/messages/index')}>消息中心</Button>
   </View>
