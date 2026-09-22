@@ -214,6 +214,46 @@ public record MerchantDisplayEligibilityDTO(
 - 与 4.1 使用同一资格策略与同一 repeatable-read 事务快照，语义一致（含失败关闭）。
 - 错误语义：确认不存在的商家/门店对 → NOT_FOUND（调用方按不可见处理）；事实源故障、读取失败或状态未知 → DEPENDENCY_UNAVAILABLE（调用方 503）；两者不得混同。
 
+### 4.3 MerchantStoreDisplayApi（CCR-W2-API-001 门店读侧 STR-D6，2026-09-22 已批；第五查询）
+
+```java
+public interface MerchantStoreDisplayApi {
+
+    MerchantStoreDisplayPageDTO pageDisplayStores(
+        MerchantStoreDisplayPageQuery query
+    );
+
+    MerchantStoreDisplayDTO getDisplayStore(MerchantStoreDisplayQuery query);
+}
+```
+
+```java
+public record MerchantStoreDisplayPageQuery(
+    List<String> cityCodes, int page, int pageSize, QueryContext context
+) {}
+
+public record MerchantStoreDisplayQuery(
+    String storeId, QueryContext context
+) {}
+
+public record MerchantStoreDisplayDTO(
+    String merchantId, String storeId,
+    String merchantName, String storeName, String address,
+    String longitude, String latitude,   // 可空，≤7位小数
+    String phoneMasked,                  // 可空，掩码
+    String cityCode
+) {}
+
+public record MerchantStoreDisplayPageDTO(
+    List<MerchantStoreDisplayDTO> items, int page, int pageSize, long total
+) {}
+```
+
+- 仅供 C 端展示聚合消费：只读门店档案投影，不授予任何商家操作权限（权威面仍是 4.1 三查询）；无所有者前提，QueryContext 仅承载链路信息；匿名浏览（STR-D8，PRD"所有用户浏览"）时主体字段为空，可见性与主体无关。
+- 可见性 = 三条件合取（merchantEnabled ∧ storeEnabled ∧ acceptsNewOrders，**不含"服务 ACTIVE"**：有店无服务仍可见），与 4.1 同一 `MerchantOrderEligibilityPolicy`、同一只读 repeatable-read 快照；`pageDisplayStores` 整页一次资格判定（一次快照内按页内去重 merchant/store 对求值，同一商家多店共享一次事实读取），`total` 只计可见门店（诚实 total，不把不可见门店计入）。
+- `cityCodes` 是调用方（boot 适配层）从服务端开放城市目录解析的闭合集合；biz 不判断何为"开放"。城市事实来自 `merchant_profile_compat.city_code`；**通过资格合取但缺 compat 行或 city_code 词法损坏 = 完整性损坏 → DEPENDENCY_UNAVAILABLE（整页 503）**，不得静默隐藏或归入任何城市；确认开放城市无可见门店 = 正常空页。
+- 错误语义（同 4.2 两分，不得混同）：确认不存在/无资格 → `getDisplayStore` NOT_FOUND（调用方 404 `STORE_NOT_FOUND`）、`pageDisplayStores` 隐藏；事实源故障、读取失败、状态未知、compat 完整性损坏 → DEPENDENCY_UNAVAILABLE（调用方 503，列表整页失败关闭）。
+
 ---
 
 ## 5. pet-service-api
