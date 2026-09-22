@@ -11,7 +11,7 @@
 | 会话/准入/权限 | AUTH-001 | C002/M002/A002 | 复用CCR-ACR/PERM，不另造第二套会话；签约OD002仍有效 |
 | 用户/宠物/个人资料 | USR-001，AUTH协作 | C002、TX001 | [用户域提案](CCR-W2-API-001/user-pet-domain-proposal.md)及权威同步已由PR22/23合入，PR24领域实现、PR31 C会话/HTTP接入已合入；前端真实联调、生产启用及尚缺展示字段按原Owner继续，其他域不自动解除 |
 | 商家/门店/人员 | MER-001 | C003/M002/ADM001 | 2026-09-17三项已获批准：[回执](CCR-W2-API-001/merchant-product-decisions.md)；[27号权威契约](../../docs/04-api/27-Merchant-Domain-Contract-v0.1.md)、存储映射、07/10/11/12与SSOT/PRD同步；8个OpenAPI操作标NOT_IMPLEMENTED。已批内容不重复审阅，明确依赖与完整MER验收仍未完成 |
-| 服务/快照/资格 | SVC-001 | C003/M002/ADM001 | ServiceBookabilityDTO/Query与页面响应；不提前实现排期/订单 |
+| 服务/快照/资格 | SVC-001 | C003/M002/ADM001 | ServiceBookabilityDTO/Query与页面响应；不提前实现排期/订单；[服务域提案草案](CCR-W2-API-001/service-domain-proposal.md)（2026-09-22，含依赖核验，待人工批准SVC-D1～D4） |
 | 可用性/排期管理 | SCH-001/002及原所属Owner | C003/M002/A002 | 对既有可用时间契约补页面所需未定义内容；原Wave3依赖不强拉到本波 |
 | 运营治理 | ADM-001，AUTH协作 | A002 | 商家/服务/员工/排期操作及动作权限、数据范围、错误；原后置依赖保留 |
 
