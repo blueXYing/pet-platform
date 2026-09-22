@@ -59,6 +59,7 @@ OpenAPI11同步员工六操作与协议两操作。成员事实沿用既有AUTH�
 | MerchantOrderEligibilityDTO | **保持原五字段** merchantId、storeId、merchantEnabled、storeEnabled、acceptsNewOrders，不增加存量履约allowed标志 |
 | `getStaff(MerchantStaffQuery)` | query：merchantId、storeId、staffId、QueryContext；三者归属必须一致。返回MerchantStaffDTO，不披露成员登录信息 |
 | MerchantStaffDTO | merchantId、storeId、staffId、staffName(1～64)、phoneMasked(可空)、employmentStatus=ACTIVE/INACTIVE、serviceEnabled(Boolean)、version；返回独立不可变副本 |
+| `checkDisplayEligibility(MerchantDisplayEligibilityQuery)` | **第四查询（CCR-W2-API-001 服务域 SVC-D5，2026-09-22 已批）**：query：merchantId、storeId、QueryContext；无所有者前提，仅供 C 端展示聚合，不授予商家操作权限。确认不存在→NOT_FOUND；事实源故障/读取失败/状态未知→503；不得混同。形状见 07 号 §4.2 |
 
 `merchantEnabled = merchant.status==ACTIVE`；`storeEnabled = store.status==ACTIVE`。
 `acceptsNewOrders = merchantEnabled && storeEnabled && application.status==APPROVED && signing.status==SIGNED`。

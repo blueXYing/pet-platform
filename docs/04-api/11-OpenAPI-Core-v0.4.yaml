@@ -5983,6 +5983,174 @@ paths:
           application/json:
             schema:
               $ref: '#/components/schemas/AuthVersionedCommand'
+  /c/stores/{storeId}/services:
+    get:
+      tags:
+      - Service-Catalog
+      operationId: cListStoreServices
+      summary: List visible services of a store (paginated)
+      x-contract-status: ACCEPTED_CONTRACT_NOT_IMPLEMENTED
+      x-audience: MINIAPP
+      security:
+      - bearerAuth: []
+      parameters:
+      - name: storeId
+        in: path
+        required: true
+        schema:
+          type: string
+      - name: page
+        in: query
+        schema:
+          type: integer
+          minimum: 1
+          maximum: 10000
+          default: 1
+      - name: pageSize
+        in: query
+        schema:
+          type: integer
+          minimum: 1
+          maximum: 50
+          default: 20
+      responses:
+        '200':
+          description: Service catalog projection; see HTTP contract 10 section 3.3.1.
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                enum:
+                - no-store
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MerErrorEnvelope'
+        '400':
+          description: Invalid path or pagination arguments.
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                enum:
+                - no-store
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MerErrorEnvelope'
+        '401':
+          description: C session required.
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                enum:
+                - no-store
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MerErrorEnvelope'
+        '404':
+          description: Not found, not visible or ineligible (indistinguishable).
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                enum:
+                - no-store
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MerErrorEnvelope'
+        '503':
+          description: Facts source failure or unknown status; fail closed.
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                enum:
+                - no-store
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MerErrorEnvelope'
+  /c/services/{serviceId}:
+    get:
+      tags:
+      - Service-Catalog
+      operationId: cGetService
+      summary: Service detail with snapshot fields; visible only when bookable-eligible
+      x-contract-status: ACCEPTED_CONTRACT_NOT_IMPLEMENTED
+      x-audience: MINIAPP
+      security:
+      - bearerAuth: []
+      parameters:
+      - name: serviceId
+        in: path
+        required: true
+        schema:
+          type: string
+      responses:
+        '200':
+          description: Service catalog projection; see HTTP contract 10 section 3.3.1.
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                enum:
+                - no-store
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MerErrorEnvelope'
+        '400':
+          description: Invalid path or pagination arguments.
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                enum:
+                - no-store
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MerErrorEnvelope'
+        '401':
+          description: C session required.
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                enum:
+                - no-store
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MerErrorEnvelope'
+        '404':
+          description: Not found, not visible or ineligible (indistinguishable).
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                enum:
+                - no-store
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MerErrorEnvelope'
+        '503':
+          description: Facts source failure or unknown status; fail closed.
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                enum:
+                - no-store
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MerErrorEnvelope'
   /c/merchant-application-cities:
     get:
       tags:

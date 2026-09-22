@@ -1,6 +1,6 @@
 # CCR-W2-API-001 服务域契约提案（草案 v0.2）
 
-状态：**PROPOSAL_DRAFT（v0.2 按人工审阅补正，待批准）**。规范版本：0.2，日期：2026-09-22。
+状态：**PROPOSAL_ACCEPTED（2026-09-22 人工批准 SVC-D1～D5，见[决定回执](service-domain-decisions.md)）**。规范版本：0.3，日期：2026-09-22。
 提出方/唯一编辑者：Backend Core（SVC-001 规范阶段）。关联 Issue：SVC-001 / EPIC-04 / ST-SVC-01；消费者：C-003 / M-002 / ADM-001。批准人：人工 Contract Owner **blueXYing**。
 基线：develop `bb6bb5c`；分支 `feat/svc001-service-domain-20260922`。本草案只做规范与依赖核验，不写实现代码、不改权威 06/07/10/11/12；获批后由 Owner 同步权威文档再派发实现。
 
@@ -9,6 +9,7 @@
 | 版本 | 变更 |
 |---|---|
 | 0.1（2026-09-22） | 初稿，SVC-D1～D4 |
+| 0.3（2026-09-22，批准落档） | 人工批准 SVC-D1～D5；错误语义细化：确认不存在/无资格→隐藏或404，事实源故障/读取失败/状态未知→503，撤下 known=false 双标志（见回执第6条）；D5 允许本切片一并实现、商家模块独立提交 |
 | 0.2（2026-09-22，人工审阅补正） | ① 撤回"资格接口可直接消费"结论：`checkOrderEligibility` 以 `owner_user_id` 匹配为前提（`MerchantQueryService.java:95`、`MerchantReadMapper.xml` `selectOwnedEligibilityBase`），消费者身份不可用，新增 **SVC-D5 消费者侧展示资格查询**（pet-merchant-api 第四查询，显式契约增补）；② 补齐"服务上架但商家/门店停用"的详情返回规则：与列表同语义，不可见即 404（SVC-D1b 可见性规则）；③ D1 增加"资格≠有空位≠下单成功"边界说明；④ 登记门店两条路由与服务写入方的后续承接；⑤ 删除 HTTP 详情响应的 bookability 子对象（可见性已蕴含基本资格，避免恒真字段） |
 
 ## 人工 CTO 一页阅读指南
@@ -39,11 +40,10 @@
    public record MerchantDisplayEligibilityQuery(String merchantId, String storeId, QueryContext context) {}
    public record MerchantDisplayEligibilityDTO(
        String merchantId, String storeId,
-       boolean merchantKnown, boolean storeKnown,
        boolean merchantEnabled, boolean storeEnabled, boolean acceptsNewOrders) {}
    ```
 
-   语义约定：**仅供 C 端展示聚合消费，只读布尔事实，不授予任何商家操作权限**（商家侧权威仍是既有三查询）；查询**不做所有者前提过滤**，`QueryContext` 仅承载 requestId/traceId 链路信息，**不得携带或冒充商家主体**（遵循 API07：调用方不能用 HTTP 自报 DTO 冒充 Principal）；`merchantKnown/storeKnown=false`（引用缺失，数据异常）按失败关闭处理为不可见并留痕，读取异常 → 503。实现归 pet-merchant-api/merchant-biz（MER 域文件，按 WAVE_2_PLAN 唯一 Writer 规则以独立 commit 交付并在 PR 显式披露）；service-biz 仅经此 API 取事实，不跨模块读 Repository/Entity。
+   语义约定：**仅供 C 端展示聚合消费，只读布尔事实，不授予任何商家操作权限**（商家侧权威仍是既有三查询）；查询**不做所有者前提过滤**，`QueryContext` 仅承载 requestId/traceId 链路信息，**不得携带或冒充商家主体**（遵循 API07：调用方不能用 HTTP 自报 DTO 冒充 Principal）。错误语义（批准细化，撤下 v0.2 的 known 双标志）：**确认不存在**的商家/门店对 → NOT_FOUND（调用方隐藏/404）；**事实源故障、读取失败或状态未知** → 503 DEPENDENCY_UNAVAILABLE 失败关闭；两者不得混同。实现归 pet-merchant-api/merchant-biz（MER 域文件，按 WAVE_2_PLAN 唯一 Writer 规则以独立 commit 交付并在 PR 显式披露）；service-biz 仅经此 API 取事实，不跨模块读 Repository/Entity。
 
 ## 1. 范围与来源（依赖核验结论）
 
