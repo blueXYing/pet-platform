@@ -90,5 +90,17 @@ export function routeForNotification(item: InboxNotification): string | null {
   if (item.messageType === 'MERCHANT_APPLICATION_REVIEWED' && item.bizType === 'MERCHANT_APPLICATION' && item.bizId !== null) {
     return '/consumer/pages/merchant-application/index'
   }
+  // M-002 service-review verdicts (delivery by role E): the existing whitelist mechanism
+  // extends to the merchant service-management page, which re-validates its own workspace
+  // coordinates and admission — a jump never bypasses the workbench gate.
+  if (item.messageType === 'SERVICE_REVIEWED' && item.bizType === 'SERVICE' && item.bizId !== null) {
+    return '/merchant/pages/services/index'
+  }
+  return null
+}
+
+export function jumpLabelForNotification(item: InboxNotification): string | null {
+  if (item.messageType === 'SERVICE_REVIEWED' && item.bizType === 'SERVICE' && item.bizId !== null) return '查看服务管理'
+  if (routeForNotification(item) !== null) return '查看入驻申请'
   return null
 }

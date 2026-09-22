@@ -1,6 +1,7 @@
 import { Button, Image, Text, View } from '@tarojs/components'
 import type { CSSProperties, ReactNode } from 'react'
 import { designSamples, formatSalePrice, type ServiceItemView } from '../../service/model'
+import type { StoreDetailView } from '../../store/model'
 import bgFlower from './assets/690-6661-bg-huaban@2x.png'
 import storeBanner from './assets/690-6908-store-banner@2x.png'
 import storeAvatar from './assets/690-6709-store-avatar@2x.png'
@@ -51,11 +52,13 @@ export function ServiceRow({ line, idPrefix, onOpen, onBook }: { line: ServiceCa
 
 /**
  * Shared one-to-one chrome of node 690:6660 (服务-商家详情页) and its identical copies
- * 690:2025/690:4205 (热门服务-宠物美容-详情页). Everything except the services section is
- * DESIGN-SAMPLE copy: the /c/stores projection and review contracts are not frozen yet, so no
- * store field is bound to contract data (C-003 slice boundary).
+ * 690:2025/690:4205 (热门服务-宠物美容-详情页). The services section and — since the /c/stores
+ * slice — the store name/address/masked phone bind contract data when a store view is passed;
+ * every field the nine-field projection does not carry (rating, monthly sold, distance, tags,
+ * intro, opening hours, promo, reviews) stays DESIGN-SAMPLE copy registered as contract gaps.
  */
-export function StoreServicesDesign({ listTop, servicesNode, reviewTop, notice, onBack, onCall, onBookNow, bookEnabled }: {
+export function StoreServicesDesign({ store: storeView, listTop, servicesNode, reviewTop, notice, onBack, onCall, onBookNow, bookEnabled }: {
+  store: StoreDetailView | null
   listTop: number
   servicesNode: ReactNode
   reviewTop: number
@@ -65,7 +68,12 @@ export function StoreServicesDesign({ listTop, servicesNode, reviewTop, notice, 
   onBookNow: () => void
   bookEnabled: boolean
 }) {
-  const store = designSamples.store
+  const store = {
+    ...designSamples.store,
+    name: storeView?.storeName ?? designSamples.store.name,
+    address: storeView?.address ?? designSamples.store.address,
+    phone: storeView?.phoneMasked ?? designSamples.store.phone,
+  }
   const reviewBottom = reviewTop + reviewCardHeight() + 20
   return <View className='svc-design' style={{ minHeight: `calc(var(--svc-unit) * ${reviewBottom})` } as CSSProperties}>
     <View className='svc-abs svc-bg-blue' />

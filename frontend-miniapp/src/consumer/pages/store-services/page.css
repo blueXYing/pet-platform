@@ -95,3 +95,30 @@ button { padding: 0; margin: 0; border: 0; border-radius: 0; background: transpa
 .svc-bottom-call text { font-size: calc(var(--svc-unit) * 14); line-height: calc(var(--svc-unit) * 20); font-weight: 500; color: #577683; }
 .svc-bottom-book { position: absolute; left: calc(var(--svc-unit) * 207); top: calc(var(--svc-unit) * 20); width: calc(var(--svc-unit) * 169); height: calc(var(--svc-unit) * 46); border-radius: calc(var(--svc-unit) * 23); background: #c0ecff; display: flex; align-items: center; justify-content: center; }
 .svc-bottom-book text { font-size: calc(var(--svc-unit) * 14); line-height: calc(var(--svc-unit) * 20); font-weight: 500; color: #577683; }
+
+/* ── 门店列表页（frame 110:480 服务tab 的九字段裁剪版）──
+   Top band + 全部服务 title follow the original measures; the category grid keeps the
+   4-column layout with text cards (icon cutouts pending); the provider feed / promo strip /
+   rating-sold-distance blocks have no contract facts and are not rendered (VIS-004). */
+.sdir-page { background: #f8f5ee; }
+.sdir-top { position: relative; height: calc(var(--svc-unit) * 132); }
+.sdir-top .svc-bg-blue { height: calc(var(--svc-unit) * 75); }
+.sdir-top .svc-bg-cream { height: calc(var(--svc-unit) * 74); }
+.sdir-city { position: absolute; left: 50%; transform: translateX(-50%); top: calc(var(--svc-unit) * 42); z-index: 3; font-size: calc(var(--svc-unit) * 12); line-height: calc(var(--svc-unit) * 18); color: #383838; display: flex; align-items: center; gap: calc(var(--svc-unit) * 3); }
+.sdir-title { position: absolute; left: calc(var(--svc-unit) * 29); top: calc(var(--svc-unit) * 103); font-family: Outfit, Roboto, 'Noto Sans SC', sans-serif; font-size: calc(var(--svc-unit) * 16); line-height: calc(var(--svc-unit) * 24); font-weight: 700; color: #1d0d07; z-index: 3; }
+.sdir-body { position: relative; z-index: 2; background: #f8f5ee; padding: calc(var(--svc-unit) * 24) calc(var(--svc-unit) * 29) calc(var(--svc-unit) * 30); }
+.sdir-categories { display: flex; flex-wrap: wrap; gap: calc(var(--svc-unit) * 10) calc(var(--svc-unit) * 8.7); }
+.sdir-category { width: calc(var(--svc-unit) * 79); height: calc(var(--svc-unit) * 34); background: #fff; border: calc(var(--svc-unit) * 1) solid #c0ecff; border-radius: calc(var(--svc-unit) * 12); display: flex; align-items: center; justify-content: center; }
+.sdir-category text { font-size: calc(var(--svc-unit) * 11); line-height: calc(var(--svc-unit) * 14); color: #3c3c3c; white-space: nowrap; }
+.sdir-heading { display: block; margin: calc(var(--svc-unit) * 24) 0 calc(var(--svc-unit) * 12); font-family: Outfit, Roboto, 'Noto Sans SC', sans-serif; font-size: calc(var(--svc-unit) * 16); line-height: calc(var(--svc-unit) * 24); font-weight: 700; color: #1d0d07; }
+.sdir-state { padding: calc(var(--svc-unit) * 24) calc(var(--svc-unit) * 12); background: #fff; border: calc(var(--svc-unit) * 1) solid #c0ecff; border-radius: calc(var(--svc-unit) * 12); font-size: calc(var(--svc-unit) * 12); line-height: calc(var(--svc-unit) * 19); color: #577683; display: flex; flex-direction: column; gap: calc(var(--svc-unit) * 10); }
+.sdir-state-action { align-self: flex-start; color: #167fab; font-size: calc(var(--svc-unit) * 12); }
+.sdir-card { display: flex; flex-direction: column; gap: calc(var(--svc-unit) * 4); margin-bottom: calc(var(--svc-unit) * 12); padding: calc(var(--svc-unit) * 14) calc(var(--svc-unit) * 16); background: #fff; border: calc(var(--svc-unit) * 1) solid #c0ecff; border-radius: calc(var(--svc-unit) * 12); text-align: left; }
+.sdir-store-name { font-size: calc(var(--svc-unit) * 14); line-height: calc(var(--svc-unit) * 21); font-weight: 500; color: #1d0d07; }
+.sdir-store-merchant { font-size: calc(var(--svc-unit) * 10); line-height: calc(var(--svc-unit) * 15); color: #577683; }
+.sdir-store-line { display: flex; align-items: center; gap: calc(var(--svc-unit) * 6); }
+.sdir-store-line image { width: calc(var(--svc-unit) * 12); height: calc(var(--svc-unit) * 13); flex: none; }
+.sdir-store-line text { font-size: calc(var(--svc-unit) * 11); line-height: calc(var(--svc-unit) * 16); color: #577683; }
+.sdir-more { display: block; margin: calc(var(--svc-unit) * 8) auto 0; width: max-content; padding: calc(var(--svc-unit) * 8) calc(var(--svc-unit) * 22); border: calc(var(--svc-unit) * 1) solid #c0ecff; border-radius: calc(var(--svc-unit) * 100); color: #3185ba; font-size: calc(var(--svc-unit) * 12); }
+.sdir-notice { display: block; margin-top: calc(var(--svc-unit) * 12); font-size: calc(var(--svc-unit) * 12); line-height: calc(var(--svc-unit) * 18); color: #402e26; }
+.sdir-tail { margin-top: calc(var(--svc-unit) * 18); font-size: calc(var(--svc-unit) * 10); line-height: calc(var(--svc-unit) * 15); color: #9bb3bd; text-align: center; }

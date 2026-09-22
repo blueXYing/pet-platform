@@ -14,7 +14,8 @@ import { ServiceRow, StoreServicesDesign, serviceListCardHeight } from './view'
 // Node 690:2025 / 690:4205 (热门服务-宠物美容-详情页) — byte-identical copies of the
 // 690:6660 layout, so the service detail reuses that design one-to-one. The 团购套餐 region
 // renders the ONE service returned by the frozen GET /api/v1/c/services/{serviceId} contract
-// (description included); store header/reviews stay design samples (unfrozen /c/stores).
+// (description included); the store header stays design-sample copy here (this page targets a
+// service, and the 商家详情页 remains the store-bound view).
 // VIS note: the design frames contain three sample cards; this page renders the queried
 // service only — recorded as a data-driven difference pending VIS-003 overlay review.
 type Phase = 'loading' | 'ready' | 'missing' | 'load-error' | 'expired' | 'invalid'
@@ -90,7 +91,7 @@ export default function ServiceDetailPage() {
       {phase === 'missing' && <Button id='svcd-back-list' className='svc-state-action' onClick={() => Taro.navigateBack().catch(() => setNotice('返回失败'))}>返回上一页</Button>}
       {!preview && phase === 'expired' && <Button className='svc-state-action' onClick={() => Taro.redirectTo({ url: '/consumer/pages/shell/index' })}>去登录</Button>}
     </View>}
-    {ready && detail && <StoreServicesDesign listTop={listTop} reviewTop={reviewTop} onBack={() => Taro.navigateBack().catch(() => setNotice('返回失败'))}
+    {ready && detail && <StoreServicesDesign store={null} listTop={listTop} reviewTop={reviewTop} onBack={() => Taro.navigateBack().catch(() => setNotice('返回失败'))}
       onCall={() => notWired('拨打电话')} onBookNow={() => notWired('立即预约')} bookEnabled
       notice={notice ? <Text id='svcd-notice' className='svc-notice' style={{ left: `calc(var(--svc-unit) * 29)`, right: `calc(var(--svc-unit) * 29)`, top: `calc(var(--svc-unit) * ${reviewTop + 246 + 24})` }}>{notice}</Text> : undefined}
       servicesNode={<ServiceRow idPrefix='svcd-row' line={{ service: detail, description: detail.description }} onBook={() => notWired('预约')} />} />}

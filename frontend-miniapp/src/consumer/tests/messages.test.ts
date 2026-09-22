@@ -1,6 +1,6 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
-import { MessagesController, routeForNotification, type NotificationDeps } from '../notifications/messages'
+import { MessagesController, jumpLabelForNotification, routeForNotification, type NotificationDeps } from '../notifications/messages'
 import { ApiError } from '../../shared/request'
 import type { InboxNotification } from '../../shared/notification-repositories'
 
@@ -63,6 +63,19 @@ test('whitelist jump only for the registered type; payload never carries a URL',
   assert.equal(routeForNotification(item()), '/consumer/pages/merchant-application/index')
   assert.equal(routeForNotification(item({ messageType: 'SOMETHING_ELSE', bizType: null, bizId: null })), null)
   assert.equal(routeForNotification(item({ bizId: null })), null)
+})
+
+test('service-review verdicts jump to the merchant service-management page (M-002)', () => {
+  const verdict = item({
+    category: 'SYSTEM', messageType: 'SERVICE_REVIEWED', bizType: 'SERVICE', bizId: '30001',
+    title: '服务审核结果', content: '「猫咪洗澡+基础护理」审核通过',
+  })
+  assert.equal(routeForNotification(verdict), '/merchant/pages/services/index')
+  assert.equal(jumpLabelForNotification(verdict), '查看服务管理')
+  // Wrong biz type or missing id never routes anywhere.
+  assert.equal(routeForNotification(item({ messageType: 'SERVICE_REVIEWED', bizType: null, bizId: null })), null)
+  assert.equal(routeForNotification(item({ messageType: 'SERVICE_REVIEWED', bizType: 'ORDER', bizId: '1' })), null)
+  assert.equal(jumpLabelForNotification(item()), '查看入驻申请')
 })
 
 test('disposed controller ignores late results', async () => {
