@@ -444,6 +444,7 @@ def check(spec):
             'merchantOperations': len(operations & MERCHANT_OPERATIONS.keys()),
             'applicationOperations': len(operations & APPLICATION_OPERATIONS.keys()),
             'privateAssetOperations': len(operations & PRIVATE_ASSET_OPERATIONS.keys()),
+            'serviceCatalogOperations': len(operations & SERVICE_CATALOG_OPERATIONS.keys()),
             'resolvedRefs': len(refs), 'stringIdProperties': ids}
 
 
