@@ -20,7 +20,8 @@ import org.springframework.web.method.annotation.MethodArgumentTypeMismatchExcep
  * body the HTTP10 envelope with data=null. Class names only in logs — never payloads.
  */
 @RestControllerAdvice(assignableTypes = {
-        CAuthController.class, CAccountController.class, CPetController.class, CProfileController.class})
+        CAuthController.class, CAccountController.class, CPetController.class,
+        CProfileController.class, CMerchantMembershipController.class})
 @Order(0)
 public class CServiceExceptionHandler {
 

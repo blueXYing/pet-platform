@@ -5,6 +5,7 @@ import com.petplatform.common.SnowflakeIdGenerator;
 import com.petplatform.event.api.IntegrationEventPublisher;
 import com.petplatform.merchant.biz.apiimpl.MerchantAgreementApiImpl;
 import com.petplatform.merchant.biz.apiimpl.MerchantApplicationApiImpl;
+import com.petplatform.merchant.biz.apiimpl.MerchantAdmissionApiImpl;
 import com.petplatform.merchant.biz.apiimpl.MerchantQueryApiImpl;
 import com.petplatform.merchant.biz.application.ApplicationFinalAuthorizationPort;
 import com.petplatform.merchant.biz.application.ApplicationReviewFactsReader;
@@ -119,6 +120,16 @@ public class MerchantApplicationRuntimeConfiguration {
       ObjectProvider<Clock> clock) {
     return new MerchantAgreementApiImpl(
         source, ids, clock.getIfAvailable(Clock::systemUTC), applications);
+  }
+
+  @Bean
+  MerchantAdmissionApiImpl merchantAdmissionApi(
+      DataSource source,
+      SnowflakeIdGenerator ids,
+      ApplicationReviewFactsReader applications,
+      ObjectProvider<Clock> clock) {
+    return new MerchantAdmissionApiImpl(
+        source, ids, applications, clock.getIfAvailable(Clock::systemUTC));
   }
 
   @Bean

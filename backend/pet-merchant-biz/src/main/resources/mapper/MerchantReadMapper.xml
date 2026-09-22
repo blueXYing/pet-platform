@@ -22,6 +22,34 @@
           AND m.owner_user_id = #{ownerUserId}
     </select>
 
+    <select id="selectOwnedStores"
+            resultType="com.petplatform.merchant.biz.infrastructure.persistence.entity.MerchantStoreReadEntity">
+        SELECT m.id AS merchant_id,
+               m.owner_user_id,
+               m.merchant_name,
+               m.status AS merchant_status,
+               s.id AS store_id,
+               s.store_name,
+               s.address,
+               s.longitude,
+               s.latitude,
+               s.phone,
+               s.status AS store_status,
+               s.version AS store_version
+        FROM merchant_store s
+        INNER JOIN merchant m ON m.id = s.merchant_id
+        WHERE m.owner_user_id = #{ownerUserId}
+        ORDER BY m.id ASC, s.id ASC
+        LIMIT #{limit} OFFSET #{offset}
+    </select>
+
+    <select id="countOwnedStores" resultType="long">
+        SELECT COUNT(*)
+        FROM merchant_store s
+        INNER JOIN merchant m ON m.id = s.merchant_id
+        WHERE m.owner_user_id = #{ownerUserId}
+    </select>
+
     <select id="selectOwnedEligibilityBase"
             resultType="com.petplatform.merchant.biz.infrastructure.persistence.entity.MerchantEligibilityBaseEntity">
         SELECT m.id AS merchant_id,
