@@ -1,8 +1,8 @@
-# ADM-001 服务写入方切片 — 归属与范围核验结论（第一阶段）
+# ADM-001 服务写入方切片 — 归属与范围核验结论（第一阶段；§11 为实现阶段增补）
 
 日期：2026-09-22。分支 `codex/adm001-service-write-20260922`（基于 develop `52a1c45`，PR#65 服务域读切片已合入）。
-角色：角色A（服务写入方后端）。本文件是**核验与规划文档**，不含任何已实现的 HTTP/Schema/代码变更；权威文档与 backend/ 未被修改。
-配套文档：CCR 草案 [service-write-proposal.md](../../../ccr/CCR-W2-API-001/service-write-proposal.md)（DRAFT 未提交人工批准）、[TEST-PLAN.md](TEST-PLAN.md)。
+角色：角色A（服务写入方后端）。第一阶段为核验与规划文档；2026-09-22 用户原则批准后进入实现阶段（提案 v0.2 + [决定回执](../../../ccr/CCR-W2-API-001/service-write-decisions.md)）。
+配套文档：CCR [service-write-proposal.md v0.2](../../../ccr/CCR-W2-API-001/service-write-proposal.md)、[TEST-PLAN.md v0.2](TEST-PLAN.md)。
 
 引用约定：PRD 为 docx，引用按章节号（提取自 word/document.xml 纯文本，行号为提取文本行号，仅供复核定位）；仓库内文档与代码引用为 文件:行号。
 
@@ -241,3 +241,25 @@
 2. 未实现排期/库存锁/订单创建/支付（AGENTS 硬规则）；未实现售罄（A3）、硬删除（A4）、批量通过、运营类目 CRUD（A2.6）、审核结果通知/事件/Outbox（A8）、销量预约量统计字段。
 3. 模块测试本轮不跑（第一阶段为文档与核验；测试计划见 TEST-PLAN.md，执行待实现切片）。
 4. 依赖待办：商家事实查询通道（getFacts）已批（27 号 §5）可直接消费；运营动作码登记、封面资产管线增补（若 Q5 采纳推荐）需跨域 Owner 配合。
+
+---
+
+## 11. 实现阶段共享文件 Writer 登记（2026-09-22 裁决第 6 条增补）
+
+角色B（门店读切片，worktree wt-mer-stores）将改 pet-boot 三共享登记文件（CBearerSessionFilter/CSessionSecurityConfiguration/CServiceExceptionHandler）的行级追加区域；本切片（角色A）对同三文件另有行级追加。追加区域互不重叠，登记如下：
+
+| 文件 | 角色A 追加内容 | 角色B 追加内容（对照） |
+|---|---|---|
+| backend/pet-boot .../config/CBearerSessionFilter.java | protectedPath 追加 `/api/v1/merchant/services`、`/api/v1/merchant/services/*`、`/api/v1/merchant/service-categories` | protectedPath 追加 `/c/stores`、`/c/stores/*` |
+| backend/pet-boot .../config/CSessionSecurityConfiguration.java | permitAll 追加 merchant services 三类路径（pet.service.command.enabled 门控） | permitAll 追加门店两路径 |
+| backend/pet-boot .../adapter/web/c/CServiceExceptionHandler.java | STATUS 追加 SERVICE_STATE_NOT_ALLOWED→409、SERVICE_REVIEW_REASON_REQUIRED→400 | STATUS 追加 STORE_NOT_FOUND→404 |
+
+合并顺序建议：两 PR 任一先合，另一 rebase 解决同文件行级冲突（均为追加行，冲突面小）；与角色F（ServiceQueryService 404 码修复 PR）交叠见下。
+
+其他跨域文件触点（角色A 本切片）：
+
+- backend/pet-admin-biz AdminPermissionEvaluator.DEPLOYED_ACTIONS：代登记 service.review.read/decide/forceOffline 三动作码（一行追加；AUTH 域，PR 披露，AUTH Owner 复核）。
+- backend/pet-boot .../config/AdminAuthSecurityConfiguration.java：/api/v1/admin/services/** permitAll（pet.service.command.enabled 门控）——角色B 不改此文件。
+- backend/pet-boot .../adapter/web/merchant/MerchantHttpExceptionHandler.java：assignableTypes 追加本切片两控制器——角色B 不改此文件。
+- docs：06/07/10/11/12/Event08/33号＝角色A；10号§3.3 门店小节、31号 SERVICE_COVER＝角色B（详见提案 v0.2 §6 登记表）。
+- ServiceQueryService 交叠：角色F 正在把服务详情 404 码修回 SERVICE_NOT_FOUND；本切片基于 develop 52a1c45（404=COMMON_NOT_FOUND）实现并撤回 v0.1"读切片零变化"结论（读侧已知状态扩五值）。F 的 PR 先合并则本 PR rebase，404 码断言随 F 定案调整；两改动同文件不同区域，冲突面小。
