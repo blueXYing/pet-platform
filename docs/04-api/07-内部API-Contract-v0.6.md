@@ -226,6 +226,11 @@ public interface ServiceQueryApi {
     ServiceSnapshotDTO getServiceSnapshot(ServiceSnapshotQuery query);
 
     ServiceBookabilityDTO checkBookable(ServiceBookabilityQuery query);
+
+    // CCR-W2-API-001 服务域（2026-09-22 已批）新增两条：
+    ServiceSnapshotPageDTO getStoreServiceSnapshots(StoreServiceSnapshotQuery query);
+
+    ServiceSnapshotDTO getVisibleService(ServiceSnapshotQuery query);
 }
 ```
 
@@ -259,6 +264,11 @@ V1.0 API 契约不包含套餐、次卡、普通商品或无需履约类型。
 ```java
 public record ServiceSnapshotQuery(String serviceId, QueryContext context) {}
 
+public record StoreServiceSnapshotQuery(
+    String storeId, int page, int pageSize, QueryContext context
+) {}
+
+
 public record ServiceBookabilityQuery(
     String serviceId, String storeId, QueryContext context
 ) {}
@@ -271,6 +281,14 @@ public record ServiceBookabilityDTO(
     java.util.List<String> reasonCodes
 ) {}
 ```
+
+```java
+public record ServiceSnapshotPageDTO(
+    java.util.List<ServiceSnapshotDTO> items, int page, int pageSize, long total
+) {}
+```
+
+`getStoreServiceSnapshots`：门店分页（created_at DESC, id DESC；page 1..10000、pageSize 1..50），仅返回可见门店的 ACTIVE 服务；门店隐藏（四条件任一不满足或确认不存在）返回空页。`getVisibleService`：C 可见性规则，不可见一律 NOT_FOUND。
 
 - `bookable = service.status=ACTIVE ∧ merchantEnabled ∧ storeEnabled ∧ acceptsNewOrders`；商家/门店事实经 §4.2 展示资格查询在同一 repeatable-read 事务内读取。
 - `reasonCodes` ∈ {MERCHANT_DISABLED, STORE_DISABLED, MERCHANT_NOT_ACCEPTING_ORDERS, SERVICE_OFFLINE}，多项可并列；仅供内部 ORD/SCH 消费，C 端 HTTP 响应不携带 bookability（可见性规则见 10 号 §3.3.1）。

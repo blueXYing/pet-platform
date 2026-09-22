@@ -1,0 +1,50 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.petplatform.service.biz.infrastructure.persistence.mapper.ServiceReadMapper">
+
+    <select id="selectServiceById"
+            resultType="com.petplatform.service.biz.infrastructure.persistence.entity.ServiceItemReadEntity">
+        SELECT s.id,
+               s.merchant_id,
+               s.store_id,
+               s.category_id,
+               c.category_name,
+               s.service_name,
+               s.description,
+               s.price,
+               s.duration_minutes,
+               s.fulfillment_type,
+               s.status
+        FROM service_item s
+        LEFT JOIN service_category c ON c.id = s.category_id
+        WHERE s.id = #{serviceId}
+    </select>
+
+    <select id="selectActiveStoreServices"
+            resultType="com.petplatform.service.biz.infrastructure.persistence.entity.ServiceItemReadEntity">
+        SELECT s.id,
+               s.merchant_id,
+               s.store_id,
+               s.category_id,
+               c.category_name,
+               s.service_name,
+               s.description,
+               s.price,
+               s.duration_minutes,
+               s.fulfillment_type,
+               s.status
+        FROM service_item s
+        LEFT JOIN service_category c ON c.id = s.category_id
+        WHERE s.store_id = #{storeId}
+          AND s.status = 'ACTIVE'
+        ORDER BY s.created_at DESC, s.id DESC
+        LIMIT #{limit} OFFSET #{offset}
+    </select>
+
+    <select id="countActiveStoreServices" resultType="long">
+        SELECT COUNT(*)
+        FROM service_item s
+        WHERE s.store_id = #{storeId}
+          AND s.status = 'ACTIVE'
+    </select>
+</mapper>

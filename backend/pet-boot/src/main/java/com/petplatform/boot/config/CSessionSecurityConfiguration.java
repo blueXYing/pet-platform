@@ -61,6 +61,9 @@ public class CSessionSecurityConfiguration {
             // Inbox reads (CCR-W2-NOTIFICATION-001): MINIAPP Bearer enforced by the filter.
             a.requestMatchers("/api/v1/c/notifications", "/api/v1/c/notifications/**")
                 .permitAll();
+            // Service catalog (CCR-W2-API-001 service domain): MINIAPP Bearer via the filter.
+            a.requestMatchers("/api/v1/c/stores/*/services").permitAll();
+            a.requestMatchers("/api/v1/c/services/*").permitAll();
             a.requestMatchers(HttpMethod.PUT, "/api/v1/c/pets/*", "/api/v1/c/profile").permitAll();
             a.requestMatchers(HttpMethod.DELETE, "/api/v1/c/pets/*").permitAll();
             if (merchantApplicationEnabled) {

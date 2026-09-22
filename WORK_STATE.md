@@ -1,16 +1,18 @@
 # Work State
 
 PROJECT: 宠物平台 V1.0
-STATE_VERSION: 7.6
+STATE_VERSION: 7.7
 UPDATED_AT: 2026-09-22
 
 CURRENT_PHASE: W3_INTEGRATION_REVIEW
-CURRENT_STATUS: M002_SIGNING_ADMISSION_CHAIN_MERGED
-VERIFIED_BASELINE: develop 12bdc382a9c44f18a2f7ab9a1f8ee08ff4d2b6ac9
-NEXT_PHASE: 通知读取与受控跳转（NTF-001/C-006），随后 SVC-001 服务域
+CURRENT_STATUS: NTF_MESSAGES_MERGED_SVC_READ_SLICE_IN_REVIEW
+VERIFIED_BASELINE: develop bb6bb5c（PR64 通知切片已合入）
+NEXT_PHASE: SVC-001 服务域读切片验收合并；随后门店读侧（MER-001 承接）与服务写入方（ADM-001 范围）
 NEXT_PHASE_APPROVED: YES（沿用既有范围；先完成本次合并核验，不自动扩大Issue或生产发布）
 
 ## 当前结论
+
+2026-09-22 PR64（NTF-001+C-006 通知读取/消息页/受控跳转，CCR-W2-NOTIFICATION-001）经用户模拟器人工验收（消息中心→详情→自动已读→查看入驻申请→重鉴权 APPROVED）后合入 develop bb6bb5c；验收中修复消息页状态栏侵入（statusBarHeight 变量机制）与 DevTools 编译缓存损坏，并修复集成脚本通知计数竞态。同日用户批准 CCR-W2-API-001 服务域提案 v0.3（SVC-D1～D5，含错误两分细化：确认不存在/无资格→隐藏或404，故障/未知→503，不混同），SVC-001 服务域读切片（两条 C 端服务路由 + SVC-D5 展示资格第四查询独立提交）已实现并测试通过，PR 评审中；完整“发布服务→看到→预约”流程因无写入方仍未验收。
 
 2026-09-22用户确认设计裁决(b)后连续交付并合入三个切片：PR61（MS-1手机签约页+申请页签约入口）、PR62（MS-2准入契约CCR-W2-ADMISSION-001冻结+memberships/admission OWNER实现）、PR63（MS-3工作台前端接真实准入）。三PR各自CI六项全绿；MS-1与MS-3另经模拟器真实链路人工验收（登录→申请→审批APPROVED→签署→工作台ALLOWED，真实微信/OSS/ClamAV/MySQL/Redis），证据在M-002-mobile-signing各交接文档分层记录。"审核通过→手机签署→按真实资格进入工作台"主链闭环；工作台业务（订单/服务/排期）、子账号、STAFF、merchantEntry、冻结写动作维持未交付。仓库已于当日转public，CI分钟限制解除。
 
@@ -40,6 +42,7 @@ SSOT §28已批准取消入驻地址/坐标地理匹配、距离和围栏限制�
 | A-002 / M-002 | PR59/60运营审核页与材料引用已交付；PR61～63手机签约+工作台准入主链闭环（方案b人工验收含在内） | A-002其他治理页、生产HTTPS入口及完整视觉验收；M-002完整工作台业务页。完整Issue不标DONE |
 | CCR-OSS-001 | 公开运营素材注册/同步/私有签名URL；私有证照另走已批准CCR-MER-PRIVATE-001 | 公开素材前端完整消费/缓存刷新及运营全流程，与私有证照验收分别记录 |
 | PLAT-005 / PLAT-006 | PLAT-005原AC核对通过，Catalog已DONE；MyBatis六模块迁移已DONE | 运维采集按原范围；生产数据库迁移与PLAT-002门禁不因DONE解除 |
+| SVC-001 服务域读 | CCR 服务域 v0.3 已批（SVC-D1～D5）；两条 C 端服务读路由 + D5 展示资格第四查询 + 快照/资格/可见性（四条件合取、错误两分）实现与 ServiceQueryHttpTest 通过；07/10/11/27 同步随切片 | PR 合并与人工核验；门店两条读路由（MER-001 承接）、服务写入方（ADM-001 范围）、排期/订单不提前；完整预约流程未验收 |
 | 服务/排期/交易/治理其余范围 | 以各Issue证据为准，未因以上合并自动完成 | 契约、业务实现与端到端验收按依赖推进 |
 
 ## 下一步与保留门禁
