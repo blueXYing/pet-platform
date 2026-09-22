@@ -136,7 +136,7 @@ CREATE TABLE service_item (
     price                 DECIMAL(18,2)  NOT NULL,
     duration_minutes      INT            NOT NULL COMMENT '单次服务时长，用于分钟级排期',
     fulfillment_type      VARCHAR(32)    NOT NULL COMMENT 'IN_STORE/PICKUP_DELIVERY',
-    status                VARCHAR(32)    NOT NULL COMMENT 'DRAFT/ACTIVE/OFFLINE',
+    status                VARCHAR(32)    NOT NULL COMMENT 'DRAFT/REVIEWING/ACTIVE/OFFLINE/REJECTED（33号扩展：C端可见性仅ACTIVE；编辑仅DRAFT/REJECTED/OFFLINE；列扩展见33号）',
     version               BIGINT         NOT NULL DEFAULT 0,
     created_at            DATETIME(3)    NOT NULL,
     updated_at            DATETIME(3)    NOT NULL,

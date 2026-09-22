@@ -22,9 +22,9 @@
 9. **SVCW-D9（v0.2 修订）**：售罄/硬删除本轮不做；"不做事件/Outbox"不再适用于审核通知。
 10. **SVCW-D10（v0.2 修订）**：审核 APPROVE/REJECT 决定同事务写 ServiceReviewedEvent.v1 到 Outbox；通知消费侧＝角色E；强制下架是否通知＝剩余问题。
 
-## Event08 载荷定稿（角色E按此消费，中途不变卦）
+## Event08 载荷定稿（角色E按此消费，中途不变卦；2026-09-22 与角色E对齐后增补 ownerUserId）
 
-`ServiceReviewedEvent.v1`，eventVersion=1，aggregateType=SERVICE，aggregateId=serviceId；payload：`serviceId、serviceName、merchantId、storeId、submissionNo、decisionType(APPROVE|REJECT)、opinion?（REJECT 必填 10-500，APPROVE 可空）、decidedAt`。意见不得粘贴敏感原文；envelope 沿用标准 IntegrationEvent。
+`ServiceReviewedEvent.v1`，eventVersion=1，aggregateType=SERVICE，aggregateId=serviceId；payload（9 字段）：`serviceId、serviceName、merchantId、storeId、submissionNo（JSON 整数，非字符串）、decisionType(APPROVE|REJECT)、opinion?（REJECT 必填 10-500，APPROVE 可空）、decidedAt、ownerUserId`。ownerUserId 为商家主账号收件人（服务侧创建时落 service_item.owner_user_id，33号增补列；消费者自包含、无需读 merchant 表）。意见不得粘贴敏感原文；envelope 沿用标准 IntegrationEvent。消费侧 Bean 装配（ServiceReviewedConsumer + `pet.service.review.notifications-enabled` 默认关闭）预留于 pet-boot EventOutboxConfiguration，随角色E分支合入后接线。
 
 ## 共享文件 Writer 分工登记（裁决第 6 条）
 

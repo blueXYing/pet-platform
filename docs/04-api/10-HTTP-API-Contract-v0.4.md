@@ -287,6 +287,24 @@ GET /api/v1/c/services/{serviceId}
 
 存量订单详情读取订单快照，不实时依赖当前服务是否已下线。
 
+### 3.3.1 服务读取形态与封面展示（CCR-W2-API-001 服务域 + 写入方 v0.2，2026-09-22 已批）
+
+`GET /api/v1/c/services/{serviceId}` 成功 data（MINIAPP Bearer；可见=ACTIVE ∧ merchantEnabled ∧ storeEnabled ∧ acceptsNewOrders，不可见一律 404 不区分原因）：
+
+```json
+{
+  "serviceId": "...", "merchantId": "...", "storeId": "...",
+  "serviceName": "...", "categoryId": "...", "categoryName": "...",
+  "salePrice": "128.00", "durationMinutes": 60, "fulfillmentType": "IN_STORE",
+  "description": "...",
+  "cover": {"coverAssetId": "...", "coverUrl": "https://...", "coverUrlExpiresAt": "2026-09-22T12:00:00Z"}
+}
+```
+
+- `cover` 仅在服务可见且有封面绑定时返回（列表项同形状减 `description`）；无封面绑定为 `cover: null`；REVIEWING/REJECTED/OFFLINE/DRAFT 一律 404 不携带。
+- `coverUrl` 为短时效签名 URL（复用 CCR-OSS-001 公开素材签名机制），客户端按 `coverUrlExpiresAt` 到期前刷新；签名端口不可用且有封面 → 503 失败关闭，不返回未签名 URL。
+- 金额两位小数 String；`Cache-Control: no-store`。
+
 ---
 
 ## 3.4 可预约时间查询
@@ -1008,6 +1026,24 @@ IN_STORE / PICKUP_DELIVERY
 
 不提供商品直售、套餐、次卡 API。
 
+### 4.10.1 服务项目管理形态（CCR-W2-API-001 服务写入方 v0.2，2026-09-22 已批）
+
+六路由细化 + 类目只读（MINIAPP Bearer；写请求 X-Request-Id UUID；首次创建 201、重放 200）：
+
+| 方法/路径 | 请求 | 成功 data | 关键错误 |
+|---|---|---|---|
+| GET `/api/v1/merchant/services` | query merchantId、storeId、status?、page(1..10000)/pageSize(1..100，默认20) | 本店全状态分页（含 latestRejection、submissionNo、submittedAt） | 400/401/404（无归属防枚举） |
+| POST `/api/v1/merchant/services` | body 业务字段（草稿宽松）；X-Request-Id | 201 `{serviceId,merchantId,storeId,status:"DRAFT",version}` | 400/401/404/409（不可经营 SERVICE_STATE_NOT_ALLOWED）/409 异参重放 IDEMPOTENCY_KEY_CONFLICT |
+| GET `/api/v1/merchant/services/{serviceId}` | query merchantId、storeId | 详情（含状态/最近驳回） | 404（非本店同响应） |
+| PUT `/api/v1/merchant/services/{serviceId}` | body 业务字段 + expectedVersion；X-Request-Id | `{serviceId,status,version}` | 409 SERVICE_STATE_NOT_ALLOWED（ACTIVE/REVIEWING 不可编辑）/409 COMMON_CONFLICT（版本） |
+| POST `/api/v1/merchant/services/{serviceId}/online` | body expectedVersion；X-Request-Id | `{serviceId,status:"REVIEWING",version}`（提交审核/重新提交，submitted_at/submission_no 递增） | 400（必填不齐含封面）/409（非 DRAFT/REJECTED/OFFLINE） |
+| POST `/api/v1/merchant/services/{serviceId}/offline` | body expectedVersion；X-Request-Id | `{serviceId,status:"OFFLINE",version}` | 409（非 ACTIVE） |
+| GET `/api/v1/merchant/service-categories` | 无参数 | `{items:[{categoryId,categoryName,sortNo}]}`（仅 ENABLED，sort_no 升序） | 401 |
+
+业务字段（body，均可空存草稿）：`serviceName`(2-50)、`categoryId`（提交时须命中 ENABLED）、`fulfillmentType`(IN_STORE|PICKUP_DELIVERY)、`price`/`listPrice`（两位小数 String；price>0；listPrice≥price）、`durationMinutes`(1..10080)、`coverAssetId`（提交时必填且属本人 SERVICE_COVER 素材）、`applicablePetTypes`(DOG/CAT/EXOTIC/ALL 数组，ALL 互斥)、`staffRequirement`(≤200)、`verificationRequired`(默认 true)、`description`(≤1000)、`aftersaleNote`/`remark`(≤500)。PUT 为全量替换。
+
+状态机与门禁见 07 号 §5.2/§5.3（商家任何动作不产生 ACTIVE；商家/门店不可经营 409；无归属 404 防枚举）。
+
 ---
 
 ## 4.11 员工
@@ -1300,6 +1336,29 @@ GET          /api/v1/admin/audit-logs
 ```
 
 V1.0 运营端没有积分抵扣配置、积分商城、直播配置 API。
+
+---
+
+## 5.9 服务审核与治理（CCR-W2-API-001 服务写入方 v0.2，2026-09-22 已批）
+
+```text
+GET  /api/v1/admin/services
+GET  /api/v1/admin/services/{serviceId}
+POST /api/v1/admin/services/{serviceId}/decision
+POST /api/v1/admin/services/{serviceId}/force-offline
+```
+
+真实运营会话（ADMIN_WEB Bearer）+ 动作码 `service.review.read` / `service.review.decide` / `service.forceOffline`；决定与强制下架在事务内做数据库权威复核。运营不代商家新增/编辑/上下架服务（PRD 运营端 §3.3，无对应路由）。
+
+| 方法/路径 | 动作码 | 请求 | 成功 data | 关键错误 |
+|---|---|---|---|---|
+| GET `/api/v1/admin/services` | service.review.read | query status?/categoryId?/merchantId?/page/pageSize | 审核分页（submittedAt、slaRemainingMinutes（按 24h SLA）、rejectCount、submissionNo） | 400/401/403 |
+| GET `/api/v1/admin/services/{serviceId}` | service.review.read | — | 详情 + `decisions[]` 历史驳回记录（append-only） | 404 |
+| POST `/api/v1/admin/services/{serviceId}/decision` | service.review.decide | body `{decisionType: APPROVE|REJECT, opinion?, expectedVersion}`；X-Request-Id | `{serviceId,status,version,decisionId}`（APPROVE→ACTIVE；REJECT→REJECTED） | 400 SERVICE_REVIEW_REASON_REQUIRED（REJECT 缺/短于10字意见）/409（非 REVIEWING 或版本失配） |
+| POST `/api/v1/admin/services/{serviceId}/force-offline` | service.forceOffline | body `{reason, expectedVersion}`；X-Request-Id | `{serviceId,status:"OFFLINE",version,actionId}`（落治理审计） | 400（reason 10-500）/409（非 ACTIVE） |
+
+- 审核决定（APPROVE/REJECT）在决定事务内写 `ServiceReviewedEvent.v1` 到事务性 Outbox（Event08）；通知消费侧（MERCHANT 收件箱）由通知域切片承接，未接通前完整审核流程不标完成。
+- 强制下架是否通知商家＝剩余问题（本轮不发事件）。
 
 ---
 
