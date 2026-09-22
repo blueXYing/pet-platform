@@ -24,6 +24,9 @@
 | 6 | 2026-09-22 | `GET /v1/images/Usvn3d6UCVCAlDxou5KAK8?ids=10:5255,11:5768&format=png&scale=2` | 200 | `assets/screenshots/mer-*@2x.png` ×2 |
 | 7 | 2026-09-22 | `GET /v1/files/bp2vpcjjA5vZbHvtKkA8wl/nodes?ids=690:2025,690:4205`（补充：服务详情页设计源，登记表§3"热门服务-宠物美容-详情页"） | 200 | `nodes/frame-summaries.json`（用户端2帧）+ 截图 ×2 |
 | 8 | 2026-09-22 | `GET /v1/images/bp2vpcjjA5vZbHvtKkA8wl?ids=<商家详情页11节点>&format=png&scale=2` | 200 | `assets/cutouts/690-*@2x.png` ×11（字节原样落盘） |
+| 9 | 2026-09-22 | `GET /v1/files/Usvn3d6UCVCAlDxou5KAK8?depth=1`（M-002 实施期版本复核） | 200 | 版本 `2401168563353004923` 无变化（与第2行一致），登记表无需维护 |
+| 10 | 2026-09-22 | `GET /v1/files/Usvn3d6UCVCAlDxou5KAK8/nodes?ids=10:5255,11:5768`（M-002 页面切图节点定位；原始 JSON 340KB 留仓库外缓存） | 200 | 节点级图标定位（返回箭头/加号/相机），见下表 |
+| 11 | 2026-09-22 | `GET /v1/images/Usvn3d6UCVCAlDxou5KAK8?ids=10:5302,10:5333,11:5772,11:5674&format=png&scale=2` | 200 | `assets/cutouts/mer-*@2x.png` ×4（字节原样落盘；10:5302 与 11:5772 哈希一致，为同一矢量两次导出） |
 
 说明：
 - 节点 JSON 原始响应体积 1.9MB/0.3MB/0.5MB，超过登记表"过大只保留结构化摘要"口径，仓库内只落 `nodes/frame-summaries.json`（文本/图片填充/纯色矩形/图层计数的局部坐标摘要）；原始 JSON 留在仓库外缓存。
@@ -61,3 +64,12 @@
 | `690-6706-nav-back@2x.png` | 690:6706 | 9x15 | 返回箭头 |
 | `690-6844-reviewer-1@2x.png` | 690:6844 | 32x32 | 评价头像1 |
 | `690-6877-reviewer-2@2x.png` | 690:6877 | 32x32 | 评价头像2 |
+
+商家端切图（`assets/cutouts/mer-*`，M-002 实施期补导，规则同上）：
+
+| 文件 | node-id | 设计尺寸(1x) | 用途 |
+|---|---|---|---|
+| `mer-10-5302-nav-back@2x.png` | 10:5302 | 8.9x14.5 | 商品管理列表页导航返回箭头 #3C3C3C |
+| `mer-10-5333-icon-plus@2x.png` | 10:5333 | 8.8x8.8 | 添加商品＋号 #5BAAE8 |
+| `mer-11-5772-nav-back@2x.png` | 11:5772 | 8.9x14.5 | 添加商品页返回箭头（与 10:5302 字节一致） |
+| `mer-11-5674-icon-camera@2x.png` | 11:5674 | 9.7x8.7 | 更换头图角标相机图标 #FFFFFF |
