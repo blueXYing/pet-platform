@@ -38,4 +38,17 @@ public interface MerchantReadMapper {
             @Param("staffId") long staffId,
             @Param("ownerUserId") long ownerUserId
     );
+
+    /**
+     * STR-D6 display candidates: every merchant/store pair with the compat city fact, no status or
+     * ownership predicate — statuses are evaluated by the approved policy (unknown values must
+     * fail closed as 503, never silently hidden by a SQL filter) and city filtering happens after
+     * the integrity check. Ordered merchantId, storeId numeric ascending.
+     */
+    java.util.List<com.petplatform.merchant.biz.infrastructure.persistence.entity.MerchantStoreDisplayRowEntity>
+            selectDisplayStoreCandidates();
+
+    /** STR-D6 single-store display row (null when the store does not exist). */
+    com.petplatform.merchant.biz.infrastructure.persistence.entity.MerchantStoreDisplayRowEntity
+            selectDisplayStore(@Param("storeId") long storeId);
 }

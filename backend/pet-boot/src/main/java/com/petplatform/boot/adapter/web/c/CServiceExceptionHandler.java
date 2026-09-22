@@ -22,7 +22,7 @@ import org.springframework.web.method.annotation.MethodArgumentTypeMismatchExcep
 @RestControllerAdvice(assignableTypes = {
         CAuthController.class, CAccountController.class, CPetController.class,
         CProfileController.class, CMerchantMembershipController.class,
-        CNotificationController.class, CServiceController.class})
+        CNotificationController.class, CServiceController.class, CStoreController.class})
 @Order(0)
 public class CServiceExceptionHandler {
 
@@ -36,6 +36,7 @@ public class CServiceExceptionHandler {
             Map.entry("USER_FROZEN", 403),
             Map.entry("COMMON_NOT_FOUND", 404),
             Map.entry("PET_NOT_FOUND", 404),
+            Map.entry("STORE_NOT_FOUND", 404),
             Map.entry("COMMON_CONFLICT", 409),
             Map.entry("IDEMPOTENCY_KEY_CONFLICT", 409),
             Map.entry("COMMON_RATE_LIMITED", 429),
