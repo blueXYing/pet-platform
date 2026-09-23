@@ -10,7 +10,6 @@ import com.petplatform.event.core.OutboxRetryDelays;
 import com.petplatform.event.core.TransactionalOutboxPublisher;
 import com.petplatform.notification.biz.event.MerchantApplicationReviewedConsumer;
 import com.petplatform.notification.biz.event.ServiceReviewedConsumer;
-import com.petplatform.notification.biz.infrastructure.persistence.ServiceReviewNotificationStore;
 import java.time.Duration;
 import java.util.List;
 import javax.sql.DataSource;
@@ -66,8 +65,7 @@ public class EventOutboxConfiguration {
             havingValue = "true")
     ServiceReviewedConsumer serviceReviewedConsumer(
             DataSource dataSource, SnowflakeIdGenerator ids, JdbcOutboxConsumeGuard guard) {
-        return new ServiceReviewedConsumer(
-                new ServiceReviewNotificationStore(dataSource, guard::tryClaim), ids);
+        return new ServiceReviewedConsumer(dataSource, ids, guard::tryClaim);
     }
 
     @Bean(destroyMethod = "close")
