@@ -22,7 +22,7 @@ import org.springframework.web.method.annotation.MethodArgumentTypeMismatchExcep
 @RestControllerAdvice(assignableTypes = {
         CAuthController.class, CAccountController.class, CPetController.class,
         CProfileController.class, CMerchantMembershipController.class,
-        CNotificationController.class, CServiceController.class})
+        CNotificationController.class, CServiceController.class, CStoreController.class})
 @Order(0)
 public class CServiceExceptionHandler {
 
@@ -36,8 +36,13 @@ public class CServiceExceptionHandler {
             Map.entry("USER_FROZEN", 403),
             Map.entry("COMMON_NOT_FOUND", 404),
             Map.entry("PET_NOT_FOUND", 404),
+            Map.entry("STORE_NOT_FOUND", 404),
+            Map.entry("SERVICE_NOT_FOUND", 404),
             Map.entry("COMMON_CONFLICT", 409),
             Map.entry("IDEMPOTENCY_KEY_CONFLICT", 409),
+            // Service write slice (ADM-001): workbench commands surface through C-session routes.
+            Map.entry("SERVICE_STATE_NOT_ALLOWED", 409),
+            Map.entry("SERVICE_REVIEW_REASON_REQUIRED", 400),
             Map.entry("COMMON_RATE_LIMITED", 429),
             Map.entry("COMMON_INTERNAL_ERROR", 500),
             Map.entry("COMMON_DEPENDENCY_UNAVAILABLE", 503));

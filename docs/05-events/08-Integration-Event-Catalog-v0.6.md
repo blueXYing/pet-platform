@@ -446,3 +446,11 @@ payload字段：applicationId、applicationNo（SQ+YYYYMMDD+8位随机码）、o
 MER审核决定、状态、审计、Outbox意图在同一事务；回滚均无事件，成功重放不产生新事件。notification按(eventId,consumerName)去重，并在本域同事务写消费日志与ownerUserId的真实站内消息。私有字段不能透传；通知持久化失败必须重试，不可先标已消费。查询页面不能代替强制站内通知。
 
 对应严格payload schema见OpenAPI11的MerchantApplicationReviewedPayload（仅共享数据定义，不是HTTP endpoint）。S5在申请决定事务中调用IntegrationEventPublisher，并实现notification域消费者：严格payload校验、同事务消费去重/站内消息写入、UTC DATETIME存储及失败重试。消费者受Outbox和申请通知两个显式开关控制，默认未启用，无Scheduler改动。外部微信推送、真实用户消息页面和受控跳转仍未交付；组件测试不等于MER-001完整DoD。
+
+## 服务审核结果事件（ADM-001 服务写入方，2026-09-22 已批；通知消费侧由通知域切片承接）
+
+新增定义：eventType 固定 `ServiceReviewedEvent.v1`，eventVersion=1，aggregateType=`SERVICE`，aggregateId=serviceId；沿用标准 IntegrationEvent envelope（eventId 为 Snowflake String、occurredAt/decidedAt 毫秒 OffsetDateTime、traceId 只在 envelope）。
+
+payload 字段（9 字段，与角色E消费侧对齐定稿 2026-09-22，中途不变卦）：`serviceId、serviceName、merchantId、storeId、submissionNo（JSON 整数）、decisionType(APPROVE|REJECT)、opinion?（REJECT 必填 10-500 字、APPROVE 可空）、decidedAt、ownerUserId`。ownerUserId 为商家主账号收件人（服务侧在创建服务时落 owner_user_id，33号），使消费者自包含、无需读 merchant 表。结构不含审核员账号、内部备注或任何长期 URL；意见不得粘贴敏感原文。
+
+服务审核决定、状态、审计、Outbox 意图在同一事务；回滚均无事件，成功幂等重放不产生新事件。通知域消费者按 (eventId, consumerName) 去重并在本域同事务写消费日志与 ownerUserId 的商家站内消息；消费者与开关（`pet.service.review.notifications-enabled`，默认关闭）由通知域切片随其 PR 装配。消费者未接通前，完整服务审核流程不标完成。强制下架（FORCE_OFFLINE）是否通知商家＝剩余问题，本轮不发事件。

@@ -9,6 +9,7 @@ import com.petplatform.service.api.query.ServiceQueryApi;
 import com.petplatform.service.api.query.ServiceSnapshotQuery;
 import com.petplatform.service.api.query.StoreServiceSnapshotQuery;
 import com.petplatform.service.biz.application.ServiceQueryService;
+import com.petplatform.service.biz.application.ServiceWriteDependencies.ServiceCoverUrlPort;
 import com.petplatform.service.biz.infrastructure.persistence.ServiceReadStore;
 import javax.sql.DataSource;
 
@@ -16,8 +17,12 @@ import javax.sql.DataSource;
 public final class ServiceQueryApiImpl implements ServiceQueryApi {
     private final ServiceQueryService service;
 
-    public ServiceQueryApiImpl(DataSource dataSource, MerchantDisplayEligibilityApi merchantFacts) {
-        this.service = new ServiceQueryService(new ServiceReadStore(dataSource), merchantFacts);
+    public ServiceQueryApiImpl(
+            DataSource dataSource,
+            MerchantDisplayEligibilityApi merchantFacts,
+            ServiceCoverUrlPort coverUrls) {
+        this.service =
+                new ServiceQueryService(new ServiceReadStore(dataSource), merchantFacts, coverUrls);
     }
 
     @Override

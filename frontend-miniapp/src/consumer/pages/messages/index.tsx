@@ -2,7 +2,7 @@ import { Button, Text, View } from '@tarojs/components'
 import Taro, { useDidShow } from '@tarojs/taro'
 import { useEffect, useState, useSyncExternalStore, type CSSProperties } from 'react'
 import { ConsumerPageLayout } from '../../components/page-layout'
-import { MessagesController, jumpLabelForNotification, routeForNotification } from '../../notifications/messages'
+import { MessagesController, jumpLabelFor, routeForNotification } from '../../notifications/messages'
 import { realNotificationDeps } from '../../notifications/messages-runtime'
 import './index.scss'
 
@@ -56,7 +56,7 @@ export default function MessagesPage() {
           <Text className='messages-title'>{state.detail.title}</Text>
           <Text className='messages-meta'>{state.detail.createdAt} · {state.detail.readAt ? `已读于 ${state.detail.readAt}` : '未读'}</Text>
           <Text className='messages-content'>{state.detail.content}</Text>
-          {routeForNotification(state.detail) && <Button id='messages-jump' onClick={jump}>{jumpLabelForNotification(state.detail) || '查看详情'}</Button>}
+          {jumpLabelFor(state.detail) && <Button id='messages-jump' onClick={jump}>{jumpLabelFor(state.detail)}</Button>}
           <Button id='messages-back-list' onClick={() => controller.closeDetail()}>返回列表</Button>
         </View>}
       </View>

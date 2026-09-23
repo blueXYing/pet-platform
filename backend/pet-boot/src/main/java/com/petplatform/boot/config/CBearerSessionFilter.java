@@ -14,8 +14,11 @@ import org.springframework.web.filter.OncePerRequestFilter;
 /**
  * Protects the session-bearing /api/v1/c/** endpoints: resolves the MINIAPP Bearer into a {@code
  * MiniSessionView} request attribute before the controller runs. Anonymous auth routes (attempts,
- * wechat-login, phone-binding) and the convergent logout are not matched here. Authorization
- * headers and tokens are never logged.
+ * wechat-login, phone-binding) and the convergent logout are not matched here. The four catalog
+ * browse routes (stores list/detail, store services, service detail) accept an anonymous GET per
+ * the approved STR-D8 ruling: no Authorization header passes through, a carried bearer is still
+ * validated (invalid/expired stays 401), and every non-GET method keeps the mandatory session.
+ * Authorization headers and tokens are never logged.
  */
 public final class CBearerSessionFilter extends OncePerRequestFilter {
 
@@ -51,19 +54,43 @@ public final class CBearerSessionFilter extends OncePerRequestFilter {
         || path.equals("/api/v1/merchant/auth/admission")
         || path.equals("/api/v1/c/notifications")
         || path.startsWith("/api/v1/c/notifications/")
+        // Merchant workbench service management (ADM-001 write slice): MINIAPP Bearer enforced.
+        || path.equals("/api/v1/merchant/services")
+        || path.startsWith("/api/v1/merchant/services/")
+        || path.equals("/api/v1/merchant/service-categories")
         || path.matches("/api/v1/c/stores/[^/]+/services")
         || path.startsWith("/api/v1/c/services/");
+  }
+
+  /**
+   * STR-D8 (store-read v0.2, PRD "all users browse"): the four browse routes accept an anonymous
+   * GET. A request without an Authorization header passes through anonymously; a carried bearer is
+   * still validated (invalid/expired stays 401 — anonymity never masks a bad credential). GET-only:
+   * every other method and path keeps the mandatory-session behaviour above.
+   */
+  static boolean optionalSessionPath(String path, String method) {
+    if (!"GET".equals(method)) return false;
+    return path.equals("/api/v1/c/stores")
+        || path.matches("/api/v1/c/stores/[^/]+")
+        || path.matches("/api/v1/c/stores/[^/]+/services")
+        || path.matches("/api/v1/c/services/[^/]+");
   }
 
   @Override
   protected void doFilterInternal(
       HttpServletRequest req, HttpServletResponse res, FilterChain chain)
       throws ServletException, IOException {
-    if (!protectedPath(req.getRequestURI())) {
+    boolean optional = optionalSessionPath(req.getRequestURI(), req.getMethod());
+    if (!optional && !protectedPath(req.getRequestURI())) {
       chain.doFilter(req, res);
       return;
     }
     String token = bearer(req);
+    if (token == null && optional) {
+      // Anonymous browse: no session attribute is set; visibility never depends on a subject.
+      chain.doFilter(req, res);
+      return;
+    }
     try {
       if (token == null) throw new IllegalArgumentException("missing bearer");
       UserAuthService service = services.getIfAvailable();

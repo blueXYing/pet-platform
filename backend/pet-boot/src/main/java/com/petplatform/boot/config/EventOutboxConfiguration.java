@@ -51,6 +51,12 @@ public class EventOutboxConfiguration {
     return new MerchantApplicationReviewedConsumer(dataSource, ids, guard::tryClaim);
     }
 
+    // Reserved assembly point (role E alignment, 2026-09-22): the ServiceReviewedConsumer bean
+    // registration lands here together with the consumer class from the notification-side PR,
+    // gated by pet.service.review.notifications-enabled (default off) exactly like the merchant
+    // application consumer above. Until then ServiceReviewedEvent.v1 rows persist in the outbox
+    // (dispatched once the consumer merges); the service review flow is NOT complete without it.
+
     @Bean(destroyMethod = "close")
     OutboxDispatcher outboxDispatcher(DataSource dataSource,
             ObjectProvider<IntegrationEventConsumer> consumers,

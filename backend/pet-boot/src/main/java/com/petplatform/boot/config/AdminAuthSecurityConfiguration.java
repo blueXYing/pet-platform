@@ -31,7 +31,8 @@ public class AdminAuthSecurityConfiguration {
       AdminAuthProperties p,
       ObjectProvider<AdminAuthService> services,
       @Value("${pet.merchant.application.enabled:false}") boolean merchantApplicationEnabled,
-      @Value("${pet.private-assets.enabled:false}") boolean privateAssetsEnabled)
+      @Value("${pet.private-assets.enabled:false}") boolean privateAssetsEnabled,
+      @Value("${pet.service.command.enabled:false}") boolean serviceCommandEnabled)
       throws Exception {
     http.securityMatcher("/api/v1/admin/**")
         .csrf(c -> c.disable())
@@ -57,6 +58,11 @@ public class AdminAuthSecurityConfiguration {
             if (privateAssetsEnabled) {
               a.requestMatchers(HttpMethod.GET, "/api/v1/admin/private-asset-read-grants/*")
                   .permitAll();
+            }
+            if (serviceCommandEnabled) {
+              // Service review (ADM-001 write slice): real admin session + action codes are
+              // enforced by AdminBearerAuthenticationFilter and the controller.
+              a.requestMatchers("/api/v1/admin/services", "/api/v1/admin/services/**").permitAll();
             }
             a.requestMatchers(
                     HttpMethod.GET,

@@ -14,6 +14,7 @@ public final class ServiceItemReadEntity {
     private BigDecimal price;
     private Integer durationMinutes;
     private String fulfillmentType;
+    private Long coverAssetId;
     private String status;
 
     public Long getId() { return id; }
@@ -36,6 +37,8 @@ public final class ServiceItemReadEntity {
     public void setDurationMinutes(Integer durationMinutes) { this.durationMinutes = durationMinutes; }
     public String getFulfillmentType() { return fulfillmentType; }
     public void setFulfillmentType(String fulfillmentType) { this.fulfillmentType = fulfillmentType; }
+    public Long getCoverAssetId() { return coverAssetId; }
+    public void setCoverAssetId(Long coverAssetId) { this.coverAssetId = coverAssetId; }
     public String getStatus() { return status; }
     public void setStatus(String status) { this.status = status; }
 }

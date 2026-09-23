@@ -24,13 +24,16 @@ class PrivateAssetContractRegressions(unittest.TestCase):
 
     def test_current_surface_independent_counts(self):
         result = check(self.spec)
-        self.assertEqual(result['operations'], 76)
+        # 89 = 76 base + 2 store catalog (store-read slice) + 11 service write.
+        self.assertEqual(result['operations'], 89)
         self.assertEqual(result['privateAssetOperations'], 3)
         self.assertEqual(result['legacyOperations'], 16)
         self.assertEqual(result['authOperations'], 36)
         self.assertEqual(result['merchantOperations'], 8)
         self.assertEqual(result['applicationOperations'], 11)
         self.assertEqual(result['serviceCatalogOperations'], 2)
+        self.assertEqual(result['storeCatalogOperations'], 2)
+        self.assertEqual(result['serviceWriteOperations'], 11)
 
     def test_all_private_operations_require_current_bearer_audience_and_default_off(self):
         for name in PRIVATE_ASSET_OPERATIONS:

@@ -214,6 +214,46 @@ public record MerchantDisplayEligibilityDTO(
 - 与 4.1 使用同一资格策略与同一 repeatable-read 事务快照，语义一致（含失败关闭）。
 - 错误语义：确认不存在的商家/门店对 → NOT_FOUND（调用方按不可见处理）；事实源故障、读取失败或状态未知 → DEPENDENCY_UNAVAILABLE（调用方 503）；两者不得混同。
 
+### 4.3 MerchantStoreDisplayApi（CCR-W2-API-001 门店读侧 STR-D6，2026-09-22 已批；第五查询）
+
+```java
+public interface MerchantStoreDisplayApi {
+
+    MerchantStoreDisplayPageDTO pageDisplayStores(
+        MerchantStoreDisplayPageQuery query
+    );
+
+    MerchantStoreDisplayDTO getDisplayStore(MerchantStoreDisplayQuery query);
+}
+```
+
+```java
+public record MerchantStoreDisplayPageQuery(
+    List<String> cityCodes, int page, int pageSize, QueryContext context
+) {}
+
+public record MerchantStoreDisplayQuery(
+    String storeId, QueryContext context
+) {}
+
+public record MerchantStoreDisplayDTO(
+    String merchantId, String storeId,
+    String merchantName, String storeName, String address,
+    String longitude, String latitude,   // 可空，≤7位小数
+    String phoneMasked,                  // 可空，掩码
+    String cityCode
+) {}
+
+public record MerchantStoreDisplayPageDTO(
+    List<MerchantStoreDisplayDTO> items, int page, int pageSize, long total
+) {}
+```
+
+- 仅供 C 端展示聚合消费：只读门店档案投影，不授予任何商家操作权限（权威面仍是 4.1 三查询）；无所有者前提，QueryContext 仅承载链路信息；匿名浏览（STR-D8，PRD"所有用户浏览"）时主体字段为空，可见性与主体无关。
+- 可见性 = 三条件合取（merchantEnabled ∧ storeEnabled ∧ acceptsNewOrders，**不含"服务 ACTIVE"**：有店无服务仍可见），与 4.1 同一 `MerchantOrderEligibilityPolicy`、同一只读 repeatable-read 快照；`pageDisplayStores` 整页一次资格判定（一次快照内按页内去重 merchant/store 对求值，同一商家多店共享一次事实读取），`total` 只计可见门店（诚实 total，不把不可见门店计入）。
+- `cityCodes` 是调用方（boot 适配层）从服务端开放城市目录解析的闭合集合；biz 不判断何为"开放"。城市事实来自 `merchant_profile_compat.city_code`；**通过资格合取但缺 compat 行或 city_code 词法损坏 = 完整性损坏 → DEPENDENCY_UNAVAILABLE（整页 503）**，不得静默隐藏或归入任何城市；确认开放城市无可见门店 = 正常空页。
+- 错误语义（同 4.2 两分，不得混同）：确认不存在/无资格 → `getDisplayStore` NOT_FOUND（调用方 404 `STORE_NOT_FOUND`）、`pageDisplayStores` 隐藏；事实源故障、读取失败、状态未知、compat 完整性损坏 → DEPENDENCY_UNAVAILABLE（调用方 503，列表整页失败关闭）。
+
 ---
 
 ## 5. pet-service-api
@@ -295,6 +335,66 @@ public record ServiceSnapshotPageDTO(
 - 快照为查询时值拷贝：主数据后续修改不改变已返回副本。
 - 失败关闭：事实源故障、读取失败或状态未知 → DEPENDENCY_UNAVAILABLE；确认不存在 → NOT_FOUND；不得混同。
 - 此判断仅为服务侧基本资格，不代表所选时间有空位或下单成功。
+
+#### 5.1.2 写入方同步（CCR-W2-API-001 服务写入方 v0.2，2026-09-22 已批）
+
+已知状态集合扩为 `DRAFT/REVIEWING/ACTIVE/OFFLINE/REJECTED`：REVIEWING/REJECTED 是写入方产生的合法已存状态——对 C 端仍不可见（`getVisibleService` 404、列表不出现），但不得按"状态未知"触发 503；`reasonCodes` 对非 ACTIVE 维持 SERVICE_OFFLINE，不新增码。
+
+`ServiceSnapshotDTO` 增补封面展示三字段（消费者封面展示裁决）：
+
+```java
+public record ServiceSnapshotDTO(
+    String serviceId, String merchantId, String storeId, String serviceName,
+    String categoryId, String categoryName,
+    BigDecimal salePrice, Integer durationMinutes, FulfillmentType fulfillmentType,
+    String description,
+    String coverAssetId,     // 存量绑定时返回（33号列），无绑定为 null
+    String coverUrl,         // 仅消费端可见读（visibleService/storePage）经签名端口填充；内部快照为 null
+    String coverUrlExpiresAt // 签名过期时间 ISO-8601；无封面为 null
+) {}
+```
+
+签名 URL 授权规则：仅当行已通过四条件可见性判定且存在封面绑定才签发；签名端口不可用且有封面 → DEPENDENCY_UNAVAILABLE（失败关闭，不返回未签名 URL）；无封面行三字段为 null。SERVICE_COVER 上传/扫描/注册管线为 31 号增补（MER 域 Writer：角色B）。
+
+### 5.2 ServiceCommandApi（CCR-W2-API-001 服务写入方 v0.2，2026-09-22 已批）
+
+```java
+public interface ServiceCommandApi {
+    ServiceItemResult createDraft(CreateServiceItemCommand command);      // merchant.service.create
+    ServiceItemResult update(UpdateServiceItemCommand command);           // merchant.service.update
+    ServiceItemResult submitForReview(SubmitServiceItemCommand command);  // merchant.service.submit
+    ServiceItemResult takeOffline(TakeServiceOfflineCommand command);     // merchant.service.offline
+    ServiceItemResult decideReview(DecideServiceReviewCommand command);   // admin.service.review.decide
+    ServiceItemResult forceOffline(ForceOfflineServiceCommand command);   // admin.service.forceOffline
+}
+```
+
+状态机：`DRAFT/REJECTED/OFFLINE --submit--> REVIEWING --APPROVE--> ACTIVE / --REJECT(opinion 10-500 必填)--> REJECTED`；`ACTIVE --商家 offline / 运营 force-offline(reason 10-500)--> OFFLINE`；编辑仅限 DRAFT/REJECTED/OFFLINE。商家任何动作不产生 ACTIVE（上架仅运营审核通过产生）；OFFLINE/REJECTED 重新上架一律过审（防绕审改价）。
+
+- 幂等：六命令按 23 号 §3～§7 绑定 `command_idempotency`（14号表），命令名 + operatorType + operatorId + 目标 scope + requestId 入 request_key；同 requestId 异参 → IDEMPOTENCY_KEY_CONFLICT。
+- 门禁：商家命令经已批所有者准入事实（27 号 §5 admission 族）——无归属 404（防枚举）、事实不可读 503、DENIED/LIMITED（未批/未签/OFFLINE/FROZEN）→ 409 `SERVICE_STATE_NOT_ALLOWED`。运营决定/强制下架携带 AdminAuthorization（sessionId+sessionGeneration），在事务内做数据库权威复核。
+- 提交审核前置校验（运营端 §5.2 第二步）：serviceName 2-50、ENABLED 类目、fulfillmentType、price>0 两位小数、durationMinutes 1..10080、applicablePetTypes ⊆{DOG,CAT,EXOTIC} 或=[ALL]、coverAssetId 必填且属提交主账号（READY、image/jpeg|png、≤10MiB、purpose=SERVICE_COVER）。
+- 乐观锁：update/submit/offline/decide/force-offline 带 expectedVersion（service_item.version），失配 409 COMMON_CONFLICT。
+- 审核事件：APPROVE/REJECT 决定在同一事务写 `ServiceReviewedEvent.v1` 到 Outbox（Event08 增补）；幂等重放不产生第二条事件；强制下架不发事件（是否通知列剩余问题）。
+- 错误码：12 号 §12 新增 `SERVICE_STATE_NOT_ALLOWED`(409)、`SERVICE_REVIEW_REASON_REQUIRED`(400)。
+
+命令形状（ServiceWriteTypes）：Create/Update 带 ServiceItemFields（草稿宽松可空）；Submit/TakeOffline 为 (serviceId, expectedVersion, context)；Decide 为 (serviceId, expectedVersion, decisionType APPROVE|REJECT, opinion?, authorization, context)；ForceOffline 为 (serviceId, expectedVersion, reason, authorization, context)。回执 `ServiceItemResult(serviceId, merchantId, storeId, status, version, decisionId?, actionId?)`。
+
+### 5.3 ServiceReviewQueryApi / ServiceManagementQueryApi（同批已批）
+
+```java
+public interface ServiceReviewQueryApi {
+    ServiceReviewPage listForReview(ServiceReviewListQuery query);   // 运营审核列表（status/categoryId/merchantId 筛选、SLA 剩余分钟、重提次数）
+    ServiceReviewDetail getForReview(ServiceReviewDetailQuery query); // 详情 + 历史驳回记录
+}
+public interface ServiceManagementQueryApi {
+    ServiceManagementPage listManaged(ServiceManagementListQuery query); // 商家工作台本店全状态分页（latestRejection）
+    ServiceManagementItem getManaged(ServiceManagementDetailQuery query);
+    ServiceCategoryPage listEnabledCategories(ServiceCategoryQuery query); // 平台字典只读（M-002 表单事实源）
+}
+```
+
+语义：运营读经真实 admin 会话 + `service.review.read` 动作码（V1 单运营，无资源范围过滤）；工作台读经所有者准入门禁（404 防枚举/503 失败关闭）。两者均为全状态投影，不改变 C 端可见性。
 
 ---
 

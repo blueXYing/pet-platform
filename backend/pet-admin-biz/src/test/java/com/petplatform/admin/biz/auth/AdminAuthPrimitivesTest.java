@@ -57,7 +57,10 @@ class AdminAuthPrimitivesTest {
     @Test void productionActionCatalogOnlyGrantsActionsWithImplementedEnforcementPoints() {
         assertEquals(
         Set.of(
-            "merchant.application.read", "merchant.application.decide", "merchant.identity.reveal"),
+            "merchant.application.read", "merchant.application.decide", "merchant.identity.reveal",
+            // ADM-001 service write slice (CCR-W2-API-001): the three service review codes now
+            // have server-side enforcement points; force-offline uses the AUTH-lexicon spelling.
+            "service.review.read", "service.review.decide", "service.force.offline"),
         AdminPermissionEvaluator.DEPLOYED_ACTIONS);
     assertEquals(AdminPermissionEvaluator.DEPLOYED_ACTIONS.stream().sorted().toList(),AdminPermissionEvaluator.evaluate(true,List.of("refund.retry"),AdminPermissionEvaluator.DEPLOYED_ACTIONS));
         assertEquals(List.of(),AdminPermissionEvaluator.evaluate(false,List.of("refund.retry"),AdminPermissionEvaluator.DEPLOYED_ACTIONS));

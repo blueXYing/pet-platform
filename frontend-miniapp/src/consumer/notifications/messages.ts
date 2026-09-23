@@ -92,15 +92,20 @@ export function routeForNotification(item: InboxNotification): string | null {
   }
   // M-002 service-review verdicts (delivery by role E): the existing whitelist mechanism
   // extends to the merchant service-management page, which re-validates its own workspace
-  // coordinates and admission — a jump never bypasses the workbench gate.
+  // coordinates and admission — a jump never bypasses the workbench gate. Route per M-002
+  // NAVIGATION-BASIS section 3; the target page and its app.config registration ship with
+  // this branch (merge of develop's PR#69 consumer side).
   if (item.messageType === 'SERVICE_REVIEWED' && item.bizType === 'SERVICE' && item.bizId !== null) {
     return '/merchant/pages/services/index'
   }
   return null
 }
 
-export function jumpLabelForNotification(item: InboxNotification): string | null {
-  if (item.messageType === 'SERVICE_REVIEWED' && item.bizType === 'SERVICE' && item.bizId !== null) return '查看服务管理'
+// Button label for the whitelist jump; null when the item has no jump at all.
+export function jumpLabelFor(item: InboxNotification): string | null {
+  if (item.messageType === 'SERVICE_REVIEWED' && item.bizType === 'SERVICE' && item.bizId !== null) {
+    return '查看服务'
+  }
   if (routeForNotification(item) !== null) return '查看入驻申请'
   return null
 }

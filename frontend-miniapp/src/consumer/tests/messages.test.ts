@@ -1,6 +1,6 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
-import { MessagesController, jumpLabelForNotification, routeForNotification, type NotificationDeps } from '../notifications/messages'
+import { MessagesController, jumpLabelFor, routeForNotification, type NotificationDeps } from '../notifications/messages'
 import { ApiError } from '../../shared/request'
 import type { InboxNotification } from '../../shared/notification-repositories'
 
@@ -65,17 +65,20 @@ test('whitelist jump only for the registered type; payload never carries a URL',
   assert.equal(routeForNotification(item({ bizId: null })), null)
 })
 
-test('service-review verdicts jump to the merchant service-management page (M-002)', () => {
-  const verdict = item({
-    category: 'SYSTEM', messageType: 'SERVICE_REVIEWED', bizType: 'SERVICE', bizId: '30001',
-    title: '服务审核结果', content: '「猫咪洗澡+基础护理」审核通过',
+test('service review notification jumps to the merchant services page with its own label', () => {
+  const serviceReviewed = item({
+    messageType: 'SERVICE_REVIEWED', bizType: 'SERVICE', bizId: '9001',
+    title: '服务审核结果', content: '服务《宠物基础洗护》：审核未通过。服务图片与门类不符，请补充真实拍摄图片后重新提交',
   })
-  assert.equal(routeForNotification(verdict), '/merchant/pages/services/index')
-  assert.equal(jumpLabelForNotification(verdict), '查看服务管理')
-  // Wrong biz type or missing id never routes anywhere.
+  // Route per role C's M-002 NAVIGATION-BASIS; the target page re-authenticates by itself.
+  assert.equal(routeForNotification(serviceReviewed), '/merchant/pages/services/index')
+  assert.equal(jumpLabelFor(serviceReviewed), '查看服务')
+  assert.equal(jumpLabelFor(item()), '查看入驻申请')
+  // Wrong biz type or missing id never routes anywhere (M-002 union of both sides' guards).
   assert.equal(routeForNotification(item({ messageType: 'SERVICE_REVIEWED', bizType: null, bizId: null })), null)
   assert.equal(routeForNotification(item({ messageType: 'SERVICE_REVIEWED', bizType: 'ORDER', bizId: '1' })), null)
-  assert.equal(jumpLabelForNotification(item()), '查看入驻申请')
+  // Unregistered shapes keep detail-only rendering with no jump entry.
+  assert.equal(jumpLabelFor(item({ messageType: 'SOMETHING_ELSE', bizType: null, bizId: null })), null)
 })
 
 test('disposed controller ignores late results', async () => {

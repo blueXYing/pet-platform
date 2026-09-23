@@ -102,4 +102,46 @@
           AND m.owner_user_id = #{ownerUserId}
     </select>
 
+
+    <!-- STR-D6 display candidates: no status predicate (the approved policy fails closed on
+         unknown statuses instead of a SQL filter hiding them); compat is a LEFT JOIN so a missing
+         row surfaces as NULL for the integrity counterexample, not as silent absence. -->
+    <select id="selectDisplayStoreCandidates"
+            resultType="com.petplatform.merchant.biz.infrastructure.persistence.entity.MerchantStoreDisplayRowEntity">
+        SELECT m.id AS merchant_id,
+               m.merchant_name,
+               m.status AS merchant_status,
+               s.id AS store_id,
+               s.store_name,
+               s.address,
+               s.longitude,
+               s.latitude,
+               s.phone,
+               s.status AS store_status,
+               p.city_code AS city_code
+        FROM merchant_store s
+        INNER JOIN merchant m ON m.id = s.merchant_id
+        LEFT JOIN merchant_profile_compat p ON p.merchant_id = m.id
+        ORDER BY m.id ASC, s.id ASC
+    </select>
+
+    <select id="selectDisplayStore"
+            resultType="com.petplatform.merchant.biz.infrastructure.persistence.entity.MerchantStoreDisplayRowEntity">
+        SELECT m.id AS merchant_id,
+               m.merchant_name,
+               m.status AS merchant_status,
+               s.id AS store_id,
+               s.store_name,
+               s.address,
+               s.longitude,
+               s.latitude,
+               s.phone,
+               s.status AS store_status,
+               p.city_code AS city_code
+        FROM merchant_store s
+        INNER JOIN merchant m ON m.id = s.merchant_id
+        LEFT JOIN merchant_profile_compat p ON p.merchant_id = m.id
+        WHERE s.id = #{storeId}
+    </select>
+
 </mapper>
