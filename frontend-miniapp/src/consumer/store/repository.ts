@@ -1,4 +1,5 @@
 import type { ConsumerApi } from '../../shared/consumer-api'
+import type { WorkspaceScope } from '../../shared/workspace'
 import { decodeStore, decodeStorePage, type StoreCity, type StoreDetailView, type StoreDirectoryDeps, type StoreListQuery, type StorePage } from './model'
 
 function isStatus(error: unknown, statusCode: number): boolean {
@@ -6,6 +7,17 @@ function isStatus(error: unknown, statusCode: number): boolean {
 }
 export function isStoreNotFound(error: unknown): boolean {
   return isStatus(error, 404) || (error instanceof Error && error.message === 'STORE_NOT_FOUND')
+}
+
+/**
+ * STR-D8 catalog reads are anonymous-browsable, so the directory must not require a
+ * workspace context: with a session the scope still guards stale context switches via
+ * run(); logged out (no context) the read runs bare and anonymousRequest keeps its own
+ * optional-context guard. Without this the page-level scope.run would throw NO_CONTEXT
+ * before any wire traffic and the designed anonymous browsing could never happen.
+ */
+export function runCatalogRead<T>(scope: WorkspaceScope, operation: () => Promise<T>): Promise<T> {
+  return scope.current ? scope.run(undefined, operation) : operation()
 }
 
 /**

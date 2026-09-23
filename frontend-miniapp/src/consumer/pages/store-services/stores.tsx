@@ -5,7 +5,7 @@ import { useWorkspace } from '../../../shared/workspace-react'
 import { ConsumerPageLayout } from '../../components/page-layout'
 import { navigationUnavailableMessage } from '../../components/navigation/model'
 import { PreviewStoreRepository, directoryCategories, isStoreScenario, type StoreCity, type StoreDirectoryDeps, type StoreView } from '../../store/model'
-import { RealStoreRepository } from '../../store/repository'
+import { RealStoreRepository, runCatalogRead } from '../../store/repository'
 import { consumerApi } from '../../../shared/consumer-runtime'
 import { MerchantApplicationRepository } from '../../../shared/merchant-repositories'
 import iconLocation from './assets/690-6750-icon-location@2x.png'
@@ -51,7 +51,8 @@ export default function StoreDirectoryPage() {
     const current = ++sequence.current
     const currentRevision = scope.revision
     try {
-      const result = await scope.run(undefined, () => repository.list({ city: nextCity, page: 1, pageSize: PAGE_SIZE }))
+      // Anonymous-browsable per STR-D8: with no session the catalog read runs bare.
+      const result = await runCatalogRead(scope, () => repository.list({ city: nextCity, page: 1, pageSize: PAGE_SIZE }))
       if (current !== sequence.current || currentRevision !== scope.revision) return
       setItems(result.items); setTotal(result.total); setPage(1); setPhase('ready')
     } catch {
@@ -69,7 +70,7 @@ export default function StoreDirectoryPage() {
     const current = sequence.current
     const currentRevision = scope.revision
     try {
-      const result = await scope.run(undefined, () => repository.list({ city, page: page + 1, pageSize: PAGE_SIZE }))
+      const result = await runCatalogRead(scope, () => repository.list({ city, page: page + 1, pageSize: PAGE_SIZE }))
       if (current !== sequence.current || currentRevision !== scope.revision) return
       const known = new Set(items.map(item => item.storeId))
       setItems([...items, ...result.items.filter(item => !known.has(item.storeId))])
