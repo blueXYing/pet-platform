@@ -5,8 +5,9 @@ import {
   PreviewStoreRepository, StoreMockError, decodeCityList, decodeStore, decodeStorePage,
   fixtureCities, fixtureInvisibleStoreId, fixtureStores,
 } from '../store/model'
-import { RealStoreRepository, isStoreNotFound } from '../store/repository'
+import { RealStoreRepository, isStoreNotFound, runCatalogRead } from '../store/repository'
 import { ConsumerApi, type LocalStore } from '../../shared/consumer-api'
+import { WorkspaceScope } from '../../shared/workspace'
 
 async function rejects(promise: Promise<unknown>): Promise<StoreMockError> {
   try { await promise; throw new Error('NO_THROW') } catch (error) { return error as StoreMockError }
@@ -96,4 +97,17 @@ test('real store repository reads anonymously with the approved query shape', as
   assert.equal(detail.storeName, fixtureStores[0]!.storeName)
   const missing = await repository.detail('960002').catch(error => error)
   assert.ok(isStoreNotFound(missing))
+})
+
+test('runCatalogRead keeps the directory anonymous-browsable and still guards stale contexts', async () => {
+  // Logged out (no workspace context): the catalog read must flow instead of throwing NO_CONTEXT.
+  const anonymous = new WorkspaceScope()
+  assert.equal(anonymous.current, null)
+  assert.equal(await runCatalogRead(anonymous, async () => 'listed'), 'listed')
+  // Logged in: scope.run keeps guarding stale context switches for catalog reads.
+  const scoped = new WorkspaceScope()
+  scoped.replace({ userId: '957001', workspace: 'consumer', merchantId: null, storeId: null })
+  assert.equal(await runCatalogRead(scoped, async () => 'listed'), 'listed')
+  const stale = runCatalogRead(scoped, () => new Promise<string>(resolve => { scoped.replace(null); resolve('late') }))
+  await assert.rejects(stale, /STALE_CONTEXT/)
 })
