@@ -123,6 +123,7 @@ SERVICE_WRITE_OPERATIONS = {
     'adminGetService': ('get', '/admin/services/{serviceId}'),
     'adminDecideServiceReview': ('post', '/admin/services/{serviceId}/decision'),
     'adminForceOfflineService': ('post', '/admin/services/{serviceId}/force-offline'),
+}
 
 # STR-D8 (store-read ruling 2026-09-22): the four C-end browse routes allow
 # anonymous GET with optional bearer; see docs/04-api/10 §3.3 and CCR-W2-API-001 v0.2.
