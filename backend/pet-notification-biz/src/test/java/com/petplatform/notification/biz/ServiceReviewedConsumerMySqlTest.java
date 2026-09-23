@@ -31,14 +31,15 @@ import java.util.concurrent.Callable;
 import java.util.concurrent.Executors;
 import java.util.concurrent.atomic.AtomicLong;
 import org.junit.jupiter.api.Test;
-import org.springframework.dao.EmptyResultDataAccessException;
 import org.springframework.jdbc.datasource.DataSourceTransactionManager;
 import org.springframework.transaction.support.TransactionTemplate;
 
 /**
- * ServiceReviewedEvent.v1 consumption slice: strict payload validation, owner-scoped inbox
- * write with consume-log idempotency, retry-without-loss, and receiver isolation on the
- * existing USER inbox read surface. Runs on the authoritative Schema 06 over real MySQL.
+ * ServiceReviewedEvent.v1 consumption slice (nine-field payload finalized in Event08, PR#68):
+ * strict payload validation, owner-scoped inbox write with consume-log idempotency, the
+ * receiver taken from the event-carried ownerUserId (no merchant table read), retry-without-loss,
+ * and receiver isolation on the existing USER inbox read surface. Runs on the authoritative
+ * Schema 06 over real MySQL.
  */
 class ServiceReviewedConsumerMySqlTest {
   private static final Instant READ_CLOCK = Instant.parse("2026-09-22T12:00:00.123Z");
@@ -49,31 +50,7 @@ class ServiceReviewedConsumerMySqlTest {
     var guard = new JdbcOutboxConsumeGuard(db.dataSource(), ids::incrementAndGet);
     return new ServiceReviewedConsumer(
         new ServiceReviewNotificationStore(db.dataSource(), guard::tryClaim),
-        ids::incrementAndGet,
-        merchantId -> {
-          try {
-            Long owner =
-                db.jdbc()
-                    .queryForObject(
-                        "SELECT owner_user_id FROM merchant WHERE id=?",
-                        Long.class,
-                        merchantId);
-            return owner == null ? 0 : owner;
-          } catch (EmptyResultDataAccessException missing) {
-            return 0;
-          }
-        });
-  }
-
-  private static void seedMerchant(MySqlNotificationTestDatabase db, long id, long ownerId) {
-    db.jdbc()
-        .update(
-            "INSERT INTO merchant(id, owner_user_id, merchant_name, status, version,"
-                + " created_at, updated_at) VALUES (?,?,?,?,0,UTC_TIMESTAMP(3),UTC_TIMESTAMP(3))",
-            id,
-            ownerId,
-            "商家" + id,
-            "ACTIVE");
+        ids::incrementAndGet);
   }
 
   private Map<String, Object> payload(String decision) {
@@ -86,6 +63,7 @@ class ServiceReviewedConsumerMySqlTest {
     body.put("decisionType", decision);
     body.put("opinion", "REJECT".equals(decision) ? "服务图片与门类不符，请补充真实拍摄图片后重新提交" : null);
     body.put("decidedAt", "2026-09-22T10:00:00.000Z");
+    body.put("ownerUserId", "1001");
     return body;
   }
 
@@ -104,7 +82,6 @@ class ServiceReviewedConsumerMySqlTest {
   @Test
   void eachDecisionCreatesMandatoryOwnerInboxAndRedeliveryDoesNotDuplicate() throws Exception {
     try (var db = new MySqlNotificationTestDatabase()) {
-      seedMerchant(db, 3001, 1001);
       var consumer = consumer(db);
       for (String decision : new String[] {"APPROVE", "REJECT"}) {
         var event = event(Long.toString(ids.incrementAndGet()), payload(decision));
@@ -141,7 +118,6 @@ class ServiceReviewedConsumerMySqlTest {
   @Test
   void failedInboxWriteRollsBackConsumeClaimAndRetryPersistsMessage() throws Exception {
     try (var db = new MySqlNotificationTestDatabase()) {
-      seedMerchant(db, 3001, 1001);
       var consumer = consumer(db);
       var event = event("97001", payload("REJECT"));
       db.jdbc().execute("RENAME TABLE notification TO unavailable_notification");
@@ -160,7 +136,6 @@ class ServiceReviewedConsumerMySqlTest {
   void concurrentRedeliveryCommitsExactlyOneInboxMessage() throws Exception {
     try (var db = new MySqlNotificationTestDatabase();
         var pool = Executors.newFixedThreadPool(2)) {
-      seedMerchant(db, 3001, 1001);
       var consumer = consumer(db);
       var event = event("97002", payload("APPROVE"));
       Callable<Void> deliver =
@@ -181,7 +156,6 @@ class ServiceReviewedConsumerMySqlTest {
   void rejectsSensitiveUnknownFieldsMismatchedShapesAndWrongAggregateBeforeClaim()
       throws Exception {
     try (var db = new MySqlNotificationTestDatabase()) {
-      seedMerchant(db, 3001, 1001);
       var consumer = consumer(db);
       var secret = payload("REJECT");
       secret.put("internalNote", "MUST_NOT_REACH_INBOX");
@@ -263,21 +237,30 @@ class ServiceReviewedConsumerMySqlTest {
   }
 
   @Test
-  void unresolvableMerchantFailsBeforeClaimAndStaysRetryable() throws Exception {
+  void missingOrMalformedOwnerUserIdIsStrictlyRejectedBeforeClaim() throws Exception {
     try (var db = new MySqlNotificationTestDatabase()) {
-      seedMerchant(db, 3001, 1001); // merchant 3002 deliberately absent
       var consumer = consumer(db);
-      var body = payload("APPROVE");
-      body.put("merchantId", "3002");
-      var event = event("97011", body);
-      assertThrows(IllegalStateException.class, () -> consumer.consume(event));
+      var missing = payload("APPROVE");
+      missing.remove("ownerUserId");
+      assertThrows(
+          IllegalArgumentException.class, () -> consumer.consume(event("97011", missing)));
+      var numeric = payload("APPROVE");
+      numeric.put("ownerUserId", 1001);
+      assertThrows(
+          IllegalArgumentException.class, () -> consumer.consume(event("97014", numeric)));
+      var zero = payload("APPROVE");
+      zero.put("ownerUserId", "0");
+      assertThrows(IllegalArgumentException.class, () -> consumer.consume(event("97015", zero)));
       assertEquals(0, db.jdbc().queryForObject("SELECT COUNT(*) FROM notification", Integer.class));
       assertEquals(
           0,
           db.jdbc()
               .queryForObject("SELECT COUNT(*) FROM integration_event_consume_log", Integer.class));
-      seedMerchant(db, 3002, 1099);
-      consumer.consume(event);
+      // Strict failures happen before the claim, so the same eventId stays retryable; a
+      // well-formed redelivery persists with the receiver taken from the payload field.
+      var addressed = payload("REJECT");
+      addressed.put("ownerUserId", "1099");
+      consumer.consume(event("97011", addressed));
       assertEquals(1, db.jdbc().queryForObject("SELECT COUNT(*) FROM notification", Integer.class));
       assertEquals(
           1099L,
@@ -290,7 +273,6 @@ class ServiceReviewedConsumerMySqlTest {
   @Test
   void actualOutboxRollbackIsInvisibleAndCommittedEventDispatchesToInbox() throws Exception {
     try (var db = new MySqlNotificationTestDatabase()) {
-      seedMerchant(db, 3001, 1001);
       var publisher =
           new TransactionalOutboxPublisher(
               db.dataSource(), ids::incrementAndGet, new ObjectMapper());
@@ -340,8 +322,6 @@ class ServiceReviewedConsumerMySqlTest {
   @Test
   void ownerInboxReadIsolationAndIdempotentMarkRead() throws Exception {
     try (var db = new MySqlNotificationTestDatabase()) {
-      seedMerchant(db, 3001, 1001);
-      seedMerchant(db, 3002, 1002); // a different merchant owner must not see this inbox
       var consumer = consumer(db);
       consumer.consume(event("97012", payload("REJECT")));
       var service =
@@ -403,7 +383,6 @@ class ServiceReviewedConsumerMySqlTest {
   @Test
   void nonUtcPayloadAndShanghaiConnectionPersistUtcDatetime() throws Exception {
     try (var db = new MySqlNotificationTestDatabase()) {
-      seedMerchant(db, 3001, 1001);
       String url;
       try (var connection = db.dataSource().getConnection()) {
         url = connection.getMetaData().getURL();
@@ -429,9 +408,7 @@ class ServiceReviewedConsumerMySqlTest {
       var consumer =
           new ServiceReviewedConsumer(
               new ServiceReviewNotificationStore(shanghaiSource, guard::tryClaim),
-              ids::incrementAndGet,
-              merchantId ->
-                  shanghaiOwner(shanghaiSource, merchantId));
+              ids::incrementAndGet);
       var body = payload("APPROVE");
       body.put("decidedAt", "2026-09-22T18:00:00.123+08:00");
       consumer.consume(event("97013", body));
@@ -441,19 +418,6 @@ class ServiceReviewedConsumerMySqlTest {
               .queryForObject(
                   "SELECT DATE_FORMAT(created_at,'%Y-%m-%d %H:%i:%s.%f') FROM notification",
                   String.class));
-    }
-  }
-
-  private static long shanghaiOwner(javax.sql.DataSource source, long merchantId) {
-    try (var connection = source.getConnection();
-        var statement =
-            connection.prepareStatement("SELECT owner_user_id FROM merchant WHERE id=?")) {
-      statement.setLong(1, merchantId);
-      try (var result = statement.executeQuery()) {
-        return result.next() ? result.getLong(1) : 0;
-      }
-    } catch (java.sql.SQLException failure) {
-      throw new IllegalStateException("owner lookup failed", failure);
     }
   }
 }

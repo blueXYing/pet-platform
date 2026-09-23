@@ -15,10 +15,11 @@ import java.util.Objects;
 import java.util.Set;
 
 /**
- * Strict consumer of ServiceReviewedEvent.v1 (payload shape agreed with the service-write
- * owner). Never propagates arbitrary payload fields into a user-visible message. The receiver
- * is the merchant owner resolved by merchantId before any claim is taken, so an unresolvable
- * merchant keeps the event retryable without burning idempotency.
+ * Strict consumer of ServiceReviewedEvent.v1 (nine-field payload finalized in Event08 by the
+ * service-write owner, PR#68: serviceId/serviceName/merchantId/storeId/submissionNo/decisionType/
+ * opinion?/decidedAt/ownerUserId). Never propagates arbitrary payload fields into a user-visible
+ * message. The receiver is the ownerUserId carried by the event itself — the consumer is
+ * self-contained and never reads the merchant tables (ARCH-002).
  */
 public final class ServiceReviewedConsumer implements IntegrationEventConsumer {
   public static final String TYPE = "ServiceReviewedEvent.v1";
@@ -31,22 +32,18 @@ public final class ServiceReviewedConsumer implements IntegrationEventConsumer {
           "submissionNo",
           "decisionType",
           "opinion",
-          "decidedAt");
+          "decidedAt",
+          "ownerUserId");
   private static final ObjectMapper JSON =
       new ObjectMapper(
               JsonFactory.builder().enable(StreamReadFeature.STRICT_DUPLICATE_DETECTION).build())
           .enable(DeserializationFeature.FAIL_ON_TRAILING_TOKENS);
   private final ServiceReviewNotificationStore store;
   private final SnowflakeIdGenerator ids;
-  private final ServiceReviewReceiverResolver receivers;
 
-  public ServiceReviewedConsumer(
-      ServiceReviewNotificationStore store,
-      SnowflakeIdGenerator ids,
-      ServiceReviewReceiverResolver receivers) {
+  public ServiceReviewedConsumer(ServiceReviewNotificationStore store, SnowflakeIdGenerator ids) {
     this.store = Objects.requireNonNull(store);
     this.ids = Objects.requireNonNull(ids);
-    this.receivers = Objects.requireNonNull(receivers);
   }
 
   @Override
@@ -78,8 +75,11 @@ public final class ServiceReviewedConsumer implements IntegrationEventConsumer {
     payload.fieldNames().forEachRemaining(fields::add);
     if (!fields.equals(FIELDS)) throw invalid();
     long serviceId = publicId(text(payload, "serviceId"));
-    long merchantId = publicId(text(payload, "merchantId"));
+    publicId(text(payload, "merchantId")); // shape-checked; the receiver never comes from merchant
     publicId(text(payload, "storeId"));
+    // Required recipient (Event08 nine-field final): merchant owner account as a Snowflake
+    // String ID. A missing, non-textual or non-positive value is a strict-contract violation.
+    long ownerId = publicId(text(payload, "ownerUserId"));
     if (event.aggregateId() != serviceId) throw invalid();
     String serviceName = text(payload, "serviceName");
     int nameLength = serviceName.codePointCount(0, serviceName.length());
@@ -105,11 +105,6 @@ public final class ServiceReviewedConsumer implements IntegrationEventConsumer {
       decidedAt = OffsetDateTime.parse(time);
     } catch (RuntimeException failure) {
       throw invalid();
-    }
-    long ownerId = receivers.ownerUserIdOf(merchantId);
-    if (ownerId <= 0) {
-      // Resolution failed before the claim: the dispatcher retries, nothing is persisted.
-      throw new IllegalStateException("service review receiver is not resolvable");
     }
     String content =
         "服务《"
