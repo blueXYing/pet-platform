@@ -34,6 +34,9 @@ Owner：NTF-001（后端读取）/ C-006（C 端消息页与跳转）。范围�
 | message_type | biz_type | 关联资源 | 跳转（客户端白名单） |
 |---|---|---|---|
 | `MERCHANT_APPLICATION_REVIEWED` | `MERCHANT_APPLICATION` | bizId=applicationId | `/consumer/pages/merchant-application/index` |
+| `SERVICE_REVIEWED` | `SERVICE` | bizId=serviceId | `/merchant/pages/services/index` |
+
+- 登记增补（2026-09-23，角色W接线 PR 随合并登记）：`SERVICE_REVIEWED` 由通知域 `ServiceReviewedConsumer`（PR#69）消费 `ServiceReviewedEvent.v1`（Event08 九字段定稿）落库；收件人＝事件载荷 `ownerUserId`（商家主账号，以 C 端 USER 身份收件，消费者自包含不读 merchant 表 ARCH-002）；`mandatory_inbox=1`（站内必达，审核类通知不可关闭）；跳转目标采用角色C NAVIGATION-BASIS §3 定稿路由 `/merchant/pages/services/index`（页面本体在 C 分支 `codex/m-svc-pages`，合入前点击跳转失败可见、不错误导航）。
 
 - 新消息类型经 CCR 增补登记；未登记类型仅展示详情，不出现跳转入口。
 - 跳转只是页面导航：目标页（申请页）自行执行本人鉴权查询——**通知跳转不携带、不豁免任何授权**；消息体不包含任何 URL 字段。

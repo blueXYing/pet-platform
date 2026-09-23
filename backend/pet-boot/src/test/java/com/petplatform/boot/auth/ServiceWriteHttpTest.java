@@ -504,6 +504,17 @@ class ServiceWriteHttpTest {
     assertEquals(200, rejectReplay.status(), rejectReplay.redacted());
     assertEquals("REJECTED", rejectReplay.data().get("status"));
     assertEquals(1L, outboxCount(serviceId));
+    // Switch-off negative (role W wiring): review notifications are NOT enabled in this context,
+    // so the ServiceReviewedConsumer bean must be absent and the event stays undelivered — rows
+    // keep waiting in the outbox until the switch is turned on elsewhere.
+    assertEquals(
+        0, context.getBeanNamesForType(
+            com.petplatform.notification.biz.event.ServiceReviewedConsumer.class).length);
+    assertEquals(
+        0,
+        db.jdbc.queryForObject(
+            "SELECT COUNT(*) FROM notification WHERE message_type='SERVICE_REVIEWED'",
+            Long.class));
     assertEquals(
         1L,
         db.jdbc.queryForObject(

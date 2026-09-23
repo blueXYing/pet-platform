@@ -46,6 +46,13 @@ public final class ServiceReviewedConsumer implements IntegrationEventConsumer {
     this.ids = Objects.requireNonNull(ids);
   }
 
+  public ServiceReviewedConsumer(
+      javax.sql.DataSource source,
+      SnowflakeIdGenerator ids,
+      java.util.function.BiPredicate<String, DispatchedEvent> consumeGuard) {
+    this(new ServiceReviewNotificationStore(source, consumeGuard), ids);
+  }
+
   @Override
   public String consumerName() {
     return "notification.service-reviewed.v1";
