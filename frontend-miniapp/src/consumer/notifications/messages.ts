@@ -90,5 +90,20 @@ export function routeForNotification(item: InboxNotification): string | null {
   if (item.messageType === 'MERCHANT_APPLICATION_REVIEWED' && item.bizType === 'MERCHANT_APPLICATION' && item.bizId !== null) {
     return '/consumer/pages/merchant-application/index'
   }
+  if (item.messageType === 'SERVICE_REVIEWED' && item.bizType === 'SERVICE' && item.bizId !== null) {
+    // Route per M-002 NAVIGATION-BASIS section 3 (role C, codex/m-svc-pages). TODO(alignment):
+    // the services page and its app.config registration ship in C's parallel branch; until that
+    // merge the jump target page is absent and Taro will fail closed, not navigate elsewhere.
+    return '/merchant/pages/services/index'
+  }
+  return null
+}
+
+// Button label for the whitelist jump; null when the item has no jump at all.
+export function jumpLabelFor(item: InboxNotification): string | null {
+  if (item.messageType === 'SERVICE_REVIEWED' && item.bizType === 'SERVICE' && item.bizId !== null) {
+    return '查看服务'
+  }
+  if (routeForNotification(item) !== null) return '查看入驻申请'
   return null
 }
