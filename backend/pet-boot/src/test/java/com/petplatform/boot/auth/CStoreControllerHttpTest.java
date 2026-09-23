@@ -95,7 +95,10 @@ class CStoreControllerHttpTest {
               "28-Merchant-Agreement-Schema-v0.1.sql",
               "29-Merchant-Application-Schema-v0.1.sql",
               "13-Async-Infra-Schema-v0.1.sql",
-              "31-Private-Asset-Schema-v0.1.sql")) {
+              "31-Private-Asset-Schema-v0.1.sql",
+              // The service write slice (PR#68) widened service_item (33号) and the read
+              // projection selects the new columns, so this fixture applies the delta too.
+              "33-Service-Write-Schema-v0.1.sql")) {
         ScriptUtils.executeSqlScript(
             connection,
             new EncodedResource(
