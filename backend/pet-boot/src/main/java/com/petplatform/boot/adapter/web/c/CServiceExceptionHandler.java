@@ -37,6 +37,7 @@ public class CServiceExceptionHandler {
             Map.entry("COMMON_NOT_FOUND", 404),
             Map.entry("PET_NOT_FOUND", 404),
             Map.entry("STORE_NOT_FOUND", 404),
+            Map.entry("SERVICE_NOT_FOUND", 404),
             Map.entry("COMMON_CONFLICT", 409),
             Map.entry("IDEMPOTENCY_KEY_CONFLICT", 409),
             Map.entry("COMMON_RATE_LIMITED", 429),

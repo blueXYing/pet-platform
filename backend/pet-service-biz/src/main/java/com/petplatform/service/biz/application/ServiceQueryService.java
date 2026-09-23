@@ -35,6 +35,9 @@ public final class ServiceQueryService {
     private static final DecimalPublicIdCodec IDS = new DecimalPublicIdCodec();
     private static final Set<String> SERVICE_STATUSES = Set.of("DRAFT", "ACTIVE", "OFFLINE");
 
+    /** Registry 12 §12 service-domain not-found code (SVC-D1b: 404, never COMMON_NOT_FOUND). */
+    private static final String SERVICE_NOT_FOUND = "SERVICE_NOT_FOUND";
+
     private final ServiceReadStore store;
     private final MerchantDisplayEligibilityApi merchantFacts;
 
@@ -169,7 +172,9 @@ public final class ServiceQueryService {
     }
 
     private static void notFound() {
-        throw new ApiException(CommonApiCodes.NOT_FOUND, "service resource not found");
+        // SVC-D1b: confirmed missing OR any visibility condition failing answers the same
+        // domain code, indistinguishable from the caller's perspective (anti-probing).
+        throw new ApiException(SERVICE_NOT_FOUND, "service resource not found");
     }
 
     private static void unavailable(String message) {
