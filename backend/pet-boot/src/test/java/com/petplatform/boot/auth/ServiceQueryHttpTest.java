@@ -88,7 +88,10 @@ class ServiceQueryHttpTest {
           List.of(
               "26-Admin-Auth-Schema-v0.1.sql",
               "28-Merchant-Agreement-Schema-v0.1.sql",
-              "29-Merchant-Application-Schema-v0.1.sql")) {
+              "29-Merchant-Application-Schema-v0.1.sql",
+              // The write slice widened service_item (cover_asset_id, 33号); the read projection
+              // selects the new column, so the regression fixture applies the approved delta too.
+              "33-Service-Write-Schema-v0.1.sql")) {
         ScriptUtils.executeSqlScript(
             connection,
             new EncodedResource(

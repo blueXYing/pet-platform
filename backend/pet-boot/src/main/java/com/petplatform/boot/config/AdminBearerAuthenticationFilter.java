@@ -40,7 +40,9 @@ public final class AdminBearerAuthenticationFilter extends OncePerRequestFilter 
           || path.equals("/api/v1/admin/auth/activity")
           || path.equals("/api/v1/admin/merchant-applications")
           || path.startsWith("/api/v1/admin/merchant-applications/")
-          || path.startsWith("/api/v1/admin/private-asset-read-grants/")) {
+          || path.startsWith("/api/v1/admin/private-asset-read-grants/")
+          || path.equals("/api/v1/admin/services")
+          || path.startsWith("/api/v1/admin/services/")) {
         try {
           AdminAuthService service = services.getIfAvailable();
           if (service == null) throw AdminAuthFailure.unavailable();
@@ -60,6 +62,7 @@ public final class AdminBearerAuthenticationFilter extends OncePerRequestFilter 
                   "{"
                       + (path.startsWith("/api/v1/admin/merchant-applications")
                               || path.startsWith("/api/v1/admin/private-asset-read-grants/")
+                              || path.startsWith("/api/v1/admin/services")
                           ? "\"success\":false,"
                           : "")
                       + "\"code\":\""

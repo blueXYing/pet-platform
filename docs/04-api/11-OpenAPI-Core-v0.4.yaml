@@ -994,6 +994,391 @@ paths:
               $ref: '#/components/schemas/MerStaffStateRequest'
       x-implementation-blocker: Order assignment/in-flight guard and concurrency contract
         missing; never assume zero orders.
+  /merchant/services:
+    get:
+      tags:
+      - Merchant-Profile
+      summary: merchantListServices
+      operationId: merchantListServices
+      x-contract-status: IMPLEMENTED_DEFAULT_OFF_REQUIRES_PROVIDERS
+      x-default-enabled: false
+      x-audience: MINIAPP
+      x-authorization: Current OWNER of the requested merchant/store; owner admission gate (HTTP10 4.10.1).
+      security:
+      - bearerAuth: []
+      parameters:
+      - name: merchantId
+        in: query
+        required: true
+        schema:
+          $ref: '#/components/schemas/PublicId'
+      - name: storeId
+        in: query
+        required: true
+        schema:
+          $ref: '#/components/schemas/PublicId'
+      - name: status
+        in: query
+        required: false
+        schema:
+          type: string
+          enum: [DRAFT, REVIEWING, ACTIVE, OFFLINE, REJECTED]
+      - name: page
+        in: query
+        schema:
+          type: integer
+      - name: pageSize
+        in: query
+        schema:
+          type: integer
+      responses:
+        '200':
+          description: Owner workbench page across all statuses (M-002).
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                enum: [no-store]
+        '401':
+          description: Session required
+        '404':
+          description: No owned-store fact (anti-enumeration)
+        '400':
+          description: Unknown query parameters or invalid paging/status
+        '503':
+          description: Admission facts unreadable (fail closed)
+    post:
+      tags:
+      - Merchant-Profile
+      summary: merchantCreateService
+      operationId: merchantCreateService
+      x-contract-status: IMPLEMENTED_DEFAULT_OFF_REQUIRES_PROVIDERS
+      x-default-enabled: false
+      x-audience: MINIAPP
+      x-authorization: Current OWNER; idempotent by X-Request-Id (supplement 23); drafts are lenient.
+      security:
+      - bearerAuth: []
+      parameters:
+      - $ref: '#/components/parameters/RequestId'
+      responses:
+        '201':
+          description: Draft created; replays of the same requestId answer 200 with the first receipt.
+        '200':
+          description: Idempotent replay of the first receipt.
+        '400':
+          description: Invalid fields or malformed requestId
+        '401':
+          description: Session required
+        '404':
+          description: No owned-store fact (anti-enumeration)
+        '409':
+          description: SERVICE_STATE_NOT_ALLOWED (non-operable merchant) or IDEMPOTENCY_KEY_CONFLICT
+        '503':
+          description: Admission facts unreadable (fail closed)
+  /merchant/services/{serviceId}:
+    get:
+      tags:
+      - Merchant-Profile
+      summary: merchantGetService
+      operationId: merchantGetService
+      x-contract-status: IMPLEMENTED_DEFAULT_OFF_REQUIRES_PROVIDERS
+      x-default-enabled: false
+      x-audience: MINIAPP
+      x-authorization: Current OWNER of the owning store; latest rejection included.
+      security:
+      - bearerAuth: []
+      parameters:
+      - name: serviceId
+        in: path
+        required: true
+        schema:
+          $ref: '#/components/schemas/PublicId'
+      - name: merchantId
+        in: query
+        required: true
+        schema:
+          $ref: '#/components/schemas/PublicId'
+      - name: storeId
+        in: query
+        required: true
+        schema:
+          $ref: '#/components/schemas/PublicId'
+      responses:
+        '200':
+          description: Workbench detail
+        '400':
+          description: Unknown query parameters or invalid ids
+        '401':
+          description: Session required
+        '404':
+          description: Missing or outside the owned store
+        '503':
+          description: Admission facts unreadable (fail closed)
+    put:
+      tags:
+      - Merchant-Profile
+      summary: merchantUpdateService
+      operationId: merchantUpdateService
+      x-contract-status: IMPLEMENTED_DEFAULT_OFF_REQUIRES_PROVIDERS
+      x-default-enabled: false
+      x-audience: MINIAPP
+      x-authorization: Current OWNER; only DRAFT/REJECTED/OFFLINE are editable; expectedVersion CAS.
+      security:
+      - bearerAuth: []
+      parameters:
+      - name: serviceId
+        in: path
+        required: true
+        schema:
+          $ref: '#/components/schemas/PublicId'
+      - $ref: '#/components/parameters/RequestId'
+      responses:
+        '200':
+          description: Updated
+        '400':
+          description: Invalid fields or malformed requestId
+        '401':
+          description: Session required
+        '404':
+          description: Missing or outside the owned store (anti-enumeration before state facts)
+        '409':
+          description: SERVICE_STATE_NOT_ALLOWED or COMMON_CONFLICT (version)
+        '503':
+          description: Admission facts unreadable (fail closed)
+  /merchant/services/{serviceId}/online:
+    post:
+      tags:
+      - Merchant-Profile
+      summary: merchantSubmitServiceOnline
+      operationId: merchantSubmitServiceOnline
+      x-contract-status: IMPLEMENTED_DEFAULT_OFF_REQUIRES_PROVIDERS
+      x-default-enabled: false
+      x-audience: MINIAPP
+      x-authorization: Current OWNER; submit for review (to REVIEWING). Merchants never produce ACTIVE.
+      security:
+      - bearerAuth: []
+      parameters:
+      - name: serviceId
+        in: path
+        required: true
+        schema:
+          $ref: '#/components/schemas/PublicId'
+      - $ref: '#/components/parameters/RequestId'
+      responses:
+        '200':
+          description: 'status=REVIEWING; submission_no/submitted_at advance'
+        '400':
+          description: Required-field gate failed (cover included)
+        '401':
+          description: Session required
+        '404':
+          description: Missing or outside the owned store (anti-enumeration before state facts)
+        '409':
+          description: SERVICE_STATE_NOT_ALLOWED or version conflict
+        '503':
+          description: Admission or cover asset facts unreadable (fail closed)
+  /merchant/services/{serviceId}/offline:
+    post:
+      tags:
+      - Merchant-Profile
+      summary: merchantTakeServiceOffline
+      operationId: merchantTakeServiceOffline
+      x-contract-status: IMPLEMENTED_DEFAULT_OFF_REQUIRES_PROVIDERS
+      x-default-enabled: false
+      x-audience: MINIAPP
+      x-authorization: Current OWNER; ACTIVE to OFFLINE only.
+      security:
+      - bearerAuth: []
+      parameters:
+      - name: serviceId
+        in: path
+        required: true
+        schema:
+          $ref: '#/components/schemas/PublicId'
+      - $ref: '#/components/parameters/RequestId'
+      responses:
+        '200':
+          description: 'status=OFFLINE'
+        '400':
+          description: Invalid expectedVersion or malformed requestId
+        '401':
+          description: Session required
+        '404':
+          description: Missing or outside the owned store (anti-enumeration before state facts)
+        '409':
+          description: SERVICE_STATE_NOT_ALLOWED or version conflict
+        '503':
+          description: Admission facts unreadable (fail closed)
+  /merchant/service-categories:
+    get:
+      tags:
+      - Merchant-Profile
+      summary: merchantListServiceCategories
+      operationId: merchantListServiceCategories
+      x-contract-status: IMPLEMENTED_DEFAULT_OFF_REQUIRES_PROVIDERS
+      x-default-enabled: false
+      x-audience: MINIAPP
+      x-authorization: Any merchant-session principal; ENABLED dictionary only, sort_no asc.
+      security:
+      - bearerAuth: []
+      responses:
+        '200':
+          description: ENABLED platform categories
+        '400':
+          description: Unknown query parameters
+        '401':
+          description: Session required
+        '503':
+          description: Dictionary unreadable (fail closed)
+  /admin/services:
+    get:
+      tags:
+      - Admin-Governance
+      summary: adminListServices
+      operationId: adminListServices
+      x-contract-status: IMPLEMENTED_DEFAULT_OFF_REQUIRES_PROVIDERS
+      x-default-enabled: false
+      x-audience: ADMIN_WEB
+      x-required-actions: [service.review.read]
+      x-authorization: 'Action codes: service.review.read'
+      security:
+      - bearerAuth: []
+      parameters:
+      - name: status
+        in: query
+        required: false
+        schema:
+          type: string
+          enum: [DRAFT, REVIEWING, ACTIVE, OFFLINE, REJECTED]
+      - name: categoryId
+        in: query
+        required: false
+        schema:
+          $ref: '#/components/schemas/PublicId'
+      - name: merchantId
+        in: query
+        required: false
+        schema:
+          $ref: '#/components/schemas/PublicId'
+      - name: page
+        in: query
+        schema:
+          type: integer
+      - name: pageSize
+        in: query
+        schema:
+          type: integer
+      responses:
+        '200':
+          description: Review page with SLA remaining minutes and reject counts
+        '400':
+          description: Unknown query parameters or invalid paging/status
+        '401':
+          description: Admin session required
+        '403':
+          description: Action not granted
+        '503':
+          description: Authorization or persistence unavailable
+  /admin/services/{serviceId}:
+    get:
+      tags:
+      - Admin-Governance
+      summary: adminGetService
+      operationId: adminGetService
+      x-contract-status: IMPLEMENTED_DEFAULT_OFF_REQUIRES_PROVIDERS
+      x-default-enabled: false
+      x-audience: ADMIN_WEB
+      x-required-actions: [service.review.read]
+      x-authorization: 'Action codes: service.review.read'
+      security:
+      - bearerAuth: []
+      parameters:
+      - name: serviceId
+        in: path
+        required: true
+        schema:
+          $ref: '#/components/schemas/PublicId'
+      responses:
+        '200':
+          description: Detail with append-only decision history
+        '401':
+          description: Admin session required
+        '403':
+          description: Action not granted
+        '404':
+          description: Service not found
+        '503':
+          description: Authorization or persistence unavailable
+  /admin/services/{serviceId}/decision:
+    post:
+      tags:
+      - Admin-Governance
+      summary: adminDecideServiceReview
+      operationId: adminDecideServiceReview
+      x-contract-status: IMPLEMENTED_DEFAULT_OFF_REQUIRES_PROVIDERS
+      x-default-enabled: false
+      x-audience: ADMIN_WEB
+      x-required-actions: [service.review.decide]
+      x-authorization: 'Action codes: service.review.decide; transactional final check; same-transaction ServiceReviewedEvent.v1 outbox append'
+      security:
+      - bearerAuth: []
+      parameters:
+      - name: serviceId
+        in: path
+        required: true
+        schema:
+          $ref: '#/components/schemas/PublicId'
+      - $ref: '#/components/parameters/RequestId'
+      responses:
+        '200':
+          description: 'APPROVE to ACTIVE; REJECT to REJECTED (opinion 10-500 required)'
+        '400':
+          description: SERVICE_REVIEW_REASON_REQUIRED
+        '401':
+          description: Admin session required
+        '403':
+          description: Action not granted
+        '404':
+          description: Service not found
+        '409':
+          description: Not REVIEWING or version conflict
+        '503':
+          description: Authorization or outbox unavailable (fail closed)
+  /admin/services/{serviceId}/force-offline:
+    post:
+      tags:
+      - Admin-Governance
+      summary: adminForceOfflineService
+      operationId: adminForceOfflineService
+      x-contract-status: IMPLEMENTED_DEFAULT_OFF_REQUIRES_PROVIDERS
+      x-default-enabled: false
+      x-audience: ADMIN_WEB
+      x-required-actions: [service.force.offline]
+      x-authorization: 'Action codes: service.force.offline (AUTH lexicon spelling; PR-disclosed); governance audit row; no event (notification question remains open)'
+      security:
+      - bearerAuth: []
+      parameters:
+      - name: serviceId
+        in: path
+        required: true
+        schema:
+          $ref: '#/components/schemas/PublicId'
+      - $ref: '#/components/parameters/RequestId'
+      responses:
+        '200':
+          description: 'status=OFFLINE with actionId'
+        '400':
+          description: reason must be 10-500 characters
+        '401':
+          description: Admin session required
+        '403':
+          description: Action not granted
+        '404':
+          description: Service not found
+        '409':
+          description: Not ACTIVE or version conflict
+        '503':
+          description: Authorization unavailable (fail closed)
   /merchant/agreement:
     get:
       tags:
@@ -12755,6 +13140,49 @@ components:
         traceId:
           type: string
           minLength: 1
+    ServiceReviewedPayload:
+      type: object
+      additionalProperties: false
+      required:
+      - serviceId
+      - serviceName
+      - merchantId
+      - storeId
+      - submissionNo
+      - decisionType
+      - decidedAt
+      - ownerUserId
+      properties:
+        serviceId:
+          $ref: '#/components/schemas/PublicId'
+        serviceName:
+          type: string
+          maxLength: 50
+        merchantId:
+          $ref: '#/components/schemas/PublicId'
+        storeId:
+          $ref: '#/components/schemas/PublicId'
+        submissionNo:
+          type: integer
+          format: int64
+          minimum: 1
+        decisionType:
+          type: string
+          enum:
+          - APPROVE
+          - REJECT
+        opinion:
+          type: string
+          nullable: true
+          maxLength: 500
+        decidedAt:
+          $ref: '#/components/schemas/AuthTimestamp'
+        ownerUserId:
+          $ref: '#/components/schemas/PublicId'
+      description: Shared data definition for ServiceReviewedEvent.v1 (Event08), not an HTTP
+        endpoint. REJECT requires opinion 10-500 chars; APPROVE opinion optional. The recipient
+        field keeps the notification consumer self-contained.
+
     MerchantApplicationReviewedPayload:
       type: object
       additionalProperties: false

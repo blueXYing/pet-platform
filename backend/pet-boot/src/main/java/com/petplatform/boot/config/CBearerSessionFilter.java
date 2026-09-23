@@ -54,6 +54,10 @@ public final class CBearerSessionFilter extends OncePerRequestFilter {
         || path.equals("/api/v1/merchant/auth/admission")
         || path.equals("/api/v1/c/notifications")
         || path.startsWith("/api/v1/c/notifications/")
+        // Merchant workbench service management (ADM-001 write slice): MINIAPP Bearer enforced.
+        || path.equals("/api/v1/merchant/services")
+        || path.startsWith("/api/v1/merchant/services/")
+        || path.equals("/api/v1/merchant/service-categories")
         || path.matches("/api/v1/c/stores/[^/]+/services")
         || path.startsWith("/api/v1/c/services/");
   }
