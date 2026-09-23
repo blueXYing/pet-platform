@@ -158,15 +158,17 @@ HTTP 映射只属于 Adapter 层；内部 Java API 通过稳定 code 表达同�
 
 ## 12. MERCHANT / SERVICE
 
-| Code | 含义 |
-|---|---|
-| MERCHANT_NOT_FOUND | 商家不存在 |
-| MERCHANT_DISABLED | 商家不可接受新订单 |
-| STORE_NOT_FOUND | 门店不存在 |
-| STORE_DISABLED | 门店不可接受新订单 |
-| SERVICE_NOT_FOUND | 服务不存在 |
-| SERVICE_NOT_BOOKABLE | 服务当前不可预约 |
-| SERVICE_FULFILLMENT_NOT_SUPPORTED | 履约方式不支持 |
+| Code | 含义 | 建议 HTTP |
+|---|---|---:|
+| MERCHANT_NOT_FOUND | 商家不存在 | 404 |
+| MERCHANT_DISABLED | 商家不可接受新订单 | 409 |
+| STORE_NOT_FOUND | 门店不存在 | 404 |
+| STORE_DISABLED | 门店不可接受新订单 | 409 |
+| SERVICE_NOT_FOUND | 服务不存在 | 404 |
+| SERVICE_NOT_BOOKABLE | 服务当前不可预约 | 409 |
+| SERVICE_FULFILLMENT_NOT_SUPPORTED | 履约方式不支持 | 400 |
+| SERVICE_STATE_NOT_ALLOWED | 服务当前状态不允许该操作（写入方状态机违规：编辑 ACTIVE/REVIEWING、对非 DRAFT/REJECTED/OFFLINE 提交、对非 ACTIVE 下架、对非 REVIEWING 审核决定、对非 ACTIVE 强制下架；或商家/门店事实明确但不可经营）（CCR-W2-API-001 服务写入方 v0.2，2026-09-22 已批） | 409 |
+| SERVICE_REVIEW_REASON_REQUIRED | 审核驳回缺少必填意见（10-500 字）（同批） | 400 |
 
 ## 13. THIRD_PARTY
 

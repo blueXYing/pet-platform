@@ -20,32 +20,29 @@ import org.springframework.web.multipart.MaxUploadSizeExceededException;
       CPrivateAssetController.class,
       AdminPrivateAssetController.class,
       MerchantAgreementController.class,
-      MerchantApplicationCityController.class
+      MerchantApplicationCityController.class,
+      MerchantServiceController.class,
+      ServiceWriteAdminController.class
     })
 @Order(Ordered.HIGHEST_PRECEDENCE + 20)
 public final class MerchantHttpExceptionHandler {
   private static final Map<String, Integer> STATUS =
-      Map.of(
-          CommonApiCodes.INVALID_ARGUMENT,
-          400,
-          CommonApiCodes.UNAUTHORIZED,
-          401,
-          CommonApiCodes.FORBIDDEN,
-          403,
-          CommonApiCodes.NOT_FOUND,
-          404,
-          CommonApiCodes.CONFLICT,
-          409,
-          CommonApiCodes.IDEMPOTENCY_KEY_CONFLICT,
-          409,
-          CommonApiCodes.DEPENDENCY_UNAVAILABLE,
-          503,
-          com.petplatform.thirdparty.api.PrivateAssetApiCodes.ASSET_NOT_READY,
-          409,
-          com.petplatform.thirdparty.api.PrivateAssetApiCodes.ASSET_REJECTED,
-          422,
-          com.petplatform.thirdparty.api.PrivateAssetApiCodes.GRANT_GONE,
-          410);
+      Map.ofEntries(
+          Map.entry(CommonApiCodes.INVALID_ARGUMENT, 400),
+          Map.entry(CommonApiCodes.UNAUTHORIZED, 401),
+          Map.entry(CommonApiCodes.FORBIDDEN, 403),
+          Map.entry(CommonApiCodes.NOT_FOUND, 404),
+          Map.entry(CommonApiCodes.CONFLICT, 409),
+          Map.entry(CommonApiCodes.IDEMPOTENCY_KEY_CONFLICT, 409),
+          Map.entry(CommonApiCodes.DEPENDENCY_UNAVAILABLE, 503),
+          // Service write slice (ADM-001, 12号 §12 additions).
+          Map.entry(com.petplatform.service.api.error.ServiceWriteApiCodes
+                  .SERVICE_STATE_NOT_ALLOWED, 409),
+          Map.entry(com.petplatform.service.api.error.ServiceWriteApiCodes
+                  .SERVICE_REVIEW_REASON_REQUIRED, 400),
+          Map.entry(com.petplatform.thirdparty.api.PrivateAssetApiCodes.ASSET_NOT_READY, 409),
+          Map.entry(com.petplatform.thirdparty.api.PrivateAssetApiCodes.ASSET_REJECTED, 422),
+          Map.entry(com.petplatform.thirdparty.api.PrivateAssetApiCodes.GRANT_GONE, 410));
 
   @ExceptionHandler(ApiException.class)
   Map<String, Object> api(ApiException error, HttpServletResponse response) {

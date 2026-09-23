@@ -2,9 +2,11 @@
 
 批准来源：CCR-MER-PRIVATE-001；2026-09-20 用户确认。适用 MER-001 S8，状态 IMPLEMENTED_CANDIDATE_LOCAL_VERIFIED，默认不启用生产。
 
+**增补（2026-09-22，CCR-W2-API-001 门店读侧切片，用户裁决派生 SERVICE_COVER 分工）**：`purpose` 取值在 `MERCHANT_APPLICATION_MATERIAL` 之外新增 **`SERVICE_COVER`**（服务封面素材）。上传走同一 `POST /api/v1/c/private-assets` 与同一不可变上传/扫描/收敛管线（图片、大小、元数据清除、ClamAV 扫描、幂等恢复全部沿用，无新错误码、无 Schema 变更）；**素材归属=上传会话用户（商家主账号）**——SERVICE_COVER 上传时服务端校验当前会话用户至少拥有一家商家（成员关系 OWNER），否则 403；商家事实不可读取时 503 失败关闭，不静默放行。`resolveOwned` 按 owner+purpose 隔离解析（封面素材不可被申请材料通道或他人引用）。运营审阅：封面在服务审核详情中可见（消费方为服务写入方的审核详情路由，仍经既有 read-grant 水印机制，不在本契约内新增匿名读取）；消费者展示授权由服务域读侧签名 URL 机制另行处理（服务写入方范围）。本增补由 MER 域 Writer 独立 commit 交付并在 PR 披露。
+
 ## 上传与不可变事实
 
-`POST /api/v1/c/private-assets` 使用 MINIAPP bearer 会话与完整 UUID `X-Request-Id`，multipart 仅包含 `purpose=MERCHANT_APPLICATION_MATERIAL` 和 `file`。owner 只取当前会话，不能由客户端传入。文件原字节和最终对象均为 1..10 MiB；明确 JPEG/PNG 声明必须匹配实际图片；空声明或 application/octet-stream 从头部识别类型后仍须完整解码。JPEG 的 EXIF 朝向先纠正并清除元数据，按 JPEG quality 0.95 重编码；PNG 清除元数据后仍重编码为 PNG。标准化保留 JPEG/PNG 编码类别，不把合法 JPEG 强制膨胀为 PNG。图片单边不超过 8192、总像素不超过 1600 万，标准化超出字节上限同样拒绝。Servlet 文件阈值 10MB、单文件上限 10MB、请求上限 11MB，避免有效文件解析落入普通临时目录；应用层仍独立执行 10MiB 上限。
+`POST /api/v1/c/private-assets` 使用 MINIAPP bearer 会话与完整 UUID `X-Request-Id`，multipart 仅包含 `purpose`（取值 `MERCHANT_APPLICATION_MATERIAL` 或 `SERVICE_COVER`）和 `file`。owner 只取当前会话，不能由客户端传入。文件原字节和最终对象均为 1..10 MiB；明确 JPEG/PNG 声明必须匹配实际图片；空声明或 application/octet-stream 从头部识别类型后仍须完整解码。JPEG 的 EXIF 朝向先纠正并清除元数据，按 JPEG quality 0.95 重编码；PNG 清除元数据后仍重编码为 PNG。标准化保留 JPEG/PNG 编码类别，不把合法 JPEG 强制膨胀为 PNG。图片单边不超过 8192、总像素不超过 1600 万，标准化超出字节上限同样拒绝。Servlet 文件阈值 10MB、单文件上限 10MB、请求上限 11MB，避免有效文件解析落入普通临时目录；应用层仍独立执行 10MiB 上限。
 
 先保存不可变上传意图和 durable AsyncTask，再执行私有对象写入与收敛。owner/requestId 绑定源摘要及语义参数；相同请求只能恢复同一 assetId，不同内容不能覆盖绑定。原始 sourceSha256 与标准化 objectSha256 分别登记。只有真实对象版本、摘要、扫描、图片解码均成功才 READY；未知写入按原意图收敛，不得返回新标识伪装成功。
 

@@ -33,14 +33,28 @@ import java.util.Set;
  */
 public final class ServiceQueryService {
     private static final DecimalPublicIdCodec IDS = new DecimalPublicIdCodec();
-    private static final Set<String> SERVICE_STATUSES = Set.of("DRAFT", "ACTIVE", "OFFLINE");
+    /**
+     * Known stored statuses (06号 comment as amended by 33号). REVIEWING/REJECTED are legal write-
+     * side states since the service write slice: they stay invisible to consumers (still 404) but
+     * are no longer treated as unknown facts (2026-09-22 ruling, proposal v0.2).
+     */
+    private static final Set<String> SERVICE_STATUSES =
+            Set.of("DRAFT", "REVIEWING", "ACTIVE", "OFFLINE", "REJECTED");
+
+    /** Registry 12 §12 service-domain not-found code (SVC-D1b: 404, never COMMON_NOT_FOUND). */
+    private static final String SERVICE_NOT_FOUND = "SERVICE_NOT_FOUND";
 
     private final ServiceReadStore store;
     private final MerchantDisplayEligibilityApi merchantFacts;
+    private final ServiceWriteDependencies.ServiceCoverUrlPort coverUrls;
 
-    public ServiceQueryService(ServiceReadStore store, MerchantDisplayEligibilityApi merchantFacts) {
+    public ServiceQueryService(
+            ServiceReadStore store,
+            MerchantDisplayEligibilityApi merchantFacts,
+            ServiceWriteDependencies.ServiceCoverUrlPort coverUrls) {
         this.store = Objects.requireNonNull(store, "store is required");
         this.merchantFacts = Objects.requireNonNull(merchantFacts, "merchantFacts is required");
+        this.coverUrls = coverUrls; // nullable on purpose: internal reads never sign a cover URL
     }
 
     /** Internal projection: any stored row by id; the returned copy never tracks later changes. */
@@ -93,7 +107,7 @@ public final class ServiceQueryService {
                 return new ServiceSnapshotPageDTO(List.of(), page, pageSize, 0);
             }
             List<ServiceSnapshotDTO> items = new ArrayList<>(rows.size());
-            for (ServiceItemReadEntity row : rows) items.add(toSnapshot(row));
+            for (ServiceItemReadEntity row : rows) items.add(withCoverUrl(toSnapshot(row)));
             return new ServiceSnapshotPageDTO(List.copyOf(items), page, pageSize, total);
         });
     }
@@ -108,8 +122,48 @@ public final class ServiceQueryService {
             if (row == null || !"ACTIVE".equals(row.getStatus())) notFound();
             MerchantDisplayEligibilityDTO facts = displayFacts(row, query.context());
             if (!facts.merchantEnabled() || !facts.storeEnabled() || !facts.acceptsNewOrders()) notFound();
-            return toSnapshot(row);
+            return withCoverUrl(toSnapshot(row));
         });
+    }
+
+    /**
+     * Consumer cover display (2026-09-22 ruling #3): a presigned URL is issued only for a row that
+     * already passed the visibility conjunction and carries a cover binding. No cover -> null
+     * fields; a bound cover whose signer is unavailable fails closed (503), never an unsigned or
+     * stale URL.
+     */
+    private ServiceSnapshotDTO withCoverUrl(ServiceSnapshotDTO snapshot) {
+        if (snapshot.coverAssetId() == null) return snapshot;
+        if (coverUrls == null) unavailable("cover url signer is unavailable");
+        ServiceWriteDependencies.ServiceCoverUrlPort.CoverUrl signed;
+        try {
+            signed = coverUrls.sign(snapshot.coverAssetId());
+        } catch (ApiException known) {
+            throw known;
+        } catch (RuntimeException failure) {
+            unavailable("cover url signer is unavailable");
+            return null;
+        }
+        if (signed == null || signed.url() == null || signed.url().isBlank()
+                || signed.expiresAtEpochSeconds() <= 0) {
+            unavailable("cover url signature is invalid");
+        }
+        return new ServiceSnapshotDTO(
+                snapshot.serviceId(),
+                snapshot.merchantId(),
+                snapshot.storeId(),
+                snapshot.serviceName(),
+                snapshot.categoryId(),
+                snapshot.categoryName(),
+                snapshot.salePrice(),
+                snapshot.durationMinutes(),
+                snapshot.fulfillmentType(),
+                snapshot.description(),
+                snapshot.coverAssetId(),
+                signed.url(),
+                java.time.Instant.ofEpochSecond(signed.expiresAtEpochSeconds())
+                        .atOffset(java.time.ZoneOffset.UTC)
+                        .toString());
     }
 
     private MerchantDisplayEligibilityDTO displayFacts(
@@ -149,7 +203,10 @@ public final class ServiceQueryService {
                 row.getPrice(),
                 row.getDurationMinutes(),
                 fulfillment,
-                row.getDescription());
+                row.getDescription(),
+                row.getCoverAssetId() == null ? null : IDS.toApi(row.getCoverAssetId()),
+                null,
+                null);
     }
 
     private static long targetId(String value) {
@@ -169,7 +226,9 @@ public final class ServiceQueryService {
     }
 
     private static void notFound() {
-        throw new ApiException(CommonApiCodes.NOT_FOUND, "service resource not found");
+        // SVC-D1b: confirmed missing OR any visibility condition failing answers the same
+        // domain code, indistinguishable from the caller's perspective (anti-probing).
+        throw new ApiException(SERVICE_NOT_FOUND, "service resource not found");
     }
 
     private static void unavailable(String message) {

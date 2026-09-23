@@ -89,7 +89,7 @@ class AdminAuthHttpTest {
         String token=granted.data().get("accessToken").toString();
         assertEquals(200,send("GET","/attempts/"+a.id+"/result?requestId="+rid,null,attemptHeaders(a)).status);
         assertEquals(200,send("GET","/session",null,bearer(token)).status);
-        var permission=send("GET","/permissions",null,bearer(token));assertEquals(200,permission.status);assertEquals(List.of("merchant.application.decide", "merchant.application.read", "merchant.identity.reveal"),permission.data().get("actionCodes"));
+        var permission=send("GET","/permissions",null,bearer(token));assertEquals(200,permission.status);assertEquals(List.of("merchant.application.decide", "merchant.application.read", "merchant.identity.reveal", "service.force.offline", "service.review.decide", "service.review.read"),permission.data().get("actionCodes"));
         var activityHeaders=bearer(token);var activity=send("POST","/activity",Map.of(),activityHeaders);assertEquals(200,activity.status);assertEquals(activity.data(),send("POST","/activity",Map.of(),activityHeaders).data());
         var logoutHeaders=bearer(token);assertEquals(200,send("POST","/logout",Map.of(),logoutHeaders).status);assertEquals(200,send("POST","/logout",Map.of(),logoutHeaders).status);
         assertEquals(401,send("GET","/session",null,bearer(token)).status);

@@ -25,6 +25,14 @@ import org.springframework.transaction.support.TransactionSynchronizationManager
 /** CCR-MER-PRIVATE-001 implementation. Raw object locations never leave this module. */
 public final class PrivateAssetApiImpl implements PrivateAssetApi {
   public static final String MERCHANT_APPLICATION_MATERIAL = "MERCHANT_APPLICATION_MATERIAL";
+  /**
+   * CCR-W2-API-001 store read (user-ruled SERVICE_COVER assignment): service cover images share
+   * the whole immutable upload/scan/ownership pipeline; the purpose only scopes resolution and
+   * review visibility, never the safety chain.
+   */
+  public static final String SERVICE_COVER = "SERVICE_COVER";
+  private static final java.util.Set<String> UPLOAD_PURPOSES =
+      java.util.Set.of(MERCHANT_APPLICATION_MATERIAL, SERVICE_COVER);
   static final int MAX_BYTES = 10 * 1024 * 1024;
   private static final DecimalPublicIdCodec IDS = new DecimalPublicIdCodec();
 
@@ -127,7 +135,7 @@ public final class PrivateAssetApiImpl implements PrivateAssetApi {
 
   @Override
   public List<PrivateAssetFact> resolveOwned(ResolveOwnedPrivateAssetsQuery query) {
-    if (query == null || !MERCHANT_APPLICATION_MATERIAL.equals(query.requiredPurpose())) {
+    if (query == null || !UPLOAD_PURPOSES.contains(query.requiredPurpose())) {
       throw invalid("私有材料查询参数无效");
     }
     long owner = apiId(query.ownerUserId());
@@ -603,7 +611,7 @@ public final class PrivateAssetApiImpl implements PrivateAssetApi {
     long owner = apiId(command.ownerUserId());
     if (command.context().operatorType() != OperatorType.USER
         || !command.ownerUserId().equals(command.context().operatorId())) throw forbidden();
-    if (!MERCHANT_APPLICATION_MATERIAL.equals(command.purpose())) throw invalid("材料用途无效");
+    if (!UPLOAD_PURPOSES.contains(command.purpose())) throw invalid("材料用途无效");
     String media = requireMediaType(command.declaredMediaType());
     if (command.declaredBytes() < 1 || command.declaredBytes() > MAX_BYTES) throw invalid("文件大小无效");
     return new UploadInput(owner, command.purpose(), media);

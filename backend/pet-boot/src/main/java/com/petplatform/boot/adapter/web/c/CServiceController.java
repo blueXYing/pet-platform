@@ -30,6 +30,9 @@ import org.springframework.web.bind.annotation.RestController;
  * GET /api/v1/c/stores/{storeId}/services and GET /api/v1/c/services/{serviceId}
  * (CCR-W2-API-001 service domain, HTTP10 3.3.1). Visibility = the approved four-condition
  * conjunction; hidden or missing resources answer 404 indistinguishably, facts failures 503.
+ * Session is optional per the store-read STR-D8 ruling (PRD "all users browse"): anonymous GET
+ * passes, an invalid carried bearer still 401s, and the optional subject never changes
+ * visibility.
  */
 @RestController
 @ConditionalOnProperty(prefix = "pet.service.query", name = "enabled", havingValue = "true")
@@ -53,14 +56,14 @@ public class CServiceController {
             @RequestParam(required = false) String pageSize,
             HttpServletRequest req) {
         rejectUnknownParameters(req);
-        MiniSessionView session = session(req);
+        QueryContext context = context(req);
         ServiceSnapshotPageDTO value =
                 services.getStoreServiceSnapshots(
                         new StoreServiceSnapshotQuery(
                                 storeId,
                                 parse(page, 1, 10_000, "page"),
                                 parse(pageSize, 20, 50, "pageSize"),
-                                new QueryContext(trace(req), OperatorType.USER, session.userId())));
+                                context));
         Map<String, Object> data = new LinkedHashMap<>();
         data.put("items", value.items().stream().map(CServiceController::summary).toList());
         data.put("page", value.page());
@@ -73,11 +76,9 @@ public class CServiceController {
     public ApiResponse<Map<String, Object>> detail(
             @PathVariable String serviceId, HttpServletRequest req) {
         rejectQuery(req);
-        MiniSessionView session = session(req);
         ServiceSnapshotDTO value =
                 services.getVisibleService(
-                        new ServiceSnapshotQuery(
-                                serviceId, new QueryContext(trace(req), OperatorType.USER, session.userId())));
+                        new ServiceSnapshotQuery(serviceId, context(req)));
         return ApiResponse.success(body(value), trace(req));
     }
 
@@ -98,15 +99,27 @@ public class CServiceController {
         row.put("salePrice", item.salePrice().toPlainString());
         row.put("durationMinutes", item.durationMinutes());
         row.put("fulfillmentType", item.fulfillmentType().name());
+        // Cover display (2026-09-22 ruling #3): only consumer-visible reads carry the presigned
+        // URL; hidden rows never reach here (404), rows without a cover binding keep cover null.
+        if (item.coverAssetId() != null) {
+            Map<String, Object> cover = new LinkedHashMap<>();
+            cover.put("coverAssetId", item.coverAssetId());
+            cover.put("coverUrl", item.coverUrl());
+            cover.put("coverUrlExpiresAt", item.coverUrlExpiresAt());
+            row.put("cover", cover);
+        } else {
+            row.put("cover", null);
+        }
         return row;
     }
 
-    private static MiniSessionView session(HttpServletRequest req) {
+    /** STR-D8 optional session: anonymous stays anonymous; visibility never depends on it. */
+    private static QueryContext context(HttpServletRequest req) {
         Object view = req.getAttribute(CBearerSessionFilter.VIEW);
-        if (!(view instanceof MiniSessionView session)) {
-            throw new ApiException(CommonApiCodes.UNAUTHORIZED, "登录已失效，请重新登录");
+        if (view instanceof MiniSessionView session) {
+            return new QueryContext(trace(req), OperatorType.USER, session.userId());
         }
-        return session;
+        return new QueryContext(trace(req), null, null);
     }
 
     private static int parse(String raw, int fallback, int max, String field) {

@@ -4,11 +4,20 @@ import static com.petplatform.boot.adapter.web.merchant.MerchantHttpSupport.*;
 import static com.petplatform.boot.config.MerchantPrivateAssetQueryAdapter.MERCHANT_APPLICATION_PURPOSE;
 import static com.petplatform.thirdparty.api.dto.PrivateAssetTypes.*;
 
+import com.petplatform.common.ApiException;
+import com.petplatform.common.CommonApiCodes;
+import com.petplatform.common.OperatorType;
 import com.petplatform.common.PublicContractChecks;
+import com.petplatform.common.QueryContext;
+import com.petplatform.merchant.api.dto.MerchantMembershipPageDTO;
+import com.petplatform.merchant.api.query.MerchantMembershipQuery;
+import com.petplatform.merchant.biz.apiimpl.MerchantAdmissionApiImpl;
 import com.petplatform.thirdparty.api.PrivateAssetApi;
+import com.petplatform.user.biz.application.UserAuthService.MiniSessionView;
 import jakarta.servlet.http.*;
 import java.io.*;
 import java.util.*;
+import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.boot.autoconfigure.condition.*;
 import org.springframework.http.*;
 import org.springframework.web.bind.annotation.*;
@@ -20,10 +29,16 @@ import org.springframework.web.multipart.*;
 public final class CPrivateAssetController {
   static final long MAX_BYTES = 10L * 1024 * 1024;
   private static final Set<String> MEDIA_TYPES = Set.of("image/jpeg", "image/png");
+  /** CCR-W2-API-001 store read: SERVICE_COVER shares the pipeline (31 supplement, MER writer). */
+  static final String SERVICE_COVER_PURPOSE = "SERVICE_COVER";
+  private static final Set<String> PURPOSES = Set.of(MERCHANT_APPLICATION_PURPOSE, SERVICE_COVER_PURPOSE);
   private final PrivateAssetApi assets;
+  private final ObjectProvider<MerchantAdmissionApiImpl> admissions;
 
-  public CPrivateAssetController(PrivateAssetApi assets) {
+  public CPrivateAssetController(
+      PrivateAssetApi assets, ObjectProvider<MerchantAdmissionApiImpl> admissions) {
     this.assets = assets;
+    this.admissions = admissions;
   }
 
   @PostMapping(consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
@@ -39,7 +54,7 @@ public final class CPrivateAssetController {
         || multipart.getParameterValues("purpose").length != 1
         || !multipart.getMultiFileMap().keySet().equals(Set.of("file"))
         || multipart.getFiles("file").size() != 1
-        || !MERCHANT_APPLICATION_PURPOSE.equals(purpose)
+        || !PURPOSES.contains(purpose)
         || file.isEmpty()
         || file.getSize() <= 0
         || file.getSize() > MAX_BYTES) throw invalid();
@@ -50,6 +65,7 @@ public final class CPrivateAssetController {
       throw invalid();
     }
     var session = mini(request);
+    if (SERVICE_COVER_PURPOSE.equals(purpose)) requireMerchantMainAccount(request, session);
     UploadPrivateAssetResult result;
     try (var content = new PushbackInputStream(file.getInputStream(), 8)) {
       String mediaType = serverMediaType(content, file.getContentType());
@@ -91,6 +107,26 @@ public final class CPrivateAssetController {
     response.setHeader(HttpHeaders.PRAGMA, "no-cache");
     response.setHeader("X-Content-Type-Options", "nosniff");
     return envelope(data, request);
+  }
+
+  /**
+   * SERVICE_COVER uploads are scoped to merchant main accounts (the user-ruled assignment): the
+   * session user must own at least one merchant. Whether that merchant may currently operate is
+   * the service write-side gate, not the pipeline's. Missing merchant facts fail closed (503),
+   * never silently allow.
+   */
+  private void requireMerchantMainAccount(HttpServletRequest request, MiniSessionView session) {
+    MerchantAdmissionApiImpl admission = admissions.getIfAvailable();
+    if (admission == null) {
+      throw new ApiException(CommonApiCodes.DEPENDENCY_UNAVAILABLE, "商家事实暂时不可用");
+    }
+    MerchantMembershipPageDTO memberships =
+        admission.listMemberships(
+            new MerchantMembershipQuery(
+                1, 1, new QueryContext(trace(request), OperatorType.USER, session.userId())));
+    if (memberships == null || memberships.total() < 1) {
+      throw new ApiException(CommonApiCodes.FORBIDDEN, "仅商家主账号可上传服务封面素材");
+    }
   }
 
   private static String serverMediaType(PushbackInputStream content, String declared)
