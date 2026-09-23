@@ -5,12 +5,14 @@ STATE_VERSION: 8.1
 UPDATED_AT: 2026-09-23
 
 CURRENT_PHASE: W3_INTEGRATION_REVIEW
-CURRENT_STATUS: ROUND_CLOSED_VISUAL_ACCEPTANCE_PASSED
+CURRENT_STATUS: SERVICE_ROUND_MERGED_VISUAL_PASSED_WINDOW_E2E_PENDING
 VERIFIED_BASELINE: develop c8d0c10（PR66~75 全部合入，合并CI绿）
 NEXT_PHASE: 本轮收官（用户视觉验收通过，见2026-09-23/VISUAL-ACCEPTANCE.md）；后续：完整人工E2E走查（可选）、B1~B7及页面登录门控张力裁决、通知端到端走查、按依赖推进排期/订单
 NEXT_PHASE_APPROVED: YES（2026-09-23用户授权按序合并并继续任务；新PR合并与人工验收仍归用户）
 
 ## 当前结论
+
+> 本节按日期倒序记录。**除最新一段为当前状态外，其余各段均为当日快照**（保留当时事实与口径，不回写；后续进展以上方表格与本节最新段为准）。
 2026-09-23收官：用户授权合并PR70~75（develop c8d0c10，合并CI绿）；**用户视觉验收通过**（六页面，口径=原稿+已批差异，记录见[VISUAL-ACCEPTANCE](planning/progress/2026-09-23/VISUAL-ACCEPTANCE.md)）；PR#75修复门店列表页匿名读被登录上下文拦截的接线缺陷（真因修正：上轮"构建打坏"为DevTools编译缓存假象），真实模式窗口级渲染+网络取证入库。完整人工E2E走查与真机未做，如实保留。
 
 
@@ -49,8 +51,8 @@ SSOT §28已批准取消入驻地址/坐标地理匹配、距离和围栏限制�
 | SVC-001 服务域读 / PR65~66 | CCR 服务域 v0.3 已批（SVC-D1～D5）；两条 C 端服务读路由 + D5 展示资格第四查询 + 快照/资格/可见性（四条件合取、错误两分）实现与 ServiceQueryHttpTest 通过；PR66 勘误修复 §3.3.1 漏同步与 404 码（SERVICE_NOT_FOUND，测试补 body code 断言） | 读侧仅在 ACTIVE 可见已含 REVIEWING/REJECTED 兼容回归（PR68）；排期/订单不提前；完整预约流程未验收 |
 | MER-001 门店读侧 / PR67 | CCR v0.2（STR-D1~D8）已批并合入：/c/stores 两路由+第五查询 MerchantStoreDisplayApi+四条浏览路由匿名（STR-D8 七面核验无冲突批准）+城市目录+完整性runbook+SERVICE_COVER 管线（31号）；CStoreControllerHttpTest 2/2 | 分类筛选/关键词搜索延后（STR-D7）；评分/月售/距离/收藏/相册/评价/促销等无事实源字段不实现；完整门店页面验收未完成 |
 | ADM-001 服务操作（写入方）/ PR68 | CCR v0.2 已批并合入：状态机五值（商家动作不产生 ACTIVE）+六命令幂等/乐观锁+getFacts 门禁+运营审核四路由+审核事件 Outbox（ServiceReviewedEvent.v1 九字段）+封面展示授权+33号 Schema/V27 迁移；ServiceWriteHttpTest 真实链路通过；owner_user_id 列小幅增补已披露 | 售罄/硬删除/批量通过/类目 CRUD 延后；动作码 service.force.offline 词法更正已披露；强制下架通知待裁决 |
-| NTF 服务审核通知 / PR69+PR71 | 消费侧（严格载荷校验/幂等/权限隔离）合入；boot 接线+开关+NOTIFICATION-001 §5 登记在 PR71（CI 绿待合并） | 三方（生产#68+消费#69+页面#72）代码齐备但端到端人工验收未做；完整审核流程不标完成；force-offline 不发通知 |
-| M-002 服务管理页 / C-003 门店页 / PR72 | 设计源（10:5255/11:5768 确认+V1裁剪20条VIS-004差异登记）+六页面实现+10项契约对齐修复+共享层真实API联调取证（发布→审核→匿名找店/进店/看到→下架隐藏/404）；162/162 前端测试（CI 绿待合并） | 模拟器窗口级验证/VIS/真机留用户人工验收；通知跳转端到端待 #71 合并；封面真实签名端口无 signer 时 503（设计内） |
+| NTF 服务审核通知 / PR69+PR71 | 消费侧（严格载荷校验/幂等/权限隔离）合入；boot 接线+开关+NOTIFICATION-001 §5 登记已随 PR71 合入 | 三方（生产#68+消费#69+页面#72）代码齐备但端到端人工验收未做；完整审核流程不标完成；force-offline 不发通知 |
+| M-002 服务管理页 / C-003 门店页 / PR72 | 设计源（10:5255/11:5768 确认+V1裁剪20条VIS-004差异登记）+六页面实现+10项契约对齐修复+共享层真实API联调取证（发布→审核→匿名找店/进店/看到→下架隐藏/404）；162/162 前端测试；PR72/75 已合入，用户视觉验收通过（2026-09-23） | 模拟器窗口级验证/VIS/真机留用户人工验收；通知跳转端到端走查未做（窗口级验证缺口）；封面真实签名端口无 signer 时 503（设计内） |
 | 服务/排期/交易/治理其余范围 | 以各Issue证据为准，未因以上合并自动完成 | 契约、业务实现与端到端验收按依赖推进 |
 
 ## 下一步与保留门禁
