@@ -30,36 +30,26 @@ export const petTypeText: Record<ApplicablePetType, string> = { DOG: '狗', CAT:
 export const petTypes: readonly ApplicablePetType[] = ['CAT', 'DOG', 'EXOTIC', 'ALL']
 const petTypeSet = new Set<ApplicablePetType>(petTypes)
 
-/** GET /api/v1/merchant/service-categories item (proposal §5.1: ENABLED id/name/sortNo). */
-export type ServiceCategoryView = Readonly<{ id: string; name: string; sortNo: number }>
+/** GET /api/v1/merchant/service-categories item (10号 §4.10.1: ENABLED categoryId/categoryName/sortNo). */
+export type ServiceCategoryView = Readonly<{ categoryId: string; categoryName: string; sortNo: number }>
 
-/** Cover projection (A-side finalization): asset anchor plus a signed display URL that is
- *  only returned while visible and expires at coverUrlExpiresAt (refresh placeholder). */
-export type ManagedServiceCover = Readonly<{
-  coverAssetId: string | null
-  coverUrl: string | null
-  coverUrlExpiresAt: string | null
-}>
-
-/** List projection of GET /api/v1/merchant/services (all statuses, this store only). */
-export type ManagedServiceItem = Readonly<{
-  serviceId: string; serviceName: string; categoryName: string | null
-  price: string | null; status: ServiceManageStatus; version: string
-  submissionNo: number; submittedAt: string | null; updatedAt: string
-  cover: ManagedServiceCover
-}>
+/** Cover projection is C-END ONLY (§3.3.1 封面增补): cover.coverUrl/coverAssetId/coverUrlExpiresAt.
+ *  The merchant workbench rows carry a flat coverAssetId anchor instead (§4.10.1 字段定稿). */
 /** Most recent REJECT decision only (A-side finalization): opinion is mandatory 10-500. */
 export type ManagedServiceRejection = Readonly<{
   decisionId: string; submissionNo: number; decisionType: 'REJECT'
   opinion: string; decidedAt: string
 }>
-export type ManagedServiceDetail = Readonly<{
+/** Workbench row of GET /api/v1/merchant/services (list and detail share one flat projection,
+ *  §4.10.1 字段定稿): coverAssetId is a flat anchor; applicablePetTypes null (loose draft) decodes
+ *  to an empty array for the form. */
+export type ManagedServiceItem = Readonly<{
   serviceId: string; merchantId: string; storeId: string
   serviceName: string; categoryId: string | null; categoryName: string | null
   fulfillmentType: FulfillmentType | null
   price: string | null; listPrice: string | null
   durationMinutes: number | null
-  cover: ManagedServiceCover
+  coverAssetId: string | null
   applicablePetTypes: readonly ApplicablePetType[]
   staffRequirement: string | null
   verificationRequired: boolean
@@ -70,9 +60,10 @@ export type ManagedServiceDetail = Readonly<{
   submissionNo: number; submittedAt: string | null; updatedAt: string
   latestRejection: ManagedServiceRejection | null
 }>
+export type ManagedServiceDetail = ManagedServiceItem
 export type ManagedServicePage = Readonly<{ items: ManagedServiceItem[]; page: number; pageSize: number; total: number }>
-/** Success data of POST/PUT/online/offline: {serviceId,status,version} (proposal §5.1). */
-export type ServiceCommandReceipt = Readonly<{ serviceId: string; status: ServiceManageStatus; version: string }>
+/** Success data of POST/PUT/online/offline: {serviceId,merchantId,storeId,status,version}. */
+export type ServiceCommandReceipt = Readonly<{ serviceId: string; merchantId: string; storeId: string; status: ServiceManageStatus; version: string }>
 
 /** Form payload for create (POST) and update (PUT); DRAFT save is loose, submit validates.
  *  The write command keeps a flat coverAssetId (the cover object is the read projection). */
@@ -103,7 +94,7 @@ export function draftFromDetail(detail: ManagedServiceDetail): ServiceDraftInput
   return {
     serviceName: detail.serviceName, categoryId: detail.categoryId, fulfillmentType: detail.fulfillmentType,
     price: detail.price, listPrice: detail.listPrice, durationMinutes: detail.durationMinutes,
-    coverAssetId: detail.cover.coverAssetId, applicablePetTypes: detail.applicablePetTypes,
+    coverAssetId: detail.coverAssetId, applicablePetTypes: detail.applicablePetTypes,
     staffRequirement: detail.staffRequirement, verificationRequired: detail.verificationRequired,
     description: detail.description, aftersaleNote: detail.aftersaleNote, remark: detail.remark,
   }
@@ -153,15 +144,6 @@ const submissionNoOf = (value: any): number => {
   if (!Number.isSafeInteger(value) || value < 0 || value > 4294967295) invalid()
   return value
 }
-function coverOf(value: any): ManagedServiceCover {
-  const v = exact(value, ['coverAssetId', 'coverUrl', 'coverUrlExpiresAt'])
-  const coverAssetId = v.coverAssetId === null ? null : isId(v.coverAssetId) ? v.coverAssetId : invalid()
-  const coverUrl = textOrNull(v.coverUrl, 2048)
-  const coverUrlExpiresAt = timestampOrNull(v.coverUrlExpiresAt)
-  // A signed display URL always comes with its asset anchor and its own expiry.
-  if (coverUrl !== null && (coverAssetId === null || coverUrlExpiresAt === null)) invalid()
-  return { coverAssetId, coverUrl, coverUrlExpiresAt }
-}
 function rejectionOf(value: any): ManagedServiceRejection | null {
   if (value === null) return null
   const v = exact(value, ['decisionId', 'submissionNo', 'decisionType', 'opinion', 'decidedAt'])
@@ -174,48 +156,26 @@ function rejectionOf(value: any): ManagedServiceRejection | null {
 }
 
 export function decodeCategory(value: unknown): ServiceCategoryView {
-  const v = exact(value, ['id', 'name', 'sortNo'])
-  if (!isId(v.id)) invalid()
-  if (typeof v.name !== 'string' || [...v.name].length < 1 || [...v.name].length > 50) invalid()
-  if (!Number.isSafeInteger(v.sortNo) || v.sortNo < 1 || v.sortNo > 10000) invalid()
-  return { id: v.id, name: v.name, sortNo: v.sortNo }
+  const v = exact(value, ['categoryId', 'categoryName', 'sortNo'])
+  if (!isId(v.categoryId)) invalid()
+  if (typeof v.categoryName !== 'string' || [...v.categoryName].length < 1 || [...v.categoryName].length > 50) invalid()
+  if (!Number.isSafeInteger(v.sortNo) || v.sortNo < 0 || v.sortNo > 10000) invalid()
+  return { categoryId: v.categoryId, categoryName: v.categoryName, sortNo: v.sortNo }
 }
 export function decodeCategoryList(value: any): ServiceCategoryView[] {
-  if (!Array.isArray(value) || value.length < 1 || value.length > 100) invalid()
-  const categories = value.map(decodeCategory)
-  if (new Set(categories.map((category: ServiceCategoryView) => category.id)).size !== categories.length) invalid()
+  const v = exact(value, ['items'])
+  if (!Array.isArray(v.items) || v.items.length < 1 || v.items.length > 100) invalid()
+  const categories = v.items.map(decodeCategory)
+  if (new Set(categories.map((category: ServiceCategoryView) => category.categoryId)).size !== categories.length) invalid()
   if (JSON.stringify(categories.map((category: ServiceCategoryView) => category.sortNo)) !== JSON.stringify([...categories].sort((a: ServiceCategoryView, b: ServiceCategoryView) => a.sortNo - b.sortNo).map((category: ServiceCategoryView) => category.sortNo))) invalid()
   return categories
 }
-const itemKeys = ['serviceId', 'serviceName', 'categoryName', 'price', 'status', 'version',
-  'submissionNo', 'submittedAt', 'updatedAt', 'cover'] as const
-export function decodeManagedServiceItem(value: unknown): ManagedServiceItem {
-  const v = exact(value, itemKeys)
-  if (!isId(v.serviceId)) invalid()
-  if (typeof v.serviceName !== 'string' || [...v.serviceName].length < 1 || [...v.serviceName].length > 50) invalid()
-  if (v.categoryName !== null && (typeof v.categoryName !== 'string' || [...v.categoryName].length > 50)) invalid()
-  return {
-    serviceId: v.serviceId, serviceName: v.serviceName, categoryName: v.categoryName,
-    price: moneyOrNull(v.price), status: statusOf(v.status), version: isVersion(v.version) ? v.version : invalid(),
-    submissionNo: submissionNoOf(v.submissionNo), submittedAt: timestampOrNull(v.submittedAt),
-    updatedAt: timestamp(v.updatedAt), cover: coverOf(v.cover),
-  }
-}
-export function decodeManagedServicePage(value: unknown): ManagedServicePage {
-  const v = exact(value, ['items', 'page', 'pageSize', 'total'])
-  if (!Array.isArray(v.items) || v.items.length > 100) invalid()
-  const page = Number(v.page), pageSize = Number(v.pageSize), total = Number(v.total)
-  if (!Number.isInteger(page) || page < 1 || page > 10000) invalid()
-  if (!Number.isInteger(pageSize) || pageSize < 1 || pageSize > 100) invalid()
-  if (!Number.isInteger(total) || total < 0) invalid()
-  return { items: v.items.map(decodeManagedServiceItem), page, pageSize, total }
-}
-const detailKeys = ['serviceId', 'merchantId', 'storeId', 'serviceName', 'categoryId', 'categoryName', 'fulfillmentType',
-  'price', 'listPrice', 'durationMinutes', 'cover', 'applicablePetTypes',
+const itemKeys = ['serviceId', 'merchantId', 'storeId', 'serviceName', 'categoryId', 'categoryName', 'fulfillmentType',
+  'price', 'listPrice', 'durationMinutes', 'coverAssetId', 'applicablePetTypes',
   'staffRequirement', 'verificationRequired', 'description', 'aftersaleNote', 'remark',
   'status', 'version', 'submissionNo', 'submittedAt', 'updatedAt', 'latestRejection'] as const
-export function decodeManagedServiceDetail(value: unknown): ManagedServiceDetail {
-  const v = exact(value, detailKeys)
+export function decodeManagedServiceItem(value: unknown): ManagedServiceItem {
+  const v = exact(value, itemKeys)
   if (!isId(v.serviceId) || !isId(v.merchantId) || !isId(v.storeId)) invalid()
   if (v.categoryId !== null && !isId(v.categoryId)) invalid()
   if (v.categoryName !== null && (typeof v.categoryName !== 'string' || [...v.categoryName].length > 50)) invalid()
@@ -231,8 +191,10 @@ export function decodeManagedServiceDetail(value: unknown): ManagedServiceDetail
     serviceId: v.serviceId, merchantId: v.merchantId, storeId: v.storeId,
     serviceName: v.serviceName, categoryId: v.categoryId, categoryName: v.categoryName,
     fulfillmentType: v.fulfillmentType === null ? null : fulfillmentOf(v.fulfillmentType),
-    price, listPrice, durationMinutes: v.durationMinutes, cover: coverOf(v.cover),
-    applicablePetTypes: petTypesOf(v.applicablePetTypes),
+    price, listPrice, durationMinutes: v.durationMinutes,
+    coverAssetId: v.coverAssetId === null ? null : isId(v.coverAssetId) ? v.coverAssetId : invalid(),
+    // A loose draft stores no pet types yet: wire null decodes to an empty selection.
+    applicablePetTypes: petTypesOf(v.applicablePetTypes === null ? [] : v.applicablePetTypes),
     staffRequirement: textOrNull(v.staffRequirement, 200), verificationRequired: v.verificationRequired,
     description: textOrNull(v.description, 1000), aftersaleNote: textOrNull(v.aftersaleNote, 500),
     remark: textOrNull(v.remark, 500), status: statusOf(v.status),
@@ -241,10 +203,23 @@ export function decodeManagedServiceDetail(value: unknown): ManagedServiceDetail
     updatedAt: timestamp(v.updatedAt), latestRejection,
   }
 }
+export function decodeManagedServicePage(value: unknown): ManagedServicePage {
+  const v = exact(value, ['items', 'page', 'pageSize', 'total'])
+  if (!Array.isArray(v.items) || v.items.length > 100) invalid()
+  const page = Number(v.page), pageSize = Number(v.pageSize), total = Number(v.total)
+  if (!Number.isInteger(page) || page < 1 || page > 10000) invalid()
+  if (!Number.isInteger(pageSize) || pageSize < 1 || pageSize > 100) invalid()
+  if (!Number.isInteger(total) || total < 0) invalid()
+  return { items: v.items.map(decodeManagedServiceItem), page, pageSize, total }
+}
+export function decodeManagedServiceDetail(value: unknown): ManagedServiceDetail {
+  return decodeManagedServiceItem(value)
+}
 export function decodeCommandReceipt(value: unknown): ServiceCommandReceipt {
-  const v = exact(value, ['serviceId', 'status', 'version'])
-  if (!isId(v.serviceId)) invalid()
-  return { serviceId: v.serviceId, status: statusOf(v.status), version: isVersion(v.version) ? v.version : invalid() }
+  const v = exact(value, ['serviceId', 'merchantId', 'storeId', 'status', 'version'])
+  if (!isId(v.serviceId) || !isId(v.merchantId) || !isId(v.storeId)) invalid()
+  return { serviceId: v.serviceId, merchantId: v.merchantId, storeId: v.storeId,
+    status: statusOf(v.status), version: isVersion(v.version) ? v.version : invalid() }
 }
 
 /** Client-side submit validation (proposal §2 submit precheck + PRD §5.5 required fields).
@@ -253,7 +228,7 @@ export function missingSubmitFields(draft: ServiceDraftInput, categories: readon
   const missing: string[] = []
   const name = [...draft.serviceName.trim()]
   if (name.length < 2 || name.length > 50) missing.push('服务名称（2-50字）')
-  if (!draft.categoryId || !categories.some(category => category.id === draft.categoryId)) missing.push('服务分类')
+  if (!draft.categoryId || !categories.some(category => category.categoryId === draft.categoryId)) missing.push('服务分类')
   if (!draft.fulfillmentType) missing.push('履约方式')
   if (draft.price === null || !/^\d+\.\d{2}$/.test(draft.price) || draft.price === '0.00') missing.push('销售价格')
   if (draft.durationMinutes === null || draft.durationMinutes < 1) missing.push('服务时长')
@@ -266,7 +241,7 @@ export function draftInputProblems(draft: ServiceDraftInput, categories: readonl
   const problems: string[] = []
   const name = [...draft.serviceName.trim()]
   if (draft.serviceName !== '' && (name.length < 2 || name.length > 50)) problems.push('服务名称需2-50字')
-  if (draft.categoryId !== null && !categories.some(category => category.id === draft.categoryId)) problems.push('服务分类无效')
+  if (draft.categoryId !== null && !categories.some(category => category.categoryId === draft.categoryId)) problems.push('服务分类无效')
   if (draft.price !== null && !/^\d+\.\d{2}$/.test(draft.price)) problems.push('销售价格需为两位小数（如128.00）')
   if (draft.price !== null && draft.listPrice !== null && cents(draft.listPrice) < cents(draft.price)) problems.push('划线价不能低于销售价格')
   if (draft.durationMinutes !== null && (draft.durationMinutes < 1 || draft.durationMinutes > 1440)) problems.push('服务时长需1-1440分钟')
@@ -314,7 +289,7 @@ export class PreviewServiceManageRepository implements ServiceManageDeps {
     private scenario: ServiceManageScenario = 'normal',
     private pause: () => Promise<void> = async () => {},
   ) {
-    this.services = new Map(services.map(service => [service.serviceId, { ...service, cover: { ...service.cover }, applicablePetTypes: [...service.applicablePetTypes] }]))
+    this.services = new Map(services.map(service => [service.serviceId, { ...service, applicablePetTypes: [...service.applicablePetTypes] }]))
     if (scenario === 'empty') this.services.clear()
     this.failNextRead = scenario === 'load-error'
   }
@@ -356,8 +331,8 @@ export class PreviewServiceManageRepository implements ServiceManageDeps {
     // Newest first (numeric serviceId desc); list carries all statuses for the workbench.
     const items = [...this.services.values()]
       .sort((a, b) => (BigInt(b.serviceId) > BigInt(a.serviceId) ? 1 : -1))
-      .map(({ serviceId, serviceName, categoryName, price, status, version, submissionNo, submittedAt, updatedAt, cover }) =>
-        ({ serviceId, serviceName, categoryName, price, status, version, submissionNo, submittedAt, updatedAt, cover: { ...cover } }))
+      .map(service => ({ ...service, applicablePetTypes: [...service.applicablePetTypes],
+        latestRejection: service.latestRejection === null ? null : { ...service.latestRejection } }))
     const start = (bounded - 1) * size
     return { items: items.slice(start, start + size), page: bounded, pageSize: size, total: items.length }
   }
@@ -366,7 +341,7 @@ export class PreviewServiceManageRepository implements ServiceManageDeps {
     if (!isId(serviceId)) throw new ServiceManageMockError('COMMON_INVALID_ARGUMENT', 400)
     const found = this.services.get(serviceId)
     if (!found) throw new ServiceManageMockError('SERVICE_NOT_FOUND', 404)
-    return { ...found, cover: { ...found.cover }, applicablePetTypes: [...found.applicablePetTypes],
+    return { ...found, applicablePetTypes: [...found.applicablePetTypes],
       latestRejection: found.latestRejection === null ? null : { ...found.latestRejection } }
   }
   private looseCheck(input: ServiceDraftInput): void {
@@ -377,13 +352,10 @@ export class PreviewServiceManageRepository implements ServiceManageDeps {
     return {
       serviceId: base.serviceId, merchantId: fixtureMerchantId, storeId: fixtureStoreId,
       serviceName: input.serviceName.trim(), categoryId: input.categoryId,
-      categoryName: input.categoryId === null ? null : fixtureCategories.find(category => category.id === input.categoryId)?.name ?? null,
+      categoryName: input.categoryId === null ? null : fixtureCategories.find(category => category.categoryId === input.categoryId)?.categoryName ?? null,
       fulfillmentType: input.fulfillmentType, price: input.price, listPrice: input.listPrice,
       durationMinutes: input.durationMinutes,
-      cover: input.coverAssetId === null
-        ? { coverAssetId: null, coverUrl: null, coverUrlExpiresAt: null }
-        // Mock signed URL placeholder (fixed expiry) until real integration.
-        : { coverAssetId: input.coverAssetId, coverUrl: fixtureCoverUrl, coverUrlExpiresAt: fixtureCoverUrlExpiresAt },
+      coverAssetId: input.coverAssetId,
       applicablePetTypes: [...input.applicablePetTypes], staffRequirement: input.staffRequirement,
       verificationRequired: input.verificationRequired, description: input.description,
       aftersaleNote: input.aftersaleNote, remark: input.remark,
@@ -399,7 +371,7 @@ export class PreviewServiceManageRepository implements ServiceManageDeps {
       const serviceId = String(this.nextId++)
       const created = this.store(input, { serviceId, status: 'DRAFT', version: '1', submissionNo: 0, submittedAt: null, latestRejection: null })
       this.services.set(serviceId, created)
-      return { serviceId, status: 'DRAFT', version: created.version }
+      return { serviceId, merchantId: fixtureMerchantId, storeId: fixtureStoreId, status: 'DRAFT', version: created.version }
     })
   }
   async update(slot: string, serviceId: string, expectedVersion: string, input: ServiceDraftInput): Promise<ServiceCommandReceipt> {
@@ -414,7 +386,7 @@ export class PreviewServiceManageRepository implements ServiceManageDeps {
       const updated = this.store(input, { serviceId, status: found.status, version: String(Number(found.version) + 1),
         submissionNo: found.submissionNo, submittedAt: found.submittedAt, latestRejection: found.latestRejection })
       this.services.set(serviceId, updated)
-      return { serviceId, status: updated.status, version: updated.version }
+      return { serviceId, merchantId: fixtureMerchantId, storeId: fixtureStoreId, status: updated.status, version: updated.version }
     })
   }
   async submitOnline(slot: string, serviceId: string, expectedVersion: string): Promise<ServiceCommandReceipt> {
@@ -428,7 +400,7 @@ export class PreviewServiceManageRepository implements ServiceManageDeps {
       const draft: ServiceDraftInput = {
         serviceName: found.serviceName, categoryId: found.categoryId, fulfillmentType: found.fulfillmentType,
         price: found.price, listPrice: found.listPrice, durationMinutes: found.durationMinutes,
-        coverAssetId: found.cover.coverAssetId, applicablePetTypes: found.applicablePetTypes,
+        coverAssetId: found.coverAssetId, applicablePetTypes: found.applicablePetTypes,
         staffRequirement: found.staffRequirement, verificationRequired: found.verificationRequired,
         description: found.description, aftersaleNote: found.aftersaleNote, remark: found.remark,
       }
@@ -439,7 +411,7 @@ export class PreviewServiceManageRepository implements ServiceManageDeps {
       const submitted = { ...found, status: 'REVIEWING' as const, version, submissionNo,
         submittedAt: this.now(), updatedAt: this.now() }
       this.services.set(serviceId, submitted)
-      return { serviceId, status: 'REVIEWING', version }
+      return { serviceId, merchantId: fixtureMerchantId, storeId: fixtureStoreId, status: 'REVIEWING', version }
     })
   }
   async takeOffline(slot: string, serviceId: string, expectedVersion: string): Promise<ServiceCommandReceipt> {
@@ -452,82 +424,77 @@ export class PreviewServiceManageRepository implements ServiceManageDeps {
       if (found.version !== expectedVersion) throw new ServiceManageMockError('COMMON_CONFLICT', 409)
       const version = String(Number(found.version) + 1)
       this.services.set(serviceId, { ...found, status: 'OFFLINE', version, updatedAt: this.now() })
-      return { serviceId, status: 'OFFLINE', version }
+      return { serviceId, merchantId: fixtureMerchantId, storeId: fixtureStoreId, status: 'OFFLINE', version }
     })
   }
 }
 
 // Design samples of frame 10:5255 (8 services of the original artwork) spread across the
 // approved status machine so every list state is previewable; prices keep the design values.
-export const fixtureCoverUrl = 'https://design.example/covers/mock-cover.png'
-/** Mock signed-URL expiry placeholder — the real value refreshes per backend response. */
-export const fixtureCoverUrlExpiresAt = '2026-09-22T11:00:00.000Z'
 export const fixtureMerchantId = '957001'
 export const fixtureStoreId = '957002'
-const cover = (coverAssetId: string): ManagedServiceCover => ({ coverAssetId, coverUrl: fixtureCoverUrl, coverUrlExpiresAt: fixtureCoverUrlExpiresAt })
-const noCover: ManagedServiceCover = { coverAssetId: null, coverUrl: null, coverUrlExpiresAt: null }
 /** Unified service dictionary (11 categories, PRD §5.1.13/商家端第8章 alignment; ids are fixtures). */
 export const fixtureCategories: ServiceCategoryView[] = [
-  { id: '957003', name: '宠物美容', sortNo: 1 },
-  { id: '957004', name: '宠物寄养', sortNo: 2 },
-  { id: '957005', name: '遛狗陪护', sortNo: 3 },
-  { id: '957006', name: '宠物训练', sortNo: 4 },
-  { id: '957007', name: '上门喂养', sortNo: 5 },
-  { id: '957008', name: '兽医助理', sortNo: 6 },
-  { id: '957009', name: '小宠寄养', sortNo: 7 },
-  { id: '957010', name: '异宠上门喂养', sortNo: 8 },
-  { id: '957011', name: '异宠健康检查', sortNo: 9 },
-  { id: '957012', name: '绿植养护', sortNo: 10 },
-  { id: '957013', name: '植物代养', sortNo: 11 },
+  { categoryId: '957003', categoryName: '宠物美容', sortNo: 1 },
+  { categoryId: '957004', categoryName: '宠物寄养', sortNo: 2 },
+  { categoryId: '957005', categoryName: '遛狗陪护', sortNo: 3 },
+  { categoryId: '957006', categoryName: '宠物训练', sortNo: 4 },
+  { categoryId: '957007', categoryName: '上门喂养', sortNo: 5 },
+  { categoryId: '957008', categoryName: '兽医助理', sortNo: 6 },
+  { categoryId: '957009', categoryName: '小宠寄养', sortNo: 7 },
+  { categoryId: '957010', categoryName: '异宠上门喂养', sortNo: 8 },
+  { categoryId: '957011', categoryName: '异宠健康检查', sortNo: 9 },
+  { categoryId: '957012', categoryName: '绿植养护', sortNo: 10 },
+  { categoryId: '957013', categoryName: '植物代养', sortNo: 11 },
 ]
 export const fixtureManagedServices: ManagedServiceDetail[] = [
   { serviceId: '30001', merchantId: fixtureMerchantId, storeId: fixtureStoreId, serviceName: '猫咪洗澡+基础护理',
     categoryId: '957003', categoryName: '宠物美容', fulfillmentType: 'IN_STORE', price: '128.00', listPrice: '158.00', durationMinutes: 60,
-    cover: cover('40001'), applicablePetTypes: ['CAT'], staffRequirement: '持证宠物美容师',
+    coverAssetId: '40001', applicablePetTypes: ['CAT'], staffRequirement: '持证宠物美容师',
     verificationRequired: true, description: '含洗护、基础护理、吹干造型', aftersaleNote: '服务开始前可全额退款', remark: null,
     status: 'ACTIVE', version: '3', submissionNo: 1, submittedAt: '2026-09-20T08:00:00.000Z', updatedAt: '2026-09-21T08:00:00.000Z',
     latestRejection: null },
   { serviceId: '30002', merchantId: fixtureMerchantId, storeId: fixtureStoreId, serviceName: '狗狗美容造型',
     categoryId: '957003', categoryName: '宠物美容', fulfillmentType: 'IN_STORE', price: '198.00', listPrice: null, durationMinutes: 90,
-    cover: cover('40002'), applicablePetTypes: ['DOG'], staffRequirement: null,
+    coverAssetId: '40002', applicablePetTypes: ['DOG'], staffRequirement: null,
     verificationRequired: true, description: '造型修剪、洗护、指甲护理', aftersaleNote: null, remark: null,
     status: 'REVIEWING', version: '2', submissionNo: 1, submittedAt: '2026-09-22T06:30:00.000Z', updatedAt: '2026-09-22T06:30:00.000Z',
     latestRejection: null },
   { serviceId: '30003', merchantId: fixtureMerchantId, storeId: fixtureStoreId, serviceName: '宠物疫苗接种（狂犬）',
     categoryId: '957008', categoryName: '兽医助理', fulfillmentType: 'IN_STORE', price: '120.00', listPrice: null, durationMinutes: 30,
-    cover: cover('40003'), applicablePetTypes: ['ALL'], staffRequirement: '执业兽医',
+    coverAssetId: '40003', applicablePetTypes: ['ALL'], staffRequirement: '执业兽医',
     verificationRequired: true, description: '狂犬疫苗接种，含接种证明', aftersaleNote: null, remark: null,
     status: 'REJECTED', version: '4', submissionNo: 2, submittedAt: '2026-09-20T09:00:00.000Z', updatedAt: '2026-09-21T10:00:00.000Z',
     latestRejection: { decisionId: '50003', submissionNo: 2, decisionType: 'REJECT',
       opinion: '封面图与接种环境说明不完整，请补充接种台照片后重新提交审核。', decidedAt: '2026-09-21T10:00:00.000Z' } },
   { serviceId: '30004', merchantId: fixtureMerchantId, storeId: fixtureStoreId, serviceName: '猫咪绝育套餐',
     categoryId: '957008', categoryName: '兽医助理', fulfillmentType: 'IN_STORE', price: '1280.00', listPrice: '1580.00', durationMinutes: 120,
-    cover: cover('40004'), applicablePetTypes: ['CAT'], staffRequirement: '执业兽医团队',
+    coverAssetId: '40004', applicablePetTypes: ['CAT'], staffRequirement: '执业兽医团队',
     verificationRequired: true, description: '术前体检、麻醉、手术与术后观察', aftersaleNote: '术后问题24小时内联系门店', remark: null,
     status: 'OFFLINE', version: '6', submissionNo: 3, submittedAt: '2026-09-15T08:00:00.000Z', updatedAt: '2026-09-18T09:00:00.000Z',
     // Only the most recent REJECT is carried; this service's last decision was an approval.
     latestRejection: null },
   { serviceId: '30005', merchantId: fixtureMerchantId, storeId: fixtureStoreId, serviceName: '狗狗寄养（每日）',
     categoryId: '957004', categoryName: '宠物寄养', fulfillmentType: 'IN_STORE', price: '150.00', listPrice: null, durationMinutes: 480,
-    cover: noCover, applicablePetTypes: ['DOG'], staffRequirement: null,
+    coverAssetId: null, applicablePetTypes: ['DOG'], staffRequirement: null,
     verificationRequired: true, description: null, aftersaleNote: null, remark: null,
     status: 'DRAFT', version: '1', submissionNo: 0, submittedAt: null, updatedAt: '2026-09-22T05:00:00.000Z',
     latestRejection: null },
   { serviceId: '30006', merchantId: fixtureMerchantId, storeId: fixtureStoreId, serviceName: '宠物体检基础套餐',
     categoryId: '957011', categoryName: '异宠健康检查', fulfillmentType: 'IN_STORE', price: '380.00', listPrice: null, durationMinutes: 60,
-    cover: cover('40006'), applicablePetTypes: ['ALL'], staffRequirement: '执业兽医',
+    coverAssetId: '40006', applicablePetTypes: ['ALL'], staffRequirement: '执业兽医',
     verificationRequired: true, description: '基础体检八项', aftersaleNote: null, remark: null,
     status: 'ACTIVE', version: '2', submissionNo: 1, submittedAt: '2026-09-18T08:00:00.000Z', updatedAt: '2026-09-19T08:00:00.000Z',
     latestRejection: null },
   { serviceId: '30007', merchantId: fixtureMerchantId, storeId: fixtureStoreId, serviceName: '猫咪上门喂养',
     categoryId: '957007', categoryName: '上门喂养', fulfillmentType: 'PICKUP_DELIVERY', price: '80.00', listPrice: null, durationMinutes: 45,
-    cover: cover('40007'), applicablePetTypes: ['CAT'], staffRequirement: null,
+    coverAssetId: '40007', applicablePetTypes: ['CAT'], staffRequirement: null,
     verificationRequired: true, description: '上门喂食、铲砂、陪伴', aftersaleNote: null, remark: null,
     status: 'ACTIVE', version: '2', submissionNo: 1, submittedAt: '2026-09-17T08:00:00.000Z', updatedAt: '2026-09-18T08:00:00.000Z',
     latestRejection: null },
   { serviceId: '30008', merchantId: fixtureMerchantId, storeId: fixtureStoreId, serviceName: '狗狗训练课程',
     categoryId: '957006', categoryName: '宠物训练', fulfillmentType: 'IN_STORE', price: '500.00', listPrice: null, durationMinutes: 60,
-    cover: cover('40008'), applicablePetTypes: ['DOG'], staffRequirement: '持证训犬师',
+    coverAssetId: '40008', applicablePetTypes: ['DOG'], staffRequirement: '持证训犬师',
     verificationRequired: true, description: '基础服从训练', aftersaleNote: null, remark: null,
     status: 'ACTIVE', version: '2', submissionNo: 1, submittedAt: '2026-09-16T08:00:00.000Z', updatedAt: '2026-09-17T08:00:00.000Z',
     latestRejection: null },

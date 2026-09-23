@@ -98,9 +98,11 @@ export default function MerchantServiceEditPage() {
     }).catch(() => setNotice('已取消选择封面'))
   }
   const [coverPreview, setCoverPreview] = useState('')
-  // Read path per the A-side cover finalization: signed display URL from the cover object
-  // (null while not visible); coverUrlExpiresAt is the refresh placeholder once real.
-  const coverSrc = coverPreview || detail?.cover.coverUrl || ''
+  // The workbench row carries a flat coverAssetId anchor only (§4.10.1 字段定稿); the signed
+  // display URL is the C-end cover projection (§3.3.1 封面增补), so the editor previews the
+  // local pick and otherwise shows the chosen-anchor state without fabricating any URL.
+  const coverChosen = coverPreview !== '' || (detail?.coverAssetId ?? draft.coverAssetId) != null
+  const coverSrc = coverPreview
 
   async function persistDraft(): Promise<boolean> {
     const problems = draftInputProblems(draft, categories)
@@ -179,7 +181,9 @@ export default function MerchantServiceEditPage() {
         <Button id='medit-cover' className='medit-cover' onClick={pickCover}>
           {coverSrc
             ? <Image className='medit-cover-image' src={coverSrc} mode='aspectFill' />
-            : <Text className='medit-cover-placeholder'>上传服务封面（JPG / PNG）</Text>}
+            : coverChosen
+              ? <Text className='medit-cover-placeholder'>已绑定封面素材（展示链接由 C 端签名投影提供）</Text>
+              : <Text className='medit-cover-placeholder'>上传服务封面（JPG / PNG）</Text>}
           <View className='medit-cover-badge'>
             <Image className='medit-cover-camera' src={iconCamera} mode='scaleToFill' />
             <Text>更换头图</Text>
@@ -203,8 +207,8 @@ export default function MerchantServiceEditPage() {
       <View className='medit-section'>
         <Text className='medit-label'>服务分类{!readonly && <Text className='medit-required'>*</Text>}</Text>
         <View className='medit-pills'>
-          {categories.map(category => <Button key={category.id} className='medit-pill' data-selected={draft.categoryId === category.id} disabled={readonly}
-            onClick={() => patch({ categoryId: draft.categoryId === category.id ? null : category.id })}><Text>{category.name}</Text></Button>)}
+          {categories.map(category => <Button key={category.categoryId} className='medit-pill' data-selected={draft.categoryId === category.categoryId} disabled={readonly}
+            onClick={() => patch({ categoryId: draft.categoryId === category.categoryId ? null : category.categoryId })}><Text>{category.categoryName}</Text></Button>)}
         </View>
       </View>
       <View className='medit-section'>

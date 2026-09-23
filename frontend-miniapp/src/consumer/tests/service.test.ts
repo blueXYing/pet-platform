@@ -35,6 +35,14 @@ test('service decoders enforce the frozen field set, ID strings and two-decimal 
   const { description: _description, ...itemSource } = fixtureServices[0]
   const item = decodeServiceItem(itemSource)
   assert.equal(item.salePrice, '80.00')
+  // Cover projection (§3.3.1 封面增补): bound rows carry the signed triple, unbound keep null.
+  assert.equal(item.cover?.coverAssetId, '40001')
+  assert.ok(item.cover?.coverUrl.startsWith('https://'))
+  assert.equal(decodeServiceItem({ ...itemSource, cover: null }).cover, null)
+  assert.throws(() => decodeServiceItem({ ...itemSource, cover: { coverAssetId: '40001', coverUrl: null, coverUrlExpiresAt: '2026-09-22T12:00:00Z' } }), /INVALID_RESPONSE/)
+  // The signed-URL expiry is second-precision on the wire (signer epoch format).
+  assert.equal(decodeServiceItem({ ...itemSource, cover: { coverAssetId: '40001', coverUrl: 'https://x/y', coverUrlExpiresAt: '2026-09-22T12:00:00Z' } }).cover?.coverUrlExpiresAt, '2026-09-22T12:00:00Z')
+  assert.throws(() => decodeServiceItem({ ...itemSource, cover: { coverAssetId: '40001', coverUrl: 'https://x/y', coverUrlExpiresAt: '2026-09-22 12:00:00Z' } }), /INVALID_RESPONSE/)
   assert.equal(item.fulfillmentType, 'IN_STORE')
   // unknown extra field (e.g. a smuggled bookability object) is rejected
   assert.throws(() => decodeServiceItem({ ...itemSource, bookable: true }), /INVALID_RESPONSE/)

@@ -4,11 +4,18 @@
 // client never recomputes visibility/bookability (SVC-D1b: hidden simply means absent/404).
 export type FulfillmentType = 'IN_STORE' | 'PICKUP_DELIVERY'
 
+/** Consumer cover projection (10号 §3.3.1 封面增补): only visible rows carry it; rows without
+ *  a cover binding keep cover null. coverUrl is a short-lived signed URL expiring at
+ *  coverUrlExpiresAt (second precision — the signer's epoch-second format). */
+export type ServiceCoverView = Readonly<{
+  coverAssetId: string; coverUrl: string; coverUrlExpiresAt: string
+}>
 /** GET /api/v1/c/stores/{storeId}/services item (list projection, no description, no version). */
 export type ServiceItemView = Readonly<{
   serviceId: string; merchantId: string; storeId: string
   serviceName: string; categoryId: string; categoryName: string
   salePrice: string; durationMinutes: number; fulfillmentType: FulfillmentType
+  cover: ServiceCoverView | null
 }>
 /** GET /api/v1/c/services/{serviceId} detail = item fields + description. */
 export type ServiceDetailView = Readonly<ServiceItemView & { description: string }>
@@ -29,6 +36,20 @@ const price = (value: any): string => {
   return value
 }
 
+const instant = (value: any): string => {
+  if (typeof value !== 'string'
+    || !/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d{1,9})?(Z|[+-]\d{2}:\d{2})(?![\s\S])/.test(value)
+    || !Number.isFinite(Date.parse(value))) invalid()
+  return value
+}
+function coverOf(value: any): ServiceCoverView | null {
+  if (value === null) return null
+  const v = exact(value, ['coverAssetId', 'coverUrl', 'coverUrlExpiresAt'])
+  // A bound cover always carries its asset anchor and its own signed-URL expiry.
+  return { coverAssetId: isId(v.coverAssetId) ? v.coverAssetId : invalid(),
+    coverUrl: typeof v.coverUrl === 'string' && v.coverUrl.length > 0 && v.coverUrl.length <= 2048 ? v.coverUrl : invalid(),
+    coverUrlExpiresAt: instant(v.coverUrlExpiresAt) }
+}
 function checkServiceFields(v: Record<string, any>): ServiceItemView {
   if (!isId(v.serviceId) || !isId(v.merchantId) || !isId(v.storeId) || !isId(v.categoryId)) invalid()
   if (typeof v.serviceName !== 'string' || !v.serviceName || [...v.serviceName].length > 50) invalid()
@@ -37,13 +58,13 @@ function checkServiceFields(v: Record<string, any>): ServiceItemView {
   if (v.fulfillmentType !== 'IN_STORE' && v.fulfillmentType !== 'PICKUP_DELIVERY') invalid()
   return { serviceId: v.serviceId, merchantId: v.merchantId, storeId: v.storeId, serviceName: v.serviceName,
     categoryId: v.categoryId, categoryName: v.categoryName, salePrice: price(v.salePrice),
-    durationMinutes: v.durationMinutes, fulfillmentType: v.fulfillmentType }
+    durationMinutes: v.durationMinutes, fulfillmentType: v.fulfillmentType, cover: coverOf(v.cover) }
 }
 export function decodeServiceItem(value: unknown): ServiceItemView {
-  return checkServiceFields(exact(value, ['serviceId', 'merchantId', 'storeId', 'serviceName', 'categoryId', 'categoryName', 'salePrice', 'durationMinutes', 'fulfillmentType']))
+  return checkServiceFields(exact(value, ['serviceId', 'merchantId', 'storeId', 'serviceName', 'categoryId', 'categoryName', 'salePrice', 'durationMinutes', 'fulfillmentType', 'cover']))
 }
 export function decodeServiceDetail(value: unknown): ServiceDetailView {
-  const v = exact(value, ['serviceId', 'merchantId', 'storeId', 'serviceName', 'categoryId', 'categoryName', 'salePrice', 'durationMinutes', 'fulfillmentType', 'description'])
+  const v = exact(value, ['serviceId', 'merchantId', 'storeId', 'serviceName', 'categoryId', 'categoryName', 'salePrice', 'durationMinutes', 'fulfillmentType', 'cover', 'description'])
   if (typeof v.description !== 'string' || [...v.description].length > 1000) invalid()
   return { ...checkServiceFields(v), description: v.description }
 }
@@ -91,16 +112,20 @@ export const designSamples = {
 
 // Fixture services follow the approved StoreServiceItemView/ServiceDetailView shapes exactly
 // (design samples of node 690:6660: 专业美容套餐 ¥80 / 家庭寄养·天 ¥60 / 洗护SPA ¥128).
+/** Mock signed-URL values — the real ones refresh per backend response (§3.3.1 封面增补). */
+export const fixtureCoverUrl = 'https://design.example/covers/mock-cover.png'
+export const fixtureCoverUrlExpiresAt = '2026-09-22T12:00:00Z'
+const cover = (coverAssetId: string): ServiceCoverView => ({ coverAssetId, coverUrl: fixtureCoverUrl, coverUrlExpiresAt: fixtureCoverUrlExpiresAt })
 export const fixtureServices: ServiceDetailView[] = [
   { serviceId: '20001', merchantId: '957001', storeId: '957002', serviceName: '专业美容套餐',
     categoryId: '957003', categoryName: '宠物美容', salePrice: '80.00', durationMinutes: 60,
-    fulfillmentType: 'IN_STORE', description: '含洗护、造型、指甲修剪' },
+    fulfillmentType: 'IN_STORE', description: '含洗护、造型、指甲修剪', cover: cover('40001') },
   { serviceId: '20002', merchantId: '957001', storeId: '957002', serviceName: '家庭寄养·天',
     categoryId: '957004', categoryName: '宠物寄养', salePrice: '60.00', durationMinutes: 60,
-    fulfillmentType: 'IN_STORE', description: '独立空间、定时喂养、遛弯' },
+    fulfillmentType: 'IN_STORE', description: '独立空间、定时喂养、遛弯', cover: cover('40002') },
   { serviceId: '20003', merchantId: '957001', storeId: '957002', serviceName: '洗护SPA',
     categoryId: '957003', categoryName: '宠物美容', salePrice: '128.00', durationMinutes: 45,
-    fulfillmentType: 'IN_STORE', description: '深层清洁 + 精油护理' },
+    fulfillmentType: 'IN_STORE', description: '深层清洁 + 精油护理', cover: null },
 ]
 export const fixtureStoreId = '957002'
 

@@ -83,16 +83,18 @@ export class RealPetRepository {
     })
   }
 }
-/** Frozen C service-catalog read slice (CCR-W2-API-001 SVC-D2): list + detail, read-only. */
+/** Frozen C service-catalog read slice (CCR-W2-API-001 SVC-D2): list + detail, read-only.
+ *  STR-D8 makes all four C catalog GET routes anonymous-browsable, so these two read routes
+ *  go through anonymousRequest exactly like the store directory (Bearer optional on the wire). */
 export class RealServiceRepository {
   constructor(private api: ConsumerApi) {}
   list(storeId: string, page = 1, pageSize = 20): Promise<ServicePage> {
     id(storeId)
-    return this.api.request({ method: 'GET', path: `/api/v1/c/stores/${storeId}/services`, data: { page, pageSize } }, decodeServicePage)
+    return this.api.anonymousRequest({ method: 'GET', path: `/api/v1/c/stores/${storeId}/services`, data: { page, pageSize } }, decodeServicePage)
   }
   detail(serviceId: string): Promise<ServiceDetailView> {
     id(serviceId)
-    return this.api.request({ method: 'GET', path: `/api/v1/c/services/${serviceId}` }, value => {
+    return this.api.anonymousRequest({ method: 'GET', path: `/api/v1/c/services/${serviceId}` }, value => {
       const detail = decodeServiceDetail(value)
       if (detail.serviceId !== serviceId) throw new Error('INVALID_RESPONSE')
       return detail

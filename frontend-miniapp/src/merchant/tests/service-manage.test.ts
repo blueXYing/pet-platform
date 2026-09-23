@@ -40,9 +40,8 @@ test('decoders enforce the exact finalized shapes (IDs/prices/status/rejection/c
     (v: Record<string, any>) => { v.status = 'REJECTED'; v.latestRejection = null },
     (v: Record<string, any>) => { delete v.submissionNo },
     (v: Record<string, any>) => { v.updatedAt = null },
-    // Cover object: a signed URL requires its asset anchor and its own expiry.
-    (v: Record<string, any>) => { v.cover.coverUrlExpiresAt = null },
-    (v: Record<string, any>) => { v.cover.coverAssetId = null },
+    // Flat cover anchor (§4.10.1): a non-snowflake asset id fails the strict decode.
+    (v: Record<string, any>) => { v.coverAssetId = 'not-an-id' },
   ]) {
     const value = wire(base)
     mutate(value)
@@ -55,20 +54,22 @@ test('decoders enforce the exact finalized shapes (IDs/prices/status/rejection/c
   const wrongType = wire(rejected)
   ;(wrongType.latestRejection as Record<string, unknown>).decisionType = 'APPROVE'
   assert.throws(() => decodeManagedServiceDetail(wrongType), /INVALID_RESPONSE/)
-  const listLine = { serviceId: base.serviceId, serviceName: base.serviceName, categoryName: base.categoryName,
-    price: base.price, status: base.status, version: base.version, submissionNo: base.submissionNo,
-    submittedAt: base.submittedAt, updatedAt: base.updatedAt, cover: base.cover }
-  const page = decodeManagedServicePage({ items: [wire(listLine)], page: 1, pageSize: 20, total: 1 })
+  // List rows carry the SAME full flat projection as the detail (backend uses one item() mapper).
+  const page = decodeManagedServicePage({ items: [wire(base)], page: 1, pageSize: 20, total: 1 })
   assert.equal(page.items[0]!.serviceName, base.serviceName)
-  assert.equal(page.items[0]!.cover.coverUrl, base.cover.coverUrl)
+  assert.equal(page.items[0]!.coverAssetId, base.coverAssetId)
   for (const broken of [
-    { ...listLine, extra: 1 }, { ...listLine, submissionNo: -1 }, { ...listLine, updatedAt: 'nope' },
-    { ...listLine, cover: { coverAssetId: null, coverUrl: base.cover.coverUrl, coverUrlExpiresAt: null } },
+    { ...wire(base), extra: 1 }, { ...wire(base), submissionNo: -1 }, { ...wire(base), updatedAt: 'nope' },
   ]) { assert.throws(() => decodeManagedServicePage({ items: [broken], page: 1, pageSize: 20, total: 1 }), /INVALID_RESPONSE/) }
   assert.throws(() => decodeManagedServicePage({ items: [], page: 0, pageSize: 20, total: 0 }), /INVALID_RESPONSE/)
-  assert.equal(decodeCommandReceipt({ serviceId: '30001', status: 'REVIEWING', version: '4' }).status, 'REVIEWING')
-  assert.equal(decodeCategoryList(JSON.parse(JSON.stringify(fixtureCategories))).length, fixtureCategories.length)
+  assert.equal(decodeCommandReceipt({ serviceId: '30001', merchantId: '957001', storeId: '957002', status: 'REVIEWING', version: '4' }).status, 'REVIEWING')
+  assert.equal(decodeCategoryList(JSON.parse(JSON.stringify({ items: fixtureCategories }))).length, fixtureCategories.length)
+  // The dictionary travels as {items:[...]} with categoryId/categoryName keys (§4.10.1).
   assert.throws(() => decodeCategoryList([{ id: '1', name: 'a', sortNo: 2 }, { id: '2', name: 'b', sortNo: 1 }]), /INVALID_RESPONSE/)
+  assert.throws(() => decodeCategoryList({ items: [{ categoryId: '1', categoryName: 'a', sortNo: 2 }, { categoryId: '2', categoryName: 'b', sortNo: 1 }] }), /INVALID_RESPONSE/)
+  // sortNo 0 is legitimate dictionary data (DB default), only negatives fail.
+  assert.equal(decodeCategoryList({ items: [{ categoryId: '957003', categoryName: '宠物美容', sortNo: 0 }] }).length, 1)
+  assert.throws(() => decodeCategoryList({ items: [{ categoryId: '957003', categoryName: '宠物美容', sortNo: -1 }] }), /INVALID_RESPONSE/)
 })
 
 test('mock list paginates all statuses newest-first and isolates snapshots', async () => {
@@ -78,7 +79,7 @@ test('mock list paginates all statuses newest-first and isolates snapshots', asy
   assert.equal(first.items.length, 5)
   assert.ok(BigInt(first.items[0]!.serviceId) > BigInt(first.items[1]!.serviceId))
   const detail = await repository.detail(first.items[0]!.serviceId)
-  assert.ok(detail.cover.coverUrlExpiresAt !== null)
+  assert.ok(typeof detail.coverAssetId === 'string' || detail.coverAssetId === null)
   const mutated = { ...detail, serviceName: 'mutated' }
   const again = await repository.detail(first.items[0]!.serviceId)
   assert.notEqual(again.serviceName, mutated.serviceName)
@@ -193,13 +194,13 @@ test('real repository wires the six merchant routes with journaled request ids',
     if (request.path.endsWith('/session')) return ok(session)
     seen.push({ method: request.method, path: request.path, requestId: (request as { requestId?: string }).requestId, data: request.data })
     if (request.method === 'GET' && request.path === '/api/v1/merchant/service-categories') {
-      return ok(fixtureCategories.map(category => ({ id: category.id, name: category.name, sortNo: category.sortNo })))
+      return ok({ items: fixtureCategories })
     }
     if (request.method === 'GET' && request.path === '/api/v1/merchant/services') return ok({ items: [], page: 1, pageSize: 20, total: 0 })
     if (request.method === 'POST' && request.path === '/api/v1/merchant/services') {
-      return { statusCode: 201, data: { code: 'SUCCESS', success: true, data: { serviceId: '30101', status: 'DRAFT', version: '1' } } }
+      return { statusCode: 201, data: { code: 'SUCCESS', success: true, data: { serviceId: '30101', merchantId: '957001', storeId: '957002', status: 'DRAFT', version: '1' } } }
     }
-    if (request.path.endsWith('/online')) return ok({ serviceId: '30101', status: 'REVIEWING', version: '2' })
+    if (request.path.endsWith('/online')) return ok({ serviceId: '30101', merchantId: '957001', storeId: '957002', status: 'REVIEWING', version: '2' })
     if (request.path.endsWith('/offline')) return failure('SERVICE_STATE_NOT_ALLOWED', 409)
     return failure('COMMON_DEPENDENCY_UNAVAILABLE', 503)
   }, store, async () => randomUUID())
