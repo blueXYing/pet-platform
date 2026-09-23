@@ -6051,7 +6051,7 @@ paths:
               schema:
                 $ref: '#/components/schemas/MerErrorEnvelope'
         '404':
-          description: Not found, not visible or ineligible (indistinguishable).
+          description: Not found, not visible or ineligible (indistinguishable); code SERVICE_NOT_FOUND (HTTP contract 10 section 3.3.1).
           headers:
             Cache-Control:
               schema:
@@ -6128,7 +6128,7 @@ paths:
               schema:
                 $ref: '#/components/schemas/MerErrorEnvelope'
         '404':
-          description: Not found, not visible or ineligible (indistinguishable).
+          description: Not found, not visible or ineligible (indistinguishable); code SERVICE_NOT_FOUND (HTTP contract 10 section 3.3.1).
           headers:
             Cache-Control:
               schema:

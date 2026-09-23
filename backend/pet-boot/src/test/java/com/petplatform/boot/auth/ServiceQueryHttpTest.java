@@ -56,6 +56,10 @@ import tools.jackson.databind.json.JsonMapper;
  * merchant/store pair plus SQL-seeded service_item rows (SVC-D4: no writer exists yet) drive the
  * C catalog. Visibility follows the four-condition conjunction; detail 404 is indistinguishable;
  * facts failures answer 503 and are never conflated with confirmed absence or ineligibility.
+ *
+ * <p>Conformance fix (2026-09-22): every hidden/missing scenario asserts BOTH the HTTP status and
+ * the envelope body code — 404 SERVICE_NOT_FOUND (registry 12 §12, SVC-D1b) versus
+ * 503 COMMON_DEPENDENCY_UNAVAILABLE — so a drift back to COMMON_NOT_FOUND fails here, not in QA.
  */
 class ServiceQueryHttpTest {
   private static final String ORIGIN = "https://svc.example.invalid";
@@ -366,11 +370,12 @@ class ServiceQueryHttpTest {
         new java.math.BigDecimal("128.00"), firstDetailBody.salePrice(), "returned copy must not track later changes");
     assertEquals("宠物美容-基础洗护", firstDetailBody.serviceName());
 
-    // Visibility negatives: OFFLINE/DRAFT/unknown are 404, indistinguishable.
-    assertEquals(404, send("GET", "/api/v1/c/services/" + offlineId, null, bearer(token)).status());
-    assertEquals(404, send("GET", "/api/v1/c/services/" + draftId, null, bearer(token)).status());
-    assertEquals(
-        404, send("GET", "/api/v1/c/services/" + (groomingId + 999_999), null, bearer(token)).status());
+    // Visibility negatives: OFFLINE/DRAFT/unknown are 404 SERVICE_NOT_FOUND, indistinguishable.
+    assertHidden(
+        send("GET", "/api/v1/c/services/" + offlineId, null, bearer(token)));
+    assertHidden(send("GET", "/api/v1/c/services/" + draftId, null, bearer(token)));
+    assertHidden(
+        send("GET", "/api/v1/c/services/" + (groomingId + 999_999), null, bearer(token)));
     // A store with no seeded services answers an empty page, never an error.
     Reply emptyStore =
         send("GET", "/api/v1/c/stores/" + (storeId + 999_999) + "/services", null, bearer(token));
@@ -382,7 +387,7 @@ class ServiceQueryHttpTest {
     assertEquals(200, send("GET", storePath, null, bearer(token)).status());
     assertTrue(
         ((List<?>) send("GET", storePath, null, bearer(token)).data().get("items")).isEmpty());
-    assertEquals(404, send("GET", "/api/v1/c/services/" + groomingId, null, bearer(token)).status());
+    assertHidden(send("GET", "/api/v1/c/services/" + groomingId, null, bearer(token)));
     // Internal bookability keeps reasons for ORD/SCH even while hidden.
     ServiceBookabilityDTO disabled =
         api.checkBookable(new ServiceBookabilityQuery(groomingApi, String.valueOf(storeId), ctx));
@@ -392,16 +397,16 @@ class ServiceQueryHttpTest {
 
     // Store frozen: same confirmed-ineligible hiding.
     db.jdbc.update("UPDATE merchant_store SET status='FROZEN' WHERE id=?", storeId);
-    assertEquals(404, send("GET", "/api/v1/c/services/" + groomingId, null, bearer(token)).status());
+    assertHidden(send("GET", "/api/v1/c/services/" + groomingId, null, bearer(token)));
     assertTrue(
         ((List<?>) send("GET", storePath, null, bearer(token)).data().get("items")).isEmpty());
     db.jdbc.update("UPDATE merchant_store SET status='ACTIVE' WHERE id=?", storeId);
 
-    // Unknown stored merchant status: fail closed 503, never conflated with hiding.
+    // Unknown stored merchant status: fail closed 503 COMMON_DEPENDENCY_UNAVAILABLE, never
+    // conflated with hiding (the body code is what distinguishes the two approved semantics).
     db.jdbc.update("UPDATE merchant SET status='CORRUPTED' WHERE id=?", merchantId);
-    assertEquals(
-        503, send("GET", "/api/v1/c/services/" + groomingId, null, bearer(token)).status());
-    assertEquals(503, send("GET", storePath, null, bearer(token)).status());
+    assertUnavailable(send("GET", "/api/v1/c/services/" + groomingId, null, bearer(token)));
+    assertUnavailable(send("GET", storePath, null, bearer(token)));
     db.jdbc.update("UPDATE merchant SET status='ACTIVE' WHERE id=?", merchantId);
 
     // Restored: visible again.
@@ -551,6 +556,24 @@ class ServiceQueryHttpTest {
 
   private static Map<String, String> bearer(String token) {
     return Map.of("Authorization", "Bearer " + token);
+  }
+
+  /** SVC-D1b: confirmed missing or any visibility condition failing -> 404 SERVICE_NOT_FOUND. */
+  private static void assertHidden(Reply reply) {
+    assertEquals(404, reply.status(), reply.redacted());
+    assertEquals(
+        "SERVICE_NOT_FOUND",
+        reply.envelope().get("code"),
+        "hidden/missing must answer the registry-12 service code, indistinguishably");
+  }
+
+  /** Fail-closed facts failure -> 503 COMMON_DEPENDENCY_UNAVAILABLE, never conflated with 404. */
+  private static void assertUnavailable(Reply reply) {
+    assertEquals(503, reply.status(), reply.redacted());
+    assertEquals(
+        "COMMON_DEPENDENCY_UNAVAILABLE",
+        reply.envelope().get("code"),
+        "facts-source failure must fail closed with the dependency code");
   }
 
   private static Map<String, Object> map(Object value) {
