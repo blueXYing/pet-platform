@@ -21,9 +21,10 @@ for (const page of ['index', 'detail', 'form']) {
 }
 const packages = app.subPackages || app.subpackages || []
 assert.deepEqual(packages.map(p => ({ root: p.root, pages: p.pages })), [
-  { root: 'merchant', pages: ['pages/workspace/index'] },
+  { root: 'merchant', pages: ['pages/workspace/index', 'pages/services/index', 'pages/services/edit'] },
   { root: 'consumer/pages/pet-archive', pages: ['index', 'detail', 'form'] },
   { root: 'consumer/pages/merchant-application', pages: ['index', 'signing'] },
+  { root: 'consumer/pages/store-services', pages: ['index', 'service-detail', 'stores'] },
 ], 'Merchant workspace, pet archive and merchant application must be registered in the single app')
 for (const page of ['index', 'signing']) {
   for (const extension of ['js', 'json', 'wxml', 'wxss']) {
@@ -31,10 +32,22 @@ for (const page of ['index', 'signing']) {
       `MER-001 application page artifact missing: ${page}.${extension}`)
   }
 }
+for (const page of ['index', 'service-detail', 'stores']) {
+  for (const extension of ['js', 'json', 'wxml', 'wxss']) {
+    assert.ok(fs.existsSync(path.join(root, `consumer/pages/store-services/${page}.` + extension)),
+      `C-003 store-services page artifact missing: ${page}.${extension}`)
+  }
+}
 assert.ok(packages.every(p => !p.independent), 'Only ordinary subpackages allowed')
 for (const extension of ['js', 'json', 'wxml']) {
   assert.ok(fs.existsSync(path.join(root, 'merchant/pages/workspace/index.' + extension)),
     'Merchant page build artifact missing: ' + extension)
+}
+for (const page of ['index', 'edit']) {
+  for (const extension of ['js', 'json', 'wxml']) {
+    assert.ok(fs.existsSync(path.join(root, `merchant/pages/services/${page}.` + extension)),
+      `M-002 service page build artifact missing: ${page}.${extension}`)
+  }
 }
 function walk(dir) { return fs.readdirSync(dir, { withFileTypes: true }).flatMap(e => e.isDirectory()
   ? walk(path.join(dir, e.name)) : [path.join(dir, e.name)]) }

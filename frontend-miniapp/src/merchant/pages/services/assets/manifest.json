@@ -1,0 +1,24 @@
+{
+  "source": "../../../../../../planning/issues/wave-2/C-003-design-inputs/assets/cutouts",
+  "note": "Byte-identical runtime copies of the registered merchant cutouts (M-002 pages). 11:5772 nav-back exports byte-identically to 10:5302, so one runtime copy serves both pages.",
+  "assets": [
+    {
+      "file": "nav-back@2x.png",
+      "node": "10:5302",
+      "bytes": 413,
+      "sha256": "ec22f2d80b8b2ea0c3574d53a061ef3d3ca67b64094496d9698b3ed79c2309bf"
+    },
+    {
+      "file": "icon-plus@2x.png",
+      "node": "10:5333",
+      "bytes": 252,
+      "sha256": "162ed02bb062285bd089ebb4b35c771ab82ce854886932eb8477836673b4c5a2"
+    },
+    {
+      "file": "icon-camera@2x.png",
+      "node": "11:5674",
+      "bytes": 351,
+      "sha256": "43d3b0d60f744ba62cf6e77c3982e719c30186a42af2eec9cb849e5713b2acbc"
+    }
+  ]
+}

@@ -90,10 +90,12 @@ export function routeForNotification(item: InboxNotification): string | null {
   if (item.messageType === 'MERCHANT_APPLICATION_REVIEWED' && item.bizType === 'MERCHANT_APPLICATION' && item.bizId !== null) {
     return '/consumer/pages/merchant-application/index'
   }
+  // M-002 service-review verdicts (delivery by role E): the existing whitelist mechanism
+  // extends to the merchant service-management page, which re-validates its own workspace
+  // coordinates and admission — a jump never bypasses the workbench gate. Route per M-002
+  // NAVIGATION-BASIS section 3; the target page and its app.config registration ship with
+  // this branch (merge of develop's PR#69 consumer side).
   if (item.messageType === 'SERVICE_REVIEWED' && item.bizType === 'SERVICE' && item.bizId !== null) {
-    // Route per M-002 NAVIGATION-BASIS section 3 (role C, codex/m-svc-pages). TODO(alignment):
-    // the services page and its app.config registration ship in C's parallel branch; until that
-    // merge the jump target page is absent and Taro will fail closed, not navigate elsewhere.
     return '/merchant/pages/services/index'
   }
   return null

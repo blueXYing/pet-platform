@@ -87,7 +87,12 @@ export default function MerchantWorkbenchPage() {
         {state.status === 'limited' && <Text className='workbench-hint'>存量订单与售后读取不受影响；新经营业务暂停。处理中的订单请继续履约。</Text>}
         {state.status === 'allowed' && view.allowedActions.length > 0 && <View className='workbench-actions'>
           {view.allowedActions.map(action => <Text key={action} className='workbench-chip'>{action}</Text>)}
-          <Text className='workbench-hint'>以上为入口提示；完整工作台功能（订单/服务/排期）在后续切片交付。</Text>
+          <Text className='workbench-hint'>以上为入口提示；完整工作台功能（订单/排期）在后续切片交付。</Text>
+        </View>}
+        {state.status === 'allowed' && <View className='workbench-steps'>
+          {/* M-002 service management entry (NAVIGATION-BASIS: workbench is the approved hub;
+              the entry stays hidden for LIMITED stores — new-business writes are suspended). */}
+          <Button id='workbench-services' onClick={() => void Taro.navigateTo({ url: '/merchant/pages/services/index' })}>服务管理</Button>
         </View>}
         {view.nextSteps.length > 0 && <View className='workbench-steps'>
           {view.nextSteps.map(step => <Button key={step.type} onClick={() => takeStep(step.type, view.merchantId)}>{stepText[step.type] || step.type}</Button>)}

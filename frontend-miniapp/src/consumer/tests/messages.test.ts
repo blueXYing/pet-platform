@@ -65,7 +65,7 @@ test('whitelist jump only for the registered type; payload never carries a URL',
   assert.equal(routeForNotification(item({ bizId: null })), null)
 })
 
-test('service review notification jumps to the merchant services page with its own label', async () => {
+test('service review notification jumps to the merchant services page with its own label', () => {
   const serviceReviewed = item({
     messageType: 'SERVICE_REVIEWED', bizType: 'SERVICE', bizId: '9001',
     title: '服务审核结果', content: '服务《宠物基础洗护》：审核未通过。服务图片与门类不符，请补充真实拍摄图片后重新提交',
@@ -74,8 +74,10 @@ test('service review notification jumps to the merchant services page with its o
   assert.equal(routeForNotification(serviceReviewed), '/merchant/pages/services/index')
   assert.equal(jumpLabelFor(serviceReviewed), '查看服务')
   assert.equal(jumpLabelFor(item()), '查看入驻申请')
+  // Wrong biz type or missing id never routes anywhere (M-002 union of both sides' guards).
+  assert.equal(routeForNotification(item({ messageType: 'SERVICE_REVIEWED', bizType: null, bizId: null })), null)
+  assert.equal(routeForNotification(item({ messageType: 'SERVICE_REVIEWED', bizType: 'ORDER', bizId: '1' })), null)
   // Unregistered shapes keep detail-only rendering with no jump entry.
-  assert.equal(routeForNotification(item({ messageType: 'SERVICE_REVIEWED', bizType: 'SERVICE', bizId: null })), null)
   assert.equal(jumpLabelFor(item({ messageType: 'SOMETHING_ELSE', bizType: null, bizId: null })), null)
 })
 
