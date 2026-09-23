@@ -1,16 +1,20 @@
-// M-002 service-management view state. Wire shapes follow the service-write contract basis
-// (CCR-W2-API-001 service-write-proposal §2/§5.1, v0.2 principle-approved by the user on
-// 2026-09-22; role A is implementing the backend). The contract is NOT yet frozen in the
-// authoritative docs, so every decoder here is strict exact-key against the shapes below and
-// the real repository is the single swap point: when A-side freezes the DTO names, this file
-// and its tests are the only places to update. Mock never claims real integration.
+// M-002 service-management view state. Wire shapes follow the service-write contract as
+// finalized by role A (10号 §4.10.1 错误码适用面定稿, relayed 2026-09-22) on top of the
+// principle-approved v0.2 basis; role A is implementing the backend. Decoders stay strict
+// exact-key against the shapes below and the real repository is the single swap point.
+// Mock never claims real integration.
 //
-// Contract anchors (task adjudication 2026-09-22 + proposal §2/§3/§5.1):
+// Contract anchors (A-side finalization 2026-09-22 + proposal §2/§3/§5.1):
 // - status machine DRAFT/REVIEWING/ACTIVE/OFFLINE/REJECTED; editing only DRAFT/REJECTED/OFFLINE;
 // - POST /{id}/online means submit-for-review (success status=REVIEWING); offline ACTIVE→OFFLINE;
 // - 409 SERVICE_STATE_NOT_ALLOWED for editing ACTIVE/REVIEWING and for non-operable stores;
-//   400 SERVICE_REVIEW_REASON_REQUIRED when submit lacks required fields;
-// - X-Request-Id idempotency + expectedVersion optimistic concurrency; IDs/prices are Strings.
+//   a merchant submit missing required fields (incl. cover) answers 400 COMMON_INVALID_ARGUMENT
+//   with details naming the fields — SERVICE_REVIEW_REASON_REQUIRED is admin-side only;
+// - latestRejection {decisionId, submissionNo, decisionType, opinion, decidedAt} carries only
+//   the most recent REJECT; list/detail also expose submissionNo/submittedAt/updatedAt and a
+//   cover object {coverAssetId, coverUrl?, coverUrlExpiresAt?} (signed URL when visible);
+// - X-Request-Id idempotency + expectedVersion optimistic concurrency; IDs/prices are Strings;
+//   online/offline carry merchantId/storeId/expectedVersion in the BODY (27号 alignment).
 export type ServiceManageStatus = 'DRAFT' | 'REVIEWING' | 'ACTIVE' | 'OFFLINE' | 'REJECTED'
 export const serviceManageStatuses = ['DRAFT', 'REVIEWING', 'ACTIVE', 'OFFLINE', 'REJECTED'] as const
 export const manageStatusText: Record<ServiceManageStatus, string> = {
@@ -29,26 +33,33 @@ const petTypeSet = new Set<ApplicablePetType>(petTypes)
 /** GET /api/v1/merchant/service-categories item (proposal §5.1: ENABLED id/name/sortNo). */
 export type ServiceCategoryView = Readonly<{ id: string; name: string; sortNo: number }>
 
+/** Cover projection (A-side finalization): asset anchor plus a signed display URL that is
+ *  only returned while visible and expires at coverUrlExpiresAt (refresh placeholder). */
+export type ManagedServiceCover = Readonly<{
+  coverAssetId: string | null
+  coverUrl: string | null
+  coverUrlExpiresAt: string | null
+}>
+
 /** List projection of GET /api/v1/merchant/services (all statuses, this store only). */
 export type ManagedServiceItem = Readonly<{
-  serviceId: string; serviceName: string; price: string | null
-  status: ServiceManageStatus; version: string
+  serviceId: string; serviceName: string; categoryName: string | null
+  price: string | null; status: ServiceManageStatus; version: string
+  submissionNo: number; submittedAt: string | null; updatedAt: string
+  cover: ManagedServiceCover
 }>
-/** Detail = list fields + the §2 business fields + latest review decision (rejection reason). */
-export type ManagedServiceDecision = Readonly<{
-  decisionType: 'APPROVE' | 'REJECT'
-  opinion: string | null
-  decidedAt: string
+/** Most recent REJECT decision only (A-side finalization): opinion is mandatory 10-500. */
+export type ManagedServiceRejection = Readonly<{
+  decisionId: string; submissionNo: number; decisionType: 'REJECT'
+  opinion: string; decidedAt: string
 }>
 export type ManagedServiceDetail = Readonly<{
   serviceId: string; merchantId: string; storeId: string
-  serviceName: string; categoryId: string | null; fulfillmentType: FulfillmentType | null
+  serviceName: string; categoryId: string | null; categoryName: string | null
+  fulfillmentType: FulfillmentType | null
   price: string | null; listPrice: string | null
   durationMinutes: number | null
-  coverAssetId: string | null
-  // Pending A-side freeze: the service-read responses will add a cover display field whose name
-  // is decided by A-side doc 11 sync; mocked as a nullable String "coverUrl" until then.
-  coverUrl: string | null
+  cover: ManagedServiceCover
   applicablePetTypes: readonly ApplicablePetType[]
   staffRequirement: string | null
   verificationRequired: boolean
@@ -56,13 +67,15 @@ export type ManagedServiceDetail = Readonly<{
   aftersaleNote: string | null
   remark: string | null
   status: ServiceManageStatus; version: string
-  latestDecision: ManagedServiceDecision | null
+  submissionNo: number; submittedAt: string | null; updatedAt: string
+  latestRejection: ManagedServiceRejection | null
 }>
 export type ManagedServicePage = Readonly<{ items: ManagedServiceItem[]; page: number; pageSize: number; total: number }>
 /** Success data of POST/PUT/online/offline: {serviceId,status,version} (proposal §5.1). */
 export type ServiceCommandReceipt = Readonly<{ serviceId: string; status: ServiceManageStatus; version: string }>
 
-/** Form payload for create (POST) and update (PUT); DRAFT save is loose, submit validates. */
+/** Form payload for create (POST) and update (PUT); DRAFT save is loose, submit validates.
+ *  The write command keeps a flat coverAssetId (the cover object is the read projection). */
 export type ServiceDraftInput = Readonly<{
   serviceName: string
   categoryId: string | null
@@ -90,7 +103,7 @@ export function draftFromDetail(detail: ManagedServiceDetail): ServiceDraftInput
   return {
     serviceName: detail.serviceName, categoryId: detail.categoryId, fulfillmentType: detail.fulfillmentType,
     price: detail.price, listPrice: detail.listPrice, durationMinutes: detail.durationMinutes,
-    coverAssetId: detail.coverAssetId, applicablePetTypes: detail.applicablePetTypes,
+    coverAssetId: detail.cover.coverAssetId, applicablePetTypes: detail.applicablePetTypes,
     staffRequirement: detail.staffRequirement, verificationRequired: detail.verificationRequired,
     description: detail.description, aftersaleNote: detail.aftersaleNote, remark: detail.remark,
   }
@@ -124,6 +137,7 @@ const timestamp = (value: any): string => {
   if (typeof value !== 'string' || !/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}(Z|[+-]\d{2}:\d{2})(?![\s\S])/.test(value) || !Number.isFinite(Date.parse(value))) invalid()
   return value
 }
+const timestampOrNull = (value: any): string | null => value === null ? null : timestamp(value)
 const statusOf = (value: any): ServiceManageStatus =>
   serviceManageStatuses.includes(value) ? value as ServiceManageStatus : invalid()
 const fulfillmentOf = (value: any): FulfillmentType =>
@@ -135,14 +149,28 @@ function petTypesOf(value: any): ApplicablePetType[] {
   if (types.includes('ALL') && types.length > 1) invalid() // ALL is exclusive per proposal §2
   return types
 }
-function decisionOf(value: any): ManagedServiceDecision | null {
+const submissionNoOf = (value: any): number => {
+  if (!Number.isSafeInteger(value) || value < 0 || value > 4294967295) invalid()
+  return value
+}
+function coverOf(value: any): ManagedServiceCover {
+  const v = exact(value, ['coverAssetId', 'coverUrl', 'coverUrlExpiresAt'])
+  const coverAssetId = v.coverAssetId === null ? null : isId(v.coverAssetId) ? v.coverAssetId : invalid()
+  const coverUrl = textOrNull(v.coverUrl, 2048)
+  const coverUrlExpiresAt = timestampOrNull(v.coverUrlExpiresAt)
+  // A signed display URL always comes with its asset anchor and its own expiry.
+  if (coverUrl !== null && (coverAssetId === null || coverUrlExpiresAt === null)) invalid()
+  return { coverAssetId, coverUrl, coverUrlExpiresAt }
+}
+function rejectionOf(value: any): ManagedServiceRejection | null {
   if (value === null) return null
-  const v = exact(value, ['decisionType', 'opinion', 'decidedAt'])
-  const decisionType: 'APPROVE' | 'REJECT' = v.decisionType === 'APPROVE' || v.decisionType === 'REJECT' ? v.decisionType : invalid()
-  const opinion = textOrNull(v.opinion, 500)
-  // REJECT decisions must carry a 10-500 opinion (proposal §2 validation).
-  if (decisionType === 'REJECT' && (opinion === null || [...opinion].length < 10)) invalid()
-  return { decisionType, opinion, decidedAt: timestamp(v.decidedAt) }
+  const v = exact(value, ['decisionId', 'submissionNo', 'decisionType', 'opinion', 'decidedAt'])
+  if (v.decisionType !== 'REJECT') invalid() // only the most recent REJECT is carried
+  // REJECT opinion is a mandatory 10-500 text (the edit-page banner shows it verbatim).
+  const opinion = textOrNull(v.opinion, 500) ?? invalid()
+  if ([...opinion].length < 10) invalid()
+  return { decisionId: isId(v.decisionId) ? v.decisionId : invalid(), submissionNo: submissionNoOf(v.submissionNo),
+    decisionType: 'REJECT', opinion, decidedAt: timestamp(v.decidedAt) }
 }
 
 export function decodeCategory(value: unknown): ServiceCategoryView {
@@ -159,11 +187,19 @@ export function decodeCategoryList(value: any): ServiceCategoryView[] {
   if (JSON.stringify(categories.map((category: ServiceCategoryView) => category.sortNo)) !== JSON.stringify([...categories].sort((a: ServiceCategoryView, b: ServiceCategoryView) => a.sortNo - b.sortNo).map((category: ServiceCategoryView) => category.sortNo))) invalid()
   return categories
 }
+const itemKeys = ['serviceId', 'serviceName', 'categoryName', 'price', 'status', 'version',
+  'submissionNo', 'submittedAt', 'updatedAt', 'cover'] as const
 export function decodeManagedServiceItem(value: unknown): ManagedServiceItem {
-  const v = exact(value, ['serviceId', 'serviceName', 'price', 'status', 'version'])
+  const v = exact(value, itemKeys)
   if (!isId(v.serviceId)) invalid()
   if (typeof v.serviceName !== 'string' || [...v.serviceName].length < 1 || [...v.serviceName].length > 50) invalid()
-  return { serviceId: v.serviceId, serviceName: v.serviceName, price: moneyOrNull(v.price), status: statusOf(v.status), version: isVersion(v.version) ? v.version : invalid() }
+  if (v.categoryName !== null && (typeof v.categoryName !== 'string' || [...v.categoryName].length > 50)) invalid()
+  return {
+    serviceId: v.serviceId, serviceName: v.serviceName, categoryName: v.categoryName,
+    price: moneyOrNull(v.price), status: statusOf(v.status), version: isVersion(v.version) ? v.version : invalid(),
+    submissionNo: submissionNoOf(v.submissionNo), submittedAt: timestampOrNull(v.submittedAt),
+    updatedAt: timestamp(v.updatedAt), cover: coverOf(v.cover),
+  }
 }
 export function decodeManagedServicePage(value: unknown): ManagedServicePage {
   const v = exact(value, ['items', 'page', 'pageSize', 'total'])
@@ -174,35 +210,35 @@ export function decodeManagedServicePage(value: unknown): ManagedServicePage {
   if (!Number.isInteger(total) || total < 0) invalid()
   return { items: v.items.map(decodeManagedServiceItem), page, pageSize, total }
 }
-const detailKeys = ['serviceId', 'merchantId', 'storeId', 'serviceName', 'categoryId', 'fulfillmentType',
-  'price', 'listPrice', 'durationMinutes', 'coverAssetId', 'coverUrl', 'applicablePetTypes',
+const detailKeys = ['serviceId', 'merchantId', 'storeId', 'serviceName', 'categoryId', 'categoryName', 'fulfillmentType',
+  'price', 'listPrice', 'durationMinutes', 'cover', 'applicablePetTypes',
   'staffRequirement', 'verificationRequired', 'description', 'aftersaleNote', 'remark',
-  'status', 'version', 'latestDecision'] as const
+  'status', 'version', 'submissionNo', 'submittedAt', 'updatedAt', 'latestRejection'] as const
 export function decodeManagedServiceDetail(value: unknown): ManagedServiceDetail {
   const v = exact(value, detailKeys)
   if (!isId(v.serviceId) || !isId(v.merchantId) || !isId(v.storeId)) invalid()
   if (v.categoryId !== null && !isId(v.categoryId)) invalid()
-  if (!isId(v.coverAssetId) && v.coverAssetId !== null) invalid()
-  if (v.coverUrl !== null && typeof v.coverUrl !== 'string') invalid()
+  if (v.categoryName !== null && (typeof v.categoryName !== 'string' || [...v.categoryName].length > 50)) invalid()
   if (typeof v.serviceName !== 'string' || [...v.serviceName].length < 1 || [...v.serviceName].length > 50) invalid()
   if (v.durationMinutes !== null && (!Number.isSafeInteger(v.durationMinutes) || v.durationMinutes < 1 || v.durationMinutes > 24 * 60)) invalid()
   if (typeof v.verificationRequired !== 'boolean') invalid()
-  if (v.status === 'REJECTED') {
-    const decision = decisionOf(v.latestDecision)
-    if (!decision || decision.decisionType !== 'REJECT') invalid()
-  }
+  const latestRejection = rejectionOf(v.latestRejection)
+  // A REJECTED service must expose its most recent rejection (the banner data source).
+  if (v.status === 'REJECTED' && latestRejection === null) invalid()
   const price = moneyOrNull(v.price), listPrice = moneyOrNull(v.listPrice)
   if (listPrice !== null && price !== null && cents(listPrice) < cents(price)) invalid()
   return {
     serviceId: v.serviceId, merchantId: v.merchantId, storeId: v.storeId,
-    serviceName: v.serviceName, categoryId: v.categoryId,
+    serviceName: v.serviceName, categoryId: v.categoryId, categoryName: v.categoryName,
     fulfillmentType: v.fulfillmentType === null ? null : fulfillmentOf(v.fulfillmentType),
-    price, listPrice, durationMinutes: v.durationMinutes, coverAssetId: v.coverAssetId,
-    coverUrl: v.coverUrl, applicablePetTypes: petTypesOf(v.applicablePetTypes),
+    price, listPrice, durationMinutes: v.durationMinutes, cover: coverOf(v.cover),
+    applicablePetTypes: petTypesOf(v.applicablePetTypes),
     staffRequirement: textOrNull(v.staffRequirement, 200), verificationRequired: v.verificationRequired,
     description: textOrNull(v.description, 1000), aftersaleNote: textOrNull(v.aftersaleNote, 500),
     remark: textOrNull(v.remark, 500), status: statusOf(v.status),
-    version: isVersion(v.version) ? v.version : invalid(), latestDecision: decisionOf(v.latestDecision),
+    version: isVersion(v.version) ? v.version : invalid(),
+    submissionNo: submissionNoOf(v.submissionNo), submittedAt: timestampOrNull(v.submittedAt),
+    updatedAt: timestamp(v.updatedAt), latestRejection,
   }
 }
 export function decodeCommandReceipt(value: unknown): ServiceCommandReceipt {
@@ -211,7 +247,8 @@ export function decodeCommandReceipt(value: unknown): ServiceCommandReceipt {
   return { serviceId: v.serviceId, status: statusOf(v.status), version: isVersion(v.version) ? v.version : invalid() }
 }
 
-/** Client-side submit validation (proposal §2 submit precheck + PRD §5.5 required fields). */
+/** Client-side submit validation (proposal §2 submit precheck + PRD §5.5 required fields).
+ *  Mirrors the finalized server answer: 400 COMMON_INVALID_ARGUMENT with these fields. */
 export function missingSubmitFields(draft: ServiceDraftInput, categories: readonly ServiceCategoryView[]): string[] {
   const missing: string[] = []
   const name = [...draft.serviceName.trim()]
@@ -259,30 +296,35 @@ export class ServiceManageMockError extends Error {
   constructor(readonly code: string, readonly statusCode: number) { super(code) }
 }
 
-// CONTRACT MOCK (principle-approved contract preview): no network, no session, no durable data.
+// CONTRACT MOCK (finalized-contract preview): no network, no session, no durable data.
 // It enforces the command semantics the backend will enforce — status-machine guards
 // (409 SERVICE_STATE_NOT_ALLOWED), expectedVersion CAS (409 COMMON_CONFLICT), submit precheck
-// (400 SERVICE_REVIEW_REASON_REQUIRED), non-operable stores rejecting writes (409), per-slot
-// requestId idempotency with replay and IDEMPOTENCY_KEY_CONFLICT on payload change — but it is
-// NOT a real backend integration and never authorizes anyone.
+// (400 COMMON_INVALID_ARGUMENT per the A-side error-code finalization), non-operable stores
+// rejecting writes (409), per-slot requestId idempotency with replay and payload locking —
+// but it is NOT a real backend integration and never authorizes anyone.
 export class PreviewServiceManageRepository implements ServiceManageDeps {
-  private services: Map<string, ManagedServiceDetail & { submittedAt: string | null }>
+  private services: Map<string, ManagedServiceDetail>
   private nextId = 30100
   private journal = new Map<string, { requestId: string; fingerprint: string; receipt: ServiceCommandReceipt }>()
   private uuidSeed = 0
+  private clock = 0
   private failNextRead = false
   constructor(
-    services: (ManagedServiceDetail & { submittedAt?: string | null })[] = fixtureManagedServices,
+    services: ManagedServiceDetail[] = fixtureManagedServices,
     private scenario: ServiceManageScenario = 'normal',
     private pause: () => Promise<void> = async () => {},
   ) {
-    this.services = new Map(services.map(service => [service.serviceId, { ...service, submittedAt: service.submittedAt ?? null }]))
+    this.services = new Map(services.map(service => [service.serviceId, { ...service, cover: { ...service.cover }, applicablePetTypes: [...service.applicablePetTypes] }]))
     if (scenario === 'empty') this.services.clear()
     this.failNextRead = scenario === 'load-error'
   }
   private uuid(): string {
     const value = (this.uuidSeed++).toString(16).padStart(12, '0')
     return `${value.slice(0, 8)}-${value.slice(8, 12)}-4000-8000-${value}`
+  }
+  /** Deterministic updatedAt for snapshot realism; the real value comes from the backend. */
+  private now(): string {
+    return `2026-09-22T10:00:${String(this.clock++ % 60).padStart(2, '0')}.000Z`
   }
   private async gate(read: boolean): Promise<void> {
     await this.pause()
@@ -314,7 +356,8 @@ export class PreviewServiceManageRepository implements ServiceManageDeps {
     // Newest first (numeric serviceId desc); list carries all statuses for the workbench.
     const items = [...this.services.values()]
       .sort((a, b) => (BigInt(b.serviceId) > BigInt(a.serviceId) ? 1 : -1))
-      .map(({ serviceId, serviceName, price, status, version }) => ({ serviceId, serviceName, price, status, version }))
+      .map(({ serviceId, serviceName, categoryName, price, status, version, submissionNo, submittedAt, updatedAt, cover }) =>
+        ({ serviceId, serviceName, categoryName, price, status, version, submissionNo, submittedAt, updatedAt, cover: { ...cover } }))
     const start = (bounded - 1) * size
     return { items: items.slice(start, start + size), page: bounded, pageSize: size, total: items.length }
   }
@@ -323,24 +366,29 @@ export class PreviewServiceManageRepository implements ServiceManageDeps {
     if (!isId(serviceId)) throw new ServiceManageMockError('COMMON_INVALID_ARGUMENT', 400)
     const found = this.services.get(serviceId)
     if (!found) throw new ServiceManageMockError('SERVICE_NOT_FOUND', 404)
-    const { submittedAt: _submittedAt, ...view } = found
-    return { ...view, applicablePetTypes: [...view.applicablePetTypes] }
+    return { ...found, cover: { ...found.cover }, applicablePetTypes: [...found.applicablePetTypes],
+      latestRejection: found.latestRejection === null ? null : { ...found.latestRejection } }
   }
   private looseCheck(input: ServiceDraftInput): void {
     if (draftInputProblems(input, fixtureCategories).length) throw new ServiceManageMockError('COMMON_INVALID_ARGUMENT', 400)
   }
   /** PUT/POST replace the full business field set (the form always carries every field). */
-  private store(input: ServiceDraftInput, serviceId: string, version: string, status: ServiceManageStatus, latestDecision: ManagedServiceDecision | null): ManagedServiceDetail {
+  private store(input: ServiceDraftInput, base: Pick<ManagedServiceDetail, 'serviceId' | 'status' | 'version' | 'submissionNo' | 'submittedAt' | 'latestRejection'>): ManagedServiceDetail {
     return {
-      serviceId, merchantId: fixtureMerchantId, storeId: fixtureStoreId,
+      serviceId: base.serviceId, merchantId: fixtureMerchantId, storeId: fixtureStoreId,
       serviceName: input.serviceName.trim(), categoryId: input.categoryId,
+      categoryName: input.categoryId === null ? null : fixtureCategories.find(category => category.id === input.categoryId)?.name ?? null,
       fulfillmentType: input.fulfillmentType, price: input.price, listPrice: input.listPrice,
-      durationMinutes: input.durationMinutes, coverAssetId: input.coverAssetId,
-      coverUrl: input.coverAssetId === null ? null : fixtureCoverUrl,
+      durationMinutes: input.durationMinutes,
+      cover: input.coverAssetId === null
+        ? { coverAssetId: null, coverUrl: null, coverUrlExpiresAt: null }
+        // Mock signed URL placeholder (fixed expiry) until real integration.
+        : { coverAssetId: input.coverAssetId, coverUrl: fixtureCoverUrl, coverUrlExpiresAt: fixtureCoverUrlExpiresAt },
       applicablePetTypes: [...input.applicablePetTypes], staffRequirement: input.staffRequirement,
       verificationRequired: input.verificationRequired, description: input.description,
       aftersaleNote: input.aftersaleNote, remark: input.remark,
-      status, version, latestDecision,
+      status: base.status, version: base.version, submissionNo: base.submissionNo,
+      submittedAt: base.submittedAt, updatedAt: this.now(), latestRejection: base.latestRejection,
     }
   }
   async create(slot: string, input: ServiceDraftInput): Promise<ServiceCommandReceipt> {
@@ -349,8 +397,8 @@ export class PreviewServiceManageRepository implements ServiceManageDeps {
     return this.command(slot, '', JSON.stringify(input), () => {
       this.looseCheck(input)
       const serviceId = String(this.nextId++)
-      const created = this.store(input, serviceId, '1', 'DRAFT', null)
-      this.services.set(serviceId, { ...created, submittedAt: null })
+      const created = this.store(input, { serviceId, status: 'DRAFT', version: '1', submissionNo: 0, submittedAt: null, latestRejection: null })
+      this.services.set(serviceId, created)
       return { serviceId, status: 'DRAFT', version: created.version }
     })
   }
@@ -363,8 +411,9 @@ export class PreviewServiceManageRepository implements ServiceManageDeps {
       if (!editableStatuses.includes(found.status)) throw new ServiceManageMockError('SERVICE_STATE_NOT_ALLOWED', 409)
       if (found.version !== expectedVersion) throw new ServiceManageMockError('COMMON_CONFLICT', 409)
       this.looseCheck(input)
-      const updated = this.store(input, serviceId, String(Number(found.version) + 1), found.status, found.latestDecision)
-      this.services.set(serviceId, { ...updated, submittedAt: found.submittedAt })
+      const updated = this.store(input, { serviceId, status: found.status, version: String(Number(found.version) + 1),
+        submissionNo: found.submissionNo, submittedAt: found.submittedAt, latestRejection: found.latestRejection })
+      this.services.set(serviceId, updated)
       return { serviceId, status: updated.status, version: updated.version }
     })
   }
@@ -379,14 +428,17 @@ export class PreviewServiceManageRepository implements ServiceManageDeps {
       const draft: ServiceDraftInput = {
         serviceName: found.serviceName, categoryId: found.categoryId, fulfillmentType: found.fulfillmentType,
         price: found.price, listPrice: found.listPrice, durationMinutes: found.durationMinutes,
-        coverAssetId: found.coverAssetId, applicablePetTypes: found.applicablePetTypes,
+        coverAssetId: found.cover.coverAssetId, applicablePetTypes: found.applicablePetTypes,
         staffRequirement: found.staffRequirement, verificationRequired: found.verificationRequired,
         description: found.description, aftersaleNote: found.aftersaleNote, remark: found.remark,
       }
-      if (missingSubmitFields(draft, fixtureCategories).length) throw new ServiceManageMockError('SERVICE_REVIEW_REASON_REQUIRED', 400)
+      // A-side finalization: missing required fields (incl. cover) answer COMMON_INVALID_ARGUMENT.
+      if (missingSubmitFields(draft, fixtureCategories).length) throw new ServiceManageMockError('COMMON_INVALID_ARGUMENT', 400)
       const version = String(Number(found.version) + 1)
-      const submitted = { ...found, status: 'REVIEWING' as const, version }
-      this.services.set(serviceId, { ...submitted, submittedAt: '2026-09-22T08:00:00.000Z' })
+      const submissionNo = found.submissionNo + 1
+      const submitted = { ...found, status: 'REVIEWING' as const, version, submissionNo,
+        submittedAt: this.now(), updatedAt: this.now() }
+      this.services.set(serviceId, submitted)
       return { serviceId, status: 'REVIEWING', version }
     })
   }
@@ -399,7 +451,7 @@ export class PreviewServiceManageRepository implements ServiceManageDeps {
       if (found.status !== 'ACTIVE') throw new ServiceManageMockError('SERVICE_STATE_NOT_ALLOWED', 409)
       if (found.version !== expectedVersion) throw new ServiceManageMockError('COMMON_CONFLICT', 409)
       const version = String(Number(found.version) + 1)
-      this.services.set(serviceId, { ...found, status: 'OFFLINE', version })
+      this.services.set(serviceId, { ...found, status: 'OFFLINE', version, updatedAt: this.now() })
       return { serviceId, status: 'OFFLINE', version }
     })
   }
@@ -408,8 +460,12 @@ export class PreviewServiceManageRepository implements ServiceManageDeps {
 // Design samples of frame 10:5255 (8 services of the original artwork) spread across the
 // approved status machine so every list state is previewable; prices keep the design values.
 export const fixtureCoverUrl = 'https://design.example/covers/mock-cover.png'
+/** Mock signed-URL expiry placeholder — the real value refreshes per backend response. */
+export const fixtureCoverUrlExpiresAt = '2026-09-22T11:00:00.000Z'
 export const fixtureMerchantId = '957001'
 export const fixtureStoreId = '957002'
+const cover = (coverAssetId: string): ManagedServiceCover => ({ coverAssetId, coverUrl: fixtureCoverUrl, coverUrlExpiresAt: fixtureCoverUrlExpiresAt })
+const noCover: ManagedServiceCover = { coverAssetId: null, coverUrl: null, coverUrlExpiresAt: null }
 /** Unified service dictionary (11 categories, PRD §5.1.13/商家端第8章 alignment; ids are fixtures). */
 export const fixtureCategories: ServiceCategoryView[] = [
   { id: '957003', name: '宠物美容', sortNo: 1 },
@@ -424,51 +480,57 @@ export const fixtureCategories: ServiceCategoryView[] = [
   { id: '957012', name: '绿植养护', sortNo: 10 },
   { id: '957013', name: '植物代养', sortNo: 11 },
 ]
-export const fixtureManagedServices: (ManagedServiceDetail & { submittedAt?: string | null })[] = [
+export const fixtureManagedServices: ManagedServiceDetail[] = [
   { serviceId: '30001', merchantId: fixtureMerchantId, storeId: fixtureStoreId, serviceName: '猫咪洗澡+基础护理',
-    categoryId: '957003', fulfillmentType: 'IN_STORE', price: '128.00', listPrice: '158.00', durationMinutes: 60,
-    coverAssetId: '40001', coverUrl: fixtureCoverUrl, applicablePetTypes: ['CAT'], staffRequirement: '持证宠物美容师',
+    categoryId: '957003', categoryName: '宠物美容', fulfillmentType: 'IN_STORE', price: '128.00', listPrice: '158.00', durationMinutes: 60,
+    cover: cover('40001'), applicablePetTypes: ['CAT'], staffRequirement: '持证宠物美容师',
     verificationRequired: true, description: '含洗护、基础护理、吹干造型', aftersaleNote: '服务开始前可全额退款', remark: null,
-    status: 'ACTIVE', version: '3', latestDecision: null, submittedAt: '2026-09-20T08:00:00.000Z' },
+    status: 'ACTIVE', version: '3', submissionNo: 1, submittedAt: '2026-09-20T08:00:00.000Z', updatedAt: '2026-09-21T08:00:00.000Z',
+    latestRejection: null },
   { serviceId: '30002', merchantId: fixtureMerchantId, storeId: fixtureStoreId, serviceName: '狗狗美容造型',
-    categoryId: '957003', fulfillmentType: 'IN_STORE', price: '198.00', listPrice: null, durationMinutes: 90,
-    coverAssetId: '40002', coverUrl: fixtureCoverUrl, applicablePetTypes: ['DOG'], staffRequirement: null,
+    categoryId: '957003', categoryName: '宠物美容', fulfillmentType: 'IN_STORE', price: '198.00', listPrice: null, durationMinutes: 90,
+    cover: cover('40002'), applicablePetTypes: ['DOG'], staffRequirement: null,
     verificationRequired: true, description: '造型修剪、洗护、指甲护理', aftersaleNote: null, remark: null,
-    status: 'REVIEWING', version: '2', latestDecision: null, submittedAt: '2026-09-22T06:30:00.000Z' },
+    status: 'REVIEWING', version: '2', submissionNo: 1, submittedAt: '2026-09-22T06:30:00.000Z', updatedAt: '2026-09-22T06:30:00.000Z',
+    latestRejection: null },
   { serviceId: '30003', merchantId: fixtureMerchantId, storeId: fixtureStoreId, serviceName: '宠物疫苗接种（狂犬）',
-    categoryId: '957008', fulfillmentType: 'IN_STORE', price: '120.00', listPrice: null, durationMinutes: 30,
-    coverAssetId: '40003', coverUrl: fixtureCoverUrl, applicablePetTypes: ['ALL'], staffRequirement: '执业兽医',
+    categoryId: '957008', categoryName: '兽医助理', fulfillmentType: 'IN_STORE', price: '120.00', listPrice: null, durationMinutes: 30,
+    cover: cover('40003'), applicablePetTypes: ['ALL'], staffRequirement: '执业兽医',
     verificationRequired: true, description: '狂犬疫苗接种，含接种证明', aftersaleNote: null, remark: null,
-    status: 'REJECTED', version: '4',
-    latestDecision: { decisionType: 'REJECT', opinion: '封面图与接种环境说明不完整，请补充接种台照片后重新提交审核。', decidedAt: '2026-09-21T10:00:00.000Z' },
-    submittedAt: '2026-09-20T09:00:00.000Z' },
+    status: 'REJECTED', version: '4', submissionNo: 2, submittedAt: '2026-09-20T09:00:00.000Z', updatedAt: '2026-09-21T10:00:00.000Z',
+    latestRejection: { decisionId: '50003', submissionNo: 2, decisionType: 'REJECT',
+      opinion: '封面图与接种环境说明不完整，请补充接种台照片后重新提交审核。', decidedAt: '2026-09-21T10:00:00.000Z' } },
   { serviceId: '30004', merchantId: fixtureMerchantId, storeId: fixtureStoreId, serviceName: '猫咪绝育套餐',
-    categoryId: '957008', fulfillmentType: 'IN_STORE', price: '1280.00', listPrice: '1580.00', durationMinutes: 120,
-    coverAssetId: '40004', coverUrl: fixtureCoverUrl, applicablePetTypes: ['CAT'], staffRequirement: '执业兽医团队',
+    categoryId: '957008', categoryName: '兽医助理', fulfillmentType: 'IN_STORE', price: '1280.00', listPrice: '1580.00', durationMinutes: 120,
+    cover: cover('40004'), applicablePetTypes: ['CAT'], staffRequirement: '执业兽医团队',
     verificationRequired: true, description: '术前体检、麻醉、手术与术后观察', aftersaleNote: '术后问题24小时内联系门店', remark: null,
-    status: 'OFFLINE', version: '6',
-    latestDecision: { decisionType: 'APPROVE', opinion: null, decidedAt: '2026-09-15T10:00:00.000Z' },
-    submittedAt: '2026-09-15T08:00:00.000Z' },
+    status: 'OFFLINE', version: '6', submissionNo: 3, submittedAt: '2026-09-15T08:00:00.000Z', updatedAt: '2026-09-18T09:00:00.000Z',
+    // Only the most recent REJECT is carried; this service's last decision was an approval.
+    latestRejection: null },
   { serviceId: '30005', merchantId: fixtureMerchantId, storeId: fixtureStoreId, serviceName: '狗狗寄养（每日）',
-    categoryId: '957004', fulfillmentType: 'IN_STORE', price: '150.00', listPrice: null, durationMinutes: 480,
-    coverAssetId: null, coverUrl: null, applicablePetTypes: ['DOG'], staffRequirement: null,
+    categoryId: '957004', categoryName: '宠物寄养', fulfillmentType: 'IN_STORE', price: '150.00', listPrice: null, durationMinutes: 480,
+    cover: noCover, applicablePetTypes: ['DOG'], staffRequirement: null,
     verificationRequired: true, description: null, aftersaleNote: null, remark: null,
-    status: 'DRAFT', version: '1', latestDecision: null },
+    status: 'DRAFT', version: '1', submissionNo: 0, submittedAt: null, updatedAt: '2026-09-22T05:00:00.000Z',
+    latestRejection: null },
   { serviceId: '30006', merchantId: fixtureMerchantId, storeId: fixtureStoreId, serviceName: '宠物体检基础套餐',
-    categoryId: '957011', fulfillmentType: 'IN_STORE', price: '380.00', listPrice: null, durationMinutes: 60,
-    coverAssetId: '40006', coverUrl: fixtureCoverUrl, applicablePetTypes: ['ALL'], staffRequirement: '执业兽医',
+    categoryId: '957011', categoryName: '异宠健康检查', fulfillmentType: 'IN_STORE', price: '380.00', listPrice: null, durationMinutes: 60,
+    cover: cover('40006'), applicablePetTypes: ['ALL'], staffRequirement: '执业兽医',
     verificationRequired: true, description: '基础体检八项', aftersaleNote: null, remark: null,
-    status: 'ACTIVE', version: '2', latestDecision: null, submittedAt: '2026-09-18T08:00:00.000Z' },
+    status: 'ACTIVE', version: '2', submissionNo: 1, submittedAt: '2026-09-18T08:00:00.000Z', updatedAt: '2026-09-19T08:00:00.000Z',
+    latestRejection: null },
   { serviceId: '30007', merchantId: fixtureMerchantId, storeId: fixtureStoreId, serviceName: '猫咪上门喂养',
-    categoryId: '957007', fulfillmentType: 'PICKUP_DELIVERY', price: '80.00', listPrice: null, durationMinutes: 45,
-    coverAssetId: '40007', coverUrl: fixtureCoverUrl, applicablePetTypes: ['CAT'], staffRequirement: null,
+    categoryId: '957007', categoryName: '上门喂养', fulfillmentType: 'PICKUP_DELIVERY', price: '80.00', listPrice: null, durationMinutes: 45,
+    cover: cover('40007'), applicablePetTypes: ['CAT'], staffRequirement: null,
     verificationRequired: true, description: '上门喂食、铲砂、陪伴', aftersaleNote: null, remark: null,
-    status: 'ACTIVE', version: '2', latestDecision: null, submittedAt: '2026-09-17T08:00:00.000Z' },
+    status: 'ACTIVE', version: '2', submissionNo: 1, submittedAt: '2026-09-17T08:00:00.000Z', updatedAt: '2026-09-18T08:00:00.000Z',
+    latestRejection: null },
   { serviceId: '30008', merchantId: fixtureMerchantId, storeId: fixtureStoreId, serviceName: '狗狗训练课程',
-    categoryId: '957006', fulfillmentType: 'IN_STORE', price: '500.00', listPrice: null, durationMinutes: 60,
-    coverAssetId: '40008', coverUrl: fixtureCoverUrl, applicablePetTypes: ['DOG'], staffRequirement: '持证训犬师',
+    categoryId: '957006', categoryName: '宠物训练', fulfillmentType: 'IN_STORE', price: '500.00', listPrice: null, durationMinutes: 60,
+    cover: cover('40008'), applicablePetTypes: ['DOG'], staffRequirement: '持证训犬师',
     verificationRequired: true, description: '基础服从训练', aftersaleNote: null, remark: null,
-    status: 'ACTIVE', version: '2', latestDecision: null, submittedAt: '2026-09-16T08:00:00.000Z' },
+    status: 'ACTIVE', version: '2', submissionNo: 1, submittedAt: '2026-09-16T08:00:00.000Z', updatedAt: '2026-09-17T08:00:00.000Z',
+    latestRejection: null },
 ]
 
 // Display helper: the design list shows integer prices ("¥128"); wire keeps two decimals.

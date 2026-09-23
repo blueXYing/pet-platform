@@ -82,9 +82,10 @@ export class RealServiceManageRepository implements ServiceManageDeps {
 
   submitOnline(slot: string, serviceId: string, expectedVersion: string): Promise<ServiceCommandReceipt> {
     const { merchantId, storeId } = this.target()
+    // A-side finalization (27号 alignment): target ids and expectedVersion all travel in the body.
     return this.api.write(slot, {
       method: 'POST', path: `/api/v1/merchant/services/${serviceId}/online`,
-      query: { merchantId, storeId }, data: { expectedVersion },
+      data: { merchantId, storeId, expectedVersion },
     }, value => {
       const receipt = decodeCommandReceipt(value)
       if (receipt.serviceId !== serviceId || receipt.status !== 'REVIEWING') throw new Error('INVALID_RESPONSE')
@@ -96,7 +97,7 @@ export class RealServiceManageRepository implements ServiceManageDeps {
     const { merchantId, storeId } = this.target()
     return this.api.write(slot, {
       method: 'POST', path: `/api/v1/merchant/services/${serviceId}/offline`,
-      query: { merchantId, storeId }, data: { expectedVersion },
+      data: { merchantId, storeId, expectedVersion },
     }, value => {
       const receipt = decodeCommandReceipt(value)
       if (receipt.serviceId !== serviceId || receipt.status !== 'OFFLINE') throw new Error('INVALID_RESPONSE')
@@ -108,7 +109,8 @@ export class RealServiceManageRepository implements ServiceManageDeps {
 export function serviceManageMessage(error: unknown): string {
   if (error instanceof ApiError) {
     if (error.code === 'SERVICE_STATE_NOT_ALLOWED') return '当前服务状态不允许该操作；上架中的服务需先下架才能编辑。'
-    if (error.code === 'SERVICE_REVIEW_REASON_REQUIRED') return '提交审核前请补齐必填信息（名称、分类、履约方式、价格、时长、封面、适用宠物类型）。'
+    // A-side finalization: a submit missing required fields answers COMMON_INVALID_ARGUMENT.
+    if (error.code === 'COMMON_INVALID_ARGUMENT' && error.statusCode === 400) return '提交内容缺少必填项（名称、分类、履约方式、价格、时长、封面、适用宠物类型），请补齐后重试。'
     if (error.code === 'COMMON_CONFLICT') return '内容已被修改，请刷新后重试；请勿更换请求盲目重试。'
     if (error.code === 'IDEMPOTENCY_KEY_CONFLICT') return '同一请求编号已被其他内容使用，请刷新后重试。'
     if (error.statusCode === 401) return '登录已失效，请重新登录。'

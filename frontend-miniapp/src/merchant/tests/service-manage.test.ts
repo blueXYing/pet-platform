@@ -22,37 +22,49 @@ async function rejects(promise: Promise<unknown>): Promise<ServiceManageMockErro
   try { await promise; return new Error('NO_THROW') } catch (error) { return error as ServiceManageMockError }
 }
 
-// Fixtures carry a mock-only submittedAt bookkeeping field the wire detail does not include.
-const wire = (detail: Record<string, any>): Record<string, unknown> => {
-  const clone = JSON.parse(JSON.stringify(detail))
-  delete clone.submittedAt
-  return clone
-}
+const wire = (value: unknown): Record<string, unknown> => JSON.parse(JSON.stringify(value))
 
-test('decoders enforce the exact approved shapes (IDs/prices/status/decision invariants)', () => {
+test('decoders enforce the exact finalized shapes (IDs/prices/status/rejection/cover)', () => {
   const base = fixtureManagedServices[0]!
   assert.ok(decodeManagedServiceDetail(wire(base)))
   assert.equal(decodeManagedServiceDetail(wire(base)).serviceId, base.serviceId)
   // extra key, bad price lexeme, non-snowflake id and unknown status all fail
   for (const mutate of [
-    (v: Record<string, unknown>) => { v.extra = 1 },
-    (v: Record<string, unknown>) => { v.price = '99.0' },
-    (v: Record<string, unknown>) => { v.serviceId = 'abc' },
-    (v: Record<string, unknown>) => { v.status = 'PAUSED' },
-    (v: Record<string, unknown>) => { v.listPrice = '1.00'; v.price = '2.00' },
-    (v: Record<string, unknown>) => { v.applicablePetTypes = ['ALL', 'CAT'] },
-    (v: Record<string, unknown>) => { v.status = 'REJECTED'; v.latestDecision = null },
+    (v: Record<string, any>) => { v.extra = 1 },
+    (v: Record<string, any>) => { v.price = '99.0' },
+    (v: Record<string, any>) => { v.serviceId = 'abc' },
+    (v: Record<string, any>) => { v.status = 'PAUSED' },
+    (v: Record<string, any>) => { v.listPrice = '1.00'; v.price = '2.00' },
+    (v: Record<string, any>) => { v.applicablePetTypes = ['ALL', 'CAT'] },
+    // A-side finalization: REJECTED must expose its most recent REJECT as latestRejection.
+    (v: Record<string, any>) => { v.status = 'REJECTED'; v.latestRejection = null },
+    (v: Record<string, any>) => { delete v.submissionNo },
+    (v: Record<string, any>) => { v.updatedAt = null },
+    // Cover object: a signed URL requires its asset anchor and its own expiry.
+    (v: Record<string, any>) => { v.cover.coverUrlExpiresAt = null },
+    (v: Record<string, any>) => { v.cover.coverAssetId = null },
   ]) {
-    const value = wire(base as Record<string, any>)
+    const value = wire(base)
     mutate(value)
     assert.throws(() => decodeManagedServiceDetail(value), /INVALID_RESPONSE/)
   }
   const rejected = fixtureManagedServices.find(service => service.status === 'REJECTED')!
-  const badDecision = wire(rejected as Record<string, any>)
-  ;(badDecision.latestDecision as Record<string, unknown>).opinion = '短'
-  assert.throws(() => decodeManagedServiceDetail(badDecision), /INVALID_RESPONSE/)
-  const page = decodeManagedServicePage({ items: [JSON.parse(JSON.stringify({ serviceId: base.serviceId, serviceName: base.serviceName, price: base.price, status: base.status, version: base.version }))], page: 1, pageSize: 20, total: 1 })
+  const badRejection = wire(rejected)
+  ;(badRejection.latestRejection as Record<string, unknown>).opinion = '短'
+  assert.throws(() => decodeManagedServiceDetail(badRejection), /INVALID_RESPONSE/)
+  const wrongType = wire(rejected)
+  ;(wrongType.latestRejection as Record<string, unknown>).decisionType = 'APPROVE'
+  assert.throws(() => decodeManagedServiceDetail(wrongType), /INVALID_RESPONSE/)
+  const listLine = { serviceId: base.serviceId, serviceName: base.serviceName, categoryName: base.categoryName,
+    price: base.price, status: base.status, version: base.version, submissionNo: base.submissionNo,
+    submittedAt: base.submittedAt, updatedAt: base.updatedAt, cover: base.cover }
+  const page = decodeManagedServicePage({ items: [wire(listLine)], page: 1, pageSize: 20, total: 1 })
   assert.equal(page.items[0]!.serviceName, base.serviceName)
+  assert.equal(page.items[0]!.cover.coverUrl, base.cover.coverUrl)
+  for (const broken of [
+    { ...listLine, extra: 1 }, { ...listLine, submissionNo: -1 }, { ...listLine, updatedAt: 'nope' },
+    { ...listLine, cover: { coverAssetId: null, coverUrl: base.cover.coverUrl, coverUrlExpiresAt: null } },
+  ]) { assert.throws(() => decodeManagedServicePage({ items: [broken], page: 1, pageSize: 20, total: 1 }), /INVALID_RESPONSE/) }
   assert.throws(() => decodeManagedServicePage({ items: [], page: 0, pageSize: 20, total: 0 }), /INVALID_RESPONSE/)
   assert.equal(decodeCommandReceipt({ serviceId: '30001', status: 'REVIEWING', version: '4' }).status, 'REVIEWING')
   assert.equal(decodeCategoryList(JSON.parse(JSON.stringify(fixtureCategories))).length, fixtureCategories.length)
@@ -66,6 +78,7 @@ test('mock list paginates all statuses newest-first and isolates snapshots', asy
   assert.equal(first.items.length, 5)
   assert.ok(BigInt(first.items[0]!.serviceId) > BigInt(first.items[1]!.serviceId))
   const detail = await repository.detail(first.items[0]!.serviceId)
+  assert.ok(detail.cover.coverUrlExpiresAt !== null)
   const mutated = { ...detail, serviceName: 'mutated' }
   const again = await repository.detail(first.items[0]!.serviceId)
   assert.notEqual(again.serviceName, mutated.serviceName)
@@ -107,16 +120,20 @@ test('create/update obey the state machine, CAS, idempotency replay and payload 
 
 test('online submits for review with required-field precheck; offline only from ACTIVE', async () => {
   const repository = new PreviewServiceManageRepository()
-  // Draft with missing required fields cannot submit: 400 SERVICE_REVIEW_REASON_REQUIRED.
+  // Draft with missing required fields cannot submit: 400 COMMON_INVALID_ARGUMENT (A-side
+  // finalization; SERVICE_REVIEW_REASON_REQUIRED is admin-side only).
   const created = await repository.create('slot-c2', draftOnly)
   const incomplete = await rejects(repository.submitOnline('slot-o2', created.serviceId, created.version)) as ServiceManageMockError
-  assert.equal(incomplete.code, 'SERVICE_REVIEW_REASON_REQUIRED')
+  assert.equal(incomplete.code, 'COMMON_INVALID_ARGUMENT')
   assert.equal(incomplete.statusCode, 400)
   // Complete draft submits → REVIEWING; editing it afterwards is rejected.
   const filled = await repository.update('slot-u2', created.serviceId, (await repository.detail(created.serviceId)).version, complete)
   const submitted = await repository.submitOnline('slot-o2', created.serviceId, filled.version)
   assert.equal(submitted.status, 'REVIEWING')
-  assert.equal((await repository.detail(created.serviceId)).status, 'REVIEWING')
+  const afterSubmit = await repository.detail(created.serviceId)
+  assert.equal(afterSubmit.status, 'REVIEWING')
+  assert.equal(afterSubmit.submissionNo, 1)
+  assert.ok(afterSubmit.submittedAt !== null && afterSubmit.updatedAt !== null)
   const reEdit = await rejects(repository.update('slot-u3', created.serviceId, submitted.version, complete)) as ServiceManageMockError
   assert.equal(reEdit.code, 'SERVICE_STATE_NOT_ALLOWED')
   // offline: only ACTIVE transitions; replay of the same slot is idempotent.
@@ -165,7 +182,7 @@ const ok = (data: unknown) => ({ statusCode: 200, data: { code: 'SUCCESS', succe
 const failure = (code: string, statusCode: number) => ({ statusCode, data: { code, data: null } })
 
 test('real repository wires the six merchant routes with journaled request ids', async () => {
-  const seen: { method: string; path: string; requestId?: string; data?: Record<string, unknown>; query?: Record<string, string> }[] = []
+  const seen: { method: string; path: string; requestId?: string; data?: Record<string, unknown> }[] = []
   const values = new Map<string, unknown>()
   const store: LocalStore = { get: key => values.get(key), set: (key, value) => values.set(key, value), remove: key => { values.delete(key) } }
   const session = { userId: '101', sessionId: '201', audience: 'MINIAPP', expiresAt: '2099-01-01T00:00:00.000Z' }
@@ -174,7 +191,7 @@ test('real repository wires the six merchant routes with journaled request ids',
     if (request.path.endsWith('/attempts')) return ok({ attemptId: '301', attemptToken: 'unusable-attempt-token', nextStep: 'PROVE_IDENTITY' })
     if (request.path.endsWith('/wechat-login')) return ok(grant)
     if (request.path.endsWith('/session')) return ok(session)
-    seen.push({ method: request.method, path: request.path, requestId: (request as { requestId?: string }).requestId, data: request.data, query: (request as { query?: Record<string, string> }).query })
+    seen.push({ method: request.method, path: request.path, requestId: (request as { requestId?: string }).requestId, data: request.data })
     if (request.method === 'GET' && request.path === '/api/v1/merchant/service-categories') {
       return ok(fixtureCategories.map(category => ({ id: category.id, name: category.name, sortNo: category.sortNo })))
     }
@@ -206,8 +223,9 @@ test('real repository wires the six merchant routes with journaled request ids',
   assert.match(String(createCall.requestId), /^[0-9a-f-]{36}$/)
   assert.match(String(onlineCall.requestId), /^[0-9a-f-]{36}$/)
   assert.notEqual(createCall.requestId, onlineCall.requestId)
-  assert.equal(onlineCall.query?.merchantId, '957001')
-  assert.equal(onlineCall.query?.storeId, '957002')
+  // A-side finalization: online/offline carry target ids + expectedVersion in the BODY.
+  assert.equal(onlineCall.data?.merchantId, '957001')
+  assert.equal(onlineCall.data?.storeId, '957002')
   assert.equal(onlineCall.data?.expectedVersion, '1')
   await assert.rejects(repository.takeOffline('merchant-service:30101:offline', '30101', '2'))
   // A consumer-coordinate scope must not reach merchant routes.

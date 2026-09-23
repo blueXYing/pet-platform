@@ -7,12 +7,6 @@ export type PlatformRequest = (options: {
 
 export function createHttpAdapter(baseUrl: string, request: PlatformRequest, allowLocalHttp = false): Transport {
   assertApiOrigin(baseUrl, allowLocalHttp)
-  const withQuery = (spec: { path: string; query?: Record<string, string> }) => {
-    if (!spec.query || Object.keys(spec.query).length === 0) return spec.path
-    const entries = Object.entries(spec.query)
-    if (entries.some(([, value]) => typeof value !== 'string')) throw new Error('INVALID_QUERY')
-    return `${spec.path}?${entries.map(([key, value]) => `${encodeURIComponent(key)}=${encodeURIComponent(value)}`).join('&')}`
-  }
-  return spec => request({ url: baseUrl + withQuery(spec), method: spec.method,
+  return spec => request({ url: baseUrl + spec.path, method: spec.method,
     data: spec.data, header: spec.headers, timeout: 15000 })
 }

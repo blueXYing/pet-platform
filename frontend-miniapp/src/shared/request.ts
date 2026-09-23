@@ -3,8 +3,6 @@ import { WorkspaceScope } from './workspace'
 export type RequestSpec = Readonly<{
   path: string; method: 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE';
   data?: Record<string, unknown>; requestId?: string;
-  /** URL query entries for non-GET commands whose body carries the command payload. */
-  query?: Record<string, string>;
 }>
 export type WireRequest = RequestSpec & { headers: Record<string, string> }
 export type Transport = (request: WireRequest) => Promise<{ statusCode: number; data: unknown }>

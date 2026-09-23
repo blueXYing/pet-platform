@@ -98,7 +98,9 @@ export default function MerchantServiceEditPage() {
     }).catch(() => setNotice('已取消选择封面'))
   }
   const [coverPreview, setCoverPreview] = useState('')
-  const coverSrc = coverPreview || detail?.coverUrl || ''
+  // Read path per the A-side cover finalization: signed display URL from the cover object
+  // (null while not visible); coverUrlExpiresAt is the refresh placeholder once real.
+  const coverSrc = coverPreview || detail?.cover.coverUrl || ''
 
   async function persistDraft(): Promise<boolean> {
     const problems = draftInputProblems(draft, categories)
@@ -162,9 +164,9 @@ export default function MerchantServiceEditPage() {
       {(phase === 'missing' || phase === 'entry') && <Button className='msvc-state-action' onClick={() => Taro.redirectTo({ url: '/merchant/pages/services/index' })}>返回服务管理</Button>}
     </View>}
     {phase === 'ready' && <View className='medit-body'>
-      {detail && detail.status === 'REJECTED' && detail.latestDecision?.decisionType === 'REJECT' && <View className='medit-banner medit-reject' role='alert'>
+      {detail && detail.status === 'REJECTED' && detail.latestRejection !== null && <View className='medit-banner medit-reject' role='alert'>
         <Text className='medit-banner-title'>审核驳回（{manageStatusText.REJECTED}）</Text>
-        <Text className='medit-banner-text'>驳回原因：{detail.latestDecision.opinion || '（未提供）'}</Text>
+        <Text className='medit-banner-text'>驳回原因：{detail.latestRejection.opinion}</Text>
         <Text className='medit-banner-text'>请按驳回原因修改后重新提交审核。</Text>
       </View>}
       {readonly && <View className='medit-banner' role='status'>

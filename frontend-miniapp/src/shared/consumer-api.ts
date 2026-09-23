@@ -168,10 +168,9 @@ export class ConsumerApi {
     if (merchantRequest) {
       if (ticket.context.workspace !== 'merchant' || !ticket.context.merchantId) throw new Error('WORKSPACE_PATH_MISMATCH')
       // The category dictionary is target-free; every other merchant route must address the
-      // caller's own merchantId (body for commands, data/query otherwise).
+      // caller's own merchantId (GET query data or command body both live in spec.data).
       const targetFree = spec.path === '/api/v1/merchant/service-categories'
-      const target = (spec.data?.merchantId ?? spec.query?.merchantId) as unknown
-      if (!targetFree && target !== ticket.context.merchantId) throw new Error('WORKSPACE_PATH_MISMATCH')
+      if (!targetFree && spec.data?.merchantId !== ticket.context.merchantId) throw new Error('WORKSPACE_PATH_MISMATCH')
     } else if (ticket.context.workspace !== 'consumer') throw new Error('WORKSPACE_PATH_MISMATCH')
     try {
       const value = await this.send(spec, { Authorization: `Bearer ${this.credential.accessToken}` })
