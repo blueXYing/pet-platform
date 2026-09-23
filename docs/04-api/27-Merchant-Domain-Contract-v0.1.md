@@ -60,6 +60,7 @@ OpenAPI11同步员工六操作与协议两操作。成员事实沿用既有AUTH�
 | `getStaff(MerchantStaffQuery)` | query：merchantId、storeId、staffId、QueryContext；三者归属必须一致。返回MerchantStaffDTO，不披露成员登录信息 |
 | MerchantStaffDTO | merchantId、storeId、staffId、staffName(1～64)、phoneMasked(可空)、employmentStatus=ACTIVE/INACTIVE、serviceEnabled(Boolean)、version；返回独立不可变副本 |
 | `checkDisplayEligibility(MerchantDisplayEligibilityQuery)` | **第四查询（CCR-W2-API-001 服务域 SVC-D5，2026-09-22 已批）**：query：merchantId、storeId、QueryContext；无所有者前提，仅供 C 端展示聚合，不授予商家操作权限。确认不存在→NOT_FOUND；事实源故障/读取失败/状态未知→503；不得混同。形状见 07 号 §4.2 |
+| `pageDisplayStores(MerchantStoreDisplayPageQuery)` / `getDisplayStore(MerchantStoreDisplayQuery)` | **第五查询（CCR-W2-API-001 门店读侧 STR-D6，2026-09-22 已批）**：page query：cityCodes（服务端开放城市集合，biz 不判断"开放"）、page、pageSize、QueryContext；store query：storeId、QueryContext；无所有者前提，仅供 C 端展示聚合，不授予商家操作权限，匿名浏览时主体字段为空且可见性与主体无关。返回 MerchantStoreDisplayDTO/MerchantStoreDisplayPageDTO（MerchantStoreDTO 档案投影 + cityCode；无 merchantStatus/storeStatus/version 恒真字段）。可见性=三条件合取（不含"服务 ACTIVE"），同一 `MerchantOrderEligibilityPolicy`、同一 repeatable-read 快照、整页一次资格判定（按页内去重 merchant/store 对）；确认无匹配可见门店=正常空页、单店不存在/无资格→NOT_FOUND；事实源故障/状态未知/compat 城市事实损坏（缺行或 city_code 词法非法）→503；不得混同。形状见 07 号 §4.3 |
 
 `merchantEnabled = merchant.status==ACTIVE`；`storeEnabled = store.status==ACTIVE`。
 `acceptsNewOrders = merchantEnabled && storeEnabled && application.status==APPROVED && signing.status==SIGNED`。

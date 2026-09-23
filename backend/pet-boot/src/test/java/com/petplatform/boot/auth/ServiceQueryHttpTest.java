@@ -412,11 +412,17 @@ class ServiceQueryHttpTest {
     // Restored: visible again.
     assertEquals(200, send("GET", "/api/v1/c/services/" + groomingId, null, bearer(token)).status());
 
-    // W2-SVC-003: argument and session errors.
+    // W2-SVC-003: argument and session errors. STR-D8 (store-read ruling, PRD "all users
+    // browse"): the browse routes accept an anonymous GET, so no bearer is 200 - this assertion
+    // changed from 401 by the user-approved contract change - while a carried invalid bearer
+    // still 401s.
     assertEquals(400, send("GET", "/api/v1/c/services/not-a-number", null, bearer(token)).status());
     assertEquals(400, send("GET", storePath + "?page=0", null, bearer(token)).status());
     assertEquals(400, send("GET", storePath + "?pageSize=51", null, bearer(token)).status());
-    assertEquals(401, send("GET", "/api/v1/c/services/" + groomingId, null, Map.of()).status());
+    assertEquals(200, send("GET", "/api/v1/c/services/" + groomingId, null, Map.of()).status());
+    assertEquals(200, send("GET", storePath, null, Map.of()).status());
+    assertEquals(
+        401, send("GET", "/api/v1/c/services/" + groomingId, null, bearer("invalid-token")).status());
     assertEquals(
         400, send("GET", "/api/v1/c/services/" + groomingId + "?extra=1", null, bearer(token)).status());
 

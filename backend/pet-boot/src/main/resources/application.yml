@@ -47,6 +47,11 @@ logging:
 pet:
   private-assets:
     enabled: ${PRIVATE_ASSETS_ENABLED:false}
+  store:
+    query:
+      # C-end store catalog (STR-D6): off by default; needs pet.auth.c.enabled and
+      # pet.merchant.application.enabled with their real dependencies when on.
+      enabled: ${STORE_QUERY_ENABLED:false}
   auth:
     c:
       enabled: ${AUTH_C_ENABLED:false}

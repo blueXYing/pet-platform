@@ -24,13 +24,16 @@ class PrivateAssetContractRegressions(unittest.TestCase):
 
     def test_current_surface_independent_counts(self):
         result = check(self.spec)
-        self.assertEqual(result['operations'], 76)
+        # 78 since the MER-001 store-read slice (STR-D1..D8) added the two
+        # C-end store catalog operations; they are counted separately below.
+        self.assertEqual(result['operations'], 78)
         self.assertEqual(result['privateAssetOperations'], 3)
         self.assertEqual(result['legacyOperations'], 16)
         self.assertEqual(result['authOperations'], 36)
         self.assertEqual(result['merchantOperations'], 8)
         self.assertEqual(result['applicationOperations'], 11)
         self.assertEqual(result['serviceCatalogOperations'], 2)
+        self.assertEqual(result['storeCatalogOperations'], 2)
 
     def test_all_private_operations_require_current_bearer_audience_and_default_off(self):
         for name in PRIVATE_ASSET_OPERATIONS:

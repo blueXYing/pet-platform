@@ -201,7 +201,9 @@ public final class MerchantQueryService {
         return Long.toString(value);
     }
 
-    private static String text(String value, int maxCodePoints, String field) {
+    // Package-private statics below: the STR-D6 display service reuses the identical approved
+    // supplement-27 masking and projection validations so owner and display can never drift.
+    static String text(String value, int maxCodePoints, String field) {
         if (value == null || value.isBlank()
                 || value.codePointCount(0, value.length()) > maxCodePoints) {
             unavailable(field + " is invalid");
@@ -209,7 +211,7 @@ public final class MerchantQueryService {
         return value;
     }
 
-    private static String coordinate(BigDecimal value, BigDecimal minimum, BigDecimal maximum, String field) {
+    static String coordinate(BigDecimal value, BigDecimal minimum, BigDecimal maximum, String field) {
         if (value == null) return null;
         if (value.scale() > 7 || value.compareTo(minimum) < 0 || value.compareTo(maximum) > 0) {
             unavailable(field + " is invalid");
@@ -217,7 +219,7 @@ public final class MerchantQueryService {
         return value.stripTrailingZeros().toPlainString();
     }
 
-    private static String maskPhone(String phone) {
+    static String maskPhone(String phone) {
         if (phone == null) return null;
         if (phone.isBlank()) unavailable("phone is invalid");
         if (phone.length() <= 7) return "****";
