@@ -33,7 +33,8 @@ public class CSessionSecurityConfiguration {
       CAuthProperties p,
       ObjectProvider<UserAuthService> services,
       @Value("${pet.merchant.application.enabled:false}") boolean merchantApplicationEnabled,
-      @Value("${pet.private-assets.enabled:false}") boolean privateAssetsEnabled)
+      @Value("${pet.private-assets.enabled:false}") boolean privateAssetsEnabled,
+      @Value("${pet.service.command.enabled:false}") boolean serviceCommandEnabled)
       throws Exception {
     http.securityMatcher("/api/v1/c/**", "/api/v1/merchant/**")
         .csrf(c -> c.disable())
@@ -82,6 +83,13 @@ public class CSessionSecurityConfiguration {
             }
             if (privateAssetsEnabled) {
               a.requestMatchers(HttpMethod.POST, "/api/v1/c/private-assets").permitAll();
+            }
+            if (serviceCommandEnabled) {
+              // Service workbench (ADM-001 write slice): MINIAPP Bearer enforced by the filter's
+              // protectedPath list, not by permitAll itself.
+              a.requestMatchers("/api/v1/merchant/services", "/api/v1/merchant/services/**")
+                  .permitAll();
+              a.requestMatchers(HttpMethod.GET, "/api/v1/merchant/service-categories").permitAll();
             }
           }
           a.anyRequest().denyAll();

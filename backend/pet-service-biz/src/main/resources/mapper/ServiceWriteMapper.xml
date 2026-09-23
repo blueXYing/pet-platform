@@ -1,0 +1,310 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.petplatform.service.biz.infrastructure.persistence.mapper.ServiceWriteMapper">
+
+    <update id="setTimeZoneUtc">SET time_zone = '+00:00'</update>
+    <update id="setLockWaitTimeout2Seconds">SET innodb_lock_wait_timeout = 2</update>
+
+    <!-- command_idempotency (14号 shared physical table; service rows use a request-key-v1 string) -->
+    <select id="selectBindingForUpdate"
+            resultType="com.petplatform.service.biz.infrastructure.persistence.entity.ServiceCommandBindingEntity">
+        SELECT id, canonical_version, params_sha256, params_canonical, status, receipt_json
+        FROM command_idempotency
+        WHERE request_key = #{requestKey}
+        FOR UPDATE
+    </select>
+    <insert id="insertBinding">
+        INSERT INTO command_idempotency(id, request_key, canonical_version, params_sha256,
+                                        params_canonical, status, receipt_json, created_at)
+        VALUES (#{id}, #{requestKey}, #{canonicalVersion}, #{paramsSha256}, #{paramsCanonical},
+                'RESERVED', NULL, UTC_TIMESTAMP(3))
+    </insert>
+    <update id="markBindingSucceeded">
+        UPDATE command_idempotency
+        SET status = 'SUCCEEDED', receipt_json = #{receiptJson}, succeeded_at = UTC_TIMESTAMP(3)
+        WHERE request_key = #{requestKey} AND status = 'RESERVED'
+    </update>
+
+    <sql id="itemColumns">
+        s.id, s.merchant_id, s.store_id, s.category_id, s.service_name, s.description, s.price,
+        s.list_price, s.duration_minutes, s.fulfillment_type, s.cover_asset_id,
+        s.applicable_pet_types, s.staff_requirement, s.verification_required, s.aftersale_note,
+        s.remark, s.status, s.submission_no, s.owner_user_id, s.submitted_at, s.version,
+        s.created_at, s.updated_at
+    </sql>
+
+    <select id="selectItemById"
+            resultType="com.petplatform.service.biz.infrastructure.persistence.entity.ServiceItemEntity">
+        SELECT <include refid="itemColumns"/>
+        FROM service_item s
+        WHERE s.id = #{serviceId}
+    </select>
+
+    <select id="selectItemByIdForUpdate"
+            resultType="com.petplatform.service.biz.infrastructure.persistence.entity.ServiceItemEntity">
+        SELECT <include refid="itemColumns"/>
+        FROM service_item s
+        WHERE s.id = #{serviceId}
+        FOR UPDATE
+    </select>
+
+    <insert id="insertItem">
+        INSERT INTO service_item(id, merchant_id, store_id, owner_user_id, category_id,
+                                 service_name, description, price, list_price, duration_minutes,
+                                 fulfillment_type, cover_asset_id, applicable_pet_types,
+                                 staff_requirement, verification_required, aftersale_note, remark,
+                                 status, submission_no, submitted_at, version, created_at,
+                                 updated_at)
+        VALUES (#{id}, #{merchantId}, #{storeId}, #{ownerUserId}, #{categoryId}, #{serviceName},
+                #{description}, #{price}, #{listPrice}, #{durationMinutes}, #{fulfillmentType},
+                #{coverAssetId}, #{applicablePetTypes}, #{staffRequirement},
+                #{verificationRequired}, #{aftersaleNote}, #{remark}, 'DRAFT', 0, NULL, 0, #{now},
+                #{now})
+    </insert>
+
+    <update id="updateItem">
+        UPDATE service_item
+        SET category_id          = #{categoryId},
+            service_name         = #{serviceName},
+            description          = #{description},
+            price                = #{price},
+            list_price           = #{listPrice},
+            duration_minutes     = #{durationMinutes},
+            fulfillment_type     = #{fulfillmentType},
+            cover_asset_id       = #{coverAssetId},
+            applicable_pet_types = #{applicablePetTypes},
+            staff_requirement    = #{staffRequirement},
+            verification_required = #{verificationRequired},
+            aftersale_note       = #{aftersaleNote},
+            remark               = #{remark},
+            version              = version + 1,
+            updated_at           = #{now}
+        WHERE id = #{id}
+          AND version = #{expectedVersion}
+          AND status IN ('DRAFT', 'REJECTED', 'OFFLINE')
+    </update>
+
+    <update id="submitItem">
+        UPDATE service_item
+        SET status         = 'REVIEWING',
+            submission_no  = submission_no + 1,
+            submitted_at   = #{now},
+            version        = version + 1,
+            updated_at     = #{now}
+        WHERE id = #{id}
+          AND version = #{expectedVersion}
+          AND status IN ('DRAFT', 'REJECTED', 'OFFLINE')
+    </update>
+
+    <update id="takeOfflineItem">
+        UPDATE service_item
+        SET status     = 'OFFLINE',
+            version    = version + 1,
+            updated_at = #{now}
+        WHERE id = #{id}
+          AND version = #{expectedVersion}
+          AND status = 'ACTIVE'
+    </update>
+
+    <update id="approveItem">
+        UPDATE service_item
+        SET status     = 'ACTIVE',
+            version    = version + 1,
+            updated_at = #{now}
+        WHERE id = #{id}
+          AND version = #{expectedVersion}
+          AND status = 'REVIEWING'
+    </update>
+
+    <update id="rejectItem">
+        UPDATE service_item
+        SET status     = 'REJECTED',
+            version    = version + 1,
+            updated_at = #{now}
+        WHERE id = #{id}
+          AND version = #{expectedVersion}
+          AND status = 'REVIEWING'
+    </update>
+
+    <update id="forceOfflineItem">
+        UPDATE service_item
+        SET status     = 'OFFLINE',
+            version    = version + 1,
+            updated_at = #{now}
+        WHERE id = #{id}
+          AND version = #{expectedVersion}
+          AND status = 'ACTIVE'
+    </update>
+
+    <sql id="categoryColumns">id, category_name, status, sort_no</sql>
+
+    <select id="selectCategoryById"
+            resultType="com.petplatform.service.biz.infrastructure.persistence.entity.ServiceCategoryEntity">
+        SELECT <include refid="categoryColumns"/>
+        FROM service_category
+        WHERE id = #{categoryId}
+    </select>
+
+    <select id="selectEnabledCategories"
+            resultType="com.petplatform.service.biz.infrastructure.persistence.entity.ServiceCategoryEntity">
+        SELECT <include refid="categoryColumns"/>
+        FROM service_category
+        WHERE status = 'ENABLED'
+        ORDER BY sort_no ASC, id ASC
+    </select>
+
+    <insert id="insertDecision">
+        INSERT INTO service_review_decision(id, service_id, submission_no, decision_type, opinion,
+                                            decided_by_operator_id, decided_at, authz_version,
+                                            scope_version, request_id, trace_id, created_at)
+        VALUES (#{id}, #{serviceId}, #{submissionNo}, #{decisionType}, #{opinion}, #{operatorId},
+                #{decidedAt}, #{authzVersion}, #{scopeVersion}, #{requestId}, #{traceId}, #{now})
+    </insert>
+
+    <select id="selectDecisionsByService"
+            resultType="com.petplatform.service.biz.infrastructure.persistence.entity.ServiceReviewDecisionEntity">
+        SELECT id, service_id, submission_no, decision_type, opinion, decided_by_operator_id,
+               decided_at, authz_version, scope_version, request_id, trace_id, created_at
+        FROM service_review_decision
+        WHERE service_id = #{serviceId}
+        ORDER BY decided_at DESC, id DESC
+    </select>
+
+    <insert id="insertGovernance">
+        INSERT INTO service_governance_action(id, service_id, action_type, reason,
+                                              acted_by_operator_id, acted_at, authz_version,
+                                              scope_version, request_id, trace_id, created_at)
+        VALUES (#{id}, #{serviceId}, 'FORCE_OFFLINE', #{reason}, #{operatorId}, #{actedAt},
+                #{authzVersion}, #{scopeVersion}, #{requestId}, #{traceId}, #{now})
+    </insert>
+
+    <sql id="reviewSelect">
+        SELECT s.id                       AS serviceId,
+               s.merchant_id              AS merchantId,
+               s.store_id                 AS storeId,
+               s.service_name             AS serviceName,
+               s.category_id              AS categoryId,
+               c.category_name            AS categoryName,
+               s.status                   AS status,
+               s.price                    AS price,
+               s.list_price               AS listPrice,
+               s.submission_no            AS submissionNo,
+               s.submitted_at             AS submittedAt,
+               s.version                  AS version,
+               COALESCE(rc.reject_count, 0) AS rejectCount
+        FROM service_item s
+        LEFT JOIN service_category c ON c.id = s.category_id
+        LEFT JOIN (SELECT service_id, COUNT(*) AS reject_count
+                   FROM service_review_decision
+                   WHERE decision_type = 'REJECT'
+                   GROUP BY service_id) rc ON rc.service_id = s.id
+    </sql>
+
+    <select id="listForReview" resultType="map">
+        <include refid="reviewSelect"/>
+        <where>
+            <if test="status != null and status != ''">s.status = #{status}</if>
+            <if test="categoryId != null">AND s.category_id = #{categoryId}</if>
+            <if test="merchantId != null">AND s.merchant_id = #{merchantId}</if>
+        </where>
+        ORDER BY s.created_at DESC, s.id DESC
+        LIMIT #{limit} OFFSET #{offset}
+    </select>
+
+    <select id="countForReview" resultType="long">
+        SELECT COUNT(*)
+        FROM service_item s
+        <where>
+            <if test="status != null and status != ''">s.status = #{status}</if>
+            <if test="categoryId != null">AND s.category_id = #{categoryId}</if>
+            <if test="merchantId != null">AND s.merchant_id = #{merchantId}</if>
+        </where>
+    </select>
+
+    <select id="selectReviewItem" resultType="map">
+        SELECT s.id                       AS serviceId,
+               s.merchant_id              AS merchantId,
+               s.store_id                 AS storeId,
+               s.service_name             AS serviceName,
+               s.category_id              AS categoryId,
+               c.category_name            AS categoryName,
+               s.status                   AS status,
+               s.price                    AS price,
+               s.list_price               AS listPrice,
+               s.duration_minutes         AS durationMinutes,
+               s.fulfillment_type         AS fulfillmentType,
+               s.cover_asset_id           AS coverAssetId,
+               s.description              AS description,
+               s.submission_no            AS submissionNo,
+               s.submitted_at             AS submittedAt,
+               s.version                  AS version,
+               s.updated_at               AS updatedAt,
+               COALESCE(rc.reject_count, 0) AS rejectCount
+        FROM service_item s
+        LEFT JOIN service_category c ON c.id = s.category_id
+        LEFT JOIN (SELECT service_id, COUNT(*) AS reject_count
+                   FROM service_review_decision
+                   WHERE decision_type = 'REJECT'
+                   GROUP BY service_id) rc ON rc.service_id = s.id
+        WHERE s.id = #{serviceId}
+    </select>
+
+    <sql id="managedSelect">
+        SELECT s.id             AS serviceId,
+               s.merchant_id    AS merchantId,
+               s.store_id       AS storeId,
+               s.service_name   AS serviceName,
+               s.category_id    AS categoryId,
+               c.category_name  AS categoryName,
+               s.status         AS status,
+               s.price          AS price,
+               s.list_price     AS listPrice,
+               s.duration_minutes AS durationMinutes,
+               s.fulfillment_type AS fulfillmentType,
+               s.cover_asset_id AS coverAssetId,
+               s.applicable_pet_types AS applicablePetTypes,
+               s.staff_requirement AS staffRequirement,
+               s.verification_required AS verificationRequired,
+               s.description    AS description,
+               s.aftersale_note AS aftersaleNote,
+               s.remark         AS remark,
+               s.submission_no  AS submissionNo,
+               s.submitted_at   AS submittedAt,
+               s.version        AS version,
+               s.updated_at     AS updatedAt,
+               lr.decision_id   AS latestRejectDecisionId,
+               lr.submission_no AS latestRejectSubmissionNo,
+               lr.opinion       AS latestRejectOpinion,
+               lr.decided_at    AS latestRejectDecidedAt
+        FROM service_item s
+        LEFT JOIN service_category c ON c.id = s.category_id
+        LEFT JOIN (SELECT d.service_id, d.id AS decision_id, d.submission_no, d.opinion, d.decided_at
+                   FROM service_review_decision d
+                   JOIN (SELECT service_id, MAX(id) AS max_id
+                         FROM service_review_decision
+                         WHERE decision_type = 'REJECT'
+                         GROUP BY service_id) m ON m.max_id = d.id) lr ON lr.service_id = s.id
+    </sql>
+
+    <select id="listManaged" resultType="map">
+        <include refid="managedSelect"/>
+        WHERE s.merchant_id = #{merchantId}
+          AND s.store_id = #{storeId}
+        <if test="status != null and status != ''">AND s.status = #{status}</if>
+        ORDER BY s.updated_at DESC, s.id DESC
+        LIMIT #{limit} OFFSET #{offset}
+    </select>
+
+    <select id="countManaged" resultType="long">
+        SELECT COUNT(*)
+        FROM service_item s
+        WHERE s.merchant_id = #{merchantId}
+          AND s.store_id = #{storeId}
+        <if test="status != null and status != ''">AND s.status = #{status}</if>
+    </select>
+
+    <select id="selectManagedItem" resultType="map">
+        <include refid="managedSelect"/>
+        WHERE s.id = #{serviceId}
+    </select>
+</mapper>

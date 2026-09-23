@@ -38,6 +38,9 @@ public class CServiceExceptionHandler {
             Map.entry("PET_NOT_FOUND", 404),
             Map.entry("COMMON_CONFLICT", 409),
             Map.entry("IDEMPOTENCY_KEY_CONFLICT", 409),
+            // Service write slice (ADM-001): workbench commands surface through C-session routes.
+            Map.entry("SERVICE_STATE_NOT_ALLOWED", 409),
+            Map.entry("SERVICE_REVIEW_REASON_REQUIRED", 400),
             Map.entry("COMMON_RATE_LIMITED", 429),
             Map.entry("COMMON_INTERNAL_ERROR", 500),
             Map.entry("COMMON_DEPENDENCY_UNAVAILABLE", 503));

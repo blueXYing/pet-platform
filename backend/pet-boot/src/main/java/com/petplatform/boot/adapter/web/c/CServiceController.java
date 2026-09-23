@@ -98,6 +98,17 @@ public class CServiceController {
         row.put("salePrice", item.salePrice().toPlainString());
         row.put("durationMinutes", item.durationMinutes());
         row.put("fulfillmentType", item.fulfillmentType().name());
+        // Cover display (2026-09-22 ruling #3): only consumer-visible reads carry the presigned
+        // URL; hidden rows never reach here (404), rows without a cover binding keep cover null.
+        if (item.coverAssetId() != null) {
+            Map<String, Object> cover = new LinkedHashMap<>();
+            cover.put("coverAssetId", item.coverAssetId());
+            cover.put("coverUrl", item.coverUrl());
+            cover.put("coverUrlExpiresAt", item.coverUrlExpiresAt());
+            row.put("cover", cover);
+        } else {
+            row.put("cover", null);
+        }
         return row;
     }
 

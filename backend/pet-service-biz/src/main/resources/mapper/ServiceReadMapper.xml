@@ -14,6 +14,7 @@
                s.price,
                s.duration_minutes,
                s.fulfillment_type,
+               s.cover_asset_id,
                s.status
         FROM service_item s
         LEFT JOIN service_category c ON c.id = s.category_id
@@ -32,6 +33,7 @@
                s.price,
                s.duration_minutes,
                s.fulfillment_type,
+               s.cover_asset_id,
                s.status
         FROM service_item s
         LEFT JOIN service_category c ON c.id = s.category_id

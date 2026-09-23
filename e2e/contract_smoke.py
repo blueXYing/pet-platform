@@ -108,6 +108,22 @@ SERVICE_CATALOG_OPERATIONS = {
     'cListStoreServices': ('get', '/c/stores/{storeId}/services'),
     'cGetService': ('get', '/c/services/{serviceId}'),
 }
+# ADM-001 service write slice (CCR-W2-API-001): workbench commands + admin review, implemented
+# default-off behind pet.service.command.enabled. The census pins the family exactly like the
+# application family; the force-offline action code is the AUTH-lexicon spelling service.force.offline.
+SERVICE_WRITE_OPERATIONS = {
+    'merchantListServices': ('get', '/merchant/services'),
+    'merchantCreateService': ('post', '/merchant/services'),
+    'merchantGetService': ('get', '/merchant/services/{serviceId}'),
+    'merchantUpdateService': ('put', '/merchant/services/{serviceId}'),
+    'merchantSubmitServiceOnline': ('post', '/merchant/services/{serviceId}/online'),
+    'merchantTakeServiceOffline': ('post', '/merchant/services/{serviceId}/offline'),
+    'merchantListServiceCategories': ('get', '/merchant/service-categories'),
+    'adminListServices': ('get', '/admin/services'),
+    'adminGetService': ('get', '/admin/services/{serviceId}'),
+    'adminDecideServiceReview': ('post', '/admin/services/{serviceId}/decision'),
+    'adminForceOfflineService': ('post', '/admin/services/{serviceId}/force-offline'),
+}
 
 
 def check_private_assets(spec, operation):
@@ -345,6 +361,34 @@ def check(spec):
                 assert (method, path) == SERVICE_CATALOG_OPERATIONS[operation_id], f'Service catalog operation moved: {operation_id}'
                 assert operation.get('x-contract-status') == 'ACCEPTED_CONTRACT_NOT_IMPLEMENTED', f'Service catalog contract status changed: {operation_id}'
                 assert operation.get('security') == [{'bearerAuth': []}], f'Service catalog security changed: {operation_id}'
+            if operation_id in SERVICE_WRITE_OPERATIONS:
+                assert (method, path) == SERVICE_WRITE_OPERATIONS[operation_id], f'Service write operation moved: {operation_id}'
+                assert operation.get('security') == [{'bearerAuth': []}], f'Service write security changed: {operation_id}'
+                assert operation.get('x-contract-status') == 'IMPLEMENTED_DEFAULT_OFF_REQUIRES_PROVIDERS', f'Service write implementation status changed: {operation_id}'
+                assert operation.get('x-default-enabled') is False, f'Service write must remain default off: {operation_id}'
+                expected_audience = 'ADMIN_WEB' if operation_id.startswith('admin') else 'MINIAPP'
+                assert operation.get('x-audience') == expected_audience, f'Service write audience changed: {operation_id}'
+                responses = operation['responses']
+                if operation_id.startswith('admin'):
+                    expected_actions = {
+                        'adminListServices': ['service.review.read'],
+                        'adminGetService': ['service.review.read'],
+                        'adminDecideServiceReview': ['service.review.decide'],
+                        'adminForceOfflineService': ['service.force.offline'],
+                    }[operation_id]
+                    assert operation.get('x-required-actions') == expected_actions, f'Service write action gate changed: {operation_id}'
+                    required = {'200', '400', '401', '403', '409', '503'} if method != 'get' else {'200', '400', '401', '403', '503'}
+                    if operation_id == 'adminGetService':
+                        required = {'200', '401', '403', '404', '503'}
+                elif operation_id == 'merchantListServiceCategories':
+                    required = {'200', '400', '401', '503'}
+                elif method == 'get':
+                    required = {'200', '400', '401', '404', '503'}
+                else:
+                    required = {'200', '400', '401', '404', '409', '503'}
+                    if operation_id == 'merchantCreateService':
+                        assert '201' in responses and responses['201'].get('description'), f'Service write create replay changed: {operation_id}'
+                assert required <= responses.keys(), f'Service write responses missing: {operation_id} {sorted(required - responses.keys())}'
             if operation_id in AUTH_OPERATIONS:
                 assert (method, path) == AUTH_OPERATIONS[operation_id], f'AUTH operation moved: {operation_id}'
                 check_auth_security(spec, operation, parameters)
@@ -409,7 +453,7 @@ def check(spec):
     assert legacy_seen == LEGACY_OPERATIONS.keys(), f'Legacy operations missing: {LEGACY_OPERATIONS.keys() - legacy_seen}'
     assert legacy_writes == 13, 'Legacy write surface changed'
     assert legacy_creates == LEGACY_CREATES, 'Legacy create surface changed'
-    assert operations == LEGACY_OPERATIONS.keys() | AUTH_OPERATIONS.keys() | MERCHANT_OPERATIONS.keys() | APPLICATION_OPERATIONS.keys() | PRIVATE_ASSET_OPERATIONS.keys() | SERVICE_CATALOG_OPERATIONS.keys(), 'Unexpected or missing reviewed operations'
+    assert operations == LEGACY_OPERATIONS.keys() | AUTH_OPERATIONS.keys() | MERCHANT_OPERATIONS.keys() | APPLICATION_OPERATIONS.keys() | PRIVATE_ASSET_OPERATIONS.keys() | SERVICE_CATALOG_OPERATIONS.keys() | SERVICE_WRITE_OPERATIONS.keys(), 'Unexpected or missing reviewed operations'
     schemes = spec['components']['securitySchemes']
     assert schemes['bearerAuth']['type'] == 'http' and schemes['bearerAuth']['scheme'] == 'bearer'
     for scheme, location, name in [('authAttempt', 'header', 'X-Auth-Attempt'),
@@ -418,12 +462,19 @@ def check(spec):
                    [('type', 'apiKey'), ('in', location), ('name', name)]), f'AUTH security scheme changed: {scheme}'
     ids = 0
 
+    # Event08 ruling (2026-09-22): submissionNo is a JSON integer inside ServiceReviewedPayload,
+    # the only sanctioned non-string *No field in the spec (declared exactly once).
+    EVENT_INTEGER_FIELDS = {'submissionNo'}
+
     def check_properties(value):
         nonlocal ids
         if isinstance(value, dict):
             for name, prop in value.get('properties', {}).items():
                 if name.endswith(('Id', 'No')):
-                    string_schema(spec, prop, name)
+                    if name in EVENT_INTEGER_FIELDS:
+                        assert prop == {'type': 'integer', 'format': 'int64', 'minimum': 1}, f'Event integer field changed: {name}'
+                    else:
+                        string_schema(spec, prop, name)
                     ids += 1
                 elif name.endswith(('Ids', 'Nos')):
                     array = dereference(spec, prop)
@@ -445,6 +496,7 @@ def check(spec):
             'applicationOperations': len(operations & APPLICATION_OPERATIONS.keys()),
             'privateAssetOperations': len(operations & PRIVATE_ASSET_OPERATIONS.keys()),
             'serviceCatalogOperations': len(operations & SERVICE_CATALOG_OPERATIONS.keys()),
+            'serviceWriteOperations': len(operations & SERVICE_WRITE_OPERATIONS.keys()),
             'resolvedRefs': len(refs), 'stringIdProperties': ids}
 
 
