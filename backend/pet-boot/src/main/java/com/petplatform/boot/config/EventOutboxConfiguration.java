@@ -9,6 +9,8 @@ import com.petplatform.event.core.OutboxDispatcher;
 import com.petplatform.event.core.OutboxRetryDelays;
 import com.petplatform.event.core.TransactionalOutboxPublisher;
 import com.petplatform.notification.biz.event.MerchantApplicationReviewedConsumer;
+import com.petplatform.notification.biz.event.ServiceReviewedConsumer;
+import com.petplatform.notification.biz.infrastructure.persistence.ServiceReviewNotificationStore;
 import java.time.Duration;
 import java.util.List;
 import javax.sql.DataSource;
@@ -51,11 +53,22 @@ public class EventOutboxConfiguration {
     return new MerchantApplicationReviewedConsumer(dataSource, ids, guard::tryClaim);
     }
 
-    // Reserved assembly point (role E alignment, 2026-09-22): the ServiceReviewedConsumer bean
-    // registration lands here together with the consumer class from the notification-side PR,
-    // gated by pet.service.review.notifications-enabled (default off) exactly like the merchant
-    // application consumer above. Until then ServiceReviewedEvent.v1 rows persist in the outbox
-    // (dispatched once the consumer merges); the service review flow is NOT complete without it.
+    // Role W wiring (2026-09-23): the consumer class from PR#69 is now on the classpath, so the
+    // reserved registration lands here, gated by pet.service.review.notifications-enabled
+    // (default off) exactly like the merchant application consumer above. The consumer is
+    // self-contained (recipient = event ownerUserId, ARCH-002): only its own store and the
+    // shared Snowflake/guard beans are needed. With the switch off, pending ServiceReviewedEvent
+    // rows keep waiting in the outbox (dispatched once enabled).
+    @Bean
+    @ConditionalOnProperty(
+            prefix = "pet.service.review",
+            name = "notifications-enabled",
+            havingValue = "true")
+    ServiceReviewedConsumer serviceReviewedConsumer(
+            DataSource dataSource, SnowflakeIdGenerator ids, JdbcOutboxConsumeGuard guard) {
+        return new ServiceReviewedConsumer(
+                new ServiceReviewNotificationStore(dataSource, guard::tryClaim), ids);
+    }
 
     @Bean(destroyMethod = "close")
     OutboxDispatcher outboxDispatcher(DataSource dataSource,

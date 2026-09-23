@@ -31,11 +31,11 @@ import org.springframework.context.annotation.Configuration;
  * publisher (review decisions append ServiceReviewedEvent.v1 in the same transaction). The cover
  * presigner is optional: without a real signer bean, visible rows carrying a cover fail closed.
  *
- * <p>Reserved assembly point (role E alignment, 2026-09-22): the ServiceReviewedConsumer bean
- * registration and the {@code pet.service.review.notifications-enabled} switch (default off) land
- * in EventOutboxConfiguration together with the consumer class from the notification-side PR —
- * enabling the review flow without the consumer is intentional and disclosed: the outbox rows
- * persist and are dispatched once the consumer merges.
+ * <p>Notification side (role E consumer merged via PR#69, wired by role W 2026-09-23): review
+ * decisions append ServiceReviewedEvent.v1 in the same transaction, and EventOutboxConfiguration
+ * registers the ServiceReviewedConsumer behind {@code pet.service.review.notifications-enabled}
+ * (default off). With the switch off the outbox rows persist and wait; enabling it completes the
+ * backend producer-to-inbox chain.
  */
 @Configuration(proxyBeanMethods = false)
 @ConditionalOnProperty(prefix = "pet.service.command", name = "enabled", havingValue = "true")
