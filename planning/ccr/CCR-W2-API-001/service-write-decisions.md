@@ -43,3 +43,7 @@
 - 通知消费侧（角色E）未接通前，完整审核流程不标完成。
 - 售罄、硬删除、批量通过、运营类目 CRUD 延后；排期/订单/支付不提前。
 - SERVICE_COVER 真实上传链在角色B 合入前以端口桩+SQL 夹具验证；B 合入后补真实链路回归。
+
+## 实现阶段披露（2026-09-22，角色A 实现切片）
+
+- 动作码 `service.forceOffline` 落地拼写为 **`service.force.offline`**：AUTH 域动作码词法为小写点分段（pet-admin-api `AdminActionCheckQuery`：`[a-z][a-z0-9]*(\.[a-z][a-z0-9]*)+`），camelCase 无法通过其最终鉴权校验。意图与语义不变（SVCW-D7 已预留"命名随 RBAC 登记统一定"），10 号 §5.9 与 11 号 x-authorization 已随实现切片更正，PR 披露，AUTH Owner 复核。

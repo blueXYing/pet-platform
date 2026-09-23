@@ -1042,6 +1042,13 @@ IN_STORE / PICKUP_DELIVERY
 
 业务字段（body，均可空存草稿）：`serviceName`(2-50)、`categoryId`（提交时须命中 ENABLED）、`fulfillmentType`(IN_STORE|PICKUP_DELIVERY)、`price`/`listPrice`（两位小数 String；price>0；listPrice≥price）、`durationMinutes`(1..10080)、`coverAssetId`（提交时必填且属本人 SERVICE_COVER 素材）、`applicablePetTypes`(DOG/CAT/EXOTIC/ALL 数组，ALL 互斥)、`staffRequirement`(≤200)、`verificationRequired`(默认 true)、`description`(≤1000)、`aftersaleNote`/`remark`(≤500)。PUT 为全量替换。
 
+错误码适用面定稿（2026-09-22 与前端对齐）：
+
+- 商家提交审核缺必填（含封面/ENABLED 类目等）→ 400 `COMMON_INVALID_ARGUMENT`（message 指明字段）；`SERVICE_REVIEW_REASON_REQUIRED` **仅**用于运营 REJECT 缺/短于 10 字意见，不覆盖商家提交场景。
+- `online`/`offline`/`decision`/`force-offline` 的 `expectedVersion` 一律放 **body**（对齐 27 号写命令惯例，不放 query）。
+- 商家工作台列表/详情字段定稿：`serviceId/merchantId/storeId/serviceName/categoryId/categoryName/status/price/listPrice/durationMinutes/fulfillmentType/coverAssetId/applicablePetTypes(数组)/staffRequirement/verificationRequired/description/aftersaleNote/remark/submissionNo/submittedAt/version/updatedAt/latestRejection{decisionId,submissionNo,decisionType,opinion,decidedAt}`；草案名 `latestDecision` 定稿为 `latestRejection`（仅承载最近一次 REJECT；APPROVE 不出现在工作台列表行）。
+- C 端封面字段定稿：`cover.coverUrl`（可空 String，仅可见时返回，签名 URL）、`cover.coverAssetId`、`cover.coverUrlExpiresAt`。
+
 状态机与门禁见 07 号 §5.2/§5.3（商家任何动作不产生 ACTIVE；商家/门店不可经营 409；无归属 404 防枚举）。
 
 ---
@@ -1348,14 +1355,16 @@ POST /api/v1/admin/services/{serviceId}/decision
 POST /api/v1/admin/services/{serviceId}/force-offline
 ```
 
-真实运营会话（ADMIN_WEB Bearer）+ 动作码 `service.review.read` / `service.review.decide` / `service.forceOffline`；决定与强制下架在事务内做数据库权威复核。运营不代商家新增/编辑/上下架服务（PRD 运营端 §3.3，无对应路由）。
+真实运营会话（ADMIN_WEB Bearer）+ 动作码 `service.review.read` / `service.review.decide` / `service.force.offline`；决定与强制下架在事务内做数据库权威复核。运营不代商家新增/编辑/上下架服务（PRD 运营端 §3.3，无对应路由）。
+
+> 动作码拼写更正（2026-09-22 实现阶段）：AUTH 域动作码词法为小写点分段（`AdminActionCheckQuery`：`[a-z][a-z0-9]*(\.[a-z][a-z0-9]*)+`），已批意图"forceOffline"按词法落地为 `service.force.offline`；语义与裁决不变，PR 披露。
 
 | 方法/路径 | 动作码 | 请求 | 成功 data | 关键错误 |
 |---|---|---|---|---|
 | GET `/api/v1/admin/services` | service.review.read | query status?/categoryId?/merchantId?/page/pageSize | 审核分页（submittedAt、slaRemainingMinutes（按 24h SLA）、rejectCount、submissionNo） | 400/401/403 |
 | GET `/api/v1/admin/services/{serviceId}` | service.review.read | — | 详情 + `decisions[]` 历史驳回记录（append-only） | 404 |
 | POST `/api/v1/admin/services/{serviceId}/decision` | service.review.decide | body `{decisionType: APPROVE|REJECT, opinion?, expectedVersion}`；X-Request-Id | `{serviceId,status,version,decisionId}`（APPROVE→ACTIVE；REJECT→REJECTED） | 400 SERVICE_REVIEW_REASON_REQUIRED（REJECT 缺/短于10字意见）/409（非 REVIEWING 或版本失配） |
-| POST `/api/v1/admin/services/{serviceId}/force-offline` | service.forceOffline | body `{reason, expectedVersion}`；X-Request-Id | `{serviceId,status:"OFFLINE",version,actionId}`（落治理审计） | 400（reason 10-500）/409（非 ACTIVE） |
+| POST `/api/v1/admin/services/{serviceId}/force-offline` | service.force.offline | body `{reason, expectedVersion}`；X-Request-Id | `{serviceId,status:"OFFLINE",version,actionId}`（落治理审计） | 400（reason 10-500）/409（非 ACTIVE） |
 
 - 审核决定（APPROVE/REJECT）在决定事务内写 `ServiceReviewedEvent.v1` 到事务性 Outbox（Event08）；通知消费侧（MERCHANT 收件箱）由通知域切片承接，未接通前完整审核流程不标完成。
 - 强制下架是否通知商家＝剩余问题（本轮不发事件）。
