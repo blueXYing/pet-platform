@@ -1,16 +1,20 @@
 # Work State
 
 PROJECT: 宠物平台 V1.0
-STATE_VERSION: 8.0
+STATE_VERSION: 8.1
 UPDATED_AT: 2026-09-23
 
 CURRENT_PHASE: W3_INTEGRATION_REVIEW
-CURRENT_STATUS: STORE_READ_AND_SERVICE_WRITE_MERGED_FRONTEND_PR_IN_REVIEW
-VERIFIED_BASELINE: develop 25bf601（PR66~69 已合入；PR70/71/72 在途待用户合并）
-NEXT_PHASE: 合并 PR70（冒烟语法修复）→PR71（通知接线）→PR72（M-002/C-003前端）；随后用户模拟器人工验收与完整"发布服务→消费者看到"闭环集成验收
+CURRENT_STATUS: SERVICE_ROUND_MERGED_VISUAL_PASSED_WINDOW_E2E_PENDING
+VERIFIED_BASELINE: develop c8d0c10（PR66~75 全部合入，合并CI绿）
+NEXT_PHASE: 本轮收官（用户视觉验收通过，见2026-09-23/VISUAL-ACCEPTANCE.md）；后续：完整人工E2E走查（可选）、B1~B7及页面登录门控张力裁决、通知端到端走查、按依赖推进排期/订单
 NEXT_PHASE_APPROVED: YES（2026-09-23用户授权按序合并并继续任务；新PR合并与人工验收仍归用户）
 
 ## 当前结论
+
+> 本节按日期倒序记录。**除最新一段为当前状态外，其余各段均为当日快照**（保留当时事实与口径，不回写；后续进展以上方表格与本节最新段为准）。
+2026-09-23收官：用户授权合并PR70~75（develop c8d0c10，合并CI绿）；**用户视觉验收通过**（六页面，口径=原稿+已批差异，记录见[VISUAL-ACCEPTANCE](planning/progress/2026-09-23/VISUAL-ACCEPTANCE.md)）；PR#75修复门店列表页匿名读被登录上下文拦截的接线缺陷（真因修正：上轮"构建打坏"为DevTools编译缓存假象），真实模式窗口级渲染+网络取证入库。完整人工E2E走查与真机未做，如实保留。
+
 
 2026-09-23 多角色并行轮收官（协调者ZCode+子代理A/B/C/D/E/F/W/CI）：用户2026-09-22分项批准门店读侧CCR v0.2（STR-D1~D8，含四条浏览路由匿名）、服务写入方CCR v0.2（SVCW，含审核事件Outbox拆分）、契约漂移修复方向与设计源裁决后，四切片经逐级合并核验合入 develop 25bf601——PR66（漂移修复：404码对齐SERVICE_NOT_FOUND+§3.3.1补写+PR65勘误）、PR67（门店读侧：/c/stores两路由+第五查询MerchantStoreDisplayApi+匿名四路由+SERVICE_COVER管线31号+完整性runbook）、PR68（服务写入方：六命令状态机五值/幂等/OWNER门禁/运营审核/admin四路由/审核事件Outbox/封面展示/33号Schema+V27迁移；动作码按AUTH词法落地service.force.offline已披露）、PR69（通知消费侧：ServiceReviewedEvent.v1九字段消费+商家收件箱+权限隔离）。合并中发现并修复两处集成级问题：CStore测试夹具缺33号Schema（读投影SELECT新列即503）、契约冒烟脚本语法损坏（PR70一行修复，源于PR68合并提交遗漏）。在途：PR71（消费者boot接线+NOTIFICATION-001登记，CI全绿，含ARCH-002修复）、PR72（M-002服务管理页+C-003门店页+10项契约对齐修复+共享层真实API联调取证，CI全绿）。真实API联调证据（共享客户端层，非模拟器窗口）：申请→审批→签署→建服务→幂等→提交审核→运营APPROVE→匿名找店→进店→店内服务/详情含cover→下架→隐藏+404防探测，见[集成证据](planning/issues/wave-2/M-002-service-pages/INTEGRATION-EVIDENCE.md)。通知链生产/消费/页面三方代码齐备但端到端人工验收未做，完整审核流程不标完成；模拟器窗口级VIS/真机留用户人工验收。本轮剩余裁决项（B1~B7）与证据清单见[2026-09-23收官记录](planning/progress/2026-09-23/ROUND-CLOSEOUT.md)。
 
@@ -47,8 +51,8 @@ SSOT §28已批准取消入驻地址/坐标地理匹配、距离和围栏限制�
 | SVC-001 服务域读 / PR65~66 | CCR 服务域 v0.3 已批（SVC-D1～D5）；两条 C 端服务读路由 + D5 展示资格第四查询 + 快照/资格/可见性（四条件合取、错误两分）实现与 ServiceQueryHttpTest 通过；PR66 勘误修复 §3.3.1 漏同步与 404 码（SERVICE_NOT_FOUND，测试补 body code 断言） | 读侧仅在 ACTIVE 可见已含 REVIEWING/REJECTED 兼容回归（PR68）；排期/订单不提前；完整预约流程未验收 |
 | MER-001 门店读侧 / PR67 | CCR v0.2（STR-D1~D8）已批并合入：/c/stores 两路由+第五查询 MerchantStoreDisplayApi+四条浏览路由匿名（STR-D8 七面核验无冲突批准）+城市目录+完整性runbook+SERVICE_COVER 管线（31号）；CStoreControllerHttpTest 2/2 | 分类筛选/关键词搜索延后（STR-D7）；评分/月售/距离/收藏/相册/评价/促销等无事实源字段不实现；完整门店页面验收未完成 |
 | ADM-001 服务操作（写入方）/ PR68 | CCR v0.2 已批并合入：状态机五值（商家动作不产生 ACTIVE）+六命令幂等/乐观锁+getFacts 门禁+运营审核四路由+审核事件 Outbox（ServiceReviewedEvent.v1 九字段）+封面展示授权+33号 Schema/V27 迁移；ServiceWriteHttpTest 真实链路通过；owner_user_id 列小幅增补已披露 | 售罄/硬删除/批量通过/类目 CRUD 延后；动作码 service.force.offline 词法更正已披露；强制下架通知待裁决 |
-| NTF 服务审核通知 / PR69+PR71 | 消费侧（严格载荷校验/幂等/权限隔离）合入；boot 接线+开关+NOTIFICATION-001 §5 登记在 PR71（CI 绿待合并） | 三方（生产#68+消费#69+页面#72）代码齐备但端到端人工验收未做；完整审核流程不标完成；force-offline 不发通知 |
-| M-002 服务管理页 / C-003 门店页 / PR72 | 设计源（10:5255/11:5768 确认+V1裁剪20条VIS-004差异登记）+六页面实现+10项契约对齐修复+共享层真实API联调取证（发布→审核→匿名找店/进店/看到→下架隐藏/404）；162/162 前端测试（CI 绿待合并） | 模拟器窗口级验证/VIS/真机留用户人工验收；通知跳转端到端待 #71 合并；封面真实签名端口无 signer 时 503（设计内） |
+| NTF 服务审核通知 / PR69+PR71 | 消费侧（严格载荷校验/幂等/权限隔离）合入；boot 接线+开关+NOTIFICATION-001 §5 登记已随 PR71 合入 | 三方（生产#68+消费#69+页面#72）代码齐备但端到端人工验收未做；完整审核流程不标完成；force-offline 不发通知 |
+| M-002 服务管理页 / C-003 门店页 / PR72 | 设计源（10:5255/11:5768 确认+V1裁剪20条VIS-004差异登记）+六页面实现+10项契约对齐修复+共享层真实API联调取证（发布→审核→匿名找店/进店/看到→下架隐藏/404）；162/162 前端测试；PR72/75 已合入，用户视觉验收通过（2026-09-23） | 模拟器窗口级验证/VIS/真机留用户人工验收；通知跳转端到端走查未做（窗口级验证缺口）；封面真实签名端口无 signer 时 503（设计内） |
 | 服务/排期/交易/治理其余范围 | 以各Issue证据为准，未因以上合并自动完成 | 契约、业务实现与端到端验收按依赖推进 |
 
 ## 下一步与保留门禁
