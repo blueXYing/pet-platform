@@ -34,7 +34,8 @@ public class CSessionSecurityConfiguration {
       ObjectProvider<UserAuthService> services,
       @Value("${pet.merchant.application.enabled:false}") boolean merchantApplicationEnabled,
       @Value("${pet.private-assets.enabled:false}") boolean privateAssetsEnabled,
-      @Value("${pet.service.command.enabled:false}") boolean serviceCommandEnabled)
+      @Value("${pet.service.command.enabled:false}") boolean serviceCommandEnabled,
+      @Value("${pet.store.query.enabled:false}") boolean storeQueryEnabled)
       throws Exception {
     http.securityMatcher("/api/v1/c/**", "/api/v1/merchant/**")
         .csrf(c -> c.disable())
@@ -62,9 +63,17 @@ public class CSessionSecurityConfiguration {
             // Inbox reads (CCR-W2-NOTIFICATION-001): MINIAPP Bearer enforced by the filter.
             a.requestMatchers("/api/v1/c/notifications", "/api/v1/c/notifications/**")
                 .permitAll();
-            // Service catalog (CCR-W2-API-001 service domain): MINIAPP Bearer via the filter.
+            // Service catalog (CCR-W2-API-001 service domain): anonymous GET per the store-read
+            // STR-D8 ruling (PRD "all users browse"); the filter validates a carried bearer.
             a.requestMatchers("/api/v1/c/stores/*/services").permitAll();
             a.requestMatchers("/api/v1/c/services/*").permitAll();
+            if (storeQueryEnabled) {
+              // Store catalog (CCR-W2-API-001 store read, STR-D8): GET-only registration behind
+              // the assembly switch; non-GET stays denied and the switch keeps it unreachable
+              // when the slice is not assembled.
+              a.requestMatchers(HttpMethod.GET, "/api/v1/c/stores", "/api/v1/c/stores/*")
+                  .permitAll();
+            }
             a.requestMatchers(HttpMethod.PUT, "/api/v1/c/pets/*", "/api/v1/c/profile").permitAll();
             a.requestMatchers(HttpMethod.DELETE, "/api/v1/c/pets/*").permitAll();
             if (merchantApplicationEnabled) {

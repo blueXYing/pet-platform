@@ -24,8 +24,14 @@ import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 
 class PrivateAssetHttpTest {
   private final PrivateAssetApi assets = mock(PrivateAssetApi.class);
+  // SERVICE_COVER gate resolves the admission query lazily; a provider over an empty registry
+  // reports "not available" and keeps these fixtures on the MERCHANT_APPLICATION_MATERIAL path.
+  private final org.springframework.beans.factory.ObjectProvider<com.petplatform.merchant.biz.apiimpl.MerchantAdmissionApiImpl>
+      admissions =
+          new org.springframework.beans.factory.support.DefaultListableBeanFactory()
+              .getBeanProvider(com.petplatform.merchant.biz.apiimpl.MerchantAdmissionApiImpl.class);
   private final MockMvc c =
-      MockMvcBuilders.standaloneSetup(new CPrivateAssetController(assets))
+      MockMvcBuilders.standaloneSetup(new CPrivateAssetController(assets, admissions))
           .setControllerAdvice(new MerchantHttpExceptionHandler())
           .addFilters(new TraceContextFilter())
           .build();
@@ -261,6 +267,117 @@ class PrivateAssetHttpTest {
             get(path).requestAttr(AdminBearerAuthenticationFilter.VIEW, adminSession()))
         .andExpect(status().isServiceUnavailable())
         .andExpect(jsonPath("$.code").value("COMMON_DEPENDENCY_UNAVAILABLE"));
+  }
+
+  /**
+   * CCR-W2-API-001 store read, N13 unit slice (SERVICE_COVER, 31 supplement): the upload is
+   * scoped to merchant main accounts. Unavailable admission facts fail closed (503, pipeline
+   * untouched), a session user without an OWNER membership is 403, and a main account passes the
+   * gate with purpose=SERVICE_COVER carried into the pipeline command. The end-to-end stranger
+   * and ownership-isolation counterexamples live in CStoreControllerHttpTest.
+   */
+  @Test
+  void serviceCoverUploadRequiresMerchantMainAccountAndFailsClosed() throws Exception {
+    MockMultipartFile png =
+        new MockMultipartFile(
+            "file",
+            "cover.png",
+            "image/png",
+            new byte[] {(byte) 0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a});
+    // Empty admission registry: facts unavailable -> fail closed 503, never silently allow.
+    c.perform(
+            multipart("/api/v1/c/private-assets")
+                .file(png)
+                .param("purpose", "SERVICE_COVER")
+                .requestAttr(CBearerSessionFilter.VIEW, mini("501"))
+                .header("X-Request-Id", "15111111-1111-1111-1111-111111111111"))
+        .andExpect(status().isServiceUnavailable())
+        .andExpect(jsonPath("$.code").value("COMMON_DEPENDENCY_UNAVAILABLE"))
+        .andExpect(header().string("Cache-Control", "no-store, private"));
+    verifyNoInteractions(assets);
+
+    // No OWNER membership: 403, pipeline still untouched.
+    PrivateAssetApi gated = mock(PrivateAssetApi.class);
+    com.petplatform.merchant.biz.apiimpl.MerchantAdmissionApiImpl noMembership =
+        mock(com.petplatform.merchant.biz.apiimpl.MerchantAdmissionApiImpl.class);
+    when(noMembership.listMemberships(any()))
+        .thenReturn(new com.petplatform.merchant.api.dto.MerchantMembershipPageDTO(
+            List.of(), 1, 1, 0));
+    gatedUploads(gated, noMembership)
+        .perform(
+            multipart("/api/v1/c/private-assets")
+                .file(png)
+                .param("purpose", "SERVICE_COVER")
+                .requestAttr(CBearerSessionFilter.VIEW, mini("501"))
+                .header("X-Request-Id", "16111111-1111-1111-1111-111111111111"))
+        .andExpect(status().isForbidden())
+        .andExpect(jsonPath("$.code").value("COMMON_FORBIDDEN"))
+        .andExpect(header().string("Cache-Control", "no-store, private"));
+    verifyNoInteractions(gated);
+
+    // A merchant main account passes the gate; SERVICE_COVER flows into the pipeline command.
+    when(assets.upload(any()))
+        .thenReturn(
+            new UploadPrivateAssetResult(
+                "811", true, PrivateAssetStatus.READY, "b".repeat(64), "image/png", 8));
+    com.petplatform.merchant.biz.apiimpl.MerchantAdmissionApiImpl owner =
+        mock(com.petplatform.merchant.biz.apiimpl.MerchantAdmissionApiImpl.class);
+    when(owner.listMemberships(any()))
+        .thenReturn(new com.petplatform.merchant.api.dto.MerchantMembershipPageDTO(
+            List.of(), 1, 1, 1));
+    gatedUploads(assets, owner)
+        .perform(
+            multipart("/api/v1/c/private-assets")
+                .file(png)
+                .param("purpose", "SERVICE_COVER")
+                .requestAttr(CBearerSessionFilter.VIEW, mini("501"))
+                .header("X-Request-Id", "17111111-1111-1111-1111-111111111111"))
+        .andExpect(status().isCreated())
+        .andExpect(jsonPath("$.data.assetId").value("811"));
+    ArgumentCaptor<UploadPrivateAssetCommand> coverCommand =
+        ArgumentCaptor.forClass(UploadPrivateAssetCommand.class);
+    verify(assets).upload(coverCommand.capture());
+    assertEquals("SERVICE_COVER", coverCommand.getValue().purpose());
+    assertEquals("501", coverCommand.getValue().ownerUserId());
+
+    // The gate never runs for the application-material purpose: same controller, material
+    // upload succeeds and the admission query interaction count stays at the single
+    // SERVICE_COVER call above.
+    gatedUploads(assets, owner)
+        .perform(
+            multipart("/api/v1/c/private-assets")
+                .file(png)
+                .param("purpose", "MERCHANT_APPLICATION_MATERIAL")
+                .requestAttr(CBearerSessionFilter.VIEW, mini("501"))
+                .header("X-Request-Id", "18111111-1111-1111-1111-111111111111"))
+        .andExpect(status().isCreated())
+        .andExpect(jsonPath("$.data.assetId").value("811"));
+    verify(assets, times(2)).upload(any());
+    verify(owner, times(1)).listMemberships(any());
+  }
+
+  private static MockMvc gatedUploads(
+      PrivateAssetApi assets,
+      com.petplatform.merchant.biz.apiimpl.MerchantAdmissionApiImpl admission) {
+    return MockMvcBuilders.standaloneSetup(
+            new CPrivateAssetController(
+                assets,
+                new org.springframework.beans.factory.ObjectProvider<
+                    com.petplatform.merchant.biz.apiimpl.MerchantAdmissionApiImpl>() {
+                  @Override
+                  public com.petplatform.merchant.biz.apiimpl.MerchantAdmissionApiImpl
+                      getIfAvailable() {
+                    return admission;
+                  }
+
+                  @Override
+                  public com.petplatform.merchant.biz.apiimpl.MerchantAdmissionApiImpl getObject() {
+                    return java.util.Objects.requireNonNull(admission);
+                  }
+                }))
+        .setControllerAdvice(new MerchantHttpExceptionHandler())
+        .addFilters(new TraceContextFilter())
+        .build();
   }
 
   private static MiniSessionView mini(String userId) {

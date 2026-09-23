@@ -287,9 +287,48 @@ GET /api/v1/c/services/{serviceId}
 
 存量订单详情读取订单快照，不实时依赖当前服务是否已下线。
 
-### 3.3.1 服务读取形态与封面展示（CCR-W2-API-001 服务域 + 写入方 v0.2，2026-09-22 已批）
+**匿名浏览语义（CCR-W2-API-001 门店读侧 STR-D8，2026-09-22 用户裁决，四条路由统一）**：按最终 C 端 PRD §5.1.13/14"所有用户浏览；已登录用户可进入预约"，上述四条 GET 路由**匿名可访问，Bearer 可选**——无 Authorization 头匿名放行；携带 Bearer 时校验，无效/过期仍 401 `COMMON_UNAUTHORIZED`（匿名放行不掩盖坏凭证）；有效会话正常解析主体。可选主体不改变可见性（可见性合取不含用户主体条件）。非 GET 方法与其余 C 端路由维持既有强制会话/denyAll。
 
-`GET /api/v1/c/services/{serviceId}` 成功 data（MINIAPP Bearer；可见=ACTIVE ∧ merchantEnabled ∧ storeEnabled ∧ acceptsNewOrders，不可见一律 404 不区分原因）：
+## 3.3.1 门店服务列表与服务详情（新增，CCR-W2-API-001 服务域 v0.3 已批；补齐 PR#65 漏同步）
+
+```text
+GET /api/v1/c/stores/{storeId}/services?page&pageSize
+GET /api/v1/c/services/{serviceId}
+```
+
+会话：匿名可访问、Bearer 可选（见上方“匿名浏览语义”，STR-D8 四条路由统一）；无效/过期凭证仍 401 `COMMON_UNAUTHORIZED`。读操作无 requestId 幂等要求（23 号）。
+
+可见性（SVC-D1b）：C 端可见性 = `service.status=ACTIVE` ∧ 商家 `merchantEnabled` ∧ 门店 `storeEnabled` ∧ `acceptsNewOrders` 四条件合取，同事务判定。任一条件不满足：列表中不出现；详情返回 404 `SERVICE_NOT_FOUND`，与"服务不存在"同响应、不区分原因（防探测），与"只展示当前允许新预约的商家/门店/服务"（§3.3）一致，避免"列表隐藏了、详情链接还能打开"。HTTP 详情响应不携带 bookability 子对象（可见即基本资格合格）；资格原因细分仅保留在内部 `checkBookable` 的 `reasonCodes`，供 ORD/SCH 使用。此"可预约"仅指基本资格合格，不代表所选时间还有空位，更不代表订单预约成功（空位查询 §3.4 与下单 §3.5 由排期/订单域另行检查）。
+
+| 操作 | 成功 | 关键错误 |
+|---|---|---|
+| GET `/api/v1/c/stores/{storeId}/services?page&pageSize` | 200 分页 `StoreServiceItemView[]`；仅返回 D1b 可见性合取通过的服务 | 400 参数；401 无效凭证（匿名可访问） |
+| GET `/api/v1/c/services/{serviceId}` | 200 `ServiceDetailView`（可见即资格合格，D1b） | 404 `SERVICE_NOT_FOUND`（不存在 / OFFLINE / DRAFT / 商家或门店停用或不接新单——一律同响应不区分原因）；400；401 无效凭证 |
+
+失败关闭：任何事实源异常/未知（查询失败、字段缺失、状态值非法）→ C 端不可见或整体 503 `COMMON_DEPENDENCY_UNAVAILABLE`，绝不降级为可见/可预约；确认不存在或不可见（404 `SERVICE_NOT_FOUND`）与事实源故障（503）不得混同。
+
+列表归属语义：`storeId` 不存在或不可见 → 200 空列表（页面显示"暂无服务"，不暴露门店状态细节，不与"门店存在但无服务"区分探测）；详情不可见一律 404（D1b）。
+
+服务详情 `ServiceDetailView` 示例：
+
+```json
+{
+  "serviceId": "20001", "merchantId": "957001", "storeId": "957002",
+  "serviceName": "宠物美容-基础洗护", "categoryId": "957003", "categoryName": "美容",
+  "salePrice": "128.00", "durationMinutes": 45,
+  "fulfillmentType": "IN_STORE", "description": "含洗护、吹干、基础梳理"
+}
+```
+
+门店服务列表项 `StoreServiceItemView`：详情字段去掉 `description`（列表不显全文）；不暴露 `version`；分页信封 `items/page/pageSize/total`，排序 `created_at DESC, id DESC`，`page` 1..10000、`pageSize` 1..50（与通知列表一致）。
+
+校验（违规 `COMMON_INVALID_ARGUMENT`/400，details 指明字段）：`serviceId`/`storeId` 为雪花 ID 字符串（公共 ID Codec），路径参数非法即 400；`fulfillmentType` 仅 IN_STORE/PICKUP_DELIVERY，存储值非法时读侧失败关闭（503）。
+
+金额与快照（SVC-D3）：HTTP 投影 `salePrice` 为十进制字符串两位小数（如 `"128.00"`，纯传输格式防精度损失）；快照为查询时值拷贝，主数据后续修改不改变已返回副本；存量订单展示旧价格/旧资料走订单域订单快照，不经本接口。
+
+#### 封面展示增补（CCR-W2-API-001 服务写入方 v0.2，2026-09-22 已批）
+
+`GET /api/v1/c/services/{serviceId}` 成功 data（匿名可访问、Bearer 可选；可见=ACTIVE ∧ merchantEnabled ∧ storeEnabled ∧ acceptsNewOrders，不可见一律 404 不区分原因）：
 
 ```json
 {
@@ -305,7 +344,21 @@ GET /api/v1/c/services/{serviceId}
 - `coverUrl` 为短时效签名 URL（复用 CCR-OSS-001 公开素材签名机制），客户端按 `coverUrlExpiresAt` 到期前刷新；签名端口不可用且有封面 → 503 失败关闭，不返回未签名 URL。
 - 金额两位小数 String；`Cache-Control: no-store`。
 
----
+## 3.3.2 门店浏览（CCR-W2-API-001 门店读侧 STR-D1～D8，2026-09-22 已批；装配开关 `pet.store.query.enabled` 默认关闭）
+
+**GET `/api/v1/c/stores?city&page&pageSize`**（列表，匿名可 GET，见上）：
+
+- Query 仅 `city?`、`page?`（1..10000，默认1）、`pageSize?`（1..50，默认20）；未知参数/非法值 400 `COMMON_INVALID_ARGUMENT`。
+- `city` 语义：城市范围由服务端开放城市目录控制（`MerchantApplicationCityCatalog`，现仅成都）；显式传值必须词法合法（`[a-z][a-z0-9_-]{0,31}`）且属于目录，否则 400；**省略 = 隐式限定为当前全部开放城市集合**（不硬编码城市名）；目录空配置 503 失败关闭。
+- 200 信封 `items/page/pageSize/total`；排序固定 `merchantId,storeId` 数值升序；不支持 sort/距离/评分排序与 keyword/categoryId 筛选（延后，未知参数 400）。
+- 列表项九字段：`storeId、merchantId、storeName、merchantName、address、longitude?、latitude?、phoneMasked?、cityCode`；无 merchantStatus/storeStatus/version 恒真字段；电话仅掩码投影（完整号码与拨号能力不在本切片，待裁决）。
+
+**GET `/api/v1/c/stores/{storeId}`**（详情，匿名可 GET）：字段集与列表项相同（详情无增量字段）；`storeId` 雪花 ID 十进制 String，非法 400。
+
+- 可见性 = 三条件合取（`merchant.status==ACTIVE` ∧ `store.status==ACTIVE` ∧ 审核APPROVED+签约SIGNED，同 27号 §4 资格策略；**不含"服务 ACTIVE"**——有店无服务仍可见，店内空服务列表由 §3.3.1 路由返回空页）。
+- 错误两分（不得混同）：确认不存在或任一条件不满足 → 详情 404 `STORE_NOT_FOUND` 不区分原因（防探测），列表隐藏；事实源故障、读取失败、状态未知、`merchant_profile_compat` 城市事实损坏（通过资格合取但缺行或 city_code 词法非法）→ 列表**整页** 503 `COMMON_DEPENDENCY_UNAVAILABLE`、详情 503，不降级空页；开放城市确证无可见门店 → 200 空页（与 503 严格区分）。
+- 配套完整性程序（用户裁决要求）：存量 SQL 巡检+告警+修复 runbook 见 `planning/issues/wave-2/MER-001-store-read/INTEGRITY-RUNBOOK.md`。
+- 与 `/c/stores/{storeId}/services` 的配合：同一不可见门店，本路由 404、店内服务列表 200 空页——各自已批语义并存；C 端页面以详情路由为门店可访问性判据。---
 
 ## 3.4 可预约时间查询
 
@@ -1368,6 +1421,8 @@ POST /api/v1/admin/services/{serviceId}/force-offline
 
 - 审核决定（APPROVE/REJECT）在决定事务内写 `ServiceReviewedEvent.v1` 到事务性 Outbox（Event08）；通知消费侧（MERCHANT 收件箱）由通知域切片承接，未接通前完整审核流程不标完成。
 - 强制下架是否通知商家＝剩余问题（本轮不发事件）。
+
+---
 
 ---
 

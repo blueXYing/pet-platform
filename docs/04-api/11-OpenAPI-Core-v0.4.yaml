@@ -6368,6 +6368,172 @@ paths:
           application/json:
             schema:
               $ref: '#/components/schemas/AuthVersionedCommand'
+  /c/stores:
+    get:
+      tags:
+      - Store-Catalog
+      operationId: cListStores
+      summary: List visible stores (paginated) with the server-side open-city filter
+      x-contract-status: ACCEPTED_CONTRACT_NOT_IMPLEMENTED
+      x-audience: MINIAPP
+      # STR-D8 (store-read ruling 2026-09-22): anonymous GET allowed, bearer optional.
+      security:
+      - {}
+      - bearerAuth: []
+      parameters:
+      - name: city
+        in: query
+        description: Open-city code; omitted means the whole current open-city set.
+        schema:
+          type: string
+          pattern: '^[a-z][a-z0-9_-]{0,31}$'
+      - name: page
+        in: query
+        schema:
+          type: integer
+          minimum: 1
+          maximum: 10000
+          default: 1
+      - name: pageSize
+        in: query
+        schema:
+          type: integer
+          minimum: 1
+          maximum: 50
+          default: 20
+      responses:
+        '200':
+          description: Store catalog projection; see HTTP contract 10 section 3.3.2.
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                enum:
+                - no-store
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MerErrorEnvelope'
+        '400':
+          description: Invalid, duplicate or unknown arguments; city not in the open-city
+            directory.
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                enum:
+                - no-store
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MerErrorEnvelope'
+        '401':
+          description: Carried bearer invalid or expired; anonymous requests without an
+            Authorization header are allowed (STR-D8).
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                enum:
+                - no-store
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MerErrorEnvelope'
+        '503':
+          description: Facts source failure, unknown status or profile-compat integrity
+            violation; whole page fails closed, never an empty page.
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                enum:
+                - no-store
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MerErrorEnvelope'
+  /c/stores/{storeId}:
+    get:
+      tags:
+      - Store-Catalog
+      operationId: cGetStore
+      summary: Store detail; visible only when the three-condition conjunction holds
+      x-contract-status: ACCEPTED_CONTRACT_NOT_IMPLEMENTED
+      x-audience: MINIAPP
+      # STR-D8 (store-read ruling 2026-09-22): anonymous GET allowed, bearer optional.
+      security:
+      - {}
+      - bearerAuth: []
+      parameters:
+      - name: storeId
+        in: path
+        required: true
+        schema:
+          type: string
+      responses:
+        '200':
+          description: Store catalog projection; see HTTP contract 10 section 3.3.2.
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                enum:
+                - no-store
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MerErrorEnvelope'
+        '400':
+          description: Invalid path argument.
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                enum:
+                - no-store
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MerErrorEnvelope'
+        '401':
+          description: Carried bearer invalid or expired; anonymous requests without an
+            Authorization header are allowed (STR-D8).
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                enum:
+                - no-store
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MerErrorEnvelope'
+        '404':
+          description: STORE_NOT_FOUND - absent, invisible or ineligible (indistinguishable).
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                enum:
+                - no-store
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MerErrorEnvelope'
+        '503':
+          description: Facts source failure, unknown status or profile-compat integrity
+            violation; fail closed.
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                enum:
+                - no-store
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MerErrorEnvelope'
   /c/stores/{storeId}/services:
     get:
       tags:
@@ -6376,7 +6542,9 @@ paths:
       summary: List visible services of a store (paginated)
       x-contract-status: ACCEPTED_CONTRACT_NOT_IMPLEMENTED
       x-audience: MINIAPP
+      # STR-D8 (store-read ruling 2026-09-22): anonymous GET allowed, bearer optional.
       security:
+      - {}
       - bearerAuth: []
       parameters:
       - name: storeId
@@ -6424,7 +6592,8 @@ paths:
               schema:
                 $ref: '#/components/schemas/MerErrorEnvelope'
         '401':
-          description: C session required.
+          description: Carried bearer invalid or expired; anonymous requests without an
+            Authorization header are allowed (STR-D8).
           headers:
             Cache-Control:
               schema:
@@ -6436,7 +6605,7 @@ paths:
               schema:
                 $ref: '#/components/schemas/MerErrorEnvelope'
         '404':
-          description: Not found, not visible or ineligible (indistinguishable).
+          description: Not found, not visible or ineligible (indistinguishable); code SERVICE_NOT_FOUND (HTTP contract 10 section 3.3.1).
           headers:
             Cache-Control:
               schema:
@@ -6467,7 +6636,9 @@ paths:
       summary: Service detail with snapshot fields; visible only when bookable-eligible
       x-contract-status: ACCEPTED_CONTRACT_NOT_IMPLEMENTED
       x-audience: MINIAPP
+      # STR-D8 (store-read ruling 2026-09-22): anonymous GET allowed, bearer optional.
       security:
+      - {}
       - bearerAuth: []
       parameters:
       - name: serviceId
@@ -6501,7 +6672,8 @@ paths:
               schema:
                 $ref: '#/components/schemas/MerErrorEnvelope'
         '401':
-          description: C session required.
+          description: Carried bearer invalid or expired; anonymous requests without an
+            Authorization header are allowed (STR-D8).
           headers:
             Cache-Control:
               schema:
@@ -6513,7 +6685,7 @@ paths:
               schema:
                 $ref: '#/components/schemas/MerErrorEnvelope'
         '404':
-          description: Not found, not visible or ineligible (indistinguishable).
+          description: Not found, not visible or ineligible (indistinguishable); code SERVICE_NOT_FOUND (HTTP contract 10 section 3.3.1).
           headers:
             Cache-Control:
               schema:

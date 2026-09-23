@@ -123,6 +123,13 @@ SERVICE_WRITE_OPERATIONS = {
     'adminGetService': ('get', '/admin/services/{serviceId}'),
     'adminDecideServiceReview': ('post', '/admin/services/{serviceId}/decision'),
     'adminForceOfflineService': ('post', '/admin/services/{serviceId}/force-offline'),
+
+# STR-D8 (store-read ruling 2026-09-22): the four C-end browse routes allow
+# anonymous GET with optional bearer; see docs/04-api/10 §3.3 and CCR-W2-API-001 v0.2.
+ANONYMOUS_BROWSE_SECURITY = [{}, {'bearerAuth': []}]
+STORE_CATALOG_OPERATIONS = {
+    'cListStores': ('get', '/c/stores'),
+    'cGetStore': ('get', '/c/stores/{storeId}'),
 }
 
 
@@ -360,7 +367,7 @@ def check(spec):
             if operation_id in SERVICE_CATALOG_OPERATIONS:
                 assert (method, path) == SERVICE_CATALOG_OPERATIONS[operation_id], f'Service catalog operation moved: {operation_id}'
                 assert operation.get('x-contract-status') == 'ACCEPTED_CONTRACT_NOT_IMPLEMENTED', f'Service catalog contract status changed: {operation_id}'
-                assert operation.get('security') == [{'bearerAuth': []}], f'Service catalog security changed: {operation_id}'
+                assert operation.get('security') == ANONYMOUS_BROWSE_SECURITY, f'Service catalog security changed: {operation_id}'
             if operation_id in SERVICE_WRITE_OPERATIONS:
                 assert (method, path) == SERVICE_WRITE_OPERATIONS[operation_id], f'Service write operation moved: {operation_id}'
                 assert operation.get('security') == [{'bearerAuth': []}], f'Service write security changed: {operation_id}'
@@ -389,6 +396,10 @@ def check(spec):
                     if operation_id == 'merchantCreateService':
                         assert '201' in responses and responses['201'].get('description'), f'Service write create replay changed: {operation_id}'
                 assert required <= responses.keys(), f'Service write responses missing: {operation_id} {sorted(required - responses.keys())}'
+            if operation_id in STORE_CATALOG_OPERATIONS:
+                assert (method, path) == STORE_CATALOG_OPERATIONS[operation_id], f'Store catalog operation moved: {operation_id}'
+                assert operation.get('x-contract-status') == 'ACCEPTED_CONTRACT_NOT_IMPLEMENTED', f'Store catalog contract status changed: {operation_id}'
+                assert operation.get('security') == ANONYMOUS_BROWSE_SECURITY, f'Store catalog security changed: {operation_id}'
             if operation_id in AUTH_OPERATIONS:
                 assert (method, path) == AUTH_OPERATIONS[operation_id], f'AUTH operation moved: {operation_id}'
                 check_auth_security(spec, operation, parameters)
@@ -453,7 +464,7 @@ def check(spec):
     assert legacy_seen == LEGACY_OPERATIONS.keys(), f'Legacy operations missing: {LEGACY_OPERATIONS.keys() - legacy_seen}'
     assert legacy_writes == 13, 'Legacy write surface changed'
     assert legacy_creates == LEGACY_CREATES, 'Legacy create surface changed'
-    assert operations == LEGACY_OPERATIONS.keys() | AUTH_OPERATIONS.keys() | MERCHANT_OPERATIONS.keys() | APPLICATION_OPERATIONS.keys() | PRIVATE_ASSET_OPERATIONS.keys() | SERVICE_CATALOG_OPERATIONS.keys() | SERVICE_WRITE_OPERATIONS.keys(), 'Unexpected or missing reviewed operations'
+    assert operations == LEGACY_OPERATIONS.keys() | AUTH_OPERATIONS.keys() | MERCHANT_OPERATIONS.keys() | APPLICATION_OPERATIONS.keys() | PRIVATE_ASSET_OPERATIONS.keys() | SERVICE_CATALOG_OPERATIONS.keys() | STORE_CATALOG_OPERATIONS.keys() | SERVICE_WRITE_OPERATIONS.keys(), 'Unexpected or missing reviewed operations'
     schemes = spec['components']['securitySchemes']
     assert schemes['bearerAuth']['type'] == 'http' and schemes['bearerAuth']['scheme'] == 'bearer'
     for scheme, location, name in [('authAttempt', 'header', 'X-Auth-Attempt'),
@@ -497,6 +508,7 @@ def check(spec):
             'privateAssetOperations': len(operations & PRIVATE_ASSET_OPERATIONS.keys()),
             'serviceCatalogOperations': len(operations & SERVICE_CATALOG_OPERATIONS.keys()),
             'serviceWriteOperations': len(operations & SERVICE_WRITE_OPERATIONS.keys()),
+            'storeCatalogOperations': len(operations & STORE_CATALOG_OPERATIONS.keys()),
             'resolvedRefs': len(refs), 'stringIdProperties': ids}
 
 
