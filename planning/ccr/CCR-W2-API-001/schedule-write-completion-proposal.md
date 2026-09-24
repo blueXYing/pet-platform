@@ -1,8 +1,8 @@
 # 排期写入 G1–G3 契约补齐提案（SCH-004）
 
-状态：**PROPOSED / 重大技术契约待人工批准**。日期：2026-09-24。本文只给出可评审候选，不是已冻结的 07/10/11/12/Schema 契约，不授权迁移、业务实现、开关开启或 PR 合并。
+状态：**SCHC-1～4 已批准 / ACCEPTED_CONTRACT_NOT_IMPLEMENTED**。日期：2026-09-24。批准回执见[四项技术裁决](schedule-write-completion-decisions.md)，权威补充见[34 号 API](../../../docs/04-api/34-Schedule-Protection-Contract-v0.1.md)与[34 号存储](../../../docs/03-database/34-Schedule-Protection-Storage-v0.1.md)。本文保留审阅推理和反例；不授权生产迁移、业务实现、开关开启或 PR 合并。
 
-依据顺序：SSOT §12、§13、§29；最终 C/商家 PRD；技术基线；06 号 Schema、07/10/11/12/23 号 API/幂等契约；[联合审阅回执](schedule-review-decisions.md)与[写入提案 v0.2](schedule-write-proposal.md)。SSOT §29 已批准：容量取配置与合格人员数的较小值、人员排班和能力撤销须保护既有预约及指派、接送两方向分窗、能力过期编辑冲突、事实缺失失败关闭。**保护算法、持久化形状、跨域锁协议和接送占用区间没有获批**；本文不重新裁决产品规则。
+依据顺序：SSOT §12、§13、§29；最终 C/商家 PRD；技术基线；06 号 Schema、07/10/11/12/23 号 API/幂等契约；[联合审阅回执](schedule-review-decisions.md)与[写入提案 v0.2](schedule-write-proposal.md)。SSOT §29 已批准容量、人员保护、接送分窗和失败关闭；后续又批准本提案 SCHC-1～4 的锁、集合头、整窗 claim 与旧 GENERAL 处置。**跨服务完整容量求解、最终同人指派关系、hold/order 绑定细节和生产迁移仍未获批/未交付**。
 
 ## 1. 已核实的缺口和实施边界
 
@@ -19,9 +19,9 @@
 
 ## 2. G1：共同闸门、人员保护及跨服务容量
 
-### 2.1 稳定闸门候选（需批准）
+### 2.1 已批准的稳定闸门设计（未实现）
 
-建议由 SCH 拥有 `schedule_store_capacity_guard(store_id PK, version, updated_at)`。同一门店的容量相关写命令都必须在**同一主库 DataSource、同一顶层本地事务**中，经 `ScheduleCapacityGuardApi.acquire(storeIds)` 取得稳定行的排他锁。可用唯一键的原子 `insert-if-absent` 建首行，再以当前读取得锁；预检查开放窗或 `SELECT FOR UPDATE` 空结果均不构成闸门。锁直到顶层提交/回滚才释放，不以 JVM/Redis 锁或跨请求 lease 代替。
+已批准由 SCH 拥有 `schedule_store_capacity_guard(store_id PK, version, updated_at)`。同一门店的容量相关写命令都必须在**同一主库 DataSource、同一顶层本地事务**中，经 `ScheduleCapacityGuardApi.acquire(storeIds)` 取得稳定行的排他锁。可用唯一键的原子 `insert-if-absent` 建首行，再以当前读取得锁；预检查开放窗或 `SELECT FOR UPDATE` 空结果均不构成闸门。锁直到顶层提交/回滚才释放，不以 JVM/Redis 锁或跨请求 lease 代替。
 
 参与命令至少包括：SCH hold、confirm、swap、release/expire、窗口受保护修改、员工排班减少可用性、能力撤销；ORDER 指派/改派/撤派；MER 停用或使服务人员失去资格的后续命令。新命令若会改变预约/人员/指派事实，须先判定是否也要参加，不能出现旁路。纯展示查询无需拿闸门。已有 MER disable 保持原 `IMPLEMENTATION_BLOCKED`，直到它和 ORDER 指派一起遵守同协议。
 
@@ -66,9 +66,9 @@ ORDER 还须明确“当前指派需保护”的生命周期状态集合及它�
 
 事务前后例：T1 缩短 X 的 09:00–11:00 排班，T2 为依赖 X 的服务在 10:00–11:00 hold。若 T1 先取门店 guard 并提交，T2 随后在锁内读取缩短后的排班而拒绝；若 T2 先提交 TEMP_LOCKED claim，T1 随后读取该 claim 和 ORDER/MER 当前事实而拒绝。两种顺序均不得出现“hold 成功且 X 排班已缩短”。T1 查询到依赖故障时整个执行事务回滚，T2 可在随后正常复核；不能把故障包装成“该窗已被业务阻挡”的部分关闭结果。
 
-## 3. G2：能力集合首次空集合 CAS（可单独冻结）
+## 3. G2：已批准的能力集合首次空集合 CAS（未实现）
 
-建议 SCH 自有 `staff_capability_set(staff_id PK, store_id, version BIGINT NOT NULL, updated_at)` 作为集合头；Java 版本为非负 `long`，HTTP/JSON 的 `version` 与 `expectedVersion` 为非负 Long 的十进制 **String**，沿用 27 号 §3 的外部版本规则和 23 号规范参数处理，绝不经 JavaScript `Number` 中转。`staff_service_capability` 保持 ENABLED 明细，空集合是零明细，**不是缺少版本**。GET 对尚无头的合法员工返回 `serviceIds:[],version:"0"`，这是“尚未编辑”的逻辑版本，必须先成功核验员工归属，故障不能合成空集合。首次 PUT 带 `expectedVersion:"0"`，在同事务中以唯一键原子创建头并推进到 1、替换明细、写动作审计与幂等成功回执。第二个也读到 0 的编辑只能有一个成功；唯一冲突者返回 409 `COMMON_CONFLICT` 并提示重新 GET。已存在头时 `UPDATE ... WHERE version=expectedVersion` CAS；影响 0 行则冲突，不覆盖集合。
+已批准 SCH 自有 `staff_capability_set(staff_id PK, store_id, version BIGINT NOT NULL, updated_at)` 作为集合头；Java 版本为非负 `long`，HTTP/JSON 的 `version` 与 `expectedVersion` 为非负 Long 的十进制 **String**，沿用 27 号 §3 的外部版本规则和 23 号规范参数处理，绝不经 JavaScript `Number` 中转。`staff_service_capability` 保持 ENABLED 明细，空集合是零明细，**不是缺少版本**。GET 对尚无头的合法员工返回 `serviceIds:[],version:"0"`，这是“尚未编辑”的逻辑版本，必须先成功核验员工归属，故障不能合成空集合。首次 PUT 带 `expectedVersion:"0"`，在同事务中以唯一键原子创建头并推进到 1、替换明细、写动作审计与幂等成功回执。第二个也读到 0 的编辑只能有一个成功；唯一冲突者返回 409 `COMMON_CONFLICT` 并提示重新 GET。已存在头时 `UPDATE ... WHERE version=expectedVersion` CAS；影响 0 行则冲突，不覆盖集合。
 
 每次**新成功** PUT 版本递增，包括写入与当前相同的集合；同 requestId 同参数成功重放返回第一次版本，不再递增。写成空集合后头仍保留，不能删除头后把版本退回 0。`serviceIds` 是具体服务 ID 集合，重复项 400，跨店/不存在服务按既有服务归属规则拒绝；如将其声明为无序集合，23 号 canonical 摘要应按规范数值升序处理并固定版本。撤销项先进入 G1 保护；只增加项仍需版本 CAS、目标身份/资格校验和审计，不能以“安全增加”跳过集合冲突。独立集合头不借 `merchant_staff.version`、requestId 或明细行数代替。
 
@@ -76,35 +76,35 @@ Schema/API 候选：GET/PUT `/api/v1/merchant/staff/{staffId}/service-capabiliti
 
 ## 4. G3：PICKUP/RETURN 权威匹配、旧窗和存量
 
-### 4.1 推荐整窗占用与选窗 ID（技术契约待批准）
+### 4.1 已批准整窗占用与选窗 ID（未实现）
 
 - **推荐的明确口径**：C 端最终 PRD §5.1 的原话是“用户必须选择一个上门时段，作为接宠时间窗口”，送回“同样可选择日期，展示商家按分钟精度自定义的可用送回时段”；临界例为上门 **10:00–11:00**、最早送回 **12:00–13:00**。商家 PRD §5.4 又规定上门与送回“分别占用”预约时段。因此一个接送预约各选一条 OPEN PICKUP/RETURN 窗，**两条所选候选窗的完整 `[window.start,window.end)` 分别成为占用区间**。这沿用现有“选一个时段”的产品行为；只需补上当前 API/Schema 缺少的所选窗口身份和分方向权威占用事实，不引入固定时长。
-- SCH-003 的 hold/swap 技术命令候选增 `selectedPickupWindowId`、`selectedReturnWindowId`（跨模块/HTTP ID 为 String）；在同一闸门事务核验两窗同店同服务、分别为 PICKUP/RETURN 且 OPEN，`pickupStart == pickupWindow.startAt`、`returnStart == returnWindow.startAt`，把两窗当时的完整边界和 ID 冻结为两条 claim。结束时间来自选中的权威窗口，不让客户端另报或用 `service_item.duration_minutes` 猜测。若前端日后要在窗口内任意截取子区间，那是目前 PRD 未写的**另一种选择行为**，须另行产品裁决和新的结束时间契约，不由本次技术同步暗加。
+- SCH-003 的 hold/swap 技术命令后续须增 `selectedPickupWindowId`、`selectedReturnWindowId`（跨模块/HTTP ID 为 String）；在同一闸门事务核验两窗同店同服务、分别为 PICKUP/RETURN 且 OPEN，`pickupStart == pickupWindow.startAt`、`returnStart == returnWindow.startAt`，把两窗当时的完整边界和 ID 冻结为两条 claim。结束时间来自选中的权威窗口，不让客户端另报或用 `service_item.duration_minutes` 猜测。当前 C 端查询只有六字段，无 `windowId/kind`，须由 SCH-004/SCH-003 后续联合增列才能供客户端传两个 ID；现有 SCH-001/002 不具备此能力。若前端日后要在窗口内任意截取子区间，那是目前 PRD 未写的**另一种选择行为**，须另行产品裁决和新的结束时间契约，不由本次技术同步暗加。
 - 到店预约只使用 GENERAL claim，继续按最终商家 PRD 的服务时长/已选时间区间约束处理；本提案不擅改其已批时间语义。接送两 claim 分别指向同店同服务同 kind 原窗。服务端 hold/swap 最终校验 `returnStart >= pickupStart+120分钟`，窗口管理不遍历组合。查询按 kind 给候选，单个方向的剩余容量不能代表两方向组合已锁定。
 - 窗口 close、降容量、移时段或更改服务/kind 的保护同时检查**原窗口 ID**、旧区间和候选新区间；原 claim 不会因窗口目标改变而消失。建议窗口 `storeId/serviceId/kind` 创建后不可 PUT 改身份，确需变更走受保护关闭+新建；若批准允许原地改 kind，必须先证明原 claim 已清零，且新目标按同闸门校验。不同 kind 的计数不能互相借用。
 - `schedule_reservation` 的状态变化与 claim 增删/状态投影同事务；SCH-001 读侧需同步 kind 与对应 claim 计数，避免旧单区间再次混用。若历史预约无法恢复两个权威 claim，不得开启该店/服务的接送新 hold 或受影响减员。
 
-候选 Schema 为 SCH 自有 `schedule_reservation_claim(id,reservation_id,window_id,store_id,service_id,kind,start_at,end_at,...)`，按 `reservation_id+kind` 唯一（到店 GENERAL、接送 PICKUP/RETURN）；`schedule_availability_window.window_kind NOT NULL`、`schedule_store_capacity_guard`、G2 集合头、审计表列另成隔离迁移。具体外键/索引、旧预约迁移脚本、claim 是否引用原窗口版本与回滚策略，在 34 号 Schema 和 SCH-003 合同中一起评审。本提案不把这些候选 DDL 当可执行 SQL。
+已批逻辑存储包括 SCH 自有 `schedule_reservation_claim(id,reservation_id,window_id,store_id,service_id,kind,start_at,end_at,...)`，按 `reservation_id+kind` 区分到店 GENERAL 与接送 PICKUP/RETURN；`schedule_availability_window.window_kind NOT NULL`、`schedule_store_capacity_guard`、G2 集合头及审计另见[34 号存储补充](../../../docs/03-database/34-Schedule-Protection-Storage-v0.1.md)。具体索引/DDL、旧预约迁移脚本与回滚策略尚未完成，本提案不把逻辑字段当可执行 SQL。
 
 ### 4.2 存量 GENERAL 处置和发布门禁
 
 上线前按 `storeId/serviceId/fulfillmentType/window status/有效预约状态` 盘点已有 GENERAL 窗与预约，并形成可追溯清单。IN_STORE 的 GENERAL 可按已批语义保留，仍须检查其预约主区间与历史选窗能否建立正确关联。PICKUP_DELIVERY 的旧 GENERAL **不能简单复制为 PICKUP+RETURN 两组 OPEN 窗**：既无方向、也无第二占用区间；这会凭空多出可约供给。对有 TEMP_LOCKED/CONFIRMED 的旧窗保留历史占用且阻止受影响改写；对新接送预约先关闭旧 GENERAL 的可约投影，逐店服务核验后由获权商家设置两组真实时段。可可靠恢复旧预约 claim 的才迁移；无法恢复的继续隔离并走明确的数据处置/订单履约方案，不能用空 claim 默许关窗或减员。正式发布前应报告各类数量、未解决 ID、迁移校验与回滚路径。
 
-## 5. 一页决定摘要：本轮仅请批准四项具体技术契约
+## 5. 四项已批技术契约摘要
 
-| # | 我的建议（可分别批准/退回） | 批准后影响的真实行为 | 已批准，不重问 |
+| # | 已批准设计 | 实施后影响的真实行为 | 先前业务裁决 |
 |---|---|---|---|
 | SCHC-1 共同锁与事实 | SCH 自有每店稳定闸门；SCH hold/confirm/swap/release、SCH-004 受保护写、ORDER 指派、MER 停用在同主库同顶层事务中按固定序取锁。ORDER/MER 经公共 API 提供当前指派、未完成状态、员工资格和版本。 | 排班/能力减少与新预约或指派竞态时只会有一个顺序生效；事实缺失仍拒绝执行。MER disable 继续保持阻塞，直到加入协议。 | 已有预约/指派必须保护、读取失败关闭；不要求再批准“先失败关闭”。 |
 | SCHC-2 能力编辑版本 | SCH 独立集合头 BIGINT `version`，首个空集合逻辑版本 0；首次 PUT 原子 CAS；HTTP `version/expectedVersion` 为十进制 String。 | 两个编辑者同时从空集合开始，仅一个成功，另一人看到冲突并重读；大于 2^53 的版本不会在页面丢精度。 | 能力按具体服务项；过期编辑不得静默覆盖。 |
 | SCHC-3 接送选窗事实 | 按 C/商家最终 PRD 的“选一个时段”采用**完整所选 PICKUP 和 RETURN 窗**占用；SCH-003 hold/swap 增两个 selected windowId，并在同事务持久两条分方向 claim。 | 选 10:00–11:00 上门及 12:00–13:00 送回时，两整窗分别锁定；改旧窗不能丢失原占用。窗内任意子区间不随本次上线。 | 两方向分窗、120 分钟、分钟级；用户不选人员。 |
 | SCHC-4 存量接送窗 | 上线前盘点旧 GENERAL；到店可核对保留，接送旧 GENERAL 先隔离新预约，能可靠恢复的旧占用才迁移；无法恢复则阻断相关发布和减员，逐单处置另案。 | 不会把一个旧接送窗自动复制成两份可约供给，也不会凭空释放已有订单的占用。 | 历史保留、存量履约不被排期写入破坏；本项不授权自动取消订单。 |
 
-本轮**不请用户批准容量求解算法**。跨服务共享人员的完整证明/技术占位、两 claim 与一个最终指派的具体关系、性能边界，交 SCH-003/ORDER 后续独立 CCR。它未冻结时受影响减少动作失败关闭已由 SSOT §29 批准。WORK_EXECUTION_PROTOCOL §4 要求重大 Contract 人工审核；这里申请的是可评审的字段、锁参与及数据迁移口径。
+本轮**没有批准容量求解算法**。跨服务共享人员的完整证明/技术占位、两 claim 与一个最终指派的具体关系、性能边界，交 SCH-003/ORDER 后续独立 CCR。它未冻结时受影响减少动作失败关闭已由 SSOT §29 批准。四项批准详情以[回执](schedule-write-completion-decisions.md)和两份 34 号补充为准。
 
 ## 6. 分期与禁止越界
 
-1. **现在即可评审/冻结** G2 集合 CAS、接口形状和独立测试；不改已运行 Schema/代码。正向增加能力的实现只有在对应授权、审计、幂等及窗口读一致性完成后才可单独验收。
+1. **已批准、待实施** G2 集合 CAS 与接口形状；不改已运行 Schema/代码。正向增加能力的实现只有在对应授权、审计、幂等及窗口读一致性完成后才可单独验收。
 2. **G1/G3 未落地期间**：排班关闭/缩短/移动、能力撤销、已占用窗口 close/降容/改时段、接送新 hold 和依赖此事实的指派链保持相应实施门禁/失败关闭；可先准备 DTO、迁移草案、模拟故障与并发测试。不能用一次无预约查询解除门禁。已批准的批量关窗“业务阻挡进 blockedWindows”仍适用，但事实源故障整笔回滚并返回 503。
-3. **联合同步后分段实施**：本轮四项获批后先同步 07/10/11/12/34 号权威契约和 ORDER/MER 对应 API，准备隔离迁移与共同闸门装配；SCH-003/ORDER 再以独立 CCR 冻结跨服务容量证明、接送两 claim 与最终指派的关系及性能边界，之后才能实现/启用受影响减员、接送 hold 和最终指派链。SCH-001/002 查询及 M-002 页面随权威事实联调。默认开关关闭；MySQL 实并发测试通过再考虑开启。未跑测试不标 DONE。
+3. **分段实施**：四项已在 34 号 API/存储补充记录，07/10/11/12 的正式增量、ORDER/MER 对应 API、隔离迁移与共同闸门装配仍待实现切片；SCH-003/ORDER 再以独立 CCR 冻结跨服务容量证明、接送两 claim 与最终指派的关系及性能边界，之后才能实现/启用受影响减员、接送 hold 和最终指派链。SCH-001/002 查询及 M-002 页面随权威事实联调。默认开关关闭；MySQL 实并发测试通过再考虑开启。未跑测试不标 DONE。
 
-验收反例与锁序故障演练见 [SCH-004 G1–G3 审阅及测试映射](../../issues/wave-3/SCH-004-contract/REVIEW-TEST-MAP.md)。本轮仅生成文档，测试状态 **NOT_EXECUTED**，没有改动权威 Schema/API/Event、backend、SSOT 或共享台账。
+验收反例与锁序故障演练见 [SCH-004 G1–G3 审阅及测试映射](../../issues/wave-3/SCH-004-contract/REVIEW-TEST-MAP.md)。业务测试状态 **NOT_EXECUTED**；现有 06/07/10/11/12、backend、SSOT 与共享台账尚未因四项批准而变化。

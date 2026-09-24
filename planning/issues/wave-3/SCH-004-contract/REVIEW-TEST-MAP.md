@@ -1,6 +1,6 @@
 # SCH-004 G1–G3 审阅与测试映射
 
-状态：CONTRACT_REVIEW_ONLY，全部用例 **NOT_EXECUTED**。依据：[补齐提案](../../../ccr/CCR-W2-API-001/schedule-write-completion-proposal.md)、[v0.2 写入提案](../../../ccr/CCR-W2-API-001/schedule-write-proposal.md)、SSOT §12/§13/§29。这里列的是冻结条件和未来 MySQL 集成测试，不替代 SCH-003/ORDER/MER 各 Owner 的实现测试。现有 W2-SCHW-001～013 保留，以下为其缺口的具体反例。
+状态：SCHC-1～4 **ACCEPTED_CONTRACT_NOT_IMPLEMENTED**，全部用例 **NOT_EXECUTED**。依据：[批准回执](../../../ccr/CCR-W2-API-001/schedule-write-completion-decisions.md)、[34 号 API 补充](../../../../docs/04-api/34-Schedule-Protection-Contract-v0.1.md)、[补齐提案](../../../ccr/CCR-W2-API-001/schedule-write-completion-proposal.md)、SSOT §12/§13/§29。这里列未来 MySQL 集成测试，不替代 SCH-003/ORDER/MER 各 Owner 的实现测试；完整容量求解算法仍需后续 CCR。现有 W2-SCHW-001～013 保留，以下为其缺口的具体反例。
 
 | ID / 对应旧测 | 并发或数据布置 | 必须观察到的事实 |
 |---|---|---|
