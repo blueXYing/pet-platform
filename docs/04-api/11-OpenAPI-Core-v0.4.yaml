@@ -1001,8 +1001,6 @@ paths:
       summary: merchantListServices
       operationId: merchantListServices
       x-contract-status: IMPLEMENTED_DEFAULT_OFF_REQUIRES_PROVIDERS
-      x-sch002-facts-contract: ACCEPTED_CONTRACT_NOT_IMPLEMENTED
-      # SCH2-D1..D7 frozen in API07 section 4.4; do not mark the provider implemented before verification.
       x-default-enabled: false
       x-audience: MINIAPP
       x-authorization: Current OWNER of the requested merchant/store; owner admission gate (HTTP10 4.10.1).
@@ -6715,13 +6713,14 @@ paths:
       tags:
       - Schedule-Availability
       operationId: cGetServiceAvailability
-      summary: Minute-level bookable windows of a service in a date range (SCH-001)
-      x-contract-status: IMPLEMENTED_DEFAULT_OFF_REQUIRES_PROVIDERS
+      summary: Minute-level windows with verified staff capacity (SCH-001/SCH-002)
+      x-contract-status: IMPLEMENTED_DEFAULT_OFF
       x-audience: MINIAPP
       # SCH-D1 (schedule ruling 2026-09-23): login is mandatory - this route is OUTSIDE the
       # STR-D8 anonymous browse family. The switch pet.schedule.query.enabled defaults to off
-      # and, while assembled, the missing qualified-staff facts provider (SCH-002) keeps every
-      # visible-service query failing closed with 503 COMMON_DEPENDENCY_UNAVAILABLE.
+      # with the real SCH-002 staff/capability/availability provider assembled. Missing or unreadable
+      # facts still fail closed with 503; confirmed empty facts give zero capacity. This is a read
+      # projection, not the SCH-003 booking/concurrency authority.
       security:
       - bearerAuth: []
       parameters:

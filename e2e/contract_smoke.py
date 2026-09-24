@@ -135,8 +135,8 @@ STORE_CATALOG_OPERATIONS = {
 
 # SCH-001 schedule availability (CCR-W2-API-001, ruling 2026-09-23): implemented default-off
 # behind pet.schedule.query.enabled. Mandatory session (SCH-D1, OUTSIDE the STR-D8 anonymous
-# browse family) and, while assembled, fail-closed 503 for visible services until the
-# qualified-staff facts provider (SCH-002) exists.
+# browse family). SCH-002 now assembles real staff/capability/availability facts; missing or
+# unreadable providers still fail closed. This surface is not booking/hold authority.
 SCHEDULE_AVAILABILITY_OPERATIONS = {
     'cGetServiceAvailability': ('get', '/c/services/{serviceId}/availability'),
 }

@@ -279,7 +279,7 @@ public record StoreStaffFactsDTO(String storeId, java.util.List<String> activeSt
 - 两段相邻排班可拼接，有一分钟空档不能跨越；同员工重复能力/排班不得重复计数；跨店排班不能补足覆盖。无排班/能力=0；能力/排班事实读失败、状态未知、无效区间/ID等损坏事实503。
 - 窗口、占用、能力、排班在同一次SCH只读RR快照；提供器加入当前事务，不能再调用REQUIRES_NEW另起SCH快照。独立模块调用时可新建只读RR入口。MER查询保持自己的只读快照；此为多个连续事实快照（人员查询可能逐窗口执行），不是预约授权租约。
 - 返回计数用于min(configuredCapacity,qualifiedAvailableStaffCount)，不改变既有占用扣减、不实现跨服务共享员工的并发预留。SCH-003在hold时负责权威复核；不得由本读切片宣称全链防超卖。
-- 外部HTTP字段、错误码、Schema及Event不变；默认关闭不变。实现/测试交付前，OpenAPI继续保留REQUIRES_PROVIDERS状态，交付后由集成者更新。
+- 外部HTTP字段、错误码、Schema及Event不变；默认关闭不变。本实现切片接通并经过定向测试后，OpenAPI状态更新为IMPLEMENTED_DEFAULT_OFF；不代表生产启用或完整预约链验收。
 
 ---
 
@@ -466,7 +466,7 @@ public record AvailabilityPageDTO(
 
 - 日期为平台业务时区（Asia/Shanghai，23 号 §2）的日历日，解释为 `[startDate 00:00, endDate+1 00:00)`；跨度 ≤31 天；`endDate>=startDate`。
 - 可见性先行：经 pet-service-api `checkBookable`（四条件合取，store 不一致/不存在/不可见 → NOT_FOUND 404 `SERVICE_NOT_FOUND` 投影）；事实源故障/状态未知 → 503 `COMMON_DEPENDENCY_UNAVAILABLE`。
-- **容量公式=SSOT §12.2 `min(configuredCapacity, qualifiedAvailableStaffCount)`，人员事实经 `QualifiedStaffFactsPort`（pet-schedule-biz 端口）获取；SCH-002 交付人员事实源前，真实装配不提供该端口——可见服务的查询失败关闭 503，不得降级为占位容量/`available=true`（SCH-D6 裁决，SQL 种子与人员计数测试替身仅限模块测试）**。SCH-002真实人员计算形状与快照边界已在§4.4冻结；实现完成前保留本缺席状态。
+- **容量公式=SSOT §12.2 `min(configuredCapacity, qualifiedAvailableStaffCount)`；SCH-002已接入§4.4真实MER员工及SCH能力/排班提供器，默认关闭不变。明确空事实=0；提供器缺席、读取失败或未知状态仍503，禁止伪容量/默认可约。** SCH-001早期“真实装配恒503”的交付状态由本切片接通解除。SQL播种仅证明模块/HTTP查询，不代替真实维护人员和预约占位链。
 - `occupiedCount` 读 `schedule_reservation` 权威表（TEMP_LOCKED/CONFIRMED 与窗口半开区间重叠计数）。
 - 过滤与排序：仅 `status='OPEN'` 窗口（CLOSED/未知值不返回，向不可约方向关闭）；已结束（end≤now）窗口不返回；进行中窗口返回且 `available=false`；跨天窗口与查询区间部分相交时整体返回不切割；items 按 `start` 升序；空结果为正常空列表。
 - 上门接送型窗口集不区分上门/送回候选（`window_kind` Schema 增补由写入方切片 SCH-004 届时裁决；120 分钟约束归 SCH-003 服务端校验）。
