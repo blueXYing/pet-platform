@@ -243,6 +243,9 @@ export function draftInputProblems(draft: ServiceDraftInput, categories: readonl
   if (draft.serviceName !== '' && (name.length < 2 || name.length > 50)) problems.push('服务名称需2-50字')
   if (draft.categoryId !== null && !categories.some(category => category.categoryId === draft.categoryId)) problems.push('服务分类无效')
   if (draft.price !== null && !/^\d+\.\d{2}$/.test(draft.price)) problems.push('销售价格需为两位小数（如128.00）')
+  // A-side prepare() rejects non-positive prices on drafts too (not only at submit) — mirror it
+  // so a well-formed-per-frontend draft never 400s on the wire (F2 same class, 2026-09-24).
+  if (draft.price !== null && /^\d+\.\d{2}$/.test(draft.price) && cents(draft.price) <= 0n) problems.push('销售价格需大于0')
   if (draft.price !== null && draft.listPrice !== null && cents(draft.listPrice) < cents(draft.price)) problems.push('划线价不能低于销售价格')
   if (draft.durationMinutes !== null && (draft.durationMinutes < 1 || draft.durationMinutes > 1440)) problems.push('服务时长需1-1440分钟')
   if (draft.staffRequirement !== null && [...draft.staffRequirement].length > 200) problems.push('服务人员要求最多200字')
