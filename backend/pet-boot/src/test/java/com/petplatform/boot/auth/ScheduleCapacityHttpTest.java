@@ -9,6 +9,8 @@ import com.petplatform.common.ApiException;
 import com.petplatform.common.OperatorType;
 import com.petplatform.common.QueryContext;
 import com.petplatform.common.SnowflakeIdGenerator;
+import com.petplatform.merchant.api.query.MerchantStoreStaffFactsApi;
+import com.petplatform.merchant.api.query.StoreStaffFactsQuery;
 import com.petplatform.merchant.biz.application.ApplicationValidationPorts;
 import com.petplatform.merchant.biz.application.PrivateAssetQueryPort;
 import com.petplatform.merchant.biz.application.SubjectCredentialPort;
@@ -16,8 +18,7 @@ import com.petplatform.merchant.biz.infrastructure.provider.AesGcmProtectedValue
 import com.petplatform.merchant.biz.infrastructure.provider.MainlandSubjectCredentialProvider;
 import com.petplatform.schedule.api.query.AvailabilityQuery;
 import com.petplatform.schedule.biz.apiimpl.ScheduleQueryApiImpl;
-import com.petplatform.service.api.dto.ServiceBookabilityDTO;
-import com.petplatform.service.api.query.ServiceBookabilityQuery;
+import com.petplatform.schedule.biz.infrastructure.provider.ScheduleQualifiedStaffFactsProvider;
 import com.petplatform.service.biz.apiimpl.ServiceQueryApiImpl;
 import com.petplatform.service.biz.application.ServiceWriteDependencies.ServiceCoverAssetPort;
 import com.petplatform.service.biz.application.ServiceWriteDependencies.ServiceCoverUrlPort;
@@ -54,15 +55,12 @@ import org.springframework.jdbc.datasource.init.ScriptUtils;
 import tools.jackson.databind.json.JsonMapper;
 
 /**
- * CCR-W2-API-001 schedule availability acceptance (W2-SCH-001..007, ruling 2026-09-23). A REAL
- * approved-and-signed merchant/store pair drives the flow; services are created through the REAL
- * writer HTTP chain (draft -> submit -> admin APPROVE), while schedule windows, reservations,
- * employees, capabilities and availability rows are SQL-seeded until their writers exist.
- *
- * <p>SCH2-D5: the enabled real assembly computes staff facts through MER and SCH-owned tables.
- * W2-SCH-007 also exercises the defensive missing-provider constructor branch directly.
+ * Independent SCH-002 HTTP integration: real MER staff facts and SCH capability/availability
+ * reads drive capacity. Merchant approval, signing and service publication use the real HTTP
+ * writers. Staff, capability, availability, schedule windows and reservations are SQL-seeded
+ * because their writers are outside SCH-002. Each test has a random isolated MySQL database.
  */
-class ScheduleAvailabilityHttpTest {
+class ScheduleCapacityHttpTest {
   private static final String ORIGIN = "https://sch.example.invalid";
   private static final String PASSWORD = "Example_ONLY_92!";
   private static final String COVER_ASSET = "590000000000000501";
@@ -220,15 +218,16 @@ class ScheduleAvailabilityHttpTest {
   }
 
   @Test
-  void availabilityAggregationVisibilityAndFailClosedFollowApprovedContract() throws Exception {
-    Map<String, Object> owner = consumerLogin("sch-owner", "13800007751");
+  void realStaffIntersectionCoversWholeWindowAndFailsClosedOnDamagedFacts() throws Exception {
+    Map<String, Object> owner = consumerLogin("capacity-owner", "13800007751");
     String token = str(owner, "accessToken");
     String ownerId = str(owner, "userId");
-    for (long id = 501; id <= 504; id++)
+    for (long asset = 501; asset <= 504; asset++) {
       privateAssets.put(
-          id,
+          asset,
           new PrivateAssetQueryPort.PrivateAssetRef(
-              id, Long.parseLong(ownerId), sha("sch-asset-" + id), "image/jpeg", 512, "READY"));
+              asset, Long.parseLong(ownerId), sha("sch-asset-" + asset), "image/jpeg", 512, "READY"));
+    }
     coverAssets.put(
         COVER_ASSET,
         new ServiceCoverAssetPort.CoverAssetFact(
@@ -237,254 +236,267 @@ class ScheduleAvailabilityHttpTest {
     long storeId =
         db.jdbc.queryForObject(
             "SELECT id FROM merchant_store WHERE merchant_id=?", Long.class, merchantId);
-    String store = String.valueOf(storeId);
-    long categoryId = db.ids.nextId();
+    long otherStoreId = db.ids.nextId();
+    db.jdbc.update(
+        "INSERT INTO merchant_store(id,merchant_id,store_name,address,status,version,created_at,updated_at)"
+            + " VALUES(?,?,?,?,'ACTIVE',0,UTC_TIMESTAMP(3),UTC_TIMESTAMP(3))",
+        otherStoreId, merchantId, "QA second store", "QA address");
+    long category = db.ids.nextId();
     db.jdbc.update(
         "INSERT INTO service_category(id,category_name,created_at,updated_at)"
             + " VALUES(?,?,UTC_TIMESTAMP(3),UTC_TIMESTAMP(3))",
-        categoryId, "洗护美容");
-
-    // Services through the REAL writer chain: create -> submit -> admin APPROVE -> ACTIVE.
-    String grooming = createActiveService(token, store, String.valueOf(categoryId), "IN_STORE", 45);
-    String pickup =
+        category, "SCH002-QA-" + UUID.randomUUID());
+    String service =
+        createActiveService(token, String.valueOf(storeId), String.valueOf(category), "IN_STORE", 45);
+    String otherService =
         createActiveService(
-            token, store, String.valueOf(categoryId), "PICKUP_DELIVERY", 120);
-    seedStaffFacts(merchantId, storeId, grooming); // pickup has no capability: qualified count 0
+            token, String.valueOf(storeId), String.valueOf(category), "PICKUP_DELIVERY", 120);
 
-    // SCH-D3: no schedule writer exists, windows and reservations are SQL-seeded. Stored as UTC
-    // DATETIME(3) (supplement 23 §2); the HTTP projection renders Asia/Shanghai +08:00.
-    seedWindow(merchantId, storeId, grooming, "2026-10-12 01:15:00", "2026-10-12 10:10:00", 5, "OPEN");
-    seedWindow(merchantId, storeId, grooming, "2026-10-13 02:00:00", "2026-10-13 03:00:00", 1, "OPEN");
-    seedWindow(merchantId, storeId, grooming, "2026-10-13 06:00:00", "2026-10-13 07:00:00", 2, "CLOSED");
-    // Cross-day boarding window crossing the query-range upper boundary: returned whole.
-    seedWindow(merchantId, storeId, grooming, "2026-10-13 14:00:00", "2026-10-13 22:00:00", 4, "OPEN");
-    // Occupancy reads the schedule_reservation authority: TEMP_LOCKED counts, RELEASED does not.
-    seedReservation(storeId, grooming, "2026-10-12 02:00:00", "2026-10-12 03:00:00", "TEMP_LOCKED");
-    seedReservation(storeId, grooming, "2026-10-12 02:30:00", "2026-10-12 03:30:00", "RELEASED");
-    // Timezone boundary: 20:00-23:30 +08:00 on 2030-01-15 = 12:00-15:30 UTC the same day.
-    seedWindow(merchantId, storeId, grooming, "2030-01-15 12:00:00", "2030-01-15 15:30:00", 5, "OPEN");
-    // Pickup windows: a "return" candidate starting only 30 minutes after the pickup window -
-    // the 120-minute rule is NOT applied on the query side (SCH-D4, SCH-003 owns the check).
-    seedWindow(merchantId, storeId, pickup, "2026-10-12 01:00:00", "2026-10-12 02:30:00", 5, "OPEN");
-    seedWindow(merchantId, storeId, pickup, "2026-10-12 01:30:00", "2026-10-12 03:00:00", 5, "OPEN");
-    // Now-relative windows for the time-boundary assertions.
-    seedWindow(
-        merchantId, storeId, grooming, utcMinusMinutes(90), utcPlusMinutes(90), 5, "OPEN");
-    seedWindow(merchantId, storeId, grooming, utcMinusMinutes(240), utcMinusMinutes(180), 5, "OPEN");
+    LocalDate day = LocalDate.now(java.time.ZoneId.of("Asia/Shanghai")).plusDays(10);
+    String start = utc(day, 9, 0), split = utc(day, 10, 0), end = utc(day, 11, 0);
+    long window = seedWindow(merchantId, storeId, service, start, end, 5, "OPEN");
+    String path = availability(service, storeId, day);
 
-    String availability = "/api/v1/c/services/" + grooming + "/availability";
+    // Three true positives: adjacent segments, one exact segment, and one wider segment.
+    long adjacent = seedStaff(merchantId, storeId, "ACTIVE", 1);
+    seedCapability(adjacent, service, "ENABLED");
+    seedAvailability(storeId, adjacent, start, split, "AVAILABLE");
+    long adjacentSecond = seedAvailability(storeId, adjacent, split, end, "AVAILABLE");
+    long exact = seedStaff(merchantId, storeId, "ACTIVE", 1);
+    seedCapability(exact, service, "ENABLED");
+    long exactAvailability = seedAvailability(storeId, exact, start, end, "AVAILABLE");
+    long wider = seedStaff(merchantId, storeId, "ACTIVE", 1);
+    seedCapability(wider, service, "ENABLED");
+    seedAvailability(storeId, wider, utc(day, 8, 0), utc(day, 12, 0), "AVAILABLE");
 
-    // ---- W2-SCH-001/006: aggregation over real MER/SCH SQL facts (three qualified staff).
-    Reply october =
-        send("GET", availability + "?storeId=" + store + "&startDate=2026-10-12&endDate=2026-10-13", null, bearer(token));
-    assertEquals(200, october.status(), october.redacted());
-    List<Map<String, Object>> items = list(october.data().get("items"));
-    assertEquals(3, items.size(), "OPEN windows only: CLOSED excluded; cross-day whole");
-    Map<String, Object> first = items.get(0);
-    assertEquals("2026-10-12T09:15:00+08:00", first.get("start"), "minute level, business zone");
-    assertEquals("2026-10-12T18:10:00+08:00", first.get("end"));
-    assertEquals(3, ((Number) first.get("effectiveCapacity")).intValue(), "min(5, staff 3)");
-    assertEquals(1, ((Number) first.get("occupiedCount")).intValue(), "TEMP_LOCKED overlap only");
-    assertEquals(2, ((Number) first.get("remainingCapacity")).intValue());
-    assertEquals(true, first.get("available"));
-    assertEquals(WINDOW_KEYS, first.keySet(), "no windowId/version/status/configured/staff keys");
-    Map<String, Object> second = items.get(1);
-    assertEquals("2026-10-13T10:00:00+08:00", second.get("start"));
-    assertEquals(1, ((Number) second.get("effectiveCapacity")).intValue(), "min(1, staff 3)");
-    Map<String, Object> crossDay = items.get(2);
-    assertEquals("2026-10-13T22:00:00+08:00", crossDay.get("start"), "starts inside the range");
-    assertEquals("2026-10-14T06:00:00+08:00", crossDay.get("end"), "ends outside, still whole");
-    assertTrue(
-        String.valueOf(items.get(0).get("start")).compareTo(String.valueOf(items.get(1).get("start"))) < 0
-            && String.valueOf(items.get(1).get("start")).compareTo(String.valueOf(items.get(2).get("start"))) < 0,
-        "start-ascending");
+    // Every false positive has the other qualifying facts, isolating its failed predicate.
+    long inactive = seedStaff(merchantId, storeId, "INACTIVE", 1);
+    seedCapability(inactive, service, "ENABLED");
+    seedAvailability(storeId, inactive, start, end, "AVAILABLE");
+    long offDuty = seedStaff(merchantId, storeId, "ACTIVE", 0);
+    seedCapability(offDuty, service, "ENABLED");
+    seedAvailability(storeId, offDuty, start, end, "AVAILABLE");
+    long withoutCapability = seedStaff(merchantId, storeId, "ACTIVE", 1);
+    seedAvailability(storeId, withoutCapability, start, end, "AVAILABLE");
+    long closedOnly = seedStaff(merchantId, storeId, "ACTIVE", 1);
+    seedCapability(closedOnly, service, "ENABLED");
+    seedAvailability(storeId, closedOnly, start, end, "CLOSED");
+    long unscheduled = seedStaff(merchantId, storeId, "ACTIVE", 1);
+    seedCapability(unscheduled, service, "ENABLED");
+    long partialCoverage = seedStaff(merchantId, storeId, "ACTIVE", 1);
+    seedCapability(partialCoverage, service, "ENABLED");
+    seedAvailability(storeId, partialCoverage, utc(day, 9, 30), end, "AVAILABLE");
+    long otherServiceOnly = seedStaff(merchantId, storeId, "ACTIVE", 1);
+    seedCapability(otherServiceOnly, otherService, "ENABLED");
+    seedAvailability(storeId, otherServiceOnly, start, end, "AVAILABLE");
+    long otherStoreStaff = seedStaff(merchantId, otherStoreId, "ACTIVE", 1);
+    long otherStoreCapability = seedCapability(otherStoreStaff, service, "ENABLED");
+    long otherStoreAvailability =
+        seedAvailability(otherStoreId, otherStoreStaff, start, end, "AVAILABLE");
+    long wrongStoreAvailability = seedStaff(merchantId, storeId, "ACTIVE", 1);
+    seedCapability(wrongStoreAvailability, service, "ENABLED");
+    seedAvailability(otherStoreId, wrongStoreAvailability, start, end, "AVAILABLE");
+    seedCapability(db.ids.nextId(), service, "ENABLED"); // legal dangling row cannot add a person
 
-    // ---- W2-SCH-004: pickup projection - no window kind, no 120-minute filtering here.
-    Reply pickupReply =
-        send(
-            "GET",
-            "/api/v1/c/services/" + pickup + "/availability?storeId=" + store
-                + "&startDate=2026-10-12&endDate=2026-10-12",
-            null,
-            bearer(token));
-    assertEquals(200, pickupReply.status(), pickupReply.redacted());
-    List<Map<String, Object>> pickupItems = list(pickupReply.data().get("items"));
-    assertEquals(2, pickupItems.size(), "both windows return, 120min rule is not query-side");
-    assertEquals(WINDOW_KEYS, pickupItems.get(0).keySet());
+    MerchantStoreStaffFactsApi merchantStaff = context.getBean(MerchantStoreStaffFactsApi.class);
+    var staffFacts =
+        merchantStaff.listActiveStoreStaffFacts(
+            new StoreStaffFactsQuery(
+                String.valueOf(storeId), new QueryContext("sch002-qa", OperatorType.SYSTEM, null)));
+    assertEquals(String.valueOf(storeId), staffFacts.storeId());
+    assertEquals(9, staffFacts.activeStaffIds().size(), "MER returns staff facts, not SCH capacity");
     assertEquals(
-        0, ((Number) pickupItems.get(0).get("effectiveCapacity")).intValue(), "min(5, staff 0)");
-    assertEquals(false, pickupItems.get(0).get("available"), "no capacity -> not available");
-    assertFalse(pickupReply.data().containsKey("fulfillmentType"));
+        staffFacts.activeStaffIds().stream()
+            .sorted(java.util.Comparator.comparingLong(Long::parseLong))
+            .toList(),
+        staffFacts.activeStaffIds(),
+        "MER staff IDs are sorted numerically");
+    assertThrows(
+        UnsupportedOperationException.class,
+        () -> staffFacts.activeStaffIds().add(String.valueOf(db.ids.nextId())));
+    ApiException missingStore =
+        assertThrows(
+            ApiException.class,
+            () ->
+                merchantStaff.listActiveStoreStaffFacts(
+                    new StoreStaffFactsQuery(
+                        String.valueOf(db.ids.nextId()),
+                        new QueryContext("sch002-qa", OperatorType.SYSTEM, null))));
+    assertEquals("COMMON_NOT_FOUND", missingStore.code());
 
-    // ---- W2-SCH-005: time boundaries and the Asia/Shanghai day split (16:00 UTC).
-    LocalDate today = LocalDate.now(java.time.ZoneId.of("Asia/Shanghai"));
-    Reply todayReply =
-        send(
-            "GET",
-            availability + "?storeId=" + store + "&startDate=" + today + "&endDate=" + today,
-            null,
-            bearer(token));
-    assertEquals(200, todayReply.status(), todayReply.redacted());
-    List<Map<String, Object>> todayItems = list(todayReply.data().get("items"));
-    assertEquals(1, todayItems.size(), "finished window filtered; in-progress stays");
-    Map<String, Object> progress = todayItems.get(0);
-    assertEquals(false, progress.get("available"), "in-progress window is not bookable");
-    assertEquals(3, ((Number) progress.get("effectiveCapacity")).intValue());
-    Reply tzInside =
-        send(
-            "GET",
-            availability + "?storeId=" + store + "&startDate=2030-01-15&endDate=2030-01-15",
-            null,
-            bearer(token));
-    assertEquals(1, list(tzInside.data().get("items")).size(), "20:00-23:30 +08 belongs to its day");
-    Reply tzNextDay =
-        send(
-            "GET",
-            availability + "?storeId=" + store + "&startDate=2030-01-16&endDate=2030-01-16",
-            null,
-            bearer(token));
-    assertEquals(
-        0,
-        list(tzNextDay.data().get("items")).size(),
-        "23:30 +08 end precedes the next Shanghai midnight (16:00 UTC)");
+    assertCapacity(send("GET", path, null, bearer(token)), 3, 0, 3, true);
+    db.jdbc.update(
+        "UPDATE staff_availability_window SET start_at=? WHERE id=?",
+        utc(day, 10, 1), adjacentSecond);
+    assertCapacity(send("GET", path, null, bearer(token)), 2, 0, 2, true);
+    db.jdbc.update("UPDATE staff_availability_window SET start_at=? WHERE id=?", split, adjacentSecond);
+    seedAvailability(storeId, adjacent, utc(day, 9, 30), utc(day, 10, 30), "AVAILABLE");
+    assertCapacity(send("GET", path, null, bearer(token)), 3, 0, 3, true);
+    db.jdbc.update(
+        "UPDATE staff_availability_window SET status='UNKNOWN' WHERE id=?",
+        otherStoreAvailability);
+    assertCapacity(send("GET", path, null, bearer(token)), 3, 0, 3, true);
+    db.jdbc.update(
+        "UPDATE staff_availability_window SET status='AVAILABLE' WHERE id=?",
+        otherStoreAvailability);
+    db.jdbc.update(
+        "UPDATE schedule_availability_window SET configured_capacity=2 WHERE id=?", window);
+    assertCapacity(send("GET", path, null, bearer(token)), 2, 0, 2, true);
+    db.jdbc.update(
+        "UPDATE schedule_availability_window SET configured_capacity=5 WHERE id=?", window);
+    seedReservation(storeId, service, utc(day, 9, 15), utc(day, 9, 45), "TEMP_LOCKED");
+    seedReservation(storeId, service, utc(day, 9, 20), utc(day, 9, 50), "RELEASED");
+    assertCapacity(send("GET", path, null, bearer(token)), 3, 1, 2, true);
 
-    // ---- W2-SCH-002: empty range stays a 200 empty page, never 404 or 503.
-    Reply emptyRange =
-        send(
-            "GET",
-            availability + "?storeId=" + store + "&startDate=2030-05-01&endDate=2030-05-02",
-            null,
-            bearer(token));
-    assertEquals(200, emptyRange.status(), emptyRange.redacted());
-    assertTrue(((List<?>) emptyRange.data().get("items")).isEmpty());
+    // The same employee can appear in two services' read projections. This is not a hold-time
+    // cross-service allocation or concurrency guarantee; SCH-003 owns that separate protocol.
+    seedCapability(adjacent, otherService, "ENABLED");
+    seedWindow(merchantId, storeId, otherService, start, end, 1, "OPEN");
+    assertCapacity(
+        send("GET", availability(otherService, storeId, day), null, bearer(token)),
+        1, 0, 1, true);
 
-    // ---- W2-SCH-002: visibility negatives answer 404 SERVICE_NOT_FOUND, indistinguishable.
+    db.jdbc.update(
+        "UPDATE merchant_staff SET employment_status='UNKNOWN' WHERE id=?", inactive);
+    assertUnavailable(send("GET", path, null, bearer(token)));
+    db.jdbc.update("UPDATE merchant_staff SET employment_status='INACTIVE' WHERE id=?", inactive);
+    db.jdbc.update("UPDATE merchant_staff SET service_enabled=2 WHERE id=?", offDuty);
+    assertUnavailable(send("GET", path, null, bearer(token)));
+    db.jdbc.update("UPDATE merchant_staff SET service_enabled=0 WHERE id=?", offDuty);
+    db.jdbc.update(
+        "UPDATE merchant_staff SET merchant_id=? WHERE id=?", db.ids.nextId(), withoutCapability);
+    assertUnavailable(send("GET", path, null, bearer(token)));
+    db.jdbc.update(
+        "UPDATE merchant_staff SET merchant_id=? WHERE id=?", merchantId, withoutCapability);
+    db.jdbc.update(
+        "UPDATE staff_service_capability SET status='UNKNOWN' WHERE id=?", otherStoreCapability);
+    assertUnavailable(send("GET", path, null, bearer(token)));
+    db.jdbc.update(
+        "UPDATE staff_service_capability SET status='DISABLED' WHERE id=?", otherStoreCapability);
+    assertUnavailable(send("GET", path, null, bearer(token)));
+    db.jdbc.update(
+        "UPDATE staff_service_capability SET status='ENABLED' WHERE id=?", otherStoreCapability);
+    db.jdbc.update(
+        "UPDATE staff_availability_window SET status='UNKNOWN' WHERE id=?", exactAvailability);
+    assertUnavailable(send("GET", path, null, bearer(token)));
+    db.jdbc.update(
+        "UPDATE staff_availability_window SET status='AVAILABLE' WHERE id=?", exactAvailability);
+    assertCapacity(send("GET", path, null, bearer(token)), 3, 1, 2, true);
+    db.jdbc.update(
+        "UPDATE staff_availability_window SET end_at=? WHERE id=?",
+        utc(day, 8, 59), exactAvailability);
+    assertUnavailable(send("GET", path, null, bearer(token)));
+    db.jdbc.update(
+        "UPDATE staff_availability_window SET end_at=? WHERE id=?", end, exactAvailability);
+
+    // Confirmed empty authority is a normal 200/zero; deleting the authority is a 503.
+    db.jdbc.update("DELETE FROM staff_service_capability WHERE service_id=?", Long.parseLong(service));
+    assertCapacity(send("GET", path, null, bearer(token)), 0, 1, 0, false);
     assertHidden(
         send(
             "GET",
-            "/api/v1/c/services/"
-                + (Long.parseLong(grooming) + 999_999)
-                + "/availability?storeId="
-                + store
-                + "&startDate=2026-10-12&endDate=2026-10-12",
+            availability(service, otherStoreId, day),
             null,
             bearer(token)),
-        "unknown service id");
-    db.jdbc.update(
-        "UPDATE service_item SET status='OFFLINE' WHERE id=?", Long.parseLong(grooming));
-    assertHidden(send("GET", availability + "?storeId=" + store + "&startDate=2026-10-12&endDate=2026-10-12", null, bearer(token)));
-    db.jdbc.update("UPDATE service_item SET status='ACTIVE' WHERE id=?", Long.parseLong(grooming));
-    db.jdbc.update("UPDATE merchant SET status='OFFLINE' WHERE id=?", merchantId);
-    assertHidden(send("GET", availability + "?storeId=" + store + "&startDate=2026-10-12&endDate=2026-10-12", null, bearer(token)));
-    db.jdbc.update("UPDATE merchant SET status='ACTIVE' WHERE id=?", merchantId);
-    // Unknown merchant status: fail-closed 503, never conflated with the 404 above.
-    db.jdbc.update("UPDATE merchant SET status='CORRUPTED' WHERE id=?", merchantId);
-    assertUnavailable(send("GET", availability + "?storeId=" + store + "&startDate=2026-10-12&endDate=2026-10-12", null, bearer(token)));
-    db.jdbc.update("UPDATE merchant SET status='ACTIVE' WHERE id=?", merchantId);
-    assertEquals(
-        200,
-        send("GET", availability + "?storeId=" + store + "&startDate=2026-10-12&endDate=2026-10-12", null, bearer(token))
-            .status(),
-        "restored facts are visible again");
-    long seededStaff = db.jdbc.queryForObject(
-        "SELECT id FROM merchant_staff WHERE store_id=? ORDER BY id LIMIT 1", Long.class, storeId);
-    db.jdbc.update("UPDATE merchant_staff SET employment_status='UNKNOWN' WHERE id=?", seededStaff);
-    assertUnavailable(send("GET", availability + "?storeId=" + store
-        + "&startDate=2026-10-12&endDate=2026-10-12", null, bearer(token)));
-    db.jdbc.update("UPDATE merchant_staff SET employment_status='ACTIVE' WHERE id=?", seededStaff);
-
-    // ---- W2-SCH-007: defensive missing-provider branch remains fail-closed, while the enabled
-    // boot assembly uses the real SQL-backed provider and answers the same visible window.
-    ScheduleQueryApiImpl missingProviderAssembly =
+        "service/store mismatch must be 404 before staff facts");
+    var disappearedStore =
+        new ScheduleQualifiedStaffFactsProvider(
+            query -> {
+              throw new ApiException("COMMON_NOT_FOUND", "store disappeared between snapshots");
+            },
+            db.source);
+    ApiException projectedMissingStore =
+        assertThrows(
+            ApiException.class,
+            () ->
+                disappearedStore.countQualifiedAvailableStaff(
+                    String.valueOf(storeId),
+                    service,
+                    day.atTime(9, 0).atOffset(java.time.ZoneOffset.ofHours(8)),
+                    day.atTime(11, 0).atOffset(java.time.ZoneOffset.ofHours(8))));
+    assertEquals("SERVICE_NOT_FOUND", projectedMissingStore.code());
+    ScheduleQueryApiImpl absent =
         new ScheduleQueryApiImpl(db.source, context.getBean(ServiceQueryApiImpl.class), null);
-    QueryContext ctx = new QueryContext("sch-test", OperatorType.USER, ownerId);
-    ApiException closed =
+    ApiException missing =
         assertThrows(
             ApiException.class,
             () ->
-                missingProviderAssembly.queryAvailability(
+                absent.queryAvailability(
                     new AvailabilityQuery(
-                        grooming, store, LocalDate.of(2026, 10, 12), LocalDate.of(2026, 10, 12), ctx)));
-    assertEquals("COMMON_DEPENDENCY_UNAVAILABLE", closed.code(), "fail closed, no placeholder");
-    ApiException invisible =
-        assertThrows(
-            ApiException.class,
-            () ->
-                missingProviderAssembly.queryAvailability(
-                    new AvailabilityQuery(
-                        String.valueOf(db.ids.nextId()),
-                        store,
-                        LocalDate.of(2026, 10, 12),
-                        LocalDate.of(2026, 10, 12),
-                        ctx)));
-    assertEquals("SERVICE_NOT_FOUND", invisible.code(), "visibility precedes the staff gate");
-    // The boot context with the provider answers 200 for the same window.
-    assertEquals(
-        200,
-        send("GET", availability + "?storeId=" + store + "&startDate=2026-10-12&endDate=2026-10-12", null, bearer(token))
-            .status());
-
-    // ---- W2-SCH-003: arguments and session. Login is mandatory (SCH-D1, outside STR-D8).
-    assertEquals(
-        401,
-        send("GET", availability + "?storeId=" + store + "&startDate=2026-10-12&endDate=2026-10-12", null, Map.of())
-            .status(),
-        "anonymous stays 401 on the availability route");
-    assertEquals(
-        401,
-        send("GET", availability + "?storeId=" + store + "&startDate=2026-10-12&endDate=2026-10-12", null, bearer("invalid-token"))
-            .status());
-    assertBad(
-        send("GET", "/api/v1/c/services/not-a-number/availability?storeId=" + store + "&startDate=2026-10-12&endDate=2026-10-12", null, bearer(token)));
-    assertBad(
-        send("GET", "/api/v1/c/services/" + grooming + "/availability?startDate=2026-10-12&endDate=2026-10-12", null, bearer(token)),
-        "missing storeId");
-    assertBad(
-        send("GET", availability + "?storeId=" + store + "&startDate=2026/10/12&endDate=2026-10-13", null, bearer(token)));
-    assertBad(
-        send("GET", availability + "?storeId=" + store + "&startDate=2026-10-13&endDate=2026-10-12", null, bearer(token)));
-    assertBad(
-        send("GET", availability + "?storeId=" + store + "&startDate=2030-01-01&endDate=2030-02-01", null, bearer(token)),
-        "32-day span");
-    assertBad(
-        send("GET", availability + "?storeId=" + store + "&startDate=2026-10-12&endDate=2026-10-12&extra=1", null, bearer(token)));
-    assertEquals(
-        200,
-        send("GET", availability + "?storeId=" + store + "&startDate=2030-01-01&endDate=2030-01-31", null, bearer(token))
-            .status(),
-        "exactly 31 days is accepted");
-    // SCH-D9: store mismatch is 404, indistinguishable from invisible.
-    assertHidden(
-        send(
-            "GET",
-            availability + "?storeId=" + (storeId + 999_999)
-                + "&startDate=2026-10-12&endDate=2026-10-12",
-            null,
-            bearer(token)));
-    // Unknown id: 404 with the registry code in the body.
-    assertHidden(
-        send(
-            "GET",
-            "/api/v1/c/services/" + (Long.parseLong(grooming) + 999_999)
-                + "/availability?storeId="
-                + store
-                + "&startDate=2026-10-12&endDate=2026-10-12",
-            null,
-            bearer(token)));
-
-    // Internal bookability keeps the same store-mismatch semantics the availability route uses:
-    // the service-domain checkBookable itself throws SERVICE_NOT_FOUND (the route projects 404).
-    ServiceQueryApiImpl serviceApi = context.getBean(ServiceQueryApiImpl.class);
-    ApiException mismatch =
-        assertThrows(
-            ApiException.class,
-            () ->
-                serviceApi.checkBookable(
-                    new ServiceBookabilityQuery(grooming, String.valueOf(storeId + 1), ctx)));
-    assertEquals("SERVICE_NOT_FOUND", mismatch.code());
+                        service,
+                        String.valueOf(storeId),
+                        day,
+                        day,
+                        new QueryContext("sch002-qa", OperatorType.USER, ownerId))));
+    assertEquals("COMMON_DEPENDENCY_UNAVAILABLE", missing.code());
+    seedCapability(exact, service, "ENABLED");
+    assertCapacity(send("GET", path, null, bearer(token)), 1, 1, 0, false);
+    db.jdbc.execute(
+        "RENAME TABLE staff_service_capability TO staff_service_capability_qa_hidden");
+    try {
+      assertUnavailable(send("GET", path, null, bearer(token)));
+    } finally {
+      db.jdbc.execute(
+          "RENAME TABLE staff_service_capability_qa_hidden TO staff_service_capability");
+    }
+    assertCapacity(send("GET", path, null, bearer(token)), 1, 1, 0, false);
   }
 
-  /** Real writer chain: draft -> submit -> admin APPROVE -> ACTIVE, returns the serviceId. */
+  private String availability(String service, long store, LocalDate day) {
+    return "/api/v1/c/services/" + service + "/availability?storeId=" + store
+        + "&startDate=" + day + "&endDate=" + day;
+  }
+
+  private static String utc(LocalDate day, int hour, int minute) {
+    return day.atTime(hour, minute)
+        .atZone(java.time.ZoneId.of("Asia/Shanghai"))
+        .withZoneSameInstant(java.time.ZoneOffset.UTC)
+        .toLocalDateTime()
+        .format(java.time.format.DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"));
+  }
+
+  private long seedStaff(long merchantId, long storeId, String status, int enabled) {
+    long id = db.ids.nextId();
+    db.jdbc.update(
+        "INSERT INTO merchant_staff(id,merchant_id,store_id,staff_name,employment_status,"
+            + "service_enabled,version,created_at,updated_at)"
+            + " VALUES(?,?,?,?,?,?,0,UTC_TIMESTAMP(3),UTC_TIMESTAMP(3))",
+        id, merchantId, storeId, "QA-" + id, status, enabled);
+    return id;
+  }
+
+  private long seedCapability(long staffId, String service, String status) {
+    long id = db.ids.nextId();
+    db.jdbc.update(
+        "INSERT INTO staff_service_capability(id,staff_id,service_id,status,created_at,updated_at)"
+            + " VALUES(?,?,?,?,UTC_TIMESTAMP(3),UTC_TIMESTAMP(3))",
+        id, staffId, Long.parseLong(service), status);
+    return id;
+  }
+
+  private long seedAvailability(
+      long storeId, long staffId, String start, String end, String status) {
+    long id = db.ids.nextId();
+    db.jdbc.update(
+        "INSERT INTO staff_availability_window(id,store_id,staff_id,start_at,end_at,status,"
+            + "version,created_at,updated_at)"
+            + " VALUES(?,?,?,?,?,?,0,UTC_TIMESTAMP(3),UTC_TIMESTAMP(3))",
+        id, storeId, staffId, start, end, status);
+    return id;
+  }
+
+  private static void assertCapacity(
+      Reply reply, int effective, int occupied, int remaining, boolean available) {
+    assertEquals(200, reply.status(), reply.redacted());
+    List<Map<String, Object>> items = list(reply.data().get("items"));
+    assertEquals(1, items.size(), "one seeded OPEN window");
+    Map<String, Object> window = items.getFirst();
+    assertEquals(effective, ((Number) window.get("effectiveCapacity")).intValue());
+    assertEquals(occupied, ((Number) window.get("occupiedCount")).intValue());
+    assertEquals(remaining, ((Number) window.get("remainingCapacity")).intValue());
+    assertEquals(available, window.get("available"));
+    assertEquals(WINDOW_KEYS, window.keySet());
+  }
   private String createActiveService(
       String token, String store, String category, String fulfillment, int minutes)
       throws Exception {
@@ -533,37 +545,6 @@ class ScheduleAvailabilityHttpTest {
             "SELECT merchant_id FROM merchant_store WHERE id=?", Long.class, Long.parseLong(store)));
   }
 
-  /** Explicit personnel SQL seed; it exercises MER's sixth query and SCH's real intersection. */
-  private void seedStaffFacts(long merchantId, long storeId, String serviceId) {
-    for (int i = 0; i < 3; i++) {
-      long staffId = db.ids.nextId();
-      db.jdbc.update(
-          "INSERT INTO merchant_staff"
-              + "(id,merchant_id,store_id,staff_name,employment_status,service_enabled,version,created_at,updated_at)"
-              + " VALUES(?,?,?,?,'ACTIVE',1,0,UTC_TIMESTAMP(3),UTC_TIMESTAMP(3))",
-          staffId, merchantId, storeId, "排期员工" + i);
-      db.jdbc.update(
-          "INSERT INTO staff_service_capability"
-              + "(id,staff_id,service_id,status,created_at,updated_at)"
-              + " VALUES(?,?,?,'ENABLED',UTC_TIMESTAMP(3),UTC_TIMESTAMP(3))",
-          db.ids.nextId(), staffId, Long.parseLong(serviceId));
-      seedStaffAvailability(storeId, staffId,
-          "2026-10-12 00:00:00", "2026-10-14 00:00:00");
-      seedStaffAvailability(storeId, staffId,
-          "2030-01-15 11:00:00", "2030-01-15 16:00:00");
-      seedStaffAvailability(storeId, staffId,
-          utcMinusMinutes(100), utcPlusMinutes(100));
-    }
-  }
-
-  private void seedStaffAvailability(long storeId, long staffId, String startUtc, String endUtc) {
-    db.jdbc.update(
-        "INSERT INTO staff_availability_window"
-            + "(id,store_id,staff_id,start_at,end_at,status,version,created_at,updated_at)"
-            + " VALUES(?,?,?,?,?,'AVAILABLE',0,UTC_TIMESTAMP(3),UTC_TIMESTAMP(3))",
-        db.ids.nextId(), storeId, staffId, startUtc, endUtc);
-  }
-
   private long seedWindow(
       long merchantId,
       long storeId,
@@ -601,24 +582,6 @@ class ScheduleAvailabilityHttpTest {
         status,
         5,
         3);
-  }
-
-  private static String utcMinusMinutes(long minutes) {
-    return java.sql.Timestamp.valueOf(
-            java.time.LocalDateTime.now(java.time.ZoneOffset.UTC).minusMinutes(minutes))
-        .toLocalDateTime()
-        .withNano(0)
-        .toString()
-        .replace('T', ' ');
-  }
-
-  private static String utcPlusMinutes(long minutes) {
-    return java.sql.Timestamp.valueOf(
-            java.time.LocalDateTime.now(java.time.ZoneOffset.UTC).plusMinutes(minutes))
-        .toLocalDateTime()
-        .withNano(0)
-        .toString()
-        .replace('T', ' ');
   }
 
   /** Runs the real application -> review -> APPROVE chain and signs the agreement. */
@@ -860,15 +823,6 @@ class ScheduleAvailabilityHttpTest {
   private static void assertUnavailable(Reply reply) {
     assertEquals(503, reply.status(), reply.redacted());
     assertEquals("COMMON_DEPENDENCY_UNAVAILABLE", reply.envelope().get("code"));
-  }
-
-  private static void assertBad(Reply reply) {
-    assertBad(reply, null);
-  }
-
-  private static void assertBad(Reply reply, String hint) {
-    assertEquals(400, reply.status(), (hint == null ? "" : hint + ": ") + reply.redacted());
-    assertEquals("COMMON_INVALID_ARGUMENT", reply.envelope().get("code"));
   }
 
   @SuppressWarnings("unchecked")

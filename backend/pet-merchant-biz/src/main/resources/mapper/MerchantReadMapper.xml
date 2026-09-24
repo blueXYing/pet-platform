@@ -2,6 +2,21 @@
 <!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
 <mapper namespace="com.petplatform.merchant.biz.infrastructure.persistence.mapper.MerchantReadMapper">
 
+    <select id="selectStoreStaffFacts"
+            resultType="com.petplatform.merchant.biz.infrastructure.persistence.entity.MerchantStoreStaffFactsEntity">
+        SELECT id AS store_id, merchant_id
+        FROM merchant_store
+        WHERE id = #{storeId}
+    </select>
+
+    <select id="selectStoreStaffRows"
+            resultType="com.petplatform.merchant.biz.infrastructure.persistence.entity.MerchantStaffFactsEntity">
+        SELECT id AS staff_id, merchant_id, store_id, employment_status, service_enabled
+        FROM merchant_staff
+        WHERE store_id = #{storeId}
+        ORDER BY id
+    </select>
+
     <select id="selectOwnedStore"
             resultType="com.petplatform.merchant.biz.infrastructure.persistence.entity.MerchantStoreReadEntity">
         SELECT m.id AS merchant_id,

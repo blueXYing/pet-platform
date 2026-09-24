@@ -1,8 +1,8 @@
 # 排期人员容量契约提案 v0.2（SCH-002）
 
-状态：BUSINESS_APPROVED_PENDING_CONTRACT_SYNC。日期：2026-09-24。
+状态：IMPLEMENTED_DEFAULT_OFF_INTEGRATION_REVIEW。日期：2026-09-24。
 依据：[联合裁决回执](schedule-review-decisions.md)、SSOT §29。v0.1 历史见 planning/history/schedule-drafts-20260924。
-本轮完成草案审阅，不实现排期代码；实现切片必须先同步 07/27/11 号契约。未实装前不得把 OpenAPI 状态改成 IMPLEMENTED_DEFAULT_OFF。
+2026-09-24用户在确认GPT-6 Sol极高多角色方案后授权“开始推进”。主协调已先同步07/27/11契约，进入实现切片；未实装并通过验证前不得把OpenAPI状态改成IMPLEMENTED_DEFAULT_OFF。
 
 ## 决定映射
 
@@ -43,4 +43,4 @@ CLOSED 不形成覆盖；失败不返回 available=true。提供器跨域异常�
 ## 验收
 
 沿用 TEST-PLAN 的 W2-SCH2-001～008，并增加：相邻覆盖与一分钟空档；同一员工多行去重；跨门店/无能力/离职/停排各反例；故障不得伪装 0；默认关闭；架构边界。
-本轮测试状态为 NOT_EXECUTED（文档审阅），不得标记 SCH-002 DONE。
+真实提供器及模块/既有HTTP/独立QA定向验证已完成；见planning/issues/wave-3/SCH-002-capacity/HANDOFF.md，最终全量以PR回执为准。默认关，SQL播种不代表维护页面或完整预约DONE。

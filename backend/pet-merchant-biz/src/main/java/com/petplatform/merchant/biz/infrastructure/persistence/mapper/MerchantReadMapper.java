@@ -3,10 +3,18 @@ package com.petplatform.merchant.biz.infrastructure.persistence.mapper;
 import com.petplatform.merchant.biz.infrastructure.persistence.entity.MerchantEligibilityBaseEntity;
 import com.petplatform.merchant.biz.infrastructure.persistence.entity.MerchantStaffReadEntity;
 import com.petplatform.merchant.biz.infrastructure.persistence.entity.MerchantStoreReadEntity;
+import com.petplatform.merchant.biz.infrastructure.persistence.entity.MerchantStoreStaffFactsEntity;
+import com.petplatform.merchant.biz.infrastructure.persistence.entity.MerchantStaffFactsEntity;
 import org.apache.ibatis.annotations.Param;
 
 /** Merchant-owned read statements. SQL is kept in MerchantReadMapper.xml. */
 public interface MerchantReadMapper {
+
+    /** Internal schedule facts: select the store without an owner filter. */
+    MerchantStoreStaffFactsEntity selectStoreStaffFacts(@Param("storeId") long storeId);
+
+    /** All raw employees of this store; Java validates status and merchant ownership before filtering. */
+    java.util.List<MerchantStaffFactsEntity> selectStoreStaffRows(@Param("storeId") long storeId);
 
     MerchantStoreReadEntity selectOwnedStore(
             @Param("storeId") long storeId,

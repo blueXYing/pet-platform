@@ -11,21 +11,16 @@ import org.springframework.jdbc.datasource.DataSourceTransactionManager;
 import org.springframework.transaction.TransactionDefinition;
 import org.springframework.transaction.support.TransactionTemplate;
 
-/**
- * Executes every schedule read unit in one read-only MySQL repeatable-read snapshot (the window
- * rows, reservation occupancy counts, capabilities and staff availability share it). Service
- * eligibility is consumed before this snapshot, while MER employee facts use their own snapshot.
- * Drift across these display reads requires an authoritative SCH-003 hold re-check.
- */
-public final class ScheduleReadStore {
+/** Joins the availability window/occupancy RR snapshot; standalone callers start their own. */
+public final class ScheduleStaffFactsReadStore {
     private final SqlSessionTemplate template;
     private final TransactionTemplate transaction;
 
-    public ScheduleReadStore(DataSource dataSource) {
-        Objects.requireNonNull(dataSource, "dataSource is required");
-        this.template = ScheduleMybatis.template(dataSource);
-        this.transaction = new TransactionTemplate(new DataSourceTransactionManager(dataSource));
-        transaction.setPropagationBehavior(TransactionDefinition.PROPAGATION_REQUIRES_NEW);
+    public ScheduleStaffFactsReadStore(DataSource source) {
+        Objects.requireNonNull(source, "source is required");
+        template = ScheduleMybatis.template(source);
+        transaction = new TransactionTemplate(new DataSourceTransactionManager(source));
+        transaction.setPropagationBehavior(TransactionDefinition.PROPAGATION_REQUIRED);
         transaction.setIsolationLevel(TransactionDefinition.ISOLATION_REPEATABLE_READ);
         transaction.setReadOnly(true);
         transaction.setTimeout(10);
@@ -37,8 +32,9 @@ public final class ScheduleReadStore {
             return transaction.execute(status -> work.apply(template.getMapper(ScheduleReadMapper.class)));
         } catch (ApiException known) {
             throw known;
-        } catch (RuntimeException unavailable) {
-            throw new ApiException(CommonApiCodes.DEPENDENCY_UNAVAILABLE, "schedule read dependency unavailable");
+        } catch (RuntimeException failure) {
+            throw new ApiException(CommonApiCodes.DEPENDENCY_UNAVAILABLE,
+                    "schedule staff facts unavailable");
         }
     }
 }

@@ -28,10 +28,9 @@ import java.util.Objects;
  * Visibility first - the four-condition conjunction consumed through the service-domain
  * checkBookable (its own repeatable-read snapshot) answers 404 SERVICE_NOT_FOUND for missing,
  * ineligible or store-mismatched services; facts failures stay 503. Capacity follows SSOT 12.2
- * (min of configured and qualified available staff): the staff facts provider is MANDATORY - the
- * real assembly ships without one (the SCH-002 source does not exist yet), so every query for a
- * visible service fails closed with DEPENDENCY_UNAVAILABLE instead of degrading to a placeholder
- * capacity. Seed facts and staff-count test doubles are module-test-only (SCH-D6).
+ * (min of configured and qualified available staff): the staff facts provider is MANDATORY.
+ * The SCH-002 real assembly supplies one, while the defensive absent-provider path remains
+ * fail-closed instead of inventing placeholder capacity.
  */
 public final class AvailabilityQueryService {
     private static final DecimalPublicIdCodec IDS = new DecimalPublicIdCodec();

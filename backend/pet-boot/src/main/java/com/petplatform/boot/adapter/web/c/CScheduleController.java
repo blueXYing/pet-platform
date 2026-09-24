@@ -32,8 +32,8 @@ import org.springframework.web.bind.annotation.RestController;
  * GET /api/v1/c/services/{serviceId}/availability (CCR-W2-API-001 schedule domain, HTTP10 3.4,
  * approved 2026-09-23). SCH-D1: login is mandatory - the route is outside the STR-D8 anonymous
  * browse family, so the session filter enforces the MINIAPP bearer (anonymous 401). Minute-level
- * windows only, no fixed 60-minute slots; capacity stays server-computed and the assembly fails
- * closed (503) while the qualified-staff facts source is missing (SCH-D6).
+ * windows only, no fixed 60-minute slots; SCH-002 computes capacity from real MER staff and SCH
+ * capability/availability facts. Missing or unreadable facts still fail closed (503, SCH-D6).
  */
 @RestController
 @ConditionalOnProperty(prefix = "pet.schedule.query", name = "enabled", havingValue = "true")

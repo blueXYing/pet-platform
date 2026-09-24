@@ -11,10 +11,9 @@ import java.time.Clock;
 import javax.sql.DataSource;
 
 /**
- * Local implementation of the approved availability query (API07 6.1, SCH-001). The staff facts
- * port is deliberately optional: the production wiring passes none (SCH-002 has not delivered
- * the source) and every visible-service query fails closed per the SCH-D6 ruling; module tests
- * pass the SQL-seeded double.
+ * Local implementation of the approved availability query (API07 6.1, SCH-001/002). Production
+ * wiring supplies the real staff facts provider. The nullable port retains the fail-closed
+ * defense for incomplete assemblies.
  */
 public final class ScheduleQueryApiImpl implements ScheduleQueryApi {
     private final AvailabilityQueryService service;

@@ -1,12 +1,21 @@
 package com.petplatform.schedule.biz.infrastructure.persistence.mapper;
 
 import com.petplatform.schedule.biz.infrastructure.persistence.entity.ScheduleAvailabilityWindowEntity;
+import com.petplatform.schedule.biz.infrastructure.persistence.entity.StaffAvailabilityEntity;
+import com.petplatform.schedule.biz.infrastructure.persistence.entity.StaffCapabilityEntity;
 import java.time.LocalDateTime;
 import java.util.List;
 import org.apache.ibatis.annotations.Param;
 
 /** schedule_availability_window / schedule_reservation read statements (SQL in the XML). */
 public interface ScheduleReadMapper {
+
+    /** Every capability for the target service, including unknown statuses and dangling staff IDs. */
+    List<StaffCapabilityEntity> selectServiceCapabilities(@Param("serviceId") long serviceId);
+
+    /** All rows for qualified candidates in this store, so malformed intervals cannot be hidden. */
+    List<StaffAvailabilityEntity> selectCandidateStaffAvailability(
+            @Param("storeId") long storeId, @Param("staffIds") List<Long> staffIds);
 
     /**
      * OPEN windows of the store/service overlapping [from, to), start-ascending. Non-OPEN status
