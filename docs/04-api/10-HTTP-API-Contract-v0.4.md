@@ -2098,3 +2098,7 @@ Scope提案：`{mode,cityCodes,merchantIds}`。授予请求mode=ALL/CITY/MERCHAN
 [30号补充](30-Merchant-Application-Contract-v0.1.md)与OpenAPI11新增本人申请4操作、运营审核6操作，全部标CONTRACT_SYNC_CANDIDATE_NOT_IMPLEMENTED。申请人仅看本人；运营仅看已提交版本并先过滤scope再分页。人工核验/释放/决定必须当前领取人，不能构造内部双人审批。
 
 applicationId等主键使用Snowflake String；applicationNo按原PRD为SQ+YYYYMMDD+8位随机码，首次提交生成、重提不变，不套PublicId数字词法。revisionNo为正序号String。默认详情仅脱敏，不接受GET reveal参数，不在URL放敏感用途；原件读取依赖独立私有资产授权契约。无新的运行时路由或Provider就绪声明。
+
+## 2026-09-24 已批准：SCH-003 / ORDER 预约保护的 HTTP 同步边界
+
+[36号联合契约](36-Reservation-Order-Protection-Contract-v0.1.md)的 ROC-1～6 已批，当前状态仍为 `ACCEPTED_CONTRACT_NOT_IMPLEMENTED`。现有 §3.4 六字段可约 `items` 不返回原 `windowId/kind`，§3.5 创建与改期请求未携接送两个所选窗 ID 或到店 GENERAL 原窗 ID；不能以旧响应猜 ID、宣称接送双 claim 或跨服务容量写已可用。后续实现切片须同步 07/10/11 的选窗字段、请求/错误与客户端合同，并在服务端锁内完成 36 号复核；本次追加不创建 HTTP 路由、不更改当前响应或 `x-contract-status`，相关入口未实现时失败关闭。

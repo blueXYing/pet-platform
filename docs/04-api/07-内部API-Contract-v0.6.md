@@ -1755,3 +1755,7 @@ thirdparty-api 新增独立 ServiceCoverSigningApi.signServiceCover(String asset
 
 依赖/素材事实异常返回 COMMON_DEPENDENCY_UNAVAILABLE；对外服务不存在/不可见仍在签发前使用 SERVICE_NOT_FOUND。签名 GET 只针对 versionId，不为 ETag-only 对象退回签最新版本。老证照 PrivateAssetApi 接口与水印授权保持原样。
 生产装配默认关闭，显式配置签名有效期；2026-09-24用户随后开启mtxoss2版本控制，新上传对象的VERSION_ID签名GET已通过真实OSS复验；旧ETag对象未迁移，完整页面/真机验收独立保留。Schema/Event及现有HTTP响应字段不变。
+
+## 2026-09-24 已批准：SCH-003 / ORDER 联合保护契约
+
+[36号预约与订单人员保护契约](36-Reservation-Order-Protection-Contract-v0.1.md)经用户批准 ROC-1～6，状态 `ACCEPTED_CONTRACT_NOT_IMPLEMENTED`。跨服务完整员工可行性、接送最终同人、到店单 GENERAL 原窗、预生成 orderId 的 hold/create 同事务绑定、ORDER 按预约及员工/门店完整当前指派事实、改期保留原指派失败留旧，以 36 号为后续实现合同；本文件 §6.2 和 §19.1 的既有签名/流程尚未据此改造成可调用接口，`assignStaff` 草案不转移 ORDER 当前指派所有权。后续唯一 Writer 同步具体 Java DTO/方法、事务装配和测试前，相关写入维持已批失败关闭，不声称 SCH-003 已实现。
