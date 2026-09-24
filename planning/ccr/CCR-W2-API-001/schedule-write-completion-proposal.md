@@ -35,6 +35,8 @@
 
 建议 `ReservationCapacityClaimDTO` 成为 SCH 的权威只读投影：`claimId,reservationId,orderId?,storeId,serviceId,windowId,kind,startAt,endAt,reservationStatus,version`，时间为半开 `[startAt,endAt)`；`orderId?` 表示 hold 与订单绑定时序未冻结，不授权持久化 NULL 以绕开现有 NOT NULL。一个到店预约为 GENERAL，一个接送预约的 PICKUP/RETURN 各有明确 claim。`TEMP_LOCKED/CONFIRMED` 均受保护；`RELEASED/EXPIRED` 只有**已提交状态**才不再占用，不能根据 `lock_expire_at` 自行跳过仍为 TEMP_LOCKED 的行。`windowId` 保存原选窗身份，防止改窗目标或 kind 后失去关联。此 DTO/表是候选，G3 未冻结前不可实装。
 
+上句“到店为 GENERAL”只指定 kind，**不冻结到店 claim 条数**；若一笔到店预约跨多个开放窗，其关联与基数仍是 SCH-003 的技术缺口，不能用接送 `reservationId+kind` 唯一口径硬套。
+
 ORDER 提供同事务公共查询，返回按 `orderId` 的**当前**指派、员工 ID、订单未完成/仍需保护的判断及版本，并明确 `pet_order.service_staff_id` 与 `order_staff_assignment.is_current` 的唯一权威关系。若两者矛盾、订单缺失或状态不明，返回依赖不可信，不能当未指派。MER 提供同事务员工 `storeId/employmentStatus/serviceEnabled/version` 当前事实；SCH 以自身能力、AVAILABLE 排班并集和目标服务匹配。接口不得泄露 Repository/DO/Entity。
 
 ORDER 还须明确“当前指派需保护”的生命周期状态集合及它与 SCH `TEMP_LOCKED/CONFIRMED/RELEASED/EXPIRED` 的关系：例如当前指派尚在而 reservation 已 RELEASED，不能仅因无活跃 claim 就忽略此订单；这是对账异常还是合法存量状态须由 ORDER 契约作权威判断。未冻结前，涉及该员工的减少可用性失败关闭。
@@ -46,9 +48,10 @@ ORDER 还须明确“当前指派需保护”的生命周期状态集合及它�
 | `ScheduleCapacityGuardApi.acquire` | `storeIds: String[]`，按数值去重升序；现有 `CommandContext` 由执行命令持有 | `void`；只在调用方顶层事务内建立/锁 SCH 自有 guard 行，调用返回不释放锁；事务不存在或 DataSource 不同即拒绝。 |
 | SCH claim 当前事实 | `storeId,fromAt,toAt` 加受影响 `windowIds/staffIds`，时间半开 | 每条 `claimId,reservationId,orderId?,serviceId,windowId,kind,startAt,endAt,status,version`；明确返回“查询完整”标记，不能将超时/未知状态折算成空列表。锁后主库当前读。 |
 | `OrderAssignmentFactsApi.listByReservationIds` | `reservationIds: String[]`，含所有受影响活跃 claim 的预约 ID | 每个 ID 对应 `bindingState,orderId?,currentStaffId?,protectRequired,orderVersion?,assignmentVersion?`；`UNBOUND_HOLD` 与已绑定但无指派须有不同的权威状态，不能用缺行猜测。ORDER 对当前指派表与订单快照不一致报故障。锁内参加同一事务并当前读。 |
+| ORDER 按员工/门店保护指派完整性 API | 减员按 `storeId,affectedStaffIds`；影响整店时按 `storeId` | 覆盖所有仍需保护的当前指派，包括无活跃 claim 或 reservation 已 RELEASED 的订单；与按 reservationId 查询对账。缺此完整性事实时减员失败关闭，不能把活跃 claim 的空列表当无人指派。具体 ORDER 生命周期状态集合另定。 |
 | `MerchantCapacityStaffFactsApi.listByStoreAndStaffIds` | `storeId,staffIds: String[]`，含候选及当前指派人员 | 每个 ID 对应 `staffId,storeId,employmentStatus,serviceEnabled,version`；无该员工和状态未知明确区分。锁内参加同一事务并当前读；SCH 自己求能力与排班，不让 MER 推算容量。 |
 
-这些字段仍是跨域 CCR 候选，不声称现有 `MerchantStoreStaffFactsApi` 的 SCH-002 展示查询已经提供事务锁内证明。未冻结的 hold→order 绑定时序会决定 `bindingState` 的物理实现；不能先放宽 06 号 `order_id NOT NULL` 来凑接口。
+这些字段仍是跨域 CCR 候选，不声称现有 `MerchantStoreStaffFactsApi` 的 SCH-002 展示查询已经提供事务锁内证明。按预约查询与按员工/门店完整性查询缺一不可；前者不能发现已 RELEASED 预约之外仍需保护的指派。未冻结的 hold→order 绑定时序会决定 `bindingState` 的物理实现；不能先放宽 06 号 `order_id NOT NULL` 来凑接口。
 
 对候选变更，未来容量证明至少须同时覆盖：(a) 每个 claim 的原 `windowId/kind/服务` 与配置容量约束；(b) **整个** claim 时间段内，已指派员工仍在本店、在职在岗、具备该服务能力、排班无空档，且不能在重叠 claim 被重复使用；(c) 未指派 claim 在该店所有同时受影响服务之间有可行人员安排。一个 claim 不能靠“每分钟分别有人”拼出中途换人的假证明；员工能做 A/B 两项服务仍只是一名共享人员；有替代人员也不能撤掉已指派 X 的资格。
 
@@ -68,7 +71,9 @@ ORDER 还须明确“当前指派需保护”的生命周期状态集合及它�
 
 ## 3. G2：已批准的能力集合首次空集合 CAS（未实现）
 
-已批准 SCH 自有 `staff_capability_set(staff_id PK, store_id, version BIGINT NOT NULL, updated_at)` 作为集合头；Java 版本为非负 `long`，HTTP/JSON 的 `version` 与 `expectedVersion` 为非负 Long 的十进制 **String**，沿用 27 号 §3 的外部版本规则和 23 号规范参数处理，绝不经 JavaScript `Number` 中转。`staff_service_capability` 保持 ENABLED 明细，空集合是零明细，**不是缺少版本**。GET 对尚无头的合法员工返回 `serviceIds:[],version:"0"`，这是“尚未编辑”的逻辑版本，必须先成功核验员工归属，故障不能合成空集合。首次 PUT 带 `expectedVersion:"0"`，在同事务中以唯一键原子创建头并推进到 1、替换明细、写动作审计与幂等成功回执。第二个也读到 0 的编辑只能有一个成功；唯一冲突者返回 409 `COMMON_CONFLICT` 并提示重新 GET。已存在头时 `UPDATE ... WHERE version=expectedVersion` CAS；影响 0 行则冲突，不覆盖集合。
+已批准 SCH 自有 `staff_capability_set(staff_id PK, store_id, version BIGINT NOT NULL, updated_at)` 作为集合头；Java 版本为非负 `long`，HTTP/JSON 的 `version` 与 `expectedVersion` 为非负 Long 的十进制 **String**，沿用 27 号 §3 的外部版本规则和 23 号规范参数处理，绝不经 JavaScript `Number` 中转。`staff_service_capability` 保持 ENABLED 明细，空集合是零明细，**不是缺少版本**。GET 仅对**集合头与能力明细都不存在**的合法员工返回 `serviceIds:[],version:"0"`，这是“尚未编辑”的逻辑版本，必须先成功核验员工归属，故障不能合成空集合。首次 PUT 带 `expectedVersion:"0"`，在同事务中以唯一键原子创建头并推进到 1、替换明细、写动作审计与幂等成功回执。第二个也读到 0 的编辑只能有一个成功；唯一冲突者返回 409 `COMMON_CONFLICT` 并提示重新 GET。已存在头时 `UPDATE ... WHERE version=expectedVersion` CAS；影响 0 行则冲突，不覆盖集合。
+
+这里“尚无头”的版本 0 仅适用于**头和能力明细同时不存在**。若旧 `staff_service_capability` 已有明细而集合头未迁移，GET/PUT 必须 503 并隔离；先盘点员工与原能力集合、核对 MER 归属，回填持久头和可解释的非零版本，不能把旧授权当空集合或用首次 PUT 覆盖。头为 0 却有明细同样是不一致事实。
 
 每次**新成功** PUT 版本递增，包括写入与当前相同的集合；同 requestId 同参数成功重放返回第一次版本，不再递增。写成空集合后头仍保留，不能删除头后把版本退回 0。`serviceIds` 是具体服务 ID 集合，重复项 400，跨店/不存在服务按既有服务归属规则拒绝；如将其声明为无序集合，23 号 canonical 摘要应按规范数值升序处理并固定版本。撤销项先进入 G1 保护；只增加项仍需版本 CAS、目标身份/资格校验和审计，不能以“安全增加”跳过集合冲突。独立集合头不借 `merchant_staff.version`、requestId 或明细行数代替。
 
@@ -81,10 +86,11 @@ Schema/API 候选：GET/PUT `/api/v1/merchant/staff/{staffId}/service-capabiliti
 - **推荐的明确口径**：C 端最终 PRD §5.1 的原话是“用户必须选择一个上门时段，作为接宠时间窗口”，送回“同样可选择日期，展示商家按分钟精度自定义的可用送回时段”；临界例为上门 **10:00–11:00**、最早送回 **12:00–13:00**。商家 PRD §5.4 又规定上门与送回“分别占用”预约时段。因此一个接送预约各选一条 OPEN PICKUP/RETURN 窗，**两条所选候选窗的完整 `[window.start,window.end)` 分别成为占用区间**。这沿用现有“选一个时段”的产品行为；只需补上当前 API/Schema 缺少的所选窗口身份和分方向权威占用事实，不引入固定时长。
 - SCH-003 的 hold/swap 技术命令后续须增 `selectedPickupWindowId`、`selectedReturnWindowId`（跨模块/HTTP ID 为 String）；在同一闸门事务核验两窗同店同服务、分别为 PICKUP/RETURN 且 OPEN，`pickupStart == pickupWindow.startAt`、`returnStart == returnWindow.startAt`，把两窗当时的完整边界和 ID 冻结为两条 claim。结束时间来自选中的权威窗口，不让客户端另报或用 `service_item.duration_minutes` 猜测。当前 C 端查询只有六字段，无 `windowId/kind`，须由 SCH-004/SCH-003 后续联合增列才能供客户端传两个 ID；现有 SCH-001/002 不具备此能力。若前端日后要在窗口内任意截取子区间，那是目前 PRD 未写的**另一种选择行为**，须另行产品裁决和新的结束时间契约，不由本次技术同步暗加。
 - 到店预约只使用 GENERAL claim，继续按最终商家 PRD 的服务时长/已选时间区间约束处理；本提案不擅改其已批时间语义。接送两 claim 分别指向同店同服务同 kind 原窗。服务端 hold/swap 最终校验 `returnStart >= pickupStart+120分钟`，窗口管理不遍历组合。查询按 kind 给候选，单个方向的剩余容量不能代表两方向组合已锁定。
+- 到店 GENERAL 的 `windowId` 仍缺来源：现有 hold 仅有 `appointmentStart/appointmentEnd`。建议 SCH-003 在锁内按原店/服务和**完整**预约区间唯一匹配 OPEN GENERAL 窗才记录原窗 ID；跨窗或多窗歧义不得选第一条/默认造窗。是否需要 `selectedGeneralWindowId` 或多个 GENERAL claim，须按原到店服务时长/选择行为另核，不因本次接送两个 ID 已批而自动解决。
 - 窗口 close、降容量、移时段或更改服务/kind 的保护同时检查**原窗口 ID**、旧区间和候选新区间；原 claim 不会因窗口目标改变而消失。建议窗口 `storeId/serviceId/kind` 创建后不可 PUT 改身份，确需变更走受保护关闭+新建；若批准允许原地改 kind，必须先证明原 claim 已清零，且新目标按同闸门校验。不同 kind 的计数不能互相借用。
 - `schedule_reservation` 的状态变化与 claim 增删/状态投影同事务；SCH-001 读侧需同步 kind 与对应 claim 计数，避免旧单区间再次混用。若历史预约无法恢复两个权威 claim，不得开启该店/服务的接送新 hold 或受影响减员。
 
-已批逻辑存储包括 SCH 自有 `schedule_reservation_claim(id,reservation_id,window_id,store_id,service_id,kind,start_at,end_at,...)`，按 `reservation_id+kind` 区分到店 GENERAL 与接送 PICKUP/RETURN；`schedule_availability_window.window_kind NOT NULL`、`schedule_store_capacity_guard`、G2 集合头及审计另见[34 号存储补充](../../../docs/03-database/34-Schedule-Protection-Storage-v0.1.md)。具体索引/DDL、旧预约迁移脚本与回滚策略尚未完成，本提案不把逻辑字段当可执行 SQL。
+已批逻辑存储包括 SCH 自有 `schedule_reservation_claim(id,reservation_id,window_id,store_id,service_id,kind,start_at,end_at,...)`，接送按 `reservation_id+kind` 区分 PICKUP/RETURN；到店 GENERAL 的窗口关联、跨窗基数和唯一键仍待 SCH-003 冻结。`schedule_availability_window.window_kind NOT NULL`、`schedule_store_capacity_guard`、G2 集合头及审计另见[34 号存储补充](../../../docs/03-database/34-Schedule-Protection-Storage-v0.1.md)。具体索引/DDL、旧预约迁移脚本与回滚策略尚未完成，本提案不把逻辑字段当可执行 SQL。
 
 ### 4.2 存量 GENERAL 处置和发布门禁
 

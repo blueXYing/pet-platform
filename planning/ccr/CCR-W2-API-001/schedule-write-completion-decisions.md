@@ -11,4 +11,6 @@
 
 **没有一并批准**：跨服务共享人员的完整约束求解/暂定人员容量占位算法、接送两个 claim 与最终一个商家指派员工是否必须同人、ORDER 指派保护的完整生命周期状态集合、hold 先于 order 创建与现有 `schedule_reservation.order_id NOT NULL` 的绑定时序、具体索引/可执行迁移脚本、生产启用或 PR 合并。这些由 SCH-003/ORDER/MER 后续独立 CCR 与实现验证处理。当前无法证明保护成立的相关减员和接送 hold 按已批 SSOT §29 失败关闭，不把“失败关闭”重复作为新决策。
 
-本轮规范状态：四项 `ACCEPTED_CONTRACT_NOT_IMPLEMENTED`。34 号文件记录已批逻辑，06/07/10/11 的当前实现和响应在相应实现切片正式增量同步前保持现状。原[联合业务回执](schedule-review-decisions.md)及[写入 v0.2](schedule-write-proposal.md)仍提供产品和 SCH-004 操作范围；若旧草案仍写“待批准”，以本回执对上述四项的后续裁决为准。本文不包含生产代码、Schema 迁移、通过的测试或合并授权。
+定稿技术边界补记：ORDER 只按活跃 claim 的 reservationId 查指派会漏掉 reservation 已 RELEASED 但仍需保护的当前指派，后续必须按受影响员工/门店提供完整性事实；缺失不得放行减员。SCH 既有能力明细若无新集合头，须先盘点/回填，GET/PUT 不能当空集合版本 0。到店 GENERAL 需要原窗口 ID，但本次只批准两个**接送**选窗 ID；到店建议在锁内按原店/服务和完整预约区间唯一关联 GENERAL 窗，跨窗/歧义与是否新增到店选窗 ID 交 SCH-003 核对。三项都是四项已批方案的安全落地边界，不扩大产品规则或宣布实现完成。
+
+本轮规范状态：四项 `ACCEPTED_CONTRACT_NOT_IMPLEMENTED`。34 号文件记录已批逻辑，06/07/10/11 的当前实现和响应在相应实现切片正式增量同步前保持现状。原[联合业务回执](schedule-review-decisions.md)及[写入 v0.2](schedule-write-proposal.md)仍提供产品和 SCH-004 操作范围；若旧草案仍写“待批准”，以本回执对上述四项的后续裁决为准。本文不包含生产代码、Schema 迁移、通过的测试或合并授权；PR81 仍为合同规范交付，SCH-004/SCH-003 不标 DONE。
