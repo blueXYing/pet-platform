@@ -1760,3 +1760,7 @@ thirdparty-api 新增独立 ServiceCoverSigningApi.signServiceCover(String asset
 ## 2026-09-24 员工管理内部命令补充
 
 员工基础五操作的已批Java接口/DTO、读写准入、幂等/CAS及SQL35审计见[35号契约](35-Merchant-Staff-Management-Contract-v0.1.md)。复用MerchantStaffDTO/Query，新增management list/get与create/update/enable命令，不开放disable。当前状态ACCEPTED_CONTRACT_NOT_IMPLEMENTED；HTTP保持27/11既有字段。
+
+## 2026-09-24 已批准：SCH-003 / ORDER 联合保护契约
+
+[36号预约与订单人员保护契约](36-Reservation-Order-Protection-Contract-v0.1.md)经用户批准 ROC-1～6，状态 `ACCEPTED_CONTRACT_NOT_IMPLEMENTED`。跨服务完整员工可行性、接送最终同人、到店单 GENERAL 原窗、预生成 orderId 的 hold/create 同事务绑定、ORDER 按预约及员工/门店完整当前指派事实、改期保留原指派失败留旧，以 36 号为后续实现合同；本文件 §6.2 和 §19.1 的既有签名/流程尚未据此改造成可调用接口，`assignStaff` 草案不转移 ORDER 当前指派所有权。后续唯一 Writer 同步具体 Java DTO/方法、事务装配和测试前，相关写入维持已批失败关闭，不声称 SCH-003 已实现。
