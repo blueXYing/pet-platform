@@ -9,13 +9,17 @@ import {
   PreviewServiceRepository, isServiceScenario,
   type ServiceCatalogDeps, type ServiceDetailView,
 } from '../../service/model'
+import { runCatalogRead } from '../../store/repository'
+import { detailActionGate, detailReadAllowed } from './browse-gate'
 import { ServiceRow, StoreServicesDesign, serviceListCardHeight } from './view'
 
 // Node 690:2025 / 690:4205 (热门服务-宠物美容-详情页) — byte-identical copies of the
 // 690:6660 layout, so the service detail reuses that design one-to-one. The 团购套餐 region
 // renders the ONE service returned by the frozen GET /api/v1/c/services/{serviceId} contract
 // (description included); the store header stays design-sample copy here (this page targets a
-// service, and the 商家详情页 remains the store-bound view).
+// service, and the 商家详情页 remains the store-bound view). Viewing is anonymous (STR-D8,
+// same adjudication as the directory and store detail); 预约/拨打电话 stay login-gated with
+// a login guide, booking itself stays an explicit no-op when logged in.
 // VIS note: the design frames contain three sample cards; this page renders the queried
 // service only — recorded as a data-driven difference pending VIS-003 overlay review.
 type Phase = 'loading' | 'ready' | 'missing' | 'load-error' | 'expired' | 'invalid'
@@ -42,9 +46,12 @@ export default function ServiceDetailPage() {
     const current = ++sequence.current
     setPhase('loading'); setNotice('')
     if (!isContractId(serviceId)) { setPhase('invalid'); return }
-    if ((preview && scenario === 'expired') || !scope.current || scope.current.workspace !== 'consumer') { setPhase('expired'); return }
+    if (!detailReadAllowed(preview, scenario)) { setPhase('expired'); return }
     try {
-      const value = await scope.run(undefined, () => repository.current.detail(serviceId))
+      // Anonymous-browsable per STR-D8 (same pattern as the directory page PR#75): with a
+      // consumer context runCatalogRead still guards stale context switches; logged out the
+      // read runs bare.
+      const value = await runCatalogRead(scope, () => repository.current.detail(serviceId))
       if (!mounted.current || current !== sequence.current || currentRevision !== scope.revision) return
       setDetail(value); setPhase('ready')
     } catch (error) {
@@ -61,15 +68,12 @@ export default function ServiceDetailPage() {
     return () => { mounted.current = false; sequence.current++ }
   }, [load])
   useEffect(() => {
-    if (previousRevision.current !== revision || !context || context.workspace !== 'consumer') {
-      previousRevision.current = revision
-      sequence.current++
-      setDetail(null); setNotice('')
-      repository.current = preview ? new PreviewServiceRepository(undefined, scenario) : realServiceRepository()
-      setPhase('expired')
-      if (!preview && context?.workspace === 'consumer') void load()
-    }
-  }, [revision, context, preview, scenario, load])
+    // Browsing is anonymous, so a login/logout (revision change) no longer expires the page;
+    // the public catalog is simply re-read under the new context for a clean state.
+    if (previousRevision.current === revision) return
+    previousRevision.current = revision
+    void load()
+  }, [revision, load])
   useEffect(() => {
     const handler = () => setPlatformInfo(Taro.getWindowInfo())
     Taro.onWindowResize(handler)
@@ -79,6 +83,13 @@ export default function ServiceDetailPage() {
   const ready = phase === 'ready'
   function notWired(label: string) {
     if (!ready) return
+    // Actions (not viewing) stay login-gated per the final PRD; anonymous taps get the guide.
+    if (detailActionGate(context) === 'login-required') {
+      void Taro.showModal({ title: '请先登录', content: `${label}需要先登录，是否前往登录？`, confirmText: '去登录', cancelText: '暂不' })
+        .then(answer => { if (answer.confirm) void Taro.redirectTo({ url: '/consumer/pages/shell/index' }).catch(() => setNotice('页面跳转失败，请重试')) })
+        .catch(() => setNotice(''))
+      return
+    }
     setNotice(preview ? `“${label}”尚未接入本次预览` : `“${label}”功能尚未接通`)
   }
   const listTop = 711.5
@@ -89,10 +100,10 @@ export default function ServiceDetailPage() {
       <Text>{phase === 'loading' ? '正在加载服务详情…' : phase === 'missing' ? '服务不存在或已下架' : phase === 'expired' ? '登录已失效，请重新登录' : phase === 'invalid' ? '服务参数无效' : '加载失败，请重试'}</Text>
       {phase === 'load-error' && <Button id='svcd-retry-load' className='svc-state-action' onClick={() => void load()}>重新加载</Button>}
       {phase === 'missing' && <Button id='svcd-back-list' className='svc-state-action' onClick={() => Taro.navigateBack().catch(() => setNotice('返回失败'))}>返回上一页</Button>}
-      {!preview && phase === 'expired' && <Button className='svc-state-action' onClick={() => Taro.redirectTo({ url: '/consumer/pages/shell/index' })}>去登录</Button>}
     </View>}
     {ready && detail && <StoreServicesDesign store={null} listTop={listTop} reviewTop={reviewTop} onBack={() => Taro.navigateBack().catch(() => setNotice('返回失败'))}
       onCall={() => notWired('拨打电话')} onBookNow={() => notWired('立即预约')} bookEnabled
+      footer={<Text>页面数据：{preview ? '契约 Mock（preview=1，不联调）' : '真实接口（后端交付前失败关闭，可匿名浏览）'}</Text>}
       notice={notice ? <Text id='svcd-notice' className='svc-notice' style={{ left: `calc(var(--svc-unit) * 29)`, right: `calc(var(--svc-unit) * 29)`, top: `calc(var(--svc-unit) * ${reviewTop + 246 + 24})` }}>{notice}</Text> : undefined}
       servicesNode={<ServiceRow idPrefix='svcd-row' line={{ service: detail, description: detail.description }} onBook={() => notWired('预约')} />} />}
   </ConsumerPageLayout>
