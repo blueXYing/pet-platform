@@ -14,6 +14,7 @@ import com.petplatform.merchant.biz.infrastructure.provider.AesGcmProtectedValue
 import com.petplatform.merchant.biz.infrastructure.provider.MainlandSubjectCredentialProvider;
 import com.petplatform.service.biz.application.ServiceWriteDependencies.ServiceCoverAssetPort;
 import com.petplatform.service.biz.application.ServiceWriteDependencies.ServiceCoverUrlPort;
+import com.petplatform.thirdparty.biz.infrastructure.oss.OssConnection;
 import com.petplatform.user.biz.application.WechatSessionProvider;
 import com.zaxxer.hikari.HikariConfig;
 import com.zaxxer.hikari.HikariDataSource;
@@ -46,13 +47,15 @@ import org.springframework.jdbc.datasource.init.ScriptUtils;
 import tools.jackson.databind.json.JsonMapper;
 
 /**
- * M-002 CI integration server (test scope ONLY — never committed): a long-running local boot
+ * M-002 CI integration server (test scope ONLY): a long-running local boot
  * that assembles the ServiceWriteHttpTest/CStoreControllerHttpTest acceptance recipe on the
  * coordinator's shared MySQL/Redis, with the Hikari pool the MS1 local acceptance proved
  * mandatory for a long-lived Snowflake node. QA seams are the same ones the in-repo acceptance
  * tests use (FixedWechatProvider login codes, permissive private-asset/cover-asset fact stubs,
  * deterministic cover URL signer); the application→approval→signing→service write→review→C read
- * chain itself runs entirely over real HTTP against real Spring/MySQL/Redis.
+ * chain itself runs entirely over real HTTP against real Spring/MySQL/Redis. Opting into
+ * M002_REAL_PRIVATE_ASSETS uses the real OSS/ClamAV upload pipeline and exact-version cover
+ * signer instead of cover stubs; the WeChat and application-material seams stay explicit.
  */
 public final class M002IntegrationServer {
   private static final String ORIGIN = "https://svcw.example.invalid";
@@ -76,6 +79,7 @@ public final class M002IntegrationServer {
       throw new IllegalArgumentException("Dedicated local Redis is required");
     }
     int port = Integer.parseInt(System.getenv().getOrDefault("M002_PORT", "18081"));
+    boolean realPrivateAssets = "true".equalsIgnoreCase(System.getenv("M002_REAL_PRIVATE_ASSETS"));
     int nodeId = Integer.parseInt(System.getenv().getOrDefault("M002_SNOWFLAKE_NODE", "21"));
     String name = "auth001cm002ci_" + UUID.randomUUID().toString().replace("-", "");
     Path directory = Files.createDirectories(Path.of(System.getenv()
@@ -166,6 +170,9 @@ public final class M002IntegrationServer {
                     () -> (city, address, lng, lat) -> "chengdu".equals(city));
                 beans.registerBean("m002Subjects", SubjectCredentialPort.class,
                     () -> new MainlandSubjectCredentialProvider(protector, "qa-only-v1", key(63)));
+                if (realPrivateAssets) {
+                  beans.registerBean("m002OssConnection", OssConnection.class, OssConnection::fromEnv);
+                } else {
                 beans.registerBean("m002CoverAssets", ServiceCoverAssetPort.class,
                     () -> (owner, assetIds) -> assetIds.stream()
                         .map(id -> new ServiceCoverAssetPort.CoverAssetFact(
@@ -177,6 +184,7 @@ public final class M002IntegrationServer {
                         "https://cover.example.invalid/signed/" + assetId
                             + "?m002ci=1",
                         java.time.Instant.now().getEpochSecond() + 3600));
+                }
               })
               .run(
                   "--server.address=127.0.0.1",
@@ -209,6 +217,16 @@ public final class M002IntegrationServer {
                   "--pet.service.query.enabled=true",
                   "--pet.service.command.enabled=true",
                   "--pet.service.review.notifications-enabled=true",
+                  "--pet.private-assets.enabled=" + realPrivateAssets,
+                  "--pet.service.cover-signing.enabled=" + realPrivateAssets,
+                  "--pet.service.cover-signing.window-seconds=600",
+                  "--PRIVATE_ASSET_CLAMAV_HOST=127.0.0.1",
+                  "--PRIVATE_ASSET_CLAMAV_PORT=13310",
+                  "--PRIVATE_ASSET_CLAMAV_TIMEOUT_MILLIS=10000",
+                  "--PRIVATE_ASSET_GRANT_KEY_VERSION=qa-live-v1",
+                  "--PRIVATE_ASSET_GRANT_HMAC_KEY_BASE64=" + base64(71),
+                  "--PRIVATE_ASSET_REASON_KEY_VERSION=qa-live-v1",
+                  "--PRIVATE_ASSET_REASON_AES_KEY_BASE64=" + base64(83),
                   "--pet.store.query.enabled=true");
       String endpoint = "http://127.0.0.1:" + port;
       context.getBean(AdminAuthService.class).bootstrap(
@@ -248,6 +266,7 @@ public final class M002IntegrationServer {
               + "databaseLifecycle=DROP_ON_PROCESS_SHUTDOWN" + System.lineSeparator()
               + "processId=" + ProcessHandle.current().pid() + System.lineSeparator()
               + "snowflakeNodeId=" + nodeId + System.lineSeparator()
+              + "privateAssetsMode=" + (realPrivateAssets ? "REAL_OSS_CLAMAV" : "FIXTURE") + System.lineSeparator()
               + "adminToken=" + adminToken + System.lineSeparator()
               + "adminOrigin=" + ORIGIN + System.lineSeparator(),
           StandardCharsets.UTF_8);

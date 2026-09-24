@@ -84,7 +84,9 @@ public class CServiceController {
 
     private static Map<String, Object> body(ServiceSnapshotDTO item) {
         Map<String, Object> row = summary(item);
-        row.put("description", item.description());
+        // Merchant drafts/submissions permit an omitted description. The C text projection
+        // remains a string so valid services without optional copy still render.
+        row.put("description", item.description() == null ? "" : item.description());
         return row;
     }
 

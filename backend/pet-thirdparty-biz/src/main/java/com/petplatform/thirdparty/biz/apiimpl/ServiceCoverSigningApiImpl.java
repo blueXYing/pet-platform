@@ -11,17 +11,25 @@ import java.net.URI;
 import java.time.Clock;
 import java.util.Objects;
 import javax.sql.DataSource;
+import org.springframework.jdbc.datasource.DataSourceTransactionManager;
+import org.springframework.transaction.TransactionDefinition;
+import org.springframework.transaction.support.TransactionTemplate;
 
 /** Approved SERVICE_COVER exception; application/identity materials can never be signed here. */
 public final class ServiceCoverSigningApiImpl implements ServiceCoverSigningApi {
   private final PrivateAssetRepository repository;
   private final ServiceCoverObjectSigner signer;
   private final Clock clock;
+  private final TransactionTemplate signingTransaction;
 
   public ServiceCoverSigningApiImpl(DataSource source, ServiceCoverObjectSigner signer, Clock clock) {
     repository = new PrivateAssetRepository(source);
     this.signer = Objects.requireNonNull(signer);
     this.clock = Objects.requireNonNull(clock);
+    signingTransaction = new TransactionTemplate(new DataSourceTransactionManager(source));
+    signingTransaction.setPropagationBehavior(TransactionDefinition.PROPAGATION_REQUIRES_NEW);
+    signingTransaction.setIsolationLevel(TransactionDefinition.ISOLATION_READ_COMMITTED);
+    signingTransaction.setTimeout(15);
   }
 
   @Override
@@ -29,8 +37,10 @@ public final class ServiceCoverSigningApiImpl implements ServiceCoverSigningApi 
     if (context == null) throw unavailable();
     try {
       long value = new DecimalPublicIdCodec().fromApi(assetId);
-      // Serialize asset retirement/quarantine with the final check and local signing operation.
-      return repository.transaction(mapper -> {
+      // Catalog visibility has already passed in its read-only snapshot. Suspend that transaction
+      // so the final asset current-read lock is writable and cannot reuse stale READY facts.
+      // Only local presigning occurs under this lock; no provider network request is made.
+      return signingTransaction.execute(status -> repository.transaction(mapper -> {
         var asset = mapper.selectAssetForUpdate(value);
         if (asset == null || !"SERVICE_COVER".equals(asset.getPurpose())
             || !"READY".equals(asset.getStatus()) || asset.getOwnerUserId() <= 0
@@ -45,7 +55,7 @@ public final class ServiceCoverSigningApiImpl implements ServiceCoverSigningApi 
         if (!"https".equals(url.getScheme()) || url.getHost() == null
             || url.getUserInfo() != null || url.getFragment() != null || signed.url().length() > 2048) throw unavailable();
         return new SignedServiceCover(assetId, signed.url(), signed.expiresAt());
-      });
+      }));
     } catch (RuntimeException failure) {
       // No pointer, signature, SDK request or provider credentials in errors/logs.
       throw unavailable();

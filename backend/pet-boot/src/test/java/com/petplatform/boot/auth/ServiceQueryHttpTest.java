@@ -356,6 +356,11 @@ class ServiceQueryHttpTest {
     assertEquals(200, detail.status(), detail.redacted());
     assertEquals("含洗护、吹干、基础梳理", detail.data().get("description"));
     assertEquals("美容", detail.data().get("categoryName"));
+    db.jdbc.update("UPDATE service_item SET description=NULL WHERE id=?", groomingId);
+    Reply withoutDescription = send("GET", "/api/v1/c/services/" + groomingId, null, bearer(token));
+    assertEquals(200, withoutDescription.status(), withoutDescription.redacted());
+    assertEquals("", withoutDescription.data().get("description"), "optional merchant copy keeps the C text contract");
+    db.jdbc.update("UPDATE service_item SET description=? WHERE id=?", "含洗护、吹干、基础梳理", groomingId);
 
     // W2-SVC-002: snapshot is a value copy - later master-data changes never mutate it.
     ServiceQueryApiImpl api = context.getBean(ServiceQueryApiImpl.class);
