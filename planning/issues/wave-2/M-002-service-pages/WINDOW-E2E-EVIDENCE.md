@@ -3,6 +3,10 @@
 日期：2026-09-24（本地会话）。分支 `codex/e2e-window-20260923`（基于 develop 639b61a）。
 取证人：Codex 窗口级验收（恢复执行轮）。工具：微信开发者工具 CLI（`wechatide -c ZCode`，simulator_screenshot / automation_element_action / automation_evaluate / automation_wx_api / get_simulator_network / debug_clear_cache / simulator_refresh）。
 
+> **2026-09-24 修复轮更新（本节置顶）**：F1/F2 已在本分支修复并通过窗口补全走查（§8、§9）；
+> 走查中新发现后端缺陷 **F3**（create 草稿链 NPE/NOT-NULL，§8.3），未修（禁止项），已登记。
+> §1–§7 为修复轮之前的原始取证，保留不动；§8 起为修复轮记录。
+
 ## 0. 证据分层声明（先读）
 
 | 层 | 定义 | 本轮覆盖 |
@@ -113,3 +117,70 @@
 - `window-shots/c3-01…c3-03`（消息列表 / 通知详情+查看服务 / 跳转目标）
 - `window-shots/c1-network-evidence.txt`（匿名四路由请求/响应，无 Authorization）
 - `window-shots/c2c3-network-evidence.txt`（会话/会员/准入/通知读+已读标记）
+
+---
+
+## 8. F1/F2 修复轮（2026-09-24 修复执行）
+
+### 8.1 F1 修复：工作台子页导航坐标让渡
+
+- 根因复核（与 §3 判断一致）：`MerchantWorkspace.leave()` 在 `useDidHide`（navigateTo 子页时也触发）无条件把 scope 重置回 consumer 坐标，而服务管理列表/编辑页门禁读同一 scope 的 merchant 坐标——工作台自己的导航动作清掉了目标页所需坐标。
+- 修法（`src/merchant/workspace.ts` + `src/merchant/pages/workspace/index.tsx`，最小行为修正，不改门禁语义、不改 MINI-003 每次进入工作台重新准入的 enter() 语义）：
+  1. 新增 `handoffToChild()`：工作台在 navigateTo 自己的管理子页（服务管理）前标记"让渡"——随后 on-hide 的 `leave()` 不清坐标（坐标交给目标页使用）；
+  2. `handoffCancelled()`：navigateTo 失败未隐藏本页时收回所有权，之后的 leave()（返回 shell/账号切换）仍正常重置；
+  3. `dispose()` 回收"仍然有效的让渡"：整栈销毁（reLaunch 离开工作台子树）时若让渡坐标未被更新的所有者接管，则重置回 consumer——避免商家坐标残留影响消费者个人页（pet-archive/profile-edit 等在 `workspace !== 'consumer'` 时判过期）；
+  4. 页面侧 `openServices()`：tap「服务管理」→ `handoffToChild()` → `navigateTo`，失败 `handoffCancelled()`。
+- 与既有契约的一致性说明：选择"让渡"而非"列表页自行重放准入"，因 admission/membership 契约（CCR-W2-ADMISSION-001）规定准入由工作台入口持有且每次进入重查；子页仅消费坐标并各自携带 merchantId/storeId 由后端做归属校验。C3 白名单跳转（`routeForNotification`）注释明确"jump never bypasses the workbench gate"——无工作台会话时目标页 entry 态即设计行为（本轮 §9 C3-3' 实测一致）。
+- 测试锁定：`src/merchant/tests/workspace.test.ts` 新增 5 组用例（让渡存活性 / 失败收回 / dispose 回收仍有效让渡 / dispose 不动更新的所有者 / 返回后重放准入再离开重置）。
+
+### 8.2 F2 修复：草稿线状按 A 侧可空契约省略未选字段
+
+- 契约核实（读后端请求模型，未改后端代码）：`MerchantServiceController.fields()` 对所有可选字段用 omitted/null = "not provided"（草稿宽松），但 `optionalId/optionalEnum/amount/optionalInt/optionalText`（blank）对 `''`/`0` 一律 400。原 `toBody` 把未选的 `categoryId/fulfillmentType/price/durationMinutes/coverAssetId` 固定序列化为 `''`/`0`（空名也发 `''`）——不止封面，整个宽松草稿保存链在真实后端必 400。
+- 修法（`src/merchant/services/repository.ts` toBody）：未选字段全部省略（与既有 listPrice/staffRequirement 等可选文本字段同策略）；`applicablePetTypes`（可空数组）与 `verificationRequired` 照发。
+- 提交审核本地校验（既有，本轮走查验证生效）：`missingSubmitFields` 含"封面图"，编辑页提示「提交审核前需补齐：封面图。」且不发出任何请求；`serviceManageMessage` 对 400 的文案含封面项。草稿宽松校验补齐一条 A 侧镜像（`model.ts` draftInputProblems：销售价格 0.00 → "销售价格需大于0"，与后端 prepare() 对草稿也拒绝非正价格一致）。
+- 测试锁定：`service-manage.test.ts` 松散草稿（仅名称/完全空）create 线状断言省略字段 + 完整草稿携带封面锚点 + 0 价格校验镜像。
+
+### 8.3 F3（本轮新发现，后端缺陷，未修——禁改后端代码）
+
+create（POST）链对"比 DTO 声明更空"的草稿在后端崩溃/拒绝，与 `ServiceWriteTypes`"Draft fields are lenient (nullable)"的声明不符：
+
+1. `ServiceWriteMapper.insertItem` 的 `categoryId/durationMinutes` 参数是**原始类型** `long/int`——null 装箱 NPE → `ServiceWriteStore.run` 兜底 503 COMMON_DEPENDENCY_UNAVAILABLE（server.log：`Cannot invoke "java.lang.Long.longValue()" ... PreparedFields.categoryId() is null`）。`updateItem`（PUT）同位置是 `Long/Integer` 无此问题。
+2. `service_item` 表 DDL：`service_name/price/duration_minutes/fulfillment_type/category_id` 均 NOT NULL 且无默认——无履约方式的草稿 INSERT 报 `Column 'fulfillment_type' cannot be null`（DataIntegrityViolation → 同样兜底 503）。
+3. 实际可创建的"最松草稿"= 名称+分类+价格+时长+履约方式必填；封面/适用宠物类型/文本可空。本轮窗口走查按此实际形态绕过（仍不选封面，验证 F2）。
+- 处置：不改后端（禁止项）；已在本文件与 PR#78 评论登记，建议 A 侧对齐（insertItem 装箱化 + 表默认值/或 prepare() 显式拒绝并 400 而非 503）。另：503 使 ConsumerApi 写日志（requestId 槽位）挂起，同槽位换内容会 PENDING_WRITE_CHANGED——在 F3 修复前，真实模式"先存必败草稿再改内容重存"会卡原槽（重试原载荷仍 503），这是 F3 的连带前端表现，非独立缺陷。
+
+### 8.4 环境处置记录（修复轮，如实）
+
+- 修复轮开始时 18081 旧实例（PID 36012）读路径正常，但 adminToken（仅服务器启动时经验证码 DB 缝隙铸造一次）已过期（约 30 分钟 TTL）→ 种子链 admin 步骤 401。按 §5 既定自举路径重启两次（java @argfile；新 PID 31968 → 12300），每次重启重播 `seed2.mjs` 全链 PASS。两次强杀的旧库（auth001cm002ci_ae409…/92bf4c…）遗留 MySQL 33452（与上轮同类，仅 CI 数据）。
+- 走查主链（第二次重启后）：userId 96438271206313984（138****5493）/ merchantId 96438271537664001 / storeId 96438272590434304；种子 ACTIVE 服务 96438273110528000；走查草稿→REVIEWING→APPROVE→ACTIVE 服务 **96438328198516736**《窗口验收·补全走查上门喂养》¥68（种子封面素材 590000000000000201）。F2 草稿验证段（c2-05/06）与 c2-04 使用前一次链（userId 96430343615238144），服务端重启不影响前端行为取证，如实注明。
+- 会话 15 分钟 TTL：走查中经 DB 恢复本链 openid（user_auth_identity 表）用 FixedWechatProvider 缝隙为同一 userId 补铸凭证两次，注入方式同 §0.1。
+- 测试域缝隙补充（在 §0 基础上）：(a) 表单药丸点选经 `wx.createSelectorQuery` 读取 Taro 运行时元素 id 后按 `#id` tap（automation 伪类/坐标 tap 不可靠）；(b) 503 后清理 ConsumerApi 写日志存储键 `pet.c.pending.v1` 并刷新（应用内存态）再重放（F3 连带，见 8.3）；(c) 含封面的走查草稿经 HTTP 种子创建（同 §0.2 等价链），窗口 UI 完成改价+提交审核。
+
+## 9. 窗口补全走查矩阵（修复轮，2026-09-24）
+
+构建：真实模式（含 `PET_MERCHANT_APPLICATION_ENABLED=true PET_PRIVATE_MATERIAL_UPLOAD_ENABLED=true`），check:package PASS；换构建后 cleanCompileCache + simulator_refresh。单测 171 全绿（含 F1 五组/F2 断言）、tsc 干净、Mock 构建同样全绿。
+
+| # | 场景 | 结果 | 证据 |
+|---|------|------|------|
+| C2-3' | 工作台 tap「服务管理」→ 列表页真实模式**可达可读**（"共 N 个服务"，GET /merchant/services 200 带 Bearer） | **PASS（F1 修复验证）** | c2-04 + c2-network-f2-evidence.txt |
+| C2-4'a | 编辑页仅填名称/分类/价格/时长/宠物/履约、**不选封面**：提交审核 → 本地提示「提交审核前需补齐：封面图。」，无任何网络请求 | **PASS（F2 校验验证）** | c2-06 |
+| C2-4'b | 同表单保存草稿 → 「草稿已保存。」；线状 POST 体**无 coverAssetId 键**（连同未选字段一并省略）→ 201 DRAFT | **PASS（F2 序列化验证）** | c2-05 + c2-network-f2-evidence.txt（POST 201） |
+| C2-4'c | HTTP 种子含封草稿 → 窗口编辑（改价 68.00）→ 提交审核 → PUT 200 + online 200 → 「已提交审核…」REVIEWING（submissionNo=1） | **PASS（写链窗口内达成）** | c2-07 + c2-network-f2-evidence.txt |
+| C2-4'd | 无分类/无履约草稿经窗口保存 | **BLOCKED（F3 后端 NPE/NOT NULL → 503；登记未修）** | §8.3 server.log 引文 |
+| C3-1' | HTTP 运营 APPROVE 决议（/admin/services/{id}/decision → ACTIVE v3） | PASS（HTTP） | §8.4 |
+| C3-2' | 消息中心新通知 SERVICE_REVIEWED《补全走查上门喂养》"审核通过，已上架"；打开即已读 | PASS | c3-04 / c3-05 |
+| C3-3' | 「查看服务」跳转 → /merchant/pages/services/index 呈 entry 态+「去商家工作台」——**设计门禁**（跳转不得绕过工作台，routeForNotification 注释）而非 F1 残留；随之 tap「去商家工作台」→ ALLOWED → tap「服务管理」→ 列表可达（F1 再验证）且该服务呈「已上架 ¥68」 | PASS | c3-06 / c3-07 |
+| C1-5' | 清会话后匿名：门店列表见新链门店（200 无 Authorization） | PASS | c1-05 + c1-network-anonymous-round2.txt（0 个 Authorization 头） |
+| C1-6' | 匿名门店详情 + 门店服务列表含《补全走查上门喂养》¥68（含 cover 投影 590000000000000201 + 签名 URL） | PASS | c1-06 + c1-network-anonymous-round2.txt |
+| C1-7' | 匿名服务详情（名称/说明/价格全契约绑定） | PASS | c1-07 |
+| — | 真机 | 未做（不声称） | — |
+
+「商家发布→运营审核→消费者看到」窗口内闭环（本轮）：工作台→列表（F1）→含封草稿提交 REVIEWING（窗口 UI）→运营 APPROVE（HTTP）→商家消息中心收 SERVICE_REVIEWED APPROVE 通知并已读（窗口）→跳转回工作台链路见「已上架」（窗口）→匿名 C 端四读到该服务（窗口+网络取证）。
+
+## 10. 修复轮证据文件清单
+
+- `window-shots/c2-04…c2-07`（F1 列表可达 / F2 草稿保存 / 提交封面校验 / REVIEWING 提交）
+- `window-shots/c3-04…c3-07`（APPROVE 新通知 / 通知详情已读 / 跳转目标 entry 态=设计门禁 / 列表已上架）
+- `window-shots/c1-05…c1-07`（匿名门店列表 / 门店详情含新服务 / 服务详情）
+- `window-shots/c2-network-f2-evidence.txt`（F1 列表读 + F2 无封面 POST 201 线状 + PUT/online 200 REVIEWING）
+- `window-shots/c1-network-anonymous-round2.txt`（匿名四读，0 Authorization）
