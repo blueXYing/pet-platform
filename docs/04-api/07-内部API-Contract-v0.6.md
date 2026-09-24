@@ -1755,3 +1755,8 @@ thirdparty-api 新增独立 ServiceCoverSigningApi.signServiceCover(String asset
 
 依赖/素材事实异常返回 COMMON_DEPENDENCY_UNAVAILABLE；对外服务不存在/不可见仍在签发前使用 SERVICE_NOT_FOUND。签名 GET 只针对 versionId，不为 ETag-only 对象退回签最新版本。老证照 PrivateAssetApi 接口与水印授权保持原样。
 生产装配默认关闭，显式配置签名有效期；2026-09-24用户随后开启mtxoss2版本控制，新上传对象的VERSION_ID签名GET已通过真实OSS复验；旧ETag对象未迁移，完整页面/真机验收独立保留。Schema/Event及现有HTTP响应字段不变。
+
+
+## 2026-09-24 员工管理内部命令补充
+
+员工基础五操作的已批Java接口/DTO、读写准入、幂等/CAS及SQL35审计见[35号契约](35-Merchant-Staff-Management-Contract-v0.1.md)。复用MerchantStaffDTO/Query，新增management list/get与create/update/enable命令，不开放disable。当前状态ACCEPTED_CONTRACT_NOT_IMPLEMENTED；HTTP保持27/11既有字段。

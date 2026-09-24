@@ -151,3 +151,8 @@ MER更新商家状态并持久化既有 `MerchantDisabledEvent.v1`，payload保�
 [验收矩阵](../../planning/ccr/CCR-W2-API-001/merchant-acceptance-matrix.md)逐项区分规范检查、未来真实MySQL/HTTP/Outbox验证和跨域未具备项。协议换版与下线存量语义已批准；成员绑定/主账号核销映射、员工在途检查不会以测试替身自动解除。
 
 本轮已同步07/10/11/12与商家域存储映射；后续按S2/S3实施，实际DDL与迁移仍需完整实现交接；不要求重新决定已经批准的电子协议或取消MFA。完整MER-001 AC1～4、W2-MER-001～003、架构检查、实际PR/CI和风险披露全部满足后才DONE。
+
+
+## 2026-09-24 员工基础五操作实现补充
+
+用户已确认读写门槛及独立审计/内部命令补充，见[35号契约](35-Merchant-Staff-Management-Contract-v0.1.md)与[批准回执](../../planning/ccr/CCR-W2-API-001/merchant-staff-implementation-decisions.md)。列表/详情为真实主账号范围只读；新增/编辑/启用要求真实APPROVED+SIGNED+merchant/store ACTIVE。disable原门禁保持。既有手机号清空/脱敏与外部字段不变；本条不等于实现已交付或生产开关已开启。
