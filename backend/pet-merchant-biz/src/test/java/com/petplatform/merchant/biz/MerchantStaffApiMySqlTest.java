@@ -77,6 +77,9 @@ class MerchantStaffApiMySqlTest {
             String createKey = UUID.randomUUID().toString();
             var create = new CreateMerchantStaffCommand(id(MERCHANT), id(STORE), "王小明", "13800138000",
                     "ACTIVE", false, command(createKey, OWNER));
+            assertEquals(CommonApiCodes.INVALID_ARGUMENT, assertThrows(ApiException.class,
+                    () -> api.createStaff(new CreateMerchantStaffCommand(id(MERCHANT), id(STORE),
+                            "无状态员工", null, null, false, command(UUID.randomUUID().toString(), OWNER)))).code());
             MerchantStaffCommandResult first = api.createStaff(create);
             assertTrue(first.created());
             assertFalse(first.replayed());

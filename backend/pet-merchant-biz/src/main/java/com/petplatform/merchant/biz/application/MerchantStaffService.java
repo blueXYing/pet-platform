@@ -87,7 +87,8 @@ public final class MerchantStaffService {
 
     public MerchantStaffCommandResult createStaff(CreateMerchantStaffCommand command) {
         if (command == null) invalid();
-        if (command.serviceEnabled() == null || !EMPLOYMENT.contains(command.employmentStatus())
+        if (command.serviceEnabled() == null || command.employmentStatus() == null
+                || !EMPLOYMENT.contains(command.employmentStatus())
                 || ("INACTIVE".equals(command.employmentStatus()) && command.serviceEnabled())) invalid();
         Intent intent = intent("merchant.staff.create", command.merchantId(), command.storeId(), null,
                 command.staffName(), command.phone(), command.employmentStatus(), command.serviceEnabled(),

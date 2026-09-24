@@ -1,6 +1,6 @@
 # 员工基础管理契约补充 v0.1
 
-状态：ACCEPTED_CONTRACT_NOT_IMPLEMENTED。2026-09-24。依据27号、23号及[批准回执](../../planning/ccr/CCR-W2-API-001/merchant-staff-implementation-decisions.md)。本补充仅落实五操作，disable保持IMPLEMENTATION_BLOCKED，不新建成员/子账号权限。
+状态：IMPLEMENTED_DEFAULT_OFF。2026-09-24。依据27号、23号及[批准回执](../../planning/ccr/CCR-W2-API-001/merchant-staff-implementation-decisions.md)。本补充仅落实五操作，disable保持IMPLEMENTATION_BLOCKED，不新建成员/子账号权限。
 
 ## 1. 外部接口与门槛
 
@@ -50,3 +50,9 @@ record MerchantStaffCommandResult(MerchantStaffDTO staff, boolean created, boole
 Admission先静态校验/当前授权，在独立短事务绑定意图；Execution锁绑定，锁MER自有merchant/store/staff目标与必要申请/协议事实，主库当前读复核owner/四条件/expectedVersion；业务、SQL35审计、SUCCEEDED回执同事务提交。不能仅在事务外getAdmission一次后写入，也不能把REQUIRES_NEW快照当最终授权锁。成功重放须重新核验当前会话/owner/读写权限后返回首次脱敏回执，不重跑CAS或产生第二份审计。
 
 phone按现有Schema06字段存储，返回掩码，普通日志及staff审计不落原手机/令牌/完整请求；审计物理映射见[SQL35](../03-database/35-Merchant-Staff-Audit-Schema-v0.1.sql)，只隔离验证，非生产迁移。disable/离职/删除须ORDER/SCH已批保护真正落地后另行实现。
+
+## 实现状态与运维边界（2026-09-24）
+
+五操作已实现，默认关闭，作者真实MySQL/HTTP与独立HTTP门禁证据见本轮集成回执；只读不要求保护密钥或申请事实源可用，写端所需依赖缺失503。姓名/手机号在SQL28规范参数中使用现有ProtectedValuePort的purpose隔离HMAC判等值，避免新增明文规范参数；主档仍按既有SQL06存储，HTTP回执仅返回手机号掩码。生产开关开启前须具备SQL06/28/29/35、真实审核/协议事实与保护密钥；测试建表不代表生产迁移。
+
+列表当前按门店全量读取并校验后过滤/分页，员工数增长时成本线性上升；后续优化必须保留坏事实拒绝语义。本轮不扩大为SQL分页改造。

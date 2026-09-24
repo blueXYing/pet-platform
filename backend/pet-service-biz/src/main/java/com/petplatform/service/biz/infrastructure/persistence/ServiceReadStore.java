@@ -14,7 +14,8 @@ import org.springframework.transaction.support.TransactionTemplate;
 /**
  * Executes every service read unit in one read-only MySQL repeatable-read snapshot. Merchant
  * display-eligibility reads join this transaction (joining template on the merchant side), so
- * service, merchant, store, application and signing facts come from one snapshot.
+ * service, merchant, store, application and agreement facts come from one snapshot. After
+ * visibility passes, cover signing separately locks the current private-asset facts.
  */
 public final class ServiceReadStore {
     private final SqlSessionTemplate template;

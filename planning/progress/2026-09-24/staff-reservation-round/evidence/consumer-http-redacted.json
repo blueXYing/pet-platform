@@ -1,0 +1,29 @@
+{
+  "source": "direct real HTTP approve-service.mjs capture; signed URL removed",
+  "data": {
+    "serviceId": "96543645653618688",
+    "merchantId": "96543476593807361",
+    "storeId": "96543477432668160",
+    "serviceName": "真实上传联调洗护",
+    "categoryId": "96543416539762688",
+    "categoryName": "宠物美容",
+    "salePrice": "88.00",
+    "durationMinutes": 45,
+    "fulfillmentType": "IN_STORE",
+    "description": "",
+    "cover": {
+      "coverAssetId": "96543618235453440",
+      "hasSignedUrl": true,
+      "coverUrlExpiresAt": "2026-09-24T10:00:00Z"
+    }
+  },
+  "imageGet": {
+    "serviceId": "96543645653618688",
+    "status": "ACTIVE",
+    "imageStatus": 200,
+    "imageType": "image/png",
+    "imageBytes": 4166,
+    "imageSha256": "f3451908bfdec278883c38491d4c5a2061f4c19c588257fdee91bf0c4339e945",
+    "hasVersionId": true
+  }
+}

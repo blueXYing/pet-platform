@@ -434,7 +434,13 @@ def check(spec):
             if operation_id in MERCHANT_OPERATIONS:
                 assert (method, path) == MERCHANT_OPERATIONS[operation_id], f'Merchant operation moved: {operation_id}'
                 assert operation.get('security') == [{'bearerAuth': []}], f'Merchant security changed: {operation_id}'
-                expected_status = 'IMPLEMENTED_DEFAULT_OFF_REQUIRES_PROVIDERS' if operation_id in {'merchantGetAgreement', 'merchantConsentAgreement'} else 'ACCEPTED_CONTRACT_NOT_IMPLEMENTED'
+                if operation_id in {'merchantGetAgreement', 'merchantConsentAgreement'}:
+                    expected_status = 'IMPLEMENTED_DEFAULT_OFF_REQUIRES_PROVIDERS'
+                elif operation_id in {'merchantListStaff', 'merchantGetStaff', 'merchantCreateStaff',
+                                     'merchantUpdateStaff', 'merchantEnableStaff'}:
+                    expected_status = 'IMPLEMENTED_DEFAULT_OFF'
+                else:
+                    expected_status = 'IMPLEMENTATION_BLOCKED'  # disable still needs ORDER/SCH protection
                 assert operation.get('x-contract-status') == expected_status, f'Merchant implementation status changed: {operation_id}'
                 responses = operation['responses']
                 assert {'200', '400', '401', '403', '404', '409', '503'} <= responses.keys(), f'Merchant responses missing: {operation_id}'
