@@ -19,13 +19,18 @@ import org.springframework.context.annotation.Configuration;
 public class MerchantStaffConfiguration {
     @Bean
     MerchantStaffApiImpl merchantStaffApi(DataSource source, SnowflakeIdGenerator ids,
-            ApplicationReviewFactsReader applications,
+            ObjectProvider<ApplicationReviewFactsReader> applications,
             ObjectProvider<ApplicationValidationPorts.ProtectedValuePort> protection, ObjectProvider<Clock> clock) {
+        ApplicationReviewFactsReader noApplicationFacts = merchantId -> {
+            throw new ApiException(CommonApiCodes.DEPENDENCY_UNAVAILABLE,
+                    "merchant application review facts are not configured");
+        };
         ApplicationValidationPorts.ProtectedValuePort unavailable = (purpose, value) -> {
             throw new ApiException(CommonApiCodes.DEPENDENCY_UNAVAILABLE,
                     "merchant staff canonical protection is not configured");
         };
-        return new MerchantStaffApiImpl(source, ids, applications,
+        return new MerchantStaffApiImpl(source, ids,
+                applications.getIfAvailable(() -> noApplicationFacts),
                 protection.getIfAvailable(() -> unavailable),
                 clock.getIfAvailable(Clock::systemUTC));
     }

@@ -220,4 +220,20 @@ class MerchantStaffApiMySqlTest {
                             null, null, query(OWNER)))).code());
         }
     }
+
+    @Test void missingApplicationFactsKeepProfileReadableAndWritingClosed() throws Exception {
+        try (var db = new MySqlMerchantApplicationSchemaTestDatabase()) {
+            seed(db);
+            db.jdbc().update("INSERT INTO merchant_staff(id,merchant_id,store_id,staff_name,employment_status,service_enabled,version,created_at,updated_at) VALUES(?,?,?,'原员工','ACTIVE',1,0,UTC_TIMESTAMP(3),UTC_TIMESTAMP(3))",
+                    1007L, MERCHANT, STORE);
+            var api = api(db, merchantId -> { throw new IllegalStateException("approval source down"); });
+            assertEquals("原员工", api.getStaff(new MerchantStaffQuery(id(MERCHANT), id(STORE),
+                    "1007", query(OWNER))).staffName());
+            assertEquals(CommonApiCodes.DEPENDENCY_UNAVAILABLE, assertThrows(ApiException.class,
+                    () -> api.createStaff(new CreateMerchantStaffCommand(id(MERCHANT), id(STORE),
+                            "新员工", null, "ACTIVE", false,
+                            command(UUID.randomUUID().toString(), OWNER)))).code());
+            assertEquals(0, db.jdbc().queryForObject("SELECT COUNT(*) FROM merchant_command_idempotency", Integer.class));
+        }
+    }
 }
