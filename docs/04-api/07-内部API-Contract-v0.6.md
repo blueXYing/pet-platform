@@ -256,6 +256,33 @@ public record MerchantStoreDisplayPageDTO(
 
 ---
 
+### 4.4 MerchantStoreStaffFactsApi（SCH2-D2，2026-09-24 已批准；第六查询）
+
+批准依据：SSOT §29、[联合裁决回执](../../planning/ccr/CCR-W2-API-001/schedule-review-decisions.md)及本轮用户“开始推进”。本节冻结SCH-002实现所需形状，不改变已有五查询、员工写接口或公开HTTP面。
+
+```java
+// com.petplatform.merchant.api.query
+public interface MerchantStoreStaffFactsApi {
+    StoreStaffFactsDTO listActiveStoreStaffFacts(StoreStaffFactsQuery query);
+}
+public record StoreStaffFactsQuery(String storeId, QueryContext context) {}
+// com.petplatform.merchant.api.dto
+public record StoreStaffFactsDTO(String storeId, java.util.List<String> activeStaffIds) {}
+```
+
+- 仅后端SCH消费，无owner前置；QueryContext只承载链路事实，不授予商家权限。ID为正Long十进制String，不返回姓名/手机号。
+- MER自有只读repeatable-read查询确认门店存在，读取该store_id全部员工，再校验原始employment_status∈{ACTIVE,INACTIVE}、service_enabled∈{0,1}及merchant_id与门店所属商家一致；异常503，不通过SQL状态过滤或归属JOIN静默隐藏坏行。
+- 校验后筛选ACTIVE且service_enabled=1，返回不可变、去重、按数值升序的staffId列表。无员工/交集为空是明确0，不是故障。其他store_id的员工不进入本店查询。
+- 非法query/storeId沿用COMMON_INVALID_ARGUMENT；门店明确不存在COMMON_NOT_FOUND；读取失败、未知状态或归属事实损坏COMMON_DEPENDENCY_UNAVAILABLE。SCH将门店NOT_FOUND映射SERVICE_NOT_FOUND；依赖失败仍503。
+- SCH以第六查询名单与目标service_id的ENABLED能力求交，再按同店候选员工的AVAILABLE排班区间并集是否完整覆盖整个[from,to)计人。先校验查询相关能力/排班行状态，不得SQL只筛ENABLED/AVAILABLE以隐去未知状态；CLOSED不形成覆盖，悬挂但状态合法的能力行不扩大员工名单。
+- 本查询校验范围：能力为目标service_id的全部行，合法悬挂行不加人但未知状态仍503；排班为目标store_id、MER名单与合法能力交集中的候选员工、与本次区间相交的行。候选员工同店排班的空/倒置/零长区间不得经SQL过滤隐去，按损坏事实503；其他店或合法且不相交的排班不影响本次结果。
+- 两段相邻排班可拼接，有一分钟空档不能跨越；同员工重复能力/排班不得重复计数；跨店排班不能补足覆盖。无排班/能力=0；能力/排班事实读失败、状态未知、无效区间/ID等损坏事实503。
+- 窗口、占用、能力、排班在同一次SCH只读RR快照；提供器加入当前事务，不能再调用REQUIRES_NEW另起SCH快照。独立模块调用时可新建只读RR入口。MER查询保持自己的只读快照；此为多个连续事实快照（人员查询可能逐窗口执行），不是预约授权租约。
+- 返回计数用于min(configuredCapacity,qualifiedAvailableStaffCount)，不改变既有占用扣减、不实现跨服务共享员工的并发预留。SCH-003在hold时负责权威复核；不得由本读切片宣称全链防超卖。
+- 外部HTTP字段、错误码、Schema及Event不变；默认关闭不变。实现/测试交付前，OpenAPI继续保留REQUIRES_PROVIDERS状态，交付后由集成者更新。
+
+---
+
 ## 5. pet-service-api
 
 ### 5.1 ServiceQueryApi
@@ -439,11 +466,11 @@ public record AvailabilityPageDTO(
 
 - 日期为平台业务时区（Asia/Shanghai，23 号 §2）的日历日，解释为 `[startDate 00:00, endDate+1 00:00)`；跨度 ≤31 天；`endDate>=startDate`。
 - 可见性先行：经 pet-service-api `checkBookable`（四条件合取，store 不一致/不存在/不可见 → NOT_FOUND 404 `SERVICE_NOT_FOUND` 投影）；事实源故障/状态未知 → 503 `COMMON_DEPENDENCY_UNAVAILABLE`。
-- **容量公式=SSOT §12.2 `min(configuredCapacity, qualifiedAvailableStaffCount)`，人员事实经 `QualifiedStaffFactsPort`（pet-schedule-biz 端口）获取；SCH-002 交付人员事实源前，真实装配不提供该端口——可见服务的查询失败关闭 503，不得降级为占位容量/`available=true`（SCH-D6 裁决，SQL 种子与人员计数测试替身仅限模块测试）**。
+- **容量公式=SSOT §12.2 `min(configuredCapacity, qualifiedAvailableStaffCount)`，人员事实经 `QualifiedStaffFactsPort`（pet-schedule-biz 端口）获取；SCH-002 交付人员事实源前，真实装配不提供该端口——可见服务的查询失败关闭 503，不得降级为占位容量/`available=true`（SCH-D6 裁决，SQL 种子与人员计数测试替身仅限模块测试）**。SCH-002真实人员计算形状与快照边界已在§4.4冻结；实现完成前保留本缺席状态。
 - `occupiedCount` 读 `schedule_reservation` 权威表（TEMP_LOCKED/CONFIRMED 与窗口半开区间重叠计数）。
 - 过滤与排序：仅 `status='OPEN'` 窗口（CLOSED/未知值不返回，向不可约方向关闭）；已结束（end≤now）窗口不返回；进行中窗口返回且 `available=false`；跨天窗口与查询区间部分相交时整体返回不切割；items 按 `start` 升序；空结果为正常空列表。
 - 上门接送型窗口集不区分上门/送回候选（`window_kind` Schema 增补由写入方切片 SCH-004 届时裁决；120 分钟约束归 SCH-003 服务端校验）。
-- 本查询为展示投影，不构成预约授权租约；服务资格事实与窗口为两个连续 repeatable-read 快照，跨快照漂移由 SCH-003 hold 权威复核兜底。
+- 本查询为展示投影，不构成预约授权租约；SCH-001为服务资格与SCH窗口/占用两个连续快照；SCH-002按§4.4接入后，能力/排班必须加入同一个SCH快照，MER员工查询另有独立只读快照（可能逐窗口执行）。跨快照漂移由SCH-003 hold权威复核兜底。
 
 ### 6.2 ScheduleCommandApi
 
