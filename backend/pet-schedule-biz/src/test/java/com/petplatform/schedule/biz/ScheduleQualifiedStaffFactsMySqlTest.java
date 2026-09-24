@@ -116,12 +116,14 @@ class ScheduleQualifiedStaffFactsMySqlTest {
         private final JdbcTemplate independent;
 
         Database() throws Exception {
-            String url = System.getenv().getOrDefault("SCH002_MYSQL_URL", "jdbc:mysql://127.0.0.1:33450/");
+            // CI provides MER001_MYSQL_*; an SCH002 override selects that entire credential set.
+            String prefix = System.getenv().containsKey("SCH002_MYSQL_URL") ? "SCH002" : "MER001";
+            String url = System.getenv().getOrDefault(prefix + "_MYSQL_URL", "jdbc:mysql://127.0.0.1:33450/");
             if (!url.matches("jdbc:mysql://(127\\.0\\.0\\.1|localhost):[0-9]+/")) {
-                throw new IllegalArgumentException("SCH002_MYSQL_URL must target a local server root");
+                throw new IllegalArgumentException(prefix + "_MYSQL_URL must target a local server root");
             }
-            String user = System.getenv().getOrDefault("SCH002_MYSQL_USER", "root");
-            String password = System.getenv().getOrDefault("SCH002_MYSQL_PASSWORD", "");
+            String user = System.getenv().getOrDefault(prefix + "_MYSQL_USER", "root");
+            String password = System.getenv().getOrDefault(prefix + "_MYSQL_PASSWORD", "");
             admin = new JdbcTemplate(source(url, user, password));
             source = source(url + name, user, password);
             jdbc = new JdbcTemplate(source);
