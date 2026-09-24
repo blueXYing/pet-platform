@@ -6,7 +6,7 @@ UPDATED_AT: 2026-09-24
 CURRENT_PHASE: W3_INTEGRATION_REVIEW
 CURRENT_STATUS: STAFF_FIVE_OPERATIONS_AND_SERVICE_PUBLISH_INTEGRATION_REVIEW
 VERIFIED_BASELINE: develop 980a830db418c55e0c871518d2b0feaeda0bd3b5（PR81/82用户批准合入，合并CI成功）
-NEXT_PHASE: 新PR审阅；按已批准ROC1～6接续ORDER指派完整性与SCH预约写入保护
+NEXT_PHASE: PR83/84审阅；按已批准ROC1～6接续ORDER指派完整性与SCH预约写入保护
 NEXT_PHASE_APPROVED: YES（用户批准GPT-6 Sol/xhigh多角色及员工读写门槛、预约六项方案；新PR合并/生产迁移未授权）
 
 ## 当前事实
@@ -33,3 +33,4 @@ NEXT_PHASE_APPROVED: YES（用户批准GPT-6 Sol/xhigh多角色及员工读写�
 - [上一状态](planning/history/WORK_STATE_BEFORE_20260924_STAFF_RESERVATION_ROUND.md)
 
 主目录原分支及用户三个改动保持；临时测试AppID恢复；不push main/develop。
+本轮实现PR：[PR84](https://github.com/blueXYing/pet-platform/pull/84)。功能分支已纳入PR83文档基线并保留SSOT §30/31及07号双方补充；建议先合入83再84，预合并无冲突，未替用户执行PR合并。
