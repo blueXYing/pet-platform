@@ -16,7 +16,6 @@ import com.petplatform.merchant.biz.infrastructure.provider.AesGcmProtectedValue
 import com.petplatform.merchant.biz.infrastructure.provider.MainlandSubjectCredentialProvider;
 import com.petplatform.schedule.api.query.AvailabilityQuery;
 import com.petplatform.schedule.biz.apiimpl.ScheduleQueryApiImpl;
-import com.petplatform.schedule.biz.application.QualifiedStaffFactsPort;
 import com.petplatform.service.api.dto.ServiceBookabilityDTO;
 import com.petplatform.service.api.query.ServiceBookabilityQuery;
 import com.petplatform.service.biz.apiimpl.ServiceQueryApiImpl;
@@ -57,14 +56,11 @@ import tools.jackson.databind.json.JsonMapper;
 /**
  * CCR-W2-API-001 schedule availability acceptance (W2-SCH-001..007, ruling 2026-09-23). A REAL
  * approved-and-signed merchant/store pair drives the flow; services are created through the REAL
- * writer HTTP chain (draft -> submit -> admin APPROVE), while schedule windows and reservation
- * rows are SQL-seeded (SCH-D3: no schedule writer exists) and the qualified-staff count comes
- * from the module-test seed double only.
+ * writer HTTP chain (draft -> submit -> admin APPROVE), while schedule windows, reservations,
+ * employees, capabilities and availability rows are SQL-seeded until their writers exist.
  *
- * <p>SCH-D6 (ruling): the real assembly carries NO staff facts provider, so every visible-service
- * query must fail closed with 503 COMMON_DEPENDENCY_UNAVAILABLE - never a placeholder capacity
- * with available=true. The double-backed boot context exists solely to verify the aggregation
- * logic; W2-SCH-007 re-runs the same real DataSource without the double to prove the split.
+ * <p>SCH2-D5: the enabled real assembly computes staff facts through MER and SCH-owned tables.
+ * W2-SCH-007 also exercises the defensive missing-provider constructor branch directly.
  */
 class ScheduleAvailabilityHttpTest {
   private static final String ORIGIN = "https://sch.example.invalid";
@@ -76,8 +72,6 @@ class ScheduleAvailabilityHttpTest {
   private final HttpClient http = HttpClient.newHttpClient();
   private final Map<Long, PrivateAssetQueryPort.PrivateAssetRef> privateAssets = new HashMap<>();
   private final Map<String, ServiceCoverAssetPort.CoverAssetFact> coverAssets = new HashMap<>();
-  /** Module-test seed facts only (SCH-D6): serviceId -> qualified staff count, default 3. */
-  private final Map<String, Integer> staffSeed = new HashMap<>();
   private final byte[] adminMac = key(3), adminAes = key(7);
   private final AesGcmProtectedValueProvider protector =
       new AesGcmProtectedValueProvider("qa-only-v1", key(31), key(47));
@@ -197,14 +191,6 @@ class ScheduleAvailabilityHttpTest {
                                     assetId,
                                     "https://cover.example.invalid/signed/" + assetId,
                                     java.time.Instant.now().getEpochSecond() + 3600));
-                    // SCH-D6: module-test seed double. The real assembly (production profile)
-                    // registers nothing here - every visible-service query then fails closed.
-                    beans.registerBean(
-                        "schStaffFacts",
-                        QualifiedStaffFactsPort.class,
-                        () ->
-                            (storeId, serviceId, from, to) ->
-                                staffSeed.getOrDefault(serviceId, 3));
                   })
               .run(
                   props.entrySet().stream()
@@ -263,7 +249,7 @@ class ScheduleAvailabilityHttpTest {
     String pickup =
         createActiveService(
             token, store, String.valueOf(categoryId), "PICKUP_DELIVERY", 120);
-    staffSeed.put(pickup, 0); // seed facts: no qualified staff for the pickup service
+    seedStaffFacts(merchantId, storeId, grooming); // pickup has no capability: qualified count 0
 
     // SCH-D3: no schedule writer exists, windows and reservations are SQL-seeded. Stored as UTC
     // DATETIME(3) (supplement 23 §2); the HTTP projection renders Asia/Shanghai +08:00.
@@ -288,7 +274,7 @@ class ScheduleAvailabilityHttpTest {
 
     String availability = "/api/v1/c/services/" + grooming + "/availability";
 
-    // ---- W2-SCH-001/006: aggregation over seeded facts (staff double = 3 by default).
+    // ---- W2-SCH-001/006: aggregation over real MER/SCH SQL facts (three qualified staff).
     Reply october =
         send("GET", availability + "?storeId=" + store + "&startDate=2026-10-12&endDate=2026-10-13", null, bearer(token));
     assertEquals(200, october.status(), october.redacted());
@@ -400,18 +386,23 @@ class ScheduleAvailabilityHttpTest {
         send("GET", availability + "?storeId=" + store + "&startDate=2026-10-12&endDate=2026-10-12", null, bearer(token))
             .status(),
         "restored facts are visible again");
+    long seededStaff = db.jdbc.queryForObject(
+        "SELECT id FROM merchant_staff WHERE store_id=? ORDER BY id LIMIT 1", Long.class, storeId);
+    db.jdbc.update("UPDATE merchant_staff SET employment_status='UNKNOWN' WHERE id=?", seededStaff);
+    assertUnavailable(send("GET", availability + "?storeId=" + store
+        + "&startDate=2026-10-12&endDate=2026-10-12", null, bearer(token)));
+    db.jdbc.update("UPDATE merchant_staff SET employment_status='ACTIVE' WHERE id=?", seededStaff);
 
-    // ---- W2-SCH-007 (SCH-D6 ruling): the REAL assembly has no staff facts provider - the same
-    // DataSource and the real checkBookable chain fail closed for a visible service, while the
-    // invisibility split stays intact (404 first). Seed facts never leak into the real route.
-    ScheduleQueryApiImpl realAssembly =
+    // ---- W2-SCH-007: defensive missing-provider branch remains fail-closed, while the enabled
+    // boot assembly uses the real SQL-backed provider and answers the same visible window.
+    ScheduleQueryApiImpl missingProviderAssembly =
         new ScheduleQueryApiImpl(db.source, context.getBean(ServiceQueryApiImpl.class), null);
     QueryContext ctx = new QueryContext("sch-test", OperatorType.USER, ownerId);
     ApiException closed =
         assertThrows(
             ApiException.class,
             () ->
-                realAssembly.queryAvailability(
+                missingProviderAssembly.queryAvailability(
                     new AvailabilityQuery(
                         grooming, store, LocalDate.of(2026, 10, 12), LocalDate.of(2026, 10, 12), ctx)));
     assertEquals("COMMON_DEPENDENCY_UNAVAILABLE", closed.code(), "fail closed, no placeholder");
@@ -419,7 +410,7 @@ class ScheduleAvailabilityHttpTest {
         assertThrows(
             ApiException.class,
             () ->
-                realAssembly.queryAvailability(
+                missingProviderAssembly.queryAvailability(
                     new AvailabilityQuery(
                         String.valueOf(db.ids.nextId()),
                         store,
@@ -427,8 +418,7 @@ class ScheduleAvailabilityHttpTest {
                         LocalDate.of(2026, 10, 12),
                         ctx)));
     assertEquals("SERVICE_NOT_FOUND", invisible.code(), "visibility precedes the staff gate");
-    // The boot context (seed double present) answers 200 for the same window - the split is the
-    // provider, not the data.
+    // The boot context with the provider answers 200 for the same window.
     assertEquals(
         200,
         send("GET", availability + "?storeId=" + store + "&startDate=2026-10-12&endDate=2026-10-12", null, bearer(token))
@@ -541,6 +531,37 @@ class ScheduleAvailabilityHttpTest {
     return String.valueOf(
         db.jdbc.queryForObject(
             "SELECT merchant_id FROM merchant_store WHERE id=?", Long.class, Long.parseLong(store)));
+  }
+
+  /** Explicit personnel SQL seed; it exercises MER's sixth query and SCH's real intersection. */
+  private void seedStaffFacts(long merchantId, long storeId, String serviceId) {
+    for (int i = 0; i < 3; i++) {
+      long staffId = db.ids.nextId();
+      db.jdbc.update(
+          "INSERT INTO merchant_staff"
+              + "(id,merchant_id,store_id,staff_name,employment_status,service_enabled,version,created_at,updated_at)"
+              + " VALUES(?,?,?,?,'ACTIVE',1,0,UTC_TIMESTAMP(3),UTC_TIMESTAMP(3))",
+          staffId, merchantId, storeId, "排期员工" + i);
+      db.jdbc.update(
+          "INSERT INTO staff_service_capability"
+              + "(id,staff_id,service_id,status,created_at,updated_at)"
+              + " VALUES(?,?,?,'ENABLED',UTC_TIMESTAMP(3),UTC_TIMESTAMP(3))",
+          db.ids.nextId(), staffId, Long.parseLong(serviceId));
+      seedStaffAvailability(storeId, staffId,
+          "2026-10-12 00:00:00", "2026-10-14 00:00:00");
+      seedStaffAvailability(storeId, staffId,
+          "2030-01-15 11:00:00", "2030-01-15 16:00:00");
+      seedStaffAvailability(storeId, staffId,
+          utcMinusMinutes(100), utcPlusMinutes(100));
+    }
+  }
+
+  private void seedStaffAvailability(long storeId, long staffId, String startUtc, String endUtc) {
+    db.jdbc.update(
+        "INSERT INTO staff_availability_window"
+            + "(id,store_id,staff_id,start_at,end_at,status,version,created_at,updated_at)"
+            + " VALUES(?,?,?,?,?,'AVAILABLE',0,UTC_TIMESTAMP(3),UTC_TIMESTAMP(3))",
+        db.ids.nextId(), storeId, staffId, startUtc, endUtc);
   }
 
   private long seedWindow(

@@ -2,6 +2,26 @@
 <!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
 <mapper namespace="com.petplatform.schedule.biz.infrastructure.persistence.mapper.ScheduleReadMapper">
 
+    <select id="selectServiceCapabilities"
+            resultType="com.petplatform.schedule.biz.infrastructure.persistence.entity.StaffCapabilityEntity">
+        SELECT id, staff_id, service_id, status
+        FROM staff_service_capability
+        WHERE service_id = #{serviceId}
+        ORDER BY id
+    </select>
+
+    <select id="selectCandidateStaffAvailability"
+            resultType="com.petplatform.schedule.biz.infrastructure.persistence.entity.StaffAvailabilityEntity">
+        SELECT id, store_id, staff_id, start_at, end_at, status
+        FROM staff_availability_window
+        WHERE store_id = #{storeId}
+          AND staff_id IN
+          <foreach collection="staffIds" item="staffId" open="(" separator="," close=")">
+              #{staffId}
+          </foreach>
+        ORDER BY staff_id, start_at, end_at, id
+    </select>
+
     <select id="selectOpenWindows"
             resultType="com.petplatform.schedule.biz.infrastructure.persistence.entity.ScheduleAvailabilityWindowEntity">
         SELECT id,
