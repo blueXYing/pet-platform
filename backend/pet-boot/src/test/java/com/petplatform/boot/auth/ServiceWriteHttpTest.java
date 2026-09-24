@@ -780,6 +780,145 @@ class ServiceWriteHttpTest {
             .status());
   }
 
+  /**
+   * Defect F3 regression (PR#78 window E2E evidence §8.3): the approved loose-draft contract
+   * (10号 §4.10.1 — every business field may be omitted on create) must store NULLs, not NPE on
+   * primitive unboxing or trip the SQL06 NOT NULL columns into a 503. The minimal draft then
+   * walks the full chain: workbench null projection -> PUT completes the fields -> submit ->
+   * REVIEWING -> APPROVE -> ACTIVE with C-side visibility intact.
+   */
+  @Test
+  void minimalLooseDraftStoresNullsThenCompletesReviewChain() throws Exception {
+    Map<String, Object> owner = consumerLogin("svcw-minimal", "13800007733");
+    String token = str(owner, "accessToken");
+    String ownerId = str(owner, "userId");
+    for (long id = 301; id <= 304; id++)
+      privateAssets.put(
+          id,
+          new PrivateAssetQueryPort.PrivateAssetRef(
+              id, Long.parseLong(ownerId), sha("svcw-minimal-" + id), "image/jpeg", 512, "READY"));
+    coverAssets.put(
+        COVER_ASSET,
+        new ServiceCoverAssetPort.CoverAssetFact(
+            COVER_ASSET, ownerId, "READY", "image/jpeg", 2048));
+    long merchantId = Long.parseLong(approveApplication(token, ownerId));
+    long storeId =
+        db.jdbc.queryForObject(
+            "SELECT id FROM merchant_store WHERE merchant_id=?", Long.class, merchantId);
+    long categoryId = db.ids.nextId();
+    db.jdbc.update(
+        "INSERT INTO service_category(id,category_name,created_at,updated_at)"
+            + " VALUES(?,?,UTC_TIMESTAMP(3),UTC_TIMESTAMP(3))",
+        categoryId, "上门洗护");
+    String merchant = String.valueOf(merchantId), store = String.valueOf(storeId);
+
+    // ---- Minimal draft: body carries only the addressing pair, zero business fields.
+    Map<String, Object> minimal = new LinkedHashMap<>();
+    minimal.put("merchantId", merchant);
+    minimal.put("storeId", store);
+    Reply created =
+        send(
+            "POST",
+            "/api/v1/merchant/services",
+            minimal,
+            bearer(token, UUID.randomUUID().toString()));
+    assertEquals(201, created.status(), created.redacted());
+    assertEquals("DRAFT", created.data().get("status"));
+    assertEquals("0", str(created.data(), "version"));
+    String serviceId = str(created.data(), "serviceId");
+    Map<String, Object> stored =
+        db.jdbc.queryForMap(
+            "SELECT category_id, service_name, price, duration_minutes, fulfillment_type,"
+                + " status FROM service_item WHERE id=?",
+            Long.parseLong(serviceId));
+    assertNull(stored.get("category_id"), "loose draft stores NULL category");
+    assertNull(stored.get("service_name"), "loose draft stores NULL name");
+    assertNull(stored.get("price"), "loose draft stores NULL price");
+    assertNull(stored.get("duration_minutes"), "loose draft stores NULL duration");
+    assertNull(stored.get("fulfillment_type"), "loose draft stores NULL fulfillment");
+    assertEquals("DRAFT", stored.get("status"));
+
+    // ---- Submitting the incomplete draft stays the field-level 400 (never 503/409).
+    Reply premature =
+        send(
+            "POST",
+            "/api/v1/merchant/services/" + serviceId + "/online",
+            Map.of("expectedVersion", "0"),
+            bearer(token));
+    assertEquals(400, premature.status(), premature.redacted());
+    assertEquals("COMMON_INVALID_ARGUMENT", premature.envelope().get("code"));
+
+    // ---- Workbench list/detail project the gaps as JSON nulls on the same DTO shape.
+    Reply workbench =
+        send(
+            "GET",
+            "/api/v1/merchant/services?merchantId=" + merchant + "&storeId=" + store,
+            null,
+            bearer(token));
+    assertEquals(200, workbench.status(), workbench.redacted());
+    Map<String, Object> row =
+        ((List<?>) workbench.data().get("items")).stream()
+            .map(ServiceWriteHttpTest::map)
+            .filter(r -> serviceId.equals(r.get("serviceId")))
+            .findFirst()
+            .orElseThrow();
+    assertTrue(row.containsKey("serviceName") && row.get("serviceName") == null);
+    assertTrue(row.containsKey("categoryId") && row.get("categoryId") == null);
+    assertTrue(row.containsKey("categoryName") && row.get("categoryName") == null);
+    assertTrue(row.containsKey("price") && row.get("price") == null);
+    assertTrue(row.containsKey("durationMinutes") && row.get("durationMinutes") == null);
+    assertTrue(row.containsKey("fulfillmentType") && row.get("fulfillmentType") == null);
+    assertTrue(row.containsKey("latestRejection") && row.get("latestRejection") == null);
+    Reply detail =
+        send(
+            "GET",
+            "/api/v1/merchant/services/" + serviceId
+                + "?merchantId=" + merchant + "&storeId=" + store,
+            null,
+            bearer(token));
+    assertEquals(200, detail.status(), detail.redacted());
+    assertTrue(detail.data().containsKey("serviceName") && detail.data().get("serviceName") == null);
+
+    // ---- Complete the fields, then the full chain must be intact: submit -> REVIEWING ->
+    // APPROVE -> ACTIVE -> C-side visible with the cover.
+    Map<String, Object> fields = new LinkedHashMap<>();
+    fields.put("serviceName", "上门基础洗护-最小草稿链路");
+    fields.put("categoryId", String.valueOf(categoryId));
+    fields.put("fulfillmentType", "IN_STORE");
+    fields.put("price", "88.00");
+    fields.put("durationMinutes", 60);
+    fields.put("coverAssetId", COVER_ASSET);
+    fields.put("applicablePetTypes", List.of("ALL"));
+    Reply saved =
+        send(
+            "PUT",
+            "/api/v1/merchant/services/" + serviceId,
+            withVersion(fields, "0"),
+            bearer(token));
+    assertEquals(200, saved.status(), saved.redacted());
+    assertEquals("1", str(saved.data(), "version"));
+    Reply submitted =
+        send(
+            "POST",
+            "/api/v1/merchant/services/" + serviceId + "/online",
+            Map.of("expectedVersion", "1"),
+            bearer(token));
+    assertEquals(200, submitted.status(), submitted.redacted());
+    assertEquals("REVIEWING", submitted.data().get("status"));
+    Reply approved =
+        send(
+            "POST",
+            "/api/v1/admin/services/" + serviceId + "/decision",
+            Map.of("decisionType", "APPROVE", "expectedVersion", "2"),
+            bearer(adminLogin()));
+    assertEquals(200, approved.status(), approved.redacted());
+    assertEquals("ACTIVE", approved.data().get("status"));
+    Reply visible = send("GET", "/api/v1/c/services/" + serviceId, null, bearer(token));
+    assertEquals(200, visible.status(), visible.redacted());
+    assertEquals(
+        COVER_ASSET, map(visible.data().get("cover")).get("coverAssetId"));
+  }
+
   /** Runs the real application -> review -> APPROVE chain and signs the agreement. */
   private String approveApplication(String token, String ownerId) throws Exception {
     Map<String, Object> draft = new LinkedHashMap<>();
