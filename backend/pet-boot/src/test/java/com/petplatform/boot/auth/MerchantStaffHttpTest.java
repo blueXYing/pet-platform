@@ -107,6 +107,10 @@ class MerchantStaffHttpTest {
                         bearer(token, rid())).status());
                 assertEquals(400, send("POST", path, create.replace("\"staffName\"", "\"unknown\""),
                         bearer(token, rid())).status());
+                assertEquals(200, send("POST", "/api/v1/c/auth/logout", "{}",
+                        bearer(token, rid())).status());
+                assertEquals(401, send("POST", path, create, bearer(token, key)).status(),
+                        "a revoked bearer cannot recover an earlier idempotency receipt");
             }
         }
     }

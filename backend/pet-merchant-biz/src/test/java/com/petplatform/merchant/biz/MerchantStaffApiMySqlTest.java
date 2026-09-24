@@ -15,6 +15,7 @@ import java.sql.Connection;
 import java.time.*;
 import java.util.Arrays;
 import java.util.UUID;
+import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicLong;
 import org.junit.jupiter.api.Test;
 import org.springframework.core.io.FileSystemResource;
@@ -141,12 +142,82 @@ class MerchantStaffApiMySqlTest {
                     id -> new ApplicationReviewFactsReader.Facts("APPROVED"),
                     (purpose, value) -> { throw new IllegalStateException("secret unavailable"); },
                     Clock.systemUTC());
+            db.jdbc().update("INSERT INTO merchant_staff(id,merchant_id,store_id,staff_name,employment_status,service_enabled,version,created_at,updated_at) VALUES(?,?,?,'只读员工','ACTIVE',1,0,UTC_TIMESTAMP(3),UTC_TIMESTAMP(3))",
+                    1005L, MERCHANT, STORE);
+            assertEquals("只读员工", api.getStaff(new MerchantStaffQuery(id(MERCHANT), id(STORE),
+                    "1005", query(OWNER))).staffName());
             assertEquals(CommonApiCodes.DEPENDENCY_UNAVAILABLE, assertThrows(ApiException.class,
                     () -> api.createStaff(new CreateMerchantStaffCommand(id(MERCHANT), id(STORE),
                             "安全员工", "13800138000", "ACTIVE", false,
                             command(UUID.randomUUID().toString(), OWNER)))).code());
             assertEquals(0, db.jdbc().queryForObject(
                     "SELECT COUNT(*) FROM merchant_command_idempotency", Integer.class));
+        }
+    }
+
+    @Test void internalSystemContextCannotBorrowOwnerAuthority() throws Exception {
+        try (var db = new MySqlMerchantApplicationSchemaTestDatabase()) {
+            seed(db);
+            var api = api(db, id -> new ApplicationReviewFactsReader.Facts("APPROVED"));
+            var system = new CommandContext(UUID.randomUUID().toString(), "trace", OperatorType.SYSTEM,
+                    id(OWNER), "INTERNAL");
+            assertEquals(CommonApiCodes.FORBIDDEN, assertThrows(ApiException.class,
+                    () -> api.createStaff(new CreateMerchantStaffCommand(id(MERCHANT), id(STORE),
+                            "越权员工", null, "ACTIVE", false, system))).code());
+            assertEquals(CommonApiCodes.FORBIDDEN, assertThrows(ApiException.class,
+                    () -> api.listStaff(new MerchantStaffListQuery(id(MERCHANT), id(STORE), 1, 20,
+                            null, null, new QueryContext("trace", OperatorType.SYSTEM, id(OWNER))))).code());
+            assertEquals(0, db.jdbc().queryForObject("SELECT COUNT(*) FROM merchant_staff", Integer.class));
+            assertEquals(0, db.jdbc().queryForObject("SELECT COUNT(*) FROM merchant_command_idempotency", Integer.class));
+        }
+    }
+
+    @Test void executionRechecksOwnerAfterAdmissionAndLeavesReservedBindingOnRevocation() throws Exception {
+        try (var db = new MySqlMerchantApplicationSchemaTestDatabase();
+             var pool = Executors.newSingleThreadExecutor();
+             Connection revoke = db.dataSource().getConnection()) {
+            seed(db);
+            var api = api(db, id -> new ApplicationReviewFactsReader.Facts("APPROVED"));
+            revoke.setAutoCommit(false);
+            try (var statement = revoke.prepareStatement("UPDATE merchant SET owner_user_id=? WHERE id=?")) {
+                statement.setLong(1, OTHER);
+                statement.setLong(2, MERCHANT);
+                assertEquals(1, statement.executeUpdate());
+            }
+            String requestId = UUID.randomUUID().toString();
+            var command = new CreateMerchantStaffCommand(id(MERCHANT), id(STORE), "并发员工", null,
+                    "ACTIVE", false, command(requestId, OWNER));
+            Future<String> result = pool.submit(() -> {
+                try { api.createStaff(command); return "unexpected success"; }
+                catch (ApiException failure) { return failure.code(); }
+            });
+            long deadline = System.nanoTime() + Duration.ofSeconds(3).toNanos();
+            while (db.jdbc().queryForObject("SELECT COUNT(*) FROM merchant_command_idempotency",
+                    Integer.class) == 0 && System.nanoTime() < deadline) Thread.sleep(10);
+            assertEquals(1, db.jdbc().queryForObject("SELECT COUNT(*) FROM merchant_command_idempotency", Integer.class));
+            revoke.commit();
+            assertEquals(CommonApiCodes.NOT_FOUND, result.get(5, TimeUnit.SECONDS));
+            assertEquals(0, db.jdbc().queryForObject("SELECT COUNT(*) FROM merchant_staff", Integer.class));
+            assertEquals(0, db.jdbc().queryForObject("SELECT COUNT(*) FROM merchant_staff_audit", Integer.class));
+            assertEquals("RESERVED", db.jdbc().queryForObject(
+                    "SELECT status FROM merchant_command_idempotency", String.class));
+            assertEquals(CommonApiCodes.NOT_FOUND, assertThrows(ApiException.class,
+                    () -> api.createStaff(command)).code());
+        }
+    }
+
+    @Test void inconsistentStaffMerchantInOwnedStoreIsDependencyFailure() throws Exception {
+        try (var db = new MySqlMerchantApplicationSchemaTestDatabase()) {
+            seed(db);
+            db.jdbc().update("INSERT INTO merchant_staff(id,merchant_id,store_id,staff_name,employment_status,service_enabled,version,created_at,updated_at) VALUES(?,?,?,'损坏员工','ACTIVE',1,0,UTC_TIMESTAMP(3),UTC_TIMESTAMP(3))",
+                    1006L, MERCHANT + 100, STORE);
+            var api = api(db, id -> new ApplicationReviewFactsReader.Facts("APPROVED"));
+            assertEquals(CommonApiCodes.DEPENDENCY_UNAVAILABLE, assertThrows(ApiException.class,
+                    () -> api.getStaff(new MerchantStaffQuery(id(MERCHANT), id(STORE), "1006",
+                            query(OWNER)))).code());
+            assertEquals(CommonApiCodes.DEPENDENCY_UNAVAILABLE, assertThrows(ApiException.class,
+                    () -> api.listStaff(new MerchantStaffListQuery(id(MERCHANT), id(STORE), 1, 20,
+                            null, null, query(OWNER)))).code());
         }
     }
 }

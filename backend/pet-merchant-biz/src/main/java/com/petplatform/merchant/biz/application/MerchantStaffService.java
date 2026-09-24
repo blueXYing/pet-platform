@@ -78,8 +78,9 @@ public final class MerchantStaffService {
         return store.read((mapper, agreements) -> {
             requireScope(mapper.selectOwnedScope(merchantId, storeId, owner), merchantId, storeId, owner);
             MerchantStaffReadEntity row = mapper.selectStaff(staffId);
-            if (row == null || !Objects.equals(row.getMerchantId(), merchantId)
-                    || !Objects.equals(row.getStoreId(), storeId)) notFound();
+            if (row == null || !Objects.equals(row.getStoreId(), storeId)) notFound();
+            if (!Objects.equals(row.getMerchantId(), merchantId))
+                unavailable("staff merchant ownership is damaged");
             return project(row, merchantId, storeId);
         });
     }
@@ -145,8 +146,9 @@ public final class MerchantStaffService {
                     unavailable("staff receipt scope is damaged");
                 // Current result ownership is checked again; the old receipt remains a historical projection.
                 MerchantStaffReadEntity current = mapper.selectStaff(target(first.staffId()));
-                if (current == null || !Objects.equals(current.getMerchantId(), intent.merchantId())
-                        || !Objects.equals(current.getStoreId(), intent.storeId())) notFound();
+                if (current == null || !Objects.equals(current.getStoreId(), intent.storeId())) notFound();
+                if (!Objects.equals(current.getMerchantId(), intent.merchantId()))
+                    unavailable("staff merchant ownership is damaged");
                 project(current, intent.merchantId(), intent.storeId());
                 return new MerchantStaffCommandResult(first, false, true);
             }
@@ -160,8 +162,9 @@ public final class MerchantStaffService {
                         intent.phone(), intent.employmentStatus(), intent.enabled() ? 1 : 0, now);
             } else {
                 before = mapper.lockStaff(staffId);
-                if (before == null || !Objects.equals(before.getMerchantId(), intent.merchantId())
-                        || !Objects.equals(before.getStoreId(), intent.storeId())) notFound();
+                if (before == null || !Objects.equals(before.getStoreId(), intent.storeId())) notFound();
+                if (!Objects.equals(before.getMerchantId(), intent.merchantId()))
+                    unavailable("staff merchant ownership is damaged");
                 project(before, intent.merchantId(), intent.storeId());
                 if (!Objects.equals(before.getStaffVersion(), intent.expectedVersion())) conflict("staff version changed");
                 if (before.getStaffVersion() == Long.MAX_VALUE) conflict("staff version exhausted");
