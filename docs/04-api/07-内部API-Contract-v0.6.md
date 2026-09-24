@@ -275,7 +275,7 @@ public record StoreStaffFactsDTO(String storeId, java.util.List<String> activeSt
 - 校验后筛选ACTIVE且service_enabled=1，返回不可变、去重、按数值升序的staffId列表。无员工/交集为空是明确0，不是故障。其他store_id的员工不进入本店查询。
 - 非法query/storeId沿用COMMON_INVALID_ARGUMENT；门店明确不存在COMMON_NOT_FOUND；读取失败、未知状态或归属事实损坏COMMON_DEPENDENCY_UNAVAILABLE。SCH将门店NOT_FOUND映射SERVICE_NOT_FOUND；依赖失败仍503。
 - SCH以第六查询名单与目标service_id的ENABLED能力求交，再按同店候选员工的AVAILABLE排班区间并集是否完整覆盖整个[from,to)计人。先校验查询相关能力/排班行状态，不得SQL只筛ENABLED/AVAILABLE以隐去未知状态；CLOSED不形成覆盖，悬挂但状态合法的能力行不扩大员工名单。
-- 本查询校验范围：能力为目标service_id的全部行，合法悬挂行不加人但未知状态仍503；排班为目标store_id、MER名单与合法能力交集中的候选员工、与本次区间相交的行。候选员工同店排班的空/倒置/零长区间不得经SQL过滤隐去，按损坏事实503；其他店或合法且不相交的排班不影响本次结果。
+- 本查询校验范围：能力为目标service_id的全部行，当前唯一已定义状态为ENABLED，其余包括DISABLED均503；无行表示不具备资格。合法悬挂行不加人但未知状态仍503；排班为目标store_id、MER名单与合法能力交集中的候选员工、与本次区间相交的行。候选员工同店排班的空/倒置/零长区间不得经SQL过滤隐去，按损坏事实503；其他店或合法且不相交的排班不影响本次结果。
 - 两段相邻排班可拼接，有一分钟空档不能跨越；同员工重复能力/排班不得重复计数；跨店排班不能补足覆盖。无排班/能力=0；能力/排班事实读失败、状态未知、无效区间/ID等损坏事实503。
 - 窗口、占用、能力、排班在同一次SCH只读RR快照；提供器加入当前事务，不能再调用REQUIRES_NEW另起SCH快照。独立模块调用时可新建只读RR入口。MER查询保持自己的只读快照；此为多个连续事实快照（人员查询可能逐窗口执行），不是预约授权租约。
 - 返回计数用于min(configuredCapacity,qualifiedAvailableStaffCount)，不改变既有占用扣减、不实现跨服务共享员工的并发预留。SCH-003在hold时负责权威复核；不得由本读切片宣称全链防超卖。
