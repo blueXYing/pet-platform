@@ -54,7 +54,7 @@ function checkServiceFields(v: Record<string, any>): ServiceItemView {
   if (!isId(v.serviceId) || !isId(v.merchantId) || !isId(v.storeId) || !isId(v.categoryId)) invalid()
   if (typeof v.serviceName !== 'string' || !v.serviceName || [...v.serviceName].length > 50) invalid()
   if (typeof v.categoryName !== 'string' || !v.categoryName || [...v.categoryName].length > 50) invalid()
-  if (!Number.isSafeInteger(v.durationMinutes) || v.durationMinutes < 1 || v.durationMinutes > 24 * 60) invalid()
+  if (!Number.isSafeInteger(v.durationMinutes) || v.durationMinutes < 1 || v.durationMinutes > 10080) invalid()
   if (v.fulfillmentType !== 'IN_STORE' && v.fulfillmentType !== 'PICKUP_DELIVERY') invalid()
   return { serviceId: v.serviceId, merchantId: v.merchantId, storeId: v.storeId, serviceName: v.serviceName,
     categoryId: v.categoryId, categoryName: v.categoryName, salePrice: price(v.salePrice),

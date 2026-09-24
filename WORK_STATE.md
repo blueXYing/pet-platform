@@ -1,34 +1,36 @@
 # Work State
 
 PROJECT: 宠物平台 V1.0
-STATE_VERSION: 9.0
+STATE_VERSION: 10.0
 UPDATED_AT: 2026-09-24
 CURRENT_PHASE: W3_INTEGRATION_REVIEW
-CURRENT_STATUS: SCH002_IMPLEMENTED_INDEPENDENT_QA_PASSED_PENDING_PR_INTEGRATION
-VERIFIED_BASELINE: develop d0b7ff52b47d8bee9db496d9f4d18821235bbeda（PR80获用户批准合入，合并后CI成功）
-NEXT_PHASE: SCH-002实现PR与SCH-004规范PR审阅；人员/排期写入和SCH-003共同保护契约接续
-NEXT_PHASE_APPROVED: YES（用户批准Sol/xhigh多角色推进；新PR合并与生产启用仍需单独授权）
+CURRENT_STATUS: STAFF_FIVE_OPERATIONS_AND_SERVICE_PUBLISH_INTEGRATION_REVIEW
+VERIFIED_BASELINE: develop 980a830db418c55e0c871518d2b0feaeda0bd3b5（PR81/82用户批准合入，合并CI成功）
+NEXT_PHASE: PR83/84审阅；按已批准ROC1～6接续ORDER指派完整性与SCH预约写入保护
+NEXT_PHASE_APPROVED: YES（用户批准GPT-6 Sol/xhigh多角色及员工读写门槛、预约六项方案；新PR合并/生产迁移未授权）
 
 ## 当前事实
 
-- PR80已合入。mtxoss2由用户自行开启版本控制，新合成封面真实OSS/ClamAV上传、精确版本签名GET和19项兼容性检查通过。旧ETag对象未迁移，完整服务发布UI/真机仍需独立验收。
-- 本分支已实现SCH-002真实人员查询→服务能力/完整排班交集→min；默认关、HTTP登录及六字段不变。模块/既有HTTP/独立QA定向通过，最终全量与远端门禁以实现PR回执为准；尚未合入develop。
-- 空人员事实0，未知/故障503；不能用总人数或配置占位。SCH窗口/占用/能力/排班共享快照，MER独立快照，不代替hold权威证明。
-- 用户已确认SCH-004四项技术方案：[PR81](https://github.com/blueXYing/pet-platform/pull/81)承载共同锁/当前事实、独立能力版本、整窗双claim、旧GENERAL保护规范；未实施代码/迁移。完整容量证明、指派生命周期、hold-order绑定等仍属后续联合契约。
-- 三角色独立worktree，由根Work统一集成；QA另以单独提交修复本轮CI暴露的既有通知测试等待竞态，不改通知生产业务。
-- MER员工接口、SCH004维护接口、M-002页面及订单/支付/履约/退款主链不会因读查询实现自动完成。
+- PR80/81/82已合入，不再待合并。SCH-002真实可约读模型已完成，默认关；SCH-004四项保护契约已批，不能将读容量视为预约并发保障。
+- 本轮已实现员工列表、详情、新增、编辑、启用：真实OWNER；读取与经营写入分离；写入APPROVED+SIGNED+merchant/store ACTIVE；幂等/CAS、锁内复核与SQL35独立审计。停用/离职/删除/成员绑定不在实现范围。
+- 服务发布已在开发者工具完成真实封面上传→保存→提交→运营HTTP批准→C真实图片显示；事件PUBLISHED且SERVICE消息一条。已修签名与只读事务冲突、可空说明和整分钟到期格式三个实际集成问题。详细接缝、环境异常和图片清理记录见回执，不等同生产或真机验收。
+- [PR83](https://github.com/blueXYing/pet-platform/pull/83)预约保护六项方案获用户批准：全店完整人员证明、接送同人双段、到店单窗、hold/订单原子绑定、ORDER当前指派完整性、改期保留原指派失败留旧。契约分支负责同步批准回执/36号/SSOT§31；未实现SCH-003，也未执行迁移。
+- 各角色独立worktree，作者测试与独立HTTP验收分开；完整集成门禁见本轮验证回执。默认开关保持关闭；新PR等待人工审阅与合并授权。
 
 ## 下一步
 
-1. 审阅实现PR的全量/CI与风险及SCH004规范PR；新PR未经批准不合并。
-2. MER员工真实写入、SCH004窗口/排班/能力及M-002页面按原模块分工；保护事实/证明缺失时受影响减员继续失败关闭。
-3. SCH003/ORDER补齐跨服务共享人员保护证明、指派完整性、到店GENERAL关联及hold-order绑定，再实现预约权威链；已批120分钟、整窗和部分关闭不重审。
-4. 服务发布完整页面链、旧封面处理与真机验收独立推进；生产ID/密钥/迁移/HTTPS/运维/材料保留期限门禁保留。
+1. 审阅本轮员工/服务实现PR及已批预约契约PR，CI通过也不自动合并。
+2. 按36号及34号先实现ORDER全量当前指派完整性查询、同店共同锁与SCH权威事实/精确容量证明；补真实MySQL并发/回滚证据。
+3. 接续SCH-003 hold/confirm/release/swap与ORDER创建原子绑定，再解锁SCH-004减员、独立能力版本CAS和双方向完整窗口维护；旧GENERAL隔离继续保留。
+4. MER员工页面/M-002排期维护页面仍未交付；服务发布手机真机、旧ETag处理及生产部署/密钥/迁移/HTTPS门禁另行验收。
 
 ## 证据
 
-- [派发及文件归属](planning/progress/2026-09-24/schedule-round/DISPATCH.md)
-- [实现交接](planning/issues/wave-3/SCH-002-capacity/HANDOFF.md)
-- [独立QA](planning/issues/wave-3/SCH-002-qa/QA-PLAN.md)
-- [上一状态](planning/history/WORK_STATE_BEFORE_20260924_SCH002_IMPLEMENTATION.md)
-- 主目录原分支及三个改动保持，新工作区不覆盖用户资料，不push main/develop，不擅自启用生产。
+- [本轮分工](planning/progress/2026-09-24/staff-reservation-round/DISPATCH.md)
+- [独立员工QA](planning/issues/wave-3/MER-staff-qa/QA-PLAN.md)
+- [服务发布联调](planning/progress/2026-09-24/staff-reservation-round/SERVICE-PUBLISH-ACCEPTANCE.md)
+- [本轮集成回执](planning/progress/2026-09-24/staff-reservation-round/INTEGRATION.md)
+- [上一状态](planning/history/WORK_STATE_BEFORE_20260924_STAFF_RESERVATION_ROUND.md)
+
+主目录原分支及用户三个改动保持；临时测试AppID恢复；不push main/develop。
+本轮实现PR：[PR84](https://github.com/blueXYing/pet-platform/pull/84)。功能分支已纳入PR83文档基线并保留SSOT §30/31及07号双方补充；建议先合入83再84，预合并无冲突，未替用户执行PR合并。

@@ -58,6 +58,8 @@ public final class CBearerSessionFilter extends OncePerRequestFilter {
         || path.equals("/api/v1/merchant/services")
         || path.startsWith("/api/v1/merchant/services/")
         || path.equals("/api/v1/merchant/service-categories")
+        || path.equals("/api/v1/merchant/staff")
+        || path.startsWith("/api/v1/merchant/staff/")
         || path.matches("/api/v1/c/stores/[^/]+/services")
         || path.startsWith("/api/v1/c/services/");
   }
@@ -123,7 +125,9 @@ public final class CBearerSessionFilter extends OncePerRequestFilter {
     return path.equals("/api/v1/c/merchant-application-cities")
         || path.equals("/api/v1/c/private-assets")
         || path.startsWith("/api/v1/c/merchant-applications")
-        || path.startsWith("/api/v1/merchant/agreement");
+        || path.startsWith("/api/v1/merchant/agreement")
+        || path.equals("/api/v1/merchant/staff")
+        || path.startsWith("/api/v1/merchant/staff/");
   }
 
   private static String traceJson(HttpServletRequest req) {

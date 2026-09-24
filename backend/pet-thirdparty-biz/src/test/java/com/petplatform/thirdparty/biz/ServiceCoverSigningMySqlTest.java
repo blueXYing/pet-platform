@@ -15,6 +15,42 @@ class ServiceCoverSigningMySqlTest {
   private final QueryContext context = new QueryContext("test", OperatorType.SYSTEM, "test");
 
   @Test
+  void signingSuspendsCatalogReadOnlySnapshotAndRechecksCurrentAsset() throws Exception {
+    try (var db = new PrivateAssetMySqlTestDatabase()) {
+      new PrivateAssetRepository(db.dataSource()).transaction(m -> {
+        m.insertAsset(101, 77, "SERVICE_COVER", "merchant-materials/77/101/source",
+            "merchant-materials/77/101/normalized-v1", "a".repeat(64));
+        m.updateSourceStored(101, "version:source1"); m.updateScanning(101);
+        m.updateReady(101, "version:final1", "b".repeat(64), "image/png", 100, "test", "CLEAN");
+        return null;
+      });
+      AtomicInteger calls = new AtomicInteger();
+      var api = new ServiceCoverSigningApiImpl(db.dataSource(), (k, v) -> {
+        assertFalse(org.springframework.transaction.support.TransactionSynchronizationManager.isCurrentTransactionReadOnly());
+        calls.incrementAndGet();
+        return new ServiceCoverObjectSigner.SignedObject("https://test.example.invalid/x", Instant.now().plusSeconds(600));
+      }, Clock.systemUTC());
+      var manager = new org.springframework.jdbc.datasource.DataSourceTransactionManager(db.dataSource());
+      var catalog = new org.springframework.transaction.support.TransactionTemplate(manager);
+      catalog.setReadOnly(true);
+      catalog.setIsolationLevel(org.springframework.transaction.TransactionDefinition.ISOLATION_REPEATABLE_READ);
+      catalog.execute(status -> {
+        assertEquals("READY", db.jdbc().queryForObject("SELECT status FROM private_asset WHERE id=101", String.class));
+        assertEquals("101", api.signServiceCover("101", context).assetId());
+        assertTrue(org.springframework.transaction.support.TransactionSynchronizationManager.isCurrentTransactionReadOnly());
+        var retire = new org.springframework.transaction.support.TransactionTemplate(manager);
+        retire.setPropagationBehavior(org.springframework.transaction.TransactionDefinition.PROPAGATION_REQUIRES_NEW);
+        retire.execute(s -> db.jdbc().update("UPDATE private_asset SET status='REJECTED' WHERE id=101"));
+        assertEquals("READY", db.jdbc().queryForObject("SELECT status FROM private_asset WHERE id=101", String.class));
+        assertThrows(ApiException.class, () -> api.signServiceCover("101", context));
+        assertTrue(org.springframework.transaction.support.TransactionSynchronizationManager.isCurrentTransactionReadOnly());
+        return null;
+      });
+      assertEquals(1, calls.get(), "a stale catalog snapshot must not sign a retired asset");
+    }
+  }
+
+  @Test
   void onlyReadyServiceCoversReachTheSignerAndPointersStayPrivate() throws Exception {
     try (var db = new PrivateAssetMySqlTestDatabase()) {
       var repository = new PrivateAssetRepository(db.dataSource());

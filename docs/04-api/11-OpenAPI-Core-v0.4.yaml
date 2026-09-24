@@ -323,7 +323,7 @@ paths:
       - Merchant-Profile
       summary: merchantListStaff
       operationId: merchantListStaff
-      x-contract-status: ACCEPTED_CONTRACT_NOT_IMPLEMENTED
+      x-contract-status: IMPLEMENTED_DEFAULT_OFF
       x-audience: MINIAPP
       x-authorization: Current OWNER of the requested merchant; no client identity assertion.
       security:
@@ -444,7 +444,7 @@ paths:
       - Merchant-Profile
       summary: merchantCreateStaff
       operationId: merchantCreateStaff
-      x-contract-status: ACCEPTED_CONTRACT_NOT_IMPLEMENTED
+      x-contract-status: IMPLEMENTED_DEFAULT_OFF
       x-audience: MINIAPP
       x-authorization: Current OWNER of the requested merchant; no client identity assertion.
       security:
@@ -560,7 +560,7 @@ paths:
       - Merchant-Profile
       summary: merchantGetStaff
       operationId: merchantGetStaff
-      x-contract-status: ACCEPTED_CONTRACT_NOT_IMPLEMENTED
+      x-contract-status: IMPLEMENTED_DEFAULT_OFF
       x-audience: MINIAPP
       x-authorization: Current OWNER of the requested merchant; no client identity assertion.
       security:
@@ -671,7 +671,7 @@ paths:
       - Merchant-Profile
       summary: merchantUpdateStaff
       operationId: merchantUpdateStaff
-      x-contract-status: ACCEPTED_CONTRACT_NOT_IMPLEMENTED
+      x-contract-status: IMPLEMENTED_DEFAULT_OFF
       x-audience: MINIAPP
       x-authorization: Current OWNER of the requested merchant; no client identity assertion.
       security:
@@ -780,7 +780,7 @@ paths:
       - Merchant-Profile
       summary: merchantEnableStaff
       operationId: merchantEnableStaff
-      x-contract-status: ACCEPTED_CONTRACT_NOT_IMPLEMENTED
+      x-contract-status: IMPLEMENTED_DEFAULT_OFF
       x-audience: MINIAPP
       x-authorization: Current OWNER of the requested merchant; no client identity assertion.
       security:
@@ -889,7 +889,7 @@ paths:
       - Merchant-Profile
       summary: merchantDisableStaff
       operationId: merchantDisableStaff
-      x-contract-status: ACCEPTED_CONTRACT_NOT_IMPLEMENTED
+      x-contract-status: IMPLEMENTATION_BLOCKED
       x-audience: MINIAPP
       x-authorization: Current OWNER of the requested merchant; no client identity assertion.
       security:

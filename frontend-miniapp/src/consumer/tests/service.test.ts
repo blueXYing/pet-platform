@@ -44,6 +44,10 @@ test('service decoders enforce the frozen field set, ID strings and two-decimal 
   assert.equal(decodeServiceItem({ ...itemSource, cover: { coverAssetId: '40001', coverUrl: 'https://x/y', coverUrlExpiresAt: '2026-09-22T12:00:00Z' } }).cover?.coverUrlExpiresAt, '2026-09-22T12:00:00Z')
   assert.throws(() => decodeServiceItem({ ...itemSource, cover: { coverAssetId: '40001', coverUrl: 'https://x/y', coverUrlExpiresAt: '2026-09-22 12:00:00Z' } }), /INVALID_RESPONSE/)
   assert.equal(item.fulfillmentType, 'IN_STORE')
+  // Published durations use the approved service-write bound, including durations over a day.
+  assert.equal(decodeServiceItem({ ...itemSource, durationMinutes: 10080 }).durationMinutes, 10080)
+  for (const durationMinutes of [0, 10081, 1.5, '45'])
+    assert.throws(() => decodeServiceItem({ ...itemSource, durationMinutes }), /INVALID_RESPONSE/)
   // unknown extra field (e.g. a smuggled bookability object) is rejected
   assert.throws(() => decodeServiceItem({ ...itemSource, bookable: true }), /INVALID_RESPONSE/)
   // missing field rejected

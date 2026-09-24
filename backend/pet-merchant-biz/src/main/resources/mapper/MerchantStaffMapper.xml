@@ -1,0 +1,56 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.petplatform.merchant.biz.infrastructure.persistence.mapper.MerchantStaffMapper">
+  <update id="setTimeZoneUtc">SET time_zone = '+00:00'</update>
+  <update id="setLockWaitTimeout2Seconds">SET innodb_lock_wait_timeout = 2</update>
+  <select id="selectOwnedScope" resultType="com.petplatform.merchant.biz.infrastructure.persistence.entity.MerchantStaffScopeEntity">
+    SELECT m.id AS merchant_id,m.owner_user_id,m.status AS merchant_status,s.id AS store_id,s.status AS store_status
+    FROM merchant m JOIN merchant_store s ON s.merchant_id=m.id
+    WHERE m.id=#{merchantId} AND s.id=#{storeId} AND m.owner_user_id=#{ownerUserId}
+  </select>
+  <select id="lockOwnedScope" resultType="com.petplatform.merchant.biz.infrastructure.persistence.entity.MerchantStaffScopeEntity">
+    SELECT m.id AS merchant_id,m.owner_user_id,m.status AS merchant_status,s.id AS store_id,s.status AS store_status
+    FROM merchant m JOIN merchant_store s ON s.merchant_id=m.id
+    WHERE m.id=#{merchantId} AND s.id=#{storeId} AND m.owner_user_id=#{ownerUserId} FOR UPDATE
+  </select>
+  <select id="lockApplication" resultType="long">
+    SELECT id FROM merchant_application WHERE reserved_merchant_id=#{merchantId} FOR UPDATE
+  </select>
+  <sql id="staffColumns">id AS staff_id,merchant_id,store_id,staff_name,phone,employment_status,service_enabled,version AS staff_version</sql>
+  <select id="listAllStaff" resultType="com.petplatform.merchant.biz.infrastructure.persistence.entity.MerchantStaffReadEntity">
+    SELECT <include refid="staffColumns"/> FROM merchant_staff WHERE store_id=#{storeId} ORDER BY id ASC
+  </select>
+  <select id="selectStaff" resultType="com.petplatform.merchant.biz.infrastructure.persistence.entity.MerchantStaffReadEntity">
+    SELECT <include refid="staffColumns"/> FROM merchant_staff WHERE id=#{staffId}
+  </select>
+  <select id="lockStaff" resultType="com.petplatform.merchant.biz.infrastructure.persistence.entity.MerchantStaffReadEntity">
+    SELECT <include refid="staffColumns"/> FROM merchant_staff WHERE id=#{staffId} FOR UPDATE
+  </select>
+  <insert id="insertStaff">
+    INSERT INTO merchant_staff(id,merchant_id,store_id,staff_name,phone,employment_status,service_enabled,version,created_at,updated_at)
+    VALUES(#{staffId},#{merchantId},#{storeId},#{staffName},#{phone},#{employmentStatus},#{serviceEnabled},0,#{now},#{now})
+  </insert>
+  <update id="updateStaff">
+    UPDATE merchant_staff SET staff_name=#{staffName},phone=#{phone},version=version+1,updated_at=#{now}
+    WHERE id=#{staffId} AND merchant_id=#{merchantId} AND store_id=#{storeId} AND version=#{expectedVersion}
+  </update>
+  <update id="enableStaff">
+    UPDATE merchant_staff SET service_enabled=1,version=version+1,updated_at=#{now}
+    WHERE id=#{staffId} AND merchant_id=#{merchantId} AND store_id=#{storeId} AND employment_status='ACTIVE' AND version=#{expectedVersion}
+  </update>
+  <insert id="insertAudit">
+    INSERT INTO merchant_staff_audit(id,actor_type,actor_id,action_code,merchant_id,store_id,staff_id,request_key,request_id,trace_id,from_employment_status,to_employment_status,from_service_enabled,to_service_enabled,from_version,to_version,occurred_at)
+    VALUES(#{id},'USER',#{actorId},#{action},#{merchantId},#{storeId},#{staffId},#{requestKey},#{requestId},#{traceId},#{fromStatus},#{toStatus},#{fromEnabled},#{toEnabled},#{fromVersion},#{toVersion},#{now})
+  </insert>
+  <insert id="insertBinding">
+    INSERT INTO merchant_command_idempotency(id,request_key,canonical_version,params_sha256,params_canonical,status,receipt_json,trace_id,created_at,succeeded_at)
+    VALUES(#{id},#{requestKey},#{canonicalVersion},#{paramsSha256},#{paramsCanonical},'RESERVED',NULL,#{traceId},UTC_TIMESTAMP(3),NULL)
+  </insert>
+  <select id="selectBindingForUpdate" resultType="com.petplatform.merchant.biz.infrastructure.persistence.entity.MerchantCommandBindingEntity">
+    SELECT id,canonical_version,params_sha256,params_canonical,status,receipt_json FROM merchant_command_idempotency WHERE request_key=#{requestKey} FOR UPDATE
+  </select>
+  <update id="markBindingSucceeded">
+    UPDATE merchant_command_idempotency SET status='SUCCEEDED',receipt_json=#{receiptJson},succeeded_at=UTC_TIMESTAMP(3)
+    WHERE request_key=#{requestKey} AND status='RESERVED'
+  </update>
+</mapper>

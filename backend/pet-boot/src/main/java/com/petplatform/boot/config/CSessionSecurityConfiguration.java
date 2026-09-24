@@ -36,6 +36,7 @@ public class CSessionSecurityConfiguration {
       @Value("${pet.private-assets.enabled:false}") boolean privateAssetsEnabled,
       @Value("${pet.service.command.enabled:false}") boolean serviceCommandEnabled,
       @Value("${pet.store.query.enabled:false}") boolean storeQueryEnabled,
+      @Value("${pet.merchant.staff.enabled:false}") boolean merchantStaffEnabled,
       @Value("${pet.schedule.query.enabled:false}") boolean scheduleQueryEnabled)
       throws Exception {
     http.securityMatcher("/api/v1/c/**", "/api/v1/merchant/**")
@@ -101,6 +102,15 @@ public class CSessionSecurityConfiguration {
                   .permitAll();
               a.requestMatchers(HttpMethod.GET, "/api/v1/merchant/service-categories").permitAll();
             }
+            if (merchantStaffEnabled) {
+              // Only the five approved staff operations. Bearer is resolved by the filter;
+              // ownership and read/write eligibility are checked by the MER command/query.
+              a.requestMatchers(HttpMethod.GET, "/api/v1/merchant/staff", "/api/v1/merchant/staff/*")
+                  .permitAll();
+              a.requestMatchers(HttpMethod.POST, "/api/v1/merchant/staff", "/api/v1/merchant/staff/*/enable")
+                  .permitAll();
+              a.requestMatchers(HttpMethod.PUT, "/api/v1/merchant/staff/*").permitAll();
+            }
             if (scheduleQueryEnabled) {
               // Schedule availability (CCR-W2-API-001 SCH-001, SCH-D1 login ruling): GET-only
               // registration behind the assembly switch. Unlike the STR-D8 browse family this
@@ -140,6 +150,8 @@ public class CSessionSecurityConfiguration {
                 || req.getRequestURI().equals("/api/v1/c/private-assets")
                 || req.getRequestURI().startsWith("/api/v1/c/merchant-applications")
                 || req.getRequestURI().startsWith("/api/v1/merchant/agreement")
+                || req.getRequestURI().equals("/api/v1/merchant/staff")
+                || req.getRequestURI().startsWith("/api/v1/merchant/staff/")
             ? "\"success\":false,"
             : "";
     res.getWriter()

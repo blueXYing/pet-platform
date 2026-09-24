@@ -115,8 +115,9 @@ public final class ServiceQueryService {
     /** C visibility rule: NOT_FOUND unless the four-condition conjunction holds. */
     public ServiceSnapshotDTO visibleService(ServiceSnapshotQuery query) {
         if (query == null) invalid("query is required");
-        // Facts must be read inside the snapshot transaction: the signing facts port joins the
-        // caller's transaction, and eligibility/visibility share one repeatable-read view.
+        // Merchant agreement/eligibility and service visibility share one repeatable-read view.
+        // After visibility passes, the cover signer suspends this read-only transaction and
+        // validates current asset readiness under its own short lock before local presigning.
         return store.read(mapper -> {
             ServiceItemReadEntity row = mapper.selectServiceById(targetId(query.serviceId()));
             if (row == null || !"ACTIVE".equals(row.getStatus())) notFound();
@@ -162,7 +163,6 @@ public final class ServiceQueryService {
                 snapshot.coverAssetId(),
                 signed.url(),
                 java.time.Instant.ofEpochSecond(signed.expiresAtEpochSeconds())
-                        .atOffset(java.time.ZoneOffset.UTC)
                         .toString());
     }
 
