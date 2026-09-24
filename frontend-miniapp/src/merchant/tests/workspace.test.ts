@@ -148,3 +148,58 @@ test('MINI-003 old page hide/dispose does not revoke a newer page admission', as
   assert.equal(scope.current?.workspace, 'merchant')
   assert.equal(next.getSnapshot().status, 'allowed')
 })
+
+test('F1 workbench-initiated child navigation keeps the admission coordinates for the target page', async () => {
+  const { page, scope } = setup()
+  await page.enter(fixtureDeps('allowed'))
+  // navigateTo hides the workbench first: handoffToChild marks the coordinates as donated so
+  // the on-hide leave() must not reset them (the service pages gate on merchant coordinates).
+  page.handoffToChild()
+  page.leave()
+  assert.equal(scope.current?.workspace, 'merchant')
+  assert.equal(scope.current?.merchantId, singleStore.merchantId)
+  assert.equal(scope.current?.storeId, singleStore.storeId)
+})
+
+test('F1 a failed child navigation re-owns the coordinates; a later leave still resets', async () => {
+  const { page, scope } = setup()
+  await page.enter(fixtureDeps('allowed'))
+  page.handoffToChild()
+  page.handoffCancelled() // navigateTo rejected without hiding the page
+  page.leave()
+  assert.deepEqual(scope.current, consumerFixture)
+})
+
+test('F1 dispose resets a still-current donation (workbench stack destroyed under a child page)', async () => {
+  const { page, scope } = setup()
+  await page.enter(fixtureDeps('allowed'))
+  page.handoffToChild()
+  page.leave() // hidden by navigateTo: donation active, coordinates kept
+  assert.equal(scope.current?.workspace, 'merchant')
+  page.dispose() // reLaunch destroyed the whole stack while the child held the coordinates
+  assert.deepEqual(scope.current, consumerFixture)
+})
+
+test('F1 dispose leaves a newer owner untouched after a donation was superseded', async () => {
+  const { page, scope } = setup()
+  await page.enter(fixtureDeps('allowed'))
+  page.handoffToChild()
+  page.leave() // donation active at this revision
+  const newer = new MerchantWorkspace(scope)
+  await newer.enter(fixtureDeps('allowed')) // bumps the revision; the newer page owns them
+  page.dispose() // old workbench unmounts; its donation is stale, ownership is elsewhere
+  assert.equal(scope.current?.workspace, 'merchant')
+  assert.equal(newer.getSnapshot().status, 'allowed')
+})
+
+test('F1 returning from a child page re-runs admission; leaving afterwards resets', async () => {
+  const { page, scope } = setup()
+  await page.enter(fixtureDeps('allowed'))
+  page.handoffToChild()
+  page.leave()
+  await page.enter(fixtureDeps('allowed')) // useDidShow on navigateBack
+  assert.equal(page.getSnapshot().status, 'allowed')
+  assert.equal(scope.current?.workspace, 'merchant')
+  page.leave()
+  assert.deepEqual(scope.current, consumerFixture)
+})

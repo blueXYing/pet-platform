@@ -177,6 +177,9 @@ test('submit/draft validators mirror the contract rules', () => {
   const problems = draftInputProblems({ ...complete, price: '10.00', listPrice: '9.00' }, categories)
   assert.ok(problems.some(item => item.includes('划线价')))
   assert.ok(draftInputProblems({ ...complete, serviceName: 'x' }, categories).some(item => item.includes('服务名称')))
+  // F2: the A side rejects non-positive prices on drafts too — the loose validator mirrors it.
+  assert.ok(draftInputProblems({ ...complete, price: '0.00' }, categories).some(item => item.includes('销售价格需大于0')))
+  assert.equal(draftInputProblems(complete, categories).length, 0)
 })
 
 const ok = (data: unknown) => ({ statusCode: 200, data: { code: 'SUCCESS', success: true, data } })
@@ -209,17 +212,40 @@ test('real repository wires the six merchant routes with journaled request ids',
   const repository = new RealServiceManageRepository(api, () => '957001', () => '957002')
   assert.equal((await repository.categories()).length, fixtureCategories.length)
   await repository.list(1, 20)
+  // F2 (window E2E 2026-09-24): a loose draft (no cover/category/fulfillment/price/duration;
+  // name optional) must OMIT those fields — the C parser treats ''/0 as malformed and answers
+  // 400; omitted or null is the "not provided" draft form.
+  await repository.create('merchant-service:create-draft', draftOnly)
+  await repository.create('merchant-service:create-bare', emptyDraft())
+  const posts = seen.filter(call => call.method === 'POST' && call.path === '/api/v1/merchant/services')
+  assert.equal(posts.length, 2, 'loose-draft creates captured')
+  const namedBody = posts[0]!.data!, bareBody = posts[1]!.data!
+  for (const absent of ['coverAssetId', 'categoryId', 'fulfillmentType', 'price', 'durationMinutes', 'listPrice']) {
+    assert.ok(!(absent in namedBody), `name-only draft must omit ${absent}`)
+    assert.ok(!(absent in bareBody), `bare draft must omit ${absent}`)
+  }
+  assert.ok(!('serviceName' in bareBody), 'bare draft must omit the blank name')
+  assert.equal(namedBody.serviceName, draftOnly.serviceName)
+  assert.deepEqual(bareBody.applicablePetTypes, [])
+  assert.equal(bareBody.merchantId, '957001')
+  assert.equal(bareBody.storeId, '957002')
+  // A complete draft carries every chosen field, cover included (flat anchor).
   const created = await repository.create('merchant-service:create', complete)
   assert.equal(created.status, 'DRAFT')
   const submitted = await repository.submitOnline('merchant-service:30101:online', '30101', created.version)
   assert.equal(submitted.status, 'REVIEWING')
   const categoriesCall = seen.find(call => call.path === '/api/v1/merchant/service-categories')!
   const listCall = seen.find(call => call.path === '/api/v1/merchant/services' && call.method === 'GET')!
-  const createCall = seen.find(call => call.method === 'POST' && call.path === '/api/v1/merchant/services')!
+  const postsAll = seen.filter(call => call.method === 'POST' && call.path === '/api/v1/merchant/services')
+  const createCall = postsAll.find(call => call.data?.coverAssetId === complete.coverAssetId)!
   const onlineCall = seen.find(call => call.path === '/api/v1/merchant/services/30101/online')!
   assert.ok(categoriesCall)
   assert.equal(listCall.data?.merchantId, '957001')
   assert.equal(listCall.data?.storeId, '957002')
+  // The complete draft carries the chosen cover anchor on the wire.
+  assert.equal(createCall.data?.coverAssetId, complete.coverAssetId)
+  assert.equal(createCall.data?.serviceName, complete.serviceName)
+  assert.equal(createCall.data?.durationMinutes, complete.durationMinutes)
   // Each journaled command carries its own UUID request id on the wire.
   assert.match(String(createCall.requestId), /^[0-9a-f-]{36}$/)
   assert.match(String(onlineCall.requestId), /^[0-9a-f-]{36}$/)

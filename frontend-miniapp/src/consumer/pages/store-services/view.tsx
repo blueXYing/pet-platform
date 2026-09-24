@@ -57,12 +57,14 @@ export function ServiceRow({ line, idPrefix, onOpen, onBook }: { line: ServiceCa
  * every field the nine-field projection does not carry (rating, monthly sold, distance, tags,
  * intro, opening hours, promo, reviews) stays DESIGN-SAMPLE copy registered as contract gaps.
  */
-export function StoreServicesDesign({ store: storeView, listTop, servicesNode, reviewTop, notice, onBack, onCall, onBookNow, bookEnabled }: {
+export function StoreServicesDesign({ store: storeView, listTop, servicesNode, reviewTop, notice, footer, onBack, onCall, onBookNow, bookEnabled }: {
   store: StoreDetailView | null
   listTop: number
   servicesNode: ReactNode
   reviewTop: number
   notice?: ReactNode
+  /** Page-data footer (same copy family as the directory page's sdir-tail). */
+  footer?: ReactNode
   onBack: () => void
   onCall: () => void
   onBookNow: () => void
@@ -75,7 +77,7 @@ export function StoreServicesDesign({ store: storeView, listTop, servicesNode, r
     phone: storeView?.phoneMasked ?? designSamples.store.phone,
   }
   const reviewBottom = reviewTop + reviewCardHeight() + 20
-  return <View className='svc-design' style={{ minHeight: `calc(var(--svc-unit) * ${reviewBottom})` } as CSSProperties}>
+  return <View className='svc-design' style={{ minHeight: `calc(var(--svc-unit) * ${reviewBottom + (footer ? 46 : 0)})` } as CSSProperties}>
     <View className='svc-abs svc-bg-blue' />
     <View className='svc-abs svc-bg-cream' />
     <Image className='svc-abs svc-bg-flower' src={svcAssets.bgFlower} mode='scaleToFill' />
@@ -142,6 +144,7 @@ export function StoreServicesDesign({ store: storeView, listTop, servicesNode, r
       <Button id='svc-bottom-call' className='svc-bottom-call' onClick={onCall}><Text>拨打电话</Text></Button>
       <Button id='svc-bottom-book' className='svc-bottom-book' disabled={!bookEnabled} onClick={onBookNow}><Text>立即预约</Text></Button>
     </View>
+    {footer && <View className='svc-tail' style={at(reviewBottom + 14, { left: `calc(var(--svc-unit) * 29)`, right: `calc(var(--svc-unit) * 29)` })}>{footer}</View>}
     {notice}
   </View>
 }

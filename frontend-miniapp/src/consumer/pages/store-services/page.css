@@ -95,6 +95,8 @@ button { padding: 0; margin: 0; border: 0; border-radius: 0; background: transpa
 .svc-bottom-call text { font-size: calc(var(--svc-unit) * 14); line-height: calc(var(--svc-unit) * 20); font-weight: 500; color: #577683; }
 .svc-bottom-book { position: absolute; left: calc(var(--svc-unit) * 207); top: calc(var(--svc-unit) * 20); width: calc(var(--svc-unit) * 169); height: calc(var(--svc-unit) * 46); border-radius: calc(var(--svc-unit) * 23); background: #c0ecff; display: flex; align-items: center; justify-content: center; }
 .svc-bottom-book text { font-size: calc(var(--svc-unit) * 14); line-height: calc(var(--svc-unit) * 20); font-weight: 500; color: #577683; }
+/* Page-data footer on the two detail pages — same copy family as the directory's sdir-tail. */
+.svc-tail { position: absolute; z-index: 5; font-size: calc(var(--svc-unit) * 10); line-height: calc(var(--svc-unit) * 15); color: #9bb3bd; text-align: center; }
 
 /* ── 门店列表页（frame 110:480 服务tab 的九字段裁剪版）──
    Top band + 全部服务 title follow the original measures; the category grid keeps the

@@ -21,6 +21,10 @@ export class MerchantWorkspace {
   private active = true
   private run = 0
   private ownedRevision: number | undefined
+  // F1 (window E2E 2026-09-24): revision of a workbench-initiated child navigation whose
+  // hide-leave donated the coordinates, and the pending handoff itself. See handoffToChild.
+  private childHandoff: number | undefined
+  private donatedRevision: number | undefined
   constructor(readonly scope: WorkspaceScope) {
     this.state = { status: 'idle', revision: scope.revision }
     // Our own coordinate switches also pass through here; stale guards rely on ticket
@@ -103,9 +107,44 @@ export class MerchantWorkspace {
       this.settle(error, run, ticket)
     }
   }
+  /**
+   * F1 fix: call immediately BEFORE a workbench-initiated navigateTo to its own management
+   * child pages (M-002 service pages). navigateTo hides this page first, and the child gate
+   * reads the same merchant coordinates — so this page's on-hide leave() must donate, not
+   * revoke, them. Returning to the workbench re-runs enter() which re-owns and re-checks
+   * admission (the MINI-003 every-entry rule is unchanged); only leaving the workbench
+   * without entering a child still resets to consumer coordinates.
+   */
+  handoffToChild() {
+    this.childHandoff = this.scope.revision
+  }
+  /**
+   * The handed-off navigation failed without hiding this page (navigateTo reject): reclaim
+   * ownership so a later leave() (back to shell, account switch) still resets the coordinates.
+   * No-op once the handoff actually fired (leave consumed it).
+   */
+  handoffCancelled() {
+    if (this.childHandoff === undefined) return
+    const revision = this.childHandoff
+    this.childHandoff = undefined
+    // Re-claim only the coordinates this controller still owned when the handoff started;
+    // a scope switch in between already cleared ownership for everyone.
+    if (this.ownedRevision === undefined && revision === this.scope.revision) {
+      this.ownedRevision = revision
+    }
+  }
   leave() {
-    // A hidden or disposing older page must not clear a newer page's admission coordinates.
-    if (this.ownedRevision === this.scope.revision && this.scope.current) {
+    // A hidden or disposing older page must not clear a newer page's admission coordinates
+    // (ownedRevision check); F1 donation is the one deliberate exception — the workbench's
+    // own child navigation keeps the coordinates its target page gates on.
+    const donated = this.childHandoff !== undefined
+    const revision = this.childHandoff
+    this.childHandoff = undefined
+    if (donated) {
+      // F1: the child page keeps the admission coordinates; remember the donated revision so
+      // dispose() can still reset them if the whole workbench stack goes away (reLaunch).
+      this.donatedRevision = revision
+    } else if (this.ownedRevision === this.scope.revision && this.scope.current) {
       const current = this.scope.current
       this.scope.replace({ userId: current.userId, workspace: 'consumer', merchantId: null, storeId: null })
     }
@@ -114,6 +153,16 @@ export class MerchantWorkspace {
   }
   dispose() {
     this.active = false
+    // F1: a donation outlived the workbench page itself (stack destroyed while a child held
+    // the coordinates, e.g. reLaunch home from a service page) — the merchant context is over
+    // and consumer personal pages gate on consumer coordinates, so reset them. A newer owner
+    // (re-entered workbench, account switch) has bumped the revision and is left untouched.
+    if (this.donatedRevision !== undefined && this.donatedRevision === this.scope.revision
+      && this.scope.current && this.scope.current.workspace === 'merchant') {
+      const current = this.scope.current
+      this.scope.replace({ userId: current.userId, workspace: 'consumer', merchantId: null, storeId: null })
+    }
+    this.donatedRevision = undefined
     this.leave()
     this.unsubscribe()
     this.listeners.clear()

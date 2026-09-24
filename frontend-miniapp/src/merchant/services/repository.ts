@@ -7,19 +7,23 @@ import {
 } from './model'
 
 function toBody(input: ServiceDraftInput, merchantId: string, storeId: string): Record<string, unknown> {
-  // Omit-empty optional text fields as the C HTTP parser rejects explicit nulls (pet PUT precedent);
-  // the server treats omitted optional fields as null.
+  // F2 fix (window E2E 2026-09-24): the C HTTP parser treats an omitted/null field as "not
+  // provided" (draft-lenient) but rejects empty lexemes — optionalId/optionalEnum/amount/
+  // optionalInt all 400 on ''/0, and optionalText rejects a blank name. A loose draft must
+  // therefore OMIT every unchosen field (same policy as the optional text fields below);
+  // the strict required set is enforced at submit (missingSubmitFields + A-side gate).
   const data: Record<string, unknown> = {
     merchantId, storeId,
-    serviceName: input.serviceName.trim(),
-    categoryId: input.categoryId ?? '',
-    fulfillmentType: input.fulfillmentType ?? '',
-    price: input.price ?? '',
-    durationMinutes: input.durationMinutes ?? 0,
-    coverAssetId: input.coverAssetId ?? '',
     applicablePetTypes: [...input.applicablePetTypes],
     verificationRequired: input.verificationRequired,
   }
+  const name = input.serviceName.trim()
+  if (name !== '') data.serviceName = name
+  if (input.categoryId !== null) data.categoryId = input.categoryId
+  if (input.fulfillmentType !== null) data.fulfillmentType = input.fulfillmentType
+  if (input.price !== null) data.price = input.price
+  if (input.durationMinutes !== null) data.durationMinutes = input.durationMinutes
+  if (input.coverAssetId !== null) data.coverAssetId = input.coverAssetId
   if (input.listPrice !== null) data.listPrice = input.listPrice
   if (input.staffRequirement !== null) data.staffRequirement = input.staffRequirement
   if (input.description !== null) data.description = input.description
