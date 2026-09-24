@@ -6708,6 +6708,108 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/MerErrorEnvelope'
+  /c/services/{serviceId}/availability:
+    get:
+      tags:
+      - Schedule-Availability
+      operationId: cGetServiceAvailability
+      summary: Minute-level bookable windows of a service in a date range (SCH-001)
+      x-contract-status: IMPLEMENTED_DEFAULT_OFF_REQUIRES_PROVIDERS
+      x-audience: MINIAPP
+      # SCH-D1 (schedule ruling 2026-09-23): login is mandatory - this route is OUTSIDE the
+      # STR-D8 anonymous browse family. The switch pet.schedule.query.enabled defaults to off
+      # and, while assembled, the missing qualified-staff facts provider (SCH-002) keeps every
+      # visible-service query failing closed with 503 COMMON_DEPENDENCY_UNAVAILABLE.
+      security:
+      - bearerAuth: []
+      parameters:
+      - name: serviceId
+        in: path
+        required: true
+        schema:
+          type: string
+      - name: storeId
+        in: query
+        required: true
+        schema:
+          type: string
+      - name: startDate
+        in: query
+        required: true
+        schema:
+          type: string
+          pattern: '^[0-9]{4}-[0-9]{2}-[0-9]{2}$'
+      - name: endDate
+        in: query
+        required: true
+        schema:
+          type: string
+          pattern: '^[0-9]{4}-[0-9]{2}-[0-9]{2}$'
+      responses:
+        '200':
+          description: 'Minute-level OPEN windows, start-ascending, rendered in the business
+            zone (+08:00); see HTTP contract 10 section 3.4. items elements carry only
+            start/end/effectiveCapacity/occupiedCount/remainingCapacity/available.'
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                enum:
+                - no-store
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MerErrorEnvelope'
+        '400':
+          description: Invalid ids, date format, ordering or a span beyond 31 days.
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                enum:
+                - no-store
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MerErrorEnvelope'
+        '401':
+          description: Missing, invalid or expired MINIAPP bearer (mandatory session, SCH-D1).
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                enum:
+                - no-store
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MerErrorEnvelope'
+        '404':
+          description: Not found, not visible, ineligible or store mismatch (indistinguishable);
+            code SERVICE_NOT_FOUND.
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                enum:
+                - no-store
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MerErrorEnvelope'
+        '503':
+          description: Facts source failure, unknown status, or the qualified-staff facts
+            provider absent before SCH-002 - fail closed, never a placeholder capacity.
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                enum:
+                - no-store
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MerErrorEnvelope'
   /c/merchant-application-cities:
     get:
       tags:
