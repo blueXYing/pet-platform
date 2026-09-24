@@ -94,3 +94,31 @@ CREATE TABLE service_governance_action (
     CONSTRAINT chk_svc_governance_reason CHECK (CHAR_LENGTH(reason) BETWEEN 10 AND 500)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci
   COMMENT='服务治理动作审计（V1仅FORCE_OFFLINE）';
+
+-- ============================================================
+-- v0.2 勘误/增补（2026-09-24，缺陷F3：宽松草稿可空化修复）
+-- ============================================================
+-- 缺陷来源：PR#78 窗口E2E取证 §8.3。上方 v0.1 原文保持不变；本节为可执行的增补 DDL，
+-- 供全新环境在 v0.1 之后执行。已开通环境的等价 Flyway 增量为
+-- backend/pet-boot/src/main/resources/db/service-migration/V28__service_draft_nullable.sql。
+--
+-- 依据：10号 §4.10.1（2026-09-22 已批）商家创建草稿"业务字段均可空存草稿"，
+-- 提交审核时才必填齐全。但 service_item 基表（06号）的五个业务列
+-- category_id/service_name/price/duration_minutes/fulfillment_type 为 NOT NULL 且无默认，
+-- 最小草稿（如仅填名称甚至全空）必然 DataIntegrity → 503，与已批契约冲突。
+-- 本节将五列可空化：仅 DRAFT/REJECTED/OFFLINE（可编辑态）行可能携带 NULL；
+-- 提交审核门（应用层 validateSubmission）在进入 REVIEWING 前重校验全部必填集
+-- （名称2-50、ENABLED类目、fulfillment、price>0、duration 1..10080、适用宠物类型、
+-- 封面归属），REVIEWING/ACTIVE 行始终字段齐全，C端读侧（仅ACTIVE可见）不受影响。
+-- 既有行无需回填；v0.1 的 CHECK（price>0、duration_minutes>0）按三值逻辑放行 NULL。
+ALTER TABLE service_item
+    MODIFY COLUMN category_id BIGINT NULL
+        COMMENT '服务类目ID（草稿可空；提交审核时须命中ENABLED类目）',
+    MODIFY COLUMN service_name VARCHAR(128) NULL
+        COMMENT '服务名称（草稿可空；提交审核时2-50必填）',
+    MODIFY COLUMN price DECIMAL(18,2) NULL
+        COMMENT '售价（草稿可空；提交审核时>0必填）',
+    MODIFY COLUMN duration_minutes INT NULL
+        COMMENT '单次服务时长，用于分钟级排期（草稿可空；提交审核时1..10080必填）',
+    MODIFY COLUMN fulfillment_type VARCHAR(32) NULL
+        COMMENT 'IN_STORE/PICKUP_DELIVERY（草稿可空；提交审核时必填）';
