@@ -35,7 +35,8 @@ public class CSessionSecurityConfiguration {
       @Value("${pet.merchant.application.enabled:false}") boolean merchantApplicationEnabled,
       @Value("${pet.private-assets.enabled:false}") boolean privateAssetsEnabled,
       @Value("${pet.service.command.enabled:false}") boolean serviceCommandEnabled,
-      @Value("${pet.store.query.enabled:false}") boolean storeQueryEnabled)
+      @Value("${pet.store.query.enabled:false}") boolean storeQueryEnabled,
+      @Value("${pet.schedule.query.enabled:false}") boolean scheduleQueryEnabled)
       throws Exception {
     http.securityMatcher("/api/v1/c/**", "/api/v1/merchant/**")
         .csrf(c -> c.disable())
@@ -99,6 +100,14 @@ public class CSessionSecurityConfiguration {
               a.requestMatchers("/api/v1/merchant/services", "/api/v1/merchant/services/**")
                   .permitAll();
               a.requestMatchers(HttpMethod.GET, "/api/v1/merchant/service-categories").permitAll();
+            }
+            if (scheduleQueryEnabled) {
+              // Schedule availability (CCR-W2-API-001 SCH-001, SCH-D1 login ruling): GET-only
+              // registration behind the assembly switch. Unlike the STR-D8 browse family this
+              // route keeps the MANDATORY session - the filter's /api/v1/c/services/ prefix
+              // already covers it, so anonymous requests answer 401 there, non-GET stays denied,
+              // and the switch keeps it unreachable when the slice is not assembled.
+              a.requestMatchers(HttpMethod.GET, "/api/v1/c/services/*/availability").permitAll();
             }
           }
           a.anyRequest().denyAll();

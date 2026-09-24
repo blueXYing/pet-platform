@@ -360,17 +360,19 @@ GET /api/v1/c/services/{serviceId}
 - 配套完整性程序（用户裁决要求）：存量 SQL 巡检+告警+修复 runbook 见 `planning/issues/wave-2/MER-001-store-read/INTEGRITY-RUNBOOK.md`。
 - 与 `/c/stores/{storeId}/services` 的配合：同一不可见门店，本路由 404、店内服务列表 200 空页——各自已批语义并存；C 端页面以详情路由为门店可访问性判据。---
 
-## 3.4 可预约时间查询
+## 3.4 可预约时间查询（CCR-W2-API-001 排期域 SCH-001，2026-09-23 已批；装配开关 `pet.schedule.query.enabled` 默认关闭）
 
 ### GET `/api/v1/c/services/{serviceId}/availability`
 
 Query：
 
 ```text
-storeId
-startDate
-endDate
+storeId      必填，雪花 ID String；与服务归属门店不一致 → 404 SERVICE_NOT_FOUND（防探测，与不可见同响应）
+startDate    必填，yyyy-MM-DD（平台业务时区 Asia/Shanghai 解释为 [当日00:00, 次日00:00)）
+endDate      必填，yyyy-MM-DD，endDate>=startDate，跨度 ≤31 天
 ```
+
+未知 query 参数拒绝（400）。会话（SCH-D1）：**登录态**——本路由不属 STR-D8 匿名四路由，MINIAPP Bearer 强制（无 Authorization 401 `COMMON_UNAUTHORIZED`；携带无效/过期 401）。读操作无 requestId 幂等要求（23 号 §3）。
 
 返回：
 
@@ -392,7 +394,7 @@ endDate
 内部调用：
 
 ```text
-ScheduleQueryApi.queryAvailability
+ScheduleQueryApi.queryAvailability   （07 号 §6.1/§6.1.1：可见性经 checkBookable，容量 min 公式，人员事实经 QualifiedStaffFactsPort）
 ```
 
 规则：
@@ -401,6 +403,17 @@ ScheduleQueryApi.queryAvailability
 - 不暴露固定 60 分钟槽位概念；
 - 有效容量由服务端计算；
 - C 端不能自行用前端人数计算容量。
+
+细化（SCH-D1～D11 裁决，[决定回执](../../planning/ccr/CCR-W2-API-001/schedule-availability-decisions.md)）：
+
+- **可见性先行（错误两分，不得混同）**：服务不存在/OFFLINE/DRAFT/REVIEWING/REJECTED/商家停用/门店停用/不接新单/storeId 不一致 → 404 `SERVICE_NOT_FOUND`（不区分原因，防探测，SVC-D1b 同语义）；服务或商家事实源故障/状态未知 → 503 `COMMON_DEPENDENCY_UNAVAILABLE`（失败关闭，不降级空页）。
+- **容量失败关闭（SCH-D6 裁决核心）**：容量=SSOT §12.2 `min(配置容量, 可用服务人员数)`；人员可用性事实源（SCH-002）交付前，**真实装配对可见服务的查询一律 503 `COMMON_DEPENDENCY_UNAVAILABLE` 失败关闭，不得降级为 `available=true`、不得以配置容量冒充已核实容量**；SQL 种子与人员计数测试替身仅限模块测试。
+- **窗口过滤与排序**：仅返回 `status='OPEN'` 窗口（CLOSED 不返回；临时停业=不开窗/关窗，无独立事实）；已结束窗口（end≤now）不返回；进行中窗口返回且 `available=false`；跨天窗口（寄养/过夜）与查询区间部分相交时**整体返回不切割**；items 按 `start` 升序；无可约窗口=200 空 `items`（与 404/503 严格三区分）。
+- **响应投影**：items 元素仅 start/end/effectiveCapacity/occupiedCount/remainingCapacity/available 六字段（不暴露 windowId/version/status/配置容量/人员数细分；`available=false` 统一表达不可约/已占满，不引入状态枚举——商家端日历细分状态归写入方切片 SCH-004）；时间带偏移 ISO-8601 分钟精度、业务时区 +08:00 投影；不携带 fulfillmentType。
+- **上门接送型（SCH-D4）**：窗口集不区分上门/送回候选（同一窗口集供 C 端分别选择）；120 分钟间隔与跨天送回约束不在查询侧（C 端置灰联动，服务端最终校验归 SCH-003 hold/订单侧）；`window_kind` Schema 增补由写入方（SCH-004）届时裁决，不得把同一组窗口宣称为已完成双时段排期。
+- **提前预约窗口（SCH-D5）**：V1 不引入最短提前预约时长（PRD/SSOT 无条款）；唯一时间门禁=过去窗口过滤；最远可约由 31 天跨度上限间接约束。
+- **边界**：本查询为展示投影，不构成预约授权租约；所选时段下单瞬间可能失效（"排期已变化，请重新选择"由 SCH-003/TX-001 承接）。
+- **交付口径（SCH-D3/D6）**：写入方（SCH-004 后端/M-002 页面）交付前，"商家开窗→消费者查到→预约"真实链路未验收；本路由真实装配当前对可见服务失败关闭，面向用户启用完整可约判断须等 SCH-002 人员容量及后续占用事实接通。
 
 ---
 

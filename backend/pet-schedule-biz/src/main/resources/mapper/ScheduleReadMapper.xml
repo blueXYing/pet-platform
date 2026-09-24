@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.petplatform.schedule.biz.infrastructure.persistence.mapper.ScheduleReadMapper">
+
+    <select id="selectOpenWindows"
+            resultType="com.petplatform.schedule.biz.infrastructure.persistence.entity.ScheduleAvailabilityWindowEntity">
+        SELECT id,
+               merchant_id,
+               store_id,
+               service_id,
+               start_at,
+               end_at,
+               configured_capacity,
+               status,
+               version
+        FROM schedule_availability_window
+        WHERE store_id = #{storeId}
+          AND service_id = #{serviceId}
+          AND status = 'OPEN'
+          AND start_at &lt; #{toAt}
+          AND end_at &gt; #{fromAt}
+        ORDER BY start_at, id
+    </select>
+
+    <select id="countActiveReservations" resultType="long">
+        SELECT COUNT(*)
+        FROM schedule_reservation
+        WHERE store_id = #{storeId}
+          AND service_id = #{serviceId}
+          AND status IN ('TEMP_LOCKED', 'CONFIRMED')
+          AND start_at &lt; #{toAt}
+          AND end_at &gt; #{fromAt}
+    </select>
+</mapper>

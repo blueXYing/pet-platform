@@ -411,6 +411,40 @@ public interface ScheduleQueryApi {
 }
 ```
 
+交付状态（CCR-W2-API-001 排期域，2026-09-23 批准）：`queryAvailability` 已随 SCH-001 交付（`AvailabilityQuery` 形状与窗口列表 DTO 见 §6.1.1）；`getReservation` 与 §6.2 命令族随 SCH-003 交付，此前不实现、不声明。
+
+### 6.1.1 AvailabilityQuery 与窗口列表（SCH-001，2026-09-23 已批）
+
+```java
+public record AvailabilityQuery(
+    String serviceId, String storeId,
+    java.time.LocalDate startDate, java.time.LocalDate endDate,
+    QueryContext context) {}
+
+/** 单窗口字段沿用 §6.3 AvailabilityResult（list 化，字段与语义不变）。 */
+public record AvailabilityWindowDTO(
+    String storeId, String serviceId,
+    OffsetDateTime start, OffsetDateTime end,
+    int configuredCapacity, int qualifiedAvailableStaffCount,
+    int effectiveCapacity, int occupiedCount, int remainingCapacity,
+    boolean available) {}
+
+public record AvailabilityPageDTO(
+    String storeId, String serviceId,
+    java.time.LocalDate startDate, java.time.LocalDate endDate,
+    java.util.List<AvailabilityWindowDTO> items) {}
+```
+
+规则（SCH-D1～D11，[决定回执](../../planning/ccr/CCR-W2-API-001/schedule-availability-decisions.md)）：
+
+- 日期为平台业务时区（Asia/Shanghai，23 号 §2）的日历日，解释为 `[startDate 00:00, endDate+1 00:00)`；跨度 ≤31 天；`endDate>=startDate`。
+- 可见性先行：经 pet-service-api `checkBookable`（四条件合取，store 不一致/不存在/不可见 → NOT_FOUND 404 `SERVICE_NOT_FOUND` 投影）；事实源故障/状态未知 → 503 `COMMON_DEPENDENCY_UNAVAILABLE`。
+- **容量公式=SSOT §12.2 `min(configuredCapacity, qualifiedAvailableStaffCount)`，人员事实经 `QualifiedStaffFactsPort`（pet-schedule-biz 端口）获取；SCH-002 交付人员事实源前，真实装配不提供该端口——可见服务的查询失败关闭 503，不得降级为占位容量/`available=true`（SCH-D6 裁决，SQL 种子与人员计数测试替身仅限模块测试）**。
+- `occupiedCount` 读 `schedule_reservation` 权威表（TEMP_LOCKED/CONFIRMED 与窗口半开区间重叠计数）。
+- 过滤与排序：仅 `status='OPEN'` 窗口（CLOSED/未知值不返回，向不可约方向关闭）；已结束（end≤now）窗口不返回；进行中窗口返回且 `available=false`；跨天窗口与查询区间部分相交时整体返回不切割；items 按 `start` 升序；空结果为正常空列表。
+- 上门接送型窗口集不区分上门/送回候选（`window_kind` Schema 增补由写入方切片 SCH-004 届时裁决；120 分钟约束归 SCH-003 服务端校验）。
+- 本查询为展示投影，不构成预约授权租约；服务资格事实与窗口为两个连续 repeatable-read 快照，跨快照漂移由 SCH-003 hold 权威复核兜底。
+
 ### 6.2 ScheduleCommandApi
 
 ```java
@@ -471,6 +505,8 @@ public record AvailabilityResult(
     boolean available
 ) {}
 ```
+
+（SCH-001 按 §6.1.1 以 `AvailabilityWindowDTO` 逐窗口 list 化落地，单窗口字段与语义与本 record 一致。）
 
 ---
 

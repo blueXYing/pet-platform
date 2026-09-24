@@ -133,6 +133,14 @@ STORE_CATALOG_OPERATIONS = {
     'cGetStore': ('get', '/c/stores/{storeId}'),
 }
 
+# SCH-001 schedule availability (CCR-W2-API-001, ruling 2026-09-23): implemented default-off
+# behind pet.schedule.query.enabled. Mandatory session (SCH-D1, OUTSIDE the STR-D8 anonymous
+# browse family) and, while assembled, fail-closed 503 for visible services until the
+# qualified-staff facts provider (SCH-002) exists.
+SCHEDULE_AVAILABILITY_OPERATIONS = {
+    'cGetServiceAvailability': ('get', '/c/services/{serviceId}/availability'),
+}
+
 
 def check_private_assets(spec, operation):
     name = operation['operationId']
@@ -465,7 +473,7 @@ def check(spec):
     assert legacy_seen == LEGACY_OPERATIONS.keys(), f'Legacy operations missing: {LEGACY_OPERATIONS.keys() - legacy_seen}'
     assert legacy_writes == 13, 'Legacy write surface changed'
     assert legacy_creates == LEGACY_CREATES, 'Legacy create surface changed'
-    assert operations == LEGACY_OPERATIONS.keys() | AUTH_OPERATIONS.keys() | MERCHANT_OPERATIONS.keys() | APPLICATION_OPERATIONS.keys() | PRIVATE_ASSET_OPERATIONS.keys() | SERVICE_CATALOG_OPERATIONS.keys() | STORE_CATALOG_OPERATIONS.keys() | SERVICE_WRITE_OPERATIONS.keys(), 'Unexpected or missing reviewed operations'
+    assert operations == LEGACY_OPERATIONS.keys() | AUTH_OPERATIONS.keys() | MERCHANT_OPERATIONS.keys() | APPLICATION_OPERATIONS.keys() | PRIVATE_ASSET_OPERATIONS.keys() | SERVICE_CATALOG_OPERATIONS.keys() | STORE_CATALOG_OPERATIONS.keys() | SERVICE_WRITE_OPERATIONS.keys() | SCHEDULE_AVAILABILITY_OPERATIONS.keys(), 'Unexpected or missing reviewed operations'
     schemes = spec['components']['securitySchemes']
     assert schemes['bearerAuth']['type'] == 'http' and schemes['bearerAuth']['scheme'] == 'bearer'
     for scheme, location, name in [('authAttempt', 'header', 'X-Auth-Attempt'),
@@ -508,6 +516,7 @@ def check(spec):
             'applicationOperations': len(operations & APPLICATION_OPERATIONS.keys()),
             'privateAssetOperations': len(operations & PRIVATE_ASSET_OPERATIONS.keys()),
             'serviceCatalogOperations': len(operations & SERVICE_CATALOG_OPERATIONS.keys()),
+            'scheduleAvailabilityOperations': len(operations & SCHEDULE_AVAILABILITY_OPERATIONS.keys()),
             'serviceWriteOperations': len(operations & SERVICE_WRITE_OPERATIONS.keys()),
             'storeCatalogOperations': len(operations & STORE_CATALOG_OPERATIONS.keys()),
             'resolvedRefs': len(refs), 'stringIdProperties': ids}
