@@ -1,6 +1,6 @@
 # SCH-003 / ORDER 联合契约审阅与测试映射
 
-状态：**REVIEW CANDIDATE / ALL TESTS NOT_EXECUTED**。对应 [CCR 候选](../../../ccr/CCR-W2-API-001/reservation-order-protection-proposal.md)，须在 ROC-1～5 经人工批准和各 Owner 同步后转为实施门禁。它不宣称本分支有生产代码、DDL 或测试结果。
+状态：**REVIEW CANDIDATE / ALL TESTS NOT_EXECUTED**。对应 [CCR 候选](../../../ccr/CCR-W2-API-001/reservation-order-protection-proposal.md)，须在 ROC-1～6 经人工批准和各 Owner 同步后转为实施门禁。它不宣称本分支有生产代码、DDL 或测试结果。
 
 ## 审阅时须逐项定稿
 
@@ -8,11 +8,12 @@
 |---|---|---|
 | ROC-1 全店精确可行性 | SCH-003 + SCH-004 + ORDER/MER，06/07/10/11/34 | 同一员工跨服务不重复占用；已指派固定、未指派只作内部匹配；完整无解 409、事实或求解故障 503；多连接下与减员/指派串行。 |
 | ROC-2 接送单人双段 | 产品 + SCH/ORDER/商家端，06/07/10/11 | 明确一名最终员工须覆盖 PICKUP、RETURN 各自完整窗；页面不显示技术匹配人；不增加两人最终指派字段。若不批准须重做模型。 |
-| ROC-3 到店 GENERAL | 产品 + SCH/C 端，06/07/10/11/34 | 新单唯一原窗完整容纳；跨相邻窗的用户可见失败被明确批准或另立多 claim 契约；存量跨窗不伪造。 |
+| ROC-3 到店 GENERAL | 产品 + SCH/C 端，06/07/10/11/34 | **新增产品选择**：新单唯一原窗完整容纳；跨相邻窗的用户可见失败被明确批准或另立多 claim 契约；既有服务时长决定实际预约区间的规则不变，存量跨窗不伪造。 |
 | ROC-4 hold/order 绑定 | ORDER + SCH + TX/优惠券/支付，06/07/10/11/23 | `order_id NOT NULL`；预分配 ID；hold 与主单同库顶层事务双向绑定；外部支付在提交后，故障补偿可重入；幂等回执原子。 |
 | ROC-5 当前指派完整性 | ORDER + MER + SCH，06/07/34 | 按全店/目标员工包含活跃 claim 以外的当前指派；两份 ORDER 当前事实一致；生命周期真值表与不变量故障可证明，索引 EXPLAIN 有证据。 |
+| ROC-6 改期保留指派 | 产品 + ORDER/SCH/C/商家端，07/10/11 | **新增产品选择**：原指派不能覆盖新时间时，409 且原预约、指派、改期次数、确认周期均不变；未批准前不把此分支当既定规则。 |
 
-改期时既有最终指派不覆盖新段，候选推荐 `SCHEDULE_SWAP_FAILED`、原单/原窗/原指派全保留；若选择自动撤派，须单列批准及页面、审计、ORDER 状态转移。现行 07 的 `ScheduleCommandApi.assignStaff` 与 ORDER 双写冲突须归并到 ORDER 权威，不让 SCH 直接维护 ORDER 当前指派。
+若产品选择自动撤派，须另行批准页面、审计和 ORDER 状态转移。现行 07 的 `ScheduleCommandApi.assignStaff` 与 ORDER 双写冲突须归并到 ORDER 权威，不让 SCH 直接维护 ORDER 当前指派。保护真值表只使用正式 `OrderStage`、`VerificationStatus`、`AppointmentReservationStatus` 与可选的 REFUND 权威 `RefundStatus`，不以展示态或新造核销枚举作依据。
 
 ## 必须执行的行为证据（当前均未执行）
 
@@ -30,7 +31,7 @@
 | P10 | TEMP_LOCKED `lock_expire_at` 已过但 EXPIRED 尚未提交；另一订单同时 hold | 仍计占用直到过期事务提交；失败或重试不借过期时间抢先复用。 |
 | P11 | 商家将订单指派给乙；乙对两段均合格但与另一固定订单重叠 | 指派 409；`pet_order.service_staff_id` 与当前 assignment 两者均维持旧值/NULL，无半次改派。 |
 | P12 | 商家已指派甲后减少甲能力/排班；乙仍可覆盖全部预约 | 减员 409，须先合法改派甲的未完成订单；不能用总人数未变放行。 |
-| P13 | 用户改期的新窗容得下预约、原指派甲无法覆盖 | 候选方案下 409 `SCHEDULE_SWAP_FAILED`，原预约/两 claim/指派/改期次数/确认截止时间不变。 |
+| P13 | 用户改期的新窗容得下预约、原指派甲无法覆盖 | **ROC-6 获批后** 409 `SCHEDULE_SWAP_FAILED`，原预约/两 claim/指派/改期次数/确认截止时间不变；未批准前该分支不启用。 |
 | P14 | 退款申请、退款单已创建、退款处理中；然后渠道退款成功但 SCH release 消费滞后 | release 前 claim 仍占用并固定当前指派；最终 release 幂等后才解除。迟到支付不恢复订单/预约。 |
 | P15 | COMPLETED/VERIFIED 历史指派；CANCELED + RELEASED 历史指派 | 全店查询仍枚举且核验两份当前事实，但 `protectRequired=false`；不把历史员工当未来业务指派。 |
 | P16 | PENDING_SERVICE + RELEASED、两份当前指派不一致、reservation 无订单、旧接送 GENERAL 不可恢复 | 503、减员/新 hold 整笔回滚并告警；不能当空事实或 409 普通容量不足。 |
