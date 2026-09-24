@@ -5,7 +5,9 @@ import static org.junit.jupiter.api.Assertions.*;
 import com.petplatform.admin.biz.application.AdminAuthService;
 import com.petplatform.admin.biz.infrastructure.provider.AdminSecretCodec;
 import com.petplatform.boot.PetPlatformApplication;
+import com.petplatform.boot.adapter.web.merchant.MerchantStaffController;
 import com.petplatform.common.SnowflakeIdGenerator;
+import com.petplatform.merchant.biz.apiimpl.MerchantStaffApiImpl;
 import com.petplatform.merchant.biz.application.ApplicationValidationPorts;
 import com.petplatform.merchant.biz.application.PrivateAssetQueryPort;
 import com.petplatform.merchant.biz.application.SubjectCredentialPort;
@@ -45,6 +47,7 @@ import org.springframework.context.support.GenericApplicationContext;
 import org.springframework.core.io.FileSystemResource;
 import org.springframework.core.io.support.EncodedResource;
 import org.springframework.jdbc.datasource.init.ScriptUtils;
+import org.springframework.web.servlet.mvc.method.annotation.RequestMappingHandlerMapping;
 import tools.jackson.databind.json.JsonMapper;
 
 /**
@@ -415,6 +418,58 @@ class MerchantStaffAcceptanceHttpTest {
         send("PUT", "/api/v1/merchant/staff/" + staffId, replacement, bearer(token, updateKey)),
         404,
         "COMMON_NOT_FOUND");
+  }
+
+  @Test
+  void defaultSwitchOmitsStaffRoutesAndEnabledSwitchStillHasNoDisableHandler() throws Exception {
+    assertEquals(1, context.getBeansOfType(MerchantStaffController.class).size());
+    assertFalse(staffMappings(context).stream().anyMatch(route -> route.contains("/disable")));
+    String token = str(consumerLogin("staff-default-off", "13800007887"), "accessToken");
+    context.close();
+    context = null;
+    context =
+        new SpringApplicationBuilder(PetPlatformApplication.class)
+            .initializers(
+                ctx -> {
+                  var beans = (GenericApplicationContext) ctx;
+                  beans.registerBean("staffOffDataSource", javax.sql.DataSource.class, () -> db.source);
+                  beans.registerBean("staffOffIds", SnowflakeIdGenerator.class, () -> db.ids);
+                  beans.registerBean(
+                      "staffOffWechat", WechatSessionProvider.class, CAuthHttpTest.FixedWechatProvider::new);
+                })
+            .run(
+                "--server.port=0",
+                "--spring.flyway.enabled=false",
+                "--spring.main.banner-mode=off",
+                "--spring.jmx.enabled=false",
+                "--pet.auth.c.enabled=true",
+                "--pet.auth.c.redis-host=" + db.redisHost,
+                "--pet.auth.c.redis-port=" + db.redisPort,
+                "--pet.auth.c.cache-prefix=" + db.prefix);
+    origin = "http://127.0.0.1:" + context.getEnvironment().getProperty("local.server.port");
+    assertTrue(context.getBeansOfType(MerchantStaffController.class).isEmpty());
+    assertTrue(context.getBeansOfType(MerchantStaffApiImpl.class).isEmpty());
+    assertTrue(staffMappings(context).isEmpty());
+    assertEquals(
+        403,
+        send("GET", "/api/v1/merchant/staff?merchantId=1&storeId=1", null, bearer(token))
+            .status());
+    assertEquals(
+        403,
+        send(
+                "POST",
+                "/api/v1/merchant/staff/1/disable",
+                Map.of("merchantId", "1", "storeId", "1", "expectedVersion", "0"),
+                bearer(token))
+            .status());
+  }
+
+  private static List<String> staffMappings(ConfigurableApplicationContext app) {
+    return app.getBean("requestMappingHandlerMapping", RequestMappingHandlerMapping.class)
+        .getHandlerMethods().keySet().stream()
+        .map(Object::toString)
+        .filter(route -> route.contains("/api/v1/merchant/staff"))
+        .toList();
   }
 
   private void assertScheduleSeesStaff(

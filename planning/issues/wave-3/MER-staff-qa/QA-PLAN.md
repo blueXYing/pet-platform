@@ -25,11 +25,12 @@
 | 启用 | 仅 ACTIVE 人员、商家/门店可经营时成功 200、版本递增；即使目标已为 true 的新请求也推进一次；重放不重复推进。INACTIVE 且 enabled=true 创建拒绝，不能借 enable 把 INACTIVE 自动转在职。 |
 | 幂等与权限 | 同命令/主体 requestId 异参 409 `IDEMPOTENCY_KEY_CONFLICT`；成功后撤销 owner 关系，再用旧 requestId 重放必须重新核当前权限、返回防枚举 404 且 `data=null`，不能泄露旧回执。 |
 | 停用边界 | `disable` 在保护契约未接入时不能产生 2xx 或改变 `service_enabled`；具体错误码随主协调冻结的关闭路径断言。 |
+| 默认关闭 | 不设置 `pet.merchant.staff.enabled` 时员工Controller、命令Bean和全部员工handler均缺席，有效MINIAPP会话请求仍403；显式开启时五路由存在，但没有`disable` handler。 |
 | SCH-002 交集 | 对 HTTP 创建并启用的员工，隔离库中补具体服务能力与完整 AVAILABLE 排班后，GET C 端可用性显示人数/容量增加；再次读证明员工事实来自 MER。能力或排班为空仍为 0。SQL 播种不算维护接口。 |
 
 ## 实施与验收记录
 
-实现仅写 `backend/pet-boot/src/test/java/com/petplatform/boot/auth/MerchantStaffAcceptanceHttpTest.java`，使用真实 HTTP、会话、MySQL 及 Redis。2026-09-24 JDK21、隔离本地 MySQL 8 端口33455及Redis端口16383运行：`mvn -pl pet-boot -am -Dtest=MerchantStaffAcceptanceHttpTest -Dsurefire.failIfNoSpecifiedTests=false test`，41模块reactor成功，1 test、0 failures/errors/skips。测试从真实审核与签署取得准入；另一个真实商家及同手机号无绑定主体验证隔离；SQL能力/排班种子只证明SCH-002读侧交集。审核来源SQL29、协议SQL28、员工审计SQL35均只在随机fixture库执行。
+实现仅写 `backend/pet-boot/src/test/java/com/petplatform/boot/auth/MerchantStaffAcceptanceHttpTest.java`，使用真实 HTTP、会话、MySQL 及 Redis。2026-09-24 JDK21、隔离本地 MySQL 8 端口33455及Redis端口16383运行：`mvn -q -pl pet-boot -am -Dtest=MerchantStaffAcceptanceHttpTest -Dsurefire.failIfNoSpecifiedTests=false test`，41模块reactor成功，2 tests、0 failures/errors/skips（Surefire报告40.54秒）。测试从真实审核与签署取得准入；另一个真实商家及同手机号无绑定主体验证隔离；SQL能力/排班种子只证明SCH-002读侧交集；另以独立context证明默认关闭和disable无handler。审核来源SQL29、协议SQL28、员工审计SQL35均只在随机fixture库执行。
 
 仍未覆盖：员工disable及其ORDER并发守卫、真实成员绑定、能力与排班维护、SCH-003 hold/预约完整闭环、生产迁移与运行环境开关。上述功能保持原合同门禁，不据本测试标记为完成。
 
