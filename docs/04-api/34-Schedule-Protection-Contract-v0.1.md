@@ -63,3 +63,7 @@ PUT 是**全量替换具体服务 ID 集合**：重复 ID 拒绝 400，跨店/�
 - **ORDER/TX 绑定和完整性细节**：10 号流程先 hold 后 create，06 号 `schedule_reservation.order_id NOT NULL`；预生成 ID、绑定时序和“未绑定 hold”事实表达尚未定。ORDER 当前指派需保护的完整生命周期状态集合、按员工/门店完整查询的物理实现与索引亦未定；缺失时不得凭按活跃预约的查询放行减员。本补充不通过放宽 NOT NULL、清空指派或猜订单状态解决。
 - **到店 GENERAL 技术关联**：同店/服务/完整预约区间在锁内唯一 GENERAL 窗可先作为推荐关联；跨窗、歧义、显式 `selectedGeneralWindowId` 的必要性和 GENERAL claim 数量仍需 SCH-003/客户端契约核对。接送双 ID 的批准不自动解决到店路径。
 - **真实实现**：本文件不改现有 07/10/11/OpenAPI 字段、路由或状态标签；不实施 Java、迁移、开关或生产数据回填。正式同步需 SCH-004/SCH-003/ORDER/MER 联合审查、[存储补充](../03-database/34-Schedule-Protection-Storage-v0.1.md)的逻辑映射、[测试映射](../../planning/issues/wave-3/SCH-004-contract/REVIEW-TEST-MAP.md)的 MySQL 并发与大版本/接送选窗验证。全部业务测试当前 **NOT_EXECUTED**。
+
+## 7. ROC-1～6 后续批准补记（2026-09-24）
+
+本文件 §6 记录的是 SCHC-1～4 批准时尚未冻结的依赖；用户随后已批准[36号 SCH-003/ORDER 联合契约](36-Reservation-Order-Protection-Contract-v0.1.md)的六项推荐，批准回执见[ROC-1～6](../../planning/ccr/CCR-W2-API-001/reservation-order-protection-decisions.md)。跨服务完整可行性、接送最终同人、到店单 GENERAL 原窗、非空 orderId 的 hold/create 同事务、ORDER 全店当前指派完整性及改期保留指派失败留旧的**逻辑合同已冻结**，以 36 号覆盖 §6 中相应“未定”描述。此补记不代表 06/07/10/11/12、Java、DDL、迁移、索引或真实测试已完成；本文件 SCHC-1～4 及旧 GENERAL 隔离、缺证明失败关闭继续有效。状态仍是 `ACCEPTED_CONTRACT_NOT_IMPLEMENTED`。
