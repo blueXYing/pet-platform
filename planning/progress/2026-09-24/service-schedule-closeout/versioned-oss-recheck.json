@@ -1,0 +1,83 @@
+{
+  "verifiedAt": "2026-09-24T07:30:48.167761+00:00",
+  "implementationCommit": "ee1cd379b3150553d6522ae3823c3929be3d6540",
+  "codeChanged": false,
+  "bucket": "mtxoss2",
+  "versioningChangedBy": "USER_IN_OSS_CONSOLE",
+  "assetScope": "NEW_SYNTHETIC_TEST_OBJECTS_ONLY",
+  "serviceCover": {
+    "upload": "READY",
+    "scanner": "REAL_CLAMAV",
+    "objectVersion": "VERSION_ID",
+    "signature": "EXACT_VERSION",
+    "downloadHttpStatus": 200,
+    "normalizedDigest": "MATCH"
+  },
+  "privateMaterial": {
+    "httpUpload": "PASS",
+    "idempotentReplay": "PASS",
+    "authentication": "FIXED_WECHAT_TEST_DOUBLE",
+    "exactObjectCleanupFailures": 0
+  },
+  "compatibilityTests": {
+    "tests": 19,
+    "failures": 0,
+    "errors": 0,
+    "skipped": 0,
+    "suites": [
+      {
+        "name": "com.petplatform.boot.auth.PrivateAssetLiveAcceptance",
+        "tests": 1,
+        "failures": 0,
+        "errors": 0,
+        "skipped": 0
+      },
+      {
+        "name": "com.petplatform.boot.auth.ServiceCoverSigningLiveAcceptance",
+        "tests": 1,
+        "failures": 0,
+        "errors": 0,
+        "skipped": 0
+      },
+      {
+        "name": "com.petplatform.boot.config.ServiceCoverSigningConfigurationTest",
+        "tests": 2,
+        "failures": 0,
+        "errors": 0,
+        "skipped": 0
+      },
+      {
+        "name": "com.petplatform.thirdparty.biz.infrastructure.oss.S3PrivateObjectStoreTest",
+        "tests": 5,
+        "failures": 0,
+        "errors": 0,
+        "skipped": 0
+      },
+      {
+        "name": "com.petplatform.thirdparty.biz.infrastructure.oss.S3ServiceCoverObjectSignerTest",
+        "tests": 2,
+        "failures": 0,
+        "errors": 0,
+        "skipped": 0
+      },
+      {
+        "name": "com.petplatform.thirdparty.biz.PrivateAssetCoreMySqlTest",
+        "tests": 6,
+        "failures": 0,
+        "errors": 0,
+        "skipped": 0
+      },
+      {
+        "name": "com.petplatform.thirdparty.biz.ServiceCoverSigningMySqlTest",
+        "tests": 2,
+        "failures": 0,
+        "errors": 0,
+        "skipped": 0
+      }
+    ]
+  },
+  "oldEtagAssets": "NOT_MIGRATED_STILL_FAIL_CLOSED",
+  "uiFullChain": "NOT_EXECUTED_THIS_RECHECK",
+  "productionSwitches": "NOT_CHANGED",
+  "bucketAcl": "NOT_CHANGED"
+}

@@ -1,9 +1,9 @@
 # SERVICE_COVER 真实展示签名补充 CCR v0.1
 
-状态：APPROVED_IMPLEMENTED_CANDIDATE_ENV_BLOCKED。日期：2026-09-24。
+状态：APPROVED_IMPLEMENTED_NEW_VERSIONED_ASSET_LIVE_VERIFIED。日期：2026-09-24。
 来源：已批 SVCW-D4 要求真实封面上传及消费者展示；本轮用户授权服务发布收尾。
 
-## 已核实的具体缺口
+## 起草时核实的缺口（历史，当前实现见下方回执）
 
 - POST /api/v1/c/private-assets 已接受 SERVICE_COVER，标准化、扫描、owner/purpose 隔离已有实现。
 - 服务写入按 READY/owner/purpose 校验 coverAssetId；C 端服务读先判四条件可见性，再调用 ServiceCoverUrlPort.sign(assetId)。
@@ -31,7 +31,7 @@
 AGENTS.md 要求“Contract 缺失走 CCR”。本文件方案已由用户回复“同意该 CCR，继续实现真实签名”批准；不需重审已经批准的封面必填、上传归属或服务审核规则。
 
 
-## 实现细化及真实环境回执
+## 实现细化及首次真实环境回执（历史，ETag-only阶段）
 
 - 已新增 ServiceCoverSigningApi、第三方模块签名实现及 boot 适配。无新客户端签名路由，无Schema/Event变化。
 - 配置：pet.private-assets.enabled=true 且 pet.service.cover-signing.enabled=true 才装配；pet.service.cover-signing.window-seconds 显式配置，范围600～537600秒（量化续窗仍不得超过S3七天上限），无生产默认值。
@@ -39,3 +39,12 @@ AGENTS.md 要求“Contract 缺失走 CCR”。本文件方案已由用户回复
 - 2026-09-24 真实 MySQL+OSS+ClamAV 合成图片上传 READY；对象事实为 ETAG_ONLY，签名按预期拒绝。真实图片下载正向验收 **BLOCKED**，不能报告为成功。
 - 用户再次明确选择：“保留 bucket 现状，明确登记环境阻塞”。本轮没有修改bucket版本控制、ACL、防覆盖策略或迁移历史对象；仅清理本轮测试资产的精确对象。
 - 版本化bucket只是未来选项，不自动批准。OSS官方说明：[Versioning overview](https://www.alibabacloud.com/help/en/oss/user-guide/overview-78/)（开启后只能暂停，影响防覆盖头与历史版本费用）。
+
+
+## 用户开启版本控制后的当前回执（2026-09-24）
+
+用户随后明确反馈已在OSS控制台开启版本控制，覆盖之前“保留bucket现状”的阶段决定。agent没有执行bucket配置变更。
+
+同一实现代码重新验证mtxoss2的新上传合成图片：真实OSS/ClamAV READY、非null VERSION_ID、精确版本签名GET 200、标准化内容摘要一致；原私有材料真实HTTP上传和同requestId重放通过，相关专项共19/19通过。测试资产按精确key/version清理，未批量读取或改写历史资产。见[追加证据](../../progress/2026-09-24/service-schedule-closeout/versioned-oss-recheck.json)。
+
+当前状态：新对象的版本条件ENV_BLOCKED已解除，原失败记录保留作历史。旧ETag-only资产不会自动转换，本轮未迁移；生产应用签名开关仍未开启，完整UI/真机验收未由这次后端/provider复验替代。不调整已批准接口/签名语义。

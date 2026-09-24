@@ -30,4 +30,4 @@
 
 - PR77/78/79已合入develop 0c2d7ae：排期查询切片、窗口匿名/导航/草稿修复、宽松草稿NULL安全。
 - SCH-002/SCH-004业务裁决见[联合回执](CCR-W2-API-001/schedule-review-decisions.md)。SCH-002待07/27/11权威同步与实现；SCH-004仍须冻结人员/占用并发保护、能力集合版本、双方向占用匹配契约，不自动列READY。
-- SERVICE_COVER内部签名[补充CCR](CCR-W2-API-001/service-cover-signing-amendment.md)已批；本分支实现待PR审阅，真实bucket版本条件不满足且用户要求不改，保留ENV_BLOCKED。
+- SERVICE_COVER内部签名[补充CCR](CCR-W2-API-001/service-cover-signing-amendment.md)已批；本分支实现待PR审阅，用户随后开启mtxoss2版本控制，新上传对象的真实版本签名GET及19项兼容性复验通过；旧ETag对象未迁移，完整UI/真机链未重验。

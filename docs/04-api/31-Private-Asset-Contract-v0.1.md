@@ -43,4 +43,4 @@ READY、用途、图片摘要/类型/大小及normalized对象指针均在素材
 
 前端上传复用本契约的multipart与原请求恢复机制：purpose=SERVICE_COVER，用户/商家/门店/编辑目标隔离本地日志；READY回执不等于草稿已保存，服务绑定成功后才清理本地上传副本。证照通道原consumer作用域不放宽；封面必须merchant作用域，服务端仍核验OWNER。
 
-本轮真实OSS/ClamAV上传成功，但bucket对象为ETag-only；用户要求保留bucket现状，真实消费者图片下载验收BLOCKED。不得以本条推定允许修改bucket版本化或ACL。
+首次真实OSS/ClamAV验证因ETag-only阻塞。2026-09-24用户随后在控制台开启mtxoss2版本控制，新上传对象的版本签名GET 200与摘要核验已通过；原私有材料上传/重放及相关测试共19项通过。旧ETag对象未迁移，页面/真机仍需独立验收。agent未修改bucket配置/ACL，生产应用开关未开启。

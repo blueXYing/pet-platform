@@ -1727,4 +1727,4 @@ thirdparty-api 新增独立 ServiceCoverSigningApi.signServiceCover(String asset
 调用方服务域先核验服务四条件可见性与绑定素材，再调用。第三方模块同事务核对素材 purpose=SERVICE_COVER、READY、有效标准化图片事实及精确对象版本；不接受证照purpose，不返回独立objectKey/version字段。签名URL本身自然含访问对象所需的签名信息，不得记录其全文。
 
 依赖/素材事实异常返回 COMMON_DEPENDENCY_UNAVAILABLE；对外服务不存在/不可见仍在签发前使用 SERVICE_NOT_FOUND。签名 GET 只针对 versionId，不为 ETag-only 对象退回签最新版本。老证照 PrivateAssetApi 接口与水印授权保持原样。
-生产装配默认关闭，显式配置签名有效期；当前真实bucket新对象为ETag-only，用户要求保持bucket设置，真实展示仍被环境阻塞。Schema/Event及现有HTTP响应字段不变。
+生产装配默认关闭，显式配置签名有效期；2026-09-24用户随后开启mtxoss2版本控制，新上传对象的VERSION_ID签名GET已通过真实OSS复验；旧ETag对象未迁移，完整页面/真机验收独立保留。Schema/Event及现有HTTP响应字段不变。
