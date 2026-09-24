@@ -113,9 +113,9 @@ export default function MerchantServicesPage() {
       </View>
       {state.items.length === 0 && <View className='msvc-empty'><Text>还没有服务，点击右上角“添加服务”创建第一个单次预约服务。</Text></View>}
       {state.items.map(item => <View key={item.serviceId} className='msvc-card' data-status={item.status}>
-        <Button id={`msvc-card-${item.serviceId}`} className='msvc-card-main' ariaLabel={`${item.serviceName}，${manageStatusText[item.status]}${item.price === null ? '' : `，价格${formatPrice(item.price)}元`}`} onClick={() => openEditor(item)}>
+        <Button id={`msvc-card-${item.serviceId}`} className='msvc-card-main' ariaLabel={`${item.serviceName || '未命名草稿'}，${manageStatusText[item.status]}${item.price === null ? '' : `，价格${formatPrice(item.price)}元`}`} onClick={() => openEditor(item)}>
           <View className='msvc-card-line'>
-            <Text className='msvc-card-name'>{item.serviceName}</Text>
+            <Text className='msvc-card-name'>{item.serviceName || '未命名草稿'}</Text>
             <Text className='msvc-card-status' data-status={item.status}>{manageStatusText[item.status]}</Text>
           </View>
           <Text className='msvc-card-price'>{item.price === null ? '未定价' : `¥${formatPrice(item.price)}`}</Text>

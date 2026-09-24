@@ -1717,3 +1717,14 @@ AdminResourceScope字段为resourceType、resourceId、merchantId、cityCode、s
 内部`MerchantApplicationReviewDetail`新增不可变`List<MaterialReference>`。同一事务快照读取提交版本、任务及材料集合，拒绝不一致的引用，不混入之后尚未提交的补正草稿。沿用read权限、数据范围及核验命令锁内最终检查；元数据不授予原件读取权限，也不证明操作者已查看材料。
 
 C端详情、列表、写入回执、Schema/DDL、迁移和Event均不变。运营端严格解码客户端需协调此响应字段扩展；缺引用时保持人工核验提交禁用。身份证正反面都应查看，但仅以ID_CARD_BACK引用提交一条IDENTITY_NUMBER证据。默认生产门禁不解除。
+
+
+## 2026-09-24 已批准：SERVICE_COVER 内部签名
+
+批准依据：[封面签名补充CCR](../../planning/ccr/CCR-W2-API-001/service-cover-signing-amendment.md)。
+thirdparty-api 新增独立 ServiceCoverSigningApi.signServiceCover(String assetId, QueryContext context)，返回 SignedServiceCover(assetId, signedUrl, Instant expiresAt)。仅后端内部调用，不新增任意assetId签名的外部路由。
+
+调用方服务域先核验服务四条件可见性与绑定素材，再调用。第三方模块同事务核对素材 purpose=SERVICE_COVER、READY、有效标准化图片事实及精确对象版本；不接受证照purpose，不返回独立objectKey/version字段。签名URL本身自然含访问对象所需的签名信息，不得记录其全文。
+
+依赖/素材事实异常返回 COMMON_DEPENDENCY_UNAVAILABLE；对外服务不存在/不可见仍在签发前使用 SERVICE_NOT_FOUND。签名 GET 只针对 versionId，不为 ETag-only 对象退回签最新版本。老证照 PrivateAssetApi 接口与水印授权保持原样。
+生产装配默认关闭，显式配置签名有效期；当前真实bucket新对象为ETag-only，用户要求保持bucket设置，真实展示仍被环境阻塞。Schema/Event及现有HTTP响应字段不变。

@@ -6,7 +6,7 @@ export type Session = { sessionId: string; userId: string; audience: 'MINIAPP'; 
 type Grant = Session & { accessToken: string; tokenType: 'Bearer' }
 type Attempt = { attemptId: string; attemptToken: string; nextStep: string }
 export type Command = RequestSpec & { requestId: string }
-export type PrivateUploadTransport = (input: { filePath: string; requestId: string; authorization: string }) => Promise<{ statusCode: number; data: unknown }>
+export type PrivateUploadTransport = (input: { filePath: string; requestId: string; authorization: string; purpose?: 'MERCHANT_APPLICATION_MATERIAL' | 'SERVICE_COVER' }) => Promise<{ statusCode: number; data: unknown }>
 export type PrivateAssetReceipt = { assetId: string; status: 'READY'; objectSha256: string; mediaType: 'image/jpeg' | 'image/png'; bytes: number }
 export function decodePrivateAsset(value: unknown): PrivateAssetReceipt {
   const v = object(value)
@@ -200,15 +200,19 @@ export class ConsumerApi {
     return decode(value)
   }
   /** Only this typed operation can use the MINIAPP credential for multipart upload. */
-  async uploadPrivateAsset(input: { filePath: string; requestId: string; ownerUserId: string }): Promise<PrivateAssetReceipt> {
+  async uploadPrivateAsset(input: { filePath: string; requestId: string; ownerUserId: string; purpose?: 'MERCHANT_APPLICATION_MATERIAL' | 'SERVICE_COVER' }): Promise<PrivateAssetReceipt> {
     const ticket = this.scope.capture()
     const credential = this.credential
     if (!credential || !this.currentSession || credential.sessionId !== this.currentSession.sessionId || credential.userId !== this.currentSession.userId || input.ownerUserId !== this.currentSession.userId || ticket.context.userId !== input.ownerUserId) throw new ApiError('COMMON_UNAUTHORIZED', 401)
-    if (ticket.context.workspace !== 'consumer') throw new Error('WORKSPACE_PATH_MISMATCH')
+    const purpose = input.purpose ?? 'MERCHANT_APPLICATION_MATERIAL'
+    if (!['MERCHANT_APPLICATION_MATERIAL', 'SERVICE_COVER'].includes(purpose)) throw new Error('UPLOAD_PURPOSE_INVALID')
+    if (purpose === 'SERVICE_COVER') {
+      if (ticket.context.workspace !== 'merchant' || !ticket.context.merchantId || !ticket.context.storeId) throw new Error('WORKSPACE_PATH_MISMATCH')
+    } else if (ticket.context.workspace !== 'consumer') throw new Error('WORKSPACE_PATH_MISMATCH')
     if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(input.requestId)) throw new Error('REQUEST_ID_REQUIRED')
     if (!this.uploadTransport) throw new Error('UPLOAD_NOT_CONNECTED')
     try {
-      const response = await this.uploadTransport({ filePath: input.filePath, requestId: input.requestId, authorization: `Bearer ${credential.accessToken}` })
+      const response = await this.uploadTransport({ filePath: input.filePath, requestId: input.requestId, authorization: `Bearer ${credential.accessToken}`, purpose })
       ticket.assertCurrent()
       if (this.credential !== credential || this.currentSession?.sessionId !== credential.sessionId) throw new StaleContextError()
       const body = object(typeof response.data === 'string' ? JSON.parse(response.data) : response.data)

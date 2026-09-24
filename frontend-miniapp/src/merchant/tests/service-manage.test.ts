@@ -24,6 +24,15 @@ async function rejects(promise: Promise<unknown>): Promise<ServiceManageMockErro
 
 const wire = (value: unknown): Record<string, unknown> => JSON.parse(JSON.stringify(value))
 
+test('PR79 empty draft decodes through detail, list and form without a false save failure', () => {
+  const empty = { ...fixtureManagedServices[0], status: 'DRAFT', serviceName: null,
+    categoryId: null, categoryName: null, fulfillmentType: null, price: null, listPrice: null,
+    durationMinutes: null, coverAssetId: null, applicablePetTypes: null, latestRejection: null }
+  assert.equal(draftFromDetail(decodeManagedServiceDetail(empty)).serviceName, '')
+  assert.equal(decodeManagedServicePage({ items: [empty], page: 1, pageSize: 20, total: 1 }).items[0].serviceName, '')
+  for (const status of ['ACTIVE', 'REVIEWING']) assert.throws(() => decodeManagedServiceDetail({ ...empty, status }), /INVALID_RESPONSE/)
+})
+
 test('decoders enforce the exact finalized shapes (IDs/prices/status/rejection/cover)', () => {
   const base = fixtureManagedServices[0]!
   assert.ok(decodeManagedServiceDetail(wire(base)))

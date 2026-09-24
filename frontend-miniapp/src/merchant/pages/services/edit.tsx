@@ -2,7 +2,9 @@ import { Button, Image, Input, Text, Textarea, View } from '@tarojs/components'
 import Taro, { useDidShow, useRouter } from '@tarojs/taro'
 import { useCallback, useEffect, useRef, useState, type CSSProperties } from 'react'
 import { useWorkspace } from '../../../shared/workspace-react'
-import { consumerApi } from '../../../shared/consumer-runtime'
+import { consumerApi, consumerStorage } from '../../../shared/consumer-runtime'
+import { privateUploadFiles } from '../../../shared/private-upload-platform'
+import { ServiceCoverUpload } from '../../services/cover-upload'
 import { RealServiceManageRepository, serviceManageMessage } from '../../services/repository'
 import {
   PreviewServiceManageRepository, draftFromDetail, draftInputProblems, editableStatuses, emptyDraft,
@@ -20,6 +22,7 @@ import './page.css'
 // PRD/contract fields the original lacks (人员要求/售后说明/备注) are appended in the same
 // form language (VIS-004 registered differences — see C-003-design-inputs/INVENTORY.md).
 type Phase = 'idle' | 'loading' | 'ready' | 'missing' | 'load-error' | 'entry'
+declare const PRIVATE_MATERIAL_UPLOAD_ENABLED: boolean
 
 export default function MerchantServiceEditPage() {
   const route = useRouter()
@@ -34,6 +37,14 @@ export default function MerchantServiceEditPage() {
   const [draft, setDraft] = useState<ServiceDraftInput>(emptyDraft())
   const [notice, setNotice] = useState('')
   const [busy, setBusy] = useState(false)
+  const [coverPreview, setCoverPreview] = useState('')
+  const [coverPending, setCoverPending] = useState(false)
+  const [coverRejected, setCoverRejected] = useState(false)
+  const picking = useRef(false)
+  const mounted = useRef(true)
+  const loadSequence = useRef(0)
+  const [coverUpload] = useState(() => !preview && PRIVATE_MATERIAL_UPLOAD_ENABLED
+    ? new ServiceCoverUpload(consumerApi, consumerStorage, privateUploadFiles(), serviceIdParam || 'new') : null)
   const version = useRef<string>('')
   const createdId = useRef<string>('')
   const [platformInfo] = useState(() => Taro.getWindowInfo())
@@ -41,6 +52,8 @@ export default function MerchantServiceEditPage() {
   const style = { '--msvc-status-top': `${platformInfo.statusBarHeight || 0}px`, '--msvc-unit': `${unit}px` } as CSSProperties
 
   const load = useCallback(async () => {
+    const sequence = ++loadSequence.current
+    const revision = scope.revision
     setNotice('')
     if (preview && scenario === 'expired') { setPhase('entry'); return }
     if (!preview) {
@@ -50,23 +63,36 @@ export default function MerchantServiceEditPage() {
     setPhase('loading')
     try {
       const categoryList = await repository.categories()
+      if (!mounted.current || sequence !== loadSequence.current || revision !== scope.revision) return
       setCategories(categoryList)
       if (serviceIdParam) {
         const loaded = await repository.detail(serviceIdParam)
+        if (!mounted.current || sequence !== loadSequence.current || revision !== scope.revision) return
         setDetail(loaded); version.current = loaded.version; createdId.current = loaded.serviceId
         setDraft(draftFromDetail(loaded))
       } else {
         setDetail(null); version.current = ''; createdId.current = ''; setDraft(emptyDraft())
       }
+      setCoverPreview('')
+      const pending = coverUpload?.pending()
+      setCoverPending(!!pending && !pending.receipt)
+      setCoverRejected(!!pending?.rejected)
+      if (pending?.receipt) {
+        setDraft(current => ({ ...current, coverAssetId: pending.receipt!.assetId }))
+        setCoverPreview(pending.filePath)
+        setNotice('已恢复上传成功的封面，请保存草稿。')
+      } else if (pending) setNotice('封面上传结果尚未确认，请点击头图继续原上传。')
       setPhase('ready')
     } catch (error) {
+      if (!mounted.current || sequence !== loadSequence.current || revision !== scope.revision) return
       if (error instanceof Error && /SERVICE_NOT_FOUND/.test(error.message)) setPhase('missing')
       else if (isStatus(error, 404)) setPhase('missing')
       else { setNotice(serviceManageMessage(error)); setPhase('load-error') }
     }
-  }, [repository, preview, scenario, scope, serviceIdParam])
-  useDidShow(() => { void load() })
-  useEffect(() => { if (!preview && context && context.workspace !== 'merchant') setPhase('entry') }, [context, preview])
+  }, [repository, preview, scenario, scope, serviceIdParam, coverUpload])
+  useDidShow(() => { if (!picking.current) void load() })
+  useEffect(() => { mounted.current = true; return () => { mounted.current = false; loadSequence.current++ } }, [])
+  useEffect(() => { if (!preview && (!context || context.workspace !== 'merchant')) { setPhase('entry'); setCoverPreview(''); setDraft(emptyDraft()) } }, [context, preview])
 
   const readonly = detail !== null && !editableStatuses.includes(detail.status)
   const editing = detail !== null
@@ -85,19 +111,50 @@ export default function MerchantServiceEditPage() {
       return { ...current, applicablePetTypes: has ? withoutAll : [...withoutAll, type] }
     })
   }
-  function pickCover() {
+  async function pickCover() {
     if (readonly || busy) return
-    if (!preview) { setNotice('封面上传依赖门店素材管线（SERVICE_COVER），尚未接通；当前无法选择真实封面。'); return }
-    void Taro.chooseImage({ count: 1, sizeType: ['compressed'], sourceType: ['album', 'camera'] }).then(result => {
+    if (!preview && !coverUpload) { setNotice('封面上传暂不可用，请稍后重试。'); return }
+    const revision = scope.revision
+    picking.current = true
+    setBusy(true)
+    try {
+      if (!preview && coverUpload) {
+        if (coverUpload.pending()?.receipt) {
+          setNotice('请先保存草稿中的已上传封面，再更换图片。'); return
+        }
+        const receipt = await coverUpload.upload('cover')
+        if (!mounted.current || revision !== scope.revision) return
+        if (!receipt) return
+        patch({ coverAssetId: receipt.assetId })
+        setCoverPreview(coverUpload.pending()?.filePath || '')
+        setCoverPending(false); setCoverRejected(false)
+        setNotice('封面上传成功，请保存草稿或提交审核。')
+        return
+      }
+      const result = await Taro.chooseImage({ count: 1, sizeType: ['compressed'], sourceType: ['album', 'camera'] })
+      if (!mounted.current || revision !== scope.revision) return
       const path = result.tempFilePaths[0]
       if (!path) return
       // Preview-only mock asset id; the real coverAssetId comes from the SERVICE_COVER pipeline.
       patch({ coverAssetId: `4${Date.now().toString().slice(-8)}` })
-      setNotice('已选择封面（Mock）；真实上传待素材管线接通。')
+      setNotice('已选择封面（预览示例）。')
       setCoverPreview(path)
-    }).catch(() => setNotice('已取消选择封面'))
+    } catch (error) {
+      if (!mounted.current || revision !== scope.revision) return
+      const pending = coverUpload?.pending()
+      setCoverPending(!!pending && !pending.receipt); setCoverRejected(!!pending?.rejected)
+      setNotice(pending?.rejected ? '图片未通过上传校验，请重新选择。' : pending
+        ? '上传结果尚未确认，请点击头图继续原上传。'
+        : '未完成图片选择或上传，请重试（仅支持 10MB 内 JPG/PNG）。')
+    } finally { picking.current = false; if (mounted.current) setBusy(false) }
   }
-  const [coverPreview, setCoverPreview] = useState('')
+  async function discardRejectedCover() {
+    if (busy || !coverUpload) return
+    setBusy(true)
+    try { await coverUpload.discardRejected(); setCoverPending(false); setCoverRejected(false); setNotice('请重新选择封面。') }
+    catch { setNotice('尚不能更换图片，请重试原上传。') }
+    finally { setBusy(false) }
+  }
   // The workbench row carries a flat coverAssetId anchor only (§4.10.1 字段定稿); the signed
   // display URL is the C-end cover projection (§3.3.1 封面增补), so the editor previews the
   // local pick and otherwise shows the chosen-anchor state without fabricating any URL.
@@ -105,6 +162,7 @@ export default function MerchantServiceEditPage() {
   const coverSrc = coverPreview
 
   async function persistDraft(): Promise<boolean> {
+    if (coverPending) { setNotice('请先确认封面上传结果。'); return false }
     const problems = draftInputProblems(draft, categories)
     if (problems.length) { setNotice(`请检查：${problems.join('；')}`); return false }
     const receipt = editing || createdId.current
@@ -112,6 +170,11 @@ export default function MerchantServiceEditPage() {
       : await repository.create('merchant-service:create', draft)
     createdId.current = receipt.serviceId
     version.current = receipt.version
+    const uploaded = coverUpload?.pending()?.receipt
+    if (uploaded && uploaded.assetId === draft.coverAssetId) {
+      await coverUpload!.acknowledge(uploaded.assetId)
+      setCoverPreview('')
+    }
     return true
   }
   async function saveDraft() {
@@ -134,7 +197,7 @@ export default function MerchantServiceEditPage() {
     if (problems.length) { setNotice(`请检查：${problems.join('；')}`); return }
     setBusy(true)
     try {
-      await persistDraft()
+      if (!await persistDraft()) return
       await repository.submitOnline(`merchant-service:${createdId.current}:online`, createdId.current, version.current)
       setDetail(await repository.detail(createdId.current))
       setNotice('已提交审核，等待平台审核结果。')
@@ -178,7 +241,7 @@ export default function MerchantServiceEditPage() {
       </View>}
       <View className='medit-section'>
         <Text className='medit-label'>头图</Text>
-        <Button id='medit-cover' className='medit-cover' onClick={pickCover}>
+        <Button id='medit-cover' className='medit-cover' disabled={readonly || busy} onClick={() => void pickCover()}>
           {coverSrc
             ? <Image className='medit-cover-image' src={coverSrc} mode='aspectFill' />
             : coverChosen
@@ -189,6 +252,7 @@ export default function MerchantServiceEditPage() {
             <Text>更换头图</Text>
           </View>
         </Button>
+        {coverRejected && <Button id='medit-cover-reselect' disabled={busy} onClick={() => void discardRejectedCover()}>重新选择未通过校验的图片</Button>}
       </View>
       <Field label='服务名称' required={!readonly}>
         <Input id='medit-name' className='medit-input' disabled={readonly} value={draft.serviceName} placeholder='例如：猫咪洗澡+基础护理'

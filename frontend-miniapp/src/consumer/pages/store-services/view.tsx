@@ -1,6 +1,7 @@
 import { Button, Image, Text, View } from '@tarojs/components'
 import type { CSSProperties, ReactNode } from 'react'
-import { designSamples, formatSalePrice, type ServiceItemView } from '../../service/model'
+import { designSamples, formatSalePrice, type ServiceItemView, type ServiceCoverView } from '../../service/model'
+import { ServiceCover } from './cover'
 import type { StoreDetailView } from '../../store/model'
 import bgFlower from './assets/690-6661-bg-huaban@2x.png'
 import storeBanner from './assets/690-6908-store-banner@2x.png'
@@ -57,7 +58,7 @@ export function ServiceRow({ line, idPrefix, onOpen, onBook }: { line: ServiceCa
  * every field the nine-field projection does not carry (rating, monthly sold, distance, tags,
  * intro, opening hours, promo, reviews) stays DESIGN-SAMPLE copy registered as contract gaps.
  */
-export function StoreServicesDesign({ store: storeView, listTop, servicesNode, reviewTop, notice, footer, onBack, onCall, onBookNow, bookEnabled }: {
+export function StoreServicesDesign({ store: storeView, listTop, servicesNode, reviewTop, notice, footer, onBack, onCall, onBookNow, bookEnabled, serviceCover, onRefreshCover }: {
   store: StoreDetailView | null
   listTop: number
   servicesNode: ReactNode
@@ -69,6 +70,8 @@ export function StoreServicesDesign({ store: storeView, listTop, servicesNode, r
   onCall: () => void
   onBookNow: () => void
   bookEnabled: boolean
+  serviceCover?: ServiceCoverView | null
+  onRefreshCover?: () => void
 }) {
   const store = {
     ...designSamples.store,
@@ -84,7 +87,9 @@ export function StoreServicesDesign({ store: storeView, listTop, servicesNode, r
     <View className='svc-abs svc-bg-base' style={at(reviewBottom, { height: `calc(var(--svc-unit) * ${reviewBottom - 75})` })} />
     <Button id='svc-nav-back' className='svc-nav-back' ariaLabel='返回' onClick={onBack}><Image src={svcAssets.navBack} mode='scaleToFill' /></Button>
     <Text className='svc-abs svc-nav-title'>商家详情</Text>
-    <Image className='svc-abs svc-banner' src={svcAssets.storeBanner} mode='aspectFill' />
+    {serviceCover !== undefined
+      ? <ServiceCover cover={serviceCover} onRefresh={onRefreshCover || (() => {})} />
+      : <Image className='svc-abs svc-banner' src={svcAssets.storeBanner} mode='aspectFill' />}
     <View className='svc-abs svc-store-card'>
       <Image className='svc-store-avatar' src={svcAssets.storeAvatar} mode='scaleToFill' />
       <View className='svc-store-head'>
