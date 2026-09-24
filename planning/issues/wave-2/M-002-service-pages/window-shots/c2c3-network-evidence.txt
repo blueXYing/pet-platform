@@ -1,0 +1,11 @@
+GET http://127.0.0.1:18081/api/v1/c/auth/session -> 200  data={"sessionId":"96422039912534016","userId":"96422039895756800","audience":"MINIAPP","expiresAt":"2026-09-24T02:01:45.750Z","phoneMasked":"138****5713"}
+--
+GET http://127.0.0.1:18081/api/v1/c/auth/merchant-memberships?page=1&pageSize=20 -> 200  data={"items":[{"merchantId":"96422040029974529","merchantName":"窗景宠物生活馆","storeId":"96422040575234048","storeName":"窗景宠物生活馆","membershipKind":"OWNER"}],"page":1,"pageSize":20,"total":1}
+--
+GET http://127.0.0.1:18081/api/v1/merchant/auth/admission?merchantId=96422040029974529&storeId=96422040575234048 -> 200  data={"merchantId":"96422040029974529","storeId":"96422040575234048","membershipKind":"OWNER","admission":"ALLOWED","checkedAt":"2026-09-24T01:47:32.827Z","authzVersion":"303f3c16d727922c","facts":{"application":{"status":"APPROVED"},"signing":{"status":"SIGNED"},"storeStatus":"ACTIVE","merchantStatus":"ACTIVE","staffEnabled":null},"allowedActions":["merchant.aft
+--
+GET http://127.0.0.1:18081/api/v1/c/notifications?page=1&pageSize=20 -> 200  data={"items":[{"id":"96423443959992320","category":"SYSTEM","messageType":"SERVICE_REVIEWED","bizType":"SERVICE","bizId":"96423284563857408","title":"服务审核结果","content":"服务《窗口验收·次日洗护加购》：审核未通过。窗口走查驳回样例：说明需补充服务时长与上门范围描述","readAt":null,"createdAt":"2026-09-24T01:52:19.882Z"},{"id":"96422043058262016","category":"SYSTEM","messageType":"SERVICE_REVIEWED","bizType":"SE
+--
+GET http://127.0.0.1:18081/api/v1/c/notifications/96423443959992320 -> 200  data={"id":"96423443959992320","category":"SYSTEM","messageType":"SERVICE_REVIEWED","bizType":"SERVICE","bizId":"96423284563857408","title":"服务审核结果","content":"服务《窗口验收·次日洗护加购》：审核未通过。窗口走查驳回样例：说明需补充服务时长与上门范围描述","readAt":null,"createdAt":"2026-09-24T01:52:19.882Z"}
+--
+POST http://127.0.0.1:18081/api/v1/c/notifications/96423443959992320/read -> 200  data={"id":"96423443959992320","readAt":"2026-09-24T01:53:20.852Z"}
