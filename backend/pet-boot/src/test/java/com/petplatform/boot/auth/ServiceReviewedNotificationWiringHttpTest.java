@@ -168,8 +168,16 @@ class ServiceReviewedNotificationWiringHttpTest {
               "SELECT COUNT(*) FROM notification WHERE receiver_id=? AND message_type='SERVICE_REVIEWED'"
                   + " AND mandatory_inbox=1",
               Integer.class, ownerId);
-      if (count != null && count >= 1) break;
-      if (System.nanoTime() >= deadline) fail("service review notification was not delivered");
+      String outboxStatus =
+          db.jdbc.queryForObject(
+              "SELECT status FROM integration_event_outbox WHERE aggregate_id=?", String.class,
+              serviceId);
+      if (count != null && count == 1 && "PUBLISHED".equals(outboxStatus)) break;
+      if (count != null && count > 1) fail("duplicate service review notifications: count=" + count);
+      if (System.nanoTime() >= deadline) {
+        fail("service review dispatch did not finish: notificationCount=" + count
+            + ", outboxStatus=" + outboxStatus);
+      }
       Thread.sleep(200);
     }
     assertEquals(
