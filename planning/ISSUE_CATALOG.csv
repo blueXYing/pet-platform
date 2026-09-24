@@ -12,6 +12,7 @@ SVC-001,服务项目领域、可预约资格与订单快照查询,Backend Core,E
 SCH-001,分钟级 Availability Query,Backend Core,EPIC-05,ST-SCH-01,P0,SVC-001,backend/pet-schedule-*,"ORD-006,ORD-007",3,BLOCKED
 SCH-002,"effectiveCapacity=min(configured,availableStaff)",Backend Core,EPIC-05,ST-SCH-01,P0,SCH-001,backend/pet-schedule-* backend/pet-merchant-api,"ORD-004,ORD-005,CON-001,CON-002",3,BLOCKED
 SCH-003,预约 TEMP_LOCKED/CONFIRMED/RELEASED 生命周期,Backend Core,EPIC-05,ST-SCH-02,P0,"SCH-002,PLAT-004",backend/pet-schedule-*,"ORD-001,PAY-005,TASK-001",3,BLOCKED
+SCH-004,商家服务时段/员工排班/服务能力维护,Backend Core,EPIC-05,ST-SCH-01,P0,"SCH-001,SCH-002,MER-001",backend/pet-schedule-* backend/pet-boot,"W2-SCHW-001~013",3,BLOCKED
 TX-001,创建预约订单与服务/宠物快照,Transaction Backend,EPIC-06,ST-ORD-01,P0,"USR-001,SVC-001,SCH-003,PLAT-002",backend/pet-order-*,"ORD-001,ORD-008,ORD-012",4,BLOCKED
 TX-002,DisplayOrderStatus 统一计算与订单查询,Transaction Backend,EPIC-06,ST-ORD-02,P0,TX-001,backend/pet-order-*,状态组合矩阵,4,BLOCKED
 PAY-001,支付单与拉卡拉 Provider Stub/Sandbox 接口,Transaction Backend,EPIC-07,ST-PAY-01,P0,TX-001,backend/pet-payment-*,PAY-001,4,BLOCKED

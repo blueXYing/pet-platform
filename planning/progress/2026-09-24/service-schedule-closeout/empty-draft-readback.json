@@ -1,0 +1,28 @@
+{
+  "verifiedAt": "2026-09-24T06:59:18.585Z",
+  "mode": "real-http-mysql-fixed-wechat-fixture",
+  "httpStatus": 200,
+  "rows": [
+    {
+      "serviceId": "96498748980547584",
+      "status": "DRAFT",
+      "version": "1",
+      "nameIsNull": true,
+      "categoryIsNull": false,
+      "priceIsNull": true,
+      "durationIsNull": true,
+      "fulfillmentIsNull": true
+    },
+    {
+      "serviceId": "96497915077414912",
+      "status": "DRAFT",
+      "version": "0",
+      "nameIsNull": true,
+      "categoryIsNull": true,
+      "priceIsNull": true,
+      "durationIsNull": true,
+      "fulfillmentIsNull": true
+    }
+  ],
+  "note": "UI screenshots separately verify saved message and unnamed-draft label; no credentials included."
+}
