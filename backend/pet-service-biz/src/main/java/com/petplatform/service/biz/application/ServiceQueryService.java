@@ -162,7 +162,6 @@ public final class ServiceQueryService {
                 snapshot.coverAssetId(),
                 signed.url(),
                 java.time.Instant.ofEpochSecond(signed.expiresAtEpochSeconds())
-                        .atOffset(java.time.ZoneOffset.UTC)
                         .toString());
     }
 

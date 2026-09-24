@@ -179,7 +179,7 @@ class ServiceWriteHttpTest {
                                 new ServiceCoverUrlPort.CoverUrl(
                                     assetId,
                                     "https://cover.example.invalid/signed/" + assetId,
-                                    java.time.Instant.now().getEpochSecond() + 3600));
+                                    (java.time.Instant.now().getEpochSecond() / 60 + 60) * 60));
                   })
               .run(
                   props.entrySet().stream()
@@ -594,6 +594,9 @@ class ServiceWriteHttpTest {
     assertEquals(COVER_ASSET, cover.get("coverAssetId"));
     assertTrue(String.valueOf(cover.get("coverUrl")).startsWith("https://cover.example.invalid/"));
     assertNotNull(cover.get("coverUrlExpiresAt"));
+    assertTrue(String.valueOf(cover.get("coverUrlExpiresAt")).matches(
+        "[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:00Z"),
+        "whole-minute signature expiry must retain seconds for the frozen C client timestamp");
     Reply storeList =
         send("GET", "/api/v1/c/stores/" + store + "/services?page=1&pageSize=20", null,
             bearer(token));
