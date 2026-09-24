@@ -419,10 +419,15 @@ public final class ServiceCommandService {
         return item;
     }
 
+    /**
+     * Structural invariants only: business columns are legitimately NULL on loose drafts (10号
+     * §4.10.1, F3 fix), so categoryId must not be treated as damaged — the submit gate enforces
+     * completeness. System columns (ids/version/submission_no/status) stay required.
+     */
     private static void strict(ServiceItemEntity item) {
         if (item.getId() == null || item.getId() <= 0
                 || item.getMerchantId() == null || item.getStoreId() == null
-                || item.getCategoryId() == null || item.getVersion() == null
+                || item.getVersion() == null
                 || item.getVersion() < 0 || item.getSubmissionNo() == null
                 || item.getSubmissionNo() < 0
                 || !ALL_STATUSES.contains(String.valueOf(item.getStatus()))) {
@@ -530,6 +535,9 @@ public final class ServiceCommandService {
         if (item.getApplicablePetTypes() == null || item.getApplicablePetTypes().isBlank())
             invalid("applicablePetTypes is required");
         if (item.getCoverAssetId() == null) invalid("coverAssetId is required");
+        // Null-guard before the primitive mapper lookup: a loose draft without a category must
+        // fail the field-level 400, never an unboxing NPE dressed up as 503 (defect F3).
+        if (item.getCategoryId() == null) invalid("categoryId is required");
         ServiceCategoryEntity category = m.selectCategoryById(item.getCategoryId());
         if (category == null || !"ENABLED".equals(category.getStatus()))
             invalid("categoryId must reference an ENABLED category");

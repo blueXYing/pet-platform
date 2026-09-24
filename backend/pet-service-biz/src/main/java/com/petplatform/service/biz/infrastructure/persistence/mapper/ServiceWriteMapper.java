@@ -37,17 +37,22 @@ public interface ServiceWriteMapper {
 
     ServiceItemEntity selectItemByIdForUpdate(@Param("serviceId") long serviceId);
 
+    /**
+     * Loose-draft insert (10号 §4.10.1): business columns are wrapper-typed so a minimal draft
+     * stores NULL — primitives would NPE on unboxing and surface as a spurious 503. The submit
+     * gate re-validates the required set before REVIEWING.
+     */
     int insertItem(
             @Param("id") long id,
             @Param("merchantId") long merchantId,
             @Param("storeId") long storeId,
             @Param("ownerUserId") long ownerUserId,
-            @Param("categoryId") long categoryId,
+            @Param("categoryId") Long categoryId,
             @Param("serviceName") String serviceName,
             @Param("description") String description,
             @Param("price") BigDecimal price,
             @Param("listPrice") BigDecimal listPrice,
-            @Param("durationMinutes") int durationMinutes,
+            @Param("durationMinutes") Integer durationMinutes,
             @Param("fulfillmentType") String fulfillmentType,
             @Param("coverAssetId") Long coverAssetId,
             @Param("applicablePetTypes") String applicablePetTypes,
