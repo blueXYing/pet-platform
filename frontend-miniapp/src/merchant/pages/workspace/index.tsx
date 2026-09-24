@@ -52,6 +52,13 @@ export default function MerchantWorkbenchPage() {
     if (url) void Taro.navigateTo({ url })
     else void Taro.showToast({ title: '该入口将在后续切片提供', icon: 'none' })
   }
+  // F1 fix: navigateTo hides this page first, and the service pages gate on the merchant
+  // coordinates this workbench holds — hand them to the child instead of revoking on hide
+  // (leave() used to reset them, deadlocking the child at its entry state in real mode).
+  function openServices() {
+    controller.handoffToChild()
+    Taro.navigateTo({ url: '/merchant/pages/services/index' }).catch(() => controller.handoffCancelled())
+  }
   const view = state.view
   return <View className='merchant-workbench'>
     <View className='workbench-header'>
@@ -92,7 +99,7 @@ export default function MerchantWorkbenchPage() {
         {state.status === 'allowed' && <View className='workbench-steps'>
           {/* M-002 service management entry (NAVIGATION-BASIS: workbench is the approved hub;
               the entry stays hidden for LIMITED stores — new-business writes are suspended). */}
-          <Button id='workbench-services' onClick={() => void Taro.navigateTo({ url: '/merchant/pages/services/index' })}>服务管理</Button>
+          <Button id='workbench-services' onClick={openServices}>服务管理</Button>
         </View>}
         {view.nextSteps.length > 0 && <View className='workbench-steps'>
           {view.nextSteps.map(step => <Button key={step.type} onClick={() => takeStep(step.type, view.merchantId)}>{stepText[step.type] || step.type}</Button>)}
