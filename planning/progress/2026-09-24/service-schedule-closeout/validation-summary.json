@@ -1,0 +1,61 @@
+{
+  "verifiedAt": "2026-09-24T07:00:36.535558+00:00",
+  "baseline": "0c2d7ae76f920d03f66c14f1bb9c8d68be7ad6ec",
+  "backendCleanVerify": {
+    "result": "PASS",
+    "tests": 429,
+    "failures": 0,
+    "errors": 0,
+    "skipped": 0,
+    "suites": 76
+  },
+  "miniapp": {
+    "typecheck": "PASS",
+    "tests": 178,
+    "failures": 0,
+    "realModeBuild": "PASS",
+    "packageBudget": "PASS"
+  },
+  "architecturePython": {
+    "tests": 13,
+    "result": "PASS"
+  },
+  "offlineE2E": {
+    "tests": 115,
+    "result": "PASS",
+    "operations": 90
+  },
+  "liveCover": {
+    "verifiedAt": "2026-09-24T07:30:48.167761+00:00",
+    "upload": "READY_REAL_OSS_REAL_CLAMAV",
+    "versionKind": "VERSION_ID",
+    "signedDownload": "PASS_HTTP_200_NORMALIZED_DIGEST_MATCH",
+    "positiveLiveTest": "PASS",
+    "bucketChange": "USER_ENABLED_VERSIONING_AGENT_VERIFIED_ONLY",
+    "oldEtagAssets": "NOT_MIGRATED"
+  },
+  "simulator": {
+    "emptyDraftSave": "PASS",
+    "incompleteSubmitGuard": "PASS",
+    "unnamedDraftList": "PASS",
+    "auth": "FIXED_WECHAT_HTTP_SESSION_INJECTION",
+    "realDevice": "NOT_EXECUTED"
+  },
+  "implementationCommit": "ee1cd379b3150553d6522ae3823c3929be3d6540",
+  "liveCoverHistory": [
+    {
+      "upload": "READY_REAL_OSS_REAL_CLAMAV",
+      "versionKind": "ETAG_ONLY",
+      "signedDownload": "BLOCKED",
+      "positiveLiveTest": "FAIL_ENVIRONMENT_PRECONDITION",
+      "bucketChange": "NOT_PERFORMED_USER_REQUEST"
+    }
+  ],
+  "versionedCompatibilityRecheck": {
+    "tests": 19,
+    "failures": 0,
+    "errors": 0,
+    "skipped": 0,
+    "evidence": "versioned-oss-recheck.json"
+  }
+}

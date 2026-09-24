@@ -102,6 +102,7 @@ export default function ServiceDetailPage() {
       {phase === 'missing' && <Button id='svcd-back-list' className='svc-state-action' onClick={() => Taro.navigateBack().catch(() => setNotice('返回失败'))}>返回上一页</Button>}
     </View>}
     {ready && detail && <StoreServicesDesign store={null} listTop={listTop} reviewTop={reviewTop} onBack={() => Taro.navigateBack().catch(() => setNotice('返回失败'))}
+      serviceCover={preview ? undefined : detail.cover} onRefreshCover={() => void load()}
       onCall={() => notWired('拨打电话')} onBookNow={() => notWired('立即预约')} bookEnabled
       footer={<Text>页面数据：{preview ? '契约 Mock（preview=1，不联调）' : '真实接口（后端交付前失败关闭，可匿名浏览）'}</Text>}
       notice={notice ? <Text id='svcd-notice' className='svc-notice' style={{ left: `calc(var(--svc-unit) * 29)`, right: `calc(var(--svc-unit) * 29)`, top: `calc(var(--svc-unit) * ${reviewTop + 246 + 24})` }}>{notice}</Text> : undefined}

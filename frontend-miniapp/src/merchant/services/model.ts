@@ -179,7 +179,10 @@ export function decodeManagedServiceItem(value: unknown): ManagedServiceItem {
   if (!isId(v.serviceId) || !isId(v.merchantId) || !isId(v.storeId)) invalid()
   if (v.categoryId !== null && !isId(v.categoryId)) invalid()
   if (v.categoryName !== null && (typeof v.categoryName !== 'string' || [...v.categoryName].length > 50)) invalid()
-  if (typeof v.serviceName !== 'string' || [...v.serviceName].length < 1 || [...v.serviceName].length > 50) invalid()
+  // PR79 allows an omitted name in a loose editable draft. Preserve the wire null as an
+  // empty form value; published/reviewing records still require a real name.
+  const name = v.serviceName === null && editableStatuses.includes(v.status) ? '' : v.serviceName
+  if (typeof name !== 'string' || (name.length === 0 && !editableStatuses.includes(v.status)) || [...name].length > 50) invalid()
   if (v.durationMinutes !== null && (!Number.isSafeInteger(v.durationMinutes) || v.durationMinutes < 1 || v.durationMinutes > 24 * 60)) invalid()
   if (typeof v.verificationRequired !== 'boolean') invalid()
   const latestRejection = rejectionOf(v.latestRejection)
@@ -189,7 +192,7 @@ export function decodeManagedServiceItem(value: unknown): ManagedServiceItem {
   if (listPrice !== null && price !== null && cents(listPrice) < cents(price)) invalid()
   return {
     serviceId: v.serviceId, merchantId: v.merchantId, storeId: v.storeId,
-    serviceName: v.serviceName, categoryId: v.categoryId, categoryName: v.categoryName,
+    serviceName: name, categoryId: v.categoryId, categoryName: v.categoryName,
     fulfillmentType: v.fulfillmentType === null ? null : fulfillmentOf(v.fulfillmentType),
     price, listPrice, durationMinutes: v.durationMinutes,
     coverAssetId: v.coverAssetId === null ? null : isId(v.coverAssetId) ? v.coverAssetId : invalid(),

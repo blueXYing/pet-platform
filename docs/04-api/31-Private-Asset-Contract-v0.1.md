@@ -33,3 +33,14 @@ thirdparty 拥有 `PrivateAssetApi`、SQL31 和对象适配器。MER 通过 API 
 源文件最多 10 MiB；图片解码不落普通临时文件，输出不包含输入元数据。水印只用可信上下文，不使用 token 或客户端姓名。测试可用协议替身模拟故障，但生产不得注入默认放行扫描器、内存私有材料或公开 URL。
 
 实际 OSS 使用已确认的本地私有 bucket 配置，代码复用 OSS_* 名称，不把密钥复制入仓库。独立 grant HMAC 密钥和原因保护依赖由运行时注入，必须稳定且与其他用途密钥隔离。真实 OSS/ClamAV 仍须按实际服务验收，不能由协议替身测试声称生产链路已通；位置按SSOT §28只做输入格式校验，不再依赖外部地图Key。
+
+
+## 2026-09-24 SERVICE_COVER 展示签名例外（已批准）
+
+见[签名补充CCR](../../planning/ccr/CCR-W2-API-001/service-cover-signing-amendment.md)及07号新增内部API。证照材料仍无对象URL读取接口；仅SERVICE_COVER通过独立内部接口签发标准化对象的精确版本GET链接，消费者读取先经过服务可见性检查。禁止跨域读private_asset Mapper，禁止为任意未审核服务提供公开签名端点。
+
+READY、用途、图片摘要/类型/大小及normalized对象指针均在素材所属模块核验；S3版本ID必须存在，ETag-only失败关闭，不签最新对象。旧已签URL在有效期内不保证即时撤销，服务下架后新的查询不再签发。
+
+前端上传复用本契约的multipart与原请求恢复机制：purpose=SERVICE_COVER，用户/商家/门店/编辑目标隔离本地日志；READY回执不等于草稿已保存，服务绑定成功后才清理本地上传副本。证照通道原consumer作用域不放宽；封面必须merchant作用域，服务端仍核验OWNER。
+
+首次真实OSS/ClamAV验证因ETag-only阻塞。2026-09-24用户随后在控制台开启mtxoss2版本控制，新上传对象的版本签名GET 200与摘要核验已通过；原私有材料上传/重放及相关测试共19项通过。旧ETag对象未迁移，页面/真机仍需独立验收。agent未修改bucket配置/ACL，生产应用开关未开启。
