@@ -26,3 +26,5 @@ SQL播种员工/能力/排班仅证明查询链，不声称人员录入/预约�
 
 - 主协调唯一编辑`pet-schedule-biz/pom.xml`，新增与MER测试同款的test-scope MySQL driver，版本沿用平台依赖管理，仅用于SCH真实数据库模块测试；不新增生产依赖或biz边界。
 - QA复核撤回“DISABLED能力状态合法”的初步判断：当前能力只定义ENABLED，无行表示没有资格，其余状态包括DISABLED均503；不添加新业务枚举。
+
+- 集成CI例外：PR81暴露既有ServiceReviewedNotificationWiringHttpTest等待竞态（run35973354153，PUBLISHING尚未转PUBLISHED时提前断言）。根Work交QA最小修复，原20秒/200ms界限不变，等待唯一通知和PUBLISHED都成立，保留最终状态/权限断言。独立提交4f9230e，集成为faf98b4；不修改通知生产代码或产品规则。
