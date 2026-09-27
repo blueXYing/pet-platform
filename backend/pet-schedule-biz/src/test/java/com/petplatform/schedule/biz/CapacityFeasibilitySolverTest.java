@@ -82,6 +82,20 @@ class CapacityFeasibilitySolverTest {
     }
 
     @Test
+    void anotherOriginalWindowAlreadyOverCapacityBlocksEvenWithoutStaffOverlap() {
+        List<Reservation> reservations = List.of(
+                reservation("candidate", "A", "wa", 0, 60, null),
+                reservation("distant-one", "A", "wb", 120, 180, null),
+                reservation("distant-two", "A", "wb", 120, 180, null));
+        var result = SOLVER.solve("candidate", reservations,
+                List.of(new Window("wa", 1), new Window("wb", 1)),
+                List.of(staff("one", Set.of("A"), 0, 60)), 1000);
+        assertEquals(Outcome.INFEASIBLE, result.outcome());
+        assertEquals(1, result.evaluatedReservations(),
+                "unrelated historical staff need no current qualification proof");
+    }
+
+    @Test
     void conflictingFixedAssignmentsCannotBeRematched() {
         List<Reservation> reservations = List.of(
                 reservation("candidate", "A", "wa", 0, 60, null),

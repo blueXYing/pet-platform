@@ -101,7 +101,9 @@ public final class CapacityFeasibilitySolver {
                 .sorted(Comparator.comparing(Reservation::id)).toList();
         int count = relevant.size();
         Map<String, TreeMap<Instant, Integer>> occupancy = new HashMap<>();
-        for (Reservation reservation : relevant) {
+        // Original-window capacity is a store-wide invariant, including active claims outside
+        // the candidate's personnel-overlap closure. Historical staff qualification is not.
+        for (Reservation reservation : all) {
             for (Claim claim : reservation.claims()) {
                 if (timer.expired()) return new Result(Outcome.BUDGET_EXHAUSTED, count);
                 TreeMap<Instant, Integer> endpoints = occupancy.computeIfAbsent(
