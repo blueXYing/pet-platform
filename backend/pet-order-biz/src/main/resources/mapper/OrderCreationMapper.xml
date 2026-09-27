@@ -1,0 +1,69 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.petplatform.order.biz.infrastructure.persistence.mapper.OrderCreationMapper">
+  <update id="setUtcTimeZone">SET SESSION time_zone = '+00:00'</update>
+  <update id="setLockWaitTimeout">SET SESSION innodb_lock_wait_timeout = 2</update>
+  <insert id="insertBinding">
+    INSERT INTO order_creation_request
+      (id,request_key,canonical_version,params_sha256,params_canonical,status,receipt_json,trace_id,created_at)
+    VALUES (#{id},#{requestKey,jdbcType=VARBINARY},#{canonicalVersion},#{paramsSha256},
+            #{paramsCanonical,jdbcType=BLOB},'RESERVED',NULL,#{traceId,jdbcType=VARCHAR},UTC_TIMESTAMP(3))
+  </insert>
+  <select id="selectBindingForUpdate" resultType="com.petplatform.order.biz.infrastructure.persistence.entity.OrderCreationBinding">
+    SELECT id,canonical_version,params_sha256,params_canonical,status,receipt_json
+    FROM order_creation_request WHERE request_key=#{requestKey,jdbcType=VARBINARY} FOR UPDATE
+  </select>
+  <update id="succeedBinding">
+    UPDATE order_creation_request SET status='SUCCEEDED',receipt_json=#{receiptJson},succeeded_at=UTC_TIMESTAMP(3)
+    WHERE request_key=#{requestKey,jdbcType=VARBINARY} AND status='RESERVED'
+  </update>
+  <select id="selectOrderOwner" resultType="java.lang.Long">
+    SELECT user_id FROM pet_order WHERE id=#{orderId}
+  </select>
+  <insert id="insertOrder">
+    INSERT INTO pet_order
+      (id,order_no,user_id,merchant_id,store_id,service_id,pet_id,reservation_id,
+       service_staff_id,order_stage,payment_status,verification_status,fulfillment_type,
+       original_amount,discount_amount,pay_amount,refunded_amount,reschedule_count,
+       appointment_start_at,appointment_end_at,payment_expire_at,version,created_at,updated_at)
+    VALUES
+      (#{id},#{orderNo},#{userId},#{merchantId},#{storeId},#{serviceId},#{petId},#{reservationId},
+       NULL,'PENDING_PAYMENT','INIT','UNVERIFIED',#{fulfillmentType},
+       #{price},0.00,#{price},0.00,0,
+       #{appointmentStart},#{appointmentEnd},#{paymentExpireAt},0,UTC_TIMESTAMP(3),UTC_TIMESTAMP(3))
+  </insert>
+  <insert id="insertServiceSnapshot">
+    INSERT INTO order_service_snapshot
+      (id,order_id,service_id,service_name,category_id,category_name,service_price,
+       service_duration_minutes,service_description,merchant_name,store_name,store_address,
+       snapshot_json,created_at)
+    VALUES (#{id},#{orderId},#{serviceId},#{serviceName},#{categoryId,jdbcType=BIGINT},
+            #{categoryName,jdbcType=VARCHAR},#{servicePrice},#{serviceDurationMinutes},
+            #{serviceDescription,jdbcType=VARCHAR},#{merchantName},#{storeName},#{storeAddress},
+            #{snapshotJson,jdbcType=VARCHAR},UTC_TIMESTAMP(3))
+  </insert>
+  <insert id="insertPetSnapshot">
+    INSERT INTO order_pet_snapshot
+      (id,order_id,pet_id,pet_name,pet_type,breed_name,sex,weight_kg,health_note,created_at)
+    VALUES (#{id},#{orderId},#{petId},#{petName},#{petType},#{breedName,jdbcType=VARCHAR},
+            #{sex,jdbcType=VARCHAR},#{weightKg,jdbcType=DECIMAL},#{healthNote,jdbcType=VARCHAR},UTC_TIMESTAMP(3))
+  </insert>
+  <insert id="insertInputSnapshot">
+    INSERT INTO order_booking_input_snapshot
+      (order_id,service_address_ciphertext,customer_remark_ciphertext,created_at)
+    VALUES (#{orderId},#{addressCiphertext,jdbcType=BLOB},#{remarkCiphertext,jdbcType=BLOB},UTC_TIMESTAMP(3))
+  </insert>
+  <insert id="insertStatusLog">
+    INSERT INTO order_status_log
+      (id,order_id,dimension,from_status,to_status,event_type,operator_type,operator_id,
+       request_id,remark,created_at)
+    VALUES (#{id},#{orderId},'ORDER_STAGE',NULL,'PENDING_PAYMENT','ORDER_CREATED',
+            'USER',#{userId},#{requestId},NULL,UTC_TIMESTAMP(3))
+  </insert>
+  <insert id="insertCreationAudit">
+    INSERT INTO order_creation_audit
+      (id,order_id,actor_user_id,request_key,request_id,trace_id,occurred_at)
+    VALUES (#{id},#{orderId},#{userId},#{requestKey,jdbcType=VARBINARY},
+            #{requestId,jdbcType=VARBINARY},#{traceId,jdbcType=VARCHAR},UTC_TIMESTAMP(3))
+  </insert>
+</mapper>
