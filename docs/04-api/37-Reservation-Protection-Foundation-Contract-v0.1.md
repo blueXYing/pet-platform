@@ -1,6 +1,6 @@
 # 预约保护基础实施契约 v0.1
 
-状态：IMPLEMENTATION_IN_PROGRESS。2026-09-27。将已批准的[36号](36-Reservation-Order-Protection-Contract-v0.1.md)及[34号](34-Schedule-Protection-Contract-v0.1.md)细化为本轮Java/SQL切片，不改变产品规则。[SQL37](../03-database/37-Reservation-Protection-Foundation-Schema-v0.1.sql)只隔离验证，不自动迁移、回填生产或开放HTTP。hold/create/swap及SCH004维护写端点仍未实现。
+状态：IMPLEMENTED_INTERNAL_DEFAULT_OFF，最终集成门禁以实现PR的对应提交CI为准。2026-09-27。将已批准的[36号](36-Reservation-Order-Protection-Contract-v0.1.md)及[34号](34-Schedule-Protection-Contract-v0.1.md)细化为本轮Java/SQL切片，不改变产品规则。[SQL37](../03-database/37-Reservation-Protection-Foundation-Schema-v0.1.sql)只隔离验证，不自动迁移、回填生产或开放HTTP。hold/create/swap及SCH004维护写端点仍未实现。
 
 ## 1. 装配与公共形状
 

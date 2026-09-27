@@ -72,3 +72,8 @@ REFUND 状态如需参与一致性判定，只能经 REFUND 公共 API 取正式
 36 号只批准 ROC-1～6 的逻辑合同。后续唯一 Writer 须按 06/07/10/11/12 分别同步物理 Schema、内部/HTTP DTO、`windowId/kind` 与选窗字段、错误映射及 OpenAPI `x-contract-status`，再实现真实 MySQL 共同锁、全量查询、搜索与迁移；当前 `GET /api/v1/c/services/{serviceId}/availability` 六字段不能被称为已能提供选窗 ID 或接送组合保证。可约 GET 只作展示，hold 锁内复核是最终授权。没有完整合同/事实的相关减员、接送 hold 与歧义到店新单继续按已批失败关闭。
 
 [SCH-003 测试映射](../../planning/issues/wave-3/SCH-003-contract/REVIEW-TEST-MAP.md) P01～P24 均 **NOT_EXECUTED**；需真实 MySQL 多连接顺序、幂等/回滚、存量 GENERAL、完整性和性能预算证据，不能以 mock/单窗口单服务测试代替。已批逻辑不授权 PR 合并、生产迁移或发布；未批准统一固定 60 分钟槽、跨店改期、自动人员展示、新业务上限或 V1 范围外能力。
+
+
+## 保护基础实施补记（2026-09-27）
+
+[37号内部基础](37-Reservation-Protection-Foundation-Contract-v0.1.md)已交付guard、SCH/MER当前事实、ORDER完整性及候选资源证明，默认关闭。SQL37只隔离验证；本文件ROC-1～6的完整预约/订单写链、迁移和P01～P24交易验收仍未完成，不能据此解锁hold、swap或减员。
