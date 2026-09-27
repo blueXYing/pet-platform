@@ -28,7 +28,7 @@ SQL37新增kind、claim、reservation.user_id和guard。user_id缺失是未恢�
 
 ## 5. ORDER完整性
 
-`OrderProtectionFactsApi.readStore`先取本店所有订单及当前assignment，核查只有主字段/只有明细、人员不同、非法current和坏版本。另查全局current孤儿assignment：因无storeId无法可靠归店，任一孤儿使本轮所有门店保护查询503，明确接受这一保守可用性代价，不猜staff归属。SQL37给assignment独立非负version；0为隔离/既有行初始值，未来指派命令负责递增。验证现有store前缀索引与新增current/order查询路径。
+`OrderProtectionFactsApi.readStore`先取本店所有订单及当前assignment，核查只有主字段/只有明细、人员不同、非法current和坏版本。另查全局current孤儿assignment：因无storeId无法可靠归店，任一孤儿使本轮所有门店保护查询503，明确接受这一保守可用性代价，不猜staff归属。全局旁查用同RC事务新语句视图，不能FOR UPDATE扫描锁住健康的别店订单；本店行经按店/订单索引锁定。SQL37给assignment独立非负version；0为隔离/既有行初始值，未来指派命令负责递增。验证现有store前缀索引、新增current/order及order/current查询路径，并以双店真实查询证明独立性。
 
 经SCH公共完整事实核验order/reservation双向唯一、user/merchant/store/service/fulfillment一致；活动预约无主单亦503。本轮无hold/create，不开放PENDING_BIND。按36号状态表计算protectRequired；未知或未能证明的状态组合503，不用展示状态推断。需保护的当前人员必须可在MER同店完整集合定位；历史不倒算当前在职/能力资格。预约已释放仍待服务必须503。
 

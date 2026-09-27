@@ -29,5 +29,6 @@ CREATE TABLE schedule_reservation_claim (
 
 ALTER TABLE order_staff_assignment
     ADD COLUMN version BIGINT NOT NULL DEFAULT 0,
-    ADD KEY idx_assignment_current_order (is_current, order_id);
+    ADD KEY idx_assignment_current_order (is_current, order_id),
+    ADD KEY idx_assignment_order_state (order_id, is_current, id);
 -- idx_order_store_stage_created already supports store-prefix enumeration; verify EXPLAIN.
