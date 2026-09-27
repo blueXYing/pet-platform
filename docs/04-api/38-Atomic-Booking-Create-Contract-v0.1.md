@@ -16,11 +16,13 @@ Java骨架为`OrderCreationApi.create(CreateOrderCommand)`及`ReservationHoldApi
 
 IN_STORE：实际分钟区间、可选selectedGeneralWindowId，禁止接送两开始值/方向ID和服务地址；区间长度严格等于SERVICE当前服务时长。PICKUP_DELIVERY：两个不同方向原ID及用户选择的pickupStart/returnStart，禁止到店appointmentStart/end和GENERAL ID；两开始值必须等于原窗且满足120分钟。服务履约类型由SERVICE确定，客户端不得改变。到店无ID只能唯一原窗完整容纳；显式ID仍不能绕过同kind OPEN窗重叠坏事实。
 
-接送主区间用于订单/预约主字段展示：`[pickup.start,min/max外包络的最大end)`，即起点为pickupStart、终点为max(pickupEnd,returnEnd)。实际容量只占两条完整claim，不占两个方向之间空档，也不新增双窗不得重叠的限制。
+接送主区间用于订单/预约主字段展示：`[pickup.start,max(pickup.end,return.end))`。实际容量只占两条完整claim，不占两个方向之间空档，也不新增双窗不得重叠的限制。
 
 remark缺省/null表示无备注；有值须非空白、最多200 Unicode字符，保护器与内容校验通过。serviceAddress接送必填非空白文本（省市区＋详细地址），不臆造联系人/地理围栏要求；单项受保护原文不得超64KiB UTF-8技术上限。拒绝孤立surrogate；不trim/大小写折叠。到店服务地址必须null。可空内部record字段缺省/null按本契约等价，无其他隐式默认。请求中没有价格、商家名、宠物快照或最终员工，不能信任客户端提供这些值。
 
 同guard下新增USER当前可用/宠物归属、MER当前经营资格和名称地址、SERVICE当前可售/价格/时长/履约类型快照公共API；各Owner只读本域持久层、同DataSource当前读，不沿用展示REQUIRES_NEW快照。MER读取为消费者创建用途，不要求顾客是商家OWNER。创建执行校验当前USER可用、pet ACTIVE且归本人、merchant/store ACTIVE且真实APPROVED+SIGNED、service ACTIVE且归店。服务适用宠物类型按现有Owner字典语义核对，不自行猜别名。
+
+用户已批准[宠物类型衔接](../../planning/ccr/CCR-W2-API-001/booking-pet-type-mapping-proposal.md)：仅在下单适用性校验将USER OTHER对应SERVICE EXOTIC，DOG/CAT精确匹配，ALL覆盖全部。各Owner及订单宠物快照仍保留原值；未知枚举503，不用别名推断扩大准入。
 
 ## 3. 幂等与原子写入
 
