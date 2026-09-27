@@ -82,6 +82,12 @@ public final class ScheduleCapacityProofApiImpl implements ScheduleCapacityProof
 
     @Override
     public CapacityProofResult checkNewReservation(CapacityProofQuery query) {
+        HoldProofPlan plan = prepareForHold(query);
+        return new CapacityProofResult(query.storeId(), true, plan.evaluatedReservations());
+    }
+
+    /** The candidate and its diagnostic counts are derived from the same locked facts as the proof. */
+    HoldProofPlan prepareForHold(CapacityProofQuery query) {
         validateQuery(query);
         guard.requireHeld(query.storeId(), source);
         try {
@@ -118,7 +124,18 @@ public final class ScheduleCapacityProofApiImpl implements ScheduleCapacityProof
             if (result.outcome() == Outcome.INFEASIBLE) {
                 throw new ApiException(CAPACITY_EXCEEDED, "schedule capacity is unavailable");
             }
-            return new CapacityProofResult(query.storeId(), true, result.evaluatedReservations());
+            List<ProvenClaim> proven = candidateClaims.stream().map(claim -> {
+                WindowFact window = windows.get(claim.windowId());
+                return new ProvenClaim(window.windowId(), window.merchantId(), window.kind(),
+                        java.time.OffsetDateTime.ofInstant(claim.interval().start(), java.time.ZoneOffset.UTC),
+                        java.time.OffsetDateTime.ofInstant(claim.interval().end(), java.time.ZoneOffset.UTC));
+            }).toList();
+            int configured = candidateClaims.stream().mapToInt(claim ->
+                    windows.get(claim.windowId()).configuredCapacity()).min().orElseThrow();
+            int qualified = (int) staff.stream().filter(person ->
+                    person.serviceIds().contains(query.serviceId()) && candidateClaims.stream()
+                            .allMatch(claim -> covers(person.availability(), claim.interval()))).count();
+            return new HoldProofPlan(proven, configured, qualified, result.evaluatedReservations());
         } catch (ApiException known) {
             rollbackOnly();
             throw known;
@@ -127,6 +144,23 @@ public final class ScheduleCapacityProofApiImpl implements ScheduleCapacityProof
             throw new ApiException(CommonApiCodes.DEPENDENCY_UNAVAILABLE,
                     "schedule capacity proof dependency unavailable");
         }
+    }
+
+    private static boolean covers(List<Interval> availability, Interval target) {
+        java.time.Instant cursor = target.start();
+        for (Interval interval : availability) {
+            if (interval.start().isAfter(cursor)) return false;
+            if (interval.end().isAfter(cursor)) cursor = interval.end();
+            if (!cursor.isBefore(target.end())) return true;
+        }
+        return false;
+    }
+
+    record ProvenClaim(String windowId, String merchantId, String kind,
+            OffsetDateTime startAt, OffsetDateTime endAt) {}
+    record HoldProofPlan(List<ProvenClaim> claims, int configuredCapacity,
+            int qualifiedStaffCount, int evaluatedReservations) {
+        HoldProofPlan { claims = List.copyOf(claims); }
     }
 
     private static void validateQuery(CapacityProofQuery query) {
