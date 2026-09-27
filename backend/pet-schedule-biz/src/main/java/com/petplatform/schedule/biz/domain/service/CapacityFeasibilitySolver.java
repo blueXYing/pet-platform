@@ -159,8 +159,8 @@ public final class CapacityFeasibilitySolver {
             for (int right = left + 1; right < count; right++) {
                 if (timer.expired()) return new Result(Outcome.BUDGET_EXHAUSTED, count);
                 if (overlaps(relevant.get(left), relevant.get(right))) {
-                    if (conflicts[left] == null) conflicts[left] = new BitSet(count);
-                    if (conflicts[right] == null) conflicts[right] = new BitSet(count);
+                    if (conflicts[left] == null) conflicts[left] = new BitSet();
+                    if (conflicts[right] == null) conflicts[right] = new BitSet();
                     conflicts[left].set(right);
                     conflicts[right].set(left);
                     degree[left]++;
