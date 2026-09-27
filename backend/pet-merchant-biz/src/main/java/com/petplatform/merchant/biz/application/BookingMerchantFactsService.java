@@ -43,8 +43,10 @@ public final class BookingMerchantFactsService {
             var review=applications.read(row.merchantId);
             if(review==null || !Set.of("DRAFT","REVIEWING","APPROVED","REJECTED").contains(review.applicationStatus()))throw unavailable();
             if(!"APPROVED".equals(review.applicationStatus()))throw new ApiException("MERCHANT_DISABLED","merchant not approved");
+            // Lock this merchant's acceptance, not the immutable agreement version shared by all shops.
+            jdbc.queryForList("SELECT id FROM merchant_agreement_acceptance WHERE merchant_id=? FOR UPDATE",Long.class,row.merchantId);
             agreements.joinCurrentTransaction(mapper->{
-                var accepted=MerchantAgreementService.acceptedAgreements(mapper,row.merchantId,true);
+                var accepted=MerchantAgreementService.acceptedAgreements(mapper,row.merchantId,false);
                 if(accepted.isEmpty())throw new ApiException("MERCHANT_DISABLED","merchant not signed");
                 MerchantAgreementService.validateDocument(accepted.getFirst(),true);return null;
             });

@@ -22,9 +22,9 @@ public final class BookingServiceFactsApiImpl implements BookingServiceFactsApi 
         if(context==null)throw new ApiException(CommonApiCodes.INVALID_ARGUMENT,"context required");
         long shop=id(storeId),service=id(serviceId);guard.requireHeld(storeId,source);
         try {
-            var rows=jdbc.query("SELECT s.id,s.merchant_id,s.store_id,s.service_name,s.category_id,c.category_name,"
+            var rows=jdbc.query("SELECT s.id,s.merchant_id,s.store_id,s.service_name,s.category_id,"
                     +"s.price,s.duration_minutes,s.fulfillment_type,s.description,s.applicable_pet_types,s.verification_required,s.version,s.status "
-                    +"FROM service_item s LEFT JOIN service_category c ON c.id=s.category_id WHERE s.id=? FOR UPDATE",(r,n)->{
+                    +"FROM service_item s WHERE s.id=? FOR UPDATE",(r,n)->{
                 String state=r.getString("status");
                 if(!Set.of("DRAFT","REVIEWING","ACTIVE","OFFLINE","REJECTED").contains(state))throw unavailable();
                 if(r.getLong("store_id")!=shop || !"ACTIVE".equals(state))throw new ApiException("SERVICE_NOT_BOOKABLE","service unavailable");
@@ -36,11 +36,14 @@ public final class BookingServiceFactsApiImpl implements BookingServiceFactsApi 
                 BigDecimal price=r.getBigDecimal("price");
                 int duration=r.getInt("duration_minutes"),verify=r.getInt("verification_required");
                 long merchant=r.getLong("merchant_id"),category=r.getLong("category_id"),version=r.getLong("version");
+                // Category is display metadata. A nonlocking current read avoids serializing every
+                // booking in a shared category while the actual service row remains locked.
+                String categoryName=category>0?jdbc.queryForObject("SELECT category_name FROM service_category WHERE id=?",String.class,category):null;
                 if(price==null||price.signum()<=0||price.compareTo(new BigDecimal("9999999999999999.99"))>0
                         ||duration<1||duration>10080||merchant<=0||category<=0||version<0
-                        ||(verify!=0&&verify!=1)||blank(r.getString("service_name"))||blank(r.getString("category_name")))throw unavailable();
+                        ||(verify!=0&&verify!=1)||blank(r.getString("service_name"))||blank(categoryName))throw unavailable();
                 price=price.setScale(2,RoundingMode.UNNECESSARY);
-                return new BookingServiceFacts(serviceId,Long.toString(merchant),storeId,r.getString("service_name"),Long.toString(category),r.getString("category_name"),price,duration,r.getString("fulfillment_type"),r.getString("description"),pets,verify==1,Long.toString(version));
+                return new BookingServiceFacts(serviceId,Long.toString(merchant),storeId,r.getString("service_name"),Long.toString(category),categoryName,price,duration,r.getString("fulfillment_type"),r.getString("description"),pets,verify==1,Long.toString(version));
             },service);
             if(rows.isEmpty())throw new ApiException("SERVICE_NOT_FOUND","service unavailable");
             var result=rows.getFirst();
