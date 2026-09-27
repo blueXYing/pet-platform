@@ -1,6 +1,6 @@
 # SCH-003 foundation 独立验收方案
 
-状态：`DESIGNED_NOT_EXECUTED`。基线 `dda3492`，2026-09-27。本方案只验收本轮 ORDER 当前指派完整性读、SCH 共同门店锁和精确容量证明基础；不把 hold、swap、停用、前端选窗或生产迁移写成已实现。接口冻结后唯一 Java 落点为 `backend/pet-boot/src/test/java/com/petplatform/boot/reservation/ReservationProtectionFoundationAcceptanceTest.java`。测试经 boot 依赖的公共 API 调用两个 Owner，不能在测试中把跨 `biz` 仓储直连伪装为产品协作。
+状态：`FOUNDATION_PARTIALLY_EXECUTED`。基线 `dda3492`，2026-09-27；执行结果见同目录 `RUN-REPORT.md`。本方案只验收本轮 ORDER 当前指派完整性读、SCH 共同门店锁和精确容量证明基础；不把 hold、swap、停用、前端选窗或生产迁移写成已实现。唯一 Java 落点为 `backend/pet-boot/src/test/java/com/petplatform/boot/reservation/ReservationProtectionFoundationAcceptanceTest.java`。测试经 boot 依赖的公共 API 调用两个 Owner，不能在测试中把跨 `biz` 仓储直连伪装为产品协作。
 
 ## 合同依据及通过定义
 
@@ -32,6 +32,10 @@ G02/G05 的可信性靠事务 B **在锁前先建立 RR 快照**，A 改写并�
 
 ## B. ORDER 当前最终指派完整性
 
+`ReservationProtectionFoundationConfiguration` 用 `ApplicationContextRunner` 独立装配检查：默认开关关闭时五个保护 Bean 均不存在；显式 `pet.schedule.protection.enabled=true` 时同一 DataSource 的 guard、SCH、MER、ORDER、proof 五个公共 Bean 齐备。这个检查不启动完整 Web/Redis，也不声称写端点已启用。
+
+MER 当前员工事实的辅助反例：真空员工表返回 `complete=true` 空集合；未知 employment_status、员工/门店 merchantId 错配、负版本、非法 service_enabled、`INACTIVE+service_enabled=1` 均 503。最后一项由既有员工基础管理 35 号不变量约束，合法已停用行为是 `INACTIVE+false` 且仍被完整枚举。MER 读同样要通过 G05 的错事务/错 DS 和锁后当前读验证。
+
 | ID | 夹具与输入 | 必须证明 |
 |---|---|---|
 | O01 | 同店三单：有效已指派、有效未指派、COMPLETED/VERIFIED 历史已指派；分别按预约 ID 和全店查询。 | 每个输入预约恰一项；全店 `complete=true,totalCurrentCount` 等于数据库全部 `is_current` 事实，含历史行；目标员工过滤先做全量对账再筛选。未指派不凭空造员工。 |
@@ -41,6 +45,7 @@ G02/G05 的可信性靠事务 B **在锁前先建立 RR 快照**，A 改写并�
 | O05 | PENDING_PAYMENT/CONFIRMED 等有效未核销、CANCELED 但 claim 未释放、COMPLETED+VERIFIED 历史、COMPLETED+UNVERIFIED，及未知底层枚举。 | 与 36 号 §6 真值表一致：有效当前指派固定保护；历史无需未来人力；不一致/未知 503。展示态或退款申请不能改写判定。 |
 | O06 | 大于单页的全店数据，损坏记录置于中间或最后一页；过滤目标员工不会命中损坏行。 | 全量分页完整性和 `totalCurrentCount` 可验证；遗漏页、重复页、末页损坏均 503。若 API 隐藏分页，用测试数据跨其真实分页阈值，并附 SQL/读取计数证据。 |
 | O07 | 真正零当前指派，但有正常未指派订单；以及 ORDER 查询失败、空/不完整回执。 | 真空返回 `complete=true,totalCurrentCount=0`；故障或缺完整性证明 503，不把“没有看到”当零。 |
+| O08 | 两个均有合法 current assignment 的门店 X/Y；事务 A 持 X guard 和 X 的 ORDER/assignment 行锁，B 持 Y guard 并调用 ORDER `readStore(Y)`。 | B 在 A 提交前完成。本轮全局孤儿 assignment 旁查不能以全表 `FOR UPDATE` 把健康异店订单串行化；同时全局孤儿仍须 503。记录 B 的连接 ID、完成先后和有界等待，不以调大锁超时掩盖阻塞。 |
 
 ## C. SCH 精确容量证明基础
 
