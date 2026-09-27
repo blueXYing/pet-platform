@@ -64,6 +64,9 @@ class OrderCreationMySqlTest {
             assertEquals(1, db.count("schedule_reservation"));
             assertEquals(1, db.count("schedule_reservation_claim"));
             assertEquals(1, db.count("order_service_snapshot"));
+            String initialServiceFacts = db.jdbc.queryForObject(
+                    "SELECT snapshot_json FROM order_service_snapshot", String.class);
+            assertTrue(initialServiceFacts.contains("verificationRequired"));
             assertEquals(1, db.count("order_pet_snapshot"));
             assertEquals(1, db.count("order_booking_input_snapshot"));
             assertEquals(1, db.count("order_status_log"));
@@ -71,12 +74,16 @@ class OrderCreationMySqlTest {
             assertEquals(first.paymentExpireAt().toInstant(), db.jdbc.queryForObject(
                     "SELECT payment_expire_at FROM pet_order", Timestamp.class).toInstant());
             db.price = "999.00";
+            db.verificationRequired = false;
+            db.serviceVersion = "1";
             db.petCurrent = false;
             var replay = db.api().create(command);
             assertTrue(replay.replayed());
             assertFalse(replay.created());
             assertEquals(first.orderId(), replay.orderId());
             assertEquals("128.00", replay.payAmount());
+            assertEquals(initialServiceFacts, db.jdbc.queryForObject(
+                    "SELECT snapshot_json FROM order_service_snapshot", String.class));
             assertEquals(1, db.count("schedule_reservation"));
             var changed = new CreateOrderCommand(command.context(), command.storeId(), command.serviceId(),
                     command.petId(), command.fulfillmentType(), command.appointmentStart(),
@@ -184,6 +191,8 @@ class OrderCreationMySqlTest {
         volatile boolean userEnabled = true;
         volatile boolean petCurrent = true;
         volatile boolean policyAvailable = true;
+        volatile boolean verificationRequired = true;
+        volatile String serviceVersion = "0";
 
         Database() throws Exception {
             String prefix = System.getenv().containsKey("ORDER_CREATE_MYSQL_URL") ? "ORDER_CREATE"
@@ -279,7 +288,7 @@ class OrderCreationMySqlTest {
                     (storeId, serviceId, context) -> new BookingServiceFacts(serviceId, "200", storeId,
                             "Wash", null, null, new java.math.BigDecimal(price), 60,
                             serviceId.equals("401") ? "PICKUP_DELIVERY" : "IN_STORE",
-                            "Description", Set.of("ALL"), true, "0"),
+                            "Description", Set.of("ALL"), verificationRequired, serviceVersion),
                     guard, hold, protection, remark -> {
                         if (!policyAvailable) throw new ApiException(CommonApiCodes.DEPENDENCY_UNAVAILABLE,
                                 "moderation unavailable");

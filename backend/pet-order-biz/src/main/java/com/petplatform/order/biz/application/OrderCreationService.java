@@ -558,7 +558,7 @@ public final class OrderCreationService {
         serviceRow.put("merchantName", merchant.merchantName());
         serviceRow.put("storeName", merchant.storeName());
         serviceRow.put("storeAddress", merchant.storeAddress());
-        serviceRow.put("snapshotJson", null);
+        serviceRow.put("snapshotJson", serviceFactsJson(service));
         store.serviceSnapshot(serviceRow);
 
         Map<String, Object> petRow = values();
@@ -603,6 +603,16 @@ public final class OrderCreationService {
 
     private static Map<String, Object> values() { return new HashMap<>(); }
     private static boolean blank(String value) { return value == null || value.isBlank(); }
+
+    private static String serviceFactsJson(BookingServiceFacts service) {
+        Map<String, Object> extra = new TreeMap<>();
+        extra.put("applicablePetTypes", service.applicablePetTypes().stream().sorted().toList());
+        extra.put("fulfillmentType", service.fulfillmentType());
+        extra.put("verificationRequired", service.verificationRequired());
+        extra.put("serviceVersion", service.version());
+        try { return JSON.writeValueAsString(extra); }
+        catch (JsonProcessingException broken) { throw unavailable("ORDER service snapshot cannot be serialized"); }
+    }
 
     private static String serializeReceipt(Receipt receipt) {
         try { return JSON.writeValueAsString(receipt); }
