@@ -129,6 +129,14 @@ public final class OrderCreationService {
         } catch (ApiException known) {
             throw known;
         } catch (RuntimeException failure) {
+            // A failed commit acknowledgement may hide an already committed success. Consult
+            // the original durable key on the primary database before reporting uncertainty.
+            try {
+                Receipt committed = existingSuccess(prepared);
+                if (committed != null) return replay(prepared, committed, queryContext);
+            } catch (RuntimeException readUnavailable) {
+                // The original failure remains authoritative for busy vs unavailable mapping.
+            }
             throw databaseFailure(failure);
         }
     }
