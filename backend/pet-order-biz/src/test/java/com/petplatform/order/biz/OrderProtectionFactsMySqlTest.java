@@ -313,13 +313,15 @@ class OrderProtectionFactsMySqlTest {
         final Guard guard;
 
         Database() throws Exception {
-            String url = System.getenv().getOrDefault("ORDER_PROTECTION_MYSQL_URL",
+            String prefix = System.getenv().containsKey("ORDER_PROTECTION_MYSQL_URL")
+                    ? "ORDER_PROTECTION" : System.getenv().containsKey("AUTH_MYSQL_URL") ? "AUTH" : "ORDER_PROTECTION";
+            String url = System.getenv().getOrDefault(prefix + "_MYSQL_URL",
                     "jdbc:mysql://127.0.0.1:33457/");
             if (!url.matches("jdbc:mysql://(127\\.0\\.0\\.1|localhost):[0-9]+/")) {
                 throw new IllegalArgumentException("ORDER_PROTECTION_MYSQL_URL must target local server root");
             }
-            String user = System.getenv().getOrDefault("ORDER_PROTECTION_MYSQL_USER", "root");
-            String password = System.getenv().getOrDefault("ORDER_PROTECTION_MYSQL_PASSWORD", "");
+            String user = System.getenv().getOrDefault(prefix + "_MYSQL_USER", "root");
+            String password = System.getenv().getOrDefault(prefix + "_MYSQL_PASSWORD", "");
             admin = new JdbcTemplate(dataSource(url, user, password));
             source = dataSource(url + name, user, password);
             jdbc = new JdbcTemplate(source);
