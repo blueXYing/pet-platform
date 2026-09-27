@@ -69,6 +69,25 @@ class ReservationHoldMySqlTest {
     }
 
     @Test
+    void wrongOrderIdCannotSatisfyTheCommitBinding() throws Exception {
+        try (Database db = new Database()) {
+            db.seedGeneral();
+            Components app = new Components(db);
+            ApiException failed = assertThrows(ApiException.class, () -> db.transaction().execute(status -> {
+                app.guard.acquire(List.of("201"), QUERY);
+                HoldResult held = app.hold.hold(general("501"));
+                db.insertOrder(new HoldResult(held.reservationId(), "502", held.startAt(),
+                        held.endAt(), held.holdExpireAt(), held.claims()), "IN_STORE");
+                return null;
+            }));
+            assertEquals(CommonApiCodes.DEPENDENCY_UNAVAILABLE, failed.code());
+            assertEquals(0, db.count("schedule_reservation"));
+            assertEquals(0, db.count("schedule_reservation_claim"));
+            assertEquals(0, db.count("pet_order"));
+        }
+    }
+
+    @Test
     void generalHoldAndOrderCommitOneRealClaimAndOriginalExpiry() throws Exception {
         try (Database db = new Database()) {
             db.seedGeneral();
