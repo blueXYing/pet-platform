@@ -1769,3 +1769,7 @@ thirdparty-api 新增独立 ServiceCoverSigningApi.signServiceCover(String asset
 ## 预约保护基础实施切片（2026-09-27）
 
 已批36号的guard、SCH当前事实、MER当前员工、ORDER完整性及新候选资源证明，具体Java/SQL冻结见[37号](37-Reservation-Protection-Foundation-Contract-v0.1.md)。内部实现默认关闭；没有开放HTTP或实现hold/create/swap/停用。
+
+## 占位与订单原子创建内部实现（2026-09-27）
+
+[38号](38-Atomic-Booking-Create-Contract-v0.1.md)落实OrderCreationApi.create与ReservationHoldApi.hold：同guard主库RC事务写预约/claim/订单/快照/审计/首回执，并在commit前校验双向绑定。只交内部默认关闭能力，不表示本文件原OrderCommandApi其他命令或ScheduleCommandApi全部方法已实现；支付、自动过期/确认/释放/改期及外部创建仍待接入。

@@ -1,6 +1,6 @@
 # 预约占位与订单原子创建内核 v0.1
 
-状态：IMPLEMENTATION_IN_PROGRESS / INTERNAL_ONLY。2026-09-27。依据已批[36号](36-Reservation-Order-Protection-Contract-v0.1.md)、[37号](37-Reservation-Protection-Foundation-Contract-v0.1.md)、[23号](23-公共接口与幂等契约补充-v0.1.md)及用户“合并完成之后按照顺序推进”。本轮只交真实内部写入内核，默认`pet.order.creation.enabled=false`；不开放C创建路由、不改变现有六字段可约GET，不宣称完整结算已上线。
+状态：IMPLEMENTED_INTERNAL_DEFAULT_OFF，最终集成门禁以对应实现PR的CI为准。2026-09-27。依据已批[36号](36-Reservation-Order-Protection-Contract-v0.1.md)、[37号](37-Reservation-Protection-Foundation-Contract-v0.1.md)、[23号](23-公共接口与幂等契约补充-v0.1.md)及用户“合并完成之后按照顺序推进”。本轮只交真实内部写入内核，默认`pet.order.creation.enabled=false`；不开放C创建路由、不改变现有六字段可约GET，不宣称完整结算已上线。
 
 ## 1. 原始PRD缺口及阶段边界
 
