@@ -207,8 +207,7 @@ public final class ReservationHoldApiImpl implements ReservationHoldApi {
         }
         if (context.requestId() == null || context.requestId().isBlank()
                 || context.requestId().getBytes(StandardCharsets.UTF_8).length > 512
-                || context.traceId() == null
-                || context.traceId().getBytes(StandardCharsets.UTF_8).length > 128) {
+                || !validOptionalTrace(context.traceId())) {
             throw invalid("hold request metadata is invalid");
         }
         if ("IN_STORE".equals(command.fulfillmentType())) {
@@ -235,6 +234,21 @@ public final class ReservationHoldApiImpl implements ReservationHoldApi {
 
     private static boolean minute(OffsetDateTime value) {
         return value != null && value.getSecond() == 0 && value.getNano() == 0;
+    }
+
+    private static boolean validOptionalTrace(String traceId) {
+        if (traceId == null) return true;
+        if (traceId.isBlank() || traceId.getBytes(StandardCharsets.UTF_8).length > 128) return false;
+        for (int index = 0; index < traceId.length(); index++) {
+            char value = traceId.charAt(index);
+            if (Character.isISOControl(value)) return false;
+            if (Character.isHighSurrogate(value)) {
+                if (++index >= traceId.length() || !Character.isLowSurrogate(traceId.charAt(index))) {
+                    return false;
+                }
+            } else if (Character.isLowSurrogate(value)) return false;
+        }
+        return true;
     }
 
     private static Timestamp timestamp(OffsetDateTime value) {

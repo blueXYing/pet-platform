@@ -88,6 +88,46 @@ class ReservationHoldMySqlTest {
     }
 
     @Test
+    void missingInternalTraceCommitsAndAuditKeepsSqlNull() throws Exception {
+        try (Database db = new Database()) {
+            db.seedGeneral();
+            Components app = new Components(db);
+            CommandContext noTrace = new CommandContext(UUID.randomUUID().toString(), null,
+                    OperatorType.USER, "601", "internal-test");
+            db.transaction().execute(status -> {
+                app.guard.acquire(List.of("201"), QUERY);
+                HoldResult held = app.hold.hold(general("501", noTrace));
+                db.insertOrder(held, "IN_STORE");
+                return null;
+            });
+            assertEquals(1, db.count("schedule_reservation_audit"));
+            assertEquals(1, db.jdbc.queryForObject("SELECT COUNT(*) FROM "
+                    + "schedule_reservation_audit WHERE trace_id IS NULL", Integer.class));
+        }
+    }
+
+    @Test
+    void malformedPresentTraceFailsBeforeAnyHoldWrite() throws Exception {
+        try (Database db = new Database()) {
+            db.seedGeneral();
+            Components app = new Components(db);
+            for (String trace : List.of(" ", "bad" + (char) 1 + "trace",
+                    "bad" + (char) 0xD800 + "trace", "x".repeat(129))) {
+                CommandContext malformed = new CommandContext(UUID.randomUUID().toString(), trace,
+                        OperatorType.USER, "601", "internal-test");
+                assertEquals(CommonApiCodes.INVALID_ARGUMENT, assertThrows(ApiException.class,
+                        () -> db.transaction().execute(status -> {
+                            app.guard.acquire(List.of("201"), QUERY);
+                            app.hold.hold(general("501", malformed));
+                            return null;
+                        })).code());
+            }
+            assertEquals(0, db.count("schedule_reservation"));
+            assertEquals(0, db.count("schedule_reservation_audit"));
+        }
+    }
+
+    @Test
     void generalHoldAndOrderCommitOneRealClaimAndOriginalExpiry() throws Exception {
         try (Database db = new Database()) {
             db.seedGeneral();
@@ -154,7 +194,11 @@ class ReservationHoldMySqlTest {
     }
 
     private static HoldCommand general(String orderId) {
-        return new HoldCommand(COMMAND, orderId, "601", "10", "201", "301", "IN_STORE",
+        return general(orderId, COMMAND);
+    }
+
+    private static HoldCommand general(String orderId, CommandContext context) {
+        return new HoldCommand(context, orderId, "601", "10", "201", "301", "IN_STORE",
                 OffsetDateTime.parse("2030-01-01T01:00:00Z"),
                 OffsetDateTime.parse("2030-01-01T01:30:00Z"), null, null, "101", null, null);
     }
