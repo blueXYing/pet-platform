@@ -276,8 +276,12 @@ public final class OrderCreationService {
         optionalId(command.selectedPickupWindowId());
         optionalId(command.selectedReturnWindowId());
         optionalId(command.couponInstanceId());
-        if (caller.traceId() != null && caller.traceId().getBytes(StandardCharsets.UTF_8).length > 128) {
-            throw invalid("traceId 过长");
+        if (caller.traceId() != null) {
+            try { PublicContractChecks.requireRequestId(caller.traceId()); }
+            catch (IllegalArgumentException malformed) { throw invalid("traceId 不合法"); }
+            if (caller.traceId().getBytes(StandardCharsets.UTF_8).length > 128) {
+                throw invalid("traceId 过长");
+            }
         }
         if ("IN_STORE".equals(command.fulfillmentType())) {
             minute(command.appointmentStart());

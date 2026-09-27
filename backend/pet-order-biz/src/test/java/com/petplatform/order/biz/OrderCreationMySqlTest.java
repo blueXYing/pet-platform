@@ -213,6 +213,29 @@ class OrderCreationMySqlTest {
         }
     }
 
+    @Test
+    void rejectsInvalidTraceBeforeBindingAndAcceptsNullInternalTrace() throws Exception {
+        try (Database db = new Database()) {
+            var base = db.inStore("trace-" + UUID.randomUUID());
+            var bad = new CreateOrderCommand(new CommandContext(base.context().requestId(),
+                    "broken\ntrace", OperatorType.USER, "100", "test"), base.storeId(),
+                    base.serviceId(), base.petId(), base.fulfillmentType(), base.appointmentStart(),
+                    base.appointmentEnd(), null, null, base.selectedGeneralWindowId(), null, null,
+                    null, null, null);
+            assertEquals(CommonApiCodes.INVALID_ARGUMENT,
+                    assertThrows(ApiException.class, () -> db.api().create(bad)).code());
+            assertEquals(0, db.count("order_creation_request"));
+            var valid = new CreateOrderCommand(new CommandContext(base.context().requestId(),
+                    null, OperatorType.USER, "100", "test"), base.storeId(), base.serviceId(),
+                    base.petId(), base.fulfillmentType(), base.appointmentStart(), base.appointmentEnd(),
+                    null, null, base.selectedGeneralWindowId(), null, null, null, null, null);
+            assertTrue(db.api().create(valid).created());
+            assertEquals(1, db.count("order_creation_request"));
+            assertEquals(0, db.jdbc.queryForObject(
+                    "SELECT COUNT(*) FROM order_creation_audit WHERE trace_id IS NOT NULL", Integer.class));
+        }
+    }
+
     private static final class Database implements AutoCloseable {
         final String name = "ordcreate_" + UUID.randomUUID().toString().replace("-", "");
         final JdbcTemplate admin;
