@@ -1764,3 +1764,8 @@ thirdparty-api 新增独立 ServiceCoverSigningApi.signServiceCover(String asset
 ## 2026-09-24 已批准：SCH-003 / ORDER 联合保护契约
 
 [36号预约与订单人员保护契约](36-Reservation-Order-Protection-Contract-v0.1.md)经用户批准 ROC-1～6，状态 `ACCEPTED_CONTRACT_NOT_IMPLEMENTED`。跨服务完整员工可行性、接送最终同人、到店单 GENERAL 原窗、预生成 orderId 的 hold/create 同事务绑定、ORDER 按预约及员工/门店完整当前指派事实、改期保留原指派失败留旧，以 36 号为后续实现合同；本文件 §6.2 和 §19.1 的既有签名/流程尚未据此改造成可调用接口，`assignStaff` 草案不转移 ORDER 当前指派所有权。后续唯一 Writer 同步具体 Java DTO/方法、事务装配和测试前，相关写入维持已批失败关闭，不声称 SCH-003 已实现。
+
+
+## 预约保护基础实施切片（2026-09-27）
+
+已批36号的guard、SCH当前事实、MER当前员工、ORDER完整性及新候选资源证明，具体Java/SQL冻结见[37号](37-Reservation-Protection-Foundation-Contract-v0.1.md)。内部实现默认关闭；没有开放HTTP或实现hold/create/swap/停用。

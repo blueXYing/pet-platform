@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.petplatform.merchant.biz.infrastructure.persistence.mapper.MerchantCurrentStaffFactsMapper">
+  <select id="lockStore" resultType="com.petplatform.merchant.biz.infrastructure.persistence.entity.MerchantStoreStaffFactsEntity">
+    SELECT id AS store_id, merchant_id FROM merchant_store WHERE id=#{storeId} FOR UPDATE
+  </select>
+  <select id="lockStaff" resultType="com.petplatform.merchant.biz.infrastructure.persistence.entity.MerchantStaffReadEntity">
+    SELECT id AS staff_id, merchant_id, store_id, employment_status, service_enabled, version AS staff_version
+    FROM merchant_staff FORCE INDEX (idx_staff_store_status)
+    WHERE store_id=#{storeId} ORDER BY id FOR UPDATE
+  </select>
+</mapper>

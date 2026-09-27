@@ -1,0 +1,72 @@
+# SCH-003 foundation 独立验收方案
+
+状态：`FOUNDATION_PARTIALLY_EXECUTED`。基线 `dda3492`，2026-09-27；执行结果见同目录 `RUN-REPORT.md`。本方案只验收本轮 ORDER 当前指派完整性读、SCH 共同门店锁和精确容量证明基础；不把 hold、swap、停用、前端选窗或生产迁移写成已实现。唯一 Java 落点为 `backend/pet-boot/src/test/java/com/petplatform/boot/reservation/ReservationProtectionFoundationAcceptanceTest.java`。测试经 boot 依赖的公共 API 调用两个 Owner，不能在测试中把跨 `biz` 仓储直连伪装为产品协作。
+
+## 合同依据及通过定义
+
+- SSOT §29～31；`docs/04-api/34-Schedule-Protection-Contract-v0.1.md` §2、§6～7；`docs/04-api/36-Reservation-Order-Protection-Contract-v0.1.md` §1～2、§6；`planning/issues/wave-3/SCH-003-contract/REVIEW-TEST-MAP.md` P04～P07、P12、P15～P16、P20～P21、P24。
+- 本轮通过需要真实 MySQL/InnoDB 的独立连接、同一主库事务和锁竞争证据；求解输入使用冻结的公共事实 DTO，断言数学结果和失败分类，并检查无自动 ORDER 人员指派写入。孤儿、不一致、缺页及未知状态都是 `503 COMMON_DEPENDENCY_UNAVAILABLE`，不能默认零记录；完整可信而不可行是 `409 SCHEDULE_CAPACITY_EXCEEDED`，已固定指派被已知减员破坏按合同为 `409 COMMON_CONFLICT`。具体 Java 异常类型只在接口冻结后绑定。
+- `ReservationProtectionFoundationAcceptanceTest` 应在无测试 MySQL 时显式跳过并报告原因；真正通过记录必须包含连接到本机独立测试库的运行命令、MySQL 版本/隔离级别、测试数量、日志与耗时。跳过、仅内存模拟或仅编译不可记为验收通过。
+
+## 真实数据库夹具与观测办法
+
+1. 只接受环境变量显式指定的 `jdbc:mysql://127.0.0.1:<port>/` 或 `localhost` 根地址和专用测试账号；每次创建带随机后缀的独立数据库，加载本分支正式 Schema/迁移。测试仅删除自己创建且记录下名称的库。两个独立连接池或 `DriverManagerDataSource` 用于事务 A/B，第三条观察连接在提交后核对持久事实。不要碰模拟器、生产或 OSS。
+2. 为门店 X、Y，人员甲乙丙，服务 A/B 和预约/订单构造确定 ID、固定 UTC 时间。每个并发案设 `CountDownLatch` 或等价屏障：A 持有 guard 后发信号，B 发起公共 API 后观察它尚未完成，再让 A 提交或回滚；使用有界等待并记录连接 ID、事务隔离级别与事件顺序。测试不得靠 `sleep` 推断锁，只把有界超时用作“B 仍等待”的辅助断言。
+3. 公共 API 是受测入口。夹具可直接写各 Owner 表以注入难以由合法命令产生的损坏事实，但结果由 ORDER/SCH 公共 API 返回或抛错验证，并核对数据库没有意外写入。接口冻结前不猜方法签名、表名或分页形状；测试辅助代码只能留在该 Java 文件中。
+4. 每个场景前后记录最小数据库快照：guard 行、ORDER 主单当前员工、`is_current` 行、预约与 claim 状态、可用排班、能力。完整性与求解的关键断言同时核对错误分类和事务后状态；503/409 均不能留下成功回执或部分事实。
+
+## A. 共同门店锁及权威事务
+
+| ID | 构造与观察 | 必须证明 |
+|---|---|---|
+| G01 | 空库同门店 X，A/B 同时首次 `acquire(X)`，各自独立连接与顶层事务。 | 唯一稳定 guard 行；后得锁者等先得者提交；两者均不能因首次无行而绕过锁。 |
+| G02 | 已有 X，A 持锁，B 请求 X；A 提交后 B 读受保护事实。 | B 进入守卫时看到 A 已提交的事实，不能沿用事务前 RR 快照。 |
+| G03 | A 持 X，B 请求 Y，同时释放两方。 | 异店请求在 A 未释放时完成；避免全局锁假阳性。 |
+| G04 | A 持 X 后回滚，B 请求 X。 | B 等待后取得同一行，A 事务内业务写与成功回执均不存在；回滚释放锁。首次建行回滚场景另验证 B 能重建并锁住唯一行。 |
+| G05 | 在无外层事务、只读外层事务、独立 `REQUIRES_NEW` 读、另一 DataSource 中分别尝试保护事实访问；在 A 持锁时 B 改事实。 | 公开守卫拒绝不满足顶层本地写事务的路径，或受测写入口 fail closed；不能凭独立读/缓存/旧 RR 快照判“无占用”。具体失败入口以冻结契约为准，不把测试中的任意 `JdbcTemplate` 读算产品违规。 |
+| G06 | 同一事务请求重复/乱序的多个门店 ID。 | 数值升序、去重；本轮无跨店改期业务，仅检验公共锁协议。若接口不暴露多店，记明确的合同缺口。 |
+
+G02/G05 的可信性靠事务 B **在锁前先建立 RR 快照**，A 改写并提交后 B 才取得 X guard，然后经受测公共当前事实读得到 A 的新版本。若仍读旧值，锁存在也不通过。通过 MySQL `CONNECTION_ID()`/会话隔离级别和事务边界日志排除同连接、自动提交或测试自身 `FOR UPDATE` 偶然修正的假阳性。
+
+事务凭据另做三种反证：① `TransactionSynchronizationManager.isActualTransactionActive()` 为真但外层是 `readOnly=true`，不能视为合格写事务；② 外层绑定 DataSource A，受测 guard/ORDER/SCH 事实组件却指向连接相同物理库的 DataSource B，不能因“有任意 Spring 事务”就放行，核对连接 ID 证明 B 未加入 A；③ 外层已拿 guard，受测事实读切进 `REQUIRES_NEW`，用 A/B 提交屏障制造新事务与外层事务可见性差异，必须拒绝或证明仍由正确的原事务当前读完成。若受测实现没有可注入事务边界，采用 public API 的测试专用配置替换其 DataSource/事实端口；不可用时记录该反证未执行，不把代码审查算真实并发证据。
+
+## B. ORDER 当前最终指派完整性
+
+`ReservationProtectionFoundationConfiguration` 用 `ApplicationContextRunner` 独立装配检查：默认开关关闭时五个保护 Bean 均不存在；显式 `pet.schedule.protection.enabled=true` 时同一 DataSource 的 guard、SCH、MER、ORDER、proof 五个公共 Bean 齐备。这个检查不启动完整 Web/Redis，也不声称写端点已启用。
+
+MER 当前员工事实的辅助反例：真空员工表返回 `complete=true` 空集合；未知 employment_status、员工/门店 merchantId 错配、负版本、非法 service_enabled、`INACTIVE+service_enabled=1` 均 503。最后一项由既有员工基础管理 35 号不变量约束，合法已停用行为是 `INACTIVE+false` 且仍被完整枚举。MER 读同样要通过 G05 的错事务/错 DS 和锁后当前读验证。
+
+| ID | 夹具与输入 | 必须证明 |
+|---|---|---|
+| O01 | 同店三单：有效已指派、有效未指派、COMPLETED/VERIFIED 历史已指派；分别按预约 ID 和全店查询。 | 每个输入预约恰一项；全店 `complete=true,totalCurrentCount` 等于数据库全部 `is_current` 事实，含历史行；目标员工过滤先做全量对账再筛选。未指派不凭空造员工。 |
+| O02 | 主单 `service_staff_id` 与当前行同空/同人、仅一侧存在、两侧不同人、同单两行 `is_current=1`。 | 合法组合可读；其余整批 503。唯一索引若阻止双当前行，就以约束拒绝作证据，不能绕过约束伪造可提交状态。历史 `is_current=0` 不参与当前容量。 |
+| O03 | 预约指向缺失订单、订单反向 `reservation_id` 不匹配、店/服务归属错配、提交后仍无主单。 | 全店和按预约查询均 503；不能把孤儿解释成 `unassigned`、也不能靠活跃 claim 清单避开。 |
+| O04 | 预约 RELEASED、ORDER PENDING_SERVICE/UNVERIFIED、仍有当前指派；同库另有 CANCELED+RELEASED 历史单。 | 全店枚举前者并报 `INCONSISTENT`/503；后者仍枚举但 `protectRequired=false`。目标员工过滤为空也须先发现前者。 |
+| O05 | PENDING_PAYMENT/CONFIRMED 等有效未核销、CANCELED 但 claim 未释放、COMPLETED+VERIFIED 历史、COMPLETED+UNVERIFIED，及未知底层枚举。 | 与 36 号 §6 真值表一致：有效当前指派固定保护；历史无需未来人力；不一致/未知 503。展示态或退款申请不能改写判定。 |
+| O06 | 大于单页的全店数据，损坏记录置于中间或最后一页；过滤目标员工不会命中损坏行。 | 全量分页完整性和 `totalCurrentCount` 可验证；遗漏页、重复页、末页损坏均 503。若 API 隐藏分页，用测试数据跨其真实分页阈值，并附 SQL/读取计数证据。 |
+| O07 | 真正零当前指派，但有正常未指派订单；以及 ORDER 查询失败、空/不完整回执。 | 真空返回 `complete=true,totalCurrentCount=0`；故障或缺完整性证明 503，不把“没有看到”当零。 |
+| O08 | 两个均有合法 current assignment 的门店 X/Y；事务 A 持 X guard 和 X 的 ORDER/assignment 行锁，B 持 Y guard 并调用 ORDER `readStore(Y)`。 | B 在 A 提交前完成。本轮全局孤儿 assignment 旁查不能以全表 `FOR UPDATE` 把健康异店订单串行化；同时全局孤儿仍须 503。记录 B 的连接 ID、完成先后和有界等待，不以调大锁超时掩盖阻塞。 |
+
+## C. SCH 精确容量证明基础
+
+以下场景调用冻结的求解公共 API 或以同一 guard 下的生产保护入口运行，期待的员工匹配只用于内部证明，不写订单最终指派。固定指派由 ORDER 权威事实提供，不能让夹具单独指定与 ORDER 不一致的人。
+
+| ID | 反例/边界 | 必须证明 |
+|---|---|---|
+| F01 | 甲同时合格服务 A/B 且两个预约重叠；B 单窗人数看似仍足。 | 跨服务闭包识别同一人冲突，完整可信无解 409。 |
+| F02 | X 候选甲/乙，Y 只甲，相交；输入顺序令先给 X 选甲的贪心失败。 | 完整搜索找到 X→乙、Y→甲，且 ORDER 无系统指派写入。交换输入顺序结果不变。 |
+| F03 | 接送两窗 `[10,11)` 和 `[12,13)`，甲两段有班、中间无班；另案甲仅前段、乙仅后段。 | 前案一人可覆盖两段；后案 409。不能合并成需要 10～13 连班，也不能两人各做一段。 |
+| F04 | 同员工两笔 GENERAL `[09:10,10:40)`、`[10:40,11:20)`；排班相邻行完整拼接；再加一分钟空档。 | 半开端点可衔接，相邻排班可覆盖；真实空档排除候选。GENERAL 按实际 claim 区间，不把完整原窗都算成该笔员工占用。 |
+| F05 | 甲固定到 X，乙可做 X，Y 仅甲，X/Y 相交。 | 不为求解偷偷把 X 改派乙；可信冲突 409。已知减员目标破坏固定甲时按 `COMMON_CONFLICT`。 |
+| F06 | 原窗配置容量为 1，但有两条重叠有效 claim、员工甲乙均可用；另案容量 2 但仅一人。 | 分段配置容量与人员匹配两证据都要满足；分别 409。端点切分检查部分重叠与半开边界。 |
+| F07 | A 与 B 通过一笔双段接送的另一 claim 递归相连，窗口各自局部看起来可行，合并闭包后固定人冲突。 | 搜索包含传递闭包，不能只看候选窗口的直接邻居。 |
+| F08 | 真无解、未知员工/能力/claim 事实、以及可控极小技术预算触发搜索耗尽。 | 真无解是 409；未知和预算耗尽是 503，均零写入。预算参数须为技术配置而非新增业务预约/能力上限；用能在合理时间内有确定耗尽证据的输入，不能靠机器慢速猜测。 |
+| F09 | 已过 `lock_expire_at` 但仍 TEMP_LOCKED；相同输入改为已提交 EXPIRED。 | 前者仍占用，后者解除；资格/排班变化以 guard 后的当前事实为准。 |
+
+求解正确性的辅助 oracle 用测试内独立的穷举枚举器，仅适用于小规模夹具；它读取预设候选集合和半开区间，不调用生产求解器，也不复制其排序/剪枝。固定种子生成小图与 F01～F07 手工反例比对。预算耗尽可用受测公开配置注入；若没有可控预算或诊断回执，应报告不可验而非凭任意超时断言 503。
+
+## 执行边界、交付记录
+
+- 先等唯一 Writer 冻结公共 API、错误类型、事务包装与必要测试装配，再按该签名写测试。`pet-boot` 目前已依赖 ORDER/SCH API 与 biz；如无需新增依赖，不改 `pom.xml` 或共享配置。
+- 测试只验证基础，绝不声称 P01～P03 的 hold/create、P09 的双 claim 写入、P13 的 swap、MER 停用、窗口维护、存量迁移、HTTP/前端或生产容量路径已通过。涉及这些路径的 F 类用纯求解/保护基础入口验证数学能力。
+- 在报告记录每个 G/O/F 场景的 `PASS/FAIL/NOT_EXECUTED`、实际命令、MySQL 版本、事务隔离级别、失败栈、耗时与仍缺接口。任何未运行项保持 `NOT_EXECUTED`；相关接口不存在时报告阻塞并不编造通过。
