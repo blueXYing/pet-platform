@@ -44,7 +44,7 @@ public class ReservationProtectionFoundationConfiguration {
     }
 
     @Bean
-    ScheduleCapacityProofApi scheduleCapacityProofApi(DataSource source, ScheduleCapacityGuardApi guard,
+    ScheduleCapacityProofApiImpl scheduleCapacityProofApi(DataSource source, ScheduleCapacityGuardApi guard,
             ScheduleProtectionFactsApi schedule, MerchantCurrentStaffFactsApi staff,
             OrderProtectionFactsApi orders, ObjectProvider<Clock> clocks,
             @Value("${pet.schedule.protection.proof-budget-millis:250}") long budgetMillis) {
