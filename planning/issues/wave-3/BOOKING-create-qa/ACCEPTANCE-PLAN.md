@@ -1,14 +1,14 @@
 # BOOKING create 独立验收计划
 
-状态：`PLAN_ONLY / NOT_EXECUTED`。基线 `fac6b73`，2026-09-27；只覆盖 C 端真实预约占位和主单创建。待 root 冻结创建入口、DTO、失败注入接缝和开关后，才在 `pet-boot` 写 `BookingCreateAcceptanceTest`。本目录和该测试文件是 QA 唯一改动范围。
+状态：`INTERNAL_MYSQL_VERIFIED / EXTERNAL_GATES_OPEN`；[实际运行记录](RUN-REPORT.md)为 16/16 通过。基线 `fac6b73`，冻结接口/SQL38 `c406fd4`，2026-09-27；本轮只验收内部真实预约占位和主单创建。公开 C 创建路由未开放，测试写在 `pet-boot` 的 `BookingCreateAcceptanceTest`。本目录和该测试文件是 QA 唯一原创改动范围。
 
 ## 合同与判定边界
 
-按 `AGENTS.md` 的优先级执行：SSOT §31；07 号内部 API §19.1、10 号 HTTP §3.5/§3.6；23 号幂等 §3～7；36 号预约与订单保护 §1～5；37 号保护基础 §2～6；SQL06/14/37。36 号已批准的同主库事务创建协议优先细化 07 号旧流程图中的失败补偿描述。
+按 `AGENTS.md` 的优先级执行：SSOT §31；07 号内部 API §19.1、10 号 HTTP §3.5/§3.6；23 号幂等 §3～7；36 号预约与订单保护 §1～5；37 号保护基础 §2～6；冻结的 38 号内部创建合同及 SQL06/14/37/38。36 号已批准的同主库事务创建协议优先细化 07 号旧流程图中的失败补偿描述。
 
-测试走冻结的生产创建入口与真实 Owner API、真实 MySQL 多连接。夹具可直接播种必要商家、服务、宠物、人员、排班和原窗事实，但创建产生的预约、claim、主单、快照、审计和幂等回执必须由被测入口持久化。SQL 查询仅作独立结果 oracle，不跨域构造业务实现。禁用 mock 容量通过、请求自报 owner 身份和手工拼接成功回执。每例使用独立随机测试库，显式施加 SQL06、14、37 及新增批准迁移；MySQL 连接信息优先 `BOOKING_MYSQL_URL/USER/PASSWORD`，回退 `AUTH_MYSQL_URL/USER/PASSWORD`，不以默认空密码当 CI 前提。事务为同一主库、`READ_COMMITTED`，连接 UTC；并发测试用至少两条物理连接和栅栏记录提交顺序。
+测试走冻结的生产内部创建入口与真实 Owner API、真实 MySQL 多连接。夹具可直接播种必要商家、审核签署来源、服务、宠物、人员、排班和原窗事实，但创建产生的预约、claim、主单、快照、审计和幂等回执必须由被测入口持久化。审核签署种子证明当前事实查询，不冒充已验收审核写流程。SQL 查询仅作独立结果 oracle，不跨域构造业务实现。禁用 mock 容量通过、请求自报 owner 身份和手工拼接成功回执。每例使用独立随机测试库，显式施加 SQL06/28/29/33/37/38；SQL14属于23号公共合同背景，本轮ORDER私有幂等物理事实由SQL38提供。MySQL 连接信息优先 `BOOKING_MYSQL_URL/USER/PASSWORD`，回退 `AUTH_MYSQL_URL/USER/PASSWORD`，不以默认空密码当 CI 前提。事务为同一主库、`READ_COMMITTED`，连接 UTC；并发测试用至少两条物理连接和栅栏记录提交顺序。
 
-测试最终同时查 `schedule_reservation`、`schedule_reservation_claim`、`pet_order`、`order_service_snapshot`、`order_pet_snapshot`、`order_status_log` 和 `command_idempotency`。对生成的订单核对两方向唯一关联、用户/商家/店/服务/履约方式、预约起止和原窗身份；HTTP/JSON ID 必须是精确十进制 String，金额用 `DECIMAL(18,2)` 与两位定点字符串核对。回执只允许首次 201、同参成功重放 200，稳定业务字段一致；当前 trace 可变。错误以冻结 API/HTTP 映射断言，不把内部异常名字伪装成协议码。
+测试最终同时查 `schedule_reservation`、`schedule_reservation_claim`、`schedule_reservation_audit`、`pet_order`、`order_service_snapshot`、`order_pet_snapshot`、`order_booking_input_snapshot`、`order_status_log`、`order_creation_audit` 和 `order_creation_request`。对生成的订单核对两方向唯一关联、用户/商家/店/服务/履约方式、预约起止和原窗身份；API ID 必须是精确十进制 String，金额用 `DECIMAL(18,2)` 与两位定点字符串核对。首次内部结果 `created=true`，同参重放 `replayed=true`，稳定业务字段一致；将来的HTTP才分别映射201/200。错误以冻结内部API的稳定码断言，不把内部异常名字伪装成HTTP协议码。
 
 ## 验收矩阵
 
@@ -24,8 +24,9 @@
 | B08 | 夹具故意提交一条旧 `PENDING_BIND` 或活动预约有 claim 但无双向主单。 | 下一次真实创建或保护当前读报 503 损坏事实，不能把旧占位当普通未指派可重排，也不能让新用户越过它；告警/对账信号按冻结接缝验证。 |
 | B09 | 到店服务价格 128.00、时长 90 分钟，请求改变 `appointmentEnd` 为 60 分钟或提供错误/重叠原窗；再用合法完整 GENERAL 原窗。 | 非法时长/窗口拒绝且零写入。合法创建实际区间由服务合同决定，一条 GENERAL claim 保存选中原窗 ID 与实际 `[start,end)`；主单、快照、回执的金额和预约时间一致。窗口歧义不得取第一条。 |
 | B10 | 接送两个不同原窗，完整方向窗长度不假设 60 分钟；先用返程 < 上门+120 分钟或只覆盖单方向的员工，再用同一员工两段完整覆盖。 | 前两案拒绝且无残片；成功案仅一位数学可行人员，两条 claim 原窗 ID/kind/整窗区间正确，预约双开始值和主单履约方式一致，不自动写商家最终指派。 |
-| B11 | 提交后查询 `paymentExpireAt`，时间前后调用到期关闭/释放；有券与无券两案，支付创建失败与迟到支付。 | 仅在支付、coupon 与超时 Owner 真实入口交付后执行端到端断言。当前创建切片若无这些接缝，记录 `NOT_EXECUTED` 并限定为内部 hold/create 交付；不得把锁的 10 分钟到期字段当作真实自动关闭任务证据，也不宣称券冻结/补偿或迟到支付链路通过。 |
+| B11 | 提交后查询 `paymentExpireAt` 和 `lock_expire_at`，有券与无券两案。 | 内部成功必须同事务写入精确相同的10分钟截止；有券现阶段503且零业务行。自动关闭/释放、付款创建、迟到支付仅在对应Owner真实入口交付后执行端到端断言，当前保持 `NOT_EXECUTED`。不得把截止字段当作自动关闭任务证据。 |
+| B12 | 非空备注、接送真实服务地址、到店伪造服务地址。 | 缺真实备注审核器时非空备注503并零业务行；有测试内审核器也仅可验其拒绝路径，不声称生产审核。接送地址走受保护输入加密快照，规范参数不存原文；到店地址拒绝。|
 
 ## 执行顺序与报告
 
-先验证冻结接口、测试编译与单笔创建，再依次做 B09/B10 业务事实、B02/B03/B05 幂等、B04 故障回滚、B01 多连接竞争、B06/B07/B08 安全和损坏事实，最后仅在 Owner 接缝齐备时做 B11。每个用例报告 `PASS/FAIL/NOT_EXECUTED`、确切 Maven 命令、MySQL 版本、隔离级别、两连接/栅栏证据和失败栈。接口或运行能力尚缺时保持 `NOT_EXECUTED`，不以纯 mock、SQL 手写订单或现有 foundation 通过来代替创建验收。未通过相关测试不声称 Done；无生产迁移、OSS、小程序模拟器和合并。
+先验证冻结接口、测试编译与单笔创建，再依次做 B09/B10/B12 业务事实、B02/B03/B05 幂等、B04 故障回滚、B01 多连接竞争、B06/B07/B08 安全和损坏事实，最后仅在 Owner 接缝齐备时做 B11的后续链路。每个用例报告 `PASS/FAIL/NOT_EXECUTED`、确切 Maven 命令、MySQL 版本、隔离级别、两连接/栅栏证据和失败栈。接口或运行能力尚缺时保持 `NOT_EXECUTED`，不以纯 mock、SQL 手写订单或现有 foundation 通过来代替创建验收。未通过相关测试不声称 Done；无生产迁移、OSS、小程序模拟器和合并。
