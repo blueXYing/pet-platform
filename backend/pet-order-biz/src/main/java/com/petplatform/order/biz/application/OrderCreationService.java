@@ -135,7 +135,9 @@ public final class OrderCreationService {
             try {
                 committed = existingSuccess(prepared);
             } catch (RuntimeException readUnavailable) {
-                // The original failure remains authoritative for busy vs unavailable mapping.
+                // We cannot infer rollback from an unconfirmed commit. The primary-key probe's
+                // own outcome decides whether the caller should retry the original key or wait.
+                throw databaseFailure(readUnavailable);
             }
             if (committed != null) return replay(prepared, committed, queryContext);
             throw databaseFailure(failure);

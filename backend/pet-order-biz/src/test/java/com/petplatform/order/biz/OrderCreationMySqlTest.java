@@ -26,6 +26,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.security.MessageDigest;
 import java.sql.Connection;
+import java.sql.SQLException;
 import java.sql.Timestamp;
 import java.time.Clock;
 import java.time.Instant;
@@ -38,12 +39,15 @@ import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicLong;
+import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicBoolean;
 import javax.sql.DataSource;
 import org.junit.jupiter.api.Test;
 import org.springframework.core.io.FileSystemResource;
 import org.springframework.core.io.support.EncodedResource;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.datasource.DriverManagerDataSource;
+import org.springframework.jdbc.datasource.DelegatingDataSource;
 import org.springframework.jdbc.datasource.init.ScriptUtils;
 
 /** SQL06/37/38 order-side integration. SCH's solver and real Owner adapters have separate tests. */
@@ -181,6 +185,34 @@ class OrderCreationMySqlTest {
         }
     }
 
+    @Test
+    void committedBusinessTransactionWithLostAckReturnsOriginalReceipt() throws Exception {
+        try (Database db = new Database()) {
+            DataSource faulting = new LostCommitAckSource(db.source, 2);
+            var command = db.inStore("unknown-ack-" + UUID.randomUUID());
+            var recovered = db.api(faulting).create(command);
+            assertTrue(recovered.replayed());
+            assertEquals(1, db.count("pet_order"));
+            assertEquals(1, db.count("schedule_reservation"));
+            assertEquals("SUCCEEDED", db.jdbc.queryForObject(
+                    "SELECT status FROM order_creation_request", String.class));
+            assertEquals(recovered.orderId(), db.api().create(command).orderId());
+        }
+    }
+
+    @Test
+    void lostAckAndUnavailablePrimaryReadReturns503UntilOriginalKeyCanBeResolved() throws Exception {
+        try (Database db = new Database()) {
+            var command = db.inStore("unresolved-ack-" + UUID.randomUUID());
+            assertEquals(CommonApiCodes.DEPENDENCY_UNAVAILABLE,
+                    assertThrows(ApiException.class,
+                            () -> db.api(new LostCommitAckSource(db.source, 2, true)).create(command)).code());
+            assertEquals(1, db.count("pet_order"));
+            assertTrue(db.api().create(command).replayed());
+            assertEquals(1, db.count("schedule_reservation"));
+        }
+    }
+
     private static final class Database implements AutoCloseable {
         final String name = "ordcreate_" + UUID.randomUUID().toString().replace("-", "");
         final JdbcTemplate admin;
@@ -225,8 +257,11 @@ class OrderCreationMySqlTest {
             } catch (Exception failure) { close(); throw failure; }
         }
 
-        OrderCreationApiImpl api() {
-            ScheduleCapacityGuardApi guard = new TestGuard(jdbc);
+        OrderCreationApiImpl api() { return api(source); }
+
+        OrderCreationApiImpl api(DataSource transactionalSource) {
+            JdbcTemplate transactionalJdbc = new JdbcTemplate(transactionalSource);
+            ScheduleCapacityGuardApi guard = new TestGuard(transactionalJdbc);
             ReservationHoldApi hold = command -> {
                 long reservationId = ids.incrementAndGet();
                 OffsetDateTime begin = command.appointmentStart() == null ? command.pickupStart()
@@ -234,7 +269,7 @@ class OrderCreationMySqlTest {
                 OffsetDateTime end = command.appointmentEnd() == null ? command.returnStart().plusHours(1)
                         : command.appointmentEnd();
                 OffsetDateTime expires = OffsetDateTime.now(CLOCK).plusMinutes(10);
-                jdbc.update("""
+                transactionalJdbc.update("""
                         INSERT INTO schedule_reservation(id,order_id,merchant_id,store_id,service_id,
                           fulfillment_type,start_at,end_at,pickup_start_at,return_start_at,status,
                           lock_token,lock_expire_at,capacity_snapshot,qualified_staff_count_snapshot,
@@ -246,15 +281,15 @@ class OrderCreationMySqlTest {
                         stamp(command.returnStart()), UUID.randomUUID().toString(),
                         Timestamp.from(expires.toInstant()), Long.parseLong(command.userId()));
                 if (command.appointmentStart() != null) {
-                    claim(reservationId, "GENERAL", "901", begin, end);
+                    claim(transactionalJdbc, reservationId, "GENERAL", "901", begin, end);
                     return new HoldResult(Long.toString(reservationId), command.orderId(), begin, end,
                             expires, List.of(new HeldClaim(Long.toString(reservationId + 1000), "901",
                                     "GENERAL", begin, end)));
                 }
                 OffsetDateTime pickupEnd = begin.plusHours(1);
                 OffsetDateTime returnStart = command.returnStart();
-                claim(reservationId, "PICKUP", "902", begin, pickupEnd);
-                claim(reservationId, "RETURN", "903", returnStart, end);
+                claim(transactionalJdbc, reservationId, "PICKUP", "902", begin, pickupEnd);
+                claim(transactionalJdbc, reservationId, "RETURN", "903", returnStart, end);
                 return new HoldResult(Long.toString(reservationId), command.orderId(), begin, end,
                         expires, List.of(new HeldClaim(Long.toString(reservationId + 1000), "902",
                                 "PICKUP", begin, pickupEnd),
@@ -269,7 +304,7 @@ class OrderCreationMySqlTest {
                             ("encrypted:" + purpose).getBytes(StandardCharsets.UTF_8), digest);
                 } catch (Exception failure) { throw new IllegalStateException(failure); }
             };
-            return new OrderCreationApiImpl(source, ids::incrementAndGet,
+            return new OrderCreationApiImpl(transactionalSource, ids::incrementAndGet,
                     new com.petplatform.user.api.query.BookingUserFactsApi() {
                         @Override public void checkActor(String userId, QueryContext context) {
                             if (!userEnabled) throw new ApiException(CommonApiCodes.FORBIDDEN, "frozen");
@@ -295,10 +330,10 @@ class OrderCreationMySqlTest {
                     }, CLOCK);
         }
 
-        private void claim(long reservationId, String kind, String windowId,
+        private void claim(JdbcTemplate target, long reservationId, String kind, String windowId,
                 OffsetDateTime start, OffsetDateTime end) {
             long claimId = reservationId + ("RETURN".equals(kind) ? 1001 : 1000);
-            jdbc.update("""
+            target.update("""
                     INSERT INTO schedule_reservation_claim
                       (id,reservation_id,window_id,store_id,service_id,kind,start_at,end_at)
                     VALUES(?,?,?,?,?,?,?,?)
@@ -337,6 +372,52 @@ class OrderCreationMySqlTest {
             }
         }
         @Override public void requireHeld(String storeId, DataSource callerSource) {}
+    }
+
+    /** Commits on the real MySQL connection, then loses exactly one acknowledgement. */
+    private static final class LostCommitAckSource extends DelegatingDataSource {
+        private final AtomicInteger commits = new AtomicInteger();
+        private final AtomicBoolean disconnected = new AtomicBoolean();
+        private final int lostAt;
+        private final boolean denyRecoveryReads;
+
+        LostCommitAckSource(DataSource target, int lostAt) {
+            this(target, lostAt, false);
+        }
+
+        LostCommitAckSource(DataSource target, int lostAt, boolean denyRecoveryReads) {
+            super(target);
+            this.lostAt = lostAt;
+            this.denyRecoveryReads = denyRecoveryReads;
+        }
+
+        @Override public Connection getConnection() throws SQLException {
+            if (denyRecoveryReads && disconnected.get()) throw new SQLException("primary unavailable", "08006");
+            return wrap(super.getConnection());
+        }
+
+        @Override public Connection getConnection(String username, String password) throws SQLException {
+            if (denyRecoveryReads && disconnected.get()) throw new SQLException("primary unavailable", "08006");
+            return wrap(super.getConnection(username, password));
+        }
+
+        private Connection wrap(Connection delegate) {
+            return (Connection) java.lang.reflect.Proxy.newProxyInstance(
+                    getClass().getClassLoader(), new Class<?>[]{Connection.class},
+                    (proxy, method, arguments) -> {
+                        try {
+                            Object result = method.invoke(delegate, arguments);
+                            if ("commit".equals(method.getName())
+                                    && commits.incrementAndGet() == lostAt) {
+                                disconnected.set(true);
+                                throw new SQLException("commit ACK lost", "08006");
+                            }
+                            return result;
+                        } catch (java.lang.reflect.InvocationTargetException wrapped) {
+                            throw wrapped.getCause();
+                        }
+                    });
+        }
     }
 
     private static Timestamp stamp(OffsetDateTime value) {
