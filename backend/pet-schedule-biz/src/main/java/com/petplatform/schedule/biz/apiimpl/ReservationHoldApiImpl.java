@@ -121,7 +121,8 @@ public final class ReservationHoldApiImpl implements ReservationHoldApi {
                     id(command.merchantId()), id(command.storeId()), id(command.serviceId()),
                     command.fulfillmentType(), timestamp(start), timestamp(end), timestamp(pickup),
                     timestamp(returning), UUID.randomUUID().toString(), timestamp(expires),
-                    plan.configuredCapacity(), plan.qualifiedStaffCount(),
+                    Math.min(plan.configuredCapacity(), plan.qualifiedStaffCount()),
+                    plan.qualifiedStaffCount(),
                     Timestamp.from(now), Timestamp.from(now));
             List<HeldClaim> claims = new ArrayList<>(plan.claims().size());
             for (ProvenClaim selected : plan.claims()) {

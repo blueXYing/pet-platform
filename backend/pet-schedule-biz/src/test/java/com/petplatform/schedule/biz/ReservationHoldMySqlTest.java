@@ -87,7 +87,7 @@ class ReservationHoldMySqlTest {
             assertEquals(1, db.count("schedule_reservation"));
             assertEquals(1, db.count("schedule_reservation_claim"));
             assertEquals(1, db.count("schedule_reservation_audit"));
-            assertEquals(2, db.jdbc.queryForObject("SELECT capacity_snapshot FROM schedule_reservation",
+            assertEquals(1, db.jdbc.queryForObject("SELECT capacity_snapshot FROM schedule_reservation",
                     Integer.class));
             assertEquals(1, db.jdbc.queryForObject(
                     "SELECT qualified_staff_count_snapshot FROM schedule_reservation", Integer.class));
