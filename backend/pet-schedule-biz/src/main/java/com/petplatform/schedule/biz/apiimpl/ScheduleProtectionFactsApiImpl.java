@@ -16,6 +16,7 @@ import java.sql.Timestamp;
 import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -130,13 +131,26 @@ public final class ScheduleProtectionFactsApiImpl implements ScheduleProtectionF
 
     private static void validate(StoreScheduleFacts facts) {
         Map<String, WindowFact> byWindow = new HashMap<>();
+        Map<String, List<WindowFact>> openGroups = new HashMap<>();
         for (WindowFact window : facts.windows()) {
             if (!facts.storeId().equals(window.storeId()) || !validKind(window.kind())
                     || !validInterval(window.startAt(), window.endAt())
-                    || window.configuredCapacity() <= 0
+                    || window.configuredCapacity() < 0
                     || !("OPEN".equals(window.status()) || "CLOSED".equals(window.status()))
                     || byWindow.putIfAbsent(window.windowId(), window) != null) {
                 bad("invalid schedule window facts");
+            }
+            if ("OPEN".equals(window.status())) {
+                openGroups.computeIfAbsent(window.serviceId() + ":" + window.kind(),
+                        ignored -> new ArrayList<>()).add(window);
+            }
+        }
+        for (List<WindowFact> group : openGroups.values()) {
+            group.sort(Comparator.comparing(WindowFact::startAt).thenComparing(WindowFact::windowId));
+            for (int index = 1; index < group.size(); index++) {
+                if (group.get(index - 1).endAt().isAfter(group.get(index).startAt())) {
+                    bad("overlapping OPEN windows of one service and kind");
+                }
             }
         }
         Map<String, ReservationFact> byReservation = new HashMap<>();

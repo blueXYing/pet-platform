@@ -39,6 +39,9 @@ public final class ScheduleCapacityGuardApiImpl implements ScheduleCapacityGuard
         for (String storeId : storeIds) ordered.add(id(storeId));
         ConnectionHolder holder = checkedHolder();
         Map<ConnectionHolder, Registration> registrations = held.get();
+        if (!registrations.isEmpty() && !registrations.containsKey(holder)) {
+            fail(holder, "nested independent transaction cannot reacquire a guarded store");
+        }
         Registration registration = registrations.get(holder);
         if (registration != null && !registration.ids.isEmpty()) {
             for (long target : ordered) {

@@ -3,6 +3,7 @@ package com.petplatform.schedule.biz.domain.service;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.BitSet;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -55,19 +56,22 @@ public final class CapacityFeasibilitySolver {
         Timer timer = new Timer(nanoTime, budgetMillis * 1_000_000L);
         Map<String, Integer> windowCapacity = new HashMap<>();
         for (Window window : windows) {
-            if (window.id() == null || window.capacity() <= 0
+            if (timer.expired()) return new Result(Outcome.BUDGET_EXHAUSTED, 0);
+            if (window.id() == null || window.capacity() < 0
                     || windowCapacity.putIfAbsent(window.id(), window.capacity()) != null) {
                 throw new IllegalArgumentException("invalid window");
             }
         }
         Map<String, Reservation> byId = new HashMap<>();
         for (Reservation reservation : all) {
+            if (timer.expired()) return new Result(Outcome.BUDGET_EXHAUSTED, 0);
             if (reservation.id() == null || reservation.serviceId() == null
                     || reservation.claims().isEmpty()
                     || byId.putIfAbsent(reservation.id(), reservation) != null) {
                 throw new IllegalArgumentException("invalid reservation");
             }
             for (Claim claim : reservation.claims()) {
+                if (timer.expired()) return new Result(Outcome.BUDGET_EXHAUSTED, 0);
                 if (claim == null || claim.interval() == null
                         || !windowCapacity.containsKey(claim.windowId())) {
                     throw new IllegalArgumentException("claim window missing");
@@ -85,6 +89,7 @@ public final class CapacityFeasibilitySolver {
             if (timer.expired()) return new Result(Outcome.BUDGET_EXHAUSTED, frontier.size());
             Reservation source = frontier.get(position);
             for (Reservation other : all) {
+                if (timer.expired()) return new Result(Outcome.BUDGET_EXHAUSTED, frontier.size());
                 if (included.contains(other.id())) continue;
                 if (overlaps(source, other)) {
                     included.add(other.id());
@@ -98,6 +103,7 @@ public final class CapacityFeasibilitySolver {
         Map<String, TreeMap<Instant, Integer>> occupancy = new HashMap<>();
         for (Reservation reservation : relevant) {
             for (Claim claim : reservation.claims()) {
+                if (timer.expired()) return new Result(Outcome.BUDGET_EXHAUSTED, count);
                 TreeMap<Instant, Integer> endpoints = occupancy.computeIfAbsent(
                         claim.windowId(), ignored -> new TreeMap<>());
                 endpoints.merge(claim.interval().start(), 1, Integer::sum);
@@ -117,6 +123,7 @@ public final class CapacityFeasibilitySolver {
         List<Staff> sortedStaff = staff.stream().sorted(Comparator.comparing(Staff::id)).toList();
         Set<String> staffIds = new HashSet<>();
         for (Staff person : sortedStaff) {
+            if (timer.expired()) return new Result(Outcome.BUDGET_EXHAUSTED, count);
             if (person.id() == null || !staffIds.add(person.id())) {
                 throw new IllegalArgumentException("invalid staff facts");
             }
@@ -126,13 +133,17 @@ public final class CapacityFeasibilitySolver {
             if (timer.expired()) return new Result(Outcome.BUDGET_EXHAUSTED, count);
             List<Integer> options = new ArrayList<>();
             for (int index = 0; index < sortedStaff.size(); index++) {
+                if (timer.expired()) return new Result(Outcome.BUDGET_EXHAUSTED, count);
                 Staff person = sortedStaff.get(index);
                 if (reservation.fixedStaffId() != null
                         && !reservation.fixedStaffId().equals(person.id())) continue;
                 if (!person.serviceIds().contains(reservation.serviceId())) continue;
                 boolean covers = true;
                 for (Claim claim : reservation.claims()) {
-                    if (!covers(person.availability(), claim.interval())) {
+                    if (timer.expired()) return new Result(Outcome.BUDGET_EXHAUSTED, count);
+                    boolean segmentCovered = covers(person.availability(), claim.interval(), timer);
+                    if (timer.expired()) return new Result(Outcome.BUDGET_EXHAUSTED, count);
+                    if (!segmentCovered) {
                         covers = false;
                         break;
                     }
@@ -142,13 +153,16 @@ public final class CapacityFeasibilitySolver {
             if (options.isEmpty()) return new Result(Outcome.INFEASIBLE, count);
             domains.add(options);
         }
-        boolean[][] conflicts = new boolean[count][count];
+        BitSet[] conflicts = new BitSet[count];
         int[] degree = new int[count];
         for (int left = 0; left < count; left++) {
             for (int right = left + 1; right < count; right++) {
                 if (timer.expired()) return new Result(Outcome.BUDGET_EXHAUSTED, count);
                 if (overlaps(relevant.get(left), relevant.get(right))) {
-                    conflicts[left][right] = conflicts[right][left] = true;
+                    if (conflicts[left] == null) conflicts[left] = new BitSet(count);
+                    if (conflicts[right] == null) conflicts[right] = new BitSet(count);
+                    conflicts[left].set(right);
+                    conflicts[right].set(left);
                     degree[left]++;
                     degree[right]++;
                 }
@@ -164,7 +178,8 @@ public final class CapacityFeasibilitySolver {
         for (int left = 0; left < count; left++) {
             if (assigned[left] < 0) continue;
             for (int right = left + 1; right < count; right++) {
-                if (conflicts[left][right] && assigned[left] == assigned[right]) {
+                if (conflicts[left] != null && conflicts[left].get(right)
+                        && assigned[left] == assigned[right]) {
                     return new Result(Outcome.INFEASIBLE, count);
                 }
             }
@@ -193,7 +208,8 @@ public final class CapacityFeasibilitySolver {
             int person = options.get(optionPosition[depth]);
             boolean allowed = true;
             for (int other = 0; other < count; other++) {
-                if (conflicts[reservationIndex][other] && assigned[other] == person) {
+                if (conflicts[reservationIndex] != null
+                        && conflicts[reservationIndex].get(other) && assigned[other] == person) {
                     allowed = false;
                     break;
                 }
@@ -217,11 +233,12 @@ public final class CapacityFeasibilitySolver {
         return false;
     }
 
-    private static boolean covers(List<Interval> availability, Interval target) {
+    private static boolean covers(List<Interval> availability, Interval target, Timer timer) {
         List<Interval> ordered = availability.stream()
                 .sorted(Comparator.comparing(Interval::start).thenComparing(Interval::end)).toList();
         Instant cursor = target.start();
         for (Interval interval : ordered) {
+            if (timer.expired()) return false;
             if (interval.start().isAfter(cursor)) return false;
             if (interval.end().isAfter(cursor)) cursor = interval.end();
             if (!cursor.isBefore(target.end())) return true;

@@ -55,7 +55,6 @@ public final class ScheduleCapacityProofApiImpl implements ScheduleCapacityProof
     private final MerchantCurrentStaffFactsApi merchant;
     private final OrderProtectionFactsApi order;
     private final JdbcTemplate jdbc;
-    private final Clock clock;
     private final long budgetMillis;
     private final CapacityFeasibilitySolver solver;
 
@@ -74,7 +73,7 @@ public final class ScheduleCapacityProofApiImpl implements ScheduleCapacityProof
         this.facts = Objects.requireNonNull(facts, "facts is required");
         this.merchant = Objects.requireNonNull(merchant, "merchant is required");
         this.order = Objects.requireNonNull(order, "order is required");
-        this.clock = Objects.requireNonNull(clock, "clock is required");
+        Objects.requireNonNull(clock, "clock is required");
         if (budgetMillis <= 0) throw new IllegalArgumentException("positive budget is required");
         this.budgetMillis = budgetMillis;
         this.solver = new CapacityFeasibilitySolver(ticker);
@@ -92,6 +91,11 @@ public final class ScheduleCapacityProofApiImpl implements ScheduleCapacityProof
             CurrentStoreStaffFacts employees = merchant.readStore(query.storeId(), query.context());
             if (employees == null || !employees.complete()
                     || !query.storeId().equals(employees.storeId())) bad("incomplete employee facts");
+            for (WindowFact window : schedule.windows()) {
+                if (!employees.merchantId().equals(window.merchantId())) {
+                    bad("schedule window merchant differs from current store merchant");
+                }
+            }
             OrderProtectionSnapshot orders = order.readStore(query.storeId(), query.context());
             if (orders == null || !orders.complete() || !query.storeId().equals(orders.storeId())
                     || orders.items().size() != orders.totalOrders()) bad("incomplete order facts");
@@ -194,8 +198,7 @@ public final class ScheduleCapacityProofApiImpl implements ScheduleCapacityProof
     private boolean selected(CapacityProofQuery query, WindowFact window, String kind) {
         return window != null && "OPEN".equals(window.status()) && kind.equals(window.kind())
                 && query.storeId().equals(window.storeId())
-                && query.serviceId().equals(window.serviceId())
-                && window.endAt().toInstant().isAfter(clock.instant());
+                && query.serviceId().equals(window.serviceId());
     }
 
     private static Map<String, CurrentStaffFact> people(CurrentStoreStaffFacts employees) {
@@ -315,8 +318,7 @@ public final class ScheduleCapacityProofApiImpl implements ScheduleCapacityProof
                     || !fact.merchantId().equals(linked.merchantId())
                     || !fact.storeId().equals(linked.storeId())
                     || !fact.serviceId().equals(linked.serviceId())
-                    || !fact.fulfillmentType().equals(linked.fulfillmentType())
-                    || (linked.currentStaffId() != null && !linked.protectRequired())) {
+                    || !fact.fulfillmentType().equals(linked.fulfillmentType())) {
                 bad("active reservation and order facts disagree");
             }
             List<Claim> segments = new ArrayList<>();

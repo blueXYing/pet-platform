@@ -12,6 +12,7 @@ import com.petplatform.schedule.biz.domain.service.CapacityFeasibilitySolver.Win
 import java.time.Instant;
 import java.util.List;
 import java.util.Set;
+import java.util.ArrayList;
 import java.util.concurrent.atomic.AtomicLong;
 import org.junit.jupiter.api.Test;
 
@@ -73,6 +74,14 @@ class CapacityFeasibilitySolverTest {
     }
 
     @Test
+    void configuredZeroIsKnownExhaustionRatherThanCorruptFacts() {
+        assertEquals(Outcome.INFEASIBLE, SOLVER.solve("candidate",
+                List.of(reservation("candidate", "A", "wa", 0, 60, null)),
+                List.of(new Window("wa", 0)),
+                List.of(staff("one", Set.of("A"), 0, 60)), 1000).outcome());
+    }
+
+    @Test
     void conflictingFixedAssignmentsCannotBeRematched() {
         List<Reservation> reservations = List.of(
                 reservation("candidate", "A", "wa", 0, 60, null),
@@ -90,6 +99,21 @@ class CapacityFeasibilitySolverTest {
                 List.of(reservation("candidate", "A", "wa", 0, 60, null)),
                 List.of(new Window("wa", 1)), List.of(staff("one", Set.of("A"), 0, 60)), 1);
         assertEquals(Outcome.BUDGET_EXHAUSTED, result.outcome());
+    }
+
+    @Test
+    void largeConnectedComponentStopsDuringConflictConstructionWithoutABusinessSizeLimit() {
+        AtomicLong calls = new AtomicLong();
+        CapacityFeasibilitySolver budgeted = new CapacityFeasibilitySolver(
+                () -> calls.incrementAndGet() < 50_000 ? 0L : 2_000_000L);
+        List<Reservation> reservations = new ArrayList<>();
+        reservations.add(reservation("candidate", "A", "wa", 0, 60, null));
+        for (int index = 0; index < 199; index++) {
+            reservations.add(reservation("r" + index, "A", "wa", 0, 60, null));
+        }
+        assertEquals(Outcome.BUDGET_EXHAUSTED, budgeted.solve("candidate", reservations,
+                List.of(new Window("wa", 200)),
+                List.of(staff("one", Set.of("A"), 0, 60)), 1).outcome());
     }
 
     private static Outcome result(List<Reservation> reservations, List<Staff> staff,
