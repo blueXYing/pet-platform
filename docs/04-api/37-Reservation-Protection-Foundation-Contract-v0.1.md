@@ -24,7 +24,7 @@ SQL37新增kind、claim、reservation.user_id和guard。user_id缺失是未恢�
 
 ## 4. MER当前员工
 
-`MerchantCurrentStaffFactsApi.readStore`返回merchantId/storeId/complete及完整员工集合（含已知INACTIVE/不在岗），员工字段为staffId/merchantId/storeId/employmentStatus/serviceEnabled/version，无姓名电话。同guard、同DS、同事务当前读，不另开快照。确认门店不存在404；故障、坏归属、未知枚举/布尔、负版本503。此API不授予管理权限，不把手机号当登录身份。
+`MerchantCurrentStaffFactsApi.readStore`返回merchantId/storeId/complete及完整员工集合（含已知INACTIVE/不在岗），员工字段为staffId/merchantId/storeId/employmentStatus/serviceEnabled/version，无姓名电话。同guard、同DS、同事务当前读，不另开快照。确认门店不存在404；故障、坏归属、未知枚举/布尔、负版本503。沿用[35号](35-Merchant-Staff-Management-Contract-v0.1.md)既有不变量，INACTIVE+serviceEnabled=true为坏事实503；合法INACTIVE+false仍返回。此API不授予管理权限，不把手机号当登录身份。
 
 ## 5. ORDER完整性
 
