@@ -6,6 +6,7 @@
   </select>
   <select id="lockStaff" resultType="com.petplatform.merchant.biz.infrastructure.persistence.entity.MerchantStaffReadEntity">
     SELECT id AS staff_id, merchant_id, store_id, employment_status, service_enabled, version AS staff_version
-    FROM merchant_staff WHERE store_id=#{storeId} ORDER BY id FOR UPDATE
+    FROM merchant_staff FORCE INDEX (idx_staff_store_status)
+    WHERE store_id=#{storeId} ORDER BY id FOR UPDATE
   </select>
 </mapper>
