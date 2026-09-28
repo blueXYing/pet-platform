@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.petplatform.merchant.biz.infrastructure.persistence.mapper.MerchantBookingMapper">
+    <select id="lockStore" resultType="map">
+        SELECT m.id,m.merchant_name,m.status merchant_status,s.store_name,s.address,
+               s.status store_status
+        FROM merchant_store s JOIN merchant m ON m.id=s.merchant_id
+        WHERE s.id=#{storeId} FOR UPDATE
+    </select>
+    <select id="lockApplicationAnchors" resultType="long">
+        SELECT id FROM merchant_application WHERE reserved_merchant_id=#{merchantId} FOR UPDATE
+    </select>
+    <select id="lockAgreementAcceptances" resultType="long">
+        SELECT id FROM merchant_agreement_acceptance WHERE merchant_id=#{merchantId} FOR UPDATE
+    </select>
+</mapper>
