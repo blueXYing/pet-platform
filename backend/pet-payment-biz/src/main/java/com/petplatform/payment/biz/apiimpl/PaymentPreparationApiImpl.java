@@ -35,7 +35,19 @@ public final class PaymentPreparationApiImpl implements PaymentPreparationApi {
         try{
             // Persist the original binding even if later eligibility/configuration fails.
             tx.execute(status->{store.session();store.jdbc.update("INSERT INTO payment_intent_request(id,request_key,order_id,user_id,created_at) VALUES(?,?,?,?,UTC_TIMESTAMP(3)) ON DUPLICATE KEY UPDATE id=id",nextId(),key,id(c.orderId()),id(c.context().operatorId()));checkBinding(key,c);return null;});
-            return tx.execute(status->{
+            return execute(c,key,q);
+        }catch(ApiException known){throw known;}catch(RuntimeException failed){
+            if(unknownCommit(failed)){
+                // One authoritative retry under the original binding; no new requestId/paymentNo.
+                try{return execute(c,key,q);}
+                catch(ApiException known){throw known;}
+                catch(RuntimeException rereadFailed){throw databaseFailure(rereadFailed);}
+            }
+            throw databaseFailure(failed);
+        }
+    }
+    private PreparedPayment execute(PreparePaymentCommand c,byte[] key,QueryContext q){
+        return tx.execute(status->{
                 store.session();checkBinding(key,c);
                 String storeId=orders.locateStore(c.orderId(),q);guard.acquire(List.of(storeId),q);guard.requireHeld(storeId,source);
                 users.requireCurrentActor(c.context().operatorId(),storeId,q);
@@ -54,13 +66,13 @@ public final class PaymentPreparationApiImpl implements PaymentPreparationApi {
                 store.jdbc.update("INSERT INTO payment_order(id,payment_no,order_id,amount,status,channel,expire_at,created_at,updated_at,store_id,merchant_id,user_id,merchant_no,term_no,sub_appid,currency,dispatch_state) VALUES(?,?,?,?,'INIT','LAKALA_WECHAT',?,UTC_TIMESTAMP(3),UTC_TIMESTAMP(3),?,?,?,?,?,?,'CNY','PREPARED')",paymentId,paymentNo,id(c.orderId()),order.payAmount(),PaymentFoundationStore.utc(order.paymentExpireAt()),id(storeId),id(order.merchantId()),id(order.userId()),binding.merchantNo(),binding.termNo(),binding.subAppId());
                 store.jdbc.update("UPDATE payment_intent_request SET payment_id=? WHERE request_key=?",paymentId,key);
                 return result(store.byId(paymentId,true),false);
-            });
-        }catch(ApiException known){throw known;}catch(RuntimeException failed){throw unavailable();}
+
+        });
     }
     private void checkBinding(byte[] key,PreparePaymentCommand c){
         var rows=store.jdbc.query("SELECT order_id,user_id FROM payment_intent_request WHERE request_key=? FOR UPDATE",(rs,n)->new long[]{rs.getLong(1),rs.getLong(2)},key);
         if(rows.size()!=1)throw unavailable();
-        if(rows.getFirst()[0]!=id(c.orderId()) || rows.getFirst()[1]!=id(c.context().operatorId()))throw new ApiException("IDEMPOTENCY_KEY_CONFLICT","payment requestId already bound");
+        if(rows.getFirst()[0]!=id(c.orderId()) || rows.getFirst()[1]!=id(c.context().operatorId()))throw new ApiException(CommonApiCodes.IDEMPOTENCY_KEY_CONFLICT,"payment requestId already bound");
     }
     private PreparedPayment result(PaymentFoundationStore.Row r,boolean replay){
         if(r==null || r.expires()==null || r.amount()==null || !"LAKALA_WECHAT".equals(r.channel()) || !"CNY".equals(r.currency()))throw unavailable();
@@ -69,5 +81,18 @@ public final class PaymentPreparationApiImpl implements PaymentPreparationApi {
     private long nextId(){long n=ids.nextId();if(n<=0)throw unavailable();return n;}
     private static long id(String s){return new DecimalPublicIdCodec().fromApi(s);}
     private static boolean valid(String s,int max){return s!=null&&!s.isBlank()&&s.length()<=max&&!s.codePoints().anyMatch(Character::isISOControl);}
+    private static boolean unknownCommit(Throwable failure){
+        for(Throwable at=failure;at!=null;at=at.getCause()){
+            if(at instanceof java.sql.SQLException sql && sql.getSQLState()!=null && sql.getSQLState().startsWith("08"))return true;
+        }
+        return false;
+    }
+    private static ApiException databaseFailure(Throwable failure){
+        for(Throwable at=failure;at!=null;at=at.getCause()){
+            if(at instanceof java.sql.SQLException sql && (sql.getErrorCode()==1205||sql.getErrorCode()==1213))
+                return new ApiException(CommonApiCodes.CONFLICT,"payment intent busy; retry the original requestId");
+        }
+        return unavailable();
+    }
     private static ApiException unavailable(){return new ApiException(CommonApiCodes.DEPENDENCY_UNAVAILABLE,"payment intent facts unavailable");}
 }
