@@ -34,6 +34,8 @@ SQL40 新增字段对历史行保持 NULL，不猜测或回填既有商户、币
 
 明确 SUCCESS 且有有效实付/支付时间：PAYMENT PAID、唯一渠道流水、实付金额、paidAt、唯一 successEventId 和 `PaymentSucceededEvent.v1` 同事务提交。重复结果与旧事实相同仅重放；变化的渠道流水、金额或时间不能覆盖成功事实。迟来的处理中/失败通知不能将已成功支付降级。其他渠道状态可记录，但不能产生成功事件或成为释放占用的许可。
 
+退款、部分退款、撤销事实不等同于旧失败通知。出现这些状态后保留已有成功事实及最小回执，并标记 RECONCILIATION_REQUIRED；迟来的 SUCCESS 不能清掉标记或产生新成功事件，尚未执行的 ORDER 消费也须暂停，交后续退款/核验能力处理。防止先退款后收到旧成功通知时错误履约或再次生成退款意图。
+
 公共 Outbox 发布与消费守卫在写 SQL 前验证自己的 DataSource 已绑定当前同步事务，误注入另一数据源时拒绝，不能先独立提交事件或消费日志再回滚业务。
 
 `PaymentSuccessFactsApi.requireSucceeded` 由 ORDER 在同 DataSource/guard 事务调用，锁 PAYMENT 权威行并验证对应成功回执，返回原 eventId 与绑定。任意 SYSTEM DTO 或伪造事件本身均不是支付成功证据。

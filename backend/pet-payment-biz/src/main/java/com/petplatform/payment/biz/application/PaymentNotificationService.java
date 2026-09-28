@@ -93,7 +93,8 @@ public final class PaymentNotificationService {
     private static void validRow(PaymentFoundationStore.Row r){
         if(r==null||r.storeId()<=0||r.merchantId()<=0||r.userId()<=0||r.no()<=0||r.amount()==null||r.amount().signum()<=0
                 ||r.merchantNo()==null||r.termNo()==null||r.subAppId()==null||!"CNY".equals(r.currency())||!"LAKALA_WECHAT".equals(r.channel())
-                ||!Set.of("INIT","PAYING","PAID","FAILED","CLOSED").contains(r.status()))throw unavailable();
+                ||!Set.of("INIT","PAYING","PAID","FAILED","CLOSED").contains(r.status())
+                ||!Set.of("PREPARED","OBSERVED","RECONCILIATION_REQUIRED").contains(r.dispatchState()))throw unavailable();
     }
     private long nextId(){long value=ids.nextId();if(value<=0)throw unavailable();return value;}
     private static ApiException invalid(){return new ApiException(CommonApiCodes.INVALID_ARGUMENT,"invalid payment notification");}
