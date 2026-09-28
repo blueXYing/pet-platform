@@ -33,11 +33,12 @@ public final class OrderPaymentStore {
         return jdbc.query("""
                 SELECT id,user_id,merchant_id,store_id,reservation_id,order_stage,payment_status,
                        verification_status,pay_amount,discount_amount,payment_expire_at,
-                       cancel_reason,version
+                       cancel_reason,paid_at,version
                 FROM pet_order WHERE id=? FOR UPDATE
                 """, rs -> {
             if (!rs.next()) return null;
             LocalDateTime deadline = rs.getObject("payment_expire_at", LocalDateTime.class);
+            LocalDateTime paidAt = rs.getObject("paid_at", LocalDateTime.class);
             return new OrderRow(rs.getLong("id"), rs.getLong("user_id"),
                     rs.getLong("merchant_id"), rs.getLong("store_id"),
                     rs.getLong("reservation_id"), rs.getString("order_stage"),
@@ -45,7 +46,8 @@ public final class OrderPaymentStore {
                     rs.getBigDecimal("pay_amount"), rs.getBigDecimal("discount_amount"),
                     deadline == null ? null : deadline.atOffset(ZoneOffset.UTC),
                     rs.getString("cancel_reason"),
-                    rs.getLong("version"));
+                    rs.getLong("version"),
+                    paidAt == null ? null : paidAt.atOffset(ZoneOffset.UTC));
         }, orderId);
     }
 
@@ -115,7 +117,8 @@ public final class OrderPaymentStore {
     public record Locator(long storeId, long userId) {}
     public record OrderRow(long id,long userId,long merchantId,long storeId,long reservationId,
             String stage,String paymentStatus,String verificationStatus,BigDecimal payAmount,
-            BigDecimal discountAmount,OffsetDateTime paymentExpireAt,String cancelReason,long version) {}
+            BigDecimal discountAmount,OffsetDateTime paymentExpireAt,String cancelReason,long version,
+            OffsetDateTime paidAt) {}
     public record ResultRow(long paymentId,long sourceEventId,String channelTradeNo,
             BigDecimal paidAmount,OffsetDateTime paidAt,String resultType) {}
 }

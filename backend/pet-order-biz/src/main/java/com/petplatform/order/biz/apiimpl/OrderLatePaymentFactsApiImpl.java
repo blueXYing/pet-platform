@@ -67,7 +67,8 @@ public final class OrderLatePaymentFactsApiImpl implements OrderLatePaymentFacts
                     || !"UNVERIFIED".equals(order.verificationStatus())
                     || result.channelTradeNo() == null || result.channelTradeNo().isBlank()
                     || result.paidAmount() == null || result.paidAmount().signum() <= 0
-                    || result.paidAmount().scale() > 2 || result.paidAt() == null)
+                    || result.paidAmount().scale() > 2 || result.paidAt() == null
+                    || order.paidAt() == null || !order.paidAt().isEqual(result.paidAt()))
                 throw unavailable();
             PublicContractChecks.requireMillisecondPrecision(result.paidAt());
             String reservationId = IDS.toApi(order.reservationId());

@@ -51,6 +51,10 @@
         </dependency>
         <dependency>
             <groupId>com.petplatform</groupId>
+            <artifactId>pet-refund-api</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>com.petplatform</groupId>
             <artifactId>pet-coupon-api</artifactId>
         </dependency>
         <dependency>

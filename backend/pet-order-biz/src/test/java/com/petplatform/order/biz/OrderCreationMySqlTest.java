@@ -21,9 +21,14 @@ import com.petplatform.order.api.dto.OrderPaymentResultTypes.ConsumePaymentResul
 import com.petplatform.order.biz.apiimpl.OrderCreationApiImpl;
 import com.petplatform.order.biz.apiimpl.OrderExpiryApiImpl;
 import com.petplatform.order.biz.apiimpl.OrderPaymentResultApiImpl;
+import com.petplatform.order.biz.apiimpl.OrderLatePaymentFactsApiImpl;
+import com.petplatform.order.biz.apiimpl.OrderLateRefundProjectionConsumer;
 import com.petplatform.event.api.DispatchedEvent;
 import com.petplatform.event.core.TransactionalOutboxPublisher;
 import com.petplatform.payment.api.dto.PaymentSuccessFact;
+import com.petplatform.refund.api.dto.RefundExecutionFact;
+import com.petplatform.refund.api.dto.RefundSuccessFact;
+import com.petplatform.refund.api.query.RefundExecutionFactsApi;
 import com.petplatform.schedule.api.command.ReservationConfirmApi;
 import com.petplatform.schedule.api.dto.ReservationConfirmTypes.ConfirmReservationCommand;
 import com.petplatform.order.biz.application.OrderCreationInputProtection;
@@ -65,13 +70,17 @@ import org.springframework.core.io.support.EncodedResource;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.datasource.DriverManagerDataSource;
 import org.springframework.jdbc.datasource.DelegatingDataSource;
+import org.springframework.jdbc.datasource.DataSourceTransactionManager;
 import org.springframework.jdbc.datasource.init.ScriptUtils;
+import org.springframework.transaction.support.TransactionTemplate;
 
 /** SQL06/37/38 order-side integration. SCH's solver and real Owner adapters have separate tests. */
 class OrderCreationMySqlTest {
     private static final OffsetDateTime START = OffsetDateTime.parse("2030-01-01T09:00:00Z");
     private static final Clock CLOCK = Clock.fixed(Instant.parse("2029-12-31T00:00:00Z"), ZoneOffset.UTC);
     private static final OffsetDateTime PAID_AT = OffsetDateTime.parse("2029-12-31T00:05:00Z");
+    private static final OffsetDateTime REFUND_CREATED_AT = OffsetDateTime.parse("2030-01-01T00:00:00Z");
+    private static final OffsetDateTime REFUND_SUCCEEDED_AT = OffsetDateTime.parse("2030-01-01T00:05:00Z");
 
     @Test
     void paymentEventAtomicallyMarksOrderAndHoldPaidAndRepeatsWithoutNewOutbox() throws Exception {
@@ -192,6 +201,157 @@ class OrderCreationMySqlTest {
             assertEquals(1, db.count("order_payment_result"));
             assertEquals(1, db.count("integration_event_outbox"));
         }
+    }
+
+    @Test
+    void lateRefundProjectionBindsCreatedAndSuccessWithoutReopeningTheOrder() throws Exception {
+        try (Database db = new Database()) {
+            String orderId = latePaidOrder(db);
+            var factApi = new OrderLatePaymentFactsApiImpl(db.source,
+                    new TestGuard(db.jdbc), expiryProof(db.jdbc));
+            QueryContext system = new QueryContext("refund-test", OperatorType.SYSTEM, null);
+            assertEquals(CommonApiCodes.DEPENDENCY_UNAVAILABLE,
+                    assertThrows(ApiException.class,
+                            () -> factApi.requireLatePayment(orderId, "7001", "300", system)).code());
+            var tx = new TransactionTemplate(new DataSourceTransactionManager(db.source));
+            var late = tx.execute(status -> {
+                var guard = new TestGuard(db.jdbc);
+                guard.acquire(List.of("300"), system);
+                return factApi.requireLatePayment(orderId, "7001", "300", system);
+            });
+            assertEquals("9001", late.paymentSuccessEventId());
+            assertEquals(new BigDecimal("128.00"), late.channelPaidAmount());
+
+            var consumer = refundProjection(db, orderId);
+            var created = refundCreatedEvent(orderId);
+            var forged = new DispatchedEvent("9199", created.eventType(), created.eventVersion(),
+                    created.occurredAt(), created.aggregateType(), created.aggregateId(),
+                    created.traceId(), created.payloadJson());
+            assertEquals(CommonApiCodes.DEPENDENCY_UNAVAILABLE,
+                    assertThrows(ApiException.class, () -> consumer.consume(forged)).code());
+            assertEquals(0, db.count("order_late_refund_result"));
+
+            consumer.consume(created);
+            consumer.consume(created);
+            assertEquals("CREATED", db.jdbc.queryForObject(
+                    "SELECT refund_status FROM order_late_refund_result", String.class));
+            assertEquals(9201L, db.jdbc.queryForObject(
+                    "SELECT refund_order_id FROM pet_order", Long.class));
+            assertEquals(new BigDecimal("0.00"), db.jdbc.queryForObject(
+                    "SELECT refunded_amount FROM pet_order", BigDecimal.class));
+            consumer.consume(refundSucceededEvent(orderId));
+            consumer.consume(refundSucceededEvent(orderId));
+            assertEquals("SUCCESS", db.jdbc.queryForObject(
+                    "SELECT refund_status FROM order_late_refund_result", String.class));
+            assertEquals(new BigDecimal("128.00"), db.jdbc.queryForObject(
+                    "SELECT refunded_amount FROM pet_order", BigDecimal.class));
+            assertEquals("CANCELED", db.jdbc.queryForObject(
+                    "SELECT order_stage FROM pet_order", String.class));
+            assertEquals("EXPIRED", db.jdbc.queryForObject(
+                    "SELECT status FROM schedule_reservation", String.class));
+            assertEquals(2, db.jdbc.queryForObject(
+                    "SELECT COUNT(*) FROM order_status_log WHERE dimension='REFUND'", Integer.class));
+            assertEquals("9001", tx.execute(status -> {
+                var guard = new TestGuard(db.jdbc);
+                guard.acquire(List.of("300"), system);
+                return factApi.requireLatePayment(orderId, "7001", "300", system)
+                        .paymentSuccessEventId();
+            }));
+        }
+    }
+
+    @Test
+    void lateRefundSuccessBeforeCreatedNeverDowngradesTheProjection() throws Exception {
+        try (Database db = new Database()) {
+            String orderId = latePaidOrder(db);
+            var consumer = refundProjection(db, orderId);
+            consumer.consume(refundSucceededEvent(orderId));
+            consumer.consume(refundCreatedEvent(orderId));
+            assertEquals("SUCCESS", db.jdbc.queryForObject(
+                    "SELECT refund_status FROM order_late_refund_result", String.class));
+            assertEquals(9101L, db.jdbc.queryForObject(
+                    "SELECT created_event_id FROM order_late_refund_result", Long.class));
+            assertEquals(9102L, db.jdbc.queryForObject(
+                    "SELECT success_event_id FROM order_late_refund_result", Long.class));
+            assertEquals(new BigDecimal("128.00"), db.jdbc.queryForObject(
+                    "SELECT refunded_amount FROM pet_order", BigDecimal.class));
+            assertEquals("CANCELED", db.jdbc.queryForObject(
+                    "SELECT order_stage FROM pet_order", String.class));
+            assertEquals(1, db.jdbc.queryForObject(
+                    "SELECT COUNT(*) FROM order_status_log WHERE dimension='REFUND'", Integer.class));
+        }
+    }
+
+    private static String latePaidOrder(Database db) {
+        var created = db.api().create(db.inStore("late-refund-" + UUID.randomUUID()));
+        assertEquals(ExpireOrderResult.CLOSED,
+                db.expiryApi().expire(db.expiryCommand(created.orderId(), db.makeDue())));
+        db.paymentResultApi(created.orderId()).consume(db.paymentEvent(created.orderId()));
+        return created.orderId();
+    }
+
+    private static ReservationExpiryApi expiryProof(JdbcTemplate jdbc) {
+        return new ReservationExpiryApi() {
+            @Override public void expire(ExpireHoldCommand command) {
+                throw new UnsupportedOperationException();
+            }
+            @Override public void assertExpired(String orderId, String reservationId,
+                    String storeId, QueryContext context) {
+                String status = jdbc.queryForObject("""
+                        SELECT status FROM schedule_reservation
+                        WHERE id=? AND order_id=? AND store_id=?
+                        """, String.class, Long.parseLong(reservationId),
+                        Long.parseLong(orderId), Long.parseLong(storeId));
+                if (!"EXPIRED".equals(status)) throw new ApiException(
+                        CommonApiCodes.DEPENDENCY_UNAVAILABLE, "SCH expiry fact absent");
+            }
+        };
+    }
+
+    private static OrderLateRefundProjectionConsumer refundProjection(Database db, String orderId) {
+        RefundExecutionFactsApi facts = new RefundExecutionFactsApi() {
+            @Override public RefundExecutionFact requireForChannel(String refundOrderId,
+                    String storeId, QueryContext context) {
+                return new RefundExecutionFact("9201", "9202", orderId, "7001", "7002",
+                        "300", "200", "100", "9001", "9301", "trade-7001",
+                        new BigDecimal("128.00"), new BigDecimal("128.00"), PAID_AT,
+                        "CNY", "SUCCESS", 0, "9101", REFUND_CREATED_AT);
+            }
+            @Override public RefundSuccessFact requireSucceeded(String refundOrderId,
+                    String targetOrderId, String storeId, QueryContext context) {
+                return new RefundSuccessFact("9201", "9202", orderId, "7001", "300",
+                        new BigDecimal("128.00"), new BigDecimal("128.00"),
+                        "refund-channel-1", REFUND_SUCCEEDED_AT, "9102",
+                        "LATE_PAYMENT_TIMEOUT");
+            }
+        };
+        return new OrderLateRefundProjectionConsumer(db.source, db.ids::incrementAndGet,
+                new TestGuard(db.jdbc), expiryProof(db.jdbc), facts);
+    }
+
+    private static DispatchedEvent refundCreatedEvent(String orderId) {
+        try {
+            String json = new com.fasterxml.jackson.databind.ObjectMapper().writeValueAsString(Map.of(
+                    "refundOrderId", "9201", "refundNo", "9202", "orderId", orderId,
+                    "refundType", "FULL", "refundAmount", new BigDecimal("128.00"),
+                    "source", "LATE_PAYMENT_TIMEOUT", "createdAt", REFUND_CREATED_AT.toString()));
+            return new DispatchedEvent("9101", "RefundOrderCreatedEvent.v1", 1,
+                    REFUND_CREATED_AT, "REFUND", 9201L, "refund-test", json);
+        } catch (Exception failed) { throw new IllegalStateException(failed); }
+    }
+
+    private static DispatchedEvent refundSucceededEvent(String orderId) {
+        try {
+            String json = new com.fasterxml.jackson.databind.ObjectMapper().writeValueAsString(Map.of(
+                    "refundOrderId", "9201", "refundNo", "9202", "orderId", orderId,
+                    "refundType", "FULL", "refundSource", "LATE_PAYMENT_TIMEOUT",
+                    "refundAmount", new BigDecimal("128.00"),
+                    "originalPaidAmount", new BigDecimal("128.00"),
+                    "channelRefundNo", "refund-channel-1",
+                    "succeededAt", REFUND_SUCCEEDED_AT.toString()));
+            return new DispatchedEvent("9102", "RefundSucceededEvent.v1", 1,
+                    REFUND_SUCCEEDED_AT, "REFUND", 9201L, "refund-test", json);
+        } catch (Exception failed) { throw new IllegalStateException(failed); }
     }
 
     @Test
@@ -496,7 +656,8 @@ class OrderCreationMySqlTest {
                             "38-Booking-Create-Schema-v0.1.sql",
                             "39-Booking-Expiry-Schema-v0.1.sql",
                             "40-Payment-Foundation-Schema-v0.1.sql",
-                "41-Payment-Dispatch-Schema-v0.1.sql")) {
+                "41-Payment-Dispatch-Schema-v0.1.sql",
+                "44-Late-Refund-Order-Projection-Schema-v0.1.sql")) {
                         ScriptUtils.executeSqlScript(connection, new EncodedResource(
                                 new FileSystemResource(root.resolve("docs/03-database/" + file)),
                                 StandardCharsets.UTF_8));
