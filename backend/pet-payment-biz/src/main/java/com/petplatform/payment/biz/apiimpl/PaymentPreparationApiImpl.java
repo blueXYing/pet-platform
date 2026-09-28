@@ -60,7 +60,7 @@ public final class PaymentPreparationApiImpl implements PaymentPreparationApi {
     private void checkBinding(byte[] key,PreparePaymentCommand c){
         var rows=store.jdbc.query("SELECT order_id,user_id FROM payment_intent_request WHERE request_key=? FOR UPDATE",(rs,n)->new long[]{rs.getLong(1),rs.getLong(2)},key);
         if(rows.size()!=1)throw unavailable();
-        if(rows.getFirst()[0]!=id(c.orderId()) || rows.getFirst()[1]!=id(c.context().operatorId()))throw new ApiException(CommonApiCodes.CONFLICT,"payment requestId already bound");
+        if(rows.getFirst()[0]!=id(c.orderId()) || rows.getFirst()[1]!=id(c.context().operatorId()))throw new ApiException("IDEMPOTENCY_KEY_CONFLICT","payment requestId already bound");
     }
     private PreparedPayment result(PaymentFoundationStore.Row r,boolean replay){
         if(r==null || r.expires()==null || r.amount()==null || !"LAKALA_WECHAT".equals(r.channel()) || !"CNY".equals(r.currency()))throw unavailable();
