@@ -18,6 +18,8 @@ import com.petplatform.order.biz.application.OrderExpiryTaskSubmission;
 import com.petplatform.order.biz.infrastructure.persistence.OrderExpiryStore;
 import com.petplatform.order.biz.infrastructure.persistence.OrderExpiryStore.OrderRow;
 import com.petplatform.payment.api.query.BookingPaymentExposureApi;
+import com.petplatform.payment.api.command.PaymentExpiryCoordinationApi;
+import com.petplatform.payment.api.command.PaymentExpiryCoordinationApi.ReconcilePaymentExpiryCommand;
 import com.petplatform.schedule.api.command.ReservationExpiryApi;
 import com.petplatform.schedule.api.dto.ReservationExpiryTypes.ExpireHoldCommand;
 import com.petplatform.schedule.api.protection.ScheduleCapacityGuardApi;
@@ -40,6 +42,7 @@ public final class OrderExpiryApiImpl implements OrderExpiryApi {
     private final ScheduleCapacityGuardApi guard;
     private final ReservationExpiryApi reservations;
     private final BookingPaymentExposureApi payments;
+    private final PaymentExpiryCoordinationApi paymentCoordination;
     private final BookingCouponExposureApi coupons;
     private final OrderExpiryStore orders;
     private final JdbcAsyncTaskSubmitter tasks;
@@ -48,11 +51,19 @@ public final class OrderExpiryApiImpl implements OrderExpiryApi {
     public OrderExpiryApiImpl(DataSource source, SnowflakeIdGenerator ids,
             ScheduleCapacityGuardApi guard, ReservationExpiryApi reservations,
             BookingPaymentExposureApi payments, BookingCouponExposureApi coupons) {
+        this(source, ids, guard, reservations, payments, coupons, null);
+    }
+
+    public OrderExpiryApiImpl(DataSource source, SnowflakeIdGenerator ids,
+            ScheduleCapacityGuardApi guard, ReservationExpiryApi reservations,
+            BookingPaymentExposureApi payments, BookingCouponExposureApi coupons,
+            PaymentExpiryCoordinationApi paymentCoordination) {
         this.source = Objects.requireNonNull(source);
         this.ids = Objects.requireNonNull(ids);
         this.guard = Objects.requireNonNull(guard);
         this.reservations = Objects.requireNonNull(reservations);
         this.payments = Objects.requireNonNull(payments);
+        this.paymentCoordination = paymentCoordination;
         this.coupons = Objects.requireNonNull(coupons);
         this.orders = new OrderExpiryStore(source);
         this.tasks = new JdbcAsyncTaskSubmitter(source, ids);
@@ -118,6 +129,22 @@ public final class OrderExpiryApiImpl implements OrderExpiryApi {
         }
         Validated input = validate(command);
         try {
+            if (paymentCoordination != null) {
+                Preflight preflight = transaction.execute(status -> beforeNetwork(input));
+                if (preflight == null) throw unavailable("ORDER expiry preflight was unavailable");
+                if (preflight.immediate() != null) return preflight.immediate();
+                if (preflight.storeId() != null) {
+                    CommandContext original = input.command().context();
+                    CommandContext paymentContext = new CommandContext(
+                            "PAYMENT_EXPIRY_ORDER:" + input.orderId() + ":0",
+                            original.traceId(), OperatorType.SYSTEM, original.operatorId(),
+                            "ASYNC_TASK");
+                    var hint = paymentCoordination.reconcileForExpiry(
+                            new ReconcilePaymentExpiryCommand(paymentContext,
+                                    input.command().orderId(), preflight.storeId(), input.deadline()));
+                    if (hint == null) throw unavailable("PAYMENT expiry coordination was unavailable");
+                }
+            }
             ExpireOrderResult result = transaction.execute(status -> close(input));
             if (result == null) throw unavailable("ORDER expiry did not return a result");
             return result;
@@ -126,6 +153,35 @@ public final class OrderExpiryApiImpl implements OrderExpiryApi {
         } catch (RuntimeException failure) {
             throw unavailable("ORDER expiry dependency unavailable");
         }
+    }
+
+    /** Validate the immutable task generation before PAYMENT can fence or reach the network. */
+    private Preflight beforeNetwork(Validated input) {
+        orders.sessionDefaults();
+        String storeId = orders.storeId(input.orderId());
+        if (storeId == null) throw unavailable("ORDER expiry target is absent");
+        QueryContext context = new QueryContext(input.command().context().traceId(),
+                OperatorType.SYSTEM, input.command().context().operatorId());
+        guard.acquire(List.of(storeId), context);
+        guard.requireHeld(storeId, source);
+        OrderRow order = orders.lock(input.orderId());
+        if (order == null || order.storeId() != Long.parseLong(storeId)
+                || order.reservationId() != input.reservationId())
+            throw unavailable("ORDER expiry binding is inconsistent");
+        if (order.paymentExpireAt() == null || !order.paymentExpireAt().isEqual(input.deadline()))
+            throw unavailable("ORDER expiry generation does not match the current order");
+        if (!List.of("PENDING_PAYMENT", "PENDING_CONFIRM", "PENDING_SERVICE", "COMPLETED",
+                "CANCELED").contains(order.stage())) throw unavailable("ORDER stage is unknown");
+        if (!"PENDING_PAYMENT".equals(order.stage())) return new Preflight(null, null);
+        if (!"INIT".equals(order.paymentStatus())
+                || !"UNVERIFIED".equals(order.verificationStatus())
+                || order.cancelReason() != null || order.payAmount() == null
+                || order.payAmount().signum() <= 0 || order.discountAmount() == null
+                || order.discountAmount().signum() != 0)
+            throw unavailable("ORDER payment or verification state is uncertain");
+        if (orders.databaseNow().isBefore(input.deadline()))
+            return new Preflight(null, ExpireOrderResult.NOT_DUE);
+        return new Preflight(storeId, null);
     }
 
     private ExpireOrderResult close(Validated input) {
@@ -177,7 +233,7 @@ public final class OrderExpiryApiImpl implements OrderExpiryApi {
         OffsetDateTime now = orders.databaseNow();
         if (now.isBefore(input.deadline())) return ExpireOrderResult.NOT_DUE;
         // An UNKNOWN, initiated, frozen, or unreadable owner fact throws and rolls back.
-        payments.requireNoPayment(input.command().orderId(), storeId, context);
+        payments.requireSafeToExpire(input.command().orderId(), storeId, input.deadline(), context);
         coupons.requireNoCoupon(input.command().orderId(), storeId, context);
         if (orders.cancel(input.orderId(), order.version(), input.deadline(), now) != 1) {
             throw unavailable("ORDER expiry compare-and-set failed");
@@ -231,4 +287,5 @@ public final class OrderExpiryApiImpl implements OrderExpiryApi {
 
     private record Validated(ExpireOrderCommand command, long orderId, long reservationId,
             OffsetDateTime deadline) {}
+    private record Preflight(String storeId, ExpireOrderResult immediate) {}
 }
