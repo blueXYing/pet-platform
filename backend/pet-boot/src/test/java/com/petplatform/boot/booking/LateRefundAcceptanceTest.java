@@ -14,6 +14,7 @@ import com.petplatform.order.api.dto.OrderCreationTypes.CreateOrderResult;
 import com.petplatform.order.api.dto.OrderExpiryTypes.ExpireOrderCommand;
 import com.petplatform.order.api.dto.OrderExpiryTypes.ExpireOrderResult;
 import com.petplatform.order.biz.apiimpl.OrderLatePaymentFactsApiImpl;
+import com.petplatform.order.biz.apiimpl.OrderLateRefundProjectionConsumer;
 import com.petplatform.payment.api.dto.PaymentPreparationTypes.PreparedPayment;
 import com.petplatform.payment.biz.apiimpl.PaymentSuccessFactsApiImpl;
 import com.petplatform.payment.biz.apiimpl.PaymentRefundResultFactsApiImpl;
@@ -343,6 +344,61 @@ class LateRefundAcceptanceTest {
     }
   }
 
+  @Test
+  void createdRefundProjectsToClosedOrderOnlyOnce() throws Exception {
+    try (var f = fixture()) {
+      LatePayment late = latePayment(f);
+      var business = lateRefund(f, f.publisher);
+      business.consume(late.event());
+      DispatchedEvent created = event(f, "RefundOrderCreatedEvent.v1");
+      var projection = new OrderLateRefundProjectionConsumer(f.db.source,
+          LateRefundAcceptanceTest::id, f.guard, f.reservationExpiry, business);
+      projection.consume(created);
+      projection.consume(created);
+      assertEquals(1L, f.count("SELECT COUNT(*) FROM order_late_refund_result"));
+      assertEquals("CREATED", f.text("SELECT refund_status FROM order_late_refund_result"));
+      assertEquals("CANCELED", f.text("SELECT order_stage FROM pet_order WHERE id=?",
+          Long.parseLong(late.orderId())));
+      assertEquals("PAYMENT_TIMEOUT", f.text("SELECT cancel_reason FROM pet_order WHERE id=?",
+          Long.parseLong(late.orderId())));
+      assertEquals("EXPIRED", f.text("SELECT status FROM schedule_reservation WHERE id=?",
+          late.reservationId()));
+      assertEquals(0L, f.count("SELECT COUNT(*) FROM integration_event_outbox "
+          + "WHERE event_type='OrderPaidEvent.v1'"));
+      assertEquals(1L, f.count("SELECT COUNT(*) FROM integration_event_consume_log "
+          + "WHERE consumer_name='ORDER_LATE_REFUND'"));
+    }
+  }
+
+  @Test
+  void corruptedRefundOrderAndExecutionBindingFailsClosedOnReplay() throws Exception {
+    try (var f = fixture()) {
+      LatePayment late = latePayment(f);
+      var business = lateRefund(f, f.publisher);
+      business.consume(late.event());
+      f.db.jdbc.update("UPDATE refund_order SET refund_no=refund_no+1");
+      ApiException replay = assertThrows(ApiException.class,
+          () -> business.consume(late.event()));
+      assertEquals("COMMON_DEPENDENCY_UNAVAILABLE", replay.code());
+      assertEquals(1L, f.count("SELECT COUNT(*) FROM refund_order"));
+      assertEquals(1L, f.count("SELECT COUNT(*) FROM refund_execution"));
+      assertEquals(1L, f.count("SELECT COUNT(*) FROM integration_event_consume_log "
+          + "WHERE consumer_name='REFUND_LATE_PAYMENT'"));
+      assertEquals(1L, f.count("SELECT COUNT(*) FROM async_task WHERE owner_module='REFUND'"));
+    }
+  }
+
+  private static DispatchedEvent event(PaymentFoundationAcceptanceTest.Fixture f, String type) {
+    return f.db.jdbc.queryForObject(
+        "SELECT event_id,event_type,event_version,occurred_at,aggregate_type,aggregate_id,trace_id,payload "
+            + "FROM integration_event_outbox WHERE event_type=?",
+        (rs, row) -> new DispatchedEvent(rs.getString("event_id"), rs.getString("event_type"),
+            rs.getInt("event_version"),
+            rs.getTimestamp("occurred_at").toInstant().atOffset(ZoneOffset.UTC),
+            rs.getString("aggregate_type"), rs.getLong("aggregate_id"),
+            rs.getString("trace_id"), rs.getString("payload")), type);
+  }
+
   private static boolean consumeConcurrently(LateRefundService consumer, DispatchedEvent event,
       CountDownLatch ready, CountDownLatch start) {
     ready.countDown();
@@ -435,14 +491,7 @@ class LateRefundAcceptanceTest {
       assertEquals(com.petplatform.event.core.OutboxDispatcher.Outcome.COMPLETED,
           dispatcher.dispatchOne());
     }
-    DispatchedEvent late = f.db.jdbc.queryForObject(
-        "SELECT event_id,event_type,event_version,occurred_at,aggregate_type,aggregate_id,trace_id,payload "
-            + "FROM integration_event_outbox WHERE event_type='LatePaymentSucceededAfterTimeoutEvent.v1'",
-        (rs, row) -> new DispatchedEvent(rs.getString("event_id"), rs.getString("event_type"),
-            rs.getInt("event_version"),
-            rs.getTimestamp("occurred_at").toInstant().atOffset(ZoneOffset.UTC),
-            rs.getString("aggregate_type"), rs.getLong("aggregate_id"),
-            rs.getString("trace_id"), rs.getString("payload")));
+    DispatchedEvent late = event(f, "LatePaymentSucceededAfterTimeoutEvent.v1");
     assertNotNull(late);
     return new LatePayment(booking.orderId(), Long.toString(paymentId),
         Long.toString(paymentNo), reservation, late);
