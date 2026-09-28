@@ -17,8 +17,9 @@ public final class JdbcAsyncTaskStatusReader {
     public String status(String taskKey) {
         if (taskKey == null || taskKey.isBlank() || taskKey.length() > 191)
             throw new IllegalArgumentException("invalid task key");
-        List<String> rows = jdbc.query("SELECT status FROM async_task WHERE BINARY task_key=BINARY ?",
-                (rs, row) -> rs.getString(1), taskKey);
+        List<String> rows = jdbc.query("SELECT status FROM async_task "
+                        + "WHERE task_key=? AND BINARY task_key=BINARY ?",
+                (rs, row) -> rs.getString(1), taskKey, taskKey);
         if (rows.size() > 1) throw new IllegalStateException("duplicate async task key");
         return rows.isEmpty() ? null : rows.getFirst();
     }
