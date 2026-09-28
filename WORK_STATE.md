@@ -4,7 +4,7 @@ PROJECT: 宠物平台 V1.0
 STATE_VERSION: 13.0
 UPDATED_AT: 2026-09-28
 CURRENT_PHASE: W3_INTEGRATION_REVIEW
-CURRENT_STATUS: SELECTION_AND_BOOKING_EXPIRY_INTEGRATION
+CURRENT_STATUS: SELECTION_AND_BOOKING_EXPIRY_REVIEW
 VERIFIED_BASELINE: develop fac6b73f344f1b6da3fd996c44d391d2a7068b92（PR85按用户批准合入，合并CI36322764978成功）
 NEXT_PHASE: 审阅 PR86 及选窗/到期协调；接真实支付、优惠券与备注审核后才开放C创建
 NEXT_PHASE_APPROVED: YES（用户批准合并85并按顺序推进；OTHER/EXOTIC映射已单独批准，新PR合并/生产启用未授权）
@@ -18,7 +18,7 @@ NEXT_PHASE_APPROVED: YES（用户批准合并85并按顺序推进；OTHER/EXOTIC
 - 同键并发/异参、七阶段故障回滚、commit ACK丢失/回查断连、共享协议与类目行锁、默认关闭均有独立MySQL验收。全量/CI最终结果见实现PR。
 - 新 selection 开关开启时，既有登录 GET 增加 windowId/kind，可按 kind 筛选并按双 claim 统计；关闭时保留旧六字段。原窗展示不代替最终人员可行性证明。
 - 新内部到期 API 和可选 worker 在同店 guard 下确认无支付/无券记录后，同事务 CANCELED+EXPIRED；未知状态保留占用。历史缺任务支持有界分页补投，不自动运行生产补偿。SCH 独立过期不能借旧取消日志提交。
-- 明确 UTC DATETIME 读写，修复 Windows 默认时区导致的八小时偏移。全量和独立 QA 执行中，以集成回执及 PR 门禁为准。
+- 明确 UTC DATETIME 读写，修复 Windows 默认时区导致的八小时偏移。独立到期 QA 7 项、选窗 HTTP 契约 4 项通过；最终全量与复跑结果以 PR87 最新门禁和验证说明为准。
 - 外部C创建、真实支付/优惠券、生产备注审核仍未开放；所有新增开关默认关闭。无生产迁移或自动启用。
 
 ## 下一步

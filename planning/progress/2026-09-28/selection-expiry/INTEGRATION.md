@@ -21,7 +21,10 @@
 - ORDER 作者：11 项真实 MySQL 测试通过，含任务提交、到期协调、回滚、重放和分页补投。
 - 时区缺陷：已通过原始 DATE_FORMAT 证据确认并修正 Windows 默认时区造成的八小时偏移；不能只依赖 Java 写入再读回的自洽断言。
 - 独立审查：NOOP 坏事实、过期前 claim 完整性、独立释放事务证明、超大版本整数解析边界已修复。无其他待修 P0/P1 报告。
-- 最终全量、独立 QA 和远程 CI：执行中，结果完成后更新本回执。
+- 独立到期 QA：7/7 通过，覆盖真实 Owner 创建 → durable task runOne → CANCELED/EXPIRED/SUCCEEDED、两种 JVM 时区的原始 UTC 数据、支付/券未知保留、回滚/重放/坏 claim、任务类型隔离与恶意代际字段。
+- 独立 HTTP 契约：4/4 通过；MockMvc 使用真实 bearer filter 和选窗服务，Owner 与会话解析使用显式 double，不宣称真实微信登录或页面 E2E。既有真实 HTTP 回归另由标准门禁覆盖。
+- 本地首次全量：业务用例通过，出现旧 ServiceWriteHttpTest 的临时库 DROP 五秒清理超时，以及旧 guard 用例将建库/删库错误计入五秒断言。后者已把 DDL 移出计时区间，仍保持原 guard 五秒限制；前者不改超时阈值，停止并发占库后单独复跑。
+- 首次 CI：选窗测试错误回退本机端口，已改为与 CI 成组读取 URL/user/password；没有跳过用例。最终全量 CI 和本地复跑结果记录在 [PR87](https://github.com/blueXYing/pet-platform/pull/87) 最新检查与验证说明，失败历史保留可核验。
 
 ## 下一阶段
 
