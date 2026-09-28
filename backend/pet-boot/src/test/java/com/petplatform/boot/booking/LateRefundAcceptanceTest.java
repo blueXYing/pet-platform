@@ -15,6 +15,7 @@ import com.petplatform.order.api.dto.OrderExpiryTypes.ExpireOrderCommand;
 import com.petplatform.order.api.dto.OrderExpiryTypes.ExpireOrderResult;
 import com.petplatform.order.biz.apiimpl.OrderLatePaymentFactsApiImpl;
 import com.petplatform.order.biz.apiimpl.OrderLateRefundProjectionConsumer;
+import com.petplatform.order.biz.apiimpl.OrderExpiryFactsApiImpl;
 import com.petplatform.payment.api.dto.PaymentPreparationTypes.PreparedPayment;
 import com.petplatform.payment.biz.apiimpl.PaymentSuccessFactsApiImpl;
 import com.petplatform.payment.biz.apiimpl.PaymentRefundResultFactsApiImpl;
@@ -23,7 +24,13 @@ import com.petplatform.payment.biz.application.PaymentRefundService;
 import com.petplatform.payment.api.dto.PaymentRefundTypes.ChannelRefundSubmitCommand;
 import com.petplatform.payment.api.dto.PaymentRefundTypes.ChannelRefundQuery;
 import com.petplatform.payment.api.dto.PaymentRefundTypes.CoordinationState;
+import com.petplatform.payment.api.dto.PaymentRefundTypes.ChannelRefundProgress;
+import com.petplatform.payment.api.command.PaymentRefundApi;
 import com.petplatform.refund.biz.application.LateRefundService;
+import com.petplatform.refund.biz.application.RefundExecutionService;
+import com.petplatform.schedule.biz.apiimpl.ScheduleCapacityGuardApiImpl;
+import com.petplatform.schedule.biz.apiimpl.ScheduleProtectionFactsApiImpl;
+import com.petplatform.schedule.biz.apiimpl.ReservationExpiryApiImpl;
 import java.math.BigDecimal;
 import java.time.Clock;
 import java.time.Instant;
@@ -32,17 +39,24 @@ import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
 import java.time.ZoneId;
 import java.time.temporal.ChronoUnit;
+import java.lang.reflect.InvocationTargetException;
+import java.lang.reflect.Proxy;
+import java.sql.Connection;
+import java.sql.SQLException;
 import java.util.UUID;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 import org.junit.jupiter.api.Test;
 import org.springframework.jdbc.datasource.DelegatingDataSource;
 import org.springframework.jdbc.datasource.DataSourceTransactionManager;
+import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.transaction.support.TransactionTemplate;
 import org.springframework.transaction.TransactionDefinition;
+import javax.sql.DataSource;
 
 /** Real isolated MySQL acceptance. Payment proof comes from a signed offline channel notice. */
 class LateRefundAcceptanceTest {
@@ -410,6 +424,274 @@ class LateRefundAcceptanceTest {
       assertEquals(1L, f.count("SELECT COUNT(*) FROM integration_event_consume_log "
           + "WHERE consumer_name='REFUND_LATE_PAYMENT'"));
       assertEquals(1L, f.count("SELECT COUNT(*) FROM async_task WHERE owner_module='REFUND'"));
+    }
+  }
+
+  @Test
+  void verifiedRefundCompletesOnceAndProjectsSuccessBeforeCreatedWithoutReopeningOrder()
+      throws Exception {
+    try (var f = fixture()) {
+      LatePayment late = latePayment(f);
+      var business = lateRefund(f, f.publisher);
+      business.consume(late.event());
+      String refundId = f.text("SELECT CAST(id AS CHAR) FROM refund_order");
+      String refundNo = f.text("SELECT CAST(refund_no AS CHAR) FROM refund_order");
+      AtomicInteger sends = new AtomicInteger();
+      PaymentRefundChannel channel = new PaymentRefundChannel() {
+        @Override public VerifiedResult submit(RefundRequest request) {
+          sends.incrementAndGet();
+          assertEquals(refundNo, request.refundNo());
+          return new VerifiedResult("SUCCESS", refundNo, "QA_REFUND_FINAL_01", 9735,
+              9735L, LocalDateTime.now(ZoneId.of("Asia/Shanghai")).minusMinutes(1)
+                  .truncatedTo(ChronoUnit.SECONDS), "c".repeat(64));
+        }
+        @Override public VerifiedResult query(RefundRequest request) {
+          throw new AssertionError("verified submit SUCCESS needs no channel query");
+        }
+      };
+      var payment = paymentRefund(f, business, channel);
+      var executor = new RefundExecutionService(business, payment,
+          new PaymentRefundResultFactsApiImpl(f.db.source, f.guard));
+      assertTrue(executor.execute(refundId, "710302", false, "refund-qa-execute").done());
+      assertEquals(1, sends.get());
+      assertEquals("SUCCESS", f.text("SELECT status FROM refund_order"));
+      assertEquals("QA_REFUND_FINAL_01", f.text("SELECT channel_refund_no FROM refund_order"));
+      assertEquals(1L, f.count("SELECT COUNT(*) FROM refund_transaction "
+          + "WHERE action='REFUND' AND channel_status='SUCCESS'"));
+      assertEquals(1L, f.count("SELECT COUNT(*) FROM integration_event_outbox "
+          + "WHERE event_type='RefundSucceededEvent.v1'"));
+
+      var projection = new OrderLateRefundProjectionConsumer(f.db.source,
+          LateRefundAcceptanceTest::id, f.guard, f.reservationExpiry, business);
+      DispatchedEvent succeeded = event(f, "RefundSucceededEvent.v1");
+      DispatchedEvent created = event(f, "RefundOrderCreatedEvent.v1");
+      projection.consume(succeeded);
+      projection.consume(created);
+      projection.consume(succeeded);
+      assertEquals("SUCCESS", f.text("SELECT refund_status FROM order_late_refund_result"));
+      assertEquals(CHANNEL_PAID, f.db.jdbc.queryForObject(
+          "SELECT refunded_amount FROM pet_order WHERE id=?", BigDecimal.class,
+          Long.parseLong(late.orderId())));
+      assertEquals(refundId, f.text("SELECT CAST(refund_order_id AS CHAR) "
+          + "FROM pet_order WHERE id=?", Long.parseLong(late.orderId())));
+      assertEquals("CANCELED", f.text("SELECT order_stage FROM pet_order WHERE id=?",
+          Long.parseLong(late.orderId())));
+      assertEquals("PAYMENT_TIMEOUT", f.text("SELECT cancel_reason FROM pet_order WHERE id=?",
+          Long.parseLong(late.orderId())));
+      assertEquals("EXPIRED", f.text("SELECT status FROM schedule_reservation WHERE id=?",
+          late.reservationId()));
+      assertEquals(0L, f.count("SELECT COUNT(*) FROM integration_event_outbox "
+          + "WHERE event_type='OrderPaidEvent.v1'"));
+      assertEquals(0L, f.count("SELECT COUNT(*) FROM async_task "
+          + "WHERE task_type LIKE '%AUTO_ACCEPT%'"));
+
+      assertTrue(executor.execute(refundId, "710302", false, "refund-qa-replay").done());
+      assertEquals(1, sends.get());
+      assertEquals(1L, f.count("SELECT COUNT(*) FROM integration_event_outbox "
+          + "WHERE event_type='RefundSucceededEvent.v1'"));
+    }
+  }
+
+  @Test
+  void deadAndCanceledSubmissionTasksCreateDurableReconciliationIssue() throws Exception {
+    for (String finalTaskState : java.util.List.of("DEAD", "CANCELED")) {
+      try (var f = fixture()) {
+        LatePayment late = latePayment(f);
+        var business = lateRefund(f, f.publisher);
+        business.consume(late.event());
+        String refundId = f.text("SELECT CAST(id AS CHAR) FROM refund_order");
+        f.db.jdbc.update("UPDATE async_task SET status=?,updated_at=UTC_TIMESTAMP(3) "
+            + "WHERE task_key=?", finalTaskState, "REFUND_SUBMIT:" + refundId + ":0");
+        PaymentRefundChannel channel = new PaymentRefundChannel() {
+          @Override public VerifiedResult submit(RefundRequest request) {
+            throw new AssertionError("reconciliation scan must not submit to channel");
+          }
+          @Override public VerifiedResult query(RefundRequest request) {
+            throw new AssertionError("reconciliation scan must not query channel");
+          }
+        };
+        var executor = new RefundExecutionService(business,
+            paymentRefund(f, business, channel),
+            new PaymentRefundResultFactsApiImpl(f.db.source, f.guard));
+        assertEquals(1, executor.reconcileDeadTasks(), finalTaskState);
+        assertEquals("OPEN", f.text("SELECT status FROM refund_reconciliation_issue "
+            + "WHERE refund_order_id=?", Long.parseLong(refundId)));
+        assertEquals("LATE_PAYMENT_AUTO_REFUND_FAILED",
+            f.text("SELECT issue_code FROM refund_reconciliation_issue "
+                + "WHERE refund_order_id=?", Long.parseLong(refundId)));
+        assertEquals("UNKNOWN", f.text("SELECT status FROM refund_order WHERE id=?",
+            Long.parseLong(refundId)));
+        assertEquals(0L, f.count("SELECT COUNT(*) FROM payment_refund_dispatch"));
+        assertEquals(0L, f.count("SELECT COUNT(*) FROM integration_event_outbox "
+            + "WHERE event_type='RefundSucceededEvent.v1'"));
+      }
+    }
+  }
+
+  @Test
+  void unknownSubmitAtomicallySchedulesOneOriginalNumberQueryTask() throws Exception {
+    try (var f = fixture()) {
+      LatePayment late = latePayment(f);
+      var business = lateRefund(f, f.publisher);
+      business.consume(late.event());
+      String refundId = f.text("SELECT CAST(id AS CHAR) FROM refund_order");
+      AtomicInteger submits = new AtomicInteger();
+      PaymentRefundChannel channel = new PaymentRefundChannel() {
+        @Override public VerifiedResult submit(RefundRequest request) {
+          submits.incrementAndGet();
+          throw new IllegalStateException("offline QA: submit ACK unknown");
+        }
+        @Override public VerifiedResult query(RefundRequest request) {
+          throw new AssertionError("query should wait for stored 30 second boundary");
+        }
+      };
+      var executor = new RefundExecutionService(business,
+          paymentRefund(f, business, channel),
+          new PaymentRefundResultFactsApiImpl(f.db.source, f.guard));
+      var first = executor.execute(refundId, "710302", false, "refund-qa-unknown");
+      assertTrue(first.done());
+      assertNotNull(first.nextQueryAt());
+      assertEquals(1, submits.get());
+      assertEquals("UNKNOWN", f.text("SELECT status FROM refund_order"));
+      assertEquals(1L, f.count("SELECT COUNT(*) FROM async_task "
+          + "WHERE task_key='REFUND_CHANNEL_QUERY:" + refundId + ":0'"));
+      assertEquals(f.text("SELECT DATE_FORMAT(first_query_at,'%Y-%m-%d %H:%i:%s.%f') "
+              + "FROM refund_execution"),
+          f.text("SELECT DATE_FORMAT(execute_at,'%Y-%m-%d %H:%i:%s.%f') "
+              + "FROM async_task WHERE task_key='REFUND_CHANNEL_QUERY:" + refundId + ":0'"));
+      executor.execute(refundId, "710302", false, "refund-qa-unknown-replay");
+      assertEquals(1, submits.get());
+      assertEquals(1L, f.count("SELECT COUNT(*) FROM async_task "
+          + "WHERE task_key='REFUND_CHANNEL_QUERY:" + refundId + ":0'"));
+      assertEquals(0L, f.count("SELECT COUNT(*) FROM integration_event_outbox "
+          + "WHERE event_type='RefundSucceededEvent.v1'"));
+    }
+  }
+
+  @Test
+  void bareCoordinationSuccessHintCannotCompleteBusinessRefund() throws Exception {
+    try (var f = fixture()) {
+      LatePayment late = latePayment(f);
+      var business = lateRefund(f, f.publisher);
+      business.consume(late.event());
+      String refundId = f.text("SELECT CAST(id AS CHAR) FROM refund_order");
+      String refundNo = f.text("SELECT CAST(refund_no AS CHAR) FROM refund_order");
+      PaymentRefundApi forged = new PaymentRefundApi() {
+        @Override public ChannelRefundProgress submitRefund(ChannelRefundSubmitCommand command) {
+          return new ChannelRefundProgress(refundId, refundNo,
+              CoordinationState.VERIFIED_SUCCESS, null);
+        }
+        @Override public ChannelRefundProgress queryRefund(ChannelRefundQuery query) {
+          return new ChannelRefundProgress(refundId, refundNo,
+              CoordinationState.VERIFIED_SUCCESS, null);
+        }
+      };
+      var executor = new RefundExecutionService(business, forged,
+          new PaymentRefundResultFactsApiImpl(f.db.source, f.guard));
+      ApiException failure = assertThrows(ApiException.class,
+          () -> executor.execute(refundId, "710302", false, "refund-qa-forged-hint"));
+      assertEquals("COMMON_DEPENDENCY_UNAVAILABLE", failure.code());
+      assertEquals("CREATED", f.text("SELECT status FROM refund_order"));
+      assertEquals(0L, f.count("SELECT COUNT(*) FROM refund_transaction"));
+      assertEquals(0L, f.count("SELECT COUNT(*) FROM integration_event_outbox "
+          + "WHERE event_type='RefundSucceededEvent.v1'"));
+    }
+  }
+
+  @Test
+  void committedBusinessSuccessWithLostDatabaseAckRecoversWithoutSecondChannelSubmit()
+      throws Exception {
+    try (var f = fixture()) {
+      LatePayment late = latePayment(f);
+      lateRefund(f, f.publisher).consume(late.event());
+      String refundId = f.text("SELECT CAST(id AS CHAR) FROM refund_order");
+      String refundNo = f.text("SELECT CAST(refund_no AS CHAR) FROM refund_order");
+      var source = new LostSuccessCommitSource(f.db.source, refundId);
+      var guard = new ScheduleCapacityGuardApiImpl(source);
+      var scheduleFacts = new ScheduleProtectionFactsApiImpl(source, guard);
+      var orderExpiry = new OrderExpiryFactsApiImpl(source, guard);
+      var reservationExpiry = new ReservationExpiryApiImpl(source,
+          LateRefundAcceptanceTest::id, guard, orderExpiry, scheduleFacts);
+      var orderFacts = new OrderLatePaymentFactsApiImpl(source, guard, reservationExpiry);
+      var paymentFacts = new PaymentSuccessFactsApiImpl(source, guard);
+      var publisher = new TransactionalOutboxPublisher(source,
+          LateRefundAcceptanceTest::id, new com.fasterxml.jackson.databind.ObjectMapper());
+      var business = new LateRefundService(source, LateRefundAcceptanceTest::id, guard,
+          orderFacts, paymentFacts, publisher);
+      AtomicInteger sends = new AtomicInteger();
+      PaymentRefundChannel channel = new PaymentRefundChannel() {
+        @Override public VerifiedResult submit(RefundRequest request) {
+          sends.incrementAndGet();
+          return new VerifiedResult("SUCCESS", refundNo, "QA_REFUND_ACK_LOST", 9735,
+              9735L, LocalDateTime.now(ZoneId.of("Asia/Shanghai"))
+                  .minusMinutes(1).truncatedTo(ChronoUnit.SECONDS), "d".repeat(64));
+        }
+        @Override public VerifiedResult query(RefundRequest request) {
+          throw new AssertionError("committed success must not query or resubmit");
+        }
+      };
+      var payment = new PaymentRefundService(source, LateRefundAcceptanceTest::id,
+          guard, orderFacts, paymentFacts, business, channel,
+          new PaymentRefundService.Settings("127.0.0.1", "https://qa.invalid/refund",
+              ZoneId.of("Asia/Shanghai")), Clock.systemUTC());
+      var executor = new RefundExecutionService(business, payment,
+          new PaymentRefundResultFactsApiImpl(source, guard));
+      source.arm();
+      assertThrows(RuntimeException.class,
+          () -> executor.execute(refundId, "710302", false, "refund-qa-lost-commit-ack"));
+      assertTrue(source.lost.get(), "success commit occurred before its client ACK was lost");
+      assertEquals("SUCCESS", f.text("SELECT status FROM refund_order"));
+      assertEquals(1, sends.get());
+      assertEquals(1L, f.count("SELECT COUNT(*) FROM integration_event_outbox "
+          + "WHERE event_type='RefundSucceededEvent.v1'"));
+      assertTrue(executor.execute(refundId, "710302", false, "refund-qa-recover").done());
+      assertEquals(1, sends.get());
+      assertEquals(1L, f.count("SELECT COUNT(*) FROM refund_transaction"));
+      assertEquals(1L, f.count("SELECT COUNT(*) FROM integration_event_outbox "
+          + "WHERE event_type='RefundSucceededEvent.v1'"));
+    }
+  }
+
+  /** Simulates a successful MySQL commit whose response is lost only for business SUCCESS. */
+  private static final class LostSuccessCommitSource extends DelegatingDataSource {
+    private final JdbcTemplate oracle;
+    private final long refundId;
+    private volatile boolean armed;
+    final AtomicBoolean lost = new AtomicBoolean();
+
+    LostSuccessCommitSource(DataSource target, String refundId) {
+      super(target);
+      oracle = new JdbcTemplate(target);
+      this.refundId = Long.parseLong(refundId);
+    }
+
+    void arm() { armed = true; }
+
+    @Override public Connection getConnection() throws SQLException {
+      return wrap(super.getConnection());
+    }
+
+    @Override public Connection getConnection(String username, String password)
+        throws SQLException {
+      return wrap(super.getConnection(username, password));
+    }
+
+    private Connection wrap(Connection delegate) {
+      return (Connection) Proxy.newProxyInstance(getClass().getClassLoader(),
+          new Class<?>[] {Connection.class}, (proxy, method, args) -> {
+            try {
+              Object result = method.invoke(delegate, args);
+              if (armed && "commit".equals(method.getName()) && !lost.get()
+                  && "SUCCESS".equals(oracle.queryForObject(
+                      "SELECT status FROM refund_order WHERE id=?", String.class, refundId))
+                  && lost.compareAndSet(false, true)) {
+                throw new SQLException("QA: committed refund SUCCESS ACK lost", "08006");
+              }
+              return result;
+            } catch (InvocationTargetException wrapped) {
+              throw wrapped.getCause();
+            }
+          });
     }
   }
 
