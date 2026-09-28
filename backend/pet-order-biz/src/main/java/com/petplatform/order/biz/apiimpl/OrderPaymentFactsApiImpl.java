@@ -94,6 +94,20 @@ public final class OrderPaymentFactsApiImpl implements OrderPaymentFactsApi {
         catch (RuntimeException failure) { throw unavailable("ORDER payment proof unavailable"); }
     }
 
+    @Override public boolean isPaymentExpiryDue(String orderId, String storeId,
+            java.time.OffsetDateTime expectedDeadline, QueryContext context) {
+        if (context == null || context.operatorType() != OperatorType.SYSTEM)
+            throw new ApiException(CommonApiCodes.FORBIDDEN, "ORDER expiry requires SYSTEM");
+        var fact = readForPayment(orderId, storeId, context);
+        if (expectedDeadline == null || !fact.paymentExpireAt().isEqual(expectedDeadline))
+            throw unavailable("ORDER expiry deadline changed");
+        if (!"PENDING_PAYMENT".equals(fact.orderStage())) return false;
+        if (!"INIT".equals(fact.paymentStatus()) || !"UNVERIFIED".equals(fact.verificationStatus())
+                || fact.discountAmount().signum() != 0 || fact.payAmount().signum() <= 0)
+            throw unavailable("ORDER expiry facts inconsistent");
+        return !orders.databaseNow().isBefore(expectedDeadline);
+    }
+
     private void requireGuard(String storeId) {
         if (!TransactionSynchronizationManager.isActualTransactionActive())
             throw unavailable("ORDER payment fact requires a transaction");
