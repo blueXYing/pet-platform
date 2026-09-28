@@ -24,6 +24,7 @@ public final class RefundExecutionStore {
                     .getResources("classpath*:mapper/RefundExecutionMapper.xml"));
             SqlSessionFactory factory = Objects.requireNonNull(bean.getObject());
             factory.getConfiguration().setMapUnderscoreToCamelCase(true);
+            factory.getConfiguration().setLocalCacheScope(org.apache.ibatis.session.LocalCacheScope.STATEMENT);
             mapper = new SqlSessionTemplate(factory).getMapper(RefundExecutionMapper.class);
         } catch (Exception failure) {
             throw new IllegalStateException("REFUND MyBatis initialization failed", failure);
