@@ -503,6 +503,8 @@ EXPIRED
 
 # 13. ORDER_AUTO_CONFIRM
 
+2026-09-28已批准B的独立实现见[43号任务准备契约](../04-api/43-Auto-Confirm-Task-Preparation-Contract-v0.1.md)：正常付款原子创建首轮任务、只读缺失/异常扫描。以下执行及恢复规则仍为完整目标；A未获批前worker/repair配置为true会启动失败，不能把本切片当作自动接单已交付。
+
 任务：
 
 ```text

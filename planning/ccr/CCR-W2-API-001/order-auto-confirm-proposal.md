@@ -1,8 +1,10 @@
 # 正常支付三十分钟自动接单：CCR 候选方案与实施边界
 
-状态：PROPOSED / AWAITING_CONTRACT_APPROVAL。基线：develop `b1b2f8f4c434b6b638fc00f9bf5da405f1a28435`（PR90）。
+状态：B_APPROVED / A_PENDING。基线：develop `b1b2f8f4c434b6b638fc00f9bf5da405f1a28435`（PR90）。
 
-2026-09-28 用户要求“请你按照你所给的顺序推进”，授权收尾、契约梳理及后续开发顺序。本稿把此前尚未确定的跨模块约定整理为可审阅方案；不把该指令追记为对本稿具体字段、退款并发策略的既有批准。依据 WORK_EXECUTION_PROTOCOL.md §4，重大 Contract 变更须人工批准。批准后由 ORDER / REFUND / TASK 各自 Owner 同步权威契约并实施；本文自身不是已冻结公共契约。
+2026-09-28 用户在A/B审批请求后回复“B”。仅B获批，A不推定获批。当前独立实施B的正常付款原子产任务和只读缺失/异常扫描，见[43号B实施契约](../../../docs/04-api/43-Auto-Confirm-Task-Preparation-Contract-v0.1.md)。B中需调用A资格核验/自动确认命令的实际补建、Worker和异常终态恢复仍依赖A，暂不装配或执行；不把整个B或完整自动接单记为完成。
+
+审批来源：用户先要求“请你按照你所给的顺序推进”，授权收尾、契约梳理及后续开发顺序；随后对具体A/B回复“B”。依据 WORK_EXECUTION_PROTOCOL.md §4，重大 Contract 变更须人工批准。以下保留原候选供追溯；B独立部分以43号实施契约为准，A仍是未冻结草案。
 
 ## 1. 既定规则与本轮范围
 

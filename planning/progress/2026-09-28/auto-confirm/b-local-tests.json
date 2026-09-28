@@ -1,0 +1,36 @@
+{
+  "scope": "B task preparation and read-only diagnostics; A remains pending",
+  "runtime": "Java 21 / isolated MySQL 8.4 on 127.0.0.1:23391",
+  "reports": [
+    {
+      "suite": "com.petplatform.boot.booking.AutoConfirmTaskPreparationAcceptanceTest",
+      "sha256": "c65b213f9fb9d0e8937dce7e4f8a9a45945cb3cdae6ec22f8bbcde6edb9f3e22",
+      "tests": 9,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    },
+    {
+      "suite": "com.petplatform.boot.config.OrderAutoConfirmTaskConfigurationTest",
+      "sha256": "15832413ab39770e83072ecf99863fcd4aca6992b5602f1ed5e7aa85f12f881f",
+      "tests": 4,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    },
+    {
+      "suite": "com.petplatform.boot.booking.PaymentFoundationAcceptanceTest",
+      "sha256": "91324c3999e63d78df545b1edf09c1563ea269ec890d6879af8f3f3bc1a000b0",
+      "tests": 10,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    }
+  ],
+  "totals": {
+    "tests": 23,
+    "failures": 0,
+    "errors": 0,
+    "skipped": 0
+  }
+}

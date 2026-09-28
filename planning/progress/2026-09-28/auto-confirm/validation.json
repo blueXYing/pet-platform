@@ -1,5 +1,5 @@
 {
-  "scope": "PR90 merge closeout and proposed auto-confirm contract; no production code changes",
+  "scope": "Initial PR90 merge closeout/document preparation checks; subsequent B implementation evidence is in b-local-tests.json and B-IMPLEMENTATION.md",
   "baseline": "b1b2f8f4c434b6b638fc00f9bf5da405f1a28435",
   "baselineCi": {
     "runId": 36431126385,
@@ -21,7 +21,7 @@
     "artifactTotals": "PASS",
     "gitDiffCheck": "PASS"
   },
-  "autoConfirmBusinessTests": "NOT_EXECUTED: implementation awaits concrete A/B contract approval",
+  "autoConfirmBusinessTests": "B task preparation: 23 local tests PASS in b-local-tests.json. Actual confirmation/repair execution NOT_EXECUTED: A remains pending",
   "newPrCi": "See live PR checks; not included in baseline evidence",
   "productionChanges": "NONE"
 }

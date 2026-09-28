@@ -21,6 +21,8 @@ import com.petplatform.order.api.command.OrderPaymentResultApi;
 import com.petplatform.order.api.dto.OrderPaymentResultTypes.ConsumePaymentResult;
 import com.petplatform.order.api.dto.OrderPaymentResultTypes.ConsumePaymentSucceededCommand;
 import com.petplatform.order.biz.application.OrderPaymentCommitProof;
+import com.petplatform.order.biz.application.OrderAutoConfirmTaskSpec;
+import com.petplatform.task.core.JdbcAsyncTaskSubmitter;
 import com.petplatform.order.biz.infrastructure.persistence.OrderExpiryStore;
 import com.petplatform.order.biz.infrastructure.persistence.OrderPaymentStore;
 import com.petplatform.order.biz.infrastructure.persistence.OrderPaymentStore.OrderRow;
@@ -65,11 +67,19 @@ public final class OrderPaymentResultApiImpl implements OrderPaymentResultApi, I
     private final OrderPaymentStore orders;
     private final OrderExpiryStore expiredOrders;
     private final TransactionTemplate transaction;
+    private final JdbcAsyncTaskSubmitter autoConfirmTasks;
 
     public OrderPaymentResultApiImpl(DataSource source, SnowflakeIdGenerator ids,
             ScheduleCapacityGuardApi guard, PaymentSuccessFactsApi payments,
             ReservationConfirmApi confirmation, ReservationExpiryApi expiry,
             IntegrationEventPublisher outbox) {
+        this(source, ids, guard, payments, confirmation, expiry, outbox, false);
+    }
+
+    public OrderPaymentResultApiImpl(DataSource source, SnowflakeIdGenerator ids,
+            ScheduleCapacityGuardApi guard, PaymentSuccessFactsApi payments,
+            ReservationConfirmApi confirmation, ReservationExpiryApi expiry,
+            IntegrationEventPublisher outbox, boolean autoConfirmTasksEnabled) {
         this.source = Objects.requireNonNull(source);
         this.ids = Objects.requireNonNull(ids);
         this.guard = Objects.requireNonNull(guard);
@@ -77,6 +87,7 @@ public final class OrderPaymentResultApiImpl implements OrderPaymentResultApi, I
         this.confirmation = Objects.requireNonNull(confirmation);
         this.expiry = Objects.requireNonNull(expiry);
         this.outbox = Objects.requireNonNull(outbox);
+        this.autoConfirmTasks = autoConfirmTasksEnabled ? new JdbcAsyncTaskSubmitter(source, ids) : null;
         this.consumeGuard = new JdbcOutboxConsumeGuard(source, ids);
         this.orders = new OrderPaymentStore(source);
         this.expiredOrders = new OrderExpiryStore(source);
@@ -186,6 +197,12 @@ public final class OrderPaymentResultApiImpl implements OrderPaymentResultApi, I
         payload.put("confirmDeadline", confirmDeadline.toString());
         outbox.publish(new IntegrationEvent<>(IDS.toApi(nextId()), "OrderPaidEvent.v1", 1,
                 ordersNow(), "ORDER", orderId, input.command().context().traceId(), payload));
+        if (autoConfirmTasks != null) {
+            autoConfirmTasks.enqueueAt(OrderAutoConfirmTaskSpec.key(orderId), "ORDER",
+                    OrderAutoConfirmTaskSpec.TYPE, "ORDER", order.id(), null,
+                    OrderAutoConfirmTaskSpec.payload(orderId, confirmDeadline),
+                    OrderAutoConfirmTaskSpec.MAX_RETRIES, OrderAutoConfirmTaskSpec.TYPE, confirmDeadline);
+        }
         return ConsumePaymentResult.NORMAL_PAID;
     }
 

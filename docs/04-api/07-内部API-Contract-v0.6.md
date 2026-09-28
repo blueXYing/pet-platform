@@ -568,6 +568,8 @@ public interface OrderQueryApi {
 
 ### 7.2 OrderCommandApi
 
+2026-09-28：已批准B的正常付款原子任务和SYSTEM只读排查接口见[43号契约](43-Auto-Confirm-Task-Preparation-Contract-v0.1.md)。`autoConfirmOrder`及依赖它的补建/恢复执行仍待A契约批准与实现，不能因下列方法名已列出而认定可调用。
+
 ```java
 public interface OrderCommandApi {
 

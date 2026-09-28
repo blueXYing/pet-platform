@@ -236,7 +236,7 @@ class PaymentFoundationAcceptanceTest {
   void lateVerifiedPaymentKeepsTimedOutOrderClosedAndEmitsActualAmountOnce() throws Exception {
     Clock beforeDeadline = Clock.fixed(Instant.now().minus(11, ChronoUnit.MINUTES)
         .truncatedTo(ChronoUnit.MILLIS), ZoneOffset.UTC);
-    try (Fixture f = new Fixture(beforeDeadline)) {
+    try (Fixture f = new Fixture(beforeDeadline, true)) {
       CreateOrderResult booking = f.book();
       long order = Long.parseLong(booking.orderId());
       long reservation = f.db.jdbc.queryForObject(
@@ -274,6 +274,7 @@ class PaymentFoundationAcceptanceTest {
       assertEquals("PAID", f.text("SELECT payment_status FROM pet_order WHERE id=?", order));
       assertEquals("EXPIRED", f.text("SELECT status FROM schedule_reservation WHERE id=?", reservation));
       assertEquals("LATE", f.text("SELECT result_type FROM order_payment_result WHERE order_id=?", order));
+      assertEquals(0L, f.count("SELECT COUNT(*) FROM async_task WHERE task_type='ORDER_AUTO_CONFIRM'"));
       assertEquals(0L, f.count("SELECT COUNT(*) FROM integration_event_outbox WHERE event_type='OrderPaidEvent.v1'"));
       assertEquals(1L, f.count("SELECT COUNT(*) FROM integration_event_outbox WHERE event_type='LatePaymentSucceededAfterTimeoutEvent.v1'"));
       assertEquals("97.35", f.text("SELECT JSON_UNQUOTE(JSON_EXTRACT(payload,'$.channelPaidAmount')) "
@@ -595,6 +596,10 @@ class PaymentFoundationAcceptanceTest {
     private final OrderCreationApiImpl creation;
 
     Fixture(Clock clock) throws Exception {
+      this(clock, false);
+    }
+
+    Fixture(Clock clock, boolean autoConfirmTasksEnabled) throws Exception {
       db = new BookingCreateAcceptanceTest.Database();
       try {
         db.seedBookableFacts();
@@ -646,7 +651,7 @@ class PaymentFoundationAcceptanceTest {
             guard, scheduleFacts, orderPayment);
         result = new OrderPaymentResultApiImpl(db.source, PaymentFoundationAcceptanceTest::id,
             guard, new PaymentSuccessFactsApiImpl(db.source, guard), confirmation, expiration,
-            publisher);
+            publisher, autoConfirmTasksEnabled);
       } catch (Exception failure) {
         db.close();
         throw failure;

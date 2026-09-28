@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.petplatform.task.core.mapper.TaskInspectionMapper">
+  <select id="findSubmission" resultType="com.petplatform.task.core.mapper.TaskInspectionMapper$Row" useCache="false" flushCache="true">
+    SELECT id,task_key,owner_module,task_type,biz_type,biz_id,expected_version,payload_json,
+           submitted_execute_at,execute_at,status,retry_count,max_retry_count,retry_policy
+    FROM async_task WHERE task_key=#{taskKey}
+  </select>
+</mapper>

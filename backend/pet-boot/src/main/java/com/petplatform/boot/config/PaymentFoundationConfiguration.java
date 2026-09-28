@@ -78,8 +78,9 @@ public class PaymentFoundationConfiguration {
     }
     @Bean OrderPaymentResultApiImpl orderPaymentResultConsumer(DataSource source,SnowflakeIdGenerator ids,
             ScheduleCapacityGuardApi guard,PaymentSuccessFactsApi payments,ReservationConfirmApi reservations,
-            ReservationExpiryApi expirations,IntegrationEventPublisher publisher){
-        return new OrderPaymentResultApiImpl(source,ids,guard,payments,reservations,expirations,publisher);
+            ReservationExpiryApi expirations,IntegrationEventPublisher publisher,
+            @org.springframework.beans.factory.annotation.Value("${pet.order.auto-confirm.enabled:false}") boolean autoConfirmTasksEnabled){
+        return new OrderPaymentResultApiImpl(source,ids,guard,payments,reservations,expirations,publisher,autoConfirmTasksEnabled);
     }
     private static ApiException unavailable(){return new ApiException(CommonApiCodes.DEPENDENCY_UNAVAILABLE,"payment channel configuration unavailable");}
 }

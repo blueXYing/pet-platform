@@ -1,5 +1,7 @@
 # PR90合并收尾与自动接单接续
 
+后续状态：用户仅批准B；B独立部分已实施，本页保留最初收尾/提案历史，当前实现与依赖见[B-IMPLEMENTATION.md](B-IMPLEMENTATION.md)及43号契约。A仍待批准，完整自动接单/写恢复未完成。
+
 ## 已完成
 
 1. 远端确认PR90为MERGED，merge commit `b1b2f8f4c434b6b638fc00f9bf5da405f1a28435`。合并CI [36431126385](https://github.com/blueXYing/pet-platform/actions/runs/36431126385) backend、repository-policy、contract-smoke、frontend-inventory、web-build、miniapp-weapp-build均SUCCESS。
