@@ -152,6 +152,8 @@ class PaymentFoundationAcceptanceTest {
       assertEquals(1L, f.count("SELECT COUNT(*) FROM payment_intent_request"),
           "failed eligibility retains the original request binding");
       assertEquals(0L, f.count("SELECT COUNT(*) FROM payment_order"));
+      assertCode("IDEMPOTENCY_KEY_CONFLICT", () -> f.prepare("710999", key));
+      assertEquals(1L, f.count("SELECT COUNT(*) FROM payment_intent_request"));
       PreparedPayment intent = f.prepare(orderId, key);
       assertNotNull(intent.paymentId());
       SignedNotice notice = f.notice(intent, "SUCCESS", "QA_CHANNEL_NO_KEY",
