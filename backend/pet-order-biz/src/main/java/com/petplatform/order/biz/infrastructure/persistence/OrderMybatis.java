@@ -19,6 +19,7 @@ final class OrderMybatis {
                     .getResources("classpath*:mapper/Order*Mapper.xml"));
             SqlSessionFactory factory = Objects.requireNonNull(bean.getObject());
             factory.getConfiguration().setMapUnderscoreToCamelCase(true);
+            factory.getConfiguration().setLocalCacheScope(org.apache.ibatis.session.LocalCacheScope.STATEMENT);
             return new SqlSessionTemplate(factory);
         } catch (Exception failure) {
             throw new IllegalStateException("ORDER MyBatis initialization failed", failure);
