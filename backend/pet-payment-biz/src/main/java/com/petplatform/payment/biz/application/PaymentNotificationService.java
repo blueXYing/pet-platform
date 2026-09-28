@@ -57,6 +57,15 @@ public final class PaymentNotificationService {
                 if(row.tradeNo()!=null && notice.channelTradeNo()!=null && !row.tradeNo().equals(notice.channelTradeNo()))throw unavailable();
                 if(!duplicate)store.jdbc.update("INSERT INTO payment_channel_receipt(id,payment_id,receipt_sha256,channel_trade_no,channel_status,total_amount,paid_amount,paid_at,received_at) VALUES(?,?,?,?,?,?,?,?,?)",
                     nextId(),row.id(),digest,notice.channelTradeNo(),notice.status(),notice.totalAmount(),notice.paidAmount(),paidAt==null?null:PaymentFoundationStore.utc(paidAt),PaymentFoundationStore.utc(now));
+                // A refund/reversal is not an old failure. Preserve it until its owner reconciles;
+                // a delayed SUCCESS must not authorize fulfillment or a second refund after reversal.
+                if(Set.of("PART_REFUND","REFUND","REVOKED").contains(notice.status())
+                        || "RECONCILIATION_REQUIRED".equals(row.dispatchState())){
+                    if(!"RECONCILIATION_REQUIRED".equals(row.dispatchState()))store.jdbc.update(
+                        "UPDATE payment_order SET dispatch_state='RECONCILIATION_REQUIRED',version=version+1,updated_at=? WHERE id=?",
+                        PaymentFoundationStore.utc(now),row.id());
+                    return new ReceiptResult(Long.toString(row.id()),duplicate,"PAID".equals(row.status()));
+                }
                 if("PAID".equals(row.status()))return new ReceiptResult(Long.toString(row.id()),true,true);
                 if("SUCCESS".equals(notice.status())){
                     long eventId=nextId();
