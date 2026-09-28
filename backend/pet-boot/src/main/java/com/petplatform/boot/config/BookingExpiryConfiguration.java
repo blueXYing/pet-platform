@@ -10,6 +10,7 @@ import com.petplatform.order.api.dto.OrderExpiryTypes.ExpireOrderCommand;
 import com.petplatform.order.api.query.OrderExpiryFactsApi;
 import com.petplatform.order.biz.apiimpl.OrderExpiryApiImpl;
 import com.petplatform.payment.api.query.BookingPaymentExposureApi;
+import com.petplatform.payment.api.command.PaymentExpiryCoordinationApi;
 import com.petplatform.payment.biz.apiimpl.BookingPaymentExposureApiImpl;
 import com.petplatform.schedule.api.command.ReservationExpiryApi;
 import com.petplatform.schedule.api.protection.ScheduleCapacityGuardApi;
@@ -28,8 +29,10 @@ import org.springframework.context.annotation.Configuration;
 @ConditionalOnProperty(prefix="pet.order.expiry",name="enabled",havingValue="true")
 public class BookingExpiryConfiguration {
     private static final String TYPE="RESERVATION_HOLD_EXPIRE";
-    @Bean BookingPaymentExposureApi bookingPaymentExposureApi(DataSource source,ScheduleCapacityGuardApi guard) {
-        return new BookingPaymentExposureApiImpl(source,guard);
+    @Bean BookingPaymentExposureApi bookingPaymentExposureApi(DataSource source,ScheduleCapacityGuardApi guard,
+            @org.springframework.beans.factory.annotation.Value("${pet.payment.dispatch.enabled:false}") boolean dispatchEnabled,
+            @org.springframework.beans.factory.annotation.Value("${pet.payment.foundation.enabled:false}") boolean foundationEnabled) {
+        return new BookingPaymentExposureApiImpl(source,guard,dispatchEnabled && foundationEnabled);
     }
     @Bean BookingCouponExposureApi bookingCouponExposureApi(DataSource source,ScheduleCapacityGuardApi guard) {
         return new BookingCouponExposureApiImpl(source,guard);
@@ -44,8 +47,9 @@ public class BookingExpiryConfiguration {
     }
     @Bean OrderExpiryApi orderExpiryApi(DataSource source,SnowflakeIdGenerator ids,
             ScheduleCapacityGuardApi guard,ReservationExpiryApi reservations,
-            BookingPaymentExposureApi payments,BookingCouponExposureApi coupons) {
-        return new OrderExpiryApiImpl(source,ids,guard,reservations,payments,coupons);
+            BookingPaymentExposureApi payments,BookingCouponExposureApi coupons,
+            ObjectProvider<PaymentExpiryCoordinationApi> coordination) {
+        return new OrderExpiryApiImpl(source,ids,guard,reservations,payments,coupons,coordination.getIfAvailable());
     }
     @Bean
     @ConditionalOnProperty(prefix="pet.order.expiry.worker",name="enabled",havingValue="true")
