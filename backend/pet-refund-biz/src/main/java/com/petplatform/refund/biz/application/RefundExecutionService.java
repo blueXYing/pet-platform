@@ -11,10 +11,12 @@ import com.petplatform.task.core.JdbcAsyncTaskStatusReader;
 import java.time.*;
 import java.util.*;
 import java.util.concurrent.atomic.AtomicLong;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 import static com.petplatform.refund.biz.application.LateRefundService.*;
 
 /** Durable task coordinator. PAYMENT proves channel facts; REFUND owns business completion. */
 public final class RefundExecutionService {
+    private static final org.slf4j.Logger LOG=org.slf4j.LoggerFactory.getLogger(RefundExecutionService.class);
     private final LateRefundService refunds;
     private final PaymentRefundApi channel;
     private final PaymentRefundResultFactsApi channelFacts;
@@ -121,10 +123,11 @@ public final class RefundExecutionService {
                 WHERE id=? AND status IN ('CREATED','PROCESSING','UNKNOWN')
                 """,p.channelRefundNo(),utc(p.resultAt()),id(f.refundOrderId()));
             if(changed!=1)throw unavailable();
-            refunds.jdbc.update("""
+            int bound=refunds.jdbc.update("""
                 UPDATE refund_execution SET success_event_id=?,success_receipt_sha256=?,next_query_at=NULL,
                   version=version+1,updated_at=UTC_TIMESTAMP(3) WHERE refund_order_id=? AND success_event_id IS NULL
                 """,event,p.receiptSha256(),id(f.refundOrderId()));
+            if(bound!=1)throw unavailable();
             refunds.jdbc.update("""
                 INSERT INTO refund_transaction(id,refund_id,request_id,action,channel_request_no,channel_status,created_at)
                 VALUES (?,?,?,?,?,'SUCCESS',UTC_TIMESTAMP(3))
@@ -146,11 +149,15 @@ public final class RefundExecutionService {
             var f=refunds.requireForChannel(expected.refundOrderId(),expected.storeId(),ctx);same(expected,f);
             if("SUCCESS".equals(f.status()))return;
             refunds.jdbc.update("UPDATE refund_order SET status='UNKNOWN',version=version+1,updated_at=UTC_TIMESTAMP(3) WHERE id=? AND status IN ('CREATED','PROCESSING','UNKNOWN')",id(f.refundOrderId()));
-            refunds.jdbc.update("""
-                INSERT INTO refund_reconciliation_issue(refund_order_id,issue_code,status,created_at,updated_at)
+            int created=refunds.jdbc.update("""
+                INSERT IGNORE INTO refund_reconciliation_issue(refund_order_id,issue_code,status,created_at,updated_at)
                 VALUES (?,?,'OPEN',UTC_TIMESTAMP(3),UTC_TIMESTAMP(3))
-                ON DUPLICATE KEY UPDATE status='OPEN',updated_at=UTC_TIMESTAMP(3)
                 """,id(f.refundOrderId()),code);
+            if(created==1) TransactionSynchronizationManager.registerSynchronization(new org.springframework.transaction.support.TransactionSynchronization() {
+                @Override public void afterCommit() {
+                    LOG.error("Late refund reconciliation required refundOrderId={} issueCode={}",f.refundOrderId(),code);
+                }
+            });
         });
     }
 
