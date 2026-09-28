@@ -28,7 +28,7 @@ import org.springframework.context.annotation.*;
 @EnableConfigurationProperties(PaymentFoundationConfiguration.LakalaSettings.class)
 public class PaymentFoundationConfiguration {
     @ConfigurationProperties(prefix="pet.payment.lakala")
-    public record LakalaSettings(Map<String,MerchantSettings> stores,String notificationCertificatePath){
+    public record LakalaSettings(Map<String,MerchantSettings> stores,String notificationCertificatePath,String channelTimeZone){
         public LakalaSettings{stores=stores==null?Map.of():Map.copyOf(stores);}
     }
     public record MerchantSettings(String merchantId,String merchantNo,String termNo,String subAppId){}
@@ -64,8 +64,10 @@ public class PaymentFoundationConfiguration {
         return new PaymentPreparationApiImpl(source,ids,guard,orders,users,bindings);
     }
     @Bean PaymentNotificationService paymentNotificationService(DataSource source,SnowflakeIdGenerator ids,
-            ScheduleCapacityGuardApi guard,PaymentReceiptVerifier verifier,IntegrationEventPublisher publisher){
-        return new PaymentNotificationService(source,ids,guard,verifier,publisher);
+            ScheduleCapacityGuardApi guard,PaymentReceiptVerifier verifier,IntegrationEventPublisher publisher,LakalaSettings settings){
+        String zone=settings.channelTimeZone();
+        return new PaymentNotificationService(source,ids,guard,verifier,publisher,
+                zone==null||zone.isBlank()?null:java.time.ZoneId.of(zone));
     }
     @Bean PaymentSuccessFactsApi paymentSuccessFactsApi(DataSource source,ScheduleCapacityGuardApi guard){
         return new PaymentSuccessFactsApiImpl(source,guard);

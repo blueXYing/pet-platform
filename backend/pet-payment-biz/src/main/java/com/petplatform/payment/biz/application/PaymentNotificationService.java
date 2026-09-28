@@ -20,14 +20,20 @@ public final class PaymentNotificationService {
     private final DataSource source;private final SnowflakeIdGenerator ids;private final ScheduleCapacityGuardApi guard;
     private final PaymentReceiptVerifier verifier;private final IntegrationEventPublisher publisher;
     private final PaymentFoundationStore store;private final TransactionTemplate tx;
+    private final ZoneId channelTimeZone;
     public PaymentNotificationService(DataSource source,SnowflakeIdGenerator ids,ScheduleCapacityGuardApi guard,
             PaymentReceiptVerifier verifier,IntegrationEventPublisher publisher){
+        this(source,ids,guard,verifier,publisher,null);
+    }
+    public PaymentNotificationService(DataSource source,SnowflakeIdGenerator ids,ScheduleCapacityGuardApi guard,
+            PaymentReceiptVerifier verifier,IntegrationEventPublisher publisher,ZoneId confirmedChannelTimeZone){
+        this.channelTimeZone=confirmedChannelTimeZone;
         this.source=source;this.ids=ids;this.guard=guard;this.verifier=verifier;this.publisher=publisher;
         store=new PaymentFoundationStore(source);tx=new TransactionTemplate(new DataSourceTransactionManager(source));
         tx.setIsolationLevel(TransactionDefinition.ISOLATION_READ_COMMITTED);tx.setTimeout(15);
     }
     public ReceiptResult receive(Map<String,String> headers,byte[] body){
-        if(TransactionSynchronizationManager.isActualTransactionActive())throw unavailable();
+        if(TransactionSynchronizationManager.isActualTransactionActive()||channelTimeZone==null)throw unavailable();
         if(body==null||body.length==0||body.length>65_536||headers==null)throw invalid();
         body=body.clone();
         headers=Map.copyOf(headers);
@@ -47,7 +53,7 @@ public final class PaymentNotificationService {
                         || !row.termNo().equals(hint.termNo()) || !row.subAppId().equals(hint.subAppId()))throw unavailable();
                 validateNotice(notice,row);
                 OffsetDateTime now=store.now();
-                OffsetDateTime paidAt=notice.channelTradeTime()==null?null:notice.channelTradeTime().atZone(ZoneId.of("Asia/Shanghai")).toOffsetDateTime().withOffsetSameInstant(ZoneOffset.UTC);
+                OffsetDateTime paidAt=channelTime(notice.channelTradeTime());
                 if("SUCCESS".equals(notice.status())&&(paidAt==null||paidAt.isAfter(now)))throw unavailable();
                 boolean duplicate=store.jdbc.queryForObject("SELECT COUNT(*) FROM payment_channel_receipt WHERE payment_id=? AND receipt_sha256=?",Long.class,row.id(),digest)>0;
                 if("PAID".equals(row.status())&&"SUCCESS".equals(notice.status())
@@ -81,6 +87,12 @@ public final class PaymentNotificationService {
                 return new ReceiptResult(Long.toString(row.id()),duplicate,false);
             });
         }catch(ApiException known){throw known;}catch(Exception failure){throw unavailable();}
+    }
+    private OffsetDateTime channelTime(LocalDateTime local){
+        if(local==null)return null;
+        var offsets=channelTimeZone.getRules().getValidOffsets(local);
+        if(offsets.size()!=1)throw unavailable();
+        return local.atOffset(offsets.getFirst()).withOffsetSameInstant(ZoneOffset.UTC);
     }
     private static void validateNotice(PaymentReceiptVerifier.VerifiedNotice n,PaymentFoundationStore.Row r){
         if(n==null||!Objects.equals(r.merchantNo(),n.merchantNo())||!Long.toString(r.no()).equals(n.paymentNo())
