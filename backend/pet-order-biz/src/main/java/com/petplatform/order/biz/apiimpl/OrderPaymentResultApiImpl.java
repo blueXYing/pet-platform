@@ -229,6 +229,7 @@ public final class OrderPaymentResultApiImpl implements OrderPaymentResultApi, I
                 || !IDS.toApi(order.merchantId()).equals(payment.merchantId())
                 || !input.command().sourceEventId().equals(payment.successEventId())
                 || !input.command().channelTradeNo().equals(payment.channelTradeNo())
+                || payment.channelTradeNo().codePoints().anyMatch(Character::isISOControl)
                 || payment.paidAmount() == null
                 || input.command().paidAmount().compareTo(payment.paidAmount()) != 0
                 || payment.paidAt() == null
@@ -320,10 +321,13 @@ public final class OrderPaymentResultApiImpl implements OrderPaymentResultApi, I
                     "EVENT:PAYMENT_SUCCEEDED:" + command.sourceEventId())
                     || command.channelTradeNo() == null || command.channelTradeNo().isBlank()
                     || command.channelTradeNo().length() > 128
+                    || command.channelTradeNo().codePoints().anyMatch(Character::isISOControl)
                     || command.paidAmount() == null || command.paidAmount().signum() <= 0
                     || command.paidAmount().scale() > 2
                     || command.context().traceId() != null
-                      && command.context().traceId().length() > 64)
+                      && (command.context().traceId().length() > 64
+                        || command.context().traceId().codePoints()
+                                .anyMatch(Character::isISOControl)))
                 throw new IllegalArgumentException();
             PublicContractChecks.requireMillisecondPrecision(command.paidAt());
             return new Input(command, eventId, paymentId, orderId);
