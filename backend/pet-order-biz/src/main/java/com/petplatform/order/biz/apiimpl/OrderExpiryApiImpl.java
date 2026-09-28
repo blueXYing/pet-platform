@@ -149,7 +149,11 @@ public final class OrderExpiryApiImpl implements OrderExpiryApi {
             throw unavailable("ORDER stage is unknown");
         }
         if ("CANCELED".equals(order.stage())) {
-            if (!"INIT".equals(order.paymentStatus()) || !"UNVERIFIED".equals(order.verificationStatus())
+            if (!"PAYMENT_TIMEOUT".equals(order.cancelReason())
+                    || !("INIT".equals(order.paymentStatus())
+                        || ("PAID".equals(order.paymentStatus())
+                            && orders.hasLatePaymentResult(input.orderId())))
+                    || !"UNVERIFIED".equals(order.verificationStatus())
                     || !orders.hasExpiryLog(input.orderId(), input.command().context().requestId())) {
                 throw unavailable("ORDER cancellation requires owner reconciliation");
             }
@@ -165,6 +169,7 @@ public final class OrderExpiryApiImpl implements OrderExpiryApi {
         }
         if (!"INIT".equals(order.paymentStatus())
                 || !"UNVERIFIED".equals(order.verificationStatus())
+                || order.cancelReason() != null
                 || order.payAmount() == null || order.payAmount().signum() <= 0
                 || order.discountAmount() == null || order.discountAmount().signum() != 0) {
             throw unavailable("ORDER payment or verification state is uncertain");

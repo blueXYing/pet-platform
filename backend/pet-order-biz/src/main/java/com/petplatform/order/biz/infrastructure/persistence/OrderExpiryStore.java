@@ -51,7 +51,7 @@ public final class OrderExpiryStore {
         return jdbc.query("""
                 SELECT id, reservation_id, store_id, order_stage, payment_status,
                        pay_amount, discount_amount,
-                       verification_status, payment_expire_at, version
+                       verification_status, payment_expire_at, cancel_reason, version
                 FROM pet_order WHERE id=? FOR UPDATE
                 """, rs -> {
             if (!rs.next()) return null;
@@ -61,6 +61,7 @@ public final class OrderExpiryStore {
                     rs.getString("payment_status"), rs.getString("verification_status"),
                     rs.getBigDecimal("pay_amount"), rs.getBigDecimal("discount_amount"),
                     deadline == null ? null : deadline.atOffset(ZoneOffset.UTC),
+                    rs.getString("cancel_reason"),
                     rs.getLong("version"));
         }, orderId);
     }
@@ -74,12 +75,21 @@ public final class OrderExpiryStore {
                 """, (rs, row) -> rs.getLong(1), orderId, requestId).isEmpty();
     }
 
+    public boolean hasLatePaymentResult(long orderId) {
+        return !jdbc.query("""
+                SELECT id FROM order_payment_result
+                WHERE order_id=? AND result_type='LATE' LIMIT 1
+                """, (rs, row) -> rs.getLong(1), orderId).isEmpty();
+    }
+
     public int cancel(long orderId, long version, OffsetDateTime deadline, OffsetDateTime observedNow) {
         return jdbc.update("""
-                UPDATE pet_order SET order_stage='CANCELED', canceled_at=?, version=version+1,
+                UPDATE pet_order SET order_stage='CANCELED', cancel_reason='PAYMENT_TIMEOUT',
+                                     canceled_at=?, version=version+1,
                                      updated_at=UTC_TIMESTAMP(3)
                 WHERE id=? AND version=? AND order_stage='PENDING_PAYMENT'
                   AND payment_status='INIT' AND verification_status='UNVERIFIED'
+                  AND cancel_reason IS NULL
                   AND payment_expire_at=? AND payment_expire_at<=?
                 """, utc(observedNow), orderId, version,
                 utc(deadline), utc(observedNow));
@@ -99,7 +109,7 @@ public final class OrderExpiryStore {
 
     public record OrderRow(long id, long reservationId, long storeId, String stage,
             String paymentStatus, String verificationStatus, BigDecimal payAmount,
-            BigDecimal discountAmount, OffsetDateTime paymentExpireAt,
+            BigDecimal discountAmount, OffsetDateTime paymentExpireAt, String cancelReason,
             long version) {}
 
     private static LocalDateTime utc(OffsetDateTime value) {
