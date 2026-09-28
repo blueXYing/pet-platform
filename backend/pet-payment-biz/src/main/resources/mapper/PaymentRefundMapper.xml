@@ -1,0 +1,65 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.petplatform.payment.biz.infrastructure.persistence.mapper.PaymentRefundMapper">
+  <update id="setUtcTimeZone">SET SESSION time_zone='+00:00'</update>
+  <update id="setLockWaitTimeout">SET SESSION innodb_lock_wait_timeout=2</update>
+  <select id="utcNow" resultType="java.time.LocalDateTime">SELECT UTC_TIMESTAMP(3)</select>
+
+  <sql id="dispatchColumns">refund_order_id,refund_no,payment_id,payment_no,order_id,store_id,
+    merchant_no,term_no,original_channel_trade_no,payment_success_event_id,
+    original_paid_amount,refund_amount,currency,refund_binding_version,channel_request_no,
+    request_sha256,state,may_have_sent_at,query_not_before,channel_refund_no,
+    terminal_receipt_sha256,terminal_result_at,version,original_request_at</sql>
+  <select id="selectByRefund" resultType="com.petplatform.payment.biz.infrastructure.persistence.PaymentRefundStore$Dispatch">
+    SELECT <include refid="dispatchColumns"/> FROM payment_refund_dispatch
+    WHERE refund_order_id=#{refundOrderId}
+  </select>
+  <select id="selectByRefundForUpdate" resultType="com.petplatform.payment.biz.infrastructure.persistence.PaymentRefundStore$Dispatch">
+    SELECT <include refid="dispatchColumns"/> FROM payment_refund_dispatch
+    WHERE refund_order_id=#{refundOrderId} FOR UPDATE
+  </select>
+  <insert id="insertDispatch">
+    INSERT INTO payment_refund_dispatch(refund_order_id,refund_no,payment_id,payment_no,
+      order_id,store_id,merchant_no,term_no,original_channel_trade_no,payment_success_event_id,
+      original_paid_amount,refund_amount,currency,refund_binding_version,channel_request_no,
+      request_sha256,state,may_have_sent_at,query_not_before,original_request_at,version,
+      created_at,updated_at)
+    VALUES(#{refundOrderId},#{refundNo},#{paymentId},#{paymentNo},#{orderId},#{storeId},
+      #{merchantNo},#{termNo},#{originalTradeNo},#{successEventId},#{originalPaidAmount},
+      #{refundAmount},#{currency},#{bindingVersion},#{channelRequestNo},#{requestSha},
+      #{state},#{mayHaveSentAt},#{queryNotBefore},#{originalRequestAt},0,#{now},#{now})
+  </insert>
+  <select id="countReceipt" resultType="java.lang.Long">
+    SELECT COUNT(*) FROM payment_refund_receipt WHERE refund_order_id=#{refundOrderId}
+      AND receipt_sha256=#{sha}
+  </select>
+  <insert id="insertReceipt">
+    INSERT INTO payment_refund_receipt(id,refund_order_id,receipt_source,receipt_sha256,
+      original_channel_trade_no,channel_request_no,channel_refund_no,channel_status,
+      refund_amount,result_at,received_at)
+    VALUES(#{id},#{refundOrderId},#{source},#{sha},#{originalTradeNo},#{channelRequestNo},
+      #{channelRefundNo},#{status},#{amount},#{resultAt},#{receivedAt})
+  </insert>
+  <update id="markPending">
+    UPDATE payment_refund_dispatch SET state='QUERY_PENDING',query_not_before=#{next},
+      version=version+1,updated_at=#{now}
+    WHERE refund_order_id=#{refundOrderId} AND version=#{version}
+      AND state IN ('MAY_HAVE_SENT','QUERY_PENDING')
+  </update>
+  <update id="markSuccess">
+    UPDATE payment_refund_dispatch SET state='VERIFIED_SUCCESS',channel_refund_no=#{channelRefundNo},
+      terminal_receipt_sha256=#{sha},terminal_result_at=#{resultAt},version=version+1,
+      updated_at=#{now} WHERE refund_order_id=#{refundOrderId} AND version=#{version}
+      AND state IN ('MAY_HAVE_SENT','QUERY_PENDING')
+  </update>
+  <update id="markReconciliation">
+    UPDATE payment_refund_dispatch SET state='RECONCILIATION_REQUIRED',version=version+1,
+      updated_at=#{now} WHERE refund_order_id=#{refundOrderId} AND version=#{version}
+      AND state IN ('MAY_HAVE_SENT','QUERY_PENDING')
+  </update>
+  <select id="selectTerminalReceipt" resultType="com.petplatform.payment.biz.infrastructure.persistence.PaymentRefundStore$Receipt">
+    SELECT receipt_source,receipt_sha256,channel_refund_no,channel_status,refund_amount,
+      result_at,original_channel_trade_no,channel_request_no FROM payment_refund_receipt
+    WHERE refund_order_id=#{refundOrderId} AND receipt_sha256=#{sha}
+  </select>
+</mapper>
