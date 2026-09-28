@@ -25,4 +25,5 @@ CREATE TABLE payment_dispatch (
 
 -- Existing SQL40 receipts came only from the signed notification entry.
 ALTER TABLE payment_channel_receipt
-    ADD COLUMN receipt_source VARCHAR(16) NOT NULL DEFAULT 'NOTIFICATION';
+    ADD COLUMN receipt_source VARCHAR(16) NOT NULL DEFAULT 'NOTIFICATION',
+    ADD COLUMN channel_response_sha256 CHAR(64) CHARACTER SET ascii COLLATE ascii_bin NULL;
