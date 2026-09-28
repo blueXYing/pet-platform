@@ -77,6 +77,7 @@ public final class PaymentDispatchService implements PaymentInitiationApi, Payme
         public Settings {
             if (blank(outOrgCode) || blank(subject) || blank(requestIp) || blank(notifyUrl)
                     || channelTimeZone == null || parameterKey == null
+                    || !"AES".equalsIgnoreCase(parameterKey.getAlgorithm())
                     || parameterKey.getEncoded() == null || parameterKey.getEncoded().length != 32) {
                 throw new IllegalArgumentException("payment dispatch settings are incomplete");
             }
@@ -107,10 +108,19 @@ public final class PaymentDispatchService implements PaymentInitiationApi, Payme
     }
 
     @Override public InitiatedPayment create(PreparePaymentCommand command) {
+        try { return createInternal(command); }
+        catch (ApiException known) { throw known; }
+        catch (RuntimeException failure) { throw unavailable(); }
+    }
+
+    private InitiatedPayment createInternal(PreparePaymentCommand command) {
         noOuterTransaction();
         if (command == null || command.context() == null || command.context().operatorType() != OperatorType.USER)
             throw forbidden();
-        PublicContractChecks.requireCommandRequestId(command.context());
+        try { PublicContractChecks.requireCommandRequestId(command.context()); }
+        catch (IllegalArgumentException invalid) {
+            throw new ApiException(CommonApiCodes.INVALID_ARGUMENT,"invalid payment requestId");
+        }
         long orderId = id(command.orderId());
         var prepared = preparation.prepare(command);
         QueryContext actor = new QueryContext(command.context().traceId(), OperatorType.USER,
@@ -136,7 +146,17 @@ public final class PaymentDispatchService implements PaymentInitiationApi, Payme
         }
         // Commit the verified channel completion independently of current USER eligibility.
         // A freeze or deadline crossing must not erase proof that the request reached Lakala.
-        tx.execute(status -> { recordPreorder(plan, verified, storeId); return null; });
+        try {
+            tx.execute(status -> { recordPreorder(plan, verified, storeId); return null; });
+        } catch (RuntimeException uncertainCommit) {
+            // A lost commit ACK may mean parameters were already saved. Read the original
+            // payment under its guard once; never submit another preorder.
+            Start recovered = tx.execute(status -> start(command, prepared.paymentId(),
+                    orderId, storeId, actor));
+            if (recovered instanceof Replay replay) return replay.payment();
+            if (recovered instanceof Recovery recovery) queryForRecovery(recovery);
+            throw unavailable();
+        }
         Start current = tx.execute(status -> start(command, prepared.paymentId(), orderId,
                 storeId, actor));
         if (current instanceof Replay replay) return replay.payment();
@@ -160,13 +180,20 @@ public final class PaymentDispatchService implements PaymentInitiationApi, Payme
         PaymentIdentity identity = identities.requireCurrentPaymentIdentity(order.userId(),
                 payment.subAppId(), storeId, actor);
         String identityHmac = identityHmac(identity);
+        if (dispatch.identityHmac() == null && !"PREPARED".equals(dispatch.state())) {
+            if (dispatch.tradeRequestDate() == null) throw unavailable();
+            return new Recovery(payment.id(), payment.no(), payment.merchantNo(),
+                    payment.termNo(), payment.amount(), dispatch.tradeRequestDate());
+        }
         if (dispatch.identityHmac() != null && !constantEqual(dispatch.identityHmac(), identityHmac))
             throw unavailable();
         OffsetDateTime now = payments.now();
         if ("MAY_HAVE_SENT".equals(dispatch.state()) || "UNKNOWN".equals(dispatch.state())
                 || ("PARAMETERS_READY".equals(dispatch.state())
                     && (dispatch.parameterValidUntil() == null
-                        || !dispatch.parameterValidUntil().isAfter(PaymentFoundationStore.utc(now))))) {
+                        || !dispatch.parameterValidUntil().isAfter(PaymentFoundationStore.utc(now))
+                        || dispatch.parametersCiphertext() == null
+                        || dispatch.parametersIv() == null))) {
             if (dispatch.tradeRequestDate() == null) throw unavailable();
             return new Recovery(payment.id(), payment.no(), payment.merchantNo(),
                     payment.termNo(), payment.amount(), dispatch.tradeRequestDate());
@@ -178,9 +205,15 @@ public final class PaymentDispatchService implements PaymentInitiationApi, Payme
                     || !payment.expires().isAfter(PaymentFoundationStore.utc(now))
                     || dispatch.parametersCiphertext() == null || dispatch.parametersIv() == null)
                 throw unavailable();
-            return new Replay(new InitiatedPayment(paymentId, Long.toString(payment.no()),
-                    payment.channel(), decrypt(payment, dispatch),
-                    dispatch.parameterValidUntil().atOffset(ZoneOffset.UTC)));
+            try {
+                return new Replay(new InitiatedPayment(paymentId, Long.toString(payment.no()),
+                        payment.channel(), decrypt(payment, dispatch),
+                        dispatch.parameterValidUntil().atOffset(ZoneOffset.UTC)));
+            } catch (ApiException unreadableParameters) {
+                if (dispatch.tradeRequestDate() == null) throw unavailable();
+                return new Recovery(payment.id(), payment.no(), payment.merchantNo(),
+                        payment.termNo(), payment.amount(), dispatch.tradeRequestDate());
+            }
         }
         if (!"PREPARED".equals(dispatch.state()) || dispatch.mayHaveSentAt() != null
                 || dispatch.identityHmac() != null) throw unavailable();
@@ -191,6 +224,14 @@ public final class PaymentDispatchService implements PaymentInitiationApi, Payme
         LocalDateTime requestTime = LocalDateTime.ofInstant(now.toInstant(),
                 settings.channelTimeZone()).withNano(0);
         LocalDate tradeDate = requestTime.toLocalDate();
+        // Pure protocol validation must finish before the durable MAY_HAVE_SENT fence. In
+        // particular USER may have a valid stored openId longer than this channel accepts.
+        try {
+            LakalaProtocol.preparePreorder(new LakalaProtocol.PreorderInput(settings.outOrgCode(),
+                    requestTime, payment.merchantNo(), payment.termNo(), Long.toString(payment.no()),
+                    payment.amount(), settings.subject(), payment.subAppId(), identity.openId(),
+                    settings.requestIp(), settings.notifyUrl(), timeoutMinutes));
+        } catch (RuntimeException malformed) { throw unavailable(); }
         int changed = jdbc.update("UPDATE payment_dispatch SET state='MAY_HAVE_SENT',"
                 + "preorder_req_time=?,trade_req_date=?,timeout_express_minutes=?,"
                 + "identity_hmac_sha256=?,may_have_sent_at=UTC_TIMESTAMP(3),"
@@ -242,6 +283,11 @@ public final class PaymentDispatchService implements PaymentInitiationApi, Payme
             throw unavailable();
         OffsetDateTime now = payments.now();
         LocalDateTime validUntil = dispatch.mayHaveSentAt().plusMinutes(dispatch.timeoutMinutes());
+        if (dispatch.preorderRequestTime() == null) throw unavailable();
+        LocalDateTime requestBasedUntil = LocalDateTime.ofInstant(
+                dispatch.preorderRequestTime().atZone(settings.channelTimeZone()).toInstant()
+                        .plus(Duration.ofMinutes(dispatch.timeoutMinutes())), ZoneOffset.UTC);
+        if (requestBasedUntil.isBefore(validUntil)) validUntil = requestBasedUntil;
         if (validUntil.isAfter(payment.expires())) validUntil = payment.expires();
         if (!validUntil.isAfter(PaymentFoundationStore.utc(now))) {
             jdbc.update("UPDATE payment_dispatch SET state='PARAMETERS_READY',"
@@ -279,6 +325,12 @@ public final class PaymentDispatchService implements PaymentInitiationApi, Payme
     }
 
     @Override public ExpiryEvidence reconcileForExpiry(ReconcilePaymentExpiryCommand command) {
+        try { return reconcileInternal(command); }
+        catch (ApiException known) { throw known; }
+        catch (RuntimeException failure) { throw unavailable(); }
+    }
+
+    private ExpiryEvidence reconcileInternal(ReconcilePaymentExpiryCommand command) {
         noOuterTransaction();
         validateExpiryCommand(command);
         QueryContext system = new QueryContext(command.context().traceId(), OperatorType.SYSTEM,
@@ -557,9 +609,15 @@ public final class PaymentDispatchService implements PaymentInitiationApi, Payme
     private static void validateExpiryCommand(ReconcilePaymentExpiryCommand command) {
         if (command == null || command.context() == null || command.context().operatorType() != OperatorType.SYSTEM)
             throw forbidden();
-        PublicContractChecks.requireCommandRequestId(command.context());
+        try { PublicContractChecks.requireCommandRequestId(command.context()); }
+        catch (IllegalArgumentException invalid) {
+            throw new ApiException(CommonApiCodes.INVALID_ARGUMENT,"invalid payment expiry requestId");
+        }
         id(command.orderId()); id(command.storeId());
-        PublicContractChecks.requireMillisecondPrecision(command.expectedDeadline());
+        try { PublicContractChecks.requireMillisecondPrecision(command.expectedDeadline()); }
+        catch (IllegalArgumentException invalid) {
+            throw new ApiException(CommonApiCodes.INVALID_ARGUMENT,"invalid payment expiry deadline");
+        }
         if (!command.context().requestId().equals("PAYMENT_EXPIRY_ORDER:" + command.orderId() + ":0"))
             throw new ApiException(CommonApiCodes.INVALID_ARGUMENT, "payment expiry key is invalid");
     }
