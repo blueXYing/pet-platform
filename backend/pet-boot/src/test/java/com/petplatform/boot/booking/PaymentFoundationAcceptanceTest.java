@@ -30,6 +30,10 @@ import java.nio.charset.StandardCharsets;
 import java.security.KeyPair;
 import java.security.KeyPairGenerator;
 import java.security.Signature;
+import java.lang.reflect.InvocationTargetException;
+import java.lang.reflect.Proxy;
+import java.sql.Connection;
+import java.sql.SQLException;
 import java.time.*;
 import java.time.format.DateTimeFormatter;
 import java.time.temporal.ChronoUnit;
@@ -453,12 +457,122 @@ class PaymentFoundationAcceptanceTest {
     }
   }
 
+  @Test
+  void committedPaymentWithLostExecutionAckReturnsTheOriginalPayment() throws Exception {
+    try (Fixture f = new Fixture(Clock.systemUTC())) {
+      String orderId = f.book().orderId();
+      var source = new LostSecondCommitSource(f.db.source);
+      var guard = new ScheduleCapacityGuardApiImpl(source);
+      var preparation = new PaymentPreparationApiImpl(source, PaymentFoundationAcceptanceTest::id,
+          guard, new OrderPaymentFactsApiImpl(source, guard),
+          new BookingUserFactsApiImpl(source, guard),
+          (merchant, store) -> new PaymentMerchantBindings.Binding(MERCHANT_NO, TERM_NO, SUB_APP));
+      String request = UUID.randomUUID().toString();
+      var command = new PreparePaymentCommand(new CommandContext(request, "lost-ack-qa",
+          OperatorType.USER, USER, "MINIAPP"), orderId);
+      PreparedPayment recovered = preparation.prepare(command);
+      assertTrue(recovered.replayed(), "the first execution committed before its ACK was lost");
+      assertEquals(2, source.lostAtCommit.get(), "the execution ACK, not admission, was lost");
+      assertEquals(3, source.commits.get(), "admission, committed execution and recovery read");
+      assertEquals(recovered.paymentId(), f.text("SELECT CAST(id AS CHAR) FROM payment_order WHERE order_id=?",
+          Long.parseLong(orderId)));
+      assertEquals(1L, f.count("SELECT COUNT(*) FROM payment_order"));
+      assertEquals(1L, f.count("SELECT COUNT(*) FROM payment_intent_request"));
+      PreparedPayment later = preparation.prepare(command);
+      assertTrue(later.replayed());
+      assertEquals(recovered.paymentId(), later.paymentId());
+      assertEquals(recovered.paymentNo(), later.paymentNo());
+      assertEquals(1L, f.count("SELECT COUNT(*) FROM payment_order"));
+    }
+  }
+
+  @Test
+  void lockedOriginalIntentReturnsBoundedBusyConflictWithoutCreatingPayment() throws Exception {
+    try (Fixture f = new Fixture(Clock.systemUTC())) {
+      String orderId = f.book().orderId();
+      var failedBinding = new PaymentPreparationApiImpl(f.db.source,
+          PaymentFoundationAcceptanceTest::id, f.guard,
+          new OrderPaymentFactsApiImpl(f.db.source, f.guard),
+          new BookingUserFactsApiImpl(f.db.source, f.guard),
+          (merchant, store) -> { throw new ApiException(CommonApiCodes.DEPENDENCY_UNAVAILABLE,
+              "test binding unavailable"); });
+      String request = UUID.randomUUID().toString();
+      var command = new PreparePaymentCommand(new CommandContext(request, "lock-qa",
+          OperatorType.USER, USER, "MINIAPP"), orderId);
+      assertCode("COMMON_DEPENDENCY_UNAVAILABLE", () -> failedBinding.prepare(command));
+      assertEquals(1L, f.count("SELECT COUNT(*) FROM payment_intent_request"));
+      assertEquals(0L, f.count("SELECT COUNT(*) FROM payment_order"));
+      CountDownLatch held = new CountDownLatch(1), release = new CountDownLatch(1);
+      try (var thread = Executors.newSingleThreadExecutor()) {
+        Future<?> locker = thread.submit(() -> {
+          var tx = new TransactionTemplate(new DataSourceTransactionManager(f.db.source));
+          tx.executeWithoutResult(status -> {
+            assertNotNull(f.db.jdbc.queryForObject(
+                "SELECT id FROM payment_intent_request WHERE order_id=? FOR UPDATE",
+                Long.class, Long.parseLong(orderId)));
+            held.countDown();
+            try { assertTrue(release.await(8, TimeUnit.SECONDS)); }
+            catch (InterruptedException interrupted) { Thread.currentThread().interrupt();
+              throw new IllegalStateException(interrupted); }
+          });
+        });
+        assertTrue(held.await(3, TimeUnit.SECONDS));
+        long started = System.nanoTime();
+        try {
+          assertCode("COMMON_CONFLICT", () -> f.preparation.prepare(command));
+          assertTrue(Duration.ofNanos(System.nanoTime() - started).compareTo(Duration.ofSeconds(6)) < 0,
+              "request binding lock has a bounded 2-second wait budget");
+        } finally {
+          release.countDown();
+        }
+        locker.get(5, TimeUnit.SECONDS);
+      }
+      assertEquals(0L, f.count("SELECT COUNT(*) FROM payment_order"));
+      assertEquals(1L, f.count("SELECT COUNT(*) FROM payment_intent_request"));
+      PreparedPayment retried = f.preparation.prepare(command);
+      assertNotNull(retried.paymentId());
+      assertEquals(1L, f.count("SELECT COUNT(*) FROM payment_order"));
+    }
+  }
+
   private static String rawUtc(OffsetDateTime time) {
     return time.withOffsetSameInstant(ZoneOffset.UTC)
         .format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss.SSS'000'"));
   }
 
   private static long id() { return IDS.incrementAndGet(); }
+
+  /** Simulates a DB commit that succeeded while only the client acknowledgement was lost. */
+  private static final class LostSecondCommitSource extends DelegatingDataSource {
+    final AtomicInteger commits = new AtomicInteger();
+    final AtomicInteger lostAtCommit = new AtomicInteger();
+
+    LostSecondCommitSource(DataSource target) { super(target); }
+
+    @Override public Connection getConnection() throws SQLException {
+      return wrap(super.getConnection());
+    }
+
+    @Override public Connection getConnection(String username, String password) throws SQLException {
+      return wrap(super.getConnection(username, password));
+    }
+
+    private Connection wrap(Connection delegate) {
+      return (Connection) Proxy.newProxyInstance(getClass().getClassLoader(),
+          new Class<?>[] {Connection.class}, (proxy, method, arguments) -> {
+            try {
+              Object result = method.invoke(delegate, arguments);
+              if ("commit".equals(method.getName()) && commits.incrementAndGet() == 2) {
+                lostAtCommit.set(2);
+                throw new SQLException("committed payment ACK lost", "08006");
+              }
+              return result;
+            } catch (InvocationTargetException wrapped) {
+              throw wrapped.getCause();
+            }
+          });
+    }
+  }
 
   private static void assertCode(String code, org.junit.jupiter.api.function.Executable action) {
     ApiException failure = assertThrows(ApiException.class, action);
