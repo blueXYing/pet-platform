@@ -1,37 +1,36 @@
 # Work State
 
 PROJECT: 宠物平台 V1.0
-STATE_VERSION: 16.0
+STATE_VERSION: 17.0
 UPDATED_AT: 2026-09-28
-CURRENT_PHASE: W3_INTEGRATION_REVIEW
-CURRENT_STATUS: MYBATIS_REGRESSION_REPAIR_AND_LATE_REFUND_REVIEW
-VERIFIED_BASELINE: develop 74f480f4f25a4194e5f02d8bec7158b2b333e6bc（PR88→89 已按用户批准顺序合并；CI36389499377 六项通过、后端584测试零失败/错误/跳过）
-NEXT_PHASE: 完成迟到退款执行的独立审阅及完整CI，再衔接三十分钟自动接单
-NEXT_PHASE_APPROVED: YES（已授权继续内部开发、已批准迟到退款 CCR A/B；本轮新 PR 合并及生产启用未授权）
+CURRENT_PHASE: W4_NEXT_WAVE_PLANNING
+CURRENT_STATUS: PR90_MERGED_GREEN__AUTO_CONFIRM_CONTRACT_REVIEW
+VERIFIED_BASELINE: develop b1b2f8f4c434b6b638fc00f9bf5da405f1a28435（PR90已合并；CI36431126385六项通过，104份后端报告合计614测试、零失败/错误/跳过）
+NEXT_PHASE: 自动接单CCR A/B审阅后同步权威契约，实施首轮内部自动接单及恢复；随后商家确认/拒单与改期联动
+NEXT_PHASE_APPROVED: PARTIAL（用户已要求按上述顺序推进；新增A/B具体契约待审阅，未授权本轮PR合并或生产启用）
 
 ## 当前事实
 
-- 用户要求全面修复 SQL/XML 规范回退。已追溯 #85～#90 六个PR，原27个生产文件涉及10模块；按22号既定裁决迁回 Mapper XML，并补生产扫描门禁。原 CI 未覆盖该约束，因此原“可审阅”判断已撤回，#90保持Draft直至最新回归通过；[审计与修复记录](planning/progress/2026-09-28/mybatis-repair/AUDIT.md)。
-
-- 继续多角色 GPT-6 Sol / xhigh，在独立 worktree 基于已合并 develop 开发；原用户工作目录改动未动。
-- 用户明确回复“批准 A/B 推荐技术方案”。已实现迟到支付核验、真实实付全额退款单、不可变原支付绑定、消费记录/事件/任务原子提交。
-- PAYMENT 先记录可能已发送，再在事务外提交退款；未知只查原退款号，不重新提交。仅已验签且持久的权威退款成功可推动 REFUND SUCCESS 和唯一成功事件。
-- ORDER 退款进度投影仍保留 CANCELED/PAYMENT_TIMEOUT、SCH EXPIRED，事件乱序/重放不倒退；未交付公开订单展示/退款 HTTP。
-- 拉卡拉退款/查询纯协议与固定地址传输已实现，使用官方1826/1827及1004规则；测试仅临时密钥、本地服务器或可信离线替身，无真实渠道交易。
-- 原子性、并发、提交确认丢失、原号查询、30秒下界、金额冲突、最终投影和 DEAD/CANCELED 对账已有独立 MySQL 验收。最终证据以本轮 PR head 的 CI 和报告为准。
-- 新运行开关默认关闭；SQL42/43/44仅随机隔离测试库执行。缺正式参数不启用生产。
+- #90已于2026-09-28T13:47:21Z合并；合并提交的完整CI于13:57:54Z全部结束且通过。此前“待审阅/待合并”的状态保留在[历史台账](planning/history/WORK_STATE_BEFORE_20260928_AUTO_CONFIRM.md)，不再作为当前待办。
+- 已下载并解析该合并CI的104份Surefire XML，614测试全部通过；证据与文件哈希见[后端汇总](planning/progress/2026-09-28/auto-confirm/pr90-backend-summary.json)，六项状态见[CI记录](planning/progress/2026-09-28/auto-confirm/pr90-merge-ci.json)。这些是#90基线测试，不是自动接单新功能验收。
+- #90交付SQL/XML规范整改和静态门禁，以及已批准迟到支付退款内部执行；ORDER与预约仍保持关闭。运行开关默认关闭，未做真实渠道交易或生产迁移。
+- 正常付款已有PENDING_CONFIRM、paidAt+30min截止、NORMAL付款结果及OrderPaid事件；尚无ORDER_AUTO_CONFIRM生产任务/Handler。普通商家确认/拒单、改期入口也尚未实现。
+- 本轮在最新develop独立工作区、`codex/auto-confirm-20260928`分支推进；原目录旧分支和未提交文件保持原状。
+- 已形成[自动接单CCR候选A/B](planning/ccr/CCR-W2-API-001/order-auto-confirm-proposal.md)。用户批准推进顺序不追记为已批准尚未展示的字段、退款并发和恢复协议。
 
 ## 下一步
 
-1. 审阅迟到退款执行 PR，核实完整 CI 后按用户批准再合并。
-2. 按[自动接单后续核对](planning/progress/2026-09-28/late-refund/AUTO_ACCEPT_NEXT.md)推进正常付款30分钟自动接单；迟到付款永不进入该链路。
-3. 接齐券、积分、通知与对账管理消费者；不把内部退款投影当公开用户流程全部交付。
-4. 正式商户/终端/证书、小程序关联、渠道时区、真实金额及退款终局语义齐备后再联调验收。
+1. 审阅A/B：SYSTEM自动确认命令、退款同锁协议与权威事实、确认事件；正常支付原子产任务、缺任务补建及异常恢复。首轮只做内部默认关闭切片。
+2. A/B获批后由各Owner同步API/Event/Scheduler/测试映射，实现并完成真实MySQL原子性/并发/恢复验收、架构扫描和完整CI。
+3. 接ORD-001商家确认/拒单与普通退款，再接ORD-003一次改期/旧任务取消及round1。ORD-002完整依赖及Issue状态不因内部切片提前解除。
+4. 接公开订单展示/支付退款HTTP、小程序流程，以及券/积分/通知/对账消费者；内部事件交付不等于用户流程完成。
+5. 正式商户/终端/证书、小程序关联、渠道时区、实付金额与终局语义齐备后真实联调；生产启用独立处理。
 
-## 证据
+## 证据与限制
 
-- [42号迟到退款实施契约](docs/04-api/42-Late-Payment-Refund-Contract-v0.1.md)
-- [已批准CCR A/B](planning/ccr/CCR-W2-API-001/late-payment-refund-execution-proposal.md)
-- [实现与验收](planning/progress/2026-09-28/late-refund/IMPLEMENTATION.md)
-- [独立审查](planning/progress/2026-09-28/late-refund/REVIEW.md)
-- [本轮前状态](planning/history/WORK_STATE_BEFORE_20260928_LATE_REFUND.md)
+- [本轮收尾与交接](planning/progress/2026-09-28/auto-confirm/HANDOFF.md)
+- [既有自动接单缺口核对](planning/progress/2026-09-28/late-refund/AUTO_ACCEPT_NEXT.md)
+- [42号迟到退款契约](docs/04-api/42-Late-Payment-Refund-Contract-v0.1.md)
+- [SQL/XML审计](planning/progress/2026-09-28/mybatis-repair/AUDIT.md)
+
+当前A/B处于PROPOSED；业务代码、公共契约及生产状态未变。本轮文档检查见交接记录；自动接单行为测试尚未执行，不声称已交付。
