@@ -854,7 +854,7 @@ class ReservationProtectionFoundationAcceptanceTest {
             manager = new DataSourceTransactionManager(source);
             admin.execute("CREATE DATABASE `" + name + "` CHARACTER SET utf8mb4");
             try {
-                script("docs/03-database/06-鏍稿績鏁版嵁搴揝chema-v0.1.sql");
+                script("docs/03-database/06-核心数据库Schema-v0.1.sql");
                 script("docs/03-database/37-Reservation-Protection-Foundation-Schema-v0.1.sql");
             } catch (Exception failure) { close(); throw failure; }
         }
