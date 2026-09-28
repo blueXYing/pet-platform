@@ -33,7 +33,7 @@ public final class PaymentNotificationService {
         tx.setIsolationLevel(TransactionDefinition.ISOLATION_READ_COMMITTED);tx.setTimeout(15);
     }
     public ReceiptResult receive(Map<String,String> headers,byte[] body){
-        if(TransactionSynchronizationManager.isActualTransactionActive()||channelTimeZone==null)throw unavailable();
+        if(TransactionSynchronizationManager.isActualTransactionActive()||TransactionSynchronizationManager.isSynchronizationActive()||channelTimeZone==null)throw unavailable();
         if(body==null||body.length==0||body.length>65_536||headers==null)throw invalid();
         body=body.clone();
         headers=Map.copyOf(headers);
@@ -45,7 +45,36 @@ public final class PaymentNotificationService {
             var notice=verifier.verify(headers,body,new PaymentReceiptVerifier.ExpectedPayment(hint.merchantNo(),Long.toString(hint.no()),hint.amount()));
             validateNotice(notice,hint);
             String digest=HexFormat.of().formatHex(MessageDigest.getInstance("SHA-256").digest(body));
-            return tx.execute(status->{
+            return persist(hint,notice,digest,"NOTIFICATION",null);
+        }catch(ApiException known){throw known;}catch(Exception failure){throw unavailable();}
+    }
+
+    /** Only the configured, signature-verifying PAYMENT channel adapter supplies this value.
+     * Package-private: no HTTP or cross-module DTO may use this as a success command. */
+    ReceiptResult receiveQuery(String paymentId,PaymentChannel.VerifiedQuery query){
+        if(TransactionSynchronizationManager.isActualTransactionActive()
+                || TransactionSynchronizationManager.isSynchronizationActive()
+                || channelTimeZone==null)throw unavailable();
+        try{
+            if(query==null||query.result()==null||query.responseSha256()==null
+                    ||!query.responseSha256().matches("[0-9a-f]{64}"))throw unavailable();
+            var hint=store.byId(new DecimalPublicIdCodec().fromApi(paymentId),false);
+            validRow(hint);
+            var result=query.result();
+            var notice=new PaymentReceiptVerifier.VerifiedNotice(result.merchantNo(),result.outTradeNo(),
+                    result.channelTradeNo(),result.tradeState().name(),java.math.BigDecimal.valueOf(result.totalAmountCents(),2),
+                    result.payerAmountCents()==null?null:java.math.BigDecimal.valueOf(result.payerAmountCents(),2),
+                    result.channelTradeTime(),result.accountType());
+            validateNotice(notice,hint);
+            String digest=HexFormat.of().formatHex(MessageDigest.getInstance("SHA-256").digest(
+                    ("QUERY\0"+query.responseSha256()).getBytes(StandardCharsets.US_ASCII)));
+            return persist(hint,notice,digest,"QUERY",query.responseSha256());
+        }catch(ApiException known){throw known;}catch(Exception failure){throw unavailable();}
+    }
+
+    private ReceiptResult persist(PaymentFoundationStore.Row hint,PaymentReceiptVerifier.VerifiedNotice notice,
+            String digest,String receiptSource,String channelResponseSha256){
+        return tx.execute(status->{
                 store.session();String storeId=Long.toString(hint.storeId());
                 guard.acquire(List.of(storeId),new QueryContext(null,OperatorType.SYSTEM,null));guard.requireHeld(storeId,source);
                 var row=store.byId(hint.id(),true);validRow(row);
@@ -61,8 +90,8 @@ public final class PaymentNotificationService {
                         || row.paidAmount().compareTo(notice.paidAmount())!=0 || row.paidAt()==null
                         || !row.paidAt().equals(PaymentFoundationStore.utc(paidAt)) || row.successEventId()==null))throw unavailable();
                 if(row.tradeNo()!=null && notice.channelTradeNo()!=null && !row.tradeNo().equals(notice.channelTradeNo()))throw unavailable();
-                if(!duplicate)store.jdbc.update("INSERT INTO payment_channel_receipt(id,payment_id,receipt_sha256,channel_trade_no,channel_status,total_amount,paid_amount,paid_at,received_at) VALUES(?,?,?,?,?,?,?,?,?)",
-                    nextId(),row.id(),digest,notice.channelTradeNo(),notice.status(),notice.totalAmount(),notice.paidAmount(),paidAt==null?null:PaymentFoundationStore.utc(paidAt),PaymentFoundationStore.utc(now));
+                if(!duplicate)store.jdbc.update("INSERT INTO payment_channel_receipt(id,payment_id,receipt_sha256,receipt_source,channel_response_sha256,channel_trade_no,channel_status,total_amount,paid_amount,paid_at,received_at) VALUES(?,?,?,?,?,?,?,?,?,?,?)",
+                    nextId(),row.id(),digest,receiptSource,channelResponseSha256,notice.channelTradeNo(),notice.status(),notice.totalAmount(),notice.paidAmount(),paidAt==null?null:PaymentFoundationStore.utc(paidAt),PaymentFoundationStore.utc(now));
                 // A refund/reversal is not an old failure. Preserve it until its owner reconciles;
                 // a delayed SUCCESS must not authorize fulfillment or a second refund after reversal.
                 if(Set.of("PART_REFUND","REFUND","REVOKED").contains(notice.status())
@@ -86,8 +115,8 @@ public final class PaymentNotificationService {
                 if(!duplicate)store.jdbc.update("UPDATE payment_order SET status=?,dispatch_state='OBSERVED',channel_trade_no=COALESCE(channel_trade_no,?),version=version+1,updated_at=? WHERE id=?",next,notice.channelTradeNo(),PaymentFoundationStore.utc(now),row.id());
                 return new ReceiptResult(Long.toString(row.id()),duplicate,false);
             });
-        }catch(ApiException known){throw known;}catch(Exception failure){throw unavailable();}
     }
+
     private OffsetDateTime channelTime(LocalDateTime local){
         if(local==null)return null;
         var offsets=channelTimeZone.getRules().getValidOffsets(local);
