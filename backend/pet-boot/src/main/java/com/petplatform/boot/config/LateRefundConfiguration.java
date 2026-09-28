@@ -72,6 +72,11 @@ import org.springframework.jdbc.core.JdbcTemplate;
 public class LateRefundConfiguration {
     private static final String SUBMIT = "REFUND_SUBMIT";
     private static final String QUERY = "REFUND_CHANNEL_QUERY";
+    /** Refund UNKNOWN polling starts no sooner than the provider's 30-second query floor. */
+    private static final List<Duration> REFUND_RETRY_DELAYS = List.of(
+            Duration.ofSeconds(30), Duration.ofSeconds(60), Duration.ofSeconds(120),
+            Duration.ofMinutes(5), Duration.ofMinutes(15), Duration.ofMinutes(30),
+            Duration.ofMinutes(60));
     private static final ObjectMapper JSON = new ObjectMapper()
             .enable(JsonParser.Feature.STRICT_DUPLICATE_DETECTION)
             .enable(DeserializationFeature.FAIL_ON_TRAILING_TOKENS);
@@ -165,9 +170,7 @@ public class LateRefundConfiguration {
             ObjectProvider<Clock> clocks) {
         return AsyncTaskWorker.create(source, ids, "late-refund-" + UUID.randomUUID(),
                 clocks.getIfAvailable(Clock::systemUTC), TaskWorkerSettings.defaults(),
-                new TaskRetryDelays(Map.of("REFUND_CHANNEL", List.of(Duration.ofSeconds(30),
-                        Duration.ofMinutes(1), Duration.ofMinutes(5), Duration.ofMinutes(15),
-                        Duration.ofMinutes(30)))),
+                new TaskRetryDelays(Map.of("REFUND_CHANNEL", REFUND_RETRY_DELAYS)),
                 List.of(refundSubmitRegistration, refundQueryRegistration));
     }
 
@@ -193,9 +196,11 @@ public class LateRefundConfiguration {
                 OffsetDateTime next = result.nextQueryAt();
                 if (next == null) throw new IllegalStateException("Refund query deadline absent");
                 LocalDateTime dbNow = jdbc.queryForObject("SELECT UTC_TIMESTAMP(3)", LocalDateTime.class);
-                Duration delay = Duration.between(dbNow.atOffset(ZoneOffset.UTC), next)
+                Duration deadline = Duration.between(dbNow.atOffset(ZoneOffset.UTC), next)
                         .plusMillis(250);
-                if (delay.isNegative() || delay.isZero()) delay = Duration.ofSeconds(1);
+                Duration backoff = REFUND_RETRY_DELAYS.get(Math.min(payload.retryCount(),
+                        REFUND_RETRY_DELAYS.size() - 1));
+                Duration delay = deadline.compareTo(backoff) > 0 ? deadline : backoff;
                 return new TaskExecutionResult.Retry("REFUND_QUERY_PENDING", delay);
             }
         }, lease -> decode(type, lease), lease -> "TASK:" + lease.taskKey());
@@ -219,16 +224,21 @@ public class LateRefundConfiguration {
             IDS.fromApi(store);
             if (lease.bizId() != refundId || !Objects.equals(lease.expectedVersion(), 0L)
                     || !type.equals(lease.taskType())
+                    || lease.retryCount() < 0
                     || !"REFUND_CHANNEL".equals(lease.retryPolicy())
                     || !(type + ":" + refund + ":0").equals(lease.taskKey()))
                 throw new IllegalArgumentException();
-            return new RefundPayload(refund, store);
+            return new RefundPayload(refund, store, lease.retryCount());
         } catch (Exception invalid) {
             throw new IllegalArgumentException("invalid late refund task generation");
         }
     }
 
-    public record RefundPayload(String refundOrderId, String storeId) {}
+    public record RefundPayload(String refundOrderId, String storeId, int retryCount) {
+        public RefundPayload(String refundOrderId, String storeId) {
+            this(refundOrderId, storeId, 0);
+        }
+    }
 
     public static final class DeadTaskReconciler implements AutoCloseable {
         private static final System.Logger LOG = System.getLogger(DeadTaskReconciler.class.getName());
