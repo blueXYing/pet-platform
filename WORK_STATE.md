@@ -4,12 +4,14 @@ PROJECT: 宠物平台 V1.0
 STATE_VERSION: 16.0
 UPDATED_AT: 2026-09-28
 CURRENT_PHASE: W3_INTEGRATION_REVIEW
-CURRENT_STATUS: LATE_REFUND_INTERNAL_REVIEW
+CURRENT_STATUS: MYBATIS_REGRESSION_REPAIR_AND_LATE_REFUND_REVIEW
 VERIFIED_BASELINE: develop 74f480f4f25a4194e5f02d8bec7158b2b333e6bc（PR88→89 已按用户批准顺序合并；CI36389499377 六项通过、后端584测试零失败/错误/跳过）
 NEXT_PHASE: 完成迟到退款执行的独立审阅及完整CI，再衔接三十分钟自动接单
 NEXT_PHASE_APPROVED: YES（已授权继续内部开发、已批准迟到退款 CCR A/B；本轮新 PR 合并及生产启用未授权）
 
 ## 当前事实
+
+- 用户要求全面修复 SQL/XML 规范回退。已追溯 #85～#90 六个PR，原27个生产文件涉及10模块；按22号既定裁决迁回 Mapper XML，并补生产扫描门禁。原 CI 未覆盖该约束，因此原“可审阅”判断已撤回，#90保持Draft直至最新回归通过；[审计与修复记录](planning/progress/2026-09-28/mybatis-repair/AUDIT.md)。
 
 - 继续多角色 GPT-6 Sol / xhigh，在独立 worktree 基于已合并 develop 开发；原用户工作目录改动未动。
 - 用户明确回复“批准 A/B 推荐技术方案”。已实现迟到支付核验、真实实付全额退款单、不可变原支付绑定、消费记录/事件/任务原子提交。
