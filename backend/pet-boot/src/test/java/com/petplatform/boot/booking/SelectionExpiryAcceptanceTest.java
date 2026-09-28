@@ -1,15 +1,9 @@
 package com.petplatform.boot.booking;
 
 import static org.junit.jupiter.api.Assertions.*;
-import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.*;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.petplatform.boot.adapter.web.c.CScheduleController;
-import com.petplatform.boot.adapter.web.c.CServiceExceptionHandler;
 import com.petplatform.boot.config.BookingExpiryConfiguration;
-import com.petplatform.boot.config.CBearerSessionFilter;
 import com.petplatform.common.*;
 import com.petplatform.coupon.biz.apiimpl.BookingCouponExposureApiImpl;
 import com.petplatform.merchant.biz.apiimpl.MerchantCurrentStaffFactsApiImpl;
@@ -24,18 +18,10 @@ import com.petplatform.order.biz.apiimpl.OrderProtectionFactsApiImpl;
 import com.petplatform.order.biz.apiimpl.OrderCreationApiImpl;
 import com.petplatform.payment.biz.apiimpl.BookingPaymentExposureApiImpl;
 import com.petplatform.schedule.api.dto.ReservationExpiryTypes.ExpireHoldCommand;
-import com.petplatform.schedule.api.query.ScheduleSelectionQueryApi;
 import com.petplatform.schedule.biz.apiimpl.*;
-import com.petplatform.schedule.biz.application.QualifiedStaffFactsPort;
 import com.petplatform.service.biz.apiimpl.BookingServiceFactsApiImpl;
-import com.petplatform.service.api.dto.ServiceBookabilityDTO;
-import com.petplatform.service.api.dto.ServiceSnapshotDTO;
-import com.petplatform.service.api.enums.FulfillmentType;
-import com.petplatform.service.biz.apiimpl.ServiceQueryApiImpl;
 import com.petplatform.task.core.*;
-import com.petplatform.user.biz.application.UserAuthService.MiniSessionView;
 import com.petplatform.user.biz.apiimpl.BookingUserFactsApiImpl;
-import java.math.BigDecimal;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -44,11 +30,9 @@ import java.time.*;
 import java.time.temporal.ChronoUnit;
 import java.time.format.DateTimeFormatter;
 import java.util.*;
-import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 import javax.sql.DataSource;
 import org.junit.jupiter.api.Test;
-import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.core.io.FileSystemResource;
 import org.springframework.core.io.support.EncodedResource;
 import org.springframework.jdbc.core.JdbcTemplate;
@@ -57,10 +41,8 @@ import org.springframework.jdbc.datasource.DriverManagerDataSource;
 import org.springframework.jdbc.datasource.init.ScriptUtils;
 import org.springframework.transaction.TransactionDefinition;
 import org.springframework.transaction.support.TransactionTemplate;
-import org.springframework.test.web.servlet.MockMvc;
-import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 
-/** Independent MySQL and servlet-contract checks for the opt-in selection/expiry slice. */
+/** Independent MySQL checks for the opt-in booking expiry slice. */
 class SelectionExpiryAcceptanceTest {
   private static final long MERCHANT = 8_100_001L;
   private static final long STORE = 8_100_002L;
@@ -73,7 +55,6 @@ class SelectionExpiryAcceptanceTest {
   private static final long RETURN = 8_100_009L;
   private static final long GAP_PICKUP = 8_100_010L;
   private static final AtomicLong IDS = new AtomicLong(8_100_000_000_000_000L);
-  private static final ObjectMapper JSON = new ObjectMapper();
 
   @Test
   void duePickupClosesOrderAndBothClaimsInOneCommitAndReplaysWithoutDuplicates() throws Exception {
@@ -172,14 +153,92 @@ class SelectionExpiryAcceptanceTest {
   }
 
   @Test
+  void scheduledTaskIsNotClaimedEarlyAndOriginalScheduleSurvivesRetry() throws Exception {
+    try (Database db = new Database()) {
+      var submitter = new JdbcAsyncTaskSubmitter(db.source, SelectionExpiryAcceptanceTest::id);
+      OffsetDateTime first = OffsetDateTime.now(ZoneOffset.UTC).plusMinutes(10)
+          .truncatedTo(ChronoUnit.MILLIS);
+      long taskId = db.transaction(() -> submitter.enqueueAt("QA_KNOWN:1", "ORDER", "QA_KNOWN",
+          "RESERVATION", 1L, 0L, "{}", 3, "FAST_INTERNAL", first));
+      String rawFirst = first.format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss.SSS'000'"));
+      assertEquals(rawFirst, db.text(
+          "SELECT DATE_FORMAT(submitted_execute_at,'%Y-%m-%d %H:%i:%s.%f') FROM async_task WHERE id=?",
+          taskId));
+      TaskRegistration<String> known = new TaskRegistration<>(new TaskHandler<>() {
+        @Override public String taskType() { return "QA_KNOWN"; }
+        @Override public TaskExecutionResult execute(TaskExecutionContext context, String payload) {
+          fail("future task must not dispatch");
+          return new TaskExecutionResult.Success("IMPOSSIBLE");
+        }
+      }, TaskLease::payloadJson, lease -> "TASK:" + lease.taskKey());
+      var settings = TaskWorkerSettings.defaults();
+      assertThrows(IllegalArgumentException.class, () -> AsyncTaskWorker.create(db.source,
+          SelectionExpiryAcceptanceTest::id, "qa-empty", Clock.systemUTC(), settings,
+          BookingExpiryConfiguration.retryDelays(), List.of()));
+      try (var worker = AsyncTaskWorker.create(db.source, SelectionExpiryAcceptanceTest::id,
+          "qa-known", Clock.systemUTC(), settings, BookingExpiryConfiguration.retryDelays(),
+          List.of(known))) {
+        assertEquals(AsyncTaskWorker.Outcome.EMPTY, worker.runOne());
+        db.transaction(() -> submitter.enqueueAt("QA_UNKNOWN:2", "ORDER", "QA_UNKNOWN",
+            "RESERVATION", 2L, 0L, "{}", 3, "FAST_INTERNAL",
+            OffsetDateTime.now(ZoneOffset.UTC).minusSeconds(2).truncatedTo(ChronoUnit.MILLIS)));
+        assertEquals(AsyncTaskWorker.Outcome.EMPTY, worker.runOne(),
+            "partial worker must leave another owner's task unclaimed");
+      }
+      assertEquals("READY", db.text("SELECT status FROM async_task WHERE id=?", taskId));
+      assertEquals(0L, db.number("SELECT COUNT(*) FROM async_task_attempt WHERE task_id=?", taskId));
+      db.jdbc.update("UPDATE async_task SET status='RETRY_WAIT',execute_at=UTC_TIMESTAMP(3) WHERE id=?", taskId);
+      assertEquals(taskId, db.transaction(() -> submitter.enqueueAt("QA_KNOWN:1", "ORDER",
+          "QA_KNOWN", "RESERVATION", 1L, 0L, "{}", 3, "FAST_INTERNAL", first)));
+      assertThrows(IllegalArgumentException.class, () -> db.transaction(() -> submitter.enqueueAt(
+          "QA_KNOWN:1", "ORDER", "QA_KNOWN", "RESERVATION", 1L, 0L,
+          "{}", 3, "FAST_INTERNAL", first.plusSeconds(1))));
+      assertEquals(rawFirst, db.text(
+          "SELECT DATE_FORMAT(submitted_execute_at,'%Y-%m-%d %H:%i:%s.%f') FROM async_task WHERE id=?",
+          taskId));
+      assertEquals(1L, db.number("SELECT COUNT(*) FROM async_task WHERE task_key=?", "QA_KNOWN:1"));
+    }
+  }
+
+  @Test
+  void oversizedTaskVersionCannotWrapToZeroAndInvokeExpiry() throws Exception {
+    try (Database db = new Database()) {
+      var submitter = new JdbcAsyncTaskSubmitter(db.source, SelectionExpiryAcceptanceTest::id);
+      db.transaction(() -> submitter.enqueueAt("RESERVATION_HOLD_EXPIRE:999:0", "ORDER",
+          "RESERVATION_HOLD_EXPIRE", "RESERVATION", 999L, 0L,
+          "{\"orderId\":\"998\",\"reservationId\":\"999\","
+              + "\"expectedReservationVersion\":18446744073709551616,"
+              + "\"expectedPaymentExpireAt\":\"2026-09-28T00:00:00Z\"}",
+          20, "FAST_INTERNAL", OffsetDateTime.now(ZoneOffset.UTC).minusSeconds(2)
+              .truncatedTo(ChronoUnit.MILLIS)));
+      OrderExpiryApi owner = mock(OrderExpiryApi.class);
+      var registration = BookingExpiryConfiguration.registration(owner, Clock.systemUTC());
+      try (var worker = AsyncTaskWorker.create(db.source, SelectionExpiryAcceptanceTest::id,
+          "qa-bad-payload", Clock.systemUTC(), TaskWorkerSettings.defaults(),
+          BookingExpiryConfiguration.retryDelays(), List.of(registration))) {
+        assertEquals(AsyncTaskWorker.Outcome.COMPLETED, worker.runOne());
+      }
+      verifyNoInteractions(owner);
+      assertEquals("RETRY_WAIT", db.text("SELECT status FROM async_task WHERE biz_id=?", 999L));
+      assertEquals(1L, db.number("SELECT retry_count FROM async_task WHERE biz_id=?", 999L));
+    }
+  }
+
+  @Test
   void notDueOrUncertainPaymentCouponAndBadLaterStageNeverReleaseClaims() throws Exception {
     try (Database db = new Database()) {
       Seed future = db.seedPickup(OffsetDateTime.now(ZoneOffset.UTC).plusMinutes(9));
       OrderExpiryApi expiry = api(db);
       assertEquals(ExpireOrderResult.NOT_DUE, expiry.expire(command(future)));
       db.assertActive();
+      assertCode("COMMON_INVALID_ARGUMENT", () -> expiry.expire(new ExpireOrderCommand(
+          systemContext(), Long.toString(ORDER), Long.toString(RESERVATION), 1,
+          future.deadline())));
+      db.assertActive();
       db.shiftDeadline(OffsetDateTime.now(ZoneOffset.UTC).minusMinutes(11));
       Seed due = db.seed();
+      assertCode("COMMON_DEPENDENCY_UNAVAILABLE", () -> expiry.expire(command(future)));
+      db.assertActive();
       db.jdbc.update("INSERT INTO payment_order(id,payment_no,order_id,amount,status,channel,expire_at,created_at,updated_at)"
               + " VALUES(?,?,?,128.00,'PAYING','LAKALA_WECHAT',?,UTC_TIMESTAMP(3),UTC_TIMESTAMP(3))",
           id(), id(), ORDER, due.deadline().toLocalDateTime());
@@ -213,6 +272,17 @@ class SelectionExpiryAcceptanceTest {
       assertCode("COMMON_DEPENDENCY_UNAVAILABLE", () -> expiry.expire(command(seed)));
       db.assertActive();
       assertEquals(1L, db.number("SELECT COUNT(*) FROM schedule_reservation_claim WHERE reservation_id=?", RESERVATION));
+      LocalDateTime back = seed.day().atTime(3, 30);
+      db.claim(RETURN, "RETURN", back, seed.day().atTime(4, 20));
+      db.jdbc.update("UPDATE schedule_reservation_claim SET kind='GENERAL' WHERE reservation_id=? AND window_id=?",
+          RESERVATION, RETURN);
+      assertCode("COMMON_DEPENDENCY_UNAVAILABLE", () -> expiry.expire(command(seed)));
+      db.assertActive();
+      db.jdbc.update("UPDATE schedule_reservation_claim SET kind='RETURN' WHERE reservation_id=? AND window_id=?",
+          RESERVATION, RETURN);
+      db.jdbc.update("UPDATE schedule_reservation SET version=1 WHERE id=?", RESERVATION);
+      assertCode("COMMON_DEPENDENCY_UNAVAILABLE", () -> expiry.expire(command(seed)));
+      db.assertActive();
     }
   }
 
