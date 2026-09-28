@@ -28,7 +28,7 @@ public final class AsyncTaskWorker implements AutoCloseable {
       TaskRetryDelays retryDelays,
       Collection<TaskRegistration<?>> handlers) {
     return new AsyncTaskWorker(
-        new JdbcAsyncTaskRepository(source, ids), owner, clock, settings, retryDelays, handlers);
+        new JdbcAsyncTaskRepository(source, ids, handlers.stream().map(r -> r.handler().taskType()).collect(Collectors.toSet())), owner, clock, settings, retryDelays, handlers);
   }
 
     public enum Outcome { EMPTY, COMPLETED, LEASE_LOST, ABANDONED }

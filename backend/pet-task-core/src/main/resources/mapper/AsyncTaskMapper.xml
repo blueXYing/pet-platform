@@ -3,10 +3,12 @@
 <mapper namespace="com.petplatform.task.core.mapper.AsyncTaskMapper">
     <insert id="insertSubmission">
         INSERT INTO async_task (id,task_no,task_key,owner_module,task_type,biz_type,biz_id,
-          status,execute_at,expected_version,payload_json,max_retry_count,retry_policy,created_at,updated_at)
+          status,execute_at,expected_version,payload_json,max_retry_count,retry_policy,created_at,updated_at
+          <if test="availableAt != null">, submitted_execute_at</if>)
         VALUES (#{id},#{id},#{taskKey},#{ownerModule},#{taskType},#{bizType},#{bizId},
-          'READY',UTC_TIMESTAMP(3),#{expectedVersion},CAST(#{payloadJson} AS JSON),
-          #{maxRetryCount},#{retryPolicy},UTC_TIMESTAMP(3),UTC_TIMESTAMP(3))
+          'READY',COALESCE(#{availableAt,jdbcType=TIMESTAMP},UTC_TIMESTAMP(3)),#{expectedVersion},CAST(#{payloadJson} AS JSON),
+          #{maxRetryCount},#{retryPolicy},UTC_TIMESTAMP(3),UTC_TIMESTAMP(3)
+          <if test="availableAt != null">, #{availableAt}</if>)
         ON DUPLICATE KEY UPDATE id=id
     </insert>
     <select id="selectMatchingSubmission" resultType="long">
@@ -15,6 +17,7 @@
           AND BINARY biz_type=BINARY #{bizType} AND biz_id=#{bizId}
           AND expected_version &lt;=&gt; #{expectedVersion} AND payload_json=CAST(#{payloadJson} AS JSON)
           AND max_retry_count=#{maxRetryCount} AND BINARY retry_policy=BINARY #{retryPolicy}
+          <if test="availableAt != null">AND submitted_execute_at=#{availableAt}</if>
         FOR UPDATE
     </select>
 
@@ -24,8 +27,11 @@
 
     <select id="selectClaimCandidate" resultType="com.petplatform.task.core.mapper.AsyncTaskRowEntity">
         SELECT * FROM async_task
-        WHERE (status IN ('READY','RETRY_WAIT') AND execute_at &lt;= NOW(3))
-           OR (status = 'RUNNING' AND lease_until &lt; NOW(3))
+        WHERE ((status IN ('READY','RETRY_WAIT') AND execute_at &lt;= NOW(3))
+           OR (status = 'RUNNING' AND lease_until &lt; NOW(3)))
+        <if test="taskTypes != null and !taskTypes.isEmpty()">
+          AND task_type IN <foreach collection="taskTypes" item="taskType" open="(" separator="," close=")">#{taskType}</foreach>
+        </if>
         ORDER BY priority DESC, execute_at ASC, id ASC
         LIMIT 1 FOR UPDATE SKIP LOCKED
     </select>

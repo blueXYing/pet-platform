@@ -21,8 +21,16 @@ public final class JdbcAsyncTaskRepository {
     private final SqlSessionTemplate template;
     private final TransactionTemplate transaction;
     private final SnowflakeIdGenerator ids;
+    private final java.util.Set<String> taskTypes;
 
     public JdbcAsyncTaskRepository(DataSource dataSource, SnowflakeIdGenerator ids) {
+        this(dataSource,ids,java.util.Set.of());
+    }
+
+    /** An explicit handler set prevents a partial worker from consuming unrelated tasks. */
+    public JdbcAsyncTaskRepository(DataSource dataSource, SnowflakeIdGenerator ids, java.util.Set<String> taskTypes) {
+        this.taskTypes=java.util.Set.copyOf(taskTypes);
+
         this.template = TaskMybatis.template(dataSource);
         this.ids = Objects.requireNonNull(ids, "PLAT-002 ID provider is required");
         transaction = new TransactionTemplate(new DataSourceTransactionManager(dataSource));
@@ -52,7 +60,7 @@ public final class JdbcAsyncTaskRepository {
         long attemptId = ids.nextId(); // Do not hold claim locks while waiting for an ID.
         if (attemptId <= 0) throw new IllegalStateException("Invalid ID from provider");
         return inTransaction(() -> {
-            AsyncTaskRowEntity candidate = tasks().selectClaimCandidate();
+            AsyncTaskRowEntity candidate = tasks().selectClaimCandidate(taskTypes);
             if (candidate == null) return Optional.empty();
             int attemptNo = Math.addExact(tasks().selectMaxAttemptNo(candidate.getId()), 1);
             // An abandoned attempt is an interrupted delivery, not a business failure.
