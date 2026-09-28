@@ -29,6 +29,8 @@ public final class PaymentNotificationService {
     public ReceiptResult receive(Map<String,String> headers,byte[] body){
         if(TransactionSynchronizationManager.isActualTransactionActive())throw unavailable();
         if(body==null||body.length==0||body.length>65_536||headers==null)throw invalid();
+        body=body.clone();
+        headers=Map.copyOf(headers);
         try{
             // Unverified data is used only as a lookup hint, never as an amount, actor or state.
             JsonNode raw=JSON.readTree(body);if(raw==null||!raw.isObject()||!raw.path("out_trade_no").isTextual())throw invalid();

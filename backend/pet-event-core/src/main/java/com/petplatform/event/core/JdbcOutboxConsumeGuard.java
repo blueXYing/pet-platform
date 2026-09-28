@@ -18,9 +18,11 @@ import org.springframework.transaction.support.TransactionSynchronizationManager
  */
 public final class JdbcOutboxConsumeGuard {
     private final SqlSessionTemplate template;
+    private final DataSource source;
     private final SnowflakeIdGenerator ids;
 
     public JdbcOutboxConsumeGuard(DataSource dataSource, SnowflakeIdGenerator ids) {
+        this.source = Objects.requireNonNull(dataSource);
         this.template = EventMybatis.template(dataSource);
         this.ids = Objects.requireNonNull(ids, "PLAT-002 ID provider is required");
     }
@@ -34,6 +36,11 @@ public final class JdbcOutboxConsumeGuard {
         Objects.requireNonNull(event, "event is required");
         if (!TransactionSynchronizationManager.isActualTransactionActive()) {
             throw new IllegalStateException("Consume claim must join the consumer's transaction");
+        }
+        Object resource = TransactionSynchronizationManager.getResource(source);
+        if (!(resource instanceof org.springframework.jdbc.datasource.ConnectionHolder holder)
+                || !holder.isSynchronizedWithTransaction()) {
+            throw new IllegalStateException("Outbox operation requires its own DataSource in the caller transaction");
         }
         long claimId = ids.nextId();
         if (claimId <= 0) throw new IllegalStateException("Invalid ID from provider");
