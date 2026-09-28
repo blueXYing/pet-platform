@@ -579,9 +579,9 @@ class PaymentFoundationAcceptanceTest {
     assertEquals(code, failure.code());
   }
 
-  private record SignedNotice(Map<String, String> headers, byte[] body) {}
+  record SignedNotice(Map<String, String> headers, byte[] body) {}
 
-  private static final class Fixture implements AutoCloseable {
+  static final class Fixture implements AutoCloseable {
     final BookingCreateAcceptanceTest.Database db;
     final ScheduleCapacityGuardApiImpl guard;
     final PaymentReceiptVerifier verifier;

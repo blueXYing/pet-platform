@@ -125,6 +125,16 @@ class LakalaProtocolTest {
                 .path("sub_appid").asText());
         assertEquals("sub-open-id", body.path("req_data").path("acc_busi_fields")
                 .path("user_id").asText());
+        var bounded = LakalaProtocol.preparePreorder(new LakalaProtocol.PreorderInput(
+                "OP123", at, "123456", "TERM1", "2100001", new BigDecimal("1.23"),
+                "宠物服务", "wx-sub-app", "sub-open-id", "127.0.0.1",
+                "https://example.test/notify", 9));
+        assertEquals("9", JSON.readTree(bounded.rawBody()).path("req_data")
+                .path("timeout_express").asText());
+        assertFalse(new LakalaProtocol.PreorderInput("OP123", at, "123456", "TERM1",
+                "2100001", new BigDecimal("1.23"), "宠物服务", "wx-sub-app",
+                "sub-open-id", "127.0.0.1", "https://example.test/notify")
+                .toString().contains("sub-open-id"));
 
         var query = LakalaProtocol.prepareQuery(new LakalaProtocol.QueryInput("OP123", at,
                 "123456", "TERM1", "2100001", LocalDate.of(2026, 9, 28)));
@@ -177,6 +187,30 @@ class LakalaProtocolTest {
         assertThrows(ProtocolException.class, () -> LakalaProtocol.verifyResponse(
                 responseHeaders(close), (new String(close, StandardCharsets.UTF_8) + " ")
                         .getBytes(StandardCharsets.UTF_8), "app-1", "serial-1", keys.getPublic()));
+    }
+
+    @Test
+    void preorderParametersAreBoundToRequestedSubAppAndPrepayId() throws Exception {
+        String fields = "\"app_id\":\"wx-sub-app\",\"prepay_id\":\"wx-prepay\","
+                + "\"pay_sign\":\"" + "S".repeat(344) + "\","
+                + "\"time_stamp\":\"1727499000\",\"nonce_str\":\"AbCd12345678\","
+                + "\"package\":\"prepay_id=wx-prepay\",\"sign_type\":\"RSA\"";
+        String json = "{\"code\":\"BBS00000\",\"resp_data\":{"
+                + "\"merchant_no\":\"123456\",\"out_trade_no\":\"2100001\","
+                + "\"trade_no\":\"T01\",\"acc_resp_fields\":{" + fields + "}}}";
+        byte[] body = json.getBytes(StandardCharsets.UTF_8);
+        var result = LakalaProtocol.verifyPreorderResponse(responseHeaders(body), body,
+                "app-1", "serial-1", keys.getPublic(), EXPECTED, "wx-sub-app");
+        assertEquals(344, result.paySign().length());
+        assertFalse(result.toString().contains(result.paySign()));
+        assertThrows(ProtocolException.class, () -> LakalaProtocol.verifyPreorderResponse(
+                responseHeaders(body), body, "app-1", "serial-1", keys.getPublic(),
+                EXPECTED, "another-app"));
+        byte[] badPackage = json.replace("prepay_id=wx-prepay", "prepay_id=other")
+                .getBytes(StandardCharsets.UTF_8);
+        assertThrows(ProtocolException.class, () -> LakalaProtocol.verifyPreorderResponse(
+                responseHeaders(badPackage), badPackage, "app-1", "serial-1",
+                keys.getPublic(), EXPECTED, "wx-sub-app"));
     }
 
     private static byte[] notice(String state, String payer, String tradeTime) {

@@ -64,6 +64,7 @@ public final class PaymentPreparationApiImpl implements PaymentPreparationApi {
                 if(binding==null || !valid(binding.merchantNo(),32) || !valid(binding.termNo(),32) || !valid(binding.subAppId(),64))throw unavailable();
                 long paymentId=nextId(),paymentNo=nextId();
                 store.jdbc.update("INSERT INTO payment_order(id,payment_no,order_id,amount,status,channel,expire_at,created_at,updated_at,store_id,merchant_id,user_id,merchant_no,term_no,sub_appid,currency,dispatch_state) VALUES(?,?,?,?,'INIT','LAKALA_WECHAT',?,UTC_TIMESTAMP(3),UTC_TIMESTAMP(3),?,?,?,?,?,?,'CNY','PREPARED')",paymentId,paymentNo,id(c.orderId()),order.payAmount(),PaymentFoundationStore.utc(order.paymentExpireAt()),id(storeId),id(order.merchantId()),id(order.userId()),binding.merchantNo(),binding.termNo(),binding.subAppId());
+                store.jdbc.update("INSERT INTO payment_dispatch(payment_id,state,created_at,updated_at) VALUES(?,'PREPARED',UTC_TIMESTAMP(3),UTC_TIMESTAMP(3))",paymentId);
                 store.jdbc.update("UPDATE payment_intent_request SET payment_id=? WHERE request_key=?",paymentId,key);
                 return result(store.byId(paymentId,true),false);
 
