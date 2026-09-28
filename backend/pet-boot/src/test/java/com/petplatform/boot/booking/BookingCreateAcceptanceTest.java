@@ -805,7 +805,8 @@ class BookingCreateAcceptanceTest {
                 "33-Service-Write-Schema-v0.1.sql",
                 "37-Reservation-Protection-Foundation-Schema-v0.1.sql",
                 "38-Booking-Create-Schema-v0.1.sql",
-                "39-Booking-Expiry-Schema-v0.1.sql");
+                "39-Booking-Expiry-Schema-v0.1.sql",
+                "40-Payment-Foundation-Schema-v0.1.sql");
         private final String name = "qa_booking_" + UUID.randomUUID().toString().replace("-", "");
         private final JdbcTemplate admin;
         final DataSource source;

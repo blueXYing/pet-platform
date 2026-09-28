@@ -17,8 +17,15 @@ import com.petplatform.order.api.dto.OrderCreationTypes.CreateOrderCommand;
 import com.petplatform.order.api.dto.OrderExpiryTypes.ExpireOrderCommand;
 import com.petplatform.order.api.dto.OrderExpiryTypes.ExpireOrderResult;
 import com.petplatform.order.api.dto.OrderExpiryTypes.ReconcileExpiryTasksCommand;
+import com.petplatform.order.api.dto.OrderPaymentResultTypes.ConsumePaymentResult;
 import com.petplatform.order.biz.apiimpl.OrderCreationApiImpl;
 import com.petplatform.order.biz.apiimpl.OrderExpiryApiImpl;
+import com.petplatform.order.biz.apiimpl.OrderPaymentResultApiImpl;
+import com.petplatform.event.api.DispatchedEvent;
+import com.petplatform.event.core.TransactionalOutboxPublisher;
+import com.petplatform.payment.api.dto.PaymentSuccessFact;
+import com.petplatform.schedule.api.command.ReservationConfirmApi;
+import com.petplatform.schedule.api.dto.ReservationConfirmTypes.ConfirmReservationCommand;
 import com.petplatform.order.biz.application.OrderCreationInputProtection;
 import com.petplatform.schedule.api.command.ReservationHoldApi;
 import com.petplatform.schedule.api.command.ReservationExpiryApi;
@@ -40,6 +47,8 @@ import java.time.Clock;
 import java.time.Instant;
 import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
+import java.math.BigDecimal;
+import java.util.Map;
 import java.util.List;
 import java.util.Set;
 import java.util.UUID;
@@ -62,6 +71,128 @@ import org.springframework.jdbc.datasource.init.ScriptUtils;
 class OrderCreationMySqlTest {
     private static final OffsetDateTime START = OffsetDateTime.parse("2030-01-01T09:00:00Z");
     private static final Clock CLOCK = Clock.fixed(Instant.parse("2029-12-31T00:00:00Z"), ZoneOffset.UTC);
+    private static final OffsetDateTime PAID_AT = OffsetDateTime.parse("2029-12-31T00:05:00Z");
+
+    @Test
+    void paymentEventAtomicallyMarksOrderAndHoldPaidAndRepeatsWithoutNewOutbox() throws Exception {
+        try (Database db = new Database()) {
+            var created = db.api().create(db.inStore("paid-" + UUID.randomUUID()));
+            var consumer = db.paymentResultApi(created.orderId());
+            consumer.consume(db.paymentEvent(created.orderId()));
+            assertEquals("PENDING_CONFIRM", db.jdbc.queryForObject(
+                    "SELECT order_stage FROM pet_order", String.class));
+            assertEquals("PAID", db.jdbc.queryForObject(
+                    "SELECT payment_status FROM pet_order", String.class));
+            assertEquals("CONFIRMED", db.jdbc.queryForObject(
+                    "SELECT status FROM schedule_reservation", String.class));
+            assertEquals(PAID_AT.plusMinutes(30).toInstant(), db.utcInstant(
+                    "SELECT confirm_deadline FROM pet_order"));
+            assertEquals("NORMAL", db.jdbc.queryForObject(
+                    "SELECT result_type FROM order_payment_result", String.class));
+            assertEquals("OrderPaidEvent.v1", db.jdbc.queryForObject(
+                    "SELECT event_type FROM integration_event_outbox", String.class));
+            assertEquals(1, db.count("integration_event_consume_log"));
+            consumer.consume(db.paymentEvent(created.orderId()));
+            assertEquals(1, db.count("order_payment_result"));
+            assertEquals(1, db.count("integration_event_outbox"));
+            assertEquals(1, db.count("integration_event_consume_log"));
+        }
+    }
+
+    @Test
+    void failedReservationConfirmRollsBackPaymentResultAndConsumeClaim() throws Exception {
+        try (Database db = new Database()) {
+            var created = db.api().create(db.inStore("paid-fail-" + UUID.randomUUID()));
+            db.holdConfirmFails = true;
+            var consumer = db.paymentResultApi(created.orderId());
+            assertEquals(CommonApiCodes.DEPENDENCY_UNAVAILABLE,
+                    assertThrows(ApiException.class, () -> consumer.consume(db.paymentEvent(created.orderId())))
+                            .code());
+            assertEquals("PENDING_PAYMENT", db.jdbc.queryForObject(
+                    "SELECT order_stage FROM pet_order", String.class));
+            assertEquals("TEMP_LOCKED", db.jdbc.queryForObject(
+                    "SELECT status FROM schedule_reservation", String.class));
+            assertEquals(0, db.count("order_payment_result"));
+            assertEquals(0, db.count("integration_event_outbox"));
+            assertEquals(0, db.count("integration_event_consume_log"));
+        }
+    }
+
+    @Test
+    void mismatchedSourceEventCannotAuthorizePaymentTransition() throws Exception {
+        try (Database db = new Database()) {
+            var created = db.api().create(db.inStore("paid-mismatch-" + UUID.randomUUID()));
+            var legitimate = db.paymentEvent(created.orderId());
+            var forged = new DispatchedEvent("9002", legitimate.eventType(),
+                    legitimate.eventVersion(), legitimate.occurredAt(),
+                    legitimate.aggregateType(), legitimate.aggregateId(),
+                    legitimate.traceId(), legitimate.payloadJson());
+            assertEquals(CommonApiCodes.DEPENDENCY_UNAVAILABLE,
+                    assertThrows(ApiException.class,
+                            () -> db.paymentResultApi(created.orderId()).consume(forged)).code());
+            assertEquals("PENDING_PAYMENT", db.jdbc.queryForObject(
+                    "SELECT order_stage FROM pet_order", String.class));
+            assertEquals(0, db.count("order_payment_result"));
+            assertEquals(0, db.count("integration_event_consume_log"));
+        }
+    }
+
+    @Test
+    void duplicateJsonKeysAndTrailingDocumentCannotAuthorizePaymentTransition() throws Exception {
+        try (Database db = new Database()) {
+            var created = db.api().create(db.inStore("paid-json-" + UUID.randomUUID()));
+            var legitimate = db.paymentEvent(created.orderId());
+            String duplicate = legitimate.payloadJson().replaceFirst("\\\"orderId\\\":\\\"",
+                    "\"orderId\":\"999999\",\"orderId\":\"");
+            var duplicateEvent = new DispatchedEvent(legitimate.eventId(),
+                    legitimate.eventType(), legitimate.eventVersion(), legitimate.occurredAt(),
+                    legitimate.aggregateType(), legitimate.aggregateId(), legitimate.traceId(), duplicate);
+            var trailingEvent = new DispatchedEvent(legitimate.eventId(),
+                    legitimate.eventType(), legitimate.eventVersion(), legitimate.occurredAt(),
+                    legitimate.aggregateType(), legitimate.aggregateId(), legitimate.traceId(),
+                    legitimate.payloadJson() + " {} ");
+            var lenient = new com.fasterxml.jackson.databind.ObjectMapper();
+            assertEquals(created.orderId(), lenient.readTree(duplicate).path("orderId").asText());
+            assertEquals(created.orderId(), lenient.readTree(trailingEvent.payloadJson())
+                    .path("orderId").asText());
+            var consumer = db.paymentResultApi(created.orderId());
+            assertEquals(CommonApiCodes.DEPENDENCY_UNAVAILABLE,
+                    assertThrows(ApiException.class, () -> consumer.consume(duplicateEvent)).code());
+            assertEquals(CommonApiCodes.DEPENDENCY_UNAVAILABLE,
+                    assertThrows(ApiException.class, () -> consumer.consume(trailingEvent)).code());
+            assertEquals("PENDING_PAYMENT", db.jdbc.queryForObject(
+                    "SELECT order_stage FROM pet_order", String.class));
+            assertEquals(0, db.count("order_payment_result"));
+            assertEquals(0, db.count("integration_event_consume_log"));
+        }
+    }
+
+    @Test
+    void latePaidEventKeepsCanceledOrderAndExpiredClaimAndEmitsOnlyLateEvent() throws Exception {
+        try (Database db = new Database()) {
+            var created = db.api().create(db.inStore("late-" + UUID.randomUUID()));
+            var expiry = db.expiryCommand(created.orderId(), db.makeDue());
+            assertEquals(ExpireOrderResult.CLOSED, db.expiryApi().expire(expiry));
+            var consumer = db.paymentResultApi(created.orderId());
+            consumer.consume(db.paymentEvent(created.orderId()));
+            assertEquals("CANCELED", db.jdbc.queryForObject(
+                    "SELECT order_stage FROM pet_order", String.class));
+            assertEquals("PAID", db.jdbc.queryForObject(
+                    "SELECT payment_status FROM pet_order", String.class));
+            assertEquals("EXPIRED", db.jdbc.queryForObject(
+                    "SELECT status FROM schedule_reservation", String.class));
+            assertEquals("LATE", db.jdbc.queryForObject(
+                    "SELECT result_type FROM order_payment_result", String.class));
+            assertEquals("LatePaymentSucceededAfterTimeoutEvent.v1", db.jdbc.queryForObject(
+                    "SELECT event_type FROM integration_event_outbox", String.class));
+            assertEquals(0, db.jdbc.queryForObject("SELECT COUNT(*) FROM integration_event_outbox "
+                    + "WHERE event_type='OrderPaidEvent.v1'", Integer.class));
+            assertEquals(ExpireOrderResult.NOOP, db.expiryApi().expire(expiry));
+            consumer.consume(db.paymentEvent(created.orderId()));
+            assertEquals(1, db.count("order_payment_result"));
+            assertEquals(1, db.count("integration_event_outbox"));
+        }
+    }
 
     @Test
     void expiryClosesOrderAndHoldInOneTransactionAndReplayKeepsClaims() throws Exception {
@@ -336,6 +467,7 @@ class OrderCreationMySqlTest {
         volatile boolean paymentExposed = false;
         volatile boolean couponExposed = false;
         volatile boolean holdExpiryFails = false;
+        volatile boolean holdConfirmFails = false;
         volatile String serviceVersion = "0";
 
         Database() throws Exception {
@@ -362,7 +494,8 @@ class OrderCreationMySqlTest {
                             "13-Async-Infra-Schema-v0.1.sql",
                             "37-Reservation-Protection-Foundation-Schema-v0.1.sql",
                             "38-Booking-Create-Schema-v0.1.sql",
-                            "39-Booking-Expiry-Schema-v0.1.sql")) {
+                            "39-Booking-Expiry-Schema-v0.1.sql",
+                            "40-Payment-Foundation-Schema-v0.1.sql")) {
                         ScriptUtils.executeSqlScript(connection, new EncodedResource(
                                 new FileSystemResource(root.resolve("docs/03-database/" + file)),
                                 StandardCharsets.UTF_8));
@@ -430,6 +563,66 @@ class OrderCreationMySqlTest {
                         if (couponExposed) throw new ApiException(
                                 CommonApiCodes.DEPENDENCY_UNAVAILABLE, "coupon uncertain");
                     });
+        }
+
+        DispatchedEvent paymentEvent(String orderId) {
+            String payload;
+            try {
+                payload = new com.fasterxml.jackson.databind.ObjectMapper().writeValueAsString(Map.of(
+                        "paymentOrderId", "7001", "orderId", orderId,
+                        "channelTradeNo", "trade-7001", "paidAmount", new BigDecimal("128.00"),
+                        "paidAt", PAID_AT.toString()));
+            } catch (Exception invalid) { throw new IllegalStateException(invalid); }
+            return new DispatchedEvent("9001", "PaymentSucceededEvent.v1", 1, PAID_AT,
+                    "PAYMENT", 7001L, "test", payload);
+        }
+
+        OrderPaymentResultApiImpl paymentResultApi(String orderId) {
+            JdbcTemplate transactionalJdbc = new JdbcTemplate(source);
+            ScheduleCapacityGuardApi guard = new TestGuard(transactionalJdbc);
+            ReservationConfirmApi confirm = new ReservationConfirmApi() {
+                @Override public void confirm(ConfirmReservationCommand command) {
+                    if (holdConfirmFails) throw new ApiException(
+                            CommonApiCodes.DEPENDENCY_UNAVAILABLE, "forced SCH confirm failure");
+                    int changed = transactionalJdbc.update("""
+                            UPDATE schedule_reservation SET status='CONFIRMED',version=version+1,
+                                   updated_at=UTC_TIMESTAMP(3)
+                            WHERE id=? AND order_id=? AND store_id=? AND status='TEMP_LOCKED'
+                              AND version=? AND lock_expire_at=?
+                            """, Long.parseLong(command.reservationId()),
+                            Long.parseLong(command.orderId()), Long.parseLong(command.storeId()),
+                            command.expectedVersion(), stamp(command.expectedExpireAt()));
+                    if (changed != 1) throw new ApiException(
+                            CommonApiCodes.DEPENDENCY_UNAVAILABLE, "SCH confirm CAS failed");
+                }
+                @Override public void assertConfirmed(String orderId, String reservationId,
+                        String storeId, QueryContext context) {
+                    if (!"CONFIRMED".equals(transactionalJdbc.queryForObject("""
+                            SELECT status FROM schedule_reservation WHERE id=? AND order_id=?
+                            """, String.class, Long.parseLong(reservationId), Long.parseLong(orderId))))
+                        throw new ApiException(CommonApiCodes.DEPENDENCY_UNAVAILABLE,
+                                "SCH confirmation is inconsistent");
+                }
+            };
+            ReservationExpiryApi expired = new ReservationExpiryApi() {
+                @Override public void expire(ExpireHoldCommand command) {
+                    throw new UnsupportedOperationException();
+                }
+                @Override public void assertExpired(String orderId, String reservationId,
+                        String storeId, QueryContext context) {
+                    if (!"EXPIRED".equals(transactionalJdbc.queryForObject("""
+                            SELECT status FROM schedule_reservation WHERE id=? AND order_id=?
+                            """, String.class, Long.parseLong(reservationId), Long.parseLong(orderId))))
+                        throw new ApiException(CommonApiCodes.DEPENDENCY_UNAVAILABLE,
+                                "SCH expiry is inconsistent");
+                }
+            };
+            return new OrderPaymentResultApiImpl(source, ids::incrementAndGet, guard,
+                    (paymentId, targetOrderId, storeId, context) -> new PaymentSuccessFact(
+                            "7001", "7002", orderId, "300", "200", "100", "trade-7001",
+                            new BigDecimal("128.00"), PAID_AT, "9001", "CNY"),
+                    confirm, expired, new TransactionalOutboxPublisher(source,
+                            ids::incrementAndGet, new com.fasterxml.jackson.databind.ObjectMapper()));
         }
 
         OrderCreationApiImpl api(DataSource transactionalSource) {

@@ -23,6 +23,10 @@
         </dependency>
         <dependency>
             <groupId>com.petplatform</groupId>
+            <artifactId>pet-event-core</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>com.petplatform</groupId>
             <artifactId>pet-order-api</artifactId>
         </dependency>
         <dependency>

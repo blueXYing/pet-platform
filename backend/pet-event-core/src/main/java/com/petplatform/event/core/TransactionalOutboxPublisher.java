@@ -18,10 +18,12 @@ import org.springframework.transaction.support.TransactionSynchronizationManager
  */
 public final class TransactionalOutboxPublisher implements IntegrationEventPublisher {
     private final SqlSessionTemplate template;
+    private final DataSource source;
     private final SnowflakeIdGenerator ids;
     private final ObjectMapper payloadCodec;
 
     public TransactionalOutboxPublisher(DataSource dataSource, SnowflakeIdGenerator ids, ObjectMapper payloadCodec) {
+        this.source = Objects.requireNonNull(dataSource);
         this.template = EventMybatis.template(dataSource);
         this.ids = Objects.requireNonNull(ids, "PLAT-002 ID provider is required");
         this.payloadCodec = Objects.requireNonNull(payloadCodec);
@@ -32,6 +34,11 @@ public final class TransactionalOutboxPublisher implements IntegrationEventPubli
         Objects.requireNonNull(event, "event is required");
         if (!TransactionSynchronizationManager.isActualTransactionActive()) {
             throw new IllegalStateException("Outbox append must join the caller's business transaction");
+        }
+        Object resource = TransactionSynchronizationManager.getResource(source);
+        if (!(resource instanceof org.springframework.jdbc.datasource.ConnectionHolder holder)
+                || !holder.isSynchronizedWithTransaction()) {
+            throw new IllegalStateException("Outbox operation requires its own DataSource in the caller transaction");
         }
         String eventType = text(event.eventType(), 128, "eventType");
         String aggregateType = text(event.aggregateType(), 64, "aggregateType");
