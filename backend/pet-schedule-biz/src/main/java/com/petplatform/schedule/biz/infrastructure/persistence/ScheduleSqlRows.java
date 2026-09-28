@@ -63,12 +63,4 @@ public final class ScheduleSqlRows {
         return value == null ? null : value.atOffset(ZoneOffset.UTC);
     }
 
-    /** Matches the existing ResultSet#getTimestamp conversion used by capacity proof. */
-    public static OffsetDateTime timestampAt(Map<String, Object> row, String column) {
-        Object value = row.get(column);
-        if (value == null) return null;
-        Timestamp stamp = value instanceof Timestamp timestamp
-                ? timestamp : Timestamp.valueOf(dateTime(row, column));
-        return stamp.toInstant().atOffset(ZoneOffset.UTC);
-    }
 }

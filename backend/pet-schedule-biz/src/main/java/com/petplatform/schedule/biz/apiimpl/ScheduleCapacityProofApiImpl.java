@@ -269,8 +269,8 @@ public final class ScheduleCapacityProofApiImpl implements ScheduleCapacityProof
     private List<AvailabilityRow> availability(String storeId) {
         return mapper.lockedAvailability(apiId(storeId)).stream()
                 .map(row -> new AvailabilityRow(ScheduleSqlRows.id(row, "store_id"),
-                        ScheduleSqlRows.id(row, "staff_id"), ScheduleSqlRows.timestampAt(row, "start_at"),
-                        ScheduleSqlRows.timestampAt(row, "end_at"), ScheduleSqlRows.text(row, "status"),
+                        ScheduleSqlRows.id(row, "staff_id"), ScheduleSqlRows.at(row, "start_at"),
+                        ScheduleSqlRows.at(row, "end_at"), ScheduleSqlRows.text(row, "status"),
                         ScheduleSqlRows.version(row, "version"))).toList();
     }
 
