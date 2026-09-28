@@ -125,6 +125,16 @@ class LakalaProtocolTest {
                 .path("sub_appid").asText());
         assertEquals("sub-open-id", body.path("req_data").path("acc_busi_fields")
                 .path("user_id").asText());
+        var bounded = LakalaProtocol.preparePreorder(new LakalaProtocol.PreorderInput(
+                "OP123", at, "123456", "TERM1", "2100001", new BigDecimal("1.23"),
+                "宠物服务", "wx-sub-app", "sub-open-id", "127.0.0.1",
+                "https://example.test/notify", 9));
+        assertEquals("9", JSON.readTree(bounded.rawBody()).path("req_data")
+                .path("timeout_express").asText());
+        assertFalse(new LakalaProtocol.PreorderInput("OP123", at, "123456", "TERM1",
+                "2100001", new BigDecimal("1.23"), "宠物服务", "wx-sub-app",
+                "sub-open-id", "127.0.0.1", "https://example.test/notify")
+                .toString().contains("sub-open-id"));
 
         var query = LakalaProtocol.prepareQuery(new LakalaProtocol.QueryInput("OP123", at,
                 "123456", "TERM1", "2100001", LocalDate.of(2026, 9, 28)));
