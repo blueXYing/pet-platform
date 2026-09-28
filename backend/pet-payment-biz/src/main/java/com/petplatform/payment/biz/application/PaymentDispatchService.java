@@ -118,6 +118,10 @@ public final class PaymentDispatchService implements PaymentInitiationApi, Payme
         String storeId = orders.locateStore(command.orderId(), actor);
         Start start = tx.execute(status -> start(command, prepared.paymentId(), orderId, storeId, actor));
         if (start instanceof Replay replay) return replay.payment();
+        if (start instanceof Recovery recovery) {
+            queryForRecovery(recovery);
+            throw unavailable();
+        }
         Plan plan = (Plan) start;
         PaymentChannel.VerifiedPreorder verified;
         try {
@@ -130,9 +134,13 @@ public final class PaymentDispatchService implements PaymentInitiationApi, Payme
             markUnknown(plan.paymentId(), storeId, actor);
             throw unavailable();
         }
-        InitiatedPayment result = tx.execute(status -> finish(plan, verified, storeId, actor));
-        if (result == null) throw unavailable();
-        return result;
+        // Commit the verified channel completion independently of current USER eligibility.
+        // A freeze or deadline crossing must not erase proof that the request reached Lakala.
+        tx.execute(status -> { recordPreorder(plan, verified, storeId); return null; });
+        Start current = tx.execute(status -> start(command, prepared.paymentId(), orderId,
+                storeId, actor));
+        if (current instanceof Replay replay) return replay.payment();
+        throw unavailable();
     }
 
     private Start start(PreparePaymentCommand command, String paymentId, long orderId,
@@ -141,10 +149,12 @@ public final class PaymentDispatchService implements PaymentInitiationApi, Payme
         guard.acquire(List.of(storeId), actor);
         guard.requireHeld(storeId, source);
         OrderPaymentFact order = orders.readForPayment(command.orderId(), storeId, actor);
-        orders.requirePayableForPreparation(command.orderId(), storeId, actor);
         PaymentFoundationStore.Row payment = payments.byId(id(paymentId), true);
         Dispatch dispatch = dispatch(id(paymentId));
         requireBinding(payment, dispatch, order, orderId, storeId);
+        if (!("INIT".equals(payment.status()) || "PAYING".equals(payment.status()))
+                || payment.successEventId() != null || payment.paidAt() != null
+                || payment.paidAmount() != null) throw unavailable();
         if (dispatch.fencedAt() != null || "RECONCILIATION_REQUIRED".equals(payment.dispatchState()))
             throw unavailable();
         PaymentIdentity identity = identities.requireCurrentPaymentIdentity(order.userId(),
@@ -153,6 +163,15 @@ public final class PaymentDispatchService implements PaymentInitiationApi, Payme
         if (dispatch.identityHmac() != null && !constantEqual(dispatch.identityHmac(), identityHmac))
             throw unavailable();
         OffsetDateTime now = payments.now();
+        if ("MAY_HAVE_SENT".equals(dispatch.state()) || "UNKNOWN".equals(dispatch.state())
+                || ("PARAMETERS_READY".equals(dispatch.state())
+                    && (dispatch.parameterValidUntil() == null
+                        || !dispatch.parameterValidUntil().isAfter(PaymentFoundationStore.utc(now))))) {
+            if (dispatch.tradeRequestDate() == null) throw unavailable();
+            return new Recovery(payment.id(), payment.no(), payment.merchantNo(),
+                    payment.termNo(), payment.amount(), dispatch.tradeRequestDate());
+        }
+        orders.requirePayableForPreparation(command.orderId(), storeId, actor);
         if ("PARAMETERS_READY".equals(dispatch.state())) {
             if (dispatch.parameterValidUntil() == null
                     || !dispatch.parameterValidUntil().isAfter(PaymentFoundationStore.utc(now))
@@ -184,32 +203,43 @@ public final class PaymentDispatchService implements PaymentInitiationApi, Payme
                 requestTime, timeoutMinutes);
     }
 
-    private InitiatedPayment finish(Plan plan, PaymentChannel.VerifiedPreorder verified,
-            String storeId, QueryContext actor) {
+    private void queryForRecovery(Recovery p) {
+        try {
+            var input = new LakalaProtocol.QueryInput(settings.outOrgCode(), channelNow(),
+                    p.merchantNo(), p.termNo(), Long.toString(p.paymentNo()), p.tradeRequestDate());
+            var expected = new LakalaProtocol.ExpectedPayment(p.merchantNo(),
+                    Long.toString(p.paymentNo()), p.amount().movePointRight(2).longValueExact());
+            PaymentChannel.VerifiedQuery result = channel.lookup(input, expected, nonce());
+            notifications.receiveQuery(Long.toString(p.paymentId()), result);
+        } catch (RuntimeException uncertain) {
+            // The original paymentNo remains the only identifier; no preorder retry is allowed.
+        }
+    }
+
+    private void recordPreorder(Plan plan, PaymentChannel.VerifiedPreorder verified,
+            String storeId) {
         payments.session();
-        guard.acquire(List.of(storeId), actor);
+        QueryContext system = new QueryContext(null, OperatorType.SYSTEM, null);
+        guard.acquire(List.of(storeId), system);
         guard.requireHeld(storeId, source);
         PaymentFoundationStore.Row payment = payments.byId(id(plan.paymentId()), true);
         Dispatch dispatch = dispatch(id(plan.paymentId()));
         if (payment == null || dispatch == null) throw unavailable();
         validatePreorder(verified, payment);
-        if (dispatch.fencedAt() != null) {
+        if (dispatch.fencedAt() != null || "PAID".equals(payment.status())
+                || payment.successEventId() != null
+                || !("INIT".equals(payment.status()) || "PAYING".equals(payment.status()))) {
             // Expiry fenced a request already in flight. Preserve its signed completion proof,
             // but never return parameters or reopen dispatch after the fence.
             if (dispatch.mayHaveSentAt() != null && dispatch.preorderResponseSha256() == null)
                 jdbc.update("UPDATE payment_dispatch SET preorder_response_sha256=?,"
                         + "version=version+1,updated_at=UTC_TIMESTAMP(3) WHERE payment_id=?",
                         verified.responseSha256(), payment.id());
-            return null;
+            return;
         }
         if (!"MAY_HAVE_SENT".equals(dispatch.state())
                 || !("INIT".equals(payment.status()) || "PAYING".equals(payment.status())))
             throw unavailable();
-        var order = orders.readForPayment(Long.toString(payment.orderId()), storeId, actor);
-        orders.requirePayableForPreparation(Long.toString(payment.orderId()), storeId, actor);
-        var identity = identities.requireCurrentPaymentIdentity(order.userId(), payment.subAppId(),
-                storeId, actor);
-        if (!constantEqual(dispatch.identityHmac(), identityHmac(identity))) throw unavailable();
         OffsetDateTime now = payments.now();
         LocalDateTime validUntil = dispatch.mayHaveSentAt().plusMinutes(dispatch.timeoutMinutes());
         if (validUntil.isAfter(payment.expires())) validUntil = payment.expires();
@@ -218,7 +248,7 @@ public final class PaymentDispatchService implements PaymentInitiationApi, Payme
                     + "preorder_response_sha256=?,parameter_valid_until=?,"
                     + "version=version+1,updated_at=UTC_TIMESTAMP(3) WHERE payment_id=?",
                     verified.responseSha256(), validUntil, payment.id());
-            return null;
+            return;
         }
         WechatPayParameters parameters = parameters(verified.result());
         byte[] iv = new byte[12]; RANDOM.nextBytes(iv);
@@ -228,8 +258,7 @@ public final class PaymentDispatchService implements PaymentInitiationApi, Payme
                 + "parameter_valid_until=?,version=version+1,updated_at=UTC_TIMESTAMP(3) "
                 + "WHERE payment_id=?", verified.responseSha256(), ciphertext, iv,
                 validUntil, payment.id());
-        return new InitiatedPayment(plan.paymentId(), plan.paymentNo(), payment.channel(),
-                parameters, validUntil.atOffset(ZoneOffset.UTC));
+        return;
     }
 
     private void markUnknown(String paymentId, String storeId, QueryContext actor) {
@@ -261,7 +290,8 @@ public final class PaymentDispatchService implements PaymentInitiationApi, Payme
         if (start instanceof FencedUnsent) return ExpiryEvidence.FENCED_UNSENT;
         if (start instanceof AlreadyClosed) return ExpiryEvidence.VERIFIED_TERMINAL_CLOSED;
         if (!(start instanceof ExpiryPlan plan)) return ExpiryEvidence.HOLD;
-        if (!queryAndRecord(plan, system)) return ExpiryEvidence.HOLD;
+        PaymentChannel.VerifiedQuery before = queryAndRecord(plan);
+        if (before == null || exceptionalState(before)) return ExpiryEvidence.HOLD;
         if (!plan.closeAlreadySent()) {
             if (!armClose(plan, system)) return ExpiryEvidence.HOLD;
             PaymentChannel.VerifiedClose close;
@@ -269,8 +299,10 @@ public final class PaymentDispatchService implements PaymentInitiationApi, Payme
             catch (RuntimeException uncertain) { return ExpiryEvidence.HOLD; }
             if (!recordClose(plan, close, system)) return ExpiryEvidence.HOLD;
         }
-        if (!queryAndRecord(plan, system)) return ExpiryEvidence.HOLD;
-        return tx.execute(status -> finalizeClose(plan, system));
+        PaymentChannel.VerifiedQuery after = queryAndRecord(plan);
+        if (after == null || after.result().tradeState() != LakalaProtocol.TradeState.CLOSE)
+            return ExpiryEvidence.HOLD;
+        return tx.execute(status -> finalizeClose(plan, system, after.responseSha256()));
     }
 
     private ExpiryStart fenceForExpiry(ReconcilePaymentExpiryCommand command, QueryContext system) {
@@ -278,10 +310,8 @@ public final class PaymentDispatchService implements PaymentInitiationApi, Payme
         guard.acquire(List.of(command.storeId()), system);
         guard.requireHeld(command.storeId(), source);
         OrderPaymentFact order = orders.readForPayment(command.orderId(), command.storeId(), system);
-        if (!order.paymentExpireAt().isEqual(command.expectedDeadline())
-                || !"PENDING_PAYMENT".equals(order.orderStage())
-                || !"INIT".equals(order.paymentStatus())
-                || payments.now().isBefore(command.expectedDeadline())) return new Hold();
+        if (!orders.isPaymentExpiryDue(command.orderId(), command.storeId(),
+                command.expectedDeadline(), system)) return new Hold();
         PaymentFoundationStore.Row payment = payments.byOrder(id(command.orderId()));
         if (payment == null) return new NoPayment();
         Dispatch dispatch = dispatch(payment.id());
@@ -304,16 +334,19 @@ public final class PaymentDispatchService implements PaymentInitiationApi, Payme
                 dispatch.tradeRequestDate(), dispatch.closeMayHaveSentAt() != null);
     }
 
-    private boolean queryAndRecord(ExpiryPlan plan, QueryContext system) {
+    private PaymentChannel.VerifiedQuery queryAndRecord(ExpiryPlan plan) {
         PaymentChannel.VerifiedQuery verified;
         try { verified = channel.lookup(queryInput(plan), expected(plan), nonce()); }
-        catch (RuntimeException uncertain) { return false; }
+        catch (RuntimeException uncertain) { return null; }
         try { notifications.receiveQuery(Long.toString(plan.paymentId()), verified); }
-        catch (RuntimeException uncertain) { return false; }
-        var state = verified.result().tradeState();
-        return state != LakalaProtocol.TradeState.SUCCESS
-                && state != LakalaProtocol.TradeState.REFUND
-                && state != LakalaProtocol.TradeState.PART_REFUND;
+        catch (RuntimeException uncertain) { return null; }
+        return verified;
+    }
+    private static boolean exceptionalState(PaymentChannel.VerifiedQuery query) {
+        var state = query.result().tradeState();
+        return state == LakalaProtocol.TradeState.SUCCESS
+                || state == LakalaProtocol.TradeState.REFUND
+                || state == LakalaProtocol.TradeState.PART_REFUND;
     }
 
     private boolean armClose(ExpiryPlan plan, QueryContext system) {
@@ -363,7 +396,8 @@ public final class PaymentDispatchService implements PaymentInitiationApi, Payme
         }));
     }
 
-    private ExpiryEvidence finalizeClose(ExpiryPlan plan, QueryContext system) {
+    private ExpiryEvidence finalizeClose(ExpiryPlan plan, QueryContext system,
+            String verifiedAfterCloseSha) {
         payments.session();
         guard.acquire(List.of(Long.toString(plan.storeId())), system);
         guard.requireHeld(Long.toString(plan.storeId()), source);
@@ -375,16 +409,16 @@ public final class PaymentDispatchService implements PaymentInitiationApi, Payme
                 || dispatch.closeResponseSha256() == null
                 || "PAID".equals(payment.status()) || payment.successEventId() != null
                 || "RECONCILIATION_REQUIRED".equals(payment.dispatchState())) return ExpiryEvidence.HOLD;
-        List<String[]> latestQuery = jdbc.query("SELECT channel_status,channel_response_sha256 "
+        if (!digest(verifiedAfterCloseSha)) return ExpiryEvidence.HOLD;
+        List<String> matchingQuery = jdbc.query("SELECT channel_response_sha256 "
                 + "FROM payment_channel_receipt WHERE payment_id=? AND receipt_source='QUERY' "
-                + "ORDER BY received_at DESC,id DESC LIMIT 1 FOR UPDATE",
-                (rs,n) -> new String[]{rs.getString(1),rs.getString(2)}, payment.id());
-        if (latestQuery.size() != 1 || !"CLOSE".equals(latestQuery.getFirst()[0])
-                || !digest(latestQuery.getFirst()[1])) return ExpiryEvidence.HOLD;
+                + "AND channel_status='CLOSE' AND channel_response_sha256=? LIMIT 1 FOR UPDATE",
+                (rs,n) -> rs.getString(1), payment.id(), verifiedAfterCloseSha);
+        if (matchingQuery.size() != 1) return ExpiryEvidence.HOLD;
         jdbc.update("UPDATE payment_dispatch SET state='TERMINAL_CLOSED',terminal_query_sha256=?,"
                 + "terminal_confirmed_at=UTC_TIMESTAMP(3),terminal_close_capability=1,"
                 + "version=version+1,updated_at=UTC_TIMESTAMP(3) WHERE payment_id=?",
-                latestQuery.getFirst()[1], payment.id());
+                verifiedAfterCloseSha, payment.id());
         return ExpiryEvidence.VERIFIED_TERMINAL_CLOSED;
     }
 
@@ -550,13 +584,15 @@ public final class PaymentDispatchService implements PaymentInitiationApi, Payme
         return value;
     }
 
-    private sealed interface Start permits Replay, Plan {}
+    private sealed interface Start permits Replay, Plan, Recovery {}
     private record Replay(InitiatedPayment payment) implements Start {}
     private record Plan(String paymentId,String paymentNo,String merchantNo,String termNo,
             String subAppId,BigDecimal amount,String openId,LocalDateTime requestTime,
             int timeoutMinutes) implements Start {
         @Override public String toString() { return "Plan[redacted]"; }
     }
+    private record Recovery(long paymentId,long paymentNo,String merchantNo,String termNo,
+            BigDecimal amount,LocalDate tradeRequestDate) implements Start {}
     private sealed interface ExpiryStart permits NoPayment,FencedUnsent,AlreadyClosed,Hold,ExpiryPlan {}
     private record NoPayment() implements ExpiryStart {}
     private record FencedUnsent() implements ExpiryStart {}
