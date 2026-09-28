@@ -4,6 +4,7 @@ CREATE TABLE payment_refund_dispatch (
     refund_order_id BIGINT NOT NULL PRIMARY KEY,
     refund_no BIGINT NOT NULL,
     payment_id BIGINT NOT NULL,
+    payment_no BIGINT NOT NULL,
     order_id BIGINT NOT NULL,
     store_id BIGINT NOT NULL,
     merchant_no VARCHAR(32) NOT NULL,
@@ -16,6 +17,7 @@ CREATE TABLE payment_refund_dispatch (
     refund_binding_version BIGINT NOT NULL,
     channel_request_no VARCHAR(128) NOT NULL,
     request_sha256 CHAR(64) CHARACTER SET ascii COLLATE ascii_bin NOT NULL,
+    original_request_at DATETIME(0) NOT NULL,
     state VARCHAR(32) NOT NULL COMMENT 'MAY_HAVE_SENT/QUERY_PENDING/VERIFIED_SUCCESS/VERIFIED_TERMINAL_FAILURE/RECONCILIATION_REQUIRED',
     may_have_sent_at DATETIME(3) NOT NULL,
     query_not_before DATETIME(3) NOT NULL,
@@ -28,6 +30,7 @@ CREATE TABLE payment_refund_dispatch (
     UNIQUE KEY uk_payment_refund_no (refund_no),
     UNIQUE KEY uk_payment_refund_payment (payment_id),
     UNIQUE KEY uk_payment_refund_channel_request (channel_request_no),
+    UNIQUE KEY uk_payment_refund_channel_result (merchant_no,channel_refund_no),
     KEY idx_payment_refund_query (state,query_not_before)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
