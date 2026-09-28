@@ -12,13 +12,15 @@ import com.petplatform.schedule.api.command.ReservationConfirmApi;
 import com.petplatform.schedule.api.dto.ReservationConfirmTypes.ConfirmReservationCommand;
 import com.petplatform.schedule.api.protection.ScheduleCapacityGuardApi;
 import com.petplatform.schedule.api.protection.ScheduleProtectionFactsApi;
+import com.petplatform.schedule.biz.infrastructure.persistence.ScheduleMybatis;
+import com.petplatform.schedule.biz.infrastructure.persistence.ScheduleSqlRows;
+import com.petplatform.schedule.biz.infrastructure.persistence.mapper.ScheduleCommandMapper;
 import java.nio.charset.StandardCharsets;
 import java.time.LocalDateTime;
 import java.time.ZoneOffset;
-import java.util.List;
 import java.util.Objects;
+import java.util.Map;
 import javax.sql.DataSource;
-import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.datasource.ConnectionHolder;
 import org.springframework.transaction.support.TransactionSynchronization;
 import org.springframework.transaction.support.TransactionSynchronizationManager;
@@ -27,7 +29,7 @@ import org.springframework.transaction.support.TransactionSynchronizationManager
 public final class ReservationConfirmApiImpl implements ReservationConfirmApi {
     private static final DecimalPublicIdCodec IDS = new DecimalPublicIdCodec();
     private final DataSource source;
-    private final JdbcTemplate jdbc;
+    private final ScheduleCommandMapper mapper;
     private final SnowflakeIdGenerator ids;
     private final ScheduleCapacityGuardApi guard;
     private final ScheduleProtectionFactsApi facts;
@@ -37,7 +39,7 @@ public final class ReservationConfirmApiImpl implements ReservationConfirmApi {
             ScheduleCapacityGuardApi guard, ScheduleProtectionFactsApi facts,
             OrderPaymentFactsApi orders) {
         this.source = Objects.requireNonNull(source);
-        this.jdbc = new JdbcTemplate(source);
+        this.mapper = ScheduleMybatis.template(source).getMapper(ScheduleCommandMapper.class);
         this.ids = Objects.requireNonNull(ids);
         this.guard = Objects.requireNonNull(guard);
         this.facts = Objects.requireNonNull(facts);
@@ -60,28 +62,19 @@ public final class ReservationConfirmApiImpl implements ReservationConfirmApi {
                     command.expectedExpireAt().toInstant(), ZoneOffset.UTC);
             if (!"TEMP_LOCKED".equals(row.status()) || row.version() != command.expectedVersion()
                     || !deadline.equals(row.expireAt())) throw unavailable();
-            LocalDateTime now = jdbc.queryForObject("SELECT UTC_TIMESTAMP(3)", LocalDateTime.class);
+            LocalDateTime now = mapper.utcNow();
             if (now == null) throw unavailable();
-            int changed = jdbc.update("""
-                    UPDATE schedule_reservation SET status='CONFIRMED',version=version+1,
-                                                    updated_at=?
-                    WHERE id=? AND order_id=? AND store_id=? AND status='TEMP_LOCKED'
-                      AND version=? AND lock_expire_at=?
-                    """, now, IDS.fromApi(command.reservationId()),
+            int changed = mapper.confirmReservation(IDS.fromApi(command.reservationId()),
                     IDS.fromApi(command.orderId()), IDS.fromApi(command.storeId()),
-                    command.expectedVersion(), deadline);
+                    command.expectedVersion(), deadline, now);
             if (changed != 1) throw unavailable();
             long auditId = ids.nextId();
             if (auditId <= 0) throw unavailable();
-            if (jdbc.update("""
-                    INSERT INTO schedule_reservation_audit
-                      (id,reservation_id,order_id,actor_user_id,store_id,action,request_id,
-                       trace_id,occurred_at,actor_type)
-                    VALUES (?,?,?,NULL,?,'CONFIRM',?,?,?,'SYSTEM')
-                    """, auditId, IDS.fromApi(command.reservationId()),
-                    IDS.fromApi(command.orderId()), IDS.fromApi(command.storeId()),
-                    command.context().requestId().getBytes(StandardCharsets.UTF_8),
-                    command.context().traceId(), now) != 1) throw unavailable();
+            if (mapper.insertSystemAudit(ScheduleSqlRows.values("id", auditId,
+                    "reservationId", IDS.fromApi(command.reservationId()),
+                    "orderId", IDS.fromApi(command.orderId()), "storeId", IDS.fromApi(command.storeId()),
+                    "action", "CONFIRM", "requestId", command.context().requestId().getBytes(StandardCharsets.UTF_8),
+                    "traceId", command.context().traceId(), "occurredAt", now)) != 1) throw unavailable();
             TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
                 @Override public void beforeCommit(boolean readOnly) {
                     try {
@@ -115,15 +108,14 @@ public final class ReservationConfirmApiImpl implements ReservationConfirmApi {
     }
 
     private Hold read(String orderId, String reservationId, String storeId) {
-        List<Hold> rows = jdbc.query("""
-                SELECT order_id,store_id,status,version,lock_expire_at
-                FROM schedule_reservation WHERE id=? FOR UPDATE
-                """, (rs, index) -> new Hold(rs.getLong(1), rs.getLong(2),
-                rs.getString(3), rs.getLong(4), rs.getObject(5, LocalDateTime.class)),
-                IDS.fromApi(reservationId));
-        if (rows.size() != 1 || rows.getFirst().orderId() != IDS.fromApi(orderId)
-                || rows.getFirst().storeId() != IDS.fromApi(storeId)) throw unavailable();
-        return rows.getFirst();
+        Map<String, Object> row = mapper.lockReservation(IDS.fromApi(reservationId));
+        if (row == null) throw unavailable();
+        Hold hold = new Hold(ScheduleSqlRows.number(row, "order_id"),
+                ScheduleSqlRows.number(row, "store_id"), ScheduleSqlRows.text(row, "status"),
+                ScheduleSqlRows.number(row, "version"), ScheduleSqlRows.dateTime(row, "lock_expire_at"));
+        if (hold.orderId() != IDS.fromApi(orderId)
+                || hold.storeId() != IDS.fromApi(storeId)) throw unavailable();
+        return hold;
     }
 
     private static void validate(ConfirmReservationCommand command) {

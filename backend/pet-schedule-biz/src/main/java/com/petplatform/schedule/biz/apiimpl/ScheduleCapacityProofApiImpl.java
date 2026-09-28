@@ -25,9 +25,9 @@ import com.petplatform.schedule.biz.domain.service.CapacityFeasibilitySolver.Out
 import com.petplatform.schedule.biz.domain.service.CapacityFeasibilitySolver.Reservation;
 import com.petplatform.schedule.biz.domain.service.CapacityFeasibilitySolver.Staff;
 import com.petplatform.schedule.biz.domain.service.CapacityFeasibilitySolver.Window;
-import java.sql.ResultSet;
-import java.sql.SQLException;
-import java.sql.Timestamp;
+import com.petplatform.schedule.biz.infrastructure.persistence.ScheduleMybatis;
+import com.petplatform.schedule.biz.infrastructure.persistence.ScheduleSqlRows;
+import com.petplatform.schedule.biz.infrastructure.persistence.mapper.ScheduleCommandMapper;
 import java.time.Clock;
 import java.time.OffsetDateTime;
 import java.util.ArrayList;
@@ -40,7 +40,6 @@ import java.util.Objects;
 import java.util.Set;
 import java.util.function.LongSupplier;
 import javax.sql.DataSource;
-import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.datasource.ConnectionHolder;
 import org.springframework.transaction.support.TransactionSynchronizationManager;
 
@@ -54,7 +53,7 @@ public final class ScheduleCapacityProofApiImpl implements ScheduleCapacityProof
     private final ScheduleProtectionFactsApi facts;
     private final MerchantCurrentStaffFactsApi merchant;
     private final OrderProtectionFactsApi order;
-    private final JdbcTemplate jdbc;
+    private final ScheduleCommandMapper mapper;
     private final long budgetMillis;
     private final CapacityFeasibilitySolver solver;
 
@@ -77,7 +76,7 @@ public final class ScheduleCapacityProofApiImpl implements ScheduleCapacityProof
         if (budgetMillis <= 0) throw new IllegalArgumentException("positive budget is required");
         this.budgetMillis = budgetMillis;
         this.solver = new CapacityFeasibilitySolver(ticker);
-        this.jdbc = new JdbcTemplate(source);
+        this.mapper = ScheduleMybatis.template(source).getMapper(ScheduleCommandMapper.class);
     }
 
     @Override
@@ -259,23 +258,20 @@ public final class ScheduleCapacityProofApiImpl implements ScheduleCapacityProof
         // Chunking only bounds SQL bind parameters; it does not impose a business staff limit.
         for (int from = 0; from < keys.size(); from += 500) {
             List<Long> chunk = keys.subList(from, Math.min(from + 500, keys.size()));
-            String placeholders = String.join(",", java.util.Collections.nCopies(chunk.size(), "?"));
-            result.addAll(jdbc.query("SELECT id,staff_id,service_id,status FROM staff_service_capability "
-                    + "FORCE INDEX (uk_staff_service) "
-                    + "WHERE staff_id IN (" + placeholders + ") ORDER BY staff_id,service_id FOR UPDATE",
-                    (rs, n) -> new CapabilityRow(id(rs, "staff_id"), id(rs, "service_id"),
-                            rs.getString("status")), chunk.toArray()));
+            result.addAll(mapper.lockedCapabilities(chunk).stream()
+                    .map(row -> new CapabilityRow(ScheduleSqlRows.id(row, "staff_id"),
+                            ScheduleSqlRows.id(row, "service_id"),
+                            ScheduleSqlRows.text(row, "status"))).toList());
         }
         return result;
     }
 
     private List<AvailabilityRow> availability(String storeId) {
-        return jdbc.query("SELECT id,store_id,staff_id,start_at,end_at,status,version "
-                + "FROM staff_availability_window FORCE INDEX (idx_store_avail_time) WHERE store_id=? "
-                + "ORDER BY staff_id,start_at,id FOR UPDATE",
-                (rs, n) -> new AvailabilityRow(id(rs, "store_id"), id(rs, "staff_id"),
-                        at(rs, "start_at"), at(rs, "end_at"), rs.getString("status"),
-                        version(rs, "version")), apiId(storeId));
+        return mapper.lockedAvailability(apiId(storeId)).stream()
+                .map(row -> new AvailabilityRow(ScheduleSqlRows.id(row, "store_id"),
+                        ScheduleSqlRows.id(row, "staff_id"), ScheduleSqlRows.timestampAt(row, "start_at"),
+                        ScheduleSqlRows.timestampAt(row, "end_at"), ScheduleSqlRows.text(row, "status"),
+                        ScheduleSqlRows.version(row, "version"))).toList();
     }
 
     private static List<Staff> staff(Map<String, CurrentStaffFact> people, String merchantId,
@@ -374,23 +370,6 @@ public final class ScheduleCapacityProofApiImpl implements ScheduleCapacityProof
 
     private static Interval interval(OffsetDateTime start, OffsetDateTime end) {
         return new Interval(start.toInstant(), end.toInstant());
-    }
-
-    private static String id(ResultSet rs, String column) throws SQLException {
-        long value = rs.getLong(column);
-        if (rs.wasNull() || value <= 0) bad("invalid " + column);
-        return IDS.toApi(value);
-    }
-
-    private static String version(ResultSet rs, String column) throws SQLException {
-        long value = rs.getLong(column);
-        if (rs.wasNull() || value < 0) bad("invalid " + column);
-        return Long.toString(value);
-    }
-
-    private static OffsetDateTime at(ResultSet rs, String column) throws SQLException {
-        Timestamp value = rs.getTimestamp(column);
-        return value == null ? null : value.toInstant().atOffset(java.time.ZoneOffset.UTC);
     }
 
     private static long apiId(String value) {

@@ -5,13 +5,13 @@ import com.petplatform.order.api.query.OrderExpiryFactsApi;
 import com.petplatform.schedule.api.command.ReservationExpiryApi;
 import com.petplatform.schedule.api.dto.ReservationExpiryTypes.ExpireHoldCommand;
 import com.petplatform.schedule.api.protection.ScheduleCapacityGuardApi;
+import com.petplatform.schedule.biz.infrastructure.persistence.ScheduleMybatis;
+import com.petplatform.schedule.biz.infrastructure.persistence.ScheduleSqlRows;
+import com.petplatform.schedule.biz.infrastructure.persistence.mapper.ScheduleCommandMapper;
 import java.nio.charset.StandardCharsets;
-import java.sql.Timestamp;
-import java.time.OffsetDateTime;
-import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 import javax.sql.DataSource;
-import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.datasource.ConnectionHolder;
 import org.springframework.transaction.support.TransactionSynchronization;
 import org.springframework.transaction.support.TransactionSynchronizationManager;
@@ -19,7 +19,7 @@ import org.springframework.transaction.support.TransactionSynchronizationManager
 /** Only ORDER's atomic cancellation may expire its original temporary hold. Claims remain history. */
 public final class ReservationExpiryApiImpl implements ReservationExpiryApi {
     private final DataSource source;
-    private final JdbcTemplate jdbc;
+    private final ScheduleCommandMapper mapper;
     private final SnowflakeIdGenerator ids;
     private final ScheduleCapacityGuardApi guard;
     private final OrderExpiryFactsApi orders;
@@ -28,7 +28,8 @@ public final class ReservationExpiryApiImpl implements ReservationExpiryApi {
     public ReservationExpiryApiImpl(DataSource source,SnowflakeIdGenerator ids,
             ScheduleCapacityGuardApi guard,OrderExpiryFactsApi orders,
             com.petplatform.schedule.api.protection.ScheduleProtectionFactsApi facts) {
-        this.source=Objects.requireNonNull(source); this.jdbc=new JdbcTemplate(source);
+        this.source=Objects.requireNonNull(source);
+        this.mapper=ScheduleMybatis.template(source).getMapper(ScheduleCommandMapper.class);
         this.ids=Objects.requireNonNull(ids); this.guard=Objects.requireNonNull(guard);
         this.orders=Objects.requireNonNull(orders); this.facts=Objects.requireNonNull(facts);
     }
@@ -44,18 +45,18 @@ public final class ReservationExpiryApiImpl implements ReservationExpiryApi {
                     || row.expires()==null || !row.expires().toInstant(java.time.ZoneOffset.UTC).equals(c.expectedExpireAt().toInstant())
                     || row.expires().toInstant(java.time.ZoneOffset.UTC).isAfter(c.observedNow().toInstant())) throw unavailable();
             // A caller-supplied future clock cannot cause an early release.
-            java.time.LocalDateTime now=jdbc.queryForObject("SELECT UTC_TIMESTAMP(3)",java.time.LocalDateTime.class);
+            java.time.LocalDateTime now=mapper.utcNow();
             if (now==null || row.expires().isAfter(now) || c.observedNow().toInstant().isAfter(now.toInstant(java.time.ZoneOffset.UTC))) throw unavailable();
-            int changed=jdbc.update("UPDATE schedule_reservation SET status='EXPIRED',version=version+1,updated_at=? "
-                    +"WHERE id=? AND status='TEMP_LOCKED' AND version=? AND lock_expire_at=?",
-                    now,IDS.fromApi(c.reservationId()),c.expectedVersion(),row.expires());
+            int changed=mapper.expireReservation(IDS.fromApi(c.reservationId()),
+                    c.expectedVersion(),row.expires(),now);
             if(changed!=1) throw unavailable();
             long auditId=ids.nextId();
             if(auditId<=0) throw unavailable();
-            jdbc.update("INSERT INTO schedule_reservation_audit(id,reservation_id,order_id,actor_user_id,store_id,"
-                    +"action,request_id,trace_id,occurred_at,actor_type) VALUES(?,?,?,NULL,?,'EXPIRE',?,?,?,'SYSTEM')",
-                    auditId,IDS.fromApi(c.reservationId()),IDS.fromApi(c.orderId()),IDS.fromApi(c.storeId()),
-                    c.context().requestId().getBytes(StandardCharsets.UTF_8),c.context().traceId(),now);
+            mapper.insertSystemAudit(ScheduleSqlRows.values("id",auditId,
+                    "reservationId",IDS.fromApi(c.reservationId()),"orderId",IDS.fromApi(c.orderId()),
+                    "storeId",IDS.fromApi(c.storeId()),"action","EXPIRE",
+                    "requestId",c.context().requestId().getBytes(StandardCharsets.UTF_8),
+                    "traceId",c.context().traceId(),"occurredAt",now));
             QueryContext context=new QueryContext(c.context().traceId(),OperatorType.SYSTEM,c.context().operatorId());
             TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
                 @Override public void beforeCommit(boolean readOnly) {
@@ -75,10 +76,11 @@ public final class ReservationExpiryApiImpl implements ReservationExpiryApi {
         } catch(RuntimeException failure) { rollbackOnly(); throw unavailable(); }
     }
     private Hold read(String orderId,String reservationId,String storeId) {
-        List<Hold> rows=jdbc.query("SELECT order_id,store_id,status,version,lock_expire_at FROM schedule_reservation WHERE id=? FOR UPDATE",
-                (rs,n)->new Hold(rs.getLong(1),rs.getLong(2),rs.getString(3),rs.getLong(4),rs.getObject(5,java.time.LocalDateTime.class)),IDS.fromApi(reservationId));
-        if(rows.size()!=1) throw unavailable();
-        Hold row=rows.getFirst();
+        Map<String,Object> columns=mapper.lockReservation(IDS.fromApi(reservationId));
+        if(columns==null) throw unavailable();
+        Hold row=new Hold(ScheduleSqlRows.number(columns,"order_id"),
+                ScheduleSqlRows.number(columns,"store_id"),ScheduleSqlRows.text(columns,"status"),
+                ScheduleSqlRows.number(columns,"version"),ScheduleSqlRows.dateTime(columns,"lock_expire_at"));
         if(row.orderId()!=IDS.fromApi(orderId) || row.storeId()!=IDS.fromApi(storeId)) throw unavailable();
         return row;
     }

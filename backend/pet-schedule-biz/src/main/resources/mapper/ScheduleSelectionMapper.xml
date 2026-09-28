@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.petplatform.schedule.biz.infrastructure.persistence.mapper.ScheduleSelectionMapper">
+    <select id="windows" resultType="map">
+        SELECT id,merchant_id,store_id,service_id,window_kind,start_at,end_at,
+               configured_capacity,status,version FROM schedule_availability_window
+        WHERE store_id=#{storeId} AND service_id=#{serviceId}
+          AND start_at&lt;#{to} AND end_at&gt;#{from}
+        ORDER BY start_at,id
+    </select>
+    <select id="claims" resultType="map">
+        SELECT r.id reservation_id,r.merchant_id,r.store_id,r.service_id,
+               r.fulfillment_type,r.start_at,r.end_at,r.pickup_start_at,r.return_start_at,r.status,
+               c.id claim_id,c.window_id,c.store_id claim_store_id,c.service_id claim_service_id,
+               c.kind claim_kind,c.start_at claim_start_at,c.end_at claim_end_at,
+               w.merchant_id original_merchant_id,w.store_id original_store_id,
+               w.service_id original_service_id,w.window_kind original_kind,
+               w.start_at original_start_at,w.end_at original_end_at,w.status original_status
+        FROM schedule_reservation r LEFT JOIN schedule_reservation_claim c
+          ON c.reservation_id=r.id LEFT JOIN schedule_availability_window w ON w.id=c.window_id
+        WHERE r.store_id=#{storeId} AND r.service_id=#{serviceId} AND
+          ((r.start_at&lt;#{to} AND r.end_at&gt;#{from}) OR EXISTS (
+            SELECT 1 FROM schedule_reservation_claim x WHERE x.reservation_id=r.id
+            AND x.start_at&lt;#{to} AND x.end_at&gt;#{from}))
+        ORDER BY r.id,c.id
+    </select>
+    <select id="brokenClaimLinks" resultType="integer">
+        SELECT COUNT(*) FROM schedule_reservation_claim c
+        LEFT JOIN schedule_reservation r ON r.id=c.reservation_id
+        LEFT JOIN schedule_availability_window w ON w.id=c.window_id
+        WHERE ((c.store_id=#{storeId} AND c.service_id=#{serviceId})
+           OR (w.store_id=#{storeId} AND w.service_id=#{serviceId}))
+          AND c.start_at&lt;#{to} AND c.end_at&gt;#{from} AND
+          (r.id IS NULL OR w.id IS NULL OR r.store_id&lt;&gt;c.store_id
+           OR r.service_id&lt;&gt;c.service_id OR w.store_id&lt;&gt;c.store_id
+           OR w.service_id&lt;&gt;c.service_id OR w.window_kind&lt;&gt;c.kind
+           OR r.merchant_id&lt;&gt;w.merchant_id)
+    </select>
+</mapper>
