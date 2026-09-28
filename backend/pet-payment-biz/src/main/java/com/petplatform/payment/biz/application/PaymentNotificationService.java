@@ -95,6 +95,7 @@ public final class PaymentNotificationService {
                 // A refund/reversal is not an old failure. Preserve it until its owner reconciles;
                 // a delayed SUCCESS must not authorize fulfillment or a second refund after reversal.
                 if(Set.of("PART_REFUND","REFUND","REVOKED").contains(notice.status())
+                        || ("CLOSED".equals(row.status())&&!Set.of("CLOSE","SUCCESS").contains(notice.status())&&!duplicate)
                         || "RECONCILIATION_REQUIRED".equals(row.dispatchState())){
                     if(!"RECONCILIATION_REQUIRED".equals(row.dispatchState()))store.jdbc.update(
                         "UPDATE payment_order SET dispatch_state='RECONCILIATION_REQUIRED',version=version+1,updated_at=? WHERE id=?",

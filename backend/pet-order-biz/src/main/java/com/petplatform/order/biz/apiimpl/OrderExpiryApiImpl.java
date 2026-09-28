@@ -124,7 +124,8 @@ public final class OrderExpiryApiImpl implements OrderExpiryApi {
     }
 
     @Override public ExpireOrderResult expire(ExpireOrderCommand command) {
-        if (TransactionSynchronizationManager.isActualTransactionActive()) {
+        if (TransactionSynchronizationManager.isActualTransactionActive()
+                || TransactionSynchronizationManager.isSynchronizationActive()) {
             throw unavailable("ORDER expiry requires an independent transaction");
         }
         Validated input = validate(command);

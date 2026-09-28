@@ -102,10 +102,11 @@ public final class BookingPaymentExposureApiImpl implements BookingPaymentExposu
             Dispatch dispatch = dispatches.getFirst();
             List<Receipt> receipts = jdbc.query("""
                     SELECT receipt_source,channel_status,receipt_sha256,
-                           channel_response_sha256,paid_amount
+                           channel_response_sha256,paid_amount,total_amount,channel_trade_no
                     FROM payment_channel_receipt WHERE payment_id=? FOR UPDATE
                     """, (rs, row) -> new Receipt(rs.getString(1), rs.getString(2),
-                    rs.getString(3), rs.getString(4), rs.getBigDecimal(5)), payment.id());
+                    rs.getString(3), rs.getString(4), rs.getBigDecimal(5),
+                    rs.getBigDecimal(6), rs.getString(7)), payment.id());
 
             if ("FENCED_UNSENT".equals(dispatch.state())) {
                 if (!"INIT".equals(payment.status()) || !"PREPARED".equals(payment.dispatchState())
@@ -122,6 +123,7 @@ public final class BookingPaymentExposureApiImpl implements BookingPaymentExposu
             }
             if (!"TERMINAL_CLOSED".equals(dispatch.state())
                     || !"CLOSED".equals(payment.status())
+                    || blank(payment.tradeNo())
                     || !"OBSERVED".equals(payment.dispatchState())
                     || dispatch.fencedAt() == null || dispatch.preorderReqTime() == null
                     || dispatch.tradeReqDate() == null
@@ -146,10 +148,15 @@ public final class BookingPaymentExposureApiImpl implements BookingPaymentExposu
                     throw unavailable();
                 if ("CLOSE".equals(receipt.source()) && "CLOSE".equals(receipt.status())
                         && sha(receipt.digest()) && sha(receipt.responseSha())
-                        && receipt.responseSha().equals(dispatch.closeResponseSha())) closeReceipt = true;
+                        && receipt.responseSha().equals(dispatch.closeResponseSha())
+                        && receipt.digest().equals(domainDigest("CLOSE", receipt.responseSha()))
+                        && payment.tradeNo().equals(receipt.tradeNo())) closeReceipt = true;
                 if ("QUERY".equals(receipt.source()) && "CLOSE".equals(receipt.status())
                         && sha(receipt.digest()) && sha(receipt.responseSha())
-                        && receipt.responseSha().equals(dispatch.terminalQuerySha())) terminalQuery = true;
+                        && receipt.responseSha().equals(dispatch.terminalQuerySha())
+                        && receipt.digest().equals(domainDigest("QUERY", receipt.responseSha()))
+                        && receipt.totalAmount() != null && receipt.totalAmount().compareTo(payment.amount()) == 0
+                        && payment.tradeNo().equals(receipt.tradeNo())) terminalQuery = true;
             }
             if (!closeReceipt || !terminalQuery) throw unavailable();
         } catch (RuntimeException failure) {
@@ -193,6 +200,12 @@ public final class BookingPaymentExposureApiImpl implements BookingPaymentExposu
     }
     private static boolean blank(String text) { return text == null || text.isBlank(); }
     private static boolean sha(String text) { return text != null && text.matches("[0-9a-fA-F]{64}"); }
+    private static String domainDigest(String domain, String rawSha) {
+        try {
+            return java.util.HexFormat.of().formatHex(java.security.MessageDigest.getInstance("SHA-256")
+                    .digest((domain + "\0" + rawSha).getBytes(java.nio.charset.StandardCharsets.US_ASCII)));
+        } catch (java.security.NoSuchAlgorithmException impossible) { throw unavailable(); }
+    }
     private static ApiException unavailable() {
         return new ApiException(CommonApiCodes.DEPENDENCY_UNAVAILABLE,
                 "booking payment exposure requires reconciliation");
@@ -204,5 +217,5 @@ public final class BookingPaymentExposureApiImpl implements BookingPaymentExposu
             LocalDateTime closeMayHaveSentAt, String closeResponseSha, String terminalQuerySha,
             LocalDateTime terminalConfirmedAt, int closeCapability) {}
     private record Receipt(String source, String status, String digest, String responseSha,
-            BigDecimal paidAmount) {}
+            BigDecimal paidAmount, BigDecimal totalAmount, String tradeNo) {}
 }
