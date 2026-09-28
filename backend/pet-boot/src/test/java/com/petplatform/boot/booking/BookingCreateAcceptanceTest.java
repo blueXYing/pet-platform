@@ -807,7 +807,10 @@ class BookingCreateAcceptanceTest {
                 "38-Booking-Create-Schema-v0.1.sql",
                 "39-Booking-Expiry-Schema-v0.1.sql",
                 "40-Payment-Foundation-Schema-v0.1.sql",
-                "41-Payment-Dispatch-Schema-v0.1.sql");
+                "41-Payment-Dispatch-Schema-v0.1.sql",
+                "42-Late-Refund-Execution-Schema-v0.1.sql",
+                "43-Payment-Refund-Dispatch-Schema-v0.1.sql",
+                "44-Late-Refund-Order-Projection-Schema-v0.1.sql");
         private final String name = "qa_booking_" + UUID.randomUUID().toString().replace("-", "");
         private final JdbcTemplate admin;
         final DataSource source;

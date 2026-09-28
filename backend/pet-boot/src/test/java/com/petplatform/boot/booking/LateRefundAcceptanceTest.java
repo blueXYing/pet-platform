@@ -4,25 +4,375 @@ import static org.junit.jupiter.api.Assertions.*;
 
 import com.petplatform.common.CommandContext;
 import com.petplatform.common.OperatorType;
+import com.petplatform.common.ApiException;
+import com.petplatform.common.QueryContext;
 import com.petplatform.event.api.DispatchedEvent;
+import com.petplatform.event.api.IntegrationEventConsumer;
+import com.petplatform.event.core.OutboxDispatcher;
+import com.petplatform.event.core.TransactionalOutboxPublisher;
 import com.petplatform.order.api.dto.OrderCreationTypes.CreateOrderResult;
 import com.petplatform.order.api.dto.OrderExpiryTypes.ExpireOrderCommand;
 import com.petplatform.order.api.dto.OrderExpiryTypes.ExpireOrderResult;
+import com.petplatform.order.biz.apiimpl.OrderLatePaymentFactsApiImpl;
 import com.petplatform.payment.api.dto.PaymentPreparationTypes.PreparedPayment;
+import com.petplatform.payment.biz.apiimpl.PaymentSuccessFactsApiImpl;
+import com.petplatform.payment.biz.apiimpl.PaymentRefundResultFactsApiImpl;
+import com.petplatform.payment.biz.application.PaymentRefundChannel;
+import com.petplatform.payment.biz.application.PaymentRefundService;
+import com.petplatform.payment.api.dto.PaymentRefundTypes.ChannelRefundSubmitCommand;
+import com.petplatform.payment.api.dto.PaymentRefundTypes.ChannelRefundQuery;
+import com.petplatform.payment.api.dto.PaymentRefundTypes.CoordinationState;
+import com.petplatform.refund.biz.application.LateRefundService;
 import java.math.BigDecimal;
 import java.time.Clock;
 import java.time.Instant;
+import java.time.LocalDateTime;
 import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
+import java.time.ZoneId;
 import java.time.temporal.ChronoUnit;
 import java.util.UUID;
 import java.util.concurrent.atomic.AtomicLong;
+import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
 import org.junit.jupiter.api.Test;
+import org.springframework.jdbc.datasource.DelegatingDataSource;
+import org.springframework.jdbc.datasource.DataSourceTransactionManager;
+import org.springframework.transaction.support.TransactionTemplate;
+import org.springframework.transaction.TransactionDefinition;
 
 /** Real isolated MySQL acceptance. Payment proof comes from a signed offline channel notice. */
 class LateRefundAcceptanceTest {
   private static final AtomicLong IDS = new AtomicLong(8_910_000_000_000_000L);
   private static final BigDecimal CHANNEL_PAID = new BigDecimal("97.35");
+
+  @Test
+  void committedLateEventCreatesOneBoundRefundWithTaskAndSurvivesLostDispatchAck()
+      throws Exception {
+    try (var f = fixture()) {
+      LatePayment late = latePayment(f);
+      var consumer = lateRefund(f, f.publisher);
+      AtomicInteger invocations = new AtomicInteger();
+      IntegrationEventConsumer lostAck = new IntegrationEventConsumer() {
+        @Override public String consumerName() { return consumer.consumerName(); }
+        @Override public java.util.Set<String> eventTypes() { return consumer.eventTypes(); }
+        @Override public void consume(DispatchedEvent event) {
+          consumer.consume(event);
+          invocations.incrementAndGet();
+          throw new IllegalStateException("QA: dispatch ACK lost after refund commit");
+        }
+      };
+      try (var dispatcher = f.dispatcher(lostAck)) {
+        assertEquals(OutboxDispatcher.Outcome.FAILED, dispatcher.dispatchOne());
+      }
+      assertEquals(1L, f.count("SELECT COUNT(*) FROM refund_order"));
+      assertEquals(1L, f.count("SELECT COUNT(*) FROM refund_execution"));
+      assertEquals(1L, f.count("SELECT COUNT(*) FROM integration_event_consume_log "
+          + "WHERE consumer_name='REFUND_LATE_PAYMENT'"));
+      assertEquals(1L, f.count("SELECT COUNT(*) FROM integration_event_outbox "
+          + "WHERE event_type='RefundOrderCreatedEvent.v1'"));
+      assertEquals(1L, f.count("SELECT COUNT(*) FROM async_task "
+          + "WHERE owner_module='REFUND' AND task_type='REFUND_SUBMIT'"));
+      String refundId = f.text("SELECT CAST(id AS CHAR) FROM refund_order");
+      String refundNo = f.text("SELECT CAST(refund_no AS CHAR) FROM refund_order");
+      assertEquals("REFUND_SUBMIT:" + refundId + ":0",
+          f.text("SELECT task_key FROM async_task WHERE owner_module='REFUND'"));
+      assertEquals("FULL", f.text("SELECT refund_type FROM refund_order"));
+      assertEquals("LATE_PAYMENT_TIMEOUT", f.text("SELECT source_type FROM refund_order"));
+      assertEquals("CREATED", f.text("SELECT status FROM refund_order"));
+      assertEquals(CHANNEL_PAID, f.db.jdbc.queryForObject(
+          "SELECT refund_amount FROM refund_order", BigDecimal.class));
+      assertEquals(CHANNEL_PAID, f.db.jdbc.queryForObject(
+          "SELECT channel_paid_amount FROM refund_execution", BigDecimal.class));
+      assertEquals("EVENT:LATE_PAYMENT_AUTO_REFUND:" + late.paymentId() + ":" + late.orderId(),
+          f.text("SELECT request_id FROM refund_execution"));
+      assertEquals(late.event().eventId(),
+          f.text("SELECT CAST(late_event_id AS CHAR) FROM refund_execution"));
+      assertEquals(late.paymentNo(),
+          f.text("SELECT CAST(payment_no AS CHAR) FROM refund_execution"));
+
+      f.db.jdbc.update("UPDATE integration_event_outbox SET next_retry_at=UTC_TIMESTAMP(3) "
+          + "WHERE event_type='LatePaymentSucceededAfterTimeoutEvent.v1'");
+      try (var dispatcher = f.dispatcher(lostAck)) {
+        assertEquals(OutboxDispatcher.Outcome.COMPLETED, dispatcher.dispatchOne());
+      }
+      assertEquals(1, invocations.get(), "consume log bypasses the handler after lost ACK");
+      consumer.consume(late.event());
+      assertEquals(refundId, f.text("SELECT CAST(id AS CHAR) FROM refund_order"));
+      assertEquals(refundNo, f.text("SELECT CAST(refund_no AS CHAR) FROM refund_order"));
+      assertEquals(1L, f.count("SELECT COUNT(*) FROM refund_order"));
+      assertEquals(1L, f.count("SELECT COUNT(*) FROM async_task WHERE owner_module='REFUND'"));
+      assertEquals("CANCELED", f.text("SELECT order_stage FROM pet_order WHERE id=?",
+          Long.parseLong(late.orderId())));
+      assertEquals(0L, f.count("SELECT COUNT(*) FROM integration_event_outbox "
+          + "WHERE event_type='OrderPaidEvent.v1'"));
+    }
+  }
+
+  @Test
+  void outboxFailureRollsBackRefundBindingConsumeLogAndTask() throws Exception {
+    try (var f = fixture()) {
+      LatePayment late = latePayment(f);
+      var wrongPublisher = new TransactionalOutboxPublisher(
+          new DelegatingDataSource(f.db.source), LateRefundAcceptanceTest::id,
+          new com.fasterxml.jackson.databind.ObjectMapper());
+      var consumer = lateRefund(f, wrongPublisher);
+      assertThrows(RuntimeException.class, () -> consumer.consume(late.event()));
+      assertEquals(0L, f.count("SELECT COUNT(*) FROM refund_order"));
+      assertEquals(0L, f.count("SELECT COUNT(*) FROM refund_execution"));
+      assertEquals(0L, f.count("SELECT COUNT(*) FROM integration_event_consume_log "
+          + "WHERE consumer_name='REFUND_LATE_PAYMENT'"));
+      assertEquals(0L, f.count("SELECT COUNT(*) FROM integration_event_outbox "
+          + "WHERE event_type='RefundOrderCreatedEvent.v1'"));
+      assertEquals(0L, f.count("SELECT COUNT(*) FROM async_task WHERE owner_module='REFUND'"));
+      lateRefund(f, f.publisher).consume(late.event());
+      assertEquals(1L, f.count("SELECT COUNT(*) FROM refund_order"));
+    }
+  }
+
+  @Test
+  void eventPayloadAloneCannotAuthorizeWrongAmountOrMissingProof() throws Exception {
+    try (var f = fixture()) {
+      LatePayment late = latePayment(f);
+      var consumer = lateRefund(f, f.publisher);
+      var original = late.event();
+      assertTrue(original.payloadJson().contains("97.35"));
+      for (DispatchedEvent invalid : java.util.List.of(
+          eventWithPayload(original, "{}"),
+          eventWithPayload(original, original.payloadJson().replace("97.35", "98.00")),
+          new DispatchedEvent(original.eventId(), original.eventType(),
+              original.eventVersion(), original.occurredAt(), original.aggregateType(),
+              original.aggregateId() + 1, original.traceId(), original.payloadJson()))) {
+        ApiException failure = assertThrows(ApiException.class, () -> consumer.consume(invalid));
+        assertEquals("COMMON_DEPENDENCY_UNAVAILABLE", failure.code());
+      }
+      assertEquals(0L, f.count("SELECT COUNT(*) FROM refund_order"));
+      assertEquals(0L, f.count("SELECT COUNT(*) FROM refund_execution"));
+      assertEquals(0L, f.count("SELECT COUNT(*) FROM integration_event_consume_log "
+          + "WHERE consumer_name='REFUND_LATE_PAYMENT'"));
+      consumer.consume(original);
+      assertEquals(1L, f.count("SELECT COUNT(*) FROM refund_order"));
+    }
+  }
+
+  @Test
+  void originalPaymentReversalBeforeRefundConsumptionFreezesAutoRefund() throws Exception {
+    try (var f = fixture()) {
+      LatePayment late = latePayment(f);
+      LocalDateTime expire = f.db.jdbc.queryForObject(
+          "SELECT expire_at FROM payment_order WHERE id=?", LocalDateTime.class,
+          Long.parseLong(late.paymentId()));
+      assertNotNull(expire);
+      PreparedPayment historical = new PreparedPayment(late.paymentId(), late.paymentNo(),
+          late.orderId(), new BigDecimal("128.00"), expire.atOffset(ZoneOffset.UTC), false);
+      var reversed = f.notice(historical, "REFUND", "QA_LATE_REFUND_TRADE",
+          historical.amount(), CHANNEL_PAID);
+      assertTrue(f.notification.receive(reversed.headers(), reversed.body()).paid());
+      assertEquals("RECONCILIATION_REQUIRED", f.text(
+          "SELECT dispatch_state FROM payment_order WHERE id=?",
+          Long.parseLong(late.paymentId())));
+      var consumer = lateRefund(f, f.publisher);
+      ApiException failure = assertThrows(ApiException.class,
+          () -> consumer.consume(late.event()));
+      assertEquals("COMMON_DEPENDENCY_UNAVAILABLE", failure.code());
+      assertEquals(0L, f.count("SELECT COUNT(*) FROM refund_order"));
+      assertEquals(0L, f.count("SELECT COUNT(*) FROM payment_refund_dispatch"));
+    }
+  }
+
+  @Test
+  void concurrentConsumersConvergeOnOneOriginalRefundNumber() throws Exception {
+    try (var f = fixture()) {
+      LatePayment late = latePayment(f);
+      var first = lateRefund(f, f.publisher);
+      var second = lateRefund(f, f.publisher);
+      CountDownLatch ready = new CountDownLatch(2), start = new CountDownLatch(1);
+      try (var threads = Executors.newFixedThreadPool(2)) {
+        var a = threads.submit(() -> consumeConcurrently(first, late.event(), ready, start));
+        var b = threads.submit(() -> consumeConcurrently(second, late.event(), ready, start));
+        assertTrue(ready.await(5, TimeUnit.SECONDS));
+        start.countDown();
+        int successes = (a.get(10, TimeUnit.SECONDS) ? 1 : 0)
+            + (b.get(10, TimeUnit.SECONDS) ? 1 : 0);
+        assertTrue(successes >= 1, "at least one consumer committed the refund");
+      }
+      assertEquals(1L, f.count("SELECT COUNT(*) FROM refund_order"));
+      assertEquals(1L, f.count("SELECT COUNT(*) FROM refund_execution"));
+      assertEquals(1L, f.count("SELECT COUNT(*) FROM integration_event_consume_log "
+          + "WHERE consumer_name='REFUND_LATE_PAYMENT'"));
+      assertEquals(1L, f.count("SELECT COUNT(*) FROM async_task WHERE owner_module='REFUND'"));
+      assertEquals(1L, f.count("SELECT COUNT(*) FROM integration_event_outbox "
+          + "WHERE event_type='RefundOrderCreatedEvent.v1'"));
+      String refundNo = f.text("SELECT CAST(refund_no AS CHAR) FROM refund_order");
+      first.consume(late.event());
+      assertEquals(refundNo, f.text("SELECT CAST(refund_no AS CHAR) FROM refund_order"));
+    }
+  }
+
+  @Test
+  void sentButTimedOutRefundQueriesOriginalNumberAfterThirtySecondsAndStoresVerifiedSuccess()
+      throws Exception {
+    try (var f = fixture()) {
+      LatePayment late = latePayment(f);
+      var business = lateRefund(f, f.publisher);
+      business.consume(late.event());
+      String refundId = f.text("SELECT CAST(id AS CHAR) FROM refund_order");
+      String refundNo = f.text("SELECT CAST(refund_no AS CHAR) FROM refund_order");
+      AtomicInteger submitCalls = new AtomicInteger(), queryCalls = new AtomicInteger();
+      PaymentRefundChannel channel = new PaymentRefundChannel() {
+        @Override public VerifiedResult submit(RefundRequest request) {
+          submitCalls.incrementAndGet();
+          assertEquals(refundNo, request.refundNo());
+          assertEquals(late.paymentNo(), request.paymentNo());
+          assertEquals(CHANNEL_PAID, request.amount());
+          assertEquals("MAY_HAVE_SENT", f.text(
+              "SELECT state FROM payment_refund_dispatch WHERE refund_order_id=?",
+              Long.parseLong(refundId)), "send boundary must commit before network I/O");
+          throw new IllegalStateException("offline QA: channel ACK lost after possible send");
+        }
+        @Override public VerifiedResult query(RefundRequest request) {
+          queryCalls.incrementAndGet();
+          assertEquals(refundNo, request.refundNo());
+          assertEquals("QA_LATE_REFUND_TRADE", request.originalChannelTradeNo());
+          return new VerifiedResult("SUCCESS", refundNo, "QA_CHANNEL_REFUND_01",
+              9735, 9735L, LocalDateTime.now(ZoneId.of("Asia/Shanghai"))
+                  .minusMinutes(1).truncatedTo(ChronoUnit.SECONDS), "a".repeat(64));
+        }
+      };
+      PaymentRefundService payment = paymentRefund(f, business, channel);
+      var submit = new ChannelRefundSubmitCommand(new CommandContext(
+          "TASK:REFUND_SUBMIT:" + refundId + ":0", "refund-qa-submit", OperatorType.SYSTEM,
+          null, "ASYNC_TASK"), refundId, refundNo, late.paymentId(), "710302", 0);
+      var query = new ChannelRefundQuery(new CommandContext(
+          "TASK:REFUND_CHANNEL_QUERY:" + refundId + ":0", "refund-qa-query",
+          OperatorType.SYSTEM, null, "ASYNC_TASK"), refundId, refundNo,
+          late.paymentId(), "710302", 0);
+      var pending = payment.submitRefund(submit);
+      assertEquals(CoordinationState.QUERY_PENDING, pending.state());
+      assertEquals(1, submitCalls.get());
+      assertEquals(0, queryCalls.get());
+      assertEquals("QUERY_PENDING", f.text("SELECT state FROM payment_refund_dispatch"));
+      assertEquals(1L, f.count("SELECT COUNT(*) FROM payment_refund_dispatch"));
+      assertEquals(0L, f.count("SELECT COUNT(*) FROM payment_refund_receipt"));
+      assertTrue(f.db.jdbc.queryForObject(
+          "SELECT TIMESTAMPDIFF(SECOND,UTC_TIMESTAMP(3),query_not_before) "
+              + "FROM payment_refund_dispatch", Integer.class) >= 29);
+      assertEquals(CoordinationState.QUERY_PENDING, payment.queryRefund(query).state());
+      assertEquals(CoordinationState.QUERY_PENDING, payment.submitRefund(submit).state());
+      assertEquals(1, submitCalls.get(), "a possibly sent refund is never submitted again");
+      assertEquals(0, queryCalls.get(), "first query is delayed at least 30 seconds");
+      f.db.jdbc.update("UPDATE payment_refund_dispatch "
+          + "SET query_not_before=UTC_TIMESTAMP(3)-INTERVAL 1 SECOND");
+      assertEquals(CoordinationState.VERIFIED_SUCCESS, payment.queryRefund(query).state());
+      assertEquals(1, queryCalls.get());
+      assertEquals(1, submitCalls.get());
+      assertEquals("VERIFIED_SUCCESS", f.text("SELECT state FROM payment_refund_dispatch"));
+      assertEquals(1L, f.count("SELECT COUNT(*) FROM payment_refund_receipt "
+          + "WHERE receipt_source='QUERY' AND channel_status='SUCCESS'"));
+      var tx = new TransactionTemplate(new DataSourceTransactionManager(f.db.source));
+      tx.setIsolationLevel(TransactionDefinition.ISOLATION_READ_COMMITTED);
+      tx.executeWithoutResult(status -> {
+        var context = new QueryContext("refund-qa-facts", OperatorType.SYSTEM, null);
+        f.guard.acquire(java.util.List.of("710302"), context);
+        var verified = new PaymentRefundResultFactsApiImpl(f.db.source, f.guard)
+            .requireVerified(refundId, refundNo, late.paymentId(), "710302", context);
+        assertEquals(CHANNEL_PAID, verified.refundAmount());
+        assertEquals("QA_CHANNEL_REFUND_01", verified.channelRefundNo());
+      });
+      assertEquals(CoordinationState.VERIFIED_SUCCESS, payment.submitRefund(submit).state());
+      assertEquals(1, submitCalls.get());
+      assertEquals(1, queryCalls.get());
+    }
+  }
+
+  private static PaymentRefundService paymentRefund(PaymentFoundationAcceptanceTest.Fixture f,
+      LateRefundService business, PaymentRefundChannel channel) {
+    return new PaymentRefundService(f.db.source, LateRefundAcceptanceTest::id, f.guard,
+        new OrderLatePaymentFactsApiImpl(f.db.source, f.guard, f.reservationExpiry),
+        new PaymentSuccessFactsApiImpl(f.db.source, f.guard), business, channel,
+        new PaymentRefundService.Settings("127.0.0.1", "https://qa.invalid/refund",
+            ZoneId.of("Asia/Shanghai")), Clock.systemUTC());
+  }
+
+  @Test
+  void signedChannelSuccessWithWrongActualAmountRequiresReconciliation() throws Exception {
+    try (var f = fixture()) {
+      LatePayment late = latePayment(f);
+      var business = lateRefund(f, f.publisher);
+      business.consume(late.event());
+      String refundId = f.text("SELECT CAST(id AS CHAR) FROM refund_order");
+      String refundNo = f.text("SELECT CAST(refund_no AS CHAR) FROM refund_order");
+      AtomicInteger calls = new AtomicInteger();
+      PaymentRefundChannel channel = new PaymentRefundChannel() {
+        @Override public VerifiedResult submit(RefundRequest request) {
+          calls.incrementAndGet();
+          return new VerifiedResult("SUCCESS", request.refundNo(), "QA_WRONG_AMOUNT_REFUND",
+              9735, 9734L, LocalDateTime.now(ZoneId.of("Asia/Shanghai"))
+                  .minusMinutes(1).truncatedTo(ChronoUnit.SECONDS), "b".repeat(64));
+        }
+        @Override public VerifiedResult query(RefundRequest request) {
+          throw new AssertionError("wrong amount must not schedule a success query");
+        }
+      };
+      var payment = paymentRefund(f, business, channel);
+      var submit = new ChannelRefundSubmitCommand(new CommandContext(
+          "TASK:REFUND_SUBMIT:" + refundId + ":0", "refund-qa-mismatch",
+          OperatorType.SYSTEM, null, "ASYNC_TASK"), refundId, refundNo,
+          late.paymentId(), "710302", 0);
+      assertEquals(CoordinationState.RECONCILIATION_REQUIRED,
+          payment.submitRefund(submit).state());
+      assertEquals(1, calls.get());
+      assertEquals("RECONCILIATION_REQUIRED",
+          f.text("SELECT state FROM payment_refund_dispatch"));
+      assertEquals(1L, f.count("SELECT COUNT(*) FROM payment_refund_receipt "
+          + "WHERE channel_status='SUCCESS'"));
+      assertEquals(0L, f.count("SELECT COUNT(*) FROM integration_event_outbox "
+          + "WHERE event_type='RefundSucceededEvent.v1'"));
+      var tx = new TransactionTemplate(new DataSourceTransactionManager(f.db.source));
+      tx.setIsolationLevel(TransactionDefinition.ISOLATION_READ_COMMITTED);
+      tx.executeWithoutResult(status -> {
+        var context = new QueryContext("refund-qa-mismatch-facts", OperatorType.SYSTEM, null);
+        f.guard.acquire(java.util.List.of("710302"), context);
+        ApiException unavailable = assertThrows(ApiException.class, () ->
+            new PaymentRefundResultFactsApiImpl(f.db.source, f.guard)
+                .requireVerified(refundId, refundNo, late.paymentId(), "710302", context));
+        assertEquals("COMMON_DEPENDENCY_UNAVAILABLE", unavailable.code());
+      });
+    }
+  }
+
+  private static boolean consumeConcurrently(LateRefundService consumer, DispatchedEvent event,
+      CountDownLatch ready, CountDownLatch start) {
+    ready.countDown();
+    try {
+      assertTrue(start.await(5, TimeUnit.SECONDS));
+      consumer.consume(event);
+      return true;
+    } catch (ApiException collision) {
+      assertEquals("COMMON_DEPENDENCY_UNAVAILABLE", collision.code());
+      return false;
+    } catch (InterruptedException interrupted) {
+      Thread.currentThread().interrupt();
+      throw new IllegalStateException(interrupted);
+    }
+  }
+
+  private static DispatchedEvent eventWithPayload(DispatchedEvent original, String payload) {
+    return new DispatchedEvent(original.eventId(), original.eventType(),
+        original.eventVersion(), original.occurredAt(), original.aggregateType(),
+        original.aggregateId(), original.traceId(), payload);
+  }
+
+  private static LateRefundService lateRefund(PaymentFoundationAcceptanceTest.Fixture f,
+      com.petplatform.event.api.IntegrationEventPublisher publisher) {
+    return new LateRefundService(f.db.source, LateRefundAcceptanceTest::id, f.guard,
+        new OrderLatePaymentFactsApiImpl(f.db.source, f.guard, f.reservationExpiry),
+        new PaymentSuccessFactsApiImpl(f.db.source, f.guard), publisher);
+  }
+
+  private static long id() { return IDS.incrementAndGet(); }
 
   @Test
   void signedLatePaymentFixtureKeepsTimeoutClosureAndActualPaidAmount() throws Exception {
@@ -74,7 +424,7 @@ class LateRefundAcceptanceTest {
             + " VALUES(?,?,?,128.00,'INIT','LAKALA_WECHAT',?,?,?,?,?,?,?,'CNY','PREPARED',UTC_TIMESTAMP(3),UTC_TIMESTAMP(3))",
         paymentId, paymentNo, order,
         booking.paymentExpireAt().withOffsetSameInstant(ZoneOffset.UTC).toLocalDateTime(),
-        710302L, 710301L, 710100L, "QA_MERCHANT_01", "QA_TERM_01", "wxQaSubApp01");
+        710302L, 710301L, 710100L, "QA_MERCHANT_01", "QA_TERM1", "wxQaSubApp01");
     PreparedPayment historical = new PreparedPayment(Long.toString(paymentId),
         Long.toString(paymentNo), booking.orderId(), new BigDecimal("128.00"),
         booking.paymentExpireAt(), false);
