@@ -134,6 +134,31 @@ class LateRefundAcceptanceTest {
   }
 
   @Test
+  void taskInsertFailureRollsBackRefundAndConsumeClaim() throws Exception {
+    try (var f = fixture()) {
+      LatePayment late = latePayment(f);
+      var consumer = lateRefund(f, f.publisher);
+      f.db.jdbc.execute("CREATE TRIGGER qa_refund_task_fail BEFORE INSERT ON async_task "
+          + "FOR EACH ROW SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT='QA task insert failure'");
+      try {
+        assertThrows(ApiException.class, () -> consumer.consume(late.event()));
+      } finally {
+        f.db.jdbc.execute("DROP TRIGGER qa_refund_task_fail");
+      }
+      assertEquals(0L, f.count("SELECT COUNT(*) FROM refund_order"));
+      assertEquals(0L, f.count("SELECT COUNT(*) FROM refund_execution"));
+      assertEquals(0L, f.count("SELECT COUNT(*) FROM integration_event_consume_log "
+          + "WHERE consumer_name='REFUND_LATE_PAYMENT'"));
+      assertEquals(0L, f.count("SELECT COUNT(*) FROM integration_event_outbox "
+          + "WHERE event_type='RefundOrderCreatedEvent.v1'"));
+      assertEquals(0L, f.count("SELECT COUNT(*) FROM async_task WHERE owner_module='REFUND'"));
+      consumer.consume(late.event());
+      assertEquals(1L, f.count("SELECT COUNT(*) FROM refund_order"));
+      assertEquals(1L, f.count("SELECT COUNT(*) FROM async_task WHERE owner_module='REFUND'"));
+    }
+  }
+
+  @Test
   void eventPayloadAloneCannotAuthorizeWrongAmountOrMissingProof() throws Exception {
     try (var f = fixture()) {
       LatePayment late = latePayment(f);
