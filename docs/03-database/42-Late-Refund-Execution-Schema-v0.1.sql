@@ -1,0 +1,45 @@
+-- Approved CCR A/B. Isolated tests only; no automatic production migration.
+CREATE TABLE refund_execution (
+  refund_order_id BIGINT NOT NULL,
+  refund_no BIGINT NOT NULL,
+  order_id BIGINT NOT NULL,
+  payment_id BIGINT NOT NULL,
+  payment_no BIGINT NOT NULL,
+  store_id BIGINT NOT NULL,
+  merchant_id BIGINT NOT NULL,
+  user_id BIGINT NOT NULL,
+  payment_success_event_id BIGINT NOT NULL,
+  late_event_id BIGINT NOT NULL,
+  channel_trade_no VARCHAR(128) COLLATE utf8mb4_bin NOT NULL,
+  channel_paid_amount DECIMAL(18,2) NOT NULL,
+  refund_amount DECIMAL(18,2) NOT NULL,
+  channel_paid_at DATETIME(3) NOT NULL,
+  currency CHAR(3) CHARACTER SET ascii COLLATE ascii_bin NOT NULL,
+  request_id VARCHAR(191) CHARACTER SET ascii COLLATE ascii_bin NOT NULL,
+  binding_version BIGINT NOT NULL DEFAULT 0,
+  created_event_id BIGINT NOT NULL,
+  success_event_id BIGINT NULL,
+  success_receipt_sha256 CHAR(64) CHARACTER SET ascii COLLATE ascii_bin NULL,
+  next_query_at DATETIME(3) NULL,
+  version BIGINT NOT NULL DEFAULT 0,
+  created_at DATETIME(3) NOT NULL,
+  updated_at DATETIME(3) NOT NULL,
+  PRIMARY KEY (refund_order_id),
+  UNIQUE KEY uk_refund_execution_order (order_id),
+  UNIQUE KEY uk_refund_execution_payment (payment_id),
+  UNIQUE KEY uk_refund_execution_number (refund_no),
+  UNIQUE KEY uk_refund_execution_request (request_id),
+  UNIQUE KEY uk_refund_execution_created_event (created_event_id),
+  UNIQUE KEY uk_refund_execution_success_event (success_event_id),
+  CONSTRAINT chk_late_refund_amount CHECK (refund_amount > 0 AND refund_amount = channel_paid_amount),
+  CONSTRAINT chk_late_refund_currency CHECK (currency = 'CNY')
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
+CREATE TABLE refund_reconciliation_issue (
+  refund_order_id BIGINT NOT NULL,
+  issue_code VARCHAR(64) CHARACTER SET ascii COLLATE ascii_bin NOT NULL,
+  status VARCHAR(16) NOT NULL DEFAULT 'OPEN',
+  created_at DATETIME(3) NOT NULL,
+  updated_at DATETIME(3) NOT NULL,
+  PRIMARY KEY (refund_order_id,issue_code)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
