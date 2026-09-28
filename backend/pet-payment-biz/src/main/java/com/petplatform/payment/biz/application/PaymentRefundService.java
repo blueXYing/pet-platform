@@ -185,6 +185,11 @@ public final class PaymentRefundService implements PaymentRefundApi {
             return new ChannelRefundProgress(input.refundOrderId(), input.refundNo(),
                     CoordinationState.RECONCILIATION_REQUIRED, null);
         }
+        RefundExecutionFact business = refundFacts.requireForChannel(input.refundOrderId(),
+                input.storeId(), context);
+        validateBusinessAgainstDispatch(row, business);
+        if (!"CREATED".equals(business.status()) && !"PROCESSING".equals(business.status())
+                && !"UNKNOWN".equals(business.status())) throw unavailable();
         return progress(row);
     }
 
