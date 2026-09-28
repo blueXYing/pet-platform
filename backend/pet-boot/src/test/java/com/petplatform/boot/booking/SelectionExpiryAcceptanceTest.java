@@ -13,22 +13,28 @@ import com.petplatform.boot.config.CBearerSessionFilter;
 import com.petplatform.common.*;
 import com.petplatform.coupon.biz.apiimpl.BookingCouponExposureApiImpl;
 import com.petplatform.merchant.biz.apiimpl.MerchantCurrentStaffFactsApiImpl;
+import com.petplatform.merchant.biz.apiimpl.BookingMerchantFactsApiImpl;
+import com.petplatform.merchant.biz.application.PersistentApplicationReviewFactsReader;
 import com.petplatform.order.api.command.OrderExpiryApi;
 import com.petplatform.order.api.dto.OrderExpiryTypes.*;
+import com.petplatform.order.api.dto.OrderCreationTypes.*;
 import com.petplatform.order.biz.apiimpl.OrderExpiryApiImpl;
 import com.petplatform.order.biz.apiimpl.OrderExpiryFactsApiImpl;
 import com.petplatform.order.biz.apiimpl.OrderProtectionFactsApiImpl;
+import com.petplatform.order.biz.apiimpl.OrderCreationApiImpl;
 import com.petplatform.payment.biz.apiimpl.BookingPaymentExposureApiImpl;
 import com.petplatform.schedule.api.dto.ReservationExpiryTypes.ExpireHoldCommand;
 import com.petplatform.schedule.api.query.ScheduleSelectionQueryApi;
 import com.petplatform.schedule.biz.apiimpl.*;
 import com.petplatform.schedule.biz.application.QualifiedStaffFactsPort;
+import com.petplatform.service.biz.apiimpl.BookingServiceFactsApiImpl;
 import com.petplatform.service.api.dto.ServiceBookabilityDTO;
 import com.petplatform.service.api.dto.ServiceSnapshotDTO;
 import com.petplatform.service.api.enums.FulfillmentType;
 import com.petplatform.service.biz.apiimpl.ServiceQueryApiImpl;
 import com.petplatform.task.core.*;
 import com.petplatform.user.biz.application.UserAuthService.MiniSessionView;
+import com.petplatform.user.biz.apiimpl.BookingUserFactsApiImpl;
 import java.math.BigDecimal;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
@@ -36,6 +42,7 @@ import java.nio.file.Path;
 import java.sql.Connection;
 import java.time.*;
 import java.time.temporal.ChronoUnit;
+import java.time.format.DateTimeFormatter;
 import java.util.*;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
@@ -86,6 +93,81 @@ class SelectionExpiryAcceptanceTest {
       assertEquals(ExpireOrderResult.NOOP, expiry.expire(command(seed)));
       assertEquals(1L, db.number("SELECT COUNT(*) FROM order_status_log WHERE order_id=? AND event_type='PAYMENT_TIMEOUT'", ORDER));
       assertEquals(1L, db.number("SELECT COUNT(*) FROM schedule_reservation_audit WHERE reservation_id=? AND action='EXPIRE'", RESERVATION));
+    }
+  }
+
+  @Test
+  void realBookingCreateSchedulesOriginalDeadlineAndWorkerClosesItAcrossJvmTimeZones()
+      throws Exception {
+    TimeZone original = TimeZone.getDefault();
+    try {
+      for (String zone : List.of("Asia/Shanghai", "UTC")) {
+        TimeZone.setDefault(TimeZone.getTimeZone(zone));
+        try (var db = new BookingCreateAcceptanceTest.Database()) {
+          db.seedBookableFacts();
+          Clock creationClock = Clock.fixed(Instant.now().minus(11, ChronoUnit.MINUTES)
+              .truncatedTo(ChronoUnit.MILLIS), ZoneOffset.UTC);
+          var guard = new ScheduleCapacityGuardApiImpl(db.source);
+          var scheduleFacts = new ScheduleProtectionFactsApiImpl(db.source, guard);
+          var staffFacts = new MerchantCurrentStaffFactsApiImpl(db.source, guard);
+          var orderFacts = new OrderProtectionFactsApiImpl(db.source, guard,
+              scheduleFacts, staffFacts, creationClock);
+          var proof = new ScheduleCapacityProofApiImpl(db.source, guard, scheduleFacts,
+              staffFacts, orderFacts, creationClock, 10_000);
+          var hold = new ReservationHoldApiImpl(db.source, SelectionExpiryAcceptanceTest::id,
+              guard, scheduleFacts, proof, orderFacts, creationClock);
+          var approval = new PersistentApplicationReviewFactsReader(db.source,
+              SelectionExpiryAcceptanceTest::id);
+          var create = new OrderCreationApiImpl(db.source, SelectionExpiryAcceptanceTest::id,
+              new BookingUserFactsApiImpl(db.source, guard),
+              new BookingMerchantFactsApiImpl(db.source, guard, approval),
+              new BookingServiceFactsApiImpl(db.source, guard), guard, hold,
+              new BookingCreateAcceptanceTest.InputProtector(), null, creationClock);
+          OffsetDateTime appointment = OffsetDateTime.parse("2030-01-01T09:00:00Z");
+          CreateOrderResult created = create.create(new CreateOrderCommand(
+              new CommandContext(UUID.randomUUID().toString(), "create-expiry-qa", OperatorType.USER,
+                  "710100", "MINIAPP"), "710302", "710401", "710200", "IN_STORE",
+              appointment, appointment.plusMinutes(90), null, null, "710500", null, null,
+              null, null, null));
+          assertTrue(created.created());
+          String order = created.orderId();
+          long orderId = Long.parseLong(order);
+          long reservationId = db.jdbc.queryForObject(
+              "SELECT reservation_id FROM pet_order WHERE id=?", Long.class, orderId);
+          String taskKey = "RESERVATION_HOLD_EXPIRE:" + reservationId + ":0";
+          String rawExpected = created.paymentExpireAt().withOffsetSameInstant(ZoneOffset.UTC)
+              .format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss.SSS'000'"));
+          assertEquals(rawExpected, db.jdbc.queryForObject(
+              "SELECT DATE_FORMAT(payment_expire_at,'%Y-%m-%d %H:%i:%s.%f') FROM pet_order WHERE id=?",
+              String.class, orderId), zone + " order deadline raw UTC");
+          assertEquals(rawExpected, db.jdbc.queryForObject(
+              "SELECT DATE_FORMAT(lock_expire_at,'%Y-%m-%d %H:%i:%s.%f') FROM schedule_reservation WHERE id=?",
+              String.class, reservationId), zone + " reservation deadline raw UTC");
+          assertEquals(rawExpected, db.jdbc.queryForObject(
+              "SELECT DATE_FORMAT(execute_at,'%Y-%m-%d %H:%i:%s.%f') FROM async_task WHERE task_key=?",
+              String.class, taskKey), zone + " task first schedule raw UTC");
+          assertEquals(rawExpected, db.jdbc.queryForObject(
+              "SELECT DATE_FORMAT(submitted_execute_at,'%Y-%m-%d %H:%i:%s.%f') FROM async_task WHERE task_key=?",
+              String.class, taskKey), zone + " immutable first schedule raw UTC");
+          assertEquals(1L, db.jdbc.queryForObject(
+              "SELECT COUNT(*) FROM async_task WHERE task_key=? AND status='READY'", Long.class,
+              taskKey));
+          var registration = BookingExpiryConfiguration.registration(api(db.source), Clock.systemUTC());
+          try (var worker = AsyncTaskWorker.create(db.source, SelectionExpiryAcceptanceTest::id,
+              "qa-expiry-" + zone, Clock.systemUTC(), TaskWorkerSettings.defaults(),
+              BookingExpiryConfiguration.retryDelays(), List.of(registration))) {
+            assertEquals(AsyncTaskWorker.Outcome.COMPLETED, worker.runOne());
+          }
+          assertEquals("CANCELED", db.jdbc.queryForObject(
+              "SELECT order_stage FROM pet_order WHERE id=?", String.class, orderId));
+          assertEquals("EXPIRED", db.jdbc.queryForObject(
+              "SELECT status FROM schedule_reservation WHERE id=?", String.class, reservationId));
+          assertEquals("SUCCEEDED", db.jdbc.queryForObject(
+              "SELECT status FROM async_task WHERE task_key=?", String.class, taskKey));
+        }
+      }
+    } finally {
+      TimeZone.setDefault(original);
     }
   }
 
@@ -158,16 +240,17 @@ class SelectionExpiryAcceptanceTest {
   }
 
   private static OrderExpiryApi api(Database db) {
-    var guard = new ScheduleCapacityGuardApiImpl(db.source);
-    var scheduleFacts = new ScheduleProtectionFactsApiImpl(db.source, guard);
-    var staffFacts = new MerchantCurrentStaffFactsApiImpl(db.source, guard);
-    var orderFacts = new OrderProtectionFactsApiImpl(db.source, guard, scheduleFacts, staffFacts,
-        Clock.systemUTC());
-    var reservations = new ReservationExpiryApiImpl(db.source, SelectionExpiryAcceptanceTest::id,
-        guard, new OrderExpiryFactsApiImpl(db.source, guard), scheduleFacts);
-    return new OrderExpiryApiImpl(db.source, SelectionExpiryAcceptanceTest::id, guard,
-        reservations, new BookingPaymentExposureApiImpl(db.source, guard),
-        new BookingCouponExposureApiImpl(db.source, guard));
+    return api(db.source);
+  }
+
+  private static OrderExpiryApi api(DataSource source) {
+    var guard = new ScheduleCapacityGuardApiImpl(source);
+    var scheduleFacts = new ScheduleProtectionFactsApiImpl(source, guard);
+    var reservations = new ReservationExpiryApiImpl(source, SelectionExpiryAcceptanceTest::id,
+        guard, new OrderExpiryFactsApiImpl(source, guard), scheduleFacts);
+    return new OrderExpiryApiImpl(source, SelectionExpiryAcceptanceTest::id, guard,
+        reservations, new BookingPaymentExposureApiImpl(source, guard),
+        new BookingCouponExposureApiImpl(source, guard));
   }
 
   private static ExpireOrderCommand command(Seed seed) {
