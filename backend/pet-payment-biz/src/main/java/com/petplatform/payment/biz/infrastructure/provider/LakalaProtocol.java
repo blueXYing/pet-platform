@@ -96,7 +96,15 @@ public final class LakalaProtocol {
 
     public record PreorderInput(String outOrgCode, LocalDateTime requestTime,
             String merchantNo, String termNo, String outTradeNo, BigDecimal amount,
-            String subject, String subAppId, String userId, String requestIp, String notifyUrl) {
+            String subject, String subAppId, String userId, String requestIp, String notifyUrl,
+            Integer timeoutExpressMinutes) {
+        public PreorderInput(String outOrgCode, LocalDateTime requestTime,
+                String merchantNo, String termNo, String outTradeNo, BigDecimal amount,
+                String subject, String subAppId, String userId, String requestIp,
+                String notifyUrl) {
+            this(outOrgCode, requestTime, merchantNo, termNo, outTradeNo, amount, subject,
+                    subAppId, userId, requestIp, notifyUrl, null);
+        }
         @Override public String toString() { return "PreorderInput[redacted]"; }
     }
 
@@ -115,6 +123,10 @@ public final class LakalaProtocol {
         data.put("account_type", "WECHAT");
         data.put("trans_type", "71");
         data.put("total_amount", cents(input.amount()));
+        if (input.timeoutExpressMinutes() != null) {
+            if (input.timeoutExpressMinutes() < 1 || input.timeoutExpressMinutes() > 10) invalid();
+            data.put("timeout_express", input.timeoutExpressMinutes().toString());
+        }
         data.put("location_info", Map.of("request_ip", ip(input.requestIp())));
         data.put("subject", required(input.subject(), 42, "subject"));
         data.put("notify_url", required(input.notifyUrl(), 128, "notify_url"));
