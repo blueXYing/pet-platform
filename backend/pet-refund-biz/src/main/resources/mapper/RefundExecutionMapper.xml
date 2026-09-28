@@ -1,0 +1,92 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.petplatform.refund.biz.infrastructure.persistence.mapper.RefundExecutionMapper">
+  <update id="setUtcTimeZone">SET SESSION time_zone='+00:00'</update>
+  <update id="setLockWaitTimeout">SET SESSION innodb_lock_wait_timeout=2</update>
+  <select id="databaseNow" resultType="java.time.LocalDateTime">SELECT UTC_TIMESTAMP(3)</select>
+
+  <insert id="insertRefundOrder">
+    INSERT INTO refund_order(id,refund_no,order_id,refund_type,source_type,
+      refund_amount,refund_ratio,status,initiator_type,channel,created_at,updated_at)
+    VALUES (#{refundId},#{refundNo},#{orderId},'FULL','LATE_PAYMENT_TIMEOUT',#{amount},
+      1.000000,'CREATED','SYSTEM','LAKALA',#{now},#{now})
+  </insert>
+  <insert id="insertExecution">
+    INSERT INTO refund_execution(refund_order_id,refund_no,order_id,payment_id,payment_no,
+      store_id,merchant_id,user_id,payment_success_event_id,late_event_id,channel_trade_no,
+      channel_paid_amount,refund_amount,channel_paid_at,currency,request_id,
+      created_event_id,created_at,updated_at)
+    VALUES (#{refundId},#{refundNo},#{orderId},#{paymentId},#{paymentNo},#{storeId},
+      #{merchantId},#{userId},#{paymentSuccessEventId},#{lateEventId},#{channelTradeNo},
+      #{amount},#{amount},#{paidAt},'CNY',#{requestId},#{createdEventId},#{now},#{now})
+  </insert>
+  <select id="successProofCount" resultType="java.lang.Integer">
+    SELECT COUNT(*) FROM refund_transaction WHERE refund_id=#{refundId}
+      AND BINARY request_id=BINARY #{receipt} AND action IN ('REFUND','QUERY','CALLBACK')
+      AND channel_status='SUCCESS' AND BINARY channel_request_no=BINARY #{refundNo}
+  </select>
+
+  <sql id="bindingColumns">
+    SELECT r.id AS business_refund_id,r.refund_no AS business_refund_no,
+      r.order_id AS business_order_id,r.refund_type,r.source_type,r.refund_amount AS business_amount,
+      r.refund_ratio,r.status,r.channel,r.channel_refund_no,r.succeeded_at,r.created_at AS business_created_at,
+      e.refund_order_id AS binding_refund_id,e.refund_no AS binding_refund_no,
+      e.order_id AS binding_order_id,e.payment_id,e.payment_no,e.store_id,e.merchant_id,
+      e.user_id,e.payment_success_event_id,e.late_event_id,e.channel_trade_no,
+      e.channel_paid_amount,e.refund_amount,e.channel_paid_at,e.currency,e.request_id,
+      e.binding_version,e.created_event_id,e.created_at AS binding_created_at,
+      e.success_event_id,e.success_receipt_sha256
+    FROM refund_order r LEFT JOIN refund_execution e ON e.refund_order_id=r.id
+  </sql>
+  <select id="lockById" resultType="com.petplatform.refund.biz.infrastructure.persistence.mapper.RefundMapperRows$Binding">
+    <include refid="bindingColumns"/>
+    WHERE r.id=#{refundId} FOR UPDATE
+  </select>
+  <select id="lockByOrder" resultType="com.petplatform.refund.biz.infrastructure.persistence.mapper.RefundMapperRows$Binding">
+    <include refid="bindingColumns"/>
+    WHERE r.order_id=#{orderId} FOR UPDATE
+  </select>
+
+  <update id="markUnknown">
+    UPDATE refund_order SET status='UNKNOWN',version=version+1,updated_at=UTC_TIMESTAMP(3)
+    WHERE id=#{refundId} AND status IN ('CREATED','PROCESSING','UNKNOWN')
+  </update>
+  <update id="setNextQuery">
+    UPDATE refund_execution SET next_query_at=#{due},version=version+1,updated_at=UTC_TIMESTAMP(3)
+    WHERE refund_order_id=#{refundId}
+  </update>
+  <select id="firstQueryAt" resultType="java.time.LocalDateTime">
+    SELECT COALESCE(first_query_at,#{due}) FROM refund_execution WHERE refund_order_id=#{refundId}
+  </select>
+  <update id="setFirstQuery">
+    UPDATE refund_execution SET first_query_at=COALESCE(first_query_at,#{first})
+    WHERE refund_order_id=#{refundId}
+  </update>
+  <update id="markRefundSucceeded">
+    UPDATE refund_order SET status='SUCCESS',channel_refund_no=#{channelRefundNo},succeeded_at=#{succeededAt},
+      version=version+1,updated_at=UTC_TIMESTAMP(3)
+    WHERE id=#{refundId} AND status IN ('CREATED','PROCESSING','UNKNOWN')
+  </update>
+  <update id="markExecutionSucceeded">
+    UPDATE refund_execution SET success_event_id=#{eventId},success_receipt_sha256=#{receipt},next_query_at=NULL,
+      version=version+1,updated_at=UTC_TIMESTAMP(3) WHERE refund_order_id=#{refundId} AND success_event_id IS NULL
+  </update>
+  <insert id="insertSuccessTransaction">
+    INSERT INTO refund_transaction(id,refund_id,request_id,action,channel_request_no,channel_status,created_at)
+    VALUES (#{id},#{refundId},#{receipt},#{action},#{refundNo},'SUCCESS',UTC_TIMESTAMP(3))
+  </insert>
+  <update id="resolveIssue">
+    UPDATE refund_reconciliation_issue SET status='RESOLVED',updated_at=UTC_TIMESTAMP(3)
+    WHERE refund_order_id=#{refundId}
+  </update>
+  <insert id="insertIssue">
+    INSERT IGNORE INTO refund_reconciliation_issue(refund_order_id,issue_code,status,created_at,updated_at)
+    VALUES (#{refundId},#{code},'OPEN',UTC_TIMESTAMP(3),UTC_TIMESTAMP(3))
+  </insert>
+  <select id="scanOpen" resultType="com.petplatform.refund.biz.infrastructure.persistence.mapper.RefundMapperRows$Candidate">
+    SELECT e.refund_order_id,e.store_id FROM refund_execution e
+    JOIN refund_order r ON r.id=e.refund_order_id
+    WHERE r.status IN ('CREATED','PROCESSING','UNKNOWN') AND e.refund_order_id&gt;#{after}
+    ORDER BY e.refund_order_id LIMIT 100
+  </select>
+</mapper>

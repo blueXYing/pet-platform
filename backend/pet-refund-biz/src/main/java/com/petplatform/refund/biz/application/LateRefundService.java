@@ -9,13 +9,14 @@ import com.petplatform.order.api.query.OrderLatePaymentFactsApi;
 import com.petplatform.payment.api.query.PaymentSuccessFactsApi;
 import com.petplatform.refund.api.dto.*;
 import com.petplatform.refund.api.query.RefundExecutionFactsApi;
+import com.petplatform.refund.biz.infrastructure.persistence.RefundExecutionStore;
+import com.petplatform.refund.biz.infrastructure.persistence.mapper.RefundMapperRows;
 import com.petplatform.schedule.api.protection.ScheduleCapacityGuardApi;
 import com.petplatform.task.core.JdbcAsyncTaskSubmitter;
 import java.math.BigDecimal;
 import java.time.*;
 import java.util.*;
 import javax.sql.DataSource;
-import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.datasource.*;
 import org.springframework.transaction.TransactionDefinition;
 import org.springframework.transaction.support.*;
@@ -29,7 +30,7 @@ public final class LateRefundService implements IntegrationEventConsumer, Refund
             .enable(DeserializationFeature.FAIL_ON_TRAILING_TOKENS);
     private static final DecimalPublicIdCodec IDS = new DecimalPublicIdCodec();
     final DataSource source;
-    final JdbcTemplate jdbc;
+    final RefundExecutionStore store;
     final SnowflakeIdGenerator ids;
     final ScheduleCapacityGuardApi guard;
     final OrderLatePaymentFactsApi orders;
@@ -45,7 +46,7 @@ public final class LateRefundService implements IntegrationEventConsumer, Refund
         this.source=Objects.requireNonNull(source); this.ids=Objects.requireNonNull(ids);
         this.guard=Objects.requireNonNull(guard); this.orders=Objects.requireNonNull(orders);
         this.payments=Objects.requireNonNull(payments); this.publisher=Objects.requireNonNull(publisher);
-        jdbc=new JdbcTemplate(source); tasks=new JdbcAsyncTaskSubmitter(source,ids);
+        store=new RefundExecutionStore(source); tasks=new JdbcAsyncTaskSubmitter(source,ids);
         claims=new JdbcOutboxConsumeGuard(source,ids);
         tx=new TransactionTemplate(new DataSourceTransactionManager(source));
         tx.setIsolationLevel(TransactionDefinition.ISOLATION_READ_COMMITTED); tx.setTimeout(15);
@@ -102,20 +103,10 @@ public final class LateRefundService implements IntegrationEventConsumer, Refund
                 if(!claims.tryClaim(consumerName(),event)) throw unavailable();
                 long refund=next(),refundNo=next(),createdEvent=next();
                 OffsetDateTime now=now(); String key="EVENT:LATE_PAYMENT_AUTO_REFUND:"+payment+":"+order;
-                jdbc.update("""
-                    INSERT INTO refund_order(id,refund_no,order_id,refund_type,source_type,
-                      refund_amount,refund_ratio,status,initiator_type,channel,created_at,updated_at)
-                    VALUES (?,?,?,'FULL','LATE_PAYMENT_TIMEOUT',?,1.000000,'CREATED','SYSTEM','LAKALA',?,?)
-                    """,refund,refundNo,id(order),amount,utc(now),utc(now));
-                jdbc.update("""
-                    INSERT INTO refund_execution(refund_order_id,refund_no,order_id,payment_id,payment_no,
-                      store_id,merchant_id,user_id,payment_success_event_id,late_event_id,channel_trade_no,
-                      channel_paid_amount,refund_amount,channel_paid_at,currency,request_id,
-                      created_event_id,created_at,updated_at)
-                    VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,'CNY',?,?,?,?)
-                    """,refund,refundNo,id(order),id(payment),id(number),id(store),id(p.merchantId()),
-                    id(p.userId()),id(p.successEventId()),id(event.eventId()),p.channelTradeNo(),amount,
-                    amount,utc(paid),key,createdEvent,utc(now),utc(now));
+                this.store.insertRefundOrder(refund,refundNo,id(order),amount,utc(now));
+                this.store.insertExecution(refund,refundNo,id(order),id(payment),id(number),id(store),
+                    id(p.merchantId()),id(p.userId()),id(p.successEventId()),id(event.eventId()),
+                    p.channelTradeNo(),amount,utc(paid),key,createdEvent,utc(now));
                 publisher.publish(new IntegrationEvent<>(Long.toString(createdEvent),
                     "RefundOrderCreatedEvent.v1",1,now,"REFUND",Long.toString(refund),event.traceId(),
                     Map.of("refundOrderId",Long.toString(refund),"refundNo",Long.toString(refundNo),
@@ -142,9 +133,7 @@ public final class LateRefundService implements IntegrationEventConsumer, Refund
             if(!f.orderId().equals(orderId)||!"SUCCESS".equals(f.status())||r.successEvent()==null
                     || r.successAt()==null||r.channelRefundNo()==null||r.channelRefundNo().isBlank()
                     || r.receipt()==null||!r.receipt().matches("[a-f0-9]{64}")) throw unavailable();
-            Integer proof=jdbc.queryForObject("SELECT COUNT(*) FROM refund_transaction WHERE refund_id=? "
-                +"AND BINARY request_id=BINARY ? AND action IN ('REFUND','QUERY','CALLBACK') AND channel_status='SUCCESS' "
-                +"AND BINARY channel_request_no=BINARY ?",Integer.class,id(refundId),r.receipt(),f.refundNo());
+            Integer proof=store.successProofCount(id(refundId),r.receipt(),f.refundNo());
             if(proof==null||proof!=1) throw unavailable();
             return new RefundSuccessFact(refundId,f.refundNo(),orderId,f.paymentId(),storeId,
                 f.refundAmount(),f.originalPaidAmount(),r.channelRefundNo(),r.successAt(),
@@ -152,41 +141,26 @@ public final class LateRefundService implements IntegrationEventConsumer, Refund
         } catch(RuntimeException failure) { rollback(); throw unavailable(); }
     }
 
-    Row byId(String refund) { return read("r.id",id(refund)); }
-    private Row byOrder(String order) { return read("r.order_id",id(order)); }
-    private Row read(String column,long value) {
-        var rows=jdbc.query("""
-            SELECT r.id AS business_refund_id,r.refund_no AS business_refund_no,
-              r.order_id AS business_order_id,r.refund_type,r.source_type,r.refund_amount AS business_amount,
-              r.refund_ratio,r.status,r.channel,r.channel_refund_no,r.succeeded_at,r.created_at AS business_created_at,
-              e.refund_order_id AS binding_refund_id,e.refund_no AS binding_refund_no,
-              e.order_id AS binding_order_id,e.payment_id,e.payment_no,e.store_id,e.merchant_id,
-              e.user_id,e.payment_success_event_id,e.late_event_id,e.channel_trade_no,
-              e.channel_paid_amount,e.refund_amount,e.channel_paid_at,e.currency,e.request_id,
-              e.binding_version,e.created_event_id,e.created_at AS binding_created_at,
-              e.success_event_id,e.success_receipt_sha256
-            FROM refund_order r LEFT JOIN refund_execution e ON e.refund_order_id=r.id
-            WHERE %s=? FOR UPDATE
-            """.formatted(column),(rs,n)-> {
-                var f=new RefundExecutionFact(Long.toString(rs.getLong("binding_refund_id")),Long.toString(rs.getLong("binding_refund_no")),
-                    Long.toString(rs.getLong("binding_order_id")),Long.toString(rs.getLong("payment_id")),
-                    Long.toString(rs.getLong("payment_no")),Long.toString(rs.getLong("store_id")),
-                    Long.toString(rs.getLong("merchant_id")),Long.toString(rs.getLong("user_id")),
-                    Long.toString(rs.getLong("payment_success_event_id")),Long.toString(rs.getLong("late_event_id")),
-                    rs.getString("channel_trade_no"),rs.getBigDecimal("channel_paid_amount"),rs.getBigDecimal("refund_amount"),
-                    offset(rs.getObject("channel_paid_at",LocalDateTime.class)),rs.getString("currency"),rs.getString("status"),
-                    rs.getLong("binding_version"),Long.toString(rs.getLong("created_event_id")),
-                    offset(rs.getObject("binding_created_at",LocalDateTime.class)));
-                return new Row(f,rs.getLong("business_refund_id"),rs.getLong("business_refund_no"),
-                    rs.getLong("business_order_id"),offset(rs.getObject("business_created_at",LocalDateTime.class)),
-                    rs.getString("refund_type"),rs.getString("source_type"),
-                    rs.getBigDecimal("business_amount"),rs.getBigDecimal("refund_ratio"),rs.getString("channel"),
-                    rs.getString("request_id"),rs.getObject("success_event_id",Long.class),
-                    rs.getString("success_receipt_sha256"),rs.getString("channel_refund_no"),
-                    offset(rs.getObject("succeeded_at",LocalDateTime.class)));
-            },value);
-        if(rows.size()>1) throw unavailable(); return rows.isEmpty()?null:rows.getFirst();
+    Row byId(String refund) { return read(store.lockById(id(refund))); }
+    private Row byOrder(String order) { return read(store.lockByOrder(id(order))); }
+    private Row read(List<RefundMapperRows.Binding> rows) {
+        if(rows.size()>1) throw unavailable();
+        if(rows.isEmpty()) return null;
+        var r=rows.getFirst();
+        var f=new RefundExecutionFact(Long.toString(value(r.bindingRefundId)),Long.toString(value(r.bindingRefundNo)),
+            Long.toString(value(r.bindingOrderId)),Long.toString(value(r.paymentId)),
+            Long.toString(value(r.paymentNo)),Long.toString(value(r.storeId)),
+            Long.toString(value(r.merchantId)),Long.toString(value(r.userId)),
+            Long.toString(value(r.paymentSuccessEventId)),Long.toString(value(r.lateEventId)),
+            r.channelTradeNo,r.channelPaidAmount,r.refundAmount,offset(r.channelPaidAt),
+            r.currency,r.status,value(r.bindingVersion),Long.toString(value(r.createdEventId)),
+            offset(r.bindingCreatedAt));
+        return new Row(f,value(r.businessRefundId),value(r.businessRefundNo),
+            value(r.businessOrderId),offset(r.businessCreatedAt),r.refundType,r.sourceType,
+            r.businessAmount,r.refundRatio,r.channel,r.requestId,r.successEventId,
+            r.successReceiptSha256,r.channelRefundNo,offset(r.succeededAt));
     }
+    private static long value(Long number) { return number == null ? 0L : number; }
 
     void verifyRow(Row r) {
         if(r==null) throw unavailable(); var f=r.fact();
@@ -218,8 +192,8 @@ public final class LateRefundService implements IntegrationEventConsumer, Refund
     }
     void rollback() { Object r=TransactionSynchronizationManager.getResource(source);
         if(r instanceof ConnectionHolder h) h.setRollbackOnly(); }
-    void session() { jdbc.execute("SET SESSION time_zone='+00:00'"); jdbc.execute("SET SESSION innodb_lock_wait_timeout=2"); }
-    OffsetDateTime now() { return offset(jdbc.queryForObject("SELECT UTC_TIMESTAMP(3)",LocalDateTime.class)); }
+    void session() { store.sessionDefaults(); }
+    OffsetDateTime now() { return offset(store.databaseNow()); }
     long next() { long value=ids.nextId(); if(value<=0)throw unavailable();return value; }
     static long id(String value) { return IDS.fromApi(value); }
     static String payload(long refund,String store) { return "{\"refundOrderId\":\""+refund+"\",\"storeId\":\""+store+"\",\"bindingVersion\":0}"; }

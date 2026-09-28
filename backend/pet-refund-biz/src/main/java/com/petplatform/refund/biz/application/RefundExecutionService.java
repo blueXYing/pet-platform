@@ -73,15 +73,12 @@ public final class RefundExecutionService {
             OffsetDateTime now=refunds.now();
             OffsetDateTime due=result.queryNotBefore()==null?now.plusSeconds(30):time(result.queryNotBefore());
             if(due.isBefore(now))due=now.plusSeconds(1);
-            refunds.jdbc.update("UPDATE refund_order SET status='UNKNOWN',version=version+1,updated_at=UTC_TIMESTAMP(3) "
-                    +"WHERE id=? AND status IN ('CREATED','PROCESSING','UNKNOWN')",id(refundId));
-            refunds.jdbc.update("UPDATE refund_execution SET next_query_at=?,version=version+1,updated_at=UTC_TIMESTAMP(3) "
-                    +"WHERE refund_order_id=?",utc(due),id(refundId));
+            refunds.store.markUnknown(id(refundId));
+            refunds.store.setNextQuery(id(refundId),utc(due));
             if(!query) {
                 // The schedule of the first query is immutable across submit task replays.
-                OffsetDateTime first=refunds.jdbc.queryForObject("SELECT COALESCE(first_query_at,?) FROM refund_execution WHERE refund_order_id=?",
-                    (rs,n)->offset(rs.getObject(1,LocalDateTime.class)),utc(due),id(refundId));
-                refunds.jdbc.update("UPDATE refund_execution SET first_query_at=COALESCE(first_query_at,?) WHERE refund_order_id=?",utc(first),id(refundId));
+                OffsetDateTime first=offset(refunds.store.firstQueryAt(id(refundId),utc(due)));
+                refunds.store.setFirstQuery(id(refundId),utc(first));
                 refunds.tasks.enqueueAt("REFUND_CHANNEL_QUERY:"+refundId+":0","REFUND","REFUND_CHANNEL_QUERY",
                     "REFUND",id(refundId),0L,payload(id(refundId),storeId),8,"REFUND_CHANNEL",first);
             }
@@ -117,29 +114,20 @@ public final class RefundExecutionService {
             }
             if(!Set.of("CREATED","PROCESSING","UNKNOWN").contains(f.status()))throw unavailable();
             long event=refunds.next();
-            int changed=refunds.jdbc.update("""
-                UPDATE refund_order SET status='SUCCESS',channel_refund_no=?,succeeded_at=?,
-                  version=version+1,updated_at=UTC_TIMESTAMP(3)
-                WHERE id=? AND status IN ('CREATED','PROCESSING','UNKNOWN')
-                """,p.channelRefundNo(),utc(p.resultAt()),id(f.refundOrderId()));
+            int changed=refunds.store.markRefundSucceeded(id(f.refundOrderId()),
+                p.channelRefundNo(),utc(p.resultAt()));
             if(changed!=1)throw unavailable();
-            int bound=refunds.jdbc.update("""
-                UPDATE refund_execution SET success_event_id=?,success_receipt_sha256=?,next_query_at=NULL,
-                  version=version+1,updated_at=UTC_TIMESTAMP(3) WHERE refund_order_id=? AND success_event_id IS NULL
-                """,event,p.receiptSha256(),id(f.refundOrderId()));
+            int bound=refunds.store.markExecutionSucceeded(id(f.refundOrderId()),event,p.receiptSha256());
             if(bound!=1)throw unavailable();
-            refunds.jdbc.update("""
-                INSERT INTO refund_transaction(id,refund_id,request_id,action,channel_request_no,channel_status,created_at)
-                VALUES (?,?,?,?,?,'SUCCESS',UTC_TIMESTAMP(3))
-                """,refunds.next(),id(f.refundOrderId()),p.receiptSha256(),
-                "SUBMIT".equals(p.receiptSource())?"REFUND":p.receiptSource(),f.refundNo());
+            refunds.store.insertSuccessTransaction(refunds.next(),id(f.refundOrderId()),
+                p.receiptSha256(),"SUBMIT".equals(p.receiptSource())?"REFUND":p.receiptSource(),f.refundNo());
             refunds.publisher.publish(new IntegrationEvent<>(Long.toString(event),"RefundSucceededEvent.v1",1,
                 p.resultAt(),"REFUND",f.refundOrderId(),ctx.traceId(),Map.of(
                   "refundOrderId",f.refundOrderId(),"refundNo",f.refundNo(),"orderId",f.orderId(),
                   "refundType","FULL","refundSource",SOURCE,"refundAmount",f.refundAmount(),
                   "originalPaidAmount",f.originalPaidAmount(),"channelRefundNo",p.channelRefundNo(),
                   "succeededAt",p.resultAt().toString())));
-            refunds.jdbc.update("UPDATE refund_reconciliation_issue SET status='RESOLVED',updated_at=UTC_TIMESTAMP(3) WHERE refund_order_id=?",id(f.refundOrderId()));
+            refunds.store.resolveIssue(id(f.refundOrderId()));
         });
     }
 
@@ -148,11 +136,8 @@ public final class RefundExecutionService {
             refunds.session();refunds.guard.acquire(List.of(expected.storeId()),ctx);
             var f=refunds.requireForChannel(expected.refundOrderId(),expected.storeId(),ctx);same(expected,f);
             if("SUCCESS".equals(f.status()))return;
-            refunds.jdbc.update("UPDATE refund_order SET status='UNKNOWN',version=version+1,updated_at=UTC_TIMESTAMP(3) WHERE id=? AND status IN ('CREATED','PROCESSING','UNKNOWN')",id(f.refundOrderId()));
-            int created=refunds.jdbc.update("""
-                INSERT IGNORE INTO refund_reconciliation_issue(refund_order_id,issue_code,status,created_at,updated_at)
-                VALUES (?,?,'OPEN',UTC_TIMESTAMP(3),UTC_TIMESTAMP(3))
-                """,id(f.refundOrderId()),code);
+            refunds.store.markUnknown(id(f.refundOrderId()));
+            int created=refunds.store.insertIssue(id(f.refundOrderId()),code);
             if(created==1) TransactionSynchronizationManager.registerSynchronization(new org.springframework.transaction.support.TransactionSynchronization() {
                 @Override public void afterCommit() {
                     LOG.error("Late refund reconciliation required refundOrderId={} issueCode={}",f.refundOrderId(),code);
@@ -164,23 +149,20 @@ public final class RefundExecutionService {
     /** Cyclic bounded scan. A worker crash or exhausted retry cannot silently lose a refund. */
     public synchronized int reconcileDeadTasks() {
         noOuter();
-        var candidates=refunds.jdbc.query("""
-            SELECT e.refund_order_id,e.store_id FROM refund_execution e
-            JOIN refund_order r ON r.id=e.refund_order_id
-            WHERE r.status IN ('CREATED','PROCESSING','UNKNOWN') AND e.refund_order_id>?
-            ORDER BY e.refund_order_id LIMIT 100
-            """,(rs,n)->new String[]{Long.toString(rs.getLong(1)),Long.toString(rs.getLong(2))},scanAfter.get());
+        var candidates=refunds.store.scanOpen(scanAfter.get());
         if(candidates.isEmpty()) {scanAfter.set(0);return 0;}
         int count=0;
         for(var c:candidates) {
-            String submit=taskStates.status("REFUND_SUBMIT:"+c[0]+":0");
-            String query=taskStates.status("REFUND_CHANNEL_QUERY:"+c[0]+":0");
+            String refundId=Long.toString(c.refundOrderId);
+            String storeId=Long.toString(c.storeId);
+            String submit=taskStates.status("REFUND_SUBMIT:"+refundId+":0");
+            String query=taskStates.status("REFUND_CHANNEL_QUERY:"+refundId+":0");
             if("DEAD".equals(submit)||"CANCELED".equals(submit)||"DEAD".equals(query)||"CANCELED".equals(query)) {
                 QueryContext ctx=new QueryContext("late-refund-reconciliation",OperatorType.SYSTEM,null);
-                var fact=refunds.tx.execute(s -> {refunds.guard.acquire(List.of(c[1]),ctx);return refunds.requireForChannel(c[0],c[1],ctx);});
+                var fact=refunds.tx.execute(s -> {refunds.guard.acquire(List.of(storeId),ctx);return refunds.requireForChannel(refundId,storeId,ctx);});
                 issue(fact,"LATE_PAYMENT_AUTO_REFUND_FAILED",ctx);count++;
             }
-            scanAfter.set(id(c[0]));
+            scanAfter.set(id(refundId));
         }
         return count;
     }
