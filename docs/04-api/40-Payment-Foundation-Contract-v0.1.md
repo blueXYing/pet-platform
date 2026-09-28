@@ -24,6 +24,8 @@
 
 内部 prepare 接受 USER 的可信 CommandContext 和 orderId。先检查当前用户，再在独立短事务持久化二进制 requestKey 与原 orderId/userId 绑定；后续资格或配置失败也不允许同键换订单。执行事务为同库 READ_COMMITTED：锁请求绑定 → 同门店 guard → USER 当前资格 → ORDER 公共当前事实 → 服务端商户绑定 → PAYMENT 行。每订单仅一条 payment_order，原十分钟截止不延长，不重开已关闭订单。
 
+同键异参沿23号返回 IDEMPOTENCY_KEY_CONFLICT；锁等待超时/死锁返回 COMMON_CONFLICT 并要求原键重试。数据库连接类异常导致提交结果不明时，仅用原绑定在权威主库事务中有限恢复一次；已提交则重放，仍无法确认则503，不能换 requestId 或再造付款编号。
+
 商户/门店归属、金额和截止时间来自 ORDER；merchant_no/term_no/sub_appid 来自服务端配置。消费者请求不能指定收款对象、金额、最终支付状态或密钥。成功意图重放重新核对当前用户与订单归属，不获取或重放过期微信参数。
 
 SQL40 新增字段对历史行保持 NULL，不猜测或回填既有商户、币种、支付身份；缺少绑定的历史记录按未知处理。SQL40 的 cancel_reason 由原到期关闭路径写 PAYMENT_TIMEOUT，已核准的状态日志仍保留。
