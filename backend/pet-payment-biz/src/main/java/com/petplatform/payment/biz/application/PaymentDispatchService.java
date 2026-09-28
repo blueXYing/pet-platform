@@ -459,8 +459,18 @@ public final class PaymentDispatchService implements PaymentInitiationApi, Payme
                 || !"CLOSE_ACKED".equals(dispatch.state()) || dispatch.fencedAt() == null
                 || dispatch.preorderResponseSha256() == null
                 || dispatch.closeResponseSha256() == null
-                || "PAID".equals(payment.status()) || payment.successEventId() != null
-                || "RECONCILIATION_REQUIRED".equals(payment.dispatchState())) return ExpiryEvidence.HOLD;
+                || !"CLOSED".equals(payment.status()) || payment.successEventId() != null
+                || payment.paidAt() != null || payment.paidAmount() != null
+                || !"OBSERVED".equals(payment.dispatchState())) return ExpiryEvidence.HOLD;
+        Long adverseReceipts = jdbc.queryForObject("SELECT COUNT(*) FROM payment_channel_receipt "
+                + "WHERE payment_id=? AND (channel_status IN ('SUCCESS','PART_REFUND','REFUND','REVOKED') "
+                + "OR paid_amount>0)", Long.class, payment.id());
+        if (adverseReceipts == null || adverseReceipts != 0) return ExpiryEvidence.HOLD;
+        Long closeReceipts = jdbc.queryForObject("SELECT COUNT(*) FROM payment_channel_receipt "
+                + "WHERE payment_id=? AND receipt_source='CLOSE' AND channel_status='CLOSE' "
+                + "AND channel_response_sha256=?", Long.class, payment.id(),
+                dispatch.closeResponseSha256());
+        if (closeReceipts == null || closeReceipts != 1) return ExpiryEvidence.HOLD;
         if (!digest(verifiedAfterCloseSha)) return ExpiryEvidence.HOLD;
         List<String> matchingQuery = jdbc.query("SELECT channel_response_sha256 "
                 + "FROM payment_channel_receipt WHERE payment_id=? AND receipt_source='QUERY' "
