@@ -799,11 +799,13 @@ class BookingCreateAcceptanceTest {
     private static final class Database implements AutoCloseable {
         private static final List<String> SCHEMA = List.of(
                 "06-核心数据库Schema-v0.1.sql",
+                "13-Async-Infra-Schema-v0.1.sql",
                 "28-Merchant-Agreement-Schema-v0.1.sql",
                 "29-Merchant-Application-Schema-v0.1.sql",
                 "33-Service-Write-Schema-v0.1.sql",
                 "37-Reservation-Protection-Foundation-Schema-v0.1.sql",
-                "38-Booking-Create-Schema-v0.1.sql");
+                "38-Booking-Create-Schema-v0.1.sql",
+                "39-Booking-Expiry-Schema-v0.1.sql");
         private final String name = "qa_booking_" + UUID.randomUUID().toString().replace("-", "");
         private final JdbcTemplate admin;
         private final DataSource source;
