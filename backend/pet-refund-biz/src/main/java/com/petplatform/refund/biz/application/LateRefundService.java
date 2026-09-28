@@ -80,9 +80,11 @@ public final class LateRefundService implements IntegrationEventConsumer, Refund
                 if(old!=null) {
                     verifyRow(old);
                     var f=old.fact();
-                    if(!f.paymentId().equals(payment)||!f.paymentNo().equals(number)
+                    if(!f.orderId().equals(order)||!f.lateEventId().equals(event.eventId())
+                            || !f.paymentId().equals(payment)||!f.paymentNo().equals(number)
                             || f.refundAmount().compareTo(amount)!=0 || !f.paidAt().isEqual(paid)
                             || !f.storeId().equals(store)||!f.channelTradeNo().equals(late.channelTradeNo())
+                            || !f.merchantId().equals(late.merchantId())||!f.userId().equals(late.userId())
                             || !f.paymentSuccessEventId().equals(late.paymentSuccessEventId())
                             || f.originalPaidAmount().compareTo(late.channelPaidAmount())!=0
                             || !f.paidAt().isEqual(late.channelPaidAt())) throw unavailable();
@@ -154,21 +156,30 @@ public final class LateRefundService implements IntegrationEventConsumer, Refund
     private Row byOrder(String order) { return read("r.order_id",id(order)); }
     private Row read(String column,long value) {
         var rows=jdbc.query("""
-            SELECT r.id,r.refund_no,r.order_id,r.refund_type,r.source_type,r.refund_amount AS business_amount,
+            SELECT r.id AS business_refund_id,r.refund_no AS business_refund_no,
+              r.order_id AS business_order_id,r.refund_type,r.source_type,r.refund_amount AS business_amount,
               r.refund_ratio,r.status,r.channel,r.channel_refund_no,r.succeeded_at,r.created_at AS business_created_at,
-              e.* FROM refund_order r LEFT JOIN refund_execution e ON e.refund_order_id=r.id
+              e.refund_order_id AS binding_refund_id,e.refund_no AS binding_refund_no,
+              e.order_id AS binding_order_id,e.payment_id,e.payment_no,e.store_id,e.merchant_id,
+              e.user_id,e.payment_success_event_id,e.late_event_id,e.channel_trade_no,
+              e.channel_paid_amount,e.refund_amount,e.channel_paid_at,e.currency,e.request_id,
+              e.binding_version,e.created_event_id,e.created_at AS binding_created_at,
+              e.success_event_id,e.success_receipt_sha256
+            FROM refund_order r LEFT JOIN refund_execution e ON e.refund_order_id=r.id
             WHERE %s=? FOR UPDATE
             """.formatted(column),(rs,n)-> {
-                var f=new RefundExecutionFact(Long.toString(rs.getLong("id")),Long.toString(rs.getLong("refund_no")),
-                    Long.toString(rs.getLong("order_id")),Long.toString(rs.getLong("payment_id")),
+                var f=new RefundExecutionFact(Long.toString(rs.getLong("binding_refund_id")),Long.toString(rs.getLong("binding_refund_no")),
+                    Long.toString(rs.getLong("binding_order_id")),Long.toString(rs.getLong("payment_id")),
                     Long.toString(rs.getLong("payment_no")),Long.toString(rs.getLong("store_id")),
                     Long.toString(rs.getLong("merchant_id")),Long.toString(rs.getLong("user_id")),
                     Long.toString(rs.getLong("payment_success_event_id")),Long.toString(rs.getLong("late_event_id")),
                     rs.getString("channel_trade_no"),rs.getBigDecimal("channel_paid_amount"),rs.getBigDecimal("refund_amount"),
                     offset(rs.getObject("channel_paid_at",LocalDateTime.class)),rs.getString("currency"),rs.getString("status"),
                     rs.getLong("binding_version"),Long.toString(rs.getLong("created_event_id")),
-                    offset(rs.getObject("business_created_at",LocalDateTime.class)));
-                return new Row(f,rs.getString("refund_type"),rs.getString("source_type"),
+                    offset(rs.getObject("binding_created_at",LocalDateTime.class)));
+                return new Row(f,rs.getLong("business_refund_id"),rs.getLong("business_refund_no"),
+                    rs.getLong("business_order_id"),offset(rs.getObject("business_created_at",LocalDateTime.class)),
+                    rs.getString("refund_type"),rs.getString("source_type"),
                     rs.getBigDecimal("business_amount"),rs.getBigDecimal("refund_ratio"),rs.getString("channel"),
                     rs.getString("request_id"),rs.getObject("success_event_id",Long.class),
                     rs.getString("success_receipt_sha256"),rs.getString("channel_refund_no"),
@@ -181,7 +192,10 @@ public final class LateRefundService implements IntegrationEventConsumer, Refund
         if(r==null) throw unavailable(); var f=r.fact();
         for(String v:List.of(f.refundOrderId(),f.refundNo(),f.orderId(),f.paymentId(),f.paymentNo(),
                 f.storeId(),f.merchantId(),f.userId(),f.paymentSuccessEventId(),f.lateEventId(),f.createdEventId())) id(v);
-        if(!"FULL".equals(r.type())||!SOURCE.equals(r.refundSource())||!"LAKALA".equals(r.channel())
+        if(id(f.refundOrderId())!=r.businessRefundId()||id(f.refundNo())!=r.businessRefundNo()
+                ||id(f.orderId())!=r.businessOrderId()||r.businessCreatedAt()==null
+                ||f.createdAt()==null||!f.createdAt().isEqual(r.businessCreatedAt())
+                ||!"FULL".equals(r.type())||!SOURCE.equals(r.refundSource())||!"LAKALA".equals(r.channel())
                 ||!"CNY".equals(f.currency())||f.bindingVersion()!=0||f.channelTradeNo()==null
                 ||f.channelTradeNo().isBlank()||f.refundAmount()==null||f.refundAmount().signum()<=0
                 ||f.originalPaidAmount()==null||f.refundAmount().compareTo(f.originalPaidAmount())!=0
@@ -191,7 +205,8 @@ public final class LateRefundService implements IntegrationEventConsumer, Refund
                 ||!("EVENT:LATE_PAYMENT_AUTO_REFUND:"+f.paymentId()+":"+f.orderId()).equals(r.requestId())) throw unavailable();
     }
 
-    record Row(RefundExecutionFact fact,String type,String refundSource,BigDecimal businessAmount,
+    record Row(RefundExecutionFact fact,long businessRefundId,long businessRefundNo,long businessOrderId,
+        OffsetDateTime businessCreatedAt,String type,String refundSource,BigDecimal businessAmount,
         BigDecimal ratio,String channel,String requestId,Long successEvent,String receipt,
         String channelRefundNo,OffsetDateTime successAt) {}
     void requireGuard(String store,QueryContext ctx) {
