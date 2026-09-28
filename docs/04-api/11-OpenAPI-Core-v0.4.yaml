@@ -6746,11 +6746,21 @@ paths:
         schema:
           type: string
           pattern: '^[0-9]{4}-[0-9]{2}-[0-9]{2}$'
+      - name: kind
+        in: query
+        required: false
+        description: 'Accepted only when pet.schedule.selection.enabled=true (Contract 39). Must match the service fulfillment type.'
+        schema:
+          type: string
+          enum: [GENERAL, PICKUP, RETURN]
       responses:
         '200':
           description: 'Minute-level OPEN windows, start-ascending, rendered in the business
             zone (+08:00); see HTTP contract 10 section 3.4. items elements carry only
-            start/end/effectiveCapacity/occupiedCount/remainingCapacity/available.'
+            start/end/effectiveCapacity/occupiedCount/remainingCapacity/available.
+            With pet.schedule.selection.enabled=true each item also contains windowId (decimal String)
+            and kind (GENERAL/PICKUP/RETURN); counts use claims and remain original-window display only,
+            not final booking feasibility. See Contract 39.'
           headers:
             Cache-Control:
               schema:
