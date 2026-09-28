@@ -155,13 +155,15 @@ class ScheduleSelectionQueryMySqlTest {
         private final JdbcTemplate jdbc;
 
         Database() throws Exception {
-            String url = System.getenv().getOrDefault("SCH_SELECTION_MYSQL_URL",
-                    "jdbc:mysql://127.0.0.1:33461/");
+            String prefix=System.getenv().containsKey("SCH_SELECTION_MYSQL_URL") ? "SCH_SELECTION"
+                    : System.getenv().containsKey("AUTH_MYSQL_URL") ? "AUTH" : "PLAT004";
+            String url = System.getenv().getOrDefault(prefix+"_MYSQL_URL",
+                    "jdbc:mysql://127.0.0.1:33450/");
             if (!url.matches("jdbc:mysql://(127\\.0\\.0\\.1|localhost):[0-9]+/")) {
                 throw new IllegalArgumentException("test MySQL URL must target localhost");
             }
-            String user = System.getenv().getOrDefault("SCH_SELECTION_MYSQL_USER", "root");
-            String password = System.getenv().getOrDefault("SCH_SELECTION_MYSQL_PASSWORD", "");
+            String user = System.getenv().getOrDefault(prefix+"_MYSQL_USER", "root");
+            String password = System.getenv().getOrDefault(prefix+"_MYSQL_PASSWORD", "");
             admin = new JdbcTemplate(source(url, user, password));
             source = source(url + name, user, password);
             jdbc = new JdbcTemplate(source);
