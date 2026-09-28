@@ -85,7 +85,9 @@ public final class LakalaProtocol {
 
     public record PreorderResult(String merchantNo, String outTradeNo, String channelTradeNo,
             String appId, String prepayId, String paySign, String timeStamp,
-            String nonceStr, String packageValue, String signType) {}
+            String nonceStr, String packageValue, String signType) {
+        @Override public String toString() { return "PreorderResult[redacted]"; }
+    }
 
     public record PreparedRequest(String path, byte[] rawBody) {
         public PreparedRequest { rawBody = rawBody.clone(); }
@@ -94,7 +96,9 @@ public final class LakalaProtocol {
 
     public record PreorderInput(String outOrgCode, LocalDateTime requestTime,
             String merchantNo, String termNo, String outTradeNo, BigDecimal amount,
-            String subject, String subAppId, String userId, String requestIp, String notifyUrl) {}
+            String subject, String subAppId, String userId, String requestIp, String notifyUrl) {
+        @Override public String toString() { return "PreorderInput[redacted]"; }
+    }
 
     public record QueryInput(String outOrgCode, LocalDateTime requestTime,
             String merchantNo, String termNo, String outTradeNo, LocalDate tradeRequestDate) {}
@@ -228,7 +232,7 @@ public final class LakalaProtocol {
 
     public static PreorderResult verifyPreorderResponse(Map<String, String> headers, byte[] rawBody,
             String expectedAppId, String expectedPlatformSerial, PublicKey trustedPlatformKey,
-            ExpectedPayment expected) {
+            ExpectedPayment expected, String expectedSubAppId) {
         verifyResponse(headers, rawBody, expectedAppId, expectedPlatformSerial, trustedPlatformKey);
         JsonNode data = successData(rawBody);
         String merchant = field(data, "merchant_no", 32);
@@ -237,10 +241,17 @@ public final class LakalaProtocol {
         JsonNode fields = object(data, "acc_resp_fields");
         String signType = field(fields, "sign_type", 32);
         if (!"RSA".equals(signType)) invalid();
+        String appId = field(fields, "app_id", 32);
+        String prepayId = field(fields, "prepay_id", 128);
+        String packageValue = field(fields, "package", 160);
+        if (!appId.equals(required(expectedSubAppId, 32, "sub_appid"))
+                || !packageValue.equals("prepay_id=" + prepayId)) invalid();
         return new PreorderResult(merchant, out, field(data, "trade_no", 32),
-                field(fields, "app_id", 32), field(fields, "prepay_id", 32),
-                field(fields, "pay_sign", 256), field(fields, "time_stamp", 32),
-                field(fields, "nonce_str", 32), field(fields, "package", 128), signType);
+                appId, prepayId,
+                // 1075 lists String(256); a 2048-bit RSA Base64 value is 344 chars.
+                // Bound compatibility at 512 pending a real merchant response fixture.
+                field(fields, "pay_sign", 512), field(fields, "time_stamp", 32),
+                field(fields, "nonce_str", 32), packageValue, signType);
     }
 
     public static CloseAcknowledgement verifyCloseResponse(Map<String, String> headers,

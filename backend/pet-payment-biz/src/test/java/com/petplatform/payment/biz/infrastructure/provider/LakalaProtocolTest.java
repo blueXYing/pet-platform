@@ -179,6 +179,30 @@ class LakalaProtocolTest {
                         .getBytes(StandardCharsets.UTF_8), "app-1", "serial-1", keys.getPublic()));
     }
 
+    @Test
+    void preorderParametersAreBoundToRequestedSubAppAndPrepayId() throws Exception {
+        String fields = "\"app_id\":\"wx-sub-app\",\"prepay_id\":\"wx-prepay\","
+                + "\"pay_sign\":\"" + "S".repeat(344) + "\","
+                + "\"time_stamp\":\"1727499000\",\"nonce_str\":\"AbCd12345678\","
+                + "\"package\":\"prepay_id=wx-prepay\",\"sign_type\":\"RSA\"";
+        String json = "{\"code\":\"BBS00000\",\"resp_data\":{"
+                + "\"merchant_no\":\"123456\",\"out_trade_no\":\"2100001\","
+                + "\"trade_no\":\"T01\",\"acc_resp_fields\":{" + fields + "}}}";
+        byte[] body = json.getBytes(StandardCharsets.UTF_8);
+        var result = LakalaProtocol.verifyPreorderResponse(responseHeaders(body), body,
+                "app-1", "serial-1", keys.getPublic(), EXPECTED, "wx-sub-app");
+        assertEquals(344, result.paySign().length());
+        assertFalse(result.toString().contains(result.paySign()));
+        assertThrows(ProtocolException.class, () -> LakalaProtocol.verifyPreorderResponse(
+                responseHeaders(body), body, "app-1", "serial-1", keys.getPublic(),
+                EXPECTED, "another-app"));
+        byte[] badPackage = json.replace("prepay_id=wx-prepay", "prepay_id=other")
+                .getBytes(StandardCharsets.UTF_8);
+        assertThrows(ProtocolException.class, () -> LakalaProtocol.verifyPreorderResponse(
+                responseHeaders(badPackage), badPackage, "app-1", "serial-1",
+                keys.getPublic(), EXPECTED, "wx-sub-app"));
+    }
+
     private static byte[] notice(String state, String payer, String tradeTime) {
         String amount = payer == null ? "" : ",\"payer_amount\":\"" + payer + "\"";
         return ("{\"merchant_no\":\"123456\",\"out_trade_no\":\"2100001\","
