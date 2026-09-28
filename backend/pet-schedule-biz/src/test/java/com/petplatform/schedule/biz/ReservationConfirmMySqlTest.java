@@ -50,6 +50,9 @@ class ReservationConfirmMySqlTest {
             ScheduleCapacityGuardApiImpl guard = new ScheduleCapacityGuardApiImpl(db.source);
             AtomicBoolean paidProof = new AtomicBoolean();
             OrderPaymentFactsApi orders = new OrderPaymentFactsApi() {
+                @Override public void requirePayableForPreparation(String orderId,String storeId,QueryContext context) {
+                    throw new UnsupportedOperationException("This fixture tests confirmation only");
+                }
                 @Override public String locateStore(String orderId, QueryContext context) {
                     throw new UnsupportedOperationException();
                 }
