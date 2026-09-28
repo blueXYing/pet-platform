@@ -62,9 +62,30 @@ class MySqlTaskRepositoryTest {
                 if (lease.isPresent()) assertTrue(claimed.add(lease.get().taskId()), "duplicate claim");
             }
         }
+        // A bounded burst of SKIP LOCKED polls can end while other transactions still hold
+        // candidate rows. Verify that every unclaimed task remains READY, then simulate the next
+        // poll cycle after the concurrent wave has committed. An empty poll is not queue drain.
+        assertFalse(claimed.isEmpty(), "concurrent workers made no progress");
+        int ready = db.jdbc().queryForObject(
+                "SELECT COUNT(*) FROM async_task WHERE status='READY'", Integer.class);
+        assertEquals(12, claimed.size() + ready);
+        assertEquals(claimed.size(), count("async_task_attempt"));
+        assertEquals(claimed.size(), db.jdbc().queryForObject(
+                "SELECT COUNT(*) FROM async_task WHERE status='RUNNING'", Integer.class));
+        for (int i = 0; i < ready; i++) {
+            TaskLease next = repository.claim("next-poll-" + i, LEASE).orElseThrow();
+            assertTrue(claimed.add(next.taskId()), "duplicate claim after next poll");
+        }
         assertEquals(12, claimed.size());
         assertEquals(12, count("async_task_attempt"));
-        assertEquals(12, db.jdbc().queryForObject("SELECT COUNT(*) FROM async_task WHERE status='RUNNING'", Integer.class));
+        assertEquals(12, db.jdbc().queryForObject(
+                "SELECT COUNT(*) FROM async_task WHERE status='RUNNING'", Integer.class));
+        assertEquals(0, db.jdbc().queryForObject(
+                "SELECT COUNT(*) FROM async_task WHERE status='READY'", Integer.class));
+        assertEquals(0, db.jdbc().queryForObject(
+                "SELECT COUNT(*) FROM (SELECT task_id FROM async_task_attempt "
+                        + "GROUP BY task_id HAVING COUNT(*)<>1 OR MIN(attempt_no)<>1) bad",
+                Integer.class));
     }
 
     @Test
