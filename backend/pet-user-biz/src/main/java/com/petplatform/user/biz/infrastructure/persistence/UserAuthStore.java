@@ -3,6 +3,7 @@ package com.petplatform.user.biz.infrastructure.persistence;
 import com.petplatform.user.biz.infrastructure.persistence.entity.UserAccountEntity;
 import com.petplatform.user.biz.infrastructure.persistence.entity.UserAuthIdentityEntity;
 import com.petplatform.user.biz.infrastructure.persistence.mapper.UserAuthMapper;
+import java.util.List;
 import javax.sql.DataSource;
 import org.mybatis.spring.SqlSessionTemplate;
 
@@ -18,6 +19,8 @@ public final class UserAuthStore {
     public record AccountRow(
             long id, String phone, String nickname, String avatarUrl,
             boolean passwordEnabled, String status) {}
+
+    public record PaymentIdentityRow(String type, String appId, String openId) {}
 
     private final SqlSessionTemplate template;
 
@@ -46,6 +49,17 @@ public final class UserAuthStore {
                 ? auth().selectAccountByIdForUpdate(userId)
                 : auth().selectAccountById(userId);
         return row == null ? null : toRow(row);
+    }
+
+    public List<String> bookingAccountStatus(long userId, boolean forUpdate) {
+        return forUpdate ? auth().lockBookingAccountStatus(userId)
+                : auth().selectBookingAccountStatus(userId);
+    }
+
+    public List<PaymentIdentityRow> lockPaymentIdentities(long userId, String appId) {
+        return auth().lockPaymentIdentities(userId, appId).stream()
+                .map(row -> new PaymentIdentityRow((String) row.get("identity_type"),
+                        (String) row.get("app_id"), (String) row.get("open_id"))).toList();
     }
 
     public Long findAccountIdByPhone(String phone) {

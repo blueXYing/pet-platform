@@ -5,10 +5,10 @@ import com.petplatform.schedule.api.protection.ScheduleCapacityGuardApi;
 import com.petplatform.user.api.dto.PetSnapshotDTO;
 import com.petplatform.user.api.query.BookingUserFactsApi;
 import com.petplatform.user.biz.infrastructure.persistence.PetStore;
+import com.petplatform.user.biz.infrastructure.persistence.UserAuthStore;
 import java.util.Objects;
 import java.util.Set;
 import javax.sql.DataSource;
-import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.datasource.ConnectionHolder;
 import org.springframework.transaction.support.TransactionSynchronizationManager;
 
@@ -17,11 +17,11 @@ public final class BookingUserFactsApiImpl implements BookingUserFactsApi {
     private static final DecimalPublicIdCodec IDS=new DecimalPublicIdCodec();
     private final DataSource source;
     private final ScheduleCapacityGuardApi guard;
-    private final JdbcTemplate jdbc;
+    private final UserAuthStore auth;
     private final PetStore pets;
     public BookingUserFactsApiImpl(DataSource source, ScheduleCapacityGuardApi guard) {
         this.source=Objects.requireNonNull(source); this.guard=Objects.requireNonNull(guard);
-        jdbc=new JdbcTemplate(source); pets=new PetStore(source);
+        auth=new UserAuthStore(source); pets=new PetStore(source);
     }
     @Override public void checkActor(String userId, QueryContext context) { actor(userId,context,false); }
     @Override public void requireCurrentActor(String userId,String storeId,QueryContext context) {
@@ -32,7 +32,7 @@ public final class BookingUserFactsApiImpl implements BookingUserFactsApi {
         if(context==null || context.operatorType()!=OperatorType.USER || !userId.equals(context.operatorId()))
             throw new ApiException(CommonApiCodes.FORBIDDEN,"booking requires the authenticated user");
         try {
-            var rows=jdbc.queryForList("SELECT status FROM user_account WHERE id=?"+(lock?" FOR UPDATE":""),String.class,id);
+            var rows=auth.bookingAccountStatus(id,lock);
             if(rows.isEmpty()) throw new ApiException(CommonApiCodes.UNAUTHORIZED,"user unavailable");
             String status=rows.getFirst();
             if(!Set.of("ACTIVE","FROZEN","CANCELED").contains(status)) throw unavailable();

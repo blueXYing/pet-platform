@@ -30,6 +30,20 @@
         WHERE id=#{userId} FOR UPDATE
     </select>
 
+    <select id="selectBookingAccountStatus" resultType="string">
+        SELECT status FROM user_account WHERE id=#{userId}
+    </select>
+
+    <select id="lockBookingAccountStatus" resultType="string">
+        SELECT status FROM user_account WHERE id=#{userId} FOR UPDATE
+    </select>
+
+    <select id="lockPaymentIdentities" resultType="map">
+        SELECT identity_type,app_id,open_id FROM user_auth_identity
+        WHERE user_id=#{userId} AND BINARY app_id=BINARY #{appId}
+        LIMIT 2 FOR UPDATE
+    </select>
+
     <select id="selectAccountIdByPhone" resultType="long">
         SELECT id FROM user_account WHERE phone=#{phone}
     </select>
