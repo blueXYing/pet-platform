@@ -85,6 +85,7 @@ public class BookingExpiryConfiguration {
                     || !node.path("orderId").isTextual() || !node.path("reservationId").isTextual()
                     || !node.path("expectedPaymentExpireAt").isTextual()
                     || !node.path("expectedReservationVersion").isIntegralNumber()
+                    || !node.path("expectedReservationVersion").canConvertToLong()
                     || node.path("expectedReservationVersion").longValue()!=0) throw new IllegalArgumentException();
             String order=node.path("orderId").textValue(),reservation=node.path("reservationId").textValue();
             var ids=new DecimalPublicIdCodec(); ids.fromApi(order);

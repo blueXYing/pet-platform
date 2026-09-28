@@ -15,6 +15,7 @@ public final class OrderExpiryFactsApiImpl implements OrderExpiryFactsApi {
     @Override public void assertExpiryCommitted(String orderId,String reservationId,String storeId,QueryContext context) {
         guard.requireHeld(storeId,source);
         try {
+            com.petplatform.order.biz.application.OrderExpiryCommitProof.require(source,orderId,reservationId);
             var ids=new DecimalPublicIdCodec(); var row=orders.lock(ids.fromApi(orderId));
             if(row==null || row.reservationId()!=ids.fromApi(reservationId) || row.storeId()!=ids.fromApi(storeId)
                     || !"CANCELED".equals(row.stage()) || !"INIT".equals(row.paymentStatus())

@@ -177,6 +177,7 @@ public final class OrderExpiryApiImpl implements OrderExpiryApi {
         if (orders.cancel(input.orderId(), order.version(), input.deadline(), now) != 1) {
             throw unavailable("ORDER expiry compare-and-set failed");
         }
+        com.petplatform.order.biz.application.OrderExpiryCommitProof.record(source,input.command().orderId(),input.command().reservationId());
         reservations.expire(new ExpireHoldCommand(input.command().context(),
                 input.command().orderId(), input.command().reservationId(), storeId,
                 input.command().expectedReservationVersion(), input.deadline(), now));
