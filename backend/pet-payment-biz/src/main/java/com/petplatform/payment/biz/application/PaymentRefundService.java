@@ -106,6 +106,9 @@ public final class PaymentRefundService implements PaymentRefundApi {
                     return queryExisting(identity);
                 return decision.progress();
             }
+            ChannelRefundProgress beforeSend = tx.execute(status -> preflight(identity));
+            if (beforeSend == null) throw unavailable();
+            if (beforeSend.state() != CoordinationState.QUERY_PENDING) return beforeSend;
             // The immutable MAY_HAVE_SENT fact has already committed. An exception is UNKNOWN.
             PaymentRefundChannel.VerifiedResult verified;
             try {
@@ -159,6 +162,30 @@ public final class PaymentRefundService implements PaymentRefundApi {
         if (refunds.markPending(row, next, now) != 1) throw unavailable();
         return new ChannelRefundProgress(input.refundOrderId(), input.refundNo(),
                 CoordinationState.QUERY_PENDING, next);
+    }
+
+    /** Recheck a just-observed reversal before the sole network submission. */
+    private ChannelRefundProgress preflight(Identity input) {
+        payments.session();
+        refunds.session();
+        QueryContext context = system(input.context());
+        guard.acquire(List.of(input.storeId()), context);
+        guard.requireHeld(input.storeId(), source);
+        Dispatch row = refunds.byRefund(input.refundOrderIdLong(), true);
+        if (row == null) throw unavailable();
+        validateIdentity(input, row);
+        if (!"MAY_HAVE_SENT".equals(row.state())) return progress(row);
+        var payment = payments.byId(input.paymentId(), true);
+        if (payment == null || payment.orderId() != row.orderId()
+                || payment.storeId() != row.storeId()) throw unavailable();
+        if (!"PAID".equals(payment.status())
+                || !"OBSERVED".equals(payment.dispatchState())) {
+            OffsetDateTime now = refunds.now();
+            if (refunds.markReconciliation(row, now) != 1) throw unavailable();
+            return new ChannelRefundProgress(input.refundOrderId(), input.refundNo(),
+                    CoordinationState.RECONCILIATION_REQUIRED, null);
+        }
+        return progress(row);
     }
 
     private SendDecision prepare(Identity input) {
