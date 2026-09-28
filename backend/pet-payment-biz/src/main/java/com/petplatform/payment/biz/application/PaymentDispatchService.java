@@ -18,6 +18,7 @@ import com.petplatform.payment.api.dto.PaymentInitiationTypes.InitiatedPayment;
 import com.petplatform.payment.api.dto.PaymentInitiationTypes.WechatPayParameters;
 import com.petplatform.payment.api.dto.PaymentPreparationTypes.PreparePaymentCommand;
 import com.petplatform.payment.biz.infrastructure.persistence.PaymentFoundationStore;
+import com.petplatform.payment.biz.infrastructure.persistence.PaymentFoundationStore.Dispatch;
 import com.petplatform.payment.biz.infrastructure.provider.LakalaHttpClient.RequestNonce;
 import com.petplatform.payment.biz.infrastructure.provider.LakalaProtocol;
 import com.petplatform.schedule.api.protection.ScheduleCapacityGuardApi;
@@ -46,7 +47,6 @@ import javax.crypto.SecretKey;
 import javax.crypto.spec.GCMParameterSpec;
 import javax.crypto.spec.SecretKeySpec;
 import javax.sql.DataSource;
-import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.datasource.DataSourceTransactionManager;
 import org.springframework.transaction.TransactionDefinition;
 import org.springframework.transaction.support.TransactionSynchronizationManager;
@@ -69,7 +69,6 @@ public final class PaymentDispatchService implements PaymentInitiationApi, Payme
     private final Settings settings;
     private final Clock clock;
     private final PaymentFoundationStore payments;
-    private final JdbcTemplate jdbc;
     private final TransactionTemplate tx;
 
     public record Settings(String outOrgCode, String subject, String requestIp, String notifyUrl,
@@ -101,7 +100,6 @@ public final class PaymentDispatchService implements PaymentInitiationApi, Payme
         this.settings = Objects.requireNonNull(settings);
         this.clock = Objects.requireNonNull(clock);
         this.payments = new PaymentFoundationStore(source);
-        this.jdbc = payments.jdbc;
         this.tx = new TransactionTemplate(new DataSourceTransactionManager(source));
         tx.setIsolationLevel(TransactionDefinition.ISOLATION_READ_COMMITTED);
         tx.setTimeout(15);
@@ -232,12 +230,9 @@ public final class PaymentDispatchService implements PaymentInitiationApi, Payme
                     payment.amount(), settings.subject(), payment.subAppId(), identity.openId(),
                     settings.requestIp(), settings.notifyUrl(), timeoutMinutes));
         } catch (RuntimeException malformed) { throw unavailable(); }
-        int changed = jdbc.update("UPDATE payment_dispatch SET state='MAY_HAVE_SENT',"
-                + "preorder_req_time=?,trade_req_date=?,timeout_express_minutes=?,"
-                + "identity_hmac_sha256=?,may_have_sent_at=UTC_TIMESTAMP(3),"
-                + "version=version+1,updated_at=UTC_TIMESTAMP(3) "
-                + "WHERE payment_id=? AND state='PREPARED' AND fenced_at IS NULL",
-                requestTime, tradeDate, timeoutMinutes, identityHmac, payment.id());
+        int changed = payments.mapper.markMayHaveSent(PaymentFoundationStore.values(
+                "requestTime",requestTime,"tradeDate",tradeDate,"timeoutMinutes",timeoutMinutes,
+                "identityHmac",identityHmac,"paymentId",payment.id()));
         if (changed != 1) throw unavailable();
         return new Plan(paymentId, Long.toString(payment.no()), payment.merchantNo(),
                 payment.termNo(), payment.subAppId(), payment.amount(), identity.openId(),
@@ -273,9 +268,8 @@ public final class PaymentDispatchService implements PaymentInitiationApi, Payme
             // Expiry fenced a request already in flight. Preserve its signed completion proof,
             // but never return parameters or reopen dispatch after the fence.
             if (dispatch.mayHaveSentAt() != null && dispatch.preorderResponseSha256() == null)
-                jdbc.update("UPDATE payment_dispatch SET preorder_response_sha256=?,"
-                        + "version=version+1,updated_at=UTC_TIMESTAMP(3) WHERE payment_id=?",
-                        verified.responseSha256(), payment.id());
+                payments.mapper.savePreorderSha(PaymentFoundationStore.values(
+                        "sha",verified.responseSha256(),"paymentId",payment.id()));
             return;
         }
         if (!"MAY_HAVE_SENT".equals(dispatch.state())
@@ -290,20 +284,16 @@ public final class PaymentDispatchService implements PaymentInitiationApi, Payme
         if (requestBasedUntil.isBefore(validUntil)) validUntil = requestBasedUntil;
         if (validUntil.isAfter(payment.expires())) validUntil = payment.expires();
         if (!validUntil.isAfter(PaymentFoundationStore.utc(now))) {
-            jdbc.update("UPDATE payment_dispatch SET state='PARAMETERS_READY',"
-                    + "preorder_response_sha256=?,parameter_valid_until=?,"
-                    + "version=version+1,updated_at=UTC_TIMESTAMP(3) WHERE payment_id=?",
-                    verified.responseSha256(), validUntil, payment.id());
+            payments.mapper.saveExpiredParameters(PaymentFoundationStore.values(
+                    "sha",verified.responseSha256(),"validUntil",validUntil,"paymentId",payment.id()));
             return;
         }
         WechatPayParameters parameters = parameters(verified.result());
         byte[] iv = new byte[12]; RANDOM.nextBytes(iv);
         byte[] ciphertext = encrypt(payment, parameters, iv);
-        jdbc.update("UPDATE payment_dispatch SET state='PARAMETERS_READY',"
-                + "preorder_response_sha256=?,parameters_ciphertext=?,parameters_iv=?,"
-                + "parameter_valid_until=?,version=version+1,updated_at=UTC_TIMESTAMP(3) "
-                + "WHERE payment_id=?", verified.responseSha256(), ciphertext, iv,
-                validUntil, payment.id());
+        payments.mapper.saveParameters(PaymentFoundationStore.values(
+                "sha",verified.responseSha256(),"ciphertext",ciphertext,"iv",iv,
+                "validUntil",validUntil,"paymentId",payment.id()));
         return;
     }
 
@@ -314,9 +304,7 @@ public final class PaymentDispatchService implements PaymentInitiationApi, Payme
                 guard.acquire(List.of(storeId), actor);
                 guard.requireHeld(storeId, source);
                 payments.byId(id(paymentId), true);
-                jdbc.update("UPDATE payment_dispatch SET state='UNKNOWN',version=version+1,"
-                        + "updated_at=UTC_TIMESTAMP(3) WHERE payment_id=? AND state='MAY_HAVE_SENT'",
-                        id(paymentId));
+                payments.mapper.markUnknown(id(paymentId));
                 return null;
             });
         } catch (RuntimeException ignored) {
@@ -371,16 +359,14 @@ public final class PaymentDispatchService implements PaymentInitiationApi, Payme
         if ("PAID".equals(payment.status()) || "RECONCILIATION_REQUIRED".equals(payment.dispatchState()))
             return new Hold();
         if ("PREPARED".equals(dispatch.state()) && dispatch.mayHaveSentAt() == null) {
-            jdbc.update("UPDATE payment_dispatch SET state='FENCED_UNSENT',fenced_at=UTC_TIMESTAMP(3),"
-                    + "version=version+1,updated_at=UTC_TIMESTAMP(3) WHERE payment_id=?", payment.id());
+            payments.mapper.fenceUnsent(payment.id());
             return new FencedUnsent();
         }
         if ("FENCED_UNSENT".equals(dispatch.state())) return new FencedUnsent();
         if ("TERMINAL_CLOSED".equals(dispatch.state())) return new AlreadyClosed();
         if (dispatch.mayHaveSentAt() == null || dispatch.tradeRequestDate() == null)
             return new Hold();
-        if (dispatch.fencedAt() == null) jdbc.update("UPDATE payment_dispatch SET fenced_at=UTC_TIMESTAMP(3),"
-                + "version=version+1,updated_at=UTC_TIMESTAMP(3) WHERE payment_id=?", payment.id());
+        if (dispatch.fencedAt() == null) payments.mapper.fence(payment.id());
         return new ExpiryPlan(payment.id(), payment.no(), payment.orderId(), payment.storeId(),
                 payment.merchantNo(), payment.termNo(), payment.amount(),
                 dispatch.tradeRequestDate(), dispatch.closeMayHaveSentAt() != null);
@@ -412,9 +398,7 @@ public final class PaymentDispatchService implements PaymentInitiationApi, Payme
                     || dispatch.fencedAt() == null || dispatch.closeMayHaveSentAt() != null
                     || dispatch.preorderResponseSha256() == null
                     || "RECONCILIATION_REQUIRED".equals(payment.dispatchState())) return false;
-            jdbc.update("UPDATE payment_dispatch SET state='CLOSE_MAY_HAVE_SENT',"
-                    + "close_may_have_sent_at=UTC_TIMESTAMP(3),version=version+1,"
-                    + "updated_at=UTC_TIMESTAMP(3) WHERE payment_id=?", plan.paymentId());
+            payments.mapper.armClose(plan.paymentId());
             return true;
         }));
     }
@@ -435,15 +419,11 @@ public final class PaymentDispatchService implements PaymentInitiationApi, Payme
                     || !digest(close.responseSha256())) return false;
             String receiptDigest = sha256(("CLOSE\0" + close.responseSha256())
                     .getBytes(StandardCharsets.US_ASCII));
-            jdbc.update("INSERT INTO payment_channel_receipt(id,payment_id,receipt_sha256,"
-                    + "channel_trade_no,channel_status,total_amount,paid_amount,paid_at,received_at,"
-                    + "receipt_source,channel_response_sha256) "
-                    + "VALUES(?,?,?,?, 'CLOSE',NULL,NULL,NULL,UTC_TIMESTAMP(3),'CLOSE',?) "
-                    + "ON DUPLICATE KEY UPDATE id=id", receiptId(), plan.paymentId(),
-                    receiptDigest, close.result().originTradeNo(), close.responseSha256());
-            jdbc.update("UPDATE payment_dispatch SET state='CLOSE_ACKED',close_response_sha256=?,"
-                    + "version=version+1,updated_at=UTC_TIMESTAMP(3) WHERE payment_id=?",
-                    close.responseSha256(), plan.paymentId());
+            payments.mapper.insertCloseReceipt(PaymentFoundationStore.values(
+                    "id",receiptId(),"paymentId",plan.paymentId(),"digest",receiptDigest,
+                    "tradeNo",close.result().originTradeNo(),"responseSha",close.responseSha256()));
+            payments.mapper.ackClose(PaymentFoundationStore.values(
+                    "sha",close.responseSha256(),"paymentId",plan.paymentId()));
             return true;
         }));
     }
@@ -462,25 +442,15 @@ public final class PaymentDispatchService implements PaymentInitiationApi, Payme
                 || !"CLOSED".equals(payment.status()) || payment.successEventId() != null
                 || payment.paidAt() != null || payment.paidAmount() != null
                 || !"OBSERVED".equals(payment.dispatchState())) return ExpiryEvidence.HOLD;
-        Long adverseReceipts = jdbc.queryForObject("SELECT COUNT(*) FROM payment_channel_receipt "
-                + "WHERE payment_id=? AND (channel_status IN ('SUCCESS','PART_REFUND','REFUND','REVOKED') "
-                + "OR paid_amount>0)", Long.class, payment.id());
+        Long adverseReceipts = payments.mapper.countAdverseReceipts(payment.id());
         if (adverseReceipts == null || adverseReceipts != 0) return ExpiryEvidence.HOLD;
-        Long closeReceipts = jdbc.queryForObject("SELECT COUNT(*) FROM payment_channel_receipt "
-                + "WHERE payment_id=? AND receipt_source='CLOSE' AND channel_status='CLOSE' "
-                + "AND channel_response_sha256=?", Long.class, payment.id(),
-                dispatch.closeResponseSha256());
+        Long closeReceipts = payments.mapper.countCloseReceipts(payment.id(),dispatch.closeResponseSha256());
         if (closeReceipts == null || closeReceipts != 1) return ExpiryEvidence.HOLD;
         if (!digest(verifiedAfterCloseSha)) return ExpiryEvidence.HOLD;
-        List<String> matchingQuery = jdbc.query("SELECT channel_response_sha256 "
-                + "FROM payment_channel_receipt WHERE payment_id=? AND receipt_source='QUERY' "
-                + "AND channel_status='CLOSE' AND channel_response_sha256=? LIMIT 1 FOR UPDATE",
-                (rs,n) -> rs.getString(1), payment.id(), verifiedAfterCloseSha);
+        List<String> matchingQuery = payments.mapper.selectMatchingQueryForUpdate(payment.id(),verifiedAfterCloseSha);
         if (matchingQuery.size() != 1) return ExpiryEvidence.HOLD;
-        jdbc.update("UPDATE payment_dispatch SET state='TERMINAL_CLOSED',terminal_query_sha256=?,"
-                + "terminal_confirmed_at=UTC_TIMESTAMP(3),terminal_close_capability=1,"
-                + "version=version+1,updated_at=UTC_TIMESTAMP(3) WHERE payment_id=?",
-                verifiedAfterCloseSha, payment.id());
+        payments.mapper.finalizeClose(PaymentFoundationStore.values(
+                "sha",verifiedAfterCloseSha,"paymentId",payment.id()));
         return ExpiryEvidence.VERIFIED_TERMINAL_CLOSED;
     }
 
@@ -506,19 +476,7 @@ public final class PaymentDispatchService implements PaymentInitiationApi, Payme
     }
 
     private Dispatch dispatch(long paymentId) {
-        List<Dispatch> found = jdbc.query("SELECT payment_id,state,preorder_req_time,trade_req_date,"
-                + "timeout_express_minutes,identity_hmac_sha256,may_have_sent_at,"
-                + "preorder_response_sha256,parameters_ciphertext,parameters_iv,parameter_valid_until,"
-                + "fenced_at,close_may_have_sent_at,close_response_sha256,terminal_query_sha256,"
-                + "terminal_confirmed_at,terminal_close_capability FROM payment_dispatch "
-                + "WHERE payment_id=? FOR UPDATE", (rs,n) -> new Dispatch(rs.getLong(1),rs.getString(2),
-                rs.getObject(3,LocalDateTime.class),rs.getObject(4,LocalDate.class),
-                rs.getObject(5,Integer.class),rs.getString(6),rs.getObject(7,LocalDateTime.class),
-                rs.getString(8),rs.getBytes(9),rs.getBytes(10),rs.getObject(11,LocalDateTime.class),
-                rs.getObject(12,LocalDateTime.class),rs.getObject(13,LocalDateTime.class),
-                rs.getString(14),rs.getString(15),rs.getObject(16,LocalDateTime.class),
-                rs.getBoolean(17)), paymentId);
-        return found.size() == 1 ? found.getFirst() : null;
+        return payments.mapper.selectDispatchForUpdate(paymentId);
     }
 
     private static void requireBinding(PaymentFoundationStore.Row payment, Dispatch dispatch,
@@ -669,10 +627,4 @@ public final class PaymentDispatchService implements PaymentInitiationApi, Payme
     private record ExpiryPlan(long paymentId,long paymentNo,long orderId,long storeId,
             String merchantNo,String termNo,BigDecimal amount,LocalDate tradeRequestDate,
             boolean closeAlreadySent) implements ExpiryStart {}
-    private record Dispatch(long paymentId,String state,LocalDateTime preorderRequestTime,
-            LocalDate tradeRequestDate,Integer timeoutMinutes,String identityHmac,
-            LocalDateTime mayHaveSentAt,String preorderResponseSha256,byte[] parametersCiphertext,
-            byte[] parametersIv,LocalDateTime parameterValidUntil,LocalDateTime fencedAt,
-            LocalDateTime closeMayHaveSentAt,String closeResponseSha256,
-            String terminalQuerySha256,LocalDateTime terminalConfirmedAt,boolean terminalCapability) {}
 }

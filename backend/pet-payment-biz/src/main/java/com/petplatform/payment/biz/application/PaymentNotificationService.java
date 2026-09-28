@@ -84,36 +84,41 @@ public final class PaymentNotificationService {
                 OffsetDateTime now=store.now();
                 OffsetDateTime paidAt=channelTime(notice.channelTradeTime());
                 if("SUCCESS".equals(notice.status())&&(paidAt==null||paidAt.isAfter(now)))throw unavailable();
-                boolean duplicate=store.jdbc.queryForObject("SELECT COUNT(*) FROM payment_channel_receipt WHERE payment_id=? AND receipt_sha256=?",Long.class,row.id(),digest)>0;
+                boolean duplicate=store.mapper.countReceiptByDigest(row.id(),digest)>0;
                 if("PAID".equals(row.status())&&"SUCCESS".equals(notice.status())
                         && (!Objects.equals(row.tradeNo(),notice.channelTradeNo()) || row.paidAmount()==null
                         || row.paidAmount().compareTo(notice.paidAmount())!=0 || row.paidAt()==null
                         || !row.paidAt().equals(PaymentFoundationStore.utc(paidAt)) || row.successEventId()==null))throw unavailable();
                 if(row.tradeNo()!=null && notice.channelTradeNo()!=null && !row.tradeNo().equals(notice.channelTradeNo()))throw unavailable();
-                if(!duplicate)store.jdbc.update("INSERT INTO payment_channel_receipt(id,payment_id,receipt_sha256,receipt_source,channel_response_sha256,channel_trade_no,channel_status,total_amount,paid_amount,paid_at,received_at) VALUES(?,?,?,?,?,?,?,?,?,?,?)",
-                    nextId(),row.id(),digest,receiptSource,channelResponseSha256,notice.channelTradeNo(),notice.status(),notice.totalAmount(),notice.paidAmount(),paidAt==null?null:PaymentFoundationStore.utc(paidAt),PaymentFoundationStore.utc(now));
+                if(!duplicate)store.mapper.insertReceipt(PaymentFoundationStore.values(
+                    "id",nextId(),"paymentId",row.id(),"digest",digest,"source",receiptSource,
+                    "responseSha",channelResponseSha256,"tradeNo",notice.channelTradeNo(),
+                    "status",notice.status(),"totalAmount",notice.totalAmount(),
+                    "paidAmount",notice.paidAmount(),"paidAt",paidAt==null?null:PaymentFoundationStore.utc(paidAt),
+                    "receivedAt",PaymentFoundationStore.utc(now)));
                 // A refund/reversal is not an old failure. Preserve it until its owner reconciles;
                 // a delayed SUCCESS must not authorize fulfillment or a second refund after reversal.
                 if(Set.of("PART_REFUND","REFUND","REVOKED").contains(notice.status())
                         || ("CLOSED".equals(row.status())&&!Set.of("CLOSE","SUCCESS").contains(notice.status())&&!duplicate)
                         || "RECONCILIATION_REQUIRED".equals(row.dispatchState())){
-                    if(!"RECONCILIATION_REQUIRED".equals(row.dispatchState()))store.jdbc.update(
-                        "UPDATE payment_order SET dispatch_state='RECONCILIATION_REQUIRED',version=version+1,updated_at=? WHERE id=?",
-                        PaymentFoundationStore.utc(now),row.id());
+                    if(!"RECONCILIATION_REQUIRED".equals(row.dispatchState()))store.mapper.markReconciliation(
+                        PaymentFoundationStore.values("now",PaymentFoundationStore.utc(now),"paymentId",row.id()));
                     return new ReceiptResult(Long.toString(row.id()),duplicate,"PAID".equals(row.status()));
                 }
                 if("PAID".equals(row.status()))return new ReceiptResult(Long.toString(row.id()),true,true);
                 if("SUCCESS".equals(notice.status())){
                     long eventId=nextId();
-                    store.jdbc.update("UPDATE payment_order SET status='PAID',dispatch_state='OBSERVED',channel_trade_no=?,channel_paid_amount=?,paid_at=?,success_event_id=?,version=version+1,updated_at=? WHERE id=?",
-                        notice.channelTradeNo(),notice.paidAmount(),PaymentFoundationStore.utc(paidAt),eventId,PaymentFoundationStore.utc(now),row.id());
+                    store.mapper.markPaid(PaymentFoundationStore.values("tradeNo",notice.channelTradeNo(),
+                        "paidAmount",notice.paidAmount(),"paidAt",PaymentFoundationStore.utc(paidAt),
+                        "eventId",eventId,"now",PaymentFoundationStore.utc(now),"paymentId",row.id()));
                     publisher.publish(new IntegrationEvent<>(Long.toString(eventId),"PaymentSucceededEvent.v1",1,now,"PAYMENT",Long.toString(row.id()),null,
                         Map.of("paymentOrderId",Long.toString(row.id()),"orderId",Long.toString(row.orderId()),"channelTradeNo",notice.channelTradeNo(),"paidAmount",notice.paidAmount(),"paidAt",paidAt.toString())));
                     return new ReceiptResult(Long.toString(row.id()),false,true);
                 }
                 // Pending/failure/unknown is never permission to release. Refund states need their own owner.
                 String next=switch(notice.status()){case "FAIL"->"FAILED";case "CLOSE"->"CLOSED";default->"PAYING";};
-                if(!duplicate)store.jdbc.update("UPDATE payment_order SET status=?,dispatch_state='OBSERVED',channel_trade_no=COALESCE(channel_trade_no,?),version=version+1,updated_at=? WHERE id=?",next,notice.channelTradeNo(),PaymentFoundationStore.utc(now),row.id());
+                if(!duplicate)store.mapper.markObserved(PaymentFoundationStore.values("status",next,
+                    "tradeNo",notice.channelTradeNo(),"now",PaymentFoundationStore.utc(now),"paymentId",row.id()));
                 return new ReceiptResult(Long.toString(row.id()),duplicate,false);
             });
     }

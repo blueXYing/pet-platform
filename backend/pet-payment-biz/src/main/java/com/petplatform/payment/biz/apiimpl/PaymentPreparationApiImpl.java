@@ -34,7 +34,7 @@ public final class PaymentPreparationApiImpl implements PaymentPreparationApi {
         byte[] key=("payment.prepare/USER/"+c.context().operatorId()+"/"+c.context().requestId()).getBytes(StandardCharsets.UTF_8);
         try{
             // Persist the original binding even if later eligibility/configuration fails.
-            tx.execute(status->{store.session();store.jdbc.update("INSERT INTO payment_intent_request(id,request_key,order_id,user_id,created_at) VALUES(?,?,?,?,UTC_TIMESTAMP(3)) ON DUPLICATE KEY UPDATE id=id",nextId(),key,id(c.orderId()),id(c.context().operatorId()));checkBinding(key,c);return null;});
+            tx.execute(status->{store.session();store.mapper.insertIntent(PaymentFoundationStore.values("id",nextId(),"key",key,"orderId",id(c.orderId()),"userId",id(c.context().operatorId())));checkBinding(key,c);return null;});
             return execute(c,key,q);
         }catch(ApiException known){throw known;}catch(RuntimeException failed){
             if(unknownCommit(failed)){
@@ -56,24 +56,24 @@ public final class PaymentPreparationApiImpl implements PaymentPreparationApi {
                 if(existing!=null){
                     if(existing.userId()!=id(c.context().operatorId()) || existing.storeId()!=id(storeId)
                             || existing.merchantId()!=id(order.merchantId()))throw unavailable();
-                    store.jdbc.update("UPDATE payment_intent_request SET payment_id=? WHERE request_key=?",existing.id(),key);
+                    store.mapper.bindIntent(existing.id(),key);
                     return result(existing,true);
                 }
                 orders.requirePayableForPreparation(c.orderId(),storeId,q);
                 var binding=bindings.require(order.merchantId(),storeId);
                 if(binding==null || !valid(binding.merchantNo(),32) || !valid(binding.termNo(),32) || !valid(binding.subAppId(),64))throw unavailable();
                 long paymentId=nextId(),paymentNo=nextId();
-                store.jdbc.update("INSERT INTO payment_order(id,payment_no,order_id,amount,status,channel,expire_at,created_at,updated_at,store_id,merchant_id,user_id,merchant_no,term_no,sub_appid,currency,dispatch_state) VALUES(?,?,?,?,'INIT','LAKALA_WECHAT',?,UTC_TIMESTAMP(3),UTC_TIMESTAMP(3),?,?,?,?,?,?,'CNY','PREPARED')",paymentId,paymentNo,id(c.orderId()),order.payAmount(),PaymentFoundationStore.utc(order.paymentExpireAt()),id(storeId),id(order.merchantId()),id(order.userId()),binding.merchantNo(),binding.termNo(),binding.subAppId());
-                store.jdbc.update("INSERT INTO payment_dispatch(payment_id,state,created_at,updated_at) VALUES(?,'PREPARED',UTC_TIMESTAMP(3),UTC_TIMESTAMP(3))",paymentId);
-                store.jdbc.update("UPDATE payment_intent_request SET payment_id=? WHERE request_key=?",paymentId,key);
+                store.mapper.insertPayment(PaymentFoundationStore.values("id",paymentId,"paymentNo",paymentNo,"orderId",id(c.orderId()),"amount",order.payAmount(),"expires",PaymentFoundationStore.utc(order.paymentExpireAt()),"storeId",id(storeId),"merchantId",id(order.merchantId()),"userId",id(order.userId()),"merchantNo",binding.merchantNo(),"termNo",binding.termNo(),"subAppId",binding.subAppId()));
+                store.mapper.insertPreparedDispatch(paymentId);
+                store.mapper.bindIntent(paymentId,key);
                 return result(store.byId(paymentId,true),false);
 
         });
     }
     private void checkBinding(byte[] key,PreparePaymentCommand c){
-        var rows=store.jdbc.query("SELECT order_id,user_id FROM payment_intent_request WHERE request_key=? FOR UPDATE",(rs,n)->new long[]{rs.getLong(1),rs.getLong(2)},key);
-        if(rows.size()!=1)throw unavailable();
-        if(rows.getFirst()[0]!=id(c.orderId()) || rows.getFirst()[1]!=id(c.context().operatorId()))throw new ApiException(CommonApiCodes.IDEMPOTENCY_KEY_CONFLICT,"payment requestId already bound");
+        var binding=store.mapper.selectIntentForUpdate(key);
+        if(binding==null)throw unavailable();
+        if(binding.orderId()!=id(c.orderId()) || binding.userId()!=id(c.context().operatorId()))throw new ApiException(CommonApiCodes.IDEMPOTENCY_KEY_CONFLICT,"payment requestId already bound");
     }
     private PreparedPayment result(PaymentFoundationStore.Row r,boolean replay){
         if(r==null || r.expires()==null || r.amount()==null || !"LAKALA_WECHAT".equals(r.channel()) || !"CNY".equals(r.currency()))throw unavailable();

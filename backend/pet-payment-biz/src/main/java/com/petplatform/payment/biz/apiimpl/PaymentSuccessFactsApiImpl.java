@@ -17,7 +17,7 @@ public final class PaymentSuccessFactsApiImpl implements PaymentSuccessFactsApi 
                     ||!"PAID".equals(r.status())||!"OBSERVED".equals(r.dispatchState())||!"CNY".equals(r.currency())
                     ||!"LAKALA_WECHAT".equals(r.channel())||r.tradeNo()==null||r.tradeNo().isBlank()||r.paidAmount()==null
                     ||r.paidAmount().signum()<=0||r.paidAt()==null||r.successEventId()==null||r.successEventId()<=0)throw new IllegalStateException();
-            Long proofs=store.jdbc.queryForObject("SELECT COUNT(*) FROM payment_channel_receipt WHERE payment_id=? AND channel_status='SUCCESS' AND BINARY channel_trade_no=BINARY ? AND paid_amount=? AND paid_at=?",Long.class,r.id(),r.tradeNo(),r.paidAmount(),r.paidAt());
+            Long proofs=store.mapper.countSuccessProofs(PaymentFoundationStore.values("paymentId",r.id(),"tradeNo",r.tradeNo(),"paidAmount",r.paidAmount(),"paidAt",r.paidAt()));
             if(proofs==null||proofs<1)throw new IllegalStateException();
             return new PaymentSuccessFact(Long.toString(r.id()),Long.toString(r.no()),Long.toString(r.orderId()),Long.toString(r.storeId()),Long.toString(r.merchantId()),Long.toString(r.userId()),r.tradeNo(),r.paidAmount(),r.paidAt().atOffset(ZoneOffset.UTC),Long.toString(r.successEventId()),r.currency());
         }catch(RuntimeException failure){throw new ApiException(CommonApiCodes.DEPENDENCY_UNAVAILABLE,"authoritative payment success unavailable");}
