@@ -23,6 +23,7 @@ import com.petplatform.schedule.api.dto.ReservationHoldTypes.HoldResult;
 import com.petplatform.schedule.api.protection.ScheduleCapacityGuardApi;
 import com.petplatform.service.api.dto.BookingServiceFacts;
 import com.petplatform.service.api.query.BookingServiceFactsApi;
+import com.petplatform.task.core.JdbcAsyncTaskSubmitter;
 import com.petplatform.user.api.dto.PetSnapshotDTO;
 import com.petplatform.user.api.query.BookingUserFactsApi;
 import java.io.ByteArrayOutputStream;
@@ -33,7 +34,7 @@ import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.sql.SQLException;
-import java.sql.Timestamp;
+import java.time.LocalDateTime;
 import java.time.Clock;
 import java.time.Duration;
 import java.time.OffsetDateTime;
@@ -68,6 +69,7 @@ public final class OrderCreationService {
     private final OrderCreationRemarkPolicy remarkPolicy;
     private final Clock clock;
     private final OrderCreationStore store;
+    private final JdbcAsyncTaskSubmitter tasks;
     private final TransactionTemplate admission;
     private final TransactionTemplate execution;
 
@@ -86,6 +88,7 @@ public final class OrderCreationService {
         this.remarkPolicy = remarkPolicy;
         this.clock = Objects.requireNonNull(clock);
         this.store = new OrderCreationStore(Objects.requireNonNull(source));
+        this.tasks = new JdbcAsyncTaskSubmitter(source, ids);
         DataSourceTransactionManager manager = new DataSourceTransactionManager(source);
         this.admission = transaction(manager);
         this.execution = transaction(manager);
@@ -213,6 +216,8 @@ public final class OrderCreationService {
         Receipt receipt = new Receipt(Long.toString(orderId), Long.toString(orderNo),
                 MONEY.format(service.price()), held.holdExpireAt().toString());
         store.succeed(input.key(), serializeReceipt(receipt));
+        OrderExpiryTaskSubmission.submit(tasks, orderId, IDS.fromApi(held.reservationId()),
+                held.holdExpireAt());
         return new Outcome(receipt, true);
     }
 
@@ -603,8 +608,8 @@ public final class OrderCreationService {
         store.creationAudit(audit);
     }
 
-    private static Timestamp utc(OffsetDateTime time) {
-        return Timestamp.from(time.toInstant());
+    private static LocalDateTime utc(OffsetDateTime time) {
+        return LocalDateTime.ofInstant(time.toInstant(), ZoneOffset.UTC);
     }
 
     private static Map<String, Object> values() { return new HashMap<>(); }

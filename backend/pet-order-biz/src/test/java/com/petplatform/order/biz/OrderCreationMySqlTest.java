@@ -5,6 +5,7 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assertions.assertAll;
 
 import com.petplatform.common.ApiException;
 import com.petplatform.common.CommandContext;
@@ -13,9 +14,15 @@ import com.petplatform.common.OperatorType;
 import com.petplatform.common.QueryContext;
 import com.petplatform.merchant.api.dto.BookingMerchantFacts;
 import com.petplatform.order.api.dto.OrderCreationTypes.CreateOrderCommand;
+import com.petplatform.order.api.dto.OrderExpiryTypes.ExpireOrderCommand;
+import com.petplatform.order.api.dto.OrderExpiryTypes.ExpireOrderResult;
+import com.petplatform.order.api.dto.OrderExpiryTypes.ReconcileExpiryTasksCommand;
 import com.petplatform.order.biz.apiimpl.OrderCreationApiImpl;
+import com.petplatform.order.biz.apiimpl.OrderExpiryApiImpl;
 import com.petplatform.order.biz.application.OrderCreationInputProtection;
 import com.petplatform.schedule.api.command.ReservationHoldApi;
+import com.petplatform.schedule.api.command.ReservationExpiryApi;
+import com.petplatform.schedule.api.dto.ReservationExpiryTypes.ExpireHoldCommand;
 import com.petplatform.schedule.api.dto.ReservationHoldTypes.HeldClaim;
 import com.petplatform.schedule.api.dto.ReservationHoldTypes.HoldResult;
 import com.petplatform.schedule.api.protection.ScheduleCapacityGuardApi;
@@ -28,6 +35,7 @@ import java.security.MessageDigest;
 import java.sql.Connection;
 import java.sql.SQLException;
 import java.sql.Timestamp;
+import java.time.LocalDateTime;
 import java.time.Clock;
 import java.time.Instant;
 import java.time.OffsetDateTime;
@@ -56,6 +64,68 @@ class OrderCreationMySqlTest {
     private static final Clock CLOCK = Clock.fixed(Instant.parse("2029-12-31T00:00:00Z"), ZoneOffset.UTC);
 
     @Test
+    void expiryClosesOrderAndHoldInOneTransactionAndReplayKeepsClaims() throws Exception {
+        try (Database db = new Database()) {
+            var created = db.api().create(db.inStore("expire-" + UUID.randomUUID()));
+            OffsetDateTime deadline = db.makeDue();
+            var command = db.expiryCommand(created.orderId(), deadline);
+            assertEquals(ExpireOrderResult.CLOSED, db.expiryApi().expire(command));
+            assertEquals("CANCELED", db.jdbc.queryForObject("SELECT order_stage FROM pet_order", String.class));
+            assertEquals("EXPIRED", db.jdbc.queryForObject(
+                    "SELECT status FROM schedule_reservation", String.class));
+            assertEquals(1, db.count("schedule_reservation_claim"));
+            assertEquals(2, db.count("order_status_log"));
+            assertEquals(ExpireOrderResult.NOOP, db.expiryApi().expire(command));
+            assertEquals(2, db.count("order_status_log"));
+        }
+    }
+
+    @Test
+    void unknownPaymentAndFailedHoldMutationKeepOrderAndClaimProtected() throws Exception {
+        try (Database db = new Database()) {
+            var created = db.api().create(db.inStore("unknown-pay-" + UUID.randomUUID()));
+            var command = db.expiryCommand(created.orderId(), db.makeDue());
+            db.paymentExposed = true;
+            assertEquals(CommonApiCodes.DEPENDENCY_UNAVAILABLE,
+                    assertThrows(ApiException.class, () -> db.expiryApi().expire(command)).code());
+            db.paymentExposed = false;
+            db.holdExpiryFails = true;
+            assertEquals(CommonApiCodes.DEPENDENCY_UNAVAILABLE,
+                    assertThrows(ApiException.class, () -> db.expiryApi().expire(command)).code());
+            assertEquals("PENDING_PAYMENT", db.jdbc.queryForObject(
+                    "SELECT order_stage FROM pet_order", String.class));
+            assertEquals("TEMP_LOCKED", db.jdbc.queryForObject(
+                    "SELECT status FROM schedule_reservation", String.class));
+            assertEquals(1, db.count("order_status_log"));
+            assertEquals(1, db.count("schedule_reservation_claim"));
+        }
+    }
+
+    @Test
+    void earlyTaskDoesNotCloseAndBoundedRecoveryRestoresMissingTask() throws Exception {
+        try (Database db = new Database()) {
+            var created = db.api().create(db.inStore("recover-" + UUID.randomUUID()));
+            var reservationId = db.jdbc.queryForObject(
+                    "SELECT reservation_id FROM pet_order", Long.class).toString();
+            var command = new ExpireOrderCommand(
+                    new CommandContext("TASK:RESERVATION_HOLD_EXPIRE:" + reservationId + ":0",
+                            "test", OperatorType.SYSTEM, "0", "async_task"),
+                    created.orderId(), reservationId, 0, created.paymentExpireAt());
+            assertEquals(ExpireOrderResult.NOT_DUE, db.expiryApi().expire(command));
+            db.jdbc.update("DELETE FROM async_task");
+            var scan = new ReconcileExpiryTasksCommand(new CommandContext(
+                    "reconcile-" + UUID.randomUUID(), "test", OperatorType.SYSTEM,
+                    "0", "maintenance"), 10, "0");
+            assertEquals(1, db.expiryApi().reconcileMissingTasks(scan).scanned());
+            assertEquals(1, db.count("async_task"));
+            assertEquals(1, db.expiryApi().reconcileMissingTasks(scan).scanned());
+            assertEquals(1, db.count("async_task"));
+            assertEquals("PENDING_PAYMENT", db.jdbc.queryForObject(
+                    "SELECT order_stage FROM pet_order", String.class));
+        }
+    }
+
+    @Test
     void createsSnapshotsAndReplaysFirstReceiptWithoutConsumingCurrentEligibility() throws Exception {
         try (Database db = new Database()) {
             var command = db.inStore("u-" + UUID.randomUUID());
@@ -75,8 +145,23 @@ class OrderCreationMySqlTest {
             assertEquals(1, db.count("order_booking_input_snapshot"));
             assertEquals(1, db.count("order_status_log"));
             assertEquals(1, db.count("order_creation_audit"));
-            assertEquals(first.paymentExpireAt().toInstant(), db.jdbc.queryForObject(
-                    "SELECT payment_expire_at FROM pet_order", Timestamp.class).toInstant());
+            assertEquals(1, db.count("async_task"));
+            assertEquals("RESERVATION_HOLD_EXPIRE", db.jdbc.queryForObject(
+                    "SELECT task_type FROM async_task", String.class));
+            assertEquals(first.paymentExpireAt().toInstant(), db.utcInstant(
+                    "SELECT execute_at FROM async_task"));
+            assertAll(
+                    () -> assertEquals("2029-12-31T00:10:00.000", db.jdbc.queryForObject(
+                            "SELECT DATE_FORMAT(execute_at,'%Y-%m-%dT%H:%i:%s.%f') FROM async_task",
+                            String.class).substring(0, 23), "task"),
+                    () -> assertEquals("2029-12-31T00:10:00.000", db.jdbc.queryForObject(
+                            "SELECT DATE_FORMAT(payment_expire_at,'%Y-%m-%dT%H:%i:%s.%f') FROM pet_order",
+                            String.class).substring(0, 23), "order"),
+                    () -> assertEquals("2029-12-31T00:10:00.000", db.jdbc.queryForObject(
+                            "SELECT DATE_FORMAT(lock_expire_at,'%Y-%m-%dT%H:%i:%s.%f') FROM schedule_reservation",
+                            String.class).substring(0, 23), "reservation"));
+            assertEquals(first.paymentExpireAt().toInstant(), db.utcInstant(
+                    "SELECT payment_expire_at FROM pet_order"));
             db.price = "999.00";
             db.verificationRequired = false;
             db.serviceVersion = "1";
@@ -112,6 +197,7 @@ class OrderCreationMySqlTest {
             assertEquals(0, db.count("schedule_reservation"));
             assertEquals(0, db.count("schedule_reservation_claim"));
             assertEquals(0, db.count("order_creation_audit"));
+            assertEquals(0, db.count("async_task"));
             assertEquals("RESERVED", db.jdbc.queryForObject(
                     "SELECT status FROM order_creation_request", String.class));
             db.admin.execute("DROP TRIGGER `" + db.name + "`.fail_snapshot");
@@ -127,10 +213,10 @@ class OrderCreationMySqlTest {
             var created = db.api().create(pickup);
             assertTrue(created.created());
             assertEquals(2, db.count("schedule_reservation_claim"));
-            assertEquals(START.toInstant(), db.jdbc.queryForObject(
-                    "SELECT appointment_start_at FROM pet_order", Timestamp.class).toInstant());
-            assertEquals(START.plusHours(3).toInstant(), db.jdbc.queryForObject(
-                    "SELECT appointment_end_at FROM pet_order", Timestamp.class).toInstant());
+            assertEquals(START.toInstant(), db.utcInstant(
+                    "SELECT appointment_start_at FROM pet_order"));
+            assertEquals(START.plusHours(3).toInstant(), db.utcInstant(
+                    "SELECT appointment_end_at FROM pet_order"));
             byte[] stored = db.jdbc.queryForObject(
                     "SELECT service_address_ciphertext FROM order_booking_input_snapshot", byte[].class);
             assertFalse(new String(stored, StandardCharsets.UTF_8).contains("虹桥路"));
@@ -247,6 +333,9 @@ class OrderCreationMySqlTest {
         volatile boolean petCurrent = true;
         volatile boolean policyAvailable = true;
         volatile boolean verificationRequired = true;
+        volatile boolean paymentExposed = false;
+        volatile boolean couponExposed = false;
+        volatile boolean holdExpiryFails = false;
         volatile String serviceVersion = "0";
 
         Database() throws Exception {
@@ -270,8 +359,10 @@ class OrderCreationMySqlTest {
                 if (root == null) throw new IllegalStateException("Schema06 not found");
                 try (Connection connection = source.getConnection()) {
                     for (String file : List.of("06-核心数据库Schema-v0.1.sql",
+                            "13-Async-Infra-Schema-v0.1.sql",
                             "37-Reservation-Protection-Foundation-Schema-v0.1.sql",
-                            "38-Booking-Create-Schema-v0.1.sql")) {
+                            "38-Booking-Create-Schema-v0.1.sql",
+                            "39-Booking-Expiry-Schema-v0.1.sql")) {
                         ScriptUtils.executeSqlScript(connection, new EncodedResource(
                                 new FileSystemResource(root.resolve("docs/03-database/" + file)),
                                 StandardCharsets.UTF_8));
@@ -281,6 +372,65 @@ class OrderCreationMySqlTest {
         }
 
         OrderCreationApiImpl api() { return api(source); }
+
+        OffsetDateTime makeDue() {
+            OffsetDateTime deadline = OffsetDateTime.now(ZoneOffset.UTC).minusMinutes(1)
+                    .withNano(0);
+            jdbc.update("UPDATE pet_order SET payment_expire_at=?",
+                    stamp(deadline));
+            jdbc.update("UPDATE schedule_reservation SET lock_expire_at=?",
+                    stamp(deadline));
+            return deadline;
+        }
+
+        ExpireOrderCommand expiryCommand(String orderId, OffsetDateTime deadline) {
+            String reservationId = jdbc.queryForObject(
+                    "SELECT reservation_id FROM pet_order", Long.class).toString();
+            return new ExpireOrderCommand(new CommandContext(
+                    "TASK:RESERVATION_HOLD_EXPIRE:" + reservationId + ":0",
+                    "test", OperatorType.SYSTEM, "0", "async_task"),
+                    orderId, reservationId, 0, deadline);
+        }
+
+        OrderExpiryApiImpl expiryApi() {
+            JdbcTemplate transactionalJdbc = new JdbcTemplate(source);
+            ReservationExpiryApi expiry = new ReservationExpiryApi() {
+                @Override public void expire(ExpireHoldCommand command) {
+                    if (holdExpiryFails) throw new ApiException(
+                            CommonApiCodes.DEPENDENCY_UNAVAILABLE, "forced SCH failure");
+                    int updated = transactionalJdbc.update("""
+                            UPDATE schedule_reservation SET status='EXPIRED',version=version+1,
+                                   updated_at=UTC_TIMESTAMP(3)
+                            WHERE id=? AND order_id=? AND store_id=? AND status='TEMP_LOCKED'
+                              AND version=? AND lock_expire_at=? AND lock_expire_at<=?
+                            """, Long.parseLong(command.reservationId()),
+                            Long.parseLong(command.orderId()), Long.parseLong(command.storeId()),
+                            command.expectedVersion(), stamp(command.expectedExpireAt()),
+                            stamp(command.observedNow()));
+                    if (updated != 1) throw new ApiException(
+                            CommonApiCodes.DEPENDENCY_UNAVAILABLE, "SCH CAS failed");
+                }
+                @Override public void assertExpired(String orderId, String reservationId,
+                        String storeId, QueryContext context) {
+                    String status = transactionalJdbc.queryForObject("""
+                            SELECT status FROM schedule_reservation
+                            WHERE id=? AND order_id=? AND store_id=?
+                            """, String.class, Long.parseLong(reservationId),
+                            Long.parseLong(orderId), Long.parseLong(storeId));
+                    if (!"EXPIRED".equals(status)) throw new ApiException(
+                            CommonApiCodes.DEPENDENCY_UNAVAILABLE, "SCH replay is inconsistent");
+                }
+            };
+            return new OrderExpiryApiImpl(source, ids::incrementAndGet,
+                    new TestGuard(transactionalJdbc), expiry,
+                    (orderId, storeId, context) -> {
+                        if (paymentExposed) throw new ApiException(
+                                CommonApiCodes.DEPENDENCY_UNAVAILABLE, "payment uncertain");
+                    }, (orderId, storeId, context) -> {
+                        if (couponExposed) throw new ApiException(
+                                CommonApiCodes.DEPENDENCY_UNAVAILABLE, "coupon uncertain");
+                    });
+        }
 
         OrderCreationApiImpl api(DataSource transactionalSource) {
             JdbcTemplate transactionalJdbc = new JdbcTemplate(transactionalSource);
@@ -299,10 +449,10 @@ class OrderCreationMySqlTest {
                           created_at,updated_at,user_id)
                         VALUES(?,?,?,?,?,?,?,?,?,?,'TEMP_LOCKED',?,?,1,1,UTC_TIMESTAMP(3),UTC_TIMESTAMP(3),?)
                         """, reservationId, Long.parseLong(command.orderId()), 200L, 300L, 400L,
-                        command.fulfillmentType(), Timestamp.from(begin.toInstant()),
-                        Timestamp.from(end.toInstant()), stamp(command.pickupStart()),
+                        command.fulfillmentType(), stamp(begin),
+                        stamp(end), stamp(command.pickupStart()),
                         stamp(command.returnStart()), UUID.randomUUID().toString(),
-                        Timestamp.from(expires.toInstant()), Long.parseLong(command.userId()));
+                        stamp(expires), Long.parseLong(command.userId()));
                 if (command.appointmentStart() != null) {
                     claim(transactionalJdbc, reservationId, "GENERAL", "901", begin, end);
                     return new HoldResult(Long.toString(reservationId), command.orderId(), begin, end,
@@ -362,7 +512,7 @@ class OrderCreationMySqlTest {
                     VALUES(?,?,?,?,?,?,?,?)
                     """, claimId, reservationId, Long.parseLong(windowId), 300L,
                     "GENERAL".equals(kind) ? 400L : 401L, kind,
-                    Timestamp.from(start.toInstant()), Timestamp.from(end.toInstant()));
+                    stamp(start), stamp(end));
         }
 
         CreateOrderCommand inStore(String requestId) {
@@ -379,6 +529,9 @@ class OrderCreationMySqlTest {
         }
 
         int count(String table) { return jdbc.queryForObject("SELECT COUNT(*) FROM " + table, Integer.class); }
+        Instant utcInstant(String sql) {
+            return jdbc.queryForObject(sql, LocalDateTime.class).toInstant(ZoneOffset.UTC);
+        }
         @Override public void close() { if (admin != null) admin.execute("DROP DATABASE IF EXISTS `" + name + "`"); }
     }
 
@@ -443,8 +596,8 @@ class OrderCreationMySqlTest {
         }
     }
 
-    private static Timestamp stamp(OffsetDateTime value) {
-        return value == null ? null : Timestamp.from(value.toInstant());
+    private static LocalDateTime stamp(OffsetDateTime value) {
+        return value == null ? null : LocalDateTime.ofInstant(value.toInstant(), ZoneOffset.UTC);
     }
 
     private static DataSource dataSource(String url, String user, String password) {
