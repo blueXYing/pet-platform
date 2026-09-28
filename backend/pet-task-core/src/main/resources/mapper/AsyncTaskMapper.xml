@@ -81,4 +81,11 @@
         SELECT id FROM async_task WHERE id=#{taskId} FOR UPDATE
     </select>
 
+    <select id="selectStatusByExactKey" resultType="string" useCache="false" flushCache="true">
+        SELECT status FROM async_task
+        WHERE task_key=#{taskKey} AND BINARY task_key=BINARY #{taskKey}
+    </select>
+    <select id="selectDatabaseNow" resultType="java.time.LocalDateTime" useCache="false" flushCache="true">
+        SELECT UTC_TIMESTAMP(3)
+    </select>
 </mapper>

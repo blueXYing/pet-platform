@@ -62,7 +62,7 @@ import org.springframework.boot.context.properties.EnableConfigurationProperties
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.beans.factory.annotation.Qualifier;
-import org.springframework.jdbc.core.JdbcTemplate;
+import com.petplatform.task.core.TaskDatabaseClock;
 
 /** Internal late-payment refund composition. All execution and live provider beans are opt-in. */
 @Configuration(proxyBeanMethods = false)
@@ -185,7 +185,7 @@ public class LateRefundConfiguration {
             RefundExecutionService execution, DataSource source) {
         if (!SUBMIT.equals(type) && !QUERY.equals(type)) throw new IllegalArgumentException();
         Objects.requireNonNull(execution);
-        var jdbc = new JdbcTemplate(Objects.requireNonNull(source));
+        var databaseClock = new TaskDatabaseClock(Objects.requireNonNull(source));
         return new TaskRegistration<>(new TaskHandler<>() {
             @Override public String taskType() { return type; }
             @Override public TaskExecutionResult execute(com.petplatform.task.core.TaskExecutionContext task,
@@ -195,7 +195,7 @@ public class LateRefundConfiguration {
                 if (result.done()) return new TaskExecutionResult.Success("REFUND_COORDINATED");
                 OffsetDateTime next = result.nextQueryAt();
                 if (next == null) throw new IllegalStateException("Refund query deadline absent");
-                LocalDateTime dbNow = jdbc.queryForObject("SELECT UTC_TIMESTAMP(3)", LocalDateTime.class);
+                LocalDateTime dbNow = databaseClock.now();
                 Duration deadline = Duration.between(dbNow.atOffset(ZoneOffset.UTC), next)
                         .plusMillis(250);
                 Duration backoff = REFUND_RETRY_DELAYS.get(Math.min(payload.retryCount(),
