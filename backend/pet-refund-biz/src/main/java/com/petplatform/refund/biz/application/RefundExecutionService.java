@@ -1,0 +1,187 @@
+package com.petplatform.refund.biz.application;
+
+import com.petplatform.common.*;
+import com.petplatform.event.api.IntegrationEvent;
+import com.petplatform.payment.api.command.PaymentRefundApi;
+import com.petplatform.payment.api.dto.PaymentRefundResultFact;
+import com.petplatform.payment.api.dto.PaymentRefundTypes.*;
+import com.petplatform.payment.api.query.PaymentRefundResultFactsApi;
+import com.petplatform.refund.api.dto.RefundExecutionFact;
+import com.petplatform.task.core.JdbcAsyncTaskStatusReader;
+import java.time.*;
+import java.util.*;
+import java.util.concurrent.atomic.AtomicLong;
+import static com.petplatform.refund.biz.application.LateRefundService.*;
+
+/** Durable task coordinator. PAYMENT proves channel facts; REFUND owns business completion. */
+public final class RefundExecutionService {
+    private final LateRefundService refunds;
+    private final PaymentRefundApi channel;
+    private final PaymentRefundResultFactsApi channelFacts;
+    private final JdbcAsyncTaskStatusReader taskStates;
+    private final AtomicLong scanAfter = new AtomicLong();
+    public record ExecutionResult(boolean done, OffsetDateTime nextQueryAt) {}
+
+    public RefundExecutionService(LateRefundService refunds, PaymentRefundApi channel,
+            PaymentRefundResultFactsApi channelFacts) {
+        this.refunds=Objects.requireNonNull(refunds);this.channel=Objects.requireNonNull(channel);
+        this.channelFacts=Objects.requireNonNull(channelFacts);
+        taskStates=new JdbcAsyncTaskStatusReader(refunds.source);
+    }
+
+    public ExecutionResult execute(String refundId,String storeId,boolean query,String traceId) {
+        noOuter(); id(refundId);id(storeId);
+        QueryContext ctx=new QueryContext(traceId,OperatorType.SYSTEM,null);
+        RefundExecutionFact f=refunds.tx.execute(s -> {
+            refunds.session();refunds.guard.acquire(List.of(storeId),ctx);
+            return refunds.requireForChannel(refundId,storeId,ctx);
+        });
+        if(f==null)throw unavailable();
+        if("SUCCESS".equals(f.status())) {
+            refunds.tx.executeWithoutResult(s -> {
+                refunds.guard.acquire(List.of(storeId),ctx);
+                refunds.requireSucceeded(refundId,f.orderId(),storeId,ctx);
+            });
+            return new ExecutionResult(true,null);
+        }
+        String type=query?"REFUND_CHANNEL_QUERY":"REFUND_SUBMIT";
+        CommandContext command=new CommandContext("TASK:"+type+":"+refundId+":0",traceId,
+            OperatorType.SYSTEM,null,"ASYNC_TASK");
+        // On an exception the worker retries this command. PAYMENT's persisted boundary decides
+        // whether it can submit or must query, including after a lost database commit ACK.
+        ChannelRefundProgress result=query
+            ? channel.queryRefund(new ChannelRefundQuery(command,refundId,f.refundNo(),f.paymentId(),storeId,0))
+            : channel.submitRefund(new ChannelRefundSubmitCommand(command,refundId,f.refundNo(),f.paymentId(),storeId,0));
+        if(result==null||!refundId.equals(result.refundOrderId())||!f.refundNo().equals(result.refundNo())
+                ||result.state()==null)throw unavailable();
+        if(result.state()==CoordinationState.VERIFIED_SUCCESS) {
+            finish(f,ctx); return new ExecutionResult(true,null);
+        }
+        if(result.state()==CoordinationState.RECONCILIATION_REQUIRED
+                ||result.state()==CoordinationState.VERIFIED_TERMINAL_FAILURE) {
+            issue(f,"LATE_PAYMENT_AUTO_REFUND_FAILED",ctx);
+            // Preserve UNKNOWN. No generic hint can prove a final financial failure.
+            return new ExecutionResult(true,null);
+        }
+        OffsetDateTime next=refunds.tx.execute(s -> {
+            refunds.session();refunds.guard.acquire(List.of(storeId),ctx);
+            RefundExecutionFact current=refunds.requireForChannel(refundId,storeId,ctx);
+            same(f,current);
+            if("SUCCESS".equals(current.status()))return null;
+            OffsetDateTime now=refunds.now();
+            OffsetDateTime due=result.queryNotBefore()==null?now.plusSeconds(30):time(result.queryNotBefore());
+            if(due.isBefore(now))due=now.plusSeconds(1);
+            refunds.jdbc.update("UPDATE refund_order SET status='UNKNOWN',version=version+1,updated_at=UTC_TIMESTAMP(3) "
+                    +"WHERE id=? AND status IN ('CREATED','PROCESSING','UNKNOWN')",id(refundId));
+            refunds.jdbc.update("UPDATE refund_execution SET next_query_at=?,version=version+1,updated_at=UTC_TIMESTAMP(3) "
+                    +"WHERE refund_order_id=?",utc(due),id(refundId));
+            if(!query) {
+                // The schedule of the first query is immutable across submit task replays.
+                OffsetDateTime first=refunds.jdbc.queryForObject("SELECT COALESCE(first_query_at,?) FROM refund_execution WHERE refund_order_id=?",
+                    (rs,n)->offset(rs.getObject(1,LocalDateTime.class)),utc(due),id(refundId));
+                refunds.jdbc.update("UPDATE refund_execution SET first_query_at=COALESCE(first_query_at,?) WHERE refund_order_id=?",utc(first),id(refundId));
+                refunds.tasks.enqueueAt("REFUND_CHANNEL_QUERY:"+refundId+":0","REFUND","REFUND_CHANNEL_QUERY",
+                    "REFUND",id(refundId),0L,payload(id(refundId),storeId),8,"REFUND_CHANNEL",first);
+            }
+            return due;
+        });
+        return new ExecutionResult(!query||next==null,next);
+    }
+
+    private void finish(RefundExecutionFact expected,QueryContext ctx) {
+        refunds.tx.executeWithoutResult(s -> {
+            refunds.session();refunds.guard.acquire(List.of(expected.storeId()),ctx);
+            var late=refunds.orders.requireLatePayment(expected.orderId(),expected.paymentId(),expected.storeId(),ctx);
+            PaymentRefundResultFact p=channelFacts.requireVerified(expected.refundOrderId(),expected.refundNo(),
+                expected.paymentId(),expected.storeId(),ctx);
+            RefundExecutionFact f=refunds.requireForChannel(expected.refundOrderId(),expected.storeId(),ctx);
+            same(expected,f);
+            if(p==null||!"SUCCESS".equals(p.channelStatus())||!f.refundOrderId().equals(p.refundOrderId())
+                    ||!f.refundNo().equals(p.refundNo())||!f.paymentId().equals(p.paymentId())
+                    ||!f.orderId().equals(p.orderId())||!f.storeId().equals(p.storeId())
+                    ||!f.channelTradeNo().equals(p.originalChannelTradeNo())||!f.currency().equals(p.currency())
+                    ||p.refundAmount()==null||p.refundAmount().compareTo(f.refundAmount())!=0
+                    ||p.channelRefundNo()==null||p.channelRefundNo().isBlank()||p.resultAt()==null
+                    ||p.receiptSha256()==null||!p.receiptSha256().matches("[a-f0-9]{64}")
+                    ||!Set.of("SUBMIT","QUERY","CALLBACK").contains(p.receiptSource())
+                    ||!f.channelTradeNo().equals(late.channelTradeNo())
+                    ||f.originalPaidAmount().compareTo(late.channelPaidAmount())!=0
+                    ||!f.paymentSuccessEventId().equals(late.paymentSuccessEventId()))throw unavailable();
+            time(p.resultAt());
+            if("SUCCESS".equals(f.status())) {
+                var success=refunds.requireSucceeded(f.refundOrderId(),f.orderId(),f.storeId(),ctx);
+                if(!success.channelRefundNo().equals(p.channelRefundNo())||!success.succeededAt().isEqual(p.resultAt()))throw unavailable();
+                return;
+            }
+            if(!Set.of("CREATED","PROCESSING","UNKNOWN").contains(f.status()))throw unavailable();
+            long event=refunds.next();
+            int changed=refunds.jdbc.update("""
+                UPDATE refund_order SET status='SUCCESS',channel_refund_no=?,succeeded_at=?,
+                  version=version+1,updated_at=UTC_TIMESTAMP(3)
+                WHERE id=? AND status IN ('CREATED','PROCESSING','UNKNOWN')
+                """,p.channelRefundNo(),utc(p.resultAt()),id(f.refundOrderId()));
+            if(changed!=1)throw unavailable();
+            refunds.jdbc.update("""
+                UPDATE refund_execution SET success_event_id=?,success_receipt_sha256=?,next_query_at=NULL,
+                  version=version+1,updated_at=UTC_TIMESTAMP(3) WHERE refund_order_id=? AND success_event_id IS NULL
+                """,event,p.receiptSha256(),id(f.refundOrderId()));
+            refunds.jdbc.update("""
+                INSERT INTO refund_transaction(id,refund_id,request_id,action,channel_request_no,channel_status,created_at)
+                VALUES (?,?,?,?,?,'SUCCESS',UTC_TIMESTAMP(3))
+                """,refunds.next(),id(f.refundOrderId()),p.receiptSha256(),
+                "SUBMIT".equals(p.receiptSource())?"REFUND":p.receiptSource(),f.refundNo());
+            refunds.publisher.publish(new IntegrationEvent<>(Long.toString(event),"RefundSucceededEvent.v1",1,
+                p.resultAt(),"REFUND",f.refundOrderId(),ctx.traceId(),Map.of(
+                  "refundOrderId",f.refundOrderId(),"refundNo",f.refundNo(),"orderId",f.orderId(),
+                  "refundType","FULL","refundSource",SOURCE,"refundAmount",f.refundAmount(),
+                  "originalPaidAmount",f.originalPaidAmount(),"channelRefundNo",p.channelRefundNo(),
+                  "succeededAt",p.resultAt().toString())));
+            refunds.jdbc.update("UPDATE refund_reconciliation_issue SET status='RESOLVED',updated_at=UTC_TIMESTAMP(3) WHERE refund_order_id=?",id(f.refundOrderId()));
+        });
+    }
+
+    private void issue(RefundExecutionFact expected,String code,QueryContext ctx) {
+        refunds.tx.executeWithoutResult(s -> {
+            refunds.session();refunds.guard.acquire(List.of(expected.storeId()),ctx);
+            var f=refunds.requireForChannel(expected.refundOrderId(),expected.storeId(),ctx);same(expected,f);
+            if("SUCCESS".equals(f.status()))return;
+            refunds.jdbc.update("UPDATE refund_order SET status='UNKNOWN',version=version+1,updated_at=UTC_TIMESTAMP(3) WHERE id=? AND status IN ('CREATED','PROCESSING','UNKNOWN')",id(f.refundOrderId()));
+            refunds.jdbc.update("""
+                INSERT INTO refund_reconciliation_issue(refund_order_id,issue_code,status,created_at,updated_at)
+                VALUES (?,?,'OPEN',UTC_TIMESTAMP(3),UTC_TIMESTAMP(3))
+                ON DUPLICATE KEY UPDATE status='OPEN',updated_at=UTC_TIMESTAMP(3)
+                """,id(f.refundOrderId()),code);
+        });
+    }
+
+    /** Cyclic bounded scan. A worker crash or exhausted retry cannot silently lose a refund. */
+    public synchronized int reconcileDeadTasks() {
+        noOuter();
+        var candidates=refunds.jdbc.query("""
+            SELECT e.refund_order_id,e.store_id FROM refund_execution e
+            JOIN refund_order r ON r.id=e.refund_order_id
+            WHERE r.status IN ('CREATED','PROCESSING','UNKNOWN') AND e.refund_order_id>?
+            ORDER BY e.refund_order_id LIMIT 100
+            """,(rs,n)->new String[]{Long.toString(rs.getLong(1)),Long.toString(rs.getLong(2))},scanAfter.get());
+        if(candidates.isEmpty()) {scanAfter.set(0);return 0;}
+        int count=0;
+        for(var c:candidates) {
+            String submit=taskStates.status("REFUND_SUBMIT:"+c[0]+":0");
+            String query=taskStates.status("REFUND_CHANNEL_QUERY:"+c[0]+":0");
+            if("DEAD".equals(submit)||"CANCELED".equals(submit)||"DEAD".equals(query)||"CANCELED".equals(query)) {
+                QueryContext ctx=new QueryContext("late-refund-reconciliation",OperatorType.SYSTEM,null);
+                var fact=refunds.tx.execute(s -> {refunds.guard.acquire(List.of(c[1]),ctx);return refunds.requireForChannel(c[0],c[1],ctx);});
+                issue(fact,"LATE_PAYMENT_AUTO_REFUND_FAILED",ctx);count++;
+            }
+            scanAfter.set(id(c[0]));
+        }
+        return count;
+    }
+
+    private static void same(RefundExecutionFact a,RefundExecutionFact b) {
+        if(!a.refundOrderId().equals(b.refundOrderId())||!a.refundNo().equals(b.refundNo())
+            ||!a.orderId().equals(b.orderId())||!a.paymentId().equals(b.paymentId())||!a.storeId().equals(b.storeId())
+            ||!a.paymentNo().equals(b.paymentNo())||a.refundAmount().compareTo(b.refundAmount())!=0
+            ||!a.channelTradeNo().equals(b.channelTradeNo())||a.bindingVersion()!=b.bindingVersion())throw unavailable();
+    }
+}

@@ -143,8 +143,8 @@ public final class LateRefundService implements IntegrationEventConsumer, Refund
                     || r.successAt()==null||r.channelRefundNo()==null||r.channelRefundNo().isBlank()
                     || r.receipt()==null||!r.receipt().matches("[a-f0-9]{64}")) throw unavailable();
             Integer proof=jdbc.queryForObject("SELECT COUNT(*) FROM refund_transaction WHERE refund_id=? "
-                +"AND BINARY request_id=BINARY ? AND action='QUERY' AND channel_status='SUCCESS' "
-                +"AND BINARY channel_request_no=BINARY ?",Integer.class,id(refundId),r.receipt(),r.channelRefundNo());
+                +"AND BINARY request_id=BINARY ? AND action IN ('REFUND','QUERY','CALLBACK') AND channel_status='SUCCESS' "
+                +"AND BINARY channel_request_no=BINARY ?",Integer.class,id(refundId),r.receipt(),f.refundNo());
             if(proof==null||proof!=1) throw unavailable();
             return new RefundSuccessFact(refundId,f.refundNo(),orderId,f.paymentId(),storeId,
                 f.refundAmount(),f.originalPaidAmount(),r.channelRefundNo(),r.successAt(),

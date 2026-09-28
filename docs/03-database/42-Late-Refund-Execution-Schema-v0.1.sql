@@ -21,6 +21,7 @@ CREATE TABLE refund_execution (
   success_event_id BIGINT NULL,
   success_receipt_sha256 CHAR(64) CHARACTER SET ascii COLLATE ascii_bin NULL,
   next_query_at DATETIME(3) NULL,
+  first_query_at DATETIME(3) NULL,
   version BIGINT NOT NULL DEFAULT 0,
   created_at DATETIME(3) NOT NULL,
   updated_at DATETIME(3) NOT NULL,
