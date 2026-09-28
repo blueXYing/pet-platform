@@ -15,7 +15,13 @@ public interface PaymentChannel {
     VerifiedQuery lookup(QueryInput input, ExpectedPayment expected, RequestNonce nonce);
     VerifiedClose requestClose(CloseInput input, RequestNonce nonce);
 
-    record VerifiedPreorder(PreorderResult result, String responseSha256) {}
-    record VerifiedQuery(QueryResult result, String responseSha256) {}
-    record VerifiedClose(CloseAcknowledgement result, String responseSha256) {}
+    record VerifiedPreorder(PreorderResult result, String responseSha256) {
+        @Override public String toString() { return "VerifiedPreorder[redacted]"; }
+    }
+    record VerifiedQuery(QueryResult result, String responseSha256) {
+        @Override public String toString() { return "VerifiedQuery[redacted]"; }
+    }
+    record VerifiedClose(CloseAcknowledgement result, String responseSha256) {
+        @Override public String toString() { return "VerifiedClose[redacted]"; }
+    }
 }

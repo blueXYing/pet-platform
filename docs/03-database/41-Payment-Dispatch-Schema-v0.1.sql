@@ -6,6 +6,7 @@ CREATE TABLE payment_dispatch (
     preorder_req_time DATETIME(0) NULL,
     trade_req_date DATE NULL,
     timeout_express_minutes INT NULL,
+    identity_hmac_sha256 CHAR(64) CHARACTER SET ascii COLLATE ascii_bin NULL,
     may_have_sent_at DATETIME(3) NULL,
     preorder_response_sha256 CHAR(64) CHARACTER SET ascii COLLATE ascii_bin NULL,
     parameters_ciphertext VARBINARY(2048) NULL,

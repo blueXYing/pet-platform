@@ -1,5 +1,6 @@
 package com.petplatform.payment.biz.infrastructure.provider;
 
+import com.petplatform.payment.biz.application.PaymentChannel;
 import com.petplatform.payment.biz.infrastructure.provider.LakalaProtocol.CloseAcknowledgement;
 import com.petplatform.payment.biz.infrastructure.provider.LakalaProtocol.CloseInput;
 import com.petplatform.payment.biz.infrastructure.provider.LakalaProtocol.ExpectedPayment;
@@ -21,11 +22,14 @@ import java.net.http.HttpResponse;
 import java.nio.ByteBuffer;
 import java.security.PrivateKey;
 import java.security.PublicKey;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
 import java.time.Duration;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.HexFormat;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionStage;
 import java.util.concurrent.ExecutionException;
@@ -35,7 +39,7 @@ import java.util.concurrent.TimeoutException;
 import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 /** One application-level signed exchange. There is no Spring bean or automatic channel retry. */
-public final class LakalaHttpClient {
+public final class LakalaHttpClient implements PaymentChannel {
     private static final int MAX_RESPONSE_BYTES = 65_536;
     private static final Duration CONNECT_TIMEOUT = Duration.ofSeconds(3);
     private static final Duration RESPONSE_TIMEOUT = Duration.ofSeconds(8);
@@ -100,20 +104,29 @@ public final class LakalaHttpClient {
     }
 
     public PreorderResult preorder(PreorderInput input, RequestNonce nonce) {
+        return submitPreorder(input, nonce).result();
+    }
+
+    @Override public VerifiedPreorder submitPreorder(PreorderInput input, RequestNonce nonce) {
         noTransaction();
         PreparedRequest prepared = LakalaProtocol.preparePreorder(input);
         RawResponse response = send(prepared, nonce);
         try {
-            return LakalaProtocol.verifyPreorderResponse(response.headers(), response.body(),
+            PreorderResult result = LakalaProtocol.verifyPreorderResponse(response.headers(), response.body(),
                     credentials.appId(), credentials.platformSerial(),
                     credentials.trustedPlatformKey(), expected(input.merchantNo(),
                             input.outTradeNo(), input.amount()), input.subAppId());
+            return new VerifiedPreorder(result, sha256(response.body()));
         } catch (LakalaProtocol.ProtocolException failure) {
             throw unknown(Reason.CHANNEL_RESPONSE);
         }
     }
 
     public QueryResult query(QueryInput input, ExpectedPayment expected, RequestNonce nonce) {
+        return lookup(input, expected, nonce).result();
+    }
+
+    @Override public VerifiedQuery lookup(QueryInput input, ExpectedPayment expected, RequestNonce nonce) {
         noTransaction();
         PreparedRequest prepared = LakalaProtocol.prepareQuery(input);
         if (!input.merchantNo().equals(expected.merchantNo())
@@ -122,22 +135,28 @@ public final class LakalaHttpClient {
         }
         RawResponse response = send(prepared, nonce);
         try {
-            return LakalaProtocol.verifyQueryResponse(response.headers(), response.body(),
+            QueryResult result = LakalaProtocol.verifyQueryResponse(response.headers(), response.body(),
                     credentials.appId(), credentials.platformSerial(),
                     credentials.trustedPlatformKey(), expected);
+            return new VerifiedQuery(result, sha256(response.body()));
         } catch (LakalaProtocol.ProtocolException failure) {
             throw unknown(Reason.CHANNEL_RESPONSE);
         }
     }
 
     public CloseAcknowledgement close(CloseInput input, RequestNonce nonce) {
+        return requestClose(input, nonce).result();
+    }
+
+    @Override public VerifiedClose requestClose(CloseInput input, RequestNonce nonce) {
         noTransaction();
         PreparedRequest prepared = LakalaProtocol.prepareClose(input);
         RawResponse response = send(prepared, nonce);
         try {
-            return LakalaProtocol.verifyCloseResponse(response.headers(), response.body(),
+            CloseAcknowledgement result = LakalaProtocol.verifyCloseResponse(response.headers(), response.body(),
                     credentials.appId(), credentials.platformSerial(),
                     credentials.trustedPlatformKey(), input.originOutTradeNo());
+            return new VerifiedClose(result, sha256(response.body()));
         } catch (LakalaProtocol.ProtocolException failure) {
             throw unknown(Reason.CHANNEL_RESPONSE);
         }
@@ -307,5 +326,9 @@ public final class LakalaHttpClient {
     }
     private static ChannelUnknownException unknown(Reason reason) {
         return new ChannelUnknownException(reason);
+    }
+    private static String sha256(byte[] raw) {
+        try { return HexFormat.of().formatHex(MessageDigest.getInstance("SHA-256").digest(raw)); }
+        catch (NoSuchAlgorithmException impossible) { throw new IllegalStateException("SHA-256 unavailable"); }
     }
 }
