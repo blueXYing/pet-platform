@@ -15,6 +15,10 @@ public final class OrderPaymentStore {
 
     public OrderPaymentStore(DataSource source) { jdbc = new JdbcTemplate(Objects.requireNonNull(source)); }
 
+    public OffsetDateTime databaseNow() {
+        return jdbc.queryForObject("SELECT UTC_TIMESTAMP(3)",LocalDateTime.class).atOffset(ZoneOffset.UTC);
+    }
+
     public void sessionDefaults() {
         jdbc.execute("SET SESSION time_zone = '+00:00'");
         jdbc.execute("SET SESSION innodb_lock_wait_timeout = 2");

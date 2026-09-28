@@ -47,10 +47,7 @@ public final class PaymentPreparationApiImpl implements PaymentPreparationApi {
                     store.jdbc.update("UPDATE payment_intent_request SET payment_id=? WHERE request_key=?",existing.id(),key);
                     return result(existing,true);
                 }
-                if(!"PENDING_PAYMENT".equals(order.orderStage()) || !"INIT".equals(order.paymentStatus())
-                        || !"UNVERIFIED".equals(order.verificationStatus()) || order.discountAmount()==null || order.discountAmount().signum()!=0
-                        || order.payAmount()==null || order.payAmount().signum()<=0 || order.paymentExpireAt()==null
-                        || !order.paymentExpireAt().isAfter(store.now()))throw new ApiException(CommonApiCodes.CONFLICT,"order is not eligible for payment intent");
+                orders.requirePayableForPreparation(c.orderId(),storeId,q);
                 var binding=bindings.require(order.merchantId(),storeId);
                 if(binding==null || !valid(binding.merchantNo(),32) || !valid(binding.termNo(),32) || !valid(binding.subAppId(),64))throw unavailable();
                 long paymentId=nextId(),paymentNo=nextId();

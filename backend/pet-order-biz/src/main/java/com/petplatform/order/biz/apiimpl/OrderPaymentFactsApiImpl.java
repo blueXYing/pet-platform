@@ -65,6 +65,15 @@ public final class OrderPaymentFactsApiImpl implements OrderPaymentFactsApi {
         catch (RuntimeException failure) { throw unavailable("ORDER payment fact unavailable"); }
     }
 
+    @Override public void requirePayableForPreparation(String orderId,String storeId,QueryContext context) {
+        var fact=readForPayment(orderId,storeId,context);
+        if(!"PENDING_PAYMENT".equals(fact.orderStage()) || !"INIT".equals(fact.paymentStatus())
+                || !"UNVERIFIED".equals(fact.verificationStatus()) || fact.discountAmount().signum()!=0
+                || fact.payAmount().signum()<=0 || !fact.paymentExpireAt().isAfter(orders.databaseNow())) {
+            throw new ApiException(CommonApiCodes.CONFLICT,"order is not eligible for payment intent");
+        }
+    }
+
     @Override public void assertPaymentCommitted(String orderId, String reservationId,
             String storeId, QueryContext context) {
         long id = positive(orderId), reservation = positive(reservationId);
