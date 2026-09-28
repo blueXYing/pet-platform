@@ -2102,3 +2102,7 @@ applicationId等主键使用Snowflake String；applicationNo按原PRD为SQ+YYYYM
 ## 2026-09-24 已批准：SCH-003 / ORDER 预约保护的 HTTP 同步边界
 
 [36号联合契约](36-Reservation-Order-Protection-Contract-v0.1.md)的 ROC-1～6 已批，当前状态仍为 `ACCEPTED_CONTRACT_NOT_IMPLEMENTED`。现有 §3.4 六字段可约 `items` 不返回原 `windowId/kind`，§3.5 创建与改期请求未携接送两个所选窗 ID 或到店 GENERAL 原窗 ID；不能以旧响应猜 ID、宣称接送双 claim 或跨服务容量写已可用。后续实现切片须同步 07/10/11 的选窗字段、请求/错误与客户端合同，并在服务端锁内完成 36 号复核；本次追加不创建 HTTP 路由、不更改当前响应或 `x-contract-status`，相关入口未实现时失败关闭。
+
+## 创建订单内核阶段状态（2026-09-27）
+
+[38号内部内核](38-Atomic-Booking-Create-Contract-v0.1.md)已实现真实占位与待支付订单原子写入、地址/备注加密快照和持久幂等。当前没有开放本文件§3.5 HTTP路由，也没有改变§3.4现行六字段响应；选窗ID/类型、服务地址及完整结算配套须后续同步公开合同与适配器后启用。优惠券、生产备注审核、自动到期关闭与支付未接齐，不能把无券内部测试当作完整C端下单上线。
