@@ -138,6 +138,36 @@ class OrderCreationMySqlTest {
     }
 
     @Test
+    void duplicateJsonKeysAndTrailingDocumentCannotAuthorizePaymentTransition() throws Exception {
+        try (Database db = new Database()) {
+            var created = db.api().create(db.inStore("paid-json-" + UUID.randomUUID()));
+            var legitimate = db.paymentEvent(created.orderId());
+            String duplicate = legitimate.payloadJson().replaceFirst("\\\"orderId\\\":\\\"",
+                    "\"orderId\":\"999999\",\"orderId\":\"");
+            var duplicateEvent = new DispatchedEvent(legitimate.eventId(),
+                    legitimate.eventType(), legitimate.eventVersion(), legitimate.occurredAt(),
+                    legitimate.aggregateType(), legitimate.aggregateId(), legitimate.traceId(), duplicate);
+            var trailingEvent = new DispatchedEvent(legitimate.eventId(),
+                    legitimate.eventType(), legitimate.eventVersion(), legitimate.occurredAt(),
+                    legitimate.aggregateType(), legitimate.aggregateId(), legitimate.traceId(),
+                    legitimate.payloadJson() + " {} ");
+            var lenient = new com.fasterxml.jackson.databind.ObjectMapper();
+            assertEquals(created.orderId(), lenient.readTree(duplicate).path("orderId").asText());
+            assertEquals(created.orderId(), lenient.readTree(trailingEvent.payloadJson())
+                    .path("orderId").asText());
+            var consumer = db.paymentResultApi(created.orderId());
+            assertEquals(CommonApiCodes.DEPENDENCY_UNAVAILABLE,
+                    assertThrows(ApiException.class, () -> consumer.consume(duplicateEvent)).code());
+            assertEquals(CommonApiCodes.DEPENDENCY_UNAVAILABLE,
+                    assertThrows(ApiException.class, () -> consumer.consume(trailingEvent)).code());
+            assertEquals("PENDING_PAYMENT", db.jdbc.queryForObject(
+                    "SELECT order_stage FROM pet_order", String.class));
+            assertEquals(0, db.count("order_payment_result"));
+            assertEquals(0, db.count("integration_event_consume_log"));
+        }
+    }
+
+    @Test
     void latePaidEventKeepsCanceledOrderAndExpiredClaimAndEmitsOnlyLateEvent() throws Exception {
         try (Database db = new Database()) {
             var created = db.api().create(db.inStore("late-" + UUID.randomUUID()));

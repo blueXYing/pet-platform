@@ -2,6 +2,8 @@ package com.petplatform.order.biz.apiimpl;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.DeserializationFeature;
+import com.fasterxml.jackson.core.JsonParser;
 import com.petplatform.common.ApiException;
 import com.petplatform.common.CommandContext;
 import com.petplatform.common.CommonApiCodes;
@@ -49,7 +51,9 @@ public final class OrderPaymentResultApiImpl implements OrderPaymentResultApi, I
     private static final String SOURCE_TYPE = "PaymentSucceededEvent.v1";
     private static final String CONSUMER = "ORDER_PAYMENT_SUCCEEDED";
     private static final DecimalPublicIdCodec IDS = new DecimalPublicIdCodec();
-    private static final ObjectMapper JSON = new ObjectMapper();
+    private static final ObjectMapper JSON = new ObjectMapper()
+            .enable(JsonParser.Feature.STRICT_DUPLICATE_DETECTION)
+            .enable(DeserializationFeature.FAIL_ON_TRAILING_TOKENS);
     private final DataSource source;
     private final SnowflakeIdGenerator ids;
     private final ScheduleCapacityGuardApi guard;
@@ -191,6 +195,7 @@ public final class OrderPaymentResultApiImpl implements OrderPaymentResultApi, I
         if (!"PAYMENT_TIMEOUT".equals(order.cancelReason())
                 || !"INIT".equals(order.paymentStatus())
                 || !"UNVERIFIED".equals(order.verificationStatus())
+                || order.payAmount() == null || order.payAmount().signum() <= 0
                 || !expiredOrders.hasExpiryLog(order.id(),
                         "TASK:RESERVATION_HOLD_EXPIRE:" + reservationId + ":0")) {
             throw unavailable("ORDER cancellation is not a proven payment timeout");
