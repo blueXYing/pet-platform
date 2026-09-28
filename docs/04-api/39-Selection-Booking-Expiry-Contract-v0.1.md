@@ -18,13 +18,17 @@ SERVICE 公共事实确定服务可见性和履约方式。到店只输出 GENER
 
 PAYMENT `BookingPaymentExposureApi.requireNoPayment`、COUPON `BookingCouponExposureApi.requireNoCoupon` 同 guard、同 DataSource 读取各自持久表。只接受确实没有支付记录、没有关联券实例或流水；任意支付记录（包括 INIT/FAILED/CLOSED）、券记录、孤立支付流水或读取失败均 503 保留占用。不能把“不是 PAID”当“未支付”，不能用 discount=0 代替 Owner 事实。此能力不判断渠道失败、不调用渠道、不冻结/解冻优惠券、不处理退款。后续支付及券写入必须遵守同一 guard，接入前须扩展其 Owner 协调契约并验收。
 
-已确认无外部占用后，同事务将 ORDER 改为 CANCELED、记录 SYSTEM/PAYMENT_TIMEOUT 状态日志，调用 SCH 将原 TEMP_LOCKED 版本 0 改为 EXPIRED 并写 SYSTEM 审计。claim 不删除。SCH 提交前通过 ORDER 公共事实验证对应订单已取消且无需保护；独立过期、绑定不符、审计或任意后续失败均回滚。已处理重放确认原日志及 SCH EXPIRED，不重新写日志或释放。
+已确认无外部占用后，同事务将 ORDER 改为 CANCELED、记录 SYSTEM/PAYMENT_TIMEOUT 状态日志，调用 SCH 将原 TEMP_LOCKED 版本 0 改为 EXPIRED 并写 SYSTEM 审计。claim 不删除。SCH 在仍为活跃状态时读取完整当前事实，先核对原窗和 claim；不能先变成历史状态再跳过完整性校验。提交前调用 ORDER 的 assertExpiryCommitted，验证本代取消日志及绑定到当前 DataSource/ConnectionHolder/事务同步对象的取消证明。历史取消日志不能冒充本事务关闭。独立过期、绑定不符、审计或任意后续失败均回滚。已处理重放确认原日志及 SCH EXPIRED，不重新写日志或释放。
+
+后续 PENDING_CONFIRM/PENDING_SERVICE 阶段仅在 PAID/UNVERIFIED 一致时 NOOP；COMPLETED 必须 PAID/VERIFIED。本切片只认可带本代到期日志的 CANCELED/INIT/UNVERIFIED，其他取消路径留待所属 Owner 核验，返回 503 而非把未知情况标成任务成功。
 
 ## 3. 持久任务、补投与启用
 
 创建订单时，在 hold、订单、快照、审计、成功回执的同一事务里提交 AsyncTask：owner ORDER、type RESERVATION_HOLD_EXPIRE、bizType RESERVATION、bizId reservationId、expectedVersion 0、key `RESERVATION_HOLD_EXPIRE:{reservationId}:0`。payload 为 orderId/reservationId/expectedReservationVersion/expectedPaymentExpireAt；首调 execute_at 为原截止时间。任务提交失败则创建整体回滚。
 
 SQL39 保留 submitted_execute_at 作为首次计划时间，execute_at 可随重试变化；enqueueAt 重放必须初调时间和 payload 一致。此任务始终使用 enqueueAt，不与历史立即 enqueue 混用同 key。新的 worker 工厂只领取注册的 taskType，空 handler 集合拒绝启动。原无过滤基础设施构造入口留给已有完整 dispatcher 的测试和集成，不用于本轮部分 worker。
+
+数据库 DATETIME 按 UTC 壁钟值存储。创建、SCH hold/expiry、任务首调时间使用显式 UTC LocalDateTime 读写，不依赖 Windows/JVM 的默认时区。默认 JDBC 连接也设 UTC。历史非 UTC 数据不得按新配置自动解释或批量修正；生产启用前须核验，发现偏移时另行评审迁移。本轮只验证隔离库。
 
 内部能力开关 `pet.order.expiry.enabled` 和后台轮询开关 `pet.order.expiry.worker.enabled` 均默认 false，依赖 SQL06/13/37/38/39、真实 foundation 与 ID provider。FAST_INTERNAL 退避 5s/15s/60s/5m/15m/30m，最多重试 20 次；异常支付/券事实最终 DEAD 仍保留业务占用，须运维核验，不假装自动支付查询已实现。任务租约丢失后的重派依靠稳定代际命令安全重放。
 
