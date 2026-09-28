@@ -38,8 +38,9 @@ public class BookingExpiryConfiguration {
         return new com.petplatform.order.biz.apiimpl.OrderExpiryFactsApiImpl(source,guard);
     }
     @Bean ReservationExpiryApi reservationExpiryApi(DataSource source,SnowflakeIdGenerator ids,
-            ScheduleCapacityGuardApi guard,OrderExpiryFactsApi orders) {
-        return new ReservationExpiryApiImpl(source,ids,guard,orders);
+            ScheduleCapacityGuardApi guard,OrderExpiryFactsApi orders,
+            com.petplatform.schedule.api.protection.ScheduleProtectionFactsApi facts) {
+        return new ReservationExpiryApiImpl(source,ids,guard,orders,facts);
     }
     @Bean OrderExpiryApi orderExpiryApi(DataSource source,SnowflakeIdGenerator ids,
             ScheduleCapacityGuardApi guard,ReservationExpiryApi reservations,

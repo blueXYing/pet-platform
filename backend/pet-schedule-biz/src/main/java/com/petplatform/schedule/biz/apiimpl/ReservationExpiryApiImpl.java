@@ -23,17 +23,22 @@ public final class ReservationExpiryApiImpl implements ReservationExpiryApi {
     private final SnowflakeIdGenerator ids;
     private final ScheduleCapacityGuardApi guard;
     private final OrderExpiryFactsApi orders;
+    private final com.petplatform.schedule.api.protection.ScheduleProtectionFactsApi facts;
     private static final DecimalPublicIdCodec IDS=new DecimalPublicIdCodec();
     public ReservationExpiryApiImpl(DataSource source,SnowflakeIdGenerator ids,
-            ScheduleCapacityGuardApi guard,OrderExpiryFactsApi orders) {
+            ScheduleCapacityGuardApi guard,OrderExpiryFactsApi orders,
+            com.petplatform.schedule.api.protection.ScheduleProtectionFactsApi facts) {
         this.source=Objects.requireNonNull(source); this.jdbc=new JdbcTemplate(source);
         this.ids=Objects.requireNonNull(ids); this.guard=Objects.requireNonNull(guard);
-        this.orders=Objects.requireNonNull(orders);
+        this.orders=Objects.requireNonNull(orders); this.facts=Objects.requireNonNull(facts);
     }
     @Override public void expire(ExpireHoldCommand c) {
         validate(c);
         guard.requireHeld(c.storeId(),source);
         try {
+            // Validate while the hold is still active: history readers intentionally allow incomplete old claims.
+            var current=facts.readStore(c.storeId(),new QueryContext(c.context().traceId(),OperatorType.SYSTEM,c.context().operatorId()));
+            if(current==null || !current.complete() || current.reservations().stream().noneMatch(r -> c.reservationId().equals(r.reservationId()))) throw unavailable();
             Hold row=read(c.orderId(),c.reservationId(),c.storeId());
             if (!"TEMP_LOCKED".equals(row.status()) || row.version()!=c.expectedVersion()
                     || row.expires()==null || !row.expires().toInstant(java.time.ZoneOffset.UTC).equals(c.expectedExpireAt().toInstant())
