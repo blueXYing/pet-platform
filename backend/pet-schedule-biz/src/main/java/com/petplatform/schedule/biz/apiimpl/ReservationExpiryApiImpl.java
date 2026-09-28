@@ -36,11 +36,11 @@ public final class ReservationExpiryApiImpl implements ReservationExpiryApi {
         try {
             Hold row=read(c.orderId(),c.reservationId(),c.storeId());
             if (!"TEMP_LOCKED".equals(row.status()) || row.version()!=c.expectedVersion()
-                    || row.expires()==null || !row.expires().toInstant().equals(c.expectedExpireAt().toInstant())
-                    || row.expires().toInstant().isAfter(c.observedNow().toInstant())) throw unavailable();
+                    || row.expires()==null || !row.expires().toInstant(java.time.ZoneOffset.UTC).equals(c.expectedExpireAt().toInstant())
+                    || row.expires().toInstant(java.time.ZoneOffset.UTC).isAfter(c.observedNow().toInstant())) throw unavailable();
             // A caller-supplied future clock cannot cause an early release.
-            Timestamp now=jdbc.queryForObject("SELECT UTC_TIMESTAMP(3)",Timestamp.class);
-            if (now==null || row.expires().after(now) || c.observedNow().toInstant().isAfter(now.toInstant())) throw unavailable();
+            java.time.LocalDateTime now=jdbc.queryForObject("SELECT UTC_TIMESTAMP(3)",java.time.LocalDateTime.class);
+            if (now==null || row.expires().isAfter(now) || c.observedNow().toInstant().isAfter(now.toInstant(java.time.ZoneOffset.UTC))) throw unavailable();
             int changed=jdbc.update("UPDATE schedule_reservation SET status='EXPIRED',version=version+1,updated_at=? "
                     +"WHERE id=? AND status='TEMP_LOCKED' AND version=? AND lock_expire_at=?",
                     now,IDS.fromApi(c.reservationId()),c.expectedVersion(),row.expires());
@@ -73,7 +73,7 @@ public final class ReservationExpiryApiImpl implements ReservationExpiryApi {
     }
     private Hold read(String orderId,String reservationId,String storeId) {
         List<Hold> rows=jdbc.query("SELECT order_id,store_id,status,version,lock_expire_at FROM schedule_reservation WHERE id=? FOR UPDATE",
-                (rs,n)->new Hold(rs.getLong(1),rs.getLong(2),rs.getString(3),rs.getLong(4),rs.getTimestamp(5)),IDS.fromApi(reservationId));
+                (rs,n)->new Hold(rs.getLong(1),rs.getLong(2),rs.getString(3),rs.getLong(4),rs.getObject(5,java.time.LocalDateTime.class)),IDS.fromApi(reservationId));
         if(rows.size()!=1) throw unavailable();
         Hold row=rows.getFirst();
         if(row.orderId()!=IDS.fromApi(orderId) || row.storeId()!=IDS.fromApi(storeId)) throw unavailable();
@@ -96,5 +96,5 @@ public final class ReservationExpiryApiImpl implements ReservationExpiryApi {
         if(resource instanceof ConnectionHolder holder) holder.setRollbackOnly();
     }
     private static ApiException unavailable() { return new ApiException(CommonApiCodes.DEPENDENCY_UNAVAILABLE,"reservation expiry facts unavailable"); }
-    private record Hold(long orderId,long storeId,String status,long version,Timestamp expires) {}
+    private record Hold(long orderId,long storeId,String status,long version,java.time.LocalDateTime expires) {}
 }

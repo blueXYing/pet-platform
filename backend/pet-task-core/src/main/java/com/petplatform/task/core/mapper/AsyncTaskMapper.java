@@ -17,7 +17,7 @@ public interface AsyncTaskMapper {
       @Param("expectedVersion") Long expectedVersion,
       @Param("payloadJson") String payloadJson,
       @Param("maxRetryCount") int maxRetryCount,
-      @Param("retryPolicy") String retryPolicy, @Param("availableAt") java.sql.Timestamp availableAt);
+      @Param("retryPolicy") String retryPolicy, @Param("availableAt") java.time.LocalDateTime availableAt);
 
   Long selectMatchingSubmission(
       @Param("taskKey") String taskKey,
@@ -28,7 +28,7 @@ public interface AsyncTaskMapper {
       @Param("expectedVersion") Long expectedVersion,
       @Param("payloadJson") String payloadJson,
       @Param("maxRetryCount") int maxRetryCount,
-      @Param("retryPolicy") String retryPolicy, @Param("availableAt") java.sql.Timestamp availableAt);
+      @Param("retryPolicy") String retryPolicy, @Param("availableAt") java.time.LocalDateTime availableAt);
 
 
     AsyncTaskRowEntity selectClaimCandidate(@Param("taskTypes") java.util.Set<String> taskTypes);

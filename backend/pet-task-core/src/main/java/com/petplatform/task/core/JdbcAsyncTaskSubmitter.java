@@ -39,11 +39,11 @@ public final class JdbcAsyncTaskSubmitter {
     Objects.requireNonNull(availableAt, "availableAt");
     if (availableAt.getNano()%1_000_000!=0) throw new IllegalArgumentException("Deadline must have millisecond precision");
     return submit(taskKey,ownerModule,taskType,bizType,bizId,expectedVersion,payloadJson,maxRetryCount,retryPolicy,
-        java.sql.Timestamp.from(availableAt.toInstant()));
+        availableAt.withOffsetSameInstant(java.time.ZoneOffset.UTC).toLocalDateTime());
   }
 
   private long submit(String taskKey,String ownerModule,String taskType,String bizType,long bizId,
-      Long expectedVersion,String payloadJson,int maxRetryCount,String retryPolicy,java.sql.Timestamp availableAt) {
+      Long expectedVersion,String payloadJson,int maxRetryCount,String retryPolicy,java.time.LocalDateTime availableAt) {
     if (!TransactionSynchronizationManager.isActualTransactionActive()
         || !TransactionSynchronizationManager.hasResource(dataSource)) {
       throw new IllegalStateException(
