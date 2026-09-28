@@ -42,4 +42,17 @@ public final class OrderMapperRows {
         public LocalDateTime channelPaidAt;
     }
 
+    public static final class LateRefundOrder {
+        public Long refundOrderId;
+        public BigDecimal refundedAmount;
+        public String orderStage, paymentStatus, verificationStatus, cancelReason;
+    }
+
+    public static final class LateRefundResult {
+        public Long refundOrderId, paymentId, createdEventId, successEventId;
+        public String refundType, refundSource, refundStatus;
+        public BigDecimal refundAmount;
+        public LocalDateTime succeededAt;
+    }
+
 }

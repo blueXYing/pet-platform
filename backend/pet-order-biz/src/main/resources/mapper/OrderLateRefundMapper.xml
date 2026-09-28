@@ -1,0 +1,59 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.petplatform.order.biz.infrastructure.persistence.mapper.OrderLateRefundMapper">
+  <select id="lockOrder" resultType="com.petplatform.order.biz.infrastructure.persistence.mapper.OrderMapperRows$LateRefundOrder">
+    SELECT refund_order_id,refunded_amount,order_stage,payment_status,
+           verification_status,cancel_reason
+    FROM pet_order WHERE id=#{orderId} FOR UPDATE
+  </select>
+  <select id="lockResult" resultType="com.petplatform.order.biz.infrastructure.persistence.mapper.OrderMapperRows$LateRefundResult">
+    SELECT refund_order_id,payment_id,refund_type,refund_source,refund_amount,
+           refund_status,created_event_id,success_event_id,succeeded_at
+    FROM order_late_refund_result WHERE order_id=#{orderId} FOR UPDATE
+  </select>
+  <update id="bindUnboundOrder">
+    UPDATE pet_order SET refund_order_id=#{refundOrderId},version=version+1,
+                         updated_at=UTC_TIMESTAMP(3)
+    WHERE id=#{orderId} AND refund_order_id IS NULL AND refunded_amount=0
+      AND order_stage='CANCELED' AND cancel_reason='PAYMENT_TIMEOUT'
+      AND payment_status='PAID' AND verification_status='UNVERIFIED'
+  </update>
+  <update id="bindRefundedOrder">
+    UPDATE pet_order SET refund_order_id=#{refundOrderId},refunded_amount=#{refundedAmount},version=version+1,
+                         updated_at=UTC_TIMESTAMP(3)
+    WHERE id=#{orderId} AND (refund_order_id IS NULL OR refund_order_id=#{refundOrderId})
+      AND refunded_amount=0 AND order_stage='CANCELED'
+      AND cancel_reason='PAYMENT_TIMEOUT' AND payment_status='PAID'
+      AND verification_status='UNVERIFIED'
+  </update>
+  <insert id="insertCreated">
+    INSERT INTO order_late_refund_result
+      (order_id,refund_order_id,payment_id,refund_type,refund_source,refund_amount,
+       refund_status,created_event_id,created_at,updated_at)
+    VALUES (#{orderId},#{refundOrderId},#{paymentId},'FULL','LATE_PAYMENT_TIMEOUT',#{amount},'CREATED',#{eventId},
+            UTC_TIMESTAMP(3),UTC_TIMESTAMP(3))
+  </insert>
+  <update id="noteCreatedAfterSuccess">
+    UPDATE order_late_refund_result SET created_event_id=#{eventId},updated_at=UTC_TIMESTAMP(3)
+    WHERE order_id=#{orderId} AND refund_status='SUCCESS' AND created_event_id IS NULL
+  </update>
+  <insert id="insertSucceeded">
+    INSERT INTO order_late_refund_result
+      (order_id,refund_order_id,payment_id,refund_type,refund_source,refund_amount,
+       refund_status,success_event_id,succeeded_at,created_at,updated_at)
+    VALUES (#{orderId},#{refundOrderId},#{paymentId},'FULL','LATE_PAYMENT_TIMEOUT',#{amount},'SUCCESS',#{eventId},#{succeededAt},
+            UTC_TIMESTAMP(3),UTC_TIMESTAMP(3))
+  </insert>
+  <update id="markSucceeded">
+    UPDATE order_late_refund_result
+    SET refund_status='SUCCESS',success_event_id=#{eventId},succeeded_at=#{succeededAt},
+        updated_at=UTC_TIMESTAMP(3)
+    WHERE order_id=#{orderId} AND refund_status='CREATED' AND success_event_id IS NULL
+  </update>
+  <insert id="statusLog">
+    INSERT INTO order_status_log
+      (id,order_id,dimension,from_status,to_status,event_type,operator_type,
+       operator_id,request_id,remark,created_at)
+    VALUES (#{id},#{orderId},'REFUND',#{from},#{to},#{eventType},'SYSTEM',NULL,#{requestId},NULL,UTC_TIMESTAMP(3))
+  </insert>
+</mapper>
