@@ -1,7 +1,7 @@
 package com.petplatform.schedule.biz.apiimpl;
 
 import com.petplatform.common.*;
-import com.petplatform.order.api.query.OrderProtectionFactsApi;
+import com.petplatform.order.api.query.OrderExpiryFactsApi;
 import com.petplatform.schedule.api.command.ReservationExpiryApi;
 import com.petplatform.schedule.api.dto.ReservationExpiryTypes.ExpireHoldCommand;
 import com.petplatform.schedule.api.protection.ScheduleCapacityGuardApi;
@@ -22,10 +22,10 @@ public final class ReservationExpiryApiImpl implements ReservationExpiryApi {
     private final JdbcTemplate jdbc;
     private final SnowflakeIdGenerator ids;
     private final ScheduleCapacityGuardApi guard;
-    private final OrderProtectionFactsApi orders;
+    private final OrderExpiryFactsApi orders;
     private static final DecimalPublicIdCodec IDS=new DecimalPublicIdCodec();
     public ReservationExpiryApiImpl(DataSource source,SnowflakeIdGenerator ids,
-            ScheduleCapacityGuardApi guard,OrderProtectionFactsApi orders) {
+            ScheduleCapacityGuardApi guard,OrderExpiryFactsApi orders) {
         this.source=Objects.requireNonNull(source); this.jdbc=new JdbcTemplate(source);
         this.ids=Objects.requireNonNull(ids); this.guard=Objects.requireNonNull(guard);
         this.orders=Objects.requireNonNull(orders);
@@ -45,9 +45,11 @@ public final class ReservationExpiryApiImpl implements ReservationExpiryApi {
                     +"WHERE id=? AND status='TEMP_LOCKED' AND version=? AND lock_expire_at=?",
                     now,IDS.fromApi(c.reservationId()),c.expectedVersion(),row.expires());
             if(changed!=1) throw unavailable();
+            long auditId=ids.nextId();
+            if(auditId<=0) throw unavailable();
             jdbc.update("INSERT INTO schedule_reservation_audit(id,reservation_id,order_id,actor_user_id,store_id,"
                     +"action,request_id,trace_id,occurred_at,actor_type) VALUES(?,?,?,NULL,?,'EXPIRE',?,?,?,'SYSTEM')",
-                    ids.nextId(),IDS.fromApi(c.reservationId()),IDS.fromApi(c.orderId()),IDS.fromApi(c.storeId()),
+                    auditId,IDS.fromApi(c.reservationId()),IDS.fromApi(c.orderId()),IDS.fromApi(c.storeId()),
                     c.context().requestId().getBytes(StandardCharsets.UTF_8),c.context().traceId(),now);
             QueryContext context=new QueryContext(c.context().traceId(),OperatorType.SYSTEM,c.context().operatorId());
             TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
@@ -55,11 +57,7 @@ public final class ReservationExpiryApiImpl implements ReservationExpiryApi {
                     try {
                         if(readOnly) throw unavailable();
                         assertExpired(c.orderId(),c.reservationId(),c.storeId(),context);
-                        var facts=orders.getByReservations(c.storeId(),List.of(c.reservationId()),context);
-                        if(facts==null || !facts.complete() || facts.items().size()!=1) throw unavailable();
-                        var order=facts.items().getFirst();
-                        if(!c.orderId().equals(order.orderId()) || !c.reservationId().equals(order.reservationId())
-                                || !"CANCELED".equals(order.orderStage()) || order.protectRequired()) throw unavailable();
+                        orders.assertExpiryCommitted(c.orderId(),c.reservationId(),c.storeId(),context);
                     } catch(RuntimeException failure) { rollbackOnly(); throw unavailable(); }
                 }
             });

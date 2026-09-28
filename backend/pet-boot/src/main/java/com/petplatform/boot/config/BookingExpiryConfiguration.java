@@ -7,7 +7,7 @@ import com.petplatform.coupon.api.query.BookingCouponExposureApi;
 import com.petplatform.coupon.biz.apiimpl.BookingCouponExposureApiImpl;
 import com.petplatform.order.api.command.OrderExpiryApi;
 import com.petplatform.order.api.dto.OrderExpiryTypes.ExpireOrderCommand;
-import com.petplatform.order.api.query.OrderProtectionFactsApi;
+import com.petplatform.order.api.query.OrderExpiryFactsApi;
 import com.petplatform.order.biz.apiimpl.OrderExpiryApiImpl;
 import com.petplatform.payment.api.query.BookingPaymentExposureApi;
 import com.petplatform.payment.biz.apiimpl.BookingPaymentExposureApiImpl;
@@ -34,8 +34,11 @@ public class BookingExpiryConfiguration {
     @Bean BookingCouponExposureApi bookingCouponExposureApi(DataSource source,ScheduleCapacityGuardApi guard) {
         return new BookingCouponExposureApiImpl(source,guard);
     }
+    @Bean OrderExpiryFactsApi orderExpiryFactsApi(DataSource source,ScheduleCapacityGuardApi guard) {
+        return new com.petplatform.order.biz.apiimpl.OrderExpiryFactsApiImpl(source,guard);
+    }
     @Bean ReservationExpiryApi reservationExpiryApi(DataSource source,SnowflakeIdGenerator ids,
-            ScheduleCapacityGuardApi guard,OrderProtectionFactsApi orders) {
+            ScheduleCapacityGuardApi guard,OrderExpiryFactsApi orders) {
         return new ReservationExpiryApiImpl(source,ids,guard,orders);
     }
     @Bean OrderExpiryApi orderExpiryApi(DataSource source,SnowflakeIdGenerator ids,

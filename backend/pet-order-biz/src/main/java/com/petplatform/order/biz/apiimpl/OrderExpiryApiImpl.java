@@ -149,13 +149,20 @@ public final class OrderExpiryApiImpl implements OrderExpiryApi {
             throw unavailable("ORDER stage is unknown");
         }
         if ("CANCELED".equals(order.stage())) {
-            if (orders.hasExpiryLog(input.orderId(), input.command().context().requestId())) {
-                reservations.assertExpired(input.command().orderId(), input.command().reservationId(),
-                        storeId, context);
+            if (!"INIT".equals(order.paymentStatus()) || !"UNVERIFIED".equals(order.verificationStatus())
+                    || !orders.hasExpiryLog(input.orderId(), input.command().context().requestId())) {
+                throw unavailable("ORDER cancellation requires owner reconciliation");
+            }
+            reservations.assertExpired(input.command().orderId(), input.command().reservationId(), storeId, context);
+            return ExpireOrderResult.NOOP;
+        }
+        if (!"PENDING_PAYMENT".equals(order.stage())) {
+            String expectedVerification="COMPLETED".equals(order.stage()) ? "VERIFIED" : "UNVERIFIED";
+            if(!"PAID".equals(order.paymentStatus()) || !expectedVerification.equals(order.verificationStatus())) {
+                throw unavailable("ORDER later-stage facts are inconsistent");
             }
             return ExpireOrderResult.NOOP;
         }
-        if (!"PENDING_PAYMENT".equals(order.stage())) return ExpireOrderResult.NOOP;
         if (!"INIT".equals(order.paymentStatus())
                 || !"UNVERIFIED".equals(order.verificationStatus())
                 || order.payAmount() == null || order.payAmount().signum() <= 0

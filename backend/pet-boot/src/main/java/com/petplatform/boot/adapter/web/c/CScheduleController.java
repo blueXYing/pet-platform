@@ -104,8 +104,10 @@ public class CScheduleController {
     }
 
     private static Map<String,Object> selectedWindow(com.petplatform.schedule.api.dto.SelectionWindowDTO item) {
-        Map<String,Object> row=window(new AvailabilityWindowDTO(item.start(),item.end(),item.effectiveCapacity(),
-                item.occupiedCount(),item.remainingCapacity(),item.available()));
+        Map<String,Object> row=new LinkedHashMap<>();
+        row.put("start",format(item.start())); row.put("end",format(item.end()));
+        row.put("effectiveCapacity",item.effectiveCapacity()); row.put("occupiedCount",item.occupiedCount());
+        row.put("remainingCapacity",item.remainingCapacity()); row.put("available",item.available());
         row.put("windowId",item.windowId()); row.put("kind",item.kind());
         return row;
     }
