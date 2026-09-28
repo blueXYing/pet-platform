@@ -1540,3 +1540,8 @@ notification_delivery
 - 启动开关默认关闭。Boot worker 收集所有注册 handler，不能让一个私有材料专用 worker 误领其他模块任务。
 
 本次不新增跨模块业务事件；意图与任务原子写入已覆盖该本模块收敛，不新增无消费者的 outbox 事件。自动删除和保留期限仍待单独裁决。
+
+
+## 2026-09-28 implementation supplement
+
+For atomic booking creation, scheduled task submission and coordinated expiration are specified in [Contract 39](../04-api/39-Selection-Booking-Expiry-Contract-v0.1.md). Its ORDER + SCH transaction supersedes standalone reservation expiry for this slice. Default switches remain off; no payment-channel or coupon settlement capability is implied.

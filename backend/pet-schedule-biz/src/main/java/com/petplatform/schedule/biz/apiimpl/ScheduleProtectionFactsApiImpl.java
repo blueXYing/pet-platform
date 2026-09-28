@@ -114,8 +114,8 @@ public final class ScheduleProtectionFactsApiImpl implements ScheduleProtectionF
     }
 
     private static OffsetDateTime at(ResultSet rs, String column) throws SQLException {
-        Timestamp value = rs.getTimestamp(column);
-        return value == null ? null : value.toInstant().atOffset(ZoneOffset.UTC);
+        java.time.LocalDateTime value = rs.getObject(column,java.time.LocalDateTime.class);
+        return value == null ? null : value.atOffset(ZoneOffset.UTC);
     }
 
     private static long positiveId(String value) {

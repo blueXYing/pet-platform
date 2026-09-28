@@ -28,7 +28,7 @@ import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
-/** Internal creation only. No HTTP route, production migration, payment or timeout worker. */
+/** Internal creation only. No HTTP route, production migration or payment; durable expiry is submitted with every create. */
 @Configuration(proxyBeanMethods=false)
 @ConditionalOnProperty(prefix="pet.order.creation",name="enabled",havingValue="true")
 public class BookingCreationConfiguration {

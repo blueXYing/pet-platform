@@ -29,6 +29,21 @@ public final class JdbcAsyncTaskSubmitter {
       String payloadJson,
       int maxRetryCount,
       String retryPolicy) {
+    return submit(taskKey,ownerModule,taskType,bizType,bizId,expectedVersion,payloadJson,maxRetryCount,retryPolicy,null);
+  }
+
+  /** Schedules the first attempt without spending retry budget while waiting for a business deadline. */
+  public long enqueueAt(String taskKey,String ownerModule,String taskType,String bizType,long bizId,
+      Long expectedVersion,String payloadJson,int maxRetryCount,String retryPolicy,
+      java.time.OffsetDateTime availableAt) {
+    Objects.requireNonNull(availableAt, "availableAt");
+    if (availableAt.getNano()%1_000_000!=0) throw new IllegalArgumentException("Deadline must have millisecond precision");
+    return submit(taskKey,ownerModule,taskType,bizType,bizId,expectedVersion,payloadJson,maxRetryCount,retryPolicy,
+        availableAt.withOffsetSameInstant(java.time.ZoneOffset.UTC).toLocalDateTime());
+  }
+
+  private long submit(String taskKey,String ownerModule,String taskType,String bizType,long bizId,
+      Long expectedVersion,String payloadJson,int maxRetryCount,String retryPolicy,java.time.LocalDateTime availableAt) {
     if (!TransactionSynchronizationManager.isActualTransactionActive()
         || !TransactionSynchronizationManager.hasResource(dataSource)) {
       throw new IllegalStateException(
@@ -62,7 +77,7 @@ public final class JdbcAsyncTaskSubmitter {
         expectedVersion,
         payloadJson,
         maxRetryCount,
-        retryPolicy);
+        retryPolicy, availableAt);
     Long matched =
         mapper.selectMatchingSubmission(
             taskKey,
@@ -73,7 +88,7 @@ public final class JdbcAsyncTaskSubmitter {
             expectedVersion,
             payloadJson,
             maxRetryCount,
-            retryPolicy);
+            retryPolicy, availableAt);
     if (matched == null)
       throw new IllegalArgumentException("Durable task key is bound to different content");
     return matched;

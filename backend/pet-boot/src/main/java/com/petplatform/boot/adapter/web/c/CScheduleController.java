@@ -43,9 +43,15 @@ public class CScheduleController {
             DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ssXXX");
 
     private final ScheduleQueryApiImpl schedule;
+    private final com.petplatform.schedule.api.query.ScheduleSelectionQueryApi selection;
+    private final boolean selectionEnabled;
 
-    public CScheduleController(ScheduleQueryApiImpl schedule) {
+    public CScheduleController(ScheduleQueryApiImpl schedule,
+            org.springframework.beans.factory.ObjectProvider<com.petplatform.schedule.api.query.ScheduleSelectionQueryApi> selection,
+            @org.springframework.beans.factory.annotation.Value("${pet.schedule.selection.enabled:false}") boolean selectionEnabled) {
         this.schedule = schedule;
+        this.selection = selection.getIfAvailable();
+        this.selectionEnabled = selectionEnabled;
     }
 
     @org.springframework.web.bind.annotation.ModelAttribute
@@ -62,8 +68,16 @@ public class CScheduleController {
             @RequestParam(required = false) String startDate,
             @RequestParam(required = false) String endDate,
             HttpServletRequest req) {
-        rejectUnknownParameters(req);
+        rejectUnknownParameters(req, selectionEnabled);
         if (storeId == null || storeId.isBlank()) throw invalid("storeId");
+        if (selectionEnabled) {
+            if(selection==null) throw new ApiException(CommonApiCodes.DEPENDENCY_UNAVAILABLE,"selection facts unavailable");
+            var selected=selection.querySelectableWindows(new com.petplatform.schedule.api.query.SelectionWindowQuery(
+                    serviceId,storeId,date(startDate,"startDate"),date(endDate,"endDate"),req.getParameter("kind"),context(req)));
+            Map<String,Object> data=new LinkedHashMap<>();
+            data.put("items",selected.items().stream().map(CScheduleController::selectedWindow).toList());
+            return ApiResponse.success(data,trace(req));
+        }
         AvailabilityPageDTO value =
                 schedule.queryAvailability(
                         new AvailabilityQuery(
@@ -86,6 +100,15 @@ public class CScheduleController {
         row.put("occupiedCount", item.occupiedCount());
         row.put("remainingCapacity", item.remainingCapacity());
         row.put("available", item.available());
+        return row;
+    }
+
+    private static Map<String,Object> selectedWindow(com.petplatform.schedule.api.dto.SelectionWindowDTO item) {
+        Map<String,Object> row=new LinkedHashMap<>();
+        row.put("start",format(item.start())); row.put("end",format(item.end()));
+        row.put("effectiveCapacity",item.effectiveCapacity()); row.put("occupiedCount",item.occupiedCount());
+        row.put("remainingCapacity",item.remainingCapacity()); row.put("available",item.available());
+        row.put("windowId",item.windowId()); row.put("kind",item.kind());
         return row;
     }
 
@@ -114,13 +137,13 @@ public class CScheduleController {
         }
     }
 
-    private static void rejectUnknownParameters(HttpServletRequest req) {
-        for (String name : new String[] {"storeId", "startDate", "endDate"}) {
+    private static void rejectUnknownParameters(HttpServletRequest req,boolean selectionEnabled) {
+        for (String name : new String[] {"storeId", "startDate", "endDate", "kind"}) {
             String[] values = req.getParameterValues(name);
             if (values != null && values.length > 1) throw invalid(name);
         }
         for (String name : req.getParameterMap().keySet()) {
-            if (!"storeId".equals(name) && !"startDate".equals(name) && !"endDate".equals(name)) {
+            if (!"storeId".equals(name) && !"startDate".equals(name) && !"endDate".equals(name) && !(selectionEnabled && "kind".equals(name))) {
                 throw invalid(name);
             }
         }

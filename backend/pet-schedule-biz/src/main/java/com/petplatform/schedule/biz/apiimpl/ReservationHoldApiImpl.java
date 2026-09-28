@@ -123,7 +123,7 @@ public final class ReservationHoldApiImpl implements ReservationHoldApi {
                     timestamp(returning), UUID.randomUUID().toString(), timestamp(expires),
                     Math.min(plan.configuredCapacity(), plan.qualifiedStaffCount()),
                     plan.qualifiedStaffCount(),
-                    Timestamp.from(now), Timestamp.from(now));
+                    java.time.LocalDateTime.ofInstant(now,ZoneOffset.UTC), java.time.LocalDateTime.ofInstant(now,ZoneOffset.UTC));
             List<HeldClaim> claims = new ArrayList<>(plan.claims().size());
             for (ProvenClaim selected : plan.claims()) {
                 long claimId = nextId();
@@ -140,7 +140,7 @@ public final class ReservationHoldApiImpl implements ReservationHoldApi {
                     + "VALUES(?,?,?,?,?,'HOLD',?,?,?)", nextId(), reservationId,
                     id(command.orderId()), id(command.userId()), id(command.storeId()),
                     command.context().requestId().getBytes(StandardCharsets.UTF_8),
-                    command.context().traceId(), Timestamp.from(now));
+                    command.context().traceId(), java.time.LocalDateTime.ofInstant(now,ZoneOffset.UTC));
             String reservation = IDS.toApi(reservationId);
             registerCommitProof(command, query, reservation);
             return new HoldResult(reservation, command.orderId(), start, end, expires, claims);
@@ -251,8 +251,8 @@ public final class ReservationHoldApiImpl implements ReservationHoldApi {
         return true;
     }
 
-    private static Timestamp timestamp(OffsetDateTime value) {
-        return value == null ? null : Timestamp.from(value.toInstant());
+    private static java.time.LocalDateTime timestamp(OffsetDateTime value) {
+        return value == null ? null : value.withOffsetSameInstant(ZoneOffset.UTC).toLocalDateTime();
     }
 
     private static long id(String value) {

@@ -684,12 +684,12 @@ class BookingCreateAcceptanceTest {
         return GENERATED_IDS.incrementAndGet();
     }
 
-    private static final class InputProtector implements OrderCreationInputProtection {
+    static final class InputProtector implements OrderCreationInputProtection {
         private final SecureRandom random = new SecureRandom();
         private final byte[] encryptionKey = new byte[32];
         private final byte[] equalityKey = new byte[32];
 
-        private InputProtector() {
+        InputProtector() {
             java.util.Arrays.fill(encryptionKey, (byte) 0x31);
             java.util.Arrays.fill(equalityKey, (byte) 0x52);
         }
@@ -796,21 +796,23 @@ class BookingCreateAcceptanceTest {
     }
 
     /** Isolated schema and durable result oracle; never creates business outcome rows. */
-    private static final class Database implements AutoCloseable {
+    static final class Database implements AutoCloseable {
         private static final List<String> SCHEMA = List.of(
                 "06-核心数据库Schema-v0.1.sql",
+                "13-Async-Infra-Schema-v0.1.sql",
                 "28-Merchant-Agreement-Schema-v0.1.sql",
                 "29-Merchant-Application-Schema-v0.1.sql",
                 "33-Service-Write-Schema-v0.1.sql",
                 "37-Reservation-Protection-Foundation-Schema-v0.1.sql",
-                "38-Booking-Create-Schema-v0.1.sql");
+                "38-Booking-Create-Schema-v0.1.sql",
+                "39-Booking-Expiry-Schema-v0.1.sql");
         private final String name = "qa_booking_" + UUID.randomUUID().toString().replace("-", "");
         private final JdbcTemplate admin;
-        private final DataSource source;
-        private final JdbcTemplate jdbc;
+        final DataSource source;
+        final JdbcTemplate jdbc;
         private final DataSourceTransactionManager manager;
 
-        private Database() throws Exception {
+        Database() throws Exception {
             var environment = System.getenv();
             String prefix = environment.containsKey("BOOKING_MYSQL_URL") ? "BOOKING" : "AUTH";
             String url = environment.get(prefix + "_MYSQL_URL");
@@ -874,7 +876,7 @@ class BookingCreateAcceptanceTest {
             });
         }
 
-        private void seedBookableFacts() {
+        void seedBookableFacts() {
             for (long userId : List.of(USER_A, USER_B, MERCHANT_OWNER)) {
                 jdbc.update("INSERT INTO user_account(id,nickname,status,created_at,updated_at)"
                         + " VALUES(?,'Booking QA','ACTIVE',UTC_TIMESTAMP(3),UTC_TIMESTAMP(3))", userId);

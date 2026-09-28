@@ -205,9 +205,10 @@ class ReservationProtectionFoundationAcceptanceTest {
 
     @Test
     void nestedIndependentTransactionCannotAcquireOuterHeldStoreWithoutWaitingForMysqlTimeout() throws Exception {
-        assertTimeoutPreemptively(Duration.ofSeconds(5), () -> {
-            try (Database db = new Database()) {
-                var guard = new ScheduleCapacityGuardApiImpl(db.source);
+        // Measure guard rejection, not unrelated schema creation/drop under concurrent test I/O.
+        try (Database db = new Database()) {
+            var guard = new ScheduleCapacityGuardApiImpl(db.source);
+            assertTimeoutPreemptively(Duration.ofSeconds(5), () -> {
                 db.inTransaction(() -> {
                     guard.acquire(List.of(STORE), CTX);
                     assertCode(CommonApiCodes.DEPENDENCY_UNAVAILABLE,
@@ -220,8 +221,8 @@ class ReservationProtectionFoundationAcceptanceTest {
                 });
                 assertEquals(1, db.jdbc.queryForObject(
                         "SELECT COUNT(*) FROM schedule_store_capacity_guard WHERE store_id=?", Integer.class, STORE));
-            }
-        });
+            });
+        }
     }
 
     @Test

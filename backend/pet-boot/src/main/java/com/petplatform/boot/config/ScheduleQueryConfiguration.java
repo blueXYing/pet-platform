@@ -36,6 +36,13 @@ public class ScheduleQueryConfiguration {
     }
 
     @Bean
+    @ConditionalOnProperty(prefix="pet.schedule.selection",name="enabled",havingValue="true")
+    com.petplatform.schedule.api.query.ScheduleSelectionQueryApi scheduleSelectionQueryApi(DataSource source,
+            ServiceQueryApiImpl serviceFacts,ObjectProvider<QualifiedStaffFactsPort> staffFacts) {
+        return new com.petplatform.schedule.biz.apiimpl.ScheduleSelectionQueryApiImpl(source,serviceFacts,staffFacts.getIfAvailable());
+    }
+
+    @Bean
     ScheduleQueryApiImpl scheduleQueryApi(
             DataSource source,
             ServiceQueryApiImpl serviceFacts,

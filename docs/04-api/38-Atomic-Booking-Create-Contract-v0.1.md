@@ -47,3 +47,8 @@ hold注册同事务beforeCommit校验，经真实ORDER.getByReservations验证�
 [SQL38](../03-database/38-Booking-Create-Schema-v0.1.sql)仅隔离库验证：ORDER绑定/创建审计/加密输入快照、SCH HOLD审计及订单支付截止时间。order_status_log不是幂等记录，用户备注不塞审计remark。业务快照、审计、绑定成功和hold同事务；任何一处失败全部回滚。无新增集成事件或声称已登记可执行过期任务。
 
 验收重点为真实MySQL双用户抢位、同key并发/异参、hold后逐阶段失败回滚、独立hold提交拒绝、成功重放不重占用/不重算价、接送双claim与用户地址加密、真实Owner当前事实。支付/优惠券实际使用、HTTP鉴权与页面、自动过期、确认/释放/改期、生产迁移未执行时明确NOT_IMPLEMENTED/NOT_EXECUTED。待这些配套接入前两个创建开关均保持关闭，不把内部验证当真实消费者结算上线。
+
+
+## 2026-09-28 implementation supplement
+
+For atomic booking creation, scheduled task submission and coordinated expiration are specified in [Contract 39](39-Selection-Booking-Expiry-Contract-v0.1.md). Its ORDER + SCH transaction supersedes standalone reservation expiry for this slice. Default switches remain off; no payment-channel or coupon settlement capability is implied.
