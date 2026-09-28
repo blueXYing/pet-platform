@@ -7,6 +7,8 @@ import com.petplatform.common.QueryContext;
 import com.petplatform.payment.api.query.BookingPaymentExposureApi;
 import com.petplatform.payment.biz.infrastructure.persistence.PaymentFoundationStore;
 import com.petplatform.payment.biz.infrastructure.persistence.PaymentFoundationStore.Row;
+import com.petplatform.payment.biz.infrastructure.persistence.PaymentFoundationStore.ExposureDispatch;
+import com.petplatform.payment.biz.infrastructure.persistence.PaymentFoundationStore.ExposureReceipt;
 import com.petplatform.schedule.api.protection.ScheduleCapacityGuardApi;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
@@ -15,7 +17,6 @@ import java.util.List;
 import java.util.Objects;
 import java.util.Set;
 import javax.sql.DataSource;
-import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.datasource.ConnectionHolder;
 import org.springframework.transaction.support.TransactionSynchronizationManager;
 
@@ -24,7 +25,6 @@ public final class BookingPaymentExposureApiImpl implements BookingPaymentExposu
     private static final DecimalPublicIdCodec IDS = new DecimalPublicIdCodec();
     private final DataSource source;
     private final ScheduleCapacityGuardApi guard;
-    private final JdbcTemplate jdbc;
     private final PaymentFoundationStore store;
     private final boolean allowDispatchEvidence;
 
@@ -36,7 +36,6 @@ public final class BookingPaymentExposureApiImpl implements BookingPaymentExposu
             boolean allowDispatchEvidence) {
         this.source = Objects.requireNonNull(source);
         this.guard = Objects.requireNonNull(guard);
-        this.jdbc = new JdbcTemplate(source);
         this.store = new PaymentFoundationStore(source);
         this.allowDispatchEvidence = allowDispatchEvidence;
     }
@@ -45,8 +44,7 @@ public final class BookingPaymentExposureApiImpl implements BookingPaymentExposu
         try {
             long order = IDS.fromApi(orderId);
             guard.requireHeld(storeId, source);
-            if (!jdbc.query("SELECT id FROM payment_order WHERE order_id=? LIMIT 1 FOR UPDATE",
-                    (rs, row) -> rs.getLong(1), order).isEmpty() || hasOrphanTransaction())
+            if (store.mapper.selectPaymentIdByOrderForUpdate(order) != null || hasOrphanTransaction())
                 throw unavailable();
         } catch (RuntimeException failure) {
             rollback();
@@ -84,29 +82,9 @@ public final class BookingPaymentExposureApiImpl implements BookingPaymentExposu
                     || payment.successEventId() != null || payment.paidAt() != null
                     || payment.paidAmount() != null) throw unavailable();
 
-            List<Dispatch> dispatches = jdbc.query("""
-                    SELECT state,preorder_req_time,trade_req_date,timeout_express_minutes,
-                           may_have_sent_at,preorder_response_sha256,parameters_ciphertext,
-                           parameters_iv,parameter_valid_until,fenced_at,close_may_have_sent_at,
-                           close_response_sha256,terminal_query_sha256,terminal_confirmed_at,
-                           terminal_close_capability
-                    FROM payment_dispatch WHERE payment_id=? FOR UPDATE
-                    """, (rs, row) -> new Dispatch(rs.getString(1),
-                    rs.getObject(2, LocalDateTime.class), rs.getObject(3, java.time.LocalDate.class),
-                    rs.getObject(4, Integer.class), rs.getObject(5, LocalDateTime.class),
-                    rs.getString(6), rs.getBytes(7), rs.getBytes(8),
-                    rs.getObject(9, LocalDateTime.class), rs.getObject(10, LocalDateTime.class),
-                    rs.getObject(11, LocalDateTime.class), rs.getString(12), rs.getString(13),
-                    rs.getObject(14, LocalDateTime.class), rs.getInt(15)), payment.id());
-            if (dispatches.size() != 1) throw unavailable();
-            Dispatch dispatch = dispatches.getFirst();
-            List<Receipt> receipts = jdbc.query("""
-                    SELECT receipt_source,channel_status,receipt_sha256,
-                           channel_response_sha256,paid_amount,total_amount,channel_trade_no
-                    FROM payment_channel_receipt WHERE payment_id=? FOR UPDATE
-                    """, (rs, row) -> new Receipt(rs.getString(1), rs.getString(2),
-                    rs.getString(3), rs.getString(4), rs.getBigDecimal(5),
-                    rs.getBigDecimal(6), rs.getString(7)), payment.id());
+            ExposureDispatch dispatch = store.mapper.selectExposureDispatchForUpdate(payment.id());
+            if (dispatch == null) throw unavailable();
+            List<ExposureReceipt> receipts = store.mapper.selectExposureReceiptsForUpdate(payment.id());
 
             if ("FENCED_UNSENT".equals(dispatch.state())) {
                 if (!"INIT".equals(payment.status()) || !"PREPARED".equals(payment.dispatchState())
@@ -137,7 +115,7 @@ public final class BookingPaymentExposureApiImpl implements BookingPaymentExposu
 
             boolean closeReceipt = false;
             boolean terminalQuery = false;
-            for (Receipt receipt : receipts) {
+            for (ExposureReceipt receipt : receipts) {
                 if (!Set.of("NOTIFICATION", "QUERY", "CLOSE").contains(receipt.source())
                         || !Set.of("INIT", "CREATE", "SUCCESS", "FAIL", "DEAL", "UNKNOWN",
                                 "CLOSE", "PART_REFUND", "REFUND", "REVOKED")
@@ -166,32 +144,19 @@ public final class BookingPaymentExposureApiImpl implements BookingPaymentExposu
     }
 
     private boolean hasOrphanTransaction() {
-        return !jdbc.query("""
-                SELECT t.id FROM payment_transaction t
-                LEFT JOIN payment_order p ON p.id=t.payment_id
-                WHERE p.id IS NULL LIMIT 1
-                """, (rs, row) -> rs.getLong(1)).isEmpty();
+        return store.mapper.selectOrphanTransaction() != null;
     }
 
     private boolean hasTransaction(long paymentId) {
-        return !jdbc.query("SELECT id FROM payment_transaction WHERE payment_id=? LIMIT 1 FOR UPDATE",
-                (rs, row) -> rs.getLong(1), paymentId).isEmpty();
+        return store.mapper.selectTransactionForUpdate(paymentId) != null;
     }
 
     private boolean hasOrphanReceipt() {
-        return !jdbc.query("""
-                SELECT r.id FROM payment_channel_receipt r
-                LEFT JOIN payment_order p ON p.id=r.payment_id
-                WHERE p.id IS NULL LIMIT 1
-                """, (rs, row) -> rs.getLong(1)).isEmpty();
+        return store.mapper.selectOrphanReceipt() != null;
     }
 
     private boolean hasOrphanDispatch() {
-        return !jdbc.query("""
-                SELECT d.payment_id FROM payment_dispatch d
-                LEFT JOIN payment_order p ON p.id=d.payment_id
-                WHERE p.id IS NULL LIMIT 1
-                """, (rs, row) -> rs.getLong(1)).isEmpty();
+        return store.mapper.selectOrphanDispatch() != null;
     }
 
     private void rollback() {
@@ -210,12 +175,4 @@ public final class BookingPaymentExposureApiImpl implements BookingPaymentExposu
         return new ApiException(CommonApiCodes.DEPENDENCY_UNAVAILABLE,
                 "booking payment exposure requires reconciliation");
     }
-    private record Dispatch(String state, LocalDateTime preorderReqTime,
-            java.time.LocalDate tradeReqDate, Integer timeoutMinutes, LocalDateTime mayHaveSentAt,
-            String preorderResponseSha, byte[] parametersCiphertext, byte[] parametersIv,
-            LocalDateTime parameterValidUntil, LocalDateTime fencedAt,
-            LocalDateTime closeMayHaveSentAt, String closeResponseSha, String terminalQuerySha,
-            LocalDateTime terminalConfirmedAt, int closeCapability) {}
-    private record Receipt(String source, String status, String digest, String responseSha,
-            BigDecimal paidAmount, BigDecimal totalAmount, String tradeNo) {}
 }

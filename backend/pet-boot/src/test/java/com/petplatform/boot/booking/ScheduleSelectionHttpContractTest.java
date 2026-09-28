@@ -41,7 +41,7 @@ import java.util.function.Function;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.boot.test.context.runner.ApplicationContextRunner;
-import org.springframework.jdbc.core.JdbcTemplate;
+import com.petplatform.schedule.biz.infrastructure.persistence.mapper.ScheduleSelectionMapper;
 import org.springframework.mock.web.MockHttpServletResponse;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
@@ -148,12 +148,12 @@ class ScheduleSelectionHttpContractTest {
     }
 
     private SelectionWindowQueryService selectionService() {
-        JdbcTemplate unusedJdbc = mock(JdbcTemplate.class);
+        ScheduleSelectionMapper unusedMapper = mock(ScheduleSelectionMapper.class);
         SelectionReadStore store = mock(SelectionReadStore.class, invocation -> {
             if ("read".equals(invocation.getMethod().getName())) {
                 @SuppressWarnings("unchecked")
-                Function<JdbcTemplate, ?> work = invocation.getArgument(0);
-                return work.apply(unusedJdbc);
+                Function<ScheduleSelectionMapper, ?> work = invocation.getArgument(0);
+                return work.apply(unusedMapper);
             }
             return org.mockito.Answers.RETURNS_DEFAULTS.answer(invocation);
         });

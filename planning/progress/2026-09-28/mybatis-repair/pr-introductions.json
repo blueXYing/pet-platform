@@ -1,0 +1,308 @@
+[
+  {
+    "commit": "fac6b73f344f1b6da3fd996c44d391d2a7068b92",
+    "pr": "Merge pull request #85 from blueXYing/codex/reservation-foundation-20260927",
+    "files": {
+      "backend/pet-order-biz/src/main/java/com/petplatform/order/biz/infrastructure/persistence/OrderProtectionReadStore.java": [
+        "import org.springframework.jdbc.core.JdbcTemplate;",
+        "private final JdbcTemplate jdbc;",
+        "jdbc = new JdbcTemplate(Objects.requireNonNull(source, \"source is required\"));",
+        "SELECT id, reservation_id, user_id, merchant_id, store_id, service_id,",
+        "SELECT a.id, a.order_id, a.staff_id, a.is_current, a.version",
+        "SELECT a.id"
+      ],
+      "backend/pet-schedule-biz/src/main/java/com/petplatform/schedule/biz/apiimpl/ScheduleCapacityGuardApiImpl.java": [
+        "import org.springframework.jdbc.core.JdbcTemplate;",
+        "private final JdbcTemplate jdbc;",
+        "this.jdbc = new JdbcTemplate(source);",
+        "jdbc.update(\"INSERT INTO schedule_store_capacity_guard(store_id,version,updated_at) \"",
+        "\"SELECT store_id FROM schedule_store_capacity_guard WHERE store_id=? FOR UPDATE\","
+      ],
+      "backend/pet-schedule-biz/src/main/java/com/petplatform/schedule/biz/apiimpl/ScheduleCapacityProofApiImpl.java": [
+        "import org.springframework.jdbc.core.JdbcTemplate;",
+        "private final JdbcTemplate jdbc;",
+        "this.jdbc = new JdbcTemplate(source);",
+        "result.addAll(jdbc.query(\"SELECT id,staff_id,service_id,status FROM staff_service_capability \"",
+        "return jdbc.query(\"SELECT id,store_id,staff_id,start_at,end_at,status,version \""
+      ],
+      "backend/pet-schedule-biz/src/main/java/com/petplatform/schedule/biz/apiimpl/ScheduleProtectionFactsApiImpl.java": [
+        "import org.springframework.jdbc.core.JdbcTemplate;",
+        "private final JdbcTemplate jdbc;",
+        "this.jdbc = new JdbcTemplate(source);",
+        "List<WindowFact> windows = jdbc.query(\"SELECT id,merchant_id,store_id,service_id,window_kind,\"",
+        "List<ReservationFact> reservations = jdbc.query(\"SELECT id,order_id,user_id,merchant_id,\"",
+        "List<ClaimFact> claims = jdbc.query(\"SELECT c.id,c.reservation_id,c.window_id,c.store_id,\"",
+        "List<Long> crossStore = jdbc.query(\"SELECT c.id FROM schedule_reservation r \""
+      ]
+    }
+  },
+  {
+    "commit": "37f8b12a0a0627c3a9cc9949fca131b1dfd74b70",
+    "pr": "Merge pull request #86 from blueXYing/codex/booking-create-20260927",
+    "files": {
+      "backend/pet-merchant-biz/src/main/java/com/petplatform/merchant/biz/application/BookingMerchantFactsService.java": [
+        "import org.springframework.jdbc.core.JdbcTemplate;",
+        "private final JdbcTemplate jdbc;",
+        "this.applications=Objects.requireNonNull(applications);agreements=new MerchantAgreementStore(source);jdbc=new JdbcTemplate(source);",
+        "var rows=jdbc.query(\"SELECT m.id,m.merchant_name,m.status merchant_status,s.store_name,s.address,s.status store_status \"",
+        "var anchor=jdbc.queryForList(\"SELECT id FROM merchant_application WHERE reserved_merchant_id=? FOR UPDATE\",Long.class,row.merchantId);",
+        "jdbc.queryForList(\"SELECT id FROM merchant_agreement_acceptance WHERE merchant_id=? FOR UPDATE\",Long.class,row.merchantId);"
+      ],
+      "backend/pet-schedule-biz/src/main/java/com/petplatform/schedule/biz/apiimpl/ReservationHoldApiImpl.java": [
+        "import org.springframework.jdbc.core.JdbcTemplate;",
+        "private final JdbcTemplate jdbc;",
+        "this.jdbc = new JdbcTemplate(source);",
+        "if (!jdbc.query(\"SELECT id FROM schedule_reservation WHERE order_id=? FOR UPDATE\",",
+        "jdbc.update(\"INSERT INTO schedule_reservation(id,order_id,user_id,merchant_id,store_id,\"",
+        "jdbc.update(\"INSERT INTO schedule_reservation_claim(id,reservation_id,window_id,\"",
+        "jdbc.update(\"INSERT INTO schedule_reservation_audit(id,reservation_id,order_id,\""
+      ],
+      "backend/pet-service-biz/src/main/java/com/petplatform/service/biz/apiimpl/BookingServiceFactsApiImpl.java": [
+        "import org.springframework.jdbc.core.JdbcTemplate;",
+        "private final JdbcTemplate jdbc;",
+        "public BookingServiceFactsApiImpl(DataSource source,ScheduleCapacityGuardApi guard){this.source=Objects.requireNonNull(source);this.guard=Objects.requireNonNull(guard);jdbc=new JdbcTemplate(source);}",
+        "var rows=jdbc.query(\"SELECT s.id,s.merchant_id,s.store_id,s.service_name,s.category_id,\"",
+        "String categoryName=category>0?jdbc.queryForObject(\"SELECT category_name FROM service_category WHERE id=?\",String.class,category):null;"
+      ],
+      "backend/pet-user-biz/src/main/java/com/petplatform/user/biz/apiimpl/BookingUserFactsApiImpl.java": [
+        "import org.springframework.jdbc.core.JdbcTemplate;",
+        "private final JdbcTemplate jdbc;",
+        "jdbc=new JdbcTemplate(source); pets=new PetStore(source);",
+        "var rows=jdbc.queryForList(\"SELECT status FROM user_account WHERE id=?\"+(lock?\" FOR UPDATE\":\"\"),String.class,id);"
+      ]
+    }
+  },
+  {
+    "commit": "6938bd7b11dea4002ee9162505027689a4abdd6b",
+    "pr": "Merge pull request #87 from blueXYing/codex/selection-expiry-20260928",
+    "files": {
+      "backend/pet-coupon-biz/src/main/java/com/petplatform/coupon/biz/apiimpl/BookingCouponExposureApiImpl.java": [
+        "import org.springframework.jdbc.core.JdbcTemplate;",
+        "private final JdbcTemplate jdbc;",
+        "this.jdbc=new JdbcTemplate(source);",
+        "if (!jdbc.query(\"SELECT id FROM coupon_instance WHERE order_id=? LIMIT 1 FOR UPDATE\", (rs,n)->rs.getLong(1), value).isEmpty()) throw unavailable();",
+        "if (!jdbc.query(\"SELECT id FROM coupon_ledger WHERE order_id=? LIMIT 1 FOR UPDATE\", (rs,n)->rs.getLong(1), value).isEmpty()) throw unavailable();"
+      ],
+      "backend/pet-order-biz/src/main/java/com/petplatform/order/biz/infrastructure/persistence/OrderExpiryStore.java": [
+        "import org.springframework.jdbc.core.JdbcTemplate;",
+        "private final JdbcTemplate jdbc;",
+        "jdbc = new JdbcTemplate(Objects.requireNonNull(source));",
+        "jdbc.execute(\"SET SESSION time_zone = '+00:00'\");",
+        "jdbc.execute(\"SET SESSION innodb_lock_wait_timeout = 2\");",
+        "return jdbc.query(\"SELECT store_id FROM pet_order WHERE id=?\", rs ->",
+        "SELECT id FROM pet_order",
+        "\"SELECT UNIX_TIMESTAMP(UTC_TIMESTAMP(3))\", BigDecimal.class);",
+        "SELECT id, reservation_id, store_id, order_stage, payment_status,",
+        "SELECT id FROM order_status_log",
+        "UPDATE pet_order SET order_stage='CANCELED', canceled_at=?, version=version+1,",
+        "INSERT INTO order_status_log"
+      ],
+      "backend/pet-payment-biz/src/main/java/com/petplatform/payment/biz/apiimpl/BookingPaymentExposureApiImpl.java": [
+        "import org.springframework.jdbc.core.JdbcTemplate;",
+        "private final JdbcTemplate jdbc;",
+        "this.jdbc=new JdbcTemplate(source);",
+        "if (!jdbc.query(\"SELECT id FROM payment_order WHERE order_id=? LIMIT 1 FOR UPDATE\", (rs,n)->rs.getLong(1), value).isEmpty()) throw unavailable();",
+        "if (!jdbc.query(\"SELECT t.id FROM payment_transaction t LEFT JOIN payment_order p ON p.id=t.payment_id WHERE p.id IS NULL LIMIT 1\", (rs,n)->rs.getLong(1)).isEmpty()) throw unavailable();"
+      ],
+      "backend/pet-schedule-biz/src/main/java/com/petplatform/schedule/biz/apiimpl/ReservationExpiryApiImpl.java": [
+        "import org.springframework.jdbc.core.JdbcTemplate;",
+        "private final JdbcTemplate jdbc;",
+        "this.source=Objects.requireNonNull(source); this.jdbc=new JdbcTemplate(source);",
+        "java.time.LocalDateTime now=jdbc.queryForObject(\"SELECT UTC_TIMESTAMP(3)\",java.time.LocalDateTime.class);",
+        "int changed=jdbc.update(\"UPDATE schedule_reservation SET status='EXPIRED',version=version+1,updated_at=? \"",
+        "jdbc.update(\"INSERT INTO schedule_reservation_audit(id,reservation_id,order_id,actor_user_id,store_id,\"",
+        "List<Hold> rows=jdbc.query(\"SELECT order_id,store_id,status,version,lock_expire_at FROM schedule_reservation WHERE id=? FOR UPDATE\","
+      ],
+      "backend/pet-schedule-biz/src/main/java/com/petplatform/schedule/biz/infrastructure/persistence/SelectionReadStore.java": [
+        "import org.springframework.jdbc.core.JdbcTemplate;",
+        "private final JdbcTemplate jdbc;",
+        "jdbc = new JdbcTemplate(source);",
+        "public <T> T read(Function<JdbcTemplate, T> work) {",
+        "public List<WindowRow> windows(JdbcTemplate connection, long storeId, long serviceId,",
+        "return connection.query(\"SELECT id,merchant_id,store_id,service_id,window_kind,start_at,\"",
+        "public List<ClaimRow> claims(JdbcTemplate connection, long storeId, long serviceId,",
+        "return connection.query(\"SELECT r.id reservation_id,r.merchant_id,r.store_id,r.service_id,\"",
+        "+ \"SELECT 1 FROM schedule_reservation_claim x WHERE x.reservation_id=r.id \"",
+        "public boolean hasBrokenClaimLinks(JdbcTemplate connection, long storeId, long serviceId,",
+        "Integer broken = connection.queryForObject(\"SELECT COUNT(*) FROM schedule_reservation_claim c \""
+      ]
+    }
+  },
+  {
+    "commit": "51def4ca3f7667352a8f31957d8d9f5b8c2def5c",
+    "pr": "Merge pull request #88 from blueXYing/codex/payment-foundation-20260928",
+    "files": {
+      "backend/pet-order-biz/src/main/java/com/petplatform/order/biz/infrastructure/persistence/OrderExpiryStore.java": [
+        "SELECT id FROM order_payment_result",
+        "UPDATE pet_order SET order_stage='CANCELED', cancel_reason='PAYMENT_TIMEOUT',"
+      ],
+      "backend/pet-order-biz/src/main/java/com/petplatform/order/biz/infrastructure/persistence/OrderPaymentStore.java": [
+        "import org.springframework.jdbc.core.JdbcTemplate;",
+        "private final JdbcTemplate jdbc;",
+        "public OrderPaymentStore(DataSource source) { jdbc = new JdbcTemplate(Objects.requireNonNull(source)); }",
+        "return jdbc.queryForObject(\"SELECT UTC_TIMESTAMP(3)\",LocalDateTime.class).atOffset(ZoneOffset.UTC);",
+        "jdbc.execute(\"SET SESSION time_zone = '+00:00'\");",
+        "jdbc.execute(\"SET SESSION innodb_lock_wait_timeout = 2\");",
+        "return jdbc.query(\"SELECT store_id,user_id FROM pet_order WHERE id=?\",",
+        "SELECT id,user_id,merchant_id,store_id,reservation_id,order_stage,payment_status,",
+        "SELECT payment_id,source_event_id,channel_trade_no,channel_paid_amount,",
+        "UPDATE pet_order SET order_stage='PENDING_CONFIRM',payment_status='PAID',",
+        "UPDATE pet_order SET payment_status='PAID',paid_at=?,version=version+1,",
+        "INSERT INTO order_payment_result",
+        "INSERT INTO order_status_log"
+      ],
+      "backend/pet-payment-biz/src/main/java/com/petplatform/payment/biz/apiimpl/PaymentPreparationApiImpl.java": [
+        "tx.execute(status->{store.session();store.jdbc.update(\"INSERT INTO payment_intent_request(id,request_key,order_id,user_id,created_at) VALUES(?,?,?,?,UTC_TIMESTAMP(3)) ON DUPLICATE KEY UPDATE id=id\",nextId(),key,id(c.orderId()),id(c.context().operatorId()));checkBinding(key,c);return null;});",
+        "store.jdbc.update(\"UPDATE payment_intent_request SET payment_id=? WHERE request_key=?\",existing.id(),key);",
+        "store.jdbc.update(\"INSERT INTO payment_order(id,payment_no,order_id,amount,status,channel,expire_at,created_at,updated_at,store_id,merchant_id,user_id,merchant_no,term_no,sub_appid,currency,dispatch_state) VALUES(?,?,?,?,'INIT','LAKALA_WECHAT',?,UTC_TIMESTAMP(3),UTC_TIMESTAMP(3),?,?,?,?,?,?,'CNY','PREPARED')\",paymentId,paymentNo,id(c.orderId()),order.payAmount(),PaymentFoundationStore.utc(order.paymentExpireAt()),id(storeId),id(order.merchantId()),id(order.userId()),binding.merchantNo(),binding.termNo(),binding.subAppId());",
+        "store.jdbc.update(\"UPDATE payment_intent_request SET payment_id=? WHERE request_key=?\",paymentId,key);",
+        "var rows=store.jdbc.query(\"SELECT order_id,user_id FROM payment_intent_request WHERE request_key=? FOR UPDATE\",(rs,n)->new long[]{rs.getLong(1),rs.getLong(2)},key);"
+      ],
+      "backend/pet-payment-biz/src/main/java/com/petplatform/payment/biz/apiimpl/PaymentSuccessFactsApiImpl.java": [
+        "Long proofs=store.jdbc.queryForObject(\"SELECT COUNT(*) FROM payment_channel_receipt WHERE payment_id=? AND channel_status='SUCCESS' AND BINARY channel_trade_no=BINARY ? AND paid_amount=? AND paid_at=?\",Long.class,r.id(),r.tradeNo(),r.paidAmount(),r.paidAt());"
+      ],
+      "backend/pet-payment-biz/src/main/java/com/petplatform/payment/biz/application/PaymentNotificationService.java": [
+        "boolean duplicate=store.jdbc.queryForObject(\"SELECT COUNT(*) FROM payment_channel_receipt WHERE payment_id=? AND receipt_sha256=?\",Long.class,row.id(),digest)>0;",
+        "if(!duplicate)store.jdbc.update(\"INSERT INTO payment_channel_receipt(id,payment_id,receipt_sha256,channel_trade_no,channel_status,total_amount,paid_amount,paid_at,received_at) VALUES(?,?,?,?,?,?,?,?,?)\",",
+        "\"UPDATE payment_order SET dispatch_state='RECONCILIATION_REQUIRED',version=version+1,updated_at=? WHERE id=?\",",
+        "store.jdbc.update(\"UPDATE payment_order SET status='PAID',dispatch_state='OBSERVED',channel_trade_no=?,channel_paid_amount=?,paid_at=?,success_event_id=?,version=version+1,updated_at=? WHERE id=?\",",
+        "if(!duplicate)store.jdbc.update(\"UPDATE payment_order SET status=?,dispatch_state='OBSERVED',channel_trade_no=COALESCE(channel_trade_no,?),version=version+1,updated_at=? WHERE id=?\",next,notice.channelTradeNo(),PaymentFoundationStore.utc(now),row.id());"
+      ],
+      "backend/pet-payment-biz/src/main/java/com/petplatform/payment/biz/infrastructure/persistence/PaymentFoundationStore.java": [
+        "import org.springframework.jdbc.core.JdbcTemplate;",
+        "public final JdbcTemplate jdbc;",
+        "public PaymentFoundationStore(DataSource source){jdbc=new JdbcTemplate(source);}",
+        "public void session(){jdbc.execute(\"SET SESSION time_zone='+00:00'\");jdbc.execute(\"SET SESSION innodb_lock_wait_timeout=2\");}",
+        "public OffsetDateTime now(){return jdbc.queryForObject(\"SELECT UTC_TIMESTAMP(3)\",LocalDateTime.class).atOffset(ZoneOffset.UTC);}",
+        "List<Row> rows=jdbc.query(\"SELECT id,payment_no,order_id,store_id,merchant_id,user_id,amount,status,expire_at,merchant_no,term_no,sub_appid,currency,dispatch_state,channel_trade_no,channel_paid_amount,paid_at,success_event_id,channel FROM payment_order WHERE \"+field+\"=?\"+(lock?\" FOR UPDATE\":\"\"),"
+      ],
+      "backend/pet-schedule-biz/src/main/java/com/petplatform/schedule/biz/apiimpl/ReservationConfirmApiImpl.java": [
+        "import org.springframework.jdbc.core.JdbcTemplate;",
+        "private final JdbcTemplate jdbc;",
+        "this.jdbc = new JdbcTemplate(source);",
+        "LocalDateTime now = jdbc.queryForObject(\"SELECT UTC_TIMESTAMP(3)\", LocalDateTime.class);",
+        "UPDATE schedule_reservation SET status='CONFIRMED',version=version+1,",
+        "INSERT INTO schedule_reservation_audit",
+        "SELECT order_id,store_id,status,version,lock_expire_at"
+      ]
+    }
+  },
+  {
+    "commit": "74f480f4f25a4194e5f02d8bec7158b2b333e6bc",
+    "pr": "Merge pull request #89 from blueXYing/codex/payment-coordination-20260928",
+    "files": {
+      "backend/pet-payment-biz/src/main/java/com/petplatform/payment/biz/apiimpl/BookingPaymentExposureApiImpl.java": [
+        "this.jdbc = new JdbcTemplate(source);",
+        "if (!jdbc.query(\"SELECT id FROM payment_order WHERE order_id=? LIMIT 1 FOR UPDATE\",",
+        "SELECT state,preorder_req_time,trade_req_date,timeout_express_minutes,",
+        "SELECT receipt_source,channel_status,receipt_sha256,",
+        "SELECT t.id FROM payment_transaction t",
+        "return !jdbc.query(\"SELECT id FROM payment_transaction WHERE payment_id=? LIMIT 1 FOR UPDATE\",",
+        "SELECT r.id FROM payment_channel_receipt r",
+        "SELECT d.payment_id FROM payment_dispatch d"
+      ],
+      "backend/pet-payment-biz/src/main/java/com/petplatform/payment/biz/apiimpl/PaymentPreparationApiImpl.java": [
+        "store.jdbc.update(\"INSERT INTO payment_dispatch(payment_id,state,created_at,updated_at) VALUES(?,'PREPARED',UTC_TIMESTAMP(3),UTC_TIMESTAMP(3))\",paymentId);"
+      ],
+      "backend/pet-payment-biz/src/main/java/com/petplatform/payment/biz/application/PaymentDispatchService.java": [
+        "import org.springframework.jdbc.core.JdbcTemplate;",
+        "private final JdbcTemplate jdbc;",
+        "int changed = jdbc.update(\"UPDATE payment_dispatch SET state='MAY_HAVE_SENT',\"",
+        "jdbc.update(\"UPDATE payment_dispatch SET preorder_response_sha256=?,\"",
+        "jdbc.update(\"UPDATE payment_dispatch SET state='PARAMETERS_READY',\"",
+        "jdbc.update(\"UPDATE payment_dispatch SET state='PARAMETERS_READY',\"",
+        "jdbc.update(\"UPDATE payment_dispatch SET state='UNKNOWN',version=version+1,\"",
+        "jdbc.update(\"UPDATE payment_dispatch SET state='FENCED_UNSENT',fenced_at=UTC_TIMESTAMP(3),\"",
+        "if (dispatch.fencedAt() == null) jdbc.update(\"UPDATE payment_dispatch SET fenced_at=UTC_TIMESTAMP(3),\"",
+        "jdbc.update(\"UPDATE payment_dispatch SET state='CLOSE_MAY_HAVE_SENT',\"",
+        "jdbc.update(\"INSERT INTO payment_channel_receipt(id,payment_id,receipt_sha256,\"",
+        "jdbc.update(\"UPDATE payment_dispatch SET state='CLOSE_ACKED',close_response_sha256=?,\"",
+        "Long adverseReceipts = jdbc.queryForObject(\"SELECT COUNT(*) FROM payment_channel_receipt \"",
+        "Long closeReceipts = jdbc.queryForObject(\"SELECT COUNT(*) FROM payment_channel_receipt \"",
+        "List<String> matchingQuery = jdbc.query(\"SELECT channel_response_sha256 \"",
+        "jdbc.update(\"UPDATE payment_dispatch SET state='TERMINAL_CLOSED',terminal_query_sha256=?,\"",
+        "List<Dispatch> found = jdbc.query(\"SELECT payment_id,state,preorder_req_time,trade_req_date,\""
+      ],
+      "backend/pet-payment-biz/src/main/java/com/petplatform/payment/biz/application/PaymentNotificationService.java": [
+        "if(!duplicate)store.jdbc.update(\"INSERT INTO payment_channel_receipt(id,payment_id,receipt_sha256,receipt_source,channel_response_sha256,channel_trade_no,channel_status,total_amount,paid_amount,paid_at,received_at) VALUES(?,?,?,?,?,?,?,?,?,?,?)\","
+      ],
+      "backend/pet-user-biz/src/main/java/com/petplatform/user/biz/apiimpl/PaymentIdentityApiImpl.java": [
+        "import org.springframework.jdbc.core.JdbcTemplate;",
+        "private final JdbcTemplate jdbc;",
+        "this.jdbc = new JdbcTemplate(source);",
+        "List<String> accounts = jdbc.query(\"SELECT status FROM user_account WHERE id=? FOR UPDATE\",",
+        "List<IdentityRow> identities = jdbc.query(\"SELECT identity_type,app_id,open_id \""
+      ]
+    }
+  },
+  {
+    "commit": "18732f6",
+    "pr": "PR #90 (open)",
+    "files": {
+      "backend/pet-boot/src/main/java/com/petplatform/boot/config/LateRefundConfiguration.java": [
+        "import org.springframework.jdbc.core.JdbcTemplate;",
+        "var jdbc = new JdbcTemplate(Objects.requireNonNull(source));",
+        "LocalDateTime dbNow = jdbc.queryForObject(\"SELECT UTC_TIMESTAMP(3)\", LocalDateTime.class);"
+      ],
+      "backend/pet-order-biz/src/main/java/com/petplatform/order/biz/infrastructure/persistence/OrderLateRefundStore.java": [
+        "import org.springframework.jdbc.core.JdbcTemplate;",
+        "private final JdbcTemplate jdbc;",
+        "public OrderLateRefundStore(DataSource source) { jdbc = new JdbcTemplate(Objects.requireNonNull(source)); }",
+        "SELECT refund_order_id,refunded_amount,order_stage,payment_status,",
+        "SELECT refund_order_id,payment_id,refund_type,refund_source,refund_amount,",
+        "UPDATE pet_order SET refund_order_id=?,version=version+1,",
+        "UPDATE pet_order SET refund_order_id=?,refunded_amount=?,version=version+1,",
+        "INSERT INTO order_late_refund_result",
+        "UPDATE order_late_refund_result SET created_event_id=?,updated_at=UTC_TIMESTAMP(3)",
+        "INSERT INTO order_late_refund_result",
+        "INSERT INTO order_status_log"
+      ],
+      "backend/pet-payment-biz/src/main/java/com/petplatform/payment/biz/infrastructure/persistence/PaymentRefundStore.java": [
+        "import org.springframework.jdbc.core.JdbcTemplate;",
+        "private final JdbcTemplate jdbc;",
+        "public PaymentRefundStore(DataSource source) { jdbc = new JdbcTemplate(source); }",
+        "jdbc.execute(\"SET SESSION time_zone='+00:00'\");",
+        "jdbc.execute(\"SET SESSION innodb_lock_wait_timeout=2\");",
+        "return jdbc.queryForObject(\"SELECT UTC_TIMESTAMP(3)\", LocalDateTime.class)",
+        "List<Dispatch> rows = jdbc.query(\"SELECT refund_order_id,refund_no,payment_id,payment_no,\"",
+        "jdbc.update(\"INSERT INTO payment_refund_dispatch(refund_order_id,refund_no,payment_id,\"",
+        "Long duplicate = jdbc.queryForObject(\"SELECT COUNT(*) FROM payment_refund_receipt \"",
+        "jdbc.update(\"INSERT INTO payment_refund_receipt(id,refund_order_id,receipt_source,\"",
+        "return jdbc.update(\"UPDATE payment_refund_dispatch SET state='QUERY_PENDING',\"",
+        "return jdbc.update(\"UPDATE payment_refund_dispatch SET state='VERIFIED_SUCCESS',\"",
+        "return jdbc.update(\"UPDATE payment_refund_dispatch SET state='RECONCILIATION_REQUIRED',\"",
+        "List<Receipt> rows = jdbc.query(\"SELECT receipt_source,receipt_sha256,channel_refund_no,\""
+      ],
+      "backend/pet-refund-biz/src/main/java/com/petplatform/refund/biz/application/LateRefundService.java": [
+        "import org.springframework.jdbc.core.JdbcTemplate;",
+        "final JdbcTemplate jdbc;",
+        "jdbc=new JdbcTemplate(source); tasks=new JdbcAsyncTaskSubmitter(source,ids);",
+        "INSERT INTO refund_order(id,refund_no,order_id,refund_type,source_type,",
+        "INSERT INTO refund_execution(refund_order_id,refund_no,order_id,payment_id,payment_no,",
+        "Integer proof=jdbc.queryForObject(\"SELECT COUNT(*) FROM refund_transaction WHERE refund_id=? \"",
+        "SELECT r.id AS business_refund_id,r.refund_no AS business_refund_no,",
+        "void session() { jdbc.execute(\"SET SESSION time_zone='+00:00'\"); jdbc.execute(\"SET SESSION innodb_lock_wait_timeout=2\"); }",
+        "OffsetDateTime now() { return offset(jdbc.queryForObject(\"SELECT UTC_TIMESTAMP(3)\",LocalDateTime.class)); }"
+      ],
+      "backend/pet-refund-biz/src/main/java/com/petplatform/refund/biz/application/RefundExecutionService.java": [
+        "refunds.jdbc.update(\"UPDATE refund_order SET status='UNKNOWN',version=version+1,updated_at=UTC_TIMESTAMP(3) \"",
+        "refunds.jdbc.update(\"UPDATE refund_execution SET next_query_at=?,version=version+1,updated_at=UTC_TIMESTAMP(3) \"",
+        "OffsetDateTime first=refunds.jdbc.queryForObject(\"SELECT COALESCE(first_query_at,?) FROM refund_execution WHERE refund_order_id=?\",",
+        "refunds.jdbc.update(\"UPDATE refund_execution SET first_query_at=COALESCE(first_query_at,?) WHERE refund_order_id=?\",utc(first),id(refundId));",
+        "UPDATE refund_order SET status='SUCCESS',channel_refund_no=?,succeeded_at=?,",
+        "UPDATE refund_execution SET success_event_id=?,success_receipt_sha256=?,next_query_at=NULL,",
+        "INSERT INTO refund_transaction(id,refund_id,request_id,action,channel_request_no,channel_status,created_at)",
+        "refunds.jdbc.update(\"UPDATE refund_reconciliation_issue SET status='RESOLVED',updated_at=UTC_TIMESTAMP(3) WHERE refund_order_id=?\",id(f.refundOrderId()));",
+        "refunds.jdbc.update(\"UPDATE refund_order SET status='UNKNOWN',version=version+1,updated_at=UTC_TIMESTAMP(3) WHERE id=? AND status IN ('CREATED','PROCESSING','UNKNOWN')\",id(f.refundOrderId()));",
+        "INSERT IGNORE INTO refund_reconciliation_issue(refund_order_id,issue_code,status,created_at,updated_at)",
+        "SELECT e.refund_order_id,e.store_id FROM refund_execution e"
+      ],
+      "backend/pet-task-core/src/main/java/com/petplatform/task/core/JdbcAsyncTaskStatusReader.java": [
+        "import org.springframework.jdbc.core.JdbcTemplate;",
+        "private final JdbcTemplate jdbc;",
+        "jdbc = new JdbcTemplate(Objects.requireNonNull(source));",
+        "List<String> rows = jdbc.query(\"SELECT status FROM async_task \""
+      ]
+    }
+  }
+]

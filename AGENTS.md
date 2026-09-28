@@ -21,6 +21,7 @@ SSOT > 最终 PRD > 技术基线 > Schema/API/Event/Scheduler > Test。
 - C/M 在 frontend-miniapp 内分目录协作，原始切图一比一还原按前端技术基线 v0.7 与21号验收补充执行；
 - Spring Boot 模块化单体；
 - MySQL / Redis；
+- 持久层统一 MyBatis；生产 SQL 写在本模块 Mapper XML，禁止新增 JdbcTemplate/原生 JDBC 执行 SQL、SQL 注解或 Java 内联 SQL；公共片段在模块内用 XML 复用，锁/事务语义不变。执行 docs/02-architecture/22-持久层统一MyBatis裁决-v1.0.md，并通过 backend/tools/check-persistence-style.py；
 - Snowflake BIGINT，HTTP/JSON ID 使用 String；
 - 金额 BigDecimal / DECIMAL(18,2)；
 - Transactional Outbox；

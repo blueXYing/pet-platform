@@ -2,36 +2,27 @@ package com.petplatform.order.biz.infrastructure.persistence;
 
 import com.petplatform.common.ApiException;
 import com.petplatform.common.CommonApiCodes;
+import com.petplatform.order.biz.infrastructure.persistence.mapper.OrderProtectionReadMapper;
 import java.util.List;
-import java.util.Objects;
 import javax.sql.DataSource;
 import org.springframework.dao.DataAccessException;
-import org.springframework.jdbc.core.JdbcTemplate;
 
 /** ORDER tables only. Store facts use locking current reads in the caller's guarded transaction. */
 public final class OrderProtectionReadStore {
-    private final JdbcTemplate jdbc;
+    private final OrderProtectionReadMapper mapper;
 
     public OrderProtectionReadStore(DataSource source) {
-        jdbc = new JdbcTemplate(Objects.requireNonNull(source, "source is required"));
+        mapper = OrderMybatis.template(source).getMapper(OrderProtectionReadMapper.class);
     }
 
     public List<OrderRow> readStoreOrders(String storeId) {
         try {
-            return jdbc.query("""
-                    SELECT id, reservation_id, user_id, merchant_id, store_id, service_id,
-                           service_staff_id, fulfillment_type, order_stage, verification_status, version
-                    FROM pet_order FORCE INDEX (idx_order_store_stage_created)
-                    WHERE store_id = ?
-                    ORDER BY id
-                    FOR UPDATE
-                    """, (rs, index) -> new OrderRow(
-                    Long.toString(rs.getLong("id")), Long.toString(rs.getLong("reservation_id")),
-                    Long.toString(rs.getLong("user_id")), Long.toString(rs.getLong("merchant_id")),
-                    Long.toString(rs.getLong("store_id")), Long.toString(rs.getLong("service_id")),
-                    nullableId(rs.getObject("service_staff_id", Long.class)),
-                    rs.getString("fulfillment_type"), rs.getString("order_stage"),
-                    rs.getString("verification_status"), rs.getLong("version")), Long.parseLong(storeId));
+            return mapper.readStoreOrders(Long.parseLong(storeId)).stream().map(row ->
+                    new OrderRow(row.id.toString(), row.reservationId.toString(),
+                            row.userId.toString(), row.merchantId.toString(),
+                            row.storeId.toString(), row.serviceId.toString(),
+                            nullableId(row.serviceStaffId), row.fulfillmentType, row.orderStage,
+                            row.verificationStatus, row.version)).toList();
         } catch (DataAccessException failure) {
             throw unavailable("order current read unavailable");
         }
@@ -39,18 +30,9 @@ public final class OrderProtectionReadStore {
 
     public List<AssignmentRow> readStoreAssignments(String storeId) {
         try {
-            return jdbc.query("""
-                    SELECT a.id, a.order_id, a.staff_id, a.is_current, a.version
-                    FROM pet_order o FORCE INDEX (idx_order_store_stage_created)
-                    STRAIGHT_JOIN order_staff_assignment a FORCE INDEX (idx_assignment_order_state)
-                        ON a.order_id = o.id
-                    WHERE o.store_id = ?
-                    ORDER BY a.order_id, a.id
-                    FOR UPDATE
-                    """, (rs, index) -> new AssignmentRow(
-                    Long.toString(rs.getLong("id")), Long.toString(rs.getLong("order_id")),
-                    Long.toString(rs.getLong("staff_id")), rs.getInt("is_current"),
-                    rs.getLong("version")), Long.parseLong(storeId));
+            return mapper.readStoreAssignments(Long.parseLong(storeId)).stream().map(row ->
+                    new AssignmentRow(row.id.toString(), row.orderId.toString(),
+                            row.staffId.toString(), row.isCurrent, row.version)).toList();
         } catch (DataAccessException failure) {
             throw unavailable("assignment current read unavailable");
         }
@@ -58,27 +40,17 @@ public final class OrderProtectionReadStore {
 
     /**
      * Assignment has no store column; an unowned current row contaminates every store answer.
-     * READ_COMMITTED gives this integrity probe a fresh statement view without taking locks on
-     * healthy assignments belonging to other stores. Store-scoped rows above remain FOR UPDATE.
+     * READ_COMMITTED gives this probe a fresh statement view without locking other stores.
      */
     public boolean hasGlobalCurrentOrphan() {
         try {
-            return !jdbc.query("""
-                    SELECT a.id
-                    FROM order_staff_assignment a FORCE INDEX (idx_assignment_current_order)
-                    LEFT JOIN pet_order o ON o.id = a.order_id
-                    WHERE a.is_current = 1 AND o.id IS NULL
-                    LIMIT 1
-                    """, (rs, index) -> rs.getLong(1)).isEmpty();
+            return mapper.findGlobalCurrentOrphan() != null;
         } catch (DataAccessException failure) {
             throw unavailable("global current assignment check unavailable");
         }
     }
 
-    private static String nullableId(Long id) {
-        return id == null ? null : Long.toString(id);
-    }
-
+    private static String nullableId(Long id) { return id == null ? null : id.toString(); }
     private static ApiException unavailable(String message) {
         return new ApiException(CommonApiCodes.DEPENDENCY_UNAVAILABLE, message);
     }
@@ -86,7 +58,6 @@ public final class OrderProtectionReadStore {
     public record OrderRow(String id, String reservationId, String userId, String merchantId,
             String storeId, String serviceId, String serviceStaffId, String fulfillmentType,
             String orderStage, String verificationStatus, long version) {}
-
     public record AssignmentRow(String id, String orderId, String staffId,
             int isCurrent, long version) {}
 }

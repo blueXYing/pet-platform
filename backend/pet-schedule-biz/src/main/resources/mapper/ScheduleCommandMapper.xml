@@ -1,0 +1,99 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.petplatform.schedule.biz.infrastructure.persistence.mapper.ScheduleCommandMapper">
+    <insert id="ensureStoreGuard">
+        INSERT INTO schedule_store_capacity_guard(store_id,version,updated_at)
+        VALUES(#{storeId},0,UTC_TIMESTAMP(3)) ON DUPLICATE KEY UPDATE store_id=store_id
+    </insert>
+    <select id="lockStoreGuard" resultType="long">
+        SELECT store_id FROM schedule_store_capacity_guard WHERE store_id=#{storeId} FOR UPDATE
+    </select>
+    <select id="lockReservationByOrder" resultType="long">
+        SELECT id FROM schedule_reservation WHERE order_id=#{orderId} FOR UPDATE
+    </select>
+    <select id="lockReservation" resultType="map">
+        SELECT order_id,store_id,status,version,lock_expire_at
+        FROM schedule_reservation WHERE id=#{reservationId} FOR UPDATE
+    </select>
+    <select id="utcNow" resultType="java.time.LocalDateTime">
+        SELECT UTC_TIMESTAMP(3)
+    </select>
+    <insert id="insertReservation">
+        INSERT INTO schedule_reservation(id,order_id,user_id,merchant_id,store_id,
+            service_id,fulfillment_type,start_at,end_at,pickup_start_at,return_start_at,
+            status,lock_token,lock_expire_at,capacity_snapshot,qualified_staff_count_snapshot,
+            version,created_at,updated_at)
+        VALUES(#{row.id},#{row.orderId},#{row.userId},#{row.merchantId},#{row.storeId},
+            #{row.serviceId},#{row.fulfillmentType},#{row.startAt},#{row.endAt},
+            #{row.pickupStartAt,jdbcType=TIMESTAMP},#{row.returnStartAt,jdbcType=TIMESTAMP},
+            'TEMP_LOCKED',#{row.lockToken},#{row.lockExpireAt},#{row.capacitySnapshot},
+            #{row.qualifiedStaffCountSnapshot},0,#{row.createdAt},#{row.updatedAt})
+    </insert>
+    <insert id="insertClaim">
+        INSERT INTO schedule_reservation_claim(id,reservation_id,window_id,store_id,
+            service_id,kind,start_at,end_at)
+        VALUES(#{row.id},#{row.reservationId},#{row.windowId},#{row.storeId},
+            #{row.serviceId},#{row.kind},#{row.startAt},#{row.endAt})
+    </insert>
+    <insert id="insertHoldAudit">
+        INSERT INTO schedule_reservation_audit(id,reservation_id,order_id,
+            actor_user_id,store_id,action,request_id,trace_id,occurred_at)
+        VALUES(#{row.id},#{row.reservationId},#{row.orderId},#{row.actorUserId},
+            #{row.storeId},'HOLD',#{row.requestId},#{row.traceId,jdbcType=VARCHAR},#{row.occurredAt})
+    </insert>
+    <update id="confirmReservation">
+        UPDATE schedule_reservation SET status='CONFIRMED',version=version+1,updated_at=#{now}
+        WHERE id=#{reservationId} AND order_id=#{orderId} AND store_id=#{storeId}
+          AND status='TEMP_LOCKED' AND version=#{version} AND lock_expire_at=#{expires}
+    </update>
+    <update id="expireReservation">
+        UPDATE schedule_reservation SET status='EXPIRED',version=version+1,updated_at=#{now}
+        WHERE id=#{reservationId} AND status='TEMP_LOCKED' AND version=#{version}
+          AND lock_expire_at=#{expires}
+    </update>
+    <insert id="insertSystemAudit">
+        INSERT INTO schedule_reservation_audit
+          (id,reservation_id,order_id,actor_user_id,store_id,action,request_id,
+           trace_id,occurred_at,actor_type)
+        VALUES(#{row.id},#{row.reservationId},#{row.orderId},NULL,#{row.storeId},
+           #{row.action},#{row.requestId},#{row.traceId,jdbcType=VARCHAR},#{row.occurredAt},'SYSTEM')
+    </insert>
+    <select id="lockedWindows" resultType="map">
+        SELECT id,merchant_id,store_id,service_id,window_kind,start_at,end_at,
+               configured_capacity,status,version
+        FROM schedule_availability_window FORCE INDEX (idx_schedule_service_time)
+        WHERE store_id=#{storeId} ORDER BY id FOR UPDATE
+    </select>
+    <select id="lockedReservations" resultType="map">
+        SELECT id,order_id,user_id,merchant_id,store_id,service_id,fulfillment_type,
+               start_at,end_at,pickup_start_at,return_start_at,status,version
+        FROM schedule_reservation FORCE INDEX (idx_reservation_service_time)
+        WHERE store_id=#{storeId} ORDER BY id FOR UPDATE
+    </select>
+    <select id="lockedClaims" resultType="map">
+        SELECT c.id,c.reservation_id,c.window_id,c.store_id,c.service_id,c.kind,
+               c.start_at,c.end_at
+        FROM schedule_reservation_claim c FORCE INDEX (idx_claim_store_reservation)
+        WHERE c.store_id=#{storeId} ORDER BY c.id FOR UPDATE
+    </select>
+    <select id="crossStoreClaims" resultType="long">
+        SELECT c.id FROM schedule_reservation r FORCE INDEX (idx_reservation_service_time)
+        JOIN schedule_reservation_claim c FORCE INDEX (uk_claim_reservation_kind)
+          ON c.reservation_id=r.id
+        WHERE r.store_id=#{storeId} AND c.store_id&lt;&gt;#{storeId} LIMIT 1
+    </select>
+    <select id="lockedCapabilities" resultType="map">
+        SELECT id,staff_id,service_id,status FROM staff_service_capability
+        FORCE INDEX (uk_staff_service)
+        WHERE staff_id IN
+        <foreach collection="staffIds" item="staffId" open="(" separator="," close=")">
+            #{staffId}
+        </foreach>
+        ORDER BY staff_id,service_id FOR UPDATE
+    </select>
+    <select id="lockedAvailability" resultType="map">
+        SELECT id,store_id,staff_id,start_at,end_at,status,version
+        FROM staff_availability_window FORCE INDEX (idx_store_avail_time)
+        WHERE store_id=#{storeId} ORDER BY staff_id,start_at,id FOR UPDATE
+    </select>
+</mapper>

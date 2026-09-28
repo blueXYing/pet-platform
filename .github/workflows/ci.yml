@@ -34,6 +34,9 @@ jobs:
           --health-timeout=3s
           --health-retries=12
     env:
+      PAYMENT_REFUND_MYSQL_URL: jdbc:mysql://127.0.0.1:3306/
+      PAYMENT_REFUND_MYSQL_USER: root
+      PAYMENT_REFUND_MYSQL_PASSWORD: plat004-ci-isolated
       PLAT004_MYSQL_URL: jdbc:mysql://127.0.0.1:3306/
       PLAT004_MYSQL_USER: root
       PLAT004_MYSQL_PASSWORD: plat004-ci-isolated
@@ -70,6 +73,7 @@ jobs:
         run: |
           python -m unittest discover -s backend/tools -p 'test_*.py' -v
           python backend/tools/check-display-status.py
+          python backend/tools/check-persistence-style.py
       - uses: actions/setup-node@v4
         with:
           node-version: '22.23.1'

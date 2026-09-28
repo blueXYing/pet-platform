@@ -1,0 +1,190 @@
+{
+  "ref": "18732f6c638f98011c9f45bd2f48ce09a15786d6",
+  "findings": [
+    {
+      "file": "backend/pet-boot/src/main/java/com/petplatform/boot/config/LateRefundConfiguration.java",
+      "findings": [
+        "JDBC executor or annotation/provider SQL is forbidden",
+        "SQL literal must move to owner Mapper XML"
+      ]
+    },
+    {
+      "file": "backend/pet-coupon-biz/src/main/java/com/petplatform/coupon/biz/apiimpl/BookingCouponExposureApiImpl.java",
+      "findings": [
+        "JDBC executor or annotation/provider SQL is forbidden",
+        "SQL literal must move to owner Mapper XML"
+      ]
+    },
+    {
+      "file": "backend/pet-merchant-biz/src/main/java/com/petplatform/merchant/biz/application/BookingMerchantFactsService.java",
+      "findings": [
+        "JDBC executor or annotation/provider SQL is forbidden",
+        "SQL literal must move to owner Mapper XML"
+      ]
+    },
+    {
+      "file": "backend/pet-order-biz/src/main/java/com/petplatform/order/biz/infrastructure/persistence/OrderExpiryStore.java",
+      "findings": [
+        "JDBC executor or annotation/provider SQL is forbidden",
+        "SQL literal must move to owner Mapper XML"
+      ]
+    },
+    {
+      "file": "backend/pet-order-biz/src/main/java/com/petplatform/order/biz/infrastructure/persistence/OrderLateRefundStore.java",
+      "findings": [
+        "JDBC executor or annotation/provider SQL is forbidden",
+        "SQL literal must move to owner Mapper XML"
+      ]
+    },
+    {
+      "file": "backend/pet-order-biz/src/main/java/com/petplatform/order/biz/infrastructure/persistence/OrderPaymentStore.java",
+      "findings": [
+        "JDBC executor or annotation/provider SQL is forbidden",
+        "SQL literal must move to owner Mapper XML"
+      ]
+    },
+    {
+      "file": "backend/pet-order-biz/src/main/java/com/petplatform/order/biz/infrastructure/persistence/OrderProtectionReadStore.java",
+      "findings": [
+        "JDBC executor or annotation/provider SQL is forbidden",
+        "SQL literal must move to owner Mapper XML"
+      ]
+    },
+    {
+      "file": "backend/pet-payment-biz/src/main/java/com/petplatform/payment/biz/apiimpl/BookingPaymentExposureApiImpl.java",
+      "findings": [
+        "JDBC executor or annotation/provider SQL is forbidden",
+        "SQL literal must move to owner Mapper XML"
+      ]
+    },
+    {
+      "file": "backend/pet-payment-biz/src/main/java/com/petplatform/payment/biz/apiimpl/PaymentPreparationApiImpl.java",
+      "findings": [
+        "SQL literal must move to owner Mapper XML"
+      ]
+    },
+    {
+      "file": "backend/pet-payment-biz/src/main/java/com/petplatform/payment/biz/apiimpl/PaymentSuccessFactsApiImpl.java",
+      "findings": [
+        "SQL literal must move to owner Mapper XML"
+      ]
+    },
+    {
+      "file": "backend/pet-payment-biz/src/main/java/com/petplatform/payment/biz/application/PaymentDispatchService.java",
+      "findings": [
+        "JDBC executor or annotation/provider SQL is forbidden",
+        "SQL literal must move to owner Mapper XML"
+      ]
+    },
+    {
+      "file": "backend/pet-payment-biz/src/main/java/com/petplatform/payment/biz/application/PaymentNotificationService.java",
+      "findings": [
+        "SQL literal must move to owner Mapper XML"
+      ]
+    },
+    {
+      "file": "backend/pet-payment-biz/src/main/java/com/petplatform/payment/biz/infrastructure/persistence/PaymentFoundationStore.java",
+      "findings": [
+        "JDBC executor or annotation/provider SQL is forbidden",
+        "SQL literal must move to owner Mapper XML"
+      ]
+    },
+    {
+      "file": "backend/pet-payment-biz/src/main/java/com/petplatform/payment/biz/infrastructure/persistence/PaymentRefundStore.java",
+      "findings": [
+        "JDBC executor or annotation/provider SQL is forbidden",
+        "SQL literal must move to owner Mapper XML"
+      ]
+    },
+    {
+      "file": "backend/pet-refund-biz/src/main/java/com/petplatform/refund/biz/application/LateRefundService.java",
+      "findings": [
+        "JDBC executor or annotation/provider SQL is forbidden",
+        "SQL literal must move to owner Mapper XML"
+      ]
+    },
+    {
+      "file": "backend/pet-refund-biz/src/main/java/com/petplatform/refund/biz/application/RefundExecutionService.java",
+      "findings": [
+        "SQL literal must move to owner Mapper XML"
+      ]
+    },
+    {
+      "file": "backend/pet-schedule-biz/src/main/java/com/petplatform/schedule/biz/apiimpl/ReservationConfirmApiImpl.java",
+      "findings": [
+        "JDBC executor or annotation/provider SQL is forbidden",
+        "SQL literal must move to owner Mapper XML"
+      ]
+    },
+    {
+      "file": "backend/pet-schedule-biz/src/main/java/com/petplatform/schedule/biz/apiimpl/ReservationExpiryApiImpl.java",
+      "findings": [
+        "JDBC executor or annotation/provider SQL is forbidden",
+        "SQL literal must move to owner Mapper XML"
+      ]
+    },
+    {
+      "file": "backend/pet-schedule-biz/src/main/java/com/petplatform/schedule/biz/apiimpl/ReservationHoldApiImpl.java",
+      "findings": [
+        "JDBC executor or annotation/provider SQL is forbidden",
+        "SQL literal must move to owner Mapper XML"
+      ]
+    },
+    {
+      "file": "backend/pet-schedule-biz/src/main/java/com/petplatform/schedule/biz/apiimpl/ScheduleCapacityGuardApiImpl.java",
+      "findings": [
+        "JDBC executor or annotation/provider SQL is forbidden",
+        "SQL literal must move to owner Mapper XML"
+      ]
+    },
+    {
+      "file": "backend/pet-schedule-biz/src/main/java/com/petplatform/schedule/biz/apiimpl/ScheduleCapacityProofApiImpl.java",
+      "findings": [
+        "JDBC executor or annotation/provider SQL is forbidden",
+        "SQL literal must move to owner Mapper XML"
+      ]
+    },
+    {
+      "file": "backend/pet-schedule-biz/src/main/java/com/petplatform/schedule/biz/apiimpl/ScheduleProtectionFactsApiImpl.java",
+      "findings": [
+        "JDBC executor or annotation/provider SQL is forbidden",
+        "SQL literal must move to owner Mapper XML"
+      ]
+    },
+    {
+      "file": "backend/pet-schedule-biz/src/main/java/com/petplatform/schedule/biz/infrastructure/persistence/SelectionReadStore.java",
+      "findings": [
+        "JDBC executor or annotation/provider SQL is forbidden",
+        "SQL literal must move to owner Mapper XML"
+      ]
+    },
+    {
+      "file": "backend/pet-service-biz/src/main/java/com/petplatform/service/biz/apiimpl/BookingServiceFactsApiImpl.java",
+      "findings": [
+        "JDBC executor or annotation/provider SQL is forbidden",
+        "SQL literal must move to owner Mapper XML"
+      ]
+    },
+    {
+      "file": "backend/pet-task-core/src/main/java/com/petplatform/task/core/JdbcAsyncTaskStatusReader.java",
+      "findings": [
+        "JDBC executor or annotation/provider SQL is forbidden",
+        "SQL literal must move to owner Mapper XML"
+      ]
+    },
+    {
+      "file": "backend/pet-user-biz/src/main/java/com/petplatform/user/biz/apiimpl/BookingUserFactsApiImpl.java",
+      "findings": [
+        "JDBC executor or annotation/provider SQL is forbidden",
+        "SQL literal must move to owner Mapper XML"
+      ]
+    },
+    {
+      "file": "backend/pet-user-biz/src/main/java/com/petplatform/user/biz/apiimpl/PaymentIdentityApiImpl.java",
+      "findings": [
+        "JDBC executor or annotation/provider SQL is forbidden",
+        "SQL literal must move to owner Mapper XML"
+      ]
+    }
+  ]
+}

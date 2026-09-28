@@ -589,6 +589,7 @@ class PaymentFoundationAcceptanceTest {
     final PaymentPreparationApiImpl preparation;
     final OrderPaymentResultApiImpl result;
     final OrderExpiryApiImpl expiry;
+    final ReservationExpiryApiImpl reservationExpiry;
     final TransactionalOutboxPublisher publisher;
     final KeyPair channelKey;
     private final OrderCreationApiImpl creation;
@@ -637,6 +638,7 @@ class PaymentFoundationAcceptanceTest {
         var orderExpiryFacts = new OrderExpiryFactsApiImpl(db.source, guard);
         var expiration = new ReservationExpiryApiImpl(db.source, PaymentFoundationAcceptanceTest::id,
             guard, orderExpiryFacts, scheduleFacts);
+        reservationExpiry = expiration;
         expiry = new OrderExpiryApiImpl(db.source, PaymentFoundationAcceptanceTest::id, guard,
             expiration, new BookingPaymentExposureApiImpl(db.source, guard),
             new BookingCouponExposureApiImpl(db.source, guard));

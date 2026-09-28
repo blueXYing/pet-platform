@@ -3,6 +3,7 @@ package com.petplatform.user.biz.infrastructure.persistence;
 import java.util.Objects;
 import javax.sql.DataSource;
 import org.apache.ibatis.session.SqlSessionFactory;
+import org.apache.ibatis.session.LocalCacheScope;
 import org.mybatis.spring.SqlSessionFactoryBean;
 import org.mybatis.spring.SqlSessionTemplate;
 
@@ -22,6 +23,7 @@ final class UserMybatis {
                     .getResources("classpath*:mapper/*.xml"));
             SqlSessionFactory factory = factoryBean.getObject();
             factory.getConfiguration().setMapUnderscoreToCamelCase(true);
+            factory.getConfiguration().setLocalCacheScope(LocalCacheScope.STATEMENT);
             return new SqlSessionTemplate(factory);
         } catch (Exception failure) {
             throw new IllegalStateException("user domain SqlSessionFactory build failed", failure);

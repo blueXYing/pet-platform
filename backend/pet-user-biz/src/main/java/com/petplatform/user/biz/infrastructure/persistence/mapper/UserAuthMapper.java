@@ -2,6 +2,8 @@ package com.petplatform.user.biz.infrastructure.persistence.mapper;
 
 import com.petplatform.user.biz.infrastructure.persistence.entity.UserAccountEntity;
 import com.petplatform.user.biz.infrastructure.persistence.entity.UserAuthIdentityEntity;
+import java.util.List;
+import java.util.Map;
 import org.apache.ibatis.annotations.Param;
 
 /** user_auth_identity / user_account auth statements; SQL lives in resources/mapper/UserAuthMapper.xml. */
@@ -18,6 +20,13 @@ public interface UserAuthMapper {
     UserAccountEntity selectAccountById(@Param("userId") long userId);
 
     UserAccountEntity selectAccountByIdForUpdate(@Param("userId") long userId);
+
+    List<String> selectBookingAccountStatus(@Param("userId") long userId);
+
+    List<String> lockBookingAccountStatus(@Param("userId") long userId);
+
+    List<Map<String, Object>> lockPaymentIdentities(@Param("userId") long userId,
+            @Param("appId") String appId);
 
     Long selectAccountIdByPhone(@Param("phone") String phone);
 

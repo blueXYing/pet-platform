@@ -5,6 +5,10 @@ import org.apache.ibatis.annotations.Param;
 /** async_task / async_task_attempt access; SQL lives in resources/mapper/AsyncTaskMapper.xml. */
 public interface AsyncTaskMapper {
 
+    java.util.List<String> selectStatusByExactKey(@Param("taskKey") String taskKey);
+
+    java.time.LocalDateTime selectDatabaseNow();
+
     void setTimeZoneUtc();
 
   int insertSubmission(

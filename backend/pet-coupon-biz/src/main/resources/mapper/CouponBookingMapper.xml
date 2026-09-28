@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.petplatform.coupon.biz.infrastructure.persistence.mapper.CouponBookingMapper">
+    <select id="lockInstanceByOrder" resultType="long">
+        SELECT id FROM coupon_instance WHERE order_id=#{orderId} LIMIT 1 FOR UPDATE
+    </select>
+    <select id="lockLedgerByOrder" resultType="long">
+        SELECT id FROM coupon_ledger WHERE order_id=#{orderId} LIMIT 1 FOR UPDATE
+    </select>
+</mapper>

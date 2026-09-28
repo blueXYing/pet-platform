@@ -21,8 +21,10 @@ import com.petplatform.schedule.api.protection.ScheduleCapacityGuardApi;
 import com.petplatform.schedule.api.protection.ScheduleProtectionFactsApi;
 import com.petplatform.schedule.biz.apiimpl.ScheduleCapacityProofApiImpl.HoldProofPlan;
 import com.petplatform.schedule.biz.apiimpl.ScheduleCapacityProofApiImpl.ProvenClaim;
+import com.petplatform.schedule.biz.infrastructure.persistence.ScheduleMybatis;
+import com.petplatform.schedule.biz.infrastructure.persistence.ScheduleSqlRows;
+import com.petplatform.schedule.biz.infrastructure.persistence.mapper.ScheduleCommandMapper;
 import java.nio.charset.StandardCharsets;
-import java.sql.Timestamp;
 import java.time.Clock;
 import java.time.Instant;
 import java.time.OffsetDateTime;
@@ -34,7 +36,6 @@ import java.util.Objects;
 import java.util.UUID;
 import javax.sql.DataSource;
 import org.springframework.dao.DuplicateKeyException;
-import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.datasource.ConnectionHolder;
 import org.springframework.transaction.support.TransactionSynchronization;
 import org.springframework.transaction.support.TransactionSynchronizationManager;
@@ -49,7 +50,7 @@ public final class ReservationHoldApiImpl implements ReservationHoldApi {
     private final ScheduleCapacityProofApiImpl proof;
     private final OrderProtectionFactsApi order;
     private final Clock clock;
-    private final JdbcTemplate jdbc;
+    private final ScheduleCommandMapper mapper;
 
     public ReservationHoldApiImpl(DataSource source, SnowflakeIdGenerator ids,
             ScheduleCapacityGuardApi guard, ScheduleProtectionFactsApi facts,
@@ -61,7 +62,7 @@ public final class ReservationHoldApiImpl implements ReservationHoldApi {
         this.proof = Objects.requireNonNull(proof);
         this.order = Objects.requireNonNull(order);
         this.clock = Objects.requireNonNull(clock);
-        this.jdbc = new JdbcTemplate(source);
+        this.mapper = ScheduleMybatis.template(source).getMapper(ScheduleCommandMapper.class);
     }
 
     @Override
@@ -69,8 +70,7 @@ public final class ReservationHoldApiImpl implements ReservationHoldApi {
         QueryContext query = validate(command);
         guard.requireHeld(command.storeId(), source);
         try {
-            if (!jdbc.query("SELECT id FROM schedule_reservation WHERE order_id=? FOR UPDATE",
-                    (rs, n) -> rs.getLong(1), id(command.orderId())).isEmpty()) {
+            if (!mapper.lockReservationByOrder(id(command.orderId())).isEmpty()) {
                 throw new ApiException(CommonApiCodes.CONFLICT, "order already has a reservation");
             }
             HoldProofPlan plan = proof.prepareForHold(new CapacityProofQuery(
@@ -112,35 +112,35 @@ public final class ReservationHoldApiImpl implements ReservationHoldApi {
             long reservationId = nextId();
             Instant now = clock.instant().truncatedTo(ChronoUnit.MILLIS);
             OffsetDateTime expires = now.plus(10, ChronoUnit.MINUTES).atOffset(ZoneOffset.UTC);
-            jdbc.update("INSERT INTO schedule_reservation(id,order_id,user_id,merchant_id,store_id,"
-                    + "service_id,fulfillment_type,start_at,end_at,pickup_start_at,return_start_at,"
-                    + "status,lock_token,lock_expire_at,capacity_snapshot,qualified_staff_count_snapshot,"
-                    + "version,created_at,updated_at) VALUES(?,?,?,?,?,?,?,?,?,?,?,"
-                    + "'TEMP_LOCKED',?,?,?,?,0,?,?)",
-                    reservationId, id(command.orderId()), id(command.userId()),
-                    id(command.merchantId()), id(command.storeId()), id(command.serviceId()),
-                    command.fulfillmentType(), timestamp(start), timestamp(end), timestamp(pickup),
-                    timestamp(returning), UUID.randomUUID().toString(), timestamp(expires),
-                    Math.min(plan.configuredCapacity(), plan.qualifiedStaffCount()),
-                    plan.qualifiedStaffCount(),
-                    java.time.LocalDateTime.ofInstant(now,ZoneOffset.UTC), java.time.LocalDateTime.ofInstant(now,ZoneOffset.UTC));
+            mapper.insertReservation(ScheduleSqlRows.values(
+                    "id", reservationId, "orderId", id(command.orderId()),
+                    "userId", id(command.userId()), "merchantId", id(command.merchantId()),
+                    "storeId", id(command.storeId()), "serviceId", id(command.serviceId()),
+                    "fulfillmentType", command.fulfillmentType(), "startAt", timestamp(start),
+                    "endAt", timestamp(end), "pickupStartAt", timestamp(pickup),
+                    "returnStartAt", timestamp(returning), "lockToken", UUID.randomUUID().toString(),
+                    "lockExpireAt", timestamp(expires),
+                    "capacitySnapshot", Math.min(plan.configuredCapacity(), plan.qualifiedStaffCount()),
+                    "qualifiedStaffCountSnapshot", plan.qualifiedStaffCount(),
+                    "createdAt", java.time.LocalDateTime.ofInstant(now, ZoneOffset.UTC),
+                    "updatedAt", java.time.LocalDateTime.ofInstant(now, ZoneOffset.UTC)));
             List<HeldClaim> claims = new ArrayList<>(plan.claims().size());
             for (ProvenClaim selected : plan.claims()) {
                 long claimId = nextId();
-                jdbc.update("INSERT INTO schedule_reservation_claim(id,reservation_id,window_id,"
-                        + "store_id,service_id,kind,start_at,end_at) VALUES(?,?,?,?,?,?,?,?)",
-                        claimId, reservationId, id(selected.windowId()), id(command.storeId()),
-                        id(command.serviceId()), selected.kind(), timestamp(selected.startAt()),
-                        timestamp(selected.endAt()));
+                mapper.insertClaim(ScheduleSqlRows.values("id", claimId,
+                        "reservationId", reservationId, "windowId", id(selected.windowId()),
+                        "storeId", id(command.storeId()), "serviceId", id(command.serviceId()),
+                        "kind", selected.kind(), "startAt", timestamp(selected.startAt()),
+                        "endAt", timestamp(selected.endAt())));
                 claims.add(new HeldClaim(IDS.toApi(claimId), selected.windowId(), selected.kind(),
                         selected.startAt(), selected.endAt()));
             }
-            jdbc.update("INSERT INTO schedule_reservation_audit(id,reservation_id,order_id,"
-                    + "actor_user_id,store_id,action,request_id,trace_id,occurred_at) "
-                    + "VALUES(?,?,?,?,?,'HOLD',?,?,?)", nextId(), reservationId,
-                    id(command.orderId()), id(command.userId()), id(command.storeId()),
-                    command.context().requestId().getBytes(StandardCharsets.UTF_8),
-                    command.context().traceId(), java.time.LocalDateTime.ofInstant(now,ZoneOffset.UTC));
+            mapper.insertHoldAudit(ScheduleSqlRows.values("id", nextId(),
+                    "reservationId", reservationId, "orderId", id(command.orderId()),
+                    "actorUserId", id(command.userId()), "storeId", id(command.storeId()),
+                    "requestId", command.context().requestId().getBytes(StandardCharsets.UTF_8),
+                    "traceId", command.context().traceId(),
+                    "occurredAt", java.time.LocalDateTime.ofInstant(now, ZoneOffset.UTC)));
             String reservation = IDS.toApi(reservationId);
             registerCommitProof(command, query, reservation);
             return new HoldResult(reservation, command.orderId(), start, end, expires, claims);

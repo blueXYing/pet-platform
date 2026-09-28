@@ -10,11 +10,10 @@ import com.petplatform.schedule.api.dto.ScheduleProtectionTypes.StoreScheduleFac
 import com.petplatform.schedule.api.dto.ScheduleProtectionTypes.WindowFact;
 import com.petplatform.schedule.api.protection.ScheduleCapacityGuardApi;
 import com.petplatform.schedule.api.protection.ScheduleProtectionFactsApi;
-import java.sql.ResultSet;
-import java.sql.SQLException;
-import java.sql.Timestamp;
+import com.petplatform.schedule.biz.infrastructure.persistence.ScheduleMybatis;
+import com.petplatform.schedule.biz.infrastructure.persistence.ScheduleSqlRows;
+import com.petplatform.schedule.biz.infrastructure.persistence.mapper.ScheduleCommandMapper;
 import java.time.OffsetDateTime;
-import java.time.ZoneOffset;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.HashMap;
@@ -24,7 +23,6 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 import javax.sql.DataSource;
-import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.datasource.ConnectionHolder;
 import org.springframework.transaction.support.TransactionSynchronizationManager;
 
@@ -33,12 +31,12 @@ public final class ScheduleProtectionFactsApiImpl implements ScheduleProtectionF
     private static final DecimalPublicIdCodec IDS = new DecimalPublicIdCodec();
     private final DataSource source;
     private final ScheduleCapacityGuardApi guard;
-    private final JdbcTemplate jdbc;
+    private final ScheduleCommandMapper mapper;
 
     public ScheduleProtectionFactsApiImpl(DataSource source, ScheduleCapacityGuardApi guard) {
         this.source = Objects.requireNonNull(source, "source is required");
         this.guard = Objects.requireNonNull(guard, "guard is required");
-        this.jdbc = new JdbcTemplate(source);
+        this.mapper = ScheduleMybatis.template(source).getMapper(ScheduleCommandMapper.class);
     }
 
     @Override
@@ -47,25 +45,14 @@ public final class ScheduleProtectionFactsApiImpl implements ScheduleProtectionF
         guard.requireHeld(storeId, source);
         long key = positiveId(storeId);
         try {
-            List<WindowFact> windows = jdbc.query("SELECT id,merchant_id,store_id,service_id,window_kind,"
-                    + "start_at,end_at,configured_capacity,status,version FROM schedule_availability_window "
-                    + "FORCE INDEX (idx_schedule_service_time) "
-                    + "WHERE store_id=? ORDER BY id FOR UPDATE", (rs, n) -> window(rs), key);
-            List<ReservationFact> reservations = jdbc.query("SELECT id,order_id,user_id,merchant_id,"
-                    + "store_id,service_id,fulfillment_type,start_at,end_at,pickup_start_at,"
-                    + "return_start_at,status,version FROM schedule_reservation "
-                    + "FORCE INDEX (idx_reservation_service_time) WHERE store_id=? "
-                    + "ORDER BY id FOR UPDATE", (rs, n) -> reservation(rs), key);
-            List<ClaimFact> claims = jdbc.query("SELECT c.id,c.reservation_id,c.window_id,c.store_id,"
-                    + "c.service_id,c.kind,c.start_at,c.end_at FROM schedule_reservation_claim c "
-                    + "FORCE INDEX (idx_claim_store_reservation) WHERE c.store_id=? "
-                    + "ORDER BY c.id FOR UPDATE", (rs, n) -> claim(rs), key);
+            List<WindowFact> windows = mapper.lockedWindows(key).stream()
+                    .map(ScheduleProtectionFactsApiImpl::window).toList();
+            List<ReservationFact> reservations = mapper.lockedReservations(key).stream()
+                    .map(ScheduleProtectionFactsApiImpl::reservation).toList();
+            List<ClaimFact> claims = mapper.lockedClaims(key).stream()
+                    .map(ScheduleProtectionFactsApiImpl::claim).toList();
             // Diagnose cross-store corruption without locking rows from another healthy store.
-            List<Long> crossStore = jdbc.query("SELECT c.id FROM schedule_reservation r "
-                    + "FORCE INDEX (idx_reservation_service_time) "
-                    + "JOIN schedule_reservation_claim c FORCE INDEX (uk_claim_reservation_kind) "
-                    + "ON c.reservation_id=r.id WHERE r.store_id=? AND c.store_id<>? LIMIT 1",
-                    (rs, n) -> rs.getLong(1), key, key);
+            List<Long> crossStore = mapper.crossStoreClaims(key);
             if (!crossStore.isEmpty()) bad("claim store differs from its reservation store");
             StoreScheduleFacts facts = new StoreScheduleFacts(storeId, true, windows, reservations, claims);
             validate(facts);
@@ -80,42 +67,29 @@ public final class ScheduleProtectionFactsApiImpl implements ScheduleProtectionF
         }
     }
 
-    private static WindowFact window(ResultSet rs) throws SQLException {
-        return new WindowFact(id(rs, "id"), id(rs, "merchant_id"), id(rs, "store_id"),
-                id(rs, "service_id"), rs.getString("window_kind"), at(rs, "start_at"),
-                at(rs, "end_at"), rs.getInt("configured_capacity"), rs.getString("status"),
-                version(rs, "version"));
+    private static WindowFact window(Map<String, Object> row) {
+        return new WindowFact(ScheduleSqlRows.id(row, "id"), ScheduleSqlRows.id(row, "merchant_id"),
+                ScheduleSqlRows.id(row, "store_id"), ScheduleSqlRows.id(row, "service_id"),
+                ScheduleSqlRows.text(row, "window_kind"), ScheduleSqlRows.at(row, "start_at"),
+                ScheduleSqlRows.at(row, "end_at"), (int) ScheduleSqlRows.number(row, "configured_capacity"),
+                ScheduleSqlRows.text(row, "status"), ScheduleSqlRows.version(row, "version"));
     }
 
-    private static ReservationFact reservation(ResultSet rs) throws SQLException {
-        return new ReservationFact(id(rs, "id"), id(rs, "order_id"), id(rs, "user_id"),
-                id(rs, "merchant_id"), id(rs, "store_id"), id(rs, "service_id"),
-                rs.getString("fulfillment_type"), at(rs, "start_at"), at(rs, "end_at"),
-                at(rs, "pickup_start_at"), at(rs, "return_start_at"), rs.getString("status"),
-                version(rs, "version"));
+    private static ReservationFact reservation(Map<String, Object> row) {
+        return new ReservationFact(ScheduleSqlRows.id(row, "id"), ScheduleSqlRows.id(row, "order_id"),
+                ScheduleSqlRows.id(row, "user_id"), ScheduleSqlRows.id(row, "merchant_id"),
+                ScheduleSqlRows.id(row, "store_id"), ScheduleSqlRows.id(row, "service_id"),
+                ScheduleSqlRows.text(row, "fulfillment_type"), ScheduleSqlRows.at(row, "start_at"),
+                ScheduleSqlRows.at(row, "end_at"), ScheduleSqlRows.at(row, "pickup_start_at"),
+                ScheduleSqlRows.at(row, "return_start_at"), ScheduleSqlRows.text(row, "status"),
+                ScheduleSqlRows.version(row, "version"));
     }
 
-    private static ClaimFact claim(ResultSet rs) throws SQLException {
-        return new ClaimFact(id(rs, "id"), id(rs, "reservation_id"), id(rs, "window_id"),
-                id(rs, "store_id"), id(rs, "service_id"), rs.getString("kind"),
-                at(rs, "start_at"), at(rs, "end_at"));
-    }
-
-    private static String id(ResultSet rs, String column) throws SQLException {
-        long value = rs.getLong(column);
-        if (rs.wasNull() || value <= 0) bad("missing or invalid " + column);
-        return IDS.toApi(value);
-    }
-
-    private static String version(ResultSet rs, String column) throws SQLException {
-        long value = rs.getLong(column);
-        if (rs.wasNull() || value < 0) bad("invalid " + column);
-        return Long.toString(value);
-    }
-
-    private static OffsetDateTime at(ResultSet rs, String column) throws SQLException {
-        java.time.LocalDateTime value = rs.getObject(column,java.time.LocalDateTime.class);
-        return value == null ? null : value.atOffset(ZoneOffset.UTC);
+    private static ClaimFact claim(Map<String, Object> row) {
+        return new ClaimFact(ScheduleSqlRows.id(row, "id"), ScheduleSqlRows.id(row, "reservation_id"),
+                ScheduleSqlRows.id(row, "window_id"), ScheduleSqlRows.id(row, "store_id"),
+                ScheduleSqlRows.id(row, "service_id"), ScheduleSqlRows.text(row, "kind"),
+                ScheduleSqlRows.at(row, "start_at"), ScheduleSqlRows.at(row, "end_at"));
     }
 
     private static long positiveId(String value) {

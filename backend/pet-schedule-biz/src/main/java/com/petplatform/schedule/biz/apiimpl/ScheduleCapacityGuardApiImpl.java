@@ -5,6 +5,8 @@ import com.petplatform.common.CommonApiCodes;
 import com.petplatform.common.DecimalPublicIdCodec;
 import com.petplatform.common.QueryContext;
 import com.petplatform.schedule.api.protection.ScheduleCapacityGuardApi;
+import com.petplatform.schedule.biz.infrastructure.persistence.ScheduleMybatis;
+import com.petplatform.schedule.biz.infrastructure.persistence.mapper.ScheduleCommandMapper;
 import java.sql.Connection;
 import java.sql.SQLException;
 import java.util.IdentityHashMap;
@@ -13,7 +15,6 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.TreeSet;
 import javax.sql.DataSource;
-import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.datasource.ConnectionHolder;
 import org.springframework.transaction.support.TransactionSynchronization;
 import org.springframework.transaction.support.TransactionSynchronizationManager;
@@ -22,13 +23,13 @@ import org.springframework.transaction.support.TransactionSynchronizationManager
 public final class ScheduleCapacityGuardApiImpl implements ScheduleCapacityGuardApi {
     private static final DecimalPublicIdCodec IDS = new DecimalPublicIdCodec();
     private final DataSource source;
-    private final JdbcTemplate jdbc;
+    private final ScheduleCommandMapper mapper;
     private final ThreadLocal<Map<ConnectionHolder, Registration>> held =
             ThreadLocal.withInitial(IdentityHashMap::new);
 
     public ScheduleCapacityGuardApiImpl(DataSource source) {
         this.source = Objects.requireNonNull(source, "source is required");
-        this.jdbc = new JdbcTemplate(source);
+        this.mapper = ScheduleMybatis.template(source).getMapper(ScheduleCommandMapper.class);
     }
 
     @Override
@@ -66,11 +67,8 @@ public final class ScheduleCapacityGuardApiImpl implements ScheduleCapacityGuard
         try {
             for (long storeId : ordered) {
                 if (registration.ids.contains(storeId)) continue;
-                jdbc.update("INSERT INTO schedule_store_capacity_guard(store_id,version,updated_at) "
-                        + "VALUES(?,0,UTC_TIMESTAMP(3)) ON DUPLICATE KEY UPDATE store_id=store_id", storeId);
-                Long locked = jdbc.queryForObject(
-                        "SELECT store_id FROM schedule_store_capacity_guard WHERE store_id=? FOR UPDATE",
-                        Long.class, storeId);
+                mapper.ensureStoreGuard(storeId);
+                Long locked = mapper.lockStoreGuard(storeId);
                 if (locked == null || locked != storeId) fail(holder, "store guard row is missing");
                 registration.ids.add(storeId);
             }

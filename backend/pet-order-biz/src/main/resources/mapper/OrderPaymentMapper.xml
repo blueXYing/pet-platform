@@ -1,0 +1,49 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.petplatform.order.biz.infrastructure.persistence.mapper.OrderPaymentMapper">
+  <select id="databaseNow" resultType="java.time.LocalDateTime">SELECT UTC_TIMESTAMP(3)</select>
+  <update id="setUtcTimeZone">SET SESSION time_zone = '+00:00'</update>
+  <update id="setLockWaitTimeout">SET SESSION innodb_lock_wait_timeout = 2</update>
+  <select id="locate" resultType="com.petplatform.order.biz.infrastructure.persistence.mapper.OrderMapperRows$Locator">
+    SELECT store_id,user_id FROM pet_order WHERE id=#{orderId}
+  </select>
+  <select id="lock" resultType="com.petplatform.order.biz.infrastructure.persistence.mapper.OrderMapperRows$PaymentOrder">
+    SELECT id,user_id,merchant_id,store_id,reservation_id,order_stage,payment_status,
+           verification_status,pay_amount,discount_amount,payment_expire_at,
+           cancel_reason,paid_at,version
+    FROM pet_order WHERE id=#{orderId} FOR UPDATE
+  </select>
+  <select id="lockResult" resultType="com.petplatform.order.biz.infrastructure.persistence.mapper.OrderMapperRows$PaymentResult">
+    SELECT payment_id,source_event_id,channel_trade_no,channel_paid_amount,
+           channel_paid_at,result_type
+    FROM order_payment_result WHERE order_id=#{orderId} FOR UPDATE
+  </select>
+  <update id="markPaid">
+    UPDATE pet_order SET order_stage='PENDING_CONFIRM',payment_status='PAID',
+      paid_at=#{paidAt},confirm_deadline=#{confirmDeadline},version=version+1,updated_at=UTC_TIMESTAMP(3)
+    WHERE id=#{id} AND version=#{version} AND reservation_id=#{reservationId} AND order_stage='PENDING_PAYMENT'
+      AND payment_status='INIT' AND verification_status='UNVERIFIED'
+      AND cancel_reason IS NULL AND canceled_at IS NULL
+  </update>
+  <update id="recordLatePayment">
+    UPDATE pet_order SET payment_status='PAID',paid_at=#{paidAt},version=version+1,
+                         updated_at=UTC_TIMESTAMP(3)
+    WHERE id=#{id} AND version=#{version} AND reservation_id=#{reservationId} AND order_stage='CANCELED'
+      AND payment_status='INIT' AND verification_status='UNVERIFIED'
+      AND cancel_reason='PAYMENT_TIMEOUT'
+  </update>
+  <insert id="insertResult">
+    INSERT INTO order_payment_result
+      (id,order_id,payment_id,source_event_id,channel_trade_no,
+       channel_paid_amount,channel_paid_at,result_type,created_at)
+    VALUES (#{id},#{orderId},#{paymentId},#{sourceEventId},#{channelTradeNo},
+            #{paidAmount},#{paidAt},#{resultType},UTC_TIMESTAMP(3))
+  </insert>
+  <insert id="statusLog">
+    INSERT INTO order_status_log
+      (id,order_id,dimension,from_status,to_status,event_type,operator_type,
+       operator_id,request_id,remark,created_at)
+    VALUES (#{id},#{orderId},#{dimension},#{fromStatus},#{toStatus},#{eventType},
+            'SYSTEM',NULL,#{requestId},NULL,UTC_TIMESTAMP(3))
+  </insert>
+</mapper>

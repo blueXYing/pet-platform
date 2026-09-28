@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.petplatform.order.biz.infrastructure.persistence.mapper.OrderProtectionReadMapper">
+  <select id="readStoreOrders" resultType="com.petplatform.order.biz.infrastructure.persistence.mapper.OrderMapperRows$ProtectionOrder">
+    SELECT id, reservation_id, user_id, merchant_id, store_id, service_id,
+           service_staff_id, fulfillment_type, order_stage, verification_status, version
+    FROM pet_order FORCE INDEX (idx_order_store_stage_created)
+    WHERE store_id = #{storeId}
+    ORDER BY id
+    FOR UPDATE
+  </select>
+  <select id="readStoreAssignments" resultType="com.petplatform.order.biz.infrastructure.persistence.mapper.OrderMapperRows$Assignment">
+    SELECT a.id, a.order_id, a.staff_id, a.is_current, a.version
+    FROM pet_order o FORCE INDEX (idx_order_store_stage_created)
+    STRAIGHT_JOIN order_staff_assignment a FORCE INDEX (idx_assignment_order_state)
+        ON a.order_id = o.id
+    WHERE o.store_id = #{storeId}
+    ORDER BY a.order_id, a.id
+    FOR UPDATE
+  </select>
+  <select id="findGlobalCurrentOrphan" resultType="java.lang.Long">
+    SELECT a.id
+    FROM order_staff_assignment a FORCE INDEX (idx_assignment_current_order)
+    LEFT JOIN pet_order o ON o.id = a.order_id
+    WHERE a.is_current = 1 AND o.id IS NULL
+    LIMIT 1
+  </select>
+</mapper>

@@ -1,0 +1,177 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.petplatform.payment.biz.infrastructure.persistence.mapper.PaymentFoundationMapper">
+  <update id="setUtcTimeZone">SET SESSION time_zone='+00:00'</update>
+  <update id="setLockWaitTimeout">SET SESSION innodb_lock_wait_timeout=2</update>
+  <select id="utcNow" resultType="java.time.LocalDateTime">SELECT UTC_TIMESTAMP(3)</select>
+
+  <sql id="paymentColumns">id,payment_no,order_id,store_id,merchant_id,user_id,amount,status,expire_at,merchant_no,term_no,sub_appid,currency,dispatch_state,channel_trade_no,channel_paid_amount,paid_at,success_event_id,channel</sql>
+  <select id="selectByNo" resultType="com.petplatform.payment.biz.infrastructure.persistence.PaymentFoundationStore$Row">
+    SELECT <include refid="paymentColumns"/> FROM payment_order WHERE payment_no=#{value}
+  </select>
+  <select id="selectById" resultType="com.petplatform.payment.biz.infrastructure.persistence.PaymentFoundationStore$Row">
+    SELECT <include refid="paymentColumns"/> FROM payment_order WHERE id=#{value}
+  </select>
+  <select id="selectByIdForUpdate" resultType="com.petplatform.payment.biz.infrastructure.persistence.PaymentFoundationStore$Row">
+    SELECT <include refid="paymentColumns"/> FROM payment_order WHERE id=#{value} FOR UPDATE
+  </select>
+  <select id="selectByOrderForUpdate" resultType="com.petplatform.payment.biz.infrastructure.persistence.PaymentFoundationStore$Row">
+    SELECT <include refid="paymentColumns"/> FROM payment_order WHERE order_id=#{value} FOR UPDATE
+  </select>
+
+  <insert id="insertIntent">
+    INSERT INTO payment_intent_request(id,request_key,order_id,user_id,created_at)
+    VALUES(#{id},#{key},#{orderId},#{userId},UTC_TIMESTAMP(3))
+    ON DUPLICATE KEY UPDATE id=id
+  </insert>
+  <select id="selectIntentForUpdate" resultType="com.petplatform.payment.biz.infrastructure.persistence.PaymentFoundationStore$IntentBinding">
+    SELECT order_id,user_id FROM payment_intent_request WHERE request_key=#{key} FOR UPDATE
+  </select>
+  <update id="bindIntent">
+    UPDATE payment_intent_request SET payment_id=#{paymentId} WHERE request_key=#{key}
+  </update>
+  <insert id="insertPayment">
+    INSERT INTO payment_order(id,payment_no,order_id,amount,status,channel,expire_at,created_at,updated_at,
+      store_id,merchant_id,user_id,merchant_no,term_no,sub_appid,currency,dispatch_state)
+    VALUES(#{id},#{paymentNo},#{orderId},#{amount},'INIT','LAKALA_WECHAT',#{expires},
+      UTC_TIMESTAMP(3),UTC_TIMESTAMP(3),#{storeId},#{merchantId},#{userId},#{merchantNo},#{termNo},#{subAppId},'CNY','PREPARED')
+  </insert>
+  <insert id="insertPreparedDispatch">
+    INSERT INTO payment_dispatch(payment_id,state,created_at,updated_at)
+    VALUES(#{paymentId},'PREPARED',UTC_TIMESTAMP(3),UTC_TIMESTAMP(3))
+  </insert>
+  <select id="countSuccessProofs" resultType="java.lang.Long">
+    SELECT COUNT(*) FROM payment_channel_receipt
+    WHERE payment_id=#{paymentId} AND channel_status='SUCCESS'
+      AND BINARY channel_trade_no=BINARY #{tradeNo} AND paid_amount=#{paidAmount} AND paid_at=#{paidAt}
+  </select>
+
+  <select id="countReceiptByDigest" resultType="java.lang.Long">
+    SELECT COUNT(*) FROM payment_channel_receipt WHERE payment_id=#{paymentId} AND receipt_sha256=#{digest}
+  </select>
+  <insert id="insertReceipt">
+    INSERT INTO payment_channel_receipt(id,payment_id,receipt_sha256,receipt_source,
+      channel_response_sha256,channel_trade_no,channel_status,total_amount,paid_amount,paid_at,received_at)
+    VALUES(#{id},#{paymentId},#{digest},#{source},#{responseSha},#{tradeNo},#{status},
+      #{totalAmount},#{paidAmount},#{paidAt},#{receivedAt})
+  </insert>
+  <update id="markReconciliation">
+    UPDATE payment_order SET dispatch_state='RECONCILIATION_REQUIRED',version=version+1,
+      updated_at=#{now} WHERE id=#{paymentId}
+  </update>
+  <update id="markPaid">
+    UPDATE payment_order SET status='PAID',dispatch_state='OBSERVED',channel_trade_no=#{tradeNo},
+      channel_paid_amount=#{paidAmount},paid_at=#{paidAt},success_event_id=#{eventId},
+      version=version+1,updated_at=#{now} WHERE id=#{paymentId}
+  </update>
+  <update id="markObserved">
+    UPDATE payment_order SET status=#{status},dispatch_state='OBSERVED',
+      channel_trade_no=COALESCE(channel_trade_no,#{tradeNo}),version=version+1,
+      updated_at=#{now} WHERE id=#{paymentId}
+  </update>
+
+  <select id="selectDispatchForUpdate" resultType="com.petplatform.payment.biz.infrastructure.persistence.PaymentFoundationStore$Dispatch">
+    SELECT payment_id,state,preorder_req_time,trade_req_date,timeout_express_minutes,
+      identity_hmac_sha256,may_have_sent_at,preorder_response_sha256,parameters_ciphertext,
+      parameters_iv,parameter_valid_until,fenced_at,close_may_have_sent_at,
+      close_response_sha256,terminal_query_sha256,terminal_confirmed_at,terminal_close_capability
+    FROM payment_dispatch WHERE payment_id=#{paymentId} FOR UPDATE
+  </select>
+  <update id="markMayHaveSent">
+    UPDATE payment_dispatch SET state='MAY_HAVE_SENT',preorder_req_time=#{requestTime},
+      trade_req_date=#{tradeDate},timeout_express_minutes=#{timeoutMinutes},
+      identity_hmac_sha256=#{identityHmac},may_have_sent_at=UTC_TIMESTAMP(3),
+      version=version+1,updated_at=UTC_TIMESTAMP(3)
+    WHERE payment_id=#{paymentId} AND state='PREPARED' AND fenced_at IS NULL
+  </update>
+  <update id="savePreorderSha">
+    UPDATE payment_dispatch SET preorder_response_sha256=#{sha},version=version+1,
+      updated_at=UTC_TIMESTAMP(3) WHERE payment_id=#{paymentId}
+  </update>
+  <update id="saveExpiredParameters">
+    UPDATE payment_dispatch SET state='PARAMETERS_READY',preorder_response_sha256=#{sha},
+      parameter_valid_until=#{validUntil},version=version+1,updated_at=UTC_TIMESTAMP(3)
+    WHERE payment_id=#{paymentId}
+  </update>
+  <update id="saveParameters">
+    UPDATE payment_dispatch SET state='PARAMETERS_READY',preorder_response_sha256=#{sha},
+      parameters_ciphertext=#{ciphertext},parameters_iv=#{iv},parameter_valid_until=#{validUntil},
+      version=version+1,updated_at=UTC_TIMESTAMP(3) WHERE payment_id=#{paymentId}
+  </update>
+  <update id="markUnknown">
+    UPDATE payment_dispatch SET state='UNKNOWN',version=version+1,updated_at=UTC_TIMESTAMP(3)
+    WHERE payment_id=#{paymentId} AND state='MAY_HAVE_SENT'
+  </update>
+  <update id="fenceUnsent">
+    UPDATE payment_dispatch SET state='FENCED_UNSENT',fenced_at=UTC_TIMESTAMP(3),
+      version=version+1,updated_at=UTC_TIMESTAMP(3) WHERE payment_id=#{paymentId}
+  </update>
+  <update id="fence">
+    UPDATE payment_dispatch SET fenced_at=UTC_TIMESTAMP(3),version=version+1,
+      updated_at=UTC_TIMESTAMP(3) WHERE payment_id=#{paymentId}
+  </update>
+  <update id="armClose">
+    UPDATE payment_dispatch SET state='CLOSE_MAY_HAVE_SENT',
+      close_may_have_sent_at=UTC_TIMESTAMP(3),version=version+1,
+      updated_at=UTC_TIMESTAMP(3) WHERE payment_id=#{paymentId}
+  </update>
+  <insert id="insertCloseReceipt">
+    INSERT INTO payment_channel_receipt(id,payment_id,receipt_sha256,channel_trade_no,
+      channel_status,total_amount,paid_amount,paid_at,received_at,receipt_source,channel_response_sha256)
+    VALUES(#{id},#{paymentId},#{digest},#{tradeNo},'CLOSE',NULL,NULL,NULL,
+      UTC_TIMESTAMP(3),'CLOSE',#{responseSha}) ON DUPLICATE KEY UPDATE id=id
+  </insert>
+  <update id="ackClose">
+    UPDATE payment_dispatch SET state='CLOSE_ACKED',close_response_sha256=#{sha},
+      version=version+1,updated_at=UTC_TIMESTAMP(3) WHERE payment_id=#{paymentId}
+  </update>
+  <select id="countAdverseReceipts" resultType="java.lang.Long">
+    SELECT COUNT(*) FROM payment_channel_receipt WHERE payment_id=#{paymentId}
+      AND (channel_status IN ('SUCCESS','PART_REFUND','REFUND','REVOKED') OR paid_amount&gt;0)
+  </select>
+  <select id="countCloseReceipts" resultType="java.lang.Long">
+    SELECT COUNT(*) FROM payment_channel_receipt WHERE payment_id=#{paymentId}
+      AND receipt_source='CLOSE' AND channel_status='CLOSE' AND channel_response_sha256=#{sha}
+  </select>
+  <select id="selectMatchingQueryForUpdate" resultType="java.lang.String">
+    SELECT channel_response_sha256 FROM payment_channel_receipt WHERE payment_id=#{paymentId}
+      AND receipt_source='QUERY' AND channel_status='CLOSE'
+      AND channel_response_sha256=#{sha} LIMIT 1 FOR UPDATE
+  </select>
+  <update id="finalizeClose">
+    UPDATE payment_dispatch SET state='TERMINAL_CLOSED',terminal_query_sha256=#{sha},
+      terminal_confirmed_at=UTC_TIMESTAMP(3),terminal_close_capability=1,
+      version=version+1,updated_at=UTC_TIMESTAMP(3) WHERE payment_id=#{paymentId}
+  </update>
+
+  <select id="selectPaymentIdByOrderForUpdate" resultType="java.lang.Long">
+    SELECT id FROM payment_order WHERE order_id=#{orderId} LIMIT 1 FOR UPDATE
+  </select>
+  <select id="selectOrphanTransaction" resultType="java.lang.Long">
+    SELECT t.id FROM payment_transaction t LEFT JOIN payment_order p ON p.id=t.payment_id
+    WHERE p.id IS NULL LIMIT 1
+  </select>
+  <select id="selectTransactionForUpdate" resultType="java.lang.Long">
+    SELECT id FROM payment_transaction WHERE payment_id=#{paymentId} LIMIT 1 FOR UPDATE
+  </select>
+  <select id="selectOrphanReceipt" resultType="java.lang.Long">
+    SELECT r.id FROM payment_channel_receipt r LEFT JOIN payment_order p ON p.id=r.payment_id
+    WHERE p.id IS NULL LIMIT 1
+  </select>
+  <select id="selectOrphanDispatch" resultType="java.lang.Long">
+    SELECT d.payment_id FROM payment_dispatch d LEFT JOIN payment_order p ON p.id=d.payment_id
+    WHERE p.id IS NULL LIMIT 1
+  </select>
+  <select id="selectExposureDispatchForUpdate" resultType="com.petplatform.payment.biz.infrastructure.persistence.PaymentFoundationStore$ExposureDispatch">
+    SELECT state,preorder_req_time,trade_req_date,timeout_express_minutes,may_have_sent_at,
+      preorder_response_sha256,parameters_ciphertext,parameters_iv,parameter_valid_until,
+      fenced_at,close_may_have_sent_at,close_response_sha256,terminal_query_sha256,
+      terminal_confirmed_at,terminal_close_capability
+    FROM payment_dispatch WHERE payment_id=#{paymentId} FOR UPDATE
+  </select>
+  <select id="selectExposureReceiptsForUpdate" resultType="com.petplatform.payment.biz.infrastructure.persistence.PaymentFoundationStore$ExposureReceipt">
+    SELECT receipt_source,channel_status,receipt_sha256,channel_response_sha256,
+      paid_amount,total_amount,channel_trade_no
+    FROM payment_channel_receipt WHERE payment_id=#{paymentId} FOR UPDATE
+  </select>
+</mapper>
