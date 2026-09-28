@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.petplatform.order.biz.infrastructure.persistence.mapper.OrderExpiryMapper">
+  <update id="setUtcTimeZone">SET SESSION time_zone = '+00:00'</update>
+  <update id="setLockWaitTimeout">SET SESSION innodb_lock_wait_timeout = 2</update>
+  <select id="storeId" resultType="java.lang.Long">SELECT store_id FROM pet_order WHERE id=#{orderId}</select>
+  <select id="scanPendingAfter" resultType="java.lang.Long">
+    SELECT id FROM pet_order
+    WHERE id &gt; #{afterOrderId} AND order_stage='PENDING_PAYMENT' AND payment_status='INIT'
+      AND verification_status='UNVERIFIED' AND payment_expire_at IS NOT NULL
+    ORDER BY id LIMIT #{limit}
+  </select>
+  <select id="databaseEpochSeconds" resultType="java.math.BigDecimal">SELECT UNIX_TIMESTAMP(UTC_TIMESTAMP(3))</select>
+  <select id="lock" resultType="com.petplatform.order.biz.infrastructure.persistence.mapper.OrderMapperRows$ExpiryOrder">
+    SELECT id, reservation_id, store_id, order_stage, payment_status,
+           pay_amount, discount_amount,
+           verification_status, payment_expire_at, cancel_reason, version
+    FROM pet_order WHERE id=#{orderId} FOR UPDATE
+  </select>
+  <select id="findExpiryLog" resultType="java.lang.Long">
+    SELECT id FROM order_status_log
+    WHERE order_id=#{orderId} AND dimension='ORDER_STAGE' AND from_status='PENDING_PAYMENT'
+      AND to_status='CANCELED' AND event_type='PAYMENT_TIMEOUT'
+      AND operator_type='SYSTEM' AND request_id=#{requestId} LIMIT 1
+  </select>
+  <select id="findLatePaymentResult" resultType="java.lang.Long">
+    SELECT id FROM order_payment_result
+    WHERE order_id=#{orderId} AND result_type='LATE' LIMIT 1
+  </select>
+  <update id="cancel">
+    UPDATE pet_order SET order_stage='CANCELED', cancel_reason='PAYMENT_TIMEOUT',
+                         canceled_at=#{observedNow}, version=version+1,
+                         updated_at=UTC_TIMESTAMP(3)
+    WHERE id=#{orderId} AND version=#{version} AND order_stage='PENDING_PAYMENT'
+      AND payment_status='INIT' AND verification_status='UNVERIFIED'
+      AND cancel_reason IS NULL
+      AND payment_expire_at=#{deadline} AND payment_expire_at&lt;=#{observedNow}
+  </update>
+  <insert id="statusLog">
+    INSERT INTO order_status_log
+      (id,order_id,dimension,from_status,to_status,event_type,operator_type,
+       operator_id,request_id,remark,created_at)
+    VALUES (#{id},#{orderId},'ORDER_STAGE','PENDING_PAYMENT','CANCELED','PAYMENT_TIMEOUT',
+            'SYSTEM',NULL,#{requestId},'PAYMENT_TIMEOUT',UTC_TIMESTAMP(3))
+  </insert>
+</mapper>
