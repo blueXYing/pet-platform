@@ -33,6 +33,10 @@ LEGACY_CREATE_SCHEMAS = {
     'createOrder': 'CreateOrderResponseEnvelope',
     'applyRefund': 'RefundApplicationResponseEnvelope',
 }
+CREDENTIAL_OPERATIONS = {
+    'getOrderVerificationCredential': ('get', '/c/orders/{orderId}/verification-code'),
+    'issueOrderVerificationCredential': ('post', '/c/orders/{orderId}/verification-code'),
+}
 AUTH_OPERATIONS = {
     'cAuthCreateAttempt': ('post', '/c/auth/attempts'),
     'cAuthWechatLogin': ('post', '/c/auth/wechat-login'),
@@ -370,6 +374,16 @@ def check(spec):
             operations.add(operation_id)
             assert operation['responses'], f'Missing responses: {operation_id}'
             parameters = operation.get('parameters', []) + item.get('parameters', [])
+            if operation_id in CREDENTIAL_OPERATIONS:
+                assert (method, path) == CREDENTIAL_OPERATIONS[operation_id], 'Credential operation moved'
+                assert operation.get('x-implementation-status') == 'NOT_IMPLEMENTED', 'Credential route is not delivered'
+                assert operation.get('x-default-enabled') is False, 'Credentials must remain default off'
+                assert operation.get('security') == [{'bearerAuth': []}], 'Credential current session required'
+                issue = spec['components']['schemas']['VerificationCredentialIssue']
+                assert issue.get('additionalProperties') is False
+                assert set(issue['required']) == {'expectedCredentialVersion', 'refreshKind'}
+                assert issue['properties']['expectedCredentialVersion']['type'] == 'string'
+                assert issue['properties']['refreshKind']['enum'] == ['INITIAL', 'AUTO', 'MANUAL']
             if operation_id in PRIVATE_ASSET_OPERATIONS:
                 assert (method, path) == PRIVATE_ASSET_OPERATIONS[operation_id], f'Private asset operation moved: {operation_id}'
                 check_private_assets(spec, operation)
@@ -479,7 +493,7 @@ def check(spec):
     assert legacy_seen == LEGACY_OPERATIONS.keys(), f'Legacy operations missing: {LEGACY_OPERATIONS.keys() - legacy_seen}'
     assert legacy_writes == 13, 'Legacy write surface changed'
     assert legacy_creates == LEGACY_CREATES, 'Legacy create surface changed'
-    assert operations == LEGACY_OPERATIONS.keys() | AUTH_OPERATIONS.keys() | MERCHANT_OPERATIONS.keys() | APPLICATION_OPERATIONS.keys() | PRIVATE_ASSET_OPERATIONS.keys() | SERVICE_CATALOG_OPERATIONS.keys() | STORE_CATALOG_OPERATIONS.keys() | SERVICE_WRITE_OPERATIONS.keys() | SCHEDULE_AVAILABILITY_OPERATIONS.keys(), 'Unexpected or missing reviewed operations'
+    assert operations == LEGACY_OPERATIONS.keys() | AUTH_OPERATIONS.keys() | MERCHANT_OPERATIONS.keys() | APPLICATION_OPERATIONS.keys() | PRIVATE_ASSET_OPERATIONS.keys() | SERVICE_CATALOG_OPERATIONS.keys() | STORE_CATALOG_OPERATIONS.keys() | SERVICE_WRITE_OPERATIONS.keys() | SCHEDULE_AVAILABILITY_OPERATIONS.keys() | CREDENTIAL_OPERATIONS.keys(), 'Unexpected or missing reviewed operations'
     schemes = spec['components']['securitySchemes']
     assert schemes['bearerAuth']['type'] == 'http' and schemes['bearerAuth']['scheme'] == 'bearer'
     for scheme, location, name in [('authAttempt', 'header', 'X-Auth-Attempt'),

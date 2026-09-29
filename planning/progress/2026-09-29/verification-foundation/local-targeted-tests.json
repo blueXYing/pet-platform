@@ -1,0 +1,159 @@
+{
+  "environment": "Java 21, private MySQL 8.4 on 127.0.0.1:3314",
+  "scope": "Targeted local tests; not a full backend verification or HTTP E2E claim",
+  "totals": {
+    "tests": 73,
+    "failures": 0,
+    "errors": 0,
+    "skipped": 0
+  },
+  "reports": [
+    {
+      "tests": 15,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "name": "com.petplatform.architecture.ArchitectureRulesFixtureTest",
+      "path": "backend/pet-architecture-test/target/surefire-reports/TEST-com.petplatform.architecture.ArchitectureRulesFixtureTest.xml",
+      "sha256": "d334ba233cb68f1d5e72893899077acf50e64baf33b4e05f5e10ff12f024e317",
+      "cases": [
+        "arch004_allows_delegation_to_application",
+        "arch004_rejects_direct_repository_update",
+        "arch002_rejects_persistence_package_without_suffix",
+        "arch003_allows_pure_contract",
+        "arch002_rejects_cross_biz_persistence_even_outside_conventional_packages(String)[1]",
+        "arch002_rejects_cross_biz_persistence_even_outside_conventional_packages(String)[2]",
+        "arch002_rejects_cross_biz_persistence_even_outside_conventional_packages(String)[3]",
+        "arch002_rejects_cross_biz_persistence_even_outside_conventional_packages(String)[4]",
+        "domain_rejects_infrastructure",
+        "arch004_recognizes_annotation_outside_web_package",
+        "arch002_allows_local_persistence_and_cross_module_api",
+        "arch003_rejects_api_implementation",
+        "arch003_rejects_real_framework_annotation_names(String)[1]",
+        "arch003_rejects_real_framework_annotation_names(String)[2]",
+        "arch003_rejects_real_framework_annotation_names(String)[3]"
+      ]
+    },
+    {
+      "tests": 7,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "name": "com.petplatform.architecture.ArchitectureRulesTest",
+      "path": "backend/pet-architecture-test/target/surefire-reports/TEST-com.petplatform.architecture.ArchitectureRulesTest.xml",
+      "sha256": "86148e745033d56c2c587d132e8367abf0f14f621134ec1d3a13e6f0f6c8b81a",
+      "cases": [
+        "source_gate_negative_fixtures",
+        "arch002_cross_module_persistence",
+        "domain_boundary",
+        "arch004_controller_boundary",
+        "arch001_maven_dependency_gate",
+        "arch005_display_status_owner_gate",
+        "arch003_api_purity"
+      ]
+    },
+    {
+      "tests": 19,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "name": "com.petplatform.boot.booking.OrderRescheduleAcceptanceTest",
+      "path": "backend/pet-boot/target/surefire-reports/TEST-com.petplatform.boot.booking.OrderRescheduleAcceptanceTest.xml",
+      "sha256": "ec21c5207428913529646ea43bd40ec1a4126a22016844eb5472de29f97399d9",
+      "cases": [
+        "beforeStartBoundaryAndFailedKeyBindingRemainEnforced",
+        "liveSessionRefundAndFrozenMerchantAreEnforcedWhileServiceSnapshotSurvivesOffline",
+        "secondRoundTaskInsertionFailureRollsBackEvenACanceledRunningLease",
+        "merchantConfirmationRaceHasOneWinnerAndStaleVersionCannotOverwriteIt",
+        "oldRoundIsStaleAndNewRoundCanConfirmRejectRefundAndReplay",
+        "concurrentDuplicateIsOneExchangeAndOneEvent",
+        "unknownDependenciesAndExistingRefundFailClosed",
+        "atomicExchangePreservesIdentityAndSnapshotsAndReplaysFirstReceipt",
+        "committedRescheduleWithLostAckReturnsItsOriginalReceipt",
+        "everyPersistenceFailureRollsBackSwapTasksFenceAndEventButKeepsAdmission",
+        "tamperedCurrentReservationCannotBeConfirmedOrAuthorizeSecondRoundRefund",
+        "newTimeConflictsWithAnotherServiceAndRetainsAllOldClaims",
+        "runningLeaseCannotHeartbeatOrCompleteAfterReschedule",
+        "unchangedIntervalsWrongVersionAndForeignUserDoNotConsumeOpportunity",
+        "roundOneRepairAndWorkerUseImmutableRescheduleTimeAndRejectTampering",
+        "pickupSwapsTwoWholeWindowsAndKeepsTheOriginalStaff",
+        "assignedStaffCannotBeSilentlyReplacedWhenOnlyAnotherPersonCoversNewTime",
+        "originalManualConfirmationRemainsAuditedAfterSecondRoundDecision",
+        "oldTaskMissingRetryAndTerminalOutcomesAreExplicitAndCorruptionRollsBack"
+      ]
+    },
+    {
+      "tests": 23,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "name": "com.petplatform.boot.booking.VerificationCredentialAcceptanceTest",
+      "path": "backend/pet-boot/target/surefire-reports/TEST-com.petplatform.boot.booking.VerificationCredentialAcceptanceTest.xml",
+      "sha256": "242f49ab1eac79a89e26a4cee5be3cda6a523a184905ce9b0b280a5b77e2a3f7",
+      "cases": [
+        "manualSixthRefreshRejectedAndWindowRecovers",
+        "issueSameKeyConcurrencyAndLostResponseReturnsSameProtectedReceipt",
+        "pickupCredentialFollowsBothWholeWindowsAcrossReschedule",
+        "serviceStartInPastDoesNotDisableCredentialAndMissingClaimsDo",
+        "thirdIndependentFailureLocksAndReplayDoesNotCountOrExtend",
+        "refreshAndRescheduleRaceNeverLeavesLiveOldEpoch",
+        "issuanceFailuresPreserveOldCodeAndAdmissionBinding",
+        "expiryAutoRotationAndRollingFiveMinuteFailureWindow",
+        "isolatedFenceCannotCommitWithoutOrderCounterpart",
+        "lockedOrderCanRescheduleButCannotIssueUntilLockExpires",
+        "riskOutboxFailureRollsBackThirdAttemptAndLock",
+        "refreshRetiresOldCodeAndRejectsInitialAutoAndOldVersionBypass",
+        "orphanStateCipherAndConfirmationProofFailClosed",
+        "authorityRevocationAndCrossStoreDoNotCountFailures",
+        "issueActualCommittedAckLossReplaysWithoutRotation",
+        "refundCancelAndVerifiedRejectWhileAftersaleAloneDoesNot",
+        "automaticConfirmationProofCanAuthorizeCredentials",
+        "missingStateCannotEraseRiskBeforeFirstIssuance",
+        "concurrentThirdFailureProducesOnePersistentLock",
+        "lockAndFailureSeriesSurviveRefreshRescheduleAndServiceRestart",
+        "realPaymentConfirmationReadDoesNotIssueAndInitialCodeValidates",
+        "codeAndRescheduleRollbackAsOneTransaction",
+        "concurrentLastManualQuotaCannotCommitSixthRefresh"
+      ]
+    },
+    {
+      "tests": 6,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "name": "com.petplatform.boot.config.VerificationCredentialConfigurationTest",
+      "path": "backend/pet-boot/target/surefire-reports/TEST-com.petplatform.boot.config.VerificationCredentialConfigurationTest.xml",
+      "sha256": "b9862b0fd4e49e209d3ea01d072b4d1d0db70817638893325b58c78db7d3a253",
+      "cases": [
+        "httpIsNotImplemented",
+        "defaultOffDoesNotTouchDatabase",
+        "missingTrustedAttemptAuthorityFailsClosed",
+        "explicitQaDependenciesComposeRealCredentialAndFence",
+        "missingFoundationsFailClosed",
+        "missingKeysFailClosed"
+      ]
+    },
+    {
+      "tests": 3,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "name": "com.petplatform.verification.biz.application.CredentialProtectionTest",
+      "path": "backend/pet-verification-biz/target/surefire-reports/TEST-com.petplatform.verification.biz.application.CredentialProtectionTest.xml",
+      "sha256": "b9dabff424d3d4f1d01acacfa79113e5051e7009142784e10694ffac156b7b49",
+      "cases": [
+        "absentOrShortKeysNeverCreateProtection",
+        "oldKeyRemainsReadableAfterRotationButMissingOldKeyFails",
+        "wrongPurposeAndTamperingCannotDecryptAndCodeHas160BitEncoding"
+      ]
+    }
+  ],
+  "otherChecks": {
+    "contractTests": 118,
+    "architectureSourceTests": 18,
+    "contractSmoke": "PASS",
+    "mybatis": "PASS",
+    "moduleDependencies": "PASS",
+    "displayStatus": "PASS"
+  }
+}

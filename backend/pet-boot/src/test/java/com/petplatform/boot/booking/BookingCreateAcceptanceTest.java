@@ -812,7 +812,8 @@ class BookingCreateAcceptanceTest {
                 "45-Merchant-Order-Actions-Schema-v0.1.sql",
                 "43-Payment-Refund-Dispatch-Schema-v0.1.sql",
                 "44-Late-Refund-Order-Projection-Schema-v0.1.sql",
-                "46-Order-Reschedule-Schema-v0.1.sql");
+                "46-Order-Reschedule-Schema-v0.1.sql",
+                "47-Verification-Credential-Schema-v0.1.sql");
         private final String name = "qa_booking_" + UUID.randomUUID().toString().replace("-", "");
         private final JdbcTemplate admin;
         final DataSource source;

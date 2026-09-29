@@ -2113,3 +2113,6 @@ applicationId等主键使用Snowflake String；applicationNo按原PRD为SQ+YYYYM
 ## 创建订单内核阶段状态（2026-09-27）
 
 [38号内部内核](38-Atomic-Booking-Create-Contract-v0.1.md)已实现真实占位与待支付订单原子写入、地址/备注加密快照和持久幂等。当前没有开放本文件§3.5 HTTP路由，也没有改变§3.4现行六字段响应；选窗ID/类型、服务地址及完整结算配套须后续同步公开合同与适配器后启用。优惠券、生产备注审核、自动到期关闭与支付未接齐，不能把无券内部测试当作完整C端下单上线。
+
+## 核销码 V1/V2 正式补充
+2026-09-29用户批准V1/V2，执行[47号契约](47-Verification-Credential-Contract-v0.1.md)。覆盖§3.11：GET仅只读，POST生成/刷新带requestId和expectedCredentialVersion；新完整视图替代旧verificationStatus示例，两个路由均NOT_IMPLEMENTED，不注册公开入口。第三次独立失败锁15分钟且换码不能绕过；不表示商家核销完成接口已交付。

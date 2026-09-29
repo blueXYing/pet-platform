@@ -13,6 +13,8 @@
     <artifactId>pet-verification-biz</artifactId>
 
     <dependencies>
+        <dependency><groupId>com.petplatform</groupId><artifactId>pet-schedule-api</artifactId></dependency>
+        <dependency><groupId>com.fasterxml.jackson.core</groupId><artifactId>jackson-databind</artifactId></dependency>
         <dependency>
             <groupId>com.petplatform</groupId>
             <artifactId>pet-common</artifactId>

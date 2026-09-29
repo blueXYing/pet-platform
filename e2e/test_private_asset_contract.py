@@ -24,9 +24,9 @@ class PrivateAssetContractRegressions(unittest.TestCase):
 
     def test_current_surface_independent_counts(self):
         result = check(self.spec)
-        # 90 = 76 base + 2 store catalog (store-read slice) + 11 service write
-        #      + 1 schedule availability (SCH-001 slice).
-        self.assertEqual(result['operations'], 90)
+        # 92 = 76 base + 2 store catalog (store-read slice) + 11 service write
+        #      + 1 schedule availability (SCH-001) + 2 credential routes (approved V1/V2, not implemented).
+        self.assertEqual(result['operations'], 92)
         self.assertEqual(result['privateAssetOperations'], 3)
         self.assertEqual(result['legacyOperations'], 16)
         self.assertEqual(result['authOperations'], 36)

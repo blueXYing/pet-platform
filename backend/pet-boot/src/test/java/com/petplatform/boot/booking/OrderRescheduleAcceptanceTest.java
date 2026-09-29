@@ -20,7 +20,7 @@ import org.junit.jupiter.api.Test;
 import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 /** Real SQL owners and signed offline payment. qa_verification_fence is an explicit QA-only
- * durable stand-in: these tests do NOT prove real verification-code invalidation or C HTTP. */
+ * fault probe around the real credential provider. These tests do NOT prove C HTTP. */
 class OrderRescheduleAcceptanceTest {
  static final AtomicLong IDS=new AtomicLong(9_070_000_000_000_000L);
  static final OffsetDateTime START=OffsetDateTime.parse("2030-01-01T09:15:00Z");
@@ -278,10 +278,12 @@ class OrderRescheduleAcceptanceTest {
    var staff=new MerchantCurrentStaffFactsApiImpl(source,guard);var orders=new OrderProtectionFactsApiImpl(source,guard,facts,staff,Clock.systemUTC());
    var proof=new ScheduleCapacityProofApiImpl(source,guard,facts,staff,orders,Clock.systemUTC(),10_000);
    var swap=new ReservationSwapApiImpl(source,IDS::incrementAndGet,guard,facts,proof,orders,new OrderRescheduleCommitApiImpl(source,guard));
+   var real=VerificationCredentialAcceptanceTest.build(f,source,guard);
    VerificationRescheduleFenceApi verification=(o,r,s,change,at,c,transactionSource)->{
+    var fence=real.invalidate(o,r,s,change,at,c,transactionSource);
     assertSame(source,transactionSource);assertTrue(TransactionSynchronizationManager.hasResource(source));guard.requireHeld(s,source);
     long id=IDS.incrementAndGet();new org.springframework.jdbc.core.JdbcTemplate(source).update("INSERT INTO qa_verification_fence(id,order_id,reschedule_id) VALUES(?,?,?)",id,Long.parseLong(o),Long.parseLong(change));
-    return new VerificationRescheduleFenceApi.Fence(Long.toString(id),o,change);
+    return fence;
    };
    return new OrderRescheduleService(source,IDS::incrementAndGet,guard,new com.petplatform.payment.biz.apiimpl.PaymentSuccessFactsApiImpl(source,guard),new RefundOrderFactsApiImpl(source,guard),
     new ReservationConfirmApiImpl(source,IDS::incrementAndGet,guard,facts,new OrderPaymentFactsApiImpl(source,guard)),swap,verification,new com.petplatform.event.core.TransactionalOutboxPublisher(source,IDS::incrementAndGet,new com.fasterxml.jackson.databind.ObjectMapper()),
