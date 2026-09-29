@@ -32,6 +32,6 @@ public final class MerchantOrderController {
             for(String name:n.propertyNames())if(!allowed.contains(name))throw invalid();return n;
         }catch(RuntimeException bad){throw invalid();}
     }
-    private static int round(JsonNode n){if(!n.path("expectedConfirmRound").isIntegralNumber()||!n.path("expectedConfirmRound").canConvertToInt()||n.path("expectedConfirmRound").intValue()!=0)throw invalid();return 0;}
+    private static int round(JsonNode n){if(!n.path("expectedConfirmRound").isIntegralNumber()||!n.path("expectedConfirmRound").canConvertToInt()||(n.path("expectedConfirmRound").intValue()<0||n.path("expectedConfirmRound").intValue()>1))throw invalid();return n.path("expectedConfirmRound").intValue();}
     private static String text(JsonNode n,String field){if(!n.path(field).isTextual())throw invalid();return n.path(field).asText();}
 }

@@ -1,3 +1,5 @@
+> 2026-09-29: [Contract 46](../04-api/46-Order-Reschedule-Contract-v0.1.md) implements round-1 ORDER_AUTO_CONFIRM and strict transactional cancellation of round-0 READY/RETRY_WAIT/RUNNING tasks, fencing leases and finishing active attempts as NOOP. Terminal history is preserved. It supersedes the historical initial-round-only implementation note below.
+
 # 宠物平台 V1.0 Scheduler / Retry / Compensation 设计 v0.5
 
 > 文档定位：定义模块化单体阶段的延迟任务、定时任务、渠道查单、重试、补偿、Outbox 发布与故障恢复机制。  

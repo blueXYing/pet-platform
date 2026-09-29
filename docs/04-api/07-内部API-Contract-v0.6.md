@@ -1779,3 +1779,8 @@ thirdparty-api 新增独立 ServiceCoverSigningApi.signServiceCover(String asset
 ## 商家首轮确认、拒单与成功退款释放（2026-09-29）
 
 用户批准D1/D2/D3，[45号契约](45-Merchant-Order-Actions-Contract-v0.1.md)冻结MerchantOrderCommandApi.decide、MerchantOrderAuthorityApi.requireOwner、OrderMerchantRejectFactsApi、MerchantRejectRefundApi.create、ReservationRefundReleaseApi.release。ORDER独立幂等占号，后续同店guard及同DataSource事务原子决定/建退款/Outbox/Task/回执；不传调用方金额授权退款。PAYMENT、REFUND按sourceType/sourceEventId区分正常拒单和迟到付款，RefundExecutionFact保留旧构造器兼容。SCH只凭REFUND最终成功和原预约归属释放。新命令默认关闭；员工、round1、公开读侧及其他退款来源不因本切片实现。
+
+
+## Approved reschedule extension (2026-09-29)
+
+[Contract 46](46-Order-Reschedule-Contract-v0.1.md) defines OrderRescheduleApi, ReservationSwapApi, OrderRescheduleCommitApi, mandatory VerificationRescheduleFenceApi, TASK transactional cancellation and round-1 confirmation/refund proof. No C route is delivered.

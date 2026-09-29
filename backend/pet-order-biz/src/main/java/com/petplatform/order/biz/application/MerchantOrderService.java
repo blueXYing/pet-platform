@@ -87,7 +87,7 @@ public final class MerchantOrderService implements MerchantOrderCommandApi {
                 long decision=next(),event=next(); Long refund="REJECT".equals(c.action())?next():null;
                 String stage=refund==null?"PENDING_SERVICE":"CANCELED";
                 var write=values("id",decision,"orderId",r.id,"storeId",r.storeId,"commandId",binding.id,
-                    "action",c.action(),"operatorId",IDS.fromApi(c.context().operatorId()),"now",now.toLocalDateTime(),
+                    "round",c.expectedConfirmRound(),"action",c.action(),"operatorId",IDS.fromApi(c.context().operatorId()),"now",now.toLocalDateTime(),
                     "eventId",event,"refundId",refund,"reasonCode",c.reasonCode(),
                     "reasonText",protectText(decision,c.reasonText()),"internalNote",protectText(decision,c.internalNote()),
                     "stage",stage,"mode",refund==null?"MERCHANT":null,"confirmedAt",refund==null?now.toLocalDateTime():null,
@@ -98,7 +98,7 @@ public final class MerchantOrderService implements MerchantOrderCommandApi {
                     var payment=paidStore.lockResult(r.id);
                     createRefund.create(c.orderId(),IDS.toApi(payment.paymentId()),store,IDS.toApi(refund),system);
                 }
-                Map<String,Object> payload=values("orderId",c.orderId(),"reservationId",IDS.toApi(r.reservationId),"storeId",store,"confirmRound",0);
+                Map<String,Object> payload=values("orderId",c.orderId(),"reservationId",IDS.toApi(r.reservationId),"storeId",store,"confirmRound",c.expectedConfirmRound());
                 String eventType;
                 if(refund==null){eventType="OrderConfirmedEvent.v1";payload.put("confirmMode","MERCHANT");
                     payload.put("confirmDeadline",r.confirmDeadline.atOffset(ZoneOffset.UTC).toString());payload.put("confirmedAt",now.toString());}
@@ -108,7 +108,7 @@ public final class MerchantOrderService implements MerchantOrderCommandApi {
                 write.put("id",next());write.put("eventType",refund==null?"ORDER_MERCHANT_CONFIRMED":"ORDER_MERCHANT_REJECTED");
                 write.put("requestId",c.context().requestId());write.put("remark","decisionId="+decision+",eventId="+event);
                 if(mapper.log(write)!=1)throw unavailable();
-                var receipt=new Receipt(c.orderId(),IDS.toApi(decision),0,c.action(),stage,now.toString(),refund==null?null:IDS.toApi(refund));
+                var receipt=new Receipt(c.orderId(),IDS.toApi(decision),c.expectedConfirmRound(),c.action(),stage,now.toString(),refund==null?null:IDS.toApi(refund));
                 if(mapper.succeed(binding.id,protection.protect(purpose+":RESULT",json(receipt)))!=1)throw unavailable();
                 return receipt;
             });
@@ -126,10 +126,11 @@ public final class MerchantOrderService implements MerchantOrderCommandApi {
         sessions.requireCurrent(c.context().operatorId());return r;
     }
     private void qualify(Command c,Row r){
-        if(!"PENDING_CONFIRM".equals(r.orderStage)||r.rescheduleCount==null||r.rescheduleCount!=0)throw error("ORDER_STATE_NOT_ALLOWED");
+        if(!"PENDING_CONFIRM".equals(r.orderStage)||r.rescheduleCount==null||r.rescheduleCount!=c.expectedConfirmRound())throw error("ORDER_STATE_NOT_ALLOWED");
         if(!"PAID".equals(r.paymentStatus)||!"UNVERIFIED".equals(r.verificationStatus)||r.confirmMode!=null||r.confirmedAt!=null
           ||r.canceledAt!=null||r.cancelReason!=null||r.refundedAmount==null||r.refundedAmount.signum()!=0
           ||r.confirmDeadline==null||r.paidAt==null||r.payAmount==null||r.payAmount.signum()<=0)throw unavailable();
+        OrderConfirmEpoch.requireSchedule(source,r,reservations,false,system(c));
         var proof=paidStore.lockResult(r.id);if(proof==null||!"NORMAL".equals(proof.resultType()))throw unavailable();
         String store=IDS.toApi(r.storeId);var p=payments.requireSucceeded(IDS.toApi(proof.paymentId()),c.orderId(),store,system(c));
         if(p==null||!c.orderId().equals(p.orderId())||!store.equals(p.storeId())||!IDS.toApi(r.userId).equals(p.userId())
@@ -137,21 +138,21 @@ public final class MerchantOrderService implements MerchantOrderCommandApi {
           ||!IDS.toApi(proof.sourceEventId()).equals(p.successEventId())||!Objects.equals(proof.channelTradeNo(),p.channelTradeNo())
           ||p.paidAmount()==null||proof.paidAmount()==null||r.payAmount.compareTo(p.paidAmount())!=0||proof.paidAmount().compareTo(p.paidAmount())!=0
           ||p.paidAt()==null||proof.paidAt()==null||!p.paidAt().isEqual(proof.paidAt())||!p.paidAt().isEqual(r.paidAt.atOffset(ZoneOffset.UTC))
-          ||!p.paidAt().plusMinutes(30).isEqual(r.confirmDeadline.atOffset(ZoneOffset.UTC))||!"CNY".equals(p.currency()))throw unavailable();
+          ||!"CNY".equals(p.currency()))throw unavailable();
         reservations.assertConfirmed(c.orderId(),IDS.toApi(r.reservationId),store,system(c));
         var refund=refunds.findByOrder(c.orderId(),store,system(c));if(refund==null)throw unavailable();
         if(r.refundOrderId!=null||refund.exists())throw error("ORDER_REFUND_ALREADY_CREATED");
         if(r.currentAftersaleId!=null||r.currentRefundApplicationId!=null)throw unavailable();
-        if(mapper.decision(r.id)!=null)throw unavailable();
+        if(mapper.decision(r.id,c.expectedConfirmRound())!=null)throw unavailable();
     }
     private Receipt replay(Command c,OrderMerchantMapper.Binding b,String purpose){
         try{
             if(!Objects.equals(b.resultVersion,1)||b.resultBytes==null)throw unavailable();
             Receipt receipt=JSON.readValue(protection.reveal(purpose+":RESULT",b.resultBytes),Receipt.class);
-            var d=mapper.decision(IDS.fromApi(c.orderId()));
+            var d=mapper.decision(IDS.fromApi(c.orderId()),c.expectedConfirmRound());
             if(d==null||!Objects.equals(d.commandId,b.id)||!c.action().equals(d.action)
               ||!c.orderId().equals(receipt.orderId())||!IDS.toApi(d.id).equals(receipt.decisionId())
-              ||!c.action().equals(receipt.action())||receipt.confirmRound()!=0
+              ||!c.action().equals(receipt.action())||receipt.confirmRound()!=c.expectedConfirmRound()
               ||!Objects.equals(receipt.refundOrderId(),d.refundOrderId==null?null:IDS.toApi(d.refundOrderId)))throw unavailable();
             return receipt;
         }catch(Exception failure){throw unavailable();}
@@ -163,7 +164,7 @@ public final class MerchantOrderService implements MerchantOrderCommandApi {
     }
     private byte[] protectText(long id,String text){return text==null?null:protection.protect("ORDER_DECISION:"+id,bytes(text));}
     private static byte[] canonical(Command c){
-        var fields=new TreeMap<String,Object>();fields.put("orderId",c.orderId());fields.put("expectedConfirmRound",0);
+        var fields=new TreeMap<String,Object>();fields.put("orderId",c.orderId());fields.put("expectedConfirmRound",c.expectedConfirmRound());
         if("REJECT".equals(c.action())){fields.put("reasonCode",c.reasonCode());fields.put("reasonText",c.reasonText());}
         else if(c.internalNote()!=null)fields.put("internalNote",c.internalNote());
         return json(fields);
@@ -172,7 +173,7 @@ public final class MerchantOrderService implements MerchantOrderCommandApi {
         try{
             if(c==null||c.context()==null||c.context().operatorType()!=OperatorType.USER)throw invalid();
             IDS.fromApi(c.orderId());IDS.fromApi(c.context().operatorId());PublicContractChecks.requireTerminalRequestId(c.context().requestId());
-            if(c.context().traceId()==null||c.context().traceId().isBlank()||c.expectedConfirmRound()!=0)throw invalid();
+            if(c.context().traceId()==null||c.context().traceId().isBlank()||(c.expectedConfirmRound()<0||c.expectedConfirmRound()>1))throw invalid();
             if("CONFIRM".equals(c.action())){if(c.reasonCode()!=null||c.reasonText()!=null)throw invalid();if(c.internalNote()!=null)text(c.internalNote(),0);}
             else if("REJECT".equals(c.action())){if(!REASONS.contains(c.reasonCode())||c.internalNote()!=null)throw invalid();text(c.reasonText(),5);if(c.reasonText().isBlank())throw invalid();}
             else throw invalid();

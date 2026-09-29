@@ -142,11 +142,13 @@ public final class OrderPaymentResultApiImpl implements OrderPaymentResultApi, I
         if (order == null || order.storeId() != located.getFirst().storeId()
                 || order.userId() <= 0 || order.merchantId() <= 0 || order.reservationId() <= 0
                 || order.paymentExpireAt() == null) throw unavailable("ORDER payment binding is invalid");
+        var epoch=new com.petplatform.order.biz.infrastructure.persistence.OrderAutoConfirmStore(source).lock(order.id());
+        if(epoch.rescheduleCount!=null&&epoch.rescheduleCount!=0)com.petplatform.order.biz.application.OrderConfirmEpoch.requireSchedule(source,epoch,confirmation,"CANCELED".equals(order.stage()),context);
         // A proven merchant rejection is a terminal NORMAL-payment projection. Replaying its
         // original receipt must not demand the pre-refund PAID getter after PAYMENT observes REFUND.
         if("CANCELED".equals(order.stage())&&"MERCHANT_REJECT_ORDER".equals(order.cancelReason())) {
             var original=orders.lockResult(order.id());
-            var rejected=new OrderMerchantRejectFactsApiImpl(source,guard).requireRejected(input.command().orderId(),
+            var rejected=new OrderMerchantRejectFactsApiImpl(source,guard,confirmation).requireRejected(input.command().orderId(),
                 input.command().paymentId(),storeId,context);
             if(original==null||!"NORMAL".equals(original.resultType())||original.sourceEventId()!=input.sourceEventId()
                 ||!rejected.paymentSuccessEventId().equals(input.command().sourceEventId())
@@ -307,7 +309,7 @@ public final class OrderPaymentResultApiImpl implements OrderPaymentResultApi, I
             confirmation.assertConfirmed(input.command().orderId(), reservationId, storeId, context);
         } else if ("CANCELED".equals(order.stage())) {
             if(!"MERCHANT_REJECT_ORDER".equals(order.cancelReason()))throw unavailable("Unknown normal-payment closure");
-            new OrderMerchantRejectFactsApiImpl(source,guard).requireRejected(input.command().orderId(),
+            new OrderMerchantRejectFactsApiImpl(source,guard,confirmation).requireRejected(input.command().orderId(),
                 input.command().paymentId(),storeId,context);
         } else if (!Set.of("PENDING_SERVICE", "COMPLETED").contains(order.stage())
                 || "PAYMENT_TIMEOUT".equals(order.cancelReason())) {

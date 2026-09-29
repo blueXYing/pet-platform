@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.petplatform.order.biz.infrastructure.persistence.mapper.OrderRescheduleMapper">
+ <insert id="reserve">
+  INSERT INTO order_reschedule_command(id,command_namespace,actor_type,actor_id,authority_scope,request_id,
+   canonical_version,payload_sha256,canonical_bytes,state,created_at,updated_at)
+  VALUES(#{id},#{namespace},'USER',#{actor},#{scope},#{requestId},'canonical-v1',#{hash},#{canonical},'RESERVED',UTC_TIMESTAMP(3),UTC_TIMESTAMP(3))
+  ON DUPLICATE KEY UPDATE id=id
+ </insert>
+ <select id="binding" resultType="com.petplatform.order.biz.infrastructure.persistence.mapper.OrderMerchantMapper$Binding">
+  SELECT id,canonical_version,payload_sha256,canonical_bytes,state,result_version,result_bytes
+  FROM order_reschedule_command WHERE command_namespace=#{namespace} AND actor_type='USER'
+   AND actor_id=#{actor} AND authority_scope=#{scope} AND request_id=#{requestId} FOR UPDATE
+ </select>
+ <update id="succeed">
+  UPDATE order_reschedule_command SET state='SUCCEEDED',result_version=1,result_bytes=#{result},updated_at=UTC_TIMESTAMP(3)
+  WHERE id=#{id} AND state='RESERVED'
+ </update>
+
+ <select id="duration" resultType="int">SELECT service_duration_minutes FROM order_service_snapshot WHERE order_id=#{id} FOR UPDATE</select>
+ <update id="change">
+  UPDATE pet_order SET appointment_start_at=#{newStart},appointment_end_at=#{newEnd},reschedule_count=1,
+   order_stage='PENDING_CONFIRM',confirm_mode=NULL,confirmed_at=NULL,confirm_deadline=#{newConfirmDeadline},version=version+1,updated_at=#{rescheduledAt}
+  WHERE id=#{orderId} AND version=#{oldOrderVersion} AND reschedule_count=0 AND order_stage IN ('PENDING_CONFIRM','PENDING_SERVICE')
+   AND payment_status='PAID' AND verification_status='UNVERIFIED' AND refund_order_id IS NULL
+   AND current_refund_application_id IS NULL AND current_aftersale_id IS NULL AND canceled_at IS NULL AND cancel_reason IS NULL AND refunded_amount=0
+   AND appointment_start_at &gt; #{rescheduledAt}
+ </update>
+ <insert id="record">INSERT INTO order_reschedule_record(id,order_id,command_id,event_id,user_id,store_id,reservation_id,old_order_version,new_order_version,old_reservation_version,new_reservation_version,old_order_stage,old_confirm_mode,old_confirmed_at,old_confirm_deadline,old_start,old_end,old_pickup,old_return,new_start,new_end,new_pickup,new_return,rescheduled_at,new_confirm_deadline,from_round,to_round,schedule_change_id,verification_fence_id,old_task_outcome) VALUES(#{id},#{orderId},#{commandId},#{eventId},#{userId},#{storeId},#{reservationId},#{oldOrderVersion},#{newOrderVersion},#{oldReservationVersion},#{newReservationVersion},#{oldOrderStage},#{oldConfirmMode,jdbcType=VARCHAR},#{oldConfirmedAt,jdbcType=TIMESTAMP},#{oldConfirmDeadline},#{oldStart},#{oldEnd},#{oldPickup,jdbcType=TIMESTAMP},#{oldReturn,jdbcType=TIMESTAMP},#{newStart},#{newEnd},#{newPickup,jdbcType=TIMESTAMP},#{newReturn,jdbcType=TIMESTAMP},#{rescheduledAt},#{newConfirmDeadline},#{fromRound},#{toRound},#{scheduleChangeId},#{verificationFenceId},#{oldTaskOutcome})</insert>
+ <select id="recordFor" resultType="com.petplatform.order.biz.infrastructure.persistence.mapper.OrderRescheduleMapper$Record">
+ SELECT id,order_id,command_id,event_id,user_id,store_id,reservation_id,old_order_version,new_order_version,old_reservation_version,new_reservation_version,old_order_stage,old_confirm_mode,old_confirmed_at,old_confirm_deadline,old_start,old_end,old_pickup,old_return,new_start,new_end,new_pickup,new_return,rescheduled_at,new_confirm_deadline,from_round,to_round,schedule_change_id,verification_fence_id,old_task_outcome FROM order_reschedule_record WHERE order_id=#{id}
+ </select>
+ <insert id="log">
+  INSERT INTO order_status_log(id,order_id,dimension,from_status,to_status,event_type,operator_type,operator_id,request_id,remark,created_at)
+  VALUES(#{logId},#{orderId},'ORDER_STAGE',#{oldOrderStage},'PENDING_CONFIRM','ORDER_RESCHEDULED','USER',#{userId},#{requestId},#{remark},#{rescheduledAt})
+ </insert>
+</mapper>

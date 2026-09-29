@@ -46,6 +46,10 @@ logging:
 # variables below at deployment time. Never commit real credentials.
 pet:
   order:
+    reschedule:
+      enabled: false
+      http:
+        enabled: false
     merchant:
       enabled: false
       http:

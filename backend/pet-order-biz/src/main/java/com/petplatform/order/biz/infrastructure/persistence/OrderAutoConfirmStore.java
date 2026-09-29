@@ -12,8 +12,8 @@ public final class OrderAutoConfirmStore {
     }
     public OrderAutoConfirmMapper.Row lock(long id) { return mapper.lock(id); }
     public List<String> proofs(long id, String requestId) { return mapper.proofs(id, requestId); }
-    public int confirm(long id, long version, LocalDateTime deadline, LocalDateTime now) {
-        return mapper.confirm(id, version, deadline, now);
+    public int confirm(long id, long version, int round, LocalDateTime deadline, LocalDateTime now) {
+        return mapper.confirm(id, version, round, deadline, now);
     }
     public void log(long id,long orderId,String from,String to,String type,String requestId,String remark) {
         if (mapper.log(id,orderId,from,to,type,requestId,remark) != 1)

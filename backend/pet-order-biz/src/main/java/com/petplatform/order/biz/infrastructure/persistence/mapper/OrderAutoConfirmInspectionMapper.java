@@ -14,6 +14,7 @@ public interface OrderAutoConfirmInspectionMapper {
         public Integer rescheduleCount;
         public String paymentStatus, verificationStatus, cancelReason, resultType, confirmMode;
         public BigDecimal payAmount, channelPaidAmount, refundedAmount;
+        public LocalDateTime rescheduledAt,rescheduleDeadline,rescheduleStart,rescheduleEnd,appointmentStartAt,appointmentEndAt;
         public LocalDateTime paidAt, confirmDeadline, channelPaidAt, confirmedAt, canceledAt;
     }
 }

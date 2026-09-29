@@ -19,19 +19,19 @@
  <insert id="insertDecision">
   INSERT INTO order_merchant_decision(id,order_id,store_id,confirm_round,command_id,action,operator_id,
    decided_at,event_id,refund_order_id,reason_code,reason_text,internal_note)
-  VALUES(#{id},#{orderId},#{storeId},0,#{commandId},#{action},#{operatorId},#{now},#{eventId},
+  VALUES(#{id},#{orderId},#{storeId},#{round},#{commandId},#{action},#{operatorId},#{now},#{eventId},
    #{refundId,jdbcType=BIGINT},#{reasonCode,jdbcType=VARCHAR},#{reasonText,jdbcType=VARBINARY},#{internalNote,jdbcType=VARBINARY})
  </insert>
  <select id="decision" resultType="com.petplatform.order.biz.infrastructure.persistence.mapper.OrderMerchantMapper$Decision">
   SELECT id,order_id,store_id,confirm_round,command_id,action,operator_id,decided_at,event_id,
-   refund_order_id,reason_code,reason_text,internal_note FROM order_merchant_decision WHERE order_id=#{orderId} AND confirm_round=0 FOR UPDATE
+   refund_order_id,reason_code,reason_text,internal_note FROM order_merchant_decision WHERE order_id=#{orderId} AND confirm_round=#{round} FOR UPDATE
  </select>
  <update id="decide">
   UPDATE pet_order SET order_stage=#{stage},confirm_mode=#{mode,jdbcType=VARCHAR},confirmed_at=#{confirmedAt,jdbcType=TIMESTAMP},
    canceled_at=#{canceledAt,jdbcType=TIMESTAMP},cancel_reason=#{cancelReason,jdbcType=VARCHAR},
    refund_order_id=#{refundId,jdbcType=BIGINT},version=version+1,updated_at=#{now}
   WHERE id=#{orderId} AND version=#{version} AND order_stage='PENDING_CONFIRM' AND payment_status='PAID'
-   AND verification_status='UNVERIFIED' AND reschedule_count=0 AND confirm_deadline &gt; #{now}
+   AND verification_status='UNVERIFIED' AND reschedule_count=#{round} AND confirm_deadline &gt; #{now}
    AND confirm_mode IS NULL AND confirmed_at IS NULL AND canceled_at IS NULL AND cancel_reason IS NULL
    AND refund_order_id IS NULL AND current_refund_application_id IS NULL AND current_aftersale_id IS NULL AND refunded_amount=0
  </update>

@@ -14,7 +14,7 @@ public final class OrderAutoConfirmTaskRegistration {
             .enable(JsonParser.Feature.STRICT_DUPLICATE_DETECTION)
             .enable(DeserializationFeature.FAIL_ON_TRAILING_TOKENS);
     private OrderAutoConfirmTaskRegistration() {}
-    public record Payload(String orderId, OffsetDateTime deadline) {}
+    public record Payload(String orderId,int round, OffsetDateTime deadline) {}
     public static TaskRegistration<Payload> create(DataSource source, OrderAutoConfirmService service) {
         var inspector = new TaskSubmissionInspector(source);
         var clock = new TaskDatabaseClock(source);
@@ -23,7 +23,7 @@ public final class OrderAutoConfirmTaskRegistration {
             @Override public TaskExecutionResult execute(TaskExecutionContext task, Payload payload) {
                 try {
                     var result = service.autoConfirm(OrderAutoConfirmService.command(
-                            task.traceId(), payload.orderId(), payload.deadline()));
+                            task.traceId(), payload.orderId(),payload.round(), payload.deadline()));
                     return switch (result) {
                         case CONFIRMED, ALREADY_CONFIRMED -> new TaskExecutionResult.Success(result.name());
                         case STALE, BLOCKED_BY_REFUND -> new TaskExecutionResult.Cancelled(result.name());
@@ -43,16 +43,17 @@ public final class OrderAutoConfirmTaskRegistration {
                 var snapshot = inspector.find(lease.taskKey());
                 var node = JSON.readTree(lease.payloadJson());
                 var deadline = OffsetDateTime.parse(node.path("expectedConfirmDeadline").textValue());
-                if (!OrderAutoConfirmTaskSpec.matches(snapshot, orderId, deadline)
+                int round=node.path("expectedConfirmRound").asInt(-1);
+                if (!OrderAutoConfirmTaskSpec.matches(snapshot, orderId,round, deadline)
                         || !Long.toString(lease.taskId()).equals(snapshot.taskId())
                         || !OrderAutoConfirmTaskSpec.TYPE.equals(lease.taskType())
-                        || !OrderAutoConfirmTaskSpec.key(orderId).equals(lease.taskKey())
+                        || !OrderAutoConfirmTaskSpec.key(orderId,round).equals(lease.taskKey())
                         || !Objects.equals(lease.expectedVersion(), snapshot.expectedVersion())
                         || lease.maxRetryCount() != snapshot.maxRetryCount()
                         || !Objects.equals(lease.retryPolicy(), snapshot.retryPolicy())
                         || !node.equals(JSON.readTree(snapshot.payloadJson())))
                     throw new IllegalArgumentException();
-                return new Payload(orderId, deadline);
+                return new Payload(orderId,round, deadline);
             } catch (Exception invalid) {
                 service.recordAnomaly(orderId,"AUTO_CONFIRM_DECODE","TASK_BINDING_CONFLICT");
                 throw new IllegalArgumentException("Invalid auto-confirm task binding");

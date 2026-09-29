@@ -1,5 +1,7 @@
 # CCR-W2-API-001：首批业务查询/写入与页面DTO缺口
 
+> 最新回执：2026-09-29用户明确“批准 R1、R2、R3”。下条改期提案的PROPOSED状态是历史记录，已由本回执取代。实施以[46号正式契约](../../docs/04-api/46-Order-Reschedule-Contract-v0.1.md)、SQL46和SSOT §35为准；真实核销/读侧依赖、公开入口及完整Issue仍未完成，不提前关闭整个CCR，不合并或生产启用。
+
 > 2026-09-29改期接续：PR92已获用户单独授权合入develop `be1cb68`，合并CI六项通过、674后端测试零失败/错误/跳过。用户授权按推荐顺序继续，已形成[ORD-003改期R1/R2/R3具体提案](CCR-W2-API-001/order-reschedule-proposal.md)：一单一预约下的原子交换与历史、旧任务取消和round1联动、核销/读侧缺失下的默认关闭首批范围；状态PROPOSED_REQUIRES_REVIEW，未修改正式合同或业务实现。已批准改期业务规则不重批，证据见[准备记录](../progress/2026-09-29/order-reschedule/PREPARATION.md)。下条商家切片“PR供审阅”是历史节点，已被本次合并授权取代。
 
 > 2026-09-29最新接续：PR91已合并develop `1eb96ac`，合并CI六项通过、649后端基线测试零失败。用户现已“批准以上三项，按推荐方案继续”，[ORD-001商家确认/拒单及退款联动](CCR-W2-API-001/merchant-order-actions-proposal.md)D1/D2/D3状态APPROVED；45号正式Contract/Schema与SSOT §34及配套接口/事件/任务/测试同步，实现提交PR供审阅。全部运行开关默认关闭，当前PR不合并或生产启用；完整Issue依赖未解除。证据见[实现记录](../progress/2026-09-29/merchant-order-actions/IMPLEMENTATION.md)。

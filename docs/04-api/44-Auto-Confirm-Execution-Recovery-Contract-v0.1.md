@@ -1,3 +1,5 @@
+> 2026-09-29: [Contract 46](46-Order-Reschedule-Contract-v0.1.md) supersedes initial-round-only restrictions. Round-1 execution/repair requires immutable ORDER and SCH reschedule proofs. Old-round tasks and repair remain STALE. All switches remain off by default.
+
 # 首轮自动接单执行与恢复契约 v0.1
 
 2026-09-29 用户批准 A 推荐方案与 B 剩余实现；授权原文见[CCR](../../planning/ccr/CCR-W2-API-001/order-auto-confirm-proposal.md)。沿用 SSOT 30 分钟、单次预约、退款及核销硬规则。无新 DDL、公开 HTTP、生产渠道调用或启用。

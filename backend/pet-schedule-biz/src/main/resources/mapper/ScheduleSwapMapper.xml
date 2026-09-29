@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.petplatform.schedule.biz.infrastructure.persistence.mapper.ScheduleSwapMapper">
+ <select id="parent" resultType="map">SELECT id,capacity_snapshot,qualified_staff_count_snapshot FROM schedule_reservation WHERE id=#{id} FOR UPDATE</select>
+ <select id="snapshot" resultType="string">
+ SELECT new_snapshot FROM schedule_reservation_change WHERE id=#{change} AND order_id=#{order} AND reservation_id=#{reservation} AND store_id=#{store} AND new_version=#{version}
+ </select>
+ <update id="swap">
+  UPDATE schedule_reservation SET start_at=#{start},end_at=#{end},pickup_start_at=#{pickup,jdbcType=TIMESTAMP},return_start_at=#{returning,jdbcType=TIMESTAMP},
+   capacity_snapshot=#{capacity},qualified_staff_count_snapshot=#{qualified},version=version+1,updated_at=#{now}
+  WHERE id=#{id} AND order_id=#{orderId} AND version=#{version} AND status='CONFIRMED'
+ </update>
+ <update id="claim">
+  UPDATE schedule_reservation_claim SET window_id=#{window},start_at=#{start},end_at=#{end}
+  WHERE id=#{id} AND reservation_id=#{reservation} AND kind=#{kind}
+ </update>
+ <insert id="history">
+  INSERT INTO schedule_reservation_change(id,reservation_id,order_id,store_id,command_id,old_version,new_version,old_snapshot,new_snapshot,changed_at)
+  VALUES(#{id},#{reservation},#{orderId},#{storeId},#{command},#{version},#{version}+1,CAST(#{old} AS JSON),CAST(#{new} AS JSON),#{now})
+ </insert>
+</mapper>

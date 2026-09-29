@@ -23,5 +23,11 @@ public final class MerchantOrderAuthorityApiImpl implements MerchantOrderAuthori
         if(!Set.of("ACTIVE","OFFLINE").contains(row.getMerchantStatus())
                 ||!Set.of("ACTIVE","OFFLINE").contains(row.getStoreStatus())) throw denied();
     }
+    @Override public void requireExistingOrderAvailability(String merchant,String store,QueryContext context) {
+        guard.requireHeld(store,source);
+        if(context==null||context.operatorType()!=OperatorType.SYSTEM)throw denied();
+        var row=mapper.lockExistingOrderScope(IDS.fromApi(merchant),IDS.fromApi(store));
+        if(row==null||!Set.of("ACTIVE","OFFLINE").contains(row.getMerchantStatus())||!Set.of("ACTIVE","OFFLINE").contains(row.getStoreStatus()))throw denied();
+    }
     private static ApiException denied(){return new ApiException(CommonApiCodes.FORBIDDEN,"Existing order authority unavailable");}
 }

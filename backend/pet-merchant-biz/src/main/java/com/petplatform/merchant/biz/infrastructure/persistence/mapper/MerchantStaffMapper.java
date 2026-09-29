@@ -14,6 +14,7 @@ public interface MerchantStaffMapper {
         @Param("storeId") long storeId, @Param("ownerUserId") long ownerUserId);
     MerchantStaffScopeEntity lockOwnedScope(@Param("merchantId") long merchantId,
         @Param("storeId") long storeId, @Param("ownerUserId") long ownerUserId);
+    MerchantStaffScopeEntity lockExistingOrderScope(@Param("merchantId") long merchantId,@Param("storeId") long storeId);
     Long lockApplication(@Param("merchantId") long merchantId);
     List<MerchantStaffReadEntity> listAllStaff(@Param("storeId") long storeId);
     MerchantStaffReadEntity selectStaff(@Param("staffId") long staffId);
