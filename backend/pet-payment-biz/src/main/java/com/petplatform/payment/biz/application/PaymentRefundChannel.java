@@ -10,7 +10,11 @@ public interface PaymentRefundChannel {
 
     record RefundRequest(String merchantNo, String termNo, String refundNo, BigDecimal amount,
             String paymentNo, String originalChannelTradeNo, LocalDateTime requestTime,
-            String requestIp, String notifyUrl) {
+            String requestIp, String notifyUrl, String reason) {
+        public RefundRequest(String merchantNo,String termNo,String refundNo,BigDecimal amount,String paymentNo,
+            String originalChannelTradeNo,LocalDateTime requestTime,String requestIp,String notifyUrl) {
+            this(merchantNo,termNo,refundNo,amount,paymentNo,originalChannelTradeNo,requestTime,requestIp,notifyUrl,"LATE_PAYMENT_TIMEOUT");
+        }
         @Override public String toString() { return "RefundRequest[redacted]"; }
     }
 

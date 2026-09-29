@@ -66,8 +66,7 @@ import com.petplatform.task.core.TaskDatabaseClock;
 
 /** Internal late-payment refund composition. All execution and live provider beans are opt-in. */
 @Configuration(proxyBeanMethods = false)
-@ConditionalOnProperty(name = {"pet.refund.late.enabled", "pet.payment.foundation.enabled"},
-        havingValue = "true")
+@org.springframework.boot.autoconfigure.condition.ConditionalOnExpression("${pet.payment.foundation.enabled:false} and (${pet.refund.late.enabled:false} or ${pet.order.merchant.enabled:false})")
 @EnableConfigurationProperties(PaymentDispatchConfiguration.DispatchSettings.class)
 public class LateRefundConfiguration {
     private static final String SUBMIT = "REFUND_SUBMIT";
@@ -89,8 +88,11 @@ public class LateRefundConfiguration {
 
     @Bean LateRefundService lateRefundService(DataSource source, SnowflakeIdGenerator ids,
             ScheduleCapacityGuardApi guard, OrderLatePaymentFactsApi orders,
-            PaymentSuccessFactsApi payments, IntegrationEventPublisher outbox) {
-        return new LateRefundService(source, ids, guard, orders, payments, outbox);
+            PaymentSuccessFactsApi payments, IntegrationEventPublisher outbox,
+            ObjectProvider<com.petplatform.order.api.query.OrderMerchantRejectFactsApi> merchantOrders,
+            org.springframework.core.env.Environment environment) {
+        return new LateRefundService(source, ids, guard, orders, payments, outbox,merchantOrders.getIfAvailable(),
+            environment.getProperty("pet.refund.late.enabled",Boolean.class,false));
     }
 
     @Bean PaymentRefundResultFactsApi paymentRefundResultFactsApi(DataSource source,
@@ -126,14 +128,15 @@ public class LateRefundConfiguration {
             ScheduleCapacityGuardApi guard, OrderLatePaymentFactsApi orders,
             PaymentSuccessFactsApi payments, LateRefundService refunds,
             PaymentRefundChannel channel, PaymentDispatchConfiguration.DispatchSettings dispatch,
-            PaymentFoundationConfiguration.LakalaSettings lakala, ObjectProvider<Clock> clocks) {
+            PaymentFoundationConfiguration.LakalaSettings lakala, ObjectProvider<Clock> clocks,
+            ObjectProvider<com.petplatform.order.api.query.OrderMerchantRejectFactsApi> merchantOrders) {
         try {
             String zone = lakala.channelTimeZone();
             if (zone == null || zone.isBlank()) throw new IllegalArgumentException();
             var settings = new PaymentRefundService.Settings(dispatch.requestIp(),
                     dispatch.notifyUrl(), ZoneId.of(zone));
             return new PaymentRefundService(source, ids, guard, orders, payments, refunds,
-                    channel, settings, clocks.getIfAvailable(Clock::systemUTC));
+                    channel, settings, clocks.getIfAvailable(Clock::systemUTC),merchantOrders.getIfAvailable());
         } catch (Exception failure) {
             throw new IllegalStateException("Refund execution settings unavailable");
         }
@@ -144,7 +147,8 @@ public class LateRefundConfiguration {
         return new RefundExecutionService(refunds, payment, results);
     }
 
-    @Bean OrderLateRefundProjectionConsumer orderLateRefundProjectionConsumer(DataSource source,
+    @Bean @ConditionalOnProperty(name="pet.refund.late.enabled",havingValue="true")
+    OrderLateRefundProjectionConsumer orderLateRefundProjectionConsumer(DataSource source,
             SnowflakeIdGenerator ids, ScheduleCapacityGuardApi guard,
             ReservationExpiryApi expiry, LateRefundService refunds) {
         return new OrderLateRefundProjectionConsumer(source, ids, guard, expiry, refunds);
@@ -183,7 +187,7 @@ public class LateRefundConfiguration {
     /** Public for an offline TaskRegistration test; the worker sees only these two types. */
     public static TaskRegistration<RefundPayload> registration(String type,
             RefundExecutionService execution, DataSource source) {
-        if (!SUBMIT.equals(type) && !QUERY.equals(type)) throw new IllegalArgumentException();
+        if (!Set.of(SUBMIT,QUERY,"MERCHANT_REFUND_SUBMIT","MERCHANT_REFUND_CHANNEL_QUERY").contains(type)) throw new IllegalArgumentException();
         Objects.requireNonNull(execution);
         var databaseClock = new TaskDatabaseClock(Objects.requireNonNull(source));
         return new TaskRegistration<>(new TaskHandler<>() {
@@ -191,7 +195,8 @@ public class LateRefundConfiguration {
             @Override public TaskExecutionResult execute(com.petplatform.task.core.TaskExecutionContext task,
                     RefundPayload payload) {
                 var result = execution.execute(payload.refundOrderId(), payload.storeId(),
-                        QUERY.equals(type), task.traceId());
+                        type.endsWith("REFUND_CHANNEL_QUERY"), task.traceId(),
+                        type.startsWith("MERCHANT_")?"MERCHANT_REJECT_ORDER":"LATE_PAYMENT_TIMEOUT");
                 if (result.done()) return new TaskExecutionResult.Success("REFUND_COORDINATED");
                 OffsetDateTime next = result.nextQueryAt();
                 if (next == null) throw new IllegalStateException("Refund query deadline absent");

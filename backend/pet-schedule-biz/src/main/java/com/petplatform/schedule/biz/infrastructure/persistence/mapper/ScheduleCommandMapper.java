@@ -7,6 +7,10 @@ import org.apache.ibatis.annotations.Param;
 
 /** Transaction-bound schedule guards, protection facts, and reservation writes. */
 public interface ScheduleCommandMapper {
+    int releaseRefund(@org.apache.ibatis.annotations.Param("reservationId") long reservationId,
+        @org.apache.ibatis.annotations.Param("version") long version);
+    int refundReleaseProof(@org.apache.ibatis.annotations.Param("reservationId") long reservationId,
+        @org.apache.ibatis.annotations.Param("requestId") byte[] requestId);
     int ensureStoreGuard(@Param("storeId") long storeId);
     Long lockStoreGuard(@Param("storeId") long storeId);
     List<Long> lockReservationByOrder(@Param("orderId") long orderId);

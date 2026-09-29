@@ -56,13 +56,19 @@ public record OrderConfirmedPayload(
     String reservationId,
     String storeId,
     int confirmRound,                 // 本轮仅0
-    String confirmMode,               // AUTO
+    String confirmMode,               // AUTO；45号批准的主账号确认使用MERCHANT
     OffsetDateTime confirmDeadline,   // 原渠道paidAt+30min，UTC毫秒
     OffsetDateTime confirmedAt        // DB UTC毫秒
 ) {}
 ```
 
 ORDER 状态、唯一成功证明和 Outbox 同事务提交。重放不产生第二个事件；通知等消费方仍按(eventId,consumerName)幂等，本切片未增加消费者。默认不启用生产者/Worker/修复扫描，不将此事件等同于用户消息已送达。
+
+### 首轮 OrderRejectedEvent.v1（45号契约）
+
+2026-09-29 用户批准D1/D2/D3。标准envelope为eventVersion=1、aggregateType=ORDER、aggregateId=orderId、occurredAt=rejectedAt。payload精确包含orderId/reservationId/storeId/decisionId/refundOrderId（String）、confirmRound（整数0）、rejectedAt（UTC毫秒OffsetDateTime）、reasonCode（45号五类枚举）。不广播reasonText/internalNote。
+
+拒单决定、订单取消、FULL/MERCHANT_REJECT_ORDER退款单、执行绑定、任务、日志及事件同事务提交。退款消费者不得凭此事件重复创建退款。通知/授权原因读侧尚未交付。RefundOrderCreatedEvent.v1、RefundSucceededEvent.v1沿既有字段，以source/refundSource区分MERCHANT_REJECT_ORDER与LATE_PAYMENT_TIMEOUT；sourceEventId从REFUND不可变执行事实读取，不扩大严格payload。成功事件经来源证明校验后，ORDER金额投影、消费claim和SCH预约释放同事务提交。已知其他来源不归本消费者处理，未知来源失败。见[45号契约](../04-api/45-Merchant-Order-Actions-Contract-v0.1.md)。
 
 ## 3. PaymentSucceededEvent.v1
 

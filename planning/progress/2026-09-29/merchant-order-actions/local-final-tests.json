@@ -1,0 +1,47 @@
+{
+  "run": "merchant-tests-final3",
+  "environment": "Java 21 / MySQL 8.4 isolated localhost:23391 / offline channel",
+  "tests": 10,
+  "reports": [
+    {
+      "name": "com.petplatform.boot.booking.LateRefundAcceptanceTest",
+      "tests": 1,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "sha256": "97823e7740fbf5358416a1440e952f77874ee1a772243ab5befd1738635011f3",
+      "cases": [
+        "sourceMigrationBackfillsLegacyBindingAndRejectsPartialOrMixedSources"
+      ]
+    },
+    {
+      "name": "com.petplatform.boot.booking.MerchantOrderAcceptanceTest",
+      "tests": 5,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "sha256": "c9e12b721701c6fbc5e4851fb89174f81dbc4a6b6f872a16bc6add135fc539cd",
+      "cases": [
+        "waitingForStoreLockPastDeadlineCannotBeatAutomaticConfirmation",
+        "newWorkerProcessesOnlyItsSourceTaskType",
+        "unknownChannelOutcomeQueriesOriginalNumberAndNeverResubmits",
+        "successProjectionAndReservationReleaseAreAtomicAndReplaySafe",
+        "confirmAndRejectRaceCommitExactlyOneDecision"
+      ]
+    },
+    {
+      "name": "com.petplatform.boot.config.LateRefundConfigurationTest",
+      "tests": 4,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "sha256": "80da8b9c31e00a7df315576ef71d9d714b3e98af580e2a7e8d23c37cb9e89bea",
+      "cases": [
+        "eitherMissingFlagKeepsAllLateRefundBeansAbsent",
+        "enabledWithoutChannelCredentialsFailsClosed",
+        "taskPayloadMustMatchImmutableTaskKeyAndVersion",
+        "injectedOfflineChannelComposesWithoutNetworkOrWorker"
+      ]
+    }
+  ]
+}

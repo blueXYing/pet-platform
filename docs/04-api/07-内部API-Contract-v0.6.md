@@ -1774,4 +1774,8 @@ thirdparty-api 新增独立 ServiceCoverSigningApi.signServiceCover(String asset
 
 ## 占位与订单原子创建内部实现（2026-09-27）
 
-[38号](38-Atomic-Booking-Create-Contract-v0.1.md)落实OrderCreationApi.create与ReservationHoldApi.hold：同guard主库RC事务写预约/claim/订单/快照/审计/首回执，并在commit前校验双向绑定。只交内部默认关闭能力，不表示本文件原OrderCommandApi其他命令或ScheduleCommandApi全部方法已实现；支付、自动过期/确认/释放/改期及外部创建仍待接入。
+[38号](38-Atomic-Booking-Create-Contract-v0.1.md)落实OrderCreationApi.create与ReservationHoldApi.hold：同guard主库RC事务写预约/claim/订单/快照/审计/首回执，并在commit前校验双向绑定。只交内部默认关闭能力，不表示本文件原OrderCommandApi其他命令或ScheduleCommandApi全部方法已实现；后续能力按39～45号独立交付。
+
+## 商家首轮确认、拒单与成功退款释放（2026-09-29）
+
+用户批准D1/D2/D3，[45号契约](45-Merchant-Order-Actions-Contract-v0.1.md)冻结MerchantOrderCommandApi.decide、MerchantOrderAuthorityApi.requireOwner、OrderMerchantRejectFactsApi、MerchantRejectRefundApi.create、ReservationRefundReleaseApi.release。ORDER独立幂等占号，后续同店guard及同DataSource事务原子决定/建退款/Outbox/Task/回执；不传调用方金额授权退款。PAYMENT、REFUND按sourceType/sourceEventId区分正常拒单和迟到付款，RefundExecutionFact保留旧构造器兼容。SCH只凭REFUND最终成功和原预约归属释放。新命令默认关闭；员工、round1、公开读侧及其他退款来源不因本切片实现。

@@ -34,6 +34,9 @@ public final class RefundExecutionStore {
         }
     }
 
+    public void insertMerchant(java.util.Map<String,Object> row) {
+        if(mapper.insertMerchantRefund(row)!=1||mapper.insertMerchantExecution(row)!=1)throw new IllegalStateException("Refund insert failed");
+    }
     public void sessionDefaults() { mapper.setUtcTimeZone(); mapper.setLockWaitTimeout(); }
     public LocalDateTime databaseNow() { return mapper.databaseNow(); }
     public void insertRefundOrder(long refundId, long refundNo, long orderId,
@@ -74,5 +77,5 @@ public final class RefundExecutionStore {
     }
     public int resolveIssue(long refundId) { return mapper.resolveIssue(refundId); }
     public int insertIssue(long refundId, String code) { return mapper.insertIssue(refundId, code); }
-    public List<RefundMapperRows.Candidate> scanOpen(long after) { return mapper.scanOpen(after); }
+    public List<RefundMapperRows.Candidate> scanOpen(long after,boolean late,boolean merchant) { return mapper.scanOpen(after,late,merchant); }
 }

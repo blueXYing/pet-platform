@@ -762,6 +762,32 @@ class LateRefundAcceptanceTest {
     }
   }
 
+  @Test
+  void sourceMigrationBackfillsLegacyBindingAndRejectsPartialOrMixedSources() throws Exception {
+    try(var f=fixture()) {
+      var late=latePayment(f);var business=lateRefund(f,f.publisher);business.consume(late.event());
+      String refund=f.text("SELECT CAST(id AS CHAR) FROM refund_order");
+      var tx=new TransactionTemplate(new DataSourceTransactionManager(f.db.source));
+      tx.setIsolationLevel(TransactionDefinition.ISOLATION_READ_COMMITTED);
+      java.util.function.Supplier<com.petplatform.refund.api.dto.RefundExecutionFact> read=()->tx.execute(s->{
+        var ctx=new QueryContext("qa-migration",OperatorType.SYSTEM,null);f.guard.acquire(java.util.List.of("710302"),ctx);
+        return business.requireForChannel(refund,"710302",ctx);
+      });
+      var legacy=read.get();assertEquals("LATE_PAYMENT_TIMEOUT",legacy.sourceType());
+      assertEquals(1,f.count("SELECT COUNT(*) FROM refund_execution WHERE source_type IS NULL AND source_event_id IS NULL"));
+      java.nio.file.Path root=java.nio.file.Path.of("").toAbsolutePath();
+      while(root!=null&&!java.nio.file.Files.exists(root.resolve("docs/03-database/45-Merchant-Order-Actions-Schema-v0.1.sql")))root=root.getParent();
+      assertNotNull(root);
+      String ddl=java.nio.file.Files.readString(root.resolve("docs/03-database/45-Merchant-Order-Actions-Schema-v0.1.sql"));
+      int begin=ddl.indexOf("UPDATE refund_execution");String backfill=ddl.substring(begin,ddl.indexOf(';',begin));
+      assertEquals(1,f.db.jdbc.update(backfill));assertEquals(legacy,read.get());assertEquals(0,f.db.jdbc.update(backfill));
+      assertThrows(org.springframework.dao.DataAccessException.class,()->f.db.jdbc.update("UPDATE refund_execution SET source_event_id=NULL"));
+      assertThrows(org.springframework.dao.DataAccessException.class,()->f.db.jdbc.update("UPDATE refund_execution SET source_type='MERCHANT_REJECT_ORDER'"));
+      business.consume(late.event());assertEquals(1,f.count("SELECT COUNT(*) FROM refund_order"));
+      assertEquals("EXPIRED",f.text("SELECT status FROM schedule_reservation"));
+    }
+  }
+
   private static PaymentFoundationAcceptanceTest.Fixture fixture() throws Exception {
     Clock beforeDeadline = Clock.fixed(Instant.now().minus(11, ChronoUnit.MINUTES)
         .truncatedTo(ChronoUnit.MILLIS), ZoneOffset.UTC);

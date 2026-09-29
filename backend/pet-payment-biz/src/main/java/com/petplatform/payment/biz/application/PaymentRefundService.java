@@ -8,7 +8,8 @@ import com.petplatform.common.OperatorType;
 import com.petplatform.common.PublicContractChecks;
 import com.petplatform.common.QueryContext;
 import com.petplatform.common.SnowflakeIdGenerator;
-import com.petplatform.order.api.dto.OrderLatePaymentFact;
+import com.petplatform.order.api.dto.OrderRefundOriginFact;
+import com.petplatform.order.api.query.OrderMerchantRejectFactsApi;
 import com.petplatform.order.api.query.OrderLatePaymentFactsApi;
 import com.petplatform.payment.api.command.PaymentRefundApi;
 import com.petplatform.payment.api.dto.PaymentRefundTypes.ChannelRefundProgress;
@@ -51,6 +52,7 @@ public final class PaymentRefundService implements PaymentRefundApi {
     private final SnowflakeIdGenerator ids;
     private final ScheduleCapacityGuardApi guard;
     private final OrderLatePaymentFactsApi orders;
+    private final OrderMerchantRejectFactsApi merchantOrders;
     private final PaymentSuccessFactsApi paymentFacts;
     private final RefundExecutionFactsApi refundFacts;
     private final PaymentRefundChannel channel;
@@ -73,6 +75,12 @@ public final class PaymentRefundService implements PaymentRefundApi {
             ScheduleCapacityGuardApi guard, OrderLatePaymentFactsApi orders,
             PaymentSuccessFactsApi paymentFacts, RefundExecutionFactsApi refundFacts,
             PaymentRefundChannel channel, Settings settings, Clock clock) {
+        this(source,ids,guard,orders,paymentFacts,refundFacts,channel,settings,clock,null);
+    }
+    public PaymentRefundService(DataSource source,SnowflakeIdGenerator ids,ScheduleCapacityGuardApi guard,
+            OrderLatePaymentFactsApi orders,PaymentSuccessFactsApi paymentFacts,RefundExecutionFactsApi refundFacts,
+            PaymentRefundChannel channel,Settings settings,Clock clock,OrderMerchantRejectFactsApi merchantOrders) {
+        this.merchantOrders=merchantOrders;
         this.source = Objects.requireNonNull(source);
         this.ids = Objects.requireNonNull(ids);
         this.guard = Objects.requireNonNull(guard);
@@ -209,12 +217,19 @@ public final class PaymentRefundService implements PaymentRefundApi {
             validateIdentity(input, previous);
             return new SendDecision(false, progress(previous), null);
         }
-        OrderLatePaymentFact order = orders.requireLatePayment(Long.toString(hint.orderId()),
-                Long.toString(input.paymentId()), input.storeId(), context);
         PaymentSuccessFact paid = paymentFacts.requireSucceeded(Long.toString(input.paymentId()),
                 Long.toString(hint.orderId()), input.storeId(), context);
         RefundExecutionFact business = refundFacts.requireForChannel(input.refundOrderId(),
                 input.storeId(), context);
+        OrderRefundOriginFact order;
+        if("LATE_PAYMENT_TIMEOUT".equals(business.sourceType()))
+            order=OrderRefundOriginFact.late(orders.requireLatePayment(Long.toString(hint.orderId()),
+                Long.toString(input.paymentId()),input.storeId(),context),business.sourceEventId(),business.refundOrderId());
+        else if("MERCHANT_REJECT_ORDER".equals(business.sourceType())&&merchantOrders!=null)
+            order=merchantOrders.requireRejected(Long.toString(hint.orderId()),Long.toString(input.paymentId()),input.storeId(),context);
+        else throw unavailable();
+        if(!business.sourceType().equals(order.sourceType())||!business.sourceEventId().equals(order.sourceEventId())
+            ||!business.refundOrderId().equals(order.refundOrderId()))throw unavailable();
         validateBinding(input, hint, order, paid, business);
         if (!"CREATED".equals(business.status()) && !"PROCESSING".equals(business.status())
                 && !"UNKNOWN".equals(business.status())) throw unavailable();
@@ -224,7 +239,7 @@ public final class PaymentRefundService implements PaymentRefundApi {
         PaymentRefundChannel.RefundRequest request = new PaymentRefundChannel.RefundRequest(
                 hint.merchantNo(), hint.termNo(), input.refundNo(), business.refundAmount(),
                 Long.toString(hint.no()), hint.tradeNo(), channelTime,
-                settings.requestIp(), settings.notifyUrl());
+                settings.requestIp(), settings.notifyUrl(), business.sourceType());
         String sha = requestHash(request);
         OffsetDateTime queryNotBefore = now.plusSeconds(30);
         Dispatch created = new Dispatch(input.refundOrderIdLong(), input.refundNoLong(),
@@ -310,7 +325,7 @@ public final class PaymentRefundService implements PaymentRefundApi {
     }
 
     private static void validateBinding(Identity input, PaymentFoundationStore.Row row,
-            OrderLatePaymentFact order, PaymentSuccessFact paid, RefundExecutionFact business) {
+            OrderRefundOriginFact order, PaymentSuccessFact paid, RefundExecutionFact business) {
         String paymentId = Long.toString(row.id());
         String orderId = Long.toString(row.orderId());
         if (order == null || paid == null || business == null || row.no() <= 0
@@ -399,7 +414,7 @@ public final class PaymentRefundService implements PaymentRefundApi {
             var input = new LakalaRefundProtocol.RefundInput(request.requestTime(),
                     request.merchantNo(), request.termNo(), request.refundNo(), request.amount(),
                     request.paymentNo(), request.originalChannelTradeNo(), request.requestIp(),
-                    "LATE_PAYMENT_TIMEOUT", request.notifyUrl());
+                    request.reason(), request.notifyUrl());
             byte[] body = LakalaRefundProtocol.prepareRefund(input).rawBody();
             return HexFormat.of().formatHex(MessageDigest.getInstance("SHA-256").digest(body));
         } catch (RuntimeException | java.security.NoSuchAlgorithmException invalid) {
