@@ -5,6 +5,10 @@ import java.time.LocalDateTime;
 
 /** Database rows mapped by MyBatis; domain checks stay in the application service. */
 public final class RefundMapperRows {
+    public static final class OrderPresence {
+        public Long id, orderId;
+        public String status;
+    }
     private RefundMapperRows() {}
 
     public static final class Binding {

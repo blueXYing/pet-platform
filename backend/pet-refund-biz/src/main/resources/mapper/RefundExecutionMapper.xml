@@ -1,6 +1,9 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
 <mapper namespace="com.petplatform.refund.biz.infrastructure.persistence.mapper.RefundExecutionMapper">
+  <select id="lockPresence" resultType="com.petplatform.refund.biz.infrastructure.persistence.mapper.RefundMapperRows$OrderPresence">
+    SELECT id,order_id,status FROM refund_order WHERE order_id=#{orderId} ORDER BY id FOR UPDATE
+  </select>
   <update id="setUtcTimeZone">SET SESSION time_zone='+00:00'</update>
   <update id="setLockWaitTimeout">SET SESSION innodb_lock_wait_timeout=2</update>
   <select id="databaseNow" resultType="java.time.LocalDateTime">SELECT UTC_TIMESTAMP(3)</select>

@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.petplatform.order.biz.infrastructure.persistence.mapper.OrderAutoConfirmInspectionMapper">
+  <select id="databaseNow" resultType="java.time.LocalDateTime">SELECT UTC_TIMESTAMP(3)</select>
+  <select id="scan" resultType="com.petplatform.order.biz.infrastructure.persistence.mapper.OrderAutoConfirmInspectionMapper$Row">
+    SELECT o.id,o.payment_status,o.verification_status,o.cancel_reason,o.refund_order_id,
+           o.current_refund_application_id,o.current_aftersale_id,o.reschedule_count,
+           o.paid_at,o.confirm_deadline,o.confirmed_at,o.canceled_at,o.confirm_mode,
+           o.pay_amount,o.refunded_amount,p.payment_id,p.source_event_id,p.result_type,
+           p.channel_paid_at,p.channel_paid_amount
+    FROM pet_order o LEFT JOIN order_payment_result p ON p.order_id=o.id
+    WHERE o.order_stage='PENDING_CONFIRM' AND o.id &gt; #{afterOrderId}
+    ORDER BY o.id LIMIT #{limit}
+  </select>
+</mapper>

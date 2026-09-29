@@ -1,0 +1,845 @@
+{
+  "runId": 36431126385,
+  "headSha": "b1b2f8f4c434b6b638fc00f9bf5da405f1a28435",
+  "artifactId": 10973254719,
+  "artifact": "backend-test-reports",
+  "reports": 104,
+  "tests": 614.0,
+  "failures": 0.0,
+  "errors": 0.0,
+  "skipped": 0.0,
+  "suites": [
+    {
+      "suite": "com.petplatform.admin.biz.auth.AdminAuthFailureRecoveryTest",
+      "tests": 11,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "sha256": "2c5f1be95d88e5f38e64b3ed9a8546d93656bf1dd4fb677233832406ab60a30d"
+    },
+    {
+      "suite": "com.petplatform.admin.biz.auth.AdminAuthLifecycleTest",
+      "tests": 11,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "sha256": "c8c1e935f97dd76bb5a3a73097434e564c12709a65731e64c89f5fb97812402b"
+    },
+    {
+      "suite": "com.petplatform.admin.biz.auth.AdminAuthorizationCurrentReadTest",
+      "tests": 7,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "sha256": "2cd1d85a73c1b18b271fd72226bc90237120e6c7075d0df8bd2b2e2d2c84808e"
+    },
+    {
+      "suite": "com.petplatform.admin.biz.auth.AdminAuthPrimitivesTest",
+      "tests": 12,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "sha256": "a53d0b6adc31958ea9a16d1ad9aced91b97a44576d5f974e0b9ea7599fd979b0"
+    },
+    {
+      "suite": "com.petplatform.architecture.ArchitectureRulesFixtureTest",
+      "tests": 15,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "sha256": "e8a8db9ab8a1a6034b4b0cd26a339d3ec534e8b7b1d10f4b034b71b9380505f2"
+    },
+    {
+      "suite": "com.petplatform.architecture.ArchitectureRulesTest",
+      "tests": 7,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "sha256": "542925d5a9a4738ae2db5becd5327da9bf83cb69ab93c837be06a780cbc290dc"
+    },
+    {
+      "suite": "com.petplatform.boot.adapter.web.merchant.MerchantApplicationCityHttpTest",
+      "tests": 3,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "sha256": "7567067bcc7434acaade6c477a43e120d9969ee1ba77060bbf4705a35ba60d68"
+    },
+    {
+      "suite": "com.petplatform.boot.adapter.web.merchant.MerchantApplicationHttpTest",
+      "tests": 5,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "sha256": "28749ccf7986580d31b3da73b25de641dd607e810acb8a3d492ffc7960eae248"
+    },
+    {
+      "suite": "com.petplatform.boot.adapter.web.merchant.MerchantHttpExceptionHandlerTest",
+      "tests": 1,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "sha256": "c82ee0ec6d348a79abdae993f3e9cf7ecac0c0d0f445d0af766c29dc306aba56"
+    },
+    {
+      "suite": "com.petplatform.boot.adapter.web.merchant.PrivateAssetHttpTest",
+      "tests": 9,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "sha256": "b1343ce312784e16e5d9ef8ff0ab0937c16f818d5d9b9ad8d162862aecf358d3"
+    },
+    {
+      "suite": "com.petplatform.boot.auth.AdminAuthDisabledTest",
+      "tests": 3,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "sha256": "7fec052214891a9ef857f77854a5c859bf227f9d250b6ac54817b043d6642663"
+    },
+    {
+      "suite": "com.petplatform.boot.auth.AdminAuthHttpTest",
+      "tests": 5,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "sha256": "6c90da6e8285ba5f7518a0b60f6a247830116ac3dc221360331de2525e6711e5"
+    },
+    {
+      "suite": "com.petplatform.boot.auth.CAuthDisabledTest",
+      "tests": 2,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "sha256": "21255f80a0a546fa2aeabeb82af672cec1c2f32693e8a2b868b8652ccb861731"
+    },
+    {
+      "suite": "com.petplatform.boot.auth.CAuthHttpTest",
+      "tests": 7,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "sha256": "95fba354e3cc41c55f945d3e4ca341415d7aad3a221c8a0ea78e072f363a87c0"
+    },
+    {
+      "suite": "com.petplatform.boot.auth.CFrontendHttpTest",
+      "tests": 1,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "sha256": "ed98df870ddc7c16838ae704a2b499253c6d068461928dcf5327417fc3746fa4"
+    },
+    {
+      "suite": "com.petplatform.boot.auth.CStoreControllerHttpTest",
+      "tests": 2,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "sha256": "4bc94124023ad043e7995437d054fab5ef9e36e252bc22465de6d924f96d6177"
+    },
+    {
+      "suite": "com.petplatform.boot.auth.MerchantAdmissionHttpTest",
+      "tests": 1,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "sha256": "ca686d6c77b275b500244cf25e846b02012032319b2880ba50937b00bcf0f4c1"
+    },
+    {
+      "suite": "com.petplatform.boot.auth.MerchantApplicationLifecycleHttpTest",
+      "tests": 1,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "sha256": "99a142fd6dbc7a3e9eca9576d615027072f096a6b8f2d989bab056d4c8b54626"
+    },
+    {
+      "suite": "com.petplatform.boot.auth.MerchantStaffAcceptanceHttpTest",
+      "tests": 2,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "sha256": "6b2fd048bb365547e901dd647150c4e91a923505ab86ffdcd5c886922581c180"
+    },
+    {
+      "suite": "com.petplatform.boot.auth.MerchantStaffHttpTest",
+      "tests": 1,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "sha256": "104bf95eae85b2de41957e56690b0faa6d63781191570d1d4def7ac9f920a5fd"
+    },
+    {
+      "suite": "com.petplatform.boot.auth.NotificationInboxHttpTest",
+      "tests": 1,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "sha256": "bff78ce118ffc67ca9b7d98f66e1255a16c9c56665280b05fcabc4fe4975ae86"
+    },
+    {
+      "suite": "com.petplatform.boot.auth.PrivateAssetAuthorizationMySqlTest",
+      "tests": 5,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "sha256": "0566418ad36b5e34c0babaa63f541294a2016291c8bcaf8701fea76a24f1ae4c"
+    },
+    {
+      "suite": "com.petplatform.boot.auth.PrivateAssetUploadHttpMySqlTest",
+      "tests": 1,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "sha256": "a3f27ae388249cf5cc97909590d95e4cbfd5a4cd0f2266518bd89c7e98dfb00f"
+    },
+    {
+      "suite": "com.petplatform.boot.auth.ScheduleAvailabilityHttpTest",
+      "tests": 1,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "sha256": "c17030e84bf3f2f034278b05c2f3bda4de7210bedd8c0a1d214cb7f1661db463"
+    },
+    {
+      "suite": "com.petplatform.boot.auth.ScheduleCapacityHttpTest",
+      "tests": 1,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "sha256": "d6740d7cdfe7f1e87d740c7db83dcf66bf9bd83d7cab2fe37c85f8fad0743e61"
+    },
+    {
+      "suite": "com.petplatform.boot.auth.ScheduleQueryDisabledTest",
+      "tests": 1,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "sha256": "529da1ffd01e46e5f3b5b5b3d106fe15a8698e87cffa13d96a5e5bcb7d9ee618"
+    },
+    {
+      "suite": "com.petplatform.boot.auth.ServiceQueryHttpTest",
+      "tests": 1,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "sha256": "be0d27f611022b927f16c62fb2f9d79be3b0a675d4385a11cb21da46b76dd075"
+    },
+    {
+      "suite": "com.petplatform.boot.auth.ServiceReviewedNotificationWiringHttpTest",
+      "tests": 1,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "sha256": "5c83bcdccf8a3b3ffacdfcc5960433bdd054c7b70176649de4e8cbaa19568e98"
+    },
+    {
+      "suite": "com.petplatform.boot.auth.ServiceWriteHttpTest",
+      "tests": 2,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "sha256": "5636e8a06904e49343f753b0893d395ec298aafd0ad0938e16e6679be6db2a15"
+    },
+    {
+      "suite": "com.petplatform.boot.booking.BookingCreateAcceptanceTest",
+      "tests": 16,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "sha256": "9f2fc6050201a844f11eff6d9769a8822cffe9ec1ed7659aed989a24b0654d94"
+    },
+    {
+      "suite": "com.petplatform.boot.booking.LateRefundAcceptanceTest",
+      "tests": 16,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "sha256": "ca5a67bfae7b872ba08de8442f5a2852147a1be0d4d30d1d2a0db0c04195d370"
+    },
+    {
+      "suite": "com.petplatform.boot.booking.PaymentCoordinationAcceptanceTest",
+      "tests": 12,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "sha256": "bed3438cdccaf930b4d28fdc5b886f61f68546af08a4ccbdfff21c66c074fa39"
+    },
+    {
+      "suite": "com.petplatform.boot.booking.PaymentDispatchConfigurationTest",
+      "tests": 3,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "sha256": "f40ee501f901ecb2e4a042ea9d843d86e7918c201aa590a329883942b3c5c77e"
+    },
+    {
+      "suite": "com.petplatform.boot.booking.PaymentFoundationAcceptanceTest",
+      "tests": 10,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "sha256": "519e95cf56b97e412cccbf0de324c6d933047c7e8f2c6abca492e049f0f5a464"
+    },
+    {
+      "suite": "com.petplatform.boot.booking.ScheduleSelectionHttpContractTest",
+      "tests": 4,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "sha256": "562246cd27bb39967999dfbf76083947305ed2b91bfb4e7a7ec849245468b969"
+    },
+    {
+      "suite": "com.petplatform.boot.booking.SelectionExpiryAcceptanceTest",
+      "tests": 7,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "sha256": "d2ff10146c916dcca601d143f749c211294f7f247fe1e640a2f0c674c22105dd"
+    },
+    {
+      "suite": "com.petplatform.boot.config.LateRefundConfigurationTest",
+      "tests": 4,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "sha256": "0ce6de5a5c4c80b5b491cd1a0d1d305cbba16d2af56b2d6a1e9fc3b8a6d69fbd"
+    },
+    {
+      "suite": "com.petplatform.boot.config.MerchantApplicationAuthorizationAdapterTest",
+      "tests": 3,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "sha256": "1e21efca1f6cfd5ad54e732871b858c4483e6798ef80c77ce0fa9eece8d779a0"
+    },
+    {
+      "suite": "com.petplatform.boot.config.MerchantApplicationCityCatalogTest",
+      "tests": 3,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "sha256": "4224db65e80554a5b4e84d17b67973993907c5d654d5b128232db5226f94978e"
+    },
+    {
+      "suite": "com.petplatform.boot.config.MerchantApplicationRuntimeConfigurationTest",
+      "tests": 2,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "sha256": "3af649875de5ea441af3b1176fcb199207c2d6e007c44488c78ddd7bd3770686"
+    },
+    {
+      "suite": "com.petplatform.boot.config.MerchantLocationInputValidationConfigurationTest",
+      "tests": 2,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "sha256": "721019dfbf6b7127e66364e92c9b333f358da1d2148fb55c1d54f5a8d87aa8a0"
+    },
+    {
+      "suite": "com.petplatform.boot.config.PrivateAssetReadAuthorizationAdapterTest",
+      "tests": 2,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "sha256": "ebff91dfaf2c12b59b51a35e0fa39cb10e5685f000e7ac6ec57e45d097e70edc"
+    },
+    {
+      "suite": "com.petplatform.boot.config.PrivateAssetRuntimeConfigurationTest",
+      "tests": 3,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "sha256": "8711ea3c5bfa4c317e3422000c6532ab14ad450fa54b5381804e42c4e6a10dc6"
+    },
+    {
+      "suite": "com.petplatform.boot.config.ServiceCoverSigningConfigurationTest",
+      "tests": 2,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "sha256": "14cb9cbc0e24b68ad08c282a1c8fbeb90a2a18505ae4d67d8d213cccfd71c0aa"
+    },
+    {
+      "suite": "com.petplatform.boot.reservation.ReservationProtectionFoundationAcceptanceTest",
+      "tests": 21,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "sha256": "b1bc4a10d86893af4456c1353738c6d015a5788edc79132e8b10fdaa6b1b499f"
+    },
+    {
+      "suite": "com.petplatform.boot.web.GlobalApiHandlerTest",
+      "tests": 4,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "sha256": "1942ec341cce95c558346e7028a84edb1ade0c6626379218adfc97a5b7953fae"
+    },
+    {
+      "suite": "com.petplatform.boot.web.TraceContextFilterTest",
+      "tests": 3,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "sha256": "531f2f3fa150f7832aecf06ded6e4f016ac2c02d0920cdb3a80ebabf0930be25"
+    },
+    {
+      "suite": "com.petplatform.common.ApiEnvelopeTest",
+      "tests": 5,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "sha256": "be3b41f999da4fdce807ef09598d1e1c9b9ed168c4465c9dc447c54141d83591"
+    },
+    {
+      "suite": "com.petplatform.common.MoneyCodecTest",
+      "tests": 28,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "sha256": "835003b337d829832823e0a392abc703cc595d211c774acac1920d003d9fc589"
+    },
+    {
+      "suite": "com.petplatform.common.PublicContractChecksTest",
+      "tests": 20,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "sha256": "4668eb23c20adcab2cbd5264700ff10c2ef301d2e9a4079e500f880eb8de7fc4"
+    },
+    {
+      "suite": "com.petplatform.common.PublicIdCodecTest",
+      "tests": 22,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "sha256": "5ce543fe7d2d28ebabc19aa4390692ea7d23e13b12c20bfbab6c07946cb4914b"
+    },
+    {
+      "suite": "com.petplatform.common.S1ContractMappingTest",
+      "tests": 4,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "sha256": "d4b644924f7ca8fff3abcff876ab6011ae62f3377cba8a1182be061b4662d7ad"
+    },
+    {
+      "suite": "com.petplatform.event.core.OutboxConsumeIdempotencyMySqlTest",
+      "tests": 3,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "sha256": "0185ccc9fe8e5d524e025bc2ba93affaa35740e597744b0e782148d13f4c56bd"
+    },
+    {
+      "suite": "com.petplatform.event.core.OutboxRecoveryMySqlTest",
+      "tests": 3,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "sha256": "10eb3e1f50d3df53ca9c11b7bf31991de16e8a581b6288ec1df72596e80cb1de"
+    },
+    {
+      "suite": "com.petplatform.event.core.OutboxSameTransactionMySqlTest",
+      "tests": 4,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "sha256": "8a11c4714da972fd5a334e80d2bc6013caeceddb8875f265b641cc9719d44e00"
+    },
+    {
+      "suite": "com.petplatform.id.core.HutoolSnowflakeIdProviderMySqlTest",
+      "tests": 13,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "sha256": "d7094721fc4f94d69dd7f3b8e9e7493671dc0cf277ab931949fe6f53dc7f26cd"
+    },
+    {
+      "suite": "com.petplatform.id.core.IdProviderProcessMySqlTest",
+      "tests": 1,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "sha256": "5c1aad0f0008fc8e365e7dda2e9f72bfacd8e5a7fa6919ec81e1cf841b575ccb"
+    },
+    {
+      "suite": "com.petplatform.id.core.JdbcSnowflakeNodeStoreMySqlTest",
+      "tests": 11,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "sha256": "433d89b4f456c06d16381365e24f734c76efadc55ec6c89fc7b3dbeb9045cf55"
+    },
+    {
+      "suite": "com.petplatform.id.core.PooledSnowflakeMySqlTest",
+      "tests": 5,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "sha256": "8306e860e8a9096a373538fde42b451ad68763ae0b2d9e7f2461b978fea1b818"
+    },
+    {
+      "suite": "com.petplatform.id.core.SingleFlightLaneTest",
+      "tests": 6,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "sha256": "7c075b7e2023bfc83bdccb798ef7dae157b12cb9b0943d3a0a6c2bd0adf5b4af"
+    },
+    {
+      "suite": "com.petplatform.id.core.SnowflakeSchemaMySqlTest",
+      "tests": 1,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "sha256": "eed5a24eed513444a0db1bf845957201191192eb1432ffa540fc96d0a6479671"
+    },
+    {
+      "suite": "com.petplatform.id.core.SnowflakeSettingsTest",
+      "tests": 4,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "sha256": "1ba21f30707d81e566e1e7a5682e3b18973d0bb8c6e2fda2fdba8244679e2574"
+    },
+    {
+      "suite": "com.petplatform.merchant.api.MerchantDtoSerializationTest",
+      "tests": 1,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "sha256": "18c7a04aecd77649eb2d1bd20cbb40946b7b09fda0fbaa2060a66e881d7e9dec"
+    },
+    {
+      "suite": "com.petplatform.merchant.biz.infrastructure.provider.AesGcmProtectedValueProviderTest",
+      "tests": 6,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "sha256": "7f42e6a93429929abea70f544b79ea98a56e9b1763cab694bddf10893dcdf966"
+    },
+    {
+      "suite": "com.petplatform.merchant.biz.infrastructure.provider.LocationInputValidationProviderTest",
+      "tests": 2,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "sha256": "54da54ee584a057004095fee2860497f09268c7c15683382aee18e761e312be3"
+    },
+    {
+      "suite": "com.petplatform.merchant.biz.infrastructure.provider.MainlandSubjectCredentialProviderTest",
+      "tests": 7,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "sha256": "f1977f05c4d3cdab85cf8f32fc9083f0b45f2c94075a18a5278c6d240d982228"
+    },
+    {
+      "suite": "com.petplatform.merchant.biz.MerchantAgreementApiMySqlTest",
+      "tests": 18,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "sha256": "bd0b83066ea3d492047ca2ae3fe8b62d3ed29ad8697a391e1dd51037cebf3cab"
+    },
+    {
+      "suite": "com.petplatform.merchant.biz.MerchantApplicationHttpProjectionMySqlTest",
+      "tests": 2,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "sha256": "c49c70454fff4079ea32aed357af1df5e5b251226faa440dcf6d4c687651ba51"
+    },
+    {
+      "suite": "com.petplatform.merchant.biz.MerchantApplicationIdempotencyMySqlTest",
+      "tests": 4,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "sha256": "505097a6fb96e4f4cb82e4939e836f0c7b0cbbea3108bc220b06786b0f7aa15c"
+    },
+    {
+      "suite": "com.petplatform.merchant.biz.MerchantApplicationRuntimeMySqlTest",
+      "tests": 5,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "sha256": "d2e7c86a910bd25eec5813b0179ce223b05cad01cb57622796266dc4020e8519"
+    },
+    {
+      "suite": "com.petplatform.merchant.biz.MerchantApplicationSafetyMySqlTest",
+      "tests": 10,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "sha256": "79308f13caa8c85acf7b252f95f57487ad3b2c09dded85a8f0997972e9da7fdc"
+    },
+    {
+      "suite": "com.petplatform.merchant.biz.MerchantApplicationSchemaMySqlTest",
+      "tests": 5,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "sha256": "6300950ac10cf835c8af48472e9ce1cf2a2d11558f267f5e3038d0670d175c77"
+    },
+    {
+      "suite": "com.petplatform.merchant.biz.MerchantQueryApiMySqlTest",
+      "tests": 9,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "sha256": "c65832c2f75b13e68a64b0e3a1839e627616fa3a45b4ecf8509209a92fc40b87"
+    },
+    {
+      "suite": "com.petplatform.merchant.biz.MerchantStaffApiMySqlTest",
+      "tests": 7,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "sha256": "ed1fe55bd1539721557d7e9c06025a9b2aeacd9fbb3bcc03d23bf86ba2535e66"
+    },
+    {
+      "suite": "com.petplatform.merchant.biz.MerchantStoreStaffFactsApiMySqlTest",
+      "tests": 2,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "sha256": "80c6e73f15ba83375e9040ca3335e59cec44fd1b838a2187ff5270921fd85be6"
+    },
+    {
+      "suite": "com.petplatform.notification.biz.MerchantApplicationReviewedConsumerMySqlTest",
+      "tests": 6,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "sha256": "475eee40074a3f12d93b8b3ceef9c731ddae748862338ea7b6f799cc7bfc884b"
+    },
+    {
+      "suite": "com.petplatform.notification.biz.ServiceReviewedConsumerMySqlTest",
+      "tests": 8,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "sha256": "6b594cc45444c661ff2b8ff0c1f6732f9652923ef373d359094be0a1ab46bf04"
+    },
+    {
+      "suite": "com.petplatform.order.biz.OrderCreationMySqlTest",
+      "tests": 18,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "sha256": "740a19e746b1e039eead7a18de29356d253eb1b44258f5cc4f63a8f4ba2e3ea9"
+    },
+    {
+      "suite": "com.petplatform.order.biz.OrderProtectionFactsMySqlTest",
+      "tests": 7,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "sha256": "0df1bd6354fcc19c1ebe52e410ab1165f353df16637b8471dca95f0e6c15be06"
+    },
+    {
+      "suite": "com.petplatform.payment.biz.application.PaymentRefundServiceMySqlTest",
+      "tests": 2,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "sha256": "3275edf1c5c44092c23bf2cfbfbc1061ef8ca1b8ce1675f355f2519c8a22b769"
+    },
+    {
+      "suite": "com.petplatform.payment.biz.infrastructure.provider.LakalaHttpClientQaTest",
+      "tests": 9,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "sha256": "833c2b492b16b3bf592debf83a4172ead8b3100c129dd952f10ed0be7c9fc3ed"
+    },
+    {
+      "suite": "com.petplatform.payment.biz.infrastructure.provider.LakalaProtocolTest",
+      "tests": 6,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "sha256": "08f026d1929f2c0a1950edfee0bfa344fefe67e19186aaef00c296e8819af8d5"
+    },
+    {
+      "suite": "com.petplatform.payment.biz.infrastructure.provider.LakalaRefundHttpClientTest",
+      "tests": 3,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "sha256": "293bbf671febf0aa0681e8681de228ac8a40a2e00b0c5c3f1a0a8c2b45af7627"
+    },
+    {
+      "suite": "com.petplatform.payment.biz.infrastructure.provider.LakalaRefundProtocolTest",
+      "tests": 3,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "sha256": "9705b6072f6bef42135ea509ce40cc21ad01ed66b996e4c0456d5a84706c8b2a"
+    },
+    {
+      "suite": "com.petplatform.schedule.biz.CapacityFeasibilitySolverTest",
+      "tests": 9,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "sha256": "d8efc02ba813fe08753ce1fbed0f36006306488245e76d619a53dba5b5c86d9a"
+    },
+    {
+      "suite": "com.petplatform.schedule.biz.ReservationConfirmMySqlTest",
+      "tests": 1,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "sha256": "befd4dc34fed547ba6531b7f14a65d187c73d10b243761e7e20fe4d8b07ac51a"
+    },
+    {
+      "suite": "com.petplatform.schedule.biz.ReservationHoldMySqlTest",
+      "tests": 6,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "sha256": "1b6a949343c23eb0f8b6d54155f344773ccbca352692f70d8e75df13ae4b174c"
+    },
+    {
+      "suite": "com.petplatform.schedule.biz.ScheduleProtectionFoundationMySqlTest",
+      "tests": 5,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "sha256": "ce26855ff46eb3e8289ff4c712e196cee13ef2e1e8dd23670a17a5b510c1778c"
+    },
+    {
+      "suite": "com.petplatform.schedule.biz.ScheduleQualifiedStaffFactsMySqlTest",
+      "tests": 2,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "sha256": "4163547ee7179d3b3056dc4e9fd4d04aecbf0de52edf19be882879a0e7d631b7"
+    },
+    {
+      "suite": "com.petplatform.schedule.biz.ScheduleSelectionQueryMySqlTest",
+      "tests": 4,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "sha256": "32988ac8e9a667a48c176a8adaab2958398e1ee9cd379aaf42fa6a92ab9f3292"
+    },
+    {
+      "suite": "com.petplatform.task.core.AsyncTaskWorkerMySqlTest",
+      "tests": 10,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "sha256": "d5b774918a04db851fc289d63f9d22c9ff7cf52b6702f9dfcff5327e40489265"
+    },
+    {
+      "suite": "com.petplatform.task.core.JdbcAsyncTaskSubmitterTest",
+      "tests": 2,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "sha256": "e34b3ede177d88fedc62a4de3d65e37339038ac7d9a6486a39c26a81eb7b5ad4"
+    },
+    {
+      "suite": "com.petplatform.task.core.MySqlTaskRepositoryTest",
+      "tests": 12,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "sha256": "01d4dcea66909ab9aa222a20f8efa3930e14a728145ff04eb1345d7832f00e4d"
+    },
+    {
+      "suite": "com.petplatform.thirdparty.biz.infrastructure.oss.S3PrivateObjectStoreTest",
+      "tests": 5,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "sha256": "33d0e6ce260da73365fc055a7c8e3230816b2cd62e55b095c81d6f3a165b3fc6"
+    },
+    {
+      "suite": "com.petplatform.thirdparty.biz.infrastructure.oss.S3ServiceCoverObjectSignerTest",
+      "tests": 2,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "sha256": "d3d8073562fefb86b2886d77c74bb2f53544f2bd447df4cbe5c8d0b80965784d"
+    },
+    {
+      "suite": "com.petplatform.thirdparty.biz.infrastructure.provider.assetimage.PrivateImageProvidersTest",
+      "tests": 9,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "sha256": "c2748e722c77f713c3a7f97cfa22587f690d8d5a20069250f230515adcdd039e"
+    },
+    {
+      "suite": "com.petplatform.thirdparty.biz.OssAssetSyncMySqlTest",
+      "tests": 1,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "sha256": "4794c78753f1d1b82832252cf24d5474b5843554f5a65f708e9f4e779cffe827"
+    },
+    {
+      "suite": "com.petplatform.thirdparty.biz.PresignedAssetUrlTest",
+      "tests": 3,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "sha256": "f31f9e3cc27ba62f8ccc189d11c0a77a150b0ba5a2717c16156831b2a41fafce"
+    },
+    {
+      "suite": "com.petplatform.thirdparty.biz.PrivateAssetCoreMySqlTest",
+      "tests": 6,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "sha256": "8291a68c6a7ae1a45a9e51f77c23c26f6efe5eb4a8e1ccd11986ce1af839c458"
+    },
+    {
+      "suite": "com.petplatform.thirdparty.biz.ServiceCoverSigningMySqlTest",
+      "tests": 3,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "sha256": "1fa4b486ec29258e1d8adab65fcb448da7fafd0369bd3f0ba322b28a18da13ea"
+    },
+    {
+      "suite": "com.petplatform.user.biz.PaymentIdentityApiMySqlTest",
+      "tests": 3,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "sha256": "682bf3d63dace1817728eecc82f664cf2e8f294163b686c215caba52ae379165"
+    },
+    {
+      "suite": "com.petplatform.user.biz.UserAuthServiceMySqlTest",
+      "tests": 13,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "sha256": "354b423711248a7eeb2c049107bb6e34fd84cc444e10e9e2f27efe0aa4fa3b3c"
+    },
+    {
+      "suite": "com.petplatform.user.biz.UserPetDomainMySqlTest",
+      "tests": 5,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "sha256": "e53cb73fe59d08d7bae4fcbdd2ce8e5dd049526d7e9b256079914f438f620fde"
+    },
+    {
+      "suite": "com.petplatform.user.biz.WechatMiniApiProviderTest",
+      "tests": 6,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "sha256": "1919d383e988e1a605ae4e3063fab56d485515efdd912579ff05b1aea9aec92c"
+    }
+  ]
+}

@@ -1,0 +1,27 @@
+{
+  "scope": "Initial PR90 merge closeout/document preparation checks; subsequent B implementation evidence is in b-local-tests.json and B-IMPLEMENTATION.md",
+  "baseline": "b1b2f8f4c434b6b638fc00f9bf5da405f1a28435",
+  "baselineCi": {
+    "runId": 36431126385,
+    "jobsSucceeded": 6,
+    "surefireReports": 104,
+    "tests": 614,
+    "failures": 0,
+    "errors": 0,
+    "skipped": 0
+  },
+  "localChecks": {
+    "moduleDependencies": "PASS",
+    "displayStatusOwnership": "PASS",
+    "productionPersistenceStyle": "PASS",
+    "architectureScriptTests": { "tests": 18, "result": "PASS" },
+    "contractSmoke": { "operations": 90, "writesWithRequestId": 57, "result": "PASS_OFFLINE_DOCUMENT_SMOKE" },
+    "contractTests": { "tests": 115, "result": "PASS" },
+    "changedCurrentDocumentLinks": "PASS",
+    "artifactTotals": "PASS",
+    "gitDiffCheck": "PASS"
+  },
+  "autoConfirmBusinessTests": "B task preparation: 23 local tests PASS in b-local-tests.json. Actual confirmation/repair execution NOT_EXECUTED: A remains pending",
+  "newPrCi": "See live PR checks; not included in baseline evidence",
+  "productionChanges": "NONE"
+}

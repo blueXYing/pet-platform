@@ -45,6 +45,15 @@ logging:
 # application-local.yml (copy application-local.yml.example) or via the environment
 # variables below at deployment time. Never commit real credentials.
 pet:
+  order:
+    auto-confirm:
+      enabled: false
+      worker:
+        enabled: false
+      repair:
+        enabled: false
+      inspection:
+        enabled: false
   private-assets:
     enabled: ${PRIVATE_ASSETS_ENABLED:false}
   store:
