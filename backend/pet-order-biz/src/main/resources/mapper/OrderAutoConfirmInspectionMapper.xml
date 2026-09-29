@@ -7,8 +7,10 @@
            o.current_refund_application_id,o.current_aftersale_id,o.reschedule_count,
            o.paid_at,o.confirm_deadline,o.confirmed_at,o.canceled_at,o.confirm_mode,
            o.pay_amount,o.refunded_amount,p.payment_id,p.source_event_id,p.result_type,
-           p.channel_paid_at,p.channel_paid_amount
+           p.channel_paid_at,p.channel_paid_amount,r.rescheduled_at,r.new_confirm_deadline AS reschedule_deadline,
+           r.new_start AS reschedule_start,r.new_end AS reschedule_end,o.appointment_start_at,o.appointment_end_at
     FROM pet_order o LEFT JOIN order_payment_result p ON p.order_id=o.id
+    LEFT JOIN order_reschedule_record r ON r.order_id=o.id AND r.reservation_id=o.reservation_id AND r.user_id=o.user_id AND r.store_id=o.store_id
     WHERE o.order_stage='PENDING_CONFIRM' AND o.id &gt; #{afterOrderId}
     ORDER BY o.id LIMIT #{limit}
   </select>

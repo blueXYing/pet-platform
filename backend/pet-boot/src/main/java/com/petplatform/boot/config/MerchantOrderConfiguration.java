@@ -38,7 +38,7 @@ public class MerchantOrderConfiguration {
     static class Runtime {
         @Bean @ConditionalOnMissingBean(RefundOrderFactsApi.class)
         RefundOrderFactsApi merchantRefundPresence(DataSource s,ScheduleCapacityGuardApi guard){return new com.petplatform.refund.biz.apiimpl.RefundOrderFactsApiImpl(s,guard);}
-        @Bean OrderMerchantRejectFactsApi merchantRejectFacts(DataSource s,ScheduleCapacityGuardApi g){return new OrderMerchantRejectFactsApiImpl(s,g);}
+        @Bean OrderMerchantRejectFactsApi merchantRejectFacts(DataSource s,ScheduleCapacityGuardApi g,ReservationConfirmApi reservation){return new OrderMerchantRejectFactsApiImpl(s,g,reservation);}
         @Bean MerchantOrderAuthorityApi merchantOrderAuthority(DataSource s,ScheduleCapacityGuardApi g){return new MerchantOrderAuthorityApiImpl(s,g);}
         @Bean @ConditionalOnMissingBean(MerchantOrderPorts.Protection.class)
         MerchantOrderPorts.Protection merchantOrderProtection(@Value("${pet.order.merchant.protection-key}") String key){

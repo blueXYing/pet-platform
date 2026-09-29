@@ -658,6 +658,8 @@ class PaymentFoundationAcceptanceTest {
       }
     }
 
+    CreateOrderResult book(CreateOrderCommand command) { return creation.create(command); }
+
     CreateOrderResult book() {
       OffsetDateTime start = OffsetDateTime.parse("2030-01-01T09:00:00Z");
       return creation.create(new CreateOrderCommand(new CommandContext(UUID.randomUUID().toString(),

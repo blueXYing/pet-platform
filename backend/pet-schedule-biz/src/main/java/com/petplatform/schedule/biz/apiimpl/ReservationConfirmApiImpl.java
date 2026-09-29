@@ -107,6 +107,33 @@ public final class ReservationConfirmApiImpl implements ReservationConfirmApi {
         }
     }
 
+    @Override public void assertRescheduled(String orderId,String reservationId,String storeId,String changeId,long version,
+            java.time.OffsetDateTime start,java.time.OffsetDateTime end,boolean releasedAllowed,QueryContext context) {
+        guard.requireHeld(storeId,source);
+        try {
+            var m=ScheduleMybatis.template(source).getMapper(com.petplatform.schedule.biz.infrastructure.persistence.mapper.ScheduleSwapMapper.class);
+            String raw=m.snapshot(IDS.fromApi(changeId),IDS.fromApi(orderId),IDS.fromApi(reservationId),IDS.fromApi(storeId),version);
+            if(raw==null)throw unavailable();
+            var json=new com.fasterxml.jackson.databind.ObjectMapper().registerModule(new com.fasterxml.jackson.datatype.jsr310.JavaTimeModule());
+            var node=json.readTree(raw);
+            var recorded=json.treeToValue(node.path("reservation"),com.petplatform.schedule.api.dto.ScheduleProtectionTypes.ReservationFact.class);
+            var current=facts.readStore(storeId,context);
+            if(current==null||!current.complete())throw unavailable();
+            var r=current.reservations().stream().filter(x->reservationId.equals(x.reservationId())).findFirst().orElseThrow(ReservationConfirmApiImpl::unavailable);
+            boolean released="RELEASED".equals(r.status());
+            if(!orderId.equals(recorded.orderId())||!reservationId.equals(recorded.reservationId())||!storeId.equals(recorded.storeId())
+                ||!Long.toString(version).equals(recorded.version())||!"CONFIRMED".equals(recorded.status())
+                ||!start.isEqual(r.startAt())||!end.isEqual(r.endAt())||!recorded.startAt().isEqual(start)||!recorded.endAt().isEqual(end)
+                ||!recorded.userId().equals(r.userId())||!recorded.merchantId().equals(r.merchantId())||!recorded.serviceId().equals(r.serviceId())
+                ||!recorded.fulfillmentType().equals(r.fulfillmentType())||!Objects.equals(recorded.pickupStartAt(),r.pickupStartAt())||!Objects.equals(recorded.returnStartAt(),r.returnStartAt())
+                ||!(releasedAllowed&&released||"CONFIRMED".equals(r.status()))||Long.parseLong(r.version())!=version+(released?1:0))throw unavailable();
+            var expected=new java.util.HashSet<com.petplatform.schedule.api.dto.ScheduleProtectionTypes.ClaimFact>();
+            for(var claim:node.path("claims"))expected.add(json.treeToValue(claim,com.petplatform.schedule.api.dto.ScheduleProtectionTypes.ClaimFact.class));
+            var actual=new java.util.HashSet<>(current.claims().stream().filter(x->reservationId.equals(x.reservationId())).toList());
+            if(expected.isEmpty()||!expected.equals(actual))throw unavailable();
+        } catch(Exception failure){rollbackOnly();throw unavailable();}
+    }
+
     private Hold read(String orderId, String reservationId, String storeId) {
         Map<String, Object> row = mapper.lockReservation(IDS.fromApi(reservationId));
         if (row == null) throw unavailable();

@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.petplatform.task.core.mapper.TaskCancellationMapper">
+  <select id="lock" resultType="long" useCache="false" flushCache="true">
+    SELECT id FROM async_task WHERE task_key=#{key} FOR UPDATE
+  </select>
+  <update id="cancel">
+    UPDATE async_task SET status='CANCELED',version=version+1,lease_owner=NULL,lease_until=NULL,
+      finished_at=UTC_TIMESTAMP(3),updated_at=UTC_TIMESTAMP(3),last_result_code='OWNER_CANCELED'
+    WHERE id=#{id} AND status IN ('READY','RETRY_WAIT','RUNNING')
+  </update>
+  <update id="finishAttempts">
+    UPDATE async_task_attempt SET result='NOOP',error_code='OWNER_CANCELED',finished_at=UTC_TIMESTAMP(3),
+      duration_ms=GREATEST(0,TIMESTAMPDIFF(MICROSECOND,started_at,UTC_TIMESTAMP(3)) DIV 1000)
+    WHERE task_id=#{id} AND finished_at IS NULL
+  </update>
+</mapper>

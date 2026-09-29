@@ -42,7 +42,7 @@ class MerchantOrderHttpTest {
     }
     @Test void duplicateUnknownNullAndWrongRoundFieldsAreRejectedBeforeBusiness() throws Exception {
         var mvc=mvc(null);
-        for(String body:List.of("{}","{\"expectedConfirmRound\":1}","{\"expectedConfirmRound\":0.0}","{\"expectedConfirmRound\":0,\"internalNote\":null}",
+        for(String body:List.of("{}","{\"expectedConfirmRound\":2}","{\"expectedConfirmRound\":0.0}","{\"expectedConfirmRound\":0,\"internalNote\":null}",
             "{\"expectedConfirmRound\":0,\"expectedConfirmRound\":0}","{\"expectedConfirmRound\":0,\"operatorId\":\"999\"}"))
             mvc.perform(post("/api/v1/merchant/orders/123/confirm").header("Authorization","Bearer valid").header("X-Request-Id",UUID.randomUUID().toString())
                 .contentType(MediaType.APPLICATION_JSON).content(body)).andExpect(status().isBadRequest());

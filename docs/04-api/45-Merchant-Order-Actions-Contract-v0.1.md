@@ -1,3 +1,5 @@
+> 2026-09-29: [Contract 46](46-Order-Reschedule-Contract-v0.1.md) extends expectedConfirmRound and immutable decisions to 0/1. Use paidAt+30min for round 0, rescheduledAt+30min for round 1; request binding and refund origin include the selected round. No production enablement.
+
 # 商家首轮确认、拒单及退款契约 v0.1
 
 2026-09-29 用户批准[CCR D1/D2/D3](../../planning/ccr/CCR-W2-API-001/merchant-order-actions-proposal.md)。该回执§2～6的字段、事务、权限、退款来源及持久化定义在本版本冻结；首切片主账号、round0，开关默认关闭，不合并或生产启用。员工权限和完整ORD-001没有因此完成。

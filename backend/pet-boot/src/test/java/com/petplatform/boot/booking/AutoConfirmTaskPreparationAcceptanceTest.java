@@ -186,7 +186,7 @@ class AutoConfirmTaskPreparationAcceptanceTest {
             var event = paidEvent(f); String order = order(event); f.result.consume(event);
             var query = inspector(f);
             f.db.jdbc.update("UPDATE pet_order SET reschedule_count=1 WHERE id=?", Long.parseLong(order));
-            assertEquals(Finding.UNSUPPORTED_ROUND, query.inspect(SYSTEM, null, 10).items().getFirst().finding());
+            assertEquals(Finding.ORDER_FACTS_REQUIRE_REVIEW, query.inspect(SYSTEM, null, 10).items().getFirst().finding());
             f.db.jdbc.update("UPDATE pet_order SET reschedule_count=0,current_refund_application_id=888 WHERE id=?", Long.parseLong(order));
             assertEquals(Finding.ORDER_FACTS_REQUIRE_REVIEW, query.inspect(SYSTEM, null, 10).items().getFirst().finding());
             f.db.jdbc.update("UPDATE pet_order SET current_refund_application_id=NULL,confirm_deadline=DATE_ADD(confirm_deadline,INTERVAL 1 SECOND) WHERE id=?", Long.parseLong(order));

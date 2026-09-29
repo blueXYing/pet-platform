@@ -87,6 +87,14 @@ public final class ScheduleCapacityProofApiImpl implements ScheduleCapacityProof
 
     /** The candidate and its diagnostic counts are derived from the same locked facts as the proof. */
     HoldProofPlan prepareForHold(CapacityProofQuery query) {
+        return prepare(query, null);
+    }
+
+    HoldProofPlan prepareForSwap(CapacityProofQuery query, String reservationId) {
+        return prepare(query, reservationId);
+    }
+
+    private HoldProofPlan prepare(CapacityProofQuery query, String replacedId) {
         validateQuery(query);
         guard.requireHeld(query.storeId(), source);
         try {
@@ -112,7 +120,15 @@ public final class ScheduleCapacityProofApiImpl implements ScheduleCapacityProof
             List<Staff> staff = staff(people, employees.merchantId(), capabilities, availability);
             Map<String, OrderProtectionFact> ordersByReservation = orderFacts(orders);
             List<Reservation> reservations = reservations(schedule, windows, ordersByReservation);
-            reservations.add(new Reservation(CANDIDATE_ID, query.serviceId(), candidateClaims, null));
+            String fixedStaff = null;
+            if (replacedId != null) {
+                var old = reservations.stream().filter(r -> replacedId.equals(r.id())).findFirst()
+                    .orElseThrow(() -> new ApiException(CommonApiCodes.DEPENDENCY_UNAVAILABLE, "Swap source absent"));
+                if (!query.serviceId().equals(old.serviceId())) bad("Swap service changed");
+                fixedStaff = old.fixedStaffId();
+                reservations.remove(old);
+            }
+            reservations.add(new Reservation(CANDIDATE_ID, query.serviceId(), candidateClaims, fixedStaff));
             List<Window> capacity = schedule.windows().stream()
                     .map(window -> new Window(window.windowId(), window.configuredCapacity())).toList();
             CapacityFeasibilitySolver.Result result =

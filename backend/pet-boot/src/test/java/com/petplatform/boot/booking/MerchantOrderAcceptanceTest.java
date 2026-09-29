@@ -189,7 +189,7 @@ class MerchantOrderAcceptanceTest {
             String o=f.paid();var c=f.command(o,"REJECT");
             for(String reason:List.of("1234"," ".repeat(10),"a".repeat(201),"\uD83D\uDC36".repeat(201),"broken\uD800"))
                 code(CommonApiCodes.INVALID_ARGUMENT,()->f.service.decide(new Command(c.context(),o,0,"REJECT","OTHER",reason,null)));
-            code(CommonApiCodes.INVALID_ARGUMENT,()->f.service.decide(new Command(c.context(),o,1,"REJECT","OTHER","valid reason",null)));
+            code(CommonApiCodes.INVALID_ARGUMENT,()->f.service.decide(new Command(c.context(),o,2,"REJECT","OTHER","valid reason",null)));
             code(CommonApiCodes.INVALID_ARGUMENT,()->f.service.decide(new Command(c.context(),o,0,"REJECT","NEW_REASON","valid reason",null)));
             assertEquals(0,f.f.count("SELECT COUNT(*) FROM order_merchant_command"));
             assertNotNull(f.service.decide(new Command(c.context(),o,0,"REJECT","OTHER","\uD83D\uDC36".repeat(5),null)).refundOrderId());
@@ -257,7 +257,7 @@ class MerchantOrderAcceptanceTest {
     private static void code(String code,org.junit.jupiter.api.function.Executable work){assertEquals(code,assertThrows(ApiException.class,work).code());}
     static final class F implements AutoCloseable {
         final PaymentFoundationAcceptanceTest.Fixture f=new PaymentFoundationAcceptanceTest.Fixture(Clock.systemUTC(),true);
-        final OrderMerchantRejectFactsApiImpl facts=new OrderMerchantRejectFactsApiImpl(f.db.source,f.guard);
+        final OrderMerchantRejectFactsApiImpl facts=new OrderMerchantRejectFactsApiImpl(f.db.source,f.guard,new ReservationConfirmApiImpl(f.db.source,IDS::incrementAndGet,f.guard,new ScheduleProtectionFactsApiImpl(f.db.source,f.guard),new OrderPaymentFactsApiImpl(f.db.source,f.guard)));
         final PaymentSuccessFactsApiImpl paid=new PaymentSuccessFactsApiImpl(f.db.source,f.guard);
         final LateRefundService refunds=new LateRefundService(f.db.source,IDS::incrementAndGet,f.guard,
             new OrderLatePaymentFactsApiImpl(f.db.source,f.guard,f.reservationExpiry),paid,f.publisher,facts);
@@ -274,7 +274,7 @@ class MerchantOrderAcceptanceTest {
             var payment=new PaymentSuccessFactsApiImpl(source,guard);
             var outbox=new TransactionalOutboxPublisher(source,IDS::incrementAndGet,JSON);
             var refund=new LateRefundService(source,IDS::incrementAndGet,guard,
-                new OrderLatePaymentFactsApiImpl(source,guard,f.reservationExpiry),payment,outbox,new OrderMerchantRejectFactsApiImpl(source,guard));
+                new OrderLatePaymentFactsApiImpl(source,guard,f.reservationExpiry),payment,outbox,new OrderMerchantRejectFactsApiImpl(source,guard,new ReservationConfirmApiImpl(source,IDS::incrementAndGet,guard,new ScheduleProtectionFactsApiImpl(source,guard),new OrderPaymentFactsApiImpl(source,guard))));
             return new MerchantOrderService(source,IDS::incrementAndGet,guard,new MerchantOrderAuthorityApiImpl(source,guard),payment,
                 new ReservationConfirmApiImpl(source,IDS::incrementAndGet,guard,new ScheduleProtectionFactsApiImpl(source,guard),new OrderPaymentFactsApiImpl(source,guard)),
                 new RefundOrderFactsApiImpl(source,guard),refund,outbox,new MerchantOrderAesProtection(new byte[32]),

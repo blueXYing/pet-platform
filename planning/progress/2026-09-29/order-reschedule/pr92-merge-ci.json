@@ -1,0 +1,38 @@
+{
+  "conclusion": "success",
+  "headSha": "be1cb681057caf2276df8ed436ac2111b4fc7bd4",
+  "jobs": [
+    {
+      "conclusion": "success",
+      "name": "repository-policy",
+      "url": "https://github.com/blueXYing/pet-platform/actions/runs/36527580700/job/109273896156"
+    },
+    {
+      "conclusion": "success",
+      "name": "backend",
+      "url": "https://github.com/blueXYing/pet-platform/actions/runs/36527580700/job/109273896437"
+    },
+    {
+      "conclusion": "success",
+      "name": "frontend-inventory",
+      "url": "https://github.com/blueXYing/pet-platform/actions/runs/36527580700/job/109273896504"
+    },
+    {
+      "conclusion": "success",
+      "name": "contract-smoke",
+      "url": "https://github.com/blueXYing/pet-platform/actions/runs/36527580700/job/109273896547"
+    },
+    {
+      "conclusion": "success",
+      "name": "web-build",
+      "url": "https://github.com/blueXYing/pet-platform/actions/runs/36527580700/job/109273922782"
+    },
+    {
+      "conclusion": "success",
+      "name": "miniapp-weapp-build",
+      "url": "https://github.com/blueXYing/pet-platform/actions/runs/36527580700/job/109273922812"
+    }
+  ],
+  "status": "completed",
+  "url": "https://github.com/blueXYing/pet-platform/actions/runs/36527580700"
+}

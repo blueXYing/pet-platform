@@ -1,3 +1,5 @@
+> 2026-09-29: [Contract 46](46-Order-Reschedule-Contract-v0.1.md) extends merchant expectedConfirmRound to 0/1, using each round's immutable deadline. Historical round-0 examples below remain valid. Consumer reschedule HTTP remains NOT_IMPLEMENTED.
+
 # 宠物平台 V1.0 HTTP / OpenAPI Controller Contract v0.4
 
 > 文档定位：定义 C 端小程序、商家端、运营端与第三方回调的 HTTP Controller 契约；内部模块之间仍优先使用 Java `*-api` Contract，不因为当前单体部署而通过 HTTP 绕一圈。  
@@ -579,16 +581,18 @@ pageSize
 
 ### POST `/api/v1/c/orders/{orderId}/reschedule`
 
+2026-09-29 R1/R2/R3已批准，正式语义由[46号契约](46-Order-Reschedule-Contract-v0.1.md)补充。本批HTTP状态为NOT_IMPLEMENTED，仅默认关闭的内部内核；真实核销码失效与公开版本读侧到位后再注册路由。
+
 Header：`X-Request-Id` 必填。
 
 Request：
 
 ```json
 {
+  "expectedOrderVersion": "1",
   "appointmentStart": "2026-09-13T14:10:00+08:00",
   "appointmentEnd": "2026-09-13T15:40:00+08:00",
-  "pickupStart": null,
-  "returnStart": null
+  "selectedGeneralWindowId": "20190001"
 }
 ```
 
@@ -599,7 +603,7 @@ Request：
 同一商家
 同一服务
 每单最多 1 次
-新预约成功后才释放旧预约
+完整证明新时段可用后原子交换同一预约及claim，保留不可变新旧历史，失败不释放原预约
 改期成功 → PENDING_CONFIRM
 confirmDeadline 重新计算 30 分钟
 ```

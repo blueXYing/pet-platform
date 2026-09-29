@@ -2,7 +2,7 @@
 <!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
 <mapper namespace="com.petplatform.order.biz.infrastructure.persistence.mapper.OrderAutoConfirmMapper">
   <select id="lock" resultType="com.petplatform.order.biz.infrastructure.persistence.mapper.OrderAutoConfirmMapper$Row">
-    SELECT id,store_id,user_id,merchant_id,reservation_id,version,order_stage,payment_status,
+    SELECT id,service_id,fulfillment_type,appointment_start_at,appointment_end_at,store_id,user_id,merchant_id,reservation_id,version,order_stage,payment_status,
       verification_status,confirm_mode,confirm_deadline,paid_at,confirmed_at,canceled_at,cancel_reason,
       refund_order_id,current_refund_application_id,current_aftersale_id,reschedule_count,pay_amount,refunded_amount
     FROM pet_order WHERE id=#{id} FOR UPDATE
@@ -14,7 +14,7 @@
   <update id="confirm">
     UPDATE pet_order SET order_stage='PENDING_SERVICE',confirm_mode='AUTO',confirmed_at=#{now},
       version=version+1,updated_at=#{now}
-    WHERE id=#{id} AND version=#{version} AND reschedule_count=0
+    WHERE id=#{id} AND version=#{version} AND reschedule_count=#{round}
       AND order_stage='PENDING_CONFIRM' AND payment_status='PAID' AND verification_status='UNVERIFIED'
       AND confirm_deadline=#{deadline} AND confirm_deadline &lt;= #{now}
       AND confirm_mode IS NULL AND confirmed_at IS NULL AND canceled_at IS NULL AND cancel_reason IS NULL

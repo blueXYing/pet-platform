@@ -8,7 +8,7 @@ public interface OrderMerchantMapper {
     Binding binding(Map<String,Object> values);
     int succeed(@Param("id") long id,@Param("result") byte[] result);
     int insertDecision(Map<String,Object> values);
-    Decision decision(@Param("orderId") long orderId);
+    Decision decision(@Param("orderId") long orderId,@Param("round") int round);
     int decide(Map<String,Object> values);
     int log(Map<String,Object> values);
     int project(@Param("orderId") long orderId,@Param("refundId") long refundId,@Param("amount") BigDecimal amount);

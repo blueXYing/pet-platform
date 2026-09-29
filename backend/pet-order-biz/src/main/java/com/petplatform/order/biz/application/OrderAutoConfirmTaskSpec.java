@@ -12,7 +12,7 @@ import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
 
-/** Immutable initial-round submission format shared by producer, inspector, worker and repair. */
+/** Immutable round-specific submission shared by producer, inspector, worker and repair. */
 public final class OrderAutoConfirmTaskSpec {
     public static final String TYPE = "ORDER_AUTO_CONFIRM";
     public static final int MAX_RETRIES = 8;
@@ -24,15 +24,21 @@ public final class OrderAutoConfirmTaskSpec {
     private OrderAutoConfirmTaskSpec() {}
 
     public static String key(String orderId) {
-        IDS.fromApi(orderId);
-        return TYPE + ":" + orderId + ":0";
+        return key(orderId,0);
+    }
+    public static String key(String orderId,int round) {
+        IDS.fromApi(orderId); if(round<0||round>1)throw new IllegalArgumentException("Invalid round");
+        return TYPE + ":" + orderId + ":" + round;
     }
 
     public static String payload(String orderId, OffsetDateTime deadline) {
-        IDS.fromApi(orderId);
+        return payload(orderId,0,deadline);
+    }
+    public static String payload(String orderId,int round,OffsetDateTime deadline) {
+        key(orderId,round);
         PublicContractChecks.requireMillisecondPrecision(deadline);
         try {
-            return JSON.writeValueAsString(Map.of("orderId", orderId, "expectedConfirmRound", 0,
+            return JSON.writeValueAsString(Map.of("orderId", orderId, "expectedConfirmRound", round,
                     "expectedConfirmDeadline", deadline.withOffsetSameInstant(ZoneOffset.UTC).toString()));
         } catch (Exception invalid) {
             throw new IllegalArgumentException("Invalid auto-confirm task payload", invalid);
@@ -40,7 +46,10 @@ public final class OrderAutoConfirmTaskSpec {
     }
 
     public static boolean matches(TaskSubmissionSnapshot task, String orderId, OffsetDateTime deadline) {
-        if (task == null || !key(orderId).equals(task.taskKey()) || !"ORDER".equals(task.ownerModule())
+        return matches(task,orderId,0,deadline);
+    }
+    public static boolean matches(TaskSubmissionSnapshot task,String orderId,int round,OffsetDateTime deadline) {
+        if (task == null || !key(orderId,round).equals(task.taskKey()) || !"ORDER".equals(task.ownerModule())
                 || !TYPE.equals(task.taskType()) || !"ORDER".equals(task.bizType())
                 || !orderId.equals(task.bizId()) || task.expectedVersion() != null
                 || task.maxRetryCount() != MAX_RETRIES || !TYPE.equals(task.retryPolicy())
@@ -54,7 +63,7 @@ public final class OrderAutoConfirmTaskSpec {
                     && node.path("orderId").isTextual() && orderId.equals(node.path("orderId").textValue())
                     && node.path("expectedConfirmRound").isIntegralNumber()
                     && node.path("expectedConfirmRound").canConvertToInt()
-                    && node.path("expectedConfirmRound").intValue() == 0
+                    && node.path("expectedConfirmRound").intValue() == round
                     && node.path("expectedConfirmDeadline").isTextual()
                     && deadline.withOffsetSameInstant(ZoneOffset.UTC).toString()
                             .equals(node.path("expectedConfirmDeadline").textValue());

@@ -1,0 +1,38 @@
+{
+  "kind": "final_round1_recovery_diagnostic_and_boundary_regression",
+  "reports": [
+    {
+      "name": "com.petplatform.boot.booking.OrderRescheduleAcceptanceTest",
+      "tests": 1,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "cases": [
+        "roundOneRepairAndWorkerUseImmutableRescheduleTimeAndRejectTampering"
+      ],
+      "sha256": "6e2f01800c067572c95fff958b52bbf3f503862d70b72fc5ba5c42d89b72970e"
+    },
+    {
+      "name": "com.petplatform.boot.booking.AutoConfirmExecutionAcceptanceTest",
+      "tests": 1,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "cases": [
+        "missingOrCorruptedSuccessProofCannotBecomeASecondConfirmation"
+      ],
+      "sha256": "c5c3c25ae36f7c835994e95a03d675199334f60dd44f392bf375b772c942b1ca"
+    },
+    {
+      "name": "com.petplatform.boot.booking.OrderRescheduleAcceptanceTest",
+      "tests": 1,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "cases": [
+        "beforeStartBoundaryAndFailedKeyBindingRemainEnforced"
+      ],
+      "sha256": "a18dc0cbeb0acb583c7646eddbbd2269781e74e533ac2cd86677ceede4fd7b8a"
+    }
+  ]
+}

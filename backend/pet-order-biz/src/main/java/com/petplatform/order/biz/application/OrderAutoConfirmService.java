@@ -22,7 +22,7 @@ import org.springframework.transaction.TransactionDefinition;
 import org.springframework.transaction.support.TransactionSynchronizationManager;
 import org.springframework.transaction.support.TransactionTemplate;
 
-/** Initial-round confirmation and recovery share one authoritative transaction path. */
+/** Both confirmation rounds and recovery share one authoritative transaction path. */
 public final class OrderAutoConfirmService implements OrderAutoConfirmApi, OrderAutoConfirmRepairApi {
     private static final DecimalPublicIdCodec IDS = new DecimalPublicIdCodec();
     private static final ObjectMapper JSON = new ObjectMapper()
@@ -58,8 +58,8 @@ public final class OrderAutoConfirmService implements OrderAutoConfirmApi, Order
 
     @Override public OrderAutoConfirmApi.Result autoConfirm(AutoConfirmOrderCommand command) {
         if (command == null) throw invalid();
-        validate(command.context(), command.orderId(), "TASK:");
-        if (command.expectedConfirmRound() != 0) throw invalid();
+        validate(command.context(), command.orderId(), "TASK:", command.expectedConfirmRound());
+        if (command.expectedConfirmRound() < 0 || command.expectedConfirmRound() > 1) throw invalid();
         try { PublicContractChecks.requireMillisecondPrecision(command.expectedConfirmDeadline()); }
         catch (IllegalArgumentException bad) { throw invalid(); }
         return execute(command.context(), command.orderId(), () -> {
@@ -69,27 +69,27 @@ public final class OrderAutoConfirmService implements OrderAutoConfirmApi, Order
     }
 
     @Override public OrderAutoConfirmRepairApi.Result repairMissingTask(CommandContext context, String orderId) {
-        validate(context, orderId, "REPAIR:");
+        validate(context, orderId, "REPAIR:", requestRound(context,orderId,"REPAIR:"));
         return execute(context, orderId, () -> repair(locked(orderId, context), context, orderId));
     }
 
     private OrderAutoConfirmRepairApi.Result repair(Row row, CommandContext context, String orderId) {
-        if (stale(row)) return OrderAutoConfirmRepairApi.Result.STALE;
+        if (stale(row) || row.rescheduleCount != requestRound(context,orderId,"REPAIR:")) return OrderAutoConfirmRepairApi.Result.STALE;
         OffsetDateTime deadline = deadline(row);
-        var command = command(context.traceId(), orderId, deadline);
+        var command = command(context.traceId(), orderId, row.rescheduleCount, deadline);
         OrderAutoConfirmApi.Result eligibility = eligible(row, command);
         if (eligibility == OrderAutoConfirmApi.Result.BLOCKED_BY_REFUND)
             return OrderAutoConfirmRepairApi.Result.BLOCKED_BY_REFUND;
         if (eligibility == OrderAutoConfirmApi.Result.STALE)
             return OrderAutoConfirmRepairApi.Result.STALE;
-        TaskSubmissionSnapshot existing = tasks.find(OrderAutoConfirmTaskSpec.key(orderId));
+        TaskSubmissionSnapshot existing = tasks.find(OrderAutoConfirmTaskSpec.key(orderId,row.rescheduleCount));
         if (existing == null) {
-            submitter.enqueueAt(OrderAutoConfirmTaskSpec.key(orderId), "ORDER", OrderAutoConfirmTaskSpec.TYPE,
-                    "ORDER", row.id, null, OrderAutoConfirmTaskSpec.payload(orderId, deadline),
+            submitter.enqueueAt(OrderAutoConfirmTaskSpec.key(orderId,row.rescheduleCount), "ORDER", OrderAutoConfirmTaskSpec.TYPE,
+                    "ORDER", row.id, null, OrderAutoConfirmTaskSpec.payload(orderId,row.rescheduleCount, deadline),
                     OrderAutoConfirmTaskSpec.MAX_RETRIES, OrderAutoConfirmTaskSpec.TYPE, deadline);
             return OrderAutoConfirmRepairApi.Result.CREATED;
         }
-        if (!OrderAutoConfirmTaskSpec.matches(existing, orderId, deadline))
+        if (!OrderAutoConfirmTaskSpec.matches(existing, orderId,row.rescheduleCount, deadline))
             throw conflict("TASK_BINDING_CONFLICT");
         if (Set.of("READY", "RETRY_WAIT", "RUNNING").contains(existing.status()))
             return OrderAutoConfirmRepairApi.Result.EXISTS;
@@ -105,7 +105,8 @@ public final class OrderAutoConfirmService implements OrderAutoConfirmApi, Order
         if (row == null) return OrderAutoConfirmApi.Result.STALE;
         if (row.rescheduleCount == null || row.rescheduleCount < 0 || row.rescheduleCount > 1)
             throw unavailable("CONFIRM_ROUND_INVALID");
-        if (row.rescheduleCount != 0) return OrderAutoConfirmApi.Result.STALE;
+        if (row.rescheduleCount != command.expectedConfirmRound()) return OrderAutoConfirmApi.Result.STALE;
+        if(!stale(row)||!store.proofs(row.id,command.context().requestId()).isEmpty())OrderConfirmEpoch.requireSchedule(source,row,reservations,"CANCELED".equals(row.orderStage),query(command.context()));
         var proofs = store.proofs(row.id, command.context().requestId());
         if (!proofs.isEmpty()) {
             if (proofs.size() != 1) throw unavailable("CONFIRMATION_PROOF_INVALID");
@@ -121,7 +122,7 @@ public final class OrderAutoConfirmService implements OrderAutoConfirmApi, Order
                 if (!command.expectedConfirmDeadline().isEqual(OffsetDateTime.parse(proof.path("confirmDeadline").asText())))
                     throw conflict("CONFIRM_DEADLINE_CONFLICT");
                 if (!command.orderId().equals(proof.path("orderId").asText())
-                        || proof.path("confirmRound").asInt(-1) != 0
+                        || proof.path("confirmRound").asInt(-1) != command.expectedConfirmRound()
                         || !"AUTO".equals(proof.path("confirmMode").asText())
                         || !IDS.toApi(row.reservationId).equals(proof.path("reservationId").asText())
                         || !IDS.toApi(row.storeId).equals(proof.path("storeId").asText())
@@ -148,7 +149,8 @@ public final class OrderAutoConfirmService implements OrderAutoConfirmApi, Order
 
     /** Null means eligible; no due-time check here so repair can submit future tasks. */
     private OrderAutoConfirmApi.Result eligible(Row row, AutoConfirmOrderCommand command) {
-        if (stale(row)) return OrderAutoConfirmApi.Result.STALE;
+        if (stale(row) || row.rescheduleCount != command.expectedConfirmRound()) return OrderAutoConfirmApi.Result.STALE;
+        OrderConfirmEpoch.requireSchedule(source,row,reservations,"CANCELED".equals(row.orderStage),query(command.context()));
         if (!store.proofs(row.id, command.context().requestId()).isEmpty())
             throw unavailable("CONFIRMATION_PROOF_INVALID");
         OffsetDateTime deadline = deadline(row);
@@ -177,7 +179,7 @@ public final class OrderAutoConfirmService implements OrderAutoConfirmApi, Order
                 || paid.paidAt() == null || previous.paidAt() == null
                 || !previous.paidAt().isEqual(paid.paidAt()) || row.paidAt == null
                 || !row.paidAt.atOffset(ZoneOffset.UTC).isEqual(paid.paidAt())
-                || !deadline.isEqual(paid.paidAt().plusMinutes(30)) || !"CNY".equals(paid.currency()))
+                || !"CNY".equals(paid.currency()))
             throw unavailable("PAYMENT_FACTS_MISMATCH");
         try {
             IDS.fromApi(paid.paymentNo()); PublicContractChecks.requireMillisecondPrecision(paid.paidAt());
@@ -204,12 +206,12 @@ public final class OrderAutoConfirmService implements OrderAutoConfirmApi, Order
     private void complete(Row row, AutoConfirmOrderCommand command) {
         OffsetDateTime now = paymentStore.databaseNow();
         if (now.isBefore(command.expectedConfirmDeadline())) throw unavailable("DATABASE_CLOCK_MOVED_BACK");
-        if (store.confirm(row.id, row.version, row.confirmDeadline, now.toLocalDateTime()) != 1)
+        if (store.confirm(row.id, row.version, row.rescheduleCount, row.confirmDeadline, now.toLocalDateTime()) != 1)
             throw unavailable("CONFIRM_CAS_FAILED");
         String eventId = IDS.toApi(ids.nextId());
         var payload = new LinkedHashMap<String,Object>();
         payload.put("orderId", command.orderId()); payload.put("reservationId", IDS.toApi(row.reservationId));
-        payload.put("storeId", IDS.toApi(row.storeId)); payload.put("confirmRound", 0);
+        payload.put("storeId", IDS.toApi(row.storeId)); payload.put("confirmRound", row.rescheduleCount);
         payload.put("confirmMode", "AUTO"); payload.put("confirmDeadline", deadline(row).toString());
         payload.put("confirmedAt", now.toString());
         outbox.publish(new IntegrationEvent<>(eventId, "OrderConfirmedEvent.v1", 1, now, "ORDER",
@@ -256,7 +258,8 @@ public final class OrderAutoConfirmService implements OrderAutoConfirmApi, Order
                 var context = new CommandContext("TASK:" + OrderAutoConfirmTaskSpec.key(orderId),
                         traceId, OperatorType.SYSTEM, null, "TASK");
                 Row row = locked(orderId, context);
-                if (row != null) anomaly(row, context.requestId(), safeCode);
+                if (row != null) anomaly(row, "TASK:"+OrderAutoConfirmTaskSpec.key(orderId,
+                        row.rescheduleCount!=null&&row.rescheduleCount>=0&&row.rescheduleCount<=1?row.rescheduleCount:0), safeCode);
             });
         } catch (RuntimeException unavailable) {
             System.getLogger(getClass().getName()).log(System.Logger.Level.WARNING,
@@ -265,7 +268,7 @@ public final class OrderAutoConfirmService implements OrderAutoConfirmApi, Order
     }
 
     private void anomaly(Row row,String requestId,String code) {
-        String remark = json(Map.of("code",code,"confirmRound",0));
+        String remark = json(Map.of("code",code,"confirmRound",row.rescheduleCount));
         if (!store.hasAnomaly(row.id,requestId,remark))
             store.log(ids.nextId(),row.id,row.orderStage,row.orderStage,"AUTO_CONFIRM_ANOMALY",requestId,remark);
     }
@@ -277,10 +280,15 @@ public final class OrderAutoConfirmService implements OrderAutoConfirmApi, Order
         for (Long id : candidates) {
             String orderId = IDS.toApi(id);
             try {
-                if (repair) repairMissingTask(new CommandContext("REPAIR:" + OrderAutoConfirmTaskSpec.key(orderId),
+                int round=tx.execute(status -> {
+                    Row row=locked(orderId,new CommandContext("SCAN:"+orderId,"AUTO_CONFIRM_SCAN",OperatorType.SYSTEM,null,"SCAN"));
+                    if(row==null||row.rescheduleCount==null||row.rescheduleCount<0||row.rescheduleCount>1)throw invalid();
+                    return row.rescheduleCount;
+                });
+                if (repair) repairMissingTask(new CommandContext("REPAIR:" + OrderAutoConfirmTaskSpec.key(orderId,round),
                         "AUTO_CONFIRM_REPAIR",OperatorType.SYSTEM,null,"REPAIR"),orderId);
                 else {
-                    var task = tasks.find(OrderAutoConfirmTaskSpec.key(orderId));
+                    var task = tasks.find(OrderAutoConfirmTaskSpec.key(orderId,round));
                     if (task != null && Set.of("DEAD","CANCELED","SUCCEEDED").contains(task.status()))
                         recordAnomaly(orderId,"AUTO_CONFIRM_SCAN","TERMINAL_TASK_" + task.status());
                 }
@@ -292,8 +300,11 @@ public final class OrderAutoConfirmService implements OrderAutoConfirmApi, Order
     }
 
     public static AutoConfirmOrderCommand command(String traceId,String orderId,OffsetDateTime deadline) {
-        return new AutoConfirmOrderCommand(new CommandContext("TASK:" + OrderAutoConfirmTaskSpec.key(orderId),
-                traceId,OperatorType.SYSTEM,null,"TASK"),orderId,0,deadline);
+        return command(traceId,orderId,0,deadline);
+    }
+    public static AutoConfirmOrderCommand command(String traceId,String orderId,int round,OffsetDateTime deadline) {
+        return new AutoConfirmOrderCommand(new CommandContext("TASK:" + OrderAutoConfirmTaskSpec.key(orderId,round),
+                traceId,OperatorType.SYSTEM,null,"TASK"),orderId,round,deadline);
     }
     private static boolean stale(Row row) {
         if (row == null) return true;
@@ -302,20 +313,25 @@ public final class OrderAutoConfirmService implements OrderAutoConfirmApi, Order
         if (!Set.of("PENDING_PAYMENT","PENDING_CONFIRM","PENDING_SERVICE","COMPLETED","CANCELED")
                 .contains(row.orderStage == null ? "" : row.orderStage))
             throw unavailable("ORDER_STAGE_INVALID");
-        return row.rescheduleCount != 0 || !"PENDING_CONFIRM".equals(row.orderStage);
+        return !"PENDING_CONFIRM".equals(row.orderStage);
     }
     private static OffsetDateTime deadline(Row row) {
         if (row.confirmDeadline == null) throw unavailable("CONFIRM_DEADLINE_MISSING");
         return row.confirmDeadline.atOffset(ZoneOffset.UTC);
     }
     private static QueryContext query(CommandContext c) { return new QueryContext(c.traceId(),OperatorType.SYSTEM,c.operatorId()); }
-    private static void validate(CommandContext c,String orderId,String prefix) {
+    private static void validate(CommandContext c,String orderId,String prefix,int round) {
         try {
             IDS.fromApi(orderId); PublicContractChecks.requireCommandRequestId(c);
             if (c.traceId() == null || c.traceId().isBlank() || c.source() == null || c.source().isBlank()) throw invalid();
             if (c.operatorType() != OperatorType.SYSTEM) throw new ApiException(CommonApiCodes.FORBIDDEN,"SYSTEM only");
-            if (!(prefix + OrderAutoConfirmTaskSpec.key(orderId)).equals(c.requestId())) throw invalid();
+            if (!(prefix + OrderAutoConfirmTaskSpec.key(orderId,round)).equals(c.requestId())) throw invalid();
         } catch (IllegalArgumentException bad) { throw invalid(); }
+    }
+    private static int requestRound(CommandContext c,String id,String prefix) {
+        if(c==null)throw invalid();
+        for(int round=0;round<=1;round++)if((prefix+OrderAutoConfirmTaskSpec.key(id,round)).equals(c.requestId()))return round;
+        throw invalid();
     }
     private static String json(Object value) {
         try { return JSON.writeValueAsString(value); } catch (Exception failed) { throw unavailable("SERIALIZATION_FAILED"); }

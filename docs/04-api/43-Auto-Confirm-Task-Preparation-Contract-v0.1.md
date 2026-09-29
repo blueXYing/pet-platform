@@ -1,3 +1,5 @@
+> 2026-09-29: approved Contract 46 extends this initial-round slice to round 1; task keys and immutable deadlines are round-specific. See [46](46-Order-Reschedule-Contract-v0.1.md). Existing round-0 rules remain valid.
+
 # 自动接单任务准备契约 v0.1（仅已批准B的独立部分）
 
 2026-09-29 接续：用户已批准 A 推荐方案及 B 剩余实现。[44号执行与恢复契约](44-Auto-Confirm-Execution-Recovery-Contract-v0.1.md)覆盖下文关于“A未批准、worker/repair不可执行”的历史边界；本文件的原子任务格式及只读排查接口保持有效。运行开关仍默认关闭。

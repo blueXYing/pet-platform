@@ -1714,6 +1714,8 @@ paths:
       - C-Order
       summary: 改期
       operationId: rescheduleOrder
+      x-implementation-status: NOT_IMPLEMENTED
+      description: Contract 46 freezes the future HTTP shape; this delivery registers no route.
       security:
       - bearerAuth: []
       parameters:
@@ -1733,6 +1735,15 @@ paths:
         '503':
           $ref: '#/components/responses/DependencyUnavailable'
         '200':
+          content:
+            application/json:
+              schema:
+                allOf:
+                - $ref: '#/components/schemas/BaseEnvelope'
+                - type: object
+                  properties:
+                    data:
+                      $ref: '#/components/schemas/RescheduleReceipt'
           description: 成功
         '409':
           $ref: '#/components/responses/Conflict'
@@ -8793,32 +8804,100 @@ components:
           description: 带偏移ISO-8601；服务端拒绝非零亚毫秒，不截断或舍入。
     RescheduleRequest:
       type: object
-      required:
-      - appointmentStart
-      - appointmentEnd
+      additionalProperties: false
+      description: Contract 46; NOT_IMPLEMENTED HTTP. Real USER session and current order version required. Minute-aligned times; unchanged intervals conflict without consuming the chance.
+      required: [expectedOrderVersion]
+      oneOf:
+      - required: [appointmentStart, appointmentEnd, selectedGeneralWindowId]
+        not:
+          anyOf:
+          - required: [pickupStart]
+          - required: [returnStart]
+          - required: [selectedPickupWindowId]
+          - required: [selectedReturnWindowId]
+      - required: [pickupStart, returnStart, selectedPickupWindowId, selectedReturnWindowId]
+        not:
+          anyOf:
+          - required: [appointmentStart]
+          - required: [appointmentEnd]
+          - required: [selectedGeneralWindowId]
       properties:
+        expectedOrderVersion:
+          type: string
+          pattern: '^(0|[1-9][0-9]*)$'
+          description: Nonnegative signed BIGINT decimal string. Not a public entity ID.
         appointmentStart:
           type: string
           format: date-time
           x-precision: milliseconds
-          description: 带偏移ISO-8601；服务端拒绝非零亚毫秒，不截断或舍入。
+          description: Offset ISO-8601; seconds and fractional seconds must both be zero.
         appointmentEnd:
           type: string
           format: date-time
           x-precision: milliseconds
-          description: 带偏移ISO-8601；服务端拒绝非零亚毫秒，不截断或舍入。
+          description: Offset ISO-8601; seconds and fractional seconds must both be zero.
         pickupStart:
           type: string
           format: date-time
           x-precision: milliseconds
-          description: 带偏移ISO-8601；服务端拒绝非零亚毫秒，不截断或舍入。
+          description: Offset ISO-8601; seconds and fractional seconds must both be zero.
+        returnStart:
+          type: string
+          format: date-time
+          x-precision: milliseconds
+          description: Offset ISO-8601; seconds and fractional seconds must both be zero.
+        selectedGeneralWindowId:
+          $ref: '#/components/schemas/PublicId'
+        selectedPickupWindowId:
+          $ref: '#/components/schemas/PublicId'
+        selectedReturnWindowId:
+          $ref: '#/components/schemas/PublicId'
+    RescheduleReceipt:
+      type: object
+      additionalProperties: false
+      required: [orderId, reservationId, rescheduleId, confirmRound, orderVersion, orderStageAtCommit, appointmentStart, appointmentEnd, pickupStart, returnStart, rescheduledAt, confirmDeadline]
+      properties:
+        orderId:
+          $ref: '#/components/schemas/PublicId'
+        reservationId:
+          $ref: '#/components/schemas/PublicId'
+        rescheduleId:
+          $ref: '#/components/schemas/PublicId'
+        confirmRound:
+          type: integer
+          enum: [1]
+        orderVersion:
+          type: string
+          pattern: '^(0|[1-9][0-9]*)$'
+        orderStageAtCommit:
+          type: string
+          enum: [PENDING_CONFIRM]
+        appointmentStart:
+          type: string
+          format: date-time
+          x-precision: milliseconds
+        appointmentEnd:
+          type: string
+          format: date-time
+          x-precision: milliseconds
+        pickupStart:
+          type: string
+          format: date-time
+          x-precision: milliseconds
           nullable: true
         returnStart:
           type: string
           format: date-time
           x-precision: milliseconds
-          description: 带偏移ISO-8601；服务端拒绝非零亚毫秒，不截断或舍入。
           nullable: true
+        rescheduledAt:
+          type: string
+          format: date-time
+          x-precision: milliseconds
+        confirmDeadline:
+          type: string
+          format: date-time
+          x-precision: milliseconds
     RefundApplyRequest:
       type: object
       required:
@@ -8935,7 +9014,7 @@ components:
       properties:
         expectedConfirmRound:
           type: integer
-          enum: [0]
+          enum: [0, 1]
         reasonCode:
           type: string
           enum: [SCHEDULE_CONFLICT, STAFF_UNAVAILABLE, PET_NOT_MATCHED, TEMPORARY_CLOSURE, OTHER]
@@ -8951,7 +9030,7 @@ components:
       properties:
         expectedConfirmRound:
           type: integer
-          enum: [0]
+          enum: [0, 1]
         internalNote:
           type: string
           maxLength: 200
@@ -8967,7 +9046,7 @@ components:
           $ref: '#/components/schemas/PublicId'
         confirmRound:
           type: integer
-          enum: [0]
+          enum: [0, 1]
         action:
           type: string
           enum: [CONFIRM, REJECT]

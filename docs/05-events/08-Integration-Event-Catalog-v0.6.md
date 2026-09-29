@@ -1,3 +1,5 @@
+> 2026-09-29: approved [Contract 46](../04-api/46-Order-Reschedule-Contract-v0.1.md) adds OrderRescheduledEvent.v1 and extends OrderConfirmedEvent.v1 / OrderRejectedEvent.v1 confirmRound to 0/1. See its exact payload/nullability and transaction rules. Notification consumption remains unimplemented.
+
 # 宠物平台 V1.0 Integration Event Catalog v0.6
 
 > 技术目标：当前模块化单体使用 Transactional Outbox；未来切 MQ 时保持事件名称、版本和业务语义稳定。
@@ -35,6 +37,7 @@ UNIQUE(event_id, consumer_name)
 | OrderPaidEvent.v1 | ORDER | order | schedule/coupon/notification |
 | OrderPaymentExpiredEvent.v1 | ORDER | order | schedule/coupon/notification |
 | OrderConfirmedEvent.v1 | ORDER | order | notification（2026-09-29首轮内部生产者见44号契约；通知消费后续交付） |
+| OrderRescheduledEvent.v1 | ORDER | order | notification (future; Contract 46) |
 | OrderRejectedEvent.v1 | ORDER | order | refund/notification |
 | OrderVerifiedEvent.v1 | ORDER | verification/order | aftersale/review/notification |
 | RefundOrderCreatedEvent.v1 | REFUND | refund | order/notification |

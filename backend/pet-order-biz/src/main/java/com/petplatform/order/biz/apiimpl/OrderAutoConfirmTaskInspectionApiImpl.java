@@ -70,16 +70,16 @@ public final class OrderAutoConfirmTaskInspectionApiImpl implements OrderAutoCon
             var deadline = row.confirmDeadline == null ? null : row.confirmDeadline.atOffset(ZoneOffset.UTC);
             String taskStatus = null;
             Finding finding;
-            if (row.rescheduleCount == null || row.rescheduleCount != 0) {
+            if (row.rescheduleCount == null || (row.rescheduleCount < 0 || row.rescheduleCount > 1)) {
                 finding = Finding.UNSUPPORTED_ROUND;
             } else if (!hasNormalOrderFacts(row)) {
                 finding = Finding.ORDER_FACTS_REQUIRE_REVIEW;
             } else {
-                var task = tasks.find(OrderAutoConfirmTaskSpec.key(id));
+                var task = tasks.find(OrderAutoConfirmTaskSpec.key(id,row.rescheduleCount));
                 if (task == null) finding = Finding.MISSING_TASK;
                 else {
                     taskStatus = task.status();
-                    if (!OrderAutoConfirmTaskSpec.matches(task, id, deadline)) finding = Finding.TASK_BINDING_CONFLICT;
+                    if (!OrderAutoConfirmTaskSpec.matches(task, id,row.rescheduleCount, deadline)) finding = Finding.TASK_BINDING_CONFLICT;
                     else if (Set.of("READY", "RETRY_WAIT", "RUNNING").contains(task.status())) finding = Finding.ACTIVE_TASK;
                     else finding = Finding.TERMINAL_TASK_REQUIRES_REVIEW;
                 }
@@ -102,6 +102,9 @@ public final class OrderAutoConfirmTaskInspectionApiImpl implements OrderAutoCon
                 && row.payAmount != null && row.payAmount.signum() > 0 && row.channelPaidAmount != null
                 && row.payAmount.compareTo(row.channelPaidAmount) == 0 && row.paidAt != null
                 && row.paidAt.equals(row.channelPaidAt) && row.confirmDeadline != null
-                && row.paidAt.plusMinutes(30).equals(row.confirmDeadline);
+                && (row.rescheduleCount==0 ? row.paidAt.plusMinutes(30).equals(row.confirmDeadline)
+                    : row.rescheduledAt!=null && row.rescheduledAt.plusMinutes(30).equals(row.confirmDeadline)
+                    && row.confirmDeadline.equals(row.rescheduleDeadline)
+                    && Objects.equals(row.appointmentStartAt,row.rescheduleStart)&&Objects.equals(row.appointmentEndAt,row.rescheduleEnd));
     }
 }

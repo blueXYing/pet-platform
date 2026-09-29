@@ -1,0 +1,55 @@
+{
+  "kind": "local_targeted_mysql_and_architecture",
+  "java": "21.0.11",
+  "mysql": "8.4.9 isolated localhost:3314",
+  "fullBackendSuite": false,
+  "verificationProvider": "Explicit durable QA stand-in; NOT real code invalidation",
+  "totals": {
+    "tests": 47,
+    "failures": 0,
+    "errors": 0,
+    "skipped": 0
+  },
+  "reports": [
+    {
+      "name": "com.petplatform.boot.booking.AutoConfirmExecutionAcceptanceTest",
+      "tests": 1,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "sha256": "fba4498d90505651a475b27955bad2d90321fb1cd2f3498c4731457fe62d90b9"
+    },
+    {
+      "name": "com.petplatform.boot.booking.OrderRescheduleAcceptanceTest",
+      "tests": 19,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "sha256": "b6656e502c6093429db30383b8882232ba1510fb8a37b0a814309ca92d75195a"
+    },
+    {
+      "name": "com.petplatform.boot.config.OrderRescheduleConfigurationTest",
+      "tests": 5,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "sha256": "01bd74fe7b6b69169e40feb990b682af827e1198908d5152f5e4cafa8b78293e"
+    },
+    {
+      "name": "com.petplatform.architecture.ArchitectureRulesFixtureTest",
+      "tests": 15,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "sha256": "274c718a8aa66085c88e3311226e5e5686b87e623a96234c042867f8ef66159e"
+    },
+    {
+      "name": "com.petplatform.architecture.ArchitectureRulesTest",
+      "tests": 7,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "sha256": "0c5f405febd66e62fdb466f843936575db38b79d94d1784353c80aea168374f0"
+    }
+  ]
+}
