@@ -14,6 +14,9 @@ import org.springframework.core.io.support.PathMatchingResourcePatternResolver;
 
 /** REFUND-owned SQL. MyBatis joins the caller's transaction on this same DataSource. */
 public final class RefundExecutionStore {
+    public List<RefundMapperRows.OrderPresence> lockPresence(long orderId) {
+        return mapper.lockPresence(orderId);
+    }
     private final RefundExecutionMapper mapper;
 
     public RefundExecutionStore(DataSource source) {

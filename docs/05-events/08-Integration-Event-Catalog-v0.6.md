@@ -34,7 +34,7 @@ UNIQUE(event_id, consumer_name)
 | PaymentFailedEvent.v1 | PAYMENT | payment | order/notification |
 | OrderPaidEvent.v1 | ORDER | order | schedule/coupon/notification |
 | OrderPaymentExpiredEvent.v1 | ORDER | order | schedule/coupon/notification |
-| OrderConfirmedEvent.v1 | ORDER | order | notification |
+| OrderConfirmedEvent.v1 | ORDER | order | notification（2026-09-29首轮内部生产者见44号契约；通知消费后续交付） |
 | OrderRejectedEvent.v1 | ORDER | order | refund/notification |
 | OrderVerifiedEvent.v1 | ORDER | verification/order | aftersale/review/notification |
 | RefundOrderCreatedEvent.v1 | REFUND | refund | order/notification |
@@ -45,6 +45,24 @@ UNIQUE(event_id, consumer_name)
 | AfterSaleInvalidatedEvent.v1 | AFTERSALE | aftersale | order/notification |
 | MerchantDisabledEvent.v1 | MERCHANT | merchant/admin | order/service/schedule/notification |
 | ReviewCreatedEvent.v1 | REVIEW | review | merchant/notification |
+
+### 首轮 OrderConfirmedEvent.v1（2026-09-29 已批准）
+
+正式实施边界见[44号契约](../04-api/44-Auto-Confirm-Execution-Recovery-Contract-v0.1.md)。标准 envelope：eventVersion=1、aggregateType=ORDER、aggregateId=orderId、occurredAt=confirmedAt；payload：
+
+```java
+public record OrderConfirmedPayload(
+    String orderId,
+    String reservationId,
+    String storeId,
+    int confirmRound,                 // 本轮仅0
+    String confirmMode,               // AUTO
+    OffsetDateTime confirmDeadline,   // 原渠道paidAt+30min，UTC毫秒
+    OffsetDateTime confirmedAt        // DB UTC毫秒
+) {}
+```
+
+ORDER 状态、唯一成功证明和 Outbox 同事务提交。重放不产生第二个事件；通知等消费方仍按(eventId,consumerName)幂等，本切片未增加消费者。默认不启用生产者/Worker/修复扫描，不将此事件等同于用户消息已送达。
 
 ## 3. PaymentSucceededEvent.v1
 

@@ -6,6 +6,7 @@ import java.util.List;
 import org.apache.ibatis.annotations.Param;
 
 public interface RefundExecutionMapper {
+    List<RefundMapperRows.OrderPresence> lockPresence(@Param("orderId") long orderId);
     void setUtcTimeZone();
     void setLockWaitTimeout();
     LocalDateTime databaseNow();

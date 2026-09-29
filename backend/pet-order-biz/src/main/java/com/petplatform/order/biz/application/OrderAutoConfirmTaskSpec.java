@@ -12,7 +12,7 @@ import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
 
-/** The approved B submission format. It does not implement an automatic confirmation command. */
+/** Immutable initial-round submission format shared by producer, inspector, worker and repair. */
 public final class OrderAutoConfirmTaskSpec {
     public static final String TYPE = "ORDER_AUTO_CONFIRM";
     public static final int MAX_RETRIES = 8;

@@ -1,5 +1,7 @@
 # 自动接单任务准备契约 v0.1（仅已批准B的独立部分）
 
+2026-09-29 接续：用户已批准 A 推荐方案及 B 剩余实现。[44号执行与恢复契约](44-Auto-Confirm-Execution-Recovery-Contract-v0.1.md)覆盖下文关于“A未批准、worker/repair不可执行”的历史边界；本文件的原子任务格式及只读排查接口保持有效。运行开关仍默认关闭。
+
 2026-09-28 用户对[CCR A/B](../../planning/ccr/CCR-W2-API-001/order-auto-confirm-proposal.md)回复“B”。B已批准，A未批准。本契约落实原子产任务和只读排查，默认关闭；不定义/实现A的自动确认命令、退款资格API或OrderConfirmed事件，也不启用依赖这些能力的补建/恢复写操作。
 
 ## 1. 正常支付与任务同事务

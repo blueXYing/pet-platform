@@ -1,6 +1,6 @@
 # 无正式渠道参数的支付基础 v0.1
 
-2026-09-28 自动接单任务接续见[43号契约](43-Auto-Confirm-Task-Preparation-Contract-v0.1.md)：用户仅批准B，启用时正常付款同事务创建首轮任务；默认关闭，不含A的自动确认、补建/恢复执行。
+自动接单任务接续见[43号契约](43-Auto-Confirm-Task-Preparation-Contract-v0.1.md)：启用时正常付款同事务创建首轮任务。2026-09-29 已批准 A 自动确认与 B 补建/恢复执行见[44号契约](44-Auto-Confirm-Execution-Recovery-Contract-v0.1.md)，所有开关默认关闭。
 
 2026-09-28 后续实施见已批准的 [41 号契约](41-Payment-Dispatch-Contract-v0.1.md)。下文保留前阶段交付边界；新的内部派发/查单/关单协调仍默认关闭，不开放公共 HTTP、不授权生产启用。
 

@@ -231,7 +231,7 @@ class AutoConfirmTaskPreparationAcceptanceTest {
         return event(f);
     }
 
-    private static DispatchedEvent event(PaymentFoundationAcceptanceTest.Fixture f) {
+    static DispatchedEvent event(PaymentFoundationAcceptanceTest.Fixture f) {
         return f.db.jdbc.queryForObject("SELECT * FROM integration_event_outbox WHERE event_type='PaymentSucceededEvent.v1'",
                 (rs, index) -> new DispatchedEvent(rs.getString("event_id"), rs.getString("event_type"),
                         rs.getInt("event_version"), rs.getObject("occurred_at", LocalDateTime.class).atOffset(ZoneOffset.UTC),
@@ -270,7 +270,7 @@ class AutoConfirmTaskPreparationAcceptanceTest {
                 new TransactionalOutboxPublisher(source, IDS::incrementAndGet, JSON), enabled);
     }
 
-    private static final class LostCommitSource extends DelegatingDataSource {
+    static final class LostCommitSource extends DelegatingDataSource {
         final AtomicBoolean committed = new AtomicBoolean();
         LostCommitSource(DataSource target) { super(target); }
         @Override public Connection getConnection() throws SQLException { return wrap(super.getConnection()); }

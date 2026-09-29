@@ -568,7 +568,7 @@ public interface OrderQueryApi {
 
 ### 7.2 OrderCommandApi
 
-2026-09-28：已批准B的正常付款原子任务和SYSTEM只读排查接口见[43号契约](43-Auto-Confirm-Task-Preparation-Contract-v0.1.md)。`autoConfirmOrder`及依赖它的补建/恢复执行仍待A契约批准与实现，不能因下列方法名已列出而认定可调用。
+2026-09-29：正常付款原子任务和SYSTEM只读排查见[43号契约](43-Auto-Confirm-Task-Preparation-Contract-v0.1.md)。已批准 A 与 B 剩余内部执行见[44号契约](44-Auto-Confirm-Execution-Recovery-Contract-v0.1.md)：实际 Java 入口为独立 `OrderAutoConfirmApi.autoConfirm`、`OrderAutoConfirmRepairApi.repairMissingTask` 和 `RefundOrderFactsApi.findByOrder`。下方原聚合接口中的 `autoConfirmOrder` 是概念索引，不是额外实现入口；首轮0、默认关闭、不含商家确认/拒单和改期1。
 
 ```java
 public interface OrderCommandApi {

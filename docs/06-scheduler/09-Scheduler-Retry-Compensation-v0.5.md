@@ -503,7 +503,7 @@ EXPIRED
 
 # 13. ORDER_AUTO_CONFIRM
 
-2026-09-28已批准B的独立实现见[43号任务准备契约](../04-api/43-Auto-Confirm-Task-Preparation-Contract-v0.1.md)：正常付款原子创建首轮任务、只读缺失/异常扫描。以下执行及恢复规则仍为完整目标；A未获批前worker/repair配置为true会启动失败，不能把本切片当作自动接单已交付。
+正常付款原子任务、只读排查见[43号契约](../04-api/43-Auto-Confirm-Task-Preparation-Contract-v0.1.md)；2026-09-29 已批准 A 执行及 B 剩余恢复见[44号契约](../04-api/44-Auto-Confirm-Execution-Recovery-Contract-v0.1.md)。首轮0内部实现，worker/repair均默认关闭；启用任一要求任务生产与支付基础开关开启且依赖齐备。round1/商家入口及对外启用不在本切片。
 
 任务：
 
@@ -539,7 +539,7 @@ confirm_deadline <= now
 PENDING_CONFIRM
 → PENDING_SERVICE
 confirmed_at = now
-confirmation_type = AUTO
+confirm_mode = AUTO
 → OrderConfirmedEvent.v1
 ```
 
