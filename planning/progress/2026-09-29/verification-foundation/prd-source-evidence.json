@@ -1,0 +1,47 @@
+[
+  {
+    "path": "docs/01-prd/02-PRD-C端用户-V1.0-最终基线.docx",
+    "sha256": "d4277076820cc8953ccbce9e672827f1b4d7a9a4ec4cb3081eb661aab7d66ff0",
+    "paragraphIndexBasis": "zero-based word/document.xml //w:p",
+    "riskThresholdExcerpts": [
+      {
+        "paragraphIndex": 101,
+        "text": "流程：浏览商家 → 选择单次服务 → 选择商家开放的分钟级可预约时段 → 服务端校验容量并临时锁定 10 分钟 → 创建待支付订单 → 拉卡拉发起微信支付 → 用户支付 → 异步回调验签 → 待确认（商家30分钟内接单或拒单，超时自动接单）→ 待服务 → 商家扫码核销 → 已完成 → 评价 / 售后。"
+      },
+      {
+        "paragraphIndex": 1465,
+        "text": "异常核销锁定：同一核销码在5分钟内被尝试核销失败超过3次，系统自动锁定该核销码15分钟，并触发风控告警。"
+      }
+    ]
+  },
+  {
+    "path": "docs/01-prd/03-PRD-商家端-V1.0-最终基线.docx",
+    "sha256": "fd1a60ad64b42cc1191567a9961242a359688a99e6750dabb8a7224147b2753b",
+    "paragraphIndexBasis": "zero-based word/document.xml //w:p",
+    "riskThresholdExcerpts": [
+      {
+        "paragraphIndex": 1072,
+        "text": "同一核销码 5 分钟内尝试核销失败超过 3 次，系统自动锁定该码 15 分钟并触发风控告警。"
+      }
+    ]
+  },
+  {
+    "path": "docs/01-prd/04-PRD-运营端-V1.0-最终基线.docx",
+    "sha256": "43c5578a23a882b1cd77acd3e24f88c75380de012371d75dfc61fd09403e41f9",
+    "paragraphIndexBasis": "zero-based word/document.xml //w:p",
+    "riskThresholdExcerpts": [
+      {
+        "paragraphIndex": 115,
+        "text": "支付超时10分钟；商家确认30分钟；排期时间精确到分钟；临时锁定10分钟；退款待确认商家24小时；核销码5分钟刷新、失败3次锁15分钟"
+      },
+      {
+        "paragraphIndex": 1521,
+        "text": "·核销码有效期 5 分钟、失败 3 次锁定 15 分钟，风控锁定记录需在运营端可查，用于争议溯源。"
+      },
+      {
+        "paragraphIndex": 3190,
+        "text": "核销码 5 分钟内失败 3 次"
+      }
+    ]
+  }
+]
