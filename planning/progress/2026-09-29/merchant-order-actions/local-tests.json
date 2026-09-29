@@ -1,0 +1,130 @@
+{
+  "run": "merchant-tests-3",
+  "environment": "Java 21 / MySQL 8.4 isolated localhost:23391 / offline signed payment / no live channel",
+  "tests": 63,
+  "reports": [
+    {
+      "name": "com.petplatform.boot.adapter.web.merchant.MerchantOrderHttpTest",
+      "tests": 3,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "sha256": "9248c482c9d803cacb709e4208ae44f335fb42f4d22a0b6cd057e1e4a03237b2",
+      "cases": [
+        "onlyValidBearerCanReachMerchantOrderCommands",
+        "duplicateUnknownNullAndWrongRoundFieldsAreRejectedBeforeBusiness",
+        "rejectionBindsReasonAndRequestIdAndDeadlineUses409"
+      ]
+    },
+    {
+      "name": "com.petplatform.boot.booking.AutoConfirmExecutionAcceptanceTest",
+      "tests": 21,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "sha256": "dccace7260da93cebe769f3bcd1c5d55c64a9d63862b02f5a2cd8ffac2c8fbef",
+      "cases": [
+        "staleMerchantProgressCanceledAndRescheduledOrdersNeverConfirm",
+        "missingOrCorruptedSuccessProofCannotBecomeASecondConfirmation",
+        "outboxFailureRollsBackConfirmationAndRetryCanCommit",
+        "sameRoundWrongDeadlineIsConflictAndRoundOneAndNonSystemAreRejected",
+        "inconsistentOrderRefundPointerBlocksAndRefundFactsRequireGuard",
+        "missingTaskRepairUsesOriginalDeadlineAndReplaysWithoutResettingActiveState",
+        "failedRefundQueryNeverBecomesAbsence",
+        "workerCrashAfterBusinessCommitAndLeaseReclaimProduceOneConfirmation",
+        "futureTerminalIsDiagnosedWithoutPrematureConfirmationAndScanIsBounded",
+        "committedConfirmationWithLostAckReplaysOriginalProof",
+        "confirmationCommitAllowsSubsequentGuardedPreServiceRefundFixture",
+        "dueConfirmationIsAtomicAndConcurrentReplayEmitsOneProofAndEvent",
+        "earlyWorkerRetriesAtOriginalDeadlineEvenWhenTaskExecuteTimeIsCorrupted",
+        "workerValidatesImmutableBindingAndLeavesDurableDiagnostic",
+        "currentPaymentReversalAndReservationDriftAreRetryable",
+        "allRefundSourcesAndFailedOrUnknownWithoutExecutionBindingBlock",
+        "equivalentOffsetAndJvmZoneDoNotChangeDeadlineMeaning",
+        "terminalRecoveryPreservesTaskAndAttemptsAndConfirmsOnce",
+        "workerExecutesOnlyItsTaskTypeAndCancelsRefundBlockedTask",
+        "refundCommitAndRollbackSerializeAgainstConfirmation",
+        "repairConflictAndRefundBlockNeverOverwriteExistingTask"
+      ]
+    },
+    {
+      "name": "com.petplatform.boot.booking.LateRefundAcceptanceTest",
+      "tests": 16,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "sha256": "cf9e96061435c6900b909de94055551bcc3aafae99381d9139d65d1bf111acf0",
+      "cases": [
+        "signedChannelSuccessWithWrongActualAmountRequiresReconciliation",
+        "committedLateEventCreatesOneBoundRefundWithTaskAndSurvivesLostDispatchAck",
+        "corruptedRefundOrderAndExecutionBindingFailsClosedOnReplay",
+        "verifiedRefundCompletesOnceAndProjectsSuccessBeforeCreatedWithoutReopeningOrder",
+        "committedBusinessSuccessWithLostDatabaseAckRecoversWithoutSecondChannelSubmit",
+        "sentButTimedOutRefundQueriesOriginalNumberAfterThirtySecondsAndStoresVerifiedSuccess",
+        "createdRefundProjectsToClosedOrderOnlyOnce",
+        "signedLatePaymentFixtureKeepsTimeoutClosureAndActualPaidAmount",
+        "outboxFailureRollsBackRefundBindingConsumeLogAndTask",
+        "taskInsertFailureRollsBackRefundAndConsumeClaim",
+        "bareCoordinationSuccessHintCannotCompleteBusinessRefund",
+        "unknownSubmitAtomicallySchedulesOneOriginalNumberQueryTask",
+        "concurrentConsumersConvergeOnOneOriginalRefundNumber",
+        "originalPaymentReversalBeforeRefundConsumptionFreezesAutoRefund",
+        "eventPayloadAloneCannotAuthorizeWrongAmountOrMissingProof",
+        "deadAndCanceledSubmissionTasksCreateDurableReconciliationIssue"
+      ]
+    },
+    {
+      "name": "com.petplatform.boot.booking.MerchantOrderAcceptanceTest",
+      "tests": 15,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "sha256": "747760165400785466ada7befb39f17b9677c286c389f40d50f36d7677de0d82",
+      "cases": [
+        "ownerConfirmsOnceAndPrivateNoteIsProtected",
+        "deadlineIsEnforcedAndAutomaticConfirmationWinsAtAndAfterDeadline",
+        "malformedReasonsAndRoundsNeverReachDurableAdmission",
+        "outboxTaskAndDecisionFailuresRollBackWholeBusinessButKeepRequestBinding",
+        "concurrentReplayCannotDuplicateRefundAndDifferentPayloadConflicts",
+        "authorityIsCurrentOnReplayAndOfflineExistingOrdersRemainOperable",
+        "forgedSourceOrSuccessCannotSendOrRelease",
+        "newWorkerProcessesOnlyItsSourceTaskType",
+        "failedRefundRecordsWithoutExecutionStillBlockAndUnknownDependenciesFailClosed",
+        "rejectionDoesNotReviveWhenPaymentOrAutomaticTaskReplays",
+        "unknownChannelOutcomeQueriesOriginalNumberAndNeverResubmits",
+        "revokedSessionModerationRejectionAndUnknownModerationDoNotWriteBusiness",
+        "allApprovedReasonsCreateOneFullRefundWithoutReleasingReservation",
+        "lostBusinessCommitAckReplaysTheOriginalProtectedReceipt",
+        "successProjectionAndReservationReleaseAreAtomicAndReplaySafe"
+      ]
+    },
+    {
+      "name": "com.petplatform.boot.config.LateRefundConfigurationTest",
+      "tests": 4,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "sha256": "044e8314ca375827f6fd9cb54d3f59f74fe273df1e5e9fc17c5c6bdc851036bf",
+      "cases": [
+        "eitherMissingFlagKeepsAllLateRefundBeansAbsent",
+        "enabledWithoutChannelCredentialsFailsClosed",
+        "taskPayloadMustMatchImmutableTaskKeyAndVersion",
+        "injectedOfflineChannelComposesWithoutNetworkOrWorker"
+      ]
+    },
+    {
+      "name": "com.petplatform.boot.config.MerchantOrderConfigurationTest",
+      "tests": 4,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "sha256": "7399f7822f3bc965c519bde43ebc3f81548cca233bdb9763055509505bec6ecc",
+      "cases": [
+        "missingModerationAndProtectionAreNotSilentlyReplaced",
+        "partialOrOrphanFlagsFailClosed",
+        "completeOfflineCompositionDoesNotEnableLateConsumerOrEitherWorker",
+        "defaultsCreateNoMerchantCommandWorkerOrChannel"
+      ]
+    }
+  ]
+}

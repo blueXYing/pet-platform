@@ -24,7 +24,7 @@ public final class LakalaPaymentRefundChannel implements PaymentRefundChannel {
         var input = new LakalaRefundProtocol.RefundInput(request.requestTime(),
                 request.merchantNo(), request.termNo(), request.refundNo(), request.amount(),
                 request.paymentNo(), request.originalChannelTradeNo(), request.requestIp(),
-                "LATE_PAYMENT_TIMEOUT", request.notifyUrl());
+                request.reason(), request.notifyUrl());
         return map(client.submit(input, nonce()));
     }
 

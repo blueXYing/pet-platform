@@ -46,6 +46,14 @@
         WHERE id=#{reservationId} AND order_id=#{orderId} AND store_id=#{storeId}
           AND status='TEMP_LOCKED' AND version=#{version} AND lock_expire_at=#{expires}
     </update>
+    <update id="releaseRefund">
+        UPDATE schedule_reservation SET status='RELEASED',version=version+1,updated_at=UTC_TIMESTAMP(3)
+        WHERE id=#{reservationId} AND version=#{version} AND status='CONFIRMED'
+    </update>
+    <select id="refundReleaseProof" resultType="int">
+        SELECT COUNT(*) FROM schedule_reservation_audit WHERE reservation_id=#{reservationId}
+          AND action='REFUND_RELEASE' AND request_id=#{requestId} AND actor_type='SYSTEM'
+    </select>
     <update id="expireReservation">
         UPDATE schedule_reservation SET status='EXPIRED',version=version+1,updated_at=#{now}
         WHERE id=#{reservationId} AND status='TEMP_LOCKED' AND version=#{version}

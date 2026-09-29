@@ -47,4 +47,4 @@ CONFIRMED/ALREADY_CONFIRMED → Success；STALE/BLOCKED_BY_REFUND → Cancelled�
 
 AUTO_CONFIRM_ANOMALY 写在 ORDER 的 order_status_log，from/to 都为当前阶段，remark 仅 code/round；按订单/requestId/code 去重。正常回滚后的依赖失败在独立短事务登记；业务成功证明和失败诊断分开。数据库整体不可用时诊断也可能失败，仅输出脱敏警告，重试状态仍由 TASK 保留。无新告警表或外部告警路由；外部通知没有配置，不能声称已通知值班人。
 
-普通商家接单/拒单、普通退款入口、一次改期/round1及任务取消、公开HTTP/小程序/消息消费者仍属后续 Issue。ORD-002 对 ORD-001 的依赖保持，内部切片不代表完整业务 DoD。生产发布/合并需单独授权。
+本44号切片未交付普通商家接单/拒单。2026-09-29批准的[45号](45-Merchant-Order-Actions-Contract-v0.1.md)追加主账号round0确认/拒单HTTP和对应全额退款，OrderConfirmedEvent.confirmMode扩展MERCHANT。一次改期/round1、完整角色、公开读侧/小程序/消息消费者仍属后续Issue。ORD-002对完整ORD-001的依赖保持，内部切片不代表完整业务DoD。生产发布/合并需单独授权。

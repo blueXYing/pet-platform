@@ -1,6 +1,6 @@
 # CCR-W2-API-001：首批业务查询/写入与页面DTO缺口
 
-> 2026-09-29接续：PR90已合并且合并CI通过。用户现已批准[自动接单A推荐方案及B剩余实现](CCR-W2-API-001/order-auto-confirm-proposal.md)，状态A_B_APPROVED。正常付款原子任务/只读排查沿用[43号契约](../../docs/04-api/43-Auto-Confirm-Task-Preparation-Contract-v0.1.md)，首轮SYSTEM确认/退款权威事实/Worker/补建恢复见[44号契约](../../docs/04-api/44-Auto-Confirm-Execution-Recovery-Contract-v0.1.md)。PR91供审阅，所有开关默认关闭，明确不合并或生产启用；未解除ORD-001/ORD-003完整联动依赖。
+> 2026-09-29最新接续：PR91已合并develop `1eb96ac`，合并CI六项通过、649后端基线测试零失败。用户现已“批准以上三项，按推荐方案继续”，[ORD-001商家确认/拒单及退款联动](CCR-W2-API-001/merchant-order-actions-proposal.md)D1/D2/D3状态APPROVED；45号正式Contract/Schema与SSOT §34及配套接口/事件/任务/测试同步，实现提交PR供审阅。全部运行开关默认关闭，当前PR不合并或生产启用；完整Issue依赖未解除。证据见[实现记录](../progress/2026-09-29/merchant-order-actions/IMPLEMENTATION.md)。
 
 > 2026-09-16 状态同步：用户域已经历契约同步与后端/HTTP交付；不能恢复本地旧副本的“尚未交付”表述。其他域仍按下表独立评审，整个CCR不因用户域进展而RESOLVED。
 

@@ -142,6 +142,20 @@ public final class OrderPaymentResultApiImpl implements OrderPaymentResultApi, I
         if (order == null || order.storeId() != located.getFirst().storeId()
                 || order.userId() <= 0 || order.merchantId() <= 0 || order.reservationId() <= 0
                 || order.paymentExpireAt() == null) throw unavailable("ORDER payment binding is invalid");
+        // A proven merchant rejection is a terminal NORMAL-payment projection. Replaying its
+        // original receipt must not demand the pre-refund PAID getter after PAYMENT observes REFUND.
+        if("CANCELED".equals(order.stage())&&"MERCHANT_REJECT_ORDER".equals(order.cancelReason())) {
+            var original=orders.lockResult(order.id());
+            var rejected=new OrderMerchantRejectFactsApiImpl(source,guard).requireRejected(input.command().orderId(),
+                input.command().paymentId(),storeId,context);
+            if(original==null||!"NORMAL".equals(original.resultType())||original.sourceEventId()!=input.sourceEventId()
+                ||!rejected.paymentSuccessEventId().equals(input.command().sourceEventId())
+                ||!rejected.channelTradeNo().equals(input.command().channelTradeNo())
+                ||rejected.channelPaidAmount().compareTo(input.command().paidAmount())!=0
+                ||!rejected.channelPaidAt().isEqual(input.command().paidAt()))throw unavailable("Original rejected payment receipt mismatch");
+            if(event!=null)consumeGuard.tryClaim(CONSUMER,event);
+            return ConsumePaymentResult.NOOP;
+        }
         PaymentSuccessFact payment = payments.requireSucceeded(input.command().paymentId(),
                 input.command().orderId(), storeId, context);
         verifyPayment(input, order, payment, storeId);
@@ -291,7 +305,11 @@ public final class OrderPaymentResultApiImpl implements OrderPaymentResultApi, I
             if (!"UNVERIFIED".equals(order.verificationStatus()))
                 throw unavailable("ORDER paid verification state is inconsistent");
             confirmation.assertConfirmed(input.command().orderId(), reservationId, storeId, context);
-        } else if (!Set.of("PENDING_SERVICE", "COMPLETED", "CANCELED").contains(order.stage())
+        } else if ("CANCELED".equals(order.stage())) {
+            if(!"MERCHANT_REJECT_ORDER".equals(order.cancelReason()))throw unavailable("Unknown normal-payment closure");
+            new OrderMerchantRejectFactsApiImpl(source,guard).requireRejected(input.command().orderId(),
+                input.command().paymentId(),storeId,context);
+        } else if (!Set.of("PENDING_SERVICE", "COMPLETED").contains(order.stage())
                 || "PAYMENT_TIMEOUT".equals(order.cancelReason())) {
             throw unavailable("ORDER paid stage is inconsistent");
         }

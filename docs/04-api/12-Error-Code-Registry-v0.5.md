@@ -47,7 +47,7 @@ HTTP 映射只属于 Adapter 层；内部 Java API 通过稳定 code 表达同�
 | ORDER_MERCHANT_MISMATCH | 商家/门店不匹配 |
 | ORDER_ALREADY_PAID | 订单已支付 |
 | ORDER_PAYMENT_EXPIRED | 支付窗口已过期 |
-| ORDER_CONFIRM_DEADLINE_PASSED | 确认时限已由其他流程处理 |
+| ORDER_CONFIRM_DEADLINE_PASSED | 商家新决定在共同门店锁内检查已达到确认截止（即使自动任务尚未落库）；已批准45号，HTTP409 |
 | ORDER_RESCHEDULE_LIMIT_REACHED | 已达到每单 1 次改期上限 |
 | ORDER_RESCHEDULE_AFTER_START | 已到预约开始时间，不允许改期 |
 | ORDER_OPERATION_BUSY | 核销/退款关键操作正在竞争 |

@@ -59,7 +59,7 @@ class PaymentFoundationAcceptanceTest {
   private static final String STORE = "710302";
   private static final String MERCHANT = "710301";
   private static final String MERCHANT_NO = "QA_MERCHANT_01";
-  private static final String TERM_NO = "QA_TERM_01";
+  private static final String TERM_NO = "QA_TERM1";
   private static final String SUB_APP = "wxQaSubApp01";
   private static final DateTimeFormatter TRADE_TIME = DateTimeFormatter.ofPattern("yyyyMMddHHmmss");
 

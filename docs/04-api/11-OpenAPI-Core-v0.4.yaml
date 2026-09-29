@@ -1857,12 +1857,22 @@ paths:
       - Merchant-Order
       summary: 商家接单
       operationId: merchantConfirmOrder
+      x-contract-status: IMPLEMENTED_DEFAULT_OFF_REQUIRES_PROVIDERS
+      description: 主账号首轮；锁内DB时间严格小于paidAt+30min。详见45号，首次成功回执持久重放。
       security:
       - bearerAuth: []
       parameters:
       - $ref: '#/components/parameters/OrderId'
       - $ref: '#/components/parameters/RequestId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/MerchantConfirmOrderRequest'
       responses:
+        '400':
+          $ref: '#/components/responses/BadRequest'
         '401':
           $ref: '#/components/responses/Unauthorized'
         '403':
@@ -1870,6 +1880,10 @@ paths:
         '503':
           $ref: '#/components/responses/DependencyUnavailable'
         '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MerchantOrderResponse'
           description: 成功
         '409':
           $ref: '#/components/responses/Conflict'
@@ -1879,6 +1893,8 @@ paths:
       - Merchant-Order
       summary: 商家拒单
       operationId: merchantRejectOrder
+      x-contract-status: IMPLEMENTED_DEFAULT_OFF_REQUIRES_PROVIDERS
+      description: 主账号首轮；拒单与全额退款建单原子提交，渠道最终成功后释放预约。详见45号。
       security:
       - bearerAuth: []
       parameters:
@@ -1891,6 +1907,8 @@ paths:
             schema:
               $ref: '#/components/schemas/MerchantRejectOrderRequest'
       responses:
+        '400':
+          $ref: '#/components/responses/BadRequest'
         '401':
           $ref: '#/components/responses/Unauthorized'
         '403':
@@ -1898,6 +1916,10 @@ paths:
         '503':
           $ref: '#/components/responses/DependencyUnavailable'
         '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MerchantOrderResponse'
           description: 成功
         '409':
           $ref: '#/components/responses/Conflict'
@@ -8108,6 +8130,12 @@ components:
         pattern: ^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}(?![\s\S])
       description: Original command UUID for result recovery; not a new GET idempotency key.
   responses:
+    BadRequest:
+      description: 请求字段、格式或枚举不合法。
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorEnvelope'
     Conflict:
       description: 业务状态/并发/幂等冲突。异参IDEMPOTENCY_KEY_CONFLICT不得覆盖；争锁忙COMMON_CONFLICT且data为null，原key稍后重试，不将所有409自动重试。
       content:
@@ -8899,16 +8927,76 @@ components:
             $ref: '#/components/schemas/PublicId'
     MerchantRejectOrderRequest:
       type: object
+      additionalProperties: false
       required:
+      - expectedConfirmRound
+      - reasonCode
       - reasonText
       properties:
+        expectedConfirmRound:
+          type: integer
+          enum: [0]
         reasonCode:
           type: string
-          maxLength: 64
+          enum: [SCHEDULE_CONFLICT, STAFF_UNAVAILABLE, PET_NOT_MATCHED, TEMPORARY_CLOSURE, OTHER]
         reasonText:
           type: string
-          minLength: 1
-          maxLength: 500
+          minLength: 5
+          maxLength: 200
+          description: 非全空白；保留原文，Unicode码点计数，须可信敏感词校验。
+    MerchantConfirmOrderRequest:
+      type: object
+      additionalProperties: false
+      required: [expectedConfirmRound]
+      properties:
+        expectedConfirmRound:
+          type: integer
+          enum: [0]
+        internalNote:
+          type: string
+          maxLength: 200
+          description: 可省略，不允许null；省略与空串幂等不同，仅店内可见。
+    MerchantOrderReceipt:
+      type: object
+      additionalProperties: false
+      required: [orderId, decisionId, confirmRound, action, orderStageAtCommit, decidedAt, refundOrderId]
+      properties:
+        orderId:
+          $ref: '#/components/schemas/PublicId'
+        decisionId:
+          $ref: '#/components/schemas/PublicId'
+        confirmRound:
+          type: integer
+          enum: [0]
+        action:
+          type: string
+          enum: [CONFIRM, REJECT]
+        orderStageAtCommit:
+          type: string
+          enum: [PENDING_SERVICE, CANCELED]
+        decidedAt:
+          type: string
+          format: date-time
+        refundOrderId:
+          type: string
+          nullable: true
+          pattern: '^[1-9][0-9]{0,18}$'
+    MerchantOrderResponse:
+      type: object
+      additionalProperties: false
+      required: [success, code, message, data, traceId]
+      properties:
+        success:
+          type: boolean
+          enum: [true]
+        code:
+          type: string
+        message:
+          type: string
+        data:
+          $ref: '#/components/schemas/MerchantOrderReceipt'
+        traceId:
+          type: string
     MerchantRejectRefundRequest:
       type: object
       required:

@@ -9,7 +9,7 @@ import org.springframework.core.Ordered;
 import org.springframework.core.annotation.Order;
 import org.springframework.web.bind.annotation.*;
 
-@RestControllerAdvice(assignableTypes = MerchantStaffController.class)
+@RestControllerAdvice(assignableTypes = {MerchantStaffController.class, MerchantOrderController.class})
 @Order(Ordered.HIGHEST_PRECEDENCE + 19)
 public final class MerchantStaffExceptionHandler {
     @ExceptionHandler(ApiException.class)
@@ -19,7 +19,7 @@ public final class MerchantStaffExceptionHandler {
             case CommonApiCodes.UNAUTHORIZED -> 401;
             case CommonApiCodes.FORBIDDEN -> 403;
             case CommonApiCodes.NOT_FOUND -> 404;
-            case CommonApiCodes.CONFLICT, CommonApiCodes.IDEMPOTENCY_KEY_CONFLICT -> 409;
+            case CommonApiCodes.CONFLICT, CommonApiCodes.IDEMPOTENCY_KEY_CONFLICT, "ORDER_STATE_NOT_ALLOWED", "ORDER_REFUND_ALREADY_CREATED", "ORDER_CONFIRM_DEADLINE_PASSED", "ORDER_OPERATION_BUSY" -> 409;
             case CommonApiCodes.DEPENDENCY_UNAVAILABLE -> 503;
             default -> 500;
         };

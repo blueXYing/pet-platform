@@ -7,6 +7,8 @@ import org.apache.ibatis.annotations.Param;
 
 public interface RefundExecutionMapper {
     List<RefundMapperRows.OrderPresence> lockPresence(@Param("orderId") long orderId);
+    int insertMerchantRefund(java.util.Map<String,Object> row);
+    int insertMerchantExecution(java.util.Map<String,Object> row);
     void setUtcTimeZone();
     void setLockWaitTimeout();
     LocalDateTime databaseNow();
@@ -39,5 +41,5 @@ public interface RefundExecutionMapper {
             @Param("refundNo") String refundNo);
     int resolveIssue(@Param("refundId") long refundId);
     int insertIssue(@Param("refundId") long refundId, @Param("code") String code);
-    List<RefundMapperRows.Candidate> scanOpen(@Param("after") long after);
+    List<RefundMapperRows.Candidate> scanOpen(@Param("after") long after,@Param("late") boolean late,@Param("merchant") boolean merchant);
 }

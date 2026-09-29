@@ -1547,3 +1547,9 @@ notification_delivery
 ## 2026-09-28 implementation supplement
 
 For atomic booking creation, scheduled task submission and coordinated expiration are specified in [Contract 39](../04-api/39-Selection-Booking-Expiry-Contract-v0.1.md). Its ORDER + SCH transaction supersedes standalone reservation expiry for this slice. Default switches remain off; no payment-channel or coupon settlement capability is implied.
+
+## 2026-09-29 商家拒单退款任务（45号）
+
+[45号契约](../04-api/45-Merchant-Order-Actions-Contract-v0.1.md)新增MERCHANT_REFUND_SUBMIT和MERCHANT_REFUND_CHANNEL_QUERY。Owner/bizType为REFUND、bizId为退款ID、expectedVersion=0、payload精确refundOrderId/storeId String及bindingVersion整数0；taskKey为类型:refundId:0。任务类型还须匹配退款来源。拒单事务内创建提交任务，UNKNOWN仍使用原退款号和持久PAYMENT发送意图，仅查单，不以重试再次发退款。
+
+复用REFUND_CHANNEL策略（30秒、60秒、120秒、5/15/30/60分钟，最多8次），查询至少满足渠道30秒间隔；租约丢失、DEAD、扫描恢复仍检查原任务绑定和权威事实。扫描每次有界，按已启用来源过滤。普通Worker只领取MERCHANT_两类任务，旧迟到Worker类型不变，彼此不能误领。pet.order.merchant.worker.enabled默认false，依赖45号完整退款执行；不默认开启pet.refund.late.worker.enabled。退款成功事件投影完成前继续占用预约，不能把任务SUCCEEDED等同于预约已释放。

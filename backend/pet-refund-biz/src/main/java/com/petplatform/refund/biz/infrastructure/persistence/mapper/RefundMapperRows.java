@@ -21,7 +21,8 @@ public final class RefundMapperRows {
         public String channelTradeNo, currency, requestId, successReceiptSha256;
         public BigDecimal channelPaidAmount, refundAmount;
         public LocalDateTime channelPaidAt, bindingCreatedAt;
-        public Long bindingVersion, createdEventId, successEventId;
+        public Long bindingVersion, createdEventId, successEventId, sourceEventId;
+        public String bindingSourceType;
     }
 
     public static final class Candidate {

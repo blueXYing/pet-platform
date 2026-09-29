@@ -58,6 +58,7 @@ public final class CBearerSessionFilter extends OncePerRequestFilter {
         || path.equals("/api/v1/merchant/services")
         || path.startsWith("/api/v1/merchant/services/")
         || path.equals("/api/v1/merchant/service-categories")
+        || path.startsWith("/api/v1/merchant/orders/")
         || path.equals("/api/v1/merchant/staff")
         || path.startsWith("/api/v1/merchant/staff/")
         || path.matches("/api/v1/c/stores/[^/]+/services")
@@ -126,6 +127,7 @@ public final class CBearerSessionFilter extends OncePerRequestFilter {
         || path.equals("/api/v1/c/private-assets")
         || path.startsWith("/api/v1/c/merchant-applications")
         || path.startsWith("/api/v1/merchant/agreement")
+        || path.startsWith("/api/v1/merchant/orders/")
         || path.equals("/api/v1/merchant/staff")
         || path.startsWith("/api/v1/merchant/staff/");
   }

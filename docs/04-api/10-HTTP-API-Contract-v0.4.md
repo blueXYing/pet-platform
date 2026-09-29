@@ -876,7 +876,7 @@ Header：`X-Request-Id` 必填。
 30分钟内未处理系统自动接单
 ```
 
-返回最新订单状态。
+2026-09-29已批准45号首切片：先接通主账号、round0；员工产品权限保留待后续账号授权接入。请求为`{"expectedConfirmRound":0,"internalNote":"可省略的店内备注"}`，备注0～200 Unicode码点，不能为null，不对C端公开。新的商家决定在锁内DB时间严格小于paidAt+30分钟时接受；等待锁越界也拒绝。返回首次成功的不可变回执，重放重新鉴权；当前订单状态由读侧查询，不混入幂等回执。完整字段、准入和事务见[45号](45-Merchant-Order-Actions-Contract-v0.1.md)。默认关闭。
 
 ---
 
@@ -888,12 +888,13 @@ Request：
 
 ```json
 {
+  "expectedConfirmRound": 0,
   "reasonCode": "OTHER",
   "reasonText": "门店临时无法履约"
 }
 ```
 
-具体 `reasonCode` 字典不在此版本擅自冻结。
+2026-09-29 D1/D2/D3已批准冻结五类编码：SCHEDULE_CONFLICT（排期冲突）、STAFF_UNAVAILABLE（人员不足）、PET_NOT_MATCHED（宠物情况不匹配）、TEMPORARY_CLOSURE（门店临时停业）、OTHER（其他）。reasonCode/reasonText必填；原因5～200 Unicode码点、非全空白且须敏感词审核。首切片主账号/round0，截止及回执同4.2，未知字段/重复键拒绝。
 
 拒单成功后：
 
@@ -902,6 +903,8 @@ Request：
 ```
 
 商家在订单确认后不再有普通拒单/取消接口。
+
+拒单决定、ORDER关闭/退款指针、REFUND全额建单/执行绑定/任务及Outbox同事务。建单即禁止后续核销；渠道最终成功才释放预约，UNKNOWN/失败仍退款中。正式契约见45号；本切片不开放用户主动退款或生产渠道。
 
 ---
 

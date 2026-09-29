@@ -1,0 +1,47 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.petplatform.order.biz.infrastructure.persistence.mapper.OrderMerchantMapper">
+ <insert id="reserve">
+  INSERT INTO order_merchant_command(id,command_namespace,actor_type,actor_id,authority_scope,request_id,
+   canonical_version,payload_sha256,canonical_bytes,state,created_at,updated_at)
+  VALUES(#{id},#{namespace},'USER',#{actor},#{scope},#{requestId},'canonical-v1',#{hash},#{canonical},'RESERVED',UTC_TIMESTAMP(3),UTC_TIMESTAMP(3))
+  ON DUPLICATE KEY UPDATE id=id
+ </insert>
+ <select id="binding" resultType="com.petplatform.order.biz.infrastructure.persistence.mapper.OrderMerchantMapper$Binding">
+  SELECT id,canonical_version,payload_sha256,canonical_bytes,state,result_version,result_bytes
+  FROM order_merchant_command WHERE command_namespace=#{namespace} AND actor_type='USER'
+   AND actor_id=#{actor} AND authority_scope=#{scope} AND request_id=#{requestId} FOR UPDATE
+ </select>
+ <update id="succeed">
+  UPDATE order_merchant_command SET state='SUCCEEDED',result_version=1,result_bytes=#{result},updated_at=UTC_TIMESTAMP(3)
+  WHERE id=#{id} AND state='RESERVED'
+ </update>
+ <insert id="insertDecision">
+  INSERT INTO order_merchant_decision(id,order_id,store_id,confirm_round,command_id,action,operator_id,
+   decided_at,event_id,refund_order_id,reason_code,reason_text,internal_note)
+  VALUES(#{id},#{orderId},#{storeId},0,#{commandId},#{action},#{operatorId},#{now},#{eventId},
+   #{refundId,jdbcType=BIGINT},#{reasonCode,jdbcType=VARCHAR},#{reasonText,jdbcType=VARBINARY},#{internalNote,jdbcType=VARBINARY})
+ </insert>
+ <select id="decision" resultType="com.petplatform.order.biz.infrastructure.persistence.mapper.OrderMerchantMapper$Decision">
+  SELECT id,order_id,store_id,confirm_round,command_id,action,operator_id,decided_at,event_id,
+   refund_order_id,reason_code,reason_text,internal_note FROM order_merchant_decision WHERE order_id=#{orderId} AND confirm_round=0 FOR UPDATE
+ </select>
+ <update id="decide">
+  UPDATE pet_order SET order_stage=#{stage},confirm_mode=#{mode,jdbcType=VARCHAR},confirmed_at=#{confirmedAt,jdbcType=TIMESTAMP},
+   canceled_at=#{canceledAt,jdbcType=TIMESTAMP},cancel_reason=#{cancelReason,jdbcType=VARCHAR},
+   refund_order_id=#{refundId,jdbcType=BIGINT},version=version+1,updated_at=#{now}
+  WHERE id=#{orderId} AND version=#{version} AND order_stage='PENDING_CONFIRM' AND payment_status='PAID'
+   AND verification_status='UNVERIFIED' AND reschedule_count=0 AND confirm_deadline &gt; #{now}
+   AND confirm_mode IS NULL AND confirmed_at IS NULL AND canceled_at IS NULL AND cancel_reason IS NULL
+   AND refund_order_id IS NULL AND current_refund_application_id IS NULL AND current_aftersale_id IS NULL AND refunded_amount=0
+ </update>
+ <insert id="log">
+  INSERT INTO order_status_log(id,order_id,dimension,from_status,to_status,event_type,operator_type,operator_id,request_id,remark,created_at)
+  VALUES(#{id},#{orderId},'ORDER_STAGE','PENDING_CONFIRM',#{stage},#{eventType},'MERCHANT',#{operatorId},#{requestId},#{remark},#{now})
+ </insert>
+ <update id="project">
+  UPDATE pet_order SET refunded_amount=#{amount},version=version+1,updated_at=UTC_TIMESTAMP(3)
+  WHERE id=#{orderId} AND refund_order_id=#{refundId} AND order_stage='CANCELED'
+   AND cancel_reason='MERCHANT_REJECT_ORDER' AND refunded_amount=0
+ </update>
+</mapper>

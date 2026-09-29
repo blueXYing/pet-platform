@@ -57,7 +57,8 @@ public class OrderAutoConfirmTaskConfiguration {
             "${pet.order.auto-confirm.enabled:false} && ${pet.payment.foundation.enabled:false}"
             + " && (${pet.order.auto-confirm.worker.enabled:false} || ${pet.order.auto-confirm.repair.enabled:false})")
     static class Execution {
-        @Bean RefundOrderFactsApi refundOrderFactsApi(DataSource source, ScheduleCapacityGuardApi guard) {
+        @Bean @org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean(RefundOrderFactsApi.class)
+        RefundOrderFactsApi refundOrderFactsApi(DataSource source, ScheduleCapacityGuardApi guard) {
             return new RefundOrderFactsApiImpl(source, guard);
         }
         @Bean OrderAutoConfirmService orderAutoConfirmService(
