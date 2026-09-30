@@ -1,0 +1,56 @@
+{
+  "conclusion": "success",
+  "databaseId": 36551704404,
+  "headSha": "89271e9428bcb087823ac36b7adf12c9c51d18c0",
+  "jobs": [
+    {
+      "completedAt": "2026-09-29T10:08:35Z",
+      "conclusion": "success",
+      "name": "backend",
+      "startedAt": "2026-09-29T09:50:06Z",
+      "status": "completed",
+      "url": "https://github.com/blueXYing/pet-platform/actions/runs/36551704404/job/109351176774"
+    },
+    {
+      "completedAt": "2026-09-29T09:50:15Z",
+      "conclusion": "success",
+      "name": "frontend-inventory",
+      "startedAt": "2026-09-29T09:50:07Z",
+      "status": "completed",
+      "url": "https://github.com/blueXYing/pet-platform/actions/runs/36551704404/job/109351177010"
+    },
+    {
+      "completedAt": "2026-09-29T09:51:08Z",
+      "conclusion": "success",
+      "name": "contract-smoke",
+      "startedAt": "2026-09-29T09:50:05Z",
+      "status": "completed",
+      "url": "https://github.com/blueXYing/pet-platform/actions/runs/36551704404/job/109351177032"
+    },
+    {
+      "completedAt": "2026-09-29T09:50:12Z",
+      "conclusion": "success",
+      "name": "repository-policy",
+      "startedAt": "2026-09-29T09:50:05Z",
+      "status": "completed",
+      "url": "https://github.com/blueXYing/pet-platform/actions/runs/36551704404/job/109351177248"
+    },
+    {
+      "completedAt": "2026-09-29T09:51:46Z",
+      "conclusion": "success",
+      "name": "miniapp-weapp-build",
+      "startedAt": "2026-09-29T09:50:17Z",
+      "status": "completed",
+      "url": "https://github.com/blueXYing/pet-platform/actions/runs/36551704404/job/109351250556"
+    },
+    {
+      "completedAt": "2026-09-29T09:51:19Z",
+      "conclusion": "success",
+      "name": "web-build",
+      "startedAt": "2026-09-29T09:50:17Z",
+      "status": "completed",
+      "url": "https://github.com/blueXYing/pet-platform/actions/runs/36551704404/job/109351250636"
+    }
+  ],
+  "url": "https://github.com/blueXYing/pet-platform/actions/runs/36551704404"
+}
