@@ -21,9 +21,9 @@ class AdminAuthLifecycleTest {
         String token=db.loginToken(service);var view=service.resolveSession(token);
         assertEquals("ADMIN_WEB",view.principal().audience());assertEquals("ALL",view.permissions().dataScope().mode());
         assertEquals(1,view.permissions().roles().size());assertEquals("PLATFORM_SUPER_ADMIN",view.permissions().roles().getFirst().roleCode());
-        // Super admin sees every deployed action; the three service review codes join with the
-        // ADM-001 service write slice (dotted force-offline spelling per the AUTH lexicon).
-        assertEquals(List.of("merchant.application.decide", "merchant.application.read", "merchant.identity.reveal", "service.force.offline", "service.review.decide", "service.review.read"),view.permissions().actionCodes());
+        // SSOT §24 and Contract50: super admin sees all deployed actions, including the approved
+        // AFS internal workflow; this exact list still rejects unrelated or undeployed permissions.
+        assertEquals(List.of("aftersale.decide", "aftersale.handle", "aftersale.read", "merchant.application.decide", "merchant.application.read", "merchant.identity.reveal", "service.force.offline", "service.review.decide", "service.review.read"),view.permissions().actionCodes());
         assertTrue(db.jdbc.queryForObject("SELECT password_hash FROM admin_account WHERE id=?",String.class,owner).contains("m=65536,t=3,p=1"));
     }
     @Test void attemptRequiresBothSecretsAndDoesNotReplaySecretFromRequestIdAlone(){

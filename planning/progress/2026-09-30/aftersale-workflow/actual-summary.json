@@ -1,5 +1,5 @@
 {
-  "recordedAt": "2026-09-30T07:09:40.601438+00:00",
+  "recordedAt": "2026-09-30T07:34:39.430841+00:00",
   "baseCommit": "ff983596cad899c7b4e1ce9c8278228787ca7ac6",
   "branch": "codex/aftersale-workflow-20260930",
   "status": "RELEVANT_LOCAL_CHECKS_PASSED_ACROSS_INCREMENTAL_RUNS",
@@ -312,6 +312,61 @@
           "class": "com.petplatform.order.biz.OrderVerificationHistoryMySqlTest"
         }
       ]
+    },
+    {
+      "log": "afs-admin-regression-green.log",
+      "sha256": "621f983aa41faaf7adfda7b2c92ea7c34966261d98bb5afbe64cfe04b33eb7c3",
+      "build": "SUCCESS",
+      "reports": [
+        {
+          "tests": 11,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0,
+          "seconds": 25.859,
+          "class": "com.petplatform.admin.biz.auth.AdminAuthFailureRecoveryTest"
+        },
+        {
+          "tests": 11,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0,
+          "seconds": 16.224,
+          "class": "com.petplatform.admin.biz.auth.AdminAuthLifecycleTest"
+        },
+        {
+          "tests": 7,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0,
+          "seconds": 27.833,
+          "class": "com.petplatform.admin.biz.auth.AdminAuthorizationCurrentReadTest"
+        },
+        {
+          "tests": 12,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0,
+          "seconds": 0.792,
+          "class": "com.petplatform.admin.biz.auth.AdminAuthPrimitivesTest"
+        },
+        {
+          "tests": 3,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0,
+          "seconds": 0.467,
+          "class": "com.petplatform.boot.auth.AdminAuthDisabledTest"
+        },
+        {
+          "tests": 5,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0,
+          "seconds": 8.847,
+          "class": "com.petplatform.boot.auth.AdminAuthHttpTest"
+        }
+      ]
     }
   ],
   "ci": "See exact PR97 head checks and downloaded backend-test-reports; baseline PR96 results are not used as current coverage.",
@@ -337,5 +392,28 @@
     "cause": "Legacy seeded component fixture supplied null AFS historical proof provider; initial positive read failed before projection version mutation. Correcting fixture and historical/current-pointer oracles without weakening production proof checks. New AFS suites had not run.",
     "reportSha256": "9c68136326d363c7cd3ed1e574b88ffacd175f10bdf7cb94e627db1662fb22b3"
   },
-  "legacyHistoryAdditionalExecutions": 1
+  "legacyHistoryAdditionalExecutions": 1,
+  "additionalFailedCi": {
+    "run": 36683509601,
+    "head": "0bf76f703d67cfee83545f4f290220c6c7f9cc40",
+    "reports": 69,
+    "totals": {
+      "tests": 479,
+      "failures": 1,
+      "errors": 0,
+      "skipped": 0
+    },
+    "failed": [
+      {
+        "name": "com.petplatform.admin.biz.auth.AdminAuthLifecycleTest",
+        "tests": 11,
+        "failures": 1,
+        "errors": 0,
+        "skipped": 0,
+        "sha256": "f065701ca0cc9ee2f0e7b7614e63b85a2b00297734e16849fe6e3fee9dfdf71e"
+      }
+    ],
+    "qualification": "Failed at ADMIN before boot acceptance suites; not complete regression.",
+    "cause": "Legacy exact super-admin permission assertion omitted the three newly approved AFS actions. Updated both lifecycle and HTTP exact lists; existing role count and least-privilege assertions retained. Production authorization unchanged."
+  }
 }
