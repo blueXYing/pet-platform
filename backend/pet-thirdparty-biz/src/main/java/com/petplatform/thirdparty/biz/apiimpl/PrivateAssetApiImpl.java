@@ -32,7 +32,7 @@ public final class PrivateAssetApiImpl implements PrivateAssetApi {
    */
   public static final String SERVICE_COVER = "SERVICE_COVER";
   private static final java.util.Set<String> UPLOAD_PURPOSES =
-      java.util.Set.of(MERCHANT_APPLICATION_MATERIAL, SERVICE_COVER);
+      java.util.Set.of(MERCHANT_APPLICATION_MATERIAL, SERVICE_COVER, "AFTERSALE_EVIDENCE");
   static final int MAX_BYTES = 10 * 1024 * 1024;
   private static final DecimalPublicIdCodec IDS = new DecimalPublicIdCodec();
 

@@ -38,6 +38,7 @@ public final class OrderMerchantRefundProjectionConsumer implements IntegrationE
             JsonNode n=JSON.readTree(event.payloadJson());Set<String> keys=new HashSet<>();n.fieldNames().forEachRemaining(keys::add);
             if(!n.isObject()||!keys.equals(Set.of("refundOrderId","refundNo","orderId","refundType","refundSource","refundAmount","originalPaidAmount","channelRefundNo","succeededAt")))throw unavailable();
             String refund=text(n,"refundOrderId"),order=text(n,"orderId");IDS.fromApi(order);IDS.fromApi(text(n,"refundNo"));IDS.fromApi(event.eventId());
+            if("AFTERSALE_DECISION".equals(text(n,"refundSource")))return;
             if(IDS.fromApi(refund)!=event.aggregateId()||!"FULL".equals(text(n,"refundType"))||!n.path("refundAmount").isNumber()||!n.path("originalPaidAmount").isNumber())throw unavailable();
             OffsetDateTime at=OffsetDateTime.parse(text(n,"succeededAt"));PublicContractChecks.requireMillisecondPrecision(at);
             if(event.occurredAt()==null||!at.isEqual(event.occurredAt()))throw unavailable();

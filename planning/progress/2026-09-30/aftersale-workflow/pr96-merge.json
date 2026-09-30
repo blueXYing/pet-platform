@@ -1,0 +1,12 @@
+{
+  "baseRefName": "develop",
+  "headRefOid": "42320017ee78189fa2495dab0404ea13e50da117",
+  "mergeCommit": {
+    "oid": "ff983596cad899c7b4e1ce9c8278228787ca7ac6"
+  },
+  "mergedAt": "2026-09-30T04:27:52Z",
+  "number": 96,
+  "state": "MERGED",
+  "title": "feat(refund): 接通普通退款申请、24h批准恢复与原路退款",
+  "url": "https://github.com/blueXYing/pet-platform/pull/96"
+}

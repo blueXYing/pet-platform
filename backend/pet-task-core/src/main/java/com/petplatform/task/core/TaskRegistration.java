@@ -30,6 +30,7 @@ public record TaskRegistration<T>(TaskHandler<T> handler, Function<TaskLease, T>
                 "TASK:" + lease.taskId() + ":" + lease.attemptNo(),
                 OffsetDateTime.now(clock).truncatedTo(ChronoUnit.MILLIS));
         T payload = decode.apply(lease);
-        return () -> Objects.requireNonNull(handler.execute(context, payload), "Handler returned null");
+        return () -> TaskInvocation.dispatch(lease,
+                () -> Objects.requireNonNull(handler.execute(context, payload), "Handler returned null"));
     }
 }

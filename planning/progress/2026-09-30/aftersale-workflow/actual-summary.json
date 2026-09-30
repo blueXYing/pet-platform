@@ -1,0 +1,419 @@
+{
+  "recordedAt": "2026-09-30T07:34:39.430841+00:00",
+  "baseCommit": "ff983596cad899c7b4e1ce9c8278228787ca7ac6",
+  "branch": "codex/aftersale-workflow-20260930",
+  "status": "RELEVANT_LOCAL_CHECKS_PASSED_ACROSS_INCREMENTAL_RUNS",
+  "newTestExecutions": 82,
+  "newTestCounts": {
+    "Workflow": 21,
+    "Money": 12,
+    "PrivateEvidence": 4,
+    "Supplement": 4,
+    "SourceIntegrity": 2,
+    "RefundRecovery": 2,
+    "Configuration": 23,
+    "Boundary": 6,
+    "FundingEvidence": 5,
+    "RefundTaskFamily": 2,
+    "TaskInvocation": 1
+  },
+  "qualification": "Counts are unique test executions covered across incremental runs, not one full same-head run. complete1 Money had 3 errors fixed and retested in complete2; complete2 Workflow had 1 fixture error fixed and retested separately. Full clean reactor regression is delegated to PR97 CI and its actual downloadable report. Missing cases in the acceptance matrix remain unverified. Final cross-review found first-send preflight using historical funding time. A deterministic test failed on production revision 75a1cafa63043f7316411982618895127357ab9f, then passed after current DB time revalidation while preserving historical query validation. The final targeted batch has 52 tests, zero failures/errors/skips. Legacy ORDER history fixture was corrected after CI36682136380 exposed a null historical proof provider; all four targeted methods passed locally. Its one added method extends an existing suite and is separate from the 82 executions in 11 new AFS-related suites.",
+  "additionalLocalRegression": {
+    "PaymentRefundServiceMySqlTest": 18,
+    "AdminAuthPrimitivesTest": 12,
+    "ArchitectureRulesFixtureTest": 15,
+    "ArchitectureRulesTest": 7,
+    "OrderVerificationHistoryMySqlTest": 4
+  },
+  "staticGates": {
+    "moduleDependencies": "PASS",
+    "persistenceStyle": "PASS",
+    "displayStatus": "PASS",
+    "backendToolsUnittests": 18,
+    "e2eUnittests": 122,
+    "contractSmoke": {
+      "status": "PASS_OFFLINE_DOCUMENT_SMOKE",
+      "operations": 92,
+      "writesWithRequestId": 58,
+      "resolvedRefs": 1056
+    },
+    "diffCheck": "PASS"
+  },
+  "runs": [
+    {
+      "log": "afs-complete-1.log",
+      "sha256": "023be2e7c522427e9e48314a123fbc00e7f55213dae425c2f7a2a0b0bc50ea61",
+      "build": "FAILURE",
+      "reports": [
+        {
+          "tests": 1,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0,
+          "seconds": 0.038,
+          "class": "com.petplatform.task.core.TaskInvocationTest"
+        },
+        {
+          "tests": 5,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0,
+          "seconds": 0.061,
+          "class": "com.petplatform.payment.biz.application.RefundFundingEvidenceChecksTest"
+        },
+        {
+          "tests": 2,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0,
+          "seconds": 0.186,
+          "class": "com.petplatform.refund.biz.application.AfterSaleRefundTaskFamilyTest"
+        },
+        {
+          "tests": 6,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0,
+          "seconds": 1.448,
+          "class": "com.petplatform.aftersale.biz.application.AfterSaleBoundaryTest"
+        },
+        {
+          "tests": 12,
+          "failures": 0,
+          "errors": 3,
+          "skipped": 0,
+          "seconds": 293.7,
+          "class": "com.petplatform.boot.booking.AfterSaleMoneyAcceptanceTest"
+        },
+        {
+          "tests": 4,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0,
+          "seconds": 51.37,
+          "class": "com.petplatform.boot.booking.AfterSalePrivateEvidenceAcceptanceTest"
+        },
+        {
+          "tests": 3,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0,
+          "seconds": 63.53,
+          "class": "com.petplatform.boot.booking.AfterSaleSupplementAcceptanceTest"
+        },
+        {
+          "tests": 17,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0,
+          "seconds": 344.1,
+          "class": "com.petplatform.boot.booking.AfterSaleWorkflowAcceptanceTest"
+        },
+        {
+          "tests": 23,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0,
+          "seconds": 6.321,
+          "class": "com.petplatform.boot.config.AfterSaleWorkflowConfigurationTest"
+        }
+      ]
+    },
+    {
+      "log": "afs-complete-2.log",
+      "sha256": "fdb479dc1421e4ae938ba2300cdb84ddd669d2158cd67a99485dde5278b313e6",
+      "build": "FAILURE",
+      "reports": [
+        {
+          "tests": 3,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0,
+          "seconds": 79.36,
+          "class": "com.petplatform.boot.booking.AfterSaleMoneyAcceptanceTest"
+        },
+        {
+          "tests": 1,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0,
+          "seconds": 17.68,
+          "class": "com.petplatform.boot.booking.AfterSaleSourceIntegrityAcceptanceTest"
+        },
+        {
+          "tests": 4,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0,
+          "seconds": 47.96,
+          "class": "com.petplatform.boot.booking.AfterSaleSupplementAcceptanceTest"
+        },
+        {
+          "tests": 21,
+          "failures": 0,
+          "errors": 1,
+          "skipped": 0,
+          "seconds": 459.4,
+          "class": "com.petplatform.boot.booking.AfterSaleWorkflowAcceptanceTest"
+        }
+      ]
+    },
+    {
+      "log": "afs-recovery-regression.log",
+      "sha256": "1fa27f5223940cfa1a2582add573e8823294bf58095096d174ce76ed06a423bd",
+      "build": "SUCCESS",
+      "reports": [
+        {
+          "tests": 18,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0,
+          "seconds": 60.22,
+          "class": "com.petplatform.payment.biz.application.PaymentRefundServiceMySqlTest"
+        },
+        {
+          "tests": 12,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0,
+          "seconds": 1.277,
+          "class": "com.petplatform.admin.biz.auth.AdminAuthPrimitivesTest"
+        },
+        {
+          "tests": 2,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0,
+          "seconds": 33.26,
+          "class": "com.petplatform.boot.booking.AfterSaleRefundRecoveryAcceptanceTest"
+        },
+        {
+          "tests": 15,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0,
+          "seconds": 4.215,
+          "class": "com.petplatform.architecture.ArchitectureRulesFixtureTest"
+        },
+        {
+          "tests": 7,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0,
+          "seconds": 11.26,
+          "class": "com.petplatform.architecture.ArchitectureRulesTest"
+        }
+      ]
+    },
+    {
+      "log": "afs-cross-order-retest.log",
+      "sha256": "a43ab49023b5b73d326a269ce8f76059b0997f9e045eb617becb6d135773809d",
+      "build": "SUCCESS",
+      "reports": [
+        {
+          "tests": 1,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0,
+          "seconds": 34.47,
+          "class": "com.petplatform.boot.booking.AfterSaleWorkflowAcceptanceTest"
+        }
+      ]
+    },
+    {
+      "log": "afs-expiry-red.log",
+      "sha256": "4a381b22c8b7aff60119ef3e35ed7a3c752c3bd831d6067310cb118ce5a4bdbc",
+      "build": "FAILURE",
+      "reports": [
+        {
+          "tests": 1,
+          "failures": 1,
+          "errors": 0,
+          "skipped": 0,
+          "seconds": 13.34,
+          "class": "com.petplatform.boot.booking.AfterSaleSourceIntegrityAcceptanceTest"
+        }
+      ]
+    },
+    {
+      "log": "afs-expiry-green.log",
+      "sha256": "2b5472fbfc1382bd98d0c0ea8efd20061261eae919c5d73060cf8d31b956a807",
+      "build": "SUCCESS",
+      "reports": [
+        {
+          "tests": 18,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0,
+          "seconds": 31.06,
+          "class": "com.petplatform.payment.biz.application.PaymentRefundServiceMySqlTest"
+        },
+        {
+          "tests": 5,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0,
+          "seconds": 0.009,
+          "class": "com.petplatform.payment.biz.application.RefundFundingEvidenceChecksTest"
+        },
+        {
+          "tests": 3,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0,
+          "seconds": 75.67,
+          "class": "com.petplatform.boot.booking.AfterSaleMoneyAcceptanceTest"
+        },
+        {
+          "tests": 2,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0,
+          "seconds": 31.1,
+          "class": "com.petplatform.boot.booking.AfterSaleRefundRecoveryAcceptanceTest"
+        },
+        {
+          "tests": 2,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0,
+          "seconds": 19.47,
+          "class": "com.petplatform.boot.booking.AfterSaleSourceIntegrityAcceptanceTest"
+        },
+        {
+          "tests": 15,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0,
+          "seconds": 4.192,
+          "class": "com.petplatform.architecture.ArchitectureRulesFixtureTest"
+        },
+        {
+          "tests": 7,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0,
+          "seconds": 9.509,
+          "class": "com.petplatform.architecture.ArchitectureRulesTest"
+        }
+      ]
+    },
+    {
+      "log": "afs-order-history-green.log",
+      "sha256": "e86f390de99b4719ec45e7a7eee5f579fdd75146257ed9eaddfe7b72fc0272d5",
+      "build": "SUCCESS",
+      "reports": [
+        {
+          "tests": 4,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0,
+          "seconds": 4.307,
+          "class": "com.petplatform.order.biz.OrderVerificationHistoryMySqlTest"
+        }
+      ]
+    },
+    {
+      "log": "afs-admin-regression-green.log",
+      "sha256": "621f983aa41faaf7adfda7b2c92ea7c34966261d98bb5afbe64cfe04b33eb7c3",
+      "build": "SUCCESS",
+      "reports": [
+        {
+          "tests": 11,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0,
+          "seconds": 25.859,
+          "class": "com.petplatform.admin.biz.auth.AdminAuthFailureRecoveryTest"
+        },
+        {
+          "tests": 11,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0,
+          "seconds": 16.224,
+          "class": "com.petplatform.admin.biz.auth.AdminAuthLifecycleTest"
+        },
+        {
+          "tests": 7,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0,
+          "seconds": 27.833,
+          "class": "com.petplatform.admin.biz.auth.AdminAuthorizationCurrentReadTest"
+        },
+        {
+          "tests": 12,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0,
+          "seconds": 0.792,
+          "class": "com.petplatform.admin.biz.auth.AdminAuthPrimitivesTest"
+        },
+        {
+          "tests": 3,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0,
+          "seconds": 0.467,
+          "class": "com.petplatform.boot.auth.AdminAuthDisabledTest"
+        },
+        {
+          "tests": 5,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0,
+          "seconds": 8.847,
+          "class": "com.petplatform.boot.auth.AdminAuthHttpTest"
+        }
+      ]
+    }
+  ],
+  "ci": "See exact PR97 head checks and downloaded backend-test-reports; baseline PR96 results are not used as current coverage.",
+  "productionFundingProvider": "NOT_IMPLEMENTED",
+  "publicHttpAndFrontend": "NOT_IMPLEMENTED",
+  "realChannelOssAndNotificationDelivery": "NOT_EXECUTED",
+  "supersededCi": {
+    "runId": 36681010671,
+    "head": "75a1cafa63043f7316411982618895127357ab9f",
+    "conclusion": "cancelled",
+    "reason": "Superseded by the verified funding-preflight expiry fix; not accepted as full regression."
+  },
+  "failedCi": {
+    "runId": 36682136380,
+    "head": "f55fb14ee4ab23fbdb8ee0265f4a552540cf5c31",
+    "conclusion": "failure",
+    "actualReportCount": 46,
+    "actualExecutions": 337,
+    "failures": 0,
+    "errors": 1,
+    "skipped": 0,
+    "failedClass": "com.petplatform.order.biz.OrderVerificationHistoryMySqlTest",
+    "cause": "Legacy seeded component fixture supplied null AFS historical proof provider; initial positive read failed before projection version mutation. Correcting fixture and historical/current-pointer oracles without weakening production proof checks. New AFS suites had not run.",
+    "reportSha256": "9c68136326d363c7cd3ed1e574b88ffacd175f10bdf7cb94e627db1662fb22b3"
+  },
+  "legacyHistoryAdditionalExecutions": 1,
+  "additionalFailedCi": {
+    "run": 36683509601,
+    "head": "0bf76f703d67cfee83545f4f290220c6c7f9cc40",
+    "reports": 69,
+    "totals": {
+      "tests": 479,
+      "failures": 1,
+      "errors": 0,
+      "skipped": 0
+    },
+    "failed": [
+      {
+        "name": "com.petplatform.admin.biz.auth.AdminAuthLifecycleTest",
+        "tests": 11,
+        "failures": 1,
+        "errors": 0,
+        "skipped": 0,
+        "sha256": "f065701ca0cc9ee2f0e7b7614e63b85a2b00297734e16849fe6e3fee9dfdf71e"
+      }
+    ],
+    "qualification": "Failed at ADMIN before boot acceptance suites; not complete regression.",
+    "cause": "Legacy exact super-admin permission assertion omitted the three newly approved AFS actions. Updated both lifecycle and HTTP exact lists; existing role count and least-privilege assertions retained. Production authorization unchanged."
+  }
+}

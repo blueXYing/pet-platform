@@ -61,8 +61,9 @@ public class RefundApplicationConfiguration {
         @Bean OrderRefundApplicationApiImpl orderRefundApplications(DataSource source,ScheduleCapacityGuardApi guard,
                 SnowflakeIdGenerator ids,PaymentSuccessFactsApi payments,RefundOrderFactsApi refunds,
                 ReservationConfirmApi reservations,ScheduleProtectionFactsApi schedule,
-                ObjectProvider<RefundApplicationApprovalFactsApi> applications) {
-            return new OrderRefundApplicationApiImpl(source,guard,ids,payments,refunds,reservations,schedule,applications::getObject);
+                ObjectProvider<RefundApplicationApprovalFactsApi> applications,
+                ObjectProvider<com.petplatform.aftersale.api.query.AfterSaleCaseFactsApi> aftersales) {
+            return new OrderRefundApplicationApiImpl(source,guard,ids,payments,refunds,reservations,schedule,applications::getObject,aftersales::getIfAvailable);
         }
         @Bean RefundApplicationPorts.SessionAuthority refundApplicationSessions(UserAuthService auth) {return sessionAuthority(auth);}
         @Bean RefundApplicationPorts.OwnerAuthority refundApplicationOwners(MerchantOrderAuthorityApi authority) {

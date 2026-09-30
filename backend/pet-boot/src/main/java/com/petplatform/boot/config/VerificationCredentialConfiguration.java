@@ -13,6 +13,7 @@ import com.petplatform.verification.biz.application.*;
 import javax.sql.DataSource;
 import java.util.*;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.boot.autoconfigure.condition.*;
 import org.springframework.context.annotation.*;
 import org.springframework.core.env.Environment;
@@ -57,8 +58,9 @@ public class VerificationCredentialConfiguration {
    org.springframework.beans.factory.ObjectProvider<VerificationCompletionService> verification,org.springframework.beans.factory.ObjectProvider<com.petplatform.aftersale.api.command.AfterSaleVerificationApi> aftersales){
    return new com.petplatform.order.biz.apiimpl.OrderVerificationCommitApiImpl(s,g,f,ids,outbox,verification::getObject,aftersales::getObject);
   }
-  @Bean com.petplatform.aftersale.api.command.AfterSaleVerificationApi verificationAftersale(DataSource s,ScheduleCapacityGuardApi g,com.petplatform.order.api.command.OrderVerificationCommitApi orders,SnowflakeIdGenerator ids){
-   return new com.petplatform.aftersale.biz.apiimpl.AfterSaleVerificationApiImpl(s,g,orders,ids);
+  @Bean com.petplatform.aftersale.api.command.AfterSaleVerificationApi verificationAftersale(DataSource s,ScheduleCapacityGuardApi g,com.petplatform.order.api.command.OrderVerificationCommitApi orders,SnowflakeIdGenerator ids,IntegrationEventPublisher outbox,
+   ObjectProvider<com.petplatform.aftersale.api.query.AfterSaleCaseFactsApi> workflow){
+   return new com.petplatform.aftersale.biz.apiimpl.AfterSaleVerificationApiImpl(s,g,orders,ids,outbox,workflow::getIfAvailable);
   }
   @Bean VerificationCompletionService verificationCompletionService(VerificationCredentialService credentials,com.petplatform.order.api.command.OrderVerificationCommitApi orders,com.petplatform.aftersale.api.command.AfterSaleVerificationApi aftersales){return new VerificationCompletionService(credentials,orders,aftersales);}
  }

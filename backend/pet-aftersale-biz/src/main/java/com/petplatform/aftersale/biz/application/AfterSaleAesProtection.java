@@ -1,0 +1,15 @@
+package com.petplatform.aftersale.biz.application;
+import java.nio.ByteBuffer;
+import java.nio.charset.StandardCharsets;
+import java.security.SecureRandom;
+import javax.crypto.Cipher;
+import javax.crypto.spec.GCMParameterSpec;
+import javax.crypto.spec.SecretKeySpec;
+/** Randomized AEAD, bound to a command/field purpose. */
+public final class AfterSaleAesProtection implements AfterSalePorts.Protection {
+    private final SecretKeySpec key;private final SecureRandom random=new SecureRandom();
+    public AfterSaleAesProtection(byte[] key){if(key==null||key.length!=32)throw new IllegalArgumentException("256-bit aftersale key required");this.key=new SecretKeySpec(key.clone(),"AES");}
+    public byte[] protect(String purpose,byte[] value){try{byte[] iv=new byte[12];random.nextBytes(iv);byte[] body=cipher(Cipher.ENCRYPT_MODE,purpose,iv).doFinal(value);return ByteBuffer.allocate(12+body.length).put(iv).put(body).array();}catch(Exception e){throw new IllegalStateException("Aftersale protection failed");}}
+    public byte[] reveal(String purpose,byte[] value){try{if(value==null||value.length<28)throw new IllegalArgumentException();ByteBuffer b=ByteBuffer.wrap(value);byte[] iv=new byte[12];b.get(iv);byte[] body=new byte[b.remaining()];b.get(body);return cipher(Cipher.DECRYPT_MODE,purpose,iv).doFinal(body);}catch(Exception e){throw new IllegalStateException("Aftersale protected value unavailable");}}
+    private Cipher cipher(int mode,String purpose,byte[] iv)throws Exception{Cipher c=Cipher.getInstance("AES/GCM/NoPadding");c.init(mode,key,new GCMParameterSpec(128,iv));c.updateAAD(purpose.getBytes(StandardCharsets.UTF_8));return c;}
+}

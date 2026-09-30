@@ -237,3 +237,18 @@ AUTH Web切片B1说明：恢复窗口按成功提交前DB锚点+60秒，不保�
 | PRIVATE_ASSET_GRANT_GONE | 410 | 一次性读取授权已消费、过期或失效，不重放图片回执 |
 
 其余复用 COMMON_INVALID_ARGUMENT、COMMON_UNAUTHORIZED、COMMON_FORBIDDEN、COMMON_NOT_FOUND、COMMON_CONFLICT、IDEMPOTENCY_KEY_CONFLICT 和 COMMON_DEPENDENCY_UNAVAILABLE。不得在错误正文中暴露 token、对象 key、扫描签名、SQL、私有图片或明文原因。
+
+
+## 售后 A1–A3 批准补充（Contract50）
+
+| Code | 含义 |
+|---|---|
+| AFTERSALE_ALREADY_ACTIVE | 订单已有活动售后 |
+| AFTERSALE_REFUND_APPLICATION_ACTIVE | 普通退款活动申请或已批准承诺互斥 |
+| AFTERSALE_CONTENT_REJECTED | 内容未通过真实审核 |
+| AFTERSALE_SUPPLEMENT_EXPIRED | 本轮补证到达或超过截止 |
+| AFTERSALE_SUPPLEMENT_STALE | 补证轮次不再是当前轮 |
+| AFTERSALE_PROOF_INVALID | 持久来源或反向关联无法证明 |
+| AFTERSALE_TASK_CONFLICT | 原任务键存在不匹配不可变载荷 |
+
+后两项亦作为耐久恢复隔离问题码；具体返回沿安全公共错误包装，不泄露数据库细节。权限/会话/依赖错误沿 COMMON_*。当前 HTTP 仍关闭。

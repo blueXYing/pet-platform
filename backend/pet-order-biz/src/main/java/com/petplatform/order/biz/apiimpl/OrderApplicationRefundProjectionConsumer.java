@@ -53,6 +53,7 @@ public final class OrderApplicationRefundProjectionConsumer implements Integrati
             Set<String> keys=new HashSet<>();n.fieldNames().forEachRemaining(keys::add);
             if(!keys.equals(Set.of("refundOrderId","refundNo","orderId","refundType","refundSource","refundAmount","originalPaidAmount","channelRefundNo","succeededAt")))throw unavailable();
             String refund=text(n,"refundOrderId"),order=text(n,"orderId"),sourceType=text(n,"refundSource");
+            if("AFTERSALE_DECISION".equals(sourceType))return;
             IDS.fromApi(order);IDS.fromApi(text(n,"refundNo"));IDS.fromApi(event.eventId());
             if(IDS.fromApi(refund)!=event.aggregateId()||!"FULL".equals(text(n,"refundType"))||!n.path("refundAmount").isNumber()||!n.path("originalPaidAmount").isNumber()
                     ||n.path("refundAmount").decimalValue().signum()<=0||n.path("refundAmount").decimalValue().scale()>2

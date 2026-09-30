@@ -41,7 +41,10 @@ public final class PaymentRefundResultFactsApiImpl implements PaymentRefundResul
                     || row.channelRefundNo() == null || row.channelRefundNo().isBlank()
                     || row.terminalResultAt() == null || !"CNY".equals(row.currency())
                     || row.refundAmount() == null || row.refundAmount().signum() <= 0
-                    || row.refundAmount().compareTo(row.originalPaidAmount()) != 0) throw unavailable();
+                    || row.originalPaidAmount() == null || row.originalPaidAmount().signum() <= 0
+                    || row.refundAmount().compareTo(row.originalPaidAmount()) > 0) throw unavailable();
+            // Source admission binds FULL/PARTIAL before dispatch; this leaf proves the exact
+            // channel result. REFUND also compares it with the independently authorized amount.
             var receipt = store.terminalReceipt(row.refundOrderId(), row.terminalReceiptSha256());
             if (receipt == null || !"SUCCESS".equals(receipt.state())
                     || !row.channelRefundNo().equals(receipt.channelRefundNo())

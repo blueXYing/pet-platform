@@ -21,6 +21,13 @@
   <select id="lockApplication" resultType="long">
     SELECT id FROM merchant_application WHERE reserved_merchant_id=#{merchantId} FOR UPDATE
   </select>
+  <select id="lockOrderResourceScope" resultType="com.petplatform.merchant.biz.infrastructure.persistence.entity.MerchantStaffScopeEntity">
+    SELECT m.id AS merchant_id,m.owner_user_id,m.status AS merchant_status,m.version AS merchant_version,
+      s.id AS store_id,s.status AS store_status,s.version AS store_version,p.city_code,p.version AS profile_version
+    FROM merchant m JOIN merchant_store s ON s.merchant_id=m.id
+      LEFT JOIN merchant_profile_compat p ON p.merchant_id=m.id
+    WHERE m.id=#{merchantId} AND s.id=#{storeId} FOR UPDATE
+  </select>
   <sql id="staffColumns">id AS staff_id,merchant_id,store_id,staff_name,phone,employment_status,service_enabled,version AS staff_version</sql>
   <select id="listAllStaff" resultType="com.petplatform.merchant.biz.infrastructure.persistence.entity.MerchantStaffReadEntity">
     SELECT <include refid="staffColumns"/> FROM merchant_staff WHERE store_id=#{storeId} ORDER BY id ASC

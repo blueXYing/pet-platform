@@ -50,6 +50,7 @@ import org.springframework.transaction.support.TransactionTemplate;
  */
 public final class PaymentRefundService implements PaymentRefundApi {
     private static final DecimalPublicIdCodec IDS = new DecimalPublicIdCodec();
+    private static final com.fasterxml.jackson.databind.ObjectMapper FUNDING_JSON=new com.fasterxml.jackson.databind.ObjectMapper().findAndRegisterModules();
     private final DataSource source;
     private final SnowflakeIdGenerator ids;
     private final ScheduleCapacityGuardApi guard;
@@ -57,6 +58,9 @@ public final class PaymentRefundService implements PaymentRefundApi {
     private final OrderMerchantRejectFactsApi merchantOrders;
     private final OrderRefundApplicationFactsApi applicationOrders;
     private final RefundApplicationApprovalFactsApi applicationApprovals;
+    private final com.petplatform.order.api.query.OrderAfterSaleRefundFactsApi aftersaleOrders;
+    private final com.petplatform.aftersale.api.query.AfterSaleRefundFactsApi aftersaleDecisions;
+    private final com.petplatform.payment.api.query.RefundFundingEligibilityFactsApi funding;
     private final PaymentSuccessFactsApi paymentFacts;
     private final RefundExecutionFactsApi refundFacts;
     private final PaymentRefundChannel channel;
@@ -92,6 +96,17 @@ public final class PaymentRefundService implements PaymentRefundApi {
             PaymentRefundChannel channel,Settings settings,Clock clock,OrderMerchantRejectFactsApi merchantOrders,
             OrderRefundApplicationFactsApi applicationOrders,
             RefundApplicationApprovalFactsApi applicationApprovals) {
+        this(source,ids,guard,orders,paymentFacts,refundFacts,channel,settings,clock,merchantOrders,applicationOrders,applicationApprovals,null,null,null);
+    }
+    public PaymentRefundService(DataSource source,SnowflakeIdGenerator ids,ScheduleCapacityGuardApi guard,
+            OrderLatePaymentFactsApi orders,PaymentSuccessFactsApi paymentFacts,RefundExecutionFactsApi refundFacts,
+            PaymentRefundChannel channel,Settings settings,Clock clock,OrderMerchantRejectFactsApi merchantOrders,
+            OrderRefundApplicationFactsApi applicationOrders,RefundApplicationApprovalFactsApi applicationApprovals,
+            com.petplatform.order.api.query.OrderAfterSaleRefundFactsApi aftersaleOrders,
+            com.petplatform.aftersale.api.query.AfterSaleRefundFactsApi aftersaleDecisions,
+            com.petplatform.payment.api.query.RefundFundingEligibilityFactsApi funding) {
+        if((aftersaleOrders==null)!=(aftersaleDecisions==null)||funding!=null&&aftersaleOrders==null)throw new IllegalArgumentException("After-sale funding dependencies incomplete");
+        this.aftersaleOrders=aftersaleOrders;this.aftersaleDecisions=aftersaleDecisions;this.funding=funding;
         this.merchantOrders=merchantOrders;
         this.applicationOrders=applicationOrders;
         this.applicationApprovals=applicationApprovals;
@@ -216,6 +231,9 @@ public final class PaymentRefundService implements PaymentRefundApi {
         validateBinding(input, payment, origin, paid, business);
         if (!"CREATED".equals(business.status()) && !"PROCESSING".equals(business.status())
                 && !"UNKNOWN".equals(business.status())) throw unavailable();
+        // Preparing the durable dispatch is not permission to send after its evidence expires.
+        // Check the current database time after all other preflight facts have been revalidated.
+        validateFunding(row,business,context,true);
         return progress(row);
     }
 
@@ -244,7 +262,19 @@ public final class PaymentRefundService implements PaymentRefundApi {
         validateBinding(input, hint, order, paid, business);
         if (!"CREATED".equals(business.status()) && !"PROCESSING".equals(business.status())
                 && !"UNKNOWN".equals(business.status())) throw unavailable();
+        com.petplatform.payment.api.query.RefundFundingEligibilityFactsApi.FundingCheck fundingCheck=null;
+        com.petplatform.payment.api.query.RefundFundingEligibilityFactsApi.FundingEvidence fundingEvidence=null;
+        String committedEvidence=null;
+        if("AFTERSALE_DECISION".equals(business.sourceType())){
+            if(funding==null)throw unavailable();
+            var decision=aftersaleDecisions.requireCreated(business.sourceBizId(),business.sourceDecisionId(),business.refundOrderId(),business.storeId(),context,source).decision();
+            var check=new com.petplatform.payment.api.query.RefundFundingEligibilityFactsApi.FundingCheck(business.orderId(),business.paymentId(),business.paymentNo(),business.paymentSuccessEventId(),business.channelTradeNo(),business.userId(),business.merchantId(),business.storeId(),business.sourceBizId(),business.sourceDecisionId(),decision.commandId(),business.refundType(),business.refundAmount(),business.originalPaidAmount(),business.currency(),"FIRST_SEND",business.refundOrderId(),business.refundNo(),Long.toString(business.bindingVersion()));
+            var evidence=funding.requireForFirstSend(check,decision.funding().evidenceId(),context);
+            fundingCheck=check;fundingEvidence=evidence;committedEvidence=decision.funding().evidenceId();
+            TransactionSynchronizationManager.registerSynchronization(new org.springframework.transaction.support.TransactionSynchronization(){public void beforeCommit(boolean readOnly){if(readOnly)throw unavailable();com.petplatform.payment.api.query.RefundFundingEvidenceChecks.requireAllowed(check,evidence,refunds.now());}});
+        }
         OffsetDateTime now = refunds.now();
+        if(fundingCheck!=null)com.petplatform.payment.api.query.RefundFundingEvidenceChecks.requireAllowed(fundingCheck,fundingEvidence,now);
         LocalDateTime channelTime = now.atZoneSameInstant(settings.channelTimeZone())
                 .toLocalDateTime().truncatedTo(ChronoUnit.SECONDS);
         PaymentRefundChannel.RefundRequest request = new PaymentRefundChannel.RefundRequest(
@@ -252,6 +282,7 @@ public final class PaymentRefundService implements PaymentRefundApi {
                 Long.toString(hint.no()), hint.tradeNo(), channelTime,
                 settings.requestIp(), settings.notifyUrl(), business.sourceType());
         String sha = requestHash(request);
+        if(fundingCheck!=null)refunds.insertFunding(input.refundOrderIdLong(),committedEvidence,fundingCheck,fundingEvidence,sha,now);
         OffsetDateTime queryNotBefore = now.plusSeconds(30);
         Dispatch created = new Dispatch(input.refundOrderIdLong(), input.refundNoLong(),
                 input.paymentId(), hint.no(), hint.orderId(), hint.storeId(), hint.merchantNo(),
@@ -280,6 +311,7 @@ public final class PaymentRefundService implements PaymentRefundApi {
         RefundExecutionFact business = refundFacts.requireForChannel(input.refundOrderId(),
                 input.storeId(), context);
         validateBusinessAgainstDispatch(row, business);
+        validateFunding(row,business,context,false);
         // A persisted dispatch can still be queried after PAYMENT observed its own REFUND notice.
         // Never re-run first-send admission here; doing so would erase genuine refund success.
         LocalDateTime queryTime = refunds.now().atZoneSameInstant(settings.channelTimeZone())
@@ -292,6 +324,19 @@ public final class PaymentRefundService implements PaymentRefundApi {
     }
 
     /** First-send evidence is source-specific; event IDs are never substituted for application IDs. */
+    private void validateFunding(Dispatch row,RefundExecutionFact f,QueryContext context,boolean firstSend){
+        if(!"AFTERSALE_DECISION".equals(f.sourceType()))return;
+        if(aftersaleDecisions==null)throw unavailable();var a=aftersaleDecisions.requireCreated(f.sourceBizId(),f.sourceDecisionId(),f.refundOrderId(),f.storeId(),context,source);
+        var p=refunds.funding(row.refundOrderId());if(p==null||a==null||!a.decision().funding().evidenceId().equals(p.committedEvidenceId)||!row.requestSha256().equals(p.requestSha256))throw unavailable();
+        try{
+            var c=FUNDING_JSON.readValue(p.checkJson,com.petplatform.payment.api.query.RefundFundingEligibilityFactsApi.FundingCheck.class);
+            var e=FUNDING_JSON.readValue(p.evidenceJson,com.petplatform.payment.api.query.RefundFundingEligibilityFactsApi.FundingEvidence.class);
+            var expected=new com.petplatform.payment.api.query.RefundFundingEligibilityFactsApi.FundingCheck(f.orderId(),f.paymentId(),f.paymentNo(),f.paymentSuccessEventId(),f.channelTradeNo(),f.userId(),f.merchantId(),f.storeId(),f.sourceBizId(),f.sourceDecisionId(),a.decision().commandId(),f.refundType(),f.refundAmount(),f.originalPaidAmount(),f.currency(),"FIRST_SEND",f.refundOrderId(),f.refundNo(),Long.toString(f.bindingVersion()));
+            if(!com.petplatform.payment.api.query.RefundFundingEvidenceChecks.hash(c).equals(com.petplatform.payment.api.query.RefundFundingEvidenceChecks.hash(expected))||!p.createdAt.equals(row.mayHaveSentAt()))throw unavailable();
+            com.petplatform.payment.api.query.RefundFundingEvidenceChecks.requireAllowed(c,e,p.createdAt.atOffset(ZoneOffset.UTC));
+            if(firstSend)com.petplatform.payment.api.query.RefundFundingEvidenceChecks.requireAllowed(c,e,refunds.now());
+        }catch(com.fasterxml.jackson.core.JsonProcessingException failure){throw unavailable();}
+    }
     private OrderRefundOriginFact requireOrigin(String orderId, Identity input,
             RefundExecutionFact business, QueryContext context) {
         validateSourceShape(business);
@@ -312,6 +357,13 @@ public final class PaymentRefundService implements PaymentRefundApi {
                 var approval = applicationApprovals.requireApproved(business.sourceBizId(),
                         business.sourceDecisionId(), input.storeId(), context);
                 validateApproval(origin, business, approval);
+            }
+            case "AFTERSALE_DECISION" -> {
+                if(aftersaleOrders==null||aftersaleDecisions==null)throw unavailable();
+                var o=aftersaleOrders.requireDecidedRefund(orderId,Long.toString(input.paymentId()),input.storeId(),context);
+                var a=aftersaleDecisions.requireCreated(business.sourceBizId(),business.sourceDecisionId(),business.refundOrderId(),input.storeId(),context,source);
+                if(o==null||a==null||!business.refundType().equals(o.refundType())||business.refundAmount().compareTo(o.refundAmount())!=0||!business.refundType().equals(a.decision().refundType())||business.refundAmount().compareTo(a.decision().refundAmount())!=0||!a.refundNo().equals(business.refundNo())||!a.createdEventId().equals(business.createdEventId())||!a.createdAt().isEqual(business.createdAt())||!o.fundingEvidenceId().equals(a.decision().funding().evidenceId()))throw unavailable();
+                origin=o.origin();
             }
             default -> throw unavailable();
         }
@@ -371,7 +423,7 @@ public final class PaymentRefundService implements PaymentRefundApi {
                         || business.sourceBizId() != null || business.sourceDecisionId() != null)
                     throw unavailable();
             }
-            case "MERCHANT_APPROVED", "MERCHANT_TIMEOUT_AUTO" -> {
+            case "MERCHANT_APPROVED", "MERCHANT_TIMEOUT_AUTO", "AFTERSALE_DECISION" -> {
                 if (business.sourceEventId() != null || business.lateEventId() != null
                         || !validFactId(business.sourceBizId()) || !validFactId(business.sourceDecisionId()))
                     throw unavailable();
@@ -432,6 +484,9 @@ public final class PaymentRefundService implements PaymentRefundApi {
 
     private static void validateBinding(Identity input, PaymentFoundationStore.Row row,
             OrderRefundOriginFact order, PaymentSuccessFact paid, RefundExecutionFact business) {
+        if(business==null)throw unavailable();
+        com.petplatform.payment.api.query.RefundFundingEvidenceChecks.amount(business.refundType(),business.refundAmount(),business.originalPaidAmount());
+        if(!"AFTERSALE_DECISION".equals(business.sourceType())&&!"FULL".equals(business.refundType()))throw unavailable();
         String paymentId = Long.toString(row.id());
         String orderId = Long.toString(row.orderId());
         if (order == null || paid == null || business == null || row.no() <= 0
@@ -465,11 +520,10 @@ public final class PaymentRefundService implements PaymentRefundApi {
                 || !"CNY".equals(paid.currency())
                 || business.refundAmount() == null || business.originalPaidAmount() == null
                 || business.refundAmount().signum() <= 0
-                || business.refundAmount().compareTo(business.originalPaidAmount()) != 0
-                || business.refundAmount().compareTo(order.channelPaidAmount()) != 0
-                || business.refundAmount().compareTo(paid.paidAmount()) != 0
+                || business.originalPaidAmount().compareTo(order.channelPaidAmount()) != 0
+                || business.originalPaidAmount().compareTo(paid.paidAmount()) != 0
                 || row.paidAmount() == null
-                || business.refundAmount().compareTo(row.paidAmount()) != 0
+                || business.originalPaidAmount().compareTo(row.paidAmount()) != 0
                 || business.paidAt() == null || order.channelPaidAt() == null
                 || paid.paidAt() == null || !business.paidAt().isEqual(order.channelPaidAt())
                 || !business.paidAt().isEqual(paid.paidAt())

@@ -1869,6 +1869,9 @@ paths:
       - C-Aftersale
       summary: 发起售后
       operationId: createAftersale
+      x-implementation-status: INTERNAL_ONLY
+      x-default-enabled: false
+      x-internal-contract: 50-AfterSale-Workflow-Contract-v0.1.md
       security:
       - bearerAuth: []
       parameters:
@@ -2101,6 +2104,9 @@ paths:
       - Admin-Aftersale
       summary: 运营售后终局裁决
       operationId: decideAftersale
+      x-implementation-status: INTERNAL_ONLY
+      x-default-enabled: false
+      x-internal-contract: 50-AfterSale-Workflow-Contract-v0.1.md
       security:
       - bearerAuth: []
       parameters:

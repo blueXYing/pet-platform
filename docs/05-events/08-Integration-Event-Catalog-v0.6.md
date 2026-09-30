@@ -509,3 +509,8 @@ payload 字段（9 字段，与角色E消费侧对齐定稿 2026-09-22，中途�
 `ORDER_APPLICATION_REFUND` 消费 `RefundSucceededEvent.v1`，先核对事件与 REFUND 最终渠道成功、ORDER 本域普通来源/原本金/身份/时间/唯一成功事件，随后在同 DataSource 事务内完成消费 claim、ORDER 已退款金额、成功证明与 SCHEDULE 原预约释放。任何一步失败全部回滚；重复事件核对原证明后幂等，UNKNOWN/FAILED 不释放。核销历史保持。
 
 旧迟到、商家拒单和新普通来源消费者只跳过已知其他来源，未知来源或损坏 payload 失败关闭；不能把普通成功事件交给旧来源路径授权资金或永久重试。优惠券、积分等后续消费仍按各自契约验收，本次成功释放不代表全部退款后置流程已完成。
+
+
+## 2026-09-30 AFS来源与进度增量（批准）
+
+执行[Contract50 §8](../04-api/50-AfterSale-Workflow-Contract-v0.1.md)：AFTERSALE_DECISION加入退款v1严格来源，FULL/PARTIAL来自可信决定/执行事实；不新增v1字段。旧消费者先分派来源再校验本来源FULL。新增AfterSaleProgressChangedEvent.v1精确字段及动作见50号；Created/Resolved/Invalidated保持原载荷，AFS核销失效同事务发事件。事件不授权出款，通知实际送达另验。

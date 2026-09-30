@@ -24,7 +24,7 @@ import org.springframework.transaction.support.*;
 import static com.petplatform.refund.biz.application.RefundApplicationPorts.*;
 
 /** Ordinary refunds retain approval independently of recoverable business-refund creation. */
-public final class RefundApplicationService implements RefundApplicationCommandApi,RefundApplicationTimeoutApi,RefundApplicationApprovalFactsApi {
+public final class RefundApplicationService implements RefundApplicationCommandApi,RefundApplicationTimeoutApi,RefundApplicationApprovalFactsApi,com.petplatform.refund.api.query.RefundApplicationHistoryFactsApi {
     private static final DecimalPublicIdCodec IDS=new DecimalPublicIdCodec();private static final ObjectMapper JSON=new ObjectMapper();
     private final DataSource source;private final SnowflakeIdGenerator ids;private final ScheduleCapacityGuardApi guard;
     private final OrderRefundApplicationApi orders;private final PaymentSuccessFactsApi payments;private final IntegrationEventPublisher outbox;
@@ -41,6 +41,15 @@ public final class RefundApplicationService implements RefundApplicationCommandA
         db=RefundApplicationStore.mapper(source);execution=new RefundExecutionStore(source);tasks=new JdbcAsyncTaskSubmitter(source,ids);
         tx=new TransactionTemplate(new DataSourceTransactionManager(source));tx.setIsolationLevel(TransactionDefinition.ISOLATION_READ_COMMITTED);tx.setTimeout(15);
     }
+    @Override public com.petplatform.refund.api.query.RefundApplicationHistoryFactsApi.Fact readForOrder(String order,String store,QueryContext context,DataSource transactionSource){return owned(()->{
+        if(transactionSource!=source)throw bad();scope(store,context);var loc=orders.locate(order,context);if(!store.equals(loc.storeId()))throw bad();
+        var rejected=db.latestRejected(id(order));var active=db.active(id(order));
+        com.petplatform.refund.api.query.RefundApplicationHistoryFactsApi.Rejected old=null;
+        com.petplatform.refund.api.query.RefundApplicationHistoryFactsApi.Active live=null;
+        if(rejected!=null){var d=requireDecision(str(rejected.id),str(rejected.decisionId),store,context);if(!order.equals(d.application().orderId())||!"REJECTED".equals(d.status()))throw bad();old=new com.petplatform.refund.api.query.RefundApplicationHistoryFactsApi.Rejected(str(rejected.id),d.decisionId(),d.decidedAt(),d.operatorId(),Long.toString(d.application().version()));}
+        if(active!=null){var a=requireApplication(str(active.id),store,context);if(!order.equals(a.orderId())||!loc.userId().equals(a.userId())||!loc.merchantId().equals(a.merchantId()))throw bad();if(a.decisionId()!=null)requireDecision(a.applicationId(),a.decisionId(),store,context);live=new com.petplatform.refund.api.query.RefundApplicationHistoryFactsApi.Active(a.applicationId(),a.status(),Long.toString(a.version()),a.decisionId());}
+        return new com.petplatform.refund.api.query.RefundApplicationHistoryFactsApi.Fact(order,store,loc.userId(),loc.merchantId(),now(),old,live,!execution.lockPresence(id(order)).isEmpty());
+    });}
     @Override public Receipt apply(Apply c){return safe(()->{
         validateApply(c);top();var loc=orders.locate(c.orderId(),system(c.context()));authorizeBuyer(c.context(),loc.userId());
         var key=key("refund.application.apply",c.context(),"ORDER:"+c.orderId());byte[] input=json(values("orderId",c.orderId(),"reasonCode",c.reasonCode(),"reasonText",c.reasonText()));String purpose=purpose(key);

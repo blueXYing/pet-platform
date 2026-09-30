@@ -13,6 +13,8 @@
     <artifactId>pet-aftersale-api</artifactId>
 
     <dependencies>
+        <dependency><groupId>com.petplatform</groupId><artifactId>pet-order-api</artifactId></dependency>
+        <dependency><groupId>com.petplatform</groupId><artifactId>pet-payment-api</artifactId></dependency>
         <dependency>
             <groupId>com.petplatform</groupId>
             <artifactId>pet-common</artifactId>

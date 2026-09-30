@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.petplatform.refund.biz.infrastructure.persistence.mapper.RefundAfterSaleMapper">
+ <insert id="insertRefund">INSERT INTO refund_order(id,refund_no,order_id,aftersale_id,refund_type,source_type,refund_amount,refund_ratio,status,initiator_type,initiator_id,channel,created_at,updated_at)
+ VALUES(#{refund},#{number},#{order},#{case},#{type},'AFTERSALE_DECISION',#{amount},#{ratio},'CREATED','OPS',#{operator},'LAKALA',#{now},#{now})</insert>
+ <insert id="insertExecution">INSERT INTO refund_execution(refund_order_id,refund_no,order_id,payment_id,payment_no,store_id,merchant_id,user_id,payment_success_event_id,late_event_id,source_type,source_event_id,source_biz_id,source_decision_id,channel_trade_no,channel_paid_amount,refund_amount,channel_paid_at,currency,request_id,created_event_id,created_at,updated_at)
+ VALUES(#{refund},#{number},#{order},#{payment},#{paymentNo},#{store},#{merchant},#{user},#{paymentEvent},NULL,'AFTERSALE_DECISION',NULL,#{case},#{decision},#{trade},#{paid},#{amount},#{paidAt},'CNY',#{key},#{event},#{now},#{now})</insert>
+ <insert id="insertProof">INSERT INTO refund_aftersale_proof(refund_order_id,case_id,decision_id,command_id,funding_evidence_id,proof_json,created_at) VALUES(#{refund},#{case},#{decision},#{command},#{funding},#{proof},#{now})</insert>
+ <select id="proof" resultType="com.petplatform.refund.biz.infrastructure.persistence.mapper.RefundAfterSaleMapper$Proof">SELECT p.*,r.aftersale_id AS business_aftersale_id,r.refund_application_id AS business_application_id,r.initiator_type,r.initiator_id FROM refund_aftersale_proof p JOIN refund_order r ON r.id=p.refund_order_id WHERE p.refund_order_id=#{refund} FOR UPDATE</select>
+</mapper>

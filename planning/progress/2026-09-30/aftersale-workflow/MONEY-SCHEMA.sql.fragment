@@ -1,0 +1,51 @@
+-- SQL50 integration fragment. Apply after SQL49. Historical SQL42/49 source shapes stay valid.
+-- Internal API23 admits exact request keys up to 512 UTF-8 bytes; AFS audit shares this ORDER table.
+ALTER TABLE order_status_log MODIFY request_id VARBINARY(512) NULL;
+ALTER TABLE refund_execution DROP CHECK chk_refund_source, DROP CHECK chk_late_refund_amount,
+ ADD CONSTRAINT chk_refund_source CHECK (
+  (source_biz_id IS NULL AND source_decision_id IS NULL AND
+   ((source_type IS NULL AND source_event_id IS NULL AND late_event_id IS NOT NULL)
+    OR (source_type IS NOT NULL AND source_event_id IS NOT NULL AND source_event_id>0 AND
+     ((source_type='LATE_PAYMENT_TIMEOUT' AND late_event_id IS NOT NULL AND late_event_id=source_event_id)
+      OR (source_type='MERCHANT_REJECT_ORDER' AND late_event_id IS NULL)))))
+  OR (source_type IS NOT NULL AND source_type IN ('MERCHANT_APPROVED','MERCHANT_TIMEOUT_AUTO','AFTERSALE_DECISION')
+   AND source_biz_id IS NOT NULL AND source_biz_id>0 AND source_decision_id IS NOT NULL AND source_decision_id>0
+   AND late_event_id IS NULL AND source_event_id IS NULL)),
+ ADD CONSTRAINT chk_refund_authorized_amount CHECK (channel_paid_amount>0 AND refund_amount>0
+  AND ((source_type IS NOT NULL AND source_type='AFTERSALE_DECISION' AND refund_amount<=channel_paid_amount)
+   OR ((source_type IS NULL OR source_type<>'AFTERSALE_DECISION') AND refund_amount=channel_paid_amount)));
+
+-- refund_order.refund_ratio remains DECIMAL(10,6), SQL06:426; no change in precision.
+ALTER TABLE refund_order ADD CONSTRAINT chk_refund_source_type_amount CHECK (
+ refund_amount>0 AND refund_ratio>=0 AND refund_ratio<=1 AND
+ ((source_type='AFTERSALE_DECISION' AND (refund_type='PARTIAL' OR (refund_type='FULL' AND refund_ratio=1)) AND aftersale_id IS NOT NULL AND refund_application_id IS NULL)
+ OR (source_type<>'AFTERSALE_DECISION' AND refund_type='FULL' AND refund_ratio=1)));
+CREATE TABLE order_aftersale_source_proof (
+ case_id BIGINT PRIMARY KEY,order_id BIGINT NOT NULL,store_id BIGINT NOT NULL,
+ case_version BIGINT NOT NULL,order_version BIGINT NOT NULL,status VARCHAR(32) NOT NULL,
+ source_stage VARCHAR(32) NOT NULL,source_json LONGTEXT COLLATE utf8mb4_bin NOT NULL,created_at DATETIME(3) NOT NULL,
+ KEY idx_order_aftersale_source(order_id,case_id),CHECK(case_version>=0 AND order_version>=0),
+ CHECK(source_stage IN ('VERIFIED','UNVERIFIED_POST_START')),CHECK(JSON_VALID(source_json))
+) ENGINE=InnoDB;
+CREATE TABLE order_aftersale_refund_commit (
+ order_id BIGINT PRIMARY KEY,store_id BIGINT NOT NULL,case_id BIGINT NOT NULL,decision_id BIGINT NOT NULL,
+ refund_order_id BIGINT NOT NULL,order_version BIGINT NOT NULL,refund_type VARCHAR(16) NOT NULL,
+ refund_amount DECIMAL(18,2) NOT NULL,source_stage VARCHAR(32) NOT NULL,
+ funding_evidence_id VARCHAR(191) COLLATE utf8mb4_bin NOT NULL,token VARCHAR(64) COLLATE utf8mb4_bin NOT NULL,
+ created_at DATETIME(3) NOT NULL,success_event_id BIGINT NULL,succeeded_at DATETIME(3) NULL,
+ UNIQUE KEY uk_order_afs_case(case_id),UNIQUE KEY uk_order_afs_decision(decision_id),
+ UNIQUE KEY uk_order_afs_refund(refund_order_id),UNIQUE KEY uk_order_afs_token(token),
+ UNIQUE KEY uk_order_afs_success(success_event_id),CHECK(refund_type IN ('FULL','PARTIAL')),
+ CHECK(refund_amount>0),CHECK(source_stage IN ('VERIFIED','UNVERIFIED_POST_START')),
+ CHECK((success_event_id IS NULL AND succeeded_at IS NULL) OR (success_event_id IS NOT NULL AND succeeded_at IS NOT NULL))
+) ENGINE=InnoDB;
+CREATE TABLE refund_aftersale_proof (
+ refund_order_id BIGINT PRIMARY KEY,case_id BIGINT NOT NULL,decision_id BIGINT NOT NULL,command_id BIGINT NOT NULL,
+ funding_evidence_id VARCHAR(191) COLLATE utf8mb4_bin NOT NULL,proof_json JSON NOT NULL,created_at DATETIME(3) NOT NULL,
+ UNIQUE KEY uk_refund_afs_case(case_id),UNIQUE KEY uk_refund_afs_decision(decision_id),UNIQUE KEY uk_refund_afs_command(command_id)
+) ENGINE=InnoDB;
+CREATE TABLE payment_refund_funding_proof (
+ refund_order_id BIGINT PRIMARY KEY,committed_evidence_id VARCHAR(191) COLLATE utf8mb4_bin NOT NULL,
+ check_json JSON NOT NULL,evidence_json JSON NOT NULL,request_sha256 CHAR(64) CHARACTER SET ascii COLLATE ascii_bin NOT NULL,
+ created_at DATETIME(3) NOT NULL
+) ENGINE=InnoDB;

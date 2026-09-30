@@ -1,5 +1,9 @@
 # CCR-W2-API-001：首批业务查询/写入与页面DTO缺口
 
+> **2026-09-30 A1–A3 已批准（当前覆盖）**：用户明确“批准四项推荐规则及 A1–A3”。[PRD31](../../docs/01-prd/31-售后流程人工裁决补充-v1.0.md)、SSOT §40、[Contract50](../../docs/04-api/50-AfterSale-Workflow-Contract-v0.1.md)及SQL50承接；PR97正在实现与隔离验收。下方四项待答/候选未批准是准备期历史，已被此回执覆盖。资金权威Provider仍依OD-W0-001，新增能力默认关闭，HTTP/真机及生产闭环尚未交付；不自动合并新PR。
+
+> **2026-09-30 AFS多角色接续（当前覆盖）**：用户明确合入PR96，develop基线`ff983596`；合并后CI36668953557六项成功，121份报告852项零失败/错误/跳过。用户已授权开始多角色AFS开发，定时接续已停用，现并行准备[AFS工作流技术总案](CCR-W2-API-001/aftersale-workflow-proposal.md)、领域/资金来源及独立验收矩阵。四项未决产品问题仍待具体回答，重大契约候选不自动视为已批准。证据、模型/Owner和实施边界见[接续记录](../progress/2026-09-30/aftersale-workflow/START.md)。下方R1/R2“不含合并”是当时批准范围，已由后续“合入96”覆盖；新PR合并、生产迁移和启用仍未授权。
+
 > **2026-09-30 R1/R2批准回执（覆盖下方准备状态）**：用户明确“批准”[普通退款方案](CCR-W2-API-001/refund-application-proposal.md)。[Contract49](../../docs/04-api/49-Refund-Application-Contract-v0.1.md)及SQL49承接申请/决定/24h恢复、普通真实来源、渠道执行和成功释放；默认关闭实现及本地隔离验收见[实施记录](../progress/2026-09-30/refund-aftersale/IMPLEMENTATION.md)，PR96当前提交全量CI另行核对。批准不包括PR合并或生产启用；TASK core补最小公共恢复入口，沿既有租约和元数据校验，不跨域改表。整个CCR、AFS及公开端到端仍未完成。
 
 > **2026-09-30最新接续（覆盖下方历史状态）**：PR95已合入develop `eb5d16f`，合并后CI36659585415六项通过；116份后端报告751项，失败/错误/跳过均0。用户授权按建议顺序继续，并已批准普通退款被拒绝后可再次申请、每次重计24h、同单同时一笔待处理、创建refund_order后禁止再申请，见SSOT §38和[PRD30回执](../../docs/01-prd/30-普通退款重复申请人工裁决补充-v1.0.md)。[退款R1/R2候选](CCR-W2-API-001/refund-application-proposal.md)已具体化申请/决定/24h恢复及可信普通来源；重大技术契约仍待审阅，未改正式API/Schema或业务实现。收尾/来源/代码/验收证据见[准备记录](../progress/2026-09-30/refund-aftersale/PREPARATION.md)；[员工绑定核销权限](CCR-W2-API-001/staff-verification-authority-preparation.md)只做独立后续准备。完整Issue和整个CCR不提前关闭，新PR不合并、不生产启用。

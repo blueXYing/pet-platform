@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.petplatform.thirdparty.biz.infrastructure.persistence.mapper.AfterSaleAssetMapper">
+  <select id="now" resultType="java.time.Instant">SELECT CURRENT_TIMESTAMP(3)</select>
+  <select id="byRequest" resultType="com.petplatform.thirdparty.biz.infrastructure.persistence.entity.AfterSaleAssetGrantEntity">
+    SELECT *,expires_at&lt;=CURRENT_TIMESTAMP(3) AS expired FROM aftersale_asset_read_grant
+    WHERE actor_type=#{actorType} AND actor_id=#{actorId} AND after_sale_id=#{caseId} AND request_id=#{requestId} FOR UPDATE
+  </select>
+  <select id="byDigest" resultType="com.petplatform.thirdparty.biz.infrastructure.persistence.entity.AfterSaleAssetGrantEntity">
+    SELECT *,expires_at&lt;=CURRENT_TIMESTAMP(3) AS expired FROM aftersale_asset_read_grant WHERE token_digest=#{digest}
+  </select>
+  <select id="lock" resultType="com.petplatform.thirdparty.biz.infrastructure.persistence.entity.AfterSaleAssetGrantEntity">
+    SELECT *,expires_at&lt;=CURRENT_TIMESTAMP(3) AS expired FROM aftersale_asset_read_grant WHERE id=#{id} FOR UPDATE
+  </select>
+  <insert id="insert">
+    INSERT INTO aftersale_asset_read_grant(id,after_sale_id,batch_id,asset_id,actor_type,actor_id,request_id,
+      key_version,token_digest,request_hash,proof_hash,reason_cipher,status,issued_at,expires_at)
+    VALUES(#{id},#{afterSaleId},#{batchId},#{assetId},#{actorType},#{actorId},#{requestId},#{keyVersion},
+      #{tokenDigest},#{requestHash},#{proofHash},#{reasonCipher},'ISSUED',CURRENT_TIMESTAMP(3),TIMESTAMPADD(MINUTE,5,CURRENT_TIMESTAMP(3)))
+  </insert>
+  <update id="consume">
+    UPDATE aftersale_asset_read_grant SET status='CONSUMED',consumed_at=CURRENT_TIMESTAMP(3)
+    WHERE id=#{id} AND status='ISSUED' AND expires_at&gt;CURRENT_TIMESTAMP(3)
+  </update>
+  <insert id="audit">
+    INSERT INTO aftersale_asset_access_audit(id,grant_id,action,result,actor_type,actor_id,request_id,created_at)
+    VALUES(#{id},#{grantId},#{action},#{result},#{actorType},#{actorId},#{requestId},CURRENT_TIMESTAMP(3))
+  </insert>
+</mapper>

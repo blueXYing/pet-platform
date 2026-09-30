@@ -26,9 +26,12 @@ public final class ReservationRefundReleaseApiImpl implements ReservationRefundR
         try{
             if(ctx==null||ctx.operatorType()!=OperatorType.SYSTEM)throw unavailable();
             var fact=refunds.requireSucceeded(refund,order,store,ctx);
-            if(fact==null||!Set.of("MERCHANT_REJECT_ORDER","MERCHANT_APPROVED","MERCHANT_TIMEOUT_AUTO").contains(fact.refundSource())||!order.equals(fact.orderId())
+            if(fact==null||!Set.of("MERCHANT_REJECT_ORDER","MERCHANT_APPROVED","MERCHANT_TIMEOUT_AUTO","AFTERSALE_DECISION").contains(fact.refundSource())||!order.equals(fact.orderId())
                 ||!store.equals(fact.storeId())||!refund.equals(fact.refundOrderId())||fact.refundAmount().signum()<=0
-                ||fact.refundAmount().compareTo(fact.originalPaidAmount())!=0)throw unavailable();
+                ||fact.refundAmount().compareTo(fact.originalPaidAmount())>0
+                ||(!"AFTERSALE_DECISION".equals(fact.refundSource())||"FULL".equals(fact.refundType()))&&fact.refundAmount().compareTo(fact.originalPaidAmount())!=0
+                ||"PARTIAL".equals(fact.refundType())&&(!"AFTERSALE_DECISION".equals(fact.refundSource())||fact.refundAmount().compareTo(fact.originalPaidAmount())>=0)
+                ||!Set.of("FULL","PARTIAL").contains(fact.refundType()))throw unavailable();
             var row=mapper.lockReservation(IDS.fromApi(reservation));
             if(row==null||ScheduleSqlRows.number(row,"order_id")!=IDS.fromApi(order)||ScheduleSqlRows.number(row,"store_id")!=IDS.fromApi(store))throw unavailable();
             byte[] key=("EVENT:REFUND_RELEASE:"+refund).getBytes(StandardCharsets.UTF_8);

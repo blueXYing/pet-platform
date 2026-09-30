@@ -17,7 +17,7 @@ public final class AdminPermissionEvaluator {
   public static final Set<String> DEPLOYED_ACTIONS =
       Set.of("merchant.application.read", "merchant.application.decide",
           "merchant.identity.reveal", "service.review.read", "service.review.decide",
-          "service.force.offline");
+          "service.force.offline", "aftersale.read", "aftersale.handle", "aftersale.decide");
 
   public static List<String> evaluate(
       boolean superAdmin, Collection<String> grants, Set<String> deployed) {

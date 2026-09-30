@@ -1,6 +1,8 @@
-> 2026-09-24 当前覆盖：PR80已合入develop d0b7ff5；新封面真实签名读取通过。SCH002真实查询实现和定向/独立QA通过，待实现PR集成；SCH004四项技术规范已批见PR81，未实施写入/迁移，完整保护证明待SCH003/ORDER。以根WORK_STATE v9.0及本轮交接为准；下方是历史范围快照，局部实现不等于全链DONE。
+> 2026-09-30当前覆盖：PR96已合入develop `ff983596`，合并后六项CI通过、852项后端测试零失败/错误/跳过。四项AFS推荐规则及A1–A3已获明确批准，默认关闭的真实工单/终裁/证据和资金核销集成已在PR97实施，见[实施与验收范围](progress/2026-09-30/aftersale-workflow/IMPLEMENTATION.md)。真实资金Provider、公开HTTP/前端、下游消费者及未验分支保留；内部切片不等于完整Issue DONE。以[WORK_STATE v32](../WORK_STATE.md)为当前依据；下方保留旧范围快照，不能据旧阻塞否定PR80～96实际已合能力。
 
 # Blocked Queue
+
+当前批准补充：四项推荐规则及A1–A3已获用户明确批准，参见[Contract50](../docs/04-api/50-AfterSale-Workflow-Contract-v0.1.md)。产品待答阻断已解除；真实资金Provider、公开HTTP/前端及生产启用仍保留。本批默认关闭实现正在隔离验收，不能把准备期待批准文字作为当前状态。
 
 更新：2026-09-22，PR61～63已顺序合入develop `12bdc38`，手机签约与工作台准入主链闭环。本页只保留未完成或未验收范围。
 

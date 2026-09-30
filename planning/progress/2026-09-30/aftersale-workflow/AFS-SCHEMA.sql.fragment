@@ -1,0 +1,113 @@
+-- AFS-owned SQL50 fragment. Run by migration owner only. No application startup DDL.
+-- Existing SQL48 cases/proofs remain readable; unknown historical cases cannot enter new workflow commands.
+ALTER TABLE aftersale_case
+ ADD workflow_revision INT NULL,
+ ADD creator_command_id BIGINT NULL,
+ ADD created_event_id BIGINT NULL,
+ ADD city_code VARCHAR(64) NULL,
+ ADD scope_version VARCHAR(128) NULL,
+ ADD eligibility_anchor DATETIME(3) NULL,
+ ADD eligibility_deadline DATETIME(3) NULL,
+ ADD origin_cipher MEDIUMBLOB NULL,
+ ADD content_cipher MEDIUMBLOB NULL,
+ ADD type_code VARCHAR(64) NULL,
+ ADD demand_code VARCHAR(64) NULL,
+ ADD final_set_version CHAR(64) CHARACTER SET ascii COLLATE ascii_bin NULL,
+ ADD decision_id BIGINT NULL,
+ ADD refund_order_id BIGINT NULL,
+ ADD current_supplement_id BIGINT NULL,
+ ADD duplicate_final_case_id BIGINT NULL,
+ ADD UNIQUE KEY uk_aftersale_creator_command(creator_command_id),
+ ADD UNIQUE KEY uk_aftersale_created_event(created_event_id),
+ ADD UNIQUE KEY uk_aftersale_decision(decision_id),
+ ADD UNIQUE KEY uk_aftersale_refund(refund_order_id),
+ ADD CONSTRAINT chk_aftersale_workflow CHECK (workflow_revision IS NULL OR
+  (workflow_revision=1 AND creator_command_id IS NOT NULL AND created_event_id IS NOT NULL
+   AND scope_version IS NOT NULL AND eligibility_anchor IS NOT NULL AND eligibility_deadline IS NOT NULL
+   AND eligibility_deadline=eligibility_anchor+INTERVAL 7 DAY AND origin_cipher IS NOT NULL
+   AND content_cipher IS NOT NULL AND description='' AND decision_reason IS NULL AND type_code IS NOT NULL
+   AND demand_code IS NOT NULL AND final_set_version IS NOT NULL
+   AND ((active_flag=1 AND status IN ('PENDING','PROCESSING','WAITING_SUPPLEMENT'))
+     OR (active_flag=0 AND status IN ('RESOLVED','WITHDRAWN','INVALIDATED','CLOSED')))));
+
+CREATE TABLE aftersale_command (
+ id BIGINT PRIMARY KEY,command_namespace VARBINARY(64) NOT NULL,actor_type VARBINARY(32) NOT NULL,
+ actor_id BIGINT NOT NULL,scope VARBINARY(128) NOT NULL,request_id VARBINARY(512) NOT NULL,
+ payload_sha256 CHAR(64) CHARACTER SET ascii COLLATE ascii_bin NOT NULL,
+ canonical_version VARCHAR(32) NOT NULL,canonical_bytes MEDIUMBLOB NOT NULL,
+ state VARCHAR(16) NOT NULL,result_version INT NULL,result_bytes MEDIUMBLOB NULL,
+ created_at DATETIME(3) NOT NULL,updated_at DATETIME(3) NOT NULL,
+ UNIQUE KEY uk_aftersale_command_binding(command_namespace,actor_type,actor_id,scope,request_id),
+ CHECK (canonical_version='canonical-v1'),
+ CHECK ((state='RESERVED' AND result_version IS NULL AND result_bytes IS NULL)
+  OR (state='SUCCEEDED' AND result_version=1 AND result_bytes IS NOT NULL))
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
+CREATE TABLE aftersale_transition (
+ command_id BIGINT PRIMARY KEY,aftersale_id BIGINT NOT NULL,order_id BIGINT NOT NULL,
+ from_status VARCHAR(32) NULL,to_status VARCHAR(32) NOT NULL,case_version BIGINT NOT NULL,
+ action VARCHAR(64) NOT NULL,event_id BIGINT NOT NULL,actor_type VARCHAR(32) NOT NULL,actor_id BIGINT NULL,
+ occurred_at DATETIME(3) NOT NULL,evidence_batch_id BIGINT NULL,supplement_id BIGINT NULL,
+ decision_id BIGINT NULL,refund_order_id BIGINT NULL,detail_cipher MEDIUMBLOB NULL,
+ UNIQUE KEY uk_aftersale_transition_version(aftersale_id,case_version),
+ UNIQUE KEY uk_aftersale_transition_event(event_id),KEY idx_aftersale_transition_case(aftersale_id,occurred_at),
+ CHECK(case_version>=0)
+) ENGINE=InnoDB;
+
+CREATE TABLE aftersale_evidence_batch (
+ id BIGINT PRIMARY KEY,aftersale_id BIGINT NOT NULL,command_id BIGINT NOT NULL,
+ submitter_type VARCHAR(16) NOT NULL,submitter_id BIGINT NOT NULL,supplement_id BIGINT NULL,
+ content_cipher MEDIUMBLOB NOT NULL,content_sha256 CHAR(64) CHARACTER SET ascii COLLATE ascii_bin NOT NULL,
+ moderation_version VARCHAR(128) NOT NULL,created_at DATETIME(3) NOT NULL,
+ UNIQUE KEY uk_aftersale_batch_command(command_id),KEY idx_aftersale_batch_case(aftersale_id,id),
+ CHECK(submitter_type IN ('USER','MERCHANT'))
+) ENGINE=InnoDB;
+CREATE TABLE aftersale_evidence_asset (
+ batch_id BIGINT NOT NULL,asset_id BIGINT NOT NULL,owner_user_id BIGINT NOT NULL,
+ object_sha256 CHAR(64) CHARACTER SET ascii COLLATE ascii_bin NOT NULL,
+ object_version_ref VARCHAR(256) NOT NULL,asset_fact_version VARCHAR(128) NOT NULL,
+ media_type VARCHAR(100) NOT NULL,asset_bytes BIGINT NOT NULL,
+ PRIMARY KEY(batch_id,asset_id),CHECK(asset_bytes>0)
+) ENGINE=InnoDB;
+
+CREATE TABLE aftersale_supplement (
+ id BIGINT PRIMARY KEY,aftersale_id BIGINT NOT NULL,request_command_id BIGINT NOT NULL,
+ target_party VARCHAR(16) NOT NULL,reason_cipher MEDIUMBLOB NOT NULL,deadline DATETIME(3) NOT NULL,
+ status VARCHAR(16) NOT NULL,created_at DATETIME(3) NOT NULL,closed_at DATETIME(3) NULL,
+ completion_command_id BIGINT NULL,completion_verification_id BIGINT NULL,
+ active_case_id BIGINT GENERATED ALWAYS AS (CASE WHEN status='OPEN' THEN aftersale_id ELSE NULL END) STORED,
+ UNIQUE KEY uk_aftersale_supplement_command(request_command_id),UNIQUE KEY uk_aftersale_supplement_active(active_case_id),
+ KEY idx_aftersale_supplement_due(status,deadline,id),
+ CHECK(target_party IN ('USER','MERCHANT')),
+ CHECK(deadline>created_at),
+ CHECK((status='OPEN' AND closed_at IS NULL AND completion_command_id IS NULL AND completion_verification_id IS NULL)
+  OR (status IN ('SUBMITTED','TIMED_OUT','CANCELED') AND closed_at IS NOT NULL AND completion_command_id IS NOT NULL AND completion_verification_id IS NULL)
+  OR (status='CANCELED' AND closed_at IS NOT NULL AND completion_command_id IS NULL AND completion_verification_id IS NOT NULL))
+) ENGINE=InnoDB;
+
+CREATE TABLE aftersale_decision (
+ id BIGINT PRIMARY KEY,aftersale_id BIGINT NOT NULL,order_id BIGINT NOT NULL,store_id BIGINT NOT NULL,
+ command_id BIGINT NOT NULL,event_id BIGINT NOT NULL,actor_id BIGINT NOT NULL,
+ decision_type VARCHAR(32) NOT NULL,refund_amount DECIMAL(18,2) NULL,paid_amount DECIMAL(18,2) NOT NULL,
+ source_case_version BIGINT NOT NULL,reason_cipher MEDIUMBLOB NOT NULL,
+ authz_version VARCHAR(128) NOT NULL,scope_version VARCHAR(128) NOT NULL,
+ proof_cipher MEDIUMBLOB NOT NULL,order_token_hash CHAR(64) CHARACTER SET ascii COLLATE ascii_bin NULL,
+ decided_at DATETIME(3) NOT NULL,refund_order_id BIGINT NULL,refund_no BIGINT NULL,
+ refund_created_event_id BIGINT NULL,refund_created_at DATETIME(3) NULL,
+ UNIQUE KEY uk_aftersale_decision_case(aftersale_id),UNIQUE KEY uk_aftersale_decision_command(command_id),
+ UNIQUE KEY uk_aftersale_decision_event(event_id),UNIQUE KEY uk_aftersale_decision_refund(refund_order_id),
+ CHECK(paid_amount>0 AND source_case_version>=0),
+ CHECK((decision_type='FULL_REFUND' AND refund_amount IS NOT NULL AND refund_amount=paid_amount AND order_token_hash IS NOT NULL)
+  OR (decision_type='PARTIAL_REFUND' AND refund_amount IS NOT NULL AND refund_amount>0 AND refund_amount<paid_amount AND order_token_hash IS NOT NULL)
+  OR (decision_type IN ('REJECT','RESERVICE','OTHER') AND refund_amount IS NULL AND order_token_hash IS NULL AND refund_order_id IS NULL)),
+ CHECK((refund_order_id IS NULL AND refund_no IS NULL AND refund_created_event_id IS NULL AND refund_created_at IS NULL)
+  OR (refund_order_id IS NOT NULL AND refund_no IS NOT NULL AND refund_created_event_id IS NOT NULL AND refund_created_at IS NOT NULL))
+) ENGINE=InnoDB;
+CREATE TABLE aftersale_recovery_issue (
+ supplement_id BIGINT NOT NULL,issue_code VARCHAR(64) CHARACTER SET ascii COLLATE ascii_bin NOT NULL,
+ aftersale_id BIGINT NOT NULL,store_id BIGINT NULL COMMENT 'Unknown only when the source case is missing',status VARCHAR(16) NOT NULL,
+ occurrences BIGINT NOT NULL,created_at DATETIME(3) NOT NULL,last_seen_at DATETIME(3) NOT NULL,
+ resolved_at DATETIME(3) NULL,PRIMARY KEY(supplement_id,issue_code),
+ CHECK(issue_code IN ('AFTERSALE_PROOF_INVALID','AFTERSALE_TASK_CONFLICT')),
+ CHECK(occurrences>0),CHECK((status='OPEN' AND resolved_at IS NULL) OR (status='RESOLVED' AND resolved_at IS NOT NULL))
+) ENGINE=InnoDB;

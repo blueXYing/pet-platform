@@ -1578,3 +1578,8 @@ CREATE 重读指定不可变批准和正常付款来源，重新取得绑定当�
 REFUND 有界扫描仅从本域可核实事实恢复：已到期且待处理、或已批准无退款单。先经公开 ORDER/REFUND 证明核对当前轮和决定，再调用 TASK 公共 `JdbcAsyncTaskRecoverer`，在调用者同 DataSource 可写 RC 事务复用完整入队参数校验；缺失任务插入，DEAD/CANCELED/SUCCEEDED 重置可执行并递增 fencing version，保留历史 attempt。READY/RETRY_WAIT/RUNNING 保持原有调度/租约，不能盗取有效租约或跨域修改任务表；损坏绑定失败关闭，不猜测补齐裸历史状态。
 
 `pet.refund.application.enabled` 与 `pet.refund.application.worker.enabled` 默认 false；启用依赖本批完整身份、保护、原支付、来源、任务及成功消费装配。公开 HTTP/小程序、通知实际送达、AFS、员工和生产开关均不由本节验收替代。
+
+
+# 2026-09-30 AFS持久任务增量（批准）
+
+执行[Contract50 §4/§8](../04-api/50-AfterSale-Workflow-Contract-v0.1.md)：补证截止前提交，截止及以后超时回PROCESSING；原轮次任务不可覆盖新轮次/终态。AFTERSALE_SUPPLEMENT_TIMEOUT与AFTERSALE_REFUND_SUBMIT/CHANNEL_QUERY按50号固定key/载荷校验并恢复原key，不建AFS终裁后CREATE_REFUND任务。§33七天包含截止等号保持；无资金权威资格不得首次出款，MAY_HAVE_SENT仍仅原号查询。
