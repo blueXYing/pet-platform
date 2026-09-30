@@ -42,7 +42,8 @@ public final class RefundExecutionService {
             refunds.session();refunds.guard.acquire(List.of(storeId),ctx);
             return refunds.requireForChannel(refundId,storeId,ctx);
         });
-        if(f==null||(expectedSource!=null&&!expectedSource.equals(f.sourceType())))throw unavailable();
+        if(f==null||applicationSource(f.sourceType())&&expectedSource==null
+            ||(expectedSource!=null&&!("APPLICATION".equals(expectedSource)?applicationSource(f.sourceType()):expectedSource.equals(f.sourceType()))))throw unavailable();
         if("SUCCESS".equals(f.status())) {
             refunds.tx.executeWithoutResult(s -> {
                 refunds.guard.acquire(List.of(storeId),ctx);
@@ -153,20 +154,35 @@ public final class RefundExecutionService {
     /** Cyclic bounded scan. A worker crash or exhausted retry cannot silently lose a refund. */
     public synchronized int reconcileDeadTasks() {
         noOuter();
-        var candidates=refunds.store.scanOpen(scanAfter.get(),refunds.lateEnabled(),refunds.merchantEnabled());
+        var candidates=refunds.store.scanOpen(scanAfter.get(),refunds.lateEnabled(),refunds.merchantEnabled(),refunds.applicationEnabled());
         if(candidates.isEmpty()) {scanAfter.set(0);return 0;}
         int count=0;
         for(var c:candidates) {
             String refundId=Long.toString(c.refundOrderId);
             String storeId=Long.toString(c.storeId);
+            try {
             String submit=taskStates.status("REFUND_SUBMIT:"+refundId+":0");
             if(submit==null)submit=taskStates.status("MERCHANT_REFUND_SUBMIT:"+refundId+":0");
+            if(submit==null)submit=taskStates.status("APPLICATION_REFUND_SUBMIT:"+refundId+":0");
             String query=taskStates.status("REFUND_CHANNEL_QUERY:"+refundId+":0");
             if(query==null)query=taskStates.status("MERCHANT_REFUND_CHANNEL_QUERY:"+refundId+":0");
+            if(query==null)query=taskStates.status("APPLICATION_REFUND_CHANNEL_QUERY:"+refundId+":0");
             if("DEAD".equals(submit)||"CANCELED".equals(submit)||"DEAD".equals(query)||"CANCELED".equals(query)) {
                 QueryContext ctx=new QueryContext("late-refund-reconciliation",OperatorType.SYSTEM,null);
                 var fact=refunds.tx.execute(s -> {refunds.guard.acquire(List.of(storeId),ctx);return refunds.requireForChannel(refundId,storeId,ctx);});
                 issue(fact,issueCode(fact),ctx);count++;
+            }
+            } catch(ApiException failure) {
+                if(RefundApplicationService.infrastructure(failure)||!CommonApiCodes.DEPENDENCY_UNAVAILABLE.equals(failure.code()))throw failure;
+                // A broken source proves neither UNKNOWN nor a financial outcome. Only record the
+                // diagnostic after rollback, leaving all monetary state unchanged. Storage failures
+                // here propagate and keep the cursor at this row for the next scan.
+                refunds.tx.executeWithoutResult(s->{
+                    refunds.session();int created=refunds.store.insertIssue(id(refundId),"REFUND_SOURCE_PROOF_INVALID");
+                    if(created==1)TransactionSynchronizationManager.registerSynchronization(new org.springframework.transaction.support.TransactionSynchronization(){
+                        @Override public void afterCommit(){LOG.error("Refund reconciliation required refundOrderId={} issueCode=REFUND_SOURCE_PROOF_INVALID",refundId);}
+                    });
+                });count++;
             }
             scanAfter.set(id(refundId));
         }
@@ -174,13 +190,15 @@ public final class RefundExecutionService {
     }
 
     public static String taskType(RefundExecutionFact f,boolean query) {
+        if(applicationSource(f.sourceType()))return "APPLICATION_"+(query?"REFUND_CHANNEL_QUERY":"REFUND_SUBMIT");
         return ("MERCHANT_REJECT_ORDER".equals(f.sourceType())?"MERCHANT_":"")+(query?"REFUND_CHANNEL_QUERY":"REFUND_SUBMIT");
     }
     private static String issueCode(RefundExecutionFact f) {
-        return SOURCE.equals(f.sourceType())?"LATE_PAYMENT_AUTO_REFUND_FAILED":"MERCHANT_REJECT_REFUND_FAILED";
+        return SOURCE.equals(f.sourceType())?"LATE_PAYMENT_AUTO_REFUND_FAILED":applicationSource(f.sourceType())?"APPLICATION_REFUND_FAILED":"MERCHANT_REJECT_REFUND_FAILED";
     }
     private static void same(RefundExecutionFact a,RefundExecutionFact b) {
         if(!Objects.equals(a.sourceType(),b.sourceType())||!Objects.equals(a.sourceEventId(),b.sourceEventId())
+            ||!Objects.equals(a.sourceBizId(),b.sourceBizId())||!Objects.equals(a.sourceDecisionId(),b.sourceDecisionId())
             ||!a.refundOrderId().equals(b.refundOrderId())||!a.refundNo().equals(b.refundNo())
             ||!a.orderId().equals(b.orderId())||!a.paymentId().equals(b.paymentId())||!a.storeId().equals(b.storeId())
             ||!a.paymentNo().equals(b.paymentNo())||a.refundAmount().compareTo(b.refundAmount())!=0

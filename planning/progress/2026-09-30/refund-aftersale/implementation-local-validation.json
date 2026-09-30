@@ -1,0 +1,99 @@
+{
+  "date": "2026-09-30",
+  "environment": "Java 21 / isolated MySQL 8.4.9 on 127.0.0.1:3315; per-test disposable schema; no live refund network",
+  "scope": "R1/R2 internal default-off implementation; full current-head CI separately required",
+  "refundAcceptanceUniqueMethods": 25,
+  "runs": [
+    {
+      "logName": "boot-refund-second.log",
+      "sha256": "51941b3a1e7d3cf104ea4bf629e776ab227b691c18c09f0334cca09b2bdb570a",
+      "status": "PASS",
+      "counts": {
+        "tests": 19,
+        "failures": 0,
+        "errors": 0,
+        "skipped": 0
+      }
+    },
+    {
+      "logName": "boot-refund-extra.log",
+      "sha256": "1d9d64a8dacef531564098fa8e99df3dc4f1b5428a43af6592f9f66b43d6463b",
+      "status": "PASS",
+      "counts": {
+        "tests": 4,
+        "failures": 0,
+        "errors": 0,
+        "skipped": 0
+      }
+    },
+    {
+      "logName": "boot-refund-final.log",
+      "sha256": "f6e4c0ae6fc44424ed725fd44c39b5bcaddb81ae685f94b69ef138e7cebc35f2",
+      "status": "PASS",
+      "counts": {
+        "tests": 3,
+        "failures": 0,
+        "errors": 0,
+        "skipped": 0
+      }
+    },
+    {
+      "logName": "boot-refund-auth-final.log",
+      "sha256": "87005b3b15d6f507cad58c4ac7ca242cffb94ebadb8d347752c3a8ecd45b537e",
+      "status": "PASS",
+      "counts": {
+        "tests": 1,
+        "failures": 0,
+        "errors": 0,
+        "skipped": 0
+      }
+    },
+    {
+      "logName": "architecture-final.log",
+      "sha256": "36fb57e3652bbabec1bc1beed2820f20b15cafc01c738011fff72ea87ebd6d45",
+      "status": "PASS",
+      "counts": {
+        "tests": 22,
+        "failures": 0,
+        "errors": 0,
+        "skipped": 0
+      }
+    }
+  ],
+  "otherTargetedSuites": [
+    {
+      "suite": "PaymentRefundServiceMySqlTest",
+      "tests": 18
+    },
+    {
+      "suite": "JdbcAsyncTaskRecovererMySqlTest",
+      "tests": 22
+    },
+    {
+      "suite": "JdbcAsyncTaskSubmitterTest",
+      "tests": 2
+    },
+    {
+      "suite": "OrderVerificationHistoryMySqlTest",
+      "tests": 3
+    },
+    {
+      "suite": "RefundApplicationAesProtectionTest",
+      "tests": 2
+    },
+    {
+      "suite": "RefundApplicationConfigurationTest",
+      "tests": 33
+    }
+  ],
+  "otherTargetedFailuresErrorsSkipped": 0,
+  "pythonContractTests": 118,
+  "pythonArchitectureSourceTests": 18,
+  "sourceGates": [
+    "module dependencies PASS",
+    "DisplayOrderStatus ownership PASS",
+    "MyBatis persistence style PASS"
+  ],
+  "changedMarkdownLocalLinksChecked": 110,
+  "brokenLocalLinks": 0
+}

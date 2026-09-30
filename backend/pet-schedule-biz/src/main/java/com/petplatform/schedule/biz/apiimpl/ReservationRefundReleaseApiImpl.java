@@ -7,6 +7,7 @@ import com.petplatform.schedule.biz.infrastructure.persistence.*;
 import com.petplatform.schedule.biz.infrastructure.persistence.mapper.ScheduleCommandMapper;
 import java.nio.charset.StandardCharsets;
 import java.util.Objects;
+import java.util.Set;
 import javax.sql.DataSource;
 import org.springframework.jdbc.datasource.ConnectionHolder;
 import org.springframework.transaction.support.TransactionSynchronizationManager;
@@ -25,7 +26,7 @@ public final class ReservationRefundReleaseApiImpl implements ReservationRefundR
         try{
             if(ctx==null||ctx.operatorType()!=OperatorType.SYSTEM)throw unavailable();
             var fact=refunds.requireSucceeded(refund,order,store,ctx);
-            if(fact==null||!"MERCHANT_REJECT_ORDER".equals(fact.refundSource())||!order.equals(fact.orderId())
+            if(fact==null||!Set.of("MERCHANT_REJECT_ORDER","MERCHANT_APPROVED","MERCHANT_TIMEOUT_AUTO").contains(fact.refundSource())||!order.equals(fact.orderId())
                 ||!store.equals(fact.storeId())||!refund.equals(fact.refundOrderId())||fact.refundAmount().signum()<=0
                 ||fact.refundAmount().compareTo(fact.originalPaidAmount())!=0)throw unavailable();
             var row=mapper.lockReservation(IDS.fromApi(reservation));

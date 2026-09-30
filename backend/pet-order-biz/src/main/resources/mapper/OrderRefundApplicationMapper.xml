@@ -1,0 +1,66 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.petplatform.order.biz.infrastructure.persistence.mapper.OrderRefundApplicationMapper">
+ <select id="current" resultType="com.petplatform.order.biz.infrastructure.persistence.mapper.OrderRefundApplicationMapper$Current">
+  SELECT current_refund_application_id,refund_application_status,refund_order_id,version,verified_at,completed_at,aftersale_status FROM pet_order WHERE id=#{order} FOR UPDATE
+ </select>
+ <select id="application" resultType="com.petplatform.order.biz.infrastructure.persistence.mapper.OrderRefundApplicationMapper$Proof">
+  SELECT application_id,order_id,store_id,merchant_id,user_id,reservation_id,payment_id,payment_success_event_id,channel_trade_no,
+   paid_amount,paid_at,created_at,merchant_deadline,applied_order_version,application_version,application_status,decision_id,decided_at
+  FROM order_refund_application_proof WHERE application_id=#{application} FOR UPDATE
+ </select>
+ <select id="committed" resultType="com.petplatform.order.biz.infrastructure.persistence.mapper.OrderRefundApplicationMapper$Commit">
+  SELECT order_id,application_id,decision_id,store_id,refund_order_id,order_version,created_at,success_event_id,succeeded_at
+  FROM order_refund_application_commit WHERE order_id=#{order} FOR UPDATE
+ </select>
+ <insert id="insertApplication">
+  INSERT INTO order_refund_application_proof(application_id,order_id,store_id,merchant_id,user_id,reservation_id,payment_id,payment_success_event_id,
+   channel_trade_no,paid_amount,paid_at,created_at,merchant_deadline,applied_order_version,application_version,application_status)
+  VALUES(#{application},#{order},#{store},#{merchant},#{user},#{reservation},#{payment},#{paymentEvent},#{trade},#{amount},#{paidAt},#{at},#{deadline},#{version},0,'PENDING_MERCHANT')
+ </insert>
+ <update id="bind">
+  UPDATE pet_order SET current_refund_application_id=#{application},refund_application_status='PENDING_MERCHANT',version=version+1,updated_at=#{at}
+  WHERE id=#{order} AND store_id=#{store} AND version=#{oldVersion} AND refund_order_id IS NULL AND refunded_amount=0
+   AND (current_refund_application_id IS NULL OR refund_application_status='REJECTED')
+ </update>
+ <update id="decideProof">
+  UPDATE order_refund_application_proof SET application_status=#{status},application_version=#{applicationVersion},decision_id=#{decision},decided_at=#{at}
+  WHERE application_id=#{application} AND order_id=#{order} AND store_id=#{store} AND application_status='PENDING_MERCHANT'
+   AND decision_id IS NULL AND application_version=#{oldApplicationVersion}
+ </update>
+ <update id="decideOrder">
+  UPDATE pet_order SET refund_application_status=#{status},version=version+1,updated_at=#{at}
+  WHERE id=#{order} AND store_id=#{store} AND version=#{oldVersion} AND current_refund_application_id=#{application}
+   AND refund_application_status='PENDING_MERCHANT' AND refund_order_id IS NULL AND refunded_amount=0
+ </update>
+ <insert id="acquire">
+  INSERT INTO order_operation_guard(id,order_id,operation_type,token,status,expire_at,created_at,updated_at)
+  VALUES(#{id},#{order},'CREATE_REFUND',#{token},'ACQUIRED',UTC_TIMESTAMP(3)+INTERVAL 15 SECOND,UTC_TIMESTAMP(3),UTC_TIMESTAMP(3))
+ </insert>
+ <update id="commitGuard">
+  UPDATE order_operation_guard SET status='COMMITTED',updated_at=UTC_TIMESTAMP(3)
+  WHERE order_id=#{order} AND operation_type='CREATE_REFUND' AND token=#{token} AND status='ACQUIRED'
+ </update>
+ <update id="createOrder">
+  UPDATE pet_order SET refund_order_id=#{refund},version=version+1,updated_at=#{at}
+  WHERE id=#{order} AND store_id=#{store} AND version=#{oldVersion} AND current_refund_application_id=#{application}
+   AND refund_application_status IN ('APPROVED','AUTO_APPROVED') AND refund_order_id IS NULL AND refunded_amount=0
+ </update>
+ <insert id="insertCommit">
+  INSERT INTO order_refund_application_commit(order_id,application_id,decision_id,store_id,refund_order_id,order_version,created_at)
+  VALUES(#{order},#{application},#{decision},#{store},#{refund},#{version},#{at})
+ </insert>
+ <update id="projectSuccess">
+  UPDATE pet_order SET refunded_amount=#{amount},version=version+1,updated_at=#{at}
+  WHERE id=#{order} AND store_id=#{store} AND refund_order_id=#{refund} AND refunded_amount=0
+   AND order_stage IN ('PENDING_SERVICE','COMPLETED') AND payment_status='PAID'
+ </update>
+ <update id="recordSuccess">
+  UPDATE order_refund_application_commit SET success_event_id=#{event},succeeded_at=#{at}
+  WHERE order_id=#{order} AND refund_order_id=#{refund} AND success_event_id IS NULL AND succeeded_at IS NULL
+ </update>
+ <insert id="log">
+  INSERT INTO order_status_log(id,order_id,dimension,from_status,to_status,event_type,operator_type,operator_id,request_id,remark,created_at)
+  VALUES(#{log},#{order},'REFUND_APPLICATION',#{from,jdbcType=VARCHAR},#{status},#{eventType},#{actorType},#{actor,jdbcType=BIGINT},#{requestId},#{remark},#{at})
+ </insert>
+</mapper>

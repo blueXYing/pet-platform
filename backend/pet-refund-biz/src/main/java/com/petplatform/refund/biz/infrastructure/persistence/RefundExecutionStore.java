@@ -77,5 +77,6 @@ public final class RefundExecutionStore {
     }
     public int resolveIssue(long refundId) { return mapper.resolveIssue(refundId); }
     public int insertIssue(long refundId, String code) { return mapper.insertIssue(refundId, code); }
-    public List<RefundMapperRows.Candidate> scanOpen(long after,boolean late,boolean merchant) { return mapper.scanOpen(after,late,merchant); }
+    public List<RefundMapperRows.Candidate> scanOpen(long after,boolean late,boolean merchant) { return scanOpen(after,late,merchant,false); }
+    public List<RefundMapperRows.Candidate> scanOpen(long after,boolean late,boolean merchant,boolean application) { return mapper.scanOpen(after,late,merchant,application); }
 }

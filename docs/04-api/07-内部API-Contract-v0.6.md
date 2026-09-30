@@ -1792,3 +1792,23 @@ thirdparty-api 新增独立 ServiceCoverSigningApi.signServiceCover(String asset
 已批准 [48号契约](48-Verification-Completion-Contract-v0.1.md)接续旧核销接口：`VerificationCompletionApi.verify(Command)` 只提供默认关闭 OWNER/SCAN 命令；新命令含 confirmed 与 expectedCredentialVersion，独立五元组准入和不可变首回执。`OrderVerificationCommitApi` 提供同事务 acquire/requirePending/release/markVerified/requireCommitted；`AfterSaleVerificationApi` 提供 invalidateCurrent/requireCommitted；`VerificationCommitProofApi` 提供 VER 本域持久化证明。接口源码为当前冻结签名。
 
 这些接口通过公共 API 组合，各域只访问自身 SQL。VERIFY token 绑定当前 DataSource/事务资源、订单/门店/操作人/命令/版本，不是可缓存授权。成功使用 OrderVerifiedEvent.v2，v1不变；真实STAFF成员授权、通用CREATE_REFUND、AFS创建/裁决和HTTP仍后续交付，旧接口草图不得当作当前实现。
+
+## 2026-09-30 R1/R2 普通退款申请与来源接续
+
+用户已批准 R1/R2，执行 [49号契约](49-Refund-Application-Contract-v0.1.md)、[SSOT §39](../00-ssot/01-SSOT-宠物平台V1.0-最终业务基线.md)及 [SQL49](../03-database/49-Refund-Application-Schema-v0.1.sql)。以下接口只属于本次普通全额退款内部切片，不将原 `RefundCommandApi.createRefund` 草图变为任意来源建单入口。
+
+| Owner / API | 本次公开的模块间能力 |
+|---|---|
+| REFUND / `RefundApplicationCommandApi` | `apply(Apply)`、`decide(Decide)`；本人 ACTIVE USER 申请、当前真实 OWNER 同意/拒绝。参数、String ID/版本、不可变首回执、说明保护及五元组幂等见 49 号。 |
+| REFUND / `RefundApplicationTimeoutApi` | `handle(Timeout)` 返回完成或真实下次执行时间；`createApproved(Create)` 恢复已批准来源。只接受已登记 ASYNC_TASK 的 SYSTEM 上下文与确定性 requestId。 |
+| REFUND / `RefundApplicationApprovalFactsApi` | `requireApplication(applicationId,storeId,context)`、`requireDecision(applicationId,decisionId,storeId,context)`、`requireApproved(...)`、`requireCreated(applicationId,decisionId,refundOrderId,storeId,context)`；读取本域真实准入绑定、申请、不可变决定、原付款与执行证明。 |
+| ORDER / `OrderRefundApplicationApi` | `locate(orderId,context)`、`requireEligible(orderId,storeId,context,transactionSource)`、`bindApplication`、`recordDecision`、`requireApplicationBound`、`requireDecisionRecorded`；本域正常付款及履约资格、当前轮投影与证明。 |
+| ORDER / `OrderRefundApplicationApi` | `acquireCreate(applicationId,decisionId,orderId,storeId,commandId,context,transactionSource)` 返回 `Permit`；`commitCreated(token,orderId,storeId,refundOrderId,createdAt,transactionSource)`；`requireCreated(orderId,storeId,refundOrderId,transactionSource)`。 |
+| ORDER / `OrderRefundApplicationFactsApi` | `requireApprovedRefund(orderId,paymentId,storeId,context)` 返回真实正常付款与本域已提交普通来源证明，供 PAYMENT 首次发送及 ORDER 成功投影核验。 |
+| SCHEDULE / `ReservationRefundReleaseApi` | 既有 `release` 签名不变；原商家拒单外增加两种普通来源，仅在 REFUND 公共成功事实通过、原订单/门店/预约一致时释放。 |
+
+除 `locate` 路由提示外，ORDER/REFUND 证明能力要求当前同 DataSource、可写 READ_COMMITTED 事务和共同门店 guard。涉及跨域写入时，调用方必须通过双方公开证明接口在提交前复核，不跨读 Mapper。异常标记当前事务回滚，不能捕获后提交孤立申请、决定或退款单。
+
+`CREATE_REFUND` 与 `VERIFY` 共享门店串行保护但资格不同：普通申请及批准未建单不阻止 VERIFY；已核销仍可获得普通退款能力，资格来自正常付款/确认/真实核销证明，不复用“只允许未核销”的接口。Permit 由 ORDER 签发并绑定活跃事务资源、命令、申请、决定、订单/门店及本次当前版本；伪造、跨事务重用、未提交完成的 token 或绕过 token 的裸 commit 均拒绝。批准后核销增加版本时，新的建单事务必须重新 acquire；不得使用批准时版本。历史核销证明允许后续合法版本增长，同时保持原核销身份、时间、状态及 AFS 证明一致；新核销写入提交仍核验本次精确版本。
+
+`OrderRefundOriginFact` 和 `RefundExecutionFact` 增加 `sourceBizId`/`sourceDecisionId`，旧构造器保留 null 的旧来源语义。普通来源固定为 `MERCHANT_APPROVED` 或 `MERCHANT_TIMEOUT_AUTO`，上述两 ID 对应 application/decision，sourceEventId/lateEventId 为 null；不得把业务 ID 填进事件字段。PAYMENT 首次发送同时复核 REFUND 决定及 ORDER 来源，之后原号查询按持久发送绑定恢复，不重新要求当前支付状态为 PAID。默认关闭；AFS/PARTIAL、STAFF、HTTP 和通知实际送达未由本切片交付。

@@ -1555,3 +1555,26 @@ For atomic booking creation, scheduled task submission and coordinated expiratio
 [45号契约](../04-api/45-Merchant-Order-Actions-Contract-v0.1.md)新增MERCHANT_REFUND_SUBMIT和MERCHANT_REFUND_CHANNEL_QUERY。Owner/bizType为REFUND、bizId为退款ID、expectedVersion=0、payload精确refundOrderId/storeId String及bindingVersion整数0；taskKey为类型:refundId:0。任务类型还须匹配退款来源。拒单事务内创建提交任务，UNKNOWN仍使用原退款号和持久PAYMENT发送意图，仅查单，不以重试再次发退款。
 
 复用REFUND_CHANNEL策略（30秒、60秒、120秒、5/15/30/60分钟，最多8次），查询至少满足渠道30秒间隔；租约丢失、DEAD、扫描恢复仍检查原任务绑定和权威事实。扫描每次有界，按已启用来源过滤。普通Worker只领取MERCHANT_两类任务，旧迟到Worker类型不变，彼此不能误领。pet.order.merchant.worker.enabled默认false，依赖45号完整退款执行；不默认开启pet.refund.late.worker.enabled。退款成功事件投影完成前继续占用预约，不能把任务SUCCEEDED等同于预约已释放。
+
+## 2026-09-30 普通退款申请、批准恢复与渠道任务（49号）
+
+用户已批准 R1/R2，执行 [49号契约](../04-api/49-Refund-Application-Contract-v0.1.md)、[SQL49](../03-database/49-Refund-Application-Schema-v0.1.sql)与 SSOT §38/§39。本节细化 §15 的两段可恢复语义：超时任务提交真实批准和独立 CREATE 任务；CREATE 使用新的业务事务完成建单。不得将旧 `createRefund(FULL)` 草图作为任意金额/来源入口。
+
+| taskType / taskKey | Owner / bizType / bizId / expectedVersion | 精确 payload / 可执行时间 |
+|---|---|---|
+| `REFUND_MERCHANT_TIMEOUT` / `REFUND_MERCHANT_TIMEOUT:{applicationId}` | REFUND / REFUND_APPLICATION / applicationId / 0 | applicationId、storeId、merchantDeadline；申请的持久 createdAt+24h。 |
+| `REFUND_APPLICATION_CREATE` / `REFUND_APPLICATION_CREATE:{applicationId}` | REFUND / REFUND_APPLICATION / applicationId / 1 | applicationId、decisionId、storeId；真实决定 decidedAt。 |
+| `APPLICATION_REFUND_SUBMIT` / `APPLICATION_REFUND_SUBMIT:{refundId}:0` | REFUND / REFUND / refundId / 0 | refundOrderId、storeId、bindingVersion；退款创建事务提交后。 |
+| `APPLICATION_REFUND_CHANNEL_QUERY` / `APPLICATION_REFUND_CHANNEL_QUERY:{refundId}:0` | REFUND / REFUND / refundId / 0 | refundOrderId、storeId、bindingVersion；遵守持久渠道 nextQueryAt 与至少 30 秒查询间隔。 |
+
+payload ID 为 String，merchantDeadline 为 UTC 毫秒时间，bindingVersion 为 JSON 整数 0；不得携带说明、原因文本或个人资料。原始 taskType/key/bizId/version/payload/retryPolicy 必须严格匹配，不允许迟到或商家拒单 Worker 越类型领取普通来源。申请任务的 SYSTEM requestId=`TASK:{taskKey}`，source=`ASYNC_TASK`；普通渠道 Worker 在复核原任务/来源绑定后映射为 PAYMENT 既有 `TASK:REFUND_SUBMIT:{refundId}:0` 或 `TASK:REFUND_CHANNEL_QUERY:{refundId}:0`。
+
+超时以共享门店锁内数据库时间为准：未到真实 deadline 返回 Retry 至期限，不能提前 SUCCESS 消耗唯一任务；载荷期限与持久期限不同失败关闭。到期且 PENDING_MERCHANT 才提交 AUTO_APPROVED；已拒绝或已决定旧轮只核对真实历史后幂等结束，不能覆盖新轮。商家新决定严格 now<deadline，边界及之后归系统，CAS 与同 guard 保证只有一条决定。批准、ORDER 决定证明、决定事件、CREATE 任务和首回执同提交。
+
+CREATE 重读指定不可变批准和正常付款来源，重新取得绑定当前 ORDER 版本/当前事务的 CREATE_REFUND token。批准后核销增加版本不废除普通退款；已合法决定不因原操作者后来撤权或会话失效被撤销。退款单、执行绑定、ORDER 提交证明、创建事件、提交任务同提交，失败整体回滚并从原批准重试，不能创建第二退款号。
+
+申请/CREATE 任务 retryPolicy=`REFUND_APPLICATION`、maxRetryCount=8，退避 5 秒、30 秒、1 分钟、5 分钟（后续沿用末档）；渠道任务沿用 `REFUND_CHANNEL` 策略和最多 8 次。MAY_HAVE_SENT 必须先于网络发送持久化，未知结果只查原 refundNo；任务完成不能代替最终成功事件及预约释放。
+
+REFUND 有界扫描仅从本域可核实事实恢复：已到期且待处理、或已批准无退款单。先经公开 ORDER/REFUND 证明核对当前轮和决定，再调用 TASK 公共 `JdbcAsyncTaskRecoverer`，在调用者同 DataSource 可写 RC 事务复用完整入队参数校验；缺失任务插入，DEAD/CANCELED/SUCCEEDED 重置可执行并递增 fencing version，保留历史 attempt。READY/RETRY_WAIT/RUNNING 保持原有调度/租约，不能盗取有效租约或跨域修改任务表；损坏绑定失败关闭，不猜测补齐裸历史状态。
+
+`pet.refund.application.enabled` 与 `pet.refund.application.worker.enabled` 默认 false；启用依赖本批完整身份、保护、原支付、来源、任务及成功消费装配。公开 HTTP/小程序、通知实际送达、AFS、员工和生产开关均不由本节验收替代。

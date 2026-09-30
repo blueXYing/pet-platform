@@ -80,7 +80,7 @@ public final class OrderLateRefundProjectionConsumer implements IntegrationEvent
                 || !eventTypes().contains(event.eventType())) throw unavailable();
         long eventId = positive(event.eventId());
         EventPayload payload = decode(event);
-        if("MERCHANT_REJECT_ORDER".equals(payload.source())) return;
+        if(Set.of("MERCHANT_REJECT_ORDER","MERCHANT_APPROVED","MERCHANT_TIMEOUT_AUTO").contains(payload.source())) return;
         if(!"LATE_PAYMENT_TIMEOUT".equals(payload.source())) throw unavailable();
         if (event.aggregateId() != positive(payload.refundOrderId())
                 || event.occurredAt() == null

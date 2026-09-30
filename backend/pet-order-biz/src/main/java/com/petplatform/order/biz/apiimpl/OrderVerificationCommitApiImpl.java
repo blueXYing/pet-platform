@@ -48,6 +48,7 @@ public final class OrderVerificationCommitApiImpl implements OrderVerificationCo
   one(db.complete(v));one(db.record(v));one(db.log(v));one(db.guardStatus(values("token",token,"order",IDS.fromApi(order),"status","COMMITTED")));tokens.get(token).status="COMMITTED";
   outbox.publish(new IntegrationEvent<>(Long.toString(event),"OrderVerifiedEvent.v2",2,at,"ORDER",order,p.context().traceId(),values("orderId",order,"verificationId",verificationId,"merchantId",p.fact().location().merchantId(),"storeId",store,"operatorType","USER","operatorId",p.context().operatorId(),"membershipKind","OWNER","operatorStaffId",null,"verifiedAt",at.withOffsetSameInstant(ZoneOffset.UTC).toString())));
   TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization(){public void beforeCommit(boolean readOnly){
+   var committedRow=db.row(IDS.fromApi(order));if(committedRow==null||!Objects.equals(committedRow.version,version))throw bad();
    requireCommitted(order,store,verificationId,at,source);verification.get().requireCommitted(proof,source);
    if(!afs.equals(aftersales.get().requireCommitted(order,store,verificationId,at,source)))throw bad();
   }});return Long.toString(version);
@@ -55,7 +56,7 @@ public final class OrderVerificationCommitApiImpl implements OrderVerificationCo
  public void requireCommitted(String order,String store,String verificationId,OffsetDateTime at,DataSource txSource){safe(()->{
   scope(store,txSource);var r=db.row(IDS.fromApi(order));var p=db.committed(IDS.fromApi(order));
   if(r==null||p==null||!store.equals(str(r.storeId))||!store.equals(str(p.storeId))||!verificationId.equals(str(p.verificationId))||!"COMPLETED".equals(r.orderStage)||!"VERIFIED".equals(r.verificationStatus)
-   ||!Objects.equals(r.version,p.orderVersion)||!Objects.equals(r.verifiedAt,p.verifiedAt)||!Objects.equals(r.completedAt,p.verifiedAt)||!at.isEqual(p.verifiedAt.atOffset(ZoneOffset.UTC))
+   ||r.version==null||p.orderVersion==null||r.version<p.orderVersion||!Objects.equals(r.verifiedAt,p.verifiedAt)||!Objects.equals(r.completedAt,p.verifiedAt)||!at.isEqual(p.verifiedAt.atOffset(ZoneOffset.UTC))
    ||!Objects.equals(r.currentAftersaleId,p.aftersaleId)||!Objects.equals(r.aftersaleStatus,p.aftersaleStatus))throw bad();return null;
  });}
  private void scope(String store,DataSource txSource){if(source!=txSource||!TransactionSynchronizationManager.isActualTransactionActive()||TransactionSynchronizationManager.isCurrentTransactionReadOnly()||!Objects.equals(TransactionSynchronizationManager.getCurrentTransactionIsolationLevel(),2)||!(TransactionSynchronizationManager.getResource(source) instanceof ConnectionHolder))throw bad();guard.requireHeld(store,source);}

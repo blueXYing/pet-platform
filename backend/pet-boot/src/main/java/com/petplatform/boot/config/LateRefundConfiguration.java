@@ -90,9 +90,12 @@ public class LateRefundConfiguration {
             ScheduleCapacityGuardApi guard, OrderLatePaymentFactsApi orders,
             PaymentSuccessFactsApi payments, IntegrationEventPublisher outbox,
             ObjectProvider<com.petplatform.order.api.query.OrderMerchantRejectFactsApi> merchantOrders,
+            ObjectProvider<com.petplatform.order.api.query.OrderRefundApplicationFactsApi> applicationOrders,
+            ObjectProvider<com.petplatform.refund.api.query.RefundApplicationApprovalFactsApi> applications,
             org.springframework.core.env.Environment environment) {
+        var ordinary=applicationOrders.getIfAvailable();
         return new LateRefundService(source, ids, guard, orders, payments, outbox,merchantOrders.getIfAvailable(),
-            environment.getProperty("pet.refund.late.enabled",Boolean.class,false));
+            environment.getProperty("pet.refund.late.enabled",Boolean.class,false),ordinary,ordinary==null?null:applications::getObject);
     }
 
     @Bean PaymentRefundResultFactsApi paymentRefundResultFactsApi(DataSource source,
@@ -129,14 +132,17 @@ public class LateRefundConfiguration {
             PaymentSuccessFactsApi payments, LateRefundService refunds,
             PaymentRefundChannel channel, PaymentDispatchConfiguration.DispatchSettings dispatch,
             PaymentFoundationConfiguration.LakalaSettings lakala, ObjectProvider<Clock> clocks,
-            ObjectProvider<com.petplatform.order.api.query.OrderMerchantRejectFactsApi> merchantOrders) {
+            ObjectProvider<com.petplatform.order.api.query.OrderMerchantRejectFactsApi> merchantOrders,
+            ObjectProvider<com.petplatform.order.api.query.OrderRefundApplicationFactsApi> applicationOrders,
+            ObjectProvider<com.petplatform.refund.api.query.RefundApplicationApprovalFactsApi> applications) {
         try {
             String zone = lakala.channelTimeZone();
             if (zone == null || zone.isBlank()) throw new IllegalArgumentException();
             var settings = new PaymentRefundService.Settings(dispatch.requestIp(),
                     dispatch.notifyUrl(), ZoneId.of(zone));
             return new PaymentRefundService(source, ids, guard, orders, payments, refunds,
-                    channel, settings, clocks.getIfAvailable(Clock::systemUTC),merchantOrders.getIfAvailable());
+                    channel, settings, clocks.getIfAvailable(Clock::systemUTC),merchantOrders.getIfAvailable(),
+                    applicationOrders.getIfAvailable(),applications.getIfAvailable());
         } catch (Exception failure) {
             throw new IllegalStateException("Refund execution settings unavailable");
         }
@@ -187,7 +193,8 @@ public class LateRefundConfiguration {
     /** Public for an offline TaskRegistration test; the worker sees only these two types. */
     public static TaskRegistration<RefundPayload> registration(String type,
             RefundExecutionService execution, DataSource source) {
-        if (!Set.of(SUBMIT,QUERY,"MERCHANT_REFUND_SUBMIT","MERCHANT_REFUND_CHANNEL_QUERY").contains(type)) throw new IllegalArgumentException();
+        if (!Set.of(SUBMIT,QUERY,"MERCHANT_REFUND_SUBMIT","MERCHANT_REFUND_CHANNEL_QUERY",
+                "APPLICATION_REFUND_SUBMIT","APPLICATION_REFUND_CHANNEL_QUERY").contains(type)) throw new IllegalArgumentException();
         Objects.requireNonNull(execution);
         var databaseClock = new TaskDatabaseClock(Objects.requireNonNull(source));
         return new TaskRegistration<>(new TaskHandler<>() {
@@ -196,7 +203,7 @@ public class LateRefundConfiguration {
                     RefundPayload payload) {
                 var result = execution.execute(payload.refundOrderId(), payload.storeId(),
                         type.endsWith("REFUND_CHANNEL_QUERY"), task.traceId(),
-                        type.startsWith("MERCHANT_")?"MERCHANT_REJECT_ORDER":"LATE_PAYMENT_TIMEOUT");
+                        type.startsWith("APPLICATION_")?"APPLICATION":type.startsWith("MERCHANT_")?"MERCHANT_REJECT_ORDER":"LATE_PAYMENT_TIMEOUT");
                 if (result.done()) return new TaskExecutionResult.Success("REFUND_COORDINATED");
                 OffsetDateTime next = result.nextQueryAt();
                 if (next == null) throw new IllegalStateException("Refund query deadline absent");

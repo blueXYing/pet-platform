@@ -9,7 +9,15 @@ public record RefundExecutionFact(String refundOrderId, String refundNo, String 
         String paymentSuccessEventId, String lateEventId, String channelTradeNo,
         BigDecimal originalPaidAmount, BigDecimal refundAmount, OffsetDateTime paidAt,
         String currency, String status, long bindingVersion, String createdEventId,
-        OffsetDateTime createdAt, String sourceType, String sourceEventId) {
+        OffsetDateTime createdAt, String sourceType, String sourceEventId, String sourceBizId, String sourceDecisionId) {
+    public RefundExecutionFact(String refundOrderId,String refundNo,String orderId,String paymentId,String paymentNo,
+        String storeId,String merchantId,String userId,String paymentSuccessEventId,String lateEventId,String channelTradeNo,
+        BigDecimal originalPaidAmount,BigDecimal refundAmount,OffsetDateTime paidAt,String currency,String status,
+        long bindingVersion,String createdEventId,OffsetDateTime createdAt,String sourceType,String sourceEventId) {
+        this(refundOrderId,refundNo,orderId,paymentId,paymentNo,storeId,merchantId,userId,paymentSuccessEventId,
+            lateEventId,channelTradeNo,originalPaidAmount,refundAmount,paidAt,currency,status,bindingVersion,
+            createdEventId,createdAt,sourceType,sourceEventId,null,null);
+    }
     public RefundExecutionFact(String refundOrderId,String refundNo,String orderId,String paymentId,String paymentNo,
         String storeId,String merchantId,String userId,String paymentSuccessEventId,String lateEventId,String channelTradeNo,
         BigDecimal originalPaidAmount,BigDecimal refundAmount,OffsetDateTime paidAt,String currency,String status,

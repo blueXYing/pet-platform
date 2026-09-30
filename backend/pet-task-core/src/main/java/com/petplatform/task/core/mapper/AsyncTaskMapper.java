@@ -11,6 +11,12 @@ public interface AsyncTaskMapper {
 
     void setTimeZoneUtc();
 
+    int recoverTerminal(@Param("taskId") long taskId,
+                        @Param("availableAt") java.time.LocalDateTime availableAt);
+
+    int countMatchingRecoverySchedule(@Param("taskId") long taskId,
+                                      @Param("availableAt") java.time.LocalDateTime availableAt);
+
   int insertSubmission(
       @Param("id") long id,
       @Param("taskKey") String taskKey,

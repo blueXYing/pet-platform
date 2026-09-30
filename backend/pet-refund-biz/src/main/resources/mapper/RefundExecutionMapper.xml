@@ -46,7 +46,7 @@
       r.refund_ratio,r.status,r.channel,r.channel_refund_no,r.succeeded_at,r.created_at AS business_created_at,
       e.refund_order_id AS binding_refund_id,e.refund_no AS binding_refund_no,
       e.order_id AS binding_order_id,e.payment_id,e.payment_no,e.store_id,e.merchant_id,
-      e.user_id,e.payment_success_event_id,e.late_event_id,e.source_type AS binding_source_type,e.source_event_id,e.channel_trade_no,
+      e.user_id,e.payment_success_event_id,e.late_event_id,e.source_type AS binding_source_type,e.source_event_id,e.source_biz_id,e.source_decision_id,e.channel_trade_no,
       e.channel_paid_amount,e.refund_amount,e.channel_paid_at,e.currency,e.request_id,
       e.binding_version,e.created_event_id,e.created_at AS binding_created_at,
       e.success_event_id,e.success_receipt_sha256
@@ -101,7 +101,7 @@
     SELECT e.refund_order_id,e.store_id FROM refund_execution e
     JOIN refund_order r ON r.id=e.refund_order_id
     WHERE r.status IN ('CREATED','PROCESSING','UNKNOWN') AND e.refund_order_id&gt;#{after}
-      AND ((#{late}=TRUE AND r.source_type='LATE_PAYMENT_TIMEOUT') OR (#{merchant}=TRUE AND r.source_type='MERCHANT_REJECT_ORDER'))
+      AND ((#{late}=TRUE AND r.source_type='LATE_PAYMENT_TIMEOUT') OR (#{merchant}=TRUE AND r.source_type='MERCHANT_REJECT_ORDER') OR (#{application}=TRUE AND r.source_type IN ('MERCHANT_APPROVED','MERCHANT_TIMEOUT_AUTO')))
     ORDER BY e.refund_order_id LIMIT 100
   </select>
 </mapper>

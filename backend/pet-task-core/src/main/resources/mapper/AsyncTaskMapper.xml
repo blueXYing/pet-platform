@@ -1,6 +1,17 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
 <mapper namespace="com.petplatform.task.core.mapper.AsyncTaskMapper">
+    <select id="countMatchingRecoverySchedule" resultType="int" useCache="false" flushCache="true">
+        SELECT COUNT(*) FROM async_task WHERE id=#{taskId}
+          AND submitted_execute_at &lt;=&gt; #{availableAt,jdbcType=TIMESTAMP}
+    </select>
+    <update id="recoverTerminal">
+        UPDATE async_task SET status='READY',retry_count=0,version=version+1,
+          execute_at=COALESCE(#{availableAt,jdbcType=TIMESTAMP},UTC_TIMESTAMP(3)),
+          lease_owner=NULL,lease_until=NULL,finished_at=NULL,last_error_code=NULL,last_error_message=NULL,
+          last_result_code='OWNER_FACT_RECOVERY',updated_at=UTC_TIMESTAMP(3)
+        WHERE id=#{taskId} AND status IN ('DEAD','CANCELED','SUCCEEDED')
+    </update>
     <insert id="insertSubmission">
         INSERT INTO async_task (id,task_no,task_key,owner_module,task_type,biz_type,biz_id,
           status,execute_at,expected_version,payload_json,max_retry_count,retry_policy,created_at,updated_at
