@@ -1784,3 +1784,6 @@ thirdparty-api 新增独立 ServiceCoverSigningApi.signServiceCover(String asset
 ## Approved reschedule extension (2026-09-29)
 
 [Contract 46](46-Order-Reschedule-Contract-v0.1.md) defines OrderRescheduleApi, ReservationSwapApi, OrderRescheduleCommitApi, mandatory VerificationRescheduleFenceApi, TASK transactional cancellation and round-1 confirmation/refund proof. No C route is delivered.
+
+## Verification credential V1/V2 amendment
+[Contract 47](47-Verification-Credential-Contract-v0.1.md) freezes VerificationCredentialApi, ORDER credential eligibility and real transactional reschedule fences; no merchant completion or public route is delivered.

@@ -24,6 +24,84 @@ tags:
 - name: Merchant-Application
 - name: Private-Asset
 paths:
+  /c/orders/{orderId}/verification-code:
+    get:
+      tags:
+      - C-Order
+      operationId: getOrderVerificationCredential
+      summary: Read current credential
+      x-implementation-status: NOT_IMPLEMENTED
+      x-default-enabled: false
+      security:
+      - bearerAuth: []
+      parameters:
+      - $ref: '#/components/parameters/OrderId'
+      responses:
+        '200':
+          description: 'Internal contract only; route NOT_IMPLEMENTED. Cache-Control:
+            no-store.'
+          content:
+            application/json:
+              schema:
+                allOf:
+                - $ref: '#/components/schemas/BaseEnvelope'
+                - type: object
+                  required:
+                  - data
+                  properties:
+                    data:
+                      $ref: '#/components/schemas/VerificationCredentialView'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '503':
+          $ref: '#/components/responses/DependencyUnavailable'
+    post:
+      tags:
+      - C-Order
+      operationId: issueOrderVerificationCredential
+      summary: Issue or refresh a credential
+      x-implementation-status: NOT_IMPLEMENTED
+      x-default-enabled: false
+      security:
+      - bearerAuth: []
+      parameters:
+      - $ref: '#/components/parameters/OrderId'
+      - $ref: '#/components/parameters/RequestId'
+      responses:
+        '200':
+          description: 'Internal contract only; route NOT_IMPLEMENTED. Cache-Control:
+            no-store.'
+          content:
+            application/json:
+              schema:
+                allOf:
+                - $ref: '#/components/schemas/BaseEnvelope'
+                - type: object
+                  required:
+                  - data
+                  properties:
+                    data:
+                      $ref: '#/components/schemas/VerificationCredentialReceipt'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '503':
+          $ref: '#/components/responses/DependencyUnavailable'
+        '429':
+          description: Manual refresh quota exceeded
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/VerificationCredentialIssue'
   /c/private-assets:
     post:
       tags:
@@ -8178,6 +8256,92 @@ components:
           schema:
             $ref: '#/components/schemas/ErrorEnvelope'
   schemas:
+    VerificationCredentialIssue:
+      type: object
+      additionalProperties: false
+      required:
+      - expectedCredentialVersion
+      - refreshKind
+      properties:
+        expectedCredentialVersion: &credentialVersion47
+          type: string
+          pattern: ^(0|[1-9][0-9]*)$
+        refreshKind:
+          type: string
+          enum:
+          - INITIAL
+          - AUTO
+          - MANUAL
+    VerificationCredentialReceipt:
+      type: object
+      additionalProperties: false
+      required:
+      - orderId
+      - credentialId
+      - credentialVersion
+      - code
+      - issuedAt
+      - expiresAt
+      - refreshAfter
+      properties:
+        orderId:
+          type: string
+          pattern: ^[1-9][0-9]*$
+        credentialId:
+          type: string
+          pattern: ^[1-9][0-9]*$
+        credentialVersion: *credentialVersion47
+        code:
+          type: string
+          pattern: ^[0-9A-Z]{32}$
+        issuedAt:
+          type: string
+          format: date-time
+        expiresAt:
+          type: string
+          format: date-time
+        refreshAfter:
+          type: string
+          format: date-time
+    VerificationCredentialView:
+      type: object
+      additionalProperties: false
+      required:
+      - orderId
+      - credentialVersion
+      - status
+      - code
+      - expiresAt
+      - refreshAfter
+      - lockedUntil
+      properties:
+        orderId:
+          type: string
+          pattern: ^[1-9][0-9]*$
+        credentialVersion: *credentialVersion47
+        status:
+          type: string
+          enum:
+          - NONE
+          - ACTIVE
+          - EXPIRED
+          - INVALIDATED
+          - LOCKED
+        code:
+          type: string
+          nullable: true
+        expiresAt:
+          type: string
+          format: date-time
+          nullable: true
+        refreshAfter:
+          type: string
+          format: date-time
+          nullable: true
+        lockedUntil:
+          type: string
+          format: date-time
+          nullable: true
     PrivateAssetUploadResult:
       type: object
       additionalProperties: false

@@ -45,6 +45,11 @@ logging:
 # application-local.yml (copy application-local.yml.example) or via the environment
 # variables below at deployment time. Never commit real credentials.
 pet:
+  verification:
+    credential:
+      enabled: false
+      http:
+        enabled: false
   order:
     reschedule:
       enabled: false

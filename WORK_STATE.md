@@ -1,29 +1,29 @@
 # Work State
 
 PROJECT: 宠物平台 V1.0
-STATE_VERSION: 24.0
+STATE_VERSION: 26.0
 UPDATED_AT: 2026-09-29
 CURRENT_PHASE: W2_WAVE_IN_PROGRESS
-CURRENT_STATUS: ORD003_R1_R2_R3_INTERNAL_SLICE__READY_FOR_PR_REVIEW
-VERIFIED_BASELINE: develop be1cb681057caf2276df8ed436ac2111b4fc7bd4（PR92已合并；合并CI36527580700六项通过，110份后端报告合计674测试、零失败/错误/跳过）
-NEXT_PHASE: ORD-003默认关闭内部切片PR审阅；完整CI以PR当前提交为准
-NEXT_PHASE_APPROVED: 用户于2026-09-29明确回复“批准 R1、R2、R3”。正式Contract/Schema同步、实现、测试及提交PR已授权；不合并、不生产启用
+CURRENT_STATUS: VER_CREDENTIAL_V1_V2__LOCAL_VERIFIED_READY_FOR_PR_REVIEW
+VERIFIED_BASELINE: develop 324cba1243183a4cfc9cfef46373121848bdd6a8（PR93已合并；合并CI36539276218六项通过，112份后端报告698测试、零失败/错误/跳过）
+NEXT_PHASE: 提交默认关闭的凭证内核PR供审阅，检查远端全量CI；不自动合并
+NEXT_PHASE_APPROVED: 用户2026-09-29明确“批准 V1、V2”，正式契约/Schema同步、实现、测试及提交PR已授权；不合并、不生产迁移或启用。
 
 ## 当前事实
 
-- 用户随后“92 合入”已授权并完成PR92合并；旧待审状态保留在[历史记录](planning/history/WORK_STATE_BEFORE_20260929_RESCHEDULE.md)，不再重复请求PR92批准。
-- 合并CI六项全部成功，实际下载并解析110份Surefire XML、674测试全部通过，见[CI](planning/progress/2026-09-29/order-reschedule/pr92-merge-ci.json)和[报告汇总/哈希](planning/progress/2026-09-29/order-reschedule/pr92-merge-backend-summary.json)。
-- 首轮自动接单、商家确认/拒单及普通全额退款内核已合并；所有开关继续默认关闭，未生产迁移、正式渠道调用或生产启用。
-- 用户授权继续推荐顺序，已在干净的既有隔离工作区创建`codex/order-reschedule-20260929`，基于PR92合并版本。没有修改原用户目录的其他内容。
-- [R1/R2/R3提案](planning/ccr/CCR-W2-API-001/order-reschedule-proposal.md)已明确批准；SSOT §35、46号正式Contract/Schema、预约交换、任务取消及round1联动已实现。本地47项定向测试及最后3项复核全部通过，详见[实施验收](planning/progress/2026-09-29/order-reschedule/IMPLEMENTATION.md)。完整CI以PR当前提交为准，不宣称完整ORD-003完成。
+- [PR93](https://github.com/blueXYing/pet-platform/pull/93)已合入develop，旧待审状态保留在[历史记录](planning/history/WORK_STATE_BEFORE_20260929_VERIFICATION.md)。
+- 合并CI六项成功，已下载解析112份Surefire XML、698测试零失败/错误/跳过；见[CI](planning/progress/2026-09-29/verification-foundation/pr93-merge-ci.json)和[汇总/哈希](planning/progress/2026-09-29/verification-foundation/pr93-merge-backend-summary.json)。这是改期基线证明，不是新核销业务验收。
+- 在干净、无在途任务的既有隔离worktree创建`codex/verification-foundation-20260929`，基于PR93合并版本；原用户目录未改动。
+- [凭证基础V1/V2方案](planning/ccr/CCR-W2-API-001/verification-credential-proposal.md)已明确批准，[准备记录](planning/progress/2026-09-29/verification-foundation/PREPARATION.md)保留审批前历史。正式来源为SSOT §36、47号Contract/Schema。
+- 已落地真实动态码、只读视图、幂等刷新、风险锁/Outbox及改期同事务fence；本地73项相关Java测试零失败/错误/跳过，契约118项、源码架构18项及静态门禁通过。见[实现/验收](planning/progress/2026-09-29/verification-foundation/IMPLEMENTATION.md)和[实际报告摘要](planning/progress/2026-09-29/verification-foundation/local-targeted-tests.json)。ORDER提供当前资格及改期提交证明；VER不越Owner读写。
+- 既定硬规则不变；第三次失败锁15分钟、跨换码/改期保持锁和读写分离按批准执行。商家核验权限仍必需可信Provider，缺失启动失败，QA适配器不算真实成员链交付。
 
 ## 下一步
 
-1. 提交已批准R1/R2/R3内部切片PR并检查当前提交完整CI；无需再申请相同方案批准。
-2. PR供审阅，不自动合并或生产启用。
-3. 接真实核销码失效、公开订单读侧/版本、HTTP及小程序、完整员工权限和通知等尚缺链路。
-4. 正式渠道、密钥管理和迁移条件齐备后真实联调；生产启用独立处理。
+1. 本地MySQL并发/故障及既有改期回归已通过；无需重复申请V1/V2批准。
+2. 默认关闭，提交PR审阅并检查当前提交CI；不自动合并、生产迁移或启用。
+3. 后续补商家核销身份、完整OrderOperationGuard/markVerified及未履约售后失效，再接公开版本读侧、HTTP/小程序；不把主账号userId伪装为staffId。
 
 ## 验收与限制
 
-PR92的674项证明已合并基线，不是改期验收。[准备记录](planning/progress/2026-09-29/order-reschedule/PREPARATION.md)保留审批前历史；本轮本地报告见[实施验收](planning/progress/2026-09-29/order-reschedule/IMPLEMENTATION.md)，完整后端及前端结果以PR当前提交CI和实际artifact为准。ORD-001/002/003等完整Issue不提前改DONE；无真实核销码失效、公开读侧、微信真机或外部通知送达证明。缺失依赖不得默认为成功。
+本轮本地相关测试已通过，远端全量结果以PR当前提交CI为准。完整VER-001/VER-002/ORD-003保持未完成；运行默认关闭。未执行生产迁移、正式支付退款渠道或外部通知；不以既有698项报告冒充新功能验收。

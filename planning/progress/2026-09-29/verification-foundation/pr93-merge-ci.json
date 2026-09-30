@@ -1,0 +1,521 @@
+{
+  "conclusion": "success",
+  "headSha": "324cba1243183a4cfc9cfef46373121848bdd6a8",
+  "jobs": [
+    {
+      "completedAt": "2026-09-29T07:53:01Z",
+      "conclusion": "success",
+      "databaseId": 109310536967,
+      "name": "repository-policy",
+      "startedAt": "2026-09-29T07:52:55Z",
+      "status": "completed",
+      "steps": [
+        {
+          "completedAt": "2026-09-29T07:52:56Z",
+          "conclusion": "success",
+          "name": "Set up job",
+          "number": 1,
+          "startedAt": "2026-09-29T07:52:56Z",
+          "status": "completed"
+        },
+        {
+          "completedAt": "2026-09-29T07:52:59Z",
+          "conclusion": "success",
+          "name": "Run actions/checkout@v4",
+          "number": 2,
+          "startedAt": "2026-09-29T07:52:56Z",
+          "status": "completed"
+        },
+        {
+          "completedAt": "2026-09-29T07:52:59Z",
+          "conclusion": "success",
+          "name": "Reject deprecated late-payment recovery design",
+          "number": 3,
+          "startedAt": "2026-09-29T07:52:59Z",
+          "status": "completed"
+        },
+        {
+          "completedAt": "2026-09-29T07:52:59Z",
+          "conclusion": "success",
+          "name": "Post Run actions/checkout@v4",
+          "number": 6,
+          "startedAt": "2026-09-29T07:52:59Z",
+          "status": "completed"
+        },
+        {
+          "completedAt": "2026-09-29T07:52:59Z",
+          "conclusion": "success",
+          "name": "Complete job",
+          "number": 7,
+          "startedAt": "2026-09-29T07:52:59Z",
+          "status": "completed"
+        }
+      ],
+      "url": "https://github.com/blueXYing/pet-platform/actions/runs/36539276218/job/109310536967"
+    },
+    {
+      "completedAt": "2026-09-29T08:09:32Z",
+      "conclusion": "success",
+      "databaseId": 109310537084,
+      "name": "backend",
+      "startedAt": "2026-09-29T07:52:54Z",
+      "status": "completed",
+      "steps": [
+        {
+          "completedAt": "2026-09-29T07:52:56Z",
+          "conclusion": "success",
+          "name": "Set up job",
+          "number": 1,
+          "startedAt": "2026-09-29T07:52:55Z",
+          "status": "completed"
+        },
+        {
+          "completedAt": "2026-09-29T07:53:27Z",
+          "conclusion": "success",
+          "name": "Initialize containers",
+          "number": 2,
+          "startedAt": "2026-09-29T07:52:56Z",
+          "status": "completed"
+        },
+        {
+          "completedAt": "2026-09-29T07:53:29Z",
+          "conclusion": "success",
+          "name": "Run actions/checkout@v4",
+          "number": 3,
+          "startedAt": "2026-09-29T07:53:27Z",
+          "status": "completed"
+        },
+        {
+          "completedAt": "2026-09-29T07:53:29Z",
+          "conclusion": "success",
+          "name": "Run actions/setup-java@v4",
+          "number": 4,
+          "startedAt": "2026-09-29T07:53:29Z",
+          "status": "completed"
+        },
+        {
+          "completedAt": "2026-09-29T07:53:29Z",
+          "conclusion": "success",
+          "name": "Check module dependencies",
+          "number": 5,
+          "startedAt": "2026-09-29T07:53:29Z",
+          "status": "completed"
+        },
+        {
+          "completedAt": "2026-09-29T07:53:31Z",
+          "conclusion": "success",
+          "name": "Architecture source gate and negative fixtures",
+          "number": 6,
+          "startedAt": "2026-09-29T07:53:29Z",
+          "status": "completed"
+        },
+        {
+          "completedAt": "2026-09-29T07:53:36Z",
+          "conclusion": "success",
+          "name": "Run actions/setup-node@v4",
+          "number": 7,
+          "startedAt": "2026-09-29T07:53:31Z",
+          "status": "completed"
+        },
+        {
+          "completedAt": "2026-09-29T07:53:40Z",
+          "conclusion": "success",
+          "name": "Run npm install --global npm@10.9.8",
+          "number": 8,
+          "startedAt": "2026-09-29T07:53:36Z",
+          "status": "completed"
+        },
+        {
+          "completedAt": "2026-09-29T07:55:13Z",
+          "conclusion": "success",
+          "name": "Prepare frontend client for real backend integration test",
+          "number": 9,
+          "startedAt": "2026-09-29T07:53:40Z",
+          "status": "completed"
+        },
+        {
+          "completedAt": "2026-09-29T08:09:26Z",
+          "conclusion": "success",
+          "name": "Maven verify",
+          "number": 10,
+          "startedAt": "2026-09-29T07:55:13Z",
+          "status": "completed"
+        },
+        {
+          "completedAt": "2026-09-29T08:09:27Z",
+          "conclusion": "success",
+          "name": "Preserve actual backend evidence",
+          "number": 11,
+          "startedAt": "2026-09-29T08:09:26Z",
+          "status": "completed"
+        },
+        {
+          "completedAt": "2026-09-29T08:09:27Z",
+          "conclusion": "success",
+          "name": "Post Run actions/setup-node@v4",
+          "number": 19,
+          "startedAt": "2026-09-29T08:09:27Z",
+          "status": "completed"
+        },
+        {
+          "completedAt": "2026-09-29T08:09:30Z",
+          "conclusion": "success",
+          "name": "Post Run actions/setup-java@v4",
+          "number": 20,
+          "startedAt": "2026-09-29T08:09:27Z",
+          "status": "completed"
+        },
+        {
+          "completedAt": "2026-09-29T08:09:30Z",
+          "conclusion": "success",
+          "name": "Post Run actions/checkout@v4",
+          "number": 21,
+          "startedAt": "2026-09-29T08:09:30Z",
+          "status": "completed"
+        },
+        {
+          "completedAt": "2026-09-29T08:09:30Z",
+          "conclusion": "success",
+          "name": "Stop containers",
+          "number": 22,
+          "startedAt": "2026-09-29T08:09:30Z",
+          "status": "completed"
+        },
+        {
+          "completedAt": "2026-09-29T08:09:30Z",
+          "conclusion": "success",
+          "name": "Complete job",
+          "number": 23,
+          "startedAt": "2026-09-29T08:09:30Z",
+          "status": "completed"
+        }
+      ],
+      "url": "https://github.com/blueXYing/pet-platform/actions/runs/36539276218/job/109310537084"
+    },
+    {
+      "completedAt": "2026-09-29T07:53:59Z",
+      "conclusion": "success",
+      "databaseId": 109310537094,
+      "name": "contract-smoke",
+      "startedAt": "2026-09-29T07:52:55Z",
+      "status": "completed",
+      "steps": [
+        {
+          "completedAt": "2026-09-29T07:52:56Z",
+          "conclusion": "success",
+          "name": "Set up job",
+          "number": 1,
+          "startedAt": "2026-09-29T07:52:56Z",
+          "status": "completed"
+        },
+        {
+          "completedAt": "2026-09-29T07:52:59Z",
+          "conclusion": "success",
+          "name": "Run actions/checkout@v4",
+          "number": 2,
+          "startedAt": "2026-09-29T07:52:56Z",
+          "status": "completed"
+        },
+        {
+          "completedAt": "2026-09-29T07:53:00Z",
+          "conclusion": "success",
+          "name": "Run actions/setup-python@v5",
+          "number": 3,
+          "startedAt": "2026-09-29T07:52:59Z",
+          "status": "completed"
+        },
+        {
+          "completedAt": "2026-09-29T07:53:01Z",
+          "conclusion": "success",
+          "name": "Run python -m pip install -r e2e/requirements.txt",
+          "number": 4,
+          "startedAt": "2026-09-29T07:53:00Z",
+          "status": "completed"
+        },
+        {
+          "completedAt": "2026-09-29T07:53:02Z",
+          "conclusion": "success",
+          "name": "Run python e2e/contract_smoke.py",
+          "number": 5,
+          "startedAt": "2026-09-29T07:53:01Z",
+          "status": "completed"
+        },
+        {
+          "completedAt": "2026-09-29T07:53:56Z",
+          "conclusion": "success",
+          "name": "Run python -m unittest discover -s e2e -p 'test_*.py' -v",
+          "number": 6,
+          "startedAt": "2026-09-29T07:53:02Z",
+          "status": "completed"
+        },
+        {
+          "completedAt": "2026-09-29T07:53:56Z",
+          "conclusion": "success",
+          "name": "Record exact tested ref and tree",
+          "number": 7,
+          "startedAt": "2026-09-29T07:53:56Z",
+          "status": "completed"
+        },
+        {
+          "completedAt": "2026-09-29T07:53:56Z",
+          "conclusion": "success",
+          "name": "Post Run actions/setup-python@v5",
+          "number": 13,
+          "startedAt": "2026-09-29T07:53:56Z",
+          "status": "completed"
+        },
+        {
+          "completedAt": "2026-09-29T07:53:56Z",
+          "conclusion": "success",
+          "name": "Post Run actions/checkout@v4",
+          "number": 14,
+          "startedAt": "2026-09-29T07:53:56Z",
+          "status": "completed"
+        },
+        {
+          "completedAt": "2026-09-29T07:53:56Z",
+          "conclusion": "success",
+          "name": "Complete job",
+          "number": 15,
+          "startedAt": "2026-09-29T07:53:56Z",
+          "status": "completed"
+        }
+      ],
+      "url": "https://github.com/blueXYing/pet-platform/actions/runs/36539276218/job/109310537094"
+    },
+    {
+      "completedAt": "2026-09-29T07:52:59Z",
+      "conclusion": "success",
+      "databaseId": 109310537347,
+      "name": "frontend-inventory",
+      "startedAt": "2026-09-29T07:52:54Z",
+      "status": "completed",
+      "steps": [
+        {
+          "completedAt": "2026-09-29T07:52:56Z",
+          "conclusion": "success",
+          "name": "Set up job",
+          "number": 1,
+          "startedAt": "2026-09-29T07:52:55Z",
+          "status": "completed"
+        },
+        {
+          "completedAt": "2026-09-29T07:52:57Z",
+          "conclusion": "success",
+          "name": "Run actions/checkout@v4",
+          "number": 2,
+          "startedAt": "2026-09-29T07:52:56Z",
+          "status": "completed"
+        },
+        {
+          "completedAt": "2026-09-29T07:52:57Z",
+          "conclusion": "success",
+          "name": "Run for pair in web:frontend-admin miniapp:frontend-miniapp; do",
+          "number": 3,
+          "startedAt": "2026-09-29T07:52:57Z",
+          "status": "completed"
+        },
+        {
+          "completedAt": "2026-09-29T07:52:58Z",
+          "conclusion": "success",
+          "name": "Post Run actions/checkout@v4",
+          "number": 6,
+          "startedAt": "2026-09-29T07:52:57Z",
+          "status": "completed"
+        },
+        {
+          "completedAt": "2026-09-29T07:52:58Z",
+          "conclusion": "success",
+          "name": "Complete job",
+          "number": 7,
+          "startedAt": "2026-09-29T07:52:58Z",
+          "status": "completed"
+        }
+      ],
+      "url": "https://github.com/blueXYing/pet-platform/actions/runs/36539276218/job/109310537347"
+    },
+    {
+      "completedAt": "2026-09-29T07:55:24Z",
+      "conclusion": "success",
+      "databaseId": 109310572809,
+      "name": "miniapp-weapp-build",
+      "startedAt": "2026-09-29T07:53:01Z",
+      "status": "completed",
+      "steps": [
+        {
+          "completedAt": "2026-09-29T07:53:02Z",
+          "conclusion": "success",
+          "name": "Set up job",
+          "number": 1,
+          "startedAt": "2026-09-29T07:53:01Z",
+          "status": "completed"
+        },
+        {
+          "completedAt": "2026-09-29T07:53:04Z",
+          "conclusion": "success",
+          "name": "Run actions/checkout@v4",
+          "number": 2,
+          "startedAt": "2026-09-29T07:53:02Z",
+          "status": "completed"
+        },
+        {
+          "completedAt": "2026-09-29T07:53:09Z",
+          "conclusion": "success",
+          "name": "Run actions/setup-node@v4",
+          "number": 3,
+          "startedAt": "2026-09-29T07:53:04Z",
+          "status": "completed"
+        },
+        {
+          "completedAt": "2026-09-29T07:53:13Z",
+          "conclusion": "success",
+          "name": "Run npm install --global npm@10.9.8",
+          "number": 4,
+          "startedAt": "2026-09-29T07:53:09Z",
+          "status": "completed"
+        },
+        {
+          "completedAt": "2026-09-29T07:55:21Z",
+          "conclusion": "success",
+          "name": "Run python backend/tools/run-frontend-gate.py miniapp-build",
+          "number": 5,
+          "startedAt": "2026-09-29T07:53:13Z",
+          "status": "completed"
+        },
+        {
+          "completedAt": "2026-09-29T07:55:22Z",
+          "conclusion": "success",
+          "name": "Post Run actions/setup-node@v4",
+          "number": 9,
+          "startedAt": "2026-09-29T07:55:21Z",
+          "status": "completed"
+        },
+        {
+          "completedAt": "2026-09-29T07:55:22Z",
+          "conclusion": "success",
+          "name": "Post Run actions/checkout@v4",
+          "number": 10,
+          "startedAt": "2026-09-29T07:55:22Z",
+          "status": "completed"
+        },
+        {
+          "completedAt": "2026-09-29T07:55:22Z",
+          "conclusion": "success",
+          "name": "Complete job",
+          "number": 11,
+          "startedAt": "2026-09-29T07:55:22Z",
+          "status": "completed"
+        }
+      ],
+      "url": "https://github.com/blueXYing/pet-platform/actions/runs/36539276218/job/109310572809"
+    },
+    {
+      "completedAt": "2026-09-29T07:54:03Z",
+      "conclusion": "success",
+      "databaseId": 109310572837,
+      "name": "web-build",
+      "startedAt": "2026-09-29T07:53:01Z",
+      "status": "completed",
+      "steps": [
+        {
+          "completedAt": "2026-09-29T07:53:02Z",
+          "conclusion": "success",
+          "name": "Set up job",
+          "number": 1,
+          "startedAt": "2026-09-29T07:53:01Z",
+          "status": "completed"
+        },
+        {
+          "completedAt": "2026-09-29T07:53:04Z",
+          "conclusion": "success",
+          "name": "Run actions/checkout@v4",
+          "number": 2,
+          "startedAt": "2026-09-29T07:53:02Z",
+          "status": "completed"
+        },
+        {
+          "completedAt": "2026-09-29T07:53:09Z",
+          "conclusion": "success",
+          "name": "Run actions/setup-node@v4",
+          "number": 3,
+          "startedAt": "2026-09-29T07:53:04Z",
+          "status": "completed"
+        },
+        {
+          "completedAt": "2026-09-29T07:53:14Z",
+          "conclusion": "success",
+          "name": "Run npm install --global npm@10.9.8",
+          "number": 4,
+          "startedAt": "2026-09-29T07:53:09Z",
+          "status": "completed"
+        },
+        {
+          "completedAt": "2026-09-29T07:53:21Z",
+          "conclusion": "success",
+          "name": "Run python backend/tools/run-frontend-gate.py web-build",
+          "number": 5,
+          "startedAt": "2026-09-29T07:53:14Z",
+          "status": "completed"
+        },
+        {
+          "completedAt": "2026-09-29T07:53:47Z",
+          "conclusion": "success",
+          "name": "Install Playwright Chromium",
+          "number": 6,
+          "startedAt": "2026-09-29T07:53:21Z",
+          "status": "completed"
+        },
+        {
+          "completedAt": "2026-09-29T07:54:01Z",
+          "conclusion": "success",
+          "name": "WEB-001 WEB-002 PERM-005 private fixture smoke",
+          "number": 7,
+          "startedAt": "2026-09-29T07:53:47Z",
+          "status": "completed"
+        },
+        {
+          "completedAt": "2026-09-29T07:54:01Z",
+          "conclusion": "success",
+          "name": "Record Web fixture scope",
+          "number": 8,
+          "startedAt": "2026-09-29T07:54:01Z",
+          "status": "completed"
+        },
+        {
+          "completedAt": "2026-09-29T07:54:02Z",
+          "conclusion": "success",
+          "name": "Preserve Web test evidence",
+          "number": 9,
+          "startedAt": "2026-09-29T07:54:01Z",
+          "status": "completed"
+        },
+        {
+          "completedAt": "2026-09-29T07:54:02Z",
+          "conclusion": "success",
+          "name": "Post Run actions/setup-node@v4",
+          "number": 17,
+          "startedAt": "2026-09-29T07:54:02Z",
+          "status": "completed"
+        },
+        {
+          "completedAt": "2026-09-29T07:54:02Z",
+          "conclusion": "success",
+          "name": "Post Run actions/checkout@v4",
+          "number": 18,
+          "startedAt": "2026-09-29T07:54:02Z",
+          "status": "completed"
+        },
+        {
+          "completedAt": "2026-09-29T07:54:02Z",
+          "conclusion": "success",
+          "name": "Complete job",
+          "number": 19,
+          "startedAt": "2026-09-29T07:54:02Z",
+          "status": "completed"
+        }
+      ],
+      "url": "https://github.com/blueXYing/pet-platform/actions/runs/36539276218/job/109310572837"
+    }
+  ],
+  "status": "completed"
+}

@@ -481,3 +481,6 @@ MER审核决定、状态、审计、Outbox意图在同一事务；回滚均无�
 payload 字段（9 字段，与角色E消费侧对齐定稿 2026-09-22，中途不变卦）：`serviceId、serviceName、merchantId、storeId、submissionNo（JSON 整数）、decisionType(APPROVE|REJECT)、opinion?（REJECT 必填 10-500 字、APPROVE 可空）、decidedAt、ownerUserId`。ownerUserId 为商家主账号收件人（服务侧在创建服务时落 owner_user_id，33号），使消费者自包含、无需读 merchant 表。结构不含审核员账号、内部备注或任何长期 URL；意见不得粘贴敏感原文。
 
 服务审核决定、状态、审计、Outbox 意图在同一事务；回滚均无事件，成功幂等重放不产生新事件。通知域消费者按 (eventId, consumerName) 去重并在本域同事务写消费日志与 ownerUserId 的商家站内消息；消费者与开关（`pet.service.review.notifications-enabled`，默认关闭）由通知域切片随其 PR 装配。消费者未接通前，完整服务审核流程不标完成。强制下架（FORCE_OFFLINE）是否通知商家＝剩余问题，本轮不发事件。
+
+## VerificationRiskLockedEvent.v1
+执行[47号契约](../04-api/47-Verification-Credential-Contract-v0.1.md)：VERIFICATION/orderId，payload为orderId/storeId/triggerAttemptId/lockedAt/lockedUntil/reasonCode，原因INVALID_CREDENTIAL_THRESHOLD；ID为String。一次新锁定与attempt/锁/首回执同事务Outbox，重试不重复告警。无明文码/个人信息，通知送达未交付。
