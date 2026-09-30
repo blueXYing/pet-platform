@@ -1,0 +1,35 @@
+{
+  "status": "PASS_DOCUMENT_PREPARATION_CHECKS",
+  "baseline": "eb5d16ffff5a2db2799545b4f5fd490e1431f99c",
+  "productDecision": "APPROVED_REPEAT_AFTER_REJECT",
+  "technicalProposal": "R1_R2_PENDING_REVIEW",
+  "contractSmoke": {
+    "status": "PASS_OFFLINE_DOCUMENT_SMOKE",
+    "operations": 92,
+    "writesWithRequestId": 58,
+    "resolvedRefs": 1056
+  },
+  "contractRegressionTests": 118,
+  "architectureToolTests": 18,
+  "moduleDependencyCheck": "PASS",
+  "displayStatusCheck": "PASS",
+  "mybatisCheck": "PASS",
+  "localLinkCount": 87,
+  "missingLocalLinks": [],
+  "baselineJavaEvidence": {
+    "ciRun": "36659585415",
+    "reports": 116,
+    "tests": 751,
+    "failures": 0,
+    "errors": 0,
+    "skipped": 0
+  },
+  "newRefundBusinessAcceptance": "NOT_EXECUTED",
+  "javaSourceChanges": false,
+  "formalApiSchemaEventSchedulerChanges": false,
+  "testLogSha256": {
+    "contract-tests.txt": "02bb06b8490d1aa73e88d78d1b34a1ea042add276c2b47617ccc992f5caba9ab",
+    "architecture-tests.txt": "254a6db0fcf942e0531ce9d80a308bb5abea082450665fe5c5400415edf4d00e"
+  },
+  "evidenceLineEndings": "LF; log content unchanged"
+}

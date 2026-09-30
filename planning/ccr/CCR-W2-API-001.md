@@ -1,5 +1,7 @@
 # CCR-W2-API-001：首批业务查询/写入与页面DTO缺口
 
+> **2026-09-30最新接续（覆盖下方历史状态）**：PR95已合入develop `eb5d16f`，合并后CI36659585415六项通过；116份后端报告751项，失败/错误/跳过均0。用户授权按建议顺序继续，并已批准普通退款被拒绝后可再次申请、每次重计24h、同单同时一笔待处理、创建refund_order后禁止再申请，见SSOT §38和[PRD30回执](../../docs/01-prd/30-普通退款重复申请人工裁决补充-v1.0.md)。[退款R1/R2候选](CCR-W2-API-001/refund-application-proposal.md)已具体化申请/决定/24h恢复及可信普通来源；重大技术契约仍待审阅，未改正式API/Schema或业务实现。收尾/来源/代码/验收证据见[准备记录](../progress/2026-09-30/refund-aftersale/PREPARATION.md)；[员工绑定核销权限](CCR-W2-API-001/staff-verification-authority-preparation.md)只做独立后续准备。完整Issue和整个CCR不提前关闭，新PR不合并、不生产启用。
+
 > 2026-09-30接续：PR94六项CI通过，115份后端报告730测试零失败/错误/跳过，仍OPEN未合并。用户授权按推荐顺序开始，已完成[验收收尾](../progress/2026-09-30/verification-completion/REVIEW-AND-PREPARATION.md)及[核销完成K1/K2候选](CCR-W2-API-001/verification-completion-proposal.md)。主账号真实操作者协议、核销/最小AFS同事务失效待审阅批准；不假称员工绑定、通用CREATE_REFUND或公开入口已完成，不自动合并。
 
 > 最新核销回执：2026-09-29用户明确“批准 V1、V2”。[凭证方案](CCR-W2-API-001/verification-credential-proposal.md)已批准，由[47号正式契约](../../docs/04-api/47-Verification-Credential-Contract-v0.1.md)、SQL47及SSOT §36承接；下面PROPOSED为历史状态。实现与测试、提交PR已授权，运行默认关闭，完整核销/身份/售后/HTTP仍未完成，不自动合并或生产启用。
