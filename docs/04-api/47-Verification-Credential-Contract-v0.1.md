@@ -1,5 +1,7 @@
 # 47 — 真实核销码生命周期与改期失效
 
+2026-09-30 接续：真实 OWNER 适配、成功核销和最小售后失效已获 K1/K2 批准，见 [48号契约](48-Verification-Completion-Contract-v0.1.md)。下文“无适配器/成功核销后续”等为 47 交付时点边界，由 48 对应部分接续；码生命周期和风险规则不变。
+
 状态：APPROVED。用户于2026-09-29明确“批准 V1、V2”；[批准方案](../../planning/ccr/CCR-W2-API-001/verification-credential-proposal.md)§2～7的协议、字段、事务及验收范围在此冻结。SSOT §36覆盖原PRD第三/第四次失败及按单码锁的歧义。SQL见[47号Schema](../03-database/47-Verification-Credential-Schema-v0.1.sql)。
 
 ## 生命周期与接口

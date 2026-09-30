@@ -1787,3 +1787,8 @@ thirdparty-api 新增独立 ServiceCoverSigningApi.signServiceCover(String asset
 
 ## Verification credential V1/V2 amendment
 [Contract 47](47-Verification-Credential-Contract-v0.1.md) freezes VerificationCredentialApi, ORDER credential eligibility and real transactional reschedule fences; no merchant completion or public route is delivered.
+## 2026-09-30 K1/K2 内部核销接续
+
+已批准 [48号契约](48-Verification-Completion-Contract-v0.1.md)接续旧核销接口：`VerificationCompletionApi.verify(Command)` 只提供默认关闭 OWNER/SCAN 命令；新命令含 confirmed 与 expectedCredentialVersion，独立五元组准入和不可变首回执。`OrderVerificationCommitApi` 提供同事务 acquire/requirePending/release/markVerified/requireCommitted；`AfterSaleVerificationApi` 提供 invalidateCurrent/requireCommitted；`VerificationCommitProofApi` 提供 VER 本域持久化证明。接口源码为当前冻结签名。
+
+这些接口通过公共 API 组合，各域只访问自身 SQL。VERIFY token 绑定当前 DataSource/事务资源、订单/门店/操作人/命令/版本，不是可缓存授权。成功使用 OrderVerifiedEvent.v2，v1不变；真实STAFF成员授权、通用CREATE_REFUND、AFS创建/裁决和HTTP仍后续交付，旧接口草图不得当作当前实现。

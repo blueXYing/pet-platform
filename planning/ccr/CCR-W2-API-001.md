@@ -1,5 +1,7 @@
 # CCR-W2-API-001：首批业务查询/写入与页面DTO缺口
 
+> 2026-09-30接续：PR94六项CI通过，115份后端报告730测试零失败/错误/跳过，仍OPEN未合并。用户授权按推荐顺序开始，已完成[验收收尾](../progress/2026-09-30/verification-completion/REVIEW-AND-PREPARATION.md)及[核销完成K1/K2候选](CCR-W2-API-001/verification-completion-proposal.md)。主账号真实操作者协议、核销/最小AFS同事务失效待审阅批准；不假称员工绑定、通用CREATE_REFUND或公开入口已完成，不自动合并。
+
 > 最新核销回执：2026-09-29用户明确“批准 V1、V2”。[凭证方案](CCR-W2-API-001/verification-credential-proposal.md)已批准，由[47号正式契约](../../docs/04-api/47-Verification-Credential-Contract-v0.1.md)、SQL47及SSOT §36承接；下面PROPOSED为历史状态。实现与测试、提交PR已授权，运行默认关闭，完整核销/身份/售后/HTTP仍未完成，不自动合并或生产启用。
 
 > 2026-09-29核销接续：用户已“93合入”并要求“开始下一步”；PR93合并`324cba1`，合并CI六项通过、698后端测试零失败/错误/跳过。真实核销码生命周期仍缺实现与存储，已准备[VER-001凭证内核V1/V2方案](CCR-W2-API-001/verification-credential-proposal.md)，状态PROPOSED_REQUIRES_REVIEW：V1冻结只读/幂等刷新与真实改期失效协议；V2解决PRD第3/第4次失败锁定歧义及刷新绕过。正式契约/业务源码未修改，默认关闭。下面“不合并”是各切片当时的范围，PR93已由随后明确授权完成合并。
@@ -41,3 +43,6 @@
 - PR77/78/79已合入develop 0c2d7ae：排期查询切片、窗口匿名/导航/草稿修复、宽松草稿NULL安全。
 - SCH-002/SCH-004业务裁决见[联合回执](CCR-W2-API-001/schedule-review-decisions.md)。SCH-002待07/27/11权威同步与实现；SCH-004仍须冻结人员/占用并发保护、能力集合版本、双方向占用匹配契约，不自动列READY。
 - SERVICE_COVER内部签名[补充CCR](CCR-W2-API-001/service-cover-signing-amendment.md)已批；本分支实现待PR审阅，用户随后开启mtxoss2版本控制，新上传对象的真实版本签名GET及19项兼容性复验通过；旧ETag对象未迁移，完整UI/真机链未重验。
+# 2026-09-30 K1/K2 批准接续
+
+用户回复“批准”，确认 [主账号核销方案](CCR-W2-API-001/verification-completion-proposal.md)中的 M94/K1/K2。PR94 已合入 develop `eb083cb`，合并后 CI36654304138 六项成功。K1/K2 正式协议见 [Contract48](../../docs/04-api/48-Verification-Completion-Contract-v0.1.md)、Schema48、SSOT §37、OrderVerifiedEvent.v2。内部实现与测试进行中，后续 PR 仅审阅，默认关闭；整个 CCR 及 VER-002/AFS-001/QA-004 不提前关闭。

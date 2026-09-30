@@ -1,0 +1,149 @@
+{
+  "mysql": "isolated MySQL 8.4 on 127.0.0.1:3314",
+  "base": "eb083cbbb1ae6195db97e438c182c4ed817594e2",
+  "completion_distinct_methods": 19,
+  "configuration_distinct_methods": 8,
+  "archunit_tests": 22,
+  "notes": "Runs overlap; do not sum totals. Full CI pending. Local raw logs stored outside repo under codex/tmp/verification-next-20260930.",
+  "runs": [
+    {
+      "log": "k1-red.log",
+      "phase": "expected-red",
+      "sha256": "eaeefe972d744729c1b42369936da26a0935043bd187ebba98a5aefa88a36d93",
+      "last_maven_totals": {
+        "tests": 6,
+        "failures": 1,
+        "errors": 0,
+        "skipped": 0
+      },
+      "python_tests": [],
+      "build_success": false
+    },
+    {
+      "log": "k1-green.log",
+      "phase": "green",
+      "sha256": "73ebfdfb44349187c7182a30382c41f69ede81cdf9cb7dab935a08434eafbbb8",
+      "last_maven_totals": {
+        "tests": 6,
+        "failures": 0,
+        "errors": 0,
+        "skipped": 0
+      },
+      "python_tests": [],
+      "build_success": true
+    },
+    {
+      "log": "k2-red-assertion.log",
+      "phase": "expected-red",
+      "sha256": "c958c25ddc97d4c0a459c95c9bef633818aa58a863f556e6bed48d017e57d1b1",
+      "last_maven_totals": {
+        "tests": 1,
+        "failures": 1,
+        "errors": 0,
+        "skipped": 0
+      },
+      "python_tests": [],
+      "build_success": false
+    },
+    {
+      "log": "k2-first.log",
+      "phase": "green",
+      "sha256": "655a55236077af0c1bd3adad3cbf35f223a40a8fdb9f5642f6e302b4a1374a9e",
+      "last_maven_totals": {
+        "tests": 14,
+        "failures": 0,
+        "errors": 0,
+        "skipped": 0
+      },
+      "python_tests": [],
+      "build_success": true
+    },
+    {
+      "log": "k2-expanded.log",
+      "phase": "green",
+      "sha256": "2e60cb0897a09236bb0fa408df07e8ee08b7820116255707483ce45ff1b3ff7b",
+      "last_maven_totals": {
+        "tests": 23,
+        "failures": 0,
+        "errors": 0,
+        "skipped": 0
+      },
+      "python_tests": [],
+      "build_success": true
+    },
+    {
+      "log": "k2-boundaries.log",
+      "phase": "green",
+      "sha256": "8b611193018cf39f151d3f79169abbebf7e6127589fab702ad6cd59c394559e5",
+      "last_maven_totals": {
+        "tests": 3,
+        "failures": 0,
+        "errors": 0,
+        "skipped": 0
+      },
+      "python_tests": [],
+      "build_success": true
+    },
+    {
+      "log": "argument-red.log",
+      "phase": "expected-red",
+      "sha256": "719fb47d3c09870c251142481bee3a5f8e74324f6ca1834035d36de7e832aaaa",
+      "last_maven_totals": {
+        "tests": 1,
+        "failures": 1,
+        "errors": 0,
+        "skipped": 0
+      },
+      "python_tests": [],
+      "build_success": false
+    },
+    {
+      "log": "argument-green.log",
+      "phase": "green",
+      "sha256": "1e64e33fdf1766df2e815a733ca364136b3ea99588e0e28f66c8595ec84c92fd",
+      "last_maven_totals": {
+        "tests": 1,
+        "failures": 0,
+        "errors": 0,
+        "skipped": 0
+      },
+      "python_tests": [],
+      "build_success": true
+    },
+    {
+      "log": "architecture.log",
+      "phase": "green",
+      "sha256": "a5e68b5a963f7be8903f2716efe7b8d18ed84162ae9282be886ad7e4c66ecba7",
+      "last_maven_totals": {
+        "tests": 22,
+        "failures": 0,
+        "errors": 0,
+        "skipped": 0
+      },
+      "python_tests": [
+        "18"
+      ],
+      "build_success": true
+    },
+    {
+      "log": "source-tests.log",
+      "phase": "green",
+      "sha256": "73633b5e9821c496a11039dc874beef2569e5ded2741cd9ed0cd70861f65a7d2",
+      "last_maven_totals": null,
+      "python_tests": [
+        "18"
+      ],
+      "build_success": false
+    },
+    {
+      "log": "contract-tests.log",
+      "phase": "green",
+      "sha256": "d362c3464cfa5c9b0417e16a0b7cbf358bdc1b3ae089724407b491a0cd4d594a",
+      "last_maven_totals": null,
+      "python_tests": [
+        "118"
+      ],
+      "build_success": false
+    }
+  ]
+}

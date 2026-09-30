@@ -1,29 +1,25 @@
 # Work State
 
 PROJECT: 宠物平台 V1.0
-STATE_VERSION: 26.0
-UPDATED_AT: 2026-09-29
+STATE_VERSION: 28.0
+UPDATED_AT: 2026-09-30
 CURRENT_PHASE: W2_WAVE_IN_PROGRESS
-CURRENT_STATUS: VER_CREDENTIAL_V1_V2__LOCAL_VERIFIED_READY_FOR_PR_REVIEW
-VERIFIED_BASELINE: develop 324cba1243183a4cfc9cfef46373121848bdd6a8（PR93已合并；合并CI36539276218六项通过，112份后端报告698测试、零失败/错误/跳过）
-NEXT_PHASE: 提交默认关闭的凭证内核PR供审阅，检查远端全量CI；不自动合并
-NEXT_PHASE_APPROVED: 用户2026-09-29明确“批准 V1、V2”，正式契约/Schema同步、实现、测试及提交PR已授权；不合并、不生产迁移或启用。
+CURRENT_STATUS: PR95_OPEN__K1_K2_IMPLEMENTED_AND_REVIEWED
+VERIFIED_BASELINE: PR94 已合入 develop eb083cbbb1ae6195db97e438c182c4ed817594e2；合并后 CI36654304138 六项成功。
+NEXT_PHASE: PR95 已提交且独立审阅无阻断项；最终 head 的全量 CI 和报告以 PR 检查/描述为准，之后由用户决定是否合并。
+NEXT_PHASE_APPROVED: 用户“批准”M94/K1/K2；新 PR 只审阅，不合并、不生产迁移或启用。
 
 ## 当前事实
 
-- [PR93](https://github.com/blueXYing/pet-platform/pull/93)已合入develop，旧待审状态保留在[历史记录](planning/history/WORK_STATE_BEFORE_20260929_VERIFICATION.md)。
-- 合并CI六项成功，已下载解析112份Surefire XML、698测试零失败/错误/跳过；见[CI](planning/progress/2026-09-29/verification-foundation/pr93-merge-ci.json)和[汇总/哈希](planning/progress/2026-09-29/verification-foundation/pr93-merge-backend-summary.json)。这是改期基线证明，不是新核销业务验收。
-- 在干净、无在途任务的既有隔离worktree创建`codex/verification-foundation-20260929`，基于PR93合并版本；原用户目录未改动。
-- [凭证基础V1/V2方案](planning/ccr/CCR-W2-API-001/verification-credential-proposal.md)已明确批准，[准备记录](planning/progress/2026-09-29/verification-foundation/PREPARATION.md)保留审批前历史。正式来源为SSOT §36、47号Contract/Schema。
-- 已落地真实动态码、只读视图、幂等刷新、风险锁/Outbox及改期同事务fence；本地73项相关Java测试零失败/错误/跳过，契约118项、源码架构18项及静态门禁通过。见[实现/验收](planning/progress/2026-09-29/verification-foundation/IMPLEMENTATION.md)和[实际报告摘要](planning/progress/2026-09-29/verification-foundation/local-targeted-tests.json)。ORDER提供当前资格及改期提交证明；VER不越Owner读写。
-- 既定硬规则不变；第三次失败锁15分钟、跨换码/改期保持锁和读写分离按批准执行。商家核验权限仍必需可信Provider，缺失启动失败，QA适配器不算真实成员链交付。
+- [PR94](https://github.com/blueXYing/pet-platform/pull/94)完整CI已通过，PR描述已补远端证据；无GitHub审阅记录，根作者复核不冒充独立审阅。见[收尾记录](planning/progress/2026-09-30/verification-completion/REVIEW-AND-PREPARATION.md)、[CI](planning/progress/2026-09-30/verification-completion/pr94-ci.json)和[实际报告摘要](planning/progress/2026-09-30/verification-completion/pr94-backend-summary.json)。
+- develop 为 PR94 合并 eb083cb，旧状态保留于[历史](planning/history/WORK_STATE_BEFORE_20260930_VERIFICATION_COMPLETION.md)。
+- [已批准方案](planning/ccr/CCR-W2-API-001/verification-completion-proposal.md)由 [Contract48](docs/04-api/48-Verification-Completion-Contract-v0.1.md)正式承接。真实 OWNER 权限、核销/ORDER/最小AFS同事务闭环已实现，19个核销方法、8个配置、22个ArchUnit及契约/源代码检查通过。[PR95](https://github.com/blueXYing/pet-platform/pull/95)仅供审阅，见[实施验收](planning/progress/2026-09-30/verification-completion/IMPLEMENTATION.md)和[独立审阅](planning/progress/2026-09-30/verification-completion/REVIEW.md)。
+- 分支codex/verification-completion-plan-20260930复用worktree，原用户工作目录未动。开关默认关闭。
 
-## 下一步
+## 下一步与限制
 
-1. 本地MySQL并发/故障及既有改期回归已通过；无需重复申请V1/V2批准。
-2. 默认关闭，提交PR审阅并检查当前提交CI；不自动合并、生产迁移或启用。
-3. 后续补商家核销身份、完整OrderOperationGuard/markVerified及未履约售后失效，再接公开版本读侧、HTTP/小程序；不把主账号userId伪装为staffId。
+1. M94 已批准并完成合并及合并后 CI 核验。
+2. K1/K2 已提交默认关闭 PR95，最终全量 CI 实际结果持续补在 PR 描述，避免文档证据提交改变自身测试 head。
+3. 其后补真实售后裁决退款来源和员工授权，再接HTTP/小程序与端到端验收。
 
-## 验收与限制
-
-本轮本地相关测试已通过，远端全量结果以PR当前提交CI为准。完整VER-001/VER-002/ORD-003保持未完成；运行默认关闭。未执行生产迁移、正式支付退款渠道或外部通知；不以既有698项报告冒充新功能验收。
+完整VER-001/VER-002/AFS-001及QA-004不标DONE；新PR不合并、不生产迁移或启用，除非后续明确授权。旧准备记录中的PR94 OPEN/待批准是历史时点，已由本轮批准和合并事实覆盖。
