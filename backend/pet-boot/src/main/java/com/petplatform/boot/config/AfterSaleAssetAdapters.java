@@ -1,7 +1,9 @@
 package com.petplatform.boot.config;
 
 import com.petplatform.aftersale.api.query.AfterSaleEvidenceAccessApi;
+import com.petplatform.aftersale.api.query.AfterSaleQueryApi.RouteParty;
 import com.petplatform.aftersale.biz.application.AfterSalePorts;
+import com.petplatform.common.*;
 import com.petplatform.thirdparty.api.*;
 import java.util.*;
 import java.util.function.Supplier;
@@ -23,12 +25,30 @@ public final class AfterSaleAssetAdapters {
     }
     public static AfterSaleAssetReadAuthorizer authorizer(Supplier<AfterSaleEvidenceAccessApi> evidence,AfterSaleAuthorityAdapter authority){
         Objects.requireNonNull(evidence);Objects.requireNonNull(authority);
-        return (context,caseId,batchId,assetId,source)->{
-            var session=authority.currentSession(context);
-            var proof=evidence.get().proveAccess(context,caseId,batchId,assetId,source);
-            return new AfterSaleAssetReadAuthorizer.Proof(session.audience(),session.sessionId(),session.generation(),context.operatorType().name(),session.actorId(),
-                    proof.afterSaleId(),proof.batchId(),proof.assetId(),proof.ownerUserId(),proof.objectSha256(),proof.objectVersionRef(),proof.assetFactVersion(),
-                    proof.authzVersion(),AfterSaleAuthorityAdapter.revision(proof.merchantId()+":"+proof.storeId(),proof.caseVersion()));
+        return new AfterSaleAssetReadAuthorizer(){
+            @Override public Proof authorize(CommandContext context,String caseId,String batchId,String assetId,DataSource source){
+                var session=authority.currentSession(context);
+                var proof=evidence.get().proveAccess(context,caseId,batchId,assetId,source);
+                return result(context,session,proof,null);
+            }
+            @Override public Proof authorize(AfterSalePrivateAssetApi.EvidencePrincipal principal,String caseId,String batchId,String assetId,DataSource source){
+                if(principal==null)throw denied();
+                RouteParty party;
+                try{party=RouteParty.valueOf(principal.party());}catch(RuntimeException invalid){throw denied();}
+                var context=principal.context();var session=authority.currentSession(context);
+                if(!session.audience().equals(principal.audience())||!session.sessionId().equals(principal.sessionId())
+                        ||session.generation()!=principal.sessionGeneration()||!session.actorId().equals(context.operatorId()))throw denied();
+                var proof=evidence.get().proveAccess(context,party,caseId,batchId,assetId,source);
+                return result(context,session,proof,party.name());
+            }
+            private Proof result(CommandContext context,AfterSaleAuthorityAdapter.SessionIdentity session,
+                    AfterSaleEvidenceAccessApi.EvidenceAccess proof,String party){
+                if(proof==null)throw denied();
+                return new Proof(session.audience(),session.sessionId(),session.generation(),context.operatorType().name(),session.actorId(),
+                        proof.afterSaleId(),proof.batchId(),proof.assetId(),proof.ownerUserId(),proof.objectSha256(),proof.objectVersionRef(),proof.assetFactVersion(),
+                        proof.authzVersion(),AfterSaleAuthorityAdapter.revision(proof.merchantId()+":"+proof.storeId(),proof.caseVersion()),party);
+            }
         };
     }
+    private static ApiException denied(){return new ApiException(CommonApiCodes.FORBIDDEN,"Current evidence audience required");}
 }

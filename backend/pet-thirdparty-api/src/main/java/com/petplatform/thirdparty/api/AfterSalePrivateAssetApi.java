@@ -15,7 +15,21 @@ public interface AfterSalePrivateAssetApi {
     PrivateAssetContent consume(Consume command);
     record Asset(String assetId,String ownerUserId,String objectSha256,String objectVersionRef,
                  String factVersion,String mediaType,long bytes) {}
-    record Issue(CommandContext context,String afterSaleId,String evidenceBatchId,String assetId,String reason) {}
-    record Consume(CommandContext context,String token) {}
+    /** Trusted boundary snapshot, never deserialized from a client body. Each use rechecks the real session. */
+    record EvidencePrincipal(CommandContext context,String audience,String sessionId,long sessionGeneration,String party) {}
+    record Issue(CommandContext context,String afterSaleId,String evidenceBatchId,String assetId,String reason,
+                 EvidencePrincipal principal) {
+        /** Compatibility for internal callers predating route-specific HTTP grants. */
+        public Issue(CommandContext context,String afterSaleId,String evidenceBatchId,String assetId,String reason){
+            this(context,afterSaleId,evidenceBatchId,assetId,reason,null);
+        }
+        public Issue(EvidencePrincipal principal,String afterSaleId,String evidenceBatchId,String assetId,String reason){
+            this(java.util.Objects.requireNonNull(principal).context(),afterSaleId,evidenceBatchId,assetId,reason,principal);
+        }
+    }
+    record Consume(CommandContext context,String token,EvidencePrincipal principal) {
+        public Consume(CommandContext context,String token){this(context,token,null);}
+        public Consume(EvidencePrincipal principal,String token){this(java.util.Objects.requireNonNull(principal).context(),token,principal);}
+    }
     record Grant(String token,OffsetDateTime expiresAt) {}
 }

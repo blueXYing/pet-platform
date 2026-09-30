@@ -4,6 +4,7 @@ import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
 import com.petplatform.common.*;
 import com.petplatform.aftersale.api.command.AfterSaleCommandApi.*;
+import com.petplatform.aftersale.api.query.AfterSaleQueryApi.*;
 import com.petplatform.event.api.IntegrationEventPublisher;
 import com.petplatform.order.api.command.OrderAfterSaleCommitApi;
 import com.petplatform.order.api.query.OrderAfterSaleFactsApi;
@@ -61,5 +62,25 @@ class AfterSaleBoundaryTest {
         assertFalse(java.util.Arrays.equals(a,b));assertArrayEquals(bytes,protector.reveal("EVIDENCE_BATCH:1",a));
         assertThrows(IllegalStateException.class,()->protector.reveal("EVIDENCE_BATCH:2",a));
         a[a.length-1]^=1;assertThrows(IllegalStateException.class,()->protector.reveal("EVIDENCE_BATCH:1",a));
+    }
+    @Test void paginatedReadsRejectUnboundedOrUnknownFiltersBeforePersistence() {
+        for(var q:List.of(new ListQuery(0,20,null,null),new ListQuery(10001,20,null,null),
+                new ListQuery(1,51,null,null),new ListQuery(1,0,null,null),
+                new ListQuery(1,20,"UNKNOWN",null),new ListQuery(1,20,null,"001"))) {
+            assertEquals(CommonApiCodes.INVALID_ARGUMENT,assertThrows(ApiException.class,()->service.listMine(USER,q)).code());
+        }
+        verifyNoInteractions(source,orders,refunds,authority);
+    }
+    @Test void explicitRoutesCannotPromoteTheActorOrFallBackToGenericAccess() {
+        var q=new ListQuery(null,null,null,null);assertEquals(1,q.page());assertEquals(20,q.pageSize());
+        assertEquals(CommonApiCodes.FORBIDDEN,assertThrows(ApiException.class,()->service.listMine(ADMIN,q)).code());
+        assertEquals(CommonApiCodes.FORBIDDEN,assertThrows(ApiException.class,()->service.listForStore(USER,RouteParty.OPS,"1","2",q)).code());
+        assertEquals(CommonApiCodes.FORBIDDEN,assertThrows(ApiException.class,()->service.listForStore(USER,RouteParty.USER,"1","2",q)).code());
+        assertEquals(CommonApiCodes.INVALID_ARGUMENT,assertThrows(ApiException.class,()->service.getCase(USER,"100",null)).code());
+        assertEquals(CommonApiCodes.FORBIDDEN,assertThrows(ApiException.class,()->service.getCase(ADMIN,"100",RouteParty.MERCHANT)).code());
+        var command=new SubmitEvidence(USER,"100","0",null,"Enough detail for evidence",List.of());
+        assertEquals(CommonApiCodes.INVALID_ARGUMENT,assertThrows(ApiException.class,()->service.submitEvidence(command,null)).code());
+        assertEquals(CommonApiCodes.FORBIDDEN,assertThrows(ApiException.class,()->service.submitEvidence(command,RouteParty.OPS)).code());
+        verifyNoInteractions(source,orders,refunds,authority);
     }
 }

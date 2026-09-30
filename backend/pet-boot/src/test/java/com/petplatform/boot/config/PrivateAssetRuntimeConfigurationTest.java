@@ -23,6 +23,23 @@ import org.springframework.boot.test.context.runner.ApplicationContextRunner;
 
 class PrivateAssetRuntimeConfigurationTest {
   @Test
+  void reasonEncryptionSeparatesApprovedPurposesWithAuthenticatedData() throws Exception {
+    byte[] reasonKey=key(17);
+    var secrets=PrivateAssetRuntimeConfiguration.PrivateAssetSecrets.from("g1",Base64.getEncoder().encodeToString(key(11)),"r1",Base64.getEncoder().encodeToString(reasonKey));
+    for(String purpose:java.util.List.of("private-asset-read-reason","aftersale-evidence-read-reason")) {
+      byte[] encrypted=secrets.protectReason(purpose,"核对已入卷的售后凭证");
+      var input=java.nio.ByteBuffer.wrap(encrypted);int length=Byte.toUnsignedInt(input.get());byte[] version=new byte[length];input.get(version);
+      byte[] iv=new byte[12];input.get(iv);byte[] payload=new byte[input.remaining()];input.get(payload);
+      var cipher=javax.crypto.Cipher.getInstance("AES/GCM/NoPadding");
+      var key=new javax.crypto.spec.SecretKeySpec(reasonKey,"AES");var spec=new javax.crypto.spec.GCMParameterSpec(128,iv);
+      cipher.init(javax.crypto.Cipher.DECRYPT_MODE,key,spec);cipher.updateAAD((purpose+":r1").getBytes(java.nio.charset.StandardCharsets.UTF_8));
+      assertEquals("核对已入卷的售后凭证",new String(cipher.doFinal(payload),java.nio.charset.StandardCharsets.UTF_8));
+      cipher.init(javax.crypto.Cipher.DECRYPT_MODE,key,spec);cipher.updateAAD("unrelated:r1".getBytes(java.nio.charset.StandardCharsets.UTF_8));
+      assertThrows(javax.crypto.AEADBadTagException.class,()->cipher.doFinal(payload));
+    }
+    assertThrows(IllegalArgumentException.class,()->secrets.protectReason("unrelated","reason"));
+  }
+  @Test
   void privateHttpAndRuntimeAreAbsentByDefault() {
     new ApplicationContextRunner()
         .withUserConfiguration(

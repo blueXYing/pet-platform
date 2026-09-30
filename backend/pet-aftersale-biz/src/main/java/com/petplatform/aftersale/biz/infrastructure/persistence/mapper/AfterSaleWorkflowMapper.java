@@ -11,6 +11,7 @@ public interface AfterSaleWorkflowMapper {
  int succeed(@Param("id") long id,@Param("result") byte[] result);
  CaseRow hint(@Param("id") long id); CaseRow row(@Param("id") long id); List<CaseRow> active(@Param("order") long order);
  List<CaseRow> finals(@Param("order") long order);
+ long countCases(Map<String,Object> filters); List<CaseRow> listCases(Map<String,Object> filters);
  int create(Map<String,Object> values); int transition(Map<String,Object> values); int insertTransition(Map<String,Object> values);
  Transition transitionByCommand(@Param("id") long id); Transition latestTransition(@Param("caseId") long caseId); VerificationProof verificationProof(@Param("caseId") long caseId); int log(Map<String,Object> values);
  int insertBatch(Map<String,Object> values); int insertAsset(Map<String,Object> values);

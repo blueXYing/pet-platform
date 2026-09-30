@@ -1,15 +1,18 @@
 package com.petplatform.aftersale.api.command;
 
 import com.petplatform.common.CommandContext;
+import com.petplatform.aftersale.api.query.AfterSaleQueryApi.RouteParty;
 import java.math.BigDecimal;
 import java.util.List;
 
 /** Trusted internal commands. Every write binds the five-part idempotency key. */
 public interface AfterSaleCommandApi {
     Receipt create(Create command);
+    default CreationResult createWithOutcome(Create command) { throw new UnsupportedOperationException("creation outcome unavailable"); }
     Receipt accept(Accept command);
     Receipt requestSupplement(RequestSupplement command);
     Receipt submitEvidence(SubmitEvidence command);
+    default Receipt submitEvidence(SubmitEvidence command, RouteParty routeParty) { throw new UnsupportedOperationException("explicit party evidence unavailable"); }
     Receipt submitMerchantOpinion(SubmitMerchantOpinion command);
     Receipt withdraw(Withdraw command);
     Receipt closeDuplicate(CloseDuplicate command);
@@ -40,4 +43,5 @@ public interface AfterSaleCommandApi {
     record Receipt(String commandId, String orderId, String afterSaleId, String status, String version,
             String occurredAt, String evidenceBatchId, String supplementRequestId,
             String decisionId, String refundOrderId) {}
+    record CreationResult(Receipt receipt, boolean created) {}
 }

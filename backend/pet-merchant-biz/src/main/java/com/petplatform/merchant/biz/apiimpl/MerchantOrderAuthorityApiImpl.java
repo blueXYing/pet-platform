@@ -16,12 +16,18 @@ public final class MerchantOrderAuthorityApiImpl implements MerchantOrderAuthori
         mapper=MerchantMybatis.joiningTemplate(source).getMapper(MerchantStaffMapper.class);
     }
     @Override public void requireOwner(String merchant,String store,QueryContext context) {
+        requireOwnerStatus(merchant,store,context,Set.of("ACTIVE","OFFLINE"));
+    }
+    @Override public void requireOwnerRead(String merchant,String store,QueryContext context) {
+        requireOwnerStatus(merchant,store,context,Set.of("ACTIVE","OFFLINE","FROZEN"));
+    }
+    private void requireOwnerStatus(String merchant,String store,QueryContext context,Set<String> statuses) {
         guard.requireHeld(store,source);
         if(context==null||context.operatorType()!=OperatorType.USER||context.operatorId()==null) throw denied();
         var row=mapper.lockOwnedScope(IDS.fromApi(merchant),IDS.fromApi(store),IDS.fromApi(context.operatorId()));
         if(row==null) throw denied();
-        if(!Set.of("ACTIVE","OFFLINE").contains(row.getMerchantStatus())
-                ||!Set.of("ACTIVE","OFFLINE").contains(row.getStoreStatus())) throw denied();
+        if(row.getMerchantStatus()==null||row.getStoreStatus()==null
+                ||!statuses.contains(row.getMerchantStatus())||!statuses.contains(row.getStoreStatus())) throw denied();
     }
     @Override public void requireExistingOrderAvailability(String merchant,String store,QueryContext context) {
         guard.requireHeld(store,source);

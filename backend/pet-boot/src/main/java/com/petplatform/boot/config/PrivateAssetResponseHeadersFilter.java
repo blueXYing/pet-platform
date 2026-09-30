@@ -11,6 +11,10 @@ public final class PrivateAssetResponseHeadersFilter extends OncePerRequestFilte
   protected boolean shouldNotFilter(HttpServletRequest request) {
     String path = request.getRequestURI();
     return !path.equals("/api/v1/c/private-assets")
+        && !path.equals("/api/v1/c/aftersale-evidence-assets")
+        && !path.contains("/aftersale-evidence-read-grants/")
+        && !path.contains("/aftersales/") && !path.endsWith("/aftersales")
+        && !path.endsWith("/aftersale-eligibility")
         && !path.contains("/private-assets/")
         && !path.startsWith("/api/v1/admin/private-asset-read-grants/");
   }

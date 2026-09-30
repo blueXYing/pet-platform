@@ -37,7 +37,8 @@ public class CSessionSecurityConfiguration {
       @Value("${pet.service.command.enabled:false}") boolean serviceCommandEnabled,
       @Value("${pet.store.query.enabled:false}") boolean storeQueryEnabled,
       @Value("${pet.merchant.staff.enabled:false}") boolean merchantStaffEnabled,
-      @Value("${pet.schedule.query.enabled:false}") boolean scheduleQueryEnabled)
+      @Value("${pet.schedule.query.enabled:false}") boolean scheduleQueryEnabled,
+      @Value("${pet.aftersale.http.enabled:false}") boolean afterSaleHttpEnabled)
       throws Exception {
     http.securityMatcher("/api/v1/c/**", "/api/v1/merchant/**")
         .csrf(c -> c.disable())
@@ -47,6 +48,20 @@ public class CSessionSecurityConfiguration {
     http.authorizeHttpRequests(
         a -> {
           if (p.isEnabled()) {
+            if (afterSaleHttpEnabled) {
+              a.requestMatchers(HttpMethod.GET,
+                  "/api/v1/c/orders/*/aftersale-eligibility",
+                  "/api/v1/c/aftersales", "/api/v1/c/aftersales/*",
+                  "/api/v1/merchant/aftersales", "/api/v1/merchant/aftersales/*",
+                  "/api/v1/c/aftersale-evidence-read-grants/*",
+                  "/api/v1/merchant/aftersale-evidence-read-grants/*").permitAll();
+              a.requestMatchers(HttpMethod.POST,
+                  "/api/v1/c/orders/*/aftersales", "/api/v1/c/aftersale-evidence-assets",
+                  "/api/v1/c/aftersales/*/evidence", "/api/v1/c/aftersales/*/withdraw",
+                  "/api/v1/merchant/aftersales/*/evidence", "/api/v1/merchant/aftersales/*/opinion",
+                  "/api/v1/c/aftersales/*/evidence-batches/*/assets/*/read-grants",
+                  "/api/v1/merchant/aftersales/*/evidence-batches/*/assets/*/read-grants").permitAll();
+            }
             a.requestMatchers(
                     HttpMethod.POST,
                     "/api/v1/c/auth/attempts",

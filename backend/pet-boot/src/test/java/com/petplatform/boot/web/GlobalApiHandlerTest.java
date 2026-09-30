@@ -33,6 +33,9 @@ class GlobalApiHandlerTest {
         public String echo(@RequestBody java.util.Map<String, Object> body) {
             return "echo";
         }
+
+        @PostMapping(value="/probe/json-only",consumes=MediaType.APPLICATION_JSON_VALUE)
+        public String jsonOnly(@RequestBody java.util.Map<String,Object> body){return "echo";}
     }
 
     private final MockMvc mockMvc = MockMvcBuilders.standaloneSetup(new ProbeController())
@@ -75,6 +78,22 @@ class GlobalApiHandlerTest {
                         .value(CommonApiCodes.INVALID_ARGUMENT));
     }
 
+    @Test void unsupportedContentTypeBeforeHandlerSelectionIsSafe415()throws Exception{
+        var result=mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post("/probe/json-only")
+                        .contentType(MediaType.TEXT_PLAIN).content("SELECT sensitive FROM evidence WHERE token='secret'"))
+                .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.status().isUnsupportedMediaType())
+                .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath("$.code").value(CommonApiCodes.INVALID_ARGUMENT))
+                .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath("$.message").value("请求内容类型不支持"))
+                .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath("$.success").doesNotExist())
+                .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath("$.data").value(org.hamcrest.Matchers.nullValue()))
+                .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath("$.traceId").isNotEmpty())
+                .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.header().string("Cache-Control","no-store, private"))
+                .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.header().string("X-Content-Type-Options","nosniff"))
+                .andReturn();
+        assertFalse(result.getResponse().getContentAsString().contains("secret"));
+        assertFalse(result.getResponse().getContentAsString().contains("SELECT"));
+    }
+
     @Test void envelopeTraceIdMatchesEchoedHeader() throws Exception {
         var result = mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders
                         .get("/probe/not-found-code")
@@ -83,5 +102,17 @@ class GlobalApiHandlerTest {
         String body = result.getResponse().getContentAsString();
         assertTrue(body.contains("\"traceId\":\"trace-aabbccdd-1234\""));
         assertEquals("trace-aabbccdd-1234", result.getResponse().getHeader("X-Trace-Id"));
+    }
+
+    @Test void earlyAftersaleMultipartMappingDoesNotChangeOtherUploadRoutes() {
+        var handler=new GlobalApiExceptionHandler();
+        for(String path:java.util.List.of("/api/v1/c/private-assets","/api/v1/c/aftersale-evidence-assets/")){
+            var request=new org.springframework.mock.web.MockHttpServletRequest("POST",path);
+            var response=new org.springframework.mock.web.MockHttpServletResponse();
+            var result=handler.multipartBeforeHandler(new org.springframework.web.multipart.MaxUploadSizeExceededException(10),request,response);
+            assertEquals(500,response.getStatus());
+            assertInstanceOf(com.petplatform.common.ApiResponse.class,result);
+            assertEquals(CommonApiCodes.INTERNAL_ERROR,((com.petplatform.common.ApiResponse<?>)result).code());
+        }
     }
 }

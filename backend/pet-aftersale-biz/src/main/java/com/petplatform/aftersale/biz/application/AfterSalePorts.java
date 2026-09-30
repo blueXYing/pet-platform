@@ -1,6 +1,7 @@
 package com.petplatform.aftersale.biz.application;
 
 import com.petplatform.common.CommandContext;
+import com.petplatform.aftersale.api.query.AfterSaleQueryApi.RouteParty;
 import java.time.OffsetDateTime;
 import java.util.List;
 import javax.sql.DataSource;
@@ -17,6 +18,15 @@ public final class AfterSalePorts {
         AdminAuthority requireAdmin(CommandContext context, Resource resource, String actionCode);
         /** Rechecks a real buyer, current OWNER or admin and returns USER/MERCHANT/OPS plus revision. */
         ReadAuthority requireRead(CommandContext context, Resource resource);
+        default ReadAuthority requireRead(CommandContext context, Resource resource, RouteParty routeParty) {
+            throw new UnsupportedOperationException("explicit party authority unavailable");
+        }
+        default String requireBuyerRead(CommandContext context) {
+            throw new UnsupportedOperationException("buyer collection authority unavailable");
+        }
+        default String requireStoreRead(CommandContext context, RouteParty routeParty, String merchantId, String storeId) {
+            throw new UnsupportedOperationException("store collection authority unavailable");
+        }
     }
     public record AdminAuthority(String authzVersion, String scopeVersion) {}
     public record ReadAuthority(String party, String authzVersion) {}

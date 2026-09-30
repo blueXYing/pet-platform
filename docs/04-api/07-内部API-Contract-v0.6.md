@@ -1816,4 +1816,17 @@ thirdparty-api 新增独立 ServiceCoverSigningApi.signServiceCover(String asset
 
 ## 2026-09-30 AFS工作流正式增量
 
-用户已批准P1～P4推荐及A1–A3，执行[50号契约](50-AfterSale-Workflow-Contract-v0.1.md)。AFS真实命令/证据/终局、ORDER当前和历史事实、REFUND申请历史与AFS原子退款、PARTIAL资金来源及默认关闭适配由50号具体化；旧普通49号保持。无公开HTTP交付声明，OD-W0-001真实资金依据仍必需。
+用户已批准P1～P4推荐及A1–A3，执行[50号契约](50-AfterSale-Workflow-Contract-v0.1.md)。AFS真实命令/证据/终局、ORDER当前和历史事实、REFUND申请历史与AFS原子退款、PARTIAL资金来源及默认关闭适配由50号具体化；旧普通49号保持。50号为内部能力；后续非出款HTTP按51号独立交付，OD-W0-001真实资金依据仍必需。
+
+
+## 2026-09-30 售后 HTTP 读侧与端别增量（Contract51）
+
+执行 [51号契约](51-AfterSale-Http-Contract-v0.1.md)，沿SSOT40，无新产品规则。
+
+- AfterSaleQueryApi.RouteParty=USER/MERCHANT/OPS；getCase(context,id,party)、listMine(context,ListQuery)、listForStore(context,party,merchantId,storeId,ListQuery)。ListQuery(Integer page,Integer pageSize,String status,String orderId)空默认1/20，上限10000/50；CasePage(page,pageSize,total,items)，CaseSummary仅结构化摘要，全部字段见51号。
+- AfterSaleCommandApi.createWithOutcome(Create)返回CreationResult(Receipt receipt,boolean created)，只首次实际提交为true；旧create取receipt兼容。submitEvidence(SubmitEvidence,RouteParty)明确入卷端别并绑定原幂等namespace/scope参数；旧方法格式不变。
+- AfterSaleEvidenceAccessApi.proveAccess(CommandContext,RouteParty,String caseId,String batchId,String assetId,DataSource)明确端别证明；旧泛化方法仅内部兼容，HTTP不调用。Authority新增requireBuyerRead(context)、requireStoreRead(context,party,merchantId,storeId)、requireRead(context,Resource,party)，所有新增default失败关闭。查询前及提交/返回前重验相同当前会话/权限版本。
+- MER MerchantOrderAuthorityApi.requireOwnerRead(merchantId,storeId,QueryContext)在真实shared store guard内验证OWNER关联，允许ACTIVE/OFFLINE/FROZEN资源读取；requireOwner写口不变。ADMIN集合入口先checkCollection，再用真实STORE与当前MER城市/范围核验aftersale.read，不能造case ID或信创建城市。
+- THIRD_PARTY EvidencePrincipal封装可信route party和真实session/audience/generation；Issue/Consume新typed构造与authorizer明确party。端别入proof_hash，签发/消费/最终返回复验；旧内部调用兼容，不作为HTTP绕过入口。
+
+公开退款类型始终关闭，原A2内部能力不受影响。所有生产分页SQL在AFS MyBatis XML，授权先于COUNT/LIMIT；无biz依赖biz或跨域表SQL。

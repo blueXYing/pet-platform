@@ -1,0 +1,233 @@
+{
+  "scope": "AFS_HTTP_LOCAL_GROUPED_ACCEPTANCE",
+  "sourceBase": "7dae97768e556d8897f3257c19eaa5823f21ddaf",
+  "sourceDelta": "Exact-route early multipart error mapping and real HTTP/negative-scope coverage; earlier successful runs remain applicable to unchanged modules",
+  "note": "Latest run per class; previous failed attempts are retained and superseded only by successful reruns. Unselected stale target reports excluded. Not a full backend or external-provider acceptance.",
+  "runs": [
+    {
+      "log": "http-and-afs-regression-pass5.log",
+      "sha256": "6cd8332744555baa96bd07e2d5edb694092e37b0cdf8c8de8edc6456dd9683d5",
+      "buildSuccess": false,
+      "classes": 16,
+      "tests": 105,
+      "failures": 2,
+      "errors": 0
+    },
+    {
+      "log": "http-final-focused-pass6.log",
+      "sha256": "068de815c163e26c69f42a502fa4374c9f22be8eec91363183b93dcd8d535aa9",
+      "buildSuccess": false,
+      "classes": 11,
+      "tests": 78,
+      "failures": 1,
+      "errors": 0
+    },
+    {
+      "log": "http-architecture-pass7.log",
+      "sha256": "7a009082dff5db86c23740cd7ed0b1e7fb3bef56b2f247b74c6e345762523c8b",
+      "buildSuccess": true,
+      "classes": 2,
+      "tests": 31,
+      "failures": 0,
+      "errors": 0
+    },
+    {
+      "log": "http-multipart-red-pass8.log",
+      "sha256": "173936be984bc55b6a2c13b66854a9a47ee997cb081b396591c6ffcdbbb6970a",
+      "buildSuccess": false,
+      "classes": 1,
+      "tests": 1,
+      "failures": 1,
+      "errors": 0
+    },
+    {
+      "log": "http-multipart-green-pass9.log",
+      "sha256": "6369fe8bb649eccd6af9b0f0667ed48522ea119bd07a0380cf8ddf8d1475bff2",
+      "buildSuccess": true,
+      "classes": 5,
+      "tests": 48,
+      "failures": 0,
+      "errors": 0
+    }
+  ],
+  "classes": 19,
+  "totals": {
+    "tests": 144,
+    "failures": 0,
+    "errors": 0,
+    "skipped": 0
+  },
+  "suites": [
+    {
+      "className": "com.petplatform.aftersale.biz.application.AfterSaleBoundaryTest",
+      "tests": 8,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "log": "http-and-afs-regression-pass5.log",
+      "reportSha256": "674507c1619997c9a301648023f6f8daeb9bac20e32c5ec546bc5d61c23adf0b"
+    },
+    {
+      "className": "com.petplatform.architecture.ArchitectureRulesFixtureTest",
+      "tests": 24,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "log": "http-multipart-green-pass9.log",
+      "reportSha256": "af9dd4d94a389206cf332003e5470982ae41c8a4943346569a3006bc2396a3eb"
+    },
+    {
+      "className": "com.petplatform.architecture.ArchitectureRulesTest",
+      "tests": 7,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "log": "http-multipart-green-pass9.log",
+      "reportSha256": "a5ab242a4f65b1d095e560f2fa1308435a3a1daf72a36b95378bfbccae9554b7"
+    },
+    {
+      "className": "com.petplatform.boot.adapter.web.aftersale.AfterSaleEvidenceHttpTest",
+      "tests": 8,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "log": "http-multipart-green-pass9.log",
+      "reportSha256": "966a9d909ee0c3a7637bc018686c45c3de48d661e147d1a41ffd148fcb18d56e"
+    },
+    {
+      "className": "com.petplatform.boot.booking.AfterSaleEvidenceHttpAcceptanceTest",
+      "tests": 3,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "log": "http-multipart-green-pass9.log",
+      "reportSha256": "ba4244973d405a062e9e967a761b1464d7c0a0d254ed1c2fab90ea7869cb2953"
+    },
+    {
+      "className": "com.petplatform.boot.booking.AfterSaleHttpAcceptanceTest",
+      "tests": 4,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "log": "http-final-focused-pass6.log",
+      "reportSha256": "d98cd5323c0d565e4f3366344a4120e39aaa2794c922bed4be30f3a38480c5f4"
+    },
+    {
+      "className": "com.petplatform.boot.booking.AfterSaleMoneyAcceptanceTest",
+      "tests": 12,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "log": "http-and-afs-regression-pass5.log",
+      "reportSha256": "9eb2cdebee959f920a07148325dafabca38c1b1bb75144b8d1aa7852d154cd59"
+    },
+    {
+      "className": "com.petplatform.boot.booking.AfterSalePrivateEvidenceAcceptanceTest",
+      "tests": 4,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "log": "http-and-afs-regression-pass5.log",
+      "reportSha256": "fa5d6c6cb55e54648eeb4ffe9301e6958fed2e091aa21d5173a66430056bf91b"
+    },
+    {
+      "className": "com.petplatform.boot.booking.AfterSaleRefundRecoveryAcceptanceTest",
+      "tests": 2,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "log": "http-and-afs-regression-pass5.log",
+      "reportSha256": "1915e95991417dde59ddb7deb1a0809563ecc6e74b68eb6df898dec97b9e9409"
+    },
+    {
+      "className": "com.petplatform.boot.booking.AfterSaleSourceIntegrityAcceptanceTest",
+      "tests": 2,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "log": "http-and-afs-regression-pass5.log",
+      "reportSha256": "a5b76c0ed44047d63b66b4dcc44f3f44f38702eab804ec83ca430ff64a84d251"
+    },
+    {
+      "className": "com.petplatform.boot.booking.AfterSaleSupplementAcceptanceTest",
+      "tests": 4,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "log": "http-and-afs-regression-pass5.log",
+      "reportSha256": "881b85337d91465e6a57ee2e9346cb741054db12697803f192e339ebf2a49bb1"
+    },
+    {
+      "className": "com.petplatform.boot.booking.AfterSaleWorkflowAcceptanceTest",
+      "tests": 21,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "log": "http-and-afs-regression-pass5.log",
+      "reportSha256": "4bc4b9b3a26c821659923abafb6f93c489fae784a7a60977d8f8f04a31d0e26d"
+    },
+    {
+      "className": "com.petplatform.boot.config.AfterSaleAssetAdaptersTest",
+      "tests": 3,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "log": "http-final-focused-pass6.log",
+      "reportSha256": "69406bb27b14525db10835eeae9a1e50975a4c75334fe2e79f4e3e6c913f6526"
+    },
+    {
+      "className": "com.petplatform.boot.config.AfterSaleWorkflowConfigurationTest",
+      "tests": 24,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "log": "http-final-focused-pass6.log",
+      "reportSha256": "2885da8c29cfa87b5c240653835e3161242c7276d59654e623a791e39e82d7c8"
+    },
+    {
+      "className": "com.petplatform.boot.config.PrivateAssetRuntimeConfigurationTest",
+      "tests": 4,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "log": "http-final-focused-pass6.log",
+      "reportSha256": "17dec5e3aaee3765f7b7711e2a884b84c4034bc2fa89946eeb78879783dbba82"
+    },
+    {
+      "className": "com.petplatform.boot.web.GlobalApiHandlerTest",
+      "tests": 6,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "log": "http-multipart-green-pass9.log",
+      "reportSha256": "b8a1fef605ed825fdb27c5b46e6fbfd14929b974bef06a3d347e964c32941a08"
+    },
+    {
+      "className": "com.petplatform.common.S1ContractMappingTest",
+      "tests": 5,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "log": "http-final-focused-pass6.log",
+      "reportSha256": "784e13d5d5212a8fb1fd58f5b64cde93785badee2f0a2fb662c6623ec714b278"
+    },
+    {
+      "className": "com.petplatform.refund.biz.application.AfterSaleRefundTaskFamilyTest",
+      "tests": 2,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "log": "http-and-afs-regression-pass5.log",
+      "reportSha256": "61d659c961fc37784128dfe6b64044adce9d079bb9117b529883f77be518832f"
+    },
+    {
+      "className": "com.petplatform.thirdparty.biz.AfterSaleEvidenceUnicodeTest",
+      "tests": 1,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "log": "http-final-focused-pass6.log",
+      "reportSha256": "f6dae17824a65f0252338ee3cf2756fd05e9ba3f73c4ee570aa59e9a9494f51b"
+    }
+  ]
+}

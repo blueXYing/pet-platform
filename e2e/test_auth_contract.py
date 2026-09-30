@@ -243,11 +243,12 @@ class AuthSurfaceRegressions(unittest.TestCase):
 
     def test_reviewed_surface_is_named_and_independently_counted(self):
         result = check(self.spec)
-        self.assertEqual(len(LEGACY_OPERATIONS), 16)
+        self.assertEqual(len(LEGACY_OPERATIONS), 14)
         self.assertEqual(len(AUTH_OPERATIONS), 36)
-        self.assertEqual(result['legacyOperations'], 16)
-        self.assertEqual(result['legacyWrites'], 13)
-        self.assertEqual(result['legacyCreates'], 4)
+        self.assertEqual(result['legacyOperations'], 14)
+        self.assertEqual(result['legacyWrites'], 11)
+        self.assertEqual(result['legacyCreates'], 3)
+        self.assertEqual(result['aftersaleOperations'], 23)
         self.assertEqual(result['authOperations'], 36)
 
     def test_business_security_cannot_be_cleared(self):

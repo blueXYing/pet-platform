@@ -212,7 +212,7 @@ public class PrivateAssetRuntimeConfiguration {
     }
 
     byte[] protectReason(String purpose, String plaintext) {
-      if (!"private-asset-read-reason".equals(purpose)
+      if (!("private-asset-read-reason".equals(purpose) || "aftersale-evidence-read-reason".equals(purpose))
           || plaintext == null
           || plaintext.isBlank()
           || plaintext.length() > 500) {

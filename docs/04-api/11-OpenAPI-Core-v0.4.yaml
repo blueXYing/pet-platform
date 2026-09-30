@@ -12,6 +12,7 @@ tags:
 - name: C-Order
 - name: C-Refund
 - name: C-Aftersale
+- name: Merchant-Aftersale
 - name: C-Review
 - name: Merchant-Order
 - name: Merchant-Refund
@@ -1867,35 +1868,94 @@ paths:
     post:
       tags:
       - C-Aftersale
-      summary: 发起售后
       operationId: createAftersale
-      x-implementation-status: INTERNAL_ONLY
+      summary: 本人发起售后
+      x-implementation-status: IMPLEMENTED_DEFAULT_OFF
       x-default-enabled: false
-      x-internal-contract: 50-AfterSale-Workflow-Contract-v0.1.md
+      x-contract: 51-AfterSale-Http-Contract-v0.1.md
       security:
       - bearerAuth: []
       parameters:
-      - $ref: '#/components/parameters/OrderId'
+      - name: orderId
+        in: path
+        required: true
+        schema:
+          type: string
+          pattern: ^[1-9][0-9]{0,18}(?![\s\S])
+          maxLength: 19
+          x-maximum-decimal: '9223372036854775807'
       - $ref: '#/components/parameters/RequestId'
+      responses:
+        '200':
+          description: 成功；重放返回首次回执并复验当前权限
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                enum:
+                - no-store, private
+            Pragma:
+              schema:
+                type: string
+                enum:
+                - no-cache
+            X-Content-Type-Options:
+              schema:
+                type: string
+                enum:
+                - nosniff
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AfterSaleReceiptEnvelope'
+        '201':
+          description: 真实首次创建，非重放
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                enum:
+                - no-store, private
+            Pragma:
+              schema:
+                type: string
+                enum:
+                - no-cache
+            X-Content-Type-Options:
+              schema:
+                type: string
+                enum:
+                - nosniff
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AfterSaleReceiptEnvelope'
+        '400':
+          $ref: '#/components/responses/AfterSaleHttpError'
+        '401':
+          $ref: '#/components/responses/AfterSaleHttpError'
+        '403':
+          $ref: '#/components/responses/AfterSaleHttpError'
+        '404':
+          $ref: '#/components/responses/AfterSaleHttpError'
+        '409':
+          $ref: '#/components/responses/AfterSaleHttpError'
+        '422':
+          $ref: '#/components/responses/AfterSaleHttpError'
+        '429':
+          $ref: '#/components/responses/AfterSaleHttpError'
+        '500':
+          $ref: '#/components/responses/AfterSaleHttpError'
+        '503':
+          $ref: '#/components/responses/AfterSaleHttpError'
       requestBody:
         required: true
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/CreateAftersaleRequest'
-      responses:
-        '401':
-          $ref: '#/components/responses/Unauthorized'
-        '403':
-          $ref: '#/components/responses/Forbidden'
-        '503':
-          $ref: '#/components/responses/DependencyUnavailable'
-        '200':
-          description: 幂等成功，当前权限通过后返回首次成功业务回执
-        '201':
-          description: 创建成功
-        '409':
-          $ref: '#/components/responses/Conflict'
+              $ref: '#/components/schemas/AfterSaleCreateRequest'
+      x-route-party: USER
+      x-audience: MINIAPP
   /c/orders/{orderId}/review-eligibility:
     get:
       tags:
@@ -2098,37 +2158,84 @@ paths:
           description: 核销成功
         '409':
           $ref: '#/components/responses/Conflict'
-  /admin/aftersales/{afterSaleId}/decision:
+  /admin/aftersales/{afterSaleId}/decisions:
     post:
       tags:
       - Admin-Aftersale
-      summary: 运营售后终局裁决
       operationId: decideAftersale
-      x-implementation-status: INTERNAL_ONLY
+      summary: 非出款最终决定
+      x-implementation-status: IMPLEMENTED_DEFAULT_OFF
       x-default-enabled: false
-      x-internal-contract: 50-AfterSale-Workflow-Contract-v0.1.md
+      x-contract: 51-AfterSale-Http-Contract-v0.1.md
       security:
       - bearerAuth: []
       parameters:
-      - $ref: '#/components/parameters/AfterSaleId'
+      - name: afterSaleId
+        in: path
+        required: true
+        schema:
+          type: string
+          pattern: ^[1-9][0-9]{0,18}(?![\s\S])
+          maxLength: 19
+          x-maximum-decimal: '9223372036854775807'
       - $ref: '#/components/parameters/RequestId'
+      responses:
+        '200':
+          description: 成功；重放返回首次回执并复验当前权限
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                enum:
+                - no-store, private
+            Pragma:
+              schema:
+                type: string
+                enum:
+                - no-cache
+            X-Content-Type-Options:
+              schema:
+                type: string
+                enum:
+                - nosniff
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AfterSaleReceiptEnvelope'
+        '400':
+          $ref: '#/components/responses/AfterSaleHttpError'
+        '401':
+          $ref: '#/components/responses/AfterSaleHttpError'
+        '403':
+          $ref: '#/components/responses/AfterSaleHttpError'
+        '404':
+          $ref: '#/components/responses/AfterSaleHttpError'
+        '409':
+          $ref: '#/components/responses/AfterSaleHttpError'
+        '422':
+          $ref: '#/components/responses/AfterSaleHttpError'
+        '429':
+          $ref: '#/components/responses/AfterSaleHttpError'
+        '500':
+          $ref: '#/components/responses/AfterSaleHttpError'
+        '503':
+          $ref: '#/components/responses/AfterSaleHttpError'
       requestBody:
         required: true
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/AftersaleDecisionRequest'
-      responses:
-        '401':
-          $ref: '#/components/responses/Unauthorized'
-        '403':
-          $ref: '#/components/responses/Forbidden'
-        '503':
-          $ref: '#/components/responses/DependencyUnavailable'
-        '200':
-          description: 裁决成功
-        '409':
-          $ref: '#/components/responses/Conflict'
+              $ref: '#/components/schemas/AfterSaleDecisionRequest'
+      description: 仅REJECT/RESERVICE/OTHER执行。FULL/PARTIAL合法请求先检查当前ADMIN会话、decide及资源权，再固定503；内部资金开关/Provider不能开启公开出款。
+      x-route-party: OPS
+      x-audience: ADMIN_WEB
+      x-required-actions:
+      - aftersale.decide
+      x-public-refund-enabled: false
+      x-executable-decision-types:
+      - REJECT
+      - RESERVICE
+      - OTHER
   /admin/orders/{orderId}/abnormal-close:
     post:
       tags:
@@ -8144,6 +8251,1649 @@ paths:
             schema:
               $ref: '#/components/schemas/AppDecisionRequest'
       x-requires-current-claimant: true
+  /c/orders/{orderId}/aftersale-eligibility:
+    get:
+      tags:
+      - C-Aftersale
+      operationId: getAftersaleEligibility
+      summary: 本人当前订单规则资格
+      x-implementation-status: IMPLEMENTED_DEFAULT_OFF
+      x-default-enabled: false
+      x-contract: 51-AfterSale-Http-Contract-v0.1.md
+      security:
+      - bearerAuth: []
+      parameters:
+      - name: orderId
+        in: path
+        required: true
+        schema:
+          type: string
+          pattern: ^[1-9][0-9]{0,18}(?![\s\S])
+          maxLength: 19
+          x-maximum-decimal: '9223372036854775807'
+      responses:
+        '200':
+          description: 成功；重放返回首次回执并复验当前权限
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                enum:
+                - no-store, private
+            Pragma:
+              schema:
+                type: string
+                enum:
+                - no-cache
+            X-Content-Type-Options:
+              schema:
+                type: string
+                enum:
+                - nosniff
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AfterSaleEligibilityEnvelope'
+        '400':
+          $ref: '#/components/responses/AfterSaleHttpError'
+        '401':
+          $ref: '#/components/responses/AfterSaleHttpError'
+        '403':
+          $ref: '#/components/responses/AfterSaleHttpError'
+        '404':
+          $ref: '#/components/responses/AfterSaleHttpError'
+        '409':
+          $ref: '#/components/responses/AfterSaleHttpError'
+        '422':
+          $ref: '#/components/responses/AfterSaleHttpError'
+        '429':
+          $ref: '#/components/responses/AfterSaleHttpError'
+        '500':
+          $ref: '#/components/responses/AfterSaleHttpError'
+        '503':
+          $ref: '#/components/responses/AfterSaleHttpError'
+      x-route-party: USER
+      x-audience: MINIAPP
+  /c/aftersales:
+    get:
+      tags:
+      - C-Aftersale
+      operationId: cListAftersales
+      summary: 本人或指定获权门店分页
+      x-implementation-status: IMPLEMENTED_DEFAULT_OFF
+      x-default-enabled: false
+      x-contract: 51-AfterSale-Http-Contract-v0.1.md
+      security:
+      - bearerAuth: []
+      parameters:
+      - name: page
+        in: query
+        required: false
+        schema:
+          type: integer
+          minimum: 1
+          maximum: 10000
+          default: 1
+      - name: pageSize
+        in: query
+        required: false
+        schema:
+          type: integer
+          minimum: 1
+          maximum: 50
+          default: 20
+      - name: status
+        in: query
+        required: false
+        schema:
+          type: string
+          enum:
+          - PENDING
+          - PROCESSING
+          - WAITING_SUPPLEMENT
+          - RESOLVED
+          - INVALIDATED
+          - WITHDRAWN
+          - CLOSED
+      - name: orderId
+        in: query
+        required: false
+        schema:
+          type: string
+          pattern: ^[1-9][0-9]{0,18}(?![\s\S])
+          maxLength: 19
+          x-maximum-decimal: '9223372036854775807'
+      responses:
+        '200':
+          description: 成功；重放返回首次回执并复验当前权限
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                enum:
+                - no-store, private
+            Pragma:
+              schema:
+                type: string
+                enum:
+                - no-cache
+            X-Content-Type-Options:
+              schema:
+                type: string
+                enum:
+                - nosniff
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AfterSaleCasePageEnvelope'
+        '400':
+          $ref: '#/components/responses/AfterSaleHttpError'
+        '401':
+          $ref: '#/components/responses/AfterSaleHttpError'
+        '403':
+          $ref: '#/components/responses/AfterSaleHttpError'
+        '404':
+          $ref: '#/components/responses/AfterSaleHttpError'
+        '409':
+          $ref: '#/components/responses/AfterSaleHttpError'
+        '422':
+          $ref: '#/components/responses/AfterSaleHttpError'
+        '429':
+          $ref: '#/components/responses/AfterSaleHttpError'
+        '500':
+          $ref: '#/components/responses/AfterSaleHttpError'
+        '503':
+          $ref: '#/components/responses/AfterSaleHttpError'
+      description: 仅允许列明query且不重复；C禁止merchantId/storeId。M/O必须商家+店，当前MER范围授权先于COUNT/LIMIT；跨店聚合后续交付。
+      x-route-party: USER
+      x-audience: MINIAPP
+  /c/aftersales/{afterSaleId}:
+    get:
+      tags:
+      - C-Aftersale
+      operationId: cGetAftersale
+      summary: 明确当前端别查看卷宗
+      x-implementation-status: IMPLEMENTED_DEFAULT_OFF
+      x-default-enabled: false
+      x-contract: 51-AfterSale-Http-Contract-v0.1.md
+      security:
+      - bearerAuth: []
+      parameters:
+      - name: afterSaleId
+        in: path
+        required: true
+        schema:
+          type: string
+          pattern: ^[1-9][0-9]{0,18}(?![\s\S])
+          maxLength: 19
+          x-maximum-decimal: '9223372036854775807'
+      responses:
+        '200':
+          description: 成功；重放返回首次回执并复验当前权限
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                enum:
+                - no-store, private
+            Pragma:
+              schema:
+                type: string
+                enum:
+                - no-cache
+            X-Content-Type-Options:
+              schema:
+                type: string
+                enum:
+                - nosniff
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AfterSaleCaseDetailEnvelope'
+        '400':
+          $ref: '#/components/responses/AfterSaleHttpError'
+        '401':
+          $ref: '#/components/responses/AfterSaleHttpError'
+        '403':
+          $ref: '#/components/responses/AfterSaleHttpError'
+        '404':
+          $ref: '#/components/responses/AfterSaleHttpError'
+        '409':
+          $ref: '#/components/responses/AfterSaleHttpError'
+        '422':
+          $ref: '#/components/responses/AfterSaleHttpError'
+        '429':
+          $ref: '#/components/responses/AfterSaleHttpError'
+        '500':
+          $ref: '#/components/responses/AfterSaleHttpError'
+        '503':
+          $ref: '#/components/responses/AfterSaleHttpError'
+      x-route-party: USER
+      x-audience: MINIAPP
+  /c/aftersales/{afterSaleId}/evidence:
+    post:
+      tags:
+      - C-Aftersale
+      operationId: cAddAftersaleEvidence
+      summary: 按选定端别追加证据
+      x-implementation-status: IMPLEMENTED_DEFAULT_OFF
+      x-default-enabled: false
+      x-contract: 51-AfterSale-Http-Contract-v0.1.md
+      security:
+      - bearerAuth: []
+      parameters:
+      - name: afterSaleId
+        in: path
+        required: true
+        schema:
+          type: string
+          pattern: ^[1-9][0-9]{0,18}(?![\s\S])
+          maxLength: 19
+          x-maximum-decimal: '9223372036854775807'
+      - $ref: '#/components/parameters/RequestId'
+      responses:
+        '200':
+          description: 成功；重放返回首次回执并复验当前权限
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                enum:
+                - no-store, private
+            Pragma:
+              schema:
+                type: string
+                enum:
+                - no-cache
+            X-Content-Type-Options:
+              schema:
+                type: string
+                enum:
+                - nosniff
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AfterSaleReceiptEnvelope'
+        '400':
+          $ref: '#/components/responses/AfterSaleHttpError'
+        '401':
+          $ref: '#/components/responses/AfterSaleHttpError'
+        '403':
+          $ref: '#/components/responses/AfterSaleHttpError'
+        '404':
+          $ref: '#/components/responses/AfterSaleHttpError'
+        '409':
+          $ref: '#/components/responses/AfterSaleHttpError'
+        '422':
+          $ref: '#/components/responses/AfterSaleHttpError'
+        '429':
+          $ref: '#/components/responses/AfterSaleHttpError'
+        '500':
+          $ref: '#/components/responses/AfterSaleHttpError'
+        '503':
+          $ref: '#/components/responses/AfterSaleHttpError'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AfterSaleEvidenceRequest'
+      x-route-party: USER
+      x-audience: MINIAPP
+  /c/aftersales/{afterSaleId}/evidence-batches/{batchId}/assets/{assetId}/read-grants:
+    post:
+      tags:
+      - C-Aftersale
+      operationId: cIssueAftersaleEvidenceGrant
+      summary: 签发当前端别私有图片单次读取凭证
+      x-implementation-status: IMPLEMENTED_DEFAULT_OFF
+      x-default-enabled: false
+      x-contract: 51-AfterSale-Http-Contract-v0.1.md
+      security:
+      - bearerAuth: []
+      parameters:
+      - name: assetId
+        in: path
+        required: true
+        schema:
+          type: string
+          pattern: ^[1-9][0-9]{0,18}(?![\s\S])
+          maxLength: 19
+          x-maximum-decimal: '9223372036854775807'
+      - name: batchId
+        in: path
+        required: true
+        schema:
+          type: string
+          pattern: ^[1-9][0-9]{0,18}(?![\s\S])
+          maxLength: 19
+          x-maximum-decimal: '9223372036854775807'
+      - name: afterSaleId
+        in: path
+        required: true
+        schema:
+          type: string
+          pattern: ^[1-9][0-9]{0,18}(?![\s\S])
+          maxLength: 19
+          x-maximum-decimal: '9223372036854775807'
+      - $ref: '#/components/parameters/RequestId'
+      responses:
+        '200':
+          description: 成功；重放返回首次回执并复验当前权限
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                enum:
+                - no-store, private
+            Pragma:
+              schema:
+                type: string
+                enum:
+                - no-cache
+            X-Content-Type-Options:
+              schema:
+                type: string
+                enum:
+                - nosniff
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AfterSaleAssetGrantEnvelope'
+        '400':
+          $ref: '#/components/responses/AfterSaleHttpError'
+        '401':
+          $ref: '#/components/responses/AfterSaleHttpError'
+        '403':
+          $ref: '#/components/responses/AfterSaleHttpError'
+        '404':
+          $ref: '#/components/responses/AfterSaleHttpError'
+        '409':
+          $ref: '#/components/responses/AfterSaleHttpError'
+        '422':
+          $ref: '#/components/responses/AfterSaleHttpError'
+        '429':
+          $ref: '#/components/responses/AfterSaleHttpError'
+        '500':
+          $ref: '#/components/responses/AfterSaleHttpError'
+        '503':
+          $ref: '#/components/responses/AfterSaleHttpError'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AfterSaleAssetGrantRequest'
+      x-route-party: USER
+      x-audience: MINIAPP
+  /c/aftersale-evidence-read-grants/{token}:
+    get:
+      tags:
+      - C-Aftersale
+      operationId: cConsumeAftersaleEvidenceGrant
+      summary: 当前同端同会话单次消费图片凭证
+      x-implementation-status: IMPLEMENTED_DEFAULT_OFF
+      x-default-enabled: false
+      x-contract: 51-AfterSale-Http-Contract-v0.1.md
+      security:
+      - bearerAuth: []
+      parameters:
+      - name: token
+        in: path
+        required: true
+        schema:
+          type: string
+          pattern: ^[A-Za-z0-9_-]{43}(?![\s\S])
+      responses:
+        '400':
+          $ref: '#/components/responses/AfterSaleHttpError'
+        '401':
+          $ref: '#/components/responses/AfterSaleHttpError'
+        '403':
+          $ref: '#/components/responses/AfterSaleHttpError'
+        '404':
+          $ref: '#/components/responses/AfterSaleHttpError'
+        '409':
+          $ref: '#/components/responses/AfterSaleHttpError'
+        '422':
+          $ref: '#/components/responses/AfterSaleHttpError'
+        '429':
+          $ref: '#/components/responses/AfterSaleHttpError'
+        '500':
+          $ref: '#/components/responses/AfterSaleHttpError'
+        '503':
+          $ref: '#/components/responses/AfterSaleHttpError'
+        '200':
+          description: 水印后图片，最多20MiB；不是JSON或裸对象URL。
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                enum:
+                - no-store, private
+            Pragma:
+              schema:
+                type: string
+                enum:
+                - no-cache
+            X-Content-Type-Options:
+              schema:
+                type: string
+                enum:
+                - nosniff
+            Content-Disposition:
+              schema:
+                type: string
+                enum:
+                - attachment; filename="aftersale-evidence"
+          content:
+            image/jpeg:
+              schema:
+                type: string
+                format: binary
+            image/png:
+              schema:
+                type: string
+                format: binary
+        '410':
+          $ref: '#/components/responses/AfterSaleHttpError'
+      description: 无query和body；有效五分钟，绑定端别/会话/资源/对象版本，返回前复验当前授权。
+      x-route-party: USER
+      x-audience: MINIAPP
+  /merchant/aftersales:
+    get:
+      tags:
+      - Merchant-Aftersale
+      operationId: merchantListAftersales
+      summary: 本人或指定获权门店分页
+      x-implementation-status: IMPLEMENTED_DEFAULT_OFF
+      x-default-enabled: false
+      x-contract: 51-AfterSale-Http-Contract-v0.1.md
+      security:
+      - bearerAuth: []
+      parameters:
+      - name: page
+        in: query
+        required: false
+        schema:
+          type: integer
+          minimum: 1
+          maximum: 10000
+          default: 1
+      - name: pageSize
+        in: query
+        required: false
+        schema:
+          type: integer
+          minimum: 1
+          maximum: 50
+          default: 20
+      - name: status
+        in: query
+        required: false
+        schema:
+          type: string
+          enum:
+          - PENDING
+          - PROCESSING
+          - WAITING_SUPPLEMENT
+          - RESOLVED
+          - INVALIDATED
+          - WITHDRAWN
+          - CLOSED
+      - name: orderId
+        in: query
+        required: false
+        schema:
+          type: string
+          pattern: ^[1-9][0-9]{0,18}(?![\s\S])
+          maxLength: 19
+          x-maximum-decimal: '9223372036854775807'
+      - name: merchantId
+        in: query
+        required: true
+        schema:
+          type: string
+          pattern: ^[1-9][0-9]{0,18}(?![\s\S])
+          maxLength: 19
+          x-maximum-decimal: '9223372036854775807'
+      - name: storeId
+        in: query
+        required: true
+        schema:
+          type: string
+          pattern: ^[1-9][0-9]{0,18}(?![\s\S])
+          maxLength: 19
+          x-maximum-decimal: '9223372036854775807'
+      responses:
+        '200':
+          description: 成功；重放返回首次回执并复验当前权限
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                enum:
+                - no-store, private
+            Pragma:
+              schema:
+                type: string
+                enum:
+                - no-cache
+            X-Content-Type-Options:
+              schema:
+                type: string
+                enum:
+                - nosniff
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AfterSaleCasePageEnvelope'
+        '400':
+          $ref: '#/components/responses/AfterSaleHttpError'
+        '401':
+          $ref: '#/components/responses/AfterSaleHttpError'
+        '403':
+          $ref: '#/components/responses/AfterSaleHttpError'
+        '404':
+          $ref: '#/components/responses/AfterSaleHttpError'
+        '409':
+          $ref: '#/components/responses/AfterSaleHttpError'
+        '422':
+          $ref: '#/components/responses/AfterSaleHttpError'
+        '429':
+          $ref: '#/components/responses/AfterSaleHttpError'
+        '500':
+          $ref: '#/components/responses/AfterSaleHttpError'
+        '503':
+          $ref: '#/components/responses/AfterSaleHttpError'
+      description: 仅允许列明query且不重复；C禁止merchantId/storeId。M/O必须商家+店，当前MER范围授权先于COUNT/LIMIT；跨店聚合后续交付。
+      x-route-party: MERCHANT
+      x-audience: MINIAPP
+  /merchant/aftersales/{afterSaleId}:
+    get:
+      tags:
+      - Merchant-Aftersale
+      operationId: merchantGetAftersale
+      summary: 明确当前端别查看卷宗
+      x-implementation-status: IMPLEMENTED_DEFAULT_OFF
+      x-default-enabled: false
+      x-contract: 51-AfterSale-Http-Contract-v0.1.md
+      security:
+      - bearerAuth: []
+      parameters:
+      - name: afterSaleId
+        in: path
+        required: true
+        schema:
+          type: string
+          pattern: ^[1-9][0-9]{0,18}(?![\s\S])
+          maxLength: 19
+          x-maximum-decimal: '9223372036854775807'
+      responses:
+        '200':
+          description: 成功；重放返回首次回执并复验当前权限
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                enum:
+                - no-store, private
+            Pragma:
+              schema:
+                type: string
+                enum:
+                - no-cache
+            X-Content-Type-Options:
+              schema:
+                type: string
+                enum:
+                - nosniff
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AfterSaleCaseDetailEnvelope'
+        '400':
+          $ref: '#/components/responses/AfterSaleHttpError'
+        '401':
+          $ref: '#/components/responses/AfterSaleHttpError'
+        '403':
+          $ref: '#/components/responses/AfterSaleHttpError'
+        '404':
+          $ref: '#/components/responses/AfterSaleHttpError'
+        '409':
+          $ref: '#/components/responses/AfterSaleHttpError'
+        '422':
+          $ref: '#/components/responses/AfterSaleHttpError'
+        '429':
+          $ref: '#/components/responses/AfterSaleHttpError'
+        '500':
+          $ref: '#/components/responses/AfterSaleHttpError'
+        '503':
+          $ref: '#/components/responses/AfterSaleHttpError'
+      x-route-party: MERCHANT
+      x-audience: MINIAPP
+  /merchant/aftersales/{afterSaleId}/evidence:
+    post:
+      tags:
+      - Merchant-Aftersale
+      operationId: merchantAddAftersaleEvidence
+      summary: 按选定端别追加证据
+      x-implementation-status: IMPLEMENTED_DEFAULT_OFF
+      x-default-enabled: false
+      x-contract: 51-AfterSale-Http-Contract-v0.1.md
+      security:
+      - bearerAuth: []
+      parameters:
+      - name: afterSaleId
+        in: path
+        required: true
+        schema:
+          type: string
+          pattern: ^[1-9][0-9]{0,18}(?![\s\S])
+          maxLength: 19
+          x-maximum-decimal: '9223372036854775807'
+      - $ref: '#/components/parameters/RequestId'
+      responses:
+        '200':
+          description: 成功；重放返回首次回执并复验当前权限
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                enum:
+                - no-store, private
+            Pragma:
+              schema:
+                type: string
+                enum:
+                - no-cache
+            X-Content-Type-Options:
+              schema:
+                type: string
+                enum:
+                - nosniff
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AfterSaleReceiptEnvelope'
+        '400':
+          $ref: '#/components/responses/AfterSaleHttpError'
+        '401':
+          $ref: '#/components/responses/AfterSaleHttpError'
+        '403':
+          $ref: '#/components/responses/AfterSaleHttpError'
+        '404':
+          $ref: '#/components/responses/AfterSaleHttpError'
+        '409':
+          $ref: '#/components/responses/AfterSaleHttpError'
+        '422':
+          $ref: '#/components/responses/AfterSaleHttpError'
+        '429':
+          $ref: '#/components/responses/AfterSaleHttpError'
+        '500':
+          $ref: '#/components/responses/AfterSaleHttpError'
+        '503':
+          $ref: '#/components/responses/AfterSaleHttpError'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AfterSaleEvidenceRequest'
+      x-route-party: MERCHANT
+      x-audience: MINIAPP
+  /merchant/aftersales/{afterSaleId}/evidence-batches/{batchId}/assets/{assetId}/read-grants:
+    post:
+      tags:
+      - Merchant-Aftersale
+      operationId: merchantIssueAftersaleEvidenceGrant
+      summary: 签发当前端别私有图片单次读取凭证
+      x-implementation-status: IMPLEMENTED_DEFAULT_OFF
+      x-default-enabled: false
+      x-contract: 51-AfterSale-Http-Contract-v0.1.md
+      security:
+      - bearerAuth: []
+      parameters:
+      - name: assetId
+        in: path
+        required: true
+        schema:
+          type: string
+          pattern: ^[1-9][0-9]{0,18}(?![\s\S])
+          maxLength: 19
+          x-maximum-decimal: '9223372036854775807'
+      - name: batchId
+        in: path
+        required: true
+        schema:
+          type: string
+          pattern: ^[1-9][0-9]{0,18}(?![\s\S])
+          maxLength: 19
+          x-maximum-decimal: '9223372036854775807'
+      - name: afterSaleId
+        in: path
+        required: true
+        schema:
+          type: string
+          pattern: ^[1-9][0-9]{0,18}(?![\s\S])
+          maxLength: 19
+          x-maximum-decimal: '9223372036854775807'
+      - $ref: '#/components/parameters/RequestId'
+      responses:
+        '200':
+          description: 成功；重放返回首次回执并复验当前权限
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                enum:
+                - no-store, private
+            Pragma:
+              schema:
+                type: string
+                enum:
+                - no-cache
+            X-Content-Type-Options:
+              schema:
+                type: string
+                enum:
+                - nosniff
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AfterSaleAssetGrantEnvelope'
+        '400':
+          $ref: '#/components/responses/AfterSaleHttpError'
+        '401':
+          $ref: '#/components/responses/AfterSaleHttpError'
+        '403':
+          $ref: '#/components/responses/AfterSaleHttpError'
+        '404':
+          $ref: '#/components/responses/AfterSaleHttpError'
+        '409':
+          $ref: '#/components/responses/AfterSaleHttpError'
+        '422':
+          $ref: '#/components/responses/AfterSaleHttpError'
+        '429':
+          $ref: '#/components/responses/AfterSaleHttpError'
+        '500':
+          $ref: '#/components/responses/AfterSaleHttpError'
+        '503':
+          $ref: '#/components/responses/AfterSaleHttpError'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AfterSaleAssetGrantRequest'
+      x-route-party: MERCHANT
+      x-audience: MINIAPP
+  /merchant/aftersale-evidence-read-grants/{token}:
+    get:
+      tags:
+      - Merchant-Aftersale
+      operationId: merchantConsumeAftersaleEvidenceGrant
+      summary: 当前同端同会话单次消费图片凭证
+      x-implementation-status: IMPLEMENTED_DEFAULT_OFF
+      x-default-enabled: false
+      x-contract: 51-AfterSale-Http-Contract-v0.1.md
+      security:
+      - bearerAuth: []
+      parameters:
+      - name: token
+        in: path
+        required: true
+        schema:
+          type: string
+          pattern: ^[A-Za-z0-9_-]{43}(?![\s\S])
+      responses:
+        '400':
+          $ref: '#/components/responses/AfterSaleHttpError'
+        '401':
+          $ref: '#/components/responses/AfterSaleHttpError'
+        '403':
+          $ref: '#/components/responses/AfterSaleHttpError'
+        '404':
+          $ref: '#/components/responses/AfterSaleHttpError'
+        '409':
+          $ref: '#/components/responses/AfterSaleHttpError'
+        '422':
+          $ref: '#/components/responses/AfterSaleHttpError'
+        '429':
+          $ref: '#/components/responses/AfterSaleHttpError'
+        '500':
+          $ref: '#/components/responses/AfterSaleHttpError'
+        '503':
+          $ref: '#/components/responses/AfterSaleHttpError'
+        '200':
+          description: 水印后图片，最多20MiB；不是JSON或裸对象URL。
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                enum:
+                - no-store, private
+            Pragma:
+              schema:
+                type: string
+                enum:
+                - no-cache
+            X-Content-Type-Options:
+              schema:
+                type: string
+                enum:
+                - nosniff
+            Content-Disposition:
+              schema:
+                type: string
+                enum:
+                - attachment; filename="aftersale-evidence"
+          content:
+            image/jpeg:
+              schema:
+                type: string
+                format: binary
+            image/png:
+              schema:
+                type: string
+                format: binary
+        '410':
+          $ref: '#/components/responses/AfterSaleHttpError'
+      description: 无query和body；有效五分钟，绑定端别/会话/资源/对象版本，返回前复验当前授权。
+      x-route-party: MERCHANT
+      x-audience: MINIAPP
+  /admin/aftersales:
+    get:
+      tags:
+      - Admin-Aftersale
+      operationId: adminListAftersales
+      summary: 本人或指定获权门店分页
+      x-implementation-status: IMPLEMENTED_DEFAULT_OFF
+      x-default-enabled: false
+      x-contract: 51-AfterSale-Http-Contract-v0.1.md
+      security:
+      - bearerAuth: []
+      parameters:
+      - name: page
+        in: query
+        required: false
+        schema:
+          type: integer
+          minimum: 1
+          maximum: 10000
+          default: 1
+      - name: pageSize
+        in: query
+        required: false
+        schema:
+          type: integer
+          minimum: 1
+          maximum: 50
+          default: 20
+      - name: status
+        in: query
+        required: false
+        schema:
+          type: string
+          enum:
+          - PENDING
+          - PROCESSING
+          - WAITING_SUPPLEMENT
+          - RESOLVED
+          - INVALIDATED
+          - WITHDRAWN
+          - CLOSED
+      - name: orderId
+        in: query
+        required: false
+        schema:
+          type: string
+          pattern: ^[1-9][0-9]{0,18}(?![\s\S])
+          maxLength: 19
+          x-maximum-decimal: '9223372036854775807'
+      - name: merchantId
+        in: query
+        required: true
+        schema:
+          type: string
+          pattern: ^[1-9][0-9]{0,18}(?![\s\S])
+          maxLength: 19
+          x-maximum-decimal: '9223372036854775807'
+      - name: storeId
+        in: query
+        required: true
+        schema:
+          type: string
+          pattern: ^[1-9][0-9]{0,18}(?![\s\S])
+          maxLength: 19
+          x-maximum-decimal: '9223372036854775807'
+      responses:
+        '200':
+          description: 成功；重放返回首次回执并复验当前权限
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                enum:
+                - no-store, private
+            Pragma:
+              schema:
+                type: string
+                enum:
+                - no-cache
+            X-Content-Type-Options:
+              schema:
+                type: string
+                enum:
+                - nosniff
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AfterSaleCasePageEnvelope'
+        '400':
+          $ref: '#/components/responses/AfterSaleHttpError'
+        '401':
+          $ref: '#/components/responses/AfterSaleHttpError'
+        '403':
+          $ref: '#/components/responses/AfterSaleHttpError'
+        '404':
+          $ref: '#/components/responses/AfterSaleHttpError'
+        '409':
+          $ref: '#/components/responses/AfterSaleHttpError'
+        '422':
+          $ref: '#/components/responses/AfterSaleHttpError'
+        '429':
+          $ref: '#/components/responses/AfterSaleHttpError'
+        '500':
+          $ref: '#/components/responses/AfterSaleHttpError'
+        '503':
+          $ref: '#/components/responses/AfterSaleHttpError'
+      description: 仅允许列明query且不重复；C禁止merchantId/storeId。M/O必须商家+店，当前MER范围授权先于COUNT/LIMIT；跨店聚合后续交付。
+      x-route-party: OPS
+      x-audience: ADMIN_WEB
+      x-required-actions:
+      - aftersale.read
+  /admin/aftersales/{afterSaleId}:
+    get:
+      tags:
+      - Admin-Aftersale
+      operationId: adminGetAftersale
+      summary: 明确当前端别查看卷宗
+      x-implementation-status: IMPLEMENTED_DEFAULT_OFF
+      x-default-enabled: false
+      x-contract: 51-AfterSale-Http-Contract-v0.1.md
+      security:
+      - bearerAuth: []
+      parameters:
+      - name: afterSaleId
+        in: path
+        required: true
+        schema:
+          type: string
+          pattern: ^[1-9][0-9]{0,18}(?![\s\S])
+          maxLength: 19
+          x-maximum-decimal: '9223372036854775807'
+      responses:
+        '200':
+          description: 成功；重放返回首次回执并复验当前权限
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                enum:
+                - no-store, private
+            Pragma:
+              schema:
+                type: string
+                enum:
+                - no-cache
+            X-Content-Type-Options:
+              schema:
+                type: string
+                enum:
+                - nosniff
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AfterSaleCaseDetailEnvelope'
+        '400':
+          $ref: '#/components/responses/AfterSaleHttpError'
+        '401':
+          $ref: '#/components/responses/AfterSaleHttpError'
+        '403':
+          $ref: '#/components/responses/AfterSaleHttpError'
+        '404':
+          $ref: '#/components/responses/AfterSaleHttpError'
+        '409':
+          $ref: '#/components/responses/AfterSaleHttpError'
+        '422':
+          $ref: '#/components/responses/AfterSaleHttpError'
+        '429':
+          $ref: '#/components/responses/AfterSaleHttpError'
+        '500':
+          $ref: '#/components/responses/AfterSaleHttpError'
+        '503':
+          $ref: '#/components/responses/AfterSaleHttpError'
+      x-route-party: OPS
+      x-audience: ADMIN_WEB
+      x-required-actions:
+      - aftersale.read
+  /admin/aftersales/{afterSaleId}/evidence-batches/{batchId}/assets/{assetId}/read-grants:
+    post:
+      tags:
+      - Admin-Aftersale
+      operationId: adminIssueAftersaleEvidenceGrant
+      summary: 签发当前端别私有图片单次读取凭证
+      x-implementation-status: IMPLEMENTED_DEFAULT_OFF
+      x-default-enabled: false
+      x-contract: 51-AfterSale-Http-Contract-v0.1.md
+      security:
+      - bearerAuth: []
+      parameters:
+      - name: assetId
+        in: path
+        required: true
+        schema:
+          type: string
+          pattern: ^[1-9][0-9]{0,18}(?![\s\S])
+          maxLength: 19
+          x-maximum-decimal: '9223372036854775807'
+      - name: batchId
+        in: path
+        required: true
+        schema:
+          type: string
+          pattern: ^[1-9][0-9]{0,18}(?![\s\S])
+          maxLength: 19
+          x-maximum-decimal: '9223372036854775807'
+      - name: afterSaleId
+        in: path
+        required: true
+        schema:
+          type: string
+          pattern: ^[1-9][0-9]{0,18}(?![\s\S])
+          maxLength: 19
+          x-maximum-decimal: '9223372036854775807'
+      - $ref: '#/components/parameters/RequestId'
+      responses:
+        '200':
+          description: 成功；重放返回首次回执并复验当前权限
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                enum:
+                - no-store, private
+            Pragma:
+              schema:
+                type: string
+                enum:
+                - no-cache
+            X-Content-Type-Options:
+              schema:
+                type: string
+                enum:
+                - nosniff
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AfterSaleAssetGrantEnvelope'
+        '400':
+          $ref: '#/components/responses/AfterSaleHttpError'
+        '401':
+          $ref: '#/components/responses/AfterSaleHttpError'
+        '403':
+          $ref: '#/components/responses/AfterSaleHttpError'
+        '404':
+          $ref: '#/components/responses/AfterSaleHttpError'
+        '409':
+          $ref: '#/components/responses/AfterSaleHttpError'
+        '422':
+          $ref: '#/components/responses/AfterSaleHttpError'
+        '429':
+          $ref: '#/components/responses/AfterSaleHttpError'
+        '500':
+          $ref: '#/components/responses/AfterSaleHttpError'
+        '503':
+          $ref: '#/components/responses/AfterSaleHttpError'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AfterSaleAssetGrantRequest'
+      x-route-party: OPS
+      x-audience: ADMIN_WEB
+      x-required-actions:
+      - aftersale.read
+  /admin/aftersale-evidence-read-grants/{token}:
+    get:
+      tags:
+      - Admin-Aftersale
+      operationId: adminConsumeAftersaleEvidenceGrant
+      summary: 当前同端同会话单次消费图片凭证
+      x-implementation-status: IMPLEMENTED_DEFAULT_OFF
+      x-default-enabled: false
+      x-contract: 51-AfterSale-Http-Contract-v0.1.md
+      security:
+      - bearerAuth: []
+      parameters:
+      - name: token
+        in: path
+        required: true
+        schema:
+          type: string
+          pattern: ^[A-Za-z0-9_-]{43}(?![\s\S])
+      responses:
+        '400':
+          $ref: '#/components/responses/AfterSaleHttpError'
+        '401':
+          $ref: '#/components/responses/AfterSaleHttpError'
+        '403':
+          $ref: '#/components/responses/AfterSaleHttpError'
+        '404':
+          $ref: '#/components/responses/AfterSaleHttpError'
+        '409':
+          $ref: '#/components/responses/AfterSaleHttpError'
+        '422':
+          $ref: '#/components/responses/AfterSaleHttpError'
+        '429':
+          $ref: '#/components/responses/AfterSaleHttpError'
+        '500':
+          $ref: '#/components/responses/AfterSaleHttpError'
+        '503':
+          $ref: '#/components/responses/AfterSaleHttpError'
+        '200':
+          description: 水印后图片，最多20MiB；不是JSON或裸对象URL。
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                enum:
+                - no-store, private
+            Pragma:
+              schema:
+                type: string
+                enum:
+                - no-cache
+            X-Content-Type-Options:
+              schema:
+                type: string
+                enum:
+                - nosniff
+            Content-Disposition:
+              schema:
+                type: string
+                enum:
+                - attachment; filename="aftersale-evidence"
+          content:
+            image/jpeg:
+              schema:
+                type: string
+                format: binary
+            image/png:
+              schema:
+                type: string
+                format: binary
+        '410':
+          $ref: '#/components/responses/AfterSaleHttpError'
+      description: 无query和body；有效五分钟，绑定端别/会话/资源/对象版本，返回前复验当前授权。
+      x-route-party: OPS
+      x-audience: ADMIN_WEB
+      x-required-actions:
+      - aftersale.read
+  /c/aftersales/{afterSaleId}/withdraw:
+    post:
+      tags:
+      - C-Aftersale
+      operationId: withdrawAftersale
+      summary: 本人撤回活动工单
+      x-implementation-status: IMPLEMENTED_DEFAULT_OFF
+      x-default-enabled: false
+      x-contract: 51-AfterSale-Http-Contract-v0.1.md
+      security:
+      - bearerAuth: []
+      parameters:
+      - name: afterSaleId
+        in: path
+        required: true
+        schema:
+          type: string
+          pattern: ^[1-9][0-9]{0,18}(?![\s\S])
+          maxLength: 19
+          x-maximum-decimal: '9223372036854775807'
+      - $ref: '#/components/parameters/RequestId'
+      responses:
+        '200':
+          description: 成功；重放返回首次回执并复验当前权限
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                enum:
+                - no-store, private
+            Pragma:
+              schema:
+                type: string
+                enum:
+                - no-cache
+            X-Content-Type-Options:
+              schema:
+                type: string
+                enum:
+                - nosniff
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AfterSaleReceiptEnvelope'
+        '400':
+          $ref: '#/components/responses/AfterSaleHttpError'
+        '401':
+          $ref: '#/components/responses/AfterSaleHttpError'
+        '403':
+          $ref: '#/components/responses/AfterSaleHttpError'
+        '404':
+          $ref: '#/components/responses/AfterSaleHttpError'
+        '409':
+          $ref: '#/components/responses/AfterSaleHttpError'
+        '422':
+          $ref: '#/components/responses/AfterSaleHttpError'
+        '429':
+          $ref: '#/components/responses/AfterSaleHttpError'
+        '500':
+          $ref: '#/components/responses/AfterSaleHttpError'
+        '503':
+          $ref: '#/components/responses/AfterSaleHttpError'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AfterSaleWithdrawRequest'
+      x-route-party: USER
+      x-audience: MINIAPP
+  /merchant/aftersales/{afterSaleId}/opinion:
+    post:
+      tags:
+      - Merchant-Aftersale
+      operationId: submitAftersaleOpinion
+      summary: 当前OWNER提交非终裁意见
+      x-implementation-status: IMPLEMENTED_DEFAULT_OFF
+      x-default-enabled: false
+      x-contract: 51-AfterSale-Http-Contract-v0.1.md
+      security:
+      - bearerAuth: []
+      parameters:
+      - name: afterSaleId
+        in: path
+        required: true
+        schema:
+          type: string
+          pattern: ^[1-9][0-9]{0,18}(?![\s\S])
+          maxLength: 19
+          x-maximum-decimal: '9223372036854775807'
+      - $ref: '#/components/parameters/RequestId'
+      responses:
+        '200':
+          description: 成功；重放返回首次回执并复验当前权限
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                enum:
+                - no-store, private
+            Pragma:
+              schema:
+                type: string
+                enum:
+                - no-cache
+            X-Content-Type-Options:
+              schema:
+                type: string
+                enum:
+                - nosniff
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AfterSaleReceiptEnvelope'
+        '400':
+          $ref: '#/components/responses/AfterSaleHttpError'
+        '401':
+          $ref: '#/components/responses/AfterSaleHttpError'
+        '403':
+          $ref: '#/components/responses/AfterSaleHttpError'
+        '404':
+          $ref: '#/components/responses/AfterSaleHttpError'
+        '409':
+          $ref: '#/components/responses/AfterSaleHttpError'
+        '422':
+          $ref: '#/components/responses/AfterSaleHttpError'
+        '429':
+          $ref: '#/components/responses/AfterSaleHttpError'
+        '500':
+          $ref: '#/components/responses/AfterSaleHttpError'
+        '503':
+          $ref: '#/components/responses/AfterSaleHttpError'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AfterSaleOpinionRequest'
+      x-route-party: MERCHANT
+      x-audience: MINIAPP
+  /admin/aftersales/{afterSaleId}/accept:
+    post:
+      tags:
+      - Admin-Aftersale
+      operationId: acceptAftersale
+      summary: 受理新问题
+      x-implementation-status: IMPLEMENTED_DEFAULT_OFF
+      x-default-enabled: false
+      x-contract: 51-AfterSale-Http-Contract-v0.1.md
+      security:
+      - bearerAuth: []
+      parameters:
+      - name: afterSaleId
+        in: path
+        required: true
+        schema:
+          type: string
+          pattern: ^[1-9][0-9]{0,18}(?![\s\S])
+          maxLength: 19
+          x-maximum-decimal: '9223372036854775807'
+      - $ref: '#/components/parameters/RequestId'
+      responses:
+        '200':
+          description: 成功；重放返回首次回执并复验当前权限
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                enum:
+                - no-store, private
+            Pragma:
+              schema:
+                type: string
+                enum:
+                - no-cache
+            X-Content-Type-Options:
+              schema:
+                type: string
+                enum:
+                - nosniff
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AfterSaleReceiptEnvelope'
+        '400':
+          $ref: '#/components/responses/AfterSaleHttpError'
+        '401':
+          $ref: '#/components/responses/AfterSaleHttpError'
+        '403':
+          $ref: '#/components/responses/AfterSaleHttpError'
+        '404':
+          $ref: '#/components/responses/AfterSaleHttpError'
+        '409':
+          $ref: '#/components/responses/AfterSaleHttpError'
+        '422':
+          $ref: '#/components/responses/AfterSaleHttpError'
+        '429':
+          $ref: '#/components/responses/AfterSaleHttpError'
+        '500':
+          $ref: '#/components/responses/AfterSaleHttpError'
+        '503':
+          $ref: '#/components/responses/AfterSaleHttpError'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AfterSaleAcceptRequest'
+      x-route-party: OPS
+      x-audience: ADMIN_WEB
+      x-required-actions:
+      - aftersale.handle
+  /admin/aftersales/{afterSaleId}/supplement-requests:
+    post:
+      tags:
+      - Admin-Aftersale
+      operationId: requestAftersaleSupplement
+      summary: 要求指定参与方补证
+      x-implementation-status: IMPLEMENTED_DEFAULT_OFF
+      x-default-enabled: false
+      x-contract: 51-AfterSale-Http-Contract-v0.1.md
+      security:
+      - bearerAuth: []
+      parameters:
+      - name: afterSaleId
+        in: path
+        required: true
+        schema:
+          type: string
+          pattern: ^[1-9][0-9]{0,18}(?![\s\S])
+          maxLength: 19
+          x-maximum-decimal: '9223372036854775807'
+      - $ref: '#/components/parameters/RequestId'
+      responses:
+        '200':
+          description: 成功；重放返回首次回执并复验当前权限
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                enum:
+                - no-store, private
+            Pragma:
+              schema:
+                type: string
+                enum:
+                - no-cache
+            X-Content-Type-Options:
+              schema:
+                type: string
+                enum:
+                - nosniff
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AfterSaleReceiptEnvelope'
+        '400':
+          $ref: '#/components/responses/AfterSaleHttpError'
+        '401':
+          $ref: '#/components/responses/AfterSaleHttpError'
+        '403':
+          $ref: '#/components/responses/AfterSaleHttpError'
+        '404':
+          $ref: '#/components/responses/AfterSaleHttpError'
+        '409':
+          $ref: '#/components/responses/AfterSaleHttpError'
+        '422':
+          $ref: '#/components/responses/AfterSaleHttpError'
+        '429':
+          $ref: '#/components/responses/AfterSaleHttpError'
+        '500':
+          $ref: '#/components/responses/AfterSaleHttpError'
+        '503':
+          $ref: '#/components/responses/AfterSaleHttpError'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AfterSaleSupplementRequest'
+      x-route-party: OPS
+      x-audience: ADMIN_WEB
+      x-required-actions:
+      - aftersale.handle
+  /admin/aftersales/{afterSaleId}/close-duplicate:
+    post:
+      tags:
+      - Admin-Aftersale
+      operationId: closeDuplicateAftersale
+      summary: 引用真实旧终局关闭重复问题
+      x-implementation-status: IMPLEMENTED_DEFAULT_OFF
+      x-default-enabled: false
+      x-contract: 51-AfterSale-Http-Contract-v0.1.md
+      security:
+      - bearerAuth: []
+      parameters:
+      - name: afterSaleId
+        in: path
+        required: true
+        schema:
+          type: string
+          pattern: ^[1-9][0-9]{0,18}(?![\s\S])
+          maxLength: 19
+          x-maximum-decimal: '9223372036854775807'
+      - $ref: '#/components/parameters/RequestId'
+      responses:
+        '200':
+          description: 成功；重放返回首次回执并复验当前权限
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                enum:
+                - no-store, private
+            Pragma:
+              schema:
+                type: string
+                enum:
+                - no-cache
+            X-Content-Type-Options:
+              schema:
+                type: string
+                enum:
+                - nosniff
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AfterSaleReceiptEnvelope'
+        '400':
+          $ref: '#/components/responses/AfterSaleHttpError'
+        '401':
+          $ref: '#/components/responses/AfterSaleHttpError'
+        '403':
+          $ref: '#/components/responses/AfterSaleHttpError'
+        '404':
+          $ref: '#/components/responses/AfterSaleHttpError'
+        '409':
+          $ref: '#/components/responses/AfterSaleHttpError'
+        '422':
+          $ref: '#/components/responses/AfterSaleHttpError'
+        '429':
+          $ref: '#/components/responses/AfterSaleHttpError'
+        '500':
+          $ref: '#/components/responses/AfterSaleHttpError'
+        '503':
+          $ref: '#/components/responses/AfterSaleHttpError'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AfterSaleCloseDuplicateRequest'
+      x-route-party: OPS
+      x-audience: ADMIN_WEB
+      x-required-actions:
+      - aftersale.handle
+  /c/aftersale-evidence-assets:
+    post:
+      tags:
+      - C-Aftersale
+      operationId: uploadAftersaleEvidenceAsset
+      summary: C/M共用本人售后图片预上传
+      x-implementation-status: IMPLEMENTED_DEFAULT_OFF
+      x-default-enabled: false
+      x-contract: 51-AfterSale-Http-Contract-v0.1.md
+      security:
+      - bearerAuth: []
+      parameters:
+      - $ref: '#/components/parameters/RequestId'
+      responses:
+        '200':
+          description: 成功；重放返回首次回执并复验当前权限
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                enum:
+                - no-store, private
+            Pragma:
+              schema:
+                type: string
+                enum:
+                - no-cache
+            X-Content-Type-Options:
+              schema:
+                type: string
+                enum:
+                - nosniff
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AfterSaleAssetUploadEnvelope'
+        '201':
+          description: 真实首次创建，非重放
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                enum:
+                - no-store, private
+            Pragma:
+              schema:
+                type: string
+                enum:
+                - no-cache
+            X-Content-Type-Options:
+              schema:
+                type: string
+                enum:
+                - nosniff
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AfterSaleAssetUploadEnvelope'
+        '400':
+          $ref: '#/components/responses/AfterSaleHttpError'
+        '401':
+          $ref: '#/components/responses/AfterSaleHttpError'
+        '403':
+          $ref: '#/components/responses/AfterSaleHttpError'
+        '404':
+          $ref: '#/components/responses/AfterSaleHttpError'
+        '409':
+          $ref: '#/components/responses/AfterSaleHttpError'
+        '422':
+          $ref: '#/components/responses/AfterSaleHttpError'
+        '429':
+          $ref: '#/components/responses/AfterSaleHttpError'
+        '500':
+          $ref: '#/components/responses/AfterSaleHttpError'
+        '503':
+          $ref: '#/components/responses/AfterSaleHttpError'
+        '413':
+          $ref: '#/components/responses/AfterSaleHttpError'
+        '415':
+          $ref: '#/components/responses/AfterSaleHttpError'
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              additionalProperties: false
+              required:
+              - file
+              properties:
+                file:
+                  type: string
+                  format: binary
+                  description: 单一非空JPEG/PNG，最多10MiB，签名与媒体类型一致；固定AFTERSALE_EVIDENCE用途。
+      x-route-party: USER
+      x-audience: MINIAPP
 components:
   securitySchemes:
     bearerAuth:
@@ -8261,6 +10011,28 @@ components:
         application/json:
           schema:
             $ref: '#/components/schemas/ErrorEnvelope'
+    AfterSaleHttpError:
+      description: Contract51安全错误；状态与code映射见Error12，data=null。
+      headers:
+        Cache-Control:
+          schema:
+            type: string
+            enum:
+            - no-store, private
+        Pragma:
+          schema:
+            type: string
+            enum:
+            - no-cache
+        X-Content-Type-Options:
+          schema:
+            type: string
+            enum:
+            - nosniff
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/AfterSaleErrorEnvelope'
   schemas:
     VerificationCredentialIssue:
       type: object
@@ -9113,22 +10885,7 @@ components:
         displayStatus:
           $ref: '#/components/schemas/DisplayOrderStatus'
     CreateAftersaleRequest:
-      type: object
-      required:
-      - type
-      - description
-      properties:
-        type:
-          type: string
-        description:
-          type: string
-          maxLength: 2000
-        requestedAmount:
-          $ref: '#/components/schemas/DecimalAmount'
-        evidenceFileIds:
-          type: array
-          items:
-            $ref: '#/components/schemas/PublicId'
+      $ref: '#/components/schemas/AfterSaleCreateRequest'
     ReviewEligibilityData:
       type: object
       required:
@@ -9256,28 +11013,7 @@ components:
           minLength: 1
           maxLength: 500
     AftersaleDecisionRequest:
-      type: object
-      required:
-      - decisionType
-      - reason
-      properties:
-        decisionType:
-          type: string
-          enum:
-          - FULL_REFUND
-          - PARTIAL_REFUND
-          - REJECT
-          - RESERVICE
-          - OTHER
-        refundAmount:
-          type: string
-          pattern: '^(?:0|[1-9][0-9]{0,15})(?:\.[0-9]{1,2})?(?![\s\S])'
-          description: 可空非负业务金额输入；REJECT等原非退款动作允许null，退款金额资格仍按HTTP契约。
-          nullable: true
-        reason:
-          type: string
-          minLength: 1
-          maxLength: 2000
+      $ref: '#/components/schemas/AfterSaleDecisionRequest'
     OrderDetailData:
       type: object
       properties:
@@ -13751,6 +15487,869 @@ components:
           minLength: 1
         data:
           $ref: '#/components/schemas/AppCities'
+        traceId:
+          type: string
+          minLength: 1
+    AfterSaleCreateRequest:
+      type: object
+      additionalProperties: false
+      required:
+      - typeCode
+      - demandCode
+      - description
+      - evidenceAssetIds
+      properties:
+        typeCode:
+          type: string
+          minLength: 1
+          maxLength: 64
+          pattern: \S
+        demandCode:
+          type: string
+          minLength: 1
+          maxLength: 64
+          pattern: \S
+        description:
+          type: string
+          minLength: 10
+          maxLength: 500
+          pattern: \S
+        requestedAmount:
+          type: string
+          pattern: ^(0|[1-9][0-9]{0,15})\.[0-9]{2}(?![\s\S])
+          nullable: true
+        evidenceAssetIds:
+          type: array
+          items:
+            type: string
+            pattern: ^[1-9][0-9]{0,18}(?![\s\S])
+            maxLength: 19
+            x-maximum-decimal: '9223372036854775807'
+          maxItems: 6
+          uniqueItems: true
+        newProblemStatement:
+          type: string
+          minLength: 10
+          maxLength: 500
+          pattern: \S
+          nullable: true
+    AfterSaleEvidenceRequest:
+      type: object
+      additionalProperties: false
+      required:
+      - expectedVersion
+      - evidenceAssetIds
+      properties:
+        expectedVersion:
+          type: string
+          pattern: ^(0|[1-9][0-9]{0,18})(?![\s\S])
+          maxLength: 19
+          x-maximum-decimal: '9223372036854775807'
+        supplementRequestId:
+          type: string
+          pattern: ^[1-9][0-9]{0,18}(?![\s\S])
+          maxLength: 19
+          x-maximum-decimal: '9223372036854775807'
+          nullable: true
+        text:
+          type: string
+          minLength: 10
+          maxLength: 500
+          pattern: \S
+          nullable: true
+        evidenceAssetIds:
+          type: array
+          items:
+            type: string
+            pattern: ^[1-9][0-9]{0,18}(?![\s\S])
+            maxLength: 19
+            x-maximum-decimal: '9223372036854775807'
+          maxItems: 6
+          uniqueItems: true
+      description: 文字或非空图片数组至少一项；WAITING_SUPPLEMENT需当前轮ID，仅指定方满足。
+    AfterSaleOpinionRequest:
+      type: object
+      additionalProperties: false
+      required:
+      - expectedVersion
+      - opinionCode
+      - explanation
+      - evidenceAssetIds
+      properties:
+        expectedVersion:
+          type: string
+          pattern: ^(0|[1-9][0-9]{0,18})(?![\s\S])
+          maxLength: 19
+          x-maximum-decimal: '9223372036854775807'
+        supplementRequestId:
+          type: string
+          pattern: ^[1-9][0-9]{0,18}(?![\s\S])
+          maxLength: 19
+          x-maximum-decimal: '9223372036854775807'
+          nullable: true
+        opinionCode:
+          type: string
+          enum:
+          - AGREE
+          - PARTLY_AGREE
+          - DISAGREE
+          - NEED_USER_SUPPLEMENT
+        explanation:
+          type: string
+          minLength: 10
+          maxLength: 500
+          pattern: \S
+        evidenceAssetIds:
+          type: array
+          items:
+            type: string
+            pattern: ^[1-9][0-9]{0,18}(?![\s\S])
+            maxLength: 19
+            x-maximum-decimal: '9223372036854775807'
+          maxItems: 6
+          uniqueItems: true
+    AfterSaleWithdrawRequest:
+      type: object
+      additionalProperties: false
+      required:
+      - expectedVersion
+      properties:
+        expectedVersion:
+          type: string
+          pattern: ^(0|[1-9][0-9]{0,18})(?![\s\S])
+          maxLength: 19
+          x-maximum-decimal: '9223372036854775807'
+    AfterSaleAcceptRequest:
+      type: object
+      additionalProperties: false
+      required:
+      - expectedVersion
+      properties:
+        expectedVersion:
+          type: string
+          pattern: ^(0|[1-9][0-9]{0,18})(?![\s\S])
+          maxLength: 19
+          x-maximum-decimal: '9223372036854775807'
+        newProblemAssessment:
+          type: string
+          minLength: 1
+          maxLength: 500
+          pattern: \S
+          nullable: true
+        expectedFinalSetVersion:
+          type: string
+          pattern: ^[0-9a-f]{64}(?![\s\S])
+          nullable: true
+      description: 已有真实非退款终局时assessment与当前finalSetVersion必须提供。
+    AfterSaleSupplementRequest:
+      type: object
+      additionalProperties: false
+      required:
+      - expectedVersion
+      - targetParty
+      - reason
+      - deadline
+      properties:
+        expectedVersion:
+          type: string
+          pattern: ^(0|[1-9][0-9]{0,18})(?![\s\S])
+          maxLength: 19
+          x-maximum-decimal: '9223372036854775807'
+        targetParty:
+          type: string
+          enum:
+          - USER
+          - MERCHANT
+        reason:
+          type: string
+          minLength: 1
+          maxLength: 500
+          pattern: \S
+        deadline:
+          type: string
+          format: date-time
+          pattern: ^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}\.[0-9]{3}Z(?![\s\S])
+          x-precision: milliseconds
+    AfterSaleCloseDuplicateRequest:
+      type: object
+      additionalProperties: false
+      required:
+      - expectedVersion
+      - priorFinalCaseId
+      - reason
+      properties:
+        expectedVersion:
+          type: string
+          pattern: ^(0|[1-9][0-9]{0,18})(?![\s\S])
+          maxLength: 19
+          x-maximum-decimal: '9223372036854775807'
+        priorFinalCaseId:
+          type: string
+          pattern: ^[1-9][0-9]{0,18}(?![\s\S])
+          maxLength: 19
+          x-maximum-decimal: '9223372036854775807'
+        reason:
+          type: string
+          minLength: 1
+          maxLength: 500
+          pattern: \S
+    AfterSaleDecisionRequest:
+      type: object
+      additionalProperties: false
+      required:
+      - expectedVersion
+      - decisionType
+      - reason
+      properties:
+        expectedVersion:
+          type: string
+          pattern: ^(0|[1-9][0-9]{0,18})(?![\s\S])
+          maxLength: 19
+          x-maximum-decimal: '9223372036854775807'
+        decisionType:
+          type: string
+          enum:
+          - REJECT
+          - RESERVICE
+          - OTHER
+          - FULL_REFUND
+          - PARTIAL_REFUND
+        refundAmount:
+          type: string
+          pattern: ^(0|[1-9][0-9]{0,15})\.[0-9]{2}(?![\s\S])
+          nullable: true
+        reason:
+          type: string
+          minLength: 1
+          maxLength: 500
+          pattern: \S
+      description: REJECT/RESERVICE/OTHER要求refundAmount=null。FULL/PARTIAL公开关闭：合法正金额且当前会话、decide动作及资源获权后固定503。
+    AfterSaleReceipt:
+      type: object
+      additionalProperties: false
+      required:
+      - commandId
+      - orderId
+      - afterSaleId
+      - status
+      - version
+      - occurredAt
+      - evidenceBatchId
+      - supplementRequestId
+      - decisionId
+      - refundOrderId
+      properties:
+        commandId:
+          type: string
+          pattern: ^[1-9][0-9]{0,18}(?![\s\S])
+          maxLength: 19
+          x-maximum-decimal: '9223372036854775807'
+        orderId:
+          type: string
+          pattern: ^[1-9][0-9]{0,18}(?![\s\S])
+          maxLength: 19
+          x-maximum-decimal: '9223372036854775807'
+        afterSaleId:
+          type: string
+          pattern: ^[1-9][0-9]{0,18}(?![\s\S])
+          maxLength: 19
+          x-maximum-decimal: '9223372036854775807'
+        status:
+          type: string
+          enum:
+          - PENDING
+          - PROCESSING
+          - WAITING_SUPPLEMENT
+          - RESOLVED
+          - INVALIDATED
+          - WITHDRAWN
+          - CLOSED
+        version:
+          type: string
+          pattern: ^(0|[1-9][0-9]{0,18})(?![\s\S])
+          maxLength: 19
+          x-maximum-decimal: '9223372036854775807'
+        occurredAt:
+          type: string
+          format: date-time
+          pattern: ^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}\.[0-9]{3}Z(?![\s\S])
+          x-precision: milliseconds
+        evidenceBatchId:
+          type: string
+          pattern: ^[1-9][0-9]{0,18}(?![\s\S])
+          maxLength: 19
+          x-maximum-decimal: '9223372036854775807'
+          nullable: true
+        supplementRequestId:
+          type: string
+          pattern: ^[1-9][0-9]{0,18}(?![\s\S])
+          maxLength: 19
+          x-maximum-decimal: '9223372036854775807'
+          nullable: true
+        decisionId:
+          type: string
+          pattern: ^[1-9][0-9]{0,18}(?![\s\S])
+          maxLength: 19
+          x-maximum-decimal: '9223372036854775807'
+          nullable: true
+        refundOrderId:
+          type: string
+          pattern: ^[1-9][0-9]{0,18}(?![\s\S])
+          maxLength: 19
+          x-maximum-decimal: '9223372036854775807'
+          nullable: true
+    AfterSaleEligibility:
+      type: object
+      additionalProperties: false
+      required:
+      - eligible
+      - sourceStage
+      - deadline
+      - blockingReason
+      - activeAfterSaleId
+      properties:
+        eligible:
+          type: boolean
+        sourceStage:
+          type: string
+          enum:
+          - VERIFIED
+          - UNVERIFIED_POST_START
+          nullable: true
+        deadline:
+          type: string
+          format: date-time
+          pattern: ^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}\.[0-9]{3}Z(?![\s\S])
+          x-precision: milliseconds
+          nullable: true
+        blockingReason:
+          type: string
+          minLength: 1
+          maxLength: 100
+          pattern: \S
+          nullable: true
+        activeAfterSaleId:
+          type: string
+          pattern: ^[1-9][0-9]{0,18}(?![\s\S])
+          maxLength: 19
+          x-maximum-decimal: '9223372036854775807'
+          nullable: true
+      description: 仅订单业务资格，不授予FROZEN账号写权限；七天闭区间沿Contract50。
+    AfterSaleCaseSummary:
+      type: object
+      additionalProperties: false
+      required:
+      - afterSaleId
+      - orderId
+      - merchantId
+      - storeId
+      - status
+      - version
+      - sourceStage
+      - typeCode
+      - demandCode
+      - requestedAmount
+      - createdAt
+      - deadline
+      properties:
+        afterSaleId:
+          type: string
+          pattern: ^[1-9][0-9]{0,18}(?![\s\S])
+          maxLength: 19
+          x-maximum-decimal: '9223372036854775807'
+        orderId:
+          type: string
+          pattern: ^[1-9][0-9]{0,18}(?![\s\S])
+          maxLength: 19
+          x-maximum-decimal: '9223372036854775807'
+        merchantId:
+          type: string
+          pattern: ^[1-9][0-9]{0,18}(?![\s\S])
+          maxLength: 19
+          x-maximum-decimal: '9223372036854775807'
+        storeId:
+          type: string
+          pattern: ^[1-9][0-9]{0,18}(?![\s\S])
+          maxLength: 19
+          x-maximum-decimal: '9223372036854775807'
+        status:
+          type: string
+          enum:
+          - PENDING
+          - PROCESSING
+          - WAITING_SUPPLEMENT
+          - RESOLVED
+          - INVALIDATED
+          - WITHDRAWN
+          - CLOSED
+        version:
+          type: string
+          pattern: ^(0|[1-9][0-9]{0,18})(?![\s\S])
+          maxLength: 19
+          x-maximum-decimal: '9223372036854775807'
+        sourceStage:
+          type: string
+          enum:
+          - VERIFIED
+          - UNVERIFIED_POST_START
+        typeCode:
+          type: string
+          minLength: 1
+          maxLength: 64
+          pattern: \S
+        demandCode:
+          type: string
+          minLength: 1
+          maxLength: 64
+          pattern: \S
+        requestedAmount:
+          type: string
+          pattern: ^(0|[1-9][0-9]{0,15})\.[0-9]{2}(?![\s\S])
+          nullable: true
+        createdAt:
+          type: string
+          format: date-time
+          pattern: ^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}\.[0-9]{3}Z(?![\s\S])
+          x-precision: milliseconds
+        deadline:
+          type: string
+          format: date-time
+          pattern: ^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}\.[0-9]{3}Z(?![\s\S])
+          x-precision: milliseconds
+    AfterSaleCasePage:
+      type: object
+      additionalProperties: false
+      required:
+      - page
+      - pageSize
+      - total
+      - items
+      properties:
+        page:
+          type: integer
+          minimum: 1
+          maximum: 10000
+        pageSize:
+          type: integer
+          minimum: 1
+          maximum: 50
+        total:
+          type: integer
+          format: int64
+          minimum: 0
+        items:
+          type: array
+          maxItems: 50
+          items:
+            $ref: '#/components/schemas/AfterSaleCaseSummary'
+    AfterSaleEvidenceBatch:
+      type: object
+      additionalProperties: false
+      required:
+      - batchId
+      - submitterType
+      - text
+      - opinionCode
+      - submittedAt
+      - assetIds
+      properties:
+        batchId:
+          type: string
+          pattern: ^[1-9][0-9]{0,18}(?![\s\S])
+          maxLength: 19
+          x-maximum-decimal: '9223372036854775807'
+        submitterType:
+          type: string
+          enum:
+          - USER
+          - MERCHANT
+        text:
+          type: string
+          minLength: 10
+          maxLength: 500
+          pattern: \S
+          nullable: true
+        opinionCode:
+          type: string
+          enum:
+          - AGREE
+          - PARTLY_AGREE
+          - DISAGREE
+          - NEED_USER_SUPPLEMENT
+          nullable: true
+        submittedAt:
+          type: string
+          format: date-time
+          pattern: ^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}\.[0-9]{3}Z(?![\s\S])
+          x-precision: milliseconds
+        assetIds:
+          type: array
+          items:
+            type: string
+            pattern: ^[1-9][0-9]{0,18}(?![\s\S])
+            maxLength: 19
+            x-maximum-decimal: '9223372036854775807'
+          maxItems: 6
+          uniqueItems: true
+    AfterSaleCaseDetail:
+      type: object
+      additionalProperties: false
+      required:
+      - afterSaleId
+      - orderId
+      - status
+      - version
+      - sourceStage
+      - typeCode
+      - demandCode
+      - requestedAmount
+      - createdAt
+      - deadline
+      - description
+      - supplementRequestId
+      - supplementTarget
+      - supplementDeadline
+      - supplementReason
+      - finalSetVersion
+      - priorFinalCaseIds
+      - newProblemStatement
+      - decisionType
+      - refundAmount
+      - decisionReason
+      - evidence
+      properties:
+        afterSaleId:
+          type: string
+          pattern: ^[1-9][0-9]{0,18}(?![\s\S])
+          maxLength: 19
+          x-maximum-decimal: '9223372036854775807'
+        orderId:
+          type: string
+          pattern: ^[1-9][0-9]{0,18}(?![\s\S])
+          maxLength: 19
+          x-maximum-decimal: '9223372036854775807'
+        status:
+          type: string
+          enum:
+          - PENDING
+          - PROCESSING
+          - WAITING_SUPPLEMENT
+          - RESOLVED
+          - INVALIDATED
+          - WITHDRAWN
+          - CLOSED
+        version:
+          type: string
+          pattern: ^(0|[1-9][0-9]{0,18})(?![\s\S])
+          maxLength: 19
+          x-maximum-decimal: '9223372036854775807'
+        sourceStage:
+          type: string
+          enum:
+          - VERIFIED
+          - UNVERIFIED_POST_START
+        typeCode:
+          type: string
+          minLength: 1
+          maxLength: 64
+          pattern: \S
+        demandCode:
+          type: string
+          minLength: 1
+          maxLength: 64
+          pattern: \S
+        requestedAmount:
+          type: string
+          pattern: ^(0|[1-9][0-9]{0,15})\.[0-9]{2}(?![\s\S])
+          nullable: true
+        createdAt:
+          type: string
+          format: date-time
+          pattern: ^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}\.[0-9]{3}Z(?![\s\S])
+          x-precision: milliseconds
+        deadline:
+          type: string
+          format: date-time
+          pattern: ^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}\.[0-9]{3}Z(?![\s\S])
+          x-precision: milliseconds
+        description:
+          type: string
+          minLength: 10
+          maxLength: 500
+          pattern: \S
+        supplementRequestId:
+          type: string
+          pattern: ^[1-9][0-9]{0,18}(?![\s\S])
+          maxLength: 19
+          x-maximum-decimal: '9223372036854775807'
+          nullable: true
+        supplementTarget:
+          type: string
+          enum:
+          - USER
+          - MERCHANT
+          nullable: true
+        supplementDeadline:
+          type: string
+          format: date-time
+          pattern: ^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}\.[0-9]{3}Z(?![\s\S])
+          x-precision: milliseconds
+          nullable: true
+        supplementReason:
+          type: string
+          minLength: 1
+          maxLength: 500
+          pattern: \S
+          nullable: true
+        finalSetVersion:
+          type: string
+          pattern: ^[0-9a-f]{64}(?![\s\S])
+        priorFinalCaseIds:
+          type: array
+          items:
+            type: string
+            pattern: ^[1-9][0-9]{0,18}(?![\s\S])
+            maxLength: 19
+            x-maximum-decimal: '9223372036854775807'
+        newProblemStatement:
+          type: string
+          minLength: 10
+          maxLength: 500
+          pattern: \S
+          nullable: true
+        decisionType:
+          type: string
+          enum:
+          - REJECT
+          - RESERVICE
+          - OTHER
+          - FULL_REFUND
+          - PARTIAL_REFUND
+          nullable: true
+        refundAmount:
+          type: string
+          pattern: ^(0|[1-9][0-9]{0,15})\.[0-9]{2}(?![\s\S])
+          nullable: true
+        decisionReason:
+          type: string
+          minLength: 1
+          maxLength: 500
+          pattern: \S
+          nullable: true
+        evidence:
+          type: array
+          items:
+            $ref: '#/components/schemas/AfterSaleEvidenceBatch'
+    AfterSaleAssetUpload:
+      type: object
+      additionalProperties: false
+      required:
+      - assetId
+      - status
+      - objectSha256
+      - mediaType
+      - bytes
+      properties:
+        assetId:
+          type: string
+          pattern: ^[1-9][0-9]{0,18}(?![\s\S])
+          maxLength: 19
+          x-maximum-decimal: '9223372036854775807'
+        status:
+          type: string
+          enum:
+          - READY
+        objectSha256:
+          type: string
+          pattern: ^[0-9a-f]{64}(?![\s\S])
+        mediaType:
+          type: string
+          enum:
+          - image/jpeg
+          - image/png
+        bytes:
+          type: integer
+          format: int64
+          minimum: 1
+          maximum: 10485760
+    AfterSaleAssetGrantRequest:
+      type: object
+      additionalProperties: false
+      required:
+      - reason
+      properties:
+        reason:
+          type: string
+          minLength: 1
+          maxLength: 500
+          pattern: \S
+      description: 非空用途说明，上限500 Java字符；不得自报主体或用途。
+    AfterSaleAssetGrant:
+      type: object
+      additionalProperties: false
+      required:
+      - readUrl
+      - expiresAt
+      properties:
+        readUrl:
+          type: string
+          pattern: ^/api/v1/(c|merchant|admin)/aftersale-evidence-read-grants/[A-Za-z0-9_-]{43}(?![\s\S])
+        expiresAt:
+          type: string
+          format: date-time
+          pattern: ^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}\.[0-9]{3}Z(?![\s\S])
+          x-precision: milliseconds
+    AfterSaleReceiptEnvelope:
+      type: object
+      additionalProperties: false
+      required:
+      - code
+      - message
+      - data
+      - traceId
+      properties:
+        code:
+          type: string
+          enum:
+          - SUCCESS
+        message:
+          type: string
+          enum:
+          - ok
+        data:
+          $ref: '#/components/schemas/AfterSaleReceipt'
+        traceId:
+          type: string
+          minLength: 1
+    AfterSaleEligibilityEnvelope:
+      type: object
+      additionalProperties: false
+      required:
+      - code
+      - message
+      - data
+      - traceId
+      properties:
+        code:
+          type: string
+          enum:
+          - SUCCESS
+        message:
+          type: string
+          enum:
+          - ok
+        data:
+          $ref: '#/components/schemas/AfterSaleEligibility'
+        traceId:
+          type: string
+          minLength: 1
+    AfterSaleCasePageEnvelope:
+      type: object
+      additionalProperties: false
+      required:
+      - code
+      - message
+      - data
+      - traceId
+      properties:
+        code:
+          type: string
+          enum:
+          - SUCCESS
+        message:
+          type: string
+          enum:
+          - ok
+        data:
+          $ref: '#/components/schemas/AfterSaleCasePage'
+        traceId:
+          type: string
+          minLength: 1
+    AfterSaleCaseDetailEnvelope:
+      type: object
+      additionalProperties: false
+      required:
+      - code
+      - message
+      - data
+      - traceId
+      properties:
+        code:
+          type: string
+          enum:
+          - SUCCESS
+        message:
+          type: string
+          enum:
+          - ok
+        data:
+          $ref: '#/components/schemas/AfterSaleCaseDetail'
+        traceId:
+          type: string
+          minLength: 1
+    AfterSaleAssetUploadEnvelope:
+      type: object
+      additionalProperties: false
+      required:
+      - code
+      - message
+      - data
+      - traceId
+      properties:
+        code:
+          type: string
+          enum:
+          - SUCCESS
+        message:
+          type: string
+          enum:
+          - ok
+        data:
+          $ref: '#/components/schemas/AfterSaleAssetUpload'
+        traceId:
+          type: string
+          minLength: 1
+    AfterSaleAssetGrantEnvelope:
+      type: object
+      additionalProperties: false
+      required:
+      - code
+      - message
+      - data
+      - traceId
+      properties:
+        code:
+          type: string
+          enum:
+          - SUCCESS
+        message:
+          type: string
+          enum:
+          - ok
+        data:
+          $ref: '#/components/schemas/AfterSaleAssetGrant'
+        traceId:
+          type: string
+          minLength: 1
+    AfterSaleErrorEnvelope:
+      type: object
+      additionalProperties: false
+      required:
+      - code
+      - message
+      - data
+      - traceId
+      properties:
+        code:
+          type: string
+          minLength: 1
+        message:
+          type: string
+        data:
+          type: object
+          nullable: true
+          enum:
+          - null
         traceId:
           type: string
           minLength: 1
