@@ -1,6 +1,6 @@
 # 售后三端非出款 HTTP 切片
 
-状态：APPROVED / IMPLEMENTATION_IN_PROGRESS，2026-09-30。用户在“先冻结售后HTTP契约、实现C本人/商家OWNER/获权运营非出款HTTP，再接页面”建议后明确“那么请你开始”，授权本技术切片。沿 [SSOT §40](../../../docs/00-ssot/01-SSOT-宠物平台V1.0-最终业务基线.md) 和 [Contract50](../../../docs/04-api/50-AfterSale-Workflow-Contract-v0.1.md) 既有规则，不重开七天、互斥、撤回及新问题裁决，不修改 SSOT。
+状态：APPROVED / IMPLEMENTED_LOCAL_ACCEPTED_PR98_CI_PENDING，2026-09-30。用户在“先冻结售后HTTP契约、实现C本人/商家OWNER/获权运营非出款HTTP，再接页面”建议后明确“那么请你开始”，授权本技术切片。沿 [SSOT §40](../../../docs/00-ssot/01-SSOT-宠物平台V1.0-最终业务基线.md) 和 [Contract50](../../../docs/04-api/50-AfterSale-Workflow-Contract-v0.1.md) 既有规则，不重开七天、互斥、撤回及新问题裁决，不修改 SSOT。
 
 基线 origin/develop=b15665b6573270e8c9123e667eedc606aac54398（PR97 合并），新分支 codex/aftersale-http-20260930。交付为 [Contract51](../../../docs/04-api/51-AfterSale-Http-Contract-v0.1.md)、OpenAPI11、AFS api/biz 授权分页及端别隔离、boot 三端路由、真实会话/OWNER/ADMIN 和私有图片链路；[SQL51](../../../docs/03-database/51-AfterSale-Http-Schema-v0.1.sql) 仅增加两项分页索引。
 

@@ -19,6 +19,9 @@ final class ArchitectureRules {
     }
 
     static boolean persistence(JavaClass type) {
+        // Spring's HTTP response carrier is not a persistence Entity. Keep this exact:
+        // project entities and every other framework/third-party suffix still use the rules below.
+        if (type.getName().equals("org.springframework.http.ResponseEntity")) return false;
         String p = type.getPackageName();
         String n = type.getSimpleName();
         return p.matches(".*\\.(persistence|repository|mapper|entity|dao)(\\..*)?")

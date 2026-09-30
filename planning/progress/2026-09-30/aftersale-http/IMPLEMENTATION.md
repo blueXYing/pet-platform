@@ -20,11 +20,15 @@
 4. 孤立Unicode surrogate在UTF-8编码时会被替换，与问号产生相同grant参数摘要。HTTP与内部证据入口拒绝孤立代理字符，保留合法emoji；补同key异参、零新增grant/审计证明。
 5. 框架在controller选择前遇到不支持的Content-Type原映射500，补安全415和四字段响应；AFS认证失败trace与入口X-Trace-Id保持一致。
 
+6. 架构门禁把Spring `org.springframework.http.ResponseEntity` 按Entity后缀误判持久化类型；仅精确排除该HTTP承载类型，补正向和项目Entity/Repository/Mapper/SQL负向夹具，原边界不放宽。
+
 测试准备期修复了隔离Redis前缀格式和将旧AUTH envelope误套新AFS四字段断言的问题。C端重新登录允许旧有效会话继续存在，不擅自改为单会话；撤销验收使用真实logout。这些准备修复不计为已发现业务缺陷。
 
 ## 验收证据与限制
 
-状态：本地分组验收进行中。结果以最终测试摘要和PR实际CI为准；未经运行的矩阵不标已通过。
+本地分组验收通过：按类取最终运行并核对实际XML，19个测试类 / 142项测试，失败、错误、跳过均0。包括真实三端主HTTP4项、私有证据HTTP2项、原售后事务/核销竞争/资金与任务回归、装配及架构门禁；保留先前失败记录，不将重复运行累加。实际清单见 [local-test-summary.json](local-test-summary.json)。契约smoke、127项文档测试、18项架构脚本测试及模块依赖/MyBatis/展示状态源检查通过。
+
+[PR98](https://github.com/blueXYing/pet-platform/pull/98) 已建立。首轮CI36696633916五项成功、后端因旧S1测试直接访问已改为引用的AFS schema而失败；该测试已按Contract51读取真实DTO并复测通过。新head完整CI待核对，本地分组通过不替代全仓CI；最终结果回填PR描述，不自动合并。
 
 测试采用独占本地MySQL 8.4端口3315及每例随机schema、Redis 7.4端口16385及随机命名空间。真实 PetPlatformApplication、C/ADMIN HTTP登录、生产过滤器/装配、AFS/ORDER/REFUND/VERIFY持久服务和事务一起运行。订单资格由真实内部下单/支付/普通拒绝/核销产生，不直接插入正向售后工单、决定或来源证明。
 

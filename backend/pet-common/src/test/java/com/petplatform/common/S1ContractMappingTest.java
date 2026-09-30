@@ -22,11 +22,11 @@ import org.yaml.snakeyaml.constructor.SafeConstructor;
 class S1ContractMappingTest {
     private static final Set<String> LEGACY_OPERATIONS = Set.of(
             "createOrder", "listMyOrders", "getMyOrder", "createOrderPayment", "rescheduleOrder",
-            "applyRefund", "createAftersale", "getReviewEligibility", "createReview",
+            "applyRefund", "getReviewEligibility", "createReview",
             "merchantConfirmOrder", "merchantRejectOrder", "merchantApproveRefund", "merchantRejectRefund",
-            "verifyPlatformOrder", "decideAftersale", "abnormalCloseOrder");
+            "verifyPlatformOrder", "abnormalCloseOrder");
     private static final Set<String> LEGACY_CREATES = Set.of(
-            "createOrder", "applyRefund", "createAftersale", "createReview");
+            "createOrder", "applyRefund", "createReview");
     private static final Set<String> LEGACY_SCHEMAS = Set.of(
             "DisplayOrderStatus", "FulfillmentType", "PublicId", "DecimalAmount", "DecimalAmountOutput",
             "CreateOrderRequest", "CreateOrderData", "RescheduleRequest", "RefundApplyRequest",
@@ -107,9 +107,9 @@ class S1ContractMappingTest {
         }
         assertEquals(LEGACY_OPERATIONS, seen, "AUTH additions must preserve every S1 business operation");
         assertEquals(LEGACY_CREATES, seenCreates);
-        assertEquals(16, operations, "The protected S1 subset remains 16 operations");
-        assertEquals(13, writes);
-        assertEquals(4, creates);
+        assertEquals(14, operations, "Two former AFS drafts are pinned separately by Contract51");
+        assertEquals(11, writes);
+        assertEquals(3, creates);
     }
 
     @Test
@@ -171,12 +171,71 @@ class S1ContractMappingTest {
         for (String data : List.of("CreateOrderData", "OrderDetailData")) {
             assertEquals(output, resolve(at(api, "components", "schemas", data, "properties", "payAmount")));
         }
-        assertEquals(input, resolve(at(api, "components", "schemas", "CreateAftersaleRequest", "properties", "requestedAmount")));
-        Map<String, Object> nullableAmount = at(api, "components", "schemas", "AftersaleDecisionRequest", "properties", "refundAmount");
-        assertEquals("string", nullableAmount.get("type"));
-        assertEquals(true, nullableAmount.get("nullable"));
-        assertEquals(input.get("pattern"), nullableAmount.get("pattern"));
-        assertFalse(nullableAmount.containsKey("allOf"), "OAS3 nullable must apply to the same typed schema");
+        // Contract51 retains the old schema names as references, while the actual HTTP DTOs use
+        // stricter two-place nullable decimal text. This does not change the common money codec.
+        Map<String, Object> create = resolve(at(api, "components", "schemas", "CreateAftersaleRequest"));
+        Map<String, Object> decision = resolve(at(api, "components", "schemas", "AftersaleDecisionRequest"));
+        assertEquals(at(api, "components", "schemas", "AfterSaleCreateRequest"), create);
+        assertEquals(at(api, "components", "schemas", "AfterSaleDecisionRequest"), decision);
+        Map<String, Object> requestedAmount = at(create, "properties", "requestedAmount");
+        Map<String, Object> refundAmount = at(decision, "properties", "refundAmount");
+        assertEquals(requestedAmount, refundAmount);
+        for (Map<String, Object> nullableAmount : List.of(requestedAmount, refundAmount)) {
+            assertEquals("string", nullableAmount.get("type"));
+            assertEquals(true, nullableAmount.get("nullable"));
+            assertFalse(nullableAmount.containsKey("allOf"), "OAS3 nullable must apply to the same typed schema");
+            for (String value : List.of("0.00", "128.00", "9999999999999999.99")) {
+                assertTrue(matchesSchemaPattern(nullableAmount, value), value);
+            }
+            for (String value : List.of("0", "128", "128.0", "128.000", "128.001", "1e2", "01.00",
+                    "-0.00", "-1.00", "10000000000000000.00", "128.00\n")) {
+                assertFalse(matchesSchemaPattern(nullableAmount, value), value);
+            }
+        }
+    }
+
+    @Test
+    void contract51PinsRealAftersaleRoutesStrictBodiesAndClosedPublicFunding() {
+        Map<String, Object> create = at(api, "paths", "/c/orders/{orderId}/aftersales", "post");
+        Map<String, Object> decision = at(api, "paths", "/admin/aftersales/{afterSaleId}/decisions", "post");
+        assertFalse(at(api, "paths").containsKey("/admin/aftersales/{afterSaleId}/decision"),
+                "The former unimplemented singular draft is not a compatibility route");
+        assertEquals("createAftersale", create.get("operationId"));
+        assertEquals("decideAftersale", decision.get("operationId"));
+        for (Map<String, Object> operation : List.of(create, decision)) {
+            assertEquals(List.of(Map.of("bearerAuth", List.of())), operation.get("security"));
+            assertEquals(false, operation.get("x-default-enabled"));
+            assertEquals("IMPLEMENTED_DEFAULT_OFF", operation.get("x-implementation-status"));
+            assertEquals("51-AfterSale-Http-Contract-v0.1.md", operation.get("x-contract"));
+            assertTrue(((List<?>) operation.get("parameters")).contains(Map.of("$ref", "#/components/parameters/RequestId")));
+            assertTrue(at(operation, "responses").keySet().containsAll(Set.of("200", "400", "401", "403", "409", "503")));
+            assertFalse(at(operation, "responses").containsKey("202"));
+            assertEquals(true, at(operation, "requestBody").get("required"));
+            assertEquals(false, resolve(at(operation, "requestBody", "content", "application/json", "schema")).get("additionalProperties"));
+        }
+        assertEquals("USER", create.get("x-route-party"));
+        assertEquals("MINIAPP", create.get("x-audience"));
+        assertEquals(at(create, "responses", "200", "content"), at(create, "responses", "201", "content"));
+        assertEquals("OPS", decision.get("x-route-party"));
+        assertEquals("ADMIN_WEB", decision.get("x-audience"));
+        assertEquals(List.of("aftersale.decide"), decision.get("x-required-actions"));
+        assertEquals(false, decision.get("x-public-refund-enabled"));
+        assertEquals(List.of("REJECT", "RESERVICE", "OTHER"), decision.get("x-executable-decision-types"));
+        assertFalse(at(decision, "responses").containsKey("201"));
+        Map<String, Object> createBody = resolve(at(create, "requestBody", "content", "application/json", "schema"));
+        assertEquals(Set.of("typeCode", "demandCode", "description", "evidenceAssetIds"), new HashSet<>((List<?>) createBody.get("required")));
+        assertEquals(Set.of("typeCode", "demandCode", "description", "evidenceAssetIds", "requestedAmount", "newProblemStatement"), at(createBody, "properties").keySet());
+        Map<String, Object> evidence = at(createBody, "properties", "evidenceAssetIds");
+        assertEquals("array", evidence.get("type"));
+        assertEquals(6, evidence.get("maxItems"));
+        assertEquals(true, evidence.get("uniqueItems"));
+        assertFalse(evidence.containsKey("nullable"));
+        checkIdShape(resolve(at(evidence, "items")));
+        Map<String, Object> decisionBody = resolve(at(decision, "requestBody", "content", "application/json", "schema"));
+        assertEquals(Set.of("expectedVersion", "decisionType", "reason"), new HashSet<>((List<?>) decisionBody.get("required")));
+        assertEquals(Set.of("expectedVersion", "decisionType", "reason", "refundAmount"), at(decisionBody, "properties").keySet());
+        assertEquals(Set.of("REJECT", "RESERVICE", "OTHER", "FULL_REFUND", "PARTIAL_REFUND"),
+                new HashSet<>((List<?>) at(decisionBody, "properties", "decisionType").get("enum")));
     }
 
     @Test

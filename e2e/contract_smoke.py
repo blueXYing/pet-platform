@@ -385,8 +385,8 @@ def check_aftersale_schemas(spec):
             string_schema(spec, assets['items'], 'evidenceAssetIds', allow_nullable=False)
     for name, field in [('AfterSaleCreateRequest', 'requestedAmount'), ('AfterSaleDecisionRequest', 'refundAmount')]:
         prop = schemas[name]['properties'][field]
-        assert prop['type'] == 'string' and prop['pattern'] == r'^(0|[1-9][0-9]{0,15})\.[0-9]{2}$', 'AFS exact decimal changed'
-    assert schemas['AfterSaleSupplementRequest']['properties']['deadline']['pattern'] == r'^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}\.[0-9]{3}Z$', 'AFS deadline precision changed'
+        assert prop['type'] == 'string' and prop['pattern'] == r'^(0|[1-9][0-9]{0,15})\.[0-9]{2}(?![\s\S])', 'AFS exact decimal changed'
+    assert schemas['AfterSaleSupplementRequest']['properties']['deadline']['pattern'] == r'^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}\.[0-9]{3}Z(?![\s\S])', 'AFS deadline precision changed'
     assert set(schemas['AfterSaleDecisionRequest']['properties']['decisionType']['enum']) == {'REJECT', 'RESERVICE', 'OTHER', 'FULL_REFUND', 'PARTIAL_REFUND'}, 'AFS decision type changed'
     summary = schemas['AfterSaleCaseSummary']
     assert set(summary['properties']) == {'afterSaleId', 'orderId', 'merchantId', 'storeId', 'status', 'version', 'sourceStage', 'typeCode', 'demandCode', 'requestedAmount', 'createdAt', 'deadline'}, 'AFS summary scope changed'

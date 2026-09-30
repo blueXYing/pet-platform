@@ -1881,7 +1881,8 @@ paths:
         required: true
         schema:
           type: string
-          pattern: ^[1-9][0-9]{0,18}$
+          pattern: ^[1-9][0-9]{0,18}(?![\s\S])
+          maxLength: 19
           x-maximum-decimal: '9223372036854775807'
       - $ref: '#/components/parameters/RequestId'
       responses:
@@ -2174,7 +2175,8 @@ paths:
         required: true
         schema:
           type: string
-          pattern: ^[1-9][0-9]{0,18}$
+          pattern: ^[1-9][0-9]{0,18}(?![\s\S])
+          maxLength: 19
           x-maximum-decimal: '9223372036854775807'
       - $ref: '#/components/parameters/RequestId'
       responses:
@@ -8266,7 +8268,8 @@ paths:
         required: true
         schema:
           type: string
-          pattern: ^[1-9][0-9]{0,18}$
+          pattern: ^[1-9][0-9]{0,18}(?![\s\S])
+          maxLength: 19
           x-maximum-decimal: '9223372036854775807'
       responses:
         '200':
@@ -8357,7 +8360,8 @@ paths:
         required: false
         schema:
           type: string
-          pattern: ^[1-9][0-9]{0,18}$
+          pattern: ^[1-9][0-9]{0,18}(?![\s\S])
+          maxLength: 19
           x-maximum-decimal: '9223372036854775807'
       responses:
         '200':
@@ -8420,7 +8424,8 @@ paths:
         required: true
         schema:
           type: string
-          pattern: ^[1-9][0-9]{0,18}$
+          pattern: ^[1-9][0-9]{0,18}(?![\s\S])
+          maxLength: 19
           x-maximum-decimal: '9223372036854775807'
       responses:
         '200':
@@ -8482,7 +8487,8 @@ paths:
         required: true
         schema:
           type: string
-          pattern: ^[1-9][0-9]{0,18}$
+          pattern: ^[1-9][0-9]{0,18}(?![\s\S])
+          maxLength: 19
           x-maximum-decimal: '9223372036854775807'
       - $ref: '#/components/parameters/RequestId'
       responses:
@@ -8551,21 +8557,24 @@ paths:
         required: true
         schema:
           type: string
-          pattern: ^[1-9][0-9]{0,18}$
+          pattern: ^[1-9][0-9]{0,18}(?![\s\S])
+          maxLength: 19
           x-maximum-decimal: '9223372036854775807'
       - name: batchId
         in: path
         required: true
         schema:
           type: string
-          pattern: ^[1-9][0-9]{0,18}$
+          pattern: ^[1-9][0-9]{0,18}(?![\s\S])
+          maxLength: 19
           x-maximum-decimal: '9223372036854775807'
       - name: afterSaleId
         in: path
         required: true
         schema:
           type: string
-          pattern: ^[1-9][0-9]{0,18}$
+          pattern: ^[1-9][0-9]{0,18}(?![\s\S])
+          maxLength: 19
           x-maximum-decimal: '9223372036854775807'
       - $ref: '#/components/parameters/RequestId'
       responses:
@@ -8634,7 +8643,7 @@ paths:
         required: true
         schema:
           type: string
-          pattern: ^[A-Za-z0-9_-]{43}$
+          pattern: ^[A-Za-z0-9_-]{43}(?![\s\S])
       responses:
         '400':
           $ref: '#/components/responses/AfterSaleHttpError'
@@ -8737,21 +8746,24 @@ paths:
         required: false
         schema:
           type: string
-          pattern: ^[1-9][0-9]{0,18}$
+          pattern: ^[1-9][0-9]{0,18}(?![\s\S])
+          maxLength: 19
           x-maximum-decimal: '9223372036854775807'
       - name: merchantId
         in: query
         required: true
         schema:
           type: string
-          pattern: ^[1-9][0-9]{0,18}$
+          pattern: ^[1-9][0-9]{0,18}(?![\s\S])
+          maxLength: 19
           x-maximum-decimal: '9223372036854775807'
       - name: storeId
         in: query
         required: true
         schema:
           type: string
-          pattern: ^[1-9][0-9]{0,18}$
+          pattern: ^[1-9][0-9]{0,18}(?![\s\S])
+          maxLength: 19
           x-maximum-decimal: '9223372036854775807'
       responses:
         '200':
@@ -8814,7 +8826,8 @@ paths:
         required: true
         schema:
           type: string
-          pattern: ^[1-9][0-9]{0,18}$
+          pattern: ^[1-9][0-9]{0,18}(?![\s\S])
+          maxLength: 19
           x-maximum-decimal: '9223372036854775807'
       responses:
         '200':
@@ -8876,7 +8889,8 @@ paths:
         required: true
         schema:
           type: string
-          pattern: ^[1-9][0-9]{0,18}$
+          pattern: ^[1-9][0-9]{0,18}(?![\s\S])
+          maxLength: 19
           x-maximum-decimal: '9223372036854775807'
       - $ref: '#/components/parameters/RequestId'
       responses:
@@ -8945,21 +8959,24 @@ paths:
         required: true
         schema:
           type: string
-          pattern: ^[1-9][0-9]{0,18}$
+          pattern: ^[1-9][0-9]{0,18}(?![\s\S])
+          maxLength: 19
           x-maximum-decimal: '9223372036854775807'
       - name: batchId
         in: path
         required: true
         schema:
           type: string
-          pattern: ^[1-9][0-9]{0,18}$
+          pattern: ^[1-9][0-9]{0,18}(?![\s\S])
+          maxLength: 19
           x-maximum-decimal: '9223372036854775807'
       - name: afterSaleId
         in: path
         required: true
         schema:
           type: string
-          pattern: ^[1-9][0-9]{0,18}$
+          pattern: ^[1-9][0-9]{0,18}(?![\s\S])
+          maxLength: 19
           x-maximum-decimal: '9223372036854775807'
       - $ref: '#/components/parameters/RequestId'
       responses:
@@ -9028,7 +9045,7 @@ paths:
         required: true
         schema:
           type: string
-          pattern: ^[A-Za-z0-9_-]{43}$
+          pattern: ^[A-Za-z0-9_-]{43}(?![\s\S])
       responses:
         '400':
           $ref: '#/components/responses/AfterSaleHttpError'
@@ -9131,21 +9148,24 @@ paths:
         required: false
         schema:
           type: string
-          pattern: ^[1-9][0-9]{0,18}$
+          pattern: ^[1-9][0-9]{0,18}(?![\s\S])
+          maxLength: 19
           x-maximum-decimal: '9223372036854775807'
       - name: merchantId
         in: query
         required: true
         schema:
           type: string
-          pattern: ^[1-9][0-9]{0,18}$
+          pattern: ^[1-9][0-9]{0,18}(?![\s\S])
+          maxLength: 19
           x-maximum-decimal: '9223372036854775807'
       - name: storeId
         in: query
         required: true
         schema:
           type: string
-          pattern: ^[1-9][0-9]{0,18}$
+          pattern: ^[1-9][0-9]{0,18}(?![\s\S])
+          maxLength: 19
           x-maximum-decimal: '9223372036854775807'
       responses:
         '200':
@@ -9210,7 +9230,8 @@ paths:
         required: true
         schema:
           type: string
-          pattern: ^[1-9][0-9]{0,18}$
+          pattern: ^[1-9][0-9]{0,18}(?![\s\S])
+          maxLength: 19
           x-maximum-decimal: '9223372036854775807'
       responses:
         '200':
@@ -9274,21 +9295,24 @@ paths:
         required: true
         schema:
           type: string
-          pattern: ^[1-9][0-9]{0,18}$
+          pattern: ^[1-9][0-9]{0,18}(?![\s\S])
+          maxLength: 19
           x-maximum-decimal: '9223372036854775807'
       - name: batchId
         in: path
         required: true
         schema:
           type: string
-          pattern: ^[1-9][0-9]{0,18}$
+          pattern: ^[1-9][0-9]{0,18}(?![\s\S])
+          maxLength: 19
           x-maximum-decimal: '9223372036854775807'
       - name: afterSaleId
         in: path
         required: true
         schema:
           type: string
-          pattern: ^[1-9][0-9]{0,18}$
+          pattern: ^[1-9][0-9]{0,18}(?![\s\S])
+          maxLength: 19
           x-maximum-decimal: '9223372036854775807'
       - $ref: '#/components/parameters/RequestId'
       responses:
@@ -9359,7 +9383,7 @@ paths:
         required: true
         schema:
           type: string
-          pattern: ^[A-Za-z0-9_-]{43}$
+          pattern: ^[A-Za-z0-9_-]{43}(?![\s\S])
       responses:
         '400':
           $ref: '#/components/responses/AfterSaleHttpError'
@@ -9435,7 +9459,8 @@ paths:
         required: true
         schema:
           type: string
-          pattern: ^[1-9][0-9]{0,18}$
+          pattern: ^[1-9][0-9]{0,18}(?![\s\S])
+          maxLength: 19
           x-maximum-decimal: '9223372036854775807'
       - $ref: '#/components/parameters/RequestId'
       responses:
@@ -9504,7 +9529,8 @@ paths:
         required: true
         schema:
           type: string
-          pattern: ^[1-9][0-9]{0,18}$
+          pattern: ^[1-9][0-9]{0,18}(?![\s\S])
+          maxLength: 19
           x-maximum-decimal: '9223372036854775807'
       - $ref: '#/components/parameters/RequestId'
       responses:
@@ -9573,7 +9599,8 @@ paths:
         required: true
         schema:
           type: string
-          pattern: ^[1-9][0-9]{0,18}$
+          pattern: ^[1-9][0-9]{0,18}(?![\s\S])
+          maxLength: 19
           x-maximum-decimal: '9223372036854775807'
       - $ref: '#/components/parameters/RequestId'
       responses:
@@ -9644,7 +9671,8 @@ paths:
         required: true
         schema:
           type: string
-          pattern: ^[1-9][0-9]{0,18}$
+          pattern: ^[1-9][0-9]{0,18}(?![\s\S])
+          maxLength: 19
           x-maximum-decimal: '9223372036854775807'
       - $ref: '#/components/parameters/RequestId'
       responses:
@@ -9715,7 +9743,8 @@ paths:
         required: true
         schema:
           type: string
-          pattern: ^[1-9][0-9]{0,18}$
+          pattern: ^[1-9][0-9]{0,18}(?![\s\S])
+          maxLength: 19
           x-maximum-decimal: '9223372036854775807'
       - $ref: '#/components/parameters/RequestId'
       responses:
@@ -15487,13 +15516,14 @@ components:
           pattern: \S
         requestedAmount:
           type: string
-          pattern: ^(0|[1-9][0-9]{0,15})\.[0-9]{2}$
+          pattern: ^(0|[1-9][0-9]{0,15})\.[0-9]{2}(?![\s\S])
           nullable: true
         evidenceAssetIds:
           type: array
           items:
             type: string
-            pattern: ^[1-9][0-9]{0,18}$
+            pattern: ^[1-9][0-9]{0,18}(?![\s\S])
+            maxLength: 19
             x-maximum-decimal: '9223372036854775807'
           maxItems: 6
           uniqueItems: true
@@ -15512,11 +15542,13 @@ components:
       properties:
         expectedVersion:
           type: string
-          pattern: ^(0|[1-9][0-9]{0,18})$
+          pattern: ^(0|[1-9][0-9]{0,18})(?![\s\S])
+          maxLength: 19
           x-maximum-decimal: '9223372036854775807'
         supplementRequestId:
           type: string
-          pattern: ^[1-9][0-9]{0,18}$
+          pattern: ^[1-9][0-9]{0,18}(?![\s\S])
+          maxLength: 19
           x-maximum-decimal: '9223372036854775807'
           nullable: true
         text:
@@ -15529,7 +15561,8 @@ components:
           type: array
           items:
             type: string
-            pattern: ^[1-9][0-9]{0,18}$
+            pattern: ^[1-9][0-9]{0,18}(?![\s\S])
+            maxLength: 19
             x-maximum-decimal: '9223372036854775807'
           maxItems: 6
           uniqueItems: true
@@ -15545,11 +15578,13 @@ components:
       properties:
         expectedVersion:
           type: string
-          pattern: ^(0|[1-9][0-9]{0,18})$
+          pattern: ^(0|[1-9][0-9]{0,18})(?![\s\S])
+          maxLength: 19
           x-maximum-decimal: '9223372036854775807'
         supplementRequestId:
           type: string
-          pattern: ^[1-9][0-9]{0,18}$
+          pattern: ^[1-9][0-9]{0,18}(?![\s\S])
+          maxLength: 19
           x-maximum-decimal: '9223372036854775807'
           nullable: true
         opinionCode:
@@ -15568,7 +15603,8 @@ components:
           type: array
           items:
             type: string
-            pattern: ^[1-9][0-9]{0,18}$
+            pattern: ^[1-9][0-9]{0,18}(?![\s\S])
+            maxLength: 19
             x-maximum-decimal: '9223372036854775807'
           maxItems: 6
           uniqueItems: true
@@ -15580,7 +15616,8 @@ components:
       properties:
         expectedVersion:
           type: string
-          pattern: ^(0|[1-9][0-9]{0,18})$
+          pattern: ^(0|[1-9][0-9]{0,18})(?![\s\S])
+          maxLength: 19
           x-maximum-decimal: '9223372036854775807'
     AfterSaleAcceptRequest:
       type: object
@@ -15590,7 +15627,8 @@ components:
       properties:
         expectedVersion:
           type: string
-          pattern: ^(0|[1-9][0-9]{0,18})$
+          pattern: ^(0|[1-9][0-9]{0,18})(?![\s\S])
+          maxLength: 19
           x-maximum-decimal: '9223372036854775807'
         newProblemAssessment:
           type: string
@@ -15600,7 +15638,7 @@ components:
           nullable: true
         expectedFinalSetVersion:
           type: string
-          pattern: ^[0-9a-f]{64}$
+          pattern: ^[0-9a-f]{64}(?![\s\S])
           nullable: true
       description: 已有真实非退款终局时assessment与当前finalSetVersion必须提供。
     AfterSaleSupplementRequest:
@@ -15614,7 +15652,8 @@ components:
       properties:
         expectedVersion:
           type: string
-          pattern: ^(0|[1-9][0-9]{0,18})$
+          pattern: ^(0|[1-9][0-9]{0,18})(?![\s\S])
+          maxLength: 19
           x-maximum-decimal: '9223372036854775807'
         targetParty:
           type: string
@@ -15629,7 +15668,7 @@ components:
         deadline:
           type: string
           format: date-time
-          pattern: ^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}\.[0-9]{3}Z$
+          pattern: ^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}\.[0-9]{3}Z(?![\s\S])
           x-precision: milliseconds
     AfterSaleCloseDuplicateRequest:
       type: object
@@ -15641,11 +15680,13 @@ components:
       properties:
         expectedVersion:
           type: string
-          pattern: ^(0|[1-9][0-9]{0,18})$
+          pattern: ^(0|[1-9][0-9]{0,18})(?![\s\S])
+          maxLength: 19
           x-maximum-decimal: '9223372036854775807'
         priorFinalCaseId:
           type: string
-          pattern: ^[1-9][0-9]{0,18}$
+          pattern: ^[1-9][0-9]{0,18}(?![\s\S])
+          maxLength: 19
           x-maximum-decimal: '9223372036854775807'
         reason:
           type: string
@@ -15662,7 +15703,8 @@ components:
       properties:
         expectedVersion:
           type: string
-          pattern: ^(0|[1-9][0-9]{0,18})$
+          pattern: ^(0|[1-9][0-9]{0,18})(?![\s\S])
+          maxLength: 19
           x-maximum-decimal: '9223372036854775807'
         decisionType:
           type: string
@@ -15674,7 +15716,7 @@ components:
           - PARTIAL_REFUND
         refundAmount:
           type: string
-          pattern: ^(0|[1-9][0-9]{0,15})\.[0-9]{2}$
+          pattern: ^(0|[1-9][0-9]{0,15})\.[0-9]{2}(?![\s\S])
           nullable: true
         reason:
           type: string
@@ -15699,15 +15741,18 @@ components:
       properties:
         commandId:
           type: string
-          pattern: ^[1-9][0-9]{0,18}$
+          pattern: ^[1-9][0-9]{0,18}(?![\s\S])
+          maxLength: 19
           x-maximum-decimal: '9223372036854775807'
         orderId:
           type: string
-          pattern: ^[1-9][0-9]{0,18}$
+          pattern: ^[1-9][0-9]{0,18}(?![\s\S])
+          maxLength: 19
           x-maximum-decimal: '9223372036854775807'
         afterSaleId:
           type: string
-          pattern: ^[1-9][0-9]{0,18}$
+          pattern: ^[1-9][0-9]{0,18}(?![\s\S])
+          maxLength: 19
           x-maximum-decimal: '9223372036854775807'
         status:
           type: string
@@ -15721,31 +15766,36 @@ components:
           - CLOSED
         version:
           type: string
-          pattern: ^(0|[1-9][0-9]{0,18})$
+          pattern: ^(0|[1-9][0-9]{0,18})(?![\s\S])
+          maxLength: 19
           x-maximum-decimal: '9223372036854775807'
         occurredAt:
           type: string
           format: date-time
-          pattern: ^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}\.[0-9]{3}Z$
+          pattern: ^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}\.[0-9]{3}Z(?![\s\S])
           x-precision: milliseconds
         evidenceBatchId:
           type: string
-          pattern: ^[1-9][0-9]{0,18}$
+          pattern: ^[1-9][0-9]{0,18}(?![\s\S])
+          maxLength: 19
           x-maximum-decimal: '9223372036854775807'
           nullable: true
         supplementRequestId:
           type: string
-          pattern: ^[1-9][0-9]{0,18}$
+          pattern: ^[1-9][0-9]{0,18}(?![\s\S])
+          maxLength: 19
           x-maximum-decimal: '9223372036854775807'
           nullable: true
         decisionId:
           type: string
-          pattern: ^[1-9][0-9]{0,18}$
+          pattern: ^[1-9][0-9]{0,18}(?![\s\S])
+          maxLength: 19
           x-maximum-decimal: '9223372036854775807'
           nullable: true
         refundOrderId:
           type: string
-          pattern: ^[1-9][0-9]{0,18}$
+          pattern: ^[1-9][0-9]{0,18}(?![\s\S])
+          maxLength: 19
           x-maximum-decimal: '9223372036854775807'
           nullable: true
     AfterSaleEligibility:
@@ -15769,7 +15819,7 @@ components:
         deadline:
           type: string
           format: date-time
-          pattern: ^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}\.[0-9]{3}Z$
+          pattern: ^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}\.[0-9]{3}Z(?![\s\S])
           x-precision: milliseconds
           nullable: true
         blockingReason:
@@ -15780,7 +15830,8 @@ components:
           nullable: true
         activeAfterSaleId:
           type: string
-          pattern: ^[1-9][0-9]{0,18}$
+          pattern: ^[1-9][0-9]{0,18}(?![\s\S])
+          maxLength: 19
           x-maximum-decimal: '9223372036854775807'
           nullable: true
       description: 仅订单业务资格，不授予FROZEN账号写权限；七天闭区间沿Contract50。
@@ -15803,19 +15854,23 @@ components:
       properties:
         afterSaleId:
           type: string
-          pattern: ^[1-9][0-9]{0,18}$
+          pattern: ^[1-9][0-9]{0,18}(?![\s\S])
+          maxLength: 19
           x-maximum-decimal: '9223372036854775807'
         orderId:
           type: string
-          pattern: ^[1-9][0-9]{0,18}$
+          pattern: ^[1-9][0-9]{0,18}(?![\s\S])
+          maxLength: 19
           x-maximum-decimal: '9223372036854775807'
         merchantId:
           type: string
-          pattern: ^[1-9][0-9]{0,18}$
+          pattern: ^[1-9][0-9]{0,18}(?![\s\S])
+          maxLength: 19
           x-maximum-decimal: '9223372036854775807'
         storeId:
           type: string
-          pattern: ^[1-9][0-9]{0,18}$
+          pattern: ^[1-9][0-9]{0,18}(?![\s\S])
+          maxLength: 19
           x-maximum-decimal: '9223372036854775807'
         status:
           type: string
@@ -15829,7 +15884,8 @@ components:
           - CLOSED
         version:
           type: string
-          pattern: ^(0|[1-9][0-9]{0,18})$
+          pattern: ^(0|[1-9][0-9]{0,18})(?![\s\S])
+          maxLength: 19
           x-maximum-decimal: '9223372036854775807'
         sourceStage:
           type: string
@@ -15848,17 +15904,17 @@ components:
           pattern: \S
         requestedAmount:
           type: string
-          pattern: ^(0|[1-9][0-9]{0,15})\.[0-9]{2}$
+          pattern: ^(0|[1-9][0-9]{0,15})\.[0-9]{2}(?![\s\S])
           nullable: true
         createdAt:
           type: string
           format: date-time
-          pattern: ^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}\.[0-9]{3}Z$
+          pattern: ^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}\.[0-9]{3}Z(?![\s\S])
           x-precision: milliseconds
         deadline:
           type: string
           format: date-time
-          pattern: ^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}\.[0-9]{3}Z$
+          pattern: ^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}\.[0-9]{3}Z(?![\s\S])
           x-precision: milliseconds
     AfterSaleCasePage:
       type: object
@@ -15899,7 +15955,8 @@ components:
       properties:
         batchId:
           type: string
-          pattern: ^[1-9][0-9]{0,18}$
+          pattern: ^[1-9][0-9]{0,18}(?![\s\S])
+          maxLength: 19
           x-maximum-decimal: '9223372036854775807'
         submitterType:
           type: string
@@ -15923,13 +15980,14 @@ components:
         submittedAt:
           type: string
           format: date-time
-          pattern: ^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}\.[0-9]{3}Z$
+          pattern: ^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}\.[0-9]{3}Z(?![\s\S])
           x-precision: milliseconds
         assetIds:
           type: array
           items:
             type: string
-            pattern: ^[1-9][0-9]{0,18}$
+            pattern: ^[1-9][0-9]{0,18}(?![\s\S])
+            maxLength: 19
             x-maximum-decimal: '9223372036854775807'
           maxItems: 6
           uniqueItems: true
@@ -15962,11 +16020,13 @@ components:
       properties:
         afterSaleId:
           type: string
-          pattern: ^[1-9][0-9]{0,18}$
+          pattern: ^[1-9][0-9]{0,18}(?![\s\S])
+          maxLength: 19
           x-maximum-decimal: '9223372036854775807'
         orderId:
           type: string
-          pattern: ^[1-9][0-9]{0,18}$
+          pattern: ^[1-9][0-9]{0,18}(?![\s\S])
+          maxLength: 19
           x-maximum-decimal: '9223372036854775807'
         status:
           type: string
@@ -15980,7 +16040,8 @@ components:
           - CLOSED
         version:
           type: string
-          pattern: ^(0|[1-9][0-9]{0,18})$
+          pattern: ^(0|[1-9][0-9]{0,18})(?![\s\S])
+          maxLength: 19
           x-maximum-decimal: '9223372036854775807'
         sourceStage:
           type: string
@@ -15999,17 +16060,17 @@ components:
           pattern: \S
         requestedAmount:
           type: string
-          pattern: ^(0|[1-9][0-9]{0,15})\.[0-9]{2}$
+          pattern: ^(0|[1-9][0-9]{0,15})\.[0-9]{2}(?![\s\S])
           nullable: true
         createdAt:
           type: string
           format: date-time
-          pattern: ^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}\.[0-9]{3}Z$
+          pattern: ^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}\.[0-9]{3}Z(?![\s\S])
           x-precision: milliseconds
         deadline:
           type: string
           format: date-time
-          pattern: ^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}\.[0-9]{3}Z$
+          pattern: ^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}\.[0-9]{3}Z(?![\s\S])
           x-precision: milliseconds
         description:
           type: string
@@ -16018,7 +16079,8 @@ components:
           pattern: \S
         supplementRequestId:
           type: string
-          pattern: ^[1-9][0-9]{0,18}$
+          pattern: ^[1-9][0-9]{0,18}(?![\s\S])
+          maxLength: 19
           x-maximum-decimal: '9223372036854775807'
           nullable: true
         supplementTarget:
@@ -16030,7 +16092,7 @@ components:
         supplementDeadline:
           type: string
           format: date-time
-          pattern: ^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}\.[0-9]{3}Z$
+          pattern: ^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}\.[0-9]{3}Z(?![\s\S])
           x-precision: milliseconds
           nullable: true
         supplementReason:
@@ -16041,12 +16103,13 @@ components:
           nullable: true
         finalSetVersion:
           type: string
-          pattern: ^[0-9a-f]{64}$
+          pattern: ^[0-9a-f]{64}(?![\s\S])
         priorFinalCaseIds:
           type: array
           items:
             type: string
-            pattern: ^[1-9][0-9]{0,18}$
+            pattern: ^[1-9][0-9]{0,18}(?![\s\S])
+            maxLength: 19
             x-maximum-decimal: '9223372036854775807'
         newProblemStatement:
           type: string
@@ -16065,7 +16128,7 @@ components:
           nullable: true
         refundAmount:
           type: string
-          pattern: ^(0|[1-9][0-9]{0,15})\.[0-9]{2}$
+          pattern: ^(0|[1-9][0-9]{0,15})\.[0-9]{2}(?![\s\S])
           nullable: true
         decisionReason:
           type: string
@@ -16089,7 +16152,8 @@ components:
       properties:
         assetId:
           type: string
-          pattern: ^[1-9][0-9]{0,18}$
+          pattern: ^[1-9][0-9]{0,18}(?![\s\S])
+          maxLength: 19
           x-maximum-decimal: '9223372036854775807'
         status:
           type: string
@@ -16097,7 +16161,7 @@ components:
           - READY
         objectSha256:
           type: string
-          pattern: ^[0-9a-f]{64}$
+          pattern: ^[0-9a-f]{64}(?![\s\S])
         mediaType:
           type: string
           enum:
@@ -16129,11 +16193,11 @@ components:
       properties:
         readUrl:
           type: string
-          pattern: ^/api/v1/(c|merchant|admin)/aftersale-evidence-read-grants/[A-Za-z0-9_-]{43}$
+          pattern: ^/api/v1/(c|merchant|admin)/aftersale-evidence-read-grants/[A-Za-z0-9_-]{43}(?![\s\S])
         expiresAt:
           type: string
           format: date-time
-          pattern: ^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}\.[0-9]{3}Z$
+          pattern: ^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}\.[0-9]{3}Z(?![\s\S])
           x-precision: milliseconds
     AfterSaleReceiptEnvelope:
       type: object

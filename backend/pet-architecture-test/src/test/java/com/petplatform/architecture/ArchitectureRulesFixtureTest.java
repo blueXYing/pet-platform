@@ -15,7 +15,7 @@ import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.*;
 
-/** These are intentionally invalid synthetic classes, never real APIs or production sources. */
+/** Compiled valid/invalid boundary fixtures, never real project APIs or production sources. */
 class ArchitectureRulesFixtureTest {
     @TempDir Path temp;
 
@@ -100,6 +100,37 @@ class ArchitectureRulesFixtureTest {
         verify(ArchitectureRules.CONTROLLER_BOUNDARY, false, "", Map.of(
             "com.petplatform.order.biz.application.OrderService", "package com.petplatform.order.biz.application; public class OrderService { public void confirm() {} }",
             "com.petplatform.order.biz.adapter.web.OrderController", "package com.petplatform.order.biz.adapter.web; public class OrderController { void confirm(com.petplatform.order.biz.application.OrderService service) { service.confirm(); } }"));
+    }
+
+    @Test void arch004_allows_the_real_spring_http_response_carrier() throws Exception {
+        verify(ArchitectureRules.CONTROLLER_BOUNDARY, false, "", Map.of(
+            "com.petplatform.boot.adapter.web.SampleController",
+            "package com.petplatform.boot.adapter.web; public class SampleController { public org.springframework.http.ResponseEntity<String> response() { return org.springframework.http.ResponseEntity.ok(\"ok\"); } }"));
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"com.petplatform.order.biz.hidden.OrderEntity",
+            "com.petplatform.order.biz.hidden.ResponseEntity", "com.petplatform.order.biz.hidden.OrderDO",
+            "com.petplatform.order.biz.hidden.OrderMapper", "example.transport.ResponseEntity",
+            "org.springframework.example.OtherEntity"})
+    void arch004_response_carrier_exception_does_not_allow_other_persistence_types(String type) throws Exception {
+        int dot = type.lastIndexOf('.');
+        verify(ArchitectureRules.CONTROLLER_BOUNDARY, true, "ARCH-004", Map.of(
+            type, "package " + type.substring(0, dot) + "; public class " + type.substring(dot + 1) + " {}",
+            "com.petplatform.boot.adapter.web.SampleController",
+            "package com.petplatform.boot.adapter.web; public class SampleController { " + type + " storage; }"));
+    }
+
+    @Test void arch004_still_rejects_direct_sql_access() throws Exception {
+        verify(ArchitectureRules.CONTROLLER_BOUNDARY, true, "ARCH-004", Map.of(
+            "com.petplatform.boot.adapter.web.SampleController",
+            "package com.petplatform.boot.adapter.web; public class SampleController { void write(java.sql.Connection connection) throws java.sql.SQLException { connection.createStatement().executeUpdate(\"UPDATE forbidden_fixture SET value=1\"); } }"));
+    }
+
+    @Test void arch003_still_rejects_spring_response_types_in_public_api() throws Exception {
+        verify(ArchitectureRules.API_PURITY, true, "ARCH-003", Map.of(
+            "com.petplatform.order.api.BadContract",
+            "package com.petplatform.order.api; public interface BadContract { org.springframework.http.ResponseEntity<String> response(); }"));
     }
 
     @Test void domain_rejects_infrastructure() throws Exception {

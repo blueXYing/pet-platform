@@ -59,9 +59,9 @@ class AfterSaleContractTest(unittest.TestCase):
         self.assertEqual('string', amount['type'])
         expression = re.compile(amount['pattern'])
         for valid in ('0.00', '32.00', '128.00', '9999999999999999.99'):
-            self.assertIsNotNone(expression.fullmatch(valid), valid)
+            self.assertIsNotNone(expression.search(valid), valid)
         for invalid in ('0', '32.0', '-1.00', '0.001', '1e2', '10000000000000000.00', '32.00\n'):
-            self.assertIsNone(expression.fullmatch(invalid), invalid)
+            self.assertIsNone(expression.search(invalid), invalid)
         self.reject(lambda s: s['components']['schemas']['AfterSaleDecisionRequest']['properties']['refundAmount'].__setitem__('pattern', '.*'), 'AFS exact decimal')
 
     def test_strict_body_assets_and_optimistic_version_cannot_disappear(self):
