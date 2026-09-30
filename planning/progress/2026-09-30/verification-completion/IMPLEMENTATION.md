@@ -19,3 +19,7 @@
 身份专项使用真实 UserAuthService、账户表、MER 归属和生产 bean 工厂；仅易失缓存是明确测试替身，不伪装真实 Redis 登录。既有 CAuthHttpTest 在全量 CI 使用真实 Redis/HTTP；微信上游仍为固定凭据测试适配。退款行拒绝专项只证明当前事实保护，完整 QA-004 竞态需真实售后裁决 CREATE_REFUND 来源后补；已有迟到支付/商家拒单退款由回归覆盖。
 
 历史核销行无可信身份映射即阻断迁移。尚未交付员工登录授权、手动订单号兜底、HTTP/小程序和 v2 通知/评价消费者；完整 VER-001/VER-002/AFS-001/QA-004 不标 DONE。
+
+## PR 与审阅
+
+[PR95](https://github.com/blueXYing/pet-platform/pull/95) 已创建并附加到当前任务。独立上下文审阅 Critical/Important/行为性Minor均0；详见 [REVIEW.md](REVIEW.md)。最终提交完整 CI 与下载的实际测试统计写入 PR 描述（以当前 head 关联的检查为准），避免证据文档提交不断改变自身待验收 head。本文件中的“尚待执行”是各次本地运行时点记录，不替代 PR 的最终结果。
