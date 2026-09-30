@@ -1,15 +1,15 @@
 {
-  "recordedAt": "2026-09-30T06:53:24.307446+00:00",
+  "recordedAt": "2026-09-30T07:09:40.601438+00:00",
   "baseCommit": "ff983596cad899c7b4e1ce9c8278228787ca7ac6",
   "branch": "codex/aftersale-workflow-20260930",
   "status": "RELEVANT_LOCAL_CHECKS_PASSED_ACROSS_INCREMENTAL_RUNS",
-  "newTestExecutions": 81,
+  "newTestExecutions": 82,
   "newTestCounts": {
     "Workflow": 21,
     "Money": 12,
     "PrivateEvidence": 4,
     "Supplement": 4,
-    "SourceIntegrity": 1,
+    "SourceIntegrity": 2,
     "RefundRecovery": 2,
     "Configuration": 23,
     "Boundary": 6,
@@ -17,7 +17,7 @@
     "RefundTaskFamily": 2,
     "TaskInvocation": 1
   },
-  "qualification": "Counts are unique test executions covered across incremental runs, not one full same-head run. complete1 Money had 3 errors fixed and retested in complete2; complete2 Workflow had 1 fixture error fixed and retested separately. Full clean reactor regression is delegated to PR97 CI and its actual downloadable report. Missing cases in the acceptance matrix remain unverified.",
+  "qualification": "Counts are unique test executions covered across incremental runs, not one full same-head run. complete1 Money had 3 errors fixed and retested in complete2; complete2 Workflow had 1 fixture error fixed and retested separately. Full clean reactor regression is delegated to PR97 CI and its actual downloadable report. Missing cases in the acceptance matrix remain unverified. Final cross-review found first-send preflight using historical funding time. A deterministic test failed on production revision 75a1cafa63043f7316411982618895127357ab9f, then passed after current DB time revalidation while preserving historical query validation. The final targeted batch has 52 tests, zero failures/errors/skips.",
   "additionalLocalRegression": {
     "PaymentRefundServiceMySqlTest": 18,
     "AdminAuthPrimitivesTest": 12,
@@ -218,10 +218,94 @@
           "class": "com.petplatform.boot.booking.AfterSaleWorkflowAcceptanceTest"
         }
       ]
+    },
+    {
+      "log": "afs-expiry-red.log",
+      "sha256": "4a381b22c8b7aff60119ef3e35ed7a3c752c3bd831d6067310cb118ce5a4bdbc",
+      "build": "FAILURE",
+      "reports": [
+        {
+          "tests": 1,
+          "failures": 1,
+          "errors": 0,
+          "skipped": 0,
+          "seconds": 13.34,
+          "class": "com.petplatform.boot.booking.AfterSaleSourceIntegrityAcceptanceTest"
+        }
+      ]
+    },
+    {
+      "log": "afs-expiry-green.log",
+      "sha256": "2b5472fbfc1382bd98d0c0ea8efd20061261eae919c5d73060cf8d31b956a807",
+      "build": "SUCCESS",
+      "reports": [
+        {
+          "tests": 18,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0,
+          "seconds": 31.06,
+          "class": "com.petplatform.payment.biz.application.PaymentRefundServiceMySqlTest"
+        },
+        {
+          "tests": 5,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0,
+          "seconds": 0.009,
+          "class": "com.petplatform.payment.biz.application.RefundFundingEvidenceChecksTest"
+        },
+        {
+          "tests": 3,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0,
+          "seconds": 75.67,
+          "class": "com.petplatform.boot.booking.AfterSaleMoneyAcceptanceTest"
+        },
+        {
+          "tests": 2,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0,
+          "seconds": 31.1,
+          "class": "com.petplatform.boot.booking.AfterSaleRefundRecoveryAcceptanceTest"
+        },
+        {
+          "tests": 2,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0,
+          "seconds": 19.47,
+          "class": "com.petplatform.boot.booking.AfterSaleSourceIntegrityAcceptanceTest"
+        },
+        {
+          "tests": 15,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0,
+          "seconds": 4.192,
+          "class": "com.petplatform.architecture.ArchitectureRulesFixtureTest"
+        },
+        {
+          "tests": 7,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0,
+          "seconds": 9.509,
+          "class": "com.petplatform.architecture.ArchitectureRulesTest"
+        }
+      ]
     }
   ],
   "ci": "See exact PR97 head checks and downloaded backend-test-reports; baseline PR96 results are not used as current coverage.",
   "productionFundingProvider": "NOT_IMPLEMENTED",
   "publicHttpAndFrontend": "NOT_IMPLEMENTED",
-  "realChannelOssAndNotificationDelivery": "NOT_EXECUTED"
+  "realChannelOssAndNotificationDelivery": "NOT_EXECUTED",
+  "supersededCi": {
+    "runId": 36681010671,
+    "head": "75a1cafa63043f7316411982618895127357ab9f",
+    "conclusion": "cancelled",
+    "reason": "Superseded by the verified funding-preflight expiry fix; not accepted as full regression."
+  }
 }

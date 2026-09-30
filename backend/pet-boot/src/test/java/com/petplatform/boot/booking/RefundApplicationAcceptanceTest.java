@@ -322,6 +322,7 @@ class RefundApplicationAcceptanceTest {
     static final class TimeSource extends DelegatingDataSource {
         final AtomicLong shiftSeconds=new AtomicLong();final AtomicReference<Instant> fixed=new AtomicReference<>();
         final AtomicInteger commitCalls=new AtomicInteger(),loseAtCommit=new AtomicInteger(-1),lostAcks=new AtomicInteger();
+        final AtomicReference<Runnable> afterCommitProbe=new AtomicReference<>();
         Instant instant(){return fixed.get()==null?Instant.now().plusSeconds(shiftSeconds.get()):fixed.get();}
         TimeSource(DataSource target){super(target);}
         @Override public Connection getConnection()throws SQLException{return clock(super.getConnection());}
@@ -329,7 +330,7 @@ class RefundApplicationAcceptanceTest {
         private Connection clock(Connection c)throws SQLException{Instant at=fixed.get();if(at==null&&shiftSeconds.get()!=0)at=Instant.now().plusSeconds(shiftSeconds.get());
             try(var statement=c.createStatement()){statement.execute("SET timestamp="+(at==null?"0":java.math.BigDecimal.valueOf(at.toEpochMilli(),3).toPlainString()));}
             return (Connection)java.lang.reflect.Proxy.newProxyInstance(Connection.class.getClassLoader(),new Class<?>[]{Connection.class},(proxy,method,args)->{
-                try{Object result=method.invoke(c,args);if(method.getName().equals("commit")&&commitCalls.incrementAndGet()==loseAtCommit.get()){lostAcks.incrementAndGet();throw new SQLException("QA committed refund ACK loss","08006");}return result;}
+                try{Object result=method.invoke(c,args);if(method.getName().equals("commit")){int committed=commitCalls.incrementAndGet();var probe=afterCommitProbe.get();if(probe!=null)probe.run();if(committed==loseAtCommit.get()){lostAcks.incrementAndGet();throw new SQLException("QA committed refund ACK loss","08006");}}return result;}
                 catch(java.lang.reflect.InvocationTargetException failure){throw failure.getCause();}
             });}
     }

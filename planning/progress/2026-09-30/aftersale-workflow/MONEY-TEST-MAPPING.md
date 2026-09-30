@@ -1,6 +1,6 @@
-# AFS 资金验收映射：Money 12 + SourceIntegrity 1 + Recovery 2
+# AFS 资金验收映射：Money 12 + SourceIntegrity 2 + Recovery 2
 
-日期：2026-09-30。范围仅为本页列出的 15 个测试方法；其他 QA 套件的覆盖及结果由 root 总报告合并。本页不把关联到矩阵条目解释为该条全部通过，不运行 Maven，不扩展生产代码。
+日期：2026-09-30。范围仅为本页列出的 16 个测试方法；其他 QA 套件的覆盖及结果由 root 总报告合并。本页不把关联到矩阵条目解释为该条全部通过，执行由 root 串行调度。
 
 ## 1. 实际执行状态
 
@@ -11,6 +11,8 @@ root 后续已复测上述 3 项：`Tests run: 3, Failures: 0, Errors: 0, Skippe
 测试源码：[AfterSaleMoneyAcceptanceTest](../../../../backend/pet-boot/src/test/java/com/petplatform/boot/booking/AfterSaleMoneyAcceptanceTest.java)、[AfterSaleSourceIntegrityAcceptanceTest](../../../../backend/pet-boot/src/test/java/com/petplatform/boot/booking/AfterSaleSourceIntegrityAcceptanceTest.java)、[AfterSaleRefundRecoveryAcceptanceTest](../../../../backend/pet-boot/src/test/java/com/petplatform/boot/booking/AfterSaleRefundRecoveryAcceptanceTest.java)。验收基准：[ACCEPTANCE-MATRIX](ACCEPTANCE-MATRIX.md)。
 
 ## 2. 逐方法覆盖矩阵
+
+最后交叉审查发现首次 preflight 错用历史时间的 P1。新增 `firstSendEvidenceExpiringAfterDispatchCommitBlocksSubmitButRetainsOriginalQuery`：真实 MAY_HAVE_SENT 提交后、首次网络调用前把受控数据库时间推进到资金证据 validUntil 等号，必须零 submit、保留原 dispatch/proof；撤掉 Provider 后重投原命令只能 query 原号。`afs-expiry-red.log` 在旧代码上稳定 1 failure（未抛预期拒绝）；修复将首次 preflight 与历史 query 的有效期校验分开，修复后结果见 root 最终摘要。该用例映射 AFS-28/31/36，只证明这个确定暂停点，不代替真实资金 Owner 的并发保证。
 
 | 方法 | 对应矩阵 | 实际操作与断言边界 | 状态 |
 |---|---|---|---|

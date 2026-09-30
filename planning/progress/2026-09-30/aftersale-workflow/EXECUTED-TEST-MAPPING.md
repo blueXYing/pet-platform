@@ -2,7 +2,7 @@
 
 日期：2026-09-30；角色：独立 QA。对应 [历史矩阵](ACCEPTANCE-MATRIX.md) AFS-01–37。P1–P4、A1–A3 已获批准；规则以 [正式 Contract50](../../../../docs/04-api/50-AfterSale-Workflow-Contract-v0.1.md)、SSOT §40 和批准记录为准。本文件审计当前代码能证明什么，不重新决定产品规则，不把历史规划的全部要求视为已实现或已验收。
 
-当前执行事实见主执行者维护的 [actual-summary.json](actual-summary.json) / [IMPLEMENTATION.md](IMPLEMENTATION.md)：新增81项已在增量批次和修复复测中通过，包含后补的真实退款worker恢复2项；不是单次同head全量。下面的首轮及“待最终报告”措辞保留为独立QA编写映射时的快照，结果统一由上述实际报告覆盖；矩阵中尚无对应测试的分支继续未验，不因同一行其他用例通过而自动补齐。
+当前执行事实见主执行者维护的 [actual-summary.json](actual-summary.json) / [IMPLEMENTATION.md](IMPLEMENTATION.md)：新增82项已在增量批次和修复复测中通过，包含后补的真实退款worker恢复2项；不是单次同head全量。下面的首轮及“待最终报告”措辞保留为独立QA编写映射时的快照，结果统一由上述实际报告覆盖；矩阵中尚无对应测试的分支继续未验，不因同一行其他用例通过而自动补齐。
 
 ## 1. 执行快照与阅读约定
 

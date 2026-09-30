@@ -18,12 +18,14 @@
 
 第一轮新增用例运行发现 PAYMENT 成功事实仍强制退款额等于实付，误拒合法 PARTIAL 的成功收尾；已改为合法正金额且不超过实付，同时保持签名回执金额与 dispatch 精确一致、旧来源创建/执行 FULL 限制。第一轮 Money 12 项中 3 项因此错误，不能计为通过；修复后的定向复测与最终 CI 必须独立记录。测试源码存在不等于已经执行，后续报告覆盖本段历史失败。
 
-本地新增 81 项在增量批次及修复复测后均已有通过证据；不是单次全量运行，也不将历史失败隐藏为一次绿色。第二轮跨订单用例的准备时钟与继承下单保护时钟不一致，导致在售后断言前被既有排期保护拒绝；仅修正 fixture，在首单预约结束后用统一受控时钟创建第二笔真实订单，定向复测通过。生产规则未放宽。
+本地新增 82 项在增量批次及修复复测后均已有通过证据；不是单次全量运行，也不将历史失败隐藏为一次绿色。第二轮跨订单用例的准备时钟与继承下单保护时钟不一致，导致在售后断言前被既有排期保护拒绝；仅修正 fixture，在首单预约结束后用统一受控时钟创建第二笔真实订单，定向复测通过。生产规则未放宽。
+
+最后交叉审查另发现首次 preflight 用历史时间验证资金有效期的 P1：MAY_HAVE_SENT 提交后若暂停至授权过期，旧代码仍会调用渠道。新增确定性用例在真实 dispatch commit 后推进到 validUntil 等号，旧代码稳定失败；修复后首次 preflight 末尾按当前 DB 时间拒绝过期授权，历史查单仍使用原授权时点，不重建证明或重发。该用例及资金/原号恢复/旧PAYMENT/架构共52项修复回归全通过。旧提交 `75a1caf` 的 CI36681010671 主动取消，不算全量通过；以修复后 PR97 当前 head 的 CI 为准。
 
 | 范围 | 实际数量与结果 |
 |---|---|
 | 工单/资格/P4/身份/并发 | Workflow 21：增强轮 20 通过，跨订单 fixture 修复后另 1 通过 |
-| 终裁资金与来源完整性 | Money 12：原 9 通过，PARTIAL 修复后 3 通过；SourceIntegrity 1 通过 |
+| 终裁资金与来源完整性 | Money 12：原 9 通过，PARTIAL 修复后 3 通过；SourceIntegrity 2 通过，含真实提交后授权到期边界 |
 | 私有证据、补证任务、退款任务恢复 | PrivateEvidence 4、Supplement 4、RefundRecovery 2 通过；恢复使用真实 worker 注册、claim 与 attempt，缺失/DEAD 任务按原 key 恢复，UNKNOWN 阻核销，移除资金 Provider 后仍只查询原号 |
 | 新配置与单元边界 | Configuration 23、Boundary 6、FundingEvidence 5、RefundTaskFamily 2、TaskInvocation 1 通过 |
 | 已有受影响回归 | PAYMENT MySQL 18、ADMIN primitives 12、Architecture fixtures 15 + rules 7 通过 |

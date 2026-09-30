@@ -225,13 +225,15 @@ public final class PaymentRefundService implements PaymentRefundApi {
         RefundExecutionFact business = refundFacts.requireForChannel(input.refundOrderId(),
                 input.storeId(), context);
         validateBusinessAgainstDispatch(row, business);
-        validateFunding(row,business,context);
         var origin = requireOrigin(Long.toString(row.orderId()), input, business, context);
         var paid = paymentFacts.requireSucceeded(Long.toString(input.paymentId()),
                 Long.toString(row.orderId()), input.storeId(), context);
         validateBinding(input, payment, origin, paid, business);
         if (!"CREATED".equals(business.status()) && !"PROCESSING".equals(business.status())
                 && !"UNKNOWN".equals(business.status())) throw unavailable();
+        // Preparing the durable dispatch is not permission to send after its evidence expires.
+        // Check the current database time after all other preflight facts have been revalidated.
+        validateFunding(row,business,context,true);
         return progress(row);
     }
 
@@ -309,7 +311,7 @@ public final class PaymentRefundService implements PaymentRefundApi {
         RefundExecutionFact business = refundFacts.requireForChannel(input.refundOrderId(),
                 input.storeId(), context);
         validateBusinessAgainstDispatch(row, business);
-        validateFunding(row,business,context);
+        validateFunding(row,business,context,false);
         // A persisted dispatch can still be queried after PAYMENT observed its own REFUND notice.
         // Never re-run first-send admission here; doing so would erase genuine refund success.
         LocalDateTime queryTime = refunds.now().atZoneSameInstant(settings.channelTimeZone())
@@ -322,7 +324,7 @@ public final class PaymentRefundService implements PaymentRefundApi {
     }
 
     /** First-send evidence is source-specific; event IDs are never substituted for application IDs. */
-    private void validateFunding(Dispatch row,RefundExecutionFact f,QueryContext context){
+    private void validateFunding(Dispatch row,RefundExecutionFact f,QueryContext context,boolean firstSend){
         if(!"AFTERSALE_DECISION".equals(f.sourceType()))return;
         if(aftersaleDecisions==null)throw unavailable();var a=aftersaleDecisions.requireCreated(f.sourceBizId(),f.sourceDecisionId(),f.refundOrderId(),f.storeId(),context,source);
         var p=refunds.funding(row.refundOrderId());if(p==null||a==null||!a.decision().funding().evidenceId().equals(p.committedEvidenceId)||!row.requestSha256().equals(p.requestSha256))throw unavailable();
@@ -332,6 +334,7 @@ public final class PaymentRefundService implements PaymentRefundApi {
             var expected=new com.petplatform.payment.api.query.RefundFundingEligibilityFactsApi.FundingCheck(f.orderId(),f.paymentId(),f.paymentNo(),f.paymentSuccessEventId(),f.channelTradeNo(),f.userId(),f.merchantId(),f.storeId(),f.sourceBizId(),f.sourceDecisionId(),a.decision().commandId(),f.refundType(),f.refundAmount(),f.originalPaidAmount(),f.currency(),"FIRST_SEND",f.refundOrderId(),f.refundNo(),Long.toString(f.bindingVersion()));
             if(!com.petplatform.payment.api.query.RefundFundingEvidenceChecks.hash(c).equals(com.petplatform.payment.api.query.RefundFundingEvidenceChecks.hash(expected))||!p.createdAt.equals(row.mayHaveSentAt()))throw unavailable();
             com.petplatform.payment.api.query.RefundFundingEvidenceChecks.requireAllowed(c,e,p.createdAt.atOffset(ZoneOffset.UTC));
+            if(firstSend)com.petplatform.payment.api.query.RefundFundingEvidenceChecks.requireAllowed(c,e,refunds.now());
         }catch(com.fasterxml.jackson.core.JsonProcessingException failure){throw unavailable();}
     }
     private OrderRefundOriginFact requireOrigin(String orderId, Identity input,

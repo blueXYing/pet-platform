@@ -9,6 +9,60 @@ import org.junit.jupiter.api.Test;
 
 /** Corrupts only proofs created by real commands; the channel and funding authority are QA doubles. */
 class AfterSaleSourceIntegrityAcceptanceTest {
+    @Test void firstSendEvidenceExpiringAfterDispatchCommitBlocksSubmitButRetainsOriginalQuery() throws Exception {
+        try (var f = new AfterSaleFixture()) {
+            var done = f.decide(f.accept(f.create(f.verifiedOrder())),
+                    "PARTIAL_REFUND", new BigDecimal("32.00"));
+            var channel = new AfterSaleChannelFixture(f, false);
+            var advanced = new java.util.concurrent.atomic.AtomicBoolean();
+            var expectedExpiry = f.now().plusMinutes(1);
+            f.ordinary.source.afterCommitProbe.set(() -> {
+                if (f.count("SELECT COUNT(*) FROM payment_refund_dispatch WHERE state='MAY_HAVE_SENT'") == 1) {
+                    // Observe a truly committed dispatch from an independent connection, then pause
+                    // at the exact funding deadline before preflight obtains its next connection.
+                    f.ordinary.source.afterCommitProbe.set(null);
+                    f.at(expectedExpiry.toInstant());
+                    advanced.set(true);
+                }
+            });
+            try {
+                var failure = assertThrows(ApiException.class, () -> channel.execution.execute(
+                        done.refundOrderId(), AfterSaleFixture.STORE, false, "afs-expired-preflight", "AFTERSALE_DECISION"));
+                assertEquals(CommonApiCodes.DEPENDENCY_UNAVAILABLE, failure.code());
+            } finally {
+                f.ordinary.source.afterCommitProbe.set(null);
+            }
+            assertTrue(advanced.get(), "the time jump must occur after the actual dispatch commit");
+            assertEquals(0, channel.sends.get());
+            assertEquals(0, channel.queries.get());
+            assertEquals("MAY_HAVE_SENT", f.text("SELECT state FROM payment_refund_dispatch"));
+            assertEquals("CREATED", f.text("SELECT status FROM refund_order"));
+            assertEquals(1, f.count("SELECT COUNT(*) FROM payment_refund_funding_proof"));
+            String originalNumber = f.text("SELECT CAST(refund_no AS CHAR) FROM payment_refund_dispatch");
+            String originalRequestHash = f.text("SELECT request_sha256 FROM payment_refund_dispatch");
+            String originalEvidence = f.text("SELECT CAST(evidence_json AS CHAR) FROM payment_refund_funding_proof");
+            var evidence = new com.fasterxml.jackson.databind.ObjectMapper().findAndRegisterModules().readValue(
+                    originalEvidence, com.petplatform.payment.api.query.RefundFundingEligibilityFactsApi.FundingEvidence.class);
+            assertTrue(evidence.validUntil().isEqual(expectedExpiry));
+            assertTrue(evidence.validUntil().isEqual(f.now()));
+
+            f.fundingAvailable.set(false);
+            var recovered = new AfterSaleChannelFixture(f, false, false);
+            // Re-delivery of the original submit command must query the existing number; it cannot
+            // refresh evidence or attempt a second initial submission, even with no Provider installed.
+            assertTrue(recovered.execution.execute(done.refundOrderId(), AfterSaleFixture.STORE,
+                    false, "afs-expired-preflight-retry", "AFTERSALE_DECISION").done());
+            assertEquals(0, recovered.sends.get());
+            assertEquals(1, recovered.queries.get());
+            assertEquals(originalNumber, recovered.lastRequest.get().refundNo());
+            assertEquals(originalRequestHash, f.text("SELECT request_sha256 FROM payment_refund_dispatch"));
+            assertEquals(originalEvidence, f.text("SELECT CAST(evidence_json AS CHAR) FROM payment_refund_funding_proof"));
+            assertEquals(1, f.count("SELECT COUNT(*) FROM payment_refund_dispatch"));
+            assertEquals(1, f.count("SELECT COUNT(*) FROM payment_refund_funding_proof"));
+            assertEquals(1, f.count("SELECT COUNT(*) FROM refund_order"));
+        }
+    }
+
     @Test void eachIndependentSourceProofMustAgreeBeforeAnyFirstSend() throws Exception {
         try (var f = new AfterSaleFixture()) {
             var done = f.decide(f.accept(f.create(f.verifiedOrder())),
