@@ -18,6 +18,7 @@ import org.springframework.web.multipart.support.MissingServletRequestPartExcept
 import org.springframework.web.servlet.NoHandlerFoundException;
 import org.springframework.web.servlet.resource.NoResourceFoundException;
 import org.springframework.web.HttpRequestMethodNotSupportedException;
+import org.springframework.web.HttpMediaTypeNotSupportedException;
 
 /**
  * Last-resort exception mapping for every controller outside the scoped admin
@@ -59,6 +60,21 @@ public class GlobalApiExceptionHandler {
     public ApiResponse<Void> invalidArgument(Exception error, HttpServletResponse response) {
         // Unknown fields, duplicate JSON keys and wrong types all land here (HTTP10 line 1630).
         return reply(400, CommonApiCodes.INVALID_ARGUMENT, "请求参数不合法", response);
+    }
+
+    /** Mapping can reject Content-Type before a controller is selected. Never expose its raw value. */
+    @ExceptionHandler(HttpMediaTypeNotSupportedException.class)
+    public Map<String,Object> unsupportedMedia(Exception error, HttpServletResponse response) {
+        response.setStatus(415);
+        var result=new java.util.LinkedHashMap<String,Object>();
+        result.put("code",CommonApiCodes.INVALID_ARGUMENT);
+        result.put("message","请求内容类型不支持");
+        result.put("data",null);
+        result.put("traceId",MDC.get(TraceContextFilter.TRACE_MDC_KEY));
+        response.setHeader("Cache-Control", "no-store, private");
+        response.setHeader("Pragma", "no-cache");
+        response.setHeader("X-Content-Type-Options", "nosniff");
+        return result;
     }
 
     @ExceptionHandler({

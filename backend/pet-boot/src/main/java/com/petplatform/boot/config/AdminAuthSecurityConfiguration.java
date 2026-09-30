@@ -32,7 +32,8 @@ public class AdminAuthSecurityConfiguration {
       ObjectProvider<AdminAuthService> services,
       @Value("${pet.merchant.application.enabled:false}") boolean merchantApplicationEnabled,
       @Value("${pet.private-assets.enabled:false}") boolean privateAssetsEnabled,
-      @Value("${pet.service.command.enabled:false}") boolean serviceCommandEnabled)
+      @Value("${pet.service.command.enabled:false}") boolean serviceCommandEnabled,
+      @Value("${pet.aftersale.http.enabled:false}") boolean afterSaleHttpEnabled)
       throws Exception {
     http.securityMatcher("/api/v1/admin/**")
         .csrf(c -> c.disable())
@@ -42,6 +43,17 @@ public class AdminAuthSecurityConfiguration {
     http.authorizeHttpRequests(
         a -> {
           if (p.isEnabled() && !p.isMaintenance()) {
+            if (afterSaleHttpEnabled) {
+              a.requestMatchers(HttpMethod.GET,
+                  "/api/v1/admin/aftersales", "/api/v1/admin/aftersales/*",
+                  "/api/v1/admin/aftersale-evidence-read-grants/*").permitAll();
+              a.requestMatchers(HttpMethod.POST,
+                  "/api/v1/admin/aftersales/*/accept",
+                  "/api/v1/admin/aftersales/*/supplement-requests",
+                  "/api/v1/admin/aftersales/*/close-duplicate",
+                  "/api/v1/admin/aftersales/*/decisions",
+                  "/api/v1/admin/aftersales/*/evidence-batches/*/assets/*/read-grants").permitAll();
+            }
             a.requestMatchers(
                     HttpMethod.POST,
                     "/api/v1/admin/auth/attempts",

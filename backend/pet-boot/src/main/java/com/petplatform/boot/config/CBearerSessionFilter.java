@@ -44,6 +44,12 @@ public final class CBearerSessionFilter extends OncePerRequestFilter {
   static boolean protectedPath(String path) {
     return PROTECTED_EXACT.contains(path)
         || path.startsWith("/api/v1/c/pets/")
+        || path.matches("/api/v1/c/orders/[^/]+/(aftersales|aftersale-eligibility)")
+        || path.equals("/api/v1/c/aftersales") || path.startsWith("/api/v1/c/aftersales/")
+        || path.equals("/api/v1/merchant/aftersales") || path.startsWith("/api/v1/merchant/aftersales/")
+        || path.equals("/api/v1/c/aftersale-evidence-assets")
+        || path.startsWith("/api/v1/c/aftersale-evidence-read-grants/")
+        || path.startsWith("/api/v1/merchant/aftersale-evidence-read-grants/")
         || path.equals("/api/v1/c/merchant-application-cities")
         || path.equals("/api/v1/c/private-assets")
         || path.equals("/api/v1/c/merchant-applications")
@@ -134,7 +140,8 @@ public final class CBearerSessionFilter extends OncePerRequestFilter {
 
   private static String traceJson(HttpServletRequest req) {
     Object trace = req.getAttribute("cTraceId");
-    String value = trace instanceof String text ? text : req.getHeader("X-Trace-Id");
+    String value = org.slf4j.MDC.get(TraceContextFilter.TRACE_MDC_KEY);
+    if (value == null) value = trace instanceof String text ? text : req.getHeader("X-Trace-Id");
     if (value == null || !value.matches("[A-Za-z0-9._:-]{1,64}"))
       value = java.util.UUID.randomUUID().toString();
     req.setAttribute("cTraceId", value);

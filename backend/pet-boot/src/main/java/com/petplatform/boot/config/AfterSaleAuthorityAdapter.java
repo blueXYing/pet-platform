@@ -1,6 +1,7 @@
 package com.petplatform.boot.config;
 
 import com.petplatform.aftersale.biz.application.AfterSalePorts;
+import com.petplatform.aftersale.api.query.AfterSaleQueryApi.RouteParty;
 import com.petplatform.admin.api.dto.*;
 import com.petplatform.admin.api.query.*;
 import com.petplatform.common.*;
@@ -70,9 +71,48 @@ public final class AfterSaleAuthorityAdapter implements AfterSalePorts.Authority
         if(c.operatorType()!=OperatorType.USER)throw denied();
         var session=currentSession(c);
         if(session.actorId().equals(r.userId()))return new AfterSalePorts.ReadAuthority("USER",revision("USER",session.sessionId()));
-        merchants.requireOwner(r.merchantId(),r.storeId(),q(c));
+        merchants.requireOwnerRead(r.merchantId(),r.storeId(),q(c));
         var scope=merchants.requireResourceScope(r.merchantId(),r.storeId(),q(c));
         return new AfterSalePorts.ReadAuthority("MERCHANT",revision(session.sessionId(),scope.scopeVersion()));
+    }
+    @Override public String requireBuyerRead(CommandContext c) {
+        if(c==null||c.operatorType()!=OperatorType.USER)throw denied();
+        var session=currentSession(c);
+        return revision(session.sessionId(),session.actorId());
+    }
+    @Override public AfterSalePorts.ReadAuthority requireRead(CommandContext c,AfterSalePorts.Resource r,RouteParty party) {
+        if(party==null)throw denied();
+        return switch(party) {
+            case USER -> {
+                String checked=requireBuyerRead(c);if(!c.operatorId().equals(r.userId()))throw denied();
+                yield new AfterSalePorts.ReadAuthority("USER",checked);
+            }
+            case MERCHANT -> new AfterSalePorts.ReadAuthority("MERCHANT",requireStoreRead(c,party,r.merchantId(),r.storeId()));
+            case OPS -> {
+                var checked=requireAdmin(c,r,"aftersale.read");var session=currentSession(c);
+                yield new AfterSalePorts.ReadAuthority("OPS",revision(session.sessionId()+":"+session.generation(),revision(checked.authzVersion(),checked.scopeVersion())));
+            }
+        };
+    }
+    @Override public String requireStoreRead(CommandContext c,RouteParty party,String merchantId,String storeId) {
+        if(c==null||party==null||party==RouteParty.USER)throw denied();
+        var session=currentSession(c);
+        if(party==RouteParty.MERCHANT) {
+            if(c.operatorType()!=OperatorType.USER)throw denied();
+            merchants.requireOwnerRead(merchantId,storeId,q(c));
+            var scope=merchants.requireResourceScope(merchantId,storeId,q(c));
+            return revision(session.sessionId(),scope.scopeVersion());
+        }
+        if(c.operatorType()!=OperatorType.PLATFORM_OPERATOR)throw denied();
+        var entry=admins.checkCollection(new AdminCollectionActionCheckQuery(session.sessionId(),session.generation(),session.actorId(),
+                "aftersale.read","AFTERSALE_PROCESSING",AdminActionCheckQuery.CheckPhase.READ_RESULT));
+        if(!entry.allowed())throw denied();
+        var scope=merchants.requireResourceScope(merchantId,storeId,q(c));
+        var checked=admins.check(new AdminActionCheckQuery(session.sessionId(),session.generation(),session.actorId(),"aftersale.read",
+                new AdminResourceScope("STORE",storeId,merchantId,scope.cityCode(),scope.scopeVersion()),
+                "AFTERSALE_PROCESSING",AdminActionCheckQuery.CheckPhase.READ_RESULT));
+        if(!checked.allowed()||!entry.authzVersion().equals(checked.authzVersion()))throw denied();
+        return revision(session.sessionId()+":"+session.generation(),revision(checked.authzVersion(),scope.scopeVersion()));
     }
     public static String revision(String a,String b){
         try{return HexFormat.of().formatHex(MessageDigest.getInstance("SHA-256").digest((a.length()+":"+a+b.length()+":"+b).getBytes(StandardCharsets.UTF_8)));}

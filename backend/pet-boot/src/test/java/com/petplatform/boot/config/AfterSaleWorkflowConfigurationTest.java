@@ -50,11 +50,18 @@ class AfterSaleWorkflowConfigurationTest {
         });
     }
 
-    @Test void httpCannotBeEnabledEvenWithCompleteInternalDependencies() {
+    @Test void httpCannotBeEnabledWithoutAdminSessions() {
         dependencies("").withPropertyValues("pet.aftersale.http.enabled=true").run(c->{
             assertThat(c).hasFailed();
-            assertThat(c.getStartupFailure()).hasStackTraceContaining("Aftersale HTTP is unavailable");
+            assertThat(c.getStartupFailure()).hasStackTraceContaining("Aftersale HTTP requires real admin sessions");
         });
+    }
+
+    @Test void httpStartsWithRealSessionDependenciesButWithoutFundingProvider() {
+        dependencies("").withPropertyValues("pet.aftersale.http.enabled=true","pet.auth.admin.enabled=true")
+                .run(c->{assertThat(c).hasNotFailed();assertThat(c).hasSingleBean(AfterSaleService.class);
+                    assertThat(c).doesNotHaveBean(RefundFundingEligibilityFactsApi.class);
+                    verifyNoInteractions(c.getBean(PrivateObjectStore.class),c.getBean(PaymentSuccessFactsApi.class));});
     }
 
     @ParameterizedTest

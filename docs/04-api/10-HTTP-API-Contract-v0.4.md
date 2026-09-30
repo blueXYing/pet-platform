@@ -711,56 +711,11 @@ VERIFICATION_BLOCKED_BY_REFUND
 
 ## 3.12 发起售后
 
-### POST `/api/v1/c/orders/{orderId}/aftersales`
-
-Header：`X-Request-Id` 必填。
-
-Request：
-
-```json
-{
-  "type": "SERVICE_DISPUTE",
-  "description": "服务未按约完成",
-  "requestedAmount": "128.00",
-  "evidenceFileIds": ["file-1", "file-2"]
-}
-```
-
-`type` 的具体用户侧分类字典后续可配置；不影响裁决状态机。
-
-资格：
-
-```text
-已核销：
-verifiedAt + 7天内
-
-未核销：
-预约开始已到 + 商家已拒绝退款
-并在 appointmentStart + 7天内
-```
-
-Response：
-
-```json
-{
-  "afterSaleId": "701",
-  "status": "PENDING"
-}
-```
-
-售后创建本身不禁止核销。
-
----
+正式实现以 [Contract51](51-AfterSale-Http-Contract-v0.1.md) 及 OpenAPI11 为准。`POST /api/v1/c/orders/{orderId}/aftersales` 接受 typeCode/demandCode/description/requestedAmount/evidenceAssetIds/newProblemStatement，路径提供 orderId。UUID 原值幂等；首次201/同参重放200，完整 Receipt 四字段 envelope。`GET /api/v1/c/orders/{orderId}/aftersale-eligibility` 只读真实本人资格，七天边界沿 Contract50。
 
 ## 3.13 售后查询与补充证据
 
-```text
-GET  /api/v1/c/aftersales/{afterSaleId}
-POST /api/v1/c/aftersales/{afterSaleId}/evidence
-POST /api/v1/c/aftersales/{afterSaleId}/withdraw
-```
-
-不存在“售后复审/二次申诉” Endpoint。
+C：GET `/api/v1/c/aftersales`、GET `/api/v1/c/aftersales/{afterSaleId}`；POST 后缀 `/evidence`、`/withdraw`。本人端别在事务内和重放复验，字段/分页/私有图授权遵 Contract51。无复审/二次申诉接口。
 
 ---
 
@@ -1141,7 +1096,7 @@ POST   /api/v1/merchant/staff/{staffId}/disable
 
 ## 4.12 售后商家侧
 
-商家不是最终裁决方。
+商家不是最终裁决方。本批按 [Contract51](51-AfterSale-Http-Contract-v0.1.md) 接入真实 OWNER；列表必须 merchantId+storeId，FROZEN 只读，不放宽补证/意见写权。
 
 ```text
 GET  /api/v1/merchant/aftersales
@@ -1265,66 +1220,13 @@ POST /api/v1/admin/refunds/{refundId}/retry
 
 ## 5.3 售后列表与详情
 
-```text
-GET /api/v1/admin/aftersales
-GET /api/v1/admin/aftersales/{afterSaleId}
-```
+GET `/api/v1/admin/aftersales` 与 GET `/api/v1/admin/aftersales/{afterSaleId}`，要求当前 aftersale.read。列表本批必须 merchantId+storeId，在当前 MER 范围授权后 SQL 分页；跨店运营聚合后续交付，不能使用历史城市快照。字段、三端权限和私有图见 [Contract51](51-AfterSale-Http-Contract-v0.1.md)。
 
----
+## 5.4 售后受理与裁决
 
-## 5.4 售后裁决
+POST `/api/v1/admin/aftersales/{afterSaleId}/accept`、`/supplement-requests`、`/close-duplicate` 要求 aftersale.handle；POST `/decisions` 要求 aftersale.decide。旧未实现单数 `/decision` 草案由复数正式路径替代。
 
-### POST `/api/v1/admin/aftersales/{afterSaleId}/decision`
-
-Header：`X-Request-Id` 必填。
-
-Request：全额退款
-
-```json
-{
-  "decisionType": "FULL_REFUND",
-  "refundAmount": "128.00",
-  "reason": "经证据核验，支持买家退款"
-}
-```
-
-部分退款：
-
-```json
-{
-  "decisionType": "PARTIAL_REFUND",
-  "refundAmount": "64.00",
-  "reason": "部分服务已完成，裁决退还部分费用"
-}
-```
-
-其他：
-
-```json
-{
-  "decisionType": "REJECT",
-  "refundAmount": null,
-  "reason": "现有证据不足以支持退款"
-}
-```
-
-合法枚举：
-
-```text
-FULL_REFUND
-PARTIAL_REFUND
-REJECT
-RESERVICE
-OTHER
-```
-
-规则：
-
-- 运营首次裁决为最终裁决；
-- 不提供复审 Endpoint；
-- 退款金额不能超过实付；
-- 退款型裁决只有在 `refund_order` 创建成功后才形成禁止核销边界；
-- 若当前未履约售后已因核销先成功而 INVALIDATED，则拒绝退款型裁决执行。
+每项 body 必含 expectedVersion，其他精确字段见 Contract51/OpenAPI11。公开仅执行 REJECT/RESERVICE/OTHER，refundAmount 必须 null；FULL_REFUND/PARTIAL_REFUND 格式合法且当前会话、decide及资源权限通过后始终503 COMMON_DEPENDENCY_UNAVAILABLE，不调用内部资金决定。内部 Contract50 原子退款能力不变。首次终局、无复审、不代商家裁决规则不变。
 
 ---
 

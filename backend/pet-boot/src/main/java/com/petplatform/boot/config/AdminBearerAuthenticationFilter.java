@@ -31,11 +31,15 @@ public final class AdminBearerAuthenticationFilter extends OncePerRequestFilter 
       HttpServletRequest req, HttpServletResponse res, FilterChain chain)
       throws ServletException, IOException {
     String trace = com.petplatform.boot.adapter.web.admin.AdminAuthController.trace(req);
+    String chainTrace = org.slf4j.MDC.get(TraceContextFilter.TRACE_MDC_KEY);
+    if (chainTrace != null) trace = chainTrace;
     AdminAuthService.bindTrace(trace);
     try {
       String path = req.getRequestURI();
       // A read-grant token is a path credential. It is used for routing only and never logged.
       if (path.equals("/api/v1/admin/auth/session")
+          || path.equals("/api/v1/admin/aftersales") || path.startsWith("/api/v1/admin/aftersales/")
+          || path.startsWith("/api/v1/admin/aftersale-evidence-read-grants/")
           || path.equals("/api/v1/admin/auth/permissions")
           || path.equals("/api/v1/admin/auth/activity")
           || path.equals("/api/v1/admin/merchant-applications")

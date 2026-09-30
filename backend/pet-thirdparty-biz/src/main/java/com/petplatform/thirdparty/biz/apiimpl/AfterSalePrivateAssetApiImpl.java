@@ -53,12 +53,14 @@ public final class AfterSalePrivateAssetApiImpl implements AfterSalePrivateAsset
     }
 
     @Override public Grant issue(Issue c) {
-        if(c==null)throw invalid();context(c.context());id(c.afterSaleId());id(c.evidenceBatchId());id(c.assetId());
-        if(c.reason()==null||c.reason().isBlank()||c.reason().length()>500)throw invalid();noCallerTransaction();
+        if(c==null)throw invalid();context(c.context());principal(c.context(),c.principal());id(c.afterSaleId());id(c.evidenceBatchId());id(c.assetId());
+        if(c.reason()==null||c.reason().isBlank()||c.reason().length()>500
+                ||c.reason().codePoints().anyMatch(value->value>=0xD800&&value<=0xDFFF))throw invalid();noCallerTransaction();
         return store.transaction(tx->{
-            var proof=prove(c.context(),c.afterSaleId(),c.evidenceBatchId(),c.assetId());
+            var proof=prove(c.context(),c.principal(),c.afterSaleId(),c.evidenceBatchId(),c.assetId());
             var asset=tx.assets().selectAssetForUpdate(id(c.assetId()));match(proof,asset);
-            byte[] requestHash=hash(frame(c.afterSaleId(),c.evidenceBatchId(),c.assetId(),c.reason()));
+            byte[] requestHash=hash(c.principal()==null?frame(c.afterSaleId(),c.evidenceBatchId(),c.assetId(),c.reason()):
+                    frame("AFTERSALE_EVIDENCE_ISSUE_V2",c.principal().party(),c.afterSaleId(),c.evidenceBatchId(),c.assetId(),c.reason()));
             byte[] proofHash=proofHash(proof);
             var key=key();
             var existing=tx.grants().byRequest(c.context().operatorType().name(),id(c.context().operatorId()),id(c.afterSaleId()),c.context().requestId());
@@ -82,13 +84,13 @@ public final class AfterSalePrivateAssetApiImpl implements AfterSalePrivateAsset
     }
 
     @Override public PrivateAssetContent consume(Consume c) {
-        if(c==null)throw invalid();context(c.context());noCallerTransaction();
+        if(c==null)throw invalid();context(c.context());principal(c.context(),c.principal());noCallerTransaction();
         if(c.token()==null||!c.token().matches("[A-Za-z0-9_-]{43}"))throw gone();
         byte[] digest=hash(c.token().getBytes(StandardCharsets.US_ASCII));
         var hint=store.read(tx->tx.grants().byDigest(digest));if(hint==null)throw gone();
         try {
             var admission=store.transaction(tx->{
-                var proof=prove(c.context(),hint.afterSaleId.toString(),hint.batchId.toString(),hint.assetId.toString());
+                var proof=prove(c.context(),c.principal(),hint.afterSaleId.toString(),hint.batchId.toString(),hint.assetId.toString());
                 var asset=tx.assets().selectAssetForUpdate(hint.assetId);match(proof,asset);
                 var row=tx.grants().lock(hint.id);validateGrant(row,c.context(),digest,proofHash(proof),"ISSUED");
                 if(tx.grants().consume(row.id)!=1)throw gone();audit(tx,row,"CONSUME","STARTED",c.context());
@@ -104,7 +106,7 @@ public final class AfterSalePrivateAssetApiImpl implements AfterSalePrivateAsset
             if(rendered==null||rendered.content()==null||rendered.content().length==0||rendered.content().length>20*1024*1024
                     ||!Set.of("image/jpeg","image/png").contains(rendered.mediaType()))throw unavailable();
             return store.transaction(tx->{
-                var proof=prove(c.context(),hint.afterSaleId.toString(),hint.batchId.toString(),hint.assetId.toString());
+                var proof=prove(c.context(),c.principal(),hint.afterSaleId.toString(),hint.batchId.toString(),hint.assetId.toString());
                 var asset=tx.assets().selectAssetForUpdate(hint.assetId);match(proof,asset);
                 var row=tx.grants().lock(hint.id);validateGrant(row,c.context(),digest,proofHash(proof),"CONSUMED");
                 if(!asset.getObjectSha256().equals(admission.sha())||!asset.getObjectVersionRef().equals(admission.version()))throw forbidden();
@@ -118,13 +120,16 @@ public final class AfterSalePrivateAssetApiImpl implements AfterSalePrivateAsset
     }
 
     private record ReadAdmission(AfterSaleAssetGrantEntity grant,String objectKey,String version,String sha,String media,long bytes) {}
-    private AfterSaleAssetReadAuthorizer.Proof prove(CommandContext c,String caseId,String batch,String asset) {
-        var p=authorization.authorize(c,caseId,batch,asset,source);
+    private AfterSaleAssetReadAuthorizer.Proof prove(CommandContext c,EvidencePrincipal principal,String caseId,String batch,String asset) {
+        var p=principal==null?authorization.authorize(c,caseId,batch,asset,source):authorization.authorize(principal,caseId,batch,asset,source);
         if(p==null||!caseId.equals(p.afterSaleId())||!batch.equals(p.batchId())||!asset.equals(p.assetId())
                 ||!c.operatorType().name().equals(p.actorType())||!c.operatorId().equals(p.actorId())
                 ||p.sessionId()==null||p.sessionId().isBlank()||p.sessionGeneration()<0
                 ||p.authzVersion()==null||p.authzVersion().isBlank()||p.scopeVersion()==null||p.scopeVersion().isBlank()
                 ||!(c.operatorType()==OperatorType.USER?"MINIAPP":"ADMIN_WEB").equals(p.audience()))throw forbidden();
+        if(principal!=null&&(!principal.party().equals(p.party())||!principal.audience().equals(p.audience())
+                ||!principal.sessionId().equals(p.sessionId())||principal.sessionGeneration()!=p.sessionGeneration()))throw forbidden();
+        if(principal==null&&p.party()!=null)throw forbidden();
         return p;
     }
     private static void match(AfterSaleAssetReadAuthorizer.Proof p,PrivateAssetEntity a) {
@@ -141,8 +146,11 @@ public final class AfterSalePrivateAssetApiImpl implements AfterSalePrivateAsset
     }
     private static Asset fact(PrivateAssetEntity a){return new Asset(Long.toString(a.getId()),Long.toString(a.getOwnerUserId()),a.getObjectSha256(),
             a.getObjectVersionRef(),Long.toString(a.getVersion()),a.getMediaType(),a.getBytes());}
-    private static byte[] proofHash(AfterSaleAssetReadAuthorizer.Proof p){return hash(frame(p.audience(),p.sessionId(),p.sessionGeneration(),p.actorType(),p.actorId(),
-            p.afterSaleId(),p.batchId(),p.assetId(),p.ownerUserId(),p.objectSha256(),p.objectVersionRef(),p.assetFactVersion(),p.authzVersion(),p.scopeVersion()));}
+    private static byte[] proofHash(AfterSaleAssetReadAuthorizer.Proof p){
+        byte[] legacy=frame(p.audience(),p.sessionId(),p.sessionGeneration(),p.actorType(),p.actorId(),
+                p.afterSaleId(),p.batchId(),p.assetId(),p.ownerUserId(),p.objectSha256(),p.objectVersionRef(),p.assetFactVersion(),p.authzVersion(),p.scopeVersion());
+        return hash(p.party()==null?legacy:frame("AFTERSALE_EVIDENCE_PROOF_V2",p.party(),hex(hash(legacy))));
+    }
     private static void validateGrant(AfterSaleAssetGrantEntity row,CommandContext c,byte[] digest,byte[] proof,String state){
         if(row==null||Boolean.TRUE.equals(row.expired)||!state.equals(row.status))throw gone();
         if(!row.actorType.equals(c.operatorType().name())||row.actorId!=id(c.operatorId())||!equal(row.tokenDigest,digest)||!equal(row.proofHash,proof))throw forbidden();
@@ -169,6 +177,14 @@ public final class AfterSalePrivateAssetApiImpl implements AfterSalePrivateAsset
         try {PublicContractChecks.requireCommandRequestId(c);id(c.operatorId());
             if(c.operatorType()!=OperatorType.USER&&c.operatorType()!=OperatorType.PLATFORM_OPERATOR)throw forbidden();
         } catch(IllegalArgumentException invalid){throw invalid();}
+    }
+    private static void principal(CommandContext c,EvidencePrincipal p){
+        if(p==null)return;
+        if(!c.equals(p.context())||p.party()==null||!Set.of("USER","MERCHANT","OPS").contains(p.party())
+                ||p.sessionId()==null||p.sessionId().isBlank()||p.sessionGeneration()<0)throw invalid();
+        boolean ops="OPS".equals(p.party());
+        if((ops?OperatorType.PLATFORM_OPERATOR:OperatorType.USER)!=c.operatorType()
+                ||!(ops?"ADMIN_WEB":"MINIAPP").equals(p.audience()))throw forbidden();
     }
     private long next(){long value=ids.nextId();if(value<=0)throw unavailable();return value;}
     private static long id(String value){try{return IDS.fromApi(value);}catch(RuntimeException invalid){throw invalid();}}

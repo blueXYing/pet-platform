@@ -12,6 +12,18 @@
  <sql id="caseColumns">id,order_id,user_id,merchant_id,store_id,status,source_stage,version,active_flag,workflow_revision,creator_command_id,created_event_id,city_code,scope_version,eligibility_anchor,eligibility_deadline,origin_cipher,content_cipher,type_code,demand_code,final_set_version,decision_id,refund_order_id,current_supplement_id,duplicate_final_case_id,requested_amount,decision_type,decision_amount,created_at,accepted_at,resolved_at,invalidated_at,closed_at</sql>
  <select id="hint" resultType="com.petplatform.aftersale.biz.infrastructure.persistence.mapper.AfterSaleWorkflowMapper$CaseRow">SELECT <include refid="caseColumns"/> FROM aftersale_case WHERE id=#{id}</select>
  <select id="row" resultType="com.petplatform.aftersale.biz.infrastructure.persistence.mapper.AfterSaleWorkflowMapper$CaseRow">SELECT <include refid="caseColumns"/> FROM aftersale_case WHERE id=#{id} FOR UPDATE</select>
+ <sql id="authorizedListWhere">
+  WHERE workflow_revision=1
+  <choose>
+   <when test="user != null">AND user_id=#{user}</when>
+   <when test="merchant != null and store != null">AND merchant_id=#{merchant} AND store_id=#{store}</when>
+   <otherwise>AND 1=0</otherwise>
+  </choose>
+  <if test="status != null">AND status=#{status}</if>
+  <if test="order != null">AND order_id=#{order}</if>
+ </sql>
+ <select id="countCases" resultType="long">SELECT COUNT(*) FROM aftersale_case <include refid="authorizedListWhere"/></select>
+ <select id="listCases" resultType="com.petplatform.aftersale.biz.infrastructure.persistence.mapper.AfterSaleWorkflowMapper$CaseRow">SELECT <include refid="caseColumns"/> FROM aftersale_case <include refid="authorizedListWhere"/> ORDER BY created_at DESC,id DESC LIMIT #{limit} OFFSET #{offset}</select>
  <select id="active" resultType="com.petplatform.aftersale.biz.infrastructure.persistence.mapper.AfterSaleWorkflowMapper$CaseRow">SELECT <include refid="caseColumns"/> FROM aftersale_case WHERE order_id=#{order} AND active_flag=1 FOR UPDATE</select>
  <select id="finals" resultType="com.petplatform.aftersale.biz.infrastructure.persistence.mapper.AfterSaleWorkflowMapper$CaseRow">SELECT <include refid="caseColumns"/> FROM aftersale_case WHERE order_id=#{order} AND status='RESOLVED' AND decision_id IS NOT NULL AND decision_type IN ('REJECT','RESERVICE','OTHER') ORDER BY id FOR UPDATE</select>
  <insert id="create">INSERT INTO aftersale_case(id,aftersale_no,order_id,user_id,merchant_id,store_id,status,source_stage,description,requested_amount,active_flag,created_at,version,workflow_revision,creator_command_id,created_event_id,city_code,scope_version,eligibility_anchor,eligibility_deadline,origin_cipher,content_cipher,type_code,demand_code,final_set_version) VALUES(#{case},#{case},#{order},#{user},#{merchant},#{store},'PENDING',#{stage},'',#{amount,jdbcType=DECIMAL},1,#{at},0,1,#{command},#{event},#{city,jdbcType=VARCHAR},#{scopeVersion},#{anchor},#{deadline},#{origin},#{content},#{type},#{demand},#{finalVersion})</insert>

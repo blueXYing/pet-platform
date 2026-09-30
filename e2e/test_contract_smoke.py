@@ -15,9 +15,9 @@ class ContractSmokeRegressions(unittest.TestCase):
 
     def test_current_document_passes(self):
         result = check(self.spec)
-        self.assertEqual(result['legacyOperations'], 16)
-        self.assertEqual(result['legacyWrites'], 13)
-        self.assertEqual(result['legacyCreates'], 4)
+        self.assertEqual(result['legacyOperations'], 14)
+        self.assertEqual(result['legacyWrites'], 11)
+        self.assertEqual(result['legacyCreates'], 3)
         self.assertGreater(result['stringIdProperties'], 0)
 
     def test_local_reference_chain_and_allof_string_pass(self):
@@ -97,15 +97,15 @@ class ContractSmokeRegressions(unittest.TestCase):
             check(self.spec)
 
     def test_numeric_id_array_item_rejected(self):
-        prop = self.spec['components']['schemas']['CreateAftersaleRequest']['properties']['evidenceFileIds']
+        prop = self.spec['components']['schemas']['AfterSaleCreateRequest']['properties']['evidenceAssetIds']
         prop['items'] = {'allOf': [{'type': 'integer'}]}
-        with self.assertRaisesRegex(AssertionError, 'Non-string ID/amount/header: evidenceFileIds'):
+        with self.assertRaisesRegex(AssertionError, 'Non-string ID/amount/header: evidenceAssetIds'):
             check(self.spec)
 
     def test_nullable_id_array_item_rejected(self):
-        prop = self.spec['components']['schemas']['CreateAftersaleRequest']['properties']['evidenceFileIds']
+        prop = self.spec['components']['schemas']['AfterSaleCreateRequest']['properties']['evidenceAssetIds']
         prop['items'] = {'type': 'string', 'nullable': True}
-        with self.assertRaisesRegex(AssertionError, 'Invalid nullable: evidenceFileIds'):
+        with self.assertRaisesRegex(AssertionError, 'Invalid nullable: evidenceAssetIds'):
             check(self.spec)
 
     def test_inline_nested_id_rejected(self):

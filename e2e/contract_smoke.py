@@ -17,7 +17,6 @@ LEGACY_OPERATIONS = {
     'createOrderPayment': ('post', '/c/orders/{orderId}/payments'),
     'rescheduleOrder': ('post', '/c/orders/{orderId}/reschedule'),
     'applyRefund': ('post', '/c/orders/{orderId}/refund-applications'),
-    'createAftersale': ('post', '/c/orders/{orderId}/aftersales'),
     'getReviewEligibility': ('get', '/c/orders/{orderId}/review-eligibility'),
     'createReview': ('post', '/c/orders/{orderId}/reviews'),
     'merchantConfirmOrder': ('post', '/merchant/orders/{orderId}/confirm'),
@@ -25,14 +24,51 @@ LEGACY_OPERATIONS = {
     'merchantApproveRefund': ('post', '/merchant/refund-applications/{applicationId}/approve'),
     'merchantRejectRefund': ('post', '/merchant/refund-applications/{applicationId}/reject'),
     'verifyPlatformOrder': ('post', '/merchant/orders/{orderId}/verification'),
-    'decideAftersale': ('post', '/admin/aftersales/{afterSaleId}/decision'),
     'abnormalCloseOrder': ('post', '/admin/orders/{orderId}/abnormal-close'),
 }
-LEGACY_CREATES = {'createOrder', 'applyRefund', 'createAftersale', 'createReview'}
+LEGACY_CREATES = {'createOrder', 'applyRefund', 'createReview'}
 LEGACY_CREATE_SCHEMAS = {
     'createOrder': 'CreateOrderResponseEnvelope',
     'applyRefund': 'RefundApplicationResponseEnvelope',
 }
+# Contract51 promotes two unimplemented AFS draft operations into a separately pinned family.
+AFTERSALE_OPERATIONS = {
+    'createAftersale': ('post', '/c/orders/{orderId}/aftersales'),
+    'getAftersaleEligibility': ('get', '/c/orders/{orderId}/aftersale-eligibility'),
+    'cListAftersales': ('get', '/c/aftersales'),
+    'merchantListAftersales': ('get', '/merchant/aftersales'),
+    'adminListAftersales': ('get', '/admin/aftersales'),
+    'cGetAftersale': ('get', '/c/aftersales/{afterSaleId}'),
+    'merchantGetAftersale': ('get', '/merchant/aftersales/{afterSaleId}'),
+    'adminGetAftersale': ('get', '/admin/aftersales/{afterSaleId}'),
+    'cAddAftersaleEvidence': ('post', '/c/aftersales/{afterSaleId}/evidence'),
+    'merchantAddAftersaleEvidence': ('post', '/merchant/aftersales/{afterSaleId}/evidence'),
+    'withdrawAftersale': ('post', '/c/aftersales/{afterSaleId}/withdraw'),
+    'submitAftersaleOpinion': ('post', '/merchant/aftersales/{afterSaleId}/opinion'),
+    'acceptAftersale': ('post', '/admin/aftersales/{afterSaleId}/accept'),
+    'requestAftersaleSupplement': ('post', '/admin/aftersales/{afterSaleId}/supplement-requests'),
+    'closeDuplicateAftersale': ('post', '/admin/aftersales/{afterSaleId}/close-duplicate'),
+    'decideAftersale': ('post', '/admin/aftersales/{afterSaleId}/decisions'),
+    'uploadAftersaleEvidenceAsset': ('post', '/c/aftersale-evidence-assets'),
+}
+for _audience in ('c', 'merchant', 'admin'):
+    AFTERSALE_OPERATIONS[_audience + 'IssueAftersaleEvidenceGrant'] = (
+        'post', '/' + _audience + '/aftersales/{afterSaleId}/evidence-batches/{batchId}/assets/{assetId}/read-grants')
+    AFTERSALE_OPERATIONS[_audience + 'ConsumeAftersaleEvidenceGrant'] = (
+        'get', '/' + _audience + '/aftersale-evidence-read-grants/{token}')
+
+AFTERSALE_REQUEST_SHAPES = {
+    'AfterSaleCreateRequest': ({'typeCode', 'demandCode', 'description', 'evidenceAssetIds'}, {'requestedAmount', 'newProblemStatement'}),
+    'AfterSaleEvidenceRequest': ({'expectedVersion', 'evidenceAssetIds'}, {'supplementRequestId', 'text'}),
+    'AfterSaleOpinionRequest': ({'expectedVersion', 'opinionCode', 'explanation', 'evidenceAssetIds'}, {'supplementRequestId'}),
+    'AfterSaleWithdrawRequest': ({'expectedVersion'}, set()),
+    'AfterSaleAcceptRequest': ({'expectedVersion'}, {'newProblemAssessment', 'expectedFinalSetVersion'}),
+    'AfterSaleSupplementRequest': ({'expectedVersion', 'targetParty', 'reason', 'deadline'}, set()),
+    'AfterSaleCloseDuplicateRequest': ({'expectedVersion', 'priorFinalCaseId', 'reason'}, set()),
+    'AfterSaleDecisionRequest': ({'expectedVersion', 'decisionType', 'reason'}, {'refundAmount'}),
+    'AfterSaleAssetGrantRequest': ({'reason'}, set()),
+}
+
 CREDENTIAL_OPERATIONS = {
     'getOrderVerificationCredential': ('get', '/c/orders/{orderId}/verification-code'),
     'issueOrderVerificationCredential': ('post', '/c/orders/{orderId}/verification-code'),
@@ -334,6 +370,77 @@ def string_schema(spec, schema, name, allow_nullable=True):
             assert all(member.get('nullable', False) for member in typed), f'Conflicting nullable allOf: {name}'
 
 
+def check_aftersale_schemas(spec):
+    schemas = spec['components']['schemas']
+    for name, (required, optional) in AFTERSALE_REQUEST_SHAPES.items():
+        schema = schemas[name]
+        assert schema.get('type') == 'object' and schema.get('additionalProperties') is False, f'AFS strict DTO changed: {name}'
+        assert set(schema.get('required', [])) == required, f'AFS required fields changed: {name}'
+        assert set(schema['properties']) == required | optional, f'AFS fields changed: {name}'
+        for field in optional:
+            assert schema['properties'][field].get('nullable') is True, f'AFS optional nullable changed: {name}.{field}'
+        if 'evidenceAssetIds' in required:
+            assets = schema['properties']['evidenceAssetIds']
+            assert assets.get('type') == 'array' and assets.get('maxItems') == 6 and assets.get('uniqueItems') is True and not assets.get('nullable'), 'AFS evidence bounds changed'
+            string_schema(spec, assets['items'], 'evidenceAssetIds', allow_nullable=False)
+    for name, field in [('AfterSaleCreateRequest', 'requestedAmount'), ('AfterSaleDecisionRequest', 'refundAmount')]:
+        prop = schemas[name]['properties'][field]
+        assert prop['type'] == 'string' and prop['pattern'] == r'^(0|[1-9][0-9]{0,15})\.[0-9]{2}$', 'AFS exact decimal changed'
+    assert schemas['AfterSaleSupplementRequest']['properties']['deadline']['pattern'] == r'^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}\.[0-9]{3}Z$', 'AFS deadline precision changed'
+    assert set(schemas['AfterSaleDecisionRequest']['properties']['decisionType']['enum']) == {'REJECT', 'RESERVICE', 'OTHER', 'FULL_REFUND', 'PARTIAL_REFUND'}, 'AFS decision type changed'
+    summary = schemas['AfterSaleCaseSummary']
+    assert set(summary['properties']) == {'afterSaleId', 'orderId', 'merchantId', 'storeId', 'status', 'version', 'sourceStage', 'typeCode', 'demandCode', 'requestedAmount', 'createdAt', 'deadline'}, 'AFS summary scope changed'
+    assert schemas['AfterSaleCasePage']['properties']['items']['maxItems'] == 50, 'AFS page bound changed'
+    for name in ('AfterSaleReceipt', 'AfterSaleEligibility', 'AfterSaleCasePage', 'AfterSaleCaseDetail', 'AfterSaleAssetUpload', 'AfterSaleAssetGrant'):
+        payload = schemas[name]
+        assert payload.get('additionalProperties') is False and set(payload['required']) == set(payload['properties']), f'AFS response incomplete: {name}'
+        envelope = schemas[name + 'Envelope']
+        assert envelope.get('additionalProperties') is False and set(envelope['required']) == {'code', 'message', 'data', 'traceId'}, f'AFS envelope changed: {name}'
+        assert set(envelope['properties']) == {'code', 'message', 'data', 'traceId'} and envelope['properties']['data'] == {'$ref': '#/components/schemas/' + name}, f'AFS envelope payload changed: {name}'
+        assert envelope['properties']['code']['enum'] == ['SUCCESS'] and envelope['properties']['message']['enum'] == ['ok'], 'AFS success code changed'
+    error = schemas['AfterSaleErrorEnvelope']
+    assert error.get('additionalProperties') is False and set(error['properties']) == {'code', 'message', 'data', 'traceId'} and error['properties']['data']['enum'] == [None], 'AFS failure data unsafe'
+
+
+def check_aftersale_operation(spec, operation, method, path):
+    name = operation['operationId']
+    assert (method, path) == AFTERSALE_OPERATIONS[name], f'AFS route changed: {name}'
+    assert operation.get('security') == [{'bearerAuth': []}], f'AFS security changed: {name}'
+    assert operation.get('x-implementation-status') == 'IMPLEMENTED_DEFAULT_OFF' and operation.get('x-default-enabled') is False, f'AFS default-off changed: {name}'
+    assert operation.get('x-contract') == '51-AfterSale-Http-Contract-v0.1.md', f'AFS authority contract changed: {name}'
+    party = 'OPS' if path.startswith('/admin/') else 'MERCHANT' if path.startswith('/merchant/') else 'USER'
+    assert operation.get('x-route-party') == party and operation.get('x-audience') == ('ADMIN_WEB' if party == 'OPS' else 'MINIAPP'), f'AFS route identity changed: {name}'
+    if party == 'OPS':
+        action = 'aftersale.decide' if path.endswith('/decisions') else 'aftersale.handle' if path.endswith(('/accept', '/supplement-requests', '/close-duplicate')) else 'aftersale.read'
+        assert operation.get('x-required-actions') == [action], f'AFS action changed: {name}'
+    responses = operation['responses']
+    assert {'200', '400', '401', '403', '404', '409', '503'} <= responses.keys() and '202' not in responses, f'AFS responses changed: {name}'
+    if name in {'createAftersale', 'uploadAftersaleEvidenceAsset'}:
+        assert '201' in responses and responses['201']['content'] == responses['200']['content'], f'AFS create replay changed: {name}'
+    else:
+        assert '201' not in responses, f'AFS unexpected create status: {name}'
+    for status in responses:
+        if int(status) >= 400:
+            response = dereference(spec, responses[status])
+            assert response['content']['application/json']['schema'] == {'$ref': '#/components/schemas/AfterSaleErrorEnvelope'}, f'AFS error envelope changed: {name}'
+    if name.endswith('ListAftersales'):
+        params = {p['name']: p for p in operation['parameters'] if p.get('in') == 'query'}
+        assert set(params) == ({'page', 'pageSize', 'status', 'orderId'} | ({'merchantId', 'storeId'} if party != 'USER' else set())), f'AFS list filters changed: {name}'
+        assert params['page']['schema'] == {'type': 'integer', 'minimum': 1, 'maximum': 10000, 'default': 1}, 'AFS page range changed'
+        assert params['pageSize']['schema'] == {'type': 'integer', 'minimum': 1, 'maximum': 50, 'default': 20}, 'AFS page size changed'
+        if party != 'USER':
+            assert params['merchantId'].get('required') is True and params['storeId'].get('required') is True, 'AFS global store scope opened'
+    if name == 'decideAftersale':
+        assert operation.get('x-public-refund-enabled') is False and operation.get('x-executable-decision-types') == ['REJECT', 'RESERVICE', 'OTHER'], 'AFS public funding opened'
+    if 'ConsumeAftersaleEvidenceGrant' in name:
+        assert '410' in responses and set(responses['200']['content']) == {'image/jpeg', 'image/png'}, 'AFS private image response changed'
+    if method == 'post' and name != 'uploadAftersaleEvidenceAsset':
+        body = operation['requestBody']
+        assert body.get('required') is True and set(body['content']) == {'application/json'}, f'AFS JSON body changed: {name}'
+        request = dereference(spec, body['content']['application/json']['schema'])
+        assert request.get('additionalProperties') is False, f'AFS request strictness changed: {name}'
+
+
 def check(spec):
     assert spec['openapi'] == '3.0.3', 'Unexpected OpenAPI dialect'
     assert spec['paths'], 'No operations'
@@ -356,6 +463,7 @@ def check(spec):
                 walk(child, active, count_refs)
     walk(spec)
     schemas = spec['components']['schemas']
+    check_aftersale_schemas(spec)
     string_schema(spec, schemas['DecimalAmount'], 'DecimalAmount', allow_nullable=False)
     request = dereference(spec, spec['components']['parameters']['RequestId'])
     assert request['name'] == 'X-Request-Id' and request['in'] == 'header' and request['required']
@@ -428,6 +536,8 @@ def check(spec):
                 check_auth_security(spec, operation, parameters)
             else:
                 assert operation.get('security', spec.get('security')), f'Missing security: {operation_id}'
+            if operation_id in AFTERSALE_OPERATIONS:
+                check_aftersale_operation(spec, operation, method, path)
             if operation_id in LEGACY_OPERATIONS:
                 legacy_seen.add(operation_id)
                 assert (method, path) == LEGACY_OPERATIONS[operation_id], f'Legacy operation moved: {operation_id}'
@@ -491,9 +601,9 @@ def check(spec):
                         if parameter['name'] == name and parameter['in'] == 'path':
                             string_schema(spec, parameter['schema'], name, allow_nullable=False)
     assert legacy_seen == LEGACY_OPERATIONS.keys(), f'Legacy operations missing: {LEGACY_OPERATIONS.keys() - legacy_seen}'
-    assert legacy_writes == 13, 'Legacy write surface changed'
+    assert legacy_writes == 11, 'Legacy write surface changed'
     assert legacy_creates == LEGACY_CREATES, 'Legacy create surface changed'
-    assert operations == LEGACY_OPERATIONS.keys() | AUTH_OPERATIONS.keys() | MERCHANT_OPERATIONS.keys() | APPLICATION_OPERATIONS.keys() | PRIVATE_ASSET_OPERATIONS.keys() | SERVICE_CATALOG_OPERATIONS.keys() | STORE_CATALOG_OPERATIONS.keys() | SERVICE_WRITE_OPERATIONS.keys() | SCHEDULE_AVAILABILITY_OPERATIONS.keys() | CREDENTIAL_OPERATIONS.keys(), 'Unexpected or missing reviewed operations'
+    assert operations == LEGACY_OPERATIONS.keys() | AUTH_OPERATIONS.keys() | MERCHANT_OPERATIONS.keys() | APPLICATION_OPERATIONS.keys() | PRIVATE_ASSET_OPERATIONS.keys() | SERVICE_CATALOG_OPERATIONS.keys() | STORE_CATALOG_OPERATIONS.keys() | SERVICE_WRITE_OPERATIONS.keys() | SCHEDULE_AVAILABILITY_OPERATIONS.keys() | CREDENTIAL_OPERATIONS.keys() | AFTERSALE_OPERATIONS.keys(), 'Unexpected or missing reviewed operations'
     schemes = spec['components']['securitySchemes']
     assert schemes['bearerAuth']['type'] == 'http' and schemes['bearerAuth']['scheme'] == 'bearer'
     for scheme, location, name in [('authAttempt', 'header', 'X-Auth-Attempt'),
@@ -530,6 +640,7 @@ def check(spec):
     # Visit declarations once, including inline/nested schemas and allOf branches.
     check_properties(spec)
     return {'operations': len(operations), 'writesWithRequestId': writes,
+            'aftersaleOperations': len(operations & AFTERSALE_OPERATIONS.keys()),
             'legacyOperations': len(legacy_seen), 'legacyWrites': legacy_writes,
             'legacyCreates': len(legacy_creates), 'authOperations': len(operations & AUTH_OPERATIONS.keys()),
             'merchantOperations': len(operations & MERCHANT_OPERATIONS.keys()),

@@ -26,13 +26,15 @@ import org.springframework.boot.autoconfigure.condition.*;
 import org.springframework.context.annotation.*;
 import org.springframework.core.env.Environment;
 
-/** Approved internal workflow. No HTTP publication or production funding fallback. */
+/** Approved workflow and opt-in HTTP adapters; no production funding fallback. */
 @Configuration(proxyBeanMethods=false)
 public class AfterSaleWorkflowConfiguration {
     @Bean Object afterSaleSwitchValidation(Environment e) {
         boolean enabled=on(e,"pet.aftersale.enabled");
-        if(on(e,"pet.aftersale.http.enabled") || !enabled && (on(e,"pet.aftersale.worker.enabled") || on(e,"pet.aftersale.refund.enabled")))
-            throw new IllegalStateException("Aftersale HTTP is unavailable; dependent switches require workflow");
+        if(!enabled && (on(e,"pet.aftersale.http.enabled") || on(e,"pet.aftersale.worker.enabled") || on(e,"pet.aftersale.refund.enabled")))
+            throw new IllegalStateException("Aftersale dependent switches require workflow");
+        if(on(e,"pet.aftersale.http.enabled") && !on(e,"pet.auth.admin.enabled"))
+            throw new IllegalStateException("Aftersale HTTP requires real admin sessions");
         if(enabled && (!on(e,"pet.refund.application.enabled") || !on(e,"pet.verification.completion.enabled")
                 || !on(e,"pet.private-assets.enabled") || !on(e,"pet.auth.c.enabled")))
             throw new IllegalStateException("Aftersale requires real refund, verification, private assets and sessions");

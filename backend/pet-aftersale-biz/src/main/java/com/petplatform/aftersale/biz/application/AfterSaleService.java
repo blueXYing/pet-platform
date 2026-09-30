@@ -62,16 +62,17 @@ public final class AfterSaleService implements AfterSaleCommandApi, AfterSaleQue
         tx.setIsolationLevel(TransactionDefinition.ISOLATION_READ_COMMITTED);tx.setPropagationBehavior(TransactionDefinition.PROPAGATION_REQUIRES_NEW);
     }
 
-    @Override public Receipt create(Create c) {return safe(()->{
+    @Override public Receipt create(Create c) {return createWithOutcome(c).receipt();}
+    @Override public CreationResult createWithOutcome(Create c) {return safe(()->{
         if(c==null)throw invalid();user(c.context());id(c.orderId());text(c.description(),10,500);text(c.typeCode(),1,64);text(c.demandCode(),1,64);
         if(c.newProblemStatement()!=null)text(c.newProblemStatement(),10,500);assetIds(c.evidenceAssetIds());optionalAmount(c.requestedAmount());
         top();authority.requireUser(c.context());
         var input=json(values("orderId",c.orderId(),"typeCode",c.typeCode(),"demandCode",c.demandCode(),"description",c.description(),"requestedAmount",money(c.requestedAmount()),"assets",sorted(c.evidenceAssetIds()),"newProblemStatement",c.newProblemStatement()));
-        var key=key("aftersale.create",c.context(),"ORDER:"+c.orderId());var purpose=purpose(key);var saved=committed(key,purpose,input,c.context());if(saved!=null)return saved;
+        var key=key("aftersale.create",c.context(),"ORDER:"+c.orderId());var purpose=purpose(key);var saved=committed(key,purpose,input,c.context());if(saved!=null)return new CreationResult(saved,false);
         reasons.requireCodes(c.typeCode(),c.demandCode());var moderationProof=moderate(c.description());moderate(c.newProblemStatement());admit(key,purpose,input);
         return tx.execute(s->{defaults();var b=db.binding(key);same(b,purpose,input);var loc=orders.locate(c.orderId(),system(c.context()));
             guard.acquire(List.of(loc.storeId()),system(c.context()));authority.requireUser(c.context());if(!c.context().operatorId().equals(loc.userId()))throw forbidden();
-            if("SUCCEEDED".equals(b.state))return replay(b,purpose,c.context());reserved(b);activate(b.id,"");
+            if("SUCCEEDED".equals(b.state))return new CreationResult(replay(b,purpose,c.context()),false);reserved(b);activate(b.id,"");
             var fact=orderFacts(c.orderId(),loc.storeId(),system(c.context()));var hf=history.readForOrder(c.orderId(),loc.storeId(),system(c.context()),source);
             var at=now();var eligibility=eligibility(fact,hf,at);if(!eligibility.eligible())throw error(eligibility.blockingReason());
             var prior=finalCases(id(c.orderId()));if(!prior.isEmpty()&&(c.newProblemStatement()==null||c.newProblemStatement().isBlank()))throw invalid();
@@ -84,7 +85,7 @@ public final class AfterSaleService implements AfterSaleCommandApi, AfterSaleQue
             var receipt=new Receipt(str(b.id),c.orderId(),str(caseId),"PENDING","0",time(at),str(batch),null,null,null);
             record(row,b,c.context(),null,"CREATED",event,receipt,null);commits.bindCreated(c.orderId(),loc.storeId(),str(caseId),fact.orderVersion(),c.context(),source);
             publish(event,"AfterSaleCreatedEvent",str(caseId),at,c.context(),values("afterSaleId",str(caseId),"orderId",c.orderId(),"userId",loc.userId(),"afterSaleType",c.typeCode(),"createdAt",time(at)));
-            finish(b,purpose,receipt);before(()->{authority.requireUser(c.context());requireOrderCurrent(row);});return receipt;
+            finish(b,purpose,receipt);before(()->{authority.requireUser(c.context());requireOrderCurrent(row);});return new CreationResult(receipt,true);
         });
     });}
 
@@ -105,17 +106,24 @@ public final class AfterSaleService implements AfterSaleCommandApi, AfterSaleQue
         });
     }
     @Override public Receipt submitEvidence(SubmitEvidence c) {
-        if(c==null)throw invalid();return evidence(c.context(),c.afterSaleId(),c.expectedVersion(),c.supplementRequestId(),c.text(),null,c.evidenceAssetIds(),false);
+        if(c==null)throw invalid();return evidence(c.context(),c.afterSaleId(),c.expectedVersion(),c.supplementRequestId(),c.text(),null,c.evidenceAssetIds(),false,null);
+    }
+    @Override public Receipt submitEvidence(SubmitEvidence c,RouteParty routeParty) {
+        if(c==null||routeParty==null)throw invalid();if(routeParty==RouteParty.OPS)throw forbidden();
+        return evidence(c.context(),c.afterSaleId(),c.expectedVersion(),c.supplementRequestId(),c.text(),null,c.evidenceAssetIds(),false,routeParty);
     }
     @Override public Receipt submitMerchantOpinion(SubmitMerchantOpinion c) {
         if(c==null||c.opinionCode()==null||!Set.of("AGREE","PARTLY_AGREE","DISAGREE","NEED_USER_SUPPLEMENT").contains(c.opinionCode()))throw invalid();
-        text(c.explanation(),10,500);return evidence(c.context(),c.afterSaleId(),c.expectedVersion(),c.supplementRequestId(),c.explanation(),c.opinionCode(),c.evidenceAssetIds(),true);
+        text(c.explanation(),10,500);return evidence(c.context(),c.afterSaleId(),c.expectedVersion(),c.supplementRequestId(),c.explanation(),c.opinionCode(),c.evidenceAssetIds(),true,null);
     }
-    private Receipt evidence(CommandContext context,String caseId,String version,String supplement,String text,String opinion,List<String> assetIds,boolean merchantOnly) {
+    private Receipt evidence(CommandContext context,String caseId,String version,String supplement,String text,String opinion,List<String> assetIds,boolean merchantOnly,RouteParty routeParty) {
         user(context);assetIds(assetIds);if(text!=null)text(text,10,500);if((text==null||text.isBlank())&&assetIds.isEmpty())throw invalid();
-        return change(merchantOnly?"opinion.submit":"evidence.submit",context,caseId,version,values("supplementRequestId",supplement,"text",text,"opinion",opinion,"assets",sorted(assetIds)),()->moderate(text),st->{
-            authority.requireUser(context);String party;if(context.operatorId().equals(str(st.row.userId))&&!merchantOnly)party="USER";else{authority.requireOwner(context,resource(st.row));party="MERCHANT";}
-            st.finalAuthority=()->{authority.requireUser(context);if("MERCHANT".equals(party))authority.requireOwner(context,resource(st.row));};
+        var parameters=values("supplementRequestId",supplement,"text",text,"opinion",opinion,"assets",sorted(assetIds));if(routeParty!=null)parameters.put("routeParty",routeParty.name());
+        return change(merchantOnly?"opinion.submit":"evidence.submit",context,caseId,version,parameters,()->moderate(text),st->{
+            authority.requireUser(context);String party;
+            if(routeParty!=null){selectedRead(context,st.row,routeParty);party=routeParty.name();if(routeParty==RouteParty.MERCHANT)authority.requireOwner(context,resource(st.row));}
+            else if(context.operatorId().equals(str(st.row.userId))&&!merchantOnly)party="USER";else{authority.requireOwner(context,resource(st.row));party="MERCHANT";}
+            st.finalAuthority=()->{authority.requireUser(context);if(routeParty!=null)selectedRead(context,st.row,routeParty);if("MERCHANT".equals(party))authority.requireOwner(context,resource(st.row));};
             if(!LIVE.contains(st.row.status))throw state();var owned=resolveAssets(context.operatorId(),assetIds);Long matching=null;
             if("WAITING_SUPPLEMENT".equals(st.row.status)){
                 var round=currentSupplement(st.row);if(supplement==null||!str(round.id).equals(supplement))throw error("AFTERSALE_SUPPLEMENT_STALE");
@@ -128,6 +136,7 @@ public final class AfterSaleService implements AfterSaleCommandApi, AfterSaleQue
     @Override public Receipt withdraw(Withdraw c) {
         if(c==null)throw invalid();return change("withdraw",c.context(),c.afterSaleId(),c.expectedVersion(),Map.of(),st->{
             user(c.context());authority.requireUser(c.context());if(!c.context().operatorId().equals(str(st.row.userId)))throw forbidden();
+            st.finalAuthority=()->{authority.requireUser(c.context());if(!c.context().operatorId().equals(str(st.row.userId)))throw forbidden();};
             if(!LIVE.contains(st.row.status))throw state();st.cancelRound();st.to="WITHDRAWN";st.action="WITHDRAWN";
         });
     }
@@ -205,10 +214,11 @@ public final class AfterSaleService implements AfterSaleCommandApi, AfterSaleQue
     }
 
     @Override public Eligibility checkEligibility(CommandContext context,String orderId){return safe(()->{
-        id(orderId);top();authority.requireUser(context);
-        try{return tx.execute(s->{defaults();var loc=orders.locate(orderId,system(context));guard.acquire(List.of(loc.storeId()),system(context));authority.requireUser(context);if(!loc.userId().equals(context.operatorId()))throw forbidden();
+        id(orderId);queryActor(context,RouteParty.USER);top();String access=authorityVersion(authority.requireBuyerRead(context));Eligibility result;
+        try{result=tx.execute(s->{defaults();var loc=orders.locate(orderId,system(context));guard.acquire(List.of(loc.storeId()),system(context));if(!access.equals(authorityVersion(authority.requireBuyerRead(context))))throw forbidden();if(!loc.userId().equals(context.operatorId()))throw forbidden();
             var f=orderFacts(orderId,loc.storeId(),system(context));return eligibility(f,history.readForOrder(orderId,loc.storeId(),system(context),source),now());});
-        }catch(ApiException failure){if(Set.of("AFTERSALE_NOT_ELIGIBLE","REFUND_ORDER_ALREADY_EXISTS").contains(failure.code()))return new Eligibility(false,null,null,failure.code(),null);throw failure;}
+        }catch(ApiException failure){if(Set.of("AFTERSALE_NOT_ELIGIBLE","REFUND_ORDER_ALREADY_EXISTS").contains(failure.code()))result=new Eligibility(false,null,null,failure.code(),null);else throw failure;}
+        if(!access.equals(authorityVersion(authority.requireBuyerRead(context))))throw forbidden();return result;
     });}
     private OrderAfterSaleFactsApi.Fact orderFacts(String order,String store,QueryContext context){try{return orders.requireCurrentEligible(order,store,context,source);}catch(ApiException failure){if(Set.of("REFUND_BEFORE_SERVICE_NOT_IMPLEMENTED","REFUND_NOT_ELIGIBLE").contains(failure.code()))throw error("AFTERSALE_NOT_ELIGIBLE");throw failure;}}
     private Eligibility eligibility(OrderAfterSaleFactsApi.Fact fact,RefundApplicationHistoryFactsApi.Fact h,OffsetDateTime at){
@@ -216,14 +226,58 @@ public final class AfterSaleService implements AfterSaleCommandApi, AfterSaleQue
         var current=requireCurrent(loc.orderId(),loc.storeId(),fact.currentCaseId(),new QueryContext("aftersale-eligibility",OperatorType.SYSTEM,null),source);
         return AfterSaleEligibilityPolicy.evaluate(fact,h,current,at);
     }
-    @Override public CaseView getCase(CommandContext context,String caseId){return safe(()->{
-        id(caseId);top();return tx.execute(s->{defaults();var hint=hint(id(caseId));guard.acquire(List.of(str(hint.storeId)),system(context));var row=caseRow(hint.id);authority.requireRead(context,resource(row));var origin=origin(row);var content=decode("CASE_CONTENT:"+row.id,row.contentCipher,Content.class);
+    @Override public CaseView getCase(CommandContext context,String caseId){return caseView(context,caseId,null);}
+    @Override public CaseView getCase(CommandContext context,String caseId,RouteParty routeParty){if(routeParty==null)throw invalid();return caseView(context,caseId,routeParty);}
+    private CaseView caseView(CommandContext context,String caseId,RouteParty routeParty){return safe(()->{
+        id(caseId);queryActor(context,routeParty);top();return tx.execute(s->{defaults();var hint=hint(id(caseId));guard.acquire(List.of(str(hint.storeId)),system(context));var row=caseRow(hint.id);var access=selectedRead(context,row,routeParty);var origin=origin(row);var content=decode("CASE_CONTENT:"+row.id,row.contentCipher,Content.class);
             var round=row.currentSupplementId==null?null:round(row,row.currentSupplementId);var prior=finalCases(row.orderId);var batches=new ArrayList<EvidenceBatch>();
             for(var b:db.batches(row.id)){var body=batchBody(b);batches.add(new EvidenceBatch(str(b.id),b.submitterType,body.text(),body.opinionCode(),time(offset(b.createdAt)),db.assets(b.id).stream().map(a->str(a.assetId)).toList()));}
             var decision=row.decisionId==null?null:decisionProof(row.decisionId);String reason=row.decisionId==null?null:decode("DECISION_REASON:"+row.decisionId,db.decision(row.decisionId).reasonCipher,String.class);
+            before(()->{if(!access.equals(selectedRead(context,row,routeParty)))throw forbidden();});
             return new CaseView(str(row.id),str(row.orderId),row.status,str(row.version),row.sourceStage,row.typeCode,row.demandCode,content.description(),row.requestedAmount,time(offset(row.createdAt)),time(offset(row.eligibilityDeadline)),nullable(row.currentSupplementId),round==null?null:round.targetParty,round==null?null:time(offset(round.deadline)),round==null?null:decode("SUPPLEMENT:"+round.id,round.reasonCipher,String.class),finalVersion(prior),prior,content.newProblemStatement(),decision==null?null:decision.decisionType(),decision==null?null:decision.refundAmount(),reason,batches);
         });
     });}
+    @Override public CasePage listMine(CommandContext context,ListQuery query){return safe(()->{
+        listQuery(query);queryActor(context,RouteParty.USER);top();
+        return tx.execute(s->{defaults();String access=authorityVersion(authority.requireBuyerRead(context));
+            var filters=listFilters(query);filters.put("user",id(context.operatorId()));
+            var result=casePage(query,filters);
+            before(()->{if(!access.equals(authorityVersion(authority.requireBuyerRead(context))))throw forbidden();});return result;
+        });
+    });}
+    @Override public CasePage listForStore(CommandContext context,RouteParty routeParty,String merchantId,String storeId,ListQuery query){return safe(()->{
+        listQuery(query);if(routeParty==null)throw invalid();if(routeParty==RouteParty.USER)throw forbidden();queryActor(context,routeParty);id(merchantId);id(storeId);top();
+        return tx.execute(s->{defaults();guard.acquire(List.of(storeId),system(context));
+            String access=authorityVersion(authority.requireStoreRead(context,routeParty,merchantId,storeId));
+            var filters=listFilters(query);filters.put("merchant",id(merchantId));filters.put("store",id(storeId));
+            var result=casePage(query,filters);
+            before(()->{if(!access.equals(authorityVersion(authority.requireStoreRead(context,routeParty,merchantId,storeId))))throw forbidden();});return result;
+        });
+    });}
+    private static void listQuery(ListQuery q){
+        if(q==null||q.page()<1||q.page()>10000||q.pageSize()<1||q.pageSize()>50)throw invalid();
+        if(q.status()!=null&&!LIVE.contains(q.status())&&!ENDED.contains(q.status()))throw invalid();if(q.orderId()!=null)id(q.orderId());
+    }
+    private static Map<String,Object> listFilters(ListQuery q){return values("user",null,"merchant",null,"store",null,"status",q.status(),"order",optionalId(q.orderId()),"limit",q.pageSize(),"offset",(q.page()-1)*q.pageSize());}
+    private CasePage casePage(ListQuery q,Map<String,Object> filters){
+        long total=db.countCases(filters);var items=new ArrayList<CaseSummary>();
+        for(var row:db.listCases(filters)){
+            validCaseRow(row);origin(row);
+            items.add(new CaseSummary(str(row.id),str(row.orderId),str(row.merchantId),str(row.storeId),row.status,str(row.version),row.sourceStage,row.typeCode,row.demandCode,row.requestedAmount,time(offset(row.createdAt)),time(offset(row.eligibilityDeadline))));
+        }
+        return new CasePage(q.page(),q.pageSize(),total,items);
+    }
+    private ReadAuthority selectedRead(CommandContext context,AfterSaleWorkflowMapper.CaseRow row,RouteParty routeParty){
+        queryActor(context,routeParty);if(routeParty==RouteParty.USER&&!context.operatorId().equals(str(row.userId)))throw forbidden();
+        var result=routeParty==null?authority.requireRead(context,resource(row)):authority.requireRead(context,resource(row),routeParty);
+        if(result==null||result.party()==null||!Set.of("USER","MERCHANT","OPS").contains(result.party())||routeParty!=null&&!routeParty.name().equals(result.party()))throw bad();authorityVersion(result.authzVersion());return result;
+    }
+    private static String authorityVersion(String value){if(value==null||value.isBlank()||value.length()>256)throw bad();return value;}
+    private static void queryActor(CommandContext context,RouteParty routeParty){
+        if(context==null||context.operatorType()==null||context.traceId()==null||context.traceId().isBlank())throw invalid();id(context.operatorId());
+        if(!Set.of(OperatorType.USER,OperatorType.PLATFORM_OPERATOR).contains(context.operatorType()))throw forbidden();
+        if(routeParty==RouteParty.OPS&&context.operatorType()!=OperatorType.PLATFORM_OPERATOR||routeParty!=null&&routeParty!=RouteParty.OPS&&context.operatorType()!=OperatorType.USER)throw forbidden();
+    }
     @Override public CaseFact requireCurrent(String orderId,String storeId,String expectedCurrentCaseId,QueryContext context,DataSource transactionSource){return owned(()->{
         scope(storeId,context,transactionSource);var active=db.active(id(orderId));if(active.size()>1)throw bad();
         if(expectedCurrentCaseId==null){if(!active.isEmpty())throw bad();return new CaseFact(null,orderId,null,null,storeId,null,null,false,null);}
@@ -256,11 +310,13 @@ public final class AfterSaleService implements AfterSaleCommandApi, AfterSaleQue
         return p;
     }
 
-    @Override public EvidenceAccess proveAccess(CommandContext context,String caseId,String batchId,String assetId,DataSource transactionSource){return owned(()->{
-        transaction(transactionSource);var hint=hint(id(caseId));guard.acquire(List.of(str(hint.storeId)),system(context));var row=caseRow(hint.id);var auth=authority.requireRead(context,resource(row));origin(row);
+    @Override public EvidenceAccess proveAccess(CommandContext context,String caseId,String batchId,String assetId,DataSource transactionSource){return evidenceAccess(context,null,caseId,batchId,assetId,transactionSource);}
+    @Override public EvidenceAccess proveAccess(CommandContext context,RouteParty routeParty,String caseId,String batchId,String assetId,DataSource transactionSource){if(routeParty==null)throw invalid();return evidenceAccess(context,routeParty,caseId,batchId,assetId,transactionSource);}
+    private EvidenceAccess evidenceAccess(CommandContext context,RouteParty routeParty,String caseId,String batchId,String assetId,DataSource transactionSource){return owned(()->{
+        transaction(transactionSource);queryActor(context,routeParty);var hint=hint(id(caseId));guard.acquire(List.of(str(hint.storeId)),system(context));var row=caseRow(hint.id);var auth=selectedRead(context,row,routeParty);origin(row);
         var batch=db.batch(id(batchId));if(batch==null||!batch.aftersaleId.equals(row.id))throw forbidden();batchBody(batch);
         var asset=db.assets(batch.id).stream().filter(a->assetId.equals(str(a.assetId))).findFirst().orElseThrow(AfterSaleService::forbidden);
-        var fact=asset(asset);assets.requireStillReady(fact,source);return new EvidenceAccess(caseId,batchId,assetId,str(asset.ownerUserId),asset.objectSha256,asset.objectVersionRef,asset.assetFactVersion,str(row.merchantId),str(row.storeId),str(row.version),auth.authzVersion());
+        var fact=asset(asset);assets.requireStillReady(fact,source);before(()->{if(!auth.equals(selectedRead(context,row,routeParty)))throw forbidden();});return new EvidenceAccess(caseId,batchId,assetId,str(asset.ownerUserId),asset.objectSha256,asset.objectVersionRef,asset.assetFactVersion,str(row.merchantId),str(row.storeId),str(row.version),auth.authzVersion());
     });}
     @Override public AfterSaleSupplementTimeoutApi.Result handle(AfterSaleSupplementTimeoutApi.Timeout c){return safe(()->{
         if(c==null)throw invalid();id(c.afterSaleId());id(c.supplementRequestId());id(c.storeId());var deadline=parseTime(c.expectedDeadline());
@@ -315,13 +371,14 @@ public final class AfterSaleService implements AfterSaleCommandApi, AfterSaleQue
         var anchor="VERIFIED".equals(row.sourceStage)?p.fact().verifiedAt():p.fact().appointmentStart();if(anchor==null||!offset(row.eligibilityAnchor).isEqual(anchor)||row.createdAt.isBefore(row.eligibilityAnchor)||row.createdAt.isAfter(row.eligibilityDeadline)||"UNVERIFIED_POST_START".equals(row.sourceStage)&&p.rejection()==null)throw bad();
         var creation=db.transitionByCommand(row.creatorCommandId);if(creation==null||!row.id.equals(creation.aftersaleId)||!row.orderId.equals(creation.orderId)||!row.createdEventId.equals(creation.eventId)||!"CREATED".equals(creation.action)||!"PENDING".equals(creation.toStatus)||!Long.valueOf(0).equals(creation.caseVersion)||!row.createdAt.equals(creation.occurredAt))throw bad();
         var content=decode("CASE_CONTENT:"+row.id,row.contentCipher,Content.class);var b=db.bindingById(row.creatorCommandId);if(b==null||!str(row.userId).equals(str(b.actorId))||!"USER".equals(string(b.actorType))||!"aftersale.create".equals(string(b.commandNamespace))||!("ORDER:"+row.orderId).equals(string(b.scope)))throw bad();
-        var batches=db.batches(row.id);var created=batches.stream().filter(v->v.commandId.equals(row.creatorCommandId)).findFirst().orElse(null);
-        if(created!=null){if(!row.id.equals(created.aftersaleId)||!row.userId.equals(created.submitterId)||!"USER".equals(created.submitterType)||!row.createdAt.equals(created.createdAt))throw bad();var body=batchBody(created);commandProof(b,json(values("orderId",str(row.orderId),"typeCode",row.typeCode,"demandCode",row.demandCode,"description",content.description(),"requestedAmount",money(row.requestedAmount),"assets",sorted(body.assets().stream().map(Asset::assetId).toList()),"newProblemStatement",content.newProblemStatement())));}
+        var created=creation.evidenceBatchId==null?null:db.batch(creation.evidenceBatchId);
+        if(created!=null){if(!row.creatorCommandId.equals(created.commandId)||!row.id.equals(created.aftersaleId)||!row.userId.equals(created.submitterId)||!"USER".equals(created.submitterType)||!row.createdAt.equals(created.createdAt))throw bad();var body=batchBody(created);commandProof(b,json(values("orderId",str(row.orderId),"typeCode",row.typeCode,"demandCode",row.demandCode,"description",content.description(),"requestedAmount",money(row.requestedAmount),"assets",sorted(body.assets().stream().map(Asset::assetId).toList()),"newProblemStatement",content.newProblemStatement())));}
         else if(!isLive(b.id))throw bad();
         return p;
     }
     private AfterSaleWorkflowMapper.CaseRow hint(long id){var row=db.hint(id);if(row==null)throw error("AFTERSALE_NOT_FOUND");return row;}
-    private AfterSaleWorkflowMapper.CaseRow caseRow(long id){var row=db.row(id);if(row==null)throw error("AFTERSALE_NOT_FOUND");if(!Objects.equals(row.workflowRevision,1)||row.creatorCommandId==null||row.createdEventId==null||row.scopeVersion==null||row.originCipher==null||row.contentCipher==null||row.version==null||row.version<0)throw bad();return row;}
+    private AfterSaleWorkflowMapper.CaseRow caseRow(long id){var row=db.row(id);validCaseRow(row);return row;}
+    private static void validCaseRow(AfterSaleWorkflowMapper.CaseRow row){if(row==null)throw error("AFTERSALE_NOT_FOUND");if(!Objects.equals(row.workflowRevision,1)||row.creatorCommandId==null||row.createdEventId==null||row.scopeVersion==null||row.originCipher==null||row.contentCipher==null||row.version==null||row.version<0)throw bad();}
     private List<String> finalCases(long order){var result=new ArrayList<String>();for(var row:db.finals(order)){if(row.workflowRevision==null||row.decisionId==null||!Objects.equals(row.activeFlag,0))throw bad();var d=db.decision(row.decisionId);if(d==null||!row.id.equals(d.aftersaleId)||!NON_REFUND.contains(d.decisionType))throw bad();decisionProof(d.id);result.add(str(row.id));}return List.copyOf(result);}
     private static String finalVersion(List<String> finalCases){return sha(json(finalCases));}
     private Resource resource(AfterSaleWorkflowMapper.CaseRow row){return new Resource(str(row.id),str(row.orderId),str(row.userId),str(row.merchantId),str(row.storeId),row.cityCode,row.scopeVersion);}
@@ -343,7 +400,8 @@ public final class AfterSaleService implements AfterSaleCommandApi, AfterSaleQue
             boolean opinion="aftersale.opinion.submit".equals(namespace);
             if((!opinion&&!"aftersale.evidence.submit".equals(namespace))||t.caseVersion==null||t.caseVersion<=0||!(opinion?"MERCHANT_OPINION_ADDED":"EVIDENCE_ADDED").equals(t.action)||opinion&&!"MERCHANT".equals(batch.submitterType)||!opinion&&body.opinionCode()!=null||!("AFTERSALE:"+batch.aftersaleId).equals(string(b.scope)))throw bad();
             if(batch.supplementId!=null&&!batch.supplementId.equals(t.supplementId))throw bad();
-            commandProof(b,json(values("afterSaleId",str(batch.aftersaleId),"version",str(t.caseVersion-1),"supplementRequestId",nullable(t.supplementId),"text",body.text(),"opinion",body.opinionCode(),"assets",sorted(body.assets().stream().map(Asset::assetId).toList()))));
+            var expectedInput=values("afterSaleId",str(batch.aftersaleId),"version",str(t.caseVersion-1),"supplementRequestId",nullable(t.supplementId),"text",body.text(),"opinion",body.opinionCode(),"assets",sorted(body.assets().stream().map(Asset::assetId).toList()));
+            var route=bindingRoute(b);if(route!=null){if(opinion||!route.name().equals(batch.submitterType))throw bad();expectedInput.put("routeParty",route.name());}commandProof(b,json(expectedInput));
         }
         return body;
     }
@@ -360,6 +418,7 @@ public final class AfterSaleService implements AfterSaleCommandApi, AfterSaleQue
     private void same(AfterSaleWorkflowMapper.Binding b,String purpose,byte[] input){if(b==null||!"canonical-v1".equals(b.canonicalVersion))throw bad();if(!sha(input).equals(b.payloadSha256)||!MessageDigest.isEqual(input,protection.reveal(purpose,b.canonicalBytes)))throw error(CommonApiCodes.IDEMPOTENCY_KEY_CONFLICT);}
     private Receipt replay(AfterSaleWorkflowMapper.Binding b,String purpose,CommandContext context){
         var receipt=replaySystem(b,purpose);var row=caseRow(id(receipt.afterSaleId()));authority.requireRead(context,resource(row));
+        var route=bindingRoute(b);if(route!=null){var access=selectedRead(context,row,route);before(()->{if(!access.equals(selectedRead(context,row,route)))throw forbidden();authority.requireUser(context);if(route==RouteParty.MERCHANT)authority.requireOwner(context,resource(row));});}
         switch(string(b.commandNamespace)){
             case "aftersale.accept","aftersale.supplement.request","aftersale.duplicate.close" -> authority.requireAdmin(context,resource(row),"aftersale.handle");
             case "aftersale.decide" -> authority.requireAdmin(context,resource(row),"aftersale.decide");
@@ -369,6 +428,12 @@ public final class AfterSaleService implements AfterSaleCommandApi, AfterSaleQue
             default -> throw bad();
         }
         return receipt;
+    }
+    private RouteParty bindingRoute(AfterSaleWorkflowMapper.Binding b){
+        String purpose=purpose(values("namespace",b.commandNamespace,"actorType",b.actorType,"actor",b.actorId,"scope",b.scope,"requestId",b.requestId));
+        var input=decode(purpose,b.canonicalBytes,Map.class);if(!input.containsKey("routeParty"))return null;
+        Object route=input.get("routeParty");if(!"aftersale.evidence.submit".equals(string(b.commandNamespace))||!(route instanceof String value)||!Set.of("USER","MERCHANT").contains(value))throw bad();
+        return RouteParty.valueOf(value);
     }
     private Receipt replaySystem(AfterSaleWorkflowMapper.Binding b,String purpose){if(!Objects.equals(b.resultVersion,1)||b.resultBytes==null)throw bad();var saved=decode(purpose+":RESULT",b.resultBytes,Receipt.class);var t=db.transitionByCommand(b.id);if(t==null)throw bad();var expected=new Receipt(str(t.commandId),str(t.orderId),str(t.aftersaleId),t.toStatus,str(t.caseVersion),time(offset(t.occurredAt)),nullable(t.evidenceBatchId),nullable(t.supplementId),nullable(t.decisionId),nullable(t.refundOrderId));if(!saved.equals(expected))throw bad();return saved;}
     private void finish(AfterSaleWorkflowMapper.Binding b,String purpose,Receipt receipt){one(db.succeed(b.id,encrypt(purpose+":RESULT",receipt)));}

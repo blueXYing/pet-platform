@@ -16,7 +16,7 @@ spring:
     multipart:
       max-file-size: 10MB
       max-request-size: 11MB
-      # This is the only servlet multipart endpoint. Keep bounded evidence bytes out of the
+      # Private material and aftersale evidence uploads share this bounded multipart policy. Keep bytes out of the
       # container's ordinary temp directory; the controller/core enforce the same 10 MiB ceiling.
       file-size-threshold: 10MB
   flyway:

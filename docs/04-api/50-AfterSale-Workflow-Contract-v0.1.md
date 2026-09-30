@@ -6,7 +6,7 @@
 
 A1建立真实内部资格、申请、受理、证据/意见、补证及超时、撤回、重复问题关闭、五类最终决定；A2建立AFS最终退款决定与业务退款单的原子来源及FULL/PARTIAL执行链；A3兼容历史核销、普通退款与真实工单核销并发。AFS/ORDER/REFUND/PAYMENT/SCHEDULE/ADMIN/THIRD_PARTY各自持有本域表，boot只组合公共API及本域port，禁止biz→biz或跨域持久化访问。
 
-未交付范围：STAFF真实绑定、公开HTTP/小程序、REF-001、实际资金分账/追回、通知送达和券/积分/评价消费者。RESERVICE只记录人工处理安排，不新增订单/预约或重复核销。全部新开关默认false；真实资金Provider缺失时退款型决定/首次出款失败关闭，隔离测试的资金资格不允许进入生产配置。
+后续公开非出款HTTP由[Contract51](51-AfterSale-Http-Contract-v0.1.md)独立交付；50号本身的未交付范围：STAFF真实绑定、小程序/运营页面、REF-001、实际资金分账/追回、通知送达和券/积分/评价消费者。RESERVICE只记录人工处理安排，不新增订单/预约或重复核销。全部新开关默认false；真实资金Provider缺失时退款型决定/首次出款失败关闭，隔离测试的资金资格不允许进入生产配置。
 
 ## 2. Eligibility / product decisions
 
@@ -94,4 +94,4 @@ RefundOrderCreatedEvent.v1/RefundSucceededEvent.v1严格字段不加case/decisio
 SQL50为显式增量，非启动DDL；历史有不可证实来源必须预检阻止，不清空历史或猜测回填。MySQL DDL非全事务。回退关闭新准入但保留已提交证据/退款/任务并查询原号；产生新来源事件后不能退回只理解旧来源的消费者。验收以真实API工单、隔离MySQL/Redis、双顺序并发、每持久点回滚、权限/证据隔离及旧来源回归为准，不以seed或test-only资金资格宣称生产闭环。
 
 
-实现补充：CaseView 回显当前补证轮次的 supplementReason（解密后仅已获权参与方可读），让被要求补证方知道所需内容。TASK 通过核心 TaskInvocation 仅在真实 worker dispatch 内建立只读租约上下文；单独构造 SYSTEM 命令不能代替来源证明。开关 pet.aftersale.enabled/refund.enabled/worker.enabled/http.enabled 均默认 false；HTTP 尚未实现；资金开关关闭时即使安装 provider 也不得新做资金裁决。生产必须显式提供审核器、原因目录、密钥及资金权威，仓库不提供恒真替身。
+实现补充：CaseView 回显当前补证轮次的 supplementReason（解密后仅已获权参与方可读），让被要求补证方知道所需内容。TASK 通过核心 TaskInvocation 仅在真实 worker dispatch 内建立只读租约上下文；单独构造 SYSTEM 命令不能代替来源证明。开关 pet.aftersale.enabled/refund.enabled/worker.enabled/http.enabled 均默认 false；非出款HTTP表面按[Contract51](51-AfterSale-Http-Contract-v0.1.md)实现并保持默认关闭，公开FULL/PARTIAL始终拒绝；资金开关关闭时即使安装 provider 也不得新做资金裁决。生产必须显式提供审核器、原因目录、密钥及资金权威，仓库不提供恒真替身。
