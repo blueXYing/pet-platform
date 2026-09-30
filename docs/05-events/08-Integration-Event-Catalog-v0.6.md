@@ -490,3 +490,22 @@ payload 字段（9 字段，与角色E消费侧对齐定稿 2026-09-22，中途�
 执行 [48号契约](../04-api/48-Verification-Completion-Contract-v0.1.md)，K1/K2 已批准。ORDER 唯一生产，aggregate=ORDER/orderId，eventVersion=2；payload 固定 9 字段：orderId、verificationId、merchantId、storeId、operatorType、operatorId、membershipKind、operatorStaffId、verifiedAt。ID 均 String，OWNER 为 USER + 真实 userId + OWNER + null staffId，时间为 UTC 毫秒精度。
 
 核销、订单完成、当前未履约售后失效、日志、首回执与事件同事务；重试不重复发布。无明文码或个人资料。v1 结构不改写，v2 通知/评价投影消费者尚未交付，不能以异步消费替代同步互斥。
+
+## RefundApplicationCreatedEvent.v1 / RefundApplicationDecidedEvent.v1
+
+2026-09-30 R1/R2 已批准，执行 [49号契约](../04-api/49-Refund-Application-Contract-v0.1.md)。两事件均由 REFUND 唯一生产，标准 envelope 的 eventVersion=1、aggregateType=`REFUND_APPLICATION`、aggregateId=applicationId；eventId 为新的 Snowflake String，traceId 只在 envelope。时间采用 UTC 毫秒精度，ID 为十进制 String，不增加自由文本或手机号。
+
+| eventType | 精确 payload 字段 | 事务与含义 |
+|---|---|---|
+| `RefundApplicationCreatedEvent.v1` | applicationId、orderId、userId、merchantId、storeId、applicationStatus、merchantDeadline、createdAt | applicationStatus 固定 PENDING_MERCHANT；merchantDeadline=createdAt+24h；occurredAt=createdAt。与申请、ORDER 引用、超时任务和首回执同事务唯一生产。 |
+| `RefundApplicationDecidedEvent.v1` | applicationId、decisionId、orderId、userId、merchantId、storeId、applicationStatus、decidedAt | applicationStatus 为 APPROVED / REJECTED / AUTO_APPROVED；occurredAt=decidedAt。与不可变决定、ORDER 投影、首回执及批准时的唯一建单恢复任务同事务生产。 |
+
+幂等重放不产生新事件，拒绝后新的申请是新聚合并重新计算期限，旧事件不得改写新一轮当前引用。事件表达可靠通知意图，不构成退款授权；说明/拒绝原因继续保存在本域受保护事实中，不透传事件。站内通知消费者、模板和实际送达仍后续验收，不能以已写 Outbox 宣称通知完成。
+
+## 49号普通退款来源对既有事件的兼容
+
+`RefundOrderCreatedEvent.v1` 的 `source` 和 `RefundSucceededEvent.v1` 的 `refundSource` 增加已批准的 `MERCHANT_APPROVED` / `MERCHANT_TIMEOUT_AUTO` 值，其他原 payload 字段保持；applicationId/decisionId 从可信内部事实读取，不追加到 v1，也不伪装 sourceEventId。普通创建事件随退款单、执行绑定、ORDER 提交证明和渠道任务同提交。
+
+`ORDER_APPLICATION_REFUND` 消费 `RefundSucceededEvent.v1`，先核对事件与 REFUND 最终渠道成功、ORDER 本域普通来源/原本金/身份/时间/唯一成功事件，随后在同 DataSource 事务内完成消费 claim、ORDER 已退款金额、成功证明与 SCHEDULE 原预约释放。任何一步失败全部回滚；重复事件核对原证明后幂等，UNKNOWN/FAILED 不释放。核销历史保持。
+
+旧迟到、商家拒单和新普通来源消费者只跳过已知其他来源，未知来源或损坏 payload 失败关闭；不能把普通成功事件交给旧来源路径授权资金或永久重试。优惠券、积分等后续消费仍按各自契约验收，本次成功释放不代表全部退款后置流程已完成。

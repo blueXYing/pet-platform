@@ -76,7 +76,7 @@ public final class ScheduleCapacityGuardApiImpl implements ScheduleCapacityGuard
             holder.setRollbackOnly();
             throw known;
         } catch (RuntimeException unavailable) {
-            fail(holder, "store guard dependency unavailable");
+            fail(holder, "store guard dependency unavailable", unavailable);
         }
     }
 
@@ -116,7 +116,7 @@ public final class ScheduleCapacityGuardApiImpl implements ScheduleCapacityGuard
                 fail(holder, "a writable READ_COMMITTED transaction is required");
             }
         } catch (SQLException unavailable) {
-            fail(holder, "cannot verify shared transaction connection");
+            fail(holder, "cannot verify shared transaction connection", unavailable);
         }
         return holder;
     }
@@ -149,6 +149,13 @@ public final class ScheduleCapacityGuardApiImpl implements ScheduleCapacityGuard
     private static void fail(ConnectionHolder holder, String message) {
         holder.setRollbackOnly();
         unavailable(message);
+    }
+
+    private static void fail(ConnectionHolder holder, String message, Throwable cause) {
+        holder.setRollbackOnly();
+        ApiException failure = new ApiException(CommonApiCodes.DEPENDENCY_UNAVAILABLE, message);
+        failure.initCause(cause);
+        throw failure;
     }
 
     private static final class Registration {

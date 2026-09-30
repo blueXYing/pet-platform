@@ -814,7 +814,8 @@ class BookingCreateAcceptanceTest {
                 "44-Late-Refund-Order-Projection-Schema-v0.1.sql",
                 "46-Order-Reschedule-Schema-v0.1.sql",
                 "47-Verification-Credential-Schema-v0.1.sql",
-                "48-Verification-Completion-Schema-v0.1.sql");
+                "48-Verification-Completion-Schema-v0.1.sql",
+                "49-Refund-Application-Schema-v0.1.sql");
         private final String name = "qa_booking_" + UUID.randomUUID().toString().replace("-", "");
         private final JdbcTemplate admin;
         final DataSource source;
@@ -842,7 +843,7 @@ class BookingCreateAcceptanceTest {
             manager = new DataSourceTransactionManager(source);
             admin.execute("CREATE DATABASE `" + name + "` CHARACTER SET utf8mb4");
             try {
-                for (String schema : SCHEMA) if (completionSchema || !schema.startsWith("48-")) script(schema);
+                for (String schema : SCHEMA) if (completionSchema || (!schema.startsWith("48-") && !schema.startsWith("49-"))) script(schema);
             } catch (Exception failure) {
                 close();
                 throw failure;

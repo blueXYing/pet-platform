@@ -11,6 +11,7 @@ import com.petplatform.common.SnowflakeIdGenerator;
 import com.petplatform.order.api.dto.OrderRefundOriginFact;
 import com.petplatform.order.api.query.OrderMerchantRejectFactsApi;
 import com.petplatform.order.api.query.OrderLatePaymentFactsApi;
+import com.petplatform.order.api.query.OrderRefundApplicationFactsApi;
 import com.petplatform.payment.api.command.PaymentRefundApi;
 import com.petplatform.payment.api.dto.PaymentRefundTypes.ChannelRefundProgress;
 import com.petplatform.payment.api.dto.PaymentRefundTypes.ChannelRefundQuery;
@@ -24,6 +25,7 @@ import com.petplatform.payment.biz.infrastructure.persistence.PaymentRefundStore
 import com.petplatform.payment.biz.infrastructure.provider.LakalaRefundProtocol;
 import com.petplatform.refund.api.dto.RefundExecutionFact;
 import com.petplatform.refund.api.query.RefundExecutionFactsApi;
+import com.petplatform.refund.api.query.RefundApplicationApprovalFactsApi;
 import com.petplatform.schedule.api.protection.ScheduleCapacityGuardApi;
 import java.math.BigDecimal;
 import java.security.MessageDigest;
@@ -53,6 +55,8 @@ public final class PaymentRefundService implements PaymentRefundApi {
     private final ScheduleCapacityGuardApi guard;
     private final OrderLatePaymentFactsApi orders;
     private final OrderMerchantRejectFactsApi merchantOrders;
+    private final OrderRefundApplicationFactsApi applicationOrders;
+    private final RefundApplicationApprovalFactsApi applicationApprovals;
     private final PaymentSuccessFactsApi paymentFacts;
     private final RefundExecutionFactsApi refundFacts;
     private final PaymentRefundChannel channel;
@@ -80,7 +84,17 @@ public final class PaymentRefundService implements PaymentRefundApi {
     public PaymentRefundService(DataSource source,SnowflakeIdGenerator ids,ScheduleCapacityGuardApi guard,
             OrderLatePaymentFactsApi orders,PaymentSuccessFactsApi paymentFacts,RefundExecutionFactsApi refundFacts,
             PaymentRefundChannel channel,Settings settings,Clock clock,OrderMerchantRejectFactsApi merchantOrders) {
+        this(source, ids, guard, orders, paymentFacts, refundFacts, channel, settings, clock,
+                merchantOrders, null, null);
+    }
+    public PaymentRefundService(DataSource source,SnowflakeIdGenerator ids,ScheduleCapacityGuardApi guard,
+            OrderLatePaymentFactsApi orders,PaymentSuccessFactsApi paymentFacts,RefundExecutionFactsApi refundFacts,
+            PaymentRefundChannel channel,Settings settings,Clock clock,OrderMerchantRejectFactsApi merchantOrders,
+            OrderRefundApplicationFactsApi applicationOrders,
+            RefundApplicationApprovalFactsApi applicationApprovals) {
         this.merchantOrders=merchantOrders;
+        this.applicationOrders=applicationOrders;
+        this.applicationApprovals=applicationApprovals;
         this.source = Objects.requireNonNull(source);
         this.ids = Objects.requireNonNull(ids);
         this.guard = Objects.requireNonNull(guard);
@@ -196,6 +210,10 @@ public final class PaymentRefundService implements PaymentRefundApi {
         RefundExecutionFact business = refundFacts.requireForChannel(input.refundOrderId(),
                 input.storeId(), context);
         validateBusinessAgainstDispatch(row, business);
+        var origin = requireOrigin(Long.toString(row.orderId()), input, business, context);
+        var paid = paymentFacts.requireSucceeded(Long.toString(input.paymentId()),
+                Long.toString(row.orderId()), input.storeId(), context);
+        validateBinding(input, payment, origin, paid, business);
         if (!"CREATED".equals(business.status()) && !"PROCESSING".equals(business.status())
                 && !"UNKNOWN".equals(business.status())) throw unavailable();
         return progress(row);
@@ -221,15 +239,8 @@ public final class PaymentRefundService implements PaymentRefundApi {
                 Long.toString(hint.orderId()), input.storeId(), context);
         RefundExecutionFact business = refundFacts.requireForChannel(input.refundOrderId(),
                 input.storeId(), context);
-        OrderRefundOriginFact order;
-        if("LATE_PAYMENT_TIMEOUT".equals(business.sourceType()))
-            order=OrderRefundOriginFact.late(orders.requireLatePayment(Long.toString(hint.orderId()),
-                Long.toString(input.paymentId()),input.storeId(),context),business.sourceEventId(),business.refundOrderId());
-        else if("MERCHANT_REJECT_ORDER".equals(business.sourceType())&&merchantOrders!=null)
-            order=merchantOrders.requireRejected(Long.toString(hint.orderId()),Long.toString(input.paymentId()),input.storeId(),context);
-        else throw unavailable();
-        if(!business.sourceType().equals(order.sourceType())||!business.sourceEventId().equals(order.sourceEventId())
-            ||!business.refundOrderId().equals(order.refundOrderId()))throw unavailable();
+        OrderRefundOriginFact order = requireOrigin(Long.toString(hint.orderId()), input,
+                business, context);
         validateBinding(input, hint, order, paid, business);
         if (!"CREATED".equals(business.status()) && !"PROCESSING".equals(business.status())
                 && !"UNKNOWN".equals(business.status())) throw unavailable();
@@ -275,8 +286,103 @@ public final class PaymentRefundService implements PaymentRefundApi {
                 .toLocalDateTime().truncatedTo(ChronoUnit.SECONDS);
         var request = new PaymentRefundChannel.RefundRequest(row.merchantNo(), row.termNo(),
                 input.refundNo(), row.refundAmount(), Long.toString(row.paymentNo()),
-                row.originalChannelTradeNo(), queryTime, settings.requestIp(), settings.notifyUrl());
+                row.originalChannelTradeNo(), queryTime, settings.requestIp(), settings.notifyUrl(),
+                business.sourceType());
         return new QueryDecision(progress, request);
+    }
+
+    /** First-send evidence is source-specific; event IDs are never substituted for application IDs. */
+    private OrderRefundOriginFact requireOrigin(String orderId, Identity input,
+            RefundExecutionFact business, QueryContext context) {
+        validateSourceShape(business);
+        OrderRefundOriginFact origin;
+        switch (business.sourceType()) {
+            case "LATE_PAYMENT_TIMEOUT" -> origin = OrderRefundOriginFact.late(
+                    orders.requireLatePayment(orderId, Long.toString(input.paymentId()),
+                            input.storeId(), context), business.sourceEventId(), business.refundOrderId());
+            case "MERCHANT_REJECT_ORDER" -> {
+                if (merchantOrders == null) throw unavailable();
+                origin = merchantOrders.requireRejected(orderId, Long.toString(input.paymentId()),
+                        input.storeId(), context);
+            }
+            case "MERCHANT_APPROVED", "MERCHANT_TIMEOUT_AUTO" -> {
+                if (applicationOrders == null || applicationApprovals == null) throw unavailable();
+                origin = applicationOrders.requireApprovedRefund(orderId,
+                        Long.toString(input.paymentId()), input.storeId(), context);
+                var approval = applicationApprovals.requireApproved(business.sourceBizId(),
+                        business.sourceDecisionId(), input.storeId(), context);
+                validateApproval(origin, business, approval);
+            }
+            default -> throw unavailable();
+        }
+        if (origin == null || !business.sourceType().equals(origin.sourceType())
+                || !Objects.equals(business.sourceEventId(), origin.sourceEventId())
+                || !Objects.equals(business.sourceBizId(), origin.sourceBizId())
+                || !Objects.equals(business.sourceDecisionId(), origin.sourceDecisionId())
+                || !business.refundOrderId().equals(origin.refundOrderId())) throw unavailable();
+        return origin;
+    }
+
+    private static void validateApproval(OrderRefundOriginFact order, RefundExecutionFact business,
+            RefundApplicationApprovalFactsApi.ApprovalFact approval) {
+        if (order == null || approval == null || approval.application() == null) throw unavailable();
+        var application = approval.application();
+        boolean manual = "MERCHANT_APPROVED".equals(business.sourceType());
+        if (!business.sourceType().equals(approval.sourceType())
+                || !(manual ? "APPROVED" : "AUTO_APPROVED").equals(application.status())
+                || !(manual ? "USER" : "SYSTEM").equals(approval.operatorType())
+                || manual && !validFactId(approval.operatorId())
+                || !manual && approval.operatorId() != null
+                || !business.sourceBizId().equals(application.applicationId())
+                || !business.sourceDecisionId().equals(approval.decisionId())
+                || !approval.decisionId().equals(application.decisionId())
+                || !business.refundOrderId().equals(application.refundOrderId())
+                || !business.orderId().equals(application.orderId())
+                || !business.storeId().equals(application.storeId())
+                || !business.merchantId().equals(application.merchantId())
+                || !business.userId().equals(application.userId())
+                || !Objects.equals(order.reservationId(), application.reservationId())
+                || !validFactId(application.reservationId())
+                || !business.paymentId().equals(application.paymentId())
+                || !business.paymentNo().equals(application.paymentNo())
+                || !business.paymentSuccessEventId().equals(application.paymentSuccessEventId())
+                || !business.channelTradeNo().equals(application.channelTradeNo())
+                || application.paidAmount() == null || business.originalPaidAmount() == null
+                || business.originalPaidAmount().compareTo(application.paidAmount()) != 0
+                || application.paidAt() == null || business.paidAt() == null
+                || !business.paidAt().isEqual(application.paidAt())
+                || approval.decidedAt() == null || business.createdAt() == null
+                || business.createdAt().isBefore(approval.decidedAt())
+                || application.createdAt() == null || approval.decidedAt().isBefore(application.createdAt())
+                || !validFactId(approval.commandId()) || !validFactId(approval.eventId())) throw unavailable();
+    }
+
+    private static void validateSourceShape(RefundExecutionFact business) {
+        if (business == null || business.sourceType() == null) throw unavailable();
+        switch (business.sourceType()) {
+            case "LATE_PAYMENT_TIMEOUT" -> {
+                if (!validFactId(business.sourceEventId())
+                        || !business.sourceEventId().equals(business.lateEventId())
+                        || business.sourceBizId() != null || business.sourceDecisionId() != null)
+                    throw unavailable();
+            }
+            case "MERCHANT_REJECT_ORDER" -> {
+                if (!validFactId(business.sourceEventId()) || business.lateEventId() != null
+                        || business.sourceBizId() != null || business.sourceDecisionId() != null)
+                    throw unavailable();
+            }
+            case "MERCHANT_APPROVED", "MERCHANT_TIMEOUT_AUTO" -> {
+                if (business.sourceEventId() != null || business.lateEventId() != null
+                        || !validFactId(business.sourceBizId()) || !validFactId(business.sourceDecisionId()))
+                    throw unavailable();
+            }
+            default -> throw unavailable();
+        }
+    }
+
+    private static boolean validFactId(String value) {
+        try { IDS.fromApi(value); return true; }
+        catch (RuntimeException invalid) { return false; }
     }
 
     private ChannelRefundProgress persist(Identity input,
@@ -380,6 +486,7 @@ public final class PaymentRefundService implements PaymentRefundApi {
     }
 
     private static void validateBusinessAgainstDispatch(Dispatch row, RefundExecutionFact business) {
+        validateSourceShape(business);
         if (business == null
                 || !Long.toString(row.refundOrderId()).equals(business.refundOrderId())
                 || !Long.toString(row.refundNo()).equals(business.refundNo())

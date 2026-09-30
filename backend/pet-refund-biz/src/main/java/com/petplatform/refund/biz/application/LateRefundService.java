@@ -39,6 +39,8 @@ public final class LateRefundService implements IntegrationEventConsumer, Refund
     final TransactionTemplate tx;
     private final PaymentSuccessFactsApi payments;
     private final com.petplatform.order.api.query.OrderMerchantRejectFactsApi merchantOrders;
+    private final com.petplatform.order.api.query.OrderRefundApplicationFactsApi applicationOrders;
+    private final java.util.function.Supplier<com.petplatform.refund.api.query.RefundApplicationApprovalFactsApi> applications;
     private final boolean lateEnabled;
     private final JdbcOutboxConsumeGuard claims;
 
@@ -55,6 +57,15 @@ public final class LateRefundService implements IntegrationEventConsumer, Refund
     public LateRefundService(DataSource source,SnowflakeIdGenerator ids,ScheduleCapacityGuardApi guard,
         OrderLatePaymentFactsApi orders,PaymentSuccessFactsApi payments,IntegrationEventPublisher publisher,
         com.petplatform.order.api.query.OrderMerchantRejectFactsApi merchantOrders,boolean lateEnabled) {
+        this(source,ids,guard,orders,payments,publisher,merchantOrders,lateEnabled,null,null);
+    }
+    public LateRefundService(DataSource source,SnowflakeIdGenerator ids,ScheduleCapacityGuardApi guard,
+        OrderLatePaymentFactsApi orders,PaymentSuccessFactsApi payments,IntegrationEventPublisher publisher,
+        com.petplatform.order.api.query.OrderMerchantRejectFactsApi merchantOrders,boolean lateEnabled,
+        com.petplatform.order.api.query.OrderRefundApplicationFactsApi applicationOrders,
+        java.util.function.Supplier<com.petplatform.refund.api.query.RefundApplicationApprovalFactsApi> applications) {
+        if((applicationOrders==null)!=(applications==null))throw new IllegalArgumentException("Ordinary refund source dependencies incomplete");
+        this.applicationOrders=applicationOrders;this.applications=applications;
         this.lateEnabled=lateEnabled;
         this.merchantOrders=merchantOrders;
         this.source=Objects.requireNonNull(source); this.ids=Objects.requireNonNull(ids);
@@ -138,8 +149,12 @@ public final class LateRefundService implements IntegrationEventConsumer, Refund
         try {
             requireGuard(storeId,ctx); Row r=byId(refundId); verifyRow(r);
             if(!r.fact().storeId().equals(storeId)) throw unavailable();
+            if(applicationSource(r.fact().sourceType())){
+                var f=r.fact();var proof=applications.get().requireCreated(f.sourceBizId(),f.sourceDecisionId(),refundId,storeId,ctx);
+                if(proof==null||!f.refundNo().equals(proof.refundNo())||!f.createdEventId().equals(proof.createdEventId())||!f.createdAt().isEqual(proof.createdAt())||!f.sourceType().equals(proof.approval().sourceType()))throw unavailable();
+            }
             return r.fact();
-        } catch(RuntimeException failure) { rollback(); throw unavailable(); }
+        } catch(RuntimeException failure) { rollback(); if(RefundApplicationService.infrastructure(failure))throw new RefundApplicationService.InfrastructureUnavailable(failure);throw unavailable(); }
     }
 
     @Override public RefundSuccessFact requireSucceeded(String refundId,String orderId,String storeId,QueryContext ctx) {
@@ -158,6 +173,8 @@ public final class LateRefundService implements IntegrationEventConsumer, Refund
 
     boolean lateEnabled(){return lateEnabled;}
     boolean merchantEnabled(){return merchantOrders!=null;}
+    boolean applicationEnabled(){return applicationOrders!=null;}
+    public static boolean applicationSource(String source){return "MERCHANT_APPROVED".equals(source)||"MERCHANT_TIMEOUT_AUTO".equals(source);}
     Row byId(String refund) { return read(store.lockById(id(refund))); }
     private Row byOrder(String order) { return read(store.lockByOrder(id(order))); }
     private Row read(List<RefundMapperRows.Binding> rows) {
@@ -174,7 +191,8 @@ public final class LateRefundService implements IntegrationEventConsumer, Refund
             offset(r.bindingCreatedAt),
             r.bindingSourceType==null&&r.sourceEventId==null&&r.lateEventId!=null?SOURCE:r.bindingSourceType,
             r.bindingSourceType==null&&r.sourceEventId==null&&r.lateEventId!=null?Long.toString(r.lateEventId):
-                r.sourceEventId==null?null:Long.toString(r.sourceEventId));
+                r.sourceEventId==null?null:Long.toString(r.sourceEventId),
+            r.sourceBizId==null?null:Long.toString(r.sourceBizId),r.sourceDecisionId==null?null:Long.toString(r.sourceDecisionId));
         return new Row(f,value(r.businessRefundId),value(r.businessRefundNo),
             value(r.businessOrderId),offset(r.businessCreatedAt),r.refundType,r.sourceType,
             r.businessAmount,r.refundRatio,r.channel,r.requestId,r.successEventId,
@@ -185,11 +203,13 @@ public final class LateRefundService implements IntegrationEventConsumer, Refund
     void verifyRow(Row r) {
         if(r==null) throw unavailable(); var f=r.fact();
         for(String v:List.of(f.refundOrderId(),f.refundNo(),f.orderId(),f.paymentId(),f.paymentNo(),
-                f.storeId(),f.merchantId(),f.userId(),f.paymentSuccessEventId(),f.sourceEventId(),f.createdEventId())) id(v);
+                f.storeId(),f.merchantId(),f.userId(),f.paymentSuccessEventId(),f.createdEventId())) id(v);
         if(SOURCE.equals(f.sourceType())) {
-            if(!Objects.equals(f.lateEventId(),f.sourceEventId()))throw unavailable();
+            id(f.sourceEventId());if(!Objects.equals(f.lateEventId(),f.sourceEventId())||f.sourceBizId()!=null||f.sourceDecisionId()!=null)throw unavailable();
         } else if("MERCHANT_REJECT_ORDER".equals(f.sourceType())) {
-            if(f.lateEventId()!=null||merchantOrders==null)throw unavailable();
+            id(f.sourceEventId());if(f.lateEventId()!=null||merchantOrders==null||f.sourceBizId()!=null||f.sourceDecisionId()!=null)throw unavailable();
+        } else if(applicationSource(f.sourceType())) {
+            id(f.sourceBizId());id(f.sourceDecisionId());if(f.lateEventId()!=null||f.sourceEventId()!=null||applicationOrders==null||applications==null)throw unavailable();
         } else throw unavailable();
         if(id(f.refundOrderId())!=r.businessRefundId()||id(f.refundNo())!=r.businessRefundNo()
                 ||id(f.orderId())!=r.businessOrderId()||r.businessCreatedAt()==null
@@ -205,6 +225,7 @@ public final class LateRefundService implements IntegrationEventConsumer, Refund
     }
 
     private static String requestKey(RefundExecutionFact f) {
+        if(applicationSource(f.sourceType()))return RefundApplicationService.executionKey(f.sourceBizId(),f.sourceDecisionId());
         return SOURCE.equals(f.sourceType()) ? "EVENT:LATE_PAYMENT_AUTO_REFUND:"+f.paymentId()+":"+f.orderId()
             : "EVENT:MERCHANT_REJECT_REFUND:"+f.sourceEventId()+":"+f.orderId();
     }
@@ -212,8 +233,10 @@ public final class LateRefundService implements IntegrationEventConsumer, Refund
     com.petplatform.order.api.dto.OrderRefundOriginFact origin(RefundExecutionFact f,QueryContext ctx) {
         var origin=SOURCE.equals(f.sourceType())
             ? com.petplatform.order.api.dto.OrderRefundOriginFact.late(orders.requireLatePayment(f.orderId(),f.paymentId(),f.storeId(),ctx),f.sourceEventId(),f.refundOrderId())
+            : applicationSource(f.sourceType())?applicationOrders==null?null:applicationOrders.requireApprovedRefund(f.orderId(),f.paymentId(),f.storeId(),ctx)
             : merchantOrders==null?null:merchantOrders.requireRejected(f.orderId(),f.paymentId(),f.storeId(),ctx);
-        if(origin==null||!f.sourceType().equals(origin.sourceType())||!f.sourceEventId().equals(origin.sourceEventId())
+        if(origin==null||!f.sourceType().equals(origin.sourceType())||!Objects.equals(f.sourceEventId(),origin.sourceEventId())
+            ||!Objects.equals(f.sourceBizId(),origin.sourceBizId())||!Objects.equals(f.sourceDecisionId(),origin.sourceDecisionId())
             ||!f.refundOrderId().equals(origin.refundOrderId())||!f.orderId().equals(origin.orderId())
             ||!f.paymentId().equals(origin.paymentId())||!f.storeId().equals(origin.storeId())
             ||!f.merchantId().equals(origin.merchantId())||!f.userId().equals(origin.userId())
