@@ -1,7 +1,7 @@
 {
   "scope": "AFS_HTTP_LOCAL_GROUPED_ACCEPTANCE",
-  "sourceBase": "54d1aeb5b85dcf822e037503a2dd7d9c2a897f8f",
-  "sourceDelta": "S1 contract alias mapping, AFS-only OpenAPI EOF-pattern fixes and exact Spring ResponseEntity architecture classifier repair",
+  "sourceBase": "7dae97768e556d8897f3257c19eaa5823f21ddaf",
+  "sourceDelta": "Exact-route early multipart error mapping and real HTTP/negative-scope coverage; earlier successful runs remain applicable to unchanged modules",
   "note": "Latest run per class; previous failed attempts are retained and superseded only by successful reruns. Unselected stale target reports excluded. Not a full backend or external-provider acceptance.",
   "runs": [
     {
@@ -30,11 +30,29 @@
       "tests": 31,
       "failures": 0,
       "errors": 0
+    },
+    {
+      "log": "http-multipart-red-pass8.log",
+      "sha256": "173936be984bc55b6a2c13b66854a9a47ee997cb081b396591c6ffcdbbb6970a",
+      "buildSuccess": false,
+      "classes": 1,
+      "tests": 1,
+      "failures": 1,
+      "errors": 0
+    },
+    {
+      "log": "http-multipart-green-pass9.log",
+      "sha256": "6369fe8bb649eccd6af9b0f0667ed48522ea119bd07a0380cf8ddf8d1475bff2",
+      "buildSuccess": true,
+      "classes": 5,
+      "tests": 48,
+      "failures": 0,
+      "errors": 0
     }
   ],
   "classes": 19,
   "totals": {
-    "tests": 142,
+    "tests": 144,
     "failures": 0,
     "errors": 0,
     "skipped": 0
@@ -55,8 +73,8 @@
       "failures": 0,
       "errors": 0,
       "skipped": 0,
-      "log": "http-architecture-pass7.log",
-      "reportSha256": "9b0798836693a35bfb120d2b35c077a084c61bfbb6a9f47b53e7461165bfe443"
+      "log": "http-multipart-green-pass9.log",
+      "reportSha256": "af9dd4d94a389206cf332003e5470982ae41c8a4943346569a3006bc2396a3eb"
     },
     {
       "className": "com.petplatform.architecture.ArchitectureRulesTest",
@@ -64,8 +82,8 @@
       "failures": 0,
       "errors": 0,
       "skipped": 0,
-      "log": "http-architecture-pass7.log",
-      "reportSha256": "b34c6ef672628d94419898542d899aef65d61f2915dec2575c2c64b7ddf5b104"
+      "log": "http-multipart-green-pass9.log",
+      "reportSha256": "a5ab242a4f65b1d095e560f2fa1308435a3a1daf72a36b95378bfbccae9554b7"
     },
     {
       "className": "com.petplatform.boot.adapter.web.aftersale.AfterSaleEvidenceHttpTest",
@@ -73,17 +91,17 @@
       "failures": 0,
       "errors": 0,
       "skipped": 0,
-      "log": "http-final-focused-pass6.log",
-      "reportSha256": "fb24a0aa07679a75ad004f2f0620a967cd48455409b3be29c2003eb1da421e17"
+      "log": "http-multipart-green-pass9.log",
+      "reportSha256": "966a9d909ee0c3a7637bc018686c45c3de48d661e147d1a41ffd148fcb18d56e"
     },
     {
       "className": "com.petplatform.boot.booking.AfterSaleEvidenceHttpAcceptanceTest",
-      "tests": 2,
+      "tests": 3,
       "failures": 0,
       "errors": 0,
       "skipped": 0,
-      "log": "http-final-focused-pass6.log",
-      "reportSha256": "08bcb714374ec7dada26f7ce4ac18d782578f0d0ef52cbafea97867ddd8cef58"
+      "log": "http-multipart-green-pass9.log",
+      "reportSha256": "ba4244973d405a062e9e967a761b1464d7c0a0d254ed1c2fab90ea7869cb2953"
     },
     {
       "className": "com.petplatform.boot.booking.AfterSaleHttpAcceptanceTest",
@@ -177,12 +195,12 @@
     },
     {
       "className": "com.petplatform.boot.web.GlobalApiHandlerTest",
-      "tests": 5,
+      "tests": 6,
       "failures": 0,
       "errors": 0,
       "skipped": 0,
-      "log": "http-final-focused-pass6.log",
-      "reportSha256": "fb8bd98b30f516b5a8580d96963b9e280689114399ea4c5035f9bda89d6f0ebd"
+      "log": "http-multipart-green-pass9.log",
+      "reportSha256": "b8a1fef605ed825fdb27c5b46e6fbfd14929b974bef06a3d347e964c32941a08"
     },
     {
       "className": "com.petplatform.common.S1ContractMappingTest",

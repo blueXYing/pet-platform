@@ -22,11 +22,13 @@
 
 6. 架构门禁把Spring `org.springframework.http.ResponseEntity` 按Entity后缀误判持久化类型；仅精确排除该HTTP承载类型，补正向和项目Entity/Repository/Mapper/SQL负向夹具，原边界不放宽。
 
+7. 收尾补测发现 eager multipart 在选择控制器前解析，绕过证据控制器局部异常处理。真实已登录HTTP的10MiB+1文件及缺boundary请求均先复现500/旧五字段，零持久写入；全局advice仅对售后证据上传的精确路径补413/400四字段映射。原私有上传及其他路径行为保持，补负向范围验证；三项完整证据HTTP及架构回归复测通过。
+
 测试准备期修复了隔离Redis前缀格式和将旧AUTH envelope误套新AFS四字段断言的问题。C端重新登录允许旧有效会话继续存在，不擅自改为单会话；撤销验收使用真实logout。这些准备修复不计为已发现业务缺陷。
 
 ## 验收证据与限制
 
-本地分组验收通过：按类取最终运行并核对实际XML，19个测试类 / 142项测试，失败、错误、跳过均0。包括真实三端主HTTP4项、私有证据HTTP2项、原售后事务/核销竞争/资金与任务回归、装配及架构门禁；保留先前失败记录，不将重复运行累加。实际清单见 [local-test-summary.json](local-test-summary.json)。契约smoke、127项文档测试、18项架构脚本测试及模块依赖/MyBatis/展示状态源检查通过。
+本地分组验收通过：按类取最终运行并核对实际XML，19个测试类 / 144项测试，失败、错误、跳过均0。包括真实三端主HTTP4项、私有证据HTTP3项、原售后事务/核销竞争/资金与任务回归、装配及架构门禁；保留先前失败记录，不将重复运行累加。实际清单见 [local-test-summary.json](local-test-summary.json)。契约smoke、127项文档测试、18项架构脚本测试及模块依赖/MyBatis/展示状态源检查通过。
 
 [PR98](https://github.com/blueXYing/pet-platform/pull/98) 已建立。首轮CI36696633916五项成功、后端因旧S1测试直接访问已改为引用的AFS schema而失败；该测试已按Contract51读取真实DTO并复测通过。新head完整CI待核对，本地分组通过不替代全仓CI；最终结果回填PR描述，不自动合并。
 

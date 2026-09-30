@@ -103,4 +103,16 @@ class GlobalApiHandlerTest {
         assertTrue(body.contains("\"traceId\":\"trace-aabbccdd-1234\""));
         assertEquals("trace-aabbccdd-1234", result.getResponse().getHeader("X-Trace-Id"));
     }
+
+    @Test void earlyAftersaleMultipartMappingDoesNotChangeOtherUploadRoutes() {
+        var handler=new GlobalApiExceptionHandler();
+        for(String path:java.util.List.of("/api/v1/c/private-assets","/api/v1/c/aftersale-evidence-assets/")){
+            var request=new org.springframework.mock.web.MockHttpServletRequest("POST",path);
+            var response=new org.springframework.mock.web.MockHttpServletResponse();
+            var result=handler.multipartBeforeHandler(new org.springframework.web.multipart.MaxUploadSizeExceededException(10),request,response);
+            assertEquals(500,response.getStatus());
+            assertInstanceOf(com.petplatform.common.ApiResponse.class,result);
+            assertEquals(CommonApiCodes.INTERNAL_ERROR,((com.petplatform.common.ApiResponse<?>)result).code());
+        }
+    }
 }

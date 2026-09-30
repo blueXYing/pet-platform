@@ -104,6 +104,60 @@ class AfterSaleEvidenceHttpAcceptanceTest {
         }
     }
 
+    @Test void eagerServletMultipartFailuresKeepContractAndLeaveNoUploadAdmission()throws Exception{
+        try(var f=new AfterSaleHttpFixture()){
+            long limit=10L*1024*1024;
+            var multipart=f.context.getBean(jakarta.servlet.MultipartConfigElement.class);
+            assertEquals(limit,multipart.getMaxFileSize());
+            assertEquals(11L*1024*1024,multipart.getMaxRequestSize());
+            assertFalse(f.context.getEnvironment().getProperty("spring.servlet.multipart.resolve-lazily",Boolean.class,false));
+            assertEquals(0,f.count("SELECT COUNT(*) FROM private_asset"));
+            assertEquals(0,f.count("SELECT COUNT(*) FROM private_asset_upload_request"));
+            assertEquals(0,f.count("SELECT COUNT(*) FROM aftersale_command"));
+
+            String boundary="AFSRealServletLimit";
+            byte[] image=new byte[(int)limit+1];
+            byte[] signature={(byte)0x89,0x50,0x4e,0x47,0x0d,0x0a,0x1a,0x0a};
+            System.arraycopy(signature,0,image,0,signature.length);
+            var body=new ByteArrayOutputStream();
+            body.write(("--"+boundary+"\r\nContent-Disposition: form-data; name=\"file\"; filename=\"e.png\"\r\nContent-Type: image/png\r\n\r\n").getBytes(StandardCharsets.US_ASCII));
+            body.write(image);body.write(("\r\n--"+boundary+"--\r\n").getBytes(StandardCharsets.US_ASCII));
+            assertTrue(body.size()<multipart.getMaxRequestSize(),"Exercise the servlet file limit rather than the total-request limit");
+            var oversized=rawMultipart(f,"multipart/form-data; boundary="+boundary,body.toByteArray());
+            // A multipart content type without its boundary fails getParts(), before @RequestPart binding.
+            var malformed=rawMultipart(f,"multipart/form-data","missing multipart boundary".getBytes(StandardCharsets.US_ASCII));
+
+            assertAll("Real eager servlet multipart errors",
+                    ()->multipartFailure(f,oversized,413),
+                    ()->multipartFailure(f,malformed,400),
+                    ()->assertEquals(0,f.count("SELECT COUNT(*) FROM private_asset")),
+                    ()->assertEquals(0,f.count("SELECT COUNT(*) FROM private_asset_upload_request")),
+                    ()->assertEquals(0,f.count("SELECT COUNT(*) FROM aftersale_command")),
+                    ()->assertEquals(0,f.count("SELECT COUNT(*) FROM aftersale_evidence_batch")),
+                    ()->assertEquals(0,f.count("SELECT COUNT(*) FROM aftersale_asset_read_grant")),
+                    ()->assertTrue(f.objects.isEmpty(),"No object may be written before multipart admission"));
+        }
+    }
+
+    private static HttpResponse<String> rawMultipart(AfterSaleHttpFixture f,String contentType,byte[] body)throws Exception{
+        return f.client.send(HttpRequest.newBuilder(URI.create(f.baseUrl+"/c/aftersale-evidence-assets"))
+                .timeout(Duration.ofSeconds(30)).header("Authorization","Bearer "+f.buyerToken)
+                .header("X-Request-Id",AfterSaleHttpFixture.rid()).header("Content-Type",contentType)
+                .POST(HttpRequest.BodyPublishers.ofByteArray(body)).build(),HttpResponse.BodyHandlers.ofString());
+    }
+    private static void multipartFailure(AfterSaleHttpFixture f,HttpResponse<String> response,int status){
+        @SuppressWarnings("unchecked") Map<String,Object> envelope=f.json.readValue(response.body(),Map.class);
+        assertAll("Expected multipart HTTP "+status+": "+response.body(),
+                ()->assertEquals(status,response.statusCode()),
+                ()->assertEquals(Set.of("code","message","data","traceId"),envelope.keySet()),
+                ()->assertEquals("COMMON_INVALID_ARGUMENT",envelope.get("code")),
+                ()->assertNull(envelope.get("data")),
+                ()->assertEquals(response.headers().firstValue("X-Trace-Id").orElseThrow(),envelope.get("traceId")),
+                ()->assertEquals("no-store, private",response.headers().firstValue("Cache-Control").orElseThrow()),
+                ()->assertEquals("no-cache",response.headers().firstValue("Pragma").orElseThrow()),
+                ()->assertEquals("nosniff",response.headers().firstValue("X-Content-Type-Options").orElseThrow()));
+    }
+
     private record Party(String path,String token){}
     private static String issuePath(String party,String caseId,String batch,String asset){return "/"+party+"/aftersales/"+caseId+"/evidence-batches/"+batch+"/assets/"+asset+"/read-grants";}
     private static AfterSaleHttpFixture.Reply issue(AfterSaleHttpFixture f,Party party,String caseId,String batch,String asset)throws Exception{

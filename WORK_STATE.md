@@ -25,6 +25,6 @@ NEXT_PHASE_APPROVED: 用户明确“合入 develop”批准PR97合并；其后�
 
 ## 验收状态与未交付
 
-已提交独立[PR98](https://github.com/blueXYing/pet-platform/pull/98)。本地按类取最终运行、核对实际XML后，19个类 / 142项测试零失败/错误/跳过；含真实三端HTTP和私有证据、既有AFS资金与核销竞争回归和架构检查。127项契约文档测试、18项架构脚本及源门禁通过。证据见[实施记录](planning/progress/2026-09-30/aftersale-http/IMPLEMENTATION.md)与[本地实际摘要](planning/progress/2026-09-30/aftersale-http/local-test-summary.json)。首轮CI发现的旧S1契约映射假设已修复，本提交等待完整CI，最终状态回填PR描述；尚未合并。Maven由总协调串行运行，使用本任务隔离MySQL/Redis及随机schema。微信、OSS、审核和扫描仅在测试提供受控外部实现，不代表真实外部服务验收。
+已提交独立[PR98](https://github.com/blueXYing/pet-platform/pull/98)。本地按类取最终运行、核对实际XML后，19个类 / 144项测试零失败/错误/跳过；含真实三端HTTP和私有证据、既有AFS资金与核销竞争回归和架构检查。127项契约文档测试、18项架构脚本及源门禁通过。证据见[实施记录](planning/progress/2026-09-30/aftersale-http/IMPLEMENTATION.md)与[本地实际摘要](planning/progress/2026-09-30/aftersale-http/local-test-summary.json)。首轮CI的旧S1契约映射假设、收尾真实multipart超限/畸形请求提前返回500的问题均已修复复测。本提交等待完整CI，最终状态回填PR描述；尚未合并。Maven由总协调串行运行，使用本任务隔离MySQL/Redis及随机schema。微信、OSS、审核和扫描仅在测试提供受控外部实现，不代表真实外部服务验收。
 
 页面、真机、STAFF独立身份/动作、全局运营列表、REF-001、真实可退资金与出款、通知实际送达及券/积分/评价消费者均不借本批提前标DONE。实施记录须保留实际测试、失败修复及未覆盖分支；新PR不自动合并、不运行生产迁移。
