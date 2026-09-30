@@ -484,3 +484,9 @@ payload 字段（9 字段，与角色E消费侧对齐定稿 2026-09-22，中途�
 
 ## VerificationRiskLockedEvent.v1
 执行[47号契约](../04-api/47-Verification-Credential-Contract-v0.1.md)：VERIFICATION/orderId，payload为orderId/storeId/triggerAttemptId/lockedAt/lockedUntil/reasonCode，原因INVALID_CREDENTIAL_THRESHOLD；ID为String。一次新锁定与attempt/锁/首回执同事务Outbox，重试不重复告警。无明文码/个人信息，通知送达未交付。
+
+## OrderVerifiedEvent.v2
+
+执行 [48号契约](../04-api/48-Verification-Completion-Contract-v0.1.md)，K1/K2 已批准。ORDER 唯一生产，aggregate=ORDER/orderId，eventVersion=2；payload 固定 9 字段：orderId、verificationId、merchantId、storeId、operatorType、operatorId、membershipKind、operatorStaffId、verifiedAt。ID 均 String，OWNER 为 USER + 真实 userId + OWNER + null staffId，时间为 UTC 毫秒精度。
+
+核销、订单完成、当前未履约售后失效、日志、首回执与事件同事务；重试不重复发布。无明文码或个人资料。v1 结构不改写，v2 通知/评价投影消费者尚未交付，不能以异步消费替代同步互斥。

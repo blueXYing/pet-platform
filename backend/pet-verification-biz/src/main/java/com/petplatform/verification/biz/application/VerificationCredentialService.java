@@ -20,10 +20,10 @@ import org.springframework.transaction.TransactionDefinition;
 import org.springframework.transaction.support.*;
 /** Real durable credentials. No HTTP, merchant service completion or fake authorization adapter. */
 public final class VerificationCredentialService implements VerificationCredentialApi,VerificationRescheduleFenceApi {
- private static final DecimalPublicIdCodec IDS=new DecimalPublicIdCodec();private static final ObjectMapper JSON=new ObjectMapper();
- private final DataSource source;private final CredentialMapper db;private final SnowflakeIdGenerator ids;private final ScheduleCapacityGuardApi guard;
- private final OrderVerificationCredentialFactsApi orders;private final CredentialProtection protection;private final CredentialPorts.Sessions sessions;
- private final CredentialPorts.AttemptAuthority authority;private final IntegrationEventPublisher outbox;private final TransactionTemplate tx;
+ private static final DecimalPublicIdCodec IDS=new DecimalPublicIdCodec();static final ObjectMapper JSON=new ObjectMapper();
+ final DataSource source;final CredentialMapper db;final SnowflakeIdGenerator ids;final ScheduleCapacityGuardApi guard;
+ final OrderVerificationCredentialFactsApi orders;final CredentialProtection protection;final CredentialPorts.Sessions sessions;
+ final CredentialPorts.AttemptAuthority authority;final IntegrationEventPublisher outbox;final TransactionTemplate tx;
  public VerificationCredentialService(DataSource source,SnowflakeIdGenerator ids,ScheduleCapacityGuardApi guard,OrderVerificationCredentialFactsApi orders,
    CredentialProtection protection,CredentialPorts.Sessions sessions,CredentialPorts.AttemptAuthority authority,IntegrationEventPublisher outbox){
   this.source=Objects.requireNonNull(source);this.ids=Objects.requireNonNull(ids);this.guard=Objects.requireNonNull(guard);this.orders=Objects.requireNonNull(orders);
@@ -64,6 +64,11 @@ public final class VerificationCredentialService implements VerificationCredenti
   return tx.execute(s->{defaults();var b=db.binding(key);same(b,purpose,input);var loc=attemptLocation(c);
    if("SUCCEEDED".equals(b.state))return result(b,purpose,CheckResult.class);reserved(b);
    var f=orders.requireEligible(c.orderId(),c.storeId(),system(query(c.context())));var st=state(f.location(),true);var now=db.now();var current=current(st,f);
+   var receipt=assess(c,b,st,f,now,current);finish(b,purpose,receipt);return receipt;
+  });
+ });}
+ // Shared only inside VER: caller owns the command transaction and current ORDER facts.
+ CheckResult assess(Check c,Binding b,State st,Fact f,LocalDateTime now,Code current){
    if(st.epoch!=f.confirmRound())throw bad();String result="VALID";boolean failed=false;
    if(locked(st,now))result="VERIFICATION_RISK_LOCKED";
    else if(current==null||!MessageDigest.isEqual(bytes(current.lookupHash),bytes(protection.digest(current.lookupKeyId,c.verificationCode())))){result="VERIFICATION_CODE_INVALID";failed=true;}
@@ -74,9 +79,8 @@ public final class VerificationCredentialService implements VerificationCredenti
      values("orderId",c.orderId(),"storeId",c.storeId(),"triggerAttemptId",Long.toString(attempt),"lockedAt",time(now),"lockedUntil",time(now.plusMinutes(15)),"reasonCode","INVALID_CREDENTIAL_THRESHOLD")));
    }
    one(db.attempt(values("id",attempt,"order",st.orderId,"store",st.storeId,"credential",current==null?null:current.id,"command",b.id,"actorType",c.context().operatorType().name(),"actor",IDS.fromApi(c.context().operatorId()),"result",result,"failed",failed,"now",now)));
-   var receipt=new CheckResult(c.orderId(),Long.toString(attempt),result,time(now));finish(b,purpose,receipt);return receipt;
-  });
- });}
+   return new CheckResult(c.orderId(),Long.toString(attempt),result,time(now));
+ }
  public VerificationRescheduleFenceApi.Fence invalidate(String order,String reservation,String store,String change,OffsetDateTime at,CommandContext c,DataSource transactionSource){
   try{
    validate(c,order,true);IDS.fromApi(reservation);IDS.fromApi(store);IDS.fromApi(change);PublicContractChecks.requireMillisecondPrecision(at);
@@ -103,12 +107,12 @@ public final class VerificationCredentialService implements VerificationCredenti
   defaults();validateQuery(q,order);sessions.requireCurrent(q.operatorId());var loc=orders.locate(order,system(q));
   if(loc==null||!q.operatorId().equals(loc.userId()))throw error(CommonApiCodes.FORBIDDEN);guard.acquire(List.of(loc.storeId()),system(q));guard.requireHeld(loc.storeId(),source);sessions.requireCurrent(q.operatorId());return loc;
  }
- private Location attemptLocation(Check c){
+ Location attemptLocation(Check c){
   defaults();var q=system(query(c.context()));var loc=orders.locate(c.orderId(),q);if(loc==null||!c.storeId().equals(loc.storeId()))throw error("VERIFICATION_STORE_MISMATCH");
   guard.acquire(List.of(c.storeId()),q);guard.requireHeld(c.storeId(),source);
   authority.requireAuthorized(c.context(),loc.merchantId(),c.storeId());return loc;
  }
- private State state(Location loc,boolean create){
+ State state(Location loc,boolean create){
   var st=db.state(IDS.fromApi(loc.orderId()));if(st==null){if(db.historyCount(IDS.fromApi(loc.orderId()))!=0)throw bad();
    st=new State();st.orderId=IDS.fromApi(loc.orderId());st.storeId=IDS.fromApi(loc.storeId());st.reservationId=IDS.fromApi(loc.reservationId());st.epoch=0L;st.version=0L;
    if(create)one(db.initialize(values("order",st.orderId,"store",st.storeId,"reservation",st.reservationId)));
@@ -119,7 +123,7 @@ public final class VerificationCredentialService implements VerificationCredenti
   var fence=db.fence(st.orderId);if(st.epoch==0&&fence!=null||st.epoch==1&&(fence==null||fence.newEpoch!=1||!loc.storeId().equals(str(fence.storeId))||!loc.reservationId().equals(str(fence.reservationId))))throw bad();
   if(fence!=null)orders.requireRescheduleCommitted(loc.orderId(),str(fence.rescheduleId),str(fence.id),fence.rescheduledAt.atOffset(ZoneOffset.UTC),new QueryContext("credential-state",OperatorType.SYSTEM,null));return st;
  }
- private Code current(State st,Fact f){
+ Code current(State st,Fact f){
   if(st.currentCredentialId==null)return null;var c=db.code(st.currentCredentialId);
   if(c==null||!Objects.equals(c.orderId,st.orderId)||!Objects.equals(c.storeId,st.storeId)||!Objects.equals(c.reservationId,st.reservationId)||!Objects.equals(c.epoch,st.epoch)
    ||!str(c.merchantId).equals(f.location().merchantId())||c.confirmRound==null||c.confirmRound!=f.confirmRound()||!Objects.equals(c.generation,st.version)
@@ -129,37 +133,37 @@ public final class VerificationCredentialService implements VerificationCredenti
  }
  private String plain(Code c){String value=new String(protection.reveal("CODE:"+c.id,c.codeCipher),StandardCharsets.UTF_8);
   if(!value.matches("[0-9A-Z]{32}")||!MessageDigest.isEqual(bytes(c.lookupHash),bytes(protection.digest(c.lookupKeyId,value))))throw bad();return value;}
- private void admit(Map<String,Object> key,String purpose,byte[] input){tx.executeWithoutResult(s->{defaults();var v=new LinkedHashMap<>(key);v.put("id",next());v.put("hash",sha(input));v.put("canonical",protection.protect(purpose,input));db.reserve(v);same(db.binding(key),purpose,input);});}
- private void same(Binding b,String purpose,byte[] input){if(b==null||!"canonical-v1".equals(b.canonicalVersion))throw bad();if(!sha(input).equals(b.payloadSha256)||!MessageDigest.isEqual(input,protection.reveal(purpose,b.canonicalBytes)))throw error(CommonApiCodes.IDEMPOTENCY_KEY_CONFLICT);}
- private void finish(Binding b,String purpose,Object result){one(db.succeed(b.id,protection.protect(purpose+":RESULT",json(result))));}
+ void admit(Map<String,Object> key,String purpose,byte[] input){tx.executeWithoutResult(s->{defaults();var v=new LinkedHashMap<>(key);v.put("id",next());v.put("hash",sha(input));v.put("canonical",protection.protect(purpose,input));db.reserve(v);same(db.binding(key),purpose,input);});}
+ void same(Binding b,String purpose,byte[] input){if(b==null||!"canonical-v1".equals(b.canonicalVersion))throw bad();if(!sha(input).equals(b.payloadSha256)||!MessageDigest.isEqual(input,protection.reveal(purpose,b.canonicalBytes)))throw error(CommonApiCodes.IDEMPOTENCY_KEY_CONFLICT);}
+ void finish(Binding b,String purpose,Object result){one(db.succeed(b.id,protection.protect(purpose+":RESULT",json(result))));}
  private <T>T result(Binding b,String purpose,Class<T> type){try{if(!Objects.equals(b.resultVersion,1)||b.resultBytes==null)throw bad();T receipt=JSON.readValue(protection.reveal(purpose+":RESULT",b.resultBytes),type);
   if(type==Receipt.class){Long id=db.receiptCode(b.id);var c=id==null?null:db.code(id);if(c==null)throw bad();
    var expected=new Receipt(str(c.orderId),str(c.id),str(c.generation),plain(c),time(c.issuedAt),time(c.expiresAt),time(c.expiresAt));if(!expected.equals(receipt))throw bad();
   }else if(type==CheckResult.class){var a=db.receiptAttempt(b.id);if(a==null||!new CheckResult(str(a.orderId),str(a.id),a.resultCode,time(a.attemptedAt)).equals(receipt))throw bad();}
   else throw bad();return receipt;}catch(Exception e){throw bad();}}
- private static void reserved(Binding b){if(!"RESERVED".equals(b.state))throw bad();}
- private static Map<String,Object> key(String namespace,CommandContext c,String scope){return values("namespace",bytes(namespace),"actorType",bytes(c.operatorType().name()),"actor",IDS.fromApi(c.operatorId()),"scope",bytes(scope),"requestId",bytes(c.requestId()));}
- private static String purpose(Map<String,Object> k){return "VC:"+sha(json(k));}
- private void defaults(){db.utc();db.timeout();}
- private static void top(){if(TransactionSynchronizationManager.isActualTransactionActive())throw bad();}
- private static void validate(CommandContext c,String order,boolean user){try{if(c==null||c.operatorId()==null||user&&c.operatorType()!=OperatorType.USER||!user&&!Set.of(OperatorType.USER,OperatorType.MERCHANT_STAFF).contains(c.operatorType()))throw invalid();IDS.fromApi(order);IDS.fromApi(c.operatorId());PublicContractChecks.requireTerminalRequestId(c.requestId());trace(c.traceId());}catch(RuntimeException e){throw invalid();}}
+ static void reserved(Binding b){if(!"RESERVED".equals(b.state))throw bad();}
+ static Map<String,Object> key(String namespace,CommandContext c,String scope){return values("namespace",bytes(namespace),"actorType",bytes(c.operatorType().name()),"actor",IDS.fromApi(c.operatorId()),"scope",bytes(scope),"requestId",bytes(c.requestId()));}
+ static String purpose(Map<String,Object> k){return "VC:"+sha(json(k));}
+ void defaults(){db.utc();db.timeout();}
+ static void top(){if(TransactionSynchronizationManager.isActualTransactionActive())throw bad();}
+ static void validate(CommandContext c,String order,boolean user){try{if(c==null||c.operatorId()==null||user&&c.operatorType()!=OperatorType.USER||!user&&!Set.of(OperatorType.USER,OperatorType.MERCHANT_STAFF).contains(c.operatorType()))throw invalid();IDS.fromApi(order);IDS.fromApi(c.operatorId());PublicContractChecks.requireTerminalRequestId(c.requestId());trace(c.traceId());}catch(RuntimeException e){throw invalid();}}
  private static void validateQuery(QueryContext q,String order){try{if(q==null||q.operatorType()!=OperatorType.USER)throw invalid();IDS.fromApi(order);IDS.fromApi(q.operatorId());trace(q.traceId());}catch(RuntimeException e){throw invalid();}}
  private static void trace(String t){if(t==null||t.isBlank()||t.length()>64||t.codePoints().anyMatch(Character::isISOControl))throw invalid();}
- private static long version(String v){try{if(v==null||!v.matches("0|[1-9][0-9]*"))throw invalid();return Long.parseLong(v);}catch(RuntimeException e){throw invalid();}}
+ static long version(String v){try{if(v==null||!v.matches("0|[1-9][0-9]*"))throw invalid();return Long.parseLong(v);}catch(RuntimeException e){throw invalid();}}
  private static boolean locked(State s,LocalDateTime now){return s.lockedUntil!=null&&now.isBefore(s.lockedUntil);}
- private long next(){long n=ids.nextId();if(n<=0)throw bad();return n;}
- private static void one(int n){if(n!=1)throw bad();}
- private static QueryContext query(CommandContext c){return new QueryContext(c.traceId(),c.operatorType(),c.operatorId());}
- private static QueryContext system(QueryContext c){return new QueryContext(c.traceId(),OperatorType.SYSTEM,null);}
- private static String str(Long n){if(n==null)throw bad();return Long.toString(n);}
- private static String time(LocalDateTime t){return t==null?null:t.atOffset(ZoneOffset.UTC).toString();}
- private static LocalDateTime local(String t){return t==null?null:OffsetDateTime.parse(t).withOffsetSameInstant(ZoneOffset.UTC).toLocalDateTime();}
- private static byte[] bytes(String s){return s.getBytes(StandardCharsets.UTF_8);}
- private static byte[] json(Object v){try{return JSON.writeValueAsBytes(v);}catch(Exception e){throw bad();}}
- private static String sha(byte[] v){try{return HexFormat.of().formatHex(MessageDigest.getInstance("SHA-256").digest(v));}catch(Exception e){throw bad();}}
- private static Map<String,Object> values(Object...v){var m=new LinkedHashMap<String,Object>();for(int i=0;i<v.length;i+=2)m.put((String)v[i],v[i+1]);return m;}
- private static <T>T safe(Supplier<T> work){try{return work.get();}catch(ApiException e){throw e;}catch(RuntimeException e){throw bad();}}
- private static ApiException error(String c){return new ApiException(c,"Credential operation cannot be applied");}
- private static ApiException bad(){return error(CommonApiCodes.DEPENDENCY_UNAVAILABLE);}
- private static ApiException invalid(){return error(CommonApiCodes.INVALID_ARGUMENT);}
+ long next(){long n=ids.nextId();if(n<=0)throw bad();return n;}
+ static void one(int n){if(n!=1)throw bad();}
+ static QueryContext query(CommandContext c){return new QueryContext(c.traceId(),c.operatorType(),c.operatorId());}
+ static QueryContext system(QueryContext c){return new QueryContext(c.traceId(),OperatorType.SYSTEM,null);}
+ static String str(Long n){if(n==null)throw bad();return Long.toString(n);}
+ static String time(LocalDateTime t){return t==null?null:t.atOffset(ZoneOffset.UTC).toString();}
+ static LocalDateTime local(String t){return t==null?null:OffsetDateTime.parse(t).withOffsetSameInstant(ZoneOffset.UTC).toLocalDateTime();}
+ static byte[] bytes(String s){return s.getBytes(StandardCharsets.UTF_8);}
+ static byte[] json(Object v){try{return JSON.writeValueAsBytes(v);}catch(Exception e){throw bad();}}
+ static String sha(byte[] v){try{return HexFormat.of().formatHex(MessageDigest.getInstance("SHA-256").digest(v));}catch(Exception e){throw bad();}}
+ static Map<String,Object> values(Object...v){var m=new LinkedHashMap<String,Object>();for(int i=0;i<v.length;i+=2)m.put((String)v[i],v[i+1]);return m;}
+ static <T>T safe(Supplier<T> work){try{return work.get();}catch(ApiException e){throw e;}catch(RuntimeException e){throw bad();}}
+ static ApiException error(String c){return new ApiException(c,"Credential operation cannot be applied");}
+ static ApiException bad(){return error(CommonApiCodes.DEPENDENCY_UNAVAILABLE);}
+ static ApiException invalid(){return error(CommonApiCodes.INVALID_ARGUMENT);}
 }

@@ -13,6 +13,7 @@
     <artifactId>pet-aftersale-biz</artifactId>
 
     <dependencies>
+        <dependency><groupId>com.petplatform</groupId><artifactId>pet-schedule-api</artifactId></dependency>
         <dependency>
             <groupId>com.petplatform</groupId>
             <artifactId>pet-common</artifactId>

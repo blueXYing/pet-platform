@@ -9,12 +9,14 @@ import javax.sql.DataSource;
 import java.util.Map;
 class VerificationCredentialConfigurationTest {
  private ApplicationContextRunner base(){return new ApplicationContextRunner().withUserConfiguration(VerificationCredentialConfiguration.class);}
- @Test void defaultOffDoesNotTouchDatabase(){var s=mock(DataSource.class);base().withBean(DataSource.class,()->s).run(c->{assertThat(c).hasNotFailed();assertThat(c).doesNotHaveBean(VerificationCredentialApi.class);verifyNoInteractions(s);});}
+ @Test void defaultOffDoesNotTouchDatabase(){var s=mock(DataSource.class);base().withBean(DataSource.class,()->s).run(c->{assertThat(c).hasNotFailed();assertThat(c).doesNotHaveBean(VerificationCredentialApi.class);assertThat(c).doesNotHaveBean(VerificationCompletionApi.class);verifyNoInteractions(s);});}
  @Test void httpIsNotImplemented(){base().withPropertyValues("pet.verification.credential.http.enabled=true").run(c->assertThat(c).hasFailed());}
  @Test void missingFoundationsFailClosed(){base().withPropertyValues("pet.verification.credential.enabled=true").run(c->assertThat(c).hasFailed());}
- @Test void missingTrustedAttemptAuthorityFailsClosed(){enabled().withBean(CredentialProtection.class,()->keys()).run(c->{assertThat(c).hasFailed();assertThat(c.getStartupFailure()).hasStackTraceContaining("AttemptAuthority");});}
+ @Test void realOwnerAuthorityComposesWithoutQaAdapter(){enabled().withBean(CredentialProtection.class,()->keys()).run(c->{assertThat(c).hasNotFailed();assertThat(c).hasSingleBean(CredentialPorts.AttemptAuthority.class);assertThat(c).hasSingleBean(VerificationCredentialApi.class);});}
  @Test void missingKeysFailClosed(){enabled().withBean(CredentialPorts.AttemptAuthority.class,()->mock(CredentialPorts.AttemptAuthority.class)).run(c->assertThat(c).hasFailed());}
  @Test void explicitQaDependenciesComposeRealCredentialAndFence(){enabled().withBean(CredentialProtection.class,()->keys()).withBean(CredentialPorts.AttemptAuthority.class,()->mock(CredentialPorts.AttemptAuthority.class)).run(c->{assertThat(c).hasNotFailed();assertThat(c).hasSingleBean(VerificationCredentialApi.class);assertThat(c).hasSingleBean(VerificationRescheduleFenceApi.class);});}
+ @Test void completionRequiresCredentialFoundation(){base().withPropertyValues("pet.verification.completion.enabled=true").run(c->assertThat(c).hasFailed());}
+ @Test void explicitCompletionComposesAllRealOwnersWithoutHttp(){enabled().withPropertyValues("pet.verification.completion.enabled=true").withBean(CredentialProtection.class,()->keys()).run(c->{assertThat(c).hasNotFailed();assertThat(c).hasSingleBean(VerificationCompletionApi.class);assertThat(c).hasSingleBean(com.petplatform.order.api.command.OrderVerificationCommitApi.class);assertThat(c).hasSingleBean(com.petplatform.aftersale.api.command.AfterSaleVerificationApi.class);});}
  private static CredentialProtection keys(){return new CredentialProtection("test",Map.of("test",new byte[32]),Map.of("test",new byte[32]));}
  private ApplicationContextRunner enabled(){return base().withPropertyValues("pet.verification.credential.enabled=true","pet.schedule.protection.enabled=true","pet.payment.foundation.enabled=true","pet.order.auto-confirm.enabled=true","pet.order.merchant.enabled=true")
   .withBean(DataSource.class,()->mock(DataSource.class)).withBean(com.petplatform.common.SnowflakeIdGenerator.class,()->()->1L)

@@ -813,14 +813,17 @@ class BookingCreateAcceptanceTest {
                 "43-Payment-Refund-Dispatch-Schema-v0.1.sql",
                 "44-Late-Refund-Order-Projection-Schema-v0.1.sql",
                 "46-Order-Reschedule-Schema-v0.1.sql",
-                "47-Verification-Credential-Schema-v0.1.sql");
+                "47-Verification-Credential-Schema-v0.1.sql",
+                "48-Verification-Completion-Schema-v0.1.sql");
         private final String name = "qa_booking_" + UUID.randomUUID().toString().replace("-", "");
         private final JdbcTemplate admin;
         final DataSource source;
         final JdbcTemplate jdbc;
         private final DataSourceTransactionManager manager;
 
-        Database() throws Exception {
+        Database() throws Exception { this(true); }
+
+        Database(boolean completionSchema) throws Exception {
             var environment = System.getenv();
             String prefix = environment.containsKey("BOOKING_MYSQL_URL") ? "BOOKING" : "AUTH";
             String url = environment.get(prefix + "_MYSQL_URL");
@@ -839,14 +842,14 @@ class BookingCreateAcceptanceTest {
             manager = new DataSourceTransactionManager(source);
             admin.execute("CREATE DATABASE `" + name + "` CHARACTER SET utf8mb4");
             try {
-                for (String schema : SCHEMA) script(schema);
+                for (String schema : SCHEMA) if (completionSchema || !schema.startsWith("48-")) script(schema);
             } catch (Exception failure) {
                 close();
                 throw failure;
             }
         }
 
-        private void script(String filename) throws Exception {
+        void script(String filename) throws Exception {
             Path root = Path.of("").toAbsolutePath();
             while (root != null && !Files.exists(root.resolve("docs/03-database/" + filename))) {
                 root = root.getParent();

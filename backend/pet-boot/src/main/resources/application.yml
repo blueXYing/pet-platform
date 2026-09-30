@@ -46,6 +46,8 @@ logging:
 # variables below at deployment time. Never commit real credentials.
 pet:
   verification:
+    completion:
+      enabled: false
     credential:
       enabled: false
       http:
