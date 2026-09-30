@@ -78,5 +78,7 @@ public final class RefundExecutionStore {
     public int resolveIssue(long refundId) { return mapper.resolveIssue(refundId); }
     public int insertIssue(long refundId, String code) { return mapper.insertIssue(refundId, code); }
     public List<RefundMapperRows.Candidate> scanOpen(long after,boolean late,boolean merchant) { return scanOpen(after,late,merchant,false); }
-    public List<RefundMapperRows.Candidate> scanOpen(long after,boolean late,boolean merchant,boolean application) { return mapper.scanOpen(after,late,merchant,application); }
+    public List<RefundMapperRows.Candidate> scanOpen(long after,boolean late,boolean merchant,boolean application) { return scanOpen(after,late,merchant,application,false); }
+    public List<RefundMapperRows.Candidate> scanOpen(long after,boolean late,boolean merchant,boolean application,boolean aftersale) { return mapper.scanOpen(after,late,merchant,application,aftersale); }
+    public LocalDateTime persistedFirstQueryAt(long refund){return mapper.persistedFirstQueryAt(refund);}
 }

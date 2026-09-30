@@ -14,6 +14,7 @@ public interface RefundApplicationMapper {
     Decision decision(@Param("id")long id);Created created(@Param("refund")long refund);
     int insertRefund(Map<String,Object> values);int insertExecution(Map<String,Object> values);int bindRefund(Map<String,Object> values);
     List<Row> scan(@Param("after")long after);
+    Row latestRejected(@Param("order")long order);
     int recordRecoveryIssue(@Param("application")long application,@Param("order")long order,@Param("store")long store,@Param("code")String code);
     int resolveRecoveryIssues(@Param("application")long application);
     class Binding {public Long id,actorId;public String state,payloadSha256,canonicalVersion;public byte[] commandNamespace,actorType,scope,requestId,canonicalBytes,resultBytes;public Integer resultVersion;}

@@ -6,6 +6,18 @@ public final class MerchantStaffScopeEntity {
     private String merchantStatus;
     private Long storeId;
     private String storeStatus;
+    private String cityCode;
+    private Long merchantVersion;
+    private Long storeVersion;
+    private Long profileVersion;
+    public String getCityCode() { return cityCode; }
+    public void setCityCode(String value) { cityCode=value; }
+    public Long getMerchantVersion() { return merchantVersion; }
+    public void setMerchantVersion(Long value) { merchantVersion=value; }
+    public Long getStoreVersion() { return storeVersion; }
+    public void setStoreVersion(Long value) { storeVersion=value; }
+    public Long getProfileVersion() { return profileVersion; }
+    public void setProfileVersion(Long value) { profileVersion=value; }
     public Long getMerchantId() { return merchantId; }
     public void setMerchantId(Long value) { merchantId = value; }
     public Long getOwnerUserId() { return ownerUserId; }

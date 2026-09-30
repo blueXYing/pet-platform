@@ -7,6 +7,12 @@ import java.time.OffsetDateTime;
 public interface PrivateAssetWatermarkRenderer {
   RenderedImage render(byte[] source, String mediaType, Watermark watermark);
 
+  /** Separate typed resources; legacy renderers must fail rather than silently omit an AFS mark. */
+  default RenderedImage renderResource(byte[] source,String mediaType,ResourceWatermark watermark) {
+    throw new IllegalStateException("Typed resource watermark renderer required");
+  }
+  record ResourceWatermark(String operatorId,String resourceType,String resourceId,OffsetDateTime renderedAt) {}
+
   record Watermark(String operatorId, String applicationId, OffsetDateTime renderedAt) {}
 
   record RenderedImage(byte[] content, String mediaType) {

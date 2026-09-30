@@ -10,6 +10,7 @@ import javax.sql.DataSource;
 /** PAYMENT-owned refund dispatch and minimum signed receipt facts (SQL43). */
 public final class PaymentRefundStore {
     private final PaymentRefundMapper mapper;
+    private static final com.fasterxml.jackson.databind.ObjectMapper FUNDING_JSON=new com.fasterxml.jackson.databind.ObjectMapper().findAndRegisterModules();
 
     public PaymentRefundStore(DataSource source) {
         mapper = PaymentMybatis.template(source).getMapper(PaymentRefundMapper.class);
@@ -18,6 +19,10 @@ public final class PaymentRefundStore {
     public void session() { mapper.setUtcTimeZone(); mapper.setLockWaitTimeout(); }
 
     public OffsetDateTime now() { return mapper.utcNow().atOffset(ZoneOffset.UTC); }
+    public void insertFunding(long refund,String committed,Object check,Object evidence,String sha,OffsetDateTime at){
+        try{if(mapper.insertFunding(PaymentFoundationStore.values("refund",refund,"committed",committed,"check",FUNDING_JSON.writeValueAsString(check),"evidence",FUNDING_JSON.writeValueAsString(evidence),"sha",sha,"at",utc(at)))!=1)throw new IllegalStateException("Funding proof insert failed");}catch(com.fasterxml.jackson.core.JsonProcessingException failure){throw new IllegalStateException("Funding proof encoding failed",failure);}
+    }
+    public PaymentRefundMapper.Funding funding(long refund){return mapper.funding(refund);}
 
     public Dispatch byRefund(long refundOrderId, boolean lock) {
         return lock ? mapper.selectByRefundForUpdate(refundOrderId)

@@ -57,7 +57,9 @@ public final class OrderVerificationCommitApiImpl implements OrderVerificationCo
   scope(store,txSource);var r=db.row(IDS.fromApi(order));var p=db.committed(IDS.fromApi(order));
   if(r==null||p==null||!store.equals(str(r.storeId))||!store.equals(str(p.storeId))||!verificationId.equals(str(p.verificationId))||!"COMPLETED".equals(r.orderStage)||!"VERIFIED".equals(r.verificationStatus)
    ||r.version==null||p.orderVersion==null||r.version<p.orderVersion||!Objects.equals(r.verifiedAt,p.verifiedAt)||!Objects.equals(r.completedAt,p.verifiedAt)||!at.isEqual(p.verifiedAt.atOffset(ZoneOffset.UTC))
-   ||!Objects.equals(r.currentAftersaleId,p.aftersaleId)||!Objects.equals(r.aftersaleStatus,p.aftersaleStatus))throw bad();return null;
+   )throw bad();
+  var historical=aftersales.get().requireCommitted(order,store,verificationId,at,source);
+  if(historical==null||!Objects.equals(p.aftersaleId,historical.aftersaleId()==null?null:IDS.fromApi(historical.aftersaleId()))||!Objects.equals(p.aftersaleStatus,historical.status()))throw bad();return null;
  });}
  private void scope(String store,DataSource txSource){if(source!=txSource||!TransactionSynchronizationManager.isActualTransactionActive()||TransactionSynchronizationManager.isCurrentTransactionReadOnly()||!Objects.equals(TransactionSynchronizationManager.getCurrentTransactionIsolationLevel(),2)||!(TransactionSynchronizationManager.getResource(source) instanceof ConnectionHolder))throw bad();guard.requireHeld(store,source);}
  private <T>T safe(Supplier<T> work){try{return work.get();}catch(RuntimeException failure){if(TransactionSynchronizationManager.getResource(source) instanceof ConnectionHolder h)h.setRollbackOnly();if(failure instanceof ApiException a)throw a;throw bad();}}

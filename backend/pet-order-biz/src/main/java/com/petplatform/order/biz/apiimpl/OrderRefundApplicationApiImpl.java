@@ -37,6 +37,7 @@ public final class OrderRefundApplicationApiImpl implements OrderRefundApplicati
     private final ReservationConfirmApi reservations;
     private final ScheduleProtectionFactsApi schedule;
     private final Supplier<RefundApplicationApprovalFactsApi> applications;
+    private final Supplier<com.petplatform.aftersale.api.query.AfterSaleCaseFactsApi> aftersales;
     private final OrderPaymentStore paid;
     private final OrderAutoConfirmStore orders;
     private final OrderRefundApplicationMapper db;
@@ -49,10 +50,17 @@ public final class OrderRefundApplicationApiImpl implements OrderRefundApplicati
     public OrderRefundApplicationApiImpl(DataSource source,ScheduleCapacityGuardApi guard,SnowflakeIdGenerator ids,
             PaymentSuccessFactsApi payments,RefundOrderFactsApi refunds,ReservationConfirmApi reservations,
             ScheduleProtectionFactsApi schedule,Supplier<RefundApplicationApprovalFactsApi> applications) {
+        this(source,guard,ids,payments,refunds,reservations,schedule,applications,null);
+    }
+    public OrderRefundApplicationApiImpl(DataSource source,ScheduleCapacityGuardApi guard,SnowflakeIdGenerator ids,
+            PaymentSuccessFactsApi payments,RefundOrderFactsApi refunds,ReservationConfirmApi reservations,
+            ScheduleProtectionFactsApi schedule,Supplier<RefundApplicationApprovalFactsApi> applications,
+            Supplier<com.petplatform.aftersale.api.query.AfterSaleCaseFactsApi> aftersales) {
         this.source=Objects.requireNonNull(source);this.guard=Objects.requireNonNull(guard);this.ids=Objects.requireNonNull(ids);
         this.payments=Objects.requireNonNull(payments);this.refunds=Objects.requireNonNull(refunds);
         this.reservations=Objects.requireNonNull(reservations);this.schedule=Objects.requireNonNull(schedule);
         this.applications=Objects.requireNonNull(applications);paid=new OrderPaymentStore(source);orders=new OrderAutoConfirmStore(source);
+        this.aftersales=aftersales;
         db=new OrderRefundApplicationStore(source).mapper();
     }
 
@@ -205,6 +213,13 @@ public final class OrderRefundApplicationApiImpl implements OrderRefundApplicati
     }
 
     private Fact normal(String order,String store,QueryContext q,boolean releasedAllowed) {
+        return normal(order,store,q,releasedAllowed,false);
+    }
+    /** Shared ORDER-owned validation; AFS owns its window/current-workflow admission. */
+    Fact requireNormalForAfterSale(String order,String store,QueryContext q,DataSource txSource) {
+        return safe(()->{scope(store,txSource);system(q);return normal(order,store,q,false,true);});
+    }
+    private Fact normal(String order,String store,QueryContext q,boolean releasedAllowed,boolean forAftersale) {
         var r=orders.lock(IDS.fromApi(order));var state=db.current(IDS.fromApi(order));
         if(r==null||state==null||!store.equals(str(r.storeId)))throw bad();
         var refund=refunds.findByOrder(order,store,q);if(refund==null)throw bad();
@@ -218,10 +233,22 @@ public final class OrderRefundApplicationApiImpl implements OrderRefundApplicati
         if(verified){
             var v=new OrderVerificationStore(source).mapper().committed(r.id);
             if(v==null||!Objects.equals(v.storeId,r.storeId)||v.orderVersion==null||v.orderVersion>r.version||v.verifiedAt==null
-                    ||!v.verifiedAt.equals(state.verifiedAt)||!v.verifiedAt.equals(state.completedAt)
-                    ||!Objects.equals(v.aftersaleId,r.currentAftersaleId)||!Objects.equals(v.aftersaleStatus,state.aftersaleStatus)
-                    ||r.currentAftersaleId!=null&&!"INVALIDATED".equals(v.aftersaleStatus))throw bad();
-        }else if(state.verifiedAt!=null||state.completedAt!=null||r.currentAftersaleId!=null)throw bad();
+                    ||!v.verifiedAt.equals(state.verifiedAt)||!v.verifiedAt.equals(state.completedAt))throw bad();
+        }else if(state.verifiedAt!=null||state.completedAt!=null)throw bad();
+        var afsProvider=aftersales==null?null:aftersales.get();
+        if(afsProvider!=null&&!forAftersale){
+            var af=afsProvider.requireCurrent(order,store,nullable(r.currentAftersaleId),q,source);
+            if(af==null||!order.equals(af.orderId())||!store.equals(af.storeId())
+                    ||!Objects.equals(nullable(r.currentAftersaleId),af.afterSaleId())
+                    ||af.afterSaleId()!=null&&(!str(r.userId).equals(af.userId())||!str(r.merchantId).equals(af.merchantId())||!Objects.equals(state.aftersaleStatus,af.status()))
+                    ||af.afterSaleId()==null&&state.aftersaleStatus!=null&&!"NONE".equals(state.aftersaleStatus))throw bad();
+            if(!forAftersale&&af.active())throw error("REFUND_APPLICATION_BLOCKED_BY_AFTERSALE");
+        }else if(!forAftersale&&r.currentAftersaleId!=null){
+            var historical=new OrderVerificationStore(source).mapper().committed(r.id);
+            if(!verified||historical==null||!Objects.equals(historical.aftersaleId,r.currentAftersaleId)
+                    ||!Objects.equals(historical.aftersaleStatus,state.aftersaleStatus)
+                    ||!"INVALIDATED".equals(state.aftersaleStatus))throw bad();
+        }
         if((state.currentRefundApplicationId==null)!=(state.refundApplicationStatus==null)
                 ||state.refundApplicationStatus!=null&&!Set.of("PENDING_MERCHANT","APPROVED","AUTO_APPROVED","REJECTED").contains(state.refundApplicationStatus))throw bad();
         var original=paid.lockResult(r.id);if(original==null||!"NORMAL".equals(original.resultType()))throw bad();

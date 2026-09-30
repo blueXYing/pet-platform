@@ -1812,3 +1812,8 @@ thirdparty-api 新增独立 ServiceCoverSigningApi.signServiceCover(String asset
 `CREATE_REFUND` 与 `VERIFY` 共享门店串行保护但资格不同：普通申请及批准未建单不阻止 VERIFY；已核销仍可获得普通退款能力，资格来自正常付款/确认/真实核销证明，不复用“只允许未核销”的接口。Permit 由 ORDER 签发并绑定活跃事务资源、命令、申请、决定、订单/门店及本次当前版本；伪造、跨事务重用、未提交完成的 token 或绕过 token 的裸 commit 均拒绝。批准后核销增加版本时，新的建单事务必须重新 acquire；不得使用批准时版本。历史核销证明允许后续合法版本增长，同时保持原核销身份、时间、状态及 AFS 证明一致；新核销写入提交仍核验本次精确版本。
 
 `OrderRefundOriginFact` 和 `RefundExecutionFact` 增加 `sourceBizId`/`sourceDecisionId`，旧构造器保留 null 的旧来源语义。普通来源固定为 `MERCHANT_APPROVED` 或 `MERCHANT_TIMEOUT_AUTO`，上述两 ID 对应 application/decision，sourceEventId/lateEventId 为 null；不得把业务 ID 填进事件字段。PAYMENT 首次发送同时复核 REFUND 决定及 ORDER 来源，之后原号查询按持久发送绑定恢复，不重新要求当前支付状态为 PAID。默认关闭；AFS/PARTIAL、STAFF、HTTP 和通知实际送达未由本切片交付。
+
+
+## 2026-09-30 AFS工作流正式增量
+
+用户已批准P1～P4推荐及A1–A3，执行[50号契约](50-AfterSale-Workflow-Contract-v0.1.md)。AFS真实命令/证据/终局、ORDER当前和历史事实、REFUND申请历史与AFS原子退款、PARTIAL资金来源及默认关闭适配由50号具体化；旧普通49号保持。无公开HTTP交付声明，OD-W0-001真实资金依据仍必需。

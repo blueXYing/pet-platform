@@ -14,6 +14,9 @@ public interface PaymentRefundMapper {
     Dispatch selectByRefund(@Param("refundOrderId") long refundOrderId);
     Dispatch selectByRefundForUpdate(@Param("refundOrderId") long refundOrderId);
     int insertDispatch(Map<String, Object> p);
+    int insertFunding(Map<String,Object> p);
+    Funding funding(@Param("refund")long refund);
+    class Funding {public Long refundOrderId;public String committedEvidenceId,checkJson,evidenceJson,requestSha256;public LocalDateTime createdAt;}
     Long countReceipt(@Param("refundOrderId") long refundOrderId, @Param("sha") String sha);
     int insertReceipt(Map<String, Object> p);
     int markPending(Map<String, Object> p);

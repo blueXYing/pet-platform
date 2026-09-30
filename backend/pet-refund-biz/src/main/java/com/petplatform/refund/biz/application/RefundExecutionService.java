@@ -21,6 +21,7 @@ public final class RefundExecutionService {
     private final PaymentRefundApi channel;
     private final PaymentRefundResultFactsApi channelFacts;
     private final JdbcAsyncTaskStatusReader taskStates;
+    private final com.petplatform.task.core.JdbcAsyncTaskRecoverer recovery;
     private final AtomicLong scanAfter = new AtomicLong();
     public record ExecutionResult(boolean done, OffsetDateTime nextQueryAt) {}
 
@@ -29,6 +30,7 @@ public final class RefundExecutionService {
         this.refunds=Objects.requireNonNull(refunds);this.channel=Objects.requireNonNull(channel);
         this.channelFacts=Objects.requireNonNull(channelFacts);
         taskStates=new JdbcAsyncTaskStatusReader(refunds.source);
+        recovery=new com.petplatform.task.core.JdbcAsyncTaskRecoverer(refunds.source,refunds.ids);
     }
 
     public ExecutionResult execute(String refundId,String storeId,boolean query,String traceId) {
@@ -42,7 +44,7 @@ public final class RefundExecutionService {
             refunds.session();refunds.guard.acquire(List.of(storeId),ctx);
             return refunds.requireForChannel(refundId,storeId,ctx);
         });
-        if(f==null||applicationSource(f.sourceType())&&expectedSource==null
+        if(f==null||(applicationSource(f.sourceType())||"AFTERSALE_DECISION".equals(f.sourceType()))&&expectedSource==null
             ||(expectedSource!=null&&!("APPLICATION".equals(expectedSource)?applicationSource(f.sourceType()):expectedSource.equals(f.sourceType()))))throw unavailable();
         if("SUCCESS".equals(f.status())) {
             refunds.tx.executeWithoutResult(s -> {
@@ -129,7 +131,7 @@ public final class RefundExecutionService {
             refunds.publisher.publish(new IntegrationEvent<>(Long.toString(event),"RefundSucceededEvent.v1",1,
                 p.resultAt(),"REFUND",f.refundOrderId(),ctx.traceId(),Map.of(
                   "refundOrderId",f.refundOrderId(),"refundNo",f.refundNo(),"orderId",f.orderId(),
-                  "refundType","FULL","refundSource",f.sourceType(),"refundAmount",f.refundAmount(),
+                  "refundType",f.refundType(),"refundSource",f.sourceType(),"refundAmount",f.refundAmount(),
                   "originalPaidAmount",f.originalPaidAmount(),"channelRefundNo",p.channelRefundNo(),
                   "succeededAt",p.resultAt().toString())));
             refunds.store.resolveIssue(id(f.refundOrderId()));
@@ -154,13 +156,20 @@ public final class RefundExecutionService {
     /** Cyclic bounded scan. A worker crash or exhausted retry cannot silently lose a refund. */
     public synchronized int reconcileDeadTasks() {
         noOuter();
-        var candidates=refunds.store.scanOpen(scanAfter.get(),refunds.lateEnabled(),refunds.merchantEnabled(),refunds.applicationEnabled());
+        var candidates=refunds.store.scanOpen(scanAfter.get(),refunds.lateEnabled(),refunds.merchantEnabled(),refunds.applicationEnabled(),refunds.aftersaleEnabled());
         if(candidates.isEmpty()) {scanAfter.set(0);return 0;}
         int count=0;
         for(var c:candidates) {
             String refundId=Long.toString(c.refundOrderId);
             String storeId=Long.toString(c.storeId);
             try {
+            if("AFTERSALE_DECISION".equals(c.sourceType)){
+                QueryContext ctx=new QueryContext("aftersale-refund-recovery",OperatorType.SYSTEM,null);
+                refunds.tx.executeWithoutResult(s->{refunds.session();refunds.guard.acquire(List.of(storeId),ctx);var f=refunds.requireForChannel(refundId,storeId,ctx);refunds.origin(f,ctx);if("SUCCESS".equals(f.status()))return;
+                    var due=refunds.store.persistedFirstQueryAt(id(refundId));boolean queryTask=due!=null;String type=taskType(f,queryTask);
+                    recovery.recover(type+":"+refundId+":0","REFUND",type,"REFUND",id(refundId),0L,payload(id(refundId),storeId),8,"REFUND_CHANNEL",offset(due));
+                });count++;scanAfter.set(id(refundId));continue;
+            }
             String submit=taskStates.status("REFUND_SUBMIT:"+refundId+":0");
             if(submit==null)submit=taskStates.status("MERCHANT_REFUND_SUBMIT:"+refundId+":0");
             if(submit==null)submit=taskStates.status("APPLICATION_REFUND_SUBMIT:"+refundId+":0");
@@ -172,6 +181,9 @@ public final class RefundExecutionService {
                 var fact=refunds.tx.execute(s -> {refunds.guard.acquire(List.of(storeId),ctx);return refunds.requireForChannel(refundId,storeId,ctx);});
                 issue(fact,issueCode(fact),ctx);count++;
             }
+            } catch(IllegalArgumentException conflict) {
+                if(!"AFTERSALE_DECISION".equals(c.sourceType))throw conflict;
+                refunds.tx.executeWithoutResult(s->{refunds.session();refunds.store.insertIssue(id(refundId),"AFTERSALE_REFUND_TASK_CONFLICT");});count++;
             } catch(ApiException failure) {
                 if(RefundApplicationService.infrastructure(failure)||!CommonApiCodes.DEPENDENCY_UNAVAILABLE.equals(failure.code()))throw failure;
                 // A broken source proves neither UNKNOWN nor a financial outcome. Only record the
@@ -190,14 +202,14 @@ public final class RefundExecutionService {
     }
 
     public static String taskType(RefundExecutionFact f,boolean query) {
-        if(applicationSource(f.sourceType()))return "APPLICATION_"+(query?"REFUND_CHANNEL_QUERY":"REFUND_SUBMIT");
-        return ("MERCHANT_REJECT_ORDER".equals(f.sourceType())?"MERCHANT_":"")+(query?"REFUND_CHANNEL_QUERY":"REFUND_SUBMIT");
+        String prefix=switch(f.sourceType()){case "LATE_PAYMENT_TIMEOUT"->"";case "MERCHANT_REJECT_ORDER"->"MERCHANT_";case "MERCHANT_APPROVED","MERCHANT_TIMEOUT_AUTO"->"APPLICATION_";case "AFTERSALE_DECISION"->"AFTERSALE_";default->throw unavailable();};
+        return prefix+(query?"REFUND_CHANNEL_QUERY":"REFUND_SUBMIT");
     }
     private static String issueCode(RefundExecutionFact f) {
-        return SOURCE.equals(f.sourceType())?"LATE_PAYMENT_AUTO_REFUND_FAILED":applicationSource(f.sourceType())?"APPLICATION_REFUND_FAILED":"MERCHANT_REJECT_REFUND_FAILED";
+        return switch(f.sourceType()){case "LATE_PAYMENT_TIMEOUT"->"LATE_PAYMENT_AUTO_REFUND_FAILED";case "MERCHANT_APPROVED","MERCHANT_TIMEOUT_AUTO"->"APPLICATION_REFUND_FAILED";case "MERCHANT_REJECT_ORDER"->"MERCHANT_REJECT_REFUND_FAILED";case "AFTERSALE_DECISION"->"AFTERSALE_REFUND_FAILED";default->throw unavailable();};
     }
     private static void same(RefundExecutionFact a,RefundExecutionFact b) {
-        if(!Objects.equals(a.sourceType(),b.sourceType())||!Objects.equals(a.sourceEventId(),b.sourceEventId())
+        if(!Objects.equals(a.refundType(),b.refundType())||!Objects.equals(a.sourceType(),b.sourceType())||!Objects.equals(a.sourceEventId(),b.sourceEventId())
             ||!Objects.equals(a.sourceBizId(),b.sourceBizId())||!Objects.equals(a.sourceDecisionId(),b.sourceDecisionId())
             ||!a.refundOrderId().equals(b.refundOrderId())||!a.refundNo().equals(b.refundNo())
             ||!a.orderId().equals(b.orderId())||!a.paymentId().equals(b.paymentId())||!a.storeId().equals(b.storeId())

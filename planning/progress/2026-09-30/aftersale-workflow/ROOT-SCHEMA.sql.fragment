@@ -1,0 +1,22 @@
+-- THIRD_PARTY Contract50: independent typed AFS grants, no merchant application/revision alias.
+CREATE TABLE aftersale_asset_read_grant (
+ id BIGINT PRIMARY KEY,after_sale_id BIGINT NOT NULL,batch_id BIGINT NOT NULL,asset_id BIGINT NOT NULL,
+ actor_type VARCHAR(32) CHARACTER SET ascii COLLATE ascii_bin NOT NULL,actor_id BIGINT NOT NULL,
+ request_id VARBINARY(512) NOT NULL,key_version VARCHAR(64) CHARACTER SET ascii COLLATE ascii_bin NOT NULL,
+ token_digest BINARY(32) NOT NULL,request_hash BINARY(32) NOT NULL,proof_hash BINARY(32) NOT NULL,
+ reason_cipher VARBINARY(4096) NOT NULL,status VARCHAR(16) NOT NULL,issued_at DATETIME(3) NOT NULL,
+ expires_at DATETIME(3) NOT NULL,consumed_at DATETIME(3) NULL,
+ UNIQUE KEY uk_afs_asset_read_request(actor_type,actor_id,after_sale_id,request_id),
+ UNIQUE KEY uk_afs_asset_read_token(token_digest),KEY idx_afs_asset_read_case(after_sale_id,batch_id),
+ CHECK (id>0 AND after_sale_id>0 AND batch_id>0 AND asset_id>0 AND actor_id>0),
+ CHECK (actor_type IN ('USER','PLATFORM_OPERATOR')),
+ CHECK (status IN ('ISSUED','CONSUMED','REVOKED','EXPIRED')),
+ CHECK (expires_at=TIMESTAMPADD(MINUTE,5,issued_at)),
+ CHECK ((status='CONSUMED' AND consumed_at IS NOT NULL) OR (status<>'CONSUMED' AND consumed_at IS NULL))
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+CREATE TABLE aftersale_asset_access_audit (
+ id BIGINT PRIMARY KEY,grant_id BIGINT NOT NULL,action VARCHAR(16) NOT NULL,result VARCHAR(16) NOT NULL,
+ actor_type VARCHAR(32) NOT NULL,actor_id BIGINT NOT NULL,request_id VARBINARY(512) NOT NULL,created_at DATETIME(3) NOT NULL,
+ KEY idx_afs_asset_audit_grant(grant_id,created_at),
+ CHECK(action IN ('ISSUE','CONSUME')),CHECK(result IN ('SUCCESS','REPLAY','STARTED','DENIED','FAILED'))
+) ENGINE=InnoDB;

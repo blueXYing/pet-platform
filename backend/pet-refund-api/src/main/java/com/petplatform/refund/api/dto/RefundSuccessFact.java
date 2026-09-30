@@ -6,4 +6,11 @@ import java.time.OffsetDateTime;
 public record RefundSuccessFact(String refundOrderId, String refundNo, String orderId,
         String paymentId, String storeId, BigDecimal refundAmount, BigDecimal originalPaidAmount,
         String channelRefundNo, OffsetDateTime succeededAt, String successEventId,
-        String refundSource) {}
+        String refundSource, String refundType) {
+    public RefundSuccessFact(String refundOrderId,String refundNo,String orderId,String paymentId,String storeId,
+        BigDecimal refundAmount,BigDecimal originalPaidAmount,String channelRefundNo,OffsetDateTime succeededAt,
+        String successEventId,String refundSource) {
+        this(refundOrderId,refundNo,orderId,paymentId,storeId,refundAmount,originalPaidAmount,channelRefundNo,
+            succeededAt,successEventId,refundSource,"FULL");
+    }
+}

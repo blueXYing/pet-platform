@@ -1,11 +1,14 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
 <mapper namespace="com.petplatform.aftersale.biz.infrastructure.persistence.mapper.AfterSaleVerificationMapper">
- <sql id="caseColumns">id,order_id,user_id,merchant_id,store_id,version,active_flag,status,source_stage,invalidated_at</sql>
+ <!-- SQL48 has no workflow_revision; SELECT * deliberately preserves old-column compatibility and maps the SQL50 marker when present. -->
+ <sql id="caseColumns">*</sql>
  <select id="current" resultType="com.petplatform.aftersale.biz.infrastructure.persistence.mapper.AfterSaleVerificationMapper$Case">SELECT <include refid="caseColumns"/> FROM aftersale_case WHERE id=#{id} FOR UPDATE</select>
  <select id="active" resultType="com.petplatform.aftersale.biz.infrastructure.persistence.mapper.AfterSaleVerificationMapper$Case">SELECT <include refid="caseColumns"/> FROM aftersale_case WHERE order_id=#{order} AND active_flag=1 FOR UPDATE</select>
  <select id="proof" resultType="com.petplatform.aftersale.biz.infrastructure.persistence.mapper.AfterSaleVerificationMapper$Proof">SELECT verification_id,order_id,store_id,aftersale_id,case_version,case_status,invalidated,verified_at FROM aftersale_verification_proof WHERE order_id=#{order}</select>
  <update id="invalidate">UPDATE aftersale_case SET status='INVALIDATED',active_flag=0,invalidated_at=#{at},version=version+1 WHERE id=#{case} AND order_id=#{order} AND store_id=#{store} AND version=#{oldVersion} AND active_flag=1 AND source_stage='UNVERIFIED_POST_START' AND status=#{oldStatus} AND invalidated_at IS NULL</update>
+ <update id="invalidateWorkflow">UPDATE aftersale_case SET status='INVALIDATED',active_flag=0,invalidated_at=#{at},current_supplement_id=NULL,version=version+1 WHERE id=#{case} AND order_id=#{order} AND store_id=#{store} AND version=#{oldVersion} AND active_flag=1 AND workflow_revision=1 AND source_stage='UNVERIFIED_POST_START' AND status=#{oldStatus} AND invalidated_at IS NULL</update>
+ <update id="cancelSupplement">UPDATE aftersale_supplement SET status='CANCELED',closed_at=#{at},completion_verification_id=#{verification} WHERE id=#{supplement} AND aftersale_id=#{case} AND status='OPEN' AND completion_command_id IS NULL AND completion_verification_id IS NULL</update>
  <insert id="log">INSERT INTO aftersale_status_log(id,aftersale_id,from_status,to_status,event_type,operator_type,operator_id,remark,created_at) VALUES(#{log},#{case},#{oldStatus},'INVALIDATED','ORDER_VERIFIED','USER',#{actor},#{verification},#{at})</insert>
  <insert id="record">INSERT INTO aftersale_verification_proof(verification_id,order_id,store_id,aftersale_id,case_version,case_status,invalidated,verified_at) VALUES(#{verification},#{order},#{store},#{case,jdbcType=BIGINT},#{version,jdbcType=BIGINT},#{status},#{invalidated},#{at})</insert>
 </mapper>

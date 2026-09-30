@@ -30,4 +30,21 @@ public final class MerchantOrderAuthorityApiImpl implements MerchantOrderAuthori
         if(row==null||!Set.of("ACTIVE","OFFLINE").contains(row.getMerchantStatus())||!Set.of("ACTIVE","OFFLINE").contains(row.getStoreStatus()))throw denied();
     }
     private static ApiException denied(){return new ApiException(CommonApiCodes.FORBIDDEN,"Existing order authority unavailable");}
+    @Override public ResourceScope requireResourceScope(String merchant,String store,QueryContext context) {
+        guard.requireHeld(store,source);
+        if(context==null||context.operatorType()==null)throw denied();
+        var row=mapper.lockOrderResourceScope(IDS.fromApi(merchant),IDS.fromApi(store));
+        if(row==null||row.getMerchantStatus()==null||row.getStoreStatus()==null||row.getCityCode()==null
+                ||!row.getCityCode().matches("[a-z][a-z0-9_-]{0,31}")
+                ||row.getMerchantVersion()==null||row.getStoreVersion()==null||row.getProfileVersion()==null
+                ||row.getMerchantVersion()<0||row.getStoreVersion()<0||row.getProfileVersion()<0
+                ||!Set.of("ACTIVE","OFFLINE","FROZEN").contains(row.getMerchantStatus())
+                ||!Set.of("ACTIVE","OFFLINE","FROZEN").contains(row.getStoreStatus()))
+            throw new ApiException(CommonApiCodes.DEPENDENCY_UNAVAILABLE,"Merchant scope facts unavailable");
+        try {
+            String version=merchant+":"+store+":"+row.getMerchantVersion()+":"+row.getStoreVersion()+":"+row.getProfileVersion()+":"+row.getCityCode();
+            String digest=java.util.HexFormat.of().formatHex(java.security.MessageDigest.getInstance("SHA-256").digest(version.getBytes(java.nio.charset.StandardCharsets.UTF_8)));
+            return new ResourceScope(merchant,store,row.getCityCode(),digest);
+        } catch(java.security.NoSuchAlgorithmException impossible){throw new IllegalStateException(impossible);}
+    }
 }

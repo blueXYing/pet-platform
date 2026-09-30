@@ -1,0 +1,227 @@
+{
+  "recordedAt": "2026-09-30T06:53:24.307446+00:00",
+  "baseCommit": "ff983596cad899c7b4e1ce9c8278228787ca7ac6",
+  "branch": "codex/aftersale-workflow-20260930",
+  "status": "RELEVANT_LOCAL_CHECKS_PASSED_ACROSS_INCREMENTAL_RUNS",
+  "newTestExecutions": 81,
+  "newTestCounts": {
+    "Workflow": 21,
+    "Money": 12,
+    "PrivateEvidence": 4,
+    "Supplement": 4,
+    "SourceIntegrity": 1,
+    "RefundRecovery": 2,
+    "Configuration": 23,
+    "Boundary": 6,
+    "FundingEvidence": 5,
+    "RefundTaskFamily": 2,
+    "TaskInvocation": 1
+  },
+  "qualification": "Counts are unique test executions covered across incremental runs, not one full same-head run. complete1 Money had 3 errors fixed and retested in complete2; complete2 Workflow had 1 fixture error fixed and retested separately. Full clean reactor regression is delegated to PR97 CI and its actual downloadable report. Missing cases in the acceptance matrix remain unverified.",
+  "additionalLocalRegression": {
+    "PaymentRefundServiceMySqlTest": 18,
+    "AdminAuthPrimitivesTest": 12,
+    "ArchitectureRulesFixtureTest": 15,
+    "ArchitectureRulesTest": 7
+  },
+  "staticGates": {
+    "moduleDependencies": "PASS",
+    "persistenceStyle": "PASS",
+    "displayStatus": "PASS",
+    "backendToolsUnittests": 18,
+    "e2eUnittests": 122,
+    "contractSmoke": {
+      "status": "PASS_OFFLINE_DOCUMENT_SMOKE",
+      "operations": 92,
+      "writesWithRequestId": 58,
+      "resolvedRefs": 1056
+    },
+    "diffCheck": "PASS"
+  },
+  "runs": [
+    {
+      "log": "afs-complete-1.log",
+      "sha256": "023be2e7c522427e9e48314a123fbc00e7f55213dae425c2f7a2a0b0bc50ea61",
+      "build": "FAILURE",
+      "reports": [
+        {
+          "tests": 1,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0,
+          "seconds": 0.038,
+          "class": "com.petplatform.task.core.TaskInvocationTest"
+        },
+        {
+          "tests": 5,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0,
+          "seconds": 0.061,
+          "class": "com.petplatform.payment.biz.application.RefundFundingEvidenceChecksTest"
+        },
+        {
+          "tests": 2,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0,
+          "seconds": 0.186,
+          "class": "com.petplatform.refund.biz.application.AfterSaleRefundTaskFamilyTest"
+        },
+        {
+          "tests": 6,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0,
+          "seconds": 1.448,
+          "class": "com.petplatform.aftersale.biz.application.AfterSaleBoundaryTest"
+        },
+        {
+          "tests": 12,
+          "failures": 0,
+          "errors": 3,
+          "skipped": 0,
+          "seconds": 293.7,
+          "class": "com.petplatform.boot.booking.AfterSaleMoneyAcceptanceTest"
+        },
+        {
+          "tests": 4,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0,
+          "seconds": 51.37,
+          "class": "com.petplatform.boot.booking.AfterSalePrivateEvidenceAcceptanceTest"
+        },
+        {
+          "tests": 3,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0,
+          "seconds": 63.53,
+          "class": "com.petplatform.boot.booking.AfterSaleSupplementAcceptanceTest"
+        },
+        {
+          "tests": 17,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0,
+          "seconds": 344.1,
+          "class": "com.petplatform.boot.booking.AfterSaleWorkflowAcceptanceTest"
+        },
+        {
+          "tests": 23,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0,
+          "seconds": 6.321,
+          "class": "com.petplatform.boot.config.AfterSaleWorkflowConfigurationTest"
+        }
+      ]
+    },
+    {
+      "log": "afs-complete-2.log",
+      "sha256": "fdb479dc1421e4ae938ba2300cdb84ddd669d2158cd67a99485dde5278b313e6",
+      "build": "FAILURE",
+      "reports": [
+        {
+          "tests": 3,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0,
+          "seconds": 79.36,
+          "class": "com.petplatform.boot.booking.AfterSaleMoneyAcceptanceTest"
+        },
+        {
+          "tests": 1,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0,
+          "seconds": 17.68,
+          "class": "com.petplatform.boot.booking.AfterSaleSourceIntegrityAcceptanceTest"
+        },
+        {
+          "tests": 4,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0,
+          "seconds": 47.96,
+          "class": "com.petplatform.boot.booking.AfterSaleSupplementAcceptanceTest"
+        },
+        {
+          "tests": 21,
+          "failures": 0,
+          "errors": 1,
+          "skipped": 0,
+          "seconds": 459.4,
+          "class": "com.petplatform.boot.booking.AfterSaleWorkflowAcceptanceTest"
+        }
+      ]
+    },
+    {
+      "log": "afs-recovery-regression.log",
+      "sha256": "1fa27f5223940cfa1a2582add573e8823294bf58095096d174ce76ed06a423bd",
+      "build": "SUCCESS",
+      "reports": [
+        {
+          "tests": 18,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0,
+          "seconds": 60.22,
+          "class": "com.petplatform.payment.biz.application.PaymentRefundServiceMySqlTest"
+        },
+        {
+          "tests": 12,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0,
+          "seconds": 1.277,
+          "class": "com.petplatform.admin.biz.auth.AdminAuthPrimitivesTest"
+        },
+        {
+          "tests": 2,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0,
+          "seconds": 33.26,
+          "class": "com.petplatform.boot.booking.AfterSaleRefundRecoveryAcceptanceTest"
+        },
+        {
+          "tests": 15,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0,
+          "seconds": 4.215,
+          "class": "com.petplatform.architecture.ArchitectureRulesFixtureTest"
+        },
+        {
+          "tests": 7,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0,
+          "seconds": 11.26,
+          "class": "com.petplatform.architecture.ArchitectureRulesTest"
+        }
+      ]
+    },
+    {
+      "log": "afs-cross-order-retest.log",
+      "sha256": "a43ab49023b5b73d326a269ce8f76059b0997f9e045eb617becb6d135773809d",
+      "build": "SUCCESS",
+      "reports": [
+        {
+          "tests": 1,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0,
+          "seconds": 34.47,
+          "class": "com.petplatform.boot.booking.AfterSaleWorkflowAcceptanceTest"
+        }
+      ]
+    }
+  ],
+  "ci": "See exact PR97 head checks and downloaded backend-test-reports; baseline PR96 results are not used as current coverage.",
+  "productionFundingProvider": "NOT_IMPLEMENTED",
+  "publicHttpAndFrontend": "NOT_IMPLEMENTED",
+  "realChannelOssAndNotificationDelivery": "NOT_EXECUTED"
+}

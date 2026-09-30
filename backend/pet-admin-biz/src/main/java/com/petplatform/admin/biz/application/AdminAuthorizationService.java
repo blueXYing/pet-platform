@@ -65,7 +65,7 @@ public final class AdminAuthorizationService implements AdminAuthorizationQueryA
   @Override
   public AdminActionDecision checkCollection(AdminCollectionActionCheckQuery query) {
     Objects.requireNonNull(query, "query");
-    if (!"merchant.application.read".equals(query.actionCode())
+    if (!("merchant.application.read".equals(query.actionCode()) || "aftersale.read".equals(query.actionCode()))
         || query.phase() != AdminActionCheckQuery.CheckPhase.READ_RESULT)
       throw AdminAuthFailure.invalid();
     return checkCurrent(

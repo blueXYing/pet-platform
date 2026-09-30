@@ -27,5 +27,6 @@ public final class RefundMapperRows {
 
     public static final class Candidate {
         public Long refundOrderId, storeId;
+        public String sourceType;
     }
 }

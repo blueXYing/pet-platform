@@ -18,6 +18,19 @@ public final class ImageIoPrivateAssetWatermarkRenderer implements PrivateAssetW
         || watermark.renderedAt() == null) {
       throw new IllegalArgumentException("Trusted watermark context required");
     }
+    return renderBound(source,mediaType,watermark.operatorId(),"APP",watermark.applicationId(),watermark.renderedAt());
+  }
+
+  @Override public RenderedImage renderResource(byte[] source,String mediaType,ResourceWatermark watermark) {
+    if(watermark==null||!"AFTERSALE".equals(watermark.resourceType())||watermark.operatorId()==null
+        ||!watermark.operatorId().matches("[1-9][0-9]{0,18}")||watermark.resourceId()==null
+        ||!watermark.resourceId().matches("[1-9][0-9]{0,18}")||watermark.renderedAt()==null)
+      throw new IllegalArgumentException("Trusted evidence watermark context required");
+    return renderBound(source,mediaType,watermark.operatorId(),"AFS",watermark.resourceId(),watermark.renderedAt());
+  }
+
+  private RenderedImage renderBound(byte[] source,String mediaType,String operator,String kind,String resource,
+      java.time.OffsetDateTime renderedAt) {
     var decoded = ImageIoPrivateAssetImageNormalizer.decode(source, mediaType);
     var image =
         new java.awt.image.BufferedImage(
@@ -36,9 +49,9 @@ public final class ImageIoPrivateAssetWatermarkRenderer implements PrivateAssetW
       graphics.setFont(new Font(Font.SANS_SERIF, Font.BOLD, size));
       String[] lines = {
         "REVIEW ONLY",
-        "OP " + watermark.operatorId(),
-        "APP " + watermark.applicationId(),
-        DateTimeFormatter.ISO_INSTANT.format(watermark.renderedAt().toInstant())
+        "OP " + operator,
+        kind + " " + resource,
+        DateTimeFormatter.ISO_INSTANT.format(renderedAt.toInstant())
       };
       int tileWidth = Math.max(160, size * 23), tileHeight = size * 7;
       for (int y = 0; y < image.getHeight(); y += tileHeight) {

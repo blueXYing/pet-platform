@@ -42,6 +42,9 @@ public final class LateRefundService implements IntegrationEventConsumer, Refund
     private final com.petplatform.order.api.query.OrderRefundApplicationFactsApi applicationOrders;
     private final java.util.function.Supplier<com.petplatform.refund.api.query.RefundApplicationApprovalFactsApi> applications;
     private final boolean lateEnabled;
+    private final com.petplatform.order.api.query.OrderAfterSaleRefundFactsApi aftersaleOrders;
+    private final java.util.function.Supplier<com.petplatform.aftersale.api.query.AfterSaleRefundFactsApi> aftersales;
+    private final com.petplatform.refund.api.query.RefundAfterSaleFactsApi aftersaleRefunds;
     private final JdbcOutboxConsumeGuard claims;
 
     public LateRefundService(DataSource source, SnowflakeIdGenerator ids,
@@ -64,6 +67,18 @@ public final class LateRefundService implements IntegrationEventConsumer, Refund
         com.petplatform.order.api.query.OrderMerchantRejectFactsApi merchantOrders,boolean lateEnabled,
         com.petplatform.order.api.query.OrderRefundApplicationFactsApi applicationOrders,
         java.util.function.Supplier<com.petplatform.refund.api.query.RefundApplicationApprovalFactsApi> applications) {
+        this(source,ids,guard,orders,payments,publisher,merchantOrders,lateEnabled,applicationOrders,applications,null,null,null);
+    }
+    public LateRefundService(DataSource source,SnowflakeIdGenerator ids,ScheduleCapacityGuardApi guard,
+        OrderLatePaymentFactsApi orders,PaymentSuccessFactsApi payments,IntegrationEventPublisher publisher,
+        com.petplatform.order.api.query.OrderMerchantRejectFactsApi merchantOrders,boolean lateEnabled,
+        com.petplatform.order.api.query.OrderRefundApplicationFactsApi applicationOrders,
+        java.util.function.Supplier<com.petplatform.refund.api.query.RefundApplicationApprovalFactsApi> applications,
+        com.petplatform.order.api.query.OrderAfterSaleRefundFactsApi aftersaleOrders,
+        java.util.function.Supplier<com.petplatform.aftersale.api.query.AfterSaleRefundFactsApi> aftersales,
+        com.petplatform.refund.api.query.RefundAfterSaleFactsApi aftersaleRefunds) {
+        if((aftersaleOrders==null)!=(aftersales==null)||(aftersales==null)!=(aftersaleRefunds==null))throw new IllegalArgumentException("After-sale refund dependencies incomplete");
+        this.aftersaleOrders=aftersaleOrders;this.aftersales=aftersales;this.aftersaleRefunds=aftersaleRefunds;
         if((applicationOrders==null)!=(applications==null))throw new IllegalArgumentException("Ordinary refund source dependencies incomplete");
         this.applicationOrders=applicationOrders;this.applications=applications;
         this.lateEnabled=lateEnabled;
@@ -153,6 +168,11 @@ public final class LateRefundService implements IntegrationEventConsumer, Refund
                 var f=r.fact();var proof=applications.get().requireCreated(f.sourceBizId(),f.sourceDecisionId(),refundId,storeId,ctx);
                 if(proof==null||!f.refundNo().equals(proof.refundNo())||!f.createdEventId().equals(proof.createdEventId())||!f.createdAt().isEqual(proof.createdAt())||!f.sourceType().equals(proof.approval().sourceType()))throw unavailable();
             }
+            if("AFTERSALE_DECISION".equals(r.fact().sourceType())){
+                var f=r.fact();var local=aftersaleRefunds.requireCreated(refundId,f.sourceBizId(),f.sourceDecisionId(),storeId,ctx,source);
+                var a=aftersales.get().requireCreated(f.sourceBizId(),f.sourceDecisionId(),refundId,storeId,ctx,source);
+                if(local==null||a==null||!f.equals(local.execution())||!a.refundNo().equals(f.refundNo())||!a.createdEventId().equals(f.createdEventId())||!a.createdAt().isEqual(f.createdAt())||!a.decision().refundType().equals(f.refundType())||a.decision().refundAmount().compareTo(f.refundAmount())!=0||!a.decision().funding().evidenceId().equals(local.fundingEvidenceId()))throw unavailable();
+            }
             return r.fact();
         } catch(RuntimeException failure) { rollback(); if(RefundApplicationService.infrastructure(failure))throw new RefundApplicationService.InfrastructureUnavailable(failure);throw unavailable(); }
     }
@@ -167,17 +187,18 @@ public final class LateRefundService implements IntegrationEventConsumer, Refund
             if(proof==null||proof!=1) throw unavailable();
             return new RefundSuccessFact(refundId,f.refundNo(),orderId,f.paymentId(),storeId,
                 f.refundAmount(),f.originalPaidAmount(),r.channelRefundNo(),r.successAt(),
-                Long.toString(r.successEvent()),f.sourceType());
+                Long.toString(r.successEvent()),f.sourceType(),f.refundType());
         } catch(RuntimeException failure) { rollback(); throw unavailable(); }
     }
 
     boolean lateEnabled(){return lateEnabled;}
     boolean merchantEnabled(){return merchantOrders!=null;}
     boolean applicationEnabled(){return applicationOrders!=null;}
+    boolean aftersaleEnabled(){return aftersaleOrders!=null;}
     public static boolean applicationSource(String source){return "MERCHANT_APPROVED".equals(source)||"MERCHANT_TIMEOUT_AUTO".equals(source);}
     Row byId(String refund) { return read(store.lockById(id(refund))); }
     private Row byOrder(String order) { return read(store.lockByOrder(id(order))); }
-    private Row read(List<RefundMapperRows.Binding> rows) {
+    static Row read(List<RefundMapperRows.Binding> rows) {
         if(rows.size()>1) throw unavailable();
         if(rows.isEmpty()) return null;
         var r=rows.getFirst();
@@ -192,7 +213,7 @@ public final class LateRefundService implements IntegrationEventConsumer, Refund
             r.bindingSourceType==null&&r.sourceEventId==null&&r.lateEventId!=null?SOURCE:r.bindingSourceType,
             r.bindingSourceType==null&&r.sourceEventId==null&&r.lateEventId!=null?Long.toString(r.lateEventId):
                 r.sourceEventId==null?null:Long.toString(r.sourceEventId),
-            r.sourceBizId==null?null:Long.toString(r.sourceBizId),r.sourceDecisionId==null?null:Long.toString(r.sourceDecisionId));
+            r.sourceBizId==null?null:Long.toString(r.sourceBizId),r.sourceDecisionId==null?null:Long.toString(r.sourceDecisionId),r.refundType);
         return new Row(f,value(r.businessRefundId),value(r.businessRefundNo),
             value(r.businessOrderId),offset(r.businessCreatedAt),r.refundType,r.sourceType,
             r.businessAmount,r.refundRatio,r.channel,r.requestId,r.successEventId,
@@ -210,28 +231,35 @@ public final class LateRefundService implements IntegrationEventConsumer, Refund
             id(f.sourceEventId());if(f.lateEventId()!=null||merchantOrders==null||f.sourceBizId()!=null||f.sourceDecisionId()!=null)throw unavailable();
         } else if(applicationSource(f.sourceType())) {
             id(f.sourceBizId());id(f.sourceDecisionId());if(f.lateEventId()!=null||f.sourceEventId()!=null||applicationOrders==null||applications==null)throw unavailable();
+        } else if("AFTERSALE_DECISION".equals(f.sourceType())) {
+            id(f.sourceBizId());id(f.sourceDecisionId());if(f.lateEventId()!=null||f.sourceEventId()!=null||aftersaleOrders==null||aftersales==null||aftersaleRefunds==null)throw unavailable();
         } else throw unavailable();
+        com.petplatform.payment.api.query.RefundFundingEvidenceChecks.amount(f.refundType(),f.refundAmount(),f.originalPaidAmount());
+        if(!"AFTERSALE_DECISION".equals(f.sourceType())&&!"FULL".equals(f.refundType()))throw unavailable();
         if(id(f.refundOrderId())!=r.businessRefundId()||id(f.refundNo())!=r.businessRefundNo()
                 ||id(f.orderId())!=r.businessOrderId()||r.businessCreatedAt()==null
                 ||f.createdAt()==null||!f.createdAt().isEqual(r.businessCreatedAt())
-                ||!"FULL".equals(r.type())||!f.sourceType().equals(r.refundSource())||!"LAKALA".equals(r.channel())
+                ||!f.refundType().equals(r.type())||!f.sourceType().equals(r.refundSource())||!"LAKALA".equals(r.channel())
                 ||!"CNY".equals(f.currency())||f.bindingVersion()!=0||f.channelTradeNo()==null
                 ||f.channelTradeNo().isBlank()||f.refundAmount()==null||f.refundAmount().signum()<=0
-                ||f.originalPaidAmount()==null||f.refundAmount().compareTo(f.originalPaidAmount())!=0
+                ||f.originalPaidAmount()==null
                 ||r.businessAmount()==null||r.businessAmount().compareTo(f.refundAmount())!=0
-                ||r.ratio()==null||r.ratio().compareTo(BigDecimal.ONE)!=0||f.paidAt()==null||f.createdAt()==null
+                ||r.ratio()==null||r.ratio().compareTo(com.petplatform.payment.api.query.RefundFundingEvidenceChecks.ratio(f.refundAmount(),f.originalPaidAmount()))!=0||f.paidAt()==null||f.createdAt()==null
                 ||!Set.of("CREATED","PROCESSING","UNKNOWN","SUCCESS","FAILED").contains(f.status())
                 ||!requestKey(f).equals(r.requestId())) throw unavailable();
     }
 
     private static String requestKey(RefundExecutionFact f) {
+        if("AFTERSALE_DECISION".equals(f.sourceType()))return RefundAfterSaleService.executionKey(f.sourceBizId(),f.sourceDecisionId());
         if(applicationSource(f.sourceType()))return RefundApplicationService.executionKey(f.sourceBizId(),f.sourceDecisionId());
         return SOURCE.equals(f.sourceType()) ? "EVENT:LATE_PAYMENT_AUTO_REFUND:"+f.paymentId()+":"+f.orderId()
             : "EVENT:MERCHANT_REJECT_REFUND:"+f.sourceEventId()+":"+f.orderId();
     }
 
     com.petplatform.order.api.dto.OrderRefundOriginFact origin(RefundExecutionFact f,QueryContext ctx) {
-        var origin=SOURCE.equals(f.sourceType())
+        com.petplatform.order.api.query.OrderAfterSaleRefundFactsApi.Fact afs=null;
+        if("AFTERSALE_DECISION".equals(f.sourceType())){if(aftersaleOrders==null)throw unavailable();afs=aftersaleOrders.requireDecidedRefund(f.orderId(),f.paymentId(),f.storeId(),ctx);if(afs==null||!f.refundType().equals(afs.refundType())||f.refundAmount().compareTo(afs.refundAmount())!=0)throw unavailable();}
+        var origin=afs!=null?afs.origin():SOURCE.equals(f.sourceType())
             ? com.petplatform.order.api.dto.OrderRefundOriginFact.late(orders.requireLatePayment(f.orderId(),f.paymentId(),f.storeId(),ctx),f.sourceEventId(),f.refundOrderId())
             : applicationSource(f.sourceType())?applicationOrders==null?null:applicationOrders.requireApprovedRefund(f.orderId(),f.paymentId(),f.storeId(),ctx)
             : merchantOrders==null?null:merchantOrders.requireRejected(f.orderId(),f.paymentId(),f.storeId(),ctx);

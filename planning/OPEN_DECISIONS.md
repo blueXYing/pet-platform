@@ -2,7 +2,7 @@
 
 ## 2026-09-30 AFS本批产品缺口
 
-用户已授权AFS多角色开发；以下问题已发出且等待实际回答，不将推荐选项视作批准。具体选项与回执维护于[AFS裁决记录](progress/2026-09-30/aftersale-workflow/PRODUCT-DECISIONS.md)。
+用户已授权AFS多角色开发；以下P1～P4已由用户“批准四项推荐规则及 A1–A3”明确解决，采用各题推荐分支；正式SSOT §40 / PRD31。具体选项与回执维护于[AFS裁决记录](progress/2026-09-30/aftersale-workflow/PRODUCT-DECISIONS.md)。
 
 | ID | 待明确事项 | 阻塞范围 |
 |---|---|---|

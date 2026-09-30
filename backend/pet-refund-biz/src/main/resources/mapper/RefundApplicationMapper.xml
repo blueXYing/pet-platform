@@ -12,6 +12,7 @@
  <select id="hint" resultType="com.petplatform.refund.biz.infrastructure.persistence.mapper.RefundApplicationMapper$Row">SELECT * FROM refund_application WHERE id=#{id}</select>
  <select id="row" resultType="com.petplatform.refund.biz.infrastructure.persistence.mapper.RefundApplicationMapper$Row">SELECT * FROM refund_application WHERE id=#{id} FOR UPDATE</select>
  <select id="active" resultType="com.petplatform.refund.biz.infrastructure.persistence.mapper.RefundApplicationMapper$Row">SELECT * FROM refund_application WHERE order_id=#{order} AND status IN ('PENDING_MERCHANT','APPROVED','AUTO_APPROVED') FOR UPDATE</select>
+ <select id="latestRejected" resultType="com.petplatform.refund.biz.infrastructure.persistence.mapper.RefundApplicationMapper$Row">SELECT * FROM refund_application WHERE order_id=#{order} AND status='REJECTED' ORDER BY decided_at DESC,id DESC LIMIT 1 FOR UPDATE</select>
  <insert id="insertApplication">INSERT INTO refund_application(id,application_no,order_id,applicant_user_id,status,reason_code,reason_text_cipher,requested_amount,merchant_deadline,request_id,created_at,updated_at,
  store_id,merchant_id,reservation_id,payment_id,payment_no,payment_success_event_id,channel_trade_no,paid_at,created_command_id,created_event_id,version)
  VALUES(#{id},#{number},#{order},#{user},'PENDING_MERCHANT',#{reasonCode},#{reasonCipher},#{amount},#{deadline},#{requestId},#{now},#{now},#{store},#{merchant},#{reservation},#{payment},#{paymentNo},#{paymentEvent},#{trade},#{paidAt},#{command},#{event},0)</insert>

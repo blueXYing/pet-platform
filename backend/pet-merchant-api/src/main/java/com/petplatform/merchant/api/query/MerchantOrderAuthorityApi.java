@@ -6,4 +6,9 @@ public interface MerchantOrderAuthorityApi {
         throw new com.petplatform.common.ApiException(com.petplatform.common.CommonApiCodes.DEPENDENCY_UNAVAILABLE,"Existing-order availability provider required");
     }
     void requireOwner(String merchantId, String storeId, QueryContext context);
+    /** Current resource identity under the store guard; this fact does not grant an action. */
+    default ResourceScope requireResourceScope(String merchantId, String storeId, QueryContext context) {
+        throw new com.petplatform.common.ApiException(com.petplatform.common.CommonApiCodes.DEPENDENCY_UNAVAILABLE,"Merchant resource scope provider required");
+    }
+    record ResourceScope(String merchantId,String storeId,String cityCode,String scopeVersion) {}
 }
