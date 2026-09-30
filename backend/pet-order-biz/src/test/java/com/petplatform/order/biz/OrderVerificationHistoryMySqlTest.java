@@ -55,9 +55,11 @@ class OrderVerificationHistoryMySqlTest {
         final String name="order_history_"+UUID.randomUUID().toString().replace("-","");
         final JdbcTemplate admin,sql;final DataSource source;final TransactionTemplate tx;final OrderVerificationCommitApiImpl api;
         Database(){
-            String base=System.getenv().getOrDefault("BOOKING_MYSQL_URL","jdbc:mysql://127.0.0.1:33459/");
+            var environment=System.getenv();
+            String prefix=environment.containsKey("BOOKING_MYSQL_URL")?"BOOKING":"AUTH";
+            String base=environment.get(prefix+"_MYSQL_URL"),user=environment.get(prefix+"_MYSQL_USER"),password=environment.get(prefix+"_MYSQL_PASSWORD");
+            if(base==null||user==null||password==null)throw new IllegalStateException("Set BOOKING_MYSQL_URL/USER/PASSWORD or AUTH_MYSQL_URL/USER/PASSWORD for the isolated MySQL test");
             if(!base.matches("jdbc:mysql://(127\\.0\\.0\\.1|localhost):[0-9]+/"))throw new IllegalArgumentException("Isolated local MySQL server root required");
-            String user=System.getenv().getOrDefault("BOOKING_MYSQL_USER","root"),password=System.getenv().getOrDefault("BOOKING_MYSQL_PASSWORD","");
             admin=new JdbcTemplate(new DriverManagerDataSource(base,user,password));admin.execute("CREATE DATABASE "+name);
             source=new DriverManagerDataSource(base+name+"?serverTimezone=UTC&connectionTimeZone=UTC&forceConnectionTimeZoneToSession=true",user,password);sql=new JdbcTemplate(source);
             sql.execute("CREATE TABLE pet_order(id BIGINT PRIMARY KEY,store_id BIGINT,merchant_id BIGINT,current_aftersale_id BIGINT,version BIGINT,order_stage VARCHAR(32),verification_status VARCHAR(32),aftersale_status VARCHAR(32),verified_at DATETIME(3),completed_at DATETIME(3))");
