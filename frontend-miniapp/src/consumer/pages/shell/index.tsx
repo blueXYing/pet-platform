@@ -47,5 +47,7 @@ export default function Shell() {
     <Button id='c-merchant-services-preview' onClick={() => platform.navigate('/merchant/pages/services/index?preview=1')}>商家服务管理视觉预览（契约 Mock，不联调）</Button>
     <Button onClick={() => platform.navigate('/merchant/pages/workspace/index')}>进入商家工作区</Button>
       <Button id='c-messages' onClick={() => platform.navigate('/consumer/pages/messages/index')}>消息中心</Button>
+    <Button id='m-messages' onClick={() => platform.navigate('/merchant/pages/messages/index')}>商家消息通知（真实契约接口）</Button>
+    <Button id='m-messages-preview' onClick={() => platform.navigate('/merchant/pages/messages/index?preview=1')}>商家消息通知视觉预览（本地数据，不联调）</Button>
   </View>
 }

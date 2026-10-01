@@ -21,7 +21,7 @@ for (const page of ['index', 'detail', 'form']) {
 }
 const packages = app.subPackages || app.subpackages || []
 assert.deepEqual(packages.map(p => ({ root: p.root, pages: p.pages })), [
-  { root: 'merchant', pages: ['pages/workspace/index', 'pages/services/index', 'pages/services/edit'] },
+  { root: 'merchant', pages: ['pages/workspace/index', 'pages/services/index', 'pages/services/edit', 'pages/messages/index'] },
   { root: 'consumer/pages/pet-archive', pages: ['index', 'detail', 'form'] },
   { root: 'consumer/pages/merchant-application', pages: ['index', 'signing'] },
   { root: 'consumer/pages/store-services', pages: ['index', 'service-detail', 'stores'] },
@@ -48,6 +48,10 @@ for (const page of ['index', 'edit']) {
     assert.ok(fs.existsSync(path.join(root, `merchant/pages/services/${page}.` + extension)),
       `M-002 service page build artifact missing: ${page}.${extension}`)
   }
+}
+for (const extension of ['js', 'json', 'wxml', 'wxss']) {
+  assert.ok(fs.existsSync(path.join(root, 'merchant/pages/messages/index.' + extension)),
+    'M-002 merchant messages page artifact missing: ' + extension)
 }
 function walk(dir) { return fs.readdirSync(dir, { withFileTypes: true }).flatMap(e => e.isDirectory()
   ? walk(path.join(dir, e.name)) : [path.join(dir, e.name)]) }
