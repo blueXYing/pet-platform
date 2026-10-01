@@ -1,12 +1,12 @@
 # Work State
 
 PROJECT: 宠物平台 V1.0
-STATE_VERSION: 37.0
+STATE_VERSION: 38.0
 UPDATED_AT: 2026-10-01
 CURRENT_PHASE: W2_WAVE_IN_PROGRESS
 CURRENT_STATUS: AFS_LOCAL_REAL_PAGE_JOINT_PASS_DEVICE_VIS_PENDING
-VERIFIED_BASELINE: PR98 已合入 develop e3b846e5038aa617e42a919862f20a927057f53e。PR99 CCR head e2a6ce61d04ddfb783b0e245183e509a4734e0b8 的 CI36828547377 六项成功，实际后端报告140 suites/986 tests/0 failures/errors/skips；不覆盖本批正式资源与联调增量。本批head 4bb317f63a0851eb50325659acd557f338379d06的[CI36842324802](https://github.com/blueXYing/pet-platform/actions/runs/36842324802)六项全部SUCCESS（backend 2026-10-01T10:03:42Z完成），无遗留未核项。
-NEXT_PHASE: 增量CI已核（4bb317f六项SUCCESS）。VIS规格级叠图已完成（5项P1待裁决修复）；真机物料已备（预览二维码+LAN可达方案+逐项清单）。下一步：裁决并修复5项P1差异→物理真机按清单验收→人工审阅草稿，不自动合并。
+VERIFIED_BASELINE: PR98 已合入 develop e3b846e5038aa617e42a919862f20a927057f53e。PR99 CCR head e2a6ce61d04ddfb783b0e245183e509a4734e0b8 的 CI36828547377 六项成功，实际后端报告140 suites/986 tests/0 failures/errors/skips；不覆盖本批正式资源与联调增量。本批head 4bb317f63a0851eb50325659acd557f338379d06的[CI36842324802](https://github.com/blueXYing/pet-platform/actions/runs/36842324802)六项全部SUCCESS（backend 2026-10-01T10:03:42Z完成），无遗留未核项。2026-10-02经用户批准完成5项VIS P1修复并经真实渲染像素级复验全部关闭（[VIS-OVERLAY §12](planning/progress/2026-10-01/aftersale-pages/joint/VIS-OVERLAY-HANDOFF.md)、[P1-FIX-VERIFICATION](planning/progress/2026-10-02/aftersale-vis/P1-FIX-VERIFICATION.md)），其间发现Taro 4.1.5动态data-*/WXSS属性选择器静默失配根因并改为类名变体。
+NEXT_PHASE: VIS规格级叠图、5项P1修复与像素级复验已完成（C apply/M list/M detail叠图边缘归零）。下一步：物理微信真机按DEVICE-PREP-HANDOFF清单验收（含P1-4修后真机复核）→人工审阅草稿，不自动合并。services页同类data-*/属性选择器迁移需独立Issue。
 NEXT_PHASE_APPROVED: 用户已授权多角色实施并要求子代理使用Figma，重连后回复“已连接”，两项具体CCR后回复“批准”，随后明确“开始下一步”。本轮完成最终PRD目录登记、独立资源及真实三端本机联调。生产启用、资金能力、SSOT变更、PR合并未获授权。目录中文内容已在最终PRD明确，不需重复产品裁决。
 
 ## 基线与切片
@@ -37,6 +37,6 @@ PR99 e2a6ce6 [CI36828547377](https://github.com/blueXYing/pet-platform/actions/r
 
 ## 未完成范围
 
-完整C-005/M-004/A-004/QA-005仍未DONE。物理真机尚无手机实测证据；本机回环不能当手机后端。Figma精确字体/汉字回退、缺状态稿、机器code显示及约1设计像素卡片宽度差已于2026-10-01完成规格级叠图登记（VIS-OVERLAY-HANDOFF.md，5项P1待裁决）；像素级渲染叠图与真机字体回退仍待物理真机，不设自造容差或冒称VIS通过。STAFF、全局运营聚合、REF-001、公开资金、通知送达及积分券评价未提前完成。
+完整C-005/M-004/A-004/QA-005仍未DONE。物理真机尚无手机实测证据；本机回环不能当手机后端。Figma精确字体/汉字回退、缺状态稿、机器code显示及约1设计像素卡片宽度差的5项P1已于2026-10-02修复并像素级复验关闭；C apply/M list/M detail三页像素级叠图完成（M抽屉豁免：设计为旧稿无可比状态）。真机字体回退、SVG镜像、dashed线型、statusBar几何及P1-4修后真机复核仍待物理真机，不设自造容差或冒称VIS通过。STAFF、全局运营聚合、REF-001、公开资金、通知送达及积分券评价未提前完成。
 
 PR99保持草稿。本批提交后的CI须另外核验并记录，不用旧head成功覆盖新head；未运行生产迁移、开启环境、上传体验版、发布或合入develop/main；2026-10-01仅生成过DevTools本地预览二维码（未上传体验版）。

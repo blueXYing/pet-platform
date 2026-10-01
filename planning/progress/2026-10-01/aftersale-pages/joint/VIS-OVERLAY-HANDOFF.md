@@ -1,6 +1,6 @@
 # C/M 售后页面 Figma 完整叠图核对（规格级）
 
-日期：2026-10-01。Owner：vis-overlay-audit 子代理。状态：SPEC_AUDIT_COMPLETE / PIXEL_OVERLAY_NOT_DONE / VIS_PENDING。
+日期：2026-10-01（规格级）；2026-10-02（P1 修复与像素级复验，见 §12）。Owner：vis-overlay-audit 子代理。状态：SPEC_AUDIT_COMPLETE / P1_ALL_CLOSED / PIXEL_OVERLAY_DONE_C_APPLY_M_LIST_M_DETAIL / VIS_PENDING_DEVICE。
 本代理只写本文件；未修改任何生产源码、未改 project.config.json、未 commit/push。主目录（Desktop）停留在其他分支，仅读 worktree 内文件，未在其中执行任何构建。
 
 ## 0. 核对方式与数据来源（可复核口径）
@@ -218,3 +218,21 @@ C index/detail 整页；C 加载/错误/重试/上传中；M 灰色终态标签�
 7. `selectAll('button')` 返回空数组的遗留问题（MINI-JOINT §本轮有限视觉实证）仍未解，控件级水平边界未全量实测。
 8. 设计源登记表 §1 的 C 端 version（2401180846436413285）已落后在线版本（2402685782043078621，2026-09-24），需按登记表 §5 维护规则重新 depth=2 抓取并确认无其他售后相关节点变更（本轮 129:10572 内容与登记范围一致）。
 9. 运营 web 端无原稿声明维持不变；若后续补桌面稿，需另行叠图。
+
+## 12. P1 修复与像素级复验记录（2026-10-02）
+
+修复经用户批准实施；详细实测、截图与叠图证据见 [P1-FIX-VERIFICATION](../../2026-10-02/aftersale-vis/P1-FIX-VERIFICATION.md)。
+
+| 编号 | 修复 | 修后实测（402 坐标系） | 判定 |
+|---|---|---|---|
+| P1-1 | `page.scss` `.afs-body` 水平 padding 改左 12.506 / 右 13.506 | 376.005（5 卡一致，x=12.498） | **CLOSED**（余 +0.017 亚像素取整） |
+| P1-1b | `page.css` `.mas-detail-card` margin 改左 29 / 右 30 | 343.021（4 卡一致，x=28.990） | **CLOSED**（余 +0.021） |
+| P1-2 | `.mas-requested` 字号 13.464→15.388、补行高 23.081 | 计算字号 15.386 / 行高盒 23.0796 | **CLOSED** |
+| P1-3 | `merchant/aftersale/model.ts` 新增 `typeLabel`/`demandLabel`（镜像 aftersale-catalog.yml，未知 code 回退原码，不自造文案），M list/detail 改用 | 列表「未履约/质量问题」、详情「未履约/退款」 | **CLOSED** |
+| P1-4 | 属性选择器失配，改类名变体（见下） | 按钮 78.87×28.85、白底 #d1d5db 描边、文字 #6b7280 | **CLOSED**（复验） |
+
+- **P1-4 根因（重要发现）**：Taro 4.1.5 不把动态 `data-*` 渲染进原生 wxml（outerWxml、属性查询、尺寸测量、截图像素取色四重独立证据），WXSS 属性选择器永不命中且静默失效——修前已存在的 `.mas-tag[data-status=…]` 状态标签变体、`.mas-filter[data-selected]`、`.mas-opinion-choice[data-selected]` 在真实渲染中同样一直未生效。修法：全部改类名变体（model.ts 新增 `statusTagClass()`；`.mas-tag-resolved`/`.mas-tag-closed`/`.mas-card-action-resolved`/`.mas-filter-selected`/`.mas-opinion-choice-selected`），新增 `aftersale-model.test.ts` 2 用例锁行为。复验：RESOLVED 按钮 78.87×28.85/描边 #d1d5db/文字 #6b7280、绿标签 #c0ecff/#15803d、灰标签（真实创建+撤回工单 323）#f3f4f6/#6b7280、筛选选中加粗 #5baae8、意见抽屉选中 #5baae8+#f0fbff、PENDING 对照 77×32 实心蓝，全部 PASS。
+- **跨页面遗留风险（不属本批，另行迁移）**：`merchant/pages/services/page.css` 仍有 7 处同类属性选择器（`msvc-card-status[data-status=…]`×4、`msvc-toggle[data-on]`×2、`medit-pill[data-selected]`×1），属已合并代码的静默失效，需独立 Issue/PR 迁移为类名。
+- **像素级叠图**：Figma 4 节点 scale=2 导出；C apply、M list、M detail 三页 overlay + ×3 差分 + 并排图完成，P1-1/P1-1b 修后卡片左右边缘归零（差分图无竖向条纹）；M 抽屉叠图豁免（设计为旧"申诉"单字段稿，实现为新范围表单，无可比状态）。叠图数据为隔离后端真实流程造数，无 mock、无 page data 替换。
+- 修后门禁：typecheck / 254 单测（含 2 新增）/ build:weapp / check:package 全 PASS。
+- 仍需物理真机的项不变：§6 字体回退三项、§11.3-11.6、P1-4 修后真机复核。
