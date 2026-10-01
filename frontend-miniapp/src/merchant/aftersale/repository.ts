@@ -41,8 +41,8 @@ export function merchantAfterSaleDeps(client: AfterSaleClient, store: LocalStore
       if (!value) return null
       if (Object.entries(c).some(([key, expected]) => value[key as keyof typeof c] !== expected)
         || typeof value.filePath !== 'string' || !value.filePath || typeof value.requestId !== 'string'
-        || !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(value.requestId)
-        || !files.owns(value.filePath, value.requestId) || typeof value.sha256 !== 'string' || !/^[a-f0-9]{64}$/.test(value.sha256)
+        || !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}(?![\s\S])/i.test(value.requestId)
+        || !files.owns(value.filePath, value.requestId) || typeof value.sha256 !== 'string' || !/^[a-f0-9]{64}(?![\s\S])/.test(value.sha256)
         || !Number.isSafeInteger(value.bytes) || value.bytes! < 1 || value.bytes! > 10485760 || typeof value.attempted !== 'boolean') throw new Error('INVALID_UPLOAD_JOURNAL')
       return { filePath: value.filePath, requestId: value.requestId, sha256: value.sha256, bytes: value.bytes!, attempted: value.attempted,
         ...(value.receipt ? { receipt: decodePrivateAsset(value.receipt) } : {}) }
