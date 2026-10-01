@@ -84,6 +84,8 @@ test('strict primitive and route boundaries reject trailing line terminators', a
     assert.equal(isAfterSalePath({ path: `/api/v1/c/aftersales${suffix}`, method: 'GET' }), false)
     const h = setup(undefined, { upload: async () => { throw new Error('must not send') }, read: async () => { throw new Error('must not send') } }); await h.api.restore()
     await assert.rejects(h.client.upload('/tmp/test.png', `${randomUUID()}${suffix}`), /REQUEST_ID_REQUIRED/)
+    await assert.rejects(h.api.request({ path: '/api/v1/c/aftersales/301/withdraw', method: 'POST', requestId: `${randomUUID()}${suffix}`, data: { expectedVersion: '0' } }, x => x), /REQUEST_ID_REQUIRED/)
+    assert.equal(h.calls.length, 1)
     await assert.rejects(h.api.readAfterSaleEvidence(`/api/v1/c/aftersale-evidence-read-grants/${'a'.repeat(43)}${suffix}`), /INVALID_PATH/)
   }
 })
