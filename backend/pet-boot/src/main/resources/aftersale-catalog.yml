@@ -1,0 +1,20 @@
+# Final C PRD 5.1.28 and merchant PRD 5.10: complete approved labels.
+# Stable engineering codes; labels describe the applicant's intent only.
+# Explicit import: spring.config.import=classpath:aftersale-catalog.yml
+# This file enables no workflow, HTTP, worker, refund, or production provider.
+pet:
+  aftersale:
+    type-codes: FEE_DISPUTE,NON_PERFORMANCE,OTHER,PET_SAFETY,SERVICE_QUALITY
+    demand-codes: APOLOGY,OTHER,PARTIAL_COMPENSATION,REFUND,RESERVICE
+    type-labels:
+      "[FEE_DISPUTE]": "费用争议"
+      "[NON_PERFORMANCE]": "未履约"
+      "[OTHER]": "其他"
+      "[PET_SAFETY]": "宠物安全"
+      "[SERVICE_QUALITY]": "质量问题"
+    demand-labels:
+      "[APOLOGY]": "道歉"
+      "[OTHER]": "其他"
+      "[PARTIAL_COMPENSATION]": "部分补偿"
+      "[REFUND]": "退款"
+      "[RESERVICE]": "重新服务"

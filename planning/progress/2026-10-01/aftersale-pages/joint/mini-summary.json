@@ -1,0 +1,110 @@
+{
+  "status": "PASS_LOCAL_REAL_BACKEND_SAME_CASE",
+  "sourceBaseline": "e2a6ce61d04ddfb783b0e245183e509a4734e0b8 plus formal catalog and live-test working changes",
+  "date": "2026-10-01",
+  "environment": {
+    "windowWidth": 390,
+    "windowHeight": 753,
+    "pixelRatio": 3,
+    "SDKVersion": "3.17.2",
+    "version": "8.0.5",
+    "model": "iPhone 12/13 (Pro)",
+    "platform": "devtools",
+    "system": "iOS 10.0.1",
+    "safeArea": {
+      "top": 47,
+      "left": 0,
+      "right": 390,
+      "bottom": 810,
+      "width": 390,
+      "height": 763
+    }
+  },
+  "upstreamWechatExchange": "TEST_ONLY_FIXTURE",
+  "albumChoice": "TEST_ONLY_FIXTURE",
+  "businessHttpMocked": false,
+  "eventMethod": "wechatide automation_element_action tap/input/trigger; real native Picker change via measured generated sid",
+  "pageStateReplaced": false,
+  "physicalDeviceVerified": false,
+  "visPassed": false,
+  "summary": {
+    "caseId": "9160000000000486",
+    "counts": {
+      "commands": 6,
+      "evidenceBatches": 3,
+      "decisions": 1,
+      "transitions": 6,
+      "statusLogs": 6,
+      "outbox": 6,
+      "refundOrders": 0,
+      "refundExecutions": 0,
+      "fundings": 0,
+      "refundAfterSaleProofs": 0,
+      "orderRefundCommits": 0,
+      "paymentDispatches": 0
+    },
+    "channelCalls": 0,
+    "status": "RESOLVED",
+    "version": "5",
+    "orderVersion": "9",
+    "currentAfterSaleId": "9160000000000486"
+  },
+  "finalConsumerMutationControlsAbsent": true,
+  "finalMerchantReadOnlyNotice": true,
+  "externalFixtureProviders": [
+    "WECHAT_EXCHANGE",
+    "SIGNED_OFFLINE_PAYMENT_RECEIPT",
+    "CONTENT_MODERATION",
+    "ANTIVIRUS_SCANNER",
+    "IN_MEMORY_PRIVATE_OSS"
+  ],
+  "viewportCount": 1,
+  "buttonBoundingQueryReturnedNoRects": true,
+  "rawEvidenceCommitted": false,
+  "hashes": [
+    {
+      "localEvidenceFile": "c-apply-initial.png",
+      "sha256": "7a7db5499c2d991a6cca1365944d11942fa9201030c3f9cf7f2e267989741b5e"
+    },
+    {
+      "localEvidenceFile": "c-index.png",
+      "sha256": "eb6e2f26b8e0889ab5e1abf74f2afbde87529d0a566768db34f8630410dc3c80"
+    },
+    {
+      "localEvidenceFile": "c-final.png",
+      "sha256": "f40c782d006a6208addd2796c0bcfc106277697f04bb92f9b4f8396d07b4823f"
+    },
+    {
+      "localEvidenceFile": "c-private-image.png",
+      "sha256": "e85c015169c3b529ed33d5b7c9d139a163de8e2b2fcc3307b4cf8b7e6a848a8e"
+    },
+    {
+      "localEvidenceFile": "m-list.png",
+      "sha256": "d8c35532d7881d09801cc2d2703c362ddb8ed624bb03663bc948953b7f83cf4a"
+    },
+    {
+      "localEvidenceFile": "m-private-image.png",
+      "sha256": "5603d7661ece16c26886b06ec60cd1ab04cce64e2e1ad00bbbc99a06efc32463"
+    },
+    {
+      "localEvidenceFile": "m-opinion-sheet.png",
+      "sha256": "cd99e3ce5ce45d3cbb47e49f30c0b9f1d0aa955983980eb920199dc36e1bb931"
+    },
+    {
+      "localEvidenceFile": "m-final.png",
+      "sha256": "a6ec831510258bd0aeccb69526cc2e6b54ee947ae7f00aa357682696a98b1f2e"
+    },
+    {
+      "localEvidenceFile": "c-geometry.json",
+      "sha256": "ce21b4f39c9a7202214c5ccf0533b0fd9a8e8dc3e259bf8c1f5e8fb0c88612f3"
+    },
+    {
+      "localEvidenceFile": "m-geometry.json",
+      "sha256": "fa267c4fcff2ad919ce7b2b2a7fb2f78952a3951b7e215b58334108440813e15"
+    },
+    {
+      "localEvidenceFile": "final-summary.json",
+      "sha256": "05606d63bb2e61ef655b46ff4c458a84c8fd9114cf8f6b47825d27df38805cb9"
+    }
+  ]
+}

@@ -53,10 +53,11 @@ final class AfterSaleHttpFixture implements AutoCloseable {
     final String prefix="auth001_"+suffix+":",miniPrefix="auth001c_"+suffix+":";
     final Path directory;
     ConfigurableApplicationContext context;
-    String baseUrl,buyerToken,otherToken,ownerToken,adminToken;
+    String baseUrl,buyerToken,otherToken,ownerToken,adminToken,adminOrigin;
 
     AfterSaleHttpFixture() throws Exception {this(Map.of());}
-    AfterSaleHttpFixture(Map<String,Object> overrides) throws Exception {
+    AfterSaleHttpFixture(Map<String,Object> overrides) throws Exception {this(overrides,true);}
+    AfterSaleHttpFixture(Map<String,Object> overrides,boolean qaCatalog) throws Exception {
         directory=Files.createTempDirectory("aftersale-http-");
         try {
             var db=ordinary.t.r.f.f.db;
@@ -83,10 +84,12 @@ final class AfterSaleHttpFixture implements AutoCloseable {
             properties.put("pet.auth.admin.mac-key-base64",key(3));properties.put("pet.auth.admin.encryption-key-base64",key(7));
             properties.put("pet.auth.admin.audit-path",directory.resolve("audit.bin"));
             properties.put("pet.auth.admin.migration-enabled",false);
-            properties.put("pet.aftersale.protection-key",key(11));properties.put("pet.aftersale.type-codes","QA_QUALITY");
-            properties.put("pet.aftersale.demand-codes","QA_REFUND");
-            properties.put("pet.aftersale.type-labels[QA_QUALITY]","QA quality issue");
-            properties.put("pet.aftersale.demand-labels[QA_REFUND]","QA requested resolution");
+            properties.put("pet.aftersale.protection-key",key(11));
+            if(qaCatalog){
+                properties.put("pet.aftersale.type-codes","QA_QUALITY");properties.put("pet.aftersale.demand-codes","QA_REFUND");
+                properties.put("pet.aftersale.type-labels[QA_QUALITY]","QA quality issue");
+                properties.put("pet.aftersale.demand-labels[QA_REFUND]","QA requested resolution");
+            }
             properties.put("pet.refund.application.protection-key",key(13));properties.put("pet.refund.application.reason-codes","QA_REASON");
             properties.put("pet.order.merchant.protection-key",key(17));
             properties.put("pet.verification.credential.key-id","qa-http");properties.put("pet.verification.credential.encryption-key",key(19));
@@ -96,6 +99,7 @@ final class AfterSaleHttpFixture implements AutoCloseable {
             properties.put("PRIVATE_ASSET_GRANT_KEY_VERSION","qa-http-grant");properties.put("PRIVATE_ASSET_GRANT_HMAC_KEY_BASE64",key(29));
             properties.put("PRIVATE_ASSET_REASON_KEY_VERSION","qa-http-reason");properties.put("PRIVATE_ASSET_REASON_AES_KEY_BASE64",key(31));
             properties.putAll(overrides);
+            adminOrigin=properties.get("pet.auth.admin.origin").toString();
             context=new SpringApplicationBuilder(PetPlatformApplication.class).initializers(c->{
                 var beans=(GenericApplicationContext)c;
                 beans.registerBean("qaAfterSaleDataSource",DataSource.class,()->ordinary.source);
@@ -153,10 +157,10 @@ final class AfterSaleHttpFixture implements AutoCloseable {
         assertEquals(200,r.status());assertEquals(id,r.value("userId"));return r.value("accessToken");
     }
     String loginAdmin()throws Exception{
-        var a=send("POST","/admin/auth/attempts",Map.of(),Map.of("Origin",ORIGIN,"X-Request-Id",rid()));assertEquals(201,a.status());
+        var a=send("POST","/admin/auth/attempts",Map.of(),Map.of("Origin",adminOrigin,"X-Request-Id",rid()));assertEquals(201,a.status());
         String cookie=a.headers().firstValue("Set-Cookie").orElseThrow().split(";",2)[0];
         var r=send("POST","/admin/auth/login",Map.of("attemptId",a.value("attemptId"),"account","qa-http-operator","password",PASSWORD),
-                Map.of("Origin",ORIGIN,"Cookie",cookie,"X-Request-Id",rid(),"X-Auth-Attempt",a.value("attemptToken")));
+                Map.of("Origin",adminOrigin,"Cookie",cookie,"X-Request-Id",rid(),"X-Auth-Attempt",a.value("attemptToken")));
         assertEquals(200,r.status());return adminToken=r.value("accessToken");
     }
     String rejectedOrder(){String id=ordinary.t.ready();at(clock.instant().plusSeconds(10));
