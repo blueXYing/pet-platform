@@ -8,7 +8,7 @@ import { AfterSaleEvidenceUpload } from '../aftersale/upload'
 
 const receipt: PrivateAssetReceipt = { assetId: '701', status: 'READY', objectSha256: 'b'.repeat(64), mediaType: 'image/png', bytes: 9 }
 async function setup() {
-  const saved = new Map<string, unknown>(), originals = new Set(['original']), copies = new Set<string>(), calls: { path: string; uuid: string }[] = []
+  const saved = new Map<string, unknown>(), originals = new Set(['original']), copies = new Set<string>(), removed: string[] = [], calls: { path: string; uuid: string }[] = []
   const session = { userId: '101', sessionId: '201', audience: 'MINIAPP', expiresAt: '2099-01-01T00:00:00.000Z' }
   const store: LocalStore = { get: key => saved.get(key), set: (key, value) => saved.set(key, structuredClone(value)), remove: key => { saved.delete(key) } }
   store.set('pet.c.session.v1', { ...session, accessToken: 'test-only', tokenType: 'Bearer' })
@@ -16,11 +16,11 @@ async function setup() {
   let chosen = 0, changed = false, cancelled = false, response: () => Promise<PrivateAssetReceipt> = async () => receipt
   const files: UploadFiles = {
     choose: async () => { chosen++; return cancelled ? null : 'original' }, save: async (_, key) => { copies.add(`/saved/${key}.png`); return `/saved/${key}.png` },
-    inspect: async () => ({ sha256: (changed ? 'c' : 'a').repeat(64), bytes: 9 }), owns: (path, key) => path === `/saved/${key}.png`, remove: async path => { copies.delete(path) },
+    inspect: async () => ({ sha256: (changed ? 'c' : 'a').repeat(64), bytes: 9 }), owns: (path, key) => path === `/saved/${key}.png`, remove: async path => { removed.push(path); copies.delete(path) },
   }
   const client = { api, upload: async (path: string, uuid: string) => { calls.push({ path, uuid }); return response() } }
   const upload = new AfterSaleEvidenceUpload(client, store, files, 'evidence:501')
-  return { upload, client, store, files, calls, originals, copies, chosen: () => chosen, respond: (value: typeof response) => { response = value }, change: () => { changed = true }, cancel: () => { cancelled = true } }
+  return { upload, client, store, files, calls, originals, copies, removed, chosen: () => chosen, respond: (value: typeof response) => { response = value }, change: () => { changed = true }, cancel: () => { cancelled = true } }
 }
 test('upload timeout survives remount with exact file and UUID; ACK removes only saved copy', async () => {
   const h = await setup(); h.respond(async () => { throw new Error('timeout') })
@@ -50,4 +50,23 @@ test('upload recovery is isolated by principal and form target', async () => {
   assert.equal(new AfterSaleEvidenceUpload(h.client, h.store, h.files, 'evidence:502').pending(), null)
   h.client.api.scope.replace({ userId: '102', workspace: 'consumer', merchantId: null, storeId: null })
   assert.throws(() => h.upload.pending(), /COMMON_UNAUTHORIZED/)
+})
+test('invalid recovered UUID/hash or unowned path cannot upload or delete files', async () => {
+  const h = await setup(); h.respond(async () => { throw new Error('timeout') }); await assert.rejects(h.upload.upload())
+  const key = 'pet.aftersale.c.upload.v1:101:evidence:501'
+  const original = h.store.get(key) as Record<string, unknown>
+  const invalid = [
+    { requestId: `${original.requestId}\n`, filePath: `/saved/${original.requestId}\n.png` },
+    { requestId: '-'.repeat(36), filePath: `/saved/${'-'.repeat(36)}.png` },
+    { sha256: `${original.sha256}\n` },
+    { filePath: '/user-selected/unowned-original.png' },
+  ]
+  for (const corrupt of invalid) {
+    h.store.set(key, { ...original, ...corrupt, rejected: true })
+    assert.throws(() => h.upload.pending(), /UPLOAD_JOURNAL_INVALID/)
+    await assert.rejects(h.upload.upload(), /UPLOAD_JOURNAL_INVALID/)
+    await assert.rejects(h.upload.discardRejected(), /UPLOAD_JOURNAL_INVALID/)
+    assert.equal(h.calls.length, 1); assert.deepEqual(h.removed, [])
+  }
+  assert.equal(h.originals.has('original'), true)
 })

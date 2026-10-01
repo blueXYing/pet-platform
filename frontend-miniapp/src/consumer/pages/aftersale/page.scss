@@ -41,3 +41,6 @@
 .afs-evidence-batch { border-top: calc(var(--afs-unit) * 1) solid #c0ecff; padding-top: calc(var(--afs-unit) * 12); margin-top: calc(var(--afs-unit) * 12); }
 .afs-evidence-image { width: calc(var(--afs-unit) * 87.694); height: calc(var(--afs-unit) * 87.694); border-radius: calc(var(--afs-unit) * 8.769); }
 .afs-divider { margin-top: calc(var(--afs-unit) * 12); }
+.afs-image-overlay { position: fixed; z-index: 1000; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: calc(var(--afs-unit) * 20); padding: calc(var(--afs-unit) * 24); padding-top: max(var(--afs-top), calc(var(--afs-unit) * 24)); padding-bottom: max(env(safe-area-inset-bottom), calc(var(--afs-unit) * 24)); box-sizing: border-box; background: rgba(0, 0, 0, .88); }
+.afs-private-image { width: 100%; height: 75vh; max-height: calc(100vh - 130px); }
+.afs-image-loading { color: #e4f6f3; }
