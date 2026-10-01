@@ -1,31 +1,33 @@
 # Work State
 
 PROJECT: 宠物平台 V1.0
-STATE_VERSION: 34.0
+STATE_VERSION: 35.0
 UPDATED_AT: 2026-10-01
 CURRENT_PHASE: W2_WAVE_IN_PROGRESS
-CURRENT_STATUS: AFS_PAGES_IMPLEMENTED_DRAFT_REVIEW_CCR_OPEN
-VERIFIED_BASELINE: PR98 已合入 develop e3b846e5038aa617e42a919862f20a927057f53e；合并后 CI36736110015 六项成功。
-NEXT_PHASE: 审阅三端非出款页面；冻结目录与确定版本冲突两项CCR后补齐真实申请及安全编辑恢复，再进行页面真实联调、真机和VIS。
-NEXT_PHASE_APPROVED: 用户明确“那么开始实现吧”，要求子代理使用Figma；重新认证后回复“已连接”。本轮不含新PR合并、生产迁移/启用、资金操作或产品目录裁决。
+CURRENT_STATUS: AFS_PAGES_CCR_IMPLEMENTED_DRAFT_REVIEW
+VERIFIED_BASELINE: PR98 已合入 develop e3b846e5038aa617e42a919862f20a927057f53e；合并 CI36736110015 六项成功。PR99 批准前 head382c65fa610d73ff7bd2a00cac53dbbcb7cf7dea 的 CI36821067368 六项成功，不替代本次CCR增量。
+NEXT_PHASE: 审阅草稿PR99及当前head CI；随后开展页面真实联合闭环、真机与VIS验收。
+NEXT_PHASE_APPROVED: 用户已授权多角色实施并要求子代理使用Figma，重新连接后回复“已连接”；2026-10-01又在两项具体CCR审批请求后明确回复“批准”。包括目录/确定冲突契约及三端接线，不包含具体生产目录内容裁决、环境启用、资金能力或PR合并。
 
 ## 基线与切片
 
-[PR98合并事实](planning/progress/2026-10-01/aftersale-pages/pr98-merge.json)及[合并CI](planning/progress/2026-10-01/aftersale-pages/pr98-merge-ci.json)已核对；旧基线测试不替代本批验收。[前一版台账](planning/history/WORK_STATE_BEFORE_20261001_AFS_PAGES.md)完整保留。P1–P4继续执行SSOT §40 / PRD31，真实资金依据OD-W0-001仍未具备。
+[PR98合并](planning/progress/2026-10-01/aftersale-pages/pr98-merge.json)、[合并CI](planning/progress/2026-10-01/aftersale-pages/pr98-merge-ci.json)与[PR99批准前CI](planning/progress/2026-10-01/aftersale-pages/pr99-before-ccr-ci.json)已核对。前一版台账完整保留在[批准前状态](planning/history/WORK_STATE_BEFORE_20261001_AFS_CCR_APPROVAL.md)。P1–P4继续执行SSOT §40 / PRD31，真实资金依据OD-W0-001仍未具备。
 
-独立树 codex/aftersale-pages-20261001：C-005本人列表/详情/资格/申请视图/补证/撤回，M-004真实OWNER当前店卷宗/四类意见/补证，A-004独立read/handle/decide权限/指定店列表/完整P4历史人工核对/受理/补证要求/重复关闭/REJECT、RESERVICE、OTHER。仅前端、入口及交付记录，无后端、SSOT或已冻结API/Schema/Event/Scheduler变化。原桌面目录与用户未提交文件保持原样。
+独立集成树codex/aftersale-pages-20261001：C-005本人列表/详情/资格/权威目录申请接线/补证/撤回，M-004当前店真实OWNER卷宗/四类意见/补证，A-004独立read/handle/decide权限/指定店列表/完整P4历史核对/受理/补证要求/重复关闭/三种非退款决定。生产开关与原桌面用户配置保持原样。
 
-三个实现角色实际使用Figma插件：C129:10572及M40:1061/1345/1500/1676读取高保真节点并导出本地原素材；运营无桌面原稿，按既有工作台风格实施。旧退款文案、描述选填、图片限制与现合同冲突按权威规则执行；缺少服务/客户字段不造数据填稿。范围及唯一Owner见[PLAN](planning/progress/2026-10-01/aftersale-pages/PLAN.md)，角色交接与原稿差异分别见[C](planning/progress/2026-10-01/aftersale-pages/C-HANDOFF.md)、[M](planning/progress/2026-10-01/aftersale-pages/M-HANDOFF.md)、[A](planning/progress/2026-10-01/aftersale-pages/A-HANDOFF.md)。不声称一比一/VIS通过。
+三实现角色实际使用Figma插件，读取C129:10572与M40:1061/1345/1500/1676并导出原节点素材；运营无桌面原稿，按现有工作台规范。旧退款规则不覆盖正式合同，缺服务/客户资料不虚构，未声称一比一或VIS通过。分工与权威规则见[PLAN](planning/progress/2026-10-01/aftersale-pages/PLAN.md)，原稿差异见C/M/A-HANDOFF；当前契约增量由[CCR实施记录](planning/progress/2026-10-01/aftersale-pages/CCR-IMPLEMENTATION.md)补充。
 
-## 开放依赖
+## 已批准契约补齐
 
-- [CCR-AFS-PAGE-OPTIONS-001](planning/ccr/CCR-AFS-PAGE-OPTIONS-001.md)：缺权威代码+展示名称查询，生产创建禁用。已呈现具体方案请求人工裁决，未收到确认前不新增接口，不硬编码目录或开放技术代码输入。
-- [CCR-AFS-CONFLICT-001](planning/ccr/CCR-AFS-CONFLICT-001.md)：COMMON_CONFLICT兼用于实际CAS/finalSet变化及幂等争锁忙，不能证明原操作确定未执行。保留原UUID/payload显式重试；确定业务码白名单可退休重读，真实CAS仍可能长期锁旧版本。未自行改错误码，未宣称该编辑恢复分支已验收。
+- [CCR-AFS-PAGE-OPTIONS-001](planning/ccr/CCR-AFS-PAGE-OPTIONS-001.md)：新增本人认证GET目录与同源创建校验。只有当前会话、完整正式code+label配置、对应本人订单资格成功才开放新提交；缺配置仍禁创建，不用测试目录兜底。
+- [CCR-AFS-CONFLICT-001](planning/ccr/CCR-AFS-CONFLICT-001.md)：确定case/finalSet比较失败区分为两个409业务码；已成功原UUID重放优先，通用忙/权限版本变化/未知结果仍保持原请求。确定拒绝只退休匹配原快照，刷新并重新人工核对后允许新UUID；存储失败不丢journal，迟到旧冲突不清新命令。
+
+Contract50/51、Internal07、HTTP10、OpenAPI11及Error12变化已披露；无SSOT、Schema、Event、Scheduler变化。用户批准的是这两项技术契约，不自动批准目录具体产品内容或生产启用。
 
 ## 验收边界
 
-实际结果、首次失败修复及证据以[实施记录](planning/progress/2026-10-01/aftersale-pages/IMPLEMENTATION.md)和[独立QA](planning/progress/2026-10-01/aftersale-pages/QA-HANDOFF.md)为准。QA使用本机已有JDK21和缓存MySQL/Redis镜像在独立临时环境跑真实三端HTTP/私有图片两个既有套件，共7项零失败/错误/跳过；结束清理本批容器/schema。测试没有调用本批页面。
+[实施记录](planning/progress/2026-10-01/aftersale-pages/IMPLEMENTATION.md)与[独立CCR QA](planning/progress/2026-10-01/aftersale-pages/CCR-QA-HANDOFF.md)记录当前结果。小程序252测试及typecheck/weapp/package通过；运营66通过、2既有live opt-in跳过；Java unit/config/boundary41、文档129、架构脚本18和源码门禁通过。独立真实MySQL/Redis累计37个唯一用例通过（14 HTTP+23域数据库），分轮旧30+新增未变6+原始wire复测1，无最终失败/跳过；修复enabled目录安全路由遗漏，并纠正关闭403、授权锁测试时序和客户端空query归一化的测试假设，不把unit或旧基线代替该验收。分轮XML计数/hash和准确源边界见[脱敏摘要](planning/progress/2026-10-01/aftersale-pages/ccr-http-summary.json)。
 
-模拟器已打开5个入口并人工查看未登录及OWNER失败关闭状态。游客AppID首次启动失败后，隔离树临时复用原本机AppID并于收尾恢复，不提交配置。automation_runtime_info超时，截图149×321，不替代交互断言、三档窗口、物理真机或叠图VIS。
+第一轮模拟器5入口只覆盖未登录/OWNER阻断，临时AppID已恢复，runtime_info超时与149×321截图限制均披露。新增目录未在物理真机或真正三端页面联合闭环验收；页面fixture传输也不等于真实后端联调。
 
-完整C-005/M-004/A-004/QA-005仍未DONE。目录、实际CAS恢复、页面真实联合闭环、真机/VIS、STAFF、全局运营聚合、REF-001、公开资金出款、通知送达及积分券评价消费者均未提前完成。新PR保持草稿，不自动合入develop/main，不运行生产迁移。
+完整C-005/M-004/A-004/QA-005仍未DONE。页面真实联合闭环、真机/VIS、STAFF、全局运营聚合、REF-001、公开资金、通知送达及积分券评价未提前完成。PR99保持草稿，最终增量CI另核；不自动合入develop/main，不运行生产迁移或启用环境。

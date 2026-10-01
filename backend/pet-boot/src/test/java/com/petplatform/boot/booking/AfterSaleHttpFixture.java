@@ -55,7 +55,8 @@ final class AfterSaleHttpFixture implements AutoCloseable {
     ConfigurableApplicationContext context;
     String baseUrl,buyerToken,otherToken,ownerToken,adminToken;
 
-    AfterSaleHttpFixture() throws Exception {
+    AfterSaleHttpFixture() throws Exception {this(Map.of());}
+    AfterSaleHttpFixture(Map<String,Object> overrides) throws Exception {
         directory=Files.createTempDirectory("aftersale-http-");
         try {
             var db=ordinary.t.r.f.f.db;
@@ -84,6 +85,8 @@ final class AfterSaleHttpFixture implements AutoCloseable {
             properties.put("pet.auth.admin.migration-enabled",false);
             properties.put("pet.aftersale.protection-key",key(11));properties.put("pet.aftersale.type-codes","QA_QUALITY");
             properties.put("pet.aftersale.demand-codes","QA_REFUND");
+            properties.put("pet.aftersale.type-labels[QA_QUALITY]","QA quality issue");
+            properties.put("pet.aftersale.demand-labels[QA_REFUND]","QA requested resolution");
             properties.put("pet.refund.application.protection-key",key(13));properties.put("pet.refund.application.reason-codes","QA_REASON");
             properties.put("pet.order.merchant.protection-key",key(17));
             properties.put("pet.verification.credential.key-id","qa-http");properties.put("pet.verification.credential.encryption-key",key(19));
@@ -92,6 +95,7 @@ final class AfterSaleHttpFixture implements AutoCloseable {
             properties.put("pet.payment.dispatch.request-ip","127.0.0.1");properties.put("pet.payment.dispatch.notify-url","https://qa.invalid/refund");
             properties.put("PRIVATE_ASSET_GRANT_KEY_VERSION","qa-http-grant");properties.put("PRIVATE_ASSET_GRANT_HMAC_KEY_BASE64",key(29));
             properties.put("PRIVATE_ASSET_REASON_KEY_VERSION","qa-http-reason");properties.put("PRIVATE_ASSET_REASON_AES_KEY_BASE64",key(31));
+            properties.putAll(overrides);
             context=new SpringApplicationBuilder(PetPlatformApplication.class).initializers(c->{
                 var beans=(GenericApplicationContext)c;
                 beans.registerBean("qaAfterSaleDataSource",DataSource.class,()->ordinary.source);

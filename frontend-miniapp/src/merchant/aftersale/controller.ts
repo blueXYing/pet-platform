@@ -150,8 +150,8 @@ export class MerchantAfterSaleController {
       }
       if (isDefiniteAfterSaleConflict(error)) {
         const retired = this.deps.retireConflict(caseId, mode, error)
-        this.patch({ pending: retired ? null : pending, busy: false, notice: retired ? '工单或补证轮次已变化，请核对最新详情后重新提交。' : '上次提交结果待确认，请按原内容重试。' })
-        try { const ticket = this.ticket(); await this.access(ticket, run); const detail = await this.deps.detail(caseId); this.current(ticket, run); this.patch({ detail, status: 'ready' }) }
+        this.patch({ pending: retired ? null : pending, busy: true, detail: null, writable: false, status: 'loading', notice: retired ? '工单或补证轮次已变化，请核对最新详情后重新提交。' : '上次提交结果待确认，请按原内容重试。' })
+        try { const ticket = this.ticket(); await this.access(ticket, run); const detail = await this.deps.detail(caseId); this.current(ticket, run); this.patch({ detail, status: 'ready', busy: false }) }
         catch (readError) { this.fail(readError, run) }
       } else if (error instanceof ApiError && [409, 429].includes(error.statusCode)) {
         this.patch({ busy: false, pending, notice: '上次提交结果待确认，请稍后按原内容重试。' })

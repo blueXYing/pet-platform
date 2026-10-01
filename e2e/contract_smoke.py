@@ -33,6 +33,7 @@ LEGACY_CREATE_SCHEMAS = {
 }
 # Contract51 promotes two unimplemented AFS draft operations into a separately pinned family.
 AFTERSALE_OPERATIONS = {
+    'getAftersaleOptions': ('get', '/c/aftersale-options'),
     'createAftersale': ('post', '/c/orders/{orderId}/aftersales'),
     'getAftersaleEligibility': ('get', '/c/orders/{orderId}/aftersale-eligibility'),
     'cListAftersales': ('get', '/c/aftersales'),
@@ -391,7 +392,19 @@ def check_aftersale_schemas(spec):
     summary = schemas['AfterSaleCaseSummary']
     assert set(summary['properties']) == {'afterSaleId', 'orderId', 'merchantId', 'storeId', 'status', 'version', 'sourceStage', 'typeCode', 'demandCode', 'requestedAmount', 'createdAt', 'deadline'}, 'AFS summary scope changed'
     assert schemas['AfterSaleCasePage']['properties']['items']['maxItems'] == 50, 'AFS page bound changed'
-    for name in ('AfterSaleReceipt', 'AfterSaleEligibility', 'AfterSaleCasePage', 'AfterSaleCaseDetail', 'AfterSaleAssetUpload', 'AfterSaleAssetGrant'):
+    options = schemas['AfterSaleOptions']
+    assert options.get('additionalProperties') is False and set(options.get('required', [])) == {'typeOptions', 'demandOptions'} and set(options['properties']) == {'typeOptions', 'demandOptions'}, 'AFS catalog fields changed'
+    for field in ('typeOptions', 'demandOptions'):
+        entries = options['properties'][field]
+        assert entries.get('type') == 'array' and entries.get('minItems') == 1 and entries.get('maxItems') == 100 and entries.get('items') == {'$ref': '#/components/schemas/AfterSaleOption'}, 'AFS catalog bounds changed'
+        assert entries.get('uniqueItems') is True and entries.get('x-unique-by') == 'code' and entries.get('x-sort-order') == 'ASCII_CODE_ASC', 'AFS catalog uniqueness/order changed'
+    option = schemas['AfterSaleOption']
+    assert option.get('additionalProperties') is False and set(option.get('required', [])) == {'code', 'label'} and set(option['properties']) == {'code', 'label'}, 'AFS option fields changed'
+    assert option['properties']['code'].get('type') == 'string' and option['properties']['code'].get('pattern') == r'^[A-Z][A-Z0-9_]{0,63}(?![\s\S])', 'AFS catalog code changed'
+    label = option['properties']['label']
+    assert label.get('type') == 'string' and label.get('minLength') == 1 and label.get('maxLength') == 64, 'AFS catalog label bounds changed'
+    assert label.get('x-length-unit') == 'UNICODE_CODE_POINTS' and label.get('x-surrogate-policy') == 'REJECT_UNPAIRED' and label.get('x-edge-whitespace-policy') == 'ECMASCRIPT_STRING_TRIM', 'AFS catalog Unicode label policy changed'
+    for name in ('AfterSaleOptions', 'AfterSaleReceipt', 'AfterSaleEligibility', 'AfterSaleCasePage', 'AfterSaleCaseDetail', 'AfterSaleAssetUpload', 'AfterSaleAssetGrant'):
         payload = schemas[name]
         assert payload.get('additionalProperties') is False and set(payload['required']) == set(payload['properties']), f'AFS response incomplete: {name}'
         envelope = schemas[name + 'Envelope']
@@ -400,6 +413,7 @@ def check_aftersale_schemas(spec):
         assert envelope['properties']['code']['enum'] == ['SUCCESS'] and envelope['properties']['message']['enum'] == ['ok'], 'AFS success code changed'
     error = schemas['AfterSaleErrorEnvelope']
     assert error.get('additionalProperties') is False and set(error['properties']) == {'code', 'message', 'data', 'traceId'} and error['properties']['data']['enum'] == [None], 'AFS failure data unsafe'
+    assert {'AFTERSALE_VERSION_CONFLICT', 'AFTERSALE_FINAL_SET_CONFLICT', 'COMMON_CONFLICT', 'IDEMPOTENCY_KEY_CONFLICT'} <= set(error['properties']['code']['enum']), 'AFS definite/busy conflict distinction changed'
 
 
 def check_aftersale_operation(spec, operation, method, path):
@@ -414,7 +428,8 @@ def check_aftersale_operation(spec, operation, method, path):
         action = 'aftersale.decide' if path.endswith('/decisions') else 'aftersale.handle' if path.endswith(('/accept', '/supplement-requests', '/close-duplicate')) else 'aftersale.read'
         assert operation.get('x-required-actions') == [action], f'AFS action changed: {name}'
     responses = operation['responses']
-    assert {'200', '400', '401', '403', '404', '409', '503'} <= responses.keys() and '202' not in responses, f'AFS responses changed: {name}'
+    expected_responses = {'200', '400', '401', '403', '503'} if name == 'getAftersaleOptions' else {'200', '400', '401', '403', '404', '409', '503'}
+    assert expected_responses <= responses.keys() and '202' not in responses, f'AFS responses changed: {name}'
     if name in {'createAftersale', 'uploadAftersaleEvidenceAsset'}:
         assert '201' in responses and responses['201']['content'] == responses['200']['content'], f'AFS create replay changed: {name}'
     else:
@@ -430,6 +445,11 @@ def check_aftersale_operation(spec, operation, method, path):
         assert params['pageSize']['schema'] == {'type': 'integer', 'minimum': 1, 'maximum': 50, 'default': 20}, 'AFS page size changed'
         if party != 'USER':
             assert params['merchantId'].get('required') is True and params['storeId'].get('required') is True, 'AFS global store scope opened'
+    if name == 'getAftersaleOptions':
+        assert not operation.get('parameters') and 'requestBody' not in operation, 'AFS catalog query/body opened'
+        assert operation.get('x-query-policy') == 'FORBIDDEN_INCLUDING_EMPTY' and operation.get('x-request-body-policy') == 'FORBIDDEN', 'AFS catalog query/body policy changed'
+        assert operation.get('x-catalog-source') == 'SAME_REASON_POLICY_AS_CREATE' and operation.get('x-incomplete-catalog-error') == 'COMMON_DEPENDENCY_UNAVAILABLE', 'AFS catalog authority/failclosed changed'
+        assert responses['200']['content']['application/json']['schema'] == {'$ref': '#/components/schemas/AfterSaleOptionsEnvelope'}, 'AFS catalog response changed'
     if name == 'decideAftersale':
         assert operation.get('x-public-refund-enabled') is False and operation.get('x-executable-decision-types') == ['REJECT', 'RESERVICE', 'OTHER'], 'AFS public funding opened'
     if 'ConsumeAftersaleEvidenceGrant' in name:

@@ -2,7 +2,7 @@ import test from 'node:test'
 import assert from 'node:assert/strict'
 import { randomUUID } from 'node:crypto'
 import { ConsumerApi, isAfterSalePath, type LocalStore, type AfterSaleAssetTransport } from '../consumer-api'
-import { AfterSaleClient, decodeDetail, decodeSummary, amount, instant, version } from '../aftersale-api'
+import { AfterSaleClient, decodeDetail, decodeSummary, decodeOptions, amount, instant, version } from '../aftersale-api'
 import { ApiError, type Transport, type WireRequest } from '../request'
 
 const session = { userId: '101', sessionId: '201', audience: 'MINIAPP', expiresAt: '2099-01-01T00:00:00.000Z' }
@@ -16,8 +16,103 @@ function setup(handler: Transport = async () => ok(receipt), assets?: AfterSaleA
   const calls: WireRequest[] = []
   const transport: Transport = async r => { calls.push(structuredClone(r)); return r.path.endsWith('/auth/session') ? ok(session) : handler(r) }
   const make = () => new ConsumerApi(transport, store, uuid, undefined, assets)
-  const api = make(); return { api, calls, values, make, client: new AfterSaleClient(api, 'c') }
+  const api = make(); return { api, calls, values, store, make, client: new AfterSaleClient(api, 'c') }
 }
+const options = () => ({ typeOptions: [{ code: 'A', label: '服务问题' }], demandOptions: [{ code: 'B', label: '协助处理' }] })
+test('options use authenticated exact GET with no query/body and strict four-field envelope', async () => {
+  const h = setup(async () => ok(options())); await h.api.restore()
+  assert.deepEqual(await h.client.options(), options())
+  assert.equal(h.calls.at(-1)?.path, '/api/v1/c/aftersale-options')
+  assert.equal(h.calls.at(-1)?.headers.Authorization, 'Bearer test-only-unusable')
+  assert.equal(h.calls.at(-1)?.data, undefined)
+  for (const spec of [{ path: '/api/v1/c/aftersale-options', method: 'POST' as const }, { path: '/api/v1/c/aftersale-options', method: 'GET' as const, data: {} }, { path: '/api/v1/c/aftersale-options?extra=true', method: 'GET' as const }, { path: '/api/v1/merchant/aftersale-options', method: 'GET' as const }]) {
+    assert.equal(isAfterSalePath(spec), false)
+    await assert.rejects(h.api.request(spec, x => x), /INVALID_PATH/)
+  }
+  await assert.rejects(h.api.anonymousRequest({ path: '/api/v1/c/aftersale-options', method: 'GET' }, x => x), /INVALID_PATH/)
+  const malformed = setup(async () => ({ statusCode: 200, data: { ...ok(options()).data, success: true } })); await malformed.api.restore()
+  await assert.rejects(malformed.client.options(), /INVALID_RESPONSE/)
+  h.api.scope.replace({ userId: '101', workspace: 'merchant', merchantId: '501', storeId: '601' })
+  assert.throws(() => new AfterSaleClient(h.api, 'merchant').options(), /WORKSPACE_PATH_MISMATCH/)
+  await assert.rejects(h.client.options(), /WORKSPACE_PATH_MISMATCH/)
+})
+test('options reject incomplete, duplicate, unsorted and over-limit catalogs while accepting 64 Unicode scalar labels', () => {
+  const valid = options()
+  assert.equal(decodeOptions({ ...valid, typeOptions: [{ code: 'A'.repeat(64), label: '😀'.repeat(64) }] }).typeOptions[0].label.length, 128)
+  assert.equal(decodeOptions({ ...valid, typeOptions: Array.from({ length: 100 }, (_, i) => ({ code: `A${String(i).padStart(3, '0')}`, label: '已配置问题' })) }).typeOptions.length, 100)
+  for (const malformed of [null, {}, { ...valid, extra: true }, { ...valid, typeOptions: [] }, { ...valid, demandOptions: [] }, { ...valid, typeOptions: [{ code: 'A', label: '问题', internal: 'hidden' }] }, { ...valid, typeOptions: [{ code: 'A', label: '问题' }, { code: 'A', label: '重复' }] }, { ...valid, typeOptions: [{ code: 'B', label: '后项' }, { code: 'A', label: '前项' }] }, { ...valid, typeOptions: Array.from({ length: 101 }, (_, i) => ({ code: `A${String(i).padStart(3, '0')}`, label: '已配置问题' })) }]) assert.throws(() => decodeOptions(malformed), /INVALID_RESPONSE/)
+  for (const code of ['', 'a', '0A', 'A-B', 'A'.repeat(65), 'A\n', ' A', 1]) assert.throws(() => decodeOptions({ ...valid, typeOptions: [{ code, label: '问题' }] }), /INVALID_RESPONSE/)
+  for (const label of ['', ' ', '😀'.repeat(65), '\uD800', '\uDC00', '问题\uD800', '\uD800\uD800\uDC00', 1]) assert.throws(() => decodeOptions({ ...valid, typeOptions: [{ code: 'A', label }] }), /INVALID_RESPONSE/)
+  for (const whitespace of ['\t', '\n', '\v', '\f', '\r', ' ', '\u00A0', '\u1680', '\u2000', '\u200A', '\u2028', '\u2029', '\u202F', '\u205F', '\u3000', '\uFEFF']) {
+    for (const label of [`${whitespace}问题`, `问题${whitespace}`, whitespace]) assert.throws(() => decodeOptions({ ...valid, typeOptions: [{ code: 'A', label }] }), /INVALID_RESPONSE/)
+  }
+  assert.equal(decodeOptions({ ...valid, typeOptions: [{ code: 'A', label: '\u001C问题\u001C' }] }).typeOptions[0].label, '\u001C问题\u001C')
+})
+test('options cannot publish after identity replacement or credential expiry', async () => {
+  let finish!: (value: ReturnType<typeof ok>) => void
+  const h = setup(() => new Promise(resolve => { finish = resolve })); await h.api.restore()
+  const reading = h.client.options()
+  h.api.scope.replace({ userId: '102', workspace: 'consumer', merchantId: null, storeId: null }); finish(ok(options()))
+  await assert.rejects(reading, /STALE_CONTEXT/)
+  const expired = setup(async () => ({ statusCode: 401, data: { code: 'COMMON_UNAUTHORIZED', message: 'expired', data: null, traceId: 't' } })); await expired.api.restore()
+  await assert.rejects(expired.client.options(), error => error instanceof ApiError && error.statusCode === 401)
+  assert.equal(expired.api.currentSession, null); assert.equal(expired.api.scope.current, null)
+})
+test('new definite conflict codes retire only the matching actual failure, then require an explicit new command', async () => {
+  for (const code of ['AFTERSALE_VERSION_CONFLICT', 'AFTERSALE_FINAL_SET_CONFLICT']) {
+    let conflict = true
+    const h = setup(async () => conflict ? { statusCode: 409, data: { code, message: 'changed', data: null, traceId: 't' } } : ok(receipt)); await h.api.restore()
+    let error: unknown; try { await h.client.withdraw('301', '0') } catch (caught) { error = caught }
+    const original = h.calls.at(-1)!
+    assert.throws(() => h.client.retireConflict('301', 'withdraw', new ApiError(code, 409)), /UNCONFIRMED_WRITE/)
+    assert.throws(() => h.client.retireConflict('302', 'withdraw', error), /UNCONFIRMED_WRITE/)
+    assert.throws(() => new AfterSaleClient(h.api, 'c').retireConflict('301', 'withdraw', error), /UNCONFIRMED_WRITE/)
+    assert.ok(h.client.pending('301', 'withdraw'))
+    h.client.retireConflict('301', 'withdraw', error)
+    assert.equal(h.client.pending('301', 'withdraw'), undefined)
+    assert.equal(h.calls.at(-1), original)
+    conflict = false; await h.client.withdraw('301', '1')
+    assert.notEqual(h.calls.at(-1)?.requestId, original.requestId)
+    assert.deepEqual(h.calls.at(-1)?.data, { expectedVersion: '1' })
+  }
+})
+test('late handling of an old definite rejection cannot retire a newer journal with identical payload', async () => {
+  let mode = 'conflict'
+  const h = setup(async () => { if (mode === 'conflict') return { statusCode: 409, data: { code: 'AFTERSALE_VERSION_CONFLICT', message: 'changed', data: null, traceId: 't' } }; throw new Error('response-lost') }); await h.api.restore()
+  let oldError: unknown; try { await h.client.withdraw('301', '0') } catch (caught) { oldError = caught }
+  const old = h.api.pendingCommands('aftersale:')[0]
+  // Another authorized handler already retired the old exact rejection before this
+  // page handles it; the newer journal deliberately has the same body, a different UUID.
+  h.api.retireRejectedCommand(old.slot, old.command)
+  mode = 'lost'; await assert.rejects(h.client.withdraw('301', '0'), /response-lost/)
+  const current = h.api.pendingCommands('aftersale:')[0]
+  assert.notEqual(current.command.requestId, old.command.requestId)
+  assert.throws(() => h.client.retireConflict('301', 'withdraw', oldError), /PENDING_WRITE_CHANGED/)
+  assert.deepEqual(h.api.pendingCommands('aftersale:')[0], current)
+})
+test('retirement storage failure keeps the same command in memory and durable storage for explicit retry', async () => {
+  let mode = 'conflict'
+  const h = setup(async () => mode === 'conflict' ? { statusCode: 409, data: { code: 'AFTERSALE_FINAL_SET_CONFLICT', message: 'changed', data: null, traceId: 't' } } : ok(receipt)); await h.api.restore()
+  let error: unknown; try { await h.client.withdraw('301', '0') } catch (caught) { error = caught }
+  const original = h.calls.at(-1)!, durable = structuredClone(h.values.get('pet.c.pending.v1'))
+  const set = h.store.set; h.store.set = () => { throw new Error('storage-write-failed') }
+  assert.throws(() => h.client.retireConflict('301', 'withdraw', error), /storage-write-failed/)
+  assert.deepEqual(h.client.pending('301', 'withdraw'), { expectedVersion: '0' }); assert.deepEqual(h.values.get('pet.c.pending.v1'), durable)
+  h.store.set = set; mode = 'ready'; await h.client.withdraw('301', '0')
+  assert.deepEqual(h.calls.at(-1), original)
+})
+test('ambiguous conflict and rate limiting retain exactly the original UUID and body through remount', async () => {
+  for (const [code, statusCode] of [['COMMON_CONFLICT', 409], ['IDEMPOTENCY_IN_PROGRESS', 409], ['IDEMPOTENCY_KEY_CONFLICT', 409], ['AFTERSALE_VERSION_CONFLICT', 429], ['COMMON_RATE_LIMITED', 429]] as const) {
+    let failed = true
+    const h = setup(async () => failed ? { statusCode, data: { code, message: 'busy', data: null, traceId: 't' } } : ok(receipt)); await h.api.restore()
+    let error: unknown; try { await h.client.withdraw('301', '0') } catch (caught) { error = caught }
+    const original = h.calls.at(-1)!
+    assert.throws(() => h.client.retireConflict('301', 'withdraw', error), /UNCONFIRMED_WRITE/)
+    const remount = h.make(); await remount.restore(); failed = false
+    await new AfterSaleClient(remount, 'c').withdraw('301', '0')
+    assert.deepEqual(h.calls.at(-1), original)
+  }
+})
 test('Contract51 uses strict four fields, String IDs and exact whitelisted methods without altering old session protocol', async () => {
   const h = setup(async () => ok({ page: 1, pageSize: 20, total: 1, items: [summary] })); await h.api.restore()
   assert.equal((await h.client.list()).items[0].afterSaleId, '301')

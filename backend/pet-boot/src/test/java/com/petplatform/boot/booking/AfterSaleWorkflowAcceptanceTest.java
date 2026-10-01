@@ -163,7 +163,7 @@ class AfterSaleWorkflowAcceptanceTest {
             assertEquals(Set.of(old.afterSaleId(), second.afterSaleId()), Set.copyOf(view.priorFinalCaseIds()));
             assertNotEquals(oneFinalVersion, view.finalSetVersion());
             f.identity.asAdmin();
-            AfterSaleFixture.code(CommonApiCodes.CONFLICT, () -> f.aftersales.accept(new Accept(f.admin(), next.afterSaleId(), next.version(),
+            AfterSaleFixture.code("AFTERSALE_FINAL_SET_CONFLICT", () -> f.aftersales.accept(new Accept(f.admin(), next.afterSaleId(), next.version(),
                     "This assessment was based on an obsolete single-final history", oneFinalVersion)));
             assertEquals("PENDING", f.caseView(next).status());
             f.identity.asAdmin();

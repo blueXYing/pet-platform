@@ -5,7 +5,7 @@ import { useWorkspace } from '../../../shared/workspace-react'
 import { afterSaleClient } from '../../../shared/aftersale-runtime'
 import { consumerStorage, consumerApi } from '../../../shared/consumer-runtime'
 import { privateUploadFiles } from '../../../shared/private-upload-platform'
-import { afterSaleCatalog, catalogSelectionErrors, consumerController, restorePending, type AfterSaleCatalog, type AfterSaleCatalogPort } from '../../aftersale/runtime'
+import { afterSaleCatalog, catalogSelectionErrors, consumerController, restorePending, type AfterSaleCatalogPort } from '../../aftersale/runtime'
 import { AfterSaleEvidenceUpload } from '../../aftersale/upload'
 import { afterSaleMessage, emptyCreateDraft, isId, validateCreate, type CreateDraft, type FieldErrors } from '../../aftersale/model'
 import { AfterSaleFrame, Card, EvidenceDraft, Notice, formatTime } from './common'
@@ -14,7 +14,7 @@ export default function AfterSaleApplyPage() {
   const route = useRouter(), { revision } = useWorkspace('real')
   return <ApplyScreen key={`${revision}:${route.params.orderId || ''}`} orderId={route.params.orderId || ''} />
 }
-function ApplyScreen({ orderId, catalogPort = afterSaleCatalog }: { orderId: string; catalogPort?: AfterSaleCatalogPort }) {
+function ApplyScreen({ orderId, catalogPort }: { orderId: string; catalogPort?: AfterSaleCatalogPort }) {
   const [client] = useState(() => afterSaleClient('c'))
   const [controller] = useState(() => consumerController(client))
   const [uploads] = useState(() => new AfterSaleEvidenceUpload(client, consumerStorage, privateUploadFiles(), `create:${orderId}`))
@@ -26,18 +26,21 @@ function ApplyScreen({ orderId, catalogPort = afterSaleCatalog }: { orderId: str
   const [uploading, setUploading] = useState(false)
   const [uploadPending, setUploadPending] = useState(false)
   const [uploadRejected, setUploadRejected] = useState(false)
-  const [catalog, setCatalog] = useState<AfterSaleCatalog | null>(null)
-  const initialized = useRef(false), mounted = useRef(true)
+  const catalog = state.catalog
+  const initialized = useRef(false), mounted = useRef(true), loadGeneration = useRef(0), visible = useRef(true)
   const revision = consumerApi.scope.revision
-  const live = () => mounted.current && revision === consumerApi.scope.revision
+  const live = () => mounted.current && visible.current && revision === consumerApi.scope.revision
   const slot = `aftersale:c:draft:create:${orderId}`
-  const locked = state.locked || state.busy || state.readOnly || uploading || !state.eligibility?.eligible || !!state.eligibility.activeAfterSaleId || !catalog
+  const locked = state.phase !== 'ready' || state.locked || state.busy || state.readOnly || uploading || !state.eligibility?.eligible || !!state.eligibility.activeAfterSaleId || !catalog
   function save(nextDraft: CreateDraft, nextAssets: { assetId: string }[]) { client.api.saveIntent(slot, { draft: nextDraft, assets: nextAssets }) }
   async function load() {
+    const generation = ++loadGeneration.current
+    controller.clearCreateContext()
+    setNotice('')
     if (!isId(orderId)) { setNotice('缺少有效订单号，请返回重新选择'); return }
     try {
       await client.api.restore()
-      if (!live()) return
+      if (!live() || generation !== loadGeneration.current) return
       if (!initialized.current) {
         const saved = client.api.intent(slot) as { draft?: CreateDraft; assets?: { assetId: string }[] } | undefined
         if (saved?.draft && Object.keys(emptyCreateDraft()).every(key => typeof saved.draft?.[key as keyof CreateDraft] === 'string')) setDraft(saved.draft)
@@ -46,13 +49,12 @@ function ApplyScreen({ orderId, catalogPort = afterSaleCatalog }: { orderId: str
         if (pending) controller.restore(pending)
         initialized.current = true
       }
-      const options = await catalogPort(); if (!live()) return; setCatalog(options?.types.length && options.demands.length ? options : null)
       const pendingUpload = uploads.pending(); setUploadPending(!!pendingUpload); setUploadRejected(!!pendingUpload?.rejected)
-      await controller.loadEligibility(orderId, state.locked)
-    } catch (error) { if (live()) setNotice(afterSaleMessage(error)) }
+      await controller.loadCreateContext(orderId, controller.getSnapshot().locked, catalogPort || (() => afterSaleCatalog(client)))
+    } catch (error) { if (live() && generation === loadGeneration.current) setNotice(afterSaleMessage(error)) }
   }
-  useDidShow(() => { void load() })
-  useDidHide(() => client.clearImages())
+  useDidShow(() => { visible.current = true; void load() })
+  useDidHide(() => { visible.current = false; loadGeneration.current++; controller.clearCreateContext(); client.clearImages() })
   useEffect(() => () => { mounted.current = false; controller.dispose(); client.dispose() }, [client, controller])
   useEffect(() => {
     if (!state.receipt || !live()) return
@@ -84,7 +86,7 @@ function ApplyScreen({ orderId, catalogPort = afterSaleCatalog }: { orderId: str
   }
   return <AfterSaleFrame title='申请售后'>
     <Notice text={notice || state.notice} />
-    {state.phase === 'loading' && <Notice text='正在读取订单资格…' />}
+    {state.phase === 'loading' && <Notice text='正在读取申请选项和订单资格…' />}
     <Card><Text className='afs-heading'>订单号 {orderId || '—'}</Text><Text className='afs-hint'>申请截止：{formatTime(state.eligibility?.deadline || null)}</Text><Text className='afs-hint'>{state.eligibility?.eligible ? '当前订单可发起售后，提交时再次校验' : state.eligibility?.blockingReason || '请先读取申请资格'}</Text>
       {state.eligibility?.activeAfterSaleId && <Button className='afs-secondary afs-field' onClick={() => void Taro.navigateTo({ url: `/consumer/pages/aftersale/detail?afterSaleId=${state.eligibility!.activeAfterSaleId}` })}>查看当前活动工单</Button>}
     </Card>
@@ -99,6 +101,6 @@ function ApplyScreen({ orderId, catalogPort = afterSaleCatalog }: { orderId: str
     {errors.evidence && <Text className='afs-error'>{errors.evidence}</Text>}
     {uploadPending && <><Notice text='图片上传结果尚未确认，请点击添加图片重试原图片' />{uploadRejected && <Button className='afs-secondary' disabled={uploading} onClick={() => void uploads.discardRejected().then(() => { setUploadPending(false); setUploadRejected(false) })}>移除校验失败的图片</Button>}</>}
     {state.locked ? <Button id='afs-retry-create' className='afs-primary' disabled={state.busy || state.readOnly} onClick={() => void controller.retry()}>重试原申请</Button> : <Button id='afs-submit' className='afs-primary' disabled={locked || uploadPending} onClick={() => void submit()}>提交申请</Button>}
-    <Button className='afs-secondary' disabled={state.busy || uploading} onClick={() => void load()}>重新读取资格</Button>
+    <Button className='afs-secondary' disabled={state.busy || uploading} onClick={() => void load()}>重新读取申请选项与资格</Button>
   </AfterSaleFrame>
 }

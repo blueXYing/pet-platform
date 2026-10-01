@@ -6,6 +6,8 @@ import static org.mockito.Mockito.*;
 import com.petplatform.admin.api.query.*;
 import com.petplatform.aftersale.biz.application.*;
 import com.petplatform.common.SnowflakeIdGenerator;
+import com.petplatform.common.ApiException;
+import com.petplatform.common.CommonApiCodes;
 import com.petplatform.event.api.IntegrationEventPublisher;
 import com.petplatform.merchant.api.query.MerchantOrderAuthorityApi;
 import com.petplatform.order.biz.apiimpl.OrderRefundApplicationApiImpl;
@@ -62,6 +64,29 @@ class AfterSaleWorkflowConfigurationTest {
                 .run(c->{assertThat(c).hasNotFailed();assertThat(c).hasSingleBean(AfterSaleService.class);
                     assertThat(c).doesNotHaveBean(RefundFundingEligibilityFactsApi.class);
                     verifyNoInteractions(c.getBean(PrivateObjectStore.class),c.getBean(PaymentSuccessFactsApi.class));});
+    }
+
+    @Test void oneConfiguredCatalogProvidesSortedLabelsAndTheExactCreateCodeSet() {
+        dependencies("").withPropertyValues("pet.aftersale.type-codes=Z_KIND,A_KIND",
+                "pet.aftersale.type-labels[Z_KIND]=Z issue","pet.aftersale.type-labels[A_KIND]=A issue",
+                "pet.aftersale.demand-labels[REFUND]=Requested outcome")
+                .run(c->{
+                    assertThat(c).hasNotFailed();var policy=c.getBean(AfterSalePorts.ReasonPolicy.class);
+                    assertThat(policy.options().typeOptions()).extracting(o->o.code()).containsExactly("A_KIND","Z_KIND");
+                    assertThat(policy.options().typeOptions()).extracting(o->o.label()).containsExactly("A issue","Z issue");
+                    policy.requireCodes("A_KIND","REFUND");policy.requireCodes("Z_KIND","REFUND");
+                    assertThatThrownBy(()->policy.requireCodes("QUALITY","REFUND")).isInstanceOfSatisfying(ApiException.class,e->assertThat(e.code()).isEqualTo(CommonApiCodes.INVALID_ARGUMENT));
+                });
+    }
+
+    @Test void absentOrInconsistentLabelsCloseReadsAndNewCreationWithoutFallback() {
+        for(var extra:List.of(new String[0],new String[]{"pet.aftersale.type-labels[QUALITY]= ","pet.aftersale.demand-labels[REFUND]=Outcome"},
+                new String[]{"pet.aftersale.type-labels[QUALITY]=Issue","pet.aftersale.type-labels[ORPHAN]=Other","pet.aftersale.demand-labels[REFUND]=Outcome"}))
+            dependencies("").withPropertyValues(extra).run(c->{
+                assertThat(c).hasNotFailed();var policy=c.getBean(AfterSalePorts.ReasonPolicy.class);
+                assertThatThrownBy(policy::options).isInstanceOfSatisfying(ApiException.class,e->assertThat(e.code()).isEqualTo(CommonApiCodes.DEPENDENCY_UNAVAILABLE));
+                assertThatThrownBy(()->policy.requireCodes("QUALITY","REFUND")).isInstanceOfSatisfying(ApiException.class,e->assertThat(e.code()).isEqualTo(CommonApiCodes.DEPENDENCY_UNAVAILABLE));
+            });
     }
 
     @ParameterizedTest

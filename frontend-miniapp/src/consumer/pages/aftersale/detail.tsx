@@ -27,7 +27,7 @@ function DetailScreen({ caseId }: { caseId: string }) {
   const revision = consumerApi.scope.revision
   const live = () => mounted.current && revision === consumerApi.scope.revision
   const slot = `aftersale:c:draft:evidence:${caseId}`
-  const locked = state.locked || state.busy || state.readOnly || uploading || !activeCase(state.detail)
+  const locked = state.phase !== 'ready' || state.locked || state.busy || state.readOnly || uploading || !activeCase(state.detail)
   function save(nextText: string, nextAssets: { assetId: string }[]) { client.api.saveIntent(slot, { text: nextText, assets: nextAssets }) }
   async function load() {
     // Re-reading is a new authorization proof: discard the old image before any request,
@@ -60,6 +60,7 @@ function DetailScreen({ caseId }: { caseId: string }) {
     return () => { unsubscribe(); mounted.current = false; visible.current = false; imageEpoch.current++; imageFlight.current = false; controller.dispose(); client.dispose() }
   }, [controller, client])
   useEffect(() => { if (!state.receipt || !live()) return; client.api.saveIntent(slot, null); setText(''); setAssets([]) }, [state.receipt])
+  useEffect(() => { if (state.phase !== 'ready' || state.busy) closeImage() }, [state.phase, state.busy])
   function edit(value: string) { if (locked || uploadPending) return; save(value, assets); setText(value); setErrors({}); setNotice('') }
   async function add() {
     if (locked || assets.length >= 6) return
@@ -83,7 +84,7 @@ function DetailScreen({ caseId }: { caseId: string }) {
     if (answer.confirm && live()) await controller.withdraw()
   }
   async function readImage(batchId: string, assetId: string) {
-    if (imageFlight.current || !visible.current) return
+    if (imageFlight.current || !visible.current || state.phase !== 'ready' || state.busy) return
     closeImage()
     const run = imageEpoch.current
     imageFlight.current = true; setReading(true); setNotice('')

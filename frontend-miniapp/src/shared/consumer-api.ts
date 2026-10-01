@@ -14,6 +14,7 @@ export type AfterSaleAssetTransport = {
 }
 export function isAfterSalePath(spec: RequestSpec): boolean {
   if (/[\r\n]/.test(spec.path)) return false
+  if (spec.path === '/api/v1/c/aftersale-options') return spec.method === 'GET' && spec.data === undefined
   const base = /^\/api\/v1\/(c|merchant)\/aftersales(?:\/([1-9][0-9]{0,18})(?:\/(evidence|withdraw|opinion|evidence-batches\/[1-9][0-9]{0,18}\/assets\/[1-9][0-9]{0,18}\/read-grants))?)?$/.exec(spec.path)
   if (base) {
     if (!base[2]) return spec.method === 'GET'
@@ -310,9 +311,12 @@ export class ConsumerApi {
   retireRejectedCommand(slot: string, rejected: RequestSpec) {
     const saved = this.pending[slot]
     if (!saved?.command || saved.command.path !== rejected.path || saved.command.method !== rejected.method
-      || JSON.stringify(saved.command.data) !== JSON.stringify(rejected.data)) throw new Error('PENDING_WRITE_CHANGED')
-    delete this.pending[slot]
-    this.store.set(WRITE_KEY, this.pending)
+      || JSON.stringify(saved.command.data) !== JSON.stringify(rejected.data)
+      || rejected.requestId !== undefined && saved.command.requestId !== rejected.requestId) throw new Error('PENDING_WRITE_CHANGED')
+    const nextPending = { ...this.pending }
+    delete nextPending[slot]
+    this.store.set(WRITE_KEY, nextPending)
+    this.pending = nextPending
   }
   saveIntent(slot: string, value: unknown) {
     const ticket = this.scope.capture()
@@ -322,7 +326,7 @@ export class ConsumerApi {
     this.store.set(WRITE_KEY, this.pending)
   }
   /** Same operation survives page remount and app restart. Unknown results lock payload/key. */
-  write<T>(slot: string, spec: Omit<RequestSpec, 'requestId'>, decode: (data: unknown) => T, checkpoint?: { slot: string; value: (result: T) => unknown }): Promise<T> {
+  write<T>(slot: string, spec: Omit<RequestSpec, 'requestId'>, decode: (data: unknown) => T, checkpoint?: { slot: string; value: (result: T) => unknown }, rejected?: (error: unknown, command: Command) => void): Promise<T> {
     // Snapshot before UUID allocation: caller edits must not change an in-flight intent.
     spec = JSON.parse(JSON.stringify(spec)) as Omit<RequestSpec, 'requestId'>
     const existing = this.writes.get(slot)
@@ -347,6 +351,7 @@ export class ConsumerApi {
         return value
       } catch (error) {
         ticket.assertCurrent()
+        rejected?.(error, JSON.parse(JSON.stringify(command)) as Command)
         // Authorization/resource visibility is rechecked before an old receipt is
         // returned. A 401/403/404 cannot prove an earlier unknown write never ran.
         const hiddenReceipt = isAfterSalePath(command) && error instanceof ApiError && [401, 403, 404].includes(error.statusCode)

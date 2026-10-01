@@ -101,6 +101,43 @@ test('definite supplement conflict reloads actual version but idempotent conflic
   f.deps.opinion = async (_id, input) => { f.pending = { action: 'opinion', input }; throw new ApiError('IDEMPOTENT_IN_PROGRESS', 409) }
   await c.submit('opinion'); assert.ok(c.getSnapshot().pending); assert.match(c.getSnapshot().notice, /按原内容重试/); c.dispose()
 })
+test('new definite conflict codes gate M writes throughout fresh admission/detail and require manual resubmit', async () => {
+  for (const code of ['AFTERSALE_VERSION_CONFLICT', 'AFTERSALE_FINAL_SET_CONFLICT']) {
+    const f = fixture(), refreshed = defer<CaseDetail>()
+    let reads = 0, writes = 0, retireCalls = 0
+    f.deps.detail = () => ++reads === 1 ? Promise.resolve(detail) : refreshed.promise
+    f.deps.retireConflict = () => { retireCalls++; f.pending = null; return true }
+    f.deps.opinion = async (_id, input) => { writes++; f.pending = { action: 'opinion', input }; throw new ApiError(code, 409) }
+    const c = new MerchantAfterSaleController(f.deps, '201'); await c.load(); c.setDraft({ opinionCode: 'AGREE', text: '商家根据真实情况提交处理意见' })
+    const submitting = c.submit('opinion')
+    for (let i = 0; i < 8; i++) await Promise.resolve()
+    assert.equal(c.getSnapshot().status, 'loading'); assert.equal(c.getSnapshot().detail, null); assert.equal(c.getSnapshot().busy, true)
+    await c.submit('opinion'); assert.equal(writes, 1)
+    refreshed.resolve({ ...detail, version: '8' }); await submitting
+    assert.equal(retireCalls, 1); assert.equal(c.getSnapshot().detail?.version, '8'); assert.equal(c.getSnapshot().pending, null); assert.equal(writes, 1)
+    assert.equal(c.getSnapshot().busy, false); assert.match(c.getSnapshot().notice, /核对/); c.dispose()
+  }
+})
+test('definite conflict followed by failed M refresh remains unable to submit with stale detail', async () => {
+  const f = fixture(); let reads = 0, writes = 0
+  f.deps.detail = async () => { if (++reads > 1) throw new Error('READ_FAILED'); return detail }
+  f.deps.opinion = async (_id, input) => { writes++; f.pending = { action: 'opinion', input }; throw new ApiError('AFTERSALE_VERSION_CONFLICT', 409) }
+  const c = new MerchantAfterSaleController(f.deps, '201'); await c.load(); c.setDraft({ opinionCode: 'AGREE', text: '商家依据真实情况说明相关意见' })
+  await c.submit('opinion'); assert.equal(c.getSnapshot().status, 'error'); assert.equal(c.getSnapshot().detail, null); assert.equal(c.canReply(), false)
+  await c.submit('opinion'); assert.equal(writes, 1); c.dispose()
+})
+test('failed M retirement preserves original pending input even after the latest detail version changes', async () => {
+  const f = fixture(); let first: OpinionInput | null = null, writes = 0
+  f.deps.retireConflict = () => false
+  f.deps.opinion = async (_id, input) => {
+    if (++writes === 1) { first = copy(input); f.pending = { action: 'opinion', input: copy(input) }; f.detail = { ...detail, version: '9' }; throw new ApiError('AFTERSALE_VERSION_CONFLICT', 409) }
+    assert.deepEqual(input, first); f.pending = null; return receipt
+  }
+  const c = new MerchantAfterSaleController(f.deps, '201'); await c.load(); c.setDraft({ opinionCode: 'AGREE', text: '商家依据当前证据确认处理意见' })
+  await c.submit('opinion'); assert.equal(c.getSnapshot().detail?.version, '9'); assert.deepEqual(c.getSnapshot().pending?.input, first)
+  c.setDraft({ text: '不能替换尚未确认的原始请求内容' }); assert.equal(c.getSnapshot().draft.text, first!.explanation)
+  await c.submit('opinion'); assert.equal(writes, 2); assert.equal(c.getSnapshot().pending, null); c.dispose()
+})
 test('COMMON_CONFLICT, unknown 409 and 429 never retire or change an unresolved opinion input', async () => {
   for (const [code, status] of [['COMMON_CONFLICT', 409], ['IDEMPOTENCY_CONFLICT', 409], ['UNKNOWN_CONFLICT', 409], ['COMMON_RATE_LIMITED', 429]] as const) {
     const f = fixture(); let original: OpinionInput | null = null, calls = 0, retireCalls = 0

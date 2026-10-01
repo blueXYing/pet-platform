@@ -1,0 +1,572 @@
+{
+  "date": "2026-10-01",
+  "owner": "independent_aftersale_qa",
+  "status": "QA_COMPLETE",
+  "baseGitHead": "382c65fa610d73ff7bd2a00cac53dbbcb7cf7dea",
+  "sourceState": "Approved CCR increment tested on shared worktree before commit; no claim of a single all-green 37-test Maven run.",
+  "environment": {
+    "java": "21.0.11",
+    "maven": "3.9.12",
+    "offline": true,
+    "mysql": "cached mysql:8.4",
+    "redis": "cached redis:7.4-alpine",
+    "network": "loopback only; task-owned random ports",
+    "externalProviders": "fixture login/moderation/scanner/OSS providers; real HTTP/sessions/SQL/Redis/transactions",
+    "temporaryContainersRemoved": true,
+    "databaseCleanup": "Only 4 system schemas and Redis DBSIZE 0 before exact-ID container and anonymous-volume cleanup",
+    "temporaryPortsRemaining": 0,
+    "otherProjectServicesUntouched": true
+  },
+  "rounds": [
+    {
+      "round": 1,
+      "finishedAt": "2026-10-01T14:43:43+08:00",
+      "mavenResult": "BUILD_FAILURE",
+      "durationSeconds": 1194,
+      "tests": 36,
+      "failures": 3,
+      "errors": 1,
+      "skipped": 0,
+      "sourceBounds": "Initial approved catalog/authz/conflict implementation. New options conditional GET missing from security whitelist. Existing domain/old HTTP routes retained.",
+      "suites": [
+        {
+          "name": "com.petplatform.boot.booking.AfterSaleEvidenceHttpAcceptanceTest",
+          "kind": "real_http",
+          "round": 1,
+          "tests": 3,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0,
+          "xmlSha256": "3d1902dfd6edd527bd4ad2b61ae0ba3db83ef2c4c6af1ca45e1a108410753f70",
+          "cases": [
+            {
+              "name": "eagerServletMultipartFailuresKeepContractAndLeaveNoUploadAdmission",
+              "passed": true
+            },
+            {
+              "name": "revocationAndQuarantineDuringObjectReadReturnNoImageAndKeepGrantConsumed",
+              "passed": true
+            },
+            {
+              "name": "threePartiesReadBothEvidenceOwnersThroughSingleUseRouteBoundGrants",
+              "passed": true
+            }
+          ]
+        },
+        {
+          "name": "com.petplatform.boot.booking.AfterSaleHttpAcceptanceTest",
+          "kind": "real_http",
+          "round": 1,
+          "tests": 4,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0,
+          "xmlSha256": "d1ca1fdfc026eb743b3a574b6317f04814fab763a93e87f35ce42cb14065b819",
+          "cases": [
+            {
+              "name": "strictHttpDtoUuidBindingAndCasRejectBeforeSideEffectsAndMoneyIsClosed",
+              "passed": true
+            },
+            {
+              "name": "realOrdinaryRejectionAndListValidationDoNotAcceptCallerInventedEligibility",
+              "passed": true
+            },
+            {
+              "name": "realSessionsCompleteSupplementNonRefundFinalsWithdrawalAndDuplicateClosure",
+              "passed": true
+            },
+            {
+              "name": "currentSessionsPartyScopesFrozenAccountsAndActionRevocationApplyToReplay",
+              "passed": true
+            }
+          ]
+        },
+        {
+          "name": "com.petplatform.boot.booking.AfterSaleSourceIntegrityAcceptanceTest",
+          "kind": "real_database_domain_api",
+          "round": 1,
+          "tests": 2,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0,
+          "xmlSha256": "c811349b7065f83268326eaa7d426807a452b52365e9bea3313cf1c602bf594c",
+          "cases": [
+            {
+              "name": "eachIndependentSourceProofMustAgreeBeforeAnyFirstSend",
+              "passed": true
+            },
+            {
+              "name": "firstSendEvidenceExpiringAfterDispatchCommitBlocksSubmitButRetainsOriginalQuery",
+              "passed": true
+            }
+          ]
+        },
+        {
+          "name": "com.petplatform.boot.booking.AfterSaleWorkflowAcceptanceTest",
+          "kind": "real_database_domain_api",
+          "round": 1,
+          "tests": 21,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0,
+          "xmlSha256": "536c06d8cfa86eaada8a61a180a7fda53382cbae1d27f30746b6c088fbf15609",
+          "cases": [
+            {
+              "name": "realRejectionCreatesOnePrivateCaseWithoutRefundOrReservationRelease",
+              "passed": true
+            },
+            {
+              "name": "competingTerminalDecisionsAtTheSameVersionCommitOnlyOneOutcome",
+              "passed": true
+            },
+            {
+              "name": "bothSevenDayWindowsIncludeDeadlineAndExcludeNextMillisecond",
+              "passed": true
+            },
+            {
+              "name": "newProblemWithSameCategoryCanBeAcceptedAgainstServerHistory",
+              "passed": true
+            },
+            {
+              "name": "frozenBuyerRetainsCaseReadingButCannotWriteOrReplayCreate",
+              "passed": true
+            },
+            {
+              "name": "supplementDeadlineDoesNotDependOnWhetherWorkerAlreadyRan",
+              "passed": true
+            },
+            {
+              "name": "allNonRefundFinalDecisionsAreIrreversibleAndNeverCreateMoney",
+              "passed": true
+            },
+            {
+              "name": "internalRequestIdsPreserve512Utf8BytesCaseAndTrailingSpace",
+              "passed": true
+            },
+            {
+              "name": "withdrawalFromEachActiveStatePreservesOriginalWindowAndCreatesNewId",
+              "passed": true
+            },
+            {
+              "name": "duplicateReferenceMustBelongToTheSameRealOrder",
+              "passed": true
+            },
+            {
+              "name": "createRacingRealVerificationPreservesTheWinningSourceStage",
+              "passed": true
+            },
+            {
+              "name": "realUserAndAdminRevocationBlocksOldReceiptReplay",
+              "passed": true
+            },
+            {
+              "name": "differentCreateKeysCannotCommitTwoActiveCases",
+              "passed": true
+            },
+            {
+              "name": "unverifiedWithoutRealRejectionAndForeignBuyerCannotCreate",
+              "passed": true
+            },
+            {
+              "name": "withdrawnOrInvalidatedHistoryCannotBeForgedAsFinalDecision",
+              "passed": true
+            },
+            {
+              "name": "finalHistoryRequiresAssessmentAndDuplicateClosureDoesNotCreateAnotherDecision",
+              "passed": true
+            },
+            {
+              "name": "successfulReplaySurvivesProviderOutageButRechecksPayloadAndCurrentAuthority",
+              "passed": true
+            },
+            {
+              "name": "evidenceMustBeOwnedReadyAndAftersalePurpose",
+              "passed": true
+            },
+            {
+              "name": "retainingReadPermissionDoesNotAuthorizeOldWriteReceiptReplay",
+              "passed": true
+            },
+            {
+              "name": "verifiedOrderNeedsNoPriorMerchantRejection",
+              "passed": true
+            },
+            {
+              "name": "oneActiveCaseAndOrdinaryApplicationAreMutuallyExclusiveInBothDirections",
+              "passed": true
+            }
+          ]
+        },
+        {
+          "name": "com.petplatform.boot.booking.AfterSaleOptionsConflictHttpAcceptanceTest",
+          "kind": "real_http",
+          "round": 1,
+          "tests": 6,
+          "failures": 3,
+          "errors": 1,
+          "skipped": 0,
+          "xmlSha256": "2b4d56d120bd4cce1562a71808cd9dc5a92e1031ff3c13d8a8657d1a60a78762",
+          "cases": [
+            {
+              "name": "finalSetMismatchRejectsBeforeEffectsMissingProofIs400AndFreshUuidCanAccept",
+              "passed": true
+            },
+            {
+              "name": "incompleteLabelConfigurationClosesCatalogAndCreateBeforeAdmission",
+              "passed": false
+            },
+            {
+              "name": "authorizationRevisionChangeAfterWritesRollsBackAndKeepsGenericConflict",
+              "passed": false
+            },
+            {
+              "name": "explicitlyClosedHttpHasNoOptionsMappingEvenWithCurrentSession",
+              "passed": false
+            },
+            {
+              "name": "simultaneousSameVersionLoserHasDefiniteCodeNoBusinessEffectsAndWinnerReplaysOriginalReceipt",
+              "passed": true
+            },
+            {
+              "name": "authenticatedCatalogIsSortedStrictAndUsesExactlyTheNewCreateCodes",
+              "passed": false
+            }
+          ]
+        }
+      ],
+      "resolvedFailureCauses": [
+        "Missing enabled-only new GET security whitelist: production defect fixed after round 1",
+        "OFF fixture incorrectly expected 404; existing family denyAll correctly 403 and no controller bean",
+        "RBAC hook joined writer blocked on AFS authz row lock: fixture self-wait fixed without changing production locking"
+      ]
+    },
+    {
+      "round": 2,
+      "finishedAt": "2026-10-01T14:51:56+08:00",
+      "mavenResult": "BUILD_FAILURE",
+      "tests": 7,
+      "failures": 1,
+      "errors": 0,
+      "skipped": 0,
+      "sourceBounds": "Only production delta from round 1 was enabled-only new GET security whitelist. New suite fixed OFF expectation and actual RBAC wait ordering; added clearly labeled same-AFS-transaction revision FAULT_INJECTION. Domain/catalog/authority/old-route production code unchanged.",
+      "suites": [
+        {
+          "name": "com.petplatform.boot.booking.AfterSaleOptionsConflictHttpAcceptanceTest",
+          "kind": "real_http",
+          "round": 2,
+          "tests": 7,
+          "failures": 1,
+          "errors": 0,
+          "skipped": 0,
+          "xmlSha256": "10410e468a17f7b68c4a84988e74d226ab58b7005f0fb715cfbc28b5096aaccb",
+          "cases": [
+            {
+              "name": "finalSetMismatchRejectsBeforeEffectsMissingProofIs400AndFreshUuidCanAccept",
+              "passed": true
+            },
+            {
+              "name": "incompleteLabelConfigurationClosesCatalogAndCreateBeforeAdmission",
+              "passed": true
+            },
+            {
+              "name": "explicitlyClosedHttpHasNoOptionsMappingEvenWithCurrentSession",
+              "passed": true
+            },
+            {
+              "name": "simultaneousSameVersionLoserHasDefiniteCodeNoBusinessEffectsAndWinnerReplaysOriginalReceipt",
+              "passed": true
+            },
+            {
+              "name": "faultInjectionOfRevisionWithinSameCaseTransactionIsGenericConflictAndRollsBack",
+              "passed": true
+            },
+            {
+              "name": "authenticatedCatalogIsSortedStrictAndUsesExactlyTheNewCreateCodes",
+              "passed": false
+            },
+            {
+              "name": "concurrentRbacMutationWaitsForCaseCommitThenBlocksOriginalSuccessReplay",
+              "passed": true
+            }
+          ]
+        }
+      ],
+      "resolvedFailureCauses": [
+        "Java HttpClient normalized trailing empty query away; catalog case aborted before body/create/FROZEN/logout assertions"
+      ]
+    },
+    {
+      "round": 3,
+      "finishedAt": "2026-10-01T14:57:48+08:00",
+      "mavenResult": "BUILD_SUCCESS",
+      "durationSeconds": 37.614,
+      "tests": 1,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "sourceBounds": "Only failed catalog test method changed: bounded raw HTTP/1.1 Socket preserves literal ? and ?&& request targets. Both return 400; no production rule change, no relaxed assertion, other 6 cases unchanged.",
+      "suites": [
+        {
+          "name": "com.petplatform.boot.booking.AfterSaleOptionsConflictHttpAcceptanceTest",
+          "kind": "real_http",
+          "round": 3,
+          "tests": 1,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0,
+          "xmlSha256": "b5248093207c8e492ccf37b547470c6bc9b6045a86fdc32aa8c7834e233c0f8a",
+          "cases": [
+            {
+              "name": "authenticatedCatalogIsSortedStrictAndUsesExactlyTheNewCreateCodes",
+              "passed": true
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "finalVerified": {
+    "aggregation": "Retain 30 passing old cases from round 1, 6 passing new cases from round 2, and the repaired catalog case from round 3. Failure rounds remain disclosed.",
+    "uniqueTests": 37,
+    "passed": 37,
+    "unresolvedFailures": 0,
+    "unresolvedErrors": 0,
+    "skipped": 0,
+    "realHttpTests": 14,
+    "realDatabaseDomainApiTests": 23,
+    "oldSuites": [
+      {
+        "name": "com.petplatform.boot.booking.AfterSaleEvidenceHttpAcceptanceTest",
+        "kind": "real_http",
+        "round": 1,
+        "tests": 3,
+        "failures": 0,
+        "errors": 0,
+        "skipped": 0,
+        "xmlSha256": "3d1902dfd6edd527bd4ad2b61ae0ba3db83ef2c4c6af1ca45e1a108410753f70",
+        "cases": [
+          {
+            "name": "eagerServletMultipartFailuresKeepContractAndLeaveNoUploadAdmission",
+            "passed": true
+          },
+          {
+            "name": "revocationAndQuarantineDuringObjectReadReturnNoImageAndKeepGrantConsumed",
+            "passed": true
+          },
+          {
+            "name": "threePartiesReadBothEvidenceOwnersThroughSingleUseRouteBoundGrants",
+            "passed": true
+          }
+        ]
+      },
+      {
+        "name": "com.petplatform.boot.booking.AfterSaleHttpAcceptanceTest",
+        "kind": "real_http",
+        "round": 1,
+        "tests": 4,
+        "failures": 0,
+        "errors": 0,
+        "skipped": 0,
+        "xmlSha256": "d1ca1fdfc026eb743b3a574b6317f04814fab763a93e87f35ce42cb14065b819",
+        "cases": [
+          {
+            "name": "strictHttpDtoUuidBindingAndCasRejectBeforeSideEffectsAndMoneyIsClosed",
+            "passed": true
+          },
+          {
+            "name": "realOrdinaryRejectionAndListValidationDoNotAcceptCallerInventedEligibility",
+            "passed": true
+          },
+          {
+            "name": "realSessionsCompleteSupplementNonRefundFinalsWithdrawalAndDuplicateClosure",
+            "passed": true
+          },
+          {
+            "name": "currentSessionsPartyScopesFrozenAccountsAndActionRevocationApplyToReplay",
+            "passed": true
+          }
+        ]
+      },
+      {
+        "name": "com.petplatform.boot.booking.AfterSaleSourceIntegrityAcceptanceTest",
+        "kind": "real_database_domain_api",
+        "round": 1,
+        "tests": 2,
+        "failures": 0,
+        "errors": 0,
+        "skipped": 0,
+        "xmlSha256": "c811349b7065f83268326eaa7d426807a452b52365e9bea3313cf1c602bf594c",
+        "cases": [
+          {
+            "name": "eachIndependentSourceProofMustAgreeBeforeAnyFirstSend",
+            "passed": true
+          },
+          {
+            "name": "firstSendEvidenceExpiringAfterDispatchCommitBlocksSubmitButRetainsOriginalQuery",
+            "passed": true
+          }
+        ]
+      },
+      {
+        "name": "com.petplatform.boot.booking.AfterSaleWorkflowAcceptanceTest",
+        "kind": "real_database_domain_api",
+        "round": 1,
+        "tests": 21,
+        "failures": 0,
+        "errors": 0,
+        "skipped": 0,
+        "xmlSha256": "536c06d8cfa86eaada8a61a180a7fda53382cbae1d27f30746b6c088fbf15609",
+        "cases": [
+          {
+            "name": "realRejectionCreatesOnePrivateCaseWithoutRefundOrReservationRelease",
+            "passed": true
+          },
+          {
+            "name": "competingTerminalDecisionsAtTheSameVersionCommitOnlyOneOutcome",
+            "passed": true
+          },
+          {
+            "name": "bothSevenDayWindowsIncludeDeadlineAndExcludeNextMillisecond",
+            "passed": true
+          },
+          {
+            "name": "newProblemWithSameCategoryCanBeAcceptedAgainstServerHistory",
+            "passed": true
+          },
+          {
+            "name": "frozenBuyerRetainsCaseReadingButCannotWriteOrReplayCreate",
+            "passed": true
+          },
+          {
+            "name": "supplementDeadlineDoesNotDependOnWhetherWorkerAlreadyRan",
+            "passed": true
+          },
+          {
+            "name": "allNonRefundFinalDecisionsAreIrreversibleAndNeverCreateMoney",
+            "passed": true
+          },
+          {
+            "name": "internalRequestIdsPreserve512Utf8BytesCaseAndTrailingSpace",
+            "passed": true
+          },
+          {
+            "name": "withdrawalFromEachActiveStatePreservesOriginalWindowAndCreatesNewId",
+            "passed": true
+          },
+          {
+            "name": "duplicateReferenceMustBelongToTheSameRealOrder",
+            "passed": true
+          },
+          {
+            "name": "createRacingRealVerificationPreservesTheWinningSourceStage",
+            "passed": true
+          },
+          {
+            "name": "realUserAndAdminRevocationBlocksOldReceiptReplay",
+            "passed": true
+          },
+          {
+            "name": "differentCreateKeysCannotCommitTwoActiveCases",
+            "passed": true
+          },
+          {
+            "name": "unverifiedWithoutRealRejectionAndForeignBuyerCannotCreate",
+            "passed": true
+          },
+          {
+            "name": "withdrawnOrInvalidatedHistoryCannotBeForgedAsFinalDecision",
+            "passed": true
+          },
+          {
+            "name": "finalHistoryRequiresAssessmentAndDuplicateClosureDoesNotCreateAnotherDecision",
+            "passed": true
+          },
+          {
+            "name": "successfulReplaySurvivesProviderOutageButRechecksPayloadAndCurrentAuthority",
+            "passed": true
+          },
+          {
+            "name": "evidenceMustBeOwnedReadyAndAftersalePurpose",
+            "passed": true
+          },
+          {
+            "name": "retainingReadPermissionDoesNotAuthorizeOldWriteReceiptReplay",
+            "passed": true
+          },
+          {
+            "name": "verifiedOrderNeedsNoPriorMerchantRejection",
+            "passed": true
+          },
+          {
+            "name": "oneActiveCaseAndOrdinaryApplicationAreMutuallyExclusiveInBothDirections",
+            "passed": true
+          }
+        ]
+      }
+    ],
+    "newSuite": {
+      "name": "com.petplatform.boot.booking.AfterSaleOptionsConflictHttpAcceptanceTest",
+      "kind": "real_http",
+      "uniqueTests": 7,
+      "compositeAcrossRounds": true,
+      "cases": [
+        {
+          "name": "finalSetMismatchRejectsBeforeEffectsMissingProofIs400AndFreshUuidCanAccept",
+          "passed": true,
+          "round": 2,
+          "xmlSha256": "10410e468a17f7b68c4a84988e74d226ab58b7005f0fb715cfbc28b5096aaccb"
+        },
+        {
+          "name": "incompleteLabelConfigurationClosesCatalogAndCreateBeforeAdmission",
+          "passed": true,
+          "round": 2,
+          "xmlSha256": "10410e468a17f7b68c4a84988e74d226ab58b7005f0fb715cfbc28b5096aaccb"
+        },
+        {
+          "name": "explicitlyClosedHttpHasNoOptionsMappingEvenWithCurrentSession",
+          "passed": true,
+          "round": 2,
+          "xmlSha256": "10410e468a17f7b68c4a84988e74d226ab58b7005f0fb715cfbc28b5096aaccb"
+        },
+        {
+          "name": "simultaneousSameVersionLoserHasDefiniteCodeNoBusinessEffectsAndWinnerReplaysOriginalReceipt",
+          "passed": true,
+          "round": 2,
+          "xmlSha256": "10410e468a17f7b68c4a84988e74d226ab58b7005f0fb715cfbc28b5096aaccb"
+        },
+        {
+          "name": "faultInjectionOfRevisionWithinSameCaseTransactionIsGenericConflictAndRollsBack",
+          "passed": true,
+          "round": 2,
+          "xmlSha256": "10410e468a17f7b68c4a84988e74d226ab58b7005f0fb715cfbc28b5096aaccb"
+        },
+        {
+          "name": "concurrentRbacMutationWaitsForCaseCommitThenBlocksOriginalSuccessReplay",
+          "passed": true,
+          "round": 2,
+          "xmlSha256": "10410e468a17f7b68c4a84988e74d226ab58b7005f0fb715cfbc28b5096aaccb"
+        },
+        {
+          "name": "authenticatedCatalogIsSortedStrictAndUsesExactlyTheNewCreateCodes",
+          "passed": true,
+          "round": 3,
+          "xmlSha256": "b5248093207c8e492ccf37b547470c6bc9b6045a86fdc32aa8c7834e233c0f8a"
+        }
+      ]
+    }
+  },
+  "authorityEvidence": {
+    "actualRbacRace": "Separate real transaction waits on AFS authz revision row; AFS commits 200, RBAC revokes next, original success UUID replay receives 403 with no new effects",
+    "revisionFaultInjection": "Revision+1 in same bound AFS transaction is explicit FAULT_INJECTION, not external RBAC commit; COMMON_CONFLICT and all effects including revision roll back",
+    "genericIdempotencyBusy": "Client preservation checked in source/injected-transport tests; no claim that revision fault injection is a real idempotency-lock race"
+  },
+  "verificationBounds": {
+    "newPagesConnectedToRealBackend": false,
+    "physicalWechatDevice": false,
+    "VIS": false,
+    "productionExternalProviders": false,
+    "productionCatalogContentsApproved": false,
+    "productionEnabled": false,
+    "newIncrementCiClaimed": false
+  }
+}

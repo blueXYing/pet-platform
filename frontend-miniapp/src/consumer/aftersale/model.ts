@@ -2,6 +2,7 @@ import { ApiError } from '../../shared/request'
 import type { WorkspaceScope } from '../../shared/workspace'
 import type { AfterSaleStatus, CaseDetail, CasePage, CommandReceipt, CreateInput, Eligibility, EvidenceInput } from '../../shared/aftersale-api'
 import { isDefiniteAfterSaleConflict } from '../../shared/aftersale-api'
+import { catalogSelectionErrors, validateCatalog, type AfterSaleCatalog, type AfterSaleCatalogPort } from './catalog'
 
 export type CreateDraft = { typeCode: string; demandCode: string; description: string; requestedAmount: string; newProblemStatement: string }
 export const emptyCreateDraft = (): CreateDraft => ({ typeCode: '', demandCode: '', description: '', requestedAmount: '', newProblemStatement: '' })
@@ -45,19 +46,21 @@ export function afterSaleMessage(error: unknown): string {
     if (error.code === 'AFTERSALE_ALREADY_ACTIVE') return '此订单已有活动售后，请查看当前工单并追加问题'
     if (error.code === 'AFTERSALE_REFUND_APPLICATION_ACTIVE') return '此订单有普通退款申请，暂不能发起售后'
     if (error.code === 'AFTERSALE_SUPPLEMENT_EXPIRED') return '本轮补证已截止，请重新读取处理进度'
-    if (error.code === 'COMMON_CONFLICT' || /IDEMPOTEN|IN_PROGRESS/.test(error.code)) return '原请求可能仍在处理，请保留当前内容并重试原操作'
+    if (error.code === 'AFTERSALE_VERSION_CONFLICT' || error.code === 'AFTERSALE_FINAL_SET_CONFLICT') return '工单状态已更新，请核对最新内容后重新提交'
+    if (error.code === 'COMMON_CONFLICT' || /IDEMPOTEN|IN_PROGRESS/.test(error.code) || error.statusCode === 429) return '原请求可能仍在处理，请保留当前内容并重试原操作'
     if (error.code === 'AFTERSALE_SUPPLEMENT_STALE') return '处理状态已更新，请重新读取后核对'
     if (error.statusCode === 410) return '图片查看授权已失效，请重新点击查看'
     if (error.statusCode === 422) return '内容或图片未通过校验，请修改后提交'
     if (error.statusCode === 404) return '工单或订单不存在，请返回重新选择'
     if (error.statusCode === 400) return '提交内容无效，请检查类型、诉求、说明及图片'
-    if (error.statusCode === 409) return '当前状态不允许操作，请重新读取核对'
+    if (error.statusCode === 409) return isDefiniteAfterSaleConflict(error) ? '当前状态不允许操作，请重新读取核对' : '原请求尚未确认，请保留当前内容并重试原操作'
     if (error.statusCode === 503) return '服务暂不可用，请稍后重试原操作'
   }
   if (error instanceof Error && error.message === 'PENDING_WRITE_CHANGED') return '上次提交结果尚未确认，请先重试原操作'
   if (error instanceof Error && error.message === 'UPLOAD_FILE_INVALID') return '请选择JPG或PNG图片，单张不超过10MiB'
   if (error instanceof Error && error.message === 'UPLOAD_FILE_CHANGED') return '已保存的上传图片发生变化，请保留当前记录并联系平台处理'
   if (error instanceof Error && error.message === 'UPLOAD_REJECTED') return '图片校验失败，请移除该图片后重新选择'
+  if (error instanceof Error && error.message === 'AFTERSALE_OPTIONS_UNAVAILABLE') return '申请选项暂不可用，请稍后重新读取'
   return '结果尚未确认，请重试原操作'
 }
 
@@ -65,6 +68,7 @@ export type ConsumerAfterSaleDeps = {
   list(query: { page: number; pageSize: number; status?: AfterSaleStatus; orderId?: string }): Promise<CasePage>
   detail(id: string): Promise<CaseDetail>
   eligibility(orderId: string): Promise<Eligibility>
+  catalog: AfterSaleCatalogPort
   create(orderId: string, input: CreateInput): Promise<CommandReceipt>
   evidence(id: string, input: EvidenceInput): Promise<CommandReceipt>
   withdraw(id: string, version: string): Promise<CommandReceipt>
@@ -73,10 +77,10 @@ export type ConsumerAfterSaleDeps = {
 export type Pending = { kind: 'create'; orderId: string; input: CreateInput } | { kind: 'evidence'; id: string; input: EvidenceInput } | { kind: 'withdraw'; id: string; version: string }
 export type AfterSaleState = Readonly<{
   phase: 'idle' | 'loading' | 'ready' | 'error' | 'unauthorized'
-  page: CasePage | null; detail: CaseDetail | null; eligibility: Eligibility | null
+  page: CasePage | null; detail: CaseDetail | null; eligibility: Eligibility | null; catalog: AfterSaleCatalog | null; createOrderId: string | null
   busy: boolean; locked: boolean; readOnly: boolean; notice: string; receipt: CommandReceipt | null
 }>
-const initialState = (): AfterSaleState => ({ phase: 'idle', page: null, detail: null, eligibility: null, busy: false, locked: false, readOnly: false, notice: '', receipt: null })
+const initialState = (): AfterSaleState => ({ phase: 'idle', page: null, detail: null, eligibility: null, catalog: null, createOrderId: null, busy: false, locked: false, readOnly: false, notice: '', receipt: null })
 
 /** A controller belongs to one mounted page and one principal. Unknown writes retain the
  * original payload; only an explicit retry resends it. The shared client journals its UUID. */
@@ -109,26 +113,39 @@ export class ConsumerAfterSaleController {
       const result = await action()
       if (this.live(epoch) && run === this.reads) this.publish({ ...this.state, ...result, phase: 'ready' })
     } catch (error) {
-      if (this.live(epoch) && run === this.reads) this.publish({ ...this.state, phase: error instanceof ApiError && error.statusCode === 401 ? 'unauthorized' : 'error', page: null, detail: null, eligibility: null, notice: afterSaleMessage(error) })
+      if (this.live(epoch) && run === this.reads) this.publish({ ...this.state, phase: error instanceof ApiError && error.statusCode === 401 ? 'unauthorized' : 'error', page: null, detail: null, eligibility: null, catalog: null, createOrderId: null, notice: afterSaleMessage(error) })
     }
   }
   loadList(page = 1, status?: AfterSaleStatus, orderId?: string) {
     return this.read(async () => ({ page: await this.deps.list({ page, pageSize: 20, ...(status ? { status } : {}), ...(orderId ? { orderId } : {}) }) }))
   }
   loadDetail(id: string, preserveNotice = false) { return this.read(async () => ({ detail: await this.deps.detail(id) }), preserveNotice) }
-  loadEligibility(orderId: string, preserveNotice = false) { return this.read(async () => ({ eligibility: await this.deps.eligibility(orderId) }), preserveNotice) }
+  loadEligibility(orderId: string, preserveNotice = false) { this.clearCreateContext(); return this.read(async () => ({ eligibility: await this.deps.eligibility(orderId) }), preserveNotice) }
+  clearCreateContext() {
+    this.reads++
+    this.publish({ ...this.state, phase: 'idle', eligibility: null, catalog: null, createOrderId: null })
+  }
+  loadCreateContext(orderId: string, preserveNotice = false, catalogPort: AfterSaleCatalogPort = this.deps.catalog) {
+    this.clearCreateContext()
+    return this.read(async () => {
+      if (!isId(orderId)) throw new Error('INVALID_ORDER')
+      const [options, eligibility] = await Promise.all([catalogPort(), this.deps.eligibility(orderId)])
+      return { catalog: validateCatalog(options), eligibility, createOrderId: orderId }
+    }, preserveNotice)
+  }
   async create(orderId: string, draft: CreateDraft, assets: string[]) {
-    if (!isId(orderId) || Object.keys(validateCreate(draft, assets)).length || !this.state.eligibility?.eligible || this.state.eligibility.activeAfterSaleId) return
+    if (!isId(orderId) || this.state.phase !== 'ready' || this.state.createOrderId !== orderId || Object.keys(validateCreate(draft, assets)).length
+      || Object.keys(catalogSelectionErrors(this.state.catalog, draft)).length || !this.state.eligibility?.eligible || this.state.eligibility.activeAfterSaleId) return
     await this.start({ kind: 'create', orderId, input: createInput(draft, assets) })
   }
   async evidence(text: string, assets: string[]) {
     const detail = this.state.detail
-    if (!detail || !activeCase(detail) || Object.keys(validateEvidence(text, assets)).length) return
+    if (this.state.phase !== 'ready' || !detail || !activeCase(detail) || Object.keys(validateEvidence(text, assets)).length) return
     await this.start({ kind: 'evidence', id: detail.afterSaleId, input: { expectedVersion: detail.version, evidenceAssetIds: [...assets], text: text || null, supplementRequestId: detail.status === 'WAITING_SUPPLEMENT' ? detail.supplementRequestId : null } })
   }
   async withdraw() {
     const detail = this.state.detail
-    if (!detail || !activeCase(detail)) return
+    if (this.state.phase !== 'ready' || !detail || !activeCase(detail)) return
     await this.start({ kind: 'withdraw', id: detail.afterSaleId, version: detail.version })
   }
   private async start(pending: Pending) {
@@ -154,12 +171,14 @@ export class ConsumerAfterSaleController {
       if (!this.live(epoch)) return
       // Exact definitive rejections can unlock edits. An idempotency conflict retains its
       // payload so the user cannot create a different operation under a new UUID.
-      const rejected = error instanceof ApiError && ([400, 422].includes(error.statusCode) || isDefiniteAfterSaleConflict(error))
-      if (error instanceof ApiError && error.statusCode === 409 && rejected) this.deps.retireConflict?.(pending.kind === 'create' ? pending.orderId : pending.id, pending.kind, error)
+      let rejected = error instanceof ApiError && [400, 422].includes(error.statusCode)
+      if (isDefiniteAfterSaleConflict(error) && this.deps.retireConflict) {
+        try { this.deps.retireConflict(pending.kind === 'create' ? pending.orderId : pending.id, pending.kind, error); rejected = true } catch { rejected = false }
+      }
       if (rejected) this.pending = null
       const unauthorized = error instanceof ApiError && error.statusCode === 401
-      this.publish({ ...this.state, ...(unauthorized ? { phase: 'unauthorized', page: null, detail: null, eligibility: null } as const : {}), busy: false, locked: !rejected, readOnly: error instanceof ApiError && error.statusCode === 403, notice: afterSaleMessage(error) })
-      if (error instanceof ApiError && error.statusCode === 409 && rejected) reread = pending.kind === 'create' ? () => this.loadEligibility(pending.orderId, true) : () => this.loadDetail(pending.id, true)
+      this.publish({ ...this.state, ...(unauthorized ? { phase: 'unauthorized', page: null, detail: null, eligibility: null, catalog: null, createOrderId: null } as const : {}), busy: false, locked: !rejected, readOnly: error instanceof ApiError && error.statusCode === 403, notice: !rejected && isDefiniteAfterSaleConflict(error) ? '原请求尚未确认，请保留内容并重试原操作' : afterSaleMessage(error) })
+      if (isDefiniteAfterSaleConflict(error)) reread = pending.kind === 'create' ? () => this.loadCreateContext(pending.orderId, true) : () => this.loadDetail(pending.id, true)
     }
     if (reread && this.live(epoch)) await reread()
   }

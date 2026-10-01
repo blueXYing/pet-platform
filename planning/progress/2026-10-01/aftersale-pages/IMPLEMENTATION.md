@@ -1,40 +1,31 @@
 # 三端售后非出款页面实施与验收
 
-2026-10-01。用户授权多角色实施并要求子代理使用Figma。基线PR98合并 `e3b846e` / CI36736110015六项成功；事实JSON位于本目录。三角色先独立工作树实现，根串行集成，独立QA反馈由唯一Owner修复。新PR仅草稿；完整C-005/M-004/A-004/QA-005不标DONE。
+2026-10-01。基线PR98合并e3b846e；用户授权多角色实现并要求子代理使用Figma，随后明确“批准”申请目录与确定冲突两项CCR。本PR交付三端页面及批准的后端/契约增量，保持草稿，完整C-005/M-004/A-004/QA-005不提前DONE。第一轮事实与失败修复完整保留在[批准前记录](IMPLEMENTATION-BEFORE-CCR.md)，最终增量见[CCR-IMPLEMENTATION](CCR-IMPLEMENTATION.md)及[独立QA](CCR-QA-HANDOFF.md)。
 
-## 实施
+## 最终实现
 
-C：本人列表、详情、真实资格和订单深链、申请视图、补证/撤回、6张JPEG/PNG私有图片、持久文件/原UUID/摘要/receipt恢复。M：每次进入与写动作重新验证当前店OWNER，冻结只读、四类意见、补证及同店持久恢复。A：指定店服务端分页及独立权限、完整P4历史人工核对、受理/补证要求/重复关闭、REJECT/RESERVICE/OTHER。五条小程序路由和当前壳/OWNER入口已接线，包检查覆盖5页四类产物。
+C：本人列表、详情、真实资格与订单深链、权威目录申请接线、补证/撤回、6张JPEG/PNG私有图片与持久原UUID恢复。M：每次进入/动作验证当前店真实OWNER、冻结只读、四类意见、补证与同店恢复。A：指定店分页及独立read/handle/decide权限、完整P4历史人工核对、受理/补证要求/重复关闭、REJECT/RESERVICE/OTHER。五条小程序路由与既有壳/OWNER入口已接线。
 
-根shared仅开放Contract51精确路由、四字段成功/失败envelope、String ID/version/money和UTC毫秒，校验列表坐标/过滤/分页与回执目标；后台主体不进命令DTO。写入持久journal必须先成功再发送，未知结果不能换键。当前端相对grant用Bearer单次二进制读取；只显示页面内私有预览，hide/scope/unmount/刷新清UI与自有文件，启动只清严格本批preview名字的遗留文件，失败删除保留拥有记录。
+后端GET /api/v1/c/aftersale-options提供同一创建校验目录的code+label，缺正式名称或配置不一致读取及新创建均失败关闭。前端只在当前会话、完整目录、对应订单资格全部有效时允许新创建，不用fixture目录兜底。两个明确版本冲突码409只代表当次命令确定未提交业务作用，匹配原快照退休后刷新并重新人工确认；幂等忙、超时、401/403/404和429保持原UUID/内容。成功原UUID重放先于当前版本/目录校验，仍重验当前动作权限。
 
-原设计节点/素材hash/取图与裁剪差异见三份HANDOFF和资产manifest。C/M实际读取Figma成功；运营无原稿。旧退款/退货规则、描述选填和3张5MB WEBP/GIF不覆盖Contract51。缺服务/客户资料不虚构，不以整页截图替代UI，不声称VIS完成。
+shared严格四字段envelope、String ID/version/money、UTC毫秒、目标回执与资源范围；未知写先持久后发，退休存储失败不丢原日志，迟到旧响应不清新命令。图片按当前会话单次grant二进制读取，只在页面内显示；隐藏/刷新/撤权清理私有预览，启动仅清严格本批名字的自有残留文件。查询重新验证期间禁写、清图片，P4旧历史核对失效。
 
-## 实际验证
+子代理实际读取C129:10572及M40:1061/1345/1500/1676并导出原素材；运营无桌面原稿，使用既有风格。原稿旧退款/退货、选填描述与图片限制按Contract51执行；缺服务/客户信息不虚构，不以截图作为页面。原稿差异/素材hash见C/M/A-HANDOFF与本地资产manifest，不声称VIS通过。
 
-| 检查 | 实际结果 |
+## 当前验证
+
+| 检查 | 当前实际结果 |
 |---|---|
-| 小程序全部Node测试 | 235 passed，0 failed/skipped |
-| 小程序TypeScript / weapp构建 | PASS，最新shared修复后typecheck与weapp构建复测通过 |
-| 包体检查 | PASS，主包约0.77MB；新售后子包约0.27MB；全部4,371,407 bytes（约4.37MB），均低于既定预算 |
-| 运营生产构建/边界/浏览器回归 | 根集成生产build与边界PASS，Playwright 63 passed / 2既有live opt-in skipped（含36项售后） |
-| 独立真实后端HTTP | AfterSaleHttpAcceptanceTest 4 + AfterSaleEvidenceHttpAcceptanceTest 3，全部0失败/错误/跳过，JDK21+隔离MySQL/Redis，详见QA-HANDOFF |
-| 契约/架构 | 文档测试127、脚本测试18、模块/持久层/DisplayStatus源门禁均通过；最终台账后复核文档 |
-| 微信模拟器 | 成功打开C index/detail/apply和M index/detail，人工看未登录/OWNER阻断与原返回图标；未连接真实后端 |
+| 小程序Node / typecheck / weapp / package | 252passed，0failed/skipped；其余PASS，总4376328B，所有包预算通过 |
+| 运营生产build / 边界 / 浏览器 | PASS；最终Playwright66passed、2既有live opt-in skipped |
+| Java21 offline单元/配置/边界 | 41passed、0失败/错误/跳过；根复核XML摘要见ccr-unit-summary.json |
+| 契约/架构 | 文档129passed、smoke114ops/24AFS/69writes；脚本18与模块/持久层/DisplayStatus门禁PASS |
+| 独立真实后端回归 | 37个唯一用例通过：14真实HTTP+23真实域数据库，无最终失败/跳过；分轮30+6+1，原失败及准确源边界见CCR-QA-HANDOFF/ccr-http-summary.json，不称单次Maven全绿 |
 
-已有webpack单个大素材/字体warning仍存在；已跑总包/子包预算检查，不当成新代码构建失败。最初预览缓存工具的USER_DATA_PATH类型可选错误已加明确运行环境校验并复测TypeScript通过。模拟器游客AppID报APPID_ERROR，临时复用用户已有本机AppID后打开成功，收尾恢复配置；automation_runtime_info超时，不隐瞒为交互通过。截图149×321不作VIS或三档视窗验收。所有实际图和原始运行日志仅本地产物，未提交敏感内容。
+第一轮旧模拟器实际打开5个入口并查看未登录/OWNER阻断，但没有走本批目录的新页面真实后台联调。原游客AppID启动失败与runtime_info超时均披露在批准前记录；临时使用用户本机AppID后已恢复配置。截图149×321不能替代三档视窗、物理真机或叠图VIS。构建既有大素材/字体与Vite兼容warning仍存在，实际预算/构建通过。
 
-根首次调用运营边界检查时尚未生成dist，报ENOENT；按顺序执行生产build后边界复测PASS，未通过修改业务代码掩盖顺序错误。运营持久命令使用localStorage，仅存当前operator/店/case绑定的原内容与UUID；后端真实会话+列表资源证明+卷宗重读后才可恢复，令牌/图片/grant不持久化。覆盖关闭浏览器context后带同源持久状态重新鉴权、存储故障、同case迟到旧ACK不删新未知命令。
+## 遗留范围与回滚
 
-## QA反馈与修复
+两项CCR已获批准、实现并通过相关验证，不再以缺契约为由禁用已完整配置的申请入口；具体生产目录内容及环境启用仍不在本次授权内。无SSOT、Schema、Event、Scheduler变化，Contract50/51、Internal07、HTTP10、OpenAPI11、Error12变化已明确披露。公开资金、STAFF、全局运营聚合、REF-001、通知送达、积分券评价未扩大实现。
 
-修复未知命令被401/登录清除、pending引用可修改、错误400envelope误退休、返回错误目标回执、JS正则末尾换行、COMMON_CONFLICT/429误当确定CAS、上传临时文件丢失及receipt到草稿中间故障、原生图库缓存、隐藏/刷新/撤权迟到图片、进程中断后旧预览残留。对应测试覆盖真实typed client/生产浏览器传输或持久文件故障，不用实现镜像测试冒充后端验收。
-
-## 遗留依赖与范围
-
-1. `CCR-AFS-PAGE-OPTIONS-001`尚未获批：生产目录port返回null，真实创建禁用；不硬编码测试字典。本人列表/补证/撤回及M/A既有处理可用。
-2. `CCR-AFS-CONFLICT-001`尚未冻结：COMMON_CONFLICT兼用真实CAS/finalSet变化与幂等争锁忙，保留原UUID避免未知重复；真实CAS可能长期锁旧版本，不能宣称已完成安全编辑恢复。
-3. 两套真实HTTP回归是既有后端验收，未调用本批页面；浏览器使用明确合同fixture。真正三端页面联合闭环、真机、三档窗口、叠图/字体VIS与相关稿件裁剪评审仍未完成。
-4. 无后端/SSOT/正式Contract/Schema/Event/Scheduler变化，不包含STAFF、跨店全局运营、资金决定、REF-001、通知送达或积分券评价。所有生产开关保持原值。原桌面用户文件保持原样。
-
-回滚：未部署，可回退本PR前端提交；无需数据库回滚。未知命令journal保留原JSON/UUID，不自动重放；目录和新错误码未实现，不存在依赖迁移。
+页面真实三端联合闭环、物理真机、三档窗口及字体/叠图VIS仍未验收，完整Issue不标DONE。生产开关与用户原桌面文件保持原样；PR不自动合入develop/main。无需数据库迁移，可一起回退本批后端、契约及客户端提交；旧后端缺目录仍禁新申请、通用冲突保留原键，持久未知意图不自动发送或擦除。当前最终head CI独立于前一版本六项成功。

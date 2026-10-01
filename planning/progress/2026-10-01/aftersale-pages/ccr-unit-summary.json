@@ -1,0 +1,34 @@
+[
+  {
+    "name": "com.petplatform.aftersale.biz.application.AfterSaleCatalogTest",
+    "tests": 3,
+    "failures": 0,
+    "errors": 0,
+    "skipped": 0,
+    "sha256": "c35830f9c28b3090a36b8dba55fac59ed673df488adef158bf297219503a7f29"
+  },
+  {
+    "name": "com.petplatform.aftersale.biz.application.AfterSaleBoundaryTest",
+    "tests": 8,
+    "failures": 0,
+    "errors": 0,
+    "skipped": 0,
+    "sha256": "9d3c4287da5a04a90c73f6b8be22cddbf13339f5a87b95fc889f061b6217dfbf"
+  },
+  {
+    "name": "com.petplatform.boot.adapter.web.aftersale.AfterSaleOptionsHttpTest",
+    "tests": 4,
+    "failures": 0,
+    "errors": 0,
+    "skipped": 0,
+    "sha256": "28f60947b8864540f5287078581f49bb8ca8acd41388ad071160666506a7b1ec"
+  },
+  {
+    "name": "com.petplatform.boot.config.AfterSaleWorkflowConfigurationTest",
+    "tests": 26,
+    "failures": 0,
+    "errors": 0,
+    "skipped": 0,
+    "sha256": "6c83e5aee3551096d749564aa3351376e517ea208f42f7f4714cb0ac524dd110"
+  }
+]

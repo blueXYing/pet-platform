@@ -393,6 +393,76 @@ test('A-004 409 reloads authoritative version and clears the old decision confir
   expect(calls.filter(c => c.path === ROOT && c.method === 'GET')).toHaveLength(2);
 });
 
+test('A-004 definitive version conflict retires the rejected UUID and requires a freshly confirmed command', async ({ page }) => {
+  const calls = captures(page); let version = '4'; let writes = 0;
+  await page.route('**/api/v1/admin/aftersales**', route => {
+    const path = new URL(route.request().url()).pathname;
+    if (path === '/api/v1/admin/aftersales') return route.fulfill(envelope({ page: 1, pageSize: 20, total: 1, items: [summary('PROCESSING', version)] }));
+    if (path.endsWith('/decisions')) {
+      writes++;
+      if (writes === 1) { version = '5'; return route.fulfill(failed('AFTERSALE_VERSION_CONFLICT', 409)); }
+      return route.fulfill(envelope(receipt('RESOLVED', '6')));
+    }
+    return route.fulfill(envelope(detail('PROCESSING', version)));
+  });
+  await signIn(page); await openCase(page); await fillBusiness(page, 'decisions');
+  await expect(page.getByRole('alert')).toContainText('重新核对');
+  await expect(page.getByRole('button', { name: '重试原操作' })).toHaveCount(0);
+  await expect(page.getByLabel('终局原因', { exact: true })).toHaveValue('');
+  await expect(page.getByLabel('确认基于双方证据作出最终处理')).not.toBeChecked();
+  await expect(page.getByRole('button', { name: '提交最终决定' })).toBeDisabled();
+  expect(writes).toBe(1);
+  expect(await page.evaluate(() => Object.keys(localStorage).filter(key => key.startsWith('pet.admin.aftersale.command.v1:')))).toEqual([]);
+  await fillBusiness(page, 'decisions');
+  await expect.poll(() => writes).toBe(2);
+  const sent = calls.filter(call => call.path.endsWith('/decisions'));
+  expect(sent[0].body).toMatchObject({ expectedVersion: '4' });
+  expect(sent[1].body).toMatchObject({ expectedVersion: '5' });
+  expect(sent[1].requestId).not.toBe(sent[0].requestId);
+});
+
+test('A-004 definitive final-set conflict discards old historical checks before a new accept command', async ({ page }) => {
+  const calls = captures(page); let changed = false; let writes = 0;
+  const newerPrior = '9007199254741001'; const nextHash = 'b'.repeat(64);
+  await page.route('**/api/v1/admin/aftersales**', route => {
+    const path = new URL(route.request().url()).pathname;
+    if (path === '/api/v1/admin/aftersales') return route.fulfill(envelope({ page: 1, pageSize: 20, total: 1, items: [summary('PENDING', '8')] }));
+    if (path.endsWith('/accept')) {
+      writes++;
+      if (writes === 1) { changed = true; return route.fulfill(failed('AFTERSALE_FINAL_SET_CONFLICT', 409)); }
+      return route.fulfill(envelope(receipt('PROCESSING', '9')));
+    }
+    if (path === ROOT) return route.fulfill(envelope({ ...detail('PENDING', '8', true), finalSetVersion: changed ? nextHash : HASH, priorFinalCaseIds: changed ? [...PRIOR, newerPrior] : PRIOR }));
+    const historicalId = [...PRIOR, newerPrior].find(id => path.endsWith(`/${id}`));
+    if (historicalId) return route.fulfill(envelope({ ...detail('RESOLVED', '3'), afterSaleId: historicalId, decisionType: 'OTHER', decisionReason: '经人工处理完成的历史服务问题。' }));
+    return route.fulfill(failed('COMMON_NOT_FOUND', 404));
+  });
+  await signIn(page); await openCase(page);
+  async function review(count: number) {
+    await page.getByRole('button', { name: '读取历史终局' }).click();
+    const checks = page.getByLabel('已核对这笔终局及当前新问题说明');
+    await expect(checks).toHaveCount(count);
+    for (const check of await checks.all()) await check.check();
+    await page.getByLabel('新问题核对意见').fill('逐笔核对当前全部历史终局，确认属于新的问题。');
+    await page.getByLabel('确认问题符合受理条件，已有终局时确属新问题').check();
+  }
+  await review(2); await page.getByRole('button', { name: '受理工单' }).click();
+  await expect(page.getByRole('alert')).toContainText('重新核对');
+  await expect(page.getByRole('button', { name: '重试原操作' })).toHaveCount(0);
+  await expect(page.getByLabel('已核对这笔终局及当前新问题说明')).toHaveCount(0);
+  await expect(page.getByLabel('新问题核对意见')).toHaveValue('');
+  await expect(page.getByLabel('确认问题符合受理条件，已有终局时确属新问题')).not.toBeChecked();
+  await expect(page.getByRole('button', { name: '受理工单' })).toBeDisabled();
+  expect(writes).toBe(1);
+  await review(3); await page.getByRole('button', { name: '受理工单' }).click();
+  await expect.poll(() => writes).toBe(2);
+  const sent = calls.filter(call => call.path.endsWith('/accept'));
+  expect(sent[0].body).toMatchObject({ expectedVersion: '8', expectedFinalSetVersion: HASH });
+  expect(sent[1].body).toMatchObject({ expectedVersion: '8', expectedFinalSetVersion: nextHash });
+  expect(sent[1].requestId).not.toBe(sent[0].requestId);
+  expect(calls.some(call => call.path.endsWith(`/${newerPrior}`))).toBe(true);
+});
+
 test('A-004 private evidence uses only current-route grant and bearer GET, then revokes blob URL', async ({ page }) => {
   const calls = captures(page);
   await page.addInitScript(() => { const revoked: string[] = []; const original = URL.revokeObjectURL; URL.revokeObjectURL = value => { revoked.push(value); original(value); }; Object.assign(window, { evidenceRevoked: revoked }); });
@@ -461,9 +531,10 @@ test('A-004 API preserves unknown supplement UUID past its deadline and invalida
   expect(result.captured).toHaveLength(2); expect(result.captured[1]).toEqual(result.captured[0]); expect(result.unresolved).toBe(false); expect(result.stale).toBe('STALE_CONTEXT');
 });
 
-test('A-004 two clients cannot let a late original ACK retire a newer unknown command', async ({ page }) => {
+for (const completion of ['receipt', 'version-conflict'] as const) {
+test(`A-004 two clients cannot let a late original ${completion} retire a newer unknown command`, async ({ page }) => {
   await page.goto('http://127.0.0.1:4173/');
-  const result = await page.evaluate(async ({ caseId, merchantId, storeId, caseSummary, caseDetail, ack }) => {
+  const result = await page.evaluate(async ({ caseId, merchantId, storeId, caseSummary, caseDetail, ack, completion }) => {
     const path = '/src/api/aftersales.ts'; const { createAfterSaleClient } = await import(path) as typeof import('../src/api/aftersales');
     const read = (request: Request) => Response.json({ code: 'SUCCESS', message: 'ok', data: new URL(request.url).pathname === '/api/v1/admin/aftersales' ? { page: 1, pageSize: 20, total: 1, items: [caseSummary] } : caseDetail, traceId: 'two-clients' });
     let finishOld!: (r: Response) => void;
@@ -472,11 +543,15 @@ test('A-004 two clients cannot let a late original ACK retire a newer unknown co
     const fast = createAfterSaleClient(async request => { if (request.method === 'GET') return read(request); writes++; if (writes === 1) return Response.json({ code: 'SUCCESS', message: 'ok', data: ack, traceId: 'two-clients' }); throw new TypeError('new command ACK lost'); });
     for (const client of [slow, fast]) { client.resetContext('test-token'); client.bindIdentity('901'); await client.list({ merchantId, storeId, page: 1, pageSize: 20 }); await client.get(caseId); }
     const original: PendingIntent = { caseId, action: 'accept', requestId: crypto.randomUUID(), label: 'original', body: { expectedVersion: '0' } };
-    const late = slow.send(original); await fast.send(fast.pending(caseId)!);
+    const late = slow.send(original).then(() => 'ACK', error => (error as Error).message); await fast.send(fast.pending(caseId)!);
     const newer: PendingIntent = { caseId, action: 'decisions', requestId: crypto.randomUUID(), label: 'newer', body: { expectedVersion: '1', decisionType: 'OTHER', reason: '先前回执已确认，此处为新的终局处理', refundAmount: null } };
     try { await fast.send(newer); } catch { /* unknown newer request remains */ }
-    const before = fast.pending(caseId); finishOld(Response.json({ code: 'SUCCESS', message: 'ok', data: ack, traceId: 'two-clients' })); await late;
-    return { before, afterSlow: slow.pending(caseId), afterFast: fast.pending(caseId), newer };
-  }, { caseId: CASE, merchantId: MERCHANT, storeId: STORE, caseSummary: summary(), caseDetail: detail(), ack: receipt('PROCESSING', '1') });
+    const before = fast.pending(caseId);
+    finishOld(completion === 'receipt' ? Response.json({ code: 'SUCCESS', message: 'ok', data: ack, traceId: 'two-clients' }) : Response.json({ code: 'AFTERSALE_VERSION_CONFLICT', message: 'stale comparison', data: null, traceId: 'two-clients' }, { status: 409 }));
+    const lateOutcome = await late;
+    return { before, afterSlow: slow.pending(caseId), afterFast: fast.pending(caseId), newer, lateOutcome };
+  }, { caseId: CASE, merchantId: MERCHANT, storeId: STORE, caseSummary: summary(), caseDetail: detail(), ack: receipt('PROCESSING', '1'), completion });
   expect(result.before).toEqual(result.newer); expect(result.afterSlow).toEqual(result.newer); expect(result.afterFast).toEqual(result.newer);
+  expect(result.lateOutcome).toBe(completion === 'receipt' ? 'ACK' : 'AFTERSALE_VERSION_CONFLICT');
 });
+}
