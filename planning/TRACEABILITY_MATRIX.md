@@ -116,3 +116,14 @@ EPIC-19/ST-CS-01仅为原人工客服承载追踪，未生成新实现Issue，�
 | MER-001 | BLOCKED | PLANNED | OD-W0-002 已 RESOLVED（PR47，SSOT §26）；可派发 |
 
 其余 Issue 维持 BLOCKED（真实前置未解除）。本次刷新不改任何 Allowed/AC/Tests 本体，不等于开发派发或验收通过声明。
+
+### 2026-10-01 售后页面非出款子切片
+
+| 上位依据 | 能力/Issue | 测试与边界 |
+|---|---|---|
+| SSOT §40 / PRD31 / Contract51；C PRD5.1.27~28 | 本人售后读取、资格、补证/撤回；C-005子切片 | consumer model/upload及shared HTTP/未知请求/私有文件测试；目录CCR未批准，真实创建禁用 |
+| 同上；商家PRD5.3 / 前端v0.7及验收21 | 当前店真实OWNER卷宗/意见/补证；M-004子切片 | merchant controller/repository隔离和持久恢复测试；不含STAFF/第三方核销 |
+| 同上；运营PRD6.7.1~3 / SSOT §24 | 指定店读取、P4人工核对、三种非退款决定；A-004子切片 | 生产React App Playwright HTTP fixture；不代替真实页面联合闭环/资金终裁/运营桌面原稿 |
+| 技术基线20 / 验收补充21 | QA-005相关子切片 / VIS差异登记 | 既有真实HTTP与私有证据7项回归、5个模拟器入口；真机/页面联合闭环/三档窗口/VIS未验收 |
+
+完整Issue状态不因未合并子切片改变。具体结果、修复及两项CCR见[实施记录](progress/2026-10-01/aftersale-pages/IMPLEMENTATION.md)和[独立QA](progress/2026-10-01/aftersale-pages/QA-HANDOFF.md)。
