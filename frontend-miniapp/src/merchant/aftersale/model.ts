@@ -5,6 +5,12 @@ export const statusText: Record<AfterSaleStatus, string> = {
   PENDING: '待受理', PROCESSING: '处理中', WAITING_SUPPLEMENT: '待补证',
   RESOLVED: '已裁决', INVALIDATED: '已失效', WITHDRAWN: '已撤回', CLOSED: '已关闭',
 }
+/** WXSS attribute selectors never match: Taro 4.1.5 drops dynamic data-* from wxml, so state variants must be class names. */
+export function statusTagClass(status: AfterSaleStatus): string {
+  if (status === 'RESOLVED') return 'mas-tag mas-tag-resolved'
+  if (status === 'INVALIDATED' || status === 'WITHDRAWN' || status === 'CLOSED') return 'mas-tag mas-tag-closed'
+  return 'mas-tag'
+}
 export const opinionOptions = [
   { code: 'AGREE', label: '同意用户意见' }, { code: 'PARTLY_AGREE', label: '部分同意' },
   { code: 'DISAGREE', label: '不同意' }, { code: 'NEED_USER_SUPPLEMENT', label: '需用户补证' },
@@ -51,3 +57,13 @@ export const decisionText: Record<string, string> = {
   REJECT: '驳回申请', RESERVICE: '重新服务（人工安排）', OTHER: '其他处理',
   FULL_REFUND: '全额退款', PARTIAL_REFUND: '部分退款',
 }
+/** Mirrors pet.aftersale.type-labels / demand-labels in aftersale-catalog.yml (final C PRD §5.1.28 / M §5.10);
+ *  unknown codes fall back to the raw code — labels are never invented client-side. */
+const typeLabels: Record<string, string> = {
+  FEE_DISPUTE: '费用争议', NON_PERFORMANCE: '未履约', OTHER: '其他', PET_SAFETY: '宠物安全', SERVICE_QUALITY: '质量问题',
+}
+const demandLabels: Record<string, string> = {
+  APOLOGY: '道歉', OTHER: '其他', PARTIAL_COMPENSATION: '部分补偿', REFUND: '退款', RESERVICE: '重新服务',
+}
+export function typeLabel(code: string): string { return typeLabels[code] ?? code }
+export function demandLabel(code: string): string { return demandLabels[code] ?? code }

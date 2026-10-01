@@ -1,7 +1,7 @@
 import { Button, Image, ScrollView, Text, Textarea, View } from '@tarojs/components'
 import Taro, { useRouter } from '@tarojs/taro'
 import { useEffect, useState } from 'react'
-import { dateText, decisionText, opinionOptions, statusText } from '../../aftersale/model'
+import { dateText, decisionText, demandLabel, opinionOptions, statusTagClass, statusText, typeLabel } from '../../aftersale/model'
 import { MerchantAfterSaleShell, MerchantAfterSaleState, useMerchantAfterSale } from './page'
 
 /** Figma detail 40:1345 and reply sheet 40:1500; no merchant decision/refund command. */
@@ -36,15 +36,15 @@ export default function MerchantAfterSaleDetail() {
       <ScrollView className='mas-detail' scrollY enhanced showScrollbar={false}>
         {state.frozen && <View className='mas-alert'>商家或门店已冻结，当前只能查看工单和证据。</View>}
         <View className='mas-detail-card'>
-          <View className='mas-line'><Text className='mas-tag' data-status={detail.status}>{statusText[detail.status]}</Text><Text className='mas-date'>工单 {detail.afterSaleId}</Text></View>
+          <View className='mas-line'><Text className={statusTagClass(detail.status)}>{statusText[detail.status]}</Text><Text className='mas-date'>工单 {detail.afterSaleId}</Text></View>
           <Text className='mas-heading'>订单 {detail.orderId}</Text>
           <Text className='mas-type'>申请于 {dateText(detail.createdAt)}</Text>
           <View className='mas-amount-row'><Text>用户诉求金额</Text><Text className='mas-amount'>{detail.requestedAmount === null ? '未填写' : `¥${detail.requestedAmount}`}</Text></View>
         </View>
         <View className='mas-detail-card'>
           <Text className='mas-section-title'>申请信息</Text>
-          <View className='mas-field'><Text>问题类型</Text><Text>{detail.typeCode}</Text></View>
-          <View className='mas-field'><Text>用户诉求</Text><Text>{detail.demandCode}</Text></View>
+          <View className='mas-field'><Text>问题类型</Text><Text>{typeLabel(detail.typeCode)}</Text></View>
+          <View className='mas-field'><Text>用户诉求</Text><Text>{demandLabel(detail.demandCode)}</Text></View>
           <View className='mas-field'><Text>发起窗口截止</Text><Text>{dateText(detail.deadline)}</Text></View>
         </View>
         <View className='mas-detail-card'>
@@ -94,7 +94,7 @@ export default function MerchantAfterSaleDetail() {
           <Text className='mas-sheet-title'>{sheet === 'opinion' ? '商家意见' : '补充证据'}</Text>
           <Text className='mas-sheet-description'>{state.pending ? '上次提交结果待确认，按原内容重试。' : '说明相关事实，平台将结合双方意见和证据处理。'}</Text>
           {sheet === 'opinion' && <View className='mas-opinions'>{opinionOptions.map(option => <Button key={option.code} id={`mas-opinion-${option.code}`} disabled={locked}
-            className='mas-opinion-choice' data-selected={state.draft.opinionCode === option.code ? 'true' : 'false'} onClick={() => controller.setDraft({ opinionCode: option.code })}>{option.label}</Button>)}</View>}
+            className={`mas-opinion-choice${state.draft.opinionCode === option.code ? ' mas-opinion-choice-selected' : ''}`} onClick={() => controller.setDraft({ opinionCode: option.code })}>{option.label}</Button>)}</View>}
           <Textarea id='mas-reply-text' className='mas-textarea' value={state.draft.text} maxlength={500} disabled={locked} autoHeight={false}
             placeholder={sheet === 'opinion' ? '请填写意见说明（10至500字）' : '请填写补证说明（10至500字）或上传图片'} onInput={event => controller.setDraft({ text: event.detail.value })} />
           <Text className='mas-text-count'>{state.draft.text.length}/500</Text>

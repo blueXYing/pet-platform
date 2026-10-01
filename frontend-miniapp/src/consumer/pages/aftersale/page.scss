@@ -11,7 +11,7 @@
 .afs-page .afs-back { display: flex; align-items: center; justify-content: flex-start; width: calc(var(--afs-unit) * 11); height: calc(var(--afs-unit) * 40); padding: 0; background: transparent; }
 /* Figma SVG root dimensions are preserved. The original mirrored layer is applied at its callsite. */
 .afs-back-icon { width: calc(var(--afs-unit) * 8.85754); height: calc(var(--afs-unit) * 14.5227); transform: scaleY(-1); }
-.afs-body { display: flex; flex-direction: column; gap: calc(var(--afs-unit) * 17.539); padding: calc(var(--afs-unit) * 17) calc(var(--afs-unit) * 12.51) calc(var(--afs-unit) * 30); }
+.afs-body { display: flex; flex-direction: column; gap: calc(var(--afs-unit) * 17.539); padding: calc(var(--afs-unit) * 17) calc(var(--afs-unit) * 13.506) calc(var(--afs-unit) * 30) calc(var(--afs-unit) * 12.506); }
 .afs-card { display: flex; flex-direction: column; padding: calc(var(--afs-unit) * 18.635); border: calc(var(--afs-unit) * 1.096) solid #c0ecff; border-radius: calc(var(--afs-unit) * 13.154); background: #fff; overflow: hidden; }
 .afs-heading { display: block; padding-bottom: calc(var(--afs-unit) * 13.154); font-size: calc(var(--afs-unit) * 15.346); font-weight: 500; line-height: calc(var(--afs-unit) * 21.923); }
 .afs-hint { display: block; color: #577683; font-size: calc(var(--afs-unit) * 12.058); line-height: calc(var(--afs-unit) * 19.594); }
