@@ -18,7 +18,7 @@ export class AfterSaleEvidenceUpload {
     const saved = this.store.get(this.key())
     if (!saved) return null
     const v = object(saved)
-    if (v.ownerUserId !== this.client.api.currentSession?.userId || !/^[a-f0-9-]{36}$/.test(v.requestId) || typeof v.filePath !== 'string' || !this.files.owns(v.filePath, v.requestId) || !/^[a-f0-9]{64}$/.test(v.sha256) || !Number.isSafeInteger(v.bytes) || v.bytes < 1 || v.bytes > 10485760) throw new Error('UPLOAD_JOURNAL_INVALID')
+    if (v.ownerUserId !== this.client.api.currentSession?.userId || !/^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}(?![\s\S])/.test(v.requestId) || typeof v.filePath !== 'string' || !this.files.owns(v.filePath, v.requestId) || !/^[a-f0-9]{64}(?![\s\S])/.test(v.sha256) || !Number.isSafeInteger(v.bytes) || v.bytes < 1 || v.bytes > 10485760) throw new Error('UPLOAD_JOURNAL_INVALID')
     return { ownerUserId: id(v.ownerUserId), requestId: v.requestId, filePath: v.filePath, sha256: v.sha256, bytes: v.bytes, attempted: v.attempted !== false, rejected: v.rejected === true, ...(v.receipt ? { receipt: decodePrivateAsset(v.receipt) } : {}) }
   }
   upload(): Promise<PrivateAssetReceipt | null> {
@@ -32,7 +32,7 @@ export class AfterSaleEvidenceUpload {
         if (!selected) return null
         const requestId = await this.client.api.uuid(); ticket.assertCurrent()
         const fingerprint = await this.files.inspect(selected); ticket.assertCurrent()
-        if (!/^[a-f0-9]{64}$/.test(fingerprint.sha256) || !Number.isSafeInteger(fingerprint.bytes) || fingerprint.bytes < 1 || fingerprint.bytes > 10485760) throw new Error('UPLOAD_FILE_INVALID')
+        if (!/^[a-f0-9]{64}(?![\s\S])/.test(fingerprint.sha256) || !Number.isSafeInteger(fingerprint.bytes) || fingerprint.bytes < 1 || fingerprint.bytes > 10485760) throw new Error('UPLOAD_FILE_INVALID')
         const filePath = await this.files.save(selected, requestId)
         try { ticket.assertCurrent(); this.store.set(key, { ownerUserId: ticket.context.userId, requestId, filePath, ...fingerprint, attempted: false }) }
         catch (error) { await this.files.remove(filePath); throw error }

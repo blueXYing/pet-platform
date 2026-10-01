@@ -49,7 +49,7 @@ test('merchant queries bind current store while command DTO carries no client id
   await assert.rejects(h.api.request({ path: '/api/v1/merchant/aftersales/301/decisions', method: 'POST', requestId: randomUUID(), data: {} }, x => x), /INVALID_PATH/)
 })
 test('409 CAS retires only definite rejection; idempotency conflict remains pending', async () => {
-  let code = 'COMMON_CONFLICT'; const h = setup(async () => ({ statusCode: 409, data: { code, message: 'conflict', data: null, traceId: 't' } })); await h.api.restore()
+  let code = 'AFTERSALE_SUPPLEMENT_STALE'; const h = setup(async () => ({ statusCode: 409, data: { code, message: 'conflict', data: null, traceId: 't' } })); await h.api.restore()
   let error: unknown; try { await h.client.withdraw('301', '0') } catch (e) { error = e }
   h.client.retireConflict('301', 'withdraw', error); assert.equal(h.client.pending('301', 'withdraw'), undefined)
   code = 'COMMON_IDEMPOTENCY_CONFLICT'; try { await h.client.withdraw('301', '0') } catch (e) { error = e }

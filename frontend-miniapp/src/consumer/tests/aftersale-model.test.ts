@@ -83,7 +83,7 @@ test('CAS/supplement conflicts retire definite request then reread the latest ve
   assert.deepEqual(retired, ['501:evidence']); assert.equal(reads, 2); assert.equal(h.controller.getSnapshot().detail?.version, '1'); assert.equal(h.controller.getSnapshot().locked, false)
 })
 test('idempotency in-progress/conflict is kept locked instead of rotating request IDs', async () => {
-  for (const code of ['IDEMPOTENCY_KEY_CONFLICT', 'IDEMPOTENCY_IN_PROGRESS']) {
+  for (const code of ['COMMON_CONFLICT', 'IDEMPOTENCY_KEY_CONFLICT', 'IDEMPOTENCY_IN_PROGRESS']) {
     let retires = 0
     const h = setup({ withdraw: async () => { throw new ApiError(code, 409) }, retireConflict: () => { retires++ } })
     await h.controller.loadDetail('501'); await h.controller.withdraw()

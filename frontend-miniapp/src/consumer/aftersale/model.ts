@@ -1,11 +1,12 @@
 import { ApiError } from '../../shared/request'
 import type { WorkspaceScope } from '../../shared/workspace'
 import type { AfterSaleStatus, CaseDetail, CasePage, CommandReceipt, CreateInput, Eligibility, EvidenceInput } from '../../shared/aftersale-api'
+import { isDefiniteAfterSaleConflict } from '../../shared/aftersale-api'
 
 export type CreateDraft = { typeCode: string; demandCode: string; description: string; requestedAmount: string; newProblemStatement: string }
 export const emptyCreateDraft = (): CreateDraft => ({ typeCode: '', demandCode: '', description: '', requestedAmount: '', newProblemStatement: '' })
 export type FieldErrors = Partial<Record<keyof CreateDraft | 'evidence' | 'text', string>>
-const idPattern = /^[1-9][0-9]{0,18}$/
+const idPattern = /^[1-9][0-9]{0,18}(?![\s\S])/
 export const isId = (value: string) => idPattern.test(value) && BigInt(value) <= 9223372036854775807n
 export function validateAssets(ids: readonly string[]): string | undefined {
   if (ids.length > 6 || new Set(ids).size !== ids.length || ids.some(value => !isId(value))) return '最多提交6张有效且不重复的图片'
@@ -19,7 +20,7 @@ export function validateCreate(draft: CreateDraft, ids: readonly string[]): Fiel
   errors.typeCode = textError(draft.typeCode, 1, 64, '问题类型')
   errors.demandCode = textError(draft.demandCode, 1, 64, '诉求')
   errors.description = textError(draft.description, 10, 500, '问题说明')
-  if (draft.requestedAmount && !/^(0|[1-9][0-9]{0,15})\.[0-9]{2}$/.test(draft.requestedAmount)) errors.requestedAmount = '金额应为两位小数字符串，例如35.00'
+  if (draft.requestedAmount && !/^(0|[1-9][0-9]{0,15})\.[0-9]{2}(?![\s\S])/.test(draft.requestedAmount)) errors.requestedAmount = '金额应为两位小数字符串，例如35.00'
   if (draft.newProblemStatement) errors.newProblemStatement = textError(draft.newProblemStatement, 10, 500, '新问题说明')
   errors.evidence = validateAssets(ids)
   return Object.fromEntries(Object.entries(errors).filter(([, value]) => value)) as FieldErrors
@@ -44,7 +45,8 @@ export function afterSaleMessage(error: unknown): string {
     if (error.code === 'AFTERSALE_ALREADY_ACTIVE') return '此订单已有活动售后，请查看当前工单并追加问题'
     if (error.code === 'AFTERSALE_REFUND_APPLICATION_ACTIVE') return '此订单有普通退款申请，暂不能发起售后'
     if (error.code === 'AFTERSALE_SUPPLEMENT_EXPIRED') return '本轮补证已截止，请重新读取处理进度'
-    if (error.code === 'AFTERSALE_SUPPLEMENT_STALE' || error.code === 'COMMON_CONFLICT') return '处理状态已更新，请重新读取后核对'
+    if (error.code === 'COMMON_CONFLICT' || /IDEMPOTEN|IN_PROGRESS/.test(error.code)) return '原请求可能仍在处理，请保留当前内容并重试原操作'
+    if (error.code === 'AFTERSALE_SUPPLEMENT_STALE') return '处理状态已更新，请重新读取后核对'
     if (error.statusCode === 410) return '图片查看授权已失效，请重新点击查看'
     if (error.statusCode === 422) return '内容或图片未通过校验，请修改后提交'
     if (error.statusCode === 404) return '工单或订单不存在，请返回重新选择'
@@ -152,7 +154,7 @@ export class ConsumerAfterSaleController {
       if (!this.live(epoch)) return
       // Exact definitive rejections can unlock edits. An idempotency conflict retains its
       // payload so the user cannot create a different operation under a new UUID.
-      const rejected = error instanceof ApiError && ([400, 401, 403, 404, 422].includes(error.statusCode) || (error.statusCode === 409 && !/IDEMPOTEN|IN_PROGRESS/.test(error.code)))
+      const rejected = error instanceof ApiError && ([400, 401, 403, 404, 422].includes(error.statusCode) || isDefiniteAfterSaleConflict(error))
       if (error instanceof ApiError && error.statusCode === 409 && rejected) this.deps.retireConflict?.(pending.kind === 'create' ? pending.orderId : pending.id, pending.kind, error)
       if (rejected) this.pending = null
       const unauthorized = error instanceof ApiError && error.statusCode === 401
