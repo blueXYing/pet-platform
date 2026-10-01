@@ -18,7 +18,7 @@ export function isAfterSalePath(spec: RequestSpec): boolean {
     if (!base[2]) return spec.method === 'GET'
     if (!base[3]) return spec.method === 'GET'
     if (spec.method !== 'POST') return false
-    return base[3] !== 'withdraw' || base[1] === 'c'
+    return (base[3] !== 'withdraw' || base[1] === 'c') && (base[3] !== 'opinion' || base[1] === 'merchant')
   }
   return /^\/api\/v1\/c\/orders\/[1-9][0-9]{0,18}\/aftersale-eligibility$/.test(spec.path) && spec.method === 'GET'
     || /^\/api\/v1\/c\/orders\/[1-9][0-9]{0,18}\/aftersales$/.test(spec.path) && spec.method === 'POST'
@@ -91,6 +91,7 @@ export class ConsumerApi {
     const serviceCommandPath = /^\/api\/v1\/merchant\/services(\/[1-9][0-9]{0,18}(\/online|\/offline)?)?$/.test(spec.path) &&
       ['GET', 'POST', 'PUT'].includes(spec.method)
     const afterSalePath = isAfterSalePath(spec)
+    if (/^\/api\/v1\/(c|merchant)\/aftersale/.test(spec.path) && !afterSalePath) throw new Error('INVALID_PATH')
     if (!/^\/api\/v1\/c\/[a-z0-9/-]+$/.test(spec.path) && !agreementPath && !admissionPath && !categoryPath && !serviceCommandPath && !afterSalePath) throw new Error('INVALID_PATH')
     if (spec.method !== 'GET' && !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(spec.requestId || '')) throw new Error('REQUEST_ID_REQUIRED')
     const response = await this.transport({ ...spec, headers: { 'Content-Type': 'application/json', ...(spec.requestId ? { 'X-Request-Id': spec.requestId } : {}), ...headers } })
@@ -185,6 +186,7 @@ export class ConsumerApi {
     }
   }
   async request<T>(spec: RequestSpec, decode: (data: unknown) => T): Promise<T> {
+    if (/^\/api\/v1\/(c|merchant)\/aftersale/.test(spec.path) && !isAfterSalePath(spec)) throw new Error('INVALID_PATH')
     const ticket = this.scope.capture()
     if (!this.credential || !this.currentSession || this.currentSession.userId !== ticket.context.userId) throw new ApiError('COMMON_UNAUTHORIZED', 401)
     const merchantRequest = spec.path.startsWith('/api/v1/merchant/')

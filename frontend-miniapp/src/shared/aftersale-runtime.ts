@@ -7,7 +7,7 @@ export function afterSaleClient(party: 'c' | 'merchant'): AfterSaleClient {
   const paths = new Set<string>(); let epoch = 0
   const fs = Taro.getFileSystemManager()
   const clear = () => { epoch++; for (const path of paths) { try { fs.unlinkSync(path) } catch { /* retry at next clear */ } } paths.clear() }
-  consumerApi.scope.subscribe(clear)
+  const unsubscribe = consumerApi.scope.subscribe(clear)
   return new AfterSaleClient(consumerApi, party, {
     async read(path) {
       const ticket = consumerApi.scope.capture(); const revision = epoch
@@ -20,5 +20,6 @@ export function afterSaleClient(party: 'c' | 'merchant'): AfterSaleClient {
       return local
     },
     clear,
+    dispose: unsubscribe,
   })
 }

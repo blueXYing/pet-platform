@@ -40,7 +40,7 @@ export function decodeReceipt(value: unknown): CommandReceipt { const v = exact(
 
 /** Contract51 client; no alternate identity, fixture fallback, or money decision surface. */
 export class AfterSaleClient {
-  constructor(readonly api: ConsumerApi, readonly party: 'c' | 'merchant', private images?: { read(path: string): Promise<string>; clear(): void }) {}
+  constructor(readonly api: ConsumerApi, readonly party: 'c' | 'merchant', private images?: { read(path: string): Promise<string>; clear(): void; dispose?(): void }) {}
   private root() { return `/api/v1/${this.party}/aftersales` }
   private slot(target: string, action: string) { const c = this.api.scope.capture().context; return `aftersale:${this.party}:${c.merchantId ?? ''}:${c.storeId ?? ''}:${id(target)}:${action}` }
   list(query: ListQuery = {}): Promise<CasePage> {
@@ -62,6 +62,7 @@ export class AfterSaleClient {
   pendingWrites() { const c = this.api.scope.capture().context; return this.api.pendingCommands(`aftersale:${this.party}:${c.merchantId ?? ''}:${c.storeId ?? ''}:`) }
   retireConflict(target: string, action: 'create' | 'evidence' | 'withdraw' | 'opinion', error: unknown) { if (!(error instanceof ApiError) || error.statusCode !== 409 || /IDEMPOTEN|IN_PROGRESS/.test(error.code)) throw new Error('UNCONFIRMED_WRITE'); const slot = this.slot(target, action); const command = this.api.pendingCommand(slot); if (command) this.api.retireRejectedCommand(slot, command) }
   upload(filePath: string, requestId: string): Promise<PrivateAssetReceipt> { return this.api.uploadAfterSaleEvidence({ filePath, requestId, party: this.party }) }
-  async readEvidence(caseId: string, batchId: string, assetId: string, reason: string): Promise<string> { if (!this.images) throw new Error('EVIDENCE_READ_NOT_CONNECTED'); str(reason); const value = await this.api.request({ path: `${this.root()}/${id(caseId)}/evidence-batches/${id(batchId)}/assets/${id(assetId)}/read-grants`, method: 'POST', requestId: await this.api.uuid(), data: { reason } }, x => { const v = exact(x, 'readUrl,expiresAt'); if (typeof v.readUrl !== 'string' || !new RegExp(`^/api/v1/${this.party}/aftersale-evidence-read-grants/[A-Za-z0-9_-]{43}$`).test(v.readUrl)) fail(); instant(v.expiresAt); return v.readUrl as string }); return this.images.read(value) }
+  async readEvidence(caseId: string, batchId: string, assetId: string, reason: string): Promise<string> { if (!this.images) throw new Error('EVIDENCE_READ_NOT_CONNECTED'); str(reason); const ticket = this.api.scope.capture(); const requestId = await this.api.uuid(); ticket.assertCurrent(); const value = await this.api.request({ path: `${this.root()}/${id(caseId)}/evidence-batches/${id(batchId)}/assets/${id(assetId)}/read-grants`, method: 'POST', requestId, data: { reason } }, x => { const v = exact(x, 'readUrl,expiresAt'); if (typeof v.readUrl !== 'string' || !new RegExp(`^/api/v1/${this.party}/aftersale-evidence-read-grants/[A-Za-z0-9_-]{43}$`).test(v.readUrl)) fail(); instant(v.expiresAt); return v.readUrl as string }); ticket.assertCurrent(); return this.images.read(value) }
   clearImages() { this.images?.clear() }
+  dispose() { this.images?.dispose?.(); this.clearImages() }
 }
