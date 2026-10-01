@@ -105,9 +105,14 @@ export class ConsumerApi {
   }
   private clear() {
     this.credential = null; this.currentSession = null; this.attempt = null; this.authCommand = null; this.authStep = 'idle'
-    this.pending = {}; this.writes.clear(); this.writeSpecs.clear()
+    // Unknown aftersale outcomes survive credential expiry/explicit logout. Their
+    // owner-bound slots remain inaccessible until a fresh server session is verified.
+    this.pending = Object.fromEntries(Object.entries(this.pending).filter(([slot, saved]) => slot.startsWith('aftersale:') && saved.command))
+    this.writes.clear(); this.writeSpecs.clear()
     this.scope.replace(null)
-    this.store.remove(SESSION_KEY); this.store.remove(WRITE_KEY)
+    this.store.remove(SESSION_KEY)
+    if (Object.keys(this.pending).length) this.store.set(WRITE_KEY, this.pending)
+    else this.store.remove(WRITE_KEY)
   }
   cancelLogin() { this.clear() }
   private assertRevision(revision: number) { if (revision !== this.scope.revision) throw new StaleContextError() }
@@ -243,7 +248,7 @@ export class ConsumerApi {
   }
   pendingCommand(slot: string): Command | undefined {
     const saved = this.pending[slot]
-    return saved?.userId === this.currentSession?.userId && saved?.userId === this.scope.current?.userId ? saved.command : undefined
+    return saved?.userId === this.currentSession?.userId && saved?.userId === this.scope.current?.userId && saved.command ? JSON.parse(JSON.stringify(saved.command)) as Command : undefined
   }
   /** Store-catalog reads are anonymous-browsable (user adjudication 2026-09-22 on the
    *  /c/stores contract; STR-D8 unifies all four C catalog GET routes): no credential, no

@@ -94,3 +94,34 @@ test('list rejects response coordinates, filter and paging that differ from the 
     await assert.rejects(new AfterSaleClient(h.api, 'merchant').list({ status: 'PENDING' }), /INVALID_RESPONSE/)
   }
 })
+
+test('unknown aftersale write survives 401/logout and is visible only to its freshly verified owner', async () => {
+  const values = new Map<string, unknown>()
+  const store: LocalStore = { get: key => values.get(key), set: (key, value) => { values.set(key, structuredClone(value)) }, remove: key => { values.delete(key) } }
+  let userId = '101', mode = 'lost'
+  const calls: WireRequest[] = []
+  const transport: Transport = async request => {
+    calls.push(structuredClone(request))
+    if (request.path.endsWith('/attempts')) return ok({ attemptId: '301', attemptToken: 'test-only', nextStep: 'PROVE_IDENTITY' })
+    if (request.path.endsWith('/wechat-login')) return ok({ ...session, userId, tokenType: 'Bearer', accessToken: `test-only-${userId}` })
+    if (request.path.endsWith('/auth/session')) return ok({ ...session, userId })
+    if (request.path.endsWith('/logout')) return ok({ loggedOut: true })
+    if (mode === 'expired') return { statusCode: 401, data: { code: 'COMMON_UNAUTHORIZED', message: 'expired', data: null, traceId: 't' } }
+    if (mode === 'lost') throw new Error('network')
+    return ok(receipt)
+  }
+  const api = new ConsumerApi(transport, store, async () => randomUUID()), client = new AfterSaleClient(api, 'c')
+  await api.startLogin(async () => ({ code: 'test' }))
+  await assert.rejects(client.create('401', input), /network/); const original = calls.at(-1)!
+  mode = 'expired'; await assert.rejects(client.list(), error => error instanceof ApiError && error.statusCode === 401)
+  assert.equal(api.currentSession, null)
+  mode = 'ready'; userId = '102'; await api.startLogin(async () => ({ code: 'other' }))
+  assert.equal(client.pending('401', 'create'), undefined)
+  await api.logout(); userId = '101'; await api.startLogin(async () => ({ code: 'owner' }))
+  assert.deepEqual(client.pending('401', 'create'), input)
+  const exposed = client.pending('401', 'create') as typeof input; exposed.description = '试图修改已保存请求引用的内容'
+  assert.deepEqual(client.pending('401', 'create'), input)
+  await client.create('401', input)
+  assert.deepEqual(calls.at(-1), original)
+  assert.equal(client.pending('401', 'create'), undefined)
+})
