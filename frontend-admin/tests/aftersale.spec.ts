@@ -1,5 +1,5 @@
 import { expect, test, type Page, type Route } from '@playwright/test';
-import type { CaseDetail, CaseStatus, PendingIntent } from '../src/api/aftersales';
+import type { Action, CaseDetail, CaseStatus, PendingIntent } from '../src/api/aftersales';
 
 // Contract fixtures run the real production UI/transport with intercepted HTTP.
 // These tests do not assert a live backend, migration, provider or production enablement.
@@ -24,14 +24,14 @@ function detail(status: CaseStatus = 'PENDING', version = '0', p4 = false): Case
 function receipt(status: CaseStatus, version: string) { return { commandId: '10001', orderId: ORDER, afterSaleId: CASE, status, version, occurredAt: '2026-10-01T03:00:00.000Z', evidenceBatchId: null, supplementRequestId: null, decisionId: status === 'RESOLVED' ? '10002' : null, refundOrderId: null }; }
 function envelope(data: unknown, status = 200) { return { status, json: { code: 'SUCCESS', message: 'ok', data, traceId: 'fixture-aftersale' } }; }
 function failed(code: string, status: number) { return { status, json: { code, message: code, data: null, traceId: 'fixture-aftersale-error' } }; }
-async function signIn(page: Page, actions = ACTIONS) {
+async function signIn(page: Page, actions = ACTIONS, operatorId = '901', sessionId = 's1') {
   await page.route('**/api/v1/admin/auth/**', route => {
     const path = new URL(route.request().url()).pathname;
     if (path.endsWith('/attempts')) return route.fulfill(envelope({ attemptId: '801', attemptToken: 'fixture-binding', expiresAt: '2026-10-02T02:00:00.000Z', nextStep: 'PROVE_IDENTITY' }, 201));
     if (path.endsWith('/requirements')) return route.fulfill(envelope({ requiredVerification: 'NONE' }));
-    if (path.endsWith('/login')) return route.fulfill(envelope({ sessionId: 's1', operatorId: '901', audience: 'ADMIN_WEB', tokenType: 'Bearer', accessToken: 'fixture-admin-token', expiresAt: '2026-10-02T02:00:00.000Z' }));
-    if (path.endsWith('/session')) return route.fulfill(envelope({ sessionId: 's1', operatorId: '901', audience: 'ADMIN_WEB', expiresAt: '2026-10-02T02:00:00.000Z', idleExpiresAt: '2026-10-02T01:00:00.000Z', authzVersion: 'v1' }));
-    if (path.endsWith('/permissions')) return route.fulfill(envelope({ operatorId: '901', authzVersion: 'v1', checkedAt: '2026-10-01T02:00:00.000Z', roles: ['OPERATOR'], dataScope: 'ALL', actionCodes: actions }));
+    if (path.endsWith('/login')) return route.fulfill(envelope({ sessionId, operatorId, audience: 'ADMIN_WEB', tokenType: 'Bearer', accessToken: 'fixture-admin-token', expiresAt: '2026-10-02T02:00:00.000Z' }));
+    if (path.endsWith('/session')) return route.fulfill(envelope({ sessionId, operatorId, audience: 'ADMIN_WEB', expiresAt: '2026-10-02T02:00:00.000Z', idleExpiresAt: '2026-10-02T01:00:00.000Z', authzVersion: 'v1' }));
+    if (path.endsWith('/permissions')) return route.fulfill(envelope({ operatorId, authzVersion: 'v1', checkedAt: '2026-10-01T02:00:00.000Z', roles: ['OPERATOR'], dataScope: 'ALL', actionCodes: actions }));
     return route.fulfill(envelope(null));
   });
   await page.goto('/login');
@@ -202,13 +202,187 @@ test('A-004 lost ACK survives refresh AND route unload; original payload and UUI
   expect(writes).toHaveLength(2); expect(writes[1].requestId).toBe(writes[0].requestId); expect(writes[1].body).toEqual(writes[0].body);
 });
 
+async function fillBusiness(page: Page, action: Action) {
+  if (action === 'accept') { await page.getByLabel('确认问题符合受理条件，已有终局时确属新问题').check(); await page.getByRole('button', { name: '受理工单' }).click(); }
+  if (action === 'supplement-requests') { await page.getByLabel('补证原因', { exact: true }).fill('需要本次真实服务照片'); await page.getByLabel('补证截止（UTC 毫秒）').fill('2099-10-02T12:00:00.000Z'); await page.getByRole('button', { name: '提交补证要求' }).click(); }
+  if (action === 'decisions') { await page.getByLabel('终局类型').selectOption('OTHER'); await page.getByLabel('终局原因', { exact: true }).fill('原运营未确认的处理说明，仅本人可以恢复'); await page.getByLabel('确认基于双方证据作出最终处理').check(); await page.getByRole('button', { name: '提交最终决定' }).click(); }
+  if (action === 'close-duplicate') {
+    await page.getByRole('button', { name: '读取历史终局' }).click(); await expect(page.getByLabel('已核对这笔终局及当前新问题说明')).toHaveCount(2);
+    for (const box of await page.getByLabel('已核对这笔终局及当前新问题说明').all()) await box.check();
+    await page.getByLabel('引用历史终局').selectOption(PRIOR[0]); await page.getByLabel('重复问题关闭原因').fill('重复原问题，引用第一笔原结论'); await page.getByLabel('确认本次为重复问题并引用原结论').check(); await page.getByRole('button', { name: '关闭重复问题' }).click();
+  }
+}
+for (const action of ['accept', 'supplement-requests', 'close-duplicate', 'decisions'] as const) {
+  test(`A-004 ${action} lost ACK survives full browser reload and same operator new session`, async ({ page }) => {
+    const calls = captures(page); let writes = 0;
+    const processing = action === 'supplement-requests' || action === 'decisions';
+    const initial = detail(processing ? 'PROCESSING' : 'PENDING', '4', action === 'close-duplicate');
+    await setupCases(page, initial, async route => { writes++; if (writes === 1) await route.abort('connectionreset'); else await route.fulfill(envelope(receipt(action === 'accept' ? 'PROCESSING' : action === 'supplement-requests' ? 'WAITING_SUPPLEMENT' : action === 'close-duplicate' ? 'CLOSED' : 'RESOLVED', '5'))); });
+    await signIn(page); await openCase(page); await fillBusiness(page, action); await expect(page.getByRole('alert')).toContainText('结果未知');
+    const stored = await page.evaluate(() => Object.keys(localStorage).filter(k => k.startsWith('pet.admin.aftersale.command.v1:')).map(k => ({ key: k, raw: localStorage.getItem(k)! })));
+    expect(stored).toHaveLength(1); expect(stored[0].key).toBe(`pet.admin.aftersale.command.v1:901:${MERCHANT}:${STORE}:${CASE}`); expect(stored[0].raw).not.toContain('fixture-admin-token'); expect(stored[0].raw).not.toContain('readUrl'); expect(stored[0].raw).not.toContain('blob:');
+    await page.reload(); await expect(page.getByRole('heading', { name: '运营登录' })).toBeVisible();
+    await signIn(page, ACTIONS, '901', 's2'); await expect(page.getByRole('heading', { name: '售后工单', exact: true })).toBeVisible(); expect(writes).toBe(1);
+    await openCase(page); await expect(page.getByRole('button', { name: '重试原操作' })).toBeVisible(); expect(writes).toBe(1);
+    await page.getByRole('button', { name: '重试原操作' }).click(); await expect(page.getByRole('button', { name: '重试原操作' })).toHaveCount(0);
+    const sent = calls.filter(c => c.path.endsWith(`/${action}`)); expect(sent).toHaveLength(2); expect(sent[1].requestId).toBe(sent[0].requestId); expect(sent[1].body).toEqual(sent[0].body);
+    expect(await page.evaluate(() => Object.keys(localStorage).filter(k => k.startsWith('pet.admin.aftersale.command.v1:')))).toEqual([]);
+  });
+}
+
+test('A-004 401 on an unknown command preserves the business journal through reauthentication', async ({ page }) => {
+  const calls = captures(page); let writes = 0;
+  await setupCases(page, detail('PROCESSING', '4'), async route => { writes++; if (writes === 1) await route.abort('connectionreset'); else if (writes === 2) await route.fulfill(failed('COMMON_UNAUTHORIZED', 401)); else await route.fulfill(envelope(receipt('RESOLVED', '5'))); });
+  await signIn(page); await openCase(page); await fillBusiness(page, 'decisions'); await expect(page.getByRole('button', { name: '重试原操作' })).toBeVisible();
+  await page.getByRole('button', { name: '重试原操作' }).click(); await expect(page.getByRole('heading', { name: '运营登录' })).toBeVisible();
+  await signIn(page, ACTIONS, '901', 's2'); await openCase(page); await expect(page.getByRole('button', { name: '重试原操作' })).toBeVisible(); expect(writes).toBe(2);
+  await page.getByRole('button', { name: '重试原操作' }).click(); await expect(page.getByRole('button', { name: '重试原操作' })).toHaveCount(0);
+  const sent = calls.filter(c => c.path.endsWith('/decisions')); expect(sent).toHaveLength(3); for (const call of sent) { expect(call.requestId).toBe(sent[0].requestId); expect(call.body).toEqual(sent[0].body); }
+});
+
+test('A-004 closing the browser context retains the original command in persisted origin storage', async ({ page, context, browser }) => {
+  const originalCalls = captures(page);
+  await setupCases(page, detail('PROCESSING', '4'), async route => { await route.abort('connectionreset'); });
+  await signIn(page); await openCase(page); await fillBusiness(page, 'decisions'); await expect(page.getByRole('button', { name: '重试原操作' })).toBeVisible();
+  // The saved origin state models the browser's persistent profile; no auth token
+  // or session state is persisted by the application. The next context must log in.
+  const persistedOrigin = await context.storageState();
+  expect(persistedOrigin.origins[0]?.localStorage).toHaveLength(1);
+  expect(JSON.stringify(persistedOrigin)).not.toContain('fixture-admin-token');
+  await page.close(); await context.close();
+  const restarted = await browser.newContext({ baseURL: 'http://127.0.0.1:4174', storageState: persistedOrigin });
+  try {
+    const fresh = await restarted.newPage(); const replayCalls = captures(fresh); let writes = 0;
+    await setupCases(fresh, detail('PROCESSING', '4'), async route => { writes++; await route.fulfill(envelope(receipt('RESOLVED', '5'))); });
+    await fresh.goto('/aftersales'); await expect(fresh.getByRole('heading', { name: '运营登录' })).toBeVisible();
+    await signIn(fresh, ACTIONS, '901', 'new-session'); await openCase(fresh);
+    await expect(fresh.getByRole('button', { name: '重试原操作' })).toBeVisible(); expect(writes).toBe(0);
+    await fresh.getByRole('button', { name: '重试原操作' }).click(); await expect(fresh.getByRole('button', { name: '重试原操作' })).toHaveCount(0);
+    const original = originalCalls.find(c => c.path.endsWith('/decisions'))!; const replay = replayCalls.find(c => c.path.endsWith('/decisions'))!;
+    expect(replay.requestId).toBe(original.requestId); expect(replay.body).toEqual(original.body); expect(writes).toBe(1);
+    expect(replayCalls.filter(c => c.method === 'GET' && c.path === '/api/v1/admin/aftersales')).toHaveLength(1);
+    expect(replayCalls.some(c => c.method === 'GET' && c.path === ROOT)).toBe(true);
+  } finally { await restarted.close(); }
+});
+
+test('A-004 another operator cannot see or replay the original operator journal', async ({ page }) => {
+  let writes = 0;
+  await setupCases(page, detail('PROCESSING', '4'), async route => { writes++; await route.abort('connectionreset'); });
+  await signIn(page); await openCase(page); await fillBusiness(page, 'decisions'); await expect(page.getByRole('button', { name: '重试原操作' })).toBeVisible();
+  await page.getByRole('button', { name: '退出', exact: true }).click(); await signIn(page, ACTIONS, '902', 's2'); await openCase(page);
+  await expect(page.getByRole('button', { name: '重试原操作' })).toHaveCount(0); await expect(page.getByText(/原运营未确认的处理说明，仅本人可以恢复/)).toHaveCount(0); expect(writes).toBe(1);
+  await page.getByRole('button', { name: '退出', exact: true }).click(); await signIn(page, ACTIONS, '901', 's3'); await openCase(page);
+  await expect(page.getByRole('button', { name: '重试原操作' })).toBeVisible(); await page.getByText('查看原处理内容', { exact: true }).click(); await expect(page.getByText('原处理原因：原运营未确认的处理说明，仅本人可以恢复')).toBeVisible(); expect(writes).toBe(1);
+});
+
+test('A-004 leaving the store hides its unknown write but returning restores the original command', async ({ page }) => {
+  const calls = captures(page); let writes = 0;
+  await page.route('**/api/v1/admin/aftersales**', async route => {
+    const url = new URL(route.request().url());
+    if (url.pathname === '/api/v1/admin/aftersales') return route.fulfill(envelope({ page: Number(url.searchParams.get('page')), pageSize: Number(url.searchParams.get('pageSize')), total: url.searchParams.get('storeId') === STORE ? 1 : 0, items: url.searchParams.get('storeId') === STORE ? [summary()] : [] }));
+    if (url.pathname.endsWith('/accept')) { writes++; if (writes === 1) return route.abort('connectionreset'); return route.fulfill(envelope(receipt('PROCESSING', '1'))); }
+    return route.fulfill(envelope(detail()));
+  });
+  await signIn(page); await openCase(page); await fillBusiness(page, 'accept'); await expect(page.getByRole('button', { name: '重试原操作' })).toBeVisible();
+  // Missing or malformed query scope must not inherit the old page's store proof.
+  for (const suffix of ['', `?merchantId=${MERCHANT}&storeId=%0A`]) {
+    await page.evaluate(url => { history.pushState({}, '', url); window.dispatchEvent(new PopStateEvent('popstate')); }, `/aftersales/${CASE}${suffix}`);
+    await expect(page.getByText('用户提交的本次服务现场情况和凭证。')).toBeVisible(); await expect(page.getByRole('button', { name: '重试原操作' })).toHaveCount(0); await expect(page.getByRole('button', { name: '受理工单' })).toBeDisabled();
+  }
+  await page.getByRole('link', { name: '返回售后列表' }).click(); await page.getByLabel('商家编号', { exact: true }).fill(MERCHANT); await page.getByLabel('门店编号', { exact: true }).fill(STORE); await page.getByRole('button', { name: '查询售后' }).click(); await page.getByRole('link', { name: '查看工单', exact: true }).click(); await expect(page.getByRole('button', { name: '重试原操作' })).toBeVisible();
+  await page.getByRole('link', { name: '返回售后列表' }).click(); await page.getByLabel('门店编号', { exact: true }).fill('12345'); await page.getByRole('button', { name: '查询售后' }).click();
+  await expect(page.getByText('该门店没有符合条件的售后工单。')).toBeVisible(); await expect(page.getByRole('button', { name: '重试原操作' })).toHaveCount(0);
+  // A forged deep link cannot recover the original store's payload just because case GET is authorized.
+  await page.evaluate(({ caseId, merchantId }) => { history.pushState({}, '', `/aftersales/${caseId}?merchantId=${merchantId}&storeId=12345`); window.dispatchEvent(new PopStateEvent('popstate')); }, { caseId: CASE, merchantId: MERCHANT });
+  await expect(page.getByRole('alert')).toContainText('RESOURCE_SCOPE_UNVERIFIED'); await expect(page.getByRole('button', { name: '重试原操作' })).toHaveCount(0); expect(writes).toBe(1);
+  await page.getByRole('link', { name: '返回售后列表' }).click();
+  await expect(page.getByText('该门店没有符合条件的售后工单。')).toBeVisible();
+  await page.getByLabel('门店编号', { exact: true }).fill(STORE); await page.getByRole('button', { name: '查询售后' }).click(); await page.getByRole('link', { name: '查看工单', exact: true }).click();
+  await expect(page.getByRole('button', { name: '重试原操作' })).toBeVisible(); expect(writes).toBe(1); await page.getByRole('button', { name: '重试原操作' }).click();
+  const sent = calls.filter(c => c.path.endsWith('/accept')); expect(sent).toHaveLength(2); expect(sent[1].requestId).toBe(sent[0].requestId); expect(sent[1].body).toEqual(sent[0].body);
+});
+
+test('A-004 a lost read-grant ACK is ephemeral and never stored with business journals', async ({ page }) => {
+  const calls = captures(page); let grants = 0;
+  await setupCases(page, detail(), async route => { grants++; if (grants === 1) await route.abort('connectionreset'); else await route.fulfill(envelope({ readUrl: GRANT, expiresAt: '2099-10-01T02:05:00.000Z' })); });
+  await page.route(`**${GRANT}`, route => route.fulfill({ status: 200, contentType: 'image/png', body: PNG }));
+  await signIn(page); await openCase(page); await page.getByRole('button', { name: '申请查看证据' }).click(); await expect(page.getByRole('button', { name: '重试原操作' })).toBeVisible();
+  expect(await page.evaluate(() => Object.keys(localStorage).filter(k => k.startsWith('pet.admin.aftersale.command.v1:')))).toEqual([]);
+  await page.reload(); await signIn(page, ACTIONS, '901', 's2'); await openCase(page); await expect(page.getByRole('button', { name: '重试原操作' })).toHaveCount(0); expect(grants).toBe(1);
+  await page.getByRole('button', { name: '申请查看证据' }).click(); await expect(page.getByRole('img', { name: `售后证据 ${ASSET}` })).toBeVisible();
+  const sent = calls.filter(c => c.path.endsWith('/read-grants')); expect(sent).toHaveLength(2); expect(sent[1].requestId).not.toBe(sent[0].requestId);
+});
+
+test('A-004 business POST fails closed if the durable journal cannot be written', async ({ page }) => {
+  const calls = captures(page);
+  await setupCases(page, detail('PROCESSING', '4'), async route => { await route.fulfill(envelope(receipt('RESOLVED', '5'))); });
+  await signIn(page); await openCase(page);
+  await page.evaluate(() => { const original = Storage.prototype.setItem; Storage.prototype.setItem = function (key, value) { if (key.startsWith('pet.admin.aftersale.command.v1:')) throw new Error('storage unavailable'); original.call(this, key, value); }; });
+  await fillBusiness(page, 'decisions'); await expect(page.getByRole('alert')).toContainText('JOURNAL_UNAVAILABLE');
+  expect(calls.filter(c => c.method === 'POST')).toEqual([]);
+});
+
+for (const point of ['command', 'grant', 'post-failure'] as const) {
+  test(`A-004 journal read failure at ${point} closes the page without an unhandled error`, async ({ page }) => {
+    const calls = captures(page); const errors: string[] = []; page.on('pageerror', e => errors.push(e.message));
+    const disableReads = () => page.evaluate(() => {
+      const original = Storage.prototype.getItem;
+      Object.assign(window, { restoreJournalRead: () => { Storage.prototype.getItem = original; } });
+      Storage.prototype.getItem = function (key) { if (key.startsWith('pet.admin.aftersale.command.v1:')) throw new Error('storage unavailable'); return original.call(this, key); };
+    });
+    await setupCases(page, detail('PROCESSING', '4'), async route => { await disableReads(); await route.abort('connectionreset'); });
+    await signIn(page); await openCase(page);
+    if (point !== 'post-failure') await disableReads();
+    if (point === 'grant') await page.getByRole('button', { name: '申请查看证据' }).click(); else await fillBusiness(page, 'decisions');
+    await expect(page.getByRole('alert')).toContainText('JOURNAL_UNAVAILABLE'); await expect(page.getByRole('button', { name: '提交最终决定' })).toHaveCount(0); await expect(page.getByRole('button', { name: '重试原操作' })).toHaveCount(0);
+    expect(calls.filter(c => c.method === 'POST')).toHaveLength(point === 'post-failure' ? 1 : 0); expect(errors).toEqual([]);
+    await page.evaluate(() => (window as unknown as { restoreJournalRead: () => void }).restoreJournalRead());
+    await page.getByRole('button', { name: '刷新工单' }).click(); await expect(page.getByText('用户提交的本次服务现场情况和凭证。')).toBeVisible();
+    await expect(page.getByRole('button', { name: '重试原操作' })).toHaveCount(point === 'post-failure' ? 1 : 0);
+  });
+}
+
+for (const failure of [{ code: 'COMMON_RATE_LIMITED', status: 429 }, { code: 'IDEMPOTENCY_KEY_CONFLICT', status: 409 }, { code: 'IDEMPOTENCY_IN_PROGRESS', status: 409 }, { code: 'COMMON_CONFLICT', status: 409 }]) {
+  test(`A-004 ${failure.code} retains the original UUID and blocks a replacement command`, async ({ page }) => {
+    const calls = captures(page); let writes = 0;
+    await setupCases(page, detail('PROCESSING', '4'), async route => { writes++; if (writes === 1) await route.fulfill(failed(failure.code, failure.status)); else await route.fulfill(envelope(receipt('RESOLVED', '5'))); });
+    await signIn(page); await openCase(page); await fillBusiness(page, 'decisions'); await expect(page.getByRole('button', { name: '重试原操作' })).toBeVisible(); await expect(page.getByRole('button', { name: '提交最终决定' })).toBeDisabled();
+    await page.getByRole('button', { name: '刷新工单' }).click(); await expect(page.getByRole('button', { name: '重试原操作' })).toBeVisible(); expect(writes).toBe(1);
+    await page.getByRole('button', { name: '重试原操作' }).click(); await expect(page.getByRole('button', { name: '重试原操作' })).toHaveCount(0);
+    const sent = calls.filter(c => c.path.endsWith('/decisions')); expect(sent).toHaveLength(2); expect(sent[1].requestId).toBe(sent[0].requestId); expect(sent[1].body).toEqual(sent[0].body);
+  });
+}
+
+test('A-004 manual refresh invalidates old human confirmation and reasons', async ({ page }) => {
+  await setupCases(page, detail('PENDING', '4', true)); await signIn(page); await openCase(page); await page.getByRole('button', { name: '读取历史终局' }).click(); await expect(page.getByLabel('已核对这笔终局及当前新问题说明')).toHaveCount(2);
+  for (const box of await page.getByLabel('已核对这笔终局及当前新问题说明').all()) await box.check(); await page.getByLabel('新问题核对意见').fill('已核对原历史，此处是新问题说明'); await page.getByLabel('确认问题符合受理条件，已有终局时确属新问题').check(); await expect(page.getByRole('button', { name: '受理工单' })).toBeEnabled();
+  await page.getByRole('button', { name: '刷新工单' }).click(); await expect(page.getByLabel('确认问题符合受理条件，已有终局时确属新问题')).not.toBeChecked(); await expect(page.getByLabel('新问题核对意见')).toHaveValue(''); await expect(page.getByLabel('已核对这笔终局及当前新问题说明')).toHaveCount(0); await expect(page.getByRole('button', { name: '受理工单' })).toBeDisabled();
+});
+
+for (const event of ['visibilitychange', 'pagehide'] as const) {
+  test(`A-004 ${event} clears object URLs and refuses a late binary image`, async ({ page }) => {
+    const revoked: string[] = []; let binary: Route | undefined; let reads = 0;
+    await page.addInitScript(() => { const revoked: string[] = []; const original = URL.revokeObjectURL; URL.revokeObjectURL = value => { revoked.push(value); original(value); }; Object.assign(window, { evidenceRevoked: revoked }); });
+    await setupCases(page, detail(), async route => { await route.fulfill(envelope({ readUrl: GRANT, expiresAt: '2099-10-01T02:05:00.000Z' })); });
+    await page.route(`**${GRANT}`, route => { reads++; if (reads === 1) return route.fulfill({ status: 200, contentType: 'image/png', body: PNG }); binary = route; return Promise.resolve(); });
+    await signIn(page); await openCase(page); await page.getByRole('button', { name: '申请查看证据' }).click(); const img = page.getByRole('img', { name: `售后证据 ${ASSET}` }); await expect(img).toBeVisible(); const oldUrl = await img.getAttribute('src'); revoked.push(oldUrl!);
+    await page.getByRole('button', { name: '申请查看证据' }).click(); await expect.poll(() => !!binary).toBe(true);
+    await page.evaluate(event => { if (event === 'visibilitychange') { Object.defineProperty(document, 'hidden', { configurable: true, value: true }); document.dispatchEvent(new Event('visibilitychange')); } else window.dispatchEvent(new PageTransitionEvent('pagehide')); }, event);
+    await expect(img).toHaveCount(0); await expect(page.getByText('用户提交的本次服务现场情况和凭证。')).toHaveCount(0);
+    await binary!.fulfill({ status: 200, contentType: 'image/png', body: PNG });
+    await page.evaluate(() => { Object.defineProperty(document, 'hidden', { configurable: true, value: false }); document.dispatchEvent(new Event('visibilitychange')); });
+    await expect(img).toHaveCount(0); expect(await page.evaluate(() => (window as unknown as { evidenceRevoked: string[] }).evidenceRevoked)).toContain(revoked[0]);
+    await page.getByRole('button', { name: '刷新工单' }).click(); await expect(page.getByText('用户提交的本次服务现场情况和凭证。')).toBeVisible(); await expect(img).toHaveCount(0); expect(reads).toBe(2);
+  });
+}
+
 test('A-004 409 reloads authoritative version and clears the old decision confirmation', async ({ page }) => {
   const calls = captures(page);
   let version = '4';
   await page.route('**/api/v1/admin/aftersales**', route => {
     const path = new URL(route.request().url()).pathname;
     if (path === '/api/v1/admin/aftersales') return route.fulfill(envelope({ page: 1, pageSize: 20, total: 1, items: [summary('PROCESSING', version)] }));
-    if (path.endsWith('/decisions')) { version = '5'; return route.fulfill(failed('COMMON_CONFLICT', 409)); }
+    if (path.endsWith('/decisions')) { version = '5'; return route.fulfill(failed('AFTERSALE_STATE_NOT_ALLOWED', 409)); }
     return route.fulfill(envelope(detail('PROCESSING', version)));
   });
   await signIn(page); await openCase(page); await page.getByLabel('终局原因', { exact: true }).fill('根据用户和商家的证据予以驳回'); await page.getByLabel('确认基于双方证据作出最终处理').check(); await page.getByRole('button', { name: '提交最终决定' }).click();
@@ -266,10 +440,14 @@ test('A-004 API fails closed on number IDs, bad envelope, foreign grants and sta
 
 test('A-004 API preserves unknown supplement UUID past its deadline and invalidates late image bytes', async ({ page }) => {
   await page.goto('http://127.0.0.1:4173/');
-  const result = await page.evaluate(async ({ caseId, grantUrl, ack }) => {
+  const result = await page.evaluate(async ({ caseId, grantUrl, ack, caseSummary, caseDetail }) => {
     const path = '/src/api/aftersales.ts'; const { createAfterSaleClient } = await import(path) as typeof import('../src/api/aftersales');
     const actualNow = Date.now; const started = actualNow(); let writes = 0; const captured: { id: string | null; body: unknown }[] = [];
-    const client = createAfterSaleClient(async request => { captured.push({ id: request.headers.get('X-Request-Id'), body: await request.json() }); writes++; if (writes === 1) throw new TypeError('lost ack'); return Response.json({ code: 'SUCCESS', message: 'ok', data: ack, traceId: 'test' }); }); client.resetContext('test-token');
+    const client = createAfterSaleClient(async request => {
+      if (request.method === 'GET') return Response.json({ code: 'SUCCESS', message: 'ok', data: new URL(request.url).pathname === '/api/v1/admin/aftersales' ? { page: 1, pageSize: 20, total: 1, items: [caseSummary] } : caseDetail, traceId: 'test' });
+      captured.push({ id: request.headers.get('X-Request-Id'), body: await request.json() }); writes++; if (writes === 1) throw new TypeError('lost ack'); return Response.json({ code: 'SUCCESS', message: 'ok', data: ack, traceId: 'test' });
+    }); client.resetContext('test-token'); client.bindIdentity('901');
+    await client.list({ merchantId: caseSummary.merchantId, storeId: caseSummary.storeId, page: 1, pageSize: 20 }); await client.get(caseId);
     const intent: PendingIntent = { caseId, action: 'supplement-requests', label: 'test', requestId: crypto.randomUUID(), body: { expectedVersion: '1', targetParty: 'USER', reason: '请补充现场图片', deadline: new Date(started + 1000).toISOString() } };
     try { await client.send(intent); } catch { /* leave pending */ }
     Date.now = () => started + 5000;
@@ -279,6 +457,26 @@ test('A-004 API preserves unknown supplement UUID past its deadline and invalida
     const read = imageClient.consumeReadGrant(grantUrl); imageClient.resetContext('new-token'); complete(new Response(new Uint8Array([1]), { headers: { 'Content-Type': 'image/png' } }));
     let stale = ''; try { await read; } catch (e) { stale = (e as Error).message; }
     return { captured, unresolved: !!client.pending(caseId), stale };
-  }, { caseId: CASE, grantUrl: GRANT, ack: receipt('WAITING_SUPPLEMENT', '2') });
+  }, { caseId: CASE, grantUrl: GRANT, ack: receipt('WAITING_SUPPLEMENT', '2'), caseSummary: summary(), caseDetail: detail() });
   expect(result.captured).toHaveLength(2); expect(result.captured[1]).toEqual(result.captured[0]); expect(result.unresolved).toBe(false); expect(result.stale).toBe('STALE_CONTEXT');
+});
+
+test('A-004 two clients cannot let a late original ACK retire a newer unknown command', async ({ page }) => {
+  await page.goto('http://127.0.0.1:4173/');
+  const result = await page.evaluate(async ({ caseId, merchantId, storeId, caseSummary, caseDetail, ack }) => {
+    const path = '/src/api/aftersales.ts'; const { createAfterSaleClient } = await import(path) as typeof import('../src/api/aftersales');
+    const read = (request: Request) => Response.json({ code: 'SUCCESS', message: 'ok', data: new URL(request.url).pathname === '/api/v1/admin/aftersales' ? { page: 1, pageSize: 20, total: 1, items: [caseSummary] } : caseDetail, traceId: 'two-clients' });
+    let finishOld!: (r: Response) => void;
+    const slow = createAfterSaleClient(request => request.method === 'GET' ? Promise.resolve(read(request)) : new Promise<Response>(resolve => { finishOld = resolve; }));
+    let writes = 0;
+    const fast = createAfterSaleClient(async request => { if (request.method === 'GET') return read(request); writes++; if (writes === 1) return Response.json({ code: 'SUCCESS', message: 'ok', data: ack, traceId: 'two-clients' }); throw new TypeError('new command ACK lost'); });
+    for (const client of [slow, fast]) { client.resetContext('test-token'); client.bindIdentity('901'); await client.list({ merchantId, storeId, page: 1, pageSize: 20 }); await client.get(caseId); }
+    const original: PendingIntent = { caseId, action: 'accept', requestId: crypto.randomUUID(), label: 'original', body: { expectedVersion: '0' } };
+    const late = slow.send(original); await fast.send(fast.pending(caseId)!);
+    const newer: PendingIntent = { caseId, action: 'decisions', requestId: crypto.randomUUID(), label: 'newer', body: { expectedVersion: '1', decisionType: 'OTHER', reason: '先前回执已确认，此处为新的终局处理', refundAmount: null } };
+    try { await fast.send(newer); } catch { /* unknown newer request remains */ }
+    const before = fast.pending(caseId); finishOld(Response.json({ code: 'SUCCESS', message: 'ok', data: ack, traceId: 'two-clients' })); await late;
+    return { before, afterSlow: slow.pending(caseId), afterFast: fast.pending(caseId), newer };
+  }, { caseId: CASE, merchantId: MERCHANT, storeId: STORE, caseSummary: summary(), caseDetail: detail(), ack: receipt('PROCESSING', '1') });
+  expect(result.before).toEqual(result.newer); expect(result.afterSlow).toEqual(result.newer); expect(result.afterFast).toEqual(result.newer);
 });

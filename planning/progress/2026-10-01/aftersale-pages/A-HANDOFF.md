@@ -29,9 +29,11 @@
 - PROCESSING 的 REJECT/RESERVICE/OTHER，强制 `refundAmount=null`；RESERVICE 记录人工安排。FULL/PARTIAL 不提供可提交选项，客户端也拒绝这些类型。
 - 私有图片：当前 admin 路由、case/batch/asset 绑定、用途原因、UUID grant、Bearer 同端单次 GET。只接受精确 admin 相对 grant 路径，拒绝跨端、绝对 URL、query、尾随换行；禁用缓存/重定向/业务 cookie，校验 JPEG/PNG 和二进制体积。
 - 所有新 JSON 响应严格验证 `code/message/data/traceId` 四字段；不接受额外 success。ID/版本/金额保持 String，校验 Long.MAX_VALUE、两位小数和 UTC 毫秒；UUID/hash/ID/版本/金额/grant 正则均严格拒绝尾随换行，避免 URL/Header 隐式归一化。
-- App 模块级客户端保留当前会话的未知结果 journal，跨详情卸载/重进恢复原 UUID + 原 payload；只显式重试原操作取得幂等回执。刷新不会清除未知意图，未知期间新的处理操作禁用。补证截止经过后仍允许原命令回放取得回执。
-- 409 清除旧填写/确认并重读，要求人工再次处理；不自动新建 UUID 再裁决。grant 成功回执与二进制消费分开：消费失败/410 时提示重新申请，不重试已消费图片 URL。
-- 退出、会话/资源切换清除 journal；身份 epoch、页面 generation 和客户端 epoch 阻止迟到结果进入新上下文。Bearer、grant/token、图片没有持久化。对象 URL 在隐藏、刷新、卸载、撤权时回收。
+- 业务写 journal 在 POST 前同步保存到 `localStorage` 并回读确认，按后端已验证的 `operatorId + merchantId + storeId + caseId` 隔离。保存原 action、UUID、payload，跨路由、浏览器刷新、标签关闭、新浏览器会话、401、暂时离开门店仍保留；不保存 Bearer、grant URL/token、图片。读取/写入失败均停止新提交并给出安全错误；不能因存储不可用换新 UUID。收到回执时只退休与该发送快照完全相同的日志，迟到的旧回执不会删除另一客户端已保存的新未知命令。
+- 恢复前先重新鉴权，校验 session/permissions 的 ADMIN_WEB/operatorId/authzVersion，再实际读取当前门店列表及工单，查询参数不能充当资源授权。不同运营或门店看不到原日志；返回原身份和门店后显式展示原处理内容，只重试原 UUID + 原 payload，不自动发送。未知期间新的处理操作禁用。补证截止经过后仍允许原命令回放取得回执。
+- 429、幂等处理中/键冲突、通用 `COMMON_CONFLICT`、401/403/404 保留原请求。只有完整真实成功回执或确定的业务拒绝才退休。明确业务 409 拒绝后清除旧填写/确认并重读，要求人工重新核对；不自动新建 UUID 再裁决。`COMMON_CONFLICT` 同时代表版本变化和幂等锁忙，无法从 code 或快照证明原命令失败，按未知处理。
+- grant 意图仅保存在当前模块会话内，鉴权/资源变化或浏览器刷新清除；grant 成功回执与二进制消费分开，消费失败/410 时提示重新申请，不重试已消费图片 URL。
+- 退出、会话/资源切换立即清除内存主体证明、私有详情、grant 和图片，但保留隔离的未知业务日志。身份 epoch、页面 generation 和客户端 epoch 阻止迟到结果进入新上下文。`visibilitychange` 隐藏与 `pagehide` 清图片并拒绝迟到二进制，回到前台不会自动读取图片；手动刷新清原因、确认勾选和全部历史核对。
 
 ## 运行结果
 
@@ -41,11 +43,12 @@ Windows / Node `npm ci` 使用现有锁文件，无依赖版本变更。
 |---|---|
 | `npm run build` | PASS，含 TypeScript 严格类型检查及生产 Vite 构建 |
 | `npm run check:boundaries` | PASS，运营源引用仍在本端，生产包无私有 fixture、小程序 API |
-| `npx playwright test tests/aftersale.spec.ts` | 15 passed |
-| `npx playwright test` | 42 passed / 2 skipped（既有真实联调 opt-in 因未配置 LIVE_JOINT_BASE 跳过） |
+| 售后 Playwright 用例（完整测试中） | 36 passed |
+| `npx playwright test` | 63 passed / 2 skipped（既有真实联调 opt-in 因未配置 LIVE_JOINT_BASE 跳过） |
+| 最后 scope 校验变更后的相关定向回归 | 7 passed（四类刷新、关闭 context、缺失/非法/其他店 scope、双客户端迟到回执） |
 | `git diff --check` | PASS |
 
-新增测试运行真实生产 App 与 transport，使用明确 HTTP 合同 fixture；覆盖独立守卫及按钮权限、完整两笔 P4 历史、真实历史引用重复关闭、UTC/String CAS、三类非退款终裁边界、跨路由/刷新 ACK 丢失回放、409 重读、店切换迟到响应、403 撤权、grant 路径与 Bearer 消费、410 后重新授权、对象 URL 回收、数字 ID/错误四字段/跨端路径/尾随换行拒绝、过期补证原键回执恢复及身份变化迟到图片丢弃。
+新增页面测试运行真实生产 App 与 transport，使用明确 HTTP 合同 fixture；API 负例读取开发服务同一源模块。覆盖独立守卫及按钮权限、完整两笔 P4 历史、真实历史引用重复关闭、UTC/String CAS、三类非退款终裁边界、跨路由 ACK 丢失回放、受理/补证/重复关闭/决定四类整页刷新重新登录原键恢复、关闭旧浏览器 context 后持久 origin 状态在新 context 重新鉴权恢复、401 再鉴权、换运营/店及伪造/缺失/非法 scope 隔离、429/三种幂等或通用 409 原键回放、明确业务 409 重读、存储 setItem/getItem 故障不发新命令且无 unhandled 错误、双客户端旧回执不会删除新日志、grant 永不持久化、手动刷新清旧确认、实际浏览器 visibilitychange/pagehide 事件清对象 URL/迟到二进制不展示、店切换迟到响应、403 撤权、grant 路径与 Bearer 消费、410 后重新授权、数字 ID/错误四字段/跨端路径/尾随换行拒绝、过期补证原键回执恢复及身份变化迟到图片丢弃。
 
 已用 `view_image` 人工检查浏览器截图（合成 fixture 数据）：
 
@@ -58,6 +61,7 @@ Windows / Node `npm ci` 使用现有锁文件，无依赖版本变更。
 
 - 本次未运行真实 PR98 后端的运营页面联调，未开启任何生产开关；HTTP fixture 通过不等于真实 RBAC/门店资源/资金能力验收。
 - 需根协调/QA 在受控后端环境走 C/M/A 联合非出款闭环及同单并发、真实单次证据消费、当前城市范围与权限变化。小程序真机及视觉验收属于 C/M/QA 的独立证据。
-- 刷新浏览器会丢失未持久化的登录会话；新登录先重读工单，不自动重送旧未知命令。当前会话的跨路由重入可恢复 journal；用户切换门店或身份时敏感 journal 按隔离规则立即清理。
+- 登录会话仍只在内存；持久日志不等于登录授权。测试通过关闭旧 context、复制持久 origin 状态到新 context 模拟浏览器持久 profile，不宣称已运行操作系统重启实测。日志依赖浏览器保留 localStorage；清除网站数据或丢失浏览器 profile 无法恢复原 UUID。
+- 现契约对 CAS/P4 变化和幂等锁忙共用 `COMMON_CONFLICT`，客户端保留原命令并阻断新裁决。若后端始终回该通用 code，不能仅据快照自动退休或人工换新键；需要明确业务失败或原幂等回执。未自行更改错误契约。
 - 现有 Vite native configLoader 预警来自已有无扩展名配置 import，不影响本次构建；未扩大范围修改。
 - 本切片没有 Contract/Schema/Event 变化，没有 push、创建 PR、merge 或部署。
