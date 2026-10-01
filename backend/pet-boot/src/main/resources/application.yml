@@ -67,6 +67,11 @@ pet:
       enabled: false
       http:
         enabled: false
+  merchant:
+    staff-identity:
+      # Contract 52 STAFF identity read kernel: off by default. The member binding command,
+      # grant writers, action catalog and verification mapping are pending the approved CCR.
+      enabled: false
   order:
     reschedule:
       enabled: false

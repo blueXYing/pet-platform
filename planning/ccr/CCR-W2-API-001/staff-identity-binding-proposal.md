@@ -1,0 +1,57 @@
+# 员工本人绑定与动作授权 CCR 草案（绑定流程/动作目录/撤回协调）
+
+状态：**PREPARATION / NOT_APPROVED**。日期：2026-10-02。基线：`codex/staff-identity-20261002`（origin/develop e3b846e + 契约 52 读侧内核）。本文是 [员工核销权威准备](staff-verification-authority-preparation.md) §4 STAFF-A 的具体契约包草案，**不是批准回执**；下列候选在用户逐项裁决前不得实施。已批准部分（27 号存储设计 §2 关系存储、27 号契约 §5 事实形状、HTTP10 准入矩阵、SSOT §25/§30/§37 边界）直接引用，不在本文重新裁决。
+
+## 1. 已批准基线（引用，不重裁）
+
+| 来源 | 内容 |
+|---|---|
+| 27 号存储设计 §2 | member/grant/动作关联字段与唯一关系（52 号 DDL 已落） |
+| 27 号契约 §5 | listForUser/getFacts 形状、authzVersion 标签、MERCHANT_STAFF 映射前提（"有真实员工绑定的子账号才可映射"） |
+| HTTP10 准入 §1–3 | C/M 同会话、staffId 仅展示、准入矩阵、allowedActions 提示组 |
+| SSOT §30 | 员工手机号不是登录绑定；员工管理读写门槛 |
+| SSOT §37 | OWNER 核销首切片；"STAFF 登录成员绑定和门店动作授予后续交付"；无身份映射的历史核销行禁止猜测回填 |
+| 商家 PRD §5.2/§5.6 | 主账号开通/停用子账号、分配角色与门店范围；核销权限绑定员工账号、禁止共享账号、授权留痕；子账号不读主账号结算签约 |
+| 取消 MFA 裁决（SSOT §25） | 绑定流程不引入 MFA/额外认证因素 |
+
+## 2. 待裁决项（候选方案，均未批准）
+
+### D1 员工本人认可绑定的流程（阻塞成员创建）
+
+前提：不接受"主账号直接填 userId/手机号即建成员"；必须取得本人认可（HTTP10 §1"不能信任客户端staffId"、27 号存储"不开放通过任意userId/手机号添加的HTTP端点"）。
+
+候选方案（供选择/修改）：
+- **D1-a 邀请-确认两步**：主账号在其门店发起邀请（目标=员工档案行或本人手机号），平台通过既有站内通知投递；员工用本人 MINIAPP 会话打开确认页，展示商家名/门店名/授予动作清单后主动确认；确认同事务创建 member(ENABLED)+grant+动作行并留痕。误绑处理：确认页展示目标身份（会话用户本人昵称/手机号脱敏），确认即本人认可；绑错走撤销+重新邀请。
+- **D1-b 主账号登记+员工首次登录认领**：主账号登记意向成员（占位 DISABLED），员工登录工作台时对未认领意向行做本人认领（展示后确认）；认领成功才 ENABLED。
+- **不采用**：短信验证码绑定（新增短信通道依赖，V1 无此基建）、扫码绑定（未定义承载页）。
+
+待明确子项（无论选哪个）：邀请有效期与次数上限、能否邀请非员工档案的真人、误绑/换绑是否需要主账号确认（D2）、通知文案归 NTF-001 契约。
+
+### D2 授予/撤回管理命令与动作目录（阻塞 grant/action 写路径）
+
+候选最小集（首切片，与准备文档 §1"员工核销动作授权"命名一致）：
+- 管理命令（主账号，X-Request-Id 幂等，23 号流程）：`merchant.staff-member.grant`（对成员+门店授予动作集，整体替换）、`merchant.staff-member.revoke-store`（整店撤权）、`merchant.staff-member.disable` / `.enable`（成员启停，独立于档案 service_enabled）、`merchant.staff-member.revoke`（成员撤销）。全部同事务审计 + member/grant 版本递增。
+- 动作目录候选（PROPOSED_ONLY，需业务 Owner 收窄）：`merchant.order.verify`（平台订单核销动作）、`merchant.order.read`（核销前查单必要读取，PRD §5.8"按订单号/时间/操作人筛选历史核销记录"）。**不**在本切片把 HTTP10 的 `merchant.order.fulfill` 等提示组当成核销员订单处理权：PRD §5.6 核销员行含"订单处理"，是否随核销动作一并授予须单独裁决（D2-1）。
+- 角色矩阵：仅落主账号 + 核销员（PRD §5.6 矩阵两行）；店长/排期负责人矩阵未细化，保持未定义，不得按名称放行。
+
+### D3 换绑、重新开通与撤销恢复
+
+候选：member 唯一(merchant_id,user_id) 不变；撤销（REVOKED）终局，重新合作走新建成员（新 member 行 + 新邀请确认），历史 grant/action 行保留为历史，不复活；DISABLED↔ENABLED 由主账号命令切换，不自动恢复被整店撤权的 grant。是否允许"同用户换绑到另一员工档案 staffId"待裁决（影响历史核销归属展示，默认：不改写历史，不原地覆盖）。
+
+### D4 撤权与在途命令的锁序/提交判定（技术协议，随 D2 冻结）
+
+候选：撤权命令与业务命令共用共享门店 guard 锁序（guard → member/grant FOR UPDATE → 事实复核 → 同事务提交）；在途业务事务先提交者胜，撤权后提交的业务命令在锁内重验失败即回滚；成功回执重放仍重验当前关系（撤权后拒绝）。判定与 35 号员工核销/48 号核销完成既有协议同构；最终以真实 MySQL 竞争测试（STA-05）证明。
+
+### D5 OFFLINE 存量履约的动作归类
+
+候选：动作目录中标记哪些动作属于"存量履约"类（核销既有订单应为该类，SSOT §15/OFFLINE 准入 LIMITED 已批），requireStaffAction 对该类动作放行 OFFLINE；非存量类保持拒绝。FROZEN 不新增写例外（B-FROZEN-WRITE 仍待裁决）。
+
+## 3. 裁决后的实施切分（与准备文档 §4 对齐）
+
+1. STAFF-B：按 D1/D2/D3 实现 member/grant/action 写命令与审计（23 号幂等）、memberships/admission 接通 STAFF 投影、（若批准）管理 HTTP 契约同步。
+2. STAFF-C：按 D2/D4/D5 将 `requireStaffAction` 接入核销完成内核，扩展 48 号 K1 身份段（operatorType=USER、membershipKind=STAFF、operatorStaffId=grant 展示 staffId 或按裁决）、v2 事件与回执兼容规则，另立契约修订。
+3. 页面与端到端接续随 M 端工作台员工入口另行交付。
+
+## 4. 本草案证据边界
+
+只读盘点 + 契约 52 读侧内核实现与测试；未实现任何写命令、未运行迁移、未开放开关。D1–D5 均为候选，未经用户批准前不进入实现。
