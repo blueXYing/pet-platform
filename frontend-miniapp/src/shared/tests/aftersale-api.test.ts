@@ -125,3 +125,20 @@ test('unknown aftersale write survives 401/logout and is visible only to its fre
   assert.deepEqual(calls.at(-1), original)
   assert.equal(client.pending('401', 'create'), undefined)
 })
+
+test('malformed failure envelopes preserve unknown commands instead of declaring a rejection', async () => {
+  for (const data of [{ code: 'COMMON_INVALID_ARGUMENT' }, { code: 'COMMON_INVALID_ARGUMENT', message: 'invalid', data: {}, traceId: 't' }, { code: 'COMMON_INVALID_ARGUMENT', message: 'invalid', data: null, traceId: 't', success: false }]) {
+    const h = setup(async () => ({ statusCode: 400, data })); await h.api.restore()
+    await assert.rejects(h.client.create('401', input), /INVALID_RESPONSE/)
+    assert.deepEqual(h.client.pending('401', 'create'), input)
+  }
+})
+
+test('mismatched receipts never retire a command or navigate to another order/case', async () => {
+  const wrongOrder = setup(async () => ok({ ...receipt, orderId: '402' })); await wrongOrder.api.restore()
+  await assert.rejects(wrongOrder.client.create('401', input), /INVALID_RESPONSE/)
+  assert.ok(wrongOrder.client.pending('401', 'create'))
+  const wrongCase = setup(async () => ok({ ...receipt, afterSaleId: '302' })); await wrongCase.api.restore()
+  await assert.rejects(wrongCase.client.withdraw('301', '0'), /INVALID_RESPONSE/)
+  assert.ok(wrongCase.client.pending('301', 'withdraw'))
+})

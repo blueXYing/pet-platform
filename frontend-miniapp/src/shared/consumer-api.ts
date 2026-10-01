@@ -26,8 +26,12 @@ export function isAfterSalePath(spec: RequestSpec): boolean {
 }
 export function afterSaleEnvelope(response: { statusCode: number; data: unknown }): unknown {
   const body = object(typeof response.data === 'string' ? JSON.parse(response.data) : response.data)
-  if (response.statusCode < 200 || response.statusCode >= 300 || body.code !== 'SUCCESS') throw new ApiError(typeof body.code === 'string' ? body.code : 'INVALID_RESPONSE', response.statusCode)
-  if (Object.keys(body).sort().join(',') !== 'code,data,message,traceId' || body.message !== 'ok' || typeof body.traceId !== 'string' || !body.traceId) throw new Error('INVALID_RESPONSE')
+  if (Object.keys(body).sort().join(',') !== 'code,data,message,traceId' || typeof body.code !== 'string' || !body.code.trim() || body.code.length > 100 || typeof body.message !== 'string' || typeof body.traceId !== 'string' || !body.traceId.trim() || body.traceId.length > 256) throw new Error('INVALID_RESPONSE')
+  if (response.statusCode < 200 || response.statusCode >= 300 || body.code !== 'SUCCESS') {
+    if (body.data !== null) throw new Error('INVALID_RESPONSE')
+    throw new ApiError(body.code, response.statusCode)
+  }
+  if (body.message !== 'ok') throw new Error('INVALID_RESPONSE')
   return body.data
 }
 export function decodePrivateAsset(value: unknown): PrivateAssetReceipt {
