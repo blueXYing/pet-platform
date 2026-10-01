@@ -1,12 +1,21 @@
 import Taro from '@tarojs/taro'
 import { AfterSaleClient } from './aftersale-api'
 import { consumerApi, requestUuid } from './consumer-runtime'
+import { PrivateEvidenceFiles } from './private-evidence-files'
+
+let startupPreviews: PrivateEvidenceFiles | undefined
 
 /** Images are app-private temporary files, cleared on hide, logout and context switch. */
 export function afterSaleClient(party: 'c' | 'merchant'): AfterSaleClient {
-  const paths = new Set<string>(); let epoch = 0
+  let epoch = 0
   const fs = Taro.getFileSystemManager()
-  const clear = () => { epoch++; for (const path of paths) { try { fs.unlinkSync(path); paths.delete(path) } catch { /* retain ownership and retry at next clear */ } } }
+  const root = Taro.env.USER_DATA_PATH
+  if (!root) throw new Error('PRIVATE_FILES_NOT_AVAILABLE')
+  // A process may have stopped before hide/logout. Recover only our strict preview
+  // names once on startup; keep failed deletions reachable throughout this process.
+  if (!startupPreviews) { startupPreviews = new PrivateEvidenceFiles(fs, root, true); startupPreviews.clear() }
+  const files = new PrivateEvidenceFiles(fs, root)
+  const clear = () => { epoch++; startupPreviews?.clear(); files.clear() }
   const unsubscribe = consumerApi.scope.subscribe(clear)
   return new AfterSaleClient(consumerApi, party, {
     async read(path) {
@@ -14,10 +23,7 @@ export function afterSaleClient(party: 'c' | 'merchant'): AfterSaleClient {
       const name = await requestUuid(); ticket.assertCurrent()
       const data = await consumerApi.readAfterSaleEvidence(path); ticket.assertCurrent()
       if (revision !== epoch) throw new Error('STALE_CONTEXT')
-      const local = `${Taro.env.USER_DATA_PATH}/pet-aftersale-${name}.img`
-      fs.writeFileSync(local, data)
-      paths.add(local)
-      return local
+      return files.save(name, data)
     },
     clear,
     dispose: unsubscribe,
