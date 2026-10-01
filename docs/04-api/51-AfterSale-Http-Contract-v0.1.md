@@ -16,6 +16,7 @@ FROZEN 当前用户、商家/店按已批准只读语义可查看获权历史/�
 
 | Method | Path | 当前权限/用途 |
 |---|---|---|
+| GET | /c/aftersale-options | 当前 MINIAPP 用户读取同一申请校验目录 |
 | GET | /c/orders/{orderId}/aftersale-eligibility | 本人订单资格 |
 | POST | /c/orders/{orderId}/aftersales | 本人创建 |
 | GET | /c/aftersales | 本人分页 |
@@ -60,7 +61,17 @@ JSON envelope 固定四项 `code/message/data/traceId`，不加 success。成功
 
 Receipt 的 data 固定 commandId/orderId/afterSaleId/status/version/occurredAt/evidenceBatchId/supplementRequestId/decisionId/refundOrderId；后四项按动作可 null，不省略。同 key 同参返回原业务回执，不重做审核；同 key 异参或换端 409。明确 HTTP evidence 的 routeParty 写入既有 namespace/scope 的 canonical 参数，旧内部格式不变。
 
+2026-10-01 已批准 [CCR-AFS-CONFLICT-001](../../planning/ccr/CCR-AFS-CONFLICT-001.md)：当前动作权限在比较工单版本前验证；未成功的新命令在业务事务中确认 `expectedVersion` 不等于当前版本、并复验本次当前动作授权后，返回 409 `AFTERSALE_VERSION_CONFLICT`。P4 有真实旧非退款终局时，缺少/空白 assessment、缺少/非法格式的集合 hash 仍为400；合法 hash 与当前历史终局集合不等且本次授权未变化，返回409 `AFTERSALE_FINAL_SET_CONFLICT`。两码仅表示本次命令已明确拒绝，未产生证据/状态日志/业务迁移/决定/ORDER投影/Outbox；独立原参数准入绑定仍保留，同 UUID 不可换参。当前权限失败优先401/403；授权版本复验变化仍 `COMMON_CONFLICT`，请求锁忙也仍 `COMMON_CONFLICT`，均不能当这两种确定拒绝。已提交成功 UUID 重放在版本/目录/内容审核之前返回原回执并重验当前权限。前端收到确定码后刷新卷宗/全部历史，重新人工确认后使用新 UUID；不能用新 UUID 盲重试旧决定。
+
 ## 4. 查询与信息范围
+
+申请目录 `GET /api/v1/c/aftersale-options` 不接受任何 query（含空 query）或 body，不要求写入 UUID。只允许真实当前 MINIAPP USER，返回前再次验证同一会话权限版本；FROZEN 当前账号可以读取，创建仍要求 ACTIVE。它随售后 HTTP/workflow 同一默认关闭开关注册，无匿名、商家/运营目录别名或调用方身份字段。
+
+关闭售后 HTTP 时不注册该控制器/映射；当前有效会话的请求在已启用C安全链按既有catch-all deny语义返回403。启用时只放行该GET至原CBearer真实会话过滤器和域读授权，不放行其他方法。
+
+成功 data 精确为 `{typeOptions,demandOptions}`；每组是1..100项的数组，每项精确为 `{code,label}`。code 为 `[A-Z][A-Z0-9_]{0,63}`，每组内唯一，按 ASCII code 升序；两组可各自拥有相同 code。label 为1..64个 Unicode 标量/码点，拒绝孤立 surrogate，不允许首尾空白；首尾空白集合与 ECMAScript `String.trim()` 一致：TAB/LF/VT/FF/CR/SPACE、U+00A0、U+1680、U+2000..U+200A、U+2028/U+2029、U+202F、U+205F、U+3000、U+FEFF。页面使用 label 展示、code 提交，不将展示文案当code。
+
+2026-10-01 用户“批准” [CCR-AFS-PAGE-OPTIONS-001](../../planning/ccr/CCR-AFS-PAGE-OPTIONS-001.md) 后冻结上述技术表面，无新问题/诉求产品字典。读目录及创建校验使用同一完整不可变 ReasonPolicy 配置快照。生产配置仍明确提供 `pet.aftersale.type-codes`/`demand-codes`，另以 `pet.aftersale.type-labels[CODE]`/`demand-labels[CODE]` 提供每个已批准代码的名称；每组 label key 集合必须与 code 集合完全相同。缺少、重复/非法 code、缺/多 label、空白/非法 label、数量超限或来源缺失均不得回成功空列表/半份目录，也不得硬编码回退。已开启且目录适配不完整时，读取及新创建均503 `COMMON_DEPENDENCY_UNAVAILABLE`；现有成功创建重放不重查可变目录。原启动校验遇未提供/非法 code 配置仍阻止启用；默认不开启、不填生产示例代码或名称。隔离验收 `QA_*` 仅为测试配置。
 
 列表参数只允许 page（1..10000，默认1）、pageSize（1..50，默认20）、status、orderId。M/O 另必须 merchantId+storeId；C 禁止这两参数。status 为 PENDING/PROCESSING/WAITING_SUPPLEMENT/RESOLVED/INVALIDATED/WITHDRAWN/CLOSED，未知/空值拒绝。查询条件只能缩小权限范围。除列表外主查询不接受 query 参数。
 

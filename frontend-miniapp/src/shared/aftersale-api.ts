@@ -1,0 +1,102 @@
+import { ConsumerApi, id, object, type Command, type PrivateAssetReceipt } from './consumer-api'
+import { ApiError, type RequestSpec } from './request'
+
+export type AfterSaleStatus = 'PENDING' | 'PROCESSING' | 'WAITING_SUPPLEMENT' | 'RESOLVED' | 'INVALIDATED' | 'WITHDRAWN' | 'CLOSED'
+export type SourceStage = 'VERIFIED' | 'UNVERIFIED_POST_START'
+export type OpinionCode = 'AGREE' | 'PARTLY_AGREE' | 'DISAGREE' | 'NEED_USER_SUPPLEMENT'
+export type CaseSummary = { afterSaleId: string; orderId: string; merchantId: string; storeId: string; status: AfterSaleStatus; version: string; sourceStage: SourceStage; typeCode: string; demandCode: string; requestedAmount: string | null; createdAt: string; deadline: string }
+export type EvidenceBatch = { batchId: string; submitterType: 'USER' | 'MERCHANT'; text: string | null; opinionCode: OpinionCode | null; submittedAt: string; assetIds: string[] }
+export type CaseDetail = Omit<CaseSummary, 'merchantId' | 'storeId'> & { description: string; supplementRequestId: string | null; supplementTarget: 'USER' | 'MERCHANT' | null; supplementDeadline: string | null; supplementReason: string | null; finalSetVersion: string; priorFinalCaseIds: string[]; newProblemStatement: string | null; decisionType: 'REJECT' | 'RESERVICE' | 'OTHER' | 'FULL_REFUND' | 'PARTIAL_REFUND' | null; refundAmount: string | null; decisionReason: string | null; evidence: EvidenceBatch[] }
+export type CasePage = { page: number; pageSize: number; total: number; items: CaseSummary[] }
+export type Eligibility = { eligible: boolean; sourceStage: SourceStage | null; deadline: string | null; blockingReason: string | null; activeAfterSaleId: string | null }
+export type AfterSaleOption = { code: string; label: string }
+export type AfterSaleOptions = { typeOptions: AfterSaleOption[]; demandOptions: AfterSaleOption[] }
+export type CommandReceipt = { commandId: string; orderId: string; afterSaleId: string; status: AfterSaleStatus; version: string; occurredAt: string; evidenceBatchId: string | null; supplementRequestId: string | null; decisionId: string | null; refundOrderId: string | null }
+export type CreateInput = { typeCode: string; demandCode: string; description: string; evidenceAssetIds: string[]; requestedAmount?: string | null; newProblemStatement?: string | null }
+export type EvidenceInput = { expectedVersion: string; evidenceAssetIds: string[]; supplementRequestId?: string | null; text?: string | null }
+export type OpinionInput = { expectedVersion: string; opinionCode: OpinionCode; explanation: string; evidenceAssetIds: string[]; supplementRequestId?: string | null }
+export type ListQuery = { page?: number; pageSize?: number; status?: AfterSaleStatus; orderId?: string; merchantId?: string; storeId?: string }
+const statuses: AfterSaleStatus[] = ['PENDING', 'PROCESSING', 'WAITING_SUPPLEMENT', 'RESOLVED', 'INVALIDATED', 'WITHDRAWN', 'CLOSED']
+const opinions: OpinionCode[] = ['AGREE', 'PARTLY_AGREE', 'DISAGREE', 'NEED_USER_SUPPLEMENT']
+export function isDefiniteAfterSaleConflict(error: unknown): boolean {
+  // COMMON_CONFLICT also represents bounded idempotency contention (Error12/API23).
+  return error instanceof ApiError && error.statusCode === 409 && ['AFTERSALE_VERSION_CONFLICT', 'AFTERSALE_FINAL_SET_CONFLICT', 'AFTERSALE_NOT_ELIGIBLE', 'AFTERSALE_ALREADY_ACTIVE', 'AFTERSALE_REFUND_APPLICATION_ACTIVE', 'AFTERSALE_STATE_NOT_ALLOWED', 'AFTERSALE_ALREADY_INVALIDATED', 'AFTERSALE_DECISION_FINAL', 'AFTERSALE_REFUND_BLOCKED_BY_VERIFICATION', 'AFTERSALE_SUPPLEMENT_EXPIRED', 'AFTERSALE_SUPPLEMENT_STALE', 'REFUND_ORDER_ALREADY_EXISTS'].includes(error.code)
+}
+const fail = (): never => { throw new Error('INVALID_RESPONSE') }
+const one = <T extends string>(v: unknown, options: readonly T[]): T => typeof v === 'string' && options.includes(v as T) ? v as T : fail()
+const nullable = <T>(v: unknown, decode: (v: unknown) => T): T | null => v === null ? null : decode(v)
+const str = (v: unknown, min = 1, max = 500): string => typeof v === 'string' && v.length >= min && v.length <= max && /\S/.test(v) ? v : fail()
+export const version = (v: unknown): string => typeof v === 'string' && /^(0|[1-9][0-9]{0,18})(?![\s\S])/.test(v) && BigInt(v) <= 9223372036854775807n ? v : fail()
+export const instant = (v: unknown): string => typeof v === 'string' && /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/.test(v) && Number.isFinite(Date.parse(v)) && new Date(v).toISOString() === v ? v : fail()
+export const amount = (v: unknown): string => typeof v === 'string' && /^(0|[1-9][0-9]{0,15})\.[0-9]{2}(?![\s\S])/.test(v) ? v : fail()
+const array = <T>(v: unknown, decode: (v: unknown) => T, max = Number.MAX_SAFE_INTEGER): T[] => Array.isArray(v) && v.length <= max ? v.map(decode) : fail()
+const ids = (v: unknown) => { const values = array(v, id, 6); if (new Set(values).size !== values.length) fail(); return values }
+const exact = (value: unknown, fields: string) => { const v = object(value); if (Object.keys(v).sort().join(',') !== fields.split(',').sort().join(',')) fail(); return v }
+export function decodeOptions(value: unknown): AfterSaleOptions {
+  const v = exact(value, 'typeOptions,demandOptions')
+  const options = (value: unknown) => {
+    const items = array(value, item => {
+      const option = exact(item, 'code,label')
+      if (typeof option.code !== 'string' || !/^[A-Z][A-Z0-9_]{0,63}(?![\s\S])/.test(option.code)
+        || typeof option.label !== 'string' || !option.label.trim() || option.label.trim() !== option.label
+        || Array.from(option.label).length > 64 || Array.from(option.label).some(point => { const scalar = point.codePointAt(0)!; return scalar >= 0xd800 && scalar <= 0xdfff })) fail()
+      return { code: option.code as string, label: option.label as string }
+    }, 100)
+    if (!items.length || items.some((item, index) => index > 0 && items[index - 1].code >= item.code)) fail()
+    return items
+  }
+  return { typeOptions: options(v.typeOptions), demandOptions: options(v.demandOptions) }
+}
+const commonFields = 'afterSaleId,orderId,status,version,sourceStage,typeCode,demandCode,requestedAmount,createdAt,deadline'
+function common(v: Record<string, any>) { return { afterSaleId: id(v.afterSaleId), orderId: id(v.orderId), status: one(v.status, statuses), version: version(v.version), sourceStage: one(v.sourceStage, ['VERIFIED', 'UNVERIFIED_POST_START'] as const), typeCode: str(v.typeCode, 1, 64), demandCode: str(v.demandCode, 1, 64), requestedAmount: nullable(v.requestedAmount, amount), createdAt: instant(v.createdAt), deadline: instant(v.deadline) } }
+export function decodeSummary(value: unknown): CaseSummary { const v = exact(value, `${commonFields},merchantId,storeId`); return { ...common(v), merchantId: id(v.merchantId), storeId: id(v.storeId) } }
+export function decodeDetail(value: unknown): CaseDetail {
+  const v = exact(value, `${commonFields},description,supplementRequestId,supplementTarget,supplementDeadline,supplementReason,finalSetVersion,priorFinalCaseIds,newProblemStatement,decisionType,refundAmount,decisionReason,evidence`)
+  if (typeof v.finalSetVersion !== 'string' || !/^[a-f0-9]{64}(?![\s\S])/.test(v.finalSetVersion)) fail()
+  return { ...common(v), description: str(v.description, 10), supplementRequestId: nullable(v.supplementRequestId, id), supplementTarget: nullable(v.supplementTarget, x => one(x, ['USER', 'MERCHANT'] as const)), supplementDeadline: nullable(v.supplementDeadline, instant), supplementReason: nullable(v.supplementReason, str), finalSetVersion: v.finalSetVersion, priorFinalCaseIds: array(v.priorFinalCaseIds, id), newProblemStatement: nullable(v.newProblemStatement, x => str(x, 10)), decisionType: nullable(v.decisionType, x => one(x, ['REJECT', 'RESERVICE', 'OTHER', 'FULL_REFUND', 'PARTIAL_REFUND'] as const)), refundAmount: nullable(v.refundAmount, amount), decisionReason: nullable(v.decisionReason, str), evidence: array(v.evidence, x => { const b = exact(x, 'batchId,submitterType,text,opinionCode,submittedAt,assetIds'); return { batchId: id(b.batchId), submitterType: one(b.submitterType, ['USER', 'MERCHANT'] as const), text: nullable(b.text, x => str(x, 10)), opinionCode: nullable(b.opinionCode, x => one(x, opinions)), submittedAt: instant(b.submittedAt), assetIds: ids(b.assetIds) } }) }
+}
+export function decodePage(value: unknown): CasePage { const v = exact(value, 'page,pageSize,total,items'); if (!Number.isInteger(v.page) || v.page < 1 || v.page > 10000 || !Number.isInteger(v.pageSize) || v.pageSize < 1 || v.pageSize > 50 || !Number.isSafeInteger(v.total) || v.total < 0) fail(); const items = array(v.items, decodeSummary, v.pageSize); return { page: v.page, pageSize: v.pageSize, total: v.total, items } }
+export function decodeEligibility(value: unknown): Eligibility { const v = exact(value, 'eligible,sourceStage,deadline,blockingReason,activeAfterSaleId'); if (typeof v.eligible !== 'boolean') fail(); return { eligible: v.eligible, sourceStage: nullable(v.sourceStage, x => one(x, ['VERIFIED', 'UNVERIFIED_POST_START'] as const)), deadline: nullable(v.deadline, instant), blockingReason: nullable(v.blockingReason, x => str(x, 1, 100)), activeAfterSaleId: nullable(v.activeAfterSaleId, id) } }
+export function decodeReceipt(value: unknown): CommandReceipt { const v = exact(value, 'commandId,orderId,afterSaleId,status,version,occurredAt,evidenceBatchId,supplementRequestId,decisionId,refundOrderId'); return { commandId: id(v.commandId), orderId: id(v.orderId), afterSaleId: id(v.afterSaleId), status: one(v.status, statuses), version: version(v.version), occurredAt: instant(v.occurredAt), evidenceBatchId: nullable(v.evidenceBatchId, id), supplementRequestId: nullable(v.supplementRequestId, id), decisionId: nullable(v.decisionId, id), refundOrderId: nullable(v.refundOrderId, id) } }
+
+/** Contract51 client; no alternate identity, fixture fallback, or money decision surface. */
+export class AfterSaleClient {
+  private rejectionProofs = new WeakMap<object, { slot: string; command: Command }>()
+  constructor(readonly api: ConsumerApi, readonly party: 'c' | 'merchant', private images?: { read(path: string): Promise<string>; clear(): void; dispose?(): void }) {}
+  private root() { return `/api/v1/${this.party}/aftersales` }
+  private slot(target: string, action: string) { const c = this.api.scope.capture().context; return `aftersale:${this.party}:${id(c.userId)}:${c.merchantId ?? ''}:${c.storeId ?? ''}:${id(target)}:${action}` }
+  private write<T>(slot: string, spec: Omit<RequestSpec, 'requestId'>, decode: (value: unknown) => T): Promise<T> {
+    return this.api.write(slot, spec, decode, undefined, (error, command) => {
+      if (isDefiniteAfterSaleConflict(error) && error && typeof error === 'object') this.rejectionProofs.set(error, { slot, command })
+    })
+  }
+  list(query: ListQuery = {}): Promise<CasePage> {
+    const data: Record<string, unknown> = { page: query.page ?? 1, pageSize: query.pageSize ?? 20 }
+    if (!Number.isInteger(data.page) || Number(data.page) < 1 || Number(data.page) > 10000 || !Number.isInteger(data.pageSize) || Number(data.pageSize) < 1 || Number(data.pageSize) > 50) throw new Error('INVALID_QUERY')
+    if (query.status !== undefined) data.status = one(query.status, statuses)
+    if (query.orderId !== undefined) data.orderId = id(query.orderId)
+    if (this.party === 'merchant') { const c = this.api.scope.capture().context; data.merchantId = id(query.merchantId ?? c.merchantId); data.storeId = id(query.storeId ?? c.storeId); if (data.merchantId !== c.merchantId || data.storeId !== c.storeId) throw new Error('WORKSPACE_PATH_MISMATCH') }
+    else if (query.merchantId !== undefined || query.storeId !== undefined) throw new Error('INVALID_QUERY')
+    return this.api.request({ path: this.root(), method: 'GET', data }, value => { const page = decodePage(value); if (page.page !== data.page || page.pageSize !== data.pageSize || page.items.some(item => data.status !== undefined && item.status !== data.status || data.orderId !== undefined && item.orderId !== data.orderId || this.party === 'merchant' && (item.merchantId !== data.merchantId || item.storeId !== data.storeId))) fail(); return page })
+  }
+  detail(caseId: string) { const target = id(caseId); return this.api.request({ path: `${this.root()}/${target}`, method: 'GET' }, value => { const detail = decodeDetail(value); if (detail.afterSaleId !== target) fail(); return detail }) }
+  eligibility(orderId: string) { if (this.party !== 'c') throw new Error('WORKSPACE_PATH_MISMATCH'); return this.api.request({ path: `/api/v1/c/orders/${id(orderId)}/aftersale-eligibility`, method: 'GET' }, decodeEligibility) }
+  options() { if (this.party !== 'c') throw new Error('WORKSPACE_PATH_MISMATCH'); return this.api.request({ path: '/api/v1/c/aftersale-options', method: 'GET' }, decodeOptions) }
+  create(orderId: string, input: CreateInput) { if (this.party !== 'c') throw new Error('WORKSPACE_PATH_MISMATCH'); str(input.typeCode, 1, 64); str(input.demandCode, 1, 64); str(input.description, 10); ids(input.evidenceAssetIds); if (input.requestedAmount != null) amount(input.requestedAmount); if (input.newProblemStatement != null) str(input.newProblemStatement, 10); return this.write(this.slot(orderId, 'create'), { path: `/api/v1/c/orders/${id(orderId)}/aftersales`, method: 'POST', data: input }, value => { const receipt = decodeReceipt(value); if (receipt.orderId !== orderId) fail(); return receipt }) }
+  evidence(caseId: string, input: EvidenceInput) { version(input.expectedVersion); ids(input.evidenceAssetIds); if (input.text != null) str(input.text, 10); if (input.supplementRequestId != null) id(input.supplementRequestId); if (!input.text && !input.evidenceAssetIds.length) throw new Error('EVIDENCE_REQUIRED'); return this.write(this.slot(caseId, 'evidence'), { path: `${this.root()}/${id(caseId)}/evidence`, method: 'POST', data: input }, value => { const receipt = decodeReceipt(value); if (receipt.afterSaleId !== caseId) fail(); return receipt }) }
+  withdraw(caseId: string, expectedVersion: string) { if (this.party !== 'c') throw new Error('WORKSPACE_PATH_MISMATCH'); return this.write(this.slot(caseId, 'withdraw'), { path: `${this.root()}/${id(caseId)}/withdraw`, method: 'POST', data: { expectedVersion: version(expectedVersion) } }, value => { const receipt = decodeReceipt(value); if (receipt.afterSaleId !== caseId) fail(); return receipt }) }
+  opinion(caseId: string, input: OpinionInput) { if (this.party !== 'merchant') throw new Error('WORKSPACE_PATH_MISMATCH'); version(input.expectedVersion); one(input.opinionCode, opinions); str(input.explanation, 10); ids(input.evidenceAssetIds); if (input.supplementRequestId != null) id(input.supplementRequestId); return this.write(this.slot(caseId, 'opinion'), { path: `${this.root()}/${id(caseId)}/opinion`, method: 'POST', data: input }, value => { const receipt = decodeReceipt(value); if (receipt.afterSaleId !== caseId) fail(); return receipt }) }
+  pending(target: string, action: 'create' | 'evidence' | 'withdraw' | 'opinion') { return this.api.pendingCommand(this.slot(target, action))?.data }
+  pendingWrites() { const c = this.api.scope.capture().context; return this.api.pendingCommands(`aftersale:${this.party}:${id(c.userId)}:${c.merchantId ?? ''}:${c.storeId ?? ''}:`) }
+  retireConflict(target: string, action: 'create' | 'evidence' | 'withdraw' | 'opinion', error: unknown) {
+    if (!isDefiniteAfterSaleConflict(error) || !error || typeof error !== 'object') throw new Error('UNCONFIRMED_WRITE')
+    const proof = this.rejectionProofs.get(error), slot = this.slot(target, action)
+    if (!proof || proof.slot !== slot) throw new Error('UNCONFIRMED_WRITE')
+    this.api.retireRejectedCommand(slot, proof.command)
+    this.rejectionProofs.delete(error)
+  }
+  upload(filePath: string, requestId: string): Promise<PrivateAssetReceipt> { return this.api.uploadAfterSaleEvidence({ filePath, requestId, party: this.party }) }
+  async readEvidence(caseId: string, batchId: string, assetId: string, reason: string): Promise<string> { if (!this.images) throw new Error('EVIDENCE_READ_NOT_CONNECTED'); str(reason); const ticket = this.api.scope.capture(); const requestId = await this.api.uuid(); ticket.assertCurrent(); const value = await this.api.request({ path: `${this.root()}/${id(caseId)}/evidence-batches/${id(batchId)}/assets/${id(assetId)}/read-grants`, method: 'POST', requestId, data: { reason } }, x => { const v = exact(x, 'readUrl,expiresAt'); if (typeof v.readUrl !== 'string' || /[\r\n]/.test(v.readUrl) || !new RegExp(`^/api/v1/${this.party}/aftersale-evidence-read-grants/[A-Za-z0-9_-]{43}$`).test(v.readUrl)) fail(); instant(v.expiresAt); return v.readUrl as string }); ticket.assertCurrent(); return this.images.read(value) }
+  clearImages() { this.images?.clear() }
+  dispose() { this.images?.dispose?.(); this.clearImages() }
+}

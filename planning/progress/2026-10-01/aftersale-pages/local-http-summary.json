@@ -1,0 +1,25 @@
+{
+  "source": "Actual Surefire XML from isolated JDK21/MySQL/Redis HTTP regression",
+  "backendSourceBaseline": "e3b846e5038aa617e42a919862f20a927057f53e",
+  "newPageLiveJointVerified": false,
+  "physicalDeviceVerified": false,
+  "visualVerified": false,
+  "suites": [
+    {
+      "suite": "AfterSaleHttpAcceptanceTest",
+      "tests": 4,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "sha256": "7a6150728456a74bc1b618d26789f43544fac14d7ba1c401ae64b8b23554145d"
+    },
+    {
+      "suite": "AfterSaleEvidenceHttpAcceptanceTest",
+      "tests": 3,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "sha256": "5ddb2474911c13bce41781b2a847bb6c97c4ac12f7694b92e592638d170020be"
+    }
+  ]
+}

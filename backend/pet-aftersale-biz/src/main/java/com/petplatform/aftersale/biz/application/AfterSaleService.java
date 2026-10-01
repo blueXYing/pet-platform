@@ -69,7 +69,7 @@ public final class AfterSaleService implements AfterSaleCommandApi, AfterSaleQue
         top();authority.requireUser(c.context());
         var input=json(values("orderId",c.orderId(),"typeCode",c.typeCode(),"demandCode",c.demandCode(),"description",c.description(),"requestedAmount",money(c.requestedAmount()),"assets",sorted(c.evidenceAssetIds()),"newProblemStatement",c.newProblemStatement()));
         var key=key("aftersale.create",c.context(),"ORDER:"+c.orderId());var purpose=purpose(key);var saved=committed(key,purpose,input,c.context());if(saved!=null)return new CreationResult(saved,false);
-        reasons.requireCodes(c.typeCode(),c.demandCode());var moderationProof=moderate(c.description());moderate(c.newProblemStatement());admit(key,purpose,input);
+        AfterSaleCatalog.requireCodes(reasons.options(),c.typeCode(),c.demandCode());reasons.requireCodes(c.typeCode(),c.demandCode());var moderationProof=moderate(c.description());moderate(c.newProblemStatement());admit(key,purpose,input);
         return tx.execute(s->{defaults();var b=db.binding(key);same(b,purpose,input);var loc=orders.locate(c.orderId(),system(c.context()));
             guard.acquire(List.of(loc.storeId()),system(c.context()));authority.requireUser(c.context());if(!c.context().operatorId().equals(loc.userId()))throw forbidden();
             if("SUCCEEDED".equals(b.state))return new CreationResult(replay(b,purpose,c.context()),false);reserved(b);activate(b.id,"");
@@ -91,9 +91,13 @@ public final class AfterSaleService implements AfterSaleCommandApi, AfterSaleQue
 
     @Override public Receipt accept(Accept c) {
         if(c==null)throw invalid();if(c.newProblemAssessment()!=null)text(c.newProblemAssessment(),1,500);
+        if(c.expectedFinalSetVersion()!=null&&!c.expectedFinalSetVersion().matches("[0-9a-f]{64}"))throw invalid();
         return change("accept",c.context(),c.afterSaleId(),c.expectedVersion(),values("assessment",c.newProblemAssessment(),"finalSetVersion",c.expectedFinalSetVersion()),()->moderate(c.newProblemAssessment()),st->{
             st.admin("aftersale.handle");st.require("PENDING");var prior=finalCases(st.row.orderId);
-            if(!prior.isEmpty()){text(c.newProblemAssessment(),1,500);if(c.newProblemAssessment().isBlank()||!finalVersion(prior).equals(c.expectedFinalSetVersion()))throw error(CommonApiCodes.CONFLICT);}
+            if(!prior.isEmpty()){
+                text(c.newProblemAssessment(),1,500);if(c.newProblemAssessment().isBlank()||c.expectedFinalSetVersion()==null)throw invalid();
+                if(!finalVersion(prior).equals(c.expectedFinalSetVersion())){st.finalAuthority.run();throw error("AFTERSALE_FINAL_SET_CONFLICT");}
+            }
             st.to="PROCESSING";st.action="ACCEPTED";st.detail=values("assessment",c.newProblemAssessment(),"finalCaseIds",prior,"finalSetVersion",finalVersion(prior));
         });
     }
@@ -186,11 +190,31 @@ public final class AfterSaleService implements AfterSaleCommandApi, AfterSaleQue
         byte[] input=json(inputValues);var key=key("aftersale."+namespace,context,"AFTERSALE:"+caseId);String purpose=purpose(key);var saved=committed(key,purpose,input,context);if(saved!=null)return saved;var approval=prepare.get();admit(key,purpose,input);
         return tx.execute(s->{defaults();var b=db.binding(key);same(b,purpose,input);var hint=hint(id(caseId));guard.acquire(List.of(str(hint.storeId)),system(context));var row=caseRow(hint.id);
             authority.requireRead(context,resource(row));if("SUCCEEDED".equals(b.state))return replay(b,purpose,context);reserved(b);activate(b.id,"");
+            var rejectedAuthority=commandAuthority(namespace,context,row,parameters);
             if(!LIVE.contains(row.status))throw "RESOLVED".equals(row.status)?error("AFTERSALE_DECISION_FINAL"):"INVALIDATED".equals(row.status)?error("AFTERSALE_ALREADY_INVALIDATED"):state();
-            if(row.version!=expected)throw error(CommonApiCodes.CONFLICT);requireOrderCurrent(row);origin(row);
+            if(row.version!=expected){rejectedAuthority.run();throw error("AFTERSALE_VERSION_CONFLICT");}requireOrderCurrent(row);origin(row);
             var st=new State(row,b,context);st.approval=approval;work.run(st);return complete(st,purpose);
         });
     });}
+    /** A definitive comparison error never replaces a current write authorization failure. */
+    private Runnable commandAuthority(String namespace,CommandContext context,AfterSaleWorkflowMapper.CaseRow row,Map<String,Object> parameters){
+        String action=switch(namespace){case "accept","supplement.request","duplicate.close"->"aftersale.handle";case "decide"->"aftersale.decide";default->null;};
+        if(action!=null){
+            var granted=authority.requireAdmin(context,resource(row),action);if(granted==null)throw bad();
+            return ()->{if(!granted.equals(authority.requireAdmin(context,resource(row),action)))throw error(CommonApiCodes.CONFLICT);};
+        }
+        Runnable current=()->{
+            authority.requireUser(context);
+            if("withdraw".equals(namespace)){if(!context.operatorId().equals(str(row.userId)))throw forbidden();}
+            else if("opinion.submit".equals(namespace))authority.requireOwner(context,resource(row));
+            else if("evidence.submit".equals(namespace)){
+                Object route=parameters.get("routeParty");
+                if(route!=null){var party=RouteParty.valueOf(route.toString());selectedRead(context,row,party);if(party==RouteParty.MERCHANT)authority.requireOwner(context,resource(row));}
+                else if(!context.operatorId().equals(str(row.userId)))authority.requireOwner(context,resource(row));
+            }else throw bad();
+        };
+        current.run();return current;
+    }
     private Receipt complete(State st,String purpose){
         long newVersion=Math.addExact(st.row.version,1);boolean active=LIVE.contains(st.to);
         one(db.transition(values("case",st.row.id,"oldVersion",st.row.version,"from",st.row.status,"to",st.to,"active",active?1:0,"supplement",st.supplement,"decision",st.decision,"refund",st.refund,"duplicate",st.duplicate,"decisionType",st.decisionType,"decisionAmount",st.decisionAmount,"action",st.action,"at",utc(st.at))));
@@ -213,6 +237,11 @@ public final class AfterSaleService implements AfterSaleCommandApi, AfterSaleQue
         var v=values("command",binding.id,"case",row.id,"order",row.orderId,"from",from,"to",row.status,"version",row.version,"action",action,"event",event,"actorType",c.operatorType().name(),"actor",c.operatorId()==null?null:id(c.operatorId()),"at",utc(parseTime(receipt.occurredAt())),"batch",optionalId(receipt.evidenceBatchId()),"supplement",optionalId(receipt.supplementRequestId()),"decision",optionalId(receipt.decisionId()),"refund",optionalId(receipt.refundOrderId()),"detail",detail==null?null:encrypt("TRANSITION:"+binding.id,detail),"log",next());one(db.insertTransition(v));one(db.log(v));
     }
 
+    @Override public Options options(CommandContext context){return safe(()->{
+        queryActor(context,RouteParty.USER);top();String access=authorityVersion(authority.requireBuyerRead(context));
+        var result=AfterSaleCatalog.requireValid(reasons.options());
+        if(!access.equals(authorityVersion(authority.requireBuyerRead(context))))throw forbidden();return result;
+    });}
     @Override public Eligibility checkEligibility(CommandContext context,String orderId){return safe(()->{
         id(orderId);queryActor(context,RouteParty.USER);top();String access=authorityVersion(authority.requireBuyerRead(context));Eligibility result;
         try{result=tx.execute(s->{defaults();var loc=orders.locate(orderId,system(context));guard.acquire(List.of(loc.storeId()),system(context));if(!access.equals(authorityVersion(authority.requireBuyerRead(context))))throw forbidden();if(!loc.userId().equals(context.operatorId()))throw forbidden();

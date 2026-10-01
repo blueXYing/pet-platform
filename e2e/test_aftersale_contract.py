@@ -23,7 +23,7 @@ class AfterSaleContractTest(unittest.TestCase):
 
     def test_family_is_separate_from_remaining_legacy_and_default_closed(self):
         result = check(self.spec)
-        self.assertEqual(23, result['aftersaleOperations'])
+        self.assertEqual(24, result['aftersaleOperations'])
         self.assertEqual(14, result['legacyOperations'])
         path = '/c/aftersales'
         self.reject(lambda s: s['paths'][path]['get'].__setitem__('x-default-enabled', True), 'AFS default-off')
@@ -87,6 +87,24 @@ class AfterSaleContractTest(unittest.TestCase):
         path = '/merchant/aftersale-evidence-read-grants/{token}'
         self.reject(lambda s: s['paths'][path]['get']['responses'].pop('410'), 'AFS private image')
         self.reject(lambda s: s['paths'][path]['get']['responses']['200'].__setitem__('content', {'application/json': {}}), 'AFS private image')
+
+    def test_approved_options_are_authenticated_bodyless_and_bounded(self):
+        path = '/c/aftersale-options'
+        self.reject(lambda s: s['paths'][path]['get'].__setitem__('security', []), 'security')
+        self.reject(lambda s: s['paths'][path]['get'].__setitem__('parameters', [{'name': 'userId', 'in': 'query', 'schema': {'type': 'string'}}]), 'AFS catalog query/body')
+        self.reject(lambda s: s['paths'][path]['get'].__setitem__('requestBody', {'required': True, 'content': {'application/json': {'schema': {'type': 'object'}}}}), 'AFS catalog query/body')
+        self.reject(lambda s: s['components']['schemas']['AfterSaleOptions']['properties']['typeOptions'].__setitem__('minItems', 0), 'AFS catalog bounds')
+        self.reject(lambda s: s['components']['schemas']['AfterSaleOptions']['properties']['demandOptions'].__setitem__('maxItems', 1000), 'AFS catalog bounds')
+        self.reject(lambda s: s['components']['schemas']['AfterSaleOption']['required'].remove('label'), 'AFS option fields')
+        self.reject(lambda s: s['components']['schemas']['AfterSaleOption']['properties']['label'].__setitem__('maxLength', 500), 'AFS catalog label bounds')
+        self.reject(lambda s: s['components']['schemas']['AfterSaleOptions']['properties']['typeOptions'].__setitem__('x-sort-order', 'LABEL_ASC'), 'AFS catalog uniqueness/order')
+        self.reject(lambda s: s['components']['schemas']['AfterSaleOptions']['properties']['demandOptions'].pop('x-unique-by'), 'AFS catalog uniqueness/order')
+        self.reject(lambda s: s['components']['schemas']['AfterSaleOption']['properties']['label'].__setitem__('x-length-unit', 'UTF16_CODE_UNITS'), 'AFS catalog Unicode label policy')
+        self.reject(lambda s: s['paths'][path]['get'].__setitem__('x-incomplete-catalog-error', 'SUCCESS'), 'AFS catalog authority/failclosed')
+
+    def test_definite_version_rejections_remain_distinct_from_idempotency_busy(self):
+        for code in ('AFTERSALE_VERSION_CONFLICT', 'AFTERSALE_FINAL_SET_CONFLICT', 'COMMON_CONFLICT', 'IDEMPOTENCY_KEY_CONFLICT'):
+            self.reject(lambda s, c=code: s['components']['schemas']['AfterSaleErrorEnvelope']['properties']['code']['enum'].remove(c), 'AFS definite/busy conflict distinction')
 
 
 if __name__ == '__main__':

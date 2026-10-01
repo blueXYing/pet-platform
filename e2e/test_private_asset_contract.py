@@ -24,11 +24,11 @@ class PrivateAssetContractRegressions(unittest.TestCase):
 
     def test_current_surface_independent_counts(self):
         result = check(self.spec)
-        # 113 = previous 92 - 2 legacy AFS drafts + 23 Contract51 AFS operations.
-        self.assertEqual(result['operations'], 113)
+        # 114 = previous 92 - 2 legacy AFS drafts + 24 approved Contract51 AFS operations.
+        self.assertEqual(result['operations'], 114)
         self.assertEqual(result['privateAssetOperations'], 3)
         self.assertEqual(result['legacyOperations'], 14)
-        self.assertEqual(result['aftersaleOperations'], 23)
+        self.assertEqual(result['aftersaleOperations'], 24)
         self.assertEqual(result['authOperations'], 36)
         self.assertEqual(result['merchantOperations'], 8)
         self.assertEqual(result['applicationOperations'], 11)

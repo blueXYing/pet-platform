@@ -123,10 +123,17 @@ final class AfterSaleFixture implements AutoCloseable {
         };
         aftersales=new AfterSaleService(ordinary.source,ordinary.guard,IDS::incrementAndGet,afsEvents,
                 orderAftersales,orderAftersales,ordinary.apps,refundAftersales,funding,authority,
-                (type,demand)->{reasonPolicyCalls.incrementAndGet();
-                    if(!reasonPolicyAvailable.get())throw new ApiException(CommonApiCodes.DEPENDENCY_UNAVAILABLE,"QA reason dictionary unavailable");
-                    if(!"QA_QUALITY".equals(type)||!"QA_REFUND".equals(demand))
-                    throw new ApiException(CommonApiCodes.INVALID_ARGUMENT,"Unconfigured QA reason");},
+                new AfterSalePorts.ReasonPolicy(){
+                    public com.petplatform.aftersale.api.query.AfterSaleQueryApi.Options options(){
+                        if(!reasonPolicyAvailable.get())throw new ApiException(CommonApiCodes.DEPENDENCY_UNAVAILABLE,"QA reason dictionary unavailable");
+                        return new com.petplatform.aftersale.api.query.AfterSaleQueryApi.Options(
+                                List.of(new com.petplatform.aftersale.api.query.AfterSaleQueryApi.Option("QA_QUALITY","QA quality issue")),
+                                List.of(new com.petplatform.aftersale.api.query.AfterSaleQueryApi.Option("QA_REFUND","QA requested resolution")));
+                    }
+                    public void requireCodes(String type,String demand){reasonPolicyCalls.incrementAndGet();
+                        options();if(!"QA_QUALITY".equals(type)||!"QA_REFUND".equals(demand))
+                        throw new ApiException(CommonApiCodes.INVALID_ARGUMENT,"Unconfigured QA reason");}
+                },
                 value->{moderationCalls.incrementAndGet();
                     if(!moderationAvailable.get())throw new ApiException(CommonApiCodes.DEPENDENCY_UNAVAILABLE,"QA moderation provider unavailable");
                     return new AfterSalePorts.Approval(sha(value),"QA_ONLY_MODERATION",true);},

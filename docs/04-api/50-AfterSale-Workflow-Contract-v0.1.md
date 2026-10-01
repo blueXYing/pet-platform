@@ -95,3 +95,5 @@ SQL50为显式增量，非启动DDL；历史有不可证实来源必须预检阻
 
 
 实现补充：CaseView 回显当前补证轮次的 supplementReason（解密后仅已获权参与方可读），让被要求补证方知道所需内容。TASK 通过核心 TaskInvocation 仅在真实 worker dispatch 内建立只读租约上下文；单独构造 SYSTEM 命令不能代替来源证明。开关 pet.aftersale.enabled/refund.enabled/worker.enabled/http.enabled 均默认 false；非出款HTTP表面按[Contract51](51-AfterSale-Http-Contract-v0.1.md)实现并保持默认关闭，公开FULL/PARTIAL始终拒绝；资金开关关闭时即使安装 provider 也不得新做资金裁决。生产必须显式提供审核器、原因目录、密钥及资金权威，仓库不提供恒真替身。
+
+2026-10-01 已批准两项技术CCR见[Contract51](51-AfterSale-Http-Contract-v0.1.md)：同一ReasonPolicy完整code+label目录供当前USER查询及新Create校验，缺目录失败关闭，旧成功Create重放不重新依赖目录。新命令确定CAS与P4合法集合版本不匹配分别为 AFTERSALE_VERSION_CONFLICT / AFTERSALE_FINAL_SET_CONFLICT，先验当前动作权限、拒绝前复验授权且无业务迁移/日志/证据/决定/ORDER/Outbox副作用；独立Admission保留。成功UUID重放仍先行；权限修订变化/争锁忙仍COMMON_CONFLICT，P4缺核对材料400。无产品规则/存储/事件/任务变化。

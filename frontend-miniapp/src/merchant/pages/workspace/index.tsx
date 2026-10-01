@@ -48,6 +48,7 @@ export default function MerchantWorkbenchPage() {
     await Taro.reLaunch({ url: '/consumer/pages/shell/index' })
   }
   function takeStep(step: string, merchantId: string) {
+    if (step === 'VIEW_AFTERSALES') { openAftersales(); return }
     const url = routeForStep(step, merchantId)
     if (url) void Taro.navigateTo({ url })
     else void Taro.showToast({ title: '该入口将在后续切片提供', icon: 'none' })
@@ -58,6 +59,10 @@ export default function MerchantWorkbenchPage() {
   function openServices() {
     controller.handoffToChild()
     Taro.navigateTo({ url: '/merchant/pages/services/index' }).catch(() => controller.handoffCancelled())
+  }
+  function openAftersales() {
+    controller.handoffToChild()
+    Taro.navigateTo({ url: '/merchant/pages/aftersale/index' }).catch(() => controller.handoffCancelled())
   }
   const view = state.view
   return <View className='merchant-workbench'>
@@ -100,6 +105,9 @@ export default function MerchantWorkbenchPage() {
           {/* M-002 service management entry (NAVIGATION-BASIS: workbench is the approved hub;
               the entry stays hidden for LIMITED stores — new-business writes are suspended). */}
           <Button id='workbench-services' onClick={openServices}>服务管理</Button>
+        </View>}
+        {(state.status === 'allowed' || state.status === 'limited') && view.membershipKind === 'OWNER' && view.allowedActions.includes('merchant.aftersale.read') && <View className='workbench-steps'>
+          <Button id='workbench-aftersales' onClick={openAftersales}>售后管理</Button>
         </View>}
         {view.nextSteps.length > 0 && <View className='workbench-steps'>
           {view.nextSteps.map(step => <Button key={step.type} onClick={() => takeStep(step.type, view.merchantId)}>{stepText[step.type] || step.type}</Button>)}

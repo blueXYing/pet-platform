@@ -713,6 +713,10 @@ VERIFICATION_BLOCKED_BY_REFUND
 
 正式实现以 [Contract51](51-AfterSale-Http-Contract-v0.1.md) 及 OpenAPI11 为准。`POST /api/v1/c/orders/{orderId}/aftersales` 接受 typeCode/demandCode/description/requestedAmount/evidenceAssetIds/newProblemStatement，路径提供 orderId。UUID 原值幂等；首次201/同参重放200，完整 Receipt 四字段 envelope。`GET /api/v1/c/orders/{orderId}/aftersale-eligibility` 只读真实本人资格，七天边界沿 Contract50。
 
+2026-10-01 已批准申请目录：`GET /api/v1/c/aftersale-options`，当前MINIAPP USER，无query/body，返回精确`{typeOptions:[{code,label}],demandOptions:[{code,label}]}`。每组1..100，code大写目录键1..64、唯一且ASCII升序，label1..64Unicode码点及首尾空白限制见51号；读与新创建校验同一权威完整配置，无硬编码默认值。目录缺名称/不一致503，成功历史重放仍返回原回执。仍沿同一默认关闭HTTP开关。
+
+已批准确定冲突：新命令在当前动作授权复验通过后，工单CAS不匹配409 AFTERSALE_VERSION_CONFLICT；P4合法历史hash不匹配409 AFTERSALE_FINAL_SET_CONFLICT，均无业务副作用但原Admission参数保留。P4缺核对材料400；锁忙/权限版本复验变化仍COMMON_CONFLICT，异参仍IDEMPOTENCY_KEY_CONFLICT。先刷新并人工确认再用新UUID；成功重放先于CAS。具体边界见51号/Error12。
+
 ## 3.13 售后查询与补充证据
 
 C：GET `/api/v1/c/aftersales`、GET `/api/v1/c/aftersales/{afterSaleId}`；POST 后缀 `/evidence`、`/withdraw`。本人端别在事务内和重放复验，字段/分页/私有图授权遵 Contract51。无复审/二次申诉接口。

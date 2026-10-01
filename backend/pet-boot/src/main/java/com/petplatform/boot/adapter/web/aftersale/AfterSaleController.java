@@ -28,6 +28,13 @@ public final class AfterSaleController {
     public record CloseBody(String expectedVersion,String priorFinalCaseId,String reason) {}
     public record DecisionBody(String expectedVersion,String decisionType,String refundAmount,String reason) {}
 
+    @GetMapping("/api/v1/c/aftersale-options")
+    public ResponseEntity<Map<String,Object>> options(HttpServletRequest r){
+        var c=context(r,false,null);if(r.getQueryString()!=null)throw invalid();onlyParameters(r);noBody(r);var a=queries.options(c);
+        return ok(map("typeOptions",a.typeOptions().stream().map(o->map("code",o.code(),"label",o.label())).toList(),
+                "demandOptions",a.demandOptions().stream().map(o->map("code",o.code(),"label",o.label())).toList()),200,r);
+    }
+
     @PostMapping("/api/v1/c/orders/{orderId}/aftersales")
     public ResponseEntity<Map<String,Object>> create(@PathVariable String orderId,HttpServletRequest r) {
         var c=context(r,true,null);var b=body(r,CreateBody.class);
