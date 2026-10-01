@@ -30,6 +30,9 @@ function DetailScreen({ caseId }: { caseId: string }) {
   const locked = state.locked || state.busy || state.readOnly || uploading || !activeCase(state.detail)
   function save(nextText: string, nextAssets: { assetId: string }[]) { client.api.saveIntent(slot, { text: nextText, assets: nextAssets }) }
   async function load() {
+    // Re-reading is a new authorization proof: discard the old image before any request,
+    // including when the latest detail/session read is denied or cannot be proved.
+    closeImage()
     if (!isId(caseId)) { setNotice('缺少有效工单编号，请返回重新选择'); return }
     try {
       await client.api.restore(); if (!live()) return
@@ -88,7 +91,12 @@ function DetailScreen({ caseId }: { caseId: string }) {
       const path = await client.readEvidence(caseId, batchId, assetId, '本人查看售后卷宗证据')
       if (!live() || !visible.current || run !== imageEpoch.current) return
       setImage(path)
-    } catch (error) { if (live() && visible.current && run === imageEpoch.current) setNotice(afterSaleMessage(error)) }
+    } catch (error) {
+      if (live() && visible.current && run === imageEpoch.current) {
+        closeImage()
+        setNotice(afterSaleMessage(error))
+      }
+    }
     finally { if (live() && run === imageEpoch.current) { imageFlight.current = false; setReading(false) } }
   }
   const detail = state.detail
