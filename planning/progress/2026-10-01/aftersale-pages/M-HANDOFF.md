@@ -32,7 +32,7 @@
 
 ## 安全、幂等及恢复
 
-意见/补证沿共享 ConsumerApi 持久同 UUID/原 body；未知结果锁定原动作和内容，重进恢复原输入，即使后来工单已经终态仍能在当前写权限成立时重放原命令。明确业务 409 退休后重读真实版本/补证轮；IDEMPOTENT/IN_PROGRESS 保留原重试。已收到成功回执但详情读失败明确显示“已提交”，要求重新加载后再动作。
+意见/补证沿共享 ConsumerApi 持久同 UUID/原 body；未知结果锁定原动作和内容，重进恢复原输入，即使后来工单已经终态仍能在当前写权限成立时重放原命令。只有共享 `isDefiniteAfterSaleConflict` 白名单里的确定业务409可退休并重读真实工单；COMMON_CONFLICT可同时表示幂等争锁忙，不能称为确定CAS。COMMON_CONFLICT、IDEMPOTENCY/IN_PROGRESS、未知409及429一律保留原内容/UUID，显式原提交重试。已收到成功回执但详情读失败明确显示“已提交”，要求重新加载后再动作。
 
 WAITING_SUPPLEMENT 无论目标 USER/MERCHANT 都带当前真实 supplementRequestId；目标 USER 时商家意见不声称完成用户补证。截止等号及以后不发起本轮新提交，等待后端 worker/read 显示恢复状态，不自动推断终裁。所有 ID/version 为 String，说明按 Java UTF-16 长度10..500、每次0..6唯一 assetId。
 
@@ -47,10 +47,12 @@ WAITING_SUPPLEMENT 无论目标 USER/MERCHANT 都带当前真实 supplementReque
 本工作树使用协调者完成 npm ci 的 node_modules 只读 junction（未改变依赖/锁文件）：
 
 - `npm run typecheck`：通过。
-- `node node_modules/tsx/dist/cli.mjs --test src/merchant/tests/aftersale*.test.ts`：19/19通过。覆盖 OWNER/STAFF、FROZEN/OFFLINE、无准入失败关闭、真实门店筛选、延迟响应隔离、期限等号、四种意见与字符限制、未知结果及终态重放、两类409、ACK后详情失败、保存副本及UUID重启恢复、receipt→草稿故障恢复、fingerprint变更、后续415不丢原UUID、私有证据410、merchant/store/case/owner持久隔离和登出后同人恢复/换人不可见。
+- `node node_modules/tsx/dist/cli.mjs --test src/merchant/tests/aftersale*.test.ts`：21/21通过（含独立QA发现后的补测）。覆盖 OWNER/STAFF、FROZEN/OFFLINE、无准入失败关闭、真实门店筛选、延迟响应隔离、期限等号、四种意见与字符限制、未知结果及终态重放、白名单确定补证409、COMMON_CONFLICT/IDEMPOTENCY/未知409/429不退休、真实客户端争锁后重构同UUID/body、ACK后详情失败、保存副本及UUID重启恢复、receipt→草稿故障恢复、fingerprint变更、后续415不丢原UUID、私有证据410、merchant/store/case/owner持久隔离和登出后同人恢复/换人不可见。
 - `git diff --check`：通过；PNG文件尺寸/非空、SHA、源节点、调用位置和CSS几何已静态核查。
 
 此处测试使用内部可控依赖与真实 ConsumerApi 的存储/会话恢复机制；不伪装真实微信网络、扫描、后端数据或生产账号。
+
+QA修复时已按协调者授权将根审定共享文件从 `6f865a4` 同步至本树，仅供验证（本树同步commit `1d43c26`，根不需 cherry-pick）。共享未知命令跨401重新认证恢复由协调者负责；商家修复只使用其公共helper、未自行改共享实现。
 
 ## 根接线与剩余验收
 

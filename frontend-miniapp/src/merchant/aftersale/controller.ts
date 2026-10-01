@@ -2,6 +2,7 @@ import { ApiError } from '../../shared/request'
 import { WorkspaceScope, StaleContextError } from '../../shared/workspace'
 import type { MerchantAdmission } from '../../shared/merchant-repositories'
 import type { AfterSaleStatus, CaseSummary, CaseDetail, CasePage, EvidenceInput, OpinionInput, CommandReceipt } from '../../shared/aftersale-api'
+import { isDefiniteAfterSaleConflict } from '../../shared/aftersale-api'
 import type { PrivateAssetReceipt } from '../../shared/consumer-api'
 import type { UploadFiles } from '../../shared/private-asset-upload'
 import { canReply, emptyReply, ownerAccess, replyInput, type ReplyDraft } from './model'
@@ -147,11 +148,13 @@ export class MerchantAfterSaleController {
         this.patch({ busy: false, status: 'error', detail: null, writable: false, pending: null, notice: '已提交，最新详情读取失败，请重新加载。' })
         return
       }
-      if (error instanceof ApiError && error.statusCode === 409) {
+      if (isDefiniteAfterSaleConflict(error)) {
         const retired = this.deps.retireConflict(caseId, mode, error)
         this.patch({ pending: retired ? null : pending, busy: false, notice: retired ? '工单或补证轮次已变化，请核对最新详情后重新提交。' : '上次提交结果待确认，请按原内容重试。' })
         try { const ticket = this.ticket(); await this.access(ticket, run); const detail = await this.deps.detail(caseId); this.current(ticket, run); this.patch({ detail, status: 'ready' }) }
         catch (readError) { this.fail(readError, run) }
+      } else if (error instanceof ApiError && [409, 429].includes(error.statusCode)) {
+        this.patch({ busy: false, pending, notice: '上次提交结果待确认，请稍后按原内容重试。' })
       } else if (error instanceof ApiError && [401, 403].includes(error.statusCode)) this.fail(error, run)
       else this.patch({ busy: false, pending, notice: merchantAfterSaleMessage(error) })
     }
@@ -241,7 +244,7 @@ export function merchantAfterSaleMessage(error: unknown): string {
     if (error.statusCode === 401) return '登录已失效，请重新登录后进入商家工作台。'
     if (error.statusCode === 403) return '当前身份或权限不允许此操作，请从商家工作台重新进入。'
     if (error.statusCode === 404) return '工单不存在或不在当前门店权限范围内。'
-    if (error.statusCode === 409) return '工单状态或补证轮次已变化，请刷新详情。'
+    if (error.statusCode === 409) return isDefiniteAfterSaleConflict(error) ? '工单状态或补证轮次已变化，请刷新详情。' : '上次提交结果待确认，请按原内容重试。'
     if (error.statusCode === 410) return '证据查看凭证已过期或已使用，请重新查看。'
     if (error.statusCode === 413) return '图片超过10MiB，请重新选择。'
     if (error.statusCode === 415) return '仅支持JPEG、PNG图片。'

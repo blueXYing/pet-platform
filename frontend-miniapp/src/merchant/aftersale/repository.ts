@@ -1,6 +1,6 @@
 import { decodePrivateAsset, id, type ConsumerApi, type LocalStore } from '../../shared/consumer-api'
 import type { UploadFiles } from '../../shared/private-asset-upload'
-import { AfterSaleClient, type OpinionInput, type EvidenceInput } from '../../shared/aftersale-api'
+import { AfterSaleClient, isDefiniteAfterSaleConflict, type OpinionInput, type EvidenceInput } from '../../shared/aftersale-api'
 import { MerchantAdmissionRepository } from '../../shared/merchant-repositories'
 import type { MerchantAfterSaleDeps, UploadAttempt } from './controller'
 import { emptyReply, opinionOptions, type ReplyDraft } from './model'
@@ -32,7 +32,7 @@ export function merchantAfterSaleDeps(client: AfterSaleClient, store: LocalStore
       const evidence = client.pending(caseId, 'evidence')
       return evidence ? { action: 'evidence', input: evidence as EvidenceInput } : null
     },
-    retireConflict: (caseId, action, error) => { try { client.retireConflict(caseId, action, error); return true } catch { return false } },
+    retireConflict: (caseId, action, error) => { if (!isDefiniteAfterSaleConflict(error)) return false; try { client.retireConflict(caseId, action, error); return true } catch { return false } },
     readEvidence: (caseId, batchId, assetId, reason) => client.readEvidence(caseId, batchId, assetId, reason),
     clearImages: () => client.clearImages(), uuid: () => api.uuid(), upload: (filePath, requestId) => client.upload(filePath, requestId), files, now: () => Date.now(),
     uploadAttempt: caseId => {

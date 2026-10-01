@@ -4,6 +4,7 @@ import { ApiError } from '../../shared/request'
 import { WorkspaceScope } from '../../shared/workspace'
 import type { MerchantAdmission } from '../../shared/merchant-repositories'
 import type { CaseDetail, CaseSummary, CommandReceipt, OpinionInput } from '../../shared/aftersale-api'
+import { isDefiniteAfterSaleConflict } from '../../shared/aftersale-api'
 import type { PrivateAssetReceipt } from '../../shared/consumer-api'
 import { MerchantAfterSaleController, type MerchantAfterSaleDeps, type PendingReply, type UploadAttempt } from '../aftersale/controller'
 import { canReply, dateText, emptyReply, ownerAccess, replyInput } from '../aftersale/model'
@@ -28,7 +29,7 @@ function fixture() {
   const deps: MerchantAfterSaleDeps = {
     scope, admission: async () => copy(view), list: async query => { listCalls++; return { page: query.page, pageSize: query.pageSize, total: 1, items: [copy(summary)] } },
     detail: async () => copy(current), opinion: async () => { writes++; return copy(receipt) }, evidence: async () => { writes++; return copy(receipt) }, pending: () => pending,
-    retireConflict: (_id, _action, error) => { if (error instanceof ApiError && !/IDEMPOTEN|IN_PROGRESS/.test(error.code)) { pending = null; return true }; return false },
+    retireConflict: (_id, _action, error) => { if (isDefiniteAfterSaleConflict(error)) { pending = null; return true }; return false },
     loadDraft: () => draft, saveDraft: (_id, value) => { draft = value || emptyReply() },
     readEvidence: async () => '/private/test.img', clearImages: () => { imagesCleared++ },
     uuid: async () => { uuids++; return '00000000-0000-4000-8000-000000000001' },
@@ -93,12 +94,26 @@ test('unknown write stays locked and retries exact previous input even after ter
   f.detail = { ...detail, version: '9', status: 'RESOLVED', decisionType: 'OTHER', decisionReason: '平台已经完成了真实处理' }; await c.load(); await c.submit('opinion')
   assert.equal(calls, 2); assert.equal(c.getSnapshot().pending, null); c.dispose()
 })
-test('confirmed CAS conflict reloads actual version but idempotent conflict retains pending replay', async () => {
+test('definite supplement conflict reloads actual version but idempotent conflict retains pending replay', async () => {
   const f = fixture(); const c = new MerchantAfterSaleController(f.deps, '201'); await c.load(); c.setDraft({ opinionCode: 'AGREE', text: '商家同意用户意见并提供补充说明' })
-  f.deps.opinion = async (_id, input) => { f.pending = { action: 'opinion', input }; f.detail = { ...detail, version: '2' }; throw new ApiError('AFTERSALE_VERSION_CONFLICT', 409) }
+  f.deps.opinion = async (_id, input) => { f.pending = { action: 'opinion', input }; f.detail = { ...detail, version: '2' }; throw new ApiError('AFTERSALE_SUPPLEMENT_STALE', 409) }
   await c.submit('opinion'); assert.equal(c.getSnapshot().detail!.version, '2'); assert.equal(c.getSnapshot().pending, null)
   f.deps.opinion = async (_id, input) => { f.pending = { action: 'opinion', input }; throw new ApiError('IDEMPOTENT_IN_PROGRESS', 409) }
   await c.submit('opinion'); assert.ok(c.getSnapshot().pending); assert.match(c.getSnapshot().notice, /按原内容重试/); c.dispose()
+})
+test('COMMON_CONFLICT, unknown 409 and 429 never retire or change an unresolved opinion input', async () => {
+  for (const [code, status] of [['COMMON_CONFLICT', 409], ['IDEMPOTENCY_CONFLICT', 409], ['UNKNOWN_CONFLICT', 409], ['COMMON_RATE_LIMITED', 429]] as const) {
+    const f = fixture(); let original: OpinionInput | null = null, calls = 0, retireCalls = 0
+    f.deps.retireConflict = () => { retireCalls++; f.pending = null; return true }
+    f.deps.opinion = async (_id, input) => {
+      if (++calls === 1) { original = copy(input); f.pending = { action: 'opinion', input: copy(input) }; throw new ApiError(code, status) }
+      assert.deepEqual(input, original); f.pending = null; return receipt
+    }
+    const c = new MerchantAfterSaleController(f.deps, '201'); await c.load(); c.setDraft({ opinionCode: 'AGREE', text: '商家根据真实证据提交相同原意见' }); await c.submit('opinion')
+    assert.equal(retireCalls, 0); assert.deepEqual(c.getSnapshot().pending?.input, original); assert.match(c.getSnapshot().notice, /原内容重试/)
+    c.setDraft({ text: '争锁忙或限流之后不允许更改原内容' }); assert.equal(c.getSnapshot().draft.text, original!.explanation)
+    await c.submit('opinion'); assert.equal(calls, 2); assert.equal(c.getSnapshot().pending, null); c.dispose()
+  }
 })
 test('acknowledged write with failed read stays confirmed and requires fresh detail before another action', async () => {
   const f = fixture(); let detailReads = 0

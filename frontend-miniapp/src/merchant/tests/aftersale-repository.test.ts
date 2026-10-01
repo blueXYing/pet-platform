@@ -5,8 +5,9 @@ import { ConsumerApi, type LocalStore } from '../../shared/consumer-api'
 import { AfterSaleClient } from '../../shared/aftersale-api'
 import { merchantAfterSaleDeps } from '../aftersale/repository'
 import type { UploadFiles } from '../../shared/private-asset-upload'
+import { ApiError, type Transport, type WireRequest } from '../../shared/request'
 
-async function setup() {
+async function setup(response?: Transport) {
   const session = { userId: '101', sessionId: '201', audience: 'MINIAPP', expiresAt: '2099-01-01T00:00:00.000Z' }
   const saved = new Map<string, unknown>([['pet.c.session.v1', { ...session, tokenType: 'Bearer', accessToken: 'test-only-unusable' }]])
   const store: LocalStore = { get: key => saved.get(key), set: (key, value) => { saved.set(key, structuredClone(value)) }, remove: key => { saved.delete(key) } }
@@ -14,7 +15,9 @@ async function setup() {
   const make = (userId = '101') => {
     const currentSession = { ...session, userId }
     saved.set('pet.c.session.v1', { ...currentSession, tokenType: 'Bearer', accessToken: 'test-only-unusable' })
-    return new ConsumerApi(async () => ({ statusCode: 200, data: { code: 'SUCCESS', message: 'ok', data: currentSession, traceId: 'test' } }), store, async () => randomUUID())
+    return new ConsumerApi(async request => request.path.endsWith('/auth/session') || !response
+      ? { statusCode: 200, data: { code: 'SUCCESS', message: 'ok', data: currentSession, traceId: 'test' } }
+      : response(request), store, async () => randomUUID())
   }
   const api = make()
   await api.restore(); api.scope.replace({ userId: '101', workspace: 'merchant', merchantId: '501', storeId: '601' })
@@ -45,4 +48,25 @@ test('unknown upload survives logout and same-user reauthentication; another use
   const otherDeps = merchantAfterSaleDeps(new AfterSaleClient(other, 'merchant'), h.store, h.files); assert.equal(otherDeps.uploadAttempt('301'), null)
   const same = h.make('101'); await same.restore(); same.scope.replace({ userId: '101', workspace: 'merchant', merchantId: '501', storeId: '601' })
   const sameDeps = merchantAfterSaleDeps(new AfterSaleClient(same, 'merchant'), h.store, h.files); assert.deepEqual(sameDeps.uploadAttempt('301'), attempt)
+})
+test('actual client preserves original UUID/body through merchant COMMON_CONFLICT and a reconstructed repository', async () => {
+  let busy = true; const requests: WireRequest[] = []
+  const h = await setup(async request => {
+    requests.push(structuredClone(request))
+    if (busy) return { statusCode: 409, data: { code: 'COMMON_CONFLICT', message: 'busy', data: null, traceId: 'test' } }
+    return { statusCode: 200, data: { code: 'SUCCESS', message: 'ok', traceId: 'test', data: {
+      commandId: '701', orderId: '401', afterSaleId: '301', status: 'PENDING', version: '1', occurredAt: '2026-10-01T00:00:00.000Z', evidenceBatchId: '702', supplementRequestId: null, decisionId: null, refundOrderId: null,
+    } } }
+  })
+  const input = { expectedVersion: '0', opinionCode: 'AGREE' as const, explanation: '商家根据真实证据提交原始意见说明', evidenceAssetIds: [] }
+  await assert.rejects(h.deps.opinion('301', input), error => error instanceof ApiError && error.code === 'COMMON_CONFLICT')
+  assert.equal(h.deps.retireConflict('301', 'opinion', new ApiError('COMMON_CONFLICT', 409)), false)
+  const original = requests[0]
+  const restored = h.make(); await restored.restore(); restored.scope.replace({ userId: '101', workspace: 'merchant', merchantId: '501', storeId: '601' })
+  const deps = merchantAfterSaleDeps(new AfterSaleClient(restored, 'merchant'), h.store, h.files)
+  assert.deepEqual(deps.pending('301')?.input, input)
+  await assert.rejects(deps.opinion('301', { ...input, expectedVersion: '1' }), /PENDING_WRITE_CHANGED/)
+  assert.equal(requests.length, 1)
+  busy = false; await deps.opinion('301', input)
+  assert.equal(requests[1].requestId, original.requestId); assert.deepEqual(requests[1].data, original.data); assert.equal(deps.pending('301'), null)
 })
