@@ -347,7 +347,10 @@ export class ConsumerApi {
         return value
       } catch (error) {
         ticket.assertCurrent()
-        if (definiteRejection(error)) { delete this.pending[slot]; this.store.set(WRITE_KEY, this.pending) }
+        // Authorization/resource visibility is rechecked before an old receipt is
+        // returned. A 401/403/404 cannot prove an earlier unknown write never ran.
+        const hiddenReceipt = isAfterSalePath(command) && error instanceof ApiError && [401, 403, 404].includes(error.statusCode)
+        if (definiteRejection(error) && !hiddenReceipt) { delete this.pending[slot]; this.store.set(WRITE_KEY, this.pending) }
         throw error
       }
     })().finally(() => { if (this.writes.get(slot) === operation) { this.writes.delete(slot); this.writeSpecs.delete(slot) } })

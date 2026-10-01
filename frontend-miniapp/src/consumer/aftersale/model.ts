@@ -154,7 +154,7 @@ export class ConsumerAfterSaleController {
       if (!this.live(epoch)) return
       // Exact definitive rejections can unlock edits. An idempotency conflict retains its
       // payload so the user cannot create a different operation under a new UUID.
-      const rejected = error instanceof ApiError && ([400, 401, 403, 404, 422].includes(error.statusCode) || isDefiniteAfterSaleConflict(error))
+      const rejected = error instanceof ApiError && ([400, 422].includes(error.statusCode) || isDefiniteAfterSaleConflict(error))
       if (error instanceof ApiError && error.statusCode === 409 && rejected) this.deps.retireConflict?.(pending.kind === 'create' ? pending.orderId : pending.id, pending.kind, error)
       if (rejected) this.pending = null
       const unauthorized = error instanceof ApiError && error.statusCode === 401

@@ -144,3 +144,17 @@ test('mismatched receipts never retire a command or navigate to another order/ca
   await assert.rejects(wrongCase.client.withdraw('301', '0'), /INVALID_RESPONSE/)
   assert.ok(wrongCase.client.pending('301', 'withdraw'))
 })
+
+test('authorization and resource-visibility failures cannot erase an earlier unknown aftersale receipt', async () => {
+  for (const statusCode of [403, 404]) {
+    let mode = 'lost'
+    const h = setup(async () => { if (mode === 'lost') throw new Error('network'); if (mode === 'hidden') return { statusCode, data: { code: statusCode === 403 ? 'COMMON_FORBIDDEN' : 'COMMON_NOT_FOUND', message: 'unavailable', data: null, traceId: 't' } }; return ok(receipt) })
+    await h.api.restore(); await assert.rejects(h.client.withdraw('301', '0'), /network/)
+    const original = h.calls.at(-1)!
+    mode = 'hidden'; await assert.rejects(h.client.withdraw('301', '0'), error => error instanceof ApiError && error.statusCode === statusCode)
+    const fresh = h.make(); await fresh.restore(); const client = new AfterSaleClient(fresh, 'c')
+    assert.deepEqual(client.pending('301', 'withdraw'), { expectedVersion: '0' })
+    mode = 'ready'; await client.withdraw('301', '0')
+    assert.deepEqual(h.calls.at(-1), original)
+  }
+})
