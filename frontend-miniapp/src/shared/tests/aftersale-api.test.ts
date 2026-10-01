@@ -2,7 +2,7 @@ import test from 'node:test'
 import assert from 'node:assert/strict'
 import { randomUUID } from 'node:crypto'
 import { ConsumerApi, isAfterSalePath, type LocalStore, type AfterSaleAssetTransport } from '../consumer-api'
-import { AfterSaleClient, decodeDetail, decodeSummary, amount, instant } from '../aftersale-api'
+import { AfterSaleClient, decodeDetail, decodeSummary, amount, instant, version } from '../aftersale-api'
 import { ApiError, type Transport, type WireRequest } from '../request'
 
 const session = { userId: '101', sessionId: '201', audience: 'MINIAPP', expiresAt: '2099-01-01T00:00:00.000Z' }
@@ -75,4 +75,22 @@ test('typed private upload uses four fields; binary grants reject cross-party/ab
 })
 test('malformed detail never publishes an incomplete or numeric business record', () => {
   assert.throws(() => decodeDetail(summary), /INVALID_RESPONSE/)
+})
+
+test('strict primitive and route boundaries reject trailing line terminators', async () => {
+  for (const suffix of ['\n', '\r', '\r\n']) {
+    assert.throws(() => amount(`12.50${suffix}`), /INVALID_RESPONSE/)
+    assert.throws(() => version(`0${suffix}`), /INVALID_RESPONSE/)
+    assert.equal(isAfterSalePath({ path: `/api/v1/c/aftersales${suffix}`, method: 'GET' }), false)
+    const h = setup(undefined, { upload: async () => { throw new Error('must not send') }, read: async () => { throw new Error('must not send') } }); await h.api.restore()
+    await assert.rejects(h.client.upload('/tmp/test.png', `${randomUUID()}${suffix}`), /REQUEST_ID_REQUIRED/)
+    await assert.rejects(h.api.readAfterSaleEvidence(`/api/v1/c/aftersale-evidence-read-grants/${'a'.repeat(43)}${suffix}`), /INVALID_PATH/)
+  }
+})
+
+test('list rejects response coordinates, filter and paging that differ from the request', async () => {
+  for (const page of [{ page: 2, pageSize: 20, total: 0, items: [] }, { page: 1, pageSize: 20, total: 1, items: [{ ...summary, storeId: '602' }] }, { page: 1, pageSize: 20, total: 1, items: [{ ...summary, status: 'CLOSED' }] }]) {
+    const h = setup(async () => ok(page)); await h.api.restore(); h.api.scope.replace({ userId: '101', workspace: 'merchant', merchantId: '501', storeId: '601' })
+    await assert.rejects(new AfterSaleClient(h.api, 'merchant').list({ status: 'PENDING' }), /INVALID_RESPONSE/)
+  }
 })

@@ -6,7 +6,7 @@ import { consumerApi, requestUuid } from './consumer-runtime'
 export function afterSaleClient(party: 'c' | 'merchant'): AfterSaleClient {
   const paths = new Set<string>(); let epoch = 0
   const fs = Taro.getFileSystemManager()
-  const clear = () => { epoch++; for (const path of paths) { try { fs.unlinkSync(path) } catch { /* retry at next clear */ } } paths.clear() }
+  const clear = () => { epoch++; for (const path of paths) { try { fs.unlinkSync(path); paths.delete(path) } catch { /* retain ownership and retry at next clear */ } } }
   const unsubscribe = consumerApi.scope.subscribe(clear)
   return new AfterSaleClient(consumerApi, party, {
     async read(path) {

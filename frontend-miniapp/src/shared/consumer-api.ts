@@ -13,6 +13,7 @@ export type AfterSaleAssetTransport = {
   read(input: { path: string; authorization: string }): Promise<{ statusCode: number; data: unknown }>
 }
 export function isAfterSalePath(spec: RequestSpec): boolean {
+  if (/[\r\n]/.test(spec.path)) return false
   const base = /^\/api\/v1\/(c|merchant)\/aftersales(?:\/([1-9][0-9]{0,18})(?:\/(evidence|withdraw|opinion|evidence-batches\/[1-9][0-9]{0,18}\/assets\/[1-9][0-9]{0,18}\/read-grants))?)?$/.exec(spec.path)
   if (base) {
     if (!base[2]) return spec.method === 'GET'
@@ -31,7 +32,7 @@ export function afterSaleEnvelope(response: { statusCode: number; data: unknown 
 }
 export function decodePrivateAsset(value: unknown): PrivateAssetReceipt {
   const v = object(value)
-  if (Object.keys(v).sort().join(',') !== 'assetId,bytes,mediaType,objectSha256,status' || v.status !== 'READY' || !/^[a-f0-9]{64}$/.test(v.objectSha256) || !['image/jpeg', 'image/png'].includes(v.mediaType) || !Number.isSafeInteger(v.bytes) || v.bytes < 1 || v.bytes > 10485760) throw new Error('INVALID_RESPONSE')
+  if (Object.keys(v).sort().join(',') !== 'assetId,bytes,mediaType,objectSha256,status' || v.status !== 'READY' || typeof v.objectSha256 !== 'string' || !/^[a-f0-9]{64}(?![\s\S])/.test(v.objectSha256) || !['image/jpeg', 'image/png'].includes(v.mediaType) || !Number.isSafeInteger(v.bytes) || v.bytes < 1 || v.bytes > 10485760) throw new Error('INVALID_RESPONSE')
   return { assetId: id(v.assetId), status: 'READY', objectSha256: v.objectSha256, mediaType: v.mediaType, bytes: v.bytes }
 }
 const SESSION_KEY = 'pet.c.session.v1'
@@ -215,7 +216,7 @@ export class ConsumerApi {
     const ticket = this.scope.capture(); const credential = this.credential
     if (!credential || !this.currentSession || credential.userId !== ticket.context.userId || credential.sessionId !== this.currentSession.sessionId) throw new ApiError('COMMON_UNAUTHORIZED', 401)
     if ((input.party === 'c' ? 'consumer' : 'merchant') !== ticket.context.workspace || input.party === 'merchant' && (!ticket.context.merchantId || !ticket.context.storeId)) throw new Error('WORKSPACE_PATH_MISMATCH')
-    if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(input.requestId)) throw new Error('REQUEST_ID_REQUIRED')
+    if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}(?![\s\S])/i.test(input.requestId)) throw new Error('REQUEST_ID_REQUIRED')
     if (!this.afterSaleAssets) throw new Error('UPLOAD_NOT_CONNECTED')
     try {
       const response = await this.afterSaleAssets.upload({ filePath: input.filePath, requestId: input.requestId, authorization: `Bearer ${credential.accessToken}` })
@@ -226,7 +227,7 @@ export class ConsumerApi {
   async readAfterSaleEvidence(path: string): Promise<ArrayBuffer> {
     const ticket = this.scope.capture(); const credential = this.credential
     const party = ticket.context.workspace === 'consumer' ? 'c' : 'merchant'
-    if (!new RegExp(`^/api/v1/${party}/aftersale-evidence-read-grants/[A-Za-z0-9_-]{43}$`).test(path)) throw new Error('INVALID_PATH')
+    if (/[\r\n]/.test(path) || !new RegExp(`^/api/v1/${party}/aftersale-evidence-read-grants/[A-Za-z0-9_-]{43}$`).test(path)) throw new Error('INVALID_PATH')
     if (!credential || !this.currentSession || credential.userId !== ticket.context.userId || credential.sessionId !== this.currentSession.sessionId) throw new ApiError('COMMON_UNAUTHORIZED', 401)
     if (!this.afterSaleAssets) throw new Error('EVIDENCE_READ_NOT_CONNECTED')
     try {
