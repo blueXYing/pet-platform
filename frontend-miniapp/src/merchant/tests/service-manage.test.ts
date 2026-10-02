@@ -4,7 +4,8 @@ import { randomUUID } from 'node:crypto'
 import {
   PreviewServiceManageRepository, ServiceManageMockError, decodeCategoryList, decodeCommandReceipt,
   decodeManagedServiceDetail, decodeManagedServicePage, draftFromDetail, draftInputProblems, emptyDraft,
-  fixtureCategories, fixtureManagedServices, missingSubmitFields, type ServiceDraftInput,
+  fixtureCategories, fixtureManagedServices, missingSubmitFields, selectedPillClass,
+  serviceManageStatuses, serviceStatusTagClass, toggleStateClass, type ServiceDraftInput,
 } from '../services/model'
 import { RealServiceManageRepository } from '../services/repository'
 import { ConsumerApi, type LocalStore } from '../../shared/consumer-api'
@@ -270,4 +271,24 @@ test('real repository wires the six merchant routes with journaled request ids',
   const wrongScope = new RealServiceManageRepository(api, () => scope.current?.merchantId || '', () => scope.current?.storeId || '')
   // list() throws synchronously on bad coordinates, so wrap in an async fn to assert it.
   await assert.rejects(async () => wrongScope.list(1, 20), /WORKSPACE_PATH_MISMATCH/)
+})
+
+// WXSS attribute selectors never match on Taro 4.1.5 (dynamic data-* is dropped from the
+// native wxml), so state variants ride class names. The enum-to-class mapping must stay
+// explicit: every contract status maps to a class a page.css rule actually defines.
+test('status/toggle/pill class variants map every state to a defined CSS class', () => {
+  assert.equal(serviceStatusTagClass('DRAFT'), 'msvc-card-status')
+  assert.equal(serviceStatusTagClass('REVIEWING'), 'msvc-card-status msvc-card-status-reviewing')
+  assert.equal(serviceStatusTagClass('REJECTED'), 'msvc-card-status msvc-card-status-rejected')
+  assert.equal(serviceStatusTagClass('ACTIVE'), 'msvc-card-status msvc-card-status-active')
+  assert.equal(serviceStatusTagClass('OFFLINE'), 'msvc-card-status msvc-card-status-offline')
+  // Exhaustive over the contract status machine: adding a status must update the mapping.
+  for (const status of serviceManageStatuses) {
+    const cls = serviceStatusTagClass(status)
+    assert.ok(cls.startsWith('msvc-card-status'), `status ${status} keeps the base tag class`)
+  }
+  assert.equal(toggleStateClass(true), 'msvc-toggle msvc-toggle-on')
+  assert.equal(toggleStateClass(false), 'msvc-toggle')
+  assert.equal(selectedPillClass(true), 'medit-pill medit-pill-selected')
+  assert.equal(selectedPillClass(false), 'medit-pill')
 })

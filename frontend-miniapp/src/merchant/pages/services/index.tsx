@@ -7,7 +7,7 @@ import { RealServiceManageRepository, serviceManageMessage } from '../../service
 import { ServiceListController } from '../../services/controller'
 import {
   PreviewServiceManageRepository, formatPrice, isServiceManageScenario, manageStatusText,
-  type ManagedServiceItem, type ServiceManageDeps,
+  serviceStatusTagClass, toggleStateClass, type ManagedServiceItem, type ServiceManageDeps,
 } from '../../services/model'
 import navBack from './assets/nav-back@2x.png'
 import iconPlus from './assets/icon-plus@2x.png'
@@ -112,17 +112,17 @@ export default function MerchantServicesPage() {
         </Button>
       </View>
       {state.items.length === 0 && <View className='msvc-empty'><Text>还没有服务，点击右上角“添加服务”创建第一个单次预约服务。</Text></View>}
-      {state.items.map(item => <View key={item.serviceId} className='msvc-card' data-status={item.status}>
+      {state.items.map(item => <View key={item.serviceId} className='msvc-card'>
         <Button id={`msvc-card-${item.serviceId}`} className='msvc-card-main' ariaLabel={`${item.serviceName || '未命名草稿'}，${manageStatusText[item.status]}${item.price === null ? '' : `，价格${formatPrice(item.price)}元`}`} onClick={() => openEditor(item)}>
           <View className='msvc-card-line'>
             <Text className='msvc-card-name'>{item.serviceName || '未命名草稿'}</Text>
-            <Text className='msvc-card-status' data-status={item.status}>{manageStatusText[item.status]}</Text>
+            <Text className={serviceStatusTagClass(item.status)}>{manageStatusText[item.status]}</Text>
           </View>
           <Text className='msvc-card-price'>{item.price === null ? '未定价' : `¥${formatPrice(item.price)}`}</Text>
         </Button>
         <Button
           id={`msvc-toggle-${item.serviceId}`} ariaLabel={item.status === 'ACTIVE' ? `下架${item.serviceName}` : `提交${item.serviceName}审核`}
-          className='msvc-toggle' data-on={item.status === 'ACTIVE' ? 'true' : 'false'} disabled={busy || item.status === 'REVIEWING'}
+          className={toggleStateClass(item.status === 'ACTIVE')} disabled={busy || item.status === 'REVIEWING'}
           onClick={() => void toggle(item)}>
           <View className='msvc-toggle-knob' />
         </Button>
