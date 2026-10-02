@@ -3,6 +3,7 @@ package com.petplatform.schedule.biz.apiimpl;
 import com.petplatform.common.ApiException;
 import com.petplatform.common.CommonApiCodes;
 import com.petplatform.common.DecimalPublicIdCodec;
+import com.petplatform.common.QueryContext;
 import com.petplatform.merchant.api.dto.MerchantCurrentStaffTypes.CurrentStaffFact;
 import com.petplatform.merchant.api.dto.MerchantCurrentStaffTypes.CurrentStoreStaffFacts;
 import com.petplatform.merchant.api.query.MerchantCurrentStaffFactsApi;
@@ -92,6 +93,59 @@ public final class ScheduleCapacityProofApiImpl implements ScheduleCapacityProof
 
     HoldProofPlan prepareForSwap(CapacityProofQuery query, String reservationId) {
         return prepare(query, reservationId);
+    }
+
+    /**
+     * Protected-reduction proof (34号 §2 SCHC-1, write-proposal SCHW-D6/D7): after a staff
+     * availability or capability reduction has been applied inside the caller's guarded
+     * transaction, every active reservation of the store must still be coverable together.
+     * Known infeasibility is a 409 business conflict; budget exhaustion or unreadable facts
+     * fail closed with 503 and the whole transaction rolls back.
+     */
+    void proveReductionSafe(String storeId, QueryContext context) {
+        Objects.requireNonNull(context, "context is required");
+        guard.requireHeld(storeId, source);
+        try {
+            StoreScheduleFacts schedule = facts.readStore(storeId, context);
+            if (schedule == null || !schedule.complete() || !storeId.equals(schedule.storeId())) {
+                bad("incomplete schedule facts");
+            }
+            CurrentStoreStaffFacts employees = merchant.readStore(storeId, context);
+            if (employees == null || !employees.complete()
+                    || !storeId.equals(employees.storeId())) bad("incomplete employee facts");
+            for (WindowFact window : schedule.windows()) {
+                if (!employees.merchantId().equals(window.merchantId())) {
+                    bad("schedule window merchant differs from current store merchant");
+                }
+            }
+            OrderProtectionSnapshot orders = order.readStore(storeId, context);
+            if (orders == null || !orders.complete() || !storeId.equals(orders.storeId())
+                    || orders.items().size() != orders.totalOrders()) bad("incomplete order facts");
+            List<Staff> staff = staff(people(employees), employees.merchantId(),
+                    capabilities(people(employees).keySet()), availability(storeId));
+            Map<String, OrderProtectionFact> ordersByReservation = orderFacts(orders);
+            List<Reservation> reservations = reservations(schedule, windows(schedule),
+                    ordersByReservation);
+            List<Window> capacity = schedule.windows().stream()
+                    .map(window -> new Window(window.windowId(), window.configuredCapacity()))
+                    .toList();
+            CapacityFeasibilitySolver.Result result =
+                    solver.solveAll(reservations, capacity, staff, budgetMillis);
+            if (result.outcome() == Outcome.BUDGET_EXHAUSTED) {
+                bad("schedule reduction proof calculation budget exhausted");
+            }
+            if (result.outcome() == Outcome.INFEASIBLE) {
+                throw new ApiException(CommonApiCodes.CONFLICT,
+                        "the reduction breaks existing protected reservations");
+            }
+        } catch (ApiException known) {
+            rollbackOnly();
+            throw known;
+        } catch (RuntimeException failed) {
+            rollbackOnly();
+            throw new ApiException(CommonApiCodes.DEPENDENCY_UNAVAILABLE,
+                    "schedule reduction proof dependency unavailable");
+        }
     }
 
     private HoldProofPlan prepare(CapacityProofQuery query, String replacedId) {
