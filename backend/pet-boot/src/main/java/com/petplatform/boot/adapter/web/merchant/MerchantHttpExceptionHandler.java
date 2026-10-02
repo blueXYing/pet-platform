@@ -22,7 +22,8 @@ import org.springframework.web.multipart.MaxUploadSizeExceededException;
       MerchantAgreementController.class,
       MerchantApplicationCityController.class,
       MerchantServiceController.class,
-      ServiceWriteAdminController.class
+      ServiceWriteAdminController.class,
+      MerchantScheduleController.class
     })
 @Order(Ordered.HIGHEST_PRECEDENCE + 20)
 public final class MerchantHttpExceptionHandler {
@@ -38,6 +39,11 @@ public final class MerchantHttpExceptionHandler {
           // Service write slice (ADM-001, 12号 §12 additions).
           Map.entry(com.petplatform.service.api.error.ServiceWriteApiCodes
                   .SERVICE_STATE_NOT_ALLOWED, 409),
+          // Schedule write slice (SCH-004, 12号 §4 additions; both are 409 business conflicts).
+          Map.entry(com.petplatform.schedule.api.error.ScheduleWriteApiCodes
+                  .SCHEDULE_WINDOW_OVERLAP, 409),
+          Map.entry(com.petplatform.schedule.api.error.ScheduleWriteApiCodes
+                  .SCHEDULE_WINDOW_STATE_NOT_ALLOWED, 409),
           Map.entry(com.petplatform.service.api.error.ServiceWriteApiCodes
                   .SERVICE_REVIEW_REASON_REQUIRED, 400),
           Map.entry(com.petplatform.thirdparty.api.PrivateAssetApiCodes.ASSET_NOT_READY, 409),
