@@ -22,6 +22,26 @@ export const manageStatusText: Record<ServiceManageStatus, string> = {
 }
 /** Editable statuses per the approved state machine (SVCW-D1). */
 export const editableStatuses: readonly ServiceManageStatus[] = ['DRAFT', 'REJECTED', 'OFFLINE']
+
+// WXSS attribute selectors never match: Taro 4.1.5 drops dynamic data-* from the native wxml,
+// so state variants must be class names (PR#99 VIS re-verification 2026-10-01, four-way evidence).
+// The mapping stays explicit — no enum-to-string interpolation that could emit a class no CSS
+// rule covers; unknown values fall back to the base (design-default) tag.
+export function serviceStatusTagClass(status: ServiceManageStatus): string {
+  if (status === 'REVIEWING') return 'msvc-card-status msvc-card-status-reviewing'
+  if (status === 'REJECTED') return 'msvc-card-status msvc-card-status-rejected'
+  if (status === 'ACTIVE') return 'msvc-card-status msvc-card-status-active'
+  if (status === 'OFFLINE') return 'msvc-card-status msvc-card-status-offline'
+  return 'msvc-card-status'
+}
+/** Edit-page pill selected state (services/page.css .medit-pill-selected). */
+export function selectedPillClass(selected: boolean): string {
+  return selected ? 'medit-pill medit-pill-selected' : 'medit-pill'
+}
+/** List toggle on/off state (services/page.css .msvc-toggle-on drives track and knob). */
+export function toggleStateClass(on: boolean): string {
+  return on ? 'msvc-toggle msvc-toggle-on' : 'msvc-toggle'
+}
 export type FulfillmentType = 'IN_STORE' | 'PICKUP_DELIVERY'
 export const fulfillmentText: Record<FulfillmentType, string> = { IN_STORE: '到店型', PICKUP_DELIVERY: '上门接送型' }
 export const fulfillments: readonly FulfillmentType[] = ['IN_STORE', 'PICKUP_DELIVERY']
