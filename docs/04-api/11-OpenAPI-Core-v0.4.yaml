@@ -1087,6 +1087,7 @@ paths:
       - bearerAuth: []
       parameters:
       - $ref: '#/components/parameters/StoreId'
+      responses:
         '200':
           description: Merchant workbench window list including CLOSED windows and versions.
           headers:
@@ -1167,6 +1168,7 @@ paths:
           application/json:
             schema:
               $ref: '#/components/schemas/ScheduleWindowCreateRequest'
+      responses:
         '201':
           description: First committed creation receipt.
           headers:
@@ -1285,6 +1287,7 @@ paths:
           application/json:
             schema:
               $ref: '#/components/schemas/ScheduleWindowUpdateRequest'
+      responses:
         '200':
           description: Updated window with bumped version.
           headers:
@@ -1391,6 +1394,7 @@ paths:
           application/json:
             schema:
               $ref: '#/components/schemas/ScheduleWindowCloseRequest'
+      responses:
         '200':
           description: Closed window, history preserved, no physical delete.
           headers:
@@ -1497,6 +1501,7 @@ paths:
           application/json:
             schema:
               $ref: '#/components/schemas/ScheduleWindowOpenRequest'
+      responses:
         '200':
           description: Reopened window.
           headers:
@@ -1602,6 +1607,7 @@ paths:
           application/json:
             schema:
               $ref: '#/components/schemas/ScheduleBatchCloseRequest'
+      responses:
         '200':
           description: Split result; never presented as a full store shutdown while windows remain open.
           headers:
@@ -1688,6 +1694,7 @@ paths:
       - bearerAuth: []
       parameters:
       - $ref: '#/components/parameters/StaffId'
+      responses:
         '200':
           description: Staff availability list including CLOSED windows and versions.
           headers:
@@ -1768,6 +1775,7 @@ paths:
           application/json:
             schema:
               $ref: '#/components/schemas/ScheduleStaffWindowCreateRequest'
+      responses:
         '201':
           description: First committed creation receipt.
           headers:
@@ -1886,6 +1894,7 @@ paths:
           application/json:
             schema:
               $ref: '#/components/schemas/ScheduleStaffWindowUpdateRequest'
+      responses:
         '200':
           description: Updated staff window with bumped version.
           headers:
@@ -1992,6 +2001,7 @@ paths:
           application/json:
             schema:
               $ref: '#/components/schemas/ScheduleStaffWindowCloseRequest'
+      responses:
         '200':
           description: Closed staff window, history preserved.
           headers:
@@ -2098,6 +2108,7 @@ paths:
           application/json:
             schema:
               $ref: '#/components/schemas/ScheduleStaffWindowOpenRequest'
+      responses:
         '200':
           description: Reopened staff window.
           headers:
@@ -2196,6 +2207,7 @@ paths:
       - bearerAuth: []
       parameters:
       - $ref: '#/components/parameters/StaffId'
+      responses:
         '200':
           description: Capability set view with its monotonic decimal version.
           headers:
@@ -2288,6 +2300,7 @@ paths:
           application/json:
             schema:
               $ref: '#/components/schemas/ScheduleCapabilityReplaceRequest'
+      responses:
         '200':
           description: Replaced capability set with the advanced version.
           headers:
