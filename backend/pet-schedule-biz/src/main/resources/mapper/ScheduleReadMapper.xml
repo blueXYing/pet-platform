@@ -51,4 +51,22 @@
           AND start_at &lt; #{toAt}
           AND end_at &gt; #{fromAt}
     </select>
+
+    <!-- SCH-004 merchant workbench reads: full states incl. CLOSED, filters optional. -->
+    <select id="listWindows" resultType="map">
+        SELECT id, merchant_id, store_id, service_id, window_kind, start_at, end_at,
+               configured_capacity, status, version, updated_at
+        FROM schedule_availability_window
+        WHERE store_id = #{storeId}
+          <if test="serviceId != null">AND service_id = #{serviceId}</if>
+          <if test="kind != null">AND window_kind = #{kind}</if>
+          <if test="status != null">AND status = #{status}</if>
+        ORDER BY start_at, id
+    </select>
+    <select id="listStaffWindows" resultType="map">
+        SELECT id, store_id, staff_id, start_at, end_at, status, version, updated_at
+        FROM staff_availability_window
+        WHERE store_id = #{storeId} AND staff_id = #{staffId}
+        ORDER BY start_at, id
+    </select>
 </mapper>

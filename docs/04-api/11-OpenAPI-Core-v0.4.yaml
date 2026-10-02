@@ -1073,6 +1073,1305 @@ paths:
               $ref: '#/components/schemas/MerStaffStateRequest'
       x-implementation-blocker: Order assignment/in-flight guard and concurrency contract
         missing; never assume zero orders.
+  /merchant/stores/{storeId}/availability-windows:
+    get:
+      tags:
+      - Merchant-Schedule
+      summary: merchantListScheduleWindows
+      operationId: merchantListScheduleWindows
+      x-contract-status: IMPLEMENTED_DEFAULT_OFF
+      x-contract: 52-Schedule-Write-Contract-v0.1.md
+      x-audience: MINIAPP
+      x-authorization: Current OWNER of the requested merchant and store; anti-enumeration 404.
+      security:
+      - bearerAuth: []
+      parameters:
+      - $ref: '#/components/parameters/StoreId'
+        '200':
+          description: Merchant workbench window list including CLOSED windows and versions.
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                enum:
+                - no-store
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ScheduleWindowPageEnvelope'
+        '400':
+          description: Contract 52 input validation; no partial business effect.
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                enum:
+                - no-store
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MerErrorEnvelope'
+        '401':
+          description: Session missing or expired.
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                enum:
+                - no-store
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MerErrorEnvelope'
+        '403':
+          description: Authenticated principal is not allowed this action.
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                enum:
+                - no-store
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MerErrorEnvelope'
+        '503':
+          description: Owner/admission/staff/order facts unreadable or store proof budget exhausted; whole command rolled back.
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                enum:
+                - no-store
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MerErrorEnvelope'
+    post:
+      tags:
+      - Merchant-Schedule
+      summary: merchantCreateScheduleWindow
+      operationId: merchantCreateScheduleWindow
+      x-contract-status: IMPLEMENTED_DEFAULT_OFF
+      x-contract: 52-Schedule-Write-Contract-v0.1.md
+      x-audience: MINIAPP
+      x-authorization: Current OWNER; per-store guard, overlap and fulfillment-kind validation inside one transaction; UUID X-Request-Id idempotent (API23), first commit 201, same-params replay 200 after authority re-verification.
+      security:
+      - bearerAuth: []
+      parameters:
+      - $ref: '#/components/parameters/StoreId'
+      - $ref: '#/components/parameters/RequestId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ScheduleWindowCreateRequest'
+        '201':
+          description: First committed creation receipt.
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                enum:
+                - no-store
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ScheduleWindowEnvelope'
+        '200':
+          description: Authorized replay of the first successful receipt; body equals 201.
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                enum:
+                - no-store
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ScheduleWindowEnvelope'
+        '400':
+          description: Contract 52 input validation; no partial business effect.
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                enum:
+                - no-store
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MerErrorEnvelope'
+        '401':
+          description: Session missing or expired.
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                enum:
+                - no-store
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MerErrorEnvelope'
+        '403':
+          description: Authenticated principal is not allowed this action.
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                enum:
+                - no-store
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MerErrorEnvelope'
+        '404':
+          description: Target absent or outside the authenticated owner scope (anti-enumeration).
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                enum:
+                - no-store
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MerErrorEnvelope'
+        '409':
+          description: Overlap, occupied-window state, CAS version or idempotency conflict.
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                enum:
+                - no-store
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MerErrorEnvelope'
+        '503':
+          description: Owner/admission/staff/order facts unreadable or store proof budget exhausted; whole command rolled back.
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                enum:
+                - no-store
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MerErrorEnvelope'
+  /merchant/stores/{storeId}/availability-windows/{windowId}:
+    put:
+      tags:
+      - Merchant-Schedule
+      summary: merchantUpdateScheduleWindow
+      operationId: merchantUpdateScheduleWindow
+      x-contract-status: IMPLEMENTED_DEFAULT_OFF
+      x-contract: 52-Schedule-Write-Contract-v0.1.md
+      x-audience: MINIAPP
+      x-authorization: Current OWNER; identity fields are fixed after creation; occupied windows cannot move or shrink (SCHW-D4).
+      security:
+      - bearerAuth: []
+      parameters:
+      - $ref: '#/components/parameters/StoreId'
+      - $ref: '#/components/parameters/WindowId'
+      - $ref: '#/components/parameters/RequestId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ScheduleWindowUpdateRequest'
+        '200':
+          description: Updated window with bumped version.
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                enum:
+                - no-store
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ScheduleWindowEnvelope'
+        '400':
+          description: Contract 52 input validation; no partial business effect.
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                enum:
+                - no-store
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MerErrorEnvelope'
+        '401':
+          description: Session missing or expired.
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                enum:
+                - no-store
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MerErrorEnvelope'
+        '403':
+          description: Authenticated principal is not allowed this action.
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                enum:
+                - no-store
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MerErrorEnvelope'
+        '404':
+          description: Target absent or outside the authenticated owner scope (anti-enumeration).
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                enum:
+                - no-store
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MerErrorEnvelope'
+        '409':
+          description: Overlap, occupied-window state, CAS version or idempotency conflict.
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                enum:
+                - no-store
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MerErrorEnvelope'
+        '503':
+          description: Owner/admission/staff/order facts unreadable or store proof budget exhausted; whole command rolled back.
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                enum:
+                - no-store
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MerErrorEnvelope'
+  /merchant/stores/{storeId}/availability-windows/{windowId}/close:
+    post:
+      tags:
+      - Merchant-Schedule
+      summary: merchantCloseScheduleWindow
+      operationId: merchantCloseScheduleWindow
+      x-contract-status: IMPLEMENTED_DEFAULT_OFF
+      x-contract: 52-Schedule-Write-Contract-v0.1.md
+      x-audience: MINIAPP
+      x-authorization: Current OWNER; reason mandatory (SSOT section 29); occupied windows are refused with SCHEDULE_WINDOW_STATE_NOT_ALLOWED (SCHW-D4).
+      security:
+      - bearerAuth: []
+      parameters:
+      - $ref: '#/components/parameters/StoreId'
+      - $ref: '#/components/parameters/WindowId'
+      - $ref: '#/components/parameters/RequestId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ScheduleWindowCloseRequest'
+        '200':
+          description: Closed window, history preserved, no physical delete.
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                enum:
+                - no-store
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ScheduleWindowEnvelope'
+        '400':
+          description: Contract 52 input validation; no partial business effect.
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                enum:
+                - no-store
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MerErrorEnvelope'
+        '401':
+          description: Session missing or expired.
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                enum:
+                - no-store
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MerErrorEnvelope'
+        '403':
+          description: Authenticated principal is not allowed this action.
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                enum:
+                - no-store
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MerErrorEnvelope'
+        '404':
+          description: Target absent or outside the authenticated owner scope (anti-enumeration).
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                enum:
+                - no-store
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MerErrorEnvelope'
+        '409':
+          description: Overlap, occupied-window state, CAS version or idempotency conflict.
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                enum:
+                - no-store
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MerErrorEnvelope'
+        '503':
+          description: Owner/admission/staff/order facts unreadable or store proof budget exhausted; whole command rolled back.
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                enum:
+                - no-store
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MerErrorEnvelope'
+  /merchant/stores/{storeId}/availability-windows/{windowId}/open:
+    post:
+      tags:
+      - Merchant-Schedule
+      summary: merchantOpenScheduleWindow
+      operationId: merchantOpenScheduleWindow
+      x-contract-status: IMPLEMENTED_DEFAULT_OFF
+      x-contract: 52-Schedule-Write-Contract-v0.1.md
+      x-audience: MINIAPP
+      x-authorization: Current OWNER; reopen re-checks overlap with open windows of the same store, service and kind (SCHW-D3).
+      security:
+      - bearerAuth: []
+      parameters:
+      - $ref: '#/components/parameters/StoreId'
+      - $ref: '#/components/parameters/WindowId'
+      - $ref: '#/components/parameters/RequestId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ScheduleWindowOpenRequest'
+        '200':
+          description: Reopened window.
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                enum:
+                - no-store
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ScheduleWindowEnvelope'
+        '400':
+          description: Contract 52 input validation; no partial business effect.
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                enum:
+                - no-store
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MerErrorEnvelope'
+        '401':
+          description: Session missing or expired.
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                enum:
+                - no-store
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MerErrorEnvelope'
+        '403':
+          description: Authenticated principal is not allowed this action.
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                enum:
+                - no-store
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MerErrorEnvelope'
+        '404':
+          description: Target absent or outside the authenticated owner scope (anti-enumeration).
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                enum:
+                - no-store
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MerErrorEnvelope'
+        '409':
+          description: Overlap, occupied-window state, CAS version or idempotency conflict.
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                enum:
+                - no-store
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MerErrorEnvelope'
+        '503':
+          description: Owner/admission/staff/order facts unreadable or store proof budget exhausted; whole command rolled back.
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                enum:
+                - no-store
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MerErrorEnvelope'
+  /merchant/stores/{storeId}/availability-windows/batch-close:
+    post:
+      tags:
+      - Merchant-Schedule
+      summary: merchantBatchCloseScheduleWindows
+      operationId: merchantBatchCloseScheduleWindows
+      x-contract-status: IMPLEMENTED_DEFAULT_OFF
+      x-contract: 52-Schedule-Write-Contract-v0.1.md
+      x-audience: MINIAPP
+      x-authorization: Current OWNER; calendar-day range in Asia/Shanghai; partial close is allowed and blocked windows must be reported explicitly (SCHW-D5); infra failure rolls the whole batch back with 503.
+      security:
+      - bearerAuth: []
+      parameters:
+      - $ref: '#/components/parameters/StoreId'
+      - $ref: '#/components/parameters/RequestId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ScheduleBatchCloseRequest'
+        '200':
+          description: Split result; never presented as a full store shutdown while windows remain open.
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                enum:
+                - no-store
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ScheduleBatchCloseEnvelope'
+        '400':
+          description: Contract 52 input validation; no partial business effect.
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                enum:
+                - no-store
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MerErrorEnvelope'
+        '401':
+          description: Session missing or expired.
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                enum:
+                - no-store
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MerErrorEnvelope'
+        '403':
+          description: Authenticated principal is not allowed this action.
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                enum:
+                - no-store
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MerErrorEnvelope'
+        '409':
+          description: Overlap, occupied-window state, CAS version or idempotency conflict.
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                enum:
+                - no-store
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MerErrorEnvelope'
+        '503':
+          description: Owner/admission/staff/order facts unreadable or store proof budget exhausted; whole command rolled back.
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                enum:
+                - no-store
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MerErrorEnvelope'
+  /merchant/staff/{staffId}/availability-windows:
+    get:
+      tags:
+      - Merchant-Schedule
+      summary: merchantListStaffAvailabilityWindows
+      operationId: merchantListStaffAvailabilityWindows
+      x-contract-status: IMPLEMENTED_DEFAULT_OFF
+      x-contract: 52-Schedule-Write-Contract-v0.1.md
+      x-audience: MINIAPP
+      x-authorization: Current OWNER of the store that owns the staff row.
+      security:
+      - bearerAuth: []
+      parameters:
+      - $ref: '#/components/parameters/StaffId'
+        '200':
+          description: Staff availability list including CLOSED windows and versions.
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                enum:
+                - no-store
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ScheduleStaffWindowPageEnvelope'
+        '400':
+          description: Contract 52 input validation; no partial business effect.
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                enum:
+                - no-store
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MerErrorEnvelope'
+        '401':
+          description: Session missing or expired.
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                enum:
+                - no-store
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MerErrorEnvelope'
+        '403':
+          description: Authenticated principal is not allowed this action.
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                enum:
+                - no-store
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MerErrorEnvelope'
+        '503':
+          description: Owner/admission/staff/order facts unreadable or store proof budget exhausted; whole command rolled back.
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                enum:
+                - no-store
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MerErrorEnvelope'
+    post:
+      tags:
+      - Merchant-Schedule
+      summary: merchantCreateStaffAvailabilityWindow
+      operationId: merchantCreateStaffAvailabilityWindow
+      x-contract-status: IMPLEMENTED_DEFAULT_OFF
+      x-contract: 52-Schedule-Write-Contract-v0.1.md
+      x-audience: MINIAPP
+      x-authorization: Current OWNER; staff must be ACTIVE in this store (SCHW-D6); overlap of AVAILABLE windows refused, adjacent half-open allowed.
+      security:
+      - bearerAuth: []
+      parameters:
+      - $ref: '#/components/parameters/StaffId'
+      - $ref: '#/components/parameters/RequestId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ScheduleStaffWindowCreateRequest'
+        '201':
+          description: First committed creation receipt.
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                enum:
+                - no-store
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ScheduleStaffWindowEnvelope'
+        '200':
+          description: Authorized replay of the first successful receipt; body equals 201.
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                enum:
+                - no-store
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ScheduleStaffWindowEnvelope'
+        '400':
+          description: Contract 52 input validation; no partial business effect.
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                enum:
+                - no-store
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MerErrorEnvelope'
+        '401':
+          description: Session missing or expired.
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                enum:
+                - no-store
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MerErrorEnvelope'
+        '403':
+          description: Authenticated principal is not allowed this action.
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                enum:
+                - no-store
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MerErrorEnvelope'
+        '404':
+          description: Target absent or outside the authenticated owner scope (anti-enumeration).
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                enum:
+                - no-store
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MerErrorEnvelope'
+        '409':
+          description: Overlap, occupied-window state, CAS version or idempotency conflict.
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                enum:
+                - no-store
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MerErrorEnvelope'
+        '503':
+          description: Owner/admission/staff/order facts unreadable or store proof budget exhausted; whole command rolled back.
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                enum:
+                - no-store
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MerErrorEnvelope'
+  /merchant/staff/{staffId}/availability-windows/{windowId}:
+    put:
+      tags:
+      - Merchant-Schedule
+      summary: merchantUpdateStaffAvailabilityWindow
+      operationId: merchantUpdateStaffAvailabilityWindow
+      x-contract-status: IMPLEMENTED_DEFAULT_OFF
+      x-contract: 52-Schedule-Write-Contract-v0.1.md
+      x-audience: MINIAPP
+      x-authorization: Current OWNER; a move or shorten is an availability reduction protected by contract 36 assignment facts plus the whole-store feasibility re-proof (SCHW-D6).
+      security:
+      - bearerAuth: []
+      parameters:
+      - $ref: '#/components/parameters/StaffId'
+      - $ref: '#/components/parameters/WindowId'
+      - $ref: '#/components/parameters/RequestId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ScheduleStaffWindowUpdateRequest'
+        '200':
+          description: Updated staff window with bumped version.
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                enum:
+                - no-store
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ScheduleStaffWindowEnvelope'
+        '400':
+          description: Contract 52 input validation; no partial business effect.
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                enum:
+                - no-store
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MerErrorEnvelope'
+        '401':
+          description: Session missing or expired.
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                enum:
+                - no-store
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MerErrorEnvelope'
+        '403':
+          description: Authenticated principal is not allowed this action.
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                enum:
+                - no-store
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MerErrorEnvelope'
+        '404':
+          description: Target absent or outside the authenticated owner scope (anti-enumeration).
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                enum:
+                - no-store
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MerErrorEnvelope'
+        '409':
+          description: Overlap, occupied-window state, CAS version or idempotency conflict.
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                enum:
+                - no-store
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MerErrorEnvelope'
+        '503':
+          description: Owner/admission/staff/order facts unreadable or store proof budget exhausted; whole command rolled back.
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                enum:
+                - no-store
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MerErrorEnvelope'
+  /merchant/staff/{staffId}/availability-windows/{windowId}/close:
+    post:
+      tags:
+      - Merchant-Schedule
+      summary: merchantCloseStaffAvailabilityWindow
+      operationId: merchantCloseStaffAvailabilityWindow
+      x-contract-status: IMPLEMENTED_DEFAULT_OFF
+      x-contract: 52-Schedule-Write-Contract-v0.1.md
+      x-audience: MINIAPP
+      x-authorization: Current OWNER; reason mandatory; protected assignments or an infeasible store proof roll the reduction back with 409 (SCHW-D6).
+      security:
+      - bearerAuth: []
+      parameters:
+      - $ref: '#/components/parameters/StaffId'
+      - $ref: '#/components/parameters/WindowId'
+      - $ref: '#/components/parameters/RequestId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ScheduleStaffWindowCloseRequest'
+        '200':
+          description: Closed staff window, history preserved.
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                enum:
+                - no-store
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ScheduleStaffWindowEnvelope'
+        '400':
+          description: Contract 52 input validation; no partial business effect.
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                enum:
+                - no-store
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MerErrorEnvelope'
+        '401':
+          description: Session missing or expired.
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                enum:
+                - no-store
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MerErrorEnvelope'
+        '403':
+          description: Authenticated principal is not allowed this action.
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                enum:
+                - no-store
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MerErrorEnvelope'
+        '404':
+          description: Target absent or outside the authenticated owner scope (anti-enumeration).
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                enum:
+                - no-store
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MerErrorEnvelope'
+        '409':
+          description: Overlap, occupied-window state, CAS version or idempotency conflict.
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                enum:
+                - no-store
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MerErrorEnvelope'
+        '503':
+          description: Owner/admission/staff/order facts unreadable or store proof budget exhausted; whole command rolled back.
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                enum:
+                - no-store
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MerErrorEnvelope'
+  /merchant/staff/{staffId}/availability-windows/{windowId}/open:
+    post:
+      tags:
+      - Merchant-Schedule
+      summary: merchantOpenStaffAvailabilityWindow
+      operationId: merchantOpenStaffAvailabilityWindow
+      x-contract-status: IMPLEMENTED_DEFAULT_OFF
+      x-contract: 52-Schedule-Write-Contract-v0.1.md
+      x-audience: MINIAPP
+      x-authorization: Current OWNER; reopen re-checks overlap with AVAILABLE windows of the same staff.
+      security:
+      - bearerAuth: []
+      parameters:
+      - $ref: '#/components/parameters/StaffId'
+      - $ref: '#/components/parameters/WindowId'
+      - $ref: '#/components/parameters/RequestId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ScheduleStaffWindowOpenRequest'
+        '200':
+          description: Reopened staff window.
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                enum:
+                - no-store
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ScheduleStaffWindowEnvelope'
+        '400':
+          description: Contract 52 input validation; no partial business effect.
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                enum:
+                - no-store
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MerErrorEnvelope'
+        '401':
+          description: Session missing or expired.
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                enum:
+                - no-store
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MerErrorEnvelope'
+        '403':
+          description: Authenticated principal is not allowed this action.
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                enum:
+                - no-store
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MerErrorEnvelope'
+        '404':
+          description: Target absent or outside the authenticated owner scope (anti-enumeration).
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                enum:
+                - no-store
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MerErrorEnvelope'
+        '409':
+          description: Overlap, occupied-window state, CAS version or idempotency conflict.
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                enum:
+                - no-store
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MerErrorEnvelope'
+        '503':
+          description: Owner/admission/staff/order facts unreadable or store proof budget exhausted; whole command rolled back.
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                enum:
+                - no-store
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MerErrorEnvelope'
+  /merchant/staff/{staffId}/service-capabilities:
+    get:
+      tags:
+      - Merchant-Schedule
+      summary: merchantGetStaffServiceCapabilities
+      operationId: merchantGetStaffServiceCapabilities
+      x-contract-status: IMPLEMENTED_DEFAULT_OFF
+      x-contract: 52-Schedule-Write-Contract-v0.1.md
+      x-audience: MINIAPP
+      x-authorization: Current OWNER; details without a set header are LEGACY_UNVERSIONED and answer 503, never an empty set at version 0 (SCHC-2).
+      security:
+      - bearerAuth: []
+      parameters:
+      - $ref: '#/components/parameters/StaffId'
+        '200':
+          description: Capability set view with its monotonic decimal version.
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                enum:
+                - no-store
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ScheduleCapabilityEnvelope'
+        '400':
+          description: Contract 52 input validation; no partial business effect.
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                enum:
+                - no-store
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MerErrorEnvelope'
+        '401':
+          description: Session missing or expired.
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                enum:
+                - no-store
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MerErrorEnvelope'
+        '403':
+          description: Authenticated principal is not allowed this action.
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                enum:
+                - no-store
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MerErrorEnvelope'
+        '404':
+          description: Target absent or outside the authenticated owner scope (anti-enumeration).
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                enum:
+                - no-store
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MerErrorEnvelope'
+        '503':
+          description: Owner/admission/staff/order facts unreadable or store proof budget exhausted; whole command rolled back.
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                enum:
+                - no-store
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MerErrorEnvelope'
+    put:
+      tags:
+      - Merchant-Schedule
+      summary: merchantReplaceStaffServiceCapabilities
+      operationId: merchantReplaceStaffServiceCapabilities
+      x-contract-status: IMPLEMENTED_DEFAULT_OFF
+      x-contract: 52-Schedule-Write-Contract-v0.1.md
+      x-audience: MINIAPP
+      x-authorization: Current OWNER; full-replacement set CAS (SCHC-2), duplicates 400, stale expectedVersion 409 COMMON_CONFLICT, removals need reason and the reduction protection (SCHW-D7).
+      security:
+      - bearerAuth: []
+      parameters:
+      - $ref: '#/components/parameters/StaffId'
+      - $ref: '#/components/parameters/RequestId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ScheduleCapabilityReplaceRequest'
+        '200':
+          description: Replaced capability set with the advanced version.
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                enum:
+                - no-store
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ScheduleCapabilityEnvelope'
+        '400':
+          description: Contract 52 input validation; no partial business effect.
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                enum:
+                - no-store
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MerErrorEnvelope'
+        '401':
+          description: Session missing or expired.
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                enum:
+                - no-store
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MerErrorEnvelope'
+        '403':
+          description: Authenticated principal is not allowed this action.
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                enum:
+                - no-store
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MerErrorEnvelope'
+        '404':
+          description: Target absent or outside the authenticated owner scope (anti-enumeration).
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                enum:
+                - no-store
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MerErrorEnvelope'
+        '409':
+          description: Overlap, occupied-window state, CAS version or idempotency conflict.
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                enum:
+                - no-store
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MerErrorEnvelope'
+        '503':
+          description: Owner/admission/staff/order facts unreadable or store proof budget exhausted; whole command rolled back.
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                enum:
+                - no-store
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MerErrorEnvelope'
   /merchant/services:
     get:
       tags:
@@ -9928,6 +11227,24 @@ components:
       required: true
       schema:
         $ref: '#/components/schemas/PublicId'
+    StoreId:
+      name: storeId
+      in: path
+      required: true
+      schema:
+        $ref: '#/components/schemas/PublicId'
+    StaffId:
+      name: staffId
+      in: path
+      required: true
+      schema:
+        $ref: '#/components/schemas/PublicId'
+    WindowId:
+      name: windowId
+      in: path
+      required: true
+      schema:
+        $ref: '#/components/schemas/PublicId'
     ApplicationId:
       name: applicationId
       in: path
@@ -10529,6 +11846,562 @@ components:
         traceId:
           type: string
           minLength: 1
+    ScheduleWindowKind:
+      type: string
+      enum:
+      - GENERAL
+      - PICKUP
+      - RETURN
+    ScheduleWindowItem:
+      type: object
+      additionalProperties: false
+      required:
+      - windowId
+      - merchantId
+      - storeId
+      - serviceId
+      - windowKind
+      - startAt
+      - endAt
+      - configuredCapacity
+      - status
+      - version
+      properties:
+        windowId:
+          $ref: '#/components/schemas/PublicId'
+        merchantId:
+          $ref: '#/components/schemas/PublicId'
+        storeId:
+          $ref: '#/components/schemas/PublicId'
+        serviceId:
+          $ref: '#/components/schemas/PublicId'
+        windowKind:
+          $ref: '#/components/schemas/ScheduleWindowKind'
+        startAt:
+          type: string
+          format: date-time
+          x-precision: milliseconds
+        endAt:
+          type: string
+          format: date-time
+          x-precision: milliseconds
+        configuredCapacity:
+          type: integer
+          minimum: 1
+        status:
+          type: string
+          enum:
+          - OPEN
+          - CLOSED
+        version:
+          type: string
+          pattern: '^(0|[1-9][0-9]{0,17})$'
+        updatedAt:
+          type: string
+          format: date-time
+          x-precision: milliseconds
+    ScheduleWindowPage:
+      type: object
+      additionalProperties: false
+      required:
+      - storeId
+      - items
+      properties:
+        storeId:
+          $ref: '#/components/schemas/PublicId'
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/ScheduleWindowItem'
+    ScheduleWindowPageEnvelope:
+      type: object
+      additionalProperties: false
+      required:
+      - success
+      - code
+      - message
+      - data
+      - traceId
+      properties:
+        success:
+          type: boolean
+          enum:
+          - true
+        code:
+          type: string
+          enum:
+          - SUCCESS
+        message:
+          type: string
+          minLength: 1
+        data:
+          $ref: '#/components/schemas/ScheduleWindowPage'
+        traceId:
+          type: string
+          minLength: 1
+    ScheduleWindowEnvelope:
+      type: object
+      additionalProperties: false
+      required:
+      - success
+      - code
+      - message
+      - data
+      - traceId
+      properties:
+        success:
+          type: boolean
+          enum:
+          - true
+        code:
+          type: string
+          enum:
+          - SUCCESS
+        message:
+          type: string
+          minLength: 1
+        data:
+          $ref: '#/components/schemas/ScheduleWindowItem'
+        traceId:
+          type: string
+          minLength: 1
+    ScheduleWindowCreateRequest:
+      type: object
+      additionalProperties: false
+      required:
+      - merchantId
+      - serviceId
+      - windowKind
+      - startAt
+      - endAt
+      - configuredCapacity
+      properties:
+        merchantId:
+          $ref: '#/components/schemas/PublicId'
+        serviceId:
+          $ref: '#/components/schemas/PublicId'
+        windowKind:
+          $ref: '#/components/schemas/ScheduleWindowKind'
+        startAt:
+          type: string
+          format: date-time
+          x-precision: milliseconds
+        endAt:
+          type: string
+          format: date-time
+          x-precision: milliseconds
+        configuredCapacity:
+          type: integer
+          minimum: 1
+    ScheduleWindowUpdateRequest:
+      type: object
+      additionalProperties: false
+      required:
+      - merchantId
+      - startAt
+      - endAt
+      - expectedVersion
+      properties:
+        merchantId:
+          $ref: '#/components/schemas/PublicId'
+        startAt:
+          type: string
+          format: date-time
+          x-precision: milliseconds
+        endAt:
+          type: string
+          format: date-time
+          x-precision: milliseconds
+        configuredCapacity:
+          type: integer
+          minimum: 1
+          nullable: true
+        expectedVersion:
+          type: string
+          pattern: '^(0|[1-9][0-9]{0,17})$'
+        reason:
+          type: string
+          minLength: 1
+          maxLength: 500
+          nullable: true
+    ScheduleWindowCloseRequest:
+      type: object
+      additionalProperties: false
+      required:
+      - merchantId
+      - expectedVersion
+      - reason
+      properties:
+        merchantId:
+          $ref: '#/components/schemas/PublicId'
+        expectedVersion:
+          type: string
+          pattern: '^(0|[1-9][0-9]{0,17})$'
+        reason:
+          type: string
+          minLength: 1
+          maxLength: 500
+    ScheduleWindowOpenRequest:
+      type: object
+      additionalProperties: false
+      required:
+      - merchantId
+      - expectedVersion
+      properties:
+        merchantId:
+          $ref: '#/components/schemas/PublicId'
+        expectedVersion:
+          type: string
+          pattern: '^(0|[1-9][0-9]{0,17})$'
+    ScheduleBatchCloseRequest:
+      type: object
+      additionalProperties: false
+      required:
+      - merchantId
+      - fromDate
+      - toDate
+      - reason
+      properties:
+        merchantId:
+          $ref: '#/components/schemas/PublicId'
+        fromDate:
+          type: string
+          format: date
+        toDate:
+          type: string
+          format: date
+        reason:
+          type: string
+          minLength: 1
+          maxLength: 500
+    ScheduleBatchCloseResult:
+      type: object
+      additionalProperties: false
+      required:
+      - storeId
+      - closedWindows
+      - blockedWindows
+      properties:
+        storeId:
+          $ref: '#/components/schemas/PublicId'
+        closedWindows:
+          type: array
+          items:
+            $ref: '#/components/schemas/ScheduleWindowItem'
+        blockedWindows:
+          type: array
+          items:
+            $ref: '#/components/schemas/ScheduleBlockedWindow'
+    ScheduleBlockedWindow:
+      type: object
+      additionalProperties: false
+      required:
+      - window
+      - reasonCode
+      properties:
+        window:
+          $ref: '#/components/schemas/ScheduleWindowItem'
+        reasonCode:
+          type: string
+          enum:
+          - SCHEDULE_WINDOW_STATE_NOT_ALLOWED
+    ScheduleBatchCloseEnvelope:
+      type: object
+      additionalProperties: false
+      required:
+      - success
+      - code
+      - message
+      - data
+      - traceId
+      properties:
+        success:
+          type: boolean
+          enum:
+          - true
+        code:
+          type: string
+          enum:
+          - SUCCESS
+        message:
+          type: string
+          minLength: 1
+        data:
+          $ref: '#/components/schemas/ScheduleBatchCloseResult'
+        traceId:
+          type: string
+          minLength: 1
+    ScheduleStaffWindowItem:
+      type: object
+      additionalProperties: false
+      required:
+      - windowId
+      - merchantId
+      - storeId
+      - staffId
+      - startAt
+      - endAt
+      - status
+      - version
+      properties:
+        windowId:
+          $ref: '#/components/schemas/PublicId'
+        merchantId:
+          $ref: '#/components/schemas/PublicId'
+        storeId:
+          $ref: '#/components/schemas/PublicId'
+        staffId:
+          $ref: '#/components/schemas/PublicId'
+        startAt:
+          type: string
+          format: date-time
+          x-precision: milliseconds
+        endAt:
+          type: string
+          format: date-time
+          x-precision: milliseconds
+        status:
+          type: string
+          enum:
+          - AVAILABLE
+          - CLOSED
+        version:
+          type: string
+          pattern: '^(0|[1-9][0-9]{0,17})$'
+        updatedAt:
+          type: string
+          format: date-time
+          x-precision: milliseconds
+    ScheduleStaffWindowPage:
+      type: object
+      additionalProperties: false
+      required:
+      - storeId
+      - staffId
+      - items
+      properties:
+        storeId:
+          $ref: '#/components/schemas/PublicId'
+        staffId:
+          $ref: '#/components/schemas/PublicId'
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/ScheduleStaffWindowItem'
+    ScheduleStaffWindowPageEnvelope:
+      type: object
+      additionalProperties: false
+      required:
+      - success
+      - code
+      - message
+      - data
+      - traceId
+      properties:
+        success:
+          type: boolean
+          enum:
+          - true
+        code:
+          type: string
+          enum:
+          - SUCCESS
+        message:
+          type: string
+          minLength: 1
+        data:
+          $ref: '#/components/schemas/ScheduleStaffWindowPage'
+        traceId:
+          type: string
+          minLength: 1
+    ScheduleStaffWindowEnvelope:
+      type: object
+      additionalProperties: false
+      required:
+      - success
+      - code
+      - message
+      - data
+      - traceId
+      properties:
+        success:
+          type: boolean
+          enum:
+          - true
+        code:
+          type: string
+          enum:
+          - SUCCESS
+        message:
+          type: string
+          minLength: 1
+        data:
+          $ref: '#/components/schemas/ScheduleStaffWindowItem'
+        traceId:
+          type: string
+          minLength: 1
+    ScheduleStaffWindowCreateRequest:
+      type: object
+      additionalProperties: false
+      required:
+      - merchantId
+      - storeId
+      - startAt
+      - endAt
+      properties:
+        merchantId:
+          $ref: '#/components/schemas/PublicId'
+        storeId:
+          $ref: '#/components/schemas/PublicId'
+        startAt:
+          type: string
+          format: date-time
+          x-precision: milliseconds
+        endAt:
+          type: string
+          format: date-time
+          x-precision: milliseconds
+    ScheduleStaffWindowUpdateRequest:
+      type: object
+      additionalProperties: false
+      required:
+      - merchantId
+      - storeId
+      - startAt
+      - endAt
+      - expectedVersion
+      properties:
+        merchantId:
+          $ref: '#/components/schemas/PublicId'
+        storeId:
+          $ref: '#/components/schemas/PublicId'
+        startAt:
+          type: string
+          format: date-time
+          x-precision: milliseconds
+        endAt:
+          type: string
+          format: date-time
+          x-precision: milliseconds
+        expectedVersion:
+          type: string
+          pattern: '^(0|[1-9][0-9]{0,17})$'
+        reason:
+          type: string
+          minLength: 1
+          maxLength: 500
+          nullable: true
+    ScheduleStaffWindowCloseRequest:
+      type: object
+      additionalProperties: false
+      required:
+      - merchantId
+      - storeId
+      - expectedVersion
+      - reason
+      properties:
+        merchantId:
+          $ref: '#/components/schemas/PublicId'
+        storeId:
+          $ref: '#/components/schemas/PublicId'
+        expectedVersion:
+          type: string
+          pattern: '^(0|[1-9][0-9]{0,17})$'
+        reason:
+          type: string
+          minLength: 1
+          maxLength: 500
+    ScheduleStaffWindowOpenRequest:
+      type: object
+      additionalProperties: false
+      required:
+      - merchantId
+      - storeId
+      - expectedVersion
+      properties:
+        merchantId:
+          $ref: '#/components/schemas/PublicId'
+        storeId:
+          $ref: '#/components/schemas/PublicId'
+        expectedVersion:
+          type: string
+          pattern: '^(0|[1-9][0-9]{0,17})$'
+    ScheduleCapabilityView:
+      type: object
+      additionalProperties: false
+      required:
+      - merchantId
+      - storeId
+      - staffId
+      - serviceIds
+      - version
+      properties:
+        merchantId:
+          $ref: '#/components/schemas/PublicId'
+        storeId:
+          $ref: '#/components/schemas/PublicId'
+        staffId:
+          $ref: '#/components/schemas/PublicId'
+        serviceIds:
+          type: array
+          uniqueItems: true
+          items:
+            $ref: '#/components/schemas/PublicId'
+        version:
+          type: string
+          pattern: '^(0|[1-9][0-9]{0,17})$'
+    ScheduleCapabilityEnvelope:
+      type: object
+      additionalProperties: false
+      required:
+      - success
+      - code
+      - message
+      - data
+      - traceId
+      properties:
+        success:
+          type: boolean
+          enum:
+          - true
+        code:
+          type: string
+          enum:
+          - SUCCESS
+        message:
+          type: string
+          minLength: 1
+        data:
+          $ref: '#/components/schemas/ScheduleCapabilityView'
+        traceId:
+          type: string
+          minLength: 1
+    ScheduleCapabilityReplaceRequest:
+      type: object
+      additionalProperties: false
+      required:
+      - merchantId
+      - storeId
+      - serviceIds
+      - expectedVersion
+      properties:
+        merchantId:
+          $ref: '#/components/schemas/PublicId'
+        storeId:
+          $ref: '#/components/schemas/PublicId'
+        serviceIds:
+          type: array
+          uniqueItems: true
+          items:
+            $ref: '#/components/schemas/PublicId'
+        expectedVersion:
+          type: string
+          pattern: '^(0|[1-9][0-9]{0,17})$'
+        reason:
+          type: string
+          minLength: 1
+          maxLength: 500
+          nullable: true
     MerStaffPageEnvelope:
       type: object
       additionalProperties: false
@@ -10630,6 +12503,8 @@ components:
           - COMMON_NOT_FOUND
           - COMMON_CONFLICT
           - IDEMPOTENCY_KEY_CONFLICT
+          - SCHEDULE_WINDOW_OVERLAP
+          - SCHEDULE_WINDOW_STATE_NOT_ALLOWED
           - COMMON_DEPENDENCY_UNAVAILABLE
         message:
           type: string

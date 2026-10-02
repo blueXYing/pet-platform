@@ -50,34 +50,9 @@ public final class CapacityFeasibilitySolver {
 
     public Result solve(String candidateId, List<Reservation> all, List<Window> windows,
             List<Staff> staff, long budgetMillis) {
-        if (budgetMillis <= 0 || budgetMillis > Long.MAX_VALUE / 1_000_000L) {
-            throw new IllegalArgumentException("invalid calculation budget");
-        }
-        Timer timer = new Timer(nanoTime, budgetMillis * 1_000_000L);
-        Map<String, Integer> windowCapacity = new HashMap<>();
-        for (Window window : windows) {
-            if (timer.expired()) return new Result(Outcome.BUDGET_EXHAUSTED, 0);
-            if (window.id() == null || window.capacity() < 0
-                    || windowCapacity.putIfAbsent(window.id(), window.capacity()) != null) {
-                throw new IllegalArgumentException("invalid window");
-            }
-        }
+        Timer timer = validated(all, windows, budgetMillis);
         Map<String, Reservation> byId = new HashMap<>();
-        for (Reservation reservation : all) {
-            if (timer.expired()) return new Result(Outcome.BUDGET_EXHAUSTED, 0);
-            if (reservation.id() == null || reservation.serviceId() == null
-                    || reservation.claims().isEmpty()
-                    || byId.putIfAbsent(reservation.id(), reservation) != null) {
-                throw new IllegalArgumentException("invalid reservation");
-            }
-            for (Claim claim : reservation.claims()) {
-                if (timer.expired()) return new Result(Outcome.BUDGET_EXHAUSTED, 0);
-                if (claim == null || claim.interval() == null
-                        || !windowCapacity.containsKey(claim.windowId())) {
-                    throw new IllegalArgumentException("claim window missing");
-                }
-            }
-        }
+        for (Reservation reservation : all) byId.put(reservation.id(), reservation);
         Reservation candidate = byId.get(candidateId);
         if (candidate == null) throw new IllegalArgumentException("candidate missing");
         // Including all segments whenever a reservation is reached makes pickup and return a bridge.
@@ -85,11 +60,64 @@ public final class CapacityFeasibilitySolver {
         included.add(candidateId);
         List<Reservation> frontier = new ArrayList<>();
         frontier.add(candidate);
+        frontier = closure(all, included, frontier, timer);
+        return search(all, windows, staff, budgetMillis, frontier, timer);
+    }
+
+    /**
+     * Whole-store variant for protected-reduction proofs (34号 §2 SCHC-1): no candidate; every
+     * reservation of the store must remain coverable together after an already-applied
+     * staff-availability or capability reduction. Same constraints and budget semantics as
+     * {@link #solve}.
+     */
+    public Result solveAll(List<Reservation> all, List<Window> windows, List<Staff> staff,
+            long budgetMillis) {
+        Timer timer = validated(all, windows, budgetMillis);
+        Set<String> included = new HashSet<>();
+        List<Reservation> frontier = new ArrayList<>();
+        for (Reservation reservation : all) {
+            if (included.add(reservation.id())) frontier.add(reservation);
+        }
+        return search(all, windows, staff, budgetMillis, frontier, timer);
+    }
+
+    private Timer validated(List<Reservation> all, List<Window> windows, long budgetMillis) {
+        if (budgetMillis <= 0 || budgetMillis > Long.MAX_VALUE / 1_000_000L) {
+            throw new IllegalArgumentException("invalid calculation budget");
+        }
+        Timer timer = new Timer(nanoTime, budgetMillis * 1_000_000L);
+        Map<String, Integer> windowCapacity = new HashMap<>();
+        for (Window window : windows) {
+            if (timer.expired()) return timer;
+            if (window.id() == null || window.capacity() < 0
+                    || windowCapacity.putIfAbsent(window.id(), window.capacity()) != null) {
+                throw new IllegalArgumentException("invalid window");
+            }
+        }
+        for (Reservation reservation : all) {
+            if (timer.expired()) return timer;
+            if (reservation.id() == null || reservation.serviceId() == null
+                    || reservation.claims().isEmpty()) {
+                throw new IllegalArgumentException("invalid reservation");
+            }
+            for (Claim claim : reservation.claims()) {
+                if (timer.expired()) return timer;
+                if (claim == null || claim.interval() == null
+                        || !windowCapacity.containsKey(claim.windowId())) {
+                    throw new IllegalArgumentException("claim window missing");
+                }
+            }
+        }
+        return timer;
+    }
+
+    private List<Reservation> closure(List<Reservation> all, Set<String> included,
+            List<Reservation> frontier, Timer timer) {
         for (int position = 0; position < frontier.size(); position++) {
-            if (timer.expired()) return new Result(Outcome.BUDGET_EXHAUSTED, frontier.size());
+            if (timer.expired()) return frontier;
             Reservation source = frontier.get(position);
             for (Reservation other : all) {
-                if (timer.expired()) return new Result(Outcome.BUDGET_EXHAUSTED, frontier.size());
+                if (timer.expired()) return frontier;
                 if (included.contains(other.id())) continue;
                 if (overlaps(source, other)) {
                     included.add(other.id());
@@ -97,6 +125,13 @@ public final class CapacityFeasibilitySolver {
                 }
             }
         }
+        return frontier;
+    }
+
+    private Result search(List<Reservation> all, List<Window> windows, List<Staff> staff,
+            long budgetMillis, List<Reservation> frontier, Timer timer) {
+        Map<String, Integer> windowCapacity = new HashMap<>();
+        for (Window window : windows) windowCapacity.put(window.id(), window.capacity());
         List<Reservation> relevant = frontier.stream()
                 .sorted(Comparator.comparing(Reservation::id)).toList();
         int count = relevant.size();
