@@ -31,13 +31,22 @@ public final class RefundApplicationService implements RefundApplicationCommandA
     private final SessionAuthority sessions;private final OwnerAuthority owners;private final ReasonPolicy reasons;private final Moderation moderation;
     private final Protection protection;private final TaskRecovery recovery;private final RefundApplicationMapper db;private final RefundExecutionStore execution;
     private final JdbcAsyncTaskSubmitter tasks;private final TransactionTemplate tx;private long scanAfter;
+    /** REF-001 SSOT §4.1: a pre-service application auto-refunds in full without merchant processing; off by default. */
+    private final boolean preServiceAutoRefund;
     private final Map<Object,Set<Long>> liveCommands=new java.util.concurrent.ConcurrentHashMap<>();
     public RefundApplicationService(DataSource source,SnowflakeIdGenerator ids,ScheduleCapacityGuardApi guard,
             OrderRefundApplicationApi orders,PaymentSuccessFactsApi payments,IntegrationEventPublisher outbox,
             SessionAuthority sessions,OwnerAuthority owners,ReasonPolicy reasons,Moderation moderation,Protection protection,TaskRecovery recovery){
+        this(source,ids,guard,orders,payments,outbox,sessions,owners,reasons,moderation,protection,recovery,false);
+    }
+    public RefundApplicationService(DataSource source,SnowflakeIdGenerator ids,ScheduleCapacityGuardApi guard,
+            OrderRefundApplicationApi orders,PaymentSuccessFactsApi payments,IntegrationEventPublisher outbox,
+            SessionAuthority sessions,OwnerAuthority owners,ReasonPolicy reasons,Moderation moderation,Protection protection,TaskRecovery recovery,
+            boolean preServiceAutoRefund){
         this.source=Objects.requireNonNull(source);this.ids=Objects.requireNonNull(ids);this.guard=Objects.requireNonNull(guard);this.orders=Objects.requireNonNull(orders);
         this.payments=Objects.requireNonNull(payments);this.outbox=Objects.requireNonNull(outbox);this.sessions=Objects.requireNonNull(sessions);this.owners=Objects.requireNonNull(owners);
         this.reasons=Objects.requireNonNull(reasons);this.moderation=Objects.requireNonNull(moderation);this.protection=Objects.requireNonNull(protection);this.recovery=Objects.requireNonNull(recovery);
+        this.preServiceAutoRefund=preServiceAutoRefund;
         db=RefundApplicationStore.mapper(source);execution=new RefundExecutionStore(source);tasks=new JdbcAsyncTaskSubmitter(source,ids);
         tx=new TransactionTemplate(new DataSourceTransactionManager(source));tx.setIsolationLevel(TransactionDefinition.ISOLATION_READ_COMMITTED);tx.setTimeout(15);
     }
@@ -63,12 +72,24 @@ public final class RefundApplicationService implements RefundApplicationCommandA
             if(f.currentApplicationId()!=null){var old=requireApplication(f.currentApplicationId(),loc.storeId(),system(c.context()));if(!old.orderId().equals(c.orderId())||!"REJECTED".equals(old.status())||!"REJECTED".equals(f.currentApplicationStatus()))throw bad();}
             else if(f.currentApplicationStatus()!=null&&!"NONE".equals(f.currentApplicationStatus()))throw bad();
             var p=payments.requireSucceeded(f.paymentId(),c.orderId(),loc.storeId(),system(c.context()));checkPayment(f,p);
-            var now=now();if(now.isBefore(f.appointmentStart())&& !"VERIFIED".equals(f.verificationStatus()))throw error("REFUND_BEFORE_SERVICE_NOT_IMPLEMENTED");
+            var now=now();boolean preService=now.isBefore(f.appointmentStart())&& !"VERIFIED".equals(f.verificationStatus());
+            // SSOT §4.1: before the appointment start the refund is automatic and full. With the switch off the
+            // historical gate stays, so an un-flagged deployment keeps refusing instead of inventing a new flow.
+            if(preService&&!preServiceAutoRefund)throw error("REFUND_BEFORE_SERVICE_NOT_IMPLEMENTED");
             long application=next(),event=next();var deadline=now.plusHours(24);
             var v=values("id",application,"number",next(),"order",id(c.orderId()),"user",id(loc.userId()),"reasonCode",c.reasonCode(),"reasonCipher",protect("APPLICATION:"+application,c.reasonText()),
                 "amount",p.paidAmount(),"deadline",utc(deadline),"requestId",c.context().requestId(),"now",utc(now),"store",id(loc.storeId()),"merchant",id(loc.merchantId()),"reservation",id(loc.reservationId()),
                 "payment",id(p.paymentId()),"paymentNo",id(p.paymentNo()),"paymentEvent",id(p.successEventId()),"trade",p.channelTradeNo(),"paidAt",utc(p.paidAt()),"command",binding.id,"event",event);
             one(db.insertApplication(v));String app=str(application);orders.bindApplication(app,c.orderId(),loc.storeId(),c.context(),source);
+            if(preService){
+                // 服务前不进入退款待确认；创建事件按提交时的真实终态发布，随后同一事务内记录系统批准。
+                publish(event,"RefundApplicationCreatedEvent.v1",app,now,c.context(),values("applicationId",app,"orderId",c.orderId(),"userId",loc.userId(),"merchantId",loc.merchantId(),"storeId",loc.storeId(),"applicationStatus","AUTO_APPROVED","merchantDeadline",time(deadline),"createdAt",time(now)));
+                // 无需商家确认：the same transaction records the immutable SYSTEM approval; the durable
+                // REFUND_APPLICATION_CREATE task performs the actual refund-order creation as usual.
+                var receipt=autoApprovePreService(c,loc,app,now);
+                finish(binding,purpose,receipt);
+                before(()->{authorizeBuyer(c.context(),loc.userId());orders.requireApplicationBound(app,c.orderId(),loc.storeId(),system(c.context()),source);});return receipt;
+            }
             enqueue(timeoutSpec(requireApplication(app,loc.storeId(),system(c.context()))));
             publish(event,"RefundApplicationCreatedEvent.v1",app,now,c.context(),values("applicationId",app,"orderId",c.orderId(),"userId",loc.userId(),"merchantId",loc.merchantId(),"storeId",loc.storeId(),"applicationStatus","PENDING_MERCHANT","merchantDeadline",time(deadline),"createdAt",time(now)));
             var receipt=new Receipt(c.orderId(),app,"PENDING_MERCHANT","0",time(deadline),null,null);finish(binding,purpose,receipt);
@@ -116,6 +137,16 @@ public final class RefundApplicationService implements RefundApplicationCommandA
             before(()->{requireCreated(a.applicationId(),approved.decisionId(),str(refund),a.storeId(),system(c.context()));orders.requireCreated(a.orderId(),a.storeId(),str(refund),source);});return str(refund);
         });
     });}
+    public boolean preServiceAutoRefund(){return preServiceAutoRefund;}
+    /** SSOT §4.1 服务前自动退款：the buyer's own application is the trigger; the decision is SYSTEM-owned and bound to a dedicated admission. */
+    private Receipt autoApprovePreService(Apply c,OrderRefundApplicationApi.Location loc,String app,OffsetDateTime now){
+        var decision=new CommandContext("REFUND_PRE_SERVICE_AUTO:"+app,c.context().traceId(),OperatorType.SYSTEM,null,"REFUND_COMMAND");
+        var key=key("refund.application.pre-service-auto",decision,"REFUND_APPLICATION:"+app);
+        byte[] input=json(values("applicationId",app,"storeId",loc.storeId()));String purpose=purpose(key);
+        var admitted=admit(key,purpose,input);reserved(admitted);pending(admitted);
+        var receipt=writeDecision(requireApplication(app,loc.storeId(),system(c.context())),"AUTO_APPROVED",null,decision,admitted,now);
+        finish(admitted,purpose,receipt);return receipt;
+    }
     private Receipt writeDecision(ApplicationFact a,String status,String reason,CommandContext context,RefundApplicationMapper.Binding binding,OffsetDateTime at){
         long decision=next(),event=next();var v=values("decision",decision,"application",id(a.applicationId()),"command",binding.id,"event",event,"status",status,"operatorType",context.operatorType().name(),"operator",context.operatorId()==null?null:id(context.operatorId()),"requestId",context.requestId(),"reasonCipher",protect("DECISION:"+decision,reason),"now",utc(at),"version",a.version());
         one(db.insertDecision(v));one(db.decide(v));orders.recordDecision(a.applicationId(),str(decision),a.orderId(),a.storeId(),context,source);
@@ -138,10 +169,22 @@ public final class RefundApplicationService implements RefundApplicationCommandA
     @Override public DecisionFact requireDecision(String app,String decision,String store,QueryContext context){return owned(()->{
         var a=requireApplication(app,store,context);var d=db.decision(id(decision));if(d==null||!decision.equals(a.decisionId())||!app.equals(str(d.applicationId))||!a.status().equals(d.status)||d.decidedAt==null||d.decidedAt.isBefore(utc(a.createdAt())))throw bad();positive(d.commandId);positive(d.eventId);
         var r=db.row(id(app));if(!d.decidedAt.equals(r.decidedAt))throw bad();var b=db.bindingById(d.commandId);if(b==null||!d.requestId.equals(string(b.requestId))||!("REFUND_APPLICATION:"+app).equals(string(b.scope))||!d.operatorType.equals(string(b.actorType)))throw bad();
-        if("AUTO_APPROVED".equals(d.status)){if(!"SYSTEM".equals(d.operatorType)||d.operatorId!=null||b.actorId!=0||!"refund.application.timeout".equals(string(b.commandNamespace))||!("TASK:REFUND_MERCHANT_TIMEOUT:"+app).equals(d.requestId)||d.decidedAt.isBefore(utc(a.merchantDeadline()))||d.reasonCipher!=null)throw bad();}
+        if("AUTO_APPROVED".equals(d.status)){if(!"SYSTEM".equals(d.operatorType)||d.operatorId!=null||d.reasonCipher!=null)throw bad();
+            byte[] expected;
+            if(d.decidedAt.isEqual(utc(a.createdAt()))){
+                // REF-001 服务前自动退款：instant approval inside the buyer's own apply transaction; the
+                // decision binds to a dedicated SYSTEM admission, never to the (absent) merchant timeout task.
+                if(!"refund.application.pre-service-auto".equals(string(b.commandNamespace))||!"SYSTEM".equals(string(b.actorType))||b.actorId!=0
+                        ||!("REFUND_PRE_SERVICE_AUTO:"+app).equals(d.requestId))throw bad();
+                expected=json(values("applicationId",app,"storeId",store));
+            }else{
+                if(b.actorId!=0||!"refund.application.timeout".equals(string(b.commandNamespace))||!("TASK:REFUND_MERCHANT_TIMEOUT:"+app).equals(d.requestId)||d.decidedAt.isBefore(utc(a.merchantDeadline())))throw bad();
+                expected=json(values("applicationId",app,"storeId",store,"merchantDeadline",time(a.merchantDeadline())));
+            }
+            commandProof(b,expected);}
         else if(Set.of("APPROVED","REJECTED").contains(d.status)){if(!"USER".equals(d.operatorType)||d.operatorId==null||d.operatorId<=0||!d.operatorId.equals(b.actorId)||!"refund.application.decide".equals(string(b.commandNamespace))||!d.decidedAt.isBefore(utc(a.merchantDeadline()))||"REJECTED".equals(d.status)&&(d.reasonCipher==null||d.reasonCipher.length<28)||"APPROVED".equals(d.status)&&d.reasonCipher!=null)throw bad();}
         else throw bad();
-        byte[] expected="AUTO_APPROVED".equals(d.status)?json(values("applicationId",app,"storeId",store,"merchantDeadline",time(a.merchantDeadline()))):json(values("applicationId",app,"version","0","action","APPROVED".equals(d.status)?"APPROVE":"REJECT","reasonText",d.reasonCipher==null?null:string(protection.reveal("DECISION:"+decision,d.reasonCipher))));commandProof(b,expected);
+        if(!"AUTO_APPROVED".equals(d.status)){byte[] expected=json(values("applicationId",app,"version","0","action","APPROVED".equals(d.status)?"APPROVE":"REJECT","reasonText",d.reasonCipher==null?null:string(protection.reveal("DECISION:"+decision,d.reasonCipher))));commandProof(b,expected);}
         return new DecisionFact(a,decision,d.status,d.operatorType,nullable(d.operatorId),offset(d.decidedAt),str(d.commandId),str(d.eventId));
     });}
     @Override public ApprovalFact requireApproved(String app,String decision,String store,QueryContext context){return owned(()->{var d=requireDecision(app,decision,store,context);if(!Set.of("APPROVED","AUTO_APPROVED").contains(d.status()))throw bad();return new ApprovalFact(d.application(),decision,"APPROVED".equals(d.status())?"MERCHANT_APPROVED":"MERCHANT_TIMEOUT_AUTO",d.operatorType(),d.operatorId(),d.decidedAt(),d.commandId(),d.eventId());});}
@@ -182,7 +225,10 @@ public final class RefundApplicationService implements RefundApplicationCommandA
     private RefundApplicationMapper.Binding admit(Map<String,Object> key,String purpose,byte[] input){return tx.execute(s->{defaults();var v=new LinkedHashMap<>(key);v.put("id",next());v.put("hash",sha(input));v.put("canonical",protection.protect(purpose,input));db.reserve(v);var b=db.binding(key);same(b,purpose,input);return b;});}
     private void same(RefundApplicationMapper.Binding b,String purpose,byte[] input){if(b==null||!"canonical-v1".equals(b.canonicalVersion))throw bad();if(!sha(input).equals(b.payloadSha256)||!MessageDigest.isEqual(input,protection.reveal(purpose,b.canonicalBytes)))throw error(CommonApiCodes.IDEMPOTENCY_KEY_CONFLICT);}
     private Receipt replay(RefundApplicationMapper.Binding b,String purpose,CommandContext c,String order,String application){try{if(!Objects.equals(b.resultVersion,1)||b.resultBytes==null)throw bad();var r=JSON.readValue(protection.reveal(purpose+":RESULT",b.resultBytes),Receipt.class);if(!order.equals(r.orderId())||application!=null&&!application.equals(r.applicationId()))throw bad();var hint=hint(r.applicationId());var a=requireApplication(r.applicationId(),str(hint.storeId),system(c));
-        if("refund.application.apply".equals(string(b.commandNamespace))){if(!str(b.id).equals(a.commandId())||!"PENDING_MERCHANT".equals(r.applicationStatus())||!"0".equals(r.applicationVersion())||r.decisionId()!=null||r.decidedAt()!=null||!time(a.merchantDeadline()).equals(r.merchantDeadline()))throw bad();}
+        if("refund.application.apply".equals(string(b.commandNamespace))){if("PENDING_MERCHANT".equals(r.applicationStatus())){
+            if(!str(b.id).equals(a.commandId())||!"0".equals(r.applicationVersion())||r.decisionId()!=null||r.decidedAt()!=null||!time(a.merchantDeadline()).equals(r.merchantDeadline()))throw bad();}
+            else{var d=requireDecision(a.applicationId(),r.decisionId(),a.storeId(),system(c));if(!str(b.id).equals(a.commandId())||!"AUTO_APPROVED".equals(r.applicationStatus())
+                ||!"1".equals(r.applicationVersion())||!d.status().equals(r.applicationStatus())||!a.decisionId().equals(r.decisionId())||!time(d.decidedAt()).equals(r.decidedAt())||!time(a.merchantDeadline()).equals(r.merchantDeadline()))throw bad();}}
         else{var d=requireDecision(a.applicationId(),r.decisionId(),a.storeId(),system(c));if(!str(b.id).equals(d.commandId())||!d.status().equals(r.applicationStatus())||!Long.toString(a.version()).equals(r.applicationVersion())||!time(d.decidedAt()).equals(r.decidedAt())||!time(a.merchantDeadline()).equals(r.merchantDeadline()))throw bad();}return r;
     }catch(ApiException e){throw e;}catch(Exception e){throw bad();}}
     private void finish(RefundApplicationMapper.Binding b,String purpose,Receipt receipt){one(db.succeed(b.id,protection.protect(purpose+":RESULT",json(receipt))));}

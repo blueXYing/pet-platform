@@ -84,9 +84,11 @@ public final class OrderRefundApplicationApiImpl implements OrderRefundApplicati
                 requireApplicationBound(f.currentApplicationId(),order,store,q,source);
             }
             var a=applications.get().requireApplication(application,store,q);same(a,f);
+            // REF-001: whether a pre-service application may exist is REFUND's switch decision; the bind happens
+            // before the in-transaction decision, so timing alone no longer rejects. The committed-state rule
+            // (never PENDING_MERCHANT before the appointment start) is enforced by requireApplicationBound.
             if(!"PENDING_MERCHANT".equals(a.status())||a.version()!=0||a.decisionId()!=null||a.refundOrderId()!=null
                     ||a.createdAt()==null||a.merchantDeadline()==null||!a.createdAt().plusHours(24).isEqual(a.merchantDeadline())
-                    ||!"VERIFIED".equals(f.verificationStatus())&&a.createdAt().isBefore(f.appointmentStart())
                     ||db.application(IDS.fromApi(application))!=null)throw bad();
             var v=sourceValues(a);v.putAll(values("oldVersion",Long.parseLong(f.orderVersion()),"version",Math.addExact(Long.parseLong(f.orderVersion()),1)));
             one(db.insertApplication(v));one(db.bind(v));
@@ -105,6 +107,10 @@ public final class OrderRefundApplicationApiImpl implements OrderRefundApplicati
             if(Objects.equals(c.currentRefundApplicationId,p.applicationId)){
                 if(!Objects.equals(c.refundApplicationStatus,p.applicationStatus))throw bad();
             }else if(!"REJECTED".equals(p.applicationStatus))throw bad();
+            // REF-001: before the appointment start an unverified order's application commits only as a decided
+            // fact (system auto full refund); PENDING_MERCHANT remains a post-start merchant-processing state.
+            if(!"VERIFIED".equals(r.verificationStatus)&&p.createdAt!=null&&r.appointmentStartAt!=null
+                    &&offset(p.createdAt).isBefore(offset(r.appointmentStartAt))&&"PENDING_MERCHANT".equals(p.applicationStatus))throw bad();
             return null;
         });
     }
@@ -119,8 +125,9 @@ public final class OrderRefundApplicationApiImpl implements OrderRefundApplicati
                     ||!Set.of("APPROVED","AUTO_APPROVED","REJECTED").contains(d.status())
                     ||!d.status().equals(d.application().status())||d.decidedAt()==null)throw bad();
             if("AUTO_APPROVED".equals(d.status())){
+                boolean preService=d.decidedAt().isEqual(d.application().createdAt());
                 if(context.operatorType()!=OperatorType.SYSTEM||!"SYSTEM".equals(d.operatorType())||d.operatorId()!=null
-                        ||d.decidedAt().isBefore(d.application().merchantDeadline()))throw bad();
+                        ||!preService&&d.decidedAt().isBefore(d.application().merchantDeadline()))throw bad();
             }else if(context.operatorType()!=OperatorType.USER||!"USER".equals(d.operatorType())
                     ||!context.operatorId().equals(d.operatorId())||!d.decidedAt().isBefore(d.application().merchantDeadline()))throw bad();
             var v=values("application",IDS.fromApi(application),"order",IDS.fromApi(order),"store",IDS.fromApi(store),
@@ -229,7 +236,9 @@ public final class OrderRefundApplicationApiImpl implements OrderRefundApplicati
         if(!verified&&!pending)throw error("REFUND_NOT_ELIGIBLE");
         if(!"PAID".equals(r.paymentStatus)||r.canceledAt!=null||r.cancelReason!=null||r.payAmount==null||r.payAmount.signum()<=0
                 ||r.refundedAmount==null||r.refundedAmount.signum()!=0||r.appointmentStartAt==null||r.appointmentEndAt==null||r.confirmedAt==null)throw bad();
-        if(!verified&&paid.databaseNow().isBefore(offset(r.appointmentStartAt)))throw error("REFUND_BEFORE_SERVICE_NOT_IMPLEMENTED");
+        // REF-001: the pre-service gate belongs to REFUND (its switch decides auto full refund vs the historic
+        // refusal). AFS keeps the original pre-service refusal unchanged; its unfulfilled window starts at appointment start.
+        if(forAftersale&&!verified&&paid.databaseNow().isBefore(offset(r.appointmentStartAt)))throw error("REFUND_BEFORE_SERVICE_NOT_IMPLEMENTED");
         if(verified){
             var v=new OrderVerificationStore(source).mapper().committed(r.id);
             if(v==null||!Objects.equals(v.storeId,r.storeId)||v.orderVersion==null||v.orderVersion>r.version||v.verifiedAt==null
