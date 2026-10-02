@@ -41,6 +41,13 @@ public final class ScheduleMerchantQueryApiImpl implements ScheduleMerchantQuery
         this.admissions = Objects.requireNonNull(admissions, "admissions is required");
     }
 
+    /** Terminal assembly entry: the read store is wired inside the owning module from the
+     * shared DataSource so terminals never touch schedule persistence types (ARCH-002). */
+    public ScheduleMerchantQueryApiImpl(javax.sql.DataSource source,
+            ScheduleAdmissionGate admissions) {
+        this(new ScheduleReadStore(source), admissions);
+    }
+
     @Override
     public WindowPage listWindows(WorkbenchWindowQuery q) {
         user(q == null ? null : q.context());
