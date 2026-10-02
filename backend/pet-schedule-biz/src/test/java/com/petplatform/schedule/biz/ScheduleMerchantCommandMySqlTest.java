@@ -561,13 +561,22 @@ class ScheduleMerchantCommandMySqlTest {
         private final JdbcTemplate jdbc;
 
         private Database() throws Exception {
-            String url = System.getenv().getOrDefault("SCH004_MYSQL_URL",
+            // Same local-MySQL harness contract as the sibling schedule tests
+            // (ReservationHold/ScheduleProtectionFoundation): whichever <prefix>_MYSQL_URL the
+            // environment defines wins, user/password follow the same prefix, and the no-env
+            // defaults only ever target a local root with no password assumption.
+            String prefix = System.getenv().containsKey("SCH004_MYSQL_URL") ? "SCH004"
+                    : System.getenv().containsKey("SCH003_MYSQL_URL") ? "SCH003"
+                    : System.getenv().containsKey("MER001_MYSQL_URL") ? "MER001"
+                    : System.getenv().containsKey("AUTH_MYSQL_URL") ? "AUTH" : "SCH004";
+            String url = System.getenv().getOrDefault(prefix + "_MYSQL_URL",
                     "jdbc:mysql://127.0.0.1:3306/");
             if (!url.matches("jdbc:mysql://(127\\.0\\.0\\.1|localhost):[0-9]+/")) {
-                throw new IllegalArgumentException("MySQL test URL must target a local root");
+                throw new IllegalArgumentException(
+                        prefix + "_MYSQL_URL must target a local root");
             }
-            String user = System.getenv().getOrDefault("SCH004_MYSQL_USER", "root");
-            String password = System.getenv().getOrDefault("SCH004_MYSQL_PASSWORD", "root");
+            String user = System.getenv().getOrDefault(prefix + "_MYSQL_USER", "root");
+            String password = System.getenv().getOrDefault(prefix + "_MYSQL_PASSWORD", "");
             admin = new JdbcTemplate(source(url, user, password));
             source = source(url + name, user, password);
             jdbc = new JdbcTemplate(source);
