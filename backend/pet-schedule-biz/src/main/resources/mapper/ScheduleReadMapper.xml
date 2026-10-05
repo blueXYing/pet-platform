@@ -23,7 +23,7 @@
     </select>
 
     <!-- C-end visibility: SOLD_OUT stays listed with remaining=0/available=false, matching the
-         presentation an at-capacity OPEN window already had (Contract52 §3, 2026-10-05). -->
+         presentation an at-capacity OPEN window already had (Contract53 §3, 2026-10-05). -->
     <select id="selectOpenWindows"
             resultType="com.petplatform.schedule.biz.infrastructure.persistence.entity.ScheduleAvailabilityWindowEntity">
         SELECT id,

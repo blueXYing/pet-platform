@@ -78,7 +78,7 @@ public final class ReservationSwapApiImpl implements ReservationSwapApi {
    if(mapper.history(values("id",change,"reservation",IDS.fromApi(c.reservationId()),"orderId",IDS.fromApi(c.orderId()),"storeId",IDS.fromApi(c.storeId()),
      "command",IDS.fromApi(c.commandId()),"version",version,"old",json(oldSnapshot),"new",json(newSnapshot),"now",utc(c.rescheduledAt())))!=1)throw bad();
    // The swap moves confirmed occupancy between windows: both sides re-derive in this
-   // transaction (Contract52 §3, 2026-10-05 SOLD_OUT ruling).
+   // transaction (Contract53 §3, 2026-10-05 SOLD_OUT ruling).
    var movedWindows=new java.util.LinkedHashSet<Long>();
    for(var o:original)movedWindows.add(IDS.fromApi(o.windowId()));
    for(var n:plan.claims())movedWindows.add(IDS.fromApi(n.windowId()));

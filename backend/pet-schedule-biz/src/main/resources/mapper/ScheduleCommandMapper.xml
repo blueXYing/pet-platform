@@ -66,7 +66,7 @@
         VALUES(#{row.id},#{row.reservationId},#{row.orderId},NULL,#{row.storeId},
            #{row.action},#{row.requestId},#{row.traceId,jdbcType=VARCHAR},#{row.occurredAt},'SYSTEM')
     </insert>
-    <!-- Derived SOLD_OUT release linkage (Contract52 §3, 2026-10-05 ruling): the caller's
+    <!-- Derived SOLD_OUT release linkage (Contract53 §3, 2026-10-05 ruling): the caller's
          guarded transaction flips the window with the reservation change that caused it. -->
     <select id="claimWindowIds" resultType="long">
         SELECT window_id FROM schedule_reservation_claim

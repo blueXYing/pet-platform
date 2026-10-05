@@ -590,7 +590,7 @@ class ScheduleMerchantCommandMySqlTest {
                         "14-Command-Idempotency-Schema-v0.1.sql",
                         "37-Reservation-Protection-Foundation-Schema-v0.1.sql",
                         "38-Booking-Create-Schema-v0.1.sql",
-                        "52-Schedule-Write-Schema-v0.1.sql")) {
+                        "53-Schedule-Write-Schema-v0.1.sql")) {
                     try (Connection connection = source.getConnection()) {
                         ScriptUtils.executeSqlScript(connection, new EncodedResource(
                                 new FileSystemResource(root.resolve("docs/03-database/" + script)),

@@ -1080,7 +1080,7 @@ paths:
       summary: merchantListScheduleWindows
       operationId: merchantListScheduleWindows
       x-contract-status: IMPLEMENTED_DEFAULT_OFF
-      x-contract: 52-Schedule-Write-Contract-v0.1.md
+      x-contract: 53-Schedule-Write-Contract-v0.1.md
       x-audience: MINIAPP
       x-authorization: Current OWNER of the requested merchant and store; anti-enumeration 404.
       security:
@@ -1154,7 +1154,7 @@ paths:
       summary: merchantCreateScheduleWindow
       operationId: merchantCreateScheduleWindow
       x-contract-status: IMPLEMENTED_DEFAULT_OFF
-      x-contract: 52-Schedule-Write-Contract-v0.1.md
+      x-contract: 53-Schedule-Write-Contract-v0.1.md
       x-audience: MINIAPP
       x-authorization: Current OWNER; per-store guard, overlap and fulfillment-kind validation inside one transaction; UUID X-Request-Id idempotent (API23), first commit 201, same-params replay 200 after authority re-verification.
       security:
@@ -1272,7 +1272,7 @@ paths:
       summary: merchantUpdateScheduleWindow
       operationId: merchantUpdateScheduleWindow
       x-contract-status: IMPLEMENTED_DEFAULT_OFF
-      x-contract: 52-Schedule-Write-Contract-v0.1.md
+      x-contract: 53-Schedule-Write-Contract-v0.1.md
       x-audience: MINIAPP
       x-authorization: Current OWNER; identity fields are fixed after creation; occupied windows cannot move or shrink (SCHW-D4).
       security:
@@ -1379,7 +1379,7 @@ paths:
       summary: merchantCloseScheduleWindow
       operationId: merchantCloseScheduleWindow
       x-contract-status: IMPLEMENTED_DEFAULT_OFF
-      x-contract: 52-Schedule-Write-Contract-v0.1.md
+      x-contract: 53-Schedule-Write-Contract-v0.1.md
       x-audience: MINIAPP
       x-authorization: Current OWNER; reason mandatory (SSOT section 29); occupied windows are refused with SCHEDULE_WINDOW_STATE_NOT_ALLOWED (SCHW-D4).
       security:
@@ -1486,7 +1486,7 @@ paths:
       summary: merchantOpenScheduleWindow
       operationId: merchantOpenScheduleWindow
       x-contract-status: IMPLEMENTED_DEFAULT_OFF
-      x-contract: 52-Schedule-Write-Contract-v0.1.md
+      x-contract: 53-Schedule-Write-Contract-v0.1.md
       x-audience: MINIAPP
       x-authorization: Current OWNER; reopen re-checks overlap with open windows of the same store, service and kind (SCHW-D3).
       security:
@@ -1593,9 +1593,9 @@ paths:
       summary: merchantBatchCloseScheduleWindows
       operationId: merchantBatchCloseScheduleWindows
       x-contract-status: IMPLEMENTED_DEFAULT_OFF
-      x-contract: 52-Schedule-Write-Contract-v0.1.md
+      x-contract: 53-Schedule-Write-Contract-v0.1.md
       x-audience: MINIAPP
-      x-authorization: Current OWNER; calendar-day range in Asia/Shanghai; partial close is allowed and blocked windows must be reported explicitly (SCHW-D5); at most 200 window entries per command, a larger range is rejected whole with 400 before any close (Contract52 3.2, 2026-10-05); infra failure rolls the whole batch back with 503.
+      x-authorization: Current OWNER; calendar-day range in Asia/Shanghai; partial close is allowed and blocked windows must be reported explicitly (SCHW-D5); at most 200 window entries per command, a larger range is rejected whole with 400 before any close (Contract53 3.2, 2026-10-05); infra failure rolls the whole batch back with 503.
       security:
       - bearerAuth: []
       parameters:
@@ -1687,7 +1687,7 @@ paths:
       summary: merchantListStaffAvailabilityWindows
       operationId: merchantListStaffAvailabilityWindows
       x-contract-status: IMPLEMENTED_DEFAULT_OFF
-      x-contract: 52-Schedule-Write-Contract-v0.1.md
+      x-contract: 53-Schedule-Write-Contract-v0.1.md
       x-audience: MINIAPP
       x-authorization: Current OWNER of the store that owns the staff row.
       security:
@@ -1761,7 +1761,7 @@ paths:
       summary: merchantCreateStaffAvailabilityWindow
       operationId: merchantCreateStaffAvailabilityWindow
       x-contract-status: IMPLEMENTED_DEFAULT_OFF
-      x-contract: 52-Schedule-Write-Contract-v0.1.md
+      x-contract: 53-Schedule-Write-Contract-v0.1.md
       x-audience: MINIAPP
       x-authorization: Current OWNER; staff must be ACTIVE in this store (SCHW-D6); overlap of AVAILABLE windows refused, adjacent half-open allowed.
       security:
@@ -1879,7 +1879,7 @@ paths:
       summary: merchantUpdateStaffAvailabilityWindow
       operationId: merchantUpdateStaffAvailabilityWindow
       x-contract-status: IMPLEMENTED_DEFAULT_OFF
-      x-contract: 52-Schedule-Write-Contract-v0.1.md
+      x-contract: 53-Schedule-Write-Contract-v0.1.md
       x-audience: MINIAPP
       x-authorization: Current OWNER; a move or shorten is an availability reduction protected by contract 36 assignment facts plus the whole-store feasibility re-proof (SCHW-D6).
       security:
@@ -1986,7 +1986,7 @@ paths:
       summary: merchantCloseStaffAvailabilityWindow
       operationId: merchantCloseStaffAvailabilityWindow
       x-contract-status: IMPLEMENTED_DEFAULT_OFF
-      x-contract: 52-Schedule-Write-Contract-v0.1.md
+      x-contract: 53-Schedule-Write-Contract-v0.1.md
       x-audience: MINIAPP
       x-authorization: Current OWNER; reason mandatory; protected assignments or an infeasible store proof roll the reduction back with 409 (SCHW-D6).
       security:
@@ -2093,7 +2093,7 @@ paths:
       summary: merchantOpenStaffAvailabilityWindow
       operationId: merchantOpenStaffAvailabilityWindow
       x-contract-status: IMPLEMENTED_DEFAULT_OFF
-      x-contract: 52-Schedule-Write-Contract-v0.1.md
+      x-contract: 53-Schedule-Write-Contract-v0.1.md
       x-audience: MINIAPP
       x-authorization: Current OWNER; reopen re-checks overlap with AVAILABLE windows of the same staff.
       security:
@@ -2200,7 +2200,7 @@ paths:
       summary: merchantGetStaffServiceCapabilities
       operationId: merchantGetStaffServiceCapabilities
       x-contract-status: IMPLEMENTED_DEFAULT_OFF
-      x-contract: 52-Schedule-Write-Contract-v0.1.md
+      x-contract: 53-Schedule-Write-Contract-v0.1.md
       x-audience: MINIAPP
       x-authorization: Current OWNER; details without a set header are LEGACY_UNVERSIONED and answer 503, never an empty set at version 0 (SCHC-2).
       security:
@@ -2286,7 +2286,7 @@ paths:
       summary: merchantReplaceStaffServiceCapabilities
       operationId: merchantReplaceStaffServiceCapabilities
       x-contract-status: IMPLEMENTED_DEFAULT_OFF
-      x-contract: 52-Schedule-Write-Contract-v0.1.md
+      x-contract: 53-Schedule-Write-Contract-v0.1.md
       x-audience: MINIAPP
       x-authorization: Current OWNER; full-replacement set CAS (SCHC-2), duplicates 400, stale expectedVersion 409 COMMON_CONFLICT, removals need reason and the reduction protection (SCHW-D7).
       security:

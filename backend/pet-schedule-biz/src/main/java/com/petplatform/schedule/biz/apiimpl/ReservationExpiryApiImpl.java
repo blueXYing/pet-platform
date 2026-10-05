@@ -57,7 +57,7 @@ public final class ReservationExpiryApiImpl implements ReservationExpiryApi {
                     "storeId",IDS.fromApi(c.storeId()),"action","EXPIRE",
                     "requestId",c.context().requestId().getBytes(StandardCharsets.UTF_8),
                     "traceId",c.context().traceId(),"occurredAt",now));
-            // The expired hold frees its windows in this same transaction (Contract52 §3).
+            // The expired hold frees its windows in this same transaction (Contract53 §3).
             WindowSoldOutDeriver.rederive(c.storeId(),
                     mapper.claimWindowIds(IDS.fromApi(c.reservationId())),
                     new QueryContext(c.context().traceId(),OperatorType.SYSTEM,c.context().operatorId()),

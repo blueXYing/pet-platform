@@ -135,7 +135,7 @@ class ScheduleSelectionQueryMySqlTest {
     @Test
     void soldOutWindowStaysListedWithZeroRemainingLikeAnAtCapacityOpenOne() throws Exception {
         try (Database db = new Database()) {
-            // Contract52 §3 (2026-10-05 ruling): SOLD_OUT is an open-derived state, so the
+            // Contract53 §3 (2026-10-05 ruling): SOLD_OUT is an open-derived state, so the
             // selection read keeps listing it with remaining=0/available=false instead of
             // dropping the slot the C-end page previously showed as an at-capacity window.
             db.window(101, "GENERAL", "2030-01-01 01:00:00", "2030-01-01 03:00:00");

@@ -1,6 +1,6 @@
 # Schedule Write Contract v0.1（商家排期写侧）
 
-状态：IMPLEMENTED_DEFAULT_OFF，2026-10-02；默认关闭，不表示生产已开放或页面已联调。2026-10-05 用户裁决：§7-1（B5）按方案 A 落地显式 SOLD_OUT 派生态与释放联动、§7-3（原登记的 200 上限问题）落地批量命令单次 200 条上限，均已并入本契约（见 §3 与 §3.1）；§7-2（C 端 kind）裁决本批不做。**本文档编号 52 为临时占用：与并行分支 #101（staff-identity）冲突，#101 合并后由主协调通知 rebase 并重编号为下一个空闲号（含 docs/03-database/SQL52 与代码注释引用，commit 内已登记待重编号）。** 产品依据：[SSOT §29](../00-ssot/01-SSOT-宠物平台V1.0-最终业务基线.md)、[PRD29](../01-prd/29-排期人员容量与维护人工裁决补充-v1.0.md)、SSOT §12/§13；技术契约：[34号排期保护契约](34-Schedule-Protection-Contract-v0.1.md)（SCHC-1～4，已批）、[34号存储](../03-database/34-Schedule-Protection-Storage-v0.1.md)、[36号预约与订单人员保护](36-Reservation-Order-Protection-Contract-v0.1.md)（ROC 已批、事实 API 已交付）、[写入提案 v0.2](../../planning/ccr/CCR-W2-API-001/schedule-write-proposal.md) 与[联合审阅回执](../../planning/ccr/CCR-W2-API-001/schedule-review-decisions.md)、[四项技术裁决回执](../../planning/ccr/CCR-W2-API-001/schedule-write-completion-decisions.md)。存储增量见 [SQL52](../03-database/52-Schedule-Write-Schema-v0.1.sql) 与隔离迁移 `schedule-migration/V29__schedule_write.sql`（仅显式 `schw001_*` 库可执行，永不跑共享数据源；SOLD_OUT 为既有 `status VARCHAR(16)` 列的应用层枚举值，无 DDL 变更）。
+状态：IMPLEMENTED_DEFAULT_OFF，2026-10-02；默认关闭，不表示生产已开放或页面已联调。2026-10-05 用户裁决：§7-1（B5）按方案 A 落地显式 SOLD_OUT 派生态与释放联动、§7-3（原登记的 200 上限问题）落地批量命令单次 200 条上限，均已并入本契约（见 §3 与 §3.1）；§7-2（C 端 kind）裁决本批不做。**本文档原编号 52：与 #101（staff-identity，52-Merchant-Staff-Identity）撞号，#101 合并后已重编号为 53（2026-10-06，含 docs/03-database/SQL53、11号 x-contract、代码注释与测试引用同步）。** 产品依据：[SSOT §29](../00-ssot/01-SSOT-宠物平台V1.0-最终业务基线.md)、[PRD29](../01-prd/29-排期人员容量与维护人工裁决补充-v1.0.md)、SSOT §12/§13；技术契约：[34号排期保护契约](34-Schedule-Protection-Contract-v0.1.md)（SCHC-1～4，已批）、[34号存储](../03-database/34-Schedule-Protection-Storage-v0.1.md)、[36号预约与订单人员保护](36-Reservation-Order-Protection-Contract-v0.1.md)（ROC 已批、事实 API 已交付）、[写入提案 v0.2](../../planning/ccr/CCR-W2-API-001/schedule-write-proposal.md) 与[联合审阅回执](../../planning/ccr/CCR-W2-API-001/schedule-review-decisions.md)、[四项技术裁决回执](../../planning/ccr/CCR-W2-API-001/schedule-write-completion-decisions.md)。存储增量见 [SQL53](../03-database/53-Schedule-Write-Schema-v0.1.sql) 与隔离迁移 `schedule-migration/V29__schedule_write.sql`（仅显式 `schw001_*` 库可执行，永不跑共享数据源；SOLD_OUT 为既有 `status VARCHAR(16)` 列的应用层枚举值，无 DDL 变更）。
 
 ## 1. 范围与开关
 
@@ -91,4 +91,4 @@ PUT 为全量替换：过期 `expectedVersion` 409 `COMMON_CONFLICT` 提示重�
 5. **「每人最多 200 项服务」上限**：随 §3.2 裁决明确为"批量命令条目上限"而非"每人能力项数上限"；每员工能力项数仍不设上限（仅 06号 INT 技术边界校验）。
 6. **排期负责人子账号角色**：员工相关项，**裁决归属 #101（staff-identity）/后续切片**；V1 写入门禁=主账号 OWNER 不变。
 
-> 编号备注：本文档（Contract52/SQL52）编号 52 与 #101 临时冲突，#101 先合并；本批 commit 已登记"待重编号"，#101 合并后由主协调通知 rebase 并统一重编号为下一个空闲号。
+> 编号备注：本文档（Contract53/SQL53）原编号 52 与 #101 撞号，#101 合并（develop 0292681）后已重编号为 53 并同步全部交叉引用；历史 commit 内的"待重编号"登记就此了结。

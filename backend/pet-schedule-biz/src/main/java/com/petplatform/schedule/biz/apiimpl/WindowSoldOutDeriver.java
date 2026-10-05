@@ -19,7 +19,7 @@ import java.util.TreeSet;
 
 /**
  * System-side link between reservation capacity changes and the derived SOLD_OUT window state
- * (Contract52 §7 blocker 1, ruling 2026-10-05, plan A): a service window is an explicit,
+ * (Contract53 §7 blocker 1, ruling 2026-10-05, plan A): a service window is an explicit,
  * system-computed SOLD_OUT ("已约满") while its effective claims fill its capacity and returns
  * to OPEN when a release frees it. Occupancy counts the active TEMP_LOCKED/CONFIRMED claims on
  * the window's original row — the same occupied notion as SCHW-D4 and the solver's store-wide

@@ -92,7 +92,7 @@ import org.springframework.transaction.TransactionDefinition;
 import org.springframework.transaction.support.TransactionTemplate;
 
 /**
- * Contract52 §7 blocker 1, ruling 2026-10-05 (plan A): the explicit system-derived SOLD_OUT
+ * Contract53 §7 blocker 1, ruling 2026-10-05 (plan A): the explicit system-derived SOLD_OUT
  * window state. Covers entry when claims fill a window, the release linkage (refund release
  * and hold expiry) back to bookable, the no-double-sell behaviour over two concurrent guarded
  * connections, the respect of SOLD_OUT by the booking capacity guard, the merchant
@@ -606,7 +606,7 @@ class ScheduleSoldOutLinkMySqlTest {
                         "37-Reservation-Protection-Foundation-Schema-v0.1.sql",
                         "38-Booking-Create-Schema-v0.1.sql",
                         "39-Booking-Expiry-Schema-v0.1.sql",
-                        "52-Schedule-Write-Schema-v0.1.sql")) {
+                        "53-Schedule-Write-Schema-v0.1.sql")) {
                     try (Connection connection = source.getConnection()) {
                         ScriptUtils.executeSqlScript(connection, new EncodedResource(
                                 new FileSystemResource(root.resolve("docs/03-database/" + script)),

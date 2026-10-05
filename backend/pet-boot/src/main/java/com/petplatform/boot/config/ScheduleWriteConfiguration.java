@@ -56,7 +56,7 @@ public class ScheduleWriteConfiguration {
         return new ScheduleMerchantQueryApiImpl(source, admissions);
     }
 
-    /** Isolated opt-in Flyway migration for the schedule write delta (SQL52), mirroring the
+    /** Isolated opt-in Flyway migration for the schedule write delta (SQL53), mirroring the
      * guarded V26/V27 precedents; never runs against the shared default datasource. */
     @Bean
     Object scheduleWriteMigration(

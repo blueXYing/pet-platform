@@ -32,7 +32,7 @@ public interface ScheduleCommandMapper {
     /** Original windows of one reservation, for the derived SOLD_OUT release linkage. */
     List<Long> claimWindowIds(@Param("reservationId") long reservationId);
 
-    /** CAS flip of the system-derived OPEN/SOLD_OUT window state (Contract52 §3). */
+    /** CAS flip of the system-derived OPEN/SOLD_OUT window state (Contract53 §3). */
     int setWindowDerivedStatus(@Param("windowId") long windowId,
         @Param("expectedStatus") String expectedStatus,
         @Param("nextStatus") String nextStatus,

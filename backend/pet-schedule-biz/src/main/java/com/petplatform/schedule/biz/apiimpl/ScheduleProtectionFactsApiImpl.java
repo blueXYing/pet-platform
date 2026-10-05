@@ -114,7 +114,7 @@ public final class ScheduleProtectionFactsApiImpl implements ScheduleProtectionF
                     || byWindow.putIfAbsent(window.windowId(), window) != null) {
                 bad("invalid schedule window facts");
             }
-            // SOLD_OUT is a derived sub-state of an open window (Contract52 §3): it occupies the
+            // SOLD_OUT is a derived sub-state of an open window (Contract53 §3): it occupies the
             // same single-open-window slot and joins the overlap invariant.
             if (openDerived(window.status())) {
                 openGroups.computeIfAbsent(window.serviceId() + ":" + window.kind(),
@@ -204,7 +204,7 @@ public final class ScheduleProtectionFactsApiImpl implements ScheduleProtectionF
         return "TEMP_LOCKED".equals(status) || "CONFIRMED".equals(status);
     }
 
-    /** SOLD_OUT is the system-derived "open but filled" sub-state (Contract52 §3). */
+    /** SOLD_OUT is the system-derived "open but filled" sub-state (Contract53 §3). */
     private static boolean openDerived(String status) {
         return "OPEN".equals(status) || "SOLD_OUT".equals(status);
     }

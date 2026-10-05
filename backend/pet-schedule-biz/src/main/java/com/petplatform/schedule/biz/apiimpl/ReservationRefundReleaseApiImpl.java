@@ -48,7 +48,7 @@ public final class ReservationRefundReleaseApiImpl implements ReservationRefundR
                 "orderId",IDS.fromApi(order),"storeId",IDS.fromApi(store),"action","REFUND_RELEASE","requestId",key,
                 "traceId",ctx.traceId(),"occurredAt",now))!=1)throw unavailable();
             // The freed reservation returns its windows to bookable in this same transaction
-            // (Contract52 §3, 2026-10-05 SOLD_OUT ruling).
+            // (Contract53 §3, 2026-10-05 SOLD_OUT ruling).
             WindowSoldOutDeriver.rederive(store,mapper.claimWindowIds(IDS.fromApi(reservation)),ctx,facts,mapper::setWindowDerivedStatus,now);
         }catch(RuntimeException failure){
             Object resource=TransactionSynchronizationManager.getResource(source);if(resource instanceof ConnectionHolder holder)holder.setRollbackOnly();

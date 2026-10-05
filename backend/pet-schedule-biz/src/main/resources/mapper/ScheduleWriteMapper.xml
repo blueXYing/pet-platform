@@ -58,7 +58,7 @@
         SET status = 'OPEN', version = version + 1, updated_at = #{now}
         WHERE id = #{windowId} AND version = #{expectedVersion} AND status = 'CLOSED'
     </update>
-    <!-- Derived SOLD_OUT state (Contract52 §3, 2026-10-05 ruling): the window version moves
+    <!-- Derived SOLD_OUT state (Contract53 §3, 2026-10-05 ruling): the window version moves
          with every system flip so merchant optimistic concurrency observes the change. -->
     <update id="setWindowDerivedStatus">
         UPDATE schedule_availability_window

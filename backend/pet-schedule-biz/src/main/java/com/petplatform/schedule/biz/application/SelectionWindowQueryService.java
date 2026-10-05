@@ -92,7 +92,7 @@ public final class SelectionWindowQueryService {
             for (WindowRow row : windows) {
                 validateWindow(row, query, snapshot.merchantId(), windowIds, openEnds);
                 // SOLD_OUT stays listed as an open-derived window: remaining=0 keeps it
-                // unbookable exactly like an at-capacity OPEN window was (Contract52 §3).
+                // unbookable exactly like an at-capacity OPEN window was (Contract53 §3).
                 if (!openDerived(row.status()) || !matches(row.kind(), applicable, query.kind())
                         || !row.end().toInstant(ZoneOffset.UTC).isAfter(now)) continue;
                 OffsetDateTime start = row.start().atOffset(ZoneOffset.UTC);

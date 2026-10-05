@@ -1,4 +1,4 @@
--- Pet Platform V1.0 schedule write-side schema v0.1 (SCH-004; SQL52)
+-- Pet Platform V1.0 schedule write-side schema v0.1 (SCH-004; SQL53)
 -- MySQL 8.0+. Apply after Schema06 (06号) and 37-Reservation-Protection-Foundation-Schema
 -- (37号) in an isolated/explicitly approved database only.
 -- No automatic migration, legacy backfill or production enablement.

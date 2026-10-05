@@ -212,7 +212,7 @@ public final class ScheduleMerchantCommandService implements ScheduleMerchantCom
                             lockedWindow(m, c.windowId(), c.merchantId(), c.storeId());
                     String status = ScheduleSqlRows.text(row, "status");
                     // SOLD_OUT is an open-derived state: editing stays possible and is still
-                    // governed by the occupied-window rules below (Contract52 §3).
+                    // governed by the occupied-window rules below (Contract53 §3).
                     if (!"OPEN".equals(status) && !"SOLD_OUT".equals(status)) stateNotAllowed();
                     requireCurrentVersion(row, c.expectedVersion());
                     StoreScheduleFacts snapshot = facts.readStore(c.storeId(), query(ctx));
@@ -873,7 +873,7 @@ public final class ScheduleMerchantCommandService implements ScheduleMerchantCom
         for (WindowFact window : snapshot.windows()) {
             // SOLD_OUT windows still hold their open slot: a sold-out window blocks overlapping
             // creations and reopens, so a later release can return it to OPEN without ever
-            // producing two overlapping open windows (Contract52 §3).
+            // producing two overlapping open windows (Contract53 §3).
             if ((!"OPEN".equals(window.status()) && !"SOLD_OUT".equals(window.status()))
                     || !serviceId.equals(window.serviceId())
                     || !kind.equals(window.kind())

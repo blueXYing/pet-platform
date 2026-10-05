@@ -24,7 +24,7 @@ class PrivateAssetContractRegressions(unittest.TestCase):
 
     def test_current_surface_independent_counts(self):
         result = check(self.spec)
-        # 126 = previous 113 + 13 Contract52 schedule write operations (SCH-004).
+        # 126 = previous 113 + 13 Contract53 schedule write operations (SCH-004).
         self.assertEqual(result['operations'], 126)
         self.assertEqual(result['privateAssetOperations'], 3)
         self.assertEqual(result['legacyOperations'], 14)

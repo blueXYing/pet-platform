@@ -181,7 +181,7 @@ SCHEDULE_AVAILABILITY_OPERATIONS = {
     'cGetServiceAvailability': ('get', '/c/services/{serviceId}/availability'),
 }
 
-# Contract52 (SCH-004 merchant schedule write side, PRD29/SSOT §29 + SCHW/SCHC rulings):
+# Contract53 (SCH-004 merchant schedule write side, PRD29/SSOT §29 + SCHW/SCHC rulings):
 # owner-gated service-window / staff-availability / capability maintenance plus the merchant
 # workbench reads, default off behind pet.schedule.command.*. Response codes are pinned per
 # operation and every error reply must use the merchant error envelope; creates answer 201

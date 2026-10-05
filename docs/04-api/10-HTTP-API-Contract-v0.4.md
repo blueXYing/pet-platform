@@ -980,7 +980,7 @@ refund_order 先创建
 
 ## 4.8 排期管理
 
-正式实现以 [Contract52](52-Schedule-Write-Contract-v0.1.md)、[SQL52](../03-database/52-Schedule-Write-Schema-v0.1.sql) 与 OpenAPI11 为准；默认 `pet.schedule.command.enabled=false`、`pet.schedule.command.http.enabled=false` 分层关闭。
+正式实现以 [Contract53](53-Schedule-Write-Contract-v0.1.md)、[SQL53](../03-database/53-Schedule-Write-Schema-v0.1.sql) 与 OpenAPI11 为准；默认 `pet.schedule.command.enabled=false`、`pet.schedule.command.http.enabled=false` 分层关闭。
 
 ```text
 GET    /api/v1/merchant/stores/{storeId}/availability-windows        （工作台列表，含 CLOSED/SOLD_OUT/version，status 可按 SOLD_OUT 过滤）
@@ -991,13 +991,13 @@ POST   /api/v1/merchant/stores/{storeId}/availability-windows/{windowId}/open   
 POST   /api/v1/merchant/stores/{storeId}/availability-windows/batch-close        （日历日范围部分关闭，closedWindows/blockedWindows；单次条目>200 整笔 400）
 ```
 
-`window_kind=GENERAL/PICKUP/RETURN`（37号增列）创建后身份固定；同店同服务同 kind OPEN 窗不重叠、相邻半开可衔接；关闭/重开保留历史，无 DELETE/物理删除。周循环模板字段 `dayOfWeek/repeatWeekly/copyNextWeek` V1.0 仍禁止出现。所有写路由 UUID `X-Request-Id` 幂等（23号），OWNER 主账号门禁，同事务共同门店闸门 + append-only 审计。窗口状态 `OPEN/CLOSED/SOLD_OUT`：SOLD_OUT 为系统派生"已约满"态（有效占用达容量自动进入；退款释放/超时过期取消/换期释放于同一事务回 OPEN；商家不可手工置位或强制可约，升容量放行并按占用重判），口径见 Contract52 §3.1；批量条目 200 上限见 Contract52 §3.2（2026-10-05 裁决）。
+`window_kind=GENERAL/PICKUP/RETURN`（37号增列）创建后身份固定；同店同服务同 kind OPEN 窗不重叠、相邻半开可衔接；关闭/重开保留历史，无 DELETE/物理删除。周循环模板字段 `dayOfWeek/repeatWeekly/copyNextWeek` V1.0 仍禁止出现。所有写路由 UUID `X-Request-Id` 幂等（23号），OWNER 主账号门禁，同事务共同门店闸门 + append-only 审计。窗口状态 `OPEN/CLOSED/SOLD_OUT`：SOLD_OUT 为系统派生"已约满"态（有效占用达容量自动进入；退款释放/超时过期取消/换期释放于同一事务回 OPEN；商家不可手工置位或强制可约，升容量放行并按占用重判），口径见 Contract53 §3.1；批量条目 200 上限见 Contract53 §3.2（2026-10-05 裁决）。
 
 ---
 
 ## 4.9 服务人员可用时间
 
-员工排班写入与员工服务能力 GET/PUT 正式实现以 [Contract52](52-Schedule-Write-Contract-v0.1.md) 为准（默认关闭同 §4.8）：
+员工排班写入与员工服务能力 GET/PUT 正式实现以 [Contract53](53-Schedule-Write-Contract-v0.1.md) 为准（默认关闭同 §4.8）：
 
 ```text
 GET/POST /api/v1/merchant/staff/{staffId}/availability-windows

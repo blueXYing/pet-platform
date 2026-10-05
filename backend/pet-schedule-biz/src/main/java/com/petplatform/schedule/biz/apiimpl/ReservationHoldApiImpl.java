@@ -144,7 +144,7 @@ public final class ReservationHoldApiImpl implements ReservationHoldApi {
                     "traceId", command.context().traceId(),
                     "occurredAt", java.time.LocalDateTime.ofInstant(now, ZoneOffset.UTC)));
             // Derived SOLD_OUT flips with the same transaction that consumed the capacity
-            // (Contract52 §3): a hold that fills its windows marks them sold out immediately.
+            // (Contract53 §3): a hold that fills its windows marks them sold out immediately.
             WindowSoldOutDeriver.rederive(command.storeId(), claimedWindows, query, facts,
                     mapper::setWindowDerivedStatus,
                     java.time.LocalDateTime.ofInstant(now, ZoneOffset.UTC));
