@@ -9,7 +9,7 @@ import { RealServiceManageRepository, serviceManageMessage } from '../../service
 import {
   PreviewServiceManageRepository, draftFromDetail, draftInputProblems, editableStatuses, emptyDraft,
   fulfillmentText, fulfillments, isServiceManageScenario, manageStatusText, missingSubmitFields,
-  petTypeText, petTypes, type ApplicablePetType, type ManagedServiceDetail,
+  petTypeText, petTypes, selectedPillClass, type ApplicablePetType, type ManagedServiceDetail,
   type ServiceCategoryView, type ServiceDraftInput, type ServiceManageDeps,
 } from '../../services/model'
 import navBack from './assets/nav-back@2x.png'
@@ -271,21 +271,21 @@ export default function MerchantServiceEditPage() {
       <View className='medit-section'>
         <Text className='medit-label'>服务分类{!readonly && <Text className='medit-required'>*</Text>}</Text>
         <View className='medit-pills'>
-          {categories.map(category => <Button key={category.categoryId} className='medit-pill' data-selected={draft.categoryId === category.categoryId} disabled={readonly}
+          {categories.map(category => <Button key={category.categoryId} className={selectedPillClass(draft.categoryId === category.categoryId)} disabled={readonly}
             onClick={() => patch({ categoryId: draft.categoryId === category.categoryId ? null : category.categoryId })}><Text>{category.categoryName}</Text></Button>)}
         </View>
       </View>
       <View className='medit-section'>
         <Text className='medit-label'>适用宠物类型{!readonly && <Text className='medit-required'>*</Text>}</Text>
         <View className='medit-pills'>
-          {petTypes.map(type => <Button key={type} className='medit-pill' data-selected={draft.applicablePetTypes.includes(type)} disabled={readonly}
+          {petTypes.map(type => <Button key={type} className={selectedPillClass(draft.applicablePetTypes.includes(type))} disabled={readonly}
             onClick={() => togglePetType(type)}><Text>{petTypeText[type]}</Text></Button>)}
         </View>
       </View>
       <View className='medit-section'>
         <Text className='medit-label'>履约方式{!readonly && <Text className='medit-required'>*</Text>}</Text>
         <View className='medit-pills'>
-          {fulfillments.map(type => <Button key={type} className='medit-pill' data-selected={draft.fulfillmentType === type} disabled={readonly}
+          {fulfillments.map(type => <Button key={type} className={selectedPillClass(draft.fulfillmentType === type)} disabled={readonly}
             onClick={() => patch({ fulfillmentType: draft.fulfillmentType === type ? null : type })}><Text>{fulfillmentText[type]}</Text></Button>)}
         </View>
         <Text className='medit-hint'>两种方式均为单次预约服务；上门接送型将分别占用接送与上门预约时段。</Text>
@@ -297,8 +297,8 @@ export default function MerchantServiceEditPage() {
       <View className='medit-section'>
         <Text className='medit-label'>是否需要核销</Text>
         <View className='medit-pills'>
-          <Button className='medit-pill' data-selected={draft.verificationRequired} disabled={readonly} onClick={() => patch({ verificationRequired: true })}><Text>是</Text></Button>
-          <Button className='medit-pill' data-selected={!draft.verificationRequired} disabled={readonly} onClick={() => patch({ verificationRequired: false })}><Text>否</Text></Button>
+          <Button className={selectedPillClass(draft.verificationRequired)} disabled={readonly} onClick={() => patch({ verificationRequired: true })}><Text>是</Text></Button>
+          <Button className={selectedPillClass(!draft.verificationRequired)} disabled={readonly} onClick={() => patch({ verificationRequired: false })}><Text>否</Text></Button>
         </View>
       </View>
       <View className='medit-section'>
