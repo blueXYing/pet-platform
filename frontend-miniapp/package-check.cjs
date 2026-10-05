@@ -21,7 +21,8 @@ for (const page of ['index', 'detail', 'form']) {
 }
 const packages = app.subPackages || app.subpackages || []
 assert.deepEqual(packages.map(p => ({ root: p.root, pages: p.pages })), [
-  { root: 'merchant', pages: ['pages/workspace/index', 'pages/services/index', 'pages/services/edit', 'pages/messages/index'] },
+  { root: 'merchant', pages: ['pages/workspace/index', 'pages/services/index', 'pages/services/edit', 'pages/messages/index',
+    'pages/schedule/index', 'pages/schedule/windows', 'pages/schedule/staff', 'pages/schedule/capabilities'] },
   { root: 'consumer/pages/pet-archive', pages: ['index', 'detail', 'form'] },
   { root: 'consumer/pages/merchant-application', pages: ['index', 'signing'] },
   { root: 'consumer/pages/store-services', pages: ['index', 'service-detail', 'stores'] },
@@ -47,6 +48,13 @@ for (const page of ['index', 'edit']) {
   for (const extension of ['js', 'json', 'wxml']) {
     assert.ok(fs.existsSync(path.join(root, `merchant/pages/services/${page}.` + extension)),
       `M-002 service page build artifact missing: ${page}.${extension}`)
+  }
+}
+// M-002 schedule maintenance pages (53号 write-side consumption slice).
+for (const page of ['index', 'windows', 'staff', 'capabilities']) {
+  for (const extension of ['js', 'json', 'wxml', 'wxss']) {
+    assert.ok(fs.existsSync(path.join(root, `merchant/pages/schedule/${page}.` + extension)),
+      `M-002 schedule page build artifact missing: ${page}.${extension}`)
   }
 }
 for (const extension of ['js', 'json', 'wxml', 'wxss']) {

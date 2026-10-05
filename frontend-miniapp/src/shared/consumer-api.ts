@@ -69,13 +69,20 @@ export class ConsumerApi {
     const categoryPath = spec.path === '/api/v1/merchant/service-categories' && spec.method === 'GET'
     const serviceCommandPath = /^\/api\/v1\/merchant\/services(\/[1-9][0-9]{0,18}(\/online|\/offline)?)?$/.test(spec.path) &&
       ['GET', 'POST', 'PUT'].includes(spec.method)
-    if (!/^\/api\/v1\/c\/[a-z0-9/-]+$/.test(spec.path) && !agreementPath && !admissionPath && !categoryPath && !serviceCommandPath) throw new Error('INVALID_PATH')
+    // M-002 schedule maintenance family (Schedule Write Contract v0.1, 53号; backend switch
+    // pet.schedule.command.http.enabled default OFF — reads/writes fail closed through the
+    // normal error paths until the platform enables it). Availability windows address the
+    // caller's store; staff windows and capability sets address the caller's store+staff.
+    const schedulePath = (/^\/api\/v1\/merchant\/stores\/[1-9][0-9]{0,18}\/availability-windows(\/[1-9][0-9]{0,18}(\/close|\/open)?|\/batch-close)?$/.test(spec.path) ||
+      /^\/api\/v1\/merchant\/staff\/[1-9][0-9]{0,18}\/(availability-windows(\/[1-9][0-9]{0,18}(\/close|\/open)?)?|service-capabilities)$/.test(spec.path)) &&
+      ['GET', 'POST', 'PUT'].includes(spec.method)
+    if (!/^\/api\/v1\/c\/[a-z0-9/-]+$/.test(spec.path) && !agreementPath && !admissionPath && !categoryPath && !serviceCommandPath && !schedulePath) throw new Error('INVALID_PATH')
     if (spec.method !== 'GET' && !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(spec.requestId || '')) throw new Error('REQUEST_ID_REQUIRED')
     const response = await this.transport({ ...spec, headers: { 'Content-Type': 'application/json', ...(spec.requestId ? { 'X-Request-Id': spec.requestId } : {}), ...headers } })
     const body = object(response.data)
     if (response.statusCode < 200 || response.statusCode >= 300 || body.code !== 'SUCCESS') throw new ApiError(typeof body.code === 'string' ? body.code : 'INVALID_RESPONSE', response.statusCode)
     const applicationPath = /^\/api\/v1\/c\/merchant-applications(?:\/|$)/.test(spec.path) || spec.path === '/api/v1/c/merchant-application-cities'
-    if ((agreementPath || applicationPath || admissionPath || categoryPath || serviceCommandPath) && body.success !== true) throw new Error('INVALID_RESPONSE')
+    if ((agreementPath || applicationPath || admissionPath || categoryPath || serviceCommandPath || schedulePath) && body.success !== true) throw new Error('INVALID_RESPONSE')
     return body.data
   }
   private clear() {

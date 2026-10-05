@@ -1,0 +1,67 @@
+/* M-002 排期维护（时段/排班/能力/工作台读）— 无契约语义兼容的 Figma 原稿（registry §4：
+   商家端 frame 12:6214「首页-排期管理」为周模板/固定1小时槽模型，与 53号写侧契约冲突，
+   视同设计缺稿），故沿 M 端现行页面规范实现：services/page.css 的 measures/tokens —
+   header band #FFF6E5, body #F0FBFF, cards white r17 border #C0ECFF, primary #5BAAE8,
+   status pill language (#C0ECFF base r4)，tag variants follow the services tag palette.
+   State variants are class names, not [data-*] selectors: Taro 4.1.5 drops dynamic data-*
+   from the native wxml (PR#99 VIS evidence); variant rules sit after their base rule. */
+.sch-page { --sch-status-top: 0px; min-height: 100vh; background: #f0fbff; color: #1d0d07; font-family: Roboto, 'Noto Sans SC', sans-serif; display: flex; flex-direction: column; }
+.sch-page view, .sch-page button, .sch-page text, .sch-page input, .sch-page textarea { box-sizing: border-box; }
+.sch-page button { margin: 0; padding: 0; border: 0; border-radius: 0; background: transparent; font: inherit; line-height: normal; }
+.sch-page button::after { border: 0; }
+.sch-page button[disabled] { opacity: .65; color: inherit; }
+.sch-status-area { height: var(--sch-status-top); flex: none; }
+.sch-header { position: relative; flex: none; height: calc(var(--sch-unit) * 86); background: #fff6e5; display: flex; align-items: center; }
+.sch-back { margin-left: calc(var(--sch-unit) * 14); padding: calc(var(--sch-unit) * 8) calc(var(--sch-unit) * 14); border-radius: calc(var(--sch-unit) * 100); border: calc(var(--sch-unit) * 1.5) solid #c0ecff; color: #3185ba; font-size: calc(var(--sch-unit) * 13); }
+.sch-title { position: absolute; left: 0; right: 0; text-align: center; font-size: calc(var(--sch-unit) * 16); line-height: calc(var(--sch-unit) * 24); font-weight: 700; color: #3c3c3c; font-family: Outfit, Roboto, 'Noto Sans SC', sans-serif; pointer-events: none; }
+.sch-state { padding: calc(var(--sch-unit) * 48) calc(var(--sch-unit) * 29); font-size: calc(var(--sch-unit) * 14); line-height: calc(var(--sch-unit) * 24); color: #577683; display: flex; flex-direction: column; gap: calc(var(--sch-unit) * 14); }
+.sch-state-action { align-self: flex-start; color: #167fab; font-size: calc(var(--sch-unit) * 14); }
+.sch-closed { display: flex; flex-direction: column; gap: calc(var(--sch-unit) * 8); }
+.sch-closed-title { font-size: calc(var(--sch-unit) * 16); font-weight: 700; color: #3c3c3c; }
+.sch-closed-text { font-size: calc(var(--sch-unit) * 13); line-height: calc(var(--sch-unit) * 21); color: #577683; }
+.sch-body { flex: 1; height: auto; padding: 0 calc(var(--sch-unit) * 17) calc(var(--sch-unit) * 24); }
+.sch-entry-row { display: flex; gap: calc(var(--sch-unit) * 10); margin-top: calc(var(--sch-unit) * 12); }
+.sch-page .sch-entry { flex: 1; padding: calc(var(--sch-unit) * 12) 0; border-radius: calc(var(--sch-unit) * 12); background: #5baae8; color: #fff; font-size: calc(var(--sch-unit) * 13.5); font-weight: 600; text-align: center; }
+.sch-summary { margin-top: calc(var(--sch-unit) * 14); display: flex; flex-direction: column; gap: calc(var(--sch-unit) * 4); font-size: calc(var(--sch-unit) * 14); line-height: calc(var(--sch-unit) * 21); color: #111827; }
+.sch-summary-hint { font-size: calc(var(--sch-unit) * 11.6); line-height: calc(var(--sch-unit) * 17); color: #9ca3af; }
+.sch-chip-row { display: flex; flex-wrap: wrap; gap: calc(var(--sch-unit) * 8) calc(var(--sch-unit) * 10); margin-top: calc(var(--sch-unit) * 10); }
+/* Pills outrank the .sch-page button reset the same way as services/page.css (0,2,0 after
+   the 0,1,1 reset; selected variant after the base). */
+.sch-page .sch-chip { padding: calc(var(--sch-unit) * 8.4) calc(var(--sch-unit) * 16.8); border: calc(var(--sch-unit) * 1.16) solid #e5e7eb; border-radius: calc(var(--sch-unit) * 8); background: #f9fafb; font-size: calc(var(--sch-unit) * 13.555); line-height: calc(var(--sch-unit) * 20); color: #4b5563; }
+.sch-chip.sch-chip-selected { background: #5baae8; border-color: #5baae8; color: #fff; }
+.sch-card { margin-top: calc(var(--sch-unit) * 12.7); padding: calc(var(--sch-unit) * 14) calc(var(--sch-unit) * 16); background: #fff; border: calc(var(--sch-unit) * 1.5) solid #c0ecff; border-radius: calc(var(--sch-unit) * 17); display: flex; flex-direction: column; gap: calc(var(--sch-unit) * 6); }
+.sch-mini-card { margin-top: calc(var(--sch-unit) * 8); padding: calc(var(--sch-unit) * 10) calc(var(--sch-unit) * 14); background: #fff; border: calc(var(--sch-unit) * 1.5) solid #c0ecff; border-radius: calc(var(--sch-unit) * 12); display: flex; align-items: center; justify-content: space-between; gap: calc(var(--sch-unit) * 8); }
+.sch-card-head { display: flex; align-items: center; gap: calc(var(--sch-unit) * 8); }
+.sch-card-name { font-size: calc(var(--sch-unit) * 15); line-height: calc(var(--sch-unit) * 22); font-weight: 600; color: #111827; flex: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.sch-card-line { font-size: calc(var(--sch-unit) * 13); line-height: calc(var(--sch-unit) * 19); color: #374151; }
+.sch-card-hint { font-size: calc(var(--sch-unit) * 11.6); line-height: calc(var(--sch-unit) * 17); color: #b45309; }
+/* Status tags: services pill language; SOLD_OUT reads amber (约满), CLOSED gray, OPEN blue. */
+.sch-tag { flex: none; padding: calc(var(--sch-unit) * 2) calc(var(--sch-unit) * 8); border-radius: calc(var(--sch-unit) * 4); background: #c0ecff; font-size: calc(var(--sch-unit) * 10); line-height: calc(var(--sch-unit) * 15); color: #577683; }
+.sch-tag.sch-tag-open { background: #d7f0d0; color: #2f6b2f; }
+.sch-tag.sch-tag-soldout { background: #fdeec8; color: #7a4a1d; }
+.sch-tag.sch-tag-closed { background: #e5e7eb; color: #4b5563; }
+.sch-count-row { display: flex; align-items: center; justify-content: space-between; gap: calc(var(--sch-unit) * 10); margin-top: calc(var(--sch-unit) * 14); min-height: calc(var(--sch-unit) * 40); }
+.sch-count { font-size: calc(var(--sch-unit) * 15); line-height: calc(var(--sch-unit) * 22); color: #6b7280; }
+.sch-page .sch-count-action { flex: none; padding: calc(var(--sch-unit) * 6) calc(var(--sch-unit) * 14); border-radius: calc(var(--sch-unit) * 100); border: calc(var(--sch-unit) * 1.5) solid #c0ecff; color: #3185ba; font-size: calc(var(--sch-unit) * 12.5); }
+.sch-empty { margin-top: calc(var(--sch-unit) * 24); padding: calc(var(--sch-unit) * 24) calc(var(--sch-unit) * 16); background: #fff; border: calc(var(--sch-unit) * 1.5) solid #c0ecff; border-radius: calc(var(--sch-unit) * 17); font-size: calc(var(--sch-unit) * 13); line-height: calc(var(--sch-unit) * 21); color: #577683; }
+/* Forms reuse the edit-page language (labels #374151, fields #F9FAFB r11.6 border #E5E7EB). */
+.sch-form { margin-top: calc(var(--sch-unit) * 12.7); padding: calc(var(--sch-unit) * 14) calc(var(--sch-unit) * 16); background: #fff; border: calc(var(--sch-unit) * 1.5) solid #c0ecff; border-radius: calc(var(--sch-unit) * 17); display: flex; flex-direction: column; gap: calc(var(--sch-unit) * 12); }
+.sch-form-title { font-size: calc(var(--sch-unit) * 14); line-height: calc(var(--sch-unit) * 20); font-weight: 600; color: #1d0d07; }
+.sch-banner-text { font-size: calc(var(--sch-unit) * 12); line-height: calc(var(--sch-unit) * 18); color: #577683; }
+.sch-section { display: flex; flex-direction: column; gap: calc(var(--sch-unit) * 6); margin-top: calc(var(--sch-unit) * 12); }
+.sch-label { font-size: calc(var(--sch-unit) * 13.555); line-height: calc(var(--sch-unit) * 20); font-weight: 500; color: #374151; }
+.sch-required { color: #d06666; margin-left: calc(var(--sch-unit) * 2); }
+.sch-hint { margin-top: calc(var(--sch-unit) * 2); font-size: calc(var(--sch-unit) * 11.6); line-height: calc(var(--sch-unit) * 17); color: #9ca3af; }
+.sch-input { height: calc(var(--sch-unit) * 46.5); background: #f9fafb; border: calc(var(--sch-unit) * 1.16) solid #e5e7eb; border-radius: calc(var(--sch-unit) * 11.6); padding: 0 calc(var(--sch-unit) * 17.5); font-size: calc(var(--sch-unit) * 13.555); color: #111827; }
+.sch-input-grow { flex: 1; }
+.sch-textarea { width: 100%; min-height: calc(var(--sch-unit) * 72); background: #f9fafb; border: calc(var(--sch-unit) * 1.16) solid #e5e7eb; border-radius: calc(var(--sch-unit) * 11.6); padding: calc(var(--sch-unit) * 12) calc(var(--sch-unit) * 17.5); font-size: calc(var(--sch-unit) * 13.555); line-height: calc(var(--sch-unit) * 21); color: #111827; }
+.sch-picker { height: calc(var(--sch-unit) * 46.5); display: flex; align-items: center; background: #f9fafb; border: calc(var(--sch-unit) * 1.16) solid #e5e7eb; border-radius: calc(var(--sch-unit) * 11.6); padding: 0 calc(var(--sch-unit) * 17.5); font-size: calc(var(--sch-unit) * 13.555); color: #111827; }
+.sch-row { display: flex; gap: calc(var(--sch-unit) * 12.7); }
+.sch-row .sch-section { flex: 1; margin-top: 0; }
+.sch-inline { display: flex; align-items: center; gap: calc(var(--sch-unit) * 10); }
+.sch-page .sch-inline-action { flex: none; padding: calc(var(--sch-unit) * 10) calc(var(--sch-unit) * 18); border-radius: calc(var(--sch-unit) * 11.6); background: #5baae8; color: #fff; font-size: calc(var(--sch-unit) * 13.5); font-weight: 600; }
+.sch-action-row { display: flex; gap: calc(var(--sch-unit) * 10); margin-top: calc(var(--sch-unit) * 4); }
+.sch-page .sch-primary { flex: 1; height: calc(var(--sch-unit) * 46.5); border-radius: calc(var(--sch-unit) * 11.6); background: #5baae8; color: #fff; font-size: calc(var(--sch-unit) * 15); font-weight: 600; display: flex; align-items: center; justify-content: center; }
+.sch-page .sch-secondary { flex: 1; height: calc(var(--sch-unit) * 46.5); border-radius: calc(var(--sch-unit) * 11.6); background: #fff; border: calc(var(--sch-unit) * 1.16) solid #5baae8; color: #5baae8; font-size: calc(var(--sch-unit) * 15); display: flex; align-items: center; justify-content: center; }
+.sch-notice { display: block; margin-top: calc(var(--sch-unit) * 14); font-size: calc(var(--sch-unit) * 12); line-height: calc(var(--sch-unit) * 18); color: #a83232; }
+.sch-tail { margin-top: calc(var(--sch-unit) * 18); font-size: calc(var(--sch-unit) * 10); line-height: calc(var(--sch-unit) * 15); color: #9bb3bd; text-align: center; }
