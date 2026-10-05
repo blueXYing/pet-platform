@@ -16,9 +16,11 @@ public final class ReservationRefundReleaseApiImpl implements ReservationRefundR
     private static final DecimalPublicIdCodec IDS=new DecimalPublicIdCodec();
     private final DataSource source; private final SnowflakeIdGenerator ids;
     private final ScheduleCapacityGuardApi guard;private final RefundExecutionFactsApi refunds;
+    private final com.petplatform.schedule.api.protection.ScheduleProtectionFactsApi facts;
     private final ScheduleCommandMapper mapper;
     public ReservationRefundReleaseApiImpl(DataSource source,SnowflakeIdGenerator ids,ScheduleCapacityGuardApi guard,RefundExecutionFactsApi refunds){
         this.source=Objects.requireNonNull(source);this.ids=Objects.requireNonNull(ids);this.guard=Objects.requireNonNull(guard);this.refunds=Objects.requireNonNull(refunds);
+        this.facts=new ScheduleProtectionFactsApiImpl(source,guard);
         mapper=ScheduleMybatis.template(source).getMapper(ScheduleCommandMapper.class);
     }
     public void release(String order,String reservation,String store,String refund,QueryContext ctx){
@@ -40,9 +42,14 @@ public final class ReservationRefundReleaseApiImpl implements ReservationRefundR
                 if(mapper.refundReleaseProof(IDS.fromApi(reservation),key)!=1)throw unavailable();return;
             }
             if(!"CONFIRMED".equals(state)||mapper.releaseRefund(IDS.fromApi(reservation),ScheduleSqlRows.number(row,"version"))!=1)throw unavailable();
+            java.time.LocalDateTime now=mapper.utcNow();
+            if(now==null)throw unavailable();
             if(mapper.insertSystemAudit(ScheduleSqlRows.values("id",ids.nextId(),"reservationId",IDS.fromApi(reservation),
                 "orderId",IDS.fromApi(order),"storeId",IDS.fromApi(store),"action","REFUND_RELEASE","requestId",key,
-                "traceId",ctx.traceId(),"occurredAt",mapper.utcNow()))!=1)throw unavailable();
+                "traceId",ctx.traceId(),"occurredAt",now))!=1)throw unavailable();
+            // The freed reservation returns its windows to bookable in this same transaction
+            // (Contract53 §3, 2026-10-05 SOLD_OUT ruling).
+            WindowSoldOutDeriver.rederive(store,mapper.claimWindowIds(IDS.fromApi(reservation)),ctx,facts,mapper::setWindowDerivedStatus,now);
         }catch(RuntimeException failure){
             Object resource=TransactionSynchronizationManager.getResource(source);if(resource instanceof ConnectionHolder holder)holder.setRollbackOnly();
             throw unavailable();

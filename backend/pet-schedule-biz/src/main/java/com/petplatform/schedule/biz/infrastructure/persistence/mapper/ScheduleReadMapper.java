@@ -33,4 +33,13 @@ public interface ScheduleReadMapper {
             @Param("serviceId") long serviceId,
             @Param("fromAt") LocalDateTime fromAt,
             @Param("toAt") LocalDateTime toAt);
+
+    /** Workbench window list (SCH-004 merchant reads): full states, filters optional. */
+    List<java.util.Map<String, Object>> listWindows(@Param("storeId") long storeId,
+            @Param("serviceId") Long serviceId, @Param("kind") String kind,
+            @Param("status") String status);
+
+    /** Workbench staff availability list for one staff member, all statuses. */
+    List<java.util.Map<String, Object>> listStaffWindows(@Param("storeId") long storeId,
+            @Param("staffId") long staffId);
 }

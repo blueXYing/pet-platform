@@ -29,6 +29,15 @@ public interface ScheduleCommandMapper {
             @Param("now") LocalDateTime now);
     int insertSystemAudit(@Param("row") Map<String, Object> row);
 
+    /** Original windows of one reservation, for the derived SOLD_OUT release linkage. */
+    List<Long> claimWindowIds(@Param("reservationId") long reservationId);
+
+    /** CAS flip of the system-derived OPEN/SOLD_OUT window state (Contract53 §3). */
+    int setWindowDerivedStatus(@Param("windowId") long windowId,
+        @Param("expectedStatus") String expectedStatus,
+        @Param("nextStatus") String nextStatus,
+        @Param("now") LocalDateTime now);
+
     List<Map<String, Object>> lockedWindows(@Param("storeId") long storeId);
     List<Map<String, Object>> lockedReservations(@Param("storeId") long storeId);
     List<Map<String, Object>> lockedClaims(@Param("storeId") long storeId);

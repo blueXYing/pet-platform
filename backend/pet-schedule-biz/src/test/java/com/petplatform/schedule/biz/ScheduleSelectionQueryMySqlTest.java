@@ -132,6 +132,31 @@ class ScheduleSelectionQueryMySqlTest {
         }
     }
 
+    @Test
+    void soldOutWindowStaysListedWithZeroRemainingLikeAnAtCapacityOpenOne() throws Exception {
+        try (Database db = new Database()) {
+            // Contract53 §3 (2026-10-05 ruling): SOLD_OUT is an open-derived state, so the
+            // selection read keeps listing it with remaining=0/available=false instead of
+            // dropping the slot the C-end page previously showed as an at-capacity window.
+            db.window(101, "GENERAL", "2030-01-01 01:00:00", "2030-01-01 03:00:00");
+            db.jdbc.update("UPDATE schedule_availability_window SET status='SOLD_OUT', "
+                    + "configured_capacity=1 WHERE id=101");
+            db.reservation(201, "IN_STORE", "2030-01-01 01:30:00", "2030-01-01 02:30:00",
+                    null, null);
+            db.claim(301, 201, 101, "GENERAL", "2030-01-01 01:30:00",
+                    "2030-01-01 02:30:00");
+            SelectionWindowPageDTO page =
+                    service(db, FulfillmentType.IN_STORE).page(query(null));
+            assertEquals(1, page.items().size());
+            var soldOut = page.items().getFirst();
+            assertEquals("101", soldOut.windowId());
+            assertEquals(1, soldOut.effectiveCapacity());
+            assertEquals(1, soldOut.occupiedCount());
+            assertEquals(0, soldOut.remainingCapacity());
+            assertEquals(false, soldOut.available());
+        }
+    }
+
     private static SelectionWindowQuery query(String kind) {
         return new SelectionWindowQuery("301", "201", DATE, DATE, kind, CONTEXT);
     }

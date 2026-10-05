@@ -125,6 +125,7 @@ public final class ReservationHoldApiImpl implements ReservationHoldApi {
                     "createdAt", java.time.LocalDateTime.ofInstant(now, ZoneOffset.UTC),
                     "updatedAt", java.time.LocalDateTime.ofInstant(now, ZoneOffset.UTC)));
             List<HeldClaim> claims = new ArrayList<>(plan.claims().size());
+            List<Long> claimedWindows = new ArrayList<>(plan.claims().size());
             for (ProvenClaim selected : plan.claims()) {
                 long claimId = nextId();
                 mapper.insertClaim(ScheduleSqlRows.values("id", claimId,
@@ -132,6 +133,7 @@ public final class ReservationHoldApiImpl implements ReservationHoldApi {
                         "storeId", id(command.storeId()), "serviceId", id(command.serviceId()),
                         "kind", selected.kind(), "startAt", timestamp(selected.startAt()),
                         "endAt", timestamp(selected.endAt())));
+                claimedWindows.add(id(selected.windowId()));
                 claims.add(new HeldClaim(IDS.toApi(claimId), selected.windowId(), selected.kind(),
                         selected.startAt(), selected.endAt()));
             }
@@ -141,6 +143,11 @@ public final class ReservationHoldApiImpl implements ReservationHoldApi {
                     "requestId", command.context().requestId().getBytes(StandardCharsets.UTF_8),
                     "traceId", command.context().traceId(),
                     "occurredAt", java.time.LocalDateTime.ofInstant(now, ZoneOffset.UTC)));
+            // Derived SOLD_OUT flips with the same transaction that consumed the capacity
+            // (Contract53 §3): a hold that fills its windows marks them sold out immediately.
+            WindowSoldOutDeriver.rederive(command.storeId(), claimedWindows, query, facts,
+                    mapper::setWindowDerivedStatus,
+                    java.time.LocalDateTime.ofInstant(now, ZoneOffset.UTC));
             String reservation = IDS.toApi(reservationId);
             registerCommitProof(command, query, reservation);
             return new HoldResult(reservation, command.orderId(), start, end, expires, claims);

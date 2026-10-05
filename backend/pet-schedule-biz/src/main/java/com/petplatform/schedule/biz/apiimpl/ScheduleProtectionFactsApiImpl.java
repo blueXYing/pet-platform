@@ -110,11 +110,13 @@ public final class ScheduleProtectionFactsApiImpl implements ScheduleProtectionF
             if (!facts.storeId().equals(window.storeId()) || !validKind(window.kind())
                     || !validInterval(window.startAt(), window.endAt())
                     || window.configuredCapacity() < 0
-                    || !("OPEN".equals(window.status()) || "CLOSED".equals(window.status()))
+                    || !validStatus(window.status())
                     || byWindow.putIfAbsent(window.windowId(), window) != null) {
                 bad("invalid schedule window facts");
             }
-            if ("OPEN".equals(window.status())) {
+            // SOLD_OUT is a derived sub-state of an open window (Contract53 §3): it occupies the
+            // same single-open-window slot and joins the overlap invariant.
+            if (openDerived(window.status())) {
                 openGroups.computeIfAbsent(window.serviceId() + ":" + window.kind(),
                         ignored -> new ArrayList<>()).add(window);
             }
@@ -169,7 +171,7 @@ public final class ScheduleProtectionFactsApiImpl implements ScheduleProtectionF
                     bad("incomplete GENERAL reservation claim");
                 }
                 WindowFact window = byWindow.get(claims.getFirst().windowId());
-                if (!"OPEN".equals(window.status())
+                if (!openDerived(window.status())
                         || window.startAt().isAfter(claims.getFirst().startAt())
                         || window.endAt().isBefore(claims.getFirst().endAt())) {
                     bad("GENERAL claim is outside its original open window");
@@ -187,7 +189,7 @@ public final class ScheduleProtectionFactsApiImpl implements ScheduleProtectionF
                     OffsetDateTime expectedStart = "PICKUP".equals(claim.kind())
                             ? reservation.pickupStartAt() : reservation.returnStartAt();
                     if (!("PICKUP".equals(claim.kind()) || "RETURN".equals(claim.kind()))
-                            || !kinds.add(claim.kind()) || !"OPEN".equals(window.status())
+                            || !kinds.add(claim.kind()) || !openDerived(window.status())
                             || !claim.startAt().isEqual(window.startAt())
                             || !claim.endAt().isEqual(window.endAt())
                             || !claim.startAt().isEqual(expectedStart)) {
@@ -200,6 +202,15 @@ public final class ScheduleProtectionFactsApiImpl implements ScheduleProtectionF
 
     private static boolean active(String status) {
         return "TEMP_LOCKED".equals(status) || "CONFIRMED".equals(status);
+    }
+
+    /** SOLD_OUT is the system-derived "open but filled" sub-state (Contract53 §3). */
+    private static boolean openDerived(String status) {
+        return "OPEN".equals(status) || "SOLD_OUT".equals(status);
+    }
+
+    private static boolean validStatus(String status) {
+        return openDerived(status) || "CLOSED".equals(status);
     }
 
     private static boolean validKind(String kind) {
