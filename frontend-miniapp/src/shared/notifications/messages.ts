@@ -1,0 +1,113 @@
+import type { InboxNotification } from '../notification-repositories'
+import { ApiError } from '../request'
+
+export type NotificationDeps = {
+  list(): Promise<{ items: InboxNotification[]; total: number }>
+  detail(id: string): Promise<InboxNotification>
+  markRead(id: string): Promise<{ readAt: string }>
+}
+export type MessagesState = Readonly<{
+  status: 'loading' | 'ready' | 'empty' | 'error' | 'unauthorized'
+  items: readonly InboxNotification[]
+  total: number
+  detail: InboxNotification | null
+  notice: string
+}>
+
+// One controller per mounted page. Opening an item marks it read and reveals the whitelist
+// jump; navigation targets re-authenticate on their own pages. Shared by the consumer message
+// center and the merchant message page — both read the same owner-scoped USER inbox (the
+// unified notification center; merchant owners receive as their C-side user per PR#69).
+export class MessagesController {
+  private state: MessagesState = { status: 'loading', items: [], total: 0, detail: null, notice: '' }
+  private listeners = new Set<() => void>()
+  private active = true
+  private run = 0
+  constructor(private deps: NotificationDeps) {}
+  getSnapshot = () => this.state
+  subscribe = (listener: () => void) => {
+    this.listeners.add(listener)
+    return () => { this.listeners.delete(listener) }
+  }
+  private publish(next: MessagesState) {
+    this.state = Object.freeze(next)
+    this.listeners.forEach(listener => listener())
+  }
+  private fail(error: unknown) {
+    if (!this.active) return
+    this.publish({
+      status: error instanceof ApiError && error.statusCode === 401 ? 'unauthorized' : 'error',
+      items: [], total: 0, detail: null,
+      notice: error instanceof ApiError && error.statusCode === 401
+        ? '登录已失效，请重新登录。'
+        : '消息读取失败，请稍后重试。',
+    })
+  }
+  async load() {
+    if (!this.active) return
+    const run = ++this.run
+    this.publish({ status: 'loading', items: [], total: 0, detail: null, notice: '' })
+    try {
+      const page = await this.deps.list()
+      if (!this.active || run !== this.run) return
+      this.publish(page.items.length
+        ? { status: 'ready', items: page.items, total: page.total, detail: null, notice: '' }
+        : { status: 'empty', items: [], total: 0, detail: null, notice: '暂无消息。' })
+    } catch (error) {
+      if (run === this.run) this.fail(error)
+    }
+  }
+  async open(notificationId: string) {
+    if (!this.active) return
+    const run = ++this.run
+    try {
+      const item = await this.deps.detail(notificationId)
+      if (!this.active || run !== this.run) return
+      // Marking read is result-idempotent; a lost response still leaves it read server-side.
+      let readAt = item.readAt
+      if (readAt === null) {
+        try { readAt = (await this.deps.markRead(notificationId)).readAt } catch { readAt = item.readAt }
+      }
+      if (!this.active || run !== this.run) return
+      const marked = readAt === null ? item : { ...item, readAt }
+      this.publish({ status: 'ready', items: this.state.items.map(existing => existing.id === notificationId ? marked : existing), total: this.state.total, detail: marked, notice: '' })
+    } catch (error) {
+      if (run === this.run) this.fail(error)
+    }
+  }
+  closeDetail() {
+    if (!this.active || this.state.detail === null) return
+    this.publish({ ...this.state, detail: null })
+  }
+  dispose() {
+    this.active = false
+    this.run++
+    this.listeners.clear()
+  }
+}
+
+// Whitelist routing only (CCR-W2-NOTIFICATION-001 section 5); the payload never carries URLs
+// and the target page performs its own owner-scoped query.
+export function routeForNotification(item: InboxNotification): string | null {
+  if (item.messageType === 'MERCHANT_APPLICATION_REVIEWED' && item.bizType === 'MERCHANT_APPLICATION' && item.bizId !== null) {
+    return '/consumer/pages/merchant-application/index'
+  }
+  // M-002 service-review verdicts (delivery by role E): the existing whitelist mechanism
+  // extends to the merchant service-management page, which re-validates its own workspace
+  // coordinates and admission — a jump never bypasses the workbench gate. Route per M-002
+  // NAVIGATION-BASIS section 3; the target page and its app.config registration ship with
+  // this branch (merge of develop's PR#69 consumer side).
+  if (item.messageType === 'SERVICE_REVIEWED' && item.bizType === 'SERVICE' && item.bizId !== null) {
+    return '/merchant/pages/services/index'
+  }
+  return null
+}
+
+// Button label for the whitelist jump; null when the item has no jump at all.
+export function jumpLabelFor(item: InboxNotification): string | null {
+  if (item.messageType === 'SERVICE_REVIEWED' && item.bizType === 'SERVICE' && item.bizId !== null) {
+    return '查看服务'
+  }
+  if (routeForNotification(item) !== null) return '查看入驻申请'
+  return null
+}
