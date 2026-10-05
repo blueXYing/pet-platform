@@ -1,0 +1,56 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.petplatform.merchant.biz.infrastructure.persistence.mapper.MerchantStaffIdentityMapper">
+  <sql id="identityScopeColumns">
+    m.id AS merchant_id,m.status AS merchant_status,m.version AS merchant_version,
+    s.id AS store_id,s.status AS store_status,s.version AS store_version,
+    mb.id AS member_id,mb.status AS member_status,mb.version AS member_version,
+    g.id AS grant_id,g.staff_id AS grant_staff_id,g.status AS grant_status,g.version AS grant_version,
+    ms.store_id AS grant_staff_store_id,ms.merchant_id AS grant_staff_merchant_id
+  </sql>
+  <sql id="identityScopeJoins">
+    FROM merchant m
+    JOIN merchant_store s ON s.merchant_id=m.id AND s.id=#{storeId}
+    JOIN merchant_member mb ON mb.merchant_id=m.id AND mb.user_id=#{userId}
+    LEFT JOIN merchant_member_store_grant g ON g.member_id=mb.id AND g.store_id=s.id
+    LEFT JOIN merchant_staff ms ON ms.id=g.staff_id
+    WHERE m.id=#{merchantId}
+  </sql>
+  <select id="selectIdentityScope" resultType="com.petplatform.merchant.biz.infrastructure.persistence.entity.MerchantStaffIdentityScopeEntity">
+    SELECT <include refid="identityScopeColumns"/><include refid="identityScopeJoins"/>
+  </select>
+  <select id="lockIdentityScope" resultType="com.petplatform.merchant.biz.infrastructure.persistence.entity.MerchantStaffIdentityScopeEntity">
+    SELECT <include refid="identityScopeColumns"/><include refid="identityScopeJoins"/> FOR UPDATE
+  </select>
+  <select id="listActionCodes" resultType="string">
+    SELECT action_code FROM merchant_member_store_action
+    WHERE member_id=#{memberId} AND store_id=#{storeId}
+    ORDER BY action_code ASC
+  </select>
+  <select id="listActionCodesLocked" resultType="string">
+    SELECT action_code FROM merchant_member_store_action
+    WHERE member_id=#{memberId} AND store_id=#{storeId}
+    ORDER BY action_code ASC FOR UPDATE
+  </select>
+  <sql id="membershipListWhere">
+    FROM merchant_member mb
+    JOIN merchant_member_store_grant g ON g.member_id=mb.id AND g.status='ENABLED'
+    JOIN merchant m ON m.id=mb.merchant_id
+    JOIN merchant_store s ON s.id=g.store_id AND s.merchant_id=m.id
+    LEFT JOIN merchant_staff ms ON ms.id=g.staff_id
+    WHERE mb.user_id=#{userId} AND mb.status='ENABLED'
+  </sql>
+  <select id="listStaffMembershipRows" resultType="com.petplatform.merchant.biz.infrastructure.persistence.entity.MerchantStaffMembershipRowEntity">
+    SELECT m.id AS merchant_id,m.merchant_name,m.status AS merchant_status,
+      s.id AS store_id,s.store_name,s.status AS store_status,
+      mb.id AS member_id,mb.status AS member_status,mb.version AS member_version,
+      g.id AS grant_id,g.staff_id AS grant_staff_id,g.status AS grant_status,g.version AS grant_version,
+      ms.store_id AS grant_staff_store_id,ms.merchant_id AS grant_staff_merchant_id
+    <include refid="membershipListWhere"/>
+    ORDER BY m.id ASC,s.id ASC
+    LIMIT #{limit} OFFSET #{offset}
+  </select>
+  <select id="countStaffMembershipRows" resultType="long">
+    SELECT COUNT(*)<include refid="membershipListWhere"/>
+  </select>
+</mapper>

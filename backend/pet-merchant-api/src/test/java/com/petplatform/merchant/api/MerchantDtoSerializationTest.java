@@ -7,6 +7,8 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.petplatform.merchant.api.dto.MerchantOrderEligibilityDTO;
 import com.petplatform.merchant.api.dto.MerchantStaffDTO;
+import com.petplatform.merchant.api.dto.MerchantStaffIdentityFactsDTO;
+import com.petplatform.merchant.api.dto.MerchantStaffMembershipDTO;
 import com.petplatform.merchant.api.dto.MerchantStoreDTO;
 import org.junit.jupiter.api.Test;
 
@@ -40,5 +42,34 @@ class MerchantDtoSerializationTest {
         JsonNode eligibility = mapper.readTree(eligibilityJson);
         assertTrue(eligibility.get("merchantId").isTextual());
         assertTrue(eligibility.get("acceptsNewOrders").isBoolean());
+    }
+
+    @Test
+    void staffIdentityDtosSerializeIdsAndVersionAsStrings() throws Exception {
+        ObjectMapper timeMapper = mapper.copy()
+                .registerModule(new com.fasterxml.jackson.datatype.jsr310.JavaTimeModule())
+                .disable(com.fasterxml.jackson.databind.SerializationFeature.WRITE_DATES_AS_TIMESTAMPS);
+        String large = "9007199254740993";
+        String membershipJson = mapper.writeValueAsString(new MerchantStaffMembershipDTO(
+                large, "商家", "9007199254740995", "门店", "STAFF", "9007199254740997"));
+        JsonNode membership = mapper.readTree(membershipJson);
+        assertTrue(membership.get("merchantId").isTextual());
+        assertTrue(membership.get("storeId").isTextual());
+        assertTrue(membership.get("staffId").isTextual());
+        assertEquals("STAFF", membership.get("membershipKind").textValue());
+
+        String factsJson = timeMapper.writeValueAsString(new MerchantStaffIdentityFactsDTO(
+                large, "9007199254740995", "STAFF", true, "APPROVED", "SIGNED", "ACTIVE",
+                "ACTIVE", "0123456789abcdef", java.time.OffsetDateTime.parse("2026-10-02T08:00:00.000Z"),
+                null, java.util.List.of("merchant.order.verify")));
+        JsonNode facts = mapper.readTree(factsJson);
+        assertTrue(facts.get("merchantId").isTextual());
+        assertTrue(facts.get("storeId").isTextual());
+        assertTrue(facts.get("membershipEnabled").isBoolean());
+        assertTrue(facts.get("authzVersion").isTextual());
+        assertTrue(facts.get("checkedAt").isTextual());
+        assertTrue(facts.get("staffId").isNull());
+        assertEquals(java.util.List.of("merchant.order.verify"),
+                mapper.readValue(facts.get("grantedActions").toString(), java.util.List.class));
     }
 }
