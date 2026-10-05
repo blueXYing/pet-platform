@@ -497,14 +497,14 @@ payload 字段（9 字段，与角色E消费侧对齐定稿 2026-09-22，中途�
 
 | eventType | 精确 payload 字段 | 事务与含义 |
 |---|---|---|
-| `RefundApplicationCreatedEvent.v1` | applicationId、orderId、userId、merchantId、storeId、applicationStatus、merchantDeadline、createdAt | applicationStatus 固定 PENDING_MERCHANT；merchantDeadline=createdAt+24h；occurredAt=createdAt。与申请、ORDER 引用、超时任务和首回执同事务唯一生产。 |
+| `RefundApplicationCreatedEvent.v1` | applicationId、orderId、userId、merchantId、storeId、applicationStatus、merchantDeadline、createdAt | applicationStatus 普通路径固定 PENDING_MERCHANT，服务前即时批准（REF-001，来源 PRESTART_AUTO）按提交时真实终态发布 AUTO_APPROVED（2026-10-05 用户裁决）；merchantDeadline=createdAt+24h；occurredAt=createdAt。与申请、ORDER 引用、超时任务和首回执同事务唯一生产。 |
 | `RefundApplicationDecidedEvent.v1` | applicationId、decisionId、orderId、userId、merchantId、storeId、applicationStatus、decidedAt | applicationStatus 为 APPROVED / REJECTED / AUTO_APPROVED；occurredAt=decidedAt。与不可变决定、ORDER 投影、首回执及批准时的唯一建单恢复任务同事务生产。 |
 
 幂等重放不产生新事件，拒绝后新的申请是新聚合并重新计算期限，旧事件不得改写新一轮当前引用。事件表达可靠通知意图，不构成退款授权；说明/拒绝原因继续保存在本域受保护事实中，不透传事件。站内通知消费者、模板和实际送达仍后续验收，不能以已写 Outbox 宣称通知完成。
 
 ## 49号普通退款来源对既有事件的兼容
 
-`RefundOrderCreatedEvent.v1` 的 `source` 和 `RefundSucceededEvent.v1` 的 `refundSource` 增加已批准的 `MERCHANT_APPROVED` / `MERCHANT_TIMEOUT_AUTO` 值，其他原 payload 字段保持；applicationId/decisionId 从可信内部事实读取，不追加到 v1，也不伪装 sourceEventId。普通创建事件随退款单、执行绑定、ORDER 提交证明和渠道任务同提交。
+`RefundOrderCreatedEvent.v1` 的 `source` 和 `RefundSucceededEvent.v1` 的 `refundSource` 增加已批准的 `MERCHANT_APPROVED` / `MERCHANT_TIMEOUT_AUTO` 值，其他原 payload 字段保持；applicationId/decisionId 从可信内部事实读取，不追加到 v1，也不伪装 sourceEventId。普通创建事件随退款单、执行绑定、ORDER 提交证明和渠道任务同提交。2026-10-05 用户裁决（PR #103 阻塞项①④）：服务前自动全额退款（REF-001）新增第三种已批准来源 `PRESTART_AUTO`，同样只出现在既有 source/refundSource 字段，不复用 `MERCHANT_TIMEOUT_AUTO`；通知/优惠券/积分等消费者后续交付按此对齐。
 
 `ORDER_APPLICATION_REFUND` 消费 `RefundSucceededEvent.v1`，先核对事件与 REFUND 最终渠道成功、ORDER 本域普通来源/原本金/身份/时间/唯一成功事件，随后在同 DataSource 事务内完成消费 claim、ORDER 已退款金额、成功证明与 SCHEDULE 原预约释放。任何一步失败全部回滚；重复事件核对原证明后幂等，UNKNOWN/FAILED 不释放。核销历史保持。
 

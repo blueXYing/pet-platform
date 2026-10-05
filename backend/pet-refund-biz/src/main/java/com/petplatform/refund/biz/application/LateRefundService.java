@@ -195,7 +195,9 @@ public final class LateRefundService implements IntegrationEventConsumer, Refund
     boolean merchantEnabled(){return merchantOrders!=null;}
     boolean applicationEnabled(){return applicationOrders!=null;}
     boolean aftersaleEnabled(){return aftersaleOrders!=null;}
-    public static boolean applicationSource(String source){return "MERCHANT_APPROVED".equals(source)||"MERCHANT_TIMEOUT_AUTO".equals(source);}
+    // 2026-10-05 user adjudication: the pre-service auto refund (PRESTART_AUTO) belongs to the same
+    // APPLICATION family as the two merchant-path sources everywhere the channel worker dispatches.
+    public static boolean applicationSource(String source){return "MERCHANT_APPROVED".equals(source)||"MERCHANT_TIMEOUT_AUTO".equals(source)||"PRESTART_AUTO".equals(source);}
     Row byId(String refund) { return read(store.lockById(id(refund))); }
     private Row byOrder(String order) { return read(store.lockByOrder(id(order))); }
     static Row read(List<RefundMapperRows.Binding> rows) {

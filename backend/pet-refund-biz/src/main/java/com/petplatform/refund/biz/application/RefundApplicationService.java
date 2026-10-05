@@ -187,7 +187,13 @@ public final class RefundApplicationService implements RefundApplicationCommandA
         if(!"AUTO_APPROVED".equals(d.status)){byte[] expected=json(values("applicationId",app,"version","0","action","APPROVED".equals(d.status)?"APPROVE":"REJECT","reasonText",d.reasonCipher==null?null:string(protection.reveal("DECISION:"+decision,d.reasonCipher))));commandProof(b,expected);}
         return new DecisionFact(a,decision,d.status,d.operatorType,nullable(d.operatorId),offset(d.decidedAt),str(d.commandId),str(d.eventId));
     });}
-    @Override public ApprovalFact requireApproved(String app,String decision,String store,QueryContext context){return owned(()->{var d=requireDecision(app,decision,store,context);if(!Set.of("APPROVED","AUTO_APPROVED").contains(d.status()))throw bad();return new ApprovalFact(d.application(),decision,"APPROVED".equals(d.status())?"MERCHANT_APPROVED":"MERCHANT_TIMEOUT_AUTO",d.operatorType(),d.operatorId(),d.decidedAt(),d.commandId(),d.eventId());});}
+    @Override public ApprovalFact requireApproved(String app,String decision,String store,QueryContext context){return owned(()->{var d=requireDecision(app,decision,store,context);if(!Set.of("APPROVED","AUTO_APPROVED").contains(d.status()))throw bad();
+        String source="MERCHANT_APPROVED";
+        if("AUTO_APPROVED".equals(d.status())){var b=db.bindingById(id(d.commandId()));if(b==null)throw bad();
+            // 2026-10-05 用户裁决：服务前即时批准（绑定 refund.application.pre-service-auto 准入）使用专门
+            // 来源 PRESTART_AUTO，不复用商家 24h 超时来源 MERCHANT_TIMEOUT_AUTO；两者在退款单上可区分。
+            source="refund.application.pre-service-auto".equals(string(b.commandNamespace))?"PRESTART_AUTO":"MERCHANT_TIMEOUT_AUTO";}
+        return new ApprovalFact(d.application(),decision,source,d.operatorType(),d.operatorId(),d.decidedAt(),d.commandId(),d.eventId());});}
     @Override public CreatedFact requireCreated(String app,String decision,String refund,String store,QueryContext context){return owned(()->{
         var approved=requireApproved(app,decision,store,context);var a=approved.application();var c=db.created(id(refund));
         if(c==null||!refund.equals(a.refundOrderId())||!app.equals(str(c.applicationId))||!app.equals(str(c.sourceBizId))||!decision.equals(str(c.sourceDecisionId))||!approved.sourceType().equals(c.sourceType)||!approved.sourceType().equals(c.executionSourceType)

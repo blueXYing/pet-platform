@@ -111,3 +111,17 @@ SSOT §20 已封板规则含"服务前自动退款""退款单创建成功后禁�
 - `preServiceCreationRecoversEvenAfterServiceStart` 覆盖"批准后建单任务恢复慢于服务开始仍按原来源建单"；若产品认为应按开始时点重新裁决，属新规则（未实现，见待裁决2）。
 - 未接入 HTTP/小程序入口：`pet.refund.application.http.enabled` 仍默认关闭，C端发起入口后续交付；本切片只打通内部命令链路。
 - 通知消费（Created/Decided 事件的实际送达）不在本批，服务前路径的事件将随通知消费者一并验收。
+
+## 2026-10-05 用户裁决附录（第二次接管代理补记）
+
+用户对阻塞第1条裁决：服务前自动退款**新立专门来源 `PRESTART_AUTO`**（沿用 SQL06 `refund_order.source_type` 注释既有预留值），不复用 `MERCHANT_TIMEOUT_AUTO`；上文实现方式中"来源沿用 `MERCHANT_TIMEOUT_AUTO`"的方案自本裁决起废止，以本附录为准。
+
+落地内容（同批提交）：
+
+- SSOT §39（即用户所称契约39的实质条款，见 docs/00-ssot §39；docs/04-api 下的39号文件为选位过期契约，与退款来源无关）与契约49"来源与执行兼容"修订为三类普通来源：`MERCHANT_APPROVED`/`MERCHANT_TIMEOUT_AUTO`/`PRESTART_AUTO`。
+- 契约49新增"服务前自动全额退款（REF-001）"实施章节：触发=开关开启时买家申请且 now<预约开始且未核销；全额=实付（refundType=FULL）；原路=既有拉卡拉渠道执行；互斥=既有 refund_order 硬规则；开关 `pet.refund.pre-service-auto-refund.enabled` 默认 false；服务前无拒绝路径；服务前 merchantDeadline=决定时间+24h，与 SQL49 CHECK `merchant_deadline=created_at+INTERVAL 24 HOUR` 一致。
+- 事件目录08：RefundApplicationCreatedEvent.v1 的 applicationStatus 普通路径固定 PENDING_MERCHANT、服务前按提交时真实终态 AUTO_APPROVED；RefundOrderCreated/Succeeded 的 source/refundSource 增补 `PRESTART_AUTO`。
+- SQL49/SQL50：`refund_execution` 来源 CHECK 增补第三来源分支（仅约束放宽，无数据回填）。
+- 代码：`RefundApplicationService.requireApproved` 按决定绑定 namespace `refund.application.pre-service-auto` 判定 `PRESTART_AUTO`，经既有建单/执行链路写入 refund_order/refund_execution 与事件；PAYMENT 审批校验、ORDER 四个投影消费者、SCHEDULE 预约释放、渠道 worker 任务类型/错误码/恢复扫描全链路识别。
+- 测试：新增 `preServiceAutoSourceIsDistinctFromMerchantTimeoutSourceOnRefundOrders`（同库两来源可区分）；PAYMENT 来源参数化增补 `PRESTART_AUTO`；`AutoConfirmTaskPreparationAcceptanceTest` 新增按 paymentId 聚合选取事件的过载，修正同夹具多订单时事件选取歧义。
+- planning：ISSUE_CATALOG REF-001 → IN_PROGRESS 且依赖补 REF-002；DEPENDENCY_GRAPH 补 REF2→REFB 边与交付注记。

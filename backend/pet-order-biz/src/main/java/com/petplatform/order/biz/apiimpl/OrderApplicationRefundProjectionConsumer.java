@@ -61,7 +61,8 @@ public final class OrderApplicationRefundProjectionConsumer implements Integrati
             OffsetDateTime at=OffsetDateTime.parse(text(n,"succeededAt"));PublicContractChecks.requireMillisecondPrecision(at);
             if(event.occurredAt()==null||!event.occurredAt().isEqual(at))throw unavailable();
             if(Set.of("LATE_PAYMENT_TIMEOUT","MERCHANT_REJECT_ORDER").contains(sourceType))return;
-            if(!Set.of("MERCHANT_APPROVED","MERCHANT_TIMEOUT_AUTO").contains(sourceType))throw unavailable();
+            // 2026-10-05 user adjudication: PRESTART_AUTO (pre-service auto refund) is a known application source.
+            if(!Set.of("MERCHANT_APPROVED","MERCHANT_TIMEOUT_AUTO","PRESTART_AUTO").contains(sourceType))throw unavailable();
             QueryContext q=new QueryContext(event.traceId(),OperatorType.SYSTEM,null);String store=locations.locate(order,q).storeId();
             tx.executeWithoutResult(status->{
                 guard.acquire(List.of(store),q);guard.requireHeld(store,source);

@@ -97,6 +97,9 @@ class RefundApplicationAcceptanceTest {
         var credential=f.t.issue(o,"INITIAL");
         String refund=f.apps.createApproved(f.create(r));
         assertEquals(1,f.count("SELECT COUNT(*) FROM refund_order"));assertEquals(refund,f.text("SELECT CAST(refund_order_id AS CHAR) FROM refund_application"));
+        // 2026-10-05 用户裁决：服务前即时批准的退款单使用专门来源 PRESTART_AUTO，不复用 MERCHANT_TIMEOUT_AUTO
+        assertEquals("PRESTART_AUTO",f.text("SELECT source_type FROM refund_order"));
+        assertEquals("PRESTART_AUTO",f.text("SELECT source_type FROM refund_execution"));
         // refund_order 创建成功后立即禁止核销
         assertThrows(ApiException.class,()->VerificationCompletionAcceptanceTest.build(f.t).verify(VerificationCompletionAcceptanceTest.command(o,credential)));
         // REF-002 渠道最终成功前预约仍占用
@@ -121,6 +124,31 @@ class RefundApplicationAcceptanceTest {
         assertEquals("VERIFIED",VerificationCompletionAcceptanceTest.build(f.t).verify(VerificationCompletionAcceptanceTest.command(o,credential)).resultCode());
         String refund=f.apps.createApproved(f.create(r));
         assertEquals(1,f.count("SELECT COUNT(*) FROM refund_order"));assertEquals("CREATED",f.text("SELECT status FROM refund_order"));
+    }}
+    /** 2026-10-05 用户裁决：新来源 PRESTART_AUTO 出现在退款单且与商家超时来源 MERCHANT_TIMEOUT_AUTO 可区分。 */
+    @Test void preServiceAutoSourceIsDistinctFromMerchantTimeoutSourceOnRefundOrders()throws Exception{try(var f=new F(true)){
+        String a=f.t.ready();var ra=f.apps.apply(f.applyCommand(a));f.apps.createApproved(f.create(ra));
+        assertEquals(1,f.count("SELECT COUNT(*) FROM refund_order WHERE source_type='PRESTART_AUTO'"));
+        assertEquals(1,f.count("SELECT COUNT(*) FROM refund_execution WHERE source_type='PRESTART_AUTO'"));
+        // 第二笔订单使用独立窗口 710590（默认窗口 710500 容量仅 1），并核销为 VERIFIED 走商家路径，不改写共享时间。
+        var fx=f.t.r.f.f;
+        fx.db.jdbc.update("INSERT INTO schedule_availability_window(id,merchant_id,store_id,service_id,start_at,end_at,configured_capacity,status,window_kind,created_at,updated_at) VALUES(710590,710301,710302,710401,'2030-01-01 11:00:00','2030-01-01 13:30:00',1,'OPEN','GENERAL',UTC_TIMESTAMP(3),UTC_TIMESTAMP(3))");
+        OffsetDateTime start=OffsetDateTime.parse("2030-01-01T11:30:00Z");
+        String b=fx.book(new com.petplatform.order.api.dto.OrderCreationTypes.CreateOrderCommand(new CommandContext(UUID.randomUUID().toString(),"pay-qa-create",OperatorType.USER,"710100","MINIAPP"),"710302","710401","710200","IN_STORE",start,start.plusMinutes(90),null,null,"710590",null,null,null,null,null)).orderId();
+        var p=fx.prepare(b,UUID.randomUUID().toString());
+        var n=fx.notice(p,"SUCCESS","MERCHANT_"+IDS.incrementAndGet(),p.amount(),p.amount());
+        fx.notification.receive(n.headers(),n.body());
+        fx.result.consume(AutoConfirmTaskPreparationAcceptanceTest.event(fx,p.paymentId()));
+        f.t.confirm(b,0);
+        var credential=f.t.issue(b,"INITIAL");
+        assertEquals("VERIFIED",VerificationCompletionAcceptanceTest.build(f.t).verify(VerificationCompletionAcceptanceTest.command(b,credential)).resultCode());
+        var rb=f.apps.apply(f.applyCommand(b));assertEquals("PENDING_MERCHANT",rb.applicationStatus());
+        f.source.fixed.set(OffsetDateTime.parse(rb.merchantDeadline()).toInstant());f.apps.handle(f.timeout(rb));
+        String decided=f.text("SELECT CAST(decision_id AS CHAR) FROM refund_application WHERE order_id="+Long.parseLong(b));
+        f.apps.createApproved(new Create(task("REFUND_APPLICATION_CREATE",rb.applicationId()),rb.applicationId(),decided,"710302"));
+        assertEquals(1,f.count("SELECT COUNT(*) FROM refund_order WHERE source_type='MERCHANT_TIMEOUT_AUTO'"));
+        assertEquals(1,f.count("SELECT COUNT(*) FROM refund_execution WHERE source_type='MERCHANT_TIMEOUT_AUTO'"));
+        assertEquals(2,f.count("SELECT COUNT(DISTINCT source_type) FROM refund_order"));
     }}
     /** 已批准未建单的服务前申请不因 durable 任务恢复慢于服务开始而变成商家处理流程。 */
     @Test void preServiceCreationRecoversEvenAfterServiceStart(){try(var f=new F(true)){
@@ -275,6 +303,7 @@ class RefundApplicationAcceptanceTest {
         String o=f.ready(verifiedOrder);var apply=f.applyCommand(o);var r=f.apps.apply(apply);Decide decision=timeout?null:f.decision(r,"APPROVE");Receipt d;
         if(timeout){f.source.fixed.set(OffsetDateTime.parse(r.merchantDeadline()).toInstant());f.apps.handle(f.timeout(r));d=f.receipt();}else d=f.apps.decide(decision);
         String refund=f.apps.createApproved(f.create(d));var runtime=f.runtime(true);
+        assertEquals(timeout?"MERCHANT_TIMEOUT_AUTO":"MERCHANT_APPROVED",f.text("SELECT source_type FROM refund_order"));
         assertThrows(ApiException.class,()->runtime.execution.execute(refund,"710302",false,"qa","LATE_PAYMENT_TIMEOUT"));
         assertThrows(ApiException.class,()->runtime.execution.execute(refund,"710302",false,"qa"));assertEquals(0,runtime.sends.get());
         assertTrue(runtime.execution.execute(refund,"710302",false,"qa","APPLICATION").done());assertEquals("UNKNOWN",f.text("SELECT status FROM refund_order"));

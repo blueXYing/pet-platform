@@ -22,7 +22,7 @@ PAY-004,PAYMENT_TIMEOUT后迟到支付自动全额原路退款,Transaction Backe
 ORD-001,商家主动接单/拒单,Transaction Backend,EPIC-08,ST-CONF-01,P0,PAY-002,backend/pet-order-* backend/pet-refund-api,"CONF-001,CONF-003,CONF-004",5,BLOCKED
 ORD-002,30分钟自动接单 Task Handler,Transaction Backend,EPIC-08,ST-CONF-01,P0,"ORD-001,PLAT-004",backend/pet-order-*,"CONF-002,CONF-005,TASK-003",5,BLOCKED
 ORD-003,用户一次改期与预约 swap/confirmRound,Transaction Backend,EPIC-08,ST-RES-01,P0,"ORD-001,SCH-003",backend/pet-order-* backend/pet-schedule-*,"RES-001~RES-006,CON-006",5,BLOCKED
-REF-001,服务开始前自动全额退款,Transaction Backend,EPIC-09,ST-REF-01,P0,"TX-001,REF-003",backend/pet-refund-* backend/pet-order-*,REF-001~REF-003,5,BLOCKED
+REF-001,服务开始前自动全额退款,Transaction Backend,EPIC-09,ST-REF-01,P0,"TX-001,REF-002,REF-003",backend/pet-refund-* backend/pet-order-*,REF-001~REF-003,5,IN_PROGRESS
 REF-002,服务开始后退款申请、商家同意/拒绝,Transaction Backend,EPIC-09,ST-REF-02,P0,TX-001,backend/pet-refund-* backend/pet-order-*,REF-004~REF-010,5,BLOCKED
 REF-003,RefundOrder/渠道退款/UNKNOWN查单核心,Transaction Backend,EPIC-09,ST-REF-03,P0,"PAY-001,PLAT-003,PLAT-004",backend/pet-refund-* backend/pet-payment-api,"REF-011~REF-013,FLT-006,FLT-007",5,BLOCKED
 REF-004,24小时商家退款超时自动批准,Transaction Backend,EPIC-09,ST-REF-02,P0,"REF-002,REF-003,PLAT-004",backend/pet-refund-*,"REF-009,TASK-004",6,BLOCKED

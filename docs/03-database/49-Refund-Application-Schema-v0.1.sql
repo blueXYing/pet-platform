@@ -70,6 +70,8 @@ CREATE TABLE order_refund_application_commit (
 ) ENGINE=InnoDB;
 
 -- Keep old source semantics, including legacy late rows with NULL source_type/source_event_id.
+-- 2026-10-05 user adjudication (PR #103): PRESTART_AUTO joins the application-source branch for the
+-- pre-service auto full refund; constraint-only change, no data backfill, isolated QA only.
 ALTER TABLE refund_execution DROP CHECK chk_refund_source,
  ADD source_biz_id BIGINT NULL, ADD source_decision_id BIGINT NULL,
  ADD CONSTRAINT chk_refund_source CHECK (
@@ -78,7 +80,7 @@ ALTER TABLE refund_execution DROP CHECK chk_refund_source,
     OR (source_type IS NOT NULL AND source_event_id IS NOT NULL AND source_event_id>0 AND
      ((source_type='LATE_PAYMENT_TIMEOUT' AND late_event_id IS NOT NULL AND late_event_id=source_event_id)
       OR (source_type='MERCHANT_REJECT_ORDER' AND late_event_id IS NULL)))))
-  OR (source_type IN ('MERCHANT_APPROVED','MERCHANT_TIMEOUT_AUTO') AND source_type IS NOT NULL
+  OR (source_type IN ('MERCHANT_APPROVED','MERCHANT_TIMEOUT_AUTO','PRESTART_AUTO') AND source_type IS NOT NULL
    AND source_biz_id IS NOT NULL AND source_biz_id>0 AND source_decision_id IS NOT NULL AND source_decision_id>0
    AND late_event_id IS NULL AND source_event_id IS NULL));
 
