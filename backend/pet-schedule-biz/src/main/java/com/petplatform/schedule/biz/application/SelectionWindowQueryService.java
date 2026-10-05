@@ -91,7 +91,9 @@ public final class SelectionWindowQueryService {
             Set<Long> windowIds = new HashSet<>();
             for (WindowRow row : windows) {
                 validateWindow(row, query, snapshot.merchantId(), windowIds, openEnds);
-                if (!"OPEN".equals(row.status()) || !matches(row.kind(), applicable, query.kind())
+                // SOLD_OUT stays listed as an open-derived window: remaining=0 keeps it
+                // unbookable exactly like an at-capacity OPEN window was (Contract52 §3).
+                if (!openDerived(row.status()) || !matches(row.kind(), applicable, query.kind())
                         || !row.end().toInstant(ZoneOffset.UTC).isAfter(now)) continue;
                 OffsetDateTime start = row.start().atOffset(ZoneOffset.UTC);
                 OffsetDateTime end = row.end().atOffset(ZoneOffset.UTC);
@@ -147,15 +149,20 @@ public final class SelectionWindowQueryService {
                 || !query.serviceId().equals(IDS.toApi(row.serviceId()))
                 || !validKind(row.kind()) || !validInterval(row.start(), row.end())
                 || row.configuredCapacity() < 1 || row.version() < 0
-                || !("OPEN".equals(row.status()) || "CLOSED".equals(row.status()))) {
+                || !(openDerived(row.status()) || "CLOSED".equals(row.status()))) {
             unavailable("selection window facts are invalid");
         }
-        if ("OPEN".equals(row.status())) {
+        // SOLD_OUT is an open-derived sub-state and joins the same overlap invariant.
+        if (openDerived(row.status())) {
             LocalDateTime priorEnd = openEnds.put(row.kind(), row.end());
             if (priorEnd != null && priorEnd.isAfter(row.start())) {
                 unavailable("overlapping original selection windows");
             }
         }
+    }
+
+    private static boolean openDerived(String status) {
+        return "OPEN".equals(status) || "SOLD_OUT".equals(status);
     }
 
     private static Map<Long, Set<Long>> occupancy(List<ClaimRow> rows,
@@ -198,7 +205,8 @@ public final class SelectionWindowQueryService {
                         || claim.originalServiceId() != parent.serviceId()
                         || !validKind(claim.claimKind()) || !kinds.add(claim.claimKind())
                         || !claim.claimKind().equals(claim.originalKind())
-                        || !"OPEN".equals(claim.originalStatus())
+                        || !("OPEN".equals(claim.originalStatus())
+                                || "SOLD_OUT".equals(claim.originalStatus()))
                         || !validInterval(claim.claimStart(), claim.claimEnd())
                         || !validInterval(claim.originalStart(), claim.originalEnd())) {
                     unavailable("original claim facts are invalid");

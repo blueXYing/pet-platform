@@ -1,6 +1,6 @@
 # Schedule Write Contract v0.1（商家排期写侧）
 
-状态：IMPLEMENTED_DEFAULT_OFF，2026-10-02；默认关闭，不表示生产已开放或页面已联调。产品依据：[SSOT §29](../00-ssot/01-SSOT-宠物平台V1.0-最终业务基线.md)、[PRD29](../01-prd/29-排期人员容量与维护人工裁决补充-v1.0.md)、SSOT §12/§13；技术契约：[34号排期保护契约](34-Schedule-Protection-Contract-v0.1.md)（SCHC-1～4，已批）、[34号存储](../03-database/34-Schedule-Protection-Storage-v0.1.md)、[36号预约与订单人员保护](36-Reservation-Order-Protection-Contract-v0.1.md)（ROC 已批、事实 API 已交付）、[写入提案 v0.2](../../planning/ccr/CCR-W2-API-001/schedule-write-proposal.md) 与[联合审阅回执](../../planning/ccr/CCR-W2-API-001/schedule-review-decisions.md)、[四项技术裁决回执](../../planning/ccr/CCR-W2-API-001/schedule-write-completion-decisions.md)。存储增量见 [SQL52](../03-database/52-Schedule-Write-Schema-v0.1.sql) 与隔离迁移 `schedule-migration/V29__schedule_write.sql`（仅显式 `schw001_*` 库可执行，永不跑共享数据源）。
+状态：IMPLEMENTED_DEFAULT_OFF，2026-10-02；默认关闭，不表示生产已开放或页面已联调。2026-10-05 用户裁决：§7-1（B5）按方案 A 落地显式 SOLD_OUT 派生态与释放联动、§7-3（原登记的 200 上限问题）落地批量命令单次 200 条上限，均已并入本契约（见 §3 与 §3.1）；§7-2（C 端 kind）裁决本批不做。**本文档编号 52 为临时占用：与并行分支 #101（staff-identity）冲突，#101 合并后由主协调通知 rebase 并重编号为下一个空闲号（含 docs/03-database/SQL52 与代码注释引用，commit 内已登记待重编号）。** 产品依据：[SSOT §29](../00-ssot/01-SSOT-宠物平台V1.0-最终业务基线.md)、[PRD29](../01-prd/29-排期人员容量与维护人工裁决补充-v1.0.md)、SSOT §12/§13；技术契约：[34号排期保护契约](34-Schedule-Protection-Contract-v0.1.md)（SCHC-1～4，已批）、[34号存储](../03-database/34-Schedule-Protection-Storage-v0.1.md)、[36号预约与订单人员保护](36-Reservation-Order-Protection-Contract-v0.1.md)（ROC 已批、事实 API 已交付）、[写入提案 v0.2](../../planning/ccr/CCR-W2-API-001/schedule-write-proposal.md) 与[联合审阅回执](../../planning/ccr/CCR-W2-API-001/schedule-review-decisions.md)、[四项技术裁决回执](../../planning/ccr/CCR-W2-API-001/schedule-write-completion-decisions.md)。存储增量见 [SQL52](../03-database/52-Schedule-Write-Schema-v0.1.sql) 与隔离迁移 `schedule-migration/V29__schedule_write.sql`（仅显式 `schw001_*` 库可执行，永不跑共享数据源；SOLD_OUT 为既有 `status VARCHAR(16)` 列的应用层枚举值，无 DDL 变更）。
 
 ## 1. 范围与开关
 
@@ -24,20 +24,34 @@
 - 审计：成功动作同事务写 append-only `schedule_write_action`（动作/操作人/时间/目标/requestId/版本前后/原因），失败不留伪成功审计；关闭、临时停业及减少人员可用性必填 reason（1..500）。
 - 错误码：新增 `SCHEDULE_WINDOW_OVERLAP`(409)、`SCHEDULE_WINDOW_STATE_NOT_ALLOWED`(409)（12号 §4 已收录）；其余沿用 12号通用映射（400/401/403/404/409 `COMMON_CONFLICT`/409 `IDEMPOTENCY_KEY_CONFLICT`/503 `COMMON_DEPENDENCY_UNAVAILABLE`）。
 
-## 3. 服务时段窗口（SCHW-D2/D3/D4/D5）
+## 3. 服务时段窗口（SCHW-D2/D3/D4/D5 + 2026-10-05 SOLD_OUT 裁决）
 
 窗口身份 `storeId+serviceId+windowKind` 创建后固定，PUT 不可转移归属或改 kind/服务（34号 §4）；换目标=受保护关闭后新建。履约方式×kind 写入校验 400：IN_STORE 仅 GENERAL，PICKUP_DELIVERY 仅 PICKUP/RETURN。同店同服务同 kind 的 OPEN 窗不重叠、相邻半开可衔接；reopen 同样核验。已占用（TEMP_LOCKED/CONFIRMED 原窗 claim）时禁止关闭、降容量、改时间；升容量放行（SCHW-D4）。
 
+### 3.1 SOLD_OUT 派生态与释放联动（2026-10-05 裁决，方案 A）
+
+窗口 `status` 为三值：`OPEN`/`CLOSED`/`SOLD_OUT`（既有 `VARCHAR(16)` 列的应用层枚举，无 DDL 变更、无新错误码）。SOLD_OUT 是**系统计算的派生态**（"已约满"），不是商家手工置位的状态：
+
+- **占用口径**：窗口原行上的有效 claim 数（TEMP_LOCKED/CONFIRMED，与 SCHW-D4 occupied 及求解器全店占用不变量同口径）；容量为窗口自身 `configuredCapacity`。有效占用 ≥ 容量即 SOLD_OUT，释放后回到 OPEN。
+- **进入**：预约占容量的同一事务内派生——临时锁位（hold）写满窗口、商家 open 重开且占用已满、以及换期（swap）把占用换入时，系统即翻转。
+- **退出（释放联动）**：退款释放（`ReservationRefundReleaseApiImpl`）、临时锁位超时过期/取消（`ReservationExpiryApiImpl`）及换期换出，均在释放同一事务内重判并回到 OPEN；确认（confirm）不改占用，故不翻转。翻转 CAS 在观察到的前置状态上、随事务提交，无双写窗口；翻转仅推进窗口 `version`（商家乐观并发可见），不写 `schedule_write_action` 审计（非商家动作）。
+- **商家语义（最小口径，PRD29 未另设规则）**：SOLD_OUT 窗口不得由商家"强制可约"。占用保护照旧适用——close 409 `SCHEDULE_WINDOW_STATE_NOT_ALLOWED`（满窗必被占用拦截）、改时间/降容量 409（SCHW-D4）；**升容量放行**，同事务按新容量重判（占用低于新容量即回 OPEN）。对 CLOSED 窗 open 重开后由系统按占用重判（可能直接呈 SOLD_OUT）。SOLD_OUT 与 OPEN 同占一个"开放位"：重叠校验（创建/改期/reopen）把 SOLD_OUT 视同 OPEN，杜绝释放回 OPEN 后出现两个重叠开放窗。
+- **读侧尊重**：预约/改期容量证明的原窗资格认 `OPEN` 及其派生 `SOLD_OUT`（SOLD_OUT 视同原开放窗），净新增占用由 `CapacityFeasibilitySolver` 占用守卫拒绝（409 `SCHEDULE_CAPACITY_EXCEEDED`）；改期（swap）先移除本单旧占用再整体复核，故在 SOLD_OUT 原窗内换时段仍可行（容量守恒）。C 端 availability/selection 列表仍列 SOLD_OUT 窗（`remaining=0`/`available=false`，与此前满量 OPEN 窗的呈现一致，不改变 C 端响应形状）；商家工作台列表可按 `status=SOLD_OUT` 过滤。
+
 | Method | Path | Body | 回执/状态 |
 |---|---|---|---|
-| GET | /merchant/stores/{storeId}/availability-windows | query: merchantId 必填，serviceId/kind/status 可选 | `{storeId,items:[{windowId,merchantId,storeId,serviceId,windowKind,startAt,endAt,configuredCapacity,status,version,updatedAt}]}`；含 CLOSED 与版本，`Cache-Control: no-store` |
+| GET | /merchant/stores/{storeId}/availability-windows | query: merchantId 必填，serviceId/kind/status 可选（status ∈ OPEN/CLOSED/SOLD_OUT） | `{storeId,items:[{windowId,merchantId,storeId,serviceId,windowKind,startAt,endAt,configuredCapacity,status,version,updatedAt}]}`；含 CLOSED/SOLD_OUT 与版本，`Cache-Control: no-store` |
 | POST | /merchant/stores/{storeId}/availability-windows | merchantId,serviceId,windowKind,startAt,endAt,configuredCapacity | 201/200 `{windowId,…,status:"OPEN",version:"0"}` |
-| PUT | /merchant/stores/{storeId}/availability-windows/{windowId} | merchantId,startAt,endAt,expectedVersion；configuredCapacity/reason 可选 | `{window,…}`；仅 OPEN 可编辑；占用时改时间或降容量 409 |
-| POST | /merchant/stores/{storeId}/availability-windows/{windowId}/close | merchantId,expectedVersion,reason 必填 | `{window,status:"CLOSED"}`；占用 409 `SCHEDULE_WINDOW_STATE_NOT_ALLOWED` |
-| POST | /merchant/stores/{storeId}/availability-windows/{windowId}/open | merchantId,expectedVersion | `{window,status:"OPEN"}`；重叠 409 `SCHEDULE_WINDOW_OVERLAP` |
-| POST | /merchant/stores/{storeId}/availability-windows/batch-close | merchantId,fromDate,toDate(Asia/Shanghai 日历日),reason 必填 | `{storeId,closedWindows:[…],blockedWindows:[{window…,reasonCode}]}`；部分成功允许，全受阻不伪称成功；跨天相交整窗处理（SCHW-D5） |
+| PUT | /merchant/stores/{storeId}/availability-windows/{windowId} | merchantId,startAt,endAt,expectedVersion；configuredCapacity/reason 可选 | `{window,…}`；仅 OPEN/SOLD_OUT 可编辑；占用时改时间或降容量 409；升容量同事务按占用重判（SOLD_OUT 可回 OPEN） |
+| POST | /merchant/stores/{storeId}/availability-windows/{windowId}/close | merchantId,expectedVersion,reason 必填 | `{window,status:"CLOSED"}`；占用（含 SOLD_OUT 满窗）409 `SCHEDULE_WINDOW_STATE_NOT_ALLOWED` |
+| POST | /merchant/stores/{storeId}/availability-windows/{windowId}/open | merchantId,expectedVersion | `{window,status:"OPEN"}`；重叠（含对 SOLD_OUT 窗）409 `SCHEDULE_WINDOW_OVERLAP`；重开后系统按占用重判，可能直接返回 SOLD_OUT |
+| POST | /merchant/stores/{storeId}/availability-windows/batch-close | merchantId,fromDate,toDate(Asia/Shanghai 日历日),reason 必填 | `{storeId,closedWindows:[…],blockedWindows:[{window…,reasonCode}]}`；部分成功允许，全受阻不伪称成功；跨天相交整窗处理（SCHW-D5）；**单次条目上限 200**（见 §3.2）；SOLD_OUT 目标视同开放目标参与相交计数，满窗占用照常列入 blockedWindows 明示 |
 
 不提供 DELETE/物理删除（SCHW-D3）；禁周模板三字段（dayOfWeek/repeatWeekly/copyNextWeek）不引入（SSOT §12.1）。
+
+### 3.2 批量命令单次条目上限 200（2026-10-05 裁决）
+
+`batch-close` 单次处理的窗口条目（= 相交区间内 OPEN/SOLD_OUT 目标，即 `closedWindows+blockedWindows` 候选合计）**超过 200 时整笔拒绝**：400 `COMMON_INVALID_ARGUMENT`（沿用既有参数错误码，无新错误码），拒绝发生在任何窗口关闭之前，不存在"前 200 已关、余量被静默丢弃"的部分执行；商家缩小日历日范围分批重试（复用同一 requestId + 不同参数按 23 号属异参 409，应换新 requestId）。人员能力集合（§5）非批量命令，其条目数维持不设上限（仅 06号 INT 技术边界）。
 
 ## 4. 员工排班（SCHW-D6）
 
@@ -66,13 +80,15 @@ PUT 为全量替换：过期 `expectedVersion` 409 `COMMON_CONFLICT` 提示重�
 
 ## 6. 审计与验收边界
 
-`schedule_write_action` 唯一键 `(request_id,target_type,target_id)`；批量关窗按受影响目标逐窗留审计。测试映射：W2-SCHW-001/003/004/005/006/007/008/012 的核心行由 `ScheduleMerchantCommandMySqlTest`（真实 MySQL，含容量守卫与写侧一致性：占用窗守卫、指派保护、全店复核、CAS 冲突、幂等重放）与 `ScheduleWriteDisabledTest` 覆盖；W2-SCHW-002/011 中涉及 C 端 kind 增列与 07/10/11 旧字段兼容的完整联调、W2-SCHW-013 MER 员工录入全链路、真实 MySQL 多连接并发演练属后续切片验收，本批不冒认。
+`schedule_write_action` 唯一键 `(request_id,target_type,target_id)`；批量关窗按受影响目标逐窗留审计。测试映射：W2-SCHW-001/003/004/005/006/007/008/012 的核心行由 `ScheduleMerchantCommandMySqlTest`（真实 MySQL，含容量守卫与写侧一致性：占用窗守卫、指派保护、全店复核、CAS 冲突、幂等重放）与 `ScheduleWriteDisabledTest` 覆盖；§3.1/§3.2 裁决行为由 `ScheduleSoldOutLinkMySqlTest` 覆盖（真实 MySQL：SOLD_OUT 进入/退款释放与过期回位、双连接并发不双卖、守卫尊重 SOLD_OUT、批量 >200 整笔拒绝与 SOLD_OUT 目标明示）及 `ScheduleSelectionQueryMySqlTest`（SOLD_OUT 窗读侧保留呈现 remaining=0）；W2-SCHW-002/011 中涉及 C 端 kind 增列与 07/10/11 旧字段兼容的完整联调、W2-SCHW-013 MER 员工录入全链路属后续切片验收，本批不冒认（真实 MySQL 多连接并发演练由 §3.1 的双连接竞争用例部分覆盖，全链路压测仍属后续）。
 
-## 7. 阻塞与待裁决（不实现，只登记）
+## 7. 阻塞与待裁决（2026-10-05 用户裁决落定）
 
-1. **B5 售罄自动/手动规则**：PRD29 与 SSOT §29 未定义窗口容量因预约耗尽后的自动置CLOSED/手工售罄语义；历史记录「B5 售罄宜在 SCH-002 前裁」。当前容量耗尽仅由读侧 min 公式与预约守卫表达。
-2. **C 端可选 kind 过滤与 `windowId/kind` 增列**：34号 §1 要求与 SCH-003 hold/swap 双选窗 ID 联合交付并同步 07/10/11；本批未改 C 端契约。
-3. **跨日/节假日语义**：仅已批的批量关窗跨天整窗+逐窗恢复；持续性停业开关、节假日模板明确不做的范围外，任何扩展需新裁决。
-4. **存量 GENERAL 盘点/迁移（SCHC-4）**：上线前盘点与隔离脚本、回填核对与回滚路径未交付；本批迁移不回填任何旧行。
-5. **「每人最多 200 项服务」上限**：未批准，不作为规则实现；容量列仅按 06号 INT 技术边界校验。
-6. **排期负责人子账号角色**：随 AUTH/MER 成员绑定交付；V1 写入门禁=主账号 OWNER。
+1. **B5 售罄自动/手动规则——已裁决，方案 A 已实现**：窗口引入系统派生 SOLD_OUT 状态（占用达容量进入，退款释放/超时过期取消/换期释放联动回位），实现口径与商家交互见 §3.1。原登记「PRD29 未定义自动置 CLOSED/手工售罄」由本裁决补充关闭；不设商家"一键售罄"手工置位（最小语义）。
+2. **C 端可选 kind 过滤与 `windowId/kind` 增列——已裁决，本批不做**：维持与 SCH-003 hold/swap 及 07/10/11 联合交付；本批不改 C 端契约（仅读侧保留 SOLD_OUT 呈现，见 §3.1）。
+3. **批量操作上限——已裁决，已实现**：batch-close/batch 类命令单次条目 >200 拒绝（400 既有参数错误码），见 §3.2。原登记的「跨日/节假日语义」仍维持：仅已批的批量关窗跨天整窗+逐窗恢复；持续性停业开关、节假日模板范围外，任何扩展需新裁决。
+4. **存量 GENERAL 盘点/迁移（SCHC-4）**：上线前盘点与隔离脚本、回填核对与回滚路径未交付；本批迁移不回填任何旧行。归属后续切片（与员工身份切片 #101 协调排序）。
+5. **「每人最多 200 项服务」上限**：随 §3.2 裁决明确为"批量命令条目上限"而非"每人能力项数上限"；每员工能力项数仍不设上限（仅 06号 INT 技术边界校验）。
+6. **排期负责人子账号角色**：员工相关项，**裁决归属 #101（staff-identity）/后续切片**；V1 写入门禁=主账号 OWNER 不变。
+
+> 编号备注：本文档（Contract52/SQL52）编号 52 与 #101 临时冲突，#101 先合并；本批 commit 已登记"待重编号"，#101 合并后由主协调通知 rebase 并统一重编号为下一个空闲号。

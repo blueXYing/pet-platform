@@ -67,8 +67,8 @@ HTTP 映射只属于 Adapter 层；内部 Java API 通过稳定 code 表达同�
 | SCHEDULE_PICKUP_RETURN_INTERVAL_INVALID | 接送时间不足 120 分钟 |
 | SCHEDULE_SWAP_FAILED | 改期原子交换失败，原预约保持 |
 | SCHEDULE_NO_QUALIFIED_STAFF | 无符合条件且在岗的服务人员 |
-| SCHEDULE_WINDOW_OVERLAP | 同店同服务同类型 OPEN 窗（或同员工 AVAILABLE 排班）与已有开放窗重叠；相邻半开区间允许（SCH-004 写入方 SCHW-D3，2026-10-02，[Contract52](52-Schedule-Write-Contract-v0.1.md)） | 409 |
-| SCHEDULE_WINDOW_STATE_NOT_ALLOWED | 排期对象当前状态或占用不允许该操作：已占用（TEMP_LOCKED/CONFIRMED 原窗 claim）窗口关闭/降容量/改时间、对非 OPEN/CLOSED 状态命令、员工 INACTIVE 或存在受保护当前指派/复核不可行的减员（SCHW-D4/D6/D7，2026-10-02，[Contract52](52-Schedule-Write-Contract-v0.1.md)） | 409 |
+| SCHEDULE_WINDOW_OVERLAP | 同店同服务同类型 OPEN/SOLD_OUT 窗（或同员工 AVAILABLE 排班）与已有开放窗重叠；相邻半开区间允许（SCH-004 写入方 SCHW-D3，2026-10-02；SOLD_OUT 视同开放位，2026-10-05，[Contract52](52-Schedule-Write-Contract-v0.1.md) §3.1） | 409 |
+| SCHEDULE_WINDOW_STATE_NOT_ALLOWED | 排期对象当前状态或占用不允许该操作：已占用（TEMP_LOCKED/CONFIRMED 原窗 claim，含 SOLD_OUT 满窗）窗口关闭/降容量/改时间、对非 OPEN/CLOSED/SOLD_OUT 状态命令、员工 INACTIVE 或存在受保护当前指派/复核不可行的减员（SCHW-D4/D6/D7，2026-10-02；SOLD_OUT 口径 2026-10-05，[Contract52](52-Schedule-Write-Contract-v0.1.md) §3.1） | 409 |
 
 ## 5. PAYMENT
 

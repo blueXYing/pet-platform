@@ -983,15 +983,15 @@ refund_order 先创建
 正式实现以 [Contract52](52-Schedule-Write-Contract-v0.1.md)、[SQL52](../03-database/52-Schedule-Write-Schema-v0.1.sql) 与 OpenAPI11 为准；默认 `pet.schedule.command.enabled=false`、`pet.schedule.command.http.enabled=false` 分层关闭。
 
 ```text
-GET    /api/v1/merchant/stores/{storeId}/availability-windows        （工作台列表，含 CLOSED/version）
+GET    /api/v1/merchant/stores/{storeId}/availability-windows        （工作台列表，含 CLOSED/SOLD_OUT/version，status 可按 SOLD_OUT 过滤）
 POST   /api/v1/merchant/stores/{storeId}/availability-windows        （创建，kind×履约方式 400 校验，首次 201）
-PUT    /api/v1/merchant/stores/{storeId}/availability-windows/{windowId}   （编辑 OPEN 窗，expectedVersion；占用禁止改时间/降容量）
-POST   /api/v1/merchant/stores/{storeId}/availability-windows/{windowId}/close   （reason 必填；占用 409）
-POST   /api/v1/merchant/stores/{storeId}/availability-windows/{windowId}/open    （重开核验重叠 409）
-POST   /api/v1/merchant/stores/{storeId}/availability-windows/batch-close        （日历日范围部分关闭，closedWindows/blockedWindows）
+PUT    /api/v1/merchant/stores/{storeId}/availability-windows/{windowId}   （编辑 OPEN/SOLD_OUT 窗，expectedVersion；占用禁止改时间/降容量；升容量同事务按占用重判）
+POST   /api/v1/merchant/stores/{storeId}/availability-windows/{windowId}/close   （reason 必填；占用含 SOLD_OUT 满窗 409）
+POST   /api/v1/merchant/stores/{storeId}/availability-windows/{windowId}/open    （重开核验重叠 409；重开后系统按占用重判，可返回 SOLD_OUT）
+POST   /api/v1/merchant/stores/{storeId}/availability-windows/batch-close        （日历日范围部分关闭，closedWindows/blockedWindows；单次条目>200 整笔 400）
 ```
 
-`window_kind=GENERAL/PICKUP/RETURN`（37号增列）创建后身份固定；同店同服务同 kind OPEN 窗不重叠、相邻半开可衔接；关闭/重开保留历史，无 DELETE/物理删除。周循环模板字段 `dayOfWeek/repeatWeekly/copyNextWeek` V1.0 仍禁止出现。所有写路由 UUID `X-Request-Id` 幂等（23号），OWNER 主账号门禁，同事务共同门店闸门 + append-only 审计。
+`window_kind=GENERAL/PICKUP/RETURN`（37号增列）创建后身份固定；同店同服务同 kind OPEN 窗不重叠、相邻半开可衔接；关闭/重开保留历史，无 DELETE/物理删除。周循环模板字段 `dayOfWeek/repeatWeekly/copyNextWeek` V1.0 仍禁止出现。所有写路由 UUID `X-Request-Id` 幂等（23号），OWNER 主账号门禁，同事务共同门店闸门 + append-only 审计。窗口状态 `OPEN/CLOSED/SOLD_OUT`：SOLD_OUT 为系统派生"已约满"态（有效占用达容量自动进入；退款释放/超时过期取消/换期释放于同一事务回 OPEN；商家不可手工置位或强制可约，升容量放行并按占用重判），口径见 Contract52 §3.1；批量条目 200 上限见 Contract52 §3.2（2026-10-05 裁决）。
 
 ---
 

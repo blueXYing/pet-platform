@@ -84,6 +84,8 @@ public final class ScheduleMerchantCommandService implements ScheduleMerchantCom
     private static final Set<String> WINDOW_KINDS = Set.of("GENERAL", "PICKUP", "RETURN");
     /** Technical column guard (06号 INT); no approved business capacity maximum exists. */
     private static final int MAX_CONFIGURED_CAPACITY = 1_000_000_000;
+    /** 2026-10-05 ruling (blocker 3): one batch command processes at most 200 entries. */
+    private static final int MAX_BATCH_ENTRIES = 200;
 
     static {
         JSON.disable(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS);
@@ -208,7 +210,10 @@ public final class ScheduleMerchantCommandService implements ScheduleMerchantCom
                     guard.acquire(List.of(c.storeId()), query(ctx));
                     Map<String, Object> row =
                             lockedWindow(m, c.windowId(), c.merchantId(), c.storeId());
-                    if (!"OPEN".equals(ScheduleSqlRows.text(row, "status"))) stateNotAllowed();
+                    String status = ScheduleSqlRows.text(row, "status");
+                    // SOLD_OUT is an open-derived state: editing stays possible and is still
+                    // governed by the occupied-window rules below (Contract52 §3).
+                    if (!"OPEN".equals(status) && !"SOLD_OUT".equals(status)) stateNotAllowed();
                     requireCurrentVersion(row, c.expectedVersion());
                     StoreScheduleFacts snapshot = facts.readStore(c.storeId(), query(ctx));
                     long target = id(c.windowId());
@@ -230,6 +235,13 @@ public final class ScheduleMerchantCommandService implements ScheduleMerchantCom
                     }
                     one(m.updateWindow(target, utc(c.startAt()), utc(c.endAt()), nextCapacity,
                             c.expectedVersion(), now()));
+                    if (nextCapacity != currentCapacity) {
+                        // Raising the capacity of a sold-out window re-derives its state in this
+                        // transaction (2026-10-05 ruling: the merchant can never force the
+                        // window bookable; the system recomputes from occupancy).
+                        WindowSoldOutDeriver.rederive(c.storeId(), List.of(target), query(ctx),
+                                facts, m::setWindowDerivedStatus, now());
+                    }
                     WindowResult result = rowToWindow(m.selectWindowByIdForUpdate(target));
                     audit(m, ctx, "WINDOW", target, id(c.merchantId()), id(c.storeId()),
                             "WINDOW_UPDATE", reason, c.expectedVersion(), c.expectedVersion() + 1);
@@ -306,6 +318,11 @@ public final class ScheduleMerchantCommandService implements ScheduleMerchantCom
                             ScheduleSqlRows.at(row, "start_at"),
                             ScheduleSqlRows.at(row, "end_at"), c.windowId());
                     one(m.openWindow(id(c.windowId()), c.expectedVersion(), now()));
+                    // Reopening re-derives the state from occupancy (2026-10-05 ruling): a
+                    // reopened window whose claims already fill it returns as SOLD_OUT, never
+                    // forced bookable beyond capacity.
+                    WindowSoldOutDeriver.rederive(c.storeId(), List.of(id(c.windowId())),
+                            query(ctx), facts, m::setWindowDerivedStatus, now());
                     WindowResult result =
                             rowToWindow(m.selectWindowByIdForUpdate(id(c.windowId())));
                     audit(m, ctx, "WINDOW", id(c.windowId()), id(c.merchantId()), id(c.storeId()),
@@ -344,15 +361,29 @@ public final class ScheduleMerchantCommandService implements ScheduleMerchantCom
                     admissions.requireOperable(query(ctx), id(c.merchantId()), id(c.storeId()));
                     guard.acquire(List.of(c.storeId()), query(ctx));
                     StoreScheduleFacts snapshot = facts.readStore(c.storeId(), query(ctx));
-                    List<WindowResult> closed = new ArrayList<>();
-                    List<BlockedWindow> blocked = new ArrayList<>();
+                    List<WindowFact> targets = new ArrayList<>();
                     for (WindowFact window : snapshot.windows()) {
-                        if (!"OPEN".equals(window.status())) continue;
+                        // SOLD_OUT windows are open-derived and stay batch targets: occupied
+                        // ones are reported as blocked, never silently skipped (SCHW-D5).
+                        if (!"OPEN".equals(window.status())
+                                && !"SOLD_OUT".equals(window.status())) continue;
                         // A window intersecting the calendar-day range is a batch target; partial
                         // closes are allowed, occupied targets are reported (SCHW-D5).
                         boolean intersects = window.startAt().isBefore(to)
                                 && window.endAt().isAfter(from);
-                        if (!intersects) continue;
+                        if (intersects) targets.add(window);
+                    }
+                    // 2026-10-05 ruling (blocker 3): one batch command processes at most 200
+                    // window entries (the closed plus blocked candidates of this range). A
+                    // larger range is rejected whole as a parameter error before any window
+                    // closes, so the overflow is never half-applied.
+                    if (targets.size() > MAX_BATCH_ENTRIES) {
+                        invalid("batch close exceeds " + MAX_BATCH_ENTRIES
+                                + " window entries per command");
+                    }
+                    List<WindowResult> closed = new ArrayList<>();
+                    List<BlockedWindow> blocked = new ArrayList<>();
+                    for (WindowFact window : targets) {
                         long target = id(window.windowId());
                         if (!activeClaimsOn(snapshot, target).isEmpty()) {
                             blocked.add(new BlockedWindow(
@@ -840,7 +871,10 @@ public final class ScheduleMerchantCommandService implements ScheduleMerchantCom
     private static void ensureNoOpenOverlap(StoreScheduleFacts snapshot, String serviceId,
             String kind, OffsetDateTime start, OffsetDateTime end, String excludedWindowId) {
         for (WindowFact window : snapshot.windows()) {
-            if (!"OPEN".equals(window.status())
+            // SOLD_OUT windows still hold their open slot: a sold-out window blocks overlapping
+            // creations and reopens, so a later release can return it to OPEN without ever
+            // producing two overlapping open windows (Contract52 §3).
+            if ((!"OPEN".equals(window.status()) && !"SOLD_OUT".equals(window.status()))
                     || !serviceId.equals(window.serviceId())
                     || !kind.equals(window.kind())
                     || window.windowId().equals(excludedWindowId)) {

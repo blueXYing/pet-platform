@@ -30,7 +30,7 @@ import java.util.Set;
  */
 public final class ScheduleMerchantQueryApiImpl implements ScheduleMerchantQueryApi {
     private static final DecimalPublicIdCodec IDS = new DecimalPublicIdCodec();
-    private static final Set<String> STATUSES = Set.of("OPEN", "CLOSED", "AVAILABLE");
+    private static final Set<String> STATUSES = Set.of("OPEN", "CLOSED", "SOLD_OUT", "AVAILABLE");
     private static final Set<String> KINDS = Set.of("GENERAL", "PICKUP", "RETURN");
 
     private final ScheduleReadStore store;

@@ -22,6 +22,8 @@
         ORDER BY staff_id, start_at, end_at, id
     </select>
 
+    <!-- C-end visibility: SOLD_OUT stays listed with remaining=0/available=false, matching the
+         presentation an at-capacity OPEN window already had (Contract52 §3, 2026-10-05). -->
     <select id="selectOpenWindows"
             resultType="com.petplatform.schedule.biz.infrastructure.persistence.entity.ScheduleAvailabilityWindowEntity">
         SELECT id,
@@ -36,7 +38,7 @@
         FROM schedule_availability_window
         WHERE store_id = #{storeId}
           AND service_id = #{serviceId}
-          AND status = 'OPEN'
+          AND status IN ('OPEN', 'SOLD_OUT')
           AND start_at &lt; #{toAt}
           AND end_at &gt; #{fromAt}
         ORDER BY start_at, id

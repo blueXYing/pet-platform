@@ -44,6 +44,11 @@ public interface ScheduleWriteMapper {
     int openWindow(@Param("windowId") long windowId,
             @Param("expectedVersion") long expectedVersion, @Param("now") LocalDateTime now);
 
+    /** CAS flip of the system-derived OPEN/SOLD_OUT window state (Contract52 §3). */
+    int setWindowDerivedStatus(@Param("windowId") long windowId,
+            @Param("expectedStatus") String expectedStatus,
+            @Param("nextStatus") String nextStatus, @Param("now") LocalDateTime now);
+
     // ------------------------------------------------------------ staff availability windows
 
     Map<String, Object> selectStaffWindowByIdForUpdate(@Param("windowId") long windowId);

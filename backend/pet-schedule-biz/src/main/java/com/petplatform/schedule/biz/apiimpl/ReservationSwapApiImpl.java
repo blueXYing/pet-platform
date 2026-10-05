@@ -27,7 +27,9 @@ public final class ReservationSwapApiImpl implements ReservationSwapApi {
   this.source=Objects.requireNonNull(source);this.ids=Objects.requireNonNull(ids);this.guard=Objects.requireNonNull(guard);
   this.facts=Objects.requireNonNull(facts);this.proof=Objects.requireNonNull(proof);this.orders=Objects.requireNonNull(orders);this.commit=Objects.requireNonNull(commit);
   mapper=ScheduleMybatis.template(source).getMapper(ScheduleSwapMapper.class);
+  commandMapper=ScheduleMybatis.template(source).getMapper(com.petplatform.schedule.biz.infrastructure.persistence.mapper.ScheduleCommandMapper.class);
  }
+ private final com.petplatform.schedule.biz.infrastructure.persistence.mapper.ScheduleCommandMapper commandMapper;
  public Result swap(Command c){
   if(c==null||c.context()==null||c.context().operatorType()!=OperatorType.USER||!Objects.equals(c.userId(),c.context().operatorId()))throw error(CommonApiCodes.FORBIDDEN);
   guard.requireHeld(c.storeId(),source);
@@ -75,6 +77,12 @@ public final class ReservationSwapApiImpl implements ReservationSwapApi {
    parent.put("id",c.reservationId());
    if(mapper.history(values("id",change,"reservation",IDS.fromApi(c.reservationId()),"orderId",IDS.fromApi(c.orderId()),"storeId",IDS.fromApi(c.storeId()),
      "command",IDS.fromApi(c.commandId()),"version",version,"old",json(oldSnapshot),"new",json(newSnapshot),"now",utc(c.rescheduledAt())))!=1)throw bad();
+   // The swap moves confirmed occupancy between windows: both sides re-derive in this
+   // transaction (Contract52 §3, 2026-10-05 SOLD_OUT ruling).
+   var movedWindows=new java.util.LinkedHashSet<Long>();
+   for(var o:original)movedWindows.add(IDS.fromApi(o.windowId()));
+   for(var n:plan.claims())movedWindows.add(IDS.fromApi(n.windowId()));
+   WindowSoldOutDeriver.rederive(c.storeId(),movedWindows,q,facts,commandMapper::setWindowDerivedStatus,utc(c.rescheduledAt()));
    TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization(){
     public void beforeCommit(boolean readOnly){
      guard.requireHeld(c.storeId(),source);

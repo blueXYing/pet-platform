@@ -269,7 +269,7 @@ public final class ScheduleCapacityProofApiImpl implements ScheduleCapacityProof
     private List<Claim> candidate(CapacityProofQuery query, Map<String, WindowFact> windows) {
         if ("IN_STORE".equals(query.fulfillmentType())) {
             List<WindowFact> eligible = windows.values().stream()
-                    .filter(window -> "OPEN".equals(window.status())
+                    .filter(window -> openDerived(window.status())
                             && "GENERAL".equals(window.kind())
                             && query.storeId().equals(window.storeId())
                             && query.serviceId().equals(window.serviceId())
@@ -298,8 +298,15 @@ public final class ScheduleCapacityProofApiImpl implements ScheduleCapacityProof
                 new Claim(returning.windowId(), interval(returning.startAt(), returning.endAt())));
     }
 
+    /** OPEN and its derived SOLD_OUT sub-state are both original windows; the solver, not the
+     * status, rejects net-new occupancy on a filled window (a swap re-proofs after removing its
+     * own reservation, so rescheduling inside a sold-out original window stays possible). */
+    private static boolean openDerived(String status) {
+        return "OPEN".equals(status) || "SOLD_OUT".equals(status);
+    }
+
     private boolean selected(CapacityProofQuery query, WindowFact window, String kind) {
-        return window != null && "OPEN".equals(window.status()) && kind.equals(window.kind())
+        return window != null && openDerived(window.status()) && kind.equals(window.kind())
                 && query.storeId().equals(window.storeId())
                 && query.serviceId().equals(window.serviceId());
     }

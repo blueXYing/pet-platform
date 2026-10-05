@@ -1595,7 +1595,7 @@ paths:
       x-contract-status: IMPLEMENTED_DEFAULT_OFF
       x-contract: 52-Schedule-Write-Contract-v0.1.md
       x-audience: MINIAPP
-      x-authorization: Current OWNER; calendar-day range in Asia/Shanghai; partial close is allowed and blocked windows must be reported explicitly (SCHW-D5); infra failure rolls the whole batch back with 503.
+      x-authorization: Current OWNER; calendar-day range in Asia/Shanghai; partial close is allowed and blocked windows must be reported explicitly (SCHW-D5); at most 200 window entries per command, a larger range is rejected whole with 400 before any close (Contract52 3.2, 2026-10-05); infra failure rolls the whole batch back with 503.
       security:
       - bearerAuth: []
       parameters:
@@ -11906,6 +11906,7 @@ components:
           enum:
           - OPEN
           - CLOSED
+          - SOLD_OUT
         version:
           type: string
           pattern: '^(0|[1-9][0-9]{0,17})$'
