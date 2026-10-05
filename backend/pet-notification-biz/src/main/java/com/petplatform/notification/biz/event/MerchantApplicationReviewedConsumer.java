@@ -37,11 +37,21 @@ public final class MerchantApplicationReviewedConsumer implements IntegrationEve
           .enable(DeserializationFeature.FAIL_ON_TRAILING_TOKENS);
   private final MerchantReviewNotificationStore store;
   private final SnowflakeIdGenerator ids;
+  private final com.petplatform.notification.biz.delivery.WechatDeliveryTaskProducer delivery;
 
   public MerchantApplicationReviewedConsumer(
       MerchantReviewNotificationStore store, SnowflakeIdGenerator ids) {
+    this(store, ids, null);
+  }
+
+  /** NTF-002: nullable delivery producer; null (switch off) keeps the consumer behavior identical. */
+  public MerchantApplicationReviewedConsumer(
+      MerchantReviewNotificationStore store,
+      SnowflakeIdGenerator ids,
+      com.petplatform.notification.biz.delivery.WechatDeliveryTaskProducer delivery) {
     this.store = Objects.requireNonNull(store);
     this.ids = Objects.requireNonNull(ids);
+    this.delivery = delivery;
   }
 
   public MerchantApplicationReviewedConsumer(
@@ -49,6 +59,14 @@ public final class MerchantApplicationReviewedConsumer implements IntegrationEve
       SnowflakeIdGenerator ids,
       java.util.function.BiPredicate<String, DispatchedEvent> consumeGuard) {
     this(new MerchantReviewNotificationStore(source, consumeGuard), ids);
+  }
+
+  public MerchantApplicationReviewedConsumer(
+      javax.sql.DataSource source,
+      SnowflakeIdGenerator ids,
+      java.util.function.BiPredicate<String, DispatchedEvent> consumeGuard,
+      com.petplatform.notification.biz.delivery.WechatDeliveryTaskProducer delivery) {
+    this(new MerchantReviewNotificationStore(source, consumeGuard), ids, delivery);
   }
 
   @Override
@@ -121,7 +139,17 @@ public final class MerchantApplicationReviewedConsumer implements IntegrationEve
     long id = ids.nextId();
     if (id <= 0) throw new IllegalStateException("notification ID unavailable");
     store.recordOnce(
-        consumerName(), event, id, ownerId, applicationId, "商家入驻审核结果", content, decidedAt);
+        consumerName(),
+        event,
+        id,
+        ownerId,
+        applicationId,
+        "商家入驻审核结果",
+        content,
+        decidedAt,
+        delivery == null
+            ? null
+            : () -> delivery.enqueueAfterInboxInsert(id, ownerId));
   }
 
   private static String text(JsonNode node, String field) {

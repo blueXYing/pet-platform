@@ -47,6 +47,24 @@ public final class ServiceReviewNotificationStore {
       String title,
       String content,
       OffsetDateTime createdAt) {
+    recordOnce(consumer, event, id, ownerId, serviceId, title, content, createdAt, null);
+  }
+
+  /**
+   * NTF-002 hook: {@code afterInboxInsert} (nullable) runs inside the same notification
+   * transaction right after the authoritative row is persisted, so an external delivery task can
+   * commit atomically with it. Null (default OFF) keeps the historical behavior unchanged.
+   */
+  public void recordOnce(
+      String consumer,
+      DispatchedEvent event,
+      long id,
+      long ownerId,
+      long serviceId,
+      String title,
+      String content,
+      OffsetDateTime createdAt,
+      Runnable afterInboxInsert) {
     transaction.executeWithoutResult(
         status -> {
           var mapper = sql.getMapper(NotificationServiceReviewMapper.class);
@@ -62,6 +80,7 @@ public final class ServiceReviewNotificationStore {
               != 1) {
             throw new IllegalStateException("notification was not persisted");
           }
+          if (afterInboxInsert != null) afterInboxInsert.run();
         });
   }
 }

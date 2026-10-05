@@ -48,8 +48,13 @@ public class EventOutboxConfiguration {
       name = "notifications-enabled",
       havingValue = "true")
   MerchantApplicationReviewedConsumer merchantApplicationReviewedConsumer(
-      DataSource dataSource, SnowflakeIdGenerator ids, JdbcOutboxConsumeGuard guard) {
-    return new MerchantApplicationReviewedConsumer(dataSource, ids, guard::tryClaim);
+      DataSource dataSource,
+      SnowflakeIdGenerator ids,
+      JdbcOutboxConsumeGuard guard,
+      ObjectProvider<com.petplatform.notification.biz.delivery.WechatDeliveryTaskProducer>
+              wechatDelivery) {
+    return new MerchantApplicationReviewedConsumer(
+        dataSource, ids, guard::tryClaim, wechatDelivery.getIfAvailable());
     }
 
     // Role W wiring (2026-09-23): the consumer class from PR#69 is now on the classpath, so the
@@ -64,8 +69,12 @@ public class EventOutboxConfiguration {
             name = "notifications-enabled",
             havingValue = "true")
     ServiceReviewedConsumer serviceReviewedConsumer(
-            DataSource dataSource, SnowflakeIdGenerator ids, JdbcOutboxConsumeGuard guard) {
-        return new ServiceReviewedConsumer(dataSource, ids, guard::tryClaim);
+            DataSource dataSource,
+            SnowflakeIdGenerator ids,
+            JdbcOutboxConsumeGuard guard,
+            ObjectProvider<com.petplatform.notification.biz.delivery.WechatDeliveryTaskProducer>
+                    wechatDelivery) {
+        return new ServiceReviewedConsumer(dataSource, ids, guard::tryClaim, wechatDelivery.getIfAvailable());
     }
 
     @Bean(destroyMethod = "close")
