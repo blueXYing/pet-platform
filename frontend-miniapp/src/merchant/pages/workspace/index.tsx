@@ -63,6 +63,13 @@ export default function MerchantWorkbenchPage() {
     controller.handoffToChild()
     Taro.navigateTo({ url: '/merchant/pages/schedule/index' }).catch(() => controller.handoffCancelled())
   }
+
+  // Contract 54 staff binding entry (member management: list/invite/cancel/disable). Same
+  // handoff discipline as the service pages: the child gates on the coordinates this page holds.
+  function openMembers() {
+    controller.handoffToChild()
+    Taro.navigateTo({ url: '/merchant/pages/members/index' }).catch(() => controller.handoffCancelled())
+  }
   const view = state.view
   return <View className='merchant-workbench'>
     <View className='workbench-header'>
@@ -106,6 +113,7 @@ export default function MerchantWorkbenchPage() {
           <Button id='workbench-services' onClick={openServices}>服务管理</Button>
           {/* Schedule maintenance entry gates on the approved action (53号 写侧消费切片). */}
           {view.allowedActions.includes('merchant.schedule.manage') && <Button id='workbench-schedule' onClick={openSchedule}>排期管理</Button>}
+          <Button id='workbench-members' onClick={openMembers}>成员管理</Button>
         </View>}
         {view.nextSteps.length > 0 && <View className='workbench-steps'>
           {view.nextSteps.map(step => <Button key={step.type} onClick={() => takeStep(step.type, view.merchantId)}>{stepText[step.type] || step.type}</Button>)}

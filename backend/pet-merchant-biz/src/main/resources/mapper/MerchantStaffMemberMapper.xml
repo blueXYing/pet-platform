@@ -1,0 +1,199 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.petplatform.merchant.biz.infrastructure.persistence.mapper.MerchantStaffMemberMapper">
+  <sql id="ownedScopeColumns">
+    m.id AS merchant_id,m.owner_user_id,m.status AS merchant_status,s.id AS store_id,s.status AS store_status
+  </sql>
+  <select id="selectOwnedScope" resultType="com.petplatform.merchant.biz.infrastructure.persistence.entity.MerchantStaffScopeEntity">
+    SELECT <include refid="ownedScopeColumns"/>
+    FROM merchant m JOIN merchant_store s ON s.merchant_id=m.id
+    WHERE m.id=#{merchantId} AND s.id=#{storeId} AND m.owner_user_id=#{ownerUserId}
+  </select>
+  <select id="lockOwnedScope" resultType="com.petplatform.merchant.biz.infrastructure.persistence.entity.MerchantStaffScopeEntity">
+    SELECT <include refid="ownedScopeColumns"/>
+    FROM merchant m JOIN merchant_store s ON s.merchant_id=m.id
+    WHERE m.id=#{merchantId} AND s.id=#{storeId} AND m.owner_user_id=#{ownerUserId} FOR UPDATE
+  </select>
+  <select id="lockApplication" resultType="long">
+    SELECT id FROM merchant_application WHERE reserved_merchant_id=#{merchantId} FOR UPDATE
+  </select>
+  <select id="lockMerchant" resultType="com.petplatform.merchant.biz.infrastructure.persistence.entity.MerchantStaffScopeEntity">
+    SELECT m.id AS merchant_id,m.owner_user_id,m.status AS merchant_status
+    FROM merchant m WHERE m.id=#{merchantId} FOR UPDATE
+  </select>
+
+  <sql id="invitationColumns">
+    id,merchant_id AS merchantId,store_id AS storeId,phone,member_name AS memberName,status,
+    invited_by AS invitedBy,confirmed_by AS confirmedBy,member_id AS memberId,version,
+    pending_marker AS pendingMarker
+  </sql>
+  <select id="selectInvitation" resultType="com.petplatform.merchant.biz.infrastructure.persistence.entity.MerchantMemberInvitationEntity">
+    SELECT <include refid="invitationColumns"/> FROM merchant_member_invitation WHERE id=#{invitationId}
+  </select>
+  <select id="selectInvitationForOwner" resultType="com.petplatform.merchant.biz.infrastructure.persistence.entity.MerchantMemberInvitationEntity">
+    SELECT <include refid="invitationColumns"/> FROM merchant_member_invitation
+    WHERE id=#{invitationId} AND merchant_id=#{merchantId} AND store_id=#{storeId}
+  </select>
+  <select id="lockInvitation" resultType="com.petplatform.merchant.biz.infrastructure.persistence.entity.MerchantMemberInvitationEntity">
+    SELECT <include refid="invitationColumns"/> FROM merchant_member_invitation WHERE id=#{invitationId} FOR UPDATE
+  </select>
+  <select id="lockPendingInvitation" resultType="com.petplatform.merchant.biz.infrastructure.persistence.entity.MerchantMemberInvitationEntity">
+    SELECT <include refid="invitationColumns"/> FROM merchant_member_invitation
+    WHERE merchant_id=#{merchantId} AND phone=#{phone} AND pending_marker='PENDING' FOR UPDATE
+  </select>
+  <insert id="insertInvitation">
+    INSERT INTO merchant_member_invitation(id,merchant_id,store_id,phone,member_name,status,
+      invited_by,version,pending_marker,created_at,updated_at)
+    VALUES(#{id},#{merchantId},#{storeId},#{phone},#{memberName},'INVITED',#{invitedBy},0,'PENDING',#{now},#{now})
+  </insert>
+  <insert id="insertInvitationAction">
+    INSERT INTO merchant_member_invitation_action(id,invitation_id,action_code,created_at)
+    VALUES(#{id},#{invitationId},#{actionCode},#{now})
+  </insert>
+  <select id="listInvitationActions" resultType="string">
+    SELECT action_code FROM merchant_member_invitation_action
+    WHERE invitation_id=#{invitationId} ORDER BY action_code ASC
+  </select>
+  <update id="cancelInvitation">
+    UPDATE merchant_member_invitation SET status='CANCELED',pending_marker=CAST(id AS CHAR),
+      version=version+1,updated_at=#{now}
+    WHERE id=#{invitationId} AND merchant_id=#{merchantId} AND status='INVITED'
+      AND version=#{expectedVersion}
+  </update>
+  <update id="confirmInvitation">
+    UPDATE merchant_member_invitation SET status='CONFIRMED',confirmed_by=#{confirmedBy},
+      member_id=#{memberId},pending_marker=CAST(id AS CHAR),version=version+1,updated_at=#{now}
+    WHERE id=#{invitationId} AND merchant_id=#{merchantId} AND status='INVITED'
+      AND version=#{expectedVersion}
+  </update>
+  <select id="listInvitationRows" resultType="com.petplatform.merchant.biz.infrastructure.persistence.entity.MerchantMemberInvitationEntity">
+    SELECT <include refid="invitationColumns"/> FROM merchant_member_invitation
+    WHERE merchant_id=#{merchantId} AND store_id=#{storeId}
+    ORDER BY id DESC LIMIT #{limit} OFFSET #{offset}
+  </select>
+  <select id="countInvitationRows" resultType="long">
+    SELECT COUNT(*) FROM merchant_member_invitation
+    WHERE merchant_id=#{merchantId} AND store_id=#{storeId}
+  </select>
+  <select id="listInvitationActionsByIds" resultType="com.petplatform.merchant.biz.infrastructure.persistence.entity.MerchantActionRefEntity">
+    SELECT invitation_id AS ownerId, action_code AS actionCode
+    FROM merchant_member_invitation_action
+    WHERE invitation_id IN
+    <foreach collection="invitationIds" item="invitationId" open="(" separator="," close=")">#{invitationId}</foreach>
+    ORDER BY invitation_id ASC, action_code ASC
+  </select>
+
+  <sql id="memberScopeColumns">
+    mb.id AS member_id,mb.user_id AS userId,mb.status AS memberStatus,mb.version AS memberVersion,
+    g.id AS grant_id,g.status AS grantStatus,g.version AS grantVersion
+  </sql>
+  <select id="lockMemberScope" resultType="com.petplatform.merchant.biz.infrastructure.persistence.entity.MerchantMemberGrantScopeEntity">
+    SELECT <include refid="memberScopeColumns"/>
+    FROM merchant_member mb
+    LEFT JOIN merchant_member_store_grant g ON g.member_id=mb.id AND g.store_id=#{storeId}
+    WHERE mb.id=#{memberId} AND mb.merchant_id=#{merchantId} FOR UPDATE
+  </select>
+  <select id="selectMemberScope" resultType="com.petplatform.merchant.biz.infrastructure.persistence.entity.MerchantMemberGrantScopeEntity">
+    SELECT <include refid="memberScopeColumns"/>
+    FROM merchant_member mb
+    LEFT JOIN merchant_member_store_grant g ON g.member_id=mb.id AND g.store_id=#{storeId}
+    WHERE mb.id=#{memberId} AND mb.merchant_id=#{merchantId}
+  </select>
+  <select id="lockMemberByUser" resultType="com.petplatform.merchant.biz.infrastructure.persistence.entity.MerchantMemberGrantScopeEntity">
+    SELECT mb.id AS member_id,mb.user_id AS userId,mb.status AS memberStatus,mb.version AS memberVersion
+    FROM merchant_member mb
+    WHERE mb.merchant_id=#{merchantId} AND mb.user_id=#{userId} FOR UPDATE
+  </select>
+  <select id="readMemberRow" resultType="com.petplatform.merchant.biz.infrastructure.persistence.entity.MerchantMemberRowEntity">
+    SELECT mb.merchant_id AS merchantId,#{storeId} AS storeId,mb.id AS memberId,
+      mb.user_id AS userId,inv.member_name AS memberName,inv.phone AS phone,
+      mb.status AS memberStatus,mb.version AS memberVersion,
+      g.status AS grantStatus,g.version AS grantVersion
+    FROM merchant_member mb
+    LEFT JOIN merchant_member_store_grant g ON g.member_id=mb.id AND g.store_id=#{storeId}
+    LEFT JOIN merchant_member_invitation inv ON inv.member_id=mb.id AND inv.status='CONFIRMED'
+    WHERE mb.id=#{memberId} AND mb.merchant_id=#{merchantId}
+  </select>
+  <insert id="insertMember">
+    INSERT INTO merchant_member(id,merchant_id,user_id,status,version,created_at,updated_at)
+    VALUES(#{id},#{merchantId},#{userId},'ENABLED',0,#{now},#{now})
+  </insert>
+  <update id="updateMemberStatus">
+    UPDATE merchant_member SET status=#{status},version=version+1,updated_at=#{now}
+    WHERE id=#{memberId} AND merchant_id=#{merchantId} AND version=#{expectedVersion}
+  </update>
+  <insert id="insertGrant">
+    INSERT INTO merchant_member_store_grant(id,member_id,store_id,status,version,created_at,updated_at)
+    VALUES(#{id},#{memberId},#{storeId},'ENABLED',0,#{now},#{now})
+  </insert>
+  <update id="updateGrantStatus">
+    UPDATE merchant_member_store_grant SET status=#{status},version=version+1,updated_at=#{now}
+    WHERE member_id=#{memberId} AND store_id=#{storeId} AND version=#{expectedVersion}
+  </update>
+  <delete id="deleteGrantActions">
+    DELETE FROM merchant_member_store_action WHERE member_id=#{memberId} AND store_id=#{storeId}
+  </delete>
+  <insert id="insertGrantAction">
+    INSERT INTO merchant_member_store_action(id,member_id,store_id,action_code,created_at,updated_at)
+    VALUES(#{id},#{memberId},#{storeId},#{actionCode},#{now},#{now})
+  </insert>
+  <select id="listGrantActions" resultType="string">
+    SELECT action_code FROM merchant_member_store_action
+    WHERE member_id=#{memberId} AND store_id=#{storeId} ORDER BY action_code ASC
+  </select>
+  <sql id="memberListFrom">
+    FROM merchant_member mb
+    JOIN merchant_member_store_grant g ON g.member_id=mb.id AND g.store_id=#{storeId}
+    LEFT JOIN merchant_member_invitation inv ON inv.member_id=mb.id AND inv.status='CONFIRMED'
+    WHERE mb.merchant_id=#{merchantId}
+  </sql>
+  <select id="listMemberRows" resultType="com.petplatform.merchant.biz.infrastructure.persistence.entity.MerchantMemberRowEntity">
+    SELECT mb.merchant_id AS merchantId,#{storeId} AS storeId,mb.id AS memberId,
+      mb.user_id AS userId,inv.member_name AS memberName,inv.phone AS phone,
+      mb.status AS memberStatus,mb.version AS memberVersion,
+      g.status AS grantStatus,g.version AS grantVersion
+    <include refid="memberListFrom"/>
+    ORDER BY mb.id ASC LIMIT #{limit} OFFSET #{offset}
+  </select>
+  <select id="countMemberRows" resultType="long">
+    SELECT COUNT(*)<include refid="memberListFrom"/>
+  </select>
+  <select id="listGrantActionsByMembers" resultType="com.petplatform.merchant.biz.infrastructure.persistence.entity.MerchantActionRefEntity">
+    SELECT member_id AS ownerId, action_code AS actionCode
+    FROM merchant_member_store_action
+    WHERE store_id=#{storeId} AND member_id IN
+    <foreach collection="memberIds" item="memberId" open="(" separator="," close=")">#{memberId}</foreach>
+    ORDER BY member_id ASC, action_code ASC
+  </select>
+
+  <select id="selectStoreFact" resultType="com.petplatform.merchant.biz.infrastructure.persistence.entity.MerchantStoreFactEntity">
+    SELECT m.id AS merchantId,m.merchant_name AS merchantName,m.status AS merchantStatus,
+      s.id AS storeId,s.store_name AS storeName,s.status AS storeStatus
+    FROM merchant m JOIN merchant_store s ON s.merchant_id=m.id AND s.id=#{storeId}
+    WHERE m.id=#{merchantId}
+  </select>
+
+  <insert id="insertAudit">
+    INSERT INTO merchant_member_audit(id,actor_type,actor_id,action_code,merchant_id,store_id,
+      member_id,invitation_id,from_status,to_status,from_version,to_version,request_key,
+      request_id,trace_id,occurred_at)
+    VALUES(#{id},'USER',#{actorId},#{action},#{merchantId},#{storeId},#{memberId},#{invitationId},
+      #{fromStatus},#{toStatus},#{fromVersion},#{toVersion},#{requestKey},#{requestId},
+      #{traceId},#{now})
+  </insert>
+
+  <insert id="insertBinding">
+    INSERT INTO merchant_command_idempotency(id,request_key,canonical_version,params_sha256,
+      params_canonical,status,receipt_json,trace_id,created_at,succeeded_at)
+    VALUES(#{id},#{requestKey},#{canonicalVersion},#{paramsSha256},#{paramsCanonical},'RESERVED',
+      NULL,#{traceId},UTC_TIMESTAMP(3),NULL)
+  </insert>
+  <select id="selectBindingForUpdate" resultType="com.petplatform.merchant.biz.infrastructure.persistence.entity.MerchantCommandBindingEntity">
+    SELECT id,canonical_version,params_sha256,params_canonical,status,receipt_json
+    FROM merchant_command_idempotency WHERE request_key=#{requestKey} FOR UPDATE
+  </select>
+  <update id="markBindingSucceeded">
+    UPDATE merchant_command_idempotency SET status='SUCCEEDED',receipt_json=#{receiptJson},
+      succeeded_at=UTC_TIMESTAMP(3) WHERE request_key=#{requestKey} AND status='RESERVED'
+  </update>
+</mapper>
