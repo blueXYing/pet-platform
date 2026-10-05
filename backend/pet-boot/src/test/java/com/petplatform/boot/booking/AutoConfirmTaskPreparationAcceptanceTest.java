@@ -231,6 +231,13 @@ class AutoConfirmTaskPreparationAcceptanceTest {
         return event(f);
     }
 
+        static DispatchedEvent event(PaymentFoundationAcceptanceTest.Fixture f, String paymentId) {
+        return f.db.jdbc.queryForObject("SELECT * FROM integration_event_outbox WHERE event_type='PaymentSucceededEvent.v1' AND aggregate_id=" + Long.parseLong(paymentId),
+                (rs, index) -> new DispatchedEvent(rs.getString("event_id"), rs.getString("event_type"),
+                        rs.getInt("event_version"), rs.getObject("occurred_at", LocalDateTime.class).atOffset(ZoneOffset.UTC),
+                        rs.getString("aggregate_type"), rs.getLong("aggregate_id"), rs.getString("trace_id"), rs.getString("payload")));
+    }
+
     static DispatchedEvent event(PaymentFoundationAcceptanceTest.Fixture f) {
         return f.db.jdbc.queryForObject("SELECT * FROM integration_event_outbox WHERE event_type='PaymentSucceededEvent.v1'",
                 (rs, index) -> new DispatchedEvent(rs.getString("event_id"), rs.getString("event_type"),

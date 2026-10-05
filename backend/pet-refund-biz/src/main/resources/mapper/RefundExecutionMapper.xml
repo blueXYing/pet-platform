@@ -101,7 +101,7 @@
     SELECT e.refund_order_id,e.store_id,r.source_type FROM refund_execution e
     JOIN refund_order r ON r.id=e.refund_order_id
     WHERE r.status IN ('CREATED','PROCESSING','UNKNOWN') AND e.refund_order_id&gt;#{after}
-      AND ((#{late}=TRUE AND r.source_type='LATE_PAYMENT_TIMEOUT') OR (#{merchant}=TRUE AND r.source_type='MERCHANT_REJECT_ORDER') OR (#{application}=TRUE AND r.source_type IN ('MERCHANT_APPROVED','MERCHANT_TIMEOUT_AUTO')) OR (#{aftersale}=TRUE AND r.source_type='AFTERSALE_DECISION'))
+      AND ((#{late}=TRUE AND r.source_type='LATE_PAYMENT_TIMEOUT') OR (#{merchant}=TRUE AND r.source_type='MERCHANT_REJECT_ORDER') OR (#{application}=TRUE AND r.source_type IN ('MERCHANT_APPROVED','MERCHANT_TIMEOUT_AUTO','PRESTART_AUTO')) OR (#{aftersale}=TRUE AND r.source_type='AFTERSALE_DECISION'))
     ORDER BY e.refund_order_id LIMIT 100
   </select>
   <select id="persistedFirstQueryAt" resultType="java.time.LocalDateTime">SELECT first_query_at FROM refund_execution WHERE refund_order_id=#{refund} FOR UPDATE</select>

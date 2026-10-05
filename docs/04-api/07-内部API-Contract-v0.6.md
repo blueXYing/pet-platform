@@ -1805,7 +1805,7 @@ thirdparty-api 新增独立 ServiceCoverSigningApi.signServiceCover(String asset
 | ORDER / `OrderRefundApplicationApi` | `locate(orderId,context)`、`requireEligible(orderId,storeId,context,transactionSource)`、`bindApplication`、`recordDecision`、`requireApplicationBound`、`requireDecisionRecorded`；本域正常付款及履约资格、当前轮投影与证明。 |
 | ORDER / `OrderRefundApplicationApi` | `acquireCreate(applicationId,decisionId,orderId,storeId,commandId,context,transactionSource)` 返回 `Permit`；`commitCreated(token,orderId,storeId,refundOrderId,createdAt,transactionSource)`；`requireCreated(orderId,storeId,refundOrderId,transactionSource)`。 |
 | ORDER / `OrderRefundApplicationFactsApi` | `requireApprovedRefund(orderId,paymentId,storeId,context)` 返回真实正常付款与本域已提交普通来源证明，供 PAYMENT 首次发送及 ORDER 成功投影核验。 |
-| SCHEDULE / `ReservationRefundReleaseApi` | 既有 `release` 签名不变；原商家拒单外增加两种普通来源，仅在 REFUND 公共成功事实通过、原订单/门店/预约一致时释放。 |
+| SCHEDULE / `ReservationRefundReleaseApi` | 既有 `release` 签名不变；原商家拒单外增加三种普通来源（`MERCHANT_APPROVED`/`MERCHANT_TIMEOUT_AUTO`，及 2026-10-05 用户裁决新增的服务前 `PRESTART_AUTO`），仅在 REFUND 公共成功事实通过、原订单/门店/预约一致时释放。 |
 
 除 `locate` 路由提示外，ORDER/REFUND 证明能力要求当前同 DataSource、可写 READ_COMMITTED 事务和共同门店 guard。涉及跨域写入时，调用方必须通过双方公开证明接口在提交前复核，不跨读 Mapper。异常标记当前事务回滚，不能捕获后提交孤立申请、决定或退款单。
 

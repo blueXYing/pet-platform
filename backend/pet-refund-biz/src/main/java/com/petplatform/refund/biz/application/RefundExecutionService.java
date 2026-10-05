@@ -202,11 +202,11 @@ public final class RefundExecutionService {
     }
 
     public static String taskType(RefundExecutionFact f,boolean query) {
-        String prefix=switch(f.sourceType()){case "LATE_PAYMENT_TIMEOUT"->"";case "MERCHANT_REJECT_ORDER"->"MERCHANT_";case "MERCHANT_APPROVED","MERCHANT_TIMEOUT_AUTO"->"APPLICATION_";case "AFTERSALE_DECISION"->"AFTERSALE_";default->throw unavailable();};
+        String prefix=switch(f.sourceType()){case "LATE_PAYMENT_TIMEOUT"->"";case "MERCHANT_REJECT_ORDER"->"MERCHANT_";case "MERCHANT_APPROVED","MERCHANT_TIMEOUT_AUTO","PRESTART_AUTO"->"APPLICATION_";case "AFTERSALE_DECISION"->"AFTERSALE_";default->throw unavailable();};
         return prefix+(query?"REFUND_CHANNEL_QUERY":"REFUND_SUBMIT");
     }
     private static String issueCode(RefundExecutionFact f) {
-        return switch(f.sourceType()){case "LATE_PAYMENT_TIMEOUT"->"LATE_PAYMENT_AUTO_REFUND_FAILED";case "MERCHANT_APPROVED","MERCHANT_TIMEOUT_AUTO"->"APPLICATION_REFUND_FAILED";case "MERCHANT_REJECT_ORDER"->"MERCHANT_REJECT_REFUND_FAILED";case "AFTERSALE_DECISION"->"AFTERSALE_REFUND_FAILED";default->throw unavailable();};
+        return switch(f.sourceType()){case "LATE_PAYMENT_TIMEOUT"->"LATE_PAYMENT_AUTO_REFUND_FAILED";case "MERCHANT_APPROVED","MERCHANT_TIMEOUT_AUTO","PRESTART_AUTO"->"APPLICATION_REFUND_FAILED";case "MERCHANT_REJECT_ORDER"->"MERCHANT_REJECT_REFUND_FAILED";case "AFTERSALE_DECISION"->"AFTERSALE_REFUND_FAILED";default->throw unavailable();};
     }
     private static void same(RefundExecutionFact a,RefundExecutionFact b) {
         if(!Objects.equals(a.refundType(),b.refundType())||!Objects.equals(a.sourceType(),b.sourceType())||!Objects.equals(a.sourceEventId(),b.sourceEventId())

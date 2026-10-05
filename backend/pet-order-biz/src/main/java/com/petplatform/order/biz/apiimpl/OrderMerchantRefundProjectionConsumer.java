@@ -42,7 +42,7 @@ public final class OrderMerchantRefundProjectionConsumer implements IntegrationE
             if(IDS.fromApi(refund)!=event.aggregateId()||!"FULL".equals(text(n,"refundType"))||!n.path("refundAmount").isNumber()||!n.path("originalPaidAmount").isNumber())throw unavailable();
             OffsetDateTime at=OffsetDateTime.parse(text(n,"succeededAt"));PublicContractChecks.requireMillisecondPrecision(at);
             if(event.occurredAt()==null||!at.isEqual(event.occurredAt()))throw unavailable();
-            String sourceType=text(n,"refundSource");if(Set.of("LATE_PAYMENT_TIMEOUT","MERCHANT_APPROVED","MERCHANT_TIMEOUT_AUTO").contains(sourceType))return;
+            String sourceType=text(n,"refundSource");if(Set.of("LATE_PAYMENT_TIMEOUT","MERCHANT_APPROVED","MERCHANT_TIMEOUT_AUTO","PRESTART_AUTO").contains(sourceType))return;
             if(!"MERCHANT_REJECT_ORDER".equals(sourceType))throw unavailable();
             QueryContext ctx=new QueryContext(event.traceId(),OperatorType.SYSTEM,null);String storeId=orders.locateStore(order,ctx);
             tx.executeWithoutResult(s -> {

@@ -81,6 +81,93 @@ class RefundApplicationAcceptanceTest {
         code(CommonApiCodes.FORBIDDEN,()->f.apps.apply(new Apply(ctx("710101"),o,"QA_REASON",null)));
         assertEquals(0,f.count("SELECT COUNT(*) FROM refund_application"));
     }}
+    /** REF-001/002/003 SSOT §4.1: pre-service application auto-approves in full, no merchant processing, slot moves only on final channel success. */
+    @Test void preServiceApplicationAutoRefundsInFullAndOnlyFinalSuccessReleases(){try(var f=new F(true)){
+        String o=f.t.ready();var apply=f.applyCommand(o);var r=f.apps.apply(apply);
+        assertEquals("AUTO_APPROVED",r.applicationStatus());assertEquals("1",r.applicationVersion());assertNotNull(r.decisionId());assertNotNull(r.decidedAt());
+        assertEquals(r,f.apps.apply(apply));
+        assertEquals(24L,f.count("SELECT TIMESTAMPDIFF(HOUR,created_at,merchant_deadline) FROM refund_application"));
+        assertEquals(1,f.count("SELECT COUNT(*) FROM refund_application WHERE status='AUTO_APPROVED'"));
+        assertEquals(1,f.count("SELECT COUNT(*) FROM refund_application_decision WHERE status='AUTO_APPROVED' AND operator_type='SYSTEM' AND operator_id IS NULL AND reason_cipher IS NULL"));
+        assertEquals("AUTO_APPROVED",f.text("SELECT refund_application_status FROM pet_order"));
+        assertEquals(0,f.count("SELECT COUNT(*) FROM async_task WHERE task_type='REFUND_MERCHANT_TIMEOUT'"));
+        assertEquals(1,f.count("SELECT COUNT(*) FROM async_task WHERE task_type='REFUND_APPLICATION_CREATE'"));
+        assertEquals(1,f.count("SELECT COUNT(*) FROM integration_event_outbox WHERE event_type='RefundApplicationCreatedEvent.v1' AND payload LIKE '%AUTO_APPROVED%'"));
+        assertEquals(1,f.count("SELECT COUNT(*) FROM integration_event_outbox WHERE event_type='RefundApplicationDecidedEvent.v1'"));
+        var credential=f.t.issue(o,"INITIAL");
+        String refund=f.apps.createApproved(f.create(r));
+        assertEquals(1,f.count("SELECT COUNT(*) FROM refund_order"));assertEquals(refund,f.text("SELECT CAST(refund_order_id AS CHAR) FROM refund_application"));
+        // 2026-10-05 用户裁决：服务前即时批准的退款单使用专门来源 PRESTART_AUTO，不复用 MERCHANT_TIMEOUT_AUTO
+        assertEquals("PRESTART_AUTO",f.text("SELECT source_type FROM refund_order"));
+        assertEquals("PRESTART_AUTO",f.text("SELECT source_type FROM refund_execution"));
+        // refund_order 创建成功后立即禁止核销
+        assertThrows(ApiException.class,()->VerificationCompletionAcceptanceTest.build(f.t).verify(VerificationCompletionAcceptanceTest.command(o,credential)));
+        // REF-002 渠道最终成功前预约仍占用
+        var runtime=f.runtime(true);
+        assertThrows(ApiException.class,()->runtime.execution.execute(refund,"710302",false,"qa","LATE_PAYMENT_TIMEOUT"));
+        assertTrue(runtime.execution.execute(refund,"710302",false,"qa","APPLICATION").done());assertEquals("UNKNOWN",f.text("SELECT status FROM refund_order"));
+        assertEquals("CONFIRMED",f.text("SELECT status FROM schedule_reservation"));
+        assertTrue(runtime.execution.execute(refund,"710302",false,"qa","APPLICATION").done());
+        f.sql("UPDATE payment_refund_dispatch SET query_not_before=UTC_TIMESTAMP(3)-INTERVAL 1 SECOND");
+        assertTrue(runtime.execution.execute(refund,"710302",true,"qa","APPLICATION").done());
+        assertEquals("SUCCESS",f.text("SELECT status FROM refund_order"));
+        // REF-003 最终成功才释放预约并回写订单
+        runtime.projection.consume(f.event("RefundSucceededEvent.v1"));
+        assertEquals("RELEASED",f.text("SELECT status FROM schedule_reservation"));
+        assertEquals(128,f.count("SELECT refunded_amount FROM pet_order"));
+        assertEquals(1,f.count("SELECT COUNT(*) FROM schedule_reservation_audit WHERE action='REFUND_RELEASE'"));
+    }}
+    /** §4.1 退款单创建成功后禁止核销，但核销先完成不否决已批准的服务前自动全额退款（与 §39 普通退款语义一致）。 */
+    @Test void preServiceVerificationBeforeCreationDoesNotVetoAutoRefund(){try(var f=new F(true)){
+        String o=f.t.ready();var r=f.apps.apply(f.applyCommand(o));
+        var credential=f.t.issue(o,"INITIAL");
+        assertEquals("VERIFIED",VerificationCompletionAcceptanceTest.build(f.t).verify(VerificationCompletionAcceptanceTest.command(o,credential)).resultCode());
+        String refund=f.apps.createApproved(f.create(r));
+        assertEquals(1,f.count("SELECT COUNT(*) FROM refund_order"));assertEquals("CREATED",f.text("SELECT status FROM refund_order"));
+    }}
+    /** 2026-10-05 用户裁决：新来源 PRESTART_AUTO 出现在退款单且与商家超时来源 MERCHANT_TIMEOUT_AUTO 可区分。 */
+    @Test void preServiceAutoSourceIsDistinctFromMerchantTimeoutSourceOnRefundOrders()throws Exception{try(var f=new F(true)){
+        String a=f.t.ready();var ra=f.apps.apply(f.applyCommand(a));f.apps.createApproved(f.create(ra));
+        assertEquals(1,f.count("SELECT COUNT(*) FROM refund_order WHERE source_type='PRESTART_AUTO'"));
+        assertEquals(1,f.count("SELECT COUNT(*) FROM refund_execution WHERE source_type='PRESTART_AUTO'"));
+        // 第二笔订单使用独立窗口 710590（默认窗口 710500 容量仅 1），并核销为 VERIFIED 走商家路径，不改写共享时间。
+        var fx=f.t.r.f.f;
+        fx.db.jdbc.update("INSERT INTO schedule_availability_window(id,merchant_id,store_id,service_id,start_at,end_at,configured_capacity,status,window_kind,created_at,updated_at) VALUES(710590,710301,710302,710401,'2030-01-01 11:00:00','2030-01-01 13:30:00',1,'OPEN','GENERAL',UTC_TIMESTAMP(3),UTC_TIMESTAMP(3))");
+        OffsetDateTime start=OffsetDateTime.parse("2030-01-01T11:30:00Z");
+        String b=fx.book(new com.petplatform.order.api.dto.OrderCreationTypes.CreateOrderCommand(new CommandContext(UUID.randomUUID().toString(),"pay-qa-create",OperatorType.USER,"710100","MINIAPP"),"710302","710401","710200","IN_STORE",start,start.plusMinutes(90),null,null,"710590",null,null,null,null,null)).orderId();
+        var p=fx.prepare(b,UUID.randomUUID().toString());
+        var n=fx.notice(p,"SUCCESS","MERCHANT_"+IDS.incrementAndGet(),p.amount(),p.amount());
+        fx.notification.receive(n.headers(),n.body());
+        fx.result.consume(AutoConfirmTaskPreparationAcceptanceTest.event(fx,p.paymentId()));
+        f.t.confirm(b,0);
+        var credential=f.t.issue(b,"INITIAL");
+        assertEquals("VERIFIED",VerificationCompletionAcceptanceTest.build(f.t).verify(VerificationCompletionAcceptanceTest.command(b,credential)).resultCode());
+        var rb=f.apps.apply(f.applyCommand(b));assertEquals("PENDING_MERCHANT",rb.applicationStatus());
+        f.source.fixed.set(OffsetDateTime.parse(rb.merchantDeadline()).toInstant());f.apps.handle(f.timeout(rb));
+        String decided=f.text("SELECT CAST(decision_id AS CHAR) FROM refund_application WHERE order_id="+Long.parseLong(b));
+        f.apps.createApproved(new Create(task("REFUND_APPLICATION_CREATE",rb.applicationId()),rb.applicationId(),decided,"710302"));
+        assertEquals(1,f.count("SELECT COUNT(*) FROM refund_order WHERE source_type='MERCHANT_TIMEOUT_AUTO'"));
+        assertEquals(1,f.count("SELECT COUNT(*) FROM refund_execution WHERE source_type='MERCHANT_TIMEOUT_AUTO'"));
+        assertEquals(2,f.count("SELECT COUNT(DISTINCT source_type) FROM refund_order"));
+    }}
+    /** 已批准未建单的服务前申请不因 durable 任务恢复慢于服务开始而变成商家处理流程。 */
+    @Test void preServiceCreationRecoversEvenAfterServiceStart(){try(var f=new F(true)){
+        String o=f.t.ready();var r=f.apps.apply(f.applyCommand(o));
+        f.sql("UPDATE async_task SET status='DEAD',retry_count=8 WHERE task_type='REFUND_APPLICATION_CREATE'");
+        f.apps=f.build();assertEquals(1,f.apps.reconcileTasks());assertEquals("READY",f.text("SELECT status FROM async_task WHERE task_type='REFUND_APPLICATION_CREATE'"));
+        f.source.shiftSeconds.set(4*365*24*3600L);
+        assertNotNull(f.apps.createApproved(f.create(r)));
+        assertEquals(1,f.count("SELECT COUNT(*) FROM refund_order"));
+    }}
+    /** 服务前自动批准是 SYSTEM 决定：伪造决定来源或篡改准入绑定不能建单，更不能触达渠道。 */
+    @Test void forgedPreServiceDecisionCannotCreateOrReachChannel(){for(String change:List.of(
+            "UPDATE refund_application_decision SET request_id='FORGED'",
+            "UPDATE refund_application_command SET canonical_bytes=X'00' WHERE command_namespace=CAST('refund.application.pre-service-auto' AS BINARY)",
+            "UPDATE refund_application_command SET payload_sha256=REPEAT('f',64) WHERE command_namespace=CAST('refund.application.pre-service-auto' AS BINARY)"))try(var f=new F(true)){
+        String o=f.t.ready();var r=f.apps.apply(f.applyCommand(o));f.sql(change);
+        assertThrows(ApiException.class,()->f.apps.createApproved(f.create(r)));
+        assertEquals(0,f.count("SELECT COUNT(*) FROM refund_order"));
+    }}
     @Test void rejectRequiresMeaningfulReasonAndModerationFailureRetainsAdmission(){try(var f=new F()){
         var r=f.apps.apply(f.applyCommand(f.ready(true)));
         for(String reason:Arrays.asList(null,"","  ","x".repeat(501)))code(CommonApiCodes.INVALID_ARGUMENT,()->f.apps.decide(new Decide(ctx("710300"),r.applicationId(),"0","REJECT",reason)));
@@ -216,6 +303,7 @@ class RefundApplicationAcceptanceTest {
         String o=f.ready(verifiedOrder);var apply=f.applyCommand(o);var r=f.apps.apply(apply);Decide decision=timeout?null:f.decision(r,"APPROVE");Receipt d;
         if(timeout){f.source.fixed.set(OffsetDateTime.parse(r.merchantDeadline()).toInstant());f.apps.handle(f.timeout(r));d=f.receipt();}else d=f.apps.decide(decision);
         String refund=f.apps.createApproved(f.create(d));var runtime=f.runtime(true);
+        assertEquals(timeout?"MERCHANT_TIMEOUT_AUTO":"MERCHANT_APPROVED",f.text("SELECT source_type FROM refund_order"));
         assertThrows(ApiException.class,()->runtime.execution.execute(refund,"710302",false,"qa","LATE_PAYMENT_TIMEOUT"));
         assertThrows(ApiException.class,()->runtime.execution.execute(refund,"710302",false,"qa"));assertEquals(0,runtime.sends.get());
         assertTrue(runtime.execution.execute(refund,"710302",false,"qa","APPLICATION").done());assertEquals("UNKNOWN",f.text("SELECT status FROM refund_order"));
@@ -273,14 +361,16 @@ class RefundApplicationAcceptanceTest {
         final OrderRefundApplicationApiImpl orders=new OrderRefundApplicationApiImpl(source,guard,IDS::incrementAndGet,payments,new RefundOrderFactsApiImpl(source,guard),reservations,schedule,approvals::get);
         final AtomicBoolean moderationAllowed=new AtomicBoolean(true);
         final AtomicReference<RefundApplicationPorts.SessionAuthority> sessions=new AtomicReference<>(user->{if(!t.r.f.sessionActive.get())throw new ApiException(CommonApiCodes.UNAUTHORIZED,"Session revoked");});
+        final boolean preServiceAutoRefund;
         RefundApplicationService apps;Decide lastDecision;
-        F(){apps=build();}
+        F(){this(false);}
+        F(boolean preServiceAutoRefund){this.preServiceAutoRefund=preServiceAutoRefund;apps=build();}
         RefundApplicationService build(){var owner=new MerchantOrderAuthorityApiImpl(source,guard);var recovery=new JdbcAsyncTaskRecoverer(source,IDS::incrementAndGet);
             var service=new RefundApplicationService(source,IDS::incrementAndGet,guard,orders,payments,outbox,user->sessions.get().requireCurrent(user),
                 (c,m,s)->owner.requireOwner(m,s,new QueryContext(c.traceId(),c.operatorType(),c.operatorId())),
                 code->{if(!"QA_REASON".equals(code))throw new ApiException(CommonApiCodes.INVALID_ARGUMENT,"QA fixture only");},
                 text->new RefundApplicationPorts.Approval(RefundApplicationService.sha(text.getBytes(StandardCharsets.UTF_8)),"qa-policy-1",moderationAllowed.get()),
-                new RefundApplicationAesProtection(new byte[32]),spec->recovery.recover(spec.taskKey(),"REFUND",spec.taskType(),spec.bizType(),spec.bizId(),spec.expectedVersion(),spec.payloadJson(),spec.maxRetryCount(),spec.retryPolicy(),spec.availableAt()));approvals.set(service);return service;
+                new RefundApplicationAesProtection(new byte[32]),spec->recovery.recover(spec.taskKey(),"REFUND",spec.taskType(),spec.bizType(),spec.bizId(),spec.expectedVersion(),spec.payloadJson(),spec.maxRetryCount(),spec.retryPolicy(),spec.availableAt()),preServiceAutoRefund);approvals.set(service);return service;
         }
         String ready(boolean verified){String o=t.ready();if(verified){var c=t.issue(o,"INITIAL");VerificationCompletionAcceptanceTest.build(t).verify(VerificationCompletionAcceptanceTest.command(o,c));}
             else {sql("UPDATE pet_order SET appointment_start_at=DATE_SUB(appointment_start_at,INTERVAL 4 YEAR),appointment_end_at=DATE_SUB(appointment_end_at,INTERVAL 4 YEAR)");
