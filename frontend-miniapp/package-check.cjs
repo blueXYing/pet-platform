@@ -25,7 +25,14 @@ assert.deepEqual(packages.map(p => ({ root: p.root, pages: p.pages })), [
   { root: 'consumer/pages/pet-archive', pages: ['index', 'detail', 'form'] },
   { root: 'consumer/pages/merchant-application', pages: ['index', 'signing'] },
   { root: 'consumer/pages/store-services', pages: ['index', 'service-detail', 'stores'] },
-], 'Merchant workspace, pet archive and merchant application must be registered in the single app')
+  { root: 'consumer/pages/coupon-points', pages: ['coupons', 'coupon-detail', 'points'] },
+], 'Merchant workspace, pet archive, merchant application, store services and coupon/points pages must be registered in the single app')
+for (const page of ['coupons', 'coupon-detail', 'points']) {
+  for (const extension of ['js', 'json', 'wxml', 'wxss']) {
+    assert.ok(fs.existsSync(path.join(root, `consumer/pages/coupon-points/${page}.` + extension)),
+      `C-006 coupon/points page artifact missing: ${page}.${extension}`)
+  }
+}
 for (const page of ['index', 'signing']) {
   for (const extension of ['js', 'json', 'wxml', 'wxss']) {
     assert.ok(fs.existsSync(path.join(root, `consumer/pages/merchant-application/${page}.` + extension)),

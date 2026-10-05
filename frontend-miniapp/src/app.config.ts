@@ -11,5 +11,6 @@ export default defineAppConfig({
     { root: 'consumer/pages/pet-archive', pages: ['index', 'detail', 'form'] },
     { root: 'consumer/pages/merchant-application', pages: ['index', 'signing'] },
     { root: 'consumer/pages/store-services', pages: ['index', 'service-detail', 'stores'] },
+    { root: 'consumer/pages/coupon-points', pages: ['coupons', 'coupon-detail', 'points'] },
   ],
 })

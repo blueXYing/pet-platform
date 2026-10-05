@@ -1,0 +1,68 @@
+/* C-006 切片（我的优惠券/我的积分，只读预览）。 measures: frame 128:2078（优惠券列表，
+   402 设计 px）与 129:8174 积分明细区块；运行时像素单位 --cpn-unit = windowWidth/402
+   （C-002/C-003 先例）。调色板沿用 C 端既有设计语言 token（#f8f5ee/#f0fbff/#c0ecff/
+   #5baae8/#577683/#1d0d07/#ff9500，见 20 号登记表与 C-003 INVENTORY）；缓存结构 JSON
+   不含 fillPaints，未为两页单独消耗图像配额，取色为登记近似（INVENTORY §3 D6）。 */
+.cpn-page { --cpn-status-top: 0px; min-height: 100vh; background: #f8f5ee; color: #1d0d07; font-family: Roboto, "Noto Sans SC", sans-serif; }
+.cpn-page view, .cpn-page button, .cpn-page image, .cpn-page text { box-sizing: border-box; }
+.cpn-page button { padding: 0; margin: 0 !important; border: 0; border-radius: 0; background: transparent; font: inherit; line-height: normal; text-align: left; }
+.cpn-page button::after { border: 0; }
+.cpn-page button[disabled] { opacity: .65; color: inherit; }
+.cpn-design { position: relative; min-height: 100vh; }
+.cpn-status-area { height: var(--cpn-status-top); }
+.cpn-notice { display: block; padding: calc(var(--cpn-unit) * 12) calc(var(--cpn-unit) * 29); font-size: calc(var(--cpn-unit) * 12); line-height: calc(var(--cpn-unit) * 18); color: #402e26; }
+.cpn-preview-note { padding: calc(var(--cpn-unit) * 16) calc(var(--cpn-unit) * 29); font-size: calc(var(--cpn-unit) * 10); line-height: calc(var(--cpn-unit) * 15); color: #8aa0ac; }
+
+/* 顶部导航（128:2078：返回 32x32 + 标题 16/700，左对齐）。 */
+.cpn-nav { position: relative; height: calc(var(--cpn-unit) * 44); display: flex; align-items: center; }
+.cpn-nav-back { position: absolute; left: calc(var(--cpn-unit) * 22); top: calc(var(--cpn-unit) * 6); width: calc(var(--cpn-unit) * 32); height: calc(var(--cpn-unit) * 32); display: flex; align-items: center; justify-content: center; }
+.cpn-nav-back-icon { width: calc(var(--cpn-unit) * 11); height: calc(var(--cpn-unit) * 18); }
+.cpn-nav-title { margin-left: calc(var(--cpn-unit) * 62); font-size: calc(var(--cpn-unit) * 16); line-height: calc(var(--cpn-unit) * 24); font-weight: 700; color: #3c3c3c; }
+
+/* 状态 tab（DIV-13 药丸 343x36 r9999 + 三个 109x28 按钮；激活态以 className 变体切换）。 */
+.cpn-tabs { margin: calc(var(--cpn-unit) * 13) calc(var(--cpn-unit) * 29) 0; height: calc(var(--cpn-unit) * 36); border-radius: calc(var(--cpn-unit) * 9999); background: #f0fbff; border: calc(var(--cpn-unit) * 1) solid #c0ecff; display: flex; align-items: center; padding: calc(var(--cpn-unit) * 4); }
+.cpn-tab { width: calc(var(--cpn-unit) * 109); height: calc(var(--cpn-unit) * 28); border-radius: calc(var(--cpn-unit) * 9999); display: flex; align-items: center; justify-content: center; }
+.cpn-tab text { font-size: calc(var(--cpn-unit) * 12); line-height: calc(var(--cpn-unit) * 16); color: #577683; }
+.cpn-tab.is-active { background: #5baae8; }
+.cpn-tab.is-active text { font-weight: 500; color: #f8f5ee; }
+
+/* 状态与空态。 */
+.cpn-state { padding: calc(var(--cpn-unit) * 42) calc(var(--cpn-unit) * 29); font-size: calc(var(--cpn-unit) * 14); line-height: calc(var(--cpn-unit) * 24); color: #577683; }
+
+/* 优惠券卡（DIV-24 343x87.5 r12；左 96 面额区 + 右侧信息区）。 */
+.cpn-card { display: block; position: relative; width: calc(var(--cpn-unit) * 343); height: calc(var(--cpn-unit) * 87.5); margin: calc(var(--cpn-unit) * 12) calc(var(--cpn-unit) * 29) 0; background: #f0fbff; border: calc(var(--cpn-unit) * 1) solid #c0ecff; border-radius: calc(var(--cpn-unit) * 12); }
+.cpn-card:first-of-type { margin-top: calc(var(--cpn-unit) * 18); }
+.cpn-card-amount { position: absolute; left: 0; top: 0; width: calc(var(--cpn-unit) * 96); height: calc(var(--cpn-unit) * 85.5); display: flex; flex-direction: column; align-items: center; justify-content: center; border-right: calc(var(--cpn-unit) * 1) dashed #c0ecff; }
+.cpn-card-amount-value { font-size: calc(var(--cpn-unit) * 24); line-height: calc(var(--cpn-unit) * 28); font-weight: 700; color: #5baae8; }
+.cpn-card-amount-threshold { margin-top: calc(var(--cpn-unit) * 4); font-size: calc(var(--cpn-unit) * 10); line-height: calc(var(--cpn-unit) * 15); color: #577683; }
+.cpn-card-main { position: absolute; left: calc(var(--cpn-unit) * 110); top: calc(var(--cpn-unit) * 12); width: calc(var(--cpn-unit) * 219); }
+.cpn-card-head { display: flex; align-items: baseline; justify-content: space-between; }
+.cpn-card-name { font-size: calc(var(--cpn-unit) * 14); line-height: calc(var(--cpn-unit) * 20); font-weight: 500; color: #1d0d07; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: calc(var(--cpn-unit) * 150); }
+.cpn-card-type { flex-shrink: 0; padding: calc(var(--cpn-unit) * 1) calc(var(--cpn-unit) * 6); border-radius: calc(var(--cpn-unit) * 4); background: #c0ecff; font-size: calc(var(--cpn-unit) * 10); line-height: calc(var(--cpn-unit) * 15); color: #577683; }
+.cpn-card-scope { display: block; margin-top: calc(var(--cpn-unit) * 2); font-size: calc(var(--cpn-unit) * 11); line-height: calc(var(--cpn-unit) * 17); color: #577683; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.cpn-card-validity { display: block; margin-top: calc(var(--cpn-unit) * 6); font-size: calc(var(--cpn-unit) * 10); line-height: calc(var(--cpn-unit) * 15); color: #8aa0ac; }
+/* 已使用/已过期：置灰变体（WXSS 铁律：className 模板字符串，不用动态 data-*）。 */
+.cpn-card.is-used, .cpn-card.is-expired { opacity: .55; }
+.cpn-card.is-used .cpn-card-amount-value, .cpn-card.is-expired .cpn-card-amount-value { color: #577683; }
+
+/* 详情页（无原稿，沿 C 端现行规范：卡片段 + 事实行，见 INVENTORY §3 D1）。 */
+.cpn-detail-body { padding-bottom: calc(var(--cpn-unit) * 24); }
+.cpn-card.is-detail { margin-top: calc(var(--cpn-unit) * 18); height: calc(var(--cpn-unit) * 96); }
+.cpn-detail-facts { margin: calc(var(--cpn-unit) * 12) calc(var(--cpn-unit) * 29) 0; background: #fff; border: calc(var(--cpn-unit) * 1) solid #c0ecff; border-radius: calc(var(--cpn-unit) * 12); padding: calc(var(--cpn-unit) * 8) calc(var(--cpn-unit) * 16); }
+.cpn-fact-row { display: flex; align-items: baseline; justify-content: space-between; padding: calc(var(--cpn-unit) * 8) 0; }
+.cpn-fact-label { font-size: calc(var(--cpn-unit) * 12); line-height: calc(var(--cpn-unit) * 18); color: #577683; }
+.cpn-fact-value { font-size: calc(var(--cpn-unit) * 12); line-height: calc(var(--cpn-unit) * 18); color: #1d0d07; text-align: right; }
+
+/* 积分页（129:8174 积分明细区块：余额卡 + 明细行）。 */
+.cpn-balance-card { margin: calc(var(--cpn-unit) * 18) calc(var(--cpn-unit) * 29) 0; padding: calc(var(--cpn-unit) * 16) calc(var(--cpn-unit) * 18); background: #f0fbff; border: calc(var(--cpn-unit) * 1) solid #c0ecff; border-radius: calc(var(--cpn-unit) * 12); }
+.cpn-balance-label { display: block; font-size: calc(var(--cpn-unit) * 12); line-height: calc(var(--cpn-unit) * 18); color: #577683; }
+.cpn-balance-value { display: block; margin-top: calc(var(--cpn-unit) * 4); font-size: calc(var(--cpn-unit) * 32); line-height: calc(var(--cpn-unit) * 40); font-weight: 700; color: #5baae8; }
+.cpn-balance-note { display: block; margin-top: calc(var(--cpn-unit) * 6); font-size: calc(var(--cpn-unit) * 10); line-height: calc(var(--cpn-unit) * 15); color: #8aa0ac; }
+.cpn-ledger-head { margin: calc(var(--cpn-unit) * 20) calc(var(--cpn-unit) * 29) 0; }
+.cpn-ledger-title { font-size: calc(var(--cpn-unit) * 17); line-height: calc(var(--cpn-unit) * 26); font-weight: 700; color: #1d0d07; }
+.cpn-ledger-row { display: flex; align-items: center; justify-content: space-between; margin: 0 calc(var(--cpn-unit) * 29); padding: calc(var(--cpn-unit) * 12) 0; border-bottom: calc(var(--cpn-unit) * 1) solid #e3f4fb; }
+.cpn-ledger-main { display: flex; flex-direction: column; }
+.cpn-ledger-name { font-size: calc(var(--cpn-unit) * 15); line-height: calc(var(--cpn-unit) * 22); color: #1d0d07; }
+.cpn-ledger-time { margin-top: calc(var(--cpn-unit) * 2); font-size: calc(var(--cpn-unit) * 11); line-height: calc(var(--cpn-unit) * 16); color: #577683; }
+.cpn-ledger-delta { font-size: calc(var(--cpn-unit) * 15); line-height: calc(var(--cpn-unit) * 22); font-weight: 700; color: #5baae8; }
+.cpn-ledger-delta.is-negative { color: #ff9500; }
