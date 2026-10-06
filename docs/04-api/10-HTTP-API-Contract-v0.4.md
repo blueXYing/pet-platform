@@ -780,6 +780,7 @@ REVIEW_ALREADY_EXISTS
 
 ```text
 GET /api/v1/c/coupons
+GET /api/v1/c/coupons/{couponId}
 GET /api/v1/c/points/balance
 GET /api/v1/c/points/ledger
 GET /api/v1/c/notifications
@@ -788,6 +789,32 @@ POST /api/v1/c/notifications/{notificationId}/read
 GET /api/v1/c/notification-preferences
 PUT /api/v1/c/notification-preferences
 ```
+
+### 3.15.1 我的优惠券（CCR-C006 P1，2026-10-06 批准）
+
+`GET /api/v1/c/coupons?status=AVAILABLE|USED|EXPIRED&page=&pageSize=`：当前登录用户自己的
+`coupon_instance` 投影分页（默认 AVAILABLE，非法 `status` 400；分页 1≤page≤10000、1≤pageSize≤50，
+默认 1/20；固定排序 `expire_at ASC, id ASC`）。D2：FROZEN/RISK_FROZEN 在任何桶、任何路由永不返回。
+返回字段 `couponId`/`name`/`amountOff`/`thresholdAmount`/`scopeSummary`/`typeLabel`/`validTo`(ISO 日期)/
+`status`/`usedAt`(ISO 时间戳|null)。D1：`amountOff`(两位小数 String)/`thresholdAmount`(两位小数
+String|null，null=无门槛)/`scopeSummary`(≤64)/`typeLabel`(≤16) 均为服务端 `rule_json` 投影，
+结构未冻结（待 CPN-001），字段缺失返回 null，前端不得解析 `rule_json`。
+
+`GET /api/v1/c/coupons/{couponId}`：单券同投影；非本人券、不存在券与冻结态券一律同一
+COMMON_NOT_FOUND 404（不区分，防枚举）；query 全禁止。
+
+### 3.15.2 我的积分（CCR-C006 P1）
+
+`GET /api/v1/c/points/balance`：`balance` 为非负整数 String（BIGINT 传输安全）；无账户行读作
+`"0"`；query 全禁止。
+
+`GET /api/v1/c/points/ledger?page=&pageSize=`：`ledgerId`/`bizType`（SIGN_IN/INVITE/TASK/
+ORDER_REWARD/REFUND_CLAWBACK 五枚举）/`delta`（带符号非零整数 String，扣回为负）/
+`balanceAfter`（整数 String）/`createdAt`（ISO 时间戳）；固定排序 `created_at DESC, id DESC`。
+
+错误码引用 12 号 §2 既有通用码：400=COMMON_INVALID_ARGUMENT（未登录 401=COMMON_UNAUTHORIZED、
+非本人券 404=COMMON_NOT_FOUND、内部失败 500=COMMON_INTERNAL_ERROR），无新增码。默认随
+`pet.auth.c.enabled` 装配（IMPLEMENTED_DEFAULT_OFF）。
 
 通知偏好只能影响：
 
@@ -806,7 +833,8 @@ AFTERSALE
 AUDIT
 ```
 
-V1.0 不提供积分抵现/积分商城 Endpoint。
+V1.0 不提供积分抵现/积分商城 Endpoint；本节券/积分为只读查询，不存在发放、冻结、核销、
+退券、兑换、抵扣、签到/邀请/任务赚取等写路径。
 
 ---
 
