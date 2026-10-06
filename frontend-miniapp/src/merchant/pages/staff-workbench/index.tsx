@@ -12,8 +12,9 @@ import './page.css'
 // 员工工作台（2026-10-06 用户裁决：员工确认入口定在商家端小程序的员工工作台；区别于 OWNER
 // 工作台）。设计源：登记表 §3/§4 复核无「员工工作台」原稿帧，按登记表规范登记缺稿，沿 M 端
 // 现行规范（members 页 12:6591 的 measures/tokens）实现。按 54/48 号契约里员工可见的能力组织：
-// 核销入口（48 K1 员工核销；HTTP 契约未交付，入口目标页失败关闭为不可交互面板）与我的邀请
-// 记录（54 §4 仅提供按编号读取，无员工侧列表端点，故为编号查询入口，不虚构列表）。
+// 核销入口（48 K2 v0.3 核销 HTTP 面已交付，目标页为 OWNER/STAFF 共用真交互提交页，身份由服务
+// 端按 K1 链解析）与我的邀请记录（54 §4 仅提供按编号读取，无员工侧列表端点，故为编号查询入口，
+// 不虚构列表）。
 
 const admissionText: Record<string, string> = {
   ALLOWED: '可正常使用',
@@ -130,7 +131,8 @@ export default function StaffWorkbenchPage() {
           </View>}
           <Text className='msw-card-meta'>校验时间 {view.checkedAt} · authzVersion {view.authzVersion}</Text>
         </View>
-        {/* 核销入口（48 K1）：准入判定在此，命令通道在目标页失败关闭。 */}
+        {/* 核销入口（48 K2 v0.3）：准入判定在此，命令通道在目标页（真交互提交，默认开关关时
+            目标页按 403/503 整页失败关闭）。 */}
         <Button id='msw-open-verify' className='msw-entry-button' onClick={openVerify}>
           <Text className='msw-entry-title'>订单核销</Text>
           <Text className='msw-entry-hint'>为到店顾客核销服务订单；核销人所属门店须与订单门店一致。</Text>

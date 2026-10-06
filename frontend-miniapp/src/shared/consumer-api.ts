@@ -43,6 +43,13 @@ export function afterSaleEnvelope(response: { statusCode: number; data: unknown 
 export function isStaffInvitationPath(path: string): boolean {
   return /^\/api\/v1\/c\/staff\/invitations\/[1-9][0-9]{0,18}(\/confirm)?$/.test(path)
 }
+// Contract 48 K2 v0.3 merchant verification route (HTTP10 §4.7): POST with body
+// {verificationCode} only — merchantId/storeId are located server-side from the order and
+// the operator identity is resolved by the K1 chain (OWNER, or STAFF under the double
+// switch), so the request carries no merchant/store/staff coordinates at all.
+export function isMerchantVerificationPath(spec: RequestSpec): boolean {
+  return spec.method === 'POST' && /^\/api\/v1\/merchant\/orders\/[1-9][0-9]{0,18}\/verification$/.test(spec.path)
+}
 export function decodePrivateAsset(value: unknown): PrivateAssetReceipt {
   const v = object(value)
   if (Object.keys(v).sort().join(',') !== 'assetId,bytes,mediaType,objectSha256,status' || v.status !== 'READY' || typeof v.objectSha256 !== 'string' || !/^[a-f0-9]{64}(?![\s\S])/.test(v.objectSha256) || !['image/jpeg', 'image/png'].includes(v.mediaType) || !Number.isSafeInteger(v.bytes) || v.bytes < 1 || v.bytes > 10485760) throw new Error('INVALID_RESPONSE')
@@ -112,22 +119,27 @@ export class ConsumerApi {
     const schedulePath = (/^\/api\/v1\/merchant\/stores\/[1-9][0-9]{0,18}\/availability-windows(\/[1-9][0-9]{0,18}(\/close|\/open)?|\/batch-close)?$/.test(spec.path) ||
       /^\/api\/v1\/merchant\/staff\/[1-9][0-9]{0,18}\/(availability-windows(\/[1-9][0-9]{0,18}(\/close|\/open)?)?|service-capabilities)$/.test(spec.path)) &&
       ['GET', 'POST', 'PUT'].includes(spec.method)
+    // Verification completion (48 K2 v0.3, switch pet.verification.completion.http.enabled
+    // default OFF): the command body is strictly {verificationCode}; the order in the path is
+    // the only target and the server locates its merchant/store.
+    const verificationPath = isMerchantVerificationPath(spec)
     if (/^\/api\/v1\/(c|merchant)\/aftersale/.test(spec.path) && !afterSalePath) throw new Error('INVALID_PATH')
-    if (!/^\/api\/v1\/c\/[a-z0-9/-]+$/.test(spec.path) && !agreementPath && !admissionPath && !categoryPath && !serviceCommandPath && !afterSalePath && !schedulePath) throw new Error('INVALID_PATH')
+    if (!/^\/api\/v1\/c\/[a-z0-9/-]+$/.test(spec.path) && !agreementPath && !admissionPath && !categoryPath && !serviceCommandPath && !afterSalePath && !schedulePath && !verificationPath) throw new Error('INVALID_PATH')
     if (spec.method !== 'GET' && !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}(?![\s\S])/i.test(spec.requestId || '')) throw new Error('REQUEST_ID_REQUIRED')
     const response = await this.transport({ ...spec, headers: { 'Content-Type': 'application/json', ...(spec.requestId ? { 'X-Request-Id': spec.requestId } : {}), ...headers } })
     if (afterSalePath) return afterSaleEnvelope(response)
     const body = object(response.data)
     if (response.statusCode < 200 || response.statusCode >= 300 || body.code !== 'SUCCESS') throw new ApiError(typeof body.code === 'string' ? body.code : 'INVALID_RESPONSE', response.statusCode)
     const applicationPath = /^\/api\/v1\/c\/merchant-applications(?:\/|$)/.test(spec.path) || spec.path === '/api/v1/c/merchant-application-cities'
-    if ((agreementPath || applicationPath || admissionPath || categoryPath || serviceCommandPath || schedulePath) && body.success !== true) throw new Error('INVALID_RESPONSE')
+    if ((agreementPath || applicationPath || admissionPath || categoryPath || serviceCommandPath || schedulePath || verificationPath) && body.success !== true) throw new Error('INVALID_RESPONSE')
     return body.data
   }
   private clear() {
     this.credential = null; this.currentSession = null; this.attempt = null; this.authCommand = null; this.authStep = 'idle'
-    // Unknown aftersale outcomes survive credential expiry/explicit logout. Their
-    // owner-bound slots remain inaccessible until a fresh server session is verified.
-    this.pending = Object.fromEntries(Object.entries(this.pending).filter(([slot, saved]) => slot.startsWith('aftersale:') && saved.command))
+    // Unknown aftersale/verification outcomes survive credential expiry/explicit logout.
+    // Their owner-bound slots remain inaccessible until a fresh server session is verified
+    // (and retrying must keep the terminal key instead of minting a new one, 23号 §5.7).
+    this.pending = Object.fromEntries(Object.entries(this.pending).filter(([slot, saved]) => (slot.startsWith('aftersale:') || slot.startsWith('merchant-verify:')) && saved.command))
     this.writes.clear(); this.writeSpecs.clear()
     this.scope.replace(null)
     this.store.remove(SESSION_KEY)
@@ -223,7 +235,11 @@ export class ConsumerApi {
       const afterSalePath = isAfterSalePath(spec)
       if (afterSalePath && !ticket.context.storeId) throw new Error('WORKSPACE_PATH_MISMATCH')
       if (afterSalePath && spec.path === '/api/v1/merchant/aftersales' && spec.data?.storeId !== ticket.context.storeId) throw new Error('WORKSPACE_PATH_MISMATCH')
-      const targetFree = spec.path === '/api/v1/merchant/service-categories' || afterSalePath && spec.path !== '/api/v1/merchant/aftersales'
+      // The verification command targets the order in the path; the body never carries
+      // merchant coordinates (48 K2 v0.3 locates them server-side).
+      const verificationPath = isMerchantVerificationPath(spec)
+      if (verificationPath && !ticket.context.storeId) throw new Error('WORKSPACE_PATH_MISMATCH')
+      const targetFree = spec.path === '/api/v1/merchant/service-categories' || afterSalePath && spec.path !== '/api/v1/merchant/aftersales' || verificationPath
       if (!targetFree && spec.data?.merchantId !== ticket.context.merchantId) throw new Error('WORKSPACE_PATH_MISMATCH')
     } else if (ticket.context.workspace !== 'consumer' && !isStaffInvitationPath(spec.path)) throw new Error('WORKSPACE_PATH_MISMATCH')
     try {
@@ -369,7 +385,10 @@ export class ConsumerApi {
         rejected?.(error, JSON.parse(JSON.stringify(command)) as Command)
         // Authorization/resource visibility is rechecked before an old receipt is
         // returned. A 401/403/404 cannot prove an earlier unknown write never ran.
-        const hiddenReceipt = isAfterSalePath(command) && error instanceof ApiError && [401, 403, 404].includes(error.statusCode)
+        // Verification replays re-prove the K1 identity chain per 48 K2/23号 §5.4 —
+        // a hidden first receipt reads exactly like these rejections, so its journal
+        // must survive them too.
+        const hiddenReceipt = (isAfterSalePath(command) || isMerchantVerificationPath(command)) && error instanceof ApiError && [401, 403, 404].includes(error.statusCode)
         if (definiteRejection(error) && !hiddenReceipt) { delete this.pending[slot]; this.store.set(WRITE_KEY, this.pending) }
         throw error
       }
