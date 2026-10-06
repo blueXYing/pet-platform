@@ -28,6 +28,10 @@
 
 /* 状态与空态。 */
 .cpn-state { padding: calc(var(--cpn-unit) * 42) calc(var(--cpn-unit) * 29); font-size: calc(var(--cpn-unit) * 14); line-height: calc(var(--cpn-unit) * 24); color: #577683; }
+/* 失败关闭面板内的动作（去登录/重新加载，沿 sdir-state-action 惯例）。 */
+.cpn-state-action { display: block; margin-top: calc(var(--cpn-unit) * 8); color: #3185ba; font-size: calc(var(--cpn-unit) * 12); line-height: calc(var(--cpn-unit) * 18); }
+/* 真实模式分页追加（沿 sdir-more 惯例）。 */
+.cpn-more { display: block; margin: calc(var(--cpn-unit) * 8) auto 0; width: max-content; padding: calc(var(--cpn-unit) * 8) calc(var(--cpn-unit) * 22); border: calc(var(--cpn-unit) * 1) solid #c0ecff; border-radius: calc(var(--cpn-unit) * 100); color: #3185ba; font-size: calc(var(--cpn-unit) * 12); }
 
 /* 优惠券卡（DIV-24 343x87.5 r12；左 96 面额区 + 右侧信息区）。 */
 .cpn-card { display: block; position: relative; width: calc(var(--cpn-unit) * 343); height: calc(var(--cpn-unit) * 87.5); margin: calc(var(--cpn-unit) * 12) calc(var(--cpn-unit) * 29) 0; background: #f0fbff; border: calc(var(--cpn-unit) * 1) solid #c0ecff; border-radius: calc(var(--cpn-unit) * 12); }
