@@ -77,7 +77,7 @@ class VerificationCompletionAcceptanceTest {
   String o=t.ready();seed(t,o,"PENDING",true);var c=t.issue(o,"INITIAL");var components=components(t);var source=t.r.f.f.db.source;
   var tx=new org.springframework.transaction.support.TransactionTemplate(new org.springframework.jdbc.datasource.DataSourceTransactionManager(source));tx.setIsolationLevel(2);
   code(CommonApiCodes.DEPENDENCY_UNAVAILABLE,()->tx.executeWithoutResult(s->{t.r.f.f.guard.acquire(List.of("710302"),new QueryContext("qa",OperatorType.SYSTEM,null));var p=components.orders().acquire(o,"710302",Long.toString(IDS.incrementAndGet()),ctx("710300"),source);String v=Long.toString(IDS.incrementAndGet());var at=java.time.OffsetDateTime.now(java.time.ZoneOffset.UTC).withNano(0);
-   components.aftersales().invalidateCurrent(p.token(),o,"710302",v,at,source);components.orders().markVerified(p.token(),o,"710302",v,c.credentialId(),Long.toString(IDS.incrementAndGet()),at,source);
+   components.aftersales().invalidateCurrent(p.token(),o,"710302",v,at,source);components.orders().markVerified(p.token(),o,"710302",v,c.credentialId(),Long.toString(IDS.incrementAndGet()),at,new com.petplatform.order.api.command.OrderVerificationCommitApi.OperatorIdentity("USER","710300","OWNER",null),source);
   }));
   assertEquals("PENDING_SERVICE",t.text("SELECT order_stage FROM pet_order"));assertEquals("PENDING",t.text("SELECT status FROM aftersale_case"));assertEquals(0,t.count("SELECT COUNT(*) FROM order_verification_commit"));
  }}

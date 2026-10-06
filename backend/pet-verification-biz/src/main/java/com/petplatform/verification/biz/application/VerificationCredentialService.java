@@ -61,7 +61,7 @@ public final class VerificationCredentialService implements VerificationCredenti
   if(c.verificationCode()==null||!c.verificationCode().matches("[0-9A-Z]{1,128}"))throw invalid();top();
   tx.executeWithoutResult(s->attemptLocation(c));var key=key("verification.check",c.context(),"STORE:"+c.storeId());String purpose=purpose(key);
   var input=json(values("orderId",c.orderId(),"storeId",c.storeId(),"code",c.verificationCode()));admit(key,purpose,input);
-  return tx.execute(s->{defaults();var b=db.binding(key);same(b,purpose,input);var loc=attemptLocation(c);
+  return tx.execute(s->{defaults();var b=db.binding(key);same(b,purpose,input);attemptLocation(c);
    if("SUCCEEDED".equals(b.state))return result(b,purpose,CheckResult.class);reserved(b);
    var f=orders.requireEligible(c.orderId(),c.storeId(),system(query(c.context())));var st=state(f.location(),true);var now=db.now();var current=current(st,f);
    var receipt=assess(c,b,st,f,now,current);finish(b,purpose,receipt);return receipt;
@@ -107,11 +107,13 @@ public final class VerificationCredentialService implements VerificationCredenti
   defaults();validateQuery(q,order);sessions.requireCurrent(q.operatorId());var loc=orders.locate(order,system(q));
   if(loc==null||!q.operatorId().equals(loc.userId()))throw error(CommonApiCodes.FORBIDDEN);guard.acquire(List.of(loc.storeId()),system(q));guard.requireHeld(loc.storeId(),source);sessions.requireCurrent(q.operatorId());return loc;
  }
- Location attemptLocation(Check c){
+ Attempt attemptLocation(Check c){
   defaults();var q=system(query(c.context()));var loc=orders.locate(c.orderId(),q);if(loc==null||!c.storeId().equals(loc.storeId()))throw error("VERIFICATION_STORE_MISMATCH");
   guard.acquire(List.of(c.storeId()),q);guard.requireHeld(c.storeId(),source);
-  authority.requireAuthorized(c.context(),loc.merchantId(),c.storeId());return loc;
+  return new Attempt(loc,authority.requireAuthorized(c.context(),loc.merchantId(),c.storeId()));
  }
+ /** Guard-held location plus the one resolved operator identity for this command (48 K1 v0.2). */
+ record Attempt(Location loc,com.petplatform.order.api.command.OrderVerificationCommitApi.OperatorIdentity identity){}
  State state(Location loc,boolean create){
   var st=db.state(IDS.fromApi(loc.orderId()));if(st==null){if(db.historyCount(IDS.fromApi(loc.orderId()))!=0)throw bad();
    st=new State();st.orderId=IDS.fromApi(loc.orderId());st.storeId=IDS.fromApi(loc.storeId());st.reservationId=IDS.fromApi(loc.reservationId());st.epoch=0L;st.version=0L;
