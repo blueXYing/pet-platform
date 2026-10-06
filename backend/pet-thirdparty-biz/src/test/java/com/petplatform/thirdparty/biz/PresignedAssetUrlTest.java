@@ -38,9 +38,20 @@ class PresignedAssetUrlTest {
                 assertTrue(first.url().contains("test-bucket.oss-cn-test.aliyuncs.com/assets/abc123.png"));
                 assertTrue(first.url().contains("X-Amz-Signature="), "presigned query auth present");
                 var second = service.presign("test/banner");
-                assertEquals(first.url(), second.url(), "same clock within window yields identical URL");
+                assertEquals(first.expiresAtEpochSeconds(), second.expiresAtEpochSeconds(),
+                        "same clock within window yields identical expiry");
+                // S3Presigner stamps X-Amz-Date/X-Amz-Signature with the SDK's live clock at
+                // signing time (the injected Clock only drives expiry quantization), so a
+                // byte-identical URL is not guaranteed when two calls straddle a wall-clock
+                // second. Determinism is asserted on everything except those two params.
+                assertEquals(stripSigningTimeParams(first.url()), stripSigningTimeParams(second.url()),
+                        "same clock within window yields identical URL apart from signing timestamp");
             }
         }
+    }
+
+    private static String stripSigningTimeParams(String url) {
+        return url.replaceAll("[&?]X-Amz-(Date|Signature)=[^&]*", "");
     }
 
     @Test void lateInWindowJumpsToNextBoundary() throws Exception {
