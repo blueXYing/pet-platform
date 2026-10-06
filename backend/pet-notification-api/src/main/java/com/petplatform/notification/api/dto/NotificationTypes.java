@@ -22,4 +22,15 @@ public final class NotificationTypes {
   public record NotificationPage(List<NotificationItem> items, int page, int pageSize, long total) {}
 
   public record ReadReceipt(String id, OffsetDateTime readAt) {}
+
+  /**
+   * SSOT §16.4 preference projection over notification_preference: the only two togglable
+   * switches plus the schema's version counter (BIGINT carried as String) and updated_at
+   * (null while no row exists — the unread defaults are in effect).
+   */
+  public record PreferenceView(
+      boolean interactionEnabled,
+      boolean externalPushEnabled,
+      String version,
+      OffsetDateTime updatedAt) {}
 }

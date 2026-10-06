@@ -48,6 +48,8 @@ export default function Shell() {
     <Button id='c-merchant-services-preview' onClick={() => platform.navigate('/merchant/pages/services/index?preview=1')}>商家服务管理视觉预览（契约 Mock，不联调）</Button>
     <Button onClick={() => platform.navigate('/merchant/pages/workspace/index')}>进入商家工作区</Button>
       <Button id='c-messages' onClick={() => platform.navigate('/consumer/pages/messages/index')}>消息中心</Button>
+    <Button id='c-notification-preferences' disabled={!context || busy} onClick={() => platform.navigate('/consumer/pages/notification-preferences/index')}>通知偏好设置（真实契约接口）</Button>
+    <Button id='c-notification-preferences-preview' onClick={() => platform.navigate('/consumer/pages/notification-preferences/index?preview=1')}>通知偏好设置预览（本地夹具，不联调）</Button>
     <Button id='c-coupons-preview' onClick={() => platform.navigate('/consumer/pages/coupon-points/coupons?preview=1')}>我的优惠券只读预览（本地夹具，不联调）</Button>
     <Button id='c-points-preview' onClick={() => platform.navigate('/consumer/pages/coupon-points/points?preview=1')}>我的积分只读预览（本地夹具，不联调）</Button>
     <Button id='c-coupons' disabled={!context || busy} onClick={() => platform.navigate('/consumer/pages/coupon-points/coupons')}>我的优惠券（真实契约接口）</Button>

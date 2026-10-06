@@ -61,6 +61,8 @@ public final class CBearerSessionFilter extends OncePerRequestFilter {
         || path.equals("/api/v1/merchant/auth/admission")
         || path.equals("/api/v1/c/notifications")
         || path.startsWith("/api/v1/c/notifications/")
+        // Notification preferences (SSOT §16.4 slice): MINIAPP Bearer enforced, GET and PUT.
+        || path.equals("/api/v1/c/notification-preferences")
         // Coupon/points C-side read surface (CCR-C006 P1): MINIAPP Bearer enforced.
         || path.equals("/api/v1/c/coupons")
         || path.startsWith("/api/v1/c/coupons/")
