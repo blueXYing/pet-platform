@@ -76,6 +76,12 @@ export default function MerchantWorkbenchPage() {
     controller.handoffToChild()
     Taro.navigateTo({ url: '/merchant/pages/members/index' }).catch(() => controller.handoffCancelled())
   }
+  // Staff landing (52/54): the staff workbench re-checks admission itself and organizes the
+  // verify entry + invitation records for the STAFF projection.
+  function openStaffWorkbench() {
+    controller.handoffToChild()
+    Taro.navigateTo({ url: '/merchant/pages/staff-workbench/index' }).catch(() => controller.handoffCancelled())
+  }
   const view = state.view
   return <View className='merchant-workbench'>
     <View className='workbench-header'>
@@ -93,6 +99,9 @@ export default function MerchantWorkbenchPage() {
         <Text>当前账号还没有可进入的商家门店。</Text>
         <Text className='workbench-hint'>完成入驻申请并审核通过、签署商家协议后即可进入。</Text>
         <Button onClick={() => void Taro.navigateTo({ url: '/consumer/pages/merchant-application/index' })}>去申请入驻</Button>
+        {/* Staff binding (contract 54): the pre-binding employee has no membership yet, so the
+            staff workbench is the discoverable confirm entry (2026-10-06 user adjudication). */}
+        <Button id='workbench-staff-entry' className='workbench-hint' onClick={() => void Taro.navigateTo({ url: '/merchant/pages/staff-workbench/index' })}>收到店员邀请？去员工工作台确认</Button>
       </View>}
       {state.status === 'choose-store' && <View className='workbench-card'>
         <Text>请选择要进入的门店</Text>
@@ -113,7 +122,12 @@ export default function MerchantWorkbenchPage() {
           {view.allowedActions.map(action => <Text key={action} className='workbench-chip'>{action}</Text>)}
           <Text className='workbench-hint'>以上为入口提示；完整工作台功能（订单）在后续切片交付。</Text>
         </View>}
-        {state.status === 'allowed' && <View className='workbench-steps'>
+        {view.membershipKind === 'STAFF' && (state.status === 'allowed' || state.status === 'limited') && <View className='workbench-steps'>
+          {/* Staff landing is the staff workbench (2026-10-06 adjudication), distinct from the
+              OWNER entries below: a STAFF projection never shows owner management entries. */}
+          <Button id='workbench-staff-workspace' onClick={openStaffWorkbench}>员工工作台</Button>
+        </View>}
+        {view.membershipKind === 'OWNER' && state.status === 'allowed' && <View className='workbench-steps'>
           {/* M-002 service management entry (NAVIGATION-BASIS: workbench is the approved hub;
               the entry stays hidden for LIMITED stores — new-business writes are suspended). */}
           <Button id='workbench-services' onClick={openServices}>服务管理</Button>

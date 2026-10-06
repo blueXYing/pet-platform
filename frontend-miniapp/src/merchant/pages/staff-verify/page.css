@@ -1,0 +1,21 @@
+/* 员工核销页（失败关闭面板） — 核销原稿帧 23:18830/23:19210 语义与 47/48 号契约冲突（登记表
+   已登记不作为还原依据），沿 M 端现行规范（members 页 12:6591 measures/tokens）实现非交互
+   面板。 */
+.msv-page { --msv-status-top: 0px; min-height: 100vh; background: #f0fbff; color: #1d0d07; font-family: Roboto, 'Noto Sans SC', sans-serif; display: flex; flex-direction: column; }
+.msv-page view, .msv-page button, .msv-page image, .msv-page text { box-sizing: border-box; }
+.msv-page button { margin: 0; padding: 0; border: 0; border-radius: 0; background: transparent; font: inherit; line-height: normal; }
+.msv-page button::after { border: 0; }
+.msv-status-area { height: var(--msv-status-top); flex: none; }
+.msv-header { position: relative; flex: none; height: calc(var(--msv-unit) * 86); background: #fff6e5; display: flex; align-items: center; }
+.msv-back { margin-left: calc(var(--msv-unit) * 8); width: calc(var(--msv-unit) * 25); height: calc(var(--msv-unit) * 42); display: flex; align-items: center; justify-content: center; }
+.msv-back image { width: calc(var(--msv-unit) * 8.9); height: calc(var(--msv-unit) * 14.5); }
+.msv-title { position: absolute; left: 0; right: 0; text-align: center; font-size: calc(var(--msv-unit) * 16); line-height: calc(var(--msv-unit) * 24); font-weight: 700; color: #3c3c3c; font-family: Outfit, Roboto, 'Noto Sans SC', sans-serif; pointer-events: none; }
+.msv-body { flex: 1; height: auto; padding: calc(var(--msv-unit) * 12) calc(var(--msv-unit) * 17) calc(var(--msv-unit) * 24); }
+.msv-state { padding: calc(var(--msv-unit) * 48) 0 calc(var(--msv-unit) * 24); font-size: calc(var(--msv-unit) * 14); line-height: calc(var(--msv-unit) * 24); color: #577683; display: flex; flex-direction: column; gap: calc(var(--msv-unit) * 14); }
+.msv-state-action { align-self: flex-start; color: #167fab; font-size: calc(var(--msv-unit) * 14); }
+.msv-panel { padding: calc(var(--msv-unit) * 18) calc(var(--msv-unit) * 16); background: #fff; border: calc(var(--msv-unit) * 1.5) solid #c0ecff; border-radius: calc(var(--msv-unit) * 17); display: flex; flex-direction: column; gap: calc(var(--msv-unit) * 10); }
+.msv-panel-title { font-size: calc(var(--msv-unit) * 16); line-height: calc(var(--msv-unit) * 24); font-weight: 700; color: #7a4a1d; }
+.msv-panel-line { font-size: calc(var(--msv-unit) * 12.5); line-height: calc(var(--msv-unit) * 19); color: #577683; }
+.msv-back-workbench { margin-top: calc(var(--msv-unit) * 6); height: calc(var(--msv-unit) * 38); border-radius: calc(var(--msv-unit) * 10); border: calc(var(--msv-unit) * 1.5) solid #5baae8; font-size: calc(var(--msv-unit) * 14); font-weight: 600; color: #167fab; display: flex; align-items: center; justify-content: center; }
+.msv-notice { display: block; margin: calc(var(--msv-unit) * 6) 0; font-size: calc(var(--msv-unit) * 12); line-height: calc(var(--msv-unit) * 18); color: #7a4a1d; }
+.msv-tail { padding: calc(var(--msv-unit) * 18) 0; text-align: center; font-size: calc(var(--msv-unit) * 11); color: #9ca3af; }

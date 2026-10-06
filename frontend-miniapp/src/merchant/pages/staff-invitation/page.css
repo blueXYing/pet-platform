@@ -1,0 +1,44 @@
+/* 员工邀请确认页 — 无原稿帧（登记表缺稿登记），沿 M 端现行规范实现：measures/tokens 沿用
+   members 页（merchant frame 12:6591, 402x898）的语言 — header band 86 #FFF6E5, body #F0FBFF,
+   cards white with #C0ECFF accents, primary #5BAAE8, status dot #22C55E/#D1D5DB。状态样式一律
+   className 模板字符串变体，不用 data-* 属性选择器（Taro 4.1.5 前科）。 */
+.msi-page { --msi-status-top: 0px; min-height: 100vh; background: #f0fbff; color: #1d0d07; font-family: Roboto, 'Noto Sans SC', sans-serif; display: flex; flex-direction: column; }
+.msi-page view, .msi-page button, .msi-page image, .msi-page text, .msi-page input { box-sizing: border-box; }
+.msi-page button { margin: 0; padding: 0; border: 0; border-radius: 0; background: transparent; font: inherit; line-height: normal; }
+.msi-page button::after { border: 0; }
+.msi-page button[disabled] { opacity: .65; color: inherit; }
+.msi-status-area { height: var(--msi-status-top); flex: none; }
+.msi-header { position: relative; flex: none; height: calc(var(--msi-unit) * 86); background: #fff6e5; display: flex; align-items: center; }
+.msi-back { margin-left: calc(var(--msi-unit) * 8); width: calc(var(--msi-unit) * 25); height: calc(var(--msi-unit) * 42); display: flex; align-items: center; justify-content: center; }
+.msi-back image { width: calc(var(--msi-unit) * 8.9); height: calc(var(--msi-unit) * 14.5); }
+.msi-title { position: absolute; left: 0; right: 0; text-align: center; font-size: calc(var(--msi-unit) * 16); line-height: calc(var(--msi-unit) * 24); font-weight: 700; color: #3c3c3c; font-family: Outfit, Roboto, 'Noto Sans SC', sans-serif; pointer-events: none; }
+.msi-state { padding: calc(var(--msi-unit) * 48) calc(var(--msi-unit) * 29); font-size: calc(var(--msi-unit) * 14); line-height: calc(var(--msi-unit) * 24); color: #577683; display: flex; flex-direction: column; gap: calc(var(--msi-unit) * 14); }
+.msi-state-action { align-self: flex-start; color: #167fab; font-size: calc(var(--msi-unit) * 14); }
+.msi-query { display: flex; align-items: center; gap: calc(var(--msi-unit) * 8); }
+.msi-query-input { flex: 1; height: calc(var(--msi-unit) * 38); padding: 0 calc(var(--msi-unit) * 10); border: calc(var(--msi-unit) * 1) solid #c0ecff; border-radius: calc(var(--msi-unit) * 8); font-size: calc(var(--msi-unit) * 14); color: #111827; background: #fff; }
+.msi-query-submit { flex: none; padding: 0 calc(var(--msi-unit) * 14); height: calc(var(--msi-unit) * 38); border-radius: calc(var(--msi-unit) * 10); background: #5baae8; font-size: calc(var(--msi-unit) * 14); font-weight: 600; color: #fff; display: flex; align-items: center; justify-content: center; }
+.msi-body { flex: 1; height: auto; padding: calc(var(--msi-unit) * 12) calc(var(--msi-unit) * 17) calc(var(--msi-unit) * 24); }
+.msi-notice { display: block; margin: calc(var(--msi-unit) * 6) 0; font-size: calc(var(--msi-unit) * 12); line-height: calc(var(--msi-unit) * 18); color: #7a4a1d; }
+.msi-card { padding: calc(var(--msi-unit) * 14) calc(var(--msi-unit) * 16); background: #fff; border: calc(var(--msi-unit) * 1.5) solid #c0ecff; border-radius: calc(var(--msi-unit) * 17); display: flex; flex-direction: column; gap: calc(var(--msi-unit) * 8); }
+.msi-card-line { display: flex; align-items: center; justify-content: space-between; gap: calc(var(--msi-unit) * 8); }
+.msi-store-name { font-size: calc(var(--msi-unit) * 17); line-height: calc(var(--msi-unit) * 24); font-weight: 700; color: #111827; }
+.msi-card-sub { font-size: calc(var(--msi-unit) * 12); line-height: calc(var(--msi-unit) * 17); color: #6b7280; }
+.msi-card-row { display: flex; align-items: center; gap: calc(var(--msi-unit) * 10); }
+.msi-card-label { flex: none; width: calc(var(--msi-unit) * 60); font-size: calc(var(--msi-unit) * 12.5); color: #577683; }
+.msi-card-value { font-size: calc(var(--msi-unit) * 14); color: #111827; }
+.msi-card-actions { display: flex; flex-wrap: wrap; gap: calc(var(--msi-unit) * 6); }
+.msi-action-chip { padding: calc(var(--msi-unit) * 2) calc(var(--msi-unit) * 8); border-radius: calc(var(--msi-unit) * 4); background: #c0ecff; font-size: calc(var(--msi-unit) * 11); line-height: calc(var(--msi-unit) * 16); color: #577683; }
+.msi-card-hint { font-size: calc(var(--msi-unit) * 11.5); line-height: calc(var(--msi-unit) * 17); color: #9ca3af; }
+.msi-tag { flex: none; padding: calc(var(--msi-unit) * 2) calc(var(--msi-unit) * 6); border-radius: calc(var(--msi-unit) * 4); background: #e5e7eb; font-size: calc(var(--msi-unit) * 10); line-height: calc(var(--msi-unit) * 15); color: #4b5563; }
+.msi-page .msi-tag-invited { background: #fdeec8; color: #7a4a1d; }
+.msi-page .msi-tag-confirmed { background: #d7f0d0; color: #2f6b2f; }
+.msi-page .msi-tag-canceled { background: #e5e7eb; color: #4b5563; }
+.msi-member-state { display: flex; align-items: center; gap: calc(var(--msi-unit) * 4); }
+.msi-state-dot { width: calc(var(--msi-unit) * 7.7); height: calc(var(--msi-unit) * 7.7); border-radius: calc(var(--msi-unit) * 3.85); background: #d1d5db; }
+.msi-state-text { font-size: calc(var(--msi-unit) * 11.5); line-height: calc(var(--msi-unit) * 16); color: #9ca3af; }
+.msi-page .msi-member-state-enabled .msi-state-dot { background: #22c55e; }
+.msi-page .msi-member-state-enabled .msi-state-text { color: #16a34a; }
+.msi-success { margin-top: calc(var(--msi-unit) * 12); padding: calc(var(--msi-unit) * 14) calc(var(--msi-unit) * 16); background: #fff; border: calc(var(--msi-unit) * 1.5) solid #d7f0d0; border-radius: calc(var(--msi-unit) * 17); display: flex; flex-direction: column; gap: calc(var(--msi-unit) * 8); }
+.msi-success-title { font-size: calc(var(--msi-unit) * 16); line-height: calc(var(--msi-unit) * 24); font-weight: 700; color: #2f6b2f; }
+.msi-primary { margin-top: calc(var(--msi-unit) * 14); height: calc(var(--msi-unit) * 42); border-radius: calc(var(--msi-unit) * 12); background: #5baae8; font-size: calc(var(--msi-unit) * 15); font-weight: 600; color: #fff; display: flex; align-items: center; justify-content: center; }
+.msi-tail { padding: calc(var(--msi-unit) * 18) 0; text-align: center; font-size: calc(var(--msi-unit) * 11); color: #9ca3af; }

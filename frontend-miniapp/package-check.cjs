@@ -23,7 +23,8 @@ const packages = app.subPackages || app.subpackages || []
 assert.deepEqual(packages.map(p => ({ root: p.root, pages: p.pages })), [
   { root: 'merchant', pages: ['pages/workspace/index', 'pages/services/index', 'pages/services/edit', 'pages/messages/index',
     'pages/schedule/index', 'pages/schedule/windows', 'pages/schedule/staff', 'pages/schedule/capabilities', 'pages/members/index',
-    'pages/aftersale/index', 'pages/aftersale/detail'] },
+    'pages/aftersale/index', 'pages/aftersale/detail',
+    'pages/staff-workbench/index', 'pages/staff-invitation/index', 'pages/staff-verify/index'] },
   { root: 'consumer/pages/pet-archive', pages: ['index', 'detail', 'form'] },
   { root: 'consumer/pages/merchant-application', pages: ['index', 'signing'] },
   { root: 'consumer/pages/store-services', pages: ['index', 'service-detail', 'stores'] },
@@ -44,6 +45,13 @@ for (const page of ['coupons', 'coupon-detail', 'points']) {
 for (const extension of ['js', 'json', 'wxml', 'wxss']) {
   assert.ok(fs.existsSync(path.join(root, `merchant/pages/members/index.` + extension)),
     'Staff member management page artifact missing: ' + extension)
+}
+// Staff workbench slice (52/54/48 K1): staff landing, invitation confirm, verify entry panel.
+for (const page of ['staff-workbench', 'staff-invitation', 'staff-verify']) {
+  for (const extension of ['js', 'json', 'wxml', 'wxss']) {
+    assert.ok(fs.existsSync(path.join(root, `merchant/pages/${page}/index.` + extension)),
+      `Staff workbench page build artifact missing: ${page}.${extension}`)
+  }
 }
 
 for (const page of ['index', 'signing']) {
