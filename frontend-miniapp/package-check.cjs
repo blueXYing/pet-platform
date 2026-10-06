@@ -30,6 +30,7 @@ assert.deepEqual(packages.map(p => ({ root: p.root, pages: p.pages })), [
   { root: 'consumer/pages/store-services', pages: ['index', 'service-detail', 'stores'] },
   { root: 'consumer/pages/coupon-points', pages: ['coupons', 'coupon-detail', 'points'] },
   { root: 'consumer/pages/aftersale', pages: ['index', 'detail', 'apply'] },
+  { root: 'consumer/pages/order-verify', pages: ['index'] },
 ], 'Merchant workspace, pet archive, merchant application, store services, coupon/points and aftersale pages must be registered in the single app')
 for (const [folder, pages] of [['consumer/pages/aftersale', ['index', 'detail', 'apply']], ['merchant/pages/aftersale', ['index', 'detail']]]) {
   for (const page of pages) for (const extension of ['js', 'json', 'wxml', 'wxss']) {
@@ -41,6 +42,11 @@ for (const page of ['coupons', 'coupon-detail', 'points']) {
     assert.ok(fs.existsSync(path.join(root, `consumer/pages/coupon-points/${page}.` + extension)),
       `C-006 coupon/points page artifact missing: ${page}.${extension}`)
   }
+}
+// Order verification code page (47号 §4 v0.2 C routes, explicit order-id entry slice).
+for (const extension of ['js', 'json', 'wxml', 'wxss']) {
+  assert.ok(fs.existsSync(path.join(root, 'consumer/pages/order-verify/index.' + extension)),
+    'Order verify page build artifact missing: ' + extension)
 }
 for (const extension of ['js', 'json', 'wxml', 'wxss']) {
   assert.ok(fs.existsSync(path.join(root, `merchant/pages/members/index.` + extension)),
