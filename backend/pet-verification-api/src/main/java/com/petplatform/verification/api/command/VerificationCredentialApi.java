@@ -6,6 +6,12 @@ public interface VerificationCredentialApi {
     Receipt issue(Issue command);
     View read(String orderId, QueryContext context);
     CheckResult check(Check command);
+    /**
+     * Contract 48 K2 HTTP assembly: read-only current VER state version for an order (SYSTEM
+     * scope, no guard, no eligibility or authorization proof; the verify command re-reads and
+     * re-checks everything inside its own guarded transaction).
+     */
+    String currentVersion(String orderId);
     record Issue(CommandContext context,String orderId,String expectedCredentialVersion,String refreshKind) {}
     record Receipt(String orderId,String credentialId,String credentialVersion,String code,String issuedAt,String expiresAt,String refreshAfter) {
         @Override public String toString(){return "CredentialReceipt[REDACTED]";}

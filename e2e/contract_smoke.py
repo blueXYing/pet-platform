@@ -74,6 +74,23 @@ CREDENTIAL_OPERATIONS = {
     'getOrderVerificationCredential': ('get', '/c/orders/{orderId}/verification-code'),
     'issueOrderVerificationCredential': ('post', '/c/orders/{orderId}/verification-code'),
 }
+# Verification HTTP face (47号§4 + 48号K2 slice, 2026-10-06): the two C-side credential routes
+# leave NOT_IMPLEMENTED behind, and the contract-10 §4.7 merchant scan completion route gets a
+# real receipt surface. Everything stays default off behind pet.verification.credential.http.enabled
+# and pet.verification.completion.http.enabled. Failed code checks are committed business results
+# returned as 200 receipts (resultCode with null tails), so the 4xx/5xx surface only covers
+# transport, authorization and fail-closed state errors; the manual-refresh quota keeps its 429.
+VERIFICATION_HTTP_OPERATIONS = {
+    'getOrderVerificationCredential': (
+        'get', '/c/orders/{orderId}/verification-code',
+        ('200', '400', '401', '403', '409', '503')),
+    'issueOrderVerificationCredential': (
+        'post', '/c/orders/{orderId}/verification-code',
+        ('200', '400', '401', '403', '409', '429', '503')),
+    'verifyPlatformOrder': (
+        'post', '/merchant/orders/{orderId}/verification',
+        ('200', '400', '401', '403', '404', '409', '503')),
+}
 AUTH_OPERATIONS = {
     'cAuthCreateAttempt': ('post', '/c/auth/attempts'),
     'cAuthWechatLogin': ('post', '/c/auth/wechat-login'),
@@ -240,6 +257,51 @@ COUPON_POINTS_READ_OPERATIONS = {
     'cGetPointsBalance': ('get', '/c/points/balance', ('200', '400', '401', '500')),
     'cListPointsLedger': ('get', '/c/points/ledger', ('200', '400', '401', '500')),
 }
+
+
+def check_verification_http(spec, operation, method, path):
+    name = operation['operationId']
+    expected_method, expected_path, required_codes = VERIFICATION_HTTP_OPERATIONS[name]
+    assert (method, path) == (expected_method, expected_path), f'Verification HTTP operation moved: {name}'
+    assert operation.get('security') == [{'bearerAuth': []}], f'Verification HTTP security changed: {name}'
+    assert operation.get('x-implementation-status') == 'IMPLEMENTED_DEFAULT_OFF', f'Verification HTTP status changed: {name}'
+    assert operation.get('x-default-enabled') is False, f'Verification HTTP must stay default off: {name}'
+    assert operation.get('x-contract') in ('47-Verification-Credential-Contract-v0.1.md', '48-Verification-Completion-Contract-v0.1.md'), f'Verification HTTP authority changed: {name}'
+    if name == 'verifyPlatformOrder':
+        assert operation.get('x-route-party') == 'MERCHANT' and operation.get('x-audience') == 'MINIAPP', f'Verification HTTP identity changed: {name}'
+    else:
+        assert operation.get('x-contract') == '47-Verification-Credential-Contract-v0.1.md', f'Verification HTTP authority changed: {name}'
+    responses = operation['responses']
+    assert set(responses) == set(required_codes), f'Verification HTTP response surface changed: {name}'
+    success = dereference(spec, responses['200'])
+    cache = dereference(spec, success['headers']['Cache-Control'])['schema']
+    assert cache == {'type': 'string', 'enum': ['no-store']}, f'Verification HTTP caching changed: {name}'
+    expected_data = 'OrderVerificationReceipt' if name == 'verifyPlatformOrder' \
+        else 'VerificationCredentialView' if method == 'get' else 'VerificationCredentialReceipt'
+    assert success['content'] == {'application/json': {'schema': {
+        'allOf': [{'$ref': '#/components/schemas/BaseEnvelope'},
+                  {'type': 'object', 'required': ['data'],
+                   'properties': {'data': {'$ref': '#/components/schemas/' + expected_data}}}]}}}, \
+        f'Verification HTTP success envelope changed: {name}'
+    for code in ('400', '401', '403', '404', '409', '503'):
+        if code in responses:
+            assert dereference(spec, responses[code])['content']['application/json']['schema'] \
+                == {'$ref': '#/components/schemas/ErrorEnvelope'}, f'Verification HTTP error envelope changed: {name} {code}'
+    receipt = spec['components']['schemas']['OrderVerificationReceipt']
+    assert receipt.get('additionalProperties') is False, 'Verification receipt opened'
+    assert set(receipt['required']) == {'orderId', 'attemptId', 'resultCode', 'verificationId', 'verifiedAt', 'orderVersion'}, 'Verification receipt fields changed'
+    for field in ('verificationId', 'verifiedAt', 'orderVersion'):
+        assert receipt['properties'][field].get('nullable') is True, f'Verification failed-receipt tail must stay nullable: {field}'
+    assert set(receipt['properties']['resultCode']['enum']) == {
+        'VERIFIED', 'VERIFICATION_CODE_INVALID', 'VERIFICATION_CODE_EXPIRED', 'VERIFICATION_RISK_LOCKED'}, \
+        'Verification receipt result codes changed'
+    if name == 'verifyPlatformOrder':
+        body = dereference(spec, operation['requestBody'])
+        request = dereference(spec, body['content']['application/json']['schema'])
+        assert request.get('additionalProperties') is False and set(request['required']) == {'verificationCode'}, \
+            'Verification scan body opened beyond the scanned code'
+        assert set(request['properties']) == {'verificationCode'} and request['properties']['verificationCode'].get('pattern') == r'^[0-9A-Z]{1,128}$', \
+            'Verification scan body opened beyond the scanned code'
 
 
 def check_coupon_points_read(spec, operation, method, path):
@@ -604,7 +666,7 @@ def check(spec):
             parameters = operation.get('parameters', []) + item.get('parameters', [])
             if operation_id in CREDENTIAL_OPERATIONS:
                 assert (method, path) == CREDENTIAL_OPERATIONS[operation_id], 'Credential operation moved'
-                assert operation.get('x-implementation-status') == 'NOT_IMPLEMENTED', 'Credential route is not delivered'
+                assert operation.get('x-implementation-status') == 'IMPLEMENTED_DEFAULT_OFF', 'Credential route status regressed'
                 assert operation.get('x-default-enabled') is False, 'Credentials must remain default off'
                 assert operation.get('security') == [{'bearerAuth': []}], 'Credential current session required'
                 issue = spec['components']['schemas']['VerificationCredentialIssue']
@@ -612,6 +674,8 @@ def check(spec):
                 assert set(issue['required']) == {'expectedCredentialVersion', 'refreshKind'}
                 assert issue['properties']['expectedCredentialVersion']['type'] == 'string'
                 assert issue['properties']['refreshKind']['enum'] == ['INITIAL', 'AUTO', 'MANUAL']
+            if operation_id in VERIFICATION_HTTP_OPERATIONS:
+                check_verification_http(spec, operation, method, path)
             if operation_id in PRIVATE_ASSET_OPERATIONS:
                 assert (method, path) == PRIVATE_ASSET_OPERATIONS[operation_id], f'Private asset operation moved: {operation_id}'
                 check_private_assets(spec, operation)
@@ -738,7 +802,7 @@ def check(spec):
     assert legacy_seen == LEGACY_OPERATIONS.keys(), f'Legacy operations missing: {LEGACY_OPERATIONS.keys() - legacy_seen}'
     assert legacy_writes == 11, 'Legacy write surface changed'
     assert legacy_creates == LEGACY_CREATES, 'Legacy create surface changed'
-    assert operations == LEGACY_OPERATIONS.keys() | AUTH_OPERATIONS.keys() | MERCHANT_OPERATIONS.keys() | APPLICATION_OPERATIONS.keys() | PRIVATE_ASSET_OPERATIONS.keys() | SERVICE_CATALOG_OPERATIONS.keys() | STORE_CATALOG_OPERATIONS.keys() | SERVICE_WRITE_OPERATIONS.keys() | SCHEDULE_AVAILABILITY_OPERATIONS.keys() | SCHEDULE_WRITE_OPERATIONS.keys() | CREDENTIAL_OPERATIONS.keys() | AFTERSALE_OPERATIONS.keys() | COUPON_POINTS_READ_OPERATIONS.keys(), 'Unexpected or missing reviewed operations'
+    assert operations == LEGACY_OPERATIONS.keys() | AUTH_OPERATIONS.keys() | MERCHANT_OPERATIONS.keys() | APPLICATION_OPERATIONS.keys() | PRIVATE_ASSET_OPERATIONS.keys() | SERVICE_CATALOG_OPERATIONS.keys() | STORE_CATALOG_OPERATIONS.keys() | SERVICE_WRITE_OPERATIONS.keys() | SCHEDULE_AVAILABILITY_OPERATIONS.keys() | SCHEDULE_WRITE_OPERATIONS.keys() | CREDENTIAL_OPERATIONS.keys() | AFTERSALE_OPERATIONS.keys() | COUPON_POINTS_READ_OPERATIONS.keys() | VERIFICATION_HTTP_OPERATIONS.keys(), 'Unexpected or missing reviewed operations'
     schemes = spec['components']['securitySchemes']
     assert schemes['bearerAuth']['type'] == 'http' and schemes['bearerAuth']['scheme'] == 'bearer'
     for scheme, location, name in [('authAttempt', 'header', 'X-Auth-Attempt'),
@@ -785,6 +849,7 @@ def check(spec):
             'scheduleAvailabilityOperations': len(operations & SCHEDULE_AVAILABILITY_OPERATIONS.keys()),
             'scheduleWriteOperations': len(operations & SCHEDULE_WRITE_OPERATIONS.keys()),
             'couponPointsReadOperations': len(operations & COUPON_POINTS_READ_OPERATIONS.keys()),
+            'verificationHttpOperations': len(operations & VERIFICATION_HTTP_OPERATIONS.keys()),
             'serviceWriteOperations': len(operations & SERVICE_WRITE_OPERATIONS.keys()),
             'storeCatalogOperations': len(operations & STORE_CATALOG_OPERATIONS.keys()),
             'resolvedRefs': len(refs), 'stringIdProperties': ids}

@@ -38,7 +38,10 @@ public class CSessionSecurityConfiguration {
       @Value("${pet.store.query.enabled:false}") boolean storeQueryEnabled,
       @Value("${pet.merchant.staff.enabled:false}") boolean merchantStaffEnabled,
       @Value("${pet.schedule.query.enabled:false}") boolean scheduleQueryEnabled,
-      @Value("${pet.aftersale.http.enabled:false}") boolean afterSaleHttpEnabled)
+      @Value("${pet.aftersale.http.enabled:false}") boolean afterSaleHttpEnabled,
+      @Value("${pet.verification.credential.http.enabled:false}") boolean verificationHttpEnabled,
+      @Value("${pet.verification.completion.http.enabled:false}")
+          boolean verificationCompletionHttpEnabled)
       throws Exception {
     http.securityMatcher("/api/v1/c/**", "/api/v1/merchant/**")
         .csrf(c -> c.disable())
@@ -134,6 +137,21 @@ public class CSessionSecurityConfiguration {
               // already covers it, so anonymous requests answer 401 there, non-GET stays denied,
               // and the switch keeps it unreachable when the slice is not assembled.
               a.requestMatchers(HttpMethod.GET, "/api/v1/c/services/*/availability").permitAll();
+            }
+            if (verificationHttpEnabled) {
+              // Verification credential C routes (contract 47 §4, this slice): MINIAPP Bearer is
+              // enforced by the filter's protectedPath regex, not by permitAll itself.
+              a.requestMatchers(HttpMethod.GET, "/api/v1/c/orders/*/verification-code")
+                  .permitAll();
+              a.requestMatchers(HttpMethod.POST, "/api/v1/c/orders/*/verification-code")
+                  .permitAll();
+            }
+            if (verificationCompletionHttpEnabled) {
+              // Merchant scan completion (contract 48 K2 via contract 10 §4.7): same pattern as
+              // the merchant order commands - the filter enforces the session on the
+              // /api/v1/merchant/orders/ prefix.
+              a.requestMatchers(HttpMethod.POST, "/api/v1/merchant/orders/*/verification")
+                  .permitAll();
             }
           }
           a.anyRequest().denyAll();

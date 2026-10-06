@@ -57,7 +57,13 @@ final class AfterSaleHttpFixture implements AutoCloseable {
 
     AfterSaleHttpFixture() throws Exception {this(Map.of());}
     AfterSaleHttpFixture(Map<String,Object> overrides) throws Exception {this(overrides,true);}
-    AfterSaleHttpFixture(Map<String,Object> overrides,boolean qaCatalog) throws Exception {
+    AfterSaleHttpFixture(Map<String,Object> overrides,boolean qaCatalog) throws Exception {this(overrides,qaCatalog,null);}
+    /** Extra isolated-QA beans for derivative fixtures (e.g. the verification HTTP slice's real
+     * application-facts reader for the contract-52 staff gate); never used by the AFS suites.
+     * Receives the fixture's isolated DataSource so late beans read the same schema. */
+    @FunctionalInterface
+    interface ExtraBeans { void register(GenericApplicationContext beans, javax.sql.DataSource source); }
+    AfterSaleHttpFixture(Map<String,Object> overrides,boolean qaCatalog, ExtraBeans extraBeans) throws Exception {
         directory=Files.createTempDirectory("aftersale-http-");
         try {
             var db=ordinary.t.r.f.f.db;
@@ -104,6 +110,7 @@ final class AfterSaleHttpFixture implements AutoCloseable {
                 var beans=(GenericApplicationContext)c;
                 beans.registerBean("qaAfterSaleDataSource",DataSource.class,()->ordinary.source);
                 beans.registerBean("qaAfterSaleIds",SnowflakeIdGenerator.class,()->IDS::incrementAndGet);
+                if(extraBeans!=null)extraBeans.register(beans,ordinary.source);
                 beans.registerBean("qaAfterSaleClock",Clock.class,()->clock);
                 beans.registerBean("qaAfterSaleOutbox",IntegrationEventPublisher.class,()->event->{
                     ordinary.outbox.publish(event);

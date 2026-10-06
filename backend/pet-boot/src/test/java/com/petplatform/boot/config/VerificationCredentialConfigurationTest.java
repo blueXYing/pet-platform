@@ -10,7 +10,9 @@ import java.util.Map;
 class VerificationCredentialConfigurationTest {
  private ApplicationContextRunner base(){return new ApplicationContextRunner().withUserConfiguration(VerificationCredentialConfiguration.class);}
  @Test void defaultOffDoesNotTouchDatabase(){var s=mock(DataSource.class);base().withBean(DataSource.class,()->s).run(c->{assertThat(c).hasNotFailed();assertThat(c).doesNotHaveBean(VerificationCredentialApi.class);assertThat(c).doesNotHaveBean(VerificationCompletionApi.class);verifyNoInteractions(s);});}
- @Test void httpIsNotImplemented(){base().withPropertyValues("pet.verification.credential.http.enabled=true").run(c->assertThat(c).hasFailed());}
+ @Test void httpWithoutKernelFailsClosed(){base().withPropertyValues("pet.verification.credential.http.enabled=true").run(c->assertThat(c).hasFailed());
+  base().withPropertyValues("pet.verification.completion.http.enabled=true").run(c->assertThat(c).hasFailed());}
+ @Test void httpSwitchComposesOnTopOfTheEnabledKernel(){enabled().withBean(CredentialProtection.class,()->keys()).withPropertyValues("pet.verification.credential.http.enabled=true","pet.verification.completion.enabled=true","pet.verification.completion.http.enabled=true").run(c->{assertThat(c).hasNotFailed();assertThat(c).hasSingleBean(VerificationCredentialApi.class);assertThat(c).hasSingleBean(VerificationCompletionApi.class);});}
  @Test void missingFoundationsFailClosed(){base().withPropertyValues("pet.verification.credential.enabled=true").run(c->assertThat(c).hasFailed());}
  @Test void realOwnerAuthorityComposesWithoutQaAdapter(){enabled().withBean(CredentialProtection.class,()->keys()).run(c->{assertThat(c).hasNotFailed();assertThat(c).hasSingleBean(CredentialPorts.AttemptAuthority.class);assertThat(c).hasSingleBean(VerificationCredentialApi.class);});}
  @Test void missingKeysFailClosed(){enabled().withBean(CredentialPorts.AttemptAuthority.class,()->mock(CredentialPorts.AttemptAuthority.class)).run(c->assertThat(c).hasFailed());}
