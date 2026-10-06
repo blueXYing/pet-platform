@@ -2,6 +2,8 @@
 
 2026-09-30 接续：真实 OWNER 适配、成功核销和最小售后失效已获 K1/K2 批准，见 [48号契约](48-Verification-Completion-Contract-v0.1.md)。下文“无适配器/成功核销后续”等为 47 交付时点边界，由 48 对应部分接续；码生命周期和风险规则不变。
 
+**2026-10-06 原号修订（v0.2）**：§4 保留的 GET/POST `/api/v1/c/orders/{orderId}/verification-code` 已按本契约形状落地实现（默认关闭，`pet.verification.credential.http.enabled`，详见 §4 修订段）；码生命周期、风险与加密规则不变。
+
 状态：APPROVED。用户于2026-09-29明确“批准 V1、V2”；[批准方案](../../planning/ccr/CCR-W2-API-001/verification-credential-proposal.md)§2～7的协议、字段、事务及验收范围在此冻结。SSOT §36覆盖原PRD第三/第四次失败及按单码锁的歧义。SQL见[47号Schema](../03-database/47-Verification-Credential-Schema-v0.1.sql)。
 
 ## 生命周期与接口
@@ -32,10 +34,16 @@ issue首回执orderId/credentialId/credentialVersion/code/issuedAt/expiresAt/ref
 
 ## 装配、迁移与限制
 
-`pet.verification.credential.enabled=false`，`.http.enabled=false`。HTTP置true直接失败；内核开启需要schedule/payment/auto-confirm/merchant基础开关及Owner事实、当前会话、显式CredentialProtection密钥、可信AttemptAuthority。未提供默认商家核销身份适配器：USER与staffId的后续契约仍未完成，缺适配器启动失败；QA显式授权替身只用于内核验收，不代表员工权限交付。
+`pet.verification.credential.enabled=false`，`.http.enabled=false`（v0.2 起 http 开关落地为真实装配前置：`.http.enabled=true` 要求 credential 内核开启，否则启动失败）。内核开启需要schedule/payment/auto-confirm/merchant基础开关及Owner事实、当前会话、显式CredentialProtection密钥、可信AttemptAuthority。~~未提供默认商家核销身份适配器~~（已被48号 K1 v0.2 的 staff-aware 权威取代：OWNER 恒可用，STAFF 路径随 `pet.verification.staff-identity.enabled` 装配）；QA显式授权替身只用于内核验收，不代表员工权限交付。
 
 默认密钥配置为key-id、encryption-key、lookup-key（后两者Base64的32字节）；可注入带历史key ring的CredentialProtection支持轮换。没有默认开发密钥；生产密钥管理、历史恢复与迁移仍须另行验证。
 
-本批无公开Controller、C端页面、商家成功核销/markVerified、完整OrderOperationGuard及未履约售后失效、手动订单号兜底或真实通知送达。GET/POST `/c/orders/{orderId}/verification-code`正式协议保留NOT_IMPLEMENTED；JSON未知字段/显式null/重复字段在未来HTTP拒绝。原HTTP10的verificationStatus字段由这里完整视图替代，不产生新的ORDER版本读侧。
+**v0.2 修订段（2026-10-06，核销 HTTP 切片）**：§4 保留的两条路由已实现（`CVerificationCredentialController`，随 `pet.auth.c.enabled` + `pet.verification.credential.http.enabled` 装配，默认关闭）：
+
+- `GET /api/v1/c/orders/{orderId}/verification-code`：订单本人 MINIAPP 会话只读，返回完整视图 `orderId/credentialVersion/status/code?/expiresAt?/refreshAfter?/lockedUntil`（NONE/ACTIVE/EXPIRED/INVALIDATED/LOCKED，仅 ACTIVE 回显码），不创建 state、不延长有效期；`refund_order` 已创建时 409 `VERIFICATION_BLOCKED_BY_REFUND`。
+- `POST /api/v1/c/orders/{orderId}/verification-code`：签发/刷新，请求体严格 JSON `{expectedCredentialVersion, refreshKind}`（INITIAL/AUTO/MANUAL 由客户端明示，服务端按本契约生命周期规则核验：INITIAL 仅无当前码、AUTO 仅当前码已过期、MANUAL 滚动60秒最多5次成功，第6次 429 `COMMON_RATE_LIMITED`）；`X-Request-Id` 终端 UUID，走 verification.issue 五元组幂等（同 key 同参重放返回受保护首回执，异参 409 `IDEMPOTENCY_KEY_CONFLICT`）；首次与重放均 200（回执含明文码，非 REST 资源创建）。成功回执 `orderId/credentialId/credentialVersion/code/issuedAt/expiresAt/refreshAfter`。
+- 两条路由一律 `Cache-Control: no-store`，未知字段/显式null/重复键/尾随 token 400（原“未来HTTP拒绝”自本切片生效）；错误码复用 12号（400/401/403/409/429/503，见 OpenAPI11）。
+
+本批仍无商家成功核销的~~公开Controller~~（已由 48号 K2 HTTP 面交付，见 48号 v0.3）、C端页面联调、手动订单号兜底或真实通知送达。原HTTP10的verificationStatus字段由这里完整视图替代，不产生新的ORDER版本读侧。
 
 SQL47新增六张VER表，无生产迁移。停用入口不删除码历史/风控锁/fence；已有改期事实依赖真实VER证据时，不得回退到伪fence或重新接受旧epoch。完整VER-001/VER-002/ORD-003不提前DONE。

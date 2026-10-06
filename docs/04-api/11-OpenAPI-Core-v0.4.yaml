@@ -31,16 +31,24 @@ paths:
       - C-Order
       operationId: getOrderVerificationCredential
       summary: Read current credential
-      x-implementation-status: NOT_IMPLEMENTED
+      x-implementation-status: IMPLEMENTED_DEFAULT_OFF
       x-default-enabled: false
+      x-contract: 47-Verification-Credential-Contract-v0.1.md
+      x-assembly-switch: pet.verification.credential.http.enabled
       security:
       - bearerAuth: []
       parameters:
       - $ref: '#/components/parameters/OrderId'
       responses:
         '200':
-          description: 'Internal contract only; route NOT_IMPLEMENTED. Cache-Control:
-            no-store.'
+          description: 'Contract 47 §4 view (this slice): read-only, never creates state or
+            extends validity; Cache-Control: no-store, the code is never cached or logged.'
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                enum:
+                - no-store
           content:
             application/json:
               schema:
@@ -52,6 +60,8 @@ paths:
                   properties:
                     data:
                       $ref: '#/components/schemas/VerificationCredentialView'
+        '400':
+          $ref: '#/components/responses/BadRequest'
         '401':
           $ref: '#/components/responses/Unauthorized'
         '403':
@@ -65,8 +75,10 @@ paths:
       - C-Order
       operationId: issueOrderVerificationCredential
       summary: Issue or refresh a credential
-      x-implementation-status: NOT_IMPLEMENTED
+      x-implementation-status: IMPLEMENTED_DEFAULT_OFF
       x-default-enabled: false
+      x-contract: 47-Verification-Credential-Contract-v0.1.md
+      x-assembly-switch: pet.verification.credential.http.enabled
       security:
       - bearerAuth: []
       parameters:
@@ -74,8 +86,15 @@ paths:
       - $ref: '#/components/parameters/RequestId'
       responses:
         '200':
-          description: 'Internal contract only; route NOT_IMPLEMENTED. Cache-Control:
-            no-store.'
+          description: 'Contract 47 §4 issue/refresh (this slice): five-tuple requestId
+            idempotency, protected first-receipt replay, a refresh retires the old code;
+            Cache-Control: no-store.'
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                enum:
+                - no-store
           content:
             application/json:
               schema:
@@ -87,16 +106,18 @@ paths:
                   properties:
                     data:
                       $ref: '#/components/schemas/VerificationCredentialReceipt'
+        '400':
+          $ref: '#/components/responses/BadRequest'
         '401':
           $ref: '#/components/responses/Unauthorized'
         '403':
           $ref: '#/components/responses/Forbidden'
         '409':
           $ref: '#/components/responses/Conflict'
-        '503':
-          $ref: '#/components/responses/DependencyUnavailable'
         '429':
           description: Manual refresh quota exceeded
+        '503':
+          $ref: '#/components/responses/DependencyUnavailable'
       requestBody:
         required: true
         content:
@@ -3443,6 +3464,12 @@ paths:
       - Merchant-Verification
       summary: 平台订单核销
       operationId: verifyPlatformOrder
+      x-implementation-status: IMPLEMENTED_DEFAULT_OFF
+      x-default-enabled: false
+      x-contract: 48-Verification-Completion-Contract-v0.1.md
+      x-assembly-switch: pet.verification.completion.http.enabled
+      x-route-party: MERCHANT
+      x-audience: MINIAPP
       security:
       - bearerAuth: []
       parameters:
@@ -3454,22 +3481,48 @@ paths:
           application/json:
             schema:
               type: object
+              additionalProperties: false
               required:
               - verificationCode
               properties:
                 verificationCode:
                   type: string
+                  pattern: ^[0-9A-Z]{1,128}$
       responses:
+        '200':
+          description: '核销回执（Contract48 K2，本切片落地）：resultCode=VERIFIED 携带
+            verificationId/verifiedAt/orderVersion；无效码/过期码/风控锁为已提交业务结果，
+            后三字段为 null；同 requestId 同参重放返回首次回执并复验当前权限。
+            Cache-Control: no-store。'
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                enum:
+                - no-store
+          content:
+            application/json:
+              schema:
+                allOf:
+                - $ref: '#/components/schemas/BaseEnvelope'
+                - type: object
+                  required:
+                  - data
+                  properties:
+                    data:
+                      $ref: '#/components/schemas/OrderVerificationReceipt'
+        '400':
+          $ref: '#/components/responses/BadRequest'
         '401':
           $ref: '#/components/responses/Unauthorized'
         '403':
           $ref: '#/components/responses/Forbidden'
-        '503':
-          $ref: '#/components/responses/DependencyUnavailable'
-        '200':
-          description: 核销成功
+        '404':
+          $ref: '#/components/responses/NotFound'
         '409':
           $ref: '#/components/responses/Conflict'
+        '503':
+          $ref: '#/components/responses/DependencyUnavailable'
   /admin/aftersales/{afterSaleId}/decisions:
     post:
       tags:
@@ -11718,6 +11771,42 @@ components:
         lockedUntil:
           type: string
           format: date-time
+          nullable: true
+    OrderVerificationReceipt:
+      type: object
+      additionalProperties: false
+      required:
+      - orderId
+      - attemptId
+      - resultCode
+      - verificationId
+      - verifiedAt
+      - orderVersion
+      properties:
+        orderId:
+          type: string
+          pattern: ^[1-9][0-9]*$
+        attemptId:
+          type: string
+          pattern: ^[1-9][0-9]*$
+        resultCode:
+          type: string
+          enum:
+          - VERIFIED
+          - VERIFICATION_CODE_INVALID
+          - VERIFICATION_CODE_EXPIRED
+          - VERIFICATION_RISK_LOCKED
+        verificationId:
+          type: string
+          pattern: ^[1-9][0-9]*$
+          nullable: true
+        verifiedAt:
+          type: string
+          format: date-time
+          nullable: true
+        orderVersion:
+          type: string
+          pattern: ^(0|[1-9][0-9]*)$
           nullable: true
     PrivateAssetUploadResult:
       type: object

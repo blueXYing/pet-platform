@@ -56,6 +56,22 @@ public final class VerificationCredentialService implements VerificationCredenti
    return new View(order,Long.toString(st.version),status,"ACTIVE".equals(status)?plain(code):null,code==null?null:time(code.expiresAt),code==null?null:time(code.expiresAt),time(st.lockedUntil));
   });
  });}
+ /** Contract 48 K2 HTTP assembly read: the credential-series version the scanned code belongs to;
+  * never an eligibility or authorization proof. Deliberately omits the live-credential invariant:
+  * after a successful completion the state legitimately has version>0 with no live credential,
+  * and resolving to the consumed code's generation (state.version-1) keeps the retry canonical
+  * identical to the first attempt, so a same-key replay returns the first receipt instead of
+  * IDEMPOTENCY_KEY_CONFLICT. The verify command re-checks everything under its own guard. */
+ public String currentVersion(String order){return safe(()->{
+  try{IDS.fromApi(order);}catch(RuntimeException e){throw invalid();}
+  top();return tx.execute(s->{defaults();var loc=orders.locate(order,new QueryContext("verification-http",OperatorType.SYSTEM,null));
+   var st=db.state(IDS.fromApi(loc.orderId()));
+   if(st==null){if(db.historyCount(IDS.fromApi(loc.orderId()))!=0)throw bad();return "0";}
+   if(st.epoch==null||st.epoch<0||st.epoch>1||st.version==null||st.version<0
+    ||!loc.storeId().equals(str(st.storeId))||!loc.reservationId().equals(str(st.reservationId)))throw bad();
+   boolean consumed=st.currentCredentialId==null&&st.version>0&&db.historyCount(IDS.fromApi(loc.orderId()))>0;
+   return Long.toString(consumed?st.version-1:st.version);});
+ });}
  public CheckResult check(Check c){return safe(()->{
   if(c==null)throw invalid();validate(c.context(),c.orderId(),false);IDS.fromApi(c.storeId());
   if(c.verificationCode()==null||!c.verificationCode().matches("[0-9A-Z]{1,128}"))throw invalid();top();

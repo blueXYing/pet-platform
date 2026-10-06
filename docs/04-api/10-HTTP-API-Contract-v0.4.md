@@ -682,7 +682,20 @@ GET /api/v1/c/orders/{orderId}/refund
 
 ## 3.11 核销码
 
-### GET `/api/v1/c/orders/{orderId}/verification-code`
+正式实现以 [Contract47](47-Verification-Credential-Contract-v0.1.md)（v0.2，2026-10-06 核销 HTTP 切片）与 OpenAPI11 为准；默认 `pet.verification.credential.enabled=false` + `pet.verification.credential.http.enabled=false` 分层关闭，随 `pet.auth.c.enabled` 装配：
+
+```text
+GET  /api/v1/c/orders/{orderId}/verification-code   （订单本人只读完整视图，仅 ACTIVE 回显码）
+POST /api/v1/c/orders/{orderId}/verification-code   （签发/刷新：X-Request-Id + {expectedCredentialVersion, refreshKind}）
+```
+
+GET 返回 `orderId/credentialVersion/status(NONE|ACTIVE|EXPIRED|INVALIDATED|LOCKED)/code?/expiresAt?/refreshAfter?/lockedUntil?`（替代下方旧 verificationStatus 示例）；POST 成功返回 `orderId/credentialId/credentialVersion/code/issuedAt/expiresAt/refreshAfter`，首次与幂等重放均 200，第6次手动刷新 429 `COMMON_RATE_LIMITED`。两条路由一律 `Cache-Control: no-store`，未知字段/显式null/重复键 400；仅 ACTIVE 回显码。
+
+若 `refund_order` 已创建，返回 409 `VERIFICATION_BLOCKED_BY_REFUND`。
+
+售后处理中但退款单尚未创建，不应仅因 `afterSaleStatus=PROCESSING` 拒绝核销码。
+
+### GET `/api/v1/c/orders/{orderId}/verification-code`（旧示例，已被上方完整视图替代）
 
 权限：订单本人。
 
@@ -698,14 +711,6 @@ Response：
   "verificationStatus": "UNVERIFIED"
 }
 ```
-
-若 `refund_order` 已创建，返回：
-
-```text
-VERIFICATION_BLOCKED_BY_REFUND
-```
-
-售后处理中但退款单尚未创建，不应仅因 `afterSaleStatus=PROCESSING` 拒绝核销码。
 
 ---
 
@@ -968,6 +973,8 @@ REFUND_APPLICATION_ALREADY_PROCESSED
 ---
 
 ## 4.7 平台订单核销
+
+正式实现以 [Contract48](48-Verification-Completion-Contract-v0.1.md) K2（v0.3，2026-10-06 核销 HTTP 切片）与 OpenAPI11 为准；默认 `pet.verification.completion.enabled=false` + `pet.verification.completion.http.enabled=false` 分层关闭。回执 200 携带 `orderId/attemptId/resultCode/verificationId/verifiedAt/orderVersion`（无效码/过期码/风险锁为已提交业务结果，后三字段 null）；错误 400/401/403/404(K1 防枚举)/409/503，一律 no-store；商家端不掌握 expectedCredentialVersion，由服务端经只读 currentVersion 解析（见48号 K2 v0.3）。失败关闭矩阵（FROZEN、STAFF 无 grant/未确认/撤权/停用、refund_order 后禁核销、核销后禁重复）沿 48号 K1 v0.2 与 Error12 既有裁决。
 
 ### POST `/api/v1/merchant/orders/{orderId}/verification`
 
@@ -2039,4 +2046,4 @@ applicationId等主键使用Snowflake String；applicationNo按原PRD为SQ+YYYYM
 [38号内部内核](38-Atomic-Booking-Create-Contract-v0.1.md)已实现真实占位与待支付订单原子写入、地址/备注加密快照和持久幂等。当前没有开放本文件§3.5 HTTP路由，也没有改变§3.4现行六字段响应；选窗ID/类型、服务地址及完整结算配套须后续同步公开合同与适配器后启用。优惠券、生产备注审核、自动到期关闭与支付未接齐，不能把无券内部测试当作完整C端下单上线。
 
 ## 核销码 V1/V2 正式补充
-2026-09-29用户批准V1/V2，执行[47号契约](47-Verification-Credential-Contract-v0.1.md)。覆盖§3.11：GET仅只读，POST生成/刷新带requestId和expectedCredentialVersion；新完整视图替代旧verificationStatus示例，两个路由均NOT_IMPLEMENTED，不注册公开入口。第三次独立失败锁15分钟且换码不能绕过；不表示商家核销完成接口已交付。
+2026-09-29用户批准V1/V2，执行[47号契约](47-Verification-Credential-Contract-v0.1.md)。覆盖§3.11：GET仅只读，POST生成/刷新带requestId和expectedCredentialVersion；新完整视图替代旧verificationStatus示例。第三次独立失败锁15分钟且换码不能绕过。~~两个路由均NOT_IMPLEMENTED，不注册公开入口~~（2026-10-06 核销 HTTP 切片按 47号 v0.2 交付，默认关闭）；~~不表示商家核销完成接口已交付~~（§4.7 商家核销路由同批按 48号 K2 v0.3 交付，默认关闭）。

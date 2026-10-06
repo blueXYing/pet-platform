@@ -1,6 +1,6 @@
 # 48 — 核销完成与最小售后失效
 
-状态：APPROVED，2026-09-30，用户批准 M94/K1/K2；**K1 于 2026-10-06 原号修订（v0.2）**，依据 [52 号绑定 CCR §5 用户裁决](../../planning/ccr/CCR-W2-API-001/staff-identity-binding-proposal.md)（D2/D4/D5 及「核销记录必须可追溯到店员」），SSOT §37、商家 PRD §5.6/§5.8。本契约覆盖 47 中“无真实主账号适配/无核销完成”的阶段限制；不改码期限、风险阈值或退款规则。
+状态：APPROVED，2026-09-30，用户批准 M94/K1/K2；**K1 于 2026-10-06 原号修订（v0.2）**，依据 [52 号绑定 CCR §5 用户裁决](../../planning/ccr/CCR-W2-API-001/staff-identity-binding-proposal.md)（D2/D4/D5 及「核销记录必须可追溯到店员」），SSOT §37、商家 PRD §5.6/§5.8。**K2 于 2026-10-06 原号修订（v0.3）：交付对外 HTTP 面（HTTP10 §4.7 路由），见 K2 修订段。**本契约覆盖 47 中“无真实主账号适配/无核销完成”的阶段限制；不改码期限、风险阈值或退款规则。
 
 ## K1 身份（v0.2 修订）
 
@@ -15,7 +15,16 @@
 
 内部 VerificationCompletionApi.verify(Command)：context/orderId/storeId/verificationCode/expectedCredentialVersion/confirmed。confirmed 必须 true，方式固定 SCAN；无手动订单号兜底。码语法沿用 47 的 1～128 位大写字母数字，版本非负十进制 String。成功回执 orderId/attemptId/resultCode=VERIFIED/verificationId/verifiedAt/orderVersion。无效码、过期码、风险锁为已提交业务结果，其后三字段 null；风险计数与 47 共用系列。
 
-namespace=verification.complete，二进制五元组(namespace,operatorType,operatorId,STORE:storeId,requestId)唯一。独立 Admission 持久绑定加密参数；执行回滚保留绑定。成功重放返回首回执的原始时间与版本，经当前权限及本域持久证据校验；另一个 key 对已核销订单返回 VERIFICATION_ALREADY_DONE。没有 HTTP Controller，不接受客户端声明的身份。
+namespace=verification.complete，二进制五元组(namespace,operatorType,operatorId,STORE:storeId,requestId)唯一。独立 Admission 持久绑定加密参数；执行回滚保留绑定。成功重放返回首回执的原始时间与版本，经当前权限及本域持久证据校验；另一个 key 对已核销订单返回 VERIFICATION_ALREADY_DONE。~~没有 HTTP Controller，不接受客户端声明的身份。~~（v0.3 修订：HTTP 面已交付，身份仍不接受客户端声明，见下段。）
+
+### K2 HTTP 面（v0.3 修订，2026-10-06 核销 HTTP 切片）
+
+`POST /api/v1/merchant/orders/{orderId}/verification`（HTTP10 §4.7 既有路由；`MerchantOrderVerificationController`，随 `pet.verification.completion.http.enabled` 装配、默认关闭，开启要求 completion 内核）：
+
+- 请求体严格 JSON `{verificationCode}`（1~128 位大写字母数字），`X-Request-Id` 终端 UUID，五元组幂等同上；未知字段/显式null/重复键 400。无 query 参数、无手动订单号兜底、`confirmed` 恒由服务端置 true、方式恒 SCAN。
+- **merchantId/storeId 服务端解析**：由订单经 `OrderVerificationCredentialFactsApi.locate` 路由到门店 guard；客户端不声明门店或店员（沿 HTTP10 §4.7）。操作身份按 K1 v0.2 链在 guard 事务内解析（OWNER 先行；`pet.verification.staff-identity.enabled` 与 52 号内核双开时 STAFF 路径可用）。
+- **expectedCredentialVersion 服务端解析（本修订新增内部只读 API `VerificationCredentialApi.currentVersion(orderId)`，SYSTEM 作用域、无 guard、不证明资格或授权）**：扫码语义下商家设备不掌握版本号，适配层在命令组装时读取当前 VER 系列 version 传入；命令事务内仍按本契约原样复核（刷新竞态导致不一致时 409 `COMMON_CONFLICT`，商家重扫即可），码哈希校验独立保证只认当前活码。
+- 回执：200 + `orderId/attemptId/resultCode/verificationId/verifiedAt/orderVersion`；`resultCode=VERIFIED` 携带后三字段，无效码/过期码/风险锁为已提交业务结果（200、后三字段 null）。错误：400 参数、401 未登录、403 无权/门拒绝/依赖失败关闭、404 K1 防枚举（未确认/撤权等按不存在处理）、409 `VERIFICATION_BLOCKED_BY_REFUND`/`VERIFICATION_ALREADY_DONE`/`VERIFICATION_NOT_ALLOWED`/`COMMON_CONFLICT`/`IDEMPOTENCY_KEY_CONFLICT`、503 依赖不可用；一律 `Cache-Control: no-store`（12号 §7 状态映射同步增补）。
 
 ## 同事务提交协议
 
@@ -33,4 +42,4 @@ OrderVerifiedEvent.v1 不变。v2 由 ORDER 唯一生产，aggregate=ORDER/order
 
 SQL48 扩展原成功/尝试表的真实身份和 command_id，移除全局 request_id 唯一键、保留 order_id 成功唯一键；新增 ORDER/AFS 提交证据与 ORDER 售后状态投影。表结构不变（CHECK 已含 STAFF 形状），仅写入语义按 K1 v0.2 开放。现无可核实员工绑定历史的来源，因此迁移遇到任何旧核销行即拒绝，必须先另行提供并审阅真实映射，绝不猜测 OWNER 或抹除历史。仅隔离 QA 执行迁移。
 
-pet.verification.completion.enabled=false；开启需要 credential 内核及其真实依赖/密钥。`pet.verification.staff-identity.enabled` 默认 false，且仅在 `pet.merchant.staff-identity.enabled=true` 时可开启，否则启动失败。不开 HTTP、生产开关或 worker；STAFF 路径依赖 52 号绑定切片（#107）产出的真实 member/grant/动作数据，测试种子仅作反例与门禁证据，不声称绑定交付。员工端核销页面与绑定/授予写命令（52 号 STAFF-B，#107）未交付；完整售后创建/裁决/CREATE_REFUND、员工授权矩阵与端到端 VER-002/QA-004 均未交付。
+pet.verification.completion.enabled=false；开启需要 credential 内核及其真实依赖/密钥。`pet.verification.staff-identity.enabled` 默认 false，且仅在 `pet.merchant.staff-identity.enabled=true` 时可开启，否则启动失败。~~不开 HTTP~~（v0.3：`pet.verification.completion.http.enabled` 已交付、默认关闭，开启要求 completion 内核；47号 §4 的 C 端凭证路由同批交付）、~~生产开关~~或 worker 仍不开；STAFF 路径依赖 52 号绑定切片（#107）产出的真实 member/grant/动作数据，测试种子仅作反例与门禁证据，不声称绑定交付。~~员工端核销页面与绑定/授予写命令（52 号 STAFF-B，#107）未交付~~（绑定/授予写命令已由 54号/#107 交付；员工端核销页面归 M 端，后端通道本批就绪）；完整售后创建/裁决/CREATE_REFUND、员工授权矩阵与端到端 VER-002/QA-004 均未交付。

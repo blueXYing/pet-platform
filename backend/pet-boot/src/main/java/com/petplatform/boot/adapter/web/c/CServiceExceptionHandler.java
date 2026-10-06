@@ -23,7 +23,8 @@ import org.springframework.web.method.annotation.MethodArgumentTypeMismatchExcep
         CAuthController.class, CAccountController.class, CPetController.class,
         CProfileController.class, CMerchantMembershipController.class,
         CNotificationController.class, CServiceController.class, CStoreController.class,
-        CScheduleController.class, CCouponController.class, CPointsController.class})
+        CScheduleController.class, CCouponController.class, CPointsController.class,
+        CVerificationCredentialController.class})
 @Order(0)
 public class CServiceExceptionHandler {
 
@@ -46,7 +47,14 @@ public class CServiceExceptionHandler {
             Map.entry("SERVICE_REVIEW_REASON_REQUIRED", 400),
             Map.entry("COMMON_RATE_LIMITED", 429),
             Map.entry("COMMON_INTERNAL_ERROR", 500),
-            Map.entry("COMMON_DEPENDENCY_UNAVAILABLE", 503));
+            Map.entry("COMMON_DEPENDENCY_UNAVAILABLE", 503),
+            // Verification credential C routes (contract 47 §4, this slice; 12号 §7 codes are
+            // 409 business conflicts — the POST keeps failed codes as 200/429 per its rules).
+            Map.entry("VERIFICATION_NOT_ALLOWED", 409),
+            Map.entry("VERIFICATION_STORE_MISMATCH", 409),
+            Map.entry("VERIFICATION_RISK_LOCKED", 409),
+            Map.entry("VERIFICATION_BLOCKED_BY_REFUND", 409),
+            Map.entry("VERIFICATION_ALREADY_DONE", 409));
 
     @ExceptionHandler(ApiException.class)
     public ApiResponse<Void> apiException(ApiException error, HttpServletResponse response) {

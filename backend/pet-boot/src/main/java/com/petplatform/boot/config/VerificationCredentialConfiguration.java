@@ -23,7 +23,8 @@ public class VerificationCredentialConfiguration {
  public static final String VERIFY_ACTION="merchant.order.verify";
  @Bean Object credentialFlags(Environment e){
   if(e.getProperty("pet.verification.completion.enabled",Boolean.class,false)&&!e.getProperty("pet.verification.credential.enabled",Boolean.class,false))throw new IllegalStateException("Verification completion requires credentials");
-  if(e.getProperty("pet.verification.credential.http.enabled",Boolean.class,false))throw new IllegalStateException("Credential HTTP is not implemented");
+  if(e.getProperty("pet.verification.credential.http.enabled",Boolean.class,false)&&!e.getProperty("pet.verification.credential.enabled",Boolean.class,false))throw new IllegalStateException("Credential HTTP requires the credential kernel");
+  if(e.getProperty("pet.verification.completion.http.enabled",Boolean.class,false)&&!e.getProperty("pet.verification.completion.enabled",Boolean.class,false))throw new IllegalStateException("Completion HTTP requires the completion kernel");
   if(e.getProperty("pet.verification.credential.enabled",Boolean.class,false))for(String key:List.of("pet.schedule.protection.enabled","pet.payment.foundation.enabled","pet.order.auto-confirm.enabled","pet.order.merchant.enabled"))
    if(!e.getProperty(key,Boolean.class,false))throw new IllegalStateException("Credentials require "+key);return new Object();
  }

@@ -23,7 +23,8 @@ import org.springframework.web.multipart.MaxUploadSizeExceededException;
       MerchantApplicationCityController.class,
       MerchantServiceController.class,
       ServiceWriteAdminController.class,
-      MerchantScheduleController.class
+      MerchantScheduleController.class,
+      MerchantOrderVerificationController.class
     })
 @Order(Ordered.HIGHEST_PRECEDENCE + 20)
 public final class MerchantHttpExceptionHandler {
@@ -48,7 +49,14 @@ public final class MerchantHttpExceptionHandler {
                   .SERVICE_REVIEW_REASON_REQUIRED, 400),
           Map.entry(com.petplatform.thirdparty.api.PrivateAssetApiCodes.ASSET_NOT_READY, 409),
           Map.entry(com.petplatform.thirdparty.api.PrivateAssetApiCodes.ASSET_REJECTED, 422),
-          Map.entry(com.petplatform.thirdparty.api.PrivateAssetApiCodes.GRANT_GONE, 410));
+          Map.entry(com.petplatform.thirdparty.api.PrivateAssetApiCodes.GRANT_GONE, 410),
+          // Verification HTTP slice (47号§4/48号K2 via 10号; 12号 §7 codes are 409 business
+          // conflicts — failed code checks themselves return as 200 receipts, not errors).
+          Map.entry("VERIFICATION_NOT_ALLOWED", 409),
+          Map.entry("VERIFICATION_STORE_MISMATCH", 409),
+          Map.entry("VERIFICATION_RISK_LOCKED", 409),
+          Map.entry("VERIFICATION_BLOCKED_BY_REFUND", 409),
+          Map.entry("VERIFICATION_ALREADY_DONE", 409));
 
   @ExceptionHandler(ApiException.class)
   Map<String, Object> api(ApiException error, HttpServletResponse response) {
