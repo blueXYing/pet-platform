@@ -126,7 +126,10 @@ class AutoConfirmTaskPreparationAcceptanceTest {
                     var payment = f.prepare(order, UUID.randomUUID().toString());
                     var original = f.notice(payment, "SUCCESS", "QA_PAST_" + zone, payment.amount(), payment.amount());
                     var body = (com.fasterxml.jackson.databind.node.ObjectNode) JSON.readTree(original.body());
-                    var channelLocal = LocalDate.now(ZoneId.of("Asia/Shanghai")).minusDays(1).atTime(23, 45);
+                    // Two days back keeps the derived deadline (23:45+30m Shanghai) strictly in the
+                    // past: with minusDays(1) the deadline lands at today 00:15 Shanghai, so runs
+                    // between 00:00 and 00:15 Shanghai saw due()=false and the test flaked daily.
+                    var channelLocal = LocalDate.now(ZoneId.of("Asia/Shanghai")).minusDays(2).atTime(23, 45);
                     body.put("trade_time", channelLocal.format(DateTimeFormatter.ofPattern("yyyyMMddHHmmss")));
                     var signed = f.sign(JSON.writeValueAsBytes(body));
                     f.notification.receive(signed.headers(), signed.body());
