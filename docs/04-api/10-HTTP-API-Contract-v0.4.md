@@ -803,14 +803,16 @@ PUT /api/v1/c/notification-preferences
 返回字段 `couponId`/`name`/`amountOff`/`thresholdAmount`/`scopeSummary`/`typeLabel`/`validTo`(ISO 日期)/
 `status`/`usedAt`(ISO 时间戳|null)。D1：`amountOff`(两位小数 String)/`thresholdAmount`(两位小数
 String|null，null=无门槛)/`scopeSummary`(≤64)/`typeLabel`(≤16) 均为服务端 `rule_json` 投影，
-结构未冻结（待 CPN-001），字段缺失返回 null，前端不得解析 `rule_json`。
+结构未冻结（待 CPN-001）；投影键恒返回（服务端固定输出全部字段），规则缺失/未冻结时对应值为
+null（11 号 OpenAPI 对应字段已标 nullable），前端不得解析 `rule_json`。排序为服务端保证
+（`expire_at ASC, id ASC`）；`validTo` 投影仅日期粒度，客户端不可据此复现完整排序。
 
 `GET /api/v1/c/coupons/{couponId}`：单券同投影；非本人券、不存在券与冻结态券一律同一
 COMMON_NOT_FOUND 404（不区分，防枚举）；query 全禁止。
 
 ### 3.15.2 我的积分（CCR-C006 P1）
 
-`GET /api/v1/c/points/balance`：`balance` 为非负整数 String（BIGINT 传输安全）；无账户行读作
+`GET /api/v1/c/points/balance`：`balance` 为非负整数 String（BIGINT 传输安全，上限 19 位十进制，与 11 号 pattern 及 x-maximum-decimal 一致）；无账户行读作
 `"0"`；query 全禁止。
 
 `GET /api/v1/c/points/ledger?page=&pageSize=`：`ledgerId`/`bizType`（SIGN_IN/INVITE/TASK/
