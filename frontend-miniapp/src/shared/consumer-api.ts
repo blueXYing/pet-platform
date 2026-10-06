@@ -35,6 +35,14 @@ export function afterSaleEnvelope(response: { statusCode: number; data: unknown 
   if (body.message !== 'ok') throw new Error('INVALID_RESPONSE')
   return body.data
 }
+// Contract 54 §4 employee invitation routes (read + confirm): identity-scoped only — the
+// server resolves the employee from the MINIAPP session and re-proves the invitation phone
+// server-side, so the routes carry no merchant/store coordinates and stay callable from the
+// staff workbench pages that run on merchant coordinates (the confirm entry lives there per
+// the 2026-10-06 user adjudication). Everything else under /c keeps consumer-only access.
+export function isStaffInvitationPath(path: string): boolean {
+  return /^\/api\/v1\/c\/staff\/invitations\/[1-9][0-9]{0,18}(\/confirm)?$/.test(path)
+}
 export function decodePrivateAsset(value: unknown): PrivateAssetReceipt {
   const v = object(value)
   if (Object.keys(v).sort().join(',') !== 'assetId,bytes,mediaType,objectSha256,status' || v.status !== 'READY' || typeof v.objectSha256 !== 'string' || !/^[a-f0-9]{64}(?![\s\S])/.test(v.objectSha256) || !['image/jpeg', 'image/png'].includes(v.mediaType) || !Number.isSafeInteger(v.bytes) || v.bytes < 1 || v.bytes > 10485760) throw new Error('INVALID_RESPONSE')
@@ -217,7 +225,7 @@ export class ConsumerApi {
       if (afterSalePath && spec.path === '/api/v1/merchant/aftersales' && spec.data?.storeId !== ticket.context.storeId) throw new Error('WORKSPACE_PATH_MISMATCH')
       const targetFree = spec.path === '/api/v1/merchant/service-categories' || afterSalePath && spec.path !== '/api/v1/merchant/aftersales'
       if (!targetFree && spec.data?.merchantId !== ticket.context.merchantId) throw new Error('WORKSPACE_PATH_MISMATCH')
-    } else if (ticket.context.workspace !== 'consumer') throw new Error('WORKSPACE_PATH_MISMATCH')
+    } else if (ticket.context.workspace !== 'consumer' && !isStaffInvitationPath(spec.path)) throw new Error('WORKSPACE_PATH_MISMATCH')
     try {
       const value = await this.send(spec, { Authorization: `Bearer ${this.credential.accessToken}` })
       ticket.assertCurrent()
