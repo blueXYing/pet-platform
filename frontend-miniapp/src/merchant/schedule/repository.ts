@@ -49,9 +49,10 @@ export class RealScheduleRepository implements ScheduleDeps {
   private receiptsFilter(filter: WindowFilter, merchantId: string): Record<string, unknown> {
     const data: Record<string, unknown> = { merchantId }
     if (filter.serviceId) data.serviceId = filter.serviceId
-    // NOTE: contract §3.1 lists status=SOLD_OUT among the filter values, but the shipped
-    // controller validates status against OPEN/CLOSED only (MerchantScheduleController
-    // WINDOW_STATUSES) — a SOLD_OUT filter would 400, so the page groups client-side.
+    // The page fetches unfiltered on purpose: the workbench summary needs all three status
+    // counts (OPEN/SOLD_OUT/CLOSED), so tabs group client-side. Contract §3.1 allows
+    // status=SOLD_OUT server-side filtering and the controller now accepts all three
+    // values (fixed alongside this slice).
     return data
   }
 

@@ -73,7 +73,9 @@ public final class MerchantScheduleController {
     private static final ObjectReader STRICT =
             com.petplatform.boot.config.MerchantJsonReaderFactory.strictReader();
     private static final Set<String> KINDS = Set.of("GENERAL", "PICKUP", "RETURN");
-    private static final Set<String> WINDOW_STATUSES = Set.of("OPEN", "CLOSED");
+    // 53号 §3.1: status ∈ OPEN/CLOSED/SOLD_OUT (SOLD_OUT is the system-derived full state,
+    // filterable per contract; the biz layer already accepts all three).
+    private static final Set<String> WINDOW_STATUSES = Set.of("OPEN", "CLOSED", "SOLD_OUT");
 
     private final ScheduleMerchantCommandApiImpl commands;
     private final ScheduleMerchantQueryApiImpl workbench;
