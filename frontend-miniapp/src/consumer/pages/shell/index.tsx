@@ -31,6 +31,7 @@ export default function Shell() {
       <Button id='c-session-query' disabled={busy} onClick={() => void perform(() => consumerApi.restore())}>查询当前会话</Button>
       <Button id='c-profile' disabled={!context || busy} onClick={() => platform.navigate('/consumer/pages/profile-edit/index')}>编辑真实资料</Button>
       <Button id='c-pets' disabled={!context || busy} onClick={() => platform.navigate('/consumer/pages/pet-archive/index')}>管理真实宠物档案</Button>
+      <Button id='c-aftersales' disabled={!context || busy} onClick={() => platform.navigate('/consumer/pages/aftersale/index')}>我的售后</Button>
       <Button id='c-merchant-application' onClick={() => platform.navigate('/consumer/pages/merchant-application/index')}>成为商家</Button>
       <Button id='c-logout' disabled={busy} onClick={() => void perform(async () => { await consumerApi.logout(); setNotice('已退出登录') })}>退出登录 / 重试退出</Button>
       {notice && <Text id='c-auth-notice' className='line'>{notice}</Text>}

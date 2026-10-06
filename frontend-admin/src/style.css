@@ -26,3 +26,24 @@ section input[type="date"] { display: inline-block; min-width: 0; margin: 0 4px 
 table.evidence td input { min-width: 120px; display: inline-block; margin: 0; }
 code { background: #f4f6fa; padding: 2px 6px; border-radius: 4px; font-size: 13px; overflow-wrap: anywhere; }
 [role="alert"] { color: #a33400; } [role="status"] { color: #2459a8; }
+
+/* A-004: operations has no Figma original; reuse the existing workbench style. */
+.workbench-nav { display: flex; gap: 24px; margin: 0; align-items: center; }
+.workbench-nav a { margin: 0; }
+.aftersale-title { display: flex; flex-wrap: wrap; align-items: center; gap: 20px; }
+.aftersale-title h1 { margin-right: auto; }
+.aftersale-title button { margin: 0; }
+.table-scroll { overflow-x: auto; }
+.aftersale-card, .aftersale-callout, .aftersale-page fieldset { background: #fff; border: 1px solid #dce2eb; border-radius: 8px; padding: 16px 20px; margin: 16px 0; }
+.aftersale-callout { border-left: 4px solid #367ac7; }
+.aftersale-page .preserve-text { white-space: pre-wrap; overflow-wrap: anywhere; }
+.aftersale-page h3 { font-size: 17px; }
+.aftersale-page textarea { min-height: 80px; width: min(100%, 720px); box-sizing: border-box; resize: vertical; }
+.aftersale-page fieldset { margin-top: 20px; }
+.aftersale-page fieldset legend { color: #566379; }
+.aftersale-page .materials img { max-width: min(100%, 420px); max-height: 300px; object-fit: contain; }
+@media (max-width: 720px) {
+  header { flex-wrap: wrap; gap: 16px; }
+  .aftersale-page { padding: 20px; }
+  .aftersale-page section input:not([type="checkbox"]), .aftersale-page section select, .aftersale-page section textarea { min-width: 0; max-width: 100%; }
+}

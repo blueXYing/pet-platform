@@ -46,6 +46,7 @@ public final class CBearerSessionFilter extends OncePerRequestFilter {
         || path.startsWith("/api/v1/c/pets/")
         || path.matches("/api/v1/c/orders/[^/]+/(aftersales|aftersale-eligibility)")
         || path.equals("/api/v1/c/aftersales") || path.startsWith("/api/v1/c/aftersales/")
+        || path.equals("/api/v1/c/aftersale-options")
         || path.equals("/api/v1/merchant/aftersales") || path.startsWith("/api/v1/merchant/aftersales/")
         || path.equals("/api/v1/c/aftersale-evidence-assets")
         || path.startsWith("/api/v1/c/aftersale-evidence-read-grants/")

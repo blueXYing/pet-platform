@@ -30,7 +30,12 @@ public final class AfterSalePorts {
     }
     public record AdminAuthority(String authzVersion, String scopeVersion) {}
     public record ReadAuthority(String party, String authzVersion) {}
-    public interface ReasonPolicy { void requireCodes(String typeCode, String demandCode); }
+    public interface ReasonPolicy {
+        void requireCodes(String typeCode, String demandCode);
+        default com.petplatform.aftersale.api.query.AfterSaleQueryApi.Options options() {
+            throw new com.petplatform.common.ApiException(com.petplatform.common.CommonApiCodes.DEPENDENCY_UNAVAILABLE,"Aftersale catalog unavailable");
+        }
+    }
     public interface Moderation { Approval check(String text); }
     public record Approval(String textSha256, String policyVersion, boolean allowed) {}
     public interface Protection {

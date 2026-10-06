@@ -50,6 +50,7 @@ public class CSessionSecurityConfiguration {
           if (p.isEnabled()) {
             if (afterSaleHttpEnabled) {
               a.requestMatchers(HttpMethod.GET,
+                  "/api/v1/c/aftersale-options",
                   "/api/v1/c/orders/*/aftersale-eligibility",
                   "/api/v1/c/aftersales", "/api/v1/c/aftersales/*",
                   "/api/v1/merchant/aftersales", "/api/v1/merchant/aftersales/*",

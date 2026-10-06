@@ -2,6 +2,7 @@ import Taro from '@tarojs/taro'
 import { ConsumerApi, type LocalStore } from './consumer-api'
 import { createWechatTransport } from './platform'
 import { createPrivateUploadTransport } from './private-upload-transport'
+import { assertApiOrigin } from './api-origin'
 
 declare const C_API_ORIGIN: string
 declare const ALLOW_LOCAL_HTTP: boolean
@@ -22,4 +23,15 @@ const transport = C_API_ORIGIN ? createWechatTransport(C_API_ORIGIN, ALLOW_LOCAL
 export const consumerApi = new ConsumerApi(transport, consumerStorage, requestUuid, C_API_ORIGIN ? createPrivateUploadTransport(C_API_ORIGIN, async options => {
   const result = await Taro.uploadFile(options)
   return { statusCode: result.statusCode, data: result.data }
-}, ALLOW_LOCAL_HTTP) : undefined)
+}, ALLOW_LOCAL_HTTP) : undefined, C_API_ORIGIN ? {
+  async upload(input) {
+    assertApiOrigin(C_API_ORIGIN, ALLOW_LOCAL_HTTP)
+    const result = await Taro.uploadFile({ url: `${C_API_ORIGIN}/api/v1/c/aftersale-evidence-assets`, filePath: input.filePath, name: 'file', header: { Authorization: input.authorization, 'X-Request-Id': input.requestId }, timeout: 30000 })
+    return { statusCode: result.statusCode, data: result.data }
+  },
+  async read(input) {
+    assertApiOrigin(C_API_ORIGIN, ALLOW_LOCAL_HTTP)
+    const result = await Taro.request({ url: C_API_ORIGIN + input.path, method: 'GET', header: { Authorization: input.authorization }, responseType: 'arraybuffer', timeout: 15000 })
+    return { statusCode: result.statusCode, data: result.data }
+  },
+} : undefined)

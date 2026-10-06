@@ -7,6 +7,11 @@ import java.util.List;
 /** Current authorization is mandatory even for a previously known case or receipt. */
 public interface AfterSaleQueryApi {
     enum RouteParty { USER, MERCHANT, OPS }
+    default Options options(CommandContext context) { throw new UnsupportedOperationException("aftersale catalog unavailable"); }
+    record Option(String code, String label) {}
+    record Options(List<Option> typeOptions, List<Option> demandOptions) {
+        public Options { typeOptions=List.copyOf(typeOptions); demandOptions=List.copyOf(demandOptions); }
+    }
     CaseView getCase(CommandContext context, String afterSaleId);
     default CaseView getCase(CommandContext context, String afterSaleId, RouteParty routeParty) { throw new UnsupportedOperationException("explicit party query unavailable"); }
     default CasePage listMine(CommandContext context, ListQuery query) { throw new UnsupportedOperationException("buyer list unavailable"); }

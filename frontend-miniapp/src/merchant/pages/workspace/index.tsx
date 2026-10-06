@@ -48,6 +48,7 @@ export default function MerchantWorkbenchPage() {
     await Taro.reLaunch({ url: '/consumer/pages/shell/index' })
   }
   function takeStep(step: string, merchantId: string) {
+    if (step === 'VIEW_AFTERSALES') { openAftersales(); return }
     const url = routeForStep(step, merchantId)
     if (url) void Taro.navigateTo({ url })
     else void Taro.showToast({ title: '该入口将在后续切片提供', icon: 'none' })
@@ -59,6 +60,11 @@ export default function MerchantWorkbenchPage() {
     controller.handoffToChild()
     Taro.navigateTo({ url: '/merchant/pages/services/index' }).catch(() => controller.handoffCancelled())
   }
+  function openAftersales() {
+    controller.handoffToChild()
+    Taro.navigateTo({ url: '/merchant/pages/aftersale/index' }).catch(() => controller.handoffCancelled())
+  }
+
   function openSchedule() {
     controller.handoffToChild()
     Taro.navigateTo({ url: '/merchant/pages/schedule/index' }).catch(() => controller.handoffCancelled())
@@ -114,6 +120,9 @@ export default function MerchantWorkbenchPage() {
           {/* Schedule maintenance entry gates on the approved action (53号 写侧消费切片). */}
           {view.allowedActions.includes('merchant.schedule.manage') && <Button id='workbench-schedule' onClick={openSchedule}>排期管理</Button>}
           <Button id='workbench-members' onClick={openMembers}>成员管理</Button>
+        </View>}
+        {(state.status === 'allowed' || state.status === 'limited') && view.membershipKind === 'OWNER' && view.allowedActions.includes('merchant.aftersale.read') && <View className='workbench-steps'>
+          <Button id='workbench-aftersales' onClick={openAftersales}>售后管理</Button>
         </View>}
         {view.nextSteps.length > 0 && <View className='workbench-steps'>
           {view.nextSteps.map(step => <Button key={step.type} onClick={() => takeStep(step.type, view.merchantId)}>{stepText[step.type] || step.type}</Button>)}

@@ -1,0 +1,13 @@
+{
+  "fileKey": "bp2vpcjjA5vZbHvtKkA8wl",
+  "frameNodeId": "129:10572",
+  "sourceRegistryVersion": "2401180846436413285",
+  "readDate": "2026-10-01",
+  "tool": "Figma get_design_context with figma-design-to-code; screenshot included",
+  "assets": [
+    { "file": "back.svg", "layerNodeId": "129:10617", "naturalWidth": 8.85754, "naturalHeight": 14.5227, "bytes": 364, "sha256": "5912d91bbe25c9d1af2c07681742bc3e80a8cf0c89419926dcad2fc793bc9b6d", "callsite": "AfterSaleFrame header", "geometry": "natural dimensions multiplied by viewportWidth/402; Figma layer transform scaleY(-1)" },
+    { "file": "add.svg", "layerNodeId": "129:11014", "naturalWidth": 12.7855, "naturalHeight": 12.7887, "bytes": 347, "sha256": "428798952dc5d6054196787ee65ca475fb90f8e44b210c327711742f46dbc206", "callsite": "UploadButton", "geometry": "natural dimensions multiplied by viewportWidth/402 in 30.693px icon slot; Figma layer transform scaleY(-1)" }
+  ],
+  "verification": "local non-empty files/hash/root dimensions/callsites checked; effective WeChat rendering, screenshot diff and VIS pending",
+  "notImplementedAsStaticAssets": "order cover is business imagery; off-canvas recommendation cards are clipped; full frame screenshot never used as page asset"
+}

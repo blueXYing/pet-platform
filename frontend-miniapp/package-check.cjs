@@ -22,12 +22,19 @@ for (const page of ['index', 'detail', 'form']) {
 const packages = app.subPackages || app.subpackages || []
 assert.deepEqual(packages.map(p => ({ root: p.root, pages: p.pages })), [
   { root: 'merchant', pages: ['pages/workspace/index', 'pages/services/index', 'pages/services/edit', 'pages/messages/index',
-    'pages/schedule/index', 'pages/schedule/windows', 'pages/schedule/staff', 'pages/schedule/capabilities', 'pages/members/index'] },
+    'pages/schedule/index', 'pages/schedule/windows', 'pages/schedule/staff', 'pages/schedule/capabilities', 'pages/members/index',
+    'pages/aftersale/index', 'pages/aftersale/detail'] },
   { root: 'consumer/pages/pet-archive', pages: ['index', 'detail', 'form'] },
   { root: 'consumer/pages/merchant-application', pages: ['index', 'signing'] },
   { root: 'consumer/pages/store-services', pages: ['index', 'service-detail', 'stores'] },
   { root: 'consumer/pages/coupon-points', pages: ['coupons', 'coupon-detail', 'points'] },
-], 'Merchant workspace, pet archive, merchant application, store services and coupon/points pages must be registered in the single app')
+  { root: 'consumer/pages/aftersale', pages: ['index', 'detail', 'apply'] },
+], 'Merchant workspace, pet archive, merchant application, store services, coupon/points and aftersale pages must be registered in the single app')
+for (const [folder, pages] of [['consumer/pages/aftersale', ['index', 'detail', 'apply']], ['merchant/pages/aftersale', ['index', 'detail']]]) {
+  for (const page of pages) for (const extension of ['js', 'json', 'wxml', 'wxss']) {
+    assert.ok(fs.existsSync(path.join(root, `${folder}/${page}.${extension}`)), `Aftersale page build artifact missing: ${folder}/${page}.${extension}`)
+  }
+}
 for (const page of ['coupons', 'coupon-detail', 'points']) {
   for (const extension of ['js', 'json', 'wxml', 'wxss']) {
     assert.ok(fs.existsSync(path.join(root, `consumer/pages/coupon-points/${page}.` + extension)),
@@ -38,6 +45,7 @@ for (const extension of ['js', 'json', 'wxml', 'wxss']) {
   assert.ok(fs.existsSync(path.join(root, `merchant/pages/members/index.` + extension)),
     'Staff member management page artifact missing: ' + extension)
 }
+
 for (const page of ['index', 'signing']) {
   for (const extension of ['js', 'json', 'wxml', 'wxss']) {
     assert.ok(fs.existsSync(path.join(root, `consumer/pages/merchant-application/${page}.` + extension)),

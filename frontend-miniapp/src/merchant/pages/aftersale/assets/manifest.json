@@ -1,0 +1,8 @@
+{
+  "fileKey": "Usvn3d6UCVCAlDxou5KAK8",
+  "designFrames": ["40:1061", "40:1345", "40:1500", "40:1676"],
+  "tool": "Figma get_design_context + use_figma read-only PNG export",
+  "assets": [{ "file": "nav-back@3x.png", "node": "40:1349", "scale": 3, "width": 27, "height": 44, "designWidth": 8.8575439453125, "designHeight": 14.522697448730469, "bytes": 471, "sha256": "582a810a8c9121d3229673b73cceb0a52a0819e32c3dc07f272e27ab0a89a043", "callsite": "page.tsx MerchantAfterSaleShell", "geometry": "8.8575 x 14.5227 design px, multiplied by actual windowWidth / 402" }],
+  "dynamicSlots": "Customer avatars, shop avatar and evidence images in the source are business data. Contract51 exposes no customer/shop identity images. Actual evidence is downloaded once through authenticated grant consumption and displayed only as a private temporary local image.",
+  "visualStatus": "VIS-003/004 pending: non-refund contract-driven cuts and actual WeChat screenshots require review; fonts are not yet supplied as local exact font files."
+}

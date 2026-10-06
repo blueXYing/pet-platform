@@ -9563,6 +9563,59 @@ paths:
             schema:
               $ref: '#/components/schemas/AppDecisionRequest'
       x-requires-current-claimant: true
+  /c/aftersale-options:
+    get:
+      tags:
+      - C-Aftersale
+      operationId: getAftersaleOptions
+      summary: 当前用户读取同一申请校验目录
+      description: 精确code+label完整目录；与新创建使用同一不可变权威配置快照。缺失/不一致503，无默认假目录或成功空列表。冻结账号可读、创建仍要求ACTIVE；返回前复验当前会话。
+      x-implementation-status: IMPLEMENTED_DEFAULT_OFF
+      x-default-enabled: false
+      x-contract: 51-AfterSale-Http-Contract-v0.1.md
+      x-route-party: USER
+      x-audience: MINIAPP
+      x-query-policy: FORBIDDEN_INCLUDING_EMPTY
+      x-request-body-policy: FORBIDDEN
+      x-catalog-source: SAME_REASON_POLICY_AS_CREATE
+      x-incomplete-catalog-error: COMMON_DEPENDENCY_UNAVAILABLE
+      security:
+      - bearerAuth: []
+      responses:
+        '200':
+          description: 完整目录，按每组code的ASCII顺序升序
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                enum:
+                - no-store, private
+            Pragma:
+              schema:
+                type: string
+                enum:
+                - no-cache
+            X-Content-Type-Options:
+              schema:
+                type: string
+                enum:
+                - nosniff
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AfterSaleOptionsEnvelope'
+        '400':
+          $ref: '#/components/responses/AfterSaleHttpError'
+        '401':
+          $ref: '#/components/responses/AfterSaleHttpError'
+        '403':
+          $ref: '#/components/responses/AfterSaleHttpError'
+        '429':
+          $ref: '#/components/responses/AfterSaleHttpError'
+        '500':
+          $ref: '#/components/responses/AfterSaleHttpError'
+        '503':
+          $ref: '#/components/responses/AfterSaleHttpError'
   /c/orders/{orderId}/aftersale-eligibility:
     get:
       tags:
@@ -17379,6 +17432,73 @@ components:
         traceId:
           type: string
           minLength: 1
+    AfterSaleOption:
+      type: object
+      additionalProperties: false
+      required:
+      - code
+      - label
+      properties:
+        code:
+          type: string
+          minLength: 1
+          maxLength: 64
+          pattern: ^[A-Z][A-Z0-9_]{0,63}(?![\s\S])
+        label:
+          type: string
+          minLength: 1
+          maxLength: 64
+          description: 1..64个Unicode标量/码点，无孤立surrogate；首尾不得出现ECMAScript String.trim()集合空白，见Contract51。
+          x-length-unit: UNICODE_CODE_POINTS
+          x-surrogate-policy: REJECT_UNPAIRED
+          x-edge-whitespace-policy: ECMASCRIPT_STRING_TRIM
+    AfterSaleOptions:
+      type: object
+      additionalProperties: false
+      required:
+      - typeOptions
+      - demandOptions
+      properties:
+        typeOptions:
+          type: array
+          minItems: 1
+          maxItems: 100
+          uniqueItems: true
+          x-unique-by: code
+          x-sort-order: ASCII_CODE_ASC
+          items:
+            $ref: '#/components/schemas/AfterSaleOption'
+        demandOptions:
+          type: array
+          minItems: 1
+          maxItems: 100
+          uniqueItems: true
+          x-unique-by: code
+          x-sort-order: ASCII_CODE_ASC
+          items:
+            $ref: '#/components/schemas/AfterSaleOption'
+    AfterSaleOptionsEnvelope:
+      type: object
+      additionalProperties: false
+      required:
+      - code
+      - message
+      - data
+      - traceId
+      properties:
+        code:
+          type: string
+          enum:
+          - SUCCESS
+        message:
+          type: string
+          enum:
+          - ok
+        data:
+          $ref: '#/components/schemas/AfterSaleOptions'
+        traceId:
+          type: string
+          minLength: 1
     AfterSaleCreateRequest:
       type: object
       additionalProperties: false
@@ -18232,6 +18352,40 @@ components:
         code:
           type: string
           minLength: 1
+          description: 确定CAS/历史集合拒绝为两个AFTERSALE_*_CONFLICT；争锁忙/权限修订变化保留COMMON_CONFLICT，不得换UUID盲重试。成功UUID重放先于比较。
+          enum:
+          - COMMON_INVALID_ARGUMENT
+          - AFTERSALE_AMOUNT_INVALID
+          - COMMON_UNAUTHORIZED
+          - ADMIN_UNAUTHORIZED
+          - COMMON_FORBIDDEN
+          - USER_FROZEN
+          - COMMON_NOT_FOUND
+          - AFTERSALE_NOT_FOUND
+          - ORDER_NOT_FOUND
+          - COMMON_CONFLICT
+          - IDEMPOTENCY_KEY_CONFLICT
+          - AFTERSALE_VERSION_CONFLICT
+          - AFTERSALE_FINAL_SET_CONFLICT
+          - AFTERSALE_NOT_ELIGIBLE
+          - AFTERSALE_ALREADY_ACTIVE
+          - AFTERSALE_REFUND_APPLICATION_ACTIVE
+          - AFTERSALE_STATE_NOT_ALLOWED
+          - AFTERSALE_ALREADY_INVALIDATED
+          - AFTERSALE_DECISION_FINAL
+          - AFTERSALE_REFUND_BLOCKED_BY_VERIFICATION
+          - AFTERSALE_SUPPLEMENT_EXPIRED
+          - AFTERSALE_SUPPLEMENT_STALE
+          - REFUND_ORDER_ALREADY_EXISTS
+          - AFTERSALE_CONTENT_REJECTED
+          - PRIVATE_ASSET_NOT_READY
+          - PRIVATE_ASSET_REJECTED
+          - PRIVATE_ASSET_GRANT_GONE
+          - COMMON_RATE_LIMITED
+          - COMMON_DEPENDENCY_UNAVAILABLE
+          - AFTERSALE_PROOF_INVALID
+          - AFTERSALE_TASK_CONFLICT
+          - COMMON_INTERNAL_ERROR
         message:
           type: string
         data:

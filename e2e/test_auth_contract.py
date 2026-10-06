@@ -248,7 +248,7 @@ class AuthSurfaceRegressions(unittest.TestCase):
         self.assertEqual(result['legacyOperations'], 14)
         self.assertEqual(result['legacyWrites'], 11)
         self.assertEqual(result['legacyCreates'], 3)
-        self.assertEqual(result['aftersaleOperations'], 23)
+        self.assertEqual(result['aftersaleOperations'], 24)
         self.assertEqual(result['authOperations'], 36)
 
     def test_business_security_cannot_be_cleared(self):

@@ -8,9 +8,36 @@ type Attempt = { attemptId: string; attemptToken: string; nextStep: string }
 export type Command = RequestSpec & { requestId: string }
 export type PrivateUploadTransport = (input: { filePath: string; requestId: string; authorization: string; purpose?: 'MERCHANT_APPLICATION_MATERIAL' | 'SERVICE_COVER' }) => Promise<{ statusCode: number; data: unknown }>
 export type PrivateAssetReceipt = { assetId: string; status: 'READY'; objectSha256: string; mediaType: 'image/jpeg' | 'image/png'; bytes: number }
+export type AfterSaleAssetTransport = {
+  upload(input: { filePath: string; requestId: string; authorization: string }): Promise<{ statusCode: number; data: unknown }>
+  read(input: { path: string; authorization: string }): Promise<{ statusCode: number; data: unknown }>
+}
+export function isAfterSalePath(spec: RequestSpec): boolean {
+  if (/[\r\n]/.test(spec.path)) return false
+  if (spec.path === '/api/v1/c/aftersale-options') return spec.method === 'GET' && spec.data === undefined
+  const base = /^\/api\/v1\/(c|merchant)\/aftersales(?:\/([1-9][0-9]{0,18})(?:\/(evidence|withdraw|opinion|evidence-batches\/[1-9][0-9]{0,18}\/assets\/[1-9][0-9]{0,18}\/read-grants))?)?$/.exec(spec.path)
+  if (base) {
+    if (!base[2]) return spec.method === 'GET'
+    if (!base[3]) return spec.method === 'GET'
+    if (spec.method !== 'POST') return false
+    return (base[3] !== 'withdraw' || base[1] === 'c') && (base[3] !== 'opinion' || base[1] === 'merchant')
+  }
+  return /^\/api\/v1\/c\/orders\/[1-9][0-9]{0,18}\/aftersale-eligibility$/.test(spec.path) && spec.method === 'GET'
+    || /^\/api\/v1\/c\/orders\/[1-9][0-9]{0,18}\/aftersales$/.test(spec.path) && spec.method === 'POST'
+}
+export function afterSaleEnvelope(response: { statusCode: number; data: unknown }): unknown {
+  const body = object(typeof response.data === 'string' ? JSON.parse(response.data) : response.data)
+  if (Object.keys(body).sort().join(',') !== 'code,data,message,traceId' || typeof body.code !== 'string' || !body.code.trim() || body.code.length > 100 || typeof body.message !== 'string' || typeof body.traceId !== 'string' || !body.traceId.trim() || body.traceId.length > 256) throw new Error('INVALID_RESPONSE')
+  if (response.statusCode < 200 || response.statusCode >= 300 || body.code !== 'SUCCESS') {
+    if (body.data !== null) throw new Error('INVALID_RESPONSE')
+    throw new ApiError(body.code, response.statusCode)
+  }
+  if (body.message !== 'ok') throw new Error('INVALID_RESPONSE')
+  return body.data
+}
 export function decodePrivateAsset(value: unknown): PrivateAssetReceipt {
   const v = object(value)
-  if (Object.keys(v).sort().join(',') !== 'assetId,bytes,mediaType,objectSha256,status' || v.status !== 'READY' || !/^[a-f0-9]{64}$/.test(v.objectSha256) || !['image/jpeg', 'image/png'].includes(v.mediaType) || !Number.isSafeInteger(v.bytes) || v.bytes < 1 || v.bytes > 10485760) throw new Error('INVALID_RESPONSE')
+  if (Object.keys(v).sort().join(',') !== 'assetId,bytes,mediaType,objectSha256,status' || v.status !== 'READY' || typeof v.objectSha256 !== 'string' || !/^[a-f0-9]{64}(?![\s\S])/.test(v.objectSha256) || !['image/jpeg', 'image/png'].includes(v.mediaType) || !Number.isSafeInteger(v.bytes) || v.bytes < 1 || v.bytes > 10485760) throw new Error('INVALID_RESPONSE')
   return { assetId: id(v.assetId), status: 'READY', objectSha256: v.objectSha256, mediaType: v.mediaType, bytes: v.bytes }
 }
 const SESSION_KEY = 'pet.c.session.v1'
@@ -52,7 +79,7 @@ export class ConsumerApi {
   private pending: Record<string, { userId: string; command?: Command; intent?: unknown }> = {}
   currentSession: Session | null = null
   authStep: 'idle' | 'phone' | 'retry' | 'authenticated' = 'idle'
-  constructor(private transport: Transport, private store: LocalStore, readonly uuid: () => Promise<string>, private uploadTransport?: PrivateUploadTransport) {
+  constructor(private transport: Transport, private store: LocalStore, readonly uuid: () => Promise<string>, private uploadTransport?: PrivateUploadTransport, private afterSaleAssets?: AfterSaleAssetTransport) {
     try { const saved = store.get(SESSION_KEY); if (saved) this.credential = grant(saved) } catch { store.remove(SESSION_KEY) }
     // Persistent pending commands never authorize a user. They are selected only after GET session.
     try { const saved = store.get(WRITE_KEY); if (saved) this.pending = object(saved) } catch { store.remove(WRITE_KEY) }
@@ -69,6 +96,7 @@ export class ConsumerApi {
     const categoryPath = spec.path === '/api/v1/merchant/service-categories' && spec.method === 'GET'
     const serviceCommandPath = /^\/api\/v1\/merchant\/services(\/[1-9][0-9]{0,18}(\/online|\/offline)?)?$/.test(spec.path) &&
       ['GET', 'POST', 'PUT'].includes(spec.method)
+    const afterSalePath = isAfterSalePath(spec)
     // M-002 schedule maintenance family (Schedule Write Contract v0.1, 53号; backend switch
     // pet.schedule.command.http.enabled default OFF — reads/writes fail closed through the
     // normal error paths until the platform enables it). Availability windows address the
@@ -76,9 +104,11 @@ export class ConsumerApi {
     const schedulePath = (/^\/api\/v1\/merchant\/stores\/[1-9][0-9]{0,18}\/availability-windows(\/[1-9][0-9]{0,18}(\/close|\/open)?|\/batch-close)?$/.test(spec.path) ||
       /^\/api\/v1\/merchant\/staff\/[1-9][0-9]{0,18}\/(availability-windows(\/[1-9][0-9]{0,18}(\/close|\/open)?)?|service-capabilities)$/.test(spec.path)) &&
       ['GET', 'POST', 'PUT'].includes(spec.method)
-    if (!/^\/api\/v1\/c\/[a-z0-9/-]+$/.test(spec.path) && !agreementPath && !admissionPath && !categoryPath && !serviceCommandPath && !schedulePath) throw new Error('INVALID_PATH')
-    if (spec.method !== 'GET' && !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(spec.requestId || '')) throw new Error('REQUEST_ID_REQUIRED')
+    if (/^\/api\/v1\/(c|merchant)\/aftersale/.test(spec.path) && !afterSalePath) throw new Error('INVALID_PATH')
+    if (!/^\/api\/v1\/c\/[a-z0-9/-]+$/.test(spec.path) && !agreementPath && !admissionPath && !categoryPath && !serviceCommandPath && !afterSalePath && !schedulePath) throw new Error('INVALID_PATH')
+    if (spec.method !== 'GET' && !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}(?![\s\S])/i.test(spec.requestId || '')) throw new Error('REQUEST_ID_REQUIRED')
     const response = await this.transport({ ...spec, headers: { 'Content-Type': 'application/json', ...(spec.requestId ? { 'X-Request-Id': spec.requestId } : {}), ...headers } })
+    if (afterSalePath) return afterSaleEnvelope(response)
     const body = object(response.data)
     if (response.statusCode < 200 || response.statusCode >= 300 || body.code !== 'SUCCESS') throw new ApiError(typeof body.code === 'string' ? body.code : 'INVALID_RESPONSE', response.statusCode)
     const applicationPath = /^\/api\/v1\/c\/merchant-applications(?:\/|$)/.test(spec.path) || spec.path === '/api/v1/c/merchant-application-cities'
@@ -87,9 +117,14 @@ export class ConsumerApi {
   }
   private clear() {
     this.credential = null; this.currentSession = null; this.attempt = null; this.authCommand = null; this.authStep = 'idle'
-    this.pending = {}; this.writes.clear(); this.writeSpecs.clear()
+    // Unknown aftersale outcomes survive credential expiry/explicit logout. Their
+    // owner-bound slots remain inaccessible until a fresh server session is verified.
+    this.pending = Object.fromEntries(Object.entries(this.pending).filter(([slot, saved]) => slot.startsWith('aftersale:') && saved.command))
+    this.writes.clear(); this.writeSpecs.clear()
     this.scope.replace(null)
-    this.store.remove(SESSION_KEY); this.store.remove(WRITE_KEY)
+    this.store.remove(SESSION_KEY)
+    if (Object.keys(this.pending).length) this.store.set(WRITE_KEY, this.pending)
+    else this.store.remove(WRITE_KEY)
   }
   cancelLogin() { this.clear() }
   private assertRevision(revision: number) { if (revision !== this.scope.revision) throw new StaleContextError() }
@@ -169,6 +204,7 @@ export class ConsumerApi {
     }
   }
   async request<T>(spec: RequestSpec, decode: (data: unknown) => T): Promise<T> {
+    if (/^\/api\/v1\/(c|merchant)\/aftersale/.test(spec.path) && !isAfterSalePath(spec)) throw new Error('INVALID_PATH')
     const ticket = this.scope.capture()
     if (!this.credential || !this.currentSession || this.currentSession.userId !== ticket.context.userId) throw new ApiError('COMMON_UNAUTHORIZED', 401)
     const merchantRequest = spec.path.startsWith('/api/v1/merchant/')
@@ -176,7 +212,10 @@ export class ConsumerApi {
       if (ticket.context.workspace !== 'merchant' || !ticket.context.merchantId) throw new Error('WORKSPACE_PATH_MISMATCH')
       // The category dictionary is target-free; every other merchant route must address the
       // caller's own merchantId (GET query data or command body both live in spec.data).
-      const targetFree = spec.path === '/api/v1/merchant/service-categories'
+      const afterSalePath = isAfterSalePath(spec)
+      if (afterSalePath && !ticket.context.storeId) throw new Error('WORKSPACE_PATH_MISMATCH')
+      if (afterSalePath && spec.path === '/api/v1/merchant/aftersales' && spec.data?.storeId !== ticket.context.storeId) throw new Error('WORKSPACE_PATH_MISMATCH')
+      const targetFree = spec.path === '/api/v1/merchant/service-categories' || afterSalePath && spec.path !== '/api/v1/merchant/aftersales'
       if (!targetFree && spec.data?.merchantId !== ticket.context.merchantId) throw new Error('WORKSPACE_PATH_MISMATCH')
     } else if (ticket.context.workspace !== 'consumer') throw new Error('WORKSPACE_PATH_MISMATCH')
     try {
@@ -189,9 +228,39 @@ export class ConsumerApi {
       throw error
     }
   }
+  /** Typed Contract51 assets only; the credential never becomes a page prop or URL. */
+  async uploadAfterSaleEvidence(input: { filePath: string; requestId: string; party: 'c' | 'merchant' }): Promise<PrivateAssetReceipt> {
+    const ticket = this.scope.capture(); const credential = this.credential
+    if (!credential || !this.currentSession || credential.userId !== ticket.context.userId || credential.sessionId !== this.currentSession.sessionId) throw new ApiError('COMMON_UNAUTHORIZED', 401)
+    if ((input.party === 'c' ? 'consumer' : 'merchant') !== ticket.context.workspace || input.party === 'merchant' && (!ticket.context.merchantId || !ticket.context.storeId)) throw new Error('WORKSPACE_PATH_MISMATCH')
+    if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}(?![\s\S])/i.test(input.requestId)) throw new Error('REQUEST_ID_REQUIRED')
+    if (!this.afterSaleAssets) throw new Error('UPLOAD_NOT_CONNECTED')
+    try {
+      const response = await this.afterSaleAssets.upload({ filePath: input.filePath, requestId: input.requestId, authorization: `Bearer ${credential.accessToken}` })
+      ticket.assertCurrent(); if (this.credential !== credential) throw new StaleContextError()
+      return decodePrivateAsset(afterSaleEnvelope(response))
+    } catch (error) { ticket.assertCurrent(); if (error instanceof ApiError && error.statusCode === 401) this.clear(); throw error }
+  }
+  async readAfterSaleEvidence(path: string): Promise<ArrayBuffer> {
+    const ticket = this.scope.capture(); const credential = this.credential
+    const party = ticket.context.workspace === 'consumer' ? 'c' : 'merchant'
+    if (/[\r\n]/.test(path) || !new RegExp(`^/api/v1/${party}/aftersale-evidence-read-grants/[A-Za-z0-9_-]{43}$`).test(path)) throw new Error('INVALID_PATH')
+    if (!credential || !this.currentSession || credential.userId !== ticket.context.userId || credential.sessionId !== this.currentSession.sessionId) throw new ApiError('COMMON_UNAUTHORIZED', 401)
+    if (!this.afterSaleAssets) throw new Error('EVIDENCE_READ_NOT_CONNECTED')
+    try {
+      const response = await this.afterSaleAssets.read({ path, authorization: `Bearer ${credential.accessToken}` })
+      ticket.assertCurrent(); if (this.credential !== credential) throw new StaleContextError()
+      if (response.statusCode !== 200) throw new ApiError(response.statusCode === 410 ? 'EVIDENCE_GRANT_EXPIRED' : 'EVIDENCE_READ_FAILED', response.statusCode)
+      if (!(response.data instanceof ArrayBuffer) || response.data.byteLength < 1 || response.data.byteLength > 20971520) throw new Error('INVALID_RESPONSE')
+      const bytes = new Uint8Array(response.data)
+      const png = [137,80,78,71,13,10,26,10].every((b, i) => bytes[i] === b)
+      if (!png && !(bytes[0] === 255 && bytes[1] === 216 && bytes[2] === 255)) throw new Error('INVALID_RESPONSE')
+      return response.data
+    } catch (error) { ticket.assertCurrent(); if (error instanceof ApiError && error.statusCode === 401) this.clear(); throw error }
+  }
   pendingCommand(slot: string): Command | undefined {
     const saved = this.pending[slot]
-    return saved?.userId === this.currentSession?.userId && saved?.userId === this.scope.current?.userId ? saved.command : undefined
+    return saved?.userId === this.currentSession?.userId && saved?.userId === this.scope.current?.userId && saved.command ? JSON.parse(JSON.stringify(saved.command)) as Command : undefined
   }
   /** Store-catalog reads are anonymous-browsable (user adjudication 2026-09-22 on the
    *  /c/stores contract; STR-D8 unifies all four C catalog GET routes): no credential, no
@@ -249,9 +318,12 @@ export class ConsumerApi {
   retireRejectedCommand(slot: string, rejected: RequestSpec) {
     const saved = this.pending[slot]
     if (!saved?.command || saved.command.path !== rejected.path || saved.command.method !== rejected.method
-      || JSON.stringify(saved.command.data) !== JSON.stringify(rejected.data)) throw new Error('PENDING_WRITE_CHANGED')
-    delete this.pending[slot]
-    this.store.set(WRITE_KEY, this.pending)
+      || JSON.stringify(saved.command.data) !== JSON.stringify(rejected.data)
+      || rejected.requestId !== undefined && saved.command.requestId !== rejected.requestId) throw new Error('PENDING_WRITE_CHANGED')
+    const nextPending = { ...this.pending }
+    delete nextPending[slot]
+    this.store.set(WRITE_KEY, nextPending)
+    this.pending = nextPending
   }
   saveIntent(slot: string, value: unknown) {
     const ticket = this.scope.capture()
@@ -261,7 +333,7 @@ export class ConsumerApi {
     this.store.set(WRITE_KEY, this.pending)
   }
   /** Same operation survives page remount and app restart. Unknown results lock payload/key. */
-  write<T>(slot: string, spec: Omit<RequestSpec, 'requestId'>, decode: (data: unknown) => T, checkpoint?: { slot: string; value: (result: T) => unknown }): Promise<T> {
+  write<T>(slot: string, spec: Omit<RequestSpec, 'requestId'>, decode: (data: unknown) => T, checkpoint?: { slot: string; value: (result: T) => unknown }, rejected?: (error: unknown, command: Command) => void): Promise<T> {
     // Snapshot before UUID allocation: caller edits must not change an in-flight intent.
     spec = JSON.parse(JSON.stringify(spec)) as Omit<RequestSpec, 'requestId'>
     const existing = this.writes.get(slot)
@@ -286,7 +358,11 @@ export class ConsumerApi {
         return value
       } catch (error) {
         ticket.assertCurrent()
-        if (definiteRejection(error)) { delete this.pending[slot]; this.store.set(WRITE_KEY, this.pending) }
+        rejected?.(error, JSON.parse(JSON.stringify(command)) as Command)
+        // Authorization/resource visibility is rechecked before an old receipt is
+        // returned. A 401/403/404 cannot prove an earlier unknown write never ran.
+        const hiddenReceipt = isAfterSalePath(command) && error instanceof ApiError && [401, 403, 404].includes(error.statusCode)
+        if (definiteRejection(error) && !hiddenReceipt) { delete this.pending[slot]; this.store.set(WRITE_KEY, this.pending) }
         throw error
       }
     })().finally(() => { if (this.writes.get(slot) === operation) { this.writes.delete(slot); this.writeSpecs.delete(slot) } })

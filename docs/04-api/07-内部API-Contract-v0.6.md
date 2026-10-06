@@ -1830,3 +1830,9 @@ thirdparty-api 新增独立 ServiceCoverSigningApi.signServiceCover(String asset
 - THIRD_PARTY EvidencePrincipal封装可信route party和真实session/audience/generation；Issue/Consume新typed构造与authorizer明确party。端别入proof_hash，签发/消费/最终返回复验；旧内部调用兼容，不作为HTTP绕过入口。
 
 公开退款类型始终关闭，原A2内部能力不受影响。所有生产分页SQL在AFS MyBatis XML，授权先于COUNT/LIMIT；无biz依赖biz或跨域表SQL。
+
+## 2026-10-01 售后目录与确定冲突增量（人工批准CCR）
+
+执行 [Contract51](51-AfterSale-Http-Contract-v0.1.md) 中已批准 CCR-AFS-PAGE-OPTIONS-001 / CCR-AFS-CONFLICT-001，无 Schema/Event/Scheduler/Product 增量。AfterSaleQueryApi.options(CommandContext) 返回 Options(List<Option> typeOptions,List<Option> demandOptions)，Option(String code,String label)，仅真实当前USER，首尾复验当前会话权限；列表/label/code界限和排序见51号。ReasonPolicy.options() 与 requireCodes 使用同一完整不可变目录；缺适配default失败关闭。新Create在原成功回执重放之后校验同目录，缺完整code+label则失败关闭；历史成功重放不依赖目录可用。
+
+AFS新命令在当前动作授权之后比较expectedVersion，明确不匹配返回 AFTERSALE_VERSION_CONFLICT；P4合法历史集合hash不匹配返回 AFTERSALE_FINAL_SET_CONFLICT。两种比较失败复验当前动作授权且没有业务写入，独立Admission保留原参数。成功首回执重放先于CAS/目录。授权修订变化和争锁忙保留COMMON_CONFLICT，不归并为这两种确定错误；缺失P4核对材料为参数错误。前端刷新事实后重新人工确认，才创建新UUID命令。

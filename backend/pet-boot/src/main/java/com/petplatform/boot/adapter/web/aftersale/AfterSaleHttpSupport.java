@@ -67,6 +67,7 @@ final class AfterSaleHttpSupport {
         if(!allowed.containsAll(r.getParameterMap().keySet()))throw invalid();
         for(var name:names)if(r.getParameterValues(name)!=null&&r.getParameterValues(name).length!=1)throw invalid();
     }
+    static void noBody(HttpServletRequest r){try{if(r.getInputStream().read()!=-1)throw invalid();}catch(java.io.IOException failure){throw invalid();}}
     static String id(String value) {
         try { if(value==null||!value.matches("[1-9][0-9]{0,18}")||Long.parseLong(value)<=0)throw invalid();return value; }
         catch(NumberFormatException bad){throw invalid();}
@@ -119,7 +120,7 @@ final class AfterSaleHttpSupport {
             case "COMMON_NOT_FOUND","AFTERSALE_NOT_FOUND","ORDER_NOT_FOUND"->404;
             case "COMMON_CONFLICT","IDEMPOTENCY_KEY_CONFLICT","AFTERSALE_NOT_ELIGIBLE","AFTERSALE_ALREADY_ACTIVE","AFTERSALE_REFUND_APPLICATION_ACTIVE",
                  "AFTERSALE_STATE_NOT_ALLOWED","AFTERSALE_ALREADY_INVALIDATED","AFTERSALE_DECISION_FINAL","AFTERSALE_REFUND_BLOCKED_BY_VERIFICATION",
-                 "AFTERSALE_SUPPLEMENT_EXPIRED","AFTERSALE_SUPPLEMENT_STALE","REFUND_ORDER_ALREADY_EXISTS"->409;
+                 "AFTERSALE_SUPPLEMENT_EXPIRED","AFTERSALE_SUPPLEMENT_STALE","AFTERSALE_VERSION_CONFLICT","AFTERSALE_FINAL_SET_CONFLICT","REFUND_ORDER_ALREADY_EXISTS"->409;
             case "AFTERSALE_CONTENT_REJECTED"->422;
             case "COMMON_RATE_LIMITED"->429;
             case "COMMON_DEPENDENCY_UNAVAILABLE","AFTERSALE_PROOF_INVALID","AFTERSALE_TASK_CONFLICT"->503;

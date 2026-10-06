@@ -23,6 +23,7 @@ import javax.sql.DataSource;
 import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.autoconfigure.condition.*;
+import org.springframework.boot.context.properties.bind.*;
 import org.springframework.context.annotation.*;
 import org.springframework.core.env.Environment;
 
@@ -75,8 +76,9 @@ public class AfterSaleWorkflowConfiguration {
         @Bean @ConditionalOnMissingBean(AfterSalePorts.ReasonPolicy.class)
         AfterSalePorts.ReasonPolicy afterSaleReasons(Environment e){
             var types=codes(e,"pet.aftersale.type-codes");var demands=codes(e,"pet.aftersale.demand-codes");
-            return (type,demand)->{if(!types.contains(type)||!demands.contains(demand))
-                throw new ApiException(CommonApiCodes.INVALID_ARGUMENT,"Aftersale reason unavailable");};
+            var typeLabels=Binder.get(e).bind("pet.aftersale.type-labels",Bindable.mapOf(String.class,String.class)).orElse(Map.of());
+            var demandLabels=Binder.get(e).bind("pet.aftersale.demand-labels",Bindable.mapOf(String.class,String.class)).orElse(Map.of());
+            return new ConfiguredAfterSaleReasonPolicy(types,typeLabels,demands,demandLabels);
         }
         @Bean AfterSaleTaskAdapter afterSaleTasks(DataSource source,SnowflakeIdGenerator ids){return new AfterSaleTaskAdapter(source,ids);}
         @Bean AfterSaleService aftersales(DataSource source,ScheduleCapacityGuardApi guard,SnowflakeIdGenerator ids,
