@@ -229,6 +229,59 @@ SCHEDULE_WRITE_OPERATIONS = {
         ('200', '400', '401', '403', '404', '409', '503')),
 }
 
+# CCR-C006-COUPON-POINTS-READ-001 P1 (approved 2026-10-06): session-scoped read-only C surface
+# for "my coupons" and "my points". Read-only GETs only: default AVAILABLE bucket, three display
+# buckets at most (D2 keeps FROZEN/RISK_FROZEN out of every reply), the anti-enumeration 404 on
+# the detail route, and the fixed created_at DESC ledger ordering. No write operations exist in
+# this family, so no RequestId requirement and no 201 replay surface.
+COUPON_POINTS_READ_OPERATIONS = {
+    'cListMyCoupons': ('get', '/c/coupons', ('200', '400', '401', '500')),
+    'cGetMyCoupon': ('get', '/c/coupons/{couponId}', ('200', '400', '401', '404', '500')),
+    'cGetPointsBalance': ('get', '/c/points/balance', ('200', '400', '401', '500')),
+    'cListPointsLedger': ('get', '/c/points/ledger', ('200', '400', '401', '500')),
+}
+
+
+def check_coupon_points_read(spec, operation, method, path):
+    name = operation['operationId']
+    expected_method, expected_path, required_codes = COUPON_POINTS_READ_OPERATIONS[name]
+    assert (method, path) == (expected_method, expected_path), f'Coupon/points read operation moved: {name}'
+    assert operation.get('security') == [{'bearerAuth': []}], f'Coupon/points read security changed: {name}'
+    assert operation.get('x-implementation-status') == 'IMPLEMENTED_DEFAULT_OFF', f'Coupon/points read status changed: {name}'
+    assert operation.get('x-default-enabled') is False, f'Coupon/points read must stay default off: {name}'
+    assert operation.get('x-contract') == '10-HTTP-API-Contract-v0.4.md', f'Coupon/points read authority changed: {name}'
+    assert operation.get('x-route-party') == 'USER' and operation.get('x-audience') == 'MINIAPP', f'Coupon/points read identity changed: {name}'
+    assert 'requestBody' not in operation, f'Coupon/points read must stay bodyless: {name}'
+    responses = operation['responses']
+    assert set(responses) == set(required_codes), f'Coupon/points read response surface changed: {name}'
+    success_envelopes = {
+        'cListMyCoupons': 'CouponInstancePageEnvelope',
+        'cGetMyCoupon': 'CouponInstanceEnvelope',
+        'cGetPointsBalance': 'PointsBalanceEnvelope',
+        'cListPointsLedger': 'PointsLedgerPageEnvelope',
+    }
+    for code in responses:
+        response = dereference(spec, responses[code])
+        schema = response['content']['application/json']['schema']
+        expected = {'$ref': '#/components/schemas/CouponPointsErrorEnvelope'} if code != '200' \
+            else {'$ref': '#/components/schemas/' + success_envelopes[name]}
+        assert schema == expected, f'Coupon/points read envelope changed: {name} {code}'
+    params = {p.get('name'): p for p in operation.get('parameters', []) if p.get('in') == 'query'}
+    allowed = {'status'} if name == 'cListMyCoupons' else set()
+    if name in {'cListMyCoupons', 'cListPointsLedger'}:
+        allowed = allowed | {'page', 'pageSize'}
+        assert params['page']['schema'] == {'type': 'integer', 'minimum': 1, 'maximum': 10000, 'default': 1}, f'Coupon/points page range changed: {name}'
+        assert params['pageSize']['schema'] == {'type': 'integer', 'minimum': 1, 'maximum': 50, 'default': 20}, f'Coupon/points page size changed: {name}'
+    else:
+        assert not params, f'Coupon/points read query opened: {name}'
+    assert set(params) == allowed, f'Coupon/points read filters changed: {name}'
+    if name == 'cListMyCoupons':
+        assert params['status']['schema'].get('enum') == ['AVAILABLE', 'USED', 'EXPIRED'], 'Coupon buckets opened beyond the three display tabs'
+        assert params['status']['schema'].get('default') == 'AVAILABLE', 'Coupon default bucket changed'
+    if name == 'cGetMyCoupon':
+        resolved = [dereference(spec, p) for p in operation.get('parameters', [])]
+        assert any(p.get('name') == 'couponId' and p.get('in') == 'path' for p in resolved), 'CouponId path parameter missing'
+
 
 def check_private_assets(spec, operation):
     name = operation['operationId']
@@ -670,6 +723,8 @@ def check(spec):
                         assert dereference(spec, responses[code])['content']['application/json']['schema'] == {'$ref': '#/components/schemas/MerErrorEnvelope'}, f'Schedule write error data unsafe: {operation_id}'
                 if '201' in responses:
                     assert responses['201']['content'] == responses['200']['content'], f'Schedule write replay changed: {operation_id}'
+            if operation_id in COUPON_POINTS_READ_OPERATIONS:
+                check_coupon_points_read(spec, operation, method, path)
             if method in {'post', 'put', 'patch', 'delete'}:
                 assert {'$ref': '#/components/parameters/RequestId'} in parameters, f'Missing request ID: {operation_id}'
                 writes += 1
@@ -683,7 +738,7 @@ def check(spec):
     assert legacy_seen == LEGACY_OPERATIONS.keys(), f'Legacy operations missing: {LEGACY_OPERATIONS.keys() - legacy_seen}'
     assert legacy_writes == 11, 'Legacy write surface changed'
     assert legacy_creates == LEGACY_CREATES, 'Legacy create surface changed'
-    assert operations == LEGACY_OPERATIONS.keys() | AUTH_OPERATIONS.keys() | MERCHANT_OPERATIONS.keys() | APPLICATION_OPERATIONS.keys() | PRIVATE_ASSET_OPERATIONS.keys() | SERVICE_CATALOG_OPERATIONS.keys() | STORE_CATALOG_OPERATIONS.keys() | SERVICE_WRITE_OPERATIONS.keys() | SCHEDULE_AVAILABILITY_OPERATIONS.keys() | SCHEDULE_WRITE_OPERATIONS.keys() | CREDENTIAL_OPERATIONS.keys() | AFTERSALE_OPERATIONS.keys(), 'Unexpected or missing reviewed operations'
+    assert operations == LEGACY_OPERATIONS.keys() | AUTH_OPERATIONS.keys() | MERCHANT_OPERATIONS.keys() | APPLICATION_OPERATIONS.keys() | PRIVATE_ASSET_OPERATIONS.keys() | SERVICE_CATALOG_OPERATIONS.keys() | STORE_CATALOG_OPERATIONS.keys() | SERVICE_WRITE_OPERATIONS.keys() | SCHEDULE_AVAILABILITY_OPERATIONS.keys() | SCHEDULE_WRITE_OPERATIONS.keys() | CREDENTIAL_OPERATIONS.keys() | AFTERSALE_OPERATIONS.keys() | COUPON_POINTS_READ_OPERATIONS.keys(), 'Unexpected or missing reviewed operations'
     schemes = spec['components']['securitySchemes']
     assert schemes['bearerAuth']['type'] == 'http' and schemes['bearerAuth']['scheme'] == 'bearer'
     for scheme, location, name in [('authAttempt', 'header', 'X-Auth-Attempt'),
@@ -729,6 +784,7 @@ def check(spec):
             'serviceCatalogOperations': len(operations & SERVICE_CATALOG_OPERATIONS.keys()),
             'scheduleAvailabilityOperations': len(operations & SCHEDULE_AVAILABILITY_OPERATIONS.keys()),
             'scheduleWriteOperations': len(operations & SCHEDULE_WRITE_OPERATIONS.keys()),
+            'couponPointsReadOperations': len(operations & COUPON_POINTS_READ_OPERATIONS.keys()),
             'serviceWriteOperations': len(operations & SERVICE_WRITE_OPERATIONS.keys()),
             'storeCatalogOperations': len(operations & STORE_CATALOG_OPERATIONS.keys()),
             'resolvedRefs': len(refs), 'stringIdProperties': ids}

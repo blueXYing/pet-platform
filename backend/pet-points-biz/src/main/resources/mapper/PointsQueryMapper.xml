@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.petplatform.points.biz.infrastructure.persistence.mapper.PointsQueryMapper">
+    <select id="selectBalance" resultType="long">
+        SELECT balance FROM points_account WHERE user_id = #{userId}
+    </select>
+    <select id="countLedger" resultType="long">
+        SELECT COUNT(*) FROM points_ledger WHERE user_id = #{userId}
+    </select>
+    <select id="selectLedgerPage" resultType="com.petplatform.points.biz.infrastructure.persistence.entity.PointsLedgerRowEntity">
+        SELECT id, biz_type, delta, balance_after, created_at
+        FROM points_ledger
+        WHERE user_id = #{userId}
+        ORDER BY created_at DESC, id DESC
+        LIMIT #{limit} OFFSET #{offset}
+    </select>
+</mapper>

@@ -11259,6 +11259,203 @@ paths:
                   description: 单一非空JPEG/PNG，最多10MiB，签名与媒体类型一致；固定AFTERSALE_EVIDENCE用途。
       x-route-party: USER
       x-audience: MINIAPP
+  /c/coupons:
+    get:
+      tags:
+      - C-Coupon
+      operationId: cListMyCoupons
+      summary: 我的优惠券三态分桶分页
+      x-implementation-status: IMPLEMENTED_DEFAULT_OFF
+      x-default-enabled: false
+      x-contract: 10-HTTP-API-Contract-v0.4.md
+      description: CCR-C006-COUPON-POINTS-READ-001 P1（2026-10-06批准）。当前会话用户自己的
+        coupon_instance 投影；仅允许 AVAILABLE/USED/EXPIRED 三桶（D2：FROZEN/RISK_FROZEN 永不返回），
+        默认 AVAILABLE，非法值 400。固定排序 expire_at ASC, id ASC；D1 展示字段为服务端 rule_json 投影，
+        字段缺失返回 null，前端不得解析 rule_json（结构待 CPN-001 冻结）。错误码引用 12 号通用码。
+      security:
+      - bearerAuth: []
+      parameters:
+      - name: status
+        in: query
+        required: false
+        schema:
+          type: string
+          enum:
+          - AVAILABLE
+          - USED
+          - EXPIRED
+          default: AVAILABLE
+      - name: page
+        in: query
+        required: false
+        schema:
+          type: integer
+          minimum: 1
+          maximum: 10000
+          default: 1
+      - name: pageSize
+        in: query
+        required: false
+        schema:
+          type: integer
+          minimum: 1
+          maximum: 50
+          default: 20
+      responses:
+        '200':
+          description: 分页投影；金额两位小数原样输出（D4）
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                enum:
+                - no-store
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CouponInstancePageEnvelope'
+        '400':
+          $ref: '#/components/responses/CouponPointsHttpError'
+        '401':
+          $ref: '#/components/responses/CouponPointsHttpError'
+        '500':
+          $ref: '#/components/responses/CouponPointsHttpError'
+      x-route-party: USER
+      x-audience: MINIAPP
+  /c/coupons/{couponId}:
+    get:
+      tags:
+      - C-Coupon
+      operationId: cGetMyCoupon
+      summary: 单张本人券投影；防枚举404
+      x-implementation-status: IMPLEMENTED_DEFAULT_OFF
+      x-default-enabled: false
+      x-contract: 10-HTTP-API-Contract-v0.4.md
+      description: CCR-C006 P1。非本人券与不存在券一律同一 404（不区分，防枚举）；冻结态同样
+        不确认存在（D2）。同 cListMyCoupons 的 D1 投影语义；query 全禁止。
+      security:
+      - bearerAuth: []
+      parameters:
+      - $ref: '#/components/parameters/CouponId'
+      responses:
+        '200':
+          description: 单张券投影
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                enum:
+                - no-store
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CouponInstanceEnvelope'
+        '400':
+          $ref: '#/components/responses/CouponPointsHttpError'
+        '401':
+          $ref: '#/components/responses/CouponPointsHttpError'
+        '404':
+          description: 不存在、非本人或冻结态（不可区分）
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                enum:
+                - no-store
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CouponPointsErrorEnvelope'
+        '500':
+          $ref: '#/components/responses/CouponPointsHttpError'
+      x-route-party: USER
+      x-audience: MINIAPP
+  /c/points/balance:
+    get:
+      tags:
+      - C-Points
+      operationId: cGetPointsBalance
+      summary: 我的积分余额（非负整数String）
+      x-implementation-status: IMPLEMENTED_DEFAULT_OFF
+      x-default-enabled: false
+      x-contract: 10-HTTP-API-Contract-v0.4.md
+      description: CCR-C006 P1。当前会话用户 points_account.balance，BIGINT 传输安全用 String；
+        无账户行读作 "0"；query 全禁止。V1 积分只赚取/扣回不消费。
+      security:
+      - bearerAuth: []
+      responses:
+        '200':
+          description: 余额
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                enum:
+                - no-store
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PointsBalanceEnvelope'
+        '400':
+          $ref: '#/components/responses/CouponPointsHttpError'
+        '401':
+          $ref: '#/components/responses/CouponPointsHttpError'
+        '500':
+          $ref: '#/components/responses/CouponPointsHttpError'
+      x-route-party: USER
+      x-audience: MINIAPP
+  /c/points/ledger:
+    get:
+      tags:
+      - C-Points
+      operationId: cListPointsLedger
+      summary: 我的积分流水分页（created_at倒序固定）
+      x-implementation-status: IMPLEMENTED_DEFAULT_OFF
+      x-default-enabled: false
+      x-contract: 10-HTTP-API-Contract-v0.4.md
+      description: CCR-C006 P1。固定排序 created_at DESC, id DESC；bizType 五枚举；delta 带符号非零
+        整数 String（REFUND_CLAWBACK 为负）；query 仅允许 page/pageSize。时间返回 ISO 时间戳（D6 相对时间
+        为客户端展示层）。
+      security:
+      - bearerAuth: []
+      parameters:
+      - name: page
+        in: query
+        required: false
+        schema:
+          type: integer
+          minimum: 1
+          maximum: 10000
+          default: 1
+      - name: pageSize
+        in: query
+        required: false
+        schema:
+          type: integer
+          minimum: 1
+          maximum: 50
+          default: 20
+      responses:
+        '200':
+          description: 流水分页
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                enum:
+                - no-store
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PointsLedgerPageEnvelope'
+        '400':
+          $ref: '#/components/responses/CouponPointsHttpError'
+        '401':
+          $ref: '#/components/responses/CouponPointsHttpError'
+        '500':
+          $ref: '#/components/responses/CouponPointsHttpError'
+      x-route-party: USER
+      x-audience: MINIAPP
 components:
   securitySchemes:
     bearerAuth:
@@ -11299,6 +11496,13 @@ components:
       required: true
       schema:
         $ref: '#/components/schemas/PublicId'
+    CouponId:
+      name: couponId
+      in: path
+      required: true
+      schema:
+        $ref: '#/components/schemas/PublicId'
+      description: CCR-C006 P1；非本人/不存在/冻结态一律同一404（防枚举）。
     StaffId:
       name: staffId
       in: path
@@ -11416,6 +11620,18 @@ components:
         application/json:
           schema:
             $ref: '#/components/schemas/AfterSaleErrorEnvelope'
+    CouponPointsHttpError:
+      description: CCR-C006只读查询错误；复用Error12 §2通用码，data=null。
+      headers:
+        Cache-Control:
+          schema:
+            type: string
+            enum:
+            - no-store
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/CouponPointsErrorEnvelope'
   schemas:
     VerificationCredentialIssue:
       type: object
@@ -18393,6 +18609,272 @@ components:
           nullable: true
           enum:
           - null
+        traceId:
+          type: string
+          minLength: 1
+    CouponPointsErrorEnvelope:
+      type: object
+      additionalProperties: false
+      required:
+      - success
+      - code
+      - message
+      - data
+      - traceId
+      properties:
+        success:
+          type: boolean
+          enum:
+          - false
+        code:
+          type: string
+          enum:
+          - COMMON_INVALID_ARGUMENT
+          - COMMON_UNAUTHORIZED
+          - COMMON_NOT_FOUND
+          - COMMON_INTERNAL_ERROR
+        message:
+          type: string
+          minLength: 1
+        data:
+          type: object
+          nullable: true
+          enum:
+          - null
+        traceId:
+          type: string
+          minLength: 1
+    CouponInstanceItem:
+      type: object
+      additionalProperties: false
+      required:
+      - couponId
+      - name
+      - validTo
+      - status
+      properties:
+        couponId:
+          $ref: '#/components/schemas/PublicId'
+        name:
+          type: string
+          minLength: 1
+          maxLength: 128
+        amountOff:
+          $ref: '#/components/schemas/DecimalAmount'
+        thresholdAmount:
+          $ref: '#/components/schemas/DecimalAmount'
+        scopeSummary:
+          type: string
+          maxLength: 64
+        typeLabel:
+          type: string
+          maxLength: 16
+        validTo:
+          type: string
+          format: date
+        status:
+          type: string
+          enum:
+          - AVAILABLE
+          - USED
+          - EXPIRED
+        usedAt:
+          type: string
+          format: date-time
+          x-precision: milliseconds
+    CouponInstancePageData:
+      type: object
+      additionalProperties: false
+      required:
+      - items
+      - page
+      - pageSize
+      - total
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/CouponInstanceItem'
+        page:
+          type: integer
+          minimum: 1
+        pageSize:
+          type: integer
+          minimum: 1
+          maximum: 50
+        total:
+          type: integer
+          format: int64
+          minimum: 0
+    CouponInstancePageEnvelope:
+      type: object
+      additionalProperties: false
+      required:
+      - success
+      - code
+      - message
+      - data
+      - traceId
+      properties:
+        success:
+          type: boolean
+          enum:
+          - true
+        code:
+          type: string
+          enum:
+          - SUCCESS
+        message:
+          type: string
+          minLength: 1
+        data:
+          $ref: '#/components/schemas/CouponInstancePageData'
+        traceId:
+          type: string
+          minLength: 1
+    CouponInstanceEnvelope:
+      type: object
+      additionalProperties: false
+      required:
+      - success
+      - code
+      - message
+      - data
+      - traceId
+      properties:
+        success:
+          type: boolean
+          enum:
+          - true
+        code:
+          type: string
+          enum:
+          - SUCCESS
+        message:
+          type: string
+          minLength: 1
+        data:
+          $ref: '#/components/schemas/CouponInstanceItem'
+        traceId:
+          type: string
+          minLength: 1
+    PointsBalanceData:
+      type: object
+      additionalProperties: false
+      required:
+      - balance
+      properties:
+        balance:
+          type: string
+          pattern: ^(0|[1-9][0-9]{0,17})(?![\s\S])$
+          x-maximum-decimal: '9223372036854775807'
+          description: 非负BIGINT整数String；无账户行读作"0"。
+    PointsBalanceEnvelope:
+      type: object
+      additionalProperties: false
+      required:
+      - success
+      - code
+      - message
+      - data
+      - traceId
+      properties:
+        success:
+          type: boolean
+          enum:
+          - true
+        code:
+          type: string
+          enum:
+          - SUCCESS
+        message:
+          type: string
+          minLength: 1
+        data:
+          $ref: '#/components/schemas/PointsBalanceData'
+        traceId:
+          type: string
+          minLength: 1
+    PointsLedgerItem:
+      type: object
+      additionalProperties: false
+      required:
+      - ledgerId
+      - bizType
+      - delta
+      - balanceAfter
+      - createdAt
+      properties:
+        ledgerId:
+          $ref: '#/components/schemas/PublicId'
+        bizType:
+          type: string
+          enum:
+          - SIGN_IN
+          - INVITE
+          - TASK
+          - ORDER_REWARD
+          - REFUND_CLAWBACK
+        delta:
+          type: string
+          pattern: ^-?[1-9][0-9]{0,17}(?![\s\S])$
+          x-maximum-decimal: '9223372036854775807'
+          description: 带符号非零整数String；REFUND_CLAWBACK为负。
+        balanceAfter:
+          type: string
+          pattern: ^(0|[1-9][0-9]{0,17})(?![\s\S])$
+          x-maximum-decimal: '9223372036854775807'
+        createdAt:
+          type: string
+          format: date-time
+          x-precision: milliseconds
+    PointsLedgerPageData:
+      type: object
+      additionalProperties: false
+      required:
+      - items
+      - page
+      - pageSize
+      - total
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/PointsLedgerItem'
+        page:
+          type: integer
+          minimum: 1
+        pageSize:
+          type: integer
+          minimum: 1
+          maximum: 50
+        total:
+          type: integer
+          format: int64
+          minimum: 0
+    PointsLedgerPageEnvelope:
+      type: object
+      additionalProperties: false
+      required:
+      - success
+      - code
+      - message
+      - data
+      - traceId
+      properties:
+        success:
+          type: boolean
+          enum:
+          - true
+        code:
+          type: string
+          enum:
+          - SUCCESS
+        message:
+          type: string
+          minLength: 1
+        data:
+          $ref: '#/components/schemas/PointsLedgerPageData'
         traceId:
           type: string
           minLength: 1

@@ -1035,9 +1035,23 @@ OTHER
 
 ### 12.1 CouponQueryApi
 
+> **实现状态（2026-10-06，CCR-C006 P1 批准切片）**：C 端只读查询面已实现
+> （pet-coupon-api `CouponQueryApi` + pet-coupon-biz `CouponQueryApiImpl`，只读 MyBatis 查询，
+> 主体固定为 QueryContext 会话用户）。形状按 CCR-C006 P1 落地为 `listMyCoupons`（三态分桶分页，
+> 仅 AVAILABLE/USED/EXPIRED，D2 冻结态永不返回）与 `getMyCoupon`（防枚举 404），
+> `CouponInstanceDTO` 为 D1 展示投影（amountOff/thresholdAmount/scopeSummary/typeLabel 为
+> rule_json 服务端投影，结构待 CPN-001 冻结，缺失返回 null）。下方预订侧
+> `listAvailable`（仅 AVAILABLE 视图，服务 CPN-002 下单选券）维持文档形态待实现。
+
 ```java
 public interface CouponQueryApi {
 
+    // 已实现（CCR-C006 P1，C 端"我的优惠券"）
+    PageResult<CouponInstanceDTO> listMyCoupons(MyCouponListQuery query);
+
+    CouponInstanceDTO getMyCoupon(MyCouponQuery query);
+
+    // 以下为预订侧文档形态（CPN-002 解阻塞后落地）
     List<CouponAvailableDTO> listAvailable(
         CouponAvailableQuery query
     );
@@ -1079,6 +1093,11 @@ V1.0 不存在积分抵扣，因此 coupon contract 不与 points 抵扣混合�
 V1.0 积分仅“赚取 + 余额 + 流水”，无订单抵扣。
 
 ### 13.1 PointsQueryApi
+
+> **实现状态（2026-10-06，CCR-C006 P1 批准切片）**：已实现（pet-points-api `PointsQueryApi` +
+> pet-points-biz `PointsQueryApiImpl`，只读 MyBatis 查询，主体固定为 QueryContext 会话用户）。
+> `getBalance` 返回非负整数 String（无账户行读作 "0"）；`queryLedger` 固定 `created_at DESC`
+> 排序，`delta` 带符号非零（REFUND_CLAWBACK 为负）。13.2 奖励/扣回命令维持文档形态（PTS-001/PTS-002）。
 
 ```java
 public interface PointsQueryApi {

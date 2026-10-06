@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.petplatform.coupon.biz.infrastructure.persistence.mapper.CouponQueryMapper">
+    <sql id="mineProjection">
+        SELECT i.id, i.user_id, i.status, i.used_at, i.expire_at,
+               t.name AS template_name, t.valid_end_at AS template_valid_end_at, t.rule_json
+        FROM coupon_instance i
+        JOIN coupon_template t ON t.id = i.coupon_template_id
+    </sql>
+    <select id="countMine" resultType="long">
+        SELECT COUNT(*)
+        FROM coupon_instance i
+        WHERE i.user_id = #{userId} AND i.status IN
+        <foreach collection="statuses" item="item" open="(" separator="," close=")">#{item}</foreach>
+    </select>
+    <select id="selectMinePage" resultType="com.petplatform.coupon.biz.infrastructure.persistence.entity.CouponInstanceViewEntity">
+        <include refid="mineProjection"/>
+        WHERE i.user_id = #{userId} AND i.status IN
+        <foreach collection="statuses" item="item" open="(" separator="," close=")">#{item}</foreach>
+        ORDER BY i.expire_at ASC, i.id ASC
+        LIMIT #{limit} OFFSET #{offset}
+    </select>
+    <select id="selectMineById" resultType="com.petplatform.coupon.biz.infrastructure.persistence.entity.CouponInstanceViewEntity">
+        <include refid="mineProjection"/>
+        WHERE i.id = #{id} AND i.user_id = #{userId} AND i.status IN
+        <foreach collection="statuses" item="item" open="(" separator="," close=")">#{item}</foreach>
+    </select>
+</mapper>
