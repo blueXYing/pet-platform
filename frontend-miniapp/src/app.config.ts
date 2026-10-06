@@ -8,7 +8,10 @@ export default defineAppConfig({
   // the platform per-package limit; routes are unchanged.
   subPackages: [
     { root: 'merchant', pages: ['pages/workspace/index', 'pages/services/index', 'pages/services/edit', 'pages/messages/index',
-      'pages/schedule/index', 'pages/schedule/windows', 'pages/schedule/staff', 'pages/schedule/capabilities'] },
+      'pages/schedule/index', 'pages/schedule/windows', 'pages/schedule/staff', 'pages/schedule/capabilities',
+      // Contract 54 staff binding (D1-a): member management workbench child page, one compact
+      // line so parallel M-side page PRs rebase cleanly.
+      'pages/members/index'] },
     { root: 'consumer/pages/pet-archive', pages: ['index', 'detail', 'form'] },
     { root: 'consumer/pages/merchant-application', pages: ['index', 'signing'] },
     { root: 'consumer/pages/store-services', pages: ['index', 'service-detail', 'stores'] },

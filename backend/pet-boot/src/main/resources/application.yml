@@ -84,6 +84,12 @@ pet:
       # Contract 52 STAFF identity read kernel: off by default. The member binding command,
       # grant writers, action catalog and verification mapping are pending the approved CCR.
       enabled: false
+    staff-member:
+      # Contract 54 invite-confirm binding (D1-a; verify-only catalog D2): off by default.
+      # Requires pet.schedule.protection.enabled for the shared store guard; the employee
+      # routes additionally require pet.auth.c.enabled. The V30 migration is a separate
+      # opt-in (migration-enabled/migration-database, isolated staffb001_ databases only).
+      enabled: ${STAFF_MEMBER_ENABLED:false}
   order:
     reschedule:
       enabled: false
