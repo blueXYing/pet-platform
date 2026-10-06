@@ -18,4 +18,8 @@ public interface NotificationInboxMapper {
       @Param("offset") int offset);
 
   int markReadIfUnread(@Param("id") long id, @Param("receiverId") long receiverId, @Param("readAt") OffsetDateTime readAt);
+
+  /** NTF-002 delivery source lookup: binds the authoritative row by id and USER receiver. */
+  NotificationInboxEntity selectDeliverySource(
+      @Param("id") long id, @Param("receiverId") long receiverId);
 }

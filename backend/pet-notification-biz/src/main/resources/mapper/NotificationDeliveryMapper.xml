@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.petplatform.notification.biz.infrastructure.persistence.mapper.NotificationDeliveryMapper">
+    <update id="setTimeZoneUtc">SET SESSION time_zone = '+00:00'</update>
+    <insert id="insertPending">
+        INSERT INTO notification_delivery
+            (id, notification_id, channel, status, provider_message_id, retry_count,
+             last_error, sent_at, created_at, updated_at)
+        VALUES (#{id}, #{notificationId}, #{channel}, 'PENDING', NULL, 0, NULL, NULL,
+                UTC_TIMESTAMP(3), UTC_TIMESTAMP(3))
+    </insert>
+    <select id="selectDelivery" resultType="com.petplatform.notification.biz.infrastructure.persistence.entity.NotificationDeliveryEntity">
+        SELECT id, notification_id, channel, status, provider_message_id, retry_count,
+               last_error, sent_at, created_at, updated_at
+        FROM notification_delivery
+        WHERE notification_id = #{notificationId} AND channel = #{channel}
+    </select>
+    <update id="markSent">
+        UPDATE notification_delivery
+        SET status = 'SENT', provider_message_id = #{providerMessageId},
+            sent_at = UTC_TIMESTAMP(3), updated_at = UTC_TIMESTAMP(3)
+        WHERE notification_id = #{notificationId} AND channel = #{channel} AND status = 'PENDING'
+    </update>
+    <!-- Terminal target is whitelisted here; anything that is not FAILED is a SKIPPED close. -->
+    <update id="markTerminal">
+        UPDATE notification_delivery
+        SET
+            <choose>
+                <when test="status == 'FAILED'">status = 'FAILED'</when>
+                <otherwise>status = 'SKIPPED'</otherwise>
+            </choose>,
+            last_error = #{lastError}, updated_at = UTC_TIMESTAMP(3)
+        WHERE notification_id = #{notificationId} AND channel = #{channel} AND status = 'PENDING'
+    </update>
+    <update id="recordRetry">
+        UPDATE notification_delivery
+        SET retry_count = #{retryCount}, last_error = #{lastError}, updated_at = UTC_TIMESTAMP(3)
+        WHERE notification_id = #{notificationId} AND channel = #{channel} AND status = 'PENDING'
+    </update>
+</mapper>

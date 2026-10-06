@@ -23,4 +23,10 @@
         UPDATE notification SET read_at = #{readAt}
         WHERE id = #{id} AND receiver_type = 'USER' AND receiver_id = #{receiverId} AND read_at IS NULL
     </update>
+    <select id="selectDeliverySource" resultType="com.petplatform.notification.biz.infrastructure.persistence.entity.NotificationInboxEntity">
+        SELECT id, receiver_type, receiver_id, category, message_type, biz_type, biz_id,
+               title, content, mandatory_inbox, read_at, created_at
+        FROM notification
+        WHERE id = #{id} AND receiver_type = 'USER' AND receiver_id = #{receiverId}
+    </select>
 </mapper>

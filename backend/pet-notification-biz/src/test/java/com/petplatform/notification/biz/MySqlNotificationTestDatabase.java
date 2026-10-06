@@ -49,11 +49,17 @@ final class MySqlNotificationTestDatabase implements AutoCloseable {
       }
       if (root == null) throw new IllegalStateException("Authoritative SQL06 schema was not found");
       try (Connection connection = dataSource.getConnection()) {
-        // The authoritative schema carries Chinese comments: read it as UTF-8 on every platform.
+        // The authoritative schemas carry Chinese comments: read them as UTF-8 on every platform.
+        // SQL13 (PLAT-004 async_task/attempt) backs the NTF-002 durable delivery task tests.
         ScriptUtils.executeSqlScript(
             connection,
             new org.springframework.core.io.support.EncodedResource(
                 new FileSystemResource(root.resolve("docs/03-database/06-核心数据库Schema-v0.1.sql")),
+                java.nio.charset.StandardCharsets.UTF_8));
+        ScriptUtils.executeSqlScript(
+            connection,
+            new org.springframework.core.io.support.EncodedResource(
+                new FileSystemResource(root.resolve("docs/03-database/13-Async-Infra-Schema-v0.1.sql")),
                 java.nio.charset.StandardCharsets.UTF_8));
       }
       System.out.println("MER notification real MySQL " + version + "; new database " + name);
