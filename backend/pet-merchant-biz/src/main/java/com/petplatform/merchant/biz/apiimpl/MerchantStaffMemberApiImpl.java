@@ -3,6 +3,7 @@ package com.petplatform.merchant.biz.apiimpl;
 import com.petplatform.common.ApiException;
 import com.petplatform.common.CommonApiCodes;
 import com.petplatform.common.SnowflakeIdGenerator;
+import com.petplatform.event.api.IntegrationEventPublisher;
 import com.petplatform.merchant.api.command.CancelStaffMemberInvitationCommand;
 import com.petplatform.merchant.api.command.ConfirmStaffMemberInvitationCommand;
 import com.petplatform.merchant.api.command.GrantStaffMemberActionsCommand;
@@ -36,8 +37,17 @@ public final class MerchantStaffMemberApiImpl
             ApplicationReviewFactsReader applicationFacts,
             ApplicationValidationPorts.ProtectedValuePort protection,
             StaffLoginPhonePort loginPhones, ScheduleCapacityGuardApi guard, Clock clock) {
+        this(source, ids, applicationFacts, protection, loginPhones, guard, clock, null);
+    }
+
+    /** NTF slice: a non-null publisher appends the lifecycle outbox events in-command. */
+    public MerchantStaffMemberApiImpl(DataSource source, SnowflakeIdGenerator ids,
+            ApplicationReviewFactsReader applicationFacts,
+            ApplicationValidationPorts.ProtectedValuePort protection,
+            StaffLoginPhonePort loginPhones, ScheduleCapacityGuardApi guard, Clock clock,
+            IntegrationEventPublisher events) {
         this.service = new MerchantStaffMemberService(new MerchantStaffMemberStore(source, ids),
-                applicationFacts, protection, loginPhones, guard, clock);
+                applicationFacts, protection, loginPhones, guard, clock, events);
     }
 
     public static ApplicationReviewFactsReader unavailableApplicationFacts() {

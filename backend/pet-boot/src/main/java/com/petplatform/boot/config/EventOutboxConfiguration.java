@@ -9,6 +9,8 @@ import com.petplatform.event.core.OutboxDispatcher;
 import com.petplatform.event.core.OutboxRetryDelays;
 import com.petplatform.event.core.TransactionalOutboxPublisher;
 import com.petplatform.notification.biz.event.MerchantApplicationReviewedConsumer;
+import com.petplatform.notification.biz.event.MerchantStaffInvitationConsumer;
+import com.petplatform.notification.biz.event.MerchantStaffMemberConsumer;
 import com.petplatform.notification.biz.event.ServiceReviewedConsumer;
 import java.time.Duration;
 import java.util.List;
@@ -69,12 +71,46 @@ public class EventOutboxConfiguration {
             name = "notifications-enabled",
             havingValue = "true")
     ServiceReviewedConsumer serviceReviewedConsumer(
+      DataSource dataSource,
+      SnowflakeIdGenerator ids,
+      JdbcOutboxConsumeGuard guard,
+      ObjectProvider<com.petplatform.notification.biz.delivery.WechatDeliveryTaskProducer>
+              wechatDelivery) {
+        return new ServiceReviewedConsumer(dataSource, ids, guard::tryClaim, wechatDelivery.getIfAvailable());
+    }
+
+    // Contract-54 NTF slice (2026-10-06): the staff invitation/member lifecycle station
+    // notifications, gated by their own default-off switch exactly like the two review consumers
+    // above. Both consumers share one notification store shape; with the switch off the pending
+    // events keep waiting in the outbox (dispatched once enabled).
+    @Bean
+    @ConditionalOnProperty(
+            prefix = "pet.merchant.staff",
+            name = "notifications-enabled",
+            havingValue = "true")
+    MerchantStaffInvitationConsumer merchantStaffInvitationConsumer(
             DataSource dataSource,
             SnowflakeIdGenerator ids,
             JdbcOutboxConsumeGuard guard,
             ObjectProvider<com.petplatform.notification.biz.delivery.WechatDeliveryTaskProducer>
                     wechatDelivery) {
-        return new ServiceReviewedConsumer(dataSource, ids, guard::tryClaim, wechatDelivery.getIfAvailable());
+        return new MerchantStaffInvitationConsumer(
+                dataSource, ids, guard::tryClaim, wechatDelivery.getIfAvailable());
+    }
+
+    @Bean
+    @ConditionalOnProperty(
+            prefix = "pet.merchant.staff",
+            name = "notifications-enabled",
+            havingValue = "true")
+    MerchantStaffMemberConsumer merchantStaffMemberConsumer(
+            DataSource dataSource,
+            SnowflakeIdGenerator ids,
+            JdbcOutboxConsumeGuard guard,
+            ObjectProvider<com.petplatform.notification.biz.delivery.WechatDeliveryTaskProducer>
+                    wechatDelivery) {
+        return new MerchantStaffMemberConsumer(
+                dataSource, ids, guard::tryClaim, wechatDelivery.getIfAvailable());
     }
 
     @Bean(destroyMethod = "close")

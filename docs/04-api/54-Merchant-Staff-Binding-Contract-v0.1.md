@@ -12,7 +12,7 @@
 - pet-boot HTTP：OWNER 侧 `/api/v1/merchant/staff-members/**`，员工侧 `/api/v1/c/staff/invitations/{invitationId}`（读 + confirm）；随 `pet.merchant.staff-member.enabled` 装配（员工侧另需 `pet.auth.c.enabled`）。
 - 跨模块新增内部只读 API：pet-user-api `UserPhoneVerificationApi.hasVerifiedPhone(userId, phone)`（pet-user-biz 实现，账号手机号恒不出用户模块）；商家模块经 pet-boot 注入端口使用。事实来源即 S9 既有链路：登录会话发放前账号手机号必已经微信 getPhoneNumber 一次性 code 兑换（`WechatSessionProvider.exchangePhone`），无手机号事实的账号不发放会话。
 
-未实现且不声称完成（随 CCR §3/§5 既定切片）：成员 REVOKED（撤销成员）命令与一切"撤销后重邀/换绑/恢复"语义（**D3 保留待裁决**，本批整店撤权与撤销邀请均为终局，不可原地复活）；grant.staff_id 展示引用的回填规则（本批恒 NULL，属 48 号 K1 修订切片裁决）；核销完成内核接入 `requireStaffAction`（STAFF-C 另立契约修订）；站内通知投递（NTF-001）；员工端确认页面（CCR §3.3 随 M 端工作台员工入口另行交付，本批仅交付服务端确认通道）；邀请有效期与次数上限（CCR D1 待明确子项，本批不设自动过期，仅可被 OWNER 撤销）。
+未实现且不声称完成（随 CCR §3/§5 既定切片）：成员 REVOKED（撤销成员）命令与一切"撤销后重邀/换绑/恢复"语义（**D3 保留待裁决**，本批整店撤权与撤销邀请均为终局，不可原地复活）；grant.staff_id 展示引用的回填规则（本批恒 NULL，属 48 号 K1 修订切片裁决）；核销完成内核接入 `requireStaffAction`（STAFF-C 另立契约修订）；员工端确认页面（CCR §3.3 随 M 端工作台员工入口另行交付，本批仅交付服务端确认通道）；邀请有效期与次数上限（CCR D1 待明确子项，本批不设自动过期，仅可被 OWNER 撤销）。站内通知投递（NTF-001）已由 2026-10-06 通知切片按 §6 范围接入（可达性受限，见该节），员工端通知触达与外投模板不在本契约。
 
 ## 2. 邀请-确认状态机
 
@@ -56,3 +56,20 @@ OWNER invite ──► INVITED ──(OWNER cancelInvitation)──► CANCELED�
 ## 5. 验收状态
 
 pet-merchant-biz 真实 MySQL 隔离测试（`MerchantStaffMemberBindingMySqlTest`，STAFFB→MER001→AUTH 环境前缀回退链）覆盖：邀请创建与待邀唯一性、撤销终局、确认创建 member+grant+action 与审计、重复确认/撤销后确认/换绑冲突、OWNER 本人手机号确认拒绝、停用→动作门 403→恢复、授予整体替换与版本递增、整店撤权终局与动作门 404、并发确认竞争（两事务串行化后一胜一 409）、重放幂等回执。单元测试覆盖邀请状态机纯语义。开关关闭时无任何 bean/路由装配（52 号读侧内核不受影响）。
+
+## 6. 站内通知接入（NTF 切片，2026-10-06 修订，v0.1 内增补）
+
+邀请编号此前只能线外转达；本切片把邀请/成员生命周期事件接入站内通知（NTF-001 消费者先例：`MerchantApplicationReviewedConsumer`/`ServiceReviewedConsumer`）。事件登记见 [08号事件目录](../05-events/08-Integration-Event-Catalog-v0.6.md)，payload 共享数据定义登记于 [11号 OpenAPI](11-OpenAPI-Core-v0.4.yaml)（`MerchantStaffInvitationLifecyclePayload`/`MerchantStaffMemberLifecyclePayload`，非 HTTP 面，OpenAPI operation 零变化）。
+
+**生产侧**：`MerchantStaffMemberService` 注入可选 `TransactionalOutboxPublisher`，在 invite / cancelInvitation / confirmInvitation / disableMember / enableMember 的命令事务内与业务写、审计、23号幂等回执原子追加 outbox 事件；回滚无事件，重放不二次发布。`pet.outbox.enabled=false`（默认）时无 publisher bean，本契约全部命令行为与历史逐字节一致（显式测试断言零事件）。
+
+**消费侧**：pet-notification-biz 新增 `MerchantStaffInvitationConsumer`（`MerchantStaffInvitationLifecycleEvent.v1`）与 `MerchantStaffMemberConsumer`（`MerchantStaffMemberLifecycleEvent.v1`），严格 payload 校验、(eventId, consumerName) 幂等、本域同事务写站内权威行；站内行 category=SERVICE、message_type=MER_STAFF_INVITATION/MER_STAFF_MEMBER、mandatory_inbox=0（不在 SSOT §16.4 五类强制清单）；NTF-002 外投 afterInboxInsert 钩子与既有消费者同款（可选）。开关 `pet.merchant.staff.notifications-enabled`（默认 false）独立生效，关闭时事件滞留 outbox 不派发。
+
+**可达性裁决（不发明产品规则，以 schema 为准）**：SQL06 §11 `notification` 只能按 receiver_type='USER' + 账号 id 寻址，而被邀人在确认前尚无 user_account（本契约 §2），故：
+- INVITED → 通知 OWNER（含邀请编号、被邀姓名、脱敏手机号；编号仍需商家线外转达给被邀人，站内行供自查与转发凭据）；
+- CANCELED → 通知 OWNER（被邀人不可达，不通知）；
+- CONFIRMED → 通知 OWNER 与确认员工本人（此时已有账号）；
+- DISABLED / ENABLED → 通知被绑定成员账号（OWNER 为命令本人，不另发）。
+- **未接事件**：grantActions / revokeStoreGrant（动作集变更与整店撤权）不在本切片事件范围，成员侧感知留待后续裁决；被邀人确认前的任何站内触达均不可达，属 schema 边界而非实现缺口。
+
+验收：pet-merchant-biz `MerchantStaffMemberEventMySqlTest`（事件同事务原子性、回滚收敛、重放不重复、载荷无明文手机号、publisher 缺席零行为）；pet-notification-biz `MerchantStaffInvitationConsumerMySqlTest`/`MerchantStaffMemberConsumerMySqlTest`（各 changeType 站内行、CONFIRMED 双收件、重派幂等、回滚收敛、严格拒绝负例、真实 dispatcher 端到端）；pet-boot wiring 测试验证开关装配。

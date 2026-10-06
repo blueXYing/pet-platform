@@ -8,6 +8,8 @@ import com.petplatform.common.DecimalPublicIdCodec;
 import com.petplatform.common.OperatorType;
 import com.petplatform.common.PublicContractChecks;
 import com.petplatform.common.QueryContext;
+import com.petplatform.event.api.IntegrationEvent;
+import com.petplatform.event.api.IntegrationEventPublisher;
 import com.petplatform.merchant.api.command.CancelStaffMemberInvitationCommand;
 import com.petplatform.merchant.api.command.ConfirmStaffMemberInvitationCommand;
 import com.petplatform.merchant.api.command.GrantStaffMemberActionsCommand;
@@ -38,6 +40,7 @@ import java.nio.charset.StandardCharsets;
 import java.time.Clock;
 import java.time.LocalDateTime;
 import java.time.ZoneOffset;
+import java.time.format.DateTimeFormatter;
 import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.HexFormat;
@@ -72,6 +75,13 @@ public final class MerchantStaffMemberService {
     private static final Set<String> MEMBER_STATUSES = Set.of("ENABLED", "DISABLED", "REVOKED");
     private static final Set<String> GRANT_STATUSES = Set.of("ENABLED", "REVOKED");
     private static final Set<String> APPLICATION = Set.of("DRAFT", "REVIEWING", "APPROVED", "REJECTED");
+    /** NTF slice: invitation/member lifecycle station-notification events (Event08 registration). */
+    static final String INVITATION_EVENT_TYPE = "MerchantStaffInvitationLifecycleEvent.v1";
+    static final String MEMBER_EVENT_TYPE = "MerchantStaffMemberLifecycleEvent.v1";
+    private static final String INVITATION_AGGREGATE = "MERCHANT_MEMBER_INVITATION";
+    private static final String MEMBER_AGGREGATE = "MERCHANT_MEMBER";
+    private static final DateTimeFormatter EVENT_TIME =
+            DateTimeFormatter.ofPattern("uuuu-MM-dd'T'HH:mm:ss.SSSXXX");
 
     private record Intent(String action, long merchantId, long storeId, long memberId,
                           long invitationId, String phone, String memberName, List<String> actions,
@@ -98,17 +108,33 @@ public final class MerchantStaffMemberService {
     private final StaffLoginPhonePort loginPhones;
     private final ScheduleCapacityGuardApi guard;
     private final Clock clock;
+    /**
+     * NTF slice: nullable Transactional Outbox producer. Null (outbox off) keeps every
+     * contract-54 command byte-identical to the pre-notification behavior; when present the
+     * lifecycle events append inside the same command transaction, so rollback leaves no event
+     * and a 23号 replay never emits a second one.
+     */
+    private final IntegrationEventPublisher events;
 
     public MerchantStaffMemberService(MerchantStaffMemberStore store,
             ApplicationReviewFactsReader applicationFacts,
             ApplicationValidationPorts.ProtectedValuePort protection,
             StaffLoginPhonePort loginPhones, ScheduleCapacityGuardApi guard, Clock clock) {
+        this(store, applicationFacts, protection, loginPhones, guard, clock, null);
+    }
+
+    public MerchantStaffMemberService(MerchantStaffMemberStore store,
+            ApplicationReviewFactsReader applicationFacts,
+            ApplicationValidationPorts.ProtectedValuePort protection,
+            StaffLoginPhonePort loginPhones, ScheduleCapacityGuardApi guard, Clock clock,
+            IntegrationEventPublisher events) {
         this.store = Objects.requireNonNull(store, "store is required");
         this.applicationFacts = Objects.requireNonNull(applicationFacts, "applicationFacts is required");
         this.protection = Objects.requireNonNull(protection, "protection is required");
         this.loginPhones = Objects.requireNonNull(loginPhones, "loginPhones is required");
         this.guard = Objects.requireNonNull(guard, "guard is required");
         this.clock = Objects.requireNonNull(clock, "clock is required");
+        this.events = events;
     }
 
     // ------------------------------------------------------------------ owner: invitations
@@ -189,8 +215,9 @@ public final class MerchantStaffMemberService {
                 intent.storeId(), null, invitationId, null, "INVITED", null, 0L, intent.key(),
                 requestIdBytes(intent), intent.traceId(), now()) != 1)
             unavailable("member audit insert failed");
-        MerchantStaffInvitationDTO receipt =
-                projectInvitation(readInvitation(mapper, invitationId));
+        MerchantMemberInvitationEntity created = readInvitation(mapper, invitationId);
+        publishInvitationLifecycle(created, "INVITED", null, null, intent.traceId());
+        MerchantStaffInvitationDTO receipt = projectInvitation(created);
         markSucceeded(mapper, intent, receipt);
         return new MerchantStaffInvitationCommandResult(receipt, true, false);
     }
@@ -210,8 +237,9 @@ public final class MerchantStaffMemberService {
                 invitation.getVersion(), invitation.getVersion() + 1, intent.key(),
                 requestIdBytes(intent), intent.traceId(), now()) != 1)
             unavailable("member audit insert failed");
-        MerchantStaffInvitationDTO receipt =
-                projectInvitation(readInvitation(mapper, intent.invitationId()));
+        MerchantMemberInvitationEntity canceled = readInvitation(mapper, intent.invitationId());
+        publishInvitationLifecycle(canceled, "CANCELED", null, null, intent.traceId());
+        MerchantStaffInvitationDTO receipt = projectInvitation(canceled);
         markSucceeded(mapper, intent, receipt);
         return new MerchantStaffInvitationCommandResult(receipt, true, false);
     }
@@ -323,6 +351,7 @@ public final class MerchantStaffMemberService {
                 scope.getMemberVersion(), scope.getMemberVersion() + 1, intent.key(),
                 requestIdBytes(intent), intent.traceId(), now()) != 1)
             unavailable("member audit insert failed");
+        publishMemberLifecycle(intent, scope, nextStatus);
         return memberReceipt(mapper, intent);
     }
 
@@ -490,6 +519,8 @@ public final class MerchantStaffMemberService {
                 invitation.getStoreId(), memberId, intent.invitationId(), "INVITED", "ENABLED",
                 invitation.getVersion(), 0L, intent.key(), requestIdBytes(intent), intent.traceId(),
                 now()) != 1) unavailable("member audit insert failed");
+        publishInvitationLifecycle(invitation, "CONFIRMED", intent.actorId(), memberId,
+                intent.traceId());
         MerchantStaffMemberDTO receipt = projectConfirmedMember(mapper, memberId, invitation);
         if (mapper.markBindingSucceeded(intent.key(), receiptJson(receipt)) != 1)
             unavailable("member idempotency result update failed");
@@ -586,6 +617,47 @@ public final class MerchantStaffMemberService {
     }
 
     // ------------------------------------------------------------------ shared plumbing
+
+    /**
+     * NTF slice producer (Event08 registration): the authoritative invitation facts travel with
+     * the event so the notification consumer stays self-contained (ARCH-002). The phone only
+     * leaves the module in the pre-masked owner-visible form; no plaintext phone, no free text.
+     */
+    private void publishInvitationLifecycle(MerchantMemberInvitationEntity invitation,
+            String changeType, Long confirmedUserId, Long memberId, String traceId) {
+        if (events == null) return;
+        Map<String, Object> payload = new LinkedHashMap<>();
+        payload.put("invitationId", Long.toUnsignedString(invitation.getId()));
+        payload.put("merchantId", Long.toUnsignedString(invitation.getMerchantId()));
+        payload.put("storeId", Long.toUnsignedString(invitation.getStoreId()));
+        payload.put("ownerUserId", Long.toUnsignedString(invitation.getInvitedBy()));
+        payload.put("memberName", invitation.getMemberName());
+        payload.put("phoneMasked", mask(invitation.getPhone()));
+        payload.put("changeType", changeType);
+        payload.put("confirmedUserId",
+                confirmedUserId == null ? null : Long.toUnsignedString(confirmedUserId));
+        payload.put("memberId", memberId == null ? null : Long.toUnsignedString(memberId));
+        payload.put("occurredAt", EVENT_TIME.format(now().atOffset(ZoneOffset.UTC)));
+        events.publish(new IntegrationEvent<>(Long.toUnsignedString(store.nextId()),
+                INVITATION_EVENT_TYPE, 1, now().atOffset(ZoneOffset.UTC), INVITATION_AGGREGATE,
+                Long.toUnsignedString(invitation.getId()), traceId, payload));
+    }
+
+    /** Same-transaction member lifecycle event; the member account is the reachable receiver. */
+    private void publishMemberLifecycle(Intent intent, MerchantMemberGrantScopeEntity scope,
+            String changeType) {
+        if (events == null) return;
+        Map<String, Object> payload = new LinkedHashMap<>();
+        payload.put("memberId", Long.toUnsignedString(intent.memberId()));
+        payload.put("merchantId", Long.toUnsignedString(intent.merchantId()));
+        payload.put("storeId", Long.toUnsignedString(intent.storeId()));
+        payload.put("memberUserId", Long.toUnsignedString(scope.getUserId()));
+        payload.put("changeType", changeType);
+        payload.put("occurredAt", EVENT_TIME.format(now().atOffset(ZoneOffset.UTC)));
+        events.publish(new IntegrationEvent<>(Long.toUnsignedString(store.nextId()),
+                MEMBER_EVENT_TYPE, 1, now().atOffset(ZoneOffset.UTC), MEMBER_AGGREGATE,
+                Long.toUnsignedString(intent.memberId()), intent.traceId(), payload));
+    }
 
     private void admitWithRecovery(Intent intent) {
         try {

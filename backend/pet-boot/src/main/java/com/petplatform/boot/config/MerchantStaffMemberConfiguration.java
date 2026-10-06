@@ -1,6 +1,7 @@
 package com.petplatform.boot.config;
 
 import com.petplatform.common.SnowflakeIdGenerator;
+import com.petplatform.event.api.IntegrationEventPublisher;
 import com.petplatform.merchant.biz.apiimpl.MerchantStaffMemberApiImpl;
 import com.petplatform.merchant.biz.application.ApplicationReviewFactsReader;
 import com.petplatform.merchant.biz.application.ApplicationValidationPorts;
@@ -29,13 +30,17 @@ public class MerchantStaffMemberConfiguration {
             ObjectProvider<ApplicationReviewFactsReader> applications,
             ObjectProvider<ApplicationValidationPorts.ProtectedValuePort> protection,
             ObjectProvider<UserPhoneVerificationApi> phones, ScheduleCapacityGuardApi guard,
-            ObjectProvider<Clock> clock) {
+            ObjectProvider<Clock> clock,
+            ObjectProvider<IntegrationEventPublisher> events) {
         StaffLoginPhonePort loginPhones = (userId, phone) -> phones.getObject()
                 .hasVerifiedPhone(new UserIdQuery(Long.toUnsignedString(userId)), phone);
+        // NTF slice: the outbox publisher is optional — with pet.outbox.enabled=false (default)
+        // the binding keeps its pre-notification behavior and emits no lifecycle events.
         return new MerchantStaffMemberApiImpl(source, ids,
                 applications.getIfAvailable(() -> MerchantStaffMemberApiImpl.unavailableApplicationFacts()),
                 protection.getIfAvailable(() -> MerchantStaffMemberApiImpl.unavailableProtection()),
-                loginPhones, guard, clock.getIfAvailable(Clock::systemUTC));
+                loginPhones, guard, clock.getIfAvailable(Clock::systemUTC),
+                events.getIfAvailable());
     }
 
     /** Opt-in isolated Flyway delta for the binding tables (SQL54); mirrors the guarded V26-V29
