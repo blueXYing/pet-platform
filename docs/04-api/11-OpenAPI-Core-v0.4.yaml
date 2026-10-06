@@ -17653,13 +17653,19 @@ components:
           - CANCELED
           - CONFIRMED
         confirmedUserId:
-          oneOf:
-          - $ref: '#/components/schemas/PublicId'
-          - type: 'null'
+          type: string
+          minLength: 1
+          maxLength: 19
+          pattern: '^[1-9][0-9]{0,18}(?![\s\S])'
+          x-maximum-decimal: '9223372036854775807'
+          nullable: true
         memberId:
-          oneOf:
-          - $ref: '#/components/schemas/PublicId'
-          - type: 'null'
+          type: string
+          minLength: 1
+          maxLength: 19
+          pattern: '^[1-9][0-9]{0,18}(?![\s\S])'
+          x-maximum-decimal: '9223372036854775807'
+          nullable: true
         occurredAt:
           $ref: '#/components/schemas/AuthTimestamp'
       description: Shared data definition for MerchantStaffInvitationLifecycleEvent.v1 (Event08,
