@@ -2,7 +2,7 @@
 
 K1/K2 用户已批准。执行 SQL48 前必须已应用 SQL47。仅隔离 QA 自动建库使用，生产迁移未授权。
 
-核销成功和尝试扩展真实 actor、membership_kind、command_id；成功记录另关联 credential_id、attempt_id、order_version。command_id 指向 47 的五元组 Admission，移除错误的全局 request_id 唯一索引；保留每订单最多一次成功核销。OWNER 的 staff_id 必须 NULL；STAFF 只保留可表达结构，不提供写入口。
+核销成功和尝试扩展真实 actor、membership_kind、command_id；成功记录另关联 credential_id、attempt_id、order_version。command_id 指向 47 的五元组 Admission，移除错误的全局 request_id 唯一索引；保留每订单最多一次成功核销。OWNER 的 staff_id 必须 NULL。STAFF 行（48 号契约 K1 v0.2，2026-10-06 修订）由核销命令在 52 号动作门通过后写入：membership_kind='STAFF'、operator_type='MERCHANT_STAFF'、operator_staff_id=grant 展示 staffId 且 operator_id=operator_staff_id（CHECK 固定），真实登录用户经 command_id→Admission actor 追溯；grant 无 staffId 时拒绝写入。开关 `pet.verification.staff-identity.enabled` 默认 false。成员/授予/动作行的写入口仍只在绑定切片（#107），本表不提供任何成员绑定写路径。
 
 目前没有可验证的旧员工登录绑定来源：迁移第一步检查旧成功/尝试表必须为空；有旧行则 CHECK 拒绝后续 ALTER。不得删除旧记录以通过门禁，不得猜测 OWNER。若迁移门禁失败，留下 gate 表用于核对，人工查明数据并制定真实映射后另行评审迁移；本脚本不是可重跑生产工具。
 

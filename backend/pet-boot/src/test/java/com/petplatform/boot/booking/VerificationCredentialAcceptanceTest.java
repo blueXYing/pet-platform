@@ -31,7 +31,7 @@ class VerificationCredentialAcceptanceTest {
   var keys=new CredentialProtection("qa-v1",Map.of("qa-v1",new byte[32]),Map.of("qa-v1",new byte[32]));
   return new VerificationCredentialService(source,IDS::incrementAndGet,guard,orders,keys,
    user->{if(!f.sessionActive.get())throw new ApiException(CommonApiCodes.UNAUTHORIZED,"QA revoked");},
-   (context,merchant,store)->{if(!f.sessionActive.get())throw new ApiException(CommonApiCodes.UNAUTHORIZED,"QA revoked");owner.requireOwner(merchant,store,new QueryContext(context.traceId(),context.operatorType(),context.operatorId()));},
+   (context,merchant,store)->{if(!f.sessionActive.get())throw new ApiException(CommonApiCodes.UNAUTHORIZED,"QA revoked");owner.requireOwner(merchant,store,new QueryContext(context.traceId(),context.operatorType(),context.operatorId()));return new com.petplatform.order.api.command.OrderVerificationCommitApi.OperatorIdentity("USER",context.operatorId(),"OWNER",null);},
    new com.petplatform.event.core.TransactionalOutboxPublisher(source,IDS::incrementAndGet,new com.fasterxml.jackson.databind.ObjectMapper()));
  }
  @Test void realPaymentConfirmationReadDoesNotIssueAndInitialCodeValidates(){try(var t=new T()){

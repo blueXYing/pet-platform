@@ -5,5 +5,5 @@ import javax.sql.DataSource;
 public interface VerificationCommitProofApi {
  void requireCommitted(Proof proof,DataSource transactionSource);
  record Proof(String orderId,String storeId,String merchantId,String commandId,String verificationId,String credentialId,String attemptId,
-              String operatorId,String requestId,OffsetDateTime verifiedAt,String orderVersion) {}
+              String operatorType,String operatorId,String membershipKind,String operatorStaffId,String requestId,OffsetDateTime verifiedAt,String orderVersion) {}
 }

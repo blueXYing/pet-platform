@@ -38,21 +38,29 @@ public final class OrderVerificationCommitApiImpl implements OrderVerificationCo
    ||!order.equals(e.permit.fact().location().orderId())||!store.equals(e.permit.fact().location().storeId()))throw bad();return e.permit;
  });}
  public void release(String token,String order,String store,DataSource txSource){safe(()->{requirePending(token,order,store,txSource);one(db.guardStatus(values("token",token,"order",IDS.fromApi(order),"status","RELEASED")));tokens.get(token).status="RELEASED";return null;});}
- public String markVerified(String token,String order,String store,String verificationId,String credential,String attempt,OffsetDateTime at,DataSource txSource){return safe(()->{
+ public String markVerified(String token,String order,String store,String verificationId,String credential,String attempt,OffsetDateTime at,OperatorIdentity identity,DataSource txSource){return safe(()->{
   var p=requirePending(token,order,store,txSource);IDS.fromApi(verificationId);IDS.fromApi(credential);IDS.fromApi(attempt);PublicContractChecks.requireMillisecondPrecision(at);
+  var resolved=checked(identity);
   var current=facts.requireEligible(order,store,new QueryContext(p.context().traceId(),OperatorType.SYSTEM,null));if(!current.equals(p.fact()))throw bad();
   var afs=aftersales.get().requireCommitted(order,store,verificationId,at,source);if(afs==null||!Objects.equals(p.currentAftersaleId(),afs.aftersaleId()))throw bad();
   long version=Math.addExact(Long.parseLong(p.fact().orderVersion()),1);long event=next();
-  var proof=new VerificationCommitProofApi.Proof(order,store,p.fact().location().merchantId(),p.commandId(),verificationId,credential,attempt,p.context().operatorId(),p.context().requestId(),at,Long.toString(version));
+  var proof=new VerificationCommitProofApi.Proof(order,store,p.fact().location().merchantId(),p.commandId(),verificationId,credential,attempt,resolved.operatorType(),resolved.operatorId(),resolved.membershipKind(),resolved.operatorStaffId(),p.context().requestId(),at,Long.toString(version));
   var v=values("order",IDS.fromApi(order),"store",IDS.fromApi(store),"verification",IDS.fromApi(verificationId),"credential",IDS.fromApi(credential),"attempt",IDS.fromApi(attempt),"command",IDS.fromApi(p.commandId()),"actor",IDS.fromApi(p.context().operatorId()),"requestId",p.context().requestId(),"oldVersion",Long.parseLong(p.fact().orderVersion()),"version",version,"event",event,"log",next(),"at",at.withOffsetSameInstant(ZoneOffset.UTC).toLocalDateTime(),"aftersale",afs.aftersaleId()==null?null:IDS.fromApi(afs.aftersaleId()),"aftersaleStatus",afs.status());
   one(db.complete(v));one(db.record(v));one(db.log(v));one(db.guardStatus(values("token",token,"order",IDS.fromApi(order),"status","COMMITTED")));tokens.get(token).status="COMMITTED";
-  outbox.publish(new IntegrationEvent<>(Long.toString(event),"OrderVerifiedEvent.v2",2,at,"ORDER",order,p.context().traceId(),values("orderId",order,"verificationId",verificationId,"merchantId",p.fact().location().merchantId(),"storeId",store,"operatorType","USER","operatorId",p.context().operatorId(),"membershipKind","OWNER","operatorStaffId",null,"verifiedAt",at.withOffsetSameInstant(ZoneOffset.UTC).toString())));
+  outbox.publish(new IntegrationEvent<>(Long.toString(event),"OrderVerifiedEvent.v2",2,at,"ORDER",order,p.context().traceId(),values("orderId",order,"verificationId",verificationId,"merchantId",p.fact().location().merchantId(),"storeId",store,"operatorType",resolved.operatorType(),"operatorId",resolved.operatorId(),"membershipKind",resolved.membershipKind(),"operatorStaffId",resolved.operatorStaffId(),"verifiedAt",at.withOffsetSameInstant(ZoneOffset.UTC).toString())));
   TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization(){public void beforeCommit(boolean readOnly){
    var committedRow=db.row(IDS.fromApi(order));if(committedRow==null||!Objects.equals(committedRow.version,version))throw bad();
    requireCommitted(order,store,verificationId,at,source);verification.get().requireCommitted(proof,source);
    if(!afs.equals(aftersales.get().requireCommitted(order,store,verificationId,at,source)))throw bad();
   }});return Long.toString(version);
  });}
+ /** Only the two K1 shapes may be mirrored; anything else fails closed before any write. */
+ private static OperatorIdentity checked(OperatorIdentity identity){
+  if(identity==null||identity.operatorType()==null||identity.operatorId()==null||identity.membershipKind()==null)throw bad();IDS.fromApi(identity.operatorId());
+  if("OWNER".equals(identity.membershipKind())){if("USER".equals(identity.operatorType())&&identity.operatorStaffId()==null)return identity;throw bad();}
+  if("STAFF".equals(identity.membershipKind())){if("MERCHANT_STAFF".equals(identity.operatorType())&&identity.operatorStaffId()!=null&&identity.operatorStaffId().equals(identity.operatorId()))return identity;throw bad();}
+  throw bad();
+ }
  public void requireCommitted(String order,String store,String verificationId,OffsetDateTime at,DataSource txSource){safe(()->{
   scope(store,txSource);var r=db.row(IDS.fromApi(order));var p=db.committed(IDS.fromApi(order));
   if(r==null||p==null||!store.equals(str(r.storeId))||!store.equals(str(p.storeId))||!verificationId.equals(str(p.verificationId))||!"COMPLETED".equals(r.orderStage)||!"VERIFIED".equals(r.verificationStatus)
