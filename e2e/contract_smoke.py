@@ -182,6 +182,53 @@ SCHEDULE_AVAILABILITY_OPERATIONS = {
     'cGetServiceAvailability': ('get', '/c/services/{serviceId}/availability'),
 }
 
+# Contract53 (SCH-004 merchant schedule write side, PRD29/SSOT §29 + SCHW/SCHC rulings):
+# owner-gated service-window / staff-availability / capability maintenance plus the merchant
+# workbench reads, default off behind pet.schedule.command.*. Response codes are pinned per
+# operation and every error reply must use the merchant error envelope; creates answer 201
+# first-commit / 200 same-params replay with identical bodies (API23).
+SCHEDULE_WRITE_OPERATIONS = {
+    'merchantListScheduleWindows': (
+        'get', '/merchant/stores/{storeId}/availability-windows',
+        ('200', '400', '401', '403', '503')),
+    'merchantCreateScheduleWindow': (
+        'post', '/merchant/stores/{storeId}/availability-windows',
+        ('200', '201', '400', '401', '403', '404', '409', '503')),
+    'merchantUpdateScheduleWindow': (
+        'put', '/merchant/stores/{storeId}/availability-windows/{windowId}',
+        ('200', '400', '401', '403', '404', '409', '503')),
+    'merchantCloseScheduleWindow': (
+        'post', '/merchant/stores/{storeId}/availability-windows/{windowId}/close',
+        ('200', '400', '401', '403', '404', '409', '503')),
+    'merchantOpenScheduleWindow': (
+        'post', '/merchant/stores/{storeId}/availability-windows/{windowId}/open',
+        ('200', '400', '401', '403', '404', '409', '503')),
+    'merchantBatchCloseScheduleWindows': (
+        'post', '/merchant/stores/{storeId}/availability-windows/batch-close',
+        ('200', '400', '401', '403', '409', '503')),
+    'merchantListStaffAvailabilityWindows': (
+        'get', '/merchant/staff/{staffId}/availability-windows',
+        ('200', '400', '401', '403', '503')),
+    'merchantCreateStaffAvailabilityWindow': (
+        'post', '/merchant/staff/{staffId}/availability-windows',
+        ('200', '201', '400', '401', '403', '404', '409', '503')),
+    'merchantUpdateStaffAvailabilityWindow': (
+        'put', '/merchant/staff/{staffId}/availability-windows/{windowId}',
+        ('200', '400', '401', '403', '404', '409', '503')),
+    'merchantCloseStaffAvailabilityWindow': (
+        'post', '/merchant/staff/{staffId}/availability-windows/{windowId}/close',
+        ('200', '400', '401', '403', '404', '409', '503')),
+    'merchantOpenStaffAvailabilityWindow': (
+        'post', '/merchant/staff/{staffId}/availability-windows/{windowId}/open',
+        ('200', '400', '401', '403', '404', '409', '503')),
+    'merchantGetStaffServiceCapabilities': (
+        'get', '/merchant/staff/{staffId}/service-capabilities',
+        ('200', '400', '401', '403', '404', '503')),
+    'merchantReplaceStaffServiceCapabilities': (
+        'put', '/merchant/staff/{staffId}/service-capabilities',
+        ('200', '400', '401', '403', '404', '409', '503')),
+}
+
 
 def check_private_assets(spec, operation):
     name = operation['operationId']
@@ -610,6 +657,19 @@ def check(spec):
                 assert {'200', '400', '401', '403', '404', '409', '503'} <= responses.keys(), f'Application response missing: {operation_id}'
                 if operation_id == 'cCreateMerchantApplication':
                     assert '201' in responses and responses['201']['content'] == responses['200']['content'], 'Application create replay changed'
+            if operation_id in SCHEDULE_WRITE_OPERATIONS:
+                expected_method, expected_path, required_codes = SCHEDULE_WRITE_OPERATIONS[operation_id]
+                assert (method, path) == (expected_method, expected_path), f'Schedule write operation moved: {operation_id}'
+                assert operation.get('security') == [{'bearerAuth': []}], f'Schedule write security changed: {operation_id}'
+                assert operation.get('x-contract-status') == 'IMPLEMENTED_DEFAULT_OFF', f'Schedule write status changed: {operation_id}'
+                assert operation.get('x-audience') == 'MINIAPP', f'Schedule write audience changed: {operation_id}'
+                responses = operation['responses']
+                assert set(responses) == set(required_codes), f'Schedule write response surface changed: {operation_id}'
+                for code in ('400', '401', '403', '404', '409', '503'):
+                    if code in required_codes:
+                        assert dereference(spec, responses[code])['content']['application/json']['schema'] == {'$ref': '#/components/schemas/MerErrorEnvelope'}, f'Schedule write error data unsafe: {operation_id}'
+                if '201' in responses:
+                    assert responses['201']['content'] == responses['200']['content'], f'Schedule write replay changed: {operation_id}'
             if method in {'post', 'put', 'patch', 'delete'}:
                 assert {'$ref': '#/components/parameters/RequestId'} in parameters, f'Missing request ID: {operation_id}'
                 writes += 1
@@ -623,7 +683,7 @@ def check(spec):
     assert legacy_seen == LEGACY_OPERATIONS.keys(), f'Legacy operations missing: {LEGACY_OPERATIONS.keys() - legacy_seen}'
     assert legacy_writes == 11, 'Legacy write surface changed'
     assert legacy_creates == LEGACY_CREATES, 'Legacy create surface changed'
-    assert operations == LEGACY_OPERATIONS.keys() | AUTH_OPERATIONS.keys() | MERCHANT_OPERATIONS.keys() | APPLICATION_OPERATIONS.keys() | PRIVATE_ASSET_OPERATIONS.keys() | SERVICE_CATALOG_OPERATIONS.keys() | STORE_CATALOG_OPERATIONS.keys() | SERVICE_WRITE_OPERATIONS.keys() | SCHEDULE_AVAILABILITY_OPERATIONS.keys() | CREDENTIAL_OPERATIONS.keys() | AFTERSALE_OPERATIONS.keys(), 'Unexpected or missing reviewed operations'
+    assert operations == LEGACY_OPERATIONS.keys() | AUTH_OPERATIONS.keys() | MERCHANT_OPERATIONS.keys() | APPLICATION_OPERATIONS.keys() | PRIVATE_ASSET_OPERATIONS.keys() | SERVICE_CATALOG_OPERATIONS.keys() | STORE_CATALOG_OPERATIONS.keys() | SERVICE_WRITE_OPERATIONS.keys() | SCHEDULE_AVAILABILITY_OPERATIONS.keys() | SCHEDULE_WRITE_OPERATIONS.keys() | CREDENTIAL_OPERATIONS.keys() | AFTERSALE_OPERATIONS.keys(), 'Unexpected or missing reviewed operations'
     schemes = spec['components']['securitySchemes']
     assert schemes['bearerAuth']['type'] == 'http' and schemes['bearerAuth']['scheme'] == 'bearer'
     for scheme, location, name in [('authAttempt', 'header', 'X-Auth-Attempt'),
@@ -668,6 +728,7 @@ def check(spec):
             'privateAssetOperations': len(operations & PRIVATE_ASSET_OPERATIONS.keys()),
             'serviceCatalogOperations': len(operations & SERVICE_CATALOG_OPERATIONS.keys()),
             'scheduleAvailabilityOperations': len(operations & SCHEDULE_AVAILABILITY_OPERATIONS.keys()),
+            'scheduleWriteOperations': len(operations & SCHEDULE_WRITE_OPERATIONS.keys()),
             'serviceWriteOperations': len(operations & SERVICE_WRITE_OPERATIONS.keys()),
             'storeCatalogOperations': len(operations & STORE_CATALOG_OPERATIONS.keys()),
             'resolvedRefs': len(refs), 'stringIdProperties': ids}

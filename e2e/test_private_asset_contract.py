@@ -24,8 +24,9 @@ class PrivateAssetContractRegressions(unittest.TestCase):
 
     def test_current_surface_independent_counts(self):
         result = check(self.spec)
-        # 114 = previous 92 - 2 legacy AFS drafts + 24 approved Contract51 AFS operations.
-        self.assertEqual(result['operations'], 114)
+        # 127 = develop 126 + net 1 from the aftersale-pages surface merge (24 Contract51 AFS
+        # operations consolidated, 2 legacy drafts retired, overlap with develop resolved).
+        self.assertEqual(result['operations'], 127)
         self.assertEqual(result['privateAssetOperations'], 3)
         self.assertEqual(result['legacyOperations'], 14)
         self.assertEqual(result['aftersaleOperations'], 24)
@@ -35,6 +36,7 @@ class PrivateAssetContractRegressions(unittest.TestCase):
         self.assertEqual(result['serviceCatalogOperations'], 2)
         self.assertEqual(result['storeCatalogOperations'], 2)
         self.assertEqual(result['scheduleAvailabilityOperations'], 1)
+        self.assertEqual(result['scheduleWriteOperations'], 13)
         self.assertEqual(result['serviceWriteOperations'], 11)
 
     def test_all_private_operations_require_current_bearer_audience_and_default_off(self):

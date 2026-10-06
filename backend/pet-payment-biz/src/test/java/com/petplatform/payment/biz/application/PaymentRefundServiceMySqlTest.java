@@ -124,7 +124,7 @@ class PaymentRefundServiceMySqlTest {
     }
 
     @ParameterizedTest
-    @ValueSource(strings = {"MERCHANT_APPROVED", "MERCHANT_TIMEOUT_AUTO"})
+    @ValueSource(strings = {"MERCHANT_APPROVED", "MERCHANT_TIMEOUT_AUTO", "PRESTART_AUTO"})
     void ordinarySourcesQueryOriginalNumberAfterReversalWithoutRepeatingFirstSendAdmission(String source)
             throws Exception {
         try (Fixture f = new Fixture(source)) {
@@ -226,10 +226,16 @@ class PaymentRefundServiceMySqlTest {
             db.setup();
             OffsetDateTime paid = db.paidAt();
             OffsetDateTime appliedAt = paid.plusSeconds(1);
-            OffsetDateTime decidedAt = refundSource.equals("MERCHANT_TIMEOUT_AUTO")
-                    ? appliedAt.plusHours(24) : appliedAt.plusSeconds(1);
+            OffsetDateTime decidedAt = switch (refundSource) {
+                // PRESTART_AUTO models the 2026-10-05 adjudicated pre-service instant approval: the SYSTEM
+                // decision lands in the buyer's apply transaction, so decidedAt == application createdAt.
+                case "MERCHANT_TIMEOUT_AUTO" -> appliedAt.plusHours(24);
+                case "PRESTART_AUTO" -> appliedAt;
+                default -> appliedAt.plusSeconds(1);
+            };
             OffsetDateTime createdAt = decidedAt.plusSeconds(1);
-            boolean ordinary = refundSource.equals("MERCHANT_APPROVED") || refundSource.equals("MERCHANT_TIMEOUT_AUTO");
+            boolean ordinary = refundSource.equals("MERCHANT_APPROVED") || refundSource.equals("MERCHANT_TIMEOUT_AUTO")
+                    || refundSource.equals("PRESTART_AUTO");
             OrderLatePaymentFactsApi orders = new OrderLatePaymentFactsApi() {
                 @Override public String locateStore(String orderId, QueryContext ctx) { return STORE; }
                 @Override public OrderLatePaymentFact requireLatePayment(String orderId,

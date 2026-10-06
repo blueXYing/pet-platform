@@ -350,7 +350,7 @@ public final class PaymentRefundService implements PaymentRefundApi {
                 origin = merchantOrders.requireRejected(orderId, Long.toString(input.paymentId()),
                         input.storeId(), context);
             }
-            case "MERCHANT_APPROVED", "MERCHANT_TIMEOUT_AUTO" -> {
+            case "MERCHANT_APPROVED", "MERCHANT_TIMEOUT_AUTO", "PRESTART_AUTO" -> {
                 if (applicationOrders == null || applicationApprovals == null) throw unavailable();
                 origin = applicationOrders.requireApprovedRefund(orderId,
                         Long.toString(input.paymentId()), input.storeId(), context);
@@ -423,7 +423,7 @@ public final class PaymentRefundService implements PaymentRefundApi {
                         || business.sourceBizId() != null || business.sourceDecisionId() != null)
                     throw unavailable();
             }
-            case "MERCHANT_APPROVED", "MERCHANT_TIMEOUT_AUTO", "AFTERSALE_DECISION" -> {
+            case "MERCHANT_APPROVED", "MERCHANT_TIMEOUT_AUTO", "PRESTART_AUTO", "AFTERSALE_DECISION" -> {
                 if (business.sourceEventId() != null || business.lateEventId() != null
                         || !validFactId(business.sourceBizId()) || !validFactId(business.sourceDecisionId()))
                     throw unavailable();

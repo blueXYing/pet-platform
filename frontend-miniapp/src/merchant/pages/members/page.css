@@ -1,0 +1,54 @@
+/* M 端成员管理 — design measures of merchant frame 12:6591 (首页-员工管理, 402x898):
+   header band 0-86 #FFF6E5; body #F0FBFF; avatar circle 46 #C0ECFF; cards 371x88 white with
+   #C0ECFF accents; status dot #22C55E on / #D1D5DB off with #16A34A / #9CA3AF text; role tag
+   pill #C0ECFF r4 (design SPAN-33). The V1 invite form and invitation rows reuse the same
+   card language; the design shows no form artwork (VIS gap logged in IMPLEMENTATION.md). */
+.mmb-page { --mmb-status-top: 0px; min-height: 100vh; background: #f0fbff; color: #1d0d07; font-family: Roboto, 'Noto Sans SC', sans-serif; display: flex; flex-direction: column; }
+.mmb-page view, .mmb-page button, .mmb-page image, .mmb-page text, .mmb-page input { box-sizing: border-box; }
+.mmb-page button { margin: 0; padding: 0; border: 0; border-radius: 0; background: transparent; font: inherit; line-height: normal; }
+.mmb-page button::after { border: 0; }
+.mmb-page button[disabled] { opacity: .65; color: inherit; }
+.mmb-status-area { height: var(--mmb-status-top); flex: none; }
+.mmb-header { position: relative; flex: none; height: calc(var(--mmb-unit) * 86); background: #fff6e5; display: flex; align-items: center; }
+.mmb-back { margin-left: calc(var(--mmb-unit) * 8); width: calc(var(--mmb-unit) * 25); height: calc(var(--mmb-unit) * 42); display: flex; align-items: center; justify-content: center; }
+.mmb-back image { width: calc(var(--mmb-unit) * 8.9); height: calc(var(--mmb-unit) * 14.5); }
+.mmb-title { position: absolute; left: 0; right: 0; text-align: center; font-size: calc(var(--mmb-unit) * 16); line-height: calc(var(--mmb-unit) * 24); font-weight: 700; color: #3c3c3c; font-family: Outfit, Roboto, 'Noto Sans SC', sans-serif; pointer-events: none; }
+.mmb-invite { position: absolute; right: calc(var(--mmb-unit) * 17); top: calc(var(--mmb-unit) * 26); padding: calc(var(--mmb-unit) * 5) calc(var(--mmb-unit) * 10); border-radius: calc(var(--mmb-unit) * 12); background: #5baae8; font-size: calc(var(--mmb-unit) * 12); line-height: calc(var(--mmb-unit) * 18); font-weight: 600; color: #fff; }
+.mmb-state { padding: calc(var(--mmb-unit) * 48) calc(var(--mmb-unit) * 29); font-size: calc(var(--mmb-unit) * 14); line-height: calc(var(--mmb-unit) * 24); color: #577683; display: flex; flex-direction: column; gap: calc(var(--mmb-unit) * 14); }
+.mmb-state-action { align-self: flex-start; color: #167fab; font-size: calc(var(--mmb-unit) * 14); }
+.mmb-form { flex: none; margin: calc(var(--mmb-unit) * 10) calc(var(--mmb-unit) * 17) 0; padding: calc(var(--mmb-unit) * 14) calc(var(--mmb-unit) * 16); background: #fff; border: calc(var(--mmb-unit) * 1.5) solid #c0ecff; border-radius: calc(var(--mmb-unit) * 17); display: flex; flex-direction: column; gap: calc(var(--mmb-unit) * 10); }
+.mmb-form-title { font-size: calc(var(--mmb-unit) * 15); line-height: calc(var(--mmb-unit) * 22); font-weight: 600; color: #111827; }
+.mmb-form-hint { font-size: calc(var(--mmb-unit) * 12); line-height: calc(var(--mmb-unit) * 18); color: #577683; }
+.mmb-form-row { display: flex; align-items: center; gap: calc(var(--mmb-unit) * 10); }
+.mmb-form-label { flex: none; width: calc(var(--mmb-unit) * 48); font-size: calc(var(--mmb-unit) * 13); color: #374151; }
+.mmb-form-input { flex: 1; height: calc(var(--mmb-unit) * 34); padding: 0 calc(var(--mmb-unit) * 10); border: calc(var(--mmb-unit) * 1) solid #c0ecff; border-radius: calc(var(--mmb-unit) * 8); font-size: calc(var(--mmb-unit) * 14); color: #111827; background: #f0fbff; }
+.mmb-form-submit { margin-top: calc(var(--mmb-unit) * 2); height: calc(var(--mmb-unit) * 38); border-radius: calc(var(--mmb-unit) * 10); background: #5baae8; font-size: calc(var(--mmb-unit) * 15); font-weight: 600; color: #fff; display: flex; align-items: center; justify-content: center; }
+.mmb-body { flex: 1; height: auto; padding: 0 calc(var(--mmb-unit) * 17) calc(var(--mmb-unit) * 24); }
+.mmb-tabs { display: flex; gap: calc(var(--mmb-unit) * 8); height: calc(var(--mmb-unit) * 47); align-items: center; }
+.mmb-tab { padding: calc(var(--mmb-unit) * 5) calc(var(--mmb-unit) * 12); border-radius: calc(var(--mmb-unit) * 13); font-size: calc(var(--mmb-unit) * 13); line-height: calc(var(--mmb-unit) * 18); color: #577683; background: #fff; border: calc(var(--mmb-unit) * 1.5) solid #c0ecff; }
+/* Selected tab = class variant (Taro 4.1.5 drops dynamic data-* from native wxml). */
+.mmb-page .mmb-tab-active { background: #5baae8; border-color: #5baae8; color: #fff; font-weight: 600; }
+.mmb-notice { display: block; margin: calc(var(--mmb-unit) * 6) 0; font-size: calc(var(--mmb-unit) * 12); line-height: calc(var(--mmb-unit) * 18); color: #7a4a1d; }
+.mmb-empty { margin-top: calc(var(--mmb-unit) * 24); padding: calc(var(--mmb-unit) * 24) calc(var(--mmb-unit) * 16); background: #fff; border: calc(var(--mmb-unit) * 1.5) solid #c0ecff; border-radius: calc(var(--mmb-unit) * 17); font-size: calc(var(--mmb-unit) * 13); line-height: calc(var(--mmb-unit) * 21); color: #577683; }
+.mmb-card { position: relative; margin-top: calc(var(--mmb-unit) * 12.7); min-height: calc(var(--mmb-unit) * 88); padding: calc(var(--mmb-unit) * 6) calc(var(--mmb-unit) * 86) calc(var(--mmb-unit) * 6) calc(var(--mmb-unit) * 6); background: #fff; border: calc(var(--mmb-unit) * 1.5) solid #c0ecff; border-radius: calc(var(--mmb-unit) * 17); display: flex; align-items: center; }
+.mmb-avatar { flex: none; width: calc(var(--mmb-unit) * 46); height: calc(var(--mmb-unit) * 46); border-radius: calc(var(--mmb-unit) * 23); background: #c0ecff; display: flex; align-items: center; justify-content: center; }
+.mmb-avatar-text { font-size: calc(var(--mmb-unit) * 17); font-weight: 700; color: #167fab; }
+.mmb-card-main { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: calc(var(--mmb-unit) * 3); padding-left: calc(var(--mmb-unit) * 10); }
+.mmb-card-line { display: flex; align-items: center; gap: calc(var(--mmb-unit) * 6); }
+.mmb-card-name { font-size: calc(var(--mmb-unit) * 15); line-height: calc(var(--mmb-unit) * 22); font-weight: 600; color: #111827; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.mmb-card-phone { font-size: calc(var(--mmb-unit) * 12); line-height: calc(var(--mmb-unit) * 17); color: #6b7280; }
+.mmb-card-hint { font-size: calc(var(--mmb-unit) * 11); line-height: calc(var(--mmb-unit) * 16); color: #9ca3af; }
+.mmb-role-tag { flex: none; padding: calc(var(--mmb-unit) * 2) calc(var(--mmb-unit) * 6); border-radius: calc(var(--mmb-unit) * 4); background: #c0ecff; font-size: calc(var(--mmb-unit) * 10); line-height: calc(var(--mmb-unit) * 15); color: #577683; }
+.mmb-member-state { display: flex; align-items: center; gap: calc(var(--mmb-unit) * 4); }
+.mmb-state-dot { width: calc(var(--mmb-unit) * 7.7); height: calc(var(--mmb-unit) * 7.7); border-radius: calc(var(--mmb-unit) * 3.85); background: #d1d5db; }
+.mmb-state-text { font-size: calc(var(--mmb-unit) * 11.5); line-height: calc(var(--mmb-unit) * 16); color: #9ca3af; }
+.mmb-page .mmb-member-state-enabled .mmb-state-dot { background: #22c55e; }
+.mmb-page .mmb-member-state-enabled .mmb-state-text { color: #16a34a; }
+.mmb-inv-tag { padding: calc(var(--mmb-unit) * 2) calc(var(--mmb-unit) * 6); border-radius: calc(var(--mmb-unit) * 4); background: #e5e7eb; font-size: calc(var(--mmb-unit) * 10); line-height: calc(var(--mmb-unit) * 15); color: #4b5563; }
+.mmb-page .mmb-inv-tag-invited { background: #fdeec8; color: #7a4a1d; }
+.mmb-page .mmb-inv-tag-confirmed { background: #d7f0d0; color: #2f6b2f; }
+.mmb-page .mmb-inv-tag-canceled { background: #e5e7eb; color: #4b5563; }
+.mmb-grant-revoked { font-size: calc(var(--mmb-unit) * 11); line-height: calc(var(--mmb-unit) * 16); color: #a83232; }
+.mmb-action { position: absolute; right: calc(var(--mmb-unit) * 12); top: calc(var(--mmb-unit) * 25); min-width: calc(var(--mmb-unit) * 60); height: calc(var(--mmb-unit) * 30); padding: 0 calc(var(--mmb-unit) * 12); border-radius: calc(var(--mmb-unit) * 15); border: calc(var(--mmb-unit) * 1.5) solid #5baae8; font-size: calc(var(--mmb-unit) * 13); font-weight: 600; color: #167fab; display: flex; align-items: center; justify-content: center; }
+.mmb-page .mmb-action-danger { border-color: #fbd9d9; background: #fdf3f3; color: #a83232; }
+.mmb-tail { padding: calc(var(--mmb-unit) * 18) 0; text-align: center; font-size: calc(var(--mmb-unit) * 11); color: #9ca3af; }

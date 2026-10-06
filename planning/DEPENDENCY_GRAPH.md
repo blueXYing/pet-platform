@@ -34,6 +34,7 @@ flowchart TD
 
   ORD --> REF2[REF-002 Merchant Refund]
   REF3 --> REFB[REF-001 Pre-service Refund]
+  REF2 --> REFB
   REF2 --> REFT[REF-004 24h Timeout]
   REF3 --> GUARD[VER-002 OperationGuard]
   VER --> AFS[AFS-001 Aftersale]
@@ -44,6 +45,8 @@ flowchart TD
 ```
 
 前端 C/M/Admin 基于 Contract/Mock 可与后端并行，不要求等待所有后端节点完成。
+
+REF-001 已按 2026-10-05 用户裁决随 PR #103 交付（分支 codex/ref001-auto-refund-20261002，默认关闭）：除原图 REF-003 外，实现另复用普通退款申请机制（契约49，ISSUE 目录 REF-002 切片：apply/决定/建单恢复/核销互斥），退款单来源为专门的服务前标记 PRESTART_AUTO（不复用 MERCHANT_TIMEOUT_AUTO）；因此上图补 REF2 → REFB 边。
 
 ## Wave2执行/完成附加门禁（不改原图的历史依赖）
 

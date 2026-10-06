@@ -65,6 +65,8 @@ public final class CBearerSessionFilter extends OncePerRequestFilter {
         || path.equals("/api/v1/merchant/services")
         || path.startsWith("/api/v1/merchant/services/")
         || path.equals("/api/v1/merchant/service-categories")
+        // Merchant schedule maintenance (SCH-004 write slice): MINIAPP Bearer enforced.
+        || path.startsWith("/api/v1/merchant/stores/")
         || path.startsWith("/api/v1/merchant/orders/")
         || path.equals("/api/v1/merchant/staff")
         || path.startsWith("/api/v1/merchant/staff/")

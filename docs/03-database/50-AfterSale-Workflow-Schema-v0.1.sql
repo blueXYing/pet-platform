@@ -125,7 +125,7 @@ ALTER TABLE refund_execution DROP CHECK chk_refund_source, DROP CHECK chk_late_r
     OR (source_type IS NOT NULL AND source_event_id IS NOT NULL AND source_event_id>0 AND
      ((source_type='LATE_PAYMENT_TIMEOUT' AND late_event_id IS NOT NULL AND late_event_id=source_event_id)
       OR (source_type='MERCHANT_REJECT_ORDER' AND late_event_id IS NULL)))))
-  OR (source_type IS NOT NULL AND source_type IN ('MERCHANT_APPROVED','MERCHANT_TIMEOUT_AUTO','AFTERSALE_DECISION')
+  OR (source_type IS NOT NULL AND source_type IN ('MERCHANT_APPROVED','MERCHANT_TIMEOUT_AUTO','PRESTART_AUTO','AFTERSALE_DECISION')
    AND source_biz_id IS NOT NULL AND source_biz_id>0 AND source_decision_id IS NOT NULL AND source_decision_id>0
    AND late_event_id IS NULL AND source_event_id IS NULL)),
  ADD CONSTRAINT chk_refund_authorized_amount CHECK (channel_paid_amount>0 AND refund_amount>0

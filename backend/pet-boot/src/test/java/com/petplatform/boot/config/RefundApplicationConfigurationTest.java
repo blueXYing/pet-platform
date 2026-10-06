@@ -112,6 +112,20 @@ class RefundApplicationConfigurationTest {
                 .run(c -> assertThat(c).hasFailed());
     }
 
+    /** REF-001: the pre-service auto full refund switch is off unless explicitly enabled. */
+    @Test void preServiceAutoRefundStaysOffByDefaultAndPassesThroughWhenEnabled() {
+        dependencies("").run(c -> {
+            assertThat(c).hasNotFailed();
+            assertThat(c.getBean(RefundApplicationService.class).preServiceAutoRefund()).isFalse();
+        });
+        dependencies("").withPropertyValues("pet.refund.pre-service-auto-refund.enabled=true").run(c -> {
+            assertThat(c).hasNotFailed();
+            assertThat(c.getBean(RefundApplicationService.class).preServiceAutoRefund()).isTrue();
+        });
+        dependencies("").withPropertyValues("pet.refund.pre-service-auto-refund.enabled=false").run(c ->
+                assertThat(c.getBean(RefundApplicationService.class).preServiceAutoRefund()).isFalse());
+    }
+
     @Test void completeOfflineCompositionStartsNoWorkerAndCallsNoPaymentOrOutbox() {
         dependencies("").run(c -> {
             assertThat(c).hasNotFailed();

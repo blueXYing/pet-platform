@@ -53,6 +53,18 @@ pet:
       enabled: false
     http:
       enabled: false
+  schedule:
+    command:
+      # SCH-004 merchant schedule write side (service windows, staff availability windows,
+      # capabilities, workbench reads). Default off; enabling additionally requires the
+      # reservation protection foundation beans (pet.schedule.protection.enabled) and, for
+      # the HTTP routes, pet.schedule.command.http.enabled. The V29 migration is a separate
+      # explicit opt-in (migration-enabled + migration-database=schw001_*).
+      enabled: false
+      http:
+        enabled: false
+      migration-enabled: false
+      migration-database:
   refund:
     application:
       enabled: false
@@ -67,6 +79,17 @@ pet:
       enabled: false
       http:
         enabled: false
+  merchant:
+    staff-identity:
+      # Contract 52 STAFF identity read kernel: off by default. The member binding command,
+      # grant writers, action catalog and verification mapping are pending the approved CCR.
+      enabled: false
+    staff-member:
+      # Contract 54 invite-confirm binding (D1-a; verify-only catalog D2): off by default.
+      # Requires pet.schedule.protection.enabled for the shared store guard; the employee
+      # routes additionally require pet.auth.c.enabled. The V30 migration is a separate
+      # opt-in (migration-enabled/migration-database, isolated staffb001_ databases only).
+      enabled: ${STAFF_MEMBER_ENABLED:false}
   order:
     reschedule:
       enabled: false

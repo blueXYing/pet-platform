@@ -1,0 +1,36 @@
+/* M-002 消息通知页 — design measures of merchant frame 23:19357 (消息通知, 402x898):
+   header band 0-86 #FFF6E5; body #F0FBFF; cards 371x92 r15.39 white, padding 15.39,
+   ~11.5 gaps; title 13.46/600 #5BAAE8; content 13.46/400 #6B7280; time 11.54/400 #9CA3AF;
+   jump pill ~57.7x26.9 #F0FBFF with 11.54/600 #5BAAE8 label. V1 cuts (documented in the
+   PR): the frame's merchant-home header (avatar/评分/营业中) and bottom tab bar belong to
+   the home composition, not this subpage; the 交易通知/系统消息 tabs have no server-side
+   category filter in the frozen list contract (CCR §2), so V1 renders one list. The unread
+   dot reuses the accepted C-006 message-center affordance (design carries none). States use
+   className variants — Taro 4.1.5 never renders dynamic data-* into wxml, so WXSS attribute
+   selectors would never match. */
+.mmsg-page { min-height: 100vh; background: #f0fbff; color: #111827; font-family: Roboto, 'Noto Sans SC', sans-serif; display: flex; flex-direction: column; }
+.mmsg-page view, .mmsg-page button, .mmsg-page text { box-sizing: border-box; }
+.mmsg-page button { margin: 0; padding: 0; border: 0; border-radius: 0; background: transparent; font: inherit; line-height: normal; font-weight: normal; }
+.mmsg-page button::after { border: 0; }
+.mmsg-status-area { height: var(--mmsg-top, 0px); flex: none; }
+.mmsg-header { position: relative; flex: none; height: calc(var(--mmsg-unit) * 86); background: #fff6e5; display: flex; align-items: center; }
+.mmsg-back { margin-left: calc(var(--mmsg-unit) * 15.5); color: #3185ba; font-size: calc(var(--mmsg-unit) * 14); }
+.mmsg-title { position: absolute; left: 0; right: 0; text-align: center; font-size: calc(var(--mmsg-unit) * 16); line-height: calc(var(--mmsg-unit) * 24); font-weight: 700; color: #3c3c3c; pointer-events: none; }
+.mmsg-body { flex: 1; height: auto; padding: calc(var(--mmsg-unit) * 17) calc(var(--mmsg-unit) * 15.5) calc(var(--mmsg-unit) * 24); display: flex; flex-direction: column; gap: calc(var(--mmsg-unit) * 11.5); }
+.mmsg-line { font-size: calc(var(--mmsg-unit) * 13.46); line-height: calc(var(--mmsg-unit) * 19); color: #577683; }
+.mmsg-card, .mmsg-detail { background: #fff; border-radius: calc(var(--mmsg-unit) * 15.39); padding: calc(var(--mmsg-unit) * 15.39); display: flex; flex-direction: column; gap: calc(var(--mmsg-unit) * 3.85); text-align: left; }
+.mmsg-item { width: 100%; display: flex; flex-direction: row; align-items: center; justify-content: space-between; gap: calc(var(--mmsg-unit) * 11.5); }
+.mmsg-item-main { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: calc(var(--mmsg-unit) * 3.85); }
+.mmsg-item-head { display: flex; align-items: center; gap: calc(var(--mmsg-unit) * 6); }
+.mmsg-item-title { font-size: calc(var(--mmsg-unit) * 13.46); line-height: calc(var(--mmsg-unit) * 19); font-weight: 600; color: #5baae8; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.mmsg-dot { flex: none; width: calc(var(--mmsg-unit) * 8); height: calc(var(--mmsg-unit) * 8); border-radius: 50%; background: #5baae8; }
+.mmsg-item-content { font-size: calc(var(--mmsg-unit) * 13.46); line-height: calc(var(--mmsg-unit) * 19); color: #6b7280; overflow: hidden; text-overflow: ellipsis; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
+.mmsg-item-time { font-size: calc(var(--mmsg-unit) * 11.54); line-height: calc(var(--mmsg-unit) * 15); color: #9ca3af; }
+.mmsg-jump { flex: none; padding: calc(var(--mmsg-unit) * 5.77) calc(var(--mmsg-unit) * 11.54); border-radius: calc(var(--mmsg-unit) * 13.46); background: #f0fbff; font-size: calc(var(--mmsg-unit) * 11.54); line-height: calc(var(--mmsg-unit) * 15.4); font-weight: 600; color: #5baae8; }
+.mmsg-detail-title { font-size: calc(var(--mmsg-unit) * 16); line-height: calc(var(--mmsg-unit) * 24); font-weight: 700; color: #111827; }
+.mmsg-detail-meta { font-size: calc(var(--mmsg-unit) * 11.54); line-height: calc(var(--mmsg-unit) * 15); color: #9ca3af; word-break: break-all; }
+.mmsg-detail-content { font-size: calc(var(--mmsg-unit) * 13.46); line-height: 1.7; color: #1d0d07; }
+.mmsg-detail > button { align-self: flex-start; margin-top: calc(var(--mmsg-unit) * 7.7); font-size: calc(var(--mmsg-unit) * 12); }
+.mmsg-detail > .mmsg-jump { color: #5baae8; }
+.mmsg-detail .mmsg-plain { color: #3185ba; }
+.mmsg-tail { margin-top: calc(var(--mmsg-unit) * 10); font-size: calc(var(--mmsg-unit) * 10); line-height: calc(var(--mmsg-unit) * 15); color: #9bb3bd; text-align: center; }

@@ -1,0 +1,147 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.petplatform.schedule.biz.infrastructure.persistence.mapper.ScheduleWriteMapper">
+
+    <update id="setTimeZoneUtc">SET time_zone = '+00:00'</update>
+    <update id="setLockWaitTimeout2Seconds">SET innodb_lock_wait_timeout = 2</update>
+
+    <!-- command_idempotency (14号 shared physical table; schedule rows use a request-key-v1 string) -->
+    <select id="selectBindingForUpdate"
+            resultType="com.petplatform.schedule.biz.infrastructure.persistence.entity.ScheduleCommandBindingEntity">
+        SELECT id, canonical_version, params_sha256, params_canonical, status, receipt_json
+        FROM command_idempotency
+        WHERE request_key = #{requestKey}
+        FOR UPDATE
+    </select>
+    <insert id="insertBinding">
+        INSERT INTO command_idempotency(id, request_key, canonical_version, params_sha256,
+                                        params_canonical, status, receipt_json, created_at)
+        VALUES (#{id}, #{requestKey}, #{canonicalVersion}, #{paramsSha256}, #{paramsCanonical},
+                'RESERVED', NULL, UTC_TIMESTAMP(3))
+    </insert>
+    <update id="markBindingSucceeded">
+        UPDATE command_idempotency
+        SET status = 'SUCCEEDED', receipt_json = #{receiptJson}, succeeded_at = UTC_TIMESTAMP(3)
+        WHERE request_key = #{requestKey} AND status = 'RESERVED'
+    </update>
+
+    <!-- service windows (06号 §2; window_kind added by 37号, identity fixed after creation) -->
+    <select id="selectWindowByIdForUpdate" resultType="map">
+        SELECT id, merchant_id, store_id, service_id, window_kind, start_at, end_at,
+               configured_capacity, status, version
+        FROM schedule_availability_window
+        WHERE id = #{windowId}
+        FOR UPDATE
+    </select>
+    <insert id="insertWindow">
+        INSERT INTO schedule_availability_window(id, merchant_id, store_id, service_id,
+            window_kind, start_at, end_at, configured_capacity, status, version,
+            created_at, updated_at)
+        VALUES(#{row.id}, #{row.merchantId}, #{row.storeId}, #{row.serviceId},
+            #{row.windowKind}, #{row.startAt}, #{row.endAt}, #{row.configuredCapacity},
+            'OPEN', 0, #{row.now}, #{row.now})
+    </insert>
+    <update id="updateWindow">
+        UPDATE schedule_availability_window
+        SET start_at = #{startAt}, end_at = #{endAt}, configured_capacity = #{capacity},
+            version = version + 1, updated_at = #{now}
+        WHERE id = #{windowId} AND version = #{expectedVersion}
+          AND status IN ('OPEN', 'SOLD_OUT')
+    </update>
+    <update id="closeWindow">
+        UPDATE schedule_availability_window
+        SET status = 'CLOSED', version = version + 1, updated_at = #{now}
+        WHERE id = #{windowId} AND version = #{expectedVersion} AND status = 'OPEN'
+    </update>
+    <update id="openWindow">
+        UPDATE schedule_availability_window
+        SET status = 'OPEN', version = version + 1, updated_at = #{now}
+        WHERE id = #{windowId} AND version = #{expectedVersion} AND status = 'CLOSED'
+    </update>
+    <!-- Derived SOLD_OUT state (Contract53 §3, 2026-10-05 ruling): the window version moves
+         with every system flip so merchant optimistic concurrency observes the change. -->
+    <update id="setWindowDerivedStatus">
+        UPDATE schedule_availability_window
+        SET status = #{nextStatus}, version = version + 1, updated_at = #{now}
+        WHERE id = #{windowId} AND status = #{expectedStatus}
+    </update>
+
+    <!-- staff availability windows (06号 §2) -->
+    <select id="selectStaffWindowByIdForUpdate" resultType="map">
+        SELECT id, store_id, staff_id, start_at, end_at, status, version
+        FROM staff_availability_window
+        WHERE id = #{windowId}
+        FOR UPDATE
+    </select>
+    <insert id="insertStaffWindow">
+        INSERT INTO staff_availability_window(id, store_id, staff_id, start_at, end_at,
+            status, version, created_at, updated_at)
+        VALUES(#{row.id}, #{row.storeId}, #{row.staffId}, #{row.startAt}, #{row.endAt},
+            'AVAILABLE', 0, #{row.now}, #{row.now})
+    </insert>
+    <update id="updateStaffWindow">
+        UPDATE staff_availability_window
+        SET start_at = #{startAt}, end_at = #{endAt}, version = version + 1, updated_at = #{now}
+        WHERE id = #{windowId} AND version = #{expectedVersion} AND status = 'AVAILABLE'
+    </update>
+    <update id="closeStaffWindow">
+        UPDATE staff_availability_window
+        SET status = 'CLOSED', version = version + 1, updated_at = #{now}
+        WHERE id = #{windowId} AND version = #{expectedVersion} AND status = 'AVAILABLE'
+    </update>
+    <update id="openStaffWindow">
+        UPDATE staff_availability_window
+        SET status = 'AVAILABLE', version = version + 1, updated_at = #{now}
+        WHERE id = #{windowId} AND version = #{expectedVersion} AND status = 'CLOSED'
+    </update>
+    <select id="listStaffWindows" resultType="map">
+        SELECT id, store_id, staff_id, start_at, end_at, status, version
+        FROM staff_availability_window
+        WHERE store_id = #{storeId} AND staff_id = #{staffId}
+        ORDER BY start_at, id
+    </select>
+
+    <!-- capability set header (34号 storage §3, SCHC-2): one BIGINT version per staff -->
+    <select id="selectCapabilitySetForUpdate" resultType="map">
+        SELECT staff_id, store_id, version, updated_at
+        FROM staff_capability_set
+        WHERE staff_id = #{staffId}
+        FOR UPDATE
+    </select>
+    <insert id="insertCapabilitySet">
+        INSERT INTO staff_capability_set(staff_id, store_id, version, updated_at)
+        VALUES(#{staffId}, #{storeId}, #{version}, #{now})
+    </insert>
+    <update id="casCapabilitySetVersion">
+        UPDATE staff_capability_set
+        SET version = #{nextVersion}, updated_at = #{now}
+        WHERE staff_id = #{staffId} AND version = #{expectedVersion}
+    </update>
+    <select id="selectCapabilitiesForUpdate" resultType="map">
+        SELECT id, staff_id, service_id, status
+        FROM staff_service_capability
+        WHERE staff_id = #{staffId}
+        ORDER BY service_id, id
+        FOR UPDATE
+    </select>
+    <insert id="insertCapability">
+        INSERT INTO staff_service_capability(id, staff_id, service_id, status,
+            created_at, updated_at)
+        VALUES(#{id}, #{staffId}, #{serviceId}, 'ENABLED', #{now}, #{now})
+    </insert>
+    <delete id="deleteCapability">
+        DELETE FROM staff_service_capability
+        WHERE staff_id = #{staffId} AND service_id = #{serviceId}
+    </delete>
+
+    <!-- append-only write audit (34号 storage §6): one row per affected target per request -->
+    <insert id="insertWriteAction">
+        INSERT INTO schedule_write_action(id, target_type, target_id, merchant_id, store_id,
+            action, actor_user_id, request_id, trace_id, reason, version_before, version_after,
+            occurred_at)
+        VALUES(#{row.id}, #{row.targetType}, #{row.targetId}, #{row.merchantId}, #{row.storeId},
+            #{row.action}, #{row.actorUserId}, #{row.requestId}, #{row.traceId,jdbcType=VARCHAR},
+            #{row.reason,jdbcType=VARCHAR}, #{row.versionBefore,jdbcType=BIGINT},
+            #{row.versionAfter}, #{row.occurredAt})
+    </insert>
+</mapper>

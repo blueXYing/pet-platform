@@ -26,15 +26,21 @@
 .msvc-card-line { display: flex; align-items: center; gap: calc(var(--msvc-unit) * 8); }
 .msvc-card-name { font-size: calc(var(--msvc-unit) * 15); line-height: calc(var(--msvc-unit) * 22); font-weight: 600; color: #111827; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .msvc-card-status { flex: none; padding: calc(var(--msvc-unit) * 2) calc(var(--msvc-unit) * 6); border-radius: calc(var(--msvc-unit) * 4); background: #c0ecff; font-size: calc(var(--msvc-unit) * 10); line-height: calc(var(--msvc-unit) * 15); color: #577683; }
-.msvc-card-status[data-status='REVIEWING'] { background: #fdeec8; color: #7a4a1d; }
-.msvc-card-status[data-status='REJECTED'] { background: #fbd9d9; color: #a83232; }
-.msvc-card-status[data-status='ACTIVE'] { background: #d7f0d0; color: #2f6b2f; }
-.msvc-card-status[data-status='OFFLINE'] { background: #e5e7eb; color: #4b5563; }
+/* State variants are class names, not [data-*] attribute selectors: Taro 4.1.5 drops dynamic
+   data-* from the native wxml, so attribute selectors never match (PR#99 VIS evidence).
+   Variant classes sit after their base rule so the same-specificity override wins. */
+.msvc-card-status-reviewing { background: #fdeec8; color: #7a4a1d; }
+.msvc-card-status-rejected { background: #fbd9d9; color: #a83232; }
+.msvc-card-status-active { background: #d7f0d0; color: #2f6b2f; }
+.msvc-card-status-offline { background: #e5e7eb; color: #4b5563; }
 .msvc-card-price { font-size: calc(var(--msvc-unit) * 17); line-height: calc(var(--msvc-unit) * 26); font-weight: 700; color: #ff7a00; }
-.msvc-toggle { position: absolute; right: calc(var(--msvc-unit) * 12); top: calc(var(--msvc-unit) * 31); width: calc(var(--msvc-unit) * 47.2); height: calc(var(--msvc-unit) * 25.7); border-radius: calc(var(--msvc-unit) * 12.85); background: #d1d5db; transition: background .2s; }
-.msvc-toggle[data-on='true'] { background: #5baae8; }
+/* .msvc-page button (0,1,1) resets every button's background/border, so the toggle/pill
+   rules must outrank it: compound the base with .msvc-page and the on/selected variants
+   with their base class (both 0,2,0; variants sit after their base rule). */
+.msvc-page .msvc-toggle { position: absolute; right: calc(var(--msvc-unit) * 12); top: calc(var(--msvc-unit) * 31); width: calc(var(--msvc-unit) * 47.2); height: calc(var(--msvc-unit) * 25.7); border-radius: calc(var(--msvc-unit) * 12.85); background: #d1d5db; transition: background .2s; }
+.msvc-toggle.msvc-toggle-on { background: #5baae8; }
 .msvc-toggle-knob { position: absolute; left: calc(var(--msvc-unit) * 2.1); top: calc(var(--msvc-unit) * 2.1); width: calc(var(--msvc-unit) * 21.4); height: calc(var(--msvc-unit) * 21.4); border-radius: 50%; background: #fff; transition: left .2s; }
-.msvc-toggle[data-on='true'] .msvc-toggle-knob { left: calc(var(--msvc-unit) * 23.6); }
+.msvc-toggle-on .msvc-toggle-knob { left: calc(var(--msvc-unit) * 23.6); }
 .msvc-load-more { margin: calc(var(--msvc-unit) * 16) auto 0; display: block; width: max-content; padding: calc(var(--msvc-unit) * 8) calc(var(--msvc-unit) * 24); border-radius: calc(var(--msvc-unit) * 100); border: calc(var(--msvc-unit) * 1.5) solid #c0ecff; color: #3185ba; font-size: calc(var(--msvc-unit) * 13); }
 .msvc-notice { display: block; margin-top: calc(var(--msvc-unit) * 14); font-size: calc(var(--msvc-unit) * 12); line-height: calc(var(--msvc-unit) * 18); color: #a83232; }
 .msvc-tail { margin-top: calc(var(--msvc-unit) * 18); font-size: calc(var(--msvc-unit) * 10); line-height: calc(var(--msvc-unit) * 15); color: #9bb3bd; text-align: center; }
@@ -60,8 +66,8 @@
 .medit-row { display: flex; gap: calc(var(--msvc-unit) * 12.7); }
 .medit-row .medit-section { flex: 1; }
 .medit-pills { display: flex; flex-wrap: wrap; gap: calc(var(--msvc-unit) * 8) calc(var(--msvc-unit) * 10); }
-.medit-pill { padding: calc(var(--msvc-unit) * 8.4) calc(var(--msvc-unit) * 16.8); border: calc(var(--msvc-unit) * 1.16) solid #e5e7eb; border-radius: calc(var(--msvc-unit) * 8); background: #f9fafb; font-size: calc(var(--msvc-unit) * 13.555); line-height: calc(var(--msvc-unit) * 20); color: #4b5563; }
-.medit-pill[data-selected='true'] { background: #5baae8; border-color: #5baae8; color: #fff; }
+.msvc-page .medit-pill { padding: calc(var(--msvc-unit) * 8.4) calc(var(--msvc-unit) * 16.8); border: calc(var(--msvc-unit) * 1.16) solid #e5e7eb; border-radius: calc(var(--msvc-unit) * 8); background: #f9fafb; font-size: calc(var(--msvc-unit) * 13.555); line-height: calc(var(--msvc-unit) * 20); color: #4b5563; }
+.medit-pill.medit-pill-selected { background: #5baae8; border-color: #5baae8; color: #fff; }
 .medit-hint { margin-top: calc(var(--msvc-unit) * 6); font-size: calc(var(--msvc-unit) * 11.6); line-height: calc(var(--msvc-unit) * 17); color: #9ca3af; }
 .medit-cover { position: relative; width: 100%; height: calc(var(--msvc-unit) * 170); background: #f9fafb; border: calc(var(--msvc-unit) * 1.16) solid #e5e7eb; border-radius: calc(var(--msvc-unit) * 11.6); display: flex; align-items: center; justify-content: center; overflow: hidden; }
 .medit-cover-image { width: 100%; height: 100%; }

@@ -984,48 +984,38 @@ refund_order 先创建
 
 ## 4.8 排期管理
 
-```text
-GET    /api/v1/merchant/stores/{storeId}/availability-windows
-POST   /api/v1/merchant/stores/{storeId}/availability-windows
-PUT    /api/v1/merchant/stores/{storeId}/availability-windows/{windowId}
-DELETE /api/v1/merchant/stores/{storeId}/availability-windows/{windowId}
-```
-
-Request：
-
-```json
-{
-  "serviceId": "20001",
-  "startAt": "2026-09-12T09:15:00+08:00",
-  "endAt": "2026-09-12T18:10:00+08:00",
-  "configuredCapacity": 5
-}
-```
-
-没有周循环模板字段：
+正式实现以 [Contract53](53-Schedule-Write-Contract-v0.1.md)、[SQL53](../03-database/53-Schedule-Write-Schema-v0.1.sql) 与 OpenAPI11 为准；默认 `pet.schedule.command.enabled=false`、`pet.schedule.command.http.enabled=false` 分层关闭。
 
 ```text
-dayOfWeek
-repeatWeekly
-copyNextWeek
+GET    /api/v1/merchant/stores/{storeId}/availability-windows        （工作台列表，含 CLOSED/SOLD_OUT/version，status 可按 SOLD_OUT 过滤）
+POST   /api/v1/merchant/stores/{storeId}/availability-windows        （创建，kind×履约方式 400 校验，首次 201）
+PUT    /api/v1/merchant/stores/{storeId}/availability-windows/{windowId}   （编辑 OPEN/SOLD_OUT 窗，expectedVersion；占用禁止改时间/降容量；升容量同事务按占用重判）
+POST   /api/v1/merchant/stores/{storeId}/availability-windows/{windowId}/close   （reason 必填；占用含 SOLD_OUT 满窗 409）
+POST   /api/v1/merchant/stores/{storeId}/availability-windows/{windowId}/open    （重开核验重叠 409；重开后系统按占用重判，可返回 SOLD_OUT）
+POST   /api/v1/merchant/stores/{storeId}/availability-windows/batch-close        （日历日范围部分关闭，closedWindows/blockedWindows；单次条目>200 整笔 400）
 ```
 
-这些字段 V1.0 Contract 中禁止出现。
+`window_kind=GENERAL/PICKUP/RETURN`（37号增列）创建后身份固定；同店同服务同 kind OPEN 窗不重叠、相邻半开可衔接；关闭/重开保留历史，无 DELETE/物理删除。周循环模板字段 `dayOfWeek/repeatWeekly/copyNextWeek` V1.0 仍禁止出现。所有写路由 UUID `X-Request-Id` 幂等（23号），OWNER 主账号门禁，同事务共同门店闸门 + append-only 审计。窗口状态 `OPEN/CLOSED/SOLD_OUT`：SOLD_OUT 为系统派生"已约满"态（有效占用达容量自动进入；退款释放/超时过期取消/换期释放于同一事务回 OPEN；商家不可手工置位或强制可约，升容量放行并按占用重判），口径见 Contract53 §3.1；批量条目 200 上限见 Contract53 §3.2（2026-10-05 裁决）。
 
 ---
 
 ## 4.9 服务人员可用时间
 
+员工排班写入与员工服务能力 GET/PUT 正式实现以 [Contract53](53-Schedule-Write-Contract-v0.1.md) 为准（默认关闭同 §4.8）：
+
 ```text
-GET    /api/v1/merchant/staff/{staffId}/availability-windows
-POST   /api/v1/merchant/staff/{staffId}/availability-windows
-PUT    /api/v1/merchant/staff/{staffId}/availability-windows/{windowId}
-DELETE /api/v1/merchant/staff/{staffId}/availability-windows/{windowId}
+GET/POST /api/v1/merchant/staff/{staffId}/availability-windows
+PUT      /api/v1/merchant/staff/{staffId}/availability-windows/{windowId}
+POST     /api/v1/merchant/staff/{staffId}/availability-windows/{windowId}/close   （reason 必填）
+POST     /api/v1/merchant/staff/{staffId}/availability-windows/{windowId}/open
+GET/PUT  /api/v1/merchant/staff/{staffId}/service-capabilities           （SCHC-2 集合头 CAS）
 ```
+
+排班减少可用性（close/缩短/移动）受 36号 当前指派保护与全店可行性复核约束；能力撤销同款保护，过期版本 409 COMMON_CONFLICT；既有明细无集合头为 LEGACY_UNVERSIONED，503 隔离等待盘点回填。旧草案 DELETE 路由不实现（SCHW-D3 软关闭承接）。
 
 用户 C 端没有选择服务人员 Endpoint。
 
-商家可在履约前/内部规则允许时指派人员：
+商家可在履约前/内部规则允许时指派人员（归 SCH-003/ORDER 命令域，07号 §6.2，本批不动）：
 
 ### POST `/api/v1/merchant/orders/{orderId}/staff-assignment`
 

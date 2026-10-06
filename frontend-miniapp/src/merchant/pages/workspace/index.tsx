@@ -64,6 +64,18 @@ export default function MerchantWorkbenchPage() {
     controller.handoffToChild()
     Taro.navigateTo({ url: '/merchant/pages/aftersale/index' }).catch(() => controller.handoffCancelled())
   }
+
+  function openSchedule() {
+    controller.handoffToChild()
+    Taro.navigateTo({ url: '/merchant/pages/schedule/index' }).catch(() => controller.handoffCancelled())
+  }
+
+  // Contract 54 staff binding entry (member management: list/invite/cancel/disable). Same
+  // handoff discipline as the service pages: the child gates on the coordinates this page holds.
+  function openMembers() {
+    controller.handoffToChild()
+    Taro.navigateTo({ url: '/merchant/pages/members/index' }).catch(() => controller.handoffCancelled())
+  }
   const view = state.view
   return <View className='merchant-workbench'>
     <View className='workbench-header'>
@@ -99,12 +111,15 @@ export default function MerchantWorkbenchPage() {
         {state.status === 'limited' && <Text className='workbench-hint'>存量订单与售后读取不受影响；新经营业务暂停。处理中的订单请继续履约。</Text>}
         {state.status === 'allowed' && view.allowedActions.length > 0 && <View className='workbench-actions'>
           {view.allowedActions.map(action => <Text key={action} className='workbench-chip'>{action}</Text>)}
-          <Text className='workbench-hint'>以上为入口提示；完整工作台功能（订单/排期）在后续切片交付。</Text>
+          <Text className='workbench-hint'>以上为入口提示；完整工作台功能（订单）在后续切片交付。</Text>
         </View>}
         {state.status === 'allowed' && <View className='workbench-steps'>
           {/* M-002 service management entry (NAVIGATION-BASIS: workbench is the approved hub;
               the entry stays hidden for LIMITED stores — new-business writes are suspended). */}
           <Button id='workbench-services' onClick={openServices}>服务管理</Button>
+          {/* Schedule maintenance entry gates on the approved action (53号 写侧消费切片). */}
+          {view.allowedActions.includes('merchant.schedule.manage') && <Button id='workbench-schedule' onClick={openSchedule}>排期管理</Button>}
+          <Button id='workbench-members' onClick={openMembers}>成员管理</Button>
         </View>}
         {(state.status === 'allowed' || state.status === 'limited') && view.membershipKind === 'OWNER' && view.allowedActions.includes('merchant.aftersale.read') && <View className='workbench-steps'>
           <Button id='workbench-aftersales' onClick={openAftersales}>售后管理</Button>

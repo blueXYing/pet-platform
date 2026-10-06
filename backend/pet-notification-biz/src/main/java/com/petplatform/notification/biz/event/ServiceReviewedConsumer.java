@@ -40,10 +40,20 @@ public final class ServiceReviewedConsumer implements IntegrationEventConsumer {
           .enable(DeserializationFeature.FAIL_ON_TRAILING_TOKENS);
   private final ServiceReviewNotificationStore store;
   private final SnowflakeIdGenerator ids;
+  private final com.petplatform.notification.biz.delivery.WechatDeliveryTaskProducer delivery;
 
   public ServiceReviewedConsumer(ServiceReviewNotificationStore store, SnowflakeIdGenerator ids) {
+    this(store, ids, null);
+  }
+
+  /** NTF-002: nullable delivery producer; null (switch off) keeps the consumer behavior identical. */
+  public ServiceReviewedConsumer(
+      ServiceReviewNotificationStore store,
+      SnowflakeIdGenerator ids,
+      com.petplatform.notification.biz.delivery.WechatDeliveryTaskProducer delivery) {
     this.store = Objects.requireNonNull(store);
     this.ids = Objects.requireNonNull(ids);
+    this.delivery = delivery;
   }
 
   public ServiceReviewedConsumer(
@@ -51,6 +61,14 @@ public final class ServiceReviewedConsumer implements IntegrationEventConsumer {
       SnowflakeIdGenerator ids,
       java.util.function.BiPredicate<String, DispatchedEvent> consumeGuard) {
     this(new ServiceReviewNotificationStore(source, consumeGuard), ids);
+  }
+
+  public ServiceReviewedConsumer(
+      javax.sql.DataSource source,
+      SnowflakeIdGenerator ids,
+      java.util.function.BiPredicate<String, DispatchedEvent> consumeGuard,
+      com.petplatform.notification.biz.delivery.WechatDeliveryTaskProducer delivery) {
+    this(new ServiceReviewNotificationStore(source, consumeGuard), ids, delivery);
   }
 
   @Override
@@ -122,7 +140,15 @@ public final class ServiceReviewedConsumer implements IntegrationEventConsumer {
     long id = ids.nextId();
     if (id <= 0) throw new IllegalStateException("notification ID unavailable");
     store.recordOnce(
-        consumerName(), event, id, ownerId, serviceId, "服务审核结果", content, decidedAt);
+        consumerName(),
+        event,
+        id,
+        ownerId,
+        serviceId,
+        "服务审核结果",
+        content,
+        decidedAt,
+        delivery == null ? null : () -> delivery.enqueueAfterInboxInsert(id, ownerId));
   }
 
   private static int submissionNo(JsonNode node) {

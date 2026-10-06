@@ -66,6 +66,17 @@
         VALUES(#{row.id},#{row.reservationId},#{row.orderId},NULL,#{row.storeId},
            #{row.action},#{row.requestId},#{row.traceId,jdbcType=VARCHAR},#{row.occurredAt},'SYSTEM')
     </insert>
+    <!-- Derived SOLD_OUT release linkage (Contract53 §3, 2026-10-05 ruling): the caller's
+         guarded transaction flips the window with the reservation change that caused it. -->
+    <select id="claimWindowIds" resultType="long">
+        SELECT window_id FROM schedule_reservation_claim
+        WHERE reservation_id=#{reservationId} ORDER BY id
+    </select>
+    <update id="setWindowDerivedStatus">
+        UPDATE schedule_availability_window
+        SET status=#{nextStatus},version=version+1,updated_at=#{now}
+        WHERE id=#{windowId} AND status=#{expectedStatus}
+    </update>
     <select id="lockedWindows" resultType="map">
         SELECT id,merchant_id,store_id,service_id,window_kind,start_at,end_at,
                configured_capacity,status,version
