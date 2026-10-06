@@ -7,7 +7,8 @@ export default defineAppConfig({
   // The pet archive pages ship as an ordinary subpackage so the 2x design strips stay within
   // the platform per-package limit; routes are unchanged.
   subPackages: [
-    { root: 'merchant', pages: ['pages/workspace/index', 'pages/services/index', 'pages/services/edit', 'pages/messages/index'] },
+    { root: 'merchant', pages: ['pages/workspace/index', 'pages/services/index', 'pages/services/edit', 'pages/messages/index',
+      'pages/schedule/index', 'pages/schedule/windows', 'pages/schedule/staff', 'pages/schedule/capabilities'] },
     { root: 'consumer/pages/pet-archive', pages: ['index', 'detail', 'form'] },
     { root: 'consumer/pages/merchant-application', pages: ['index', 'signing'] },
     { root: 'consumer/pages/store-services', pages: ['index', 'service-detail', 'stores'] },
