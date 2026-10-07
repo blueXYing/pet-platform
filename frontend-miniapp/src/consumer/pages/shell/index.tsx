@@ -54,6 +54,9 @@ export default function Shell() {
     <Button id='c-points-preview' onClick={() => platform.navigate('/consumer/pages/coupon-points/points?preview=1')}>我的积分只读预览（本地夹具，不联调）</Button>
     <Button id='c-coupons' disabled={!context || busy} onClick={() => platform.navigate('/consumer/pages/coupon-points/coupons')}>我的优惠券（真实契约接口）</Button>
     <Button id='c-points' disabled={!context || busy} onClick={() => platform.navigate('/consumer/pages/coupon-points/points')}>我的积分（真实契约接口）</Button>
+    <Button id='c-orders-preview' onClick={() => platform.navigate('/consumer/pages/orders/list?preview=1')}>我的订单只读预览（本地夹具，不联调）</Button>
+    <Button id='c-orders' disabled={!context || busy} onClick={() => platform.navigate('/consumer/pages/orders/list')}>我的订单（真实契约接口）</Button>
+    <Button id='c-order-verify' disabled={!context || busy} onClick={() => platform.navigate('/consumer/pages/order-verify/index')}>订单核销码直连通道（输入订单号）</Button>
     <Button id='m-messages' onClick={() => platform.navigate('/merchant/pages/messages/index')}>商家消息通知（真实契约接口）</Button>
     <Button id='m-messages-preview' onClick={() => platform.navigate('/merchant/pages/messages/index?preview=1')}>商家消息通知视觉预览（本地数据，不联调）</Button>
   </View>
