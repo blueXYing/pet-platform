@@ -41,6 +41,7 @@ import java.time.Instant;
 import java.time.ZoneId;
 import java.time.ZoneOffset;
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -135,16 +136,91 @@ class OrderCreateHttpAcceptanceTest {
     }
 
     @Test
-    void pickupDeliveryFailsClosedUntilTheSelectionFieldsJoinThePublicContract() throws Exception {
+    void pickupDeliveryOrdersThroughThePublicSelectionFields() throws Exception {
         try (Fixture fixture = new Fixture()) {
-            // The pinned CreateOrderRequest carries no directional window ids and no service
-            // address; the 38 kernel requires both for PICKUP_DELIVERY, so the honest contract
-            // shape fails closed instead of guessing window ids from the availability read.
+            // The 36/38 selection sync slice publicized selectedPickupWindowId/
+            // selectedReturnWindowId/serviceAddress, so a PICKUP_DELIVERY order now travels the
+            // whole kernel: two directional claims on the selected windows, the address in an
+            // encrypted snapshot, and the durable five-tuple idempotency on top.
+            String requestId = UUID.randomUUID().toString();
+            ResponseEntity<ApiResponse<Map<String, Object>>> first =
+                    fixture.create(requestId, pickupBody(), USER_A);
+            assertEquals(HttpStatus.CREATED, first.getStatusCode());
+            assertEquals("168.00", first.getBody().data().get("payAmount"));
+            assertEquals(1L, fixture.count("SELECT COUNT(*) FROM pet_order"));
+            assertEquals(1L, fixture.count("SELECT COUNT(*) FROM schedule_reservation"));
+            assertEquals(2L, fixture.count("SELECT COUNT(*) FROM schedule_reservation_claim"));
+            assertEquals(List.of("PICKUP", "RETURN"), fixture.list(
+                    "SELECT kind FROM schedule_reservation_claim ORDER BY start_at"));
+            assertEquals(List.of(710501L, 710502L), fixture.list(
+                    "SELECT window_id FROM schedule_reservation_claim ORDER BY start_at"));
+            // 38号: the raw address only lives in the protected ciphertext snapshot.
+            byte[] encrypted = (byte[]) fixture.value(
+                    "SELECT service_address_ciphertext FROM order_booking_input_snapshot");
+            assertFalse(new String(encrypted, java.nio.charset.StandardCharsets.UTF_8)
+                    .contains(PICKUP_ADDRESS));
+            // Same key, same params: 200 with the identical receipt; nothing new written.
+            ResponseEntity<ApiResponse<Map<String, Object>>> replay =
+                    fixture.create(requestId, pickupBody(), USER_A);
+            assertEquals(HttpStatus.OK, replay.getStatusCode());
+            assertEquals(first.getBody().data(), replay.getBody().data());
+            assertEquals(1L, fixture.count("SELECT COUNT(*) FROM pet_order"));
+            assertEquals(2L, fixture.count("SELECT COUNT(*) FROM schedule_reservation_claim"));
+            // Same key, different params stays a 409 per supplement 23.
+            assertCode("IDEMPOTENCY_KEY_CONFLICT", () -> fixture.create(requestId,
+                    pickupBody("四川省成都市锦江区测试路2号"), USER_A));
+            assertEquals(1L, fixture.count("SELECT COUNT(*) FROM pet_order"));
+        }
+    }
+
+    @Test
+    void pickupSelectionErrorsReuseTheKernelAndShapeErrorFaces() throws Exception {
+        try (Fixture fixture = new Fixture()) {
+            // Missing directional window id: the branch shape itself is a 400.
             assertCode("COMMON_INVALID_ARGUMENT", () -> fixture.create(UUID.randomUUID().toString(),
                     body(Map.of("storeId", STORE, "serviceId", "710402", "petId", "710200",
                             "fulfillmentType", "PICKUP_DELIVERY",
                             "pickupStart", "2030-01-01T09:00:00Z",
-                            "returnStart", "2030-01-01T11:30:00Z")), USER_A));
+                            "returnStart", "2030-01-01T11:30:00Z",
+                            "selectedReturnWindowId", "710502",
+                            "serviceAddress", PICKUP_ADDRESS)), USER_A));
+            // Interval below 120 minutes: the kernel's own 400 (38号 接送预约字段不合法).
+            assertCode("COMMON_INVALID_ARGUMENT", () -> fixture.create(UUID.randomUUID().toString(),
+                    pickupBody("2030-01-01T09:00:00Z", "2030-01-01T10:59:00Z",
+                            "710501", "710502"), USER_A));
+            // Both directions on the same original window: kernel 400 (36号 ROC-2).
+            assertCode("COMMON_INVALID_ARGUMENT", () -> fixture.create(UUID.randomUUID().toString(),
+                    pickupBody("2030-01-01T09:00:00Z", "2030-01-01T11:30:00Z",
+                            "710501", "710501"), USER_A));
+            // pickupStart disagreeing with the selected window's own start: the SCH hold face
+            // rejects the drift as 409 COMMON_CONFLICT (36号 ROC-2 start equality, lock-side).
+            assertCode("COMMON_CONFLICT", () -> fixture.create(UUID.randomUUID().toString(),
+                    pickupBody("2030-01-01T09:15:00Z", "2030-01-01T11:30:00Z",
+                            "710501", "710502"), USER_A));
+            // Cross-branch leakage is a plain 400: pickup carrying the appointment pair...
+            Map<String, Object> mixedFields = new LinkedHashMap<>();
+            mixedFields.put("storeId", STORE);
+            mixedFields.put("serviceId", "710402");
+            mixedFields.put("petId", "710200");
+            mixedFields.put("fulfillmentType", "PICKUP_DELIVERY");
+            mixedFields.put("appointmentStart", "2030-01-01T09:00:00Z");
+            mixedFields.put("appointmentEnd", "2030-01-01T10:30:00Z");
+            mixedFields.put("pickupStart", "2030-01-01T09:00:00Z");
+            mixedFields.put("returnStart", "2030-01-01T11:30:00Z");
+            mixedFields.put("selectedPickupWindowId", "710501");
+            mixedFields.put("selectedReturnWindowId", "710502");
+            mixedFields.put("serviceAddress", PICKUP_ADDRESS);
+            MockHttpServletRequest mixed = request("/api/v1/c/orders", USER_A);
+            mixed.addHeader("X-Request-Id", UUID.randomUUID().toString());
+            assertEquals(CommonApiCodes.INVALID_ARGUMENT, assertThrows(ApiException.class,
+                    () -> fixture.controller.create(body(mixedFields), mixed)).code());
+            // ...and IN_STORE carrying the pickup service address.
+            assertCode("COMMON_INVALID_ARGUMENT", () -> fixture.create(UUID.randomUUID().toString(),
+                    body(Map.of("storeId", STORE, "serviceId", "710401", "petId", "710200",
+                            "fulfillmentType", "IN_STORE",
+                            "appointmentStart", "2030-01-01T09:00:00Z",
+                            "appointmentEnd", "2030-01-01T10:30:00Z",
+                            "serviceAddress", PICKUP_ADDRESS)), USER_A));
             assertEquals(0L, fixture.count("SELECT COUNT(*) FROM pet_order"));
         }
     }
@@ -321,6 +397,32 @@ class OrderCreateHttpAcceptanceTest {
         return inStoreBody("2030-01-01T09:00:00Z", "2030-01-01T10:30:00Z");
     }
 
+    /** The seeded PICKUP window 710501 (09:00-09:35) and RETURN window 710502 (11:30-12:20). */
+    private static final String PICKUP_ADDRESS = "四川省成都市锦江区测试路1号";
+
+    private static String pickupBody() {
+        return pickupBody(PICKUP_ADDRESS);
+    }
+
+    private static String pickupBody(String address) {
+        return pickupBody("2030-01-01T09:00:00Z", "2030-01-01T11:30:00Z",
+                "710501", "710502", address);
+    }
+
+    private static String pickupBody(String pickupStart, String returnStart,
+            String pickupWindowId, String returnWindowId) {
+        return pickupBody(pickupStart, returnStart, pickupWindowId, returnWindowId, PICKUP_ADDRESS);
+    }
+
+    private static String pickupBody(String pickupStart, String returnStart,
+            String pickupWindowId, String returnWindowId, String address) {
+        return body(Map.of("storeId", STORE, "serviceId", "710402", "petId", "710200",
+                "fulfillmentType", "PICKUP_DELIVERY",
+                "pickupStart", pickupStart, "returnStart", returnStart,
+                "selectedPickupWindowId", pickupWindowId, "selectedReturnWindowId", returnWindowId,
+                "serviceAddress", address));
+    }
+
     /** USER_A's pet (710200) is the default; USER_B books with its own pet (710201). */
     private static String inStoreBody(String petId) {
         Map<String, Object> fields = new LinkedHashMap<>();
@@ -480,6 +582,12 @@ class OrderCreateHttpAcceptanceTest {
 
         String text(String sql, Object arg) {
             return db().jdbc.queryForObject(sql, String.class, arg);
+        }
+
+        Object value(String sql) { return db().jdbc.queryForObject(sql, Object.class); }
+
+        java.util.List<Object> list(String sql) {
+            return db().jdbc.queryForList(sql, Object.class);
         }
 
         long count(String sql) { return db().jdbc.queryForObject(sql, Long.class); }

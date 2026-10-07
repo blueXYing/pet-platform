@@ -3,11 +3,11 @@ import assert from 'node:assert/strict'
 import { randomUUID } from 'node:crypto'
 import {
   PREVIEW_BOOKING_SERVICE, PREVIEW_BOOKING_STORE, PREVIEW_BOOKING_TODAY, PREVIEW_PAY_ORDER, PREVIEW_PICKUP_SERVICE,
-  PICKUP_OPTION_NOTICE, PICKUP_SELECTION_ENABLED, PICKUP_SERVICE_UNAVAILABLE, availabilityQuery, availabilityReadMessage,
+  PICKUP_SELECTION_ENABLED, availabilityQuery, availabilityReadMessage,
   beijingClock, beijingToday, bookingCreateMessage, bookingDates, bookingFormError, bookingFormErrorLabels,
   bookingPaymentMessage, buildOrderRequest, canInitiatePayment, decodeAvailability, decodeAvailabilityItem,
   decodeCreateOrderReceipt, decodePaymentReceipt, draftFromCommandData, fulfillmentModes, isBookingScenario,
-  paymentDeadline, paymentGateNotice, paymentSandboxNotice, pickupReturnIntervalInvalid, pickupSelectionClosed,
+  paymentDeadline, paymentGateNotice, paymentSandboxNotice, pickupCandidates, pickupReturnIntervalInvalid,
   receiptBadge, returnCandidates, slotViews, validateBookingFixtures, windowLabel,
   PreviewBookingRepository, type AvailabilityItem, type BookingDraft,
 } from '../booking/model'
@@ -26,30 +26,25 @@ test('booking scenario guard only accepts the registered preview scenarios', () 
   assert.equal(isBookingScenario('unavailable'), true)
   assert.equal(isBookingScenario('conflict'), true)
   assert.equal(isBookingScenario('pay-error'), true)
-  assert.equal(isBookingScenario('pickup'), true) // 演示接送失败关闭面板
+  assert.equal(isBookingScenario('pickup'), true) // 接送成功预约演示（选窗字段同步后解锁）
   assert.equal(isBookingScenario('load-error'), false)
   assert.equal(isBookingScenario(undefined), false)
 })
 
-// ---- 接送履约失败关闭（#128 对齐：36号选窗字段公开前，接送单 HTTP 层必 400） ----
+// ---- 接送履约解锁（36号公开选窗字段同步切片：#128 失败关闭注记移除） ----
 
-test('pickup fulfillment stays fail-closed until the selection contract lands', () => {
-  assert.equal(PICKUP_SELECTION_ENABLED, false)
-  assert.equal(pickupSelectionClosed(storeDraft), false)
-  assert.equal(pickupSelectionClosed(pickupDraft), true)
-  // 履约方式区：当前方式高亮；上门接送禁用态+说明（非交互呈现，不呈现「可选但必败」的交互）。
+test('pickup fulfillment is unlocked with the selection fields on the public contract', () => {
+  assert.equal(PICKUP_SELECTION_ENABLED, true)
+  // 履约方式区：上门接送为可选项（无禁用态），说明为接送履约。
   const modes = fulfillmentModes('IN_STORE')
   assert.equal(modes.length, 2)
   assert.deepEqual(modes.map(mode => mode.id), ['IN_STORE', 'PICKUP_DELIVERY'])
   assert.equal(modes[0].className, 'bkg-mode is-selected')
-  assert.equal(modes[1].className, 'bkg-mode is-disabled')
-  assert.equal(modes[1].note, PICKUP_OPTION_NOTICE)
-  assert.match(PICKUP_OPTION_NOTICE, /暂未开放/)
-  assert.match(PICKUP_SERVICE_UNAVAILABLE, /上门接送履约/)
-  assert.match(PICKUP_SERVICE_UNAVAILABLE, /暂未开放/)
-  // 接送校验与请求构造代码保留（36号切片翻开关即启用）：在此登记其仍可用。
+  assert.equal(modes[1].className, 'bkg-mode')
+  assert.equal(modes[1].note, '接送履约（含接宠/送回时段）')
+  // 接送草稿通过全部表单校验，请求体携带双方向选窗 ID 与服务地址。
   assert.equal(bookingFormError(pickupDraft), null)
-  assert.equal('pickupStart' in buildOrderRequest(pickupDraft), true)
+  assert.equal('selectedPickupWindowId' in buildOrderRequest(pickupDraft), true)
 })
 
 test('preview fixtures satisfy the strict decoder', () => {
@@ -66,7 +61,8 @@ const wireWindow = {
 test('availability decoder accepts the six-field projection and start ordering', () => {
   const view = decodeAvailability({ items: [wireWindow, { ...wireWindow, start: '2026-10-01T14:00:00.000+08:00', end: '2026-10-01T15:30:00.000+08:00' }] })
   assert.equal(view.items.length, 2)
-  assert.deepEqual(decodeAvailabilityItem(wireWindow), { ...wireWindow })
+  // 六字段投影解码为 windowId/kind = null（39号 selection 未装配时旧响应兼容）。
+  assert.deepEqual(decodeAvailabilityItem(wireWindow), { ...wireWindow, windowId: null, kind: null })
   // 乱序（start 非升序）按契约拒绝。
   assert.throws(() => decodeAvailability({ items: [
     { ...wireWindow, start: '2026-10-01T14:00:00.000+08:00' }, wireWindow] }), /INVALID_RESPONSE/)
@@ -75,7 +71,7 @@ test('availability decoder accepts the six-field projection and start ordering',
 
 test('availability decoder fails closed on contract violations', () => {
   for (const over of [
-    { windowId: '20190001' },                                 // 39号 selection 增补键未启用即出现 → 失败关闭
+    { windowId: '20190001' },                                 // 39号 selection 增补键单键出现（须同进同出）→ 失败关闭
     { kind: 'GENERAL' },                                      // 同上
     { start: '2026-10-01 09:15' },                            // 非带偏移 ISO-8601
     { end: '2026-10-01T25:00:00+08:00' },                     // 越界时刻
@@ -92,6 +88,23 @@ test('availability decoder fails closed on contract violations', () => {
   }
 })
 
+test('availability decoder accepts the selection projection only when both keys arrive together', () => {
+  // 39号 selection 装配后 item 增补 windowId/kind（两键同进同出）。
+  for (const kind of ['GENERAL', 'PICKUP', 'RETURN'] as const) {
+    const item = decodeAvailabilityItem({ ...wireWindow, windowId: '20190001', kind })
+    assert.equal(item.windowId, '20190001')
+    assert.equal(item.kind, kind)
+  }
+  for (const over of [
+    { windowId: '20190001', kind: 'VISIT' },                  // kind 闭集外
+    { windowId: '0', kind: 'GENERAL' },                       // 非正 Long 十进制
+    { windowId: '9223372036854775808', kind: 'RETURN' },      // 溢出 BIGINT
+    { windowId: '20190001', kind: null },                     // 显式 null 不是缺省
+  ]) {
+    assert.throws(() => decodeAvailabilityItem({ ...wireWindow, ...over }), /INVALID_RESPONSE/, JSON.stringify(over))
+  }
+})
+
 // ---- §3.4 查询参数（仅三键；未知参数服务端 400） ----
 
 test('availability query carries exactly storeId/startDate/endDate for a single day', () => {
@@ -105,17 +118,20 @@ test('availability query carries exactly storeId/startDate/endDate for a single 
 
 // ---- 时段选择推导（可选=available 且 remaining>0；已满置灰「已约满」；无状态枚举） ----
 
+/** 模块层 AvailabilityItem 样例（39号 selection 投影已带 windowId/kind）。 */
+const itemWindow: AvailabilityItem = { ...wireWindow, windowId: '20190001', kind: 'GENERAL' }
+
 test('slot views mark selectable windows and grey sold-out windows without a status enum', () => {
-  const views = slotViews([wireWindow, { ...wireWindow, start: '2026-10-01T10:15:00.000+08:00', end: '2026-10-01T11:15:00.000+08:00', effectiveCapacity: 2, occupiedCount: 2, remainingCapacity: 0, available: false }], null)
+  const views = slotViews([itemWindow, { ...itemWindow, windowId: '20190002', start: '2026-10-01T10:15:00.000+08:00', end: '2026-10-01T11:15:00.000+08:00', effectiveCapacity: 2, occupiedCount: 2, remainingCapacity: 0, available: false }], null)
   assert.equal(views[0].selectable, true)
   assert.equal(views[0].note, '剩2个')
   assert.equal(views[1].selectable, false)
   assert.equal(views[1].note, '已约满')
   assert.equal(views[1].className.includes('is-full'), true)
-  const chosen = slotViews([wireWindow], wireWindow.start)
+  const chosen = slotViews([itemWindow], itemWindow.start)
   assert.equal(chosen[0].className, 'bkg-slot is-selected')
   // available=false 即使 remaining>0 也置灰（服务端统一不可约表达）。
-  const suspended = slotViews([{ ...wireWindow, available: false }], null)
+  const suspended = slotViews([{ ...itemWindow, available: false }], null)
   assert.equal(suspended[0].selectable, false)
   assert.equal(suspended[0].note, '已约满')
 })
@@ -124,7 +140,7 @@ test('slot labels are minute-level and cross-day windows are marked honestly', (
   assert.equal(windowLabel('2026-10-01T09:15:00.000+08:00', '2026-10-01T10:45:00.000+08:00'), '09:15~10:45')
   assert.equal(windowLabel('2026-10-01T20:00:00.000+08:00', '2026-10-02T09:00:00.000+08:00'), '20:00~次日09:00')
   assert.equal(beijingClock('2026-09-30T17:00:00.000Z'), '01:00') // 设备时区不作假设：北京时间口径
-  for (const view of slotViews([wireWindow], null)) assert.match(view.className, /^bkg-slot( is-selected| is-full)?$/) // WXSS：闭集变体，禁 data-*
+  for (const view of slotViews([itemWindow], null)) assert.match(view.className, /^bkg-slot( is-selected| is-full)?$/) // WXSS：闭集变体，禁 data-*
 })
 
 test('preview availability keeps minute-level windows with sold-out entries', async () => {
@@ -134,8 +150,14 @@ test('preview availability keeps minute-level windows with sold-out entries', as
   assert.equal(views.length, 5)
   assert.equal(views[0].label, '09:15~10:45')
   assert.equal(views[4].label, '20:00~次日09:00')
+  assert.ok(view.items.every(item => item.kind === 'GENERAL' && item.windowId !== null))   // 39号 selection 投影
   assert.ok(views.some(view => !view.selectable && view.note === '已约满'))
   assert.ok(views.some(view => view.selectable))
+  // 接送服务返回 PICKUP/RETURN 方向窗（36号双方向原窗演示）。
+  const pickupView = await new PreviewBookingRepository('pickup').availability(
+    PREVIEW_PICKUP_SERVICE, PREVIEW_BOOKING_STORE, PREVIEW_BOOKING_TODAY)
+  assert.deepEqual(pickupView.items.map(item => item.kind), ['PICKUP', 'PICKUP', 'RETURN', 'RETURN', 'RETURN'])
+  assert.ok(pickupView.items.every(item => /^[1-9][0-9]{0,18}$/.test(item.windowId || '')))
   // 范围外日期=200 空列表（与 404/503 严格三区分，§3.4）；未知服务/门店 404 防探测。
   assert.equal((await repository.availability(PREVIEW_BOOKING_SERVICE, PREVIEW_BOOKING_STORE, '2026-10-08')).items.length, 0)
   const missing = await repository.availability('29999', PREVIEW_BOOKING_STORE, PREVIEW_BOOKING_TODAY).catch(error => error)
@@ -162,33 +184,40 @@ test('booking dates anchor to the business-zone today with weekday labels', () =
   assert.equal(beijingToday(Date.parse('2026-09-30T20:00:00.000Z')), '2026-10-01') // UTC 尚在 09-30
 })
 
-// ---- §3.5 请求构造（CreateOrderRequest 七必填；接送两键；couponInstanceId 不携带） ----
+// ---- §3.5 请求构造（11号 oneOf 履约分支；couponInstanceId 不携带） ----
 
 const storeDraft: BookingDraft = {
   storeId: '957002', serviceId: '20001', petId: '30001', fulfillmentType: 'IN_STORE',
   appointmentStart: '2026-10-01T09:15:00.000+08:00', appointmentEnd: '2026-10-01T10:45:00.000+08:00',
-  pickupStart: null, returnStart: null, remark: '  怕生，请提前沟通  ',
+  pickupStart: null, returnStart: null, selectedPickupWindowId: null, selectedReturnWindowId: null,
+  serviceAddress: '', remark: '  怕生，请提前沟通  ',
 }
 const pickupDraft: BookingDraft = {
   storeId: '957002', serviceId: PREVIEW_PICKUP_SERVICE, petId: '30001', fulfillmentType: 'PICKUP_DELIVERY',
-  appointmentStart: '2026-10-01T12:00:00.000+08:00', appointmentEnd: '2026-10-01T13:30:00.000+08:00',
-  pickupStart: '2026-10-01T09:00:00.000+08:00', returnStart: '2026-10-01T11:00:00.000+08:00', remark: '',
+  appointmentStart: '', appointmentEnd: '',
+  pickupStart: '2026-10-01T09:00:00.000+08:00', returnStart: '2026-10-01T11:00:00.000+08:00',
+  selectedPickupWindowId: '20190001', selectedReturnWindowId: '20190003',
+  serviceAddress: '  上海市徐汇区某路100弄5号201室  ', remark: '',
 }
 
-test('buildOrderRequest emits the seven required keys; remark trimmed; coupon key never present', () => {
+test('buildOrderRequest emits the fulfillment branches; remark trimmed; coupon key never present', () => {
   assert.deepEqual(buildOrderRequest(storeDraft), {
     storeId: '957002', serviceId: '20001', petId: '30001', fulfillmentType: 'IN_STORE',
     appointmentStart: '2026-10-01T09:15:00.000+08:00', appointmentEnd: '2026-10-01T10:45:00.000+08:00',
     remark: '怕生，请提前沟通',
   })
   assert.equal('couponInstanceId' in buildOrderRequest(storeDraft), false) // 本切片边界
+  assert.equal('pickupStart' in buildOrderRequest(storeDraft), false)     // 到店分支不带接送键
   const quiet = buildOrderRequest({ ...storeDraft, remark: '   ' })
   assert.equal('remark' in quiet, false) // 空白备注不入 JSON
+  // 接送分支：五键必填（含双方向选窗 ID 与服务地址），不带 toStore 两键；地址原文 trim。
   assert.deepEqual(buildOrderRequest(pickupDraft), {
     storeId: '957002', serviceId: '20002', petId: '30001', fulfillmentType: 'PICKUP_DELIVERY',
-    appointmentStart: '2026-10-01T12:00:00.000+08:00', appointmentEnd: '2026-10-01T13:30:00.000+08:00',
     pickupStart: '2026-10-01T09:00:00.000+08:00', returnStart: '2026-10-01T11:00:00.000+08:00',
+    selectedPickupWindowId: '20190001', selectedReturnWindowId: '20190003',
+    serviceAddress: '上海市徐汇区某路100弄5号201室',
   })
+  assert.equal('appointmentStart' in buildOrderRequest(pickupDraft), false)
 })
 
 test('form validation walks every contract branch with Chinese labels', () => {
@@ -200,20 +229,29 @@ test('form validation walks every contract branch with Chinese labels', () => {
   assert.equal(bookingFormError({ ...pickupDraft, pickupStart: null }), 'pickup')
   assert.equal(bookingFormError({ ...pickupDraft, returnStart: null }), 'return')
   assert.equal(bookingFormError({ ...pickupDraft, returnStart: '2026-10-01T10:59:00.000+08:00' }), 'interval')
+  // 选窗身份：缺窗 ID、两方向同一原窗，均为 selection 错误（36号 ROC-2）。
+  assert.equal(bookingFormError({ ...pickupDraft, selectedPickupWindowId: null }), 'selection')
+  assert.equal(bookingFormError({ ...pickupDraft, selectedReturnWindowId: '20190001' }), 'selection')
+  // 接送服务地址必填非空白（38号）。
+  assert.equal(bookingFormError({ ...pickupDraft, serviceAddress: '   ' }), 'address')
   assert.equal(bookingFormError({ ...storeDraft, remark: '长'.repeat(501) }), 'remark')
   for (const key of Object.keys(bookingFormErrorLabels) as (keyof typeof bookingFormErrorLabels)[]) assert.ok(bookingFormErrorLabels[key])
   assert.throws(() => buildOrderRequest({ ...storeDraft, petId: '' }), /BOOKING_FORM_PET/)
+  assert.throws(() => buildOrderRequest({ ...pickupDraft, serviceAddress: ' ' }), /BOOKING_FORM_ADDRESS/)
 })
 
-// ---- 接送硬规则：returnStart >= pickupStart + 120 分钟（C 端置灰联动，SCH-D4） ----
+// ---- 接送硬规则：returnStart >= pickupStart + 120 分钟 + 方向窗（C 端置灰联动，SCH-D4/ROC-2） ----
 
-test('pickup-return interval rule greys return candidates below 120 minutes', () => {
+test('pickup-return interval rule greys RETURN candidates below 120 minutes', () => {
   assert.equal(pickupReturnIntervalInvalid('2026-10-01T09:00:00.000+08:00', '2026-10-01T10:59:00.000+08:00'), true)
   assert.equal(pickupReturnIntervalInvalid('2026-10-01T09:00:00.000+08:00', '2026-10-01T11:00:00.000+08:00'), false) // 恰好 120 分钟
   const items: AvailabilityItem[] = [
-    { ...wireWindow, start: '2026-10-01T10:00:00.000+08:00', end: '2026-10-01T11:00:00.000+08:00' },
-    { ...wireWindow, start: '2026-10-01T11:00:00.000+08:00', end: '2026-10-01T12:00:00.000+08:00' },
+    { ...wireWindow, windowId: '20190001', kind: 'PICKUP', start: '2026-10-01T09:00:00.000+08:00', end: '2026-10-01T09:35:00.000+08:00' },
+    { ...wireWindow, windowId: '20190002', kind: 'RETURN', start: '2026-10-01T10:00:00.000+08:00', end: '2026-10-01T11:00:00.000+08:00' },
+    { ...wireWindow, windowId: '20190003', kind: 'RETURN', start: '2026-10-01T11:00:00.000+08:00', end: '2026-10-01T12:00:00.000+08:00' },
   ]
+  // 接宠候选只含 PICKUP 方向原窗；送回候选只含 RETURN 方向且满足 120 分钟。
+  assert.deepEqual(pickupCandidates(items).map(item => item.start), ['2026-10-01T09:00:00.000+08:00'])
   const candidates = returnCandidates(items, '2026-10-01T09:00:00.000+08:00')
   assert.deepEqual(candidates.map(item => item.start), ['2026-10-01T11:00:00.000+08:00'])
 })
@@ -320,9 +358,12 @@ test('draftFromCommandData round-trips the emitted request payload and rejects f
   const restored = draftFromCommandData(JSON.parse(JSON.stringify(request)))
   assert.deepEqual(restored, { ...storeDraft, remark: '怕生，请提前沟通' })
   const pickupRestored = draftFromCommandData(JSON.parse(JSON.stringify(buildOrderRequest(pickupDraft))))
-  assert.deepEqual(pickupRestored, pickupDraft)
+  assert.deepEqual(pickupRestored, { ...pickupDraft, serviceAddress: '上海市徐汇区某路100弄5号201室' })
   assert.equal(draftFromCommandData({ ...request, extra: 1 }), null)     // 载荷外键
   assert.equal(draftFromCommandData({ ...request, petId: '0' }), null)   // 非法 id
+  assert.equal(draftFromCommandData(JSON.parse(JSON.stringify({
+    ...buildOrderRequest(pickupDraft), appointmentStart: '2026-10-01T09:00:00.000+08:00',
+  }))), null)                                                            // 接送分支混入到店键
   assert.equal(draftFromCommandData('not-an-object'), null)
 })
 
@@ -373,19 +414,38 @@ test('real repository queries availability with the three contract params only',
   await assert.rejects(repository.availability('x', '957002', '2026-10-01'), /INVALID/) // 网络前失败关闭
 })
 
-test('preview and real repositories reject pickup drafts before the network (mirror #128 400 fail-closed)', async () => {
-  const preview = await new PreviewBookingRepository('normal').create(pickupDraft).catch(error => error)
-  assert.ok(preview instanceof ApiError && preview.code === 'COMMON_INVALID_ARGUMENT' && preview.statusCode === 400)
-  const posts: WireRequest[] = []
+test('preview repository completes pickup bookings with the selection fields (unlocked)', async () => {
+  // 接送成功场景（36号公开选窗字段同步切片）：preview 夹具本地应答接送回执，链路可续走支付。
+  const receipt = await new PreviewBookingRepository('pickup').create(pickupDraft)
+  assert.equal(receipt.orderId, PREVIEW_PAY_ORDER)
+  assert.equal(receipt.payAmount, '60.00')
+  assert.equal(receiptBadge(receipt).label, '待支付')
+  // 缺选窗身份（selection 未装配的旧六字段投影）：表单层 400，不发「必败」请求。
+  const legacy = await new PreviewBookingRepository('normal').create(
+    { ...pickupDraft, selectedPickupWindowId: null }).catch(error => error)
+  assert.ok(legacy instanceof ApiError && legacy.code === 'COMMON_INVALID_ARGUMENT' && legacy.statusCode === 400)
+})
+
+test('real create posts pickup bodies with the selection fields under a journal-backed X-Request-Id', async () => {
+  const seen: WireRequest[] = []
   const { api, restore } = authenticatedApi(async request => {
     if (request.path === '/api/v1/c/auth/session') return ok(sessionView)
-    posts.push(request)
+    seen.push(request)
+    if (request.path === '/api/v1/c/orders') return ok(JSON.parse(JSON.stringify(wireReceipt)))
     return ok({})
   })
   await restore()
-  const rejected = await new RealBookingRepository(api).create(pickupDraft).catch(error => error)
-  assert.ok(rejected instanceof ApiError && rejected.statusCode === 400)
-  assert.equal(posts.length, 0) // 不发「必败」请求：网络前失败关闭
+  const repository = new RealBookingRepository(api)
+  const receipt = await repository.create(pickupDraft)
+  assert.equal(receipt.orderId, '900101001990000')
+  assert.equal(seen[0]!.method, 'POST')
+  assert.deepEqual(seen[0]!.data, buildOrderRequest(pickupDraft))
+  assert.equal('selectedPickupWindowId' in (seen[0]!.data as Record<string, unknown>), true)
+  assert.equal('appointmentStart' in (seen[0]!.data as Record<string, unknown>), false)
+  // 缺窗 ID/缺地址的草稿在网络前失败关闭（BOOKING_FORM_SELECTION/ADDRESS）。
+  await assert.rejects(repository.create({ ...pickupDraft, selectedReturnWindowId: null }), /BOOKING_FORM_SELECTION/)
+  await assert.rejects(repository.create({ ...pickupDraft, serviceAddress: ' ' }), /BOOKING_FORM_ADDRESS/)
+  assert.equal(seen.length, 1)
 })
 
 test('real create posts the exact request body under a journal-backed X-Request-Id', async () => {  const seen: WireRequest[] = []

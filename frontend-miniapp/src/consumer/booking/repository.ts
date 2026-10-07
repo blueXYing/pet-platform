@@ -2,7 +2,7 @@ import { ApiError } from '../../shared/request'
 import { ConsumerApi, id } from '../../shared/consumer-api'
 import {
   availabilityQuery, buildOrderRequest, decodeAvailability, decodeCreateOrderReceipt, decodePaymentReceipt,
-  PAYMENT_CHANNEL, pickupSelectionClosed, type AvailabilityView, type BookingDeps, type BookingDraft,
+  PAYMENT_CHANNEL, type AvailabilityView, type BookingDeps, type BookingDraft,
   type CreateOrderReceipt, type PaymentReceipt,
 } from './model'
 
@@ -11,7 +11,8 @@ import {
 // 三条路由都落在 ConsumerApi 既有 /c/ 白名单内，不改 consumer-api.ts。
 // - availability：登录态只读（SCH-D1），GET query 仅 storeId/startDate/endDate（§3.4 拒绝未知参数）；
 // - create：幂等槽 order:create（23号 X-Request-Id 跨页面重开/重启重放；载荷变化即
-//   PENDING_WRITE_CHANGED，不盲目换号重试）；
+//   PENDING_WRITE_CHANGED，不盲目换号重试）。接送（PICKUP_DELIVERY）已随 36号公开选窗字段
+//   同步切片解锁，草稿经 buildOrderRequest 携带双方向窗 ID 与服务地址（#128 失败关闭守卫移除）；
 // - pay：幂等槽 order-pay:{orderId}（同语义；channel 固定 WECHAT_MINI_PROGRAM，§3.6）。
 export const ORDER_CREATE_SLOT = 'order:create'
 export const paymentSlot = (orderId: string): string => `order-pay:${orderId}`
@@ -30,9 +31,6 @@ export class RealBookingRepository implements BookingDeps {
     return this.api.request({ method: 'GET', path: query.path, data: query.data }, decodeAvailability)
   }
   async create(draft: BookingDraft): Promise<CreateOrderReceipt> {
-    // #128 对齐（失败关闭）：公开 CreateOrderRequest 无选窗字段而内核必填双方向窗 ID，
-    // PICKUP_DELIVERY 单在 HTTP 层必 400；开关打开前网络前拒绝，不发「必败」请求。
-    if (pickupSelectionClosed(draft)) throw new ApiError('COMMON_INVALID_ARGUMENT', 400)
     const slot = ORDER_CREATE_SLOT
     const spec = { method: 'POST' as const, path: '/api/v1/c/orders', data: buildOrderRequest(draft) }
     return this.api.write(slot, spec, decodeCreateOrderReceipt, undefined, (error, command) => {
