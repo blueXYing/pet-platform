@@ -15,7 +15,11 @@ public final class ScheduleWorkbenchTypes {
             String windowKind, OffsetDateTime startAt, OffsetDateTime endAt, int configuredCapacity,
             String status, String version, OffsetDateTime updatedAt) {}
 
-    public record WindowPage(String storeId, List<WindowItem> items) {
+    /** Pagination envelope (53号 §3.3): total/page/pageSize are null in the legacy unpaginated
+     * mode (response stays the pre-2026-10-07 {storeId,items} shape); in paged mode total is
+     * the filter-matched count independent of the requested page. */
+    public record WindowPage(String storeId, List<WindowItem> items, Long total, Integer page,
+            Integer pageSize) {
         public WindowPage { items = List.copyOf(items); }
     }
 

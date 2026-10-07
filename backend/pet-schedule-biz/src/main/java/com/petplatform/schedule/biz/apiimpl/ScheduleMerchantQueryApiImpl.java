@@ -32,6 +32,10 @@ public final class ScheduleMerchantQueryApiImpl implements ScheduleMerchantQuery
     private static final DecimalPublicIdCodec IDS = new DecimalPublicIdCodec();
     private static final Set<String> STATUSES = Set.of("OPEN", "CLOSED", "SOLD_OUT", "AVAILABLE");
     private static final Set<String> KINDS = Set.of("GENERAL", "PICKUP", "RETURN");
+    // 53号 §3.3 (2026-10-07): the notification-list pagination baseline (10号 §3.14 先例),
+    // re-validated here so a direct API caller gets the same 400 as the HTTP surface.
+    private static final int PAGE_MAX = 10_000;
+    private static final int PAGE_SIZE_MAX = 50;
 
     private final ScheduleReadStore store;
     private final ScheduleAdmissionGate admissions;
@@ -53,13 +57,25 @@ public final class ScheduleMerchantQueryApiImpl implements ScheduleMerchantQuery
         user(q == null ? null : q.context());
         positive(q.merchantId(), "merchantId");
         positive(q.storeId(), "storeId");
-        if (q.windowKind() != null && !KINDS.contains(q.windowKind())) invalid("windowKind");
-        if (q.status() != null && !STATUSES.contains(q.status())) invalid("status");
+        if (q.windowKind() != null && !KINDS.contains(q.windowKind())) throw invalid("windowKind");
+        if (q.status() != null && !STATUSES.contains(q.status())) throw invalid("status");
+        boolean paged = q.page() != null || q.pageSize() != null;
+        if (paged && (q.page() == null || q.pageSize() == null)) throw invalid("page/pageSize");
+        if (q.page() != null && (q.page() < 1 || q.page() > PAGE_MAX)) throw invalid("page");
+        if (q.pageSize() != null && (q.pageSize() < 1 || q.pageSize() > PAGE_SIZE_MAX)) {
+            throw invalid("pageSize");
+        }
         return store.read(mapper -> {
             admissions.requireOperable(q.context(), id(q.merchantId()), id(q.storeId()));
-            List<Map<String, Object>> rows = mapper.listWindows(id(q.storeId()),
-                    q.serviceId() == null ? null : id(q.serviceId()),
-                    q.windowKind(), q.status());
+            long storeId = id(q.storeId());
+            Long serviceId = q.serviceId() == null ? null : id(q.serviceId());
+            // Same repeatable-read snapshot for rows and total, so a paged answer never
+            // mixes two moments of the table (53号 §3.3).
+            Long total = paged ? mapper.countWindows(storeId, serviceId,
+                    q.windowKind(), q.status()) : null;
+            List<Map<String, Object>> rows = mapper.listWindows(storeId, serviceId,
+                    q.windowKind(), q.status(), paged ? q.pageSize() : null,
+                    paged ? (q.page() - 1) * q.pageSize() : 0);
             List<WindowItem> items = new ArrayList<>(rows.size());
             for (Map<String, Object> row : rows) {
                 items.add(new WindowItem(
@@ -75,7 +91,8 @@ public final class ScheduleMerchantQueryApiImpl implements ScheduleMerchantQuery
                         ScheduleSqlRows.version(row, "version"),
                         ScheduleSqlRows.at(row, "updated_at")));
             }
-            return new WindowPage(q.storeId(), items);
+            return new WindowPage(q.storeId(), items, total, paged ? q.page() : null,
+                    paged ? q.pageSize() : null);
         });
     }
 

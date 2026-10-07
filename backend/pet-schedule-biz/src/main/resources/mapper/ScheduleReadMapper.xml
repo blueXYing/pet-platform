@@ -54,16 +54,27 @@
           AND end_at &gt; #{fromAt}
     </select>
 
-    <!-- SCH-004 merchant workbench reads: full states incl. CLOSED, filters optional. -->
+    <!-- SCH-004 merchant workbench reads: full states incl. CLOSED, filters optional. The
+         filter fragment is shared with the pagination count so total always matches the
+         listed rows (53号 §3.3, 2026-10-07). -->
+    <sql id="workbenchWindowFilters">
+        WHERE store_id = #{storeId}
+        <if test="serviceId != null">AND service_id = #{serviceId}</if>
+        <if test="kind != null">AND window_kind = #{kind}</if>
+        <if test="status != null">AND status = #{status}</if>
+    </sql>
     <select id="listWindows" resultType="map">
         SELECT id, merchant_id, store_id, service_id, window_kind, start_at, end_at,
                configured_capacity, status, version, updated_at
         FROM schedule_availability_window
-        WHERE store_id = #{storeId}
-          <if test="serviceId != null">AND service_id = #{serviceId}</if>
-          <if test="kind != null">AND window_kind = #{kind}</if>
-          <if test="status != null">AND status = #{status}</if>
+        <include refid="workbenchWindowFilters"/>
         ORDER BY start_at, id
+        <if test="limit != null">LIMIT #{limit} OFFSET #{offset}</if>
+    </select>
+    <select id="countWindows" resultType="long">
+        SELECT COUNT(*)
+        FROM schedule_availability_window
+        <include refid="workbenchWindowFilters"/>
     </select>
     <select id="listStaffWindows" resultType="map">
         SELECT id, store_id, staff_id, start_at, end_at, status, version, updated_at
