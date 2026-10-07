@@ -1,0 +1,68 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.petplatform.order.biz.infrastructure.persistence.mapper.OrderQueryMapper">
+    <!--
+      The displayStatus filter mirrors the order-domain DisplayOrderStatus truth table
+      (tech baseline §5; application/OrderDisplayStatus.compute). Static XML branches only:
+      the service validates the value against the ten-value vocabulary first, the five stage
+      tabs bind order_stage directly, and the MySQL acceptance test cross-checks every filter
+      against the same Java computation row by row.
+    -->
+    <sql id="displayFilter">
+        <choose>
+            <when test="displayStatus == null"></when>
+            <when test="displayStatus == 'REFUNDING'">
+                AND refund_order_id IS NOT NULL AND refunded_amount = 0
+            </when>
+            <when test="displayStatus == 'REFUNDED'">
+                AND refund_order_id IS NOT NULL AND refunded_amount > 0 AND pay_amount > 0
+                AND refunded_amount >= pay_amount
+            </when>
+            <when test="displayStatus == 'PARTIAL_REFUND'">
+                AND refund_order_id IS NOT NULL AND refunded_amount > 0 AND pay_amount > 0
+                AND refunded_amount &lt; pay_amount
+            </when>
+            <when test="displayStatus == 'REFUND_PENDING_CONFIRM'">
+                AND refund_order_id IS NULL AND refund_application_status = 'PENDING_MERCHANT'
+            </when>
+            <when test="displayStatus == 'AFTERSALE'">
+                AND refund_order_id IS NULL
+                AND (refund_application_status IS NULL OR refund_application_status &lt;&gt; 'PENDING_MERCHANT')
+                AND aftersale_status IN ('PENDING','PROCESSING','WAITING_SUPPLEMENT')
+            </when>
+            <otherwise>
+                AND refund_order_id IS NULL
+                AND (refund_application_status IS NULL OR refund_application_status &lt;&gt; 'PENDING_MERCHANT')
+                AND (aftersale_status IS NULL OR aftersale_status NOT IN ('PENDING','PROCESSING','WAITING_SUPPLEMENT'))
+                AND order_stage = #{displayStatus}
+            </otherwise>
+        </choose>
+    </sql>
+    <sql id="mineProjection">
+        SELECT id, order_no, user_id, merchant_id, store_id, service_id, reservation_id,
+               order_stage, payment_status, verification_status,
+               refund_application_status, aftersale_status, refund_order_id,
+               original_amount, discount_amount, pay_amount, refunded_amount,
+               appointment_start_at, appointment_end_at, paid_at, confirmed_at, verified_at,
+               canceled_at, cancel_reason, payment_expire_at,
+               reschedule_count, version
+        FROM pet_order
+    </sql>
+    <select id="countMine" resultType="long">
+        SELECT COUNT(*)
+        FROM pet_order
+        WHERE user_id = #{userId}
+        <include refid="displayFilter"/>
+    </select>
+    <select id="selectMinePage" resultType="com.petplatform.order.biz.infrastructure.persistence.entity.OrderQueryViewEntity">
+        <include refid="mineProjection"/>
+        WHERE user_id = #{userId}
+        <include refid="displayFilter"/>
+        ORDER BY created_at DESC, id DESC
+        LIMIT #{limit} OFFSET #{offset}
+    </select>
+    <select id="selectMineById" resultType="com.petplatform.order.biz.infrastructure.persistence.entity.OrderQueryViewEntity">
+        <include refid="mineProjection"/>
+        WHERE id = #{id} AND user_id = #{userId}
+    </select>
+</mapper>

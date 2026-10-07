@@ -543,11 +543,23 @@ order API 拆为 Query / Command / OperationGuard 三类。
 
 ### 7.1 OrderQueryApi
 
+> **实现状态（2026-10-07，C-004 读取切片）**：已实现 `getOrder`（§7.4 `OrderSnapshotDTO`，
+> 防枚举 404）并新增登记 `listMyOrders(MyOrderListQuery) -> PageResult<OrderSnapshotDTO>`
+> （本人订单分页，固定排序 created_at DESC, id DESC；`displayStatus` 过滤与技术基线 §5
+> 的 ORDER 域统一计算同源）。实现为 pet-order-api `OrderQueryApi` + pet-order-biz
+> `OrderQueryApiImpl`（只读 MyBatis 查询，主体固定为 QueryContext 会话用户），
+> 服务 HTTP Contract 10 §3.7。下方 `checkRefundEligibility`/`checkVerificationEligibility`/
+> `checkReviewEligibility` 仍为文档形态，待各自切片实现。
+
 ```java
 public interface OrderQueryApi {
 
+    // 已实现（C-004 读取切片，2026-10-07）
     OrderSnapshotDTO getOrder(OrderIdQuery query);
 
+    PageResult<OrderSnapshotDTO> listMyOrders(MyOrderListQuery query);
+
+    // 待实现
     RefundEligibilityDTO checkRefundEligibility(
         RefundEligibilityQuery query
     );
@@ -634,6 +646,12 @@ CREATE_REFUND
 ```
 
 ### 7.4 OrderSnapshotDTO
+
+> **增补（2026-10-07，C-004 读取切片返工）**：`OrderSnapshotDTO` 追加尾字段
+> `Actions actions`（嵌套 record：`canPay/canReschedule/canApplyRefund/canShowVerificationCode/canReview/canApplyAfterSale` 六布尔，
+> 对应 OpenAPI11 `OrderActions`）。actions 与 displayStatus 同由 ORDER 域单点计算（依据逐条见
+> HTTP Contract 10 §3.7 实现注记：40/46/47/48/49/50号与本号 §7.7），为读侧 UI 入口投影，
+> 写命令仍在各自内核守卫内复验。追加为尾部字段，既有调用方按位兼容。
 
 ```java
 public record OrderSnapshotDTO(

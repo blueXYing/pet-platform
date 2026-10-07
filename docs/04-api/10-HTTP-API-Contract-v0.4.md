@@ -543,6 +543,22 @@ PaymentApi.createPayment
 
 ## 3.7 C 端订单查询
 
+> **实现状态（2026-10-07，C-004 读取切片；同日返工补 actions）**：本节两条 GET 已实现，随 `pet.auth.c.enabled`
+> 装配（默认关闭；OpenAPI11 `x-implementation-status=IMPLEMENTED_DEFAULT_OFF`）。实现要点：
+> `displayStatus` 由 order 域按技术基线 §5 优先级统一计算，C 端只读投影；列表固定排序
+> `created_at DESC, id DESC`（稳定分页），分页边界 page>=1、pageSize 1..100 默认 20；
+> 详情（与列表项同投影）返回 `orderId/orderNo/displayStatus/orderStage/paymentStatus/refundApplicationStatus/refundStatus/afterSaleStatus/verificationStatus/payAmount/appointmentStart/appointmentEnd/verifiedAt/actions`；
+> `refundStatus` 取 ORDER 域自身投影词汇 `null/CREATED/SUCCESS`；非本人或不存在订单
+> 一律同一 404（防枚举）；两条路由 `Cache-Control: no-store`。与 §3.11 核销码路由共存，互不影响。
+>
+> **actions（六布尔，随详情/列表同投影返回；逐条依据）**——读侧 UI 入口投影，写命令仍在各自内核守卫内复验：
+> - `canPay`：`order_stage=PENDING_PAYMENT` 且 `payment_status∈{INIT,PAYING}` 且未过 `payment_expire_at` 且无 refund_order（依据：SSOT 待支付生命周期 + 40号支付窗口；迟到支付订单保持关闭，过期即不可付）。
+> - `canReschedule`：`PENDING_CONFIRM/PENDING_SERVICE`+`PAID`+`UNVERIFIED`+`reschedule_count=0`+当前早于预约开始+无 refund_order（依据：46号准入原文；每单最多 1 次改期）。
+> - `canApplyRefund`：`PENDING_SERVICE+UNVERIFIED` 或 `COMPLETED+VERIFIED`，`PAID`、未取消、未退分文、无 refund_order、已确认、无在途申请（REJECTED 可再申请）（依据：49号 ORDER 准入 normal()/bind；§3.9 服务前自动全额、服务后商家 24h 两窗口均可发起）。
+> - `canShowVerificationCode`：`PENDING_SERVICE`+`PAID`+`UNVERIFIED`+无 refund_order+未退分文+未取消+已确认（依据：47号§4 视图与 48号内核核销资格既有判定；SSOT：未履约售后与在途退款申请在 refund_order 创建前均不禁止核销，故 aftersale/refund_application 状态不参与本布尔）。
+> - `canReview`：`VERIFIED` 且 `verified_at` 起 30 天内；其后部分退款成功（`refunded_amount<pay_amount`）仍为 true（依据：07号§7.7 必须已核销/30 天/部分退款仍 eligible）；**全额退款（REFUNDED）与退款中（REFUNDING）保守 false 待裁**（§7.7 仅明文保证部分退款情形）。
+> - `canApplyAfterSale`：`PENDING_SERVICE+UNVERIFIED`（须已过预约开始且存在被拒申请，依据 50号 policy + REF-001 服务前走退款申请而非售后）或 `COMPLETED+VERIFIED`（锚点 `verified_at`），均在锚点起 7 天窗口内；且 `PAID`、未取消、未退分文、无 refund_order、已确认、无在途申请、无活跃售后单（依据：50号 AfterSaleEligibilityPolicy 既有判定）。
+
 ```text
 GET /api/v1/c/orders
 GET /api/v1/c/orders/{orderId}
