@@ -40,6 +40,12 @@ public class MerchantOrderConfiguration {
         RefundOrderFactsApi merchantRefundPresence(DataSource s,ScheduleCapacityGuardApi guard){return new com.petplatform.refund.biz.apiimpl.RefundOrderFactsApiImpl(s,guard);}
         @Bean OrderMerchantRejectFactsApi merchantRejectFacts(DataSource s,ScheduleCapacityGuardApi g,ReservationConfirmApi reservation){return new OrderMerchantRejectFactsApiImpl(s,g,reservation);}
         @Bean MerchantOrderAuthorityApi merchantOrderAuthority(DataSource s,ScheduleCapacityGuardApi g){return new MerchantOrderAuthorityApiImpl(s,g);}
+        /** Read-only store order list (contract 10 §4.1 supplement): same Runtime assembly as
+         *  the contract-45 commands; the http switch keeps the route itself default off. */
+        @Bean com.petplatform.order.api.query.MerchantOrderQueryApi merchantOrderQueryApi(DataSource s,
+            ScheduleCapacityGuardApi guard,MerchantOrderAuthorityApi authority){
+            return new com.petplatform.order.biz.apiimpl.MerchantOrderQueryApiImpl(s,guard,authority);
+        }
         @Bean @ConditionalOnMissingBean(MerchantOrderPorts.Protection.class)
         MerchantOrderPorts.Protection merchantOrderProtection(@Value("${pet.order.merchant.protection-key}") String key){
             try{return new MerchantOrderAesProtection(Base64.getDecoder().decode(key));}catch(RuntimeException bad){throw new IllegalStateException("Order protection configuration unavailable");}

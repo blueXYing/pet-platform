@@ -90,12 +90,13 @@ export default function MerchantWorkbenchPage() {
     controller.handoffToChild()
     Taro.navigateTo({ url: '/merchant/pages/staff-verify/index' }).catch(() => controller.handoffCancelled())
   }
-  // Merchant manual confirm/reject (45号 via 10号 §4.2/§4.3): OWNER-only pending-order
-  // decisions, entered by order id (M 端暂无商家订单列表读侧). Existing-order family like
-  // verify — OFFLINE/LIMITED keeps handling paid orders, FROZEN fails closed server-side.
+  // Merchant order processing (45号 via 10号 §4.2/§4.3 + §4.1 list read): the entry now lands
+  // on the store order list (待接单/全部 tabs); the #129 confirm/reject page is entered from a
+  // list card. Existing-order family like verify — OFFLINE/LIMITED keeps handling paid orders,
+  // FROZEN fails closed server-side.
   function openOrderConfirm() {
     controller.handoffToChild()
-    Taro.navigateTo({ url: '/merchant/pages/order-confirm/index' }).catch(() => controller.handoffCancelled())
+    Taro.navigateTo({ url: '/merchant/pages/order-list/index' }).catch(() => controller.handoffCancelled())
   }
   const view = state.view
   return <View className='merchant-workbench'>
@@ -154,7 +155,7 @@ export default function MerchantWorkbenchPage() {
           {/* Order verification entry (48 K2 v0.3): 存量履约 family — ACTIVE/OFFLINE keeps
               verifying existing orders, so the entry stays for LIMITED like aftersale. */}
           <Button id='workbench-verify' onClick={openVerify}>订单核销</Button>
-          {/* Merchant order decisions (45号): 待接单订单的接单/拒单,同样属存量履约 family。 */}
+          {/* Merchant order processing (45号 + §4.1 list read): 本店订单列表(重点待接单),同样属存量履约 family。 */}
           <Button id='workbench-order-confirm' onClick={openOrderConfirm}>订单处理</Button>
         </View>}
         {(state.status === 'allowed' || state.status === 'limited') && view.membershipKind === 'OWNER' && view.allowedActions.includes('merchant.aftersale.read') && <View className='workbench-steps'>

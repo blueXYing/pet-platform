@@ -1,7 +1,7 @@
 import { ApiError } from '../../shared/request'
 import { ConsumerApi } from '../../shared/consumer-api'
 import {
-  decodeOrderDecisionReceipt, definitiveNoWrite, isOrderId, reasonTextProblem, internalNoteProblem,
+  decodeMerchantOrderPage, decodeOrderDecisionReceipt, definitiveNoWrite, isOrderId, reasonTextProblem, internalNoteProblem,
   type OrderDecisionDeps, type OrderDecisionReceipt, type RejectReasonCode,
 } from './model'
 
@@ -99,5 +99,53 @@ export class RealMerchantOrderRepository implements OrderDecisionDeps {
       }
     }
     return null
+  }
+}
+
+// ---------------------------------------------------------------------------
+// 商家订单列表读侧（10号 §4.1 增补）：只读 GET，商家坐标由工作台票根携带并经
+// ConsumerApi 的 WORKSPACE_PATH_MISMATCH 防线核对（与 merchantId/storeId 严格一致），
+// 服务端仍在门店 guard 事务内重验 OWNER 归属；开关未开时按常规错误路径失败关闭。
+// ---------------------------------------------------------------------------
+export interface MerchantOrderListDeps {
+  list(query: { merchantId: string; storeId: string; displayStatus?: string; page: number; pageSize: number }): Promise<import('./model').MerchantOrderPage>
+}
+
+const MERCHANT_LIST_PAGE_SIZE = 20
+
+export class RealMerchantOrderListRepository implements MerchantOrderListDeps {
+  constructor(private api: ConsumerApi) {}
+
+  /** tab=null 即「全部」桶（不发送 displayStatus，§3.7 先例）。 */
+  async list(query: { merchantId: string; storeId: string; displayStatus?: string; page: number; pageSize: number }): Promise<import('./model').MerchantOrderPage> {
+    const coordinates = this.coordinates()
+    if (query.merchantId !== coordinates.merchantId || query.storeId !== coordinates.storeId) {
+      throw new Error('WORKSPACE_PATH_MISMATCH')
+    }
+    if (!Number.isInteger(query.page) || query.page < 1 || query.page > 10000
+      || !Number.isInteger(query.pageSize) || query.pageSize < 1 || query.pageSize > 100
+      || query.pageSize !== MERCHANT_LIST_PAGE_SIZE) throw new Error('INVALID_QUERY')
+    const data: Record<string, unknown> = {
+      merchantId: query.merchantId, storeId: query.storeId, page: query.page, pageSize: query.pageSize,
+    }
+    if (query.displayStatus !== undefined) data.displayStatus = query.displayStatus
+    const page = await this.api.request(
+      { method: 'GET', path: '/api/v1/merchant/orders', data },
+      value => {
+        const decoded = decodeMerchantOrderPage(value)
+        if (decoded.page !== query.page || decoded.pageSize !== query.pageSize) throw new Error('INVALID_RESPONSE')
+        if (query.displayStatus !== undefined
+          && decoded.items.some(item => item.displayStatus !== query.displayStatus)) throw new Error('INVALID_RESPONSE')
+        return decoded
+      })
+    return page
+  }
+
+  private coordinates(): { merchantId: string; storeId: string } {
+    const context = this.api.scope.capture().context
+    if (!context || context.workspace !== 'merchant' || !context.merchantId || !context.storeId) {
+      throw new Error('WORKSPACE_PATH_MISMATCH')
+    }
+    return { merchantId: context.merchantId, storeId: context.storeId }
   }
 }

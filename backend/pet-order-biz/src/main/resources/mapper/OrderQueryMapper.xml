@@ -65,4 +65,23 @@
         <include refid="mineProjection"/>
         WHERE id = #{id} AND user_id = #{userId}
     </select>
+    <!--
+      Merchant order list (contract 10 §4.1 supplement): same projection and the same
+      displayStatus truth-table branches as the C-end statements above; the store scope is
+      the double key merchant_id+store_id, re-proven by the OWNER authority in the service
+      before any of these statements run. Fixed sort created_at DESC, id DESC (stable page).
+    -->
+    <select id="countForStore" resultType="long">
+        SELECT COUNT(*)
+        FROM pet_order
+        WHERE merchant_id = #{merchantId} AND store_id = #{storeId}
+        <include refid="displayFilter"/>
+    </select>
+    <select id="selectForStorePage" resultType="com.petplatform.order.biz.infrastructure.persistence.entity.OrderQueryViewEntity">
+        <include refid="mineProjection"/>
+        WHERE merchant_id = #{merchantId} AND store_id = #{storeId}
+        <include refid="displayFilter"/>
+        ORDER BY created_at DESC, id DESC
+        LIMIT #{limit} OFFSET #{offset}
+    </select>
 </mapper>
