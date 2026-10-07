@@ -5,10 +5,13 @@ import { useWorkspace } from '../../../shared/workspace-react'
 import { consumerApi } from '../../../shared/consumer-runtime'
 import { navigationUnavailableMessage } from '../../components/navigation/model'
 import { ConsumerPageLayout } from '../../components/page-layout'
+// ARCH-005 分工：本页不触碰订单原始事实字段（orderStage/paymentStatus/verificationStatus/
+// refund*/afterSaleStatus），事实→展示的推导（文案映射/空值占位/按钮可见性/缺核销码说明）
+// 全部委托 src/consumer/orders/model.ts（orderStatusBadge/orderFactRows/enabledActionLabels/
+// verifyAbsenceNotice）；页面只消费现成展示值与非事实字段（订单号/金额/预约时间窗）。
 import {
-  actionLabels, actionOrder, appointmentWindow, canShowVerifyBlock, displayStatusLabels, formatOrderInstant,
-  orderReadMessage, orderStageLabels, paymentStatusLabels, statusVariant,
-  verificationStatusLabels, PreviewOrderReadRepository, type OrderDetailView,
+  appointmentWindow, canShowVerifyBlock, orderFactRows, orderReadMessage, orderStatusBadge,
+  verifyAbsenceNotice, PreviewOrderReadRepository, type OrderDetailView,
 } from '../../orders/model'
 import { RealOrderReadRepository, isOrderReadUnauthorized } from '../../orders/repository'
 import {
@@ -87,9 +90,8 @@ function DetailScreen({ preview, scenario, orderId }: { preview: boolean; scenar
     else await Taro.redirectTo({ url: `/consumer/pages/orders/list${preview ? '?preview=1' : ''}` })
   }
   function goOrders() { void Taro.redirectTo({ url: `/consumer/pages/orders/list${preview ? '?preview=1' : ''}` }) }
-  const actions = detail?.actions ?? null
-  const enabledActions = actions ? actionOrder.filter(key => actions[key]) : []
   const ready = phase === 'ready' && detail !== null
+  const badge = detail === null ? null : orderStatusBadge(detail)
   return <ConsumerPageLayout page='orderDetail' unit={unit} className='ord-page' style={style}
     navigation={{ idPrefix: 'ord', disabled: phase === 'loading', onSelect: key => { void Taro.showToast({ title: navigationUnavailableMessage(key), icon: 'none' }) } }}>
     <View className='ord-design'>
@@ -117,34 +119,20 @@ function DetailScreen({ preview, scenario, orderId }: { preview: boolean; scenar
         <View className='ord-summary'>
           <View className='ord-card-head'>
             <Text className='ord-card-no'>订单号 {detail.orderNo}</Text>
-            <Text className={`ord-badge ${statusVariant(detail.displayStatus)}`}>{displayStatusLabels[detail.displayStatus]}</Text>
+            {badge && <Text className={`ord-badge ${badge.className}`}>{badge.label}</Text>}
           </View>
           <Text className='ord-card-time'>服务时间 {appointmentWindow(detail)}</Text>
           <Text className='ord-card-amount ord-summary-amount'>¥{detail.payAmount}</Text>
         </View>
         <View className='ord-facts'>
-          <View className='ord-fact-row'><Text className='ord-fact-label'>订单ID</Text><Text className='ord-fact-value'>{detail.orderId}</Text></View>
-          <View className='ord-fact-row'><Text className='ord-fact-label'>订单阶段</Text><Text className='ord-fact-value'>{detail.orderStage === null ? '—' : orderStageLabels[detail.orderStage]}</Text></View>
-          <View className='ord-fact-row'><Text className='ord-fact-label'>支付状态</Text><Text className='ord-fact-value'>{detail.paymentStatus === null ? '—' : paymentStatusLabels[detail.paymentStatus]}</Text></View>
-          <View className='ord-fact-row'><Text className='ord-fact-label'>支付金额</Text><Text className='ord-fact-value'>¥{detail.payAmount}</Text></View>
-          <View className='ord-fact-row'><Text className='ord-fact-label'>预约开始</Text><Text className='ord-fact-value'>{formatOrderInstant(detail.appointmentStart)}</Text></View>
-          <View className='ord-fact-row'><Text className='ord-fact-label'>预约结束</Text><Text className='ord-fact-value'>{formatOrderInstant(detail.appointmentEnd)}</Text></View>
-          <View className='ord-fact-row'><Text className='ord-fact-label'>核销状态</Text><Text className='ord-fact-value'>{detail.verificationStatus === null ? '—' : verificationStatusLabels[detail.verificationStatus]}</Text></View>
-          <View className='ord-fact-row'><Text className='ord-fact-label'>核销时间</Text><Text className='ord-fact-value'>{formatOrderInstant(detail.verifiedAt)}</Text></View>
-          <View className='ord-fact-row'><Text className='ord-fact-label'>退款申请状态</Text><Text className='ord-fact-value'>{detail.refundApplicationStatus ?? '—'}</Text></View>
-          <View className='ord-fact-row'><Text className='ord-fact-label'>退款状态</Text><Text className='ord-fact-value'>{detail.refundStatus ?? '—'}</Text></View>
-          <View className='ord-fact-row'><Text className='ord-fact-label'>售后状态</Text><Text className='ord-fact-value'>{detail.afterSaleStatus ?? '—'}</Text></View>
-          <View className='ord-fact-row'><Text className='ord-fact-label'>可用操作</Text><Text className='ord-fact-value'>{enabledActions.length === 0 ? '—' : enabledActions.map(key => actionLabels[key]).join(' / ')}</Text></View>
+          {orderFactRows(detail).map(row => <View key={row.id} className='ord-fact-row'>
+            <Text className='ord-fact-label'>{row.label}</Text>
+            <Text className='ord-fact-value'>{row.value}</Text>
+          </View>)}
         </View>
         {canShowVerifyBlock(detail)
           ? <VerifyCodeBlock key={detail.orderId} preview={preview} scenario={scenario} orderId={detail.orderId} />
-          : <View className='ord-verify-note'><Text id='ord-verify-absent'>
-              {detail.verificationStatus === 'VERIFIED'
-                ? '订单已核销完成，无需再出示核销码。'
-                : detail.verifiedAt !== null
-                  ? `已核销（${formatOrderInstant(detail.verifiedAt)}），核销码不再展示。`
-                  : '当前订单状态不支持查看核销码（以订单实时状态为准）。'}
-            </Text></View>}
+          : <View className='ord-verify-note'><Text id='ord-verify-absent'>{verifyAbsenceNotice(detail)}</Text></View>}
         <View className='ord-preview-note'><Text>{preview ? '只读预览：本地样例数据，仅用于设计验收，不发起真实请求。' : '页面数据：真实接口（订单只读 + 核销码 no-store）。'}</Text></View>
       </View>}
     </View>

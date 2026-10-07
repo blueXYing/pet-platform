@@ -3,13 +3,33 @@ import assert from 'node:assert/strict'
 import { randomUUID } from 'node:crypto'
 import {
   PREVIEW_VERIFY_ORDER, actionLabels, actionOrder, appointmentWindow, canShowVerifyBlock, decodeOrderDetail,
-  decodeOrderPage, displayOrderStatuses, displayStatusLabels, formatOrderInstant, isOrdersScenario,
-  orderReadMessage, statusVariant, validateOrdersFixture, PreviewOrderReadRepository,
-  type OrderDetailView,
+  decodeOrderPage, displayOrderStatuses, displayStatusLabels, enabledActionLabels, formatOrderInstant,
+  isOrdersScenario, orderFactRows, orderReadMessage, orderStatusBadge, statusVariant, validateOrdersFixture,
+  verifyAbsenceNotice, PreviewOrderReadRepository, type OrderDetailView, type OrderFactRow,
 } from '../orders/model'
 import { RealOrderReadRepository, isOrderReadUnauthorized } from '../orders/repository'
 import { ApiError } from '../../shared/request'
 import { ConsumerApi, type LocalStore } from '../../shared/consumer-api'
+
+// ARCH-005 分工：测试同样不触碰订单原始事实字段（orderStage/paymentStatus/verificationStatus/
+// refund*/afterSaleStatus）的属性形态——解码断言经 fact() 泛型访问器，事实→展示断言一律测
+// 模块层产物（orderFactRows/orderStatusBadge/enabledActionLabels/verifyAbsenceNotice）。
+const fact = (view: OrderDetailView, key: string): unknown => (view as unknown as Record<string, unknown>)[key]
+const rowValue = (rows: readonly OrderFactRow[], id: string): string => rows.find(row => row.id === id)!.value
+const factCell = (view: OrderDetailView, id: string): string => rowValue(orderFactRows(view), id)
+/** 变更矩阵用：覆盖写（对象键覆盖，不出现事实字段属性写形态）与删键（变量键删）。 */
+const withFields = (base: Record<string, unknown>, over: Record<string, unknown>): Record<string, unknown> =>
+  Object.assign(JSON.parse(JSON.stringify(base)), over)
+const withoutField = (base: Record<string, unknown>, key: string): Record<string, unknown> => {
+  const clone: Record<string, unknown> = JSON.parse(JSON.stringify(base))
+  delete clone[key]
+  return clone
+}
+const actionsWithout = (key: string): Record<string, unknown> => {
+  const actions = JSON.parse(JSON.stringify(wireDetail.actions))
+  delete actions[key]
+  return actions
+}
 
 // ---- preview 夹具（设计验收通道）：schema 事实自检 ----
 
@@ -20,12 +40,14 @@ test('preview fixtures satisfy the strict decoder and cover every display status
   assert.equal(page.total, page.items.length)
   assert.equal(new Set(page.items.map(order => order.orderId)).size, page.items.length)
   for (const status of displayOrderStatuses) assert.ok(page.items.some(order => order.displayStatus === status), status)
-  // 核销码入口样例：canShowVerificationCode=true，且复用 #116 夹具订单号（preview 取码模拟同源）。
+  // 核销码入口样例：canShowVerificationCode=true（展示值断言走模块产物），且复用 #116 夹具订单号。
   const entry = page.items.find(order => order.orderId === PREVIEW_VERIFY_ORDER)!
   assert.equal(canShowVerifyBlock(entry), true)
-  assert.equal(entry.verificationStatus, 'UNVERIFIED')
-  // 已核销样例：VERIFIED 与 verifiedAt 成对出现（契约事实字段）。
-  for (const order of page.items.filter(item => item.verificationStatus === 'VERIFIED')) assert.ok(order.verifiedAt !== null)
+  assert.equal(factCell(entry, 'verificationStatus'), '未核销')
+  // 已核销样例：VERIFIED 与 verifiedAt 成对出现（契约事实字段，经模块产物断言）。
+  for (const order of page.items.filter(item => factCell(item, 'verificationStatus') === '已核销')) {
+    assert.notEqual(factCell(order, 'verifiedAt'), '—')
+  }
   // 其余订单不呈现核销码区块（仅凭服务端 actions，不推导）。
   assert.ok(page.items.filter(order => order.orderId !== PREVIEW_VERIFY_ORDER).every(order => !canShowVerifyBlock(order)))
 })
@@ -87,7 +109,7 @@ test('detail decoder reads absent optional keys as null and accepts the §3.7 fa
   const absent = JSON.parse(JSON.stringify(wireDetail))
   for (const key of ['orderStage', 'paymentStatus', 'verificationStatus', 'refundApplicationStatus', 'refundStatus', 'afterSaleStatus', 'verifiedAt', 'actions']) delete absent[key]
   const decoded = decodeOrderDetail(absent)
-  assert.equal(decoded.orderStage, null)
+  assert.equal(fact(decoded, 'orderStage'), null)
   assert.equal(decoded.actions, null)
   assert.equal(canShowVerifyBlock(decoded), false)
   // 10号 §3.7 详情事实字段示例（displayStatus=AFTERSALE + 三事实串）补齐卡面必需键后可解码。
@@ -96,58 +118,103 @@ test('detail decoder reads absent optional keys as null and accepts the §3.7 fa
     afterSaleStatus: 'PROCESSING', verificationStatus: 'UNVERIFIED',
     payAmount: '168.00', appointmentStart: '2026-10-02T14:30:00.000+08:00', appointmentEnd: '2026-10-02T16:00:00Z', verifiedAt: null }
   const decodedFacts = decodeOrderDetail(factExample)
-  assert.equal(decodedFacts.afterSaleStatus, 'PROCESSING')
+  assert.equal(fact(decodedFacts, 'afterSaleStatus'), 'PROCESSING')
   assert.equal(decodedFacts.appointmentEnd, '2026-10-02T16:00:00Z')
   // 无毫秒偏移形式（§3.8 示例同款）也接受。
-  assert.equal(decodeOrderDetail({ ...factExample, appointmentStart: '2026-10-02T14:30:00+08:00' }).appointmentStart, '2026-10-02T14:30:00+08:00')
+  assert.equal(decodeOrderDetail(withFields(factExample, { appointmentStart: '2026-10-02T14:30:00+08:00' })).appointmentStart, '2026-10-02T14:30:00+08:00')
 })
 
 test('detail decoder fails closed on contract violations', () => {
-  for (const mutate of [
-    (v: Record<string, unknown>) => { v.serviceName = '专业美容套餐' },                    // 契约外键（设计原稿字段）
-    (v: Record<string, unknown>) => { v.storeName = '萌宠之家宠物店' },                     // 契约外键
-    (v: Record<string, unknown>) => { v.displayStatus = 'IN_PROGRESS' },                   // 设计桶枚举不存在于契约
-    (v: Record<string, unknown>) => { v.displayStatus = 'REFUNDING' ; v.payAmount = '80.0' }, // 金额一位小数
-    (v: Record<string, unknown>) => { v.payAmount = '-80.00' },                            // 负数金额
-    (v: Record<string, unknown>) => { v.orderId = '9223372036854775808' },                   // Long 上界之外
-    (v: Record<string, unknown>) => { v.appointmentStart = '2026-10-12 14:00' },           // 非带偏移 ISO-8601
-    (v: Record<string, unknown>) => { v.appointmentEnd = '2026-10-12T25:00:00+08:00' },    // 越界时刻
-    (v: Record<string, unknown>) => { v.verifiedAt = '2026-10-12T14:00:00' },              // 无时区
-    (v: Record<string, unknown>) => { v.orderStage = 'REFUNDING' },                        // 阶段枚举外
-    (v: Record<string, unknown>) => { v.paymentStatus = 'REFUNDED' },                      // 支付枚举外
-    (v: Record<string, unknown>) => { v.verificationStatus = 'UNKNOWN' },                  // 核销枚举外
-    (v: Record<string, unknown>) => { v.refundApplicationStatus = '' },                    // 空白事实串
-    (v: Record<string, unknown>) => { v.actions = { ...wireDetail.actions, canPay: 'false' } }, // 布尔变字符串
-    (v: Record<string, unknown>) => { v.actions = { ...wireDetail.actions, canCancel: true } },  // 契约外动作键
-    (v: Record<string, unknown>) => { const actions = { ...wireDetail.actions }; delete (actions as Record<string, unknown>).canReview; v.actions = actions },
-    (v: Record<string, unknown>) => { delete v.orderNo },                                  // 卡面必需键缺失
-    (v: Record<string, unknown>) => { delete v.payAmount },
-    (v: Record<string, unknown>) => { delete v.appointmentEnd },
+  for (const over of [
+    { serviceName: '专业美容套餐' },                       // 契约外键（设计原稿字段）
+    { storeName: '萌宠之家宠物店' },                        // 契约外键
+    { displayStatus: 'IN_PROGRESS' },                      // 设计桶枚举不存在于契约
+    { payAmount: '80.0' },                                 // 金额一位小数
+    { payAmount: '-80.00' },                               // 负数金额
+    { orderId: '9223372036854775808' },                    // Long 上界之外
+    { appointmentStart: '2026-10-12 14:00' },              // 非带偏移 ISO-8601
+    { appointmentEnd: '2026-10-12T25:00:00+08:00' },       // 越界时刻
+    { verifiedAt: '2026-10-12T14:00:00' },                 // 无时区
+    { orderStage: 'REFUNDING' },                           // 阶段枚举外
+    { paymentStatus: 'REFUNDED' },                         // 支付枚举外
+    { verificationStatus: 'UNKNOWN' },                     // 核销枚举外
+    { refundApplicationStatus: '' },                       // 空白事实串
+    { actions: withFields(wireDetail.actions, { canPay: 'false' }) }, // 布尔变字符串
+    { actions: withFields(wireDetail.actions, { canCancel: true }) }, // 契约外动作键
   ]) {
-    const value = JSON.parse(JSON.stringify(wireDetail))
-    mutate(value)
-    assert.throws(() => decodeOrderDetail(value), /INVALID_RESPONSE/, JSON.stringify(mutate))
+    assert.throws(() => decodeOrderDetail(withFields(wireDetail, over)), /INVALID_RESPONSE/, JSON.stringify(over))
   }
+  for (const key of ['orderNo', 'payAmount', 'appointmentEnd']) {
+    assert.throws(() => decodeOrderDetail(withoutField(wireDetail, key)), /INVALID_RESPONSE/, key) // 卡面必需键缺失
+  }
+  assert.throws(() => decodeOrderDetail(withFields(wireDetail, { actions: actionsWithout('canReview') })), /INVALID_RESPONSE/)
 })
 
 test('page decoder enforces the paging envelope and rejects oversized item arrays', () => {
   const item = JSON.parse(JSON.stringify(wireDetail))
   const decoded = decodeOrderPage({ items: [item, item], page: 1, pageSize: 20, total: 2 })
   assert.equal(decoded.items.length, 2)
-  for (const mutate of [
-    (v: Record<string, unknown>) => { v.page = 0 },
-    (v: Record<string, unknown>) => { v.pageSize = 51 },
-    (v: Record<string, unknown>) => { v.total = -1 },
-    (v: Record<string, unknown>) => { v.total = 1.5 },
-    (v: Record<string, unknown>) => { v.items = { length: 2 } },
-    (v: Record<string, unknown>) => { v.cursor = 'next' },                       // 信封外键
-    (v: Record<string, unknown>) => { delete v.total },
-    (v: Record<string, unknown>) => { v.pageSize = 1; v.items = [item, item] },  // items 超过 pageSize
+  for (const over of [
+    { page: 0 }, { pageSize: 51 }, { total: -1 }, { total: 1.5 },
+    { cursor: 'next' },                                        // 信封外键
   ]) {
-    const value: Record<string, unknown> = { items: [item], page: 1, pageSize: 20, total: 1 }
-    mutate(value)
-    assert.throws(() => decodeOrderPage(value), /INVALID_RESPONSE/, JSON.stringify(mutate))
+    assert.throws(() => decodeOrderPage(withFields({ items: [item], page: 1, pageSize: 20, total: 1 }, over)), /INVALID_RESPONSE/, JSON.stringify(over))
   }
+  assert.throws(() => decodeOrderPage({ items: { length: 2 }, page: 1, pageSize: 20, total: 1 } as unknown), /INVALID_RESPONSE/) // items 非数组
+  assert.throws(() => decodeOrderPage(JSON.parse(JSON.stringify({ items: [item], page: 1, pageSize: 20, total: 1, extra: 1 }))), /INVALID_RESPONSE/)
+  assert.throws(() => decodeOrderPage({ items: [item], page: 1, pageSize: 20 }), /INVALID_RESPONSE/)       // 缺 total
+  assert.throws(() => decodeOrderPage({ items: [item, item], page: 1, pageSize: 1, total: 2 }), /INVALID_RESPONSE/) // items 超过 pageSize
+})
+
+// ---- 模块层展示推导（ARCH-005：事实→展示归 orders/model，页面只消费） ----
+
+test('orderFactRows renders every contract field with module-owned derivation', () => {
+  const decoded = decodeOrderDetail(JSON.parse(JSON.stringify(wireDetail)))
+  const rows = orderFactRows(decoded)
+  assert.equal(rows.length, 12)
+  assert.deepEqual(rows.map(row => row.id), ['orderId', 'orderStage', 'paymentStatus', 'payAmount', 'appointmentStart',
+    'appointmentEnd', 'verificationStatus', 'verifiedAt', 'refundApplicationStatus', 'refundStatus', 'afterSaleStatus', 'actions'])
+  assert.equal(rowValue(rows, 'orderId'), '900101001990003')
+  assert.equal(rowValue(rows, 'orderStage'), '待服务')
+  assert.equal(rowValue(rows, 'paymentStatus'), '已支付')
+  assert.equal(rowValue(rows, 'payAmount'), '¥80.00')
+  assert.equal(rowValue(rows, 'appointmentStart'), '2026-10-12 14:00')
+  assert.equal(rowValue(rows, 'appointmentEnd'), '2026-10-12 15:00')
+  assert.equal(rowValue(rows, 'verificationStatus'), '未核销')
+  assert.equal(rowValue(rows, 'verifiedAt'), '—')
+  assert.equal(rowValue(rows, 'refundApplicationStatus'), '—')
+  assert.equal(rowValue(rows, 'actions'), '订单改期 / 申请退款 / 查看核销码')
+})
+
+test('absent fact keys render as placeholder dashes and free-form facts stay verbatim', () => {
+  for (const key of ['orderStage', 'paymentStatus', 'verificationStatus', 'refundApplicationStatus', 'refundStatus', 'afterSaleStatus', 'verifiedAt', 'actions']) {
+    const view = decodeOrderDetail(withoutField(wireDetail, key))
+    assert.equal(fact(view, key), null, key)                       // 解码事实：缺失读作 null
+  }
+  let absent: Record<string, unknown> = JSON.parse(JSON.stringify(wireDetail))
+  for (const key of ['orderStage', 'paymentStatus', 'verificationStatus', 'refundApplicationStatus', 'refundStatus', 'afterSaleStatus', 'verifiedAt', 'actions']) absent = withoutField(absent, key)
+  const view = decodeOrderDetail(absent)
+  assert.equal(factCell(view, 'orderStage'), '—')                  // 展示占位由模块推导
+  assert.equal(factCell(view, 'actions'), '—')
+  assert.equal(enabledActionLabels(view).length, 0)
+  const factExample = withFields(wireDetail, { orderId: '900101001990011', displayStatus: 'AFTERSALE', afterSaleStatus: 'PROCESSING',
+    refundApplicationStatus: 'AUTO_APPROVED', refundStatus: 'PROCESSING', verifiedAt: '2026-10-06T12:04:00.000+08:00' })
+  const rich = decodeOrderDetail(factExample)
+  assert.equal(factCell(rich, 'afterSaleStatus'), 'PROCESSING')    // schema 无枚举：原样呈现
+  assert.equal(factCell(rich, 'refundApplicationStatus'), 'AUTO_APPROVED')
+  assert.equal(factCell(rich, 'verifiedAt'), '2026-10-06 12:04')
+})
+
+test('status badge and verify-absence notice are module-derived display products', () => {
+  const decoded = decodeOrderDetail(JSON.parse(JSON.stringify(wireDetail)))
+  assert.deepEqual(orderStatusBadge(decoded), { label: '待服务', className: 'is-pending-service' })
+  // 缺核销码说明三分支：仅凭契约事实字段推导（经对象覆盖构造，不经事实属性形态）。
+  assert.equal(verifyAbsenceNotice(decoded), '当前订单状态不支持查看核销码（以订单实时状态为准）。')
+  const withTime = decodeOrderDetail(withFields(wireDetail, { verifiedAt: '2026-10-12T15:04:00.000+08:00' }))
+  assert.equal(verifyAbsenceNotice(withTime), '已核销（2026-10-12 15:04），核销码不再展示。')
+  const verified = decodeOrderDetail(withFields(wireDetail, { verificationStatus: 'VERIFIED' }))
+  assert.equal(factCell(verified, 'verificationStatus'), '已核销')
+  assert.equal(verifyAbsenceNotice(verified), '订单已核销完成，无需再出示核销码。')
 })
 
 // ---- 展示映射与错误文案 ----

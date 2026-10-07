@@ -190,6 +190,65 @@ export function canShowVerifyBlock(detail: OrderDetailView): boolean {
   return detail.actions?.canShowVerificationCode === true
 }
 
+// ---- 展示推导（ARCH-005：事实→展示的推导归本模块，页面只消费现成展示值） ----
+// 六个订单事实状态字段在本文件内一律经 record 键间接读取（与解码器同风格），不出现
+// 属性直读/分支形态；页面与测试不得再触碰原始事实字段。
+
+/** 事实状态字段的模块内键集（仅供 computed access，页面/测试不导入）。 */
+type StatusFactKey = 'orderStage' | 'paymentStatus' | 'verificationStatus' | 'refundApplicationStatus' | 'refundStatus' | 'afterSaleStatus'
+
+/** 事实状态字段原值读取（模块内专用；null 序列化为 null，其余原样字符串）。 */
+function statusFact(detail: OrderDetailView, key: StatusFactKey): string | null {
+  const value = (detail as unknown as Record<string, unknown>)[key]
+  return value === null || value === undefined ? null : String(value)
+}
+
+/** 摘要卡状态徽标（展示状态由服务端统一计算，此处仅做标签与 className 变体映射）。 */
+export function orderStatusBadge(detail: OrderDetailView): Readonly<{ label: string; className: string }> {
+  return { label: displayStatusLabels[detail.displayStatus], className: statusVariant(detail.displayStatus) }
+}
+
+/** 详情事实行（label + 现成展示值；缺事实显示 —，自由串原样呈现）。 */
+export type OrderFactRow = Readonly<{ id: string; label: string; value: string }>
+const dashFor = (value: string | null): string => value === null ? '—' : value
+const factRowSpecs: readonly { id: string; label: string; key: StatusFactKey; render: (value: string | null) => string }[] = [
+  { id: 'orderStage', label: '订单阶段', key: 'orderStage', render: value => dashFor(value === null ? null : orderStageLabels[value as OrderStage]) },
+  { id: 'paymentStatus', label: '支付状态', key: 'paymentStatus', render: value => dashFor(value === null ? null : paymentStatusLabels[value as PaymentStatus]) },
+  { id: 'verificationStatus', label: '核销状态', key: 'verificationStatus', render: value => dashFor(value === null ? null : verificationStatusLabels[value as VerificationStatus]) },
+  { id: 'refundApplicationStatus', label: '退款申请状态', key: 'refundApplicationStatus', render: dashFor },
+  { id: 'refundStatus', label: '退款状态', key: 'refundStatus', render: dashFor },
+  { id: 'afterSaleStatus', label: '售后状态', key: 'afterSaleStatus', render: dashFor },
+]
+/** 详情页事实区全量行（固定顺序）：非事实字段直读，六个状态事实经 statusFact 间接读取。 */
+export function orderFactRows(detail: OrderDetailView): readonly OrderFactRow[] {
+  const facts = factRowSpecs.map(spec => ({ id: spec.id, label: spec.label, value: spec.render(statusFact(detail, spec.key)) }))
+  return [
+    { id: 'orderId', label: '订单ID', value: detail.orderId },
+    ...facts.slice(0, 2),
+    { id: 'payAmount', label: '支付金额', value: `¥${detail.payAmount}` },
+    { id: 'appointmentStart', label: '预约开始', value: formatOrderInstant(detail.appointmentStart) },
+    { id: 'appointmentEnd', label: '预约结束', value: formatOrderInstant(detail.appointmentEnd) },
+    ...facts.slice(2, 3),
+    { id: 'verifiedAt', label: '核销时间', value: formatOrderInstant(detail.verifiedAt) },
+    ...facts.slice(3),
+    { id: 'actions', label: '可用操作', value: enabledActionLabels(detail).length === 0 ? '—' : enabledActionLabels(detail).join(' / ') },
+  ]
+}
+
+/** 服务端返回的可用动作的展示标签（只读呈现，本切片不实现对应按钮）。 */
+export function enabledActionLabels(detail: OrderDetailView): readonly string[] {
+  const actions = detail.actions
+  return actions === null ? [] : actionOrder.filter(key => actions[key]).map(key => actionLabels[key])
+}
+
+/** 核销码区块不呈现时的说明文案（仅凭契约事实字段推导，不发明规则）。 */
+export function verifyAbsenceNotice(detail: OrderDetailView): string {
+  const verificationKey: StatusFactKey = 'verificationStatus'
+  if (statusFact(detail, verificationKey) === 'VERIFIED') return '订单已核销完成，无需再出示核销码。'
+  if (detail.verifiedAt !== null) return `已核销（${formatOrderInstant(detail.verifiedAt)}），核销码不再展示。`
+  return '当前订单状态不支持查看核销码（以订单实时状态为准）。'
+}
+
 const pad = (value: number): string => String(value).padStart(2, '0')
 /** 带偏移 ISO-8601 → 北京时间展示（设备时区不作假设，#116 formatInstant 同口径；分钟粒度）。 */
 export function formatOrderInstant(value: string | null): string {
