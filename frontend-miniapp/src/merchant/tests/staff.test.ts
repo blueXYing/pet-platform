@@ -3,12 +3,18 @@ import assert from 'node:assert/strict'
 import { randomUUID } from 'node:crypto'
 import { ApiError } from '../../shared/request'
 import { ConsumerApi, isStaffInvitationPath, type LocalStore } from '../../shared/consumer-api'
-import { StaffInvitationController, type StaffInvitationState } from '../staff/controller'
+import {
+  StaffInvitationController, StaffInvitationListController, type StaffInvitationListState,
+  type StaffInvitationState,
+} from '../staff/controller'
 import { StaffWorkbenchController } from '../staff/workbench'
 import {
-  decodeStaffConfirmReceipt, decodeStaffInvitationDetail, invitationTagClass, isInvitationId,
-  memberStateClass, staffActionText, staffInvitationAvailability, staffInvitationMessage,
+  decodeStaffConfirmReceipt, decodeStaffInvitationDetail, decodeStaffInvitationPage,
+  invitationTagClass, isInvitationId, memberStateClass, staffActionText,
+  staffInvitationAvailability, staffInvitationListAvailability, staffInvitationListMessage,
+  staffInvitationMessage,
   type StaffConfirmReceipt, type StaffInvitationDetail, type StaffInvitationDeps,
+  type StaffInvitationListDeps, type StaffInvitationPage, type StaffInvitationSummary,
 } from '../staff/model'
 import type { MerchantAdmission } from '../../shared/merchant-repositories'
 
@@ -41,6 +47,30 @@ class FakeStaffInvitationRepository implements StaffInvitationDeps {
     this.confirms.push([slot, invitationId])
     return this.confirmResult
   }
+}
+
+const summary: StaffInvitationSummary = {
+  invitationId: '930000000000301', merchantId: '910000000000101', merchantName: '小李宠物店',
+  storeId: '910000000000102', storeName: '小李宠物店·总店', memberName: '李小美',
+  grantedActions: ['merchant.order.verify'], status: 'INVITED',
+  invitedAt: '2026-10-06T08:00:00.000Z', updatedAt: '2026-10-06T08:00:00.000Z',
+}
+const page: StaffInvitationPage = { items: [summary], page: 1, pageSize: 20, total: 1 }
+
+class FakeStaffInvitationListRepository implements StaffInvitationListDeps {
+  pages: Array<[number, number]> = []
+  results: StaffInvitationPage[] = [page]
+  failWith: Error | null = null
+  async list(requestedPage: number, requestedPageSize: number) {
+    if (this.failWith) { const e = this.failWith; this.failWith = null; throw e }
+    this.pages.push([requestedPage, requestedPageSize])
+    return this.results[Math.min(this.pages.length - 1, this.results.length - 1)]
+  }
+}
+
+async function settledList(controller: StaffInvitationListController): Promise<StaffInvitationListState> {
+  await new Promise(resolve => setTimeout(resolve, 0))
+  return controller.getSnapshot()
 }
 
 async function settled(controller: StaffInvitationController): Promise<StaffInvitationState> {
@@ -105,6 +135,84 @@ test('per-error-code Chinese mapping for the employee read+confirm channel', () 
   assert.equal(staffInvitationAvailability(new ApiError('COMMON_CONFLICT', 409)), 'ok')
   assert.equal(staffInvitationAvailability(new ApiError('COMMON_UNAUTHORIZED', 401)), 'ok')
   assert.equal(staffInvitationAvailability(new Error('INVALID_RESPONSE')), 'ok')
+})
+
+test('decoders enforce the exact contract-54 §7 list shapes (no phone in any form)', () => {
+  assert.ok(decodeStaffInvitationPage(wire(page)))
+  for (const mutate of [
+    (v: Record<string, any>) => { (v.items[0] as Record<string, any>).phoneMasked = '139****1111' },
+    (v: Record<string, any>) => { (v.items[0] as Record<string, any>).phone = '13900001111' },
+    (v: Record<string, any>) => { delete (v.items[0] as Record<string, any>).invitedAt },
+    (v: Record<string, any>) => { (v.items[0] as Record<string, any>).invitedAt = '2026-10-06T08:00Z' },
+    (v: Record<string, any>) => { (v.items[0] as Record<string, any>).status = 'EXPIRED' },
+    (v: Record<string, any>) => { (v.items[0] as Record<string, any>).merchantId = 'abc' },
+    (v: Record<string, any>) => { (v.items[0] as Record<string, any>).grantedActions = [] },
+    (v: Record<string, any>) => { v.total = -1 },
+    (v: Record<string, any>) => { v.pageSize = 51 },
+    (v: Record<string, any>) => { v.extra = 1 },
+  ]) {
+    const value = wire(page)
+    mutate(value)
+    assert.throws(() => decodeStaffInvitationPage(value), /INVALID_RESPONSE/)
+  }
+})
+
+test('list message mapping and fail-closed classification for the §7 channel', () => {
+  assert.match(staffInvitationListMessage(new ApiError('COMMON_UNAUTHORIZED', 401)), /登录已失效/)
+  assert.match(staffInvitationListMessage(new ApiError('COMMON_INVALID_ARGUMENT', 400)), /分页参数/)
+  assert.match(staffInvitationListMessage(new ApiError('COMMON_DEPENDENCY_UNAVAILABLE', 503)), /暂不可用/)
+  assert.match(staffInvitationListMessage(new Error('INVALID_RESPONSE')), /加载失败/)
+  // Switch-off 404 (route absent) and dependency 503 close the block; 401/400 stay retryable.
+  assert.equal(staffInvitationListAvailability(new ApiError('COMMON_NOT_FOUND', 404)), 'closed')
+  assert.equal(staffInvitationListAvailability(new ApiError('COMMON_DEPENDENCY_UNAVAILABLE', 503)), 'closed')
+  assert.equal(staffInvitationListAvailability(new ApiError('COMMON_UNAUTHORIZED', 401)), 'ok')
+  assert.equal(staffInvitationListAvailability(new Error('INVALID_RESPONSE')), 'ok')
+})
+
+test('list controller loads the first page, appends more and keeps the fixed order', async () => {
+  const deps = new FakeStaffInvitationListRepository()
+  const confirmed: StaffInvitationSummary = { ...summary, invitationId: '930000000000291', status: 'CONFIRMED' }
+  deps.results = [{ items: [summary], page: 1, pageSize: 1, total: 2 }, { items: [confirmed], page: 2, pageSize: 1, total: 2 }]
+  const controller = new StaffInvitationListController(deps)
+  await controller.load(1)
+  let state = await settledList(controller)
+  assert.equal(state.status, 'ready')
+  assert.deepEqual(state.items.map(item => item.invitationId), ['930000000000301'])
+  assert.equal(state.total, 2)
+
+  await controller.loadMore()
+  state = await settledList(controller)
+  assert.deepEqual(state.items.map(item => item.invitationId), ['930000000000301', '930000000000291'])
+  assert.deepEqual(deps.pages, [[1, 1], [2, 1]])
+  // No more requests once the matched subset is exhausted.
+  await controller.loadMore()
+  await settledList(controller)
+  assert.deepEqual(deps.pages, [[1, 1], [2, 1]])
+  controller.dispose()
+})
+
+test('list controller fails closed on switch-off/dependency faults and recovers on retry', async () => {
+  const deps = new FakeStaffInvitationListRepository()
+  const controller = new StaffInvitationListController(deps)
+  deps.failWith = new ApiError('COMMON_NOT_FOUND', 404)
+  await controller.load()
+  let state = await settledList(controller)
+  assert.equal(state.status, 'error')
+  assert.equal(state.closed, true)
+  assert.deepEqual(state.items, [])
+
+  deps.failWith = new ApiError('COMMON_UNAUTHORIZED', 401)
+  await controller.load()
+  state = await settledList(controller)
+  assert.equal(state.status, 'error')
+  assert.equal(state.closed, false)
+  assert.match(state.notice, /登录已失效/)
+
+  await controller.load()
+  state = await settledList(controller)
+  assert.equal(state.status, 'ready')
+  assert.equal(state.total, 1)
+  controller.dispose()
 })
 
 test('controller loads one invitation, confirms it and folds to the terminal state', async () => {
@@ -236,12 +344,16 @@ function apiHarness(extra: (path: string) => { statusCode: number; data: unknown
 
 test('staff invitation routes are identity-scoped and callable from merchant coordinates; other /c routes are not', async () => {
   const h = apiHarness(path => {
+    if (path === '/api/v1/c/staff/invitations') return ok(wire(page))
     if (path === '/api/v1/c/staff/invitations/930000000000301') return ok(wire(detail))
     if (path === '/api/v1/c/staff/invitations/930000000000301/confirm') return ok(wire(receipt))
     return ok(null)
   })
   await h.api.restore()
   h.api.scope.replace({ userId: '101', workspace: 'merchant', merchantId: '910000000000101', storeId: '910000000000102' })
+  const listed = await h.api.request({ method: 'GET', path: '/api/v1/c/staff/invitations', data: { page: 1, pageSize: 20 } }, decodeStaffInvitationPage)
+  assert.equal(listed.total, 1)
+  assert.equal(listed.items[0].invitationId, summary.invitationId)
   const loaded = await h.api.request({ method: 'GET', path: '/api/v1/c/staff/invitations/930000000000301' }, decodeStaffInvitationDetail)
   assert.equal(loaded.storeName, detail.storeName)
   const confirmed = await h.api.write('staff-invitation:930000000000301:confirm',
@@ -249,13 +361,18 @@ test('staff invitation routes are identity-scoped and callable from merchant coo
   assert.equal(confirmed.memberId, receipt.memberId)
   const readCall = h.calls.find(call => call.path === '/api/v1/c/staff/invitations/930000000000301')!
   const confirmCall = h.calls.find(call => call.path === '/api/v1/c/staff/invitations/930000000000301/confirm')!
-  // The read carries no query bytes and the confirm carries no merchant coordinates — identity only.
+  const listCall = h.calls.find(call => call.path === '/api/v1/c/staff/invitations')!
+  // The list carries paging only, the read no query bytes and the confirm no merchant
+  // coordinates — identity stays server-side on all three routes.
+  assert.deepEqual(listCall.data, { page: 1, pageSize: 20 })
   assert.equal(readCall.data, undefined)
   assert.deepEqual(confirmCall.data, {})
   await assert.rejects(h.api.request({ method: 'GET', path: '/api/v1/c/profile' }, v => v), /WORKSPACE_PATH_MISMATCH/)
+  assert.equal(isStaffInvitationPath('/api/v1/c/staff/invitations'), true)
   assert.equal(isStaffInvitationPath('/api/v1/c/staff/invitations/930000000000301'), true)
   assert.equal(isStaffInvitationPath('/api/v1/c/staff/invitations/930000000000301/confirm'), true)
   assert.equal(isStaffInvitationPath('/api/v1/c/staff/invitations/abc'), false)
   assert.equal(isStaffInvitationPath('/api/v1/c/staff/invitations/930000000000301/cancel'), false)
+  assert.equal(isStaffInvitationPath('/api/v1/c/staff/invitations/930000000000301/confirm/x'), false)
   assert.equal(isStaffInvitationPath('/api/v1/c/profile'), false)
 })

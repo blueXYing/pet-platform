@@ -1,5 +1,8 @@
 import { ConsumerApi } from '../../shared/consumer-api'
-import { decodeStaffConfirmReceipt, decodeStaffInvitationDetail, type StaffInvitationDeps } from './model'
+import {
+  decodeStaffConfirmReceipt, decodeStaffInvitationDetail, decodeStaffInvitationPage,
+  type StaffInvitationDeps, type StaffInvitationListDeps,
+} from './model'
 
 /**
  * Real wiring for the contract-54 employee-side invitation routes (CStaffInvitationController,
@@ -11,7 +14,7 @@ import { decodeStaffConfirmReceipt, decodeStaffInvitationDetail, type StaffInvit
  * merchant/store coordinates at all. Confirm is a journaled per-slot X-Request-Id command via
  * ConsumerApi.write so retries replay the same requestId (54 §2 idempotency).
  */
-export class RealStaffInvitationRepository implements StaffInvitationDeps {
+export class RealStaffInvitationRepository implements StaffInvitationDeps, StaffInvitationListDeps {
   constructor(private api: ConsumerApi) {}
 
   /** GET with no query bytes — the controller rejects any request parameter. */
@@ -25,5 +28,12 @@ export class RealStaffInvitationRepository implements StaffInvitationDeps {
     return this.api.write(slot, {
       method: 'POST', path: `/api/v1/c/staff/invitations/${invitationId}/confirm`, data: {},
     }, decodeStaffConfirmReceipt)
+  }
+
+  /** §7 list: identity-scoped paging only (server-side phone match, fixed id DESC order). */
+  list(page: number, pageSize: number) {
+    return this.api.request(
+      { method: 'GET', path: '/api/v1/c/staff/invitations', data: { page, pageSize } },
+      decodeStaffInvitationPage)
   }
 }

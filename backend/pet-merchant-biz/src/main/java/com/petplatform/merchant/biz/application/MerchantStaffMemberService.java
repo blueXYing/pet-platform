@@ -18,15 +18,19 @@ import com.petplatform.merchant.api.command.StaffMemberLifecycleCommand;
 import com.petplatform.merchant.api.dto.MerchantStaffInvitationCommandResult;
 import com.petplatform.merchant.api.dto.MerchantStaffInvitationDTO;
 import com.petplatform.merchant.api.dto.MerchantStaffInvitationDetailDTO;
+import com.petplatform.merchant.api.dto.MerchantStaffInvitationListPageDTO;
 import com.petplatform.merchant.api.dto.MerchantStaffInvitationPageDTO;
+import com.petplatform.merchant.api.dto.MerchantStaffInvitationSummaryDTO;
 import com.petplatform.merchant.api.dto.MerchantStaffMemberCommandResult;
 import com.petplatform.merchant.api.dto.MerchantStaffMemberDTO;
 import com.petplatform.merchant.api.dto.MerchantStaffMemberPageDTO;
+import com.petplatform.merchant.api.query.MyStaffInvitationPageQuery;
 import com.petplatform.merchant.api.query.MyStaffInvitationQuery;
 import com.petplatform.merchant.api.query.StaffInvitationManagementQuery;
 import com.petplatform.merchant.api.query.StaffMemberManagementQuery;
 import com.petplatform.merchant.biz.infrastructure.persistence.MerchantAgreementStore;
 import com.petplatform.merchant.biz.infrastructure.persistence.MerchantStaffMemberStore;
+import com.petplatform.merchant.biz.infrastructure.persistence.entity.MerchantActionRefEntity;
 import com.petplatform.merchant.biz.infrastructure.persistence.entity.MerchantAgreementDocumentEntity;
 import com.petplatform.merchant.biz.infrastructure.persistence.entity.MerchantMemberGrantScopeEntity;
 import com.petplatform.merchant.biz.infrastructure.persistence.entity.MerchantMemberInvitationEntity;
@@ -623,6 +627,73 @@ public final class MerchantStaffMemberService {
                     Long.toUnsignedString(invitation.getStoreId()), fact.getStoreName(),
                     invitation.getMemberName(), actions, invitation.getStatus());
         });
+    }
+
+    /**
+     * Contract 54 §7 employee-side list, user ruling 2026-10-07 (indexed seek path): the session
+     * account's verified phone is read once through the purpose-bound port and used purely as
+     * the in-memory bind of the indexed lookup (idx_mer_member_inv_phone: phone equality +
+     * id DESC backward-scan pagination). A session without a phone fact — or whose phone simply
+     * has no invitations — reads the very same empty page, so neither existence nor the row
+     * count is ever disclosed. Projections carry no phone in any form.
+     */
+    public MerchantStaffInvitationListPageDTO listMyInvitations(MyStaffInvitationPageQuery query) {
+        if (query == null) invalid();
+        if (query.page() < 1 || query.page() > 10_000 || query.pageSize() < 1 || query.pageSize() > 50)
+            invalid();
+        Principal principal = readPrincipal(query.context());
+        // Anti-enumeration: no readable session phone reads exactly like "no invitations".
+        String phone = loginPhones.sessionUserPhone(principal.actorId());
+        if (phone == null || !PHONE.matcher(phone).matches()) {
+            return new MerchantStaffInvitationListPageDTO(List.of(), query.page(), query.pageSize(), 0);
+        }
+        return store.read((mapper, agreements) -> {
+            long total = mapper.countInvitationRowsByPhone(phone);
+            int from = (int) Math.min((query.page() - 1L) * query.pageSize(), total);
+            int to = (int) Math.min(from + (long) query.pageSize(), total);
+            List<MerchantMemberInvitationEntity> slice =
+                    from >= to ? List.of() : mapper.listInvitationRowsByPhone(phone,
+                            query.pageSize(), from);
+            List<Long> sliceIds = new ArrayList<>(slice.size());
+            for (MerchantMemberInvitationEntity row : slice) sliceIds.add(row.getId());
+            Map<Long, List<String>> actionSets = new LinkedHashMap<>();
+            if (!sliceIds.isEmpty()) {
+                for (MerchantActionRefEntity ref : mapper.listInvitationActionsByIds(sliceIds)) {
+                    if (ref.getOwnerId() == null || ref.getActionCode() == null) continue;
+                    actionSets.computeIfAbsent(ref.getOwnerId(), key -> new ArrayList<>())
+                            .add(ref.getActionCode());
+                }
+            }
+            List<MerchantStaffInvitationSummaryDTO> items = new ArrayList<>(slice.size());
+            for (MerchantMemberInvitationEntity row : slice) {
+                items.add(projectMyInvitation(mapper, row, actionSets.get(row.getId())));
+            }
+            return new MerchantStaffInvitationListPageDTO(List.copyOf(items), query.page(),
+                    query.pageSize(), total);
+        });
+    }
+
+    /** §7 row projection: same disclosure family as the confirm-page detail plus timestamps. */
+    private MerchantStaffInvitationSummaryDTO projectMyInvitation(MerchantStaffMemberMapper mapper,
+            MerchantMemberInvitationEntity invitation, List<String> actions) {
+        validateInvitationFacts(invitation);
+        if (invitation.getCreatedAt() == null || invitation.getUpdatedAt() == null)
+            unavailable("invitation time facts are damaged");
+        MerchantStoreFactEntity fact =
+                mapper.selectStoreFact(invitation.getMerchantId(), invitation.getStoreId());
+        if (fact == null || !Objects.equals(fact.getMerchantId(), invitation.getMerchantId())
+                || !Objects.equals(fact.getStoreId(), invitation.getStoreId())
+                || fact.getMerchantName() == null || fact.getMerchantName().isEmpty()
+                || fact.getStoreName() == null || fact.getStoreName().isEmpty())
+            unavailable("invitation merchant facts are damaged");
+        List<String> codes = catalogCodes(actions == null ? List.of() : actions);
+        return new MerchantStaffInvitationSummaryDTO(
+                Long.toUnsignedString(invitation.getId()),
+                Long.toUnsignedString(invitation.getMerchantId()), fact.getMerchantName(),
+                Long.toUnsignedString(invitation.getStoreId()), fact.getStoreName(),
+                invitation.getMemberName(), codes, invitation.getStatus(),
+                invitation.getCreatedAt().atOffset(ZoneOffset.UTC),
+                invitation.getUpdatedAt().atOffset(ZoneOffset.UTC));
     }
 
     // ------------------------------------------------------------------ shared plumbing

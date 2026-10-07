@@ -315,6 +315,62 @@ def check_notification_preferences(spec, operation, method, path):
     assert set(update['required']) == {'interactionEnabled', 'externalPushEnabled'}, 'Preference update must be a full two-switch PUT'
 
 
+# Staff invitation list (contract 54 §7 slice, 2026-10-07): the employee-side self-service
+# list closes the offline-number-only gap left by the confirm channel. The session's verified
+# account phone is matched server-side (never crossing the user module in plaintext); a
+# non-matching session reads the same empty page — anti-enumeration is pinned by schema shape:
+# the summary carries no phone field in any form. Read-only family: Error12 §2 subset without
+# the idempotency/conflict pair; fixed id DESC ordering; query surface is exactly page/pageSize.
+STAFF_INVITATION_LIST_OPERATIONS = {
+    'cListMyStaffInvitations': (
+        'get', '/c/staff/invitations',
+        ('200', '400', '401', '503')),
+}
+
+
+def check_staff_invitation_list(spec, operation, method, path):
+    name = operation['operationId']
+    expected_method, expected_path, required_codes = STAFF_INVITATION_LIST_OPERATIONS[name]
+    assert (method, path) == (expected_method, expected_path), f'Staff invitation list operation moved: {name}'
+    assert operation.get('security') == [{'bearerAuth': []}], f'Staff invitation list security changed: {name}'
+    assert operation.get('x-implementation-status') == 'IMPLEMENTED_DEFAULT_OFF', f'Staff invitation list status changed: {name}'
+    assert operation.get('x-default-enabled') is False, f'Staff invitation list must stay default off: {name}'
+    assert operation.get('x-contract') == '54-Merchant-Staff-Binding-Contract-v0.1.md', f'Staff invitation list authority changed: {name}'
+    assert operation.get('x-route-party') == 'USER' and operation.get('x-audience') == 'MINIAPP', f'Staff invitation list identity changed: {name}'
+    assert 'requestBody' not in operation, f'Staff invitation list must stay bodyless: {name}'
+    responses = operation['responses']
+    assert set(responses) == set(required_codes), f'Staff invitation list response surface changed: {name}'
+    for code in responses:
+        response = dereference(spec, responses[code])
+        cache = response['headers']['Cache-Control']['schema']
+        assert cache == {'type': 'string', 'enum': ['no-store']}, f'Staff invitation list caching changed: {name} {code}'
+        schema = response['content']['application/json']['schema']
+        expected = {'$ref': '#/components/schemas/StaffInvitationErrorEnvelope'} if code != '200'             else {'$ref': '#/components/schemas/StaffInvitationPageEnvelope'}
+        assert schema == expected, f'Staff invitation list envelope changed: {name} {code}'
+    params = {p['name']: p for p in operation.get('parameters', []) if p.get('in') == 'query'}
+    assert set(params) == {'page', 'pageSize'}, f'Staff invitation list query opened: {name}'
+    assert params['page']['schema'] == {'type': 'integer', 'minimum': 1, 'maximum': 10000, 'default': 1}, 'Staff invitation page range changed'
+    assert params['pageSize']['schema'] == {'type': 'integer', 'minimum': 1, 'maximum': 50, 'default': 20}, 'Staff invitation page size changed'
+    summary = spec['components']['schemas']['StaffInvitationSummary']
+    assert summary.get('additionalProperties') is False, 'Staff invitation summary opened'
+    assert set(summary['required']) == {'invitationId', 'merchantId', 'merchantName', 'storeId',
+                                        'storeName', 'memberName', 'grantedActions', 'status',
+                                        'invitedAt', 'updatedAt'}, 'Staff invitation summary fields changed'
+    assert set(summary['properties']) == set(summary['required']), 'Staff invitation summary fields changed'
+    assert not any('phone' in key for key in summary['properties']), 'Staff invitation summary must never carry a phone field'
+    assert summary['properties']['status']['enum'] == ['INVITED', 'CANCELED', 'CONFIRMED'], 'Staff invitation status machine changed'
+    assert summary['properties']['grantedActions']['items']['enum'] == ['merchant.order.verify'], 'Staff invitation action catalog changed'
+    for field in ('invitedAt', 'updatedAt'):
+        assert summary['properties'][field] == {'type': 'string', 'format': 'date-time', 'x-precision': 'milliseconds'}, f'Staff invitation time precision changed: {field}'
+    page = spec['components']['schemas']['StaffInvitationPageData']
+    assert page.get('additionalProperties') is False, 'Staff invitation page data opened'
+    assert set(page['required']) == {'items', 'page', 'pageSize', 'total'}, 'Staff invitation page fields changed'
+    assert page['properties']['pageSize'] == {'type': 'integer', 'minimum': 1, 'maximum': 50}, 'Staff invitation page size schema changed'
+    envelope = spec['components']['schemas']['StaffInvitationErrorEnvelope']
+    assert envelope['properties']['code']['enum'] == ['COMMON_INVALID_ARGUMENT', 'COMMON_UNAUTHORIZED',
+                                                      'COMMON_INTERNAL_ERROR', 'COMMON_DEPENDENCY_UNAVAILABLE'], 'Staff invitation error codes changed'
+
+
 def check_verification_http(spec, operation, method, path):
     name = operation['operationId']
     expected_method, expected_path, required_codes = VERIFICATION_HTTP_OPERATIONS[name]
@@ -847,6 +903,8 @@ def check(spec):
                 check_coupon_points_read(spec, operation, method, path)
             if operation_id in NOTIFICATION_PREFERENCE_OPERATIONS:
                 check_notification_preferences(spec, operation, method, path)
+            if operation_id in STAFF_INVITATION_LIST_OPERATIONS:
+                check_staff_invitation_list(spec, operation, method, path)
             if method in {'post', 'put', 'patch', 'delete'}:
                 assert {'$ref': '#/components/parameters/RequestId'} in parameters, f'Missing request ID: {operation_id}'
                 writes += 1
@@ -860,7 +918,7 @@ def check(spec):
     assert legacy_seen == LEGACY_OPERATIONS.keys(), f'Legacy operations missing: {LEGACY_OPERATIONS.keys() - legacy_seen}'
     assert legacy_writes == 11, 'Legacy write surface changed'
     assert legacy_creates == LEGACY_CREATES, 'Legacy create surface changed'
-    assert operations == LEGACY_OPERATIONS.keys() | AUTH_OPERATIONS.keys() | MERCHANT_OPERATIONS.keys() | APPLICATION_OPERATIONS.keys() | PRIVATE_ASSET_OPERATIONS.keys() | SERVICE_CATALOG_OPERATIONS.keys() | STORE_CATALOG_OPERATIONS.keys() | SERVICE_WRITE_OPERATIONS.keys() | SCHEDULE_AVAILABILITY_OPERATIONS.keys() | SCHEDULE_WRITE_OPERATIONS.keys() | CREDENTIAL_OPERATIONS.keys() | AFTERSALE_OPERATIONS.keys() | COUPON_POINTS_READ_OPERATIONS.keys() | VERIFICATION_HTTP_OPERATIONS.keys() | NOTIFICATION_PREFERENCE_OPERATIONS.keys(), 'Unexpected or missing reviewed operations'
+    assert operations == LEGACY_OPERATIONS.keys() | AUTH_OPERATIONS.keys() | MERCHANT_OPERATIONS.keys() | APPLICATION_OPERATIONS.keys() | PRIVATE_ASSET_OPERATIONS.keys() | SERVICE_CATALOG_OPERATIONS.keys() | STORE_CATALOG_OPERATIONS.keys() | SERVICE_WRITE_OPERATIONS.keys() | SCHEDULE_AVAILABILITY_OPERATIONS.keys() | SCHEDULE_WRITE_OPERATIONS.keys() | CREDENTIAL_OPERATIONS.keys() | AFTERSALE_OPERATIONS.keys() | COUPON_POINTS_READ_OPERATIONS.keys() | VERIFICATION_HTTP_OPERATIONS.keys() | NOTIFICATION_PREFERENCE_OPERATIONS.keys() | STAFF_INVITATION_LIST_OPERATIONS.keys(), 'Unexpected or missing reviewed operations'
     schemes = spec['components']['securitySchemes']
     assert schemes['bearerAuth']['type'] == 'http' and schemes['bearerAuth']['scheme'] == 'bearer'
     for scheme, location, name in [('authAttempt', 'header', 'X-Auth-Attempt'),
@@ -910,6 +968,7 @@ def check(spec):
             'verificationHttpOperations': len(operations & VERIFICATION_HTTP_OPERATIONS.keys()),
             'serviceWriteOperations': len(operations & SERVICE_WRITE_OPERATIONS.keys()),
             'storeCatalogOperations': len(operations & STORE_CATALOG_OPERATIONS.keys()),
+            'staffInvitationListOperations': len(operations & STAFF_INVITATION_LIST_OPERATIONS.keys()),
             'resolvedRefs': len(refs), 'stringIdProperties': ids}
 
 

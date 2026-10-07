@@ -12,10 +12,12 @@ import com.petplatform.merchant.api.command.MerchantStaffMemberCommandApi;
 import com.petplatform.merchant.api.command.StaffMemberLifecycleCommand;
 import com.petplatform.merchant.api.dto.MerchantStaffInvitationCommandResult;
 import com.petplatform.merchant.api.dto.MerchantStaffInvitationDetailDTO;
+import com.petplatform.merchant.api.dto.MerchantStaffInvitationListPageDTO;
 import com.petplatform.merchant.api.dto.MerchantStaffInvitationPageDTO;
 import com.petplatform.merchant.api.dto.MerchantStaffMemberCommandResult;
 import com.petplatform.merchant.api.dto.MerchantStaffMemberPageDTO;
 import com.petplatform.merchant.api.query.MerchantStaffMemberManagementQueryApi;
+import com.petplatform.merchant.api.query.MyStaffInvitationPageQuery;
 import com.petplatform.merchant.api.query.MyStaffInvitationQuery;
 import com.petplatform.merchant.api.query.StaffInvitationManagementQuery;
 import com.petplatform.merchant.api.query.StaffMemberManagementQuery;
@@ -65,9 +67,18 @@ public final class MerchantStaffMemberApiImpl
     }
 
     public static StaffLoginPhonePort unavailableLoginPhones() {
-        return (userId, phone) -> {
-            throw new ApiException(CommonApiCodes.DEPENDENCY_UNAVAILABLE,
-                    "staff login phone facts are not configured");
+        return new StaffLoginPhonePort() {
+            @Override
+            public boolean matchesSessionUserPhone(long userId, String phone) {
+                throw new ApiException(CommonApiCodes.DEPENDENCY_UNAVAILABLE,
+                        "staff login phone facts are not configured");
+            }
+
+            @Override
+            public String sessionUserPhone(long userId) {
+                throw new ApiException(CommonApiCodes.DEPENDENCY_UNAVAILABLE,
+                        "staff login phone facts are not configured");
+            }
         };
     }
 
@@ -121,5 +132,10 @@ public final class MerchantStaffMemberApiImpl
     @Override
     public MerchantStaffInvitationDetailDTO getMyInvitation(MyStaffInvitationQuery query) {
         return service.getMyInvitation(query);
+    }
+
+    @Override
+    public MerchantStaffInvitationListPageDTO listMyInvitations(MyStaffInvitationPageQuery query) {
+        return service.listMyInvitations(query);
     }
 }

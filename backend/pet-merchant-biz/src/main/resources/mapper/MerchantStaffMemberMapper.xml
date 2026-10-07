@@ -25,7 +25,7 @@
   <sql id="invitationColumns">
     id,merchant_id AS merchantId,store_id AS storeId,phone,member_name AS memberName,status,
     invited_by AS invitedBy,confirmed_by AS confirmedBy,member_id AS memberId,version,
-    pending_marker AS pendingMarker
+    pending_marker AS pendingMarker,created_at AS createdAt,updated_at AS updatedAt
   </sql>
   <select id="selectInvitation" resultType="com.petplatform.merchant.biz.infrastructure.persistence.entity.MerchantMemberInvitationEntity">
     SELECT <include refid="invitationColumns"/> FROM merchant_member_invitation WHERE id=#{invitationId}
@@ -81,6 +81,16 @@
     WHERE invitation_id IN
     <foreach collection="invitationIds" item="invitationId" open="(" separator="," close=")">#{invitationId}</foreach>
     ORDER BY invitation_id ASC, action_code ASC
+  </select>
+
+  <select id="countInvitationRowsByPhone" resultType="long">
+    SELECT COUNT(*) FROM merchant_member_invitation
+    WHERE phone=#{phone}
+  </select>
+  <select id="listInvitationRowsByPhone" resultType="com.petplatform.merchant.biz.infrastructure.persistence.entity.MerchantMemberInvitationEntity">
+    SELECT <include refid="invitationColumns"/> FROM merchant_member_invitation
+    WHERE phone=#{phone}
+    ORDER BY id DESC LIMIT #{limit} OFFSET #{offset}
   </select>
 
   <sql id="memberScopeColumns">

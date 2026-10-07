@@ -1,6 +1,8 @@
 import {
-  staffInvitationAvailability, staffInvitationMessage,
+  staffInvitationAvailability, staffInvitationListAvailability, staffInvitationListMessage,
+  staffInvitationMessage,
   type StaffConfirmReceipt, type StaffInvitationDeps, type StaffInvitationDetail,
+  type StaffInvitationListDeps, type StaffInvitationSummary,
 } from './model'
 
 export type StaffInvitationState = Readonly<{
@@ -75,6 +77,88 @@ export class StaffInvitationController {
     } catch (error) {
       this.publish({ busy: false, notice: staffInvitationMessage(error) })
       return false
+    }
+  }
+
+  dispose() {
+    this.active = false
+    this.listeners.clear()
+  }
+}
+
+export type StaffInvitationListState = Readonly<{
+  status: 'idle' | 'loading' | 'ready' | 'error'
+  items: readonly StaffInvitationSummary[]
+  page: number
+  pageSize: number
+  total: number
+  loadingMore: boolean
+  notice: string
+  /** True when the list read failed as switch-off (404) / dependency fault (503): the block
+   *  renders the non-interactive 功能未开放 panel instead of any list or entry action. */
+  closed: boolean
+}>
+
+/**
+ * Contract 54 §7 employee-side invitation list: pages of invitations sent to the session's
+ * own verified phone (server-side match, history including terminal states). Fixed id DESC
+ * order; loadMore appends the next page only while items < total. Stale responses are dropped
+ * via run counters; failures map to the §7 message set with the same fail-closed switch-off
+ * classification as the detail channel (404/503 close the block).
+ */
+export class StaffInvitationListController {
+  private state: StaffInvitationListState = {
+    status: 'idle', items: [], page: 1, pageSize: 20, total: 0, loadingMore: false, notice: '',
+    closed: false,
+  }
+  private listeners = new Set<() => void>()
+  private active = true
+  private run = 0
+  constructor(private deps: StaffInvitationListDeps) {}
+  getSnapshot = () => this.state
+  subscribe = (listener: () => void) => {
+    this.listeners.add(listener)
+    return () => { this.listeners.delete(listener) }
+  }
+  private publish(patch: Partial<StaffInvitationListState>) {
+    this.state = Object.freeze({ ...this.state, ...patch })
+    this.listeners.forEach(listener => listener())
+  }
+
+  async load(pageSize = 20) {
+    if (!this.active) return
+    const run = ++this.run
+    this.publish({ status: 'loading', items: [], page: 1, pageSize, total: 0, loadingMore: false, notice: '', closed: false })
+    try {
+      const page = await this.deps.list(1, pageSize)
+      if (!this.active || run !== this.run) return
+      this.publish({ status: 'ready', items: page.items, page: page.page, pageSize: page.pageSize, total: page.total })
+    } catch (error) {
+      if (!this.active || run !== this.run) return
+      this.publish({
+        status: 'error', items: [], page: 1, pageSize, total: 0,
+        notice: staffInvitationListMessage(error),
+        closed: staffInvitationListAvailability(error) === 'closed',
+      })
+    }
+  }
+
+  async loadMore() {
+    if (!this.active || this.state.status !== 'ready' || this.state.loadingMore) return
+    if (this.state.items.length >= this.state.total) return
+    const nextPage = this.state.page + 1
+    const run = this.run
+    this.publish({ loadingMore: true, notice: '' })
+    try {
+      const page = await this.deps.list(nextPage, this.state.pageSize)
+      if (!this.active || run !== this.run || this.state.status !== 'ready') return
+      this.publish({
+        loadingMore: false, items: [...this.state.items, ...page.items],
+        page: page.page, total: page.total,
+      })
+    } catch (error) {
+      if (!this.active || run !== this.run) return
+      this.publish({ loadingMore: false, notice: staffInvitationListMessage(error) })
     }
   }
 

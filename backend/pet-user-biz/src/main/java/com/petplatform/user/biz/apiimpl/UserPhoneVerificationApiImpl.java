@@ -37,4 +37,23 @@ public final class UserPhoneVerificationApiImpl implements UserPhoneVerification
         if (account == null || !UserStatus.ACTIVE.name().equals(account.status())) return false;
         return account.phone() != null && account.phone().equals(phone);
     }
+
+    @Override
+    public String verifiedPhone(UserIdQuery query) {
+        // Contract 54 §7 (user ruling 2026-10-07): purpose-bound session-phone read, one account
+        // lookup, fail closed — any unreadable or absent fact reads as "no phone" (null).
+        Objects.requireNonNull(query, "query is required");
+        long userId = PetService.numericId(query.userId(), "userId");
+        UserAuthStore.AccountRow account;
+        try {
+            account = store.findAccount(userId, false);
+        } catch (RuntimeException failure) {
+            return null;
+        }
+        if (account == null || !UserStatus.ACTIVE.name().equals(account.status())
+                || account.phone() == null || !PHONE.matcher(account.phone()).matches()) {
+            return null;
+        }
+        return account.phone();
+    }
 }

@@ -1,13 +1,14 @@
 import { ApiError } from '../../shared/request'
 
-// Contract 54 §4 employee-side invitation view state (D1-a invite-confirm binding). The
-// employee reads ONE invitation by id with their own MINIAPP session and confirms it; there
-// is deliberately no list endpoint, so "my invitations" on the staff workbench is an
-// id-keyed lookup, never a fabricated list. Wire shapes follow
-// docs/04-api/54-Merchant-Staff-Binding-Contract-v0.1.md §4 (CStaffInvitationController):
-// the detail projection carries merchant/store names but no phone; a non-matching session
-// reads exactly like a missing invitation (404 anti-enumeration), so the client never
-// distinguishes the two. Decoders stay strict exact-key like the OWNER-side members model.
+// Contract 54 §4/§7 employee-side invitation view state (D1-a invite-confirm binding). The
+// employee reads ONE invitation by id with their own MINIAPP session and confirms it, and —
+// since the 54号 §7 slice — also lists every invitation sent to their own verified phone
+// (history including terminal states). Wire shapes follow
+// docs/04-api/54-Merchant-Staff-Binding-Contract-v0.1.md §4/§7 (CStaffInvitationController):
+// both projections carry merchant/store names but never any phone; a non-matching session
+// reads exactly like a missing invitation (detail 404 / list empty page, 404 anti-enumeration),
+// so the client never distinguishes the two. Decoders stay strict exact-key like the
+// OWNER-side members model.
 export type InvitationStatus = 'INVITED' | 'CANCELED' | 'CONFIRMED'
 export type MemberStatus = 'ENABLED' | 'DISABLED' | 'REVOKED'
 
@@ -31,9 +32,34 @@ export type StaffConfirmReceipt = Readonly<{
   replayed: boolean
 }>
 
+/** One §7 list row: same disclosure family as the detail plus row timestamps, never a phone. */
+export type StaffInvitationSummary = Readonly<{
+  invitationId: string
+  merchantId: string
+  merchantName: string
+  storeId: string
+  storeName: string
+  memberName: string
+  grantedActions: readonly string[]
+  status: InvitationStatus
+  invitedAt: string
+  updatedAt: string
+}>
+
+export type StaffInvitationPage = Readonly<{
+  items: readonly StaffInvitationSummary[]
+  page: number
+  pageSize: number
+  total: number
+}>
+
 export interface StaffInvitationDeps {
   read(invitationId: string): Promise<StaffInvitationDetail>
   confirm(slot: string, invitationId: string): Promise<StaffConfirmReceipt>
+}
+
+export interface StaffInvitationListDeps {
+  list(page: number, pageSize: number): Promise<StaffInvitationPage>
 }
 
 export const invitationStatusText: Record<InvitationStatus, string> = {
@@ -118,7 +144,9 @@ function statusOf<T extends string>(value: unknown, allowed: readonly T[]): T {
 const APPROVED_ACTIONS: readonly string[] = ['merchant.order.verify']
 
 function actionsOf(value: unknown): readonly string[] {
-  if (!Array.isArray(value)) invalid()
+  // 54 §2: an invitation always carries a non-empty catalog subset (invite validates it;
+  // action rows are never removed), so an empty wire array is damaged data.
+  if (!Array.isArray(value) || value.length === 0) invalid()
   return value.map(code => {
     if (typeof code !== 'string' || !/^[a-z0-9][a-z0-9.-]{0,99}$/.test(code)) invalid()
     if (!APPROVED_ACTIONS.includes(code)) invalid()
@@ -149,6 +177,57 @@ export function decodeStaffConfirmReceipt(value: unknown): StaffConfirmReceipt {
     memberStatus: statusOf(v.memberStatus, ['ENABLED', 'DISABLED', 'REVOKED'] as const),
     grantedActions: actionsOf(v.grantedActions), replayed: v.replayed,
   }
+}
+
+/** Millisecond ISO instant, the C-side wire convention (54号 §7 invitedAt/updatedAt). */
+function isInstant(value: unknown): value is string {
+  return typeof value === 'string'
+    && /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z(?![\s\S])$/.test(value)
+    && Number.isFinite(Date.parse(value))
+}
+
+export function decodeStaffInvitationSummary(value: unknown): StaffInvitationSummary {
+  const v = exact(value, ['invitationId', 'merchantId', 'merchantName', 'storeId', 'storeName',
+    'memberName', 'grantedActions', 'status', 'invitedAt', 'updatedAt'])
+  if (!isId(v.invitationId) || !isId(v.merchantId) || !isId(v.storeId)) invalid()
+  if (!isText(v.merchantName, 128) || !isText(v.storeName, 128)) invalid()
+  if (!isText(v.memberName, 64)) invalid()
+  if (!isInstant(v.invitedAt) || !isInstant(v.updatedAt)) invalid()
+  return {
+    invitationId: v.invitationId, merchantId: v.merchantId, merchantName: v.merchantName,
+    storeId: v.storeId, storeName: v.storeName, memberName: v.memberName,
+    grantedActions: actionsOf(v.grantedActions),
+    status: statusOf(v.status, ['INVITED', 'CANCELED', 'CONFIRMED'] as const),
+    invitedAt: v.invitedAt, updatedAt: v.updatedAt,
+  }
+}
+
+export function decodeStaffInvitationPage(value: unknown): StaffInvitationPage {
+  const v = exact(value, ['items', 'page', 'pageSize', 'total'])
+  if (!Array.isArray(v.items) || v.items.length > 50) invalid()
+  const page = Number(v.page), pageSize = Number(v.pageSize), total = Number(v.total)
+  if (!Number.isInteger(page) || page < 1 || page > 10000) invalid()
+  if (!Number.isInteger(pageSize) || pageSize < 1 || pageSize > 50) invalid()
+  if (!Number.isInteger(total) || total < 0) invalid()
+  return { items: v.items.map(decodeStaffInvitationSummary), page, pageSize, total }
+}
+
+/** Per-error-code Chinese mapping for the §7 list channel (paging surface only). */
+export function staffInvitationListMessage(error: unknown): string {
+  if (error instanceof ApiError) {
+    if (error.statusCode === 401) return '登录已失效，请重新登录后查看邀请记录。'
+    if (error.statusCode === 400) return '分页参数不正确，请重试。'
+    if (error.statusCode === 503) return '邀请记录服务暂不可用（依赖故障），请稍后重试。'
+    return '邀请记录加载失败，请稍后重试。'
+  }
+  return '邀请记录加载失败，请稍后重试。'
+}
+
+/** List fail-closed classification (§7): switch-off renders the route 404 exactly like the
+ *  detail channel; dependency faults 503 close the block; 401/400 stay retryable states. */
+export function staffInvitationListAvailability(error: unknown): 'ok' | 'closed' {
+  if (error instanceof ApiError && (error.statusCode === 503 || error.statusCode === 404)) return 'closed'
+  return 'ok'
 }
 
 /** Route/deep-link invitation id: Snowflake decimal string only (whitelist-id discipline). */

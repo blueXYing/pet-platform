@@ -24,6 +24,9 @@ class PrivateAssetContractRegressions(unittest.TestCase):
 
     def test_current_surface_independent_counts(self):
         result = check(self.spec)
+        # 134 = 133 (develop through the notification-preference slice) + 1 contract-54 §7
+        # staff invitation list operation (cListMyStaffInvitations; employee-side
+        # self-service list, read-only family).
         # 133 = develop 126 + net 1 from the aftersale-pages surface merge (24 Contract51 AFS
         # operations consolidated, 2 legacy drafts retired, overlap with develop resolved)
         # + 4 CCR-C006 coupon/points C-side read-only operations
@@ -31,7 +34,7 @@ class PrivateAssetContractRegressions(unittest.TestCase):
         # The verification HTTP slice adds no new operationId: it flips the two pinned
         # credential routes to implemented default-off and re-pins the legacy merchant
         # verify route inside VERIFICATION_HTTP_OPERATIONS (3 overlapping operations).
-        self.assertEqual(result['operations'], 133)
+        self.assertEqual(result['operations'], 134)
         self.assertEqual(result['privateAssetOperations'], 3)
         self.assertEqual(result['legacyOperations'], 14)
         self.assertEqual(result['aftersaleOperations'], 24)
@@ -45,6 +48,7 @@ class PrivateAssetContractRegressions(unittest.TestCase):
         self.assertEqual(result['couponPointsReadOperations'], 4)
         self.assertEqual(result['verificationHttpOperations'], 3)
         self.assertEqual(result['serviceWriteOperations'], 11)
+        self.assertEqual(result['staffInvitationListOperations'], 1)
 
     def test_all_private_operations_require_current_bearer_audience_and_default_off(self):
         for name in PRIVATE_ASSET_OPERATIONS:

@@ -5,6 +5,9 @@
 -- UTC timestamps. The audit table never stores clear-text phone/name (supplement 35 precedent);
 -- the invitation row stores the registered phone only because confirm-time phone equality needs
 -- it (see contract 54 §3); projections always mask it.
+-- 2026-10-07 user ruling (contract 54 §7 amendment): idx_mer_member_inv_phone serves the
+-- employee-side list access path (phone equality + id DESC pagination); mirrored by the
+-- isolated opt-in V31 delta (V30 already merged, unchanged).
 -- No production migration is authorized by this delivery.
 
 CREATE TABLE merchant_member_invitation (
@@ -24,6 +27,7 @@ CREATE TABLE merchant_member_invitation (
     PRIMARY KEY (id),
     UNIQUE KEY uk_mer_member_inv_pending (merchant_id, phone, pending_marker),
     KEY idx_mer_member_inv_store (store_id, status),
+    KEY idx_mer_member_inv_phone (phone, id) COMMENT 'employee-side list seek (phone equality + id DESC pagination); user ruling 2026-10-07, contract 54 §7',
     CONSTRAINT chk_mer_member_inv_ids CHECK (id > 0 AND merchant_id > 0 AND store_id > 0
         AND invited_by > 0 AND (confirmed_by IS NULL OR confirmed_by > 0)
         AND (member_id IS NULL OR member_id > 0) AND version >= 0),

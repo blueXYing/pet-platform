@@ -19,9 +19,6 @@
 .msw-card-title { font-size: calc(var(--msw-unit) * 15); line-height: calc(var(--msw-unit) * 22); font-weight: 600; color: #111827; }
 .msw-card-hint { font-size: calc(var(--msw-unit) * 12); line-height: calc(var(--msw-unit) * 18); color: #577683; }
 .msw-card-meta { font-size: calc(var(--msw-unit) * 10.5); line-height: calc(var(--msw-unit) * 15); color: #9ca3af; }
-.msw-query { display: flex; align-items: center; gap: calc(var(--msw-unit) * 8); }
-.msw-query-input { flex: 1; height: calc(var(--msw-unit) * 38); padding: 0 calc(var(--msw-unit) * 10); border: calc(var(--msw-unit) * 1) solid #c0ecff; border-radius: calc(var(--msw-unit) * 8); font-size: calc(var(--msw-unit) * 14); color: #111827; background: #f0fbff; }
-.msw-query-submit { flex: none; padding: 0 calc(var(--msw-unit) * 14); height: calc(var(--msw-unit) * 38); border-radius: calc(var(--msw-unit) * 10); background: #5baae8; font-size: calc(var(--msw-unit) * 14); font-weight: 600; color: #fff; display: flex; align-items: center; justify-content: center; }
 .msw-entry { margin-top: calc(var(--msw-unit) * 12); padding: calc(var(--msw-unit) * 14) calc(var(--msw-unit) * 16); background: #fff; border: calc(var(--msw-unit) * 1.5) solid #c0ecff; border-radius: calc(var(--msw-unit) * 17); display: flex; flex-direction: column; gap: calc(var(--msw-unit) * 6); }
 .msw-entry-button { margin-top: calc(var(--msw-unit) * 12); padding: calc(var(--msw-unit) * 14) calc(var(--msw-unit) * 16); background: #fff; border: calc(var(--msw-unit) * 1.5) solid #c0ecff; border-radius: calc(var(--msw-unit) * 17); display: flex; flex-direction: column; gap: calc(var(--msw-unit) * 6); text-align: left; }
 .msw-entry-title { font-size: calc(var(--msw-unit) * 15); line-height: calc(var(--msw-unit) * 22); font-weight: 600; color: #111827; }
@@ -33,3 +30,19 @@
 .msw-secondary { margin-top: calc(var(--msw-unit) * 10); height: calc(var(--msw-unit) * 38); border-radius: calc(var(--msw-unit) * 10); border: calc(var(--msw-unit) * 1.5) solid #5baae8; font-size: calc(var(--msw-unit) * 14); font-weight: 600; color: #167fab; display: flex; align-items: center; justify-content: center; }
 .msw-notice { display: block; margin: calc(var(--msw-unit) * 6) 0; font-size: calc(var(--msw-unit) * 12); line-height: calc(var(--msw-unit) * 18); color: #7a4a1d; }
 .msw-tail { padding: calc(var(--msw-unit) * 18) 0; text-align: center; font-size: calc(var(--msw-unit) * 11); color: #9ca3af; }
+
+/* 54号 §7 我的邀请记录列表（2026-10-07 增补）：待确认邀请高亮为可点行（className 变体），
+   终局态只读；状态标签配色沿 members 页 mmb-inv-tag 语言。 */
+.msw-inv-state { display: flex; flex-direction: column; gap: calc(var(--msw-unit) * 8); padding: calc(var(--msw-unit) * 8) 0; font-size: calc(var(--msw-unit) * 12.5); line-height: calc(var(--msw-unit) * 19); color: #577683; }
+.msw-inv-row { padding: calc(var(--msw-unit) * 10) calc(var(--msw-unit) * 4); border-radius: calc(var(--msw-unit) * 10); background: #f7fbff; display: flex; flex-direction: column; gap: calc(var(--msw-unit) * 4); }
+.msw-page .msw-inv-row-pending { background: #fff6e5; border: calc(var(--msw-unit) * 1.5) solid #f2c98a; }
+.msw-inv-line { display: flex; align-items: center; justify-content: space-between; gap: calc(var(--msw-unit) * 8); }
+.msw-inv-store { font-size: calc(var(--msw-unit) * 14); line-height: calc(var(--msw-unit) * 20); font-weight: 600; color: #111827; }
+.msw-inv-merchant { font-size: calc(var(--msw-unit) * 11.5); line-height: calc(var(--msw-unit) * 17); color: #577683; }
+.msw-inv-actions { font-size: calc(var(--msw-unit) * 11.5); line-height: calc(var(--msw-unit) * 17); color: #167fab; }
+.msw-inv-go { flex: none; font-size: calc(var(--msw-unit) * 12.5); line-height: calc(var(--msw-unit) * 18); font-weight: 600; color: #b9680a; }
+.msw-inv-tag { flex: none; padding: calc(var(--msw-unit) * 2) calc(var(--msw-unit) * 6); border-radius: calc(var(--msw-unit) * 4); background: #e5e7eb; font-size: calc(var(--msw-unit) * 10); line-height: calc(var(--msw-unit) * 15); color: #4b5563; }
+.msw-page .msw-inv-tag-invited { background: #fdeec8; color: #7a4a1d; }
+.msw-page .msw-inv-tag-confirmed { background: #d7f0d0; color: #2f6b2f; }
+.msw-page .msw-inv-tag-canceled { background: #e5e7eb; color: #4b5563; }
+.msw-inv-preview-note { font-size: calc(var(--msw-unit) * 10.5); line-height: calc(var(--msw-unit) * 15); color: #9ca3af; }

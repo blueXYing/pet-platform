@@ -58,7 +58,22 @@ class MerchantStaffMemberEventMySqlTest {
                 (ApplicationReviewFactsReader) merchantId ->
                         new ApplicationReviewFactsReader.Facts("APPROVED"),
                 new AesGcmProtectedValueProvider("staff-event-test-v1", key((byte) 5), key((byte) 6)),
-                (userId, phone) -> userId == USER && PHONE.equals(phone), guard, CLOCK, publisher);
+                loginPhones(), guard, CLOCK, publisher);
+    }
+
+    /** Boolean confirm channel + purpose-bound session phone for the §7 list. */
+    private static com.petplatform.merchant.biz.application.StaffLoginPhonePort loginPhones() {
+        return new com.petplatform.merchant.biz.application.StaffLoginPhonePort() {
+            @Override
+            public boolean matchesSessionUserPhone(long userId, String phone) {
+                return userId == USER && PHONE.equals(phone);
+            }
+
+            @Override
+            public String sessionUserPhone(long userId) {
+                return userId == USER ? PHONE : null;
+            }
+        };
     }
 
     private static byte[] key(byte value) {

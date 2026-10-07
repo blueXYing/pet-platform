@@ -13,6 +13,8 @@ public final class MerchantMemberInvitationEntity {
     private Long memberId;
     private Long version;
     private String pendingMarker;
+    private java.time.LocalDateTime createdAt;
+    private java.time.LocalDateTime updatedAt;
 
     public Long getId() { return id; }
     public void setId(Long value) { id = value; }
@@ -36,4 +38,8 @@ public final class MerchantMemberInvitationEntity {
     public void setVersion(Long value) { version = value; }
     public String getPendingMarker() { return pendingMarker; }
     public void setPendingMarker(String value) { pendingMarker = value; }
+    public java.time.LocalDateTime getCreatedAt() { return createdAt; }
+    public void setCreatedAt(java.time.LocalDateTime value) { createdAt = value; }
+    public java.time.LocalDateTime getUpdatedAt() { return updatedAt; }
+    public void setUpdatedAt(java.time.LocalDateTime value) { updatedAt = value; }
 }

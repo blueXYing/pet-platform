@@ -32,8 +32,22 @@ public class MerchantStaffMemberConfiguration {
             ObjectProvider<UserPhoneVerificationApi> phones, ScheduleCapacityGuardApi guard,
             ObjectProvider<Clock> clock,
             ObjectProvider<IntegrationEventPublisher> events) {
-        StaffLoginPhonePort loginPhones = (userId, phone) -> phones.getObject()
-                .hasVerifiedPhone(new UserIdQuery(Long.toUnsignedString(userId)), phone);
+        // Contract 54 §1/§7: the confirm/detail channel stays boolean; the §7 list (user ruling
+        // 2026-10-07) additionally reads the session phone once as the purpose-bound seek key
+        // of the indexed invitation list — in-memory bind only, never persisted or projected.
+        StaffLoginPhonePort loginPhones = new StaffLoginPhonePort() {
+            @Override
+            public boolean matchesSessionUserPhone(long userId, String phone) {
+                return phones.getObject().hasVerifiedPhone(
+                        new UserIdQuery(Long.toUnsignedString(userId)), phone);
+            }
+
+            @Override
+            public String sessionUserPhone(long userId) {
+                return phones.getObject().verifiedPhone(
+                        new UserIdQuery(Long.toUnsignedString(userId)));
+            }
+        };
         // NTF slice: the outbox publisher is optional — with pet.outbox.enabled=false (default)
         // the binding keeps its pre-notification behavior and emits no lifecycle events.
         return new MerchantStaffMemberApiImpl(source, ids,

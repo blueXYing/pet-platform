@@ -51,6 +51,11 @@ public interface MerchantStaffMemberMapper {
         @Param("storeId") long storeId);
     List<MerchantActionRefEntity> listInvitationActionsByIds(
         @Param("invitationIds") List<Long> invitationIds);
+    // Contract 54 §7 employee-side list (user ruling 2026-10-07): phone-equality seek over
+    // idx_mer_member_inv_phone (phone, id), id DESC backward-scan pagination.
+    long countInvitationRowsByPhone(@Param("phone") String phone);
+    List<MerchantMemberInvitationEntity> listInvitationRowsByPhone(@Param("phone") String phone,
+        @Param("limit") int limit, @Param("offset") int offset);
 
     // members / grants / actions (contract 52 relations, written here from contract 54 commands)
     MerchantMemberGrantScopeEntity lockMemberScope(@Param("merchantId") long merchantId,
