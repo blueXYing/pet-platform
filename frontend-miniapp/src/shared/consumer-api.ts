@@ -35,13 +35,14 @@ export function afterSaleEnvelope(response: { statusCode: number; data: unknown 
   if (body.message !== 'ok') throw new Error('INVALID_RESPONSE')
   return body.data
 }
-// Contract 54 §4 employee invitation routes (read + confirm): identity-scoped only — the
-// server resolves the employee from the MINIAPP session and re-proves the invitation phone
+// Contract 54 §4/§7 employee invitation routes (list + read + confirm): identity-scoped only —
+// the server resolves the employee from the MINIAPP session and matches the invitation phone
 // server-side, so the routes carry no merchant/store coordinates and stay callable from the
 // staff workbench pages that run on merchant coordinates (the confirm entry lives there per
 // the 2026-10-06 user adjudication). Everything else under /c keeps consumer-only access.
 export function isStaffInvitationPath(path: string): boolean {
-  return /^\/api\/v1\/c\/staff\/invitations\/[1-9][0-9]{0,18}(\/confirm)?$/.test(path)
+  return path === '/api/v1/c/staff/invitations'
+    || /^\/api\/v1\/c\/staff\/invitations\/[1-9][0-9]{0,18}(\/confirm)?$/.test(path)
 }
 // Contract 48 K2 v0.3 merchant verification route (HTTP10 §4.7): POST with body
 // {verificationCode} only — merchantId/storeId are located server-side from the order and

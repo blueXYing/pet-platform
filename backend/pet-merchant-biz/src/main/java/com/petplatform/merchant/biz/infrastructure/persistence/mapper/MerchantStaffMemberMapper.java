@@ -51,6 +51,10 @@ public interface MerchantStaffMemberMapper {
         @Param("storeId") long storeId);
     List<MerchantActionRefEntity> listInvitationActionsByIds(
         @Param("invitationIds") List<Long> invitationIds);
+    // Contract 54 §7 employee-side list scan: PK-order windows newest-first, no phone filter in
+    // SQL (the account phone never leaves the user module; matching happens in-application).
+    List<MerchantMemberInvitationEntity> listAllInvitationRows(@Param("limit") int limit,
+        @Param("offset") int offset);
 
     // members / grants / actions (contract 52 relations, written here from contract 54 commands)
     MerchantMemberGrantScopeEntity lockMemberScope(@Param("merchantId") long merchantId,

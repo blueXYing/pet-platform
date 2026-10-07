@@ -9,7 +9,7 @@
 - [54 号存储](../03-database/54-Merchant-Staff-Binding-Schema-v0.1.sql)三表：`merchant_member_invitation` / `merchant_member_invitation_action` / `merchant_member_audit`；52 号三表不变。
 - 内部命令 API `MerchantStaffMemberCommandApi`（pet-merchant-api）与 pet-merchant-biz 实现：invite / cancelInvitation / disableMember / enableMember / grantActions / revokeStoreGrant / confirmInvitation。
 - OWNER 管理查询 `MerchantStaffMemberManagementQueryApi`（成员列表、邀请列表）与员工本人确认页查询 `getMyInvitation`。
-- pet-boot HTTP：OWNER 侧 `/api/v1/merchant/staff-members/**`，员工侧 `/api/v1/c/staff/invitations/{invitationId}`（读 + confirm）；随 `pet.merchant.staff-member.enabled` 装配（员工侧另需 `pet.auth.c.enabled`）。
+- pet-boot HTTP：OWNER 侧 `/api/v1/merchant/staff-members/**`，员工侧 `/api/v1/c/staff/invitations`（§7 列表，2026-10-07 增补）与 `/api/v1/c/staff/invitations/{invitationId}`（读 + confirm）；随 `pet.merchant.staff-member.enabled` 装配（员工侧另需 `pet.auth.c.enabled`）。
 - 跨模块新增内部只读 API：pet-user-api `UserPhoneVerificationApi.hasVerifiedPhone(userId, phone)`（pet-user-biz 实现，账号手机号恒不出用户模块）；商家模块经 pet-boot 注入端口使用。事实来源即 S9 既有链路：登录会话发放前账号手机号必已经微信 getPhoneNumber 一次性 code 兑换（`WechatSessionProvider.exchangePhone`），无手机号事实的账号不发放会话。
 
 未实现且不声称完成（随 CCR §3/§5 既定切片）：成员 REVOKED（撤销成员）命令与一切"撤销后重邀/换绑/恢复"语义（**D3 保留待裁决**，本批整店撤权与撤销邀请均为终局，不可原地复活）；grant.staff_id 展示引用的回填规则（本批恒 NULL，属 48 号 K1 修订切片裁决）；核销完成内核接入 `requireStaffAction`（STAFF-C 另立契约修订）；员工端确认页面（CCR §3.3 随 M 端工作台员工入口另行交付，本批仅交付服务端确认通道）；邀请有效期与次数上限（CCR D1 待明确子项，本批不设自动过期，仅可被 OWNER 撤销）。站内通知投递（NTF-001）已由 2026-10-06 通知切片按 §6 范围接入，并经 2026-10-07 用户裁决增补授权/整店撤权事件（可达性受限，见该节），员工端通知触达与外投模板不在本契约。
@@ -74,3 +74,13 @@ pet-merchant-biz 真实 MySQL 隔离测试（`MerchantStaffMemberBindingMySqlTes
 - 被邀人确认前的任何站内触达均不可达，属 schema 边界而非实现缺口。
 
 验收：pet-merchant-biz `MerchantStaffMemberEventMySqlTest`（事件同事务原子性、回滚收敛、重放不重复、载荷无明文手机号、publisher 缺席零行为，含授予/替换/整店撤权事件与动作摘要载荷）；pet-notification-biz `MerchantStaffInvitationConsumerMySqlTest`/`MerchantStaffMemberConsumerMySqlTest`/`MerchantStaffGrantConsumerMySqlTest`（各 changeType 站内行、CONFIRMED 双收件、重派幂等、回滚收敛、严格拒绝负例、真实 dispatcher 端到端）；pet-boot wiring 测试验证开关装配。
+## 7. 员工侧邀请记录列表（2026-10-07 增补，v0.1 内增补）
+
+§4 员工侧此前只有按编号读取 + confirm；被邀人只能靠商家线外转达编号（§6 INVITED 通知可达性结论的另一半缺口）。本增补补上员工侧自助列表：登录会话主体按 54 号 S9 账号手机号事实看到发给自己的邀请（含历史终局），不改变 §2 状态机、§3 命令面与既有端点语义。
+
+- **HTTP**：`GET /api/v1/c/staff/invitations?page=&pageSize=`（登录 MINIAPP 会话；X-Request-Id 不适用，GET 幂等只读）。query 仅允许 `page`（1..10000，默认 1）与 `pageSize`（1..50，默认 20），其余任意 query 参数 400。装配与 §4 员工侧既有路由一致：`pet.merchant.staff-member.enabled` + `pet.auth.c.enabled` 双开关默认关，关闭即路由不装配（404），与现状相同。
+- **匹配语义（防枚举）**：服务端在只读事务内将会话账号的已验证登录手机号（S9 事实，`user_account.phone`，明文永不出用户模块，沿 §1 `UserPhoneVerificationApi` 先例以批量等值核对 `verifiedPhonesEqualTo` 实现）与邀请行手机号比对；**只返回匹配本人手机号的邀请，不匹配（他人手机号、账号无手机号事实、依赖不可读）一律同一空页 `{items:[],page,pageSize,total:0}`，不暴露任何存在性**。行数与内容在"没有邀请"与"有邀请但不是发给你"之间不可区分。
+- **排序与分页**：固定 `id DESC`（Snowflake 创建序，新的在前）为唯一稳定排序；分页沿仓库 PageResult 惯例（items/page/pageSize/total）。因账号手机号不出用户模块、54 号表结构不变（无手机号检索列），服务端按主键序窗口扫描 + 应用内等值比对后分页：这是本增补已知代价（全表窗口扫描），表规模受商家邀请行为约束，V1 接受；如需索引化须另行 Schema 修订裁决。
+- **披露字段**：沿用既有邀请读投影家族——invitationId/merchantId/merchantName/storeId/storeName/memberName/grantedActions/status + 行时间 invitedAt/updatedAt（毫秒 ISO）；**任何形式都不回手机号**（本人列表无需回显，明文/脱敏均不出现）。行校验失败关闭（503），不降级为部分行。
+- **内部 API**：pet-user-api `UserPhoneVerificationApi` 增批量等值方法 `verifiedPhonesEqualTo(userId, phones)`（一次账号读取返回匹配子集；语义与既有 `hasVerifiedPhone` 逐项等价、同样失败关闭）；pet-merchant-api `MerchantStaffMemberManagementQueryApi` 增 `listMyInvitations(MyStaffInvitationPageQuery)` 与 `MerchantStaffInvitationListPageDTO`/`MerchantStaffInvitationSummaryDTO` 投影。52 号三表与 54 号三表 Schema 零变化。
+- **OpenAPI**：本增补操作以 `cListMyStaffInvitations` 登记于 [11号 OpenAPI](11-OpenAPI-Core-v0.4.yaml)（IMPLEMENTED_DEFAULT_OFF，复用 Error12 §2 通用码 400/401/503）；既有员工侧 detail/confirm 两操作维持仅在本文档登记的现状不变。

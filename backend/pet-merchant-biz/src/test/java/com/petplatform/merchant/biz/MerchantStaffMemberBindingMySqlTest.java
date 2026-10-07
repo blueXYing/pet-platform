@@ -13,7 +13,9 @@ import com.petplatform.merchant.api.command.GrantStaffMemberActionsCommand;
 import com.petplatform.merchant.api.command.InviteStaffMemberCommand;
 import com.petplatform.merchant.api.command.StaffMemberLifecycleCommand;
 import com.petplatform.merchant.api.dto.MerchantStaffInvitationCommandResult;
+import com.petplatform.merchant.api.dto.MerchantStaffInvitationListPageDTO;
 import com.petplatform.merchant.api.dto.MerchantStaffMemberCommandResult;
+import com.petplatform.merchant.api.query.MyStaffInvitationPageQuery;
 import com.petplatform.merchant.api.query.MyStaffInvitationQuery;
 import com.petplatform.merchant.api.query.StaffInvitationManagementQuery;
 import com.petplatform.merchant.api.query.StaffMemberManagementQuery;
@@ -486,6 +488,119 @@ class MerchantStaffMemberBindingMySqlTest {
             });
             assertEquals("ENABLED", db.jdbc().queryForObject(
                     "SELECT status FROM merchant_member WHERE id=" + memberId, String.class));
+        }
+    }
+
+    @Test
+    void listMyInvitationsMatchesOwnPhoneIncludingTerminalHistory() throws Exception {
+        try (var db = new StaffBindingMySqlTestDatabase()) {
+            seed(db);
+            var api = api(db);
+            // inv-1 (PHONE, canceled) and a noise row for another phone.
+            String first = invite(api, "inv-1", PHONE).invitation().invitationId();
+            api.cancelInvitation(new CancelStaffMemberInvitationCommand(id(MERCHANT), id(STORE),
+                    first, "0", command("cancel-1", OWNER)));
+            invite(api, "inv-other", OTHER_PHONE);
+            // inv-2 (PHONE, confirmed) on the second store.
+            String second = invite(api, "inv-2", PHONE).invitation().invitationId();
+            confirm(api, "cf-2", USER, second);
+            // inv-3 (PHONE, still pending) re-uses the freed pending slot after two terminals.
+            String third = invite(api, "inv-3", PHONE).invitation().invitationId();
+
+            MerchantStaffInvitationListPageDTO page = api.listMyInvitations(
+                    new MyStaffInvitationPageQuery(1, 20, query(USER)));
+            assertEquals(3, page.total());
+            assertEquals(1, page.page());
+            assertEquals(20, page.pageSize());
+            assertEquals(3, page.items().size());
+            // Fixed stable order: id DESC (newest first).
+            assertEquals(third, page.items().get(0).invitationId());
+            assertEquals("INVITED", page.items().get(0).status());
+            assertEquals(second, page.items().get(1).invitationId());
+            assertEquals("CONFIRMED", page.items().get(1).status());
+            assertEquals(first, page.items().get(2).invitationId());
+            assertEquals("CANCELED", page.items().get(2).status());
+            // §7 disclosure: confirm-page family fields + timestamps, never any phone form.
+            assertEquals("绑定测试商家", page.items().get(0).merchantName());
+            assertEquals("旗舰一店", page.items().get(0).storeName());
+            assertEquals("李小美", page.items().get(0).memberName());
+            assertEquals(List.of(VERIFY), page.items().get(0).grantedActions());
+            assertEquals(java.time.OffsetDateTime.parse("2026-10-06T08:00:00Z"),
+                    page.items().get(0).invitedAt());
+            assertNotNull(page.items().get(0).updatedAt());
+            // The OTHER_PHONE row never surfaces for this session.
+            String otherRowId = Long.toUnsignedString(db.jdbc().queryForObject(
+                    "SELECT id FROM merchant_member_invitation WHERE phone='" + OTHER_PHONE + "'",
+                    Long.class));
+            String visible = page.items().stream().map(row -> row.invitationId())
+                    .reduce("", (a, b) -> a + "," + b);
+            assertFalse(visible.contains(otherRowId));
+        }
+    }
+
+    @Test
+    void listMyInvitationsIsAntiEnumerationSafeForOtherAndPhonelessSessions() throws Exception {
+        try (var db = new StaffBindingMySqlTestDatabase()) {
+            seed(db);
+            var api = api(db);
+            invite(api, "inv-1", PHONE);
+            invite(api, "inv-2", OTHER_PHONE);
+
+            // Another phone: same empty page as a phone-less / unknown account; no existence.
+            for (long session : new long[] {OTHER_USER, 9_100_000_000_000_199L}) {
+                MerchantStaffInvitationListPageDTO page = api.listMyInvitations(
+                        new MyStaffInvitationPageQuery(1, 20, query(session)));
+                assertEquals(0, page.total());
+                assertTrue(page.items().isEmpty());
+                assertEquals(1, page.page());
+                assertEquals(20, page.pageSize());
+            }
+            // Paging bounds and context discipline stay as pinned.
+            assertEquals(CommonApiCodes.INVALID_ARGUMENT, assertThrows(ApiException.class,
+                    () -> api.listMyInvitations(new MyStaffInvitationPageQuery(0, 20, query(USER))))
+                    .code());
+            assertEquals(CommonApiCodes.INVALID_ARGUMENT, assertThrows(ApiException.class,
+                    () -> api.listMyInvitations(new MyStaffInvitationPageQuery(1, 51, query(USER))))
+                    .code());
+            assertEquals(CommonApiCodes.UNAUTHORIZED, assertThrows(ApiException.class,
+                    () -> api.listMyInvitations(new MyStaffInvitationPageQuery(1, 20,
+                            new QueryContext("test", OperatorType.USER, null)))).code());
+        }
+    }
+
+    @Test
+    void listMyInvitationsPaginatesStablyOverTheMatchedSubset() throws Exception {
+        try (var db = new StaffBindingMySqlTestDatabase()) {
+            seed(db);
+            var api = api(db);
+            // Three terminal-then-pending rows for the same merchant+phone (each cancel frees
+            // the pending slot) plus noise rows for other phones and other sessions.
+            String oldest = invite(api, "inv-1", PHONE).invitation().invitationId();
+            api.cancelInvitation(new CancelStaffMemberInvitationCommand(id(MERCHANT), id(STORE),
+                    oldest, "0", command("cancel-1", OWNER)));
+            String middle = invite(api, "inv-2", PHONE).invitation().invitationId();
+            api.cancelInvitation(new CancelStaffMemberInvitationCommand(id(MERCHANT), id(STORE),
+                    middle, "0", command("cancel-2", OWNER)));
+            String newest = invite(api, "inv-3", PHONE).invitation().invitationId();
+            invite(api, "inv-o1", OTHER_PHONE);
+            invite(api, "inv-o2", "13900003333");
+
+            MerchantStaffInvitationListPageDTO pageOne = api.listMyInvitations(
+                    new MyStaffInvitationPageQuery(1, 2, query(USER)));
+            assertEquals(3, pageOne.total());
+            assertEquals(2, pageOne.items().size());
+            assertEquals(newest, pageOne.items().get(0).invitationId());
+            assertEquals(middle, pageOne.items().get(1).invitationId());
+            MerchantStaffInvitationListPageDTO pageTwo = api.listMyInvitations(
+                    new MyStaffInvitationPageQuery(2, 2, query(USER)));
+            assertEquals(3, pageTwo.total());
+            assertEquals(1, pageTwo.items().size());
+            assertEquals(oldest, pageTwo.items().get(0).invitationId());
+            // Beyond the end: the stable empty page, not an error.
+            MerchantStaffInvitationListPageDTO pageThree = api.listMyInvitations(
+                    new MyStaffInvitationPageQuery(3, 2, query(USER)));
+            assertEquals(3, pageThree.total());
+            assertTrue(pageThree.items().isEmpty());
         }
     }
 }
