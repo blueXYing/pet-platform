@@ -543,6 +543,15 @@ PaymentApi.createPayment
 
 ## 3.7 C 端订单查询
 
+> **实现状态（2026-10-07，C-004 读取切片）**：本节两条 GET 已实现，随 `pet.auth.c.enabled`
+> 装配（默认关闭；OpenAPI11 `x-implementation-status=IMPLEMENTED_DEFAULT_OFF`）。实现要点：
+> `displayStatus` 由 order 域按技术基线 §5 优先级统一计算，C 端只读投影；列表固定排序
+> `created_at DESC, id DESC`（稳定分页），分页边界 page>=1、pageSize 1..100 默认 20；
+> 详情事实字段为 `orderId/orderNo/displayStatus/orderStage/paymentStatus/refundApplicationStatus/refundStatus/afterSaleStatus/verificationStatus/payAmount/appointmentStart/appointmentEnd/verifiedAt`
+> （`OrderDetailData` 可选 `actions` 本切片不返回，UI 按事实字段自行决定按钮）；
+> `refundStatus` 取 ORDER 域自身投影词汇 `null/CREATED/SUCCESS`；非本人或不存在订单
+> 一律同一 404（防枚举）；两条路由 `Cache-Control: no-store`。与 §3.11 核销码路由共存，互不影响。
+
 ```text
 GET /api/v1/c/orders
 GET /api/v1/c/orders/{orderId}

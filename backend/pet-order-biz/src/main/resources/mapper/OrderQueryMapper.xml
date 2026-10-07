@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.petplatform.order.biz.infrastructure.persistence.mapper.OrderQueryMapper">
+    <sql id="mineProjection">
+        SELECT id, order_no, user_id, merchant_id, store_id, service_id, reservation_id,
+               order_stage, payment_status, verification_status,
+               refund_application_status, aftersale_status, refund_order_id,
+               original_amount, discount_amount, pay_amount, refunded_amount,
+               appointment_start_at, appointment_end_at, paid_at, confirmed_at, verified_at,
+               reschedule_count, version
+        FROM pet_order
+    </sql>
+    <select id="countMine" resultType="long">
+        SELECT COUNT(*)
+        FROM pet_order
+        WHERE user_id = #{userId}
+        <if test="filter != null">AND ${filter}</if>
+    </select>
+    <select id="selectMinePage" resultType="com.petplatform.order.biz.infrastructure.persistence.entity.OrderQueryViewEntity">
+        <include refid="mineProjection"/>
+        WHERE user_id = #{userId}
+        <if test="filter != null">AND ${filter}</if>
+        ORDER BY created_at DESC, id DESC
+        LIMIT #{limit} OFFSET #{offset}
+    </select>
+    <select id="selectMineById" resultType="com.petplatform.order.biz.infrastructure.persistence.entity.OrderQueryViewEntity">
+        <include refid="mineProjection"/>
+        WHERE id = #{id} AND user_id = #{userId}
+    </select>
+</mapper>

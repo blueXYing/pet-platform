@@ -3054,6 +3054,12 @@ paths:
       - C-Order
       summary: 我的订单
       operationId: listMyOrders
+      x-implementation-status: IMPLEMENTED_DEFAULT_OFF
+      x-default-enabled: false
+      x-contract: 10-HTTP-API-Contract-v0.4.md
+      x-assembly-switch: pet.auth.c.enabled
+      x-route-party: USER
+      x-audience: MINIAPP
       security:
       - bearerAuth: []
       parameters:
@@ -3072,6 +3078,12 @@ paths:
       - C-Order
       summary: 订单详情
       operationId: getMyOrder
+      x-implementation-status: IMPLEMENTED_DEFAULT_OFF
+      x-default-enabled: false
+      x-contract: 10-HTTP-API-Contract-v0.4.md
+      x-assembly-switch: pet.auth.c.enabled
+      x-route-party: USER
+      x-audience: MINIAPP
       security:
       - bearerAuth: []
       parameters:
