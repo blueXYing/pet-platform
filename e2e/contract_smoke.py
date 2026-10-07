@@ -327,6 +327,42 @@ STAFF_INVITATION_LIST_OPERATIONS = {
         ('200', '400', '401', '503')),
 }
 
+# C-side order write face (contract 10 §3.5/§3.6 slice, 2026-10-07): the two POST routes leave
+# the unimplemented legacy draft state behind and ride pet.auth.c.enabled like the §3.7 reads.
+# The census pins the default-off status, the §3.x response surface (create keeps the
+# 201-first/200-replay pair with identical CreateOrderResponseEnvelope bodies) and the fixed
+# channel body. Booking eligibility, ownership, five-tuple idempotency and the payment window
+# stay in the 38/40/41 kernels — no new error codes and no route changes here. The two
+# operations stay in LEGACY_OPERATIONS as well, so the S1 shape guards there keep applying.
+ORDER_WRITE_OPERATIONS = {
+    'createOrder': ('post', '/c/orders', ('200', '201', '401', '403', '409', '503')),
+    'createOrderPayment': ('post', '/c/orders/{orderId}/payments', ('200', '401', '403', '409', '503')),
+}
+
+
+def check_order_write(spec, operation, method, path):
+    name = operation['operationId']
+    expected_method, expected_path, required_codes = ORDER_WRITE_OPERATIONS[name]
+    assert (method, path) == (expected_method, expected_path), f'Order write operation moved: {name}'
+    assert operation.get('security') == [{'bearerAuth': []}], f'Order write security changed: {name}'
+    assert operation.get('x-implementation-status') == 'IMPLEMENTED_DEFAULT_OFF', f'Order write status changed: {name}'
+    assert operation.get('x-default-enabled') is False, f'Order write must stay default off: {name}'
+    assert operation.get('x-contract') == '10-HTTP-API-Contract-v0.4.md', f'Order write authority changed: {name}'
+    assert operation.get('x-assembly-switch') == 'pet.auth.c.enabled', f'Order write switch changed: {name}'
+    assert operation.get('x-route-party') == 'USER' and operation.get('x-audience') == 'MINIAPP', f'Order write identity changed: {name}'
+    responses = operation['responses']
+    assert set(responses) == set(required_codes), f'Order write response surface changed: {name}'
+    if name == 'createOrder':
+        assert responses['201']['content'] == responses['200']['content'], f'Order create replay changed: {name}'
+        assert responses['200']['content']['application/json']['schema'] == {
+            '$ref': '#/components/schemas/CreateOrderResponseEnvelope'}, f'Order create envelope changed: {name}'
+    else:
+        body = dereference(spec, operation['requestBody'])
+        assert body.get('required') is True, f'Payment initiation body must be required: {name}'
+        request = dereference(spec, body['content']['application/json']['schema'])
+        assert set(request['required']) == {'channel'}, f'Payment channel body opened: {name}'
+        assert request['properties']['channel']['enum'] == ['WECHAT_MINI_PROGRAM'], f'Payment channel enum opened: {name}'
+
 
 def check_staff_invitation_list(spec, operation, method, path):
     name = operation['operationId']
@@ -905,6 +941,8 @@ def check(spec):
                 check_notification_preferences(spec, operation, method, path)
             if operation_id in STAFF_INVITATION_LIST_OPERATIONS:
                 check_staff_invitation_list(spec, operation, method, path)
+            if operation_id in ORDER_WRITE_OPERATIONS:
+                check_order_write(spec, operation, method, path)
             if method in {'post', 'put', 'patch', 'delete'}:
                 assert {'$ref': '#/components/parameters/RequestId'} in parameters, f'Missing request ID: {operation_id}'
                 writes += 1
@@ -918,7 +956,7 @@ def check(spec):
     assert legacy_seen == LEGACY_OPERATIONS.keys(), f'Legacy operations missing: {LEGACY_OPERATIONS.keys() - legacy_seen}'
     assert legacy_writes == 11, 'Legacy write surface changed'
     assert legacy_creates == LEGACY_CREATES, 'Legacy create surface changed'
-    assert operations == LEGACY_OPERATIONS.keys() | AUTH_OPERATIONS.keys() | MERCHANT_OPERATIONS.keys() | APPLICATION_OPERATIONS.keys() | PRIVATE_ASSET_OPERATIONS.keys() | SERVICE_CATALOG_OPERATIONS.keys() | STORE_CATALOG_OPERATIONS.keys() | SERVICE_WRITE_OPERATIONS.keys() | SCHEDULE_AVAILABILITY_OPERATIONS.keys() | SCHEDULE_WRITE_OPERATIONS.keys() | CREDENTIAL_OPERATIONS.keys() | AFTERSALE_OPERATIONS.keys() | COUPON_POINTS_READ_OPERATIONS.keys() | VERIFICATION_HTTP_OPERATIONS.keys() | NOTIFICATION_PREFERENCE_OPERATIONS.keys() | STAFF_INVITATION_LIST_OPERATIONS.keys(), 'Unexpected or missing reviewed operations'
+    assert operations == LEGACY_OPERATIONS.keys() | AUTH_OPERATIONS.keys() | MERCHANT_OPERATIONS.keys() | APPLICATION_OPERATIONS.keys() | PRIVATE_ASSET_OPERATIONS.keys() | SERVICE_CATALOG_OPERATIONS.keys() | STORE_CATALOG_OPERATIONS.keys() | SERVICE_WRITE_OPERATIONS.keys() | SCHEDULE_AVAILABILITY_OPERATIONS.keys() | SCHEDULE_WRITE_OPERATIONS.keys() | CREDENTIAL_OPERATIONS.keys() | AFTERSALE_OPERATIONS.keys() | COUPON_POINTS_READ_OPERATIONS.keys() | VERIFICATION_HTTP_OPERATIONS.keys() | NOTIFICATION_PREFERENCE_OPERATIONS.keys() | STAFF_INVITATION_LIST_OPERATIONS.keys() | ORDER_WRITE_OPERATIONS.keys(), 'Unexpected or missing reviewed operations'
     schemes = spec['components']['securitySchemes']
     assert schemes['bearerAuth']['type'] == 'http' and schemes['bearerAuth']['scheme'] == 'bearer'
     for scheme, location, name in [('authAttempt', 'header', 'X-Auth-Attempt'),
@@ -969,6 +1007,7 @@ def check(spec):
             'serviceWriteOperations': len(operations & SERVICE_WRITE_OPERATIONS.keys()),
             'storeCatalogOperations': len(operations & STORE_CATALOG_OPERATIONS.keys()),
             'staffInvitationListOperations': len(operations & STAFF_INVITATION_LIST_OPERATIONS.keys()),
+            'orderWriteOperations': len(operations & ORDER_WRITE_OPERATIONS.keys()),
             'resolvedRefs': len(refs), 'stringIdProperties': ids}
 
 

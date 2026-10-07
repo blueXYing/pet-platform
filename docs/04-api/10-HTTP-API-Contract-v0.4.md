@@ -421,6 +421,25 @@ ScheduleQueryApi.queryAvailability   （07 号 §6.1/§6.1.1：可见性经 chec
 
 ## 3.5 创建订单
 
+> **实现状态（2026-10-07，C 端下单 HTTP 切片）**：本路由已实现，随 `pet.auth.c.enabled` 装配（默认关闭；
+> OpenAPI11 `x-implementation-status=IMPLEMENTED_DEFAULT_OFF`）。实现要点：控制器只做装配与投影，预约资格、
+> 归属与幂等全部在 38 号原子下单内核（`OrderCreationApi.create`）；请求体严格按 11 号
+> `CreateOrderRequest` 形状（未知字段/非可空字段显式 null/重复键/尾随 token 均 400），`X-Request-Id`
+> 沿 23 号终端 UUID；首次创建 201、同 key 同参重放 200 返回首次成功回执（orderId/orderNo/displayStatus/
+> payAmount/paymentExpireAt 五字段），同 key 异参 409 `IDEMPOTENCY_KEY_CONFLICT`；错误面按 12 号既有码
+> （含 `SCHEDULE_CAPACITY_EXCEEDED`/`SERVICE_NOT_BOOKABLE`/`PET_NOT_FOUND` 等 409/404 家族）。
+> 实施细则钉死如下（均按既有契约语义，未新增产品规则）：
+> - 请求未携带选窗 ID 与接送服务地址（本节及 11 号均无该字段）：到店（IN_STORE）由服务端在锁内解析唯一
+>   完整容纳所选分钟区间的原窗（38 号"到店无ID只能唯一原窗完整容纳"）；接送（PICKUP_DELIVERY）因内核
+>   必填双方向窗 ID 与服务地址，在本切片按现状**失败关闭**为 400 `COMMON_INVALID_ARGUMENT`，待 36 号
+>   联合契约的公开选窗字段同步切片（见本文件 §3.11 后注记与 §3.4 六字段响应限制）落地后启用，不猜测
+>   或臆造窗口 ID。
+> - `couponInstanceId` 字段按 CPN 未启现状如实透传：null（缺省）即无券；非空时内核按"券冻结提供器未
+>   实现"失败关闭 503 `COMMON_DEPENDENCY_UNAVAILABLE` 且不创建任何业务行（38 号既有语义）。
+> - `remark` 形状上限 500 字符（11 号 maxLength），内核另按 200 字符内容规则校验；未配置真实备注审核
+>   提供器时非空备注 503 失败关闭（38 号既有语义）。
+> - 内核装配开关（`pet.order.creation.enabled` 等）未开启时，路由随会话开关存在但失败关闭 503，不半执行。
+
 ### POST `/api/v1/c/orders`
 
 Header：
@@ -501,6 +520,19 @@ IDEMPOTENCY_KEY_CONFLICT
 ---
 
 ## 3.6 发起支付
+
+> **实现状态（2026-10-07，C 端支付发起 HTTP 切片）**：本路由已实现，随 `pet.auth.c.enabled` 装配（默认
+> 关闭；OpenAPI11 `x-implementation-status=IMPLEMENTED_DEFAULT_OFF`）。实现要点：控制器只做装配与投影，
+> 支付意图、渠道派发与短期参数全部在 40/41 号既有内核（`PaymentInitiationApi.create`，内部先走
+> `PaymentPreparationApi` 请求绑定）；`channel` 固定只接受 `WECHAT_MINI_PROGRAM`（本节"客户端固定传输"
+> 的落地：其余值或缺失均 400，服务端不代客户端猜渠道）；`X-Request-Id` 沿 23 号终端 UUID。重复发起语义
+> 按内核既有事实钉死：同 key 同参重放返回原支付单与同一组仍有效的微信参数（不再向渠道重复预下单）；同
+> key 换订单 409 `IDEMPOTENCY_KEY_CONFLICT`；新 key 对同一订单仍返回**同一张**支付单（每订单仅一条
+> payment_order，paymentNo/金额/期限不变，41 号既有语义），响应恒 200。非本人订单 403
+> `COMMON_FORBIDDEN`；订单非待支付或支付窗口已过（canPay=false，含迟到支付订单保持关闭）为 409
+> `COMMON_CONFLICT`（内核 `requirePayableForPreparation` 既有判定，40 号"原十分钟截止不延长"）；
+> 渠道结果未知等协调态为 503 `COMMON_DEPENDENCY_UNAVAILABLE`。本切片不做真实渠道外呼——渠道适配
+> 沿 PAY 域既有 stub/sandbox 语义，正式渠道联调与生产启用仍按 41 号 §5 门禁。
 
 ### POST `/api/v1/c/orders/{orderId}/payments`
 
@@ -2086,7 +2118,7 @@ applicationId等主键使用Snowflake String；applicationNo按原PRD为SQ+YYYYM
 
 ## 创建订单内核阶段状态（2026-09-27）
 
-[38号内部内核](38-Atomic-Booking-Create-Contract-v0.1.md)已实现真实占位与待支付订单原子写入、地址/备注加密快照和持久幂等。当前没有开放本文件§3.5 HTTP路由，也没有改变§3.4现行六字段响应；选窗ID/类型、服务地址及完整结算配套须后续同步公开合同与适配器后启用。优惠券、生产备注审核、自动到期关闭与支付未接齐，不能把无券内部测试当作完整C端下单上线。
+[38号内部内核](38-Atomic-Booking-Create-Contract-v0.1.md)已实现真实占位与待支付订单原子写入、地址/备注加密快照和持久幂等。~~当前没有开放本文件§3.5 HTTP路由，也没有改变§3.4现行六字段响应~~（2026-10-07 C 端下单/支付发起 HTTP 切片按 §3.5/§3.6 实现注记交付 §3.5 与 §3.6 两条 POST，默认关闭；§3.4 现行六字段响应未改变）；选窗ID/类型、服务地址及完整结算配套须后续同步公开合同与适配器后启用（接送履约在公开合同补齐选窗字段前按 §3.5 实现注记失败关闭）。优惠券、生产备注审核、自动到期关闭与支付未接齐，不能把无券内部测试当作完整C端下单上线。
 
 ## 核销码 V1/V2 正式补充
 2026-09-29用户批准V1/V2，执行[47号契约](47-Verification-Credential-Contract-v0.1.md)。覆盖§3.11：GET仅只读，POST生成/刷新带requestId和expectedCredentialVersion；新完整视图替代旧verificationStatus示例。第三次独立失败锁15分钟且换码不能绕过。~~两个路由均NOT_IMPLEMENTED，不注册公开入口~~（2026-10-06 核销 HTTP 切片按 47号 v0.2 交付，默认关闭）；~~不表示商家核销完成接口已交付~~（§4.7 商家核销路由同批按 48号 K2 v0.3 交付，默认关闭）。
