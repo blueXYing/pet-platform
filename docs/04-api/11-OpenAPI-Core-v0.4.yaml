@@ -3208,6 +3208,12 @@ paths:
       - C-Refund
       summary: 申请退款
       operationId: applyRefund
+      x-implementation-status: IMPLEMENTED_DEFAULT_OFF
+      x-default-enabled: false
+      x-contract: 49-Refund-Application-Contract-v0.1.md
+      x-assembly-switch: pet.refund.application.http.enabled
+      x-route-party: USER
+      x-audience: MINIAPP
       security:
       - bearerAuth: []
       parameters:
@@ -3220,6 +3226,8 @@ paths:
             schema:
               $ref: '#/components/schemas/RefundApplyRequest'
       responses:
+        '400':
+          $ref: '#/components/responses/BadRequest'
         '401':
           $ref: '#/components/responses/Unauthorized'
         '403':
@@ -13338,11 +13346,13 @@ components:
           x-precision: milliseconds
     RefundApplyRequest:
       type: object
+      additionalProperties: false
       required:
       - reasonCode
       properties:
         reasonCode:
           type: string
+          minLength: 1
           maxLength: 64
         reasonText:
           type: string

@@ -59,13 +59,15 @@ public final class RefundApplicationService implements RefundApplicationCommandA
         if(active!=null){var a=requireApplication(str(active.id),store,context);if(!order.equals(a.orderId())||!loc.userId().equals(a.userId())||!loc.merchantId().equals(a.merchantId()))throw bad();if(a.decisionId()!=null)requireDecision(a.applicationId(),a.decisionId(),store,context);live=new com.petplatform.refund.api.query.RefundApplicationHistoryFactsApi.Active(a.applicationId(),a.status(),Long.toString(a.version()),a.decisionId());}
         return new com.petplatform.refund.api.query.RefundApplicationHistoryFactsApi.Fact(order,store,loc.userId(),loc.merchantId(),now(),old,live,!execution.lockPresence(id(order)).isEmpty());
     });}
-    @Override public Receipt apply(Apply c){return safe(()->{
+    @Override public Receipt apply(Apply c){return applyWithOutcome(c).receipt();}
+    /** Same kernel path as apply; additionally reports whether this call created the application (201) or replayed the protected first receipt (200). */
+    @Override public CreationResult applyWithOutcome(Apply c){return safe(()->{
         validateApply(c);top();var loc=orders.locate(c.orderId(),system(c.context()));authorizeBuyer(c.context(),loc.userId());
         var key=key("refund.application.apply",c.context(),"ORDER:"+c.orderId());byte[] input=json(values("orderId",c.orderId(),"reasonCode",c.reasonCode(),"reasonText",c.reasonText()));String purpose=purpose(key);
         var admitted=admit(key,purpose,input);if(!"SUCCEEDED".equals(admitted.state)){reasons.requireCode(c.reasonCode());moderate(c.reasonText());}
         return tx.execute(s->{defaults();var binding=db.binding(key);same(binding,purpose,input);guard.acquire(List.of(loc.storeId()),system(c.context()));
             var nowLoc=orders.locate(c.orderId(),system(c.context()));if(!loc.equals(nowLoc))throw bad();authorizeBuyer(c.context(),loc.userId());
-            if("SUCCEEDED".equals(binding.state))return replay(binding,purpose,c.context(),c.orderId(),null);
+            if("SUCCEEDED".equals(binding.state))return new CreationResult(replay(binding,purpose,c.context(),c.orderId(),null),false);
             reserved(binding);pending(binding);var f=orders.requireEligible(c.orderId(),loc.storeId(),system(c.context()),source);if(!loc.equals(f.location()))throw bad();
             if(!execution.lockPresence(id(c.orderId())).isEmpty())throw error("REFUND_ALREADY_EXISTS");
             var active=db.active(id(c.orderId()));if(active!=null)throw error("REFUND_APPLICATION_ALREADY_PROCESSED");
@@ -88,12 +90,12 @@ public final class RefundApplicationService implements RefundApplicationCommandA
                 // REFUND_APPLICATION_CREATE task performs the actual refund-order creation as usual.
                 var receipt=autoApprovePreService(c,loc,app,now);
                 finish(binding,purpose,receipt);
-                before(()->{authorizeBuyer(c.context(),loc.userId());orders.requireApplicationBound(app,c.orderId(),loc.storeId(),system(c.context()),source);});return receipt;
+                before(()->{authorizeBuyer(c.context(),loc.userId());orders.requireApplicationBound(app,c.orderId(),loc.storeId(),system(c.context()),source);});return new CreationResult(receipt,true);
             }
             enqueue(timeoutSpec(requireApplication(app,loc.storeId(),system(c.context()))));
             publish(event,"RefundApplicationCreatedEvent.v1",app,now,c.context(),values("applicationId",app,"orderId",c.orderId(),"userId",loc.userId(),"merchantId",loc.merchantId(),"storeId",loc.storeId(),"applicationStatus","PENDING_MERCHANT","merchantDeadline",time(deadline),"createdAt",time(now)));
             var receipt=new Receipt(c.orderId(),app,"PENDING_MERCHANT","0",time(deadline),null,null);finish(binding,purpose,receipt);
-            before(()->{authorizeBuyer(c.context(),loc.userId());orders.requireApplicationBound(app,c.orderId(),loc.storeId(),system(c.context()),source);});return receipt;
+            before(()->{authorizeBuyer(c.context(),loc.userId());orders.requireApplicationBound(app,c.orderId(),loc.storeId(),system(c.context()),source);});return new CreationResult(receipt,true);
         });
     });}
     @Override public Receipt decide(Decide c){return safe(()->{

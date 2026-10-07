@@ -13,6 +13,7 @@ import {
   appointmentWindow, canShowVerifyBlock, orderFactRows, orderReadMessage, orderStatusBadge,
   verifyAbsenceNotice, PreviewOrderReadRepository, type OrderDetailView,
 } from '../../orders/model'
+import { canApplyRefundEntry } from '../../orders/refund'
 import { RealOrderReadRepository, isOrderReadUnauthorized } from '../../orders/repository'
 // 支付发起入口（booking 切片）：仅凭服务端 OrderActions.canPay（§3.7 #123）挂载，不推导业务真相。
 import { canInitiatePayment } from '../../booking/model'
@@ -140,6 +141,15 @@ function DetailScreen({ preview, scenario, orderId }: { preview: boolean; scenar
         {canShowVerifyBlock(detail)
           ? <VerifyCodeBlock key={detail.orderId} preview={preview} scenario={scenario} orderId={detail.orderId} />
           : <View className='ord-verify-note'><Text id='ord-verify-absent'>{verifyAbsenceNotice(detail)}</Text></View>}
+        {/* C-005 退款入口：仅凭服务端 actions.canApplyRefund（§3.7 事实字段，ARCH-005 不在页面推导），
+            两窗口口径文案与页面归 src/consumer/orders/refund.ts。 */}
+        {canApplyRefundEntry(detail) && <View className='ord-refund-entry'>
+          <View className='ord-refund-entry-head'>
+            <Text className='ord-refund-entry-title'>退款</Text>
+          </View>
+          <Text className='ord-verify-hint'>服务开始前申请将自动全额原路退回；服务开始后由商家在 24 小时内处理。</Text>
+          <Button id='ord-apply-refund' className='ord-refund-entry-link' onClick={() => { void Taro.navigateTo({ url: `/consumer/pages/orders/refund-apply?orderId=${encodeURIComponent(detail.orderId)}${preview ? '&preview=1' : ''}` }).catch(() => { void Taro.showToast({ title: '页面跳转失败，请重试', icon: 'none' }) }) }}>申请退款</Button>
+        </View>}
         <View className='ord-preview-note'><Text>{preview ? '只读预览：本地样例数据，仅用于设计验收，不发起真实请求。' : '页面数据：真实接口（订单只读 + 核销码 no-store）。'}</Text></View>
       </View>}
     </View>

@@ -62,14 +62,19 @@ class RefundApplicationConfigurationTest {
         });
     }
 
-    @Test void orphanWorkerAndAnyHttpFlagFailClosed() {
-        for (String flag : List.of("pet.refund.application.worker.enabled=true", "pet.refund.application.http.enabled=true"))
-            runner().withPropertyValues(flag).run(c -> {
-                assertThat(c).hasFailed();
-                assertThat(c.getStartupFailure()).hasStackTraceContaining("HTTP is not available");
-            });
+    @Test void orphanWorkerAndHttpWithoutTheSliceFailClosed() {
+        runner().withPropertyValues("pet.refund.application.worker.enabled=true").run(c -> {
+            assertThat(c).hasFailed();
+            assertThat(c.getStartupFailure()).hasStackTraceContaining("real session, merchant and payment dependencies");
+        });
+        // 2026-10-07 C-005: the HTTP face is implemented default-off; it still refuses to boot
+        // unless the whole kernel slice (and its real dependencies) is enabled first.
+        runner().withPropertyValues("pet.refund.application.http.enabled=true").run(c -> {
+            assertThat(c).hasFailed();
+            assertThat(c.getStartupFailure()).hasStackTraceContaining("real session, merchant and payment dependencies");
+        });
         dependencies("").withPropertyValues("pet.refund.application.http.enabled=true")
-                .run(c -> assertThat(c).hasFailed());
+                .run(c -> assertThat(c).hasNotFailed());
     }
 
     @ParameterizedTest
