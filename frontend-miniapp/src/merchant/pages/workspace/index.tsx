@@ -82,6 +82,14 @@ export default function MerchantWorkbenchPage() {
     controller.handoffToChild()
     Taro.navigateTo({ url: '/merchant/pages/staff-workbench/index' }).catch(() => controller.handoffCancelled())
   }
+  // Order verification (48 K2 v0.3 HTTP face): OWNER and STAFF share the same submit page —
+  // the operator identity is resolved server-side by the K1 chain. The OWNER path keeps
+  // ACTIVE/OFFLINE existing-order fulfillment, so a LIMITED store keeps the entry too
+  // (FROZEN fails closed server-side).
+  function openVerify() {
+    controller.handoffToChild()
+    Taro.navigateTo({ url: '/merchant/pages/staff-verify/index' }).catch(() => controller.handoffCancelled())
+  }
   const view = state.view
   return <View className='merchant-workbench'>
     <View className='workbench-header'>
@@ -134,6 +142,11 @@ export default function MerchantWorkbenchPage() {
           {/* Schedule maintenance entry gates on the approved action (53号 写侧消费切片). */}
           {view.allowedActions.includes('merchant.schedule.manage') && <Button id='workbench-schedule' onClick={openSchedule}>排期管理</Button>}
           <Button id='workbench-members' onClick={openMembers}>成员管理</Button>
+        </View>}
+        {(state.status === 'allowed' || state.status === 'limited') && view.membershipKind === 'OWNER' && <View className='workbench-steps'>
+          {/* Order verification entry (48 K2 v0.3): 存量履约 family — ACTIVE/OFFLINE keeps
+              verifying existing orders, so the entry stays for LIMITED like aftersale. */}
+          <Button id='workbench-verify' onClick={openVerify}>订单核销</Button>
         </View>}
         {(state.status === 'allowed' || state.status === 'limited') && view.membershipKind === 'OWNER' && view.allowedActions.includes('merchant.aftersale.read') && <View className='workbench-steps'>
           <Button id='workbench-aftersales' onClick={openAftersales}>售后管理</Button>
