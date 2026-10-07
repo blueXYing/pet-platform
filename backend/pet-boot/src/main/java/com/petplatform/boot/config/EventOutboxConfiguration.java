@@ -9,6 +9,7 @@ import com.petplatform.event.core.OutboxDispatcher;
 import com.petplatform.event.core.OutboxRetryDelays;
 import com.petplatform.event.core.TransactionalOutboxPublisher;
 import com.petplatform.notification.biz.event.MerchantApplicationReviewedConsumer;
+import com.petplatform.notification.biz.event.MerchantStaffGrantConsumer;
 import com.petplatform.notification.biz.event.MerchantStaffInvitationConsumer;
 import com.petplatform.notification.biz.event.MerchantStaffMemberConsumer;
 import com.petplatform.notification.biz.event.ServiceReviewedConsumer;
@@ -110,6 +111,24 @@ public class EventOutboxConfiguration {
             ObjectProvider<com.petplatform.notification.biz.delivery.WechatDeliveryTaskProducer>
                     wechatDelivery) {
         return new MerchantStaffMemberConsumer(
+                dataSource, ids, guard::tryClaim, wechatDelivery.getIfAvailable());
+    }
+
+    // Contract-54 NTF grant slice (2026-10-07 ruling): grant-actions / revoke-store station
+    // notifications ride the same default-off switch and store shape as the two staff consumers
+    // above; with the switch off the pending grant events keep waiting in the outbox.
+    @Bean
+    @ConditionalOnProperty(
+            prefix = "pet.merchant.staff",
+            name = "notifications-enabled",
+            havingValue = "true")
+    MerchantStaffGrantConsumer merchantStaffGrantConsumer(
+            DataSource dataSource,
+            SnowflakeIdGenerator ids,
+            JdbcOutboxConsumeGuard guard,
+            ObjectProvider<com.petplatform.notification.biz.delivery.WechatDeliveryTaskProducer>
+                    wechatDelivery) {
+        return new MerchantStaffGrantConsumer(
                 dataSource, ids, guard::tryClaim, wechatDelivery.getIfAvailable());
     }
 

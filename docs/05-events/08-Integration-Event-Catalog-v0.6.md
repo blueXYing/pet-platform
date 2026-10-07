@@ -524,4 +524,14 @@ payload 字段（9 字段，与角色E消费侧对齐定稿 2026-09-22，中途�
 | `MerchantStaffInvitationLifecycleEvent.v1` | 1 / `MERCHANT_MEMBER_INVITATION`，aggregateId=invitationId | invitationId、merchantId、storeId、ownerUserId、memberName、phoneMasked、changeType(INVITED\|CANCELED\|CONFIRMED)、confirmedUserId?（仅CONFIRMED）、memberId?（仅CONFIRMED）、occurredAt | invite/cancel/confirm 各自在同一命令事务内与邀请行、动作行、审计、23号幂等回执原子提交；回滚无事件，成功重放不产生新事件。载荷只含预脱敏手机号（`1xx****xxxx`）与 owner 可见姓名，无明文手机号。 |
 | `MerchantStaffMemberLifecycleEvent.v1` | 1 / `MERCHANT_MEMBER`，aggregateId=memberId | memberId、merchantId、storeId、memberUserId、changeType(DISABLED\|ENABLED)、occurredAt | OWNER disable/enable 命令事务内原子生产；语义同上。 |
 
-通知域消费（NTF-001 切片）：消费者 `notification.merchant-staff-invitation.v1` / `notification.merchant-staff-member.v1` 按 (eventId, consumerName) 去重并在本域同事务写消费日志与站内行；开关 `pet.merchant.staff.notifications-enabled`（默认关闭）独立于 54号写侧开关与 outbox 总开关，装配见 pet-boot EventOutboxConfiguration。**可达性边界（SQL06 §11 依据）**：站内行只能按 USER 账号 id 寻址，被邀人确认前尚无 user_account（54号 §2），因此 INVITED/CANCELED 仅通知 OWNER（邀请编号随站内行落库，供商家转发与自查），CONFIRMED 通知 OWNER 与确认员工本人，DISABLED/ENABLED 通知被绑定的成员账号。grantActions/revokeStoreGrant 不在本切片事件范围。消费者自包含（收件人来自事件载荷），不读 merchant 表（ARCH-002）。生产侧不设独立开关：`pet.outbox.enabled=false`（默认）时无 publisher bean、零事件零行为。
+通知域消费（NTF-001 切片）：消费者 `notification.merchant-staff-invitation.v1` / `notification.merchant-staff-member.v1` 按 (eventId, consumerName) 去重并在本域同事务写消费日志与站内行；开关 `pet.merchant.staff.notifications-enabled`（默认关闭）独立于 54号写侧开关与 outbox 总开关，装配见 pet-boot EventOutboxConfiguration。**可达性边界（SQL06 §11 依据）**：站内行只能按 USER 账号 id 寻址，被邀人确认前尚无 user_account（54号 §2），因此 INVITED/CANCELED 仅通知 OWNER（邀请编号随站内行落库，供商家转发与自查），CONFIRMED 通知 OWNER 与确认员工本人，DISABLED/ENABLED 通知被绑定的成员账号。grantActions/revokeStoreGrant 由 2026-10-07 授权通知增补切片接入（见下节）。消费者自包含（收件人来自事件载荷），不读 merchant 表（ARCH-002）。生产侧不设独立开关：`pet.outbox.enabled=false`（默认）时无 publisher bean、零事件零行为。
+
+## 员工授权与整店撤权站内通知事件（NTF增补，2026-10-07）
+
+执行[54号契约](../04-api/54-Merchant-Staff-Binding-Contract-v0.1.md) §6 授权/撤权增补切片（2026-10-07 用户裁决：授权/撤权必须站内通知成员，避免成员下次核销失败才感知）。新事件由 MER 唯一生产（MerchantStaffMemberService 写事务内 TransactionalOutboxPublisher），envelope 惯例同上节；载荷只有通知所需字段，动作码明文可入，姓名/手机号零明文。
+
+| eventType | eventVersion / aggregate | 精确 payload 字段 | 事务与含义 |
+|---|---|---|---|
+| `MerchantStaffGrantLifecycleEvent.v1` | 1 / `MERCHANT_MEMBER`，aggregateId=memberId | memberId、merchantId、storeId、memberUserId、changeType(GRANTED\|REVOKED)、actions（动作码数组，GRANTED 为变更后集合且非空，REVOKED 为被收回集合）、occurredAt | OWNER grant-actions（首次授予与整体替换，均 GRANTED）与 revoke-store（整店撤权，REVOKED，终局 D3）各自在命令事务内与授权行、动作行、审计、23号幂等回执原子提交；回滚无事件，成功重放不产生新事件；授权/撤权业务语义零变化，纯增通知。 |
+
+通知域消费（NTF 授权增补）：消费者 `notification.merchant-staff-grant.v1` 沿用 (eventId, consumerName) 去重与本域同事务写站内行（message_type=MER_STAFF_GRANT、biz_type=MERCHANT_MEMBER、bizId=memberId）；开关沿用 `pet.merchant.staff.notifications-enabled`（默认关闭，关闭时零行为、事件滞留 outbox）。**可达性（2026-10-07 裁决）**：GRANTED/REVOKED 均只通知被授权/被撤权的成员账号（memberUserId，已绑定、可达性成立），OWNER 为命令本人不另发；动作码经严格形状校验后才进入站内文案（ARCH-002），不读 merchant 表。

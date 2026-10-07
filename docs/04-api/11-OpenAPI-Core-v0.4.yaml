@@ -17802,6 +17802,50 @@ components:
         contract 54 NTF slice), not an HTTP endpoint. memberUserId is the bound staff account and
         the only station-notification receiver for these changes.
 
+    MerchantStaffGrantLifecyclePayload:
+      type: object
+      additionalProperties: false
+      required:
+      - memberId
+      - merchantId
+      - storeId
+      - memberUserId
+      - changeType
+      - actions
+      - occurredAt
+      properties:
+        memberId:
+          $ref: '#/components/schemas/PublicId'
+        merchantId:
+          $ref: '#/components/schemas/PublicId'
+        storeId:
+          $ref: '#/components/schemas/PublicId'
+        memberUserId:
+          $ref: '#/components/schemas/PublicId'
+        changeType:
+          type: string
+          enum:
+          - GRANTED
+          - REVOKED
+        actions:
+          type: array
+          minItems: 0
+          maxItems: 8
+          items:
+            type: string
+            minLength: 1
+            maxLength: 64
+            pattern: '^[a-z][a-z0-9-]*(\.[a-z][a-z0-9-]*){1,5}$'
+        occurredAt:
+          $ref: '#/components/schemas/AuthTimestamp'
+      description: Shared data definition for MerchantStaffGrantLifecycleEvent.v1 (Event08,
+        contract 54 NTF grant slice, 2026-10-07 ruling), not an HTTP endpoint. GRANTED covers the
+        first store grant and the whole-set action replacement (actions is the post-change set,
+        never empty); REVOKED is the terminal store-wide revoke (actions is the withdrawn set,
+        possibly empty). Action codes travel in plaintext; no name and no phone. memberUserId is
+        the bound staff account and the only station-notification receiver; the OWNER actor is
+        not notified about its own command.
+
     MerchantApplicationReviewedPayload:
       type: object
       additionalProperties: false
