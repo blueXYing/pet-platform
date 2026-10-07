@@ -6,6 +6,15 @@
 
 本批提供ORDER/SCH/TASK内部内核、第二轮自动/手工确认、拒单退款衔接及隔离MySQL验收。`pet.order.reschedule.enabled=false`；`pet.order.reschedule.http.enabled=false`，HTTP置true直接装配失败。本批不注册C端改期路由，不提供小程序页面、临时版本查询、通知发送或生产迁移。
 
+> **HTTP 切片注记（2026-10-07）**：前置"真实核销码失效"（47号真实凭证 Owner 失效）与"公开版本读侧"
+> 均已到位，`POST /api/v1/c/orders/{orderId}/reschedule` 已注册为默认关闭的 C 端路由
+> （`pet.order.reschedule.http.enabled=true` 且 `pet.order.reschedule.enabled=true` 时装配；HTTP 开而内核
+> 关仍装配失败）。首交与受保护重放返回同一首次成功回执（200）；严格 JSON 与 oneOf 分支形状在 HTTP 边界
+> 校验；本契约全部准入/交换/任务/核销失效语义不变，仍在内核。公开版本读侧以 10号 §3.7 详情/列表投影
+> 新增 `orderVersion`（连同 `serviceId`/`storeId`）落实——该读侧增补由本切片登记。小程序改期页与
+> 订单详情入口随本切片交付（canReschedule 门控、CAS 409 重读、§3.4+39号选窗 windowId 消费）；
+> 通知消费与生产启用仍不在本切片。
+
 内部装配必须具备支付、预约保护、首轮任务生产、商家命令基础能力，以及真实会话、保护密钥、全来源退款事实和`VerificationRescheduleFenceApi`。核销Owner接口在同一DataSource、同一guard事务中失效旧码，并返回持久证据ID、orderId、rescheduleId。没有真实Provider时装配失败；不能使用默认空成功实现。真实动态码生命周期仍NOT_IMPLEMENTED，隔离QA明确使用带持久化记录的测试替身，不将其视作真实核销链验收。
 
 ## 命令与回执

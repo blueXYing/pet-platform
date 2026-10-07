@@ -14,11 +14,14 @@ import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.context.annotation.*;
 import org.springframework.core.env.Environment;
 
-/** No HTTP or fake verification provider. Explicit enablement still requires every owner dependency. */
+/** Real verification provider required; the C HTTP face (10号 §3.8 slice) rides the kernel switches. */
 @Configuration(proxyBeanMethods=false)
 public class OrderRescheduleConfiguration {
  @Bean Object rescheduleFlags(Environment e){
-  if(e.getProperty("pet.order.reschedule.http.enabled",Boolean.class,false))throw new IllegalStateException("Reschedule HTTP is not implemented");
+  // Same fail-closed shape as the refund/credential families: the HTTP face can never assemble
+  // without the kernel and its complete owner dependencies.
+  if(e.getProperty("pet.order.reschedule.http.enabled",Boolean.class,false)&&!e.getProperty("pet.order.reschedule.enabled",Boolean.class,false))
+   throw new IllegalStateException("Reschedule HTTP requires the reschedule kernel");
   if(e.getProperty("pet.order.reschedule.enabled",Boolean.class,false)){
    for(String dependency:new String[]{"pet.schedule.protection.enabled","pet.payment.foundation.enabled","pet.order.auto-confirm.enabled","pet.order.merchant.enabled"})
     if(!e.getProperty(dependency,Boolean.class,false))throw new IllegalStateException("Reschedule requires "+dependency);

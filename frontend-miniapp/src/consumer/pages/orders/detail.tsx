@@ -14,6 +14,7 @@ import {
   verifyAbsenceNotice, PreviewOrderReadRepository, type OrderDetailView,
 } from '../../orders/model'
 import { canApplyRefundEntry } from '../../orders/refund'
+import { canRescheduleEntry } from '../../orders/reschedule'
 import { RealOrderReadRepository, isOrderReadUnauthorized } from '../../orders/repository'
 // 支付发起入口（booking 切片）：仅凭服务端 OrderActions.canPay（§3.7 #123）挂载，不推导业务真相。
 import { canInitiatePayment } from '../../booking/model'
@@ -131,6 +132,12 @@ function DetailScreen({ preview, scenario, orderId }: { preview: boolean; scenar
         {canInitiatePayment(detail) && <Button id='ord-go-pay' className='ord-pay-action'
           onClick={() => { void Taro.navigateTo({ url: `/consumer/pages/booking/pay?${preview ? 'preview=1&' : ''}orderId=${encodeURIComponent(detail.orderId)}` }).catch(() => setNotice('页面跳转失败，请重试')) }}>
           去支付 ¥{detail.payAmount}
+        </Button>}
+        {/* §3.8 改期入口：仅凭服务端 actions.canReschedule（46号准入投影，ARCH-005 不在页面推导），
+            进入改期页（新时段选择 + expectedOrderVersion CAS + 46号错误面）。 */}
+        {canRescheduleEntry(detail) && <Button id='ord-go-reschedule' className='ord-pay-action'
+          onClick={() => { void Taro.navigateTo({ url: `/consumer/pages/orders/reschedule?orderId=${encodeURIComponent(detail.orderId)}${preview ? '&preview=1' : ''}` }).catch(() => { void Taro.showToast({ title: '页面跳转失败，请重试', icon: 'none' }) }) }}>
+          订单改期
         </Button>}
         <View className='ord-facts'>
           {orderFactRows(detail).map(row => <View key={row.id} className='ord-fact-row'>

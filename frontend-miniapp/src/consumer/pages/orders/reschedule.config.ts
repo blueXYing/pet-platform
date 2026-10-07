@@ -1,0 +1,1 @@
+export default definePageConfig({ navigationStyle: 'custom', backgroundColor: '#F8F5EE', disableScroll: false })
