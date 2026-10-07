@@ -3037,6 +3037,12 @@ paths:
       - C-Order
       summary: 创建预约订单
       operationId: createOrder
+      x-implementation-status: IMPLEMENTED_DEFAULT_OFF
+      x-default-enabled: false
+      x-contract: 10-HTTP-API-Contract-v0.4.md
+      x-assembly-switch: pet.auth.c.enabled
+      x-route-party: USER
+      x-audience: MINIAPP
       security:
       - bearerAuth: []
       parameters:
@@ -3122,6 +3128,12 @@ paths:
       - C-Order
       summary: 发起微信支付
       operationId: createOrderPayment
+      x-implementation-status: IMPLEMENTED_DEFAULT_OFF
+      x-default-enabled: false
+      x-contract: 10-HTTP-API-Contract-v0.4.md
+      x-assembly-switch: pet.auth.c.enabled
+      x-route-party: USER
+      x-audience: MINIAPP
       security:
       - bearerAuth: []
       parameters:

@@ -84,11 +84,14 @@ public class CSessionSecurityConfiguration {
             // Inbox reads (CCR-W2-NOTIFICATION-001): MINIAPP Bearer enforced by the filter.
             a.requestMatchers("/api/v1/c/notifications", "/api/v1/c/notifications/**")
                 .permitAll();
-            // C order list/detail reads (contract 10 §3.7, C-004 slice): MINIAPP Bearer is
-            // enforced by the filter's protectedPath list, not by permitAll itself. GET-only:
-            // the unimplemented POST /api/v1/c/orders stays denied.
+            // C order routes (contract 10 §3.5/§3.6/§3.7, C-004 + order-create slices): MINIAPP
+            // Bearer is enforced by the filter's protectedPath list, not by permitAll itself.
+            // The read pair stays GET-only; the two write routes (create order, initiate payment)
+            // join the same pet.auth.c.enabled assembly and the filter's POST family.
             a.requestMatchers(HttpMethod.GET, "/api/v1/c/orders", "/api/v1/c/orders/*")
                 .permitAll();
+            a.requestMatchers(HttpMethod.POST, "/api/v1/c/orders",
+                    "/api/v1/c/orders/*/payments").permitAll();
             // Notification preferences (SSOT §16.4 slice): same session-filter enforcement —
             // the GET/PUT pair rides pet.auth.c.enabled like the inbox surface.
             a.requestMatchers("/api/v1/c/notification-preferences").permitAll();

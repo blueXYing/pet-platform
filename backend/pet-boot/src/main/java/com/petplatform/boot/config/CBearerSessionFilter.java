@@ -68,10 +68,12 @@ public final class CBearerSessionFilter extends OncePerRequestFilter {
         || path.startsWith("/api/v1/c/coupons/")
         || path.equals("/api/v1/c/points/balance")
         || path.equals("/api/v1/c/points/ledger")
-        // C order list/detail reads (contract 10 §3.7, C-004): MINIAPP Bearer enforced; the
-        // deeper order subpaths keep their own explicit patterns below.
+        // C order routes (contract 10 §3.5/§3.6/§3.7): MINIAPP Bearer enforced; reads, creation
+        // and payment initiation all need the session; the deeper order subpaths keep their own
+        // explicit patterns below.
         || path.equals("/api/v1/c/orders")
         || path.matches("/api/v1/c/orders/[^/]+")
+        || path.matches("/api/v1/c/orders/[^/]+/payments")
         // Merchant workbench service management (ADM-001 write slice): MINIAPP Bearer enforced.
         || path.equals("/api/v1/merchant/services")
         || path.startsWith("/api/v1/merchant/services/")

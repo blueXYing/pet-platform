@@ -25,6 +25,7 @@ import org.springframework.web.method.annotation.MethodArgumentTypeMismatchExcep
         CNotificationController.class, CNotificationPreferenceController.class,
         CServiceController.class, CStoreController.class,
         CScheduleController.class, CCouponController.class, CPointsController.class,
+        COrderCreateController.class,
         CVerificationCredentialController.class})
 @Order(0)
 public class CServiceExceptionHandler {
@@ -46,6 +47,11 @@ public class CServiceExceptionHandler {
             // Service write slice (ADM-001): workbench commands surface through C-session routes.
             Map.entry("SERVICE_STATE_NOT_ALLOWED", 409),
             Map.entry("SERVICE_REVIEW_REASON_REQUIRED", 400),
+            // Order create/payment HTTP face (contract 10 §3.5/§3.6): the booking kernel's
+            // business rejections reuse the Error12 §3/§4/§12 codes with their registry statuses.
+            Map.entry("SERVICE_NOT_BOOKABLE", 409),
+            Map.entry("SCHEDULE_NOT_AVAILABLE", 409),
+            Map.entry("SCHEDULE_CAPACITY_EXCEEDED", 409),
             Map.entry("COMMON_RATE_LIMITED", 429),
             Map.entry("COMMON_INTERNAL_ERROR", 500),
             Map.entry("COMMON_DEPENDENCY_UNAVAILABLE", 503),
