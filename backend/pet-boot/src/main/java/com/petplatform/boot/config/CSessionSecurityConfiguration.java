@@ -45,7 +45,9 @@ public class CSessionSecurityConfiguration {
       @Value("${pet.order.merchant.http.enabled:false}")
           boolean merchantOrderHttpEnabled,
       @Value("${pet.refund.application.http.enabled:false}")
-          boolean refundApplicationHttpEnabled)
+      boolean refundApplicationHttpEnabled,
+      @Value("${pet.review.http.enabled:false}")
+      boolean reviewHttpEnabled)
       throws Exception {
     http.securityMatcher("/api/v1/c/**", "/api/v1/merchant/**")
         .csrf(c -> c.disable())
@@ -186,6 +188,16 @@ public class CSessionSecurityConfiguration {
               // by the filter's protectedPath regex, not by permitAll itself.
               a.requestMatchers(HttpMethod.POST,
                       "/api/v1/c/orders/*/refund-applications")
+                  .permitAll();
+            }
+            if (reviewHttpEnabled) {
+              // C review face (contract 10 §3.14 / REV-001 slice): MINIAPP Bearer is enforced
+              // by the filter's protectedPath regex, not by permitAll itself.
+              a.requestMatchers(HttpMethod.GET,
+                      "/api/v1/c/orders/*/review-eligibility")
+                  .permitAll();
+              a.requestMatchers(HttpMethod.POST,
+                      "/api/v1/c/orders/*/reviews")
                   .permitAll();
             }
           }

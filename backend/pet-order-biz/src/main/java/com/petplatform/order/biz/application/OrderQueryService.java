@@ -6,6 +6,7 @@ import com.petplatform.common.DecimalPublicIdCodec;
 import com.petplatform.common.PageResult;
 import com.petplatform.common.QueryContext;
 import com.petplatform.order.api.dto.OrderSnapshotDTO;
+import com.petplatform.order.api.dto.ReviewEligibilityDTO;
 import com.petplatform.order.api.query.OrderQueryApi.MyOrderListQuery;
 import com.petplatform.order.api.query.OrderQueryApi.OrderIdQuery;
 import com.petplatform.order.biz.application.OrderDisplayStatus.Facts;
@@ -74,6 +75,34 @@ public final class OrderQueryService {
             throw new ApiException(CommonApiCodes.NOT_FOUND, "订单不存在");
         }
         return project(row, clock.instant().atOffset(java.time.ZoneOffset.UTC));
+    }
+
+    /**
+     * §7.7 review eligibility (REV-001 slice) over the caller's own order facts. Same
+     * anti-enumeration as {@link #getOrder(OrderIdQuery)}; the verdict itself stays single
+     * truth in {@link OrderActionAvailability#reviewOutcome} (the same branch that projects
+     * OrderActions.canReview), and reviewDeadline is the verifiedAt+30d window fact — null
+     * before verification. Existing reviews are the review domain's overlay, not this one's.
+     */
+    public ReviewEligibilityDTO checkReviewEligibility(OrderIdQuery query) {
+        Objects.requireNonNull(query, "query is required");
+        long id = parse(query.orderId());
+        OrderQueryViewEntity row = store.read(mapper -> mapper.selectMineById(id, subject(query.context())));
+        if (row == null) {
+            throw new ApiException(CommonApiCodes.NOT_FOUND, "订单不存在");
+        }
+        OrderActionAvailability.ReviewOutcome outcome = OrderActionAvailability.reviewOutcome(
+                new OrderActionAvailability.Facts(
+                        row.getOrderStage(), row.getPaymentStatus(), row.getVerificationStatus(),
+                        row.getRefundOrderId(), row.getRefundedAmount(), row.getPayAmount(),
+                        row.getRefundApplicationStatus(), row.getAftersaleStatus(),
+                        row.getRescheduleCount(), row.getPaymentExpireAt(), row.getCanceledAt(),
+                        row.getCancelReason(), row.getConfirmedAt(), row.getAppointmentStartAt(),
+                        row.getVerifiedAt()),
+                clock.instant().atOffset(java.time.ZoneOffset.UTC));
+        java.time.OffsetDateTime deadline = instant(row.getVerifiedAt());
+        return new ReviewEligibilityDTO(outcome.eligible(), outcome.scoreIncluded(),
+                deadline == null ? null : deadline.plusDays(30), outcome.rejectCode());
     }
 
     private static long subject(QueryContext context) {

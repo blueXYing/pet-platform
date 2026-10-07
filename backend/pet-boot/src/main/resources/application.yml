@@ -72,6 +72,13 @@ pet:
         enabled: false
       http:
         enabled: false
+  review:
+    # REV-001 review kernel + C face (10号 §3.14 + 07号 §7.7/§14): off by default; the kernel
+    # additionally needs pet.auth.c.enabled for the real C session/order query slice, and the
+    # HTTP routes ride pet.review.http.enabled on top of it.
+    enabled: false
+    http:
+      enabled: false
   verification:
     completion:
       enabled: false

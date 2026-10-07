@@ -44,7 +44,7 @@ public final class CBearerSessionFilter extends OncePerRequestFilter {
   static boolean protectedPath(String path) {
     return PROTECTED_EXACT.contains(path)
         || path.startsWith("/api/v1/c/pets/")
-        || path.matches("/api/v1/c/orders/[^/]+/(aftersales|aftersale-eligibility|verification-code|refund-applications|reschedule)")
+        || path.matches("/api/v1/c/orders/[^/]+/(aftersales|aftersale-eligibility|verification-code|refund-applications|reschedule|review-eligibility|reviews)")
         || path.equals("/api/v1/c/aftersales") || path.startsWith("/api/v1/c/aftersales/")
         || path.equals("/api/v1/c/aftersale-options")
         || path.equals("/api/v1/merchant/aftersales") || path.startsWith("/api/v1/merchant/aftersales/")

@@ -95,3 +95,18 @@
 .ord-refund-entry-head { display: flex; align-items: baseline; justify-content: space-between; gap: calc(var(--ord-unit) * 8); }
 .ord-refund-entry-title { font-size: calc(var(--ord-unit) * 15); line-height: calc(var(--ord-unit) * 22); font-weight: 500; color: #1d0d07; }
 .ord-refund-entry-link { align-self: flex-start; margin-top: calc(var(--ord-unit) * 8); padding: 0 calc(var(--ord-unit) * 22); border-radius: calc(var(--ord-unit) * 9999); background: #5baae8; color: #e4f6f3; font-size: calc(var(--ord-unit) * 13); line-height: calc(var(--ord-unit) * 36); }
+
+/* REV-001 评价页（orders 分包 review，detail actions.canReview 门控进入）：三维 40/40/20 星级
+   交互 + 文字评价 + 成功回执；WXSS className，沿 ord-* 设计变量。 */
+.ord-review { width: calc(var(--ord-unit) * 343); margin: calc(var(--ord-unit) * 12) calc(var(--ord-unit) * 29) 0; padding: calc(var(--ord-unit) * 14) calc(var(--ord-unit) * 16); background: #fff; border: calc(var(--ord-unit) * 1) solid #c0ecff; border-radius: calc(var(--ord-unit) * 12); }
+.ord-rate { display: flex; flex-direction: column; gap: calc(var(--ord-unit) * 4); margin-top: calc(var(--ord-unit) * 12); }
+.ord-rate-head { display: flex; align-items: baseline; justify-content: space-between; gap: calc(var(--ord-unit) * 8); }
+.ord-rate-label { font-size: calc(var(--ord-unit) * 13); line-height: calc(var(--ord-unit) * 19); font-weight: 500; color: #1d0d07; }
+.ord-rate-weight { font-size: calc(var(--ord-unit) * 10); line-height: calc(var(--ord-unit) * 15); color: #577683; }
+.ord-rate-stars { display: flex; gap: calc(var(--ord-unit) * 6); }
+.ord-star { width: calc(var(--ord-unit) * 36); height: calc(var(--ord-unit) * 36); display: flex; align-items: center; justify-content: center; border: none; border-radius: calc(var(--ord-unit) * 8); background: #f0fbff; padding: 0; margin: 0; }
+.ord-star-icon { font-size: calc(var(--ord-unit) * 20); line-height: 1; color: #c9d8e0; }
+.ord-star.is-on { background: #c0ecff; }
+.ord-star.is-on .ord-star-icon { color: #f5a623; }
+.ord-rate-summary { display: flex; align-items: baseline; justify-content: space-between; gap: calc(var(--ord-unit) * 8); margin-top: calc(var(--ord-unit) * 14); padding: calc(var(--ord-unit) * 10) calc(var(--ord-unit) * 12); background: #f0fbff; border-radius: calc(var(--ord-unit) * 8); }
+.ord-rate-composite { font-size: calc(var(--ord-unit) * 16); line-height: calc(var(--ord-unit) * 22); font-weight: 700; color: #1d0d07; }
