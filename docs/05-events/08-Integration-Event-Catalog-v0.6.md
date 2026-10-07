@@ -514,3 +514,14 @@ payload 字段（9 字段，与角色E消费侧对齐定稿 2026-09-22，中途�
 ## 2026-09-30 AFS来源与进度增量（批准）
 
 执行[Contract50 §8](../04-api/50-AfterSale-Workflow-Contract-v0.1.md)：AFTERSALE_DECISION加入退款v1严格来源，FULL/PARTIAL来自可信决定/执行事实；不新增v1字段。旧消费者先分派来源再校验本来源FULL。新增AfterSaleProgressChangedEvent.v1精确字段及动作见50号；Created/Resolved/Invalidated保持原载荷，AFS核销失效同事务发事件。事件不授权出款，通知实际送达另验。
+
+## 员工邀请与成员生命周期事件（NTF切片，2026-10-06）
+
+执行[54号契约](../04-api/54-Merchant-Staff-Binding-Contract-v0.1.md)站内通知接入切片。两个新事件由 MER 唯一生产（MerchantStaffMemberService 写事务内 TransactionalOutboxPublisher），标准 envelope：eventId 为新的 Snowflake String，traceId 只在 envelope，occurredAt/载荷时间为 UTC 毫秒精度，ID 为十进制 String。
+
+| eventType | eventVersion / aggregate | 精确 payload 字段 | 事务与含义 |
+|---|---|---|---|
+| `MerchantStaffInvitationLifecycleEvent.v1` | 1 / `MERCHANT_MEMBER_INVITATION`，aggregateId=invitationId | invitationId、merchantId、storeId、ownerUserId、memberName、phoneMasked、changeType(INVITED\|CANCELED\|CONFIRMED)、confirmedUserId?（仅CONFIRMED）、memberId?（仅CONFIRMED）、occurredAt | invite/cancel/confirm 各自在同一命令事务内与邀请行、动作行、审计、23号幂等回执原子提交；回滚无事件，成功重放不产生新事件。载荷只含预脱敏手机号（`1xx****xxxx`）与 owner 可见姓名，无明文手机号。 |
+| `MerchantStaffMemberLifecycleEvent.v1` | 1 / `MERCHANT_MEMBER`，aggregateId=memberId | memberId、merchantId、storeId、memberUserId、changeType(DISABLED\|ENABLED)、occurredAt | OWNER disable/enable 命令事务内原子生产；语义同上。 |
+
+通知域消费（NTF-001 切片）：消费者 `notification.merchant-staff-invitation.v1` / `notification.merchant-staff-member.v1` 按 (eventId, consumerName) 去重并在本域同事务写消费日志与站内行；开关 `pet.merchant.staff.notifications-enabled`（默认关闭）独立于 54号写侧开关与 outbox 总开关，装配见 pet-boot EventOutboxConfiguration。**可达性边界（SQL06 §11 依据）**：站内行只能按 USER 账号 id 寻址，被邀人确认前尚无 user_account（54号 §2），因此 INVITED/CANCELED 仅通知 OWNER（邀请编号随站内行落库，供商家转发与自查），CONFIRMED 通知 OWNER 与确认员工本人，DISABLED/ENABLED 通知被绑定的成员账号。grantActions/revokeStoreGrant 不在本切片事件范围。消费者自包含（收件人来自事件载荷），不读 merchant 表（ARCH-002）。生产侧不设独立开关：`pet.outbox.enabled=false`（默认）时无 publisher bean、零事件零行为。

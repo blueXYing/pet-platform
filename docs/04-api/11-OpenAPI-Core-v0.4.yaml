@@ -17616,6 +17616,94 @@ components:
         endpoint. REJECT requires opinion 10-500 chars; APPROVE opinion optional. The recipient
         field keeps the notification consumer self-contained.
 
+    MerchantStaffInvitationLifecyclePayload:
+      type: object
+      additionalProperties: false
+      required:
+      - invitationId
+      - merchantId
+      - storeId
+      - ownerUserId
+      - memberName
+      - phoneMasked
+      - changeType
+      - confirmedUserId
+      - memberId
+      - occurredAt
+      properties:
+        invitationId:
+          $ref: '#/components/schemas/PublicId'
+        merchantId:
+          $ref: '#/components/schemas/PublicId'
+        storeId:
+          $ref: '#/components/schemas/PublicId'
+        ownerUserId:
+          $ref: '#/components/schemas/PublicId'
+        memberName:
+          type: string
+          minLength: 1
+          maxLength: 64
+        phoneMasked:
+          type: string
+          pattern: '^1[0-9]{2}\*{4}[0-9]{4}$'
+        changeType:
+          type: string
+          enum:
+          - INVITED
+          - CANCELED
+          - CONFIRMED
+        confirmedUserId:
+          type: string
+          minLength: 1
+          maxLength: 19
+          pattern: '^[1-9][0-9]{0,18}(?![\s\S])'
+          x-maximum-decimal: '9223372036854775807'
+          nullable: true
+        memberId:
+          type: string
+          minLength: 1
+          maxLength: 19
+          pattern: '^[1-9][0-9]{0,18}(?![\s\S])'
+          x-maximum-decimal: '9223372036854775807'
+          nullable: true
+        occurredAt:
+          $ref: '#/components/schemas/AuthTimestamp'
+      description: Shared data definition for MerchantStaffInvitationLifecycleEvent.v1 (Event08,
+        contract 54 NTF slice), not an HTTP endpoint. confirmedUserId/memberId are null unless
+        changeType=CONFIRMED. The phone only travels in the pre-masked owner-visible form; no
+        plaintext phone. ownerUserId (INVITED/CANCELED receiver) and confirmedUserId (CONFIRMED
+        employee receiver) keep the notification consumer self-contained.
+
+    MerchantStaffMemberLifecyclePayload:
+      type: object
+      additionalProperties: false
+      required:
+      - memberId
+      - merchantId
+      - storeId
+      - memberUserId
+      - changeType
+      - occurredAt
+      properties:
+        memberId:
+          $ref: '#/components/schemas/PublicId'
+        merchantId:
+          $ref: '#/components/schemas/PublicId'
+        storeId:
+          $ref: '#/components/schemas/PublicId'
+        memberUserId:
+          $ref: '#/components/schemas/PublicId'
+        changeType:
+          type: string
+          enum:
+          - DISABLED
+          - ENABLED
+        occurredAt:
+          $ref: '#/components/schemas/AuthTimestamp'
+      description: Shared data definition for MerchantStaffMemberLifecycleEvent.v1 (Event08,
+        contract 54 NTF slice), not an HTTP endpoint. memberUserId is the bound staff account and
+        the only station-notification receiver for these changes.
+
     MerchantApplicationReviewedPayload:
       type: object
       additionalProperties: false
