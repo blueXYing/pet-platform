@@ -949,6 +949,8 @@ Header：`X-Request-Id` 必填。
 
 2026-09-29已批准45号首切片：先接通主账号、round0；员工产品权限保留待后续账号授权接入。请求为`{"expectedConfirmRound":0,"internalNote":"可省略的店内备注"}`，备注0～200 Unicode码点，不能为null，不对C端公开。新的商家决定在锁内DB时间严格小于paidAt+30分钟时接受；等待锁越界也拒绝。返回首次成功的不可变回执，重放重新鉴权；当前订单状态由读侧查询，不混入幂等回执。完整字段、准入和事务见[45号](45-Merchant-Order-Actions-Contract-v0.1.md)。默认关闭。
 
+2026-10-07手动面切片：`MerchantOrderController` 已装配本路由（严格 JSON、未知/重复字段 400、UUID `X-Request-Id` 幂等、`Cache-Control: no-store`；OWNER 主账号门禁在命令 guard 事务内每次执行与重放重验）。随 `pet.order.merchant.http.enabled` 默认关闭（该开关要求命令主开关、退款 Worker、payment.foundation 与 auto-confirm 生产/Worker 齐备才装配，安全链 permitAll 同开关分位开启、MINIAPP Bearer 由会话过滤器强制）；生产启用前须显式提供敏感词审核 Provider 与 `pet.order.merchant.protection-key`。OpenAPI11 本 operation 已翻 `IMPLEMENTED_DEFAULT_OFF` 带全 responses；自动接单 Task 与手动命令竞争按 45 号先提交者胜。商家端处理页随本切片交付（按单进入；M 端暂无商家订单列表读侧，列表读侧交付后补列表入口）。
+
 ---
 
 ## 4.3 拒单
@@ -976,6 +978,8 @@ Request：
 商家在订单确认后不再有普通拒单/取消接口。
 
 拒单决定、ORDER关闭/退款指针、REFUND全额建单/执行绑定/任务及Outbox同事务。建单即禁止后续核销；渠道最终成功才释放预约，UNKNOWN/失败仍退款中。正式契约见45号；本切片不开放用户主动退款或生产渠道。
+
+2026-10-07手动面切片：本路由与 4.2 同一 Controller/开关/幂等/no-store/鉴权重验语义；reasonCode 五类编码与 reasonText 5～200 码点在 HTTP 面先行 400 校验，敏感词审核在 durable 占号后、业务事务前执行（未通过不放行）。拒单成功回执携带 `refundOrderId`；同 requestId 同参重放返回首次回执。前端处理页拒单必填原因（五类编码选择 + 原因文本），成功/失败回执与错误面中文映射随页交付；M 端无商家订单列表读侧，按单进入处理。
 
 ---
 

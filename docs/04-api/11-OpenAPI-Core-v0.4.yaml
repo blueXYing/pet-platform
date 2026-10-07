@@ -3385,8 +3385,15 @@ paths:
       - Merchant-Order
       summary: 商家接单
       operationId: merchantConfirmOrder
-      x-contract-status: IMPLEMENTED_DEFAULT_OFF_REQUIRES_PROVIDERS
+      x-implementation-status: IMPLEMENTED_DEFAULT_OFF
+      x-default-enabled: false
+      x-contract: 45-Merchant-Order-Actions-Contract-v0.1.md
+      x-assembly-switch: pet.order.merchant.http.enabled
+      x-route-party: MERCHANT
+      x-audience: MINIAPP
       description: 主账号首轮；锁内DB时间严格小于paidAt+30min。详见45号，首次成功回执持久重放。
+        本切片已装配HTTP面（严格JSON、requestId幂等、no-store）；生产启用仍须显式提供
+        敏感词审核 Provider 与 pet.order.merchant.protection-key。
       security:
       - bearerAuth: []
       parameters:
@@ -3399,30 +3406,44 @@ paths:
             schema:
               $ref: '#/components/schemas/MerchantConfirmOrderRequest'
       responses:
+        '200':
+          description: '接单回执（45号，本切片装配）：同 requestId 同参重放返回首次成功回执并重验
+            当前权限；refundOrderId 恒为 null。Cache-Control: no-store。'
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                enum:
+                - no-store
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MerchantOrderResponse'
         '400':
           $ref: '#/components/responses/BadRequest'
         '401':
           $ref: '#/components/responses/Unauthorized'
         '403':
           $ref: '#/components/responses/Forbidden'
-        '503':
-          $ref: '#/components/responses/DependencyUnavailable'
-        '200':
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/MerchantOrderResponse'
-          description: 成功
         '409':
           $ref: '#/components/responses/Conflict'
+        '503':
+          $ref: '#/components/responses/DependencyUnavailable'
   /merchant/orders/{orderId}/reject:
     post:
       tags:
       - Merchant-Order
       summary: 商家拒单
       operationId: merchantRejectOrder
-      x-contract-status: IMPLEMENTED_DEFAULT_OFF_REQUIRES_PROVIDERS
+      x-implementation-status: IMPLEMENTED_DEFAULT_OFF
+      x-default-enabled: false
+      x-contract: 45-Merchant-Order-Actions-Contract-v0.1.md
+      x-assembly-switch: pet.order.merchant.http.enabled
+      x-route-party: MERCHANT
+      x-audience: MINIAPP
       description: 主账号首轮；拒单与全额退款建单原子提交，渠道最终成功后释放预约。详见45号。
+        本切片已装配HTTP面（严格JSON、requestId幂等、no-store、reasonCode/reasonText 绑定）；
+        生产启用仍须显式提供敏感词审核 Provider 与 pet.order.merchant.protection-key。
       security:
       - bearerAuth: []
       parameters:
@@ -3435,22 +3456,30 @@ paths:
             schema:
               $ref: '#/components/schemas/MerchantRejectOrderRequest'
       responses:
+        '200':
+          description: '拒单回执（45号，本切片装配）：拒单、不可变决定、全额退款建单与执行绑定同事务
+            提交，回执携带 refundOrderId；同 requestId 同参重放返回首次成功回执并重验当前权限。
+            Cache-Control: no-store。'
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                enum:
+                - no-store
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MerchantOrderResponse'
         '400':
           $ref: '#/components/responses/BadRequest'
         '401':
           $ref: '#/components/responses/Unauthorized'
         '403':
           $ref: '#/components/responses/Forbidden'
-        '503':
-          $ref: '#/components/responses/DependencyUnavailable'
-        '200':
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/MerchantOrderResponse'
-          description: 成功
         '409':
           $ref: '#/components/responses/Conflict'
+        '503':
+          $ref: '#/components/responses/DependencyUnavailable'
   /merchant/refund-applications/{applicationId}/approve:
     post:
       tags:
