@@ -36,10 +36,13 @@ public class RefundApplicationConfiguration {
         boolean enabled=e.getProperty("pet.refund.application.enabled",Boolean.class,false);
         boolean worker=e.getProperty("pet.refund.application.worker.enabled",Boolean.class,false);
         boolean http=e.getProperty("pet.refund.application.http.enabled",Boolean.class,false);
-        if(http || worker&&!enabled || enabled&&(!e.getProperty("pet.payment.foundation.enabled",Boolean.class,false)
-                || !e.getProperty("pet.order.merchant.enabled",Boolean.class,false)
-                || !e.getProperty("pet.auth.c.enabled",Boolean.class,false)))
-            throw new IllegalStateException("Refund application requires real session, merchant and payment dependencies; HTTP is not available");
+        boolean dependencies=e.getProperty("pet.payment.foundation.enabled",Boolean.class,false)
+                && e.getProperty("pet.order.merchant.enabled",Boolean.class,false)
+                && e.getProperty("pet.auth.c.enabled",Boolean.class,false);
+        // The C refund-application HTTP face (contract 10 §3.9 slice) rides the same real
+        // dependencies as the kernel; it stays unreachable unless the whole slice is enabled.
+        if(worker&&!enabled || enabled&&!dependencies || http&&!enabled)
+            throw new IllegalStateException("Refund application requires real session, merchant and payment dependencies");
         return new Object();
     }
 

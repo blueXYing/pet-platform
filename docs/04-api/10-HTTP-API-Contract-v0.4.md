@@ -671,6 +671,8 @@ SCHEDULE_CAPACITY_EXCEEDED
 
 ### POST `/api/v1/c/orders/{orderId}/refund-applications`
 
+> 2026-10-07 C-005 退款申请切片注记：本路由随 OpenAPI11 翻为 `IMPLEMENTED_DEFAULT_OFF`（`pet.refund.application.http.enabled` + `pet.auth.c.enabled` 双层默认关闭），实现以 [Contract49](49-Refund-Application-Contract-v0.1.md) 内核与 OpenAPI11 为准。首报文 201、持久成功重放 200（同 `X-Request-Id` 同参与当前权限复验）；严格 JSON（未知字段/显式 `reasonCode` null/重复键/尾随内容均 400），路径 ID 为正十进制 String；准入判定（两窗口、单活动申请、REJECTED 可再申请、任何来源 refund_order 禁新申请）全在 REFUND 内核。首回执固定为申请事实（`applicationId/applicationStatus/route/merchantDeadline/refundOrderId/displayStatus`，时间为毫秒精度）；`refund_order` 由耐久任务 `REFUND_APPLICATION_CREATE` 异步创建，故首回执 `refundOrderId=null`（下方示例中 `"601"` 仅为形状示意），服务前自动全额口径以 `applicationStatus=AUTO_APPROVED` + `route=AUTO_FULL_BEFORE_SERVICE` 如实表达；错误码映射见 Error12 §6。
+
 Header：`X-Request-Id` 必填。
 
 Request：
