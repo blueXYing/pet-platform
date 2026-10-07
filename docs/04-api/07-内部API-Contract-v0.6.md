@@ -647,6 +647,12 @@ CREATE_REFUND
 
 ### 7.4 OrderSnapshotDTO
 
+> **增补（2026-10-07，C-004 读取切片返工）**：`OrderSnapshotDTO` 追加尾字段
+> `Actions actions`（嵌套 record：`canPay/canReschedule/canApplyRefund/canShowVerificationCode/canReview/canApplyAfterSale` 六布尔，
+> 对应 OpenAPI11 `OrderActions`）。actions 与 displayStatus 同由 ORDER 域单点计算（依据逐条见
+> HTTP Contract 10 §3.7 实现注记：40/46/47/48/49/50号与本号 §7.7），为读侧 UI 入口投影，
+> 写命令仍在各自内核守卫内复验。追加为尾部字段，既有调用方按位兼容。
+
 ```java
 public record OrderSnapshotDTO(
     String orderId,

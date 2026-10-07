@@ -13432,19 +13432,38 @@ components:
           $ref: '#/components/schemas/OrderActions'
     OrderActions:
       type: object
+      description: 'Order-domain UI entry projection (computed with the display status by
+        ORDER per tech baseline §5/20号; consumers never re-derive). Read-side projection
+        only: every write command re-checks its own kernel guards.'
       properties:
         canPay:
           type: boolean
+          description: 'PENDING_PAYMENT with an unexpired payment window (contract 40);
+            a late payment keeps the order closed, never payable again.'
         canReschedule:
           type: boolean
+          description: 'Contract 46 admission: PENDING_CONFIRM/PENDING_SERVICE, PAID,
+            UNVERIFIED, reschedule_count=0, before the appointment start, no refund_order.'
         canApplyRefund:
           type: boolean
+          description: 'Contract 49 ORDER admission: PENDING_SERVICE+UNVERIFIED or
+            COMPLETED+VERIFIED, paid and uncancelled, nothing refunded, no refund_order,
+            no live application (a rejected one may retry). Covers both §3.9 windows.'
         canShowVerificationCode:
           type: boolean
+          description: 'Contracts 47 §4 / 48 eligibility: fulfillable, paid, unverified,
+            no refund_order, confirmed. An unfinished aftersale or a pending refund
+            application does not block the code (SSOT); only a created refund_order does.'
         canReview:
           type: boolean
+          description: 'Contract 07 §7.7: verified within 30 days of verifiedAt; a later
+            partial refund keeps it true. Full refund and in-flight refunds are
+            conservatively false pending adjudication.'
         canApplyAfterSale:
           type: boolean
+          description: 'Contract 50 policy: paid/uncancelled with no refund_order, no live
+            application and no active case, inside the 7-day window anchored at verifiedAt
+            (verified) or appointmentStart (unverified, strictly post-start per REF-001).'
     BaseEnvelope:
       type: object
       required:

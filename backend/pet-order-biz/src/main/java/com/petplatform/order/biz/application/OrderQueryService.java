@@ -31,9 +31,15 @@ public final class OrderQueryService {
 
     private static final DecimalPublicIdCodec IDS = new DecimalPublicIdCodec();
     private final OrderQueryStore store;
+    private final java.time.Clock clock;
 
     public OrderQueryService(OrderQueryStore store) {
+        this(store, java.time.Clock.systemUTC());
+    }
+
+    public OrderQueryService(OrderQueryStore store, java.time.Clock clock) {
         this.store = Objects.requireNonNull(store, "store is required");
+        this.clock = Objects.requireNonNull(clock, "clock is required");
     }
 
     public PageResult<OrderSnapshotDTO> listMyOrders(MyOrderListQuery query) {
@@ -52,9 +58,10 @@ public final class OrderQueryService {
         if (total == 0 || pageSize == 0) {
             items = List.of();
         } else {
+            java.time.OffsetDateTime now = clock.instant().atOffset(java.time.ZoneOffset.UTC);
             items = store.read(mapper -> mapper
                             .selectMinePage(user, predicate, pageSize, (long) (page - 1) * pageSize))
-                    .stream().map(OrderQueryService::project).toList();
+                    .stream().map(row -> project(row, now)).toList();
         }
         return new PageResult<>(items, total, page, pageSize);
     }
@@ -67,7 +74,7 @@ public final class OrderQueryService {
             // Anti-enumeration: absent and foreign ids share one indistinguishable answer.
             throw new ApiException(CommonApiCodes.NOT_FOUND, "订单不存在");
         }
-        return project(row);
+        return project(row, clock.instant().atOffset(java.time.ZoneOffset.UTC));
     }
 
     private static long subject(QueryContext context) {
@@ -87,7 +94,7 @@ public final class OrderQueryService {
     }
 
     /** Wire-neutral projection; the HTTP adapter renders ids/amounts/instants per contract. */
-    private static OrderSnapshotDTO project(OrderQueryViewEntity row) {
+    private static OrderSnapshotDTO project(OrderQueryViewEntity row, java.time.OffsetDateTime now) {
         String display;
         try {
             display = OrderDisplayStatus.compute(new Facts(row.getOrderStage(), row.getRefundOrderId(),
@@ -121,7 +128,14 @@ public final class OrderQueryService {
                 instant(row.getConfirmedAt()),
                 instant(row.getVerifiedAt()),
                 row.getRescheduleCount() == null ? 0 : row.getRescheduleCount(),
-                row.getVersion() == null ? 0L : row.getVersion());
+                row.getVersion() == null ? 0L : row.getVersion(),
+                OrderActionAvailability.evaluate(new OrderActionAvailability.Facts(
+                        row.getOrderStage(), row.getPaymentStatus(), row.getVerificationStatus(),
+                        row.getRefundOrderId(), row.getRefundedAmount(), row.getPayAmount(),
+                        row.getRefundApplicationStatus(), row.getAftersaleStatus(),
+                        row.getRescheduleCount(), row.getPaymentExpireAt(), row.getCanceledAt(),
+                        row.getCancelReason(), row.getConfirmedAt(), row.getAppointmentStartAt(),
+                        row.getVerifiedAt()), now));
     }
 
     /**

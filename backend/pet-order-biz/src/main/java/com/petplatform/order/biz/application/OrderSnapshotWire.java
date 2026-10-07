@@ -35,6 +35,14 @@ public final class OrderSnapshotWire {
         row.put("appointmentStart", instant(item.appointmentStart()));
         row.put("appointmentEnd", instant(item.appointmentEnd()));
         row.put("verifiedAt", instant(item.verifiedAt()));
+        Map<String, Object> actions = new LinkedHashMap<>();
+        actions.put("canPay", item.actions().canPay());
+        actions.put("canReschedule", item.actions().canReschedule());
+        actions.put("canApplyRefund", item.actions().canApplyRefund());
+        actions.put("canShowVerificationCode", item.actions().canShowVerificationCode());
+        actions.put("canReview", item.actions().canReview());
+        actions.put("canApplyAfterSale", item.actions().canApplyAfterSale());
+        row.put("actions", actions);
         return row;
     }
 

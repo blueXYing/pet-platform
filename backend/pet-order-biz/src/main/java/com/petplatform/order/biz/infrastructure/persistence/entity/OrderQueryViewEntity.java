@@ -31,6 +31,9 @@ public final class OrderQueryViewEntity {
     private LocalDateTime paidAt;
     private LocalDateTime confirmedAt;
     private LocalDateTime verifiedAt;
+    private LocalDateTime canceledAt;
+    private LocalDateTime paymentExpireAt;
+    private String cancelReason;
     private Integer rescheduleCount;
     private Long version;
 
@@ -78,6 +81,12 @@ public final class OrderQueryViewEntity {
     public void setConfirmedAt(LocalDateTime confirmedAt) { this.confirmedAt = confirmedAt; }
     public LocalDateTime getVerifiedAt() { return verifiedAt; }
     public void setVerifiedAt(LocalDateTime verifiedAt) { this.verifiedAt = verifiedAt; }
+    public LocalDateTime getCanceledAt() { return canceledAt; }
+    public void setCanceledAt(LocalDateTime canceledAt) { this.canceledAt = canceledAt; }
+    public LocalDateTime getPaymentExpireAt() { return paymentExpireAt; }
+    public void setPaymentExpireAt(LocalDateTime paymentExpireAt) { this.paymentExpireAt = paymentExpireAt; }
+    public String getCancelReason() { return cancelReason; }
+    public void setCancelReason(String cancelReason) { this.cancelReason = cancelReason; }
     public Integer getRescheduleCount() { return rescheduleCount; }
     public void setRescheduleCount(Integer rescheduleCount) { this.rescheduleCount = rescheduleCount; }
     public Long getVersion() { return version; }

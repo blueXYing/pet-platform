@@ -15,8 +15,13 @@ public final class OrderQueryApiImpl implements OrderQueryApi {
     private final OrderQueryService service;
 
     public OrderQueryApiImpl(DataSource dataSource) {
+        this(dataSource, java.time.Clock.systemUTC());
+    }
+
+    public OrderQueryApiImpl(DataSource dataSource, java.time.Clock clock) {
         this.service = new OrderQueryService(
-                new OrderQueryStore(Objects.requireNonNull(dataSource, "dataSource is required")));
+                new OrderQueryStore(Objects.requireNonNull(dataSource, "dataSource is required")),
+                clock);
     }
 
     @Override

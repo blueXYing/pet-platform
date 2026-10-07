@@ -58,6 +58,9 @@ class OrderQueryHttpTest {
     private static final long AFTERSALE = 9_500_000_000_000_710L;
     private static final long PENDING_PAY_2 = 9_500_000_000_000_711L;
     private static final long FOREIGN = 9_500_000_000_000_712L;
+    private static final long LATE_PAYMENT = 9_500_000_000_000_713L;
+    /** Fixed read moment shared with the biz truth table: deterministic action windows. */
+    private static final java.time.Instant NOW = java.time.Instant.parse("2026-10-07T12:00:00Z");
 
     private Fixture fixture;
     private COrderQueryController orders;
@@ -66,7 +69,8 @@ class OrderQueryHttpTest {
     void start() throws Exception {
         fixture = new Fixture();
         seed(fixture);
-        orders = new COrderQueryController(new OrderQueryApiImpl(fixture.source));
+        orders = new COrderQueryController(new OrderQueryApiImpl(fixture.source,
+                java.time.Clock.fixed(NOW, java.time.ZoneOffset.UTC)));
     }
 
     @AfterEach
@@ -103,6 +107,32 @@ class OrderQueryHttpTest {
                 "128.00", "0.00", "128.00", "0.00", null, null, null, null, "2026-10-01 10:00:00.000");
         order(jdbc, FOREIGN, OTHER, "PENDING_SERVICE", "PAID", "UNVERIFIED",
                 "128.00", "0.00", "128.00", "0.00", null, null, null, null, "2026-10-11 10:00:00.000");
+        // SSOT late payment: the order stays closed (PAYMENT_TIMEOUT) with the auto full
+        // refund already bound — every entry is closed while the money is on its way back.
+        order(jdbc, LATE_PAYMENT, OWNER, "CANCELED", "PAID", "UNVERIFIED",
+                "128.00", "0.00", "128.00", "0.00", "6904", null, null, null, "2026-10-03 12:00:00.000");
+        state(jdbc, LATE_PAYMENT, "2026-10-03 00:30:00.000", null, "2026-10-03 01:00:00.000",
+                "PAYMENT_TIMEOUT", null, null);
+        // Action-window facts for the cited rules (contract 40 window, 48 confirm, 46 future
+        // appointment for the reschedule row).
+        state(jdbc, PENDING_PAY_1, "2030-01-01 00:00:00.000", "2026-10-01 09:30:00.000", null, null, null, null);
+        state(jdbc, PENDING_PAY_2, "2030-01-01 00:00:00.000", "2026-10-01 09:30:00.000", null, null, null, null);
+        state(jdbc, PENDING_CONFIRM, null, "2026-10-02 09:30:00.000", null, null,
+                "2026-12-02 09:00:00.000", "2026-12-02 10:30:00.000");
+        state(jdbc, PENDING_SERVICE, null, "2026-10-03 09:30:00.000", null, null, null, null);
+        state(jdbc, COMPLETED, null, "2026-10-04 08:00:00.000", null, null, null, null);
+        state(jdbc, REFUND_PENDING, null, "2026-10-09 09:30:00.000", null, null, null, null);
+        state(jdbc, AFTERSALE, null, "2026-10-10 09:30:00.000", null, null, null, null);
+    }
+
+    /** Column overlays the base row builder does not model (read-side action windows). */
+    private static void state(JdbcTemplate jdbc, long id, String paymentExpireAt, String confirmedAt,
+            String canceledAt, String cancelReason, String appointmentStart, String appointmentEnd) {
+        jdbc.update("UPDATE pet_order SET payment_expire_at=?, confirmed_at=?, canceled_at=?,"
+                        + " cancel_reason=?, appointment_start_at=COALESCE(?, appointment_start_at),"
+                        + " appointment_end_at=COALESCE(?, appointment_end_at) WHERE id=?",
+                paymentExpireAt, confirmedAt, canceledAt, cancelReason,
+                appointmentStart, appointmentEnd, id);
     }
 
     private static void order(JdbcTemplate jdbc, long id, long user, String stage, String payment,
@@ -153,11 +183,11 @@ class OrderQueryHttpTest {
         ApiResponse<Map<String, Object>> value =
                 orders.list(null, null, null, request("GET", "/api/v1/c/orders", null));
         assertEquals("SUCCESS", value.code());
-        assertEquals(11L, value.data().get("total"));
+        assertEquals(12L, value.data().get("total"));
         assertEquals(1, value.data().get("page"));
         assertEquals(20, value.data().get("pageSize"));
         List<Map<String, Object>> rows = items(value);
-        assertEquals(11, rows.size());
+        assertEquals(12, rows.size());
         assertEquals(Long.toString(AFTERSALE), rows.get(0).get("orderId"));
         assertEquals("AFTERSALE", rows.get(0).get("displayStatus"));
         assertEquals(Long.toString(REFUND_PENDING), rows.get(1).get("orderId"));
@@ -167,11 +197,14 @@ class OrderQueryHttpTest {
         assertEquals("REFUNDING", rows.get(4).get("displayStatus"));
         assertEquals("CANCELED", rows.get(5).get("displayStatus"));
         assertEquals("COMPLETED", rows.get(6).get("displayStatus"));
-        assertEquals("PENDING_SERVICE", rows.get(7).get("displayStatus"));
-        assertEquals("PENDING_CONFIRM", rows.get(8).get("displayStatus"));
+        // The late-payment row displays as REFUNDING (refund bound, nothing projected yet).
+        assertEquals(Long.toString(LATE_PAYMENT), rows.get(7).get("orderId"));
+        assertEquals("REFUNDING", rows.get(7).get("displayStatus"));
+        assertEquals("PENDING_SERVICE", rows.get(8).get("displayStatus"));
+        assertEquals("PENDING_CONFIRM", rows.get(9).get("displayStatus"));
         // Same created_at: the higher id wins the stable tiebreak.
-        assertEquals(Long.toString(PENDING_PAY_2), rows.get(9).get("orderId"));
-        assertEquals(Long.toString(PENDING_PAY_1), rows.get(10).get("orderId"));
+        assertEquals(Long.toString(PENDING_PAY_2), rows.get(10).get("orderId"));
+        assertEquals(Long.toString(PENDING_PAY_1), rows.get(11).get("orderId"));
         // The foreign user's order never surfaces.
         assertTrue(rows.stream().noneMatch(row -> row.get("orderId").equals(Long.toString(FOREIGN))));
     }
@@ -186,8 +219,9 @@ class OrderQueryHttpTest {
         for (var entry : expected.entrySet()) {
             ApiResponse<Map<String, Object>> value = orders.list(entry.getKey(), null, null,
                     request("GET", "/api/v1/c/orders", "displayStatus=" + entry.getKey()));
-            assertEquals(entry.getKey().equals("PENDING_PAYMENT") ? 2L : 1L,
-                    value.data().get("total"), entry.getKey() + " total");
+            long expectedTotal = entry.getKey().equals("PENDING_PAYMENT")
+                    || entry.getKey().equals("REFUNDING") ? 2L : 1L;
+            assertEquals(expectedTotal, value.data().get("total"), entry.getKey() + " total");
             for (Map<String, Object> row : items(value)) {
                 assertEquals(entry.getKey(), row.get("displayStatus"));
                 // Cross-check: the SQL filter and the Java computation agree row by row.
@@ -202,11 +236,11 @@ class OrderQueryHttpTest {
     void pagingIsStableAcrossPages() {
         ApiResponse<Map<String, Object>> page2 = orders.list(null, "2", "4",
                 request("GET", "/api/v1/c/orders", "page=2&pageSize=4"));
-        assertEquals(11L, page2.data().get("total"));
+        assertEquals(12L, page2.data().get("total"));
         assertEquals(4, items(page2).size());
-        // Global newest-first order sliced at offset 4: REFUNDING, CANCELED, COMPLETED, PENDING_SERVICE.
+        // Global newest-first order sliced at offset 4: REFUNDING, CANCELED, COMPLETED, LATE_PAYMENT.
         assertEquals(Long.toString(REFUNDING), items(page2).get(0).get("orderId"));
-        assertEquals(Long.toString(PENDING_SERVICE), items(page2).get(3).get("orderId"));
+        assertEquals(Long.toString(LATE_PAYMENT), items(page2).get(3).get("orderId"));
         // A page past the end is empty, not an error.
         ApiResponse<Map<String, Object>> far = orders.list(null, "99", "20",
                 request("GET", "/api/v1/c/orders", "page=99&pageSize=20"));
@@ -247,6 +281,78 @@ class OrderQueryHttpTest {
         Map<String, Object> completed = orders.detail(Long.toString(COMPLETED),
                 request("GET", "/api/v1/c/orders/" + COMPLETED, null)).data();
         assertEquals("2026-10-04T12:30:00.000Z", completed.get("verifiedAt"));
+    }
+
+    @SuppressWarnings("unchecked")
+    private static Map<String, Boolean> actions(Map<String, Object> data) {
+        return (Map<String, Boolean>) data.get("actions");
+    }
+
+    private Map<String, Object> detailOf(long id) {
+        return orders.detail(Long.toString(id),
+                request("GET", "/api/v1/c/orders/" + id, null)).data();
+    }
+
+    /** The six OrderActions booleans at the fixed read moment, per cited rule (see 10 §3.7). */
+    @Test
+    void actionsFollowTheCitedRulesAcrossTheSeedTable() {
+        // PENDING_PAYMENT inside the 40 window: only canPay.
+        assertEquals(Map.of("canPay", true, "canReschedule", false, "canApplyRefund", false,
+                "canShowVerificationCode", false, "canReview", false, "canApplyAfterSale", false),
+                actions(detailOf(PENDING_PAY_1)));
+        // Contract 46: paid, unverified, first round, future appointment -> reschedule.
+        assertEquals(Map.of("canPay", false, "canReschedule", true, "canApplyRefund", false,
+                "canShowVerificationCode", false, "canReview", false, "canApplyAfterSale", false),
+                actions(detailOf(PENDING_CONFIRM)));
+        // Contract 49/47: confirmed pre-service order opens the refund application and the code.
+        assertEquals(Map.of("canPay", false, "canReschedule", false, "canApplyRefund", true,
+                "canShowVerificationCode", true, "canReview", false, "canApplyAfterSale", false),
+                actions(detailOf(PENDING_SERVICE)));
+        // Verified/completed on day 3: refund application, review (30d) and aftersale (7d).
+        assertEquals(Map.of("canPay", false, "canReschedule", false, "canApplyRefund", true,
+                "canShowVerificationCode", false, "canReview", true, "canApplyAfterSale", true),
+                actions(detailOf(COMPLETED)));
+        // SSOT: a pending refund application never blocks the code; it blocks a new application.
+        assertEquals(Map.of("canPay", false, "canReschedule", true, "canApplyRefund", false,
+                "canShowVerificationCode", true, "canReview", false, "canApplyAfterSale", false),
+                actions(detailOf(REFUND_PENDING)));
+        // SSOT: an unfulfilled aftersale (no refund_order) never blocks the code either.
+        assertEquals(Map.of("canPay", false, "canReschedule", true, "canApplyRefund", true,
+                "canShowVerificationCode", true, "canReview", false, "canApplyAfterSale", false),
+                actions(detailOf(AFTERSALE)));
+        // 07 §7.7: verified + partial refund keeps the review entry; money movements close refund/aftersale.
+        assertEquals(Map.of("canPay", false, "canReschedule", false, "canApplyRefund", false,
+                "canShowVerificationCode", false, "canReview", true, "canApplyAfterSale", false),
+                actions(detailOf(PARTIAL)));
+        // refund_order created or a full refund: every entry closed.
+        assertEquals(Map.of("canPay", false, "canReschedule", false, "canApplyRefund", false,
+                "canShowVerificationCode", false, "canReview", false, "canApplyAfterSale", false),
+                actions(detailOf(REFUNDING)));
+        assertEquals(Map.of("canPay", false, "canReschedule", false, "canApplyRefund", false,
+                "canShowVerificationCode", false, "canReview", false, "canApplyAfterSale", false),
+                actions(detailOf(REFUNDED)));
+        assertEquals(Map.of("canPay", false, "canReschedule", false, "canApplyRefund", false,
+                "canShowVerificationCode", false, "canReview", false, "canApplyAfterSale", false),
+                actions(detailOf(CANCELED)));
+    }
+
+    @Test
+    void latePaymentOrderClosesEveryEntryAndListCarriesTheSameActions() {
+        // SSOT: the late payment keeps the order closed; the automatic full refund is bound, so
+        // nothing is payable, reschedulable, refundable, verifiable, reviewable or aftersale-able.
+        assertEquals(Map.of("canPay", false, "canReschedule", false, "canApplyRefund", false,
+                "canShowVerificationCode", false, "canReview", false, "canApplyAfterSale", false),
+                actions(detailOf(LATE_PAYMENT)));
+
+        // The list projection carries the identical actions object (same wire projection).
+        ApiResponse<Map<String, Object>> list = orders.list("REFUNDING", null, null,
+                request("GET", "/api/v1/c/orders", "displayStatus=REFUNDING"));
+        List<Map<String, Object>> rows = items(list);
+        assertEquals(2, rows.size());
+        for (Map<String, Object> row : rows) {
+            assertEquals(actions(detailOf(Long.parseLong((String) row.get("orderId")))),
+                    row.get("actions"));
+        }
     }
 
     @Test

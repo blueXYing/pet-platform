@@ -7,6 +7,7 @@
                refund_application_status, aftersale_status, refund_order_id,
                original_amount, discount_amount, pay_amount, refunded_amount,
                appointment_start_at, appointment_end_at, paid_at, confirmed_at, verified_at,
+               canceled_at, cancel_reason, payment_expire_at,
                reschedule_count, version
         FROM pet_order
     </sql>
