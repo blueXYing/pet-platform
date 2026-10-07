@@ -41,7 +41,9 @@ public class CSessionSecurityConfiguration {
       @Value("${pet.aftersale.http.enabled:false}") boolean afterSaleHttpEnabled,
       @Value("${pet.verification.credential.http.enabled:false}") boolean verificationHttpEnabled,
       @Value("${pet.verification.completion.http.enabled:false}")
-          boolean verificationCompletionHttpEnabled)
+          boolean verificationCompletionHttpEnabled,
+      @Value("${pet.order.merchant.http.enabled:false}")
+          boolean merchantOrderHttpEnabled)
       throws Exception {
     http.securityMatcher("/api/v1/c/**", "/api/v1/merchant/**")
         .csrf(c -> c.disable())
@@ -162,6 +164,17 @@ public class CSessionSecurityConfiguration {
               // the merchant order commands - the filter enforces the session on the
               // /api/v1/merchant/orders/ prefix.
               a.requestMatchers(HttpMethod.POST, "/api/v1/merchant/orders/*/verification")
+                  .permitAll();
+            }
+            if (merchantOrderHttpEnabled) {
+              // Merchant manual confirm/reject (contract 45 via contract 10 §4.2/§4.3): the
+              // MINIAPP Bearer is enforced by the filter's /api/v1/merchant/orders/ prefix rule;
+              // OWNER admission is re-proven in the command's guard transaction on every call
+              // and replay, so the chain only opens the transport here.
+              a.requestMatchers(
+                      HttpMethod.POST,
+                      "/api/v1/merchant/orders/*/confirm",
+                      "/api/v1/merchant/orders/*/reject")
                   .permitAll();
             }
           }

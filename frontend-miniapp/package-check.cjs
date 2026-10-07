@@ -24,7 +24,8 @@ assert.deepEqual(packages.map(p => ({ root: p.root, pages: p.pages })), [
   { root: 'merchant', pages: ['pages/workspace/index', 'pages/services/index', 'pages/services/edit', 'pages/messages/index',
     'pages/schedule/index', 'pages/schedule/windows', 'pages/schedule/staff', 'pages/schedule/capabilities', 'pages/members/index',
     'pages/aftersale/index', 'pages/aftersale/detail',
-    'pages/staff-workbench/index', 'pages/staff-invitation/index', 'pages/staff-verify/index'] },
+    'pages/staff-workbench/index', 'pages/staff-invitation/index', 'pages/staff-verify/index',
+    'pages/order-confirm/index'] },
   { root: 'consumer/pages/pet-archive', pages: ['index', 'detail', 'form'] },
   { root: 'consumer/pages/merchant-application', pages: ['index', 'signing'] },
   { root: 'consumer/pages/store-services', pages: ['index', 'service-detail', 'stores'] },
@@ -81,8 +82,13 @@ for (const extension of ['js', 'json', 'wxml', 'wxss']) {
 for (const page of ['staff-workbench', 'staff-invitation', 'staff-verify']) {
   for (const extension of ['js', 'json', 'wxml', 'wxss']) {
     assert.ok(fs.existsSync(path.join(root, `merchant/pages/${page}/index.` + extension)),
-      `Staff workbench page build artifact missing: ${page}.${extension}`)
+      `Staff workbench page build artifact missing: ${page}`)
   }
+}
+// Merchant manual order decisions (45号 via 10号 §4.2/§4.3): OWNER confirm/reject page.
+for (const extension of ['js', 'json', 'wxml', 'wxss']) {
+  assert.ok(fs.existsSync(path.join(root, 'merchant/pages/order-confirm/index.' + extension)),
+    'Merchant order-confirm page build artifact missing: ' + extension)
 }
 
 for (const page of ['index', 'signing']) {

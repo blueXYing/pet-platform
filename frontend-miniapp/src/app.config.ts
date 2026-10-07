@@ -14,7 +14,9 @@ export default defineAppConfig({
       'pages/members/index', 'pages/aftersale/index', 'pages/aftersale/detail',
       // Staff workbench slice (52/54/48 K1, 2026-10-06 adjudication): staff landing with the
       // invitation confirm entry, invitation id lookup and the fail-closed verify entry page.
-      'pages/staff-workbench/index', 'pages/staff-invitation/index', 'pages/staff-verify/index'] },
+      'pages/staff-workbench/index', 'pages/staff-invitation/index', 'pages/staff-verify/index',
+      // Merchant manual order decisions (45号 via 10号 §4.2/§4.3): OWNER confirm/reject page.
+      'pages/order-confirm/index'] },
     { root: 'consumer/pages/pet-archive', pages: ['index', 'detail', 'form'] },
     { root: 'consumer/pages/merchant-application', pages: ['index', 'signing'] },
     { root: 'consumer/pages/store-services', pages: ['index', 'service-detail', 'stores'] },

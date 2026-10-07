@@ -91,6 +91,21 @@ VERIFICATION_HTTP_OPERATIONS = {
         'post', '/merchant/orders/{orderId}/verification',
         ('200', '400', '401', '403', '404', '409', '503')),
 }
+# Merchant manual order actions slice (contract 45 via contract-10 §4.2/§4.3, 2026-10-07): the
+# two OWNER decision routes leave the contract-only REQUIRES_PROVIDERS spelling behind and pin
+# the assembled default-off surface. Both share pet.order.merchant.http.enabled (the switch
+# validation forces the kernel, refund worker and auto-confirm dependency stack with it); the
+# production moderation provider and protection key stay explicit enablement prerequisites, so
+# default-off remains the shipped state. The routes stay in LEGACY_OPERATIONS as well, exactly
+# like verifyPlatformOrder after its promotion.
+MERCHANT_ORDER_HTTP_OPERATIONS = {
+    'merchantConfirmOrder': (
+        'post', '/merchant/orders/{orderId}/confirm',
+        ('200', '400', '401', '403', '409', '503')),
+    'merchantRejectOrder': (
+        'post', '/merchant/orders/{orderId}/reject',
+        ('200', '400', '401', '403', '409', '503')),
+}
 AUTH_OPERATIONS = {
     'cAuthCreateAttempt': ('post', '/c/auth/attempts'),
     'cAuthWechatLogin': ('post', '/c/auth/wechat-login'),
@@ -450,6 +465,53 @@ def check_verification_http(spec, operation, method, path):
             'Verification scan body opened beyond the scanned code'
         assert set(request['properties']) == {'verificationCode'} and request['properties']['verificationCode'].get('pattern') == r'^[0-9A-Z]{1,128}$', \
             'Verification scan body opened beyond the scanned code'
+
+
+def check_merchant_order_http(spec, operation, method, path):
+    name = operation['operationId']
+    expected_method, expected_path, required_codes = MERCHANT_ORDER_HTTP_OPERATIONS[name]
+    assert (method, path) == (expected_method, expected_path), f'Merchant order HTTP operation moved: {name}'
+    assert operation.get('security') == [{'bearerAuth': []}], f'Merchant order HTTP security changed: {name}'
+    assert operation.get('x-implementation-status') == 'IMPLEMENTED_DEFAULT_OFF', f'Merchant order HTTP status changed: {name}'
+    assert operation.get('x-default-enabled') is False, f'Merchant order HTTP must stay default off: {name}'
+    assert operation.get('x-contract') == '45-Merchant-Order-Actions-Contract-v0.1.md', f'Merchant order HTTP authority changed: {name}'
+    assert operation.get('x-assembly-switch') == 'pet.order.merchant.http.enabled', f'Merchant order HTTP switch changed: {name}'
+    assert operation.get('x-route-party') == 'MERCHANT' and operation.get('x-audience') == 'MINIAPP', f'Merchant order HTTP identity changed: {name}'
+    responses = operation['responses']
+    assert set(responses) == set(required_codes), f'Merchant order HTTP response surface changed: {name}'
+    success = dereference(spec, responses['200'])
+    cache = dereference(spec, success['headers']['Cache-Control'])['schema']
+    assert cache == {'type': 'string', 'enum': ['no-store']}, f'Merchant order HTTP caching changed: {name}'
+    assert success['content'] == {'application/json': {'schema': {'$ref': '#/components/schemas/MerchantOrderResponse'}}}, \
+        f'Merchant order HTTP success envelope changed: {name}'
+    for code in ('400', '401', '403', '409', '503'):
+        assert dereference(spec, responses[code])['content']['application/json']['schema'] \
+            == {'$ref': '#/components/schemas/ErrorEnvelope'}, f'Merchant order HTTP error envelope changed: {name} {code}'
+    body = dereference(spec, operation['requestBody'])
+    request = body['content']['application/json']['schema']
+    expected_request = 'MerchantConfirmOrderRequest' if name == 'merchantConfirmOrder' else 'MerchantRejectOrderRequest'
+    assert request == {'$ref': '#/components/schemas/' + expected_request}, f'Merchant order HTTP request body opened: {name}'
+    receipt = spec['components']['schemas']['MerchantOrderReceipt']
+    assert receipt.get('additionalProperties') is False, 'Merchant order receipt opened'
+    assert set(receipt['required']) == {'orderId', 'decisionId', 'confirmRound', 'action', 'orderStageAtCommit', 'decidedAt', 'refundOrderId'}, \
+        'Merchant order receipt fields changed'
+    assert receipt['properties']['confirmRound']['enum'] == [0, 1], 'Merchant order round enum changed'
+    assert receipt['properties']['action']['enum'] == ['CONFIRM', 'REJECT'], 'Merchant order action enum changed'
+    assert receipt['properties']['orderStageAtCommit']['enum'] == ['PENDING_SERVICE', 'CANCELED'], 'Merchant order stage enum changed'
+    assert receipt['properties']['refundOrderId'].get('nullable') is True, 'Confirm receipts must keep refundOrderId null'
+    reject = spec['components']['schemas']['MerchantRejectOrderRequest']
+    assert reject.get('additionalProperties') is False and set(reject['required']) == {'expectedConfirmRound', 'reasonCode', 'reasonText'}, \
+        'Merchant reject request fields changed'
+    assert set(reject['properties']['reasonCode']['enum']) == {
+        'SCHEDULE_CONFLICT', 'STAFF_UNAVAILABLE', 'PET_NOT_MATCHED', 'TEMPORARY_CLOSURE', 'OTHER'}, \
+        'Merchant reject reason codes changed'
+    assert reject['properties']['reasonText']['minLength'] == 5 and reject['properties']['reasonText']['maxLength'] == 200, \
+        'Merchant reject reason length bounds changed'
+    confirm = spec['components']['schemas']['MerchantConfirmOrderRequest']
+    assert confirm.get('additionalProperties') is False and set(confirm['required']) == {'expectedConfirmRound'}, \
+        'Merchant confirm request fields changed'
+    assert 'internalNote' in confirm['properties'] and confirm['properties']['internalNote']['maxLength'] == 200, \
+        'Merchant confirm internal note bounds changed'
 
 
 def check_coupon_points_read(spec, operation, method, path):
@@ -824,6 +886,8 @@ def check(spec):
                 assert issue['properties']['refreshKind']['enum'] == ['INITIAL', 'AUTO', 'MANUAL']
             if operation_id in VERIFICATION_HTTP_OPERATIONS:
                 check_verification_http(spec, operation, method, path)
+            if operation_id in MERCHANT_ORDER_HTTP_OPERATIONS:
+                check_merchant_order_http(spec, operation, method, path)
             if operation_id in PRIVATE_ASSET_OPERATIONS:
                 assert (method, path) == PRIVATE_ASSET_OPERATIONS[operation_id], f'Private asset operation moved: {operation_id}'
                 check_private_assets(spec, operation)
@@ -1004,6 +1068,7 @@ def check(spec):
             'scheduleWriteOperations': len(operations & SCHEDULE_WRITE_OPERATIONS.keys()),
             'couponPointsReadOperations': len(operations & COUPON_POINTS_READ_OPERATIONS.keys()),
             'verificationHttpOperations': len(operations & VERIFICATION_HTTP_OPERATIONS.keys()),
+            'merchantOrderHttpOperations': len(operations & MERCHANT_ORDER_HTTP_OPERATIONS.keys()),
             'serviceWriteOperations': len(operations & SERVICE_WRITE_OPERATIONS.keys()),
             'storeCatalogOperations': len(operations & STORE_CATALOG_OPERATIONS.keys()),
             'staffInvitationListOperations': len(operations & STAFF_INVITATION_LIST_OPERATIONS.keys()),
