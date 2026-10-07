@@ -101,6 +101,8 @@ HTTP 映射只属于 Adapter 层；内部 Java API 通过稳定 code 表达同�
 
 退款申请 C 端 HTTP 状态映射（2026-10-07 C-005 退款申请切片，10号 §3.9/49号路由）：400 严格 JSON/UUID/路径 ID/`reasonCode` 结构不合法（含未配置原因字典，沿 `COMMON_INVALID_ARGUMENT`）；401 会话缺失/失效；403 非订单本人、账号非 ACTIVE 或未知订单（49号 locate 防探测语义）；409 `COMMON_CONFLICT`/`IDEMPOTENCY_KEY_CONFLICT`/`ORDER_OPERATION_BUSY` 及 49号准入拒绝（`REFUND_NOT_ELIGIBLE` 窗口或状态不符、`REFUND_APPLICATION_ALREADY_PROCESSED` 在途申请、`REFUND_ORDER_ALREADY_EXISTS`/`REFUND_ALREADY_EXISTS` 已有退款单、`REFUND_MERCHANT_DEADLINE_PASSED`）；503 `COMMON_DEPENDENCY_UNAVAILABLE` 及服务前开关关闭时的既有桩码 `REFUND_BEFORE_SERVICE_NOT_IMPLEMENTED`（能力未开放，非业务终态）；未识别内部异常统一 500 `COMMON_INTERNAL_ERROR` 安全包装。无新增错误码；REJECTED 后再申请走新 `X-Request-Id` 新行，不将 409 当可换号盲重试。
 
+改期 C 端 HTTP 状态映射（2026-10-07 §3.8 切片，10号 §3.8/46号路由）：400 严格 JSON（未知字段/显式 null/重复键/尾随内容/oneOf 分支混用）/非终端 UUID/路径 ID 不合法；401 会话缺失/失效；403 非订单本人、账号非 ACTIVE 或未知订单（46号 locate 防探测语义）；409 `COMMON_CONFLICT`（CAS 版本不符或区间无实质变化，均不消耗唯一机会）、`IDEMPOTENCY_KEY_CONFLICT`（同 key 异参）、`ORDER_OPERATION_BUSY`、`ORDER_RESCHEDULE_LIMIT_REACHED`（每单一次已用）、`ORDER_RESCHEDULE_AFTER_START`（已到原预约开始）、`ORDER_STATE_NOT_ALLOWED`（已核销/已完成/已取消）、`ORDER_REFUND_ALREADY_CREATED`（任意来源退款单）、`SCHEDULE_SWAP_FAILED`/`SCHEDULE_CAPACITY_EXCEEDED`（新时段容量或人员证明失败，原预约保持）；503 `COMMON_DEPENDENCY_UNAVAILABLE`；未识别内部异常统一 500 `COMMON_INTERNAL_ERROR` 安全包装。无新增错误码；200 首交与受保护重放同回执，CAS 冲突后按重读的新 `orderVersion` 重试，不换号盲重试。
+
 ## 7. VERIFICATION
 
 | Code | 含义 |

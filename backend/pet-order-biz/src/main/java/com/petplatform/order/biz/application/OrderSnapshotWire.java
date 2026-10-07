@@ -24,6 +24,12 @@ public final class OrderSnapshotWire {
         Map<String, Object> row = new LinkedHashMap<>();
         row.put("orderId", item.orderId());
         row.put("orderNo", item.orderNo());
+        // §3.8 reschedule page coordinates (46号 slice): the C face needs the service/store the
+        // order belongs to for the §3.4 availability read and the current order version for the
+        // expectedOrderVersion CAS — raw facts from the same single projection, never re-derived.
+        row.put("serviceId", item.serviceId());
+        row.put("storeId", item.storeId());
+        row.put("orderVersion", Long.toString(item.version()));
         row.put("displayStatus", item.displayStatus());
         row.put("orderStage", item.orderStage());
         row.put("paymentStatus", item.paymentStatus());

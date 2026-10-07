@@ -1,4 +1,4 @@
-> 2026-09-29: [Contract 46](46-Order-Reschedule-Contract-v0.1.md) extends merchant expectedConfirmRound to 0/1, using each round's immutable deadline. Historical round-0 examples below remain valid. Consumer reschedule HTTP remains NOT_IMPLEMENTED.
+> 2026-09-29: [Contract 46](46-Order-Reschedule-Contract-v0.1.md) extends merchant expectedConfirmRound to 0/1, using each round's immutable deadline. Historical round-0 examples below remain valid. 2026-10-07: consumer reschedule HTTP is implemented default off (§3.8 note).
 
 # 宠物平台 V1.0 HTTP / OpenAPI Controller Contract v0.4
 
@@ -583,6 +583,11 @@ PaymentApi.createPayment
 > `refundStatus` 取 ORDER 域自身投影词汇 `null/CREATED/SUCCESS`；非本人或不存在订单
 > 一律同一 404（防枚举）；两条路由 `Cache-Control: no-store`。与 §3.11 核销码路由共存，互不影响。
 >
+> **§3.8 改期切片读侧增补（2026-10-07，登记变更）**：详情与列表同一投影新增三个原始事实键
+> `serviceId`/`storeId`（改期页调用 §3.4 可约时段所需坐标）与 `orderVersion`（46号 §3.8 的
+> expectedOrderVersion 公开版本读侧来源；409 后页面重读取新值）。均为只读原始事实，不含推导，
+> OpenAPI11 OrderDetailData 同步增补；写入门槛仍全部在各自内核。
+>
 > **actions（六布尔，随详情/列表同投影返回；逐条依据）**——读侧 UI 入口投影，写命令仍在各自内核守卫内复验：
 > - `canPay`：`order_stage=PENDING_PAYMENT` 且 `payment_status∈{INIT,PAYING}` 且未过 `payment_expire_at` 且无 refund_order（依据：SSOT 待支付生命周期 + 40号支付窗口；迟到支付订单保持关闭，过期即不可付）。
 > - `canReschedule`：`PENDING_CONFIRM/PENDING_SERVICE`+`PAID`+`UNVERIFIED`+`reschedule_count=0`+当前早于预约开始+无 refund_order（依据：46号准入原文；每单最多 1 次改期）。
@@ -629,7 +634,7 @@ pageSize
 
 ### POST `/api/v1/c/orders/{orderId}/reschedule`
 
-2026-09-29 R1/R2/R3已批准，正式语义由[46号契约](46-Order-Reschedule-Contract-v0.1.md)补充。本批HTTP状态为NOT_IMPLEMENTED，仅默认关闭的内部内核；真实核销码失效与公开版本读侧到位后再注册路由。
+2026-09-29 R1/R2/R3已批准，正式语义由[46号契约](46-Order-Reschedule-Contract-v0.1.md)补充。> **实现状态（2026-10-07，§3.8 切片）**：两个前置（真实核销码失效 #114/#116、公开版本读侧）已满足，本路由翻为 `IMPLEMENTED_DEFAULT_OFF`（`pet.order.reschedule.http.enabled` + `pet.order.reschedule.enabled` + `pet.auth.c.enabled` 多层默认关闭；HTTP 置 true 而内核关闭直接装配失败）。实现要点：会话取当前真实 USER；严格 JSON（未知字段/显式 null/重复键/尾随内容/混合到店与接送分支均 400）；五元组幂等首交与受保护重放同一 200 首次成功回执；每单一次/已核销/任意来源 refund_order/容量不足/区间无变化/版本不符等准入全在 46号内核；全部回执 no-store。公开版本读侧由 §3.7 详情/列表投影新增 `orderVersion`（连同 `serviceId`/`storeId` 原始事实，供改期页调用 §3.4 与携带 expectedOrderVersion）补齐——本切片登记的读侧增补。
 
 Header：`X-Request-Id` 必填。
 

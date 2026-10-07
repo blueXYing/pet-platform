@@ -375,6 +375,13 @@ ORDER_WRITE_OPERATIONS = {
 }
 
 
+RESCHEDULE_HTTP_OPERATIONS = {
+    'rescheduleOrder': (
+        'post', '/c/orders/{orderId}/reschedule',
+        ('200', '400', '401', '403', '409', '503')),
+}
+
+
 def check_order_write(spec, operation, method, path):
     name = operation['operationId']
     expected_method, expected_path, required_codes = ORDER_WRITE_OPERATIONS[name]
@@ -398,6 +405,28 @@ def check_order_write(spec, operation, method, path):
         assert set(request['required']) == {'channel'}, f'Payment channel body opened: {name}'
         assert request['properties']['channel']['enum'] == ['WECHAT_MINI_PROGRAM'], f'Payment channel enum opened: {name}'
 
+
+
+def check_reschedule_http(spec, operation, method, path):
+    name = operation['operationId']
+    expected_method, expected_path, required_codes = RESCHEDULE_HTTP_OPERATIONS[name]
+    assert (method, path) == (expected_method, expected_path), f'Reschedule HTTP operation moved: {name}'
+    assert operation.get('security') == [{'bearerAuth': []}], f'Reschedule HTTP security changed: {name}'
+    assert operation.get('x-implementation-status') == 'IMPLEMENTED_DEFAULT_OFF', f'Reschedule HTTP status changed: {name}'
+    assert operation.get('x-default-enabled') is False, f'Reschedule HTTP must stay default off: {name}'
+    assert operation.get('x-contract') == '46-Order-Reschedule-Contract-v0.1.md', f'Reschedule HTTP authority changed: {name}'
+    assert operation.get('x-assembly-switch') == 'pet.order.reschedule.http.enabled', f'Reschedule HTTP switch changed: {name}'
+    assert operation.get('x-route-party') == 'USER' and operation.get('x-audience') == 'MINIAPP', f'Reschedule HTTP identity changed: {name}'
+    responses = operation['responses']
+    assert set(responses) == set(required_codes), f'Reschedule HTTP response surface changed: {name}'
+    success = responses['200']['content']['application/json']['schema']
+    assert success['allOf'][1]['properties']['data'] == {'$ref': '#/components/schemas/RescheduleReceipt'}         and success['allOf'][0] == {'$ref': '#/components/schemas/BaseEnvelope'}, f'Reschedule receipt ref changed: {name}'
+    for code in ('400', '401', '403', '409', '503'):
+        assert dereference(spec, responses[code])['content']['application/json']['schema']             == {'$ref': '#/components/schemas/ErrorEnvelope'}, f'Reschedule HTTP error envelope changed: {name} {code}'
+    request = spec['components']['schemas']['RescheduleRequest']
+    assert request.get('additionalProperties') is False and request['required'] == ['expectedOrderVersion'],         'Reschedule body opened beyond the version and one branch'
+    assert request['properties']['expectedOrderVersion']['pattern'] == r'^(0|[1-9][0-9]*)$',         'Reschedule version pattern changed'
+    assert len(request['oneOf']) == 2, 'Reschedule oneOf branches changed'
 
 def check_staff_invitation_list(spec, operation, method, path):
     name = operation['operationId']
@@ -1114,6 +1143,8 @@ def check(spec):
                 check_staff_invitation_list(spec, operation, method, path)
             if operation_id in ORDER_WRITE_OPERATIONS:
                 check_order_write(spec, operation, method, path)
+            if operation_id in RESCHEDULE_HTTP_OPERATIONS:
+                check_reschedule_http(spec, operation, method, path)
             if method in {'post', 'put', 'patch', 'delete'}:
                 assert {'$ref': '#/components/parameters/RequestId'} in parameters, f'Missing request ID: {operation_id}'
                 writes += 1
@@ -1127,7 +1158,7 @@ def check(spec):
     assert legacy_seen == LEGACY_OPERATIONS.keys(), f'Legacy operations missing: {LEGACY_OPERATIONS.keys() - legacy_seen}'
     assert legacy_writes == 11, 'Legacy write surface changed'
     assert legacy_creates == LEGACY_CREATES, 'Legacy create surface changed'
-    assert operations == LEGACY_OPERATIONS.keys() | AUTH_OPERATIONS.keys() | MERCHANT_OPERATIONS.keys() | APPLICATION_OPERATIONS.keys() | PRIVATE_ASSET_OPERATIONS.keys() | SERVICE_CATALOG_OPERATIONS.keys() | STORE_CATALOG_OPERATIONS.keys() | SERVICE_WRITE_OPERATIONS.keys() | SCHEDULE_AVAILABILITY_OPERATIONS.keys() | SCHEDULE_WRITE_OPERATIONS.keys() | CREDENTIAL_OPERATIONS.keys() | AFTERSALE_OPERATIONS.keys() | COUPON_POINTS_READ_OPERATIONS.keys() | VERIFICATION_HTTP_OPERATIONS.keys() | NOTIFICATION_PREFERENCE_OPERATIONS.keys() | STAFF_INVITATION_LIST_OPERATIONS.keys() | ORDER_WRITE_OPERATIONS.keys() | REFUND_HTTP_OPERATIONS.keys() | MERCHANT_ORDER_LIST_OPERATIONS.keys(), 'Unexpected or missing reviewed operations'
+    assert operations == LEGACY_OPERATIONS.keys() | AUTH_OPERATIONS.keys() | MERCHANT_OPERATIONS.keys() | APPLICATION_OPERATIONS.keys() | PRIVATE_ASSET_OPERATIONS.keys() | SERVICE_CATALOG_OPERATIONS.keys() | STORE_CATALOG_OPERATIONS.keys() | SERVICE_WRITE_OPERATIONS.keys() | SCHEDULE_AVAILABILITY_OPERATIONS.keys() | SCHEDULE_WRITE_OPERATIONS.keys() | CREDENTIAL_OPERATIONS.keys() | AFTERSALE_OPERATIONS.keys() | COUPON_POINTS_READ_OPERATIONS.keys() | VERIFICATION_HTTP_OPERATIONS.keys() | NOTIFICATION_PREFERENCE_OPERATIONS.keys() | STAFF_INVITATION_LIST_OPERATIONS.keys() | ORDER_WRITE_OPERATIONS.keys() | REFUND_HTTP_OPERATIONS.keys() | MERCHANT_ORDER_LIST_OPERATIONS.keys() | RESCHEDULE_HTTP_OPERATIONS.keys(), 'Unexpected or missing reviewed operations'
     schemes = spec['components']['securitySchemes']
     assert schemes['bearerAuth']['type'] == 'http' and schemes['bearerAuth']['scheme'] == 'bearer'
     for scheme, location, name in [('authAttempt', 'header', 'X-Auth-Attempt'),
@@ -1177,6 +1208,7 @@ def check(spec):
             'verificationHttpOperations': len(operations & VERIFICATION_HTTP_OPERATIONS.keys()),
             'merchantOrderHttpOperations': len(operations & MERCHANT_ORDER_HTTP_OPERATIONS.keys()),
             'merchantOrderListOperations': len(operations & MERCHANT_ORDER_LIST_OPERATIONS.keys()),
+            'rescheduleHttpOperations': len(operations & RESCHEDULE_HTTP_OPERATIONS.keys()),
             'refundHttpOperations': len(operations & REFUND_HTTP_OPERATIONS.keys()),
             'serviceWriteOperations': len(operations & SERVICE_WRITE_OPERATIONS.keys()),
             'storeCatalogOperations': len(operations & STORE_CATALOG_OPERATIONS.keys()),

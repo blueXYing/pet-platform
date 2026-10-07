@@ -3169,8 +3169,16 @@ paths:
       - C-Order
       summary: 改期
       operationId: rescheduleOrder
-      x-implementation-status: NOT_IMPLEMENTED
-      description: Contract 46 freezes the future HTTP shape; this delivery registers no route.
+      x-implementation-status: IMPLEMENTED_DEFAULT_OFF
+      x-default-enabled: false
+      x-contract: 46-Order-Reschedule-Contract-v0.1.md
+      x-assembly-switch: pet.order.reschedule.http.enabled
+      x-route-party: USER
+      x-audience: MINIAPP
+      description: 'Contract 46 (R1/R2/R3 approved) over the reschedule kernel; the 10号 §3.8
+        slice (2026-10-07) registers this route default off behind pet.order.reschedule.http.enabled
+        plus pet.order.reschedule.enabled. One 200 receipt serves the first submit and the
+        protected replay; every admission rule stays in the kernel.'
       security:
       - bearerAuth: []
       parameters:
@@ -3183,6 +3191,8 @@ paths:
             schema:
               $ref: '#/components/schemas/RescheduleRequest'
       responses:
+        '400':
+          $ref: '#/components/responses/BadRequest'
         '401':
           $ref: '#/components/responses/Unauthorized'
         '403':
@@ -3190,6 +3200,7 @@ paths:
         '503':
           $ref: '#/components/responses/DependencyUnavailable'
         '200':
+          description: 改期成功；受保护重放返回首次成功回执
           content:
             application/json:
               schema:
@@ -3199,7 +3210,6 @@ paths:
                   properties:
                     data:
                       $ref: '#/components/schemas/RescheduleReceipt'
-          description: 成功
         '409':
           $ref: '#/components/responses/Conflict'
   /c/orders/{orderId}/refund-applications:
@@ -13321,7 +13331,7 @@ components:
     RescheduleRequest:
       type: object
       additionalProperties: false
-      description: Contract 46; NOT_IMPLEMENTED HTTP. Real USER session and current order version required. Minute-aligned times; unchanged intervals conflict without consuming the chance.
+      description: Contract 46; implemented default off (10号 §3.8 slice). Real USER session and current order version required. Minute-aligned times; unchanged intervals conflict without consuming the chance.
       required: [expectedOrderVersion]
       oneOf:
       - required: [appointmentStart, appointmentEnd, selectedGeneralWindowId]
@@ -13660,6 +13670,17 @@ components:
           $ref: '#/components/schemas/PublicId'
         orderNo:
           $ref: '#/components/schemas/PublicId'
+        serviceId:
+          $ref: '#/components/schemas/PublicId'
+        storeId:
+          $ref: '#/components/schemas/PublicId'
+        orderVersion:
+          type: string
+          pattern: ^(0|[1-9][0-9]*)$
+          description: 'Raw facts from the same §3.7 projection for the 46号 §3.8 reschedule
+            page: serviceId/storeId address the §3.4 availability read, and orderVersion is
+            the public version read that route waited for — the page sends it back as
+            expectedOrderVersion for the CAS and re-reads on 409. Not a public entity id.'
         displayStatus:
           $ref: '#/components/schemas/DisplayOrderStatus'
         orderStage:

@@ -11,7 +11,7 @@ class OrderRescheduleConfigurationTest {
  @Test void disabledByDefaultDoesNotTouchDatabaseOrRegisterCommand(){
   DataSource source=mock(DataSource.class);runner().withBean(DataSource.class,()->source).run(c->{assertThat(c).hasNotFailed();assertThat(c).doesNotHaveBean(OrderRescheduleApi.class);verifyNoInteractions(source);});
  }
- @Test void httpCannotBeEnabledByConfiguration(){
+ @Test void httpWithoutKernelFailsClosed(){
   runner().withPropertyValues("pet.order.reschedule.http.enabled=true").run(c->assertThat(c).hasFailed());
  }
  @Test void explicitEnablementWithoutOwnerDependenciesFailsClosed(){

@@ -57,6 +57,11 @@ export type OrderDetailView = Readonly<{
   appointmentEnd: string
   verifiedAt: string | null
   actions: OrderActions | null
+  // §3.8 改期切片读侧增补（10号 §3.7 登记）：改期页的 §3.4 坐标与 expectedOrderVersion 来源；
+  // 均为服务端原始事实，缺失按 null 读（读侧未升级时改期页失败关闭）。
+  serviceId: string | null
+  storeId: string | null
+  orderVersion: string | null
 }>
 
 /** 分页信封沿 C 端既有分页契约惯例（CouponInstancePageData/PointsLedgerPageData 同构）。 */
@@ -65,7 +70,8 @@ export type OrderPage = Readonly<{ items: readonly OrderDetailView[]; page: numb
 const invalid = (): never => { throw new Error('INVALID_RESPONSE') }
 /** OrderDetailData 全键集合（11号 schema）：exact-key 白名单。 */
 const orderDetailKeys = ['actions', 'afterSaleStatus', 'appointmentEnd', 'appointmentStart', 'displayStatus', 'orderId',
-  'orderNo', 'orderStage', 'payAmount', 'paymentStatus', 'refundApplicationStatus', 'refundStatus', 'verifiedAt', 'verificationStatus']
+  'orderNo', 'orderStage', 'orderVersion', 'payAmount', 'paymentStatus', 'refundApplicationStatus', 'refundStatus',
+  'serviceId', 'storeId', 'verifiedAt', 'verificationStatus']
 /** 严格 exact-key：只允许 OrderDetailData 键集合，未知键失败关闭（沿仓库惯例）。 */
 function exactObject(value: unknown): Record<string, any> {
   const v = objectLike(value)
@@ -143,6 +149,9 @@ export function decodeOrderDetail(value: unknown): OrderDetailView {
     afterSaleStatus: optionalField(v, 'afterSaleStatus', statusText),
     verifiedAt: optionalField(v, 'verifiedAt', offsetInstant),
     actions: optionalField(v, 'actions', decodeActions),
+    serviceId: optionalField(v, 'serviceId', isIdText),
+    storeId: optionalField(v, 'storeId', isIdText),
+    orderVersion: optionalField(v, 'orderVersion', x => typeof x === 'string' && /^(0|[1-9][0-9]{0,18})(?![\s\S])/.test(x) ? x : invalid()),
   }
 }
 
@@ -287,6 +296,9 @@ export const isOrdersScenario = (value?: string): value is OrdersScenario =>
 
 /** 核销码可展示订单使用 #116 夹具订单号，复用其 PreviewOrderVerifyRepository 的本地取码模拟。 */
 export const PREVIEW_VERIFY_ORDER = '900101001990001'
+/** 改期/下单夹具共用的服务与门店坐标（booking 夹具同源；§3.4 可约时段查询目标）。 */
+export const PREVIEW_BOOKING_SERVICE_ID = '20001'
+export const PREVIEW_BOOKING_STORE_ID = '957002'
 
 const at = (day: number, hour: number, minute: number): string =>
   `2026-10-${pad(day)}T${pad(hour)}:${pad(minute)}:00.000+08:00`
@@ -295,7 +307,8 @@ type Fixture = (Partial<OrderDetailView> & Pick<OrderDetailView, 'orderId' | 'or
 
 const base = (over: Fixture): OrderDetailView => ({
   orderStage: null, paymentStatus: null, verificationStatus: null, refundApplicationStatus: null,
-  refundStatus: null, afterSaleStatus: null, verifiedAt: null, actions: null, ...over,
+  refundStatus: null, afterSaleStatus: null, verifiedAt: null, actions: null,
+  serviceId: null, storeId: null, orderVersion: null, ...over,
 })
 
 // 十个 displayStatus 全覆盖 + 一单一事实：核销码入口（PENDING_SERVICE+canShowVerificationCode）、
@@ -308,9 +321,10 @@ const normalOrders: readonly OrderDetailView[] = [
     appointmentStart: at(11, 9, 30), appointmentEnd: at(11, 11, 0), orderStage: 'PENDING_CONFIRM', paymentStatus: 'PAID',
     actions: { canPay: false, canReschedule: false, canApplyRefund: true, canShowVerificationCode: false, canReview: false, canApplyAfterSale: false } }),
   // 核销码入口样例：已支付待服务、未核销，服务端返回 canShowVerificationCode=true。
+  // §3.8 改期切片：同一样例单也是改期入口样例（canReschedule=true + 读侧增补三事实）。
   base({ orderId: PREVIEW_VERIFY_ORDER, orderNo: '2026100100003', displayStatus: 'PENDING_SERVICE', payAmount: '80.00',
     appointmentStart: at(12, 14, 0), appointmentEnd: at(12, 15, 0), orderStage: 'PENDING_SERVICE', paymentStatus: 'PAID',
-    verificationStatus: 'UNVERIFIED',
+    verificationStatus: 'UNVERIFIED', serviceId: PREVIEW_BOOKING_SERVICE_ID, storeId: PREVIEW_BOOKING_STORE_ID, orderVersion: '0',
     actions: { canPay: false, canReschedule: true, canApplyRefund: true, canShowVerificationCode: true, canReview: false, canApplyAfterSale: false } }),
   base({ orderId: '900101001990004', orderNo: '2026100100004', displayStatus: 'COMPLETED', payAmount: '156.00',
     appointmentStart: at(6, 10, 0), appointmentEnd: at(6, 12, 0), orderStage: 'COMPLETED', paymentStatus: 'PAID',

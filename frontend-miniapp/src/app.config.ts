@@ -26,8 +26,9 @@ export default defineAppConfig({
     // Order verification code slice (47号 §4 v0.2): explicit order-id entry, no order list yet.
     { root: 'consumer/pages/order-verify', pages: ['index'] },
     // C-004 order read slice (10号 §3.7): my orders list + detail, verify-code entry inside detail.
-    // C-005 refund apply page (10号 §3.9/49号) rides the same orders subpackage, gated by detail actions.
-    { root: 'consumer/pages/orders', pages: ['list', 'detail', 'refund-apply'] },
+    // C-005 refund apply (§3.9/49号) and §3.8 reschedule (46号) pages ride the same orders
+    // subpackage, both gated by detail actions; one compact line per the app.config convention.
+    { root: 'consumer/pages/orders', pages: ['list', 'detail', 'refund-apply', 'reschedule'] },
     // NTF preference slice (SSOT §16.4): notification preference settings page.
     { root: 'consumer/pages/notification-preferences', pages: ['index'] },
     // Booking create + payment initiation slice (10号 §3.4/§3.5/§3.6): service-detail entry,
