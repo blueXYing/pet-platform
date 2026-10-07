@@ -13,7 +13,9 @@
 // - POST /api/v1/c/orders/{orderId}/payments（§3.6）：请求体固定 {channel:'WECHAT_MINI_PROGRAM'}
 //   （V1 不展示支付方式选择）；回执 paymentId/paymentNo/channel/wechatPayParameters 五键。
 //   支付渠道为无正式渠道参数的沙箱态（40号）：回执如实呈现，不虚构支付成功、不调起收银台。
-// 边界（PR 登记）：优惠券选择（couponInstanceId）不在本切片，请求体一律不携带该键。
+// 边界（PR 登记）：优惠券选择（couponInstanceId）不在本切片，请求体一律不携带该键；
+// 接送履约（PICKUP_DELIVERY）在 36号公开选窗字段前失败关闭呈现（#128 对齐，见
+// PICKUP_SELECTION_ENABLED），三段选窗与接送校验代码保留待启用。
 
 import { ApiError } from '../../shared/request'
 import { displayOrderStatuses, displayStatusLabels, statusVariant, type DisplayOrderStatus } from '../orders/model'
@@ -157,6 +159,34 @@ export function bookingDates(today: string, count = 7, selected: string | null =
 // ---- §3.5 下单请求构造（CreateOrderRequest 唯一来源；显式 null 不入 JSON） ----
 
 export type FulfillmentKind = 'IN_STORE' | 'PICKUP_DELIVERY'
+
+/** 接送履约开放开关（36号联合契约公开选窗字段前的失败关闭点，与并行后端切片 #128 对齐）：
+ *  公开 CreateOrderRequest 只有 pickupStart/returnStart 时间字段（无选窗 ID、无服务地址），
+ *  而内核必填双方向窗 ID，故 PICKUP_DELIVERY 订单在 HTTP 层按契约如实 400 COMMON_INVALID_ARGUMENT
+ *  失败关闭。false 期间前端不呈现「可选但必败」的接送交互：页面接送选项为禁用态、纯接送服务
+ *  整页失败关闭、仓库层对接送草稿网络前拒绝；三段选窗 UI 与接送校验代码保留，翻 true 即启用。 */
+export const PICKUP_SELECTION_ENABLED: boolean = false
+/** 履约方式区禁用项说明（失败关闭面板风格）。 */
+export const PICKUP_OPTION_NOTICE = '暂未开放，待选窗契约同步'
+/** 纯接送服务整页失败关闭说明。 */
+export const PICKUP_SERVICE_UNAVAILABLE = '该服务为上门接送履约，暂不可预约：接送履约暂未开放（待选窗契约同步），开放前请选择到店服务。'
+/** 仓库层守卫：接送草稿在开关打开前网络前拒绝（镜像 #128 的 400 失败关闭语义）。 */
+export function pickupSelectionClosed(draft: BookingDraft): boolean {
+  return draft.fulfillmentType === 'PICKUP_DELIVERY' && !PICKUP_SELECTION_ENABLED
+}
+
+/** 履约方式区呈现（模块层推导，页面只消费；接送项 selectable 随 PICKUP_SELECTION_ENABLED）。 */
+export type FulfillmentModeView = Readonly<{ id: FulfillmentKind; label: string; note: string; className: string }>
+export function fulfillmentModes(current: FulfillmentKind): readonly FulfillmentModeView[] {
+  return [
+    { id: 'IN_STORE', label: '到店服务', note: '本服务到店履约',
+      className: `bkg-mode${current === 'IN_STORE' ? ' is-selected' : ''}` },
+    { id: 'PICKUP_DELIVERY', label: '上门接送',
+      note: PICKUP_SELECTION_ENABLED ? '接送履约（含接宠/送回时段）' : PICKUP_OPTION_NOTICE,
+      className: `bkg-mode${current === 'PICKUP_DELIVERY' ? ' is-selected' : ''}${PICKUP_SELECTION_ENABLED ? '' : ' is-disabled'}` },
+  ]
+}
+
 export type BookingDraft = Readonly<{
   storeId: string; serviceId: string; petId: string
   fulfillmentType: FulfillmentKind
@@ -367,9 +397,9 @@ export function availabilityReadMessage(error: unknown): string {
 
 // ---- preview=1 夹具通道（本地样例数据，不发任何网络请求；设计验收专用） ----
 
-export type BookingScenario = 'normal' | 'unavailable' | 'conflict' | 'pay-error'
+export type BookingScenario = 'normal' | 'unavailable' | 'conflict' | 'pay-error' | 'pickup'
 export const isBookingScenario = (value?: string): value is BookingScenario =>
-  ['normal', 'unavailable', 'conflict', 'pay-error'].includes(value || '')
+  ['normal', 'unavailable', 'conflict', 'pay-error', 'pickup'].includes(value || '')
 
 export const PREVIEW_BOOKING_SERVICE = '20001'   // service/model 夹具：专业美容套餐 ¥80/60min IN_STORE
 export const PREVIEW_BOOKING_STORE = '957002'
@@ -420,6 +450,8 @@ export class PreviewBookingRepository implements BookingDeps {
     return { items: fixtureWindows(offset).map(item => ({ ...item })) }
   }
   async create(draft: BookingDraft): Promise<CreateOrderReceipt> {
+    // #128 对齐：接送草稿在开关打开前按后端现状应答 400 COMMON_INVALID_ARGUMENT（失败关闭）。
+    if (pickupSelectionClosed(draft)) throw new ApiError('COMMON_INVALID_ARGUMENT', 400)
     if (this.scenario === 'conflict') throw new ApiError('SCHEDULE_CAPACITY_EXCEEDED', 409)
     if (bookingFormError(draft) !== null) throw new ApiError('COMMON_INVALID_ARGUMENT', 400)
     if (draft.serviceId !== PREVIEW_BOOKING_SERVICE && draft.serviceId !== PREVIEW_PICKUP_SERVICE) throw new ApiError('SERVICE_NOT_FOUND', 404)

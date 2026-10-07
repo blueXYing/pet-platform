@@ -14,9 +14,9 @@ import { PreviewStoreRepository } from '../../store/model'
 import { PreviewPetRepository, type PetView } from '../../pet/model'
 import { realPetRepository } from '../../api/page-repository'
 import {
-  PREVIEW_BOOKING_TODAY, availabilityReadMessage, beijingToday, bookingCreateMessage, bookingDates, bookingFormError,
-  bookingFormErrorLabels, draftFromCommandData, isBookingScenario, paymentDeadline, receiptBadge, returnCandidates,
-  slotViews, windowLabel, PreviewBookingRepository,
+  PREVIEW_BOOKING_TODAY, PICKUP_SELECTION_ENABLED, PICKUP_SERVICE_UNAVAILABLE, availabilityReadMessage, beijingToday,
+  bookingCreateMessage, bookingDates, bookingFormError, bookingFormErrorLabels, draftFromCommandData, fulfillmentModes,
+  isBookingScenario, paymentDeadline, receiptBadge, returnCandidates, slotViews, windowLabel, PreviewBookingRepository,
   type AvailabilityItem, type AvailabilityView, type BookingDate, type BookingDraft, type CreateOrderReceipt,
 } from '../../booking/model'
 import { ORDER_CREATE_SLOT, RealBookingRepository } from '../../booking/repository'
@@ -25,13 +25,17 @@ import './booking.css'
 // 预约下单页（10号 §3.4 可约时段 + §3.5 创建订单）。设计源登记表 §4.3：原稿 690:4506 为固定
 // 60 分钟槽 + 上门/送回两栏，与已批分钟级 availability 契约（六字段投影、remaining>0 可选、
 // 已满置灰「已约满」）语义冲突，视同设计缺稿——本页沿 C 端现行页面规范（orders/coupons tokens）
-// 实现，布局参照原稿弹层结构（门店头 + 费用 + 时段网格 + 底部确认条）。字段以契约为唯一来源：
+// 实现，布局参照原稿弹层结构（门店头 + 时段网格 + 底部确认条）。字段以契约为唯一来源：
 // 服务/门店名来自 §3.3 只读投影，时段来自 availability，宠物来自 pet-archive；优惠券不在本切片
-//（couponInstanceId 不携带，PR 登记边界）。提交走幂等槽 order:create（23号 X-Request-Id 重放，
-// 未确认载荷锁死，页面按原命令还原选择后重试）；成功回执展示 CreateOrderData 五字段并引导去
-// 支付/订单详情；失败逐错误码中文映射。ARCH-005 分工：回执展示状态经 booking/model.receiptBadge
-// 现成展示值，页面不触碰订单事实字段。preview=1 沿本地夹具通道（夹具自检在测试期暴露）。
-type Phase = 'loading' | 'ready' | 'invalid' | 'missing' | 'expired' | 'load-error' | 'receipt'
+//（couponInstanceId 不携带，PR 登记边界）。**接送履约（PICKUP_DELIVERY）失败关闭呈现（#128
+// 对齐）**：公开 CreateOrderRequest 无选窗字段而内核必填双方向窗 ID，接送单在 HTTP 层必 400，
+// 故履约方式区「上门接送」为禁用态+说明、纯接送服务整页失败关闭；三段选窗 UI 保留代码，仅在
+// PICKUP_SELECTION_ENABLED 打开后启用（36号选窗契约同步切片）。提交走幂等槽 order:create
+//（23号 X-Request-Id 重放，未确认载荷锁死，页面按原命令还原选择后重试）；成功回执展示
+// CreateOrderData 五字段并引导去支付/订单详情；失败逐错误码中文映射。ARCH-005 分工：回执展示
+// 状态经 booking/model.receiptBadge 现成展示值，页面不触碰订单事实字段。preview=1 沿本地夹具
+// 通道（scenario=pickup 演示接送失败关闭面板）。
+type Phase = 'loading' | 'ready' | 'invalid' | 'missing' | 'expired' | 'load-error' | 'receipt' | 'pickup-unavailable'
 type SlotPhase = 'loading' | 'ready' | 'empty' | 'error'
 const DATE_COUNT = 7
 
@@ -81,9 +85,15 @@ function CreateScreen({ preview, scenario, serviceId, storeIdParam }: { preview:
     const petRepository = preview ? new PreviewPetRepository() : realPetRepository()
     const storeRepository = preview ? new PreviewStoreRepository() : new RealStoreRepository(consumerApi, () => Promise.resolve([]))
     try {
-      const detail = await runCatalogRead(scope, () => catalog.detail(serviceId))
+      const loaded = await runCatalogRead(scope, () => catalog.detail(serviceId))
       if (!mounted.current || current !== sequence.current || currentRevision !== scope.revision) return
+      // preview scenario=pickup：本地投影为接送型，仅用于设计验收通道演示接送失败关闭面板。
+      const detail = preview && scenario === 'pickup'
+        ? { ...loaded, fulfillmentType: 'PICKUP_DELIVERY' as const } : loaded
       if (storeIdParam && detail.storeId !== storeIdParam) { setPhase('invalid'); return }
+      // #128 对齐（失败关闭）：接送履约暂未开放（36号选窗字段未随公开契约发布），纯接送服务
+      // 不呈现「可选但必败」的预约交互，整页失败关闭说明。
+      if (detail.fulfillmentType === 'PICKUP_DELIVERY' && !PICKUP_SELECTION_ENABLED) { setPhase('pickup-unavailable'); return }
       setService(detail)
       // 门店名：§3.3.2 匿名详情投影（可选增强，失败不阻断预约，显示门店ID占位）。
       void runCatalogRead(scope, () => storeRepository.detail(detail.storeId))
@@ -237,7 +247,8 @@ function CreateScreen({ preview, scenario, serviceId, storeIdParam }: { preview:
   }
 
   const ready = phase === 'ready' && service !== null
-  const pickupFlow = service?.fulfillmentType === 'PICKUP_DELIVERY'
+  // 三段选窗 UI 保留：仅在接送开放（PICKUP_SELECTION_ENABLED，36号切片）后对接送型服务启用。
+  const pickupFlow = service?.fulfillmentType === 'PICKUP_DELIVERY' && PICKUP_SELECTION_ENABLED
   const items = availability?.items ?? []
   const slots = slotViews(items, selectedStart)
   const pickupSlots = slotViews(items.filter(item => item.start !== selectedStart), pickupStart)
@@ -272,6 +283,10 @@ function CreateScreen({ preview, scenario, serviceId, storeIdParam }: { preview:
         <Text id='bkg-error'>服务或宠物档案读取失败，请稍后重试。</Text>
         <Button id='bkg-retry-load' className='bkg-state-action' onClick={() => void loadService()}>重新加载</Button>
       </View>}
+      {phase === 'pickup-unavailable' && <View className='bkg-state' role='status'>
+        <Text id='bkg-pickup-closed'>{PICKUP_SERVICE_UNAVAILABLE}</Text>
+        <Button id='bkg-pickup-back' className='bkg-state-action' onClick={() => void goBack()}>返回上一页</Button>
+      </View>}
       {phase === 'receipt' && receipt && badge && <View className='bkg-body'>
         <View className='bkg-service-card'>
           <View className='bkg-card-head'>
@@ -293,6 +308,16 @@ function CreateScreen({ preview, scenario, serviceId, storeIdParam }: { preview:
             <Text className='bkg-service-price'>¥{formatSalePrice(service.salePrice)}</Text>
           </View>
           <Text className='bkg-hint'>{storeName ?? `门店 ${service.storeId}`} · {service.categoryName} · 时长{service.durationMinutes}分钟 · {pickupFlow ? '上门接送' : '到店服务'}</Text>
+        </View>
+        <View className='bkg-section'>
+          <Text className='bkg-section-title'>履约方式</Text>
+          <View className='bkg-modes'>
+            {fulfillmentModes(service.fulfillmentType).map(mode => <View key={mode.id} id={`bkg-mode-${mode.id}`}
+              className={mode.className} ariaLabel={`${mode.label}，${mode.note}`}>
+              <Text className='bkg-mode-label'>{mode.label}</Text>
+              <Text className='bkg-mode-note'>{mode.note}</Text>
+            </View>)}
+          </View>
         </View>
         <View className='bkg-section'>
           <Text className='bkg-section-title'>选择日期</Text>

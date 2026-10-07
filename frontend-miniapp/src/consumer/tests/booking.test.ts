@@ -3,10 +3,11 @@ import assert from 'node:assert/strict'
 import { randomUUID } from 'node:crypto'
 import {
   PREVIEW_BOOKING_SERVICE, PREVIEW_BOOKING_STORE, PREVIEW_BOOKING_TODAY, PREVIEW_PAY_ORDER, PREVIEW_PICKUP_SERVICE,
-  availabilityQuery, availabilityReadMessage, beijingClock, beijingToday, bookingCreateMessage, bookingDates,
-  bookingFormError, bookingFormErrorLabels, bookingPaymentMessage, buildOrderRequest, canInitiatePayment,
-  decodeAvailability, decodeAvailabilityItem, decodeCreateOrderReceipt, decodePaymentReceipt, draftFromCommandData,
-  isBookingScenario, paymentDeadline, paymentGateNotice, paymentSandboxNotice, pickupReturnIntervalInvalid,
+  PICKUP_OPTION_NOTICE, PICKUP_SELECTION_ENABLED, PICKUP_SERVICE_UNAVAILABLE, availabilityQuery, availabilityReadMessage,
+  beijingClock, beijingToday, bookingCreateMessage, bookingDates, bookingFormError, bookingFormErrorLabels,
+  bookingPaymentMessage, buildOrderRequest, canInitiatePayment, decodeAvailability, decodeAvailabilityItem,
+  decodeCreateOrderReceipt, decodePaymentReceipt, draftFromCommandData, fulfillmentModes, isBookingScenario,
+  paymentDeadline, paymentGateNotice, paymentSandboxNotice, pickupReturnIntervalInvalid, pickupSelectionClosed,
   receiptBadge, returnCandidates, slotViews, validateBookingFixtures, windowLabel,
   PreviewBookingRepository, type AvailabilityItem, type BookingDraft,
 } from '../booking/model'
@@ -25,8 +26,30 @@ test('booking scenario guard only accepts the registered preview scenarios', () 
   assert.equal(isBookingScenario('unavailable'), true)
   assert.equal(isBookingScenario('conflict'), true)
   assert.equal(isBookingScenario('pay-error'), true)
+  assert.equal(isBookingScenario('pickup'), true) // 演示接送失败关闭面板
   assert.equal(isBookingScenario('load-error'), false)
   assert.equal(isBookingScenario(undefined), false)
+})
+
+// ---- 接送履约失败关闭（#128 对齐：36号选窗字段公开前，接送单 HTTP 层必 400） ----
+
+test('pickup fulfillment stays fail-closed until the selection contract lands', () => {
+  assert.equal(PICKUP_SELECTION_ENABLED, false)
+  assert.equal(pickupSelectionClosed(storeDraft), false)
+  assert.equal(pickupSelectionClosed(pickupDraft), true)
+  // 履约方式区：当前方式高亮；上门接送禁用态+说明（非交互呈现，不呈现「可选但必败」的交互）。
+  const modes = fulfillmentModes('IN_STORE')
+  assert.equal(modes.length, 2)
+  assert.deepEqual(modes.map(mode => mode.id), ['IN_STORE', 'PICKUP_DELIVERY'])
+  assert.equal(modes[0].className, 'bkg-mode is-selected')
+  assert.equal(modes[1].className, 'bkg-mode is-disabled')
+  assert.equal(modes[1].note, PICKUP_OPTION_NOTICE)
+  assert.match(PICKUP_OPTION_NOTICE, /暂未开放/)
+  assert.match(PICKUP_SERVICE_UNAVAILABLE, /上门接送履约/)
+  assert.match(PICKUP_SERVICE_UNAVAILABLE, /暂未开放/)
+  // 接送校验与请求构造代码保留（36号切片翻开关即启用）：在此登记其仍可用。
+  assert.equal(bookingFormError(pickupDraft), null)
+  assert.equal('pickupStart' in buildOrderRequest(pickupDraft), true)
 })
 
 test('preview fixtures satisfy the strict decoder', () => {
@@ -350,8 +373,22 @@ test('real repository queries availability with the three contract params only',
   await assert.rejects(repository.availability('x', '957002', '2026-10-01'), /INVALID/) // 网络前失败关闭
 })
 
-test('real create posts the exact request body under a journal-backed X-Request-Id', async () => {
-  const seen: WireRequest[] = []
+test('preview and real repositories reject pickup drafts before the network (mirror #128 400 fail-closed)', async () => {
+  const preview = await new PreviewBookingRepository('normal').create(pickupDraft).catch(error => error)
+  assert.ok(preview instanceof ApiError && preview.code === 'COMMON_INVALID_ARGUMENT' && preview.statusCode === 400)
+  const posts: WireRequest[] = []
+  const { api, restore } = authenticatedApi(async request => {
+    if (request.path === '/api/v1/c/auth/session') return ok(sessionView)
+    posts.push(request)
+    return ok({})
+  })
+  await restore()
+  const rejected = await new RealBookingRepository(api).create(pickupDraft).catch(error => error)
+  assert.ok(rejected instanceof ApiError && rejected.statusCode === 400)
+  assert.equal(posts.length, 0) // 不发「必败」请求：网络前失败关闭
+})
+
+test('real create posts the exact request body under a journal-backed X-Request-Id', async () => {  const seen: WireRequest[] = []
   const { api, restore } = authenticatedApi(async request => {
     if (request.path === '/api/v1/c/auth/session') return ok(sessionView)
     seen.push(request)

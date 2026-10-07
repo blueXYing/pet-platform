@@ -2,7 +2,8 @@ import { ApiError } from '../../shared/request'
 import { ConsumerApi, id } from '../../shared/consumer-api'
 import {
   availabilityQuery, buildOrderRequest, decodeAvailability, decodeCreateOrderReceipt, decodePaymentReceipt,
-  PAYMENT_CHANNEL, type AvailabilityView, type BookingDeps, type BookingDraft, type CreateOrderReceipt, type PaymentReceipt,
+  PAYMENT_CHANNEL, pickupSelectionClosed, type AvailabilityView, type BookingDeps, type BookingDraft,
+  type CreateOrderReceipt, type PaymentReceipt,
 } from './model'
 
 // 预约下单/支付发起真实仓库（10号 §3.4/§3.5/§3.6）。后端 createOrder/createOrderPayment 由
@@ -29,6 +30,9 @@ export class RealBookingRepository implements BookingDeps {
     return this.api.request({ method: 'GET', path: query.path, data: query.data }, decodeAvailability)
   }
   async create(draft: BookingDraft): Promise<CreateOrderReceipt> {
+    // #128 对齐（失败关闭）：公开 CreateOrderRequest 无选窗字段而内核必填双方向窗 ID，
+    // PICKUP_DELIVERY 单在 HTTP 层必 400；开关打开前网络前拒绝，不发「必败」请求。
+    if (pickupSelectionClosed(draft)) throw new ApiError('COMMON_INVALID_ARGUMENT', 400)
     const slot = ORDER_CREATE_SLOT
     const spec = { method: 'POST' as const, path: '/api/v1/c/orders', data: buildOrderRequest(draft) }
     return this.api.write(slot, spec, decodeCreateOrderReceipt, undefined, (error, command) => {

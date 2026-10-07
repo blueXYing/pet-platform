@@ -49,6 +49,19 @@
 .bkg-date.is-selected .bkg-date-label { color: #f8f5ee; font-weight: 500; }
 .bkg-date.is-selected .bkg-date-weekday { color: #e4f6f3; }
 
+/* 履约方式区（#128 对齐）：当前方式高亮；上门接送在 PICKUP_SELECTION_ENABLED 打开前为
+   禁用态+说明（非交互 View，仅 className 变体，不伪造可切换交互）。 */
+.bkg-modes { display: flex; flex-wrap: wrap; gap: calc(var(--bkg-unit) * 8); margin-top: calc(var(--bkg-unit) * 10); }
+.bkg-mode { display: flex; flex-direction: column; align-items: flex-start; min-width: calc(var(--bkg-unit) * 120); padding: calc(var(--bkg-unit) * 8) calc(var(--bkg-unit) * 12); background: #f0fbff; border: calc(var(--bkg-unit) * 1) solid #c0ecff; border-radius: calc(var(--bkg-unit) * 10); }
+.bkg-mode-label { font-size: calc(var(--bkg-unit) * 13); line-height: calc(var(--bkg-unit) * 18); color: #1d0d07; }
+.bkg-mode-note { margin-top: calc(var(--bkg-unit) * 2); font-size: calc(var(--bkg-unit) * 10); line-height: calc(var(--bkg-unit) * 14); color: #8aa0ac; }
+.bkg-mode.is-selected { background: #5baae8; border-color: #5baae8; }
+.bkg-mode.is-selected .bkg-mode-label { color: #f8f5ee; font-weight: 500; }
+.bkg-mode.is-selected .bkg-mode-note { color: #e4f6f3; }
+.bkg-mode.is-disabled { background: #e9e4d9; border-color: #e9e4d9; }
+.bkg-mode.is-disabled .bkg-mode-label { color: #8aa0ac; }
+.bkg-mode.is-disabled .bkg-mode-note { color: #a23e2d; }
+
 /* 时段网格（分钟级窗口；可选=available 且 remaining>0；已满 is-full 置灰「已约满」）。 */
 .bkg-slots { display: flex; flex-wrap: wrap; gap: calc(var(--bkg-unit) * 8); margin-top: calc(var(--bkg-unit) * 10); }
 .bkg-slot { display: flex; flex-direction: column; align-items: center; justify-content: center; min-width: calc(var(--bkg-unit) * 96); padding: calc(var(--bkg-unit) * 8) calc(var(--bkg-unit) * 12); background: #f0fbff; border: calc(var(--bkg-unit) * 1) solid #c0ecff; border-radius: calc(var(--bkg-unit) * 10); }
