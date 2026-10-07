@@ -14,6 +14,8 @@ import {
   verifyAbsenceNotice, PreviewOrderReadRepository, type OrderDetailView,
 } from '../../orders/model'
 import { RealOrderReadRepository, isOrderReadUnauthorized } from '../../orders/repository'
+// 支付发起入口（booking 切片）：仅凭服务端 OrderActions.canPay（§3.7 #123）挂载，不推导业务真相。
+import { canInitiatePayment } from '../../booking/model'
 import {
   OrderVerifyController, PreviewOrderVerifyRepository, actionFor, formatCode,
   formatInstant, isOrderId, isOrderVerifyScenario, remainingLabel, statusHints, statusLabels,
@@ -124,6 +126,11 @@ function DetailScreen({ preview, scenario, orderId }: { preview: boolean; scenar
           <Text className='ord-card-time'>服务时间 {appointmentWindow(detail)}</Text>
           <Text className='ord-card-amount ord-summary-amount'>¥{detail.payAmount}</Text>
         </View>
+        {/* 未支付单支付入口：仅凭服务端 actions.canPay（§3.7），进入 booking/pay 发起页。 */}
+        {canInitiatePayment(detail) && <Button id='ord-go-pay' className='ord-pay-action'
+          onClick={() => { void Taro.navigateTo({ url: `/consumer/pages/booking/pay?${preview ? 'preview=1&' : ''}orderId=${encodeURIComponent(detail.orderId)}` }).catch(() => setNotice('页面跳转失败，请重试')) }}>
+          去支付 ¥{detail.payAmount}
+        </Button>}
         <View className='ord-facts'>
           {orderFactRows(detail).map(row => <View key={row.id} className='ord-fact-row'>
             <Text className='ord-fact-label'>{row.label}</Text>

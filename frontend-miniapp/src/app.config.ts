@@ -26,5 +26,8 @@ export default defineAppConfig({
     { root: 'consumer/pages/orders', pages: ['list', 'detail'] },
     // NTF preference slice (SSOT §16.4): notification preference settings page.
     { root: 'consumer/pages/notification-preferences', pages: ['index'] },
+    // Booking create + payment initiation slice (10号 §3.4/§3.5/§3.6): service-detail entry,
+    // unpaid-order pay entry; one compact line per the app.config convention.
+    { root: 'consumer/pages/booking', pages: ['create', 'pay'] },
   ],
 })

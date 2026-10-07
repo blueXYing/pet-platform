@@ -35,6 +35,8 @@ assert.deepEqual(packages.map(p => ({ root: p.root, pages: p.pages })), [
   { root: 'consumer/pages/orders', pages: ['list', 'detail'] },
   // NTF preference slice (SSOT §16.4): notification preference settings page.
   { root: 'consumer/pages/notification-preferences', pages: ['index'] },
+  // Booking create + payment initiation slice (10号 §3.4/§3.5/§3.6).
+  { root: 'consumer/pages/booking', pages: ['create', 'pay'] },
 ], 'Merchant workspace, pet archive, merchant application, store services, coupon/points, aftersale and notification preference pages must be registered in the single app')
 for (const [folder, pages] of [['consumer/pages/aftersale', ['index', 'detail', 'apply']], ['merchant/pages/aftersale', ['index', 'detail']]]) {
   for (const page of pages) for (const extension of ['js', 'json', 'wxml', 'wxss']) {
@@ -61,8 +63,15 @@ for (const page of ['list', 'detail']) {
 }
 // NTF preference slice (SSOT §16.4): notification preference settings page.
 for (const extension of ['js', 'json', 'wxml', 'wxss']) {
-  assert.ok(fs.existsSync(path.join(root, `consumer/pages/notification-preferences/index.${extension}`)),
+  assert.ok(fs.existsSync(path.join(root, 'consumer/pages/notification-preferences/index.' + extension)),
     'Notification preference page artifact missing: ' + extension)
+}
+// Booking create + payment initiation slice (10号 §3.4/§3.5/§3.6).
+for (const page of ['create', 'pay']) {
+  for (const extension of ['js', 'json', 'wxml', 'wxss']) {
+    assert.ok(fs.existsSync(path.join(root, `consumer/pages/booking/${page}.${extension}`)),
+      `Booking page build artifact missing: booking/${page}.${extension}`)
+  }
 }
 for (const extension of ['js', 'json', 'wxml', 'wxss']) {
   assert.ok(fs.existsSync(path.join(root, `merchant/pages/members/index.` + extension)),

@@ -1,0 +1,93 @@
+/* 预约下单/支付发起切片（10号 §3.4/§3.5/§3.6）。设计源登记表 §4.3：原稿 690:4506/690:4837
+   与已批契约语义冲突（固定 60 分钟槽/支付方式选择/支付成功页），视同设计缺稿——本组样式沿
+   C 端现行页面规范（orders/coupons 家族 token：#f8f5ee/#f0fbff/#c0ecff/#5baae8/#577683/
+   #1d0d07/#3185ba）实现，布局参照原稿弹层结构（门店头 + 时段网格 + 底部确认条）。运行时像素
+   单位 --bkg-unit = windowWidth/402（C-002/C-003/C-004 先例）。WXSS 铁律：状态样式仅
+   className 变体（is-* 闭集），禁 data-*。 */
+.bkg-page { --bkg-status-top: 0px; min-height: 100vh; background: #f8f5ee; color: #1d0d07; font-family: Roboto, "Noto Sans SC", sans-serif; }
+.bkg-page view, .bkg-page button, .bkg-page scroll-view, .bkg-page text, .bkg-page textarea { box-sizing: border-box; }
+.bkg-page button { padding: 0; margin: 0 !important; border: 0; border-radius: 0; background: transparent; font: inherit; line-height: normal; text-align: left; }
+.bkg-page button::after { border: 0; }
+.bkg-page button[disabled] { opacity: .65; color: inherit; }
+.bkg-design { position: relative; min-height: 100vh; }
+.bkg-status-area { height: var(--bkg-status-top); }
+.bkg-state { padding: calc(var(--bkg-unit) * 42) calc(var(--bkg-unit) * 29); font-size: calc(var(--bkg-unit) * 14); line-height: calc(var(--bkg-unit) * 24); color: #577683; }
+.bkg-state-action { display: block; margin-top: calc(var(--bkg-unit) * 8); color: #3185ba; font-size: calc(var(--bkg-unit) * 12); line-height: calc(var(--bkg-unit) * 18); }
+.bkg-notice { display: block; margin: calc(var(--bkg-unit) * 10) calc(var(--bkg-unit) * 29) 0; font-size: calc(var(--bkg-unit) * 12); line-height: calc(var(--bkg-unit) * 18); color: #a23e2d; }
+.bkg-preview-note { padding: calc(var(--bkg-unit) * 16) calc(var(--bkg-unit) * 29); font-size: calc(var(--bkg-unit) * 10); line-height: calc(var(--bkg-unit) * 15); color: #8aa0ac; }
+
+/* 顶部导航（orders 同款：返回 32x32 + 标题 16/700）。 */
+.bkg-nav { position: relative; height: calc(var(--bkg-unit) * 44); display: flex; align-items: center; }
+.bkg-nav-back { position: absolute; left: calc(var(--bkg-unit) * 22); top: calc(var(--bkg-unit) * 6); width: calc(var(--bkg-unit) * 32); height: calc(var(--bkg-unit) * 32); display: flex; align-items: center; justify-content: center; }
+.bkg-nav-back-icon { font-size: calc(var(--bkg-unit) * 22); line-height: 1; color: #3c3c3c; }
+.bkg-nav-title { margin-left: calc(var(--bkg-unit) * 62); font-size: calc(var(--bkg-unit) * 16); line-height: calc(var(--bkg-unit) * 24); font-weight: 700; color: #3c3c3c; }
+
+/* 服务/回执摘要卡（690:4506 弹层头部：门店 + 费用；卡片字段=契约投影）。 */
+.bkg-body { padding-bottom: calc(var(--bkg-unit) * 96); }
+.bkg-service-card { width: calc(var(--bkg-unit) * 343); margin: calc(var(--bkg-unit) * 18) calc(var(--bkg-unit) * 29) 0; padding: calc(var(--bkg-unit) * 14) calc(var(--bkg-unit) * 16); background: #f0fbff; border: calc(var(--bkg-unit) * 1) solid #c0ecff; border-radius: calc(var(--bkg-unit) * 12); }
+.bkg-card-head { display: flex; align-items: baseline; justify-content: space-between; gap: calc(var(--bkg-unit) * 8); }
+.bkg-card-no { font-size: calc(var(--bkg-unit) * 14); line-height: calc(var(--bkg-unit) * 20); font-weight: 500; color: #1d0d07; overflow-wrap: anywhere; }
+.bkg-service-name { font-size: calc(var(--bkg-unit) * 15); line-height: calc(var(--bkg-unit) * 22); font-weight: 500; color: #1d0d07; }
+.bkg-service-price { flex-shrink: 0; font-size: calc(var(--bkg-unit) * 18); line-height: calc(var(--bkg-unit) * 24); font-weight: 700; color: #5baae8; }
+.bkg-summary-amount { display: block; margin-top: calc(var(--bkg-unit) * 8); font-size: calc(var(--bkg-unit) * 24); line-height: calc(var(--bkg-unit) * 30); font-weight: 700; color: #5baae8; }
+.bkg-hint { display: block; margin-top: calc(var(--bkg-unit) * 6); font-size: calc(var(--bkg-unit) * 11); line-height: calc(var(--bkg-unit) * 17); color: #577683; }
+.bkg-badge { flex-shrink: 0; padding: calc(var(--bkg-unit) * 1) calc(var(--bkg-unit) * 8); border-radius: calc(var(--bkg-unit) * 4); background: #c0ecff; font-size: calc(var(--bkg-unit) * 10); line-height: calc(var(--bkg-unit) * 15); color: #577683; }
+.bkg-badge.is-pending-payment { color: #ff9500; }
+
+/* 分区容器。 */
+.bkg-section { margin: calc(var(--bkg-unit) * 12) calc(var(--bkg-unit) * 29) 0; }
+.bkg-section-title { display: block; font-size: calc(var(--bkg-unit) * 14); line-height: calc(var(--bkg-unit) * 21); font-weight: 700; color: #1d0d07; }
+.bkg-section-subtitle { display: block; margin-top: calc(var(--bkg-unit) * 12); font-size: calc(var(--bkg-unit) * 12); line-height: calc(var(--bkg-unit) * 18); font-weight: 500; color: #577683; }
+.bkg-slot-error { margin-top: calc(var(--bkg-unit) * 8); font-size: calc(var(--bkg-unit) * 12); line-height: calc(var(--bkg-unit) * 18); color: #a23e2d; }
+
+/* 日期条（7 天横向滚动；激活态 className 变体）。 */
+.bkg-dates { margin-top: calc(var(--bkg-unit) * 10); width: 100%; white-space: nowrap; }
+.bkg-date { display: inline-flex; flex-direction: column; align-items: center; justify-content: center; width: calc(var(--bkg-unit) * 64); height: calc(var(--bkg-unit) * 48); margin-right: calc(var(--bkg-unit) * 8); background: #f0fbff; border: calc(var(--bkg-unit) * 1) solid #c0ecff; border-radius: calc(var(--bkg-unit) * 10); }
+.bkg-date-label { font-size: calc(var(--bkg-unit) * 12); line-height: calc(var(--bkg-unit) * 16); color: #577683; }
+.bkg-date-weekday { font-size: calc(var(--bkg-unit) * 10); line-height: calc(var(--bkg-unit) * 14); color: #8aa0ac; }
+.bkg-date.is-selected { background: #5baae8; border-color: #5baae8; }
+.bkg-date.is-selected .bkg-date-label { color: #f8f5ee; font-weight: 500; }
+.bkg-date.is-selected .bkg-date-weekday { color: #e4f6f3; }
+
+/* 时段网格（分钟级窗口；可选=available 且 remaining>0；已满 is-full 置灰「已约满」）。 */
+.bkg-slots { display: flex; flex-wrap: wrap; gap: calc(var(--bkg-unit) * 8); margin-top: calc(var(--bkg-unit) * 10); }
+.bkg-slot { display: flex; flex-direction: column; align-items: center; justify-content: center; min-width: calc(var(--bkg-unit) * 96); padding: calc(var(--bkg-unit) * 8) calc(var(--bkg-unit) * 12); background: #f0fbff; border: calc(var(--bkg-unit) * 1) solid #c0ecff; border-radius: calc(var(--bkg-unit) * 10); }
+.bkg-slot-time { font-size: calc(var(--bkg-unit) * 12); line-height: calc(var(--bkg-unit) * 17); color: #1d0d07; }
+.bkg-slot-note { margin-top: calc(var(--bkg-unit) * 2); font-size: calc(var(--bkg-unit) * 10); line-height: calc(var(--bkg-unit) * 14); color: #8aa0ac; }
+.bkg-slot.is-selected { background: #5baae8; border-color: #5baae8; }
+.bkg-slot.is-selected .bkg-slot-time { color: #f8f5ee; font-weight: 500; }
+.bkg-slot.is-selected .bkg-slot-note { color: #e4f6f3; }
+.bkg-slot.is-full { background: #e9e4d9; border-color: #e9e4d9; }
+.bkg-slot.is-full .bkg-slot-time { color: #8aa0ac; }
+.bkg-slot.is-full .bkg-slot-note { color: #a23e2d; }
+
+/* 宠物选择 chips。 */
+.bkg-pets { display: flex; flex-wrap: wrap; gap: calc(var(--bkg-unit) * 8); margin-top: calc(var(--bkg-unit) * 10); }
+.bkg-pet { display: flex; flex-direction: column; align-items: flex-start; min-width: calc(var(--bkg-unit) * 96); padding: calc(var(--bkg-unit) * 8) calc(var(--bkg-unit) * 12); background: #fff; border: calc(var(--bkg-unit) * 1) solid #c0ecff; border-radius: calc(var(--bkg-unit) * 10); }
+.bkg-pet-name { font-size: calc(var(--bkg-unit) * 13); line-height: calc(var(--bkg-unit) * 18); color: #1d0d07; }
+.bkg-pet-note { margin-top: calc(var(--bkg-unit) * 2); font-size: calc(var(--bkg-unit) * 10); line-height: calc(var(--bkg-unit) * 14); color: #8aa0ac; }
+.bkg-pet.is-selected { background: #5baae8; border-color: #5baae8; }
+.bkg-pet.is-selected .bkg-pet-name { color: #f8f5ee; font-weight: 500; }
+.bkg-pet.is-selected .bkg-pet-note { color: #e4f6f3; }
+
+/* 备注。 */
+.bkg-textarea { display: block; margin-top: calc(var(--bkg-unit) * 10); width: 100%; min-height: calc(var(--bkg-unit) * 84); padding: calc(var(--bkg-unit) * 10) calc(var(--bkg-unit) * 12); background: #fff; border: calc(var(--bkg-unit) * 1) solid #c0ecff; border-radius: calc(var(--bkg-unit) * 10); font-size: calc(var(--bkg-unit) * 12); line-height: calc(var(--bkg-unit) * 18); color: #1d0d07; }
+
+/* 确认信息卡（orders 详情事实行同款）。 */
+.bkg-confirm-card { padding: calc(var(--bkg-unit) * 12) calc(var(--bkg-unit) * 16); background: #fff; border: calc(var(--bkg-unit) * 1) solid #c0ecff; border-radius: calc(var(--bkg-unit) * 12); }
+.bkg-fact-row { display: flex; align-items: baseline; justify-content: space-between; gap: calc(var(--bkg-unit) * 12); padding: calc(var(--bkg-unit) * 8) 0; }
+.bkg-fact-label { flex-shrink: 0; font-size: calc(var(--bkg-unit) * 12); line-height: calc(var(--bkg-unit) * 18); color: #577683; }
+.bkg-fact-value { font-size: calc(var(--bkg-unit) * 12); line-height: calc(var(--bkg-unit) * 18); color: #1d0d07; text-align: right; overflow-wrap: anywhere; }
+.bkg-fact-amount { font-weight: 700; color: #5baae8; }
+
+/* 底部确认条（690:4506「确认预约 · ¥80」；固定吸底）。 */
+.bkg-footer { position: fixed; left: 0; right: 0; bottom: 0; display: flex; align-items: center; justify-content: space-between; gap: calc(var(--bkg-unit) * 12); padding: calc(var(--bkg-unit) * 10) calc(var(--bkg-unit) * 29) calc(var(--bkg-unit) * 20); background: #f8f5ee; border-top: calc(var(--bkg-unit) * 1) solid #c0ecff; }
+.bkg-footer-amount { display: flex; flex-direction: column; }
+.bkg-footer-label { font-size: calc(var(--bkg-unit) * 10); line-height: calc(var(--bkg-unit) * 14); color: #8aa0ac; }
+.bkg-footer-price { font-size: calc(var(--bkg-unit) * 18); line-height: calc(var(--bkg-unit) * 24); font-weight: 700; color: #5baae8; }
+.bkg-footer-action { flex-shrink: 0; padding: 0 calc(var(--bkg-unit) * 24); border-radius: calc(var(--bkg-unit) * 9999); background: #5baae8; color: #e4f6f3; font-size: calc(var(--bkg-unit) * 13); line-height: calc(var(--bkg-unit) * 38); font-weight: 500; }
+.bkg-pay-action { display: inline-block; margin: calc(var(--bkg-unit) * 12) calc(var(--bkg-unit) * 29) 0; }
+
+/* 主/次按钮（回执与支付页）。 */
+.bkg-primary { display: block; margin: calc(var(--bkg-unit) * 12) calc(var(--bkg-unit) * 29) 0; padding: 0 calc(var(--bkg-unit) * 24); border-radius: calc(var(--bkg-unit) * 9999); background: #5baae8; color: #e4f6f3; font-size: calc(var(--bkg-unit) * 13); line-height: calc(var(--bkg-unit) * 38); font-weight: 500; text-align: center; }
+.bkg-secondary { display: block; margin: calc(var(--bkg-unit) * 10) calc(var(--bkg-unit) * 29) 0; padding: 0 calc(var(--bkg-unit) * 24); border: calc(var(--bkg-unit) * 1) solid #c0ecff; border-radius: calc(var(--bkg-unit) * 9999); background: #fff; color: #577683; font-size: calc(var(--bkg-unit) * 12); line-height: calc(var(--bkg-unit) * 34); text-align: center; }

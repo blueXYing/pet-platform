@@ -178,7 +178,7 @@ export const paymentStatusLabels: Record<PaymentStatus, string> = {
 export const verificationStatusLabels: Record<VerificationStatus, string> = {
   UNVERIFIED: '未核销', VERIFIED: '已核销',
 }
-/** 只读呈现服务端返回的可用动作（本切片不实现支付/改期/退款/评价/售后按钮）。 */
+/** 服务端返回的可用动作的展示标签（去支付已由 booking 切片接通真实入口；其余动作仍只读呈现）。 */
 export const actionLabels: Readonly<Record<keyof OrderActions, string>> = {
   canPay: '去支付', canReschedule: '订单改期', canApplyRefund: '申请退款',
   canShowVerificationCode: '查看核销码', canReview: '评价', canApplyAfterSale: '申请售后',
