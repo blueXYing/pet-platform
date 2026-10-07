@@ -1,0 +1,23 @@
+/* No Figma original for notification preferences (design registry gap); tokens follow the
+   messages/application page language — not a 1:1 restoration or VIS pass. */
+.ntf-pref-page { min-height: 100vh; background: #f0fbff; color: #1d0d07; font-family: Roboto, Arial, 'Microsoft YaHei', sans-serif; }
+.ntf-pref-subpage { padding-top: var(--ntf-pref-top, 0px); }
+.ntf-pref-design button { margin: 0; padding: 0; border: 0; line-height: normal; font-weight: normal; }
+.ntf-pref-design button::after { border: 0; }
+.ntf-pref-header { height: 88rpx; background: #fff6e5; border-bottom: 2rpx solid #c0ecff; display: flex; align-items: center; gap: 16rpx; font-size: 32rpx; font-weight: 700; }
+.ntf-pref-header button { margin-left: 38rpx; color: #3185ba; background: transparent; font-size: 28rpx; }
+.ntf-pref-body { padding: 24rpx 32rpx 64rpx; display: flex; flex-direction: column; gap: 20rpx; }
+.ntf-pref-line { color: #577683; font-size: 28rpx; }
+.ntf-pref-card { background: #fff; border: 2rpx solid #c0ecff; border-radius: 18rpx; padding: 24rpx; display: flex; flex-direction: column; gap: 12rpx; }
+.ntf-pref-card > button { align-self: flex-start; color: #3185ba; background: transparent; font-size: 28rpx; padding: 8rpx 0; }
+.ntf-pref-row { background: #fff; border: 2rpx solid #c0ecff; border-radius: 18rpx; padding: 24rpx; display: flex; align-items: center; gap: 20rpx; }
+.ntf-pref-row-main { flex: 1; display: flex; flex-direction: column; gap: 8rpx; }
+.ntf-pref-row-title { font-size: 30rpx; font-weight: 700; }
+.ntf-pref-row-desc { color: #577683; font-size: 24rpx; line-height: 1.6; }
+.ntf-pref-note { color: #577683; font-size: 24rpx; line-height: 1.7; }
+.ntf-pref-actions { display: flex; gap: 20rpx; }
+.ntf-pref-actions button { flex: 1; background: #5baae8; color: #fff; border-radius: 44rpx; font-size: 30rpx; padding: 18rpx 0; }
+.ntf-pref-actions button[disabled] { background: #c9e4f6; color: #fff; }
+.ntf-pref-actions #ntf-pref-reset { background: #fff; color: #3185ba; border: 2rpx solid #5baae8; }
+.ntf-pref-saved-at, .ntf-pref-preview-note { color: #9bb3bd; font-size: 22rpx; }
+.ntf-pref-notice { color: #c2564d; font-size: 26rpx; }

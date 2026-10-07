@@ -84,6 +84,9 @@ public class CSessionSecurityConfiguration {
             // Inbox reads (CCR-W2-NOTIFICATION-001): MINIAPP Bearer enforced by the filter.
             a.requestMatchers("/api/v1/c/notifications", "/api/v1/c/notifications/**")
                 .permitAll();
+            // Notification preferences (SSOT §16.4 slice): same session-filter enforcement —
+            // the GET/PUT pair rides pet.auth.c.enabled like the inbox surface.
+            a.requestMatchers("/api/v1/c/notification-preferences").permitAll();
             // Service catalog (CCR-W2-API-001 service domain): anonymous GET per the store-read
             // STR-D8 ruling (PRD "all users browse"); the filter validates a carried bearer.
             a.requestMatchers("/api/v1/c/stores/*/services").permitAll();

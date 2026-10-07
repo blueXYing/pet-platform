@@ -11509,6 +11509,91 @@ paths:
           $ref: '#/components/responses/CouponPointsHttpError'
       x-route-party: USER
       x-audience: MINIAPP
+  /c/notification-preferences:
+    get:
+      tags:
+      - C-Notification
+      operationId: cGetNotificationPreferences
+      summary: 我的通知偏好（两项开关+版本）
+      x-implementation-status: IMPLEMENTED_DEFAULT_OFF
+      x-default-enabled: false
+      x-contract: 10-HTTP-API-Contract-v0.4.md
+      description: SSOT §16.4。偏好项严格只有 interactionEnabled（普通互动提醒）与
+        externalPushEnabled（微信外部推送偏好）两个开关；订单/退款/核销/售后/审核站内消息
+        不可关闭，不属于偏好项。无行读 schema 默认 {true,true}、version "0"、updatedAt null；
+        query 全禁止。
+      security:
+      - bearerAuth: []
+      responses:
+        '200':
+          description: 当前偏好投影
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                enum:
+                - no-store
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/NotificationPreferenceEnvelope'
+        '400':
+          $ref: '#/components/responses/NotificationPreferenceHttpError'
+        '401':
+          $ref: '#/components/responses/NotificationPreferenceHttpError'
+        '500':
+          $ref: '#/components/responses/NotificationPreferenceHttpError'
+        '503':
+          $ref: '#/components/responses/NotificationPreferenceHttpError'
+      x-route-party: USER
+      x-audience: MINIAPP
+    put:
+      tags:
+      - C-Notification
+      operationId: cUpdateNotificationPreferences
+      summary: 全量保存通知偏好（requestId幂等）
+      x-implementation-status: IMPLEMENTED_DEFAULT_OFF
+      x-default-enabled: false
+      x-contract: 10-HTTP-API-Contract-v0.4.md
+      description: SSOT §16.4 + 23号公共幂等。严格 JSON：两个必填 boolean，未知字段/显式
+        null/非boolean/重复键/尾随token 均400；query 全禁止。同 requestId 同参重放首次成功
+        回执，异参 409 IDEMPOTENCY_KEY_CONFLICT。externalPushEnabled 仅记录偏好——微信外投
+        发送能力 V1 搁置（#108），本切片不含任何外发逻辑。
+      security:
+      - bearerAuth: []
+      parameters:
+      - $ref: '#/components/parameters/RequestId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/NotificationPreferenceUpdate'
+      responses:
+        '200':
+          description: 保存后的偏好投影（首存与幂等重放同形）
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                enum:
+                - no-store
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/NotificationPreferenceEnvelope'
+        '400':
+          $ref: '#/components/responses/NotificationPreferenceHttpError'
+        '401':
+          $ref: '#/components/responses/NotificationPreferenceHttpError'
+        '409':
+          $ref: '#/components/responses/NotificationPreferenceHttpError'
+        '500':
+          $ref: '#/components/responses/NotificationPreferenceHttpError'
+        '503':
+          $ref: '#/components/responses/NotificationPreferenceHttpError'
+      x-route-party: USER
+      x-audience: MINIAPP
 components:
   securitySchemes:
     bearerAuth:
@@ -11685,6 +11770,19 @@ components:
         application/json:
           schema:
             $ref: '#/components/schemas/CouponPointsErrorEnvelope'
+    NotificationPreferenceHttpError:
+      description: 通知偏好错误；复用Error12 §2通用码（409含幂等异参IDEMPOTENCY_KEY_CONFLICT
+        与争锁忙COMMON_CONFLICT），data=null。
+      headers:
+        Cache-Control:
+          schema:
+            type: string
+            enum:
+            - no-store
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/NotificationPreferenceErrorEnvelope'
   schemas:
     VerificationCredentialIssue:
       type: object
@@ -18976,6 +19074,101 @@ components:
           minLength: 1
         data:
           $ref: '#/components/schemas/PointsBalanceData'
+        traceId:
+          type: string
+          minLength: 1
+    NotificationPreferenceUpdate:
+      type: object
+      additionalProperties: false
+      required:
+      - interactionEnabled
+      - externalPushEnabled
+      properties:
+        interactionEnabled:
+          type: boolean
+          description: 普通互动提醒开关（SSOT §16.4 允许用户关闭的两项之一）。
+        externalPushEnabled:
+          type: boolean
+          description: 微信外部推送偏好开关；仅记录偏好，外投发送能力 V1 搁置（#108）。
+    NotificationPreferenceData:
+      type: object
+      additionalProperties: false
+      required:
+      - interactionEnabled
+      - externalPushEnabled
+      - version
+      - updatedAt
+      properties:
+        interactionEnabled:
+          type: boolean
+        externalPushEnabled:
+          type: boolean
+        version:
+          type: string
+          pattern: ^(0|[1-9][0-9]{0,18})(?![\s\S])$
+          description: notification_preference.version BIGINT 计数器按 String 传输；0=从未写过，
+            每次成功更新 +1。
+        updatedAt:
+          type: string
+          nullable: true
+          description: 最近一次成功更新的偏移毫秒时间戳；从未写过（读默认值）时为 null。
+    NotificationPreferenceEnvelope:
+      type: object
+      additionalProperties: false
+      required:
+      - success
+      - code
+      - message
+      - data
+      - traceId
+      properties:
+        success:
+          type: boolean
+          enum:
+          - true
+        code:
+          type: string
+          enum:
+          - SUCCESS
+        message:
+          type: string
+          minLength: 1
+        data:
+          $ref: '#/components/schemas/NotificationPreferenceData'
+        traceId:
+          type: string
+          minLength: 1
+    NotificationPreferenceErrorEnvelope:
+      type: object
+      additionalProperties: false
+      required:
+      - success
+      - code
+      - message
+      - data
+      - traceId
+      properties:
+        success:
+          type: boolean
+          enum:
+          - false
+        code:
+          type: string
+          enum:
+          - COMMON_INVALID_ARGUMENT
+          - COMMON_UNAUTHORIZED
+          - COMMON_CONFLICT
+          - IDEMPOTENCY_KEY_CONFLICT
+          - COMMON_INTERNAL_ERROR
+          - COMMON_DEPENDENCY_UNAVAILABLE
+        message:
+          type: string
+          minLength: 1
+        data:
+          type: object
+          nullable: true
+          enum:
+          - null
         traceId:
           type: string
           minLength: 1

@@ -840,6 +840,31 @@ AFTERSALE
 AUDIT
 ```
 
+### 3.15.3 通知偏好（SSOT §16.4，本切片落地）
+
+`GET /api/v1/c/notification-preferences`：当前登录用户自己的偏好投影；query 全禁止。偏好项
+严格只有两个（SSOT §16.4 + SQL06 §11 `notification_preference`）：`interactionEnabled`（普通
+互动提醒）与 `externalPushEnabled`（微信外部推送偏好）。返回
+`{interactionEnabled, externalPushEnabled, version, updatedAt}`：`version` 为 BIGINT 计数器按
+String 传输（`0`=从未写过，每次成功更新 +1）；`updatedAt` 为偏移毫秒时间戳，从未写过（读
+schema 默认值）时为 null；无行读作默认 `{true, true}`。订单/退款/核销/售后/审核类站内消息
+不可关闭，不属于偏好项，任何参数不得影响。
+
+`PUT /api/v1/c/notification-preferences`：全量替换两个开关。Header `X-Request-Id` 必填（终端
+UUID，23 号）；严格 JSON：字段必须且只能是 `interactionEnabled`/`externalPushEnabled` 两个
+boolean，未知字段、显式 null、非 boolean、重复键、尾随 token 均 400；query 全禁止。更新按
+23 号公共幂等：五元组键 `notification.preference.update|USER|<userId>|USER_SELF|<requestId>`
+绑定受保护参数（canonical-v1，14 号 `command_idempotency`），同 requestId 同参重放首次成功
+回执；同 requestId 异参 409 `IDEMPOTENCY_KEY_CONFLICT`；争锁忙 409 `COMMON_CONFLICT`；无行
+插入（version=0），既有行 version+1，业务写与绑定 SUCCEEDED 同事务提交。返回与 GET 相同
+投影。`externalPushEnabled` 仅记录偏好——微信外投发送能力 V1 搁置（PR #108 登记搁置），本
+切片不含任何外发逻辑。
+
+错误码引用 12 号 §2 既有通用码：400=COMMON_INVALID_ARGUMENT、401=COMMON_UNAUTHORIZED、
+409=IDEMPOTENCY_KEY_CONFLICT（幂等异参）/COMMON_CONFLICT（忙）、500=COMMON_INTERNAL_ERROR、
+503=COMMON_DEPENDENCY_UNAVAILABLE，无新增码。默认随 `pet.auth.c.enabled` 装配
+（IMPLEMENTED_DEFAULT_OFF）；两端点 `Cache-Control: no-store`。
+
 V1.0 不提供积分抵现/积分商城 Endpoint；本节券/积分为只读查询，不存在发放、冻结、核销、
 退券、兑换、抵扣、签到/邀请/任务赚取等写路径。
 

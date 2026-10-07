@@ -22,5 +22,7 @@ export default defineAppConfig({
     { root: 'consumer/pages/aftersale', pages: ['index', 'detail', 'apply'] },
     // Order verification code slice (47号 §4 v0.2): explicit order-id entry, no order list yet.
     { root: 'consumer/pages/order-verify', pages: ['index'] },
+    // NTF preference slice (SSOT §16.4): notification preference settings page.
+    { root: 'consumer/pages/notification-preferences', pages: ['index'] },
   ],
 })

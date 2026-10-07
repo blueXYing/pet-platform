@@ -33,6 +33,8 @@ export default function MessagesPage() {
       <View className='messages-header'>
         <Button id='messages-back' ariaLabel='返回' onClick={() => void back()}>返回</Button>
         <Text>{state.detail ? '消息详情' : '消息中心'}</Text>
+        {state.detail === null && <Button id='messages-preferences' ariaLabel='通知偏好设置'
+          onClick={() => void Taro.navigateTo({ url: '/consumer/pages/notification-preferences/index' })}>通知偏好</Button>}
       </View>
       <View className='messages-body'>
         {state.status === 'loading' && <View className='messages-line' role='status'>正在读取消息…</View>}

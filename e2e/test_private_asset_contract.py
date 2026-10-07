@@ -24,13 +24,14 @@ class PrivateAssetContractRegressions(unittest.TestCase):
 
     def test_current_surface_independent_counts(self):
         result = check(self.spec)
-        # 131 = develop 126 + net 1 from the aftersale-pages surface merge (24 Contract51 AFS
+        # 133 = develop 126 + net 1 from the aftersale-pages surface merge (24 Contract51 AFS
         # operations consolidated, 2 legacy drafts retired, overlap with develop resolved)
-        # + 4 CCR-C006 coupon/points C-side read-only operations.
+        # + 4 CCR-C006 coupon/points C-side read-only operations
+        # + 2 notification preference operations (SSOT §16.4 slice: GET/PUT pair).
         # The verification HTTP slice adds no new operationId: it flips the two pinned
         # credential routes to implemented default-off and re-pins the legacy merchant
         # verify route inside VERIFICATION_HTTP_OPERATIONS (3 overlapping operations).
-        self.assertEqual(result['operations'], 131)
+        self.assertEqual(result['operations'], 133)
         self.assertEqual(result['privateAssetOperations'], 3)
         self.assertEqual(result['legacyOperations'], 14)
         self.assertEqual(result['aftersaleOperations'], 24)

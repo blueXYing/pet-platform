@@ -258,6 +258,62 @@ COUPON_POINTS_READ_OPERATIONS = {
     'cListPointsLedger': ('get', '/c/points/ledger', ('200', '400', '401', '500')),
 }
 
+# Notification preferences (SSOT §16.4 slice, 2026-10-06): the two-switch C-side preference
+# surface rides pet.auth.c.enabled like the inbox. Preference items are exactly the schema's
+# interaction/external-push switches; the mandatory in-site kinds are not settable. The PUT is
+# a supplement-23 bound command (same-requestId same-params replay, different-params 409); the
+# GET reads the schema defaults when no row exists. No new error codes — the family pins the
+# reused Error12 §2 set including the 409 pair.
+NOTIFICATION_PREFERENCE_OPERATIONS = {
+    'cGetNotificationPreferences': (
+        'get', '/c/notification-preferences',
+        ('200', '400', '401', '500', '503')),
+    'cUpdateNotificationPreferences': (
+        'put', '/c/notification-preferences',
+        ('200', '400', '401', '409', '500', '503')),
+}
+
+
+def check_notification_preferences(spec, operation, method, path):
+    name = operation['operationId']
+    expected_method, expected_path, required_codes = NOTIFICATION_PREFERENCE_OPERATIONS[name]
+    assert (method, path) == (expected_method, expected_path), f'Preference operation moved: {name}'
+    assert operation.get('security') == [{'bearerAuth': []}], f'Preference security changed: {name}'
+    assert operation.get('x-implementation-status') == 'IMPLEMENTED_DEFAULT_OFF', f'Preference status changed: {name}'
+    assert operation.get('x-default-enabled') is False, f'Preference must stay default off: {name}'
+    assert operation.get('x-contract') == '10-HTTP-API-Contract-v0.4.md', f'Preference authority changed: {name}'
+    assert operation.get('x-route-party') == 'USER' and operation.get('x-audience') == 'MINIAPP', f'Preference identity changed: {name}'
+    responses = operation['responses']
+    assert set(responses) == set(required_codes), f'Preference response surface changed: {name}'
+    for code in responses:
+        response = dereference(spec, responses[code])
+        cache = response['headers']['Cache-Control']['schema']
+        assert cache == {'type': 'string', 'enum': ['no-store']}, f'Preference caching changed: {name} {code}'
+        schema = response['content']['application/json']['schema']
+        expected = {'$ref': '#/components/schemas/NotificationPreferenceErrorEnvelope'} if code != '200' \
+            else {'$ref': '#/components/schemas/NotificationPreferenceEnvelope'}
+        assert schema == expected, f'Preference envelope changed: {name} {code}'
+    assert not [p for p in operation.get('parameters', []) if p.get('in') == 'query'], f'Preference query opened: {name}'
+    if method == 'get':
+        assert 'requestBody' not in operation, f'Preference GET must stay bodyless: {name}'
+    else:
+        body = dereference(spec, operation['requestBody'])
+        assert body.get('required') is True, f'Preference PUT body must be required: {name}'
+        request = dereference(spec, body['content']['application/json']['schema'])
+        assert request == spec['components']['schemas']['NotificationPreferenceUpdate'] or \
+            request is spec['components']['schemas']['NotificationPreferenceUpdate'], f'Preference PUT body changed: {name}'
+    data = spec['components']['schemas']['NotificationPreferenceData']
+    assert data.get('additionalProperties') is False, 'Preference projection opened'
+    assert set(data['required']) == {'interactionEnabled', 'externalPushEnabled', 'version', 'updatedAt'}, 'Preference fields changed'
+    assert set(data['properties']) == {'interactionEnabled', 'externalPushEnabled', 'version', 'updatedAt'}, 'Preference fields changed'
+    assert data['properties']['interactionEnabled']['type'] == 'boolean', 'Interaction switch must stay boolean'
+    assert data['properties']['externalPushEnabled']['type'] == 'boolean', 'Push switch must stay boolean'
+    assert data['properties']['version']['pattern'] == r'^(0|[1-9][0-9]{0,18})(?![\s\S])$', 'Preference version width changed'
+    assert data['properties']['updatedAt'].get('nullable') is True, 'updatedAt must stay nullable (unread default row)'
+    update = spec['components']['schemas']['NotificationPreferenceUpdate']
+    assert update.get('additionalProperties') is False, 'Preference update body opened'
+    assert set(update['required']) == {'interactionEnabled', 'externalPushEnabled'}, 'Preference update must be a full two-switch PUT'
+
 
 def check_verification_http(spec, operation, method, path):
     name = operation['operationId']
@@ -789,6 +845,8 @@ def check(spec):
                     assert responses['201']['content'] == responses['200']['content'], f'Schedule write replay changed: {operation_id}'
             if operation_id in COUPON_POINTS_READ_OPERATIONS:
                 check_coupon_points_read(spec, operation, method, path)
+            if operation_id in NOTIFICATION_PREFERENCE_OPERATIONS:
+                check_notification_preferences(spec, operation, method, path)
             if method in {'post', 'put', 'patch', 'delete'}:
                 assert {'$ref': '#/components/parameters/RequestId'} in parameters, f'Missing request ID: {operation_id}'
                 writes += 1
@@ -802,7 +860,7 @@ def check(spec):
     assert legacy_seen == LEGACY_OPERATIONS.keys(), f'Legacy operations missing: {LEGACY_OPERATIONS.keys() - legacy_seen}'
     assert legacy_writes == 11, 'Legacy write surface changed'
     assert legacy_creates == LEGACY_CREATES, 'Legacy create surface changed'
-    assert operations == LEGACY_OPERATIONS.keys() | AUTH_OPERATIONS.keys() | MERCHANT_OPERATIONS.keys() | APPLICATION_OPERATIONS.keys() | PRIVATE_ASSET_OPERATIONS.keys() | SERVICE_CATALOG_OPERATIONS.keys() | STORE_CATALOG_OPERATIONS.keys() | SERVICE_WRITE_OPERATIONS.keys() | SCHEDULE_AVAILABILITY_OPERATIONS.keys() | SCHEDULE_WRITE_OPERATIONS.keys() | CREDENTIAL_OPERATIONS.keys() | AFTERSALE_OPERATIONS.keys() | COUPON_POINTS_READ_OPERATIONS.keys() | VERIFICATION_HTTP_OPERATIONS.keys(), 'Unexpected or missing reviewed operations'
+    assert operations == LEGACY_OPERATIONS.keys() | AUTH_OPERATIONS.keys() | MERCHANT_OPERATIONS.keys() | APPLICATION_OPERATIONS.keys() | PRIVATE_ASSET_OPERATIONS.keys() | SERVICE_CATALOG_OPERATIONS.keys() | STORE_CATALOG_OPERATIONS.keys() | SERVICE_WRITE_OPERATIONS.keys() | SCHEDULE_AVAILABILITY_OPERATIONS.keys() | SCHEDULE_WRITE_OPERATIONS.keys() | CREDENTIAL_OPERATIONS.keys() | AFTERSALE_OPERATIONS.keys() | COUPON_POINTS_READ_OPERATIONS.keys() | VERIFICATION_HTTP_OPERATIONS.keys() | NOTIFICATION_PREFERENCE_OPERATIONS.keys(), 'Unexpected or missing reviewed operations'
     schemes = spec['components']['securitySchemes']
     assert schemes['bearerAuth']['type'] == 'http' and schemes['bearerAuth']['scheme'] == 'bearer'
     for scheme, location, name in [('authAttempt', 'header', 'X-Auth-Attempt'),

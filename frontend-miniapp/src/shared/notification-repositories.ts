@@ -74,3 +74,33 @@ export class NotificationRepository {
     })
   }
 }
+
+// 通知偏好（SSOT §16.4 + SQL06 §11 notification_preference）：仅两个服务端定义的开关——
+// interactionEnabled（普通互动提醒）与 externalPushEnabled（微信外部推送偏好）。订单/退款/
+// 核销/售后/审核站内消息必须保留，任何偏好不可关闭（服务端事实，页面只作说明呈现）。
+// version 为 BIGINT 计数器，按技术基线以字符串传输；updatedAt 在从未保存过（读默认值）时为 null。
+export function decodeNotificationPreference(value: unknown) {
+  const v = exact(value, ['interactionEnabled', 'externalPushEnabled', 'version', 'updatedAt'])
+  if (typeof v.interactionEnabled !== 'boolean' || typeof v.externalPushEnabled !== 'boolean') invalid()
+  if (typeof v.version !== 'string' || !/^(0|[1-9][0-9]{0,18})(?![\s\S])/.test(v.version)) invalid()
+  return {
+    interactionEnabled: v.interactionEnabled,
+    externalPushEnabled: v.externalPushEnabled,
+    version: v.version,
+    updatedAt: v.updatedAt === null ? null : timestamp(v.updatedAt),
+  }
+}
+export type NotificationPreference = ReturnType<typeof decodeNotificationPreference>
+
+/** C 端通知偏好客户端：GET 读取当前偏好，PUT 全量保存（requestId 幂等由 ConsumerApi.write 保障）。 */
+export class NotificationPreferenceRepository {
+  constructor(private api: ConsumerApi) {}
+  load(): Promise<NotificationPreference> {
+    return this.api.request({ path: '/api/v1/c/notification-preferences', method: 'GET' }, decodeNotificationPreference)
+  }
+  save(input: { interactionEnabled: boolean; externalPushEnabled: boolean }): Promise<NotificationPreference> {
+    return this.api.write('notification-preferences:update',
+      { path: '/api/v1/c/notification-preferences', method: 'PUT', data: { ...input } },
+      decodeNotificationPreference)
+  }
+}

@@ -1,0 +1,47 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.petplatform.notification.biz.infrastructure.persistence.mapper.NotificationPreferenceMapper">
+    <update id="setTimeZoneUtc">SET time_zone = '+00:00'</update>
+    <update id="setLockWaitTimeout2Seconds">SET innodb_lock_wait_timeout = 2</update>
+
+    <!-- command_idempotency (14号 shared physical table; notification preference rows use a
+         length-prefixed request-key-v1 string like the service domain). -->
+    <select id="selectBindingForUpdate"
+            resultType="com.petplatform.notification.biz.infrastructure.persistence.entity.NotificationPreferenceBindingEntity">
+        SELECT id, canonical_version, params_sha256, params_canonical, status, receipt_json
+        FROM command_idempotency
+        WHERE request_key = #{requestKey}
+        FOR UPDATE
+    </select>
+    <insert id="insertBinding">
+        INSERT INTO command_idempotency(id, request_key, canonical_version, params_sha256,
+                                        params_canonical, status, receipt_json, created_at)
+        VALUES (#{id}, #{requestKey}, #{canonicalVersion}, #{paramsSha256}, #{paramsCanonical},
+                'RESERVED', NULL, UTC_TIMESTAMP(3))
+    </insert>
+    <update id="markBindingSucceeded">
+        UPDATE command_idempotency
+        SET status = 'SUCCEEDED', receipt_json = #{receiptJson}, succeeded_at = UTC_TIMESTAMP(3)
+        WHERE request_key = #{requestKey} AND status = 'RESERVED'
+    </update>
+
+    <select id="selectPreference"
+            resultType="com.petplatform.notification.biz.infrastructure.persistence.entity.NotificationPreferenceEntity">
+        SELECT id, receiver_type, receiver_id, interaction_enabled, external_push_enabled,
+               version, created_at, updated_at
+        FROM notification_preference
+        WHERE receiver_type = 'USER' AND receiver_id = #{receiverId}
+    </select>
+    <insert id="upsertPreference">
+        INSERT INTO notification_preference
+            (id, receiver_type, receiver_id, interaction_enabled, external_push_enabled,
+             version, created_at, updated_at)
+        VALUES (#{id}, 'USER', #{receiverId}, #{interactionEnabled}, #{externalPushEnabled},
+                0, #{updatedAt}, #{updatedAt})
+        ON DUPLICATE KEY UPDATE
+            interaction_enabled = #{interactionEnabled},
+            external_push_enabled = #{externalPushEnabled},
+            version = version + 1,
+            updated_at = #{updatedAt}
+    </insert>
+</mapper>
