@@ -1,0 +1,32 @@
+/* 核销码页：无设计切图来源的功能页（47号 §4 v0.2），沿用 C 端家族配色（aftersale/coupon-points
+   同源：#f0fbff 底、#c0ecff 描边、#5baae8 主按钮、#577683 辅助文字）；系统字体，仅 className 变体。 */
+.ovv-page { min-height: 100vh; background: #f0fbff; color: #1d0d07; font-size: calc(var(--ovv-unit) * 13.154); }
+.ovv-page button { box-sizing: border-box; margin: 0; font-family: inherit; border: 0; }
+.ovv-page button::after { border: 0; }
+.ovv-design { display: flex; flex-direction: column; }
+.ovv-status-area { min-height: var(--ovv-top); background: #fff6e5; }
+.ovv-nav { display: flex; align-items: center; gap: calc(var(--ovv-unit) * 21); min-height: calc(var(--ovv-unit) * 74); padding: 0 calc(var(--ovv-unit) * 18); background: #fff6e5; font-weight: 700; font-size: calc(var(--ovv-unit) * 16); color: #3c3c3c; }
+.ovv-page .ovv-nav-back { display: flex; align-items: center; justify-content: center; width: calc(var(--ovv-unit) * 24); height: calc(var(--ovv-unit) * 40); padding: 0; background: transparent; }
+.ovv-nav-back-icon { font-size: calc(var(--ovv-unit) * 22); line-height: 1; color: #3c3c3c; }
+.ovv-body { display: flex; flex-direction: column; gap: calc(var(--ovv-unit) * 17.539); padding: calc(var(--ovv-unit) * 17) calc(var(--ovv-unit) * 13.506) calc(var(--ovv-unit) * 30) calc(var(--ovv-unit) * 12.506); }
+.ovv-card { display: flex; flex-direction: column; padding: calc(var(--ovv-unit) * 18.635); border: calc(var(--ovv-unit) * 1.096) solid #c0ecff; border-radius: calc(var(--ovv-unit) * 13.154); background: #fff; overflow: hidden; }
+.ovv-heading { font-size: calc(var(--ovv-unit) * 15.346); font-weight: 500; line-height: calc(var(--ovv-unit) * 21.923); }
+.ovv-card .ovv-heading { padding-bottom: calc(var(--ovv-unit) * 8); }
+.ovv-hint { display: block; color: #577683; font-size: calc(var(--ovv-unit) * 12.058); line-height: calc(var(--ovv-unit) * 19.594); }
+.ovv-field { margin-top: calc(var(--ovv-unit) * 8.769); }
+.ovv-input { border: calc(var(--ovv-unit) * 1.096) solid #c0ecff; background: #f9fffe; color: #2e1d16; border-radius: calc(var(--ovv-unit) * 8.769); min-height: calc(var(--ovv-unit) * 43.847); padding: 0 calc(var(--ovv-unit) * 14.25); font-size: calc(var(--ovv-unit) * 15.346); margin-top: calc(var(--ovv-unit) * 8.769); }
+.ovv-error { display: block; color: #a23e2d; line-height: calc(var(--ovv-unit) * 20); margin-top: calc(var(--ovv-unit) * 4); }
+.ovv-notice { color: #577683; line-height: calc(var(--ovv-unit) * 21); padding: 0 calc(var(--ovv-unit) * 5); overflow-wrap: anywhere; }
+.ovv-row { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: calc(var(--ovv-unit) * 10); }
+.ovv-status { color: #53bfee; font-weight: 500; }
+.ovv-status.is-expired, .ovv-status.is-invalidated { color: #a23e2d; }
+.ovv-status.is-locked { color: #b8860b; }
+.ovv-code-panel { display: flex; flex-direction: column; gap: calc(var(--ovv-unit) * 6); margin-top: calc(var(--ovv-unit) * 12); padding: calc(var(--ovv-unit) * 16) calc(var(--ovv-unit) * 12); border: calc(var(--ovv-unit) * 1.096) dashed #85d2f3; border-radius: calc(var(--ovv-unit) * 8.769); background: #f9fffe; }
+.ovv-code { font-weight: 700; font-size: calc(var(--ovv-unit) * 19); letter-spacing: calc(var(--ovv-unit) * 1.2); line-height: calc(var(--ovv-unit) * 26); color: #1d5f8f; overflow-wrap: anywhere; }
+.ovv-page .ovv-primary { width: calc(var(--ovv-unit) * 335); max-width: 100%; height: calc(var(--ovv-unit) * 44); margin: calc(var(--ovv-unit) * 16) auto 0; padding: 0; border-radius: calc(var(--ovv-unit) * 9999); background: #5baae8; color: #e4f6f3; font-size: calc(var(--ovv-unit) * 14); font-weight: 500; line-height: calc(var(--ovv-unit) * 44); }
+.ovv-page .ovv-secondary { border: calc(var(--ovv-unit) * 1.096) solid #c0ecff; border-radius: calc(var(--ovv-unit) * 9999); color: #577683; background: #fff; padding: calc(var(--ovv-unit) * 6) calc(var(--ovv-unit) * 14); font-size: calc(var(--ovv-unit) * 13.154); line-height: calc(var(--ovv-unit) * 22); }
+.ovv-page button[disabled] { opacity: .5; }
+.ovv-actions { display: flex; gap: calc(var(--ovv-unit) * 10); flex-wrap: wrap; }
+.ovv-state { display: flex; flex-direction: column; align-items: center; gap: calc(var(--ovv-unit) * 10); padding: calc(var(--ovv-unit) * 18) calc(var(--ovv-unit) * 12); border: calc(var(--ovv-unit) * 1.096) solid #c0ecff; border-radius: calc(var(--ovv-unit) * 13.154); background: #fff; color: #577683; }
+.ovv-page .ovv-state-action { border: calc(var(--ovv-unit) * 1.096) solid #c0ecff; border-radius: calc(var(--ovv-unit) * 9999); color: #577683; background: #fff; padding: 0 calc(var(--ovv-unit) * 14.25); line-height: calc(var(--ovv-unit) * 32.885); font-size: calc(var(--ovv-unit) * 13.154); }
+.ovv-preview-note { color: #577683; font-size: calc(var(--ovv-unit) * 11); line-height: calc(var(--ovv-unit) * 18); padding: 0 calc(var(--ovv-unit) * 5); }

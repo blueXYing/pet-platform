@@ -20,5 +20,7 @@ export default defineAppConfig({
     { root: 'consumer/pages/store-services', pages: ['index', 'service-detail', 'stores'] },
     { root: 'consumer/pages/coupon-points', pages: ['coupons', 'coupon-detail', 'points'] },
     { root: 'consumer/pages/aftersale', pages: ['index', 'detail', 'apply'] },
+    // Order verification code slice (47号 §4 v0.2): explicit order-id entry, no order list yet.
+    { root: 'consumer/pages/order-verify', pages: ['index'] },
   ],
 })
