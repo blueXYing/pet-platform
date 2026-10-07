@@ -31,6 +31,8 @@ assert.deepEqual(packages.map(p => ({ root: p.root, pages: p.pages })), [
   { root: 'consumer/pages/coupon-points', pages: ['coupons', 'coupon-detail', 'points'] },
   { root: 'consumer/pages/aftersale', pages: ['index', 'detail', 'apply'] },
   { root: 'consumer/pages/order-verify', pages: ['index'] },
+  // C-004 order read slice (10号 §3.7): my orders list + detail, verify-code entry inside detail.
+  { root: 'consumer/pages/orders', pages: ['list', 'detail'] },
   // NTF preference slice (SSOT §16.4): notification preference settings page.
   { root: 'consumer/pages/notification-preferences', pages: ['index'] },
 ], 'Merchant workspace, pet archive, merchant application, store services, coupon/points, aftersale and notification preference pages must be registered in the single app')
@@ -49,6 +51,13 @@ for (const page of ['coupons', 'coupon-detail', 'points']) {
 for (const extension of ['js', 'json', 'wxml', 'wxss']) {
   assert.ok(fs.existsSync(path.join(root, 'consumer/pages/order-verify/index.' + extension)),
     'Order verify page build artifact missing: ' + extension)
+}
+// C-004 order read slice (10号 §3.7): my orders list/detail pages with the verify-code entry.
+for (const page of ['list', 'detail']) {
+  for (const extension of ['js', 'json', 'wxml', 'wxss']) {
+    assert.ok(fs.existsSync(path.join(root, `consumer/pages/orders/${page}.` + extension)),
+      `C-004 order page artifact missing: ${page}.${extension}`)
+  }
 }
 // NTF preference slice (SSOT §16.4): notification preference settings page.
 for (const extension of ['js', 'json', 'wxml', 'wxss']) {

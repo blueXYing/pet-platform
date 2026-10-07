@@ -12,12 +12,12 @@ import {
 import { RealOrderVerifyRepository } from '../../order-verify/repository'
 import './order-verify.css'
 
-// 核销码页（47号 §4 v0.2 C 端凭证路由的最小用户侧闭环）。入口现状诚实披露：C 端订单
-// 列表/详情契约仅有形状（10号 §3.7），后端无 Controller、前端无订单页（C-004 后续切片），
-// 因此本页按 aftersale 先例由用户显式输入订单号进入，只展示核销码视图本身，不虚构任何
-// 订单字段。preview=1 走本地夹具（设计验收通道，scenario=active|none|expired|invalidated|
-// locked）；真实模式走 GET/POST /api/v1/c/orders/{orderId}/verification-code（开关
-// pet.verification.credential.http.enabled 默认关闭，未开放期间失败关闭）。码仅在 ACTIVE
+// 核销码页（47号 §4 v0.2 C 端凭证路由的最小用户侧闭环）。入口现状（C-004 已交付）：核销码
+// 主入口在订单详情页（consumer/pages/orders/detail，按 OrderActions.canShowVerificationCode
+// 呈现同源核销码区块）；本页按 aftersale 先例保留为显式输入订单号的直连通道，只展示核销码
+// 视图本身，不虚构任何订单字段。preview=1 走本地夹具（设计验收通道，scenario=active|none|
+// expired|invalidated|locked）；真实模式走 GET/POST /api/v1/c/orders/{orderId}/verification-code
+// （开关 pet.verification.credential.http.enabled 默认关闭，未开放期间失败关闭）。码仅在 ACTIVE
 // 显示，页面不缓存、不写日志；刷新沿 api.write 幂等槽，未确认结果只能重试原操作。
 export default function OrderVerifyPage() {
   const route = useRouter()
@@ -89,7 +89,7 @@ function VerifyScreen({ preview, scenario, initialOrderId }: { preview: boolean;
       <View className='ovv-body'>
         <View className='ovv-card'>
           <Text className='ovv-heading'>查看核销码</Text>
-          <Text className='ovv-hint'>输入本人的订单号，核销码以实时读取为准。订单详情页（服务、时间、金额等）属后续切片，本页仅提供核销码。</Text>
+          <Text className='ovv-hint'>输入本人的订单号，核销码以实时读取为准。核销码主入口在「我的订单」订单详情内（C-004 已交付），本页保留为直连通道。</Text>
           <Input id='ovv-order-id' className='ovv-input' type='text' maxlength={19} value={orderId} placeholder='订单号'
             disabled={state.busy || state.phase === 'loading'} onInput={event => { setOrderId(event.detail.value); setInputError('') }} />
           {inputError && <Text className='ovv-error'>{inputError}</Text>}
