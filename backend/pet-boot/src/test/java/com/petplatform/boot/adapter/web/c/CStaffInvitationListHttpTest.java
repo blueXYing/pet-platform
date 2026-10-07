@@ -22,7 +22,6 @@ import java.time.Clock;
 import java.time.Instant;
 import java.time.ZoneOffset;
 import java.util.Arrays;
-import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -70,7 +69,8 @@ class CStaffInvitationListHttpTest {
     void start() throws Exception {
         fixture = new Fixture();
         seed(fixture);
-        // Batch-backed fake mirroring the boot wiring: the account phone never leaves the port.
+        // Fake mirroring the boot wiring: the confirm/detail channel stays boolean, the §7 list
+        // seeks with the session phone read once through the purpose-bound port.
         StaffLoginPhonePort loginPhones = new StaffLoginPhonePort() {
             @Override
             public boolean matchesSessionUserPhone(long userId, String phone) {
@@ -78,12 +78,8 @@ class CStaffInvitationListHttpTest {
             }
 
             @Override
-            public Set<String> matchSessionUserPhones(long userId, java.util.Collection<String> phones) {
-                Set<String> matched = new LinkedHashSet<>();
-                for (String phone : new LinkedHashSet<>(phones)) {
-                    if (userId == USER && PHONE.equals(phone)) matched.add(phone);
-                }
-                return matched;
+            public String sessionUserPhone(long userId) {
+                return userId == USER ? PHONE : null;
             }
         };
         MerchantStaffMemberApiImpl api = new MerchantStaffMemberApiImpl(fixture.source,

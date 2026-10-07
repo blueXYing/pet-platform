@@ -88,8 +88,6 @@ public final class MerchantStaffMemberService {
     private static final String MEMBER_AGGREGATE = "MERCHANT_MEMBER";
     private static final DateTimeFormatter EVENT_TIME =
             DateTimeFormatter.ofPattern("uuuu-MM-dd'T'HH:mm:ss.SSSXXX");
-    /** §7 employee list scan window (rows per PK-order read; see listMyInvitations). */
-    private static final int LIST_SCAN_WINDOW = 500;
 
     private record Intent(String action, long merchantId, long storeId, long memberId,
                           long invitationId, String phone, String memberName, List<String> actions,
@@ -632,42 +630,30 @@ public final class MerchantStaffMemberService {
     }
 
     /**
-     * Contract 54 §7 employee-side list (anti-enumeration): the page contains exactly the
-     * invitations whose stored phone equals the session user's verified account phone — history
-     * including terminal states. The account phone never leaves the user module, so SQL cannot
-     * filter by it: the read walks PK-order windows (id DESC, the pinned stable order) and
-     * matches each window's distinct phones through the fail-closed batch port; a session with
-     * another phone, or without a phone fact at all, reads the very same empty page and the row
-     * count never discloses existence. Projections carry no phone in any form.
+     * Contract 54 §7 employee-side list, user ruling 2026-10-07 (indexed seek path): the session
+     * account's verified phone is read once through the purpose-bound port and used purely as
+     * the in-memory bind of the indexed lookup (idx_mer_member_inv_phone: phone equality +
+     * id DESC backward-scan pagination). A session without a phone fact — or whose phone simply
+     * has no invitations — reads the very same empty page, so neither existence nor the row
+     * count is ever disclosed. Projections carry no phone in any form.
      */
     public MerchantStaffInvitationListPageDTO listMyInvitations(MyStaffInvitationPageQuery query) {
         if (query == null) invalid();
         if (query.page() < 1 || query.page() > 10_000 || query.pageSize() < 1 || query.pageSize() > 50)
             invalid();
         Principal principal = readPrincipal(query.context());
+        // Anti-enumeration: no readable session phone reads exactly like "no invitations".
+        String phone = loginPhones.sessionUserPhone(principal.actorId());
+        if (phone == null || !PHONE.matcher(phone).matches()) {
+            return new MerchantStaffInvitationListPageDTO(List.of(), query.page(), query.pageSize(), 0);
+        }
         return store.read((mapper, agreements) -> {
-            List<MerchantMemberInvitationEntity> mine = new ArrayList<>();
-            int offset = 0;
-            while (true) {
-                List<MerchantMemberInvitationEntity> window =
-                        mapper.listAllInvitationRows(LIST_SCAN_WINDOW, offset);
-                if (window.isEmpty()) break;
-                Set<String> candidates = new LinkedHashSet<>();
-                for (MerchantMemberInvitationEntity row : window) candidates.add(row.getPhone());
-                Set<String> matched =
-                        loginPhones.matchSessionUserPhones(principal.actorId(), candidates);
-                if (!matched.isEmpty()) {
-                    for (MerchantMemberInvitationEntity row : window) {
-                        if (matched.contains(row.getPhone())) mine.add(row);
-                    }
-                }
-                if (window.size() < LIST_SCAN_WINDOW) break;
-                offset += LIST_SCAN_WINDOW;
-            }
-            long total = mine.size();
+            long total = mapper.countInvitationRowsByPhone(phone);
             int from = (int) Math.min((query.page() - 1L) * query.pageSize(), total);
             int to = (int) Math.min(from + (long) query.pageSize(), total);
-            List<MerchantMemberInvitationEntity> slice = mine.subList(from, to);
+            List<MerchantMemberInvitationEntity> slice =
+                    from >= to ? List.of() : mapper.listInvitationRowsByPhone(phone,
+                            query.pageSize(), from);
             List<Long> sliceIds = new ArrayList<>(slice.size());
             for (MerchantMemberInvitationEntity row : slice) sliceIds.add(row.getId());
             Map<Long, List<String>> actionSets = new LinkedHashMap<>();

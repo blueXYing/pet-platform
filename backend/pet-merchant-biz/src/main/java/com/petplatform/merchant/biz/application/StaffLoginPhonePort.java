@@ -1,30 +1,20 @@
 package com.petplatform.merchant.biz.application;
 
-import java.util.Collection;
-import java.util.HashSet;
-import java.util.Set;
-
 /**
  * Contract 54 §1/§7 confirm-and-list channel port: compares invitation phones against the
- * session user's verified login phone (the S9 WeChat getPhoneNumber account fact). Implementations
- * must fail closed; the raw account phone never travels back from the user module.
+ * session user's verified login phone (the S9 WeChat getPhoneNumber account fact). The confirm
+ * and detail channels stay boolean (their shape is "does this invitation target the session");
+ * the §7 list (user ruling 2026-10-07) additionally reads the session phone once as the
+ * purpose-bound in-memory seek key for the indexed invitation list — implementations must fail
+ * closed and the value must never be persisted, logged, audited or projected.
  */
-@FunctionalInterface
 public interface StaffLoginPhonePort {
     boolean matchesSessionUserPhone(long userId, String phone);
 
     /**
-     * Contract 54 §7 batch form for the employee invitation list: returns the subset of candidate
-     * invitation phones equal to the session user's verified account phone. Default delegates to
-     * the single comparison; the boot wiring routes it to the user module's one-read batch form.
-     * The candidates are merchant-owned invitation values — never account credentials.
+     * The session account's verified 11-digit phone, or null when the account is missing,
+     * non-ACTIVE, has no phone fact or the store is unreadable. Null always renders the §7 list
+     * as the same empty page as a non-matching phone (anti-enumeration).
      */
-    default Set<String> matchSessionUserPhones(long userId, Collection<String> phones) {
-        if (phones == null || phones.isEmpty()) return Set.of();
-        Set<String> matched = new HashSet<>();
-        for (String phone : phones) {
-            if (matchesSessionUserPhone(userId, phone)) matched.add(phone);
-        }
-        return Set.copyOf(matched);
-    }
+    String sessionUserPhone(long userId);
 }

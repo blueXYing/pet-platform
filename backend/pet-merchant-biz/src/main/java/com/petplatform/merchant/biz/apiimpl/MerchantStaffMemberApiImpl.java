@@ -67,9 +67,18 @@ public final class MerchantStaffMemberApiImpl
     }
 
     public static StaffLoginPhonePort unavailableLoginPhones() {
-        return (userId, phone) -> {
-            throw new ApiException(CommonApiCodes.DEPENDENCY_UNAVAILABLE,
-                    "staff login phone facts are not configured");
+        return new StaffLoginPhonePort() {
+            @Override
+            public boolean matchesSessionUserPhone(long userId, String phone) {
+                throw new ApiException(CommonApiCodes.DEPENDENCY_UNAVAILABLE,
+                        "staff login phone facts are not configured");
+            }
+
+            @Override
+            public String sessionUserPhone(long userId) {
+                throw new ApiException(CommonApiCodes.DEPENDENCY_UNAVAILABLE,
+                        "staff login phone facts are not configured");
+            }
         };
     }
 

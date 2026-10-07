@@ -83,8 +83,13 @@
     ORDER BY invitation_id ASC, action_code ASC
   </select>
 
-  <select id="listAllInvitationRows" resultType="com.petplatform.merchant.biz.infrastructure.persistence.entity.MerchantMemberInvitationEntity">
+  <select id="countInvitationRowsByPhone" resultType="long">
+    SELECT COUNT(*) FROM merchant_member_invitation
+    WHERE phone=#{phone}
+  </select>
+  <select id="listInvitationRowsByPhone" resultType="com.petplatform.merchant.biz.infrastructure.persistence.entity.MerchantMemberInvitationEntity">
     SELECT <include refid="invitationColumns"/> FROM merchant_member_invitation
+    WHERE phone=#{phone}
     ORDER BY id DESC LIMIT #{limit} OFFSET #{offset}
   </select>
 

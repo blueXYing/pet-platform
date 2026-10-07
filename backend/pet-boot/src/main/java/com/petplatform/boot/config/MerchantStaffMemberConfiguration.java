@@ -32,8 +32,9 @@ public class MerchantStaffMemberConfiguration {
             ObjectProvider<UserPhoneVerificationApi> phones, ScheduleCapacityGuardApi guard,
             ObjectProvider<Clock> clock,
             ObjectProvider<IntegrationEventPublisher> events) {
-        // Contract 54 §1/§7: single and batch phone equality both stay inside the user module —
-        // only booleans / matched merchant-owned candidate values cross the boundary.
+        // Contract 54 §1/§7: the confirm/detail channel stays boolean; the §7 list (user ruling
+        // 2026-10-07) additionally reads the session phone once as the purpose-bound seek key
+        // of the indexed invitation list — in-memory bind only, never persisted or projected.
         StaffLoginPhonePort loginPhones = new StaffLoginPhonePort() {
             @Override
             public boolean matchesSessionUserPhone(long userId, String phone) {
@@ -42,10 +43,9 @@ public class MerchantStaffMemberConfiguration {
             }
 
             @Override
-            public java.util.Set<String> matchSessionUserPhones(long userId,
-                    java.util.Collection<String> candidates) {
-                return phones.getObject().verifiedPhonesEqualTo(
-                        new UserIdQuery(Long.toUnsignedString(userId)), candidates);
+            public String sessionUserPhone(long userId) {
+                return phones.getObject().verifiedPhone(
+                        new UserIdQuery(Long.toUnsignedString(userId)));
             }
         };
         // NTF slice: the outbox publisher is optional — with pet.outbox.enabled=false (default)

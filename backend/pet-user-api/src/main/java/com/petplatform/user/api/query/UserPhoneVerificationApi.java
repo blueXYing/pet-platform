@@ -1,9 +1,10 @@
 package com.petplatform.user.api.query;
 
-import java.util.Collection;
-import java.util.Set;
-
-/** Contract 54 §1: fail-closed phone-equality check for the staff invitation confirm channel. */
+/**
+ * Contract 54 §1/§7 phone-equality channel for the staff invitation flow. The account's
+ * verified login phone (the S9 WeChat getPhoneNumber exchange fact) stays inside the user
+ * module except for the single purpose-bound read below.
+ */
 public interface UserPhoneVerificationApi {
 
     /**
@@ -14,11 +15,12 @@ public interface UserPhoneVerificationApi {
     boolean hasVerifiedPhone(UserIdQuery query, String phone);
 
     /**
-     * Contract 54 §7 batch form of the same equality fact (employee invitation list): returns the
-     * subset of submitted candidate phones equal to the account's verified login phone. The
-     * candidates are caller-owned values echoed back, never the account credential; a missing /
-     * non-ACTIVE / phone-less account or an unreadable store yields an empty set, never an error
-     * disclosure. Same fail-closed semantics as {@link #hasVerifiedPhone}, one account read.
+     * Contract 54 §7 employee invitation list, user ruling 2026-10-07: purpose-bound read of the
+     * session account's verified login phone — the in-memory seek key for the indexed invitation
+     * list (phone equality + id DESC). The value may only ever be used as a query bind for this
+     * listing; it must never be persisted, logged, audited or carried in any projection, event
+     * or error. Missing account, non-ACTIVE account, missing phone fact or an unreadable store
+     * all read as "no phone" (null) — never an error disclosure.
      */
-    Set<String> verifiedPhonesEqualTo(UserIdQuery query, Collection<String> phones);
+    String verifiedPhone(UserIdQuery query);
 }

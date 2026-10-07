@@ -80,9 +80,34 @@ class MerchantStaffMemberBindingMySqlTest {
         return merchantId -> new ApplicationReviewFactsReader.Facts("APPROVED");
     }
 
-    /** The confirm channel: equality with the session user's verified account phone (S9 fact). */
+    /** The confirm/detail channel stays boolean; the §7 list seeks with the session phone. */
     private static com.petplatform.merchant.biz.application.StaffLoginPhonePort loginPhones() {
-        return (userId, phone) -> userId == USER && PHONE.equals(phone);
+        return new com.petplatform.merchant.biz.application.StaffLoginPhonePort() {
+            @Override
+            public boolean matchesSessionUserPhone(long userId, String phone) {
+                return userId == USER && PHONE.equals(phone);
+            }
+
+            @Override
+            public String sessionUserPhone(long userId) {
+                return userId == USER ? PHONE : null;
+            }
+        };
+    }
+
+    /** Owner-session port for the owner-phone rejection case (list reads the owner phone). */
+    private static com.petplatform.merchant.biz.application.StaffLoginPhonePort ownerLoginPhones() {
+        return new com.petplatform.merchant.biz.application.StaffLoginPhonePort() {
+            @Override
+            public boolean matchesSessionUserPhone(long userId, String phone) {
+                return userId == OWNER && "13900003333".equals(phone);
+            }
+
+            @Override
+            public String sessionUserPhone(long userId) {
+                return userId == OWNER ? "13900003333" : null;
+            }
+        };
     }
 
     private static byte[] key(byte value) {
@@ -267,7 +292,7 @@ class MerchantStaffMemberBindingMySqlTest {
             var ownerApi = new MerchantStaffMemberApiImpl(db.dataSource(), ids::incrementAndGet,
                     approvedFacts(),
                     new AesGcmProtectedValueProvider("staff-binding-test-v1", key((byte) 3), key((byte) 4)),
-                    (userId, phone) -> userId == OWNER && "13900003333".equals(phone),
+                    ownerLoginPhones(),
                     Mockito.mock(ScheduleCapacityGuardApi.class), CLOCK);
             // The invitation detail 404s for the owner session: phone matches but the confirm
             // path rejects OWNER binding; keep the read honest by asserting the conflict there.
@@ -569,8 +594,7 @@ class MerchantStaffMemberBindingMySqlTest {
     }
 
     @Test
-    void listMyInvitationsPaginatesStablyOverTheMatchedSubset() throws Exception {
-        try (var db = new StaffBindingMySqlTestDatabase()) {
+    void listMyInvitationsPaginatesStablyOverTheMatchedSubset() throws Exception {        try (var db = new StaffBindingMySqlTestDatabase()) {
             seed(db);
             var api = api(db);
             // Three terminal-then-pending rows for the same merchant+phone (each cancel frees
@@ -601,6 +625,34 @@ class MerchantStaffMemberBindingMySqlTest {
                     new MyStaffInvitationPageQuery(3, 2, query(USER)));
             assertEquals(3, pageThree.total());
             assertTrue(pageThree.items().isEmpty());
+        }
+    }
+    @Test
+    void listMyInvitationsSeeksOnThePhoneIndex() throws Exception {
+        try (var db = new StaffBindingMySqlTestDatabase()) {
+            seed(db);
+            var api = api(db);
+            invite(api, "inv-1", PHONE);
+            invite(api, "inv-2", OTHER_PHONE);
+            invite(api, "inv-3", "13900003333");
+
+            // The authoritative schema (54号 SQL, V31 mirror) carries the ruling's access-path
+            // index and MySQL picks it for the exact §7 shape: phone equality + id DESC paging,
+            // no full-table window scan, no filesort.
+            var plan = db.jdbc().queryForMap(
+                    "EXPLAIN SELECT id, phone FROM merchant_member_invitation WHERE phone='"
+                            + PHONE + "' ORDER BY id DESC LIMIT 2 OFFSET 0");
+            assertEquals("idx_mer_member_inv_phone", plan.get("key"), String.valueOf(plan));
+            assertEquals("ref", plan.get("type"), String.valueOf(plan));
+
+            // Behavioral equivalence on the same rows: the indexed path returns exactly the
+            // matched subset in the pinned order (same assertions as the scan-era tests).
+            MerchantStaffInvitationListPageDTO page = api.listMyInvitations(
+                    new MyStaffInvitationPageQuery(1, 20, query(USER)));
+            assertEquals(1, page.total());
+            assertEquals(1, page.items().size());
+            assertEquals(List.of(VERIFY), page.items().get(0).grantedActions());
+            assertEquals("旗舰一店", page.items().get(0).storeName());
         }
     }
 }

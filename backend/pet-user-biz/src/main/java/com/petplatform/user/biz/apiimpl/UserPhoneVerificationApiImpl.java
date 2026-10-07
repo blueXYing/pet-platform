@@ -5,10 +5,7 @@ import com.petplatform.user.api.query.UserPhoneVerificationApi;
 import com.petplatform.user.api.query.UserIdQuery;
 import com.petplatform.user.biz.application.PetService;
 import com.petplatform.user.biz.infrastructure.persistence.UserAuthStore;
-import java.util.Collection;
-import java.util.HashSet;
 import java.util.Objects;
-import java.util.Set;
 import java.util.regex.Pattern;
 import javax.sql.DataSource;
 
@@ -42,28 +39,21 @@ public final class UserPhoneVerificationApiImpl implements UserPhoneVerification
     }
 
     @Override
-    public Set<String> verifiedPhonesEqualTo(UserIdQuery query, Collection<String> phones) {
-        // Contract 54 §7: one account read, batch equality, fail closed on any unreadable fact.
+    public String verifiedPhone(UserIdQuery query) {
+        // Contract 54 §7 (user ruling 2026-10-07): purpose-bound session-phone read, one account
+        // lookup, fail closed — any unreadable or absent fact reads as "no phone" (null).
         Objects.requireNonNull(query, "query is required");
-        if (phones == null || phones.isEmpty()) return Set.of();
         long userId = PetService.numericId(query.userId(), "userId");
         UserAuthStore.AccountRow account;
         try {
             account = store.findAccount(userId, false);
         } catch (RuntimeException failure) {
-            return Set.of();
+            return null;
         }
         if (account == null || !UserStatus.ACTIVE.name().equals(account.status())
-                || account.phone() == null) {
-            return Set.of();
+                || account.phone() == null || !PHONE.matcher(account.phone()).matches()) {
+            return null;
         }
-        Set<String> matched = new HashSet<>();
-        for (String phone : phones) {
-            if (phone != null && PHONE.matcher(phone).matches()
-                    && account.phone().equals(phone)) {
-                matched.add(phone);
-            }
-        }
-        return Set.copyOf(matched);
+        return account.phone();
     }
 }
