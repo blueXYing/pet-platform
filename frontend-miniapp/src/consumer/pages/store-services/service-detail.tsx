@@ -19,7 +19,8 @@ import { ServiceRow, StoreServicesDesign, serviceListCardHeight } from './view'
 // (description included); the store header stays design-sample copy here (this page targets a
 // service, and the 商家详情页 remains the store-bound view). Viewing is anonymous (STR-D8,
 // same adjudication as the directory and store detail); 预约/拨打电话 stay login-gated with
-// a login guide, booking itself stays an explicit no-op when logged in.
+// a login guide — 立即预约/预约 now route into the booking-create slice (10号 §3.4/§3.5),
+// 拨打电话 stays an explicit no-op when logged in.
 // VIS note: the design frames contain three sample cards; this page renders the queried
 // service only — recorded as a data-driven difference pending VIS-003 overlay review.
 type Phase = 'loading' | 'ready' | 'missing' | 'load-error' | 'expired' | 'invalid'
@@ -81,7 +82,7 @@ export default function ServiceDetailPage() {
   }, [])
 
   const ready = phase === 'ready'
-  function notWired(label: string) {
+  function requireLogin(label: string, then: () => void) {
     if (!ready) return
     // Actions (not viewing) stay login-gated per the final PRD; anonymous taps get the guide.
     if (detailActionGate(context) === 'login-required') {
@@ -90,7 +91,17 @@ export default function ServiceDetailPage() {
         .catch(() => setNotice(''))
       return
     }
-    setNotice(preview ? `“${label}”尚未接入本次预览` : `“${label}”功能尚未接通`)
+    then()
+  }
+  function notWired(label: string) {
+    requireLogin(label, () => setNotice(preview ? `“${label}”尚未接入本次预览` : `“${label}”功能尚未接通`))
+  }
+  // 预约下单入口（booking 切片）：携服务/门店上下文进入创建页；10号 §3.5 字段以契约为唯一来源。
+  function goBooking() {
+    requireLogin('立即预约', () => {
+      void Taro.navigateTo({ url: `/consumer/pages/booking/create?${preview ? 'preview=1&' : ''}serviceId=${encodeURIComponent(serviceId)}&storeId=${encodeURIComponent(detail!.storeId)}` })
+        .catch(() => setNotice('页面跳转失败，请重试'))
+    })
   }
   const listTop = 711.5
   const reviewTop = listTop + serviceListCardHeight(1) + 15.5
@@ -103,10 +114,10 @@ export default function ServiceDetailPage() {
     </View>}
     {ready && detail && <StoreServicesDesign store={null} listTop={listTop} reviewTop={reviewTop} onBack={() => Taro.navigateBack().catch(() => setNotice('返回失败'))}
       serviceCover={preview ? undefined : detail.cover} onRefreshCover={() => void load()}
-      onCall={() => notWired('拨打电话')} onBookNow={() => notWired('立即预约')} bookEnabled
+      onCall={() => notWired('拨打电话')} onBookNow={goBooking} bookEnabled
       footer={<Text>页面数据：{preview ? '契约 Mock（preview=1，不联调）' : '真实接口（后端交付前失败关闭，可匿名浏览）'}</Text>}
       notice={notice ? <Text id='svcd-notice' className='svc-notice' style={{ left: `calc(var(--svc-unit) * 29)`, right: `calc(var(--svc-unit) * 29)`, top: `calc(var(--svc-unit) * ${reviewTop + 246 + 24})` }}>{notice}</Text> : undefined}
-      servicesNode={<ServiceRow idPrefix='svcd-row' line={{ service: detail, description: detail.description }} onBook={() => notWired('预约')} />} />}
+      servicesNode={<ServiceRow idPrefix='svcd-row' line={{ service: detail, description: detail.description }} onBook={goBooking} />} />}
   </ConsumerPageLayout>
 }
 function isContractId(value: string): boolean {

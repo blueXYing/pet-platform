@@ -19,5 +19,7 @@ export const consumerPageSections = {
   profileEdit: 'mine', petList: 'home', petDetail: 'home', petForm: 'home', merchantApplication: 'mine',
   storeServices: 'services', serviceDetail: 'services', storeDirectory: 'services',
   couponList: 'mine', couponDetail: 'mine', pointsPage: 'mine', orderVerify: 'mine', orderList: 'mine', orderDetail: 'mine',
+  // Booking create + payment initiation slice (10号 §3.4/§3.5/§3.6).
+  bookingCreate: 'services', bookingPay: 'mine',
 } as const satisfies Record<string, ConsumerNavigationKey>
 export type ConsumerNavigationPage = keyof typeof consumerPageSections
