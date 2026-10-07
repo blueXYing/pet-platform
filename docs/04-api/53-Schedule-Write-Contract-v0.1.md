@@ -1,6 +1,6 @@
 # Schedule Write Contract v0.1（商家排期写侧）
 
-状态：IMPLEMENTED_DEFAULT_OFF，2026-10-02；默认关闭，不表示生产已开放或页面已联调。2026-10-05 用户裁决：§7-1（B5）按方案 A 落地显式 SOLD_OUT 派生态与释放联动、§7-3（原登记的 200 上限问题）落地批量命令单次 200 条上限，均已并入本契约（见 §3 与 §3.1）；§7-2（C 端 kind）裁决本批不做。**本文档原编号 52：与 #101（staff-identity，52-Merchant-Staff-Identity）撞号，#101 合并后已重编号为 53（2026-10-06，含 docs/03-database/SQL53、11号 x-contract、代码注释与测试引用同步）。** 产品依据：[SSOT §29](../00-ssot/01-SSOT-宠物平台V1.0-最终业务基线.md)、[PRD29](../01-prd/29-排期人员容量与维护人工裁决补充-v1.0.md)、SSOT §12/§13；技术契约：[34号排期保护契约](34-Schedule-Protection-Contract-v0.1.md)（SCHC-1～4，已批）、[34号存储](../03-database/34-Schedule-Protection-Storage-v0.1.md)、[36号预约与订单人员保护](36-Reservation-Order-Protection-Contract-v0.1.md)（ROC 已批、事实 API 已交付）、[写入提案 v0.2](../../planning/ccr/CCR-W2-API-001/schedule-write-proposal.md) 与[联合审阅回执](../../planning/ccr/CCR-W2-API-001/schedule-review-decisions.md)、[四项技术裁决回执](../../planning/ccr/CCR-W2-API-001/schedule-write-completion-decisions.md)。存储增量见 [SQL53](../03-database/53-Schedule-Write-Schema-v0.1.sql) 与隔离迁移 `schedule-migration/V29__schedule_write.sql`（仅显式 `schw001_*` 库可执行，永不跑共享数据源；SOLD_OUT 为既有 `status VARCHAR(16)` 列的应用层枚举值，无 DDL 变更）。
+状态：IMPLEMENTED_DEFAULT_OFF，2026-10-02；默认关闭，不表示生产已开放或页面已联调。2026-10-05 用户裁决：§7-1（B5）按方案 A 落地显式 SOLD_OUT 派生态与释放联动、§7-3（原登记的 200 上限问题）落地批量命令单次 200 条上限，均已并入本契约（见 §3 与 §3.1）；§7-2（C 端 kind）裁决本批不做。**2026-10-07 增补：§3.3 商家窗口列表标准分页（#106 登记的契约缺口，向后兼容、无新错误码、无 Schema 变更）。****本文档原编号 52：与 #101（staff-identity，52-Merchant-Staff-Identity）撞号，#101 合并后已重编号为 53（2026-10-06，含 docs/03-database/SQL53、11号 x-contract、代码注释与测试引用同步）。** 产品依据：[SSOT §29](../00-ssot/01-SSOT-宠物平台V1.0-最终业务基线.md)、[PRD29](../01-prd/29-排期人员容量与维护人工裁决补充-v1.0.md)、SSOT §12/§13；技术契约：[34号排期保护契约](34-Schedule-Protection-Contract-v0.1.md)（SCHC-1～4，已批）、[34号存储](../03-database/34-Schedule-Protection-Storage-v0.1.md)、[36号预约与订单人员保护](36-Reservation-Order-Protection-Contract-v0.1.md)（ROC 已批、事实 API 已交付）、[写入提案 v0.2](../../planning/ccr/CCR-W2-API-001/schedule-write-proposal.md) 与[联合审阅回执](../../planning/ccr/CCR-W2-API-001/schedule-review-decisions.md)、[四项技术裁决回执](../../planning/ccr/CCR-W2-API-001/schedule-write-completion-decisions.md)。存储增量见 [SQL53](../03-database/53-Schedule-Write-Schema-v0.1.sql) 与隔离迁移 `schedule-migration/V29__schedule_write.sql`（仅显式 `schw001_*` 库可执行，永不跑共享数据源；SOLD_OUT 为既有 `status VARCHAR(16)` 列的应用层枚举值，无 DDL 变更）。
 
 ## 1. 范围与开关
 
@@ -40,7 +40,7 @@
 
 | Method | Path | Body | 回执/状态 |
 |---|---|---|---|
-| GET | /merchant/stores/{storeId}/availability-windows | query: merchantId 必填，serviceId/kind/status 可选（status ∈ OPEN/CLOSED/SOLD_OUT） | `{storeId,items:[{windowId,merchantId,storeId,serviceId,windowKind,startAt,endAt,configuredCapacity,status,version,updatedAt}]}`；含 CLOSED/SOLD_OUT 与版本，`Cache-Control: no-store` |
+| GET | /merchant/stores/{storeId}/availability-windows | query: merchantId 必填，serviceId/kind/status 可选（status ∈ OPEN/CLOSED/SOLD_OUT），page/pageSize 可选（2026-10-07 分页增补，见 §3.3） | 不带分页参数：`{storeId,items:[{windowId,merchantId,storeId,serviceId,windowKind,startAt,endAt,configuredCapacity,status,version,updatedAt}]}` 与既有形状一致（全量，无 LIMIT）；任一带分页参数：同一 items 外加标准信封 `page/pageSize/total`（§3.3）。含 CLOSED/SOLD_OUT 与版本，`Cache-Control: no-store` |
 | POST | /merchant/stores/{storeId}/availability-windows | merchantId,serviceId,windowKind,startAt,endAt,configuredCapacity | 201/200 `{windowId,…,status:"OPEN",version:"0"}` |
 | PUT | /merchant/stores/{storeId}/availability-windows/{windowId} | merchantId,startAt,endAt,expectedVersion；configuredCapacity/reason 可选 | `{window,…}`；仅 OPEN/SOLD_OUT 可编辑；占用时改时间或降容量 409；升容量同事务按占用重判（SOLD_OUT 可回 OPEN） |
 | POST | /merchant/stores/{storeId}/availability-windows/{windowId}/close | merchantId,expectedVersion,reason 必填 | `{window,status:"CLOSED"}`；占用（含 SOLD_OUT 满窗）409 `SCHEDULE_WINDOW_STATE_NOT_ALLOWED` |
@@ -52,6 +52,16 @@
 ### 3.2 批量命令单次条目上限 200（2026-10-05 裁决）
 
 `batch-close` 单次处理的窗口条目（= 相交区间内 OPEN/SOLD_OUT 目标，即 `closedWindows+blockedWindows` 候选合计）**超过 200 时整笔拒绝**：400 `COMMON_INVALID_ARGUMENT`（沿用既有参数错误码，无新错误码），拒绝发生在任何窗口关闭之前，不存在"前 200 已关、余量被静默丢弃"的部分执行；商家缩小日历日范围分批重试（复用同一 requestId + 不同参数按 23 号属异参 409，应换新 requestId）。人员能力集合（§5）非批量命令，其条目数维持不设上限（仅 06号 INT 技术边界）。
+
+### 3.3 商家窗口列表分页（2026-10-07 增补，#106 登记缺口）
+
+`GET /merchant/stores/{storeId}/availability-windows` 增补可选分页参数，口径沿仓库通用分页基线：`page` 1..10000 默认 1、`pageSize` 1..50 默认 20（对齐通知列表先例 CCR-W2-NOTIFICATION-001 与 10号 §3.3 门店服务列表同款；信封遵 10号 §2.9 通则），无新错误码、无 Schema 变更：
+
+- **向后兼容（非 breaking）**：`page`/`pageSize` 均不携带（含空串视同缺省）时为**不分页模式**——行为与 2026-10-07 之前逐字节一致：全量返回、SQL 无 LIMIT、响应 data 仅 `{storeId,items}` 不含信封字段。现网 M 端排期页（#106 全量拉取+客户端分组、1000 条解码 sanity 上限）不受任何影响；前端切换分页消费属后续切片。
+- **分页模式**：任一参数出现即进入分页模式，未携带的那个取默认值（如仅 `pageSize=10` 则 page=1）。响应 data 为 `{storeId,items,page,pageSize,total}`；`total` 为过滤后（serviceId/kind/status 与 items 同一 WHERE）匹配总窗数，与页无关；超末页 `items` 为空数组、`total` 不变（10号通则）。行与 total 在同一 repeatable-read 快照内读取，不混两个时刻。
+- **非法值 400 `COMMON_INVALID_ARGUMENT`**：非数字、越界（page<1 或 >10000、pageSize<1 或 >50）、未知参数、重复参数；空串视同缺省（仅剩空串则不分页/取默认）。
+- **排序固定不变**：`start_at` 升序、`id` 升序 tiebreak（既有口径），不接排序参数；过滤先应用、分页在过滤之后（先过滤再计数与切片）。
+- 幂等、审计（读侧本无审计）、`no-store`、OWNER 准入、开关分层语义均不变。
 
 ## 4. 员工排班（SCHW-D6）
 
@@ -80,7 +90,7 @@ PUT 为全量替换：过期 `expectedVersion` 409 `COMMON_CONFLICT` 提示重�
 
 ## 6. 审计与验收边界
 
-`schedule_write_action` 唯一键 `(request_id,target_type,target_id)`；批量关窗按受影响目标逐窗留审计。测试映射：W2-SCHW-001/003/004/005/006/007/008/012 的核心行由 `ScheduleMerchantCommandMySqlTest`（真实 MySQL，含容量守卫与写侧一致性：占用窗守卫、指派保护、全店复核、CAS 冲突、幂等重放）与 `ScheduleWriteDisabledTest` 覆盖；§3.1/§3.2 裁决行为由 `ScheduleSoldOutLinkMySqlTest` 覆盖（真实 MySQL：SOLD_OUT 进入/退款释放与过期回位、双连接并发不双卖、守卫尊重 SOLD_OUT、批量 >200 整笔拒绝与 SOLD_OUT 目标明示）及 `ScheduleSelectionQueryMySqlTest`（SOLD_OUT 窗读侧保留呈现 remaining=0）；W2-SCHW-002/011 中涉及 C 端 kind 增列与 07/10/11 旧字段兼容的完整联调、W2-SCHW-013 MER 员工录入全链路属后续切片验收，本批不冒认（真实 MySQL 多连接并发演练由 §3.1 的双连接竞争用例部分覆盖，全链路压测仍属后续）。
+`schedule_write_action` 唯一键 `(request_id,target_type,target_id)`；批量关窗按受影响目标逐窗留审计。测试映射：W2-SCHW-001/003/004/005/006/007/008/012 的核心行由 `ScheduleMerchantCommandMySqlTest`（真实 MySQL，含容量守卫与写侧一致性：占用窗守卫、指派保护、全店复核、CAS 冲突、幂等重放）与 `ScheduleWriteDisabledTest` 覆盖；§3.1/§3.2 裁决行为由 `ScheduleSoldOutLinkMySqlTest` 覆盖（真实 MySQL：SOLD_OUT 进入/退款释放与过期回位、双连接并发不双卖、守卫尊重 SOLD_OUT、批量 >200 整笔拒绝与 SOLD_OUT 目标明示）及 `ScheduleSelectionQueryMySqlTest`（SOLD_OUT 窗读侧保留呈现 remaining=0）；§3.3 分页增补由 `MerchantSchedulePaginationHttpTest`（pet-boot，隔离真实 MySQL：不分页向后兼容形状、显式切片与 total、超末页空 items、非法参数 400、排序稳定、过滤×分页合成）覆盖；W2-SCHW-002/011 中涉及 C 端 kind 增列与 07/10/11 旧字段兼容的完整联调、W2-SCHW-013 MER 员工录入全链路属后续切片验收，本批不冒认（真实 MySQL 多连接并发演练由 §3.1 的双连接竞争用例部分覆盖，全链路压测仍属后续）。
 
 ## 7. 阻塞与待裁决（2026-10-05 用户裁决落定）
 

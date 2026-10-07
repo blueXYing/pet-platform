@@ -100,17 +100,31 @@ public final class MerchantScheduleController {
             @RequestParam(required = false) String serviceId,
             @RequestParam(required = false) String kind,
             @RequestParam(required = false) String status,
+            @RequestParam(required = false) String page,
+            @RequestParam(required = false) String pageSize,
             HttpServletRequest req) {
-        onlyParameters(req, "merchantId", "serviceId", "kind", "status");
+        onlyParameters(req, "merchantId", "serviceId", "kind", "status", "page", "pageSize");
         if ((kind != null && !KINDS.contains(kind))
                 || (status != null && !WINDOW_STATUSES.contains(status))) throw invalid();
+        // 53号 §3.3 (2026-10-07): pagination is opt-in. Neither parameter present keeps the
+        // legacy unpaginated full list byte-for-byte; either one switches to paged mode with
+        // the notification-list baseline (page 1..10000 default 1, pageSize 1..50 default 20).
+        boolean paged = present(page) || present(pageSize);
+        Integer pageNumber = paged ? paging(page, 1, 10_000) : null;
+        Integer size = paged ? paging(pageSize, 20, 50) : null;
         var session = mini(req);
-        WindowPage page = workbench.listWindows(new WorkbenchWindowQuery(
+        WindowPage value = workbench.listWindows(new WorkbenchWindowQuery(
                 id(merchantId), id(storeId), serviceId == null ? null : id(serviceId), kind,
-                status, new QueryContext(trace(req), OperatorType.USER, session.userId())));
+                status, pageNumber, size,
+                new QueryContext(trace(req), OperatorType.USER, session.userId())));
         Map<String, Object> data = new LinkedHashMap<>();
-        data.put("storeId", page.storeId());
-        data.put("items", page.items().stream().map(MerchantScheduleController::window).toList());
+        data.put("storeId", value.storeId());
+        data.put("items", value.items().stream().map(MerchantScheduleController::window).toList());
+        if (value.total() != null) {
+            data.put("page", value.page());
+            data.put("pageSize", value.pageSize());
+            data.put("total", value.total());
+        }
         return envelope(data, req);
     }
 
@@ -487,5 +501,19 @@ public final class MerchantScheduleController {
 
     private static ApiException invalid() {
         return new ApiException(CommonApiCodes.INVALID_ARGUMENT, "请求参数不合法");
+    }
+
+    /** An empty query value counts as absent, matching the notification-list precedent. */
+    private static boolean present(String raw) {
+        return raw != null && !raw.isEmpty();
+    }
+
+    /** Same lexicon/range as the C-side notification inbox list (CCR-W2-NOTIFICATION-001). */
+    private static int paging(String raw, int fallback, int max) {
+        if (!present(raw)) return fallback;
+        if (!raw.matches("[0-9]{1,5}")) throw invalid();
+        int value = Integer.parseInt(raw);
+        if (value < 1 || value > max) throw invalid();
+        return value;
     }
 }

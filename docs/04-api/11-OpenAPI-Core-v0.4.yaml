@@ -1108,6 +1108,25 @@ paths:
       - bearerAuth: []
       parameters:
       - $ref: '#/components/parameters/StoreId'
+      - name: page
+        in: query
+        required: false
+        description: Pagination is opt-in (Contract53 section 3.3, 2026-10-07); neither
+          page nor pageSize present keeps the legacy unpaginated full list and the response
+          data carries no envelope fields.
+        schema:
+          type: integer
+          minimum: 1
+          maximum: 10000
+          default: 1
+      - name: pageSize
+        in: query
+        required: false
+        schema:
+          type: integer
+          minimum: 1
+          maximum: 50
+          default: 20
       responses:
         '200':
           description: Merchant workbench window list including CLOSED windows and versions.
@@ -12376,6 +12395,9 @@ components:
       required:
       - storeId
       - items
+      description: Pagination envelope fields (Contract53 section 3.3, 2026-10-07) are
+        present only when the request carried page or pageSize; the unpaginated legacy
+        response omits them entirely.
       properties:
         storeId:
           $ref: '#/components/schemas/PublicId'
@@ -12383,6 +12405,17 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/ScheduleWindowItem'
+        page:
+          type: integer
+          minimum: 1
+        pageSize:
+          type: integer
+          minimum: 1
+          maximum: 50
+        total:
+          type: integer
+          minimum: 0
+          description: Filter-matched window count, independent of the requested page.
     ScheduleWindowPageEnvelope:
       type: object
       additionalProperties: false
