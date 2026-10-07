@@ -25,7 +25,7 @@ assert.deepEqual(packages.map(p => ({ root: p.root, pages: p.pages })), [
     'pages/schedule/index', 'pages/schedule/windows', 'pages/schedule/staff', 'pages/schedule/capabilities', 'pages/members/index',
     'pages/aftersale/index', 'pages/aftersale/detail',
     'pages/staff-workbench/index', 'pages/staff-invitation/index', 'pages/staff-verify/index',
-    'pages/order-confirm/index'] },
+    'pages/order-list/index', 'pages/order-confirm/index'] },
   { root: 'consumer/pages/pet-archive', pages: ['index', 'detail', 'form'] },
   { root: 'consumer/pages/merchant-application', pages: ['index', 'signing'] },
   { root: 'consumer/pages/store-services', pages: ['index', 'service-detail', 'stores'] },
@@ -85,10 +85,13 @@ for (const page of ['staff-workbench', 'staff-invitation', 'staff-verify']) {
       `Staff workbench page build artifact missing: ${page}`)
   }
 }
-// Merchant manual order decisions (45号 via 10号 §4.2/§4.3): OWNER confirm/reject page.
-for (const extension of ['js', 'json', 'wxml', 'wxss']) {
-  assert.ok(fs.existsSync(path.join(root, 'merchant/pages/order-confirm/index.' + extension)),
-    'Merchant order-confirm page build artifact missing: ' + extension)
+// Merchant manual order decisions (45号 via 10号 §4.2/§4.3): OWNER confirm/reject page, plus
+// the §4.1 store order list read slice entry that feeds it.
+for (const page of ['order-list', 'order-confirm']) {
+  for (const extension of ['js', 'json', 'wxml', 'wxss']) {
+    assert.ok(fs.existsSync(path.join(root, `merchant/pages/${page}/index.` + extension)),
+      `Merchant order page build artifact missing: ${page}.${extension}`)
+  }
 }
 
 for (const page of ['index', 'signing']) {

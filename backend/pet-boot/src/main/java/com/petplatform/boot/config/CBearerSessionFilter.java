@@ -80,6 +80,9 @@ public final class CBearerSessionFilter extends OncePerRequestFilter {
         || path.equals("/api/v1/merchant/service-categories")
         // Merchant schedule maintenance (SCH-004 write slice): MINIAPP Bearer enforced.
         || path.startsWith("/api/v1/merchant/stores/")
+        // Merchant order routes (contract 45 commands + contract 10 §4.1 list read): the exact
+        // list path carries no trailing segment, so it joins the deeper prefix rule here.
+        || path.equals("/api/v1/merchant/orders")
         || path.startsWith("/api/v1/merchant/orders/")
         || path.equals("/api/v1/merchant/staff")
         || path.startsWith("/api/v1/merchant/staff/")
@@ -149,6 +152,7 @@ public final class CBearerSessionFilter extends OncePerRequestFilter {
         || path.equals("/api/v1/c/private-assets")
         || path.startsWith("/api/v1/c/merchant-applications")
         || path.startsWith("/api/v1/merchant/agreement")
+        || path.equals("/api/v1/merchant/orders")
         || path.startsWith("/api/v1/merchant/orders/")
         || path.equals("/api/v1/merchant/staff")
         || path.startsWith("/api/v1/merchant/staff/");

@@ -22,6 +22,9 @@ public final class OrderQueryStore {
         Objects.requireNonNull(source, "source is required");
         this.transaction = new TransactionTemplate(new DataSourceTransactionManager(source));
         this.transaction.setPropagationBehavior(TransactionDefinition.PROPAGATION_REQUIRES_NEW);
+        // The merchant store list (contract 10 §4.1 supplement) shares this transaction with the
+        // schedule store guard + OWNER re-proof, which requires exactly READ_COMMITTED.
+        this.transaction.setIsolationLevel(TransactionDefinition.ISOLATION_READ_COMMITTED);
         try {
             SqlSessionFactoryBean factory = new SqlSessionFactoryBean();
             factory.setDataSource(source);

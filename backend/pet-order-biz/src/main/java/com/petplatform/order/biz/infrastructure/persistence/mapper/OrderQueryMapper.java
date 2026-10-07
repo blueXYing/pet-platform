@@ -19,4 +19,11 @@ public interface OrderQueryMapper {
             @Param("limit") int limit, @Param("offset") long offset);
 
     OrderQueryViewEntity selectMineById(@Param("id") long id, @Param("userId") long userId);
+
+    long countForStore(@Param("merchantId") long merchantId, @Param("storeId") long storeId,
+            @Param("displayStatus") String displayStatus);
+
+    List<OrderQueryViewEntity> selectForStorePage(@Param("merchantId") long merchantId,
+            @Param("storeId") long storeId, @Param("displayStatus") String displayStatus,
+            @Param("limit") int limit, @Param("offset") long offset);
 }

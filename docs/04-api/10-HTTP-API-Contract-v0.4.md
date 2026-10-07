@@ -932,6 +932,53 @@ GET /api/v1/merchant/orders/{orderId}
 
 商家列表中的状态同样使用服务端 `displayStatus`。
 
+### GET `/api/v1/merchant/orders`（商家订单列表，2026-10-07 列表读侧切片增补）
+
+> 本节为 #129 后续切片补齐的商家订单列表读侧（此前 M 端按单号进入处理页）。实现以
+> §3.7 C 端订单读侧先例与仓库惯例起草：固定排序 `created_at DESC, id DESC`（稳定分页）；
+> 分页边界 page>=1、pageSize 1..100 默认 20；PageResult 信封 `items/page/pageSize/total`；
+> `Cache-Control: no-store`；只读、无 X-Request-Id（GET 不绑定幂等）。随
+> `pet.order.merchant.http.enabled` 装配（与 §4.2/§4.3 同开关及同一验证依赖链，默认关闭；
+> OpenAPI11 `merchantListOrders` 带 `IMPLEMENTED_DEFAULT_OFF`）。
+
+Query：
+
+```text
+merchantId    必填，正十进制 String（商家坐标，沿 §4.4 售后列表/53号排期坐标惯例由客户端携带）
+storeId       必填，正十进制 String（商家坐标；merchantId+storeId 必须为登录主账号当前自有门店）
+displayStatus 可选，DisplayOrderStatus 十值之一（与 §3.7 同词汇同过滤语义；缺省=不过滤=「全部」）
+page          可选，>=1，默认 1
+pageSize      可选，1..100，默认 20
+```
+
+权限与作用域：MINIAPP Bearer 会话（CBearerSessionFilter）+ OWNER 主账号商家坐标校验——
+服务端在门店 guard 事务内以 `MerchantOrderAuthorityApi.requireOwnerRead`（ACTIVE/OFFLINE/
+FROZEN 存量履约读侧语义，同 51号售后读侧）重验 merchantId+storeId 归属；查询按
+`merchant_id+store_id` 双键过滤，商家只能看到本店订单（跨店隔离）。非本店坐标、不存在
+的商家/门店与非 OWNER 会话一律同一 403 `COMMON_FORBIDDEN`（防枚举，不区分“不存在/无权/
+他店”）；displayStatus 非法值 400 `COMMON_INVALID_ARGUMENT`；未登录 401。
+
+列表项字段集为商家运营所需最小集（本切片披露；不复制 C 端 OrderDetailData 全集与 actions
+六布尔——商家写命令仍在 #129 处理页/核销页各自内核守卫内复验）：
+
+```json
+{
+  "orderId": "...",
+  "orderNo": "...",
+  "displayStatus": "PENDING_CONFIRM",
+  "payAmount": "128.00",
+  "appointmentStart": "2026-10-08T02:00:00.000Z",
+  "appointmentEnd": "2026-10-08T03:30:00.000Z",
+  "paidAt": "2026-10-07T09:00:00.000Z"
+}
+```
+
+`displayStatus` 由 ORDER 域统一计算（技术基线 §5，同 §3.7），前端禁止按底层字段重算；
+`paidAt` 为事实字段（待接单 30 分钟规则的锚点事实，页面只呈现不推导截止）。点单进入
+#129 处理页（`orderId` 透传）；工作台「订单处理」入口改挂本列表。商家端「待接单」tab 即
+`displayStatus=PENDING_CONFIRM` 过滤。M 端订单详情读侧（`GET /merchant/orders/{orderId}`）
+仍不在本切片范围。
+
 ---
 
 ## 4.2 接单

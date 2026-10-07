@@ -169,10 +169,12 @@ public class CSessionSecurityConfiguration {
                   .permitAll();
             }
             if (merchantOrderHttpEnabled) {
-              // Merchant manual confirm/reject (contract 45 via contract 10 §4.2/§4.3): the
-              // MINIAPP Bearer is enforced by the filter's /api/v1/merchant/orders/ prefix rule;
-              // OWNER admission is re-proven in the command's guard transaction on every call
-              // and replay, so the chain only opens the transport here.
+              // Merchant manual confirm/reject (contract 45 via contract 10 §4.2/§4.3) plus the
+              // §4.1 store order list read: the MINIAPP Bearer is enforced by the filter's
+              // /api/v1/merchant/orders rules; OWNER admission/coordinate ownership is re-proven
+              // in each command's guard transaction (or the list's store-guard read) on every
+              // call and replay, so the chain only opens the transport here.
+              a.requestMatchers(HttpMethod.GET, "/api/v1/merchant/orders").permitAll();
               a.requestMatchers(
                       HttpMethod.POST,
                       "/api/v1/merchant/orders/*/confirm",

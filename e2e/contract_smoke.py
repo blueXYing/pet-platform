@@ -91,7 +91,6 @@ VERIFICATION_HTTP_OPERATIONS = {
         'post', '/merchant/orders/{orderId}/verification',
         ('200', '400', '401', '403', '404', '409', '503')),
 }
-<<<<<<< HEAD
 # Merchant manual order actions slice (contract 45 via contract-10 §4.2/§4.3, 2026-10-07): the
 # two OWNER decision routes leave the contract-only REQUIRES_PROVIDERS spelling behind and pin
 # the assembled default-off surface. Both share pet.order.merchant.http.enabled (the switch
@@ -106,7 +105,17 @@ MERCHANT_ORDER_HTTP_OPERATIONS = {
     'merchantRejectOrder': (
         'post', '/merchant/orders/{orderId}/reject',
         ('200', '400', '401', '403', '409', '503')),
-=======
+}
+# Merchant order list read side (contract 10 §4.1 supplement, the slice after contract 45's
+# manual decisions): the OWNER store list GET joins the same pet.order.merchant.http.enabled
+# switch family. It is a new operationId (not in LEGACY_OPERATIONS), stays default off, and
+# pins the merchant-coordinate query, the §3.7 displayStatus vocabulary filter, the
+# Page/PageSize bounds and the PageResult envelope with the minimal merchant summary.
+MERCHANT_ORDER_LIST_OPERATIONS = {
+    'merchantListOrders': (
+        'get', '/merchant/orders',
+        ('200', '400', '401', '403', '503')),
+}
 # Refund application C face (49号/10号 §3.9 slice, 2026-10-07): applyRefund leaves the draft
 # family behind, implemented default-off behind pet.refund.application.http.enabled (plus
 # pet.auth.c.enabled). The operation stays in LEGACY_OPERATIONS, so the path, the 201/200
@@ -116,7 +125,6 @@ REFUND_HTTP_OPERATIONS = {
     'applyRefund': (
         'post', '/c/orders/{orderId}/refund-applications',
         ('200', '201', '400', '401', '403', '409', '503')),
->>>>>>> b06ed4a (feat(c-end): 退款申请 HTTP 与页面)
 }
 AUTH_OPERATIONS = {
     'cAuthCreateAttempt': ('post', '/c/auth/attempts'),
@@ -479,7 +487,6 @@ def check_verification_http(spec, operation, method, path):
             'Verification scan body opened beyond the scanned code'
 
 
-<<<<<<< HEAD
 def check_merchant_order_http(spec, operation, method, path):
     name = operation['operationId']
     expected_method, expected_path, required_codes = MERCHANT_ORDER_HTTP_OPERATIONS[name]
@@ -525,7 +532,56 @@ def check_merchant_order_http(spec, operation, method, path):
         'Merchant confirm request fields changed'
     assert 'internalNote' in confirm['properties'] and confirm['properties']['internalNote']['maxLength'] == 200, \
         'Merchant confirm internal note bounds changed'
-=======
+
+
+def check_merchant_order_list(spec, operation, method, path):
+    name = operation['operationId']
+    expected_method, expected_path, required_codes = MERCHANT_ORDER_LIST_OPERATIONS[name]
+    assert (method, path) == (expected_method, expected_path), f'Merchant order list operation moved: {name}'
+    assert operation.get('security') == [{'bearerAuth': []}], f'Merchant order list security changed: {name}'
+    assert operation.get('x-implementation-status') == 'IMPLEMENTED_DEFAULT_OFF', f'Merchant order list status changed: {name}'
+    assert operation.get('x-default-enabled') is False, f'Merchant order list must stay default off: {name}'
+    assert operation.get('x-contract') == '10-HTTP-API-Contract-v0.4.md', f'Merchant order list authority changed: {name}'
+    assert operation.get('x-assembly-switch') == 'pet.order.merchant.http.enabled', f'Merchant order list switch changed: {name}'
+    assert operation.get('x-route-party') == 'MERCHANT' and operation.get('x-audience') == 'MINIAPP', f'Merchant order list identity changed: {name}'
+    assert 'requestBody' not in operation, f'Merchant order list must stay bodyless: {name}'
+    responses = operation['responses']
+    assert set(responses) == set(required_codes), f'Merchant order list response surface changed: {name}'
+    success = dereference(spec, responses['200'])
+    cache = dereference(spec, success['headers']['Cache-Control'])['schema']
+    assert cache == {'type': 'string', 'enum': ['no-store']}, f'Merchant order list caching changed: {name}'
+    assert success['content'] == {'application/json': {'schema': {'$ref': '#/components/schemas/MerchantOrderPageEnvelope'}}},         f'Merchant order list success envelope changed: {name}'
+    for code in ('400', '401', '403', '503'):
+        assert dereference(spec, responses[code])['content']['application/json']['schema']             == {'$ref': '#/components/schemas/ErrorEnvelope'}, f'Merchant order list error envelope changed: {name} {code}'
+    resolved = [dereference(spec, parameter) for parameter in operation['parameters']]
+    names = [(parameter['in'], parameter['name'], parameter.get('required', False)) for parameter in resolved]
+    assert names == [
+        ('query', 'merchantId', True), ('query', 'storeId', True),
+        ('query', 'displayStatus', False), ('query', 'page', False), ('query', 'pageSize', False)],         f'Merchant order list query surface changed: {name}'
+    merchant = resolved[0]['schema']
+    assert merchant == {'$ref': '#/components/schemas/PublicId'}, f'Merchant coordinate id shape changed: {name}'
+    assert resolved[1]['schema'] == {'$ref': '#/components/schemas/PublicId'}, f'Store coordinate id shape changed: {name}'
+    display = dereference(spec, resolved[2]['schema'])
+    assert display['enum'] == [
+        'PENDING_PAYMENT', 'PENDING_CONFIRM', 'PENDING_SERVICE', 'COMPLETED', 'CANCELED',
+        'REFUND_PENDING_CONFIRM', 'REFUNDING', 'REFUNDED', 'PARTIAL_REFUND', 'AFTERSALE'],         'Merchant order list display vocabulary diverged from §3.7'
+    page = resolved[3]['schema']
+    assert page == {'type': 'integer', 'minimum': 1, 'default': 1}, f'Merchant order list page bounds changed: {name}'
+    page_size = resolved[4]['schema']
+    assert page_size == {'type': 'integer', 'minimum': 1, 'maximum': 100, 'default': 20},         f'Merchant order list pageSize bounds changed: {name}'
+    envelope = dereference(spec, spec['components']['schemas']['MerchantOrderPageEnvelope'])
+    data = dereference(spec, envelope['properties']['data'])
+    assert envelope.get('additionalProperties') is False and data.get('additionalProperties') is False,         'Merchant order page opened'
+    assert set(data['required']) == {'items', 'page', 'pageSize', 'total'}, 'Merchant order page fields changed'
+    summary = dereference(spec, data['properties']['items']['items'])
+    assert summary.get('additionalProperties') is False, 'Merchant order summary opened'
+    assert set(summary['required']) == {
+        'orderId', 'orderNo', 'displayStatus', 'payAmount', 'appointmentStart', 'appointmentEnd', 'paidAt'},         'Merchant order summary fields changed'
+    for field in ('appointmentStart', 'appointmentEnd', 'paidAt'):
+        assert summary['properties'][field].get('nullable') is True, f'Merchant summary tail must stay nullable: {field}'
+    assert summary['properties']['payAmount']['pattern'] == r'^(0|[1-9][0-9]{0,15})\.[0-9]{2}$',         'Merchant summary amount format changed'
+
+
 def check_refund_http(spec, operation, method, path):
     name = operation['operationId']
     expected_method, expected_path, required_codes = REFUND_HTTP_OPERATIONS[name]
@@ -559,7 +615,6 @@ def check_refund_http(spec, operation, method, path):
         'AUTO_FULL_BEFORE_SERVICE', 'MERCHANT_CONFIRM_AFTER_SERVICE', 'AFTERSALE_DECISION'], 'Refund route enum changed'
     assert data['properties']['merchantDeadline'].get('nullable') is True, 'Refund deadline must stay nullable'
     assert data['properties']['refundOrderId'].get('nullable') is True, 'Refund receipt order id must stay nullable (durable task creates it)'
->>>>>>> b06ed4a (feat(c-end): 退款申请 HTTP 与页面)
 
 
 def check_coupon_points_read(spec, operation, method, path):
@@ -934,13 +989,12 @@ def check(spec):
                 assert issue['properties']['refreshKind']['enum'] == ['INITIAL', 'AUTO', 'MANUAL']
             if operation_id in VERIFICATION_HTTP_OPERATIONS:
                 check_verification_http(spec, operation, method, path)
-<<<<<<< HEAD
             if operation_id in MERCHANT_ORDER_HTTP_OPERATIONS:
                 check_merchant_order_http(spec, operation, method, path)
-=======
+            if operation_id in MERCHANT_ORDER_LIST_OPERATIONS:
+                check_merchant_order_list(spec, operation, method, path)
             if operation_id in REFUND_HTTP_OPERATIONS:
                 check_refund_http(spec, operation, method, path)
->>>>>>> b06ed4a (feat(c-end): 退款申请 HTTP 与页面)
             if operation_id in PRIVATE_ASSET_OPERATIONS:
                 assert (method, path) == PRIVATE_ASSET_OPERATIONS[operation_id], f'Private asset operation moved: {operation_id}'
                 check_private_assets(spec, operation)
@@ -1073,7 +1127,7 @@ def check(spec):
     assert legacy_seen == LEGACY_OPERATIONS.keys(), f'Legacy operations missing: {LEGACY_OPERATIONS.keys() - legacy_seen}'
     assert legacy_writes == 11, 'Legacy write surface changed'
     assert legacy_creates == LEGACY_CREATES, 'Legacy create surface changed'
-    assert operations == LEGACY_OPERATIONS.keys() | AUTH_OPERATIONS.keys() | MERCHANT_OPERATIONS.keys() | APPLICATION_OPERATIONS.keys() | PRIVATE_ASSET_OPERATIONS.keys() | SERVICE_CATALOG_OPERATIONS.keys() | STORE_CATALOG_OPERATIONS.keys() | SERVICE_WRITE_OPERATIONS.keys() | SCHEDULE_AVAILABILITY_OPERATIONS.keys() | SCHEDULE_WRITE_OPERATIONS.keys() | CREDENTIAL_OPERATIONS.keys() | AFTERSALE_OPERATIONS.keys() | COUPON_POINTS_READ_OPERATIONS.keys() | VERIFICATION_HTTP_OPERATIONS.keys() | NOTIFICATION_PREFERENCE_OPERATIONS.keys() | STAFF_INVITATION_LIST_OPERATIONS.keys() | ORDER_WRITE_OPERATIONS.keys() | REFUND_HTTP_OPERATIONS.keys(), 'Unexpected or missing reviewed operations'
+    assert operations == LEGACY_OPERATIONS.keys() | AUTH_OPERATIONS.keys() | MERCHANT_OPERATIONS.keys() | APPLICATION_OPERATIONS.keys() | PRIVATE_ASSET_OPERATIONS.keys() | SERVICE_CATALOG_OPERATIONS.keys() | STORE_CATALOG_OPERATIONS.keys() | SERVICE_WRITE_OPERATIONS.keys() | SCHEDULE_AVAILABILITY_OPERATIONS.keys() | SCHEDULE_WRITE_OPERATIONS.keys() | CREDENTIAL_OPERATIONS.keys() | AFTERSALE_OPERATIONS.keys() | COUPON_POINTS_READ_OPERATIONS.keys() | VERIFICATION_HTTP_OPERATIONS.keys() | NOTIFICATION_PREFERENCE_OPERATIONS.keys() | STAFF_INVITATION_LIST_OPERATIONS.keys() | ORDER_WRITE_OPERATIONS.keys() | REFUND_HTTP_OPERATIONS.keys() | MERCHANT_ORDER_LIST_OPERATIONS.keys(), 'Unexpected or missing reviewed operations'
     schemes = spec['components']['securitySchemes']
     assert schemes['bearerAuth']['type'] == 'http' and schemes['bearerAuth']['scheme'] == 'bearer'
     for scheme, location, name in [('authAttempt', 'header', 'X-Auth-Attempt'),
@@ -1121,11 +1175,9 @@ def check(spec):
             'scheduleWriteOperations': len(operations & SCHEDULE_WRITE_OPERATIONS.keys()),
             'couponPointsReadOperations': len(operations & COUPON_POINTS_READ_OPERATIONS.keys()),
             'verificationHttpOperations': len(operations & VERIFICATION_HTTP_OPERATIONS.keys()),
-<<<<<<< HEAD
             'merchantOrderHttpOperations': len(operations & MERCHANT_ORDER_HTTP_OPERATIONS.keys()),
-=======
+            'merchantOrderListOperations': len(operations & MERCHANT_ORDER_LIST_OPERATIONS.keys()),
             'refundHttpOperations': len(operations & REFUND_HTTP_OPERATIONS.keys()),
->>>>>>> b06ed4a (feat(c-end): 退款申请 HTTP 与页面)
             'serviceWriteOperations': len(operations & SERVICE_WRITE_OPERATIONS.keys()),
             'storeCatalogOperations': len(operations & STORE_CATALOG_OPERATIONS.keys()),
             'staffInvitationListOperations': len(operations & STAFF_INVITATION_LIST_OPERATIONS.keys()),

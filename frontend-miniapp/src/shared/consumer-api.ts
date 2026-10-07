@@ -58,6 +58,12 @@ export function isMerchantVerificationPath(spec: RequestSpec): boolean {
 export function isMerchantOrderActionPath(spec: RequestSpec): boolean {
   return spec.method === 'POST' && /^\/api\/v1\/merchant\/orders\/[1-9][0-9]{0,18}\/(confirm|reject)$/.test(spec.path)
 }
+// Contract 10 §4.1 supplement merchant order list read (same switch as the 45号 commands):
+// the only GET on the exact /merchant/orders path. The query carries the caller's merchant
+// coordinates (merchantId+storeId), which the server re-proves under the store guard per read.
+export function isMerchantOrderListPath(spec: RequestSpec): boolean {
+  return spec.method === 'GET' && spec.path === '/api/v1/merchant/orders'
+}
 export function decodePrivateAsset(value: unknown): PrivateAssetReceipt {
   const v = object(value)
   if (Object.keys(v).sort().join(',') !== 'assetId,bytes,mediaType,objectSha256,status' || v.status !== 'READY' || typeof v.objectSha256 !== 'string' || !/^[a-f0-9]{64}(?![\s\S])/.test(v.objectSha256) || !['image/jpeg', 'image/png'].includes(v.mediaType) || !Number.isSafeInteger(v.bytes) || v.bytes < 1 || v.bytes > 10485760) throw new Error('INVALID_RESPONSE')
@@ -135,15 +141,18 @@ export class ConsumerApi {
     // pet.order.merchant.http.enabled default OFF): command bodies are the round plus the
     // confirm note or the frozen reject reason pair; merchant/store stay server-located.
     const merchantOrderAction = isMerchantOrderActionPath(spec)
+    // Merchant order list read (contract 10 §4.1 supplement): GET with the merchant
+    // coordinate query; not target-free — both ids must equal the workspace coordinates.
+    const merchantOrderList = isMerchantOrderListPath(spec)
     if (/^\/api\/v1\/(c|merchant)\/aftersale/.test(spec.path) && !afterSalePath) throw new Error('INVALID_PATH')
-    if (!/^\/api\/v1\/c\/[a-z0-9/-]+$/.test(spec.path) && !agreementPath && !admissionPath && !categoryPath && !serviceCommandPath && !afterSalePath && !schedulePath && !verificationPath && !merchantOrderAction) throw new Error('INVALID_PATH')
+    if (!/^\/api\/v1\/c\/[a-z0-9/-]+$/.test(spec.path) && !agreementPath && !admissionPath && !categoryPath && !serviceCommandPath && !afterSalePath && !schedulePath && !verificationPath && !merchantOrderAction && !merchantOrderList) throw new Error('INVALID_PATH')
     if (spec.method !== 'GET' && !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}(?![\s\S])/i.test(spec.requestId || '')) throw new Error('REQUEST_ID_REQUIRED')
     const response = await this.transport({ ...spec, headers: { 'Content-Type': 'application/json', ...(spec.requestId ? { 'X-Request-Id': spec.requestId } : {}), ...headers } })
     if (afterSalePath) return afterSaleEnvelope(response)
     const body = object(response.data)
     if (response.statusCode < 200 || response.statusCode >= 300 || body.code !== 'SUCCESS') throw new ApiError(typeof body.code === 'string' ? body.code : 'INVALID_RESPONSE', response.statusCode)
     const applicationPath = /^\/api\/v1\/c\/merchant-applications(?:\/|$)/.test(spec.path) || spec.path === '/api/v1/c/merchant-application-cities'
-    if ((agreementPath || applicationPath || admissionPath || categoryPath || serviceCommandPath || schedulePath || verificationPath || merchantOrderAction) && body.success !== true) throw new Error('INVALID_RESPONSE')
+    if ((agreementPath || applicationPath || admissionPath || categoryPath || serviceCommandPath || schedulePath || verificationPath || merchantOrderAction || merchantOrderList) && body.success !== true) throw new Error('INVALID_RESPONSE')
     return body.data
   }
   private clear() {
@@ -255,6 +264,12 @@ export class ConsumerApi {
       // re-proven server-side per call, so a wrong-workspace request fails closed there.
       const merchantOrderAction = isMerchantOrderActionPath(spec)
       if (merchantOrderAction && !ticket.context.storeId) throw new Error('WORKSPACE_PATH_MISMATCH')
+      // Merchant order list (10号 §4.1 supplement): the query must address the selected store
+      // of the current merchant workspace exactly (aftersale-list discipline).
+      const merchantOrderList = isMerchantOrderListPath(spec)
+      if (merchantOrderList && (!ticket.context.storeId
+        || spec.data?.merchantId !== ticket.context.merchantId
+        || spec.data?.storeId !== ticket.context.storeId)) throw new Error('WORKSPACE_PATH_MISMATCH')
       const targetFree = spec.path === '/api/v1/merchant/service-categories' || afterSalePath && spec.path !== '/api/v1/merchant/aftersales' || verificationPath || merchantOrderAction
       if (!targetFree && spec.data?.merchantId !== ticket.context.merchantId) throw new Error('WORKSPACE_PATH_MISMATCH')
     } else if (ticket.context.workspace !== 'consumer' && !isStaffInvitationPath(spec.path)) throw new Error('WORKSPACE_PATH_MISMATCH')
