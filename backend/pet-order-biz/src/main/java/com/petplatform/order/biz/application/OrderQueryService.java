@@ -52,15 +52,14 @@ public final class OrderQueryService {
         int page = query.page() < 1 ? 1 : query.page();
         int pageSize = query.pageSize() <= 0 ? DEFAULT_PAGE_SIZE
                 : Math.min(query.pageSize(), MAX_PAGE_SIZE);
-        String predicate = OrderDisplayStatus.sqlPredicate(filterStatus);
-        long total = store.read(mapper -> mapper.countMine(user, predicate));
+        long total = store.read(mapper -> mapper.countMine(user, filterStatus));
         List<OrderSnapshotDTO> items;
         if (total == 0 || pageSize == 0) {
             items = List.of();
         } else {
             java.time.OffsetDateTime now = clock.instant().atOffset(java.time.ZoneOffset.UTC);
             items = store.read(mapper -> mapper
-                            .selectMinePage(user, predicate, pageSize, (long) (page - 1) * pageSize))
+                            .selectMinePage(user, filterStatus, pageSize, (long) (page - 1) * pageSize))
                     .stream().map(row -> project(row, now)).toList();
         }
         return new PageResult<>(items, total, page, pageSize);

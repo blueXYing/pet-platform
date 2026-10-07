@@ -1,10 +1,7 @@
 package com.petplatform.order.biz.application;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertNotNull;
-import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
-import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.math.BigDecimal;
 import java.util.List;
@@ -75,19 +72,13 @@ class OrderDisplayStatusTest {
     }
 
     @Test
-    void filterWhitelistCoversExactlyTheTenValues() {
-        for (String value : OrderDisplayStatus.VALUES) {
-            assertNotNull(OrderDisplayStatus.sqlPredicate(value), value);
-        }
+    void vocabularyIsExactlyTheTenDisplayTabs() {
+        // The selectable vocabulary; the mapper's XML filter branches mirror the same truth
+        // table and the MySQL acceptance test cross-checks both on real rows.
+        assertEquals(List.of(
+                "PENDING_PAYMENT", "PENDING_CONFIRM", "PENDING_SERVICE", "COMPLETED", "CANCELED",
+                "REFUND_PENDING_CONFIRM", "REFUNDING", "REFUNDED", "PARTIAL_REFUND", "AFTERSALE"),
+                OrderDisplayStatus.VALUES);
         assertEquals(10, OrderDisplayStatus.VALUES.size());
-        assertNull(OrderDisplayStatus.sqlPredicate(null));
-        assertNull(OrderDisplayStatus.sqlPredicate("BOGUS"));
-        // Fixed strings over the pet_order projection columns only: no interpolation slots,
-        // no statement separators, no table joins.
-        for (String value : OrderDisplayStatus.VALUES) {
-            String predicate = OrderDisplayStatus.sqlPredicate(value);
-            assertTrue(predicate.indexOf('$') < 0 && predicate.indexOf(';') < 0, value);
-            assertTrue(predicate.startsWith("refund_order_id ") || predicate.contains(" refund_order_id "), value);
-        }
     }
 }

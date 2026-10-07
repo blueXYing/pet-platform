@@ -1,9 +1,7 @@
 package com.petplatform.order.biz.application;
 
 import java.math.BigDecimal;
-import java.util.LinkedHashMap;
 import java.util.List;
-import java.util.Map;
 import java.util.Set;
 
 /**
@@ -17,10 +15,9 @@ import java.util.Set;
  * refund application &gt; active aftersale &gt; order stage. The five stage values share the
  * DisplayOrderStatus names, so stages 6-10 project verbatim.</p>
  *
- * <p>{@link #sqlPredicate(String)} exposes, for each display value, the fixed SQL predicate
- * equivalent of the same truth table so the list filter and this derivation cannot disagree
- * silently; the MySQL acceptance test cross-checks them on seeded rows. Predicates are a fixed
- * whitelist here — never built from request input.</p>
+ * <p>The list filter mirrors this truth table as fixed branches in OrderQueryMapper.xml
+ * (bound values only, per the PERSISTENCE-XML gate); the MySQL acceptance test cross-checks
+ * every filtered row against this same computation.</p>
  */
 public final class OrderDisplayStatus {
     private OrderDisplayStatus() {}
@@ -71,37 +68,5 @@ public final class OrderDisplayStatus {
             return AFTERSALE; // step 5
         }
         return facts.orderStage(); // steps 6-10 share the display names
-    }
-
-    /** Fixed SQL predicates mirroring {@link #compute}; the whitelist order matches VALUES. */
-    private static final Map<String, String> PREDICATES = buildPredicates();
-
-    private static Map<String, String> buildPredicates() {
-        String noRefund = "refund_order_id IS NULL";
-        String applicationCleared = "(refund_application_status IS NULL OR refund_application_status <> 'PENDING_MERCHANT')";
-        String aftersaleCleared = "(aftersale_status IS NULL OR aftersale_status NOT IN ('PENDING','PROCESSING','WAITING_SUPPLEMENT'))";
-        Map<String, String> map = new LinkedHashMap<>();
-        for (String stage : List.of(PENDING_PAYMENT, PENDING_CONFIRM, PENDING_SERVICE, COMPLETED, CANCELED)) {
-            map.put(stage, noRefund + " AND " + applicationCleared + " AND " + aftersaleCleared
-                    + " AND order_stage = '" + stage + "'");
-        }
-        map.put(REFUND_PENDING_CONFIRM, noRefund + " AND refund_application_status = 'PENDING_MERCHANT'");
-        map.put(REFUNDING, "refund_order_id IS NOT NULL AND refunded_amount = 0");
-        map.put(REFUNDED, "refund_order_id IS NOT NULL AND refunded_amount > 0 AND pay_amount > 0"
-                + " AND refunded_amount >= pay_amount");
-        map.put(PARTIAL_REFUND, "refund_order_id IS NOT NULL AND refunded_amount > 0 AND pay_amount > 0"
-                + " AND refunded_amount < pay_amount");
-        map.put(AFTERSALE, noRefund + " AND " + applicationCleared
-                + " AND aftersale_status IN ('PENDING','PROCESSING','WAITING_SUPPLEMENT')");
-        return Map.copyOf(map);
-    }
-
-    /**
-     * The SQL predicate selecting exactly the rows {@link #compute} labels with the given
-     * display value, or null when the value is not one of the ten (callers reject input first).
-     * Fixed strings from the whitelist above — request values never reach SQL text.
-     */
-    public static String sqlPredicate(String displayStatus) {
-        return displayStatus == null ? null : PREDICATES.get(displayStatus);
     }
 }
