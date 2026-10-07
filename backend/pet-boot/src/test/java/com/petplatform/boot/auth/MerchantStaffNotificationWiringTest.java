@@ -6,6 +6,7 @@ import com.petplatform.boot.PetPlatformApplication;
 import com.petplatform.common.SnowflakeIdGenerator;
 import com.petplatform.event.api.IntegrationEvent;
 import com.petplatform.event.core.TransactionalOutboxPublisher;
+import com.petplatform.notification.biz.event.MerchantStaffGrantConsumer;
 import com.petplatform.notification.biz.event.MerchantStaffInvitationConsumer;
 import com.petplatform.notification.biz.event.MerchantStaffMemberConsumer;
 import com.petplatform.user.biz.application.WechatSessionProvider;
@@ -114,6 +115,19 @@ class MerchantStaffNotificationWiringTest {
     return payload;
   }
 
+  private Map<String, Object> grantPayload(String changeType) {
+    Map<String, Object> payload = new LinkedHashMap<>();
+    payload.put("memberId", "9301");
+    payload.put("merchantId", "9101");
+    payload.put("storeId", "9201");
+    payload.put("memberUserId", "9202");
+    payload.put("changeType", changeType);
+    payload.put("actions", "GRANTED".equals(changeType)
+        ? java.util.List.of("merchant.order.verify") : java.util.List.of());
+    payload.put("occurredAt", "2026-10-07T09:30:00.000Z");
+    return payload;
+  }
+
   @Test
   void staffSwitchRegistersBothConsumersAndDispatchesConfirmToBothReceivers() throws Exception {
     Map<String, Object> props = baseProps();
@@ -126,6 +140,9 @@ class MerchantStaffNotificationWiringTest {
     MerchantStaffMemberConsumer member = context.getBean(MerchantStaffMemberConsumer.class);
     assertEquals("notification.merchant-staff-member.v1", member.consumerName());
     assertTrue(member.eventTypes().contains("MerchantStaffMemberLifecycleEvent.v1"));
+    MerchantStaffGrantConsumer grant = context.getBean(MerchantStaffGrantConsumer.class);
+    assertEquals("notification.merchant-staff-grant.v1", grant.consumerName());
+    assertTrue(grant.eventTypes().contains("MerchantStaffGrantLifecycleEvent.v1"));
 
     TransactionalOutboxPublisher publisher = context.getBean(TransactionalOutboxPublisher.class);
     TransactionTemplate transaction = new TransactionTemplate(
@@ -178,6 +195,54 @@ class MerchantStaffNotificationWiringTest {
                 + " consumer_name='notification.merchant-staff-invitation.v1'",
             Integer.class));
 
+    // 2026-10-07 grant slice: a grant lifecycle event dispatched through the same real publisher
+    // reaches only the bound staff account with the action summary in the message.
+    OffsetDateTime grantAt = OffsetDateTime.now(ZoneOffset.UTC);
+    transaction.executeWithoutResult(
+        status ->
+            publisher.publish(
+                new IntegrationEvent<>(
+                    null,
+                    "MerchantStaffGrantLifecycleEvent.v1",
+                    1,
+                    grantAt,
+                    "MERCHANT_MEMBER",
+                    "9301",
+                    "staff-ntf-wiring-trace",
+                    grantPayload("GRANTED"))));
+    for (long deadline = System.nanoTime() + Duration.ofSeconds(20).toNanos(); ; ) {
+      Integer grants =
+          db.jdbc.queryForObject(
+              "SELECT COUNT(*) FROM notification WHERE receiver_id=9202"
+                  + " AND message_type='MER_STAFF_GRANT' AND biz_id=9301",
+              Integer.class);
+      String grantOutbox =
+          db.jdbc.queryForObject(
+              "SELECT status FROM integration_event_outbox WHERE aggregate_id=?",
+              String.class, 9301L);
+      if (grants != null && grants == 1 && "PUBLISHED".equals(grantOutbox)) {
+        break;
+      }
+      if (grants != null && grants > 1) {
+        fail("duplicate staff grant notifications");
+      }
+      if (System.nanoTime() >= deadline) {
+        fail("staff grant dispatch did not finish: grants=" + grants
+            + ", outboxStatus=" + grantOutbox);
+      }
+      Thread.sleep(200);
+    }
+    String grantContent =
+        db.jdbc.queryForObject(
+            "SELECT content FROM notification WHERE message_type='MER_STAFF_GRANT'", String.class);
+    assertTrue(grantContent.contains("订单核销"));
+    assertEquals(
+        0,
+        db.jdbc.queryForObject(
+            "SELECT COUNT(*) FROM notification WHERE message_type='MER_STAFF_GRANT'"
+                + " AND receiver_id<>9202",
+            Integer.class));
+
     // Default-off structural negative: same outbox assembly without the staff switch has none of
     // the two consumer beans (mirrors the ServiceWriteHttpTest consumer-absence precedent).
     Map<String, Object> offProps = baseProps();
@@ -187,5 +252,6 @@ class MerchantStaffNotificationWiringTest {
         0,
         offContext.getBeanNamesForType(MerchantStaffInvitationConsumer.class).length);
     assertEquals(0, offContext.getBeanNamesForType(MerchantStaffMemberConsumer.class).length);
+    assertEquals(0, offContext.getBeanNamesForType(MerchantStaffGrantConsumer.class).length);
   }
 }

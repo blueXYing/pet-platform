@@ -78,6 +78,8 @@ public final class MerchantStaffMemberService {
     /** NTF slice: invitation/member lifecycle station-notification events (Event08 registration). */
     static final String INVITATION_EVENT_TYPE = "MerchantStaffInvitationLifecycleEvent.v1";
     static final String MEMBER_EVENT_TYPE = "MerchantStaffMemberLifecycleEvent.v1";
+    /** NTF grant slice (2026-10-07 ruling): grant/revoke station-notification event. */
+    static final String GRANT_EVENT_TYPE = "MerchantStaffGrantLifecycleEvent.v1";
     private static final String INVITATION_AGGREGATE = "MERCHANT_MEMBER_INVITATION";
     private static final String MEMBER_AGGREGATE = "MERCHANT_MEMBER";
     private static final DateTimeFormatter EVENT_TIME =
@@ -363,6 +365,10 @@ public final class MerchantStaffMemberService {
         if (scope.getGrantId() == null) notFound();
         requireGrantUsable(scope);
         if (scope.getGrantVersion() != intent.expectedVersion()) conflict("store grant version changed");
+        // NTF grant slice: capture the withdrawn set before the rows go away, so the member
+        // notification carries the action summary of what was revoked.
+        List<String> revokedActions = catalogCodes(mapper.listGrantActions(
+                intent.memberId(), intent.storeId()));
         if (mapper.updateGrantStatus(intent.memberId(), intent.storeId(), "REVOKED",
                 intent.expectedVersion(), now()) != 1)
             conflict("store grant write lost a concurrent version race");
@@ -372,6 +378,7 @@ public final class MerchantStaffMemberService {
                 scope.getGrantVersion(), scope.getGrantVersion() + 1, intent.key(),
                 requestIdBytes(intent), intent.traceId(), now()) != 1)
             unavailable("member audit insert failed");
+        publishGrantLifecycle(intent, scope, "REVOKED", revokedActions);
         return memberReceipt(mapper, intent);
     }
 
@@ -390,6 +397,7 @@ public final class MerchantStaffMemberService {
                     intent.merchantId(), intent.storeId(), intent.memberId(), null, null,
                     "ENABLED", null, 0L, intent.key(), requestIdBytes(intent), intent.traceId(),
                     now()) != 1) unavailable("member audit insert failed");
+            publishGrantLifecycle(intent, scope, "GRANTED", intent.actions());
             return memberReceipt(mapper, intent);
         }
         requireGrantUsable(scope);
@@ -406,6 +414,7 @@ public final class MerchantStaffMemberService {
                 scope.getGrantVersion(), scope.getGrantVersion() + 1, intent.key(),
                 requestIdBytes(intent), intent.traceId(), now()) != 1)
             unavailable("member audit insert failed");
+        publishGrantLifecycle(intent, scope, "GRANTED", intent.actions());
         return memberReceipt(mapper, intent);
     }
 
@@ -656,6 +665,28 @@ public final class MerchantStaffMemberService {
         payload.put("occurredAt", EVENT_TIME.format(now().atOffset(ZoneOffset.UTC)));
         events.publish(new IntegrationEvent<>(Long.toUnsignedString(store.nextId()),
                 MEMBER_EVENT_TYPE, 1, now().atOffset(ZoneOffset.UTC), MEMBER_AGGREGATE,
+                Long.toUnsignedString(intent.memberId()), intent.traceId(), payload));
+    }
+
+    /**
+     * NTF grant slice producer (Event08 registration, 2026-10-07 ruling): the store-grant
+     * lifecycle event for grant-actions (first grant and whole-set replacement) and
+     * revoke-store. Only catalog action codes and coordinates travel — no name, no phone;
+     * GRANTED carries the post-change action set, REVOKED the withdrawn set.
+     */
+    private void publishGrantLifecycle(Intent intent, MerchantMemberGrantScopeEntity scope,
+            String changeType, List<String> actions) {
+        if (events == null) return;
+        Map<String, Object> payload = new LinkedHashMap<>();
+        payload.put("memberId", Long.toUnsignedString(intent.memberId()));
+        payload.put("merchantId", Long.toUnsignedString(intent.merchantId()));
+        payload.put("storeId", Long.toUnsignedString(intent.storeId()));
+        payload.put("memberUserId", Long.toUnsignedString(scope.getUserId()));
+        payload.put("changeType", changeType);
+        payload.put("actions", List.copyOf(actions));
+        payload.put("occurredAt", EVENT_TIME.format(now().atOffset(ZoneOffset.UTC)));
+        events.publish(new IntegrationEvent<>(Long.toUnsignedString(store.nextId()),
+                GRANT_EVENT_TYPE, 1, now().atOffset(ZoneOffset.UTC), MEMBER_AGGREGATE,
                 Long.toUnsignedString(intent.memberId()), intent.traceId(), payload));
     }
 

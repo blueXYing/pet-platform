@@ -9,6 +9,7 @@ import com.petplatform.common.OperatorType;
 import com.petplatform.event.core.TransactionalOutboxPublisher;
 import com.petplatform.merchant.api.command.CancelStaffMemberInvitationCommand;
 import com.petplatform.merchant.api.command.ConfirmStaffMemberInvitationCommand;
+import com.petplatform.merchant.api.command.GrantStaffMemberActionsCommand;
 import com.petplatform.merchant.api.command.InviteStaffMemberCommand;
 import com.petplatform.merchant.api.command.StaffMemberLifecycleCommand;
 import com.petplatform.merchant.biz.apiimpl.MerchantStaffMemberApiImpl;
@@ -35,6 +36,7 @@ import org.mockito.Mockito;
 class MerchantStaffMemberEventMySqlTest {
     private static final long MERCHANT = 9_100_000_000_000_201L;
     private static final long STORE = 9_100_000_000_000_202L;
+    private static final long STORE2 = 9_100_000_000_000_203L;
     private static final long OWNER = 9_100_000_000_000_210L;
     private static final long USER = 9_100_000_000_000_211L;
     private static final String PHONE = "13900004444";
@@ -71,6 +73,8 @@ class MerchantStaffMemberEventMySqlTest {
                 MERCHANT, OWNER, "事件测试商家");
         jdbc.update("INSERT INTO merchant_store(id,merchant_id,store_name,address,status,version,created_at,updated_at) VALUES(?,?,?,?,'ACTIVE',1,UTC_TIMESTAMP(3),UTC_TIMESTAMP(3))",
                 STORE, MERCHANT, "事件门店", "地址");
+        jdbc.update("INSERT INTO merchant_store(id,merchant_id,store_name,address,status,version,created_at,updated_at) VALUES(?,?,?,?,'ACTIVE',1,UTC_TIMESTAMP(3),UTC_TIMESTAMP(3))",
+                STORE2, MERCHANT, "事件门店二", "地址二");
         jdbc.update("INSERT INTO merchant_application(id,owner_user_id,reserved_merchant_id,status,subject_verification_status,version,created_at,updated_at) VALUES(?,?,?,'DRAFT','NOT_STARTED',0,UTC_TIMESTAMP(3),UTC_TIMESTAMP(3))",
                 2201L, OWNER, MERCHANT);
         String content = "事件测试协议";
@@ -106,6 +110,17 @@ class MerchantStaffMemberEventMySqlTest {
                 "SELECT CAST(payload AS CHAR) FROM integration_event_outbox WHERE event_type=?"
                         + " AND aggregate_id=? AND payload->>'$.changeType'=?",
                 String.class, eventType, aggregateId, changeType);
+        return new ObjectMapper().readValue(json, Map.class);
+    }
+
+    /** Grant events share the member aggregate, so the store distinguishes the payloads. */
+    private Map<String, Object> grantPayloadOf(StaffBindingMySqlTestDatabase db, long aggregateId,
+            String changeType, long storeId) throws Exception {
+        String json = db.jdbc().queryForObject(
+                "SELECT CAST(payload AS CHAR) FROM integration_event_outbox"
+                        + " WHERE event_type='MerchantStaffGrantLifecycleEvent.v1'"
+                        + " AND aggregate_id=? AND payload->>'$.changeType'=? AND payload->>'$.storeId'=?",
+                String.class, aggregateId, changeType, Long.toUnsignedString(storeId));
         return new ObjectMapper().readValue(json, Map.class);
     }
 
@@ -201,6 +216,61 @@ class MerchantStaffMemberEventMySqlTest {
     }
 
     @Test
+    void grantReplaceAndRevokeStoreEmitGrantEventsWithActionSummary() throws Exception {
+        try (var db = new StaffBindingMySqlTestDatabase()) {
+            seed(db);
+            var publisher = new TransactionalOutboxPublisher(db.dataSource(),
+                    ids::incrementAndGet, new ObjectMapper());
+            var api = api(db, publisher);
+            String invitationId = invite(api, "inv-1", PHONE);
+            long memberId = Long.parseLong(api.confirmInvitation(new ConfirmStaffMemberInvitationCommand(
+                    invitationId, command("cf-1", USER))).member().memberId());
+            assertEquals(0, outboxCount(db, "MerchantStaffGrantLifecycleEvent.v1"));
+            // Whole-set replacement on the confirmed store grant rides the same transaction.
+            api.grantActions(new GrantStaffMemberActionsCommand(id(MERCHANT), id(STORE),
+                    Long.toUnsignedString(memberId), List.of(VERIFY), "0", command("g-1", OWNER)));
+            assertEquals(1, outboxCount(db, "MerchantStaffGrantLifecycleEvent.v1"));
+            Map<String, Object> replaced = grantPayloadOf(db, memberId, "GRANTED", STORE);
+            assertEquals(List.of(VERIFY), replaced.get("actions"));
+            assertEquals(id(USER), replaced.get("memberUserId"));
+            assertEquals(id(STORE), replaced.get("storeId"));
+            assertEquals("GRANTED", replaced.get("changeType"));
+            // 23号 replay serves the stored receipt, never a second event.
+            api.grantActions(new GrantStaffMemberActionsCommand(id(MERCHANT), id(STORE),
+                    Long.toUnsignedString(memberId), List.of(VERIFY), "0", command("g-1", OWNER)));
+            assertEquals(1, outboxCount(db, "MerchantStaffGrantLifecycleEvent.v1"));
+            // First store grant (multi-store member, grant v0 path) emits its own GRANTED event.
+            api.grantActions(new GrantStaffMemberActionsCommand(id(MERCHANT), id(STORE2),
+                    Long.toUnsignedString(memberId), List.of(VERIFY), "0", command("g-2", OWNER)));
+            assertEquals(2, outboxCount(db, "MerchantStaffGrantLifecycleEvent.v1"));
+            assertEquals(List.of(VERIFY), grantPayloadOf(db, memberId, "GRANTED", STORE2).get("actions"));
+            // Store-wide revoke is terminal and carries the withdrawn action set.
+            api.revokeStoreGrant(new StaffMemberLifecycleCommand(id(MERCHANT), id(STORE),
+                    Long.toUnsignedString(memberId), "1", command("r-1", OWNER)));
+            assertEquals(3, outboxCount(db, "MerchantStaffGrantLifecycleEvent.v1"));
+            Map<String, Object> revoked = grantPayloadOf(db, memberId, "REVOKED", STORE);
+            assertEquals(List.of(VERIFY), revoked.get("actions"));
+            assertEquals(id(USER), revoked.get("memberUserId"));
+            String json = db.jdbc().queryForObject(
+                    "SELECT CAST(payload AS CHAR) FROM integration_event_outbox"
+                            + " WHERE event_type='MerchantStaffGrantLifecycleEvent.v1'"
+                            + " AND payload->>'$.changeType'='REVOKED'",
+                    String.class);
+            assertFalse(json.contains(PHONE)); // grant payloads never carry name or phone
+            assertFalse(json.contains("王小明"));
+            // Conflicts after the terminal revoke roll back before any event is appended.
+            assertEquals(CommonApiCodes.CONFLICT, assertThrows(ApiException.class,
+                    () -> api.grantActions(new GrantStaffMemberActionsCommand(id(MERCHANT), id(STORE),
+                            Long.toUnsignedString(memberId), List.of(VERIFY), "2",
+                            command("g-3", OWNER)))).code());
+            assertEquals(CommonApiCodes.CONFLICT, assertThrows(ApiException.class,
+                    () -> api.revokeStoreGrant(new StaffMemberLifecycleCommand(id(MERCHANT), id(STORE),
+                            Long.toUnsignedString(memberId), "2", command("r-2", OWNER)))).code());
+            assertEquals(3, outboxCount(db, "MerchantStaffGrantLifecycleEvent.v1"));
+        }
+    }
+
+    @Test
     void missingPublisherKeepsContract54BehaviorWithZeroEvents() throws Exception {
         try (var db = new StaffBindingMySqlTestDatabase()) {
             seed(db);
@@ -211,6 +281,10 @@ class MerchantStaffMemberEventMySqlTest {
             api.disableMember(new StaffMemberLifecycleCommand(id(MERCHANT), id(STORE), memberId,
                     "0", command("dis-1", OWNER)));
             cancel(api, "cancel-1", invite(api, "inv-2", OTHER_PHONE), "0");
+            api.grantActions(new GrantStaffMemberActionsCommand(id(MERCHANT), id(STORE2),
+                    memberId, List.of(VERIFY), "0", command("g-1", OWNER)));
+            api.revokeStoreGrant(new StaffMemberLifecycleCommand(id(MERCHANT), id(STORE),
+                    memberId, "0", command("r-1", OWNER)));
             assertEquals(0, db.jdbc().queryForObject(
                     "SELECT COUNT(*) FROM integration_event_outbox", Integer.class));
             assertEquals(2, db.jdbc().queryForObject(
