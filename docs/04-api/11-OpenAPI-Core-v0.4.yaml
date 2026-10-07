@@ -11323,7 +11323,7 @@ paths:
       x-contract: 10-HTTP-API-Contract-v0.4.md
       description: CCR-C006-COUPON-POINTS-READ-001 P1（2026-10-06批准）。当前会话用户自己的
         coupon_instance 投影；仅允许 AVAILABLE/USED/EXPIRED 三桶（D2：FROZEN/RISK_FROZEN 永不返回），
-        默认 AVAILABLE，非法值 400。固定排序 expire_at ASC, id ASC；D1 展示字段为服务端 rule_json 投影，
+        默认 AVAILABLE，非法值 400。固定排序 expire_at ASC, id ASC（服务端保证；validTo 投影仅日期粒度，客户端不可据此复现完整排序）；D1 展示字段为服务端 rule_json 投影（键恒返回，未裁决/规则缺失时为 null），
         字段缺失返回 null，前端不得解析 rule_json（结构待 CPN-001 冻结）。错误码引用 12 号通用码。
       security:
       - bearerAuth: []
@@ -18749,15 +18749,21 @@ components:
           minLength: 1
           maxLength: 128
         amountOff:
-          $ref: '#/components/schemas/DecimalAmount'
+          allOf:
+          - $ref: '#/components/schemas/DecimalAmountOutput'
+          nullable: true
         thresholdAmount:
-          $ref: '#/components/schemas/DecimalAmount'
+          allOf:
+          - $ref: '#/components/schemas/DecimalAmountOutput'
+          nullable: true
         scopeSummary:
           type: string
           maxLength: 64
+          nullable: true
         typeLabel:
           type: string
           maxLength: 16
+          nullable: true
         validTo:
           type: string
           format: date
@@ -18771,6 +18777,7 @@ components:
           type: string
           format: date-time
           x-precision: milliseconds
+          nullable: true
     CouponInstancePageData:
       type: object
       additionalProperties: false
@@ -18855,7 +18862,7 @@ components:
       properties:
         balance:
           type: string
-          pattern: ^(0|[1-9][0-9]{0,17})(?![\s\S])$
+          pattern: ^(0|[1-9][0-9]{0,18})(?![\s\S])$
           x-maximum-decimal: '9223372036854775807'
           description: 非负BIGINT整数String；无账户行读作"0"。
     PointsBalanceEnvelope:
@@ -18906,12 +18913,12 @@ components:
           - REFUND_CLAWBACK
         delta:
           type: string
-          pattern: ^-?[1-9][0-9]{0,17}(?![\s\S])$
+          pattern: ^-?[1-9][0-9]{0,18}(?![\s\S])$
           x-maximum-decimal: '9223372036854775807'
           description: 带符号非零整数String；REFUND_CLAWBACK为负。
         balanceAfter:
           type: string
-          pattern: ^(0|[1-9][0-9]{0,17})(?![\s\S])$
+          pattern: ^(0|[1-9][0-9]{0,18})(?![\s\S])$
           x-maximum-decimal: '9223372036854775807'
         createdAt:
           type: string
