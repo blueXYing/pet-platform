@@ -7,7 +7,7 @@ import {
   reasonProblem, staffWindowFormProblems, windowFormProblems,
   type BatchCloseResult, type CapabilityView, type ScheduleDeps, type ScheduleWindowPage,
   type ScheduleWindowReceipt, type StaffWindowFormInput, type StaffWindowReceipt,
-  type StaffWindowPage, type WindowFilter, type WindowFormInput,
+  type StaffWindowPage, type WindowFormInput, type WindowPageQuery,
 } from './model'
 
 /**
@@ -19,6 +19,10 @@ import {
  * overlap, occupied-window, idempotency-key) proves nothing was written for that exact
  * payload, so the slot is retired and a corrected payload can use it again; 5xx keeps the
  * journal (outcome unknown) and the page tells the user to retry the original action.
+ * The store-windows list read always consumes the §3.3 paged mode (#122): page/pageSize
+ * go on every query and the decode accepts only the {storeId,items,page,pageSize,total}
+ * envelope — the workbench summary counts ride the filter-matched total of one-row
+ * status-filtered queries instead of a full fetch.
  */
 export class RealScheduleRepository implements ScheduleDeps {
   constructor(private api: ConsumerApi, private merchantId: () => string, private storeId: () => string) {}
@@ -46,20 +50,21 @@ export class RealScheduleRepository implements ScheduleDeps {
     }
   }
 
-  private receiptsFilter(filter: WindowFilter, merchantId: string): Record<string, unknown> {
-    const data: Record<string, unknown> = { merchantId }
-    if (filter.serviceId) data.serviceId = filter.serviceId
-    // The page fetches unfiltered on purpose: the workbench summary needs all three status
-    // counts (OPEN/SOLD_OUT/CLOSED), so tabs group client-side. Contract §3.1 allows
-    // status=SOLD_OUT server-side filtering and the controller now accepts all three
-    // values (fixed alongside this slice).
+  private windowsParams(query: WindowPageQuery, merchantId: string): Record<string, unknown> {
+    const data: Record<string, unknown> = { merchantId, page: query.page, pageSize: query.pageSize }
+    if (query.serviceId) data.serviceId = query.serviceId
+    if (query.kind) data.kind = query.kind
+    // §3.1/§3.3: the controller accepts OPEN/CLOSED/SOLD_OUT as the server-side filter;
+    // the workbench status chips and the summary count queries ride it (total is the
+    // filter-matched count).
+    if (query.status) data.status = query.status
     return data
   }
 
-  async windows(filter: WindowFilter): Promise<ScheduleWindowPage> {
+  async windows(query: WindowPageQuery): Promise<ScheduleWindowPage> {
     const { merchantId, storeId } = this.target()
     return this.read(`/api/v1/merchant/stores/${storeId}/availability-windows`,
-      this.receiptsFilter(filter, merchantId), decodeWindowPage)
+      this.windowsParams(query, merchantId), decodeWindowPage)
   }
 
   async createWindow(slot: string, input: WindowFormInput): Promise<ScheduleWindowReceipt> {

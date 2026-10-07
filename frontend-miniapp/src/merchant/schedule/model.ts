@@ -13,7 +13,9 @@
 //   capacity-raise. No DELETE; weekly templates (dayOfWeek/repeatWeekly/copyNextWeek) are
 //   explicitly not introduced. batch-close: single request capped at 200 intersecting
 //   entries (400 COMMON_INVALID_ARGUMENT beyond), partial success allowed with blockedWindows
-//   named per window (reasonCode SCHEDULE_WINDOW_STATE_NOT_ALLOWED).
+//   named per window (reasonCode SCHEDULE_WINDOW_STATE_NOT_ALLOWED). The store-windows list
+//   read is paged (§3.3, #122): page 1..10000 / pageSize 1..50, filter-matched total in the
+//   envelope, order start_at/id ascending — the pages always consume the paged mode.
 // - Staff windows: AVAILABLE/CLOSED, same overlap discipline; shrinking availability is
 //   protected by current assignments (409) and a whole-store feasibility re-check (409/503).
 // - Capabilities: whole-set replace on a versioned head (SCHC-2); stale expectedVersion 409
@@ -52,7 +54,14 @@ export type ScheduleWindowReceipt = Readonly<{
   windowKind: WindowKind; startAt: string; endAt: string; configuredCapacity: number
   status: WindowStatus; version: string
 }>
-export type ScheduleWindowPage = Readonly<{ storeId: string; items: readonly ScheduleWindowItem[] }>
+/** GET …/availability-windows paged envelope (§3.3, #122): the pages always send page/
+ *  pageSize, so the wire always answers {storeId,items,page,pageSize,total}; total is the
+ *  filter-matched count (same WHERE as the items, page-independent) and stays put past the
+ *  last page. The workbench summary rides one-row status-filtered queries' total. */
+export type ScheduleWindowPage = Readonly<{
+  storeId: string; items: readonly ScheduleWindowItem[]
+  page: number; pageSize: number; total: number
+}>
 export type BlockedWindow = Readonly<{ window: ScheduleWindowReceipt; reasonCode: string }>
 export type BatchCloseResult = Readonly<{
   storeId: string; closedWindows: readonly ScheduleWindowReceipt[]; blockedWindows: readonly BlockedWindow[]
@@ -105,10 +114,17 @@ const staffItemKeys = ['windowId', 'merchantId', 'storeId', 'staffId', 'startAt'
   'status', 'version', 'updatedAt'] as const
 const staffReceiptKeys = ['windowId', 'merchantId', 'storeId', 'staffId', 'startAt', 'endAt',
   'status', 'version'] as const
-/** Sanity bounds only — the contract sets no page size for the workbench reads; the decode
- *  must still fail closed on absurd payloads instead of freezing the page. */
+/** Sanity bounds only — the contract sets no page size for the staff-window read (§4 has
+ *  no pagination); the decode must still fail closed on absurd payloads instead of freezing
+ *  the page. The store-windows read carries its own §3.3 paged bound below. */
 const MAX_LIST_ITEMS = 1000
 const MAX_CAPABILITY_ITEMS = 2000
+/** §3.3 paged-windows bounds: page 1..10000, pageSize 1..50; a conformant server never
+ *  answers more items than the pageSize ceiling, so the paged envelope decodes fail closed
+ *  beyond it (the flat 1000 cap no longer applies — the endpoint is never consumed
+ *  unpaginated any more). */
+const MAX_PAGE_NUMBER = 10000
+const MAX_PAGE_SIZE = 50
 
 export function decodeWindowItem(value: unknown): ScheduleWindowItem {
   const v = exact(value, windowItemKeys)
@@ -134,10 +150,29 @@ export function decodeWindowReceipt(value: unknown): ScheduleWindowReceipt {
     version: isVersion(v.version) ? v.version : invalid(),
   }
 }
+const pageNumber = (value: any): number => {
+  if (!Number.isSafeInteger(value) || value < 1 || value > MAX_PAGE_NUMBER) invalid()
+  return value
+}
+const pageSizeNumber = (value: any): number => {
+  if (!Number.isSafeInteger(value) || value < 1 || value > MAX_PAGE_SIZE) invalid()
+  return value
+}
+const totalCount = (value: any): number => {
+  if (!Number.isSafeInteger(value) || value < 0) invalid()
+  return value
+}
+/** §3.3 paged envelope only: the page always requests pagination, so the legacy
+ *  `{storeId,items}`-only shape is an INVALID_RESPONSE (fail closed, never a silent
+ *  full-list fallback that would break the summary counts). */
 export function decodeWindowPage(value: unknown): ScheduleWindowPage {
-  const v = exact(value, ['storeId', 'items'])
-  if (!Array.isArray(v.items) || v.items.length > MAX_LIST_ITEMS) invalid()
-  return { storeId: isId(v.storeId) ? v.storeId : invalid(), items: v.items.map(decodeWindowItem) }
+  const v = exact(value, ['storeId', 'items', 'page', 'pageSize', 'total'])
+  if (!Array.isArray(v.items) || v.items.length > MAX_PAGE_SIZE) invalid()
+  return {
+    storeId: isId(v.storeId) ? v.storeId : invalid(),
+    items: v.items.map(decodeWindowItem),
+    page: pageNumber(v.page), pageSize: pageSizeNumber(v.pageSize), total: totalCount(v.total),
+  }
 }
 export function decodeBatchCloseResult(value: unknown): BatchCloseResult {
   const v = exact(value, ['storeId', 'closedWindows', 'blockedWindows'])
@@ -406,9 +441,20 @@ export function scheduleClosedReason(error: unknown): string {
 // Slots carry the write identity for ConsumerApi journaling (retry replays the same
 // X-Request-Id; definitive 409s retire the slot inside the real repository).
 // ---------------------------------------------------------------------------
-export type WindowFilter = Readonly<{ serviceId?: string; kind?: WindowKind | '' }>
+/** Store-windows list query (§3.3): page/pageSize are always explicit — the pages never
+ *  fall back to the legacy unpaginated mode — and serviceId/kind/status are the optional
+ *  server-side filters (status feeds both the list chips and the summary count queries). */
+export type WindowPageQuery = Readonly<{
+  page: number; pageSize: number
+  serviceId?: string; kind?: WindowKind | ''; status?: WindowStatus | ''
+}>
+/** Both schedule pages page the windows list at 20 rows like the other M-side lists
+ *  (services/aftersale); the summary count queries fetch a single row — only the
+ *  filter-matched total matters. */
+export const windowListPageSize = 20
+export const windowCountPageSize = 1
 export type ScheduleDeps = {
-  windows(filter: WindowFilter): Promise<ScheduleWindowPage>
+  windows(query: WindowPageQuery): Promise<ScheduleWindowPage>
   createWindow(slot: string, input: WindowFormInput): Promise<ScheduleWindowReceipt>
   updateWindow(slot: string, windowId: string, expectedVersion: string, input: WindowFormInput): Promise<ScheduleWindowReceipt>
   closeWindow(slot: string, windowId: string, expectedVersion: string, reason: string): Promise<ScheduleWindowReceipt>
@@ -532,15 +578,28 @@ export class PreviewScheduleRepository implements ScheduleDeps {
     entry.updatedAt = this.now()
     return { ...entry.window, status: this.statusFor(entry) }
   }
-  async windows(filter: WindowFilter): Promise<ScheduleWindowPage> {
+  async windows(query: WindowPageQuery): Promise<ScheduleWindowPage> {
     this.gate(true)
-    const items = this.store
-      .filter(entry => (filter.serviceId ? entry.window.serviceId === filter.serviceId : true))
-      .filter(entry => (filter.kind ? entry.window.windowKind === filter.kind : true))
+    // Mirror the server's §3.3 parameter discipline: illegal page/pageSize answers the
+    // generic 400 before anything is read.
+    if (!Number.isSafeInteger(query.page) || query.page < 1 || query.page > MAX_PAGE_NUMBER
+      || !Number.isSafeInteger(query.pageSize) || query.pageSize < 1 || query.pageSize > MAX_PAGE_SIZE) {
+      throw new ScheduleMockError('COMMON_INVALID_ARGUMENT', 400)
+    }
+    const matched = this.store
+      .filter(entry => (query.serviceId ? entry.window.serviceId === query.serviceId : true))
+      .filter(entry => (query.kind ? entry.window.windowKind === query.kind : true))
+      .filter(entry => (query.status ? this.statusFor(entry) === query.status : true))
       .map(entry => this.view(entry))
-      // Newest start first; CLOSED windows stay visible (§3 read contract).
-      .sort((a, b) => (a.startAt < b.startAt ? 1 : -1))
-    return { storeId: fixtureStoreId, items }
+      // §3.3 wire order — start_at ascending with id ascending tiebreak — so the preview
+      // slices the same order the server slices; CLOSED windows stay listed (§3 read).
+      .sort((a, b) => (a.startAt === b.startAt ? Number(a.windowId) - Number(b.windowId) : a.startAt < b.startAt ? -1 : 1))
+    const start = (query.page - 1) * query.pageSize
+    return {
+      storeId: fixtureStoreId,
+      items: matched.slice(start, start + query.pageSize), // past the end: empty, total intact
+      page: query.page, pageSize: query.pageSize, total: matched.length,
+    }
   }
   async createWindow(slot: string, input: WindowFormInput): Promise<ScheduleWindowReceipt> {
     this.gate(false)

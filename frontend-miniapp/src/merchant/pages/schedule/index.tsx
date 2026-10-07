@@ -8,9 +8,9 @@ import {
 } from '../../schedule/repository'
 import {
   formatWindowInterval, isScheduleScenario, PreviewScheduleRepository, scheduleAvailability,
-  scheduleClosedReason, scheduleMessage, windowKindText, windowStatusTagClass, windowStatusText,
-  windowStatuses, type ScheduleDeps, type ScheduleWindowItem, type StaffWindowItem,
-  type WindowKind, type WindowStatus,
+  scheduleClosedReason, scheduleMessage, windowCountPageSize, windowKindText, windowListPageSize,
+  windowStatusTagClass, windowStatusText, windowStatuses, type ScheduleDeps,
+  type ScheduleWindowItem, type StaffWindowItem, type WindowKind, type WindowStatus,
 } from '../../schedule/model'
 import { Chip, intervalText, ScheduleShell, useScheduleStyle, type PagePhase } from './parts'
 import './page.css'
@@ -18,7 +18,10 @@ import './page.css'
 // M-002 排期工作台（读） — 商家工作台读（Contract 53号 §3 GET availability-windows +
 // §4 GET staff availability-windows 的呈现）。设计源见 registry §4：无契约语义兼容原稿，
 // 沿 M 端现行页面规范实现；SOLD_OUT 为系统派生态，只读呈现为「已约满」。
+// #122/§3.3 后列表切服务端分页：类型/状态 chips 走服务端过滤（每次选择重拉第 1 页），
+// 摘要三态计数用三个单行 status 过滤请求的信封 total（过滤后匹配总数），不再全量拉取。
 type StaffQuery = 'idle' | 'loading' | 'ready' | 'error'
+type WindowListQuery = { page: number; pageSize: number; kind?: WindowKind; status?: WindowStatus }
 
 export default function ScheduleWorkbenchPage() {
   const route = useRouter()
@@ -31,6 +34,10 @@ export default function ScheduleWorkbenchPage() {
   const [closedReason, setClosedReason] = useState('')
   const [notice, setNotice] = useState('')
   const [windows, setWindows] = useState<readonly ScheduleWindowItem[]>([])
+  const [listTotal, setListTotal] = useState(0)
+  const [page, setPage] = useState(1)
+  const [loadingMore, setLoadingMore] = useState(false)
+  const [summary, setSummary] = useState<Readonly<Record<WindowStatus, number>>>({ OPEN: 0, SOLD_OUT: 0, CLOSED: 0 })
   const [names, setNames] = useState<Map<string, string>>(new Map())
   const [kind, setKind] = useState<WindowKind | ''>('')
   const [status, setStatus] = useState<WindowStatus | ''>('')
@@ -39,6 +46,17 @@ export default function ScheduleWorkbenchPage() {
   const [staffWindows, setStaffWindows] = useState<readonly StaffWindowItem[]>([])
   const mounted = useRef(true)
   const loadSequence = useRef(0)
+  // Server-side chips: load() reads the CURRENT selection through this ref so useDidShow and
+  // chip handlers share one query builder without stale-closure risk.
+  const filterRef = useRef<{ kind: WindowKind | ''; status: WindowStatus | '' }>({ kind: '', status: '' })
+
+  const listQuery = (target: { page: number; kind?: WindowKind | ''; status?: WindowStatus | '' }): WindowListQuery => {
+    const current = filterRef.current
+    const chosenKind = target.kind !== undefined ? target.kind : current.kind
+    const chosenStatus = target.status !== undefined ? target.status : current.status
+    return { page: target.page, pageSize: windowListPageSize,
+      ...(chosenKind ? { kind: chosenKind } : {}), ...(chosenStatus ? { status: chosenStatus } : {}) }
+  }
 
   const load = useCallback(async () => {
     const sequence = ++loadSequence.current
@@ -49,9 +67,20 @@ export default function ScheduleWorkbenchPage() {
     }
     setPhase('loading')
     try {
-      const page = await repository.windows({})
+      // Summary three-state counts: §3.3 total is the filter-matched count, so one single-row
+      // query per status yields the exact count without pulling every window.
+      const [list, openCount, soldOutCount, closedCount] = await Promise.all([
+        repository.windows(listQuery({ page: 1 })),
+        repository.windows({ page: 1, pageSize: windowCountPageSize, status: 'OPEN' }),
+        repository.windows({ page: 1, pageSize: windowCountPageSize, status: 'SOLD_OUT' }),
+        repository.windows({ page: 1, pageSize: windowCountPageSize, status: 'CLOSED' }),
+      ])
       if (!mounted.current || sequence !== loadSequence.current) return
-      setWindows(page.items)
+      setWindows(list.items)
+      setListTotal(list.total)
+      setPage(1)
+      setLoadingMore(false)
+      setSummary({ OPEN: openCount.total, SOLD_OUT: soldOutCount.total, CLOSED: closedCount.total })
       setPhase('ready')
       const coords = scope.current
       if (coords?.merchantId && coords.storeId) {
@@ -89,6 +118,37 @@ export default function ScheduleWorkbenchPage() {
     Taro.navigateTo({ url: `/merchant/pages/schedule/${sub}?preview=${preview ? '1' : '0'}${preview ? `&scenario=${scenario}` : ''}` })
       .catch(() => setNotice('页面跳转失败，请重试'))
   }
+  /** Server-side chips: a selection changes the query, so it re-fetches page 1 of the new
+   *  filter (a client-side filter over one page would lie about later pages). */
+  function selectKind(target: WindowKind | '') {
+    setKind(target)
+    filterRef.current = { ...filterRef.current, kind: target }
+    void load()
+  }
+  function selectStatus(target: WindowStatus | '') {
+    setStatus(target)
+    filterRef.current = { ...filterRef.current, status: target }
+    void load()
+  }
+  /** Append the next server page while some of the filtered total is still unloaded. */
+  async function loadMore() {
+    if (loadingMore || phase !== 'ready' || windows.length >= listTotal || page >= 10000) return
+    const sequence = loadSequence.current
+    setLoadingMore(true)
+    try {
+      const next = await repository.windows(listQuery({ page: page + 1 }))
+      if (!mounted.current || sequence !== loadSequence.current) return
+      const known = new Set(windows.map(item => item.windowId))
+      setWindows(current => [...current, ...next.items.filter(item => !known.has(item.windowId))])
+      setPage(next.page)
+      setListTotal(next.total)
+    } catch (error) {
+      if (!mounted.current || sequence !== loadSequence.current) return
+      setNotice(scheduleMessage(error))
+    } finally {
+      if (mounted.current) setLoadingMore(false)
+    }
+  }
   async function queryStaff() {
     if (!/^[1-9][0-9]{0,18}$/.test(staffId)) { setNotice('请输入正确的员工编号（数字）。'); return }
     setNotice(''); setStaffPhase('loading')
@@ -102,10 +162,6 @@ export default function ScheduleWorkbenchPage() {
     }
   }
 
-  const filtered = windows
-    .filter(item => (kind ? item.windowKind === kind : true))
-    .filter(item => (status ? item.status === status : true))
-  const count = (target: WindowStatus) => windows.filter(item => item.status === target).length
   const serviceName = (serviceId: string) => names.get(serviceId) || `服务 ${serviceId}`
   return <ScheduleShell title='排期工作台' style={style} phase={phase} notice={notice} closedReason={closedReason}
     onRetry={() => void load()} onBack={() => void back()} preview={preview}>
@@ -116,21 +172,21 @@ export default function ScheduleWorkbenchPage() {
         <Button id='sch-go-capabilities' className='sch-entry' onClick={() => open('capabilities')}><Text>员工能力</Text></Button>
       </View>
       <View className='sch-summary' role='status'>
-        <Text>开放 {count('OPEN')} · 已约满 {count('SOLD_OUT')} · 已关闭 {count('CLOSED')}</Text>
+        <Text>开放 {summary.OPEN} · 已约满 {summary.SOLD_OUT} · 已关闭 {summary.CLOSED}</Text>
         <Text className='sch-summary-hint'>「已约满」由系统按占用自动置位，释放后自动回位；商家不可手工置满或强制可约。</Text>
       </View>
       <View className='sch-chip-row'>
-        <Chip selected={kind === ''} onClick={() => setKind('')}>全部类型</Chip>
+        <Chip selected={kind === ''} onClick={() => selectKind('')}>全部类型</Chip>
         {(['GENERAL', 'PICKUP', 'RETURN'] as const).map(target =>
-          <Chip key={target} selected={kind === target} onClick={() => setKind(target)}>{windowKindText[target]}</Chip>)}
+          <Chip key={target} selected={kind === target} onClick={() => selectKind(target)}>{windowKindText[target]}</Chip>)}
       </View>
       <View className='sch-chip-row'>
-        <Chip selected={status === ''} onClick={() => setStatus('')}>全部状态</Chip>
+        <Chip selected={status === ''} onClick={() => selectStatus('')}>全部状态</Chip>
         {windowStatuses.map(target =>
-          <Chip key={target} selected={status === target} onClick={() => setStatus(target)}>{windowStatusText[target]}</Chip>)}
+          <Chip key={target} selected={status === target} onClick={() => selectStatus(target)}>{windowStatusText[target]}</Chip>)}
       </View>
-      {filtered.length === 0 && <View className='sch-empty'><Text>当前筛选下没有服务时段；可到「服务时段管理」新建。</Text></View>}
-      {filtered.map(item => <View key={item.windowId} className='sch-card'>
+      {windows.length === 0 && <View className='sch-empty'><Text>当前筛选下没有服务时段；可到「服务时段管理」新建。</Text></View>}
+      {windows.map(item => <View key={item.windowId} className='sch-card'>
         <View className='sch-card-head'>
           <Text className='sch-card-name'>{serviceName(item.serviceId)}</Text>
           <Text className={windowStatusTagClass(item.status)}>{windowStatusText[item.status]}</Text>
@@ -139,6 +195,8 @@ export default function ScheduleWorkbenchPage() {
         <Text className='sch-card-line'>容量 {item.configuredCapacity} · 版本 {item.version}</Text>
         {item.status === 'SOLD_OUT' && <Text className='sch-card-hint'>已约满：占用达容量自动置位，释放或提高容量后自动回位。</Text>}
       </View>)}
+      {windows.length < listTotal && <Button id='sch-more' className='sch-load-more' disabled={loadingMore}
+        onClick={() => void loadMore()}>{loadingMore ? '正在加载…' : `加载更多（已显示 ${windows.length}/${listTotal}）`}</Button>}
       <View className='sch-section'>
         <Text className='sch-label'>员工排班查询</Text>
         <View className='sch-inline'>

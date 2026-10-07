@@ -21,22 +21,60 @@ const staffForm = (start: string, end: string) =>
 
 test('preview workbench read decodes fixtures and derives SOLD_OUT', async () => {
   const repository = new PreviewScheduleRepository()
-  const page = await repository.windows({})
+  const page = await repository.windows({ page: 1, pageSize: 20 })
   assert.equal(page.items.length, fixtureWindows().length)
+  assert.equal(page.total, fixtureWindows().length)
   const full = page.items.find(item => item.windowId === '61003')!
   assert.equal(full.status, 'SOLD_OUT', 'occupied == capacity derives SOLD_OUT')
   const partial = page.items.find(item => item.windowId === '61002')!
   assert.equal(partial.status, 'OPEN', 'occupied < capacity stays OPEN')
   assert.ok(page.items.some(item => item.status === 'CLOSED'))
-  const filtered = await repository.windows({ kind: 'PICKUP' })
+  const filtered = await repository.windows({ page: 1, pageSize: 20, kind: 'PICKUP' })
   assert.equal(filtered.items.length, 1)
-  const byService = await repository.windows({ serviceId: '30007' })
+  assert.equal(filtered.total, 1)
+  const byService = await repository.windows({ page: 1, pageSize: 20, serviceId: '30007' })
   assert.equal(byService.items.length, 2)
+  assert.equal(byService.total, 2)
+})
+
+test('preview windows paginate §3.3-style: wire order, slices, filter-matched totals, 400 bounds', async () => {
+  const repository = new PreviewScheduleRepository()
+  // Wire order is start_at ascending with id ascending tiebreak (§3.3), so page 1 of 2
+  // carries the earliest two windows of 2026-10-07: 61001 09:00 then 61004 09:30.
+  const all = await repository.windows({ page: 1, pageSize: 20 })
+  assert.deepEqual(all.items.map(item => item.windowId), ['61001', '61004', '61002', '61005', '61003', '61006'])
+  const page1 = await repository.windows({ page: 1, pageSize: 2 })
+  assert.deepEqual(page1.items.map(item => item.windowId), ['61001', '61004'])
+  assert.equal(page1.total, 6)
+  const page3 = await repository.windows({ page: 3, pageSize: 2 })
+  assert.deepEqual(page3.items.map(item => item.windowId), ['61003', '61006'])
+  // Past the end: empty items, total unchanged (§3.3 / 10号通则).
+  const over = await repository.windows({ page: 5, pageSize: 2 })
+  assert.equal(over.items.length, 0)
+  assert.equal(over.total, 6)
+  // Summary count queries ride the status-filtered total (fixtures: 4 OPEN, 1 SOLD_OUT, 1 CLOSED).
+  const open = await repository.windows({ page: 1, pageSize: 1, status: 'OPEN' })
+  assert.equal(open.total, 4)
+  assert.equal(open.items.length, 1)
+  assert.equal((await repository.windows({ page: 1, pageSize: 1, status: 'SOLD_OUT' })).total, 1)
+  assert.equal((await repository.windows({ page: 1, pageSize: 1, status: 'CLOSED' })).total, 1)
+  assert.equal(4 + 1 + 1, all.total, 'three-state totals partition the unfiltered total')
+  // kind × status compose into one WHERE (filter first, then count and slice).
+  const pickupOpen = await repository.windows({ page: 1, pageSize: 20, kind: 'PICKUP', status: 'OPEN' })
+  assert.equal(pickupOpen.total, 1)
+  // Illegal paging values mirror the server's generic 400 before anything is read.
+  for (const bad of [
+    { page: 0, pageSize: 20 }, { page: 10001, pageSize: 20 }, { page: 1.5, pageSize: 20 },
+    { page: 1, pageSize: 0 }, { page: 1, pageSize: 51 }, { page: 1, pageSize: 1.5 },
+  ]) {
+    const rejected = await rejects(() => repository.windows(bad))
+    assert.equal((rejected as ScheduleMockError).code, 'COMMON_INVALID_ARGUMENT', JSON.stringify(bad))
+  }
 })
 
 test('preview enforces occupied-window guards and the capacity-raise re-judge', async () => {
   const repository = new PreviewScheduleRepository()
-  const full = (await repository.windows({})).items.find(item => item.windowId === '61003')!
+  const full = (await repository.windows({ page: 1, pageSize: 20 })).items.find(item => item.windowId === '61003')!
   // Close a full (SOLD_OUT) window → occupied guard.
   const close = await rejects(() => repository.closeWindow('s1', '61003', full.version, '整理'))
   assert.equal((close as ScheduleMockError).code, 'SCHEDULE_WINDOW_STATE_NOT_ALLOWED')
@@ -157,12 +195,14 @@ test('preview capabilities: whole-set CAS replace, removal reason, legacy quaran
 
 test('preview scenarios fail closed and the slot journal replays/locks', async () => {
   const closed = new PreviewScheduleRepository(undefined, undefined, undefined, 'closed')
-  const unavailable = await rejects(() => closed.windows({}))
+  const unavailable = await rejects(() => closed.windows({ page: 1, pageSize: 20 }))
   assert.equal((unavailable as ScheduleMockError).statusCode, 503)
   const empty = new PreviewScheduleRepository(undefined, undefined, undefined, 'empty')
-  assert.equal((await empty.windows({})).items.length, 0)
+  const emptyPage = await empty.windows({ page: 1, pageSize: 20 })
+  assert.equal(emptyPage.items.length, 0)
+  assert.equal(emptyPage.total, 0)
   const loadError = new PreviewScheduleRepository(undefined, undefined, undefined, 'load-error')
-  const failed = await rejects(() => loadError.windows({}))
+  const failed = await rejects(() => loadError.windows({ page: 1, pageSize: 20 }))
   assert.equal((failed as ScheduleMockError).statusCode, 503)
   const repository = new PreviewScheduleRepository()
   const first = await repository.openWindow('s', '61006', '5')
@@ -209,7 +249,8 @@ test('real repository wires the contract routes with workspace coordinates', asy
   }
   const { repository, seen } = await wiredApi(call => {
     if (call.method === 'GET' && /\/availability-windows$/.test(call.path) && call.path.includes('/stores/')) {
-      return ok({ storeId: '958002', items: [] })
+      // §3.3 paged envelope only — the legacy {storeId,items} shape would fail the decode.
+      return ok({ storeId: '958002', items: [], page: 2, pageSize: 20, total: 41 })
     }
     if (call.method === 'POST' && /stores\/958002\/availability-windows$/.test(call.path)) {
       return { statusCode: 201, data: { code: 'SUCCESS', success: true, data: windowReceipt } }
@@ -225,10 +266,23 @@ test('real repository wires the contract routes with workspace coordinates', asy
     }
     return undefined
   })
-  const page = await repository.windows({})
+  const page = await repository.windows({ page: 2, pageSize: 20, kind: 'GENERAL', status: 'OPEN' })
   assert.equal(page.items.length, 0)
+  assert.equal(page.total, 41)
   const listCall = seen.find(item => item.method === 'GET' && item.path === '/api/v1/merchant/stores/958002/availability-windows')!
   assert.equal(listCall.data?.merchantId, '958001')
+  // §3.3 paged mode is explicit on every query: page/pageSize ride the wire alongside the
+  // optional server-side filters (status feeds the summary count queries).
+  assert.equal(listCall.data?.page, 2)
+  assert.equal(listCall.data?.pageSize, 20)
+  assert.equal(listCall.data?.kind, 'GENERAL')
+  assert.equal(listCall.data?.status, 'OPEN')
+  // The count queries send no kind/status-less variant: a plain query carries only the paging.
+  await repository.windows({ page: 1, pageSize: 20 })
+  const plainCall = seen.filter(item => item.method === 'GET' && item.path === '/api/v1/merchant/stores/958002/availability-windows').pop()!
+  assert.equal(plainCall.data?.kind, undefined)
+  assert.equal(plainCall.data?.status, undefined)
+  assert.equal(plainCall.data?.serviceId, undefined)
   const created = await repository.createWindow('r1', formFor('30001', 'GENERAL', '2026-10-07 09:00', '2026-10-07 12:00', 2))
   assert.equal(created.windowId, '61009')
   const createCall = seen.find(item => item.method === 'POST' && item.path === '/api/v1/merchant/stores/958002/availability-windows')!
@@ -321,7 +375,7 @@ test('real repository: definitive 409 retires the slot; 503 keeps it and replays
 test('real repository fails closed on consumer coordinates and validates forms before the wire', async () => {
   const { api, repository } = await wiredApi(() => undefined)
   api.scope.replace({ userId: '101', workspace: 'consumer', merchantId: null, storeId: null })
-  await assert.rejects(() => repository.windows({}), /WORKSPACE_PATH_MISMATCH/)
+  await assert.rejects(() => repository.windows({ page: 1, pageSize: 20 }), /WORKSPACE_PATH_MISMATCH/)
   api.scope.replace({ userId: '101', workspace: 'merchant', merchantId: '958001', storeId: '958002' })
   // Client-side pre-validation mirrors the server answers; nothing reaches the wire.
   const badForm = { ...emptyWindowForm('2026-10-07', '09:00'), serviceId: '' }
