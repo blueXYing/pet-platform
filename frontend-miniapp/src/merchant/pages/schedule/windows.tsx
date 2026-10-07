@@ -7,7 +7,7 @@ import { loadServiceOptions, RealScheduleRepository, type ScheduleServiceOption 
 import { fixtureManagedServices } from '../../services/model'
 import {
   beijingToday, emptyWindowForm, isScheduleScenario, kindsForFulfillment, PreviewScheduleRepository,
-  reasonProblem, scheduleAvailability, scheduleClosedReason, scheduleMessage,
+  reasonProblem, scheduleAvailability, scheduleClosedReason, scheduleMessage, windowListPageSize,
   windowFormFromItem, windowFormProblems, windowKindText, windowStatusTagClass, windowStatusText,
   type ScheduleDeps, type ScheduleWindowItem, type WindowFormInput, type WindowKind,
 } from '../../schedule/model'
@@ -18,6 +18,8 @@ import './page.css'
 // 原稿，沿 M 端现行页面规范实现）。SOLD_OUT 为系统派生态：只读呈现「已约满」，不设手工
 // 置满/强制可约入口；占用窗禁止关闭/改期/降容量（409 呈现），升容量放行并自动回位。
 // 批量关闭按日历日范围提交，单次相交条目 >200 时整笔拒绝（400 呈现），部分成功明示受阻窗。
+// #122/§3.3 后列表切服务端分页：首屏拉第 1 页（20 条），「加载更多」按 total 追加，
+// 计数行用信封 total；每次写操作后整表重拉回第 1 页（与此前全量刷新语义一致）。
 type Panel = 'none' | 'create' | 'batch'
 
 export default function ScheduleWindowsPage() {
@@ -31,6 +33,9 @@ export default function ScheduleWindowsPage() {
   const [closedReason, setClosedReason] = useState('')
   const [notice, setNotice] = useState('')
   const [windows, setWindows] = useState<readonly ScheduleWindowItem[]>([])
+  const [listTotal, setListTotal] = useState(0)
+  const [page, setPage] = useState(1)
+  const [loadingMore, setLoadingMore] = useState(false)
   const [options, setOptions] = useState<readonly ScheduleServiceOption[]>([])
   const [panel, setPanel] = useState<Panel>('none')
   const [create, setCreate] = useState<WindowFormInput>(() => emptyWindowForm(beijingToday(), '09:00'))
@@ -52,9 +57,12 @@ export default function ScheduleWindowsPage() {
     }
     setPhase('loading')
     try {
-      const page = await repository.windows({})
+      const first = await repository.windows({ page: 1, pageSize: windowListPageSize })
       if (!mounted.current || sequence !== loadSequence.current) return
-      setWindows(page.items)
+      setWindows(first.items)
+      setListTotal(first.total)
+      setPage(1)
+      setLoadingMore(false)
       setPhase('ready')
       const coords = scope.current
       if (coords?.merchantId && coords.storeId) {
@@ -82,6 +90,25 @@ export default function ScheduleWindowsPage() {
   async function back() {
     if (Taro.getCurrentPages().length > 1) await Taro.navigateBack().catch(() => setNotice('返回失败，请重试'))
     else await Taro.redirectTo({ url: '/merchant/pages/schedule/index' }).catch(() => setNotice('返回失败，请重试'))
+  }
+  /** Append the next server page while some of the total is still unloaded (§3.3). */
+  async function loadMore() {
+    if (loadingMore || phase !== 'ready' || windows.length >= listTotal || page >= 10000) return
+    const sequence = loadSequence.current
+    setLoadingMore(true)
+    try {
+      const next = await repository.windows({ page: page + 1, pageSize: windowListPageSize })
+      if (!mounted.current || sequence !== loadSequence.current) return
+      const known = new Set(windows.map(item => item.windowId))
+      setWindows(current => [...current, ...next.items.filter(item => !known.has(item.windowId))])
+      setPage(next.page)
+      setListTotal(next.total)
+    } catch (error) {
+      if (!mounted.current || sequence !== loadSequence.current) return
+      setNotice(scheduleMessage(error))
+    } finally {
+      if (mounted.current) setLoadingMore(false)
+    }
   }
   const serviceName = (serviceId: string) => options.find(option => option.serviceId === serviceId)?.serviceName || `服务 ${serviceId}`
 
@@ -153,7 +180,7 @@ export default function ScheduleWindowsPage() {
     onRetry={() => void load()} onBack={() => void back()} preview={preview}>
     <ScrollView className='sch-body' scrollY enhanced showScrollbar={false}>
       <View className='sch-count-row'>
-        <Text className='sch-count'>共 {windows.length} 个时段</Text>
+        <Text className='sch-count'>共 {listTotal} 个时段</Text>
         <Button id='sch-create-toggle' className='sch-count-action' onClick={() => { setPanel(panel === 'create' ? 'none' : 'create'); setEditing(null); setBatchResult('') }}>
           {panel === 'create' ? '收起新建' : '+ 新建时段'}
         </Button>
@@ -248,6 +275,8 @@ export default function ScheduleWindowsPage() {
                 onClick={() => { setEditing(null); setBatchResult(''); setCloseTarget(item); setCloseReason('') }}>关闭</Button>
             </View>}
       </View>)}
+      {windows.length < listTotal && <Button id='sch-windows-more' className='sch-load-more' disabled={loadingMore}
+        onClick={() => void loadMore()}>{loadingMore ? '正在加载…' : `加载更多（已显示 ${windows.length}/${listTotal}）`}</Button>}
       {notice && <Text id='sch-notice' className='sch-notice'>{notice}</Text>}
       <View className='sch-tail'><Text>页面数据：{preview ? '契约 Mock（preview=1，不联调）' : '真实接口（开关未开放时失败关闭）'}</Text></View>
     </ScrollView>

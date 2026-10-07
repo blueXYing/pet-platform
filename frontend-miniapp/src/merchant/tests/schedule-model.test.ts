@@ -57,10 +57,15 @@ test('window decoders are exact-key and fail closed', () => {
 })
 
 test('page and batch decoders enforce their envelopes and the 200-entry cap', () => {
-  const page = decodeWindowPage({ storeId: '958002', items: [baseWindowItem()] })
+  const page = decodeWindowPage({ storeId: '958002', items: [baseWindowItem()], page: 1, pageSize: 20, total: 1 })
   assert.equal(page.items.length, 1)
+  assert.equal(page.total, 1)
+  // Legacy unpaginated shape (no envelope keys) is refused: the pages always request §3.3
+  // pagination, so a legacy answer is an INVALID_RESPONSE instead of a silent full-list
+  // fallback that would corrupt the summary counts.
+  assert.throws(() => decodeWindowPage({ storeId: '958002', items: [baseWindowItem()] }), /INVALID_RESPONSE/)
+  assert.throws(() => decodeWindowPage({ storeId: '958002', items: [] as unknown, page: 1, pageSize: 20, total: 0, extra: 1 }), /INVALID_RESPONSE/)
   assert.throws(() => decodeWindowPage({ storeId: '958002' }), /INVALID_RESPONSE/)
-  assert.throws(() => decodeWindowPage({ storeId: '958002', items: [] as unknown, extra: 1 }), /INVALID_RESPONSE/)
   const receipt = withoutUpdatedAt()
   const batch = decodeBatchCloseResult({ storeId: '958002', closedWindows: [receipt], blockedWindows: [{ window: receipt, reasonCode: 'SCHEDULE_WINDOW_STATE_NOT_ALLOWED' }] })
   assert.equal(batch.blockedWindows[0].reasonCode, 'SCHEDULE_WINDOW_STATE_NOT_ALLOWED')
@@ -69,6 +74,33 @@ test('page and batch decoders enforce their envelopes and the 200-entry cap', ()
   const many = Array.from({ length: 201 }, () => receipt)
   assert.throws(() => decodeBatchCloseResult({ storeId: '958002', closedWindows: many, blockedWindows: [] }), /INVALID_RESPONSE/)
   assert.ok(decodeBatchCloseResult({ storeId: '958002', closedWindows: many.slice(0, 200), blockedWindows: [] }))
+})
+
+test('paged window envelope enforces the §3.3 bounds (fail closed)', () => {
+  const envelope = () => ({ storeId: '958002', items: [] as unknown[], page: 1, pageSize: 20, total: 0 })
+  assert.equal(decodeWindowPage(envelope()).total, 0)
+  assert.equal(decodeWindowPage({ ...envelope(), items: [baseWindowItem()], page: 10000, pageSize: 50, total: 999999 }).page, 10000)
+  for (const mutate of [
+    (v: Record<string, any>) => { v.page = 0 },
+    (v: Record<string, any>) => { v.page = 10001 },
+    (v: Record<string, any>) => { v.page = 1.5 },
+    (v: Record<string, any>) => { v.page = '1' },
+    (v: Record<string, any>) => { v.pageSize = 0 },
+    (v: Record<string, any>) => { v.pageSize = 51 },
+    (v: Record<string, any>) => { v.pageSize = 1.5 },
+    (v: Record<string, any>) => { delete v.pageSize },
+    (v: Record<string, any>) => { v.total = -1 },
+    (v: Record<string, any>) => { v.total = 2.5 },
+    (v: Record<string, any>) => { delete v.total },
+    // A conformant server never answers more rows than the pageSize ceiling (sanity cap).
+    (v: Record<string, any>) => { v.items = Array.from({ length: 51 }, () => baseWindowItem()) },
+  ]) {
+    const value = envelope()
+    mutate(value)
+    assert.throws(() => decodeWindowPage(value), /INVALID_RESPONSE/, JSON.stringify(value))
+  }
+  // Fifty rows is the §3.3 pageSize ceiling: still decodable.
+  assert.equal(decodeWindowPage({ ...envelope(), items: Array.from({ length: 50 }, () => baseWindowItem()), pageSize: 50, total: 50 }).items.length, 50)
 })
 
 test('staff window and capability decoders are exact-key', () => {
