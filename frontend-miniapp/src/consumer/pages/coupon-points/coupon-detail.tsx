@@ -74,7 +74,7 @@ export default function CouponDetailPage() {
   }, [revision, load])
   async function goBack() {
     if (Taro.getCurrentPages().length > 1) await Taro.navigateBack()
-    else await Taro.redirectTo({ url: '/consumer/pages/shell/index' })
+    else await Taro.switchTab({ url: '/consumer/pages/mine/index' })
   }
   return <ConsumerPageLayout page='couponDetail' unit={unit} className='cpn-page' style={style}>
     <View className='cpn-design'>
@@ -88,7 +88,7 @@ export default function CouponDetailPage() {
       {phase === 'loading' && <View className='cpn-state' role='status'><Text>正在读取优惠券…</Text></View>}
       {phase === 'expired' && <View className='cpn-state' role='status'>
         <Text id='cpnd-login-hint'>登录后可查看我的优惠券。</Text>
-        <Button id='cpnd-login' className='cpn-state-action' onClick={() => { void Taro.redirectTo({ url: '/consumer/pages/shell/index' }) }}>去登录</Button>
+        <Button id='cpnd-login' className='cpn-state-action' onClick={() => { void Taro.switchTab({ url: '/consumer/pages/mine/index' }) }}>去登录</Button>
       </View>}
       {phase === 'load-error' && <View className='cpn-state' role='status'>
         <Text id='cpnd-error'>优惠券读取失败，请稍后重试。</Text>

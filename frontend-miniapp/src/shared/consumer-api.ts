@@ -108,7 +108,13 @@ export class ConsumerApi {
   private pending: Record<string, { userId: string; command?: Command; intent?: unknown }> = {}
   currentSession: Session | null = null
   authStep: 'idle' | 'phone' | 'retry' | 'authenticated' = 'idle'
-  constructor(private transport: Transport, private store: LocalStore, readonly uuid: () => Promise<string>, private uploadTransport?: PrivateUploadTransport, private afterSaleAssets?: AfterSaleAssetTransport) {
+  // 用户 2026-10-08 裁决的 401 自动恢复：autoLogin 注入静默重登（silent-login 模块单飞），
+  // 未注入时 request() 行为与既有版本完全一致。显式退出登录后本进程内不再自动复活会话。
+  private autoLogin?: () => Promise<unknown>
+  private loggedOutByUser = false
+  private recoveryFlight: Promise<boolean> | null = null
+  constructor(private transport: Transport, private store: LocalStore, readonly uuid: () => Promise<string>, private uploadTransport?: PrivateUploadTransport, private afterSaleAssets?: AfterSaleAssetTransport, autoLogin?: () => Promise<unknown>) {
+    this.autoLogin = autoLogin
     try { const saved = store.get(SESSION_KEY); if (saved) this.credential = grant(saved) } catch { store.remove(SESSION_KEY) }
     // Persistent pending commands never authorize a user. They are selected only after GET session.
     try { const saved = store.get(WRITE_KEY); if (saved) this.pending = object(saved) } catch { store.remove(WRITE_KEY) }
@@ -202,6 +208,21 @@ export class ConsumerApi {
     this.authFlight = promise
     return promise
   }
+  /** 401 自动恢复（用户 2026-10-08 裁决）：单飞静默重登一次；并发 401 共享同一次恢复。
+   *  显式退出（或退出结果未决）后拒绝恢复——退出登录不能被静默登录复活。调用前须已 clear()
+   *  作废在途凭据（401 证明其失效），否则 ensure 的已认证短路会放行陈旧凭据。 */
+  private recoverAccess(): Promise<boolean> {
+    if (!this.autoLogin) return Promise.resolve(false)
+    if (this.recoveryFlight) return this.recoveryFlight
+    const autoLogin = this.autoLogin
+    const promise = (async () => {
+      if (this.loggedOutByUser || this.logoutCommand || this.logoutFlight) return false
+      try { await autoLogin() } catch { return false }
+      return !!(this.credential && this.currentSession)
+    })().finally(() => { if (this.recoveryFlight === promise) this.recoveryFlight = null })
+    this.recoveryFlight = promise
+    return promise
+  }
   startLogin(login: () => Promise<{ code: string }>) {
     return this.singleAuth(async () => {
       if (this.logoutCommand || this.logoutFlight) throw new Error('LOGOUT_PENDING')
@@ -244,7 +265,7 @@ export class ConsumerApi {
       throw error
     }
   }
-  async request<T>(spec: RequestSpec, decode: (data: unknown) => T): Promise<T> {
+  async request<T>(spec: RequestSpec, decode: (data: unknown) => T, retried = false): Promise<T> {
     if (/^\/api\/v1\/(c|merchant)\/aftersale/.test(spec.path) && !isAfterSalePath(spec)) throw new Error('INVALID_PATH')
     const ticket = this.scope.capture()
     if (!this.credential || !this.currentSession || this.currentSession.userId !== ticket.context.userId) throw new ApiError('COMMON_UNAUTHORIZED', 401)
@@ -278,6 +299,30 @@ export class ConsumerApi {
       ticket.assertCurrent()
       return decode(value)
     } catch (error) {
+      // 401 自动恢复（用户 2026-10-08 裁决）：已带凭据发出的请求遇 401 → 静默重登一次并按
+      // 原请求重试（写请求沿用同一 command/requestId，幂等不破）。仅当恢复后的工作区坐标与
+      // 原请求一致才重试；账号/工作区切换、恢复失败或第二次 401 一律按原 401 错误路径收口
+      // （静默重登内部的 clear() 已使 scope 失效，这里不再复检 STALE，保留原错误给调用方）。
+      if (!retried && error instanceof ApiError && error.statusCode === 401 && this.autoLogin) {
+        ticket.assertCurrent()
+        // 401 证明在途凭据已失效：先作废本地凭据/会话（scope 同步失效，在途工作按既有语义
+        // 走日志重放），再静默重登；恢复后工作区坐标与原请求一致才按原请求重试。在途写日志
+        // 跨恢复保留（恢复后按缺口合并回写）：恢复重试已按原 command 在服务端执行，页面侧
+        // 重放必须沿用原 X-Request-Id，不得二次创建；恢复期间新入日志的槽位以新值为准。
+        const pendingSnapshot = this.pending
+        this.clear()
+        let recovered = false
+        try { recovered = await this.recoverAccess() } catch { recovered = false }
+        const merged = { ...this.pending }
+        for (const slot of Object.keys(pendingSnapshot)) if (!merged[slot]) merged[slot] = pendingSnapshot[slot]
+        this.pending = merged
+        if (Object.keys(this.pending).length) this.store.set(WRITE_KEY, this.pending)
+        else this.store.remove(WRITE_KEY)
+        if (recovered && this.scope.current && this.scope.capture().key === ticket.key) {
+          return await this.request(spec, decode, true)
+        }
+        throw error
+      }
       ticket.assertCurrent()
       if (error instanceof ApiError && error.statusCode === 401) this.clear()
       throw error
@@ -436,6 +481,9 @@ export class ConsumerApi {
     return promise
   }
   private async performLogout() {
+    // Explicit logout is a user decision: no silent auto-login may resurrect the session in
+    // this process (a fresh app launch may silently log in again per the launch bootstrap).
+    this.loggedOutByUser = true
     if (!this.logoutCommand) {
       const token = this.credential?.accessToken
       this.clear() // invalidate immediately, even when the revocation response is lost

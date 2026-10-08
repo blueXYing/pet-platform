@@ -3,7 +3,7 @@ import Taro, { useRouter, useDidShow } from '@tarojs/taro'
 import { useCallback, useEffect, useRef, useState, type CSSProperties } from 'react'
 import { useWorkspace } from '../../../shared/workspace-react'
 import { realServiceRepository } from '../../api/page-repository'
-import { navigationUnavailableMessage } from '../../components/navigation/model'
+import { switchConsumerTab } from '../../components/navigation/switch'
 import { ConsumerPageLayout } from '../../components/page-layout'
 import {
   PreviewServiceRepository, designSamples, fixtureStoreId, isServiceScenario,
@@ -96,7 +96,7 @@ export default function StoreServicesPage() {
     // Actions (not viewing) stay login-gated per the final PRD; anonymous taps get the guide.
     if (detailActionGate(context) === 'login-required') {
       void Taro.showModal({ title: '请先登录', content: `${label}需要先登录，是否前往登录？`, confirmText: '去登录', cancelText: '暂不' })
-        .then(answer => { if (answer.confirm) void Taro.redirectTo({ url: '/consumer/pages/shell/index' }).catch(() => setNotice('页面跳转失败，请重试')) })
+        .then(answer => { if (answer.confirm) void Taro.switchTab({ url: '/consumer/pages/mine/index' }).catch(() => setNotice('页面跳转失败，请重试')) })
         .catch(() => setNotice(''))
       return
     }
@@ -109,7 +109,7 @@ export default function StoreServicesPage() {
   const count = items.length
   const listTop = 711.5
   const reviewTop = listTop + serviceListCardHeight(count) + 15.5
-  return <ConsumerPageLayout page='storeServices' unit={unit} navigation={{ idPrefix: 'svc', disabled: !ready, onSelect: key => { setNotice(navigationUnavailableMessage(key)) }, referencePlacement: undefined }} className='svc-page' style={style}>
+  return <ConsumerPageLayout page='storeServices' unit={unit} navigation={{ idPrefix: 'svc', disabled: !ready, onSelect: key => void switchConsumerTab(key), referencePlacement: undefined }} className='svc-page' style={style}>
     <View className='svc-status-area' />
     {!ready && <View className='svc-state' role='status'>
       <Text>{phase === 'loading' ? '正在加载门店服务…' : phase === 'expired' ? '登录已失效，请重新登录' : phase === 'invalid' ? '门店参数无效' : phase === 'missing' ? '门店不存在或不可访问' : '加载失败，请重试'}</Text>

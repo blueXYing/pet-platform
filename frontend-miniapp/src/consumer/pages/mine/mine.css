@@ -1,0 +1,141 @@
+/* 「我的」tab（设计源：我的 126:675 骨架子集；用户卡片浅蓝统计条沿原稿，胶带贴纸等装饰
+   为偏差项留补稿轮）。状态样式一律 className 变体（mine-card-* / mine-logout-hidden）。 */
+.mine-page {
+  min-height: 100vh;
+  background: #f0fbff;
+  display: flex;
+  flex-direction: column;
+}
+.mine-status-area { height: calc(var(--mine-top) + 4px); background: linear-gradient(160deg, #cdeede 0%, #c0ecff 100%); }
+.mine-header {
+  padding: calc(var(--mine-unit) * 6) calc(var(--mine-unit) * 12);
+  background: linear-gradient(160deg, #cdeede 0%, #c0ecff 100%);
+}
+.mine-title { font-size: calc(var(--mine-unit) * 10); font-weight: 700; color: #3c3c3c; }
+.mine-body { flex: 1; height: 0; padding: 0 calc(var(--mine-unit) * 8) calc(var(--mine-unit) * 20); box-sizing: border-box; }
+.mine-card {
+  margin-top: calc(var(--mine-unit) * 8);
+  padding: calc(var(--mine-unit) * 10);
+  background: #ffffff;
+  border-radius: calc(var(--mine-unit) * 12);
+  border: 1px solid #dcecf7;
+}
+.mine-card-pending { display: flex; align-items: center; justify-content: center; color: #7b9aa8; font-size: calc(var(--mine-unit) * 4); }
+.mine-user-row { display: flex; align-items: center; gap: calc(var(--mine-unit) * 5); }
+.mine-avatar {
+  width: calc(var(--mine-unit) * 20);
+  height: calc(var(--mine-unit) * 20);
+  border-radius: 50%;
+  border: 2px solid #ffffff;
+  background: #c0ecff;
+  flex-shrink: 0;
+}
+.mine-user-main { flex: 1; display: flex; flex-direction: column; min-width: 0; }
+.mine-nickname { font-size: calc(var(--mine-unit) * 7); font-weight: 700; color: #3c3c3c; }
+.mine-phone { margin-top: calc(var(--mine-unit) * 2); font-size: calc(var(--mine-unit) * 3.8); color: #577683; }
+.mine-link { padding: calc(var(--mine-unit) * 2) calc(var(--mine-unit) * 4); margin: 0; background: transparent; border: none; line-height: 1.4; }
+.mine-link::after { border: none; }
+.mine-link-text { font-size: calc(var(--mine-unit) * 3.6); color: #53bfee; }
+.mine-stats {
+  margin-top: calc(var(--mine-unit) * 8);
+  padding: calc(var(--mine-unit) * 5) calc(var(--mine-unit) * 3);
+  background: #f2f9ff;
+  border-radius: calc(var(--mine-unit) * 10);
+  display: flex;
+}
+.mine-stat { flex: 1; display: flex; flex-direction: column; align-items: center; padding: 0; margin: 0; background: transparent; border: none; }
+.mine-stat::after { border: none; }
+.mine-stat-value { font-size: calc(var(--mine-unit) * 6.4); font-weight: 700; color: #3c3c3c; }
+.mine-stat-label { margin-top: calc(var(--mine-unit) * 1.5); font-size: calc(var(--mine-unit) * 3.2); color: #7b9aa8; }
+.mine-guide { display: flex; flex-direction: column; align-items: stretch; }
+.mine-guide-title { font-size: calc(var(--mine-unit) * 6.4); font-weight: 700; color: #3c3c3c; }
+.mine-guide-body { margin-top: calc(var(--mine-unit) * 3); font-size: calc(var(--mine-unit) * 3.8); color: #577683; line-height: 1.6; }
+.mine-guide-primary {
+  margin-top: calc(var(--mine-unit) * 7);
+  background: #53bfee;
+  color: #ffffff;
+  font-size: calc(var(--mine-unit) * 4.4);
+  font-weight: 600;
+  border-radius: calc(var(--mine-unit) * 10);
+  border: none;
+  line-height: 2.4;
+}
+.mine-guide-primary::after { border: none; }
+.mine-guide-primary[disabled] { background: #a7dcfa; color: #f0fbff; }
+.mine-guide-secondary {
+  margin-top: calc(var(--mine-unit) * 4);
+  background: transparent;
+  color: #7b9aa8;
+  font-size: calc(var(--mine-unit) * 3.8);
+  border: none;
+  line-height: 2.2;
+}
+.mine-guide-secondary::after { border: none; }
+.mine-guide-collapsed { padding: calc(var(--mine-unit) * 3) 0; margin: 0; background: transparent; border: none; text-align: left; }
+.mine-guide-collapsed::after { border: none; }
+.mine-guide-collapsed-text { font-size: calc(var(--mine-unit) * 3.8); color: #53bfee; }
+.mine-notice {
+  margin-top: calc(var(--mine-unit) * 5);
+  padding: calc(var(--mine-unit) * 4) calc(var(--mine-unit) * 5);
+  background: #fff6e5;
+  border-radius: calc(var(--mine-unit) * 8);
+  font-size: calc(var(--mine-unit) * 3.4);
+  color: #7b5b4a;
+}
+.mine-hub {
+  margin-top: calc(var(--mine-unit) * 8);
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: calc(var(--mine-unit) * 5);
+}
+.mine-hub-cell {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: calc(var(--mine-unit) * 6) calc(var(--mine-unit) * 7);
+  background: #ffffff;
+  border-radius: calc(var(--mine-unit) * 10);
+  border: 1px solid #dcecf7;
+  margin: 0;
+}
+.mine-hub-cell::after { border: none; }
+.mine-hub-label { font-size: calc(var(--mine-unit) * 4.6); font-weight: 600; color: #3c3c3c; }
+.mine-hub-go { font-size: calc(var(--mine-unit) * 5); color: #9db6c2; }
+.mine-wide {
+  margin-top: calc(var(--mine-unit) * 5);
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  text-align: left;
+  gap: calc(var(--mine-unit) * 1.5);
+  padding: calc(var(--mine-unit) * 7) calc(var(--mine-unit) * 7);
+  background: #cdeede;
+  border-radius: calc(var(--mine-unit) * 10);
+  border: 1px solid #b6e2d0;
+  margin-left: 0;
+  margin-right: 0;
+  width: auto;
+}
+.mine-wide::after { border: none; }
+.mine-wide-title { font-size: calc(var(--mine-unit) * 5.4); font-weight: 700; color: #33695a; }
+.mine-wide-sub { font-size: calc(var(--mine-unit) * 3.4); color: #4d7c6b; }
+.mine-footer {
+  margin-top: calc(var(--mine-unit) * 10);
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: calc(var(--mine-unit) * 4);
+}
+.mine-logout {
+  background: #ffffff;
+  color: #e06c5a;
+  font-size: calc(var(--mine-unit) * 4.2);
+  border: 1px solid #f2d9d4;
+  border-radius: calc(var(--mine-unit) * 10);
+  line-height: 2.6;
+}
+.mine-logout::after { border: none; }
+.mine-logout-hidden { display: none; }
+.mine-developer { padding: calc(var(--mine-unit) * 3) 0; margin: 0; background: transparent; border: none; line-height: 1.6; }
+.mine-developer::after { border: none; }
+.mine-developer-text { font-size: calc(var(--mine-unit) * 3.2); color: #9db6c2; }

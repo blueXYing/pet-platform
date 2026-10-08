@@ -27,7 +27,7 @@ export default function NotificationPreferencesPage() {
   useEffect(() => () => controller.dispose(), [controller])
   async function back() {
     if (Taro.getCurrentPages().length > 1) await Taro.navigateBack()
-    else await Taro.redirectTo({ url: '/consumer/pages/shell/index' })
+    else await Taro.switchTab({ url: '/consumer/pages/mine/index' })
   }
   const [windowInfo] = useState(() => Taro.getWindowInfo())
   const style = { '--ntf-pref-top': `${windowInfo.statusBarHeight || 0}px` } as CSSProperties
@@ -42,7 +42,7 @@ export default function NotificationPreferencesPage() {
         {(state.status === 'error' || state.status === 'unauthorized') && <View className='ntf-pref-card'>
           <Text>{state.notice || '通知偏好读取失败，请稍后重试。'}</Text>
           {state.status === 'unauthorized'
-            ? <Button id='ntf-pref-login' onClick={() => void Taro.redirectTo({ url: '/consumer/pages/shell/index' })}>去登录</Button>
+            ? <Button id='ntf-pref-login' onClick={() => void Taro.switchTab({ url: '/consumer/pages/mine/index' })}>去登录</Button>
             : <Button id='ntf-pref-retry' onClick={() => void controller.load()}>重试</Button>}
         </View>}
         {state.status === 'ready' && state.draft !== null && <>

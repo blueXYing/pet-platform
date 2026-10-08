@@ -66,7 +66,7 @@ export default function StaffInvitationPage() {
     Taro.redirectTo({ url: '/merchant/pages/staff-workbench/index' }).catch(() => setNotice('页面跳转失败，请重试'))
   }
   function goShell() {
-    Taro.reLaunch({ url: '/consumer/pages/shell/index' }).catch(() => setNotice('页面跳转失败，请重试'))
+    Taro.switchTab({ url: '/consumer/pages/mine/index' }).catch(() => setNotice('页面跳转失败，请重试'))
   }
 
   const ready = state.status === 'ready'

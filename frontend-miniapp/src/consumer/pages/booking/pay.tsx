@@ -4,7 +4,7 @@ import { useCallback, useEffect, useRef, useState, type CSSProperties } from 're
 import { useWorkspace } from '../../../shared/workspace-react'
 import { consumerApi } from '../../../shared/consumer-runtime'
 import { ApiError } from '../../../shared/request'
-import { navigationUnavailableMessage } from '../../components/navigation/model'
+import { switchConsumerTab } from '../../components/navigation/switch'
 import { ConsumerPageLayout } from '../../components/page-layout'
 import { appointmentWindow, orderReadMessage, orderStatusBadge, PreviewOrderReadRepository, type OrderDetailView } from '../../orders/model'
 import { RealOrderReadRepository } from '../../orders/repository'
@@ -111,7 +111,7 @@ function PayScreen({ preview, scenario, orderId }: { preview: boolean; scenario:
     void Taro.redirectTo({ url: `/consumer/pages/orders/list${preview ? '?preview=1' : ''}` })
       .catch(() => setNotice('页面跳转失败，请重试'))
   }
-  function goLogin() { void Taro.redirectTo({ url: '/consumer/pages/shell/index' }) }
+  function goLogin() { void Taro.switchTab({ url: '/consumer/pages/mine/index' }) }
   async function goBack() {
     if (Taro.getCurrentPages().length > 1) await Taro.navigateBack()
     else await Taro.redirectTo({ url: `/consumer/pages/orders/detail?${preview ? 'preview=1&' : ''}orderId=${encodeURIComponent(orderId)}` })
@@ -123,7 +123,7 @@ function PayScreen({ preview, scenario, orderId }: { preview: boolean; scenario:
   // 幂等恢复提示：真实模式存在未确认的发起命令时，按钮文案改为重试原发起（同一 X-Request-Id）。
   const pendingLaunch = !preview && consumerApi.pendingCommand(paymentSlot(orderId)) !== undefined
   return <ConsumerPageLayout page='bookingPay' unit={unit} className='bkg-page' style={style}
-    navigation={{ idPrefix: 'bkp', disabled: phase === 'loading', onSelect: key => { void Taro.showToast({ title: navigationUnavailableMessage(key), icon: 'none' }) } }}>
+    navigation={{ idPrefix: 'bkp', disabled: phase === 'loading', onSelect: key => { void switchConsumerTab(key) } }}>
     <View className='bkg-design'>
       <View className='bkg-status-area' />
       <View className='bkg-nav'>

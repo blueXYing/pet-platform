@@ -1,5 +1,5 @@
 import { ConsumerPageLayout } from '../../components/page-layout'
-import { navigationUnavailableMessage } from '../../components/navigation/model'
+import { switchConsumerTab } from '../../components/navigation/switch'
 import { Button, Image, Text, View } from '@tarojs/components'
 import Taro, { useRouter, useDidShow } from '@tarojs/taro'
 import { useCallback, useEffect, useRef, useState, type CSSProperties } from 'react'
@@ -122,7 +122,7 @@ export default function PetArchiveList() {
   }
   const extraRows = Math.max(0, pets.length - 2) * 85
   const ready = phase === 'ready'
-  return <ConsumerPageLayout page='petList' unit={unit} navigation={{ idPrefix: 'pet', disabled: phase !== 'ready', onSelect: key => { setNotice(navigationUnavailableMessage(key)) }, referencePlacement: undefined }} className={`pet-page pet-list-page${referenceCanvas ? ' pet-reference-canvas' : ''}`} style={style}>
+  return <ConsumerPageLayout page='petList' unit={unit} navigation={{ idPrefix: 'pet', disabled: phase !== 'ready', onSelect: key => void switchConsumerTab(key), referencePlacement: undefined }} className={`pet-page pet-list-page${referenceCanvas ? ' pet-reference-canvas' : ''}`} style={style}>
     <View className='pet-status-area' />
     <View className='pet-design pet-list-design' data-phase={phase} style={{ '--pet-list-extra': `${extraRows * unit}px` } as CSSProperties}>
       <Image className='pet-list-strip' src={stripMain} mode='scaleToFill' />
@@ -131,7 +131,7 @@ export default function PetArchiveList() {
       <Image className='pet-list-tape' src={tape} mode='scaleToFill' />
       {!ready && <View className='pet-state pet-list-state' role='status'>
         <Text>{phase === 'loading' ? '正在加载宠物档案…' : phase === 'expired' ? '登录已失效，请重新登录' : phase === 'load-error' ? '加载失败，请重试' : '宠物服务暂不可用，请稍后再试'}</Text>
-        {!preview && phase === 'expired' && <Button className='pet-state-action' onClick={() => Taro.redirectTo({ url: '/consumer/pages/shell/index' })}>去登录</Button>}
+        {!preview && phase === 'expired' && <Button className='pet-state-action' onClick={() => Taro.switchTab({ url: '/consumer/pages/mine/index' })}>去登录</Button>}
         {phase === 'load-error' && <Button id='pet-retry-load' className='pet-state-action' onClick={() => void load()}>重新加载</Button>}
       </View>}
       {ready && pets.length === 0 && <View className='pet-state pet-list-state' role='status'>

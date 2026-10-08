@@ -3,7 +3,7 @@ import Taro, { useDidShow, useRouter } from '@tarojs/taro'
 import { Button, Image, Text, View } from '@tarojs/components'
 import { useSyncExternalStore } from 'react'
 import { ConsumerPageLayout } from '../../components/page-layout'
-import { navigationUnavailableMessage } from '../../components/navigation/model'
+import { switchConsumerTab } from '../../components/navigation/switch'
 import { useWorkspace } from '../../../shared/workspace-react'
 import { SigningController } from '../../merchant-application/signing'
 import { signingRuntime } from '../../merchant-application/signing-runtime'
@@ -30,11 +30,11 @@ function SigningScreen({ preview, merchantParam, scope }: { preview: boolean; me
   async function leave() {
     controller.leave()
     if (Taro.getCurrentPages().length > 1) await Taro.navigateBack()
-    else await Taro.redirectTo({ url: '/consumer/pages/shell/index' })
+    else await Taro.switchTab({ url: '/consumer/pages/mine/index' })
   }
   const receiptVersion = state.receipt?.agreementVersion || ''
   const receiptTime = state.receipt?.acceptedAt || ''
-  return <ConsumerPageLayout page='merchantApplication' unit={unit} className='application-page signing-page' style={style} navigation={{ idPrefix: 'signing', disabled: state.busy, onSelect: key => void Taro.showToast({ title: navigationUnavailableMessage(key), icon: 'none' }) }}>
+  return <ConsumerPageLayout page='merchantApplication' unit={unit} className='application-page signing-page' style={style} navigation={{ idPrefix: 'signing', disabled: state.busy, onSelect: key => void switchConsumerTab(key) }}>
     <View className='application-design' data-state={state.phase}>
       <View className='application-header'><Button id='signing-back' ariaLabel='返回' disabled={state.busy} onClick={() => void leave()}><Image src={back} mode='scaleToFill' /></Button><Text>商家协议签署</Text></View>
       <View className='application-content'>
@@ -42,7 +42,7 @@ function SigningScreen({ preview, merchantParam, scope }: { preview: boolean; me
         {state.phase === 'switching' && <View className='application-state' role='status'>签署工作区已切换，请重新进入签署。</View>}
         {state.phase === 'loading' && <View className='application-state' role='status'>正在读取协议…</View>}
         {state.phase === 'invalid-merchant' && <View className='application-state' role='alert'>商家标识无效，请从申请页重新进入。</View>}
-        {state.phase === 'unauthorized' && <View className='application-state'><Text>请先登录后继续签署</Text><Button id='signing-login' onClick={() => void Taro.redirectTo({ url: '/consumer/pages/shell/index' })}>去登录</Button></View>}
+        {state.phase === 'unauthorized' && <View className='application-state'><Text>请先登录后继续签署</Text><Button id='signing-login' onClick={() => void Taro.switchTab({ url: '/consumer/pages/mine/index' })}>去登录</Button></View>}
         {state.phase === 'denied' && <View className='application-state' role='alert'>当前账号无权查看或签署该商家协议。<Button id='signing-denied-reload' disabled={state.busy} onClick={() => controller.reread()}>重新读取</Button></View>}
         {state.phase === 'load-failed' && <View className='application-state' role='alert'>{state.notice || '协议读取失败。'}<Button id='signing-reload' disabled={state.busy} onClick={() => controller.reread()}>重新读取协议</Button></View>}
         {state.phase === 'recovering' && <View className='application-state' role='status'>

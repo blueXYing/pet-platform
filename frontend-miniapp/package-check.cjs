@@ -4,7 +4,30 @@ const path = require('node:path')
 const assert = require('node:assert/strict')
 const root = path.join(__dirname, 'dist')
 const app = JSON.parse(fs.readFileSync(path.join(root, 'app.json'), 'utf8'))
-assert.deepEqual(app.pages, ['consumer/pages/shell/index', 'consumer/pages/diagnostics/index', 'consumer/pages/profile-edit/index', 'consumer/pages/messages/index'])
+assert.deepEqual(app.pages, ['consumer/pages/home/index', 'consumer/pages/services/index', 'consumer/pages/community/index', 'consumer/pages/messages/index', 'consumer/pages/mine/index', 'consumer/pages/shell/index', 'consumer/pages/diagnostics/index', 'consumer/pages/profile-edit/index'])
+// Native tabBar (2026-10-08 adjudication): five equal tabs, main-package pages only, icons are
+// the registry-extracted original cuts (no selected-state variant — registered design deviation).
+assert.deepEqual(app.tabBar, {
+  color: '#3c3c3c', selectedColor: '#53bfee', backgroundColor: '#ffffff', borderStyle: 'black',
+  list: [
+    { pagePath: 'consumer/pages/home/index', text: '首页', iconPath: 'consumer/assets/navigation/home.png', selectedIconPath: 'consumer/assets/navigation/home.png' },
+    { pagePath: 'consumer/pages/services/index', text: '服务', iconPath: 'consumer/assets/navigation/services.png', selectedIconPath: 'consumer/assets/navigation/services.png' },
+    { pagePath: 'consumer/pages/community/index', text: '宠友圈', iconPath: 'consumer/assets/navigation/community.png', selectedIconPath: 'consumer/assets/navigation/community.png' },
+    { pagePath: 'consumer/pages/messages/index', text: '消息', iconPath: 'consumer/assets/navigation/messages.png', selectedIconPath: 'consumer/assets/navigation/messages.png' },
+    { pagePath: 'consumer/pages/mine/index', text: '我的', iconPath: 'consumer/assets/navigation/mine.png', selectedIconPath: 'consumer/assets/navigation/mine.png' },
+  ],
+})
+for (const tab of app.tabBar.list) {
+  assert.ok(app.pages.includes(tab.pagePath), 'tab page must be a main-package page: ' + tab.pagePath)
+  assert.ok(fs.existsSync(path.join(root, tab.iconPath)), 'tab icon missing from dist: ' + tab.iconPath)
+}
+// Tab page artifacts (tabbar+login slice): home/services/community/mine are new main-package pages.
+for (const page of ['home/index', 'services/index', 'community/index', 'mine/index']) {
+  for (const extension of ['js', 'json', 'wxml', 'wxss']) {
+    assert.ok(fs.existsSync(path.join(root, `consumer/pages/${page}.` + extension)),
+      `Tab page artifact missing: ${page}.${extension}`)
+  }
+}
 for (const extension of ['js', 'json', 'wxml', 'wxss']) {
   assert.ok(fs.existsSync(path.join(root, 'consumer/pages/profile-edit/index.' + extension)),
     'C-002 profile page artifact missing: ' + extension)

@@ -1,5 +1,5 @@
 import { ConsumerPageLayout } from '../../components/page-layout'
-import { navigationUnavailableMessage } from '../../components/navigation/model'
+import { switchConsumerTab } from '../../components/navigation/switch'
 import { Button, Image, Text, View } from '@tarojs/components'
 import Taro, { useRouter, useDidShow } from '@tarojs/taro'
 import { useCallback, useEffect, useRef, useState, type CSSProperties } from 'react'
@@ -84,7 +84,7 @@ export default function PetArchiveDetail() {
   }, [])
   async function leave() {
     if (Taro.getCurrentPages().length > 1) await Taro.navigateBack()
-    else await Taro.redirectTo({ url: '/consumer/pages/shell/index' })
+    else await Taro.switchTab({ url: '/consumer/pages/mine/index' })
   }
   function editPet() {
     if (!pet) return
@@ -97,7 +97,7 @@ export default function PetArchiveDetail() {
   const supplement = previewSupplement(preview && ready ? pet.petId : undefined)
   const tag = supplement.tag
   const photo = ready ? pet.avatarUrl || (preview ? (pet.petId === '30001' ? petPhoto : pet.petId === '30002' ? catPhoto : null) : null) : null
-  return <ConsumerPageLayout page='petDetail' unit={unit} navigation={{ idPrefix: 'pet', disabled: phase !== 'ready', onSelect: key => { setNotice(navigationUnavailableMessage(key)) }, referencePlacement: referenceCanvas ? { bottom: 0, height: 61 } : undefined }} className={`pet-page pet-detail-page${referenceCanvas ? ' pet-reference-canvas' : ''}`} style={style}>
+  return <ConsumerPageLayout page='petDetail' unit={unit} navigation={{ idPrefix: 'pet', disabled: phase !== 'ready', onSelect: key => void switchConsumerTab(key), referencePlacement: referenceCanvas ? { bottom: 0, height: 61 } : undefined }} className={`pet-page pet-detail-page${referenceCanvas ? ' pet-reference-canvas' : ''}`} style={style}>
     <View className='pet-status-area' />
     <View className='pet-design pet-detail-design' data-phase={phase}>
       <Image className='pet-abs pet-detail-strip1' src={stripMain} mode='scaleToFill' />
@@ -112,7 +112,7 @@ export default function PetArchiveDetail() {
         <Button id='pet-detail-edit' className='pet-abs pet-detail-edit' ariaLabel='编辑宠物信息' disabled={!ready} onClick={editPet}><Image src={navEdit} mode='scaleToFill' /></Button>
       {!ready && <View className='pet-state pet-detail-state' role='status'>
         <Text>{notice || (phase === 'loading' ? '正在加载宠物档案…' : phase === 'expired' ? '登录已失效，请重新登录' : phase === 'unavailable' ? '宠物服务暂不可用，请稍后再试' : '加载失败，请重试')}</Text>
-        {!preview && phase === 'expired' && <Button className='pet-state-action' onClick={() => Taro.redirectTo({ url: '/consumer/pages/shell/index' })}>去登录</Button>}
+        {!preview && phase === 'expired' && <Button className='pet-state-action' onClick={() => Taro.switchTab({ url: '/consumer/pages/mine/index' })}>去登录</Button>}
         {phase === 'load-error' && <Button id='pet-retry-load' className='pet-state-action' onClick={() => void load()}>重新加载</Button>}
       </View>}
       {ready && <>

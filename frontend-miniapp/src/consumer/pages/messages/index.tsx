@@ -8,14 +8,21 @@ import './index.scss'
 
 // No Figma original exists for the message center (design registry section 4); this page
 // follows the application-page language and is not a 1:1 restoration or VIS pass.
+// tabbar+login slice (2026-10-08): this page is now a native tabBar page; the back button only
+// renders when actually stacked (tab entry is a page-stack root) and the 401 guide leads to the
+// phone-authorization card on the “mine” tab instead of the demoted engineering shell.
 export default function MessagesPage() {
   const [controller] = useState(() => new MessagesController(realNotificationDeps()))
   const state = useSyncExternalStore(controller.subscribe, controller.getSnapshot)
+  const [stacked] = useState(() => Taro.getCurrentPages().length > 1)
   useDidShow(() => { void controller.load() })
   useEffect(() => () => controller.dispose(), [controller])
   async function back() {
     if (Taro.getCurrentPages().length > 1) await Taro.navigateBack()
-    else await Taro.redirectTo({ url: '/consumer/pages/shell/index' })
+    else await Taro.switchTab({ url: '/consumer/pages/home/index' })
+  }
+  function goAuthorize() {
+    void Taro.switchTab({ url: '/consumer/pages/mine/index' })
   }
   function jump() {
     const detail = state.detail
@@ -31,7 +38,7 @@ export default function MessagesPage() {
   return <ConsumerPageLayout page='profileEdit' unit={1} className='messages-page messages-subpage' style={style}>
     <View className='messages-design' data-state={state.status}>
       <View className='messages-header'>
-        <Button id='messages-back' ariaLabel='返回' onClick={() => void back()}>返回</Button>
+        {stacked && <Button id='messages-back' ariaLabel='返回' onClick={() => void back()}>返回</Button>}
         <Text>{state.detail ? '消息详情' : '消息中心'}</Text>
         {state.detail === null && <Button id='messages-preferences' ariaLabel='通知偏好设置'
           onClick={() => void Taro.navigateTo({ url: '/consumer/pages/notification-preferences/index' })}>通知偏好</Button>}
@@ -41,7 +48,7 @@ export default function MessagesPage() {
         {(state.status === 'empty' || state.status === 'error' || state.status === 'unauthorized') && <View className='messages-card'>
           <Text>{state.notice || '暂无消息。'}</Text>
           {state.status === 'unauthorized'
-            ? <Button id='messages-login' onClick={() => void Taro.redirectTo({ url: '/consumer/pages/shell/index' })}>去登录</Button>
+            ? <Button id='messages-login' onClick={goAuthorize}>去登录</Button>
             : state.status === 'error' ? <Button id='messages-retry' onClick={() => void controller.load()}>重试</Button> : null}
         </View>}
         {state.status === 'ready' && state.detail === null && <View className='messages-list'>

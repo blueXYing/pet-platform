@@ -1,5 +1,6 @@
-// One C-end navigation registry. Top-level business routes are not implemented yet.
-// A pet archive module must not be presented as the real home route.
+// One C-end navigation registry. The five top-level tabs are real native tabBar pages since the
+// 2026-10-08 tabbar+login slice (app.config.ts tabBar); subpages route to them via switchTab.
+// 本模块保持纯数据（无 Taro 依赖，node 测试可直接驱动）；switchTab 帮助函数在 switch.ts。
 export const consumerNavigationItems = [
   { key: 'home', label: '首页' },
   { key: 'services', label: '服务' },
@@ -10,10 +11,15 @@ export const consumerNavigationItems = [
 export type ConsumerNavigationKey = typeof consumerNavigationItems[number]['key']
 export type ConsumerNavigationItem = typeof consumerNavigationItems[number]
 
-export function navigationUnavailableMessage(key: ConsumerNavigationKey): string {
-  const item = consumerNavigationItems.find(item => item.key === key)!
-  return `“${item.label}”页面尚未接入本次预览`
-}
+// Native tabBar page routes (must stay main-package pages; registered in app.config.ts tabBar
+// and asserted by package-check.cjs).
+export const consumerTabRoutes = {
+  home: '/consumer/pages/home/index',
+  services: '/consumer/pages/services/index',
+  community: '/consumer/pages/community/index',
+  messages: '/consumer/pages/messages/index',
+  mine: '/consumer/pages/mine/index',
+} as const satisfies Record<ConsumerNavigationKey, string>
 
 export const consumerPageSections = {
   profileEdit: 'mine', petList: 'home', petDetail: 'home', petForm: 'home', merchantApplication: 'mine',

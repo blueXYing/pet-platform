@@ -3,7 +3,7 @@ import Taro, { useRouter } from '@tarojs/taro'
 import { useCallback, useEffect, useRef, useState, type CSSProperties } from 'react'
 import { useWorkspace } from '../../../shared/workspace-react'
 import { consumerApi } from '../../../shared/consumer-runtime'
-import { navigationUnavailableMessage } from '../../components/navigation/model'
+import { switchConsumerTab } from '../../components/navigation/switch'
 import { ConsumerPageLayout } from '../../components/page-layout'
 import {
   couponsByStatus, isCouponPointsScenario, statusTabLabels, thresholdLabel,
@@ -99,16 +99,16 @@ export default function CouponsPage() {
       setPage(result.page); setTotal(result.total)
     } catch { setNotice('加载更多失败，请重试。') } finally { setLoadingMore(false) }
   }
-  function goLogin() { void Taro.redirectTo({ url: '/consumer/pages/shell/index' }) }
+  function goLogin() { void Taro.switchTab({ url: '/consumer/pages/mine/index' }) }
   async function goBack() {
     if (Taro.getCurrentPages().length > 1) await Taro.navigateBack()
-    else await Taro.redirectTo({ url: '/consumer/pages/shell/index' })
+    else await Taro.switchTab({ url: '/consumer/pages/mine/index' })
   }
   const ready = phase === 'ready'
   // preview：ready 才出 tab（PR#105 行为不变）；real：首个桶成功后 tab 常驻，切换即服务端查询。
   const visible = preview ? couponsByStatus(coupons, tab) : coupons
   return <ConsumerPageLayout page='couponList' unit={unit} className='cpn-page'
-    navigation={{ idPrefix: 'cpn', disabled: !ready, onSelect: key => setNotice(navigationUnavailableMessage(key)) }}
+    navigation={{ idPrefix: 'cpn', disabled: !ready, onSelect: key => void switchConsumerTab(key) }}
     style={style}>
     <View className='cpn-design'>
       <View className='cpn-status-area' />

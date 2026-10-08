@@ -1,0 +1,24 @@
+{
+  "sourceVersion": "2401180846436413285",
+  "note": "Home header icons rendered from C-end file frame 首页1 61:599 (search 62:27, bell 62:43) at scale 2; one batched Figma images call (quota noted in the design source registry). The location pin (62:9) was rendered but stays unused: V1 has no C-side geolocation surface, so the home header omits the city selector (registered deviation).",
+  "assets": [
+    {
+      "nodeId": "62:27",
+      "file": "frontend-miniapp/src/consumer/assets/home/home-search.png",
+      "scale": 2,
+      "version": "2401180846436413285",
+      "status": "DOWNLOADED",
+      "sha256": "0bce2440cd951f6535869da86fc8a823289bf45af23f438ed5f27deb788d6589",
+      "bytes": 1302
+    },
+    {
+      "nodeId": "62:43",
+      "file": "frontend-miniapp/src/consumer/assets/home/home-bell.png",
+      "scale": 2,
+      "version": "2401180846436413285",
+      "status": "DOWNLOADED",
+      "sha256": "72faa2f962bf5b3718430538a2fd747cee6e095a55ad8c41ec933d95ba37cef9",
+      "bytes": 1512
+    }
+  ]
+}

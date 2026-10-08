@@ -3,7 +3,7 @@ import Taro, { useDidShow, useDidHide, useRouter } from '@tarojs/taro'
 import { useEffect, useRef, useState, useSyncExternalStore, type CSSProperties } from 'react'
 import { useWorkspace } from '../../../shared/workspace-react'
 import { consumerApi } from '../../../shared/consumer-runtime'
-import { navigationUnavailableMessage } from '../../components/navigation/model'
+import { switchConsumerTab } from '../../components/navigation/switch'
 import { ConsumerPageLayout } from '../../components/page-layout'
 // ARCH-005 分工：本页不触碰订单原始事实字段，事实→展示的推导（资格文案/综合分预览/权重口径/
 // 错误面映射/入口门控）全部委托 src/consumer/orders/review.ts（eligibilityHeadline/
@@ -127,13 +127,13 @@ function ReviewScreen({ preview, scenario, orderId }: { preview: boolean; scenar
     if (Taro.getCurrentPages().length > 1) await Taro.navigateBack()
     else await Taro.redirectTo({ url: `/consumer/pages/orders/detail?orderId=${encodeURIComponent(orderId)}${preview ? '&preview=1' : ''}` })
   }
-  function goLogin() { void Taro.redirectTo({ url: '/consumer/pages/shell/index' }) }
+  function goLogin() { void Taro.switchTab({ url: '/consumer/pages/mine/index' }) }
 
   const detail: OrderDetailView | null = state.detail
   const badge = detail === null ? null : orderStatusBadge(detail)
   const composite = compositePreview(draft)
   return <ConsumerPageLayout page='orderDetail' unit={unit} className='ord-page' style={style}
-    navigation={{ idPrefix: 'rvw', disabled: state.phase === 'loading', onSelect: key => { void Taro.showToast({ title: navigationUnavailableMessage(key), icon: 'none' }) } }}>
+    navigation={{ idPrefix: 'rvw', disabled: state.phase === 'loading', onSelect: key => { void switchConsumerTab(key) } }}>
     <View className='ord-design'>
       <View className='ord-status-area' />
       <View className='ord-nav'>

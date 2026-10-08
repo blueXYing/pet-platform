@@ -1,5 +1,6 @@
 import { ConsumerPageLayout } from '../../components/page-layout'
-import { navigationUnavailableMessage, type ConsumerNavigationKey } from '../../components/navigation/model'
+import { type ConsumerNavigationKey } from '../../components/navigation/model'
+import { switchConsumerTab } from '../../components/navigation/switch'
 import { Button, Image, Input, Picker, Text, Textarea, View } from '@tarojs/components'
 import Taro, { useRouter } from '@tarojs/taro'
 import { useCallback, useEffect, useRef, useState, type CSSProperties } from 'react'
@@ -139,9 +140,9 @@ export default function PetArchiveForm() {
       if (!result.confirm) return
     }
     if (!mounted.current || currentRevision !== scope.revision) return
-    if (tab) { setNotice(navigationUnavailableMessage(tab)); return }
+    if (tab) { await switchConsumerTab(tab); return }
     if (Taro.getCurrentPages().length > 1) await Taro.navigateBack()
-    else await Taro.redirectTo({ url: '/consumer/pages/shell/index' })
+    else await Taro.switchTab({ url: '/consumer/pages/mine/index' })
   }
   const editable = ['ready', 'saving', 'save-error'].includes(phase)
   const fieldsLocked = phase === 'saving' || (!preview && !!consumerApi.pendingCommand(savedPetId.current ? `pet:${savedPetId.current}` : 'pet:create'))
@@ -159,7 +160,7 @@ export default function PetArchiveForm() {
       <Image className='pet-abs pet-form-navedit' src={navEdit} mode='scaleToFill' />
       {!editable && <View className='pet-state pet-form-state' role='status'>
         <Text>{phase === 'loading' ? '正在加载宠物档案…' : phase === 'expired' ? '登录已失效，请重新登录' : phase === 'unavailable' ? '宠物服务暂不可用，请稍后再试' : '加载失败，请重试'}</Text>
-        {!preview && phase === 'expired' && <Button className='pet-state-action' onClick={() => Taro.redirectTo({ url: '/consumer/pages/shell/index' })}>去登录</Button>}
+        {!preview && phase === 'expired' && <Button className='pet-state-action' onClick={() => Taro.switchTab({ url: '/consumer/pages/mine/index' })}>去登录</Button>}
         {phase === 'load-error' && <Button id='pet-retry-load' className='pet-state-action' onClick={() => void load()}>重新加载</Button>}
       </View>}
       {editable && <>

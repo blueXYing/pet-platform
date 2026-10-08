@@ -45,7 +45,7 @@ export default function MerchantWorkbenchPage() {
   useEffect(() => () => controller.dispose(), [controller])
   async function back() {
     controller.leave()
-    await Taro.reLaunch({ url: '/consumer/pages/shell/index' })
+    await Taro.switchTab({ url: '/consumer/pages/home/index' })
   }
   function takeStep(step: string, merchantId: string) {
     if (step === 'VIEW_AFTERSALES') { openAftersales(); return }

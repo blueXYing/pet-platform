@@ -3,7 +3,7 @@ import Taro, { useDidShow, useRouter } from '@tarojs/taro'
 import { useCallback, useEffect, useRef, useState, type CSSProperties } from 'react'
 import { useWorkspace } from '../../../shared/workspace-react'
 import { ConsumerPageLayout } from '../../components/page-layout'
-import { navigationUnavailableMessage } from '../../components/navigation/model'
+import { switchConsumerTab } from '../../components/navigation/switch'
 import { PreviewStoreRepository, directoryCategories, isStoreScenario, type StoreCity, type StoreDirectoryDeps, type StoreView } from '../../store/model'
 import { RealStoreRepository, runCatalogRead } from '../../store/repository'
 import { consumerApi } from '../../../shared/consumer-runtime'
@@ -96,7 +96,7 @@ export default function StoreDirectoryPage() {
 
   const ready = phase === 'ready'
   const currentCityName = city === undefined ? (cities[0]?.cityName || '成都') : (cities.find(entry => entry.cityCode === city)?.cityName || city)
-  return <ConsumerPageLayout page='storeDirectory' unit={unit} navigation={{ idPrefix: 'sdir', disabled: !ready, onSelect: key => setNotice(navigationUnavailableMessage(key)), referencePlacement: undefined }} className='svc-page sdir-page' style={style}>
+  return <ConsumerPageLayout page='storeDirectory' unit={unit} navigation={{ idPrefix: 'sdir', disabled: !ready, onSelect: key => void switchConsumerTab(key), referencePlacement: undefined }} className='svc-page sdir-page' style={style}>
     <View className='svc-status-area' />
     <View className='sdir-top'>
       <View className='svc-abs svc-bg-blue' />

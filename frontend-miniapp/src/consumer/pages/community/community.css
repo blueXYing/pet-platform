@@ -1,0 +1,38 @@
+/* 宠友圈占位 tab（COM-001 未启动，失败关闭占位；气球图形复用 tabBar 原切图 127:1682）。 */
+.cmy-page {
+  min-height: 100vh;
+  background: #f0fbff;
+  display: flex;
+  flex-direction: column;
+}
+.cmy-status-area { height: calc(var(--cmy-top) + 4px); background: linear-gradient(160deg, #cdeede 0%, #c0ecff 100%); }
+.cmy-header {
+  padding: calc(var(--cmy-unit) * 6) calc(var(--cmy-unit) * 12);
+  background: linear-gradient(160deg, #cdeede 0%, #c0ecff 100%);
+}
+.cmy-title { font-size: calc(var(--cmy-unit) * 10); font-weight: 700; color: #3c3c3c; }
+.cmy-body { flex: 1; display: flex; align-items: center; justify-content: center; padding: 0 calc(var(--cmy-unit) * 16); }
+.cmy-placeholder {
+  width: 100%;
+  padding: calc(var(--cmy-unit) * 18) calc(var(--cmy-unit) * 12);
+  background: #ffffff;
+  border-radius: calc(var(--cmy-unit) * 14);
+  border: 1px solid #dcecf7;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+}
+.cmy-balloon { width: calc(var(--cmy-unit) * 34); height: calc(var(--cmy-unit) * 34); opacity: 0.9; }
+.cmy-soon { margin-top: calc(var(--cmy-unit) * 8); font-size: calc(var(--cmy-unit) * 8); font-weight: 700; color: #3c3c3c; }
+.cmy-hint { margin-top: calc(var(--cmy-unit) * 4); font-size: calc(var(--cmy-unit) * 3.8); color: #7b9aa8; line-height: 1.6; }
+.cmy-action {
+  margin-top: calc(var(--cmy-unit) * 10);
+  padding: calc(var(--cmy-unit) * 3.5) calc(var(--cmy-unit) * 10);
+  background: #cdeede;
+  border-radius: calc(var(--cmy-unit) * 10);
+  border: 1px solid #b6e2d0;
+  line-height: 1.4;
+}
+.cmy-action::after { border: none; }
+.cmy-action-text { font-size: calc(var(--cmy-unit) * 4); color: #33695a; font-weight: 600; }

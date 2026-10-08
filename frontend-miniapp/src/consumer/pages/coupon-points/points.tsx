@@ -3,7 +3,7 @@ import Taro, { useRouter } from '@tarojs/taro'
 import { useCallback, useEffect, useRef, useState, type CSSProperties } from 'react'
 import { useWorkspace } from '../../../shared/workspace-react'
 import { consumerApi } from '../../../shared/consumer-runtime'
-import { navigationUnavailableMessage } from '../../components/navigation/model'
+import { switchConsumerTab } from '../../components/navigation/switch'
 import { ConsumerPageLayout } from '../../components/page-layout'
 import {
   deltaLabel, formatLedgerTime, isCouponPointsScenario, pointsBizTypeLabels,
@@ -99,11 +99,11 @@ export default function PointsPage() {
   }
   async function goBack() {
     if (Taro.getCurrentPages().length > 1) await Taro.navigateBack()
-    else await Taro.redirectTo({ url: '/consumer/pages/shell/index' })
+    else await Taro.switchTab({ url: '/consumer/pages/mine/index' })
   }
   const ready = phase === 'ready'
   return <ConsumerPageLayout page='pointsPage' unit={unit} className='cpn-page'
-    navigation={{ idPrefix: 'cpt', disabled: !ready, onSelect: key => setNotice(navigationUnavailableMessage(key)) }}
+    navigation={{ idPrefix: 'cpt', disabled: !ready, onSelect: key => void switchConsumerTab(key) }}
     style={style}>
     <View className='cpn-design'>
       <View className='cpn-status-area' />
@@ -116,7 +116,7 @@ export default function PointsPage() {
       {phase === 'loading' && <View className='cpn-state' role='status'><Text>正在读取积分…</Text></View>}
       {phase === 'expired' && <View className='cpn-state' role='status'>
         <Text id='cpt-login-hint'>登录后可查看我的积分。</Text>
-        <Button id='cpt-login' className='cpn-state-action' onClick={() => { void Taro.redirectTo({ url: '/consumer/pages/shell/index' }) }}>去登录</Button>
+        <Button id='cpt-login' className='cpn-state-action' onClick={() => { void Taro.switchTab({ url: '/consumer/pages/mine/index' }) }}>去登录</Button>
       </View>}
       {phase === 'load-error' && <View className='cpn-state' role='status'>
         <Text id='cpt-error'>积分读取失败，请稍后重试。</Text>

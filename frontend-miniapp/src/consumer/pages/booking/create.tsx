@@ -4,7 +4,7 @@ import { useCallback, useEffect, useRef, useState, type CSSProperties } from 're
 import { useWorkspace } from '../../../shared/workspace-react'
 import { consumerApi } from '../../../shared/consumer-runtime'
 import { ApiError } from '../../../shared/request'
-import { navigationUnavailableMessage } from '../../components/navigation/model'
+import { switchConsumerTab } from '../../components/navigation/switch'
 import { ConsumerPageLayout } from '../../components/page-layout'
 import { runCatalogRead } from '../../store/repository'
 import { RealStoreRepository } from '../../store/repository'
@@ -246,7 +246,7 @@ function CreateScreen({ preview, scenario, serviceId, storeIdParam }: { preview:
     void Taro.navigateTo({ url: `/consumer/pages/pet-archive/form${preview ? '?preview=1' : ''}` })
       .catch(() => setNotice('页面跳转失败，请重试'))
   }
-  function goLogin() { void Taro.redirectTo({ url: '/consumer/pages/shell/index' }) }
+  function goLogin() { void Taro.switchTab({ url: '/consumer/pages/mine/index' }) }
   async function goBack() {
     if (Taro.getCurrentPages().length > 1) await Taro.navigateBack()
     else await Taro.redirectTo({ url: `/consumer/pages/store-services/service-detail?${preview ? 'preview=1&' : ''}serviceId=${encodeURIComponent(serviceId)}` })
@@ -267,7 +267,7 @@ function CreateScreen({ preview, scenario, serviceId, storeIdParam }: { preview:
   const badge = receipt === null ? null : receiptBadge(receipt)
 
   return <ConsumerPageLayout page='bookingCreate' unit={unit} className='bkg-page' style={style}
-    navigation={{ idPrefix: 'bkg', disabled: phase === 'loading', onSelect: key => { void Taro.showToast({ title: navigationUnavailableMessage(key), icon: 'none' }) } }}>
+    navigation={{ idPrefix: 'bkg', disabled: phase === 'loading', onSelect: key => { void switchConsumerTab(key) } }}>
     <View className='bkg-design'>
       <View className='bkg-status-area' />
       <View className='bkg-nav'>
@@ -336,7 +336,7 @@ function CreateScreen({ preview, scenario, serviceId, storeIdParam }: { preview:
           {slotPhase === 'error' && <View className='bkg-slot-error' role='status'>
             <Text id='bkg-slots-error'>{notice || '可约时段读取失败，请稍后重试。'}</Text>
             <Button id='bkg-slots-retry' className='bkg-state-action' onClick={() => void loadSlots(date)}>重新读取时段</Button>
-            {slotAuthExpired && <Button id='bkg-slots-login' className='bkg-state-action' onClick={() => void Taro.redirectTo({ url: '/consumer/pages/shell/index' })}>去登录</Button>}
+            {slotAuthExpired && <Button id='bkg-slots-login' className='bkg-state-action' onClick={() => void Taro.switchTab({ url: '/consumer/pages/mine/index' })}>去登录</Button>}
           </View>}
           {(slotPhase === 'ready' || slotPhase === 'empty') && <View className='bkg-slots'>
             {(pickupFlow ? pickupSlots : slots).map(slot => <Button

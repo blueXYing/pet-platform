@@ -3,7 +3,7 @@ import Taro, { useDidShow, useRouter } from '@tarojs/taro'
 import { useEffect, useRef, useState, useSyncExternalStore, type CSSProperties } from 'react'
 import { useWorkspace } from '../../../shared/workspace-react'
 import { consumerApi } from '../../../shared/consumer-runtime'
-import { navigationUnavailableMessage } from '../../components/navigation/model'
+import { switchConsumerTab } from '../../components/navigation/switch'
 import { ConsumerPageLayout } from '../../components/page-layout'
 // ARCH-005 分工：本页不触碰订单原始事实字段（orderStage/paymentStatus/verificationStatus/
 // refund*/afterSaleStatus），事实→展示的推导（文案映射/空值占位/按钮可见性/缺核销码说明）
@@ -90,7 +90,7 @@ function DetailScreen({ preview, scenario, orderId }: { preview: boolean; scenar
   }
   useEffect(() => { mounted.current = true; void load(); return () => { mounted.current = false } }, [])
   useDidShow(() => { if (phase === 'ready') void load() })
-  function goLogin() { void Taro.redirectTo({ url: '/consumer/pages/shell/index' }) }
+  function goLogin() { void Taro.switchTab({ url: '/consumer/pages/mine/index' }) }
   async function goBack() {
     if (Taro.getCurrentPages().length > 1) await Taro.navigateBack()
     else await Taro.redirectTo({ url: `/consumer/pages/orders/list${preview ? '?preview=1' : ''}` })
@@ -99,7 +99,7 @@ function DetailScreen({ preview, scenario, orderId }: { preview: boolean; scenar
   const ready = phase === 'ready' && detail !== null
   const badge = detail === null ? null : orderStatusBadge(detail)
   return <ConsumerPageLayout page='orderDetail' unit={unit} className='ord-page' style={style}
-    navigation={{ idPrefix: 'ord', disabled: phase === 'loading', onSelect: key => { void Taro.showToast({ title: navigationUnavailableMessage(key), icon: 'none' }) } }}>
+    navigation={{ idPrefix: 'ord', disabled: phase === 'loading', onSelect: key => { void switchConsumerTab(key) } }}>
     <View className='ord-design'>
       <View className='ord-status-area' />
       <View className='ord-nav'>
@@ -202,7 +202,7 @@ function VerifyCodeBlock({ preview, scenario, orderId }: { preview: boolean; sce
     {state.phase === 'loading' && <Text className='ord-verify-hint' id='ord-verify-loading'>正在读取核销码…</Text>}
     {state.phase === 'unauthorized' && <View className='ord-verify-state' role='status'>
       <Text id='ord-verify-login-hint'>登录已失效，核销码不可用。</Text>
-      <Button id='ord-verify-login' className='ord-state-action' onClick={() => void Taro.redirectTo({ url: '/consumer/pages/shell/index' })}>去登录</Button>
+      <Button id='ord-verify-login' className='ord-state-action' onClick={() => void Taro.switchTab({ url: '/consumer/pages/mine/index' })}>去登录</Button>
     </View>}
     {state.phase === 'load-error' && <View className='ord-verify-state' role='status'>
       <Text id='ord-verify-error'>{state.notice || '核销码读取失败，请稍后重试。'}</Text>

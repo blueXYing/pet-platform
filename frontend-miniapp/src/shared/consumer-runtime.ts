@@ -1,6 +1,7 @@
 import Taro from '@tarojs/taro'
 import { ConsumerApi, type LocalStore } from './consumer-api'
-import { createWechatTransport } from './platform'
+import { createSilentLogin, type SilentLogin } from './silent-login'
+import { createWechatTransport, platform } from './platform'
 import { createPrivateUploadTransport } from './private-upload-transport'
 import { assertApiOrigin } from './api-origin'
 
@@ -34,4 +35,9 @@ export const consumerApi = new ConsumerApi(transport, consumerStorage, requestUu
     const result = await Taro.request({ url: C_API_ORIGIN + input.path, method: 'GET', header: { Authorization: input.authorization }, responseType: 'arraybuffer', timeout: 15000 })
     return { statusCode: result.statusCode, data: result.data }
   },
-} : undefined)
+} : undefined,
+// 401 自动恢复的静默重登通道（用户 2026-10-08 裁决）：闭包引用自身实例，模块初始化期无环。
+() => consumerSession.ensure())
+
+// 登录体验层单例：app 启动静默登录（workspace-react 的 launch()）与「我的」页手机号引导共用。
+export const consumerSession: SilentLogin = createSilentLogin(consumerApi, platform.login)

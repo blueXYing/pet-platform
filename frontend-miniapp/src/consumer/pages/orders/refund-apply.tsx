@@ -3,7 +3,7 @@ import Taro, { useDidShow, useDidHide, useRouter } from '@tarojs/taro'
 import { useEffect, useRef, useState, useSyncExternalStore, type CSSProperties } from 'react'
 import { useWorkspace } from '../../../shared/workspace-react'
 import { consumerApi } from '../../../shared/consumer-runtime'
-import { navigationUnavailableMessage } from '../../components/navigation/model'
+import { switchConsumerTab } from '../../components/navigation/switch'
 import { ConsumerPageLayout } from '../../components/page-layout'
 // ARCH-005 分工：本页不触碰订单原始事实字段，事实→展示的推导（回执口径文案/徽标变体/入口门控/
 // 错误面映射）全部委托 src/consumer/orders/refund.ts（receiptHeadline/receiptBody/
@@ -115,13 +115,13 @@ function RefundApplyScreen({ preview, scenario, orderId }: { preview: boolean; s
     if (Taro.getCurrentPages().length > 1) await Taro.navigateBack()
     else await Taro.redirectTo({ url: `/consumer/pages/orders/detail?orderId=${encodeURIComponent(orderId)}${preview ? '&preview=1' : ''}` })
   }
-  function goLogin() { void Taro.redirectTo({ url: '/consumer/pages/shell/index' }) }
+  function goLogin() { void Taro.switchTab({ url: '/consumer/pages/mine/index' }) }
 
   const detail: OrderDetailView | null = state.detail
   const badge = detail === null ? null : orderStatusBadge(detail)
   const receiptBadge = state.receipt === null ? null : receiptStatusBadge(state.receipt)
   return <ConsumerPageLayout page='orderDetail' unit={unit} className='ord-page' style={style}
-    navigation={{ idPrefix: 'rfd', disabled: state.phase === 'loading', onSelect: key => { void Taro.showToast({ title: navigationUnavailableMessage(key), icon: 'none' }) } }}>
+    navigation={{ idPrefix: 'rfd', disabled: state.phase === 'loading', onSelect: key => { void switchConsumerTab(key) } }}>
     <View className='ord-design'>
       <View className='ord-status-area' />
       <View className='ord-nav'>

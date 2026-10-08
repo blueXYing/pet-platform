@@ -3,7 +3,7 @@ import Taro, { useRouter } from '@tarojs/taro'
 import { useCallback, useEffect, useRef, useState, type CSSProperties } from 'react'
 import { useWorkspace } from '../../../shared/workspace-react'
 import { consumerApi } from '../../../shared/consumer-runtime'
-import { navigationUnavailableMessage } from '../../components/navigation/model'
+import { switchConsumerTab } from '../../components/navigation/switch'
 import { ConsumerPageLayout } from '../../components/page-layout'
 import {
   appointmentWindow, displayOrderStatuses, displayStatusLabels, isOrdersScenario, orderReadMessage,
@@ -94,14 +94,14 @@ function ListScreen({ preview, scenario }: { preview: boolean; scenario: 'normal
       setPage(result.page); setTotal(result.total)
     } catch { setNotice('加载更多失败，请重试。') } finally { setLoadingMore(false) }
   }
-  function goLogin() { void Taro.redirectTo({ url: '/consumer/pages/shell/index' }) }
+  function goLogin() { void Taro.switchTab({ url: '/consumer/pages/mine/index' }) }
   async function goBack() {
     if (Taro.getCurrentPages().length > 1) await Taro.navigateBack()
-    else await Taro.redirectTo({ url: '/consumer/pages/shell/index' })
+    else await Taro.switchTab({ url: '/consumer/pages/mine/index' })
   }
   const ready = phase === 'ready'
   return <ConsumerPageLayout page='orderList' unit={unit} className='ord-page' style={style}
-    navigation={{ idPrefix: 'ord', disabled: phase === 'loading', onSelect: key => { void Taro.showToast({ title: navigationUnavailableMessage(key), icon: 'none' }) } }}>
+    navigation={{ idPrefix: 'ord', disabled: phase === 'loading', onSelect: key => { void switchConsumerTab(key) } }}>
     <View className='ord-design'>
       <View className='ord-status-area' />
       <View className='ord-nav'>

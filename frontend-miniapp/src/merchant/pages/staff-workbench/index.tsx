@@ -3,6 +3,7 @@ import Taro, { useDidShow, useRouter } from '@tarojs/taro'
 import { useCallback, useEffect, useRef, useState, useSyncExternalStore, type CSSProperties } from 'react'
 import { useWorkspace } from '../../../shared/workspace-react'
 import { consumerApi } from '../../../shared/consumer-runtime'
+import { phoneGuard } from '../../../shared/phone-guard-runtime'
 import { MerchantAdmissionRepository } from '../../../shared/merchant-repositories'
 import { StaffWorkbenchController } from '../../staff/workbench'
 import { StaffInvitationListController } from '../../staff/controller'
@@ -84,8 +85,13 @@ export default function StaffWorkbenchPage() {
 
   function openInvitation(invitationId: string) {
     setNotice('')
-    Taro.navigateTo({ url: `/merchant/pages/staff-invitation/index?invitationId=${invitationId}` })
-      .catch(() => setNotice('页面跳转失败，请重试'))
+    // 手机号前置守卫（用户 2026-10-08 裁决的接入点）：员工邀请确认须由被邀请手机号本人完成，
+    // 无已验证会话（即无绑定手机号）时不进确认页，引导去「我的」页授权；守卫内部会先做一次
+    // 静默恢复，仅会话真正缺失才拦截。
+    void phoneGuard(() => {
+      Taro.navigateTo({ url: `/merchant/pages/staff-invitation/index?invitationId=${invitationId}` })
+        .catch(() => setNotice('页面跳转失败，请重试'))
+    })
   }
 
   function openVerify() {
@@ -96,7 +102,7 @@ export default function StaffWorkbenchPage() {
     Taro.redirectTo({ url: '/merchant/pages/workspace/index' }).catch(() => setNotice('页面跳转失败，请重试'))
   }
   function goShell() {
-    Taro.reLaunch({ url: '/consumer/pages/shell/index' }).catch(() => setNotice('页面跳转失败，请重试'))
+    Taro.switchTab({ url: '/consumer/pages/mine/index' }).catch(() => setNotice('页面跳转失败，请重试'))
   }
 
   // 54号 §7「我的邀请记录」区块：同一控制器渲染于未绑定（待确认引导）与已准入（历史记录）

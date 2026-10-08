@@ -1,6 +1,19 @@
 export default defineAppConfig({
-  pages: ['consumer/pages/shell/index', 'consumer/pages/diagnostics/index', 'consumer/pages/profile-edit/index', 'consumer/pages/messages/index'],
-  window: { navigationBarTitleText: '工程验证', backgroundColor: '#f5f5f5' },
+  // Tab pages must be main-package pages; the first entry is the launch page (home).
+  pages: ['consumer/pages/home/index', 'consumer/pages/services/index', 'consumer/pages/community/index', 'consumer/pages/messages/index', 'consumer/pages/mine/index', 'consumer/pages/shell/index', 'consumer/pages/diagnostics/index', 'consumer/pages/profile-edit/index'],
+  window: { navigationBarTitleText: '宠物生活服务', backgroundColor: '#f5f5f5' },
+  // 用户 2026-10-08 裁决：V1 用原生 tabBar 等分布局；设计稿“宠友圈中间凸起”登记为设计偏差留补稿轮。
+  // 图标沿用导航登记表提取的原切图（无选中态变体，选中差异仅文字色，同登记偏差）。
+  tabBar: {
+    color: '#3c3c3c', selectedColor: '#53bfee', backgroundColor: '#ffffff', borderStyle: 'black',
+    list: [
+      { pagePath: 'consumer/pages/home/index', text: '首页', iconPath: 'consumer/assets/navigation/home.png', selectedIconPath: 'consumer/assets/navigation/home.png' },
+      { pagePath: 'consumer/pages/services/index', text: '服务', iconPath: 'consumer/assets/navigation/services.png', selectedIconPath: 'consumer/assets/navigation/services.png' },
+      { pagePath: 'consumer/pages/community/index', text: '宠友圈', iconPath: 'consumer/assets/navigation/community.png', selectedIconPath: 'consumer/assets/navigation/community.png' },
+      { pagePath: 'consumer/pages/messages/index', text: '消息', iconPath: 'consumer/assets/navigation/messages.png', selectedIconPath: 'consumer/assets/navigation/messages.png' },
+      { pagePath: 'consumer/pages/mine/index', text: '我的', iconPath: 'consumer/assets/navigation/mine.png', selectedIconPath: 'consumer/assets/navigation/mine.png' },
+    ],
+  },
   permission: { 'scope.userLocation': { desc: '用于选择入驻店铺的位置与地址' } },
   requiredPrivateInfos: ['chooseLocation'],
   // M-001 internal shell shares this AppID; C-End owns ordinary subpackage registration.

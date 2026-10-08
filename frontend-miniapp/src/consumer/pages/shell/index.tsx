@@ -1,4 +1,5 @@
 import { Button, Text, View } from '@tarojs/components'
+import Taro from '@tarojs/taro'
 import { useRef, useState } from 'react'
 import { platform } from '../../../shared/platform'
 import { consumerApi } from '../../../shared/consumer-runtime'
@@ -19,8 +20,8 @@ export default function Shell() {
     finally { running.current = false; setBusy(false); setStep(consumerApi.authStep) }
   }
   return <View className='shell'>
-    <View className='panel'><Text className='line'>C-001 工程示例</Text>
-      <Text>非产品页面 · 预览入口与真实接口验证分别标注</Text></View>
+    <View className='panel'><Text className='line'>C-001 工程验证（调试入口）</Text>
+      <Text>自 2026-10-08 tabbar+login 切片起降级为开发者工具：真实入口在底部五 tab 与「我的」页。本页保留全部真实接口验证与 preview 夹具通道。</Text></View>
     <View className='panel'>
       <Text className='line'>真实接口接入验证（沿用工程入口）</Text>
       <Text id='c-session-state' className='line'>{context ? `已登录 · ${consumerApi.currentSession?.phoneMasked || ''}` : '未登录'}</Text>
@@ -47,7 +48,7 @@ export default function Shell() {
     <Button id='c-store-services' disabled={!context || busy} onClick={() => platform.navigate('/consumer/pages/store-services/index?storeId=957002')}>商家服务列表（真实契约接口）</Button>
     <Button id='c-merchant-services-preview' onClick={() => platform.navigate('/merchant/pages/services/index?preview=1')}>商家服务管理视觉预览（契约 Mock，不联调）</Button>
     <Button onClick={() => platform.navigate('/merchant/pages/workspace/index')}>进入商家工作区</Button>
-      <Button id='c-messages' onClick={() => platform.navigate('/consumer/pages/messages/index')}>消息中心</Button>
+      <Button id='c-messages' onClick={() => Taro.switchTab({ url: '/consumer/pages/messages/index' })}>消息中心</Button>
     <Button id='c-notification-preferences' disabled={!context || busy} onClick={() => platform.navigate('/consumer/pages/notification-preferences/index')}>通知偏好设置（真实契约接口）</Button>
     <Button id='c-notification-preferences-preview' onClick={() => platform.navigate('/consumer/pages/notification-preferences/index?preview=1')}>通知偏好设置预览（本地夹具，不联调）</Button>
     <Button id='c-coupons-preview' onClick={() => platform.navigate('/consumer/pages/coupon-points/coupons?preview=1')}>我的优惠券只读预览（本地夹具，不联调）</Button>
