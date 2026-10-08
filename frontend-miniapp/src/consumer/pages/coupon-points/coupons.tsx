@@ -118,6 +118,7 @@ export default function CouponsPage() {
         </Button>
         <Text className='cpn-nav-title'>优惠券</Text>
       </View>
+      <View className='cpn-body'>
       {(preview ? ready : tabsShown) && <View className='cpn-tabs' role='tablist'>
         {(Object.keys(statusTabLabels) as CouponStatus[]).map(key => <Button key={key}
           id={`cpn-tab-${key}`} ariaLabel={statusTabLabels[key]}
@@ -156,6 +157,7 @@ export default function CouponsPage() {
       </Button>}
       {ready && <View className='cpn-preview-note'><Text>{preview ? '只读预览：本地样例数据，仅用于设计验收，不发起真实请求。' : '页面数据：真实接口（只读查询）。'}</Text></View>}
       {notice && <Text id='cpn-notice' className='cpn-notice'>{notice}</Text>}
+      </View>
     </View>
   </ConsumerPageLayout>
 }

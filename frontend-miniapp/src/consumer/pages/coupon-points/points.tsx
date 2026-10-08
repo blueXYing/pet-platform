@@ -113,6 +113,7 @@ export default function PointsPage() {
         </Button>
         <Text className='cpn-nav-title'>我的积分</Text>
       </View>
+      <View className='cpn-body'>
       {phase === 'loading' && <View className='cpn-state' role='status'><Text>正在读取积分…</Text></View>}
       {phase === 'expired' && <View className='cpn-state' role='status'>
         <Text id='cpt-login-hint'>登录后可查看我的积分。</Text>
@@ -142,6 +143,7 @@ export default function PointsPage() {
       </Button>}
       {ready && <View className='cpn-preview-note'><Text>{preview ? '只读预览：本地样例数据，仅用于设计验收，不发起真实请求；签到/邀请/任务等赚取行为不在本页提供。' : '页面数据：真实接口（只读查询）；签到/邀请/任务等赚取行为不在本页提供。'}</Text></View>}
       {notice && <Text id='cpt-notice' className='cpn-notice'>{notice}</Text>}
+      </View>
     </View>
   </ConsumerPageLayout>
 }

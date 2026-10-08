@@ -6,6 +6,7 @@ import { consumerApi, consumerSession, consumerStorage } from '../../../shared/c
 import { integrationMessage } from '../../../shared/consumer-api'
 import { RealProfileRepository } from '../../api/repositories'
 import { RealCouponPointsRepository } from '../../coupon-points/repository'
+import { deltaLabel, formatLedgerTime, pointsBizTypeLabels, type PointsLedgerView } from '../../coupon-points/model'
 import avatar from '../../assets/profile/avatar.png'
 import {
   MINE_DEVELOPER_SHELL_URL, MINE_MERCHANT_WORKSPACE_URL, mineCard, mineHubEntries, phoneGuideCopy,
@@ -36,6 +37,9 @@ export default function MinePage() {
   }))
   const [notice, setNotice] = useState('')
   const [busy, setBusy] = useState(false)
+  // 积分明细半屏弹层(129:8174 原稿形态):统计条积分入口弹出,不再整页跳转。
+  const [sheetPhase, setSheetPhase] = useState<'closed' | 'loading' | 'ready' | 'error'>('closed')
+  const [ledger, setLedger] = useState<readonly PointsLedgerView[]>([])
   const busyRef = useRef(false)
   const runningRef = useRef(false)
   const mounted = useRef(true)
@@ -135,6 +139,14 @@ export default function MinePage() {
   function open(url: string) {
     Taro.navigateTo({ url }).catch(() => setNotice('页面打开失败，请重试'))
   }
+  function openPointsSheet() {
+    if (card.state !== 'authenticated') { setNotice('登录后可查看积分明细。'); return }
+    setSheetPhase('loading')
+    void couponPointsRepository.ledger(1, 20)
+      .then(page => { setLedger(page.items); setSheetPhase('ready') })
+      .catch(() => setSheetPhase('error'))
+  }
+  function closePointsSheet() { setSheetPhase('closed') }
 
   return <View className='mine-page' style={style}>
     <View className='mine-status-area' />
@@ -161,7 +173,7 @@ export default function MinePage() {
             <Text className='mine-stat-value'>{card.stats.coupons === null ? '—' : card.stats.coupons}</Text>
             <Text className='mine-stat-label'>优惠券</Text>
           </Button>
-          <Button id='mine-stat-points' className='mine-stat' hoverClass='none' onClick={() => open('/consumer/pages/coupon-points/points')}>
+          <Button id='mine-stat-points' className='mine-stat' hoverClass='none' onClick={openPointsSheet}>
             <Text className='mine-stat-value'>{card.stats.points === null ? '—' : card.stats.points}</Text>
             <Text className='mine-stat-label'>积分</Text>
           </Button>
@@ -209,6 +221,34 @@ export default function MinePage() {
         </Button>
       </View>
     </ScrollView>
+    {sheetPhase !== 'closed' && <View className='pts-mask' onClick={closePointsSheet} catchMove>
+      <View className='pts-sheet' onClick={event => event.stopPropagation()} catchMove>
+        <View className='pts-head'>
+          <Text className='pts-title'>积分明细</Text>
+          <Button id='mine-pts-close' className='pts-close' hoverClass='none' onClick={closePointsSheet}>
+            <Text>×</Text>
+          </Button>
+        </View>
+        <ScrollView className='pts-list' scrollY enhanced showScrollbar={false}>
+          {sheetPhase === 'loading' && <View className='pts-state' role='status'><Text>正在读取积分明细…</Text></View>}
+          {sheetPhase === 'error' && <View className='pts-state' role='status'><Text>积分明细读取失败，请稍后重试。</Text></View>}
+          {sheetPhase === 'ready' && ledger.length === 0 && <View className='pts-state'><Text>暂无积分明细。</Text></View>}
+          {sheetPhase === 'ready' && ledger.map(entry => <View key={entry.ledgerId} id={`mine-pts-row-${entry.ledgerId}`}
+            className='pts-row' ariaLabel={`${pointsBizTypeLabels[entry.bizType]}，${deltaLabel(entry)}积分`}>
+            <View className='pts-row-left'>
+              <View className={`pts-icon${entry.delta.startsWith('-') ? ' is-negative' : ''}`}>
+                <Text>{entry.delta.startsWith('-') ? '−' : '+'}</Text>
+              </View>
+              <Text className='pts-name'>{pointsBizTypeLabels[entry.bizType]}</Text>
+            </View>
+            <View className='pts-row-right'>
+              <Text className={`pts-delta${entry.delta.startsWith('-') ? ' is-negative' : ''}`}>{deltaLabel(entry)}</Text>
+              <Text className='pts-time'>{formatLedgerTime(new Date(), entry.createdAt)}</Text>
+            </View>
+          </View>)}
+        </ScrollView>
+      </View>
+    </View>}
   </View>
 }
 
