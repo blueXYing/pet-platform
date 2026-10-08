@@ -156,14 +156,64 @@ class BookingCreateAcceptanceTest {
                 assertEquals(1, db.count("pet_order"));
                 assertCode("COMMON_DEPENDENCY_UNAVAILABLE", () -> creation.create(
                         pickup(USER_B, PET_B, requestId(), "四川省成都市锦江区测试路1号")));
-                CreateOrderCommand plain = inStore(USER_B, PET_B, requestId());
-                CreateOrderCommand remarked = new CreateOrderCommand(plain.context(), plain.storeId(),
-                        plain.serviceId(), plain.petId(), plain.fulfillmentType(),
-                        plain.appointmentStart(), plain.appointmentEnd(), null, null,
-                        plain.selectedGeneralWindowId(), null, null, null, "请联系我", null);
-                assertCode("COMMON_DEPENDENCY_UNAVAILABLE", () -> creation.create(remarked));
                 assertEquals(1, db.count("pet_order"));
             });
+        }
+    }
+
+    /**
+     * 2026-10-08 user ruling (E2E finding F-2): with no remark-review provider assembled the
+     * boot default accepts a non-empty remark leniently — the 38号 length/character rules run
+     * in the kernel prepare phase and the remark is protected and stored as before; the
+     * moderation mechanism itself is a V2 deliverable.
+     */
+    @Test
+    void remarkWithoutReviewProviderIsAcceptedLenientlyAndStoredProtected() throws Exception {
+        var runner = new ApplicationContextRunner().withUserConfiguration(
+                ReservationProtectionFoundationConfiguration.class, BookingCreationConfiguration.class);
+        try (Database db = new Database()) {
+            db.seedBookableFacts();
+            runner.withBean(DataSource.class, () -> db.source)
+                    .withBean(com.petplatform.common.SnowflakeIdGenerator.class,
+                            () -> BookingCreateAcceptanceTest::id)
+                    .withBean(Clock.class, () -> Clock.fixed(NOW, ZoneOffset.UTC))
+                    .withBean(OrderCreationInputProtection.class, InputProtector::new)
+                    .withPropertyValues("pet.schedule.protection.enabled=true",
+                            "pet.order.creation.enabled=true")
+                    .run(context -> {
+                        // No OrderCreationRemarkPolicy bean is registered here: the context
+                        // wires the lenient V1 default, and a remarked order no longer 503s.
+                        OrderCreationApi creation = context.getBean(OrderCreationApi.class);
+                        CreateOrderCommand base = inStore(USER_A, PET_A, requestId());
+                        CreateOrderCommand remarked = new CreateOrderCommand(base.context(),
+                                base.storeId(), base.serviceId(), base.petId(),
+                                base.fulfillmentType(), base.appointmentStart(),
+                                base.appointmentEnd(), null, null,
+                                base.selectedGeneralWindowId(), null, null, null,
+                                "怕生，请提前沟通", null);
+                        CreateOrderResult receipt = creation.create(remarked);
+                        assertTrue(receipt.created());
+                        assertEquals("PENDING_PAYMENT", receipt.displayStatus());
+                        assertEquals(1, db.count("pet_order"));
+                        assertEquals(1, db.count("order_booking_input_snapshot"));
+                        byte[] stored = db.jdbc.queryForObject(
+                                "SELECT customer_remark_ciphertext FROM order_booking_input_snapshot",
+                                byte[].class);
+                        assertNotNull(stored);
+                        assertFalse(new String(stored, StandardCharsets.UTF_8).contains("怕生"));
+                        // The 38号 length rule keeps failing closed regardless of the provider.
+                        StringBuilder over = new StringBuilder();
+                        for (int index = 0; index < 201; index++) over.append('好');
+                        CreateOrderCommand limit = inStore(USER_A, PET_A, requestId());
+                        CreateOrderCommand tooLong = new CreateOrderCommand(limit.context(),
+                                limit.storeId(), limit.serviceId(), limit.petId(),
+                                limit.fulfillmentType(), limit.appointmentStart(),
+                                limit.appointmentEnd(), null, null,
+                                limit.selectedGeneralWindowId(), null, null, null,
+                                over.toString(), null);
+                        assertCode("COMMON_INVALID_ARGUMENT", () -> creation.create(tooLong));
+                        assertEquals(1, db.count("pet_order"));
+                    });
         }
     }
 
@@ -506,7 +556,7 @@ class BookingCreateAcceptanceTest {
     }
 
     @Test
-    void invalidDurationCouponAndMissingRemarkModerationNeverCommitBusinessRows() throws Exception {
+    void invalidDurationAndCouponNeverCommitRowsWhileRemarkIsAcceptedDirectly() throws Exception {
         try (Database db = new Database()) {
             db.seedBookableFacts();
             Components app = new Components(db);
@@ -525,14 +575,24 @@ class BookingCreateAcceptanceTest {
                     null, null, "710999", null, null);
             assertCode("COMMON_DEPENDENCY_UNAVAILABLE", () -> app.creation.create(coupon));
             db.assertNoCreatedBusinessRows();
+            // 2026-10-08 user ruling: the lenient default policy stores the remark directly
+            // (no review provider, no 503); the encrypted snapshot is still the only plaintext
+            // carrier in the database.
             CreateOrderCommand remarkBase = inStore(USER_A, PET_A, requestId());
             CreateOrderCommand remark = new CreateOrderCommand(remarkBase.context(),
                     remarkBase.storeId(), remarkBase.serviceId(), remarkBase.petId(),
                     remarkBase.fulfillmentType(), remarkBase.appointmentStart(),
                     remarkBase.appointmentEnd(), null, null, remarkBase.selectedGeneralWindowId(),
                     null, null, null, "请提前沟通", null);
-            assertCode("COMMON_DEPENDENCY_UNAVAILABLE", () -> app.creation.create(remark));
-            db.assertNoCreatedBusinessRows();
+            CreateOrderResult remarked = app.creation.create(remark);
+            assertTrue(remarked.created());
+            assertEquals(1, db.count("pet_order"));
+            assertEquals(1, db.count("order_booking_input_snapshot"));
+            byte[] stored = db.jdbc.queryForObject(
+                    "SELECT customer_remark_ciphertext FROM order_booking_input_snapshot",
+                    byte[].class);
+            assertNotNull(stored);
+            assertFalse(new String(stored, StandardCharsets.UTF_8).contains("请提前沟通"));
         }
     }
 
@@ -752,8 +812,10 @@ class BookingCreateAcceptanceTest {
             var merchants = new BookingMerchantFactsApiImpl(source, guard, approved);
             var services = new BookingServiceFactsApiImpl(source, guard);
             protector = new InputProtector();
+            // Mirrors the production default after the 2026-10-08 ruling: no review provider,
+            // lenient acceptance (length/character rules run inside the kernel).
             creation = new OrderCreationApiImpl(source, BookingCreateAcceptanceTest::id,
-                    users, merchants, services, guard, hold, protector, null, clock);
+                    users, merchants, services, guard, hold, protector, remark -> {}, clock);
         }
     }
 
