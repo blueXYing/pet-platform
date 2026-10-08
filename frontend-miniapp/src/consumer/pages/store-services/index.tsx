@@ -91,16 +91,17 @@ export default function StoreServicesPage() {
 
   const ready = phase === 'ready'
   function canInteract() { return ready }
-  function notWired(label: string) {
+  // 预约下单入口(booking 切片,2026-10-08 验收:门店页行内预约从占位改为真实下单入口):
+  // 匿名点击仍走登录引导,登录后携服务/门店上下文进入创建页。
+  function bookService(service: ServiceItemView) {
     if (!canInteract()) return
-    // Actions (not viewing) stay login-gated per the final PRD; anonymous taps get the guide.
     if (detailActionGate(context) === 'login-required') {
-      void Taro.showModal({ title: '请先登录', content: `${label}需要先登录，是否前往登录？`, confirmText: '去登录', cancelText: '暂不' })
+      void Taro.showModal({ title: '请先登录', content: '预约需要先登录，是否前往登录？', confirmText: '去登录', cancelText: '暂不' })
         .then(answer => { if (answer.confirm) void Taro.switchTab({ url: '/consumer/pages/mine/index' }).catch(() => setNotice('页面跳转失败，请重试')) })
         .catch(() => setNotice(''))
       return
     }
-    setNotice(preview ? `“${label}”尚未接入本次预览` : `“${label}”功能尚未接通`)
+    Taro.navigateTo({ url: `/consumer/pages/booking/create?preview=${preview ? '1' : '0'}&serviceId=${encodeURIComponent(service.serviceId)}&storeId=${encodeURIComponent(service.storeId)}` }).catch(() => setNotice('页面跳转失败，请重试'))
   }
   function openDetail(service: ServiceItemView) {
     if (!canInteract()) return
@@ -122,7 +123,7 @@ export default function StoreServicesPage() {
       servicesNode={count === 0
         ? <View className='svc-list-empty'><Text>暂无服务</Text></View>
         : items.map(service => <ServiceRow key={service.serviceId} idPrefix='svc-row' line={{ service, description: preview ? designSamples.listDescription[service.serviceId] : undefined }}
-            onOpen={() => openDetail(service)} onBook={() => notWired('预约')} />)} />}
+            onOpen={() => openDetail(service)} onBook={() => bookService(service)} />)} />}
   </ConsumerPageLayout>
 }
 function isContractId(value: string): boolean {
