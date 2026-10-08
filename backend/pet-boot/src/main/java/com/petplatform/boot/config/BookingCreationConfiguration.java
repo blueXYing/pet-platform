@@ -54,10 +54,18 @@ public class BookingCreationConfiguration {
             return new OrderCreationInputProtection.ProtectedInput(protectedValue.ciphertext(),protectedValue.equalityToken());
         };
     }
+    /**
+     * 2026-10-08 user ruling (E2E finding F-2): V1 accepts non-empty remarks leniently. With no
+     * real remark-review provider delivered, the default policy performs no moderation — the
+     * 38号 length/character rules (non-blank, ≤200 Unicode code points, no isolated surrogates,
+     * 64 KiB technical ceiling) already run in the kernel's prepare phase before this hook, and
+     * the remark is then protected and stored as before. The moderation mechanism itself is a
+     * V2 deliverable; deployments may still override this bean with a real provider.
+     */
     @Bean
     @ConditionalOnMissingBean(OrderCreationRemarkPolicy.class)
     OrderCreationRemarkPolicy orderCreationRemarkPolicy(){
-        return remark->{throw new ApiException(CommonApiCodes.DEPENDENCY_UNAVAILABLE,"booking remark review unavailable");};
+        return remark->{};
     }
     @Bean ReservationHoldApi reservationHoldApi(DataSource source,SnowflakeIdGenerator ids,
             ScheduleCapacityGuardApi guard,ScheduleProtectionFactsApi facts,ScheduleCapacityProofApiImpl proof,

@@ -45,7 +45,9 @@ public class CSessionSecurityConfiguration {
       @Value("${pet.order.merchant.http.enabled:false}")
           boolean merchantOrderHttpEnabled,
       @Value("${pet.refund.application.http.enabled:false}")
-      boolean refundApplicationHttpEnabled,
+          boolean refundApplicationHttpEnabled,
+      @Value("${pet.order.reschedule.http.enabled:false}")
+          boolean orderRescheduleHttpEnabled,
       @Value("${pet.review.http.enabled:false}")
       boolean reviewHttpEnabled)
       throws Exception {
@@ -188,6 +190,13 @@ public class CSessionSecurityConfiguration {
               // by the filter's protectedPath regex, not by permitAll itself.
               a.requestMatchers(HttpMethod.POST,
                       "/api/v1/c/orders/*/refund-applications")
+                  .permitAll();
+            }
+            if (orderRescheduleHttpEnabled) {
+              // C reschedule (contract 10 §3.8 / 46号 slice): MINIAPP Bearer is enforced by the
+              // filter's protectedPath regex, not by permitAll itself.
+              a.requestMatchers(HttpMethod.POST,
+                      "/api/v1/c/orders/*/reschedule")
                   .permitAll();
             }
             if (reviewHttpEnabled) {
