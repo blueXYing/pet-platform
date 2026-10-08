@@ -105,18 +105,39 @@ public final class OrderActionAvailability {
     }
 
     /**
-     * Contract 07 §7.7: must be verified, within verifiedAt + 30 days; a later PARTIAL refund
-     * keeps the review eligible (scoreIncluded is that endpoint's concern). A full refund
-     * (REFUNDED) or an in-flight refund order is conservatively false pending adjudication —
-     * §7.7 only guarantees the partial-success case.
+     * Contract 07 §7.7 (REV-001 slice): the full review-eligibility outcome over the same
+     * facts {@link #canReview(Facts, OffsetDateTime)} projects. Single truth: canReview
+     * delegates here, so the §3.7 action boolean and the §3.14 eligibility verdict can never
+     * drift. rejectCode registry 12 §11: REVIEW_NOT_VERIFIED before verification,
+     * REVIEW_WINDOW_EXPIRED past verifiedAt+30d, REVIEW_NOT_ELIGIBLE for the refund-based
+     * exclusion (full refund or in-flight refund order — 2026-10-07 user ruling: a refunded
+     * order is not reviewable; SSOT §11.2 keeps only the post-verification partial refund
+     * eligible, public but score-excluded).
      */
+    public record ReviewOutcome(boolean eligible, boolean scoreIncluded, String rejectCode) {}
+
+    /** Contract 07 §7.7: must be verified, within verifiedAt + 30 days; a later PARTIAL refund
+     * keeps the review eligible with scoreIncluded=false (SSOT §11.2). A full refund
+     * (REFUNDED) or an in-flight refund order is conservatively false per the 2026-10-07
+     * user ruling — §7.7 only guarantees the partial-success case. */
     private static boolean canReview(Facts f, OffsetDateTime now) {
-        if (!"VERIFIED".equals(f.verificationStatus()) || f.verifiedAt() == null) return false;
-        if (local(now).isAfter(f.verifiedAt().plusDays(30))) return false;
-        if (f.refundOrderId() == null) return true;
+        return reviewOutcome(f, now).eligible();
+    }
+
+    /** The §3.14/§7.7 verdict; every branch cites the same authorities as canReview above. */
+    static ReviewOutcome reviewOutcome(Facts f, OffsetDateTime now) {
+        if (!"VERIFIED".equals(f.verificationStatus()) || f.verifiedAt() == null)
+            return new ReviewOutcome(false, false, "REVIEW_NOT_VERIFIED");
+        if (local(now).isAfter(f.verifiedAt().plusDays(30)))
+            return new ReviewOutcome(false, false, "REVIEW_WINDOW_EXPIRED");
+        if (f.refundOrderId() == null)
+            return new ReviewOutcome(true, true, null);
         BigDecimal refunded = f.refundedAmount();
-        return refunded != null && refunded.signum() > 0
+        boolean partial = refunded != null && refunded.signum() > 0
                 && f.payAmount() != null && refunded.compareTo(f.payAmount()) < 0;
+        return partial
+                ? new ReviewOutcome(true, false, null)
+                : new ReviewOutcome(false, false, "REVIEW_NOT_ELIGIBLE");
     }
 
     /**

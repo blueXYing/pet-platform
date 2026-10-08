@@ -3356,11 +3356,27 @@ paths:
       - C-Review
       summary: 查询评价资格
       operationId: getReviewEligibility
+      x-implementation-status: IMPLEMENTED_DEFAULT_OFF
+      x-default-enabled: false
+      x-contract: 10-HTTP-API-Contract-v0.4.md
+      x-assembly-switch: pet.review.http.enabled
+      x-route-party: USER
+      x-audience: MINIAPP
       security:
       - bearerAuth: []
       parameters:
       - $ref: '#/components/parameters/OrderId'
       responses:
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '503':
+          $ref: '#/components/responses/DependencyUnavailable'
         '200':
           description: 成功
           content:
@@ -3373,6 +3389,12 @@ paths:
       - C-Review
       summary: 提交评价
       operationId: createReview
+      x-implementation-status: IMPLEMENTED_DEFAULT_OFF
+      x-default-enabled: false
+      x-contract: 10-HTTP-API-Contract-v0.4.md
+      x-assembly-switch: pet.review.http.enabled
+      x-route-party: USER
+      x-audience: MINIAPP
       security:
       - bearerAuth: []
       parameters:
@@ -3385,16 +3407,28 @@ paths:
             schema:
               $ref: '#/components/schemas/CreateReviewRequest'
       responses:
+        '400':
+          $ref: '#/components/responses/BadRequest'
         '401':
           $ref: '#/components/responses/Unauthorized'
         '403':
           $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
         '503':
           $ref: '#/components/responses/DependencyUnavailable'
         '200':
           description: 幂等成功，当前权限通过后返回首次成功业务回执
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CreateReviewResponseEnvelope'
         '201':
           description: 创建成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CreateReviewResponseEnvelope'
         '409':
           $ref: '#/components/responses/Conflict'
   /merchant/orders:
@@ -13493,6 +13527,7 @@ components:
           nullable: true
     CreateReviewRequest:
       type: object
+      additionalProperties: false
       required:
       - storeScore
       - serviceScore
@@ -13811,6 +13846,25 @@ components:
         properties:
           data:
             $ref: '#/components/schemas/ReviewEligibilityData'
+    CreateReviewData:
+      type: object
+      additionalProperties: false
+      required:
+      - reviewId
+      - scoreIncluded
+      properties:
+        reviewId:
+          $ref: '#/components/schemas/PublicId'
+        scoreIncluded:
+          type: boolean
+          description: SSOT §11.2：已核销后部分退款的评价公开展示但不参与评分统计；回执如实返回该事实。
+    CreateReviewResponseEnvelope:
+      allOf:
+      - $ref: '#/components/schemas/BaseEnvelope'
+      - type: object
+        properties:
+          data:
+            $ref: '#/components/schemas/CreateReviewData'
     OrderDetailResponseEnvelope:
       allOf:
       - $ref: '#/components/schemas/BaseEnvelope'

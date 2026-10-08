@@ -785,6 +785,8 @@ C：GET `/api/v1/c/aftersales`、GET `/api/v1/c/aftersales/{afterSaleId}`；POST
 
 ## 3.14 评价
 
+> 2026-10-07 REV-001 评价切片注记：本节两路由随 OpenAPI11 翻为 `IMPLEMENTED_DEFAULT_OFF`（`pet.review.http.enabled` + `pet.auth.c.enabled` 双层默认关闭）。资格判定单真源在 ORDER 域（07号 §7.7 `OrderQueryApi.checkReviewEligibility`，与 §3.7 `actions.canReview` 同一分支），REVIEW 内核仅叠加自身事实（一单一评 → `rejectCode=REVIEW_ALREADY_EXISTS`）；**2026-10-07 用户裁决回归：退款成功（REFUNDED）与退款中（REFUNDING）不可评价**（`rejectCode=REVIEW_NOT_ELIGIBLE`），已核销后部分退款仍可评价但 `scoreIncluded=false`（SSOT §11.2，公开展示不计分）。POST 严格 JSON（未知字段/非整数或越界评分/重复键/尾随内容均 400，三维评分 1~5 整数、`content` ≤2000 码点、`mediaFileIds` 媒体能力未开放——非空数组 400 如实拒绝）；`X-Request-Id` 五元组幂等（首报文 201、受保护重放 200，回执固定 `reviewId/scoreIncluded`）；40/40/20 综合分（门店40%+服务40%+人员20%，1 位小数）为内核事实，不接受客户端提交；错误码映射见 Error12 §11。评价申诉（REV-002）不在本切片。GET 404 沿订单读取族防探测语义（他人/未知订单同应答）。
+
 ### GET `/api/v1/c/orders/{orderId}/review-eligibility`
 
 Response：

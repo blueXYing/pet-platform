@@ -164,6 +164,8 @@ HTTP 映射只属于 Adapter 层；内部 Java API 通过稳定 code 表达同�
 | REVIEW_APPEAL_ALREADY_USED | 每条评价最多申诉一次 |
 | REVIEW_NOT_FOUND | 评价不存在 |
 
+评价 C 端 HTTP 状态映射（2026-10-07 REV-001 评价切片，10号 §3.14 路由）：400 严格 JSON/UUID/路径 ID/评分非 1~5 整数/`content` 超 2000 码点/非空 `mediaFileIds`（媒体能力未开放，沿 `COMMON_INVALID_ARGUMENT` 如实拒绝）；401 会话缺失/失效；403 账号非 ACTIVE；404 订单不存在或非本人（沿订单读取族防探测语义，与 GET `/c/orders/{id}` 同应答）；409 `REVIEW_NOT_VERIFIED`（未核销）、`REVIEW_WINDOW_EXPIRED`（超核销后 30 天）、`REVIEW_ALREADY_EXISTS`（一单一评）、`REVIEW_NOT_ELIGIBLE`（退款成功/退款中，2026-10-07 用户裁决）及 `COMMON_CONFLICT`/`IDEMPOTENCY_KEY_CONFLICT`；503 `COMMON_DEPENDENCY_UNAVAILABLE`；未识别异常统一 500 `COMMON_INTERNAL_ERROR`。无新增错误码。
+
 ## 12. MERCHANT / SERVICE
 
 | Code | 含义 | 建议 HTTP |

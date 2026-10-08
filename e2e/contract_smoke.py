@@ -375,6 +375,15 @@ ORDER_WRITE_OPERATIONS = {
 }
 
 
+REVIEW_HTTP_OPERATIONS = {
+    'getReviewEligibility': (
+        'get', '/c/orders/{orderId}/review-eligibility',
+        ('200', '400', '401', '403', '404', '503')),
+    'createReview': (
+        'post', '/c/orders/{orderId}/reviews',
+        ('200', '201', '400', '401', '403', '404', '409', '503')),
+}
+
 RESCHEDULE_HTTP_OPERATIONS = {
     'rescheduleOrder': (
         'post', '/c/orders/{orderId}/reschedule',
@@ -427,6 +436,40 @@ def check_reschedule_http(spec, operation, method, path):
     assert request.get('additionalProperties') is False and request['required'] == ['expectedOrderVersion'],         'Reschedule body opened beyond the version and one branch'
     assert request['properties']['expectedOrderVersion']['pattern'] == r'^(0|[1-9][0-9]*)$',         'Reschedule version pattern changed'
     assert len(request['oneOf']) == 2, 'Reschedule oneOf branches changed'
+
+
+def check_review_http(spec, operation, method, path):
+    name = operation['operationId']
+    expected_method, expected_path, required_codes = REVIEW_HTTP_OPERATIONS[name]
+    assert (method, path) == (expected_method, expected_path), f'Review HTTP operation moved: {name}'
+    assert operation.get('security') == [{'bearerAuth': []}], f'Review HTTP security changed: {name}'
+    assert operation.get('x-implementation-status') == 'IMPLEMENTED_DEFAULT_OFF', f'Review HTTP status changed: {name}'
+    assert operation.get('x-default-enabled') is False, f'Review HTTP must stay default off: {name}'
+    assert operation.get('x-contract') == '10-HTTP-API-Contract-v0.4.md', f'Review HTTP authority changed: {name}'
+    assert operation.get('x-assembly-switch') == 'pet.review.http.enabled', f'Review HTTP switch changed: {name}'
+    assert operation.get('x-route-party') == 'USER' and operation.get('x-audience') == 'MINIAPP', f'Review HTTP identity changed: {name}'
+    responses = operation['responses']
+    assert set(responses) == set(required_codes), f'Review HTTP response surface changed: {name}'
+    if name == 'createReview':
+        body = dereference(spec, operation['requestBody'])
+        request = dereference(spec, body['content']['application/json']['schema'])
+        assert request.get('additionalProperties') is False, 'Review create body opened beyond the contract fields'
+        assert set(request['required']) == {'storeScore', 'serviceScore', 'staffScore'},             'Review create must keep the three required dimensions'
+        for dimension in ('storeScore', 'serviceScore', 'staffScore'):
+            bound = request['properties'][dimension]
+            assert bound.get('type') == 'integer' and bound.get('minimum') == 1 and bound.get('maximum') == 5,                 f'Review score bounds changed: {dimension}'
+        assert request['properties']['content'].get('maxLength') == 2000, 'Review content bounds changed'
+        assert responses['201']['content'] == responses['200']['content'] == {
+            'application/json': {'schema': {'$ref': '#/components/schemas/CreateReviewResponseEnvelope'}}},             'Review create/replay schema changed'
+        data = spec['components']['schemas']['CreateReviewData']
+        assert data.get('additionalProperties') is False, 'Review receipt opened'
+        assert set(data['required']) == {'reviewId', 'scoreIncluded'}, 'Review receipt fields changed'
+        assert data['properties']['scoreIncluded'].get('type') == 'boolean', 'Review score fact must stay boolean'
+    else:
+        assert responses['200']['content'] == {
+            'application/json': {'schema': {'$ref': '#/components/schemas/ReviewEligibilityResponseEnvelope'}}},             'Review eligibility success envelope changed'
+    for code in ('400', '401', '403', '404', '503'):
+        assert dereference(spec, responses[code])['content']['application/json']['schema']             == {'$ref': '#/components/schemas/ErrorEnvelope'}, f'Review HTTP error envelope changed: {name} {code}'
 
 def check_staff_invitation_list(spec, operation, method, path):
     name = operation['operationId']
@@ -1145,6 +1188,8 @@ def check(spec):
                 check_order_write(spec, operation, method, path)
             if operation_id in RESCHEDULE_HTTP_OPERATIONS:
                 check_reschedule_http(spec, operation, method, path)
+            if operation_id in REVIEW_HTTP_OPERATIONS:
+                check_review_http(spec, operation, method, path)
             if method in {'post', 'put', 'patch', 'delete'}:
                 assert {'$ref': '#/components/parameters/RequestId'} in parameters, f'Missing request ID: {operation_id}'
                 writes += 1
@@ -1158,7 +1203,7 @@ def check(spec):
     assert legacy_seen == LEGACY_OPERATIONS.keys(), f'Legacy operations missing: {LEGACY_OPERATIONS.keys() - legacy_seen}'
     assert legacy_writes == 11, 'Legacy write surface changed'
     assert legacy_creates == LEGACY_CREATES, 'Legacy create surface changed'
-    assert operations == LEGACY_OPERATIONS.keys() | AUTH_OPERATIONS.keys() | MERCHANT_OPERATIONS.keys() | APPLICATION_OPERATIONS.keys() | PRIVATE_ASSET_OPERATIONS.keys() | SERVICE_CATALOG_OPERATIONS.keys() | STORE_CATALOG_OPERATIONS.keys() | SERVICE_WRITE_OPERATIONS.keys() | SCHEDULE_AVAILABILITY_OPERATIONS.keys() | SCHEDULE_WRITE_OPERATIONS.keys() | CREDENTIAL_OPERATIONS.keys() | AFTERSALE_OPERATIONS.keys() | COUPON_POINTS_READ_OPERATIONS.keys() | VERIFICATION_HTTP_OPERATIONS.keys() | NOTIFICATION_PREFERENCE_OPERATIONS.keys() | STAFF_INVITATION_LIST_OPERATIONS.keys() | ORDER_WRITE_OPERATIONS.keys() | REFUND_HTTP_OPERATIONS.keys() | MERCHANT_ORDER_LIST_OPERATIONS.keys() | RESCHEDULE_HTTP_OPERATIONS.keys(), 'Unexpected or missing reviewed operations'
+    assert operations == LEGACY_OPERATIONS.keys() | AUTH_OPERATIONS.keys() | MERCHANT_OPERATIONS.keys() | APPLICATION_OPERATIONS.keys() | PRIVATE_ASSET_OPERATIONS.keys() | SERVICE_CATALOG_OPERATIONS.keys() | STORE_CATALOG_OPERATIONS.keys() | SERVICE_WRITE_OPERATIONS.keys() | SCHEDULE_AVAILABILITY_OPERATIONS.keys() | SCHEDULE_WRITE_OPERATIONS.keys() | CREDENTIAL_OPERATIONS.keys() | AFTERSALE_OPERATIONS.keys() | COUPON_POINTS_READ_OPERATIONS.keys() | VERIFICATION_HTTP_OPERATIONS.keys() | NOTIFICATION_PREFERENCE_OPERATIONS.keys() | STAFF_INVITATION_LIST_OPERATIONS.keys() | ORDER_WRITE_OPERATIONS.keys() | REFUND_HTTP_OPERATIONS.keys() | MERCHANT_ORDER_LIST_OPERATIONS.keys() | RESCHEDULE_HTTP_OPERATIONS.keys() | REVIEW_HTTP_OPERATIONS.keys(), 'Unexpected or missing reviewed operations'
     schemes = spec['components']['securitySchemes']
     assert schemes['bearerAuth']['type'] == 'http' and schemes['bearerAuth']['scheme'] == 'bearer'
     for scheme, location, name in [('authAttempt', 'header', 'X-Auth-Attempt'),
@@ -1209,6 +1254,7 @@ def check(spec):
             'merchantOrderHttpOperations': len(operations & MERCHANT_ORDER_HTTP_OPERATIONS.keys()),
             'merchantOrderListOperations': len(operations & MERCHANT_ORDER_LIST_OPERATIONS.keys()),
             'rescheduleHttpOperations': len(operations & RESCHEDULE_HTTP_OPERATIONS.keys()),
+            'reviewHttpOperations': len(operations & REVIEW_HTTP_OPERATIONS.keys()),
             'refundHttpOperations': len(operations & REFUND_HTTP_OPERATIONS.keys()),
             'serviceWriteOperations': len(operations & SERVICE_WRITE_OPERATIONS.keys()),
             'storeCatalogOperations': len(operations & STORE_CATALOG_OPERATIONS.keys()),
