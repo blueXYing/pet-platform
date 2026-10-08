@@ -2,6 +2,7 @@ package com.petplatform.order.biz.apiimpl;
 
 import com.petplatform.common.PageResult;
 import com.petplatform.order.api.dto.OrderSnapshotDTO;
+import com.petplatform.order.api.dto.ReviewEligibilityDTO;
 import com.petplatform.order.api.query.OrderQueryApi;
 import com.petplatform.order.api.query.OrderQueryApi.MyOrderListQuery;
 import com.petplatform.order.api.query.OrderQueryApi.OrderIdQuery;
@@ -32,5 +33,11 @@ public final class OrderQueryApiImpl implements OrderQueryApi {
     @Override
     public PageResult<OrderSnapshotDTO> listMyOrders(MyOrderListQuery query) {
         return service.listMyOrders(query);
+    }
+
+    /** §7.7 review eligibility (REV-001 slice); delegates to the same single-truth service. */
+    @Override
+    public ReviewEligibilityDTO checkReviewEligibility(OrderIdQuery query) {
+        return service.checkReviewEligibility(query);
     }
 }

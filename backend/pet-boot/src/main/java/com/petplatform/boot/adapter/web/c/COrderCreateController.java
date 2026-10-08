@@ -18,6 +18,7 @@ import com.petplatform.payment.api.dto.PaymentPreparationTypes.PreparePaymentCom
 import com.petplatform.user.biz.application.UserAuthService.MiniSessionView;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
+import java.nio.charset.StandardCharsets;
 import java.time.OffsetDateTime;
 import java.time.format.DateTimeFormatterBuilder;
 import java.util.LinkedHashMap;
@@ -46,10 +47,14 @@ import tools.jackson.databind.ObjectReader;
  * kernel. Strict JSON (unknown field, wrong type, explicit null on a non-nullable field, duplicate
  * key and trailing tokens are all 400), terminal X-Request-Id UUID per supplement 23, no query
  * string, Cache-Control: no-store on every reply. The request body is exactly the pinned
- * CreateOrderRequest shape: the selection window ids and the pickup service address are NOT
- * contract fields yet (contract 10 line-group after §3.11 keeps them for the selection sync
- * slice), so IN_STORE creation resolves its unique covering window server-side while
- * PICKUP_DELIVERY fails closed at kernel admission until that sync lands. The kernel beans ride
+ * CreateOrderRequest shape: the 36/38 selection-window sync slice (2026-10-07) added
+ * selectedGeneralWindowId, selectedPickupWindowId, selectedReturnWindowId and serviceAddress to
+ * the public contract, unlocking PICKUP_DELIVERY creation. The four-field top-level requirement
+ * plus the fulfillment oneOf branches (IN_STORE: appointment pair required, directional ids and
+ * service address forbidden; PICKUP_DELIVERY: pickupStart, returnStart, both directional ids and
+ * a non-blank serviceAddress required, appointment pair and GENERAL id forbidden) mirror the
+ * OpenAPI11 schema shape; start-equals-window, same-kind OPEN, 120-minute interval, ownership and
+ * capacity rules all stay in the kernel's locked re-verification. The kernel beans ride
  * their own switches (pet.order.creation.enabled, pet.payment.foundation/dispatch.enabled); when
  * they are not assembled the routes fail closed with 503 instead of half-executing.
  */
@@ -62,12 +67,20 @@ public class COrderCreateController {
     /** CreateOrderRequest (OpenAPI11): exactly these fields, nothing else. */
     private static final Set<String> ORDER_FIELDS = Set.of("storeId", "serviceId", "petId",
             "fulfillmentType", "appointmentStart", "appointmentEnd", "pickupStart", "returnStart",
-            "couponInstanceId", "remark");
+            "selectedGeneralWindowId", "selectedPickupWindowId", "selectedReturnWindowId",
+            "couponInstanceId", "remark", "serviceAddress");
     /** Explicitly nullable in the schema; null is the "absent" spelling and equals omission. */
     private static final Set<String> ORDER_NULLABLE = Set.of("pickupStart", "returnStart",
-            "couponInstanceId");
+            "selectedGeneralWindowId", "selectedPickupWindowId", "selectedReturnWindowId",
+            "couponInstanceId", "serviceAddress");
     private static final Set<String> ORDER_REQUIRED = Set.of("storeId", "serviceId", "petId",
-            "fulfillmentType", "appointmentStart", "appointmentEnd");
+            "fulfillmentType");
+    private static final Set<String> APPOINTMENT_FIELDS = Set.of("appointmentStart",
+            "appointmentEnd");
+    private static final Set<String> PICKUP_REQUIRED = Set.of("pickupStart", "returnStart",
+            "selectedPickupWindowId", "selectedReturnWindowId", "serviceAddress");
+    /** 38号 protected-text technical cap for the raw service address (UTF-8 bytes). */
+    private static final int ADDRESS_MAX_BYTES = 65536;
     private static final Set<String> CHANNEL_FIELDS = Set.of("channel");
 
     private final ObjectProvider<OrderCreationApi> creations;
@@ -91,15 +104,31 @@ public class COrderCreateController {
         MiniSessionView session = session(req);
         JsonNode body = strictObject(raw, ORDER_FIELDS, ORDER_NULLABLE);
         require(body, ORDER_REQUIRED);
+        String fulfillment = oneOf(text(body, "fulfillmentType"), "IN_STORE", "PICKUP_DELIVERY");
+        boolean pickup = "PICKUP_DELIVERY".equals(fulfillment);
+        // The oneOf branch of the schema: each fulfillment requires its own pair and rejects the
+        // other branch's fields. Presence means a non-null value here — nullable fields spell
+        // absence as explicit null, exactly like omission.
+        if (pickup) {
+            require(body, PICKUP_REQUIRED);
+            reject(body, APPOINTMENT_FIELDS, "selectedGeneralWindowId");
+            address(body);
+        } else {
+            require(body, APPOINTMENT_FIELDS);
+            reject(body, PICKUP_REQUIRED);
+        }
         CreateOrderCommand command = new CreateOrderCommand(
                 new CommandContext(CShared.requestId(req), trace(req), OperatorType.USER,
                         session.userId(), "MINIAPP"),
                 id(text(body, "storeId")), id(text(body, "serviceId")), id(text(body, "petId")),
-                oneOf(text(body, "fulfillmentType"), "IN_STORE", "PICKUP_DELIVERY"),
+                fulfillment,
                 time(body, "appointmentStart"), time(body, "appointmentEnd"),
                 time(body, "pickupStart"), time(body, "returnStart"),
-                null, null, null,
-                optionalId(text(body, "couponInstanceId")), remark(body), null);
+                optionalId(text(body, "selectedGeneralWindowId")),
+                pickup ? id(text(body, "selectedPickupWindowId")) : null,
+                pickup ? id(text(body, "selectedReturnWindowId")) : null,
+                optionalId(text(body, "couponInstanceId")), remark(body),
+                pickup ? address(body) : null);
         CreateOrderResult result = creation().create(command);
         Map<String, Object> data = new LinkedHashMap<>();
         data.put("orderId", result.orderId());
@@ -174,6 +203,29 @@ public class COrderCreateController {
         for (String name : names) {
             if (text(body, name) == null) throw invalid();
         }
+    }
+
+    /** The oneOf branch's not-clause: a field of the other branch being present is a 400. */
+    private static void reject(JsonNode body, Set<String> names, String... more) {
+        for (String name : names) {
+            if (text(body, name) != null) throw invalid();
+        }
+        for (String name : more) {
+            if (text(body, name) != null) throw invalid();
+        }
+    }
+
+    /**
+     * Pickup service address (contract 38): non-blank shape here; the kernel owns the content
+     * rules and the protected encrypted snapshot. Returns the trimmed-free raw text as sent.
+     */
+    private static String address(JsonNode body) {
+        String value = text(body, "serviceAddress");
+        if (value == null || value.isBlank()
+                || value.getBytes(StandardCharsets.UTF_8).length > ADDRESS_MAX_BYTES) {
+            throw invalid();
+        }
+        return value;
     }
 
     private static String text(JsonNode body, String name) {

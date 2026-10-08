@@ -15,6 +15,8 @@ import {
 } from '../../orders/model'
 import { canApplyRefundEntry } from '../../orders/refund'
 import { canRescheduleEntry } from '../../orders/reschedule'
+// REV-001 评价入口：仅凭服务端 actions.canReview（§3.7 事实字段）挂载，40/40/20 口径页面归 review.ts。
+import { canReviewEntry } from '../../orders/review'
 import { RealOrderReadRepository, isOrderReadUnauthorized } from '../../orders/repository'
 // 支付发起入口（booking 切片）：仅凭服务端 OrderActions.canPay（§3.7 #123）挂载，不推导业务真相。
 import { canInitiatePayment } from '../../booking/model'
@@ -156,6 +158,15 @@ function DetailScreen({ preview, scenario, orderId }: { preview: boolean; scenar
           </View>
           <Text className='ord-verify-hint'>服务开始前申请将自动全额原路退回；服务开始后由商家在 24 小时内处理。</Text>
           <Button id='ord-apply-refund' className='ord-refund-entry-link' onClick={() => { void Taro.navigateTo({ url: `/consumer/pages/orders/refund-apply?orderId=${encodeURIComponent(detail.orderId)}${preview ? '&preview=1' : ''}` }).catch(() => { void Taro.showToast({ title: '页面跳转失败，请重试', icon: 'none' }) }) }}>申请退款</Button>
+        </View>}
+        {/* REV-001 评价入口：仅凭服务端 actions.canReview（§3.7 事实字段，核销后 30 天内；
+            退款单按 2026-10-07 裁决为 false），40/40/20 评分页归 src/consumer/orders/review.ts。 */}
+        {canReviewEntry(detail) && <View className='ord-refund-entry'>
+          <View className='ord-refund-entry-head'>
+            <Text className='ord-refund-entry-title'>评价</Text>
+          </View>
+          <Text className='ord-verify-hint'>核销后 30 天内可评价一次：门店 40% + 服务 40% + 人员 20%。</Text>
+          <Button id='ord-go-review' className='ord-refund-entry-link' onClick={() => { void Taro.navigateTo({ url: `/consumer/pages/orders/review?orderId=${encodeURIComponent(detail.orderId)}${preview ? '&preview=1' : ''}` }).catch(() => { void Taro.showToast({ title: '页面跳转失败，请重试', icon: 'none' }) }) }}>去评价</Button>
         </View>}
         <View className='ord-preview-note'><Text>{preview ? '只读预览：本地样例数据，仅用于设计验收，不发起真实请求。' : '页面数据：真实接口（订单只读 + 核销码 no-store）。'}</Text></View>
       </View>}

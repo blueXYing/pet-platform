@@ -3356,11 +3356,27 @@ paths:
       - C-Review
       summary: 查询评价资格
       operationId: getReviewEligibility
+      x-implementation-status: IMPLEMENTED_DEFAULT_OFF
+      x-default-enabled: false
+      x-contract: 10-HTTP-API-Contract-v0.4.md
+      x-assembly-switch: pet.review.http.enabled
+      x-route-party: USER
+      x-audience: MINIAPP
       security:
       - bearerAuth: []
       parameters:
       - $ref: '#/components/parameters/OrderId'
       responses:
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '503':
+          $ref: '#/components/responses/DependencyUnavailable'
         '200':
           description: 成功
           content:
@@ -3373,6 +3389,12 @@ paths:
       - C-Review
       summary: 提交评价
       operationId: createReview
+      x-implementation-status: IMPLEMENTED_DEFAULT_OFF
+      x-default-enabled: false
+      x-contract: 10-HTTP-API-Contract-v0.4.md
+      x-assembly-switch: pet.review.http.enabled
+      x-route-party: USER
+      x-audience: MINIAPP
       security:
       - bearerAuth: []
       parameters:
@@ -3385,16 +3407,28 @@ paths:
             schema:
               $ref: '#/components/schemas/CreateReviewRequest'
       responses:
+        '400':
+          $ref: '#/components/responses/BadRequest'
         '401':
           $ref: '#/components/responses/Unauthorized'
         '403':
           $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
         '503':
           $ref: '#/components/responses/DependencyUnavailable'
         '200':
           description: 幂等成功，当前权限通过后返回首次成功业务回执
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CreateReviewResponseEnvelope'
         '201':
           description: 创建成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CreateReviewResponseEnvelope'
         '409':
           $ref: '#/components/responses/Conflict'
   /merchant/orders:
@@ -13264,13 +13298,34 @@ components:
       example: '128.00'
     CreateOrderRequest:
       type: object
+      description: >-
+        Contract 36/38 selection-window sync slice (2026-10-07): the directional window ids and
+        the pickup service address join the public shape, unlocking PICKUP_DELIVERY creation.
+        Field names and semantics follow contract 36 (ROC-2/ROC-3) and contract 38 verbatim; every
+        cross-field rule (window start equality, same-kind OPEN window, store/service ownership,
+        returnStart >= pickupStart + 120 minutes, capacity) stays a kernel-side locked
+        re-verification, never an HTTP promise. IN_STORE keeps the appointment pair and may carry
+        selectedGeneralWindowId; PICKUP_DELIVERY requires pickupStart, returnStart, both
+        directional ids and serviceAddress (province/city/district + detailed address), and
+        forbids the appointment pair and the GENERAL id.
       required:
-      - storeId
-      - serviceId
-      - petId
-      - fulfillmentType
-      - appointmentStart
-      - appointmentEnd
+        - storeId
+        - serviceId
+        - petId
+        - fulfillmentType
+      oneOf:
+        - required: [appointmentStart, appointmentEnd]
+          not:
+            anyOf:
+              - required: [selectedPickupWindowId]
+              - required: [selectedReturnWindowId]
+              - required: [serviceAddress]
+        - required: [pickupStart, returnStart, selectedPickupWindowId, selectedReturnWindowId, serviceAddress]
+          not:
+            anyOf:
+              - required: [appointmentStart]
+              - required: [appointmentEnd]
+              - required: [selectedGeneralWindowId]
       properties:
         storeId:
           $ref: '#/components/schemas/PublicId'
@@ -13284,24 +13339,48 @@ components:
           type: string
           format: date-time
           x-precision: milliseconds
-          description: 带偏移ISO-8601；服务端拒绝非零亚毫秒，不截断或舍入。
+          description: 带偏移ISO-8601；服务端拒绝非零亚毫秒，不截断或舍入。仅 IN_STORE 分支必填。
         appointmentEnd:
           type: string
           format: date-time
           x-precision: milliseconds
-          description: 带偏移ISO-8601；服务端拒绝非零亚毫秒，不截断或舍入。
+          description: 带偏移ISO-8601；服务端拒绝非零亚毫秒，不截断或舍入。仅 IN_STORE 分支必填。
         pickupStart:
           type: string
           format: date-time
           x-precision: milliseconds
-          description: 带偏移ISO-8601；服务端拒绝非零亚毫秒，不截断或舍入。
+          description: 带偏移ISO-8601；服务端拒绝非零亚毫秒，不截断或舍入。仅 PICKUP_DELIVERY 分支必填，且须等于所选 PICKUP 原窗开始值（36号 ROC-2 锁内复核）。
           nullable: true
         returnStart:
           type: string
           format: date-time
           x-precision: milliseconds
-          description: 带偏移ISO-8601；服务端拒绝非零亚毫秒，不截断或舍入。
+          description: 带偏移ISO-8601；服务端拒绝非零亚毫秒，不截断或舍入。仅 PICKUP_DELIVERY 分支必填，且须等于所选 RETURN 原窗开始值并满足 returnStart >= pickupStart + 120 分钟。
           nullable: true
+        selectedGeneralWindowId:
+          type: string
+          minLength: 1
+          maxLength: 19
+          pattern: '^[1-9][0-9]{0,18}(?![\s\S])'
+          x-maximum-decimal: '9223372036854775807'
+          nullable: true
+          description: 36号 ROC-3 到店 GENERAL 原窗 ID（十进制 String）。IN_STORE 可选；缺省时由服务端在锁内按唯一完整容纳规则解析原窗。PICKUP_DELIVERY 禁止。
+        selectedPickupWindowId:
+          type: string
+          minLength: 1
+          maxLength: 19
+          pattern: '^[1-9][0-9]{0,18}(?![\s\S])'
+          x-maximum-decimal: '9223372036854775807'
+          nullable: true
+          description: 36号 ROC-2 接送 PICKUP 方向原窗 ID（十进制 String）。PICKUP_DELIVERY 必填；与 returnStart 所选 RETURN 窗不得为同一原窗。IN_STORE 禁止。
+        selectedReturnWindowId:
+          type: string
+          minLength: 1
+          maxLength: 19
+          pattern: '^[1-9][0-9]{0,18}(?![\s\S])'
+          x-maximum-decimal: '9223372036854775807'
+          nullable: true
+          description: 36号 ROC-2 接送 RETURN 方向原窗 ID（十进制 String）。PICKUP_DELIVERY 必填。IN_STORE 禁止。
         couponInstanceId:
           type: string
           minLength: 1
@@ -13309,6 +13388,12 @@ components:
           pattern: '^[1-9][0-9]{0,18}(?![\s\S])'
           x-maximum-decimal: '9223372036854775807'
           nullable: true
+        serviceAddress:
+          type: string
+          minLength: 1
+          maxLength: 65536
+          nullable: true
+          description: 38号接送服务地址（省市区＋详细地址，非空白文本；受保护原文技术上限 65536 UTF-8 字节由内核强校验并加密快照落库）。PICKUP_DELIVERY 必填；IN_STORE 禁止（必须为 null/缺省）。
         remark:
           type: string
           maxLength: 500
@@ -13493,6 +13578,7 @@ components:
           nullable: true
     CreateReviewRequest:
       type: object
+      additionalProperties: false
       required:
       - storeScore
       - serviceScore
@@ -13811,6 +13897,25 @@ components:
         properties:
           data:
             $ref: '#/components/schemas/ReviewEligibilityData'
+    CreateReviewData:
+      type: object
+      additionalProperties: false
+      required:
+      - reviewId
+      - scoreIncluded
+      properties:
+        reviewId:
+          $ref: '#/components/schemas/PublicId'
+        scoreIncluded:
+          type: boolean
+          description: SSOT §11.2：已核销后部分退款的评价公开展示但不参与评分统计；回执如实返回该事实。
+    CreateReviewResponseEnvelope:
+      allOf:
+      - $ref: '#/components/schemas/BaseEnvelope'
+      - type: object
+        properties:
+          data:
+            $ref: '#/components/schemas/CreateReviewData'
     OrderDetailResponseEnvelope:
       allOf:
       - $ref: '#/components/schemas/BaseEnvelope'

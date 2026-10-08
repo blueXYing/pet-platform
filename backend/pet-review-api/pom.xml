@@ -17,5 +17,11 @@
             <groupId>com.petplatform</groupId>
             <artifactId>pet-common</artifactId>
         </dependency>
+        <!-- Internal contract 07 §14.1: the review eligibility view reuses the §7.7 DTO the
+             ORDER domain owns (api-to-api reference, same precedent as pet-aftersale-api). -->
+        <dependency>
+            <groupId>com.petplatform</groupId>
+            <artifactId>pet-order-api</artifactId>
+        </dependency>
     </dependencies>
 </project>

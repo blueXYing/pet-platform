@@ -2,30 +2,39 @@
 // 本文件是本切片的模块层：严格 exact-key 解码、事实→展示推导、逐错误码中文映射、preview 夹具
 // 全部在这里（ARCH-005 分工；页面只消费现成展示值）。字段以契约为唯一来源：
 // - GET /api/v1/c/services/{serviceId}/availability（§3.4）：登录态读（SCH-D1，Bearer 强制）；
-//   Query 仅 storeId/startDate/endDate（未知参数 400）；items 元素仅六字段投影
+//   Query 仅 storeId/startDate/endDate（未知参数 400）；items 元素六字段投影
 //   start/end/effectiveCapacity/occupiedCount/remainingCapacity/available，分钟级带偏移 ISO-8601
 //   （业务时区 +08:00），按 start 升序；available=false 统一表达不可约/已占满（不引入状态枚举）。
-//   39号 selection（windowId/kind 增补）默认关闭，本切片不发送 kind、不消费增补键。
-// - POST /api/v1/c/orders（§3.5）：X-Request-Id 必填；请求体 CreateOrderRequest 七必填 + 可空
-//   pickupStart/returnStart/couponInstanceId/remark；接送强校验 returnStart >= pickupStart + 120min
-//   （C 端置灰联动，服务端最终校验，SCH-D4）。回执 CreateOrderData 五字段
+//   39号 selection（pet.schedule.selection.enabled 装配）开启时 item 增补 windowId/kind
+//   （两键同进同出）；接送选窗 ID 的唯一展示来源（36号：可约 GET 只作展示，hold 锁内复核为最终授权）。
+// - POST /api/v1/c/orders（§3.5）：X-Request-Id 必填；请求体 CreateOrderRequest 四键全必填
+//   （storeId/serviceId/petId/fulfillmentType）+ 履约分支互斥（11号 oneOf，46号改期同惯例）：
+//   到店 = appointmentStart/appointmentEnd（+可选 selectedGeneralWindowId，缺省由服务端锁内
+//   解析唯一完整容纳原窗）；接送 = pickupStart/returnStart/selectedPickupWindowId/
+//   selectedReturnWindowId/serviceAddress 五键必填、禁止到店键。接送强校验
+//   returnStart >= pickupStart + 120min 与所选原窗开始值一致（C 端置灰联动，服务端 36/38号
+//   内核锁内复核，SCH-D4/ROC-2）。回执 CreateOrderData 五字段
 //   orderId/orderNo/displayStatus/payAmount/paymentExpireAt。
 // - POST /api/v1/c/orders/{orderId}/payments（§3.6）：请求体固定 {channel:'WECHAT_MINI_PROGRAM'}
 //   （V1 不展示支付方式选择）；回执 paymentId/paymentNo/channel/wechatPayParameters 五键。
 //   支付渠道为无正式渠道参数的沙箱态（40号）：回执如实呈现，不虚构支付成功、不调起收银台。
 // 边界（PR 登记）：优惠券选择（couponInstanceId）不在本切片，请求体一律不携带该键；
-// 接送履约（PICKUP_DELIVERY）在 36号公开选窗字段前失败关闭呈现（#128 对齐，见
-// PICKUP_SELECTION_ENABLED），三段选窗与接送校验代码保留待启用。
+// 接送履约已随 36号公开选窗字段同步切片解锁（PICKUP_SELECTION_ENABLED=true，#128 失败关闭
+// 注记移除）；本切片仍不发送 kind 查询参数。
 
 import { ApiError } from '../../shared/request'
 import { displayOrderStatuses, displayStatusLabels, statusVariant, type DisplayOrderStatus } from '../orders/model'
 
 // ---- §3.4 可预约时段（严格 exact-key 解码，失败关闭） ----
 
+/** 39号 selection 增补键的闭集；未装配 selection 时六字段投影无这两键。 */
+export type WindowKind = 'GENERAL' | 'PICKUP' | 'RETURN'
 export type AvailabilityItem = Readonly<{
   start: string; end: string
   effectiveCapacity: number; occupiedCount: number; remainingCapacity: number
   available: boolean
+  windowId: string | null   // 39号 selection 装配后非空；null = 旧六字段投影（无选窗身份）
+  kind: WindowKind | null
 }>
 export type AvailabilityView = Readonly<{ items: readonly AvailabilityItem[] }>
 
@@ -71,12 +80,23 @@ const booleanOf = (value: any): boolean => {
 }
 
 const availabilityKeys = ['start', 'end', 'effectiveCapacity', 'occupiedCount', 'remainingCapacity', 'available']
+const selectionKeys = ['windowId', 'kind']
+const windowKindOf = (value: any): WindowKind => {
+  if (value !== 'GENERAL' && value !== 'PICKUP' && value !== 'RETURN') invalid()
+  return value
+}
 export function decodeAvailabilityItem(value: unknown): AvailabilityItem {
-  const v = exact(value, availabilityKeys)
+  const v = exact(value, [...availabilityKeys, ...selectionKeys])
+  // 39号 selection 增补：windowId/kind 同进同出；只有其一或值非法即失败关闭。
+  const hasWindowId = 'windowId' in v
+  const hasKind = 'kind' in v
+  if (hasWindowId !== hasKind) invalid()
   return {
     start: offsetInstant(requiredKey(v, 'start')), end: offsetInstant(requiredKey(v, 'end')),
     effectiveCapacity: count(requiredKey(v, 'effectiveCapacity')), occupiedCount: count(requiredKey(v, 'occupiedCount')),
     remainingCapacity: count(requiredKey(v, 'remainingCapacity')), available: booleanOf(requiredKey(v, 'available')),
+    windowId: hasWindowId ? isIdText(v.windowId) : null,
+    kind: hasKind ? windowKindOf(v.kind) : null,
   }
 }
 export function decodeAvailability(value: unknown): AvailabilityView {
@@ -160,29 +180,20 @@ export function bookingDates(today: string, count = 7, selected: string | null =
 
 export type FulfillmentKind = 'IN_STORE' | 'PICKUP_DELIVERY'
 
-/** 接送履约开放开关（36号联合契约公开选窗字段前的失败关闭点，与并行后端切片 #128 对齐）：
- *  公开 CreateOrderRequest 只有 pickupStart/returnStart 时间字段（无选窗 ID、无服务地址），
- *  而内核必填双方向窗 ID，故 PICKUP_DELIVERY 订单在 HTTP 层按契约如实 400 COMMON_INVALID_ARGUMENT
- *  失败关闭。false 期间前端不呈现「可选但必败」的接送交互：页面接送选项为禁用态、纯接送服务
- *  整页失败关闭、仓库层对接送草稿网络前拒绝；三段选窗 UI 与接送校验代码保留，翻 true 即启用。 */
-export const PICKUP_SELECTION_ENABLED: boolean = false
-/** 履约方式区禁用项说明（失败关闭面板风格）。 */
-export const PICKUP_OPTION_NOTICE = '暂未开放，待选窗契约同步'
-/** 纯接送服务整页失败关闭说明。 */
-export const PICKUP_SERVICE_UNAVAILABLE = '该服务为上门接送履约，暂不可预约：接送履约暂未开放（待选窗契约同步），开放前请选择到店服务。'
-/** 仓库层守卫：接送草稿在开关打开前网络前拒绝（镜像 #128 的 400 失败关闭语义）。 */
-export function pickupSelectionClosed(draft: BookingDraft): boolean {
-  return draft.fulfillmentType === 'PICKUP_DELIVERY' && !PICKUP_SELECTION_ENABLED
-}
+/** 接送履约开放开关（36号联合契约公开选窗字段同步切片，2026-10-07 解锁）：
+ *  selectedPickupWindowId/selectedReturnWindowId/serviceAddress 已进 11号公开
+ *  CreateOrderRequest，#128 的接送 400 失败关闭注记随之移除。false 可整体回退接送呈现
+ *  （历史失败关闭语义），true 时接送选项可选、纯接送服务正常进入三段选窗。 */
+export const PICKUP_SELECTION_ENABLED: boolean = true
 
-/** 履约方式区呈现（模块层推导，页面只消费；接送项 selectable 随 PICKUP_SELECTION_ENABLED）。 */
+/** 履约方式区呈现（模块层推导，页面只消费；接送项随 PICKUP_SELECTION_ENABLED 可选）。 */
 export type FulfillmentModeView = Readonly<{ id: FulfillmentKind; label: string; note: string; className: string }>
 export function fulfillmentModes(current: FulfillmentKind): readonly FulfillmentModeView[] {
   return [
     { id: 'IN_STORE', label: '到店服务', note: '本服务到店履约',
       className: `bkg-mode${current === 'IN_STORE' ? ' is-selected' : ''}` },
     { id: 'PICKUP_DELIVERY', label: '上门接送',
-      note: PICKUP_SELECTION_ENABLED ? '接送履约（含接宠/送回时段）' : PICKUP_OPTION_NOTICE,
+      note: PICKUP_SELECTION_ENABLED ? '接送履约（含接宠/送回时段）' : '暂未开放，待选窗契约同步',
       className: `bkg-mode${current === 'PICKUP_DELIVERY' ? ' is-selected' : ''}${PICKUP_SELECTION_ENABLED ? '' : ' is-disabled'}` },
   ]
 }
@@ -192,21 +203,31 @@ export type BookingDraft = Readonly<{
   fulfillmentType: FulfillmentKind
   appointmentStart: string; appointmentEnd: string
   pickupStart: string | null; returnStart: string | null
+  selectedPickupWindowId: string | null
+  selectedReturnWindowId: string | null
+  serviceAddress: string
   remark: string
 }>
 /** 接送硬规则（§3.5 强校验 + SSOT）：returnStart >= pickupStart + 120 分钟（C 端置灰联动）。 */
 export function pickupReturnIntervalInvalid(pickupStart: string, returnStart: string): boolean {
   return Date.parse(returnStart) < Date.parse(pickupStart) + 120 * 60000
 }
-/** 送回候选置灰：同一窗口集里仅 returnStart >= pickupStart + 120min 可选（SCH-D4）。 */
-export function returnCandidates(items: readonly AvailabilityItem[], pickupStart: string): readonly AvailabilityItem[] {
-  return items.filter(item => !pickupReturnIntervalInvalid(pickupStart, item.start))
+/** 接宠候选：接送服务的 PICKUP 方向原窗（36号 ROC-2：上门方向只能选 PICKUP 窗）。 */
+export function pickupCandidates(items: readonly AvailabilityItem[]): readonly AvailabilityItem[] {
+  return items.filter(item => item.kind === 'PICKUP')
 }
-export type BookingFormError = 'store' | 'service' | 'pet' | 'window' | 'pickup' | 'return' | 'interval' | 'remark'
+/** 送回候选：RETURN 方向原窗且满足 120 分钟间隔（36号 ROC-2 + SCH-D4 C 端置灰联动）。 */
+export function returnCandidates(items: readonly AvailabilityItem[], pickupStart: string): readonly AvailabilityItem[] {
+  return items.filter(item => item.kind === 'RETURN' && !pickupReturnIntervalInvalid(pickupStart, item.start))
+}
+export type BookingFormError = 'store' | 'service' | 'pet' | 'window' | 'pickup' | 'return' | 'interval'
+  | 'selection' | 'address' | 'remark'
 /** 草稿里的时刻值按契约词法校验（复用解码器口径；非法值按表单错误呈现，不抛出）。 */
 const isInstantLike = (value: string): boolean => {
   try { offsetInstant(value); return true } catch { return false }
 }
+const isIdLike = (value: string | null): boolean =>
+  value !== null && /^[1-9][0-9]{0,18}$/.test(value) && (value.length < 19 || BigInt(value) <= 9223372036854775807n)
 export const bookingFormErrorLabels: Readonly<Record<BookingFormError, string>> = {
   store: '门店参数无效，请从服务详情重新进入',
   service: '服务参数无效，请从服务详情重新进入',
@@ -215,24 +236,33 @@ export const bookingFormErrorLabels: Readonly<Record<BookingFormError, string>> 
   pickup: '请选择接宠时段',
   return: '请选择送回时段',
   interval: '送回开始需不早于接宠开始后 120 分钟，请重新选择送回时段',
+  selection: '所选时段暂无选窗信息（排期选窗装配未开放），请稍后重试或选择到店服务',
+  address: '请填写接送服务地址（省市区＋详细地址）',
   remark: '备注最多500字',
 }
 export function bookingFormError(draft: BookingDraft): BookingFormError | null {
   if (!/^[1-9][0-9]{0,18}$/.test(draft.storeId)) return 'store'
   if (!/^[1-9][0-9]{0,18}$/.test(draft.serviceId)) return 'service'
   if (!/^[1-9][0-9]{0,18}$/.test(draft.petId)) return 'pet'
-  if (!isInstantLike(draft.appointmentStart) || !isInstantLike(draft.appointmentEnd)) return 'window'
   if (draft.fulfillmentType !== 'IN_STORE' && draft.fulfillmentType !== 'PICKUP_DELIVERY') return 'window'
   if (draft.fulfillmentType === 'PICKUP_DELIVERY') {
     if (draft.pickupStart === null || !isInstantLike(draft.pickupStart)) return 'pickup'
     if (draft.returnStart === null || !isInstantLike(draft.returnStart)) return 'return'
     if (pickupReturnIntervalInvalid(draft.pickupStart, draft.returnStart)) return 'interval'
+    if (!isIdLike(draft.selectedPickupWindowId) || !isIdLike(draft.selectedReturnWindowId)) return 'selection'
+    if (draft.selectedPickupWindowId === draft.selectedReturnWindowId) return 'selection'
+    if (!draft.serviceAddress.trim()) return 'address'
+  } else {
+    if (!isInstantLike(draft.appointmentStart) || !isInstantLike(draft.appointmentEnd)) return 'window'
   }
   if ([...draft.remark].length > 500) return 'remark'
   return null
 }
-/** 构造 CreateOrderRequest：必填七键 + 接送两键（仅 PICKUP_DELIVERY）+ remark（非空才带）；
- *  couponInstanceId 不在本切片（PR 登记边界）；显式 null 不入 JSON（C 解析器拒绝 null）。 */
+/** 构造 CreateOrderRequest（11号 oneOf 履约分支）：四键全必填；到店带 appointmentStart/
+ *  appointmentEnd（selectedGeneralWindowId 缺省由服务端锁内解析，本切片不发送）；
+ *  接送带 pickupStart/returnStart/selectedPickupWindowId/selectedReturnWindowId/serviceAddress
+ *  五键、不携带到店键；remark 非空才带；couponInstanceId 不在本切片（PR 登记边界）；
+ *  显式 null 不入 JSON（C 解析器拒绝 null）。 */
 export function buildOrderRequest(draft: BookingDraft): Record<string, unknown> {
   const error = bookingFormError(draft)
   if (error !== null) throw new Error(`BOOKING_FORM_${error.toUpperCase()}`)
@@ -240,11 +270,16 @@ export function buildOrderRequest(draft: BookingDraft): Record<string, unknown> 
   const request: Record<string, unknown> = {
     storeId: draft.storeId, serviceId: draft.serviceId, petId: draft.petId,
     fulfillmentType: draft.fulfillmentType,
-    appointmentStart: draft.appointmentStart, appointmentEnd: draft.appointmentEnd,
   }
   if (draft.fulfillmentType === 'PICKUP_DELIVERY') {
     request.pickupStart = draft.pickupStart
     request.returnStart = draft.returnStart
+    request.selectedPickupWindowId = draft.selectedPickupWindowId
+    request.selectedReturnWindowId = draft.selectedReturnWindowId
+    request.serviceAddress = draft.serviceAddress.trim()
+  } else {
+    request.appointmentStart = draft.appointmentStart
+    request.appointmentEnd = draft.appointmentEnd
   }
   if (remark) request.remark = remark
   return request
@@ -255,12 +290,17 @@ export function buildOrderRequest(draft: BookingDraft): Record<string, unknown> 
 export function draftFromCommandData(data: unknown): BookingDraft | null {
   try {
     const v = objectLike(data)
+    const pickup = v.fulfillmentType === 'PICKUP_DELIVERY'
     const request = buildOrderRequest({
       storeId: isIdText(v.storeId), serviceId: isIdText(v.serviceId), petId: isIdText(v.petId),
-      fulfillmentType: v.fulfillmentType === 'PICKUP_DELIVERY' ? 'PICKUP_DELIVERY' : 'IN_STORE',
-      appointmentStart: offsetInstant(v.appointmentStart), appointmentEnd: offsetInstant(v.appointmentEnd),
-      pickupStart: v.pickupStart === undefined ? null : offsetInstant(v.pickupStart),
-      returnStart: v.returnStart === undefined ? null : offsetInstant(v.returnStart),
+      fulfillmentType: pickup ? 'PICKUP_DELIVERY' : 'IN_STORE',
+      appointmentStart: pickup ? '' : offsetInstant(v.appointmentStart),
+      appointmentEnd: pickup ? '' : offsetInstant(v.appointmentEnd),
+      pickupStart: pickup ? offsetInstant(v.pickupStart) : null,
+      returnStart: pickup ? offsetInstant(v.returnStart) : null,
+      selectedPickupWindowId: pickup ? isIdText(v.selectedPickupWindowId) : null,
+      selectedReturnWindowId: pickup ? isIdText(v.selectedReturnWindowId) : null,
+      serviceAddress: pickup ? plainText(v.serviceAddress, 65536) : '',
       remark: v.remark === undefined ? '' : plainText(v.remark, 500),
     })
     // buildOrderRequest 会重排/裁剪键；与原载荷全等校验（顺序无关）确认无字段漂移。
@@ -269,10 +309,14 @@ export function draftFromCommandData(data: unknown): BookingDraft | null {
     if (JSON.stringify(original) !== JSON.stringify(request)) return null
     return {
       storeId: String(request.storeId), serviceId: String(request.serviceId), petId: String(request.petId),
-      fulfillmentType: request.fulfillmentType === 'PICKUP_DELIVERY' ? 'PICKUP_DELIVERY' : 'IN_STORE',
-      appointmentStart: String(request.appointmentStart), appointmentEnd: String(request.appointmentEnd),
-      pickupStart: request.pickupStart === undefined ? null : String(request.pickupStart),
-      returnStart: request.returnStart === undefined ? null : String(request.returnStart),
+      fulfillmentType: pickup ? 'PICKUP_DELIVERY' : 'IN_STORE',
+      appointmentStart: pickup ? '' : String(request.appointmentStart),
+      appointmentEnd: pickup ? '' : String(request.appointmentEnd),
+      pickupStart: pickup ? String(request.pickupStart) : null,
+      returnStart: pickup ? String(request.returnStart) : null,
+      selectedPickupWindowId: pickup ? String(request.selectedPickupWindowId) : null,
+      selectedReturnWindowId: pickup ? String(request.selectedReturnWindowId) : null,
+      serviceAddress: pickup ? String(request.serviceAddress) : '',
       remark: v.remark === undefined ? '' : String(v.remark),
     }
   } catch {
@@ -397,7 +441,7 @@ export function availabilityReadMessage(error: unknown): string {
 
 // ---- preview=1 夹具通道（本地样例数据，不发任何网络请求；设计验收专用） ----
 
-export type BookingScenario = 'normal' | 'unavailable' | 'conflict' | 'pay-error' | 'pickup'
+export type BookingScenario = 'normal' | 'unavailable' | 'conflict' | 'pay-error' | 'pickup'  // pickup：接送成功场景（选窗字段同步后解锁）
 export const isBookingScenario = (value?: string): value is BookingScenario =>
   ['normal', 'unavailable', 'conflict', 'pay-error', 'pickup'].includes(value || '')
 
@@ -414,22 +458,35 @@ function fixtureInstant(dayOffset: number, hour: number, minute: number): string
   const beijing = new Date(base + 8 * 3600000)
   return `${beijing.toISOString().slice(0, 10)}T${beijing.toISOString().slice(11, 16)}:00.000+08:00`
 }
-/** 夹具日以 2026-10-01 为第 0 天：返回 (dayOffset, hour, minute, durationMinutes) 的六键投影。 */
-function fixtureWindow(dayOffset: number, hour: number, minute: number, durationMinutes: number, remaining: number, capacity: number): AvailabilityItem {
+/** 夹具日以 2026-10-01 为第 0 天：39号 selection 投影（windowId/kind 与六键同发）。 */
+function fixtureWindow(dayOffset: number, index: number, kind: WindowKind, hour: number, minute: number, durationMinutes: number, remaining: number, capacity: number): AvailabilityItem {
   const start = fixtureInstant(dayOffset, hour, minute)
   const end = fixtureInstant(dayOffset, hour, minute + durationMinutes)
-  return { start, end, effectiveCapacity: capacity, occupiedCount: capacity - remaining, remainingCapacity: remaining, available: remaining > 0 }
+  return {
+    start, end, effectiveCapacity: capacity, occupiedCount: capacity - remaining,
+    remainingCapacity: remaining, available: remaining > 0,
+    windowId: `2019${String(dayOffset).padStart(2, '0')}${String(index).padStart(2, '0')}`, kind,
+  }
 }
 
 // 分钟级样例（非整点）：09:15~10:45 可约、10:15~11:15 已满、14:00~15:30 可约、16:30~18:00 已满；
-// 跨天窗口（寄养）：20:00~次日 09:00 可约。
-const fixtureWindows = (dayOffset: number): AvailabilityItem[] => [
-  fixtureWindow(dayOffset, 9, 15, 90, 2, 3),
-  fixtureWindow(dayOffset, 10, 15, 60, 0, 2),
-  fixtureWindow(dayOffset, 14, 0, 90, 1, 1),
-  fixtureWindow(dayOffset, 16, 30, 90, 0, 4),
-  fixtureWindow(dayOffset, 20, 0, 780, 3, 5),
-]
+// 跨天窗口（寄养）：20:00~次日 09:00 可约。到店服务全 GENERAL；接送服务前两窗 PICKUP、后三窗
+// RETURN（36号 ROC-2 双方向原窗；09:15+120=11:15 起 14:00/16:30/20:00 均为合法送回）。
+const fixtureWindows = (dayOffset: number, pickup = false): AvailabilityItem[] => pickup
+  ? [
+    fixtureWindow(dayOffset, 1, 'PICKUP', 9, 15, 90, 2, 3),
+    fixtureWindow(dayOffset, 2, 'PICKUP', 10, 15, 60, 0, 2),
+    fixtureWindow(dayOffset, 3, 'RETURN', 14, 0, 90, 1, 1),
+    fixtureWindow(dayOffset, 4, 'RETURN', 16, 30, 90, 0, 4),
+    fixtureWindow(dayOffset, 5, 'RETURN', 20, 0, 780, 3, 5),
+  ]
+  : [
+    fixtureWindow(dayOffset, 1, 'GENERAL', 9, 15, 90, 2, 3),
+    fixtureWindow(dayOffset, 2, 'GENERAL', 10, 15, 60, 0, 2),
+    fixtureWindow(dayOffset, 3, 'GENERAL', 14, 0, 90, 1, 1),
+    fixtureWindow(dayOffset, 4, 'GENERAL', 16, 30, 90, 0, 4),
+    fixtureWindow(dayOffset, 5, 'GENERAL', 20, 0, 780, 3, 5),
+  ]
 
 export type BookingDeps = {
   availability(serviceId: string, storeId: string, date: string): Promise<AvailabilityView>
@@ -447,11 +504,10 @@ export class PreviewBookingRepository implements BookingDeps {
     if (storeId !== PREVIEW_BOOKING_STORE) throw new ApiError('SERVICE_NOT_FOUND', 404)
     const offset = Number(date.slice(8, 10)) - 1
     if (!(date.startsWith('2026-10-')) || offset < 0 || offset > 6) return { items: [] }
-    return { items: fixtureWindows(offset).map(item => ({ ...item })) }
+    // 接送服务按 39号 selection 投影返回 PICKUP/RETURN 方向窗；到店服务为 GENERAL。
+    return { items: fixtureWindows(offset, serviceId === PREVIEW_PICKUP_SERVICE).map(item => ({ ...item })) }
   }
   async create(draft: BookingDraft): Promise<CreateOrderReceipt> {
-    // #128 对齐：接送草稿在开关打开前按后端现状应答 400 COMMON_INVALID_ARGUMENT（失败关闭）。
-    if (pickupSelectionClosed(draft)) throw new ApiError('COMMON_INVALID_ARGUMENT', 400)
     if (this.scenario === 'conflict') throw new ApiError('SCHEDULE_CAPACITY_EXCEEDED', 409)
     if (bookingFormError(draft) !== null) throw new ApiError('COMMON_INVALID_ARGUMENT', 400)
     if (draft.serviceId !== PREVIEW_BOOKING_SERVICE && draft.serviceId !== PREVIEW_PICKUP_SERVICE) throw new ApiError('SERVICE_NOT_FOUND', 404)
@@ -471,10 +527,13 @@ export class PreviewBookingRepository implements BookingDeps {
     }
   }
 }
-/** 夹具自检：坏夹具直接在测试期暴露（全量重解一遍）。 */
+/** 夹具自检：坏夹具直接在测试期暴露（全量重解一遍，含接送方向窗）。 */
 export function validateBookingFixtures(): boolean {
   try {
-    for (let day = 0; day <= 6; day++) decodeAvailability({ items: fixtureWindows(day) })
+    for (let day = 0; day <= 6; day++) {
+      decodeAvailability({ items: fixtureWindows(day) })
+      decodeAvailability({ items: fixtureWindows(day, true) })
+    }
     return true
   } catch { return false }
 }

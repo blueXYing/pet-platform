@@ -429,17 +429,23 @@ ScheduleQueryApi.queryAvailability   （07 号 §6.1/§6.1.1：可见性经 chec
 > payAmount/paymentExpireAt 五字段），同 key 异参 409 `IDEMPOTENCY_KEY_CONFLICT`；错误面按 12 号既有码
 > （含 `SCHEDULE_CAPACITY_EXCEEDED`/`SERVICE_NOT_BOOKABLE`/`PET_NOT_FOUND` 等 409/404 家族）。
 > 实施细则钉死如下（均按既有契约语义，未新增产品规则）：
-> - 请求未携带选窗 ID 与接送服务地址（本节及 11 号均无该字段）：到店（IN_STORE）由服务端在锁内解析唯一
->   完整容纳所选分钟区间的原窗（38 号"到店无ID只能唯一原窗完整容纳"）；接送（PICKUP_DELIVERY）因内核
->   必填双方向窗 ID 与服务地址，在本切片按现状**失败关闭**为 400 `COMMON_INVALID_ARGUMENT`，待 36 号
->   联合契约的公开选窗字段同步切片（见本文件 §3.11 后注记与 §3.4 六字段响应限制）落地后启用，不猜测
->   或臆造窗口 ID。
+> - ~~请求未携带选窗 ID 与接送服务地址（本节及 11 号均无该字段）~~（2026-10-07 36 号联合契约公开选窗
+>   字段同步切片解锁：11 号 `CreateOrderRequest` 已按 36 号 ROC-2/ROC-3 与 38 号原文增补
+>   `selectedPickupWindowId`/`selectedReturnWindowId`/`selectedGeneralWindowId`/`serviceAddress`，
+>   履约分支互斥沿 46 号改期请求的 oneOf 惯例）。接送（PICKUP_DELIVERY）必填双方向窗 ID 与服务地址，
+>   缺窗 ID/缺地址/间隔不足 120 分钟按内核既有面 400 `COMMON_INVALID_ARGUMENT`；到店（IN_STORE）
+>   `selectedGeneralWindowId` 可选，缺省仍由服务端在锁内解析唯一完整容纳所选分钟区间的原窗（38 号
+>   "到店无ID只能唯一原窗完整容纳"）。窗口开始值与所选窗一致、同店同服务同 kind OPEN、返程
+>   `>= 上门 + 120 分钟`、容量与人员证明全部在 36/38 号内核锁内复核，HTTP 层只做形状门禁，不猜测或
+>   臆造窗口 ID；选窗 ID 的展示来源为 §3.4 可约 items 的 39 号 selection 增补（`windowId`/`kind`，
+>   `pet.schedule.selection.enabled` 装配）。
 > - `couponInstanceId` 字段按 CPN 未启现状如实透传：null（缺省）即无券；非空时内核按"券冻结提供器未
 >   实现"失败关闭 503 `COMMON_DEPENDENCY_UNAVAILABLE` 且不创建任何业务行（38 号既有语义）。
 > - `remark` 形状上限 500 字符（11 号 maxLength），内核另按 200 字符内容规则校验；~~未配置真实备注审核
 >   提供器时非空备注 503 失败关闭（38 号既有语义）~~（2026-10-08 用户裁决：V1 宽容直收，未配置真实备注
 >   审核提供器时非空备注按 38 号长度/字符规则校验通过后直接加密收存、不再 503，不走审核；备注审核机制
->   V2 交付。原号增补，不改 11 号 schema）。
+>   V2 交付。原号增补，不改 11 号 schema）。`serviceAddress`（仅接送）形状上限 65536 字符，
+>   内核按非空白＋65536 UTF-8 字节技术上限校验并加密快照落库（38 号既有语义）。
 > - 内核装配开关（`pet.order.creation.enabled` 等）未开启时，路由随会话开关存在但失败关闭 503，不半执行。
 
 ### POST `/api/v1/c/orders`
@@ -462,18 +468,22 @@ Request：
   "appointmentEnd": "2026-09-12T10:45:00+08:00",
   "pickupStart": null,
   "returnStart": null,
+  "selectedGeneralWindowId": null,
   "couponInstanceId": "40001",
   "remark": "怕生，请提前沟通"
 }
 ```
 
-接送：
+接送（PICKUP_DELIVERY 分支必填五键，禁止到店两键与 GENERAL 窗 ID）：
 
 ```json
 {
   "fulfillmentType": "PICKUP_DELIVERY",
   "pickupStart": "2026-09-12T09:00:00+08:00",
-  "returnStart": "2026-09-12T11:00:00+08:00"
+  "returnStart": "2026-09-12T11:00:00+08:00",
+  "selectedPickupWindowId": "2019000000000000101",
+  "selectedReturnWindowId": "2019000000000000102",
+  "serviceAddress": "上海市徐汇区某路100弄5号201室"
 }
 ```
 
@@ -481,6 +491,8 @@ Request：
 
 ```text
 returnStart >= pickupStart + 120 minutes
+pickupStart/returnStart 须等于所选 PICKUP/RETURN 原窗开始值（36号 ROC-2 锁内复核）
+两方向不得为同一原窗；serviceAddress 非空白（省市区＋详细地址，38号）
 ```
 
 Response：
@@ -786,6 +798,8 @@ C：GET `/api/v1/c/aftersales`、GET `/api/v1/c/aftersales/{afterSaleId}`；POST
 ---
 
 ## 3.14 评价
+
+> 2026-10-07 REV-001 评价切片注记：本节两路由随 OpenAPI11 翻为 `IMPLEMENTED_DEFAULT_OFF`（`pet.review.http.enabled` + `pet.auth.c.enabled` 双层默认关闭）。资格判定单真源在 ORDER 域（07号 §7.7 `OrderQueryApi.checkReviewEligibility`，与 §3.7 `actions.canReview` 同一分支），REVIEW 内核仅叠加自身事实（一单一评 → `rejectCode=REVIEW_ALREADY_EXISTS`）；**2026-10-07 用户裁决回归：退款成功（REFUNDED）与退款中（REFUNDING）不可评价**（`rejectCode=REVIEW_NOT_ELIGIBLE`），已核销后部分退款仍可评价但 `scoreIncluded=false`（SSOT §11.2，公开展示不计分）。POST 严格 JSON（未知字段/非整数或越界评分/重复键/尾随内容均 400，三维评分 1~5 整数、`content` ≤2000 码点、`mediaFileIds` 媒体能力未开放——非空数组 400 如实拒绝）；`X-Request-Id` 五元组幂等（首报文 201、受保护重放 200，回执固定 `reviewId/scoreIncluded`）；40/40/20 综合分（门店40%+服务40%+人员20%，1 位小数）为内核事实，不接受客户端提交；错误码映射见 Error12 §11。评价申诉（REV-002）不在本切片。GET 404 沿订单读取族防探测语义（他人/未知订单同应答）。
 
 ### GET `/api/v1/c/orders/{orderId}/review-eligibility`
 
@@ -2178,7 +2192,7 @@ applicationId等主键使用Snowflake String；applicationNo按原PRD为SQ+YYYYM
 
 ## 创建订单内核阶段状态（2026-09-27）
 
-[38号内部内核](38-Atomic-Booking-Create-Contract-v0.1.md)已实现真实占位与待支付订单原子写入、地址/备注加密快照和持久幂等。~~当前没有开放本文件§3.5 HTTP路由，也没有改变§3.4现行六字段响应~~（2026-10-07 C 端下单/支付发起 HTTP 切片按 §3.5/§3.6 实现注记交付 §3.5 与 §3.6 两条 POST，默认关闭；§3.4 现行六字段响应未改变）；选窗ID/类型、服务地址及完整结算配套须后续同步公开合同与适配器后启用（接送履约在公开合同补齐选窗字段前按 §3.5 实现注记失败关闭）。优惠券、~~生产备注审核~~（2026-10-08 用户裁决：V1 备注宽容直收、不走审核，见 §3.5 备注段增补；审核机制 V2 交付）、自动到期关闭与支付未接齐，不能把无券内部测试当作完整C端下单上线。
+[38号内部内核](38-Atomic-Booking-Create-Contract-v0.1.md)已实现真实占位与待支付订单原子写入、地址/备注加密快照和持久幂等。~~当前没有开放本文件§3.5 HTTP路由，也没有改变§3.4现行六字段响应~~（2026-10-07 C 端下单/支付发起 HTTP 切片按 §3.5/§3.6 实现注记交付 §3.5 与 §3.6 两条 POST，默认关闭；§3.4 现行六字段响应未改变）；~~选窗ID/类型、服务地址及完整结算配套须后续同步公开合同与适配器后启用（接送履约在公开合同补齐选窗字段前按 §3.5 实现注记失败关闭）~~（2026-10-07 36号联合契约公开选窗字段同步切片按 §3.5 实现注记交付：`selectedPickupWindowId`/`selectedReturnWindowId`/`selectedGeneralWindowId`/`serviceAddress` 已进 11 号公开 `CreateOrderRequest`，接送履约下单解锁，全部校验仍由 36/38 号内核锁内复核；选窗 ID 展示来源为 §3.4 的 39 号 selection 增补）。优惠券、~~生产备注审核~~（2026-10-08 用户裁决：V1 备注宽容直收、不走审核，见 §3.5 备注段增补；审核机制 V2 交付）、自动到期关闭与支付未接齐，不能把无券内部测试当作完整C端下单上线。
 
 ## 核销码 V1/V2 正式补充
 2026-09-29用户批准V1/V2，执行[47号契约](47-Verification-Credential-Contract-v0.1.md)。覆盖§3.11：GET仅只读，POST生成/刷新带requestId和expectedCredentialVersion；新完整视图替代旧verificationStatus示例。第三次独立失败锁15分钟且换码不能绕过。~~两个路由均NOT_IMPLEMENTED，不注册公开入口~~（2026-10-06 核销 HTTP 切片按 47号 v0.2 交付，默认关闭）；~~不表示商家核销完成接口已交付~~（§4.7 商家核销路由同批按 48号 K2 v0.3 交付，默认关闭）。
