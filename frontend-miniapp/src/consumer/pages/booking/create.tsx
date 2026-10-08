@@ -14,9 +14,9 @@ import { PreviewStoreRepository } from '../../store/model'
 import { PreviewPetRepository, type PetView } from '../../pet/model'
 import { realPetRepository } from '../../api/page-repository'
 import {
-  PREVIEW_BOOKING_TODAY, PICKUP_SELECTION_ENABLED, PICKUP_SERVICE_UNAVAILABLE, availabilityReadMessage, beijingToday,
+  PREVIEW_BOOKING_TODAY, PICKUP_SELECTION_ENABLED, availabilityReadMessage, beijingToday,
   bookingCreateMessage, bookingDates, bookingFormError, bookingFormErrorLabels, draftFromCommandData, fulfillmentModes,
-  isBookingScenario, paymentDeadline, receiptBadge, returnCandidates, slotViews, windowLabel, PreviewBookingRepository,
+  isBookingScenario, paymentDeadline, pickupCandidates, receiptBadge, returnCandidates, slotViews, windowLabel, PreviewBookingRepository,
   type AvailabilityItem, type AvailabilityView, type BookingDate, type BookingDraft, type CreateOrderReceipt,
 } from '../../booking/model'
 import { ORDER_CREATE_SLOT, RealBookingRepository } from '../../booking/repository'
@@ -26,16 +26,17 @@ import './booking.css'
 // 60 分钟槽 + 上门/送回两栏，与已批分钟级 availability 契约（六字段投影、remaining>0 可选、
 // 已满置灰「已约满」）语义冲突，视同设计缺稿——本页沿 C 端现行页面规范（orders/coupons tokens）
 // 实现，布局参照原稿弹层结构（门店头 + 时段网格 + 底部确认条）。字段以契约为唯一来源：
-// 服务/门店名来自 §3.3 只读投影，时段来自 availability，宠物来自 pet-archive；优惠券不在本切片
-//（couponInstanceId 不携带，PR 登记边界）。**接送履约（PICKUP_DELIVERY）失败关闭呈现（#128
-// 对齐）**：公开 CreateOrderRequest 无选窗字段而内核必填双方向窗 ID，接送单在 HTTP 层必 400，
-// 故履约方式区「上门接送」为禁用态+说明、纯接送服务整页失败关闭；三段选窗 UI 保留代码，仅在
-// PICKUP_SELECTION_ENABLED 打开后启用（36号选窗契约同步切片）。提交走幂等槽 order:create
+// 服务/门店名来自 §3.3 只读投影，时段来自 availability（39号 selection 投影带 windowId/kind），
+// 宠物来自 pet-archive；优惠券不在本切片（couponInstanceId 不携带，PR 登记边界）。**接送履约
+// （PICKUP_DELIVERY）已随 36号公开选窗字段同步切片解锁**（PICKUP_SELECTION_ENABLED=true，
+// #128 失败关闭呈现移除）：接送型服务呈现接宠（PICKUP 方向原窗）/送回（RETURN 方向原窗＋
+// 120 分钟间隔置灰）两段选窗与接送服务地址（省市区＋详细地址）输入；提交体带双方向选窗 ID
+// 与服务地址，全部一致性规则由 36/38号内核锁内复核。提交走幂等槽 order:create
 //（23号 X-Request-Id 重放，未确认载荷锁死，页面按原命令还原选择后重试）；成功回执展示
 // CreateOrderData 五字段并引导去支付/订单详情；失败逐错误码中文映射。ARCH-005 分工：回执展示
 // 状态经 booking/model.receiptBadge 现成展示值，页面不触碰订单事实字段。preview=1 沿本地夹具
-// 通道（scenario=pickup 演示接送失败关闭面板）。
-type Phase = 'loading' | 'ready' | 'invalid' | 'missing' | 'expired' | 'load-error' | 'receipt' | 'pickup-unavailable'
+// 通道（scenario=pickup 演示接送成功预约）。
+type Phase = 'loading' | 'ready' | 'invalid' | 'missing' | 'expired' | 'load-error' | 'receipt'
 type SlotPhase = 'loading' | 'ready' | 'empty' | 'error'
 const DATE_COUNT = 7
 
@@ -64,6 +65,7 @@ function CreateScreen({ preview, scenario, serviceId, storeIdParam }: { preview:
   const [selectedStart, setSelectedStart] = useState<string | null>(null)
   const [pickupStart, setPickupStart] = useState<string | null>(null)
   const [returnStart, setReturnStart] = useState<string | null>(null)
+  const [serviceAddress, setServiceAddress] = useState('')
   const [remark, setRemark] = useState('')
   const [notice, setNotice] = useState('')
   const [slotAuthExpired, setSlotAuthExpired] = useState(false)
@@ -87,13 +89,10 @@ function CreateScreen({ preview, scenario, serviceId, storeIdParam }: { preview:
     try {
       const loaded = await runCatalogRead(scope, () => catalog.detail(serviceId))
       if (!mounted.current || current !== sequence.current || currentRevision !== scope.revision) return
-      // preview scenario=pickup：本地投影为接送型，仅用于设计验收通道演示接送失败关闭面板。
+      // preview scenario=pickup：本地投影为接送型，供设计验收通道演示接送成功预约链路。
       const detail = preview && scenario === 'pickup'
         ? { ...loaded, fulfillmentType: 'PICKUP_DELIVERY' as const } : loaded
       if (storeIdParam && detail.storeId !== storeIdParam) { setPhase('invalid'); return }
-      // #128 对齐（失败关闭）：接送履约暂未开放（36号选窗字段未随公开契约发布），纯接送服务
-      // 不呈现「可选但必败」的预约交互，整页失败关闭说明。
-      if (detail.fulfillmentType === 'PICKUP_DELIVERY' && !PICKUP_SELECTION_ENABLED) { setPhase('pickup-unavailable'); return }
       setService(detail)
       // 门店名：§3.3.2 匿名详情投影（可选增强，失败不阻断预约，显示门店ID占位）。
       void runCatalogRead(scope, () => storeRepository.detail(detail.storeId))
@@ -121,9 +120,9 @@ function CreateScreen({ preview, scenario, serviceId, storeIdParam }: { preview:
         setNotice('检测到上次提交结果尚未确认，请核对以下预约信息后重试原提交（不会重复创建订单）。')
         if (!restored.current) {
           restored.current = true
-          setPetId(draft.petId); setRemark(draft.remark)
-          setSelectedStart(draft.appointmentStart); setPickupStart(draft.pickupStart); setReturnStart(draft.returnStart)
-          const restoredDate = draft.appointmentStart.slice(0, 10)
+          setPetId(draft.petId); setRemark(draft.remark); setServiceAddress(draft.serviceAddress)
+          setSelectedStart(draft.appointmentStart || null); setPickupStart(draft.pickupStart); setReturnStart(draft.returnStart)
+          const restoredDate = (draft.appointmentStart || draft.pickupStart || '').slice(0, 10)
           if (/^\d{4}-\d{2}-\d{2}$/.test(restoredDate)) {
             setDate(restoredDate)
             setDates(bookingDates(preview ? PREVIEW_BOOKING_TODAY : beijingToday(), DATE_COUNT, restoredDate))
@@ -202,12 +201,19 @@ function CreateScreen({ preview, scenario, serviceId, storeIdParam }: { preview:
   async function submit() {
     if (!service || busy || phase !== 'ready') return
     const appointment = itemByStart(selectedStart)
+    const pickup = service.fulfillmentType === 'PICKUP_DELIVERY' && PICKUP_SELECTION_ENABLED
+    const pickupItem = pickup ? itemByStart(pickupStart) : null
+    const returnItem = pickup ? itemByStart(returnStart) : null
     const draft: BookingDraft = {
       storeId: service.storeId, serviceId: service.serviceId, petId: petId || '',
       fulfillmentType: service.fulfillmentType,
-      appointmentStart: appointment?.start || '', appointmentEnd: appointment?.end || '',
-      pickupStart: service.fulfillmentType === 'PICKUP_DELIVERY' ? itemByStart(pickupStart)?.start ?? null : null,
-      returnStart: service.fulfillmentType === 'PICKUP_DELIVERY' ? itemByStart(returnStart)?.start ?? null : null,
+      appointmentStart: pickup ? '' : appointment?.start || '',
+      appointmentEnd: pickup ? '' : appointment?.end || '',
+      pickupStart: pickup ? pickupItem?.start ?? null : null,
+      returnStart: pickup ? returnItem?.start ?? null : null,
+      selectedPickupWindowId: pickup ? pickupItem?.windowId ?? null : null,
+      selectedReturnWindowId: pickup ? returnItem?.windowId ?? null : null,
+      serviceAddress: pickup ? serviceAddress : '',
       remark,
     }
     const error = bookingFormError(draft)
@@ -247,13 +253,12 @@ function CreateScreen({ preview, scenario, serviceId, storeIdParam }: { preview:
   }
 
   const ready = phase === 'ready' && service !== null
-  // 三段选窗 UI 保留：仅在接送开放（PICKUP_SELECTION_ENABLED，36号切片）后对接送型服务启用。
+  // 接送选窗（36号切片解锁）：接宠 = PICKUP 方向原窗，送回 = RETURN 方向原窗＋120 分钟置灰。
   const pickupFlow = service?.fulfillmentType === 'PICKUP_DELIVERY' && PICKUP_SELECTION_ENABLED
   const items = availability?.items ?? []
   const slots = slotViews(items, selectedStart)
-  const pickupSlots = slotViews(items.filter(item => item.start !== selectedStart), pickupStart)
+  const pickupSlots = slotViews(pickupCandidates(items), pickupStart)
   const returnItems = pickupStart === null ? [] : returnCandidates(items, pickupStart)
-    .filter(item => item.start !== selectedStart && item.start !== pickupStart)
   const returnSlots = pickupStart === null ? [] : slotViews(returnItems, returnStart)
   const appointment = itemByStart(selectedStart)
   const pickupItem = itemByStart(pickupStart)
@@ -282,10 +287,6 @@ function CreateScreen({ preview, scenario, serviceId, storeIdParam }: { preview:
       {phase === 'load-error' && <View className='bkg-state' role='status'>
         <Text id='bkg-error'>服务或宠物档案读取失败，请稍后重试。</Text>
         <Button id='bkg-retry-load' className='bkg-state-action' onClick={() => void loadService()}>重新加载</Button>
-      </View>}
-      {phase === 'pickup-unavailable' && <View className='bkg-state' role='status'>
-        <Text id='bkg-pickup-closed'>{PICKUP_SERVICE_UNAVAILABLE}</Text>
-        <Button id='bkg-pickup-back' className='bkg-state-action' onClick={() => void goBack()}>返回上一页</Button>
       </View>}
       {phase === 'receipt' && receipt && badge && <View className='bkg-body'>
         <View className='bkg-service-card'>
@@ -329,7 +330,7 @@ function CreateScreen({ preview, scenario, serviceId, storeIdParam }: { preview:
           </ScrollView>
         </View>
         <View className='bkg-section'>
-          <Text className='bkg-section-title'>{pickupFlow ? '选择上门服务时段' : '选择预约时段'}</Text>
+          <Text className='bkg-section-title'>{pickupFlow ? '选择接宠时段' : '选择预约时段'}</Text>
           {slotPhase === 'loading' && <Text className='bkg-hint' id='bkg-slots-loading'>正在读取可约时段…</Text>}
           {slotPhase === 'empty' && <Text className='bkg-hint' id='bkg-slots-empty'>当日暂无可约时段，请选择其他日期。</Text>}
           {slotPhase === 'error' && <View className='bkg-slot-error' role='status'>
@@ -338,21 +339,16 @@ function CreateScreen({ preview, scenario, serviceId, storeIdParam }: { preview:
             {slotAuthExpired && <Button id='bkg-slots-login' className='bkg-state-action' onClick={() => void Taro.redirectTo({ url: '/consumer/pages/shell/index' })}>去登录</Button>}
           </View>}
           {(slotPhase === 'ready' || slotPhase === 'empty') && <View className='bkg-slots'>
-            {slots.map(slot => <Button key={slot.key} id={`bkg-slot-${slot.key}`} className={slot.className} ariaLabel={`${slot.label} ${slot.note}`}
-              disabled={busy || !slot.selectable} onClick={() => { const item = itemByStart(slot.key); if (item) chooseWindow(item) }}>
+            {(pickupFlow ? pickupSlots : slots).map(slot => <Button
+              key={slot.key} id={`${pickupFlow ? 'bkg-pickup' : 'bkg-slot'}-${slot.key}`} className={slot.className}
+              ariaLabel={`${pickupFlow ? '接宠' : ''}${slot.label} ${slot.note}`}
+              disabled={busy || !slot.selectable}
+              onClick={() => { const item = itemByStart(slot.key); if (!item) return; if (pickupFlow) choosePickup(item); else chooseWindow(item) }}>
               <Text className='bkg-slot-time'>{slot.label}</Text>
               <Text className='bkg-slot-note'>{slot.note}</Text>
             </Button>)}
           </View>}
           {slotPhase === 'ready' && pickupFlow && <>
-            <Text className='bkg-section-subtitle'>选择接宠时段</Text>
-            <View className='bkg-slots'>
-              {pickupSlots.map(slot => <Button key={`p-${slot.key}`} className={slot.className} ariaLabel={`接宠 ${slot.label} ${slot.note}`}
-                disabled={busy || !slot.selectable} onClick={() => { const item = itemByStart(slot.key); if (item) choosePickup(item) }}>
-                <Text className='bkg-slot-time'>{slot.label}</Text>
-                <Text className='bkg-slot-note'>{slot.note}</Text>
-              </Button>)}
-            </View>
             <Text className='bkg-section-subtitle'>选择送回时段（需不早于接宠后 120 分钟）</Text>
             <View className='bkg-slots'>
               {pickupStart === null
@@ -384,14 +380,20 @@ function CreateScreen({ preview, scenario, serviceId, storeIdParam }: { preview:
           <Textarea id='bkg-remark' className='bkg-textarea' maxlength={500} value={remark} disabled={busy}
             placeholder='例如：怕生，请提前沟通' onInput={event => setRemark(event.detail.value)} />
         </View>
+        {pickupFlow && <View className='bkg-section'>
+          <Text className='bkg-section-title'>接送服务地址（必填）</Text>
+          <Textarea id='bkg-address' className='bkg-textarea' maxlength={65536} value={serviceAddress} disabled={busy}
+            placeholder='省市区＋详细地址，例如：上海市徐汇区某路100弄5号201室' onInput={event => setServiceAddress(event.detail.value)} />
+        </View>}
         <View className='bkg-section bkg-confirm-card'>
           <Text className='bkg-section-title'>确认信息</Text>
           <View className='bkg-fact-row'><Text className='bkg-fact-label'>服务</Text><Text className='bkg-fact-value'>{service.serviceName}</Text></View>
           <View className='bkg-fact-row'><Text className='bkg-fact-label'>门店</Text><Text className='bkg-fact-value'>{storeName ?? service.storeId}</Text></View>
           <View className='bkg-fact-row'><Text className='bkg-fact-label'>宠物</Text><Text className='bkg-fact-value'>{chosenPet ? `${chosenPet.name}（${petTypeLabel(chosenPet)}）` : '—'}</Text></View>
-          <View className='bkg-fact-row'><Text className='bkg-fact-label'>服务时段</Text><Text className='bkg-fact-value'>{appointment ? windowLabel(appointment.start, appointment.end) : '—'}</Text></View>
+          {!pickupFlow && <View className='bkg-fact-row'><Text className='bkg-fact-label'>服务时段</Text><Text className='bkg-fact-value'>{appointment ? windowLabel(appointment.start, appointment.end) : '—'}</Text></View>}
           {pickupFlow && <View className='bkg-fact-row'><Text className='bkg-fact-label'>接宠时段</Text><Text className='bkg-fact-value'>{pickupItem ? windowLabel(pickupItem.start, pickupItem.end) : '—'}</Text></View>}
           {pickupFlow && <View className='bkg-fact-row'><Text className='bkg-fact-label'>送回时段</Text><Text className='bkg-fact-value'>{returnItem ? windowLabel(returnItem.start, returnItem.end) : '—'}</Text></View>}
+          {pickupFlow && <View className='bkg-fact-row'><Text className='bkg-fact-label'>服务地址</Text><Text className='bkg-fact-value'>{serviceAddress.trim() || '—'}</Text></View>}
           <View className='bkg-fact-row'><Text className='bkg-fact-label'>预约费用</Text><Text className='bkg-fact-value bkg-fact-amount'>¥{service.salePrice}</Text></View>
         </View>
         {notice && <Text id='bkg-notice' className='bkg-notice'>{notice}</Text>}
