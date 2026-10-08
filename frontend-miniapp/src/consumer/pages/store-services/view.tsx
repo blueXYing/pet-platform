@@ -38,17 +38,21 @@ export type ServiceCardLine = {
 
 export function ServiceRow({ line, idPrefix, onOpen, onBook }: { line: ServiceCardLine; idPrefix: string; onOpen?: () => void; onBook: () => void }) {
   const sold = designSamples.sold[line.service.serviceId]
-  return <Button id={`${idPrefix}-${line.service.serviceId}`} className='svc-service-row' ariaLabel={`${line.service.serviceName}，价格${formatSalePrice(line.service.salePrice)}元`} onClick={onOpen}>
+  // 行根节点用 View:微信原生 button 不允许嵌套,内层「预约」Button 在 button 里不渲染
+  // (2026-10-08 真机验收发现)。第三行设计稿是"已售",契约无该字段:夹具行显示样例,
+  // 真实行显示真实的服务时长,不虚构销量。
+  const meta = sold ?? (line.service.durationMinutes > 0 ? `约 ${line.service.durationMinutes} 分钟` : '')
+  return <View id={`${idPrefix}-${line.service.serviceId}`} className='svc-service-row' ariaLabel={`${line.service.serviceName}，价格${formatSalePrice(line.service.salePrice)}元`} onClick={onOpen}>
     <View className='svc-service-main'>
       <Text className='svc-service-name'>{line.service.serviceName}</Text>
       {line.description ? <Text className='svc-service-desc'>{line.description}</Text> : null}
-      {sold ? <Text className='svc-service-sold'>{sold}</Text> : null}
+      {meta ? <Text className='svc-service-sold'>{meta}</Text> : null}
     </View>
     <View className='svc-service-side' onClick={event => { event.stopPropagation(); onBook() }}>
       <Text className='svc-service-price'>¥{formatSalePrice(line.service.salePrice)}</Text>
       <Button id={`${idPrefix}-book-${line.service.serviceId}`} className='svc-service-book' ariaLabel={`预约${line.service.serviceName}`} onClick={onBook}><Text>预约</Text></Button>
     </View>
-  </Button>
+  </View>
 }
 
 /**
@@ -58,7 +62,7 @@ export function ServiceRow({ line, idPrefix, onOpen, onBook }: { line: ServiceCa
  * every field the nine-field projection does not carry (rating, monthly sold, distance, tags,
  * intro, opening hours, promo, reviews) stays DESIGN-SAMPLE copy registered as contract gaps.
  */
-export function StoreServicesDesign({ store: storeView, listTop, servicesNode, reviewTop, notice, footer, onBack, onCall, onBookNow, bookEnabled, serviceCover, onRefreshCover }: {
+export function StoreServicesDesign({ store: storeView, listTop, servicesNode, reviewTop, notice, footer, onBack, serviceCover, onRefreshCover }: {
   store: StoreDetailView | null
   listTop: number
   servicesNode: ReactNode
@@ -67,9 +71,6 @@ export function StoreServicesDesign({ store: storeView, listTop, servicesNode, r
   /** Page-data footer (same copy family as the directory page's sdir-tail). */
   footer?: ReactNode
   onBack: () => void
-  onCall: () => void
-  onBookNow: () => void
-  bookEnabled: boolean
   serviceCover?: ServiceCoverView | null
   onRefreshCover?: () => void
 }) {
@@ -143,12 +144,8 @@ export function StoreServicesDesign({ store: storeView, listTop, servicesNode, r
         </View>
       </View>)}
     </View>
-    {/* Fixed action bar sits above the shared bottom navigation (design frame overlays it on
-        scrolling content at y1160; the draft tabbar itself is diff D1 in the design inventory). */}
-    <View className='svc-bottombar'>
-      <Button id='svc-bottom-call' className='svc-bottom-call' onClick={onCall}><Text>拨打电话</Text></Button>
-      <Button id='svc-bottom-book' className='svc-bottom-book' disabled={!bookEnabled} onClick={onBookNow}><Text>立即预约</Text></Button>
-    </View>
+    {/* 底部「拨打电话/立即预约」固定按钮栏已按用户 2026-10-08 验收裁决移除:
+        拨打电话 V1 无此能力,预约入口以团购套餐行内「预约」按钮为准。 */}
     {footer && <View className='svc-tail' style={at(reviewBottom + 14, { left: `calc(var(--svc-unit) * 29)`, right: `calc(var(--svc-unit) * 29)` })}>{footer}</View>}
     {notice}
   </View>

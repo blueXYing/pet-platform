@@ -93,12 +93,10 @@ export default function ServiceDetailPage() {
     }
     then()
   }
-  function notWired(label: string) {
-    requireLogin(label, () => setNotice(preview ? `“${label}”尚未接入本次预览` : `“${label}”功能尚未接通`))
-  }
-  // 预约下单入口（booking 切片）：携服务/门店上下文进入创建页；10号 §3.5 字段以契约为唯一来源。
+  // 预约下单入口(booking 切片):套餐行内「预约」按钮携服务/门店上下文进入创建页;
+  // 10号 §3.5 字段以契约为唯一来源。底部拨打电话/立即预约栏已按用户 2026-10-08 裁决移除。
   function goBooking() {
-    requireLogin('立即预约', () => {
+    requireLogin('预约', () => {
       void Taro.navigateTo({ url: `/consumer/pages/booking/create?${preview ? 'preview=1&' : ''}serviceId=${encodeURIComponent(serviceId)}&storeId=${encodeURIComponent(detail!.storeId)}` })
         .catch(() => setNotice('页面跳转失败，请重试'))
     })
@@ -114,7 +112,6 @@ export default function ServiceDetailPage() {
     </View>}
     {ready && detail && <StoreServicesDesign store={null} listTop={listTop} reviewTop={reviewTop} onBack={() => Taro.navigateBack().catch(() => setNotice('返回失败'))}
       serviceCover={preview ? undefined : detail.cover} onRefreshCover={() => void load()}
-      onCall={() => notWired('拨打电话')} onBookNow={goBooking} bookEnabled
       footer={<Text>页面数据：{preview ? '契约 Mock（preview=1，不联调）' : '真实接口（后端交付前失败关闭，可匿名浏览）'}</Text>}
       notice={notice ? <Text id='svcd-notice' className='svc-notice' style={{ left: `calc(var(--svc-unit) * 29)`, right: `calc(var(--svc-unit) * 29)`, top: `calc(var(--svc-unit) * ${reviewTop + 246 + 24})` }}>{notice}</Text> : undefined}
       servicesNode={<ServiceRow idPrefix='svcd-row' line={{ service: detail, description: detail.description }} onBook={goBooking} />} />}

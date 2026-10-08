@@ -117,7 +117,6 @@ export default function StoreServicesPage() {
       {(phase === 'missing' || phase === 'invalid') && <Button id='svc-back-directory' className='svc-state-action' onClick={() => Taro.redirectTo({ url: '/consumer/pages/store-services/stores' }).catch(() => setNotice('返回失败'))}>返回门店列表</Button>}
     </View>}
     {ready && <StoreServicesDesign store={store} listTop={listTop} reviewTop={reviewTop} onBack={() => Taro.navigateBack().catch(() => setNotice('返回失败'))}
-      onCall={() => notWired('拨打电话')} onBookNow={() => notWired('立即预约')} bookEnabled={canInteract()}
       footer={<Text>页面数据：{preview ? '契约 Mock（preview=1，不联调）' : '真实接口（后端交付前失败关闭，可匿名浏览）'}</Text>}
       notice={notice ? <Text id='svc-notice' className='svc-notice' style={{ left: `calc(var(--svc-unit) * 29)`, right: `calc(var(--svc-unit) * 29)`, top: `calc(var(--svc-unit) * ${reviewTop + reviewCardHeight() + 24})` }}>{notice}</Text> : undefined}
       servicesNode={count === 0
