@@ -103,6 +103,13 @@ public class CSessionSecurityConfiguration {
             // Notification preferences (SSOT §16.4 slice): same session-filter enforcement —
             // the GET/PUT pair rides pet.auth.c.enabled like the inbox surface.
             a.requestMatchers("/api/v1/c/notification-preferences").permitAll();
+            // Coupon/points read-only pair (CCR-C006 P1): GET-only; the MINIAPP Bearer is
+            // enforced by the filter's protectedPath list, same as the inbox surface above.
+            a.requestMatchers(HttpMethod.GET,
+                    "/api/v1/c/coupons",
+                    "/api/v1/c/coupons/*",
+                    "/api/v1/c/points/balance",
+                    "/api/v1/c/points/ledger").permitAll();
             // Service catalog (CCR-W2-API-001 service domain): anonymous GET per the store-read
             // STR-D8 ruling (PRD "all users browse"); the filter validates a carried bearer.
             a.requestMatchers("/api/v1/c/stores/*/services").permitAll();
