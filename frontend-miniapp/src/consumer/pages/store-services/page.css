@@ -62,11 +62,11 @@ button { padding: 0; margin: 0; border: 0; border-radius: 0; background: transpa
 .svc-list-card { left: calc(var(--svc-unit) * 29); top: calc(var(--svc-unit) * 711.5); width: calc(var(--svc-unit) * 343); background: #f8f5ee; border: calc(var(--svc-unit) * 1) solid #c0ecff; border-radius: calc(var(--svc-unit) * 12); }
 .svc-list-title { position: absolute; left: calc(var(--svc-unit) * 18); top: calc(var(--svc-unit) * 18); font-size: calc(var(--svc-unit) * 14); line-height: calc(var(--svc-unit) * 20); font-weight: 700; color: #1d0d07; }
 .svc-list-rows { position: absolute; left: calc(var(--svc-unit) * 18); top: calc(var(--svc-unit) * 50); width: calc(var(--svc-unit) * 309); }
-.svc-service-row { position: relative; display: block; width: calc(var(--svc-unit) * 309); height: calc(var(--svc-unit) * 82); background: #f0fbff; border-radius: calc(var(--svc-unit) * 8); padding: calc(var(--svc-unit) * 12); margin-bottom: calc(var(--svc-unit) * 11.5); text-align: left; }
+.svc-service-row { position: relative; display: block; width: calc(var(--svc-unit) * 309); min-height: calc(var(--svc-unit) * 82); background: #f0fbff; border-radius: calc(var(--svc-unit) * 8); padding: calc(var(--svc-unit) * 12); margin-bottom: calc(var(--svc-unit) * 11.5); text-align: left; }
 .svc-service-row:last-child { margin-bottom: calc(var(--svc-unit) * 12); }
 .svc-service-main { position: absolute; left: calc(var(--svc-unit) * 12); top: calc(var(--svc-unit) * 12); width: calc(var(--svc-unit) * 225); }
 .svc-service-name { font-size: calc(var(--svc-unit) * 14); line-height: calc(var(--svc-unit) * 20); color: #1d0d07; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.svc-service-desc { margin-top: calc(var(--svc-unit) * 2); font-size: calc(var(--svc-unit) * 11); line-height: calc(var(--svc-unit) * 17); color: #577683; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.svc-service-desc { margin-top: calc(var(--svc-unit) * 2); font-size: calc(var(--svc-unit) * 11); line-height: calc(var(--svc-unit) * 17); color: #577683; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; word-break: break-all; }
 .svc-service-sold { margin-top: calc(var(--svc-unit) * 4); font-size: calc(var(--svc-unit) * 10); line-height: calc(var(--svc-unit) * 15); color: #5baae8; }
 .svc-service-side { position: absolute; left: calc(var(--svc-unit) * 249); top: calc(var(--svc-unit) * 12); width: calc(var(--svc-unit) * 48); display: flex; flex-direction: column; align-items: flex-end; gap: calc(var(--svc-unit) * 8); }
 .svc-service-price { font-size: calc(var(--svc-unit) * 16); line-height: calc(var(--svc-unit) * 24); font-weight: 700; color: #5baae8; }

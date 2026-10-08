@@ -21,10 +21,11 @@ const at = (top: number | string, extra: CSSProperties = {}): CSSProperties => (
 /** One-to-one cutouts of node 690:6660 (see assets/manifest.json); no substitute artwork. */
 export const svcAssets = { bgFlower, storeBanner, storeAvatar, starOrange, starBlue, iconLocation, iconClock, iconPhone, navBack, reviewer1, reviewer2 }
 
-// 团购套餐 card: rows are 82 tall with an 11.5 gap (12 after the last); title area 50; bottom pad 16.
+// 团购套餐 card: rows reserve 99 for up to a two-line description (2026-10-08 验收:
+// 描述不再单行截断), 11.5 gap (12 after the last); title area 50; bottom pad 16.
 export function serviceListCardHeight(count: number): number {
   if (count <= 0) return 50 + 24 + 16
-  return 50 + count * 82 + (count - 1) * 11.5 + 16
+  return 50 + count * 99 + (count - 1) * 11.5 + 16
 }
 // 用户评价 card: two design items of 72 with a 12 gap; head 50; bottom pad 18 (frame 343x224).
 export function reviewCardHeight(): number { return 224 }
