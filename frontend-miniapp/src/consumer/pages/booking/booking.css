@@ -6,13 +6,13 @@
    className 变体（is-* 闭集），禁 data-*。 */
 .bkg-page { --bkg-status-top: 0px; min-height: 100vh; background: #f8f5ee; color: #1d0d07; font-family: Roboto, "Noto Sans SC", sans-serif; }
 .bkg-page view, .bkg-page button, .bkg-page scroll-view, .bkg-page text, .bkg-page textarea { box-sizing: border-box; }
-.bkg-page button { padding: 0; margin: 0 !important; border: 0; border-radius: 0; background: transparent; font: inherit; line-height: normal; text-align: left; }
+.bkg-page button { padding: 0; margin: 0; border: 0; border-radius: 0; background: transparent; font: inherit; line-height: normal; text-align: left; }
 .bkg-page button::after { border: 0; }
 .bkg-page button[disabled] { opacity: .65; color: inherit; }
 .bkg-design { position: relative; min-height: 100vh; }
 .bkg-status-area { height: var(--bkg-status-top); }
 .bkg-state { padding: calc(var(--bkg-unit) * 42) calc(var(--bkg-unit) * 29); font-size: calc(var(--bkg-unit) * 14); line-height: calc(var(--bkg-unit) * 24); color: #577683; }
-.bkg-state-action { display: block; margin-top: calc(var(--bkg-unit) * 8); color: #3185ba; font-size: calc(var(--bkg-unit) * 12); line-height: calc(var(--bkg-unit) * 18); }
+.bkg-page .bkg-state-action { display: block; margin-top: calc(var(--bkg-unit) * 8); color: #3185ba; font-size: calc(var(--bkg-unit) * 12); line-height: calc(var(--bkg-unit) * 18); }
 .bkg-notice { display: block; margin: calc(var(--bkg-unit) * 10) calc(var(--bkg-unit) * 29) 0; font-size: calc(var(--bkg-unit) * 12); line-height: calc(var(--bkg-unit) * 18); color: #a23e2d; }
 .bkg-preview-note { padding: calc(var(--bkg-unit) * 16) calc(var(--bkg-unit) * 29); font-size: calc(var(--bkg-unit) * 10); line-height: calc(var(--bkg-unit) * 15); color: #8aa0ac; }
 
@@ -98,9 +98,9 @@
 .bkg-footer-amount { display: flex; flex-direction: column; }
 .bkg-footer-label { font-size: calc(var(--bkg-unit) * 10); line-height: calc(var(--bkg-unit) * 14); color: #8aa0ac; }
 .bkg-footer-price { font-size: calc(var(--bkg-unit) * 18); line-height: calc(var(--bkg-unit) * 24); font-weight: 700; color: #5baae8; }
-.bkg-footer-action { flex-shrink: 0; padding: 0 calc(var(--bkg-unit) * 24); border-radius: calc(var(--bkg-unit) * 9999); background: #5baae8; color: #e4f6f3; font-size: calc(var(--bkg-unit) * 13); line-height: calc(var(--bkg-unit) * 38); font-weight: 500; }
+.bkg-page .bkg-footer-action { flex-shrink: 0; padding: 0 calc(var(--bkg-unit) * 24); border-radius: calc(var(--bkg-unit) * 9999); background: #5baae8; color: #e4f6f3; font-size: calc(var(--bkg-unit) * 13); line-height: calc(var(--bkg-unit) * 38); font-weight: 500; }
 .bkg-pay-action { display: inline-block; margin: calc(var(--bkg-unit) * 12) calc(var(--bkg-unit) * 29) 0; }
 
 /* 主/次按钮（回执与支付页）。 */
-.bkg-primary { display: block; margin: calc(var(--bkg-unit) * 12) calc(var(--bkg-unit) * 29) 0; padding: 0 calc(var(--bkg-unit) * 24); border-radius: calc(var(--bkg-unit) * 9999); background: #5baae8; color: #e4f6f3; font-size: calc(var(--bkg-unit) * 13); line-height: calc(var(--bkg-unit) * 38); font-weight: 500; text-align: center; }
-.bkg-secondary { display: block; margin: calc(var(--bkg-unit) * 10) calc(var(--bkg-unit) * 29) 0; padding: 0 calc(var(--bkg-unit) * 24); border: calc(var(--bkg-unit) * 1) solid #c0ecff; border-radius: calc(var(--bkg-unit) * 9999); background: #fff; color: #577683; font-size: calc(var(--bkg-unit) * 12); line-height: calc(var(--bkg-unit) * 34); text-align: center; }
+.bkg-page .bkg-primary { display: block; margin: calc(var(--bkg-unit) * 12) calc(var(--bkg-unit) * 29) 0; padding: 0 calc(var(--bkg-unit) * 24); border-radius: calc(var(--bkg-unit) * 9999); background: #5baae8; color: #e4f6f3; font-size: calc(var(--bkg-unit) * 13); line-height: calc(var(--bkg-unit) * 38); font-weight: 500; text-align: center; }
+.bkg-page .bkg-secondary { display: block; margin: calc(var(--bkg-unit) * 10) calc(var(--bkg-unit) * 29) 0; padding: 0 calc(var(--bkg-unit) * 24); border: calc(var(--bkg-unit) * 1) solid #c0ecff; border-radius: calc(var(--bkg-unit) * 9999); background: #fff; color: #577683; font-size: calc(var(--bkg-unit) * 12); line-height: calc(var(--bkg-unit) * 34); text-align: center; }
