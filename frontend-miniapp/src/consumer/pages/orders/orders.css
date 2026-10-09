@@ -1,18 +1,20 @@
 /* C-004 切片（我的订单列表/详情，只读 + 核销码主入口）。设计源登记表 §3「我的」：
-   列表原稿帧 129:9946（402 设计 px，卡片段/状态 tab 布局参照）、待服务帧 237:860；
-   卡片字段按契约 OrderDetailData 裁剪（服务名/类目/门店名不在契约内不渲染，PR 登记差异），
-   状态桶=契约 displayStatus 单值查询（原稿 5 桶中“进行中”不可表达，PR 登记）。运行时像素单位
-   --ord-unit = windowWidth/402（C-002/C-003/C-006 先例）；调色板沿用 C 端家族 token
-   （#f8f5ee/#f0fbff/#c0ecff/#5baae8/#577683/#1d0d07/#ff9500）。WXSS 铁律：状态样式仅
-   className 变体（is-*），禁 data-*。 */
+   列表主稿 129:9946（2026-10-06 按线上版重做视觉：奶油导航区 #fff6e5 + #c0ecff 压线、#f0fbff
+   内容区、#eaf6f3 药丸 tab 容器 + #5baae8 激活胶囊、白卡 #c0ecff 描边 r13、状态徽标实心胶囊、
+   129:10252 深色胶囊 toast）；变体帧 237:860（待服务：页脚动作/二维码挂件，契约外不渲染）。
+   取色 = 该帧 REST 渲染图 PIL 行列扫描 + 节点 JSON fills 实测（#fff6e5/#c0ecff/#f0fbff/#eaf6f3/
+   #5baae8/#53bfee/#3c3c3c/#1d0d07/#7b5b4a/#8aa0ac）。卡片字段按契约 OrderDetailData 裁剪
+   （封面/服务名/类目/门店名不在契约内不渲染，PR 登记差异），状态桶=契约 displayStatus 单值查询
+   （原稿 5 桶中“进行中”不可表达，PR 登记）。运行时像素单位 --ord-unit = windowWidth/402
+   （C-002/C-003/C-006 先例）。列表样式一律 .ordl 作用域，不影响详情/退款/改期/评价共享词汇。
+   WXSS 铁律：状态样式仅 className 变体（is-*），禁 data-*；按钮重置不用 margin !important。 */
 .ord-page { --ord-status-top: 0px; min-height: 100vh; background: #f8f5ee; color: #1d0d07; font-family: Roboto, "Noto Sans SC", sans-serif; }
 .ord-page view, .ord-page button, .ord-page scroll-view, .ord-page text { box-sizing: border-box; }
-.ord-page button { padding: 0; margin: 0 !important; border: 0; border-radius: 0; background: transparent; font: inherit; line-height: normal; text-align: left; }
+.ord-page button { padding: 0; margin: 0; border: 0; border-radius: 0; background: transparent; font: inherit; line-height: normal; text-align: left; }
 .ord-page button::after { border: 0; }
 .ord-page button[disabled] { opacity: .65; color: inherit; }
 .ord-design { position: relative; min-height: 100vh; }
 .ord-status-area { height: var(--ord-status-top); }
-.ord-notice { display: block; padding: calc(var(--ord-unit) * 12) calc(var(--ord-unit) * 29); font-size: calc(var(--ord-unit) * 12); line-height: calc(var(--ord-unit) * 18); color: #402e26; }
 .ord-preview-note { padding: calc(var(--ord-unit) * 16) calc(var(--ord-unit) * 29); font-size: calc(var(--ord-unit) * 10); line-height: calc(var(--ord-unit) * 15); color: #8aa0ac; }
 
 /* 顶部导航（129:9946：返回 32x32 + 标题 16/700，左对齐；coupons 同款）。 */
@@ -21,26 +23,58 @@
 .ord-nav-back-icon { font-size: calc(var(--ord-unit) * 22); line-height: 1; color: #3c3c3c; }
 .ord-nav-title { margin-left: calc(var(--ord-unit) * 62); font-size: calc(var(--ord-unit) * 16); line-height: calc(var(--ord-unit) * 24); font-weight: 700; color: #3c3c3c; }
 
-/* 状态 tab：契约 displayStatus 十桶 + 全部（原稿 5 桶药丸形态延伸为横向滚动；激活态 className 变体）。 */
-.ord-tabs { margin: calc(var(--ord-unit) * 13) 0 0; padding: 0 calc(var(--ord-unit) * 22); width: 100%; white-space: nowrap; }
-.ord-tab { display: inline-flex; align-items: center; justify-content: center; height: calc(var(--ord-unit) * 28); margin: 0 calc(var(--ord-unit) * 4) calc(var(--ord-unit) * 4) 0; padding: 0 calc(var(--ord-unit) * 14); border-radius: calc(var(--ord-unit) * 9999); background: #f0fbff; border: calc(var(--ord-unit) * 1) solid #c0ecff; }
-.ord-tab text { font-size: calc(var(--ord-unit) * 12); line-height: calc(var(--ord-unit) * 16); color: #577683; }
-.ord-tab.is-active { background: #5baae8; border-color: #5baae8; }
-.ord-tab.is-active text { font-weight: 500; color: #f8f5ee; }
-
+/* ---- 我的订单列表（129:9946 主稿，.ordl 作用域；按钮类样式用 .ord-page 前缀两段选择器
+      抬优先级，压过上面 .ord-page button 的原生重置，coupons 同法） ---- */
+.ordl { display: block; min-height: 100vh; background: #f0fbff; }
+/* 奶油导航区 0..109：状态栏 + 44 高导航行 + 11 间距 + 36 药丸 tab + 18 底距，#c0ecff 压线。 */
+.ordl-hero { background: #fff6e5; border-bottom: calc(var(--ord-unit) * 1) solid #c0ecff; padding-bottom: calc(var(--ord-unit) * 18); }
+.ordl .ord-nav-title { color: #1d0d07; }
+.ordl .ord-nav-back-icon { color: #7b5b4a; }
+/* 状态 tab：DIV-13 药丸容器 343x36 r9999 #eaf6f3 + 64x28 子胶囊（间距 4），激活 #5baae8 白字；
+   契约十状态桶横向滚动承载（原稿 5 桶，“进行中”不可表达，PR 登记差异）。 */
+.ordl-tabs { display: block; margin: calc(var(--ord-unit) * 11) calc(var(--ord-unit) * 29) 0; width: calc(var(--ord-unit) * 343); height: calc(var(--ord-unit) * 36); border-radius: calc(var(--ord-unit) * 9999); background: #eaf6f3; overflow: hidden; white-space: nowrap; }
+.ordl-tabs-track { display: flex; flex-wrap: nowrap; align-items: center; gap: calc(var(--ord-unit) * 4); padding: calc(var(--ord-unit) * 4); width: max-content; }
+.ord-page .ordl-tab { flex-shrink: 0; min-width: calc(var(--ord-unit) * 64); height: calc(var(--ord-unit) * 28); padding: 0 calc(var(--ord-unit) * 12); display: flex; align-items: center; justify-content: center; border-radius: calc(var(--ord-unit) * 9999); }
+.ordl-tab text { font-size: calc(var(--ord-unit) * 12); line-height: calc(var(--ord-unit) * 16); color: #3c3c3c; white-space: nowrap; }
+.ord-page .ordl-tab.is-active { background: #5baae8; }
+.ordl-tab.is-active text { font-weight: 500; color: #ffffff; }
 /* 状态与空态 / 失败关闭面板（不可交互数据，仅重试/登录动作；coupons 同款）。 */
 .ord-state { padding: calc(var(--ord-unit) * 42) calc(var(--ord-unit) * 29); font-size: calc(var(--ord-unit) * 14); line-height: calc(var(--ord-unit) * 24); color: #577683; }
 .ord-state-action { display: block; margin-top: calc(var(--ord-unit) * 8); color: #3185ba; font-size: calc(var(--ord-unit) * 12); line-height: calc(var(--ord-unit) * 18); }
-.ord-more { display: block; margin: calc(var(--ord-unit) * 8) auto 0; width: max-content; padding: calc(var(--ord-unit) * 8) calc(var(--ord-unit) * 22); border: calc(var(--ord-unit) * 1) solid #c0ecff; border-radius: calc(var(--ord-unit) * 100); color: #3185ba; font-size: calc(var(--ord-unit) * 12); }
+/* 订单卡（129:9946 DIV-30：374 宽 x=14、白底、#c0ecff 描边 r13、卡距 15、首卡 109 下 17）：
+   卡体封面/服务名/类目/门店与页脚动作不在契约内不渲染（PR 登记差异），整卡点击进详情。 */
+.ord-page .ordl-card { display: block; width: calc(var(--ord-unit) * 374); margin: calc(var(--ord-unit) * 15) calc(var(--ord-unit) * 14) 0; background: #ffffff; border: calc(var(--ord-unit) * 1) solid #c0ecff; border-radius: calc(var(--ord-unit) * 13); }
+.ordl-card:first-of-type { margin-top: calc(var(--ord-unit) * 17); }
+.ordl-card-head { display: flex; align-items: center; justify-content: space-between; gap: calc(var(--ord-unit) * 8); height: calc(var(--ord-unit) * 45); padding: 0 calc(var(--ord-unit) * 15); border-bottom: calc(var(--ord-unit) * 1) solid #c0ecff; }
+.ordl-card-no { font-size: calc(var(--ord-unit) * 12); line-height: calc(var(--ord-unit) * 18); color: #53bfee; }
+.ordl-card-body { padding: calc(var(--ord-unit) * 14) calc(var(--ord-unit) * 15) calc(var(--ord-unit) * 16); }
+.ordl-card-time { display: block; font-size: calc(var(--ord-unit) * 12); line-height: calc(var(--ord-unit) * 18); color: #3c3c3c; }
+.ordl-card-foot { display: flex; align-items: flex-end; justify-content: space-between; gap: calc(var(--ord-unit) * 8); margin-top: calc(var(--ord-unit) * 12); }
+.ordl-card-id { font-size: calc(var(--ord-unit) * 10); line-height: calc(var(--ord-unit) * 15); color: #8aa0ac; }
+.ordl-card-price { display: flex; align-items: baseline; }
+.ordl-card-price-cur { font-size: calc(var(--ord-unit) * 12); line-height: calc(var(--ord-unit) * 18); color: #5baae8; }
+.ordl-card-price-value { font-size: calc(var(--ord-unit) * 17.5); line-height: calc(var(--ord-unit) * 26); font-weight: 700; color: #5baae8; }
+/* 展示状态徽标（129:9946 SPAN-35：实心胶囊 h22 白字 12/500；待服务=#5baae8 实测）。C 端原稿仅
+   覆盖待服务态，其余状态底色沿既有语义色族映射（数据驱动差异：橙=待支付/退款申请中，蓝=待确认/
+   待服务，浅蓝=已完成，灰=已取消，金=已退款族，红=售后中）。 */
+.ordl-badge { flex-shrink: 0; display: flex; align-items: center; height: calc(var(--ord-unit) * 22); padding: 0 calc(var(--ord-unit) * 8); border-radius: calc(var(--ord-unit) * 9999); background: #5baae8; font-size: calc(var(--ord-unit) * 12); line-height: calc(var(--ord-unit) * 18); font-weight: 500; color: #ffffff; }
+.ordl-badge.is-pending-payment { background: #ff9500; }
+.ordl-badge.is-pending-confirm, .ordl-badge.is-pending-service { background: #5baae8; }
+.ordl-badge.is-completed { background: #53bfee; }
+.ordl-badge.is-canceled { background: #8aa0ac; }
+.ordl-badge.is-refund-pending-confirm, .ordl-badge.is-refunding { background: #ff9500; }
+.ordl-badge.is-refunded, .ordl-badge.is-partial-refund { background: #b8860b; }
+.ordl-badge.is-aftersale { background: #a23e2d; }
+/* 契约分页追加（原稿无分页控件，沿家族药丸形态）。 */
+.ord-page .ordl-more { display: block; margin: calc(var(--ord-unit) * 15) auto 0; width: max-content; padding: 0 calc(var(--ord-unit) * 22); background: #ffffff; border: calc(var(--ord-unit) * 1) solid #c0ecff; border-radius: calc(var(--ord-unit) * 9999); color: #5baae8; font-size: calc(var(--ord-unit) * 12); line-height: calc(var(--ord-unit) * 30); }
+/* 页内轻提示（129:10252「取消成功」toast：#1d0d07 实心胶囊白字）。 */
+.ordl-notice { display: block; margin: calc(var(--ord-unit) * 15) auto 0; width: max-content; max-width: calc(var(--ord-unit) * 374); padding: calc(var(--ord-unit) * 4) calc(var(--ord-unit) * 20); border-radius: calc(var(--ord-unit) * 9999); background: #1d0d07; color: #ffffff; font-size: calc(var(--ord-unit) * 14); line-height: calc(var(--ord-unit) * 22); font-weight: 500; text-align: center; }
 
-/* 订单卡（129:9946 卡片段 343 宽 r12 沿用；字段=契约 OrderDetailData 投影）。 */
-.ord-card { display: block; width: calc(var(--ord-unit) * 343); margin: calc(var(--ord-unit) * 12) calc(var(--ord-unit) * 29) 0; padding: calc(var(--ord-unit) * 14) calc(var(--ord-unit) * 16); background: #f0fbff; border: calc(var(--ord-unit) * 1) solid #c0ecff; border-radius: calc(var(--ord-unit) * 12); }
-.ord-card:first-of-type { margin-top: calc(var(--ord-unit) * 18); }
+/* ---- 以下为详情/退款/改期/评价页共享词汇（本次列表重做不动） ----
+   订单摘要卡字段行（ord-card-head/no/time/amount 与 ord-badge 变体同被各只读页复用）。 */
 .ord-card-head { display: flex; align-items: baseline; justify-content: space-between; gap: calc(var(--ord-unit) * 8); }
 .ord-card-no { font-size: calc(var(--ord-unit) * 14); line-height: calc(var(--ord-unit) * 20); font-weight: 500; color: #1d0d07; }
 .ord-card-time { display: block; margin-top: calc(var(--ord-unit) * 6); font-size: calc(var(--ord-unit) * 11); line-height: calc(var(--ord-unit) * 17); color: #577683; }
-.ord-card-foot { display: flex; align-items: baseline; justify-content: space-between; margin-top: calc(var(--ord-unit) * 10); }
-.ord-card-id { font-size: calc(var(--ord-unit) * 10); line-height: calc(var(--ord-unit) * 15); color: #8aa0ac; }
 .ord-card-amount { font-size: calc(var(--ord-unit) * 18); line-height: calc(var(--ord-unit) * 24); font-weight: 700; color: #5baae8; }
 
 /* 展示状态徽标：className 变体（闭集枚举，禁 data-*）。 */
