@@ -15,6 +15,7 @@ import { consumerApi } from '../../../shared/consumer-runtime'
 import { MerchantApplicationRepository } from '../../../shared/merchant-repositories'
 import { detailActionGate, detailReadAllowed } from './browse-gate'
 import { ServiceRow, StoreServicesDesign, reviewCardHeight, serviceListCardHeight } from './view'
+import { BookingSheet } from '../../components/booking-sheet/booking-sheet'
 
 // Node 690:6660 (服务-商家详情页), 402x1306. The 团购套餐 region binds the frozen
 // GET /api/v1/c/stores/{storeId}/services contract; since the /c/stores slice (2026-09-22)
@@ -91,8 +92,10 @@ export default function StoreServicesPage() {
 
   const ready = phase === 'ready'
   function canInteract() { return ready }
-  // 预约下单入口(booking 切片,2026-10-08 验收:门店页行内预约从占位改为真实下单入口):
-  // 匿名点击仍走登录引导,登录后携服务/门店上下文进入创建页。
+  // 预约下单入口(booking 切片,2026-10-08 验收 + 2026-10 半屏弹层改造 Figma 690:4506):
+  // 匿名点击仍走登录引导,登录后行内「预约」直接弹出 BookingSheet 半屏弹层(携服务/门店
+  // 上下文),不再整页跳转创建页;提交/回执/支付链路不变。
+  const [bookingService, setBookingService] = useState<ServiceItemView | null>(null)
   function bookService(service: ServiceItemView) {
     if (!canInteract()) return
     if (detailActionGate(context) === 'login-required') {
@@ -101,7 +104,7 @@ export default function StoreServicesPage() {
         .catch(() => setNotice(''))
       return
     }
-    Taro.navigateTo({ url: `/consumer/pages/booking/create?preview=${preview ? '1' : '0'}&serviceId=${encodeURIComponent(service.serviceId)}&storeId=${encodeURIComponent(service.storeId)}` }).catch(() => setNotice('页面跳转失败，请重试'))
+    setBookingService(service)
   }
   function openDetail(service: ServiceItemView) {
     if (!canInteract()) return
@@ -110,7 +113,8 @@ export default function StoreServicesPage() {
   const count = items.length
   const listTop = 711.5
   const reviewTop = listTop + serviceListCardHeight(count) + 15.5
-  return <ConsumerPageLayout page='storeServices' unit={unit} navigation={{ idPrefix: 'svc', disabled: !ready, onSelect: key => void switchConsumerTab(key), referencePlacement: undefined }} className='svc-page' style={style}>
+  return <View>
+    <ConsumerPageLayout page='storeServices' unit={unit} navigation={{ idPrefix: 'svc', disabled: !ready, onSelect: key => void switchConsumerTab(key), referencePlacement: undefined }} className='svc-page' style={style}>
     <View className='svc-status-area' />
     {!ready && <View className='svc-state' role='status'>
       <Text>{phase === 'loading' ? '正在加载门店服务…' : phase === 'expired' ? '登录已失效，请重新登录' : phase === 'invalid' ? '门店参数无效' : phase === 'missing' ? '门店不存在或不可访问' : '加载失败，请重试'}</Text>
@@ -124,7 +128,11 @@ export default function StoreServicesPage() {
         ? <View className='svc-list-empty'><Text>暂无服务</Text></View>
         : items.map(service => <ServiceRow key={service.serviceId} idPrefix='svc-row' line={{ service, description: preview ? designSamples.listDescription[service.serviceId] : undefined }}
             onOpen={() => openDetail(service)} onBook={() => bookService(service)} />)} />}
-  </ConsumerPageLayout>
+    </ConsumerPageLayout>
+    {/* 弹层渲染在 .svc-page 之外（同 booking 直连页：页面级 button 重置不作用于弹层）。 */}
+    {bookingService && ready && <BookingSheet key={`${revision}-${bookingService.serviceId}`} idPrefix='svc-booking' preview={preview}
+      serviceId={bookingService.serviceId} storeId={bookingService.storeId} onClose={() => setBookingService(null)} />}
+  </View>
 }
 function isContractId(value: string): boolean {
   return /^[1-9][0-9]{0,18}$/.test(value) && (value.length < 19 || BigInt(value) <= 9223372036854775807n)
