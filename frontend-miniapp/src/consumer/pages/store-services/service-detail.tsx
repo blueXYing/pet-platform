@@ -3,8 +3,9 @@ import Taro, { useRouter, useDidShow } from '@tarojs/taro'
 import { useCallback, useEffect, useRef, useState, type CSSProperties } from 'react'
 import { useWorkspace } from '../../../shared/workspace-react'
 import { realServiceRepository } from '../../api/page-repository'
-import { navigationUnavailableMessage } from '../../components/navigation/model'
+import { switchConsumerTab } from '../../components/navigation/switch'
 import { ConsumerPageLayout } from '../../components/page-layout'
+import { BookingSheet } from '../../components/booking-sheet/booking-sheet'
 import {
   PreviewServiceRepository, isServiceScenario,
   type ServiceCatalogDeps, type ServiceDetailView,
@@ -87,25 +88,23 @@ export default function ServiceDetailPage() {
     // Actions (not viewing) stay login-gated per the final PRD; anonymous taps get the guide.
     if (detailActionGate(context) === 'login-required') {
       void Taro.showModal({ title: '请先登录', content: `${label}需要先登录，是否前往登录？`, confirmText: '去登录', cancelText: '暂不' })
-        .then(answer => { if (answer.confirm) void Taro.redirectTo({ url: '/consumer/pages/shell/index' }).catch(() => setNotice('页面跳转失败，请重试')) })
+        .then(answer => { if (answer.confirm) void Taro.switchTab({ url: '/consumer/pages/mine/index' }).catch(() => setNotice('页面跳转失败，请重试')) })
         .catch(() => setNotice(''))
       return
     }
     then()
   }
-  function notWired(label: string) {
-    requireLogin(label, () => setNotice(preview ? `“${label}”尚未接入本次预览` : `“${label}”功能尚未接通`))
-  }
-  // 预约下单入口（booking 切片）：携服务/门店上下文进入创建页；10号 §3.5 字段以契约为唯一来源。
+  // 预约下单入口(2026-10 半屏弹层改造,Figma 690:4506):套餐行内「预约」不再整页跳转,
+  // 在本页之上直接弹出 BookingSheet 半屏弹层(携服务/门店上下文);10号 §3.5 字段以契约为
+  // 唯一来源,提交/回执/支付链路不变。底部拨打电话/立即预约栏已按用户 2026-10-08 裁决移除。
+  const [bookingOpen, setBookingOpen] = useState(false)
   function goBooking() {
-    requireLogin('立即预约', () => {
-      void Taro.navigateTo({ url: `/consumer/pages/booking/create?${preview ? 'preview=1&' : ''}serviceId=${encodeURIComponent(serviceId)}&storeId=${encodeURIComponent(detail!.storeId)}` })
-        .catch(() => setNotice('页面跳转失败，请重试'))
-    })
+    requireLogin('预约', () => { setBookingOpen(true) })
   }
   const listTop = 711.5
   const reviewTop = listTop + serviceListCardHeight(1) + 15.5
-  return <ConsumerPageLayout page='serviceDetail' unit={unit} navigation={{ idPrefix: 'svcd', disabled: !ready, onSelect: key => { setNotice(navigationUnavailableMessage(key)) }, referencePlacement: undefined }} className='svc-page svc-detail-page' style={style}>
+  return <View>
+    <ConsumerPageLayout page='serviceDetail' unit={unit} navigation={{ idPrefix: 'svcd', disabled: !ready, onSelect: key => void switchConsumerTab(key), referencePlacement: undefined }} className={`svc-page svc-detail-page${bookingOpen ? ' bks-lock' : ''}`} style={style}>
     <View className='svc-status-area' />
     {!ready && <View className='svc-state' role='status'>
       <Text>{phase === 'loading' ? '正在加载服务详情…' : phase === 'missing' ? '服务不存在或已下架' : phase === 'expired' ? '登录已失效，请重新登录' : phase === 'invalid' ? '服务参数无效' : '加载失败，请重试'}</Text>
@@ -114,11 +113,14 @@ export default function ServiceDetailPage() {
     </View>}
     {ready && detail && <StoreServicesDesign store={null} listTop={listTop} reviewTop={reviewTop} onBack={() => Taro.navigateBack().catch(() => setNotice('返回失败'))}
       serviceCover={preview ? undefined : detail.cover} onRefreshCover={() => void load()}
-      onCall={() => notWired('拨打电话')} onBookNow={goBooking} bookEnabled
       footer={<Text>页面数据：{preview ? '契约 Mock（preview=1，不联调）' : '真实接口（后端交付前失败关闭，可匿名浏览）'}</Text>}
       notice={notice ? <Text id='svcd-notice' className='svc-notice' style={{ left: `calc(var(--svc-unit) * 29)`, right: `calc(var(--svc-unit) * 29)`, top: `calc(var(--svc-unit) * ${reviewTop + 246 + 24})` }}>{notice}</Text> : undefined}
       servicesNode={<ServiceRow idPrefix='svcd-row' line={{ service: detail, description: detail.description }} onBook={goBooking} />} />}
-  </ConsumerPageLayout>
+    </ConsumerPageLayout>
+    {/* 弹层渲染在 .svc-page 之外（同 booking 直连页：页面级 button 重置不作用于弹层）。 */}
+    {bookingOpen && ready && <BookingSheet key={revision} idPrefix='svcd-booking' preview={preview}
+      serviceId={serviceId} storeId={detail?.storeId} onClose={() => setBookingOpen(false)} />}
+  </View>
 }
 function isContractId(value: string): boolean {
   return /^[1-9][0-9]{0,18}$/.test(value) && (value.length < 19 || BigInt(value) <= 9223372036854775807n)

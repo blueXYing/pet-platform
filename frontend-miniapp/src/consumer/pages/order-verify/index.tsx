@@ -3,7 +3,7 @@ import Taro, { useDidShow, useRouter } from '@tarojs/taro'
 import { useEffect, useRef, useState, useSyncExternalStore, type CSSProperties } from 'react'
 import { useWorkspace } from '../../../shared/workspace-react'
 import { consumerApi } from '../../../shared/consumer-runtime'
-import { navigationUnavailableMessage } from '../../components/navigation/model'
+import { switchConsumerTab } from '../../components/navigation/switch'
 import { ConsumerPageLayout } from '../../components/page-layout'
 import {
   OrderVerifyController, actionFor, formatCode, formatInstant, isOrderVerifyScenario, isOrderId,
@@ -68,16 +68,16 @@ function VerifyScreen({ preview, scenario, initialOrderId }: { preview: boolean;
     if (!isOrderId(orderId)) { setInputError('请输入真实订单号（纯数字，最多19位）'); return }
     void enter(orderId)
   }
-  function goLogin() { void Taro.redirectTo({ url: '/consumer/pages/shell/index' }) }
+  function goLogin() { void Taro.switchTab({ url: '/consumer/pages/mine/index' }) }
   async function goBack() {
     if (Taro.getCurrentPages().length > 1) await Taro.navigateBack()
-    else await Taro.redirectTo({ url: '/consumer/pages/shell/index' })
+    else await Taro.switchTab({ url: '/consumer/pages/mine/index' })
   }
   const view = state.view
   const action = view ? actionFor(view.status) : null
   const remaining = view?.status === 'ACTIVE' ? remainingLabel(now, view.expiresAt) : ''
   return <ConsumerPageLayout page='orderVerify' unit={unit} className='ovv-page' style={style}
-    navigation={{ idPrefix: 'ovv', disabled: state.phase === 'loading', onSelect: key => { void Taro.showToast({ title: navigationUnavailableMessage(key), icon: 'none' }) } }}>
+    navigation={{ idPrefix: 'ovv', disabled: state.phase === 'loading', onSelect: key => { void switchConsumerTab(key) } }}>
     <View className='ovv-design'>
       <View className='ovv-status-area' />
       <View className='ovv-nav'>

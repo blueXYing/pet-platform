@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState, type CSSProperties } from 'react'
 import Taro, { useRouter } from '@tarojs/taro'
 import { ConsumerPageLayout } from '../../components/page-layout'
-import { navigationUnavailableMessage } from '../../components/navigation/model'
+import { switchConsumerTab } from '../../components/navigation/switch'
 import { useWorkspace } from '../../../shared/workspace-react'
 import type { ApplicationResult, DraftInput } from '../../../shared/merchant-repositories'
 import { id, definiteRejection } from '../../../shared/consumer-api'
@@ -151,14 +151,14 @@ function ApplicationScreen({ preview, reference, scope }: { preview: boolean; re
     if (pending.current) { setNotice('上次操作结果尚未确认，请先重试原操作后再离开。'); return }
     if (dirty.current) { const answer = await Taro.showModal({ title: '离开申请页面？', content: '尚未保存的修改将不会保留。', confirmText: '离开', cancelText: '继续填写' }); if (!answer.confirm || !live()) return }
     if (Taro.getCurrentPages().length > 1) await Taro.navigateBack()
-    else await Taro.redirectTo({ url: '/consumer/pages/shell/index' })
+    else await Taro.switchTab({ url: '/consumer/pages/mine/index' })
   }
-  return <ConsumerPageLayout page='merchantApplication' unit={unit} className={`application-page${reference ? ' application-reference' : ''}`} style={style} navigation={{ idPrefix: 'application', disabled: busy, onSelect: key => setNotice(navigationUnavailableMessage(key)) }}>
+  return <ConsumerPageLayout page='merchantApplication' unit={unit} className={`application-page${reference ? ' application-reference' : ''}`} style={style} navigation={{ idPrefix: 'application', disabled: busy, onSelect: key => void switchConsumerTab(key) }}>
     <MerchantApplicationView draft={draft} result={result} errors={errors} notice={notice} busy={busy} loading={loading} preview={preview} loggedIn={loggedIn} locked={locked} opinion={opinion} cityName={cityName} cities={cities} typeOpen={typeOpen} edit={edit}
       onBack={() => void leave()} onTypes={() => setTypeOpen(value => !value)} onCity={() => void perform(async () => { const values = await deps.cities(); if (live()) setCities(values) })}
       onCitySelect={city => { if (running.current || pending.current || !editableApplication(result)) return; edit('cityCode', city.code); setCityName(city.name); setCities(null) }}
       onLocation={() => void perform(async () => { const value = await deps.location(); if (value && live()) { setDraft(previous => ({ ...previous, ...value })); dirty.current = true } })}
-      onUpload={kind => void upload(kind)} onRemove={(kind, assetId) => edit(kind, kind === 'storePhotoAssetIds' ? (draft.storePhotoAssetIds || []).filter(value => value !== assetId) : null)}      onSave={() => void write(false)} onSubmit={() => void write(true)} onReload={() => void load()} onLogin={() => void Taro.redirectTo({ url: '/consumer/pages/shell/index' })}
+      onUpload={kind => void upload(kind)} onRemove={(kind, assetId) => edit(kind, kind === 'storePhotoAssetIds' ? (draft.storePhotoAssetIds || []).filter(value => value !== assetId) : null)}      onSave={() => void write(false)} onSubmit={() => void write(true)} onReload={() => void load()} onLogin={() => void Taro.switchTab({ url: '/consumer/pages/mine/index' })}
       onSigning={() => {
         if (running.current || pending.current) { setNotice('当前有操作结果尚未确认，请先重试原操作后再进入签署。'); return }
         if (result?.status !== 'APPROVED' || !result.reservedMerchantId) return

@@ -3,7 +3,7 @@ import Taro, { useRouter } from '@tarojs/taro'
 import { useCallback, useEffect, useRef, useState, type CSSProperties } from 'react'
 import { useWorkspace } from '../../../shared/workspace-react'
 import { consumerApi } from '../../../shared/consumer-runtime'
-import { navigationUnavailableMessage } from '../../components/navigation/model'
+import { switchConsumerTab } from '../../components/navigation/switch'
 import { ConsumerPageLayout } from '../../components/page-layout'
 import {
   deltaLabel, formatLedgerTime, isCouponPointsScenario, pointsBizTypeLabels,
@@ -99,11 +99,11 @@ export default function PointsPage() {
   }
   async function goBack() {
     if (Taro.getCurrentPages().length > 1) await Taro.navigateBack()
-    else await Taro.redirectTo({ url: '/consumer/pages/shell/index' })
+    else await Taro.switchTab({ url: '/consumer/pages/mine/index' })
   }
   const ready = phase === 'ready'
   return <ConsumerPageLayout page='pointsPage' unit={unit} className='cpn-page'
-    navigation={{ idPrefix: 'cpt', disabled: !ready, onSelect: key => setNotice(navigationUnavailableMessage(key)) }}
+    navigation={{ idPrefix: 'cpt', disabled: !ready, onSelect: key => void switchConsumerTab(key) }}
     style={style}>
     <View className='cpn-design'>
       <View className='cpn-status-area' />
@@ -113,10 +113,11 @@ export default function PointsPage() {
         </Button>
         <Text className='cpn-nav-title'>我的积分</Text>
       </View>
+      <View className='cpn-body'>
       {phase === 'loading' && <View className='cpn-state' role='status'><Text>正在读取积分…</Text></View>}
       {phase === 'expired' && <View className='cpn-state' role='status'>
         <Text id='cpt-login-hint'>登录后可查看我的积分。</Text>
-        <Button id='cpt-login' className='cpn-state-action' onClick={() => { void Taro.redirectTo({ url: '/consumer/pages/shell/index' }) }}>去登录</Button>
+        <Button id='cpt-login' className='cpn-state-action' onClick={() => { void Taro.switchTab({ url: '/consumer/pages/mine/index' }) }}>去登录</Button>
       </View>}
       {phase === 'load-error' && <View className='cpn-state' role='status'>
         <Text id='cpt-error'>积分读取失败，请稍后重试。</Text>
@@ -142,6 +143,7 @@ export default function PointsPage() {
       </Button>}
       {ready && <View className='cpn-preview-note'><Text>{preview ? '只读预览：本地样例数据，仅用于设计验收，不发起真实请求；签到/邀请/任务等赚取行为不在本页提供。' : '页面数据：真实接口（只读查询）；签到/邀请/任务等赚取行为不在本页提供。'}</Text></View>}
       {notice && <Text id='cpt-notice' className='cpn-notice'>{notice}</Text>}
+      </View>
     </View>
   </ConsumerPageLayout>
 }

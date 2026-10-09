@@ -8,7 +8,7 @@ import {
   bookingPaymentMessage, buildOrderRequest, canInitiatePayment, decodeAvailability, decodeAvailabilityItem,
   decodeCreateOrderReceipt, decodePaymentReceipt, draftFromCommandData, fulfillmentModes, isBookingScenario,
   paymentDeadline, paymentGateNotice, paymentSandboxNotice, pickupCandidates, pickupReturnIntervalInvalid,
-  receiptBadge, returnCandidates, slotViews, validateBookingFixtures, windowLabel,
+  receiptBadge, returnCandidates, slotViews, validateBookingFixtures, windowLabel, bookingSheetTitle,
   PreviewBookingRepository, type AvailabilityItem, type BookingDraft,
 } from '../booking/model'
 import { ORDER_CREATE_SLOT, RealBookingRepository, paymentSlot } from '../booking/repository'
@@ -49,6 +49,14 @@ test('pickup fulfillment is unlocked with the selection fields on the public con
 
 test('preview fixtures satisfy the strict decoder', () => {
   assert.equal(validateBookingFixtures(), true)
+})
+
+// ---- 半屏弹层（690:4506）：头部标题展示值由模块层唯一给出（弹层与直连页共用） ----
+
+test('booking sheet title follows the fulfillment kind with the design-source copy', () => {
+  // 原稿头部为「预约上门」（上门接送履约）；到店履约按现有文案体系适配为「到店预约」。
+  assert.equal(bookingSheetTitle('PICKUP_DELIVERY'), '预约上门')
+  assert.equal(bookingSheetTitle('IN_STORE'), '到店预约')
 })
 
 // ---- §3.4 解码（严格 exact-key + 失败关闭） ----

@@ -2,7 +2,7 @@ import { Button, Image, Text, View } from '@tarojs/components'
 import Taro from '@tarojs/taro'
 import { useEffect, useState, type CSSProperties, type PropsWithChildren } from 'react'
 import { ConsumerPageLayout } from '../../components/page-layout'
-import { navigationUnavailableMessage } from '../../components/navigation/model'
+import { switchConsumerTab } from '../../components/navigation/switch'
 import backIcon from './assets/back.svg'
 import addIcon from './assets/add.svg'
 import './page.scss'
@@ -16,11 +16,7 @@ export function AfterSaleFrame({ title, children }: PropsWithChildren<{ title: s
     if (Taro.getCurrentPages().length > 1) await Taro.navigateBack()
     else await Taro.redirectTo({ url: '/consumer/pages/shell/index' })
   }
-  return <ConsumerPageLayout page='profileEdit' unit={unit} className='afs-page' style={style} navigation={{ idPrefix: 'afs', onSelect: async key => {
-    const target = key === 'messages' ? '/consumer/pages/messages/index' : key === 'mine' ? '/consumer/pages/profile-edit/index' : null
-    if (target) await Taro.navigateTo({ url: target })
-    else await Taro.showToast({ title: navigationUnavailableMessage(key), icon: 'none' })
-  } }}>
+  return <ConsumerPageLayout page='profileEdit' unit={unit} className='afs-page' style={style} navigation={{ idPrefix: 'afs', onSelect: key => switchConsumerTab(key) }}>
     <View className='afs-header'><Button id='afs-back' className='afs-back' ariaLabel='返回' onClick={() => void back()}><Image src={backIcon} className='afs-back-icon' /></Button><Text>{title}</Text></View>
     <View className='afs-body'>{children}</View>
   </ConsumerPageLayout>

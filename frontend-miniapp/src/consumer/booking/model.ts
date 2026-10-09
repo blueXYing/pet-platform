@@ -198,6 +198,12 @@ export function fulfillmentModes(current: FulfillmentKind): readonly Fulfillment
   ]
 }
 
+/** 预约半屏弹层标题（690:4506 原稿头部为「预约上门」；到店履约按现有文案体系适配为
+ *  「到店预约」，展示值由模块层唯一给出，弹层与直连页共用）。 */
+export function bookingSheetTitle(fulfillmentType: FulfillmentKind): string {
+  return fulfillmentType === 'PICKUP_DELIVERY' ? '预约上门' : '到店预约'
+}
+
 export type BookingDraft = Readonly<{
   storeId: string; serviceId: string; petId: string
   fulfillmentType: FulfillmentKind

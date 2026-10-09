@@ -20,7 +20,7 @@ export default function MerchantMessagesPage() {
   useEffect(() => () => controller.dispose(), [controller])
   async function back() {
     if (Taro.getCurrentPages().length > 1) await Taro.navigateBack()
-    else await Taro.redirectTo({ url: '/consumer/pages/shell/index' })
+    else await Taro.switchTab({ url: '/consumer/pages/mine/index' })
   }
   function jump() {
     const detail = state.detail
@@ -47,7 +47,7 @@ export default function MerchantMessagesPage() {
       {(state.status === 'empty' || state.status === 'error' || state.status === 'unauthorized') && <View className='mmsg-card'>
         <Text>{state.notice || '暂无消息。'}</Text>
         {state.status === 'unauthorized'
-          ? <Button id='mmsg-login' className='mmsg-jump' onClick={() => void Taro.redirectTo({ url: '/consumer/pages/shell/index' })}>去登录</Button>
+          ? <Button id='mmsg-login' className='mmsg-jump' onClick={() => void Taro.switchTab({ url: '/consumer/pages/mine/index' })}>去登录</Button>
           : state.status === 'error' ? <Button id='mmsg-retry' className='mmsg-jump' onClick={() => void controller.load()}>重试</Button> : null}
       </View>}
       {state.status === 'ready' && state.detail === null && <View className='mmsg-list'>

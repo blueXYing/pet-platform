@@ -1,0 +1,120 @@
+/* 预约下单半屏弹层（Figma 690:4506「立即预约」）。几何/取色按原稿节点值（402 宽设计稿，
+   --bks-unit = windowWidth/402）：遮罩 #000 30%；面板白底、顶部圆角 9、高 556；头部标题
+   16/700 #1d0d07 + 32x32 ×；服务卡 #f0fbff r8（48 封面 + 名称/说明/价格 #ff9500）；日期
+   INPUT 44 高 #f0fbff r8 + 右侧日历图样（CSS 绘制，原稿为 date 图标切图）；时段格三列
+   r8：常态 #f0fbff/#5a4135、选中 #85d2f3/#f8f5ee、置灰 #d3b7a6（原稿固定 60 分钟槽与
+   分钟级 availability 契约冲突，沿既有登记视同设计缺稿，格子渲染契约窗口）；
+   BUTTON-326：335x44 胶囊 #5baae8/#f8f5ee、吸弹层底部。取色经渲染图 PIL 采样核对，
+   与券页/积分弹层同语言（#f0fbff/#c0ecff/#5baae8/#1d0d07）。
+   WXSS 铁律：button 重置不用 margin !important；元素样式一律 .bks-sheet 前缀两段选择器
+   （含从 booking/model 现成展示值带出的 .bkg-date/.bkg-slot 族，两段前缀同时保证与
+   booking.css 同名单类样式的优先级）；状态仅 className 变体（is-*），禁 data-*。 */
+
+.bks-lock { height: 100vh; overflow: hidden; }
+.bks-mask { position: fixed; left: 0; right: 0; top: 0; bottom: 0; background: rgba(0, 0, 0, .3); z-index: 1000; display: flex; flex-direction: column; justify-content: flex-end; }
+.bks-sheet view, .bks-sheet button, .bks-sheet scroll-view, .bks-sheet text, .bks-sheet textarea, .bks-sheet image { box-sizing: border-box; }
+.bks-sheet button { padding: 0; margin: 0; border: 0; border-radius: 0; background: transparent; font: inherit; line-height: normal; text-align: left; }
+.bks-sheet button::after { border: 0; }
+.bks-sheet button[disabled] { opacity: .65; color: inherit; }
+.bks-sheet { background: #ffffff; border-radius: calc(var(--bks-unit) * 9) calc(var(--bks-unit) * 9) 0 0; height: calc(var(--bks-unit) * 556); max-height: 84vh; display: flex; flex-direction: column; font-family: Roboto, 'Noto Sans SC', sans-serif; color: #1d0d07; }
+
+/* 头部：标题（预约上门/到店预约，模块层 bookingSheetTitle）+ × 关闭（原稿 33,345 起标题行）。 */
+.bks-sheet .bks-head { flex-shrink: 0; display: flex; align-items: center; justify-content: space-between; padding: calc(var(--bks-unit) * 9) calc(var(--bks-unit) * 33) 0; }
+.bks-sheet .bks-title { font-size: calc(var(--bks-unit) * 16); line-height: calc(var(--bks-unit) * 24); font-weight: 700; color: #1d0d07; }
+.bks-sheet .bks-close { width: calc(var(--bks-unit) * 32); height: calc(var(--bks-unit) * 32); display: flex; align-items: center; justify-content: center; font-size: calc(var(--bks-unit) * 20); line-height: 1; color: #3c3c3c; }
+
+/* 内容滚动区（左右留白 33，同原稿）。 */
+.bks-sheet .bks-body { flex: 1; height: 0; }
+.bks-sheet .bks-body-inner { padding: 0 calc(var(--bks-unit) * 33) calc(var(--bks-unit) * 14); }
+
+/* 状态/提示族（与 bkg 页面同文案体系）。宿主页均有 .xx-page button { margin: 0 !important }
+   重置（压 wx-button 内建 margin-top，不能删），故弹层内 button 一律不带 CSS margin：
+   间距放在 View 包裹层（.bks-action/.bks-secondary-wrap），日期 chips 用 View。 */
+.bks-sheet .bks-state { padding: calc(var(--bks-unit) * 56) 0; text-align: center; font-size: calc(var(--bks-unit) * 14); line-height: calc(var(--bks-unit) * 24); color: #577683; }
+.bks-sheet .bks-action { margin-top: calc(var(--bks-unit) * 8); text-align: center; }
+.bks-sheet .bks-state-action { color: #3185ba; font-size: calc(var(--bks-unit) * 12); line-height: calc(var(--bks-unit) * 18); text-align: center; }
+.bks-sheet .bks-hint { display: block; margin-top: calc(var(--bks-unit) * 8); font-size: calc(var(--bks-unit) * 11); line-height: calc(var(--bks-unit) * 17); color: #577683; }
+.bks-sheet .bks-subtitle { display: block; margin-top: calc(var(--bks-unit) * 12); font-size: calc(var(--bks-unit) * 12); line-height: calc(var(--bks-unit) * 18); font-weight: 500; color: #3c3c3c; }
+.bks-sheet .bks-error { margin-top: calc(var(--bks-unit) * 8); font-size: calc(var(--bks-unit) * 12); line-height: calc(var(--bks-unit) * 18); color: #a23e2d; }
+.bks-sheet .bks-notice { display: block; margin-top: calc(var(--bks-unit) * 10); font-size: calc(var(--bks-unit) * 12); line-height: calc(var(--bks-unit) * 18); color: #a23e2d; }
+.bks-sheet .bks-note { display: block; margin-top: calc(var(--bks-unit) * 12); font-size: calc(var(--bks-unit) * 10); line-height: calc(var(--bks-unit) * 15); color: #8aa0ac; }
+
+/* 服务信息卡（原稿 335x86 #f0fbff r8：48 封面 + 名称/说明行/价格）。 */
+.bks-sheet .bks-svc { display: flex; align-items: flex-start; gap: calc(var(--bks-unit) * 12); margin-top: calc(var(--bks-unit) * 14); padding: calc(var(--bks-unit) * 9) calc(var(--bks-unit) * 12); background: #f0fbff; border-radius: calc(var(--bks-unit) * 8); }
+.bks-sheet .bks-svc-cover { flex-shrink: 0; width: calc(var(--bks-unit) * 48); height: calc(var(--bks-unit) * 48); border-radius: calc(var(--bks-unit) * 8); background: #c0ecff; }
+.bks-sheet .bks-svc-cover-fallback { display: flex; align-items: center; justify-content: center; font-size: calc(var(--bks-unit) * 18); font-weight: 700; color: #577683; }
+.bks-sheet .bks-svc-main { flex: 1; min-width: 0; display: flex; flex-direction: column; align-items: flex-start; }
+.bks-sheet .bks-svc-name { max-width: 100%; font-size: calc(var(--bks-unit) * 14); line-height: calc(var(--bks-unit) * 20); font-weight: 500; color: #1d0d07; overflow-wrap: anywhere; }
+.bks-sheet .bks-svc-hint { margin-top: calc(var(--bks-unit) * 4); font-size: calc(var(--bks-unit) * 11); line-height: calc(var(--bks-unit) * 16); color: #9e7660; overflow-wrap: anywhere; }
+.bks-sheet .bks-svc-price { margin-top: calc(var(--bks-unit) * 6); font-size: calc(var(--bks-unit) * 14); line-height: calc(var(--bks-unit) * 20); font-weight: 700; color: #ff9500; }
+
+/* 分区标签（原稿 12/#3c3c3c）。 */
+.bks-sheet .bks-section { margin-top: calc(var(--bks-unit) * 16); }
+.bks-sheet .bks-label { display: block; font-size: calc(var(--bks-unit) * 12); line-height: calc(var(--bks-unit) * 20); color: #3c3c3c; }
+
+/* 日期 INPUT 图样（原稿 INPUT-276：335x44 #f0fbff r8，右侧 date 图标；选中日期只读呈现，
+   选择经下方日期条）。日历图样为 CSS 绘制（原稿切图未导出，登记偏差）。 */
+.bks-sheet .bks-input { display: flex; align-items: center; justify-content: space-between; gap: calc(var(--bks-unit) * 8); height: calc(var(--bks-unit) * 44); margin-top: calc(var(--bks-unit) * 6); padding: 0 calc(var(--bks-unit) * 14); background: #f0fbff; border-radius: calc(var(--bks-unit) * 8); }
+.bks-sheet .bks-input-text { font-size: calc(var(--bks-unit) * 14); line-height: calc(var(--bks-unit) * 20); color: #1d0d07; }
+.bks-sheet .bks-cal { position: relative; flex-shrink: 0; width: calc(var(--bks-unit) * 15); height: calc(var(--bks-unit) * 15); border: calc(var(--bks-unit) * 1) solid #9e7660; border-radius: calc(var(--bks-unit) * 2); }
+.bks-sheet .bks-cal::before { content: ''; position: absolute; left: calc(var(--bks-unit) * 2); right: calc(var(--bks-unit) * 2); top: calc(var(--bks-unit) * 5); height: calc(var(--bks-unit) * 1); background: #9e7660; }
+.bks-sheet .bks-cal::after { content: ''; position: absolute; top: calc(var(--bks-unit) * -3); left: calc(var(--bks-unit) * 2.5); width: calc(var(--bks-unit) * 1); height: calc(var(--bks-unit) * 5); background: #9e7660; box-shadow: calc(var(--bks-unit) * 7) 0 0 #9e7660; }
+
+/* 日期条（booking/model.bookingDates 现成 className=.bkg-date 族；弹层口径 64x44、
+   选中 #85d2f3 同时段选中态）。 */
+.bks-sheet .bkg-dates { margin-top: calc(var(--bks-unit) * 8); width: 100%; white-space: nowrap; }
+.bks-sheet .bkg-date { display: inline-flex; flex-direction: column; align-items: center; justify-content: center; width: calc(var(--bks-unit) * 64); height: calc(var(--bks-unit) * 44); margin-right: calc(var(--bks-unit) * 8); background: #f0fbff; border: calc(var(--bks-unit) * 1) solid #c0ecff; border-radius: calc(var(--bks-unit) * 8); }
+.bks-sheet .bkg-date-label { font-size: calc(var(--bks-unit) * 12); line-height: calc(var(--bks-unit) * 16); color: #5a4135; }
+.bks-sheet .bkg-date-weekday { font-size: calc(var(--bks-unit) * 10); line-height: calc(var(--bks-unit) * 14); color: #9e7660; }
+.bks-sheet .bkg-date.is-selected { background: #85d2f3; border-color: #85d2f3; }
+.bks-sheet .bkg-date.is-selected .bkg-date-label { color: #f8f5ee; font-weight: 500; }
+.bks-sheet .bkg-date.is-selected .bkg-date-weekday { color: #eaf7fd; }
+
+/* 时段格（slotViews 现成 className=.bkg-slot 族；三列 89.9x30 原稿 → 三等分列、双行
+   契约窗口+余量，高约 38，登记偏差）。 */
+.bks-sheet .bks-slots { display: flex; flex-wrap: wrap; gap: calc(var(--bks-unit) * 8); margin-top: calc(var(--bks-unit) * 8); }
+.bks-sheet .bkg-slot { display: flex; flex-direction: column; align-items: center; justify-content: center; width: calc((100% - calc(var(--bks-unit) * 16)) / 3); min-width: 0; min-height: calc(var(--bks-unit) * 38); padding: calc(var(--bks-unit) * 4) calc(var(--bks-unit) * 6); background: #f0fbff; border: calc(var(--bks-unit) * 1) solid #c0ecff; border-radius: calc(var(--bks-unit) * 8); }
+.bks-sheet .bkg-slot-time { font-size: calc(var(--bks-unit) * 12); line-height: calc(var(--bks-unit) * 16); color: #5a4135; }
+.bks-sheet .bkg-slot-note { margin-top: calc(var(--bks-unit) * 1); font-size: calc(var(--bks-unit) * 10); line-height: calc(var(--bks-unit) * 13); color: #9e7660; }
+.bks-sheet .bkg-slot.is-selected { background: #85d2f3; border-color: #85d2f3; }
+.bks-sheet .bkg-slot.is-selected .bkg-slot-time { color: #f8f5ee; font-weight: 500; }
+.bks-sheet .bkg-slot.is-selected .bkg-slot-note { color: #eaf7fd; }
+.bks-sheet .bkg-slot.is-full { background: #f0fbff; border-color: #e9e4d9; }
+.bks-sheet .bkg-slot.is-full .bkg-slot-time { color: #d3b7a6; }
+.bks-sheet .bkg-slot.is-full .bkg-slot-note { color: #d3b7a6; }
+
+/* 宠物 chips（白卡描边，选中 #85d2f3 同语言）。 */
+.bks-sheet .bks-pets { display: flex; flex-wrap: wrap; gap: calc(var(--bks-unit) * 8); margin-top: calc(var(--bks-unit) * 8); }
+.bks-sheet .bks-pet { display: flex; flex-direction: column; align-items: flex-start; padding: calc(var(--bks-unit) * 8) calc(var(--bks-unit) * 12); background: #ffffff; border: calc(var(--bks-unit) * 1) solid #c0ecff; border-radius: calc(var(--bks-unit) * 8); }
+.bks-sheet .bks-pet-name { font-size: calc(var(--bks-unit) * 13); line-height: calc(var(--bks-unit) * 18); color: #1d0d07; }
+.bks-sheet .bks-pet-note { margin-top: calc(var(--bks-unit) * 1); font-size: calc(var(--bks-unit) * 10); line-height: calc(var(--bks-unit) * 14); color: #9e7660; }
+.bks-sheet .bks-pet.is-selected { background: #85d2f3; border-color: #85d2f3; }
+.bks-sheet .bks-pet.is-selected .bks-pet-name { color: #f8f5ee; font-weight: 500; }
+.bks-sheet .bks-pet.is-selected .bks-pet-note { color: #eaf7fd; }
+
+/* 备注/接送地址（INPUT 同款底）。 */
+.bks-sheet .bks-textarea { display: block; margin-top: calc(var(--bks-unit) * 6); width: 100%; min-height: calc(var(--bks-unit) * 72); padding: calc(var(--bks-unit) * 10) calc(var(--bks-unit) * 14); background: #f0fbff; border-radius: calc(var(--bks-unit) * 8); font-size: calc(var(--bks-unit) * 12); line-height: calc(var(--bks-unit) * 18); color: #1d0d07; }
+
+/* 确认信息（#f0fbff 事实行卡）。 */
+.bks-sheet .bks-facts { margin-top: calc(var(--bks-unit) * 6); padding: calc(var(--bks-unit) * 6) calc(var(--bks-unit) * 12); background: #f0fbff; border-radius: calc(var(--bks-unit) * 8); }
+.bks-sheet .bks-fact-row { display: flex; align-items: baseline; justify-content: space-between; gap: calc(var(--bks-unit) * 12); padding: calc(var(--bks-unit) * 8) 0; }
+.bks-sheet .bks-fact-label { flex-shrink: 0; font-size: calc(var(--bks-unit) * 12); line-height: calc(var(--bks-unit) * 18); color: #577683; }
+.bks-sheet .bks-fact-value { font-size: calc(var(--bks-unit) * 12); line-height: calc(var(--bks-unit) * 18); color: #1d0d07; text-align: right; overflow-wrap: anywhere; }
+.bks-sheet .bks-fact-amount { font-weight: 700; color: #ff9500; }
+
+/* 回执卡（CreateOrderData 五字段；徽标变体来自 orders/model.statusVariant）。 */
+.bks-sheet .bks-receipt { margin-top: calc(var(--bks-unit) * 14); padding: calc(var(--bks-unit) * 14) calc(var(--bks-unit) * 16); background: #f0fbff; border: calc(var(--bks-unit) * 1) solid #c0ecff; border-radius: calc(var(--bks-unit) * 12); }
+.bks-sheet .bks-receipt-head { display: flex; align-items: baseline; justify-content: space-between; gap: calc(var(--bks-unit) * 8); }
+.bks-sheet .bks-receipt-no { font-size: calc(var(--bks-unit) * 14); line-height: calc(var(--bks-unit) * 20); font-weight: 500; color: #1d0d07; overflow-wrap: anywhere; }
+.bks-sheet .bks-badge { flex-shrink: 0; padding: calc(var(--bks-unit) * 1) calc(var(--bks-unit) * 8); border-radius: calc(var(--bks-unit) * 4); background: #c0ecff; font-size: calc(var(--bks-unit) * 10); line-height: calc(var(--bks-unit) * 15); color: #577683; }
+.bks-sheet .bks-badge.is-pending-payment { color: #ff9500; }
+.bks-sheet .bks-receipt-amount { display: block; margin-top: calc(var(--bks-unit) * 8); font-size: calc(var(--bks-unit) * 24); line-height: calc(var(--bks-unit) * 30); font-weight: 700; color: #1d0d07; }
+.bks-sheet .bks-receipt-hint { display: block; margin-top: calc(var(--bks-unit) * 6); font-size: calc(var(--bks-unit) * 11); line-height: calc(var(--bks-unit) * 17); color: #577683; }
+.bks-sheet .bks-secondary-wrap { margin-top: calc(var(--bks-unit) * 10); }
+.bks-sheet .bks-secondary { display: block; border: calc(var(--bks-unit) * 1) solid #c0ecff; border-radius: calc(var(--bks-unit) * 9999); background: #ffffff; color: #577683; font-size: calc(var(--bks-unit) * 12); line-height: calc(var(--bks-unit) * 34); text-align: center; }
+
+/* 底部全宽按钮（BUTTON-326：335x44 胶囊 #5baae8，常驻弹层底部；表单=确认预约、
+   回执=去支付，支付链路不变）。 */
+.bks-sheet .bks-foot { flex-shrink: 0; padding: calc(var(--bks-unit) * 12) calc(var(--bks-unit) * 33) calc(var(--bks-unit) * 29); }
+.bks-sheet .bks-foot-action { display: block; width: 100%; height: calc(var(--bks-unit) * 44); border-radius: calc(var(--bks-unit) * 9999); background: #5baae8; color: #f8f5ee; font-size: calc(var(--bks-unit) * 14); line-height: calc(var(--bks-unit) * 44); font-weight: 500; text-align: center; }
+.bks-sheet .bks-foot-action[disabled] { opacity: .65; }

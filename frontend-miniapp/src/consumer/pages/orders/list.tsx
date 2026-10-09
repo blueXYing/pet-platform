@@ -3,7 +3,7 @@ import Taro, { useRouter } from '@tarojs/taro'
 import { useCallback, useEffect, useRef, useState, type CSSProperties } from 'react'
 import { useWorkspace } from '../../../shared/workspace-react'
 import { consumerApi } from '../../../shared/consumer-runtime'
-import { navigationUnavailableMessage } from '../../components/navigation/model'
+import { switchConsumerTab } from '../../components/navigation/switch'
 import { ConsumerPageLayout } from '../../components/page-layout'
 import {
   appointmentWindow, displayOrderStatuses, displayStatusLabels, isOrdersScenario, orderReadMessage,
@@ -94,29 +94,37 @@ function ListScreen({ preview, scenario }: { preview: boolean; scenario: 'normal
       setPage(result.page); setTotal(result.total)
     } catch { setNotice('加载更多失败，请重试。') } finally { setLoadingMore(false) }
   }
-  function goLogin() { void Taro.redirectTo({ url: '/consumer/pages/shell/index' }) }
+  function goLogin() { void Taro.switchTab({ url: '/consumer/pages/mine/index' }) }
   async function goBack() {
     if (Taro.getCurrentPages().length > 1) await Taro.navigateBack()
-    else await Taro.redirectTo({ url: '/consumer/pages/shell/index' })
+    else await Taro.switchTab({ url: '/consumer/pages/mine/index' })
   }
   const ready = phase === 'ready'
   return <ConsumerPageLayout page='orderList' unit={unit} className='ord-page' style={style}
-    navigation={{ idPrefix: 'ord', disabled: phase === 'loading', onSelect: key => { void Taro.showToast({ title: navigationUnavailableMessage(key), icon: 'none' }) } }}>
-    <View className='ord-design'>
-      <View className='ord-status-area' />
-      <View className='ord-nav'>
-        <Button id='ord-back' ariaLabel='返回' className='ord-nav-back' onClick={() => void goBack()}>
-          <Text className='ord-nav-back-icon'>‹</Text>
-        </Button>
-        <Text className='ord-nav-title'>我的订单</Text>
+    navigation={{ idPrefix: 'ord', disabled: phase === 'loading', onSelect: key => { void switchConsumerTab(key) } }}>
+    {/* 视觉按设计源 129:9946（我的-我的订单主稿）重做：奶油导航区 #fff6e5 + #c0ecff 压线、
+        #f0fbff 内容区、#eaf6f3 药丸 tab 容器、白卡 #c0ecff 描边 r13。功能/契约/ID 与 aria 不变；
+        列表样式一律走 .ordl 作用域（orders.css），不触碰详情/退款/改期/评价共享词汇。 */}
+    <View className='ord-design ordl'>
+      <View className='ordl-hero'>
+        <View className='ord-status-area' />
+        <View className='ord-nav'>
+          <Button id='ord-back' ariaLabel='返回' className='ord-nav-back' onClick={() => void goBack()}>
+            <Text className='ord-nav-back-icon'>‹</Text>
+          </Button>
+          <Text className='ord-nav-title'>我的订单</Text>
+        </View>
+        {/* 契约桶=displayStatus 单值查询（§3.7）+“全部”（不发送参数）。原稿 5 桶（全部/待服务/进行中/
+            已完成/已取消，#eaf6f3 容器 + 64x28 子胶囊、激活 #5baae8 白字）中的“进行中”无法用单一
+            displayStatus 表达，不并入任何桶（PR 登记差异）；十状态桶沿原稿胶囊形态横向滚动承载。 */}
+        <ScrollView scrollX className='ordl-tabs'>
+          <View className='ordl-tabs-track'>
+            <Button className={`ordl-tab${tab === null ? ' is-active' : ''}`} ariaLabel='全部' onClick={() => chooseTab(null)}><Text>全部</Text></Button>
+            {displayOrderStatuses.map(status => <Button key={status} className={`ordl-tab${tab === status ? ' is-active' : ''}`}
+              ariaLabel={displayStatusLabels[status]} onClick={() => chooseTab(status)}><Text>{displayStatusLabels[status]}</Text></Button>)}
+          </View>
+        </ScrollView>
       </View>
-      {/* 契约桶=displayStatus 单值查询（§3.7）+“全部”（不发送参数）。设计原稿 5 桶中的“进行中”
-          无法用单一 displayStatus 表达，不并入任何桶（PR 登记差异），横向滚动承载十状态。 */}
-      <ScrollView scrollX className='ord-tabs'>
-        <Button className={`ord-tab${tab === null ? ' is-active' : ''}`} ariaLabel='全部' onClick={() => chooseTab(null)}><Text>全部</Text></Button>
-        {displayOrderStatuses.map(status => <Button key={status} className={`ord-tab${tab === status ? ' is-active' : ''}`}
-          ariaLabel={displayStatusLabels[status]} onClick={() => chooseTab(status)}><Text>{displayStatusLabels[status]}</Text></Button>)}
-      </ScrollView>
       {phase === 'loading' && <View className='ord-state' role='status'><Text id='ord-loading'>正在读取订单…</Text></View>}
       {phase === 'expired' && <View className='ord-state' role='status'>
         <Text id='ord-login-hint'>登录后可查看我的订单。</Text>
@@ -128,24 +136,33 @@ function ListScreen({ preview, scenario }: { preview: boolean; scenario: 'normal
       </View>}
       {ready && orders.length === 0 && <View className='ord-state'><Text id='ord-empty'>{tab === null ? '暂无订单。' : `暂无${displayStatusLabels[tab]}订单。`}</Text></View>}
       {ready && orders.map(order => <Button key={order.orderId} id={`ord-card-${order.orderId}`}
-        className='ord-card'
+        className='ordl-card'
         ariaLabel={`订单 ${order.orderNo}，${displayStatusLabels[order.displayStatus]}，${appointmentWindow(order)}，${order.payAmount} 元`}
         onClick={() => { void Taro.navigateTo({ url: `/consumer/pages/orders/detail?${preview ? 'preview=1&' : ''}orderId=${encodeURIComponent(order.orderId)}` }).catch(() => setNotice('页面跳转失败，请重试')) }}>
-        <View className='ord-card-head'>
-          <Text className='ord-card-no'>订单号 {order.orderNo}</Text>
-          <Text className={`ord-badge ${statusVariant(order.displayStatus)}`}>{displayStatusLabels[order.displayStatus]}</Text>
+        {/* 卡面=契约 OrderDetailData 投影：订单号/展示状态/时间窗/orderId/两位小数支付金额。
+            原稿 129:9946 卡体的封面图 IMG-39/服务名 H3-41/类目 SPAN-45/门店 P-49 与页脚
+            操作按钮（取消订单/联系电话；237:860 的订单改期/无责退款/打开二维码）均不在契约内，
+            不虚构数据，PR 登记差异；整卡点击进详情的交互保持不变。 */}
+        <View className='ordl-card-head'>
+          <Text className='ordl-card-no'>订单号 {order.orderNo}</Text>
+          <Text className={`ordl-badge ${statusVariant(order.displayStatus)}`}>{displayStatusLabels[order.displayStatus]}</Text>
         </View>
-        <Text className='ord-card-time'>服务时间 {appointmentWindow(order)}</Text>
-        <View className='ord-card-foot'>
-          <Text className='ord-card-id'>ID {order.orderId}</Text>
-          <Text className='ord-card-amount'>¥{order.payAmount}</Text>
+        <View className='ordl-card-body'>
+          <Text className='ordl-card-time'>服务时间 {appointmentWindow(order)}</Text>
+          <View className='ordl-card-foot'>
+            <Text className='ordl-card-id'>ID {order.orderId}</Text>
+            <View className='ordl-card-price'>
+              <Text className='ordl-card-price-cur'>¥</Text>
+              <Text className='ordl-card-price-value'>{order.payAmount}</Text>
+            </View>
+          </View>
         </View>
       </Button>)}
-      {ready && orders.length < total && <Button id='ord-load-more' className='ord-more' disabled={loadingMore} onClick={() => void loadMore()}>
+      {ready && orders.length < total && <Button id='ord-load-more' className='ordl-more' disabled={loadingMore} onClick={() => void loadMore()}>
         {loadingMore ? '正在加载…' : '加载更多'}
       </Button>}
       {ready && <View className='ord-preview-note'><Text>{preview ? '只读预览：本地样例数据，仅用于设计验收，不发起真实请求。' : '页面数据：真实接口（只读查询）。'}</Text></View>}
-      {notice && phase !== 'load-error' && <Text id='ord-notice' className='ord-notice'>{notice}</Text>}
+      {notice && phase !== 'load-error' && <Text id='ord-notice' className='ordl-notice'>{notice}</Text>}
     </View>
   </ConsumerPageLayout>
 }
