@@ -8,9 +8,97 @@ on:
 permissions:
   contents: read
 
+# PR 迭代时取消同一 PR 的过期 run，立刻释放 runner；
+# develop push 是合并验收证据（六项绿），每个 run 独立分组，永不取消、不排队。
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.run_id }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
 jobs:
-  backend:
+  # 仅 PR 事件运行（push 上跳过，下游 job 以 result == 'skipped' 放行全量）。
+  # 分类原则：宁多跑不漏跑——未归类的路径走 other=true 触发全量。
+  changes:
     runs-on: ubuntu-latest
+    timeout-minutes: 10
+    if: github.event_name == 'pull_request'
+    outputs:
+      backend: ${{ steps.filter.outputs.backend }}
+      web: ${{ steps.filter.outputs.web }}
+      miniapp: ${{ steps.filter.outputs.miniapp }}
+      policy: ${{ steps.filter.outputs.policy }}
+      contract: ${{ steps.filter.outputs.contract }}
+      ci: ${{ steps.filter.outputs.ci }}
+      other: ${{ steps.filter.outputs.other }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dorny/paths-filter@v3
+        id: filter
+        with:
+          filters: |
+            backend:
+              - 'backend/**'
+              - 'docs/03-database/**'
+              # pet-boot 集成测试在本仓内启动 frontend-miniapp 的 node 链脚本（CFrontendHttpTest / MerchantApplicationLifecycleHttpTest）
+              - 'frontend-miniapp/package.json'
+              - 'frontend-miniapp/package-lock.json'
+              - 'frontend-miniapp/tsconfig.json'
+              - 'frontend-miniapp/src/consumer/tests/**'
+              - 'frontend-miniapp/src/shared/tests/**'
+            web:
+              - 'frontend-admin/**'
+              - 'backend/tools/**'
+            miniapp:
+              - 'frontend-miniapp/**'
+              - 'backend/tools/**'
+            policy:
+              - 'backend/**'
+              - 'docs/00-ssot/**'
+              - 'docs/02-architecture/**'
+              - 'docs/04-api/**'
+              - 'docs/05-events/**'
+              - 'docs/06-scheduler/**'
+            contract:
+              - 'e2e/**'
+              - 'docs/00-ssot/**'
+              - 'docs/04-api/**'
+              # e2e/test_auth_contract.py 读取 planning/ccr/AUTH-001/examples.md
+              - 'planning/ccr/**'
+            ci:
+              - '.github/workflows/**'
+            other:
+              - '**'
+              - '!backend/**'
+              - '!frontend-admin/**'
+              - '!frontend-miniapp/**'
+              - '!docs/**'
+              - '!planning/**'
+              - '!e2e/**'
+              - '!.github/**'
+              - '!**.md'
+      - name: Record filter outcome
+        env:
+          BACKEND: ${{ steps.filter.outputs.backend }}
+          WEB: ${{ steps.filter.outputs.web }}
+          MINIAPP: ${{ steps.filter.outputs.miniapp }}
+          POLICY: ${{ steps.filter.outputs.policy }}
+          CONTRACT: ${{ steps.filter.outputs.contract }}
+          CI: ${{ steps.filter.outputs.ci }}
+          OTHER: ${{ steps.filter.outputs.other }}
+        run: |
+          echo "### CI path filter (PR only; push to develop always runs all jobs)" >> "$GITHUB_STEP_SUMMARY"
+          echo "backend=$BACKEND web=$WEB miniapp=$MINIAPP policy=$POLICY contract=$CONTRACT ci=$CI other=$OTHER" >> "$GITHUB_STEP_SUMMARY"
+
+  backend:
+    needs: changes
+    # push 到 develop 一律全量（合并验收证据）；PR 上按路径分类放行
+    if: >-
+      ${{ !cancelled() && (
+      needs.changes.result == 'skipped' ||
+      needs.changes.outputs.backend == 'true' ||
+      needs.changes.outputs.ci == 'true' ||
+      needs.changes.outputs.other == 'true' ) }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
     services:
       mysql:
         image: mysql:8.4
@@ -77,6 +165,8 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '22.23.1'
+          cache: npm
+          cache-dependency-path: frontend-miniapp/package-lock.json
       - run: npm install --global npm@10.9.8
       - name: Prepare frontend client for real backend integration test
         working-directory: frontend-miniapp
@@ -93,6 +183,7 @@ jobs:
 
   frontend-inventory:
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     outputs:
       web: ${{ steps.inventory.outputs.web }}
       miniapp: ${{ steps.inventory.outputs.miniapp }}
@@ -114,22 +205,38 @@ jobs:
           echo 'Inventory only. Web fixture Playwright results are reported by web-build. WeChat runtime and VIS are not executed in Linux CI; see QA-001 provenance for existing same-source platform evidence.' >> "$GITHUB_STEP_SUMMARY"
 
   web-build:
-    needs: frontend-inventory
-    if: needs.frontend-inventory.outputs.web == 'true'
+    needs: [changes, frontend-inventory]
+    if: >-
+      ${{ !cancelled() && needs.frontend-inventory.outputs.web == 'true' && (
+      needs.changes.result == 'skipped' ||
+      needs.changes.outputs.web == 'true' ||
+      needs.changes.outputs.ci == 'true' ||
+      needs.changes.outputs.other == 'true' ) }}
     runs-on: ubuntu-latest
+    timeout-minutes: 25
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
           node-version: '22.23.1'
+          cache: npm
+          cache-dependency-path: frontend-admin/package-lock.json
       - run: npm install --global npm@10.9.8
       - run: python backend/tools/run-frontend-gate.py web-build
+      - name: Cache Playwright browsers
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-chromium-${{ runner.os }}-${{ hashFiles('frontend-admin/package-lock.json') }}
+          restore-keys: playwright-chromium-${{ runner.os }}-
       - name: Install Playwright Chromium
         working-directory: frontend-admin
         run: npx playwright install --with-deps chromium
+      # gate 已执行 npm ci + typecheck + vite build（产物在 dist 供 preview webServer 使用），
+      # 这里直接跑 Playwright，不再经 npm test 重复 typecheck + vite build
       - name: WEB-001 WEB-002 PERM-005 private fixture smoke
         working-directory: frontend-admin
-        run: npm test
+        run: npx playwright test
       - name: Record Web fixture scope
         run: echo 'PASS Web Playwright fixture smoke. Real Java API, RBAC, data scope and audit are NOT_EXECUTED.' >> "$GITHUB_STEP_SUMMARY"
       - name: Preserve Web test evidence
@@ -141,19 +248,35 @@ jobs:
           if-no-files-found: error
 
   miniapp-weapp-build:
-    needs: frontend-inventory
-    if: needs.frontend-inventory.outputs.miniapp == 'true'
+    needs: [changes, frontend-inventory]
+    if: >-
+      ${{ !cancelled() && needs.frontend-inventory.outputs.miniapp == 'true' && (
+      needs.changes.result == 'skipped' ||
+      needs.changes.outputs.miniapp == 'true' ||
+      needs.changes.outputs.ci == 'true' ||
+      needs.changes.outputs.other == 'true' ) }}
     runs-on: ubuntu-latest
+    timeout-minutes: 25
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
           node-version: '22.23.1'
+          cache: npm
+          cache-dependency-path: frontend-miniapp/package-lock.json
       - run: npm install --global npm@10.9.8
       - run: python backend/tools/run-frontend-gate.py miniapp-build
 
   repository-policy:
+    needs: changes
+    if: >-
+      ${{ !cancelled() && (
+      needs.changes.result == 'skipped' ||
+      needs.changes.outputs.policy == 'true' ||
+      needs.changes.outputs.ci == 'true' ||
+      needs.changes.outputs.other == 'true' ) }}
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     steps:
       - uses: actions/checkout@v4
       - name: Reject deprecated late-payment recovery design
@@ -162,12 +285,22 @@ jobs:
           ! grep -R --exclude='*.docx' --exclude-dir='.git' -n "WAITING_APPOINTMENT_RESELECTION" backend docs/00-ssot docs/02-architecture docs/04-api docs/05-events docs/06-scheduler
 
   contract-smoke:
+    needs: changes
+    if: >-
+      ${{ !cancelled() && (
+      needs.changes.result == 'skipped' ||
+      needs.changes.outputs.contract == 'true' ||
+      needs.changes.outputs.ci == 'true' ||
+      needs.changes.outputs.other == 'true' ) }}
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
+          cache: pip
+          cache-dependency-path: e2e/requirements.txt
       - run: python -m pip install -r e2e/requirements.txt
       - run: python e2e/contract_smoke.py
       - run: python -m unittest discover -s e2e -p 'test_*.py' -v
