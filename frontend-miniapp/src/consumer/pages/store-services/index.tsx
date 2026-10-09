@@ -114,7 +114,7 @@ export default function StoreServicesPage() {
   const listTop = 711.5
   const reviewTop = listTop + serviceListCardHeight(count) + 15.5
   return <View>
-    <ConsumerPageLayout page='storeServices' unit={unit} navigation={{ idPrefix: 'svc', disabled: !ready, onSelect: key => void switchConsumerTab(key), referencePlacement: undefined }} className='svc-page' style={style}>
+    <ConsumerPageLayout page='storeServices' unit={unit} navigation={{ idPrefix: 'svc', disabled: !ready, onSelect: key => void switchConsumerTab(key), referencePlacement: undefined }} className={`svc-page${bookingService ? ' bks-lock' : ''}`} style={style}>
     <View className='svc-status-area' />
     {!ready && <View className='svc-state' role='status'>
       <Text>{phase === 'loading' ? '正在加载门店服务…' : phase === 'expired' ? '登录已失效，请重新登录' : phase === 'invalid' ? '门店参数无效' : phase === 'missing' ? '门店不存在或不可访问' : '加载失败，请重试'}</Text>

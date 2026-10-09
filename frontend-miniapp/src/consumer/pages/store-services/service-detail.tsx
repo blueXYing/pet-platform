@@ -104,7 +104,7 @@ export default function ServiceDetailPage() {
   const listTop = 711.5
   const reviewTop = listTop + serviceListCardHeight(1) + 15.5
   return <View>
-    <ConsumerPageLayout page='serviceDetail' unit={unit} navigation={{ idPrefix: 'svcd', disabled: !ready, onSelect: key => void switchConsumerTab(key), referencePlacement: undefined }} className='svc-page svc-detail-page' style={style}>
+    <ConsumerPageLayout page='serviceDetail' unit={unit} navigation={{ idPrefix: 'svcd', disabled: !ready, onSelect: key => void switchConsumerTab(key), referencePlacement: undefined }} className={`svc-page svc-detail-page${bookingOpen ? ' bks-lock' : ''}`} style={style}>
     <View className='svc-status-area' />
     {!ready && <View className='svc-state' role='status'>
       <Text>{phase === 'loading' ? '正在加载服务详情…' : phase === 'missing' ? '服务不存在或已下架' : phase === 'expired' ? '登录已失效，请重新登录' : phase === 'invalid' ? '服务参数无效' : '加载失败，请重试'}</Text>

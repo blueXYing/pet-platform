@@ -35,7 +35,7 @@ export default function BookingCreatePage() {
   //（margin: 0 !important 压 wx-button 内建 margin）不影响弹层内按钮边距；弹层自身
   // position:fixed 全屏遮罩，不依赖页面容器。
   return <View>
-    <ConsumerPageLayout page='bookingCreate' unit={unit} className='bkg-page' style={style}
+    <ConsumerPageLayout page='bookingCreate' unit={unit} className='bkg-page bks-lock' style={style}
       navigation={{ idPrefix: 'bkg', onSelect: key => { void switchConsumerTab(key) } }}>
       <View className='bkg-design'>
         <View className='bkg-status-area' />
