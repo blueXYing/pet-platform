@@ -34,6 +34,9 @@ jobs:
       - uses: dorny/paths-filter@v3
         id: filter
         with:
+          # some-with-excludes：命中至少一条正向且未被 ! 取反排除才计入；
+          # 默认 some 下 ! 取反无效（上游文档明示），other 会恒真导致所有 PR 全量跑
+          predicate-quantifier: 'some-with-excludes'
           filters: |
             backend:
               - 'backend/**'
@@ -74,7 +77,7 @@ jobs:
               - '!planning/**'
               - '!e2e/**'
               - '!.github/**'
-              - '!**.md'
+              - '!**/*.md'
       - name: Record filter outcome
         env:
           BACKEND: ${{ steps.filter.outputs.backend }}
