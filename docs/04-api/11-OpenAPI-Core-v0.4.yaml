@@ -3588,34 +3588,163 @@ paths:
           $ref: '#/components/responses/Conflict'
         '503':
           $ref: '#/components/responses/DependencyUnavailable'
-  /merchant/refund-applications/{applicationId}/approve:
-    post:
+  /merchant/refund-applications:
+    get:
       tags:
       - Merchant-Refund
-      summary: 商家同意全额退款
-      operationId: merchantApproveRefund
+      summary: 商家退款待处理列表
+      operationId: merchantListRefundApplications
+      x-implementation-status: IMPLEMENTED_DEFAULT_OFF
+      x-default-enabled: false
+      x-contract: 57-Merchant-Refund-Application-Contract-v0.1.md
+      x-assembly-switch: pet.refund.merchant.http.enabled
+      x-route-party: MERCHANT
+      x-audience: MINIAPP
+      description: 商家退款待处理列表（57号，10号 §4.4）：仅该商家有权限处理的
+        PENDING_MERCHANT 申请；OWNER 商家坐标（merchantId+storeId）在门店 guard 事务内
+        以 requireOwnerRead 重验，按双键过滤；固定排序 created_at DESC, id DESC。
+        买家申请说明明文与买家身份字段不回传（49号密文留存）。非本店/非 OWNER/未知
+        门店同一 403 防枚举；no-store；GET 不绑 X-Request-Id。
       security:
       - bearerAuth: []
       parameters:
-      - $ref: '#/components/parameters/ApplicationId'
-      - $ref: '#/components/parameters/RequestId'
+      - $ref: '#/components/parameters/MerchantIdQuery'
+      - $ref: '#/components/parameters/StoreIdQuery'
+      - $ref: '#/components/parameters/Page'
+      - $ref: '#/components/parameters/PageSize'
       responses:
+        '200':
+          description: '商家退款待处理列表页：PageResult 信封 items/page/pageSize/total，
+            列表项字段 applicationId/applicationNo/orderId/status/applicationVersion/
+            reasonCode/refundAmount/createdAt/merchantDeadline。Cache-Control: no-store。'
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                enum:
+                - no-store
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MerchantRefundApplicationPageEnvelope'
+        '400':
+          $ref: '#/components/responses/BadRequest'
         '401':
           $ref: '#/components/responses/Unauthorized'
         '403':
           $ref: '#/components/responses/Forbidden'
         '503':
           $ref: '#/components/responses/DependencyUnavailable'
+  /merchant/refund-applications/{applicationId}:
+    get:
+      tags:
+      - Merchant-Refund
+      summary: 商家退款申请详情
+      operationId: merchantReadRefundApplication
+      x-implementation-status: IMPLEMENTED_DEFAULT_OFF
+      x-default-enabled: false
+      x-contract: 57-Merchant-Refund-Application-Contract-v0.1.md
+      x-assembly-switch: pet.refund.merchant.http.enabled
+      x-route-party: MERCHANT
+      x-audience: MINIAPP
+      description: 商家单笔退款申请详情（57号）：本店任意状态（决定后回看）；OWNER
+        坐标同样在门店 guard 事务内重验。终态字段 decidedAt/decisionId/refundOrderId
+        可空（PENDING_MERCHANT 时为 null）。未知/跨店/非 OWNER 同一 403 防枚举；
+        no-store。
+      security:
+      - bearerAuth: []
+      parameters:
+      - $ref: '#/components/parameters/MerchantIdQuery'
+      - $ref: '#/components/parameters/StoreIdQuery'
+      - $ref: '#/components/parameters/ApplicationId'
+      responses:
         '200':
-          description: 成功
+          description: '单笔退款申请详情（与列表项同形，另含终态字段 decidedAt/
+            decisionId/refundOrderId）。Cache-Control: no-store。'
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                enum:
+                - no-store
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MerchantRefundApplicationDetailEnvelope'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '503':
+          $ref: '#/components/responses/DependencyUnavailable'
+  /merchant/refund-applications/{applicationId}/approve:
+    post:
+      tags:
+      - Merchant-Refund
+      summary: 商家同意全额退款
+      operationId: merchantApproveRefund
+      x-implementation-status: IMPLEMENTED_DEFAULT_OFF
+      x-default-enabled: false
+      x-contract: 57-Merchant-Refund-Application-Contract-v0.1.md
+      x-assembly-switch: pet.refund.merchant.http.enabled
+      x-route-party: MERCHANT
+      x-audience: MINIAPP
+      description: 商家同意全额退款（57号装配 49号 decide(APPROVE)；HTTP10 §4.5）：
+        无业务体、无部分金额参数；仅 now<merchantDeadline（数据库时间，门店锁内），
+        到期 409 REFUND_MERCHANT_DEADLINE_PASSED 由系统超时接管。同 X-Request-Id
+        同参重放返回首回执并重验当前 OWNER；回执不表示退款成功（durable
+        REFUND_APPLICATION_CREATE 任务建单后原路执行）。expectedApplicationVersion
+        由 HTTP 面按 49号不变式固定 "0"。
+      security:
+      - bearerAuth: []
+      parameters:
+      - $ref: '#/components/parameters/ApplicationId'
+      - $ref: '#/components/parameters/RequestId'
+      responses:
+        '200':
+          description: '49号七字段决定回执（orderId/applicationId/applicationStatus=
+            APPROVED/applicationVersion/merchantDeadline/decidedAt/decisionId），
+            商家信封。Cache-Control: no-store。'
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                enum:
+                - no-store
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MerchantRefundDecisionEnvelope'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
         '409':
           $ref: '#/components/responses/Conflict'
+        '503':
+          $ref: '#/components/responses/DependencyUnavailable'
   /merchant/refund-applications/{applicationId}/reject:
     post:
       tags:
       - Merchant-Refund
       summary: 商家拒绝退款
       operationId: merchantRejectRefund
+      x-implementation-status: IMPLEMENTED_DEFAULT_OFF
+      x-default-enabled: false
+      x-contract: 57-Merchant-Refund-Application-Contract-v0.1.md
+      x-assembly-switch: pet.refund.merchant.http.enabled
+      x-route-party: MERCHANT
+      x-audience: MINIAPP
+      description: 商家拒绝退款（57号装配 49号 decide(REJECT)；HTTP10 §4.6）：
+        reasonText 必填 1..500 Unicode 码点、非全空白（缺失映射 400
+        REFUND_MERCHANT_REASON_REQUIRED），过既有审核；拒绝不建 refund_order。
+        期限/幂等/防枚举语义同 approve。
       security:
       - bearerAuth: []
       parameters:
@@ -3628,16 +3757,31 @@ paths:
             schema:
               $ref: '#/components/schemas/MerchantRejectRefundRequest'
       responses:
+        '200':
+          description: '49号七字段决定回执（applicationStatus=REJECTED），商家信封。
+            Cache-Control: no-store。'
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                enum:
+                - no-store
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MerchantRefundDecisionEnvelope'
+        '400':
+          $ref: '#/components/responses/BadRequest'
         '401':
           $ref: '#/components/responses/Unauthorized'
         '403':
           $ref: '#/components/responses/Forbidden'
-        '503':
-          $ref: '#/components/responses/DependencyUnavailable'
-        '200':
-          description: 成功
+        '404':
+          $ref: '#/components/responses/NotFound'
         '409':
           $ref: '#/components/responses/Conflict'
+        '503':
+          $ref: '#/components/responses/DependencyUnavailable'
   /merchant/orders/{orderId}/verification:
     post:
       tags:
@@ -13740,6 +13884,7 @@ components:
           minLength: 1
     MerchantRejectRefundRequest:
       type: object
+      additionalProperties: false
       required:
       - reasonText
       properties:
@@ -13747,6 +13892,183 @@ components:
           type: string
           minLength: 1
           maxLength: 500
+    MerchantRefundApplicationSummary:
+      type: object
+      additionalProperties: false
+      required: [applicationId, applicationNo, orderId, status, applicationVersion,
+        reasonCode, refundAmount, createdAt, merchantDeadline]
+      properties:
+        applicationId:
+          $ref: '#/components/schemas/PublicId'
+        applicationNo:
+          $ref: '#/components/schemas/PublicId'
+        orderId:
+          $ref: '#/components/schemas/PublicId'
+        status:
+          type: string
+          enum: [PENDING_MERCHANT, APPROVED, AUTO_APPROVED, REJECTED]
+        applicationVersion:
+          type: string
+          pattern: ^(0|[1-9][0-9]{0,18})$
+        reasonCode:
+          type: string
+          minLength: 1
+          maxLength: 64
+          description: 服务端配置字典内的申请原因编码；买家自由说明不回传（49号密文留存）。
+        refundAmount:
+          type: string
+          pattern: '^(0|[1-9][0-9]{0,15})\.[0-9]{2}$'
+          description: 真实实付全额（只能 FULL，无部分金额）。
+        createdAt:
+          type: string
+          description: ISO-8601 UTC 毫秒精度。
+        merchantDeadline:
+          type: string
+          description: 本轮 24 小时商家处理期限（createdAt+24h）。
+    MerchantRefundApplicationDetail:
+      type: object
+      additionalProperties: false
+      required: [applicationId, applicationNo, orderId, status, applicationVersion,
+        reasonCode, refundAmount, createdAt, merchantDeadline, decidedAt, decisionId,
+        refundOrderId]
+      properties:
+        applicationId:
+          $ref: '#/components/schemas/PublicId'
+        applicationNo:
+          $ref: '#/components/schemas/PublicId'
+        orderId:
+          $ref: '#/components/schemas/PublicId'
+        status:
+          type: string
+          enum: [PENDING_MERCHANT, APPROVED, AUTO_APPROVED, REJECTED]
+        applicationVersion:
+          type: string
+          pattern: ^(0|[1-9][0-9]{0,18})$
+        reasonCode:
+          type: string
+          minLength: 1
+          maxLength: 64
+        refundAmount:
+          type: string
+          pattern: '^(0|[1-9][0-9]{0,15})\.[0-9]{2}$'
+        createdAt:
+          type: string
+        merchantDeadline:
+          type: string
+        decidedAt:
+          type: string
+          nullable: true
+        decisionId:
+          type: string
+          nullable: true
+          minLength: 1
+          maxLength: 19
+          pattern: '^[1-9][0-9]{0,18}(?![\s\S])'
+        refundOrderId:
+          type: string
+          nullable: true
+          minLength: 1
+          maxLength: 19
+          pattern: '^[1-9][0-9]{0,18}(?![\s\S])'
+          description: durable REFUND_APPLICATION_CREATE 任务建单后非空。
+    MerchantRefundDecisionReceipt:
+      type: object
+      additionalProperties: false
+      required: [orderId, applicationId, applicationStatus, applicationVersion,
+        merchantDeadline, decidedAt, decisionId]
+      properties:
+        orderId:
+          $ref: '#/components/schemas/PublicId'
+        applicationId:
+          $ref: '#/components/schemas/PublicId'
+        applicationStatus:
+          type: string
+          enum: [APPROVED, REJECTED]
+        applicationVersion:
+          type: string
+          pattern: ^(0|[1-9][0-9]{0,18})$
+        merchantDeadline:
+          type: string
+        decidedAt:
+          type: string
+        decisionId:
+          $ref: '#/components/schemas/PublicId'
+    MerchantRefundApplicationPageData:
+      type: object
+      additionalProperties: false
+      required: [items, page, pageSize, total]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/MerchantRefundApplicationSummary'
+        page:
+          type: integer
+          minimum: 1
+        pageSize:
+          type: integer
+          minimum: 1
+          maximum: 100
+        total:
+          type: integer
+          minimum: 0
+    MerchantRefundApplicationPageEnvelope:
+      type: object
+      additionalProperties: false
+      required: [success, code, message, data, traceId]
+      properties:
+        success:
+          type: boolean
+          enum: [true]
+        code:
+          type: string
+          enum: [SUCCESS]
+        message:
+          type: string
+          minLength: 1
+        data:
+          $ref: '#/components/schemas/MerchantRefundApplicationPageData'
+        traceId:
+          type: string
+          minLength: 1
+    MerchantRefundApplicationDetailEnvelope:
+      type: object
+      additionalProperties: false
+      required: [success, code, message, data, traceId]
+      properties:
+        success:
+          type: boolean
+          enum: [true]
+        code:
+          type: string
+          enum: [SUCCESS]
+        message:
+          type: string
+          minLength: 1
+        data:
+          $ref: '#/components/schemas/MerchantRefundApplicationDetail'
+        traceId:
+          type: string
+          minLength: 1
+    MerchantRefundDecisionEnvelope:
+      type: object
+      additionalProperties: false
+      required: [success, code, message, data, traceId]
+      properties:
+        success:
+          type: boolean
+          enum: [true]
+        code:
+          type: string
+          enum: [SUCCESS]
+        message:
+          type: string
+          minLength: 1
+        data:
+          $ref: '#/components/schemas/MerchantRefundDecisionReceipt'
+        traceId:
+          type: string
+          minLength: 1
     AftersaleDecisionRequest:
       $ref: '#/components/schemas/AfterSaleDecisionRequest'
     OrderDetailData:

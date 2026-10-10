@@ -29,9 +29,9 @@ const sampleView = (admission: 'ALLOWED' | 'LIMITED' | 'DENIED'): MerchantAdmiss
     staffEnabled: null,
   },
   allowedActions: admission === 'ALLOWED'
-    ? ['merchant.aftersale.read', 'merchant.order.read', 'merchant.penalty.read', 'merchant.schedule.manage', 'merchant.service.manage', 'merchant.staff.manage']
+    ? ['merchant.aftersale.read', 'merchant.order.read', 'merchant.penalty.read', 'merchant.refund.handle', 'merchant.refund.read', 'merchant.schedule.manage', 'merchant.service.manage', 'merchant.staff.manage']
     : admission === 'LIMITED'
-      ? ['merchant.aftersale.read', 'merchant.order.read', 'merchant.penalty.appeal', 'merchant.penalty.read']
+      ? ['merchant.aftersale.read', 'merchant.order.read', 'merchant.penalty.appeal', 'merchant.penalty.read', 'merchant.refund.read']
       : [],
   reasonCodes: admission === 'LIMITED' ? ['STORE_FROZEN'] : admission === 'DENIED' ? ['SIGNING_REQUIRED'] : [],
   nextSteps: admission === 'LIMITED'

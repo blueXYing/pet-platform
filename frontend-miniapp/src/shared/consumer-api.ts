@@ -64,6 +64,21 @@ export function isMerchantOrderActionPath(spec: RequestSpec): boolean {
 export function isMerchantOrderListPath(spec: RequestSpec): boolean {
   return spec.method === 'GET' && spec.path === '/api/v1/merchant/orders'
 }
+// Contract 57 merchant refund surfaces (HTTP10 §4.4-§4.6, switch
+// pet.refund.merchant.http.enabled default OFF): every route carries the caller's merchant
+// coordinate query (merchantId+storeId), which the server re-proves under the store guard
+// per read; the approve/reject commands address the application in the path only — the
+// server locates its store and re-proves the OWNER authority per call and replay.
+export function isMerchantRefundListPath(spec: RequestSpec): boolean {
+  return spec.method === 'GET' && spec.path === '/api/v1/merchant/refund-applications'
+}
+export function isMerchantRefundDecisionPath(spec: RequestSpec): boolean {
+  return spec.method === 'POST' && /^\/api\/v1\/merchant\/refund-applications\/[1-9][0-9]{0,18}\/(approve|reject)$/.test(spec.path)
+}
+export function isMerchantRefundTargetPath(spec: RequestSpec): boolean {
+  return (spec.method === 'GET' && /^\/api\/v1\/merchant\/refund-applications\/[1-9][0-9]{0,18}$/.test(spec.path))
+    || isMerchantRefundDecisionPath(spec)
+}
 export function decodePrivateAsset(value: unknown): PrivateAssetReceipt {
   const v = object(value)
   if (Object.keys(v).sort().join(',') !== 'assetId,bytes,mediaType,objectSha256,status' || v.status !== 'READY' || typeof v.objectSha256 !== 'string' || !/^[a-f0-9]{64}(?![\s\S])/.test(v.objectSha256) || !['image/jpeg', 'image/png'].includes(v.mediaType) || !Number.isSafeInteger(v.bytes) || v.bytes < 1 || v.bytes > 10485760) throw new Error('INVALID_RESPONSE')
@@ -150,23 +165,28 @@ export class ConsumerApi {
     // Merchant order list read (contract 10 §4.1 supplement): GET with the merchant
     // coordinate query; not target-free — both ids must equal the workspace coordinates.
     const merchantOrderList = isMerchantOrderListPath(spec)
+    // Merchant refund surfaces (contract 57): same coordinate discipline — the list, the
+    // detail GET and the approve/reject commands all carry merchantId+storeId equal to the
+    // workspace ticket; the server re-proves the OWNER relation per call anyway.
+    const merchantRefundPath = isMerchantRefundListPath(spec) || isMerchantRefundTargetPath(spec)
     if (/^\/api\/v1\/(c|merchant)\/aftersale/.test(spec.path) && !afterSalePath) throw new Error('INVALID_PATH')
-    if (!/^\/api\/v1\/c\/[a-z0-9/-]+$/.test(spec.path) && !agreementPath && !admissionPath && !categoryPath && !serviceCommandPath && !afterSalePath && !schedulePath && !verificationPath && !merchantOrderAction && !merchantOrderList) throw new Error('INVALID_PATH')
+    if (!/^\/api\/v1\/c\/[a-z0-9/-]+$/.test(spec.path) && !agreementPath && !admissionPath && !categoryPath && !serviceCommandPath && !afterSalePath && !schedulePath && !verificationPath && !merchantOrderAction && !merchantOrderList && !merchantRefundPath) throw new Error('INVALID_PATH')
     if (spec.method !== 'GET' && !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}(?![\s\S])/i.test(spec.requestId || '')) throw new Error('REQUEST_ID_REQUIRED')
     const response = await this.transport({ ...spec, headers: { 'Content-Type': 'application/json', ...(spec.requestId ? { 'X-Request-Id': spec.requestId } : {}), ...headers } })
     if (afterSalePath) return afterSaleEnvelope(response)
     const body = object(response.data)
     if (response.statusCode < 200 || response.statusCode >= 300 || body.code !== 'SUCCESS') throw new ApiError(typeof body.code === 'string' ? body.code : 'INVALID_RESPONSE', response.statusCode)
     const applicationPath = /^\/api\/v1\/c\/merchant-applications(?:\/|$)/.test(spec.path) || spec.path === '/api/v1/c/merchant-application-cities'
-    if ((agreementPath || applicationPath || admissionPath || categoryPath || serviceCommandPath || schedulePath || verificationPath || merchantOrderAction || merchantOrderList) && body.success !== true) throw new Error('INVALID_RESPONSE')
+    if ((agreementPath || applicationPath || admissionPath || categoryPath || serviceCommandPath || schedulePath || verificationPath || merchantOrderAction || merchantOrderList || merchantRefundPath) && body.success !== true) throw new Error('INVALID_RESPONSE')
     return body.data
   }
   private clear() {
     this.credential = null; this.currentSession = null; this.attempt = null; this.authCommand = null; this.authStep = 'idle'
-    // Unknown aftersale/verification/merchant-decision outcomes survive credential expiry and
-    // explicit logout. Their owner-bound slots remain inaccessible until a fresh server session
-    // is verified (and retrying must keep the terminal key instead of minting a new one, 23号 §5.7).
-    this.pending = Object.fromEntries(Object.entries(this.pending).filter(([slot, saved]) => (slot.startsWith('aftersale:') || slot.startsWith('merchant-verify:') || slot.startsWith('merchant-confirm:') || slot.startsWith('merchant-reject:')) && saved.command))
+    // Unknown aftersale/verification/merchant-decision/refund-decision outcomes survive
+    // credential expiry and explicit logout. Their owner-bound slots remain inaccessible
+    // until a fresh server session is verified (and retrying must keep the terminal key
+    // instead of minting a new one, 23号 §5.7).
+    this.pending = Object.fromEntries(Object.entries(this.pending).filter(([slot, saved]) => (slot.startsWith('aftersale:') || slot.startsWith('merchant-verify:') || slot.startsWith('merchant-confirm:') || slot.startsWith('merchant-reject:') || slot.startsWith('merchant-refund:')) && saved.command))
     this.writes.clear(); this.writeSpecs.clear()
     this.scope.replace(null)
     this.store.remove(SESSION_KEY)
@@ -291,7 +311,18 @@ export class ConsumerApi {
       if (merchantOrderList && (!ticket.context.storeId
         || spec.data?.merchantId !== ticket.context.merchantId
         || spec.data?.storeId !== ticket.context.storeId)) throw new Error('WORKSPACE_PATH_MISMATCH')
-      const targetFree = spec.path === '/api/v1/merchant/service-categories' || afterSalePath && spec.path !== '/api/v1/merchant/aftersales' || verificationPath || merchantOrderAction
+      // Merchant refund surfaces (57号): the reads carry the caller's merchant coordinate
+      // query (exact workspace match, aftersale-list discipline); the approve/reject commands
+      // address the application only — the server locates its store and re-proves the OWNER
+      // per call and replay (merchant order action discipline).
+      const merchantRefundRead = isMerchantRefundListPath(spec)
+        || (spec.method === 'GET' && /^\/api\/v1\/merchant\/refund-applications\/[1-9][0-9]{0,18}$/.test(spec.path))
+      const merchantRefundDecision = isMerchantRefundDecisionPath(spec)
+      if (merchantRefundRead && (!ticket.context.storeId
+        || spec.data?.merchantId !== ticket.context.merchantId
+        || spec.data?.storeId !== ticket.context.storeId)) throw new Error('WORKSPACE_PATH_MISMATCH')
+      if (merchantRefundDecision && !ticket.context.storeId) throw new Error('WORKSPACE_PATH_MISMATCH')
+      const targetFree = spec.path === '/api/v1/merchant/service-categories' || afterSalePath && spec.path !== '/api/v1/merchant/aftersales' || verificationPath || merchantOrderAction || merchantRefundDecision
       if (!targetFree && spec.data?.merchantId !== ticket.context.merchantId) throw new Error('WORKSPACE_PATH_MISMATCH')
     } else if (ticket.context.workspace !== 'consumer' && !isStaffInvitationPath(spec.path)) throw new Error('WORKSPACE_PATH_MISMATCH')
     try {
@@ -464,8 +495,9 @@ export class ConsumerApi {
         // Verification replays re-prove the K1 identity chain per 48 K2/23号 §5.4 —
         // a hidden first receipt reads exactly like these rejections, so its journal
         // must survive them too. Merchant order decisions replay the same way (45号:
-        // the replay re-validates the OWNER session before the first receipt returns).
-        const hiddenReceipt = (isAfterSalePath(command) || isMerchantVerificationPath(command) || isMerchantOrderActionPath(command)) && error instanceof ApiError && [401, 403, 404].includes(error.statusCode)
+        // the replay re-validates the OWNER session before the first receipt returns),
+        // and merchant refund decisions equally (57号 on the 49号 replay semantics).
+        const hiddenReceipt = (isAfterSalePath(command) || isMerchantVerificationPath(command) || isMerchantOrderActionPath(command) || isMerchantRefundDecisionPath(command)) && error instanceof ApiError && [401, 403, 404].includes(error.statusCode)
         if (definiteRejection(error) && !hiddenReceipt) { delete this.pending[slot]; this.store.set(WRITE_KEY, this.pending) }
         throw error
       }

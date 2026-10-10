@@ -7,6 +7,8 @@ public final class RefundApplicationPorts {
     private RefundApplicationPorts() {}
     public interface SessionAuthority { void requireCurrent(String userId); }
     public interface OwnerAuthority { void requireOwner(CommandContext context,String merchantId,String storeId); }
+    /** Contract 57 read side: existing material stays readable by its current OWNER while frozen; grants no write. */
+    public interface OwnerReadAuthority { void requireOwnerRead(com.petplatform.common.QueryContext context,String merchantId,String storeId); }
     public interface ReasonPolicy { void requireCode(String code); }
     public interface Moderation { Approval check(String text); }
     public record Approval(String textSha256,String policyVersion,boolean allowed) {}

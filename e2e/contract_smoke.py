@@ -390,6 +390,27 @@ RESCHEDULE_HTTP_OPERATIONS = {
         ('200', '400', '401', '403', '409', '503')),
 }
 
+# Merchant refund HTTP face (contract 57, 2026-10-10): the four M-side routes assemble the
+# approved 49号 kernel decide semantics behind pet.refund.merchant.http.enabled. The two
+# decision routes stay in LEGACY_OPERATIONS as well, so the S1 shape guards there keep
+# applying; list/detail are new operationIds not in LEGACY_OPERATIONS. The census pins the
+# default-off status, the read-side anti-enumeration surface (reads carry 403, never 404)
+# and the fixed seven-field decision receipt; reads stay GET without X-Request-Id binding.
+MERCHANT_REFUND_HTTP_OPERATIONS = {
+    'merchantListRefundApplications': (
+        'get', '/merchant/refund-applications',
+        ('200', '400', '401', '403', '503')),
+    'merchantReadRefundApplication': (
+        'get', '/merchant/refund-applications/{applicationId}',
+        ('200', '400', '401', '403', '503')),
+    'merchantApproveRefund': (
+        'post', '/merchant/refund-applications/{applicationId}/approve',
+        ('200', '400', '401', '403', '404', '409', '503')),
+    'merchantRejectRefund': (
+        'post', '/merchant/refund-applications/{applicationId}/reject',
+        ('200', '400', '401', '403', '404', '409', '503')),
+}
+
 
 def check_order_write(spec, operation, method, path):
     name = operation['operationId']
@@ -470,6 +491,53 @@ def check_review_http(spec, operation, method, path):
             'application/json': {'schema': {'$ref': '#/components/schemas/ReviewEligibilityResponseEnvelope'}}},             'Review eligibility success envelope changed'
     for code in ('400', '401', '403', '404', '503'):
         assert dereference(spec, responses[code])['content']['application/json']['schema']             == {'$ref': '#/components/schemas/ErrorEnvelope'}, f'Review HTTP error envelope changed: {name} {code}'
+
+def check_merchant_refund_http(spec, operation, method, path):
+    name = operation['operationId']
+    expected_method, expected_path, required_codes = MERCHANT_REFUND_HTTP_OPERATIONS[name]
+    assert (method, path) == (expected_method, expected_path), f'Merchant refund HTTP operation moved: {name}'
+    assert operation.get('security') == [{'bearerAuth': []}], f'Merchant refund HTTP security changed: {name}'
+    assert operation.get('x-implementation-status') == 'IMPLEMENTED_DEFAULT_OFF', f'Merchant refund HTTP status changed: {name}'
+    assert operation.get('x-default-enabled') is False, f'Merchant refund HTTP must stay default off: {name}'
+    assert operation.get('x-contract') == '57-Merchant-Refund-Application-Contract-v0.1.md', f'Merchant refund HTTP authority changed: {name}'
+    assert operation.get('x-assembly-switch') == 'pet.refund.merchant.http.enabled', f'Merchant refund HTTP switch changed: {name}'
+    assert operation.get('x-route-party') == 'MERCHANT' and operation.get('x-audience') == 'MINIAPP', f'Merchant refund HTTP identity changed: {name}'
+    responses = operation['responses']
+    assert set(responses) == set(required_codes), f'Merchant refund HTTP response surface changed: {name}'
+    for code in required_codes:
+        if code != '200':
+            assert dereference(spec, responses[code])['content']['application/json']['schema']                 == {'$ref': '#/components/schemas/ErrorEnvelope'}, f'Merchant refund HTTP error envelope changed: {name} {code}'
+    success = responses['200']
+    cache = success['headers']['Cache-Control']['schema']
+    assert cache == {'type': 'string', 'enum': ['no-store']}, f'Merchant refund HTTP caching changed: {name}'
+    if name == 'merchantListRefundApplications':
+        assert success['content'] == {'application/json': {'schema': {'$ref': '#/components/schemas/MerchantRefundApplicationPageEnvelope'}}},             f'Merchant refund list envelope changed: {name}'
+        summary = spec['components']['schemas']['MerchantRefundApplicationSummary']
+        assert summary.get('additionalProperties') is False, 'Merchant refund summary opened'
+        assert 'decidedAt' not in summary['properties'] and 'decisionId' not in summary['properties'],             'Merchant refund summary must not carry terminal decision fields'
+    elif name == 'merchantReadRefundApplication':
+        assert success['content'] == {'application/json': {'schema': {'$ref': '#/components/schemas/MerchantRefundApplicationDetailEnvelope'}}},             f'Merchant refund detail envelope changed: {name}'
+        detail = spec['components']['schemas']['MerchantRefundApplicationDetail']
+        assert detail.get('additionalProperties') is False, 'Merchant refund detail opened'
+        for field in ('decidedAt', 'decisionId', 'refundOrderId'):
+            terminal = detail['properties'][field]
+            assert terminal.get('type') == 'string' and terminal.get('nullable') is True,                 f'Merchant refund detail terminal field must stay an inline nullable string: {field}'
+    else:
+        assert success['content'] == {'application/json': {'schema': {'$ref': '#/components/schemas/MerchantRefundDecisionEnvelope'}}},             f'Merchant refund decision envelope changed: {name}'
+        receipt = spec['components']['schemas']['MerchantRefundDecisionReceipt']
+        assert receipt.get('additionalProperties') is False, 'Merchant refund receipt opened'
+        assert set(receipt['required']) == {'orderId', 'applicationId', 'applicationStatus',             'applicationVersion', 'merchantDeadline', 'decidedAt', 'decisionId'}, 'Merchant refund receipt fields changed'
+        assert receipt['properties']['applicationStatus']['enum'] == ['APPROVED', 'REJECTED'],             'Merchant refund receipt status enum changed'
+        if name == 'merchantApproveRefund':
+            assert 'requestBody' not in operation, 'Merchant refund approve must stay business-body-free'
+        else:
+            body = dereference(spec, operation['requestBody'])
+            assert body.get('required') is True, f'Merchant refund reject body must be required: {name}'
+            request = dereference(spec, body['content']['application/json']['schema'])
+            assert request.get('additionalProperties') is False, 'Merchant refund reject body opened'
+            assert set(request['required']) == {'reasonText'}, 'Merchant refund reject must keep reasonText alone'
+            reason = request['properties']['reasonText']
+            assert reason.get('type') == 'string' and reason.get('minLength') == 1 and reason.get('maxLength') == 500,                 'Merchant refund reject reason bounds changed'
 
 def check_staff_invitation_list(spec, operation, method, path):
     name = operation['operationId']
@@ -1190,6 +1258,8 @@ def check(spec):
                 check_reschedule_http(spec, operation, method, path)
             if operation_id in REVIEW_HTTP_OPERATIONS:
                 check_review_http(spec, operation, method, path)
+            if operation_id in MERCHANT_REFUND_HTTP_OPERATIONS:
+                check_merchant_refund_http(spec, operation, method, path)
             if method in {'post', 'put', 'patch', 'delete'}:
                 assert {'$ref': '#/components/parameters/RequestId'} in parameters, f'Missing request ID: {operation_id}'
                 writes += 1
@@ -1203,7 +1273,7 @@ def check(spec):
     assert legacy_seen == LEGACY_OPERATIONS.keys(), f'Legacy operations missing: {LEGACY_OPERATIONS.keys() - legacy_seen}'
     assert legacy_writes == 11, 'Legacy write surface changed'
     assert legacy_creates == LEGACY_CREATES, 'Legacy create surface changed'
-    assert operations == LEGACY_OPERATIONS.keys() | AUTH_OPERATIONS.keys() | MERCHANT_OPERATIONS.keys() | APPLICATION_OPERATIONS.keys() | PRIVATE_ASSET_OPERATIONS.keys() | SERVICE_CATALOG_OPERATIONS.keys() | STORE_CATALOG_OPERATIONS.keys() | SERVICE_WRITE_OPERATIONS.keys() | SCHEDULE_AVAILABILITY_OPERATIONS.keys() | SCHEDULE_WRITE_OPERATIONS.keys() | CREDENTIAL_OPERATIONS.keys() | AFTERSALE_OPERATIONS.keys() | COUPON_POINTS_READ_OPERATIONS.keys() | VERIFICATION_HTTP_OPERATIONS.keys() | NOTIFICATION_PREFERENCE_OPERATIONS.keys() | STAFF_INVITATION_LIST_OPERATIONS.keys() | ORDER_WRITE_OPERATIONS.keys() | REFUND_HTTP_OPERATIONS.keys() | MERCHANT_ORDER_LIST_OPERATIONS.keys() | RESCHEDULE_HTTP_OPERATIONS.keys() | REVIEW_HTTP_OPERATIONS.keys(), 'Unexpected or missing reviewed operations'
+    assert operations == LEGACY_OPERATIONS.keys() | AUTH_OPERATIONS.keys() | MERCHANT_OPERATIONS.keys() | APPLICATION_OPERATIONS.keys() | PRIVATE_ASSET_OPERATIONS.keys() | SERVICE_CATALOG_OPERATIONS.keys() | STORE_CATALOG_OPERATIONS.keys() | SERVICE_WRITE_OPERATIONS.keys() | SCHEDULE_AVAILABILITY_OPERATIONS.keys() | SCHEDULE_WRITE_OPERATIONS.keys() | CREDENTIAL_OPERATIONS.keys() | AFTERSALE_OPERATIONS.keys() | COUPON_POINTS_READ_OPERATIONS.keys() | VERIFICATION_HTTP_OPERATIONS.keys() | NOTIFICATION_PREFERENCE_OPERATIONS.keys() | STAFF_INVITATION_LIST_OPERATIONS.keys() | ORDER_WRITE_OPERATIONS.keys() | REFUND_HTTP_OPERATIONS.keys() | MERCHANT_ORDER_LIST_OPERATIONS.keys() | RESCHEDULE_HTTP_OPERATIONS.keys() | REVIEW_HTTP_OPERATIONS.keys() | MERCHANT_REFUND_HTTP_OPERATIONS.keys(), 'Unexpected or missing reviewed operations'
     schemes = spec['components']['securitySchemes']
     assert schemes['bearerAuth']['type'] == 'http' and schemes['bearerAuth']['scheme'] == 'bearer'
     for scheme, location, name in [('authAttempt', 'header', 'X-Auth-Attempt'),
@@ -1255,6 +1325,7 @@ def check(spec):
             'merchantOrderListOperations': len(operations & MERCHANT_ORDER_LIST_OPERATIONS.keys()),
             'rescheduleHttpOperations': len(operations & RESCHEDULE_HTTP_OPERATIONS.keys()),
             'reviewHttpOperations': len(operations & REVIEW_HTTP_OPERATIONS.keys()),
+            'merchantRefundHttpOperations': len(operations & MERCHANT_REFUND_HTTP_OPERATIONS.keys()),
             'refundHttpOperations': len(operations & REFUND_HTTP_OPERATIONS.keys()),
             'serviceWriteOperations': len(operations & SERVICE_WRITE_OPERATIONS.keys()),
             'storeCatalogOperations': len(operations & STORE_CATALOG_OPERATIONS.keys()),

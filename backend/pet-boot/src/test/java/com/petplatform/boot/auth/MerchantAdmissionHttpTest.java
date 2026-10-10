@@ -389,6 +389,8 @@ class MerchantAdmissionHttpTest {
             "merchant.aftersale.read",
             "merchant.order.read",
             "merchant.penalty.read",
+            "merchant.refund.handle",
+            "merchant.refund.read",
             "merchant.schedule.manage",
             "merchant.service.manage",
             "merchant.staff.manage"),
@@ -419,7 +421,8 @@ class MerchantAdmissionHttpTest {
             "merchant.aftersale.read",
             "merchant.order.read",
             "merchant.penalty.appeal",
-            "merchant.penalty.read"),
+            "merchant.penalty.read",
+            "merchant.refund.read"),
         frozen.data().get("allowedActions"));
     assertEquals(
         List.of(
