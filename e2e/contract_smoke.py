@@ -1297,6 +1297,7 @@ def check(spec):
             'merchantOrderListOperations': len(operations & MERCHANT_ORDER_LIST_OPERATIONS.keys()),
             'rescheduleHttpOperations': len(operations & RESCHEDULE_HTTP_OPERATIONS.keys()),
             'reviewHttpOperations': len(operations & REVIEW_HTTP_OPERATIONS.keys()),
+            'reviewAppealHttpOperations': len(operations & REVIEW_APPEAL_HTTP_OPERATIONS.keys()),
             'refundHttpOperations': len(operations & REFUND_HTTP_OPERATIONS.keys()),
             'serviceWriteOperations': len(operations & SERVICE_WRITE_OPERATIONS.keys()),
             'storeCatalogOperations': len(operations & STORE_CATALOG_OPERATIONS.keys()),
