@@ -47,6 +47,8 @@ assert.deepEqual(packages.map(p => ({ root: p.root, pages: p.pages })), [
   { root: 'merchant', pages: ['pages/workspace/index', 'pages/services/index', 'pages/services/edit', 'pages/messages/index',
     'pages/schedule/index', 'pages/schedule/windows', 'pages/schedule/staff', 'pages/schedule/capabilities', 'pages/members/index',
     'pages/aftersale/index', 'pages/aftersale/detail',
+    // Contract 57 merchant refund face: pending list + detail with the two OWNER decisions.
+    'pages/refund/index', 'pages/refund/detail',
     'pages/staff-workbench/index', 'pages/staff-invitation/index', 'pages/staff-verify/index',
     'pages/order-list/index', 'pages/order-confirm/index'] },
   { root: 'consumer/pages/pet-archive', pages: ['index', 'detail', 'form'] },
@@ -114,6 +116,13 @@ for (const page of ['order-list', 'order-confirm']) {
   for (const extension of ['js', 'json', 'wxml', 'wxss']) {
     assert.ok(fs.existsSync(path.join(root, `merchant/pages/${page}/index.` + extension)),
       `Merchant order page build artifact missing: ${page}.${extension}`)
+  }
+}
+// Merchant refund processing (57号 via 10号 §4.4-§4.6): pending list + detail decision page.
+for (const page of ['index', 'detail']) {
+  for (const extension of ['js', 'json', 'wxml', 'wxss']) {
+    assert.ok(fs.existsSync(path.join(root, `merchant/pages/refund/${page}.` + extension)),
+      `Merchant refund page build artifact missing: refund/${page}.${extension}`)
   }
 }
 

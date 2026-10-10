@@ -46,6 +46,8 @@ public class CSessionSecurityConfiguration {
           boolean merchantOrderHttpEnabled,
       @Value("${pet.refund.application.http.enabled:false}")
           boolean refundApplicationHttpEnabled,
+      @Value("${pet.refund.merchant.http.enabled:false}")
+          boolean merchantRefundHttpEnabled,
       @Value("${pet.order.reschedule.http.enabled:false}")
           boolean orderRescheduleHttpEnabled,
       @Value("${pet.review.http.enabled:false}")
@@ -197,6 +199,21 @@ public class CSessionSecurityConfiguration {
               // by the filter's protectedPath regex, not by permitAll itself.
               a.requestMatchers(HttpMethod.POST,
                       "/api/v1/c/orders/*/refund-applications")
+                  .permitAll();
+            }
+            if (merchantRefundHttpEnabled) {
+              // Merchant refund application face (contract 57 / HTTP10 §4.4-§4.6 over the
+              // 49号 kernel): same pattern as the merchant order family — the MINIAPP Bearer
+              // is enforced by the filter's /api/v1/merchant/refund-applications rules and the
+              // OWNER coordinate/authority is re-proven in each read's store-guard transaction
+              // and each decision's guard transaction on every call and replay.
+              a.requestMatchers(HttpMethod.GET, "/api/v1/merchant/refund-applications")
+                  .permitAll();
+              a.requestMatchers(HttpMethod.GET, "/api/v1/merchant/refund-applications/*")
+                  .permitAll();
+              a.requestMatchers(HttpMethod.POST,
+                      "/api/v1/merchant/refund-applications/*/approve",
+                      "/api/v1/merchant/refund-applications/*/reject")
                   .permitAll();
             }
             if (orderRescheduleHttpEnabled) {

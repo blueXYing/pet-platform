@@ -98,6 +98,13 @@ export default function MerchantWorkbenchPage() {
     controller.handoffToChild()
     Taro.navigateTo({ url: '/merchant/pages/order-list/index' }).catch(() => controller.handoffCancelled())
   }
+  // Merchant refund processing (57号 via 10号 §4.4-§4.6): pending refund list + OWNER
+  // decisions. Existing-material family — OFFLINE keeps handling pending refunds (49号),
+  // FROZEN stays read-only and new decisions fail closed server-side.
+  function openRefunds() {
+    controller.handoffToChild()
+    Taro.navigateTo({ url: '/merchant/pages/refund/index' }).catch(() => controller.handoffCancelled())
+  }
   const view = state.view
   return <View className='merchant-workbench'>
     <View className='workbench-header'>
@@ -157,6 +164,8 @@ export default function MerchantWorkbenchPage() {
           <Button id='workbench-verify' onClick={openVerify}>订单核销</Button>
           {/* Merchant order processing (45号 + §4.1 list read): 本店订单列表(重点待接单),同样属存量履约 family。 */}
           <Button id='workbench-order-confirm' onClick={openOrderConfirm}>订单处理</Button>
+          {/* Merchant refund processing (57号): 待处理退款列表入口，同存量履约 family（OFFLINE 可处理）。 */}
+          <Button id='workbench-refunds' onClick={openRefunds}>退款处理</Button>
         </View>}
         {(state.status === 'allowed' || state.status === 'limited') && view.membershipKind === 'OWNER' && view.allowedActions.includes('merchant.aftersale.read') && <View className='workbench-steps'>
           <Button id='workbench-aftersales' onClick={openAftersales}>售后管理</Button>
