@@ -31,9 +31,13 @@ jobs:
       other: ${{ steps.filter.outputs.other }}
     steps:
       - uses: actions/checkout@v4
-      - uses: dorny/paths-filter@v3
+      - uses: dorny/paths-filter@v4
         id: filter
         with:
+          # some-with-excludes：命中至少一条正向且未被 ! 取反排除才计入；
+          # v3 无此量词（仅 every/some），取反在默认 some 下无效（上游文档明示），
+          # other 会恒真导致所有 PR 全量跑——run 38018978615 实证 v3 拒绝该输入
+          predicate-quantifier: 'some-with-excludes'
           filters: |
             backend:
               - 'backend/**'
@@ -74,7 +78,7 @@ jobs:
               - '!planning/**'
               - '!e2e/**'
               - '!.github/**'
-              - '!**.md'
+              - '!**/*.md'
       - name: Record filter outcome
         env:
           BACKEND: ${{ steps.filter.outputs.backend }}
