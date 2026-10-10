@@ -1,10 +1,10 @@
 # Work State
 
 PROJECT: 宠物平台 V1.0
-STATE_VERSION: 38.0
-UPDATED_AT: 2026-10-01
+STATE_VERSION: 39.0
+UPDATED_AT: 2026-10-10
 CURRENT_PHASE: W2_WAVE_IN_PROGRESS
-CURRENT_STATUS: AFS_LOCAL_REAL_PAGE_JOINT_PASS_DEVICE_VIS_PENDING
+CURRENT_STATUS: DOCS_ONLY_CATALOG_REAUDIT_THROUGH_20261010_ENGINEERING_STATE_UNCHANGED_FROM_38_0
 VERIFIED_BASELINE: PR98 已合入 develop e3b846e5038aa617e42a919862f20a927057f53e。PR99 CCR head e2a6ce61d04ddfb783b0e245183e509a4734e0b8 的 CI36828547377 六项成功，实际后端报告140 suites/986 tests/0 failures/errors/skips；不覆盖本批正式资源与联调增量。本批head 4bb317f63a0851eb50325659acd557f338379d06的[CI36842324802](https://github.com/blueXYing/pet-platform/actions/runs/36842324802)六项全部SUCCESS（backend 2026-10-01T10:03:42Z完成），无遗留未核项。2026-10-02经用户批准完成5项VIS P1修复并经真实渲染像素级复验全部关闭（[VIS-OVERLAY §12](planning/progress/2026-10-01/aftersale-pages/joint/VIS-OVERLAY-HANDOFF.md)、[P1-FIX-VERIFICATION](planning/progress/2026-10-02/aftersale-vis/P1-FIX-VERIFICATION.md)），其间发现Taro 4.1.5动态data-*/WXSS属性选择器静默失配根因并改为类名变体。
 NEXT_PHASE: VIS规格级叠图、5项P1修复与像素级复验已完成（C apply/M list/M detail叠图边缘归零）。下一步：物理微信真机按DEVICE-PREP-HANDOFF清单验收（含P1-4修后真机复核）→人工审阅草稿，不自动合并。services页同类data-*/属性选择器迁移需独立Issue。
 NEXT_PHASE_APPROVED: 用户已授权多角色实施并要求子代理使用Figma，重连后回复“已连接”，两项具体CCR后回复“批准”，随后明确“开始下一步”。本轮完成最终PRD目录登记、独立资源及真实三端本机联调。生产启用、资金能力、SSOT变更、PR合并未获授权。目录中文内容已在最终PRD明确，不需重复产品裁决。
@@ -40,3 +40,11 @@ PR99 e2a6ce6 [CI36828547377](https://github.com/blueXYing/pet-platform/actions/r
 完整C-005/M-004/A-004/QA-005仍未DONE。物理真机尚无手机实测证据；本机回环不能当手机后端。Figma精确字体/汉字回退、缺状态稿、机器code显示及约1设计像素卡片宽度差的5项P1已于2026-10-02修复并像素级复验关闭；C apply/M list/M detail三页像素级叠图完成（M抽屉豁免：设计为旧稿无可比状态）。真机字体回退、SVG镜像、dashed线型、statusBar几何及P1-4修后真机复核仍待物理真机，不设自造容差或冒称VIS通过。STAFF、全局运营聚合、REF-001、公开资金、通知送达及积分券评价未提前完成。
 
 PR99保持草稿。本批提交后的CI须另外核验并记录，不用旧head成功覆盖新head；未运行生产迁移、开启环境、上传体验版、发布或合入develop/main；2026-10-01仅生成过DevTools本地预览二维码（未上传体验版）。
+
+## 2026-10-10 目录重核（STATE_VERSION 39.0，纯文档）
+
+本版为 docs-only 版本升位：上表与各节工程事实（38.0，2026-10-01/02 批次收尾，前一存档 35.0 见 [history](planning/history/WORK_STATE_BEFORE_20261001_AFS_JOINT.md)）原样保留，未重核未改写；工程状态字段以 38.0 内容为准，Issue 级权威状态见 [ISSUE_CATALOG](planning/ISSUE_CATALOG.csv)（本次重核至 2026-10-10）。38.0 之后（2026-10-02~10-10）的工程推进未逐版记录于本文件，由 PR#100~#141 与目录承担记录。
+
+重核范围：上次目录重核停在 2026-10-07（PR#125，merge 5eed641）；其后 PR#126~#141 共 16 个 PR 合入 develop（M 端排期分页消费、C 端预约下单/支付发起页与 HTTP、商家手动接单/拒单、C 端退款申请、商家订单列表读侧、C 端改期、核心交易闭环模拟器 E2E 一轮全链通过、评价资格与创建、接送履约解锁、部署开关组合清单与备注宽容直收裁决、五 tab 导航与静默登录、券/积分安全链 403 修复、CI 提速三连）。ISSUE_CATALOG 9 行更新（TX-002/ORD-001/ORD-003/REV-001/C-003/C-004/C-005/M-003→DONE；QA-005→IN_PROGRESS，一轮模拟器 E2E 已过、运营Web主链与二轮未做），DEPENDENCY_GRAPH 补 ORD-003/REV-001 节点与 2026-10-10 注记。
+
+遗留与红线不变：物理真机验收、二轮 E2E、运营Web主链 E2E、REF-002 商家退款决定面、A 端页面族仍未交付；本批零代码/契约/脚本改动，不合并本 PR。
