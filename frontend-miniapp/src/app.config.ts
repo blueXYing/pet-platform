@@ -25,6 +25,9 @@ export default defineAppConfig({
       // Contract 54 staff binding (D1-a): member management workbench child page, one compact
       // line so parallel M-side page PRs rebase cleanly.
       'pages/members/index', 'pages/aftersale/index', 'pages/aftersale/detail',
+      // Merchant refund processing (57号 via 10号 §4.4-§4.6): pending list + detail with the
+      // two OWNER decisions (reject reason mandatory); one compact line per the convention.
+      'pages/refund/index', 'pages/refund/detail',
       // Staff workbench slice (52/54/48 K1, 2026-10-06 adjudication): staff landing with the
       // invitation confirm entry, invitation id lookup and the fail-closed verify entry page.
       'pages/staff-workbench/index', 'pages/staff-invitation/index', 'pages/staff-verify/index',
