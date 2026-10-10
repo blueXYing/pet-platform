@@ -14214,7 +14214,7 @@ components:
         content: {type: string, nullable: true}
         createdAt: {type: string, format: date-time, x-precision: milliseconds}
         appealStatus: {allOf: [{$ref: '#/components/schemas/ReviewAppealStatus'}], nullable: true}
-        appealId: {$ref: '#/components/schemas/PublicId', nullable: true}
+        appealId: {type: string, nullable: true, minLength: 1, maxLength: 19, pattern: '^[1-9][0-9]{0,18}(?![\s\S])'}
     MerchantReviewDetailData:
       allOf:
       - $ref: '#/components/schemas/MerchantReviewSummaryData'
@@ -14306,7 +14306,7 @@ components:
         required: [decisionReason, decidedBy, review]
         properties:
           decisionReason: {type: string, nullable: true}
-          decidedBy: {$ref: '#/components/schemas/PublicId', nullable: true}
+          decidedBy: {type: string, nullable: true, minLength: 1, maxLength: 19, pattern: '^[1-9][0-9]{0,18}(?![\s\S])'}
           review:
             $ref: '#/components/schemas/MerchantReviewSummaryData'
     ReviewAppealPageEnvelope:
