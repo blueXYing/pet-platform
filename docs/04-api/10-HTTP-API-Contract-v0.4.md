@@ -1307,6 +1307,10 @@ POST /api/v1/merchant/reviews/{reviewId}/appeal
 
 评价申诉不等于售后复审。
 
+> 实现注记（2026-10-10，REV-002）：列表/详情/申诉三路由已按 [56号 评价申诉契约](56-Review-Appeal-Contract-v0.1.md)
+> 交付（默认关，`pet.review.appeal.enabled` + `pet.review.appeal.http.enabled`）；`reply`
+> 不在本切片（评价回复为独立能力，SSOT §11.3 未列）。
+
 ---
 
 ## 4.14 第三方团购核销
@@ -1482,6 +1486,10 @@ POST /api/v1/admin/review-appeals/{appealId}/decision
 ```
 
 这是评价治理，不是售后复审。
+
+> 实现注记（2026-10-10，REV-002）：三条路由已按 [56号 评价申诉契约](56-Review-Appeal-Contract-v0.1.md)
+> 交付（默认关）：动作码 `review.appeal.read` / `review.appeal.decide`；裁决类型
+> APPROVED（评价隐藏）/ REJECTED（维持展示），终局、无复审。
 
 ---
 

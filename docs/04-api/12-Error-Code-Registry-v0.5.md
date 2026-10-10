@@ -166,6 +166,8 @@ HTTP 映射只属于 Adapter 层；内部 Java API 通过稳定 code 表达同�
 
 评价 C 端 HTTP 状态映射（2026-10-07 REV-001 评价切片，10号 §3.14 路由）：400 严格 JSON/UUID/路径 ID/评分非 1~5 整数/`content` 超 2000 码点/非空 `mediaFileIds`（媒体能力未开放，沿 `COMMON_INVALID_ARGUMENT` 如实拒绝）；401 会话缺失/失效；403 账号非 ACTIVE；404 订单不存在或非本人（沿订单读取族防探测语义，与 GET `/c/orders/{id}` 同应答）；409 `REVIEW_NOT_VERIFIED`（未核销）、`REVIEW_WINDOW_EXPIRED`（超核销后 30 天）、`REVIEW_ALREADY_EXISTS`（一单一评）、`REVIEW_NOT_ELIGIBLE`（退款成功/退款中，2026-10-07 用户裁决）及 `COMMON_CONFLICT`/`IDEMPOTENCY_KEY_CONFLICT`；503 `COMMON_DEPENDENCY_UNAVAILABLE`；未识别异常统一 500 `COMMON_INTERNAL_ERROR`。无新增错误码。
 
+评价申诉 HTTP 状态映射（2026-10-10 REV-002 评价申诉切片，56号 路由）：400 严格 JSON/UUID/路径 ID/`reason` 空白或超 1000 码点/`decisionType` 非 APPROVED|REJECTED；401 会话缺失/失效；403 M 面 OWNER 门禁（含商家/门店非 ACTIVE 写拒绝）或 O 面动作码 `review.appeal.read`/`review.appeal.decide` 缺失；404 M 面 `REVIEW_NOT_FOUND`（评价不存在与非本店统一防枚举）、O 面 `COMMON_NOT_FOUND`（申诉不存在）；409 `REVIEW_APPEAL_ALREADY_USED`（每条评价最多申诉一次，含 uk_review_appeal_once 竞态兜底）、`COMMON_CONFLICT`（已裁决终局改判/请求锁忙）、`IDEMPOTENCY_KEY_CONFLICT`；503 `COMMON_DEPENDENCY_UNAVAILABLE`；未识别异常统一 500 `COMMON_INTERNAL_ERROR`。无新增错误码。
+
 ## 12. MERCHANT / SERVICE
 
 | Code | 含义 | 建议 HTTP |

@@ -37,7 +37,11 @@ class PrivateAssetContractRegressions(unittest.TestCase):
         # The verification HTTP slice adds no new operationId: it flips the two pinned
         # credential routes to implemented default-off and re-pins the legacy merchant
         # verify route inside VERIFICATION_HTTP_OPERATIONS (3 overlapping operations).
-        self.assertEqual(result['operations'], 135)
+        # 141 = 135 + 6 review-appeal operations (contract-56 §Review Appeal: merchant 3
+        # — merchantListReviews/merchantGetReview/merchantAppealReview — plus admin 3
+        # — adminListReviewAppeals/adminGetReviewAppeal/adminDecideReviewAppeal).
+        # 135 = develop through the reschedule/review-creation slices (3432 + 134 + 133 lineage above).
+        self.assertEqual(result['operations'], 141)
         self.assertEqual(result['privateAssetOperations'], 3)
         self.assertEqual(result['legacyOperations'], 14)
         self.assertEqual(result['aftersaleOperations'], 24)
@@ -55,6 +59,7 @@ class PrivateAssetContractRegressions(unittest.TestCase):
         self.assertEqual(result['merchantOrderHttpOperations'], 2)
         self.assertEqual(result['merchantOrderListOperations'], 1)
         self.assertEqual(result['refundHttpOperations'], 1)
+        self.assertEqual(result['reviewAppealHttpOperations'], 6)
 
     def test_all_private_operations_require_current_bearer_audience_and_default_off(self):
         for name in PRIVATE_ASSET_OPERATIONS:

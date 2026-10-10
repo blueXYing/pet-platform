@@ -61,7 +61,9 @@ class AdminAuthPrimitivesTest {
             // ADM-001 service write slice (CCR-W2-API-001): the three service review codes now
             // have server-side enforcement points; force-offline uses the AUTH-lexicon spelling.
             "service.review.read", "service.review.decide", "service.force.offline",
-            "aftersale.read", "aftersale.handle", "aftersale.decide"),
+            "aftersale.read", "aftersale.handle", "aftersale.decide",
+            // REV-002 review appeal slice (contract 56): both enforcement points ship in it.
+            "review.appeal.read", "review.appeal.decide"),
         AdminPermissionEvaluator.DEPLOYED_ACTIONS);
     assertEquals(AdminPermissionEvaluator.DEPLOYED_ACTIONS.stream().sorted().toList(),AdminPermissionEvaluator.evaluate(true,List.of("refund.retry"),AdminPermissionEvaluator.DEPLOYED_ACTIONS));
         assertEquals(List.of(),AdminPermissionEvaluator.evaluate(false,List.of("refund.retry"),AdminPermissionEvaluator.DEPLOYED_ACTIONS));
