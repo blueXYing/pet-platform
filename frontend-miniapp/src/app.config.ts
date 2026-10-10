@@ -30,7 +30,10 @@ export default defineAppConfig({
       'pages/staff-workbench/index', 'pages/staff-invitation/index', 'pages/staff-verify/index',
       // Merchant manual order decisions (45号 via 10号 §4.2/§4.3): OWNER confirm/reject page;
       // §4.1 store order list read slice adds the list entry page ahead of it.
-      'pages/order-list/index', 'pages/order-confirm/index'] },
+      'pages/order-list/index', 'pages/order-confirm/index',
+      // Review appeal M face (56号 / REV-002, one compact line per the app.config convention):
+      // OWNER review list with the one-appeal-per-review entry and status overlay.
+      'pages/reviews/index'] },
     { root: 'consumer/pages/pet-archive', pages: ['index', 'detail', 'form'] },
     { root: 'consumer/pages/merchant-application', pages: ['index', 'signing'] },
     { root: 'consumer/pages/store-services', pages: ['index', 'service-detail', 'stores'] },

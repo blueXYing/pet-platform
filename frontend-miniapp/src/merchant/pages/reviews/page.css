@@ -1,0 +1,48 @@
+/* REV-002 评价管理（56号 M 面）。无 Figma 原稿的页面沿 aftersale 页面语言；按钮原生重置
+   （0-1-1）压平单类样式：弹层 button 不带 margin，状态变体一律类名（无动态 data-*）。 */
+.mrv-page { --mrv-unit: 1px; min-height: 100vh; height: 100vh; display: flex; flex-direction: column; background: #f0fbff; color: #111827; font-family: Roboto, Outfit, sans-serif; font-size: calc(14 * var(--mrv-unit)); }
+.mrv-page button { margin: 0; padding: 0; border: 0; line-height: inherit; font-family: inherit; box-sizing: border-box; background: transparent; }
+.mrv-page button::after { border: none; }
+.mrv-page button[disabled] { opacity: .45; }
+.mrv-status-area { flex: 0 0 var(--mrv-status-top, 0px); background: #fff6e5; }
+.mrv-header { flex: 0 0 calc(54 * var(--mrv-unit)); position: relative; display: flex; align-items: center; justify-content: center; background: #fff6e5; }
+.mrv-title { color: #3c3c3c; font-family: Outfit, Roboto, sans-serif; font-weight: 700; font-size: calc(16 * var(--mrv-unit)); line-height: calc(24 * var(--mrv-unit)); }
+.mrv-page .mrv-back { position: absolute; left: calc(3.42875 * var(--mrv-unit)); top: 0; height: calc(54 * var(--mrv-unit)); width: calc(64 * var(--mrv-unit)); color: #3c3c3c; font-size: calc(14 * var(--mrv-unit)); }
+.mrv-state { margin: calc(29 * var(--mrv-unit)); padding: calc(24 * var(--mrv-unit)); background: white; border-radius: calc(16 * var(--mrv-unit)); display: flex; flex-direction: column; gap: calc(18 * var(--mrv-unit)); line-height: 1.6; }
+.mrv-list { flex: 1; min-height: 0; height: 0; box-sizing: border-box; }
+.mrv-count { display: block; margin: calc(14 * var(--mrv-unit)) calc(15.388 * var(--mrv-unit)) calc(10 * var(--mrv-unit)); color: #6b7280; font-size: calc(12 * var(--mrv-unit)); }
+.mrv-card { margin: 0 calc(15.388 * var(--mrv-unit)) calc(11.541 * var(--mrv-unit)); padding: calc(15.388 * var(--mrv-unit)); box-sizing: border-box; border-radius: calc(15.388 * var(--mrv-unit)); background: white; }
+.mrv-line { display: flex; align-items: center; justify-content: space-between; gap: calc(8 * var(--mrv-unit)); }
+.mrv-score { font-size: calc(18 * var(--mrv-unit)); font-weight: 700; color: #ff7a00; line-height: calc(26 * var(--mrv-unit)); }
+.mrv-visibility { font-size: calc(12 * var(--mrv-unit)); color: #6b7280; }
+.mrv-visibility-hidden { color: #9ca3af; }
+.mrv-dimensions { display: block; margin-top: calc(6 * var(--mrv-unit)); color: #6b7280; font-size: calc(13 * var(--mrv-unit)); line-height: calc(20 * var(--mrv-unit)); }
+.mrv-content { display: block; margin-top: calc(8 * var(--mrv-unit)); color: #4b5563; font-size: calc(14 * var(--mrv-unit)); line-height: calc(21 * var(--mrv-unit)); white-space: pre-wrap; overflow-wrap: anywhere; }
+.mrv-subline { margin-top: calc(11.4 * var(--mrv-unit)); }
+.mrv-tag { font-size: calc(12.603 * var(--mrv-unit)); line-height: calc(16.804 * var(--mrv-unit)); padding: calc(2.1 * var(--mrv-unit)) calc(10.502 * var(--mrv-unit)); border-radius: calc(999 * var(--mrv-unit)); background: #fffbeb; color: #de8722; flex-shrink: 0; }
+.mrv-tag-approved { background: #c0ecff; color: #15803d; }
+.mrv-tag-closed { background: #f3f4f6; color: #6b7280; }
+.mrv-tag-none { background: #f3f4f6; color: #9ca3af; }
+.mrv-date { color: #9ca3af; font-size: calc(11.541 * var(--mrv-unit)); line-height: calc(16 * var(--mrv-unit)); }
+.mrv-page .mrv-card-action { margin-top: calc(11.4 * var(--mrv-unit)); background: #5baae8; color: white; width: calc(96 * var(--mrv-unit)); height: calc(32 * var(--mrv-unit)); border-radius: calc(999 * var(--mrv-unit)); font-size: calc(12.603 * var(--mrv-unit)); font-weight: 600; line-height: calc(32 * var(--mrv-unit)); }
+.mrv-empty, .mrv-alert { margin: calc(13 * var(--mrv-unit)) calc(29 * var(--mrv-unit)); padding: calc(16 * var(--mrv-unit)); background: white; border-radius: calc(12 * var(--mrv-unit)); color: #6b7280; line-height: 1.6; }
+.mrv-alert { color: #9a6700; background: #fffbeb; font-size: calc(13 * var(--mrv-unit)); }
+.mrv-page .mrv-more { margin: calc(12 * var(--mrv-unit)) auto; width: calc(180 * var(--mrv-unit)); height: calc(36 * var(--mrv-unit)); color: #5baae8; border: 1px solid #5baae8; border-radius: calc(999 * var(--mrv-unit)); font-size: calc(13 * var(--mrv-unit)); line-height: calc(36 * var(--mrv-unit)); }
+.mrv-notice { display: block; margin: calc(12 * var(--mrv-unit)) calc(16 * var(--mrv-unit)); color: #a15e00; font-size: calc(13 * var(--mrv-unit)); line-height: calc(20 * var(--mrv-unit)); }
+.mrv-receipt { margin: calc(12 * var(--mrv-unit)) calc(15.388 * var(--mrv-unit)); padding: calc(14 * var(--mrv-unit)); background: #ecfdf5; border-radius: calc(12 * var(--mrv-unit)); color: #15803d; font-size: calc(13 * var(--mrv-unit)); line-height: calc(20 * var(--mrv-unit)); display: flex; align-items: center; justify-content: space-between; gap: calc(8 * var(--mrv-unit)); }
+.mrv-page .mrv-receipt-close { color: #15803d; font-size: calc(13 * var(--mrv-unit)); line-height: calc(20 * var(--mrv-unit)); }
+.mrv-bottom-space { height: calc(20 * var(--mrv-unit)); }
+.mrv-overlay { position: fixed; inset: 0; z-index: 20; background: rgba(0,0,0,.3); display: flex; flex-direction: column; justify-content: flex-end; }
+.mrv-page .mrv-sheet-dismiss { position: absolute; inset: 0; width: 100%; height: 100%; }
+.mrv-sheet { position: relative; background: white; border-radius: calc(25.728 * var(--mrv-unit)) calc(25.728 * var(--mrv-unit)) 0 0; padding: calc(25.728 * var(--mrv-unit)); padding-bottom: max(calc(25.728 * var(--mrv-unit)), env(safe-area-inset-bottom)); max-height: 85vh; overflow-y: auto; box-sizing: border-box; }
+.mrv-sheet-handle { width: calc(42.88 * var(--mrv-unit)); height: calc(4.288 * var(--mrv-unit)); background: #e5e7eb; border-radius: calc(999 * var(--mrv-unit)); margin: 0 auto calc(8.576 * var(--mrv-unit)); }
+.mrv-sheet-title { display: block; font-size: calc(19.296 * var(--mrv-unit)); font-weight: 700; line-height: calc(30.016 * var(--mrv-unit)); text-align: center; }
+.mrv-sheet-description { display: block; color: #6b7280; font-size: calc(13 * var(--mrv-unit)); line-height: calc(20 * var(--mrv-unit)); margin: calc(14 * var(--mrv-unit)) 0 calc(12.864 * var(--mrv-unit)); }
+.mrv-pending { background: #fffbeb; border-radius: calc(12.864 * var(--mrv-unit)); padding: calc(12 * var(--mrv-unit)); color: #9a6700; font-size: calc(13 * var(--mrv-unit)); line-height: calc(20 * var(--mrv-unit)); display: flex; flex-direction: column; gap: calc(8 * var(--mrv-unit)); }
+.mrv-pending-reason { color: #4b5563; white-space: pre-wrap; overflow-wrap: anywhere; }
+.mrv-textarea { display: block; height: calc(140 * var(--mrv-unit)); width: 100%; box-sizing: border-box; padding: calc(11.792 * var(--mrv-unit)) calc(13.936 * var(--mrv-unit)); border: 1px solid #e5e7eb; border-radius: calc(12.864 * var(--mrv-unit)); color: #1a1a2e; font-size: calc(15.008 * var(--mrv-unit)); line-height: calc(21.44 * var(--mrv-unit)); background: white; }
+.mrv-text-count { display: block; text-align: right; color: #9ca3af; font-size: calc(12.864 * var(--mrv-unit)); line-height: calc(17.152 * var(--mrv-unit)); padding-top: calc(4.288 * var(--mrv-unit)); }
+.mrv-page .mrv-primary { background: #5baae8; color: white; border-radius: calc(12.845 * var(--mrv-unit)); font-size: calc(14.986 * var(--mrv-unit)); font-weight: 600; text-align: center; }
+.mrv-state .mrv-primary { padding: calc(10 * var(--mrv-unit)) calc(16 * var(--mrv-unit)); }
+.mrv-page .mrv-submit { width: 100%; margin-top: calc(17.152 * var(--mrv-unit)); height: calc(47.168 * var(--mrv-unit)); line-height: calc(47.168 * var(--mrv-unit)); }
+.mrv-page .mrv-close-sheet { width: 100%; color: #6b7280; font-size: calc(13 * var(--mrv-unit)); line-height: calc(32 * var(--mrv-unit)); margin-top: calc(8 * var(--mrv-unit)); }

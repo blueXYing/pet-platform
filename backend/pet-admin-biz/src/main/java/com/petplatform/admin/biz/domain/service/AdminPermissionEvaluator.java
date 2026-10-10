@@ -13,11 +13,14 @@ public final class AdminPermissionEvaluator {
    * 2026-09-22); full RBAC registration stays with the AUTH owner. The force-offline intent is
    * spelled service.force.offline to satisfy the AUTH action-code lexicon (lowercase dotted
    * segments, AdminActionCheckQuery) — implementation-phase spelling correction, PR-disclosed.
+   * The two review-appeal codes are registered on behalf of the REV-002 review appeal slice
+   * (CCR-REVIEW-APPEAL-001, contract 56): review.appeal.read / review.appeal.decide.
    */
   public static final Set<String> DEPLOYED_ACTIONS =
       Set.of("merchant.application.read", "merchant.application.decide",
           "merchant.identity.reveal", "service.review.read", "service.review.decide",
-          "service.force.offline", "aftersale.read", "aftersale.handle", "aftersale.decide");
+          "service.force.offline", "aftersale.read", "aftersale.handle", "aftersale.decide",
+          "review.appeal.read", "review.appeal.decide");
 
   public static List<String> evaluate(
       boolean superAdmin, Collection<String> grants, Set<String> deployed) {

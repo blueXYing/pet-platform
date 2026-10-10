@@ -48,7 +48,9 @@ assert.deepEqual(packages.map(p => ({ root: p.root, pages: p.pages })), [
     'pages/schedule/index', 'pages/schedule/windows', 'pages/schedule/staff', 'pages/schedule/capabilities', 'pages/members/index',
     'pages/aftersale/index', 'pages/aftersale/detail',
     'pages/staff-workbench/index', 'pages/staff-invitation/index', 'pages/staff-verify/index',
-    'pages/order-list/index', 'pages/order-confirm/index'] },
+    'pages/order-list/index', 'pages/order-confirm/index',
+    // Review appeal M face (56号 / REV-002): OWNER review list + one-appeal entry.
+    'pages/reviews/index'] },
   { root: 'consumer/pages/pet-archive', pages: ['index', 'detail', 'form'] },
   { root: 'consumer/pages/merchant-application', pages: ['index', 'signing'] },
   { root: 'consumer/pages/store-services', pages: ['index', 'service-detail', 'stores'] },
@@ -62,7 +64,7 @@ assert.deepEqual(packages.map(p => ({ root: p.root, pages: p.pages })), [
   // Booking create + payment initiation slice (10号 §3.4/§3.5/§3.6).
   { root: 'consumer/pages/booking', pages: ['create', 'pay'] },
 ], 'Merchant workspace, pet archive, merchant application, store services, coupon/points, aftersale and notification preference pages must be registered in the single app')
-for (const [folder, pages] of [['consumer/pages/aftersale', ['index', 'detail', 'apply']], ['merchant/pages/aftersale', ['index', 'detail']]]) {
+for (const [folder, pages] of [['consumer/pages/aftersale', ['index', 'detail', 'apply']], ['merchant/pages/aftersale', ['index', 'detail']], ['merchant/pages/reviews', ['index']]]) {
   for (const page of pages) for (const extension of ['js', 'json', 'wxml', 'wxss']) {
     assert.ok(fs.existsSync(path.join(root, `${folder}/${page}.${extension}`)), `Aftersale page build artifact missing: ${folder}/${page}.${extension}`)
   }

@@ -62,6 +62,34 @@ class ReviewConfigurationTest {
                         com.petplatform.boot.adapter.web.c.CReviewController.class));
     }
 
+    /** REV-002 appeal gates: orphan http fails, appeal without the guard/admin session fails. */
+    @Test void appealSwitchesFailClosedWithoutTheirDependencies() {
+        // Appeal HTTP on top of an off kernel: fail closed.
+        runner().withPropertyValues("pet.review.appeal.http.enabled=true").run(c -> {
+            assertThat(c).hasFailed();
+            assertThat(c.getStartupFailure())
+                    .hasStackTraceContaining("Review appeal requires");
+        });
+        // Appeal on with the C stack but without the store guard and ADMIN_WEB session domain.
+        dependencies("pet.review.enabled=true", "pet.auth.c.enabled=true",
+                "pet.review.appeal.enabled=true").run(c -> {
+                    assertThat(c).hasFailed();
+                    assertThat(c.getStartupFailure())
+                            .hasStackTraceContaining("Review appeal requires");
+                });
+        // The appeal controller itself stays default off regardless of the C face flags.
+        new ApplicationContextRunner()
+                .withUserConfiguration(
+                        com.petplatform.boot.adapter.web.review.MerchantReviewAppealController.class)
+                .withPropertyValues("pet.review.enabled=true", "pet.auth.c.enabled=true",
+                        "pet.review.http.enabled=true")
+                .run(c -> {
+                    assertThat(c).hasNotFailed();
+                    assertThat(c).doesNotHaveBean(
+                            com.petplatform.boot.adapter.web.review.MerchantReviewAppealController.class);
+                });
+    }
+
     private ApplicationContextRunner dependencies(String... properties) {
         return runner().withPropertyValues(properties)
                 .withBean(DataSource.class, () -> mock(DataSource.class))

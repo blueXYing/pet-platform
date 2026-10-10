@@ -47,3 +47,11 @@ code { background: #f4f6fa; padding: 2px 6px; border-radius: 4px; font-size: 13p
   .aftersale-page { padding: 20px; }
   .aftersale-page section input:not([type="checkbox"]), .aftersale-page section select, .aftersale-page section textarea { min-width: 0; max-width: 100%; }
 }
+
+/* Contract56 review-appeal governance pages: plain fact sheets + the terminal decision form. */
+main dl { display: grid; grid-template-columns: max-content 1fr; gap: 4px 16px; margin: 8px 0 16px; }
+main dl dt { color: #566379; white-space: nowrap; }
+main dl dd { margin: 0; overflow-wrap: anywhere; }
+main dl dd.reason { white-space: pre-wrap; }
+main textarea { width: 100%; box-sizing: border-box; }
+main .decision-actions { display: flex; gap: 12px; margin-top: 8px; }

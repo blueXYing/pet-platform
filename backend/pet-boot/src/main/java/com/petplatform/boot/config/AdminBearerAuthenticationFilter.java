@@ -46,7 +46,11 @@ public final class AdminBearerAuthenticationFilter extends OncePerRequestFilter 
           || path.startsWith("/api/v1/admin/merchant-applications/")
           || path.startsWith("/api/v1/admin/private-asset-read-grants/")
           || path.equals("/api/v1/admin/services")
-          || path.startsWith("/api/v1/admin/services/")) {
+          || path.startsWith("/api/v1/admin/services/")
+          // Review appeal governance (contract 56 / REV-002): ADMIN_WEB Bearer enforced;
+          // the review.appeal.* action codes are re-checked by the kernel per call/replay.
+          || path.equals("/api/v1/admin/review-appeals")
+          || path.startsWith("/api/v1/admin/review-appeals/")) {
         try {
           AdminAuthService service = services.getIfAvailable();
           if (service == null) throw AdminAuthFailure.unavailable();

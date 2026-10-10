@@ -49,7 +49,9 @@ public class CSessionSecurityConfiguration {
       @Value("${pet.order.reschedule.http.enabled:false}")
           boolean orderRescheduleHttpEnabled,
       @Value("${pet.review.http.enabled:false}")
-      boolean reviewHttpEnabled)
+      boolean reviewHttpEnabled,
+      @Value("${pet.review.appeal.http.enabled:false}")
+      boolean reviewAppealHttpEnabled)
       throws Exception {
     http.securityMatcher("/api/v1/c/**", "/api/v1/merchant/**")
         .csrf(c -> c.disable())
@@ -214,6 +216,17 @@ public class CSessionSecurityConfiguration {
                   .permitAll();
               a.requestMatchers(HttpMethod.POST,
                       "/api/v1/c/orders/*/reviews")
+                  .permitAll();
+            }
+            if (reviewAppealHttpEnabled) {
+              // Review appeal M face (contract 56 / REV-002): the filter enforces the
+              // MINIAPP session on the /api/v1/merchant/ prefix; the OWNER admission is
+              // re-proven inside each command's store-guarded transaction on every call.
+              a.requestMatchers(HttpMethod.GET,
+                      "/api/v1/merchant/reviews", "/api/v1/merchant/reviews/*")
+                  .permitAll();
+              a.requestMatchers(HttpMethod.POST,
+                      "/api/v1/merchant/reviews/*/appeal")
                   .permitAll();
             }
           }
