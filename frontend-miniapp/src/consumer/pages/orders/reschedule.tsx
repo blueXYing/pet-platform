@@ -181,7 +181,12 @@ function RescheduleScreen({ preview, scenario, orderId }: { preview: boolean; sc
   const badge = detail === null ? null : orderStatusBadge(detail)
   return <ConsumerPageLayout page='orderDetail' unit={unit} className='ord-page' style={style}
     navigation={{ idPrefix: 'rsc', disabled: state.phase === 'loading', onSelect: key => { void switchConsumerTab(key) } }}>
-    <View className='ord-design'>
+    {/* 视觉按设计源 237:1038（我的-我的订单-待服务-订单改期，2026-10-12 新版缓存）重做：弹层
+        语言整页承载——白底 + #f0fbff 摘要条 + LABEL 16/#3c3c3c + 时段槽 89.9x30（#f0fbff+#acd5e8
+        描边 / 激活 #85d2f3 白字）+ 主按钮 335x44 r12 #5baae8。原稿 INPUT 行为时间展示（工程由
+        日期条+槽位+确认卡承载，不虚构假输入行）；门店名/费用不在改期契约内不渲染（PR 登记）。
+        .rsc 作用域同节修复 bkg-* 依赖 --bkg-unit 的存量退化。功能/契约/ID/aria 零改动。 */}
+    <View className='ord-design rsc'>
       <View className='ord-status-area' />
       <View className='ord-nav'>
         <Button id='rsc-back' ariaLabel='返回' className='ord-nav-back' onClick={() => void goBack()}>
@@ -202,8 +207,8 @@ function RescheduleScreen({ preview, scenario, orderId }: { preview: boolean; sc
         <Text id='rsc-ineligible'>当前订单不支持改期（每单最多 1 次；预约开始后、已核销、已进入退款或状态变化后不可改期）。</Text>
         <Button id='rsc-back-detail' className='ord-state-action' onClick={() => void goBack()}>返回订单详情</Button>
       </View>}
-      {(state.phase === 'ready' || state.receipt !== null) && detail !== null && <View className='ord-detail-body'>
-        <View className='ord-summary'>
+      {(state.phase === 'ready' || state.receipt !== null) && detail !== null && <View className='rsc-body'>
+        <View className='rsc-summary'>
           <View className='ord-card-head'>
             <Text className='ord-card-no'>订单号 {detail.orderNo}</Text>
             {badge && <Text className={`ord-badge ${badge.className}`}>{badge.label}</Text>}
@@ -211,7 +216,7 @@ function RescheduleScreen({ preview, scenario, orderId }: { preview: boolean; sc
           <Text className='ord-card-time'>当前预约 {appointmentWindow(detail)}</Text>
           <Text className='ord-verify-hint'>改期不改变服务、宠物与金额；每单最多 1 次，改期后回到待确认并重启 30 分钟商家确认。</Text>
         </View>
-        {state.receipt !== null && <View className='ord-receipt' id='rsc-receipt'>
+        {state.receipt !== null && <View className='rsc-receipt' id='rsc-receipt'>
           <View className='ord-verify-head'>
             <Text className='ord-verify-title'>{receiptHeadline()}</Text>
             <Text className='ord-badge is-pending-confirm'>待确认</Text>
@@ -226,7 +231,7 @@ function RescheduleScreen({ preview, scenario, orderId }: { preview: boolean; sc
           <Text id='rsc-readiness'>{readiness.notice}</Text>
           <Button id='rsc-reload' className='ord-state-action' onClick={() => void load()}>重新读取</Button>
         </View>}
-        {state.receipt === null && readiness !== null && readiness.ok && <View className='ord-refund'>
+        {state.receipt === null && readiness !== null && readiness.ok && <View className='rsc-form'>
           <View className='ord-verify-head'><Text className='ord-verify-title'>选择新时段</Text></View>
           <View className='bkg-section'>
             <Text className='bkg-section-title'>选择日期</Text>

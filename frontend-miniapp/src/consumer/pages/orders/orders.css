@@ -210,3 +210,149 @@
 .ord-star.is-on .ord-star-icon { color: #f5a623; }
 .ord-rate-summary { display: flex; align-items: baseline; justify-content: space-between; gap: calc(var(--ord-unit) * 8); margin-top: calc(var(--ord-unit) * 14); padding: calc(var(--ord-unit) * 10) calc(var(--ord-unit) * 12); background: #f0fbff; border-radius: calc(var(--ord-unit) * 8); }
 .ord-rate-composite { font-size: calc(var(--ord-unit) * 16); line-height: calc(var(--ord-unit) * 22); font-weight: 700; color: #1d0d07; }
+
+/* ---- 以下三节 = 订单族剩余页面按 Figma 新版稿（2026-10-12 缓存）纯视觉重做，先例 = 列表 .ordl（0ef5aa2）
+   与详情 .ordd（7a6e93a）；零功能/契约/ID/aria 改动，不触碰 .ordl/.ordd 词汇。取色 = 前任素材
+   planning/progress/2026-10-12/figma-orders/ 七帧渲染图 PIL 行列扫描实测（0.5px 精度），官方变量
+   #5baae8/#c0ecff/#f0fbff + 稿实测 #85d2f3/#acd5e8/#5a4135/#53bfee/#ff9500/#f9fffe/#e9e4d9。
+   WXSS 铁律：状态样式仅 className 变体（is-*），禁 data-*；按钮类一律 .ord-page 前缀抬特异度压
+   button 原生重置（0,1,1），services 5e074a6 同法；button 不嵌套。 ---- */
+
+/* ---- 订单改期页 .rsc（设计源 237:1038「我的-我的订单-待服务-订单改期」底部弹层语言，独立页承载：
+   弹层头 H3 24/#1d0d07 + 门店条 #f0fbff（店名 #1d0d07 20 + 副题 #577683 + 费用 #ff9500）、
+   LABEL 行 #3c3c3c 16、INPUT 行 #f0fbff h44 #1d0d07、时段槽 89.9x30（默认 #f0fbff + #acd5e8 描边 +
+   #5a4135 字 / 激活 #85d2f3 白字，间距 8）、主按钮 BUTTON-326 335x44 r12 #5baae8 白字 15/600。
+   原稿 INPUT 行为时间选择展示（工程由日期条+槽位承载，确认信息卡呈现所选，不虚构假输入行，PR 登记）。
+   弹层内门店名/副题/费用不在改期契约内不渲染，摘要条=契约字段（订单号/状态/当前预约）。
+   随本节修复存量缺陷：本页 bkg-* 词汇依赖 --bkg-unit 而页面只设 --ord-unit，calc 全部退化
+   （视觉裸奔）——.rsc 作用域以 --ord-unit 全量重定义本页所需 bkg-* 形态，booking 页不受影响。 ---- */
+.rsc { display: block; min-height: 100vh; background: #ffffff; }
+.rsc-body { padding-bottom: calc(var(--ord-unit) * 24); }
+/* 摘要条（弹层门店行 256:1686 语言：#f0fbff 条 x=33 宽 335 r8 pad12）。 */
+.rsc-summary { display: flex; flex-direction: column; width: calc(var(--ord-unit) * 335); margin: calc(var(--ord-unit) * 14) calc(var(--ord-unit) * 33) 0; padding: calc(var(--ord-unit) * 12); background: #f0fbff; border-radius: calc(var(--ord-unit) * 8); }
+.rsc .ord-card-head { display: flex; align-items: center; justify-content: space-between; gap: calc(var(--ord-unit) * 8); }
+.rsc .ord-card-no { font-size: calc(var(--ord-unit) * 15); line-height: calc(var(--ord-unit) * 22); font-weight: 500; color: #1d0d07; overflow-wrap: anywhere; }
+.rsc .ord-card-time { display: block; margin-top: calc(var(--ord-unit) * 6); font-size: calc(var(--ord-unit) * 14); line-height: calc(var(--ord-unit) * 20); color: #577683; }
+.rsc .ord-badge { flex-shrink: 0; display: flex; align-items: center; height: calc(var(--ord-unit) * 22); padding: 0 calc(var(--ord-unit) * 10); border: calc(var(--ord-unit) * 1) solid #c0ecff; border-radius: calc(var(--ord-unit) * 9999); background: #ffffff; font-size: calc(var(--ord-unit) * 12); line-height: calc(var(--ord-unit) * 18); font-weight: 500; }
+.rsc .ord-verify-hint { font-size: calc(var(--ord-unit) * 11); line-height: calc(var(--ord-unit) * 17); color: #577683; }
+/* 表单区（弹层 LABEL/INPUT/槽位白底无卡壳语言；页面承载为白区纵列 x=33 宽 335）。 */
+.rsc-form { display: flex; flex-direction: column; align-items: stretch; width: calc(var(--ord-unit) * 335); margin: calc(var(--ord-unit) * 16) calc(var(--ord-unit) * 33) 0; }
+.rsc .ord-verify-title { font-size: calc(var(--ord-unit) * 16); line-height: calc(var(--ord-unit) * 24); font-weight: 500; color: #3c3c3c; }
+/* 日期条与时段槽（稿无日期条，沿槽位胶囊语言家族化；槽位=256:1715 BUTTON 89.9x30 实测）。 */
+.rsc .bkg-section { margin: calc(var(--ord-unit) * 16) 0 0; }
+.rsc .bkg-section-title { display: block; font-size: calc(var(--ord-unit) * 16); line-height: calc(var(--ord-unit) * 24); font-weight: 500; color: #3c3c3c; }
+.rsc .bkg-section-subtitle { display: block; margin-top: calc(var(--ord-unit) * 6); font-size: calc(var(--ord-unit) * 11); line-height: calc(var(--ord-unit) * 17); font-weight: 400; color: #577683; }
+.rsc .bkg-hint { display: block; font-size: calc(var(--ord-unit) * 12); line-height: calc(var(--ord-unit) * 18); color: #577683; }
+.rsc .bkg-slot-error { font-size: calc(var(--ord-unit) * 12); line-height: calc(var(--ord-unit) * 18); color: #a23e2d; }
+.ord-page .rsc .bkg-state-action { display: block; margin-top: calc(var(--ord-unit) * 8); color: #3185ba; font-size: calc(var(--ord-unit) * 12); line-height: calc(var(--ord-unit) * 18); }
+.rsc .bkg-dates { display: block; margin-top: calc(var(--ord-unit) * 10); width: 100%; white-space: nowrap; }
+.ord-page .rsc .bkg-date { display: inline-flex; flex-direction: column; align-items: center; justify-content: center; width: calc(var(--ord-unit) * 64); height: calc(var(--ord-unit) * 44); margin-right: calc(var(--ord-unit) * 8); background: #f0fbff; border: calc(var(--ord-unit) * 1) solid #c0ecff; border-radius: calc(var(--ord-unit) * 8); }
+.rsc .bkg-date-label { font-size: calc(var(--ord-unit) * 12); line-height: calc(var(--ord-unit) * 16); color: #5a4135; }
+.rsc .bkg-date-weekday { font-size: calc(var(--ord-unit) * 10); line-height: calc(var(--ord-unit) * 14); color: #8aa0ac; }
+.ord-page .rsc .bkg-date.is-selected { background: #5baae8; border-color: #5baae8; }
+.rsc .bkg-date.is-selected .bkg-date-label { color: #ffffff; font-weight: 500; }
+.rsc .bkg-date.is-selected .bkg-date-weekday { color: #f0fbff; }
+.rsc .bkg-slots { display: flex; flex-wrap: wrap; gap: calc(var(--ord-unit) * 8); margin-top: calc(var(--ord-unit) * 10); }
+.ord-page .rsc .bkg-slot { display: flex; flex-direction: column; align-items: center; justify-content: center; min-width: calc(var(--ord-unit) * 89.9); padding: calc(var(--ord-unit) * 7) calc(var(--ord-unit) * 10); background: #f0fbff; border: calc(var(--ord-unit) * 1) solid #acd5e8; border-radius: calc(var(--ord-unit) * 8); }
+.rsc .bkg-slot-time { font-size: calc(var(--ord-unit) * 13); line-height: calc(var(--ord-unit) * 18); color: #5a4135; }
+.rsc .bkg-slot-note { margin-top: calc(var(--ord-unit) * 2); font-size: calc(var(--ord-unit) * 10); line-height: calc(var(--ord-unit) * 14); color: #8aa0ac; }
+.ord-page .rsc .bkg-slot.is-selected { background: #85d2f3; border-color: #85d2f3; }
+.rsc .bkg-slot.is-selected .bkg-slot-time { color: #ffffff; font-weight: 500; }
+.rsc .bkg-slot.is-selected .bkg-slot-note { color: #f0fbff; }
+.ord-page .rsc .bkg-slot.is-full { background: #e9e4d9; border-color: #e9e4d9; }
+.rsc .bkg-slot.is-full .bkg-slot-time { color: #8aa0ac; }
+.rsc .bkg-slot.is-full .bkg-slot-note { color: #a23e2d; }
+/* 确认信息卡（原稿无此区块：契约 CAS/间隔校验事实行，卡壳沿家族白卡 #c0ecff 描边 r13）。 */
+.rsc .bkg-confirm-card { padding: calc(var(--ord-unit) * 4) calc(var(--ord-unit) * 16); background: #ffffff; border: calc(var(--ord-unit) * 1) solid #c0ecff; border-radius: calc(var(--ord-unit) * 13); }
+.rsc .ord-fact-row { display: flex; align-items: baseline; justify-content: space-between; gap: calc(var(--ord-unit) * 12); padding: calc(var(--ord-unit) * 10) 0; }
+.rsc .ord-fact-label { flex-shrink: 0; font-size: calc(var(--ord-unit) * 12); line-height: calc(var(--ord-unit) * 18); color: #577683; }
+.rsc .ord-fact-value { font-size: calc(var(--ord-unit) * 12); line-height: calc(var(--ord-unit) * 18); color: #1d0d07; text-align: right; overflow-wrap: anywhere; }
+/* 主/返回按钮（BUTTON-326：335x44 r12 #5baae8 白字 15/600；.ord-page 前缀压 button 原生重置）。 */
+.ord-page .rsc .ord-verify-action { display: flex; align-items: center; justify-content: center; margin: calc(var(--ord-unit) * 20) 0 0; align-self: stretch; height: calc(var(--ord-unit) * 44); border-radius: calc(var(--ord-unit) * 12); background: #5baae8; color: #ffffff; font-size: calc(var(--ord-unit) * 15); line-height: calc(var(--ord-unit) * 21); font-weight: 600; text-align: center; }
+/* 回执卡（成功态白卡 #c0ecff 描边 r13 + 标题 + 事实行 + 返回按钮）。 */
+.rsc-receipt { display: flex; flex-direction: column; align-items: stretch; width: calc(var(--ord-unit) * 335); margin: calc(var(--ord-unit) * 16) calc(var(--ord-unit) * 33) 0; padding: calc(var(--ord-unit) * 16); background: #ffffff; border: calc(var(--ord-unit) * 1) solid #c0ecff; border-radius: calc(var(--ord-unit) * 13); }
+
+/* ---- 退款申请页 .rfd（设计源 129:10572「我的-我的订单-申请售后」整页：奶油头带 #fff6e5 h74 →
+   白内容区（Rectangle 41）、订单卡 DIV-13 x=12.5 宽 376 #f0fbff + #c0ecff 描边 r13（IMG 79 方图
+   契约外不渲染，PR 登记）、H4 标题 22/700、原因胶囊组白底 #c0ecff 描边 #577683 字（内置选项
+   契约外——reasonCode 走服务端字典文本输入，不内置选项，PR 登记）、TEXTAREA 338.7x122.8
+   #f9fffe 底 #c0ecff 描边 + 0/500 右下、主按钮 335x44 r12 #5baae8。售后类型/上传图片区块契约外
+   不渲染（PR 登记）。原稿「售后类型（仅退款/退货退款）」选中态 #85d2f3 实底——本页无该字段，
+   词汇不引入。 ---- */
+.rfd { display: block; min-height: 100vh; background: #ffffff; }
+.rfd-hero { background: #fff6e5; }
+.rfd .ord-nav-title { color: #1d0d07; }
+.rfd .ord-nav-back-icon { color: #7b5b4a; }
+.rfd-body { padding-bottom: calc(var(--ord-unit) * 24); }
+/* 订单卡（DIV-13：#f0fbff + #c0ecff 描边 r13 pad13；订单号 19px 实测 #577683/金额 ¥ 27px 实测
+   #53bfee——字段沿工程契约投影，封面/服务名/类目不在契约内不渲染）。 */
+.rfd-summary { display: flex; flex-direction: column; width: calc(var(--ord-unit) * 377); margin: calc(var(--ord-unit) * 14) calc(var(--ord-unit) * 12.5) 0; padding: calc(var(--ord-unit) * 13); background: #f0fbff; border: calc(var(--ord-unit) * 1) solid #c0ecff; border-radius: calc(var(--ord-unit) * 13); }
+.rfd .ord-card-head { display: flex; align-items: center; justify-content: space-between; gap: calc(var(--ord-unit) * 8); }
+.rfd .ord-card-no { font-size: calc(var(--ord-unit) * 15); line-height: calc(var(--ord-unit) * 22); font-weight: 500; color: #1d0d07; overflow-wrap: anywhere; }
+.rfd .ord-card-time { display: block; margin-top: calc(var(--ord-unit) * 6); font-size: calc(var(--ord-unit) * 12.5); line-height: calc(var(--ord-unit) * 18); color: #577683; }
+.rfd .ord-badge { flex-shrink: 0; display: flex; align-items: center; height: calc(var(--ord-unit) * 22); padding: 0 calc(var(--ord-unit) * 10); border: calc(var(--ord-unit) * 1) solid #c0ecff; border-radius: calc(var(--ord-unit) * 9999); background: #ffffff; font-size: calc(var(--ord-unit) * 12); line-height: calc(var(--ord-unit) * 18); font-weight: 500; }
+.rfd .ord-summary-amount { display: block; margin: calc(var(--ord-unit) * 8) 0 0; padding: 0; font-size: calc(var(--ord-unit) * 27); line-height: calc(var(--ord-unit) * 34); font-weight: 700; color: #53bfee; text-align: right; }
+/* 表单卡（稿三段白卡语言并为一张 #f0fbff 卡：H4 标题 + 字段；输入件 #f9fffe 底 #c0ecff 描边 r8）。 */
+.rfd-form { display: flex; flex-direction: column; align-items: stretch; width: calc(var(--ord-unit) * 377); margin: calc(var(--ord-unit) * 14) calc(var(--ord-unit) * 12.5) 0; padding: calc(var(--ord-unit) * 4) calc(var(--ord-unit) * 20) calc(var(--ord-unit) * 20); background: #f0fbff; border: calc(var(--ord-unit) * 1) solid #c0ecff; border-radius: calc(var(--ord-unit) * 13); }
+.rfd .ord-verify-title { font-size: calc(var(--ord-unit) * 16); line-height: calc(var(--ord-unit) * 24); font-weight: 500; color: #1d0d07; }
+.rfd .ord-verify-hint { font-size: calc(var(--ord-unit) * 11); line-height: calc(var(--ord-unit) * 17); color: #577683; }
+.rfd .ord-field { display: flex; flex-direction: column; gap: calc(var(--ord-unit) * 4); margin-top: calc(var(--ord-unit) * 12); }
+.rfd .ord-label { font-size: calc(var(--ord-unit) * 12); line-height: calc(var(--ord-unit) * 18); color: #577683; }
+.rfd .ord-input { height: calc(var(--ord-unit) * 44); padding: 0 calc(var(--ord-unit) * 14); background: #f9fffe; border: calc(var(--ord-unit) * 1) solid #c0ecff; border-radius: calc(var(--ord-unit) * 8); font-size: calc(var(--ord-unit) * 14); line-height: calc(var(--ord-unit) * 20); color: #1d0d07; }
+.rfd .ord-textarea { width: 100%; min-height: calc(var(--ord-unit) * 123); padding: calc(var(--ord-unit) * 12) calc(var(--ord-unit) * 14); background: #f9fffe; border: calc(var(--ord-unit) * 1) solid #c0ecff; border-radius: calc(var(--ord-unit) * 8); font-size: calc(var(--ord-unit) * 14); line-height: calc(var(--ord-unit) * 20); color: #1d0d07; }
+.rfd .ord-count { align-self: flex-end; font-size: calc(var(--ord-unit) * 10); line-height: calc(var(--ord-unit) * 15); color: #8aa0ac; }
+.rfd .ord-error { font-size: calc(var(--ord-unit) * 11); line-height: calc(var(--ord-unit) * 17); color: #a23e2d; }
+.rfd .ord-fact-row { display: flex; align-items: baseline; justify-content: space-between; gap: calc(var(--ord-unit) * 12); padding: calc(var(--ord-unit) * 10) 0; }
+.rfd .ord-fact-label { flex-shrink: 0; font-size: calc(var(--ord-unit) * 12); line-height: calc(var(--ord-unit) * 18); color: #577683; }
+.rfd .ord-fact-value { font-size: calc(var(--ord-unit) * 12); line-height: calc(var(--ord-unit) * 18); color: #1d0d07; text-align: right; overflow-wrap: anywhere; }
+/* 主/返回按钮（BUTTON-422：335x44 r12 #5baae8 白字 15/600，稿文案「提交评价」为复用残留不采用）。 */
+.ord-page .rfd .ord-verify-action { display: flex; align-items: center; justify-content: center; margin: calc(var(--ord-unit) * 20) auto 0; align-self: center; width: calc(var(--ord-unit) * 335); height: calc(var(--ord-unit) * 44); border-radius: calc(var(--ord-unit) * 12); background: #5baae8; color: #ffffff; font-size: calc(var(--ord-unit) * 15); line-height: calc(var(--ord-unit) * 21); font-weight: 600; text-align: center; }
+/* 回执卡（白卡 #c0ecff 描边 r13 + 标题 + 处理路径/退款单号事实行 + 返回按钮）。 */
+.rfd-receipt { display: flex; flex-direction: column; align-items: stretch; width: calc(var(--ord-unit) * 377); margin: calc(var(--ord-unit) * 14) calc(var(--ord-unit) * 12.5) 0; padding: calc(var(--ord-unit) * 16) calc(var(--ord-unit) * 20); background: #f0fbff; border: calc(var(--ord-unit) * 1) solid #c0ecff; border-radius: calc(var(--ord-unit) * 13); }
+
+/* ---- 评价页 .rvw（设计源 129:12416「我的-我的订单-评价」覆盖层 DIV-388（整页白底 + 顶栏
+   H3 24）语言：服务行白底（IMG 180.5x141.6 契约外不渲染，PR 登记）、评分大卡 236:411 x=14 宽 373
+   #f0fbff r14 pad17.7（维度标签 23px 实测 #5a4135 + 星组）、总体评分大星 39.9 / 子维度星 31
+   （激活 #ff9500 橙实测、未激活白）、快捷评价胶囊/上传照片/匿名开关契约外不渲染（PR 登记）、
+   TEXTAREA 373x141.7 #f0fbff 底 #c0ecff 描边、提交按钮 335x44 #5baae8。工程三维（门店/服务/人员
+   40/40/20）与原稿维度（总体+服务态度/服务专业/性价比）不同——维度沿契约口径，星形/间距/配色
+   按原稿（数据驱动差异，PR 登记）。 ---- */
+.rvw { display: block; min-height: 100vh; background: #ffffff; }
+.rvw-body { padding-bottom: calc(var(--ord-unit) * 24); }
+/* 服务行（白底裸区 x=14 宽 373：工程字段=订单号/状态/服务时间/实付金额）。 */
+.rvw-summary { display: flex; flex-direction: column; width: calc(var(--ord-unit) * 373); margin: calc(var(--ord-unit) * 14) calc(var(--ord-unit) * 14) 0; }
+.rvw .ord-card-head { display: flex; align-items: center; justify-content: space-between; gap: calc(var(--ord-unit) * 8); }
+.rvw .ord-card-no { font-size: calc(var(--ord-unit) * 15); line-height: calc(var(--ord-unit) * 22); font-weight: 500; color: #1d0d07; overflow-wrap: anywhere; }
+.rvw .ord-card-time { display: block; margin-top: calc(var(--ord-unit) * 6); font-size: calc(var(--ord-unit) * 12.5); line-height: calc(var(--ord-unit) * 18); color: #577683; }
+.rvw .ord-badge { flex-shrink: 0; display: flex; align-items: center; height: calc(var(--ord-unit) * 22); padding: 0 calc(var(--ord-unit) * 10); border: calc(var(--ord-unit) * 1) solid #c0ecff; border-radius: calc(var(--ord-unit) * 9999); background: #ffffff; font-size: calc(var(--ord-unit) * 12); line-height: calc(var(--ord-unit) * 18); font-weight: 500; }
+.rvw .ord-summary-amount { display: block; margin: calc(var(--ord-unit) * 6) 0 0; padding: 0; font-size: calc(var(--ord-unit) * 20); line-height: calc(var(--ord-unit) * 28); font-weight: 700; color: #53bfee; text-align: right; }
+/* 评分大卡（#f0fbff r14 pad17.7：三维星级 + 权重 + 综合分预览 + 文字评价）。 */
+.rvw-form { display: flex; flex-direction: column; align-items: stretch; width: calc(var(--ord-unit) * 373); margin: calc(var(--ord-unit) * 14) calc(var(--ord-unit) * 14) 0; padding: calc(var(--ord-unit) * 17.7); background: #f0fbff; border-radius: calc(var(--ord-unit) * 14); }
+.rvw .ord-verify-title { font-size: calc(var(--ord-unit) * 16); line-height: calc(var(--ord-unit) * 24); font-weight: 500; color: #5a4135; }
+.rvw .ord-verify-hint { font-size: calc(var(--ord-unit) * 11); line-height: calc(var(--ord-unit) * 17); color: #577683; }
+.rvw .ord-rate { display: flex; flex-direction: column; gap: calc(var(--ord-unit) * 4); margin-top: calc(var(--ord-unit) * 14); }
+.rvw .ord-rate-head { display: flex; align-items: baseline; justify-content: space-between; gap: calc(var(--ord-unit) * 8); }
+.rvw .ord-rate-label { font-size: calc(var(--ord-unit) * 15); line-height: calc(var(--ord-unit) * 22); font-weight: 500; color: #5a4135; }
+.rvw .ord-rate-weight { font-size: calc(var(--ord-unit) * 10); line-height: calc(var(--ord-unit) * 15); color: #577683; }
+/* 星组（原稿子维度星 31x31 间距 4.4：激活 #ff9500 / 未激活白，无底板；.ord-page 前缀压重置）。 */
+.rvw .ord-rate-stars { display: flex; gap: calc(var(--ord-unit) * 4.4); }
+.ord-page .rvw .ord-star { display: flex; align-items: center; justify-content: center; width: calc(var(--ord-unit) * 31); height: calc(var(--ord-unit) * 31); padding: 0; background: transparent; border: none; border-radius: 0; }
+.rvw .ord-star-icon { font-size: calc(var(--ord-unit) * 23); line-height: 1; color: #ffffff; }
+.rvw .ord-star.is-on { background: transparent; }
+.rvw .ord-star.is-on .ord-star-icon { color: #ff9500; }
+/* 综合分预览（工程特有展示推导：白底内嵌条 r8）。 */
+.rvw .ord-rate-summary { display: flex; align-items: baseline; justify-content: space-between; gap: calc(var(--ord-unit) * 8); margin-top: calc(var(--ord-unit) * 16); padding: calc(var(--ord-unit) * 10) calc(var(--ord-unit) * 12); background: #ffffff; border-radius: calc(var(--ord-unit) * 8); }
+.rvw .ord-rate-composite { font-size: calc(var(--ord-unit) * 16); line-height: calc(var(--ord-unit) * 22); font-weight: 700; color: #1d0d07; }
+/* 文字评价（TEXTAREA：#f0fbff 底 #c0ecff 描边 r8；卡内呈白底变体 + 0/2000 右下）。 */
+.rvw .ord-field { display: flex; flex-direction: column; gap: calc(var(--ord-unit) * 4); margin-top: calc(var(--ord-unit) * 12); }
+.rvw .ord-label { font-size: calc(var(--ord-unit) * 12); line-height: calc(var(--ord-unit) * 18); color: #577683; }
+.rvw .ord-textarea { width: 100%; min-height: calc(var(--ord-unit) * 123); padding: calc(var(--ord-unit) * 12) calc(var(--ord-unit) * 14); background: #ffffff; border: calc(var(--ord-unit) * 1) solid #c0ecff; border-radius: calc(var(--ord-unit) * 8); font-size: calc(var(--ord-unit) * 14); line-height: calc(var(--ord-unit) * 20); color: #1d0d07; }
+.rvw .ord-count { align-self: flex-end; font-size: calc(var(--ord-unit) * 10); line-height: calc(var(--ord-unit) * 15); color: #8aa0ac; }
+.rvw .ord-error { font-size: calc(var(--ord-unit) * 11); line-height: calc(var(--ord-unit) * 17); color: #a23e2d; }
+.rvw .ord-fact-row { display: flex; align-items: baseline; justify-content: space-between; gap: calc(var(--ord-unit) * 12); padding: calc(var(--ord-unit) * 10) 0; }
+.rvw .ord-fact-label { flex-shrink: 0; font-size: calc(var(--ord-unit) * 12); line-height: calc(var(--ord-unit) * 18); color: #577683; }
+.rvw .ord-fact-value { font-size: calc(var(--ord-unit) * 12); line-height: calc(var(--ord-unit) * 18); color: #1d0d07; text-align: right; overflow-wrap: anywhere; }
+/* 主/返回按钮（BUTTON-422 同款：335x44 r12 #5baae8 白字 15/600）。 */
+.ord-page .rvw .ord-verify-action { display: flex; align-items: center; justify-content: center; margin: calc(var(--ord-unit) * 20) auto 0; align-self: center; width: calc(var(--ord-unit) * 335); height: calc(var(--ord-unit) * 44); border-radius: calc(var(--ord-unit) * 12); background: #5baae8; color: #ffffff; font-size: calc(var(--ord-unit) * 15); line-height: calc(var(--ord-unit) * 21); font-weight: 600; text-align: center; }
+/* 回执卡（评分大卡同壳：#f0fbff r14 + 评价编号/综合分构成事实行 + 返回按钮）。 */
+.rvw-receipt { display: flex; flex-direction: column; align-items: stretch; width: calc(var(--ord-unit) * 373); margin: calc(var(--ord-unit) * 14) calc(var(--ord-unit) * 14) 0; padding: calc(var(--ord-unit) * 17.7); background: #f0fbff; border-radius: calc(var(--ord-unit) * 14); }

@@ -134,7 +134,13 @@ function ReviewScreen({ preview, scenario, orderId }: { preview: boolean; scenar
   const composite = compositePreview(draft)
   return <ConsumerPageLayout page='orderDetail' unit={unit} className='ord-page' style={style}
     navigation={{ idPrefix: 'rvw', disabled: state.phase === 'loading', onSelect: key => { void switchConsumerTab(key) } }}>
-    <View className='ord-design'>
+    {/* 视觉按设计源 129:12416（我的-我的订单-评价，2026-10-12 新版缓存）重做：覆盖层整页白底、
+        评分大卡 #f0fbff r14（x=14 宽 373 pad17.7，维度标签 15/500 #5a4135 + 星组 31x31 间距 4.4、
+        激活 #ff9500 / 未激活白）、文字评价白底 #c0ecff 描边 + 0/2000 右下、提交按钮 335x44 r12
+        #5baae8。原稿维度（总体评分大星+服务态度/服务专业/性价比）与快捷评价胶囊/上传照片/匿名
+        开关不在 §3.14 契约内——三维沿 40/40/20 契约口径按原稿星形呈现，其余不渲染（PR 登记）。
+        功能/契约/ID/aria 零改动。 */}
+    <View className='ord-design rvw'>
       <View className='ord-status-area' />
       <View className='ord-nav'>
         <Button id='rvw-back' ariaLabel='返回' className='ord-nav-back' onClick={() => void goBack()}>
@@ -156,8 +162,8 @@ function ReviewScreen({ preview, scenario, orderId }: { preview: boolean; scenar
         <Text id='rvw-ineligible'>{state.eligibility !== null ? eligibilityHeadline(state.eligibility) : '当前订单不可评价（以订单实时状态为准）。'}</Text>
         <Button id='rvw-back-detail' className='ord-state-action' onClick={() => void goBack()}>返回订单详情</Button>
       </View>}
-      {(state.phase === 'ready' || state.receipt !== null) && detail !== null && <View className='ord-detail-body'>
-        <View className='ord-summary'>
+      {(state.phase === 'ready' || state.receipt !== null) && detail !== null && <View className='rvw-body'>
+        <View className='rvw-summary'>
           <View className='ord-card-head'>
             <Text className='ord-card-no'>订单号 {detail.orderNo}</Text>
             {badge && <Text className={`ord-badge ${badge.className}`}>{badge.label}</Text>}
@@ -165,7 +171,7 @@ function ReviewScreen({ preview, scenario, orderId }: { preview: boolean; scenar
           <Text className='ord-card-time'>服务时间 {appointmentWindow(detail)}</Text>
           <Text className='ord-card-amount ord-summary-amount'>¥{detail.payAmount}</Text>
         </View>
-        {state.receipt !== null && <View className='ord-receipt' id='rvw-receipt'>
+        {state.receipt !== null && <View className='rvw-receipt' id='rvw-receipt'>
           <View className='ord-verify-head'>
             <Text className='ord-verify-title'>{receiptHeadline(state.receipt)}</Text>
           </View>
@@ -174,7 +180,7 @@ function ReviewScreen({ preview, scenario, orderId }: { preview: boolean; scenar
           <View className='ord-fact-row'><Text className='ord-fact-label'>综合分构成</Text><Text className='ord-fact-value'>门店 40% + 服务 40% + 人员 20%</Text></View>
           <Button id='rvw-back-after' className='ord-verify-action' onClick={() => void goBack()}>返回订单详情</Button>
         </View>}
-        {state.receipt === null && state.eligibility !== null && <View className='ord-review'>
+        {state.receipt === null && state.eligibility !== null && <View className='rvw-form'>
           <View className='ord-verify-head'><Text className='ord-verify-title'>本单评分</Text></View>
           <Text className='ord-verify-hint'>按平台规则：单条综合分 = 门店评分×40% + 服务评分×40% + 人员评分×20%；核销后 30 天内可评价，一单一次。</Text>
           {reviewDimensions.map(dimension => <View className='ord-rate' key={dimension.key}>
