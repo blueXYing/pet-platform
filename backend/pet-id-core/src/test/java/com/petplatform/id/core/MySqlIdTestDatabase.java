@@ -1,5 +1,7 @@
 package com.petplatform.id.core;
 
+import com.zaxxer.hikari.HikariConfig;
+import com.zaxxer.hikari.HikariDataSource;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.sql.Connection;
@@ -8,7 +10,6 @@ import java.util.UUID;
 import javax.sql.DataSource;
 import org.springframework.core.io.FileSystemResource;
 import org.springframework.jdbc.core.JdbcTemplate;
-import org.springframework.jdbc.datasource.DriverManagerDataSource;
 import org.springframework.jdbc.datasource.init.ScriptUtils;
 
 /** Real MySQL fixture. Only drops the randomly named database this object created. */
@@ -25,12 +26,18 @@ final class MySqlIdTestDatabase implements AutoCloseable {
         if (!server.matches("jdbc:mysql://(127\\.0\\.0\\.1|localhost):[0-9]+/")) {
             throw new IllegalArgumentException("PLAT002_ID_MYSQL_URL must be a local isolated server without database/parameters");
         }
-        admin = new JdbcTemplate(source(server));
         databaseUrl = server + name;
+        admin = new JdbcTemplate(source(server));
+        try {
+            admin.execute("CREATE DATABASE `" + name + "` CHARACTER SET utf8mb4");
+        } catch (Exception failure) {
+            if (admin.getDataSource() instanceof HikariDataSource pool) pool.close();
+            throw failure;
+        }
+        created = true;
+        // Built only after the database exists: the pool opens its connections eagerly.
         dataSource = source(databaseUrl);
         jdbc = new JdbcTemplate(dataSource);
-        admin.execute("CREATE DATABASE `" + name + "` CHARACTER SET utf8mb4");
-        created = true;
         try {
             String version = admin.queryForObject("SELECT VERSION()", String.class);
             if (version == null || !version.startsWith("8.")) throw new IllegalStateException("Real MySQL 8 required");
@@ -55,20 +62,22 @@ final class MySqlIdTestDatabase implements AutoCloseable {
     }
 
     static DataSource source(String url) {
-        return new DriverManagerDataSource(url + "?allowPublicKeyRetrieval=true&useSSL=false&connectionTimeZone=UTC&connectTimeout=1000&socketTimeout=5000",
-                System.getenv().getOrDefault("PLAT002_ID_MYSQL_USER", "root"),
-                System.getenv().getOrDefault("PLAT002_ID_MYSQL_PASSWORD", "")) {
-            @Override public Connection getConnection() throws SQLException {
-                Connection connection = super.getConnection();
-                try (var statement = connection.createStatement()) {
-                    statement.execute("SET SESSION time_zone = '+00:00'");
-                    return connection;
-                } catch (SQLException failure) {
-                    connection.close();
-                    throw failure;
-                }
-            }
-        };
+        // The store's single-flight lane budget (1s, a production constant without a test seam)
+        // covers its REQUIRES_NEW transactions, and the process probe's child runs that budget
+        // against a freshly booted JVM. A new TCP+auth handshake per checkout — what
+        // DriverManagerDataSource costs — is exactly the fixed overhead a saturated parallel
+        // runner squeezes over the budget (PR#139 run 37922615049). A small eagerly-warm pool
+        // (same shape as PooledSnowflakeMySqlTest.pool) keeps every budgeted transaction on an
+        // established connection. The UTC session the old per-checkout wrapper set is preserved
+        // per physical connection via the init SQL.
+        var config = new HikariConfig();
+        config.setJdbcUrl(url + "?allowPublicKeyRetrieval=true&useSSL=false&connectionTimeZone=UTC&connectTimeout=1000&socketTimeout=5000");
+        config.setUsername(System.getenv().getOrDefault("PLAT002_ID_MYSQL_USER", "root"));
+        config.setPassword(System.getenv().getOrDefault("PLAT002_ID_MYSQL_PASSWORD", ""));
+        config.setMaximumPoolSize(3);
+        config.setMinimumIdle(3);
+        config.setConnectionInitSql("SET SESSION time_zone = '+00:00'");
+        return new HikariDataSource(config);
     }
 
     DataSource dataSource() { return dataSource; }
@@ -117,9 +126,18 @@ final class MySqlIdTestDatabase implements AutoCloseable {
     }
 
     @Override public void close() {
-        if (created) {
-            admin.execute("DROP DATABASE `" + name + "`");
-            created = false;
+        if (!created) return;
+        created = false;
+        try {
+            // Release this fixture's pooled test-database connections before dropping it;
+            // the DROP runs on the admin pool, which is closed last.
+            if (dataSource instanceof HikariDataSource pool) pool.close();
+        } finally {
+            try {
+                admin.execute("DROP DATABASE `" + name + "`");
+            } finally {
+                if (admin.getDataSource() instanceof HikariDataSource pool) pool.close();
+            }
         }
     }
 }
