@@ -63,6 +63,15 @@ import tools.jackson.databind.json.JsonMapper;
  * W2-SCH-007 also exercises the defensive missing-provider constructor branch directly.
  */
 class ScheduleAvailabilityHttpTest {
+  // Hotfix 2026-10-12: fixture days must stay strictly future. Hardcoded 2026-10-12/13
+  // overlapped "today" once reached, dragging the now-relative windows into the
+  // aggregation query (expected 3, got 4) and turning static windows in-progress.
+  // Business-zone (Asia/Shanghai) days keep the day-split semantics intact.
+  private static final java.time.LocalDate D1 =
+      java.time.LocalDate.now(java.time.ZoneId.of("Asia/Shanghai")).plusDays(1);
+  private static final java.time.LocalDate D2 = D1.plusDays(1);
+  private static final java.time.LocalDate D2P = D2.plusDays(1);
+
   private static final String ORIGIN = "https://sch.example.invalid";
   private static final String PASSWORD = "Example_ONLY_92!";
   private static final String COVER_ASSET = "590000000000000501";
@@ -253,20 +262,20 @@ class ScheduleAvailabilityHttpTest {
 
     // SCH-D3: no schedule writer exists, windows and reservations are SQL-seeded. Stored as UTC
     // DATETIME(3) (supplement 23 §2); the HTTP projection renders Asia/Shanghai +08:00.
-    seedWindow(merchantId, storeId, grooming, "2026-10-12 01:15:00", "2026-10-12 10:10:00", 5, "OPEN");
-    seedWindow(merchantId, storeId, grooming, "2026-10-13 02:00:00", "2026-10-13 03:00:00", 1, "OPEN");
-    seedWindow(merchantId, storeId, grooming, "2026-10-13 06:00:00", "2026-10-13 07:00:00", 2, "CLOSED");
+    seedWindow(merchantId, storeId, grooming, D1 + " 01:15:00", D1 + " 10:10:00", 5, "OPEN");
+    seedWindow(merchantId, storeId, grooming, D2 + " 02:00:00", D2 + " 03:00:00", 1, "OPEN");
+    seedWindow(merchantId, storeId, grooming, D2 + " 06:00:00", D2 + " 07:00:00", 2, "CLOSED");
     // Cross-day boarding window crossing the query-range upper boundary: returned whole.
-    seedWindow(merchantId, storeId, grooming, "2026-10-13 14:00:00", "2026-10-13 22:00:00", 4, "OPEN");
+    seedWindow(merchantId, storeId, grooming, D2 + " 14:00:00", D2 + " 22:00:00", 4, "OPEN");
     // Occupancy reads the schedule_reservation authority: TEMP_LOCKED counts, RELEASED does not.
-    seedReservation(storeId, grooming, "2026-10-12 02:00:00", "2026-10-12 03:00:00", "TEMP_LOCKED");
-    seedReservation(storeId, grooming, "2026-10-12 02:30:00", "2026-10-12 03:30:00", "RELEASED");
+    seedReservation(storeId, grooming, D1 + " 02:00:00", D1 + " 03:00:00", "TEMP_LOCKED");
+    seedReservation(storeId, grooming, D1 + " 02:30:00", D1 + " 03:30:00", "RELEASED");
     // Timezone boundary: 20:00-23:30 +08:00 on 2030-01-15 = 12:00-15:30 UTC the same day.
     seedWindow(merchantId, storeId, grooming, "2030-01-15 12:00:00", "2030-01-15 15:30:00", 5, "OPEN");
     // Pickup windows: a "return" candidate starting only 30 minutes after the pickup window -
     // the 120-minute rule is NOT applied on the query side (SCH-D4, SCH-003 owns the check).
-    seedWindow(merchantId, storeId, pickup, "2026-10-12 01:00:00", "2026-10-12 02:30:00", 5, "OPEN");
-    seedWindow(merchantId, storeId, pickup, "2026-10-12 01:30:00", "2026-10-12 03:00:00", 5, "OPEN");
+    seedWindow(merchantId, storeId, pickup, D1 + " 01:00:00", D1 + " 02:30:00", 5, "OPEN");
+    seedWindow(merchantId, storeId, pickup, D1 + " 01:30:00", D1 + " 03:00:00", 5, "OPEN");
     // Now-relative windows for the time-boundary assertions.
     seedWindow(
         merchantId, storeId, grooming, utcMinusMinutes(90), utcPlusMinutes(90), 5, "OPEN");
@@ -276,24 +285,24 @@ class ScheduleAvailabilityHttpTest {
 
     // ---- W2-SCH-001/006: aggregation over real MER/SCH SQL facts (three qualified staff).
     Reply october =
-        send("GET", availability + "?storeId=" + store + "&startDate=2026-10-12&endDate=2026-10-13", null, bearer(token));
+        send("GET", availability + "?storeId=" + store + "&startDate=" + D1 + "&endDate=" + D2, null, bearer(token));
     assertEquals(200, october.status(), october.redacted());
     List<Map<String, Object>> items = list(october.data().get("items"));
     assertEquals(3, items.size(), "OPEN windows only: CLOSED excluded; cross-day whole");
     Map<String, Object> first = items.get(0);
-    assertEquals("2026-10-12T09:15:00+08:00", first.get("start"), "minute level, business zone");
-    assertEquals("2026-10-12T18:10:00+08:00", first.get("end"));
+    assertEquals(D1 + "T09:15:00+08:00", first.get("start"), "minute level, business zone");
+    assertEquals(D1 + "T18:10:00+08:00", first.get("end"));
     assertEquals(3, ((Number) first.get("effectiveCapacity")).intValue(), "min(5, staff 3)");
     assertEquals(1, ((Number) first.get("occupiedCount")).intValue(), "TEMP_LOCKED overlap only");
     assertEquals(2, ((Number) first.get("remainingCapacity")).intValue());
     assertEquals(true, first.get("available"));
     assertEquals(WINDOW_KEYS, first.keySet(), "no windowId/version/status/configured/staff keys");
     Map<String, Object> second = items.get(1);
-    assertEquals("2026-10-13T10:00:00+08:00", second.get("start"));
+    assertEquals(D2 + "T10:00:00+08:00", second.get("start"));
     assertEquals(1, ((Number) second.get("effectiveCapacity")).intValue(), "min(1, staff 3)");
     Map<String, Object> crossDay = items.get(2);
-    assertEquals("2026-10-13T22:00:00+08:00", crossDay.get("start"), "starts inside the range");
-    assertEquals("2026-10-14T06:00:00+08:00", crossDay.get("end"), "ends outside, still whole");
+    assertEquals(D2 + "T22:00:00+08:00", crossDay.get("start"), "starts inside the range");
+    assertEquals(D2P + "T06:00:00+08:00", crossDay.get("end"), "ends outside, still whole");
     assertTrue(
         String.valueOf(items.get(0).get("start")).compareTo(String.valueOf(items.get(1).get("start"))) < 0
             && String.valueOf(items.get(1).get("start")).compareTo(String.valueOf(items.get(2).get("start"))) < 0,
@@ -304,7 +313,7 @@ class ScheduleAvailabilityHttpTest {
         send(
             "GET",
             "/api/v1/c/services/" + pickup + "/availability?storeId=" + store
-                + "&startDate=2026-10-12&endDate=2026-10-12",
+                + "&startDate=" + D1 + "&endDate=" + D1,
             null,
             bearer(token));
     assertEquals(200, pickupReply.status(), pickupReply.redacted());
@@ -366,31 +375,31 @@ class ScheduleAvailabilityHttpTest {
                 + (Long.parseLong(grooming) + 999_999)
                 + "/availability?storeId="
                 + store
-                + "&startDate=2026-10-12&endDate=2026-10-12",
+                + "&startDate=" + D1 + "&endDate=" + D1,
             null,
             bearer(token)),
         "unknown service id");
     db.jdbc.update(
         "UPDATE service_item SET status='OFFLINE' WHERE id=?", Long.parseLong(grooming));
-    assertHidden(send("GET", availability + "?storeId=" + store + "&startDate=2026-10-12&endDate=2026-10-12", null, bearer(token)));
+    assertHidden(send("GET", availability + "?storeId=" + store + "&startDate=" + D1 + "&endDate=" + D1, null, bearer(token)));
     db.jdbc.update("UPDATE service_item SET status='ACTIVE' WHERE id=?", Long.parseLong(grooming));
     db.jdbc.update("UPDATE merchant SET status='OFFLINE' WHERE id=?", merchantId);
-    assertHidden(send("GET", availability + "?storeId=" + store + "&startDate=2026-10-12&endDate=2026-10-12", null, bearer(token)));
+    assertHidden(send("GET", availability + "?storeId=" + store + "&startDate=" + D1 + "&endDate=" + D1, null, bearer(token)));
     db.jdbc.update("UPDATE merchant SET status='ACTIVE' WHERE id=?", merchantId);
     // Unknown merchant status: fail-closed 503, never conflated with the 404 above.
     db.jdbc.update("UPDATE merchant SET status='CORRUPTED' WHERE id=?", merchantId);
-    assertUnavailable(send("GET", availability + "?storeId=" + store + "&startDate=2026-10-12&endDate=2026-10-12", null, bearer(token)));
+    assertUnavailable(send("GET", availability + "?storeId=" + store + "&startDate=" + D1 + "&endDate=" + D1, null, bearer(token)));
     db.jdbc.update("UPDATE merchant SET status='ACTIVE' WHERE id=?", merchantId);
     assertEquals(
         200,
-        send("GET", availability + "?storeId=" + store + "&startDate=2026-10-12&endDate=2026-10-12", null, bearer(token))
+        send("GET", availability + "?storeId=" + store + "&startDate=" + D1 + "&endDate=" + D1, null, bearer(token))
             .status(),
         "restored facts are visible again");
     long seededStaff = db.jdbc.queryForObject(
         "SELECT id FROM merchant_staff WHERE store_id=? ORDER BY id LIMIT 1", Long.class, storeId);
     db.jdbc.update("UPDATE merchant_staff SET employment_status='UNKNOWN' WHERE id=?", seededStaff);
     assertUnavailable(send("GET", availability + "?storeId=" + store
-        + "&startDate=2026-10-12&endDate=2026-10-12", null, bearer(token)));
+        + "&startDate=" + D1 + "&endDate=" + D1, null, bearer(token)));
     db.jdbc.update("UPDATE merchant_staff SET employment_status='ACTIVE' WHERE id=?", seededStaff);
 
     // ---- W2-SCH-007: defensive missing-provider branch remains fail-closed, while the enabled
@@ -421,33 +430,33 @@ class ScheduleAvailabilityHttpTest {
     // The boot context with the provider answers 200 for the same window.
     assertEquals(
         200,
-        send("GET", availability + "?storeId=" + store + "&startDate=2026-10-12&endDate=2026-10-12", null, bearer(token))
+        send("GET", availability + "?storeId=" + store + "&startDate=" + D1 + "&endDate=" + D1, null, bearer(token))
             .status());
 
     // ---- W2-SCH-003: arguments and session. Login is mandatory (SCH-D1, outside STR-D8).
     assertEquals(
         401,
-        send("GET", availability + "?storeId=" + store + "&startDate=2026-10-12&endDate=2026-10-12", null, Map.of())
+        send("GET", availability + "?storeId=" + store + "&startDate=" + D1 + "&endDate=" + D1, null, Map.of())
             .status(),
         "anonymous stays 401 on the availability route");
     assertEquals(
         401,
-        send("GET", availability + "?storeId=" + store + "&startDate=2026-10-12&endDate=2026-10-12", null, bearer("invalid-token"))
+        send("GET", availability + "?storeId=" + store + "&startDate=" + D1 + "&endDate=" + D1, null, bearer("invalid-token"))
             .status());
     assertBad(
-        send("GET", "/api/v1/c/services/not-a-number/availability?storeId=" + store + "&startDate=2026-10-12&endDate=2026-10-12", null, bearer(token)));
+        send("GET", "/api/v1/c/services/not-a-number/availability?storeId=" + store + "&startDate=" + D1 + "&endDate=" + D1, null, bearer(token)));
     assertBad(
-        send("GET", "/api/v1/c/services/" + grooming + "/availability?startDate=2026-10-12&endDate=2026-10-12", null, bearer(token)),
+        send("GET", "/api/v1/c/services/" + grooming + "/availability?startDate=" + D1 + "&endDate=" + D1, null, bearer(token)),
         "missing storeId");
     assertBad(
-        send("GET", availability + "?storeId=" + store + "&startDate=2026/10/12&endDate=2026-10-13", null, bearer(token)));
+        send("GET", availability + "?storeId=" + store + "&startDate=2026/10/12&endDate=" + D2, null, bearer(token)));
     assertBad(
-        send("GET", availability + "?storeId=" + store + "&startDate=2026-10-13&endDate=2026-10-12", null, bearer(token)));
+        send("GET", availability + "?storeId=" + store + "&startDate=" + D2 + "&endDate=" + D1, null, bearer(token)));
     assertBad(
         send("GET", availability + "?storeId=" + store + "&startDate=2030-01-01&endDate=2030-02-01", null, bearer(token)),
         "32-day span");
     assertBad(
-        send("GET", availability + "?storeId=" + store + "&startDate=2026-10-12&endDate=2026-10-12&extra=1", null, bearer(token)));
+        send("GET", availability + "?storeId=" + store + "&startDate=" + D1 + "&endDate=" + D1 + "&extra=1", null, bearer(token)));
     assertEquals(
         200,
         send("GET", availability + "?storeId=" + store + "&startDate=2030-01-01&endDate=2030-01-31", null, bearer(token))
@@ -458,7 +467,7 @@ class ScheduleAvailabilityHttpTest {
         send(
             "GET",
             availability + "?storeId=" + (storeId + 999_999)
-                + "&startDate=2026-10-12&endDate=2026-10-12",
+                + "&startDate=" + D1 + "&endDate=" + D1,
             null,
             bearer(token)));
     // Unknown id: 404 with the registry code in the body.
@@ -468,7 +477,7 @@ class ScheduleAvailabilityHttpTest {
             "/api/v1/c/services/" + (Long.parseLong(grooming) + 999_999)
                 + "/availability?storeId="
                 + store
-                + "&startDate=2026-10-12&endDate=2026-10-12",
+                + "&startDate=" + D1 + "&endDate=" + D1,
             null,
             bearer(token)));
 
@@ -548,7 +557,7 @@ class ScheduleAvailabilityHttpTest {
               + " VALUES(?,?,?,'ENABLED',UTC_TIMESTAMP(3),UTC_TIMESTAMP(3))",
           db.ids.nextId(), staffId, Long.parseLong(serviceId));
       seedStaffAvailability(storeId, staffId,
-          "2026-10-12 00:00:00", "2026-10-14 00:00:00");
+          D1 + " 00:00:00", D2P + " 00:00:00");
       seedStaffAvailability(storeId, staffId,
           "2030-01-15 11:00:00", "2030-01-15 16:00:00");
       seedStaffAvailability(storeId, staffId,
