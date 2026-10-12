@@ -17,15 +17,18 @@ async function rejects(call: () => Promise<unknown> | unknown): Promise<unknown>
   try { await call(); return new Error('NO_THROW') } catch (error) { return error }
 }
 
+// Far-future merchant deadline: the controller's submit() gate re-checks the window against
+// the real clock (Date.now()), so a near-date fixture would rot the tests once wall time
+// passes it. Boundary assertions below pass their own explicit instants.
 const summary: RefundApplicationSummary = {
   applicationId: '881001', applicationNo: '881002', orderId: '777001', status: 'PENDING_MERCHANT',
   applicationVersion: '0', reasonCode: 'QA_REASON', refundAmount: '128.00',
-  createdAt: '2026-10-10T02:00:00.000Z', merchantDeadline: '2026-10-11T02:00:00.000Z',
+  createdAt: '2026-10-10T02:00:00.000Z', merchantDeadline: '2099-12-31T00:00:00.000Z',
 }
 const detail: RefundApplicationDetail = { ...summary, decidedAt: null, decisionId: null, refundOrderId: null }
 const receipt: RefundDecisionReceipt = {
   orderId: '777001', applicationId: '881001', applicationStatus: 'APPROVED',
-  applicationVersion: '1', merchantDeadline: '2026-10-11T02:00:00.000Z',
+  applicationVersion: '1', merchantDeadline: '2099-12-31T00:00:00.000Z',
   decidedAt: '2026-10-10T03:00:00.000Z', decisionId: '881003',
 }
 
@@ -87,9 +90,9 @@ test('model: decide window is PENDING_MERCHANT before the deadline only', () => 
   const pending = { ...detail }
   assert.equal(canDecide(pending, true, Date.parse('2026-10-10T10:00:00.000Z')), true)
   assert.equal(canDecide(pending, false, Date.parse('2026-10-10T10:00:00.000Z')), false, 'frozen/read-only never decides')
-  assert.equal(canDecide(pending, true, Date.parse('2026-10-11T02:00:00.000Z')), false, 'deadline reached hands over to the system')
-  assert.equal(deadlinePassed(pending, Date.parse('2026-10-11T02:00:01.000Z')), true)
-  assert.equal(deadlinePassed({ ...detail, status: 'APPROVED' }, Date.parse('2026-10-11T02:00:01.000Z')), false)
+  assert.equal(canDecide(pending, true, Date.parse('2099-12-31T00:00:00.000Z')), false, 'deadline reached hands over to the system')
+  assert.equal(deadlinePassed(pending, Date.parse('2099-12-31T00:00:01.000Z')), true)
+  assert.equal(deadlinePassed({ ...detail, status: 'APPROVED' }, Date.parse('2099-12-31T00:00:01.000Z')), false)
   assert.equal(canDecide({ ...detail, status: 'REJECTED' }, true, Date.parse('2026-10-10T10:00:00.000Z')), false)
   assert.equal(refundStatusTagClass('PENDING_MERCHANT'), 'mrf-tag')
   assert.equal(refundStatusTagClass('APPROVED'), 'mrf-tag mrf-tag-approved')
