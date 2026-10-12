@@ -1,0 +1,365 @@
+==== 126:675 '我的' ====
+FRAME '我的' | 402x1124@5332,5827 | fill=SOLID:#ffffff
+  RECTANGLE 'Rectangle 14' | 402x68@5332,6077 | fill=SOLID:#cdeede
+  RECTANGLE 'Rectangle 37' | 402x949@5332,6002 | fill=SOLID:#f0fbff
+  RECTANGLE 'Rectangle 10' | 402x158@5332,5831 | fill=SOLID:#cdeede
+  RECTANGLE 'Rectangle 36' | 402x158@5332,5827 | fill=SOLID:#fff6e5
+  FRAME 'A-208' | 240x446@6104,6704 | auto:VERTICAL gap=None pad[LRTB]=[1.0,1.0,1.0,1.0] align=-/- | fill=SOLID:#f8f5ee | stroke SOLID:#e9dcc8 op=0.60 w=1.0 INSIDE | r=12.0
+    FRAME 'DIV-209' | 238x357@6106,6706 | auto:VERTICAL gap=None pad[LRTB]=[None,None,None,None] align=-/-
+      RECTANGLE 'IMG-210' | 238x357@6106,6706 | fill=IMAGE:imgRef=114d1c071b1bfefcc4aeb7b5bf674acb8940c554/FILL
+    FRAME 'DIV-211' | 238x87@6106,7063 | auto:VERTICAL gap=None pad[LRTB]=[12.0,12.0,12.0,12.0] align=-/-
+      FRAME 'margin-wrap' | 214x43@6118,7075 | auto:HORIZONTAL gap=None pad[LRTB]=[None,None,None,10.0] align=-/-
+        FRAME 'P-212' | 214x33@6118,7075 | auto:HORIZONTAL gap=None pad[LRTB]=[None,None,None,None] align=-/-
+          TEXT '接手照顾了一只小仓鼠，圆滚滚的特别可爱，每天喂食换垫料，主人说放心多了！-214' | 204x50@6118,7075 | fill=SOLID:#402e26 | text='接手照顾了一只小仓鼠，圆滚滚的特别可爱，每天喂食换垫料，主人说放心多了！' | font=Roboto w=400 sz=12.0 lh=16.5 ls=0.0 | tcolor=SOLID:#402e26
+      FRAME 'DIV-215' | 214x20@6118,7118 | auto:HORIZONTAL gap=None pad[LRTB]=[None,None,None,None] align=SPACE_BETWEEN/CENTER
+        FRAME 'DIV-216' | 59x20@6118,7118 | auto:HORIZONTAL gap=6.0 pad[LRTB]=[None,None,None,None] align=-/CENTER
+          RECTANGLE 'IMG-217' | 20x20@6118,7118 | fill=IMAGE:imgRef=b35b0d78d6299ff5f3e6fdbb15c7517d2429f62d/FILL | r=9999.0
+          FRAME 'SPAN-218' | 33x16@6144,7120 | auto:HORIZONTAL gap=None pad[LRTB]=[None,None,None,None] align=-/CENTER
+            TEXT '李阿姨-220' | 33x17@6144,7120 | fill=SOLID:#7b5b4a | text='李阿姨' | font=Roboto w=400 sz=11.0 lh=16.5 ls=0.0 | tcolor=SOLID:#7b5b4a
+        FRAME 'DIV-221' | 29x16@6303,7120 | auto:HORIZONTAL gap=4.0 pad[LRTB]=[None,None,None,None] align=-/CENTER
+          FRAME 'I-222' | 12x16@6303,7120 | auto:HORIZONTAL gap=None pad[LRTB]=[None,None,None,None] align=-/CENTER
+            FRAME 'Icon-223' | 12x12@6303,7122
+              GROUP 'Group' | 10x9@6304,7123
+                VECTOR 'Vector' | 10x9@6304,7123 | fill=SOLID:#9e7660
+          FRAME 'SPAN-224' | 12x16@6320,7120 | auto:HORIZONTAL gap=None pad[LRTB]=[None,None,None,None] align=-/CENTER
+            TEXT '63-226' | 13x17@6320,7120 | fill=SOLID:#9e7660 | text='63' | font=Roboto w=400 sz=11.0 lh=16.5 ls=0.0 | tcolor=SOLID:#9e7660
+  RECTANGLE 'huaban-5913185224 1' | 402x175@5332,5827 | fill=IMAGE:imgRef=a20e1db6e875df18127ad7c7bec190d963ba338f/STRETCH
+  FRAME 'DIV-60' | 343x267@5361,6093 | auto:VERTICAL gap=None pad[LRTB]=[None,None,None,None] align=-/-
+    FRAME 'DIV-61' | 343x170@5361,6093 | auto:VERTICAL gap=None pad[LRTB]=[16.0,16.0,16.0,16.0] align=-/- | fill=GRADIENT_LINEAR:[#c0ecff@0.00,#e4f6f3@1.00] | r=12.0
+      FRAME 'DIV-62' | 311x28@5377,6109 | auto:HORIZONTAL gap=None pad[LRTB]=[None,None,None,None] align=SPACE_BETWEEN/CENTER
+        FRAME 'DIV-63' | 85x28@5377,6109 | auto:HORIZONTAL gap=8.0 pad[LRTB]=[None,None,None,None] align=-/CENTER
+          FRAME 'I-64' | 21x28@5377,6109 | auto:HORIZONTAL gap=None pad[LRTB]=[None,None,None,None] align=-/CENTER
+            FRAME 'Icon-65' | 21x20@5377,6113
+              GROUP 'Group' | 17x17@5379,6115
+                VECTOR 'Vector' | 17x17@5379,6115 | fill=SOLID:#53bfee
+          FRAME 'SPAN-66' | 56x20@5406,6113 | auto:HORIZONTAL gap=None pad[LRTB]=[None,None,None,None] align=-/CENTER
+            TEXT '每日签到-68' | 56x20@5406,6113 | fill=SOLID:#53bfee | text='每日签到' | font=Outfit w=700 sz=14.0 lh=20.0 ls=0.0 | tcolor=SOLID:#53bfee
+        FRAME 'SPAN-69' | 75x24@5613,6111 | auto:HORIZONTAL gap=None pad[LRTB]=[None,None,None,None] align=-/-
+          TEXT '连续签到 \u200b-71' | 51x16@5613,6111 | fill=SOLID:#53bfee | text='连续签到 \u200b' | font=Roboto w=400 sz=12.0 lh=16.0 ls=0.0 | tcolor=SOLID:#53bfee
+          TEXT '0-74' | 10x15@5664,6111 | fill=SOLID:#53bfee | text='0' | font=Roboto w=700 sz=16.0 lh=15.0 ls=0.0 | tcolor=SOLID:#53bfee
+          TEXT ' 天-76' | 15x16@5674,6111 | fill=SOLID:#53bfee | text=' 天' | font=Roboto w=400 sz=12.0 lh=16.0 ls=0.0 | tcolor=SOLID:#53bfee
+      FRAME 'margin-wrap' | 311x62@5377,6137 | auto:HORIZONTAL gap=None pad[LRTB]=[None,None,12.0,None] align=-/-
+        FRAME 'DIV-77' | 311x50@5377,6149 | auto:HORIZONTAL gap=None pad[LRTB]=[None,None,None,None] align=SPACE_BETWEEN/CENTER
+          FRAME 'DIV-78' | 32x50@5377,6149 | auto:VERTICAL gap=4.0 pad[LRTB]=[None,None,None,None] align=-/CENTER
+            FRAME 'DIV-79' | 32x32@5377,6149 | auto:HORIZONTAL gap=None pad[LRTB]=[None,None,None,None] align=CENTER/CENTER | fill=SOLID:#f0fbff | r=9999.0
+              TEXT '三-81' | 12x16@5387,6157 | fill=SOLID:#53bfee | text='三' | font=Roboto w=700 sz=12.0 lh=16.0 ls=0.0 | tcolor=SOLID:#53bfee
+            FRAME 'SPAN-82' | 10x14@5388,6185 | auto:HORIZONTAL gap=None pad[LRTB]=[None,None,None,None] align=-/CENTER
+              TEXT '26-84' | 11x14@5388,6185 | fill=SOLID:#53bfee | text='26' | font=Roboto w=400 sz=9.0 lh=13.5 ls=0.0 | tcolor=SOLID:#53bfee
+          FRAME 'DIV-85' | 32x50@5424,6149 | auto:VERTICAL gap=4.0 pad[LRTB]=[None,None,None,None] align=-/CENTER
+            FRAME 'DIV-86' | 32x32@5424,6149 | auto:HORIZONTAL gap=None pad[LRTB]=[None,None,None,None] align=CENTER/CENTER | fill=SOLID:#f0fbff | r=9999.0
+              TEXT '四-88' | 12x16@5434,6157 | fill=SOLID:#53bfee | text='四' | font=Roboto w=700 sz=12.0 lh=16.0 ls=0.0 | tcolor=SOLID:#53bfee
+            FRAME 'SPAN-89' | 10x14@5434,6185 | auto:HORIZONTAL gap=None pad[LRTB]=[None,None,None,None] align=-/CENTER
+              TEXT '27-91' | 11x14@5434,6185 | fill=SOLID:#53bfee | text='27' | font=Roboto w=400 sz=9.0 lh=13.5 ls=0.0 | tcolor=SOLID:#53bfee
+          FRAME 'DIV-92' | 32x50@5470,6149 | auto:VERTICAL gap=4.0 pad[LRTB]=[None,None,None,None] align=-/CENTER
+            FRAME 'DIV-93' | 32x32@5470,6149 | auto:HORIZONTAL gap=None pad[LRTB]=[None,None,None,None] align=CENTER/CENTER | fill=SOLID:#f0fbff | r=9999.0
+              TEXT '五-95' | 12x16@5480,6157 | fill=SOLID:#53bfee | text='五' | font=Roboto w=700 sz=12.0 lh=16.0 ls=0.0 | tcolor=SOLID:#53bfee
+            FRAME 'SPAN-96' | 10x14@5481,6185 | auto:HORIZONTAL gap=None pad[LRTB]=[None,None,None,None] align=-/CENTER
+              TEXT '28-98' | 11x14@5481,6185 | fill=SOLID:#53bfee | text='28' | font=Roboto w=400 sz=9.0 lh=13.5 ls=0.0 | tcolor=SOLID:#53bfee
+          FRAME 'DIV-99' | 32x50@5516,6149 | auto:VERTICAL gap=4.0 pad[LRTB]=[None,None,None,None] align=-/CENTER
+            FRAME 'DIV-100' | 32x32@5516,6149 | auto:HORIZONTAL gap=None pad[LRTB]=[None,None,None,None] align=CENTER/CENTER | fill=SOLID:#f0fbff | r=9999.0
+              TEXT '六-102' | 12x16@5526,6157 | fill=SOLID:#53bfee | text='六' | font=Roboto w=700 sz=12.0 lh=16.0 ls=0.0 | tcolor=SOLID:#53bfee
+            FRAME 'SPAN-103' | 10x14@5527,6185 | auto:HORIZONTAL gap=None pad[LRTB]=[None,None,None,None] align=-/CENTER
+              TEXT '29-105' | 11x14@5527,6185 | fill=SOLID:#53bfee | text='29' | font=Roboto w=400 sz=9.0 lh=13.5 ls=0.0 | tcolor=SOLID:#53bfee
+          FRAME 'DIV-106' | 32x50@5563,6149 | auto:VERTICAL gap=4.0 pad[LRTB]=[None,None,None,None] align=-/CENTER
+            FRAME 'DIV-107' | 32x32@5563,6149 | auto:HORIZONTAL gap=None pad[LRTB]=[None,None,None,None] align=CENTER/CENTER | fill=SOLID:#f0fbff | r=9999.0
+              TEXT '日-109' | 12x16@5573,6157 | fill=SOLID:#53bfee | text='日' | font=Roboto w=700 sz=12.0 lh=16.0 ls=0.0 | tcolor=SOLID:#53bfee
+            FRAME 'SPAN-110' | 10x14@5574,6185 | auto:HORIZONTAL gap=None pad[LRTB]=[None,None,None,None] align=-/CENTER
+              TEXT '30-112' | 11x14@5574,6185 | fill=SOLID:#53bfee | text='30' | font=Roboto w=400 sz=9.0 lh=13.5 ls=0.0 | tcolor=SOLID:#53bfee
+          FRAME 'DIV-113' | 32x50@5610,6149 | auto:VERTICAL gap=4.0 pad[LRTB]=[None,None,None,None] align=-/CENTER
+            FRAME 'DIV-114' | 32x32@5610,6149 | auto:HORIZONTAL gap=None pad[LRTB]=[None,None,None,None] align=CENTER/CENTER | fill=SOLID:#f0fbff | r=9999.0
+              TEXT '一-116' | 12x16@5620,6157 | fill=SOLID:#53bfee | text='一' | font=Roboto w=700 sz=12.0 lh=16.0 ls=0.0 | tcolor=SOLID:#53bfee
+            FRAME 'SPAN-117' | 10x14@5620,6185 | auto:HORIZONTAL gap=None pad[LRTB]=[None,None,None,None] align=-/CENTER
+              TEXT '31-119' | 11x14@5620,6185 | fill=SOLID:#53bfee | text='31' | font=Roboto w=400 sz=9.0 lh=13.5 ls=0.0 | tcolor=SOLID:#53bfee
+          FRAME 'DIV-120' | 32x50@5656,6149 | auto:VERTICAL gap=4.0 pad[LRTB]=[None,None,None,None] align=-/CENTER
+            FRAME 'DIV-121' | 32x32@5656,6149 | auto:HORIZONTAL gap=None pad[LRTB]=[None,None,None,None] align=CENTER/CENTER | fill=SOLID:#f0fbff | r=9999.0
+              TEXT '二-123' | 12x16@5666,6157 | fill=SOLID:#53bfee | text='二' | font=Roboto w=700 sz=12.0 lh=16.0 ls=0.0 | tcolor=SOLID:#53bfee
+            FRAME 'SPAN-124' | 10x14@5667,6185 | auto:HORIZONTAL gap=None pad[LRTB]=[None,None,None,None] align=-/CENTER
+              TEXT '01-126' | 11x14@5667,6185 | fill=SOLID:#53bfee | text='01' | font=Roboto w=400 sz=9.0 lh=13.5 ls=0.0 | tcolor=SOLID:#53bfee
+      FRAME 'margin-wrap' | 311x48@5377,6198 | auto:HORIZONTAL gap=None pad[LRTB]=[None,None,12.0,None] align=-/-
+        FRAME 'BUTTON-127' | 311x36@5377,6210 | auto:HORIZONTAL gap=None pad[LRTB]=[None,None,8.0,8.0] align=CENTER/CENTER | fill=SOLID:#ffffff | r=9999.0
+          TEXT '立即签到 · 得 5 积分-129' | 124x20@5470,6218 | fill=SOLID:#53bfee | text='立即签到 · 得 5 积分' | font=Roboto w=500 sz=14.0 lh=20.0 ls=0.0 | tcolor=SOLID:#53bfee | ta=CENTER
+    FRAME 'margin-wrap' | 343x97@5361,6262 | auto:HORIZONTAL gap=None pad[LRTB]=[None,None,12.0,None] align=-/-
+      FRAME 'DIV-130' | 343x85@5361,6274 | auto:HORIZONTAL gap=8.0 pad[LRTB]=[None,None,None,None] align=-/-
+        FRAME 'BUTTON-131' | 109x85@5361,6274 | auto:VERTICAL gap=6.0 pad[LRTB]=[1.0,1.0,13.0,13.0] align=-/CENTER | fill=SOLID:#ffffff | stroke SOLID:#c0ecff w=1.0 INSIDE | r=12.0
+          FRAME 'DIV-132' | 40x40@5396,6288 | auto:HORIZONTAL gap=None pad[LRTB]=[None,None,None,None] align=CENTER/CENTER | fill=SOLID:#ffcfba op=0.68 | r=12.0
+            FRAME 'I-133' | 21x28@5405,6294 | auto:HORIZONTAL gap=None pad[LRTB]=[None,None,None,None] align=CENTER/CENTER
+              FRAME 'Icon-134' | 21x20@5405,6298
+                GROUP 'Group' | 17x17@5407,6300
+                  VECTOR 'Vector' | 17x17@5407,6300 | fill=SOLID:#ffffff
+          FRAME 'SPAN-135' | 44x13@5394,6334 | auto:HORIZONTAL gap=None pad[LRTB]=[None,None,None,None] align=CENTER/CENTER
+            TEXT '拉新任务-137' | 44x14@5394,6334 | fill=SOLID:#3c3c3c | text='拉新任务' | font=Roboto w=400 sz=11.0 lh=13.199999809265137 ls=0.0 | tcolor=SOLID:#3c3c3c | ta=CENTER
+        FRAME 'BUTTON-138' | 109x85@5478,6274 | auto:VERTICAL gap=6.0 pad[LRTB]=[1.0,1.0,13.0,13.0] align=-/CENTER | fill=SOLID:#ffffff | stroke SOLID:#c0ecff w=1.0 INSIDE | r=12.0
+          FRAME 'DIV-139' | 40x40@5512,6288 | auto:HORIZONTAL gap=None pad[LRTB]=[None,None,None,None] align=CENTER/CENTER | fill=SOLID:#c0ecff | r=12.0
+            FRAME 'I-140' | 21x28@5522,6294 | auto:HORIZONTAL gap=None pad[LRTB]=[None,None,None,None] align=CENTER/CENTER
+              FRAME 'Icon-141' | 21x20@5522,6298
+                GROUP 'Group' | 18x16@5523,6301
+                  VECTOR 'Vector' | 18x16@5523,6301 | fill=SOLID:#ffffff
+          FRAME 'SPAN-142' | 44x13@5510,6334 | auto:HORIZONTAL gap=None pad[LRTB]=[None,None,None,None] align=CENTER/CENTER
+            TEXT '奖励领取-144' | 44x14@5510,6334 | fill=SOLID:#3c3c3c | text='奖励领取' | font=Roboto w=400 sz=11.0 lh=13.199999809265137 ls=0.0 | tcolor=SOLID:#3c3c3c | ta=CENTER
+        FRAME 'BUTTON-145' | 109x85@5595,6274 | auto:VERTICAL gap=6.0 pad[LRTB]=[1.0,1.0,13.0,13.0] align=-/CENTER | fill=SOLID:#ffffff | stroke SOLID:#c0ecff w=1.0 INSIDE | r=12.0
+          FRAME 'DIV-146' | 40x40@5630,6288 | auto:HORIZONTAL gap=None pad[LRTB]=[None,None,None,None] align=CENTER/CENTER | fill=SOLID:#c0ecff | r=12.0
+            FRAME 'I-147' | 21x28@5639,6294 | auto:HORIZONTAL gap=None pad[LRTB]=[None,None,None,None] align=CENTER/CENTER
+              FRAME 'Icon-148' | 21x20@5639,6298
+                GROUP 'Group' | 17x17@5641,6300
+                  VECTOR 'Vector' | 17x17@5641,6300 | fill=SOLID:#ffffff
+          FRAME 'SPAN-149' | 44x13@5628,6334 | auto:HORIZONTAL gap=None pad[LRTB]=[None,None,None,None] align=CENTER/CENTER
+            TEXT '积分明细-151' | 44x14@5628,6334 | fill=SOLID:#3c3c3c | text='积分明细' | font=Roboto w=400 sz=11.0 lh=13.199999809265137 ls=0.0 | tcolor=SOLID:#3c3c3c | ta=CENTER
+  GROUP 'Group 28' | 413x250@5326,5831
+    VECTOR 'Vector 2' | 356x242@5340,5839 | fill=SOLID:#5baae8
+    VECTOR 'Vector 3' | 413x244@5326,5831 | fill=SOLID:#f9fffc | rot=0.0
+    RECTANGLE 'huaban-6727256158 1' | 52x52@5345,5831 | fill=IMAGE:imgRef=a7b2f580dff53f87ccb17efd08ef68683659537b/FILL
+  FRAME 'DIV-152' | 375x124@5346,6374 | auto:VERTICAL gap=None pad[LRTB]=[16.0,16.0,None,None] align=-/-
+    FRAME 'DIV-153' | 343x124@5362,6374 | auto:VERTICAL gap=None pad[LRTB]=[13.0,13.0,13.0,13.0] align=-/- | fill=SOLID:#ffffff | stroke SOLID:#c0ecff w=1.0 INSIDE | r=12.0
+      FRAME 'margin-wrap' | 317x32@5376,6388 | auto:HORIZONTAL gap=None pad[LRTB]=[None,None,None,12.0] align=-/-
+        FRAME 'DIV-154' | 317x20@5376,6388 | auto:HORIZONTAL gap=None pad[LRTB]=[None,None,None,None] align=SPACE_BETWEEN/CENTER
+          FRAME 'H2-155' | 56x20@5376,6388 | auto:HORIZONTAL gap=None pad[LRTB]=[None,None,None,None] align=-/CENTER
+            TEXT '我的订单-157' | 56x20@5376,6388 | fill=SOLID:#3c3c3c | text='我的订单' | font=Outfit w=700 sz=14.0 lh=20.0 ls=0.0 | tcolor=SOLID:#3c3c3c
+          FRAME 'A-158' | 61x20@5632,6388 | auto:HORIZONTAL gap=2.0 pad[LRTB]=[None,None,None,None] align=-/CENTER
+            TEXT '全部订单-160' | 44x17@5632,6390 | fill=SOLID:#3c3c3c | text='全部订单' | font=Roboto w=400 sz=11.0 lh=16.5 ls=0.0 | tcolor=SOLID:#3c3c3c
+            FRAME 'I-161' | 15x20@5678,6388 | auto:HORIZONTAL gap=None pad[LRTB]=[None,None,None,None] align=-/CENTER
+              FRAME 'Icon-162' | 15x14@5678,6391
+                GROUP 'Group' | 5x7@5683,6394
+                  VECTOR 'Vector' | 5x7@5683,6394 | fill=SOLID:#3c3c3c
+      FRAME 'DIV-163' | 317x66@5376,6420 | auto:HORIZONTAL gap=8.0 pad[LRTB]=[None,None,None,None] align=-/-
+        FRAME 'A-164' | 57x66@5376,6420 | auto:VERTICAL gap=6.0 pad[LRTB]=[None,None,4.0,4.0] align=-/CENTER
+          FRAME 'DIV-165' | 36x36@5386,6424 | auto:HORIZONTAL gap=None pad[LRTB]=[None,None,None,None] align=CENTER/CENTER
+            FRAME 'I-166' | 25x32@5392,6426 | auto:HORIZONTAL gap=None pad[LRTB]=[None,None,None,None] align=-/CENTER
+              FRAME 'Icon-167' | 25x24@5392,6430
+                GROUP 'Group' | 20x20@5394,6432
+                  VECTOR 'Vector' | 20x20@5394,6432 | fill=SOLID:#577683
+            FRAME 'SPAN-168' | 16x16@5408,6422 | auto:HORIZONTAL gap=None pad[LRTB]=[4.0,4.0,None,None] align=CENTER/CENTER | fill=SOLID:#5baae8 | r=9999.0
+              TEXT '1-170' | 6x14@5414,6423 | fill=SOLID:#ffffff | text='1' | font=Roboto w=400 sz=9.0 lh=13.5 ls=0.0 | tcolor=SOLID:#ffffff
+          FRAME 'SPAN-171' | 33x16@5388,6466 | auto:HORIZONTAL gap=None pad[LRTB]=[None,None,None,None] align=-/CENTER
+            TEXT '待服务-173' | 33x17@5388,6466 | fill=SOLID:#577683 | text='待服务' | font=Roboto w=400 sz=11.0 lh=16.5 ls=0.0 | tcolor=SOLID:#577683
+        FRAME 'A-174' | 57x66@5441,6420 | auto:VERTICAL gap=6.0 pad[LRTB]=[None,None,4.0,4.0] align=-/CENTER
+          FRAME 'DIV-175' | 36x36@5452,6424 | auto:HORIZONTAL gap=None pad[LRTB]=[None,None,None,None] align=CENTER/CENTER
+            FRAME 'I-176' | 25x32@5457,6426 | auto:HORIZONTAL gap=None pad[LRTB]=[None,None,None,None] align=-/CENTER
+              FRAME 'Icon-177' | 25x24@5457,6430
+                GROUP 'Group' | 20x20@5460,6432
+                  VECTOR 'Vector' | 20x20@5460,6432 | fill=SOLID:#577683
+            FRAME 'SPAN-178' | 16x16@5474,6422 | auto:HORIZONTAL gap=None pad[LRTB]=[4.0,4.0,None,None] align=CENTER/CENTER | fill=SOLID:#5baae8 | r=9999.0
+              TEXT '1-180' | 6x14@5478,6423 | fill=SOLID:#ffffff | text='1' | font=Roboto w=400 sz=9.0 lh=13.5 ls=0.0 | tcolor=SOLID:#ffffff
+          FRAME 'SPAN-181' | 33x16@5453,6466 | auto:HORIZONTAL gap=None pad[LRTB]=[None,None,None,None] align=-/CENTER
+            TEXT '进行中-183' | 33x17@5453,6466 | fill=SOLID:#577683 | text='进行中' | font=Roboto w=400 sz=11.0 lh=16.5 ls=0.0 | tcolor=SOLID:#577683
+        FRAME 'A-184' | 57x66@5506,6420 | auto:VERTICAL gap=6.0 pad[LRTB]=[None,None,4.0,4.0] align=-/CENTER
+          FRAME 'DIV-185' | 36x36@5516,6424 | auto:HORIZONTAL gap=None pad[LRTB]=[None,None,None,None] align=CENTER/CENTER
+            FRAME 'I-186' | 25x32@5522,6426 | auto:HORIZONTAL gap=None pad[LRTB]=[None,None,None,None] align=-/CENTER
+              FRAME 'Icon-187' | 25x24@5522,6430
+                GROUP 'Group' | 20x20@5524,6432
+                  VECTOR 'Vector' | 20x20@5524,6432 | fill=SOLID:#577683
+            FRAME 'SPAN-188' | 16x16@5538,6422 | auto:HORIZONTAL gap=None pad[LRTB]=[4.0,4.0,None,None] align=CENTER/CENTER | fill=SOLID:#5baae8 | r=9999.0
+              TEXT '5-190' | 6x14@5544,6423 | fill=SOLID:#ffffff | text='5' | font=Roboto w=400 sz=9.0 lh=13.5 ls=0.0 | tcolor=SOLID:#ffffff
+          FRAME 'SPAN-191' | 33x16@5518,6466 | auto:HORIZONTAL gap=None pad[LRTB]=[None,None,None,None] align=-/CENTER
+            TEXT '已完成-193' | 33x17@5518,6466 | fill=SOLID:#577683 | text='已完成' | font=Roboto w=400 sz=11.0 lh=16.5 ls=0.0 | tcolor=SOLID:#577683
+        FRAME 'A-194' | 57x66@5571,6420 | auto:VERTICAL gap=6.0 pad[LRTB]=[None,None,4.0,4.0] align=-/CENTER
+          FRAME 'DIV-195' | 36x36@5582,6424 | auto:HORIZONTAL gap=None pad[LRTB]=[None,None,None,None] align=CENTER/CENTER
+            FRAME 'I-196' | 25x32@5587,6426 | auto:HORIZONTAL gap=None pad[LRTB]=[None,None,None,None] align=-/CENTER
+              FRAME 'Icon-197' | 25x24@5587,6430
+                GROUP 'Group' | 20x20@5590,6432
+                  VECTOR 'Vector' | 20x20@5590,6432 | fill=SOLID:#577683
+            FRAME 'SPAN-198' | 16x16@5604,6422 | auto:HORIZONTAL gap=None pad[LRTB]=[4.0,4.0,None,None] align=CENTER/CENTER | fill=SOLID:#5baae8 | r=9999.0
+              TEXT '1-200' | 6x14@5608,6423 | fill=SOLID:#ffffff | text='1' | font=Roboto w=400 sz=9.0 lh=13.5 ls=0.0 | tcolor=SOLID:#ffffff
+          FRAME 'SPAN-201' | 33x16@5583,6466 | auto:HORIZONTAL gap=None pad[LRTB]=[None,None,None,None] align=-/CENTER
+            TEXT '已取消-203' | 33x17@5583,6466 | fill=SOLID:#577683 | text='已取消' | font=Roboto w=400 sz=11.0 lh=16.5 ls=0.0 | tcolor=SOLID:#577683
+        FRAME 'A-204' | 57x66@5636,6420 | auto:VERTICAL gap=6.0 pad[LRTB]=[None,None,4.0,4.0] align=-/CENTER
+          FRAME 'DIV-205' | 36x36@5646,6424 | auto:HORIZONTAL gap=None pad[LRTB]=[None,None,None,None] align=CENTER/CENTER
+            FRAME 'I-206' | 25x32@5652,6426 | auto:HORIZONTAL gap=None pad[LRTB]=[None,None,None,None] align=-/CENTER
+              FRAME 'Icon-207' | 25x24@5652,6430
+                GROUP 'Group' | 21x19@5654,6432
+                  VECTOR 'Vector' | 21x19@5654,6432 | fill=SOLID:#577683
+            FRAME 'SPAN-208' | 16x16@5668,6422 | auto:HORIZONTAL gap=None pad[LRTB]=[4.0,4.0,None,None] align=CENTER/CENTER | fill=SOLID:#5baae8 | r=9999.0
+              TEXT '1-210' | 6x14@5674,6423 | fill=SOLID:#ffffff | text='1' | font=Roboto w=400 sz=9.0 lh=13.5 ls=0.0 | tcolor=SOLID:#ffffff
+          FRAME 'SPAN-211' | 44x16@5642,6466 | auto:HORIZONTAL gap=None pad[LRTB]=[None,None,None,None] align=-/CENTER
+            TEXT '订单售后-213' | 44x17@5642,6466 | fill=SOLID:#577683 | text='订单售后' | font=Roboto w=400 sz=11.0 lh=16.5 ls=0.0 | tcolor=SOLID:#577683
+  FRAME 'margin-wrap' | 375x289@5344,6499 | auto:HORIZONTAL gap=None pad[LRTB]=[None,None,16.0,None] align=-/-
+    FRAME 'DIV-214' | 375x273@5344,6515 | auto:VERTICAL gap=None pad[LRTB]=[16.0,16.0,None,None] align=-/-
+      FRAME 'DIV-215' | 343x128@5360,6515 | auto:VERTICAL gap=None pad[LRTB]=[1.0,1.0,1.0,1.0] align=-/- | fill=SOLID:#ffffff | stroke SOLID:#c0ecff w=1.0 INSIDE | r=12.0
+        FRAME 'H2-216' | 341x36@5362,6517 | auto:HORIZONTAL gap=None pad[LRTB]=[12.0,12.0,12.0,4.0] align=-/CENTER
+          TEXT '我的服务-218' | 56x20@5374,6529 | fill=SOLID:#3c3c3c | text='我的服务' | font=Outfit w=700 sz=14.0 lh=20.0 ls=0.0 | tcolor=SOLID:#3c3c3c
+        FRAME 'DIV-219' | 341x90@5362,6553 | auto:HORIZONTAL gap=None pad[LRTB]=[None,None,12.0,12.0] align=-/-
+          FRAME 'A-220' | 85x66@5362,6565 | auto:VERTICAL gap=6.0 pad[LRTB]=[None,None,None,None] align=-/CENTER
+            FRAME 'DIV-221' | 44x44@5383,6565 | auto:HORIZONTAL gap=None pad[LRTB]=[None,None,None,None] align=CENTER/CENTER | fill=SOLID:#c0ecff | r=12.0
+              FRAME 'I-222' | 21x28@5394,6573 | auto:HORIZONTAL gap=None pad[LRTB]=[None,None,None,None] align=-/CENTER
+                FRAME 'Icon-223' | 21x20@5394,6577
+                  GROUP 'Group' | 17x15@5396,6579
+                    VECTOR 'Vector' | 17x15@5396,6579 | fill=SOLID:#577683
+            FRAME 'SPAN-224' | 44x16@5383,6615 | auto:HORIZONTAL gap=None pad[LRTB]=[None,None,None,None] align=-/CENTER
+              TEXT '我的收藏-226' | 44x17@5383,6615 | fill=SOLID:#3c3c3c | text='我的收藏' | font=Roboto w=400 sz=11.0 lh=16.5 ls=0.0 | tcolor=SOLID:#3c3c3c
+          FRAME 'A-227' | 85x66@5447,6565 | auto:VERTICAL gap=6.0 pad[LRTB]=[None,None,None,None] align=-/CENTER
+            FRAME 'DIV-228' | 44x44@5468,6565 | auto:HORIZONTAL gap=None pad[LRTB]=[None,None,None,None] align=CENTER/CENTER | fill=SOLID:#c0ecff | r=12.0
+              FRAME 'I-229' | 21x28@5479,6573 | auto:HORIZONTAL gap=None pad[LRTB]=[None,None,None,None] align=-/CENTER
+                FRAME 'Icon-230' | 21x20@5479,6577
+                  GROUP 'Group' | 17x15@5482,6580
+                    VECTOR 'Vector' | 17x15@5482,6580 | fill=SOLID:#577683
+            FRAME 'SPAN-231' | 33x16@5473,6615 | auto:HORIZONTAL gap=None pad[LRTB]=[None,None,None,None] align=-/CENTER
+              TEXT '优惠券-233' | 33x17@5473,6615 | fill=SOLID:#3c3c3c | text='优惠券' | font=Roboto w=400 sz=11.0 lh=16.5 ls=0.0 | tcolor=SOLID:#3c3c3c
+          FRAME 'A-234' | 85x66@5532,6565 | auto:VERTICAL gap=6.0 pad[LRTB]=[None,None,None,None] align=-/CENTER
+            FRAME 'DIV-235' | 44x44@5553,6565 | auto:HORIZONTAL gap=None pad[LRTB]=[None,None,None,None] align=CENTER/CENTER | fill=SOLID:#c0ecff | r=12.0
+              FRAME 'I-236' | 21x28@5565,6573 | auto:HORIZONTAL gap=None pad[LRTB]=[None,None,None,None] align=-/CENTER
+                FRAME 'Icon-237' | 21x20@5565,6577
+                  GROUP 'Group' | 18x16@5566,6579
+                    VECTOR 'Vector' | 18x16@5566,6579 | fill=SOLID:#577683
+            FRAME 'SPAN-238' | 44x16@5553,6615 | auto:HORIZONTAL gap=None pad[LRTB]=[None,None,None,None] align=-/CENTER
+              TEXT '积分商城-240' | 44x17@5553,6615 | fill=SOLID:#3c3c3c | text='积分商城' | font=Roboto w=400 sz=11.0 lh=16.5 ls=0.0 | tcolor=SOLID:#3c3c3c
+          FRAME 'A-241' | 85x66@5618,6565 | auto:VERTICAL gap=6.0 pad[LRTB]=[None,None,None,None] align=-/CENTER
+            FRAME 'DIV-242' | 44x44@5638,6565 | auto:HORIZONTAL gap=None pad[LRTB]=[None,None,None,None] align=CENTER/CENTER | fill=SOLID:#c0ecff | r=12.0
+              FRAME 'I-243' | 21x28@5650,6573 | auto:HORIZONTAL gap=None pad[LRTB]=[None,None,None,None] align=-/CENTER
+                FRAME 'Icon-244' | 21x20@5650,6577
+                  GROUP 'Group' | 15x18@5653,6578
+                    VECTOR 'Vector' | 15x18@5653,6578 | fill=SOLID:#577683
+            FRAME 'SPAN-245' | 44x16@5638,6615 | auto:HORIZONTAL gap=None pad[LRTB]=[None,None,None,None] align=-/CENTER
+              TEXT '地址管理-247' | 44x17@5638,6615 | fill=SOLID:#3c3c3c | text='地址管理' | font=Roboto w=400 sz=11.0 lh=16.5 ls=0.0 | tcolor=SOLID:#3c3c3c
+      FRAME 'margin-wrap' | 343x144@5360,6644 | auto:HORIZONTAL gap=None pad[LRTB]=[None,None,16.0,None] align=-/-
+        FRAME 'DIV-248' | 343x128@5360,6660 | auto:VERTICAL gap=None pad[LRTB]=[1.0,1.0,1.0,1.0] align=-/- | fill=SOLID:#ffffff | stroke SOLID:#c0ecff w=1.0 INSIDE | r=12.0
+          FRAME 'H2-249' | 341x36@5362,6662 | auto:HORIZONTAL gap=None pad[LRTB]=[12.0,12.0,12.0,4.0] align=-/CENTER
+            TEXT '更多服务-251' | 56x20@5374,6674 | fill=SOLID:#3c3c3c | text='更多服务' | font=Outfit w=700 sz=14.0 lh=20.0 ls=0.0 | tcolor=SOLID:#3c3c3c
+          FRAME 'DIV-252' | 341x90@5362,6698 | auto:HORIZONTAL gap=None pad[LRTB]=[None,None,12.0,12.0] align=-/-
+            FRAME 'BUTTON-253' | 85x66@5362,6710 | auto:VERTICAL gap=6.0 pad[LRTB]=[None,None,None,None] align=-/CENTER
+              FRAME 'DIV-254' | 44x44@5383,6710 | auto:HORIZONTAL gap=None pad[LRTB]=[None,None,None,None] align=CENTER/CENTER | fill=SOLID:#c0ecff | r=12.0
+                FRAME 'I-255' | 21x28@5394,6718 | auto:HORIZONTAL gap=None pad[LRTB]=[None,None,None,None] align=CENTER/CENTER
+                  FRAME 'Icon-256' | 21x20@5394,6722
+                    GROUP 'Group' | 16x18@5397,6723
+                      VECTOR 'Vector' | 16x18@5397,6723 | fill=SOLID:#577683
+              FRAME 'SPAN-257' | 55x13@5377,6760 | auto:HORIZONTAL gap=None pad[LRTB]=[None,None,None,None] align=CENTER/CENTER
+                TEXT '成为服务者-259' | 55x14@5377,6759 | fill=SOLID:#3c3c3c | text='成为服务者' | font=Roboto w=400 sz=11.0 lh=13.199999809265137 ls=0.0 | tcolor=SOLID:#3c3c3c | ta=CENTER
+            FRAME 'A-260' | 85x66@5447,6710 | auto:VERTICAL gap=6.0 pad[LRTB]=[None,None,None,None] align=-/CENTER
+              FRAME 'DIV-261' | 44x44@5468,6710 | auto:HORIZONTAL gap=None pad[LRTB]=[None,None,None,None] align=CENTER/CENTER | fill=SOLID:#c0ecff | r=12.0
+                FRAME 'I-262' | 21x28@5479,6718 | auto:HORIZONTAL gap=None pad[LRTB]=[None,None,None,None] align=-/CENTER
+                  FRAME 'Icon-263' | 21x20@5479,6722
+                    GROUP 'Group' | 17x17@5482,6723
+                      VECTOR 'Vector' | 17x17@5482,6723 | fill=SOLID:#577683
+              FRAME 'SPAN-264' | 55x16@5462,6760 | auto:HORIZONTAL gap=None pad[LRTB]=[None,None,None,None] align=-/CENTER
+                TEXT '帮助与客服-266' | 55x17@5462,6759 | fill=SOLID:#3c3c3c | text='帮助与客服' | font=Roboto w=400 sz=11.0 lh=16.5 ls=0.0 | tcolor=SOLID:#3c3c3c
+            FRAME 'A-267' | 85x66@5532,6710 | auto:VERTICAL gap=6.0 pad[LRTB]=[None,None,None,None] align=-/CENTER
+              FRAME 'DIV-268' | 44x44@5553,6710 | auto:HORIZONTAL gap=None pad[LRTB]=[None,None,None,None] align=CENTER/CENTER | fill=SOLID:#c0ecff | r=12.0
+                FRAME 'I-269' | 21x28@5565,6718 | auto:HORIZONTAL gap=None pad[LRTB]=[None,None,None,None] align=-/CENTER
+                  FRAME 'Icon-270' | 21x20@5565,6722
+                    GROUP 'Group' | 17x17@5567,6723
+                      VECTOR 'Vector' | 17x17@5567,6723 | fill=SOLID:#577683
+              FRAME 'SPAN-271' | 44x16@5553,6760 | auto:HORIZONTAL gap=None pad[LRTB]=[None,None,None,None] align=-/CENTER
+                TEXT '意见反馈-273' | 44x17@5553,6759 | fill=SOLID:#3c3c3c | text='意见反馈' | font=Roboto w=400 sz=11.0 lh=16.5 ls=0.0 | tcolor=SOLID:#3c3c3c
+            FRAME 'A-274' | 85x66@5618,6710 | auto:VERTICAL gap=6.0 pad[LRTB]=[None,None,None,None] align=-/CENTER
+              FRAME 'DIV-275' | 44x44@5638,6710 | auto:HORIZONTAL gap=None pad[LRTB]=[None,None,None,None] align=CENTER/CENTER | fill=SOLID:#c0ecff | r=12.0
+                FRAME 'I-276' | 21x28@5650,6718 | auto:HORIZONTAL gap=None pad[LRTB]=[None,None,None,None] align=-/CENTER
+                  FRAME 'Icon-277' | 21x20@5650,6722
+                    GROUP 'Group' | 16x17@5652,6723
+                      VECTOR 'Vector' | 16x17@5652,6723 | fill=SOLID:#577683
+              FRAME 'SPAN-278' | 22x16@5649,6760 | auto:HORIZONTAL gap=None pad[LRTB]=[None,None,None,None] align=-/CENTER
+                TEXT '设置-280' | 22x17@5649,6759 | fill=SOLID:#3c3c3c | text='设置' | font=Roboto w=400 sz=11.0 lh=16.5 ls=0.0 | tcolor=SOLID:#3c3c3c
+  FRAME 'margin-wrap' | 375x80@5345,6788 | auto:HORIZONTAL gap=None pad[LRTB]=[None,None,16.0,None] align=-/-
+    FRAME 'DIV-281' | 375x64@5345,6804 | auto:VERTICAL gap=None pad[LRTB]=[16.0,16.0,None,None] align=-/-
+      FRAME 'BUTTON-282' | 343x64@5361,6804 | auto:HORIZONTAL gap=12.0 pad[LRTB]=[12.0,12.0,12.0,12.0] align=-/CENTER | fill=GRADIENT_LINEAR:[#dffff8@0.00,#c0ecff@1.00] | r=12.0
+        FRAME 'DIV-283' | 40x40@5373,6816 | auto:HORIZONTAL gap=None pad[LRTB]=[None,None,None,None] align=CENTER/CENTER | fill=SOLID:#ffffff | r=8.0
+          FRAME 'I-284' | 21x28@5383,6822 | auto:HORIZONTAL gap=None pad[LRTB]=[None,None,None,None] align=CENTER/CENTER
+            FRAME 'Icon-285' | 21x20@5383,6826
+              GROUP 'Group' | 18x17@5384,6828
+                VECTOR 'Vector' | 18x17@5384,6828 | fill=SOLID:#53bfee
+        FRAME 'DIV-286' | 234x33@5425,6819 | auto:VERTICAL gap=None pad[LRTB]=[None,None,None,None] align=-/-
+          FRAME 'P-287' | 234x20@5425,6819 | auto:HORIZONTAL gap=None pad[LRTB]=[None,None,None,None] align=-/CENTER
+            TEXT '成为商家-289' | 56x20@5425,6819 | fill=SOLID:#1d0d07 | text='成为商家' | font=Roboto w=700 sz=14.0 lh=20.0 ls=0.0 | tcolor=SOLID:#1d0d07
+          FRAME 'P-290' | 234x13@5425,6839 | auto:HORIZONTAL gap=None pad[LRTB]=[None,None,None,None] align=-/CENTER
+            TEXT '入驻开店，让更多宠友找到你-292' | 143x14@5425,6839 | fill=SOLID:#1d0d07 | text='入驻开店，让更多宠友找到你' | font=Roboto w=400 sz=11.0 lh=13.199999809265137 ls=0.0 | tcolor=SOLID:#1d0d07
+        FRAME 'I-293' | 21x28@5671,6822 | auto:HORIZONTAL gap=None pad[LRTB]=[None,None,None,None] align=CENTER/CENTER
+          FRAME 'Icon-294' | 21x20@5671,6826
+            GROUP 'Group' | 6x11@5678,6831
+              VECTOR 'Vector' | 6x11@5678,6831 | fill=SOLID:#53bfee
+  RECTANGLE 'IMG-5' | 69x69@5366,5881 | fill=IMAGE:imgRef=2c819ee867da87550279ec46aec8e15c00ed06e0/FILL | stroke SOLID:#c5e9f9 w=2.1439998149871826 INSIDE | r=10718.9267578125
+  FRAME 'DIV-6' | 230x51@5451,5890 | auto:VERTICAL gap=None pad[LRTB]=[None,None,None,None] align=-/-
+    FRAME 'DIV-7' | 230x30@5451,5890 | auto:HORIZONTAL gap=8.57599925994873 pad[LRTB]=[None,None,None,None] align=-/CENTER
+      FRAME 'H1-8' | 77x30@5451,5890 | auto:HORIZONTAL gap=None pad[LRTB]=[None,None,None,None] align=-/CENTER
+        TEXT '宠友小白-10' | 78x31@5451,5889 | fill=SOLID:#1d0d07 | text='宠友小白' | font=Outfit w=700 sz=19.29599952697754 lh=30.01599884033203 ls=0.0 | tcolor=SOLID:#1d0d07
+      FRAME 'SPAN-11' | 76x21@5537,5894 | auto:HORIZONTAL gap=2.1439998149871826 pad[LRTB]=[8.57599925994873,8.57599925994873,2.1439998149871826,2.1439998149871826] align=-/CENTER | fill=SOLID:#5baae8 | r=10718.9267578125
+        FRAME 'I-12' | 13x17@5545,5896 | auto:HORIZONTAL gap=None pad[LRTB]=[None,None,None,None] align=-/CENTER
+          FRAME 'Icon-13' | 13x13@5545,5898
+            GROUP 'Group' | 11x10@5547,5899
+              VECTOR 'Vector' | 11x10@5547,5899 | fill=SOLID:#f8f5ee
+        TEXT '金牌会员-15' | 43x17@5561,5896 | fill=SOLID:#f8f5ee | text='金牌会员' | font=Roboto w=400 sz=10.719999313354492 lh=16.079999923706055 ls=0.0 | tcolor=SOLID:#f8f5ee
+    FRAME 'margin-wrap' | 230x21@5451,5920 | auto:HORIZONTAL gap=None pad[LRTB]=[None,None,4.287999629974365,None] align=-/-
+      FRAME 'P-16' | 230x17@5451,5924 | auto:HORIZONTAL gap=None pad[LRTB]=[None,None,None,None] align=-/CENTER
+        TEXT '138****5678-18' | 73x18@5451,5923 | fill=SOLID:#3c3c3c | text='138****5678' | font=Roboto w=400 sz=12.863999366760254 lh=17.15199851989746 ls=0.0 | tcolor=SOLID:#3c3c3c
+  FRAME 'SPAN-19' | 34x34@5667,5898 | auto:HORIZONTAL gap=None pad[LRTB]=[None,None,None,None] align=CENTER/CENTER
+    FRAME 'I-20' | 22x30@5673,5900 | auto:HORIZONTAL gap=None pad[LRTB]=[None,None,None,None] align=-/CENTER
+      FRAME 'Icon-21' | 22x21@5673,5905
+        GROUP 'Group' | 7x11@5681,5910
+          VECTOR 'Vector' | 7x11@5681,5910 | fill=SOLID:#3c3c3c
+  GROUP 'Group 27' | 342x96@5362,5973 | r=rect[0.0,0.0,0.0,0.0]
+    RECTANGLE 'Rectangle 60' | 342x96@5362,5973 | fill=SOLID:#f0fbff | r=11.176528930664062 | shadow[0.0,3.7255096435546875,8.848085403442383,#577683 a=0.50,-0.9313774108886719]
+    FRAME 'A-23' | 79x71@5374,5986 | auto:VERTICAL gap=3.993746519088745 pad[LRTB]=[None,None,None,None] align=-/CENTER
+      FRAME 'I-24' | 19x28@5404,5986 | auto:HORIZONTAL gap=None pad[LRTB]=[None,None,None,None] align=-/CENTER
+        FRAME 'Icon-25' | 19x18@5404,5991
+          GROUP 'Group' | 15x13@5406,5993
+            VECTOR 'Vector' | 15x13@5406,5993 | fill=SOLID:#5baae8
+      FRAME 'SPAN-26' | 8x20@5410,6018 | auto:HORIZONTAL gap=None pad[LRTB]=[None,None,None,None] align=-/CENTER
+        TEXT '6-28' | 9x20@5410,6018 | fill=SOLID:#1d0d07 | text='6' | font=Roboto w=700 sz=13.97811222076416 lh=19.968730926513672 ls=0.0 | tcolor=SOLID:#1d0d07
+      FRAME 'SPAN-29' | 30x15@5399,6042 | auto:HORIZONTAL gap=None pad[LRTB]=[None,None,None,None] align=-/CENTER
+        TEXT '优惠券-31' | 30x15@5399,6042 | fill=SOLID:#5baae8 | text='优惠券' | font=Roboto w=400 sz=9.984365463256836 lh=14.97654914855957 ls=0.0 | tcolor=SOLID:#5baae8
+    FRAME 'A-32' | 79x71@5453,5986 | auto:VERTICAL gap=3.993746519088745 pad[LRTB]=[None,None,None,None] align=-/CENTER
+      FRAME 'I-33' | 19x28@5483,5986 | auto:HORIZONTAL gap=None pad[LRTB]=[None,None,None,None] align=-/CENTER
+        FRAME 'Icon-34' | 19x18@5483,5991
+          GROUP 'Group' | 16x12@5485,5994
+            VECTOR 'Vector' | 16x12@5485,5994 | fill=SOLID:#5baae8
+      FRAME 'SPAN-35' | 32x20@5477,6018 | auto:HORIZONTAL gap=None pad[LRTB]=[None,None,None,None] align=-/CENTER
+        TEXT '1280-37' | 33x20@5477,6018 | fill=SOLID:#1d0d07 | text='1280' | font=Roboto w=700 sz=13.97811222076416 lh=19.968730926513672 ls=0.0 | tcolor=SOLID:#1d0d07
+      FRAME 'SPAN-38' | 20x15@5483,6042 | auto:HORIZONTAL gap=None pad[LRTB]=[None,None,None,None] align=-/CENTER
+        TEXT '积分-40' | 20x15@5483,6042 | fill=SOLID:#5baae8 | text='积分' | font=Roboto w=400 sz=9.984365463256836 lh=14.97654914855957 ls=0.0 | tcolor=SOLID:#5baae8
+    FRAME 'A-41' | 79x71@5532,5986 | auto:VERTICAL gap=3.993746519088745 pad[LRTB]=[None,None,None,None] align=-/CENTER
+      FRAME 'I-42' | 19x28@5563,5986 | auto:HORIZONTAL gap=None pad[LRTB]=[None,None,None,None] align=-/CENTER
+        FRAME 'Icon-43' | 19x18@5563,5991
+          GROUP 'Group' | 15x14@5564,5993
+            VECTOR 'Vector' | 15x14@5564,5993 | fill=SOLID:#5baae8
+      FRAME 'SPAN-44' | 16x20@5564,6018 | auto:HORIZONTAL gap=None pad[LRTB]=[None,None,None,None] align=-/CENTER
+        TEXT '23-46' | 17x20@5564,6018 | fill=SOLID:#1d0d07 | text='23' | font=Roboto w=700 sz=13.97811222076416 lh=19.968730926513672 ls=0.0 | tcolor=SOLID:#1d0d07
+      FRAME 'SPAN-47' | 20x15@5562,6042 | auto:HORIZONTAL gap=None pad[LRTB]=[None,None,None,None] align=-/CENTER
+        TEXT '收藏-49' | 20x15@5562,6042 | fill=SOLID:#5baae8 | text='收藏' | font=Roboto w=400 sz=9.984365463256836 lh=14.97654914855957 ls=0.0 | tcolor=SOLID:#5baae8
+    FRAME 'BUTTON-50' | 79x71@5611,5986 | auto:VERTICAL gap=3.993746519088745 pad[LRTB]=[None,None,None,None] align=-/CENTER
+      FRAME 'I-51' | 19x28@5642,5986 | auto:HORIZONTAL gap=None pad[LRTB]=[None,None,None,None] align=CENTER/CENTER
+        FRAME 'Icon-52' | 19x18@5642,5991
+          GROUP 'Group' | 14x15@5644,5992
+            VECTOR 'Vector' | 14x15@5644,5992 | fill=SOLID:#5baae8
+      FRAME 'SPAN-53' | 16x20@5643,6018 | auto:HORIZONTAL gap=None pad[LRTB]=[None,None,None,None] align=CENTER/CENTER
+        TEXT '15-55' | 17x20@5643,6018 | fill=SOLID:#1d0d07 | text='15' | font=Roboto w=700 sz=13.97811222076416 lh=19.968730926513672 ls=0.0 | tcolor=SOLID:#1d0d07 | ta=CENTER
+      FRAME 'SPAN-56' | 20x12@5641,6042 | auto:HORIZONTAL gap=None pad[LRTB]=[None,None,None,None] align=CENTER/CENTER
+        TEXT '足迹-58' | 20x12@5641,6042 | fill=SOLID:#5baae8 | text='足迹' | font=Roboto w=400 sz=9.984365463256836 lh=11.98123836517334 ls=0.0 | tcolor=SOLID:#5baae8 | ta=CENTER
+  GROUP 'Group 30' | 402x76@5332,6875 | r=rect[0.0,0.0,0.0,0.0]
+    RECTANGLE 'Rectangle 34' | 402x61@5332,6889 | fill=SOLID:#c0ecff
+    RECTANGLE 'Rectangle 35' | 402x61@5332,6890 | fill=SOLID:#f0fbff
+    TEXT '首页-469' | 21x16@5362,6921 | fill=SOLID:#3c3c3c | text='首页' | font=Roboto w=500 sz=10.0 lh=15.0 ls=0.0 | tcolor=SOLID:#3c3c3c
+    TEXT '服务-475' | 22x16@5442,6921 | fill=SOLID:#3c3c3c | text='订单' | font=Roboto w=500 sz=10.0 lh=15.0 ls=0.0 | tcolor=SOLID:#3c3c3c
+    FRAME 'SPAN-477' | 53x53@5507,6875 | auto:HORIZONTAL gap=None pad[LRTB]=[None,None,None,None] align=CENTER/CENTER | fill=SOLID:#5baae8 | r=16.0
+      FRAME 'I-478' | 18x28@5524,6888 | auto:HORIZONTAL gap=None pad[LRTB]=[None,None,None,None] align=-/CENTER
+        FRAME 'Icon-479' | 27x27@5520,6887
+          GROUP 'Group' | 27x24@5520,6889
+            VECTOR 'Vector' | 27x24@5520,6889 | fill=SOLID:#fffef4
+    TEXT '宠友圈-482' | 33x16@5517,6930 | fill=SOLID:#3c3c3c | text='核销' | font=Roboto w=500 sz=10.0 lh=15.0 ls=0.0 | tcolor=SOLID:#3c3c3c | ta=CENTER
+    TEXT '消息-488' | 22x16@5603,6921 | fill=SOLID:#3c3c3c | text='消息' | font=Roboto w=500 sz=10.0 lh=15.0 ls=0.0 | tcolor=SOLID:#3c3c3c
+    TEXT '我的-494' | 21x16@5684,6921 | fill=SOLID:#3c3c3c | text='我的' | font=Roboto w=500 sz=10.0 lh=15.0 ls=0.0 | tcolor=SOLID:#3c3c3c
+    GROUP 'airship' | 21x18@5442,6899
+      VECTOR 'Vector 903' | 20x13@5443,6900 | fill=SOLID:#5baae8 | stroke SOLID:#3c3c3c w=1.0 CENTER
+      VECTOR 'Vector 902' | 20x13@5443,6900 | stroke SOLID:#3c3c3c w=1.0 CENTER
+      VECTOR 'Subtract' | 6x7@5442,6899 | fill=SOLID:#ffffff | stroke SOLID:#3c3c3c w=1.0 CENTER
+      VECTOR 'Subtract_2' | 6x7@5442,6906 | fill=SOLID:#ffffff | stroke SOLID:#3c3c3c w=1.0 CENTER
+      VECTOR 'Vector 663' | 3x0@5447,6906 | stroke SOLID:#3c3c3c w=1.0 CENTER
+      VECTOR 'Subtract_3' | 6x5@5451,6912 | fill=SOLID:#ffffff | stroke SOLID:#3c3c3c w=1.0 CENTER
+      VECTOR 'Subtract_4' | 6x5@5451,6912 | stroke SOLID:#3c3c3c w=1.0 CENTER
+      VECTOR 'Subtract_5' | 6x7@5442,6899 | stroke SOLID:#3c3c3c w=1.0 CENTER
+      VECTOR 'Subtract_6' | 6x7@5442,6906 | stroke SOLID:#3c3c3c w=1.0 CENTER
+      VECTOR 'Intersect' | 6x12@5457,6900 | fill=SOLID:#ffffff | stroke SOLID:#3c3c3c w=1.0 CENTER
+      VECTOR 'Intersect_2' | 6x12@5457,6900 | stroke SOLID:#3c3c3c w=1.0 CENTER
+    GROUP 'chat-bubble-text-square--messages-message-bubble-text-square-chat' | 17x17@5605,6899
+      VECTOR 'Union' | 17x17@5605,6899 | fill=SOLID:#5baae8 | stroke SOLID:#3c3c3c w=1.0 CENTER
+      VECTOR 'Union_2' | 17x17@5605,6899 | stroke SOLID:#3c3c3c w=1.0 CENTER
+      VECTOR 'Vector 496' | 7x0@5610,6904 | stroke SOLID:#ffffff w=1.0 CENTER
+      VECTOR 'Vector 497' | 5x0@5610,6908 | stroke SOLID:#ffffff w=1.0 CENTER
+    GROUP 'cat-2--nature-head-cat-pet-animals-felyne' | 17x17@5686,6899
+      VECTOR 'Vector' | 17x17@5686,6899 | fill=SOLID:#5baae8 | stroke SOLID:#3c3c3c w=1.0 CENTER
+      VECTOR 'Vector 1353' | 7x1@5691,6902 | stroke SOLID:#3c3c3c w=1.0 CENTER
+      VECTOR 'Vector_2' | 17x17@5686,6899 | stroke SOLID:#3c3c3c w=1.0 CENTER
+      VECTOR 'Vector 1351' | 0x1@5692,6907 | stroke SOLID:#ffffff w=1.0 CENTER
+      VECTOR 'Vector 1352' | 0x1@5697,6907 | stroke SOLID:#ffffff w=1.0 CENTER
+      VECTOR 'Vector 2593' | 2x1@5694,6910 | stroke SOLID:#ffffff w=1.0 CENTER
+      VECTOR 'Vector 1323' | 5x1@5692,6911 | stroke SOLID:#ffffff w=1.0 CENTER
+    GROUP 'home-2--door-entrance-home-house-roof-round-shelter' | 19x16@5362,6899
+      VECTOR 'Rectangle 16' | 19x16@5362,6899 | fill=SOLID:#5baae8 | stroke SOLID:#3c3c3c w=1.0 OUTSIDE
+      VECTOR 'Vector (Stroke)' | 5x7@5369,6908 | fill=SOLID:#ffffff | stroke SOLID:#3c3c3c w=1.0 OUTSIDE
+      VECTOR 'Rectangle 15' | 19x16@5362,6899 | stroke SOLID:#3c3c3c w=1.0 OUTSIDE
+      VECTOR 'Vector (Stroke)_2' | 5x7@5369,6908 | stroke SOLID:#3c3c3c w=1.0 OUTSIDE

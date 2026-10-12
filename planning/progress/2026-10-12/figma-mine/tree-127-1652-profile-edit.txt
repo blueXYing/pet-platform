@@ -1,0 +1,86 @@
+==== 127:1652 '我的-编辑资料' ====
+FRAME '我的-编辑资料' | 402x812@5820,5827 | fill=SOLID:#ffffff
+  RECTANGLE 'Rectangle 37' | 402x1208@5820,5861 | fill=SOLID:#f0fbff
+  FRAME 'A-208' | 240x446@6592,6704 | auto:VERTICAL gap=None pad[LRTB]=[1.0,1.0,1.0,1.0] align=-/- | fill=SOLID:#f8f5ee | stroke SOLID:#e9dcc8 op=0.60 w=1.0 INSIDE | r=12.0
+    FRAME 'DIV-209' | 238x357@6594,6706 | auto:VERTICAL gap=None pad[LRTB]=[None,None,None,None] align=-/-
+      RECTANGLE 'IMG-210' | 238x357@6594,6706 | fill=IMAGE:imgRef=114d1c071b1bfefcc4aeb7b5bf674acb8940c554/FILL
+    FRAME 'DIV-211' | 238x87@6594,7063 | auto:VERTICAL gap=None pad[LRTB]=[12.0,12.0,12.0,12.0] align=-/-
+      FRAME 'margin-wrap' | 214x43@6606,7075 | auto:HORIZONTAL gap=None pad[LRTB]=[None,None,None,10.0] align=-/-
+        FRAME 'P-212' | 214x33@6606,7075 | auto:HORIZONTAL gap=None pad[LRTB]=[None,None,None,None] align=-/-
+          TEXT '接手照顾了一只小仓鼠，圆滚滚的特别可爱，每天喂食换垫料，主人说放心多了！-214' | 204x50@6606,7075 | fill=SOLID:#402e26 | text='接手照顾了一只小仓鼠，圆滚滚的特别可爱，每天喂食换垫料，主人说放心多了！' | font=Roboto w=400 sz=12.0 lh=16.5 ls=0.0 | tcolor=SOLID:#402e26
+      FRAME 'DIV-215' | 214x20@6606,7118 | auto:HORIZONTAL gap=None pad[LRTB]=[None,None,None,None] align=SPACE_BETWEEN/CENTER
+        FRAME 'DIV-216' | 59x20@6606,7118 | auto:HORIZONTAL gap=6.0 pad[LRTB]=[None,None,None,None] align=-/CENTER
+          RECTANGLE 'IMG-217' | 20x20@6606,7118 | fill=IMAGE:imgRef=b35b0d78d6299ff5f3e6fdbb15c7517d2429f62d/FILL | r=9999.0
+          FRAME 'SPAN-218' | 33x16@6632,7120 | auto:HORIZONTAL gap=None pad[LRTB]=[None,None,None,None] align=-/CENTER
+            TEXT '李阿姨-220' | 33x17@6632,7120 | fill=SOLID:#7b5b4a | text='李阿姨' | font=Roboto w=400 sz=11.0 lh=16.5 ls=0.0 | tcolor=SOLID:#7b5b4a
+        FRAME 'DIV-221' | 29x16@6791,7120 | auto:HORIZONTAL gap=4.0 pad[LRTB]=[None,None,None,None] align=-/CENTER
+          FRAME 'I-222' | 12x16@6791,7120 | auto:HORIZONTAL gap=None pad[LRTB]=[None,None,None,None] align=-/CENTER
+            FRAME 'Icon-223' | 12x12@6791,7122
+              GROUP 'Group' | 10x9@6792,7123
+                VECTOR 'Vector' | 10x9@6792,7123 | fill=SOLID:#9e7660
+          FRAME 'SPAN-224' | 12x16@6808,7120 | auto:HORIZONTAL gap=None pad[LRTB]=[None,None,None,None] align=-/CENTER
+            TEXT '63-226' | 13x17@6808,7120 | fill=SOLID:#9e7660 | text='63' | font=Roboto w=400 sz=11.0 lh=16.5 ls=0.0 | tcolor=SOLID:#9e7660
+  RECTANGLE 'Rectangle 10' | 402x47@5820,5829 | fill=SOLID:#cdeede
+  RECTANGLE 'Rectangle 36' | 402x47@5820,5827 | fill=SOLID:#fff6e5
+  FRAME 'A-6' | 32x32@5839,5835 | auto:HORIZONTAL gap=None pad[LRTB]=[None,None,None,None] align=CENTER/CENTER
+    FRAME 'I-7' | 21x28@5845,5837 | auto:HORIZONTAL gap=None pad[LRTB]=[None,None,None,None] align=-/CENTER
+      FRAME 'Icon-8' | 21x20@5845,5841
+        GROUP 'Group' | 6x11@5852,5846
+          VECTOR 'Vector' | 6x11@5852,5846 | fill=SOLID:#7b5b4a
+  FRAME 'H1-9' | 64x24@5879,5839 | auto:HORIZONTAL gap=None pad[LRTB]=[None,None,None,None] align=-/CENTER
+    TEXT '编辑资料-11' | 64x24@5879,5839 | fill=SOLID:#1d0d07 | text='编辑资料' | font=Outfit w=700 sz=16.0 lh=24.0 ls=0.0 | tcolor=SOLID:#1d0d07
+  FRAME 'DIV-12' | 375x608@5833,5876 | auto:VERTICAL gap=None pad[LRTB]=[16.0,16.0,16.0,80.0] align=-/-
+    FRAME 'DIV-13' | 343x82@5849,5892 | auto:VERTICAL gap=None pad[LRTB]=[13.0,13.0,13.0,13.0] align=-/- | fill=SOLID:#ffffff | stroke SOLID:#c0ecff w=1.0 INSIDE | r=12.0
+      FRAME 'DIV-14' | 317x56@5863,5906 | auto:HORIZONTAL gap=None pad[LRTB]=[None,None,None,None] align=SPACE_BETWEEN/CENTER
+        FRAME 'SPAN-15' | 28x20@5863,5924 | auto:HORIZONTAL gap=None pad[LRTB]=[None,None,None,None] align=-/CENTER
+          TEXT '头像-17' | 28x20@5863,5924 | fill=SOLID:#402e26 | text='头像' | font=Roboto w=400 sz=14.0 lh=20.0 ls=0.0 | tcolor=SOLID:#402e26
+        FRAME 'BUTTON-18' | 85x56@6095,5906 | auto:HORIZONTAL gap=8.0 pad[LRTB]=[None,None,None,None] align=-/CENTER
+          RECTANGLE 'IMG-19' | 56x56@6095,5906 | fill=IMAGE:imgRef=2c819ee867da87550279ec46aec8e15c00ed06e0/FILL | stroke SOLID:#c0ecff w=1.0 INSIDE | r=9999.0
+          FRAME 'I-20' | 21x28@6159,5920 | auto:HORIZONTAL gap=None pad[LRTB]=[None,None,None,None] align=CENTER/CENTER
+            FRAME 'Icon-21' | 21x20@6159,5924
+              GROUP 'Group' | 6x11@6166,5929
+                VECTOR 'Vector' | 6x11@6166,5929 | fill=SOLID:#3c3c3c
+    FRAME 'margin-wrap' | 343x62@5849,5974 | auto:HORIZONTAL gap=None pad[LRTB]=[None,None,16.0,None] align=-/-
+      FRAME 'DIV-22' | 343x46@5849,5990 | auto:VERTICAL gap=None pad[LRTB]=[13.0,13.0,13.0,13.0] align=-/- | fill=SOLID:#ffffff | stroke SOLID:#c0ecff w=1.0 INSIDE | r=12.0
+        FRAME 'DIV-23' | 317x20@5863,6004 | auto:HORIZONTAL gap=None pad[LRTB]=[None,None,None,None] align=SPACE_BETWEEN/CENTER
+          FRAME 'SPAN-24' | 28x20@5863,6004 | auto:HORIZONTAL gap=None pad[LRTB]=[None,None,None,None] align=-/CENTER
+            TEXT '昵称-26' | 28x20@5863,6004 | fill=SOLID:#402e26 | text='昵称' | font=Roboto w=400 sz=14.0 lh=20.0 ls=0.0 | tcolor=SOLID:#402e26
+          FRAME 'INPUT' | 277x20@5903,6004 | auto:HORIZONTAL gap=None pad[LRTB]=[None,None,None,None] align=MAX/CENTER
+            TEXT 'INPUT-27' | 277x20@5907,6004 | fill=SOLID:#b89682 | text='请输入昵称' | font=Inter w=500 sz=14.0 lh=20.0 ls=0.0 | tcolor=SOLID:#b89682 | ta=RIGHT
+            TEXT 'INPUT-27' | 277x20@5903,6004 | fill=SOLID:#1d0d07 | text='宠友小白' | font=Roboto w=400 sz=14.0 lh=20.0 ls=0.0 | tcolor=SOLID:#1d0d07 | ta=RIGHT
+    FRAME 'margin-wrap' | 343x66@5849,6036 | auto:HORIZONTAL gap=None pad[LRTB]=[None,None,16.0,None] align=-/-
+      FRAME 'DIV-28' | 343x50@5849,6052 | auto:VERTICAL gap=None pad[LRTB]=[13.0,13.0,13.0,13.0] align=-/- | fill=SOLID:#ffffff | stroke SOLID:#c0ecff w=1.0 INSIDE | r=12.0
+        FRAME 'DIV-29' | 317x24@5863,6066 | auto:HORIZONTAL gap=None pad[LRTB]=[None,None,None,None] align=SPACE_BETWEEN/CENTER
+          FRAME 'SPAN-30' | 28x20@5863,6068 | auto:HORIZONTAL gap=None pad[LRTB]=[None,None,None,None] align=-/CENTER
+            TEXT '性别-32' | 28x20@5863,6068 | fill=SOLID:#402e26 | text='性别' | font=Roboto w=400 sz=14.0 lh=20.0 ls=0.0 | tcolor=SOLID:#402e26
+          FRAME 'DIV-33' | 136x24@6044,6066 | auto:HORIZONTAL gap=8.0 pad[LRTB]=[None,None,None,None] align=-/-
+            FRAME 'BUTTON-34' | 48x24@6044,6066 | auto:HORIZONTAL gap=None pad[LRTB]=[12.0,12.0,4.0,4.0] align=CENTER/CENTER | fill=SOLID:#5baae8 | r=9999.0
+              TEXT '保密-36' | 24x16@6056,6070 | fill=SOLID:#ffffff | text='保密' | font=Roboto w=400 sz=12.0 lh=16.0 ls=0.0 | tcolor=SOLID:#ffffff | ta=CENTER
+            FRAME 'BUTTON-37' | 36x24@6100,6066 | auto:HORIZONTAL gap=None pad[LRTB]=[12.0,12.0,4.0,4.0] align=CENTER/CENTER | fill=SOLID:#ffffff | r=9999.0
+              TEXT '男-39' | 12x16@6112,6070 | fill=SOLID:#3c3c3c | text='男' | font=Roboto w=400 sz=12.0 lh=16.0 ls=0.0 | tcolor=SOLID:#3c3c3c | ta=CENTER
+            FRAME 'BUTTON-40' | 36x24@6144,6066 | auto:HORIZONTAL gap=None pad[LRTB]=[12.0,12.0,4.0,4.0] align=CENTER/CENTER | fill=SOLID:#ffffff | r=9999.0
+              TEXT '女-42' | 12x16@6156,6070 | fill=SOLID:#3c3c3c | text='女' | font=Roboto w=400 sz=12.0 lh=16.0 ls=0.0 | tcolor=SOLID:#3c3c3c | ta=CENTER
+    FRAME 'margin-wrap' | 343x62@5849,6102 | auto:HORIZONTAL gap=None pad[LRTB]=[None,None,16.0,None] align=-/-
+      FRAME 'DIV-43' | 343x46@5849,6118 | auto:VERTICAL gap=None pad[LRTB]=[13.0,13.0,13.0,13.0] align=-/- | fill=SOLID:#ffffff | stroke SOLID:#c0ecff w=1.0 INSIDE | r=12.0
+        FRAME 'DIV-44' | 317x20@5863,6132 | auto:HORIZONTAL gap=None pad[LRTB]=[None,None,None,None] align=SPACE_BETWEEN/CENTER
+          FRAME 'SPAN-45' | 42x20@5863,6132 | auto:HORIZONTAL gap=None pad[LRTB]=[None,None,None,None] align=-/CENTER
+            TEXT '手机号-47' | 42x20@5863,6132 | fill=SOLID:#402e26 | text='手机号' | font=Roboto w=400 sz=14.0 lh=20.0 ls=0.0 | tcolor=SOLID:#402e26
+          FRAME 'SPAN-48' | 122x16@6058,6134 | auto:HORIZONTAL gap=4.0 pad[LRTB]=[None,None,None,None] align=-/CENTER
+            TEXT '138****5678-50' | 68x16@6058,6134 | fill=SOLID:#3c3c3c | text='138****5678' | font=Roboto w=400 sz=12.0 lh=16.0 ls=0.0 | tcolor=SOLID:#3c3c3c
+            FRAME 'SPAN-51' | 50x16@6130,6134 | auto:HORIZONTAL gap=None pad[LRTB]=[None,None,None,None] align=-/CENTER
+              TEXT '（已绑定）-53' | 50x16@6130,6134 | fill=SOLID:#5baae8 | text='（已绑定）' | font=Roboto w=400 sz=10.0 lh=16.0 ls=0.0 | tcolor=SOLID:#5baae8
+    FRAME 'margin-wrap' | 343x180@5849,6164 | auto:HORIZONTAL gap=None pad[LRTB]=[None,None,16.0,None] align=-/-
+      FRAME 'DIV-54' | 343x164@5849,6180 | auto:VERTICAL gap=None pad[LRTB]=[13.0,13.0,13.0,13.0] align=-/- | fill=SOLID:#ffffff | stroke SOLID:#c0ecff w=1.0 INSIDE | r=12.0
+        FRAME 'margin-wrap' | 317x29@5863,6194 | auto:HORIZONTAL gap=None pad[LRTB]=[None,None,None,8.0] align=-/-
+          FRAME 'DIV-55' | 317x21@5863,6194 | auto:HORIZONTAL gap=None pad[LRTB]=[None,None,None,None] align=-/CENTER
+            FRAME 'SPAN-56' | 56x16@5863,6196 | auto:HORIZONTAL gap=None pad[LRTB]=[None,None,None,None] align=-/-
+              TEXT '个性签名-58' | 56x20@5863,6196 | fill=SOLID:#402e26 | text='个性签名' | font=Roboto w=400 sz=14.0 lh=20.0 ls=0.0 | tcolor=SOLID:#402e26
+        FRAME 'TEXTAREA' | 317x82@5863,6223 | auto:HORIZONTAL gap=None pad[LRTB]=[13.0,13.0,11.0,11.0] align=-/- | fill=SOLID:#f0fbff | stroke SOLID:#c0ecff w=1.0 INSIDE | r=8.0
+          TEXT 'TEXTAREA-59' | 291x20@5876,6234 | fill=SOLID:#b89682 | text='介绍一下你自己吧～' | font=Inter w=500 sz=14.0 lh=20.0 ls=0.0 | tcolor=SOLID:#b89682
+          TEXT 'TEXTAREA-59' | 291x60@5877,6235 | fill=SOLID:#1d0d07 | text='爱宠物的铲屎官一枚～' | font=Roboto w=400 sz=14.0 lh=20.0 ls=0.0 | tcolor=SOLID:#1d0d07
+        FRAME 'margin-wrap' | 317x20@5863,6305 | auto:HORIZONTAL gap=None pad[LRTB]=[None,None,4.0,None] align=-/-
+          FRAME 'P-61' | 317x16@5863,6309 | auto:HORIZONTAL gap=None pad[LRTB]=[None,None,None,None] align=MAX/CENTER
+            TEXT '10/60-63' | 30x17@6150,6309 | fill=SOLID:#5baae8 | text='10/60' | font=Roboto w=400 sz=11.0 lh=16.5 ls=0.0 | tcolor=SOLID:#5baae8 | ta=RIGHT
+    FRAME 'margin-wrap' | 343x60@5849,6344 | auto:HORIZONTAL gap=None pad[LRTB]=[None,None,16.0,None] align=-/-
+      FRAME 'BUTTON-64' | 343x44@5849,6360 | auto:HORIZONTAL gap=None pad[LRTB]=[None,None,12.0,12.0] align=CENTER/CENTER | fill=SOLID:#5baae8 | r=12.0
+        TEXT '保存-66' | 28x20@6006,6372 | fill=SOLID:#ffffff | text='保存' | font=Roboto w=500 sz=14.0 lh=20.0 ls=0.0 | tcolor=SOLID:#ffffff | ta=CENTER

@@ -1,0 +1,118 @@
+{
+ "signin-calendar": {
+  "node": "126:975",
+  "bytes": 887
+ },
+ "quick-invite": {
+  "node": "126:1029",
+  "bytes": 4752
+ },
+ "quick-reward": {
+  "node": "126:1037",
+  "bytes": 1845
+ },
+ "quick-points": {
+  "node": "126:1045",
+  "bytes": 1611
+ },
+ "chevron-orders": {
+  "node": "127:1270",
+  "bytes": 229
+ },
+ "order-wait": {
+  "node": "127:1277",
+  "bytes": 1124
+ },
+ "order-doing": {
+  "node": "127:1287",
+  "bytes": 1463
+ },
+ "order-done": {
+  "node": "127:1297",
+  "bytes": 1162
+ },
+ "order-cancel": {
+  "node": "127:1307",
+  "bytes": 1232
+ },
+ "order-aftersale": {
+  "node": "127:1317",
+  "bytes": 2228
+ },
+ "svc-collect": {
+  "node": "127:1333",
+  "bytes": 1975
+ },
+ "svc-coupon": {
+  "node": "127:1341",
+  "bytes": 2234
+ },
+ "svc-mall": {
+  "node": "127:1349",
+  "bytes": 1847
+ },
+ "svc-address": {
+  "node": "127:1357",
+  "bytes": 2276
+ },
+ "svc-provider": {
+  "node": "127:1370",
+  "bytes": 1796
+ },
+ "svc-help": {
+  "node": "127:1378",
+  "bytes": 1946
+ },
+ "svc-feedback": {
+  "node": "127:1386",
+  "bytes": 1399
+ },
+ "svc-settings": {
+  "node": "127:1394",
+  "bytes": 4188
+ },
+ "banner-shop": {
+  "node": "127:1403",
+  "bytes": 2321
+ },
+ "chevron-banner": {
+  "node": "127:1412",
+  "bytes": 229
+ },
+ "chevron-user": {
+  "node": "126:926",
+  "bytes": 231
+ },
+ "stat-coupon": {
+  "node": "126:933",
+  "bytes": 2037
+ },
+ "stat-points": {
+  "node": "126:942",
+  "bytes": 2183
+ },
+ "stat-collect": {
+  "node": "126:951",
+  "bytes": 1761
+ },
+ "stat-footprint": {
+  "node": "126:960",
+  "bytes": 3135
+ },
+ "wave-blue": {
+  "node": "132:1389",
+  "bytes": 315
+ },
+ "wave-white": {
+  "node": "132:1390",
+  "bytes": 356
+ },
+ "sheet-close": {
+  "node": "129:8498",
+  "bytes": 323
+ },
+ "sheet-row": {
+  "node": "129:8986",
+  "bytes": 879
+ }
+}
