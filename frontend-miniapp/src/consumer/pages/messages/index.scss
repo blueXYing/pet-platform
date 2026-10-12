@@ -1,23 +1,143 @@
-/* No Figma original for the message center; tokens follow the application page. */
+/* 消息族页面（设计源：Figma 新版 file bp2vpcjjA5vZbHvtKkA8wl；消息主页 116:5219，变体 690:9623/690:10109
+   与其同构；列表行借用子稿 116:5755/116:6068/116:6213/116:6311 的行结构。官方变量：主蓝 #5baae8、
+   中蓝/描边 #c0ecff、浅蓝底 #f0fbff；头部米色 #fff6e5 取自原稿 Rectangle 36 填充。
+   画板宽 402：所有尺寸用 calc(var(--messages-unit) * N) 一比一映射设计稿 px。
+   状态一律 className 变体（messages-mode-* / messages-state-*），不用 data-* 选择器；
+   button 原生重置走 .messages-design button（0-1-1），按钮自身不带 CSS margin，间距由父级 flex/gap 出。 */
 .messages-page { min-height: 100vh; background: #f0fbff; color: #1d0d07; font-family: Roboto, Arial, 'Microsoft YaHei', sans-serif; }
-.messages-design button { margin: 0; padding: 0; border: 0; line-height: normal; font-weight: normal; }
-.messages-design button::after { border: 0; }
-.messages-header { height: 88rpx; background: #fff6e5; border-bottom: 2rpx solid #c0ecff; display: flex; align-items: center; gap: 16rpx; font-size: 32rpx; font-weight: 700; }
-.messages-header button { margin-left: 38rpx; color: #3185ba; background: transparent; font-size: 28rpx; }
-.messages-header #messages-preferences { margin-left: auto; }
-.messages-body { padding: 24rpx 32rpx 64rpx; display: flex; flex-direction: column; gap: 20rpx; }
 .messages-subpage { padding-top: var(--messages-top, 0px); }
-.messages-item-meta, .messages-meta { word-break: break-all; }
-.messages-item { width: 100%; box-sizing: border-box; }
-.messages-line { color: #577683; font-size: 28rpx; }
-.messages-card, .messages-item { background: #fff; border: 2rpx solid #c0ecff; border-radius: 18rpx; padding: 24rpx; display: flex; flex-direction: column; gap: 12rpx; text-align: left; }
-.messages-list { display: flex; flex-direction: column; gap: 16rpx; }
-.messages-item-head { display: flex; align-items: center; gap: 12rpx; }
-.messages-item-title { font-size: 30rpx; font-weight: 700; flex: 1; }
-.messages-dot { width: 16rpx; height: 16rpx; border-radius: 100%; background: #5baae8; }
-.messages-item-content { color: #577683; font-size: 26rpx; line-height: 1.6; overflow: hidden; text-overflow: ellipsis; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
-.messages-item-meta { color: #9bb3bd; font-size: 22rpx; }
-.messages-title { font-size: 34rpx; font-weight: 700; }
-.messages-meta { color: #9bb3bd; font-size: 22rpx; }
-.messages-content { color: #1d0d07; font-size: 28rpx; line-height: 1.7; }
-.messages-card > button { align-self: flex-start; color: #3185ba; background: transparent; font-size: 28rpx; padding: 8rpx 0; }
+.messages-design button { margin: 0; padding: 0; border: 0; background: transparent; line-height: normal; font-weight: normal; color: inherit; }
+.messages-design button::after { border: 0; }
+
+/* 头部：原稿 116:5219 米色区（0..158）内含标题行与快捷入口行；列表态左对齐标题 + 右侧设置齿轮，
+   详情态沿子稿（116:5755 等）居中标题 + 左侧返回。 */
+.messages-header {
+  position: relative;
+  display: flex;
+  align-items: center;
+  height: calc(var(--messages-unit) * 28);
+  padding-right: calc(var(--messages-unit) * 30);
+  padding-left: calc(var(--messages-unit) * 29);
+  background: #fff6e5;
+}
+.messages-header-title {
+  flex: 1;
+  min-width: 0;
+  font-size: calc(var(--messages-unit) * 16);
+  font-weight: 700;
+  line-height: calc(var(--messages-unit) * 24);
+  color: #1d0d07;
+}
+.messages-iconbtn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: calc(var(--messages-unit) * 32);
+  height: calc(var(--messages-unit) * 28);
+  flex-shrink: 0;
+}
+.messages-iconbtn-img { width: calc(var(--messages-unit) * 19); height: calc(var(--messages-unit) * 19); }
+.messages-mode-detail .messages-header-title { text-align: center; padding-left: calc(var(--messages-unit) * 60); padding-right: calc(var(--messages-unit) * 60); }
+.messages-mode-detail #messages-back { position: absolute; left: calc(var(--messages-unit) * 28); }
+
+/* 快捷入口：原稿 y=83 的四个 48x66 入口（图标圆 48 #c0ecff + 10px 标签），左右边距 30、间距 50。
+   V1 无对应后端分类与计数，原稿 14x14 角标不渲染（登记表 §4.6 偏差）。 */
+.messages-quick {
+  display: flex;
+  justify-content: space-between;
+  padding: calc(var(--messages-unit) * 13) calc(var(--messages-unit) * 30) calc(var(--messages-unit) * 9);
+  background: #fff6e5;
+}
+.messages-quick-entry { display: flex; flex-direction: column; align-items: center; width: calc(var(--messages-unit) * 48); }
+.messages-quick-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: calc(var(--messages-unit) * 48);
+  height: calc(var(--messages-unit) * 48);
+  border-radius: 50%;
+  background: #c0ecff;
+}
+.messages-quick-img { width: calc(var(--messages-unit) * 20); height: calc(var(--messages-unit) * 20); }
+.messages-quick-label {
+  margin-top: calc(var(--messages-unit) * 6);
+  font-size: calc(var(--messages-unit) * 10);
+  line-height: calc(var(--messages-unit) * 12);
+  color: #3c3c3c;
+  text-align: center;
+}
+
+/* 主体：浅蓝底 #f0fbff（原稿 Rectangle 37）。原稿 huaban 纸纹底图为 962KB 纹理噪点，
+   视觉不可辨，按纯色替代（登记表 §4.6 偏差）。 */
+.messages-body { padding: calc(var(--messages-unit) * 12) 0 calc(var(--messages-unit) * 24); background: #f0fbff; }
+.messages-line { padding: calc(var(--messages-unit) * 16) 0; text-align: center; font-size: calc(var(--messages-unit) * 12); color: #577683; }
+
+/* 通知列表行：子稿行结构（头像 44 圆 + 文本两行 + 右侧 18.75 橙色箭头 #ea9340）。
+   V1 通知无发件人头像字段，用平台占位头像（登记表 §4.6 偏差）；未读点沿主页聊天行
+   12x12 主蓝 + 2px #f8f5ee 描边落在头像右下角。 */
+.messages-list { display: flex; flex-direction: column; }
+/* 行本体是 button：选择器抬到 (0,2,0) 以压过 .messages-design button 原生重置 (0,1,1) 的 padding。 */
+.messages-design .messages-item {
+  display: flex;
+  align-items: center;
+  width: 100%;
+  box-sizing: border-box;
+  padding: calc(var(--messages-unit) * 11.5) calc(var(--messages-unit) * 16);
+  text-align: left;
+}
+.messages-item-side { position: relative; width: calc(var(--messages-unit) * 44); height: calc(var(--messages-unit) * 44); flex-shrink: 0; }
+.messages-item-avatar { width: 100%; height: 100%; border-radius: 50%; background: #c0ecff; }
+.messages-dot {
+  position: absolute;
+  right: calc(var(--messages-unit) * -1);
+  bottom: calc(var(--messages-unit) * -1);
+  width: calc(var(--messages-unit) * 12);
+  height: calc(var(--messages-unit) * 12);
+  box-sizing: border-box;
+  border-radius: 50%;
+  background: #5baae8;
+  border: 2px solid #f8f5ee;
+}
+.messages-item-main { flex: 1; min-width: 0; margin-right: calc(var(--messages-unit) * 12); margin-left: calc(var(--messages-unit) * 12); display: flex; flex-direction: column; gap: calc(var(--messages-unit) * 4); }
+.messages-item-head { display: flex; align-items: center; justify-content: space-between; gap: calc(var(--messages-unit) * 8); }
+.messages-item-title {
+  flex: 1;
+  min-width: 0;
+  font-size: calc(var(--messages-unit) * 14);
+  font-weight: 500;
+  line-height: calc(var(--messages-unit) * 20);
+  color: #1d0d07;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.messages-item-meta { flex-shrink: 0; font-size: calc(var(--messages-unit) * 10); line-height: calc(var(--messages-unit) * 12); color: #5baae8; }
+.messages-item-content {
+  font-size: calc(var(--messages-unit) * 12);
+  line-height: calc(var(--messages-unit) * 16);
+  color: #3c3c3c;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.messages-item-chevron { width: calc(var(--messages-unit) * 19); height: calc(var(--messages-unit) * 19); flex-shrink: 0; }
+
+/* 详情/空态/错误态卡片：白卡 + #c0ecff 描边（原稿卡片语言）。 */
+.messages-card {
+  margin: calc(var(--messages-unit) * 8) calc(var(--messages-unit) * 13) 0;
+  padding: calc(var(--messages-unit) * 12);
+  display: flex;
+  flex-direction: column;
+  gap: calc(var(--messages-unit) * 8);
+  background: #ffffff;
+  border: 1px solid #c0ecff;
+  border-radius: calc(var(--messages-unit) * 12);
+}
+.messages-notice { font-size: calc(var(--messages-unit) * 14); color: #577683; line-height: 1.6; }
+.messages-title { font-size: calc(var(--messages-unit) * 16); font-weight: 700; color: #1d0d07; }
+.messages-meta { font-size: calc(var(--messages-unit) * 10); color: #5baae8; word-break: break-all; }
+.messages-content { font-size: calc(var(--messages-unit) * 14); color: #402e26; line-height: 1.7; word-break: break-all; }
+.messages-card-actions { display: flex; flex-wrap: wrap; gap: calc(var(--messages-unit) * 12); }
+/* 动作按钮同样是 button：抬特异度压过原生重置的 line-height: normal。 */
+.messages-design .messages-action { font-size: calc(var(--messages-unit) * 14); line-height: calc(var(--messages-unit) * 24); color: #5baae8; }
+.messages-action-secondary { color: #577683; }
