@@ -100,13 +100,18 @@ function DetailScreen({ preview, scenario, orderId }: { preview: boolean; scenar
   const badge = detail === null ? null : orderStatusBadge(detail)
   return <ConsumerPageLayout page='orderDetail' unit={unit} className='ord-page' style={style}
     navigation={{ idPrefix: 'ord', disabled: phase === 'loading', onSelect: key => { void switchConsumerTab(key) } }}>
-    <View className='ord-design'>
-      <View className='ord-status-area' />
-      <View className='ord-nav'>
-        <Button id='ord-back' ariaLabel='返回' className='ord-nav-back' onClick={() => void goBack()}>
-          <Text className='ord-nav-back-icon'>‹</Text>
-        </Button>
-        <Text className='ord-nav-title'>订单详情</Text>
+    {/* 视觉按设计源 23:18010 族重做（登记表 §3 商家端「订单」，C 端纯视觉借用先例=列表页 0ef5aa2）：
+        奶油头带 #fff6e5 + #f0fbff 内容区、白卡 #c0ecff 描边 r16.7、居中导航标题。功能/契约/ID 与
+        aria 不变；详情样式一律走 .ordd 作用域（orders.css），不触碰退款/改期/评价共享词汇。 */}
+    <View className='ord-design ordd'>
+      <View className='ordd-hero'>
+        <View className='ord-status-area' />
+        <View className='ord-nav'>
+          <Button id='ord-back' ariaLabel='返回' className='ord-nav-back' onClick={() => void goBack()}>
+            <Text className='ord-nav-back-icon'>‹</Text>
+          </Button>
+          <Text className='ord-nav-title'>订单详情</Text>
+        </View>
       </View>
       {phase === 'loading' && <View className='ord-state' role='status'><Text id='ord-loading'>正在读取订单…</Text></View>}
       {phase === 'invalid' && <View className='ord-state' role='status'>
@@ -122,29 +127,38 @@ function DetailScreen({ preview, scenario, orderId }: { preview: boolean; scenar
         <Button id='ord-retry' className='ord-state-action' onClick={() => void load()}>重新加载</Button>
       </View>}
       {ready && <View className='ord-detail-body'>
-        <View className='ord-summary'>
-          <View className='ord-card-head'>
-            <Text className='ord-card-no'>订单号 {detail.orderNo}</Text>
-            {badge && <Text className={`ord-badge ${badge.className}`}>{badge.label}</Text>}
+        {/* 摘要卡按 23:18010 DIV-15 重排：状态胶囊居左 + 订单号右对齐（#5baae8）、时间行 #5baae8、
+            #c0ecff 压线上方实付金额行（标签 #5baae8 / 金额 #ff7a00 20.9/700）。原稿第二行服务名
+            （猫咪洗澡+美容 18.8/700）不在 C 端 OrderDetailData 契约内不渲染（PR 登记差异）。 */}
+        <View className='ordd-summary'>
+          <View className='ordd-card-head'>
+            {badge && <Text className={`ordd-badge ${badge.className}`}>{badge.label}</Text>}
+            <Text className='ordd-card-no'>订单号 {detail.orderNo}</Text>
           </View>
-          <Text className='ord-card-time'>服务时间 {appointmentWindow(detail)}</Text>
-          <Text className='ord-card-amount ord-summary-amount'>¥{detail.payAmount}</Text>
+          <Text className='ordd-card-time'>服务时间 {appointmentWindow(detail)}</Text>
+          <View className='ordd-amount-row'>
+            <Text className='ordd-amount-label'>实付金额</Text>
+            <Text className='ordd-amount-value'>¥{detail.payAmount}</Text>
+          </View>
         </View>
-        {/* 未支付单支付入口：仅凭服务端 actions.canPay（§3.7），进入 booking/pay 发起页。 */}
-        {canInitiatePayment(detail) && <Button id='ord-go-pay' className='ord-pay-action'
+        {/* 未支付单支付入口：仅凭服务端 actions.canPay（§3.7），进入 booking/pay 发起页。
+            按钮形态沿 23:18010 DIV-106（h49.2 r12.8）：主蓝实心=去支付、描边=订单改期。 */}
+        {canInitiatePayment(detail) && <Button id='ord-go-pay' className='ordd-action ordd-action-primary'
           onClick={() => { void Taro.navigateTo({ url: `/consumer/pages/booking/pay?${preview ? 'preview=1&' : ''}orderId=${encodeURIComponent(detail.orderId)}` }).catch(() => setNotice('页面跳转失败，请重试')) }}>
           去支付 ¥{detail.payAmount}
         </Button>}
         {/* §3.8 改期入口：仅凭服务端 actions.canReschedule（46号准入投影，ARCH-005 不在页面推导），
             进入改期页（新时段选择 + expectedOrderVersion CAS + 46号错误面）。 */}
-        {canRescheduleEntry(detail) && <Button id='ord-go-reschedule' className='ord-pay-action'
+        {canRescheduleEntry(detail) && <Button id='ord-go-reschedule' className='ordd-action ordd-action-outline'
           onClick={() => { void Taro.navigateTo({ url: `/consumer/pages/orders/reschedule?orderId=${encodeURIComponent(detail.orderId)}${preview ? '&preview=1' : ''}` }).catch(() => { void Taro.showToast({ title: '页面跳转失败，请重试', icon: 'none' }) }) }}>
           订单改期
         </Button>}
-        <View className='ord-facts'>
-          {orderFactRows(detail).map(row => <View key={row.id} className='ord-fact-row'>
-            <Text className='ord-fact-label'>{row.label}</Text>
-            <Text className='ord-fact-value'>{row.value}</Text>
+        {/* 事实行卡：原稿无此区块（其「客户信息/服务流程」卡不在契约内），卡壳沿家族白卡呈现，
+            label #9ca3af / value #3c3c3c（PR 登记差异）。 */}
+        <View className='ordd-facts'>
+          {orderFactRows(detail).map(row => <View key={row.id} className='ordd-fact-row'>
+            <Text className='ordd-fact-label'>{row.label}</Text>
+            <Text className='ordd-fact-value'>{row.value}</Text>
           </View>)}
         </View>
         {canShowVerifyBlock(detail)
@@ -197,7 +211,7 @@ function VerifyCodeBlock({ preview, scenario, orderId }: { preview: boolean; sce
   return <View className='ord-verify'>
     <View className='ord-verify-head'>
       <Text className='ord-verify-title'>核销码</Text>
-      {view && <Text className={`ord-badge ${credentialVariant(view.status)}`}>{statusLabels[view.status]}</Text>}
+      {view && <Text className={`ordd-badge ${credentialVariant(view.status)}`}>{statusLabels[view.status]}</Text>}
     </View>
     {state.phase === 'loading' && <Text className='ord-verify-hint' id='ord-verify-loading'>正在读取核销码…</Text>}
     {state.phase === 'unauthorized' && <View className='ord-verify-state' role='status'>
