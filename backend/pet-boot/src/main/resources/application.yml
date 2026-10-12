@@ -79,6 +79,15 @@ pet:
     enabled: false
     http:
       enabled: false
+    # REV-002 review appeal (SSOT §11.3 one-appeal-per-review; 56号; 06号 review_appeal table,
+    # zero schema change). Off by default; appeal requires the review kernel plus the store
+    # guard (pet.schedule.protection.enabled) and both real session domains (pet.auth.c /
+    # pet.auth.admin); the HTTP routes (M reads/appeal + admin list/detail/decision) ride
+    # pet.review.appeal.http.enabled on top of it.
+    appeal:
+      enabled: false
+      http:
+        enabled: false
   verification:
     completion:
       enabled: false

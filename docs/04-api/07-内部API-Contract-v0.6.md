@@ -1172,6 +1172,11 @@ public interface ReviewQueryApi {
 }
 ```
 
+> **实现状态（2026-10-10，CCR-REVIEW-APPEAL-001 / REV-002 切片）**：`checkEligibility` 已实现；
+> 本切片另落地商家/运营申诉读面（listStoreReviews / getStoreReview / listAppeals / getAppeal，
+> 挂 pet-review.enabled 之上的 pet.review.appeal.enabled）。`getByOrder` 仍未实现（无调用方）。
+> 读面字段以 [56号](56-Review-Appeal-Contract-v0.1.md) 为准。
+
 ### 14.2 ReviewCommandApi
 
 ```java
@@ -1182,6 +1187,15 @@ public interface ReviewCommandApi {
     ReviewAppealResult appeal(ReviewAppealCommand command);
 }
 ```
+
+> **实现状态（2026-10-10，CCR-REVIEW-APPEAL-001 / REV-002 切片）**：`create` 已实现（pet-review-api
+> `ReviewCommandApi` + pet-review-biz `ReviewApiImpl`）。`appeal` 本切片实现为
+> `appealWithOutcome(ReviewAppealCommand)`（HTTP 201/200 边界沿 createWithOutcome 先例），
+> `ReviewAppealCommand(context, reviewId, reason)`；另增同批裁决命令
+> `decide(ReviewAppealDecisionCommand)`（context, appealId, decisionType APPROVED/REJECTED, reason）
+> 与 §14.1 商家/运营读面（listStoreReviews/getStoreReview/listAppeals/getAppeal）。字段与
+> HTTP 口径以 [56号 评价申诉契约](56-Review-Appeal-Contract-v0.1.md) 为准；SSOT §11.3
+> 一次性申诉与「非售后复审」边界不变。
 
 评价创建前必须调用 `OrderQueryApi.checkReviewEligibility()`。
 

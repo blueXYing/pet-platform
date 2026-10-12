@@ -29,6 +29,12 @@
             <groupId>com.petplatform</groupId>
             <artifactId>pet-order-api</artifactId>
         </dependency>
+        <!-- REV-002 appeal slice: store guard for the OWNER/admin authority transactions
+             (same api-only dependency shape as the aftersale kernel). -->
+        <dependency>
+            <groupId>com.petplatform</groupId>
+            <artifactId>pet-schedule-api</artifactId>
+        </dependency>
         <dependency>
             <groupId>com.fasterxml.jackson.core</groupId>
             <artifactId>jackson-databind</artifactId>

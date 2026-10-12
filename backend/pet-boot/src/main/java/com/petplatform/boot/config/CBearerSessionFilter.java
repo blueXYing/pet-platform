@@ -84,6 +84,10 @@ public final class CBearerSessionFilter extends OncePerRequestFilter {
         // list path carries no trailing segment, so it joins the deeper prefix rule here.
         || path.equals("/api/v1/merchant/orders")
         || path.startsWith("/api/v1/merchant/orders/")
+        // Review appeal M face (contract 56 / REV-002): MINIAPP Bearer enforced; the OWNER
+        // admission over the review's merchant/store is re-proven by the review kernel.
+        || path.equals("/api/v1/merchant/reviews")
+        || path.startsWith("/api/v1/merchant/reviews/")
         || path.equals("/api/v1/merchant/staff")
         || path.startsWith("/api/v1/merchant/staff/")
         || path.matches("/api/v1/c/stores/[^/]+/services")

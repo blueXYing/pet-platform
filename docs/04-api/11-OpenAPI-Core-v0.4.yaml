@@ -3431,6 +3431,233 @@ paths:
                 $ref: '#/components/schemas/CreateReviewResponseEnvelope'
         '409':
           $ref: '#/components/responses/Conflict'
+  /merchant/reviews:
+    get:
+      tags:
+      - Merchant-Review
+      summary: 商家本店评价分页（含申诉状态投影）
+      operationId: merchantListReviews
+      x-implementation-status: IMPLEMENTED_DEFAULT_OFF
+      x-default-enabled: false
+      x-contract: 56-Review-Appeal-Contract-v0.1.md
+      x-assembly-switch: pet.review.appeal.http.enabled
+      x-route-party: MERCHANT
+      x-audience: MINIAPP
+      security:
+      - bearerAuth: []
+      parameters:
+      - name: merchantId
+        in: query
+        required: true
+        schema:
+          type: string
+          pattern: ^[1-9][0-9]{0,18}(?![\s\S])
+          maxLength: 19
+      - name: storeId
+        in: query
+        required: true
+        schema:
+          type: string
+          pattern: ^[1-9][0-9]{0,18}(?![\s\S])
+          maxLength: 19
+      - name: page
+        in: query
+        required: false
+        schema: {type: integer, minimum: 1, maximum: 10000, default: 1}
+      - name: pageSize
+        in: query
+        required: false
+        schema: {type: integer, minimum: 1, maximum: 50, default: 20}
+      responses:
+        '400': {$ref: '#/components/responses/BadRequest'}
+        '401': {$ref: '#/components/responses/Unauthorized'}
+        '403': {$ref: '#/components/responses/Forbidden'}
+        '503': {$ref: '#/components/responses/DependencyUnavailable'}
+        '200':
+          description: 成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MerchantReviewPageEnvelope'
+  /merchant/reviews/{reviewId}:
+    get:
+      tags:
+      - Merchant-Review
+      summary: 商家单条评价与申诉详情
+      operationId: merchantGetReview
+      x-implementation-status: IMPLEMENTED_DEFAULT_OFF
+      x-default-enabled: false
+      x-contract: 56-Review-Appeal-Contract-v0.1.md
+      x-assembly-switch: pet.review.appeal.http.enabled
+      x-route-party: MERCHANT
+      x-audience: MINIAPP
+      security:
+      - bearerAuth: []
+      parameters:
+      - $ref: '#/components/parameters/ReviewId'
+      responses:
+        '400': {$ref: '#/components/responses/BadRequest'}
+        '401': {$ref: '#/components/responses/Unauthorized'}
+        '403': {$ref: '#/components/responses/Forbidden'}
+        '404': {$ref: '#/components/responses/NotFound'}
+        '503': {$ref: '#/components/responses/DependencyUnavailable'}
+        '200':
+          description: 成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MerchantReviewDetailEnvelope'
+  /merchant/reviews/{reviewId}/appeal:
+    post:
+      tags:
+      - Merchant-Review
+      summary: 商家对违规评价一次性申诉（SSOT §11.3）
+      operationId: merchantAppealReview
+      x-implementation-status: IMPLEMENTED_DEFAULT_OFF
+      x-default-enabled: false
+      x-contract: 56-Review-Appeal-Contract-v0.1.md
+      x-assembly-switch: pet.review.appeal.http.enabled
+      x-route-party: MERCHANT
+      x-audience: MINIAPP
+      security:
+      - bearerAuth: []
+      parameters:
+      - $ref: '#/components/parameters/ReviewId'
+      - $ref: '#/components/parameters/RequestId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ReviewAppealRequest'
+      responses:
+        '400': {$ref: '#/components/responses/BadRequest'}
+        '401': {$ref: '#/components/responses/Unauthorized'}
+        '403': {$ref: '#/components/responses/Forbidden'}
+        '404': {$ref: '#/components/responses/NotFound'}
+        '503': {$ref: '#/components/responses/DependencyUnavailable'}
+        '200':
+          description: 幂等成功，当前权限通过后返回首次成功业务回执
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ReviewAppealReceiptEnvelope'
+        '201':
+          description: 首次提交成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ReviewAppealReceiptEnvelope'
+        '409':
+          $ref: '#/components/responses/Conflict'
+  /admin/review-appeals:
+    get:
+      tags:
+      - Admin-Review-Governance
+      summary: 评价申诉分页（review.appeal.read）
+      operationId: adminListReviewAppeals
+      x-implementation-status: IMPLEMENTED_DEFAULT_OFF
+      x-default-enabled: false
+      x-contract: 56-Review-Appeal-Contract-v0.1.md
+      x-assembly-switch: pet.review.appeal.http.enabled
+      x-route-party: OPS
+      x-audience: ADMIN_WEB
+      x-required-actions: [review.appeal.read]
+      security:
+      - bearerAuth: []
+      parameters:
+      - name: page
+        in: query
+        required: false
+        schema: {type: integer, minimum: 1, maximum: 10000, default: 1}
+      - name: pageSize
+        in: query
+        required: false
+        schema: {type: integer, minimum: 1, maximum: 50, default: 20}
+      - name: status
+        in: query
+        required: false
+        schema:
+          type: string
+          enum: [SUBMITTED, PROCESSING, APPROVED, REJECTED]
+      responses:
+        '400': {$ref: '#/components/responses/BadRequest'}
+        '401': {$ref: '#/components/responses/Unauthorized'}
+        '403': {$ref: '#/components/responses/Forbidden'}
+        '503': {$ref: '#/components/responses/DependencyUnavailable'}
+        '200':
+          description: 成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ReviewAppealPageEnvelope'
+  /admin/review-appeals/{appealId}:
+    get:
+      tags:
+      - Admin-Review-Governance
+      summary: 评价申诉详情（review.appeal.read）
+      operationId: adminGetReviewAppeal
+      x-implementation-status: IMPLEMENTED_DEFAULT_OFF
+      x-default-enabled: false
+      x-contract: 56-Review-Appeal-Contract-v0.1.md
+      x-assembly-switch: pet.review.appeal.http.enabled
+      x-route-party: OPS
+      x-audience: ADMIN_WEB
+      x-required-actions: [review.appeal.read]
+      security:
+      - bearerAuth: []
+      parameters:
+      - $ref: '#/components/parameters/AppealId'
+      responses:
+        '400': {$ref: '#/components/responses/BadRequest'}
+        '401': {$ref: '#/components/responses/Unauthorized'}
+        '403': {$ref: '#/components/responses/Forbidden'}
+        '404': {$ref: '#/components/responses/NotFound'}
+        '503': {$ref: '#/components/responses/DependencyUnavailable'}
+        '200':
+          description: 成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ReviewAppealDetailEnvelope'
+  /admin/review-appeals/{appealId}/decision:
+    post:
+      tags:
+      - Admin-Review-Governance
+      summary: 评价申诉终局裁决（review.appeal.decide；APPROVED=评价隐藏）
+      operationId: adminDecideReviewAppeal
+      x-implementation-status: IMPLEMENTED_DEFAULT_OFF
+      x-default-enabled: false
+      x-contract: 56-Review-Appeal-Contract-v0.1.md
+      x-assembly-switch: pet.review.appeal.http.enabled
+      x-route-party: OPS
+      x-audience: ADMIN_WEB
+      x-required-actions: [review.appeal.decide]
+      security:
+      - bearerAuth: []
+      parameters:
+      - $ref: '#/components/parameters/AppealId'
+      - $ref: '#/components/parameters/RequestId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ReviewAppealDecisionRequest'
+      responses:
+        '400': {$ref: '#/components/responses/BadRequest'}
+        '401': {$ref: '#/components/responses/Unauthorized'}
+        '403': {$ref: '#/components/responses/Forbidden'}
+        '404': {$ref: '#/components/responses/NotFound'}
+        '503': {$ref: '#/components/responses/DependencyUnavailable'}
+        '200':
+          description: 成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ReviewAppealDecisionReceiptEnvelope'
+        '409':
+          $ref: '#/components/responses/Conflict'
   /merchant/orders:
     get:
       tags:
@@ -11912,6 +12139,19 @@ components:
       required: true
       schema:
         $ref: '#/components/schemas/PublicId'
+    ReviewId:
+      name: reviewId
+      in: path
+      required: true
+      schema:
+        $ref: '#/components/schemas/PublicId'
+      description: 56号；非本店/不存在统一404 REVIEW_NOT_FOUND（防枚举）。
+    AppealId:
+      name: appealId
+      in: path
+      required: true
+      schema:
+        $ref: '#/components/schemas/PublicId'
     Page:
       name: page
       in: query
@@ -13916,6 +14156,183 @@ components:
         properties:
           data:
             $ref: '#/components/schemas/CreateReviewData'
+    ReviewAppealRequest:
+      type: object
+      additionalProperties: false
+      required:
+      - reason
+      properties:
+        reason:
+          type: string
+          minLength: 1
+          maxLength: 1000
+          description: 06号 reason NOT NULL VARCHAR(1000)；trim后非空，拒绝孤立surrogate。
+    ReviewAppealDecisionRequest:
+      type: object
+      additionalProperties: false
+      required:
+      - decisionType
+      - reason
+      properties:
+        decisionType:
+          type: string
+          enum: [APPROVED, REJECTED]
+          description: 06号 终态；APPROVED=申诉成立→评价 HIDDEN，REJECTED=维持展示。终局无复审。
+        reason:
+          type: string
+          minLength: 1
+          maxLength: 1000
+    ReviewAppealStatus:
+      type: string
+      enum: [SUBMITTED, PROCESSING, APPROVED, REJECTED]
+      description: 06号 review_appeal.status；PROCESSING为保留值，56号切片不产生。
+    MerchantReviewSummaryData:
+      type: object
+      additionalProperties: false
+      required:
+      - reviewId
+      - orderId
+      - storeScore
+      - serviceScore
+      - staffScore
+      - compositeScore
+      - scoreIncluded
+      - visibilityStatus
+      - content
+      - createdAt
+      - appealStatus
+      - appealId
+      properties:
+        reviewId: {$ref: '#/components/schemas/PublicId'}
+        orderId: {$ref: '#/components/schemas/PublicId'}
+        storeScore: {type: string, pattern: '^[1-5]\.0$'}
+        serviceScore: {type: string, pattern: '^[1-5]\.0$'}
+        staffScore: {type: string, pattern: '^[1-5]\.0$'}
+        compositeScore: {type: string, pattern: '^[1-5]\.[0-9]$'}
+        scoreIncluded: {type: boolean}
+        visibilityStatus: {type: string, enum: [PUBLISHED, HIDDEN]}
+        content: {type: string, nullable: true}
+        createdAt: {type: string, format: date-time, x-precision: milliseconds}
+        appealStatus: {allOf: [{$ref: '#/components/schemas/ReviewAppealStatus'}], nullable: true}
+        appealId: {type: string, nullable: true, minLength: 1, maxLength: 19, pattern: '^[1-9][0-9]{0,18}(?![\s\S])'}
+    MerchantReviewDetailData:
+      allOf:
+      - $ref: '#/components/schemas/MerchantReviewSummaryData'
+      - type: object
+        additionalProperties: false
+        properties:
+          appealReason: {type: string, nullable: true}
+          appealCreatedAt: {type: string, format: date-time, nullable: true}
+          decisionReason: {type: string, nullable: true}
+          decidedAt: {type: string, format: date-time, nullable: true}
+    MerchantReviewPageEnvelope:
+      allOf:
+      - $ref: '#/components/schemas/BaseEnvelope'
+      - type: object
+        properties:
+          data:
+            type: object
+            additionalProperties: false
+            required: [page, pageSize, total, items]
+            properties:
+              page: {type: integer}
+              pageSize: {type: integer}
+              total: {type: integer}
+              items:
+                type: array
+                items:
+                  $ref: '#/components/schemas/MerchantReviewSummaryData'
+    MerchantReviewDetailEnvelope:
+      allOf:
+      - $ref: '#/components/schemas/BaseEnvelope'
+      - type: object
+        properties:
+          data:
+            $ref: '#/components/schemas/MerchantReviewDetailData'
+    ReviewAppealReceiptData:
+      type: object
+      additionalProperties: false
+      required: [appealId, reviewId, status, createdAt]
+      properties:
+        appealId: {$ref: '#/components/schemas/PublicId'}
+        reviewId: {$ref: '#/components/schemas/PublicId'}
+        status: {$ref: '#/components/schemas/ReviewAppealStatus'}
+        createdAt: {type: string, format: date-time, x-precision: milliseconds}
+    ReviewAppealReceiptEnvelope:
+      allOf:
+      - $ref: '#/components/schemas/BaseEnvelope'
+      - type: object
+        properties:
+          data:
+            $ref: '#/components/schemas/ReviewAppealReceiptData'
+    ReviewAppealDecisionReceiptData:
+      type: object
+      additionalProperties: false
+      required: [appealId, reviewId, status, decisionType, decisionReason, decidedAt, reviewVisibility]
+      properties:
+        appealId: {$ref: '#/components/schemas/PublicId'}
+        reviewId: {$ref: '#/components/schemas/PublicId'}
+        status: {$ref: '#/components/schemas/ReviewAppealStatus'}
+        decisionType: {type: string, enum: [APPROVED, REJECTED]}
+        decisionReason: {type: string}
+        decidedAt: {type: string, format: date-time, x-precision: milliseconds}
+        reviewVisibility: {type: string, enum: [PUBLISHED, HIDDEN]}
+    ReviewAppealDecisionReceiptEnvelope:
+      allOf:
+      - $ref: '#/components/schemas/BaseEnvelope'
+      - type: object
+        properties:
+          data:
+            $ref: '#/components/schemas/ReviewAppealDecisionReceiptData'
+    ReviewAppealSummaryData:
+      type: object
+      additionalProperties: false
+      required: [appealId, reviewId, merchantId, storeId, orderId, status, reason, createdAt, decidedAt]
+      properties:
+        appealId: {$ref: '#/components/schemas/PublicId'}
+        reviewId: {$ref: '#/components/schemas/PublicId'}
+        merchantId: {$ref: '#/components/schemas/PublicId'}
+        storeId: {$ref: '#/components/schemas/PublicId'}
+        orderId: {$ref: '#/components/schemas/PublicId'}
+        status: {$ref: '#/components/schemas/ReviewAppealStatus'}
+        reason: {type: string}
+        createdAt: {type: string, format: date-time, x-precision: milliseconds}
+        decidedAt: {type: string, format: date-time, nullable: true}
+    ReviewAppealDetailData:
+      allOf:
+      - $ref: '#/components/schemas/ReviewAppealSummaryData'
+      - type: object
+        additionalProperties: false
+        required: [decisionReason, decidedBy, review]
+        properties:
+          decisionReason: {type: string, nullable: true}
+          decidedBy: {type: string, nullable: true, minLength: 1, maxLength: 19, pattern: '^[1-9][0-9]{0,18}(?![\s\S])'}
+          review:
+            $ref: '#/components/schemas/MerchantReviewSummaryData'
+    ReviewAppealPageEnvelope:
+      allOf:
+      - $ref: '#/components/schemas/BaseEnvelope'
+      - type: object
+        properties:
+          data:
+            type: object
+            additionalProperties: false
+            required: [page, pageSize, total, items]
+            properties:
+              page: {type: integer}
+              pageSize: {type: integer}
+              total: {type: integer}
+              items:
+                type: array
+                items:
+                  $ref: '#/components/schemas/ReviewAppealSummaryData'
+    ReviewAppealDetailEnvelope:
+      allOf:
+      - $ref: '#/components/schemas/BaseEnvelope'
+      - type: object
+        properties:
+          data:
+            $ref: '#/components/schemas/ReviewAppealDetailData'
     OrderDetailResponseEnvelope:
       allOf:
       - $ref: '#/components/schemas/BaseEnvelope'

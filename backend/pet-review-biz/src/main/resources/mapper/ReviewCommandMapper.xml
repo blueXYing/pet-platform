@@ -43,4 +43,109 @@
                 #{storeScore}, #{serviceScore}, #{staffScore}, #{compositeScore},
                 #{scoreIncluded}, #{content}, 'PUBLISHED', #{now}, #{now})
     </insert>
+
+    <!-- ================= REV-002 appeal (06号 §10 review_appeal; zero schema change) ===== -->
+
+    <select id="selectReviewByIdForUpdate"
+            resultType="com.petplatform.review.biz.infrastructure.persistence.entity.ReviewRowEntity">
+        SELECT id, order_id, merchant_id, store_id, store_score, service_score, staff_score,
+               composite_score, score_included, visibility_status, content, created_at
+        FROM review
+        WHERE id = #{reviewId}
+        FOR UPDATE
+    </select>
+    <select id="selectReviewById"
+            resultType="com.petplatform.review.biz.infrastructure.persistence.entity.ReviewRowEntity">
+        SELECT id, order_id, merchant_id, store_id, store_score, service_score, staff_score,
+               composite_score, score_included, visibility_status, content, created_at
+        FROM review
+        WHERE id = #{reviewId}
+    </select>
+    <select id="selectAppealByReviewIdForUpdate"
+            resultType="com.petplatform.review.biz.infrastructure.persistence.entity.ReviewAppealRowEntity">
+        SELECT id, review_id, merchant_id, status, reason, decision_reason, decided_by,
+               decided_at, created_at
+        FROM review_appeal
+        WHERE review_id = #{reviewId}
+        FOR UPDATE
+    </select>
+    <select id="selectAppealByReviewId"
+            resultType="com.petplatform.review.biz.infrastructure.persistence.entity.ReviewAppealRowEntity">
+        SELECT id, review_id, merchant_id, status, reason, decision_reason, decided_by,
+               decided_at, created_at
+        FROM review_appeal
+        WHERE review_id = #{reviewId}
+    </select>
+    <select id="selectAppealByIdForUpdate"
+            resultType="com.petplatform.review.biz.infrastructure.persistence.entity.ReviewAppealRowEntity">
+        SELECT id, review_id, merchant_id, status, reason, decision_reason, decided_by,
+               decided_at, created_at
+        FROM review_appeal
+        WHERE id = #{appealId}
+        FOR UPDATE
+    </select>
+    <select id="selectAppealById"
+            resultType="com.petplatform.review.biz.infrastructure.persistence.entity.ReviewAppealRowEntity">
+        SELECT id, review_id, merchant_id, status, reason, decision_reason, decided_by,
+               decided_at, created_at
+        FROM review_appeal
+        WHERE id = #{appealId}
+    </select>
+    <insert id="insertAppeal">
+        INSERT INTO review_appeal(id, review_id, merchant_id, status, reason,
+                                  decision_reason, decided_by, decided_at, created_at, updated_at)
+        VALUES (#{id}, #{reviewId}, #{merchantId}, 'SUBMITTED', #{reason}, NULL, NULL, NULL,
+                #{now}, #{now})
+    </insert>
+    <update id="decideAppeal">
+        UPDATE review_appeal
+        SET status = #{status}, decision_reason = #{decisionReason}, decided_by = #{decidedBy},
+            decided_at = #{now}, updated_at = #{now}
+        WHERE id = #{appealId} AND status = 'SUBMITTED'
+    </update>
+    <update id="hideReview">
+        UPDATE review
+        SET visibility_status = 'HIDDEN', updated_at = #{now}
+        WHERE id = #{reviewId} AND visibility_status = 'PUBLISHED'
+    </update>
+
+    <!-- M read face: the appeal overlay joins the single appeal per review (uk_review_appeal_once);
+         stable ordering created_at DESC, id DESC (56号 §3). -->
+    <select id="countStoreReviews" resultType="long">
+        SELECT COUNT(*)
+        FROM review
+        WHERE merchant_id = #{merchantId} AND store_id = #{storeId}
+    </select>
+    <select id="pageStoreReviews"
+            resultType="com.petplatform.review.biz.infrastructure.persistence.entity.ReviewListRowEntity">
+        SELECT r.id, r.order_id, r.store_score, r.service_score, r.staff_score,
+               r.composite_score, r.score_included, r.visibility_status, r.content,
+               r.created_at, a.status AS appeal_status, a.id AS appeal_id
+        FROM review r
+        LEFT JOIN review_appeal a ON a.review_id = r.id
+        WHERE r.merchant_id = #{merchantId} AND r.store_id = #{storeId}
+        ORDER BY r.created_at DESC, r.id DESC
+        LIMIT #{offset}, #{limit}
+    </select>
+
+    <!-- O read face: order id joins back through the appealed review; same stable ordering. -->
+    <select id="countAppeals" resultType="long">
+        SELECT COUNT(*)
+        FROM review_appeal
+        <where>
+            <if test="status != null">status = #{status}</if>
+        </where>
+    </select>
+    <select id="pageAppeals"
+            resultType="com.petplatform.review.biz.infrastructure.persistence.entity.AppealListRowEntity">
+        SELECT a.id, a.review_id, a.merchant_id, a.status, a.reason, a.created_at, a.decided_at,
+               r.order_id, r.store_id
+        FROM review_appeal a
+        INNER JOIN review r ON r.id = a.review_id
+        <where>
+            <if test="status != null">a.status = #{status}</if>
+        </where>
+        ORDER BY a.created_at DESC, a.id DESC
+        LIMIT #{offset}, #{limit}
+    </select>
 </mapper>

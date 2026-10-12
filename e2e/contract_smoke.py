@@ -384,6 +384,27 @@ REVIEW_HTTP_OPERATIONS = {
         ('200', '201', '400', '401', '403', '404', '409', '503')),
 }
 
+REVIEW_APPEAL_HTTP_OPERATIONS = {
+    'merchantListReviews': (
+        'get', '/merchant/reviews',
+        ('200', '400', '401', '403', '503')),
+    'merchantGetReview': (
+        'get', '/merchant/reviews/{reviewId}',
+        ('200', '400', '401', '403', '404', '503')),
+    'merchantAppealReview': (
+        'post', '/merchant/reviews/{reviewId}/appeal',
+        ('200', '201', '400', '401', '403', '404', '409', '503')),
+    'adminListReviewAppeals': (
+        'get', '/admin/review-appeals',
+        ('200', '400', '401', '403', '503')),
+    'adminGetReviewAppeal': (
+        'get', '/admin/review-appeals/{appealId}',
+        ('200', '400', '401', '403', '404', '503')),
+    'adminDecideReviewAppeal': (
+        'post', '/admin/review-appeals/{appealId}/decision',
+        ('200', '400', '401', '403', '404', '409', '503')),
+}
+
 RESCHEDULE_HTTP_OPERATIONS = {
     'rescheduleOrder': (
         'post', '/c/orders/{orderId}/reschedule',
@@ -470,6 +491,25 @@ def check_review_http(spec, operation, method, path):
             'application/json': {'schema': {'$ref': '#/components/schemas/ReviewEligibilityResponseEnvelope'}}},             'Review eligibility success envelope changed'
     for code in ('400', '401', '403', '404', '503'):
         assert dereference(spec, responses[code])['content']['application/json']['schema']             == {'$ref': '#/components/schemas/ErrorEnvelope'}, f'Review HTTP error envelope changed: {name} {code}'
+
+def check_review_appeal_http(spec, operation, method, path):
+    name = operation['operationId']
+    expected_method, expected_path, required_codes = REVIEW_APPEAL_HTTP_OPERATIONS[name]
+    assert (method, path) == (expected_method, expected_path), f'Review appeal operation moved: {name}'
+    assert operation.get('security') == [{'bearerAuth': []}], f'Review appeal security changed: {name}'
+    assert operation.get('x-implementation-status') == 'IMPLEMENTED_DEFAULT_OFF', f'Review appeal status changed: {name}'
+    assert operation.get('x-default-enabled') is False, f'Review appeal must stay default off: {name}'
+    assert operation.get('x-contract') == '56-Review-Appeal-Contract-v0.1.md', f'Review appeal authority changed: {name}'
+    assert operation.get('x-assembly-switch') == 'pet.review.appeal.http.enabled', f'Review appeal switch changed: {name}'
+    merchant_side = name.startswith('merchant')
+    assert operation.get('x-route-party') == ('MERCHANT' if merchant_side else 'OPS'), f'Review appeal identity changed: {name}'
+    assert operation.get('x-audience') == ('MINIAPP' if merchant_side else 'ADMIN_WEB'), f'Review appeal audience changed: {name}'
+    responses = operation['responses']
+    assert set(responses) == set(required_codes), f'Review appeal response surface changed: {name}'
+    for code in ('400', '401', '403', '404', '409', '503'):
+        if code in responses:
+            envelope = dereference(spec, responses[code])['content']['application/json']['schema']
+            assert envelope == {'$ref': '#/components/schemas/ErrorEnvelope'}, f'Review appeal error envelope changed: {name} {code}'
 
 def check_staff_invitation_list(spec, operation, method, path):
     name = operation['operationId']
@@ -1190,6 +1230,8 @@ def check(spec):
                 check_reschedule_http(spec, operation, method, path)
             if operation_id in REVIEW_HTTP_OPERATIONS:
                 check_review_http(spec, operation, method, path)
+            if operation_id in REVIEW_APPEAL_HTTP_OPERATIONS:
+                check_review_appeal_http(spec, operation, method, path)
             if method in {'post', 'put', 'patch', 'delete'}:
                 assert {'$ref': '#/components/parameters/RequestId'} in parameters, f'Missing request ID: {operation_id}'
                 writes += 1
@@ -1203,7 +1245,7 @@ def check(spec):
     assert legacy_seen == LEGACY_OPERATIONS.keys(), f'Legacy operations missing: {LEGACY_OPERATIONS.keys() - legacy_seen}'
     assert legacy_writes == 11, 'Legacy write surface changed'
     assert legacy_creates == LEGACY_CREATES, 'Legacy create surface changed'
-    assert operations == LEGACY_OPERATIONS.keys() | AUTH_OPERATIONS.keys() | MERCHANT_OPERATIONS.keys() | APPLICATION_OPERATIONS.keys() | PRIVATE_ASSET_OPERATIONS.keys() | SERVICE_CATALOG_OPERATIONS.keys() | STORE_CATALOG_OPERATIONS.keys() | SERVICE_WRITE_OPERATIONS.keys() | SCHEDULE_AVAILABILITY_OPERATIONS.keys() | SCHEDULE_WRITE_OPERATIONS.keys() | CREDENTIAL_OPERATIONS.keys() | AFTERSALE_OPERATIONS.keys() | COUPON_POINTS_READ_OPERATIONS.keys() | VERIFICATION_HTTP_OPERATIONS.keys() | NOTIFICATION_PREFERENCE_OPERATIONS.keys() | STAFF_INVITATION_LIST_OPERATIONS.keys() | ORDER_WRITE_OPERATIONS.keys() | REFUND_HTTP_OPERATIONS.keys() | MERCHANT_ORDER_LIST_OPERATIONS.keys() | RESCHEDULE_HTTP_OPERATIONS.keys() | REVIEW_HTTP_OPERATIONS.keys(), 'Unexpected or missing reviewed operations'
+    assert operations == LEGACY_OPERATIONS.keys() | AUTH_OPERATIONS.keys() | MERCHANT_OPERATIONS.keys() | APPLICATION_OPERATIONS.keys() | PRIVATE_ASSET_OPERATIONS.keys() | SERVICE_CATALOG_OPERATIONS.keys() | STORE_CATALOG_OPERATIONS.keys() | SERVICE_WRITE_OPERATIONS.keys() | SCHEDULE_AVAILABILITY_OPERATIONS.keys() | SCHEDULE_WRITE_OPERATIONS.keys() | CREDENTIAL_OPERATIONS.keys() | AFTERSALE_OPERATIONS.keys() | COUPON_POINTS_READ_OPERATIONS.keys() | VERIFICATION_HTTP_OPERATIONS.keys() | NOTIFICATION_PREFERENCE_OPERATIONS.keys() | STAFF_INVITATION_LIST_OPERATIONS.keys() | ORDER_WRITE_OPERATIONS.keys() | REFUND_HTTP_OPERATIONS.keys() | MERCHANT_ORDER_LIST_OPERATIONS.keys() | RESCHEDULE_HTTP_OPERATIONS.keys() | REVIEW_HTTP_OPERATIONS.keys() | REVIEW_APPEAL_HTTP_OPERATIONS.keys(), 'Unexpected or missing reviewed operations'
     schemes = spec['components']['securitySchemes']
     assert schemes['bearerAuth']['type'] == 'http' and schemes['bearerAuth']['scheme'] == 'bearer'
     for scheme, location, name in [('authAttempt', 'header', 'X-Auth-Attempt'),
@@ -1255,6 +1297,7 @@ def check(spec):
             'merchantOrderListOperations': len(operations & MERCHANT_ORDER_LIST_OPERATIONS.keys()),
             'rescheduleHttpOperations': len(operations & RESCHEDULE_HTTP_OPERATIONS.keys()),
             'reviewHttpOperations': len(operations & REVIEW_HTTP_OPERATIONS.keys()),
+            'reviewAppealHttpOperations': len(operations & REVIEW_APPEAL_HTTP_OPERATIONS.keys()),
             'refundHttpOperations': len(operations & REFUND_HTTP_OPERATIONS.keys()),
             'serviceWriteOperations': len(operations & SERVICE_WRITE_OPERATIONS.keys()),
             'storeCatalogOperations': len(operations & STORE_CATALOG_OPERATIONS.keys()),

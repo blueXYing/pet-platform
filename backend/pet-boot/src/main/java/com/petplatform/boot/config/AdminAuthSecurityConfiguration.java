@@ -33,7 +33,8 @@ public class AdminAuthSecurityConfiguration {
       @Value("${pet.merchant.application.enabled:false}") boolean merchantApplicationEnabled,
       @Value("${pet.private-assets.enabled:false}") boolean privateAssetsEnabled,
       @Value("${pet.service.command.enabled:false}") boolean serviceCommandEnabled,
-      @Value("${pet.aftersale.http.enabled:false}") boolean afterSaleHttpEnabled)
+      @Value("${pet.aftersale.http.enabled:false}") boolean afterSaleHttpEnabled,
+      @Value("${pet.review.appeal.http.enabled:false}") boolean reviewAppealHttpEnabled)
       throws Exception {
     http.securityMatcher("/api/v1/admin/**")
         .csrf(c -> c.disable())
@@ -53,6 +54,16 @@ public class AdminAuthSecurityConfiguration {
                   "/api/v1/admin/aftersales/*/close-duplicate",
                   "/api/v1/admin/aftersales/*/decisions",
                   "/api/v1/admin/aftersales/*/evidence-batches/*/assets/*/read-grants").permitAll();
+            }
+            if (reviewAppealHttpEnabled) {
+              // Review appeal governance (contract 56 / REV-002): the ADMIN_WEB Bearer and
+              // the review.appeal.* action codes are enforced by the filter and kernel.
+              a.requestMatchers(HttpMethod.GET,
+                      "/api/v1/admin/review-appeals", "/api/v1/admin/review-appeals/*")
+                  .permitAll();
+              a.requestMatchers(HttpMethod.POST,
+                      "/api/v1/admin/review-appeals/*/decision")
+                  .permitAll();
             }
             a.requestMatchers(
                     HttpMethod.POST,

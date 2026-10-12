@@ -39,14 +39,15 @@ public final class MerchantAdmissionService {
       Set.of("DRAFT", "REVIEWING", "APPROVED", "REJECTED");
   private static final List<String> ALLOWED_ACTIONS =
       List.of("merchant.aftersale.read", "merchant.order.read", "merchant.penalty.read",
-          "merchant.schedule.manage", "merchant.service.manage", "merchant.staff.manage");
+          "merchant.review.read", "merchant.schedule.manage", "merchant.service.manage",
+          "merchant.staff.manage");
   private static final List<String> OFFLINE_LIMITED_ACTIONS =
       List.of("merchant.aftersale.read", "merchant.aftersale.respond", "merchant.order.fulfill",
           "merchant.order.read", "merchant.penalty.appeal", "merchant.penalty.read",
-          "merchant.refund.handle");
+          "merchant.refund.handle", "merchant.review.read");
   private static final List<String> FROZEN_LIMITED_ACTIONS =
       List.of("merchant.aftersale.read", "merchant.order.read", "merchant.penalty.appeal",
-          "merchant.penalty.read");
+          "merchant.penalty.read", "merchant.review.read");
   private static final List<MerchantAdmissionDTO.AdmissionStep> NO_STEPS = List.of();
   private static final List<MerchantAdmissionDTO.AdmissionStep> VIEW_APPLICATION_STEPS =
       List.of(new MerchantAdmissionDTO.AdmissionStep("VIEW_APPLICATION"));

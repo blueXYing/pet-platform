@@ -65,7 +65,10 @@ public final class AdminAuthorizationService implements AdminAuthorizationQueryA
   @Override
   public AdminActionDecision checkCollection(AdminCollectionActionCheckQuery query) {
     Objects.requireNonNull(query, "query");
-    if (!("merchant.application.read".equals(query.actionCode()) || "aftersale.read".equals(query.actionCode()))
+    if (!("merchant.application.read".equals(query.actionCode()) || "aftersale.read".equals(query.actionCode())
+            // REV-002 review appeal list (contract 56): collection entry check for the
+            // single ops reader face; the per-resource check re-runs with the store scope.
+            || "review.appeal.read".equals(query.actionCode()))
         || query.phase() != AdminActionCheckQuery.CheckPhase.READ_RESULT)
       throw AdminAuthFailure.invalid();
     return checkCurrent(

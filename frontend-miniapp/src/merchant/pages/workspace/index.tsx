@@ -65,6 +65,13 @@ export default function MerchantWorkbenchPage() {
     Taro.navigateTo({ url: '/merchant/pages/aftersale/index' }).catch(() => controller.handoffCancelled())
   }
 
+  // Review management (56号 / REV-002): same handoff discipline as aftersale — the child page
+  // gates on the merchant coordinates this workbench holds.
+  function openReviews() {
+    controller.handoffToChild()
+    Taro.navigateTo({ url: '/merchant/pages/reviews/index' }).catch(() => controller.handoffCancelled())
+  }
+
   function openSchedule() {
     controller.handoffToChild()
     Taro.navigateTo({ url: '/merchant/pages/schedule/index' }).catch(() => controller.handoffCancelled())
@@ -160,6 +167,11 @@ export default function MerchantWorkbenchPage() {
         </View>}
         {(state.status === 'allowed' || state.status === 'limited') && view.membershipKind === 'OWNER' && view.allowedActions.includes('merchant.aftersale.read') && <View className='workbench-steps'>
           <Button id='workbench-aftersales' onClick={openAftersales}>售后管理</Button>
+        </View>}
+        {/* Review management entry (56号 / REV-002): 存量读取 family — the review list stays
+            readable for LIMITED/FROZEN stores; the one-appeal write fails closed server-side. */}
+        {(state.status === 'allowed' || state.status === 'limited') && view.membershipKind === 'OWNER' && view.allowedActions.includes('merchant.review.read') && <View className='workbench-steps'>
+          <Button id='workbench-reviews' onClick={openReviews}>评价管理</Button>
         </View>}
         {view.nextSteps.length > 0 && <View className='workbench-steps'>
           {view.nextSteps.map(step => <Button key={step.type} onClick={() => takeStep(step.type, view.merchantId)}>{stepText[step.type] || step.type}</Button>)}
