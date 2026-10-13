@@ -166,6 +166,91 @@ jobs:
           python -m unittest discover -s backend/tools -p 'test_*.py' -v
           python backend/tools/check-display-status.py
           python backend/tools/check-persistence-style.py
+      # B 计划（模块分组双 job）：本 job 跑除 pet-boot/pet-architecture-test 外的 27 个模块。
+      # -T 1C 灰度三轮中轮 3 失败（OutboxRecoveryMySqlTest 150ms 退避窗口被并行争抢挤爆，
+      # 与 #139 放弃原因同类：时间敏感测试的有界等待窗口经不起 Maven 并行放大）→ CI 可靠性优先，弃并行改分组。
+      # 本组不需要 node/npm：frontend-miniapp 链脚本仅 pet-boot 集成测试（CFrontendHttpTest 等）使用，由 backend-boot job 提供。
+      - name: Maven verify (modules excluding pet-boot and pet-architecture-test)
+        run: mvn -B -f backend/pom.xml -pl '!pet-boot,!pet-architecture-test' clean verify
+      - name: Preserve actual backend evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: backend-test-reports
+          path: backend/**/target/surefire-reports/
+          if-no-files-found: error
+
+  # B 计划新增 job：pet-boot（长杆主体，26 个测试类多次启动 Boot 应用）+ pet-architecture-test
+  # （依赖 pet-boot 构件，必须与之同 reactor，故归入本组）单独一条 runner + 独立服务容器，
+  # 与 backend job 并行执行、互不同容器争抢；两条 job 内部测试均保持串行语义（未用 -T）。
+  backend-boot:
+    needs: changes
+    if: >-
+      ${{ !cancelled() && (
+      needs.changes.result == 'skipped' ||
+      needs.changes.outputs.backend == 'true' ||
+      needs.changes.outputs.ci == 'true' ||
+      needs.changes.outputs.other == 'true' ) }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    services:
+      mysql:
+        image: mysql:8.4
+        env:
+          MYSQL_ROOT_PASSWORD: plat004-ci-isolated
+          MYSQL_ROOT_HOST: '%'
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd="mysqladmin ping -h 127.0.0.1 -uroot -pplat004-ci-isolated"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=12
+      auth-redis:
+        image: redis:7.4-alpine
+        ports:
+          - 16379:6379
+        options: >-
+          --health-cmd "redis-cli -e CONFIG SET save '' appendonly no && redis-cli -e ping"
+          --health-interval=5s
+          --health-timeout=3s
+          --health-retries=12
+    env:
+      PAYMENT_REFUND_MYSQL_URL: jdbc:mysql://127.0.0.1:3306/
+      PAYMENT_REFUND_MYSQL_USER: root
+      PAYMENT_REFUND_MYSQL_PASSWORD: plat004-ci-isolated
+      PLAT004_MYSQL_URL: jdbc:mysql://127.0.0.1:3306/
+      PLAT004_MYSQL_USER: root
+      PLAT004_MYSQL_PASSWORD: plat004-ci-isolated
+      PLAT003_MYSQL_URL: jdbc:mysql://127.0.0.1:3306/
+      PLAT003_MYSQL_USER: root
+      PLAT003_MYSQL_PASSWORD: plat004-ci-isolated
+      USR001_MYSQL_URL: jdbc:mysql://127.0.0.1:3306/
+      USR001_MYSQL_USER: root
+      USR001_MYSQL_PASSWORD: plat004-ci-isolated
+      MER001_MYSQL_URL: jdbc:mysql://127.0.0.1:3306/
+      MER001_MYSQL_USER: root
+      MER001_MYSQL_PASSWORD: plat004-ci-isolated
+      OSSTEST_MYSQL_URL: jdbc:mysql://127.0.0.1:3306/
+      OSSTEST_MYSQL_USER: root
+      OSSTEST_MYSQL_PASSWORD: plat004-ci-isolated
+      PLAT002_ID_MYSQL_URL: jdbc:mysql://127.0.0.1:3306/
+      PLAT002_ID_MYSQL_USER: root
+      PLAT002_ID_MYSQL_PASSWORD: plat004-ci-isolated
+      AUTH_MYSQL_URL: jdbc:mysql://127.0.0.1:3306/
+      AUTH_MYSQL_USER: root
+      AUTH_MYSQL_PASSWORD: plat004-ci-isolated
+      AUTH_REDIS_HOST: 127.0.0.1
+      AUTH_REDIS_PORT: 16379
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+          cache: maven
+      # pet-boot 集成测试在本仓内启动 frontend-miniapp 的 node 链脚本（CFrontendHttpTest /
+      # MerchantApplicationLifecycleHttpTest），node 依赖从原 backend job 平移到本 job
       - uses: actions/setup-node@v4
         with:
           node-version: '22.23.1'
@@ -175,13 +260,17 @@ jobs:
       - name: Prepare frontend client for real backend integration test
         working-directory: frontend-miniapp
         run: npm ci
-      - name: Maven verify
-        run: mvn -B -f backend/pom.xml clean verify
-      - name: Preserve actual backend evidence
+      # 两步构建：-am 会连带依赖模块走完整 verify（测试重复跑），故先 -DskipTests install
+      # 全部依赖构件到本地仓库，第二步仅对本组两模块执行 verify（测试只跑一遍）。
+      - name: Maven install dependencies (compile all, skip tests)
+        run: mvn -B -f backend/pom.xml -pl pet-boot,pet-architecture-test -am clean install -DskipTests
+      - name: Maven verify (pet-boot and pet-architecture-test)
+        run: mvn -B -f backend/pom.xml -pl pet-boot,pet-architecture-test verify
+      - name: Preserve actual backend-boot evidence
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: backend-test-reports
+          name: backend-boot-test-reports
           path: backend/**/target/surefire-reports/
           if-no-files-found: error
 
