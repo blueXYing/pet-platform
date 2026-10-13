@@ -4,6 +4,7 @@ import static com.petplatform.boot.booking.AfterSaleHttpFixture.*;
 import static org.junit.jupiter.api.Assertions.*;
 
 import com.petplatform.boot.adapter.web.merchant.MerchantOrderController;
+import com.petplatform.task.core.AsyncTaskWorker;
 import java.util.*;
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.test.context.runner.ApplicationContextRunner;
@@ -180,10 +181,21 @@ class MerchantOrderHttpAcceptanceTest {
     void pastDeadlineIsRejectedOverHttpWhileTheScheduledTaskStaysEligible() throws Exception {
         try (var http = new Http()) {
             var f = http.f;
-            // A normally paid order (real deadline now+30min keeps the assembled auto-confirm
-            // worker ineligible), examined with the fixture clock pinned just past the cutoff.
-            // OrderConfirmEpoch pins confirmDeadline=paidAt+30min as stored values, so the
-            // wire deadline face is proven by moving the clock, never the stored epoch.
+            // The auto-confirm claim reads execute_at <= NOW(3) on the fixture-pinned sessions,
+            // so once the clock passes the cutoff the assembled worker (one-second poll) sees
+            // the task as overdue at the same moment the manual route starts returning 409 —
+            // a genuine race the HTTP assertions can only win on a fast machine (PR#139
+            // comment run 38056469585: the deadline 409s came back ORDER_STATE_NOT_ALLOWED
+            // after the worker had already confirmed the order). Gate this order's visibility
+            // to the worker by pausing its poller BEFORE the payment creates the task: not a
+            // single stored value changes, so the scheduled task itself stays exactly as
+            // production wrote it — the face this test asserts — while the worker's overdue
+            // behavior stays proven deterministically by overdueOrderIsAutoConfirmed... below.
+            ((AsyncTaskWorker) f.context.getBean("orderAutoConfirmWorker")).close();
+            // A normally paid order (real deadline now+30min), examined with the fixture clock
+            // pinned just past the cutoff. OrderConfirmEpoch pins confirmDeadline=paidAt+30min
+            // as stored values, so the wire deadline face is proven by moving the clock, never
+            // the stored epoch.
             String order = f.ordinary.t.r.f.paid();
             f.at(java.time.Instant.now().plusSeconds(35 * 60));
             Map<String, Object> body = Map.of("expectedConfirmRound", 0, "reasonCode", "OTHER",
@@ -196,6 +208,16 @@ class MerchantOrderHttpAcceptanceTest {
             // Nothing was decided by either rejected command.
             assertEquals("PENDING_CONFIRM", f.text("SELECT order_stage FROM pet_order WHERE id=" + order));
             assertEquals(0, f.count("SELECT COUNT(*) FROM order_merchant_decision WHERE order_id=" + order));
+            // The scheduled task stays eligible: still READY at the stored epoch deadline and
+            // never claimed (zero attempt rows) — the deadline 409s consumed nothing, so the
+            // worker side remains free to confirm the order later.
+            assertEquals("READY", f.text(
+                    "SELECT status FROM async_task WHERE task_type='ORDER_AUTO_CONFIRM' AND biz_id=" + order));
+            assertEquals(1, f.count(
+                    "SELECT COUNT(*) FROM async_task t JOIN pet_order o ON o.id=t.biz_id"
+                            + " WHERE t.task_type='ORDER_AUTO_CONFIRM' AND o.id=" + order
+                            + " AND t.execute_at=o.confirm_deadline"));
+            assertEquals(0, f.count("SELECT COUNT(*) FROM async_task_attempt"));
         }
     }
 
