@@ -53,5 +53,8 @@ export default defineAppConfig({
     // Booking create + payment initiation slice (10号 §3.4/§3.5/§3.6): service-detail entry,
     // unpaid-order pay entry; one compact line per the app.config convention.
     { root: 'consumer/pages/booking', pages: ['create', 'pay'] },
+    // Become-provider entry slice (32号 §2 seven-page batch): landing sheet + service type
+    // selection feeding the existing merchant-application flow via merchantTypeCode.
+    { root: 'consumer/pages/become-provider', pages: ['index', 'service-type'] },
   ],
 })

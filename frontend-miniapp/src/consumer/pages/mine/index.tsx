@@ -10,7 +10,7 @@ import { deltaLabel, formatLedgerTime, pointsBizTypeLabels, type PointsLedgerVie
 import avatar from '../../assets/profile/avatar.png'
 import stripTop from './assets/strip-top.jpg'
 import {
-  MINE_DEVELOPER_SHELL_URL, MINE_MERCHANT_WORKSPACE_URL, mineCard, mineHubEntries, phoneGuideCopy,
+  MINE_BECOME_PROVIDER_URL, MINE_DEVELOPER_SHELL_URL, MINE_MERCHANT_WORKSPACE_URL, mineCard, mineHubEntries, phoneGuideCopy,
   type MineCard, type MineStats,
 } from './model'
 import './mine.css'
@@ -20,9 +20,10 @@ import './mine.css'
 // （wechat-login → VERIFY_PHONE → phone-binding attempt 通道），本页不新造第二套会话。
 // 2026-10-12 视觉重做：设计源 126:675 新版（2026-10-10 稿，planning/progress/2026-10-12/
 // figma-mine/ 精确树）。功能/契约零改动；签到卡/拉新/奖励/收藏/足迹/积分商城/地址管理/
-// 成为服务者/帮助与客服/意见反馈/设置等无工程页面的原稿入口仅做视觉占位（无交互），
-// 登记表 §4.6 记偏差。全部既有入口（订单/优惠券/积分明细页/宠物档案/通知偏好/编辑资料/
-// 商家工作台/退出登录/开发者工具）保留并沿用原 URL。
+// 帮助与客服/意见反馈/设置等无工程页面的原稿入口仅做视觉占位（无交互），登记表 §4.6 记
+// 偏差。成为服务者格位自 32号 §2 七页批次起为真实入口（become-provider 落地页）。
+// 全部既有入口（订单/优惠券/积分明细页/宠物档案/通知偏好/编辑资料/商家工作台/退出登录/
+// 开发者工具）保留并沿用原 URL。
 const GUIDE_KEY = 'pet.c.phone-guide.v1'
 
 const [hubOrders, hubCoupons, hubPoints, hubPreferences, hubPets, hubProfile] = mineHubEntries
@@ -309,11 +310,11 @@ export default function MinePage() {
         <View className='mine-section'>
           <View className='mine-section-head'><Text className='mine-section-title'>更多服务</Text></View>
           <View className='mine-grid'>
-            {/* 成为服务者/帮助与客服/意见反馈：无工程页面，视觉占位；通知偏好为真实入口。 */}
-            <View className='mine-cell'>
+            {/* 成为服务者为真实入口（32号 §2 七页批次：become-provider 落地页）；帮助与客服/意见反馈：无工程页面，视觉占位；通知偏好为真实入口。 */}
+            <Button id='mine-become-provider' className='mine-cell' hoverClass='none' onClick={() => open(MINE_BECOME_PROVIDER_URL)}>
               <View className='mine-cell-chip'><View className='mi-svc-provider' /></View>
               <Text className='mine-cell-label'>成为服务者</Text>
-            </View>
+            </Button>
             <View className='mine-cell'>
               <View className='mine-cell-chip'><View className='mi-svc-help' /></View>
               <Text className='mine-cell-label'>帮助与客服</Text>
