@@ -1,9 +1,10 @@
-import { Button, ScrollView, Text, Textarea, View } from '@tarojs/components'
+import { Button, Image, ScrollView, Text, Textarea, View } from '@tarojs/components'
 import Taro, { useDidHide, useDidShow } from '@tarojs/taro'
 import { useEffect, useState, useSyncExternalStore, type CSSProperties } from 'react'
 import { consumerApi, consumerStorage } from '../../../shared/consumer-runtime'
 import { merchantReviewDeps } from '../../review-appeal/repository'
 import { MerchantReviewController } from '../../review-appeal/controller'
+import navBack from '../aftersale/assets/nav-back@3x.png'
 import './page.css'
 
 /** Contract56 M face: the store coordinates come from the merchant workspace handoff. */
@@ -33,6 +34,20 @@ async function backToWorkbench() {
   } catch { await Taro.showToast({ title: '返回失败，请重试', icon: 'none' }) }
 }
 
+/** Star row is a display derivation of the contract compositeScore (round-to-nearest). */
+function starCount(score: string): number {
+  const value = Math.round(Number(score))
+  return Number.isFinite(value) ? Math.min(5, Math.max(0, value)) : 0
+}
+
+// REV-002 评价管理 M face — 2026-10-13 visual pass on merchant frame 23:14160「首页-店铺评价-全部」
+// (family: 68:2106 待回复 / 68:3178 差评 / 68:4048 申诉中): header band 86 #FFF6E5 + centered
+// 店铺评价 title + back arrow; review cards white with the #FF7A00 star row and #9CA3AF date,
+// #1A1A2E 13.47 content, appeal tag pills and the #5BAAE8 appeal button. The frame's aggregate
+// blocks (score summary card / star histogram / 总评价·待回复·好评率·申诉中 stat card / filter
+// chips / reviewer identity / image grid / 有帮助·回复 actions) have no contract-56 read side
+// and are not rendered — registry §4.10 deviations. Zero functional change: every id, mount
+// condition, handler and the one-appeal sheet stay byte-identical.
 export default function MerchantReviewsPage() {
   const { controller, state, style } = useMerchantReviews()
   const [draft, setDraft] = useState('')
@@ -41,8 +56,8 @@ export default function MerchantReviewsPage() {
   return <View className='mrv-page' style={style}>
     <View className='mrv-status-area' />
     <View className='mrv-header'>
-      <Button className='mrv-back' ariaLabel='返回' onClick={() => void backToWorkbench()}>返回</Button>
-      <Text className='mrv-title'>评价管理</Text>
+      <Button className='mrv-back' ariaLabel='返回' onClick={() => void backToWorkbench()}><Image src={navBack} mode='scaleToFill' /></Button>
+      <Text className='mrv-title'>店铺评价</Text>
     </View>
     {state.phase !== 'ready' ? <View className='mrv-state' role='status'>
       <Text>{state.phase === 'loading' || state.phase === 'idle' ? '正在读取本店评价…' : state.notice || (state.phase === 'entry' || state.phase === 'denied' ? '仅商家 OWNER 可查看本店评价' : '页面暂时不可用')}</Text>
@@ -54,21 +69,25 @@ export default function MerchantReviewsPage() {
         <Text className='mrv-count'>当前门店 · 共 {state.total} 条评价</Text>
         {state.items.length === 0 && <View className='mrv-empty'>本店暂无评价</View>}
         {state.items.map(item => <View key={item.reviewId} className='mrv-card'>
-          <View className='mrv-line'><Text className='mrv-score'>{item.compositeScore} 分</Text>
-            <Text className={item.visibilityStatus === 'HIDDEN' ? 'mrv-visibility mrv-visibility-hidden' : 'mrv-visibility'}>{item.visibilityStatus === 'HIDDEN' ? '已隐藏' : '公开展示'}</Text></View>
-          <Text className='mrv-dimensions'>门店 {item.storeScore} · 服务 {item.serviceScore} · 人员 {item.staffScore}{item.scoreIncluded ? '' : ' · 不计入商家评分'}</Text>
+          <View className='mrv-line mrv-card-head'>
+            <View className='mrv-stars' ariaLabel={`${item.compositeScore} 分`}>
+              {[1, 2, 3, 4, 5].map(star => <Text key={star} className={starCount(item.compositeScore) >= star ? 'mrv-star mrv-star-on' : 'mrv-star'}>★</Text>)}
+            </View>
+            <Text className={item.visibilityStatus === 'HIDDEN' ? 'mrv-visibility mrv-visibility-hidden' : 'mrv-visibility'}>{item.visibilityStatus === 'HIDDEN' ? '已隐藏' : '公开展示'}</Text>
+            <Text className='mrv-date'>{item.createdAt.slice(0, 10)}</Text>
+          </View>
+          <Text className='mrv-dimensions'>综合 {item.compositeScore} 分 · 门店 {item.storeScore} · 服务 {item.serviceScore} · 人员 {item.staffScore}{item.scoreIncluded ? '' : ' · 不计入商家评分'}</Text>
           {item.content !== null && <Text className='mrv-content'>{item.content}</Text>}
           <View className='mrv-line mrv-subline'>
             <Text className={item.appealStatus === null ? 'mrv-tag mrv-tag-none' : item.appealStatus === 'APPROVED' ? 'mrv-tag mrv-tag-approved' : item.appealStatus === 'REJECTED' ? 'mrv-tag mrv-tag-closed' : 'mrv-tag'}>
               {item.appealStatus === null ? '未申诉' : item.appealStatus === 'APPROVED' ? '申诉成立' : item.appealStatus === 'REJECTED' ? '申诉未成立' : '申诉处理中'}
             </Text>
-            <Text className='mrv-date'>{item.createdAt.slice(0, 10)}</Text>
+            {item.appealStatus === null && item.visibilityStatus === 'PUBLISHED' && state.writable
+              ? <Button id={`mrv-appeal-${item.reviewId}`} className='mrv-card-action'
+                disabled={state.busy || state.sheetReviewId !== null}
+                onClick={() => { setDraft(controller.draft(item.reviewId)); controller.openSheet(item.reviewId) }}>申诉</Button>
+              : null}
           </View>
-          {item.appealStatus === null && item.visibilityStatus === 'PUBLISHED' && state.writable
-            ? <Button id={`mrv-appeal-${item.reviewId}`} className='mrv-card-action'
-              disabled={state.busy || state.sheetReviewId !== null}
-              onClick={() => { setDraft(controller.draft(item.reviewId)); controller.openSheet(item.reviewId) }}>申诉</Button>
-            : null}
         </View>)}
         {state.items.length < state.total && <Button id='mrv-more' className='mrv-more' disabled={state.loadingMore} onClick={() => void controller.loadMore()}>{state.loadingMore ? '正在加载…' : '加载更多'}</Button>}
         {state.receiptReviewId !== null && <View className='mrv-receipt' role='status'>

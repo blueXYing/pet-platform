@@ -1,0 +1,269 @@
+FRAME "首页-休息中" (0.0,0.0 x)  [fill=#ffffff]
+  RECTANGLE "Rectangle 10" (0.0,0.0 x)  [fill=#fff6e5]
+  FRAME "Bell-Notification--Streamline-Flex" (0.0,0.0 x)  [fill=]
+    GROUP "bell-notification--alert-bell-ring-notification-alarm" (0.0,0.0 x)
+      VECTOR "Vector_2" (0.0,0.0 x)  [fill=#5baae8 stroke=#505050/1.7142961025238037]
+      VECTOR "Subtract" (0.0,0.0 x)  [fill=#5baae8 stroke=#505050/1.7142961025238037]
+      VECTOR "Subtract_2" (0.0,0.0 x)  [fill=#5baae8 stroke=#505050/1.7142961025238037]
+  RECTANGLE "huaban-5913185224 1" (0.0,0.0 x)  [fill=IMAGE]
+  VECTOR "Vector 2" (0.0,0.0 x)  [fill=#5baae8]
+  VECTOR "Vector 3" (0.0,0.0 x)  [fill=#f9fbff]
+  RECTANGLE "huaban-6727256158 1" (0.0,0.0 x)  [fill=IMAGE]
+  FRAME "DIV-41" (0.0,0.0 x)  [ite=4.0 HORIZONTAL]
+    TEXT "¥-44" (0.0,0.0 x)  [fill=#ff7a00] fs=20.0 fw=600 lh=28.0 Roboto col=#ff7a00 text='¥'
+    TEXT "3,846.00-47" (0.0,0.0 x)  [fill=#ff7a00] fs=40.0 fw=800 lh=50.0 Roboto col=#ff7a00 text='3,846.00'
+    FRAME "split-margin-45" (0.0,0.0 x)  [HORIZONTAL]
+  FRAME "margin-wrap" (0.0,0.0 x)  [ite=10.0 HORIZONTAL]
+    FRAME "DIV-48" (0.0,0.0 x)  [HORIZONTAL]
+      TEXT "较昨日-50" (0.0,0.0 x)  [fill=#6b7280] fs=14.0 fw=400 lh=20.0 Roboto col=#6b7280 text='较昨日'
+      FRAME "split-margin-52" (0.0,0.0 x)  [HORIZONTAL]
+      TEXT "↑ 12.5%-54" (0.0,0.0 x)  [fill=#22c55e] fs=14.0 fw=600 lh=20.0 Roboto col=#22c55e text='↑ 12.5%'
+  FRAME "BUTTON-23" (0.0,0.0 x)  [fill=#c0ecff r=9999.0]
+    FRAME "margin-wrap" (0.0,0.0 x)
+      FRAME "DIV-34" (0.0,0.0 x)  [HORIZONTAL]
+        FRAME "SPAN-35" (0.0,0.0 x)  [HORIZONTAL]
+          TEXT "今日营收-37" (0.0,0.0 x)  [fill=#3c3c3c] fs=14.0 fw=500 lh=20.0 Roboto col=#3c3c3c text='今日营收'
+  RECTANGLE "Rectangle 14" (0.0,0.0 x)  [fill=#f0fbff]
+  FRAME "DIV-85" (0.0,0.0 x)
+    FRAME "margin-wrap" (0.0,0.0 x)
+      FRAME "SPAN-87" (0.0,0.0 x)  [HORIZONTAL]
+        TEXT "待办预约-89" (0.0,0.0 x)  [fill=#111827] fs=16.0 fw=700 lh=24.0 Roboto col=#111827 text='待办预约'
+      FRAME "BUTTON-90" (0.0,0.0 x)  [ite=2.0 HORIZONTAL]
+    TEXT "全部 ​-92" (0.0,0.0 x)  [fill=#6b7280] fs=14.0 fw=400 lh=20.0 Roboto col=#6b7280 text='全部 \u200b'
+    FRAME "I-93" (0.0,0.0 x)  [HORIZONTAL]
+      FRAME "Icon-94" (0.0,0.0 x)
+        GROUP "Group" (0.0,0.0 x)
+          VECTOR "Vector" (0.0,0.0 x)  [fill=#6b7280]
+    FRAME "DIV-95" (0.0,0.0 x)
+      FRAME "DIV-96" (0.0,0.0 x)  [fill=#d7f1fd stroke=#d7f1fd/1.0 r=14.797926902770996]
+        FRAME "margin-wrap" (0.0,0.0 x)
+          FRAME "DIV-97" (0.0,0.0 x)
+            FRAME "DIV-98" (0.0,0.0 x)  [fill=IMAGE r=9247.779296875 HORIZONTAL]
+            FRAME "SPAN-101" (0.0,0.0 x)
+              TEXT "李小姐-103" (0.0,0.0 x)  [fill=#111827] fs=12.948185920715332 fw=600 lh=18.497407913208008 Roboto col=#111827 text='李小姐'
+            FRAME "margin-wrap" (0.0,0.0 x)
+              FRAME "DIV-107" (0.0,0.0 x)  [HORIZONTAL]
+                TEXT "10:30-109" (0.0,0.0 x)  [fill=#3c3c3c] fs=11.098444938659668 fw=400 lh=14.797926902770996 Roboto col=#3c3c3c text='10:30'
+        FRAME "margin-wrap" (0.0,0.0 x)
+          FRAME "DIV-104" (0.0,0.0 x)  [HORIZONTAL]
+            TEXT "猫咪洗澡+美容-106" (0.0,0.0 x)  [fill=#5baae8] fs=12.948185920715332 fw=400 lh=18.497407913208008 Roboto col=#5baae8 text='猫咪洗澡+美容'
+        FRAME "margin-wrap" (0.0,0.0 x)
+        FRAME "DIV-110" (0.0,0.0 x)  [HORIZONTAL]
+          TEXT "15分钟后-112" (0.0,0.0 x)  [fill=#ff9500] fs=14.797926902770996 fw=700 lh=22.196889877319336 Roboto col=#ff9500 text='15分钟后'
+        FRAME "DIV-113" (0.0,0.0 x)  [ite=7.398963451385498 HORIZONTAL]
+          FRAME "BUTTON-114" (0.0,0.0 x)  [fill=#ffffff r=11.098444938659668 pad=7.398963451385498 pad=7.398963451385498 HORIZONTAL]
+            TEXT "拒绝-116" (0.0,0.0 x)  [fill=#5baae8] fs=12.948185920715332 fw=600 lh=18.497407913208008 Roboto col=#5baae8 text='拒绝'
+          FRAME "BUTTON-117" (0.0,0.0 x)  [fill=#5baae8 r=11.098444938659668 pad=7.398963451385498 pad=7.398963451385498 HORIZONTAL]
+            TEXT "接单-119" (0.0,0.0 x)  [fill=#ffffff] fs=12.948185920715332 fw=600 lh=18.497407913208008 Roboto col=#ffffff text='接单'
+      FRAME "DIV-96" (0.0,0.0 x)  [fill=#d7f1fd stroke=#d7f1fd/1.0 r=14.797926902770996]
+        FRAME "margin-wrap" (0.0,0.0 x)
+          FRAME "DIV-97" (0.0,0.0 x)
+            FRAME "DIV-98" (0.0,0.0 x)  [fill=IMAGE r=9247.779296875 HORIZONTAL]
+            FRAME "SPAN-101" (0.0,0.0 x)
+              TEXT "李小姐-103" (0.0,0.0 x)  [fill=#111827] fs=12.948185920715332 fw=600 lh=18.497407913208008 Roboto col=#111827 text='王先生'
+            FRAME "margin-wrap" (0.0,0.0 x)
+              FRAME "DIV-107" (0.0,0.0 x)  [HORIZONTAL]
+                TEXT "10:30-109" (0.0,0.0 x)  [fill=#3c3c3c] fs=11.098444938659668 fw=400 lh=14.797926902770996 Roboto col=#3c3c3c text='11:20'
+        FRAME "margin-wrap" (0.0,0.0 x)
+          FRAME "DIV-104" (0.0,0.0 x)  [HORIZONTAL]
+            TEXT "猫咪洗澡+美容-106" (0.0,0.0 x)  [fill=#5baae8] fs=12.948185920715332 fw=400 lh=18.497407913208008 Roboto col=#5baae8 text='健康体检'
+        FRAME "margin-wrap" (0.0,0.0 x)
+        FRAME "DIV-110" (0.0,0.0 x)  [HORIZONTAL]
+          TEXT "15分钟后-112" (0.0,0.0 x)  [fill=#ff9500] fs=14.797926902770996 fw=700 lh=22.196889877319336 Roboto col=#ff9500 text='30分钟后'
+        FRAME "DIV-113" (0.0,0.0 x)  [ite=7.398963451385498 HORIZONTAL]
+          FRAME "BUTTON-114" (0.0,0.0 x)  [fill=#ffffff r=11.098444938659668 pad=7.398963451385498 pad=7.398963451385498 HORIZONTAL]
+            TEXT "拒绝-116" (0.0,0.0 x)  [fill=#5baae8] fs=12.948185920715332 fw=600 lh=18.497407913208008 Roboto col=#5baae8 text='拒绝'
+          FRAME "BUTTON-117" (0.0,0.0 x)  [fill=#5baae8 r=11.098444938659668 pad=7.398963451385498 pad=7.398963451385498 HORIZONTAL]
+            TEXT "接单-119" (0.0,0.0 x)  [fill=#ffffff] fs=12.948185920715332 fw=600 lh=18.497407913208008 Roboto col=#ffffff text='接单'
+      FRAME "DIV-144" (0.0,0.0 x)  [fill=#d7f1fd r=14.797926902770996 pad=14.797926902770996 pad=14.797926902770996 pad=14.797926902770996 pad=14.797926902770996 VERTICAL]
+        FRAME "margin-wrap" (0.0,0.0 x)  [pad=5.549222469329834 HORIZONTAL]
+          FRAME "DIV-145" (0.0,0.0 x)  [ite=7.398963451385498 HORIZONTAL]
+            FRAME "DIV-146" (0.0,0.0 x)  [fill=#e5e7eb r=9247.779296875 HORIZONTAL]
+              TEXT "张-148" (0.0,0.0 x)  [fill=#5baae8] fs=11.098444938659668 fw=600 lh=14.797926902770996 Roboto col=#5baae8 text='张'
+            FRAME "SPAN-149" (0.0,0.0 x)  [HORIZONTAL]
+              TEXT "张女士-151" (0.0,0.0 x)  [fill=#111827] fs=12.948185920715332 fw=600 lh=18.497407913208008 Roboto col=#111827 text='张女士'
+        FRAME "margin-wrap" (0.0,0.0 x)  [pad=3.699481725692749 HORIZONTAL]
+          FRAME "DIV-152" (0.0,0.0 x)  [HORIZONTAL]
+            TEXT "疫苗接种-154" (0.0,0.0 x)  [fill=#6b7280] fs=12.948185920715332 fw=400 lh=18.497407913208008 Roboto col=#6b7280 text='疫苗接种'
+        FRAME "margin-wrap" (0.0,0.0 x)  [pad=7.398963451385498 HORIZONTAL]
+          FRAME "DIV-155" (0.0,0.0 x)  [HORIZONTAL]
+            TEXT "14:00-157" (0.0,0.0 x)  [fill=#9ca3af] fs=11.098444938659668 fw=400 lh=14.797926902770996 Roboto col=#9ca3af text='14:00'
+        FRAME "margin-wrap" (0.0,0.0 x)  [pad=11.098444938659668 HORIZONTAL]
+          FRAME "DIV-158" (0.0,0.0 x)  [HORIZONTAL]
+            TEXT "3小时后-160" (0.0,0.0 x)  [fill=#ef4444] fs=14.797926902770996 fw=700 lh=22.196889877319336 Roboto col=#ef4444 text='3小时后'
+        FRAME "DIV-161" (0.0,0.0 x)  [ite=7.398963451385498 HORIZONTAL]
+          FRAME "BUTTON-162" (0.0,0.0 x)  [fill=#f3f4f6 r=11.098444938659668 pad=7.398963451385498 pad=7.398963451385498 HORIZONTAL]
+            TEXT "拒绝-164" (0.0,0.0 x)  [fill=#5baae8] fs=12.948185920715332 fw=600 lh=18.497407913208008 Roboto col=#5baae8 text='拒绝'
+          FRAME "BUTTON-165" (0.0,0.0 x)  [fill=#ff7a00 r=11.098444938659668 pad=7.398963451385498 pad=7.398963451385498 HORIZONTAL]
+            TEXT "接单-167" (0.0,0.0 x)  [fill=#d7f1fd] fs=12.948185920715332 fw=600 lh=18.497407913208008 Roboto col=#d7f1fd text='接单'
+      FRAME "DIV-168" (0.0,0.0 x)  [fill=#d7f1fd r=14.797926902770996 pad=14.797926902770996 pad=14.797926902770996 pad=14.797926902770996 pad=14.797926902770996 VERTICAL]
+        FRAME "margin-wrap" (0.0,0.0 x)  [pad=5.549222469329834 HORIZONTAL]
+          FRAME "DIV-169" (0.0,0.0 x)  [ite=7.398963451385498 HORIZONTAL]
+            FRAME "DIV-170" (0.0,0.0 x)  [fill=#e5e7eb r=9247.779296875 HORIZONTAL]
+              TEXT "陈-172" (0.0,0.0 x)  [fill=#5baae8] fs=11.098444938659668 fw=600 lh=14.797926902770996 Roboto col=#5baae8 text='陈'
+            FRAME "SPAN-173" (0.0,0.0 x)  [HORIZONTAL]
+              TEXT "陈先生-175" (0.0,0.0 x)  [fill=#111827] fs=12.948185920715332 fw=600 lh=18.497407913208008 Roboto col=#111827 text='陈先生'
+        FRAME "margin-wrap" (0.0,0.0 x)  [pad=3.699481725692749 HORIZONTAL]
+          FRAME "DIV-176" (0.0,0.0 x)  [HORIZONTAL]
+            TEXT "宠物体检-178" (0.0,0.0 x)  [fill=#6b7280] fs=12.948185920715332 fw=400 lh=18.497407913208008 Roboto col=#6b7280 text='宠物体检'
+        FRAME "margin-wrap" (0.0,0.0 x)  [pad=7.398963451385498 HORIZONTAL]
+          FRAME "DIV-179" (0.0,0.0 x)  [HORIZONTAL]
+            TEXT "15:30-181" (0.0,0.0 x)  [fill=#9ca3af] fs=11.098444938659668 fw=400 lh=14.797926902770996 Roboto col=#9ca3af text='15:30'
+        FRAME "margin-wrap" (0.0,0.0 x)  [pad=11.098444938659668 HORIZONTAL]
+          FRAME "DIV-182" (0.0,0.0 x)  [HORIZONTAL]
+            TEXT "5小时后-184" (0.0,0.0 x)  [fill=#ef4444] fs=14.797926902770996 fw=700 lh=22.196889877319336 Roboto col=#ef4444 text='5小时后'
+        FRAME "DIV-185" (0.0,0.0 x)  [ite=7.398963451385498 HORIZONTAL]
+          FRAME "BUTTON-186" (0.0,0.0 x)  [fill=#f3f4f6 r=11.098444938659668 pad=7.398963451385498 pad=7.398963451385498 HORIZONTAL]
+            TEXT "拒绝-188" (0.0,0.0 x)  [fill=#5baae8] fs=12.948185920715332 fw=600 lh=18.497407913208008 Roboto col=#5baae8 text='拒绝'
+          FRAME "BUTTON-189" (0.0,0.0 x)  [fill=#ff7a00 r=11.098444938659668 pad=7.398963451385498 pad=7.398963451385498 HORIZONTAL]
+            TEXT "接单-191" (0.0,0.0 x)  [fill=#d7f1fd] fs=12.948185920715332 fw=600 lh=18.497407913208008 Roboto col=#d7f1fd text='接单'
+  FRAME "margin-wrap" (0.0,0.0 x)
+    FRAME "DIV-192" (0.0,0.0 x)  [fill=#d7f1fd r=16.0 pad=16.0 pad=16.0 pad=16.0 pad=16.0 VERTICAL]
+      FRAME "DIV-193" (0.0,0.0 x)  [ite=8.0 HORIZONTAL]
+        FRAME "BUTTON-194" (0.0,0.0 x)  [ite=6.0 VERTICAL]
+          FRAME "DIV-195" (0.0,0.0 x)  [fill=#ffffff r=12.0 HORIZONTAL]
+            FRAME "I-196" (0.0,0.0 x)  [HORIZONTAL]
+              FRAME "Icon-197" (0.0,0.0 x)
+                GROUP "Group" (0.0,0.0 x)
+                  VECTOR "Vector" (0.0,0.0 x)  [fill=#6b7280]
+          FRAME "SPAN-198" (0.0,0.0 x)  [HORIZONTAL]
+            TEXT "商品管理-200" (0.0,0.0 x)  [fill=#1d0d07] fs=11.0 fw=500 lh=16.5 Roboto col=#1d0d07 text='商品管理'
+        FRAME "BUTTON-201" (0.0,0.0 x)  [ite=6.0 VERTICAL]
+          FRAME "DIV-202" (0.0,0.0 x)  [fill=#ffffff r=12.0 HORIZONTAL]
+            FRAME "I-203" (0.0,0.0 x)  [HORIZONTAL]
+              FRAME "Icon-204" (0.0,0.0 x)
+                GROUP "Group" (0.0,0.0 x)
+                  VECTOR "Vector" (0.0,0.0 x)  [fill=#6b7280]
+          FRAME "SPAN-205" (0.0,0.0 x)  [HORIZONTAL]
+            TEXT "排期管理-207" (0.0,0.0 x)  [fill=#1d0d07] fs=11.0 fw=500 lh=16.5 Roboto col=#1d0d07 text='排期管理'
+        FRAME "BUTTON-208" (0.0,0.0 x)  [ite=6.0 VERTICAL]
+          FRAME "DIV-209" (0.0,0.0 x)  [fill=#ffffff r=12.0 HORIZONTAL]
+            FRAME "I-210" (0.0,0.0 x)  [HORIZONTAL]
+              FRAME "Icon-211" (0.0,0.0 x)
+                GROUP "Group" (0.0,0.0 x)
+                  VECTOR "Vector" (0.0,0.0 x)  [fill=#6b7280]
+          FRAME "SPAN-212" (0.0,0.0 x)  [HORIZONTAL]
+            TEXT "员工管理-214" (0.0,0.0 x)  [fill=#1d0d07] fs=11.0 fw=500 lh=16.5 Roboto col=#1d0d07 text='员工管理'
+        FRAME "BUTTON-215" (0.0,0.0 x)  [ite=6.0 VERTICAL]
+          FRAME "DIV-216" (0.0,0.0 x)  [fill=#ffffff r=12.0 HORIZONTAL]
+            FRAME "I-217" (0.0,0.0 x)  [HORIZONTAL]
+              FRAME "Icon-218" (0.0,0.0 x)
+                GROUP "Group" (0.0,0.0 x)
+                  VECTOR "Vector" (0.0,0.0 x)  [fill=#6b7280]
+          FRAME "SPAN-219" (0.0,0.0 x)  [HORIZONTAL]
+            TEXT "核销记录-221" (0.0,0.0 x)  [fill=#1d0d07] fs=11.0 fw=500 lh=16.5 Roboto col=#1d0d07 text='核销记录'
+        FRAME "BUTTON-222" (0.0,0.0 x)  [ite=6.0 VERTICAL]
+          FRAME "DIV-223" (0.0,0.0 x)  [fill=#ffffff r=12.0 HORIZONTAL]
+            FRAME "I-224" (0.0,0.0 x)  [HORIZONTAL]
+              FRAME "Icon-225" (0.0,0.0 x)
+                GROUP "Group" (0.0,0.0 x)
+                  VECTOR "Vector" (0.0,0.0 x)  [fill=#6b7280]
+          FRAME "SPAN-226" (0.0,0.0 x)  [HORIZONTAL]
+            TEXT "营销工具-228" (0.0,0.0 x)  [fill=#1d0d07] fs=11.0 fw=500 lh=16.5 Roboto col=#1d0d07 text='营销工具'
+        FRAME "BUTTON-229" (0.0,0.0 x)  [ite=6.0 VERTICAL]
+          FRAME "DIV-230" (0.0,0.0 x)  [fill=#ffffff r=12.0 HORIZONTAL]
+            FRAME "I-231" (0.0,0.0 x)  [HORIZONTAL]
+              FRAME "Icon-232" (0.0,0.0 x)
+                GROUP "Group" (0.0,0.0 x)
+                  VECTOR "Vector" (0.0,0.0 x)  [fill=#6b7280]
+          FRAME "SPAN-233" (0.0,0.0 x)  [HORIZONTAL]
+            TEXT "数据统计-235" (0.0,0.0 x)  [fill=#1d0d07] fs=11.0 fw=500 lh=16.5 Roboto col=#1d0d07 text='数据统计'
+        FRAME "BUTTON-236" (0.0,0.0 x)  [ite=6.0 VERTICAL]
+          FRAME "DIV-237" (0.0,0.0 x)  [fill=#ffffff r=12.0 HORIZONTAL]
+            FRAME "I-238" (0.0,0.0 x)  [HORIZONTAL]
+              FRAME "Icon-239" (0.0,0.0 x)
+                GROUP "Group" (0.0,0.0 x)
+                  VECTOR "Vector" (0.0,0.0 x)  [fill=#6b7280]
+          FRAME "SPAN-240" (0.0,0.0 x)  [HORIZONTAL]
+            TEXT "客户管理-242" (0.0,0.0 x)  [fill=#1d0d07] fs=11.0 fw=500 lh=16.5 Roboto col=#1d0d07 text='客户管理'
+        FRAME "BUTTON-243" (0.0,0.0 x)  [ite=6.0 VERTICAL]
+          FRAME "DIV-244" (0.0,0.0 x)  [fill=#ffffff r=12.0 HORIZONTAL]
+            FRAME "I-245" (0.0,0.0 x)  [HORIZONTAL]
+              FRAME "Icon-246" (0.0,0.0 x)
+                GROUP "Group" (0.0,0.0 x)
+                  VECTOR "Vector" (0.0,0.0 x)  [fill=#6b7280]
+          FRAME "SPAN-247" (0.0,0.0 x)  [HORIZONTAL]
+            TEXT "门店设置-249" (0.0,0.0 x)  [fill=#1d0d07] fs=11.0 fw=500 lh=16.5 Roboto col=#1d0d07 text='店铺评价'
+  FRAME "DIV-55" (0.0,0.0 x)  [ite=10.0 HORIZONTAL]
+    FRAME "DIV-56" (0.0,0.0 x)  [fill=#c0ecff stroke=#5baae8/1.0 r=16.0 pad=12.0 pad=12.0 pad=12.0 pad=12.0 VERTICAL]
+      FRAME "DIV-57" (0.0,0.0 x)  [HORIZONTAL]
+        TEXT "8-59" (0.0,0.0 x)  [fill=#000000~0.85] fs=22.0 fw=700 lh=33.0 Roboto col=#000000~0.85 text='8'
+        FRAME "margin-wrap" (0.0,0.0 x)  [pad=4.0 HORIZONTAL]
+          FRAME "SPAN-60" (0.0,0.0 x)  [fill=#ff9500 r=9999.0 HORIZONTAL]
+      FRAME "margin-wrap" (0.0,0.0 x)  [pad=2.0 HORIZONTAL]
+        FRAME "DIV-61" (0.0,0.0 x)  [HORIZONTAL]
+          TEXT "待处理-63" (0.0,0.0 x)  [fill=#3c3c3c] fs=12.0 fw=400 lh=16.0 Roboto col=#3c3c3c text='待确认'
+    FRAME "DIV-64" (0.0,0.0 x)  [fill=#c0ecff stroke=#5baae8/1.0 r=16.0 pad=12.0 pad=12.0 pad=12.0 pad=12.0 VERTICAL]
+      FRAME "DIV-65" (0.0,0.0 x)  [HORIZONTAL]
+        TEXT "5-67" (0.0,0.0 x)  [fill=#000000~0.85] fs=22.0 fw=700 lh=33.0 Roboto col=#000000~0.85 text='5'
+      FRAME "margin-wrap" (0.0,0.0 x)  [pad=2.0 HORIZONTAL]
+        FRAME "DIV-68" (0.0,0.0 x)  [HORIZONTAL]
+          TEXT "进行中-70" (0.0,0.0 x)  [fill=#3c3c3c] fs=12.0 fw=400 lh=16.0 Roboto col=#3c3c3c text='待服务'
+    FRAME "DIV-71" (0.0,0.0 x)  [fill=#c0ecff stroke=#5baae8/1.0 r=16.0 pad=12.0 pad=12.0 pad=12.0 pad=12.0 VERTICAL]
+      FRAME "DIV-72" (0.0,0.0 x)  [HORIZONTAL]
+        TEXT "42-74" (0.0,0.0 x)  [fill=#000000~0.85] fs=22.0 fw=700 lh=33.0 Roboto col=#000000~0.85 text='42'
+      FRAME "margin-wrap" (0.0,0.0 x)  [pad=2.0 HORIZONTAL]
+        FRAME "DIV-75" (0.0,0.0 x)  [HORIZONTAL]
+          TEXT "已完成-77" (0.0,0.0 x)  [fill=#3c3c3c] fs=12.0 fw=400 lh=16.0 Roboto col=#3c3c3c text='今日订单'
+    FRAME "DIV-78" (0.0,0.0 x)  [fill=#c0ecff stroke=#5baae8/1.0 r=16.0 pad=12.0 pad=12.0 pad=12.0 pad=12.0 VERTICAL]
+      FRAME "DIV-79" (0.0,0.0 x)  [HORIZONTAL]
+        TEXT "1-81" (0.0,0.0 x)  [fill=#000000~0.85] fs=22.0 fw=700 lh=33.0 Roboto col=#000000~0.85 text='1'
+      FRAME "margin-wrap" (0.0,0.0 x)  [pad=2.0 HORIZONTAL]
+        FRAME "DIV-82" (0.0,0.0 x)  [HORIZONTAL]
+          TEXT "退款单-84" (0.0,0.0 x)  [fill=#3c3c3c] fs=12.0 fw=400 lh=16.0 Roboto col=#3c3c3c text='退款'
+  FRAME "BUTTON-23" (0.0,0.0 x)  [fill=#e5e7eb r=9999.0 ite=6.0 pad=10.0 pad=10.0 pad=6.0 pad=6.0 HORIZONTAL]
+    FRAME "SPAN-24" (0.0,0.0 x)  [fill=#6b7280 r=9999.0 HORIZONTAL]
+    TEXT "营业中-26" (0.0,0.0 x)  [fill=#6b7280] fs=12.0 fw=600 lh=16.0 Roboto col=#6b7280 text='休息中'
+  FRAME "DIV-8" (0.0,0.0 x)  [fill=IMAGE r=9999.0 HORIZONTAL]
+  FRAME "DIV-11" (0.0,0.0 x)  [VERTICAL]
+    FRAME "DIV-12" (0.0,0.0 x)  [HORIZONTAL]
+      TEXT "1014840986@qq.com-14" (0.0,0.0 x)  [fill=#111827] fs=16.0 fw=700 lh=24.0 Roboto col=#111827 text='小李宠物店'
+    FRAME "margin-wrap" (0.0,0.0 x)  [pad=2.0 HORIZONTAL]
+      FRAME "DIV-15" (0.0,0.0 x)  [ite=4.0 HORIZONTAL]
+        FRAME "SPAN-16" (0.0,0.0 x)  [HORIZONTAL]
+          TEXT "★ 5-18" (0.0,0.0 x)  [fill=#f59e0b] fs=12.0 fw=600 lh=16.0 Roboto col=#f59e0b text='★ 5'
+        FRAME "SPAN-19" (0.0,0.0 x)  [HORIZONTAL]
+          TEXT "评分-21" (0.0,0.0 x)  [fill=#6b7280] fs=12.0 fw=400 lh=16.0 Roboto col=#6b7280 text='评分'
+  GROUP "Group 30" (0.0,0.0 x)  [r=[0.0, 0.0, 0.0, 0.0]]
+    RECTANGLE "Rectangle 34" (0.0,0.0 x)  [fill=#c0ecff]
+    RECTANGLE "Rectangle 35" (0.0,0.0 x)  [fill=#f0fbff]
+    TEXT "首页-469" (0.0,0.0 x)  [fill=#3c3c3c] fs=10.0 fw=500 lh=15.0 Roboto col=#3c3c3c text='首页'
+    TEXT "服务-475" (0.0,0.0 x)  [fill=#3c3c3c] fs=10.0 fw=500 lh=15.0 Roboto col=#3c3c3c text='订单'
+    FRAME "SPAN-477" (0.0,0.0 x)  [fill=#5baae8 r=16.0 HORIZONTAL]
+      FRAME "I-478" (0.0,0.0 x)  [HORIZONTAL]
+        FRAME "Icon-479" (0.0,0.0 x)
+          GROUP "Group" (0.0,0.0 x)
+            VECTOR "Vector" (0.0,0.0 x)  [fill=#fffef4]
+    TEXT "宠友圈-482" (0.0,0.0 x)  [fill=#3c3c3c] fs=10.0 fw=500 lh=15.0 Roboto col=#3c3c3c text='核销'
+    TEXT "消息-488" (0.0,0.0 x)  [fill=#3c3c3c] fs=10.0 fw=500 lh=15.0 Roboto col=#3c3c3c text='消息'
+    TEXT "我的-494" (0.0,0.0 x)  [fill=#3c3c3c] fs=10.0 fw=500 lh=15.0 Roboto col=#3c3c3c text='我的'
+    GROUP "airship" (0.0,0.0 x)
+      VECTOR "Vector 903" (0.0,0.0 x)  [fill=#5baae8 stroke=#3c3c3c/1.0]
+      VECTOR "Vector 902" (0.0,0.0 x)  [stroke=#3c3c3c/1.0]
+      VECTOR "Subtract" (0.0,0.0 x)  [fill=#ffffff stroke=#3c3c3c/1.0]
+      VECTOR "Subtract_2" (0.0,0.0 x)  [fill=#ffffff stroke=#3c3c3c/1.0]
+      VECTOR "Vector 663" (0.0,0.0 x)  [stroke=#3c3c3c/1.0]
+      VECTOR "Subtract_3" (0.0,0.0 x)  [fill=#ffffff stroke=#3c3c3c/1.0]
+      VECTOR "Subtract_4" (0.0,0.0 x)  [stroke=#3c3c3c/1.0]
+      VECTOR "Subtract_5" (0.0,0.0 x)  [stroke=#3c3c3c/1.0]
+      VECTOR "Subtract_6" (0.0,0.0 x)  [stroke=#3c3c3c/1.0]
+      VECTOR "Intersect" (0.0,0.0 x)  [fill=#ffffff stroke=#3c3c3c/1.0]
+      VECTOR "Intersect_2" (0.0,0.0 x)  [stroke=#3c3c3c/1.0]
+    GROUP "chat-bubble-text-square--messages-message-bubble-text-square-chat" (0.0,0.0 x)
+      VECTOR "Union" (0.0,0.0 x)  [fill=#5baae8 stroke=#3c3c3c/1.0]
+      VECTOR "Union_2" (0.0,0.0 x)  [stroke=#3c3c3c/1.0]
+      VECTOR "Vector 496" (0.0,0.0 x)  [stroke=#ffffff/1.0]
+      VECTOR "Vector 497" (0.0,0.0 x)  [stroke=#ffffff/1.0]
+    GROUP "cat-2--nature-head-cat-pet-animals-felyne" (0.0,0.0 x)
+      VECTOR "Vector" (0.0,0.0 x)  [fill=#5baae8 stroke=#3c3c3c/1.0]
+      VECTOR "Vector 1353" (0.0,0.0 x)  [stroke=#3c3c3c/1.0]
+      VECTOR "Vector_2" (0.0,0.0 x)  [stroke=#3c3c3c/1.0]
+      VECTOR "Vector 1351" (0.0,0.0 x)  [stroke=#ffffff/1.0]
+      VECTOR "Vector 1352" (0.0,0.0 x)  [stroke=#ffffff/1.0]
+      VECTOR "Vector 2593" (0.0,0.0 x)  [stroke=#ffffff/1.0]
+      VECTOR "Vector 1323" (0.0,0.0 x)  [stroke=#ffffff/1.0]
+    GROUP "home-2--door-entrance-home-house-roof-round-shelter" (0.0,0.0 x)
+      VECTOR "Rectangle 16" (0.0,0.0 x)  [fill=#5baae8 stroke=#3c3c3c/1.0]
+      VECTOR "Vector (Stroke)" (0.0,0.0 x)  [fill=#ffffff stroke=#3c3c3c/1.0]
+      VECTOR "Rectangle 15" (0.0,0.0 x)  [stroke=#3c3c3c/1.0]
+      VECTOR "Vector (Stroke)_2" (0.0,0.0 x)  [stroke=#3c3c3c/1.0]

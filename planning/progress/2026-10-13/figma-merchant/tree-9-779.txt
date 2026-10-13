@@ -1,0 +1,70 @@
+FRAME "首页-退款单" (446.0,4139.0 402.0x898.0)  [fill=#ffffff]
+  RECTANGLE "Rectangle 10" (0.0,0.0 402.0x86.0)  [fill=#fff6e5]
+  RECTANGLE "Rectangle 14" (0.0,86.0 402.0x788.0)  [fill=#f0fbff]
+  TEXT "宠物信息-11" (177.0,43.0 48.0x24.0)  [fill=#3c3c3c] fs=16.0 fw=700 lh=24.0 Outfit col=#3c3c3c text='售后单'
+  GROUP "Group" (17.0,47.7 8.8575439453125x14.522697448730469)
+    VECTOR "Vector" (0.0,0.0 8.8575439453125x14.522697448730469)  [fill=#3c3c3c]
+  FRAME "margin-wrap" (20.4,101.0 360.2283020019531x153.3333282470703)
+    FRAME "DIV-43" (0.0,0.0 360.2283020019531x140.7305908203125)  [fill=#ffffff stroke=#c0ecff/1.0 r=16.803653717041016 pad=16.803653717041016 pad=16.803653717041016 pad=16.803653717041016 pad=16.803653717041016 VERTICAL]
+      FRAME "margin-wrap" (17.8,17.8 326.6210021972656x42.009132385253906)  [pad=8.401826858520508 HORIZONTAL]
+        FRAME "DIV-44" (0.0,0.0 326.6210021972656x33.60730743408203)  [HORIZONTAL]
+          FRAME "DIV-45" (0.0,0.0 86.11872100830078x33.60730743408203)  [ite=8.401826858520508 HORIZONTAL]
+            FRAME "DIV-46" (0.0,0.0 33.60730743408203x33.60730743408203)  [fill=IMAGE r=10501.2333984375 HORIZONTAL]
+            FRAME "SPAN-49" (42.0,6.3 44.109588623046875x21.004566192626953)  [HORIZONTAL]
+              TEXT "李小姐-51" (0.0,0.0 45.0x21.0)  [fill=#111827] fs=14.703197479248047 fw=600 lh=21.004566192626953 Roboto col=#111827 text='李小姐'
+          FRAME "SPAN-52" (288.7,4.2 37.93949890136719x25.20547866821289)  [HORIZONTAL]
+            TEXT "¥268-54" (0.0,-0.4 38.0x26.0)  [fill=#ff7a00] fs=16.803653717041016 fw=700 lh=25.205480575561523 Roboto col=#ff7a00 text='¥268'
+      FRAME "margin-wrap" (17.8,59.8 326.6210021972656x33.60730743408203)  [pad=12.602740287780762 HORIZONTAL]
+        FRAME "DIV-55" (0.0,0.0 326.6210021972656x21.004566192626953)  [HORIZONTAL]
+          FRAME "SPAN-56" (0.0,0.0 96.55536651611328x21.004566192626953)  [HORIZONTAL]
+            TEXT "猫咪洗澡+美容-58" (0.0,0.0 97.0x21.0)  [fill=#3c3c3c] fs=14.703197479248047 fw=400 lh=21.004566192626953 Roboto col=#3c3c3c text='猫咪洗澡+美容'
+          FRAME "SPAN-59" (266.9,2.1 59.698917388916016x16.803653717041016)  [HORIZONTAL]
+            TEXT "今天 10:30-61" (0.0,-0.1 60.0x17.0)  [fill=#9ca3af] fs=12.602740287780762 fw=400 lh=16.803653717041016 Roboto col=#9ca3af text='今天 10:30'
+      FRAME "DIV-62" (17.8,93.4 326.6210021972656x31.50684928894043)  [HORIZONTAL]
+        FRAME "SPAN-63" (0.0,5.3 58.82919692993164x21.004566192626953)  [fill=#ffffff r=10501.2333984375 pad=10.502283096313477 pad=10.502283096313477 pad=2.100456714630127 pad=2.100456714630127 HORIZONTAL]
+          TEXT "待服务-65" (10.5,2.0 38.0x17.0)  [fill=#ff7a00] fs=12.602740287780762 fw=500 lh=16.803653717041016 Roboto col=#ff7a00 text='退款中'
+        FRAME "BUTTON-70" (249.6,-0.2 77.0x32.0)  [fill=#5baae8 r=10501.2333984375 pad=16.803653717041016 pad=16.803653717041016 pad=6.301370143890381 pad=6.301370143890381 HORIZONTAL]
+          TEXT "接单-72" (13.0,6.3 51.0x17.0)  [fill=#ffffff] fs=12.602740287780762 fw=600 lh=16.803653717041016 Roboto col=#ffffff text='处理退款'
+  GROUP "Group 30" (0.0,822.0 402.0x76.0)  [r=[0.0, 0.0, 0.0, 0.0]]
+    RECTANGLE "Rectangle 34" (0.0,14.0 402.0x61.0)  [fill=#c0ecff]
+    RECTANGLE "Rectangle 35" (0.0,15.0 402.0x61.0)  [fill=#f0fbff]
+    TEXT "首页-469" (30.0,46.0 21.0x16.0)  [fill=#3c3c3c] fs=10.0 fw=500 lh=15.0 Roboto col=#3c3c3c text='首页'
+    TEXT "服务-475" (110.0,46.0 22.0x16.0)  [fill=#3c3c3c] fs=10.0 fw=500 lh=15.0 Roboto col=#3c3c3c text='订单'
+    FRAME "SPAN-477" (175.0,0.0 53.0x53.0)  [fill=#5baae8 r=16.0 HORIZONTAL]
+      FRAME "I-478" (17.5,12.5 18.0x28.0)  [HORIZONTAL]
+        FRAME "Icon-479" (-4.5,-0.5 27.0x27.0)
+          GROUP "Group" (0.1,2.3 26.950366973876953x23.627197265625)
+            VECTOR "Vector" (0.0,0.0 26.950366973876953x23.627197265625)  [fill=#fffef4]
+    TEXT "宠友圈-482" (185.0,55.0 33.0x16.0)  [fill=#3c3c3c] fs=10.0 fw=500 lh=15.0 Roboto col=#3c3c3c text='核销'
+    TEXT "消息-488" (271.0,46.0 22.0x16.0)  [fill=#3c3c3c] fs=10.0 fw=500 lh=15.0 Roboto col=#3c3c3c text='消息'
+    TEXT "我的-494" (352.0,46.0 21.0x16.0)  [fill=#3c3c3c] fs=10.0 fw=500 lh=15.0 Roboto col=#3c3c3c text='我的'
+    GROUP "airship" (110.0,24.0 21.069124221801758x17.832054138183594)
+      VECTOR "Vector 903" (1.3,0.8 19.757112503051758x12.531132698059082)  [fill=#5baae8 stroke=#3c3c3c/1.0]
+      VECTOR "Vector 902" (1.3,0.8 19.757112503051758x12.531132698059082)  [stroke=#3c3c3c/1.0]
+      VECTOR "Subtract" (0.0,0.0 5.791347980499268x6.787289619445801)  [fill=#ffffff stroke=#3c3c3c/1.0]
+      VECTOR "Subtract_2" (0.0,7.4 5.791347980499268x6.787320137023926)  [fill=#ffffff stroke=#3c3c3c/1.0]
+      VECTOR "Vector 663" (4.6,7.0 2.793022632598877x0.0)  [stroke=#3c3c3c/1.0]
+      VECTOR "Subtract_3" (8.6,12.8 6.383056163787842x5.074728965759277)  [fill=#ffffff stroke=#3c3c3c/1.0]
+      VECTOR "Subtract_4" (8.6,12.8 6.383056163787842x5.074728965759277)  [stroke=#3c3c3c/1.0]
+      VECTOR "Subtract_5" (0.0,0.0 5.791347980499268x6.787289619445801)  [stroke=#3c3c3c/1.0]
+      VECTOR "Subtract_6" (0.0,7.4 5.791347980499268x6.787285804748535)  [stroke=#3c3c3c/1.0]
+      VECTOR "Intersect" (15.0,1.2 6.067472457885742x11.722930908203125)  [fill=#ffffff stroke=#3c3c3c/1.0]
+      VECTOR "Intersect_2" (15.0,1.2 6.067472457885742x11.722930908203125)  [stroke=#3c3c3c/1.0]
+    GROUP "chat-bubble-text-square--messages-message-bubble-text-square-chat" (273.0,24.0 17.313247680664062x17.313247680664062)
+      VECTOR "Union" (0.0,0.0 17.313247680664062x17.313247680664062)  [fill=#5baae8 stroke=#3c3c3c/1.0]
+      VECTOR "Union_2" (0.0,0.0 17.313247680664062x17.313247680664062)  [stroke=#3c3c3c/1.0]
+      VECTOR "Vector 496" (5.3,4.5 6.752165794372559x0.0)  [stroke=#ffffff/1.0]
+      VECTOR "Vector 497" (5.3,8.7 5.10804557800293x0.0)  [stroke=#ffffff/1.0]
+    GROUP "cat-2--nature-head-cat-pet-animals-felyne" (354.0,24.0 17.32148551940918x17.3215274810791)
+      VECTOR "Vector" (0.0,0.0 17.32148551940918x17.3215274810791)  [fill=#5baae8 stroke=#3c3c3c/1.0]
+      VECTOR "Vector 1353" (5.1,3.2 7.043943405151367x0.9250801205635071)  [stroke=#3c3c3c/1.0]
+      VECTOR "Vector_2" (0.0,0.0 17.32148551940918x17.3215274810791)  [stroke=#3c3c3c/1.0]
+      VECTOR "Vector 1351" (5.9,7.8 0.0x0.693553626537323)  [stroke=#ffffff/1.0]
+      VECTOR "Vector 1352" (11.4,7.8 0.0x0.693553626537323)  [stroke=#ffffff/1.0]
+      VECTOR "Vector 2593" (7.8,10.6 1.6897554397583008x1.0843626260757446)  [stroke=#ffffff/1.0]
+      VECTOR "Vector 1323" (6.3,12.2 4.807336330413818x1.0628834962844849)  [stroke=#ffffff/1.0]
+    GROUP "home-2--door-entrance-home-house-roof-round-shelter" (30.0,24.0 19.477567672729492x16.481008529663086)
+      VECTOR "Rectangle 16" (0.0,0.0 19.477567672729492x16.481008529663086)  [fill=#5baae8 stroke=#3c3c3c/1.0]
+      VECTOR "Vector (Stroke)" (7.2,9.4 4.997056484222412x7.053152561187744)  [fill=#ffffff stroke=#3c3c3c/1.0]
+      VECTOR "Rectangle 15" (0.0,0.0 19.477567672729492x16.481008529663086)  [stroke=#3c3c3c/1.0]
+      VECTOR "Vector (Stroke)_2" (7.2,9.4 4.997056484222412x7.053152561187744)  [stroke=#3c3c3c/1.0]
