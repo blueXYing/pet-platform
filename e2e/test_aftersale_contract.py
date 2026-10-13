@@ -45,12 +45,16 @@ class AfterSaleContractTest(unittest.TestCase):
         self.reject(lambda s: s['paths']['/admin/aftersales']['get'].__setitem__('security', []), 'security')
         self.reject(lambda s: s['paths']['/admin/aftersales/{afterSaleId}/accept']['post'].__setitem__('x-required-actions', ['aftersale.read']), 'AFS action')
 
-    def test_only_three_final_decisions_execute_over_http(self):
+    def test_all_five_final_decisions_execute_over_http_per_ruling_32(self):
+        # Ruling 32 (2026-10-13): FULL/PARTIAL refunds execute via the original WeChat route
+        # behind pet.aftersale.refund.enabled; the former fail-closed pin is superseded.
         request = self.spec['components']['schemas']['AfterSaleDecisionRequest']
         self.assertEqual({'FULL_REFUND', 'PARTIAL_REFUND', 'REJECT', 'RESERVICE', 'OTHER'}, set(request['properties']['decisionType']['enum']))
         path = '/admin/aftersales/{afterSaleId}/decisions'
-        self.reject(lambda s: s['paths'][path]['post'].__setitem__('x-public-refund-enabled', True), 'AFS public funding')
-        self.reject(lambda s: s['paths'][path]['post']['x-executable-decision-types'].append('FULL_REFUND'), 'AFS public funding')
+        self.assertEqual(True, self.spec['paths'][path]['post']['x-public-refund-enabled'])
+        self.assertEqual('pet.aftersale.refund.enabled', self.spec['paths'][path]['post']['x-public-refund-switch'])
+        self.assertEqual(['REJECT', 'RESERVICE', 'OTHER', 'FULL_REFUND', 'PARTIAL_REFUND'],
+            self.spec['paths'][path]['post']['x-executable-decision-types'])
         self.assertNotIn('/admin/aftersales/{afterSaleId}/decision', self.spec['paths'])
         self.reject(lambda s: s['paths'].__setitem__('/admin/aftersales/{afterSaleId}/decision', s['paths'].pop(path)), 'AFS route')
 
