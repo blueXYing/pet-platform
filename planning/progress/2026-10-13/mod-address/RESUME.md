@@ -3,6 +3,10 @@
 日期：2026-10-13。分支 `codex/mod-address-20261013`（基线 develop `6263f17`）。
 任务：地址 CRUD 后端 + C 端三页 + BookingSheet 接入 + 测试 + PR；登记表小节 **§4.14**。
 
+## 交付状态（第三任 2026-10-13 23:5x）
+
+**已交付：PR #158** https://github.com/blueXYing/pet-platform/pull/158（base develop，commit `506b30c`，45 文件 +3679/-419；未合并——按红线等人工审）。PR 描述含全部方案披露（下单链接法/上限20/chooseAddress 不接入/标题残留/契约让号 58→59/e2e 计数与 #155 互操作/三类遗留风险）。以下为第三任补充的关键事实：
+
 ## 第三任进展（2026-10-13 22:2x 接手，交付冲刺）
 
 - 环境核验：JAVA21（`C:/Program Files/Eclipse Adoptium/jdk-21.0.11.10-hotspot`）、MySQL 127.0.0.1:33440 root/空、Redis 127.0.0.1:16379 全部就绪。
