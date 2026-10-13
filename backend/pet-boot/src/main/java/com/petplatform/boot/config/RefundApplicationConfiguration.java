@@ -13,6 +13,7 @@ import com.petplatform.refund.api.query.RefundOrderFactsApi;
 import com.petplatform.refund.api.command.RefundApplicationTimeoutApi;
 import com.fasterxml.jackson.core.JsonParser;
 import com.fasterxml.jackson.databind.*;
+import com.petplatform.refund.biz.apiimpl.MerchantRefundApplicationQueryApiImpl;
 import com.petplatform.refund.biz.application.*;
 import com.petplatform.schedule.api.command.*;
 import com.petplatform.schedule.api.protection.*;
@@ -36,12 +37,14 @@ public class RefundApplicationConfiguration {
         boolean enabled=e.getProperty("pet.refund.application.enabled",Boolean.class,false);
         boolean worker=e.getProperty("pet.refund.application.worker.enabled",Boolean.class,false);
         boolean http=e.getProperty("pet.refund.application.http.enabled",Boolean.class,false);
+        boolean merchantHttp=e.getProperty("pet.refund.merchant.http.enabled",Boolean.class,false);
         boolean dependencies=e.getProperty("pet.payment.foundation.enabled",Boolean.class,false)
                 && e.getProperty("pet.order.merchant.enabled",Boolean.class,false)
                 && e.getProperty("pet.auth.c.enabled",Boolean.class,false);
         // The C refund-application HTTP face (contract 10 §3.9 slice) rides the same real
         // dependencies as the kernel; it stays unreachable unless the whole slice is enabled.
-        if(worker&&!enabled || enabled&&!dependencies || http&&!enabled)
+        // The M refund face (contract 57) rides the same kernel and its own http switch.
+        if(worker&&!enabled || enabled&&!dependencies || http&&!enabled || merchantHttp&&!enabled)
             throw new IllegalStateException("Refund application requires real session, merchant and payment dependencies");
         return new Object();
     }
@@ -71,6 +74,15 @@ public class RefundApplicationConfiguration {
         @Bean RefundApplicationPorts.SessionAuthority refundApplicationSessions(UserAuthService auth) {return sessionAuthority(auth);}
         @Bean RefundApplicationPorts.OwnerAuthority refundApplicationOwners(MerchantOrderAuthorityApi authority) {
             return (c,merchant,store)->authority.requireOwner(merchant,store,new QueryContext(c.traceId(),c.operatorType(),c.operatorId()));
+        }
+        /** Contract 57 read side: existing material stays readable by its OWNER while frozen (no write). */
+        @Bean RefundApplicationPorts.OwnerReadAuthority refundApplicationOwnerReads(MerchantOrderAuthorityApi authority) {
+            return (context,merchant,store)->authority.requireOwnerRead(merchant,store,context);
+        }
+        /** Contract 57 merchant refund-application read surfaces (list/detail), default behind pet.refund.merchant.http.enabled. */
+        @Bean MerchantRefundApplicationQueryApiImpl merchantRefundApplicationQueries(DataSource source,
+                ScheduleCapacityGuardApi guard,RefundApplicationPorts.OwnerReadAuthority ownerRead) {
+            return new MerchantRefundApplicationQueryApiImpl(source,guard,ownerRead);
         }
         @Bean @ConditionalOnMissingBean(RefundApplicationPorts.Protection.class)
         RefundApplicationPorts.Protection refundApplicationProtection(@Value("${pet.refund.application.protection-key}") String key) {
