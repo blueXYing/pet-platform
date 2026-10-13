@@ -1,0 +1,72 @@
+{
+  "fileKey": "bp2vpcjjA5vZbHvtKkA8wl",
+  "assets": [
+    {
+      "nodeId": "116:5457",
+      "file": "frontend-miniapp/src/consumer/assets/messages/entry-interaction.png",
+      "scale": 3,
+      "status": "DOWNLOADED",
+      "sha256": "4796879504deb2d257334906973aa119ceb87a7ece801c2341187fd152545bf4",
+      "bytes": 792
+    },
+    {
+      "nodeId": "116:5467",
+      "file": "frontend-miniapp/src/consumer/assets/messages/entry-likes.png",
+      "scale": 3,
+      "status": "DOWNLOADED",
+      "sha256": "605ea349302d2fd46bece894125fed19246e7fca0a7cbef5a7f249c2abe06551",
+      "bytes": 1585
+    },
+    {
+      "nodeId": "116:5477",
+      "file": "frontend-miniapp/src/consumer/assets/messages/entry-follows.png",
+      "scale": 3,
+      "status": "DOWNLOADED",
+      "sha256": "1c94f23b0ec1ddcded955f7533b6929cb4eb30512ea2221e30efc3973de09d99",
+      "bytes": 1393
+    },
+    {
+      "nodeId": "116:5487",
+      "file": "frontend-miniapp/src/consumer/assets/messages/entry-comments.png",
+      "scale": 3,
+      "status": "DOWNLOADED",
+      "sha256": "c9d545379e9ec89d629bc7ec4a22dc155a6fa926ae60794fab50e7738ebde938",
+      "bytes": 912
+    },
+    {
+      "nodeId": "116:5450",
+      "file": "frontend-miniapp/src/consumer/assets/messages/header-gear.png",
+      "scale": 3,
+      "status": "DOWNLOADED",
+      "sha256": "5c4c9d81092512f1f51a3f08fc9872d9c5a609429f8eb5b76c16e43300ffad31",
+      "bytes": 1401
+    },
+    {
+      "nodeId": "116:5988",
+      "file": "frontend-miniapp/src/consumer/assets/messages/header-back.png",
+      "scale": 3,
+      "status": "DOWNLOADED",
+      "sha256": "7e84a008efa3405e17d44ece4fc3aacdf7ad83e5f071d8d3d5152a0a3ed53a5",
+      "bytes": 514
+    },
+    {
+      "nodeId": "116:6010",
+      "file": "frontend-miniapp/src/consumer/assets/messages/row-chevron.png",
+      "scale": 3,
+      "status": "DOWNLOADED",
+      "sha256": "b6bb8fe7ed9c0953e2971ee5eec73d02ad86e90c0353e0e18cd84d976c118c55",
+      "bytes": 981,
+      "note": "list row right chevron #ea9340 (116:5755 Icon-29)"
+    }
+  ],
+  "discarded": [
+    {
+      "nodeId": "116:5521",
+      "note": "huaban paper texture 962KB@3x — visually indistinguishable noise; replaced by solid #f0fbff (registry 4.6 deviation)"
+    },
+    {
+      "nodeId": "116:5995",
+      "note": "sub-page header gear — sub pages map to in-page sections, home gear 116:5450 already covers the only interactive header action"
+    }
+  ]
+}
