@@ -119,11 +119,68 @@ class AfterSaleHttpAcceptanceTest {
                 assertEquals(400,f.sendRaw("POST",adminPath(id,"decisions"),bad,bearer(f.adminToken)).status(),literal);
             }
             for(String type:List.of("FULL_REFUND","PARTIAL_REFUND")){
-                var money=Map.of("expectedVersion",receipt.value("version"),"decisionType",type,"refundAmount",type.equals("FULL_REFUND")?"128.00":"32.00","reason","HTTP must not authorize disbursement");
-                assertEquals(503,f.send("POST",adminPath(id,"decisions"),money,f.adminToken).status());
+                // Ruling 32 removed the HTTP 503 shortcut; without pet.aftersale.refund.enabled
+                // the kernel funding authority itself stays closed and rejects both types.
+                var money=Map.of("expectedVersion",receipt.value("version"),"decisionType",type,"refundAmount",type.equals("FULL_REFUND")?"128.00":"32.00","reason","Refund decisions stay closed without the funding switch");
+                var reply=f.send("POST",adminPath(id,"decisions"),money,f.adminToken);
+                assertEquals(503,reply.status());assertEquals("COMMON_DEPENDENCY_UNAVAILABLE",reply.code());
             }
-            assertEquals(commands,f.count("SELECT COUNT(*) FROM aftersale_command"));assertEquals(decisions,f.count("SELECT COUNT(*) FROM aftersale_decision"));assertNoMoney(f);
+            // The two denied attempts keep their idempotency bindings but produce no decision or money.
+            assertEquals(commands+2,f.count("SELECT COUNT(*) FROM aftersale_command"));assertEquals(decisions,f.count("SELECT COUNT(*) FROM aftersale_decision"));assertNoMoney(f);
             assertEquals("RESOLVED",decide(f,receipt,"OTHER").value("status"));
+        }
+    }
+
+    /** Ruling 32: with the funding switch on, public FULL/PARTIAL decisions build refund orders
+     * bound to the original WeChat route; execution itself stays with the durable task family. */
+    @Test void refundDecisionsAdjudicateOriginalRouteRefundOrdersUnderTheRuling32Switch()throws Exception{
+        try(var f=new AfterSaleHttpFixture(Map.of("pet.aftersale.refund.enabled",true))){
+            assertEquals(1,f.context.getBeansOfType(RefundFundingEligibilityFactsApi.class).size());
+            String order=f.verifiedOrder();
+            var receipt=f.send("POST",createPath(order),createBody(),f.buyerToken);assertEquals(201,receipt.status());
+            receipt=accept(f,receipt);String id=receipt.value("afterSaleId");
+            long commands=f.count("SELECT COUNT(*) FROM aftersale_command"),decisions=f.count("SELECT COUNT(*) FROM aftersale_decision");
+            // FULL must equal the paid amount and PARTIAL must stay strictly below it.
+            for(String[] boundary:List.of(new String[]{"FULL_REFUND","127.99"},new String[]{"PARTIAL_REFUND","128.00"},new String[]{"PARTIAL_REFUND","0.00"})){
+                var reply=f.send("POST",adminPath(id,"decisions"),Map.of("expectedVersion",receipt.value("version"),"decisionType",boundary[0],"refundAmount",boundary[1],"reason","Kernel amount bounds reject this adjudication"),f.adminToken);
+                assertEquals(400,reply.status(),boundary[0]+" "+boundary[1]);assertEquals("AFTERSALE_AMOUNT_INVALID",reply.code());
+            }
+            // The in-bounds rejections (FULL below paid, PARTIAL at paid) are admitted first and
+            // keep their command bindings; a non-positive PARTIAL fails kernel shape validation
+            // before admission, so exactly two of the three attempts persist a command.
+            assertEquals(commands+2,f.count("SELECT COUNT(*) FROM aftersale_command"));
+            assertEquals(decisions,f.count("SELECT COUNT(*) FROM aftersale_decision"));assertNoMoney(f);
+            var body=Map.of("expectedVersion",receipt.value("version"),"decisionType","PARTIAL_REFUND","refundAmount","32.00","reason","Adjudicated partial refund executes the WeChat original route");
+            String requestId=rid();var headers=Map.of("Authorization","Bearer "+f.adminToken,"X-Request-Id",requestId);
+            var decision=f.sendRaw("POST",adminPath(id,"decisions"),f.json.writeValueAsString(body),headers);
+            assertEquals(200,decision.status(),decision.toString());
+            assertEquals("RESOLVED",decision.value("status"));assertNotNull(decision.value("decisionId"));
+            String refundOrder=decision.value("refundOrderId");assertNotNull(refundOrder);
+            assertEquals(decision.data(),f.sendRaw("POST",adminPath(id,"decisions"),f.json.writeValueAsString(body),headers).data());
+            var changed=Map.of("expectedVersion",receipt.value("version"),"decisionType","PARTIAL_REFUND","refundAmount","31.00","reason","Adjudicated partial refund executes the WeChat original route");
+            assertEquals(409,f.sendRaw("POST",adminPath(id,"decisions"),f.json.writeValueAsString(changed),headers).status());
+            // One final decision per case; replaying any later decision stays a conflict.
+            assertEquals(409,f.send("POST",adminPath(id,"decisions"),Map.of("expectedVersion",decision.value("version"),"decisionType","REJECT","reason","No second review after a final adjudication"),f.adminToken).status());
+            assertEquals("PARTIAL",f.text("SELECT refund_type FROM refund_order"));
+            assertEquals("32.00",f.text("SELECT refund_amount FROM refund_order"));
+            assertEquals("CREATED",f.text("SELECT status FROM refund_order"));
+            assertEquals("AFTERSALE_DECISION",f.text("SELECT source_type FROM refund_execution"));
+            assertEquals(id,f.text("SELECT CAST(source_biz_id AS CHAR) FROM refund_execution"));
+            assertEquals("AFTERSALE_REFUND_SUBMIT:"+refundOrder+":0",f.text("SELECT task_key FROM async_task WHERE task_type='AFTERSALE_REFUND_SUBMIT'"));
+            assertEquals(0,f.count("SELECT COUNT(*) FROM payment_refund_dispatch"));assertEquals(0,f.channelCalls.get());
+            assertEquals("WECHAT_ORIGINAL_ROUTE",f.text("SELECT funding_evidence_id FROM refund_aftersale_proof").substring(0,"WECHAT_ORIGINAL_ROUTE".length()));
+            // A refund order exists: no new after-sale may be opened for this order.
+            var blocked=f.send("GET","/c/orders/"+order+"/aftersale-eligibility",null,f.buyerToken);
+            assertEquals(200,blocked.status());assertEquals(false,blocked.data().get("eligible"));
+            assertEquals("REFUND_ORDER_ALREADY_EXISTS",blocked.value("blockingReason"));
+            // The full-refund sibling path on a fresh same-store order binds the exact paid amount.
+            String fullOrder=f.secondVerifiedOrder();
+            var full=f.send("POST",createPath(fullOrder),createBody(),f.buyerToken);assertEquals(201,full.status());
+            full=accept(f,full);
+            var done=f.send("POST",adminPath(full.value("afterSaleId"),"decisions"),Map.of("expectedVersion",full.value("version"),"decisionType","FULL_REFUND","refundAmount","128.00","reason","Adjudicated full refund executes the WeChat original route"),f.adminToken);
+            assertEquals(200,done.status());assertNotNull(done.value("refundOrderId"));
+            assertEquals(2,f.count("SELECT COUNT(*) FROM refund_order"));
+            assertEquals("FULL",f.text("SELECT refund_type FROM refund_order WHERE id="+done.value("refundOrderId")));
         }
     }
 

@@ -108,6 +108,13 @@ public class LateRefundConfiguration {
         return new PaymentRefundResultFactsApiImpl(source, guard);
     }
 
+    /** Ruling 32: after-sale refund funding rides the original WeChat route of the succeeded payment. */
+    @Bean @ConditionalOnProperty(name="pet.aftersale.refund.enabled",havingValue="true")
+    com.petplatform.payment.api.query.RefundFundingEligibilityFactsApi wechatOriginalRouteRefundFunding(
+            DataSource source, PaymentSuccessFactsApi payments) {
+        return new com.petplatform.payment.biz.application.WechatOriginalRouteRefundFundingAuthority(source, payments);
+    }
+
     @Bean @ConditionalOnMissingBean(PaymentRefundChannel.class)
     PaymentRefundChannel paymentRefundChannel(PaymentDispatchConfiguration.DispatchSettings settings,
             ObjectProvider<Clock> clocks) {

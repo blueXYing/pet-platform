@@ -1,12 +1,16 @@
 import { useEffect, useRef, useState } from 'react';
 import { Link, useParams, useSearchParams } from 'react-router-dom';
-import { AfterSaleFailure, caseStatusLabel, decisionLabel, validUtc, type Action, type ActionBody, type AfterSaleClient, type CaseDetail, type NonRefundDecision, type PendingIntent, type ReadGrant, type Receipt } from '../api/aftersales';
+import { AfterSaleFailure, caseStatusLabel, decisionLabel, validUtc, REFUND_DECISIONS, type Action, type ActionBody, type AfterSaleClient, type CaseDetail, type DecisionType, type PendingIntent, type ReadGrant, type Receipt } from '../api/aftersales';
 
 function errorText(caught: unknown, fallback: string) {
   if (!(caught instanceof AfterSaleFailure)) return fallback;
   return `${fallback}（${caught.code}）${caught.traceId ? ` · 追踪 ${caught.traceId}` : ''}`;
 }
 const hasText = (value: string) => /\S/.test(value) && value.length <= 500;
+const isRefundDecision = (value: DecisionType) => REFUND_DECISIONS.includes(value);
+// Exact two-decimal positive amount string; FULL/PARTIAL bounds against the real paid
+// amount are adjudicated by the kernel (400 AFTERSALE_AMOUNT_INVALID otherwise).
+const isAmountDraft = (value: string) => /^(0|[1-9][0-9]{0,15})\.[0-9]{2}$/.test(value) && !/^0\.00$/.test(value);
 export default function AfterSaleDetailPage({ client, canHandle, canDecide, onAuthLost }: { client: AfterSaleClient; canHandle: boolean; canDecide: boolean; onAuthLost: () => void }) {
   const { afterSaleId = '' } = useParams();
   const [params] = useSearchParams();
@@ -31,12 +35,13 @@ export default function AfterSaleDetailPage({ client, canHandle, canDecide, onAu
   const [targetParty, setTargetParty] = useState<'USER' | 'MERCHANT'>('USER');
   const [supplementReason, setSupplementReason] = useState('');
   const [deadline, setDeadline] = useState('');
-  const [decisionType, setDecisionType] = useState<NonRefundDecision>('REJECT');
+  const [decisionType, setDecisionType] = useState<DecisionType>('REJECT');
+  const [refundAmountDraft, setRefundAmountDraft] = useState('');
   const [reason, setReason] = useState('');
   const [decisionConfirmed, setDecisionConfirmed] = useState(false);
   const [lastReceipt, setLastReceipt] = useState<Receipt>();
   function clearPreviews() { for (const url of Object.values(urls.current)) URL.revokeObjectURL(url); urls.current = {}; setPreviews({}); }
-  function resetDrafts() { setAssessment(''); setAcceptConfirmed(false); setPriorFinalCaseId(''); setDuplicateReason(''); setDuplicateConfirmed(false); setSupplementReason(''); setDeadline(''); setReason(''); setDecisionConfirmed(false); }
+  function resetDrafts() { setAssessment(''); setAcceptConfirmed(false); setPriorFinalCaseId(''); setDuplicateReason(''); setDuplicateConfirmed(false); setSupplementReason(''); setDeadline(''); setReason(''); setDecisionConfirmed(false); setRefundAmountDraft(''); }
   function readPending(): { ok: true; intent: PendingIntent | undefined } | { ok: false } {
     try { return { ok: true, intent: client.pending(afterSaleId) }; }
     catch (caught) {
@@ -153,7 +158,7 @@ export default function AfterSaleDetailPage({ client, canHandle, canDecide, onAu
     <div className="aftersale-title"><h1>售后工单详情</h1><Link to={back}>返回售后列表</Link><button disabled={busy} onClick={() => { setError(''); void load(); }}>刷新工单</button></div>
     {error && <p role="alert">{error}</p>}{notice && <p role="status">{notice}</p>}
     {retry && <div className="aftersale-callout"><p>待确认操作：{retry.label}。保留原请求标识和原始内容，新的处理操作暂停。</p>
-      {retryBody && <details><summary>查看原处理内容</summary>{typeof retryBody.expectedVersion === 'string' && <p>原工单版本：{retryBody.expectedVersion}</p>}{typeof retryBody.decisionType === 'string' && <p>原处理类型：{decisionLabel(retryBody.decisionType)}</p>}{typeof retryBody.reason === 'string' && <p className="preserve-text">原处理原因：{retryBody.reason}</p>}{typeof retryBody.newProblemAssessment === 'string' && <p className="preserve-text">原新问题评估：{retryBody.newProblemAssessment}</p>}{typeof retryBody.targetParty === 'string' && <p>原补证方：{retryBody.targetParty === 'USER' ? '用户' : '商家'}</p>}{typeof retryBody.deadline === 'string' && <p>原补证截止（UTC）：{retryBody.deadline}</p>}{typeof retryBody.priorFinalCaseId === 'string' && <p>引用原终局：{retryBody.priorFinalCaseId}</p>}</details>}
+      {retryBody && <details><summary>查看原处理内容</summary>{typeof retryBody.expectedVersion === 'string' && <p>原工单版本：{retryBody.expectedVersion}</p>}{typeof retryBody.decisionType === 'string' && <p>原处理类型：{decisionLabel(retryBody.decisionType)}</p>}{typeof retryBody.refundAmount === 'string' && <p>原退款金额：{retryBody.refundAmount}</p>}{typeof retryBody.reason === 'string' && <p className="preserve-text">原处理原因：{retryBody.reason}</p>}{typeof retryBody.newProblemAssessment === 'string' && <p className="preserve-text">原新问题评估：{retryBody.newProblemAssessment}</p>}{typeof retryBody.targetParty === 'string' && <p>原补证方：{retryBody.targetParty === 'USER' ? '用户' : '商家'}</p>}{typeof retryBody.deadline === 'string' && <p>原补证截止（UTC）：{retryBody.deadline}</p>}{typeof retryBody.priorFinalCaseId === 'string' && <p>引用原终局：{retryBody.priorFinalCaseId}</p>}</details>}
       <button disabled={busy || !retryAllowed} onClick={() => void execute(retry)}>重试原操作</button></div>}
     {busy && <p role="status">正在读取或提交</p>}
     {detail && <>
@@ -177,12 +182,11 @@ export default function AfterSaleDetailPage({ client, canHandle, canDecide, onAu
         {p4 && <fieldset disabled={blocked}><legend>重复问题关闭</legend><label>引用历史终局<select aria-label="引用历史终局" value={priorFinalCaseId} onChange={event => setPriorFinalCaseId(event.target.value)}><option value="">请选择已核对的历史结论</option>{histories.filter(old => reviewed.includes(old.afterSaleId)).map(old => <option key={old.afterSaleId} value={old.afterSaleId}>{old.afterSaleId} · {decisionLabel(old.decisionType ?? '')}</option>)}</select></label><label>重复问题关闭原因<textarea maxLength={500} value={duplicateReason} onChange={event => setDuplicateReason(event.target.value)} /></label><label><input type="checkbox" checked={duplicateConfirmed} onChange={event => setDuplicateConfirmed(event.target.checked)} />确认本次为重复问题并引用原结论</label><button disabled={!historyChecked || !priorFinalCaseId || !hasText(duplicateReason) || !duplicateConfirmed} onClick={() => command('close-duplicate', { expectedVersion: detail.version, priorFinalCaseId, reason: duplicateReason }, '重复问题关闭')}>关闭重复问题</button></fieldset>}
       </section>}
       {detail.status === 'PROCESSING' && canHandle && <section><h2>要求补证</h2><fieldset disabled={blocked}><label>补证方<select aria-label="补证方" value={targetParty} onChange={event => setTargetParty(event.target.value as 'USER' | 'MERCHANT')}><option value="USER">用户</option><option value="MERCHANT">商家</option></select></label><label>补证原因<textarea maxLength={500} value={supplementReason} onChange={event => setSupplementReason(event.target.value)} /></label><label>补证截止（UTC 毫秒）<input value={deadline} placeholder="2026-10-02T12:00:00.000Z" onChange={event => setDeadline(event.target.value)} /></label><p className="hint">请输入未来的 UTC 时间，格式 YYYY-MM-DDTHH:mm:ss.SSSZ。仅严格早于截止的补证可满足本轮。</p><button disabled={!hasText(supplementReason) || !validDeadline} onClick={() => command('supplement-requests', { expectedVersion: detail.version, targetParty, reason: supplementReason, deadline }, '补证要求')}>提交补证要求</button></fieldset></section>}
-      {detail.status === 'PROCESSING' && canDecide && <section><h2>非退款终局处理</h2><fieldset disabled={blocked}><label>终局类型<select aria-label="终局类型" value={decisionType} onChange={event => setDecisionType(event.target.value as NonRefundDecision)}>{(['REJECT', 'RESERVICE', 'OTHER'] as const).map(value => <option value={value} key={value}>{decisionLabel(value)}</option>)}</select></label><label>终局原因<textarea maxLength={500} value={reason} onChange={event => setReason(event.target.value)} /></label>{decisionType === 'RESERVICE' && <p className="hint">说明人工重新服务安排。该决定不会自动创建订单、预约或再次核销。</p>}<label><input type="checkbox" checked={decisionConfirmed} onChange={event => setDecisionConfirmed(event.target.checked)} />确认基于双方证据作出最终处理</label><button disabled={!hasText(reason) || !decisionConfirmed} onClick={() => command('decisions', { expectedVersion: detail.version, decisionType, reason, refundAmount: null }, '非退款终局决定')}>提交最终决定</button></fieldset></section>}
-      {detail.decisionType && <section><h2>已记录的最终决定</h2><p>{decisionLabel(detail.decisionType)}{detail.refundAmount && ` · 记录金额 ${detail.refundAmount}`}</p><p className="preserve-text">{detail.decisionReason}</p></section>}
+      {detail.status === 'PROCESSING' && canDecide && <section><h2>最终裁决</h2><fieldset disabled={blocked}><label>终局类型<select aria-label="终局类型" value={decisionType} onChange={event => setDecisionType(event.target.value as DecisionType)}>{(['REJECT', 'RESERVICE', 'OTHER', 'FULL_REFUND', 'PARTIAL_REFUND'] as const).map(value => <option value={value} key={value}>{decisionLabel(value)}</option>)}</select></label>{isRefundDecision(decisionType) && <><label>退款金额（元）<input inputMode="decimal" value={refundAmountDraft} placeholder="例如 32.00" onChange={event => setRefundAmountDraft(event.target.value.trim())} /></label><p className="hint">精确两位小数。全额退款必须等于订单真实实付金额，部分退款必须大于 0 且小于实付金额；以系统核算为准，不符将被拒绝。裁决成功后自动创建退款单，按微信支付原路退回异步执行。</p></>}<label>终局原因<textarea maxLength={500} value={reason} onChange={event => setReason(event.target.value)} /></label>{decisionType === 'RESERVICE' && <p className="hint">说明人工重新服务安排。该决定不会自动创建订单、预约或再次核销。</p>}<label><input type="checkbox" checked={decisionConfirmed} onChange={event => setDecisionConfirmed(event.target.checked)} />确认基于双方证据作出最终处理</label><button disabled={!hasText(reason) || !decisionConfirmed || isRefundDecision(decisionType) && !isAmountDraft(refundAmountDraft)} onClick={() => command('decisions', { expectedVersion: detail.version, decisionType, reason, refundAmount: isRefundDecision(decisionType) ? refundAmountDraft : null }, '最终裁决')}>提交最终决定</button><p className="hint">裁决一次终局，不支持复审；提交前请核对双方证据与金额。</p></fieldset></section>}
+      {detail.decisionType && <section><h2>已记录的最终决定</h2><p>{decisionLabel(detail.decisionType)}{detail.refundAmount && ` · 记录金额 ${detail.refundAmount}`}</p><p className="preserve-text">{detail.decisionReason}</p>{detail.decisionType && isRefundDecision(detail.decisionType) && <p className="hint">退款单已创建，按微信支付原路退回执行；执行进度以退款渠道回执为准，工单状态不再变化。</p>}</section>}
       {!canHandle && !canDecide && <p className="hint">当前账号仅可查看售后工单与获权证据。</p>}
       {!client.canWriteCase(afterSaleId) && <p className="hint">当前页面未验证所选门店，请从指定商家与门店的售后列表进入后处理。</p>}
-      <p className="hint">全额退款、部分退款终裁尚未开放。</p>
-      {lastReceipt && <section className="aftersale-callout"><h2>提交回执</h2><p>命令 {lastReceipt.commandId} · 工单 {lastReceipt.afterSaleId} · {caseStatusLabel(lastReceipt.status)} · 版本 {lastReceipt.version}</p><p>提交（UTC）：{lastReceipt.occurredAt}{lastReceipt.decisionId && ` · 决定 ${lastReceipt.decisionId}`}{lastReceipt.supplementRequestId && ` · 补证轮次 ${lastReceipt.supplementRequestId}`}</p></section>}
+      {lastReceipt && <section className="aftersale-callout"><h2>提交回执</h2><p>命令 {lastReceipt.commandId} · 工单 {lastReceipt.afterSaleId} · {caseStatusLabel(lastReceipt.status)} · 版本 {lastReceipt.version}</p><p>提交（UTC）：{lastReceipt.occurredAt}{lastReceipt.decisionId && ` · 决定 ${lastReceipt.decisionId}`}{lastReceipt.supplementRequestId && ` · 补证轮次 ${lastReceipt.supplementRequestId}`}{lastReceipt.refundOrderId && ` · 退款单 ${lastReceipt.refundOrderId}（原路退回执行中）`}</p></section>}
     </>}
   </main>;
 }

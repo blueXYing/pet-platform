@@ -12,7 +12,7 @@ import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
-/** Real C / OWNER / OPS routes. Public funding decisions remain closed in this slice. */
+/** Real C / OWNER / OPS routes. Refund decisions execute the ruling-32 original-route chain. */
 @RestController
 @ConditionalOnProperty(name="pet.aftersale.http.enabled",havingValue="true")
 public final class AfterSaleController {
@@ -80,13 +80,12 @@ public final class AfterSaleController {
     public ResponseEntity<Map<String,Object>> decide(@PathVariable String caseId,HttpServletRequest r) {
         var c=context(r,true,"aftersale.decide");var b=body(r,DecisionBody.class);id(caseId);version(b.expectedVersion());text(b.reason(),1,500,false);
         String type=oneOf(b.decisionType(),"REJECT","RESERVICE","OTHER","FULL_REFUND","PARTIAL_REFUND");var refund=amount(b.refundAmount());
-        if(Set.of("FULL_REFUND","PARTIAL_REFUND").contains(type)) {
-            if(refund==null||refund.signum()<=0)throw invalid();
-            queries.getCase(c,caseId,RouteParty.OPS);
-            throw new ApiException(CommonApiCodes.DEPENDENCY_UNAVAILABLE,"Public funding decisions unavailable");
-        }
-        if(refund!=null)throw invalid();
-        return ok(receipt(commands.decide(new Decide(c,caseId,b.expectedVersion(),type,null,b.reason()))),200,r);
+        boolean isRefund=Set.of("FULL_REFUND","PARTIAL_REFUND").contains(type);
+        // Ruling 32: refund decisions execute through the internal original-route chain; the
+        // pet.aftersale.refund switch inside the kernel stays the funding authority gate.
+        if(isRefund&&refund==null)throw invalid();
+        if(!isRefund&&refund!=null)throw invalid();
+        return ok(receipt(commands.decide(new Decide(c,caseId,b.expectedVersion(),type,refund,b.reason()))),200,r);
     }
     @ExceptionHandler(RuntimeException.class)
     public ResponseEntity<Map<String,Object>> failure(RuntimeException failure,HttpServletRequest r){return error(failure,r);}

@@ -4079,7 +4079,7 @@ paths:
       tags:
       - Admin-Aftersale
       operationId: decideAftersale
-      summary: 非出款最终决定
+      summary: 售后最终决定（含原路退回退款）
       x-implementation-status: IMPLEMENTED_DEFAULT_OFF
       x-default-enabled: false
       x-contract: 51-AfterSale-Http-Contract-v0.1.md
@@ -4142,16 +4142,20 @@ paths:
           application/json:
             schema:
               $ref: '#/components/schemas/AfterSaleDecisionRequest'
-      description: 仅REJECT/RESERVICE/OTHER执行。FULL/PARTIAL合法请求先检查当前ADMIN会话、decide及资源权，再固定503；内部资金开关/Provider不能开启公开出款。
+      description: 五类终局决定均可执行（32号裁决）。FULL_REFUND/PARTIAL_REFUND必须携带正金额refundAmount（FULL=订单真实实付、PARTIAL>0且<实付，违例400 AFTERSALE_AMOUNT_INVALID），经真实决定事务原子创建原路退回退款单并交给AFTERSALE_REFUND_SUBMIT/CHANNEL_QUERY durable任务族；成功回执refundOrderId为退款单ID。pet.aftersale.refund.enabled=false（默认）时退款型fail-closed 503 COMMON_DEPENDENCY_UNAVAILABLE，无决定/退款单/ORDER投影。REJECT/RESERVICE/OTHER要求refundAmount=null。
       x-route-party: OPS
       x-audience: ADMIN_WEB
       x-required-actions:
       - aftersale.decide
-      x-public-refund-enabled: false
+      x-public-refund-enabled: true
+      x-public-refund-switch: pet.aftersale.refund.enabled
+      x-refund-execution: AFTERSALE_REFUND_SUBMIT/AFTERSALE_REFUND_CHANNEL_QUERY durable tasks, async, original WeChat route
       x-executable-decision-types:
       - REJECT
       - RESERVICE
       - OTHER
+      - FULL_REFUND
+      - PARTIAL_REFUND
   /admin/orders/{orderId}/abnormal-close:
     post:
       tags:
@@ -19445,7 +19449,7 @@ components:
           minLength: 1
           maxLength: 500
           pattern: \S
-      description: REJECT/RESERVICE/OTHER要求refundAmount=null。FULL/PARTIAL公开关闭：合法正金额且当前会话、decide动作及资源获权后固定503。
+      description: REJECT/RESERVICE/OTHER要求refundAmount=null。FULL_REFUND/PARTIAL_REFUND要求正金额refundAmount（精确两位字符串；FULL=订单真实实付金额，PARTIAL>0且严格小于实付，内核按PAYMENT权威事实裁定，违例400 AFTERSALE_AMOUNT_INVALID）；退款型在pet.aftersale.refund.enabled=false时503 fail-closed（32号裁决/CCR-AFS-FUNDING-001）。
     AfterSaleReceipt:
       type: object
       additionalProperties: false
@@ -19520,6 +19524,7 @@ components:
           maxLength: 19
           x-maximum-decimal: '9223372036854775807'
           nullable: true
+          description: 退款型终局决定（FULL_REFUND/PARTIAL_REFUND，32号裁决）成功时为已创建的原路退回退款单ID；渠道执行由AFTERSALE_REFUND_SUBMIT/CHANNEL_QUERY任务族异步完成。其余动作为null。
     AfterSaleEligibility:
       type: object
       additionalProperties: false
