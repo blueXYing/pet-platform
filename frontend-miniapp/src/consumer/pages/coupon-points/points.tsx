@@ -133,10 +133,15 @@ export default function PointsPage() {
       {ready && ledger.map(entry => <View key={entry.ledgerId} id={`cpt-ledger-${entry.ledgerId}`}
         className='cpn-ledger-row' ariaLabel={`${pointsBizTypeLabels[entry.bizType]}，${deltaLabel(entry)}积分`}>
         <View className='cpn-ledger-main'>
-          <Text className='cpn-ledger-name'>{pointsBizTypeLabels[entry.bizType]}</Text>
+          <View className='cpn-ledger-namecell'>
+            <View className={`cpn-row-ico${entry.delta.startsWith('-') ? ' is-negative' : ''}`} />
+            <Text className='cpn-ledger-name'>{pointsBizTypeLabels[entry.bizType]}</Text>
+          </View>
+        </View>
+        <View className='cpn-ledger-right'>
+          <Text className={`cpn-ledger-delta${entry.delta.startsWith('-') ? ' is-negative' : ''}`}>{deltaLabel(entry)}</Text>
           <Text className='cpn-ledger-time'>{formatLedgerTime(new Date(), entry.createdAt)}</Text>
         </View>
-        <Text className={`cpn-ledger-delta${entry.delta.startsWith('-') ? ' is-negative' : ''}`}>{deltaLabel(entry)}</Text>
       </View>)}
       {ready && !preview && ledger.length < total && <Button id='cpt-load-more' className='cpn-more' disabled={loadingMore} onClick={() => void loadMore()}>
         {loadingMore ? '正在加载…' : '加载更多'}

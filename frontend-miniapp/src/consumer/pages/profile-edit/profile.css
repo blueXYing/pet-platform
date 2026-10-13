@@ -11,25 +11,25 @@
 .profile-back image { width: 100%; height: 100%; display: block; }
 .profile-title { position: absolute; left: calc(var(--profile-unit) * 59); top: calc(var(--profile-unit) * 12); font-family: "C002 Noto CJK", "C002 Noto SC", Outfit, "Noto Sans SC", sans-serif; font-size: calc(var(--profile-unit) * 16); font-weight: 700; line-height: calc(var(--profile-unit) * 24); }
 .profile-form { width: calc(var(--profile-unit) * 343); margin-left: calc(var(--profile-unit) * 29); padding-top: calc(var(--profile-unit) * 16); }
-.profile-card { width: 100%; margin-bottom: calc(var(--profile-unit) * 16); background: #e4f6f3; border: calc(var(--profile-unit) * 1) solid #cdeede; border-radius: calc(var(--profile-unit) * 12); padding: calc(var(--profile-unit) * 13); display: flex; align-items: center; justify-content: space-between; position: relative; }
+.profile-card { width: 100%; margin-bottom: calc(var(--profile-unit) * 16); background: #ffffff; border: calc(var(--profile-unit) * 1) solid #c0ecff; border-radius: calc(var(--profile-unit) * 12); padding: calc(var(--profile-unit) * 13); display: flex; align-items: center; justify-content: space-between; position: relative; }
 .profile-label { font-family: "C002 Roboto", "C002 Noto CJK", "C002 Noto SC", Roboto, "Noto Sans SC", sans-serif; font-size: calc(var(--profile-unit) * 14); line-height: calc(var(--profile-unit) * 20); font-weight: 400; color: #402e26; flex-shrink: 0; }
 .profile-avatar-card { height: calc(var(--profile-unit) * 82); }
 .profile-avatar-action { display: flex; align-items: center; width: calc(var(--profile-unit) * 84.84375); height: calc(var(--profile-unit) * 56); gap: calc(var(--profile-unit) * 8); }
-.profile-avatar-image { width: calc(var(--profile-unit) * 56); height: calc(var(--profile-unit) * 56); border-radius: 50%; display: block; flex-shrink: 0; }
+.profile-avatar-image { width: calc(var(--profile-unit) * 56); height: calc(var(--profile-unit) * 56); border-radius: 50%; border: calc(var(--profile-unit) * 1) solid #c0ecff; display: block; flex-shrink: 0; }
 .profile-chevron { width: calc(var(--profile-unit) * 20.84375); height: calc(var(--profile-unit) * 28); flex-shrink: 0; }
 .profile-nickname-card, .profile-phone-card { height: calc(var(--profile-unit) * 46); }
 .profile-nickname { flex: 1; min-width: 0; margin-left: calc(var(--profile-unit) * 12); height: calc(var(--profile-unit) * 20); font-size: calc(var(--profile-unit) * 14); line-height: calc(var(--profile-unit) * 20); text-align: right; color: #1d0d07; font-family: "C002 Roboto", "C002 Noto CJK", "C002 Noto SC", Roboto, "Noto Sans SC", sans-serif; }
 .profile-gender-card { height: calc(var(--profile-unit) * 50); }
 .profile-genders { display: flex; align-items: center; gap: calc(var(--profile-unit) * 8); }
-.profile-gender { font-size: calc(var(--profile-unit) * 12) !important; line-height: calc(var(--profile-unit) * 16) !important; padding: calc(var(--profile-unit) * 4) calc(var(--profile-unit) * 12) !important; height: calc(var(--profile-unit) * 24); border-radius: calc(var(--profile-unit) * 5359.464) !important; color: #402e26; white-space: nowrap; }
-.profile-gender.is-selected { background: #53bfee; color: #e4f6f3; }
+.profile-gender { font-size: calc(var(--profile-unit) * 12) !important; line-height: calc(var(--profile-unit) * 16) !important; padding: calc(var(--profile-unit) * 4) calc(var(--profile-unit) * 12) !important; height: calc(var(--profile-unit) * 24); border-radius: calc(var(--profile-unit) * 5359.464) !important; background: #ffffff; color: #3c3c3c; white-space: nowrap; }
+.profile-gender.is-selected { background: #5baae8; color: #ffffff; }
 .profile-phone { display: flex; align-items: center; font-size: calc(var(--profile-unit) * 12); line-height: calc(var(--profile-unit) * 16); color: #402e26; gap: calc(var(--profile-unit) * 4); }
-.profile-bound { font-size: calc(var(--profile-unit) * 10); color: #53bfee; }
+.profile-bound { font-size: calc(var(--profile-unit) * 10); color: #5baae8; }
 .profile-signature-card { height: calc(var(--profile-unit) * 163.5); display: block; padding-top: calc(var(--profile-unit) * 14); }
 .profile-signature-card > .profile-label { display: block; }
 .profile-signature { width: calc(var(--profile-unit) * 317); height: calc(var(--profile-unit) * 82); margin-top: calc(var(--profile-unit) * 8); padding: calc(var(--profile-unit) * 11) calc(var(--profile-unit) * 13); border: calc(var(--profile-unit) * 1) solid #cdeede; border-radius: calc(var(--profile-unit) * 8); background: #f0fbff; font-family: "C002 Roboto", "C002 Noto CJK", "C002 Noto SC", Roboto, "Noto Sans SC", sans-serif; font-size: calc(var(--profile-unit) * 14); line-height: calc(var(--profile-unit) * 20); color: #1d0d07; }
-.profile-count { display: block; width: 100%; margin-top: calc(var(--profile-unit) * 4); text-align: right; color: #53bfee; font-size: calc(var(--profile-unit) * 11); line-height: calc(var(--profile-unit) * 16.5); }
-.profile-save { display: flex; align-items: center; justify-content: center; width: 100%; height: calc(var(--profile-unit) * 44); border-radius: calc(var(--profile-unit) * 12) !important; background: #53bfee !important; color: #e4f6f3 !important; font-size: calc(var(--profile-unit) * 14) !important; font-weight: 500 !important; line-height: calc(var(--profile-unit) * 20) !important; }
+.profile-count { display: block; width: 100%; margin-top: calc(var(--profile-unit) * 4); text-align: right; color: #5baae8; font-size: calc(var(--profile-unit) * 11); line-height: calc(var(--profile-unit) * 16.5); }
+.profile-save { display: flex; align-items: center; justify-content: center; width: 100%; height: calc(var(--profile-unit) * 44); border-radius: calc(var(--profile-unit) * 12) !important; background: #5baae8 !important; color: #ffffff !important; font-size: calc(var(--profile-unit) * 14) !important; font-weight: 500 !important; line-height: calc(var(--profile-unit) * 20) !important; }
 .profile-field-error, .profile-notice { display: block; font-size: calc(var(--profile-unit) * 12); line-height: calc(var(--profile-unit) * 18); margin: calc(var(--profile-unit) * 8) 0; }
 .profile-field-error { color: #b42318; }
 .profile-notice { color: #402e26; }
@@ -55,5 +55,5 @@
 /* Full render bounds include the original vector strokes; display PNGs at their 2x raster scale. */
 
 .profile-gender { color: #3c3c3c; }
-.profile-gender.is-selected { color: #e4f6f3; }
+.profile-gender.is-selected { color: #ffffff; }
 .profile-phone { color: #3c3c3c; }
