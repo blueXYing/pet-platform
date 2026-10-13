@@ -1,0 +1,72 @@
+/* 收藏+足迹两页（Contract 58 / 32号裁决第二节批次）。设计源 128:3200（我的-我的收藏）、
+   129:3484（我的-浏览足迹，今天/昨天/更早分组行）；运行时像素单位 --fvt-unit =
+   windowWidth/402（C-002/C-003/优惠券页先例）。官方色值：主蓝 #5baae8 / 浅蓝 #c0ecff /
+   极浅蓝 #f0fbff；文案色沿 C 端 token（#1d0d07/#577683/#8aa0ac）。WXSS 铁律：button
+   原生样式重置为 0-1-1 类+元素选择器；按钮不嵌套按钮（行根节点用 View）；变体用
+   className 切换，禁用 data-*。 */
+.fvt-page { --fvt-status-top: 0px; min-height: 100vh; background: #f0fbff; color: #1d0d07; font-family: Roboto, "Noto Sans SC", sans-serif; }
+.fvt-page view, .fvt-page button, .fvt-page image, .fvt-page text { box-sizing: border-box; }
+.fvt-page button { padding: 0; margin: 0; border: 0; border-radius: 0; background: transparent; font: inherit; line-height: normal; text-align: left; }
+.fvt-page button::after { border: 0; }
+.fvt-page button[disabled] { opacity: .65; color: inherit; }
+.fvt-status-area { height: var(--fvt-status-top); }
+.fvt-body { min-height: 85vh; padding-bottom: calc(var(--fvt-unit) * 24); }
+.fvt-scroll { height: calc(100vh - var(--fvt-status-top) - var(--fvt-unit) * 44); }
+
+/* 顶部导航（128:3200/129:3484：返回 32x32 + 标题左对齐，47 高）。 */
+.fvt-nav { position: relative; height: calc(var(--fvt-unit) * 47); display: flex; align-items: center; }
+.fvt-nav-back { position: absolute; left: calc(var(--fvt-unit) * 19); top: calc(var(--fvt-unit) * 8); width: calc(var(--fvt-unit) * 32); height: calc(var(--fvt-unit) * 32); display: flex; align-items: center; justify-content: center; }
+.fvt-nav-back-icon { width: calc(var(--fvt-unit) * 11); height: calc(var(--fvt-unit) * 18); }
+.fvt-nav-title { margin-left: calc(var(--fvt-unit) * 62); font-size: calc(var(--fvt-unit) * 16); line-height: calc(var(--fvt-unit) * 24); font-weight: 700; color: #1d0d07; }
+
+/* 状态与空态（沿 cpn-state 惯例）。 */
+.fvt-state { padding: calc(var(--fvt-unit) * 42) calc(var(--fvt-unit) * 29); font-size: calc(var(--fvt-unit) * 14); line-height: calc(var(--fvt-unit) * 24); color: #577683; }
+.fvt-page .fvt-state-action { display: block; margin-top: calc(var(--fvt-unit) * 8); color: #3185ba; font-size: calc(var(--fvt-unit) * 12); line-height: calc(var(--fvt-unit) * 18); }
+.fvt-page .fvt-more { display: block; margin: calc(var(--fvt-unit) * 8) auto 0; width: max-content; padding: calc(var(--fvt-unit) * 8) calc(var(--fvt-unit) * 22); border: calc(var(--fvt-unit) * 1) solid #c0ecff; border-radius: calc(var(--fvt-unit) * 100); color: #3185ba; font-size: calc(var(--fvt-unit) * 12); }
+.fvt-notice { padding: calc(var(--fvt-unit) * 8) calc(var(--fvt-unit) * 29); font-size: calc(var(--fvt-unit) * 11); line-height: calc(var(--fvt-unit) * 17); color: #402e26; }
+.fvt-preview-note { padding: calc(var(--fvt-unit) * 10) calc(var(--fvt-unit) * 29) 0; font-size: calc(var(--fvt-unit) * 10); line-height: calc(var(--fvt-unit) * 15); color: #8aa0ac; }
+.fvt-tail { padding: calc(var(--fvt-unit) * 16) 0 calc(var(--fvt-unit) * 8); text-align: center; font-size: calc(var(--fvt-unit) * 10); line-height: calc(var(--fvt-unit) * 15); color: #8aa0ac; }
+
+/* 收藏页过滤 tab（128:3200 卡片族；沿优惠券页药丸形态，全宽三段）。 */
+.fvt-tabs { margin: calc(var(--fvt-unit) * 13) calc(var(--fvt-unit) * 29) 0; height: calc(var(--fvt-unit) * 36); border-radius: calc(var(--fvt-unit) * 9999); background: #ffffff; display: flex; align-items: center; padding: calc(var(--fvt-unit) * 4); }
+.fvt-page .fvt-tab { flex: 1; height: calc(var(--fvt-unit) * 28); border-radius: calc(var(--fvt-unit) * 9999); display: flex; align-items: center; justify-content: center; }
+.fvt-tab text { font-size: calc(var(--fvt-unit) * 12); line-height: calc(var(--fvt-unit) * 16); color: #3c3c3c; }
+.fvt-tab.is-active { background: #c0ecff; }
+.fvt-tab.is-active text { font-weight: 500; color: #1d0d07; }
+
+/* 类型小标（服务/商家 chip，两页共用；主蓝底白字）。 */
+.fvt-page .fvt-badge-service, .fvt-page .fvt-badge-store { display: flex; align-items: center; justify-content: center; border-radius: calc(var(--fvt-unit) * 4); }
+.fvt-badge-service text, .fvt-badge-store text { font-size: calc(var(--fvt-unit) * 10); line-height: calc(var(--fvt-unit) * 15); color: #ffffff; }
+.fvt-page .fvt-badge-service { background: #5baae8; }
+.fvt-page .fvt-badge-store { background: #7cc4ee; }
+
+/* 收藏卡（128:3200 行形态的工程口径：类型 chip + 标题/副题/价格 + 行内动作）。 */
+.fvt-card { position: relative; width: calc(var(--fvt-unit) * 343); margin: calc(var(--fvt-unit) * 12) auto 0; background: #ffffff; border: calc(var(--fvt-unit) * 1) solid #c0ecff; border-radius: calc(var(--fvt-unit) * 12); padding: calc(var(--fvt-unit) * 14) calc(var(--fvt-unit) * 14) calc(var(--fvt-unit) * 12); display: flex; align-items: flex-start; }
+.fvt-card:first-of-type { margin-top: calc(var(--fvt-unit) * 16); }
+.fvt-card.is-unavailable { opacity: .62; }
+.fvt-card .fvt-card-badge { width: calc(var(--fvt-unit) * 34); height: calc(var(--fvt-unit) * 20); flex-shrink: 0; margin-top: calc(var(--fvt-unit) * 2); }
+.fvt-card-main { flex: 1; min-width: 0; margin-left: calc(var(--fvt-unit) * 10); }
+.fvt-card-title { display: block; font-size: calc(var(--fvt-unit) * 14); line-height: calc(var(--fvt-unit) * 20); font-weight: 500; color: #1d0d07; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.fvt-card-sub { display: block; margin-top: calc(var(--fvt-unit) * 3); font-size: calc(var(--fvt-unit) * 11); line-height: calc(var(--fvt-unit) * 17); color: #577683; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.fvt-card-price { display: block; margin-top: calc(var(--fvt-unit) * 5); font-size: calc(var(--fvt-unit) * 13); line-height: calc(var(--fvt-unit) * 19); font-weight: 700; color: #5baae8; }
+.fvt-card-actions { flex-shrink: 0; margin-left: calc(var(--fvt-unit) * 8); display: flex; flex-direction: column; align-items: flex-end; gap: calc(var(--fvt-unit) * 8); }
+.fvt-page .fvt-card-book { width: calc(var(--fvt-unit) * 78); height: calc(var(--fvt-unit) * 30); border-radius: calc(var(--fvt-unit) * 15); background: #5baae8; display: flex; align-items: center; justify-content: center; }
+.fvt-card-book text { font-size: calc(var(--fvt-unit) * 12); line-height: calc(var(--fvt-unit) * 18); color: #ffffff; }
+.fvt-page .fvt-card-remove { width: calc(var(--fvt-unit) * 78); height: calc(var(--fvt-unit) * 30); border-radius: calc(var(--fvt-unit) * 15); border: calc(var(--fvt-unit) * 1) solid #c0ecff; background: #f0fbff; display: flex; align-items: center; justify-content: center; }
+.fvt-card-remove text { font-size: calc(var(--fvt-unit) * 12); line-height: calc(var(--fvt-unit) * 18); color: #3185ba; }
+
+/* 足迹分组（129:3484：今天/昨天/更早 H2 + 363x92 行）。 */
+.fvt-group { margin: calc(var(--fvt-unit) * 18) calc(var(--fvt-unit) * 29) 0; }
+.fvt-group-title { display: block; font-size: calc(var(--fvt-unit) * 15); line-height: calc(var(--fvt-unit) * 22); font-weight: 700; color: #1d0d07; margin-bottom: calc(var(--fvt-unit) * 8); }
+.fvt-track-row { position: relative; background: #ffffff; border: calc(var(--fvt-unit) * 1) solid #c0ecff; border-radius: calc(var(--fvt-unit) * 12); padding: calc(var(--fvt-unit) * 12) calc(var(--fvt-unit) * 12) calc(var(--fvt-unit) * 11); margin-top: calc(var(--fvt-unit) * 10); display: flex; align-items: flex-start; }
+.fvt-track-row:first-of-type { margin-top: 0; }
+.fvt-track-row.is-unavailable { opacity: .62; }
+.fvt-track-row .fvt-track-chip { width: calc(var(--fvt-unit) * 34); height: calc(var(--fvt-unit) * 20); flex-shrink: 0; margin-top: calc(var(--fvt-unit) * 2); }
+.fvt-track-main { flex: 1; min-width: 0; margin-left: calc(var(--fvt-unit) * 10); }
+.fvt-track-head { display: flex; justify-content: flex-end; }
+.fvt-track-time { font-size: calc(var(--fvt-unit) * 10); line-height: calc(var(--fvt-unit) * 15); color: #8aa0ac; }
+.fvt-track-title { display: block; margin-top: calc(var(--fvt-unit) * 2); font-size: calc(var(--fvt-unit) * 14); line-height: calc(var(--fvt-unit) * 20); font-weight: 500; color: #1d0d07; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.fvt-track-sub { display: block; margin-top: calc(var(--fvt-unit) * 3); font-size: calc(var(--fvt-unit) * 11); line-height: calc(var(--fvt-unit) * 17); color: #577683; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.fvt-track-side { flex-shrink: 0; margin-left: calc(var(--fvt-unit) * 8); display: flex; align-items: center; }
+.fvt-page .fvt-track-delete { width: calc(var(--fvt-unit) * 52); height: calc(var(--fvt-unit) * 26); border-radius: calc(var(--fvt-unit) * 13); border: calc(var(--fvt-unit) * 1) solid #c0ecff; background: #f0fbff; display: flex; align-items: center; justify-content: center; }
+.fvt-track-delete text { font-size: calc(var(--fvt-unit) * 11); line-height: calc(var(--fvt-unit) * 16); color: #3185ba; }

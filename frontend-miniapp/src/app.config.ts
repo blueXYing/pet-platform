@@ -53,5 +53,8 @@ export default defineAppConfig({
     // Booking create + payment initiation slice (10号 §3.4/§3.5/§3.6): service-detail entry,
     // unpaid-order pay entry; one compact line per the app.config convention.
     { root: 'consumer/pages/booking', pages: ['create', 'pay'] },
+    // Favorite/footprint lists (contract 58, 32号裁决第二节批次, CCR-C-FAVTRACK-001):
+    // my favorites + my footprints; detail rows route to the existing store-services pages.
+    { root: 'consumer/pages/favtrack', pages: ['favorites', 'footprints'] },
   ],
 })

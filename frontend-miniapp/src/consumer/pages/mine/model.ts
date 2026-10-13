@@ -42,6 +42,9 @@ export const mineHubEntries = [
   { key: 'orders', label: '我的订单', url: '/consumer/pages/orders/list' },
   { key: 'coupons', label: '优惠券', url: '/consumer/pages/coupon-points/coupons' },
   { key: 'points', label: '积分', url: '/consumer/pages/coupon-points/points' },
+  // 收藏/足迹（contract 58，32号裁决第二节批次）：统计条两格与"我的收藏"格位的目标页。
+  { key: 'favorites', label: '我的收藏', url: '/consumer/pages/favtrack/favorites' },
+  { key: 'footprints', label: '浏览足迹', url: '/consumer/pages/favtrack/footprints' },
   { key: 'preferences', label: '通知偏好', url: '/consumer/pages/notification-preferences/index' },
   { key: 'pets', label: '宠物档案', url: '/consumer/pages/pet-archive/index' },
   { key: 'profile', label: '编辑资料', url: '/consumer/pages/profile-edit/index' },

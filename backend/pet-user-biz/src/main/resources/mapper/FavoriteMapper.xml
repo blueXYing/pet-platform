@@ -1,0 +1,53 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.petplatform.user.biz.infrastructure.persistence.mapper.FavoriteMapper">
+
+    <!-- user_favorite statements (SQL06 user section, Contract 58). Cancel is a hard delete:
+         the row is the current favorite relationship, and a later re-favorite creates a fresh
+         row with its own created_at ordering position. -->
+
+    <sql id="favoriteColumns">id,user_id,target_type,target_id,created_at,updated_at</sql>
+
+    <select id="selectUserStatus" resultType="string">
+        SELECT status FROM user_account WHERE id=#{userId}
+    </select>
+
+    <select id="selectFavorite" resultType="com.petplatform.user.biz.infrastructure.persistence.entity.FavoriteEntity">
+        SELECT <include refid="favoriteColumns"/>
+        FROM user_favorite
+        WHERE user_id=#{userId} AND target_type=#{targetType} AND target_id=#{targetId}
+    </select>
+
+    <select id="selectFavoriteForUpdate" resultType="com.petplatform.user.biz.infrastructure.persistence.entity.FavoriteEntity">
+        SELECT <include refid="favoriteColumns"/>
+        FROM user_favorite
+        WHERE user_id=#{userId} AND target_type=#{targetType} AND target_id=#{targetId}
+        FOR UPDATE
+    </select>
+
+    <insert id="insertFavorite">
+        INSERT INTO user_favorite (id,user_id,target_type,target_id,created_at,updated_at)
+        VALUES (#{id},#{userId},#{targetType},#{targetId},NOW(3),NOW(3))
+    </insert>
+
+    <delete id="deleteFavorite">
+        DELETE FROM user_favorite
+        WHERE user_id=#{userId} AND target_type=#{targetType} AND target_id=#{targetId}
+    </delete>
+
+    <select id="countFavorites" resultType="long">
+        SELECT COUNT(*) FROM user_favorite
+        WHERE user_id=#{userId}
+        <if test="targetType != null">AND target_type=#{targetType}</if>
+    </select>
+
+    <select id="selectFavoritePage" resultType="com.petplatform.user.biz.infrastructure.persistence.entity.FavoriteEntity">
+        SELECT <include refid="favoriteColumns"/>
+        FROM user_favorite
+        WHERE user_id=#{userId}
+        <if test="targetType != null">AND target_type=#{targetType}</if>
+        ORDER BY created_at DESC, id DESC
+        LIMIT #{limit} OFFSET #{offset}
+    </select>
+
+</mapper>

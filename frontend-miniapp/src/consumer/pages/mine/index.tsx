@@ -25,7 +25,7 @@ import './mine.css'
 // 商家工作台/退出登录/开发者工具）保留并沿用原 URL。
 const GUIDE_KEY = 'pet.c.phone-guide.v1'
 
-const [hubOrders, hubCoupons, hubPoints, hubPreferences, hubPets, hubProfile] = mineHubEntries
+const [hubOrders, hubCoupons, hubPoints, hubFavorites, hubFootprints, hubPreferences, hubPets, hubProfile] = mineHubEntries
 // 原稿 126:675 订单五状态入口：工程订单列表不收状态参数，统一落既有列表页（行为与现状一致）。
 const orderStatusEntries = [
   { key: 'wait', label: '待服务' },
@@ -203,17 +203,18 @@ export default function MinePage() {
               <Text className='mine-stat-value'>{card.stats.points === null ? '—' : card.stats.points}</Text>
               <Text className='mine-stat-label'>积分</Text>
             </Button>
-            {/* 收藏/足迹：V1 无对应页面与读侧字段，按原稿视觉占位（无交互），登记表 §4.6。 */}
-            <View className='mine-stat'>
+            {/* 收藏/足迹（contract 58，32号裁决第二节批次）：统计位维持"—"占位（D3 未裁决
+                回填总数），点击进入对应列表页。 */}
+            <Button id='mine-stat-favorites' className='mine-stat' hoverClass='none' onClick={() => open(hubFavorites.url)}>
               <View className='mine-stat-ico'><View className='mi-stat-collect' /></View>
               <Text className='mine-stat-value'>—</Text>
               <Text className='mine-stat-label'>收藏</Text>
-            </View>
-            <View className='mine-stat'>
+            </Button>
+            <Button id='mine-stat-footprints' className='mine-stat' hoverClass='none' onClick={() => open(hubFootprints.url)}>
               <View className='mine-stat-ico'><View className='mi-stat-footprint' /></View>
               <Text className='mine-stat-value'>—</Text>
               <Text className='mine-stat-label'>足迹</Text>
-            </View>
+            </Button>
           </View>
         </>}
         {card.state === 'phone-required' && <View className={`mine-card mine-card-phone${card.guideOpen ? ' mine-card-phone-open' : ' mine-card-phone-closed'}`}>
@@ -287,11 +288,11 @@ export default function MinePage() {
         <View className='mine-section'>
           <View className='mine-section-head'><Text className='mine-section-title'>我的服务</Text></View>
           <View className='mine-grid'>
-            {/* 我的收藏/地址管理：无工程页面，视觉占位；优惠券/宠物档案为真实入口。 */}
-            <View className='mine-cell'>
+            {/* 我的收藏（contract 58）：真实入口；地址管理仍为视觉占位；优惠券/宠物档案为真实入口。 */}
+            <Button id='mine-hub-favorites' className='mine-cell' hoverClass='none' onClick={() => open(hubFavorites.url)}>
               <View className='mine-cell-chip'><View className='mi-svc-collect' /></View>
               <Text className='mine-cell-label'>我的收藏</Text>
-            </View>
+            </Button>
             <Button id='mine-hub-coupons' className='mine-cell' hoverClass='none' onClick={() => open(hubCoupons.url)}>
               <View className='mine-cell-chip'><View className='mi-svc-coupon' /></View>
               <Text className='mine-cell-label'>优惠券</Text>

@@ -432,6 +432,35 @@ MERCHANT_REFUND_HTTP_OPERATIONS = {
         ('200', '400', '401', '403', '404', '409', '503')),
 }
 
+# Favorite/footprint C face (contract 58, 2026-10-13, 32号裁决第二节批次): user-private
+# SERVICE/STORE favorites and browse footprints behind pet.favtrack.http.enabled. The
+# census pins the default-off status, the review-family 201/200 create split (only the very
+# first create answers 201), the bodyless writes (no requestBody on any command), the fixed
+# page bounds, and the shared catalog display projection on list rows.
+FAVTRACK_HTTP_OPERATIONS = {
+    'cListMyFavorites': (
+        'get', '/c/favorites',
+        ('200', '400', '401', '503')),
+    'cAddFavorite': (
+        'post', '/c/favorites/{targetType}/{targetId}',
+        ('200', '201', '400', '401', '403', '404', '409', '503')),
+    'cCancelFavorite': (
+        'delete', '/c/favorites/{targetType}/{targetId}',
+        ('200', '400', '401', '403', '409')),
+    'cGetFavoriteStatus': (
+        'get', '/c/favorites/{targetType}/{targetId}',
+        ('200', '400', '401')),
+    'cListMyFootprints': (
+        'get', '/c/footprints',
+        ('200', '400', '401', '503')),
+    'cRecordFootprint': (
+        'post', '/c/footprints/{targetType}/{targetId}',
+        ('200', '201', '400', '401', '403', '404', '409', '503')),
+    'cDeleteFootprint': (
+        'delete', '/c/footprints/{footprintId}',
+        ('200', '400', '401', '403', '409')),
+}
+
 
 def check_order_write(spec, operation, method, path):
     name = operation['operationId']
@@ -579,6 +608,60 @@ def check_merchant_refund_http(spec, operation, method, path):
             assert set(request['required']) == {'reasonText'}, 'Merchant refund reject must keep reasonText alone'
             reason = request['properties']['reasonText']
             assert reason.get('type') == 'string' and reason.get('minLength') == 1 and reason.get('maxLength') == 500,                 'Merchant refund reject reason bounds changed'
+
+
+def check_favtrack_http(spec, operation, method, path):
+    name = operation['operationId']
+    expected_method, expected_path, required_codes = FAVTRACK_HTTP_OPERATIONS[name]
+    assert (method, path) == (expected_method, expected_path), f'Favtrack HTTP operation moved: {name}'
+    assert operation.get('security') == [{'bearerAuth': []}], f'Favtrack HTTP security changed: {name}'
+    assert operation.get('x-implementation-status') == 'IMPLEMENTED_DEFAULT_OFF', f'Favtrack HTTP status changed: {name}'
+    assert operation.get('x-default-enabled') is False, f'Favtrack HTTP must stay default off: {name}'
+    assert operation.get('x-contract') == '58-Favorite-Footprint-Contract-v0.1.md', f'Favtrack HTTP authority changed: {name}'
+    assert operation.get('x-assembly-switch') == 'pet.favtrack.http.enabled', f'Favtrack HTTP switch changed: {name}'
+    assert operation.get('x-route-party') == 'USER' and operation.get('x-audience') == 'MINIAPP', f'Favtrack HTTP identity changed: {name}'
+    assert 'requestBody' not in operation, f'Favtrack routes must stay business-body-free: {name}'
+    responses = operation['responses']
+    assert set(responses) == set(required_codes), f'Favtrack HTTP response surface changed: {name}'
+    success_envelopes = {
+        'cListMyFavorites': 'FavoritePageEnvelope',
+        'cAddFavorite': 'FavoriteAddEnvelope',
+        'cCancelFavorite': 'FavoriteCancelEnvelope',
+        'cGetFavoriteStatus': 'FavoriteStatusEnvelope',
+        'cListMyFootprints': 'FootprintPageEnvelope',
+        'cRecordFootprint': 'FootprintRecordEnvelope',
+        'cDeleteFootprint': 'FootprintDeleteEnvelope',
+    }
+    for code in responses:
+        response = dereference(spec, responses[code])
+        cache = response['headers']['Cache-Control']['schema']
+        assert cache == {'type': 'string', 'enum': ['no-store']}, f'Favtrack caching changed: {name} {code}'
+        schema = response['content']['application/json']['schema']
+        expected = {'$ref': '#/components/schemas/FavTrackErrorEnvelope'} if code not in ('200', '201')             else {'$ref': f"#/components/schemas/{success_envelopes[name]}"}
+        assert schema == expected, f'Favtrack envelope changed: {name} {code}'
+    if '201' in responses:
+        # Review-family create split: the first create and the replay share one receipt schema.
+        assert responses['201']['content'] == responses['200']['content'], f'Favtrack create/replay receipt diverged: {name}'
+    params = {p['name']: p for p in operation.get('parameters', []) if p.get('in') == 'query'}
+    if name in ('cListMyFavorites', 'cListMyFootprints'):
+        expected_query = {'page', 'pageSize'} if name == 'cListMyFootprints' else {'targetType', 'page', 'pageSize'}
+        assert set(params) == expected_query, f'Favtrack list query opened: {name}'
+        assert params['page']['schema'] == {'type': 'integer', 'minimum': 1, 'maximum': 10000, 'default': 1}, 'Favtrack page range changed'
+        assert params['pageSize']['schema'] == {'type': 'integer', 'minimum': 1, 'maximum': 50, 'default': 20}, 'Favtrack page size changed'
+        if name == 'cListMyFavorites':
+            assert params['targetType']['schema']['enum'] == ['SERVICE', 'STORE'], 'Favtrack targetType filter opened'
+    else:
+        assert not params, f'Favtrack non-list query opened: {name}'
+    for row in ('FavoriteItem', 'FootprintItem'):
+        item = spec['components']['schemas'][row]
+        assert item.get('additionalProperties') is False, f'Favtrack row opened: {row}'
+        assert item['properties']['targetAvailable']['type'] == 'boolean', f'Favtrack availability flag changed: {row}'
+        for nullable in ('title', 'categoryLabel', 'salePrice', 'coverUrl'):
+            assert item['properties'][nullable].get('nullable') is True, f'Favtrack unavailable projection must stay nullable: {row}.{nullable}'
+    status_data = spec['components']['schemas']['FavoriteStatusData']
+    assert status_data['properties']['favoriteId'].get('nullable') is True, 'Favtrack status probe must answer favoriteId=null, never 404'
+    add_data = spec['components']['schemas']['FavoriteAddData']
+    assert add_data['properties']['favorited']['enum'] == [True], 'Favtrack add receipt must stay favorited=true'
 
 
 def check_staff_invitation_list(spec, operation, method, path):
@@ -1307,6 +1390,9 @@ def check(spec):
             if operation_id in MERCHANT_REFUND_HTTP_OPERATIONS:
                 check_merchant_refund_http(spec, operation, method, path)
 
+            if operation_id in FAVTRACK_HTTP_OPERATIONS:
+                check_favtrack_http(spec, operation, method, path)
+
             if method in {'post', 'put', 'patch', 'delete'}:
                 assert {'$ref': '#/components/parameters/RequestId'} in parameters, f'Missing request ID: {operation_id}'
                 writes += 1
@@ -1321,7 +1407,7 @@ def check(spec):
     assert legacy_writes == 11, 'Legacy write surface changed'
     assert legacy_creates == LEGACY_CREATES, 'Legacy create surface changed'
 
-    assert operations == LEGACY_OPERATIONS.keys() | AUTH_OPERATIONS.keys() | MERCHANT_OPERATIONS.keys() | APPLICATION_OPERATIONS.keys() | PRIVATE_ASSET_OPERATIONS.keys() | SERVICE_CATALOG_OPERATIONS.keys() | STORE_CATALOG_OPERATIONS.keys() | SERVICE_WRITE_OPERATIONS.keys() | SCHEDULE_AVAILABILITY_OPERATIONS.keys() | SCHEDULE_WRITE_OPERATIONS.keys() | CREDENTIAL_OPERATIONS.keys() | AFTERSALE_OPERATIONS.keys() | COUPON_POINTS_READ_OPERATIONS.keys() | VERIFICATION_HTTP_OPERATIONS.keys() | NOTIFICATION_PREFERENCE_OPERATIONS.keys() | STAFF_INVITATION_LIST_OPERATIONS.keys() | ORDER_WRITE_OPERATIONS.keys() | REFUND_HTTP_OPERATIONS.keys() | MERCHANT_ORDER_LIST_OPERATIONS.keys() | RESCHEDULE_HTTP_OPERATIONS.keys() | REVIEW_HTTP_OPERATIONS.keys() | REVIEW_APPEAL_HTTP_OPERATIONS.keys() | MERCHANT_REFUND_HTTP_OPERATIONS.keys(), 'Unexpected or missing reviewed operations'
+    assert operations == LEGACY_OPERATIONS.keys() | AUTH_OPERATIONS.keys() | MERCHANT_OPERATIONS.keys() | APPLICATION_OPERATIONS.keys() | PRIVATE_ASSET_OPERATIONS.keys() | SERVICE_CATALOG_OPERATIONS.keys() | STORE_CATALOG_OPERATIONS.keys() | SERVICE_WRITE_OPERATIONS.keys() | SCHEDULE_AVAILABILITY_OPERATIONS.keys() | SCHEDULE_WRITE_OPERATIONS.keys() | CREDENTIAL_OPERATIONS.keys() | AFTERSALE_OPERATIONS.keys() | COUPON_POINTS_READ_OPERATIONS.keys() | VERIFICATION_HTTP_OPERATIONS.keys() | NOTIFICATION_PREFERENCE_OPERATIONS.keys() | STAFF_INVITATION_LIST_OPERATIONS.keys() | ORDER_WRITE_OPERATIONS.keys() | REFUND_HTTP_OPERATIONS.keys() | MERCHANT_ORDER_LIST_OPERATIONS.keys() | RESCHEDULE_HTTP_OPERATIONS.keys() | REVIEW_HTTP_OPERATIONS.keys() | REVIEW_APPEAL_HTTP_OPERATIONS.keys() | MERCHANT_REFUND_HTTP_OPERATIONS.keys() | FAVTRACK_HTTP_OPERATIONS.keys(), 'Unexpected or missing reviewed operations'
 
     schemes = spec['components']['securitySchemes']
     assert schemes['bearerAuth']['type'] == 'http' and schemes['bearerAuth']['scheme'] == 'bearer'
@@ -1377,6 +1463,7 @@ def check(spec):
 
             'reviewAppealHttpOperations': len(operations & REVIEW_APPEAL_HTTP_OPERATIONS.keys()),
             'merchantRefundHttpOperations': len(operations & MERCHANT_REFUND_HTTP_OPERATIONS.keys()),
+            'favtrackHttpOperations': len(operations & FAVTRACK_HTTP_OPERATIONS.keys()),
             'refundHttpOperations': len(operations & REFUND_HTTP_OPERATIONS.keys()),
             'serviceWriteOperations': len(operations & SERVICE_WRITE_OPERATIONS.keys()),
             'storeCatalogOperations': len(operations & STORE_CATALOG_OPERATIONS.keys()),

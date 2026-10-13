@@ -12,6 +12,7 @@ import {
 } from '../../service/model'
 import { runCatalogRead } from '../../store/repository'
 import { detailActionGate, detailReadAllowed } from './browse-gate'
+import { DetailFavoriteEntry, useFootprintRecord } from '../../favtrack/detail-tracking'
 import { ServiceRow, StoreServicesDesign, serviceListCardHeight } from './view'
 
 // Node 690:2025 / 690:4205 (热门服务-宠物美容-详情页) — byte-identical copies of the
@@ -83,6 +84,8 @@ export default function ServiceDetailPage() {
   }, [])
 
   const ready = phase === 'ready'
+  // Contract 58：登录态浏览服务详情成功即上报一次足迹（埋点失败不阻塞详情）；收藏入口在导航右缘。
+  useFootprintRecord({ enabled: ready, targetType: 'SERVICE', targetId: serviceId, preview, scope })
   function requireLogin(label: string, then: () => void) {
     if (!ready) return
     // Actions (not viewing) stay login-gated per the final PRD; anonymous taps get the guide.
@@ -112,6 +115,7 @@ export default function ServiceDetailPage() {
       {phase === 'missing' && <Button id='svcd-back-list' className='svc-state-action' onClick={() => Taro.navigateBack().catch(() => setNotice('返回失败'))}>返回上一页</Button>}
     </View>}
     {ready && detail && <StoreServicesDesign store={null} listTop={listTop} reviewTop={reviewTop} onBack={() => Taro.navigateBack().catch(() => setNotice('返回失败'))}
+      favoriteNode={<DetailFavoriteEntry targetType='SERVICE' targetId={serviceId} preview={preview} idPrefix='svcd' onNotice={setNotice} />}
       serviceCover={preview ? undefined : detail.cover} onRefreshCover={() => void load()}
       footer={<Text>页面数据：{preview ? '契约 Mock（preview=1，不联调）' : '真实接口（后端交付前失败关闭，可匿名浏览）'}</Text>}
       notice={notice ? <Text id='svcd-notice' className='svc-notice' style={{ left: `calc(var(--svc-unit) * 29)`, right: `calc(var(--svc-unit) * 29)`, top: `calc(var(--svc-unit) * ${reviewTop + 246 + 24})` }}>{notice}</Text> : undefined}

@@ -941,6 +941,44 @@ V1.0 不提供积分抵现/积分商城 Endpoint；本节券/积分为只读查�
 
 ---
 
+## 3.16 收藏与浏览足迹（58号契约，32号裁决第二节批次；CCR-C-FAVTRACK-001 已批）
+
+> 实现注记（2026-10-13，FAV-001）：七路由已按 [58号契约](58-Favorite-Footprint-Contract-v0.1.md)
+> 装配（默认关闭，开关 `pet.favtrack.http.enabled`，[硬] 前置 `pet.auth.c.enabled` +
+> `pet.service.query.enabled` + `pet.store.query.enabled`，见 21号清单）；字段、错误映射与
+> C 端两页以 58 号为准，本节为 C 端路由族登记。用户私有读写：全家族真实 MINIAPP Bearer
+> 会话，无匿名路由；`Cache-Control: no-store`；ID String、时间 ISO-8601 UTC 毫秒。
+
+- `POST /api/v1/c/favorites/{targetType}/{targetId}`：加收藏，无业务体；Header
+  `X-Request-Id` 必填（终态 UUID，23号 §5 五元组，namespace `favorite.add`）。首建 **201**；
+  requestId 重放与业务重复（目标已收藏，行锁防重复）**200** 同当前行回执
+  `{favoriteId,targetType,targetId,favoritedAt,favorited:true,created}`。
+- `DELETE /api/v1/c/favorites/{targetType}/{targetId}`：取消=当前关系行硬删除，缺席仍 200
+  `{targetType,targetId,removed}`；Header `X-Request-Id` 必填。
+- `GET /api/v1/c/favorites?targetType&page&pageSize`：本人收藏列表，固定排序
+  created_at DESC, id DESC；targetType 可选（`SERVICE|STORE`）；page 1..10000 默认 1、
+  pageSize 1..50 默认 20；PageResult 信封。未知/重复查询参数 400。行含目录展示投影
+  `{targetAvailable,title,categoryLabel,salePrice,storeId,coverUrl}`；目标下架行保留、
+  `targetAvailable=false`、展示列 null。
+- `GET /api/v1/c/favorites/{targetType}/{targetId}`：收藏状态探针；未收藏 200
+  `favoriteId=null`（绝不 404）；仅当前会话主体（他人收藏不可见，防枚举）。
+- `POST /api/v1/c/footprints/{targetType}/{targetId}`：上报一次浏览（客户端埋点，登录态
+  详情页加载成功后调用；匿名浏览不产生足迹），无业务体；Header `X-Request-Id` 必填。
+  首见 **201**，重放与重复浏览 **200**；`{footprintId,targetType,targetId,lastViewedAt,created}`。
+- `GET /api/v1/c/footprints?page&pageSize`：本人足迹列表；(user,target) 唯一键去重、重复浏览
+  刷新置顶；固定排序 last_viewed_at DESC, id DESC；分页界同上；行投影同收藏列表（时间列
+  `lastViewedAt`）。
+- `DELETE /api/v1/c/footprints/{footprintId}`：删单条，本人过滤硬删，不存在/非本人仍 200
+  `{footprintId,deleted:false}`；Header `X-Request-Id` 必填。
+
+targetType 恰为 `SERVICE|STORE`（其他 400）；targetId 正整数 BIGINT String；目标准入经既有
+C 目录可见性 API，隐藏/缺失统一 404 目录家族码（SERVICE_NOT_FOUND/STORE_NOT_FOUND，
+防枚举）；目录 facts 故障整页 503 fail-closed；写前置 `user_account.status=ACTIVE`（否则
+403 USER_FROZEN）；同 requestId 异参 409 IDEMPOTENCY_KEY_CONFLICT。Schema：SQL06 用户节
+`user_favorite`/`user_browse_footprint` 两表（58号），无 Event/任务变更。
+
+---
+
 # 4. 商家端 API
 
 ## 4.1 工作台与订单

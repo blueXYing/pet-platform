@@ -146,3 +146,10 @@ pet:
       wechat:
         app-id: ${AUTH_WECHAT_APP_ID:}
         app-secret: ${AUTH_WECHAT_APP_SECRET:}
+  # Contract 58 favorite/footprint C face (32号裁决第二节批次; 10号 §3.16): off by default.
+  # Enabling additionally requires pet.auth.c.enabled (real MINIAPP session) plus both C
+  # catalog query slices (pet.service.query.enabled + pet.store.query.enabled) for target
+  # admission and list enrichment; the assembly fails closed when either catalog is missing.
+  favtrack:
+    http:
+      enabled: false

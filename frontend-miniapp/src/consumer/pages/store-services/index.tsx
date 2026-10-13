@@ -14,6 +14,7 @@ import { RealStoreRepository, isStoreNotFound, runCatalogRead } from '../../stor
 import { consumerApi } from '../../../shared/consumer-runtime'
 import { MerchantApplicationRepository } from '../../../shared/merchant-repositories'
 import { detailActionGate, detailReadAllowed } from './browse-gate'
+import { DetailFavoriteEntry, useFootprintRecord } from '../../favtrack/detail-tracking'
 import { ServiceRow, StoreServicesDesign, reviewCardHeight, serviceListCardHeight } from './view'
 import { BookingSheet } from '../../components/booking-sheet/booking-sheet'
 
@@ -91,6 +92,8 @@ export default function StoreServicesPage() {
   }, [])
 
   const ready = phase === 'ready'
+  // Contract 58：登录态浏览门店详情成功即上报一次足迹（埋点失败不阻塞详情）；收藏入口在导航右缘。
+  useFootprintRecord({ enabled: ready, targetType: 'STORE', targetId: storeId, preview, scope })
   function canInteract() { return ready }
   // 预约下单入口(booking 切片,2026-10-08 验收 + 2026-10 半屏弹层改造 Figma 690:4506):
   // 匿名点击仍走登录引导,登录后行内「预约」直接弹出 BookingSheet 半屏弹层(携服务/门店
@@ -122,6 +125,7 @@ export default function StoreServicesPage() {
       {(phase === 'missing' || phase === 'invalid') && <Button id='svc-back-directory' className='svc-state-action' onClick={() => Taro.redirectTo({ url: '/consumer/pages/store-services/stores' }).catch(() => setNotice('返回失败'))}>返回门店列表</Button>}
     </View>}
     {ready && <StoreServicesDesign store={store} listTop={listTop} reviewTop={reviewTop} onBack={() => Taro.navigateBack().catch(() => setNotice('返回失败'))}
+      favoriteNode={<DetailFavoriteEntry targetType='STORE' targetId={storeId} preview={preview} idPrefix='svc' onNotice={setNotice} />}
       footer={<Text>页面数据：{preview ? '契约 Mock（preview=1，不联调）' : '真实接口（后端交付前失败关闭，可匿名浏览）'}</Text>}
       notice={notice ? <Text id='svc-notice' className='svc-notice' style={{ left: `calc(var(--svc-unit) * 29)`, right: `calc(var(--svc-unit) * 29)`, top: `calc(var(--svc-unit) * ${reviewTop + reviewCardHeight() + 24})` }}>{notice}</Text> : undefined}
       servicesNode={count === 0

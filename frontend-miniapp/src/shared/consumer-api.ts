@@ -44,6 +44,21 @@ export function isStaffInvitationPath(path: string): boolean {
   return path === '/api/v1/c/staff/invitations'
     || /^\/api\/v1\/c\/staff\/invitations\/[1-9][0-9]{0,18}(\/confirm)?$/.test(path)
 }
+// Contract 58 favorite/footprint routes (10号 §3.16; 32号裁决第二节批次): identity-scoped
+// like coupons/points — the owner is the MINIAPP session, requests carry no merchant/store
+// coordinates. The targetType path segment is the uppercase SERVICE|STORE enum, which the
+// generic lowercase c/ whitelist cannot express, so the family gets its own matcher; the
+// three write commands are business-body-free (path-only).
+export function isFavoriteFootprintPath(spec: RequestSpec): boolean {
+  if (spec.path === '/api/v1/c/favorites' || spec.path === '/api/v1/c/footprints')
+    return spec.method === 'GET'
+  if (/^\/api\/v1\/c\/favorites\/(SERVICE|STORE)\/[1-9][0-9]{0,18}$/.test(spec.path))
+    // 收藏加（POST）/取消（DELETE）/状态探针（GET，未收藏 200 favoriteId=null）。
+    return spec.method === 'POST' || spec.method === 'DELETE' || spec.method === 'GET'
+  if (/^\/api\/v1\/c\/footprints\/(SERVICE|STORE)\/[1-9][0-9]{0,18}$/.test(spec.path))
+    return spec.method === 'POST'
+  return spec.method === 'DELETE' && /^\/api\/v1\/c\/footprints\/[1-9][0-9]{0,18}$/.test(spec.path)
+}
 // Contract 48 K2 v0.3 merchant verification route (HTTP10 §4.7): POST with body
 // {verificationCode} only — merchantId/storeId are located server-side from the order and
 // the operator identity is resolved by the K1 chain (OWNER, or STAFF under the double
@@ -179,9 +194,11 @@ export class ConsumerApi {
     // detail GET and the approve/reject commands all carry merchantId+storeId equal to the
     // workspace ticket; the server re-proves the OWNER relation per call anyway.
     const merchantRefundPath = isMerchantRefundListPath(spec) || isMerchantRefundTargetPath(spec)
+    const favoriteFootprintPath = isFavoriteFootprintPath(spec)
     if (/^\/api\/v1\/(c|merchant)\/aftersale/.test(spec.path) && !afterSalePath) throw new Error('INVALID_PATH')
     if (/^\/api\/v1\/merchant\/reviews(\/|$)/.test(spec.path) && !merchantReviewPath) throw new Error('INVALID_PATH')
-    if (!/^\/api\/v1\/c\/[a-z0-9/-]+$/.test(spec.path) && !agreementPath && !admissionPath && !categoryPath && !serviceCommandPath && !afterSalePath && !schedulePath && !verificationPath && !merchantOrderAction && !merchantOrderList && !merchantReviewPath && !merchantRefundPath) throw new Error('INVALID_PATH')
+    if (/^\/api\/v1\/c\/(favorites|footprints)(\/|$)/.test(spec.path) && !favoriteFootprintPath) throw new Error('INVALID_PATH')
+    if (!/^\/api\/v1\/c\/[a-z0-9/-]+$/.test(spec.path) && !agreementPath && !admissionPath && !categoryPath && !serviceCommandPath && !afterSalePath && !schedulePath && !verificationPath && !merchantOrderAction && !merchantOrderList && !merchantReviewPath && !merchantRefundPath && !favoriteFootprintPath) throw new Error('INVALID_PATH')
     if (spec.method !== 'GET' && !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}(?![\s\S])/i.test(spec.requestId || '')) throw new Error('REQUEST_ID_REQUIRED')
     const response = await this.transport({ ...spec, headers: { 'Content-Type': 'application/json', ...(spec.requestId ? { 'X-Request-Id': spec.requestId } : {}), ...headers } })
     if (afterSalePath) return afterSaleEnvelope(response)

@@ -23,6 +23,12 @@ button { padding: 0; margin: 0; border: 0; border-radius: 0; background: transpa
 .svc-nav-back { left: calc(var(--svc-unit) * 10); top: calc(var(--svc-unit) * 18); width: calc(var(--svc-unit) * 25); height: calc(var(--svc-unit) * 42); display: flex; align-items: center; justify-content: center; z-index: 4; }
 .svc-nav-back image { width: calc(var(--svc-unit) * 9); height: calc(var(--svc-unit) * 15); }
 .svc-nav-title { left: calc(var(--svc-unit) * 50); top: calc(var(--svc-unit) * 22); font-size: calc(var(--svc-unit) * 16); line-height: calc(var(--svc-unit) * 24); font-weight: 700; color: #3c3c3c; z-index: 2; }
+/* Contract 58 favorite entry (128:3200 BUTTON-25 30x30 形态，官方色 chip 变体，无原切图). */
+.svc-nav-favorite { right: calc(var(--svc-unit) * 15); top: calc(var(--svc-unit) * 28); z-index: 4; }
+.svc-page .svc-fav-toggle { display: flex; align-items: center; justify-content: center; width: calc(var(--svc-unit) * 62); height: calc(var(--svc-unit) * 28); border-radius: calc(var(--svc-unit) * 14); background: #f0fbff; border: calc(var(--svc-unit) * 1) solid #5baae8; }
+.svc-fav-toggle text { font-size: calc(var(--svc-unit) * 11); line-height: calc(var(--svc-unit) * 16); color: #2f7fb8; }
+.svc-page .svc-fav-toggle.is-on { background: #5baae8; border-color: #5baae8; }
+.svc-fav-toggle.is-on text { color: #ffffff; }
 .svc-banner { left: calc(var(--svc-unit) * 13); top: calc(var(--svc-unit) * 75); width: calc(var(--svc-unit) * 375); height: calc(var(--svc-unit) * 180); }
 .svc-cover-unavailable { display: flex; flex-direction: column; justify-content: center; align-items: center; background: #f0fbff; color: #536777; font-size: calc(var(--svc-unit) * 14); }
 .svc-cover-unavailable button { margin-top: calc(var(--svc-unit) * 12); font-size: calc(var(--svc-unit) * 13); }
