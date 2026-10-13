@@ -10,7 +10,7 @@ import { deltaLabel, formatLedgerTime, pointsBizTypeLabels, type PointsLedgerVie
 import avatar from '../../assets/profile/avatar.png'
 import stripTop from './assets/strip-top.jpg'
 import {
-  MINE_DEVELOPER_SHELL_URL, MINE_MERCHANT_WORKSPACE_URL, mineCard, mineHubEntries, phoneGuideCopy,
+  MINE_DEVELOPER_SHELL_URL, MINE_MERCHANT_WORKSPACE_URL, MINE_POINTS_MALL_URL, mineCard, mineHubEntries, phoneGuideCopy,
   type MineCard, type MineStats,
 } from './model'
 import './mine.css'
@@ -19,10 +19,11 @@ import './mine.css'
 // 授权引导（可跳过）+ 功能枢纽。复用既有机制：会话存取/登录链全在 ConsumerApi
 // （wechat-login → VERIFY_PHONE → phone-binding attempt 通道），本页不新造第二套会话。
 // 2026-10-12 视觉重做：设计源 126:675 新版（2026-10-10 稿，planning/progress/2026-10-12/
-// figma-mine/ 精确树）。功能/契约零改动；签到卡/拉新/奖励/收藏/足迹/积分商城/地址管理/
+// figma-mine/ 精确树）。功能/契约零改动；签到卡/拉新/奖励/收藏/足迹/地址管理/
 // 成为服务者/帮助与客服/意见反馈/设置等无工程页面的原稿入口仅做视觉占位（无交互），
 // 登记表 §4.6 记偏差。全部既有入口（订单/优惠券/积分明细页/宠物档案/通知偏好/编辑资料/
-// 商家工作台/退出登录/开发者工具）保留并沿用原 URL。
+// 商家工作台/退出登录/开发者工具）保留并沿用原 URL。2026-10-13（32号裁决第二节）：
+// 我的服务第三格复位原稿「积分商城」并接通展示态页（§4.15），宠物档案迁「更多服务」行。
 const GUIDE_KEY = 'pet.c.phone-guide.v1'
 
 const [hubOrders, hubCoupons, hubPoints, hubPreferences, hubPets, hubProfile] = mineHubEntries
@@ -287,7 +288,9 @@ export default function MinePage() {
         <View className='mine-section'>
           <View className='mine-section-head'><Text className='mine-section-title'>我的服务</Text></View>
           <View className='mine-grid'>
-            {/* 我的收藏/地址管理：无工程页面，视觉占位；优惠券/宠物档案为真实入口。 */}
+            {/* 我的收藏：无工程页面，视觉占位；优惠券/积分商城/宠物档案为真实入口。积分商城格位
+                2026-10-13 接通 32号裁决第二节展示态页（原稿 126:675 第三格复位，登记表 §4.15）；
+                宠物档案自该格迁至「更多服务」行（原 §4.7 偏差3 的临时落位随之更新）。 */}
             <View className='mine-cell'>
               <View className='mine-cell-chip'><View className='mi-svc-collect' /></View>
               <Text className='mine-cell-label'>我的收藏</Text>
@@ -296,9 +299,9 @@ export default function MinePage() {
               <View className='mine-cell-chip'><View className='mi-svc-coupon' /></View>
               <Text className='mine-cell-label'>优惠券</Text>
             </Button>
-            <Button id='mine-stat-pets' className='mine-cell' hoverClass='none' onClick={() => open(hubPets.url)}>
+            <Button id='mine-hub-mall' className='mine-cell' hoverClass='none' ariaLabel='积分商城，兑换暂未开放' onClick={() => open(MINE_POINTS_MALL_URL)}>
               <View className='mine-cell-chip'><View className='mi-svc-mall' /></View>
-              <Text className='mine-cell-label'>宠物档案</Text>
+              <Text className='mine-cell-label'>积分商城</Text>
             </Button>
             <View className='mine-cell'>
               <View className='mine-cell-chip'><View className='mi-svc-address' /></View>
@@ -309,7 +312,8 @@ export default function MinePage() {
         <View className='mine-section'>
           <View className='mine-section-head'><Text className='mine-section-title'>更多服务</Text></View>
           <View className='mine-grid'>
-            {/* 成为服务者/帮助与客服/意见反馈：无工程页面，视觉占位；通知偏好为真实入口。 */}
+            {/* 成为服务者/帮助与客服/意见反馈：无工程页面，视觉占位；宠物档案（自「我的服务」
+                商城格位迁入，原稿本行 4 格现 5 格，登记表 §4.15）与通知偏好为真实入口。 */}
             <View className='mine-cell'>
               <View className='mine-cell-chip'><View className='mi-svc-provider' /></View>
               <Text className='mine-cell-label'>成为服务者</Text>
@@ -322,6 +326,10 @@ export default function MinePage() {
               <View className='mine-cell-chip'><View className='mi-svc-feedback' /></View>
               <Text className='mine-cell-label'>意见反馈</Text>
             </View>
+            <Button id='mine-stat-pets' className='mine-cell' hoverClass='none' onClick={() => open(hubPets.url)}>
+              <View className='mine-cell-chip'><View className='mi-svc-pet' /></View>
+              <Text className='mine-cell-label'>宠物档案</Text>
+            </Button>
             <Button id='mine-hub-preferences' className='mine-cell' hoverClass='none' onClick={() => open(hubPreferences.url)}>
               <View className='mine-cell-chip'><View className='mi-svc-settings' /></View>
               <Text className='mine-cell-label'>通知偏好</Text>

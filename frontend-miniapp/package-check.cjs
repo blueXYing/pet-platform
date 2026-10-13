@@ -65,6 +65,8 @@ assert.deepEqual(packages.map(p => ({ root: p.root, pages: p.pages })), [
   { root: 'consumer/pages/notification-preferences', pages: ['index'] },
   // Booking create + payment initiation slice (10号 §3.4/§3.5/§3.6).
   { root: 'consumer/pages/booking', pages: ['create', 'pay'] },
+  // Points mall display-state page (32号裁决第二节: 只赚不花, 商城=能看不能换).
+  { root: 'consumer/pages/points-mall', pages: ['index'] },
 ], 'Merchant workspace, pet archive, merchant application, store services, coupon/points, aftersale and notification preference pages must be registered in the single app')
 for (const [folder, pages] of [['consumer/pages/aftersale', ['index', 'detail', 'apply']], ['merchant/pages/aftersale', ['index', 'detail']], ['merchant/pages/reviews', ['index']]]) {
   for (const page of pages) for (const extension of ['js', 'json', 'wxml', 'wxss']) {

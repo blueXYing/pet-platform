@@ -52,6 +52,8 @@ export type MineHubKey = typeof mineHubEntries[number]['key']
 export const MINE_MERCHANT_WORKSPACE_URL = '/merchant/pages/workspace/index'
 // 「工程验证」壳降级为调试入口（direct path 保留，preview 夹具通道原样保留）。
 export const MINE_DEVELOPER_SHELL_URL = '/consumer/pages/shell/index'
+// 积分商城展示态页（32号裁决第二节：只赚不花，商城=能看不能换；126:675 我的服务第三格原稿格位）。
+export const MINE_POINTS_MALL_URL = '/consumer/pages/points-mall/index'
 
 export const phoneGuideCopy = {
   title: '授权手机号，完善账号',
