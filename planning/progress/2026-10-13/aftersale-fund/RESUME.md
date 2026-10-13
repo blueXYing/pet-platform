@@ -57,7 +57,14 @@
    - 编译错：ReservationHoldApiImpl 在 `schedule.biz.apiimpl`（非 order）、`Instant.isBefore` 需 `start.toInstant()`。
    - 时钟跳到 11:00 后构造期签发的三端会话过期（credentials.read 401"验证失败"）→ 跳变后 `loginBuyer();loginOwner();loginAdmin();` 重建（AfterSaleFixture.refreshBuyer 同因）。
 5. **run7 复跑：AfterSaleHttpAcceptanceTest 5/5 全绿 BUILD SUCCESS**（含新测试 refundDecisionsAdjudicateOriginalRouteRefundOrdersUnderTheRuling32Switch：PARTIAL 建单/边界400×3/幂等重放200/换参409/终局后409/资格面 REFUND_ORDER_ALREADY_EXISTS/FULL 兄弟单 + 既有开关关闭503用例）。
-6. payment-biz 定向复跑见 payment-run2.log（结果记录于完成报告）。
+6. payment-biz 定向复跑见 payment-run2.log：**28/28 全绿 BUILD SUCCESS**（PaymentRefundServiceMySqlTest 19 + RefundFundingEvidenceChecks 5 + WechatOriginalRouteRefundFundingAuthority 4）。
+
+## 交付完成（第3棒 2026-10-13 23:55）
+
+- commit `5ef2a9a`（15 文件，+494/-36），已 push `codex/aftersale-fund-20261013`。
+- **PR #160：https://github.com/blueXYing/pet-platform/pull/160**（base develop，未合并——按红线不合并不 push develop/main）。
+- 测试证据汇总：payment-biz 28/28；boot 定向 155/155（14 类 150 + Http 5）；admin web playwright 39/39；contract_smoke PASS；check-persistence-style PASS。
+- 遗留风险（PR body 已披露）：生产开关默认关闭，启用需渠道凭据+worker；证据 24h 窗口为技术护栏；任务族执行态不在本验收内。
 
 ## 坑
 
