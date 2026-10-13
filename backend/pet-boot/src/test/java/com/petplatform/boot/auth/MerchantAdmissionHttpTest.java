@@ -389,6 +389,8 @@ class MerchantAdmissionHttpTest {
             "merchant.aftersale.read",
             "merchant.order.read",
             "merchant.penalty.read",
+            "merchant.refund.handle",
+            "merchant.refund.read",
             // REV-002 review appeal slice: the review list/appeal entry rides the same
             // admission hint family (read stays open for LIMITED/FROZEN; write fails closed).
             "merchant.review.read",
@@ -423,6 +425,7 @@ class MerchantAdmissionHttpTest {
             "merchant.order.read",
             "merchant.penalty.appeal",
             "merchant.penalty.read",
+            "merchant.refund.read",
             "merchant.review.read"),
         frozen.data().get("allowedActions"));
     assertEquals(

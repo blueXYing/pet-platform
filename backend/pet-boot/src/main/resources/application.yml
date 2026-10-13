@@ -72,6 +72,12 @@ pet:
         enabled: false
       http:
         enabled: false
+    merchant:
+      # Contract 57 M refund face (pending list/detail/approve/reject on the 49号 kernel):
+      # off by default; enabling additionally requires pet.refund.application.enabled (the
+      # RefundApplicationConfiguration validation fails closed otherwise).
+      http:
+        enabled: false
   review:
     # REV-001 review kernel + C face (10号 §3.14 + 07号 §7.7/§14): off by default; the kernel
     # additionally needs pet.auth.c.enabled for the real C session/order query slice, and the

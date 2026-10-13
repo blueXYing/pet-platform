@@ -8,6 +8,7 @@ import { RealProfileRepository } from '../../api/repositories'
 import { RealCouponPointsRepository } from '../../coupon-points/repository'
 import { deltaLabel, formatLedgerTime, pointsBizTypeLabels, type PointsLedgerView } from '../../coupon-points/model'
 import avatar from '../../assets/profile/avatar.png'
+import stripTop from './assets/strip-top.jpg'
 import {
   MINE_DEVELOPER_SHELL_URL, MINE_MERCHANT_WORKSPACE_URL, mineCard, mineHubEntries, phoneGuideCopy,
   type MineCard, type MineStats,
@@ -16,10 +17,32 @@ import './mine.css'
 
 // 「我的」tab（用户 2026-10-08 裁决的登录体验层落点）：静默登录状态投影 + 首次进入的手机号
 // 授权引导（可跳过）+ 功能枢纽。复用既有机制：会话存取/登录链全在 ConsumerApi
-// （wechat-login → VERIFY_PHONE → phone-binding attempt 通道），本页不新造第二套会话；
-// 设计源：我的 126:675 为原稿，本页还原用户卡片/订单入口/服务网格骨架，签到/拉新/收藏/
-// 足迹/会员等级等无 V1 后端字段登记偏差不实现。
+// （wechat-login → VERIFY_PHONE → phone-binding attempt 通道），本页不新造第二套会话。
+// 2026-10-12 视觉重做：设计源 126:675 新版（2026-10-10 稿，planning/progress/2026-10-12/
+// figma-mine/ 精确树）。功能/契约零改动；签到卡/拉新/奖励/收藏/足迹/积分商城/地址管理/
+// 成为服务者/帮助与客服/意见反馈/设置等无工程页面的原稿入口仅做视觉占位（无交互），
+// 登记表 §4.6 记偏差。全部既有入口（订单/优惠券/积分明细页/宠物档案/通知偏好/编辑资料/
+// 商家工作台/退出登录/开发者工具）保留并沿用原 URL。
 const GUIDE_KEY = 'pet.c.phone-guide.v1'
+
+const [hubOrders, hubCoupons, hubPoints, hubPreferences, hubPets, hubProfile] = mineHubEntries
+// 原稿 126:675 订单五状态入口：工程订单列表不收状态参数，统一落既有列表页（行为与现状一致）。
+const orderStatusEntries = [
+  { key: 'wait', label: '待服务' },
+  { key: 'doing', label: '进行中' },
+  { key: 'done', label: '已完成' },
+  { key: 'cancel', label: '已取消' },
+  { key: 'aftersale', label: '订单售后' },
+] as const
+const weekdayLabels = ['日', '一', '二', '三', '四', '五', '六'] as const
+// 原稿签到周条（三~二 7 格）：用真实日历（今天往前 7 天），不虚构签到状态。
+function weekStrip(): { day: string; date: string }[] {
+  const today = new Date()
+  return Array.from({ length: 7 }, (_, index) => {
+    const date = new Date(today.getFullYear(), today.getMonth(), today.getDate() - (6 - index))
+    return { day: weekdayLabels[date.getDay()], date: `${date.getDate()}`.padStart(2, '0') }
+  })
+}
 
 export default function MinePage() {
   const [info] = useState(() => Taro.getWindowInfo())
@@ -150,83 +173,184 @@ export default function MinePage() {
 
   return <View className='mine-page' style={style}>
     <View className='mine-status-area' />
-    <View className='mine-header'>
-      <Text className='mine-title'>我的</Text>
-    </View>
     <ScrollView className='mine-body' scrollY enhanced showScrollbar={false}>
-      {card.state === 'pending' && <View className='mine-card mine-card-pending' role='status'>
-        <Text>正在同步登录状态…</Text>
-      </View>}
-      {card.state === 'authenticated' && <View className='mine-card mine-card-authenticated'>
-        <View className='mine-user-row'>
-          <Image className='mine-avatar' src={avatar} mode='scaleToFill' />
-          <View className='mine-user-main'>
-            <Text className='mine-nickname'>{card.nickname}</Text>
-            <Text id='mine-phone' className='mine-phone'>{card.phoneMasked || '已登录'}</Text>
+      <View className='mine-scroll'>
+        <Image className='mine-strip' src={stripTop} mode='scaleToFill' />
+        <View className='mi-wave-blue mine-wave-blue' />
+        <View className='mi-wave-white mine-wave-white' />
+        {card.state === 'pending' && <View className='mine-card mine-card-pending' role='status'>
+          <Text>正在同步登录状态…</Text>
+        </View>}
+        {card.state === 'authenticated' && <>
+          <View className='mine-user'>
+            <Image className='mine-avatar' src={avatar} mode='scaleToFill' />
+            <View className='mine-user-main'>
+              <Text className='mine-nickname'>{card.nickname}</Text>
+              <Text id='mine-phone' className='mine-phone'>{card.phoneMasked || '已登录'}</Text>
+            </View>
+            <Button id='mine-profile' className='mine-user-go' hoverClass='none' ariaLabel='编辑资料' onClick={() => open(hubProfile.url)}>
+              <View className='mi-chev-user' />
+            </Button>
           </View>
-          <Button id='mine-profile' className='mine-link' hoverClass='none' onClick={() => open('/consumer/pages/profile-edit/index')}>
-            <Text className='mine-link-text'>编辑资料 ›</Text>
+          <View className='mine-stats'>
+            <Button id='mine-stat-coupons' className='mine-stat' hoverClass='none' onClick={() => open(hubCoupons.url)}>
+              <View className='mine-stat-ico'><View className='mi-stat-coupon' /></View>
+              <Text className='mine-stat-value'>{card.stats.coupons === null ? '—' : card.stats.coupons}</Text>
+              <Text className='mine-stat-label'>优惠券</Text>
+            </Button>
+            <Button id='mine-stat-points' className='mine-stat' hoverClass='none' onClick={openPointsSheet}>
+              <View className='mine-stat-ico'><View className='mi-stat-points' /></View>
+              <Text className='mine-stat-value'>{card.stats.points === null ? '—' : card.stats.points}</Text>
+              <Text className='mine-stat-label'>积分</Text>
+            </Button>
+            {/* 收藏/足迹：V1 无对应页面与读侧字段，按原稿视觉占位（无交互），登记表 §4.6。 */}
+            <View className='mine-stat'>
+              <View className='mine-stat-ico'><View className='mi-stat-collect' /></View>
+              <Text className='mine-stat-value'>—</Text>
+              <Text className='mine-stat-label'>收藏</Text>
+            </View>
+            <View className='mine-stat'>
+              <View className='mine-stat-ico'><View className='mi-stat-footprint' /></View>
+              <Text className='mine-stat-value'>—</Text>
+              <Text className='mine-stat-label'>足迹</Text>
+            </View>
+          </View>
+        </>}
+        {card.state === 'phone-required' && <View className={`mine-card mine-card-phone${card.guideOpen ? ' mine-card-phone-open' : ' mine-card-phone-closed'}`}>
+          {card.guideOpen ? <View className='mine-guide'>
+            <Text className='mine-guide-title'>{phoneGuideCopy.title}</Text>
+            <Text className='mine-guide-body'>{phoneGuideCopy.body}</Text>
+            <Button id='mine-phone-authorize' className='mine-guide-primary' openType='getPhoneNumber' disabled={busy}
+              onGetPhoneNumber={event => void authorize(event.detail)}>{phoneGuideCopy.authorize}</Button>
+            <Button id='mine-phone-skip' className='mine-guide-secondary' disabled={busy} onClick={skipGuide}>{phoneGuideCopy.skip}</Button>
+          </View> : <Button id='mine-phone-reopen' className='mine-guide-collapsed' hoverClass='none' onClick={reopenGuide}>
+            <Text className='mine-guide-collapsed-text'>{phoneGuideCopy.collapsed} ›</Text>
+          </Button>}
+        </View>}
+        {card.state === 'unavailable' && <View className='mine-card mine-card-unauthenticated'>
+          <View className='mine-guide'>
+            <Text className='mine-guide-title'>未登录</Text>
+            <Text className='mine-guide-body'>可先匿名浏览门店与服务；下单、订单与消息需要登录。</Text>
+            <Button id='mine-login' className='mine-guide-primary' disabled={busy} onClick={() => void loginRetry()}>微信一键登录</Button>
+          </View>
+        </View>}
+        {notice && <View className='mine-notice' role='status'><Text id='mine-notice'>{notice}</Text></View>}
+        {/* 每日签到卡：V1 无签到写路径，纯视觉占位（周条为真实日历），登记表 §4.6。 */}
+        <View className='mine-signin' ariaLabel='签到功能暂未接通'>
+          <View className='mine-signin-head'>
+            <View className='mine-signin-title'><View className='mi-signin-cal' /><Text>每日签到</Text></View>
+            <View className='mine-signin-streak'>
+              <Text>连续签到</Text>
+              <Text className='mine-signin-streak-num'>0</Text>
+              <Text> 天</Text>
+            </View>
+          </View>
+          <View className='mine-signin-week'>
+            {weekStrip().map(day => <View key={day.date} className='mine-signin-day'>
+              <View className='mine-signin-day-circle'><Text>{day.day}</Text></View>
+              <Text className='mine-signin-day-date'>{day.date}</Text>
+            </View>)}
+          </View>
+          <View className='mine-signin-action'><Text>立即签到 · 得 5 积分</Text></View>
+        </View>
+        <View className='mine-quick'>
+          {/* 拉新任务/奖励领取：V1 无对应页面，视觉占位（无交互）；积分明细沿既有积分页入口。 */}
+          <View className='mine-quick-cell'>
+            <View className='mine-quick-chip is-accent'><View className='mi-quick-invite' /></View>
+            <Text className='mine-quick-label'>拉新任务</Text>
+          </View>
+          <View className='mine-quick-cell'>
+            <View className='mine-quick-chip'><View className='mi-quick-reward' /></View>
+            <Text className='mine-quick-label'>奖励领取</Text>
+          </View>
+          <Button id='mine-hub-points' className='mine-quick-cell' hoverClass='none' onClick={() => open(hubPoints.url)}>
+            <View className='mine-quick-chip'><View className='mi-quick-points' /></View>
+            <Text className='mine-quick-label'>积分明细</Text>
           </Button>
         </View>
-        <View className='mine-stats'>
-          <Button id='mine-stat-coupons' className='mine-stat' hoverClass='none' onClick={() => open('/consumer/pages/coupon-points/coupons')}>
-            <Text className='mine-stat-value'>{card.stats.coupons === null ? '—' : card.stats.coupons}</Text>
-            <Text className='mine-stat-label'>优惠券</Text>
-          </Button>
-          <Button id='mine-stat-points' className='mine-stat' hoverClass='none' onClick={openPointsSheet}>
-            <Text className='mine-stat-value'>{card.stats.points === null ? '—' : card.stats.points}</Text>
-            <Text className='mine-stat-label'>积分</Text>
-          </Button>
-          <Button id='mine-stat-pets' className='mine-stat' hoverClass='none' onClick={() => open('/consumer/pages/pet-archive/index')}>
-            <Text className='mine-stat-value'>›</Text>
-            <Text className='mine-stat-label'>宠物档案</Text>
-          </Button>
+        <View className='mine-section'>
+          <View className='mine-section-head'>
+            <Text className='mine-section-title'>我的订单</Text>
+            <Button id='mine-hub-orders' className='mine-orders-all' hoverClass='none' onClick={() => open(hubOrders.url)}>
+              <Text className='mine-orders-all-text'>全部订单</Text>
+              <View className='mi-chev-orders' />
+            </Button>
+          </View>
+          <View className='mine-orders-row'>
+            {orderStatusEntries.map(entry => <Button key={entry.key} id={`mine-order-${entry.key}`}
+              className='mine-order-item' hoverClass='none' onClick={() => open(hubOrders.url)}>
+              <View className='mine-order-ico'><View className={`mi-ord-${entry.key}`} /></View>
+              <Text className='mine-order-label'>{entry.label}</Text>
+            </Button>)}
+          </View>
         </View>
-      </View>}
-      {card.state === 'phone-required' && <View className={`mine-card mine-card-phone${card.guideOpen ? ' mine-card-phone-open' : ' mine-card-phone-closed'}`}>
-        {card.guideOpen ? <View className='mine-guide'>
-          <Text className='mine-guide-title'>{phoneGuideCopy.title}</Text>
-          <Text className='mine-guide-body'>{phoneGuideCopy.body}</Text>
-          <Button id='mine-phone-authorize' className='mine-guide-primary' openType='getPhoneNumber' disabled={busy}
-            onGetPhoneNumber={event => void authorize(event.detail)}>{phoneGuideCopy.authorize}</Button>
-          <Button id='mine-phone-skip' className='mine-guide-secondary' disabled={busy} onClick={skipGuide}>{phoneGuideCopy.skip}</Button>
-        </View> : <Button id='mine-phone-reopen' className='mine-guide-collapsed' hoverClass='none' onClick={reopenGuide}>
-          <Text className='mine-guide-collapsed-text'>{phoneGuideCopy.collapsed} ›</Text>
-        </Button>}
-      </View>}
-      {card.state === 'unavailable' && <View className='mine-card mine-card-unauthenticated'>
-        <View className='mine-guide'>
-          <Text className='mine-guide-title'>未登录</Text>
-          <Text className='mine-guide-body'>可先匿名浏览门店与服务；下单、订单与消息需要登录。</Text>
-          <Button id='mine-login' className='mine-guide-primary' disabled={busy} onClick={() => void loginRetry()}>微信一键登录</Button>
+        <View className='mine-section'>
+          <View className='mine-section-head'><Text className='mine-section-title'>我的服务</Text></View>
+          <View className='mine-grid'>
+            {/* 我的收藏/地址管理：无工程页面，视觉占位；优惠券/宠物档案为真实入口。 */}
+            <View className='mine-cell'>
+              <View className='mine-cell-chip'><View className='mi-svc-collect' /></View>
+              <Text className='mine-cell-label'>我的收藏</Text>
+            </View>
+            <Button id='mine-hub-coupons' className='mine-cell' hoverClass='none' onClick={() => open(hubCoupons.url)}>
+              <View className='mine-cell-chip'><View className='mi-svc-coupon' /></View>
+              <Text className='mine-cell-label'>优惠券</Text>
+            </Button>
+            <Button id='mine-stat-pets' className='mine-cell' hoverClass='none' onClick={() => open(hubPets.url)}>
+              <View className='mine-cell-chip'><View className='mi-svc-mall' /></View>
+              <Text className='mine-cell-label'>宠物档案</Text>
+            </Button>
+            <View className='mine-cell'>
+              <View className='mine-cell-chip'><View className='mi-svc-address' /></View>
+              <Text className='mine-cell-label'>地址管理</Text>
+            </View>
+          </View>
         </View>
-      </View>}
-      {notice && <View className='mine-notice' role='status'><Text id='mine-notice'>{notice}</Text></View>}
-      <View className='mine-hub'>
-        {mineHubEntries.map(entry => <Button key={entry.key} id={`mine-hub-${entry.key}`} className='mine-hub-cell' hoverClass='none' onClick={() => open(entry.url)}>
-          <Text className='mine-hub-label'>{entry.label}</Text>
-          <Text className='mine-hub-go'>›</Text>
-        </Button>)}
-      </View>
-      <Button id='mine-merchant' className='mine-wide' hoverClass='none' onClick={() => open(MINE_MERCHANT_WORKSPACE_URL)}>
-        <Text className='mine-wide-title'>商家工作台</Text>
-        <Text className='mine-wide-sub'>商家与员工沿现有工作台路径进入</Text>
-        <Text className='mine-hub-go'>›</Text>
-      </Button>
-      <View className='mine-footer'>
-        <Button id='mine-logout' className={`mine-logout${card.state === 'authenticated' ? '' : ' mine-logout-hidden'}`}
-          disabled={busy || card.state !== 'authenticated'} onClick={() => void logoutUser()}>退出登录</Button>
-        <Button id='mine-developer' className='mine-developer' hoverClass='none' onClick={() => open(MINE_DEVELOPER_SHELL_URL)}>
-          <Text className='mine-developer-text'>开发者工具 · 工程验证</Text>
+        <View className='mine-section'>
+          <View className='mine-section-head'><Text className='mine-section-title'>更多服务</Text></View>
+          <View className='mine-grid'>
+            {/* 成为服务者/帮助与客服/意见反馈：无工程页面，视觉占位；通知偏好为真实入口。 */}
+            <View className='mine-cell'>
+              <View className='mine-cell-chip'><View className='mi-svc-provider' /></View>
+              <Text className='mine-cell-label'>成为服务者</Text>
+            </View>
+            <View className='mine-cell'>
+              <View className='mine-cell-chip'><View className='mi-svc-help' /></View>
+              <Text className='mine-cell-label'>帮助与客服</Text>
+            </View>
+            <View className='mine-cell'>
+              <View className='mine-cell-chip'><View className='mi-svc-feedback' /></View>
+              <Text className='mine-cell-label'>意见反馈</Text>
+            </View>
+            <Button id='mine-hub-preferences' className='mine-cell' hoverClass='none' onClick={() => open(hubPreferences.url)}>
+              <View className='mine-cell-chip'><View className='mi-svc-settings' /></View>
+              <Text className='mine-cell-label'>通知偏好</Text>
+            </Button>
+          </View>
+        </View>
+        <Button id='mine-merchant' className='mine-banner' hoverClass='none' onClick={() => open(MINE_MERCHANT_WORKSPACE_URL)}>
+          <View className='mine-banner-chip'><View className='mi-banner-shop' /></View>
+          <View className='mine-banner-main'>
+            <Text className='mine-banner-title'>商家工作台</Text>
+            <Text className='mine-banner-sub'>商家与员工沿现有工作台路径进入</Text>
+          </View>
+          <View className='mine-banner-go'><View className='mi-chev-banner' /></View>
         </Button>
+        <View className='mine-footer'>
+          <Button id='mine-logout' className={`mine-logout${card.state === 'authenticated' ? '' : ' mine-logout-hidden'}`}
+            disabled={busy || card.state !== 'authenticated'} onClick={() => void logoutUser()}>退出登录</Button>
+          <Button id='mine-developer' className='mine-developer' hoverClass='none' onClick={() => open(MINE_DEVELOPER_SHELL_URL)}>
+            <Text className='mine-developer-text'>开发者工具 · 工程验证</Text>
+          </Button>
+        </View>
       </View>
     </ScrollView>
     {sheetPhase !== 'closed' && <View className='pts-mask' onClick={closePointsSheet} catchMove>
       <View className='pts-sheet' onClick={event => event.stopPropagation()} catchMove>
         <View className='pts-head'>
           <Text className='pts-title'>积分明细</Text>
-          <Button id='mine-pts-close' className='pts-close' hoverClass='none' onClick={closePointsSheet}>
-            <Text>×</Text>
+          <Button id='mine-pts-close' className='pts-close' hoverClass='none' ariaLabel='关闭' onClick={closePointsSheet}>
+            <View className='mi-sheet-close' />
           </Button>
         </View>
         <ScrollView className='pts-list' scrollY enhanced showScrollbar={false}>
@@ -236,9 +360,7 @@ export default function MinePage() {
           {sheetPhase === 'ready' && ledger.map(entry => <View key={entry.ledgerId} id={`mine-pts-row-${entry.ledgerId}`}
             className='pts-row' ariaLabel={`${pointsBizTypeLabels[entry.bizType]}，${deltaLabel(entry)}积分`}>
             <View className='pts-row-left'>
-              <View className={`pts-icon${entry.delta.startsWith('-') ? ' is-negative' : ''}`}>
-                <Text>{entry.delta.startsWith('-') ? '−' : '+'}</Text>
-              </View>
+              <View className={entry.delta.startsWith('-') ? 'mi-sheet-row-neg' : 'mi-sheet-row'} />
               <Text className='pts-name'>{pointsBizTypeLabels[entry.bizType]}</Text>
             </View>
             <View className='pts-row-right'>

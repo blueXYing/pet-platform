@@ -41,7 +41,12 @@ class PrivateAssetContractRegressions(unittest.TestCase):
         # — merchantListReviews/merchantGetReview/merchantAppealReview — plus admin 3
         # — adminListReviewAppeals/adminGetReviewAppeal/adminDecideReviewAppeal).
         # 135 = develop through the reschedule/review-creation slices (3432 + 134 + 133 lineage above).
-        self.assertEqual(result['operations'], 141)
+        # 143 = 141 + 2 net-new contract-57 merchant refund application operations
+        # (merchantListRefundApplications / merchantReadRefundApplication). The approve
+        # /reject drafts (merchantApproveRefund / merchantRejectRefund) pre-existed in
+        # develop's baseline and are only re-pinned implemented default-off into
+        # MERCHANT_REFUND_HTTP_OPERATIONS (family census = 4).
+        self.assertEqual(result['operations'], 143)
         self.assertEqual(result['privateAssetOperations'], 3)
         self.assertEqual(result['legacyOperations'], 14)
         self.assertEqual(result['aftersaleOperations'], 24)
@@ -60,6 +65,7 @@ class PrivateAssetContractRegressions(unittest.TestCase):
         self.assertEqual(result['merchantOrderListOperations'], 1)
         self.assertEqual(result['refundHttpOperations'], 1)
         self.assertEqual(result['reviewAppealHttpOperations'], 6)
+        self.assertEqual(result['merchantRefundHttpOperations'], 4)
 
     def test_all_private_operations_require_current_bearer_audience_and_default_off(self):
         for name in PRIVATE_ASSET_OPERATIONS:
