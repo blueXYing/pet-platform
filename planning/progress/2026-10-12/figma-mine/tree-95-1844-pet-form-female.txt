@@ -1,0 +1,172 @@
+==== 95:1844 '宠物档案填写-妹妹' ====
+FRAME '宠物档案填写-妹妹' | 402x1067@2878,2207 | fill=SOLID:#ffffff
+  RECTANGLE 'huaban-5913185224 2' | 402x787@2878,2232 | fill=IMAGE:imgRef=a20e1db6e875df18127ad7c7bec190d963ba338f/STRETCH
+  RECTANGLE 'huaban-5913185224 1' | 402x227@2878,3016 | fill=IMAGE:imgRef=a20e1db6e875df18127ad7c7bec190d963ba338f/STRETCH
+  RECTANGLE 'Rectangle 36' | 358x87@2900,2311 | fill=SOLID:#85d2f3 | r=rect[9.0,9.0,0.0,0.0]
+  RECTANGLE 'Rectangle 38' | 358x87@2900,2310 | fill=SOLID:#f0fbff | r=rect[9.0,9.0,0.0,0.0]
+  RECTANGLE 'Rectangle 37' | 358x869@2900,2398 | fill=SOLID:#f0fbff | r=rect[0.0,0.0,9.0,9.0]
+  RECTANGLE 'Rectangle 64' | 343x86@2908,2417 | fill=SOLID:#d2f1ff | stroke SOLID:#c0ecff w=1.0 INSIDE | r=10.0
+  FRAME 'H3-235' | 96x24@2919,2342 | auto:HORIZONTAL gap=None pad[LRTB]=[None,None,None,None] align=-/CENTER
+    TEXT '编辑宠物信息-237' | 96x24@2919,2342 | fill=SOLID:#1d0d07 | text='添加宠物信息' | font=Outfit w=700 sz=16.0 lh=24.0 ls=0.0 | tcolor=SOLID:#1d0d07
+  FRAME 'I-239' | 21x28@3216,2340 | auto:HORIZONTAL gap=None pad[LRTB]=[None,None,None,None] align=CENTER/CENTER
+    FRAME 'Icon-240' | 21x20@3216,2344
+      GROUP 'Group' | 11x11@3221,2349
+        VECTOR 'Vector' | 11x11@3221,2349 | fill=SOLID:#9e7660
+  FRAME 'BUTTON-300' | 166x40@2907,3136 | auto:HORIZONTAL gap=None pad[LRTB]=[None,None,10.0,10.0] align=CENTER/CENTER | fill=SOLID:#c0ecff | r=9999.0
+    TEXT '取消-302' | 28x20@2976,3146 | fill=SOLID:#2e1d16 | text='取消' | font=Roboto w=500 sz=14.0 lh=20.0 ls=0.0 | tcolor=SOLID:#2e1d16 | ta=CENTER
+  FRAME 'BUTTON-303' | 166x40@3084,3136 | auto:HORIZONTAL gap=None pad[LRTB]=[None,None,10.0,10.0] align=CENTER/CENTER | fill=SOLID:#ffe2bd | r=9999.0
+    TEXT '保存-305' | 28x20@3153,3146 | fill=SOLID:#3c3c3c | text='保存' | font=Roboto w=500 sz=14.0 lh=20.0 ls=0.0 | tcolor=SOLID:#3c3c3c | ta=CENTER
+  RECTANGLE 'huaban-7000785516 1' | 65x54@2923,2433 | fill=IMAGE:imgRef=0c73ab5ec6dd7209bc90f23b311b5aad7e193634/STRETCH
+  TEXT '2024-06-18-34' | 44x17@2999,2454 | fill=SOLID:#b89682 | text='更换头像' | font=Roboto w=400 sz=11.0 lh=16.5 ls=0.0 | tcolor=SOLID:#b89682
+  TEXT '宠物名字-252' | 54x16@3162,2440 | fill=SOLID:#7b5b4a | text='宠物名字*' | font=Roboto w=400 sz=12.0 lh=16.0 ls=0.0 | tcolor=SOLID:#7b5b4a | ta=RIGHT | styleOverrides=[0, 0, 0, 0, 4]
+  RECTANGLE 'Rectangle 10' | 402x86@2878,2207 | fill=SOLID:#fff6e5
+  RECTANGLE 'Rectangle 14' | 402x507@2878,2996 | fill=SOLID:#f0fbff | r=7.0
+  FRAME 'A-189' | 240x446@3398,3084 | auto:VERTICAL gap=None pad[LRTB]=[1.0,1.0,1.0,1.0] align=-/- | fill=SOLID:#f8f5ee | stroke SOLID:#e9dcc8 op=0.60 w=1.0 INSIDE | r=12.0
+    FRAME 'DIV-190' | 238x317@3400,3086 | auto:VERTICAL gap=None pad[LRTB]=[None,None,None,None] align=-/-
+      RECTANGLE 'IMG-191' | 238x317@3400,3086 | fill=IMAGE:imgRef=f00db4618e978f53552ca4c86d75504891b9406c/FILL
+    FRAME 'DIV-192' | 238x87@3400,3403 | auto:VERTICAL gap=None pad[LRTB]=[12.0,12.0,12.0,12.0] align=-/-
+      FRAME 'margin-wrap' | 214x43@3412,3415 | auto:HORIZONTAL gap=None pad[LRTB]=[None,None,None,10.0] align=-/-
+        FRAME 'P-193' | 214x33@3412,3415 | auto:HORIZONTAL gap=None pad[LRTB]=[None,None,None,None] align=-/-
+          TEXT '店里新到了一批进口宠物零食，还有超可爱的玩具，欢迎各位宠友带毛孩子来逛逛～-195' | 204x50@3412,3415 | fill=SOLID:#402e26 | text='店里新到了一批进口宠物零食，还有超可爱的玩具，欢迎各位宠友带毛孩子来逛逛～' | font=Roboto w=400 sz=12.0 lh=16.5 ls=0.0 | tcolor=SOLID:#402e26
+      FRAME 'DIV-196' | 214x20@3412,3458 | auto:HORIZONTAL gap=None pad[LRTB]=[None,None,None,None] align=SPACE_BETWEEN/CENTER
+        FRAME 'DIV-197' | 59x20@3412,3458 | auto:HORIZONTAL gap=6.0 pad[LRTB]=[None,None,None,None] align=-/CENTER
+          RECTANGLE 'IMG-198' | 20x20@3412,3458 | fill=IMAGE:imgRef=c5c6afd9f612094487b0da7e3bf39079c2c4326a/FILL | r=9999.0
+          FRAME 'SPAN-199' | 33x16@3438,3460 | auto:HORIZONTAL gap=None pad[LRTB]=[None,None,None,None] align=-/CENTER
+            TEXT '王店长-201' | 33x17@3438,3460 | fill=SOLID:#7b5b4a | text='王店长' | font=Roboto w=400 sz=11.0 lh=16.5 ls=0.0 | tcolor=SOLID:#7b5b4a
+        FRAME 'DIV-202' | 35x16@3591,3460 | auto:HORIZONTAL gap=4.0 pad[LRTB]=[None,None,None,None] align=-/CENTER
+          FRAME 'I-203' | 12x16@3591,3460 | auto:HORIZONTAL gap=None pad[LRTB]=[None,None,None,None] align=-/CENTER
+            FRAME 'Icon-204' | 12x12@3591,3462
+              GROUP 'Group' | 10x9@3592,3464
+                VECTOR 'Vector' | 10x9@3592,3464 | fill=SOLID:#9e7660
+          FRAME 'SPAN-205' | 19x16@3607,3460 | auto:HORIZONTAL gap=None pad[LRTB]=[None,None,None,None] align=-/CENTER
+            TEXT '204-207' | 19x17@3607,3460 | fill=SOLID:#9e7660 | text='204' | font=Roboto w=400 sz=11.0 lh=16.5 ls=0.0 | tcolor=SOLID:#9e7660
+  FRAME 'A-208' | 240x446@3650,3084 | auto:VERTICAL gap=None pad[LRTB]=[1.0,1.0,1.0,1.0] align=-/- | fill=SOLID:#f8f5ee | stroke SOLID:#e9dcc8 op=0.60 w=1.0 INSIDE | r=12.0
+    FRAME 'DIV-209' | 238x357@3652,3086 | auto:VERTICAL gap=None pad[LRTB]=[None,None,None,None] align=-/-
+      RECTANGLE 'IMG-210' | 238x357@3652,3086 | fill=IMAGE:imgRef=114d1c071b1bfefcc4aeb7b5bf674acb8940c554/FILL
+    FRAME 'DIV-211' | 238x87@3652,3443 | auto:VERTICAL gap=None pad[LRTB]=[12.0,12.0,12.0,12.0] align=-/-
+      FRAME 'margin-wrap' | 214x43@3664,3455 | auto:HORIZONTAL gap=None pad[LRTB]=[None,None,None,10.0] align=-/-
+        FRAME 'P-212' | 214x33@3664,3455 | auto:HORIZONTAL gap=None pad[LRTB]=[None,None,None,None] align=-/-
+          TEXT '接手照顾了一只小仓鼠，圆滚滚的特别可爱，每天喂食换垫料，主人说放心多了！-214' | 204x50@3664,3455 | fill=SOLID:#402e26 | text='接手照顾了一只小仓鼠，圆滚滚的特别可爱，每天喂食换垫料，主人说放心多了！' | font=Roboto w=400 sz=12.0 lh=16.5 ls=0.0 | tcolor=SOLID:#402e26
+      FRAME 'DIV-215' | 214x20@3664,3498 | auto:HORIZONTAL gap=None pad[LRTB]=[None,None,None,None] align=SPACE_BETWEEN/CENTER
+        FRAME 'DIV-216' | 59x20@3664,3498 | auto:HORIZONTAL gap=6.0 pad[LRTB]=[None,None,None,None] align=-/CENTER
+          RECTANGLE 'IMG-217' | 20x20@3664,3498 | fill=IMAGE:imgRef=b35b0d78d6299ff5f3e6fdbb15c7517d2429f62d/FILL | r=9999.0
+          FRAME 'SPAN-218' | 33x16@3690,3500 | auto:HORIZONTAL gap=None pad[LRTB]=[None,None,None,None] align=-/CENTER
+            TEXT '李阿姨-220' | 33x17@3690,3500 | fill=SOLID:#7b5b4a | text='李阿姨' | font=Roboto w=400 sz=11.0 lh=16.5 ls=0.0 | tcolor=SOLID:#7b5b4a
+        FRAME 'DIV-221' | 29x16@3849,3500 | auto:HORIZONTAL gap=4.0 pad[LRTB]=[None,None,None,None] align=-/CENTER
+          FRAME 'I-222' | 12x16@3849,3500 | auto:HORIZONTAL gap=None pad[LRTB]=[None,None,None,None] align=-/CENTER
+            FRAME 'Icon-223' | 12x12@3849,3502
+              GROUP 'Group' | 10x9@3850,3503
+                VECTOR 'Vector' | 10x9@3850,3503 | fill=SOLID:#9e7660
+          FRAME 'SPAN-224' | 12x16@3866,3500 | auto:HORIZONTAL gap=None pad[LRTB]=[None,None,None,None] align=-/CENTER
+            TEXT '63-226' | 13x17@3866,3500 | fill=SOLID:#9e7660 | text='63' | font=Roboto w=400 sz=11.0 lh=16.5 ls=0.0 | tcolor=SOLID:#9e7660
+  GROUP 'Group' | 14x15@3226,2257
+    VECTOR 'Vector' | 14x15@3226,2257 | fill=SOLID:#3c3c3c
+  TEXT '宠物信息-11' | 64x24@3046,2252 | fill=SOLID:#3c3c3c | text='宠物信息' | font=Outfit w=700 sz=16.0 lh=24.0 ls=0.0 | tcolor=SOLID:#3c3c3c
+  GROUP 'Group' | 9x15@2919,2257
+    VECTOR 'Vector' | 9x15@2919,2257 | fill=SOLID:#3c3c3c
+  FRAME 'Frame' | 58x26@3160,2463 | auto:HORIZONTAL gap=None pad[LRTB]=[13.0,13.0,11.0,11.0] align=-/CENTER | fill=SOLID:#ffffff | stroke SOLID:#c0ecff w=1.0 INSIDE | r=8.0
+    TEXT 'INPUT-258' | 317x20@3173,2474 | fill=SOLID:#b89682 | text='请输入品种' | font=Inter w=500 sz=14.0 lh=20.0 ls=0.0 | tcolor=SOLID:#b89682
+    TEXT 'INPUT-258' | 317x20@3174,2466 | fill=SOLID:#2e1d16 | text='豆豆' | font=Roboto w=400 sz=14.0 lh=20.0 ls=0.0 | tcolor=SOLID:#2e1d16
+  FRAME 'margin-wrap' | 343x80@2908,2506 | auto:HORIZONTAL gap=None pad[LRTB]=[None,None,16.0,None] align=-/-
+    FRAME 'DIV-254' | 343x64@2908,2522 | auto:VERTICAL gap=None pad[LRTB]=[None,None,None,None] align=-/-
+      FRAME 'margin-wrap' | 343x22@2908,2522 | auto:HORIZONTAL gap=None pad[LRTB]=[None,None,None,6.0] align=-/-
+        FRAME 'LABEL-255' | 343x16@2908,2522 | auto:HORIZONTAL gap=None pad[LRTB]=[None,None,None,None] align=-/CENTER
+          TEXT '品种-257' | 30x16@2908,2522 | fill=SOLID:#7b5b4a | text='品种*' | font=Roboto w=400 sz=12.0 lh=16.0 ls=0.0 | tcolor=SOLID:#7b5b4a | styleOverrides=[0, 0, 1]
+      FRAME 'INPUT' | 343x42@2908,2544 | auto:HORIZONTAL gap=None pad[LRTB]=[13.0,13.0,11.0,11.0] align=-/CENTER | fill=SOLID:#d2f1ff | stroke SOLID:#c0ecff w=1.0 INSIDE | r=8.0
+        TEXT 'INPUT-258' | 317x20@2921,2555 | fill=SOLID:#b89682 | text='请输入品种' | font=Inter w=500 sz=14.0 lh=20.0 ls=0.0 | tcolor=SOLID:#b89682
+        TEXT 'INPUT-258' | 317x20@2922,2555 | fill=SOLID:#2e1d16 | text='金毛寻回犬' | font=Roboto w=400 sz=14.0 lh=20.0 ls=0.0 | tcolor=SOLID:#2e1d16
+  FRAME 'margin-wrap' | 343x82@2908,2586 | auto:HORIZONTAL gap=None pad[LRTB]=[None,None,16.0,None] align=-/-
+    FRAME 'DIV-259' | 343x66@2908,2602 | auto:VERTICAL gap=None pad[LRTB]=[None,None,None,None] align=-/-
+      FRAME 'margin-wrap' | 343x22@2908,2602 | auto:HORIZONTAL gap=None pad[LRTB]=[None,None,None,6.0] align=-/-
+        FRAME 'LABEL-260' | 343x16@2908,2602 | auto:HORIZONTAL gap=None pad[LRTB]=[None,None,None,None] align=-/CENTER
+          TEXT '性别-262' | 30x16@2908,2602 | fill=SOLID:#7b5b4a | text='性别*' | font=Roboto w=400 sz=12.0 lh=16.0 ls=0.0 | tcolor=SOLID:#7b5b4a | styleOverrides=[0, 0, 1]
+      FRAME 'DIV-263' | 343x44@2908,2624 | auto:HORIZONTAL gap=None pad[LRTB]=[4.0,4.0,4.0,4.0] align=-/- | fill=SOLID:#d2f1ff | r=9999.0
+        FRAME 'BUTTON-267' | 168x36@2912,2628 | auto:HORIZONTAL gap=None pad[LRTB]=[None,None,8.0,8.0] align=CENTER/CENTER | r=9999.0
+          TEXT '妹妹-269' | 28x20@2982,2636 | fill=SOLID:#7b5b4a | text='弟弟' | font=Roboto w=500 sz=14.0 lh=20.0 ls=0.0 | tcolor=SOLID:#7b5b4a | ta=CENTER
+        FRAME 'BUTTON-264' | 168x36@3080,2628 | auto:HORIZONTAL gap=None pad[LRTB]=[None,None,8.0,8.0] align=CENTER/CENTER | fill=SOLID:#ffffff | r=9999.0
+          TEXT '弟弟-266' | 28x20@3149,2636 | fill=SOLID:#df7487 | text='妹妹' | font=Roboto w=500 sz=14.0 lh=20.0 ls=0.0 | tcolor=SOLID:#df7487 | ta=CENTER
+  FRAME 'margin-wrap' | 343x80@2908,2668 | auto:HORIZONTAL gap=None pad[LRTB]=[None,None,16.0,None] align=-/-
+    FRAME 'DIV-270' | 343x64@2908,2684 | auto:VERTICAL gap=None pad[LRTB]=[None,None,None,None] align=-/-
+      FRAME 'margin-wrap' | 343x22@2908,2684 | auto:HORIZONTAL gap=None pad[LRTB]=[None,None,None,6.0] align=-/-
+        FRAME 'LABEL-271' | 343x16@2908,2684 | auto:HORIZONTAL gap=None pad[LRTB]=[None,None,None,None] align=-/CENTER
+          TEXT '年龄-273' | 24x16@2908,2684 | fill=SOLID:#7b5b4a | text='年龄' | font=Roboto w=400 sz=12.0 lh=16.0 ls=0.0 | tcolor=SOLID:#7b5b4a
+      FRAME 'INPUT' | 343x42@2908,2706 | auto:HORIZONTAL gap=None pad[LRTB]=[13.0,13.0,11.0,11.0] align=-/CENTER | fill=SOLID:#d2f1ff | stroke SOLID:#c0ecff w=1.0 INSIDE | r=8.0
+        TEXT 'INPUT-274' | 317x20@2921,2717 | fill=SOLID:#b89682 | text='如：2岁' | font=Inter w=500 sz=14.0 lh=20.0 ls=0.0 | tcolor=SOLID:#b89682
+        TEXT 'INPUT-274' | 317x20@2922,2717 | fill=SOLID:#2e1d16 | text='2岁' | font=Roboto w=400 sz=14.0 lh=20.0 ls=0.0 | tcolor=SOLID:#2e1d16
+  FRAME 'margin-wrap' | 343x82@2908,2748 | auto:HORIZONTAL gap=None pad[LRTB]=[None,None,16.0,None] align=-/-
+    FRAME 'DIV-275' | 343x66@2908,2764 | auto:VERTICAL gap=None pad[LRTB]=[None,None,None,None] align=-/-
+      FRAME 'margin-wrap' | 343x22@2908,2764 | auto:HORIZONTAL gap=None pad[LRTB]=[None,None,None,6.0] align=-/-
+        FRAME 'LABEL-276' | 343x16@2908,2764 | auto:HORIZONTAL gap=None pad[LRTB]=[None,None,None,None] align=-/CENTER
+          TEXT '出生日期-278' | 48x16@2908,2764 | fill=SOLID:#7b5b4a | text='出生日期' | font=Roboto w=400 sz=12.0 lh=16.0 ls=0.0 | tcolor=SOLID:#7b5b4a
+      FRAME 'INPUT-279' | 343x44@2908,2786 | auto:VERTICAL gap=None pad[LRTB]=[13.0,13.0,11.0,11.0] align=-/- | fill=SOLID:#d2f1ff | stroke SOLID:#c0ecff w=1.0 INSIDE | r=8.0
+        TEXT '-280' | 0x20@2922,2798 | fill=SOLID:#2e1d16 | text='' | font=Roboto w=400 sz=14.0 lh=20.0 ls=0.0 | tcolor=SOLID:#2e1d16
+        FRAME 'date-281' | 16x15@3219,2800
+          VECTOR 'Vector' | 12x14@3221,2801 | fill=SOLID:#2e1d16
+          VECTOR 'Vector' | 15x15@3220,2800
+  FRAME 'margin-wrap' | 343x80@2908,2830 | auto:HORIZONTAL gap=None pad[LRTB]=[None,None,16.0,None] align=-/-
+    FRAME 'DIV-282' | 343x64@2908,2846 | auto:VERTICAL gap=None pad[LRTB]=[None,None,None,None] align=-/-
+      FRAME 'margin-wrap' | 343x22@2908,2846 | auto:HORIZONTAL gap=None pad[LRTB]=[None,None,None,6.0] align=-/-
+        FRAME 'LABEL-283' | 343x16@2908,2846 | auto:HORIZONTAL gap=None pad[LRTB]=[None,None,None,None] align=-/CENTER
+          TEXT '体重-285' | 24x16@2908,2846 | fill=SOLID:#7b5b4a | text='体重' | font=Roboto w=400 sz=12.0 lh=16.0 ls=0.0 | tcolor=SOLID:#7b5b4a
+      FRAME 'INPUT' | 343x42@2908,2868 | auto:HORIZONTAL gap=None pad[LRTB]=[13.0,13.0,11.0,11.0] align=-/CENTER | fill=SOLID:#d2f1ff | stroke SOLID:#c0ecff w=1.0 INSIDE | r=8.0
+        TEXT 'INPUT-286' | 317x20@2921,2879 | fill=SOLID:#b89682 | text='如：28.5kg' | font=Inter w=500 sz=14.0 lh=20.0 ls=0.0 | tcolor=SOLID:#b89682
+        TEXT 'INPUT-286' | 317x20@2922,2879 | fill=SOLID:#2e1d16 | text='28.5kg' | font=Roboto w=400 sz=14.0 lh=20.0 ls=0.0 | tcolor=SOLID:#2e1d16
+  FRAME 'margin-wrap' | 343x80@2908,2910 | auto:HORIZONTAL gap=None pad[LRTB]=[None,None,16.0,None] align=-/-
+    FRAME 'DIV-287' | 343x64@2908,2926 | auto:VERTICAL gap=None pad[LRTB]=[None,None,None,None] align=-/-
+      FRAME 'margin-wrap' | 343x22@2908,2926 | auto:HORIZONTAL gap=None pad[LRTB]=[None,None,None,6.0] align=-/-
+        FRAME 'LABEL-288' | 343x16@2908,2926 | auto:HORIZONTAL gap=None pad[LRTB]=[None,None,None,None] align=-/CENTER
+          TEXT '宠物芯片号-290' | 60x16@2908,2926 | fill=SOLID:#7b5b4a | text='宠物芯片号' | font=Roboto w=400 sz=12.0 lh=16.0 ls=0.0 | tcolor=SOLID:#7b5b4a
+      FRAME 'INPUT' | 343x42@2908,2948 | auto:HORIZONTAL gap=None pad[LRTB]=[13.0,13.0,11.0,11.0] align=-/CENTER | fill=SOLID:#d2f1ff | stroke SOLID:#c0ecff w=1.0 INSIDE | r=8.0
+        TEXT 'INPUT-291' | 317x20@2921,2959 | fill=SOLID:#b89682 | text='请输入芯片号' | font=Inter w=500 sz=14.0 lh=20.0 ls=0.0 | tcolor=SOLID:#b89682
+        TEXT 'INPUT-291' | 317x20@2922,2959 | fill=SOLID:#2e1d16 | text='900001234567890' | font=Roboto w=400 sz=14.0 lh=20.0 ls=0.0 | tcolor=SOLID:#2e1d16
+  FRAME 'margin-wrap' | 343x126@2908,2990 | auto:HORIZONTAL gap=None pad[LRTB]=[None,None,16.0,None] align=-/-
+    FRAME 'DIV-292' | 343x110@2908,3006 | auto:VERTICAL gap=None pad[LRTB]=[None,None,None,None] align=-/-
+      FRAME 'margin-wrap' | 343x22@2908,3006 | auto:HORIZONTAL gap=None pad[LRTB]=[None,None,None,6.0] align=-/-
+        FRAME 'LABEL-293' | 343x16@2908,3006 | auto:HORIZONTAL gap=None pad[LRTB]=[None,None,None,None] align=-/CENTER
+          TEXT '健康备注-295' | 48x16@2908,3006 | fill=SOLID:#7b5b4a | text='健康备注' | font=Roboto w=400 sz=12.0 lh=16.0 ls=0.0 | tcolor=SOLID:#7b5b4a
+      FRAME 'TEXTAREA' | 343x82@2908,3028 | auto:HORIZONTAL gap=None pad[LRTB]=[13.0,13.0,11.0,11.0] align=-/- | fill=SOLID:#d2f1ff | stroke SOLID:#c0ecff w=1.0 INSIDE | r=8.0
+        TEXT 'TEXTAREA-296' | 317x20@2921,3039 | fill=SOLID:#b89682 | text='记录过敏源、性格特点、注意事项等' | font=Inter w=500 sz=14.0 lh=20.0 ls=0.0 | tcolor=SOLID:#b89682
+        TEXT 'TEXTAREA-296' | 317x60@2922,3040 | fill=SOLID:#2e1d16 | text='性格温顺粘人，喜欢球类玩具。对鸡肉不过敏，注意控制零食量。' | font=Roboto w=400 sz=14.0 lh=20.0 ls=0.0 | tcolor=SOLID:#2e1d16
+  GROUP 'Group 30' | 402x76@2878,3198 | r=rect[0.0,0.0,0.0,0.0]
+    RECTANGLE 'Rectangle 34' | 402x61@2878,3212 | fill=SOLID:#c0ecff
+    RECTANGLE 'Rectangle 35' | 402x61@2878,3213 | fill=SOLID:#f0fbff
+    TEXT '首页-469' | 21x16@2908,3244 | fill=SOLID:#3c3c3c | text='首页' | font=Roboto w=500 sz=10.0 lh=15.0 ls=0.0 | tcolor=SOLID:#3c3c3c
+    TEXT '服务-475' | 22x16@2988,3244 | fill=SOLID:#3c3c3c | text='订单' | font=Roboto w=500 sz=10.0 lh=15.0 ls=0.0 | tcolor=SOLID:#3c3c3c
+    FRAME 'SPAN-477' | 53x53@3053,3198 | auto:HORIZONTAL gap=None pad[LRTB]=[None,None,None,None] align=CENTER/CENTER | fill=SOLID:#5baae8 | r=16.0
+      FRAME 'I-478' | 18x28@3070,3210 | auto:HORIZONTAL gap=None pad[LRTB]=[None,None,None,None] align=-/CENTER
+        FRAME 'Icon-479' | 27x27@3066,3210
+          GROUP 'Group' | 27x24@3066,3212
+            VECTOR 'Vector' | 27x24@3066,3212 | fill=SOLID:#fffef4
+    TEXT '宠友圈-482' | 33x16@3063,3253 | fill=SOLID:#3c3c3c | text='核销' | font=Roboto w=500 sz=10.0 lh=15.0 ls=0.0 | tcolor=SOLID:#3c3c3c | ta=CENTER
+    TEXT '消息-488' | 22x16@3149,3244 | fill=SOLID:#3c3c3c | text='消息' | font=Roboto w=500 sz=10.0 lh=15.0 ls=0.0 | tcolor=SOLID:#3c3c3c
+    TEXT '我的-494' | 21x16@3230,3244 | fill=SOLID:#3c3c3c | text='我的' | font=Roboto w=500 sz=10.0 lh=15.0 ls=0.0 | tcolor=SOLID:#3c3c3c
+    GROUP 'airship' | 21x18@2988,3222
+      VECTOR 'Vector 903' | 20x13@2989,3223 | fill=SOLID:#5baae8 | stroke SOLID:#3c3c3c w=1.0 CENTER
+      VECTOR 'Vector 902' | 20x13@2989,3223 | stroke SOLID:#3c3c3c w=1.0 CENTER
+      VECTOR 'Subtract' | 6x7@2988,3222 | fill=SOLID:#ffffff | stroke SOLID:#3c3c3c w=1.0 CENTER
+      VECTOR 'Subtract_2' | 6x7@2988,3229 | fill=SOLID:#ffffff | stroke SOLID:#3c3c3c w=1.0 CENTER
+      VECTOR 'Vector 663' | 3x0@2993,3229 | stroke SOLID:#3c3c3c w=1.0 CENTER
+      VECTOR 'Subtract_3' | 6x5@2997,3235 | fill=SOLID:#ffffff | stroke SOLID:#3c3c3c w=1.0 CENTER
+      VECTOR 'Subtract_4' | 6x5@2997,3235 | stroke SOLID:#3c3c3c w=1.0 CENTER
+      VECTOR 'Subtract_5' | 6x7@2988,3222 | stroke SOLID:#3c3c3c w=1.0 CENTER
+      VECTOR 'Subtract_6' | 6x7@2988,3229 | stroke SOLID:#3c3c3c w=1.0 CENTER
+      VECTOR 'Intersect' | 6x12@3003,3223 | fill=SOLID:#ffffff | stroke SOLID:#3c3c3c w=1.0 CENTER
+      VECTOR 'Intersect_2' | 6x12@3003,3223 | stroke SOLID:#3c3c3c w=1.0 CENTER
+    GROUP 'chat-bubble-text-square--messages-message-bubble-text-square-chat' | 17x17@3151,3222
+      VECTOR 'Union' | 17x17@3151,3222 | fill=SOLID:#5baae8 | stroke SOLID:#3c3c3c w=1.0 CENTER
+      VECTOR 'Union_2' | 17x17@3151,3222 | stroke SOLID:#3c3c3c w=1.0 CENTER
+      VECTOR 'Vector 496' | 7x0@3156,3227 | stroke SOLID:#ffffff w=1.0 CENTER
+      VECTOR 'Vector 497' | 5x0@3156,3231 | stroke SOLID:#ffffff w=1.0 CENTER
+    GROUP 'cat-2--nature-head-cat-pet-animals-felyne' | 17x17@3232,3222
+      VECTOR 'Vector' | 17x17@3232,3222 | fill=SOLID:#5baae8 | stroke SOLID:#3c3c3c w=1.0 CENTER
+      VECTOR 'Vector 1353' | 7x1@3237,3225 | stroke SOLID:#3c3c3c w=1.0 CENTER
+      VECTOR 'Vector_2' | 17x17@3232,3222 | stroke SOLID:#3c3c3c w=1.0 CENTER
+      VECTOR 'Vector 1351' | 0x1@3238,3230 | stroke SOLID:#ffffff w=1.0 CENTER
+      VECTOR 'Vector 1352' | 0x1@3243,3230 | stroke SOLID:#ffffff w=1.0 CENTER
+      VECTOR 'Vector 2593' | 2x1@3240,3233 | stroke SOLID:#ffffff w=1.0 CENTER
+      VECTOR 'Vector 1323' | 5x1@3238,3234 | stroke SOLID:#ffffff w=1.0 CENTER
+    GROUP 'home-2--door-entrance-home-house-roof-round-shelter' | 19x16@2908,3222
+      VECTOR 'Rectangle 16' | 19x16@2908,3222 | fill=SOLID:#5baae8 | stroke SOLID:#3c3c3c w=1.0 OUTSIDE
+      VECTOR 'Vector (Stroke)' | 5x7@2915,3231 | fill=SOLID:#ffffff | stroke SOLID:#3c3c3c w=1.0 OUTSIDE
+      VECTOR 'Rectangle 15' | 19x16@2908,3222 | stroke SOLID:#3c3c3c w=1.0 OUTSIDE
+      VECTOR 'Vector (Stroke)_2' | 5x7@2915,3231 | stroke SOLID:#3c3c3c w=1.0 OUTSIDE

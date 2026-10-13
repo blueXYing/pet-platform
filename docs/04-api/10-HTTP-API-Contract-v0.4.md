@@ -1062,6 +1062,8 @@ GET /api/v1/merchant/refund-applications/{applicationId}
 
 仅显示该商家有权限处理的 `PENDING_MERCHANT` 申请。
 
+2026-10-10 商家退款 HTTP 切片：本节与 §4.5/§4.6 四路由已按 57 号契约装配（默认关闭，开关 `pet.refund.merchant.http.enabled`，见 21 号清单）；字段、错误映射与 M 端页面以 57 号为准，本草案保留为基线口径。
+
 ---
 
 ## 4.5 商家同意退款
