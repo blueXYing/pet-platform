@@ -1,60 +1,44 @@
-/* 服务 tab 轻页（设计源：服务 110:480 的功能子集，分类文案取自原稿；营销位偏差见登记表）。 */
-.svc2-page {
-  min-height: 100vh;
-  background: #f0fbff;
-  display: flex;
-  flex-direction: column;
-}
-.svc2-status-area { height: calc(var(--svc2-top) + 4px); background: linear-gradient(160deg, #cdeede 0%, #c0ecff 100%); }
+/* 服务 tab 轻页（设计源：服务-全部服务-分类 690:6370 新版视觉对齐，登记表 §4.11）。
+   层次按原稿 z 序：#f0fbff 主体 → 网格纸纹条(86..158，72 高) → 奶油头带(0..86, #fff6e5)；
+   分类药丸对齐新版排序键形态（#daf4ff 底 #3c3c3c 字，h28 r14）；目录入口卡为白卡家族
+   （#fff + #c0ecff 描边）。色值走官方变量与渲染实测；状态样式一律 className 变体，禁 data-*。 */
+.svc2-page { min-height: 100vh; background: #f0fbff; display: flex; flex-direction: column; position: relative; }
+.svc2-page button { margin: 0 !important; }
+.svc2-page button::after { border: none; }
+
+.svc2-bg-grid { position: absolute; left: 0; top: calc(var(--svc2-top) + var(--svc2-unit) * 51); width: calc(var(--svc2-unit) * 402); height: calc(var(--svc2-unit) * 72); z-index: 0; }
+.svc2-bg-cream { position: absolute; left: 0; top: 0; width: calc(var(--svc2-unit) * 402); height: calc(var(--svc2-top) + var(--svc2-unit) * 51); background: #fff6e5; z-index: 1; }
+
 .svc2-header {
-  display: flex;
-  flex-direction: column;
-  padding: calc(var(--svc2-unit) * 6) calc(var(--svc2-unit) * 12);
-  background: linear-gradient(160deg, #cdeede 0%, #c0ecff 100%);
+  position: relative; z-index: 2;
+  height: calc(var(--svc2-top) + var(--svc2-unit) * 51);
+  display: flex; align-items: flex-end;
+  padding: 0 0 calc(var(--svc2-unit) * 9) calc(var(--svc2-unit) * 9);
 }
-.svc2-title { font-size: calc(var(--svc2-unit) * 10); font-weight: 700; color: #3c3c3c; }
-.svc2-sub { margin-top: calc(var(--svc2-unit) * 1.5); font-size: calc(var(--svc2-unit) * 4); color: #577683; }
-.svc2-body { flex: 1; height: 0; padding: 0 calc(var(--svc2-unit) * 8) calc(var(--svc2-unit) * 20); box-sizing: border-box; }
-.svc2-card {
-  margin-top: calc(var(--svc2-unit) * 8);
-  padding: calc(var(--svc2-unit) * 9) calc(var(--svc2-unit) * 9);
-  background: #ffffff;
-  border-radius: calc(var(--svc2-unit) * 12);
-  border: 1px solid #dcecf7;
-}
-.svc2-card-title { font-size: calc(var(--svc2-unit) * 6); font-weight: 700; color: #3c3c3c; }
-.svc2-card-hint { display: block; margin-top: calc(var(--svc2-unit) * 2); font-size: calc(var(--svc2-unit) * 3.4); color: #7b9aa8; }
-.svc2-chips {
-  margin-top: calc(var(--svc2-unit) * 6);
-  display: flex;
-  flex-wrap: wrap;
-  gap: calc(var(--svc2-unit) * 4);
-}
+.svc2-logo { width: calc(var(--svc2-unit) * 73); height: calc(var(--svc2-unit) * 37); }
+
+.svc2-body { flex: 1; height: 0; position: relative; z-index: 2; padding: calc(var(--svc2-unit) * 21) calc(var(--svc2-unit) * 12) calc(var(--svc2-unit) * 24); box-sizing: border-box; }
+
+/* 分类药丸（沿 §4.4 功能子集：点击进全部门店目录；原稿该行为排序四键——无契约不实现） */
+.svc2-chips { display: flex; flex-wrap: wrap; gap: calc(var(--svc2-unit) * 8) calc(var(--svc2-unit) * 8); }
 .svc2-chip {
-  padding: calc(var(--svc2-unit) * 3) calc(var(--svc2-unit) * 6);
-  margin: 0;
-  background: #cdeede;
-  border-radius: calc(var(--svc2-unit) * 8);
-  border: 1px solid #b6e2d0;
-  line-height: 1.4;
+  height: calc(var(--svc2-unit) * 28); padding: 0 calc(var(--svc2-unit) * 14);
+  display: flex; align-items: center; justify-content: center;
+  background: #daf4ff; border-radius: calc(var(--svc2-unit) * 14); line-height: 1;
 }
-.svc2-chip::after { border: none; }
-.svc2-chip-text { font-size: calc(var(--svc2-unit) * 3.8); color: #33695a; }
+.svc2-chip-text { font-size: calc(var(--svc2-unit) * 12); line-height: calc(var(--svc2-unit) * 16); color: #3c3c3c; }
+
+/* 全部门店目录入口（白卡家族，对应原稿服务者卡壳 x=12 w=377） */
 .svc2-stores {
-  margin-top: calc(var(--svc2-unit) * 8);
-  display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  text-align: left;
-  padding: calc(var(--svc2-unit) * 12) calc(var(--svc2-unit) * 12);
+  margin-top: calc(var(--svc2-unit) * 24);
+  display: flex; flex-direction: column; align-items: flex-start; text-align: left;
+  padding: calc(var(--svc2-unit) * 14) calc(var(--svc2-unit) * 16);
   background: #ffffff;
   border-radius: calc(var(--svc2-unit) * 12);
-  border: 1px solid #dcecf7;
-  box-shadow: 0 calc(var(--svc2-unit) * 1) calc(var(--svc2-unit) * 4) rgba(87, 118, 131, 0.08);
+  border: calc(var(--svc2-unit) * 1) solid #c0ecff;
 }
-.svc2-stores::after { border: none; }
-.svc2-stores-title { font-size: calc(var(--svc2-unit) * 8); font-weight: 700; color: #3c3c3c; }
-.svc2-stores-sub { margin-top: calc(var(--svc2-unit) * 3); font-size: calc(var(--svc2-unit) * 4); color: #577683; }
-.svc2-stores-go { margin-top: calc(var(--svc2-unit) * 5); font-size: calc(var(--svc2-unit) * 5); color: #53bfee; font-weight: 600; }
-.svc2-tail { margin: calc(var(--svc2-unit) * 10) 0 calc(var(--svc2-unit) * 4); display: flex; justify-content: center; }
-.svc2-tail Text { font-size: calc(var(--svc2-unit) * 3); color: #9db6c2; }
+.svc2-stores-title { font-size: calc(var(--svc2-unit) * 16); line-height: calc(var(--svc2-unit) * 22); font-weight: 700; color: #1d0d07; }
+.svc2-stores-sub { margin-top: calc(var(--svc2-unit) * 4); font-size: calc(var(--svc2-unit) * 11); line-height: calc(var(--svc2-unit) * 16); color: #577683; }
+.svc2-stores-go { margin-top: calc(var(--svc2-unit) * 8); font-size: calc(var(--svc2-unit) * 13); line-height: calc(var(--svc2-unit) * 18); color: #53bfee; font-weight: 600; }
+.svc2-tail { margin: calc(var(--svc2-unit) * 20) 0 calc(var(--svc2-unit) * 8); display: flex; justify-content: center; }
+.svc2-tail Text { font-size: calc(var(--svc2-unit) * 10); line-height: calc(var(--svc2-unit) * 15); color: #9bb3bd; }

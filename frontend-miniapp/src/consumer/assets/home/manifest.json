@@ -1,6 +1,6 @@
 {
-  "sourceVersion": "2401180846436413285",
-  "note": "Home header icons rendered from C-end file frame 首页1 61:599 (search 62:27, bell 62:43) at scale 2; one batched Figma images call (quota noted in the design source registry). The location pin (62:9) was rendered but stays unused: V1 has no C-side geolocation surface, so the home header omits the city selector (registered deviation).",
+  "sourceVersion": "2408620332145508244",
+  "note": "Home assets from the C-end file 2026-10-10 version (frame 首页1 61:599 new visual): search 62:27 / bell 62:43 re-rendered and verified byte-identical to the previous cut (kept original files); brand logo 687:45, guarantee icon vectors 75:30/75:35/75:44/75:40 rendered at scale 2 in one batched Figma images call. huaban-grid@2x.jpg re-encoded (JPEG q65) from the store-services 690-6661 cut, whose pixels are identical to the new 61:31 node render; huaban-doodle@2x.jpg is the 62:49 band (402x245) flattened onto the texture cream #fefaee (JPEG q70, STRETCH-free original pixels). The location pin (62:9) stays unused per the §4.4 verdict (no C-side geolocation).",
   "assets": [
     {
       "nodeId": "62:27",
@@ -19,6 +19,71 @@
       "status": "DOWNLOADED",
       "sha256": "72faa2f962bf5b3718430538a2fd747cee6e095a55ad8c41ec933d95ba37cef9",
       "bytes": 1512
+    },
+    {
+      "nodeId": "687:45",
+      "file": "frontend-miniapp/src/consumer/assets/home/brand-logo@2x.png",
+      "scale": 2,
+      "version": "2408620332145508244",
+      "status": "DOWNLOADED",
+      "sha256": "72d507b9b842155af6dd82325f5eb4ad61b828699a3ea197129c92211da90b25",
+      "bytes": 5174
+    },
+    {
+      "nodeId": "75:30",
+      "file": "frontend-miniapp/src/consumer/assets/home/guarantee-certified@2x.png",
+      "scale": 2,
+      "version": "2408620332145508244",
+      "status": "DOWNLOADED",
+      "sha256": "3c08d8f00426b028367c1f05532f43a1ecf6be0e0705764903d6cf83a28d28b6",
+      "bytes": 861
+    },
+    {
+      "nodeId": "75:35",
+      "file": "frontend-miniapp/src/consumer/assets/home/guarantee-rating@2x.png",
+      "scale": 2,
+      "version": "2408620332145508244",
+      "status": "DOWNLOADED",
+      "sha256": "7a2e80062600cb1a9c82658249526b5ac0eaadc5161b83b1559a404d2fbe9d47",
+      "bytes": 1775
+    },
+    {
+      "nodeId": "75:44",
+      "file": "frontend-miniapp/src/consumer/assets/home/guarantee-insurance@2x.png",
+      "scale": 2,
+      "version": "2408620332145508244",
+      "status": "DOWNLOADED",
+      "sha256": "4d862b8358f8f239aa3ec9293784ba99f7a71617a4159678f7980aa0e77802b3",
+      "bytes": 1252
+    },
+    {
+      "nodeId": "75:40",
+      "file": "frontend-miniapp/src/consumer/assets/home/guarantee-escrow@2x.png",
+      "scale": 2,
+      "version": "2408620332145508244",
+      "status": "DOWNLOADED",
+      "sha256": "6931e30aeeabd66bd0d1b1874635c26e6d3f96296887675344b253b19a13bd77",
+      "bytes": 1315
+    },
+    {
+      "nodeId": "61:31",
+      "file": "frontend-miniapp/src/consumer/assets/home/huaban-grid@2x.jpg",
+      "scale": 2,
+      "version": "2408620332145508244",
+      "status": "REENCODED_JPEG",
+      "sha256": "fe2ce408787c3541b02452766262a2da5c3d81ea88f6ad31746ac8b7d69dbd0b",
+      "bytes": 31143,
+      "derivedFrom": "frontend-miniapp/src/consumer/pages/store-services/assets/690-6661-bg-huaban@2x.png (pixel-identical render of node 61:31 / huaban-5913185224)"
+    },
+    {
+      "nodeId": "62:49",
+      "file": "frontend-miniapp/src/consumer/assets/home/huaban-doodle@2x.jpg",
+      "scale": 2,
+      "version": "2408620332145508244",
+      "status": "FLATTENED_JPEG",
+      "sha256": "d707167dfd55e08bb69a304d0fdd976447c04376ed8480c928a543fda9de5f9f",
+      "bytes": 60417,
+      "derivedFrom": "REST render of node 62:49 flattened onto texture cream #fefaee (alpha composite, JPEG q70)"
     }
   ]
 }
