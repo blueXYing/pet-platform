@@ -1,0 +1,38 @@
+{
+ "grid-services.svg": {
+  "sha256": "f9639f5a3dfb42ca8f116ba3b672c94006bb6854a3c7b909fad3219a319919e9",
+  "bytes": 1416
+ },
+ "grid-schedule.svg": {
+  "sha256": "99e19da24a4c200e2462fc86f7d38732e14216003333392cfa74b7d8829d4228",
+  "bytes": 1994
+ },
+ "grid-staff.svg": {
+  "sha256": "309e4b14224e5b29394e737b8a8a7ac2ee7d7bcefdc5f2205aa37f4a9277e490",
+  "bytes": 4802
+ },
+ "grid-verify.svg": {
+  "sha256": "3e2f97344604cd36888a49ef108866f3c76a2c0be9d4bf4765355851b660fa61",
+  "bytes": 1312
+ },
+ "grid-marketing.svg": {
+  "sha256": "2b77f9856a6821d5927ad44027490ad29b5aa5c38c05d6f3769887bc23947c41",
+  "bytes": 1739
+ },
+ "grid-stats.svg": {
+  "sha256": "de83f8cc06bcd408d1fb973ffd0a6c036e733b75c72df33d2d588aa142104601",
+  "bytes": 874
+ },
+ "grid-customers.svg": {
+  "sha256": "1d1b2959ca67f9252411d9f5c337c21b17c01dbf4310ab880f7ead19d0b99c01",
+  "bytes": 2127
+ },
+ "grid-reviews.svg": {
+  "sha256": "7f1cc9197c8f55a2f2a38679e77da35c0cf8c6fe12be67cfa41cf053ac6731ca",
+  "bytes": 770
+ },
+ "bell.svg": {
+  "sha256": "842009114f5126870a916959c5cf34c9cc2cd2c6cb8a21e0f19a2c61d0965f9b",
+  "bytes": 1811
+ }
+}

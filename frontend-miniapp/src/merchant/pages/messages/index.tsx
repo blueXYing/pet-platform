@@ -1,9 +1,10 @@
-import { Button, Text, View } from '@tarojs/components'
+import { Button, Image, Text, View } from '@tarojs/components'
 import Taro, { useDidShow, useRouter } from '@tarojs/taro'
 import { useEffect, useState, useSyncExternalStore, type CSSProperties } from 'react'
 import { MessagesController, jumpLabelFor, routeForNotification } from '../../../shared/notifications/messages'
 import { previewNotificationDeps } from '../../notifications/preview'
 import { realNotificationDeps } from '../../notifications/messages-runtime'
+import navBack from '../aftersale/assets/nav-back@3x.png'
 import './page.css'
 
 // M-002 消息通知页 (design source: merchant frame 23:19357「消息通知」, 402x898). The merchant
@@ -39,7 +40,7 @@ export default function MerchantMessagesPage() {
   return <View className='mmsg-page' style={style}>
     <View className='mmsg-status-area' />
     <View className='mmsg-header'>
-      <Button id='mmsg-back' ariaLabel='返回' className='mmsg-back' onClick={() => void back()}>返回</Button>
+      <Button id='mmsg-back' ariaLabel='返回' className='mmsg-back' onClick={() => void back()}><Image src={navBack} mode='scaleToFill' /></Button>
       <Text className='mmsg-title'>消息通知</Text>
     </View>
     <View className='mmsg-body'>
