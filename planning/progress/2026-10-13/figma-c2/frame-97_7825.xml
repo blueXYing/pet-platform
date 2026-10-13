@@ -1,0 +1,224 @@
+  <frame id="97:7825" name="热门服务" x="526" y="6455" width="402" height="966">
+    <rounded-rectangle id="97:8104" name="huaban-5913185224 1" x="0" y="86" width="402" height="787" />
+    <frame id="97:8103" name="Group 11" x="-18.000030517578125" y="35" width="449.0377502441406" height="241.338134765625">
+      <vector id="97:8083" name="Vector 2" x="4.86419677734375" y="36" width="418.3530952077557" height="234.77559367880167" />
+      <vector id="97:8084" name="Vector 3" x="29.703369140625" y="35" width="449.0377624861262" height="241.33814137750414" />
+    </frame>
+    <rounded-rectangle id="97:7894" name="Rectangle 14" x="0" y="299" width="402" height="1025" />
+    <frame id="97:7902" name="A-189" x="520" y="877" width="240" height="446">
+      <frame id="97:7903" name="DIV-190" x="2" y="2" width="238" height="317.328125">
+        <rounded-rectangle id="97:7904" name="IMG-191" x="0" y="0" width="238" height="317.328125" />
+      </frame>
+      <frame id="97:7905" name="DIV-192" x="2" y="319.328125" width="238" height="87">
+        <frame id="97:7906" name="margin-wrap" x="12" y="12" width="214" height="43">
+          <frame id="97:7907" name="P-193" x="0" y="0" width="214" height="33">
+            <text id="97:7908" name="店里新到了一批进口宠物零食，还有超可爱的玩具，欢迎各位宠友带毛孩子来逛逛～-195" x="0" y="0" width="204.015625" height="49.5" />
+          </frame>
+        </frame>
+        <frame id="97:7909" name="DIV-196" x="12" y="55" width="214" height="20">
+          <frame id="97:7910" name="DIV-197" x="0" y="0" width="59" height="20">
+            <rounded-rectangle id="97:7911" name="IMG-198" x="0" y="0" width="20" height="20" />
+            <frame id="97:7912" name="SPAN-199" x="26" y="1.75" width="33" height="16.5">
+              <text id="97:7913" name="王店长-201" x="0" y="-0.25" width="33" height="17" />
+            </frame>
+          </frame>
+          <frame id="97:7914" name="DIV-202" x="178.96875" y="1.75" width="35.03125" height="16.5">
+            <frame id="97:7915" name="I-203" x="0" y="0.25" width="12.5" height="16">
+              <frame id="97:7916" name="Icon-204" x="0" y="2" width="12.5" height="12" />
+            </frame>
+            <frame id="97:7919" name="SPAN-205" x="16.5" y="0" width="18.53125" height="16.5">
+              <text id="97:7920" name="204-207" x="0" y="-0.25" width="19" height="17" />
+            </frame>
+          </frame>
+        </frame>
+      </frame>
+    </frame>
+    <frame id="97:7921" name="A-208" x="772" y="877" width="240" height="446">
+      <frame id="97:7922" name="DIV-209" x="2" y="2" width="238" height="357">
+        <rounded-rectangle id="97:7923" name="IMG-210" x="0" y="0" width="238" height="357" />
+      </frame>
+      <frame id="97:7924" name="DIV-211" x="2" y="359" width="238" height="87">
+        <frame id="97:7925" name="margin-wrap" x="12" y="12" width="214" height="43">
+          <frame id="97:7926" name="P-212" x="0" y="0" width="214" height="33">
+            <text id="97:7927" name="接手照顾了一只小仓鼠，圆滚滚的特别可爱，每天喂食换垫料，主人说放心多了！-214" x="0" y="0" width="204.015625" height="49.5" />
+          </frame>
+        </frame>
+        <frame id="97:7928" name="DIV-215" x="12" y="55" width="214" height="20">
+          <frame id="97:7929" name="DIV-216" x="0" y="0" width="59" height="20">
+            <rounded-rectangle id="97:7930" name="IMG-217" x="0" y="0" width="20" height="20" />
+            <frame id="97:7931" name="SPAN-218" x="26" y="1.75" width="33" height="16.5">
+              <text id="97:7932" name="李阿姨-220" x="0" y="-0.25" width="33" height="17" />
+            </frame>
+          </frame>
+          <frame id="97:7933" name="DIV-221" x="185.140625" y="1.75" width="28.859375" height="16.5">
+            <frame id="97:7934" name="I-222" x="0" y="0.25" width="12.5" height="16">
+              <frame id="97:7935" name="Icon-223" x="0" y="2" width="12.5" height="12" />
+            </frame>
+            <frame id="97:7938" name="SPAN-224" x="16.5" y="0" width="12.359375" height="16.5">
+              <text id="97:7939" name="63-226" x="0" y="-0.25" width="13" height="17" />
+            </frame>
+          </frame>
+        </frame>
+      </frame>
+    </frame>
+    <frame id="97:7729" name="margin-wrap" x="29" y="314" width="343" height="40">
+      <frame id="97:7730" name="DIV-229" x="0" y="0" width="343" height="28">
+        <frame id="97:7731" name="H2-230" x="0" y="0" width="72" height="28">
+          <text id="97:7732" name="热门服务-232" x="0" y="0" width="72" height="28" />
+        </frame>
+        <frame id="97:7733" name="A-233" x="309.75" y="6" width="33.25" height="16">
+          <text id="97:7734" name="全部 &gt;-235" x="-0.375" y="0" width="34" height="16" />
+        </frame>
+      </frame>
+    </frame>
+    <frame id="97:7735" name="DIV-236" x="29" y="354" width="343" height="516.75">
+      <frame id="97:7736" name="A-237" x="0" y="0" width="165.5" height="164.25">
+        <frame id="97:7737" name="DIV-238" x="1" y="-6.375" width="163.5" height="88">
+          <rounded-rectangle id="97:7738" name="IMG-239" x="0" y="4" width="163.5" height="80" />
+        </frame>
+        <frame id="97:7741" name="DIV-241" x="8" y="84.625" width="143.5" height="20">
+          <frame id="97:7742" name="DIV-242" x="0" y="0" width="20" height="20">
+            <frame id="97:7743" name="I-243" x="4.7890625" y="2.5" width="10.421875" height="15">
+              <frame id="97:7744" name="Icon-244" x="0" y="2.5" width="10.40625" height="10" />
+            </frame>
+          </frame>
+          <frame id="97:7747" name="H3-245" x="26" y="0" width="56" height="20">
+            <text id="97:7748" name="宠物美容-247" x="0" y="0" width="56" height="20" />
+          </frame>
+        </frame>
+        <text id="97:7750" name="专业美容师为您的爱宠提供洗澡、剪毛、造型等全方位护理服务-250" x="7.75" y="113" width="150" height="61" />
+      </frame>
+      <frame id="99:8105" name="A-237" x="0" y="176" width="165.5" height="164.25">
+        <frame id="99:8106" name="DIV-238" x="1" y="-6" width="164" height="79">
+          <rounded-rectangle id="99:8128" name="IMG-266" x="0.25" y="-4.5" width="163.5" height="88" />
+        </frame>
+        <text id="97:7779" name="安全舒适的寄养环境，让您的宠物在您外出时也能享受家的温暖-277" x="11" y="103" width="143" height="60.5" />
+      </frame>
+      <frame id="99:8179" name="A-237" x="0" y="352" width="165.5" height="164.25">
+        <frame id="99:8180" name="DIV-238" x="1" y="-6" width="164" height="79">
+          <rounded-rectangle id="99:8195" name="IMG-294" x="0.25" y="-4.5" width="163.5" height="88" />
+        </frame>
+        <frame id="99:8154" name="margin-wrap" x="11" y="85" width="143.5" height="24">
+          <frame id="99:8155" name="DIV-296" x="0" y="0" width="143.5" height="20">
+            <frame id="99:8156" name="DIV-297" x="0" y="0" width="20" height="20">
+              <frame id="99:8157" name="I-298" x="4.7890625" y="2.5" width="10.421875" height="15">
+                <frame id="99:8158" name="Icon-299" x="0" y="2.5" width="10.40625" height="10" />
+              </frame>
+            </frame>
+            <frame id="99:8161" name="H3-300" x="26" y="0" width="56" height="20">
+              <text id="99:8162" name="上门喂养-302" x="0" y="0" width="56" height="20" />
+            </frame>
+          </frame>
+        </frame>
+        <frame id="99:8163" name="P-303" x="11" y="109" width="144" height="37">
+          <text id="99:8164" name="当您出差或度假时，可靠的服务者按时上门喂养、陪伴您的宠物-305" x="0" y="0" width="143" height="49" />
+        </frame>
+      </frame>
+      <frame id="97:7751" name="A-251" x="177.5" y="0" width="165.5" height="164.25">
+        <frame id="97:7752" name="DIV-252" x="1.25" y="1.625" width="163" height="76">
+          <rounded-rectangle id="97:7753" name="IMG-253" x="0" y="0" width="163" height="76" />
+        </frame>
+        <frame id="97:7756" name="DIV-255" x="11" y="83.625" width="143.5" height="20">
+          <frame id="97:7757" name="DIV-256" x="0" y="0" width="20" height="20">
+            <frame id="97:7758" name="Icon-257" x="4.375" y="5" width="11.25" height="10" />
+          </frame>
+          <frame id="97:7761" name="H3-258" x="26" y="0" width="56" height="20">
+            <text id="97:7762" name="遛狗陪护-260" x="0" y="0" width="56" height="20" />
+          </frame>
+        </frame>
+        <text id="97:7764" name="经验丰富的遛狗员按时带您的狗狗出门散步、运动和社交-263" x="11.25" y="109.625" width="143" height="31" />
+      </frame>
+      <frame id="99:8117" name="A-251" x="177.5" y="176" width="165.5" height="164.25">
+        <frame id="99:8118" name="DIV-252" x="1.25" y="1.625" width="163" height="76">
+          <rounded-rectangle id="99:8132" name="IMG-280" x="0" y="0" width="163.5" height="88" />
+        </frame>
+        <frame id="97:7785" name="DIV-282" x="11.5" y="83" width="143.5" height="20">
+          <frame id="97:7786" name="DIV-283" x="0" y="0" width="20" height="20">
+            <frame id="97:7787" name="I-284" x="4.7890625" y="2.5" width="10.421875" height="15">
+              <frame id="97:7788" name="Icon-285" x="0" y="2.5" width="10.40625" height="10" />
+            </frame>
+          </frame>
+          <frame id="97:7791" name="H3-286" x="26" y="0" width="56" height="20">
+            <text id="97:7792" name="宠物训练-288" x="0" y="0" width="56" height="20" />
+          </frame>
+        </frame>
+        <text id="97:7794" name="认证训犬师一对一指导，帮助宠物养成良好行为习惯，融入家庭生活-291" x="11.5" y="108" width="143" height="51" />
+      </frame>
+      <frame id="99:8183" name="A-251" x="177.5" y="352" width="165.5" height="164.25">
+        <frame id="99:8184" name="DIV-252" x="1.25" y="1.625" width="163" height="76">
+          <rounded-rectangle id="99:8197" name="IMG-308" x="0" y="0" width="163" height="88" />
+        </frame>
+        <text id="99:8178" name="兽医助理上门提供基础健康检查、用药指导和术后护理服务-318" x="10.5" y="111" width="143" height="30.25" />
+        <frame id="99:8170" name="DIV-310" x="10.5" y="85" width="143.5" height="20">
+          <frame id="99:8171" name="DIV-311" x="0" y="0" width="20" height="20">
+            <frame id="99:8172" name="Icon-312" x="5.625" y="5" width="8.75" height="10" />
+          </frame>
+          <frame id="99:8175" name="H3-313" x="26" y="0" width="56" height="20">
+            <text id="99:8176" name="兽医助理-315" x="0" y="0" width="56" height="20" />
+          </frame>
+        </frame>
+      </frame>
+    </frame>
+    <frame id="97:8085" name="margin-wrap" x="33.756103515625" y="102" width="343" height="124">
+      <frame id="97:8086" name="DIV-29" x="0" y="0" width="343" height="120">
+        <rounded-rectangle id="97:8087" name="IMG-30" x="0" y="0" width="343" height="120" />
+        <frame id="97:8088" name="DIV-31" x="0" y="0" width="343" height="120" />
+        <frame id="97:8089" name="DIV-32" x="0" y="0" width="343" height="120">
+          <frame id="97:8090" name="margin-wrap" x="16" y="26" width="118.234375" height="25">
+            <frame id="97:8091" name="SPAN-33" x="0" y="0" width="118.234375" height="19">
+              <frame id="97:8092" name="I-34" x="8" y="2" width="10.421875" height="15">
+                <frame id="97:8093" name="Icon-35" x="0" y="2.5" width="10.40625" height="10" />
+              </frame>
+              <text id="97:8096" name="限时优惠 · 先到先得-37" x="22.421875" y="2" width="88" height="15" />
+            </frame>
+          </frame>
+          <frame id="97:8097" name="SPAN-38" x="16" y="51" width="311" height="22.5">
+            <text id="97:8098" name="优惠活动商家-40" x="0" y="-0.25" width="108" height="23" />
+          </frame>
+          <frame id="97:8099" name="margin-wrap" x="16" y="73.5" width="311" height="20.5">
+            <frame id="97:8100" name="SPAN-41" x="0" y="4" width="311" height="16.5">
+              <text id="97:8101" name="精选优质商家优惠，点击查看详情-43" x="0" y="-0.25" width="165" height="17" />
+            </frame>
+          </frame>
+        </frame>
+      </frame>
+    </frame>
+    <rounded-rectangle id="97:8102" name="huaban-6727256158 1" x="303.756103515625" y="214" width="57" height="57" />
+    <frame id="97:7770" name="DIV-268" x="40" y="613" width="143.5" height="20">
+      <frame id="97:7771" name="DIV-269" x="0" y="0" width="20" height="20">
+        <frame id="97:7772" name="I-270" x="4.7890625" y="2.5" width="10.421875" height="15">
+          <frame id="97:7773" name="Icon-271" x="0" y="2.5" width="10.40625" height="10" />
+        </frame>
+      </frame>
+      <frame id="97:7776" name="H3-272" x="26" y="0" width="56" height="20">
+        <text id="97:7777" name="宠物寄养-274" x="0" y="0" width="56" height="20" />
+      </frame>
+    </frame>
+    <rounded-rectangle id="690:1822" name="Rectangle 10" x="0" y="0" width="402" height="86" />
+    <frame id="690:1823" name="Location-Heart-Pin--Streamline-Flex" x="92" y="35" width="39.9635009765625" height="39.9635009765625" />
+    <vector id="690:1827" name="Vector" x="106.9781494140625" y="58" width="10" height="8" />
+    <vector id="690:1828" name="Union" x="101.9781494140625" y="50" width="20" height="17" />
+    <text id="690:1829" name="成都" x="132" y="50" width="24" height="15" />
+    <frame id="690:1830" name="magnifying-glass--glass-search-magnifying" x="304" y="48" width="18.999996185302734" height="18.999723434448242" />
+    <frame id="690:1834" name="Bell-Notification--Streamline-Flex" x="347" y="46" width="24.000144958496094" height="24.000144958496094" />
+    <frame id="690:1839" name="Icon-149" x="170.2890625" y="49.7109375" width="14.000000637230073" height="14.578125611959877" />
+    <rounded-rectangle id="690:1842" name="hui-8 1" x="9" y="40" width="73" height="37" />
+    <frame id="717:752" name="Group 30" x="0" y="884" width="402" height="76">
+      <rounded-rectangle id="717:753" name="Rectangle 34" x="0" y="898" width="402" height="61" />
+      <rounded-rectangle id="717:754" name="Rectangle 35" x="0" y="899" width="402" height="61" />
+      <text id="717:755" name="首页-469" x="30" y="930" width="21" height="16" />
+      <text id="717:756" name="服务-475" x="110" y="930" width="22" height="16" />
+      <frame id="717:757" name="SPAN-477" x="175" y="884" width="53" height="53">
+        <frame id="717:758" name="I-478" x="17.5" y="12.5" width="18" height="28">
+          <frame id="717:759" name="Icon-479" x="-4.5" y="-0.5" width="27" height="27" />
+        </frame>
+      </frame>
+      <text id="717:762" name="宠友圈-482" x="185" y="939" width="33" height="16" />
+      <text id="717:763" name="消息-488" x="271" y="930" width="22" height="16" />
+      <text id="717:764" name="我的-494" x="352" y="930" width="21" height="16" />
+      <frame id="717:765" name="airship" x="110" y="908.0001220703125" width="21.069307327270508" height="17.832054138183594" />
+      <frame id="717:777" name="chat-bubble-text-square--messages-message-bubble-text-square-chat" x="273" y="908" width="17.313247680664062" height="17.313247680664062" />
+      <frame id="717:782" name="cat-2--nature-head-cat-pet-animals-felyne" x="354" y="908" width="17.32148551940918" height="17.3215274810791" />
+      <frame id="717:790" name="home-2--door-entrance-home-house-roof-round-shelter" x="30" y="908" width="19.477567672729492" height="16.481008529663086" />
+    </frame>
+  </frame>
