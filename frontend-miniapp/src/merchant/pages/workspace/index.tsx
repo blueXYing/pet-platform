@@ -1,9 +1,10 @@
-import { Button, Text, View } from '@tarojs/components'
+import { Button, Image, Text, View } from '@tarojs/components'
 import Taro, { useDidHide, useDidShow } from '@tarojs/taro'
-import { useEffect, useState, useSyncExternalStore } from 'react'
+import { useEffect, useState, useSyncExternalStore, type CSSProperties } from 'react'
 import { useWorkspace } from '../../../shared/workspace-react'
 import { MerchantWorkspace } from '../../workspace'
 import { realDeps } from '../../admission-runtime'
+import navBack from '../aftersale/assets/nav-back@3x.png'
 import './index.css'
 
 const reasonText: Record<string, string> = {
@@ -33,8 +34,12 @@ function routeForStep(step: string, merchantId: string): string | null {
   return null
 }
 
-// No Figma original exists for the admission screen states (design registry §4); this page
-// follows the application-page language and is not a 1:1 restoration or VIS pass.
+// M-002 workbench visual pass (2026-10-13): merchant frame 95:1899「首页」family measures —
+// header band #FFF6E5 + centered title + back arrow, blue hero card #5BAAE8 with the light
+// wave zone, quick-entry grid on #D7F1FD r16 with white r12 icon tiles. Visual only: every
+// button id / mount condition / route / admission gate below is byte-identical to the prior
+// implementation. Design blocks with no admission-view fields (今日营收/较昨日/营业中状态/
+// 待办预约/统计卡/底部tab) are not rendered — registry §4.10 deviations.
 export default function MerchantWorkbenchPage() {
   const { scope, context } = useWorkspace('real')
   const [controller] = useState(() => new MerchantWorkspace(scope))
@@ -43,6 +48,13 @@ export default function MerchantWorkbenchPage() {
   useDidShow(enter)
   useDidHide(() => controller.leave())
   useEffect(() => () => controller.dispose(), [controller])
+  // Custom navigation reserves the real status-bar height, same mechanism as the services and
+  // application pages; the unit scale follows the 402-wide design frame.
+  const [windowInfo] = useState(() => Taro.getWindowInfo())
+  const style = {
+    '--mwb-status-top': `${windowInfo.statusBarHeight || 0}px`,
+    '--mwb-unit': `${windowInfo.windowWidth / 402}px`,
+  } as CSSProperties
   async function back() {
     controller.leave()
     await Taro.switchTab({ url: '/consumer/pages/home/index' })
@@ -113,81 +125,111 @@ export default function MerchantWorkbenchPage() {
     Taro.navigateTo({ url: '/merchant/pages/refund/index' }).catch(() => controller.handoffCancelled())
   }
   const view = state.view
-  return <View className='merchant-workbench'>
-    <View className='workbench-header'>
-      <Button className='workbench-back' ariaLabel='返回' onClick={() => void back()}>返回</Button>
-      <Text>商家工作台</Text>
+  const heroTitle = state.status === 'idle' ? '正在进入工作台…'
+    : state.status === 'checking' ? '正在校验工作台准入…'
+    : state.status === 'error' ? (state.notice || '准入查询失败，未放行。')
+    : state.status === 'no-stores' ? '还没有可进入的商家门店'
+    : state.status === 'choose-store' ? '请选择要进入的门店'
+    : state.status === 'allowed' ? '工作台已就绪'
+    : state.status === 'limited' ? '门店受限访问'
+    : '暂不能进入工作台'
+  return <View className='mwb-page' style={style}>
+    <View className='mwb-status-area' />
+    <View className='mwb-header'>
+      <Button className='mwb-back' ariaLabel='返回' onClick={() => void back()}><Image src={navBack} mode='scaleToFill' /></Button>
+      <Text className='mwb-title'>商家工作台</Text>
     </View>
-    <View className='workbench-body' data-state={state.status}>
-      {state.status === 'idle' && <Text className='workbench-line'>正在进入工作台…</Text>}
-      {state.status === 'checking' && <View className='workbench-line' role='status'>正在校验工作台准入…</View>}
-      {state.status === 'error' && <View className='workbench-card workbench-error' role='alert'>
+    <View className='mwb-body'>
+      <View className='mwb-hero'>
+        <View className='mwb-hero-wave' />
+        <View className='mwb-hero-pill'><Text>商家工作台</Text></View>
+        <Text className='mwb-hero-title'>{heroTitle}</Text>
+        {view && <Text className='mwb-hero-sub'>校验时间 {view.checkedAt} · authzVersion {view.authzVersion}</Text>}
+      </View>
+      {state.status === 'checking' && <View className='mwb-line' role='status'>正在校验工作台准入…</View>}
+      {state.status === 'error' && <View className='mwb-card mwb-error' role='alert'>
         <Text>{state.notice || '准入查询失败，未放行。'}</Text>
-        <Button onClick={enter}>重试</Button>
+        <Button className='mwb-primary' onClick={enter}>重试</Button>
       </View>}
-      {state.status === 'no-stores' && <View className='workbench-card'>
+      {state.status === 'no-stores' && <View className='mwb-card'>
         <Text>当前账号还没有可进入的商家门店。</Text>
-        <Text className='workbench-hint'>完成入驻申请并审核通过、签署商家协议后即可进入。</Text>
-        <Button onClick={() => void Taro.navigateTo({ url: '/consumer/pages/merchant-application/index' })}>去申请入驻</Button>
+        <Text className='mwb-hint'>完成入驻申请并审核通过、签署商家协议后即可进入。</Text>
+        <Button className='mwb-primary' onClick={() => void Taro.navigateTo({ url: '/consumer/pages/merchant-application/index' })}>去申请入驻</Button>
         {/* Staff binding (contract 54): the pre-binding employee has no membership yet, so the
             staff workbench is the discoverable confirm entry (2026-10-06 user adjudication). */}
-        <Button id='workbench-staff-entry' className='workbench-hint' onClick={() => void Taro.navigateTo({ url: '/merchant/pages/staff-workbench/index' })}>收到店员邀请？去员工工作台确认</Button>
+        <Button id='workbench-staff-entry' className='mwb-hint' onClick={() => void Taro.navigateTo({ url: '/merchant/pages/staff-workbench/index' })}>收到店员邀请？去员工工作台确认</Button>
       </View>}
-      {state.status === 'choose-store' && <View className='workbench-card'>
+      {state.status === 'choose-store' && <View className='mwb-card'>
         <Text>请选择要进入的门店</Text>
-        {state.stores?.map(store => <Button key={store.storeId} className='workbench-store'
+        {state.stores?.map(store => <Button key={store.storeId} className='mwb-store'
           onClick={() => void controller.select(store.merchantId, store.storeId, realDeps())}>
-          {store.storeName}<Text className='workbench-hint'>{store.merchantName}</Text>
+          {store.storeName}<Text className='mwb-hint'>{store.merchantName}</Text>
         </Button>)}
       </View>}
-      {view && (state.status === 'allowed' || state.status === 'limited' || state.status === 'denied') && <View className='workbench-card'>
-        {state.status === 'allowed' && <Text className='workbench-title'>工作台已就绪</Text>}
-        {state.status === 'limited' && <Text className='workbench-title'>门店受限访问</Text>}
-        {state.status === 'denied' && <Text className='workbench-title'>暂不能进入工作台</Text>}
-        {view.reasonCodes.length > 0 && <View className='workbench-reasons' role='status'>
+      {view && (state.status === 'allowed' || state.status === 'limited' || state.status === 'denied') && <View className='mwb-card'>
+        {view.reasonCodes.length > 0 && <View className='mwb-reasons' role='status'>
           {view.reasonCodes.map(code => <Text key={code}>· {reasonText[code] || code}</Text>)}
         </View>}
-        {state.status === 'limited' && <Text className='workbench-hint'>存量订单与售后读取不受影响；新经营业务暂停。处理中的订单请继续履约。</Text>}
-        {state.status === 'allowed' && view.allowedActions.length > 0 && <View className='workbench-actions'>
-          {view.allowedActions.map(action => <Text key={action} className='workbench-chip'>{action}</Text>)}
-          <Text className='workbench-hint'>以上为入口提示；完整工作台功能（订单）在后续切片交付。</Text>
+        {state.status === 'limited' && <Text className='mwb-hint'>存量订单与售后读取不受影响；新经营业务暂停。处理中的订单请继续履约。</Text>}
+        {state.status === 'allowed' && view.allowedActions.length > 0 && <View className='mwb-actions'>
+          {view.allowedActions.map(action => <Text key={action} className='mwb-chip'>{action}</Text>)}
+          <Text className='mwb-hint'>以上为入口提示；完整工作台功能（订单）在后续切片交付。</Text>
         </View>}
-        {view.membershipKind === 'STAFF' && (state.status === 'allowed' || state.status === 'limited') && <View className='workbench-steps'>
-          {/* Staff landing is the staff workbench (2026-10-06 adjudication), distinct from the
-              OWNER entries below: a STAFF projection never shows owner management entries. */}
-          <Button id='workbench-staff-workspace' onClick={openStaffWorkbench}>员工工作台</Button>
-        </View>}
-        {view.membershipKind === 'OWNER' && state.status === 'allowed' && <View className='workbench-steps'>
-          {/* M-002 service management entry (NAVIGATION-BASIS: workbench is the approved hub;
-              the entry stays hidden for LIMITED stores — new-business writes are suspended). */}
-          <Button id='workbench-services' onClick={openServices}>服务管理</Button>
-          {/* Schedule maintenance entry gates on the approved action (53号 写侧消费切片). */}
-          {view.allowedActions.includes('merchant.schedule.manage') && <Button id='workbench-schedule' onClick={openSchedule}>排期管理</Button>}
-          <Button id='workbench-members' onClick={openMembers}>成员管理</Button>
-        </View>}
-        {(state.status === 'allowed' || state.status === 'limited') && view.membershipKind === 'OWNER' && <View className='workbench-steps'>
-          {/* Order verification entry (48 K2 v0.3): 存量履约 family — ACTIVE/OFFLINE keeps
-              verifying existing orders, so the entry stays for LIMITED like aftersale. */}
-          <Button id='workbench-verify' onClick={openVerify}>订单核销</Button>
-          {/* Merchant order processing (45号 + §4.1 list read): 本店订单列表(重点待接单),同样属存量履约 family。 */}
-          <Button id='workbench-order-confirm' onClick={openOrderConfirm}>订单处理</Button>
-          {/* Merchant refund processing (57号): 待处理退款列表入口，同存量履约 family（OFFLINE 可处理）。 */}
-          <Button id='workbench-refunds' onClick={openRefunds}>退款处理</Button>
-        </View>}
-        {(state.status === 'allowed' || state.status === 'limited') && view.membershipKind === 'OWNER' && view.allowedActions.includes('merchant.aftersale.read') && <View className='workbench-steps'>
-          <Button id='workbench-aftersales' onClick={openAftersales}>售后管理</Button>
-        </View>}
-        {/* Review management entry (56号 / REV-002): 存量读取 family — the review list stays
-            readable for LIMITED/FROZEN stores; the one-appeal write fails closed server-side. */}
-        {(state.status === 'allowed' || state.status === 'limited') && view.membershipKind === 'OWNER' && view.allowedActions.includes('merchant.review.read') && <View className='workbench-steps'>
-          <Button id='workbench-reviews' onClick={openReviews}>评价管理</Button>
-        </View>}
-        {view.nextSteps.length > 0 && <View className='workbench-steps'>
+        <View className='mwb-grid'>
+          {view.membershipKind === 'STAFF' && (state.status === 'allowed' || state.status === 'limited') && <>
+            {/* Staff landing is the staff workbench (2026-10-06 adjudication), distinct from the
+                OWNER entries below: a STAFF projection never shows owner management entries. */}
+            <Button id='workbench-staff-workspace' className='mwb-cell' onClick={openStaffWorkbench}>
+              <View className='mwb-cell-icon mwb-icon-staff' /><Text className='mwb-cell-label'>员工工作台</Text>
+            </Button>
+          </>}
+          {view.membershipKind === 'OWNER' && state.status === 'allowed' && <>
+            {/* M-002 service management entry (NAVIGATION-BASIS: workbench is the approved hub;
+                the entry stays hidden for LIMITED stores — new-business writes are suspended). */}
+            <Button id='workbench-services' className='mwb-cell' onClick={openServices}>
+              <View className='mwb-cell-icon mwb-icon-services' /><Text className='mwb-cell-label'>服务管理</Text>
+            </Button>
+            {/* Schedule maintenance entry gates on the approved action (53号 写侧消费切片). */}
+            {view.allowedActions.includes('merchant.schedule.manage') && <Button id='workbench-schedule' className='mwb-cell' onClick={openSchedule}>
+              <View className='mwb-cell-icon mwb-icon-schedule' /><Text className='mwb-cell-label'>排期管理</Text>
+            </Button>}
+            <Button id='workbench-members' className='mwb-cell' onClick={openMembers}>
+              <View className='mwb-cell-icon mwb-icon-staff' /><Text className='mwb-cell-label'>成员管理</Text>
+            </Button>
+          </>}
+          {view.membershipKind === 'OWNER' && (state.status === 'allowed' || state.status === 'limited') && <>
+            {/* Order verification entry (48 K2 v0.3): 存量履约 family — ACTIVE/OFFLINE keeps
+                verifying existing orders, so the entry stays for LIMITED like aftersale. */}
+            <Button id='workbench-verify' className='mwb-cell' onClick={openVerify}>
+              <View className='mwb-cell-icon mwb-icon-verify' /><Text className='mwb-cell-label'>订单核销</Text>
+            </Button>
+            {/* Merchant order processing (45号 + §4.1 list read): 本店订单列表(重点待接单),同样属存量履约 family。 */}
+            <Button id='workbench-order-confirm' className='mwb-cell' onClick={openOrderConfirm}>
+              <View className='mwb-cell-icon mwb-icon-orders' /><Text className='mwb-cell-label'>订单处理</Text>
+            </Button>
+            {/* Merchant refund processing (57号): 待处理退款列表入口，同存量履约 family（OFFLINE 可处理）。 */}
+            <Button id='workbench-refunds' className='mwb-cell' onClick={openRefunds}>
+              <View className='mwb-cell-icon mwb-icon-refunds' /><Text className='mwb-cell-label'>退款处理</Text>
+            </Button>
+          </>}
+          {view.membershipKind === 'OWNER' && (state.status === 'allowed' || state.status === 'limited') && view.allowedActions.includes('merchant.aftersale.read') && <>
+            <Button id='workbench-aftersales' className='mwb-cell' onClick={openAftersales}>
+              <View className='mwb-cell-icon mwb-icon-aftersales' /><Text className='mwb-cell-label'>售后管理</Text>
+            </Button>
+          </>}
+          {/* Review management entry (56号 / REV-002): 存量读取 family — the review list stays
+              readable for LIMITED/FROZEN stores; the one-appeal write fails closed server-side. */}
+          {view.membershipKind === 'OWNER' && (state.status === 'allowed' || state.status === 'limited') && view.allowedActions.includes('merchant.review.read') && <>
+            <Button id='workbench-reviews' className='mwb-cell' onClick={openReviews}>
+              <View className='mwb-cell-icon mwb-icon-reviews' /><Text className='mwb-cell-label'>评价管理</Text>
+            </Button>
+          </>}
+        </View>
+        {view.nextSteps.length > 0 && <View className='mwb-steps'>
           {view.nextSteps.map(step => <Button key={step.type} onClick={() => takeStep(step.type, view.merchantId)}>{stepText[step.type] || step.type}</Button>)}
         </View>}
-        <Text className='workbench-meta'>校验时间 {view.checkedAt} · authzVersion {view.authzVersion}</Text>
       </View>}
-      <Text className='workbench-meta'>当前工作区：{context?.workspace ?? '未登录'}{context?.merchantId ? ` · ${context.merchantId}` : ''}</Text>
+      <Text className='mwb-meta'>当前工作区：{context?.workspace ?? '未登录'}{context?.merchantId ? ` · ${context.merchantId}` : ''}</Text>
     </View>
   </View>
 }

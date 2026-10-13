@@ -3,14 +3,18 @@
 .mrf-page button::after { border: none; }
 .mrf-page button[disabled] { opacity: .45; }
 .mrf-status-area { flex: 0 0 var(--mrf-status-top, 0px); background: #fff6e5; }
-.mrf-header { flex: 0 0 calc(54 * var(--mrf-unit)); position: relative; display: flex; align-items: center; justify-content: center; background: #fff6e5; }
-.mrf-title { color: #3c3c3c; font-family: Outfit, Roboto, sans-serif; font-weight: 700; font-size: calc(16 * var(--mrf-unit)); line-height: calc(24 * var(--mrf-unit)); }
-.mrf-page .mrf-back { position: absolute; left: calc(3.42875 * var(--mrf-unit)); top: 0; height: calc(54 * var(--mrf-unit)); width: calc(36 * var(--mrf-unit)); display: flex; align-items: center; justify-content: center; }
-.mrf-back image { display: block; width: calc(8.8575 * var(--mrf-unit)); height: calc(14.5227 * var(--mrf-unit)); }
-.mrf-state { margin: calc(29 * var(--mrf-unit)); padding: calc(24 * var(--mrf-unit)); background: white; border-radius: calc(16 * var(--mrf-unit)); display: flex; flex-direction: column; gap: calc(18 * var(--mrf-unit)); line-height: 1.6; }
+/* 商家退款处理（57号）——原稿帧族经登记表 §4.6 裁决为第三方聚合语义不作还原依据，沿
+   M 端现行家族语言实现（2026-10-13 对齐：header band 86 #FFF6E5 + 居中标题 + 家族返回键
+   坐标、卡片 #C0ECFF 1.5 描边；卡片度量沿 aftersale 页 15.388 系）。状态样式只用
+   className 变体，不用 data-*。 */
+.mrf-header { flex: 0 0 calc(86 * var(--mrf-unit)); position: relative; display: flex; align-items: center; background: #fff6e5; }
+.mrf-title { position: absolute; left: 0; right: 0; text-align: center; color: #3c3c3c; font-family: Outfit, Roboto, sans-serif; font-weight: 700; font-size: calc(16 * var(--mrf-unit)); line-height: calc(24 * var(--mrf-unit)); pointer-events: none; }
+.mrf-page .mrf-back { margin-left: calc(8 * var(--mrf-unit)); width: calc(25 * var(--mrf-unit)); height: calc(42 * var(--mrf-unit)); display: flex; align-items: center; justify-content: center; }
+.mrf-back image { display: block; width: calc(8.9 * var(--mrf-unit)); height: calc(14.5 * var(--mrf-unit)); }
+.mrf-state { margin: calc(17 * var(--mrf-unit)) calc(15.388 * var(--mrf-unit)); padding: calc(24 * var(--mrf-unit)); background: white; border: calc(1.5 * var(--mrf-unit)) solid #c0ecff; border-radius: calc(16 * var(--mrf-unit)); display: flex; flex-direction: column; gap: calc(18 * var(--mrf-unit)); line-height: 1.6; }
 .mrf-list, .mrf-detail { flex: 1; min-height: 0; height: 0; box-sizing: border-box; }
 .mrf-count { display: block; margin: calc(13 * var(--mrf-unit)) calc(15.388 * var(--mrf-unit)) calc(10 * var(--mrf-unit)); color: #6b7280; font-size: calc(12 * var(--mrf-unit)); }
-.mrf-list-card { margin: 0 calc(15.388 * var(--mrf-unit)) calc(11.541 * var(--mrf-unit)); padding: calc(15.388 * var(--mrf-unit)); box-sizing: border-box; border-radius: calc(15.388 * var(--mrf-unit)); background: white; box-shadow: 0 calc(1.923 * var(--mrf-unit)) calc(3.847 * var(--mrf-unit)) white; }
+.mrf-list-card { margin: 0 calc(15.388 * var(--mrf-unit)) calc(11.541 * var(--mrf-unit)); padding: calc(15.388 * var(--mrf-unit)); box-sizing: border-box; border-radius: calc(15.388 * var(--mrf-unit)); background: white; border: calc(1.5 * var(--mrf-unit)) solid #c0ecff; }
 .mrf-line { display: flex; align-items: center; justify-content: space-between; gap: calc(8 * var(--mrf-unit)); }
 .mrf-case-number { font-size: calc(13.464 * var(--mrf-unit)); font-weight: 600; line-height: calc(19.234 * var(--mrf-unit)); overflow-wrap: anywhere; }
 .mrf-requested { font-size: calc(15.388 * var(--mrf-unit)); font-weight: 700; line-height: calc(23.081 * var(--mrf-unit)); color: #5baae8; white-space: nowrap; }
@@ -23,10 +27,10 @@
 .mrf-tag-approved { background: #c0ecff; color: #15803d; }
 .mrf-tag-closed { background: #f3f4f6; color: #6b7280; }
 .mrf-page .mrf-card-action { background: #5baae8; color: white; width: calc(88 * var(--mrf-unit)); height: calc(32 * var(--mrf-unit)); border-radius: calc(999 * var(--mrf-unit)); font-size: calc(12.603 * var(--mrf-unit)); font-weight: 600; line-height: calc(32 * var(--mrf-unit)); }
-.mrf-empty, .mrf-alert { margin: calc(13 * var(--mrf-unit)) calc(29 * var(--mrf-unit)); padding: calc(16 * var(--mrf-unit)); background: white; border-radius: calc(12 * var(--mrf-unit)); color: #6b7280; line-height: 1.6; }
-.mrf-alert { color: #9a6700; background: #fffbeb; font-size: calc(13 * var(--mrf-unit)); }
+.mrf-empty, .mrf-alert { margin: calc(13 * var(--mrf-unit)) calc(15.388 * var(--mrf-unit)); padding: calc(16 * var(--mrf-unit)); background: white; border: calc(1.5 * var(--mrf-unit)) solid #c0ecff; border-radius: calc(12 * var(--mrf-unit)); color: #6b7280; line-height: 1.6; }
+.mrf-alert { color: #9a6700; background: #fffbeb; border-color: #f3e0af; font-size: calc(13 * var(--mrf-unit)); }
 .mrf-detail { padding-top: calc(13 * var(--mrf-unit)); }
-.mrf-detail-card { margin: 0 calc(30 * var(--mrf-unit)) calc(16 * var(--mrf-unit)) calc(29 * var(--mrf-unit)); padding: calc(16 * var(--mrf-unit)); border-radius: calc(16 * var(--mrf-unit)); background: white; box-shadow: 0 calc(2 * var(--mrf-unit)) calc(4 * var(--mrf-unit)) white; }
+.mrf-detail-card { margin: 0 calc(15.388 * var(--mrf-unit)) calc(16 * var(--mrf-unit)); padding: calc(16 * var(--mrf-unit)); border-radius: calc(16 * var(--mrf-unit)); background: white; border: calc(1.5 * var(--mrf-unit)) solid #c0ecff; }
 .mrf-heading { display: block; font-size: calc(18 * var(--mrf-unit)); font-weight: 700; line-height: calc(28 * var(--mrf-unit)); margin-top: calc(12 * var(--mrf-unit)); margin-bottom: calc(4 * var(--mrf-unit)); overflow-wrap: anywhere; }
 .mrf-amount-row { border-top: 1px solid #f9fafb; margin-top: calc(16 * var(--mrf-unit)); padding-top: calc(13 * var(--mrf-unit)); display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: calc(6 * var(--mrf-unit)); color: #6b7280; }
 .mrf-amount { max-width: 100%; font-size: calc(20 * var(--mrf-unit)); font-weight: 700; line-height: calc(28 * var(--mrf-unit)); color: #ff7a00; overflow-wrap: anywhere; }
@@ -34,7 +38,7 @@
 .mrf-field { display: flex; justify-content: space-between; gap: calc(12 * var(--mrf-unit)); color: #6b7280; font-size: calc(13 * var(--mrf-unit)); line-height: calc(20 * var(--mrf-unit)); margin-bottom: calc(6 * var(--mrf-unit)); }
 .mrf-field text:last-child { max-width: 65%; color: #4b5563; text-align: right; overflow-wrap: anywhere; }
 .mrf-notice { display: block; margin: calc(12 * var(--mrf-unit)) calc(16 * var(--mrf-unit)); color: #a15e00; font-size: calc(13 * var(--mrf-unit)); line-height: calc(20 * var(--mrf-unit)); }
-.mrf-readonly { margin: calc(12 * var(--mrf-unit)) calc(29 * var(--mrf-unit)); }
+.mrf-readonly { margin: calc(12 * var(--mrf-unit)) calc(15.388 * var(--mrf-unit)); }
 .mrf-page .mrf-more { margin: calc(12 * var(--mrf-unit)) auto; width: calc(180 * var(--mrf-unit)); height: calc(36 * var(--mrf-unit)); color: #5baae8; border: 1px solid #5baae8; border-radius: calc(999 * var(--mrf-unit)); font-size: calc(13 * var(--mrf-unit)); line-height: calc(36 * var(--mrf-unit)); }
 .mrf-refresh-row { display: flex; justify-content: center; }
 .mrf-bottom-space { height: calc(20 * var(--mrf-unit)); }

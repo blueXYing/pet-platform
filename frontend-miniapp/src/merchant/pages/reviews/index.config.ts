@@ -1,1 +1,1 @@
-export default definePageConfig({ navigationBarTitleText: '评价管理', navigationStyle: 'custom' })
+export default definePageConfig({ navigationBarTitleText: '店铺评价', navigationStyle: 'custom' })
