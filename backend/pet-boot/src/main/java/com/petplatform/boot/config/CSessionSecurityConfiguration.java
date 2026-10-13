@@ -51,9 +51,11 @@ public class CSessionSecurityConfiguration {
       @Value("${pet.order.reschedule.http.enabled:false}")
           boolean orderRescheduleHttpEnabled,
       @Value("${pet.review.http.enabled:false}")
-      boolean reviewHttpEnabled,
+          boolean reviewHttpEnabled,
       @Value("${pet.review.appeal.http.enabled:false}")
-      boolean reviewAppealHttpEnabled)
+          boolean reviewAppealHttpEnabled,
+      @Value("${pet.points.task.http.enabled:false}")
+          boolean pointsTaskHttpEnabled)
       throws Exception {
     http.securityMatcher("/api/v1/c/**", "/api/v1/merchant/**")
         .csrf(c -> c.disable())
@@ -244,6 +246,22 @@ public class CSessionSecurityConfiguration {
                   .permitAll();
               a.requestMatchers(HttpMethod.POST,
                       "/api/v1/merchant/reviews/*/appeal")
+                  .permitAll();
+            }
+            if (pointsTaskHttpEnabled) {
+              // Points earn family (contract 58 / 32号 ruling second batch): sign-in,
+              // task-center reads, reward claims and referral bindings. The MINIAPP Bearer
+              // is enforced by the filter's protectedPath list, not by permitAll itself;
+              // non-GET/POST stays denied and the switch keeps the family unreachable when
+              // the slice is not assembled.
+              a.requestMatchers(HttpMethod.GET,
+                      "/api/v1/c/points/sign-in/status",
+                      "/api/v1/c/points/tasks")
+                  .permitAll();
+              a.requestMatchers(HttpMethod.POST,
+                      "/api/v1/c/points/sign-in",
+                      "/api/v1/c/points/claims",
+                      "/api/v1/c/points/referral-bindings")
                   .permitAll();
             }
           }

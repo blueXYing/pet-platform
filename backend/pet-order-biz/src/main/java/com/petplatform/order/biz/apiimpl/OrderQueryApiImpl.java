@@ -6,6 +6,7 @@ import com.petplatform.order.api.dto.ReviewEligibilityDTO;
 import com.petplatform.order.api.query.OrderQueryApi;
 import com.petplatform.order.api.query.OrderQueryApi.MyOrderListQuery;
 import com.petplatform.order.api.query.OrderQueryApi.OrderIdQuery;
+import com.petplatform.order.api.query.OrderQueryApi.UserOrderFactQuery;
 import com.petplatform.order.biz.application.OrderQueryService;
 import com.petplatform.order.biz.infrastructure.persistence.OrderQueryStore;
 import java.util.Objects;
@@ -39,5 +40,11 @@ public final class OrderQueryApiImpl implements OrderQueryApi {
     @Override
     public ReviewEligibilityDTO checkReviewEligibility(OrderIdQuery query) {
         return service.checkReviewEligibility(query);
+    }
+
+    /** 07号 §7.1 amendment (contract 58): first-payment fact for the points referral kernel. */
+    @Override
+    public java.time.OffsetDateTime firstPaidAt(UserOrderFactQuery query) {
+        return service.firstPaidAt(query);
     }
 }

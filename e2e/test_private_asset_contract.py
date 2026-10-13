@@ -46,7 +46,11 @@ class PrivateAssetContractRegressions(unittest.TestCase):
         # /reject drafts (merchantApproveRefund / merchantRejectRefund) pre-existed in
         # develop's baseline and are only re-pinned implemented default-off into
         # MERCHANT_REFUND_HTTP_OPERATIONS (family census = 4).
-        self.assertEqual(result['operations'], 143)
+        # 150 = 143 + 7 contract-58 points earn operations (32号 ruling second batch:
+        # C face cGetSignInStatus/cSignIn/cListPointsTasks/cClaimPointsReward/
+        # cBindReferralCode plus admin face adminGetPointsTaskConfig/
+        # adminUpdatePointsTaskConfig; the earn surface only accrues, never spends).
+        self.assertEqual(result['operations'], 150)
         self.assertEqual(result['privateAssetOperations'], 3)
         self.assertEqual(result['legacyOperations'], 14)
         self.assertEqual(result['aftersaleOperations'], 24)
@@ -66,6 +70,7 @@ class PrivateAssetContractRegressions(unittest.TestCase):
         self.assertEqual(result['refundHttpOperations'], 1)
         self.assertEqual(result['reviewAppealHttpOperations'], 6)
         self.assertEqual(result['merchantRefundHttpOperations'], 4)
+        self.assertEqual(result['pointsTaskOperations'], 7)
 
     def test_all_private_operations_require_current_bearer_audience_and_default_off(self):
         for name in PRIVATE_ASSET_OPERATIONS:

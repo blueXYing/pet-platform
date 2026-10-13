@@ -168,6 +168,8 @@ HTTP 映射只属于 Adapter 层；内部 Java API 通过稳定 code 表达同�
 
 评价申诉 HTTP 状态映射（2026-10-10 REV-002 评价申诉切片，56号 路由）：400 严格 JSON/UUID/路径 ID/`reason` 空白或超 1000 码点/`decisionType` 非 APPROVED|REJECTED；401 会话缺失/失效；403 M 面 OWNER 门禁（含商家/门店非 ACTIVE 写拒绝）或 O 面动作码 `review.appeal.read`/`review.appeal.decide` 缺失；404 M 面 `REVIEW_NOT_FOUND`（评价不存在与非本店统一防枚举）、O 面 `COMMON_NOT_FOUND`（申诉不存在）；409 `REVIEW_APPEAL_ALREADY_USED`（每条评价最多申诉一次，含 uk_review_appeal_once 竞态兜底）、`COMMON_CONFLICT`（已裁决终局改判/请求锁忙）、`IDEMPOTENCY_KEY_CONFLICT`；503 `COMMON_DEPENDENCY_UNAVAILABLE`；未识别异常统一 500 `COMMON_INTERNAL_ERROR`。无新增错误码。
 
+签到/拉新 HTTP 状态映射（2026-10-13 58 号积分任务切片，32号裁决第二节路由）：C 面五路 400 严格 JSON（签到体非空对象/`claimType` 枚举外/`inviteCode` 非 `[A-Za-z0-9]{1,32}`）、无效邀请码/自邀/邀请人不存在（防探测统一 400 同文案）；401 会话缺失/失效；409 `COMMON_CONFLICT`（当日重复签到换新 requestId、终身重复绑定、被邀请人已有订单史、无可领取含一次性里程碑已领、拉新月上限已满）、`IDEMPOTENCY_KEY_CONFLICT`（同 requestId 异参）；503 `COMMON_DEPENDENCY_UNAVAILABLE`（订单/用户跨域事实读不可用——拉新领取与绑定面；签到/连签/资料/配置面不依赖）；未识别异常统一 500 `COMMON_INTERNAL_ERROR` 安全包装。admin 面两路另加 403 动作码 `points.task.config.read`/`points.task.config.write` 缺失；PUT 七字段范围越界 400。无新增错误码。
+
 ## 12. MERCHANT / SERVICE
 
 | Code | 含义 | 建议 HTTP |

@@ -53,5 +53,8 @@ export default defineAppConfig({
     // Booking create + payment initiation slice (10号 §3.4/§3.5/§3.6): service-detail entry,
     // unpaid-order pay entry; one compact line per the app.config convention.
     { root: 'consumer/pages/booking', pages: ['create', 'pay'] },
+    // Points earn slice (58号 / 32号 ruling second batch): sign-in calendar, referral tasks and
+    // reward claim pages, entered from the mine tab; points only accrue in V1.
+    { root: 'consumer/pages/points-tasks', pages: ['signin', 'tasks', 'rewards'] },
   ],
 })
