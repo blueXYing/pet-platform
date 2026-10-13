@@ -46,7 +46,7 @@ class PrivateAssetContractRegressions(unittest.TestCase):
         # /reject drafts (merchantApproveRefund / merchantRejectRefund) pre-existed in
         # develop's baseline and are only re-pinned implemented default-off into
         # MERCHANT_REFUND_HTTP_OPERATIONS (family census = 4).
-        self.assertEqual(result['operations'], 143)
+        self.assertEqual(result['operations'], 150)
         self.assertEqual(result['privateAssetOperations'], 3)
         self.assertEqual(result['legacyOperations'], 14)
         self.assertEqual(result['aftersaleOperations'], 24)
@@ -66,6 +66,7 @@ class PrivateAssetContractRegressions(unittest.TestCase):
         self.assertEqual(result['refundHttpOperations'], 1)
         self.assertEqual(result['reviewAppealHttpOperations'], 6)
         self.assertEqual(result['merchantRefundHttpOperations'], 4)
+        self.assertEqual(result['favtrackHttpOperations'], 7)
 
     def test_all_private_operations_require_current_bearer_audience_and_default_off(self):
         for name in PRIVATE_ASSET_OPERATIONS:
