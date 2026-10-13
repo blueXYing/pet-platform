@@ -13,7 +13,7 @@ import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.datasource.DriverManagerDataSource;
 import org.springframework.jdbc.datasource.init.ScriptUtils;
 
-/** Test-only, real MySQL fixture over Schema 06 + SQL 14. Never adopts or drops a pre-existing database. */
+/** Test-only, real MySQL fixture over Schema 06 + SQL 14 + SQL 55. Never adopts or drops a pre-existing database. */
 final class MySqlUserDomainTestDatabase implements AutoCloseable {
     private final String name = "usr001_test_" + UUID.randomUUID().toString().replace("-", "");
     private final JdbcTemplate admin;
@@ -49,6 +49,9 @@ final class MySqlUserDomainTestDatabase implements AutoCloseable {
                         StandardCharsets.UTF_8));
                 ScriptUtils.executeSqlScript(connection, new EncodedResource(
                         new FileSystemResource(root.resolve("docs/03-database/14-Command-Idempotency-Schema-v0.1.sql")),
+                        StandardCharsets.UTF_8));
+                ScriptUtils.executeSqlScript(connection, new EncodedResource(
+                        new FileSystemResource(root.resolve("docs/03-database/55-User-Address-Schema-v0.1.sql")),
                         StandardCharsets.UTF_8));
             }
             System.out.println("USR-001 real MySQL " + version + "; new database " + name);

@@ -561,6 +561,27 @@
 
 素材登记：`consumer/assets/home/` 新增 brand-logo@2x.png（5.2KB）、guarantee-certified/rating/insurance/escrow@2x.png（0.9~1.8KB）、huaban-grid@2x.jpg（31KB）、huaban-doodle@2x.jpg（60KB），manifest 含 sha256 与源版本 2408620332145508244；门店页 `store-services/assets/` 零变化（复核确认）。
 
+### 4.14 C 端地址管理三页（2026-10-13）
+
+复核方法：2026-10-13 从工作树缓存素材（`D:/Temp/figma-mcp/user-end-page1.raw`，2026-10-10 版全量 SSE，提取 `129:13141`/`129:13533`/`129:13731` 三帧 XML 树——零 API 配额，存 `D:/Temp/figma-mcp/addr-{list,edit,new}.xml`），另消耗 **1 次** REST images 调用（三帧 scale=2 渲染核对色值；dev token，渲染图存 `D:/Temp/figma-mcp/addr-render-url-129-*.png`）。落地：契约 59（`docs/04-api/59-User-Address-Contract-v0.1.md`，CCR-USR-ADDRESS-001）+ HTTP10 §3.2.2 六路由后端切片 + C 端三页（32号裁决第二批「七页全做」之地址管理页）。
+
+| 页面 | 画板 | 落地 |
+|---|---|---|
+| 地址列表 `consumer/pages/address/index` | `129:13141` | 头带沿 profile-edit 族（`#fff6e5` 底 + `#cdeede` 底边，返回 32×32@x19 + 标题）；卡区 x13 w375：白卡 r12 + 14 内边，姓名 15/600 + 脱敏手机号（`138****5678` 展示层形态）+ `#c0ecff`「默认」胶囊 + 地区/详址两行 + 行内「设为默认/编辑/删除」文字钮（`#2f83c7`/删除 `#e8756a`）；底部「+ 新增地址」343×44 胶囊 `#5baae8` 白字；页底 `#f0fbff`。行内钮走真六路由（set-default 决策路由/DELETE 软删，ConsumerApi 幂等槽 `address-default:{id}`/`address-delete:{id}`）。 |
+| 新增地址 `consumer/pages/address/new` | `129:13731` | 列表之上的底部弹层（y250 h561）：遮罩 + 白面板顶圆角 16 + 标题/×；收货人/手机号/所在地区 INPUT h42（`#f5fafd` 底 `#dcedf8` 描边 r8）+ 详细地址 TEXTAREA h82 + 「设为默认地址」开关行 h44（Switch `#5baae8`）+ 「保存地址」335×44 胶囊 `#5baae8`。POST 幂等槽 `address:create`（23号 X-Request-Id，未确认提交重进还原重试）。 |
+| 编辑地址 `consumer/pages/address/edit` | `129:13533` | 与新增同构（共用 `address-form.tsx`）；GET 详情回填明文，PUT 幂等槽 `address:{id}` 全量替换五字段。 |
+| BookingSheet 地址簿快选 | （无独立画板） | 接送地址区上方横滑 chips（`#c0ecff` 描边白底/选中 `#c0ecff` 底 `#5baae8` 描边）；点击把 `region + 空格 + detail` 平铺进既有 `serviceAddress` 文本快照（下单链接法：订单契约零改动，`order_booking_input_snapshot` 原样）；仅真实登录态渲染，读取失败静默降级为纯手填；preview/未登录不渲染。 |
+
+登记偏差（补稿或功能交付后按 21号验收补充）：
+
+1. **列表页头带标题残留**：原稿标题为「编辑资料」（`129:13213`，模板复制残留），按语义用「地址管理」。
+2. **编辑帧标题残留**：原稿编辑弹层标题为「新增地址」（`129:13533` 同 `129:13731` 复制残留），按语义用「编辑地址」。
+3. **底部 tab 栏**：三帧原稿均带底部五 tab（`717:2689` 族），工程为 navigateTo 子页不带（§4.4 原生 tabBar 裁决同口径）。
+4. **微信 chooseAddress/chooseLocation 不接入**：原稿「所在地区」为纯 INPUT（`129:13879` 无定位/选点图标形态），V1 地址簿已覆盖录入需求；微信收货地址导入与地图选点均不接入（涉及新交互与隐私授权声明，app.config 既有 `chooseLocation` 声明属商家入驻切片不复用），留待需要时另开切片评估。
+5. **列表卡片社区图文层**（`129:13143` A-208 族，x772 画板外溢出内容）：属同文件其他页面残留图层，不属地址管理画板内容，不实现。
+
+范围排除登记：地址簿与订单的关联严格走下单链接法（地址不进订单契约，快照语义不变）；三帧底部 tab 栏不再复述（偏差③）。
+
 ## 5. 维护规则
 
 - Figma 文件更新后（比对 §1 的 version 字段），由任一 Worker 重新执行 depth=2 抓取并更新 §3；同名不同 id 的 frame 是不同状态稿，全部保留。
