@@ -122,13 +122,20 @@ function RefundApplyScreen({ preview, scenario, orderId }: { preview: boolean; s
   const receiptBadge = state.receipt === null ? null : receiptStatusBadge(state.receipt)
   return <ConsumerPageLayout page='orderDetail' unit={unit} className='ord-page' style={style}
     navigation={{ idPrefix: 'rfd', disabled: state.phase === 'loading', onSelect: key => { void switchConsumerTab(key) } }}>
-    <View className='ord-design'>
-      <View className='ord-status-area' />
-      <View className='ord-nav'>
-        <Button id='rfd-back' ariaLabel='返回' className='ord-nav-back' onClick={() => void goBack()}>
-          <Text className='ord-nav-back-icon'>‹</Text>
-        </Button>
-        <Text className='ord-nav-title'>申请退款</Text>
+    {/* 视觉按设计源 129:10572（我的-我的订单-申请售后，2026-10-12 新版缓存）重做：奶油头带
+        #fff6e5 → 白内容区、订单卡 #f0fbff+#c0ecff 描边 r13（x=12.5 宽 377，金额 27/700 #53bfee）、
+        输入件 #f9fffe 底 #c0ecff 描边 r8 + 0/500 右下、主按钮 335x44 r12 #5baae8。原稿「售后类型」
+        （仅退款/退货退款）/原因胶囊组（内置选项）/上传图片区块不在 §3.9 契约内不渲染——reasonCode
+        为服务端字典文本输入（未封板不内置选项），PR 登记差异。功能/契约/ID/aria 零改动。 */}
+    <View className='ord-design rfd'>
+      <View className='rfd-hero'>
+        <View className='ord-status-area' />
+        <View className='ord-nav'>
+          <Button id='rfd-back' ariaLabel='返回' className='ord-nav-back' onClick={() => void goBack()}>
+            <Text className='ord-nav-back-icon'>‹</Text>
+          </Button>
+          <Text className='ord-nav-title'>申请退款</Text>
+        </View>
       </View>
       {invalidOrderId && <View className='ord-state' role='status'><Text id='rfd-invalid'>订单链接无效，请从订单详情重新进入。</Text></View>}
       {state.phase === 'loading' && <View className='ord-state' role='status'><Text id='rfd-loading'>正在读取订单…</Text></View>}
@@ -144,8 +151,8 @@ function RefundApplyScreen({ preview, scenario, orderId }: { preview: boolean; s
         <Text id='rfd-ineligible'>当前订单不支持发起退款申请（以订单实时状态为准；被拒绝的历史申请处理后再试）。</Text>
         <Button id='rfd-back-detail' className='ord-state-action' onClick={() => void goBack()}>返回订单详情</Button>
       </View>}
-      {(state.phase === 'ready' || state.receipt !== null) && detail !== null && <View className='ord-detail-body'>
-        <View className='ord-summary'>
+      {(state.phase === 'ready' || state.receipt !== null) && detail !== null && <View className='rfd-body'>
+        <View className='rfd-summary'>
           <View className='ord-card-head'>
             <Text className='ord-card-no'>订单号 {detail.orderNo}</Text>
             {badge && <Text className={`ord-badge ${badge.className}`}>{badge.label}</Text>}
@@ -153,7 +160,7 @@ function RefundApplyScreen({ preview, scenario, orderId }: { preview: boolean; s
           <Text className='ord-card-time'>服务时间 {appointmentWindow(detail)}</Text>
           <Text className='ord-card-amount ord-summary-amount'>¥{detail.payAmount}</Text>
         </View>
-        {state.receipt !== null && <View className='ord-receipt' id='rfd-receipt'>
+        {state.receipt !== null && <View className='rfd-receipt' id='rfd-receipt'>
           <View className='ord-verify-head'>
             <Text className='ord-verify-title'>{receiptHeadline(state.receipt)}</Text>
             {receiptBadge && <Text className={`ord-badge ${receiptBadge.className}`}>{receiptBadge.label}</Text>}
@@ -164,7 +171,7 @@ function RefundApplyScreen({ preview, scenario, orderId }: { preview: boolean; s
           <View className='ord-fact-row'><Text className='ord-fact-label'>退款单号</Text><Text className='ord-fact-value'>{state.receipt.refundOrderId ?? '生成中（提交后自动创建）'}</Text></View>
           <Button id='rfd-back-after' className='ord-verify-action' onClick={() => void goBack()}>返回订单详情</Button>
         </View>}
-        {state.receipt === null && <View className='ord-refund'>
+        {state.receipt === null && <View className='rfd-form'>
           <View className='ord-verify-head'><Text className='ord-verify-title'>退款原因</Text></View>
           <Text className='ord-verify-hint'>按平台规则：服务开始前申请自动全额原路退回；服务开始后由商家在 24 小时内处理。提交时以订单实时状态判定适用窗口。</Text>
           <View className='ord-field'>
