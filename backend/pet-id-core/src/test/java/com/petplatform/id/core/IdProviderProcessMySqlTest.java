@@ -16,8 +16,19 @@ import java.util.concurrent.TimeUnit;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.Timeout;
 
-@Timeout(30)
+/**
+ * Spawns real child JVMs against the isolated MySQL fixture. Every bounded wait is generous and
+ * overridable via system properties (defaults tuned for a saturated parallel runner, PR#139 run
+ * 37922615049): {@code plat002.idtest.lineTimeoutSeconds} (default 120) caps waiting for any child
+ * output/handshake line, {@code plat002.idtest.warmingBudgetSeconds} (default 60) caps the child's
+ * WARMING loop, {@code plat002.idtest.exitTimeoutSeconds} (default 30) caps waiting for a child to
+ * exit. Properties set on the parent are forwarded to the children.
+ */
+@Timeout(300)
 class IdProviderProcessMySqlTest {
+    private static long lineTimeoutSeconds() { return Long.getLong("plat002.idtest.lineTimeoutSeconds", 120L); }
+    private static long exitTimeoutSeconds() { return Long.getLong("plat002.idtest.exitTimeoutSeconds", 30L); }
+
     @Test void livePriorJvmIsRejectedThenHaltedJvmAllowsFreshRangeAndWarmingDoesNotBurnH() throws Exception {
         Process old = null;
         Process fresh = null;
@@ -57,7 +68,7 @@ class IdProviderProcessMySqlTest {
                     .acquire(new SnowflakeProviderSettings(17), UUID.randomUUID(), exitProof));
             assertEquals(oldHigh, db.highWater(17));
             send(old, "HALT");
-            assertTrue(old.waitFor(3, TimeUnit.SECONDS));
+            assertTrue(old.waitFor(exitTimeoutSeconds(), TimeUnit.SECONDS));
             assertEquals(23, old.exitValue());
             // Fixture-only expiry injection after confirmed exit; never reset H/fence or infer death from lease.
             db.jdbc().update("UPDATE snowflake_worker_state SET lease_until=TIMESTAMPADD(SECOND,-1,NOW(3)) WHERE node_id=17");
@@ -70,7 +81,7 @@ class IdProviderProcessMySqlTest {
                     Long.parseLong(verify[2]), db.initializationRef(17), Long.parseLong(verify[3])));
             send(fresh, "EXIT_VERIFIED:" + oldIncarnation + ":" + old.pid() + ":" + recordedStart);
             String[] recovered = readUntil(readers, freshReader, "READY ", freshLines).split(" ");
-            assertTrue(fresh.waitFor(3, TimeUnit.SECONDS));
+            assertTrue(fresh.waitFor(exitTimeoutSeconds(), TimeUnit.SECONDS));
             assertEquals(0, fresh.exitValue());
             assertTrue(freshLines.stream().anyMatch(line -> line.startsWith("WARMING ")),
                     "must actually exercise waiting for the old reserved boundary");
@@ -94,8 +105,16 @@ class IdProviderProcessMySqlTest {
 
     private static Process start(String mode, MySqlIdTestDatabase db, List<String> extra) throws Exception {
         String java = Path.of(System.getProperty("java.home"), "bin", System.getProperty("os.name").startsWith("Windows") ? "java.exe" : "java").toString();
-        List<String> command = new ArrayList<>(List.of(java, "-cp", System.getProperty("surefire.test.class.path", System.getProperty("java.class.path")),
-                IdProviderProcessProbe.class.getName(), mode, db.databaseUrl(), "17", db.initializationRef(17)));
+        List<String> command = new ArrayList<>(List.of(java, "-cp", System.getProperty("surefire.test.class.path", System.getProperty("java.class.path"))));
+        for (String property : List.of("plat002.idtest.lineTimeoutSeconds", "plat002.idtest.warmingBudgetSeconds")) {
+            String value = System.getProperty(property);
+            if (value != null) command.add("-D" + property + "=" + value);
+        }
+        command.add(IdProviderProcessProbe.class.getName());
+        command.add(mode);
+        command.add(db.databaseUrl());
+        command.add("17");
+        command.add(db.initializationRef(17));
         command.addAll(extra);
         return new ProcessBuilder(command).redirectErrorStream(true).start();
     }
@@ -108,7 +127,7 @@ class IdProviderProcessMySqlTest {
                 if (line.startsWith(prefix)) return line;
             }
             throw new IllegalStateException("Child exited before " + prefix + ": " + lines);
-        }).get(12, TimeUnit.SECONDS);
+        }).get(lineTimeoutSeconds(), TimeUnit.SECONDS);
     }
 
     private static void send(Process process, String value) throws Exception {
@@ -121,7 +140,7 @@ class IdProviderProcessMySqlTest {
             process.destroy();
             if (!process.waitFor(1, TimeUnit.SECONDS)) {
                 process.destroyForcibly();
-                assertTrue(process.waitFor(3, TimeUnit.SECONDS));
+                assertTrue(process.waitFor(exitTimeoutSeconds(), TimeUnit.SECONDS));
             }
         }
     }
