@@ -25,12 +25,16 @@ final class MySqlCommunityTestDatabase implements AutoCloseable {
     private boolean created;
 
     MySqlCommunityTestDatabase() throws Exception {
-        String url = System.getenv().getOrDefault("CMN001_MYSQL_URL", "jdbc:mysql://127.0.0.1:33440/");
+        // Same env wiring as the CI-green fixtures (e.g. schedule ReservationConfirmMySqlTest):
+        // the globally provided AUTH_MYSQL_URL/USER/PASSWORD win, the defaults only name a
+        // local isolated developer server. CI overrides all three via the workflow env block.
+        String url = System.getenv().getOrDefault("AUTH_MYSQL_URL",
+                "jdbc:mysql://127.0.0.1:33440/");
         if (!url.matches("jdbc:mysql://(127\\.0\\.0\\.1|localhost):[0-9]+/")) {
-            throw new IllegalArgumentException("CMN001_MYSQL_URL must name a local isolated server, with no database or parameters");
+            throw new IllegalArgumentException("AUTH_MYSQL_URL must name a local isolated server, with no database or parameters");
         }
-        String user = System.getenv().getOrDefault("CMN001_MYSQL_USER", "root");
-        String password = System.getenv().getOrDefault("CMN001_MYSQL_PASSWORD", "");
+        String user = System.getenv().getOrDefault("AUTH_MYSQL_USER", "root");
+        String password = System.getenv().getOrDefault("AUTH_MYSQL_PASSWORD", "");
         admin = new JdbcTemplate(source(url, user, password));
         dataSource = source(url + name, user, password);
         jdbc = new JdbcTemplate(dataSource);
