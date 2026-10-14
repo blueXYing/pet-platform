@@ -54,6 +54,8 @@ export const MINE_MERCHANT_WORKSPACE_URL = '/merchant/pages/workspace/index'
 export const MINE_BECOME_PROVIDER_URL = '/consumer/pages/become-provider/index'
 // 「工程验证」壳降级为调试入口（direct path 保留，preview 夹具通道原样保留）。
 export const MINE_DEVELOPER_SHELL_URL = '/consumer/pages/shell/index'
+// 地址管理（契约 59 切片，32号第二批）：mine 网格「地址管理」格位的真实入口。
+export const MINE_ADDRESS_BOOK_URL = '/consumer/pages/address/index'
 
 export const phoneGuideCopy = {
   title: '授权手机号，完善账号',

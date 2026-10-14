@@ -65,6 +65,8 @@ assert.deepEqual(packages.map(p => ({ root: p.root, pages: p.pages })), [
   { root: 'consumer/pages/notification-preferences', pages: ['index'] },
   // Booking create + payment initiation slice (10号 §3.4/§3.5/§3.6).
   { root: 'consumer/pages/booking', pages: ['create', 'pay'] },
+  // Address book slice (59号契约).
+  { root: 'consumer/pages/address', pages: ['index', 'new', 'edit'] },
   // Become-provider entry slice (32号 §2 seven-page batch): landing + service-type selection.
   { root: 'consumer/pages/become-provider', pages: ['index', 'service-type'] },
 ], 'Merchant workspace, pet archive, merchant application, store services, coupon/points, aftersale and notification preference pages must be registered in the single app')

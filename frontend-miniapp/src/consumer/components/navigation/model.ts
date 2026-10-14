@@ -25,6 +25,9 @@ export const consumerPageSections = {
   profileEdit: 'mine', petList: 'home', petDetail: 'home', petForm: 'home', merchantApplication: 'mine',
   storeServices: 'services', serviceDetail: 'services', storeDirectory: 'services',
   couponList: 'mine', couponDetail: 'mine', pointsPage: 'mine', orderVerify: 'mine', orderList: 'mine', orderDetail: 'mine',
+  // Address book slice (contract 59 via HTTP10 §3.2.2, ruling-32 second batch): the three
+  // subpages ride the mine section like the other mine-hub destinations.
+  addressList: 'mine', addressNew: 'mine', addressEdit: 'mine',
   // Booking create + payment initiation slice (10号 §3.4/§3.5/§3.6).
   bookingCreate: 'services', bookingPay: 'mine',
   // Become-provider entry slice (32号 §2): entered from the mine grid, rides the mine section.
