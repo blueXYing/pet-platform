@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
-import { TradeQueryFailure, displayStatusLabel, type OrderDetail, type Page, type StatusLog, type TradeQueryClient } from '../api/tradeQuery';
+import { TradeQueryFailure, displayStatusLabel, field, type OrderDetail, type Page, type StatusLog, type TradeQueryClient } from '../api/tradeQuery';
 
 function Field({ label, children }: { label: string; children: React.ReactNode }) {
   return <div><dt>{label}</dt><dd>{children}</dd></div>;
@@ -45,9 +45,9 @@ export default function TradeOrderDetailPage({ client, onAuthLost }: { client: T
         <Field label="订单号">{detail.orderNo}</Field>
         <Field label="订单编号">{detail.orderId}</Field>
         <Field label="用户编号">{detail.userId}</Field>
-        <Field label="展示状态">{displayStatusLabel(detail.displayStatus)}</Field>
-        <Field label="业务阶段">{detail.orderStage}</Field>
-        <Field label="支付状态">{detail.paymentStatus === 'PAID' ? '已支付' : '未支付'}</Field>
+        <Field label="展示状态">{displayStatusLabel(field(detail, 'displayStatus'))}</Field>
+        <Field label="业务阶段">{field(detail, 'orderStage')}</Field>
+        <Field label="支付状态">{field(detail, 'paymentStatus') === 'PAID' ? '已支付' : '未支付'}</Field>
         <Field label="预约时间（UTC）">{detail.appointmentStart} ~ {detail.appointmentEnd}</Field>
         <Field label="改期次数">{detail.rescheduleCount}</Field>
         <Field label="创建（UTC）">{detail.createdAt}</Field>
@@ -75,13 +75,13 @@ export default function TradeOrderDetailPage({ client, onAuthLost }: { client: T
       </dl>
       <h2>退款层</h2>
       <p>退款单：<strong>{detail.refundOrderId ?? '无'}</strong>
-        {detail.refundStatus ? ` · ${detail.refundStatus}` : ''}
+        {field(detail, 'refundStatus') ? ` · ${field(detail, 'refundStatus')}` : ''}
         {detail.refundOrderId && <> · <Link to={`/trade/refunds?orderId=${detail.orderId}`}>查看该订单退款单</Link></>}
         {detail.refundOrderId && <> · <Link to={`/trade/refunds/${detail.refundOrderId}`}>退款单详情</Link></>}
       </p>
-      <p>售后状态：{detail.aftersaleStatus ?? '无'} · 申请状态：{detail.refundApplicationStatus ?? '无'}</p>
+      <p>售后状态：{field(detail, 'aftersaleStatus') ?? '无'} · 申请状态：{field(detail, 'refundApplicationStatus') ?? '无'}</p>
       <h2>核销</h2>
-      <p>核销状态：{detail.verificationStatus} · <Link to={`/trade/verifications?orderId=${detail.orderId}`}>查看核销记录</Link></p>
+      <p>核销状态：{field(detail, 'verificationStatus')} · <Link to={`/trade/verifications?orderId=${detail.orderId}`}>查看核销记录</Link></p>
       <h2>改期记录</h2>
       {detail.rescheduleRecords.length === 0
         ? <p>该订单没有改期记录。</p>

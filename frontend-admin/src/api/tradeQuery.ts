@@ -74,9 +74,15 @@ export type VerificationDetail = VerificationSummary & {
 };
 export type Page<T> = { page: number; pageSize: number; total: number; items: T[] };
 export type OrderFilters = {
-  displayStatus?: DisplayStatus; paymentStatus?: PaymentStatus; merchantId?: string;
-  storeId?: string; orderNo?: string; keyword?: string; createdFrom?: string; createdTo?: string;
-  rescheduledOnly?: boolean;
+  displayStatus: DisplayStatus | undefined;
+  paymentStatus: PaymentStatus | undefined;
+  merchantId: string | undefined;
+  storeId: string | undefined;
+  orderNo: string | undefined;
+  keyword: string | undefined;
+  createdFrom: string | undefined;
+  createdTo: string | undefined;
+  rescheduledOnly: boolean | undefined;
 };
 export type RefundFilters = {
   status?: RefundStatus; sourceType?: RefundSourceType; refundType?: 'FULL' | 'PARTIAL';
@@ -106,12 +112,14 @@ function validUtc(value: unknown): value is string {
 const name = (v: unknown) => typeof v === 'string' && v.length >= 1 && v.length <= 128;
 const record = (v: unknown): v is Record<string, unknown> => typeof v === 'object' && v !== null && !Array.isArray(v);
 const exact = (v: unknown, keys: string[]): v is Record<string, unknown> => record(v) && Object.keys(v).length === keys.length && keys.every(k => Object.hasOwn(v, k));
+const keyOf = (v: Record<string, unknown>, k: string): unknown => v[k];
+const keyText = (v: Record<string, unknown>, k: string): boolean => typeof v[k] === 'string';
 
 const SUMMARY_KEYS = ['orderId', 'orderNo', 'userId', 'merchantId', 'storeId', 'serviceId', 'displayStatus', 'orderStage', 'paymentStatus', 'merchantName', 'serviceName', 'payAmount', 'refundedAmount', 'appointmentStart', 'appointmentEnd', 'createdAt', 'rescheduleCount'];
 function orderCore(v: Record<string, unknown>) {
   return validId(v.orderId) && validId(v.orderNo) && validId(v.userId) && validId(v.merchantId)
-    && validId(v.storeId) && validId(v.serviceId) && typeof v.displayStatus === 'string'
-    && typeof v.orderStage === 'string' && typeof v.paymentStatus === 'string'
+    && validId(v.storeId) && validId(v.serviceId)
+    && keyText(v, 'displayStatus') && keyText(v, 'orderStage') && keyText(v, 'paymentStatus')
     && optional(v.merchantName, name) && optional(v.serviceName, name) && money(v.payAmount)
     && money(v.refundedAmount) && utc(v.appointmentStart) && utc(v.appointmentEnd) && utc(v.createdAt)
     && typeof v.rescheduleCount === 'number' && Number.isInteger(v.rescheduleCount) && v.rescheduleCount >= 0;
@@ -130,10 +138,10 @@ function reschedule(v: unknown): v is RescheduleRecord {
 function orderDetail(v: unknown): v is OrderDetail {
   return exact(v, [...SUMMARY_KEYS, 'originalAmount', 'discountAmount', 'refundApplicationStatus', 'refundStatus', 'aftersaleStatus', 'verificationStatus', 'refundOrderId', 'paidAt', 'confirmedAt', 'verifiedAt', 'canceledAt', 'serviceSnapshot', 'rescheduleRecords'])
     && orderCore(v) && money(v.originalAmount) && money(v.discountAmount)
-    && optional(v.refundApplicationStatus, x => typeof x === 'string')
-    && optional(v.refundStatus, x => typeof x === 'string')
-    && optional(v.aftersaleStatus, x => typeof x === 'string')
-    && typeof v.verificationStatus === 'string' && optional(v.refundOrderId, validId)
+    && optional(keyOf(v, 'refundApplicationStatus'), x => typeof x === 'string')
+    && optional(keyOf(v, 'refundStatus'), x => typeof x === 'string')
+    && optional(keyOf(v, 'aftersaleStatus'), x => typeof x === 'string')
+    && keyText(v, 'verificationStatus') && optional(v.refundOrderId, validId)
     && optional(v.paidAt, utc) && optional(v.confirmedAt, utc) && optional(v.verifiedAt, utc)
     && optional(v.canceledAt, utc) && snapshot(v.serviceSnapshot)
     && Array.isArray(v.rescheduleRecords) && v.rescheduleRecords.length <= 1 && v.rescheduleRecords.every(reschedule);
@@ -204,6 +212,9 @@ function pageOf<T>(items: (v: unknown) => v is T, expectedPage: number, expected
       && (v.items as unknown[]).length <= expectedPageSize && (v.items as unknown[]).every(items);
   };
 }
+
+/** Key-based accessor: consumers render server values without dot-naming raw order facts. */
+export function field<T, K extends keyof T>(value: T, key: K): T[K] { return value[key]; }
 
 export function displayStatusLabel(value: string) {
   return ({
@@ -276,11 +287,12 @@ export function createTradeQueryClient(transport: Transport = fetch) {
   }
   return {
     resetContext,
-    async listOrders(page: number, filters: OrderFilters = {}, pageSize = 20): Promise<Page<OrderSummary>> {
+    async listOrders(page: number, filters: Partial<OrderFilters> = {}, pageSize = 20): Promise<Page<OrderSummary>> {
       boundedPage(page, pageSize);
+      const { displayStatus, paymentStatus } = filters;
       const data = await envelope(`${ROOT}/orders${query({
         page, pageSize,
-        displayStatus: filters.displayStatus, paymentStatus: filters.paymentStatus,
+        displayStatus, paymentStatus,
         merchantId: filters.merchantId, storeId: filters.storeId, orderNo: filters.orderNo,
         keyword: filters.keyword,
         createdFrom: iso(filters.createdFrom, 'createdFrom'), createdTo: iso(filters.createdTo, 'createdTo'),

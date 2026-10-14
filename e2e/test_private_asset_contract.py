@@ -50,7 +50,11 @@ class PrivateAssetContractRegressions(unittest.TestCase):
         # C face cGetSignInStatus/cSignIn/cListPointsTasks/cClaimPointsReward/
         # cBindReferralCode plus admin face adminGetPointsTaskConfig/
         # adminUpdatePointsTaskConfig; the earn surface only accrues, never spends).
-        self.assertEqual(result['operations'], 163)
+        # 170 = 163 + 7 contract-63 admin trade read operations (63号 ADM-002/A-003:
+        # seven GET-only routes — adminListTradeOrders/adminGetTradeOrder/
+        # adminListTradeOrderStatusLogs/adminListTradeRefunds/adminGetTradeRefund/
+        # adminListTradeVerifications/adminGetTradeVerification; no write route).
+        self.assertEqual(result['operations'], 170)
         self.assertEqual(result['privateAssetOperations'], 3)
         self.assertEqual(result['legacyOperations'], 14)
         self.assertEqual(result['aftersaleOperations'], 24)

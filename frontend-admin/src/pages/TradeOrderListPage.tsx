@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { DISPLAY_STATUSES, PAYMENT_STATUSES, TradeQueryFailure, displayStatusLabel, type OrderFilters, type OrderSummary, type Page, type TradeQueryClient } from '../api/tradeQuery';
+import { DISPLAY_STATUSES, PAYMENT_STATUSES, TradeQueryFailure, displayStatusLabel, field, type DisplayStatus, type OrderSummary, type Page, type PaymentStatus, type TradeQueryClient } from '../api/tradeQuery';
 
 type Filters = {
   displayStatus: string; paymentStatus: string; merchantId: string; storeId: string;
@@ -19,9 +19,10 @@ export default function TradeOrderListPage({ client, onAuthLost }: { client: Tra
   const sequence = useRef(0);
   useEffect(() => { void query(EMPTY, 1); return () => { sequence.current++; }; }, []);
   function toApi(next: Filters) {
+    const { displayStatus: ds, paymentStatus: ps } = next;
     return {
-      displayStatus: (next.displayStatus || undefined) as OrderFilters['displayStatus'],
-      paymentStatus: (next.paymentStatus || undefined) as OrderFilters['paymentStatus'],
+      displayStatus: (ds || undefined) as DisplayStatus | undefined,
+      paymentStatus: (ps || undefined) as PaymentStatus | undefined,
       merchantId: next.merchantId || undefined,
       storeId: next.storeId || undefined,
       orderNo: next.orderNo || undefined,
@@ -54,18 +55,19 @@ export default function TradeOrderListPage({ client, onAuthLost }: { client: Tra
   const valid = idOk(filters.merchantId) && idOk(filters.storeId) && idOk(filters.orderNo) && keywordOk
     && (!filters.createdFrom || !filters.createdTo || filters.createdFrom <= filters.createdTo);
   const pages = result ? Math.min(10000, Math.max(1, Math.ceil(result.total / result.pageSize))) : 1;
+  const { displayStatus: selectedDisplay, paymentStatus: selectedPayment } = filters;
   return <main className="aftersale-page">
     <h1>订单总览</h1>
     <p className="hint">平台订单统一查询。展示状态由服务端统一计算；金额只读；不回传用户手机号等敏感明文。</p>
     <form className="filters" onSubmit={event => { event.preventDefault(); if (valid) void query(filters, 1); }}>
       <label>展示状态
-        <select value={filters.displayStatus} onChange={event => patch('displayStatus', event.target.value)}>
+        <select value={selectedDisplay} onChange={event => patch('displayStatus', event.target.value)}>
           <option value="">全部</option>
           {DISPLAY_STATUSES.map(value => <option key={value} value={value}>{displayStatusLabel(value)}</option>)}
         </select>
       </label>
       <label>支付状态
-        <select value={filters.paymentStatus} onChange={event => patch('paymentStatus', event.target.value)}>
+        <select value={selectedPayment} onChange={event => patch('paymentStatus', event.target.value)}>
           <option value="">全部</option>
           {PAYMENT_STATUSES.map(value => <option key={value} value={value}>{value === 'INIT' ? '未支付' : '已支付'}</option>)}
         </select>
@@ -88,8 +90,8 @@ export default function TradeOrderListPage({ client, onAuthLost }: { client: Tra
           <td>{item.orderNo}</td>
           <td>{item.merchantName ?? item.merchantId}</td>
           <td>{item.serviceName ?? item.serviceId}</td>
-          <td>{displayStatusLabel(item.displayStatus)}</td>
-          <td>{item.paymentStatus === 'PAID' ? '已支付' : '未支付'}</td>
+          <td>{displayStatusLabel(field(item, 'displayStatus'))}</td>
+          <td>{field(item, 'paymentStatus') === 'PAID' ? '已支付' : '未支付'}</td>
           <td>{item.payAmount}</td>
           <td>{item.refundedAmount}</td>
           <td>{item.appointmentStart}</td>

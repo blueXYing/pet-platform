@@ -117,7 +117,13 @@ public class AdminTradeQueryController {
     data.put("page", result.page());
     data.put("pageSize", result.pageSize());
     data.put("total", result.total());
-    data.put("items", result.items().stream().map(AdminTradeQueryController::orderSummary).toList());
+    // ARCH-005: the order module owns fact naming and the display derivation; this adapter
+    // relays the order-owned wire projection verbatim (same discipline as the C-end slice).
+    data.put(
+        "items",
+        result.items().stream()
+            .map(com.petplatform.order.biz.application.AdminOrderSnapshotWire::fields)
+            .toList());
     return ok(data, req);
   }
 
@@ -128,44 +134,9 @@ public class AdminTradeQueryController {
     var detail =
         orders.getOrder(
             new AdminOrderDetailQuery(id(orderId), query(req, session), orderAuthorization(session)));
-    Map<String, Object> data = orderSummary(detail);
-    data.put("originalAmount", money(detail.originalAmount()));
-    data.put("discountAmount", money(detail.discountAmount()));
-    data.put("refundApplicationStatus", detail.refundApplicationStatus());
-    data.put("refundStatus", detail.refundStatus());
-    data.put("aftersaleStatus", detail.aftersaleStatus());
-    data.put("verificationStatus", detail.verificationStatus());
-    data.put("refundOrderId", detail.refundOrderId());
-    data.put("paidAt", time(detail.paidAt()));
-    data.put("confirmedAt", time(detail.confirmedAt()));
-    data.put("verifiedAt", time(detail.verifiedAt()));
-    data.put("canceledAt", time(detail.canceledAt()));
-    data.put(
-        "serviceSnapshot",
-        Map.of(
-            "serviceName", text(detail.serviceSnapshot().serviceName()),
-            "categoryName", detail.serviceSnapshot().categoryName(),
-            "merchantName", text(detail.serviceSnapshot().merchantName()),
-            "storeName", text(detail.serviceSnapshot().storeName()),
-            "storeAddress", text(detail.serviceSnapshot().storeAddress()),
-            "servicePrice", money(detail.serviceSnapshot().servicePrice()),
-            "serviceDurationMinutes", detail.serviceSnapshot().serviceDurationMinutes()));
-    data.put(
-        "rescheduleRecords",
-        detail.rescheduleRecords().stream()
-            .map(
-                record -> {
-                  Map<String, Object> row = new LinkedHashMap<>();
-                  row.put("rescheduleId", record.rescheduleId());
-                  row.put("oldStart", time(record.oldStart()));
-                  row.put("oldEnd", time(record.oldEnd()));
-                  row.put("newStart", time(record.newStart()));
-                  row.put("newEnd", time(record.newEnd()));
-                  row.put("rescheduledAt", time(record.rescheduledAt()));
-                  return row;
-                })
-            .toList());
-    return ok(data, req);
+    // Relay the order-owned wire projection verbatim; no fact/display mapping here.
+    return ok(
+        com.petplatform.order.biz.application.AdminOrderSnapshotWire.detailFields(detail), req);
   }
 
   @GetMapping("/orders/{orderId}/status-logs")
@@ -179,7 +150,11 @@ public class AdminTradeQueryController {
     data.put("page", result.page());
     data.put("pageSize", result.pageSize());
     data.put("total", result.total());
-    data.put("items", result.items().stream().map(AdminTradeQueryController::statusLog).toList());
+    data.put(
+        "items",
+        result.items().stream()
+            .map(com.petplatform.order.biz.application.AdminOrderSnapshotWire::logFields)
+            .toList());
     return ok(data, req);
   }
 
@@ -316,78 +291,31 @@ public class AdminTradeQueryController {
     return ok(data, req);
   }
 
-  private static Map<String, Object> orderSummary(AdminOrderQueryApi.AdminOrderDetail detail) {
-    return orderSummary(new AdminOrderQueryApi.AdminOrderSummary(
-        detail.orderId(), detail.orderNo(), detail.userId(), detail.merchantId(),
-        detail.storeId(), detail.serviceId(), detail.displayStatus(), detail.orderStage(),
-        detail.paymentStatus(), detail.serviceSnapshot().merchantName(),
-        detail.serviceSnapshot().serviceName(), detail.payAmount(), detail.refundedAmount(),
-        detail.appointmentStart(), detail.appointmentEnd(), detail.createdAt(),
-        detail.rescheduleCount()));
-  }
-
-  private static Map<String, Object> orderSummary(AdminOrderQueryApi.AdminOrderSummary summary) {
+  private static Map<String, Object> refundSummary(AdminRefundQueryApi.AdminRefundSummary refundRow) {
     Map<String, Object> row = new LinkedHashMap<>();
-    row.put("orderId", summary.orderId());
-    row.put("orderNo", summary.orderNo());
-    row.put("userId", summary.userId());
-    row.put("merchantId", summary.merchantId());
-    row.put("storeId", summary.storeId());
-    row.put("serviceId", summary.serviceId());
-    row.put("displayStatus", summary.displayStatus());
-    row.put("orderStage", summary.orderStage());
-    row.put("paymentStatus", summary.paymentStatus());
-    row.put("merchantName", summary.merchantName());
-    row.put("serviceName", summary.serviceName());
-    row.put("payAmount", money(summary.payAmount()));
-    row.put("refundedAmount", money(summary.refundedAmount()));
-    row.put("appointmentStart", time(summary.appointmentStart()));
-    row.put("appointmentEnd", time(summary.appointmentEnd()));
-    row.put("createdAt", time(summary.createdAt()));
-    row.put("rescheduleCount", summary.rescheduleCount());
-    return row;
-  }
-
-  private static Map<String, Object> statusLog(AdminOrderQueryApi.StatusLog log) {
-    Map<String, Object> row = new LinkedHashMap<>();
-    row.put("logId", log.logId());
-    row.put("orderId", log.orderId());
-    row.put("dimension", log.dimension());
-    row.put("fromStatus", log.fromStatus());
-    row.put("toStatus", log.toStatus());
-    row.put("eventType", log.eventType());
-    row.put("operatorType", log.operatorType());
-    row.put("operatorId", log.operatorId());
-    row.put("remark", log.remark());
-    row.put("createdAt", time(log.createdAt()));
-    return row;
-  }
-
-  private static Map<String, Object> refundSummary(AdminRefundQueryApi.AdminRefundSummary refund) {
-    Map<String, Object> row = new LinkedHashMap<>();
-    row.put("refundOrderId", refund.refundOrderId());
-    row.put("refundNo", refund.refundNo());
-    row.put("orderId", refund.orderId());
-    row.put("refundType", refund.refundType());
-    row.put("sourceType", refund.sourceType());
-    row.put("status", refund.status());
-    row.put("refundAmount", money(refund.refundAmount()));
-    row.put("initiatorType", refund.initiatorType());
-    row.put("channelRefundNo", refund.channelRefundNo());
-    row.put("succeededAt", time(refund.succeededAt()));
-    row.put("createdAt", time(refund.createdAt()));
+    row.put("refundOrderId", refundRow.refundOrderId());
+    row.put("refundNo", refundRow.refundNo());
+    row.put("orderId", refundRow.orderId());
+    row.put("refundType", refundRow.refundType());
+    row.put("sourceType", refundRow.sourceType());
+    row.put("status", refundRow.status());
+    row.put("refundAmount", money(refundRow.refundAmount()));
+    row.put("initiatorType", refundRow.initiatorType());
+    row.put("channelRefundNo", refundRow.channelRefundNo());
+    row.put("succeededAt", time(refundRow.succeededAt()));
+    row.put("createdAt", time(refundRow.createdAt()));
     return row;
   }
 
   private static Map<String, Object> verificationSummary(
-      AdminVerificationQueryApi.AdminVerificationSummary verification) {
+      AdminVerificationQueryApi.AdminVerificationSummary verificationRow) {
     Map<String, Object> row = new LinkedHashMap<>();
-    row.put("verificationId", verification.verificationId());
-    row.put("verificationNo", verification.verificationNo());
-    row.put("orderId", verification.orderId());
-    row.put("storeId", verification.storeId());
-    row.put("verifyMethod", verification.verifyMethod());
-    row.put("verifiedAt", time(verification.verifiedAt()));
+    row.put("verificationId", verificationRow.verificationId());
+    row.put("verificationNo", verificationRow.verificationNo());
+    row.put("orderId", verificationRow.orderId());
+    row.put("storeId", verificationRow.storeId());
+    row.put("verifyMethod", verificationRow.verifyMethod());
+    row.put("verifiedAt", time(verificationRow.verifiedAt()));
     return row;
   }
 
