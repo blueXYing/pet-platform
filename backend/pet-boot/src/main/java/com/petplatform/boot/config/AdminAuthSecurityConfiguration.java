@@ -35,7 +35,8 @@ public class AdminAuthSecurityConfiguration {
       @Value("${pet.service.command.enabled:false}") boolean serviceCommandEnabled,
       @Value("${pet.aftersale.http.enabled:false}") boolean afterSaleHttpEnabled,
       @Value("${pet.review.appeal.http.enabled:false}") boolean reviewAppealHttpEnabled,
-      @Value("${pet.points.task.http.enabled:false}") boolean pointsTaskHttpEnabled)
+      @Value("${pet.points.task.http.enabled:false}") boolean pointsTaskHttpEnabled,
+      @Value("${pet.admin.trade.http.enabled:false}") boolean adminTradeHttpEnabled)
       throws Exception {
     http.securityMatcher("/api/v1/admin/**")
         .csrf(c -> c.disable())
@@ -73,6 +74,17 @@ public class AdminAuthSecurityConfiguration {
               a.requestMatchers(HttpMethod.GET, "/api/v1/admin/points-task-config")
                   .permitAll();
               a.requestMatchers(HttpMethod.PUT, "/api/v1/admin/points-task-config")
+                  .permitAll();
+            }
+            if (adminTradeHttpEnabled) {
+              // Platform trade read face (contract 63 / ADM-002+A-003): GET-only routes; the
+              // ADMIN_WEB Bearer plus the order.*/refund.read action codes are enforced by the
+              // filter and re-checked by each kernel per call.
+              a.requestMatchers(HttpMethod.GET,
+                  "/api/v1/admin/trade/orders", "/api/v1/admin/trade/orders/*",
+                  "/api/v1/admin/trade/orders/*/status-logs",
+                  "/api/v1/admin/trade/refunds", "/api/v1/admin/trade/refunds/*",
+                  "/api/v1/admin/trade/verifications", "/api/v1/admin/trade/verifications/*")
                   .permitAll();
             }
             a.requestMatchers(

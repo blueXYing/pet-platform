@@ -1636,6 +1636,30 @@ PUT /api/v1/admin/points-task-config
 
 ---
 
+## 5.11 运营交易查询（63 号，2026-10-14 ADM-002/A-003 切片）
+
+> 本节为摘要；权威契约在 `63-Admin-Trade-Query-Contract-v0.1.md`。
+
+```text
+GET /api/v1/admin/trade/orders
+GET /api/v1/admin/trade/orders/{orderId}
+GET /api/v1/admin/trade/orders/{orderId}/status-logs
+GET /api/v1/admin/trade/refunds
+GET /api/v1/admin/trade/refunds/{refundOrderId}
+GET /api/v1/admin/trade/verifications
+GET /api/v1/admin/trade/verifications/{verificationId}
+```
+
+七条只读路由随 `pet.admin.trade.http.enabled`（默认 false）+ `pet.auth.admin.enabled` 装配；动作码
+`order.read` / `order.status-log.read` / `order.verification-log.read` / `refund.read`（AUTH-001
+提案矩阵第 7/8 行，随切片登记部署清单），控制器快照校验 + 模块内核 `AdminAuthorizationQueryApi`
+每次重验；trade 面要求数据范围 `ALL`（CITY/MERCHANT 因订单/退款/核销域缺权威城市/商家归属事实
+fail-closed 403，CCR-PERM-001 §3）。脱敏：不回传手机号/地址联系人明文/凭证密文/申请理由密文。
+§5.2 `channel-query`/`retry`、§5.5 `abnormal-close`、§5.6 商家下线保持草案未实现（需各自写内核
+切片）；部分退款仅运营售后裁决（51 号，A-004 已交付）。
+
+---
+
 ---
 
 # 6. 拉卡拉回调

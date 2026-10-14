@@ -66,7 +66,10 @@ class AdminAuthPrimitivesTest {
             "review.appeal.read", "review.appeal.decide",
             // Contract-58 earn slice (CCR-POINTS-TASK-001, 32号 ruling): the config read/write
             // enforcement points ship in the same slice.
-            "points.task.config.read", "points.task.config.write"),
+            "points.task.config.read", "points.task.config.write",
+            // Contract-63 platform trade read slice (ADM-002/A-003, AUTH-001 matrix rows 7/8):
+            // GET-only query enforcement points ship in the same slice.
+            "order.read", "order.status-log.read", "order.verification-log.read", "refund.read"),
         AdminPermissionEvaluator.DEPLOYED_ACTIONS);
     assertEquals(AdminPermissionEvaluator.DEPLOYED_ACTIONS.stream().sorted().toList(),AdminPermissionEvaluator.evaluate(true,List.of("refund.retry"),AdminPermissionEvaluator.DEPLOYED_ACTIONS));
         assertEquals(List.of(),AdminPermissionEvaluator.evaluate(false,List.of("refund.retry"),AdminPermissionEvaluator.DEPLOYED_ACTIONS));

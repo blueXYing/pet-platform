@@ -13143,6 +13143,357 @@ paths:
           $ref: '#/components/responses/AddressHttpError'
       x-route-party: USER
       x-audience: MINIAPP
+  /admin/trade/orders:
+    get:
+      tags:
+      - Admin-Trade-Query
+      summary: 平台订单分页（order.read）
+      operationId: adminListTradeOrders
+      x-implementation-status: IMPLEMENTED_DEFAULT_OFF
+      x-default-enabled: false
+      x-contract: 63-Admin-Trade-Query-Contract-v0.1.md
+      x-assembly-switch: pet.admin.trade.http.enabled
+      x-route-party: OPS
+      x-audience: ADMIN_WEB
+      x-required-actions: [order.read]
+      description: 63号（HTTP10 §5.11）。DisplayOrderStatus 由 order 域真值表统一计算；
+        固定排序 created_at DESC, id DESC；脱敏（无手机号/地址联系人明文）；dataScope 非 ALL 一律 403。
+      security:
+      - bearerAuth: []
+      parameters:
+      - name: page
+        in: query
+        required: false
+        schema: {type: integer, minimum: 1, maximum: 10000, default: 1}
+      - name: pageSize
+        in: query
+        required: false
+        schema: {type: integer, minimum: 1, maximum: 100, default: 20}
+      - name: displayStatus
+        in: query
+        required: false
+        schema:
+          type: string
+          enum: [PENDING_PAYMENT, PENDING_CONFIRM, PENDING_SERVICE, COMPLETED, CANCELED, REFUNDING, REFUND_PENDING_CONFIRM, PARTIAL_REFUND, REFUNDED, AFTERSALE]
+      - name: paymentStatus
+        in: query
+        required: false
+        schema: {type: string, enum: [INIT, PAID]}
+      - name: merchantId
+        in: query
+        required: false
+        schema: {$ref: '#/components/schemas/PublicId'}
+      - name: storeId
+        in: query
+        required: false
+        schema: {$ref: '#/components/schemas/PublicId'}
+      - name: orderNo
+        in: query
+        required: false
+        schema: {$ref: '#/components/schemas/PublicId'}
+      - name: keyword
+        in: query
+        required: false
+        description: 2..64 字符；纯数字合法 Snowflake 形态按 order_no 精确，否则按服务快照商家名 LIKE。
+        schema: {type: string, minLength: 2, maxLength: 64}
+      - name: createdFrom
+        in: query
+        required: false
+        schema: {type: string, format: date-time}
+      - name: createdTo
+        in: query
+        required: false
+        schema: {type: string, format: date-time}
+      - name: rescheduledOnly
+        in: query
+        required: false
+        description: true=仅 reschedule_count>0（6.3.3 改期核对）。
+        schema: {type: string, enum: ['true', 'false']}
+      responses:
+        '400': {$ref: '#/components/responses/BadRequest'}
+        '401': {$ref: '#/components/responses/Unauthorized'}
+        '403': {$ref: '#/components/responses/Forbidden'}
+        '503': {$ref: '#/components/responses/DependencyUnavailable'}
+        '200':
+          description: 成功
+          headers:
+            Cache-Control:
+              schema: {type: string, enum: [no-store]}
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AdminTradeOrderPageEnvelope'
+  /admin/trade/orders/{orderId}:
+    get:
+      tags:
+      - Admin-Trade-Query
+      summary: 平台订单详情（order.read）
+      operationId: adminGetTradeOrder
+      x-implementation-status: IMPLEMENTED_DEFAULT_OFF
+      x-default-enabled: false
+      x-contract: 63-Admin-Trade-Query-Contract-v0.1.md
+      x-assembly-switch: pet.admin.trade.http.enabled
+      x-route-party: OPS
+      x-audience: ADMIN_WEB
+      x-required-actions: [order.read]
+      description: 63号。履约层（订单投影+服务快照+改期记录）；退款/核销层经 refundOrderId 与
+        verification 面按 orderId 关联查询；支付渠道交易号与结算层不在本切片（OD-W0-001 未决）。
+        内核每次以 AdminResourceScope 重验（未知 ID 与越范围同形 404）。
+      security:
+      - bearerAuth: []
+      parameters:
+      - name: orderId
+        in: path
+        required: true
+        schema: {$ref: '#/components/schemas/PublicId'}
+      responses:
+        '400': {$ref: '#/components/responses/BadRequest'}
+        '401': {$ref: '#/components/responses/Unauthorized'}
+        '403': {$ref: '#/components/responses/Forbidden'}
+        '404': {$ref: '#/components/responses/NotFound'}
+        '503': {$ref: '#/components/responses/DependencyUnavailable'}
+        '200':
+          description: 成功
+          headers:
+            Cache-Control:
+              schema: {type: string, enum: [no-store]}
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AdminTradeOrderDetailEnvelope'
+  /admin/trade/orders/{orderId}/status-logs:
+    get:
+      tags:
+      - Admin-Trade-Query
+      summary: 订单状态时间轴（order.status-log.read）
+      operationId: adminListTradeOrderStatusLogs
+      x-implementation-status: IMPLEMENTED_DEFAULT_OFF
+      x-default-enabled: false
+      x-contract: 63-Admin-Trade-Query-Contract-v0.1.md
+      x-assembly-switch: pet.admin.trade.http.enabled
+      x-route-party: OPS
+      x-audience: ADMIN_WEB
+      x-required-actions: [order.status-log.read]
+      description: 63号。order_status_log append-only 时间轴（六维度），固定 created_at ASC, id ASC。
+      security:
+      - bearerAuth: []
+      parameters:
+      - name: orderId
+        in: path
+        required: true
+        schema: {$ref: '#/components/schemas/PublicId'}
+      responses:
+        '400': {$ref: '#/components/responses/BadRequest'}
+        '401': {$ref: '#/components/responses/Unauthorized'}
+        '403': {$ref: '#/components/responses/Forbidden'}
+        '404': {$ref: '#/components/responses/NotFound'}
+        '503': {$ref: '#/components/responses/DependencyUnavailable'}
+        '200':
+          description: 成功
+          headers:
+            Cache-Control:
+              schema: {type: string, enum: [no-store]}
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AdminTradeStatusLogPageEnvelope'
+  /admin/trade/refunds:
+    get:
+      tags:
+      - Admin-Trade-Query
+      summary: 退款单分页（refund.read）
+      operationId: adminListTradeRefunds
+      x-implementation-status: IMPLEMENTED_DEFAULT_OFF
+      x-default-enabled: false
+      x-contract: 63-Admin-Trade-Query-Contract-v0.1.md
+      x-assembly-switch: pet.admin.trade.http.enabled
+      x-route-party: OPS
+      x-audience: ADMIN_WEB
+      x-required-actions: [refund.read]
+      description: 63号（HTTP10 §5.2 查询面）。refund_order 平台只读列表；一笔订单最多一张业务退款单。
+        channel-query/retry 保持草案（本切片不实现）。
+      security:
+      - bearerAuth: []
+      parameters:
+      - name: page
+        in: query
+        required: false
+        schema: {type: integer, minimum: 1, maximum: 10000, default: 1}
+      - name: pageSize
+        in: query
+        required: false
+        schema: {type: integer, minimum: 1, maximum: 100, default: 20}
+      - name: status
+        in: query
+        required: false
+        schema: {type: string, enum: [CREATED, PROCESSING, SUCCESS, FAILED, UNKNOWN]}
+      - name: sourceType
+        in: query
+        required: false
+        schema: {type: string, enum: [PRESTART_AUTO, MERCHANT_REJECT_ORDER, MERCHANT_APPROVED, MERCHANT_TIMEOUT_AUTO, AFTERSALE_DECISION, LATE_PAYMENT_TIMEOUT]}
+      - name: refundType
+        in: query
+        required: false
+        schema: {type: string, enum: [FULL, PARTIAL]}
+      - name: orderId
+        in: query
+        required: false
+        schema: {$ref: '#/components/schemas/PublicId'}
+      - name: createdFrom
+        in: query
+        required: false
+        schema: {type: string, format: date-time}
+      - name: createdTo
+        in: query
+        required: false
+        schema: {type: string, format: date-time}
+      responses:
+        '400': {$ref: '#/components/responses/BadRequest'}
+        '401': {$ref: '#/components/responses/Unauthorized'}
+        '403': {$ref: '#/components/responses/Forbidden'}
+        '503': {$ref: '#/components/responses/DependencyUnavailable'}
+        '200':
+          description: 成功
+          headers:
+            Cache-Control:
+              schema: {type: string, enum: [no-store]}
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AdminTradeRefundPageEnvelope'
+  /admin/trade/refunds/{refundOrderId}:
+    get:
+      tags:
+      - Admin-Trade-Query
+      summary: 退款单详情（refund.read）
+      operationId: adminGetTradeRefund
+      x-implementation-status: IMPLEMENTED_DEFAULT_OFF
+      x-default-enabled: false
+      x-contract: 63-Admin-Trade-Query-Contract-v0.1.md
+      x-assembly-switch: pet.admin.trade.http.enabled
+      x-route-party: OPS
+      x-audience: ADMIN_WEB
+      x-required-actions: [refund.read]
+      description: 63号。refund_order + 关联申请投影（不含密文理由）+ 执行事实（存在时）。
+        申请理由密文（reason_text_cipher）不出域。
+      security:
+      - bearerAuth: []
+      parameters:
+      - name: refundOrderId
+        in: path
+        required: true
+        schema: {$ref: '#/components/schemas/PublicId'}
+      responses:
+        '400': {$ref: '#/components/responses/BadRequest'}
+        '401': {$ref: '#/components/responses/Unauthorized'}
+        '403': {$ref: '#/components/responses/Forbidden'}
+        '404': {$ref: '#/components/responses/NotFound'}
+        '503': {$ref: '#/components/responses/DependencyUnavailable'}
+        '200':
+          description: 成功
+          headers:
+            Cache-Control:
+              schema: {type: string, enum: [no-store]}
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AdminTradeRefundDetailEnvelope'
+  /admin/trade/verifications:
+    get:
+      tags:
+      - Admin-Trade-Query
+      summary: 平台核销记录分页（order.verification-log.read）
+      operationId: adminListTradeVerifications
+      x-implementation-status: IMPLEMENTED_DEFAULT_OFF
+      x-default-enabled: false
+      x-contract: 63-Admin-Trade-Query-Contract-v0.1.md
+      x-assembly-switch: pet.admin.trade.http.enabled
+      x-route-party: OPS
+      x-audience: ADMIN_WEB
+      x-required-actions: [order.verification-log.read]
+      description: 63号（HTTP10 §5.1 核销记录面）。verification_record 平台只读列表；
+        核销成功是订单已完成的唯一入口；凭证密文不出域。
+      security:
+      - bearerAuth: []
+      parameters:
+      - name: page
+        in: query
+        required: false
+        schema: {type: integer, minimum: 1, maximum: 10000, default: 1}
+      - name: pageSize
+        in: query
+        required: false
+        schema: {type: integer, minimum: 1, maximum: 100, default: 20}
+      - name: orderId
+        in: query
+        required: false
+        schema: {$ref: '#/components/schemas/PublicId'}
+      - name: storeId
+        in: query
+        required: false
+        schema: {$ref: '#/components/schemas/PublicId'}
+      - name: method
+        in: query
+        required: false
+        schema: {type: string, enum: [SCAN, MANUAL]}
+      - name: verifiedFrom
+        in: query
+        required: false
+        schema: {type: string, format: date-time}
+      - name: verifiedTo
+        in: query
+        required: false
+        schema: {type: string, format: date-time}
+      responses:
+        '400': {$ref: '#/components/responses/BadRequest'}
+        '401': {$ref: '#/components/responses/Unauthorized'}
+        '403': {$ref: '#/components/responses/Forbidden'}
+        '503': {$ref: '#/components/responses/DependencyUnavailable'}
+        '200':
+          description: 成功
+          headers:
+            Cache-Control:
+              schema: {type: string, enum: [no-store]}
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AdminTradeVerificationPageEnvelope'
+  /admin/trade/verifications/{verificationId}:
+    get:
+      tags:
+      - Admin-Trade-Query
+      summary: 核销记录详情（order.verification-log.read）
+      operationId: adminGetTradeVerification
+      x-implementation-status: IMPLEMENTED_DEFAULT_OFF
+      x-default-enabled: false
+      x-contract: 63-Admin-Trade-Query-Contract-v0.1.md
+      x-assembly-switch: pet.admin.trade.http.enabled
+      x-route-party: OPS
+      x-audience: ADMIN_WEB
+      x-required-actions: [order.verification-log.read]
+      description: 63号。核销记录 + 尝试链与风控尝试（争议溯源）；核销凭证密文/lookup/code 不回传。
+      security:
+      - bearerAuth: []
+      parameters:
+      - name: verificationId
+        in: path
+        required: true
+        schema: {$ref: '#/components/schemas/PublicId'}
+      responses:
+        '400': {$ref: '#/components/responses/BadRequest'}
+        '401': {$ref: '#/components/responses/Unauthorized'}
+        '403': {$ref: '#/components/responses/Forbidden'}
+        '404': {$ref: '#/components/responses/NotFound'}
+        '503': {$ref: '#/components/responses/DependencyUnavailable'}
+        '200':
+          description: 成功
+          headers:
+            Cache-Control:
+              schema: {type: string, enum: [no-store]}
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AdminTradeVerificationDetailEnvelope'
 components:
   securitySchemes:
     bearerAuth:
@@ -22748,6 +23099,335 @@ components:
         traceId:
           type: string
           minLength: 1
+    AdminTradeOrderSummary:
+      type: object
+      additionalProperties: false
+      required:
+      - orderId
+      - orderNo
+      - userId
+      - merchantId
+      - storeId
+      - serviceId
+      - displayStatus
+      - orderStage
+      - paymentStatus
+      - payAmount
+      - refundedAmount
+      - appointmentStart
+      - appointmentEnd
+      - createdAt
+      - rescheduleCount
+      properties:
+        orderId: {$ref: '#/components/schemas/PublicId'}
+        orderNo: {$ref: '#/components/schemas/PublicId'}
+        userId: {$ref: '#/components/schemas/PublicId'}
+        merchantId: {$ref: '#/components/schemas/PublicId'}
+        storeId: {$ref: '#/components/schemas/PublicId'}
+        serviceId: {$ref: '#/components/schemas/PublicId'}
+        displayStatus: {type: string}
+        orderStage: {type: string}
+        paymentStatus: {type: string}
+        merchantName: {type: string, minLength: 1, maxLength: 128}
+        serviceName: {type: string, minLength: 1, maxLength: 128}
+        payAmount: {$ref: '#/components/schemas/DecimalAmountOutput'}
+        refundedAmount: {$ref: '#/components/schemas/DecimalAmountOutput'}
+        appointmentStart: {$ref: '#/components/schemas/AuthTimestamp'}
+        appointmentEnd: {$ref: '#/components/schemas/AuthTimestamp'}
+        createdAt: {$ref: '#/components/schemas/AuthTimestamp'}
+        rescheduleCount: {type: integer, minimum: 0}
+    AdminTradeOrderDetail:
+      allOf:
+      - $ref: '#/components/schemas/AdminTradeOrderSummary'
+      - type: object
+        additionalProperties: false
+        required:
+        - originalAmount
+        - discountAmount
+        - verificationStatus
+        - refundOrderId
+        - serviceSnapshot
+        - rescheduleRecords
+        properties:
+          originalAmount: {$ref: '#/components/schemas/DecimalAmountOutput'}
+          discountAmount: {$ref: '#/components/schemas/DecimalAmountOutput'}
+          refundApplicationStatus: {type: string, nullable: true}
+          refundStatus: {type: string, nullable: true}
+          aftersaleStatus: {type: string, nullable: true}
+          verificationStatus: {type: string}
+          refundOrderId:
+            type: string
+            minLength: 1
+            maxLength: 19
+            pattern: '^[1-9][0-9]{0,18}(?![\s\S])'
+            x-maximum-decimal: '9223372036854775807'
+            nullable: true
+          paidAt: {$ref: '#/components/schemas/AuthTimestamp'}
+          confirmedAt: {$ref: '#/components/schemas/AuthTimestamp'}
+          verifiedAt: {$ref: '#/components/schemas/AuthTimestamp'}
+          canceledAt: {$ref: '#/components/schemas/AuthTimestamp'}
+          serviceSnapshot:
+            type: object
+            additionalProperties: false
+            required: [serviceName, merchantName, storeName, storeAddress, servicePrice, serviceDurationMinutes]
+            properties:
+              serviceName: {type: string, minLength: 1, maxLength: 128}
+              categoryName: {type: string, nullable: true, minLength: 1, maxLength: 64}
+              merchantName: {type: string, minLength: 1, maxLength: 128}
+              storeName: {type: string, minLength: 1, maxLength: 128}
+              storeAddress: {type: string, minLength: 1, maxLength: 255}
+              servicePrice: {$ref: '#/components/schemas/DecimalAmountOutput'}
+              serviceDurationMinutes: {type: integer, minimum: 1}
+          rescheduleRecords:
+            type: array
+            maxItems: 1
+            items:
+              type: object
+              additionalProperties: false
+              required: [rescheduleId, oldStart, oldEnd, newStart, newEnd, rescheduledAt]
+              properties:
+                rescheduleId: {$ref: '#/components/schemas/PublicId'}
+                oldStart: {$ref: '#/components/schemas/AuthTimestamp'}
+                oldEnd: {$ref: '#/components/schemas/AuthTimestamp'}
+                newStart: {$ref: '#/components/schemas/AuthTimestamp'}
+                newEnd: {$ref: '#/components/schemas/AuthTimestamp'}
+                rescheduledAt: {$ref: '#/components/schemas/AuthTimestamp'}
+    AdminTradeStatusLog:
+      type: object
+      additionalProperties: false
+      required:
+      - logId
+      - orderId
+      - dimension
+      - toStatus
+      - eventType
+      - operatorType
+      - createdAt
+      properties:
+        logId: {$ref: '#/components/schemas/PublicId'}
+        orderId: {$ref: '#/components/schemas/PublicId'}
+        dimension: {type: string, enum: [ORDER_STAGE, PAYMENT, REFUND_APPLICATION, REFUND, AFTERSALE, VERIFICATION]}
+        fromStatus: {type: string, nullable: true}
+        toStatus: {type: string, minLength: 1}
+        eventType: {type: string, minLength: 1, maxLength: 64}
+        operatorType: {type: string, enum: [USER, MERCHANT, OPS, SYSTEM, CHANNEL]}
+        operatorId:
+          type: string
+          minLength: 1
+          maxLength: 19
+          pattern: '^[1-9][0-9]{0,18}(?![\s\S])'
+          x-maximum-decimal: '9223372036854775807'
+          nullable: true
+        remark: {type: string, nullable: true, maxLength: 1000}
+        createdAt: {$ref: '#/components/schemas/AuthTimestamp'}
+    AdminTradeRefundSummary:
+      type: object
+      additionalProperties: false
+      required:
+      - refundOrderId
+      - refundNo
+      - orderId
+      - refundType
+      - sourceType
+      - status
+      - refundAmount
+      - initiatorType
+      - createdAt
+      properties:
+        refundOrderId: {$ref: '#/components/schemas/PublicId'}
+        refundNo: {$ref: '#/components/schemas/PublicId'}
+        orderId: {$ref: '#/components/schemas/PublicId'}
+        refundType: {type: string, enum: [FULL, PARTIAL]}
+        sourceType: {type: string, enum: [PRESTART_AUTO, MERCHANT_REJECT_ORDER, MERCHANT_APPROVED, MERCHANT_TIMEOUT_AUTO, AFTERSALE_DECISION, LATE_PAYMENT_TIMEOUT]}
+        status: {type: string, enum: [CREATED, PROCESSING, SUCCESS, FAILED, UNKNOWN]}
+        refundAmount: {$ref: '#/components/schemas/DecimalAmountOutput'}
+        initiatorType: {type: string, enum: [SYSTEM, MERCHANT, OPS]}
+        channelRefundNo: {type: string, nullable: true, maxLength: 128}
+        succeededAt:
+          type: string
+          minLength: 1
+          format: date-time
+          pattern: ^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}(Z|[+-]\d{2}:\d{2})$
+          nullable: true
+        createdAt: {$ref: '#/components/schemas/AuthTimestamp'}
+    AdminTradeRefundDetail:
+      allOf:
+      - $ref: '#/components/schemas/AdminTradeRefundSummary'
+      - type: object
+        additionalProperties: false
+        required:
+        - application
+        - execution
+        properties:
+          application:
+            type: object
+            additionalProperties: false
+            nullable: true
+            required: [applicationId, status]
+            properties:
+              applicationId: {$ref: '#/components/schemas/PublicId'}
+              status: {type: string, enum: [PENDING_MERCHANT, APPROVED, AUTO_APPROVED, REJECTED]}
+              requestedAmount: {$ref: '#/components/schemas/DecimalAmountOutput'}
+              merchantDeadline:
+                type: string
+                minLength: 1
+                format: date-time
+                pattern: ^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}(Z|[+-]\d{2}:\d{2})$
+                nullable: true
+              decidedAt:
+                type: string
+                minLength: 1
+                format: date-time
+                pattern: ^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}(Z|[+-]\d{2}:\d{2})$
+                nullable: true
+          execution:
+            type: object
+            additionalProperties: false
+            nullable: true
+            required: [channelTradeNo, refundAmount, channelPaidAt, currency]
+            properties:
+              channelTradeNo: {type: string, minLength: 1, maxLength: 128}
+              refundAmount: {$ref: '#/components/schemas/DecimalAmountOutput'}
+              channelPaidAt: {$ref: '#/components/schemas/AuthTimestamp'}
+              currency: {type: string, enum: [CNY]}
+    AdminTradeVerificationSummary:
+      type: object
+      additionalProperties: false
+      required:
+      - verificationId
+      - verificationNo
+      - orderId
+      - storeId
+      - verifyMethod
+      - verifiedAt
+      properties:
+        verificationId: {$ref: '#/components/schemas/PublicId'}
+        verificationNo: {$ref: '#/components/schemas/PublicId'}
+        orderId: {$ref: '#/components/schemas/PublicId'}
+        storeId: {$ref: '#/components/schemas/PublicId'}
+        verifyMethod: {type: string, enum: [SCAN, MANUAL]}
+        verifiedAt: {$ref: '#/components/schemas/AuthTimestamp'}
+    AdminTradeVerificationDetail:
+      allOf:
+      - $ref: '#/components/schemas/AdminTradeVerificationSummary'
+      - type: object
+        additionalProperties: false
+        required:
+        - attempts
+        - riskAttempts
+        properties:
+          operatorStaffId: {$ref: '#/components/schemas/PublicId'}
+          attempts:
+            type: array
+            items:
+              type: object
+              additionalProperties: false
+              required: [attemptId, result, attemptedAt]
+              properties:
+                attemptId: {$ref: '#/components/schemas/PublicId'}
+                result: {type: string, enum: [SUCCESS, FAILED, LOCKED, REJECTED]}
+                failReason: {type: string, nullable: true, maxLength: 128}
+                attemptedAt: {$ref: '#/components/schemas/AuthTimestamp'}
+          riskAttempts:
+            type: array
+            items:
+              type: object
+              additionalProperties: false
+              required: [riskAttemptId, resultCode, countsFailure, attemptedAt]
+              properties:
+                riskAttemptId: {$ref: '#/components/schemas/PublicId'}
+                resultCode: {type: string, minLength: 1, maxLength: 64}
+                countsFailure: {type: boolean}
+                attemptedAt: {$ref: '#/components/schemas/AuthTimestamp'}
+    AdminTradeOrderPageEnvelope:
+      allOf:
+      - $ref: '#/components/schemas/BaseEnvelope'
+      - type: object
+        properties:
+          data:
+            type: object
+            additionalProperties: false
+            required: [page, pageSize, total, items]
+            properties:
+              page: {type: integer}
+              pageSize: {type: integer}
+              total: {type: integer}
+              items:
+                type: array
+                items:
+                  $ref: '#/components/schemas/AdminTradeOrderSummary'
+    AdminTradeOrderDetailEnvelope:
+      allOf:
+      - $ref: '#/components/schemas/BaseEnvelope'
+      - type: object
+        properties:
+          data:
+            $ref: '#/components/schemas/AdminTradeOrderDetail'
+    AdminTradeStatusLogPageEnvelope:
+      allOf:
+      - $ref: '#/components/schemas/BaseEnvelope'
+      - type: object
+        properties:
+          data:
+            type: object
+            additionalProperties: false
+            required: [page, pageSize, total, items]
+            properties:
+              page: {type: integer}
+              pageSize: {type: integer}
+              total: {type: integer}
+              items:
+                type: array
+                items:
+                  $ref: '#/components/schemas/AdminTradeStatusLog'
+    AdminTradeRefundPageEnvelope:
+      allOf:
+      - $ref: '#/components/schemas/BaseEnvelope'
+      - type: object
+        properties:
+          data:
+            type: object
+            additionalProperties: false
+            required: [page, pageSize, total, items]
+            properties:
+              page: {type: integer}
+              pageSize: {type: integer}
+              total: {type: integer}
+              items:
+                type: array
+                items:
+                  $ref: '#/components/schemas/AdminTradeRefundSummary'
+    AdminTradeRefundDetailEnvelope:
+      allOf:
+      - $ref: '#/components/schemas/BaseEnvelope'
+      - type: object
+        properties:
+          data:
+            $ref: '#/components/schemas/AdminTradeRefundDetail'
+    AdminTradeVerificationPageEnvelope:
+      allOf:
+      - $ref: '#/components/schemas/BaseEnvelope'
+      - type: object
+        properties:
+          data:
+            type: object
+            additionalProperties: false
+            required: [page, pageSize, total, items]
+            properties:
+              page: {type: integer}
+              pageSize: {type: integer}
+              total: {type: integer}
+              items:
+                type: array
+                items:
+                  $ref: '#/components/schemas/AdminTradeVerificationSummary'
+    AdminTradeVerificationDetailEnvelope:
+      allOf:
+      - $ref: '#/components/schemas/BaseEnvelope'
+      - type: object
+        properties:
+          data:
+            $ref: '#/components/schemas/AdminTradeVerificationDetail'
   examples:
     AuthApprovedExample1:
       summary: Accepted AUTH example; fictional data, no Provider success claim

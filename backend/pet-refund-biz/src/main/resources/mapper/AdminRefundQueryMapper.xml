@@ -1,0 +1,47 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.petplatform.refund.biz.infrastructure.persistence.mapper.AdminRefundQueryMapper">
+    <!--
+      Contract 63 platform refund face (HTTP10 §5.2 query side). Read-only joins over the
+      module-owned refund_order / refund_execution / refund_application tables. Cipher columns
+      (reason_text_cipher, merchant_decision_reason already banned) are never selected. One
+      order keeps at most one business refund (uk_refund_order_once). All filters bind with #{}.
+    -->
+    <sql id="adminRefundFilter">
+        <if test="status != null">AND r.status = #{status}</if>
+        <if test="sourceType != null">AND r.source_type = #{sourceType}</if>
+        <if test="refundType != null">AND r.refund_type = #{refundType}</if>
+        <if test="orderId != null">AND r.order_id = #{orderId}</if>
+        <if test="createdFrom != null">AND r.created_at &gt;= #{createdFrom}</if>
+        <if test="createdTo != null">AND r.created_at &lt;= #{createdTo}</if>
+    </sql>
+    <sql id="adminRefundProjection">
+        SELECT r.id, r.refund_no, r.order_id, r.refund_type, r.source_type, r.status,
+               r.refund_amount, r.initiator_type, r.channel_refund_no, r.succeeded_at,
+               r.created_at, r.version,
+               a.id AS application_id, a.status AS application_status,
+               a.requested_amount, a.merchant_deadline, a.decided_at,
+               e.channel_trade_no, e.refund_amount AS execution_refund_amount,
+               e.channel_paid_at, e.currency
+        FROM refund_order r
+        LEFT JOIN refund_application a ON a.id = r.refund_application_id
+        LEFT JOIN refund_execution e ON e.refund_order_id = r.id
+    </sql>
+    <select id="countRefunds" resultType="long">
+        SELECT COUNT(*)
+        FROM refund_order r
+        WHERE 1 = 1
+        <include refid="adminRefundFilter"/>
+    </select>
+    <select id="selectRefundPage" resultType="com.petplatform.refund.biz.infrastructure.persistence.mapper.AdminRefundQueryMapper$RefundRow">
+        <include refid="adminRefundProjection"/>
+        WHERE 1 = 1
+        <include refid="adminRefundFilter"/>
+        ORDER BY r.created_at DESC, r.id DESC
+        LIMIT #{limit} OFFSET #{offset}
+    </select>
+    <select id="selectRefundById" resultType="com.petplatform.refund.biz.infrastructure.persistence.mapper.AdminRefundQueryMapper$RefundRow">
+        <include refid="adminRefundProjection"/>
+        WHERE r.id = #{id}
+    </select>
+</mapper>
