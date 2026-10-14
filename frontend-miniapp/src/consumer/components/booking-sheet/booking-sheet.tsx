@@ -18,6 +18,8 @@ import {
   type AvailabilityItem, type AvailabilityView, type BookingDate, type BookingDraft, type BookingScenario, type CreateOrderReceipt,
 } from '../../booking/model'
 import { ORDER_CREATE_SLOT, RealBookingRepository } from '../../booking/repository'
+import { RealAddressRepository } from '../../address/repository'
+import { addressFlat, type AddressView } from '../../address/model'
 import './booking-sheet.css'
 
 // 预约下单半屏弹层（Figma 690:4506「立即预约」原稿形态：服务详情页/门店页之上的白色半屏
@@ -70,6 +72,11 @@ export function BookingSheet({ serviceId, storeId: storeIdParam, preview, scenar
   const [pickupStart, setPickupStart] = useState<string | null>(null)
   const [returnStart, setReturnStart] = useState<string | null>(null)
   const [serviceAddress, setServiceAddress] = useState('')
+  // 地址簿快选（契约 59 切片，32号第二批）：接送地址区上方平铺地址条目，点击把
+  // region+detail 平铺进既有 serviceAddress 文本快照（订单契约零改动）。仅真实登录态
+  // 渲染；读取失败静默降级（无快选，不影响手填）；preview/未登录不渲染。
+  const [quickAddresses, setQuickAddresses] = useState<readonly AddressView[]>([])
+  const quickLoadedRevision = useRef<number | null>(null)
   const [remark, setRemark] = useState('')
   const [notice, setNotice] = useState('')
   const [slotAuthExpired, setSlotAuthExpired] = useState(false)
@@ -177,6 +184,18 @@ export function BookingSheet({ serviceId, storeId: storeIdParam, preview, scenar
     return () => { mounted.current = false; sequence.current++ }
   }, [loadService, preview, serviceId])
   useEffect(() => { if (phase === 'ready' && service && date) void loadSlots(date) }, [phase, service, date, loadSlots])
+  // 地址簿快选懒加载：接送弹层就绪后按会话坐标读一次地址簿（revision 变化即登录/
+  // 退出后重读，避免上一会话地址残留）；失败静默降级（手填不受影响）。幂等恢复优先：
+  // serviceAddress 先由 pending 命令载荷还原，快选只在其后点击覆盖。
+  useEffect(() => {
+    if (preview || phase !== 'ready' || !service
+      || !(service.fulfillmentType === 'PICKUP_DELIVERY' && PICKUP_SELECTION_ENABLED)
+      || quickLoadedRevision.current === scope.revision) return
+    quickLoadedRevision.current = scope.revision
+    new RealAddressRepository(consumerApi).list()
+      .then(list => { if (mounted.current) setQuickAddresses(list) })
+      .catch(() => { if (mounted.current) setQuickAddresses([]) })
+  }, [preview, phase, service, scope.revision])
   useDidShow(() => { if (phase === 'ready' && service) { void loadService(); void loadSlots(date) } })
 
   function chooseDate(iso: string) {
@@ -387,6 +406,17 @@ export function BookingSheet({ serviceId, storeId: storeIdParam, preview, scenar
             </View>
             {pickupFlow && <View className='bks-section'>
               <Text className='bks-label'>接送服务地址（必填）</Text>
+              {quickAddresses.length > 0 && <ScrollView scrollX className='bks-quick' showScrollbar={false}>
+                {quickAddresses.map(address => <Button
+                  key={address.addressId} id={`${idPrefix}-addr-${address.addressId}`}
+                  className={`bks-quick-chip${serviceAddress === addressFlat(address) ? ' is-selected' : ''}`}
+                  ariaLabel={`选择地址 ${address.contactName} ${addressFlat(address)}`}
+                  disabled={busy} hoverClass='none'
+                  onClick={() => setServiceAddress(addressFlat(address))}>
+                  <Text className='bks-quick-name'>{address.contactName}</Text>
+                  <Text className='bks-quick-text'>{addressFlat(address)}</Text>
+                </Button>)}
+              </ScrollView>}
               <Textarea id={`${idPrefix}-address`} className='bks-textarea' maxlength={65536} value={serviceAddress} disabled={busy}
                 placeholder='省市区＋详细地址，例如：上海市徐汇区某路100弄5号201室' onInput={event => setServiceAddress(event.detail.value)} />
             </View>}
