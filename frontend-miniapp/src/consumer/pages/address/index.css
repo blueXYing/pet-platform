@@ -1,0 +1,44 @@
+/* 地址管理列表页（设计稿 129:13141，登记表 §4.14）。官方色值 #5baae8/#c0ecff/#f0fbff；
+   头带沿用 profile-edit 族（#fff6e5 + #cdeede 底边，原稿标题残留「编辑资料」记偏差）。
+   WXSS 铁律：button 全重置（不用 margin !important）、无 button 嵌套、状态仅 className、禁 data-*。 */
+.addr-page { position: fixed; inset: 0; display: flex; flex-direction: column; background: #f0fbff; }
+.addr-page view, .addr-page button, .addr-page image, .addr-page text { box-sizing: border-box; }
+.addr-page button { padding: 0; margin: 0; border: 0; border-radius: 0; background: transparent; font: inherit; line-height: normal; text-align: left; }
+.addr-page button::after { border: 0; }
+.addr-page button[disabled] { opacity: .65; color: inherit; }
+
+.addr-status-area { height: var(--addr-top); flex-shrink: 0; }
+
+/* 头带（原稿 47 高：返回 32x32 左 19，标题 24 高左 59）。 */
+.addr-header { position: relative; height: calc(var(--addr-unit) * 47); flex-shrink: 0; background: #fff6e5; border-bottom: calc(var(--addr-unit) * 2) solid #cdeede; }
+.addr-back { position: absolute; left: calc(var(--addr-unit) * 19); top: calc(var(--addr-unit) * 8); width: calc(var(--addr-unit) * 32); height: calc(var(--addr-unit) * 32); }
+.addr-back-icon { width: 100%; height: 100%; display: block; }
+.addr-title { position: absolute; left: calc(var(--addr-unit) * 59); top: calc(var(--addr-unit) * 12); font-size: calc(var(--addr-unit) * 18); line-height: calc(var(--addr-unit) * 24); font-weight: 600; color: #1f2b30; }
+
+.addr-body { flex: 1; min-height: 0; }
+.addr-scroll { padding: calc(var(--addr-unit) * 16) calc(var(--addr-unit) * 29) calc(var(--addr-unit) * 96); }
+.addr-state { padding: calc(var(--addr-unit) * 48) calc(var(--addr-unit) * 16); text-align: center; font-size: calc(var(--addr-unit) * 13); line-height: calc(var(--addr-unit) * 20); color: #577683; }
+.addr-state-action { margin-top: calc(var(--addr-unit) * 12); text-align: center; }
+.addr-state-btn { display: inline-block; padding: calc(var(--addr-unit) * 8) calc(var(--addr-unit) * 20); border-radius: calc(var(--addr-unit) * 18); background: #5baae8; color: #ffffff; font-size: calc(var(--addr-unit) * 13); line-height: calc(var(--addr-unit) * 18); }
+
+/* 卡区（原稿 x13 w375；卡白底圆角 12，内边 14，内容行 40.5 + 操作行 41）。 */
+.addr-cards { display: flex; flex-direction: column; gap: calc(var(--addr-unit) * 12); }
+.addr-card { background: #ffffff; border-radius: calc(var(--addr-unit) * 12); box-shadow: 0 calc(var(--addr-unit) * 2) calc(var(--addr-unit) * 6) rgba(87, 118, 131, 0.10); padding: calc(var(--addr-unit) * 14); }
+.addr-card-head { display: flex; align-items: center; gap: calc(var(--addr-unit) * 8); }
+.addr-card-name { font-size: calc(var(--addr-unit) * 15); line-height: calc(var(--addr-unit) * 20); font-weight: 600; color: #1f2b30; }
+.addr-card-phone { font-size: calc(var(--addr-unit) * 12); line-height: calc(var(--addr-unit) * 16); color: #577683; }
+.addr-card-pill { padding: calc(var(--addr-unit) * 1) calc(var(--addr-unit) * 6); border-radius: calc(var(--addr-unit) * 4); background: #c0ecff; }
+.addr-card-pill text { font-size: calc(var(--addr-unit) * 11); line-height: calc(var(--addr-unit) * 15); color: #2f83c7; }
+.addr-card-region { display: block; margin-top: calc(var(--addr-unit) * 6); font-size: calc(var(--addr-unit) * 13); line-height: calc(var(--addr-unit) * 17); color: #37474f; }
+.addr-card-detail { display: block; margin-top: calc(var(--addr-unit) * 2); font-size: calc(var(--addr-unit) * 13); line-height: calc(var(--addr-unit) * 17); color: #577683; }
+.addr-card-actions { display: flex; justify-content: flex-end; align-items: center; gap: calc(var(--addr-unit) * 20); margin-top: calc(var(--addr-unit) * 12); padding-top: calc(var(--addr-unit) * 12); border-top: calc(var(--addr-unit) * 1) solid #f0fbff; }
+.addr-card-act { font-size: calc(var(--addr-unit) * 13); line-height: calc(var(--addr-unit) * 16); color: #2f83c7; }
+.addr-card-act-danger { color: #e8756a; }
+
+.addr-notice { display: block; margin-top: calc(var(--addr-unit) * 12); text-align: center; font-size: calc(var(--addr-unit) * 12); line-height: calc(var(--addr-unit) * 18); color: #577683; }
+
+/* 底部新增钮（原稿 x29 w343 h44 y679：主蓝胶囊、白字 20）。 */
+.addr-foot { position: absolute; left: 0; right: 0; bottom: calc(var(--addr-unit) * 13); display: flex; justify-content: center; }
+.addr-new { width: calc(var(--addr-unit) * 343); height: calc(var(--addr-unit) * 44); border-radius: calc(var(--addr-unit) * 22); background: #5baae8; color: #ffffff; font-size: calc(var(--addr-unit) * 15); line-height: calc(var(--addr-unit) * 44); text-align: center; font-weight: 500; }
+.addr-new::after { border: none; }
+.addr-new[disabled] { background: #a7dcfa; color: #f0fbff; }

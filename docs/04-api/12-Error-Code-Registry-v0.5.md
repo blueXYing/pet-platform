@@ -198,6 +198,8 @@ HTTP 映射只属于 Adapter 层；内部 Java API 通过稳定 code 表达同�
 |---|---|---:|
 | USER_FROZEN | 用户账号冻结/注销，拒绝写入 | 403 |
 | PET_NOT_FOUND | 宠物不存在/已删除/归属不符（防枚举统一语义，内部与HTTP同义） | 404 |
+| ADDRESS_NOT_FOUND | 地址不存在/已删除/归属不符（防枚举统一语义，59号） | 404 |
+| ADDRESS_LIMIT_EXCEEDED | 单用户 ACTIVE 地址超上限 20 条（59号） | 400 |
 
 ## 14. 使用规则
 
