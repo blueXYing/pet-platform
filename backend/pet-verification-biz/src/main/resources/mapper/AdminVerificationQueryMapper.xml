@@ -1,0 +1,49 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.petplatform.verification.biz.infrastructure.persistence.mapper.AdminVerificationQueryMapper">
+    <!--
+      Contract 63 platform verification face (HTTP10 §5.1 verification-log read, 运营 PRD
+      6.3.5). Read-only over the module-owned verification_record / verification_attempt /
+      verification_credential_risk_attempt tables. Credential cipher material (code_cipher,
+      lookup hash) is never selected. All filters bind with #{}, no string substitution.
+    -->
+    <sql id="adminVerificationFilter">
+        <if test="orderId != null">AND v.order_id = #{orderId}</if>
+        <if test="storeId != null">AND v.store_id = #{storeId}</if>
+        <if test="method != null">AND v.verify_method = #{method}</if>
+        <if test="verifiedFrom != null">AND v.verified_at &gt;= #{verifiedFrom}</if>
+        <if test="verifiedTo != null">AND v.verified_at &lt;= #{verifiedTo}</if>
+    </sql>
+    <select id="countVerifications" resultType="long">
+        SELECT COUNT(*)
+        FROM verification_record v
+        WHERE 1 = 1
+        <include refid="adminVerificationFilter"/>
+    </select>
+    <select id="selectVerificationPage" resultType="com.petplatform.verification.biz.infrastructure.persistence.mapper.AdminVerificationQueryMapper$VerificationRow">
+        SELECT v.id, v.verification_no, v.order_id, v.store_id, v.verify_method, v.verified_at
+        FROM verification_record v
+        WHERE 1 = 1
+        <include refid="adminVerificationFilter"/>
+        ORDER BY v.verified_at DESC, v.id DESC
+        LIMIT #{limit} OFFSET #{offset}
+    </select>
+    <select id="selectVerificationById" resultType="com.petplatform.verification.biz.infrastructure.persistence.mapper.AdminVerificationQueryMapper$VerificationRow">
+        SELECT v.id, v.verification_no, v.order_id, v.store_id, v.operator_staff_id,
+               v.verify_method, v.verified_at
+        FROM verification_record v
+        WHERE v.id = #{id}
+    </select>
+    <select id="selectAttempts" resultType="com.petplatform.verification.biz.infrastructure.persistence.mapper.AdminVerificationQueryMapper$AttemptRow">
+        SELECT a.id, a.result, a.fail_reason, a.created_at AS attempted_at
+        FROM verification_attempt a
+        WHERE a.order_id = #{orderId}
+        ORDER BY a.created_at ASC, a.id ASC
+    </select>
+    <select id="selectRiskAttempts" resultType="com.petplatform.verification.biz.infrastructure.persistence.mapper.AdminVerificationQueryMapper$RiskAttemptRow">
+        SELECT ra.id, ra.result_code, ra.counts_failure, ra.attempted_at
+        FROM verification_credential_risk_attempt ra
+        WHERE ra.order_id = #{orderId}
+        ORDER BY ra.attempted_at ASC, ra.id ASC
+    </select>
+</mapper>
