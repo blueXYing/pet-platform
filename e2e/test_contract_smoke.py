@@ -21,7 +21,8 @@ class ContractSmokeRegressions(unittest.TestCase):
         # Address book family (contract 59, 2026-10-13): six routes — list/detail/create/
         # update/delete/set-default; the legacy 14/11/3 subset stays untouched.
         self.assertEqual(result['addressOperations'], 6)
-        self.assertEqual(result['operations'], 149)
+        self.assertEqual(result['pointsTaskOperations'], 7)
+        self.assertEqual(result['operations'], 156)
         self.assertGreater(result['stringIdProperties'], 0)
 
     def test_local_reference_chain_and_allof_string_pass(self):

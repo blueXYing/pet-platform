@@ -65,17 +65,14 @@ assert.deepEqual(packages.map(p => ({ root: p.root, pages: p.pages })), [
   { root: 'consumer/pages/notification-preferences', pages: ['index'] },
   // Booking create + payment initiation slice (10号 §3.4/§3.5/§3.6).
   { root: 'consumer/pages/booking', pages: ['create', 'pay'] },
-<<<<<<< HEAD
-  // Points tasks slice (check-in / referral tasks / rewards, 60号契约).
-  { root: 'consumer/pages/points-tasks', pages: ['signin', 'tasks', 'rewards'] },
-=======
   // Address book slice (59号契约).
   { root: 'consumer/pages/address', pages: ['index', 'new', 'edit'] },
   // Become-provider entry slice (32号 §2 seven-page batch): landing + service-type selection.
   { root: 'consumer/pages/become-provider', pages: ['index', 'service-type'] },
   // Points mall display-state page (32号裁决第二节: 只赚不花, 商城=能看不能换).
   { root: 'consumer/pages/points-mall', pages: ['index'] },
->>>>>>> origin/develop
+  // Points tasks slice (check-in / referral tasks / rewards, 60号契约).
+  { root: 'consumer/pages/points-tasks', pages: ['signin', 'tasks', 'rewards'] },
 ], 'Merchant workspace, pet archive, merchant application, store services, coupon/points, aftersale and notification preference pages must be registered in the single app')
 for (const [folder, pages] of [['consumer/pages/aftersale', ['index', 'detail', 'apply']], ['merchant/pages/aftersale', ['index', 'detail']], ['merchant/pages/reviews', ['index']]]) {
   for (const page of pages) for (const extension of ['js', 'json', 'wxml', 'wxss']) {
