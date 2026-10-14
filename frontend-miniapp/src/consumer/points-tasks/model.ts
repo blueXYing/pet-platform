@@ -1,5 +1,5 @@
 // 58 号切片（签到 + 拉新任务 + 奖励领取，32 号裁决第二节）。本文件是 C 端赚取面投影契约的
-// 唯一替换点：契约 58-Points-Task-Contract-v0.1.md（docs/04-api），11 号 OpenAPI-Core
+// 唯一替换点：契约 60-Points-Task-Contract-v0.1.md（docs/04-api），11 号 OpenAPI-Core
 // cGetSignInStatus/cSignIn/cListPointsTasks/cClaimPointsReward/cBindReferralCode
 // （IMPLEMENTED_DEFAULT_OFF，pet.points.task.http.enabled 另需 pet.auth.c.enabled）。
 // 字段事实：

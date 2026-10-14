@@ -17,8 +17,8 @@
 1. **侦查完成**：契约链（contract_smoke.py 家族模式 + test_private_asset_contract 计数 operations=143）、积分表（06§9）、幂等先例（通知偏好切片 14号绑定表 admission/execution 双事务）、admin RBAC（AdminPermissionEvaluator.DEPLOYED_ACTIONS + AdminBearerAuthenticationFilter.VIEW + AdminAuthSecurityConfiguration permitAll 开关族）、C 链（CBearerSessionFilter.protectedPath + CSessionSecurityConfiguration）、设计稿三树（签到 690:11773 / 拉新 129:5854 / 领取奖励 129:7677，从 D:/Temp/figma-mcp/user-end-page1.xml 提取）。
 2. **文档已写**：
    - `planning/ccr/CCR-POINTS-TASK-001.md`（细则 S1~S3/R1~R4/M1~M2/A1~A3 定稿=最保守口径）
-   - `docs/04-api/58-Points-Task-Contract-v0.1.md`（7 操作 HTTP 契约）
-   - `docs/03-database/58-Points-Task-Schema-v0.1.sql`（4 新表：points_task_config/points_sign_in/points_referral_binding/points_task_award）
+   - `docs/04-api/60-Points-Task-Contract-v0.1.md`（7 操作 HTTP 契约）
+   - `docs/03-database/60-Points-Task-Schema-v0.1.sql`（4 新表：points_task_config/points_sign_in/points_referral_binding/points_task_award）
 3. **pet-points-api**（新，编译通过）：PointsTaskCommandApi（signIn/bindReferral/claimReward/updateConfig）、PointsTaskQueryApi（signInStatus/tasks/config）、PointsTaskTypes（DTO 全家）。
 4. **pet-points-biz**（新，编译通过）：PointsTaskService（内核全部规则）、PointsTaskStore（事务壳+幂等绑定，仿通知偏好店）、PointsTaskMapper+.xml（全部 SQL）、5 实体、InviteCodeCodec（P+13位base36+1校验位，可逆）、PointsTaskFacts（跨域事实端口）、PointsTaskCanonicalParams（canonical-v1 镜像）、两个 apiimpl；pom 加 jackson-databind。
 5. **pet-order-api/biz 增补**（编译通过，已评估保留）：OrderQueryApi.firstPaidAt(UserOrderFactQuery)（07号§7.1 增补）+ Impl + Service + Mapper XML 一条 MIN(paid_at) 聚合。**理由**（PR 已论证）：拉新"注册并下单"条件需要被邀请人首付事实；PaymentSucceeded/OrderPaid 载荷无 userId、事件路径必须读 order 持久层（ARCH-002 禁）；listMyOrders 主体锁死会话用户不能查被邀请人；biz→api 是既定模式（verification/review 先例）。只读、加法、52 行。
