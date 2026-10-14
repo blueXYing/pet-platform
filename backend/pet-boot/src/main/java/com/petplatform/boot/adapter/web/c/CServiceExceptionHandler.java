@@ -26,10 +26,8 @@ import org.springframework.web.method.annotation.MethodArgumentTypeMismatchExcep
         CServiceController.class, CStoreController.class,
         CScheduleController.class, CCouponController.class, CPointsController.class,
         COrderCreateController.class,
-        CVerificationCredentialController.class, CAddressController.class})
-        CVerificationCredentialController.class,
-        CFavoriteController.class,
-        CFootprintController.class})
+        CVerificationCredentialController.class, CAddressController.class,
+        CFavoriteController.class, CFootprintController.class})
 @Order(0)
 public class CServiceExceptionHandler {
 
