@@ -118,3 +118,11 @@
 .bks-sheet .bks-foot { flex-shrink: 0; padding: calc(var(--bks-unit) * 12) calc(var(--bks-unit) * 33) calc(var(--bks-unit) * 29); }
 .bks-sheet .bks-foot-action { display: block; width: 100%; height: calc(var(--bks-unit) * 44); border-radius: calc(var(--bks-unit) * 9999); background: #5baae8; color: #f8f5ee; font-size: calc(var(--bks-unit) * 14); line-height: calc(var(--bks-unit) * 44); font-weight: 500; text-align: center; }
 .bks-sheet .bks-foot-action[disabled] { opacity: .65; }
+
+/* 地址簿快选 chips（契约 59 切片）：接送地址区上方横滑条目，点击把 region+detail
+   平铺进 serviceAddress；仅真实登录态渲染，读取失败静默降级为纯手填。 */
+.bks-sheet .bks-quick { margin-top: calc(var(--bks-unit) * 6); white-space: nowrap; width: 100%; }
+.bks-sheet .bks-quick-chip { display: inline-flex; flex-direction: column; gap: calc(var(--bks-unit) * 2); vertical-align: top; margin-right: calc(var(--bks-unit) * 8); padding: calc(var(--bks-unit) * 8) calc(var(--bks-unit) * 12); max-width: calc(var(--bks-unit) * 260); background: #ffffff; border: calc(var(--bks-unit) * 1) solid #c0ecff; border-radius: calc(var(--bks-unit) * 8); }
+.bks-sheet .bks-quick-chip.is-selected { background: #c0ecff; border-color: #5baae8; }
+.bks-sheet .bks-quick-name { font-size: calc(var(--bks-unit) * 12); line-height: calc(var(--bks-unit) * 16); font-weight: 500; color: #1d0d07; }
+.bks-sheet .bks-quick-text { font-size: calc(var(--bks-unit) * 10); line-height: calc(var(--bks-unit) * 14); color: #577683; overflow: hidden; text-overflow: ellipsis; max-width: 100%; display: block; }

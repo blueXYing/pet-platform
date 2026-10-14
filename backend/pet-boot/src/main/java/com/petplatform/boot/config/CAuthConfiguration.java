@@ -42,6 +42,16 @@ public class CAuthConfiguration {
                 "PLAT-002 ID provider required before C pet writes can start"));
     }
 
+    /** Address book (contract 59, ruling-32 second batch): same user-domain assembly as pets. */
+    @Bean
+    com.petplatform.user.biz.application.AddressService addressService(
+            DataSource source, ObjectProvider<SnowflakeIdGenerator> ids) {
+        SnowflakeIdGenerator idProvider = ids.getIfAvailable();
+        return new com.petplatform.user.biz.application.AddressService(source,
+                Objects.requireNonNull(idProvider,
+                        "PLAT-002 ID provider required before C address writes can start"));
+    }
+
     @Bean
     @ConditionalOnMissingBean(MiniAuthVolatileStore.class)
     MiniAuthVolatileStore miniAuthVolatileStore(CAuthProperties p) {

@@ -50,8 +50,12 @@ export type MineHubKey = typeof mineHubEntries[number]['key']
 
 // 商家侧入口沿现有工作台路径（不新造导航层级）。
 export const MINE_MERCHANT_WORKSPACE_URL = '/merchant/pages/workspace/index'
+// 成为服务者入口（32号 §2 七页批次）：落地页半屏面板，接既有商家入驻申请流程。
+export const MINE_BECOME_PROVIDER_URL = '/consumer/pages/become-provider/index'
 // 「工程验证」壳降级为调试入口（direct path 保留，preview 夹具通道原样保留）。
 export const MINE_DEVELOPER_SHELL_URL = '/consumer/pages/shell/index'
+// 地址管理（契约 59 切片，32号第二批）：mine 网格「地址管理」格位的真实入口。
+export const MINE_ADDRESS_BOOK_URL = '/consumer/pages/address/index'
 // 积分商城展示态页（32号裁决第二节：只赚不花，商城=能看不能换；126:675 我的服务第三格原稿格位）。
 export const MINE_POINTS_MALL_URL = '/consumer/pages/points-mall/index'
 

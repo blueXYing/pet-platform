@@ -53,6 +53,12 @@ export default defineAppConfig({
     // Booking create + payment initiation slice (10号 §3.4/§3.5/§3.6): service-detail entry,
     // unpaid-order pay entry; one compact line per the app.config convention.
     { root: 'consumer/pages/booking', pages: ['create', 'pay'] },
+    // Address book slice (contract 59 via HTTP10 §3.2.2, ruling-32 second batch): list with
+    // inline set-default/delete, new/edit as the designed bottom-sheet form pages.
+    { root: 'consumer/pages/address', pages: ['index', 'new', 'edit'] },
+    // Become-provider entry slice (32号 §2 seven-page batch): landing sheet + service type
+    // selection feeding the existing merchant-application flow via merchantTypeCode.
+    { root: 'consumer/pages/become-provider', pages: ['index', 'service-type'] },
     // Points mall display-state page (32号裁决第二节: 只赚不花——商品陈列、兑换置灰禁用,
     // 商品为设计样例无商品后端; entry from the mine hub, one compact line per the convention).
     { root: 'consumer/pages/points-mall', pages: ['index'] },
