@@ -55,8 +55,7 @@ public class CSessionSecurityConfiguration {
       @Value("${pet.review.appeal.http.enabled:false}")
           boolean reviewAppealHttpEnabled,
       @Value("${pet.points.task.http.enabled:false}")
-          boolean pointsTaskHttpEnabled)
-      boolean reviewAppealHttpEnabled,
+          boolean pointsTaskHttpEnabled,
       @Value("${pet.favtrack.http.enabled:false}")
       boolean favoriteFootprintHttpEnabled)
       throws Exception {

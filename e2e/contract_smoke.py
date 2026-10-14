@@ -781,7 +781,7 @@ def check_points_task(spec, operation, method, path):
     assert operation.get('security') == [{'bearerAuth': []}], f'Points task security changed: {name}'
     assert operation.get('x-implementation-status') == 'IMPLEMENTED_DEFAULT_OFF', f'Points task status changed: {name}'
     assert operation.get('x-default-enabled') is False, f'Points task must stay default off: {name}'
-    assert operation.get('x-contract') == '58-Points-Task-Contract-v0.1.md', f'Points task authority changed: {name}'
+    assert operation.get('x-contract') == '60-Points-Task-Contract-v0.1.md', f'Points task authority changed: {name}'
     assert operation.get('x-assembly-switch') == 'pet.points.task.http.enabled', f'Points task switch changed: {name}'
     admin_side = name.startswith('admin')
     assert operation.get('x-route-party') == ('OPS' if admin_side else 'USER'), f'Points task identity changed: {name}'

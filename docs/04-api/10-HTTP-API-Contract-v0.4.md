@@ -962,7 +962,7 @@ boolean，未知字段、显式 null、非 boolean、重复键、尾随 token �
 
 ### 3.15.4 签到 / 拉新 / 任务奖励（58 号，32 号裁决第二节，2026-10-13）
 
-> 本节为摘要；权威契约在 `58-Points-Task-Contract-v0.1.md`（CCR-POINTS-TASK-001 细则定稿）。
+> 本节为摘要；权威契约在 `60-Points-Task-Contract-v0.1.md`（CCR-POINTS-TASK-001 细则定稿）。
 
 ```text
 GET  /api/v1/c/points/sign-in/status
@@ -1620,7 +1620,7 @@ POST /api/v1/admin/services/{serviceId}/force-offline
 
 ## 5.10 签到/拉新积分量配置（58 号 §4，32 号裁决第二节，2026-10-13）
 
-> 本节为摘要；权威契约在 `58-Points-Task-Contract-v0.1.md` §4。
+> 本节为摘要；权威契约在 `60-Points-Task-Contract-v0.1.md` §4。
 
 ```text
 GET /api/v1/admin/points-task-config

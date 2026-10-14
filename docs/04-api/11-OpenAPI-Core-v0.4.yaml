@@ -3667,7 +3667,7 @@ paths:
       operationId: adminGetPointsTaskConfig
       x-implementation-status: IMPLEMENTED_DEFAULT_OFF
       x-default-enabled: false
-      x-contract: 58-Points-Task-Contract-v0.1.md
+      x-contract: 60-Points-Task-Contract-v0.1.md
       x-assembly-switch: pet.points.task.http.enabled
       x-route-party: OPS
       x-audience: ADMIN_WEB
@@ -3698,7 +3698,7 @@ paths:
       operationId: adminUpdatePointsTaskConfig
       x-implementation-status: IMPLEMENTED_DEFAULT_OFF
       x-default-enabled: false
-      x-contract: 58-Points-Task-Contract-v0.1.md
+      x-contract: 60-Points-Task-Contract-v0.1.md
       x-assembly-switch: pet.points.task.http.enabled
       x-route-party: OPS
       x-audience: ADMIN_WEB
@@ -12230,7 +12230,7 @@ paths:
       summary: 签到状态（今日已签+连签数+近7天）
       x-implementation-status: IMPLEMENTED_DEFAULT_OFF
       x-default-enabled: false
-      x-contract: 58-Points-Task-Contract-v0.1.md
+      x-contract: 60-Points-Task-Contract-v0.1.md
       x-assembly-switch: pet.points.task.http.enabled
       description: 58号§3.1（32号裁决第二节）。Asia/Shanghai 自然日口径；连签=自今日（或昨日）
         向前连续自然日数，断签清零不回补（保守口径 S2）；query 全禁止。
@@ -12260,7 +12260,7 @@ paths:
       summary: 每日签到（空对象；requestId幂等；当日重复409）
       x-implementation-status: IMPLEMENTED_DEFAULT_OFF
       x-default-enabled: false
-      x-contract: 58-Points-Task-Contract-v0.1.md
+      x-contract: 60-Points-Task-Contract-v0.1.md
       x-assembly-switch: pet.points.task.http.enabled
       description: 58号§3.2。体为空 JSON 对象（严格解析）；S1~S3：UTC+8 自然日一次、固定面额、
         biz_type=SIGN_IN、points_ledger 配账即时入账；同 requestId 重放首次回执，换新 requestId
@@ -12300,7 +12300,7 @@ paths:
       summary: 任务面板+奖励面板共用投影（含邀请码）
       x-implementation-status: IMPLEMENTED_DEFAULT_OFF
       x-default-enabled: false
-      x-contract: 58-Points-Task-Contract-v0.1.md
+      x-contract: 60-Points-Task-Contract-v0.1.md
       x-assembly-switch: pet.points.task.http.enabled
       description: 58号§3.3。一读供拉新任务（129:5854）与奖励领取（129:7677）两页；inviteCode
         为确定性可逆码（P+base36+校验位）；COMMUNITY_POST 恒 NOT_OPEN（V1 无社区积分规则，
@@ -12331,7 +12331,7 @@ paths:
       summary: 领取任务/里程碑奖励（requestId幂等；无可领取409）
       x-implementation-status: IMPLEMENTED_DEFAULT_OFF
       x-default-enabled: false
-      x-contract: 58-Points-Task-Contract-v0.1.md
+      x-contract: 60-Points-Task-Contract-v0.1.md
       x-assembly-switch: pet.points.task.http.enabled
       description: 58号§3.4（M1/A2：除每日签到外全部显式领取，无事件自动发放）。多人头一次
         领取生成多行 ledger（biz_type=INVITE/TASK）；一次性里程碑已领过再领 409；月上限截断。
@@ -12370,7 +12370,7 @@ paths:
       summary: 绑定邀请码（终身一次；requestId幂等）
       x-implementation-status: IMPLEMENTED_DEFAULT_OFF
       x-default-enabled: false
-      x-contract: 58-Points-Task-Contract-v0.1.md
+      x-contract: 60-Points-Task-Contract-v0.1.md
       x-assembly-switch: pet.points.task.http.enabled
       description: 58号§3.5（R1~R4 保守口径）。无效码/用户不存在/自邀 400；被邀请人已有订单史
         400/409（不符合新用户条件）；已绑定终局 409。绑定后完成首笔支付才算拉新成立
@@ -13417,7 +13417,6 @@ components:
         application/json:
           schema:
             $ref: '#/components/schemas/FavTrackErrorEnvelope'
-  schemas:
   schemas:
     VerificationCredentialIssue:
       type: object

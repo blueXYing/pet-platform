@@ -25,7 +25,7 @@ final class PointsTaskMySqlTestDatabase implements AutoCloseable {
   private static final List<String> SCRIPTS = List.of(
       "06-核心数据库Schema-v0.1.sql",
       "14-Command-Idempotency-Schema-v0.1.sql",
-      "58-Points-Task-Schema-v0.1.sql");
+      "60-Points-Task-Schema-v0.1.sql");
 
   private final String name = PREFIX + UUID.randomUUID().toString().replace("-", "");
   private final JdbcTemplate admin;
@@ -89,7 +89,7 @@ final class PointsTaskMySqlTestDatabase implements AutoCloseable {
   private static Path repositoryRoot() {
     Path root = Path.of("").toAbsolutePath();
     while (root != null && !Files.exists(
-        root.resolve("docs/03-database/58-Points-Task-Schema-v0.1.sql"))) {
+        root.resolve("docs/03-database/60-Points-Task-Schema-v0.1.sql"))) {
       root = root.getParent();
     }
     if (root == null) {

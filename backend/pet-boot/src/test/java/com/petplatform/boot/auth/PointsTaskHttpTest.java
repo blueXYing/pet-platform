@@ -58,7 +58,7 @@ class PointsTaskHttpTest {
   void start() throws Exception {
     db = new CAuthHttpTest.HttpFixture();
     try (var connection = db.source.getConnection()) {
-      for (String file : List.of("26-Admin-Auth-Schema-v0.1.sql", "58-Points-Task-Schema-v0.1.sql")) {
+      for (String file : List.of("26-Admin-Auth-Schema-v0.1.sql", "60-Points-Task-Schema-v0.1.sql")) {
         ScriptUtils.executeSqlScript(
             connection,
             new EncodedResource(
