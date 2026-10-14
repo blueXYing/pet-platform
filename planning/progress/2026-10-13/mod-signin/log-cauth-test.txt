@@ -1,0 +1,19 @@
+2026-10-13T22:37:37.809+08:00  INFO [traceId= requestId=] 15560 --- [pet-platform] [           main] o.a.maven.surefire.booter.ForkedBooter   : Starting ForkedBooter v3.5.6 using Java 21.0.11 with PID 15560 (started by Administrator in C:\Users\Administrator\Desktop\wt-mod-signin\backend\pet-boot)
+2026-10-13T22:37:37.811+08:00  INFO [traceId= requestId=] 15560 --- [pet-platform] [           main] o.a.maven.surefire.booter.ForkedBooter   : The following 1 profile is active: "local"
+2026-10-13T22:37:39.003+08:00  INFO [traceId= requestId=] 15560 --- [pet-platform] [           main] .s.d.r.c.RepositoryConfigurationDelegate : Multiple Spring Data modules found, entering strict repository configuration mode
+2026-10-13T22:37:39.005+08:00  INFO [traceId= requestId=] 15560 --- [pet-platform] [           main] .s.d.r.c.RepositoryConfigurationDelegate : Bootstrapping Spring Data Redis repositories in DEFAULT mode.
+2026-10-13T22:37:39.051+08:00  INFO [traceId= requestId=] 15560 --- [pet-platform] [           main] .s.d.r.c.RepositoryConfigurationDelegate : Finished Spring Data repository scanning in 28 ms. Found 0 Redis repository interfaces.
+2026-10-13T22:37:39.363+08:00  WARN [traceId= requestId=] 15560 --- [pet-platform] [           main] o.m.s.mapper.ClassPathMapperScanner      : No MyBatis mapper was found in '[com.petplatform.boot]' package. Please check your configuration.
+2026-10-13T22:37:40.016+08:00  INFO [traceId= requestId=] 15560 --- [pet-platform] [           main] o.s.boot.tomcat.TomcatWebServer          : Tomcat initialized with port 8080 (http)
+2026-10-13T22:37:40.034+08:00  INFO [traceId= requestId=] 15560 --- [pet-platform] [           main] o.apache.catalina.core.StandardService   : Starting service [Tomcat]
+2026-10-13T22:37:40.035+08:00  INFO [traceId= requestId=] 15560 --- [pet-platform] [           main] o.apache.catalina.core.StandardEngine    : Starting Servlet engine: [Apache Tomcat/11.0.24]
+2026-10-13T22:37:40.080+08:00  INFO [traceId= requestId=] 15560 --- [pet-platform] [           main] b.w.c.s.WebApplicationContextInitializer : Root WebApplicationContext: initialization completed in 2240 ms
+2026-10-13T22:37:42.248+08:00  INFO [traceId= requestId=] 15560 --- [pet-platform] [           main] r$InitializeUserDetailsManagerConfigurer : Global AuthenticationManager configured with UserDetailsService bean with name noImplicitDefaultAccounts
+2026-10-13T22:37:43.119+08:00  INFO [traceId= requestId=] 15560 --- [pet-platform] [           main] o.s.b.a.e.web.EndpointLinksResolver      : Exposing 3 endpoints beneath base path '/actuator'
+2026-10-13T22:37:43.172+08:00  INFO [traceId= requestId=] 15560 --- [pet-platform] [           main] o.s.boot.tomcat.TomcatWebServer          : Tomcat started on port 8080 (http) with context path '/'
+2026-10-13T22:37:43.180+08:00  INFO [traceId= requestId=] 15560 --- [pet-platform] [           main] o.a.maven.surefire.booter.ForkedBooter   : Started ForkedBooter in 5.654 seconds (process running for 19.881)
+2026-10-13T22:37:43.319+08:00  INFO [traceId= requestId=] 15560 --- [pet-platform] [nio-8080-exec-1] o.a.c.c.C.[Tomcat].[localhost].[/]       : Initializing Spring DispatcherServlet 'dispatcherServlet'
+2026-10-13T22:37:43.320+08:00  INFO [traceId= requestId=] 15560 --- [pet-platform] [nio-8080-exec-1] o.s.web.servlet.DispatcherServlet        : Initializing Servlet 'dispatcherServlet'
+2026-10-13T22:37:43.321+08:00  INFO [traceId= requestId=] 15560 --- [pet-platform] [nio-8080-exec-1] o.s.web.servlet.DispatcherServlet        : Completed initialization in 1 ms
+2026-10-13T22:37:45.928+08:00  INFO [traceId= requestId=] 15560 --- [pet-platform] [           main] o.s.boot.tomcat.GracefulShutdown         : Commencing graceful shutdown. Waiting for active requests to complete
+2026-10-13T22:37:45.931+08:00  INFO [traceId= requestId=] 15560 --- [pet-platform] [tomcat-shutdown] o.s.boot.tomcat.GracefulShutdown         : Graceful shutdown complete

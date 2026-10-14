@@ -24,7 +24,8 @@ public final class CBearerSessionFilter extends OncePerRequestFilter {
 
   public static final String VIEW = "cSessionView";
   private static final Set<String> PROTECTED_EXACT =
-      Set.of("/api/v1/c/pets", "/api/v1/c/profile", "/api/v1/c/auth/session");
+      Set.of("/api/v1/c/pets", "/api/v1/c/profile", "/api/v1/c/auth/session",
+          "/api/v1/c/addresses");
 
   private final ObjectProvider<UserAuthService> services;
 
@@ -44,6 +45,9 @@ public final class CBearerSessionFilter extends OncePerRequestFilter {
   static boolean protectedPath(String path) {
     return PROTECTED_EXACT.contains(path)
         || path.startsWith("/api/v1/c/pets/")
+        // Address book (contract 59): MINIAPP Bearer enforced for list/detail and every write,
+        // including the bodyless set-default decision route.
+        || path.startsWith("/api/v1/c/addresses/")
         || path.matches("/api/v1/c/orders/[^/]+/(aftersales|aftersale-eligibility|verification-code|refund-applications|reschedule|review-eligibility|reviews)")
         || path.equals("/api/v1/c/aftersales") || path.startsWith("/api/v1/c/aftersales/")
         || path.equals("/api/v1/c/aftersale-options")
@@ -68,6 +72,13 @@ public final class CBearerSessionFilter extends OncePerRequestFilter {
         || path.startsWith("/api/v1/c/coupons/")
         || path.equals("/api/v1/c/points/balance")
         || path.equals("/api/v1/c/points/ledger")
+        // Points earn family (contract 58 / 32号 ruling): sign-in status/command, task-center
+        // read, reward claims and referral bindings — all session-scoped, Bearer enforced.
+        || path.equals("/api/v1/c/points/sign-in")
+        || path.equals("/api/v1/c/points/sign-in/status")
+        || path.equals("/api/v1/c/points/tasks")
+        || path.equals("/api/v1/c/points/claims")
+        || path.equals("/api/v1/c/points/referral-bindings")
         // Favorite/footprint surface (contract 58): MINIAPP Bearer enforced on every method —
         // user-private data, no anonymous route in this family.
         || path.equals("/api/v1/c/favorites")

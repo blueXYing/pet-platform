@@ -37,9 +37,20 @@ public interface OrderQueryApi {
      */
     ReviewEligibilityDTO checkReviewEligibility(OrderIdQuery query);
 
+    /**
+     * First successful payment time over the named user's own orders, null when the user never
+     * completed a payment (07号 §7.1 amendment, contract 58 / CCR-POINTS-TASK-001 P3). Pure
+     * cross-domain fact read for the points referral kernel (conservative invite condition);
+     * carries no order fields beyond the instant, so it opens no enumeration surface.
+     */
+    java.time.OffsetDateTime firstPaidAt(UserOrderFactQuery query);
+
     /** orderId is the canonical decimal string form of the pet_order id. */
     record OrderIdQuery(String orderId, QueryContext context) {}
 
     /** displayStatus is one of the ten DisplayOrderStatus values or null; page starts at 1. */
     record MyOrderListQuery(String displayStatus, int page, int pageSize, QueryContext context) {}
+
+    /** userId is the canonical decimal string form of the pet_order.user_id being asked about. */
+    record UserOrderFactQuery(String userId) {}
 }

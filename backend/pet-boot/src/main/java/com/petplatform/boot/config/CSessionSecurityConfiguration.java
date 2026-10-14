@@ -51,8 +51,11 @@ public class CSessionSecurityConfiguration {
       @Value("${pet.order.reschedule.http.enabled:false}")
           boolean orderRescheduleHttpEnabled,
       @Value("${pet.review.http.enabled:false}")
-      boolean reviewHttpEnabled,
+          boolean reviewHttpEnabled,
       @Value("${pet.review.appeal.http.enabled:false}")
+          boolean reviewAppealHttpEnabled,
+      @Value("${pet.points.task.http.enabled:false}")
+          boolean pointsTaskHttpEnabled)
       boolean reviewAppealHttpEnabled,
       @Value("${pet.favtrack.http.enabled:false}")
       boolean favoriteFootprintHttpEnabled)
@@ -95,6 +98,15 @@ public class CSessionSecurityConfiguration {
                     "/api/v1/c/profile")
                 .permitAll();
             a.requestMatchers(HttpMethod.POST, "/api/v1/c/pets", "/api/v1/c/profile").permitAll();
+            // Address book (contract 59): the six user-domain routes ride pet.auth.c.enabled
+            // exactly like pets/profile — the MINIAPP Bearer session is enforced by the
+            // filter's protectedPath list, ownership stays in the AddressService kernel.
+            a.requestMatchers(
+                    HttpMethod.GET, "/api/v1/c/addresses", "/api/v1/c/addresses/*").permitAll();
+            a.requestMatchers(HttpMethod.POST, "/api/v1/c/addresses").permitAll();
+            a.requestMatchers(HttpMethod.POST, "/api/v1/c/addresses/*/set-default").permitAll();
+            a.requestMatchers(HttpMethod.PUT, "/api/v1/c/addresses/*").permitAll();
+            a.requestMatchers(HttpMethod.DELETE, "/api/v1/c/addresses/*").permitAll();
             // Inbox reads (CCR-W2-NOTIFICATION-001): MINIAPP Bearer enforced by the filter.
             a.requestMatchers("/api/v1/c/notifications", "/api/v1/c/notifications/**")
                 .permitAll();
@@ -265,6 +277,22 @@ public class CSessionSecurityConfiguration {
               a.requestMatchers(HttpMethod.DELETE,
                   "/api/v1/c/favorites/*/*",
                   "/api/v1/c/footprints/*")
+                  .permitAll();
+            }
+            if (pointsTaskHttpEnabled) {
+              // Points earn family (contract 58 / 32号 ruling second batch): sign-in,
+              // task-center reads, reward claims and referral bindings. The MINIAPP Bearer
+              // is enforced by the filter's protectedPath list, not by permitAll itself;
+              // non-GET/POST stays denied and the switch keeps the family unreachable when
+              // the slice is not assembled.
+              a.requestMatchers(HttpMethod.GET,
+                      "/api/v1/c/points/sign-in/status",
+                      "/api/v1/c/points/tasks")
+                  .permitAll();
+              a.requestMatchers(HttpMethod.POST,
+                      "/api/v1/c/points/sign-in",
+                      "/api/v1/c/points/claims",
+                      "/api/v1/c/points/referral-bindings")
                   .permitAll();
             }
           }

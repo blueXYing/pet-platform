@@ -1,0 +1,111 @@
+22:44:52.335 [main] INFO com.tngtech.archunit.core.PluginLoader -- Detected Java version 21.0.11
+ARCH-COVERAGE pet-common: 15 production classes
+ARCH-COVERAGE pet-id-core: 19 production classes
+ARCH-COVERAGE pet-event-api: 7 production classes
+ARCH-COVERAGE pet-event-core: 14 production classes
+ARCH-COVERAGE pet-task-core: 30 production classes
+ARCH-COVERAGE pet-user-api: 24 production classes
+ARCH-COVERAGE pet-user-biz: 54 production classes
+ARCH-COVERAGE pet-merchant-api: 115 production classes
+ARCH-COVERAGE pet-merchant-biz: 129 production classes
+ARCH-COVERAGE pet-service-api: 44 production classes
+ARCH-COVERAGE pet-service-biz: 48 production classes
+ARCH-COVERAGE pet-schedule-api: 67 production classes
+ARCH-COVERAGE pet-schedule-biz: 76 production classes
+ARCH-COVERAGE pet-order-api: 77 production classes
+ARCH-COVERAGE pet-order-biz: 141 production classes
+ARCH-COVERAGE pet-payment-api: 32 production classes
+ARCH-COVERAGE pet-payment-biz: 96 production classes
+ARCH-COVERAGE pet-refund-api: 40 production classes
+ARCH-COVERAGE pet-refund-biz: 54 production classes
+ARCH-COVERAGE pet-verification-api: 19 production classes
+ARCH-COVERAGE pet-verification-biz: 29 production classes
+ARCH-COVERAGE pet-aftersale-api: 39 production classes
+ARCH-COVERAGE pet-aftersale-biz: 52 production classes
+ARCH-COVERAGE pet-coupon-api: 11 production classes
+ARCH-COVERAGE pet-coupon-biz: 19 production classes
+ARCH-COVERAGE pet-points-api: 31 production classes
+ARCH-COVERAGE pet-points-biz: 34 production classes
+ARCH-COVERAGE pet-review-api: 27 production classes
+ARCH-COVERAGE pet-review-biz: 25 production classes
+ARCH-COVERAGE pet-notification-api: 16 production classes
+ARCH-COVERAGE pet-notification-biz: 53 production classes
+ARCH-COVERAGE pet-community-api: 6 production classes
+ARCH-COVERAGE pet-community-biz: 10 production classes
+ARCH-COVERAGE pet-thirdparty-api: 32 production classes
+ARCH-COVERAGE pet-thirdparty-biz: 65 production classes
+ARCH-COVERAGE pet-customer-service-api: 6 production classes
+ARCH-COVERAGE pet-customer-service-biz: 10 production classes
+ARCH-COVERAGE pet-admin-api: 18 production classes
+ARCH-COVERAGE pet-admin-biz: 47 production classes
+ARCH-COVERAGE pet-boot: 180 production classes
+ARCH-COVERAGE total: 40 modules / 1811 classes
+ARCH-COVERAGE meaningful classes: 1567; controllers: 78; domain classes: 13
+test_miniapp_plan_never_uses_web_build (test_architecture_gates.CapabilityGateTest) ... ok
+test_missing_app_cannot_pass (test_architecture_gates.CapabilityGateTest) ... ok
+test_missing_script_cannot_pass (test_architecture_gates.CapabilityGateTest) ... ok
+test_unknown_runtime_cannot_pass (test_architecture_gates.CapabilityGateTest) ... ok
+test_arch005_allows_contract_pass_through_labels_and_snapshot_fixture (test_architecture_gates.DisplayGateTest) ... ok
+test_arch005_allows_order_owner (test_architecture_gates.DisplayGateTest) ... ok
+test_arch005_rejects_frontend_priority_ternary_switch_and_lookup (test_architecture_gates.DisplayGateTest) ... ok
+test_arch005_rejects_present_frontend_with_empty_source_scan (test_architecture_gates.DisplayGateTest) ... ok
+test_arch005_scans_real_backend_and_both_frontend_paths (test_architecture_gates.DisplayGateTest) ... ok
+test_arch001_allows_api (test_architecture_gates.ModuleGateTest) ... ok
+test_arch001_rejects_biz_in_normal_test_and_profile_dependencies (test_architecture_gates.ModuleGateTest) ... ok
+test_arch001_rejects_empty_reactor (test_architecture_gates.ModuleGateTest) ... ok
+test_arch001_rejects_unlisted_module (test_architecture_gates.ModuleGateTest) ... ok
+test_allows_comments_transactions_metadata_and_mapper_calls (test_persistence_style.PersistenceStyleTest) ... ok
+test_empty_scan_cannot_pass (test_persistence_style.PersistenceStyleTest) ... ok
+test_rejects_executors_and_sql_annotations (test_persistence_style.PersistenceStyleTest) ... ok
+test_rejects_sql_literals_text_blocks_and_concatenation (test_persistence_style.PersistenceStyleTest) ... ok
+test_scans_production_only_and_rejects_xml_raw_substitution (test_persistence_style.PersistenceStyleTest) ... ok
+
+----------------------------------------------------------------------
+Ran 18 tests in 13.522s
+
+OK
+ARCH-001 scanned 41 reactor modules, 17 biz POMs
+PASS: no biz -> biz dependencies
+ARCH-005 pet-common: 15 source files
+ARCH-005 pet-id-core: 9 source files
+ARCH-005 pet-event-api: 7 source files
+ARCH-005 pet-event-core: 12 source files
+ARCH-005 pet-task-core: 22 source files
+ARCH-005 pet-user-api: 20 source files
+ARCH-005 pet-user-biz: 36 source files
+ARCH-005 pet-merchant-api: 79 source files
+ARCH-005 pet-merchant-biz: 93 source files
+ARCH-005 pet-service-api: 22 source files
+ARCH-005 pet-service-biz: 33 source files
+ARCH-005 pet-schedule-api: 33 source files
+ARCH-005 pet-schedule-biz: 46 source files
+ARCH-005 pet-order-api: 38 source files
+ARCH-005 pet-order-biz: 81 source files
+ARCH-005 pet-payment-api: 20 source files
+ARCH-005 pet-payment-biz: 31 source files
+ARCH-005 pet-refund-api: 18 source files
+ARCH-005 pet-refund-biz: 28 source files
+ARCH-005 pet-verification-api: 10 source files
+ARCH-005 pet-verification-biz: 18 source files
+ARCH-005 pet-aftersale-api: 13 source files
+ARCH-005 pet-aftersale-biz: 21 source files
+ARCH-005 pet-coupon-api: 9 source files
+ARCH-005 pet-coupon-biz: 18 source files
+ARCH-005 pet-points-api: 12 source files
+ARCH-005 pet-points-biz: 28 source files
+ARCH-005 pet-review-api: 8 source files
+ARCH-005 pet-review-biz: 22 source files
+ARCH-005 pet-notification-api: 10 source files
+ARCH-005 pet-notification-biz: 42 source files
+ARCH-005 pet-community-api: 6 source files
+ARCH-005 pet-community-biz: 10 source files
+ARCH-005 pet-thirdparty-api: 13 source files
+ARCH-005 pet-thirdparty-biz: 44 source files
+ARCH-005 pet-customer-service-api: 6 source files
+ARCH-005 pet-customer-service-biz: 10 source files
+ARCH-005 pet-admin-api: 16 source files
+ARCH-005 pet-admin-biz: 26 source files
+ARCH-005 pet-boot: 119 source files
+ARCH-005 frontend-admin: 18 source files
+ARCH-005 frontend-miniapp: 283 source files
+PASS: no duplicate display derivation patterns in existing sources

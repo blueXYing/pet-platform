@@ -75,7 +75,10 @@ class OutboxRecoveryMySqlTest {
             String eventId = seed(db, 800_002);
             var repository = new JdbcOutboxRepository(db.dataSource());
             var lease = repository.claim("worker-A", Duration.ofSeconds(30)).orElseThrow();
-            assertTrue(repository.markFailed(lease, Duration.ofMillis(150)));
+            // Backoff widened from 150ms: under -T 1C parallel CI load the "not due yet"
+            // claim below must survive any scheduling gap; expiry is forced via SQL below
+            // instead of sleeping past a narrow window.
+            assertTrue(repository.markFailed(lease, Duration.ofSeconds(5)));
             Map<String, Object> failed = db.jdbc().queryForMap(
                     "SELECT status,retry_count,next_retry_at FROM integration_event_outbox WHERE event_id=?", eventId);
             assertEquals("FAILED", failed.get("status"));
@@ -84,7 +87,9 @@ class OutboxRecoveryMySqlTest {
 
             assertTrue(repository.claim("worker-B", Duration.ofSeconds(30)).isEmpty(), "backoff not due yet");
 
-            Thread.sleep(250);
+            db.jdbc().update(
+                    "UPDATE integration_event_outbox SET next_retry_at = DATE_SUB(UTC_TIMESTAMP(3), INTERVAL 1 SECOND) WHERE event_id=?",
+                    eventId);
             var retry = repository.claim("worker-B", Duration.ofSeconds(30));
             assertTrue(retry.isPresent());
             assertEquals(1, retry.orElseThrow().retryCount(), "takeover of a retry keeps retry_count");

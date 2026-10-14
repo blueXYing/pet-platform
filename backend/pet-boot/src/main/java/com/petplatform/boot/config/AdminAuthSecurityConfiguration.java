@@ -34,7 +34,8 @@ public class AdminAuthSecurityConfiguration {
       @Value("${pet.private-assets.enabled:false}") boolean privateAssetsEnabled,
       @Value("${pet.service.command.enabled:false}") boolean serviceCommandEnabled,
       @Value("${pet.aftersale.http.enabled:false}") boolean afterSaleHttpEnabled,
-      @Value("${pet.review.appeal.http.enabled:false}") boolean reviewAppealHttpEnabled)
+      @Value("${pet.review.appeal.http.enabled:false}") boolean reviewAppealHttpEnabled,
+      @Value("${pet.points.task.http.enabled:false}") boolean pointsTaskHttpEnabled)
       throws Exception {
     http.securityMatcher("/api/v1/admin/**")
         .csrf(c -> c.disable())
@@ -63,6 +64,15 @@ public class AdminAuthSecurityConfiguration {
                   .permitAll();
               a.requestMatchers(HttpMethod.POST,
                       "/api/v1/admin/review-appeals/*/decision")
+                  .permitAll();
+            }
+            if (pointsTaskHttpEnabled) {
+              // Points grant amounts config (contract 58 §4 / 32号 ruling: 签到与拉新积分量后台
+              // 可配置): the ADMIN_WEB Bearer plus points.task.config.read/write are enforced by
+              // the filter and the controller.
+              a.requestMatchers(HttpMethod.GET, "/api/v1/admin/points-task-config")
+                  .permitAll();
+              a.requestMatchers(HttpMethod.PUT, "/api/v1/admin/points-task-config")
                   .permitAll();
             }
             a.requestMatchers(

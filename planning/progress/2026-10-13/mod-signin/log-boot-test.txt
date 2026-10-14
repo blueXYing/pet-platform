@@ -1,0 +1,90 @@
+2026-10-13T22:30:29.354+08:00  INFO [traceId= requestId=] 16464 --- [pet-platform] [           main] o.a.maven.surefire.booter.ForkedBooter   : Starting ForkedBooter v3.5.6 using Java 21.0.11 with PID 16464 (started by Administrator in C:\Users\Administrator\Desktop\wt-mod-signin\backend\pet-boot)
+2026-10-13T22:30:29.358+08:00  INFO [traceId= requestId=] 16464 --- [pet-platform] [           main] o.a.maven.surefire.booter.ForkedBooter   : The following 1 profile is active: "local"
+2026-10-13T22:30:31.090+08:00  INFO [traceId= requestId=] 16464 --- [pet-platform] [           main] .s.d.r.c.RepositoryConfigurationDelegate : Multiple Spring Data modules found, entering strict repository configuration mode
+2026-10-13T22:30:31.093+08:00  INFO [traceId= requestId=] 16464 --- [pet-platform] [           main] .s.d.r.c.RepositoryConfigurationDelegate : Bootstrapping Spring Data Redis repositories in DEFAULT mode.
+2026-10-13T22:30:31.137+08:00  INFO [traceId= requestId=] 16464 --- [pet-platform] [           main] .s.d.r.c.RepositoryConfigurationDelegate : Finished Spring Data repository scanning in 23 ms. Found 0 Redis repository interfaces.
+2026-10-13T22:30:31.427+08:00  WARN [traceId= requestId=] 16464 --- [pet-platform] [           main] o.m.s.mapper.ClassPathMapperScanner      : No MyBatis mapper was found in '[com.petplatform.boot]' package. Please check your configuration.
+2026-10-13T22:30:32.195+08:00  INFO [traceId= requestId=] 16464 --- [pet-platform] [           main] o.s.boot.tomcat.TomcatWebServer          : Tomcat initialized with port 8080 (http)
+2026-10-13T22:30:32.221+08:00  INFO [traceId= requestId=] 16464 --- [pet-platform] [           main] o.apache.catalina.core.StandardService   : Starting service [Tomcat]
+2026-10-13T22:30:32.221+08:00  INFO [traceId= requestId=] 16464 --- [pet-platform] [           main] o.apache.catalina.core.StandardEngine    : Starting Servlet engine: [Apache Tomcat/11.0.24]
+2026-10-13T22:30:32.282+08:00  INFO [traceId= requestId=] 16464 --- [pet-platform] [           main] b.w.c.s.WebApplicationContextInitializer : Root WebApplicationContext: initialization completed in 2876 ms
+2026-10-13T22:30:36.426+08:00  INFO [traceId= requestId=] 16464 --- [pet-platform] [           main] r$InitializeUserDetailsManagerConfigurer : Global AuthenticationManager configured with UserDetailsService bean with name noImplicitDefaultAccounts
+2026-10-13T22:30:37.193+08:00  INFO [traceId= requestId=] 16464 --- [pet-platform] [           main] o.s.b.a.e.web.EndpointLinksResolver      : Exposing 3 endpoints beneath base path '/actuator'
+2026-10-13T22:30:37.258+08:00  INFO [traceId= requestId=] 16464 --- [pet-platform] [           main] o.s.boot.tomcat.TomcatWebServer          : Tomcat started on port 8080 (http) with context path '/'
+2026-10-13T22:30:37.271+08:00  INFO [traceId= requestId=] 16464 --- [pet-platform] [           main] o.a.maven.surefire.booter.ForkedBooter   : Started ForkedBooter in 8.395 seconds (process running for 14.069)
+2026-10-13T22:30:37.673+08:00  INFO [traceId= requestId=] 16464 --- [pet-platform] [nio-8080-exec-1] o.a.c.c.C.[Tomcat].[localhost].[/]       : Initializing Spring DispatcherServlet 'dispatcherServlet'
+2026-10-13T22:30:37.673+08:00  INFO [traceId= requestId=] 16464 --- [pet-platform] [nio-8080-exec-1] o.s.web.servlet.DispatcherServlet        : Initializing Servlet 'dispatcherServlet'
+2026-10-13T22:30:37.674+08:00  INFO [traceId= requestId=] 16464 --- [pet-platform] [nio-8080-exec-1] o.s.web.servlet.DispatcherServlet        : Completed initialization in 1 ms
+2026-10-13T22:30:38.438+08:00  INFO [traceId= requestId=] 16464 --- [pet-platform] [           main] o.s.boot.tomcat.GracefulShutdown         : Commencing graceful shutdown. Waiting for active requests to complete
+2026-10-13T22:30:38.441+08:00  INFO [traceId= requestId=] 16464 --- [pet-platform] [tomcat-shutdown] o.s.boot.tomcat.GracefulShutdown         : Graceful shutdown complete
+2026-10-13T22:30:45.591+08:00  INFO [traceId= requestId=] 16464 --- [pet-platform] [           main] o.a.maven.surefire.booter.ForkedBooter   : Starting ForkedBooter v3.5.6 using Java 21.0.11 with PID 16464 (started by Administrator in C:\Users\Administrator\Desktop\wt-mod-signin\backend\pet-boot)
+2026-10-13T22:30:45.592+08:00  INFO [traceId= requestId=] 16464 --- [pet-platform] [           main] o.a.maven.surefire.booter.ForkedBooter   : The following 1 profile is active: "local"
+2026-10-13T22:30:46.246+08:00  INFO [traceId= requestId=] 16464 --- [pet-platform] [           main] .s.d.r.c.RepositoryConfigurationDelegate : Multiple Spring Data modules found, entering strict repository configuration mode
+2026-10-13T22:30:46.246+08:00  INFO [traceId= requestId=] 16464 --- [pet-platform] [           main] .s.d.r.c.RepositoryConfigurationDelegate : Bootstrapping Spring Data Redis repositories in DEFAULT mode.
+2026-10-13T22:30:46.265+08:00  INFO [traceId= requestId=] 16464 --- [pet-platform] [           main] .s.d.r.c.RepositoryConfigurationDelegate : Finished Spring Data repository scanning in 16 ms. Found 0 Redis repository interfaces.
+2026-10-13T22:30:46.307+08:00  WARN [traceId= requestId=] 16464 --- [pet-platform] [           main] o.m.s.mapper.ClassPathMapperScanner      : No MyBatis mapper was found in '[com.petplatform.boot]' package. Please check your configuration.
+2026-10-13T22:30:46.335+08:00  INFO [traceId= requestId=] 16464 --- [pet-platform] [           main] o.s.boot.tomcat.TomcatWebServer          : Tomcat initialized with port 8080 (http)
+2026-10-13T22:30:46.336+08:00  INFO [traceId= requestId=] 16464 --- [pet-platform] [           main] o.apache.catalina.core.StandardService   : Starting service [Tomcat]
+2026-10-13T22:30:46.337+08:00  INFO [traceId= requestId=] 16464 --- [pet-platform] [           main] o.apache.catalina.core.StandardEngine    : Starting Servlet engine: [Apache Tomcat/11.0.24]
+2026-10-13T22:30:46.353+08:00  INFO [traceId= requestId=] 16464 --- [pet-platform] [           main] b.w.c.s.WebApplicationContextInitializer : Root WebApplicationContext: initialization completed in 758 ms
+2026-10-13T22:30:48.761+08:00  INFO [traceId= requestId=] 16464 --- [pet-platform] [           main] r$InitializeUserDetailsManagerConfigurer : Global AuthenticationManager configured with UserDetailsService bean with name noImplicitDefaultAccounts
+2026-10-13T22:30:48.957+08:00  INFO [traceId= requestId=] 16464 --- [pet-platform] [           main] o.s.b.a.e.web.EndpointLinksResolver      : Exposing 3 endpoints beneath base path '/actuator'
+2026-10-13T22:30:48.976+08:00  INFO [traceId= requestId=] 16464 --- [pet-platform] [           main] o.s.boot.tomcat.TomcatWebServer          : Tomcat started on port 8080 (http) with context path '/'
+2026-10-13T22:30:48.981+08:00  INFO [traceId= requestId=] 16464 --- [pet-platform] [           main] o.a.maven.surefire.booter.ForkedBooter   : Started ForkedBooter in 3.414 seconds (process running for 25.779)
+2026-10-13T22:30:49.244+08:00  INFO [traceId= requestId=] 16464 --- [pet-platform] [nio-8080-exec-1] o.a.c.c.C.[Tomcat].[localhost].[/]       : Initializing Spring DispatcherServlet 'dispatcherServlet'
+2026-10-13T22:30:49.244+08:00  INFO [traceId= requestId=] 16464 --- [pet-platform] [nio-8080-exec-1] o.s.web.servlet.DispatcherServlet        : Initializing Servlet 'dispatcherServlet'
+2026-10-13T22:30:49.246+08:00  INFO [traceId= requestId=] 16464 --- [pet-platform] [nio-8080-exec-1] o.s.web.servlet.DispatcherServlet        : Completed initialization in 2 ms
+2026-10-13T22:30:50.105+08:00  INFO [traceId= requestId=] 16464 --- [pet-platform] [           main] o.s.boot.tomcat.GracefulShutdown         : Commencing graceful shutdown. Waiting for active requests to complete
+2026-10-13T22:30:50.108+08:00  INFO [traceId= requestId=] 16464 --- [pet-platform] [tomcat-shutdown] o.s.boot.tomcat.GracefulShutdown         : Graceful shutdown complete
+[ERROR] Tests run: 2, Failures: 1, Errors: 1, Skipped: 0, Time elapsed: 27.96 s <<< FAILURE! -- in com.petplatform.boot.auth.PointsTaskHttpTest
+[ERROR] com.petplatform.boot.auth.PointsTaskHttpTest.cFaceSignInTasksReferralStrictBodiesAndIdempotency -- Time elapsed: 16.71 s <<< ERROR!
+org.springframework.jdbc.BadSqlGrammarException: PreparedStatementCallback; bad SQL grammar [INSERT INTO pet_order(id, order_no, user_id, merchant_id, store_id, service_id, pet_id, reservation_id, order_stage, payment_status, fulfillment_type, original_amount, pay_amount, appointment_start_at, appointment_end_at, paid_at, created_at, updated_at) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,UTC_TIMESTAMP(3),UTC_TIMESTAMP(3),UTC_TIMESTAMP(3))]
+	at org.springframework.jdbc.support.SQLStateSQLExceptionTranslator.doTranslate(SQLStateSQLExceptionTranslator.java:134)
+	at org.springframework.jdbc.support.AbstractFallbackSQLExceptionTranslator.translate(AbstractFallbackSQLExceptionTranslator.java:102)
+	at org.springframework.jdbc.support.AbstractFallbackSQLExceptionTranslator.translate(AbstractFallbackSQLExceptionTranslator.java:111)
+	at org.springframework.jdbc.core.JdbcTemplate.translateException(JdbcTemplate.java:1549)
+	at org.springframework.jdbc.core.JdbcTemplate.execute(JdbcTemplate.java:689)
+	at org.springframework.jdbc.core.JdbcTemplate.update(JdbcTemplate.java:966)
+	at org.springframework.jdbc.core.JdbcTemplate.update(JdbcTemplate.java:1010)
+	at org.springframework.jdbc.core.JdbcTemplate.update(JdbcTemplate.java:1020)
+	at com.petplatform.boot.auth.PointsTaskHttpTest.cFaceSignInTasksReferralStrictBodiesAndIdempotency(PointsTaskHttpTest.java:205)
+Caused by: java.sql.SQLException: No value specified for parameter 16
+	at com.mysql.cj.jdbc.exceptions.SQLError.createSQLException(SQLError.java:121)
+	at com.mysql.cj.jdbc.exceptions.SQLExceptionsMapping.translateException(SQLExceptionsMapping.java:114)
+	at com.mysql.cj.jdbc.ClientPreparedStatement.executeUpdateInternal(ClientPreparedStatement.java:1197)
+	at com.mysql.cj.jdbc.ClientPreparedStatement.executeUpdateInternal(ClientPreparedStatement.java:1101)
+	at com.mysql.cj.jdbc.ClientPreparedStatement.executeLargeUpdate(ClientPreparedStatement.java:1448)
+	at com.mysql.cj.jdbc.ClientPreparedStatement.executeUpdate(ClientPreparedStatement.java:1084)
+	at org.springframework.jdbc.core.JdbcTemplate.lambda$update$0(JdbcTemplate.java:971)
+	at org.springframework.jdbc.core.JdbcTemplate.execute(JdbcTemplate.java:670)
+	... 4 more
+
+[ERROR] com.petplatform.boot.auth.PointsTaskHttpTest.adminFaceConfigGetPutValidationReplayAndConflict -- Time elapsed: 10.93 s <<< FAILURE!
+org.opentest4j.AssertionFailedError: expected: <200> but was: <401>
+	at org.junit.jupiter.api.AssertionFailureBuilder.build(AssertionFailureBuilder.java:158)
+	at org.junit.jupiter.api.AssertionFailureBuilder.buildAndThrow(AssertionFailureBuilder.java:139)
+	at org.junit.jupiter.api.AssertEquals.failNotEqual(AssertEquals.java:201)
+	at org.junit.jupiter.api.AssertEquals.assertEquals(AssertEquals.java:152)
+	at org.junit.jupiter.api.AssertEquals.assertEquals(AssertEquals.java:147)
+	at org.junit.jupiter.api.Assertions.assertEquals(Assertions.java:558)
+	at com.petplatform.boot.auth.PointsTaskHttpTest.adminFaceConfigGetPutValidationReplayAndConflict(PointsTaskHttpTest.java:231)
+
+[ERROR] Failures: 
+[ERROR]   PointsTaskHttpTest.adminFaceConfigGetPutValidationReplayAndConflict:231 expected: <200> but was: <401>
+[ERROR] Errors: 
+[ERROR]   PointsTaskHttpTest.cFaceSignInTasksReferralStrictBodiesAndIdempotency:205 ? BadSqlGrammar PreparedStatementCallback; bad SQL grammar [INSERT INTO pet_order(id, order_no, user_id, merchant_id, store_id, service_id, pet_id, reservation_id, order_stage, payment_status, fulfillment_type, original_amount, pay_amount, appointment_start_at, appointment_end_at, paid_at, created_at, updated_at) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,UTC_TIMESTAMP(3),UTC_TIMESTAMP(3),UTC_TIMESTAMP(3))]
+[ERROR] Tests run: 2, Failures: 1, Errors: 1, Skipped: 0
+[ERROR] Failed to execute goal org.apache.maven.plugins:maven-surefire-plugin:3.5.6:test (default-test) on project pet-boot: There are test failures.
+[ERROR] 
+[ERROR] See C:\Users\Administrator\Desktop\wt-mod-signin\backend\pet-boot\target\surefire-reports for the individual test results.
+[ERROR] See dump files (if any exist) [date].dump, [date]-jvmRun[N].dump and [date].dumpstream.
+[ERROR] -> [Help 1]
+[ERROR] 
+[ERROR] To see the full stack trace of the errors, re-run Maven with the -e switch.
+[ERROR] Re-run Maven using the -X switch to enable full debug logging.
+[ERROR] 
+[ERROR] For more information about the errors and possible solutions, please read the following articles:
+[ERROR] [Help 1] http://cwiki.apache.org/confluence/display/MAVEN/MojoFailureException
+[ERROR] 
+[ERROR] After correcting the problems, you can resume the build with the command
+[ERROR]   mvn <args> -rf :pet-boot

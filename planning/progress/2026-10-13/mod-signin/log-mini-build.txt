@@ -1,0 +1,280 @@
+
+> pet-platform-miniapp@0.1.0 build:weapp
+> taro build --type weapp --disable-global-config
+
+👽 Taro v4.1.5
+
+Tips:
+1. 建议开启持久化缓存功能，能有效提升二次编译速度，详情请参考: https://docs.taro.zone/docs/config-detail#cache。
+
+
+
+● Webpack █████████████████████████  (0%)  
+ 
+
+[2K[1A[2K[1A[2K[1A[2K[1A[2K[G
+● Webpack █████████████████████████ setup (2%)  
+ run
+
+[2K[1A[2K[1A[2K[1A[2K[1A[2K[G
+● Webpack █████████████████████████ setup (9%) compilation 
+ mini-css-extract-plugin
+
+[2K[1A[2K[1A[2K[1A[2K[1A[2K[G
+● Webpack █████████████████████████ building (10%) 0/107 entries 100/107 depen
+dencies 0/100 modules 1 active 
+ babel-loader › src\app.config.ts
+
+[2K[1A[2K[1A[2K[1A[2K[1A[2K[1A[2K[G
+● Webpack █████████████████████████ building (10%) 0/107 entries 100/107 depen
+dencies 0/100 modules 1 active 
+ babel-loader › src\app.config.ts
+
+[2K[1A[2K[1A[2K[1A[2K[1A[2K[1A[2K[G
+● Webpack █████████████████████████ building (10%) 0/107 entries 100/107 depen
+dencies 0/100 modules 2 active 
+ babel-loader › src\app.tsx
+
+[2K[1A[2K[1A[2K[1A[2K[1A[2K[1A[2K[G
+● Webpack █████████████████████████ building (10%) 0/107 entries 107/107 depen
+dencies 1/107 modules 99 active 
+ ...l-loader › node_modules\@tarojs\webpack5-runner\dist\template\custom-wrapp
+er.js
+
+[2K[1A[2K[1A[2K[1A[2K[1A[2K[1A[2K[1A[2K[G
+● Webpack █████████████████████████ building (26%) 32/107 entries 107/134 depe
+ndencies 32/107 modules 75 active 
+ babel-loader › src\consumer\pages\points-tasks\tasks.tsx
+
+[2K[1A[2K[1A[2K[1A[2K[1A[2K[1A[2K[G
+● Webpack █████████████████████████ building (30%) 39/107 entries 107/158 depe
+ndencies 39/107 modules 68 active 
+ babel-loader › src\consumer\pages\points-tasks\tasks.tsx
+
+[2K[1A[2K[1A[2K[1A[2K[1A[2K[1A[2K[G
+● Webpack █████████████████████████ building (36%) 51/107 entries 857/921 depe
+ndencies 51/317 modules 102 active 
+ taro-loader › src\merchant\pages\order-confirm\index.tsx
+
+[2K[1A[2K[1A[2K[1A[2K[1A[2K[1A[2K[G
+● Webpack █████████████████████████ building (36%) 51/107 entries 1026/1055 de
+pendencies 51/376 modules 138 active 
+ ...top\wt-mod-signin\frontend-miniapp\src\consumer\assets\messages\header-bac
+k.png
+
+[2K[1A[2K[1A[2K[1A[2K[1A[2K[1A[2K[1A[2K[G
+● Webpack █████████████████████████ building (36%)  
+ import loader .\node_modules\postcss-loader\dist\cjs.js
+
+[2K[1A[2K[1A[2K[1A[2K[1A[2K[G
+● Webpack █████████████████████████ building (36%) 51/107 entries 1026/1055 de
+pendencies 51/376 modules 182 active 
+ css-loader › postcss-loader › src\app.css
+
+[2K[1A[2K[1A[2K[1A[2K[1A[2K[1A[2K[G
+● Webpack █████████████████████████ building (36%) 51/107 entries 1026/1056 de
+pendencies 51/376 modules 183 active 
+ css-loader › postcss-loader › src\merchant\pages\workspace\index.css
+
+[2K[1A[2K[1A[2K[1A[2K[1A[2K[1A[2K[G
+● Webpack █████████████████████████ building (36%)  
+ import loader .\node_modules\sass-loader\dist\cjs.js
+
+[2K[1A[2K[1A[2K[1A[2K[1A[2K[G
+● Webpack █████████████████████████ building (36%) 51/107 entries 1052/1066 de
+pendencies 51/383 modules 194 active 
+ ...der › resolve-url-loader › sass-loader › src\consumer\pages\messages\index
+.scss
+
+[2K[1A[2K[1A[2K[1A[2K[1A[2K[1A[2K[1A[2K[G
+● Webpack █████████████████████████ building (36%) 51/107 entries 1135/1140 de
+pendencies 65/413 modules 228 active 
+ babel-loader › src\consumer\order-verify\repository.ts
+
+[2K[1A[2K[1A[2K[1A[2K[1A[2K[1A[2K[G
+● Webpack █████████████████████████ building (36%) 51/107 entries 1163/1189 de
+pendencies 79/418 modules 228 active 
+ babel-loader › src\merchant\schedule\model.ts
+
+[2K[1A[2K[1A[2K[1A[2K[1A[2K[1A[2K[G
+● Webpack █████████████████████████ building (36%) 51/107 entries 1187/1195 de
+pendencies 98/422 modules 211 active 
+ babel-loader › src\merchant\services\repository.ts
+
+[2K[1A[2K[1A[2K[1A[2K[1A[2K[1A[2K[G
+● Webpack █████████████████████████ building (36%) 51/107 entries 1426/1474 de
+pendencies 110/426 modules 242 active 
+ babel-loader › node_modules\@tarojs\runtime\dist\bom\history.js
+
+[2K[1A[2K[1A[2K[1A[2K[1A[2K[1A[2K[G
+● Webpack █████████████████████████ building (36%) 51/107 entries 1435/1474 de
+pendencies 110/426 modules 243 active 
+ babel-loader › node_modules\@tarojs\runtime\dist\bom\raf.js
+
+[2K[1A[2K[1A[2K[1A[2K[1A[2K[1A[2K[G
+● Webpack █████████████████████████ building (36%) 51/107 entries 1469/1483 de
+pendencies 110/456 modules 252 active 
+ babel-loader › src\merchant\order\list-controller.ts
+
+[2K[1A[2K[1A[2K[1A[2K[1A[2K[1A[2K[G
+● Webpack █████████████████████████ building (36%) 51/107 entries 1476/1500 de
+pendencies 111/456 modules 280 active 
+ css-loader › postcss-loader › src\consumer\pages\mine\mine.css
+
+[2K[1A[2K[1A[2K[1A[2K[1A[2K[1A[2K[G
+● Webpack █████████████████████████ building (36%) 51/107 entries 1639/1800 de
+pendencies 123/481 modules 268 active 
+ css-loader › postcss-loader › src\consumer\pages\mine\mine.css
+
+[2K[1A[2K[1A[2K[1A[2K[1A[2K[1A[2K[G
+● Webpack █████████████████████████ building (36%) 51/107 entries 1851/1886 de
+pendencies 128/496 modules 264 active 
+ css-loader › postcss-loader › src\consumer\pages\pet-archive\detail.css
+
+[2K[1A[2K[1A[2K[1A[2K[1A[2K[1A[2K[G
+● Webpack █████████████████████████ building (36%) 51/107 entries 1879/1889 de
+pendencies 129/503 modules 347 active 
+ babel-loader › node_modules\@tarojs\runtime\dist\dom\class-list.js
+
+[2K[1A[2K[1A[2K[1A[2K[1A[2K[1A[2K[G
+● Webpack █████████████████████████ building (36%) 51/107 entries 1938/1986 de
+pendencies 176/515 modules 305 active 
+ babel-loader › node_modules\@tarojs\runtime\dist\dom\style_properties.js
+
+[2K[1A[2K[1A[2K[1A[2K[1A[2K[1A[2K[G
+● Webpack █████████████████████████ building (36%) 51/107 entries 2019/2031 de
+pendencies 198/538 modules 332 active 
+ babel-loader › node_modules\@tarojs\shared\dist\components.js
+
+[2K[1A[2K[1A[2K[1A[2K[1A[2K[1A[2K[G
+● Webpack █████████████████████████ building (36%) 51/107 entries 2084/2121 de
+pendencies 269/542 modules 270 active 
+ ...ontend-miniapp\node_modules\@babel\runtime\helpers\esm\assertThisInitializ
+ed.js
+
+[2K[1A[2K[1A[2K[1A[2K[1A[2K[1A[2K[1A[2K[G
+● Webpack █████████████████████████ building (36%) 51/107 entries 2124/2146 de
+pendencies 281/544 modules 262 active 
+ ...el-loader › node_modules\@tarojs\runtime\dist\dom-external\inner-html\scan
+er.js
+
+[2K[1A[2K[1A[2K[1A[2K[1A[2K[1A[2K[1A[2K[G
+● Webpack █████████████████████████ building (36%) 51/107 entries 2164/2172 de
+pendencies 336/554 modules 217 active 
+ babel-loader › node_modules\@tarojs\api\dist\interceptor\index.js
+
+[2K[1A[2K[1A[2K[1A[2K[1A[2K[1A[2K[G
+● Webpack █████████████████████████ building (37%) 54/107 entries 2175/2180 de
+pendencies 350/555 modules 205 active 
+ ...r\Desktop\wt-mod-signin\frontend-miniapp\node_modules\@noble\hashes\esm\_u
+64.js
+
+[2K[1A[2K[1A[2K[1A[2K[1A[2K[1A[2K[1A[2K[G
+● Webpack █████████████████████████ building (37%) 54/107 entries 2183/2184 de
+pendencies 352/557 modules 205 active 
+ babel-loader › node_modules\@tarojs\api\dist\interceptor\chain.js
+
+[2K[1A[2K[1A[2K[1A[2K[1A[2K[1A[2K[G
+● Webpack █████████████████████████ building (38%) 55/107 entries 2189/2189 de
+pendencies 366/559 modules 193 active 
+ node_modules\scheduler\cjs\scheduler.production.min.js
+
+[2K[1A[2K[1A[2K[1A[2K[1A[2K[1A[2K[G
+● Webpack █████████████████████████ building (38%) 55/107 entries 2193/2193 de
+pendencies 371/561 modules 189 active 
+ node_modules\css-loader\dist\runtime\noSourceMaps.js
+
+[2K[1A[2K[1A[2K[1A[2K[1A[2K[1A[2K[G
+● Webpack █████████████████████████ building (38%) 55/107 entries 2196/2196 de
+pendencies 374/562 modules 188 active 
+ css-loader › postcss-loader › src\app.css|0|||}}
+
+[2K[1A[2K[1A[2K[1A[2K[1A[2K[1A[2K[G
+● Webpack █████████████████████████ building (38%) 56/107 entries 2262/2265 de
+pendencies 382/614 modules 181 active 
+ ...jUxNTUgMjQyIDM0LjUxNTUgMjQyTDAgMTUuMjk4OFoiIGZpbGw9IiM1QkFBRTgiLz4NCjwvc3Z
+nPg0K
+
+[2K[1A[2K[1A[2K[1A[2K[1A[2K[1A[2K[1A[2K[G
+● Webpack █████████████████████████ building (40%) 59/107 entries 2280/2321 de
+pendencies 445/625 modules 171 active 
+ ...CIAOAAnADwAKQBBAEIASQAtACgAMQAtACwAKAAnACgAKwA3ACIALAAqACUAIQBJAFQAUwAoACQ
+AJgAA
+
+[2K[1A[2K[1A[2K[1A[2K[1A[2K[1A[2K[1A[2K[G
+● Webpack █████████████████████████ building (40%) 59/107 entries 2340/2340 de
+pendencies 479/643 modules 146 active 
+ css-loader › postcss-loader › src\consumer\components\navigation\style.css
+
+[2K[1A[2K[1A[2K[1A[2K[1A[2K[1A[2K[G
+● Webpack █████████████████████████ building (48%) 75/107 entries 2357/2357 de
+pendencies 564/652 modules 85 active 
+ ...postcss-loader › src\consumer\components\booking-sheet\booking-sheet.css|0
+|||}}
+
+[2K[1A[2K[1A[2K[1A[2K[1A[2K[1A[2K[1A[2K[G
+● Webpack █████████████████████████ sealing (70%) finish module graph 
+ InnerGraphPlugin
+
+[2K[1A[2K[1A[2K[1A[2K[1A[2K[G
+● Webpack █████████████████████████ sealing (71%)  
+ dependencies optimization
+
+[2K[1A[2K[1A[2K[1A[2K[1A[2K[G
+● Webpack █████████████████████████ sealing (75%) chunk optimization 
+ SplitChunksPlugin
+
+[2K[1A[2K[1A[2K[1A[2K[1A[2K[G
+● Webpack █████████████████████████ sealing (78%)  
+ chunk modules optimization
+
+[2K[1A[2K[1A[2K[1A[2K[1A[2K[G
+● Webpack █████████████████████████ sealing (87%)  
+ code generation
+
+[2K[1A[2K[1A[2K[1A[2K[1A[2K[G
+● Webpack █████████████████████████ sealing (88%)  
+ runtime requirements
+
+[2K[1A[2K[1A[2K[1A[2K[1A[2K[G
+● Webpack █████████████████████████ sealing (92%) asset processing 
+ TaroMiniPlugin
+
+[2K[1A[2K[1A[2K[1A[2K[1A[2K[G
+● Webpack █████████████████████████ sealing (92%) asset processing 
+ CssMinimizerPlugin
+
+[2K[1A[2K[1A[2K[1A[2K[1A[2K[G
+● Webpack █████████████████████████ sealing (92%) asset processing 
+ RealContentHashPlugin
+
+[2K[1A[2K[1A[2K[1A[2K[1A[2K[G
+● Webpack █████████████████████████ sealing (92%) asset processing 
+ TaroMiniPlugin
+
+[2K[1A[2K[1A[2K[1A[2K[1A[2K[G
+● Webpack █████████████████████████ emitting (98%)  
+ after emit
+
+[2K[1A[2K[1A[2K[1A[2K[1A[2K[G
+✔ Webpack
+  Compiled successfully in 59.45s
+
+⚠️ Warnings: 
+
+AssetsOverSizeLimitWarning: asset size limit: The following asset(s) exceed the recommended size limit (244 KiB).
+This can impact web performance.
+Assets: 
+  consumer/pages/profile-edit/index.wxss (332 KiB)
+  consumer/pages/pet-archive/assets/strip-detail-bottom.png (370 KiB)
+  consumer/pages/store-services/assets/690-6661-bg-huaban@2x.png (634 KiB)
+  consumer/pages/store-services/assets/690-6908-store-banner@2x.png (477 KiB)
+  consumer/pages/pet-archive/sub-vendors.wxss (401 KiB)
+  consumer/pages/pet-archive/assets/strip-main.png (634 KiB)
+    at Generator.next (<anonymous>)
+
+NoAsyncChunksWarning: webpack performance recommendations: 
+You can limit the size of your bundles by using import() or require.ensure to lazy load some parts of your application.
+For more info visit https://webpack.js.org/guides/code-splitting/
+    at Generator.next (<anonymous>)
+

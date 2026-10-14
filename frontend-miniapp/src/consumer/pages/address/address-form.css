@@ -1,0 +1,39 @@
+/* 新增/编辑地址共用弹层表单（设计稿 129:13731/129:13533：列表之上的底部面板 h561，
+   白底顶圆角 16，标题+×、INPUT h42、TEXTAREA h82、开关行 h44、保存钮 h44 胶囊）。
+   官方色值 #5baae8；WXSS 铁律同列表页。 */
+.addr-form-page { position: fixed; inset: 0; background: rgba(31, 43, 48, 0.45); display: flex; flex-direction: column; justify-content: flex-end; z-index: 20; }
+.addr-form-page-static { background: #f0fbff; }
+.addr-form-page view, .addr-form-page button, .addr-form-page image, .addr-form-page text, .addr-form-page textarea { box-sizing: border-box; }
+.addr-form-page button { padding: 0; margin: 0; border: 0; border-radius: 0; background: transparent; font: inherit; line-height: normal; text-align: left; }
+.addr-form-page button::after { border: 0; }
+.addr-form-page button[disabled] { opacity: .65; color: inherit; }
+
+.addr-form-sheet { background: #ffffff; border-radius: calc(var(--addr-unit) * 16) calc(var(--addr-unit) * 16) 0 0; max-height: 82vh; display: flex; flex-direction: column; }
+.addr-form-head { position: relative; height: calc(var(--addr-unit) * 48); flex-shrink: 0; padding: calc(var(--addr-unit) * 12) calc(var(--addr-unit) * 16) 0 calc(var(--addr-unit) * 33); }
+.addr-form-title { font-size: calc(var(--addr-unit) * 18); line-height: calc(var(--addr-unit) * 24); font-weight: 600; color: #1f2b30; }
+.addr-form-close { position: absolute; right: calc(var(--addr-unit) * 11); top: calc(var(--addr-unit) * 8); width: calc(var(--addr-unit) * 32); height: calc(var(--addr-unit) * 32); font-size: calc(var(--addr-unit) * 22); line-height: calc(var(--addr-unit) * 32); text-align: center; color: #577683; }
+
+.addr-form-body { max-height: calc(82vh - var(--addr-unit) * 48); }
+.addr-form-fields { padding: calc(var(--addr-unit) * 8) calc(var(--addr-unit) * 33) calc(var(--addr-unit) * 24); }
+.addr-form-state { padding: calc(var(--addr-unit) * 48) calc(var(--addr-unit) * 16); text-align: center; font-size: calc(var(--addr-unit) * 13); line-height: calc(var(--addr-unit) * 20); color: #577683; }
+.addr-form-state-action { margin-top: calc(var(--addr-unit) * 12); text-align: center; }
+.addr-form-state-btn { display: inline-block; padding: calc(var(--addr-unit) * 8) calc(var(--addr-unit) * 20); border-radius: calc(var(--addr-unit) * 18); background: #5baae8; color: #ffffff; font-size: calc(var(--addr-unit) * 13); line-height: calc(var(--addr-unit) * 18); }
+
+/* 字段（原稿：label 16 高 + 输入 h42 r8；textarea h82；组间距 16）。 */
+.addr-form-field { margin-top: calc(var(--addr-unit) * 16); }
+.addr-form-fields .addr-form-field:first-child { margin-top: calc(var(--addr-unit) * 8); }
+.addr-form-label { display: block; font-size: calc(var(--addr-unit) * 12); line-height: calc(var(--addr-unit) * 16); color: #577683; }
+.addr-form-input, .addr-form-textarea { margin-top: calc(var(--addr-unit) * 6); width: 100%; background: #f5fafd; border: calc(var(--addr-unit) * 1) solid #dcedf8; border-radius: calc(var(--addr-unit) * 8); padding: calc(var(--addr-unit) * 11) calc(var(--addr-unit) * 13); font-size: calc(var(--addr-unit) * 14); line-height: calc(var(--addr-unit) * 20); color: #1f2b30; }
+.addr-form-input.is-error, .addr-form-textarea.is-error { border-color: #e8756a; }
+.addr-form-textarea { height: calc(var(--addr-unit) * 82); }
+
+/* 默认开关行（原稿 BUTTON-133 h44：文案左、Switch 44x24 右置）。 */
+.addr-form-default { margin-top: calc(var(--addr-unit) * 16); height: calc(var(--addr-unit) * 44); display: flex; align-items: center; justify-content: space-between; }
+.addr-form-default-label { font-size: calc(var(--addr-unit) * 15); line-height: calc(var(--addr-unit) * 20); color: #1f2b30; }
+.addr-form-default switch { transform: scale(calc(var(--addr-unit) * 0.92)); }
+
+.addr-form-save { margin-top: calc(var(--addr-unit) * 16); width: 100%; height: calc(var(--addr-unit) * 44); border-radius: calc(var(--addr-unit) * 22); background: #5baae8; color: #ffffff; font-size: calc(var(--addr-unit) * 15); line-height: calc(var(--addr-unit) * 44); text-align: center; font-weight: 500; }
+.addr-form-save::after { border: none; }
+.addr-form-save[disabled] { background: #a7dcfa; color: #f0fbff; }
+.addr-form-notice { display: block; margin-top: calc(var(--addr-unit) * 10); text-align: center; font-size: calc(var(--addr-unit) * 12); line-height: calc(var(--addr-unit) * 18); color: #577683; }
+.addr-form-notice.is-error { color: #e8756a; }

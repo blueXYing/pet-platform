@@ -20,6 +20,9 @@ public interface OrderQueryMapper {
 
     OrderQueryViewEntity selectMineById(@Param("id") long id, @Param("userId") long userId);
 
+    /** 07号 §7.1 amendment (contract 58): earliest successful payment instant, null when none. */
+    java.time.LocalDateTime selectFirstPaidAt(@Param("userId") long userId);
+
     long countForStore(@Param("merchantId") long merchantId, @Param("storeId") long storeId,
             @Param("displayStatus") String displayStatus);
 

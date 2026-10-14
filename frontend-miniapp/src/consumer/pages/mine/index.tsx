@@ -6,11 +6,12 @@ import { consumerApi, consumerSession, consumerStorage } from '../../../shared/c
 import { integrationMessage } from '../../../shared/consumer-api'
 import { RealProfileRepository } from '../../api/repositories'
 import { RealCouponPointsRepository } from '../../coupon-points/repository'
+import { RealPointsTaskRepository } from '../../points-tasks/repository'
 import { deltaLabel, formatLedgerTime, pointsBizTypeLabels, type PointsLedgerView } from '../../coupon-points/model'
 import avatar from '../../assets/profile/avatar.png'
 import stripTop from './assets/strip-top.jpg'
 import {
-  MINE_DEVELOPER_SHELL_URL, MINE_MERCHANT_WORKSPACE_URL, mineCard, mineHubEntries, phoneGuideCopy,
+  MINE_ADDRESS_BOOK_URL, MINE_BECOME_PROVIDER_URL, MINE_DEVELOPER_SHELL_URL, MINE_MERCHANT_WORKSPACE_URL, MINE_POINTS_MALL_URL, mineCard, mineHubEntries, phoneGuideCopy,
   type MineCard, type MineStats,
 } from './model'
 import './mine.css'
@@ -19,10 +20,11 @@ import './mine.css'
 // 授权引导（可跳过）+ 功能枢纽。复用既有机制：会话存取/登录链全在 ConsumerApi
 // （wechat-login → VERIFY_PHONE → phone-binding attempt 通道），本页不新造第二套会话。
 // 2026-10-12 视觉重做：设计源 126:675 新版（2026-10-10 稿，planning/progress/2026-10-12/
-// figma-mine/ 精确树）。功能/契约零改动；签到卡/拉新/奖励/收藏/足迹/积分商城/地址管理/
-// 成为服务者/帮助与客服/意见反馈/设置等无工程页面的原稿入口仅做视觉占位（无交互），
+// figma-mine/ 精确树）。功能/契约零改动；签到卡/拉新/奖励/收藏/足迹/
+// 帮助与客服/意见反馈/设置等无工程页面的原稿入口仅做视觉占位（无交互），
 // 登记表 §4.6 记偏差。全部既有入口（订单/优惠券/积分明细页/宠物档案/通知偏好/编辑资料/
-// 商家工作台/退出登录/开发者工具）保留并沿用原 URL。
+// 商家工作台/退出登录/开发者工具）保留并沿用原 URL。2026-10-13（32号裁决第二批）：
+// 地址管理/积分商城/成为服务者三格接通真实子页（契约 59/展示态 §4.15/become-provider）。
 const GUIDE_KEY = 'pet.c.phone-guide.v1'
 
 const [hubOrders, hubCoupons, hubPoints, hubFavorites, hubFootprints, hubPreferences, hubPets, hubProfile] = mineHubEntries
@@ -51,6 +53,9 @@ export default function MinePage() {
   const { revision } = useWorkspace('real')
   const [profileRepository] = useState(() => new RealProfileRepository(consumerApi))
   const [couponPointsRepository] = useState(() => new RealCouponPointsRepository(consumerApi))
+  const [pointsTaskRepository] = useState(() => new RealPointsTaskRepository(consumerApi))
+  // 58 号签到切片：连签数接真实 status；读取失败软降级保持 0 占位语义（不阻塞卡片）。
+  const [signInStreak, setSignInStreak] = useState(0)
   const [card, setCard] = useState<MineCard>(() => mineCard({
     outcome: consumerSession.outcome(),
     nickname: '',
@@ -80,12 +85,14 @@ export default function MinePage() {
       let phoneMasked: string | null = consumerApi.currentSession?.phoneMasked ?? null
       let stats: MineStats = { coupons: null, points: null }
       if (outcome === 'authenticated') {
-        // 三路读取失败均软降级（卡片仍可用）；会话过期由 ConsumerApi 401 自动恢复兜底。
-        const [profile, coupons, points] = await Promise.all([
+        // 四路读取失败均软降级（卡片仍可用）；会话过期由 ConsumerApi 401 自动恢复兜底。
+        const [profile, coupons, points, signIn] = await Promise.all([
           profileRepository.load().catch(() => null),
           couponPointsRepository.listCoupons('AVAILABLE', 1, 1).then(page => page.total).catch(() => null),
           couponPointsRepository.balance().then(value => value.balance).catch(() => null),
+          pointsTaskRepository.signInStatus().then(status => status.streak).catch(() => null),
         ])
+        setSignInStreak(signIn ?? 0)
         nickname = profile?.nickname || ''
         if (profile?.phoneMasked) phoneMasked = profile.phoneMasked
         stats = { coupons, points }
@@ -236,13 +243,15 @@ export default function MinePage() {
           </View>
         </View>}
         {notice && <View className='mine-notice' role='status'><Text id='mine-notice'>{notice}</Text></View>}
-        {/* 每日签到卡：V1 无签到写路径，纯视觉占位（周条为真实日历），登记表 §4.6。 */}
-        <View className='mine-signin' ariaLabel='签到功能暂未接通'>
+        {/* 每日签到卡（58 号切片接通）：整卡入口进签到日历页；连签数接真实 status，
+            读取失败保持 0 占位语义；周条仍为真实日历（已签点亮在签到页内呈现）。 */}
+        <Button id='mine-hub-signin' className='mine-signin' hoverClass='none'
+          ariaLabel='进入每日签到' onClick={() => open('/consumer/pages/points-tasks/signin')}>
           <View className='mine-signin-head'>
             <View className='mine-signin-title'><View className='mi-signin-cal' /><Text>每日签到</Text></View>
             <View className='mine-signin-streak'>
               <Text>连续签到</Text>
-              <Text className='mine-signin-streak-num'>0</Text>
+              <Text className='mine-signin-streak-num'>{signInStreak}</Text>
               <Text> 天</Text>
             </View>
           </View>
@@ -252,18 +261,20 @@ export default function MinePage() {
               <Text className='mine-signin-day-date'>{day.date}</Text>
             </View>)}
           </View>
-          <View className='mine-signin-action'><Text>立即签到 · 得 5 积分</Text></View>
-        </View>
+          <View className='mine-signin-action'><Text>立即签到 · 赚积分</Text></View>
+        </Button>
         <View className='mine-quick'>
-          {/* 拉新任务/奖励领取：V1 无对应页面，视觉占位（无交互）；积分明细沿既有积分页入口。 */}
-          <View className='mine-quick-cell'>
+          {/* 拉新任务/奖励领取（58 号切片接通）：面板页入口；积分明细沿既有积分页入口。 */}
+          <Button id='mine-hub-points-tasks' className='mine-quick-cell' hoverClass='none'
+            onClick={() => open('/consumer/pages/points-tasks/tasks')}>
             <View className='mine-quick-chip is-accent'><View className='mi-quick-invite' /></View>
             <Text className='mine-quick-label'>拉新任务</Text>
-          </View>
-          <View className='mine-quick-cell'>
+          </Button>
+          <Button id='mine-hub-points-rewards' className='mine-quick-cell' hoverClass='none'
+            onClick={() => open('/consumer/pages/points-tasks/rewards')}>
             <View className='mine-quick-chip'><View className='mi-quick-reward' /></View>
             <Text className='mine-quick-label'>奖励领取</Text>
-          </View>
+          </Button>
           <Button id='mine-hub-points' className='mine-quick-cell' hoverClass='none' onClick={() => open(hubPoints.url)}>
             <View className='mine-quick-chip'><View className='mi-quick-points' /></View>
             <Text className='mine-quick-label'>积分明细</Text>
@@ -288,33 +299,37 @@ export default function MinePage() {
         <View className='mine-section'>
           <View className='mine-section-head'><Text className='mine-section-title'>我的服务</Text></View>
           <View className='mine-grid'>
+            {/* 我的收藏（contract 58 收藏足迹切片）：真实入口；地址管理为真实入口；积分商城格位
+                2026-10-13 接通 32号裁决第二节展示态页（§4.15）；宠物档案已迁「更多服务」行。 */}
             {/* 我的收藏（contract 58）：真实入口；地址管理仍为视觉占位；优惠券/宠物档案为真实入口。 */}
-            <Button id='mine-hub-favorites' className='mine-cell' hoverClass='none' onClick={() => open(hubFavorites.url)}>
-              <View className='mine-cell-chip'><View className='mi-svc-collect' /></View>
+            <Button id='mine-hub-favorites' className='mine-cell' hoverClass='none' onClick={() => open(hubFavorites.url)}>              <View className='mine-cell-chip'><View className='mi-svc-collect' /></View>
               <Text className='mine-cell-label'>我的收藏</Text>
             </Button>
             <Button id='mine-hub-coupons' className='mine-cell' hoverClass='none' onClick={() => open(hubCoupons.url)}>
               <View className='mine-cell-chip'><View className='mi-svc-coupon' /></View>
               <Text className='mine-cell-label'>优惠券</Text>
             </Button>
-            <Button id='mine-stat-pets' className='mine-cell' hoverClass='none' onClick={() => open(hubPets.url)}>
+            <Button id='mine-hub-mall' className='mine-cell' hoverClass='none' ariaLabel='积分商城，兑换暂未开放' onClick={() => open(MINE_POINTS_MALL_URL)}>
               <View className='mine-cell-chip'><View className='mi-svc-mall' /></View>
-              <Text className='mine-cell-label'>宠物档案</Text>
+              <Text className='mine-cell-label'>积分商城</Text>
             </Button>
-            <View className='mine-cell'>
+            {/* 地址管理（契约 59 切片）：原视觉占位格位接真实子页。 */}
+            <Button id='mine-svc-address' className='mine-cell' hoverClass='none' onClick={() => open(MINE_ADDRESS_BOOK_URL)}>
               <View className='mine-cell-chip'><View className='mi-svc-address' /></View>
               <Text className='mine-cell-label'>地址管理</Text>
-            </View>
+            </Button>
           </View>
         </View>
         <View className='mine-section'>
           <View className='mine-section-head'><Text className='mine-section-title'>更多服务</Text></View>
           <View className='mine-grid'>
-            {/* 成为服务者/帮助与客服/意见反馈：无工程页面，视觉占位；通知偏好为真实入口。 */}
-            <View className='mine-cell'>
+            {/* 成为服务者为真实入口（32号 §2 七页批次：become-provider 落地页）；帮助与客服/意见反馈：
+                无工程页面，视觉占位；宠物档案（自「我的服务」商城格位迁入，原稿本行 4 格现 5 格）与
+                通知偏好为真实入口。 */}
+            <Button id='mine-become-provider' className='mine-cell' hoverClass='none' onClick={() => open(MINE_BECOME_PROVIDER_URL)}>
               <View className='mine-cell-chip'><View className='mi-svc-provider' /></View>
               <Text className='mine-cell-label'>成为服务者</Text>
-            </View>
+            </Button>
             <View className='mine-cell'>
               <View className='mine-cell-chip'><View className='mi-svc-help' /></View>
               <Text className='mine-cell-label'>帮助与客服</Text>
@@ -323,6 +338,10 @@ export default function MinePage() {
               <View className='mine-cell-chip'><View className='mi-svc-feedback' /></View>
               <Text className='mine-cell-label'>意见反馈</Text>
             </View>
+            <Button id='mine-stat-pets' className='mine-cell' hoverClass='none' onClick={() => open(hubPets.url)}>
+              <View className='mine-cell-chip'><View className='mi-svc-pet' /></View>
+              <Text className='mine-cell-label'>宠物档案</Text>
+            </Button>
             <Button id='mine-hub-preferences' className='mine-cell' hoverClass='none' onClick={() => open(hubPreferences.url)}>
               <View className='mine-cell-chip'><View className='mi-svc-settings' /></View>
               <Text className='mine-cell-label'>通知偏好</Text>

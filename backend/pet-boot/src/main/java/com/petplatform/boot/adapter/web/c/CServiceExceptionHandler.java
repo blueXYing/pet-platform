@@ -26,6 +26,7 @@ import org.springframework.web.method.annotation.MethodArgumentTypeMismatchExcep
         CServiceController.class, CStoreController.class,
         CScheduleController.class, CCouponController.class, CPointsController.class,
         COrderCreateController.class,
+        CVerificationCredentialController.class, CAddressController.class})
         CVerificationCredentialController.class,
         CFavoriteController.class,
         CFootprintController.class})
@@ -42,6 +43,9 @@ public class CServiceExceptionHandler {
             Map.entry("USER_FROZEN", 403),
             Map.entry("COMMON_NOT_FOUND", 404),
             Map.entry("PET_NOT_FOUND", 404),
+            // Address book (contract 59): anti-enumeration 404 and the conservative cap 400.
+            Map.entry("ADDRESS_NOT_FOUND", 404),
+            Map.entry("ADDRESS_LIMIT_EXCEEDED", 400),
             Map.entry("STORE_NOT_FOUND", 404),
             Map.entry("SERVICE_NOT_FOUND", 404),
             Map.entry("COMMON_CONFLICT", 409),

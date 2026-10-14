@@ -1,0 +1,3260 @@
+
+> pet-platform-miniapp@0.1.0 test
+> tsx --test src/shared/tests/*.test.ts src/merchant/tests/*.test.ts src/consumer/tests/*.test.ts
+
+TAP version 13
+# Subtest: new creation requires a complete current catalog plus same-order eligibility and allowed selections
+ok 1 - new creation requires a complete current catalog plus same-order eligibility and allowed selections
+  ---
+  duration_ms: 2.3708
+  type: 'test'
+  ...
+# Subtest: create context refresh clears stale options and eligibility before loading or failure
+ok 2 - create context refresh clears stale options and eligibility before loading or failure
+  ---
+  duration_ms: 0.4483
+  type: 'test'
+  ...
+# Subtest: catalog and eligibility publish atomically; latest read wins and old principal cannot publish options
+ok 3 - catalog and eligibility publish atomically; latest read wins and old principal cannot publish options
+  ---
+  duration_ms: 0.3701
+  type: 'test'
+  ...
+# Subtest: options refresh failure and disabled old selection preserve original unknown create for explicit replay
+ok 4 - options refresh failure and disabled old selection preserve original unknown create for explicit replay
+  ---
+  duration_ms: 4.4411
+  type: 'test'
+  ...
+# Subtest: definite create conflict retires only original, reloads options and eligibility, and waits for manual confirmation
+ok 5 - definite create conflict retires only original, reloads options and eligibility, and waits for manual confirmation
+  ---
+  duration_ms: 0.3892
+  type: 'test'
+  ...
+# Subtest: unconfirmed retirement storage failure keeps the C page locked and replays original UUID
+ok 6 - unconfirmed retirement storage failure keeps the C page locked and replays original UUID
+  ---
+  duration_ms: 1.221
+  type: 'test'
+  ...
+# Subtest: definite version conflict clears C action readiness until detail reload completes or fails
+ok 7 - definite version conflict clears C action readiness until detail reload completes or fails
+  ---
+  duration_ms: 0.4188
+  type: 'test'
+  ...
+# Subtest: creation validation keeps exact string ID, money and canonical text constraints
+ok 8 - creation validation keeps exact string ID, money and canonical text constraints
+  ---
+  duration_ms: 0.2329
+  type: 'test'
+  ...
+# Subtest: evidence requires text or valid unique images and uses the public six-image ceiling
+ok 9 - evidence requires text or valid unique images and uses the public six-image ceiling
+  ---
+  duration_ms: 0.257
+  type: 'test'
+  ...
+# Subtest: missing catalog and stale codes fail closed; test-only injected catalog admits its own options
+ok 10 - missing catalog and stale codes fail closed; test-only injected catalog admits its own options
+  ---
+  duration_ms: 0.286
+  type: 'test'
+  ...
+# Subtest: ineligible and already-active orders never create a parallel case
+ok 11 - ineligible and already-active orders never create a parallel case
+  ---
+  duration_ms: 0.1886
+  type: 'test'
+  ...
+# Subtest: unknown create locks original payload; only explicit retry resends; success rereads detail
+ok 12 - unknown create locks original payload; only explicit retry resends; success rereads detail
+  ---
+  duration_ms: 0.3207
+  type: 'test'
+  ...
+# Subtest: duplicate clicks share one in-flight action
+ok 13 - duplicate clicks share one in-flight action
+  ---
+  duration_ms: 0.16
+  type: 'test'
+  ...
+# Subtest: supplement uses exact current round ID even when the target is merchant
+ok 14 - supplement uses exact current round ID even when the target is merchant
+  ---
+  duration_ms: 0.2622
+  type: 'test'
+  ...
+# Subtest: CAS/supplement conflicts retire definite request then reread the latest version
+ok 15 - CAS/supplement conflicts retire definite request then reread the latest version
+  ---
+  duration_ms: 0.2155
+  type: 'test'
+  ...
+# Subtest: idempotency in-progress/conflict is kept locked instead of rotating request IDs
+ok 16 - idempotency in-progress/conflict is kept locked instead of rotating request IDs
+  ---
+  duration_ms: 0.2904
+  type: 'test'
+  ...
+# Subtest: frozen/forbidden writes become read-only while authorized history remains readable
+ok 17 - frozen/forbidden writes become read-only while authorized history remains readable
+  ---
+  duration_ms: 0.1587
+  type: 'test'
+  ...
+# Subtest: terminal cases expose their actual aftersale state and cannot withdraw or append
+ok 18 - terminal cases expose their actual aftersale state and cannot withdraw or append
+  ---
+  duration_ms: 0.2811
+  type: 'test'
+  ...
+# Subtest: identity switch clears old state and ignores delayed response
+ok 19 - identity switch clears old state and ignores delayed response
+  ---
+  duration_ms: 0.1136
+  type: 'test'
+  ...
+# Subtest: latest read wins; disposed controller refuses new requests
+ok 20 - latest read wins; disposed controller refuses new requests
+  ---
+  duration_ms: 0.1807
+  type: 'test'
+  ...
+# Subtest: logout during a write clears details and rejects late receipt publication
+ok 21 - logout during a write clears details and rejects late receipt publication
+  ---
+  duration_ms: 0.132
+  type: 'test'
+  ...
+# Subtest: page remount restores actual durable command and replays its original UUID
+ok 22 - page remount restores actual durable command and replays its original UUID
+  ---
+  duration_ms: 0.7548
+  type: 'test'
+  ...
+# Subtest: upload timeout survives remount with exact file and UUID; ACK removes only saved copy
+ok 23 - upload timeout survives remount with exact file and UUID; ACK removes only saved copy
+  ---
+  duration_ms: 35.1302
+  type: 'test'
+  ...
+# Subtest: cancelled chooser has no upload or durable network intent
+ok 24 - cancelled chooser has no upload or durable network intent
+  ---
+  duration_ms: 0.5642
+  type: 'test'
+  ...
+# Subtest: changed saved image cannot be uploaded under the original key
+ok 25 - changed saved image cannot be uploaded under the original key
+  ---
+  duration_ms: 0.6794
+  type: 'test'
+  ...
+# Subtest: a definite first media rejection can be discarded; unknown earlier result stays journaled
+ok 26 - a definite first media rejection can be discarded; unknown earlier result stays journaled
+  ---
+  duration_ms: 1.0773
+  type: 'test'
+  ...
+# Subtest: upload recovery is isolated by principal and form target
+ok 27 - upload recovery is isolated by principal and form target
+  ---
+  duration_ms: 0.4232
+  type: 'test'
+  ...
+# Subtest: invalid recovered UUID/hash or unowned path cannot upload or delete files
+ok 28 - invalid recovered UUID/hash or unowned path cannot upload or delete files
+  ---
+  duration_ms: 0.5632
+  type: 'test'
+  ...
+# Subtest: booking scenario guard only accepts the registered preview scenarios
+ok 29 - booking scenario guard only accepts the registered preview scenarios
+  ---
+  duration_ms: 2.02
+  type: 'test'
+  ...
+# Subtest: pickup fulfillment is unlocked with the selection fields on the public contract
+ok 30 - pickup fulfillment is unlocked with the selection fields on the public contract
+  ---
+  duration_ms: 6.0593
+  type: 'test'
+  ...
+# Subtest: preview fixtures satisfy the strict decoder
+ok 31 - preview fixtures satisfy the strict decoder
+  ---
+  duration_ms: 39.4346
+  type: 'test'
+  ...
+# Subtest: booking sheet title follows the fulfillment kind with the design-source copy
+ok 32 - booking sheet title follows the fulfillment kind with the design-source copy
+  ---
+  duration_ms: 0.1327
+  type: 'test'
+  ...
+# Subtest: availability decoder accepts the six-field projection and start ordering
+ok 33 - availability decoder accepts the six-field projection and start ordering
+  ---
+  duration_ms: 0.4077
+  type: 'test'
+  ...
+# Subtest: availability decoder fails closed on contract violations
+ok 34 - availability decoder fails closed on contract violations
+  ---
+  duration_ms: 0.3124
+  type: 'test'
+  ...
+# Subtest: availability decoder accepts the selection projection only when both keys arrive together
+ok 35 - availability decoder accepts the selection projection only when both keys arrive together
+  ---
+  duration_ms: 0.196
+  type: 'test'
+  ...
+# Subtest: availability query carries exactly storeId/startDate/endDate for a single day
+ok 36 - availability query carries exactly storeId/startDate/endDate for a single day
+  ---
+  duration_ms: 0.2234
+  type: 'test'
+  ...
+# Subtest: slot views mark selectable windows and grey sold-out windows without a status enum
+ok 37 - slot views mark selectable windows and grey sold-out windows without a status enum
+  ---
+  duration_ms: 0.5164
+  type: 'test'
+  ...
+# Subtest: slot labels are minute-level and cross-day windows are marked honestly
+ok 38 - slot labels are minute-level and cross-day windows are marked honestly
+  ---
+  duration_ms: 0.725
+  type: 'test'
+  ...
+# Subtest: preview availability keeps minute-level windows with sold-out entries
+ok 39 - preview availability keeps minute-level windows with sold-out entries
+  ---
+  duration_ms: 0.7469
+  type: 'test'
+  ...
+# Subtest: booking dates anchor to the business-zone today with weekday labels
+ok 40 - booking dates anchor to the business-zone today with weekday labels
+  ---
+  duration_ms: 0.2513
+  type: 'test'
+  ...
+# Subtest: buildOrderRequest emits the fulfillment branches; remark trimmed; coupon key never present
+ok 41 - buildOrderRequest emits the fulfillment branches; remark trimmed; coupon key never present
+  ---
+  duration_ms: 0.1897
+  type: 'test'
+  ...
+# Subtest: form validation walks every contract branch with Chinese labels
+ok 42 - form validation walks every contract branch with Chinese labels
+  ---
+  duration_ms: 0.276
+  type: 'test'
+  ...
+# Subtest: pickup-return interval rule greys RETURN candidates below 120 minutes
+ok 43 - pickup-return interval rule greys RETURN candidates below 120 minutes
+  ---
+  duration_ms: 0.1513
+  type: 'test'
+  ...
+# Subtest: create-order receipt decoder accepts the contract shape and fails closed
+ok 44 - create-order receipt decoder accepts the contract shape and fails closed
+  ---
+  duration_ms: 0.4594
+  type: 'test'
+  ...
+# Subtest: payment receipt decoder enforces the five keys and honest parameter shape
+ok 45 - payment receipt decoder enforces the five keys and honest parameter shape
+  ---
+  duration_ms: 0.3053
+  type: 'test'
+  ...
+# Subtest: payment gate uses only the server-returned actions flag
+ok 46 - payment gate uses only the server-returned actions flag
+  ---
+  duration_ms: 0.0975
+  type: 'test'
+  ...
+# Subtest: create error mapping covers every contract code and the common envelope
+ok 47 - create error mapping covers every contract code and the common envelope
+  ---
+  duration_ms: 0.2888
+  type: 'test'
+  ...
+# Subtest: payment and availability error mappings keep switch-off and dependency failures honest
+ok 48 - payment and availability error mappings keep switch-off and dependency failures honest
+  ---
+  duration_ms: 0.1974
+  type: 'test'
+  ...
+# Subtest: draftFromCommandData round-trips the emitted request payload and rejects foreign shapes
+ok 49 - draftFromCommandData round-trips the emitted request payload and rejects foreign shapes
+  ---
+  duration_ms: 0.3176
+  type: 'test'
+  ...
+# Subtest: preview create returns the receipt chained to the fixture unpaid order; conflict scenario answers 409
+ok 50 - preview create returns the receipt chained to the fixture unpaid order; conflict scenario answers 409
+  ---
+  duration_ms: 0.2699
+  type: 'test'
+  ...
+# Subtest: real repository queries availability with the three contract params only
+ok 51 - real repository queries availability with the three contract params only
+  ---
+  duration_ms: 1.3634
+  type: 'test'
+  ...
+# Subtest: preview repository completes pickup bookings with the selection fields (unlocked)
+ok 52 - preview repository completes pickup bookings with the selection fields (unlocked)
+  ---
+  duration_ms: 0.1394
+  type: 'test'
+  ...
+# Subtest: real create posts pickup bodies with the selection fields under a journal-backed X-Request-Id
+ok 53 - real create posts pickup bodies with the selection fields under a journal-backed X-Request-Id
+  ---
+  duration_ms: 13.8667
+  type: 'test'
+  ...
+# Subtest: real create posts the exact request body under a journal-backed X-Request-Id
+ok 54 - real create posts the exact request body under a journal-backed X-Request-Id
+  ---
+  duration_ms: 0.5556
+  type: 'test'
+  ...
+# Subtest: unknown create outcome keeps the journal: replay reuses the same X-Request-Id across a restart
+ok 55 - unknown create outcome keeps the journal: replay reuses the same X-Request-Id across a restart
+  ---
+  duration_ms: 0.7568
+  type: 'test'
+  ...
+# Subtest: definite rejection releases the slot: a corrected payload gets a fresh request id
+ok 56 - definite rejection releases the slot: a corrected payload gets a fresh request id
+  ---
+  duration_ms: 0.4081
+  type: 'test'
+  ...
+# Subtest: real pay posts the fixed channel body per order and replays the same request id on unknown outcome
+ok 57 - real pay posts the fixed channel body per order and replays the same request id on unknown outcome
+  ---
+  duration_ms: 0.4701
+  type: 'test'
+  ...
+# Subtest: real create/pay surface switched-off routes and dependency failures as-is (fail closed)
+ok 58 - real create/pay surface switched-off routes and dependency failures as-is (fail closed)
+  ---
+  duration_ms: 0.4572
+  type: 'test'
+  ...
+# Subtest: detail pages stay readable without login: only the preview design cut expires
+ok 59 - detail pages stay readable without login: only the preview design cut expires
+  ---
+  duration_ms: 0.5332
+  type: 'test'
+  ...
+# Subtest: detail page actions stay login-gated: anonymous or merchant context requires login
+ok 60 - detail page actions stay login-gated: anonymous or merchant context requires login
+  ---
+  duration_ms: 0.0995
+  type: 'test'
+  ...
+# Subtest: service detail/list reads flow anonymously through the page repository (no session, no Authorization)
+ok 61 - service detail/list reads flow anonymously through the page repository (no session, no Authorization)
+  ---
+  duration_ms: 14.1197
+  type: 'test'
+  ...
+# Subtest: preview repository serves fixtures that satisfy schema-grounded validation
+ok 62 - preview repository serves fixtures that satisfy schema-grounded validation
+  ---
+  duration_ms: 16.1266
+  type: 'test'
+  ...
+# Subtest: empty scenario has no coupons and zero balance
+ok 63 - empty scenario has no coupons and zero balance
+  ---
+  duration_ms: 0.1572
+  type: 'test'
+  ...
+# Subtest: status bucketing keeps fixture order and only returns the requested status
+ok 64 - status bucketing keeps fixture order and only returns the requested status
+  ---
+  duration_ms: 0.2528
+  type: 'test'
+  ...
+# Subtest: threshold label renders threshold amounts or 无门槛
+ok 65 - threshold label renders threshold amounts or 无门槛
+  ---
+  duration_ms: 0.1813
+  type: 'test'
+  ...
+# Subtest: delta labels carry explicit sign; clawback stays negative
+ok 66 - delta labels carry explicit sign; clawback stays negative
+  ---
+  duration_ms: 0.189
+  type: 'test'
+  ...
+# Subtest: ledger time renders today/yesterday/absolute deterministically (UTC-based)
+ok 67 - ledger time renders today/yesterday/absolute deterministically (UTC-based)
+  ---
+  duration_ms: 0.3199
+  type: 'test'
+  ...
+# Subtest: scenario guard only accepts the registered preview scenarios
+ok 68 - scenario guard only accepts the registered preview scenarios
+  ---
+  duration_ms: 0.1264
+  type: 'test'
+  ...
+# Subtest: fixtures never contain points redemption or discount-type samples (V1 hard rules)
+ok 69 - fixtures never contain points redemption or discount-type samples (V1 hard rules)
+  ---
+  duration_ms: 0.2005
+  type: 'test'
+  ...
+# Subtest: coupon decoder accepts the \#112 wire projection with D1 nulls and absent-as-null
+ok 70 - coupon decoder accepts the \#112 wire projection with D1 nulls and absent-as-null
+  ---
+  duration_ms: 0.5779
+  type: 'test'
+  ...
+# Subtest: coupon decoder fails closed on contract violations (exact-key + enums + patterns)
+ok 71 - coupon decoder fails closed on contract violations (exact-key + enums + patterns)
+  ---
+  duration_ms: 0.756
+  type: 'test'
+  ...
+# Subtest: coupon page decoder checks the paging envelope bounds
+ok 72 - coupon page decoder checks the paging envelope bounds
+  ---
+  duration_ms: 0.329
+  type: 'test'
+  ...
+# Subtest: points decoders enforce single-key balance and the five-enum nonzero-delta ledger row
+ok 73 - points decoders enforce single-key balance and the five-enum nonzero-delta ledger row
+  ---
+  duration_ms: 0.86
+  type: 'test'
+  ...
+# Subtest: ledger page decoder enforces the fixed created_at DESC, id DESC order
+ok 74 - ledger page decoder enforces the fixed created_at DESC, id DESC order
+  ---
+  duration_ms: 0.2864
+  type: 'test'
+  ...
+# Subtest: real repository reads the four contract routes with the approved query shape
+ok 75 - real repository reads the four contract routes with the approved query shape
+  ---
+  duration_ms: 2.233
+  type: 'test'
+  ...
+# Subtest: real repository maps the anti-enumeration 404 and the session 401 for the pages
+ok 76 - real repository maps the anti-enumeration 404 and the session 401 for the pages
+  ---
+  duration_ms: 0.7031
+  type: 'test'
+  ...
+# Subtest: real repository rejects decoded detail whose couponId does not echo the path
+ok 77 - real repository rejects decoded detail whose couponId does not echo the path
+  ---
+  duration_ms: 0.2128
+  type: 'test'
+  ...
+# Subtest: page/process restart after lost save ACK restores original payload/key then submits decoded receipt
+ok 78 - page/process restart after lost save ACK restores original payload/key then submits decoded receipt
+  ---
+  duration_ms: 31.7719
+  type: 'test'
+  ...
+# Subtest: lost submit ACK after restart only retries submit and never saves another revision
+ok 79 - lost submit ACK after restart only retries submit and never saves another revision
+  ---
+  duration_ms: 1.1401
+  type: 'test'
+  ...
+# Subtest: lost create ACK restores original create identity and ignores newly edited inputs
+ok 80 - lost create ACK restores original create identity and ignores newly edited inputs
+  ---
+  duration_ms: 0.8301
+  type: 'test'
+  ...
+# Subtest: ACK checkpoint survives destruction immediately after persistence, before submit starts
+ok 81 - ACK checkpoint survives destruction immediately after persistence, before submit starts
+  ---
+  duration_ms: 0.7222
+  type: 'test'
+  ...
+# Subtest: completed receipt survives restart and does not send another write
+ok 82 - completed receipt survives restart and does not send another write
+  ---
+  duration_ms: 0.375
+  type: 'test'
+  ...
+# Subtest: pre-UI-journal commands recover original save and submit parameters
+ok 83 - pre-UI-journal commands recover original save and submit parameters
+  ---
+  duration_ms: 1.1848
+  type: 'test'
+  ...
+# Subtest: unknown rejection and platform cancel retain intent; definite rejection unlocks it
+ok 84 - unknown rejection and platform cancel retain intent; definite rejection unlocks it
+  ---
+  duration_ms: 1.1175
+  type: 'test'
+  ...
+# Subtest: logout clears private intent and an old late response cannot checkpoint into a new identity
+ok 85 - logout clears private intent and an old late response cannot checkpoint into a new identity
+  ---
+  duration_ms: 4.0269
+  type: 'test'
+  ...
+# Subtest: a forged workspace identity cannot read another principal journal
+ok 86 - a forged workspace identity cannot read another principal journal
+  ---
+  duration_ms: 0.5112
+  type: 'test'
+  ...
+# Subtest: definite submit rejection retains acknowledged save receipt for continued editing
+ok 87 - definite submit rejection retains acknowledged save receipt for continued editing
+  ---
+  duration_ms: 0.6027
+  type: 'test'
+  ...
+# Subtest: invalid server receipt cannot advance stage or clear original request
+ok 88 - invalid server receipt cannot advance stage or clear original request
+  ---
+  duration_ms: 0.3132
+  type: 'test'
+  ...
+# Subtest: approved fields, six merchant options, hospital license and 1–6 photos
+ok 89 - approved fields, six merchant options, hospital license and 1–6 photos
+  ---
+  duration_ms: 1.2944
+  type: 'test'
+  ...
+# Subtest: only draft/rejected are editable; reviewing and approved cannot edit
+ok 90 - only draft/rejected are editable; reviewing and approved cannot edit
+  ---
+  duration_ms: 0.1133
+  type: 'test'
+  ...
+# Subtest: unavailable integrations fail closed and do not return fake assets or receipts
+ok 91 - unavailable integrations fail closed and do not return fake assets or receipts
+  ---
+  duration_ms: 0.4802
+  type: 'test'
+  ...
+# Subtest: save captures input, coalesces identical actions and rejects changed in-flight intent
+ok 92 - save captures input, coalesces identical actions and rejects changed in-flight intent
+  ---
+  duration_ms: 0.7275
+  type: 'test'
+  ...
+# Subtest: save rejects late response after logout or identity switch
+ok 93 - save rejects late response after logout or identity switch
+  ---
+  duration_ms: 0.2548
+  type: 'test'
+  ...
+# Subtest: submit uses saved server version and revision without converting string IDs
+ok 94 - submit uses saved server version and revision without converting string IDs
+  ---
+  duration_ms: 0.1926
+  type: 'test'
+  ...
+# Subtest: permission, conflict and unavailable errors remain distinct from success
+ok 95 - permission, conflict and unavailable errors remain distinct from success
+  ---
+  duration_ms: 0.4397
+  type: 'test'
+  ...
+# Subtest: first GET current not-found is a normal empty application
+ok 96 - first GET current not-found is a normal empty application
+  ---
+  duration_ms: 1.1576
+  type: 'test'
+  ...
+# Subtest: GET current other faults propagate without converting to empty
+ok 97 - GET current other faults propagate without converting to empty
+  ---
+  duration_ms: 0.4202
+  type: 'test'
+  ...
+# Subtest: late not-found cannot reset a replaced context or pending-write state
+ok 98 - late not-found cannot reset a replaced context or pending-write state
+  ---
+  duration_ms: 0.2679
+  type: 'test'
+  ...
+# Subtest: write 404 is still an error and global error message remains unchanged
+ok 99 - write 404 is still an error and global error message remains unchanged
+  ---
+  duration_ms: 0.6124
+  type: 'test'
+  ...
+# Subtest: pending upload still restores existing application identity and photos so subsequent save updates
+ok 100 - pending upload still restores existing application identity and photos so subsequent save updates
+  ---
+  duration_ms: 0.4115
+  type: 'test'
+  ...
+# Subtest: pending upload blocks only empty reset; stale context and pending draft writes still block success
+ok 101 - pending upload blocks only empty reset; stale context and pending draft writes still block success
+  ---
+  duration_ms: 0.1725
+  type: 'test'
+  ...
+# Subtest: native picker preserves GCJ-02 coordinates as decimal strings without inventing cityCode
+ok 102 - native picker preserves GCJ-02 coordinates as decimal strings without inventing cityCode
+  ---
+  duration_ms: 35.0547
+  type: 'test'
+  ...
+# Subtest: cancel returns no location while denial and invalid coordinates remain errors
+ok 103 - cancel returns no location while denial and invalid coordinates remain errors
+  ---
+  duration_ms: 1.0032
+  type: 'test'
+  ...
+# Subtest: enter switches to the merchant candidate workspace and loads the unsigned agreement
+ok 104 - enter switches to the merchant candidate workspace and loads the unsigned agreement
+  ---
+  duration_ms: 15.7131
+  type: 'test'
+  ...
+# Subtest: consent requires the explicit checkbox and signs from the command receipt only
+ok 105 - consent requires the explicit checkbox and signs from the command receipt only
+  ---
+  duration_ms: 0.5388
+  type: 'test'
+  ...
+# Subtest: unknown consent outcome stays journaled and recovers by replaying the original command
+ok 106 - unknown consent outcome stays journaled and recovers by replaying the original command
+  ---
+  duration_ms: 1.0505
+  type: 'test'
+  ...
+# Subtest: a definitive 409 retires exactly the rejected payload, then the new version can be confirmed
+ok 107 - a definitive 409 retires exactly the rejected payload, then the new version can be confirmed
+  ---
+  duration_ms: 0.8569
+  type: 'test'
+  ...
+# Subtest: a signed read snapshot never resolves a journaled consent; only replay may
+ok 108 - a signed read snapshot never resolves a journaled consent; only replay may
+  ---
+  duration_ms: 0.3205
+  type: 'test'
+  ...
+# Subtest: malformed merchant ids never reach the repository; ownership and dependency faults map to states
+ok 109 - malformed merchant ids never reach the repository; ownership and dependency faults map to states
+  ---
+  duration_ms: 0.8713
+  type: 'test'
+  ...
+# Subtest: leave restores consumer coordinates only while this page owns the current revision
+ok 110 - leave restores consumer coordinates only while this page owns the current revision
+  ---
+  duration_ms: 0.3193
+  type: 'test'
+  ...
+# Subtest: preview mode shows the interaction only and the unavailable runtime fails closed
+ok 111 - preview mode shows the interaction only and the unavailable runtime fails closed
+  ---
+  duration_ms: 0.223
+  type: 'test'
+  ...
+# Subtest: signing messages stay fail-closed and never claim success
+ok 112 - signing messages stay fail-closed and never claim success
+  ---
+  duration_ms: 0.3727
+  type: 'test'
+  ...
+# Subtest: list renders items; empty maps to guidance; failures stay closed
+ok 113 - list renders items; empty maps to guidance; failures stay closed
+  ---
+  duration_ms: 16.1564
+  type: 'test'
+  ...
+# Subtest: opening an item marks it read once and keeps the list in sync
+ok 114 - opening an item marks it read once and keeps the list in sync
+  ---
+  duration_ms: 0.5887
+  type: 'test'
+  ...
+# Subtest: already-read items do not mark again; lost mark response keeps the item read
+ok 115 - already-read items do not mark again; lost mark response keeps the item read
+  ---
+  duration_ms: 0.2657
+  type: 'test'
+  ...
+# Subtest: whitelist jump only for the registered type; payload never carries a URL
+ok 116 - whitelist jump only for the registered type; payload never carries a URL
+  ---
+  duration_ms: 0.1509
+  type: 'test'
+  ...
+# Subtest: service review notification jumps to the merchant services page with its own label
+ok 117 - service review notification jumps to the merchant services page with its own label
+  ---
+  duration_ms: 0.2285
+  type: 'test'
+  ...
+# Subtest: disposed controller ignores late results
+ok 118 - disposed controller ignores late results
+  ---
+  duration_ms: 0.1687
+  type: 'test'
+  ...
+# Subtest: load maps the two schema switches; defaults never invent extra items
+ok 119 - load maps the two schema switches; defaults never invent extra items
+  ---
+  duration_ms: 34.7951
+  type: 'test'
+  ...
+# Subtest: read failures stay closed; 401 routes to the login guidance
+ok 120 - read failures stay closed; 401 routes to the login guidance
+  ---
+  duration_ms: 0.4458
+  type: 'test'
+  ...
+# Subtest: toggles edit the draft only; nothing is saved until save
+ok 121 - toggles edit the draft only; nothing is saved until save
+  ---
+  duration_ms: 0.4716
+  type: 'test'
+  ...
+# Subtest: save persists the full two-switch state and shows the confirmed result
+ok 122 - save persists the full two-switch state and shows the confirmed result
+  ---
+  duration_ms: 0.6668
+  type: 'test'
+  ...
+# Subtest: failed save keeps the draft for an idempotent retry
+ok 123 - failed save keeps the draft for an idempotent retry
+  ---
+  duration_ms: 0.5677
+  type: 'test'
+  ...
+# Subtest: save-time 401 fails closed to the login guidance
+ok 124 - save-time 401 fails closed to the login guidance
+  ---
+  duration_ms: 0.2932
+  type: 'test'
+  ...
+# Subtest: disposed controller ignores late results
+ok 125 - disposed controller ignores late results
+  ---
+  duration_ms: 0.2755
+  type: 'test'
+  ...
+# Subtest: preview fixture serves local data only and mirrors the save shape
+ok 126 - preview fixture serves local data only and mirrors the save shape
+  ---
+  duration_ms: 0.3334
+  type: 'test'
+  ...
+# Subtest: view decoder accepts the \#114 wire projection for all five statuses
+ok 127 - view decoder accepts the \#114 wire projection for all five statuses
+  ---
+  duration_ms: 37.2924
+  type: 'test'
+  ...
+# Subtest: view decoder fails closed on contract violations
+ok 128 - view decoder fails closed on contract violations
+  ---
+  duration_ms: 0.9247
+  type: 'test'
+  ...
+# Subtest: issue receipt decoder enforces the seven-key shape and refreshAfter=expiresAt
+ok 129 - issue receipt decoder enforces the seven-key shape and refreshAfter=expiresAt
+  ---
+  duration_ms: 0.4974
+  type: 'test'
+  ...
+# Subtest: action mapping follows the kernel refresh-kind rules and LOCKED has no write
+ok 130 - action mapping follows the kernel refresh-kind rules and LOCKED has no write
+  ---
+  duration_ms: 0.9252
+  type: 'test'
+  ...
+# Subtest: verify message maps the 47号/12号 error surface for the page
+ok 131 - verify message maps the 47号/12号 error surface for the page
+  ---
+  duration_ms: 0.3975
+  type: 'test'
+  ...
+# Subtest: code grouping, countdown and UTC+8 display are deterministic
+ok 132 - code grouping, countdown and UTC+8 display are deterministic
+  ---
+  duration_ms: 0.2336
+  type: 'test'
+  ...
+# Subtest: preview repository walks the credential lifecycle by kernel rules with an injected clock
+ok 133 - preview repository walks the credential lifecycle by kernel rules with an injected clock
+  ---
+  duration_ms: 1.0071
+  type: 'test'
+  ...
+# Subtest: preview scenarios cover locked (code hidden) and invalidated (reschedule fence)
+ok 134 - preview scenarios cover locked (code hidden) and invalidated (reschedule fence)
+  ---
+  duration_ms: 0.2534
+  type: 'test'
+  ...
+# Subtest: controller loads the view, issues by state, and re-reads after success
+ok 135 - controller loads the view, issues by state, and re-reads after success
+  ---
+  duration_ms: 0.861
+  type: 'test'
+  ...
+# Subtest: controller fails closed on read errors and 401 routes to login state
+ok 136 - controller fails closed on read errors and 401 routes to login state
+  ---
+  duration_ms: 0.5169
+  type: 'test'
+  ...
+# Subtest: controller retires the journal on a definite conflict and reloads; 429 keeps the pending command
+ok 137 - controller retires the journal on a definite conflict and reloads; 429 keeps the pending command
+  ---
+  duration_ms: 0.4661
+  type: 'test'
+  ...
+# Subtest: controller restores a journaled command instead of issuing a new one
+ok 138 - controller restores a journaled command instead of issuing a new one
+  ---
+  duration_ms: 0.4051
+  type: 'test'
+  ...
+# Subtest: real repository reads the view without query and posts the strict two-field body
+ok 139 - real repository reads the view without query and posts the strict two-field body
+  ---
+  duration_ms: 14.5534
+  type: 'test'
+  ...
+# Subtest: real repository journals the write, replays the same key, and rejects changed payloads
+ok 140 - real repository journals the write, replays the same key, and rejects changed payloads
+  ---
+  duration_ms: 0.8261
+  type: 'test'
+  ...
+# Subtest: real repository retires the journaled command on a definite 409 with proof only
+ok 141 - real repository retires the journaled command on a definite 409 with proof only
+  ---
+  duration_ms: 0.6733
+  type: 'test'
+  ...
+# Subtest: real repository surfaces the switched-off route and dependency failures as-is
+ok 142 - real repository surfaces the switched-off route and dependency failures as-is
+  ---
+  duration_ms: 0.4226
+  type: 'test'
+  ...
+# Subtest: status hint for the C-004 gap keeps the entry honest (no invented order fields)
+ok 143 - status hint for the C-004 gap keeps the entry honest (no invented order fields)
+  ---
+  duration_ms: 0.1238
+  type: 'test'
+  ...
+# Subtest: preview fixtures satisfy the strict decoder and cover every display status
+ok 144 - preview fixtures satisfy the strict decoder and cover every display status
+  ---
+  duration_ms: 33.521
+  type: 'test'
+  ...
+# Subtest: preview repository buckets by display status locally and pages deterministically
+ok 145 - preview repository buckets by display status locally and pages deterministically
+  ---
+  duration_ms: 0.3561
+  type: 'test'
+  ...
+# Subtest: preview detail returns the fixture order or fails closed with 404 for unknown ids
+ok 146 - preview detail returns the fixture order or fails closed with 404 for unknown ids
+  ---
+  duration_ms: 0.2478
+  type: 'test'
+  ...
+# Subtest: scenario guard only accepts the registered preview scenarios
+ok 147 - scenario guard only accepts the registered preview scenarios
+  ---
+  duration_ms: 0.1292
+  type: 'test'
+  ...
+# Subtest: detail decoder accepts the contract shape with offset instants and six-key actions
+ok 148 - detail decoder accepts the contract shape with offset instants and six-key actions
+  ---
+  duration_ms: 0.5871
+  type: 'test'
+  ...
+# Subtest: detail decoder reads absent optional keys as null and accepts the §3.7 fact-only example
+ok 149 - detail decoder reads absent optional keys as null and accepts the §3.7 fact-only example
+  ---
+  duration_ms: 0.1762
+  type: 'test'
+  ...
+# Subtest: detail decoder fails closed on contract violations
+ok 150 - detail decoder fails closed on contract violations
+  ---
+  duration_ms: 0.8121
+  type: 'test'
+  ...
+# Subtest: page decoder enforces the paging envelope and rejects oversized item arrays
+ok 151 - page decoder enforces the paging envelope and rejects oversized item arrays
+  ---
+  duration_ms: 0.4426
+  type: 'test'
+  ...
+# Subtest: orderFactRows renders every contract field with module-owned derivation
+ok 152 - orderFactRows renders every contract field with module-owned derivation
+  ---
+  duration_ms: 0.3876
+  type: 'test'
+  ...
+# Subtest: absent fact keys render as placeholder dashes and free-form facts stay verbatim
+ok 153 - absent fact keys render as placeholder dashes and free-form facts stay verbatim
+  ---
+  duration_ms: 19.1219
+  type: 'test'
+  ...
+# Subtest: status badge and verify-absence notice are module-derived display products
+ok 154 - status badge and verify-absence notice are module-derived display products
+  ---
+  duration_ms: 0.2742
+  type: 'test'
+  ...
+# Subtest: display labels cover the closed contract enums; action labels mirror OrderActions keys
+ok 155 - display labels cover the closed contract enums; action labels mirror OrderActions keys
+  ---
+  duration_ms: 0.114
+  type: 'test'
+  ...
+# Subtest: verify block gate uses only the server-returned OrderActions flag
+ok 156 - verify block gate uses only the server-returned OrderActions flag
+  ---
+  duration_ms: 0.0928
+  type: 'test'
+  ...
+# Subtest: beijing-time formatting and appointment window (offset instants, no device tz assumptions)
+ok 157 - beijing-time formatting and appointment window (offset instants, no device tz assumptions)
+  ---
+  duration_ms: 0.1268
+  type: 'test'
+  ...
+# Subtest: status variants stay inside the enumerated className set (WXSS: no data-*)
+ok 158 - status variants stay inside the enumerated className set (WXSS: no data-*)
+  ---
+  duration_ms: 0.222
+  type: 'test'
+  ...
+# Subtest: read error mapping keeps 403/404 anti-enumeration and dependency failures honest
+ok 159 - read error mapping keeps 403/404 anti-enumeration and dependency failures honest
+  ---
+  duration_ms: 0.175
+  type: 'test'
+  ...
+# Subtest: real repository sends displayStatus/page/pageSize only, and omits displayStatus for 全部
+ok 160 - real repository sends displayStatus/page/pageSize only, and omits displayStatus for 全部
+  ---
+  duration_ms: 1.5009
+  type: 'test'
+  ...
+# Subtest: real repository rejects mismatched echo ids and invalid path ids before the network
+ok 161 - real repository rejects mismatched echo ids and invalid path ids before the network
+  ---
+  duration_ms: 0.3669
+  type: 'test'
+  ...
+# Subtest: real repository surfaces switched-off routes and dependency failures as-is (fail closed)
+ok 162 - real repository surfaces switched-off routes and dependency failures as-is (fail closed)
+  ---
+  duration_ms: 0.5026
+  type: 'test'
+  ...
+# Subtest: weight input keeps the designed kg shape and serializes to the two-decimal contract string
+ok 163 - weight input keeps the designed kg shape and serializes to the two-decimal contract string
+  ---
+  duration_ms: 12.9688
+  type: 'test'
+  ...
+# Subtest: age is derived from birthDate at view time and never stored
+ok 164 - age is derived from birthDate at view time and never stored
+  ---
+  duration_ms: 67.2876
+  type: 'test'
+  ...
+# Subtest: validation mirrors the approved PetView field contract
+ok 165 - validation mirrors the approved PetView field contract
+  ---
+  duration_ms: 0.7701
+  type: 'test'
+  ...
+# Subtest: breed/age and sex labels follow the design copy
+ok 166 - breed/age and sex labels follow the design copy
+  ---
+  duration_ms: 0.1617
+  type: 'test'
+  ...
+# Subtest: preview repository save is idempotent per request and replay with other content conflicts
+ok 167 - preview repository save is idempotent per request and replay with other content conflicts
+  ---
+  duration_ms: 0.604
+  type: 'test'
+  ...
+# Subtest: preview edit keeps contract-managed fields and create leaves petType unresolved
+ok 168 - preview edit keeps contract-managed fields and create leaves petType unresolved
+  ---
+  duration_ms: 0.2536
+  type: 'test'
+  ...
+# Subtest: preview delete is soft, replayable, and hides the pet from later loads
+ok 169 - preview delete is soft, replayable, and hides the pet from later loads
+  ---
+  duration_ms: 0.2608
+  type: 'test'
+  ...
+# Subtest: load failure stays failed until an explicit retry succeeds
+ok 170 - load failure stays failed until an explicit retry succeeds
+  ---
+  duration_ms: 0.1468
+  type: 'test'
+  ...
+# Subtest: failed save preserves the draft and the retry succeeds with the same request identity
+ok 171 - failed save preserves the draft and the retry succeeds with the same request identity
+  ---
+  duration_ms: 0.3601
+  type: 'test'
+  ...
+# Subtest: late pet responses are rejected after account or workspace revision changes
+ok 172 - late pet responses are rejected after account or workspace revision changes
+  ---
+  duration_ms: 0.7617
+  type: 'test'
+  ...
+# Subtest: list, form and detail share mutations only within one preview workspace revision
+ok 173 - list, form and detail share mutations only within one preview workspace revision
+  ---
+  duration_ms: 0.5773
+  type: 'test'
+  ...
+# Subtest: visual record fixtures never assign dog medical records or chip to other pets
+ok 174 - visual record fixtures never assign dog medical records or chip to other pets
+  ---
+  duration_ms: 0.2367
+  type: 'test'
+  ...
+# Subtest: impossible calendar dates are rejected instead of deriving an age
+ok 175 - impossible calendar dates are rejected instead of deriving an age
+  ---
+  duration_ms: 0.196
+  type: 'test'
+  ...
+# Subtest: sign-in status decoder accepts the wire projection and keeps the 7-day week intact
+ok 176 - sign-in status decoder accepts the wire projection and keeps the 7-day week intact
+  ---
+  duration_ms: 6.7194
+  type: 'test'
+  ...
+# Subtest: tasks decoder pins the 4+3 rows, milestone shape and the invite-code alphabet
+ok 177 - tasks decoder pins the 4+3 rows, milestone shape and the invite-code alphabet
+  ---
+  duration_ms: 2.2446
+  type: 'test'
+  ...
+# Subtest: receipt decoders enforce non-negative string ids and the five claim types
+ok 178 - receipt decoders enforce non-negative string ids and the five claim types
+  ---
+  duration_ms: 0.741
+  type: 'test'
+  ...
+# Subtest: week cells map the server week to weekday labels and day-of-month digits
+ok 179 - week cells map the server week to weekday labels and day-of-month digits
+  ---
+  duration_ms: 1.8297
+  type: 'test'
+  ...
+# Subtest: status labels and share text never offer a spend/exchange wording (V1 hard rule)
+ok 180 - status labels and share text never offer a spend/exchange wording (V1 hard rule)
+  ---
+  duration_ms: 0.3838
+  type: 'test'
+  ...
+# Subtest: real repository speaks the five contract routes with idempotent write slots
+ok 181 - real repository speaks the five contract routes with idempotent write slots
+  ---
+  duration_ms: 42.5154
+  type: 'test'
+  ...
+# Subtest: unauthorized and definite-conflict guards classify ApiError by code
+ok 182 - unauthorized and definite-conflict guards classify ApiError by code
+  ---
+  duration_ms: 0.2087
+  type: 'test'
+  ...
+# Subtest: SHA256 matches standard vectors including large image-sized input
+ok 183 - SHA256 matches standard vectors including large image-sized input
+  ---
+  duration_ms: 161.8362
+  type: 'test'
+  ...
+# Subtest: multipart transport fixes endpoint/purpose/file field and preserves header UUID without JSON Content-Type
+ok 184 - multipart transport fixes endpoint/purpose/file field and preserves header UUID without JSON Content-Type
+  ---
+  duration_ms: 1.1051
+  type: 'test'
+  ...
+# Subtest: saved copy and UUID survive restart and timeout; object hash may differ after sanitization
+ok 185 - saved copy and UUID survive restart and timeout; object hash may differ after sanitization
+  ---
+  duration_ms: 2.3971
+  type: 'test'
+  ...
+# Subtest: double tap coalesces selection and network; different material cannot replace unknown intent
+ok 186 - double tap coalesces selection and network; different material cannot replace unknown intent
+  ---
+  duration_ms: 0.4099
+  type: 'test'
+  ...
+# Subtest: changed saved bytes cannot be sent with a previously bound request ID
+ok 187 - changed saved bytes cannot be sent with a previously bound request ID
+  ---
+  duration_ms: 0.4676
+  type: 'test'
+  ...
+# Subtest: 401 expires session without deleting owner upload journal; new identity cannot access it
+ok 188 - 401 expires session without deleting owner upload journal; new identity cannot access it
+  ---
+  duration_ms: 0.4264
+  type: 'test'
+  ...
+# Subtest: late response after scope replacement never creates a receipt
+ok 189 - late response after scope replacement never creates a receipt
+  ---
+  duration_ms: 0.4091
+  type: 'test'
+  ...
+# Subtest: forged response fields, IDs, hashes, status and envelope cannot publish materials
+ok 190 - forged response fields, IDs, hashes, status and envelope cannot publish materials
+  ---
+  duration_ms: 1.4208
+  type: 'test'
+  ...
+# Subtest: cancel chooser creates no journal/network; invalid saved path cannot be retried or deleted
+ok 191 - cancel chooser creates no journal/network; invalid saved path cannot be retried or deleted
+  ---
+  duration_ms: 0.3347
+  type: 'test'
+  ...
+# Subtest: explicit new selection is available only after definite rejection; unknown outcomes cannot discard
+ok 192 - explicit new selection is available only after definite rejection; unknown outcomes cannot discard
+  ---
+  duration_ms: 0.8421
+  type: 'test'
+  ...
+# Subtest: 5xx retry preserves exact descriptor and original UUID until confirmed READY
+ok 193 - 5xx retry preserves exact descriptor and original UUID until confirmed READY
+  ---
+  duration_ms: 0.3566
+  type: 'test'
+  ...
+# Subtest: unknown upload then explicit terminal rejection permits new file and UUID; status or code alone does not
+ok 194 - unknown upload then explicit terminal rejection permits new file and UUID; status or code alone does not
+  ---
+  duration_ms: 0.7874
+  type: 'test'
+  ...
+# Subtest: old epoch 401 cannot clear the new identity or delete the old upload journal
+ok 195 - old epoch 401 cannot clear the new identity or delete the old upload journal
+  ---
+  duration_ms: 0.4087
+  type: 'test'
+  ...
+# Subtest: draft validation counts Unicode code points and preserves literal content
+ok 196 - draft validation counts Unicode code points and preserves literal content
+  ---
+  duration_ms: 34.3091
+  type: 'test'
+  ...
+# Subtest: preview keeps changes across repository reads and never mutates original fixture
+ok 197 - preview keeps changes across repository reads and never mutates original fixture
+  ---
+  duration_ms: 0.3904
+  type: 'test'
+  ...
+# Subtest: preview write retry preserves receipt and rejects same identity with different content
+ok 198 - preview write retry preserves receipt and rejects same identity with different content
+  ---
+  duration_ms: 1.0027
+  type: 'test'
+  ...
+# Subtest: load failure can be retried without inventing a successful response
+ok 199 - load failure can be retried without inventing a successful response
+  ---
+  duration_ms: 0.4467
+  type: 'test'
+  ...
+# Subtest: late profile response is rejected after account or workspace revision changes
+ok 200 - late profile response is rejected after account or workspace revision changes
+  ---
+  duration_ms: 0.7187
+  type: 'test'
+  ...
+# Subtest: receipt decoder accepts both §3.9 window projections and keeps the fixed six keys
+ok 201 - receipt decoder accepts both §3.9 window projections and keeps the fixed six keys
+  ---
+  duration_ms: 33.2934
+  type: 'test'
+  ...
+# Subtest: receipt decoder fails closed on contract violations
+ok 202 - receipt decoder fails closed on contract violations
+  ---
+  duration_ms: 0.534
+  type: 'test'
+  ...
+# Subtest: draft validation enforces the contract bounds and the payload normalization
+ok 203 - draft validation enforces the contract bounds and the payload normalization
+  ---
+  duration_ms: 0.6807
+  type: 'test'
+  ...
+# Subtest: receipt copy states both windows honestly and badge variants stay the closed display set
+ok 204 - receipt copy states both windows honestly and badge variants stay the closed display set
+  ---
+  duration_ms: 0.2707
+  type: 'test'
+  ...
+# Subtest: detail entry gating reads only the server actions boolean
+ok 205 - detail entry gating reads only the server actions boolean
+  ---
+  duration_ms: 0.1535
+  type: 'test'
+  ...
+# Subtest: definite conflict set and error copy follow 49号 semantics
+ok 206 - definite conflict set and error copy follow 49号 semantics
+  ---
+  duration_ms: 0.289
+  type: 'test'
+  ...
+# Subtest: scenario guard only accepts the registered preview scenarios
+ok 207 - scenario guard only accepts the registered preview scenarios
+  ---
+  duration_ms: 0.1865
+  type: 'test'
+  ...
+# Subtest: preview repository answers both windows and rejects a second live application
+ok 208 - preview repository answers both windows and rejects a second live application
+  ---
+  duration_ms: 0.3717
+  type: 'test'
+  ...
+# Subtest: controller gates the form on server actions, submits, and re-gates after the receipt
+ok 209 - controller gates the form on server actions, submits, and re-gates after the receipt
+  ---
+  duration_ms: 0.8492
+  type: 'test'
+  ...
+# Subtest: controller refuses invalid drafts and ineligible orders without sending anything
+ok 210 - controller refuses invalid drafts and ineligible orders without sending anything
+  ---
+  duration_ms: 0.7661
+  type: 'test'
+  ...
+# Subtest: controller fails closed on read errors and 401 routes to the login state
+ok 211 - controller fails closed on read errors and 401 routes to the login state
+  ---
+  duration_ms: 0.1871
+  type: 'test'
+  ...
+# Subtest: controller retires the journal on a definite conflict; unknown outcomes keep the original command
+ok 212 - controller retires the journal on a definite conflict; unknown outcomes keep the original command
+  ---
+  duration_ms: 0.4186
+  type: 'test'
+  ...
+# Subtest: controller restores a journaled command instead of sending a new one
+ok 213 - controller restores a journaled command instead of sending a new one
+  ---
+  duration_ms: 0.2561
+  type: 'test'
+  ...
+# Subtest: real repository posts the strict body with a terminal UUID and decodes both windows
+ok 214 - real repository posts the strict body with a terminal UUID and decodes both windows
+  ---
+  duration_ms: 17.0425
+  type: 'test'
+  ...
+# Subtest: real repository journals the write, replays the same key, and rejects changed payloads
+ok 215 - real repository journals the write, replays the same key, and rejects changed payloads
+  ---
+  duration_ms: 0.8399
+  type: 'test'
+  ...
+# Subtest: real repository retires the journaled command on a definite 409 with proof only
+ok 216 - real repository retires the journaled command on a definite 409 with proof only
+  ---
+  duration_ms: 0.6399
+  type: 'test'
+  ...
+# Subtest: real repository surfaces the switched-off route and mismatched receipts fail closed
+ok 217 - real repository surfaces the switched-off route and mismatched receipts fail closed
+  ---
+  duration_ms: 1.0147
+  type: 'test'
+  ...
+# Subtest: receipt decoder accepts both fulfillment branches and keeps the fixed twelve keys
+ok 218 - receipt decoder accepts both fulfillment branches and keeps the fixed twelve keys
+  ---
+  duration_ms: 32.085
+  type: 'test'
+  ...
+# Subtest: receipt decoder fails closed on contract violations
+ok 219 - receipt decoder fails closed on contract violations
+  ---
+  duration_ms: 0.7491
+  type: 'test'
+  ...
+# Subtest: selection decoder keeps the eight-key projection and fails closed outside it
+ok 220 - selection decoder keeps the eight-key projection and fails closed outside it
+  ---
+  duration_ms: 0.5076
+  type: 'test'
+  ...
+# Subtest: selection branch and return candidates follow the 39号/46号 projections
+ok 221 - selection branch and return candidates follow the 39号/46号 projections
+  ---
+  duration_ms: 0.6529
+  type: 'test'
+  ...
+# Subtest: store input derives the new appointment from the window start plus the original duration
+ok 222 - store input derives the new appointment from the window start plus the original duration
+  ---
+  duration_ms: 0.6012
+  type: 'test'
+  ...
+# Subtest: pickup input enforces the 120-minute interval and carries both whole windows
+ok 223 - pickup input enforces the 120-minute interval and carries both whole windows
+  ---
+  duration_ms: 0.1808
+  type: 'test'
+  ...
+# Subtest: entry gating reads only the server actions boolean; readiness needs the amended facts
+ok 224 - entry gating reads only the server actions boolean; readiness needs the amended facts
+  ---
+  duration_ms: 0.5934
+  type: 'test'
+  ...
+# Subtest: slot views and receipt copy keep the closed variant sets and the 46号 wording
+ok 225 - slot views and receipt copy keep the closed variant sets and the 46号 wording
+  ---
+  duration_ms: 0.6572
+  type: 'test'
+  ...
+# Subtest: definite conflict set, CAS detection and error copy follow 46号 semantics
+ok 226 - definite conflict set, CAS detection and error copy follow 46号 semantics
+  ---
+  duration_ms: 0.494
+  type: 'test'
+  ...
+# Subtest: scenario guard only accepts the registered preview scenarios
+ok 227 - scenario guard only accepts the registered preview scenarios
+  ---
+  duration_ms: 0.2873
+  type: 'test'
+  ...
+# Subtest: preview repository answers one success per order and rejects a second reschedule
+ok 228 - preview repository answers one success per order and rejects a second reschedule
+  ---
+  duration_ms: 6.6198
+  type: 'test'
+  ...
+# Subtest: controller gates on server actions, submits the built payload and re-reads after the receipt
+ok 229 - controller gates on server actions, submits the built payload and re-reads after the receipt
+  ---
+  duration_ms: 0.7031
+  type: 'test'
+  ...
+# Subtest: controller refuses ineligible orders and routes read failures to closed states
+ok 230 - controller refuses ineligible orders and routes read failures to closed states
+  ---
+  duration_ms: 0.2437
+  type: 'test'
+  ...
+# Subtest: controller retires the journal on a CAS/limit conflict and presents the re-read; unknown outcomes keep the command
+ok 231 - controller retires the journal on a CAS/limit conflict and presents the re-read; unknown outcomes keep the command
+  ---
+  duration_ms: 0.4916
+  type: 'test'
+  ...
+# Subtest: controller restores a journaled command instead of sending a new one
+ok 232 - controller restores a journaled command instead of sending a new one
+  ---
+  duration_ms: 0.3084
+  type: 'test'
+  ...
+# Subtest: real repository posts the strict oneOf body with a terminal UUID and decodes the receipt
+ok 233 - real repository posts the strict oneOf body with a terminal UUID and decodes the receipt
+  ---
+  duration_ms: 8.4705
+  type: 'test'
+  ...
+# Subtest: real repository journals the write, replays the same key, and rejects changed payloads
+ok 234 - real repository journals the write, replays the same key, and rejects changed payloads
+  ---
+  duration_ms: 0.841
+  type: 'test'
+  ...
+# Subtest: real repository retires the journaled command on a definite 409 with proof only
+ok 235 - real repository retires the journaled command on a definite 409 with proof only
+  ---
+  duration_ms: 0.5331
+  type: 'test'
+  ...
+# Subtest: eligibility decoder accepts the verified and partial-refund projections
+ok 236 - eligibility decoder accepts the verified and partial-refund projections
+  ---
+  duration_ms: 36.524
+  type: 'test'
+  ...
+# Subtest: decoders fail closed on contract violations
+ok 237 - decoders fail closed on contract violations
+  ---
+  duration_ms: 1.036
+  type: 'test'
+  ...
+# Subtest: draft validation enforces the three 1..5 dimensions and the content bounds
+ok 238 - draft validation enforces the three 1..5 dimensions and the content bounds
+  ---
+  duration_ms: 0.3904
+  type: 'test'
+  ...
+# Subtest: submit payload keeps integer scores, omits blank content and closes the media capability
+ok 239 - submit payload keeps integer scores, omits blank content and closes the media capability
+  ---
+  duration_ms: 0.1981
+  type: 'test'
+  ...
+# Subtest: composite preview follows the 40/40/20 weighting and stays null until all three dimensions are rated
+ok 240 - composite preview follows the 40/40/20 weighting and stays null until all three dimensions are rated
+  ---
+  duration_ms: 0.2686
+  type: 'test'
+  ...
+# Subtest: eligibility copy states every §3.14 rejection honestly
+ok 241 - eligibility copy states every §3.14 rejection honestly
+  ---
+  duration_ms: 0.2134
+  type: 'test'
+  ...
+# Subtest: entry gating reads only the server actions boolean; definite conflicts follow 12号 §11
+ok 242 - entry gating reads only the server actions boolean; definite conflicts follow 12号 §11
+  ---
+  duration_ms: 0.6446
+  type: 'test'
+  ...
+# Subtest: scenario guard only accepts the registered preview scenarios
+ok 243 - scenario guard only accepts the registered preview scenarios
+  ---
+  duration_ms: 0.0975
+  type: 'test'
+  ...
+# Subtest: preview repository mirrors the kernel rules per scenario
+ok 244 - preview repository mirrors the kernel rules per scenario
+  ---
+  duration_ms: 0.6673
+  type: 'test'
+  ...
+# Subtest: controller gates on actions, loads eligibility, submits and flips to the receipt
+ok 245 - controller gates on actions, loads eligibility, submits and flips to the receipt
+  ---
+  duration_ms: 1.1128
+  type: 'test'
+  ...
+# Subtest: controller refuses incomplete drafts and ineligible orders without sending anything
+ok 246 - controller refuses incomplete drafts and ineligible orders without sending anything
+  ---
+  duration_ms: 0.4984
+  type: 'test'
+  ...
+# Subtest: controller fails closed on read errors and 401 routes to the login state
+ok 247 - controller fails closed on read errors and 401 routes to the login state
+  ---
+  duration_ms: 0.4108
+  type: 'test'
+  ...
+# Subtest: controller retires the journal on a definite conflict; unknown outcomes keep the original command
+ok 248 - controller retires the journal on a definite conflict; unknown outcomes keep the original command
+  ---
+  duration_ms: 0.6469
+  type: 'test'
+  ...
+# Subtest: real repository reads eligibility without a request id and posts the strict body with a terminal UUID
+ok 249 - real repository reads eligibility without a request id and posts the strict body with a terminal UUID
+  ---
+  duration_ms: 15.469
+  type: 'test'
+  ...
+# Subtest: real repository journals the write, replays the same key, and rejects changed payloads
+ok 250 - real repository journals the write, replays the same key, and rejects changed payloads
+  ---
+  duration_ms: 0.7632
+  type: 'test'
+  ...
+# Subtest: real repository retires the journaled command on a definite 409 with proof only
+ok 251 - real repository retires the journaled command on a definite 409 with proof only
+  ---
+  duration_ms: 0.6907
+  type: 'test'
+  ...
+# Subtest: real repository surfaces the switched-off route and unknown-result 503s keep the journal
+ok 252 - real repository surfaces the switched-off route and unknown-result 503s keep the journal
+  ---
+  duration_ms: 0.3997
+  type: 'test'
+  ...
+# Subtest: service decoders enforce the frozen field set, ID strings and two-decimal prices
+ok 253 - service decoders enforce the frozen field set, ID strings and two-decimal prices
+  ---
+  duration_ms: 16.2974
+  type: 'test'
+  ...
+# Subtest: detail view is the item shape plus description; list items carry no description key
+ok 254 - detail view is the item shape plus description; list items carry no description key
+  ---
+  duration_ms: 0.3999
+  type: 'test'
+  ...
+# Subtest: page decoder enforces the approved pagination bounds
+ok 255 - page decoder enforces the approved pagination bounds
+  ---
+  duration_ms: 0.6351
+  type: 'test'
+  ...
+# Subtest: sale price display keeps the design integer shape without changing the contract value
+ok 256 - sale price display keeps the design integer shape without changing the contract value
+  ---
+  duration_ms: 0.1612
+  type: 'test'
+  ...
+# Subtest: contract mock lists a visible store, hides an unknown one as an empty page, and never mixes in description
+ok 257 - contract mock lists a visible store, hides an unknown one as an empty page, and never mixes in description
+  ---
+  duration_ms: 0.2295
+  type: 'test'
+  ...
+# Subtest: contract mock paginates within the approved bounds
+ok 258 - contract mock paginates within the approved bounds
+  ---
+  duration_ms: 0.2341
+  type: 'test'
+  ...
+# Subtest: contract mock answers unknown or ineligible services with the indistinguishable 404, facts failure with 503
+ok 259 - contract mock answers unknown or ineligible services with the indistinguishable 404, facts failure with 503
+  ---
+  duration_ms: 0.2905
+  type: 'test'
+  ...
+# Subtest: returned snapshots are value copies: mutating a result never rewrites the catalog
+ok 260 - returned snapshots are value copies: mutating a result never rewrites the catalog
+  ---
+  duration_ms: 0.0918
+  type: 'test'
+  ...
+# Subtest: late service responses are rejected after a workspace revision change
+ok 261 - late service responses are rejected after a workspace revision change
+  ---
+  duration_ms: 0.4988
+  type: 'test'
+  ...
+# Subtest: real repository targets the frozen routes with query paging and strict decoders
+ok 262 - real repository targets the frozen routes with query paging and strict decoders
+  ---
+  duration_ms: 35.4111
+  type: 'test'
+  ...
+# Subtest: real repository surfaces the frozen fail-closed 503 without conflating it with 404
+ok 263 - real repository surfaces the frozen fail-closed 503 without conflating it with 404
+  ---
+  duration_ms: 0.5735
+  type: 'test'
+  ...
+# Subtest: design samples stay keyed to fixture ids and never become contract fields
+ok 264 - design samples stay keyed to fixture ids and never become contract fields
+  ---
+  duration_ms: 0.8318
+  type: 'test'
+  ...
+# Subtest: store decoders enforce the nine-field projection and the STR-D4 order
+ok 265 - store decoders enforce the nine-field projection and the STR-D4 order
+  ---
+  duration_ms: 17.6234
+  type: 'test'
+  ...
+# Subtest: mock list scopes by the open-city catalog and paginates in contract order
+ok 266 - mock list scopes by the open-city catalog and paginates in contract order
+  ---
+  duration_ms: 0.4628
+  type: 'test'
+  ...
+# Subtest: detail answers unknown and invisible stores with an indistinguishable 404; 503 fails closed
+ok 267 - detail answers unknown and invisible stores with an indistinguishable 404; 503 fails closed
+  ---
+  duration_ms: 0.3232
+  type: 'test'
+  ...
+# Subtest: real store repository reads anonymously with the approved query shape
+ok 268 - real store repository reads anonymously with the approved query shape
+  ---
+  duration_ms: 1.2305
+  type: 'test'
+  ...
+# Subtest: runCatalogRead keeps the directory anonymous-browsable and still guards stale contexts
+ok 269 - runCatalogRead keeps the directory anonymous-browsable and still guards stale contexts
+  ---
+  duration_ms: 0.4313
+  type: 'test'
+  ...
+# Subtest: the five navigation keys register exactly one native tab route each
+ok 270 - the five navigation keys register exactly one native tab route each
+  ---
+  duration_ms: 1.6302
+  type: 'test'
+  ...
+# Subtest: app.config registers the tab pages in the main package with the home page as launch entry
+ok 271 - app.config registers the tab pages in the main package with the home page as launch entry
+  ---
+  duration_ms: 34.5447
+  type: 'test'
+  ...
+# Subtest: mine card projection: authenticated shows masked phone, phone-required honors dismissal
+ok 272 - mine card projection: authenticated shows masked phone, phone-required honors dismissal
+  ---
+  duration_ms: 0.3484
+  type: 'test'
+  ...
+# Subtest: mine hub routes only to delivered real pages
+ok 273 - mine hub routes only to delivered real pages
+  ---
+  duration_ms: 0.1434
+  type: 'test'
+  ...
+# Subtest: tab route registry stays in sync with the navigation keys type
+ok 274 - tab route registry stays in sync with the navigation keys type
+  ---
+  duration_ms: 0.1531
+  type: 'test'
+  ...
+# Subtest: native foreign-realm ArrayBuffer is accepted without instanceof and preserves actual bytes
+ok 275 - native foreign-realm ArrayBuffer is accepted without instanceof and preserves actual bytes
+  ---
+  duration_ms: 1.5289
+  type: 'test'
+  ...
+# Subtest: optional diagnostics expose only bounded type and length facts, never the source object
+ok 276 - optional diagnostics expose only bounded type and length facts, never the source object
+  ---
+  duration_ms: 33.0121
+  type: 'test'
+  ...
+# Subtest: byteLength, constructor, toStringTag and prototype forgeries cannot impersonate buffers
+ok 277 - byteLength, constructor, toStringTag and prototype forgeries cannot impersonate buffers
+  ---
+  duration_ms: 0.6205
+  type: 'test'
+  ...
+# Subtest: real buffer bounds remain 1..10MiB including foreign realm and ignore spoofed own byteLength
+ok 278 - real buffer bounds remain 1..10MiB including foreign realm and ignore spoofed own byteLength
+  ---
+  duration_ms: 3.5573
+  type: 'test'
+  ...
+# Subtest: owner access rejects STAFF/wrong coordinates and preserves FROZEN read only/OFFLINE backend writes
+ok 279 - owner access rejects STAFF/wrong coordinates and preserves FROZEN read only/OFFLINE backend writes
+  ---
+  duration_ms: 2.4156
+  type: 'test'
+  ...
+# Subtest: STAFF and unavailable admission fail closed before reading any case data
+ok 280 - STAFF and unavailable admission fail closed before reading any case data
+  ---
+  duration_ms: 0.4555
+  type: 'test'
+  ...
+# Subtest: read always uses selected merchant/store and all filter clears previous status
+ok 281 - read always uses selected merchant/store and all filter clears previous status
+  ---
+  duration_ms: 0.414
+  type: 'test'
+  ...
+# Subtest: late list response cannot repopulate UI after same-coordinate revalidation or identity switch
+ok 282 - late list response cannot repopulate UI after same-coordinate revalidation or identity switch
+  ---
+  duration_ms: 0.927
+  type: 'test'
+  ...
+# Subtest: round must be strictly before deadline, and both parties carry current round id
+ok 283 - round must be strictly before deadline, and both parties carry current round id
+  ---
+  duration_ms: 0.2996
+  type: 'test'
+  ...
+# Subtest: four opinions are advisory, empty evidence and Java-character-limit overflow are rejected
+ok 284 - four opinions are advisory, empty evidence and Java-character-limit overflow are rejected
+  ---
+  duration_ms: 0.5291
+  type: 'test'
+  ...
+# Subtest: unknown write stays locked and retries exact previous input even after terminal detail
+ok 285 - unknown write stays locked and retries exact previous input even after terminal detail
+  ---
+  duration_ms: 0.9447
+  type: 'test'
+  ...
+# Subtest: definite supplement conflict reloads actual version but idempotent conflict retains pending replay
+ok 286 - definite supplement conflict reloads actual version but idempotent conflict retains pending replay
+  ---
+  duration_ms: 0.6729
+  type: 'test'
+  ...
+# Subtest: new definite conflict codes gate M writes throughout fresh admission/detail and require manual resubmit
+ok 287 - new definite conflict codes gate M writes throughout fresh admission/detail and require manual resubmit
+  ---
+  duration_ms: 1.0088
+  type: 'test'
+  ...
+# Subtest: definite conflict followed by failed M refresh remains unable to submit with stale detail
+ok 288 - definite conflict followed by failed M refresh remains unable to submit with stale detail
+  ---
+  duration_ms: 0.9143
+  type: 'test'
+  ...
+# Subtest: failed M retirement preserves original pending input even after the latest detail version changes
+ok 289 - failed M retirement preserves original pending input even after the latest detail version changes
+  ---
+  duration_ms: 0.4892
+  type: 'test'
+  ...
+# Subtest: COMMON_CONFLICT, unknown 409 and 429 never retire or change an unresolved opinion input
+ok 290 - COMMON_CONFLICT, unknown 409 and 429 never retire or change an unresolved opinion input
+  ---
+  duration_ms: 1.067
+  type: 'test'
+  ...
+# Subtest: acknowledged write with failed read stays confirmed and requires fresh detail before another action
+ok 291 - acknowledged write with failed read stays confirmed and requires fresh detail before another action
+  ---
+  duration_ms: 0.4093
+  type: 'test'
+  ...
+# Subtest: image upload persists original file/UUID across remount and publishes only READY asset
+ok 292 - image upload persists original file/UUID across remount and publishes only READY asset
+  ---
+  duration_ms: 0.7743
+  type: 'test'
+  ...
+# Subtest: an upload completion after context switch never attaches an asset to new identity
+ok 293 - an upload completion after context switch never attaches an asset to new identity
+  ---
+  duration_ms: 0.2492
+  type: 'test'
+  ...
+# Subtest: saved image fingerprint changes stop unknown-result retries before any new network request
+ok 294 - saved image fingerprint changes stop unknown-result retries before any new network request
+  ---
+  duration_ms: 0.3128
+  type: 'test'
+  ...
+# Subtest: receipt saved before failed draft insertion recovers without re-upload and cleans only owned copy after draft durability
+ok 295 - receipt saved before failed draft insertion recovers without re-upload and cleans only owned copy after draft durability
+  ---
+  duration_ms: 0.4292
+  type: 'test'
+  ...
+# Subtest: a later ingress rejection cannot discard a previously unknown successful upload
+ok 296 - a later ingress rejection cannot discard a previously unknown successful upload
+  ---
+  duration_ms: 0.3991
+  type: 'test'
+  ...
+# Subtest: private image read uses actual case/batch/asset, hides local image on scope switch and 410 needs new grant
+ok 297 - private image read uses actual case/batch/asset, hides local image on scope switch and 410 needs new grant
+  ---
+  duration_ms: 0.4141
+  type: 'test'
+  ...
+# Subtest: Beijing deadline is stable across device timezones without modifying the UTC contract
+ok 298 - Beijing deadline is stable across device timezones without modifying the UTC contract
+  ---
+  duration_ms: 0.6354
+  type: 'test'
+  ...
+# Subtest: type/demand labels mirror the official catalog and fall back to raw codes
+ok 299 - type/demand labels mirror the official catalog and fall back to raw codes
+  ---
+  duration_ms: 0.8543
+  type: 'test'
+  ...
+# Subtest: status tag variants use class names because WXSS attribute selectors never match
+ok 300 - status tag variants use class names because WXSS attribute selectors never match
+  ---
+  duration_ms: 0.1544
+  type: 'test'
+  ...
+# Subtest: drafts and upload UUID journals are isolated across merchant/store/case and inaccessible while logged out
+ok 301 - drafts and upload UUID journals are isolated across merchant/store/case and inaccessible while logged out
+  ---
+  duration_ms: 2.8232
+  type: 'test'
+  ...
+# Subtest: consumer identity cannot obtain a merchant-local upload journal
+ok 302 - consumer identity cannot obtain a merchant-local upload journal
+  ---
+  duration_ms: 0.4009
+  type: 'test'
+  ...
+# Subtest: unknown upload survives logout and same-user reauthentication; another user cannot recover or send it
+ok 303 - unknown upload survives logout and same-user reauthentication; another user cannot recover or send it
+  ---
+  duration_ms: 0.4617
+  type: 'test'
+  ...
+# Subtest: actual client preserves original UUID/body through merchant COMMON_CONFLICT and a reconstructed repository
+ok 304 - actual client preserves original UUID/body through merchant COMMON_CONFLICT and a reconstructed repository
+  ---
+  duration_ms: 2.5132
+  type: 'test'
+  ...
+# Subtest: decoders enforce the exact contract-54 shapes (ids, masked phone, catalog codes)
+ok 305 - decoders enforce the exact contract-54 shapes (ids, masked phone, catalog codes)
+  ---
+  duration_ms: 1.7116
+  type: 'test'
+  ...
+# Subtest: status classes are explicit class-name variants, never dynamic data-*
+ok 306 - status classes are explicit class-name variants, never dynamic data-*
+  ---
+  duration_ms: 0.1376
+  type: 'test'
+  ...
+# Subtest: invite input validation mirrors the server rules (11-digit mobile, 1-64 code points)
+ok 307 - invite input validation mirrors the server rules (11-digit mobile, 1-64 code points)
+  ---
+  duration_ms: 0.2231
+  type: 'test'
+  ...
+# Subtest: controller loads both lists, invites into the invitation tab and toggles members
+ok 308 - controller loads both lists, invites into the invitation tab and toggles members
+  ---
+  duration_ms: 56.0586
+  type: 'test'
+  ...
+# Subtest: server conflicts and failures surface as refresh-suggestion notices, never fake success
+ok 309 - server conflicts and failures surface as refresh-suggestion notices, never fake success
+  ---
+  duration_ms: 62.8229
+  type: 'test'
+  ...
+# Subtest: merchant page state machine: ready/empty/error/unauthorized and open-marks-once
+ok 310 - merchant page state machine: ready/empty/error/unauthorized and open-marks-once
+  ---
+  duration_ms: 1.2555
+  type: 'test'
+  ...
+# Subtest: whitelist jump from the merchant page: services page for reviews, application page for admission
+ok 311 - whitelist jump from the merchant page: services page for reviews, application page for admission
+  ---
+  duration_ms: 0.1811
+  type: 'test'
+  ...
+# Subtest: preview fixtures: registered types carry jumps, unregistered type stays detail-only
+ok 312 - preview fixtures: registered types carry jumps, unregistered type stays detail-only
+  ---
+  duration_ms: 0.5416
+  type: 'test'
+  ...
+# Subtest: preview markRead flips readAt locally and stays idempotent
+ok 313 - preview markRead flips readAt locally and stays idempotent
+  ---
+  duration_ms: 0.1838
+  type: 'test'
+  ...
+# Subtest: disposed merchant controller ignores late list results
+ok 314 - disposed merchant controller ignores late list results
+  ---
+  duration_ms: 0.269
+  type: 'test'
+  ...
+# Subtest: decode: confirm and reject receipts carry their contract tails all-or-nothing
+ok 315 - decode: confirm and reject receipts carry their contract tails all-or-nothing
+  ---
+  duration_ms: 0.8104
+  type: 'test'
+  ...
+# Subtest: decode rejects contract-foreign shapes
+ok 316 - decode rejects contract-foreign shapes
+  ---
+  duration_ms: 0.3128
+  type: 'test'
+  ...
+# Subtest: form syntax: order id, reason text 5-200 code points, optional note 0-200
+ok 317 - form syntax: order id, reason text 5-200 code points, optional note 0-200
+  ---
+  duration_ms: 0.7915
+  type: 'test'
+  ...
+# Subtest: error mapping: per-code Chinese copy; 403 anti-enumeration stays single
+ok 318 - error mapping: per-code Chinese copy; 403 anti-enumeration stays single
+  ---
+  duration_ms: 0.3176
+  type: 'test'
+  ...
+# Subtest: controller: entry gating and pending journal surface on load
+ok 319 - controller: entry gating and pending journal surface on load
+  ---
+  duration_ms: 0.5934
+  type: 'test'
+  ...
+# Subtest: controller: confirm path requires the order id and forwards the note verbatim
+ok 320 - controller: confirm path requires the order id and forwards the note verbatim
+  ---
+  duration_ms: 0.2572
+  type: 'test'
+  ...
+# Subtest: controller: reject path binds reason code and text; unknown codes are ignored
+ok 321 - controller: reject path binds reason code and text; unknown codes are ignored
+  ---
+  duration_ms: 0.1862
+  type: 'test'
+  ...
+# Subtest: controller: replayed flag mirrors the journaled same-action command
+ok 322 - controller: replayed flag mirrors the journaled same-action command
+  ---
+  duration_ms: 0.1705
+  type: 'test'
+  ...
+# Subtest: controller: 403/503 fail the whole page closed; 409s stay form notices
+ok 323 - controller: 403/503 fail the whole page closed; 409s stay form notices
+  ---
+  duration_ms: 0.3149
+  type: 'test'
+  ...
+# Subtest: real repository wires the 45号 routes: strict bodies, journaled UUID, no coordinates
+ok 324 - real repository wires the 45号 routes: strict bodies, journaled UUID, no coordinates
+  ---
+  duration_ms: 2.7035
+  type: 'test'
+  ...
+# Subtest: real repository: receipt orderId must echo the command target
+ok 325 - real repository: receipt orderId must echo the command target
+  ---
+  duration_ms: 0.4533
+  type: 'test'
+  ...
+# Subtest: real repository: definitive 409 retires the slot; a corrected payload gets a fresh requestId
+ok 326 - real repository: definitive 409 retires the slot; a corrected payload gets a fresh requestId
+  ---
+  duration_ms: 0.8463
+  type: 'test'
+  ...
+# Subtest: real repository: unknown outcome keeps the journal; retry replays the SAME requestId
+ok 327 - real repository: unknown outcome keeps the journal; retry replays the SAME requestId
+  ---
+  duration_ms: 0.7361
+  type: 'test'
+  ...
+# Subtest: real repository: 401/403/404 keep the journal (hidden first receipt), 400 retires it
+ok 328 - real repository: 401/403/404 keep the journal (hidden first receipt), 400 retires it
+  ---
+  duration_ms: 1.0256
+  type: 'test'
+  ...
+# Subtest: real repository: pending() reads only the current merchant workspace; slots are action-scoped
+ok 329 - real repository: pending() reads only the current merchant workspace; slots are action-scoped
+  ---
+  duration_ms: 0.491
+  type: 'test'
+  ...
+# Subtest: decode: page and summary accept the contract shape only
+ok 330 - decode: page and summary accept the contract shape only
+  ---
+  duration_ms: 0.8584
+  type: 'test'
+  ...
+# Subtest: decode rejects contract-foreign shapes
+ok 331 - decode rejects contract-foreign shapes
+  ---
+  duration_ms: 0.3311
+  type: 'test'
+  ...
+# Subtest: display copy: merchant-side PENDING_CONFIRM reads 待接单; times render UTC+8
+ok 332 - display copy: merchant-side PENDING_CONFIRM reads 待接单; times render UTC+8
+  ---
+  duration_ms: 0.7389
+  type: 'test'
+  ...
+# Subtest: error mapping: 403 stays one anti-enumeration copy; 403/503 fail closed
+ok 333 - error mapping: 403 stays one anti-enumeration copy; 403/503 fail closed
+  ---
+  duration_ms: 0.2473
+  type: 'test'
+  ...
+# Subtest: controller: default tab is 待接单 (displayStatus=PENDING_CONFIRM); 全部 omits the filter
+ok 334 - controller: default tab is 待接单 (displayStatus=PENDING_CONFIRM); 全部 omits the filter
+  ---
+  duration_ms: 3.2609
+  type: 'test'
+  ...
+# Subtest: controller: loadMore pages with dedupe and stops at the total
+ok 335 - controller: loadMore pages with dedupe and stops at the total
+  ---
+  duration_ms: 0.4494
+  type: 'test'
+  ...
+# Subtest: controller: entry without merchant coordinates; 401 also re-entries
+ok 336 - controller: entry without merchant coordinates; 401 also re-entries
+  ---
+  duration_ms: 0.2734
+  type: 'test'
+  ...
+# Subtest: controller: 403/503 fail the page closed; other faults stay retryable load-error
+ok 337 - controller: 403/503 fail the page closed; other faults stay retryable load-error
+  ---
+  duration_ms: 0.2661
+  type: 'test'
+  ...
+# Subtest: controller: workspace switch invalidates the list immediately
+ok 338 - controller: workspace switch invalidates the list immediately
+  ---
+  duration_ms: 0.3074
+  type: 'test'
+  ...
+# Subtest: real repository: list GET carries the merchant coordinates and the tab filter only
+ok 339 - real repository: list GET carries the merchant coordinates and the tab filter only
+  ---
+  duration_ms: 2.2865
+  type: 'test'
+  ...
+# Subtest: real repository: coordinates must match the workspace; wrong method/path fail closed
+ok 340 - real repository: coordinates must match the workspace; wrong method/path fail closed
+  ---
+  duration_ms: 0.4885
+  type: 'test'
+  ...
+# Subtest: real repository: echo mismatch and foreign filter results fail closed
+ok 341 - real repository: echo mismatch and foreign filter results fail closed
+  ---
+  duration_ms: 0.4315
+  type: 'test'
+  ...
+# Subtest: decode: summary/detail/page/receipt accept the exact wire fields
+ok 342 - decode: summary/detail/page/receipt accept the exact wire fields
+  ---
+  duration_ms: 2.1072
+  type: 'test'
+  ...
+# Subtest: decode rejects contract-foreign shapes
+ok 343 - decode rejects contract-foreign shapes
+  ---
+  duration_ms: 0.3706
+  type: 'test'
+  ...
+# Subtest: only the definitive no-write 409s retire the journal; busy/dependency keep the key
+ok 344 - only the definitive no-write 409s retire the journal; busy/dependency keep the key
+  ---
+  duration_ms: 0.1826
+  type: 'test'
+  ...
+# Subtest: model: OWNER + refund.read gates readable; FROZEN keeps read-only; wrong store never passes
+ok 345 - model: OWNER + refund.read gates readable; FROZEN keeps read-only; wrong store never passes
+  ---
+  duration_ms: 0.2243
+  type: 'test'
+  ...
+# Subtest: model: decide window is PENDING_MERCHANT before the deadline only
+ok 346 - model: decide window is PENDING_MERCHANT before the deadline only
+  ---
+  duration_ms: 0.1403
+  type: 'test'
+  ...
+# Subtest: model: reject reason 1..500 code points, non-blank
+ok 347 - model: reject reason 1..500 code points, non-blank
+  ---
+  duration_ms: 0.1174
+  type: 'test'
+  ...
+# Subtest: controller: entry gating on missing workspace; list load carries the coordinates
+ok 348 - controller: entry gating on missing workspace; list load carries the coordinates
+  ---
+  duration_ms: 0.5552
+  type: 'test'
+  ...
+# Subtest: controller: detail load; approve submits and re-reads the current application
+ok 349 - controller: detail load; approve submits and re-reads the current application
+  ---
+  duration_ms: 0.3286
+  type: 'test'
+  ...
+# Subtest: controller: reject requires a reason; the draft is persisted and cleared on success
+ok 350 - controller: reject requires a reason; the draft is persisted and cleared on success
+  ---
+  duration_ms: 0.3857
+  type: 'test'
+  ...
+# Subtest: controller: journaled unknown outcome replays its exact payload; foreign pending locks out
+ok 351 - controller: journaled unknown outcome replays its exact payload; foreign pending locks out
+  ---
+  duration_ms: 0.4248
+  type: 'test'
+  ...
+# Subtest: controller: definitive 409 retires and re-reads; 403 fails the page closed
+ok 352 - controller: definitive 409 retires and re-reads; 403 fails the page closed
+  ---
+  duration_ms: 0.3203
+  type: 'test'
+  ...
+# Subtest: controller: frozen admission stays read-only (no decision reaches the wire)
+ok 353 - controller: frozen admission stays read-only (no decision reaches the wire)
+  ---
+  duration_ms: 0.1502
+  type: 'test'
+  ...
+# Subtest: messages: per-code Chinese copy and entry guidance
+ok 354 - messages: per-code Chinese copy and entry guidance
+  ---
+  duration_ms: 0.1237
+  type: 'test'
+  ...
+# Subtest: real wiring: list/detail carry the workspace coordinates; decisions address the application only
+ok 355 - real wiring: list/detail carry the workspace coordinates; decisions address the application only
+  ---
+  duration_ms: 2.435
+  type: 'test'
+  ...
+# Subtest: real wiring: foreign coordinates never leave the client; malformed ids and reasons fail closed
+ok 356 - real wiring: foreign coordinates never leave the client; malformed ids and reasons fail closed
+  ---
+  duration_ms: 0.3925
+  type: 'test'
+  ...
+# Subtest: real wiring: definitive 409 retires the slot with a fresh key; unknown outcome keeps the journal
+ok 357 - real wiring: definitive 409 retires the slot with a fresh key; unknown outcome keeps the journal
+  ---
+  duration_ms: 0.9936
+  type: 'test'
+  ...
+# Subtest: appeal tag variants use class names because WXSS attribute selectors never match
+ok 358 - appeal tag variants use class names because WXSS attribute selectors never match
+  ---
+  duration_ms: 0.7819
+  type: 'test'
+  ...
+# Subtest: appeal tag text prefers the terminal visibility fact
+ok 359 - appeal tag text prefers the terminal visibility fact
+  ---
+  duration_ms: 0.1382
+  type: 'test'
+  ...
+# Subtest: appeal entry only for a published not-yet-appealed review with write access
+ok 360 - appeal entry only for a published not-yet-appealed review with write access
+  ---
+  duration_ms: 0.1394
+  type: 'test'
+  ...
+# Subtest: reason boundary: trimmed non-blank 1..1000 code points, no lone surrogates
+ok 361 - reason boundary: trimmed non-blank 1..1000 code points, no lone surrogates
+  ---
+  duration_ms: 0.393
+  type: 'test'
+  ...
+# Subtest: contract decoders fail closed on unknown or malformed shapes
+ok 362 - contract decoders fail closed on unknown or malformed shapes
+  ---
+  duration_ms: 2.2604
+  type: 'test'
+  ...
+# Subtest: definite appeal conflicts are exactly the terminal one-time 409 family
+ok 363 - definite appeal conflicts are exactly the terminal one-time 409 family
+  ---
+  duration_ms: 0.2167
+  type: 'test'
+  ...
+# Subtest: appeal page messages map the 56号 error face for the merchant
+ok 364 - appeal page messages map the 56号 error face for the merchant
+  ---
+  duration_ms: 0.3109
+  type: 'test'
+  ...
+# Subtest: owner access gates on OWNER kind, coordinates and the merchant.review.read action
+ok 365 - owner access gates on OWNER kind, coordinates and the merchant.review.read action
+  ---
+  duration_ms: 0.619
+  type: 'test'
+  ...
+# Subtest: appeal entry only for a published, not-yet-appealed review with write access
+ok 366 - appeal entry only for a published, not-yet-appealed review with write access
+  ---
+  duration_ms: 0.0986
+  type: 'test'
+  ...
+# Subtest: load reads admission first and never lists for a denied or STAFF session
+ok 367 - load reads admission first and never lists for a denied or STAFF session
+  ---
+  duration_ms: 0.6005
+  type: 'test'
+  ...
+# Subtest: one-time appeal: first submit reloads and overlays the appeal status
+ok 368 - one-time appeal: first submit reloads and overlays the appeal status
+  ---
+  duration_ms: 0.4134
+  type: 'test'
+  ...
+# Subtest: blank reason stays local and FROZEN keeps the list readable but the entry closed
+ok 369 - blank reason stays local and FROZEN keeps the list readable but the entry closed
+  ---
+  duration_ms: 0.207
+  type: 'test'
+  ...
+# Subtest: unknown outcome keeps the original command; terminal one-time 409 retires it and reloads
+ok 370 - unknown outcome keeps the original command; terminal one-time 409 retires it and reloads
+  ---
+  duration_ms: 0.8009
+  type: 'test'
+  ...
+# Subtest: late list response cannot repopulate the UI after an identity switch
+ok 371 - late list response cannot repopulate the UI after an identity switch
+  ---
+  duration_ms: 0.2696
+  type: 'test'
+  ...
+# Subtest: pagination appends deduplicated pages only while the identity holds
+ok 372 - pagination appends deduplicated pages only while the identity holds
+  ---
+  duration_ms: 0.3333
+  type: 'test'
+  ...
+# Subtest: window decoders are exact-key and fail closed
+ok 373 - window decoders are exact-key and fail closed
+  ---
+  duration_ms: 1.5689
+  type: 'test'
+  ...
+# Subtest: page and batch decoders enforce their envelopes and the 200-entry cap
+ok 374 - page and batch decoders enforce their envelopes and the 200-entry cap
+  ---
+  duration_ms: 0.866
+  type: 'test'
+  ...
+# Subtest: paged window envelope enforces the §3.3 bounds (fail closed)
+ok 375 - paged window envelope enforces the §3.3 bounds (fail closed)
+  ---
+  duration_ms: 0.7091
+  type: 'test'
+  ...
+# Subtest: staff window and capability decoders are exact-key
+ok 376 - staff window and capability decoders are exact-key
+  ---
+  duration_ms: 1.1155
+  type: 'test'
+  ...
+# Subtest: status variants are explicit class names (no data-* reliance)
+ok 377 - status variants are explicit class names (no data-* reliance)
+  ---
+  duration_ms: 0.2485
+  type: 'test'
+  ...
+# Subtest: Beijing time helpers compose minute-precision offsets and split back
+ok 378 - Beijing time helpers compose minute-precision offsets and split back
+  ---
+  duration_ms: 1.217
+  type: 'test'
+  ...
+# Subtest: form pre-validation mirrors the server answers
+ok 379 - form pre-validation mirrors the server answers
+  ---
+  duration_ms: 0.584
+  type: 'test'
+  ...
+# Subtest: availability classifies switch-off/dependency failure as closed; error text maps by code
+ok 380 - availability classifies switch-off/dependency failure as closed; error text maps by code
+  ---
+  duration_ms: 0.37
+  type: 'test'
+  ...
+# Subtest: fixtures cover the open/partial/full/closed state space for preview
+ok 381 - fixtures cover the open/partial/full/closed state space for preview
+  ---
+  duration_ms: 0.5151
+  type: 'test'
+  ...
+# Subtest: preview workbench read decodes fixtures and derives SOLD_OUT
+ok 382 - preview workbench read decodes fixtures and derives SOLD_OUT
+  ---
+  duration_ms: 1.2802
+  type: 'test'
+  ...
+# Subtest: preview windows paginate §3.3-style: wire order, slices, filter-matched totals, 400 bounds
+ok 383 - preview windows paginate §3.3-style: wire order, slices, filter-matched totals, 400 bounds
+  ---
+  duration_ms: 0.8862
+  type: 'test'
+  ...
+# Subtest: preview enforces occupied-window guards and the capacity-raise re-judge
+ok 384 - preview enforces occupied-window guards and the capacity-raise re-judge
+  ---
+  duration_ms: 1.5882
+  type: 'test'
+  ...
+# Subtest: preview enforces overlap discipline and the CLOSED edit guard
+ok 385 - preview enforces overlap discipline and the CLOSED edit guard
+  ---
+  duration_ms: 0.5728
+  type: 'test'
+  ...
+# Subtest: preview batch close: partial success names blocked windows; >200 entries reject whole
+ok 386 - preview batch close: partial success names blocked windows; >200 entries reject whole
+  ---
+  duration_ms: 0.7078
+  type: 'test'
+  ...
+# Subtest: preview staff windows: overlap 409, assignment protection 409, CAS 409
+ok 387 - preview staff windows: overlap 409, assignment protection 409, CAS 409
+  ---
+  duration_ms: 0.9149
+  type: 'test'
+  ...
+# Subtest: preview capabilities: whole-set CAS replace, removal reason, legacy quarantine
+ok 388 - preview capabilities: whole-set CAS replace, removal reason, legacy quarantine
+  ---
+  duration_ms: 0.508
+  type: 'test'
+  ...
+# Subtest: preview scenarios fail closed and the slot journal replays/locks
+ok 389 - preview scenarios fail closed and the slot journal replays/locks
+  ---
+  duration_ms: 0.3265
+  type: 'test'
+  ...
+# Subtest: real repository wires the contract routes with workspace coordinates
+ok 390 - real repository wires the contract routes with workspace coordinates
+  ---
+  duration_ms: 3.9475
+  type: 'test'
+  ...
+# Subtest: real repository: staff and capability commands address staffId in the path
+ok 391 - real repository: staff and capability commands address staffId in the path
+  ---
+  duration_ms: 1.098
+  type: 'test'
+  ...
+# Subtest: real repository: definitive 409 retires the slot; 503 keeps it and replays the requestId
+ok 392 - real repository: definitive 409 retires the slot; 503 keeps it and replays the requestId
+  ---
+  duration_ms: 1.2486
+  type: 'test'
+  ...
+# Subtest: real repository fails closed on consumer coordinates and validates forms before the wire
+ok 393 - real repository fails closed on consumer coordinates and validates forms before the wire
+  ---
+  duration_ms: 0.3992
+  type: 'test'
+  ...
+# Subtest: service cover sends approved purpose and original UUID; READY alone is not binding acknowledgement
+ok 394 - service cover sends approved purpose and original UUID; READY alone is not binding acknowledgement
+  ---
+  duration_ms: 4.178
+  type: 'test'
+  ...
+# Subtest: timeout survives uploader restart with exact file and request ID, without choosing another image
+ok 395 - timeout survives uploader restart with exact file and request ID, without choosing another image
+  ---
+  duration_ms: 1.1746
+  type: 'test'
+  ...
+# Subtest: journal isolated by editor target/store and application purpose; consumer cannot upload covers
+ok 396 - journal isolated by editor target/store and application purpose; consumer cannot upload covers
+  ---
+  duration_ms: 0.733
+  type: 'test'
+  ...
+# Subtest: scope change while cover is uploading cannot attach old receipt to another store
+ok 397 - scope change while cover is uploading cannot attach old receipt to another store
+  ---
+  duration_ms: 0.5723
+  type: 'test'
+  ...
+# Subtest: terminal scanner rejection allows replacement; unknown server failure preserves original attempt
+ok 398 - terminal scanner rejection allows replacement; unknown server failure preserves original attempt
+  ---
+  duration_ms: 1.0258
+  type: 'test'
+  ...
+# Subtest: consumer cover rendering only accepts unexpired HTTPS signatures
+ok 399 - consumer cover rendering only accepts unexpired HTTPS signatures
+  ---
+  duration_ms: 0.177
+  type: 'test'
+  ...
+# Subtest: PR79 empty draft decodes through detail, list and form without a false save failure
+ok 400 - PR79 empty draft decodes through detail, list and form without a false save failure
+  ---
+  duration_ms: 1.283
+  type: 'test'
+  ...
+# Subtest: decoders enforce the exact finalized shapes (IDs/prices/status/rejection/cover)
+ok 401 - decoders enforce the exact finalized shapes (IDs/prices/status/rejection/cover)
+  ---
+  duration_ms: 1.2111
+  type: 'test'
+  ...
+# Subtest: mock list paginates all statuses newest-first and isolates snapshots
+ok 402 - mock list paginates all statuses newest-first and isolates snapshots
+  ---
+  duration_ms: 0.4876
+  type: 'test'
+  ...
+# Subtest: create/update obey the state machine, CAS, idempotency replay and payload lock
+ok 403 - create/update obey the state machine, CAS, idempotency replay and payload lock
+  ---
+  duration_ms: 1.0058
+  type: 'test'
+  ...
+# Subtest: online submits for review with required-field precheck; offline only from ACTIVE
+ok 404 - online submits for review with required-field precheck; offline only from ACTIVE
+  ---
+  duration_ms: 0.5232
+  type: 'test'
+  ...
+# Subtest: non-operable stores reject every write with 409; reads stay available
+ok 405 - non-operable stores reject every write with 409; reads stay available
+  ---
+  duration_ms: 0.1947
+  type: 'test'
+  ...
+# Subtest: submit/draft validators mirror the contract rules
+ok 406 - submit/draft validators mirror the contract rules
+  ---
+  duration_ms: 0.2384
+  type: 'test'
+  ...
+# Subtest: real repository wires the six merchant routes with journaled request ids
+ok 407 - real repository wires the six merchant routes with journaled request ids
+  ---
+  duration_ms: 3.2783
+  type: 'test'
+  ...
+# Subtest: status/toggle/pill class variants map every state to a defined CSS class
+ok 408 - status/toggle/pill class variants map every state to a defined CSS class
+  ---
+  duration_ms: 0.2526
+  type: 'test'
+  ...
+# Subtest: decoders enforce the exact contract-54 employee-side shapes
+ok 409 - decoders enforce the exact contract-54 employee-side shapes
+  ---
+  duration_ms: 1.3099
+  type: 'test'
+  ...
+# Subtest: status styles are explicit class-name variants, never dynamic data-*
+ok 410 - status styles are explicit class-name variants, never dynamic data-*
+  ---
+  duration_ms: 0.1363
+  type: 'test'
+  ...
+# Subtest: invitation ids and the frozen action catalog follow the contract lexicons
+ok 411 - invitation ids and the frozen action catalog follow the contract lexicons
+  ---
+  duration_ms: 0.1793
+  type: 'test'
+  ...
+# Subtest: per-error-code Chinese mapping for the employee read+confirm channel
+ok 412 - per-error-code Chinese mapping for the employee read+confirm channel
+  ---
+  duration_ms: 0.2683
+  type: 'test'
+  ...
+# Subtest: decoders enforce the exact contract-54 §7 list shapes (no phone in any form)
+ok 413 - decoders enforce the exact contract-54 §7 list shapes (no phone in any form)
+  ---
+  duration_ms: 0.4216
+  type: 'test'
+  ...
+# Subtest: list message mapping and fail-closed classification for the §7 channel
+ok 414 - list message mapping and fail-closed classification for the §7 channel
+  ---
+  duration_ms: 0.1443
+  type: 'test'
+  ...
+# Subtest: list controller loads the first page, appends more and keeps the fixed order
+ok 415 - list controller loads the first page, appends more and keeps the fixed order
+  ---
+  duration_ms: 19.8601
+  type: 'test'
+  ...
+# Subtest: list controller fails closed on switch-off/dependency faults and recovers on retry
+ok 416 - list controller fails closed on switch-off/dependency faults and recovers on retry
+  ---
+  duration_ms: 46.646
+  type: 'test'
+  ...
+# Subtest: controller loads one invitation, confirms it and folds to the terminal state
+ok 417 - controller loads one invitation, confirms it and folds to the terminal state
+  ---
+  duration_ms: 30.0379
+  type: 'test'
+  ...
+# Subtest: confirm is refused client-side on terminal invitations and never fakes success
+ok 418 - confirm is refused client-side on terminal invitations and never fakes success
+  ---
+  duration_ms: 47.6759
+  type: 'test'
+  ...
+# Subtest: load failures fail closed with the whole-page panel; confirm conflicts keep the invitation
+ok 419 - load failures fail closed with the whole-page panel; confirm conflicts keep the invitation
+  ---
+  duration_ms: 62.9299
+  type: 'test'
+  ...
+# Subtest: workbench controller discriminates staff from owner and fails closed on admission faults
+ok 420 - workbench controller discriminates staff from owner and fails closed on admission faults
+  ---
+  duration_ms: 45.9671
+  type: 'test'
+  ...
+# Subtest: staff invitation routes are identity-scoped and callable from merchant coordinates; other /c routes are not
+ok 421 - staff invitation routes are identity-scoped and callable from merchant coordinates; other /c routes are not
+  ---
+  duration_ms: 3.1585
+  type: 'test'
+  ...
+# Subtest: decode: VERIFIED carries the tail trio; negative results carry null tails
+ok 422 - decode: VERIFIED carries the tail trio; negative results carry null tails
+  ---
+  duration_ms: 1.2477
+  type: 'test'
+  ...
+# Subtest: decode rejects contract-foreign shapes
+ok 423 - decode rejects contract-foreign shapes
+  ---
+  duration_ms: 0.5318
+  type: 'test'
+  ...
+# Subtest: form syntax: order id is a Snowflake decimal string; code is 1-128 uppercase alnum
+ok 424 - form syntax: order id is a Snowflake decimal string; code is 1-128 uppercase alnum
+  ---
+  duration_ms: 0.32
+  type: 'test'
+  ...
+# Subtest: error mapping: per-code Chinese copy, 404 anti-enumeration stays single
+ok 425 - error mapping: per-code Chinese copy, 404 anti-enumeration stays single
+  ---
+  duration_ms: 1.1012
+  type: 'test'
+  ...
+# Subtest: controller: entry gating and pending journal surface on load
+ok 426 - controller: entry gating and pending journal surface on load
+  ---
+  duration_ms: 0.7067
+  type: 'test'
+  ...
+# Subtest: controller: form validation blocks submit; code is normalized before send
+ok 427 - controller: form validation blocks submit; code is normalized before send
+  ---
+  duration_ms: 0.3584
+  type: 'test'
+  ...
+# Subtest: controller: replayed flag mirrors the journaled same-payload command
+ok 428 - controller: replayed flag mirrors the journaled same-payload command
+  ---
+  duration_ms: 0.2948
+  type: 'test'
+  ...
+# Subtest: controller: committed negative business result keeps the receipt panel
+ok 429 - controller: committed negative business result keeps the receipt panel
+  ---
+  duration_ms: 0.1596
+  type: 'test'
+  ...
+# Subtest: controller: ALREADY_DONE is its own terminal panel; other 409s stay form notices
+ok 430 - controller: ALREADY_DONE is its own terminal panel; other 409s stay form notices
+  ---
+  duration_ms: 0.4216
+  type: 'test'
+  ...
+# Subtest: controller: 403/503 fail the whole page closed; 404 stays a form notice
+ok 431 - controller: 403/503 fail the whole page closed; 404 stays a form notice
+  ---
+  duration_ms: 0.5227
+  type: 'test'
+  ...
+# Subtest: real repository wires the 48 K2 route: POST only, strict body, journaled UUID, no coordinates
+ok 432 - real repository wires the 48 K2 route: POST only, strict body, journaled UUID, no coordinates
+  ---
+  duration_ms: 2.6005
+  type: 'test'
+  ...
+# Subtest: real repository: receipt orderId must echo the command target
+ok 433 - real repository: receipt orderId must echo the command target
+  ---
+  duration_ms: 0.5683
+  type: 'test'
+  ...
+# Subtest: real repository: definitive 409 retires the slot; a corrected payload gets a fresh requestId
+ok 434 - real repository: definitive 409 retires the slot; a corrected payload gets a fresh requestId
+  ---
+  duration_ms: 0.7047
+  type: 'test'
+  ...
+# Subtest: real repository: unknown outcome keeps the journal; retry replays the SAME requestId and first receipt
+ok 435 - real repository: unknown outcome keeps the journal; retry replays the SAME requestId and first receipt
+  ---
+  duration_ms: 0.7018
+  type: 'test'
+  ...
+# Subtest: real repository: 401/403/404 keep the journal (hidden first receipt), 400 retires it
+ok 436 - real repository: 401/403/404 keep the journal (hidden first receipt), 400 retires it
+  ---
+  duration_ms: 1.534
+  type: 'test'
+  ...
+# Subtest: real repository: pending() reads only the current workspace coordinates
+ok 437 - real repository: pending() reads only the current workspace coordinates
+  ---
+  duration_ms: 0.4938
+  type: 'test'
+  ...
+# Subtest: MINI-002 single accessible store auto-selects and switches to merchant coordinates
+ok 438 - MINI-002 single accessible store auto-selects and switches to merchant coordinates
+  ---
+  duration_ms: 3.0232
+  type: 'test'
+  ...
+# Subtest: MINI-002 multiple stores require an explicit choice; no default-first
+ok 439 - MINI-002 multiple stores require an explicit choice; no default-first
+  ---
+  duration_ms: 0.2757
+  type: 'test'
+  ...
+# Subtest: MINI-002 no-stores keeps consumer coordinates and offers guidance
+ok 440 - MINI-002 no-stores keeps consumer coordinates and offers guidance
+  ---
+  duration_ms: 0.1869
+  type: 'test'
+  ...
+# Subtest: MINI-002 limited admission renders facts without inventing access
+ok 441 - MINI-002 limited admission renders facts without inventing access
+  ---
+  duration_ms: 0.2097
+  type: 'test'
+  ...
+# Subtest: MINI-002 denied admission renders facts without inventing access
+ok 442 - MINI-002 denied admission renders facts without inventing access
+  ---
+  duration_ms: 0.1599
+  type: 'test'
+  ...
+# Subtest: MINI-002 error fails closed and can retry
+ok 443 - MINI-002 error fails closed and can retry
+  ---
+  duration_ms: 0.2335
+  type: 'test'
+  ...
+# Subtest: MINI-002 store-error fails closed and can retry
+ok 444 - MINI-002 store-error fails closed and can retry
+  ---
+  duration_ms: 0.211
+  type: 'test'
+  ...
+# Subtest: MINI-002 every entry re-checks; admitted view hidden during query
+ok 445 - MINI-002 every entry re-checks; admitted view hidden during query
+  ---
+  duration_ms: 0.2738
+  type: 'test'
+  ...
+# Subtest: MINI-002 missing shared session does not query or invent login
+ok 446 - MINI-002 missing shared session does not query or invent login
+  ---
+  duration_ms: 0.2565
+  type: 'test'
+  ...
+# Subtest: MINI-003 pending admission cannot revive after return
+ok 447 - MINI-003 pending admission cannot revive after return
+  ---
+  duration_ms: 0.5217
+  type: 'test'
+  ...
+# Subtest: MINI-003 pending admission cannot revive after logout
+ok 448 - MINI-003 pending admission cannot revive after logout
+  ---
+  duration_ms: 0.0897
+  type: 'test'
+  ...
+# Subtest: MINI-003 pending admission cannot revive after user-switch
+ok 449 - MINI-003 pending admission cannot revive after user-switch
+  ---
+  duration_ms: 0.0704
+  type: 'test'
+  ...
+# Subtest: MINI-003 pending admission cannot revive after dispose
+ok 450 - MINI-003 pending admission cannot revive after dispose
+  ---
+  duration_ms: 0.1189
+  type: 'test'
+  ...
+# Subtest: MINI-003 older successful or failing admission cannot replace newest verdict
+ok 451 - MINI-003 older successful or failing admission cannot replace newest verdict
+  ---
+  duration_ms: 0.2424
+  type: 'test'
+  ...
+# Subtest: MINI-003 old page hide/dispose does not revoke a newer page admission
+ok 452 - MINI-003 old page hide/dispose does not revoke a newer page admission
+  ---
+  duration_ms: 0.1615
+  type: 'test'
+  ...
+# Subtest: F1 workbench-initiated child navigation keeps the admission coordinates for the target page
+ok 453 - F1 workbench-initiated child navigation keeps the admission coordinates for the target page
+  ---
+  duration_ms: 0.1381
+  type: 'test'
+  ...
+# Subtest: F1 a failed child navigation re-owns the coordinates; a later leave still resets
+ok 454 - F1 a failed child navigation re-owns the coordinates; a later leave still resets
+  ---
+  duration_ms: 0.2053
+  type: 'test'
+  ...
+# Subtest: F1 dispose resets a still-current donation (workbench stack destroyed under a child page)
+ok 455 - F1 dispose resets a still-current donation (workbench stack destroyed under a child page)
+  ---
+  duration_ms: 0.1474
+  type: 'test'
+  ...
+# Subtest: F1 dispose leaves a newer owner untouched after a donation was superseded
+ok 456 - F1 dispose leaves a newer owner untouched after a donation was superseded
+  ---
+  duration_ms: 0.1635
+  type: 'test'
+  ...
+# Subtest: F1 returning from a child page re-runs admission; leaving afterwards resets
+ok 457 - F1 returning from a child page re-runs admission; leaving afterwards resets
+  ---
+  duration_ms: 0.1551
+  type: 'test'
+  ...
+# Subtest: options use authenticated exact GET with no query/body and strict four-field envelope
+ok 458 - options use authenticated exact GET with no query/body and strict four-field envelope
+  ---
+  duration_ms: 4.4912
+  type: 'test'
+  ...
+# Subtest: options reject incomplete, duplicate, unsorted and over-limit catalogs while accepting 64 Unicode scalar labels
+ok 459 - options reject incomplete, duplicate, unsorted and over-limit catalogs while accepting 64 Unicode scalar labels
+  ---
+  duration_ms: 1.1924
+  type: 'test'
+  ...
+# Subtest: options cannot publish after identity replacement or credential expiry
+ok 460 - options cannot publish after identity replacement or credential expiry
+  ---
+  duration_ms: 0.5917
+  type: 'test'
+  ...
+# Subtest: new definite conflict codes retire only the matching actual failure, then require an explicit new command
+ok 461 - new definite conflict codes retire only the matching actual failure, then require an explicit new command
+  ---
+  duration_ms: 2.826
+  type: 'test'
+  ...
+# Subtest: late handling of an old definite rejection cannot retire a newer journal with identical payload
+ok 462 - late handling of an old definite rejection cannot retire a newer journal with identical payload
+  ---
+  duration_ms: 0.6223
+  type: 'test'
+  ...
+# Subtest: retirement storage failure keeps the same command in memory and durable storage for explicit retry
+ok 463 - retirement storage failure keeps the same command in memory and durable storage for explicit retry
+  ---
+  duration_ms: 0.4301
+  type: 'test'
+  ...
+# Subtest: ambiguous conflict and rate limiting retain exactly the original UUID and body through remount
+ok 464 - ambiguous conflict and rate limiting retain exactly the original UUID and body through remount
+  ---
+  duration_ms: 1.648
+  type: 'test'
+  ...
+# Subtest: Contract51 uses strict four fields, String IDs and exact whitelisted methods without altering old session protocol
+ok 465 - Contract51 uses strict four fields, String IDs and exact whitelisted methods without altering old session protocol
+  ---
+  duration_ms: 0.9009
+  type: 'test'
+  ...
+# Subtest: unknown ACK survives reconstruction, retries the original UUID/payload and blocks edits
+ok 466 - unknown ACK survives reconstruction, retries the original UUID/payload and blocks edits
+  ---
+  duration_ms: 0.8121
+  type: 'test'
+  ...
+# Subtest: merchant queries bind current store while command DTO carries no client identity or coordinates
+ok 467 - merchant queries bind current store while command DTO carries no client identity or coordinates
+  ---
+  duration_ms: 0.6466
+  type: 'test'
+  ...
+# Subtest: 409 CAS retires only definite rejection; idempotency conflict remains pending
+ok 468 - 409 CAS retires only definite rejection; idempotency conflict remains pending
+  ---
+  duration_ms: 0.3911
+  type: 'test'
+  ...
+# Subtest: scope changes during UUID generation cannot sign a grant as the later identity
+ok 469 - scope changes during UUID generation cannot sign a grant as the later identity
+  ---
+  duration_ms: 0.2379
+  type: 'test'
+  ...
+# Subtest: typed private upload uses four fields; binary grants reject cross-party/absolute URLs and stale returns
+ok 470 - typed private upload uses four fields; binary grants reject cross-party/absolute URLs and stale returns
+  ---
+  duration_ms: 0.569
+  type: 'test'
+  ...
+# Subtest: malformed detail never publishes an incomplete or numeric business record
+ok 471 - malformed detail never publishes an incomplete or numeric business record
+  ---
+  duration_ms: 0.1435
+  type: 'test'
+  ...
+# Subtest: strict primitive and route boundaries reject trailing line terminators
+ok 472 - strict primitive and route boundaries reject trailing line terminators
+  ---
+  duration_ms: 0.7111
+  type: 'test'
+  ...
+# Subtest: list rejects response coordinates, filter and paging that differ from the request
+ok 473 - list rejects response coordinates, filter and paging that differ from the request
+  ---
+  duration_ms: 0.4308
+  type: 'test'
+  ...
+# Subtest: unknown aftersale write survives 401/logout and is visible only to its freshly verified owner
+ok 474 - unknown aftersale write survives 401/logout and is visible only to its freshly verified owner
+  ---
+  duration_ms: 2.3329
+  type: 'test'
+  ...
+# Subtest: malformed failure envelopes preserve unknown commands instead of declaring a rejection
+ok 475 - malformed failure envelopes preserve unknown commands instead of declaring a rejection
+  ---
+  duration_ms: 0.7281
+  type: 'test'
+  ...
+# Subtest: mismatched receipts never retire a command or navigate to another order/case
+ok 476 - mismatched receipts never retire a command or navigate to another order/case
+  ---
+  duration_ms: 0.5815
+  type: 'test'
+  ...
+# Subtest: authorization and resource-visibility failures cannot erase an earlier unknown aftersale receipt
+ok 477 - authorization and resource-visibility failures cannot erase an earlier unknown aftersale receipt
+  ---
+  duration_ms: 0.8272
+  type: 'test'
+  ...
+# Subtest: HTTP requires explicit local development exception; HTTPS stays default
+ok 478 - HTTP requires explicit local development exception; HTTPS stays default
+  ---
+  duration_ms: 25.7838
+  type: 'test'
+  ...
+# Subtest: exception cannot admit public hosts, DNS aliases, userinfo, alternate IP spellings or URL suffixes
+ok 479 - exception cannot admit public hosts, DNS aliases, userinfo, alternate IP spellings or URL suffixes
+  ---
+  duration_ms: 0.2931
+  type: 'test'
+  ...
+# Subtest: request and multipart enforce the same origin policy and retain fixed route/header semantics
+ok 480 - request and multipart enforce the same origin policy and retain fixed route/header semantics
+  ---
+  duration_ms: 0.4684
+  type: 'test'
+  ...
+# Subtest: real client uses approved two-step login and server session; no client principal in requests
+ok 481 - real client uses approved two-step login and server session; no client principal in requests
+  ---
+  duration_ms: 4.4706
+  type: 'test'
+  ...
+# Subtest: platform cancellation/empty code/network failure and phone denial never log in
+ok 482 - platform cancellation/empty code/network failure and phone denial never log in
+  ---
+  duration_ms: 1.3672
+  type: 'test'
+  ...
+# Subtest: expired code is rejected and a cancelled in-flight login cannot publish a principal
+ok 483 - expired code is rejected and a cancelled in-flight login cannot publish a principal
+  ---
+  duration_ms: 0.6352
+  type: 'test'
+  ...
+# Subtest: login duplicate clicks are single flight; grant is not trusted when session query fails
+ok 484 - login duplicate clicks are single flight; grant is not trusted when session query fails
+  ---
+  duration_ms: 0.6979
+  type: 'test'
+  ...
+# Subtest: 401 clears secrets/context/cache; stale 401 cannot clear a later identity
+ok 485 - 401 clears secrets/context/cache; stale 401 cannot clear a later identity
+  ---
+  duration_ms: 0.959
+  type: 'test'
+  ...
+# Subtest: logout invalidates immediately, persists original revocation request for explicit retry, and blocks new login
+ok 486 - logout invalidates immediately, persists original revocation request for explicit retry, and blocks new login
+  ---
+  duration_ms: 0.8478
+  type: 'test'
+  ...
+# Subtest: late business success after logout cannot update data
+ok 487 - late business success after logout cannot update data
+  ---
+  duration_ms: 0.614
+  type: 'test'
+  ...
+# Subtest: lost write ACK preserves original key/body across process restart; changed payload cannot be resubmitted
+ok 488 - lost write ACK preserves original key/body across process restart; changed payload cannot be resubmitted
+  ---
+  duration_ms: 1.1666
+  type: 'test'
+  ...
+# Subtest: duplicate business clicks share one write; different in-flight payload is rejected
+ok 489 - duplicate business clicks share one write; different in-flight payload is rejected
+  ---
+  duration_ms: 0.7952
+  type: 'test'
+  ...
+# Subtest: profile sends nickname only; real pet edit preserves non-form fields, string weight and immutable type
+ok 490 - profile sends nickname only; real pet edit preserves non-form fields, string weight and immutable type
+  ---
+  duration_ms: 1.5343
+  type: 'test'
+  ...
+# Subtest: real pet creation requires explicit approved type, never inherits design samples; no fallback on bad responses
+ok 491 - real pet creation requires explicit approved type, never inherits design samples; no fallback on bad responses
+  ---
+  duration_ms: 1.1853
+  type: 'test'
+  ...
+# Subtest: another server identity cannot restore stored credentials or recover another user pending command
+ok 492 - another server identity cannot restore stored credentials or recover another user pending command
+  ---
+  duration_ms: 0.6619
+  type: 'test'
+  ...
+# Subtest: MINI-003 workspace: old success and cache cannot cross context
+ok 493 - MINI-003 workspace: old success and cache cannot cross context
+  ---
+  duration_ms: 1.1434
+  type: 'test'
+  ...
+# Subtest: MINI-003 user: old success and cache cannot cross context
+ok 494 - MINI-003 user: old success and cache cannot cross context
+  ---
+  duration_ms: 0.1556
+  type: 'test'
+  ...
+# Subtest: MINI-003 merchant: old success and cache cannot cross context
+ok 495 - MINI-003 merchant: old success and cache cannot cross context
+  ---
+  duration_ms: 0.2126
+  type: 'test'
+  ...
+# Subtest: MINI-003 store: old success and cache cannot cross context
+ok 496 - MINI-003 store: old success and cache cannot cross context
+  ---
+  duration_ms: 0.1183
+  type: 'test'
+  ...
+# Subtest: MINI-003 logout: old success and cache cannot cross context
+ok 497 - MINI-003 logout: old success and cache cannot cross context
+  ---
+  duration_ms: 0.1334
+  type: 'test'
+  ...
+# Subtest: MINI-003 revocation: old success and cache cannot cross context
+ok 498 - MINI-003 revocation: old success and cache cannot cross context
+  ---
+  duration_ms: 0.1077
+  type: 'test'
+  ...
+# Subtest: MINI-003 sameContextReentry: old success and cache cannot cross context
+ok 499 - MINI-003 sameContextReentry: old success and cache cannot cross context
+  ---
+  duration_ms: 0.1072
+  type: 'test'
+  ...
+# Subtest: MINI-003 delayed rejection is stale; current context success remains available
+ok 500 - MINI-003 delayed rejection is stale; current context success remains available
+  ---
+  duration_ms: 0.219
+  type: 'test'
+  ...
+# Subtest: MINI-003 logout then same user login cannot revive pending response
+ok 501 - MINI-003 logout then same user login cannot revive pending response
+  ---
+  duration_ms: 0.3312
+  type: 'test'
+  ...
+# Subtest: city catalog strictly decodes server-owned opaque codes and names without hardcoded city choices
+ok 502 - city catalog strictly decodes server-owned opaque codes and names without hardcoded city choices
+  ---
+  duration_ms: 1.5249
+  type: 'test'
+  ...
+# Subtest: city catalog uses authenticated GET and requires the application success envelope
+ok 503 - city catalog uses authenticated GET and requires the application success envelope
+  ---
+  duration_ms: 1.7014
+  type: 'test'
+  ...
+# Subtest: application decoder enforces string IDs, version range, number format and unknown field rejection
+ok 504 - application decoder enforces string IDs, version range, number format and unknown field rejection
+  ---
+  duration_ms: 0.3868
+  type: 'test'
+  ...
+# Subtest: owner detail rejects sensitive fields, inconsistent revision and unsupported decision states
+ok 505 - owner detail rejects sensitive fields, inconsistent revision and unsupported decision states
+  ---
+  duration_ms: 0.6061
+  type: 'test'
+  ...
+# Subtest: draft preserves clear semantics while rejecting duplicate/private invented inputs and invalid decimal coordinates
+ok 506 - draft preserves clear semantics while rejecting duplicate/private invented inputs and invalid decimal coordinates
+  ---
+  duration_ms: 0.2861
+  type: 'test'
+  ...
+# Subtest: application read/create/save/submit uses exact candidate endpoints and optimistic version payloads
+ok 507 - application read/create/save/submit uses exact candidate endpoints and optimistic version payloads
+  ---
+  duration_ms: 1.5791
+  type: 'test'
+  ...
+# Subtest: unknown write survives restart with identical requestId and blocks modified intent
+ok 508 - unknown write survives restart with identical requestId and blocks modified intent
+  ---
+  duration_ms: 0.5293
+  type: 'test'
+  ...
+# Subtest: agreement recovery replays original explicit consent after process restart without re-signing new content
+ok 509 - agreement recovery replays original explicit consent after process restart without re-signing new content
+  ---
+  duration_ms: 0.8404
+  type: 'test'
+  ...
+# Subtest: draft mutation after command start cannot change persisted/sent payload
+ok 510 - draft mutation after command start cannot change persisted/sent payload
+  ---
+  duration_ms: 0.4419
+  type: 'test'
+  ...
+# Subtest: agreement decoder checks signed evidence, hash, version, unknown fields and UTF-8 byte limit
+ok 511 - agreement decoder checks signed evidence, hash, version, unknown fields and UTF-8 byte limit
+  ---
+  duration_ms: 3.7541
+  type: 'test'
+  ...
+# Subtest: agreement requires merchant workspace, matching merchant and explicit consent; server receives bearer
+ok 512 - agreement requires merchant workspace, matching merchant and explicit consent; server receives bearer
+  ---
+  duration_ms: 0.5543
+  type: 'test'
+  ...
+# Subtest: merchant access is narrowly path/method bound; session user cannot be replaced with fixture identity
+ok 513 - merchant access is narrowly path/method bound; session user cannot be replaced with fixture identity
+  ---
+  duration_ms: 0.3689
+  type: 'test'
+  ...
+# Subtest: old merchant response cannot enter switched workspace
+ok 514 - old merchant response cannot enter switched workspace
+  ---
+  duration_ms: 0.2106
+  type: 'test'
+  ...
+# Subtest: 403 never becomes consent success; 409/503 preserve original consent for explicit retry
+ok 515 - 403 never becomes consent success; 409/503 preserve original consent for explicit retry
+  ---
+  duration_ms: 0.9407
+  type: 'test'
+  ...
+# Subtest: agreement wrong-merchant receipt is invalid and remains unresolved
+ok 516 - agreement wrong-merchant receipt is invalid and remains unresolved
+  ---
+  duration_ms: 0.2855
+  type: 'test'
+  ...
+# Subtest: application success envelope must be true; malformed success keeps write unresolved
+ok 517 - application success envelope must be true; malformed success keeps write unresolved
+  ---
+  duration_ms: 0.345
+  type: 'test'
+  ...
+# Subtest: admission decoder enforces the CCR shape, enum domains and sorted actions
+ok 518 - admission decoder enforces the CCR shape, enum domains and sorted actions
+  ---
+  duration_ms: 0.5176
+  type: 'test'
+  ...
+# Subtest: membership page decoder keeps owner rows without staffId and bounds paging
+ok 519 - membership page decoder keeps owner rows without staffId and bounds paging
+  ---
+  duration_ms: 0.2076
+  type: 'test'
+  ...
+# Subtest: admission client uses the approved endpoints and echoes target identity
+ok 520 - admission client uses the approved endpoints and echoes target identity
+  ---
+  duration_ms: 0.3459
+  type: 'test'
+  ...
+# Subtest: an authenticated session runs the action immediately (phone is implied by the grant)
+ok 521 - an authenticated session runs the action immediately (phone is implied by the grant)
+  ---
+  duration_ms: 0.9353
+  type: 'test'
+  ...
+# Subtest: an expired session is silently recovered once, then the action runs
+ok 522 - an expired session is silently recovered once, then the action runs
+  ---
+  duration_ms: 0.169
+  type: 'test'
+  ...
+# Subtest: a phone-less user is guided to authorize and the action never runs
+ok 523 - a phone-less user is guided to authorize and the action never runs
+  ---
+  duration_ms: 0.1586
+  type: 'test'
+  ...
+# Subtest: declining the guide stays on the page without side effects
+ok 524 - declining the guide stays on the page without side effects
+  ---
+  duration_ms: 0.1273
+  type: 'test'
+  ...
+# Subtest: restart recovers only strict preview names and retries failed deletions
+ok 525 - restart recovers only strict preview names and retries failed deletions
+  ---
+  duration_ms: 1.1355
+  type: 'test'
+  ...
+# Subtest: partially written previews remain owned for cleanup and invalid names never write
+ok 526 - partially written previews remain owned for cleanup and invalid names never write
+  ---
+  duration_ms: 0.7139
+  type: 'test'
+  ...
+# Subtest: MINI-004 injected transport preserves string ID, amount, remote state/actions and write requestId
+ok 527 - MINI-004 injected transport preserves string ID, amount, remote state/actions and write requestId
+  ---
+  duration_ms: 1.1113
+  type: 'test'
+  ...
+# Subtest: MINI-004 all write verbs require requestId, cross-workspace and encoded traversal fail before transport
+ok 528 - MINI-004 all write verbs require requestId, cross-workspace and encoded traversal fail before transport
+  ---
+  duration_ms: 0.3224
+  type: 'test'
+  ...
+# Subtest: MINI-004 malformed IDs/amounts/actions rejected, unknown server displayStatus is not recomputed
+ok 529 - MINI-004 malformed IDs/amounts/actions rejected, unknown server displayStatus is not recomputed
+  ---
+  duration_ms: 0.2109
+  type: 'test'
+  ...
+# Subtest: MINI-004 real mode blocked by unapproved CCR; errors use code rather than message
+ok 530 - MINI-004 real mode blocked by unapproved CCR; errors use code rather than message
+  ---
+  duration_ms: 0.3349
+  type: 'test'
+  ...
+# Subtest: MINI-004 platform request port mock captures URL, headers, data, timeout; network failure propagates
+ok 531 - MINI-004 platform request port mock captures URL, headers, data, timeout; network failure propagates
+  ---
+  duration_ms: 1.1845
+  type: 'test'
+  ...
+# Subtest: server 401 on a sent request triggers one silent re-login and retries the original request
+ok 532 - server 401 on a sent request triggers one silent re-login and retries the original request
+  ---
+  duration_ms: 2.7986
+  type: 'test'
+  ...
+# Subtest: concurrent 401s share one recovery flight; a failed recovery keeps the original 401 path
+ok 533 - concurrent 401s share one recovery flight; a failed recovery keeps the original 401 path
+  ---
+  duration_ms: 1.1308
+  type: 'test'
+  ...
+# Subtest: a 401 write recovers the session and replays the exact journaled command (same X-Request-Id)
+ok 534 - a 401 write recovers the session and replays the exact journaled command (same X-Request-Id)
+  ---
+  duration_ms: 0.8535
+  type: 'test'
+  ...
+# Subtest: explicit logout blocks auto recovery for this process; unauthenticated preflight 401 never recovers
+ok 535 - explicit logout blocks auto recovery for this process; unauthenticated preflight 401 never recovers
+  ---
+  duration_ms: 0.5309
+  type: 'test'
+  ...
+# Subtest: without autoLogin wiring the original 401 semantics are byte-for-byte preserved
+ok 536 - without autoLogin wiring the original 401 semantics are byte-for-byte preserved
+  ---
+  duration_ms: 0.3156
+  type: 'test'
+  ...
+# Subtest: launch validates the persisted grant first and never mints a fresh login over it
+ok 537 - launch validates the persisted grant first and never mints a fresh login over it
+  ---
+  duration_ms: 1.6804
+  type: 'test'
+  ...
+# Subtest: launch with no valid grant silent-logins; a phone-less identity stops at phone-required
+ok 538 - launch with no valid grant silent-logins; a phone-less identity stops at phone-required
+  ---
+  duration_ms: 1.1309
+  type: 'test'
+  ...
+# Subtest: launch with no stored grant goes straight to silent login and authenticates a phone-bound user
+ok 539 - launch with no stored grant goes straight to silent login and authenticates a phone-bound user
+  ---
+  duration_ms: 0.4279
+  type: 'test'
+  ...
+# Subtest: ensure is single-flight: concurrent callers share one silent login
+ok 540 - ensure is single-flight: concurrent callers share one silent login
+  ---
+  duration_ms: 0.4051
+  type: 'test'
+  ...
+# Subtest: pending logout blocks silent login (never resurrects an explicit logout); network faults stay unavailable
+ok 541 - pending logout blocks silent login (never resurrects an explicit logout); network faults stay unavailable
+  ---
+  duration_ms: 0.2563
+  type: 'test'
+  ...
+1..541
+# tests 541
+# suites 0
+# pass 541
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 2724.1026

@@ -14,13 +14,16 @@ public final class AdminPermissionEvaluator {
    * spelled service.force.offline to satisfy the AUTH action-code lexicon (lowercase dotted
    * segments, AdminActionCheckQuery) — implementation-phase spelling correction, PR-disclosed.
    * The two review-appeal codes are registered on behalf of the REV-002 review appeal slice
-   * (CCR-REVIEW-APPEAL-001, contract 56): review.appeal.read / review.appeal.decide.
+   * (CCR-REVIEW-APPEAL-001, contract 56): review.appeal.read / review.appeal.decide. The two
+   * points-task codes are registered on behalf of the contract-58 earn slice (CCR-POINTS-TASK-001,
+   * 32号 ruling: 签到与拉新积分量后台可配置): points.task.config.read / points.task.config.write.
    */
   public static final Set<String> DEPLOYED_ACTIONS =
       Set.of("merchant.application.read", "merchant.application.decide",
           "merchant.identity.reveal", "service.review.read", "service.review.decide",
           "service.force.offline", "aftersale.read", "aftersale.handle", "aftersale.decide",
-          "review.appeal.read", "review.appeal.decide");
+          "review.appeal.read", "review.appeal.decide",
+          "points.task.config.read", "points.task.config.write");
 
   public static List<String> evaluate(
       boolean superAdmin, Collection<String> grants, Set<String> deployed) {

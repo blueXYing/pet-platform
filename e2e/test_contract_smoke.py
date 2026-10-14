@@ -18,6 +18,12 @@ class ContractSmokeRegressions(unittest.TestCase):
         self.assertEqual(result['legacyOperations'], 14)
         self.assertEqual(result['legacyWrites'], 11)
         self.assertEqual(result['legacyCreates'], 3)
+        # Address book family (contract 59, 2026-10-13): six routes — list/detail/create/
+        # update/delete/set-default; the legacy 14/11/3 subset stays untouched.
+        self.assertEqual(result['addressOperations'], 6)
+        self.assertEqual(result['pointsTaskOperations'], 7)
+        self.assertEqual(result['favtrackHttpOperations'], 7)
+        self.assertEqual(result['operations'], 163)
         self.assertGreater(result['stringIdProperties'], 0)
         # Contract 58 favorite/footprint face (2026-10-13): seven reviewed operations.
         self.assertEqual(result['favtrackHttpOperations'], 7)
@@ -178,6 +184,14 @@ class ContractSmokeRegressions(unittest.TestCase):
     def test_duplicate_operation_rejected(self):
         self.spec['paths']['/duplicate'] = copy.deepcopy(self.spec['paths']['/c/orders'])
         with self.assertRaisesRegex(AssertionError, 'Duplicate operationId'):
+            check(self.spec)
+
+    def test_address_family_regression_rejected(self):
+        # Contract 59 census: the cap error and the anti-enumeration code are pinned members
+        # of the address error envelope; dropping either must fail the document smoke.
+        codes = self.spec['components']['schemas']['AddressErrorEnvelope']['properties']['code']['enum']
+        codes.remove('ADDRESS_LIMIT_EXCEEDED')
+        with self.assertRaisesRegex(AssertionError, 'Address cap error code missing'):
             check(self.spec)
 
 

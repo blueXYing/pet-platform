@@ -308,6 +308,33 @@ NOTIFICATION_PREFERENCE_OPERATIONS = {
         ('200', '400', '401', '409', '500', '503')),
 }
 
+# User address book (contract 59 / ruling-32 second batch, 2026-10-13): the C-side address CRUD
+# family rides pet.auth.c.enabled like the pets/profile user-domain faces (no new assembly
+# switch). The census pins the six routes, the owner-scoped default-off status, the 201/200
+# create pair, the 20-address cap error (ADDRESS_LIMIT_EXCEEDED), the anti-enumeration 404
+# (ADDRESS_NOT_FOUND) and the supplement-23 idempotency pair; orders keep the text-snapshot
+# serviceAddress semantics untouched — the address book is only a C-side input source.
+ADDRESS_OPERATIONS = {
+    'cListMyAddresses': (
+        'get', '/c/addresses',
+        ('200', '400', '401', '500', '503')),
+    'cCreateAddress': (
+        'post', '/c/addresses',
+        ('200', '201', '400', '401', '403', '409', '500', '503')),
+    'cGetMyAddress': (
+        'get', '/c/addresses/{addressId}',
+        ('200', '400', '401', '404', '500', '503')),
+    'cUpdateMyAddress': (
+        'put', '/c/addresses/{addressId}',
+        ('200', '400', '401', '403', '404', '409', '500', '503')),
+    'cDeleteMyAddress': (
+        'delete', '/c/addresses/{addressId}',
+        ('200', '400', '401', '403', '404', '409', '500', '503')),
+    'cSetDefaultAddress': (
+        'post', '/c/addresses/{addressId}/set-default',
+        ('200', '400', '401', '403', '404', '409', '500', '503')),
+}
+
 
 def check_notification_preferences(spec, operation, method, path):
     name = operation['operationId']
@@ -348,6 +375,62 @@ def check_notification_preferences(spec, operation, method, path):
     update = spec['components']['schemas']['NotificationPreferenceUpdate']
     assert update.get('additionalProperties') is False, 'Preference update body opened'
     assert set(update['required']) == {'interactionEnabled', 'externalPushEnabled'}, 'Preference update must be a full two-switch PUT'
+
+
+def check_address_operations(spec, operation, method, path):
+    name = operation['operationId']
+    expected_method, expected_path, required_codes = ADDRESS_OPERATIONS[name]
+    assert (method, path) == (expected_method, expected_path), f'Address operation moved: {name}'
+    assert operation.get('security') == [{'bearerAuth': []}], f'Address security changed: {name}'
+    assert operation.get('x-implementation-status') == 'IMPLEMENTED_DEFAULT_OFF', f'Address status changed: {name}'
+    assert operation.get('x-default-enabled') is False, f'Address must stay default off: {name}'
+    assert operation.get('x-contract') == '59-User-Address-Contract-v0.1.md', f'Address authority changed: {name}'
+    assert operation.get('x-assembly-switch') == 'pet.auth.c.enabled', f'Address assembly switch changed: {name}'
+    assert operation.get('x-route-party') == 'USER' and operation.get('x-audience') == 'MINIAPP', f'Address identity changed: {name}'
+    responses = operation['responses']
+    assert set(responses) == set(required_codes), f'Address response surface changed: {name}'
+    success_envelopes = {
+        'cListMyAddresses': 'AddressListEnvelope',
+        'cCreateAddress': 'AddressEnvelope',
+        'cGetMyAddress': 'AddressEnvelope',
+        'cUpdateMyAddress': 'AddressEnvelope',
+        'cDeleteMyAddress': 'AddressDeleteEnvelope',
+        'cSetDefaultAddress': 'AddressEnvelope',
+    }
+    for code in responses:
+        response = dereference(spec, responses[code])
+        cache = response['headers']['Cache-Control']['schema']
+        assert cache == {'type': 'string', 'enum': ['no-store']}, f'Address caching changed: {name} {code}'
+        schema = response['content']['application/json']['schema']
+        expected = {'$ref': '#/components/schemas/AddressErrorEnvelope'} if code not in {'200', '201'} \
+            else {'$ref': '#/components/schemas/' + success_envelopes[name]}
+        assert schema == expected, f'Address envelope changed: {name} {code}'
+    assert not [p for p in operation.get('parameters', []) if p.get('in') == 'query'], f'Address query opened: {name}'
+    resolved = [dereference(spec, p) for p in operation.get('parameters', [])]
+    if '{addressId}' in path:
+        assert any(p.get('name') == 'addressId' and p.get('in') == 'path' for p in resolved), f'AddressId path parameter missing: {name}'
+    if method in {'get', 'delete'} or name == 'cSetDefaultAddress':
+        # delete and set-default are bodyless (soft-delete receipt / default flip need no
+        # business body, like the 45号/57号 decision routes); GET is bodyless by definition.
+        assert 'requestBody' not in operation, f'Address {method} must stay bodyless: {name}'
+    else:
+        # create/update carry the strict five-field upsert body.
+        body = dereference(spec, operation['requestBody'])
+        assert body.get('required') is True, f'Address write body must be required: {name}'
+        request = dereference(spec, body['content']['application/json']['schema'])
+        assert request is spec['components']['schemas']['AddressUpsert'], f'Address write body changed: {name}'
+    data = spec['components']['schemas']['AddressData']
+    assert data.get('additionalProperties') is False, 'Address projection opened'
+    assert set(data['required']) == {'addressId', 'contactName', 'contactPhone', 'region', 'detail', 'isDefault', 'status'}, 'Address fields changed'
+    assert data['properties']['isDefault']['type'] == 'boolean', 'Address default flag must stay boolean'
+    assert data['properties']['status']['enum'] == ['ACTIVE', 'DELETED'], 'Address status vocabulary changed'
+    assert data['properties']['contactPhone']['pattern'] == '^1[3-9][0-9]{9}$', 'Address phone pattern changed'
+    upsert = spec['components']['schemas']['AddressUpsert']
+    assert upsert.get('additionalProperties') is False, 'Address upsert body opened'
+    assert set(upsert['required']) == {'contactName', 'contactPhone', 'region', 'detail'}, 'Address upsert must keep isDefault optional'
+    envelope = spec['components']['schemas']['AddressErrorEnvelope']
+    assert 'ADDRESS_LIMIT_EXCEEDED' in envelope['properties']['code']['enum'], 'Address cap error code missing'
+    assert 'ADDRESS_NOT_FOUND' in envelope['properties']['code']['enum'], 'Address anti-enumeration code missing'
 
 
 # Staff invitation list (contract 54 §7 slice, 2026-10-07): the employee-side self-service
@@ -459,6 +542,35 @@ FAVTRACK_HTTP_OPERATIONS = {
     'cDeleteFootprint': (
         'delete', '/c/footprints/{footprintId}',
         ('200', '400', '401', '403', '409')),
+}
+# Points earn family (contract-58 / 32号 ruling second batch, 2026-10-13): sign-in + referral
+# earn surface plus the ops-configured grant amounts. V1 points only accrue and get clawed
+# back — no spend/exchange route exists in this family. The three POST commands are
+# supplement-23 bound commands (same-requestId same-params replay, different-params 409);
+# the daily re-sign with a fresh requestId is the 409 COMMON_CONFLICT pair. Reads carry no
+# X-Request-Id; every reply is no-store.
+POINTS_TASK_OPERATIONS = {
+    'cGetSignInStatus': (
+        'get', '/c/points/sign-in/status',
+        ('200', '400', '401', '500', '503')),
+    'cSignIn': (
+        'post', '/c/points/sign-in',
+        ('200', '400', '401', '409', '500', '503')),
+    'cListPointsTasks': (
+        'get', '/c/points/tasks',
+        ('200', '400', '401', '500', '503')),
+    'cClaimPointsReward': (
+        'post', '/c/points/claims',
+        ('200', '400', '401', '409', '500', '503')),
+    'cBindReferralCode': (
+        'post', '/c/points/referral-bindings',
+        ('200', '400', '401', '409', '500', '503')),
+    'adminGetPointsTaskConfig': (
+        'get', '/admin/points-task-config',
+        ('200', '400', '401', '403', '500', '503')),
+    'adminUpdatePointsTaskConfig': (
+        'put', '/admin/points-task-config',
+        ('200', '400', '401', '403', '409', '500', '503')),
 }
 
 
@@ -662,6 +774,46 @@ def check_favtrack_http(spec, operation, method, path):
     assert status_data['properties']['favoriteId'].get('nullable') is True, 'Favtrack status probe must answer favoriteId=null, never 404'
     add_data = spec['components']['schemas']['FavoriteAddData']
     assert add_data['properties']['favorited']['enum'] == [True], 'Favtrack add receipt must stay favorited=true'
+def check_points_task(spec, operation, method, path):
+    name = operation['operationId']
+    expected_method, expected_path, required_codes = POINTS_TASK_OPERATIONS[name]
+    assert (method, path) == (expected_method, expected_path), f'Points task operation moved: {name}'
+    assert operation.get('security') == [{'bearerAuth': []}], f'Points task security changed: {name}'
+    assert operation.get('x-implementation-status') == 'IMPLEMENTED_DEFAULT_OFF', f'Points task status changed: {name}'
+    assert operation.get('x-default-enabled') is False, f'Points task must stay default off: {name}'
+    assert operation.get('x-contract') == '58-Points-Task-Contract-v0.1.md', f'Points task authority changed: {name}'
+    assert operation.get('x-assembly-switch') == 'pet.points.task.http.enabled', f'Points task switch changed: {name}'
+    admin_side = name.startswith('admin')
+    assert operation.get('x-route-party') == ('OPS' if admin_side else 'USER'), f'Points task identity changed: {name}'
+    assert operation.get('x-audience') == ('ADMIN_WEB' if admin_side else 'MINIAPP'), f'Points task audience changed: {name}'
+    if admin_side:
+        expected_actions = ['points.task.config.read' if method == 'get' else 'points.task.config.write']
+        assert operation.get('x-required-actions') == expected_actions, f'Points task action gate changed: {name}'
+    responses = operation['responses']
+    assert set(responses) == set(required_codes), f'Points task response surface changed: {name}'
+    for code in required_codes:
+        if code != '200':
+            assert dereference(spec, responses[code])['content']['application/json']['schema']                 == {'$ref': '#/components/schemas/PointsTaskErrorEnvelope'}, f'Points task error envelope changed: {name} {code}'
+    success = responses['200']
+    cache = success['headers']['Cache-Control']['schema']
+    assert cache == {'type': 'string', 'enum': ['no-store']}, f'Points task caching changed: {name}'
+    envelope_by_name = {
+        'cGetSignInStatus': 'SignInStatusEnvelope',
+        'cSignIn': 'SignInReceiptEnvelope',
+        'cListPointsTasks': 'PointsTasksEnvelope',
+        'cClaimPointsReward': 'PointsClaimReceiptEnvelope',
+        'cBindReferralCode': 'PointsBindingReceiptEnvelope',
+        'adminGetPointsTaskConfig': 'PointsTaskConfigEnvelope',
+        'adminUpdatePointsTaskConfig': 'PointsTaskConfigEnvelope',
+    }
+    assert success['content'] == {'application/json': {'schema': {'$ref':             '#/components/schemas/' + envelope_by_name[name]}}}, f'Points task success envelope changed: {name}'
+    # No spend/exchange route can appear in this family: every grant is a positive accrual.
+    tasks = spec['components']['schemas']['PointsTasksData']
+    assert tasks.get('additionalProperties') is False, 'Points tasks projection opened'
+    claim = spec['components']['schemas']['PointsTaskClaimRequest']
+    assert claim['properties']['claimType']['enum'] == ['INVITE_PER_HEAD', 'FIRST_ORDER',         'SIGN_IN_STREAK_7', 'INVITE_MILESTONE_3', 'PROFILE_COMPLETE'], 'Points claim types changed'
+    config_update = spec['components']['schemas']['PointsTaskConfigUpdate']
+    assert set(config_update['required']) == {'signInDailyPoints', 'signInStreakBonusPoints',         'invitePerInviteePoints', 'inviteMonthlyRewardCap', 'inviteMilestoneBonusPoints',         'firstOrderPoints', 'profileCompletePoints'}, 'Points config full-put fields changed'
 
 
 def check_staff_invitation_list(spec, operation, method, path):
@@ -1191,7 +1343,8 @@ def check_aftersale_operation(spec, operation, method, path):
         assert operation.get('x-catalog-source') == 'SAME_REASON_POLICY_AS_CREATE' and operation.get('x-incomplete-catalog-error') == 'COMMON_DEPENDENCY_UNAVAILABLE', 'AFS catalog authority/failclosed changed'
         assert responses['200']['content']['application/json']['schema'] == {'$ref': '#/components/schemas/AfterSaleOptionsEnvelope'}, 'AFS catalog response changed'
     if name == 'decideAftersale':
-        assert operation.get('x-public-refund-enabled') is False and operation.get('x-executable-decision-types') == ['REJECT', 'RESERVICE', 'OTHER'], 'AFS public funding opened'
+        assert operation.get('x-public-refund-enabled') is True and operation.get('x-public-refund-switch') == 'pet.aftersale.refund.enabled', 'AFS ruling-32 refund switch changed'
+        assert operation.get('x-executable-decision-types') == ['REJECT', 'RESERVICE', 'OTHER', 'FULL_REFUND', 'PARTIAL_REFUND'], 'AFS executable decision types changed'
     if 'ConsumeAftersaleEvidenceGrant' in name:
         assert '410' in responses and set(responses['200']['content']) == {'image/jpeg', 'image/png'}, 'AFS private image response changed'
     if method == 'post' and name != 'uploadAftersaleEvidenceAsset':
@@ -1375,6 +1528,8 @@ def check(spec):
                 check_coupon_points_read(spec, operation, method, path)
             if operation_id in NOTIFICATION_PREFERENCE_OPERATIONS:
                 check_notification_preferences(spec, operation, method, path)
+            if operation_id in ADDRESS_OPERATIONS:
+                check_address_operations(spec, operation, method, path)
             if operation_id in STAFF_INVITATION_LIST_OPERATIONS:
                 check_staff_invitation_list(spec, operation, method, path)
             if operation_id in ORDER_WRITE_OPERATIONS:
@@ -1392,6 +1547,8 @@ def check(spec):
 
             if operation_id in FAVTRACK_HTTP_OPERATIONS:
                 check_favtrack_http(spec, operation, method, path)
+            if operation_id in POINTS_TASK_OPERATIONS:
+                check_points_task(spec, operation, method, path)
 
             if method in {'post', 'put', 'patch', 'delete'}:
                 assert {'$ref': '#/components/parameters/RequestId'} in parameters, f'Missing request ID: {operation_id}'
@@ -1407,7 +1564,7 @@ def check(spec):
     assert legacy_writes == 11, 'Legacy write surface changed'
     assert legacy_creates == LEGACY_CREATES, 'Legacy create surface changed'
 
-    assert operations == LEGACY_OPERATIONS.keys() | AUTH_OPERATIONS.keys() | MERCHANT_OPERATIONS.keys() | APPLICATION_OPERATIONS.keys() | PRIVATE_ASSET_OPERATIONS.keys() | SERVICE_CATALOG_OPERATIONS.keys() | STORE_CATALOG_OPERATIONS.keys() | SERVICE_WRITE_OPERATIONS.keys() | SCHEDULE_AVAILABILITY_OPERATIONS.keys() | SCHEDULE_WRITE_OPERATIONS.keys() | CREDENTIAL_OPERATIONS.keys() | AFTERSALE_OPERATIONS.keys() | COUPON_POINTS_READ_OPERATIONS.keys() | VERIFICATION_HTTP_OPERATIONS.keys() | NOTIFICATION_PREFERENCE_OPERATIONS.keys() | STAFF_INVITATION_LIST_OPERATIONS.keys() | ORDER_WRITE_OPERATIONS.keys() | REFUND_HTTP_OPERATIONS.keys() | MERCHANT_ORDER_LIST_OPERATIONS.keys() | RESCHEDULE_HTTP_OPERATIONS.keys() | REVIEW_HTTP_OPERATIONS.keys() | REVIEW_APPEAL_HTTP_OPERATIONS.keys() | MERCHANT_REFUND_HTTP_OPERATIONS.keys() | FAVTRACK_HTTP_OPERATIONS.keys(), 'Unexpected or missing reviewed operations'
+    assert operations == LEGACY_OPERATIONS.keys() | AUTH_OPERATIONS.keys() | MERCHANT_OPERATIONS.keys() | APPLICATION_OPERATIONS.keys() | PRIVATE_ASSET_OPERATIONS.keys() | SERVICE_CATALOG_OPERATIONS.keys() | STORE_CATALOG_OPERATIONS.keys() | SERVICE_WRITE_OPERATIONS.keys() | SCHEDULE_AVAILABILITY_OPERATIONS.keys() | SCHEDULE_WRITE_OPERATIONS.keys() | CREDENTIAL_OPERATIONS.keys() | AFTERSALE_OPERATIONS.keys() | COUPON_POINTS_READ_OPERATIONS.keys() | VERIFICATION_HTTP_OPERATIONS.keys() | NOTIFICATION_PREFERENCE_OPERATIONS.keys() | STAFF_INVITATION_LIST_OPERATIONS.keys() | ORDER_WRITE_OPERATIONS.keys() | REFUND_HTTP_OPERATIONS.keys() | MERCHANT_ORDER_LIST_OPERATIONS.keys() | RESCHEDULE_HTTP_OPERATIONS.keys() | REVIEW_HTTP_OPERATIONS.keys() | REVIEW_APPEAL_HTTP_OPERATIONS.keys() | MERCHANT_REFUND_HTTP_OPERATIONS.keys() | FAVTRACK_HTTP_OPERATIONS.keys() | ADDRESS_OPERATIONS.keys() | POINTS_TASK_OPERATIONS.keys(), 'Unexpected or missing reviewed operations'
 
     schemes = spec['components']['securitySchemes']
     assert schemes['bearerAuth']['type'] == 'http' and schemes['bearerAuth']['scheme'] == 'bearer'
@@ -1464,11 +1621,13 @@ def check(spec):
             'reviewAppealHttpOperations': len(operations & REVIEW_APPEAL_HTTP_OPERATIONS.keys()),
             'merchantRefundHttpOperations': len(operations & MERCHANT_REFUND_HTTP_OPERATIONS.keys()),
             'favtrackHttpOperations': len(operations & FAVTRACK_HTTP_OPERATIONS.keys()),
+            'pointsTaskOperations': len(operations & POINTS_TASK_OPERATIONS.keys()),
             'refundHttpOperations': len(operations & REFUND_HTTP_OPERATIONS.keys()),
             'serviceWriteOperations': len(operations & SERVICE_WRITE_OPERATIONS.keys()),
             'storeCatalogOperations': len(operations & STORE_CATALOG_OPERATIONS.keys()),
             'staffInvitationListOperations': len(operations & STAFF_INVITATION_LIST_OPERATIONS.keys()),
             'orderWriteOperations': len(operations & ORDER_WRITE_OPERATIONS.keys()),
+            'addressOperations': len(operations & ADDRESS_OPERATIONS.keys()),
             'resolvedRefs': len(refs), 'stringIdProperties': ids}
 
 

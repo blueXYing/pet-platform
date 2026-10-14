@@ -274,6 +274,30 @@ PUT 请求: {nickname?(1~64), avatarUrl?(≤512,https)}；幂等X-Request-Id；4
 不包含手机号换绑/注销（AUTH后续）。
 ```
 
+## 3.2.2 收货/服务地址簿（新增，59号契约，32号裁决第二节）
+
+[Contract59](59-User-Address-Contract-v0.1.md)（CCR-USR-ADDRESS-001）；沿 `pet.auth.c.enabled` 装配（同宠物档案，无新开关）；SQL55 `user_address`。
+
+```text
+GET    /api/v1/c/addresses
+POST   /api/v1/c/addresses
+GET    /api/v1/c/addresses/{addressId}
+PUT    /api/v1/c/addresses/{addressId}
+DELETE /api/v1/c/addresses/{addressId}
+POST   /api/v1/c/addresses/{addressId}/set-default
+```
+
+```text
+AddressView: addressId/contactName(1..32)/contactPhone(11位大陆手机号)/region(1..64)/
+             detail(1..256)/isDefault/status(ACTIVE|DELETED)
+单用户 ACTIVE 上限 20（第 21 条 400 ADDRESS_LIMIT_EXCEEDED，保守值 2026-10-13 披露）；
+默认地址唯一（清旧默认同事务，删除默认后无默认直至再设置）；软删除，订单不引用本表
+（下单地址仍走 order_booking_input_snapshot 文本快照，地址簿仅 C 端录入源，59号 §下单链接法）；
+归属反例（不存在/他人/已删除）统一 404 ADDRESS_NOT_FOUND 防枚举；写操作 X-Request-Id
+幂等按23号（POST 201/200）；冻结用户写 403 USER_FROZEN；本人读侧返回明文 contactPhone
+（列表页前端按设计稿脱敏展示）；query 全禁止；无微信 chooseAddress/chooseLocation 接入。
+```
+
 ---
 
 ## 3.3 商家与服务
@@ -936,8 +960,30 @@ boolean，未知字段、显式 null、非 boolean、重复键、尾随 token �
 503=COMMON_DEPENDENCY_UNAVAILABLE，无新增码。默认随 `pet.auth.c.enabled` 装配
 （IMPLEMENTED_DEFAULT_OFF）；两端点 `Cache-Control: no-store`。
 
-V1.0 不提供积分抵现/积分商城 Endpoint；本节券/积分为只读查询，不存在发放、冻结、核销、
-退券、兑换、抵扣、签到/邀请/任务赚取等写路径。
+### 3.15.4 签到 / 拉新 / 任务奖励（58 号，32 号裁决第二节，2026-10-13）
+
+> 本节为摘要；权威契约在 `58-Points-Task-Contract-v0.1.md`（CCR-POINTS-TASK-001 细则定稿）。
+
+```text
+GET  /api/v1/c/points/sign-in/status
+POST /api/v1/c/points/sign-in
+GET  /api/v1/c/points/tasks
+POST /api/v1/c/points/claims
+POST /api/v1/c/points/referral-bindings
+```
+
+五路全部为登录会话主体（MINIAPP Bearer，CBearerSessionFilter protectedPath），随
+`pet.points.task.http.enabled` 装配（另需 `pet.auth.c.enabled`，默认全关）。签到为每日一次
+（UTC+8 自然日）固定面额命令，当日换新 requestId 再签 409；除签到外一切奖励（首单/资料/
+连签里程碑/拉新人头/拉新里程碑）均为**显式领取**命令，无可领取 409。拉新成立条件=被邀请人
+绑定时零订单史且绑定后完成首笔支付；邀请码为确定性可逆码。全部写命令走 23 号公共幂等 +
+14 号绑定表，配账只写正向 `points_ledger`/`points_account`（biz_type SIGN_IN/INVITE/TASK）。
+积分量七项由运营后台配置（见 §5.10）。错误面全部复用 12 号 §2 通用码；`no-store` 全端点。
+
+V1.0 仍不提供积分抵现/积分商城/兑换/转赠 Endpoint（32 号裁决第二节第 1 条：积分只赚取/
+扣回不消费，商城页为展示态）；§3.15.1/§3.15.2 的券/积分为只读查询。2026-10-13 起，
+签到/邀请/任务**赚取**写路径由本节（58 号）提供——此前"不存在赚取写路径"的表述自本批
+起失效，消费侧禁令不变。
 
 ---
 
@@ -1569,6 +1615,24 @@ POST /api/v1/admin/services/{serviceId}/force-offline
 
 - 审核决定（APPROVE/REJECT）在决定事务内写 `ServiceReviewedEvent.v1` 到事务性 Outbox（Event08）；通知消费侧（MERCHANT 收件箱）由通知域切片承接，未接通前完整审核流程不标完成。
 - 强制下架是否通知商家＝剩余问题（本轮不发事件）。
+
+---
+
+## 5.10 签到/拉新积分量配置（58 号 §4，32 号裁决第二节，2026-10-13）
+
+> 本节为摘要；权威契约在 `58-Points-Task-Contract-v0.1.md` §4。
+
+```text
+GET /api/v1/admin/points-task-config
+PUT /api/v1/admin/points-task-config
+```
+
+真实运营会话（ADMIN_WEB Bearer）+ 动作码 `points.task.config.read` /
+`points.task.config.write`（单运营 V1，无第二审批人，SSOT §24）；随
+`pet.points.task.http.enabled` 装配（另需 `pet.auth.admin.enabled`，默认关）。GET 无行读内置
+缺省（5/30/50/3/100/100/20，version "0"）。PUT 为全量七字段整数（严格 JSON，范围见 58 号
+§4.2），23 号公共幂等，配置即时生效（新领取按新值，既有流水不回改）。错误面复用 12 号 §2
+通用码；`no-store`。V1 无积分消费类配置（抵现/商城/兑换不存在，32 号裁决第二节第 1 条）。
 
 ---
 

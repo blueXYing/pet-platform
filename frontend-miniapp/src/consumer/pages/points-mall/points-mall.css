@@ -1,0 +1,63 @@
+/* 积分商城展示态（32号裁决第二节第 1 条）。设计源 128:2614（我的-积分商城，402 设计 px，
+   结构树 D:/Temp/figma-mcp/mod-mall-tree.xml、REST 渲染对照 mod-mall-render.png，2026-10-13）。
+   运行时像素单位 --pml-unit = windowWidth/402（C-002/C-003/coupon-points 先例）。
+   调色板：主蓝 #5baae8、描边/中蓝 #c0ecff、浅蓝底 #f0fbff、奶油导航 #fff6e5、强调蓝
+   #53bfee、文本 #1d0d07/#3c3c3c/#555/#577683（20号登记表 C 端设计语言 token）；
+   余额卡渐变 #c1ecff→#dffff8 与「热销」角标 #ff9500 为渲染图取值（缓存 JSON 无 fillPaints，
+   登记近似，口径同 coupon-points.css 头注）。 */
+.pml-page { --pml-status-top: 0px; min-height: 100vh; background: #f0fbff; color: #1d0d07; font-family: Roboto, "Noto Sans SC", sans-serif; }
+.pml-page view, .pml-page button, .pml-page image, .pml-page text { box-sizing: border-box; }
+/* WXSS 铁律：button 原生样式重置（0-1-1）；带背景/圆角的按钮类规则一律 .pml-page 前缀抬高优先级（0-2-0）。 */
+.pml-page button { padding: 0; margin: 0; border: 0; border-radius: 0; background: transparent; font: inherit; line-height: normal; text-align: left; }
+.pml-page button::after { border: 0; }
+.pml-page button[disabled] { opacity: .65; color: inherit; }
+
+/* 顶部导航（128:2614 Rectangle 36/10 奶油底 + A-6 返回 32x32@19,8 + H1-9 标题 16/700，标题按工程语义「积分商城」）。 */
+.pml-status-area { height: var(--pml-status-top); background: #fff6e5; }
+.pml-nav { position: relative; height: calc(var(--pml-unit) * 44); background: #fff6e5; }
+.pml-nav-back { position: absolute; left: calc(var(--pml-unit) * 19); top: calc(var(--pml-unit) * 8); width: calc(var(--pml-unit) * 32); height: calc(var(--pml-unit) * 32); display: flex; align-items: center; justify-content: center; }
+/* 128:2682 原矢量（21x20 折返箭头 #7B5B4A，REST SVG 导出，base64 内嵌）。 */
+.pml-nav-back-icon { width: calc(var(--pml-unit) * 20.828125); height: calc(var(--pml-unit) * 20); background-image: url("data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjEiIGhlaWdodD0iMjAiIHZpZXdCb3g9IjAgMCAyMSAyMCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cGF0aCBkPSJNOS41MzEwNSA5Ljk5OThMMTMuNjQ2NyAxNC4xMTY1TDEyLjQ4MDMgMTUuMjk5OEw3LjE4MTY0IDkuOTk5OEwxMi40ODAzIDQuNjk5OEwxMy42NDY3IDUuODgzMTRMOS41MzEwNSA5Ljk5OThaIiBmaWxsPSIjN0I1QjRBIi8+PC9zdmc+"); background-repeat: no-repeat; background-size: 100% 100%; }
+.pml-nav-title { position: absolute; left: calc(var(--pml-unit) * 59); top: calc(var(--pml-unit) * 12); font-size: calc(var(--pml-unit) * 16); line-height: calc(var(--pml-unit) * 24); font-weight: 700; color: #1d0d07; }
+
+.pml-body { background: #f0fbff; min-height: 85vh; padding-bottom: calc(var(--pml-unit) * 24); }
+
+/* 当前积分卡（DIV-13 343x88 r12：左#c1ecff→右#dffff8 渐变 + #c0ecff 描边；当前积分 12/16 #3c3c3c@16,16；1280 24/36 700 #53bfee@16,36；赚积分 60x28 白药丸 #53bfee 字@右16,上30）。 */
+.pml-balance { position: relative; width: calc(var(--pml-unit) * 343); height: calc(var(--pml-unit) * 88); margin: calc(var(--pml-unit) * 21) auto 0; padding: calc(var(--pml-unit) * 16); background: linear-gradient(90deg, #c1ecff 0%, #dffff8 100%); border: calc(var(--pml-unit) * 1) solid #c0ecff; border-radius: calc(var(--pml-unit) * 12); }
+.pml-balance-label { display: block; font-size: calc(var(--pml-unit) * 12); line-height: calc(var(--pml-unit) * 16); color: #3c3c3c; }
+.pml-balance-hint { display: block; margin-top: calc(var(--pml-unit) * 2); font-size: calc(var(--pml-unit) * 10); line-height: calc(var(--pml-unit) * 15); color: #577683; }
+.pml-balance-value { display: block; margin-top: calc(var(--pml-unit) * 4); font-size: calc(var(--pml-unit) * 24); line-height: calc(var(--pml-unit) * 36); font-weight: 700; color: #53bfee; }
+.pml-page .pml-earn { position: absolute; right: calc(var(--pml-unit) * 16); top: calc(var(--pml-unit) * 30); width: calc(var(--pml-unit) * 60); height: calc(var(--pml-unit) * 28); border-radius: calc(var(--pml-unit) * 9999); background: #ffffff; display: flex; align-items: center; justify-content: center; }
+.pml-earn text { font-size: calc(var(--pml-unit) * 12); line-height: calc(var(--pml-unit) * 16); color: #53bfee; }
+
+/* 兑换暂未开放说明条（32号裁决第二节第 1 条要求页面文案明示；原稿无此元素，登记偏差①）。 */
+.pml-notice { width: calc(var(--pml-unit) * 343); margin: calc(var(--pml-unit) * 12) auto 0; padding: calc(var(--pml-unit) * 8) calc(var(--pml-unit) * 12); background: #ffffff; border: calc(var(--pml-unit) * 1) solid #c0ecff; border-radius: calc(var(--pml-unit) * 8); }
+.pml-notice text { font-size: calc(var(--pml-unit) * 11); line-height: calc(var(--pml-unit) * 16); color: #577683; }
+
+/* 商品两列网格（margin-wrap 29,153 → DIV-24@169：2×165.5，列/行距 12，行高 243.5）。 */
+.pml-grid { display: flex; flex-wrap: wrap; gap: calc(var(--pml-unit) * 12); width: calc(var(--pml-unit) * 343); margin: calc(var(--pml-unit) * 16) auto 0; }
+/* 商品卡（DIV-25 165.5x243.5：白底 + #c0ecff 描边 r12，padding 2；图 163.5x163.5 r6）。 */
+.pml-good { width: calc(var(--pml-unit) * 165.5); background: #ffffff; border: calc(var(--pml-unit) * 1) solid #c0ecff; border-radius: calc(var(--pml-unit) * 12); padding: calc(var(--pml-unit) * 2); }
+.pml-good-photo { position: relative; width: calc(var(--pml-unit) * 163.5); height: calc(var(--pml-unit) * 163.5); }
+.pml-good-img { width: 100%; height: 100%; display: block; border-radius: calc(var(--pml-unit) * 6); }
+/* 热销角标（SPAN-28 30x17.5 r4 #ff9500 白字 9/14@6,6，仅首卡）。 */
+.pml-good-hot { position: absolute; left: calc(var(--pml-unit) * 6); top: calc(var(--pml-unit) * 6); width: calc(var(--pml-unit) * 30); height: calc(var(--pml-unit) * 17.5); border-radius: calc(var(--pml-unit) * 4); background: #ff9500; display: flex; align-items: center; justify-content: center; }
+.pml-good-hot text { font-size: calc(var(--pml-unit) * 9); line-height: calc(var(--pml-unit) * 14); color: #ffffff; }
+/* 信息区（DIV-31@165.5 h78：名称 14/16.5 #1d0d07@10,10；底部行@+8：积分 13x16 图标+14/20 700 #5baae8，库存 10/13.5 #555，按钮右下）。 */
+.pml-good-info { padding: calc(var(--pml-unit) * 10); }
+.pml-good-name { display: block; font-size: calc(var(--pml-unit) * 14); line-height: calc(var(--pml-unit) * 16.5); color: #1d0d07; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.pml-good-bottom { display: flex; align-items: center; justify-content: space-between; margin-top: calc(var(--pml-unit) * 8); height: calc(var(--pml-unit) * 33.5); }
+.pml-good-points { display: flex; flex-direction: column; min-width: 0; }
+.pml-good-points-line { display: flex; align-items: center; gap: calc(var(--pml-unit) * 2); height: calc(var(--pml-unit) * 20); }
+/* 积分图标（128:2775 原矢量 13x16 #5BAAE8，REST SVG 导出，base64 内嵌）。 */
+.pml-good-points-ico { width: calc(var(--pml-unit) * 12.5); height: calc(var(--pml-unit) * 16); background-image: url("data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTMiIGhlaWdodD0iMTYiIHZpZXdCb3g9IjAgMCAxMyAxNiIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cGF0aCBkPSJNNi4yNSA0QzYuOTk2NjcgNCA3LjcxIDQuMDggOC4zOSA0LjI0QzkuMDUgNC4zODY2NyA5LjYzMzMzIDQuNTk4MyAxMC4xNCA0Ljg3NUMxMC42NDY3IDUuMTUxNjcgMTEuMDQgNS40NyAxMS4zMiA1LjgzQzExLjYwNjcgNi4yMDMzMyAxMS43NSA2LjU5MzMzIDExLjc1IDdWOSBDMTEuNzUgOS40MDY2NyAxMS42MDY3IDkuNzk2NjcgMTEuMzIgMTAuMTdDMTEuMDQgMTAuNTMgMTAuNjQ2NyAxMC44NDgzIDEwLjE0IDExLjEyNUM5LjYzMzMzIDExLjQwMTMgOS4wNSAxMS42MTMzIDguMzkgMTEuNzZDNy43MSAxMS45MiA2Ljk5NjY3IDEyIDYuMjUgMTJDNS4yNyAxMiA0LjM2IDExLjg2NjcgMy41MiAxMS42QzIuNyAxMS4zNDY3IDIuMDQzMzMgMTEgMS41NSAxMC41NkMxLjA0MzMzIDEwLjEwNjcgMC43NzY2NjcgOS42MTY2NyAwLjc1IDkuMDlWN0MwLjc1IDYuNTkzMzMgMC44OTMzMzMgNi4yMDMzMyAxLjE4IDUuODNDMS40NiA1LjQ3IDEuODUzMzMgNS4xNTE2NyAyLjM2IDQuODc1QzIuODY2NjcgNC41OTgzIDMuNDUgNC4zODY2NyA0LjExIDQuMjRDNC43OSA0LjA4IDUuNTAzMzMgNCA2LjI1IDRaTTYuMjUgMTBDNS4zMzY2NyAxMCA0LjQ4IDkuODgzMzMgMy42OCA5LjY1QzIuOSA5LjQyMzMzIDIuMjU2NjcgOS4xMTY2NyAxLjc1IDguNzNWOUMxLjc1IDkuMjMzMzMgMS44NjMzMyA5LjQ2ODMzIDIuMDkgOS43MDVDMi4zMTY2NyA5Ljk0MSAyLjYzMzMzIDEwLjE1NjcgMy4wNCAxMC4zNUMzLjQ2IDEwLjU1IDMuOTM2NjcgMTAuNzA2NyA0LjQ3IDEwLjgyQzUuMDM2NjcgMTAuOTQgNS42MyAxMSA2LjI1IDExQzcuMDUgMTEgNy44MDMzMyAxMC45IDguNTEgMTAuN0M5LjE2MzMzIDEwLjUyIDkuNjkzMzMgMTAuMjggMTAuMSA5Ljk4QzEwLjUwNjcgOS42OCAxMC43MjMzIDkuMzczMzMgMTAuNzUgOS4wNlY4LjcyQzEwLjI0MzMgOS4xMTMzMyA5LjYgOS40MjMzMyA4LjgyIDkuNjVDOC4wMiA5Ljg4MzMzIDcuMTYzMzMgMTAgNi4yNSAxMFpNNi4yNSA1QzUuNjMgNSA1LjAzNjY3IDUuMDYgNC40NyA1LjE4QzMuOTM2NjcgNS4yOTMzMyAzLjQ2IDUuNDUgMy4wNCA1LjY1QzIuNjMzMzMgNS44NDMzMyAyLjMxNjY3IDYuMDU4MzMgMi4wOSA2LjI5NUMxLjg2MzMzIDYuNTMxIDEuNzUgNi43NjY2NyAxLjc1IDdDMS43NSA3LjIzMzMzIDEuODYzMzMgNy40NjgzMyAyLjA5IDcuNzA1QzIuMzE2NjcgNy45NDEgMi42MzMzMyA4LjE1NjcgMy4wNCA4LjM1QzMuNDYgOC41NSAzLjkzNjY3IDguNzA2NyA0LjQ3IDguODJDNS4wMzY2NyA4Ljk0IDUuNjMgOSA2LjI1IDlDNi44NyA5IDcuNDYzMzMgOC45NCA4LjAzIDguODJDOC41NjMzMyA4LjcwNjcgOS4wNCA4LjU1IDkuNDYgOC4zNUM5Ljg2NjY3IDguMTU2NyAxMC4xODMzIDcuOTQxIDEwLjQxIDcuNzA1QzEwLjYzNjcgNy40NjgzMyAxMC43NSA3LjIzMzMzIDEwLjc1IDdDMTAuNzUgNi43NjY2NyAxMC42MzY3IDYuNTMxIDEwLjQxIDYuMjk1QzEwLjE4MzMgNi4wNTgzMyA5Ljg2NjY3IDUuODQzMzMgOS40NiA1LjY1QzkuMDQgNS40NSA4LjU2MzMzIDUuMjkzMzMgOC4wMyA1LjE4QzcuNDYzMzMgNS4wNiA2Ljg3IDUgNi4yNSA1WiIgZmlsbD0iIzVCQUFFOCIvPjwvc3ZnPg0K"); background-repeat: no-repeat; background-size: 100% 100%; flex-shrink: 0; }
+.pml-good-points-num { font-size: calc(var(--pml-unit) * 14); line-height: calc(var(--pml-unit) * 20); font-weight: 700; color: #5baae8; }
+.pml-good-stock { display: block; font-size: calc(var(--pml-unit) * 10); line-height: calc(var(--pml-unit) * 13.5); color: #555; }
+/* 兑换动作（BUTTON-45 42x25.19 r6 / 售罄卡 53 宽）：原稿蓝底白字，展示态按裁决置灰禁用——
+   沿用原稿售罄卡「已兑完」的灰字幽灵样式（无底色、#3c3c3c 字，登记偏差③），全部 disabled。 */
+.pml-page .pml-good-action { width: calc(var(--pml-unit) * 42); height: calc(var(--pml-unit) * 25.1875); border-radius: calc(var(--pml-unit) * 6); display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+.pml-page .pml-good-action.is-sold-out { width: calc(var(--pml-unit) * 53); }
+.pml-good-action text { font-size: calc(var(--pml-unit) * 11); line-height: calc(var(--pml-unit) * 14); color: #3c3c3c; }
+
+/* 页脚说明（沿 cpn-preview-note 惯例）。 */
+.pml-preview-note { width: calc(var(--pml-unit) * 343); margin: calc(var(--pml-unit) * 16) auto 0; font-size: calc(var(--pml-unit) * 10); line-height: calc(var(--pml-unit) * 15); color: #8aa0ac; }

@@ -24,6 +24,7 @@ tags:
 - name: Merchant-Profile
 - name: Merchant-Application
 - name: Private-Asset
+- name: C-Address
 paths:
   /c/orders/{orderId}/verification-code:
     get:
@@ -3658,6 +3659,78 @@ paths:
                 $ref: '#/components/schemas/ReviewAppealDecisionReceiptEnvelope'
         '409':
           $ref: '#/components/responses/Conflict'
+  /admin/points-task-config:
+    get:
+      tags:
+      - Admin-Points-Task
+      summary: 签到/拉新积分量配置读（points.task.config.read）
+      operationId: adminGetPointsTaskConfig
+      x-implementation-status: IMPLEMENTED_DEFAULT_OFF
+      x-default-enabled: false
+      x-contract: 58-Points-Task-Contract-v0.1.md
+      x-assembly-switch: pet.points.task.http.enabled
+      x-route-party: OPS
+      x-audience: ADMIN_WEB
+      x-required-actions: [points.task.config.read]
+      description: 58号§4.1（32号裁决第二节：签到与拉新积分量后台可配置）。无行读内置缺省
+        （5/30/50/3/100/100/20），version "0"、updatedAt null；query 全禁止。
+      security:
+      - bearerAuth: []
+      responses:
+        '400': {$ref: '#/components/responses/PointsTaskHttpError'}
+        '401': {$ref: '#/components/responses/PointsTaskHttpError'}
+        '403': {$ref: '#/components/responses/PointsTaskHttpError'}
+        '500': {$ref: '#/components/responses/PointsTaskHttpError'}
+        '503': {$ref: '#/components/responses/PointsTaskHttpError'}
+        '200':
+          description: 当前配置投影
+          headers:
+            Cache-Control:
+              schema: {type: string, enum: [no-store]}
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PointsTaskConfigEnvelope'
+    put:
+      tags:
+      - Admin-Points-Task
+      summary: 全量保存七项积分量配置（points.task.config.write；requestId幂等）
+      operationId: adminUpdatePointsTaskConfig
+      x-implementation-status: IMPLEMENTED_DEFAULT_OFF
+      x-default-enabled: false
+      x-contract: 58-Points-Task-Contract-v0.1.md
+      x-assembly-switch: pet.points.task.http.enabled
+      x-route-party: OPS
+      x-audience: ADMIN_WEB
+      x-required-actions: [points.task.config.write]
+      description: 58号§4.2。七字段全部必填整数、严格 JSON（未知字段/显式 null/重复键/尾随
+        token 均400）；同 requestId 同参重放首成回执、异参 409；配置即时生效（既有流水不回改）。
+      security:
+      - bearerAuth: []
+      parameters:
+      - $ref: '#/components/parameters/RequestId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PointsTaskConfigUpdate'
+      responses:
+        '400': {$ref: '#/components/responses/PointsTaskHttpError'}
+        '401': {$ref: '#/components/responses/PointsTaskHttpError'}
+        '403': {$ref: '#/components/responses/PointsTaskHttpError'}
+        '409': {$ref: '#/components/responses/PointsTaskHttpError'}
+        '500': {$ref: '#/components/responses/PointsTaskHttpError'}
+        '503': {$ref: '#/components/responses/PointsTaskHttpError'}
+        '200':
+          description: 保存后的配置投影（首存与幂等重放同形）
+          headers:
+            Cache-Control:
+              schema: {type: string, enum: [no-store]}
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PointsTaskConfigEnvelope'
   /merchant/orders:
     get:
       tags:
@@ -4079,7 +4152,7 @@ paths:
       tags:
       - Admin-Aftersale
       operationId: decideAftersale
-      summary: 非出款最终决定
+      summary: 售后最终决定（含原路退回退款）
       x-implementation-status: IMPLEMENTED_DEFAULT_OFF
       x-default-enabled: false
       x-contract: 51-AfterSale-Http-Contract-v0.1.md
@@ -4142,16 +4215,20 @@ paths:
           application/json:
             schema:
               $ref: '#/components/schemas/AfterSaleDecisionRequest'
-      description: 仅REJECT/RESERVICE/OTHER执行。FULL/PARTIAL合法请求先检查当前ADMIN会话、decide及资源权，再固定503；内部资金开关/Provider不能开启公开出款。
+      description: 五类终局决定均可执行（32号裁决）。FULL_REFUND/PARTIAL_REFUND必须携带正金额refundAmount（FULL=订单真实实付、PARTIAL>0且<实付，违例400 AFTERSALE_AMOUNT_INVALID），经真实决定事务原子创建原路退回退款单并交给AFTERSALE_REFUND_SUBMIT/CHANNEL_QUERY durable任务族；成功回执refundOrderId为退款单ID。pet.aftersale.refund.enabled=false（默认）时退款型fail-closed 503 COMMON_DEPENDENCY_UNAVAILABLE，无决定/退款单/ORDER投影。REJECT/RESERVICE/OTHER要求refundAmount=null。
       x-route-party: OPS
       x-audience: ADMIN_WEB
       x-required-actions:
       - aftersale.decide
-      x-public-refund-enabled: false
+      x-public-refund-enabled: true
+      x-public-refund-switch: pet.aftersale.refund.enabled
+      x-refund-execution: AFTERSALE_REFUND_SUBMIT/AFTERSALE_REFUND_CHANNEL_QUERY durable tasks, async, original WeChat route
       x-executable-decision-types:
       - REJECT
       - RESERVICE
       - OTHER
+      - FULL_REFUND
+      - PARTIAL_REFUND
   /admin/orders/{orderId}/abnormal-close:
     post:
       tags:
@@ -12145,6 +12222,239 @@ paths:
           $ref: '#/components/responses/NotificationPreferenceHttpError'
       x-route-party: USER
       x-audience: MINIAPP
+  /c/points/sign-in/status:
+    get:
+      tags:
+      - C-Points
+      operationId: cGetSignInStatus
+      summary: 签到状态（今日已签+连签数+近7天）
+      x-implementation-status: IMPLEMENTED_DEFAULT_OFF
+      x-default-enabled: false
+      x-contract: 58-Points-Task-Contract-v0.1.md
+      x-assembly-switch: pet.points.task.http.enabled
+      description: 58号§3.1（32号裁决第二节）。Asia/Shanghai 自然日口径；连签=自今日（或昨日）
+        向前连续自然日数，断签清零不回补（保守口径 S2）；query 全禁止。
+      security:
+      - bearerAuth: []
+      responses:
+        '400': {$ref: '#/components/responses/PointsTaskHttpError'}
+        '401': {$ref: '#/components/responses/PointsTaskHttpError'}
+        '500': {$ref: '#/components/responses/PointsTaskHttpError'}
+        '503': {$ref: '#/components/responses/PointsTaskHttpError'}
+        '200':
+          description: 签到状态投影
+          headers:
+            Cache-Control:
+              schema: {type: string, enum: [no-store]}
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SignInStatusEnvelope'
+      x-route-party: USER
+      x-audience: MINIAPP
+  /c/points/sign-in:
+    post:
+      tags:
+      - C-Points
+      operationId: cSignIn
+      summary: 每日签到（空对象；requestId幂等；当日重复409）
+      x-implementation-status: IMPLEMENTED_DEFAULT_OFF
+      x-default-enabled: false
+      x-contract: 58-Points-Task-Contract-v0.1.md
+      x-assembly-switch: pet.points.task.http.enabled
+      description: 58号§3.2。体为空 JSON 对象（严格解析）；S1~S3：UTC+8 自然日一次、固定面额、
+        biz_type=SIGN_IN、points_ledger 配账即时入账；同 requestId 重放首次回执，换新 requestId
+        当日再签 409 COMMON_CONFLICT。V1 积分只赚取/扣回不消费。
+      security:
+      - bearerAuth: []
+      parameters:
+      - $ref: '#/components/parameters/RequestId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PointsSignInRequest'
+      responses:
+        '400': {$ref: '#/components/responses/PointsTaskHttpError'}
+        '401': {$ref: '#/components/responses/PointsTaskHttpError'}
+        '409': {$ref: '#/components/responses/PointsTaskHttpError'}
+        '500': {$ref: '#/components/responses/PointsTaskHttpError'}
+        '503': {$ref: '#/components/responses/PointsTaskHttpError'}
+        '200':
+          description: 签到回执（首签与幂等重放同形）
+          headers:
+            Cache-Control:
+              schema: {type: string, enum: [no-store]}
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SignInReceiptEnvelope'
+      x-route-party: USER
+      x-audience: MINIAPP
+  /c/points/tasks:
+    get:
+      tags:
+      - C-Points
+      operationId: cListPointsTasks
+      summary: 任务面板+奖励面板共用投影（含邀请码）
+      x-implementation-status: IMPLEMENTED_DEFAULT_OFF
+      x-default-enabled: false
+      x-contract: 58-Points-Task-Contract-v0.1.md
+      x-assembly-switch: pet.points.task.http.enabled
+      description: 58号§3.3。一读供拉新任务（129:5854）与奖励领取（129:7677）两页；inviteCode
+        为确定性可逆码（P+base36+校验位）；COMMUNITY_POST 恒 NOT_OPEN（V1 无社区积分规则，
+        文案"暂未开放"）；query 全禁止。
+      security:
+      - bearerAuth: []
+      responses:
+        '400': {$ref: '#/components/responses/PointsTaskHttpError'}
+        '401': {$ref: '#/components/responses/PointsTaskHttpError'}
+        '500': {$ref: '#/components/responses/PointsTaskHttpError'}
+        '503': {$ref: '#/components/responses/PointsTaskHttpError'}
+        '200':
+          description: 任务与奖励投影
+          headers:
+            Cache-Control:
+              schema: {type: string, enum: [no-store]}
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PointsTasksEnvelope'
+      x-route-party: USER
+      x-audience: MINIAPP
+  /c/points/claims:
+    post:
+      tags:
+      - C-Points
+      operationId: cClaimPointsReward
+      summary: 领取任务/里程碑奖励（requestId幂等；无可领取409）
+      x-implementation-status: IMPLEMENTED_DEFAULT_OFF
+      x-default-enabled: false
+      x-contract: 58-Points-Task-Contract-v0.1.md
+      x-assembly-switch: pet.points.task.http.enabled
+      description: 58号§3.4（M1/A2：除每日签到外全部显式领取，无事件自动发放）。多人头一次
+        领取生成多行 ledger（biz_type=INVITE/TASK）；一次性里程碑已领过再领 409；月上限截断。
+      security:
+      - bearerAuth: []
+      parameters:
+      - $ref: '#/components/parameters/RequestId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PointsTaskClaimRequest'
+      responses:
+        '400': {$ref: '#/components/responses/PointsTaskHttpError'}
+        '401': {$ref: '#/components/responses/PointsTaskHttpError'}
+        '409': {$ref: '#/components/responses/PointsTaskHttpError'}
+        '500': {$ref: '#/components/responses/PointsTaskHttpError'}
+        '503': {$ref: '#/components/responses/PointsTaskHttpError'}
+        '200':
+          description: 领取回执（首领与幂等重放同形）
+          headers:
+            Cache-Control:
+              schema: {type: string, enum: [no-store]}
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PointsClaimReceiptEnvelope'
+      x-route-party: USER
+      x-audience: MINIAPP
+  /c/points/referral-bindings:
+    post:
+      tags:
+      - C-Points
+      operationId: cBindReferralCode
+      summary: 绑定邀请码（终身一次；requestId幂等）
+      x-implementation-status: IMPLEMENTED_DEFAULT_OFF
+      x-default-enabled: false
+      x-contract: 58-Points-Task-Contract-v0.1.md
+      x-assembly-switch: pet.points.task.http.enabled
+      description: 58号§3.5（R1~R4 保守口径）。无效码/用户不存在/自邀 400；被邀请人已有订单史
+        400/409（不符合新用户条件）；已绑定终局 409。绑定后完成首笔支付才算拉新成立
+        （firstPaidAt>绑定时刻）。
+      security:
+      - bearerAuth: []
+      parameters:
+      - $ref: '#/components/parameters/RequestId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PointsTaskBindingRequest'
+      responses:
+        '400': {$ref: '#/components/responses/PointsTaskHttpError'}
+        '401': {$ref: '#/components/responses/PointsTaskHttpError'}
+        '409': {$ref: '#/components/responses/PointsTaskHttpError'}
+        '500': {$ref: '#/components/responses/PointsTaskHttpError'}
+        '503': {$ref: '#/components/responses/PointsTaskHttpError'}
+        '200':
+          description: 绑定回执（首绑与幂等重放同形）
+          headers:
+            Cache-Control:
+              schema: {type: string, enum: [no-store]}
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PointsBindingReceiptEnvelope'
+      x-route-party: USER
+      x-audience: MINIAPP
+  /c/staff/invitations:
+    get:
+      tags:
+      - C-Staff
+      operationId: cListMyStaffInvitations
+      summary: 我的邀请记录分页（id倒序固定，54号§7）
+      x-implementation-status: IMPLEMENTED_DEFAULT_OFF
+      x-default-enabled: false
+      x-contract: 54-Merchant-Staff-Binding-Contract-v0.1.md
+      description: 54号§7 员工侧列表（2026-10-07 增补）。登录会话主体；服务端按 S9 账号手机号
+        事实匹配邀请行（明文手机号永不出用户模块）。防枚举：只返回匹配本人手机号的邀请（含历史终局），
+        他人手机号/无手机号事实/依赖不可读一律同一空页，不暴露存在性。固定排序 id DESC；投影不回任何
+        形式的手机号。行校验失败关闭（503），不降级为部分行。
+      security:
+      - bearerAuth: []
+      parameters:
+      - name: page
+        in: query
+        required: false
+        schema:
+          type: integer
+          minimum: 1
+          maximum: 10000
+          default: 1
+      - name: pageSize
+        in: query
+        required: false
+        schema:
+          type: integer
+          minimum: 1
+          maximum: 50
+          default: 20
+      responses:
+        '200':
+          description: 邀请记录分页（无匹配时空页）
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                enum:
+                - no-store
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StaffInvitationPageEnvelope'
+        '400':
+          $ref: '#/components/responses/StaffInvitationHttpError'
+        '401':
+          $ref: '#/components/responses/StaffInvitationHttpError'
+        '503':
+          $ref: '#/components/responses/StaffInvitationHttpError'
+      x-route-party: USER
+      x-audience: MINIAPP
   /c/favorites:
     get:
       tags:
@@ -12545,41 +12855,25 @@ paths:
           $ref: '#/components/responses/FavTrackHttpError'
       x-route-party: USER
       x-audience: MINIAPP
-  /c/staff/invitations:
+  /c/addresses:
     get:
       tags:
-      - C-Staff
-      operationId: cListMyStaffInvitations
-      summary: 我的邀请记录分页（id倒序固定，54号§7）
+      - C-Address
+      operationId: cListMyAddresses
+      summary: 我的地址列表（默认在前）
       x-implementation-status: IMPLEMENTED_DEFAULT_OFF
       x-default-enabled: false
-      x-contract: 54-Merchant-Staff-Binding-Contract-v0.1.md
-      description: 54号§7 员工侧列表（2026-10-07 增补）。登录会话主体；服务端按 S9 账号手机号
-        事实匹配邀请行（明文手机号永不出用户模块）。防枚举：只返回匹配本人手机号的邀请（含历史终局），
-        他人手机号/无手机号事实/依赖不可读一律同一空页，不暴露存在性。固定排序 id DESC；投影不回任何
-        形式的手机号。行校验失败关闭（503），不降级为部分行。
+      x-contract: 59-User-Address-Contract-v0.1.md
+      x-assembly-switch: pet.auth.c.enabled
+      description: 59号契约（32号裁决第二节地址管理）。本人 ACTIVE 地址全量列表，固定排序
+        is_default DESC, created_at ASC, id ASC；query 全禁止。单用户上限 20 条由写侧校验，
+        列表不 hiding 状态差异（软删除行不返回）。订单不引用本表——下单地址仍走
+        order_booking_input_snapshot 文本快照。
       security:
       - bearerAuth: []
-      parameters:
-      - name: page
-        in: query
-        required: false
-        schema:
-          type: integer
-          minimum: 1
-          maximum: 10000
-          default: 1
-      - name: pageSize
-        in: query
-        required: false
-        schema:
-          type: integer
-          minimum: 1
-          maximum: 50
-          default: 20
       responses:
         '200':
-          description: 邀请记录分页（无匹配时空页）
+          description: 本人地址列表（无地址时空数组）
           headers:
             Cache-Control:
               schema:
@@ -12589,13 +12883,264 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/StaffInvitationPageEnvelope'
+                $ref: '#/components/schemas/AddressListEnvelope'
         '400':
-          $ref: '#/components/responses/StaffInvitationHttpError'
+          $ref: '#/components/responses/AddressHttpError'
         '401':
-          $ref: '#/components/responses/StaffInvitationHttpError'
+          $ref: '#/components/responses/AddressHttpError'
+        '500':
+          $ref: '#/components/responses/AddressHttpError'
         '503':
-          $ref: '#/components/responses/StaffInvitationHttpError'
+          $ref: '#/components/responses/AddressHttpError'
+      x-route-party: USER
+      x-audience: MINIAPP
+    post:
+      tags:
+      - C-Address
+      operationId: cCreateAddress
+      summary: 新增地址（requestId幂等，201/200）
+      x-implementation-status: IMPLEMENTED_DEFAULT_OFF
+      x-default-enabled: false
+      x-contract: 59-User-Address-Contract-v0.1.md
+      x-assembly-switch: pet.auth.c.enabled
+      description: 59号契约。严格 JSON：contactName(1..32码点)/contactPhone(11位大陆手机号)/
+        region(1..64)/detail(1..256) 必填，isDefault 可省（默认 false）；未知字段、显式
+        null、尾随 token 均 400。单用户 ACTIVE 上限 20，第 21 条 400
+        ADDRESS_LIMIT_EXCEEDED。置默认与清旧默认同事务。同 requestId 同参重放返回首回执
+        （200），异参 409 IDEMPOTENCY_KEY_CONFLICT。冻结用户 403 USER_FROZEN。
+      security:
+      - bearerAuth: []
+      parameters:
+      - $ref: '#/components/parameters/RequestId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AddressUpsert'
+      responses:
+        '200':
+          description: 同 requestId 幂等重放首回执
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                enum:
+                - no-store
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AddressEnvelope'
+        '201':
+          description: 首次创建成功
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                enum:
+                - no-store
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AddressEnvelope'
+        '400':
+          $ref: '#/components/responses/AddressHttpError'
+        '401':
+          $ref: '#/components/responses/AddressHttpError'
+        '403':
+          $ref: '#/components/responses/AddressHttpError'
+        '409':
+          $ref: '#/components/responses/AddressHttpError'
+        '500':
+          $ref: '#/components/responses/AddressHttpError'
+        '503':
+          $ref: '#/components/responses/AddressHttpError'
+      x-route-party: USER
+      x-audience: MINIAPP
+  /c/addresses/{addressId}:
+    get:
+      tags:
+      - C-Address
+      operationId: cGetMyAddress
+      summary: 地址详情（防枚举404）
+      x-implementation-status: IMPLEMENTED_DEFAULT_OFF
+      x-default-enabled: false
+      x-contract: 59-User-Address-Contract-v0.1.md
+      x-assembly-switch: pet.auth.c.enabled
+      description: 59号契约。非本人/不存在/已删除统一 404 ADDRESS_NOT_FOUND（防枚举，不区分）。
+        本人读侧返回明文 contactPhone（用户自录收货联系电话，宠物档案同口径；C 端列表页
+        按设计稿做展示层脱敏）。query 全禁止。
+      security:
+      - bearerAuth: []
+      parameters:
+      - $ref: '#/components/parameters/AddressId'
+      responses:
+        '200':
+          description: 地址详情
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                enum:
+                - no-store
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AddressEnvelope'
+        '400':
+          $ref: '#/components/responses/AddressHttpError'
+        '401':
+          $ref: '#/components/responses/AddressHttpError'
+        '404':
+          $ref: '#/components/responses/AddressHttpError'
+        '500':
+          $ref: '#/components/responses/AddressHttpError'
+        '503':
+          $ref: '#/components/responses/AddressHttpError'
+      x-route-party: USER
+      x-audience: MINIAPP
+    put:
+      tags:
+      - C-Address
+      operationId: cUpdateMyAddress
+      summary: 全量编辑地址（requestId幂等）
+      x-implementation-status: IMPLEMENTED_DEFAULT_OFF
+      x-default-enabled: false
+      x-contract: 59-User-Address-Contract-v0.1.md
+      x-assembly-switch: pet.auth.c.enabled
+      description: 59号契约。全量替换 contactName/contactPhone/region/detail；isDefault 可省
+        （缺省保持现值），置默认与清旧默认同事务。严格 JSON 同创建。防枚举 404 与幂等
+        语义同创建。
+      security:
+      - bearerAuth: []
+      parameters:
+      - $ref: '#/components/parameters/RequestId'
+      - $ref: '#/components/parameters/AddressId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AddressUpsert'
+      responses:
+        '200':
+          description: 编辑后的地址投影
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                enum:
+                - no-store
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AddressEnvelope'
+        '400':
+          $ref: '#/components/responses/AddressHttpError'
+        '401':
+          $ref: '#/components/responses/AddressHttpError'
+        '403':
+          $ref: '#/components/responses/AddressHttpError'
+        '404':
+          $ref: '#/components/responses/AddressHttpError'
+        '409':
+          $ref: '#/components/responses/AddressHttpError'
+        '500':
+          $ref: '#/components/responses/AddressHttpError'
+        '503':
+          $ref: '#/components/responses/AddressHttpError'
+      x-route-party: USER
+      x-audience: MINIAPP
+    delete:
+      tags:
+      - C-Address
+      operationId: cDeleteMyAddress
+      summary: 软删除地址（requestId幂等）
+      x-implementation-status: IMPLEMENTED_DEFAULT_OFF
+      x-default-enabled: false
+      x-contract: 59-User-Address-Contract-v0.1.md
+      x-assembly-switch: pet.auth.c.enabled
+      description: 59号契约。软删除（status=DELETED），不物理删除；订单快照不依赖本表，
+        删除不影响存量订单。删除默认地址后该用户无默认直至再设置。回执
+        {addressId,status}。防枚举 404 与幂等语义同创建。
+      security:
+      - bearerAuth: []
+      parameters:
+      - $ref: '#/components/parameters/RequestId'
+      - $ref: '#/components/parameters/AddressId'
+      responses:
+        '200':
+          description: 删除回执（status=DELETED）
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                enum:
+                - no-store
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AddressDeleteEnvelope'
+        '400':
+          $ref: '#/components/responses/AddressHttpError'
+        '401':
+          $ref: '#/components/responses/AddressHttpError'
+        '403':
+          $ref: '#/components/responses/AddressHttpError'
+        '404':
+          $ref: '#/components/responses/AddressHttpError'
+        '409':
+          $ref: '#/components/responses/AddressHttpError'
+        '500':
+          $ref: '#/components/responses/AddressHttpError'
+        '503':
+          $ref: '#/components/responses/AddressHttpError'
+      x-route-party: USER
+      x-audience: MINIAPP
+  /c/addresses/{addressId}/set-default:
+    post:
+      tags:
+      - C-Address
+      operationId: cSetDefaultAddress
+      summary: 设为默认地址（requestId幂等）
+      x-implementation-status: IMPLEMENTED_DEFAULT_OFF
+      x-default-enabled: false
+      x-contract: 59-User-Address-Contract-v0.1.md
+      x-assembly-switch: pet.auth.c.enabled
+      description: 59号契约。无业务体（允许空对象/无体）；默认地址唯一——置默认与清旧默认
+        同事务。回执同详情投影。防枚举 404 与幂等语义同创建。
+      security:
+      - bearerAuth: []
+      parameters:
+      - $ref: '#/components/parameters/RequestId'
+      - $ref: '#/components/parameters/AddressId'
+      responses:
+        '200':
+          description: 设默认后的地址投影
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                enum:
+                - no-store
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AddressEnvelope'
+        '400':
+          $ref: '#/components/responses/AddressHttpError'
+        '401':
+          $ref: '#/components/responses/AddressHttpError'
+        '403':
+          $ref: '#/components/responses/AddressHttpError'
+        '404':
+          $ref: '#/components/responses/AddressHttpError'
+        '409':
+          $ref: '#/components/responses/AddressHttpError'
+        '500':
+          $ref: '#/components/responses/AddressHttpError'
+        '503':
+          $ref: '#/components/responses/AddressHttpError'
       x-route-party: USER
       x-audience: MINIAPP
 components:
@@ -12696,6 +13241,13 @@ components:
       required: true
       schema:
         $ref: '#/components/schemas/PublicId'
+    AddressId:
+      name: addressId
+      in: path
+      required: true
+      schema:
+        $ref: '#/components/schemas/PublicId'
+      description: 59号；非本人/不存在/已删除统一 404 ADDRESS_NOT_FOUND（防枚举）。
     Page:
       name: page
       in: query
@@ -12826,6 +13378,32 @@ components:
         application/json:
           schema:
             $ref: '#/components/schemas/NotificationPreferenceErrorEnvelope'
+    AddressHttpError:
+      description: 地址簿错误（59号）；400含上限 ADDRESS_LIMIT_EXCEEDED，404含防枚举
+        ADDRESS_NOT_FOUND，409含幂等异参 IDEMPOTENCY_KEY_CONFLICT，data=null。
+      headers:
+        Cache-Control:
+          schema:
+            type: string
+            enum:
+            - no-store
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/AddressErrorEnvelope'
+    PointsTaskHttpError:
+      description: 签到/拉新/积分配置错误；复用Error12 §2通用码（409含幂等异参
+        IDEMPOTENCY_KEY_CONFLICT、当日重复签到与终局冲突COMMON_CONFLICT），data=null。
+      headers:
+        Cache-Control:
+          schema:
+            type: string
+            enum:
+            - no-store
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/PointsTaskErrorEnvelope'
     FavTrackHttpError:
       description: 收藏/足迹错误（58号）；复用Error12 §2通用码+目录家族404码（SERVICE_NOT_FOUND/
         STORE_NOT_FOUND）+USER_FROZEN，409含幂等异参IDEMPOTENCY_KEY_CONFLICT，data=null。
@@ -12839,6 +13417,7 @@ components:
         application/json:
           schema:
             $ref: '#/components/schemas/FavTrackErrorEnvelope'
+  schemas:
   schemas:
     VerificationCredentialIssue:
       type: object
@@ -19858,7 +20437,7 @@ components:
           minLength: 1
           maxLength: 500
           pattern: \S
-      description: REJECT/RESERVICE/OTHER要求refundAmount=null。FULL/PARTIAL公开关闭：合法正金额且当前会话、decide动作及资源获权后固定503。
+      description: REJECT/RESERVICE/OTHER要求refundAmount=null。FULL_REFUND/PARTIAL_REFUND要求正金额refundAmount（精确两位字符串；FULL=订单真实实付金额，PARTIAL>0且严格小于实付，内核按PAYMENT权威事实裁定，违例400 AFTERSALE_AMOUNT_INVALID）；退款型在pet.aftersale.refund.enabled=false时503 fail-closed（32号裁决/CCR-AFS-FUNDING-001）。
     AfterSaleReceipt:
       type: object
       additionalProperties: false
@@ -19933,6 +20512,7 @@ components:
           maxLength: 19
           x-maximum-decimal: '9223372036854775807'
           nullable: true
+          description: 退款型终局决定（FULL_REFUND/PARTIAL_REFUND，32号裁决）成功时为已创建的原路退回退款单ID；渠道执行由AFTERSALE_REFUND_SUBMIT/CHANNEL_QUERY任务族异步完成。其余动作为null。
     AfterSaleEligibility:
       type: object
       additionalProperties: false
@@ -20807,6 +21387,661 @@ components:
         traceId:
           type: string
           minLength: 1
+    AddressUpsert:
+      type: object
+      additionalProperties: false
+      required:
+      - contactName
+      - contactPhone
+      - region
+      - detail
+      properties:
+        contactName:
+          type: string
+          minLength: 1
+          maxLength: 32
+          description: 收货人姓名，1..32 Unicode 码点、非全空白。
+        contactPhone:
+          type: string
+          pattern: '^1[3-9][0-9]{9}$'
+          description: 大陆手机号（11 位数字）。
+        region:
+          type: string
+          minLength: 1
+          maxLength: 64
+          description: 所在地区（省/市/区），1..64 码点、非全空白。
+        detail:
+          type: string
+          minLength: 1
+          maxLength: 256
+          description: 详细地址，1..256 码点、非全空白。
+        isDefault:
+          type: boolean
+          description: 创建可省（默认 false）；编辑可省（缺省保持现值）。置默认与清旧默认同事务。
+    AddressData:
+      type: object
+      additionalProperties: false
+      required:
+      - addressId
+      - contactName
+      - contactPhone
+      - region
+      - detail
+      - isDefault
+      - status
+      properties:
+        addressId:
+          $ref: '#/components/schemas/PublicId'
+        contactName:
+          type: string
+          minLength: 1
+          maxLength: 32
+        contactPhone:
+          type: string
+          pattern: '^1[3-9][0-9]{9}$'
+          description: 本人读侧明文返回（用户自录收货联系电话，宠物档案同口径）；C 端列表页
+            按设计稿做展示层脱敏。
+        region:
+          type: string
+          minLength: 1
+          maxLength: 64
+        detail:
+          type: string
+          minLength: 1
+          maxLength: 256
+        isDefault:
+          type: boolean
+        status:
+          type: string
+          enum:
+          - ACTIVE
+          - DELETED
+    AddressEnvelope:
+      type: object
+      additionalProperties: false
+      required:
+      - success
+      - code
+      - message
+      - data
+      - traceId
+      properties:
+        success:
+          type: boolean
+          enum:
+          - true
+        code:
+          type: string
+          enum:
+          - SUCCESS
+        message:
+          type: string
+          minLength: 1
+        data:
+          $ref: '#/components/schemas/AddressData'
+        traceId:
+          type: string
+          minLength: 1
+    AddressListEnvelope:
+      type: object
+      additionalProperties: false
+      required:
+      - success
+      - code
+      - message
+      - data
+      - traceId
+      properties:
+        success:
+          type: boolean
+          enum:
+          - true
+        code:
+          type: string
+          enum:
+          - SUCCESS
+        message:
+          type: string
+          minLength: 1
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/AddressData'
+        traceId:
+          type: string
+          minLength: 1
+    AddressDeleteEnvelope:
+      type: object
+      additionalProperties: false
+      required:
+      - success
+      - code
+      - message
+      - data
+      - traceId
+      properties:
+        success:
+          type: boolean
+          enum:
+          - true
+        code:
+          type: string
+          enum:
+          - SUCCESS
+        message:
+          type: string
+          minLength: 1
+        data:
+          type: object
+          additionalProperties: false
+          required:
+          - addressId
+          - status
+          properties:
+            addressId:
+              $ref: '#/components/schemas/PublicId'
+            status:
+              type: string
+              enum:
+              - DELETED
+        traceId:
+          type: string
+          minLength: 1
+    AddressErrorEnvelope:
+      type: object
+      additionalProperties: false
+      required:
+      - success
+      - code
+      - message
+      - data
+      - traceId
+      properties:
+        success:
+          type: boolean
+          enum:
+          - false
+        code:
+          type: string
+          enum:
+          - COMMON_INVALID_ARGUMENT
+          - ADDRESS_LIMIT_EXCEEDED
+          - COMMON_UNAUTHORIZED
+          - USER_FROZEN
+          - ADDRESS_NOT_FOUND
+          - COMMON_CONFLICT
+          - IDEMPOTENCY_KEY_CONFLICT
+          - COMMON_INTERNAL_ERROR
+          - COMMON_DEPENDENCY_UNAVAILABLE
+        message:
+          type: string
+          minLength: 1
+        data:
+          type: object
+          nullable: true
+          enum:
+          - null
+        traceId:
+          type: string
+          minLength: 1
+    PointsTaskErrorEnvelope:
+      type: object
+      additionalProperties: false
+      required:
+      - success
+      - code
+      - message
+      - data
+      - traceId
+      properties:
+        success:
+          type: boolean
+          enum:
+          - false
+        code:
+          type: string
+          enum:
+          - COMMON_INVALID_ARGUMENT
+          - COMMON_UNAUTHORIZED
+          - COMMON_FORBIDDEN
+          - COMMON_CONFLICT
+          - IDEMPOTENCY_KEY_CONFLICT
+          - COMMON_DEPENDENCY_UNAVAILABLE
+          - COMMON_INTERNAL_ERROR
+        message:
+          type: string
+          minLength: 1
+        data:
+          type: object
+          nullable: true
+          enum:
+          - null
+        traceId:
+          type: string
+          minLength: 1
+    PointsSignInRequest:
+      type: object
+      additionalProperties: false
+      maxProperties: 0
+      description: 签到命令体恒为空 JSON 对象（严格解析，未知字段即400）。
+    SignInStatusData:
+      type: object
+      additionalProperties: false
+      required:
+      - signedToday
+      - streak
+      - dailyPoints
+      - week
+      properties:
+        signedToday:
+          type: boolean
+        streak:
+          type: integer
+          format: int64
+          minimum: 0
+        dailyPoints:
+          type: string
+          pattern: ^(0|[1-9][0-9]{0,18})(?![\s\S])$
+          description: 运营配置的每日签到面额，BIGINT 传输安全用 String。
+        week:
+          type: array
+          minItems: 7
+          maxItems: 7
+          items:
+            $ref: '#/components/schemas/SignInWeekDay'
+    SignInWeekDay:
+      type: object
+      additionalProperties: false
+      required:
+      - date
+      - signed
+      properties:
+        date:
+          type: string
+          pattern: ^[0-9]{4}-[0-9]{2}-[0-9]{2}$
+        signed:
+          type: boolean
+    SignInStatusEnvelope:
+      allOf:
+      - $ref: '#/components/schemas/BaseEnvelope'
+      - type: object
+        properties:
+          data:
+            $ref: '#/components/schemas/SignInStatusData'
+    SignInReceiptData:
+      type: object
+      additionalProperties: false
+      required:
+      - signedDate
+      - points
+      - streakAfter
+      - ledgerId
+      - balanceAfter
+      properties:
+        signedDate:
+          type: string
+          pattern: ^[0-9]{4}-[0-9]{2}-[0-9]{2}$
+        points:
+          type: string
+          pattern: ^(0|[1-9][0-9]{0,18})(?![\s\S])$
+        streakAfter:
+          type: integer
+          format: int64
+          minimum: 1
+        ledgerId:
+          type: string
+          pattern: ^(0|[1-9][0-9]{0,18})(?![\s\S])$
+        balanceAfter:
+          type: string
+          pattern: ^(0|[1-9][0-9]{0,18})(?![\s\S])$
+    SignInReceiptEnvelope:
+      allOf:
+      - $ref: '#/components/schemas/BaseEnvelope'
+      - type: object
+        properties:
+          data:
+            $ref: '#/components/schemas/SignInReceiptData'
+    PointsTaskSignInSummary:
+      type: object
+      additionalProperties: false
+      required:
+      - signedToday
+      - streak
+      - dailyPoints
+      properties:
+        signedToday:
+          type: boolean
+        streak:
+          type: integer
+          format: int64
+          minimum: 0
+        dailyPoints:
+          type: string
+          pattern: ^(0|[1-9][0-9]{0,18})(?![\s\S])$
+    PointsTaskInviteOverview:
+      type: object
+      additionalProperties: false
+      required:
+      - perInviteePoints
+      - monthlyRewardCap
+      - rewardedThisMonth
+      - claimableCount
+      - milestoneRewarded
+      - milestoneStatus
+      - milestoneProgress
+      properties:
+        perInviteePoints:
+          type: string
+          pattern: ^(0|[1-9][0-9]{0,18})(?![\s\S])$
+        monthlyRewardCap:
+          type: integer
+          format: int64
+          minimum: 0
+          maximum: 100
+        rewardedThisMonth:
+          type: integer
+          format: int64
+          minimum: 0
+        claimableCount:
+          type: integer
+          format: int64
+          minimum: 0
+        milestoneRewarded:
+          type: integer
+          format: int64
+          minimum: 0
+        milestoneStatus:
+          type: string
+          enum:
+          - NOT_ACHIEVED
+          - CLAIMABLE
+          - CLAIMED
+        milestoneProgress:
+          type: string
+          pattern: ^[0-9]{1,3}/3$
+    PointsTaskRow:
+      type: object
+      additionalProperties: false
+      required:
+      - taskCode
+      - title
+      - description
+      - points
+      - status
+      - progress
+      properties:
+        taskCode:
+          type: string
+          enum:
+          - INVITE_PER_HEAD
+          - FIRST_ORDER
+          - SIGN_IN
+          - COMMUNITY_POST
+        title:
+          type: string
+          minLength: 1
+        description:
+          type: string
+        points:
+          type: string
+          pattern: ^(0|[1-9][0-9]{0,18})(?![\s\S])$
+        status:
+          type: string
+          enum:
+          - CLAIMABLE
+          - CLAIMED
+          - NOT_ACHIEVED
+          - NOT_OPEN
+          - DONE_TODAY
+        progress:
+          type: string
+    PointsRewardRow:
+      type: object
+      additionalProperties: false
+      required:
+      - rewardCode
+      - title
+      - description
+      - points
+      - status
+      - progress
+      properties:
+        rewardCode:
+          type: string
+          enum:
+          - SIGN_IN_STREAK_7
+          - INVITE_MILESTONE_3
+          - PROFILE_COMPLETE
+        title:
+          type: string
+          minLength: 1
+        description:
+          type: string
+        points:
+          type: string
+          pattern: ^(0|[1-9][0-9]{0,18})(?![\s\S])$
+        status:
+          type: string
+          enum:
+          - NOT_ACHIEVED
+          - CLAIMABLE
+          - CLAIMED
+        progress:
+          type: string
+    PointsTasksData:
+      type: object
+      additionalProperties: false
+      required:
+      - inviteCode
+      - signIn
+      - invite
+      - tasks
+      - rewards
+      properties:
+        inviteCode:
+          type: string
+          pattern: ^[A-Za-z0-9]{1,32}$
+          description: 本人邀请码（R1：确定性可逆，服务端按需重新生成，无状态）。
+        signIn:
+          $ref: '#/components/schemas/PointsTaskSignInSummary'
+        invite:
+          $ref: '#/components/schemas/PointsTaskInviteOverview'
+        tasks:
+          type: array
+          minItems: 4
+          maxItems: 4
+          items:
+            $ref: '#/components/schemas/PointsTaskRow'
+        rewards:
+          type: array
+          minItems: 3
+          maxItems: 3
+          items:
+            $ref: '#/components/schemas/PointsRewardRow'
+    PointsTasksEnvelope:
+      allOf:
+      - $ref: '#/components/schemas/BaseEnvelope'
+      - type: object
+        properties:
+          data:
+            $ref: '#/components/schemas/PointsTasksData'
+    PointsTaskClaimRequest:
+      type: object
+      additionalProperties: false
+      required:
+      - claimType
+      properties:
+        claimType:
+          type: string
+          enum:
+          - INVITE_PER_HEAD
+          - FIRST_ORDER
+          - SIGN_IN_STREAK_7
+          - INVITE_MILESTONE_3
+          - PROFILE_COMPLETE
+    PointsClaimReceiptData:
+      type: object
+      additionalProperties: false
+      required:
+      - claimType
+      - pointsGranted
+      - ledgerIds
+      - balanceAfter
+      properties:
+        claimType:
+          type: string
+          enum:
+          - INVITE_PER_HEAD
+          - FIRST_ORDER
+          - SIGN_IN_STREAK_7
+          - INVITE_MILESTONE_3
+          - PROFILE_COMPLETE
+        pointsGranted:
+          type: string
+          pattern: ^(0|[1-9][0-9]{0,18})(?![\s\S])$
+        ledgerIds:
+          type: array
+          minItems: 1
+          items:
+            type: string
+            pattern: ^(0|[1-9][0-9]{0,18})(?![\s\S])$
+          description: 多人头一次领取生成多行 ledger（每被邀请人一行）。
+        balanceAfter:
+          type: string
+          pattern: ^(0|[1-9][0-9]{0,18})(?![\s\S])$
+    PointsClaimReceiptEnvelope:
+      allOf:
+      - $ref: '#/components/schemas/BaseEnvelope'
+      - type: object
+        properties:
+          data:
+            $ref: '#/components/schemas/PointsClaimReceiptData'
+    PointsTaskBindingRequest:
+      type: object
+      additionalProperties: false
+      required:
+      - inviteCode
+      properties:
+        inviteCode:
+          type: string
+          pattern: ^[A-Za-z0-9]{1,32}$
+    PointsBindingReceiptData:
+      type: object
+      additionalProperties: false
+      required:
+      - bindingId
+      - createdAt
+      properties:
+        bindingId:
+          type: string
+          pattern: ^(0|[1-9][0-9]{0,18})(?![\s\S])$
+        createdAt:
+          type: string
+          nullable: true
+    PointsBindingReceiptEnvelope:
+      allOf:
+      - $ref: '#/components/schemas/BaseEnvelope'
+      - type: object
+        properties:
+          data:
+            $ref: '#/components/schemas/PointsBindingReceiptData'
+    PointsTaskConfigUpdate:
+      type: object
+      additionalProperties: false
+      required:
+      - signInDailyPoints
+      - signInStreakBonusPoints
+      - invitePerInviteePoints
+      - inviteMonthlyRewardCap
+      - inviteMilestoneBonusPoints
+      - firstOrderPoints
+      - profileCompletePoints
+      properties:
+        signInDailyPoints:
+          type: integer
+          format: int64
+          minimum: 1
+          maximum: 1000
+        signInStreakBonusPoints:
+          type: integer
+          format: int64
+          minimum: 0
+          maximum: 1000
+        invitePerInviteePoints:
+          type: integer
+          format: int64
+          minimum: 0
+          maximum: 1000
+        inviteMonthlyRewardCap:
+          type: integer
+          format: int64
+          minimum: 0
+          maximum: 100
+        inviteMilestoneBonusPoints:
+          type: integer
+          format: int64
+          minimum: 0
+          maximum: 1000
+        firstOrderPoints:
+          type: integer
+          format: int64
+          minimum: 0
+          maximum: 1000
+        profileCompletePoints:
+          type: integer
+          format: int64
+          minimum: 0
+          maximum: 1000
+    PointsTaskConfigData:
+      type: object
+      additionalProperties: false
+      required:
+      - signInDailyPoints
+      - signInStreakBonusPoints
+      - invitePerInviteePoints
+      - inviteMonthlyRewardCap
+      - inviteMilestoneBonusPoints
+      - firstOrderPoints
+      - profileCompletePoints
+      - version
+      - updatedAt
+      properties:
+        signInDailyPoints:
+          type: string
+          pattern: ^(0|[1-9][0-9]{0,18})(?![\s\S])$
+        signInStreakBonusPoints:
+          type: string
+          pattern: ^(0|[1-9][0-9]{0,18})(?![\s\S])$
+        invitePerInviteePoints:
+          type: string
+          pattern: ^(0|[1-9][0-9]{0,18})(?![\s\S])$
+        inviteMonthlyRewardCap:
+          type: string
+          pattern: ^(0|[1-9][0-9]{0,18})(?![\s\S])$
+        inviteMilestoneBonusPoints:
+          type: string
+          pattern: ^(0|[1-9][0-9]{0,18})(?![\s\S])$
+        firstOrderPoints:
+          type: string
+          pattern: ^(0|[1-9][0-9]{0,18})(?![\s\S])$
+        profileCompletePoints:
+          type: string
+          pattern: ^(0|[1-9][0-9]{0,18})(?![\s\S])$
+        version:
+          type: string
+          pattern: ^(0|[1-9][0-9]{0,18})(?![\s\S])$
+          description: points_task_config.version BIGINT 计数器按 String 传输；0=内置缺省。
+        updatedAt:
+          type: string
+          nullable: true
+          description: 最近一次成功保存的偏移毫秒时间戳；从未写过（读默认值）时为 null。
+    PointsTaskConfigEnvelope:
+      allOf:
+      - $ref: '#/components/schemas/BaseEnvelope'
+      - type: object
+        properties:
+          data:
+            $ref: '#/components/schemas/PointsTaskConfigData'
     StaffInvitationSummary:
       type: object
       additionalProperties: false
@@ -21026,56 +22261,6 @@ components:
         traceId:
           type: string
           minLength: 1
-    UserTargetDisplay:
-      type: object
-      additionalProperties: false
-      required:
-      - targetType
-      - targetId
-      - targetAvailable
-      - title
-      - categoryLabel
-      - salePrice
-      - storeId
-      - coverUrl
-      properties:
-        targetType:
-          type: string
-          enum:
-          - SERVICE
-          - STORE
-        targetId:
-          $ref: '#/components/schemas/PublicId'
-        targetAvailable:
-          type: boolean
-          description: 目标当前隐藏/下架时行保留、此位 false 且展示列 null（取消/删除仍可用）。
-        title:
-          type: string
-          nullable: true
-          description: 服务名或门店名（当前目录投影）；不可用时 null。
-        categoryLabel:
-          type: string
-          nullable: true
-          description: 服务类目名；STORE 行 null。
-        salePrice:
-          type: string
-          nullable: true
-          pattern: '^(?:0|[1-9][0-9]{0,15})\.[0-9]{2}(?![\s\S])'
-          description: 服务起价两位小数 String；STORE 行/不可用 null。
-        storeId:
-          type: string
-          nullable: true
-          minLength: 1
-          maxLength: 19
-          pattern: '^[1-9][0-9]{0,18}(?![\s\S])'
-          x-maximum-decimal: '9223372036854775807'
-          description: SERVICE 行携带所属门店（跳预约/门店视图）；STORE 行/不可用 null。
-        coverUrl:
-          type: string
-          nullable: true
-          maxLength: 1024
-          description: 服务封面 URL；STORE 行/不可用 null。
-      description: 58号 收藏/足迹列表共享的目录展示投影。
     FavoriteItem:
       type: object
       additionalProperties: false

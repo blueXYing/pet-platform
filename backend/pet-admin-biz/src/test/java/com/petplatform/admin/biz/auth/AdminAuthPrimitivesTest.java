@@ -63,7 +63,10 @@ class AdminAuthPrimitivesTest {
             "service.review.read", "service.review.decide", "service.force.offline",
             "aftersale.read", "aftersale.handle", "aftersale.decide",
             // REV-002 review appeal slice (contract 56): both enforcement points ship in it.
-            "review.appeal.read", "review.appeal.decide"),
+            "review.appeal.read", "review.appeal.decide",
+            // Contract-58 earn slice (CCR-POINTS-TASK-001, 32号 ruling): the config read/write
+            // enforcement points ship in the same slice.
+            "points.task.config.read", "points.task.config.write"),
         AdminPermissionEvaluator.DEPLOYED_ACTIONS);
     assertEquals(AdminPermissionEvaluator.DEPLOYED_ACTIONS.stream().sorted().toList(),AdminPermissionEvaluator.evaluate(true,List.of("refund.retry"),AdminPermissionEvaluator.DEPLOYED_ACTIONS));
         assertEquals(List.of(),AdminPermissionEvaluator.evaluate(false,List.of("refund.retry"),AdminPermissionEvaluator.DEPLOYED_ACTIONS));
