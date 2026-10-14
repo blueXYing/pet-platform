@@ -56,6 +56,9 @@ public class CServiceExceptionHandler {
             Map.entry("SERVICE_NOT_BOOKABLE", 409),
             Map.entry("SCHEDULE_NOT_AVAILABLE", 409),
             Map.entry("SCHEDULE_CAPACITY_EXCEEDED", 409),
+            // Coupon lifecycle (contract 61 §7): freeze ineligibility/lost race through the
+            // booking kernel reuses the Error12 §12 coupon code with its registry 409 status.
+            Map.entry("COUPON_NOT_AVAILABLE", 409),
             Map.entry("COMMON_RATE_LIMITED", 429),
             Map.entry("COMMON_INTERNAL_ERROR", 500),
             Map.entry("COMMON_DEPENDENCY_UNAVAILABLE", 503),

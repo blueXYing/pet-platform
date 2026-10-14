@@ -571,6 +571,7 @@
 | 新增地址 `consumer/pages/address/new` | `129:13731` | 列表之上的底部弹层（y250 h561）：遮罩 + 白面板顶圆角 16 + 标题/×；收货人/手机号/所在地区 INPUT h42（`#f5fafd` 底 `#dcedf8` 描边 r8）+ 详细地址 TEXTAREA h82 + 「设为默认地址」开关行 h44（Switch `#5baae8`）+ 「保存地址」335×44 胶囊 `#5baae8`。POST 幂等槽 `address:create`（23号 X-Request-Id，未确认提交重进还原重试）。 |
 | 编辑地址 `consumer/pages/address/edit` | `129:13533` | 与新增同构（共用 `address-form.tsx`）；GET 详情回填明文，PUT 幂等槽 `address:{id}` 全量替换五字段。 |
 | BookingSheet 地址簿快选 | （无独立画板） | 接送地址区上方横滑 chips（`#c0ecff` 描边白底/选中 `#c0ecff` 底 `#5baae8` 描边）；点击把 `region + 空格 + detail` 平铺进既有 `serviceAddress` 文本快照（下单链接法：订单契约零改动，`order_booking_input_snapshot` 原样）；仅真实登录态渲染，读取失败静默降级为纯手填；preview/未登录不渲染。 |
+| BookingSheet 选券入口（61号切片） | （无独立画板；语言沿地址簿快选 chips + 128:2078 券卡信息词汇） | 宠物选择与备注之间新增「优惠券」区：`不使用优惠` 缺省 chip + 可用券 chip（券名/`-¥面额`/门槛标签，`#ff9500` 抵扣强调），选中态 `#c0ecff` 底 `#5baae8` 描边；数据源为 §3.15.1 AVAILABLE 读面（61号：展示提示，资格以服务端冻结判定为准）；选中券在确认信息区展示「优惠券」与「预估应付」行，底部按钮随显折后估价；409 `COUPON_NOT_AVAILABLE` 按 23号 retire 释放槽位去券重选。仅真实登录态且有可用券渲染，读取失败静默降级；preview/未登录不渲染。原稿无此区（690:4506 缺稿），按契约为唯一来源登记。 |
 
 登记偏差（补稿或功能交付后按 21号验收补充）：
 

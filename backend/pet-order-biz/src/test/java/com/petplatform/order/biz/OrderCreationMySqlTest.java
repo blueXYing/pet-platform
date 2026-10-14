@@ -6,6 +6,8 @@ import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assertions.assertAll;
+import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 
 import com.petplatform.common.ApiException;
 import com.petplatform.common.CommandContext;
@@ -546,6 +548,157 @@ class OrderCreationMySqlTest {
     }
 
     @Test
+    void couponBearingCreateFreezesDiscountsAndTimeoutCloseReleases() throws Exception {
+        try (Database db = new Database()) {
+            var coupons = couponCommands(db);
+            long couponId = db.seedCoupon(
+                    "{\"amountOff\":\"20\",\"thresholdAmount\":\"100.00\"}",
+                    "2099-01-01 00:00:00.000");
+            var created = db.api(db.source, coupons).create(
+                    db.inStore("coupon-" + UUID.randomUUID(), Long.toString(couponId)));
+            assertEquals("108.00", created.payAmount());
+            assertEquals(new BigDecimal("20.00"), db.jdbc.queryForObject(
+                    "SELECT discount_amount FROM pet_order WHERE id=?", BigDecimal.class,
+                    Long.parseLong(created.orderId())));
+            assertEquals(new BigDecimal("108.00"), db.jdbc.queryForObject(
+                    "SELECT pay_amount FROM pet_order WHERE id=?", BigDecimal.class,
+                    Long.parseLong(created.orderId())));
+            assertEquals("FROZEN", db.jdbc.queryForObject(
+                    "SELECT status FROM coupon_instance WHERE id=?", String.class, couponId));
+            assertEquals(Long.parseLong(created.orderId()), db.jdbc.queryForObject(
+                    "SELECT order_id FROM coupon_instance WHERE id=?", Long.class, couponId));
+            // Ledger rows are the coupon owner's contract (CouponLifecycleMySqlTest); the
+            // in-module stand-in mirrors only the row-level CAS the ORDER kernel depends on.
+            // Payment-timeout close releases the frozen coupon inside the same close transaction.
+            var command = db.expiryCommand(created.orderId(), db.makeDue());
+            assertEquals(ExpireOrderResult.CLOSED,
+                    db.expiryApi(coupons).expire(command));
+            assertEquals("AVAILABLE", db.jdbc.queryForObject(
+                    "SELECT status FROM coupon_instance WHERE id=?", String.class, couponId));
+            assertNull(db.jdbc.queryForObject(
+                    "SELECT order_id FROM coupon_instance WHERE id=?", Long.class, couponId));
+        }
+    }
+
+    @Test
+    void paymentSuccessConsumesTheFrozenCouponAndPublishesItInstanceId() throws Exception {
+        try (Database db = new Database()) {
+            var coupons = couponCommands(db);
+            long couponId = db.seedCoupon(
+                    "{\"amountOff\":\"20\",\"thresholdAmount\":\"100.00\"}",
+                    "2099-01-01 00:00:00.000");
+            var created = db.api(db.source, coupons).create(
+                    db.inStore("consume-" + UUID.randomUUID(), Long.toString(couponId)));
+            var consumer = db.paymentResultApi(created.orderId(), null, coupons);
+            consumer.consume(db.paymentEvent(created.orderId(), new BigDecimal("108.00")));
+            assertEquals("USED", db.jdbc.queryForObject(
+                    "SELECT status FROM coupon_instance WHERE id=?", String.class, couponId));
+            assertNotNull(db.jdbc.queryForObject(
+                    "SELECT used_at FROM coupon_instance WHERE id=?", java.sql.Timestamp.class, couponId));
+            // The OrderPaidEvent.v1 payload now carries the consumed coupon id.
+            String payload = db.jdbc.queryForObject(
+                    "SELECT payload FROM integration_event_outbox"
+                            + " WHERE event_type='OrderPaidEvent.v1'", String.class);
+            assertTrue(payload.replace(" ", "").contains("\"couponInstanceId\":\"" + couponId + "\""),
+                    "OrderPaidEvent must carry the consumed coupon id: " + payload);
+        }
+    }
+
+    @Test
+    void concurrentCouponBearingCreatesLetOnlyOneOrderWinTheCoupon() throws Exception {
+        try (Database db = new Database(); var workers = Executors.newFixedThreadPool(2)) {
+            var coupons = couponCommands(db);
+            long couponId = db.seedCoupon(
+                    "{\"amountOff\":\"20\",\"thresholdAmount\":\"100.00\"}",
+                    "2099-01-01 00:00:00.000");
+            var start = new CountDownLatch(1);
+            var one = workers.submit(() -> db.api(db.source, coupons).create(
+                    db.inStore("race-coupon-a-" + UUID.randomUUID(), Long.toString(couponId))));
+            var two = workers.submit(() -> db.api(db.source, coupons).create(
+                    db.inStore("race-coupon-b-" + UUID.randomUUID(), Long.toString(couponId))));
+            start.countDown();
+            int created = 0;
+            int rejected = 0;
+            for (var future : List.of(one, two)) {
+                try {
+                    assertTrue(future.get(30, TimeUnit.SECONDS).created());
+                    created++;
+                } catch (java.util.concurrent.ExecutionException lost) {
+                    assertTrue(lost.getCause() instanceof ApiException
+                            && "COUPON_NOT_AVAILABLE".equals(((ApiException) lost.getCause()).code()),
+                            "loser must be COUPON_NOT_AVAILABLE: " + lost.getCause());
+                    rejected++;
+                }
+            }
+            assertEquals(1, created);
+            assertEquals(1, rejected);
+            assertEquals(1, db.count("pet_order"));
+            assertEquals("FROZEN", db.jdbc.queryForObject(
+                    "SELECT status FROM coupon_instance WHERE id=?", String.class, couponId));
+        }
+    }
+
+    /**
+     * In-module CouponCommandApi stand-in mirroring the contract 61 row-level CAS (the real
+     * statement semantics live in pet-coupon-biz; biz modules never depend on each other, not
+     * even in tests). Discount parses the seeded frozen rule vocabulary.
+     */
+    private static com.petplatform.coupon.api.command.CouponCommandApi couponCommands(Database db) {
+        return new com.petplatform.coupon.api.command.CouponCommandApi() {
+            @Override public CouponFreezeResult freeze(CouponFreezeCommand command) {
+                long couponId = Long.parseLong(command.couponInstanceId());
+                long orderId = Long.parseLong(command.orderId());
+                int frozen = db.jdbc.update(
+                        "UPDATE coupon_instance SET status='FROZEN', order_id=?,"
+                        + " frozen_at=UTC_TIMESTAMP(3), freeze_expire_at=?, version=version+1,"
+                        + " updated_at=UTC_TIMESTAMP(3)"
+                        + " WHERE id=? AND user_id=? AND status='AVAILABLE'"
+                        + " AND expire_at > UTC_TIMESTAMP(3)",
+                        orderId, stamp(command.freezeExpireAt()), couponId,
+                        Long.parseLong(command.userId()));
+                if (frozen != 1) throw new ApiException("COUPON_NOT_AVAILABLE", "coupon lost");
+                String rule = db.jdbc.queryForObject(
+                        "SELECT t.rule_json FROM coupon_instance i"
+                        + " JOIN coupon_template t ON t.id=i.coupon_template_id WHERE i.id=?",
+                        String.class, couponId);
+                // MySQL normalizes the JSON column with a space after the colon; allow it.
+                var matcher = java.util.regex.Pattern.compile(
+                        "\"amountOff\":\\s?\"([0-9]+(?:\\.[0-9]{1,2})?)\"").matcher(rule);
+                if (!matcher.find()) throw new ApiException("COUPON_NOT_AVAILABLE", "no rule");
+                BigDecimal discount = new BigDecimal(matcher.group(1));
+                if (discount.compareTo(command.orderAmount()) >= 0) {
+                    throw new ApiException("COUPON_NOT_AVAILABLE", "not discountable");
+                }
+                return new CouponFreezeResult(command.couponInstanceId(), discount);
+            }
+            @Override public CouponConsumeResult consume(CouponConsumeCommand command) {
+                long couponId = db.jdbc.queryForObject(
+                        "SELECT id FROM coupon_instance WHERE order_id=? AND status='FROZEN'"
+                        + " FOR UPDATE", Long.class, Long.parseLong(command.orderId()));
+                db.jdbc.update("UPDATE coupon_instance SET status='USED', used_at=?,"
+                        + " version=version+1, updated_at=UTC_TIMESTAMP(3)"
+                        + " WHERE id=? AND status='FROZEN' AND order_id=?",
+                        stamp(command.consumedAt()), couponId, Long.parseLong(command.orderId()));
+                return new CouponConsumeResult(Long.toString(couponId));
+            }
+            @Override public CouponReleaseResult release(CouponReleaseCommand command) {
+                long orderId = Long.parseLong(command.orderId());
+                long couponId = db.jdbc.queryForObject(
+                        "SELECT id FROM coupon_instance WHERE order_id=? AND status='FROZEN'"
+                        + " FOR UPDATE", Long.class, orderId);
+                db.jdbc.update("UPDATE coupon_instance SET status=CASE WHEN expire_at > ?"
+                        + " THEN 'AVAILABLE' ELSE 'EXPIRED' END, order_id=NULL, frozen_at=NULL,"
+                        + " freeze_expire_at=NULL, version=version+1, updated_at=UTC_TIMESTAMP(3)"
+                        + " WHERE id=? AND status='FROZEN' AND order_id=?",
+                        stamp(command.closedAt()), couponId, orderId);
+                String landing = db.jdbc.queryForObject(
+                        "SELECT status FROM coupon_instance WHERE id=?", String.class, couponId);
+                return new CouponReleaseResult(Long.toString(couponId), landing);
+            }
+        };
+    }
+
+    @Test
     void concurrentSameKeyProducesOneReceiptAndOneReservation() throws Exception {
         try (Database db = new Database(); var workers = Executors.newFixedThreadPool(2)) {
             var command = db.inStore("race-" + UUID.randomUUID());
@@ -687,7 +840,9 @@ class OrderCreationMySqlTest {
                     orderId, reservationId, 0, deadline);
         }
 
-        OrderExpiryApiImpl expiryApi() {
+        OrderExpiryApiImpl expiryApi() { return expiryApi(null); }
+
+        OrderExpiryApiImpl expiryApi(com.petplatform.coupon.api.command.CouponCommandApi couponCommands) {
             JdbcTemplate transactionalJdbc = new JdbcTemplate(source);
             ReservationExpiryApi expiry = new ReservationExpiryApi() {
                 @Override public void expire(ExpireHoldCommand command) {
@@ -724,15 +879,19 @@ class OrderCreationMySqlTest {
                     }, (orderId, storeId, context) -> {
                         if (couponExposed) throw new ApiException(
                                 CommonApiCodes.DEPENDENCY_UNAVAILABLE, "coupon uncertain");
-                    });
+                    }, null, couponCommands);
         }
 
         DispatchedEvent paymentEvent(String orderId) {
+            return paymentEvent(orderId, new BigDecimal("128.00"));
+        }
+
+        DispatchedEvent paymentEvent(String orderId, BigDecimal paidAmount) {
             String payload;
             try {
                 payload = new com.fasterxml.jackson.databind.ObjectMapper().writeValueAsString(Map.of(
                         "paymentOrderId", "7001", "orderId", orderId,
-                        "channelTradeNo", "trade-7001", "paidAmount", new BigDecimal("128.00"),
+                        "channelTradeNo", "trade-7001", "paidAmount", paidAmount,
                         "paidAt", PAID_AT.toString()));
             } catch (Exception invalid) { throw new IllegalStateException(invalid); }
             return new DispatchedEvent("9001", "PaymentSucceededEvent.v1", 1, PAID_AT,
@@ -779,15 +938,85 @@ class OrderCreationMySqlTest {
                                 "SCH expiry is inconsistent");
                 }
             };
+            return paymentResultApi(orderId, null, null);
+        }
+
+        OrderPaymentResultApiImpl paymentResultApi(String orderId,
+                com.petplatform.coupon.api.query.BookingCouponExposureApi couponExposure,
+                com.petplatform.coupon.api.command.CouponCommandApi couponCommands) {
+            JdbcTemplate transactionalJdbc = new JdbcTemplate(source);
+            ScheduleCapacityGuardApi guard = new TestGuard(transactionalJdbc);
+            ReservationConfirmApi confirm = new ReservationConfirmApi() {
+                @Override public void confirm(ConfirmReservationCommand command) {
+                    if (holdConfirmFails) throw new ApiException(
+                            CommonApiCodes.DEPENDENCY_UNAVAILABLE, "forced SCH confirm failure");
+                    int changed = transactionalJdbc.update(
+                            "UPDATE schedule_reservation SET status='CONFIRMED',version=version+1,"
+                            + " updated_at=UTC_TIMESTAMP(3) WHERE id=? AND order_id=? AND store_id=?"
+                            + " AND status='TEMP_LOCKED' AND version=? AND lock_expire_at=?",
+                            Long.parseLong(command.reservationId()),
+                            Long.parseLong(command.orderId()), Long.parseLong(command.storeId()),
+                            command.expectedVersion(), stamp(command.expectedExpireAt()));
+                    if (changed != 1) throw new ApiException(
+                            CommonApiCodes.DEPENDENCY_UNAVAILABLE, "SCH confirm CAS failed");
+                }
+                @Override public void assertConfirmed(String orderId, String reservationId,
+                        String storeId, QueryContext context) {
+                    if (!"CONFIRMED".equals(transactionalJdbc.queryForObject(
+                            "SELECT status FROM schedule_reservation WHERE id=? AND order_id=?",
+                            String.class, Long.parseLong(reservationId), Long.parseLong(orderId))))
+                        throw new ApiException(CommonApiCodes.DEPENDENCY_UNAVAILABLE,
+                                "SCH confirmation is inconsistent");
+                }
+            };
+            ReservationExpiryApi expired = new ReservationExpiryApi() {
+                @Override public void expire(ExpireHoldCommand command) {
+                    throw new UnsupportedOperationException();
+                }
+                @Override public void assertExpired(String orderId, String reservationId,
+                        String storeId, QueryContext context) {
+                    if (!"EXPIRED".equals(transactionalJdbc.queryForObject(
+                            "SELECT status FROM schedule_reservation WHERE id=? AND order_id=?",
+                            String.class, Long.parseLong(reservationId), Long.parseLong(orderId))))
+                        throw new ApiException(CommonApiCodes.DEPENDENCY_UNAVAILABLE,
+                                "SCH expiry is inconsistent");
+                }
+            };
+            BigDecimal payable = transactionalJdbc.queryForObject(
+                    "SELECT pay_amount FROM pet_order WHERE id=?", BigDecimal.class,
+                    Long.parseLong(orderId));
             return new OrderPaymentResultApiImpl(source, ids::incrementAndGet, guard,
                     (paymentId, targetOrderId, storeId, context) -> new PaymentSuccessFact(
                             "7001", "7002", orderId, "300", "200", "100", "trade-7001",
-                            new BigDecimal("128.00"), PAID_AT, "9001", "CNY"),
+                            payable, PAID_AT, "9001", "CNY"),
                     confirm, expired, new TransactionalOutboxPublisher(source,
-                            ids::incrementAndGet, new com.fasterxml.jackson.databind.ObjectMapper()));
+                            ids::incrementAndGet, new com.fasterxml.jackson.databind.ObjectMapper()),
+                    false, couponExposure, couponCommands);
+        }
+
+        /** Seeds one ACTIVE template plus one own AVAILABLE instance with the given rule. */
+        long seedCoupon(String ruleJson, String expireAt) {
+            long templateId = ids.incrementAndGet();
+            long instanceId = ids.incrementAndGet();
+            jdbc.update("INSERT INTO coupon_template(id,name,status,total_stock,issued_count,"
+                    + "valid_start_at,valid_end_at,rule_json,version,created_at,updated_at)"
+                    + " VALUES(?,'测试券','ACTIVE',100,0,'2020-01-01 00:00:00.000',"
+                    + "'2099-12-31 23:59:59.000',?,0,UTC_TIMESTAMP(3),UTC_TIMESTAMP(3))",
+                    templateId, ruleJson);
+            jdbc.update("INSERT INTO coupon_instance(id,coupon_template_id,user_id,status,"
+                    + "order_id,frozen_at,freeze_expire_at,used_at,original_expire_at,expire_at,"
+                    + "version,created_at,updated_at) VALUES(?,?,100,'AVAILABLE',NULL,NULL,NULL,"
+                    + "NULL,?,?,0,UTC_TIMESTAMP(3),UTC_TIMESTAMP(3))",
+                    instanceId, templateId, expireAt, expireAt);
+            return instanceId;
         }
 
         OrderCreationApiImpl api(DataSource transactionalSource) {
+            return api(transactionalSource, null);
+        }
+
+        OrderCreationApiImpl api(DataSource transactionalSource,
+                com.petplatform.coupon.api.command.CouponCommandApi coupons) {
             JdbcTemplate transactionalJdbc = new JdbcTemplate(transactionalSource);
             ScheduleCapacityGuardApi guard = new TestGuard(transactionalJdbc);
             ReservationHoldApi hold = command -> {
@@ -855,7 +1084,7 @@ class OrderCreationMySqlTest {
                     guard, hold, protection, remark -> {
                         if (!policyAvailable) throw new ApiException(CommonApiCodes.DEPENDENCY_UNAVAILABLE,
                                 "moderation unavailable");
-                    }, CLOCK);
+                    }, coupons, CLOCK);
         }
 
         private void claim(JdbcTemplate target, long reservationId, String kind, String windowId,
@@ -871,9 +1100,13 @@ class OrderCreationMySqlTest {
         }
 
         CreateOrderCommand inStore(String requestId) {
+            return inStore(requestId, null);
+        }
+
+        CreateOrderCommand inStore(String requestId, String couponId) {
             return new CreateOrderCommand(new CommandContext(requestId, "test", OperatorType.USER,
                     "100", "test"), "300", "400", "500", "IN_STORE", START, START.plusHours(1),
-                    null, null, "901", null, null, null, null, null);
+                    null, null, "901", null, null, couponId, null, null);
         }
 
         CreateOrderCommand pickup(String requestId, String couponId) {

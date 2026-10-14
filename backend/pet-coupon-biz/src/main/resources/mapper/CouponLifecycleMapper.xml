@@ -1,0 +1,78 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<!--
+  Coupon lifecycle statements (contract 61). DATETIME(3) is UTC wall time; the store sets the
+  session zone to +00:00 before any statement. Amounts stay DECIMAL(18,2) scale-2.
+-->
+<mapper namespace="com.petplatform.coupon.biz.infrastructure.persistence.mapper.CouponLifecycleMapper">
+    <update id="setUtcTimeZone">SET SESSION time_zone = '+00:00'</update>
+    <update id="setLockWaitTimeout">SET SESSION innodb_lock_wait_timeout = 2</update>
+
+    <sql id="instanceWithTemplate">
+        SELECT i.id, i.user_id, i.status, i.order_id, i.expire_at, i.freeze_expire_at,
+               t.status AS template_status, t.valid_start_at AS template_valid_start_at,
+               t.valid_end_at AS template_valid_end_at, t.rule_json
+        FROM coupon_instance i
+        JOIN coupon_template t ON t.id = i.coupon_template_id
+    </sql>
+
+    <select id="lockInstance" resultType="com.petplatform.coupon.biz.infrastructure.persistence.entity.CouponLifecycleInstanceEntity">
+        <include refid="instanceWithTemplate"/>
+        WHERE i.id = #{id}
+        FOR UPDATE
+    </select>
+
+    <select id="countInstancesByOrder" resultType="long">
+        SELECT COUNT(*) FROM coupon_instance WHERE order_id = #{orderId}
+    </select>
+
+    <update id="freezeInstance">
+        UPDATE coupon_instance
+        SET status = 'FROZEN', order_id = #{orderId}, frozen_at = #{now},
+            freeze_expire_at = #{freezeExpireAt}, version = version + 1, updated_at = #{now}
+        WHERE id = #{id} AND user_id = #{userId} AND status = 'AVAILABLE'
+          AND expire_at &gt; #{now}
+    </update>
+
+    <select id="lockInstanceByOrder" resultType="com.petplatform.coupon.biz.infrastructure.persistence.entity.CouponLifecycleInstanceEntity">
+        <include refid="instanceWithTemplate"/>
+        WHERE i.order_id = #{orderId}
+        ORDER BY i.id ASC
+        LIMIT 1
+        FOR UPDATE
+    </select>
+
+    <update id="consumeInstance">
+        UPDATE coupon_instance
+        SET status = 'USED', used_at = #{usedAt}, version = version + 1, updated_at = #{now}
+        WHERE id = #{id} AND status = 'FROZEN' AND order_id = #{orderId}
+    </update>
+
+    <update id="releaseInstance">
+        UPDATE coupon_instance
+        SET status = CASE WHEN expire_at &gt; #{closedAt} THEN 'AVAILABLE' ELSE 'EXPIRED' END,
+            order_id = NULL, frozen_at = NULL, freeze_expire_at = NULL,
+            version = version + 1, updated_at = #{now}
+        WHERE id = #{id} AND status = 'FROZEN' AND order_id = #{orderId}
+    </update>
+
+    <select id="selectStatus" resultType="string">
+        SELECT status FROM coupon_instance WHERE id = #{id}
+    </select>
+
+    <update id="restoreInstance">
+        UPDATE coupon_instance
+        SET status = 'AVAILABLE', order_id = NULL, used_at = NULL, expire_at = #{newExpireAt},
+            version = version + 1, updated_at = #{now}
+        WHERE id = #{id} AND status = 'USED' AND order_id = #{orderId}
+    </update>
+
+    <insert id="insertLedger">
+        INSERT INTO coupon_ledger
+          (id, coupon_instance_id, user_id, order_id, action, from_status, to_status,
+           request_id, remark, created_at)
+        VALUES
+          (#{id}, #{couponInstanceId}, #{userId}, #{orderId}, #{action}, #{fromStatus},
+           #{toStatus}, #{requestId}, #{remark}, #{now})
+    </insert>
+</mapper>

@@ -18,6 +18,7 @@ import java.security.PublicKey;
 import java.security.cert.CertificateFactory;
 import java.util.Map;
 import javax.sql.DataSource;
+import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.boot.autoconfigure.condition.*;
 import org.springframework.boot.context.properties.*;
 import org.springframework.context.annotation.*;
@@ -79,8 +80,12 @@ public class PaymentFoundationConfiguration {
     @Bean OrderPaymentResultApiImpl orderPaymentResultConsumer(DataSource source,SnowflakeIdGenerator ids,
             ScheduleCapacityGuardApi guard,PaymentSuccessFactsApi payments,ReservationConfirmApi reservations,
             ReservationExpiryApi expirations,IntegrationEventPublisher publisher,
-            @org.springframework.beans.factory.annotation.Value("${pet.order.auto-confirm.enabled:false}") boolean autoConfirmTasksEnabled){
-        return new OrderPaymentResultApiImpl(source,ids,guard,payments,reservations,expirations,publisher,autoConfirmTasksEnabled);
+            @org.springframework.beans.factory.annotation.Value("${pet.order.auto-confirm.enabled:false}") boolean autoConfirmTasksEnabled,
+            ObjectProvider<com.petplatform.coupon.api.query.BookingCouponExposureApi> couponExposure,
+            ObjectProvider<com.petplatform.coupon.api.command.CouponCommandApi> couponCommands){
+        // Contract 61: paid marking consumes the frozen coupon when the lifecycle switch is on.
+        return new OrderPaymentResultApiImpl(source,ids,guard,payments,reservations,expirations,publisher,
+                autoConfirmTasksEnabled,couponExposure.getIfAvailable(),couponCommands.getIfAvailable());
     }
     private static ApiException unavailable(){return new ApiException(CommonApiCodes.DEPENDENCY_UNAVAILABLE,"payment channel configuration unavailable");}
 }

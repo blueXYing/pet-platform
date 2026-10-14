@@ -20,6 +20,9 @@ public final class CouponMybatis {
                     .getResources("classpath*:mapper/Coupon*Mapper.xml"));
             SqlSessionFactory factory = Objects.requireNonNull(bean.getObject());
             factory.getConfiguration().setLocalCacheScope(LocalCacheScope.STATEMENT);
+            // Lifecycle entities map underscored result labels (contract 61); the read store
+            // builds its own factory with the same setting.
+            factory.getConfiguration().setMapUnderscoreToCamelCase(true);
             return new SqlSessionTemplate(factory);
         } catch (Exception failure) {
             throw new IllegalStateException("coupon SqlSessionFactory build failed", failure);

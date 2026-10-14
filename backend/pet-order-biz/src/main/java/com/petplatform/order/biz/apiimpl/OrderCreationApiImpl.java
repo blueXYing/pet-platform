@@ -1,6 +1,7 @@
 package com.petplatform.order.biz.apiimpl;
 
 import com.petplatform.common.SnowflakeIdGenerator;
+import com.petplatform.coupon.api.command.CouponCommandApi;
 import com.petplatform.merchant.api.query.BookingMerchantFactsApi;
 import com.petplatform.order.api.command.OrderCreationApi;
 import com.petplatform.order.api.dto.OrderCreationTypes.CreateOrderCommand;
@@ -24,8 +25,18 @@ public final class OrderCreationApiImpl implements OrderCreationApi {
             BookingServiceFactsApi services, ScheduleCapacityGuardApi guard,
             ReservationHoldApi reservations, OrderCreationInputProtection protection,
             OrderCreationRemarkPolicy remarkPolicy, Clock clock) {
+        this(source, ids, users, merchants, services, guard, reservations, protection,
+                remarkPolicy, null, clock);
+    }
+
+    /** Contract 61 slice: coupon freeze provider rides along when the lifecycle switch is on. */
+    public OrderCreationApiImpl(DataSource source, SnowflakeIdGenerator ids,
+            BookingUserFactsApi users, BookingMerchantFactsApi merchants,
+            BookingServiceFactsApi services, ScheduleCapacityGuardApi guard,
+            ReservationHoldApi reservations, OrderCreationInputProtection protection,
+            OrderCreationRemarkPolicy remarkPolicy, CouponCommandApi coupons, Clock clock) {
         this.service = new OrderCreationService(source, ids, users, merchants, services,
-                guard, reservations, protection, remarkPolicy, clock);
+                guard, reservations, protection, remarkPolicy, coupons, clock);
     }
 
     @Override public CreateOrderResult create(CreateOrderCommand command) {

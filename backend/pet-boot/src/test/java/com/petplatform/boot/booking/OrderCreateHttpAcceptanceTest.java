@@ -110,6 +110,15 @@ class OrderCreateHttpAcceptanceTest {
     @Test
     void qualificationRejectionsReuseTheKernelErrorFace() throws Exception {
         try (Fixture fixture = new Fixture()) {
+            // Contract 61 ordering: the coupon freeze runs inside the kernel AFTER the facts and
+            // capacity proof, so the provider-missing fail-closed answer is observable while the
+            // seeded slot is still free — and no business row survives it.
+            assertCode("COMMON_DEPENDENCY_UNAVAILABLE", () -> fixture.create(UUID.randomUUID().toString(),
+                    body(Map.of("storeId", STORE, "serviceId", "710401", "petId", "710200",
+                            "fulfillmentType", "IN_STORE", "appointmentStart", "2030-01-01T09:00:00Z",
+                            "appointmentEnd", "2030-01-01T10:30:00Z", "couponInstanceId", "710999")),
+                    USER_A));
+            assertEquals(0L, fixture.count("SELECT COUNT(*) FROM pet_order"));
             String ownerRequest = UUID.randomUUID().toString();
             assertNotNull(fixture.create(ownerRequest, inStoreBody(), USER_A).getBody());
             // The seeded window holds one slot: a second booking (USER_B's own pet) loses it.
@@ -121,12 +130,6 @@ class OrderCreateHttpAcceptanceTest {
             // The pet belongs to USER_A only.
             assertCode("PET_NOT_FOUND", () -> fixture.create(UUID.randomUUID().toString(),
                     inStoreBody(), USER_B));
-            // Coupons stay unimplemented (CPN not launched): a non-null id fails closed, no rows.
-            assertCode("COMMON_DEPENDENCY_UNAVAILABLE", () -> fixture.create(UUID.randomUUID().toString(),
-                    body(Map.of("storeId", STORE, "serviceId", "710401", "petId", "710200",
-                            "fulfillmentType", "IN_STORE", "appointmentStart", "2030-01-01T09:00:00Z",
-                            "appointmentEnd", "2030-01-01T10:30:00Z", "couponInstanceId", "710999")),
-                    USER_A));
             // A canceled account is a plain 403 on replay of its own successful order.
             fixture.db().jdbc.update("UPDATE user_account SET status='CANCELED' WHERE id=?",
                     Long.parseLong(USER_A));

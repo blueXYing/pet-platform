@@ -13,10 +13,12 @@ import { PreviewPetRepository, type PetView } from '../../pet/model'
 import { realPetRepository } from '../../api/page-repository'
 import {
   PREVIEW_BOOKING_TODAY, PICKUP_SELECTION_ENABLED, availabilityReadMessage, beijingToday,
-  bookingCreateMessage, bookingDates, bookingFormError, bookingFormErrorLabels, bookingSheetTitle, draftFromCommandData, paymentDeadline,
+  bookingCreateMessage, bookingDates, bookingFormError, bookingFormErrorLabels, bookingSheetTitle, couponOptions,
+  discountedAmount, draftFromCommandData, paymentDeadline,
   pickupCandidates, receiptBadge, returnCandidates, slotViews, windowLabel, PreviewBookingRepository,
   type AvailabilityItem, type AvailabilityView, type BookingDate, type BookingDraft, type BookingScenario, type CreateOrderReceipt,
 } from '../../booking/model'
+import { thresholdLabel, type CouponView } from '../../coupon-points/model'
 import { ORDER_CREATE_SLOT, RealBookingRepository } from '../../booking/repository'
 import { RealAddressRepository } from '../../address/repository'
 import { addressFlat, type AddressView } from '../../address/model'
@@ -78,6 +80,10 @@ export function BookingSheet({ serviceId, storeId: storeIdParam, preview, scenar
   const [quickAddresses, setQuickAddresses] = useState<readonly AddressView[]>([])
   const quickLoadedRevision = useRef<number | null>(null)
   const [remark, setRemark] = useState('')
+  // 61号选券入口：§3.15.1 AVAILABLE 读面只作展示提示，资格与折后应付以服务端冻结判定为准；
+  // preview 通道返回空数组，本节仅在真实登录态且有可用券时渲染。读取失败静默降级（不影响下单）。
+  const [coupons, setCoupons] = useState<readonly CouponView[]>([])
+  const [couponId, setCouponId] = useState<string | null>(null)
   const [notice, setNotice] = useState('')
   const [slotAuthExpired, setSlotAuthExpired] = useState(false)
   const [busy, setBusy] = useState(false)
@@ -126,6 +132,10 @@ export function BookingSheet({ serviceId, storeId: storeIdParam, preview, scenar
       if (!mounted.current || current !== sequence.current || currentRevision !== scope.revision) return
       setPets(list)
       setPetId(previous => previous ?? list.find(pet => pet.isDefault)?.petId ?? list[0]?.petId ?? null)
+      // 选券展示源（61号）：与宠物档案同批懒加载；失败静默降级为「不用券」。
+      void scope.run(undefined, () => (preview ? bookingRepository : realRepository).availableCoupons())
+        .then(list => { if (mounted.current && current === sequence.current) setCoupons(list) })
+        .catch(() => { if (mounted.current && current === sequence.current) setCoupons([]) })
       // 幂等恢复：上次提交结果未确认时按原命令载荷还原选择（23号：同载荷重试同一 X-Request-Id）。
       const pending = consumerApi.pendingCommand(ORDER_CREATE_SLOT)
       const draft = pending ? draftFromCommandData(pending.data) : null
@@ -134,6 +144,7 @@ export function BookingSheet({ serviceId, storeId: storeIdParam, preview, scenar
         if (!restored.current) {
           restored.current = true
           setPetId(draft.petId); setRemark(draft.remark); setServiceAddress(draft.serviceAddress)
+          setCouponId(draft.couponInstanceId)
           setSelectedStart(draft.appointmentStart || null); setPickupStart(draft.pickupStart); setReturnStart(draft.returnStart)
           const restoredDate = (draft.appointmentStart || draft.pickupStart || '').slice(0, 10)
           if (/^\d{4}-\d{2}-\d{2}$/.test(restoredDate)) {
@@ -239,6 +250,7 @@ export function BookingSheet({ serviceId, storeId: storeIdParam, preview, scenar
       selectedReturnWindowId: pickup ? returnItem?.windowId ?? null : null,
       serviceAddress: pickup ? serviceAddress : '',
       remark,
+      couponInstanceId: chosenCoupon?.couponId ?? null,
     }
     const error = bookingFormError(draft)
     if (error !== null) { setNotice(bookingFormErrorLabels[error]); return }
@@ -284,6 +296,10 @@ export function BookingSheet({ serviceId, storeId: storeIdParam, preview, scenar
   const pickupItem = itemByStart(pickupStart)
   const returnItem = itemByStart(returnStart)
   const chosenPet = pets.find(pet => pet.petId === petId) || null
+  const couponChoices = service === null ? [] : couponOptions(coupons, service.salePrice)
+  const chosenCoupon = couponChoices.find(coupon => coupon.couponId === couponId) ?? null
+  const payableEstimate = service === null || chosenCoupon === null ? service?.salePrice ?? null
+    : discountedAmount(service.salePrice, chosenCoupon)
   const badge = receipt === null ? null : receiptBadge(receipt)
   const dateView = dates.find(item => item.iso === date) || null
   const coverUrl = service === null ? null : usableCoverUrl(service.cover, coverNow)
@@ -399,6 +415,25 @@ export function BookingSheet({ serviceId, storeId: storeIdParam, preview, scenar
                 </Button>)}
               </View>}
             </View>
+            {!preview && couponChoices.length > 0 && <View className='bks-section'>
+              <Text className='bks-label'>优惠券</Text>
+              <View className='bks-coupons'>
+                <Button id={`${idPrefix}-coupon-none`} ariaLabel='不使用优惠'
+                  className={`bks-coupon-chip${couponId === null ? ' is-selected' : ''}`}
+                  disabled={busy} hoverClass='none' onClick={() => setCouponId(null)}>
+                  <Text className='bks-coupon-name'>不使用优惠</Text>
+                </Button>
+                {couponChoices.map(coupon => <Button key={coupon.couponId}
+                  id={`${idPrefix}-coupon-${coupon.couponId}`}
+                  ariaLabel={`选择优惠券 ${coupon.name} 抵扣${coupon.amountOff}元 ${thresholdLabel(coupon)}`}
+                  className={`bks-coupon-chip${couponId === coupon.couponId ? ' is-selected' : ''}`}
+                  disabled={busy} hoverClass='none' onClick={() => setCouponId(coupon.couponId)}>
+                  <Text className='bks-coupon-name'>{coupon.name}</Text>
+                  <Text className='bks-coupon-discount'>-¥{coupon.amountOff}</Text>
+                  <Text className='bks-coupon-threshold'>{thresholdLabel(coupon)}</Text>
+                </Button>)}
+              </View>
+            </View>}
             <View className='bks-section'>
               <Text className='bks-label'>备注（选填）</Text>
               <Textarea id={`${idPrefix}-remark`} className='bks-textarea' maxlength={500} value={remark} disabled={busy}
@@ -431,6 +466,12 @@ export function BookingSheet({ serviceId, storeId: storeIdParam, preview, scenar
                 {pickupFlow && <View className='bks-fact-row'><Text className='bks-fact-label'>送回时段</Text><Text className='bks-fact-value'>{returnItem ? windowLabel(returnItem.start, returnItem.end) : '—'}</Text></View>}
                 {pickupFlow && <View className='bks-fact-row'><Text className='bks-fact-label'>服务地址</Text><Text className='bks-fact-value'>{serviceAddress.trim() || '—'}</Text></View>}
                 <View className='bks-fact-row'><Text className='bks-fact-label'>预约费用</Text><Text className='bks-fact-value bks-fact-amount'>¥{service.salePrice}</Text></View>
+                {chosenCoupon !== null && <View className='bks-fact-row'>
+                  <Text className='bks-fact-label'>优惠券</Text>
+                  <Text className='bks-fact-value'>{chosenCoupon.name} -¥{chosenCoupon.amountOff}</Text>
+                </View>}
+                {chosenCoupon !== null && payableEstimate !== null
+                  && <View className='bks-fact-row'><Text className='bks-fact-label'>预估应付</Text><Text className='bks-fact-value bks-fact-amount'>¥{payableEstimate}</Text></View>}
               </View>
             </View>
             {notice && <Text id={`${idPrefix}-notice`} className='bks-notice'>{notice}</Text>}
@@ -440,7 +481,7 @@ export function BookingSheet({ serviceId, storeId: storeIdParam, preview, scenar
       </ScrollView>
       {ready && service && <View className='bks-foot'>
         <Button id={`${idPrefix}-submit`} className='bks-foot-action' disabled={busy} hoverClass='none' onClick={() => void submit()}>
-          {busy ? '正在提交…' : `确认预约 · ¥${service.salePrice}`}
+          {busy ? '正在提交…' : `确认预约 · ¥${payableEstimate ?? service.salePrice}`}
         </Button>
       </View>}
       {phase === 'receipt' && receipt && <View className='bks-foot'>
