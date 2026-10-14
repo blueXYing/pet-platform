@@ -56,6 +56,8 @@ export const MINE_BECOME_PROVIDER_URL = '/consumer/pages/become-provider/index'
 export const MINE_DEVELOPER_SHELL_URL = '/consumer/pages/shell/index'
 // 地址管理（契约 59 切片，32号第二批）：mine 网格「地址管理」格位的真实入口。
 export const MINE_ADDRESS_BOOK_URL = '/consumer/pages/address/index'
+// 积分商城展示态页（32号裁决第二节：只赚不花，商城=能看不能换；126:675 我的服务第三格原稿格位）。
+export const MINE_POINTS_MALL_URL = '/consumer/pages/points-mall/index'
 
 export const phoneGuideCopy = {
   title: '授权手机号，完善账号',

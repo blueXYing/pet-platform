@@ -10,7 +10,7 @@ import { deltaLabel, formatLedgerTime, pointsBizTypeLabels, type PointsLedgerVie
 import avatar from '../../assets/profile/avatar.png'
 import stripTop from './assets/strip-top.jpg'
 import {
-  MINE_ADDRESS_BOOK_URL, MINE_BECOME_PROVIDER_URL, MINE_DEVELOPER_SHELL_URL, MINE_MERCHANT_WORKSPACE_URL, mineCard, mineHubEntries, phoneGuideCopy,
+  MINE_ADDRESS_BOOK_URL, MINE_BECOME_PROVIDER_URL, MINE_DEVELOPER_SHELL_URL, MINE_MERCHANT_WORKSPACE_URL, MINE_POINTS_MALL_URL, mineCard, mineHubEntries, phoneGuideCopy,
   type MineCard, type MineStats,
 } from './model'
 import './mine.css'
@@ -19,11 +19,11 @@ import './mine.css'
 // 授权引导（可跳过）+ 功能枢纽。复用既有机制：会话存取/登录链全在 ConsumerApi
 // （wechat-login → VERIFY_PHONE → phone-binding attempt 通道），本页不新造第二套会话。
 // 2026-10-12 视觉重做：设计源 126:675 新版（2026-10-10 稿，planning/progress/2026-10-12/
-// figma-mine/ 精确树）。功能/契约零改动；签到卡/拉新/奖励/收藏/足迹/积分商城/
-// 成为服务者/帮助与客服/意见反馈/设置等无工程页面的原稿入口仅做视觉占位（无交互），
+// figma-mine/ 精确树）。功能/契约零改动；签到卡/拉新/奖励/收藏/足迹/
+// 帮助与客服/意见反馈/设置等无工程页面的原稿入口仅做视觉占位（无交互），
 // 登记表 §4.6 记偏差。全部既有入口（订单/优惠券/积分明细页/宠物档案/通知偏好/编辑资料/
-// 商家工作台/退出登录/开发者工具）保留并沿用原 URL；地址管理格位 2026-10-13 接通
-// 契约 59 子页（32号第二批）。
+// 商家工作台/退出登录/开发者工具）保留并沿用原 URL。2026-10-13（32号裁决第二批）：
+// 地址管理/积分商城/成为服务者三格接通真实子页（契约 59/展示态 §4.15/become-provider）。
 const GUIDE_KEY = 'pet.c.phone-guide.v1'
 
 const [hubOrders, hubCoupons, hubPoints, hubPreferences, hubPets, hubProfile] = mineHubEntries
@@ -288,7 +288,9 @@ export default function MinePage() {
         <View className='mine-section'>
           <View className='mine-section-head'><Text className='mine-section-title'>我的服务</Text></View>
           <View className='mine-grid'>
-            {/* 我的收藏：无工程页面，视觉占位；优惠券/宠物档案/地址管理为真实入口。 */}
+            {/* 我的收藏：无工程页面，视觉占位；优惠券/地址管理为真实入口。积分商城格位
+                2026-10-13 接通 32号裁决第二节展示态页（原稿 126:675 第三格复位，登记表 §4.15）；
+                宠物档案自该格迁至「更多服务」行。 */}
             <View className='mine-cell'>
               <View className='mine-cell-chip'><View className='mi-svc-collect' /></View>
               <Text className='mine-cell-label'>我的收藏</Text>
@@ -297,9 +299,9 @@ export default function MinePage() {
               <View className='mine-cell-chip'><View className='mi-svc-coupon' /></View>
               <Text className='mine-cell-label'>优惠券</Text>
             </Button>
-            <Button id='mine-stat-pets' className='mine-cell' hoverClass='none' onClick={() => open(hubPets.url)}>
+            <Button id='mine-hub-mall' className='mine-cell' hoverClass='none' ariaLabel='积分商城，兑换暂未开放' onClick={() => open(MINE_POINTS_MALL_URL)}>
               <View className='mine-cell-chip'><View className='mi-svc-mall' /></View>
-              <Text className='mine-cell-label'>宠物档案</Text>
+              <Text className='mine-cell-label'>积分商城</Text>
             </Button>
             {/* 地址管理（契约 59 切片）：原视觉占位格位接真实子页。 */}
             <Button id='mine-svc-address' className='mine-cell' hoverClass='none' onClick={() => open(MINE_ADDRESS_BOOK_URL)}>
@@ -311,7 +313,9 @@ export default function MinePage() {
         <View className='mine-section'>
           <View className='mine-section-head'><Text className='mine-section-title'>更多服务</Text></View>
           <View className='mine-grid'>
-            {/* 成为服务者为真实入口（32号 §2 七页批次：become-provider 落地页）；帮助与客服/意见反馈：无工程页面，视觉占位；通知偏好为真实入口。 */}
+            {/* 成为服务者为真实入口（32号 §2 七页批次：become-provider 落地页）；帮助与客服/意见反馈：
+                无工程页面，视觉占位；宠物档案（自「我的服务」商城格位迁入，原稿本行 4 格现 5 格）与
+                通知偏好为真实入口。 */}
             <Button id='mine-become-provider' className='mine-cell' hoverClass='none' onClick={() => open(MINE_BECOME_PROVIDER_URL)}>
               <View className='mine-cell-chip'><View className='mi-svc-provider' /></View>
               <Text className='mine-cell-label'>成为服务者</Text>
@@ -324,6 +328,10 @@ export default function MinePage() {
               <View className='mine-cell-chip'><View className='mi-svc-feedback' /></View>
               <Text className='mine-cell-label'>意见反馈</Text>
             </View>
+            <Button id='mine-stat-pets' className='mine-cell' hoverClass='none' onClick={() => open(hubPets.url)}>
+              <View className='mine-cell-chip'><View className='mi-svc-pet' /></View>
+              <Text className='mine-cell-label'>宠物档案</Text>
+            </Button>
             <Button id='mine-hub-preferences' className='mine-cell' hoverClass='none' onClick={() => open(hubPreferences.url)}>
               <View className='mine-cell-chip'><View className='mi-svc-settings' /></View>
               <Text className='mine-cell-label'>通知偏好</Text>
