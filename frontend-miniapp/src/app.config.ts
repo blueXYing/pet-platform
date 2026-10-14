@@ -56,5 +56,8 @@ export default defineAppConfig({
     // Address book slice (contract 59 via HTTP10 §3.2.2, ruling-32 second batch): list with
     // inline set-default/delete, new/edit as the designed bottom-sheet form pages.
     { root: 'consumer/pages/address', pages: ['index', 'new', 'edit'] },
+    // Become-provider entry slice (32号 §2 seven-page batch): landing sheet + service type
+    // selection feeding the existing merchant-application flow via merchantTypeCode.
+    { root: 'consumer/pages/become-provider', pages: ['index', 'service-type'] },
   ],
 })

@@ -67,6 +67,8 @@ assert.deepEqual(packages.map(p => ({ root: p.root, pages: p.pages })), [
   { root: 'consumer/pages/booking', pages: ['create', 'pay'] },
   // Address book slice (59号契约).
   { root: 'consumer/pages/address', pages: ['index', 'new', 'edit'] },
+  // Become-provider entry slice (32号 §2 seven-page batch): landing + service-type selection.
+  { root: 'consumer/pages/become-provider', pages: ['index', 'service-type'] },
 ], 'Merchant workspace, pet archive, merchant application, store services, coupon/points, aftersale and notification preference pages must be registered in the single app')
 for (const [folder, pages] of [['consumer/pages/aftersale', ['index', 'detail', 'apply']], ['merchant/pages/aftersale', ['index', 'detail']], ['merchant/pages/reviews', ['index']]]) {
   for (const page of pages) for (const extension of ['js', 'json', 'wxml', 'wxss']) {
@@ -101,6 +103,13 @@ for (const page of ['create', 'pay']) {
   for (const extension of ['js', 'json', 'wxml', 'wxss']) {
     assert.ok(fs.existsSync(path.join(root, `consumer/pages/booking/${page}.${extension}`)),
       `Booking page build artifact missing: booking/${page}.${extension}`)
+  }
+}
+// Become-provider entry slice (32号 §2 seven-page batch): landing sheet + type selection.
+for (const page of ['index', 'service-type']) {
+  for (const extension of ['js', 'json', 'wxml', 'wxss']) {
+    assert.ok(fs.existsSync(path.join(root, `consumer/pages/become-provider/${page}.${extension}`)),
+      `Become-provider page build artifact missing: become-provider/${page}.${extension}`)
   }
 }
 for (const extension of ['js', 'json', 'wxml', 'wxss']) {

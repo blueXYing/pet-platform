@@ -1,0 +1,47 @@
+/* 成为服务者入口模块（32号裁决 §2 七页批次；设计源 129:14566 / 129:15547，登记表 §4.16）。
+   运行时像素单位 --bep-unit = windowWidth/402（C 端家族先例）。原稿面板：白底 r17.155
+   顶角、标题 17.146/700 #1d0d07、简介 12.86 #3c3c3c、说明行 #f0fbff r8.573 底+#5baae8
+   图标/文字、输入件 #f0fbff+#c0ecff 1.07 描边 r8.573、下拉白底 #c0ecff 1.19 描边行高
+   32.23、主按钮 #5baae8 全圆角 47.15 高。WXSS 铁律：button 重置走 (0,1,1) 页面作用域、
+   样式按钮用 (0,2,0) 复合选择器压重置、无 button 嵌套、状态仅 className 变体、禁 data-*。 */
+.bep-page { min-height: 100vh; background: #f5f5f5; color: #1d0d07; font-family: Roboto, "Noto Sans SC", sans-serif; }
+.bep-page view, .bep-page button, .bep-page text { box-sizing: border-box; }
+.bep-page button { padding: 0; margin: 0; border: 0; border-radius: 0; background: transparent; font: inherit; line-height: normal; text-align: left; }
+.bep-page button::after { border: 0; }
+
+/* 半屏面板层：遮罩铺满导航保留区以上，面板贴自绘底部导航上沿（原稿面板浮于「我的」页
+   与底部 tab 之上；独立路由页以遮罩+面板承载同形态，偏差登记 §4.16）。 */
+.bep-design { position: fixed; left: 0; right: 0; top: 0; bottom: calc(var(--bep-unit) * 62 + env(safe-area-inset-bottom)); display: flex; flex-direction: column; justify-content: flex-end; }
+.bep-mask { position: absolute; left: 0; right: 0; top: 0; bottom: 0; background: rgba(0, 0, 0, .3); }
+.bep-sheet { position: relative; background: #ffffff; border-radius: calc(var(--bep-unit) * 17.155) calc(var(--bep-unit) * 17.155) 0 0; padding: calc(var(--bep-unit) * 17.15) calc(var(--bep-unit) * 21.5) calc(var(--bep-unit) * 12.86); }
+
+/* 面板头（原稿 margin-wrap y17：标题 86x26 + 关闭钮 34.29 方）。 */
+.bep-head { display: flex; align-items: center; justify-content: space-between; height: calc(var(--bep-unit) * 34.29); }
+.bep-title { font-size: calc(var(--bep-unit) * 17.146); line-height: calc(var(--bep-unit) * 25.72); font-weight: 700; color: #1d0d07; }
+.bep-sheet .bep-close { width: calc(var(--bep-unit) * 34.29); height: calc(var(--bep-unit) * 34.29); display: flex; align-items: center; justify-content: center; }
+.bep-close-icon { width: calc(var(--bep-unit) * 11); height: calc(var(--bep-unit) * 11); background-image: url("data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTEiIGhlaWdodD0iMTEiIHZpZXdCb3g9IjAgMCAxMSAxMSIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4NCjxwYXRoIGQ9Ik01LjQ5ODYgNC42NjAyNUwxMC42NTc5IC0wLjAwMDIwMjMzN0wxMS45OTcyIDEuMzM5NDRMNi44Mzc5MSA1Ljk5OTlMMTEuOTk3MiAxMC42NjA0TDEwLjY1NzkgMTJMNS40OTg2IDcuMzM5NTRMMC4zMzkzMDkgMTJMMCAxMC42NjA0TDUuMTU5MzEgNS45OTk5TDAuMDAwMTQ5MDExIDEuMzM5NDRMMC4zMzkzMDkgMEw1LjQ5ODYgNC42NjAyNVoiIGZpbGw9IiMzYzNjM2MiLz4NCjwvc3ZnPg0K"); background-repeat: no-repeat; background-size: 100% 100%; }
+
+/* 简介与说明行（原稿 12.86/400，行距 20.897；说明行 #f0fbff 胶囊 r8.573）。 */
+.bep-intro { display: block; margin-top: calc(var(--bep-unit) * 17.15); font-size: calc(var(--bep-unit) * 12.859); line-height: calc(var(--bep-unit) * 20.897); color: #3c3c3c; }
+.bep-note { display: flex; align-items: flex-start; margin-top: calc(var(--bep-unit) * 17.15); padding: calc(var(--bep-unit) * 12.86); background: #f0fbff; border-radius: calc(var(--bep-unit) * 8.573); }
+.bep-note-icon { flex: none; width: calc(var(--bep-unit) * 20); height: calc(var(--bep-unit) * 20); margin-top: calc(var(--bep-unit) * 0.5); background-image: url("data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjAiIGhlaWdodD0iMjAiIHZpZXdCb3g9IjAgMCAyMCAyMCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4NCjxwYXRoIGQ9Ik0xMCAwLjVDNC45ODA3MSAwLjUgMC45IDQuNTgwNzEgMC45IDkuNkMwLjkgMTQuNjE5MyA0Ljk4MDcxIDE4LjcgMTAgMTguN0MxNS4wMTkzIDE4LjcgMTkuMSAxNC42MTkzIDE5LjEgOS42QzE5LjEgNC41ODA3MSAxNS4wMTkzIDAuNSAxMCAwLjVaTTEwIDE3LjFDNS44NjQzNiAxNy4xIDIuNSAxMy43MzU2IDIuNSA5LjZDMi41IDUuNDY0MzYgNS44NjQzNiAyLjEgMTAgMi4xQzE0LjEzNTYgMi4xIDE3LjUgNS40NjQzNiAxNy41IDkuNkMxNy41IDEzLjczNTYgMTQuMTM1NiAxNy4xIDEwIDE3LjFaIiBmaWxsPSIjNWJhYWU4Ii8+DQo8cGF0aCBkPSJNMTAgNC43NzkzQzEwLjU1MjMgNC43NzkzIDExIDUuMjI3MDEgMTEgNS43NzkzQzExIDYuMzMxNTggMTAuNTUyMyA2Ljc3OTMgMTAgNi43NzkzQzkuNDQ3NzIgNi43NzkzIDkgNi4zMzE1OCA5IDUuNzc5M0M5IDUuMjI3MDEgOS40NDc3MiA0Ljc3OTMgMTAgNC43NzkzWiIgZmlsbD0iIzViYWFlOCIvPg0KPHBhdGggZD0iTTguOSA4LjVIMTEuMVYxNC41SDguOVY4LjVaIiBmaWxsPSIjNWJhYWU4Ii8+DQo8L3N2Zz4NCg=="); background-repeat: no-repeat; background-size: 100% 100%; }
+.bep-note-text { display: block; margin-left: calc(var(--bep-unit) * 8.6); font-size: calc(var(--bep-unit) * 12.859); line-height: calc(var(--bep-unit) * 20.897); color: #5baae8; }
+
+/* 服务类型字段（原稿 LABEL 12.86 + SELECT 42.87 高 #f0fbff/#c0ecff；原稿为两列布局的
+   左列，落地页仅此一项故取全宽，偏差登记 §4.16）。 */
+.bep-field { margin-top: calc(var(--bep-unit) * 17.15); }
+.bep-label { display: block; font-size: calc(var(--bep-unit) * 12.859); line-height: calc(var(--bep-unit) * 17.15); color: #3c3c3c; margin-bottom: calc(var(--bep-unit) * 4.29); }
+.bep-sheet .bep-select, .bep-select.is-open { display: flex; align-items: center; justify-content: space-between; width: 100%; height: calc(var(--bep-unit) * 42.87); padding: 0 calc(var(--bep-unit) * 15); background: #f0fbff; border: calc(var(--bep-unit) * 1.07) solid #c0ecff; border-radius: calc(var(--bep-unit) * 8.573); }
+.bep-select-value { font-size: calc(var(--bep-unit) * 15.003); line-height: calc(var(--bep-unit) * 22); color: #1d0d07; }
+.bep-select-chevron { flex: none; width: calc(var(--bep-unit) * 8.573); height: calc(var(--bep-unit) * 4.287); background-image: url("data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iOSIgaGVpZ2h0PSI1IiB2aWV3Qm94PSIwIDAgOSA1IiBmaWxsPSJub25lIiB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciPg0KPHBhdGggZD0iTTAuNiAwTDQuNSAzLjhMOC40IDBMOSAwLjZMNC41IDVMMCAwLjZMMC42IDBaIiBmaWxsPSIjMDAwMDAwIi8+DQo8L3N2Zz4NCg=="); background-repeat: no-repeat; background-size: 100% 100%; margin-right: calc(var(--bep-unit) * 5.36); }
+
+/* 下拉展开（129:15547 Group 26：白底 #c0ecff 1.19 描边、行高 32.23、字 15.516；原稿宽
+   170.68 随窄列选择器，本页选择器全宽故下拉同宽，偏差登记 §4.16）。 */
+.bep-options { margin-top: calc(var(--bep-unit) * 7.07); background: #ffffff; border: calc(var(--bep-unit) * 1.19) solid #c0ecff; padding: calc(var(--bep-unit) * 3) 0; }
+.bep-options .bep-option { display: flex; align-items: center; width: 100%; height: calc(var(--bep-unit) * 32.23); padding-left: calc(var(--bep-unit) * 15.516); background: #ffffff; }
+.bep-option-text { font-size: calc(var(--bep-unit) * 15.516); line-height: calc(var(--bep-unit) * 26); color: #1d0d07; }
+.bep-options .bep-option.is-current .bep-option-text { color: #5baae8; font-weight: 500; }
+
+/* 主按钮（原稿 BUTTON-398：359x47.15 #5baae8 全圆角白字 15/500；文案按契约对齐口径
+   由「提交申请」改为「进入入驻申请」，偏差登记 §4.16）。 */
+.bep-sheet .bep-primary { display: flex; align-items: center; justify-content: center; width: 100%; height: calc(var(--bep-unit) * 47.15); margin-top: calc(var(--bep-unit) * 25.72); background: #5baae8; border-radius: calc(var(--bep-unit) * 23.58); color: #ffffff; font-size: calc(var(--bep-unit) * 15.003); font-weight: 500; line-height: calc(var(--bep-unit) * 47.15); text-align: center; }

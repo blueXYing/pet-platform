@@ -10,7 +10,7 @@ import { deltaLabel, formatLedgerTime, pointsBizTypeLabels, type PointsLedgerVie
 import avatar from '../../assets/profile/avatar.png'
 import stripTop from './assets/strip-top.jpg'
 import {
-  MINE_ADDRESS_BOOK_URL, MINE_DEVELOPER_SHELL_URL, MINE_MERCHANT_WORKSPACE_URL, mineCard, mineHubEntries, phoneGuideCopy,
+  MINE_ADDRESS_BOOK_URL, MINE_BECOME_PROVIDER_URL, MINE_DEVELOPER_SHELL_URL, MINE_MERCHANT_WORKSPACE_URL, mineCard, mineHubEntries, phoneGuideCopy,
   type MineCard, type MineStats,
 } from './model'
 import './mine.css'
@@ -311,11 +311,11 @@ export default function MinePage() {
         <View className='mine-section'>
           <View className='mine-section-head'><Text className='mine-section-title'>更多服务</Text></View>
           <View className='mine-grid'>
-            {/* 成为服务者/帮助与客服/意见反馈：无工程页面，视觉占位；通知偏好为真实入口。 */}
-            <View className='mine-cell'>
+            {/* 成为服务者为真实入口（32号 §2 七页批次：become-provider 落地页）；帮助与客服/意见反馈：无工程页面，视觉占位；通知偏好为真实入口。 */}
+            <Button id='mine-become-provider' className='mine-cell' hoverClass='none' onClick={() => open(MINE_BECOME_PROVIDER_URL)}>
               <View className='mine-cell-chip'><View className='mi-svc-provider' /></View>
               <Text className='mine-cell-label'>成为服务者</Text>
-            </View>
+            </Button>
             <View className='mine-cell'>
               <View className='mine-cell-chip'><View className='mi-svc-help' /></View>
               <Text className='mine-cell-label'>帮助与客服</Text>

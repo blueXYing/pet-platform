@@ -30,5 +30,7 @@ export const consumerPageSections = {
   addressList: 'mine', addressNew: 'mine', addressEdit: 'mine',
   // Booking create + payment initiation slice (10号 §3.4/§3.5/§3.6).
   bookingCreate: 'services', bookingPay: 'mine',
+  // Become-provider entry slice (32号 §2): entered from the mine grid, rides the mine section.
+  becomeProvider: 'mine',
 } as const satisfies Record<string, ConsumerNavigationKey>
 export type ConsumerNavigationPage = keyof typeof consumerPageSections

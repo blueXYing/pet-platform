@@ -5,7 +5,7 @@ import { switchConsumerTab } from '../../components/navigation/switch'
 import { useWorkspace } from '../../../shared/workspace-react'
 import type { ApplicationResult, DraftInput } from '../../../shared/merchant-repositories'
 import { id, definiteRejection } from '../../../shared/consumer-api'
-import { ApplicationCommands, applicationMessage, editableApplication, emptyDraft, validateApplication, type City, type FieldErrors, type MaterialKind } from '../../merchant-application/model'
+import { ApplicationCommands, applicationMessage, editableApplication, emptyDraft, merchantTypeOptions, validateApplication, type City, type FieldErrors, type MaterialKind } from '../../merchant-application/model'
 import { applicationRuntime } from '../../merchant-application/runtime'
 import { noCurrentApplicationNotice, readCurrentApplication } from '../../merchant-application/current'
 import { MerchantApplicationView } from './view'
@@ -15,14 +15,20 @@ const materialLabels: Record<MaterialKind, string> = { storePhotoAssetIds: '门�
 export default function MerchantApplicationPage() {
   const route = useRouter()
   const preview = route.params.preview === '1'
+  // 32号 §2 become-provider 入口接法：服务类型选择结果按既有 DraftInput 字段形态
+  // （merchantTypeCode）传入；仅作为新空草稿的初始值——已有申请（含 DRAFT/REJECTED）
+  // 一律以服务端草稿为准，参数不覆盖任何既有数据。
+  const initialType = merchantTypeOptions.some(([code]) => code === route.params.merchantTypeCode)
+    ? route.params.merchantTypeCode as (typeof merchantTypeOptions)[number][0]
+    : null
   const { scope, revision } = useWorkspace(preview ? 'preview' : 'real')
   // A scope replacement discards every input and invalidates all callbacks from the old principal.
-  return <ApplicationScreen key={`${preview}:${revision}`} preview={preview} reference={preview && route.params.referenceCanvas === '1'} scope={scope} />
+  return <ApplicationScreen key={`${preview}:${revision}`} preview={preview} reference={preview && route.params.referenceCanvas === '1'} scope={scope} initialType={initialType} />
 }
-function ApplicationScreen({ preview, reference, scope }: { preview: boolean; reference: boolean; scope: ReturnType<typeof useWorkspace>['scope'] }) {
+function ApplicationScreen({ preview, reference, scope, initialType }: { preview: boolean; reference: boolean; scope: ReturnType<typeof useWorkspace>['scope']; initialType: (typeof merchantTypeOptions)[number][0] | null }) {
   const [{ dependencies: deps, recovery, uploads }] = useState(() => applicationRuntime(preview))
   const [commands] = useState(() => new ApplicationCommands(deps.application, scope))
-  const [draft, setDraft] = useState<DraftInput>(emptyDraft)
+  const [draft, setDraft] = useState<DraftInput>(() => initialType ? { merchantTypeCode: initialType } : emptyDraft())
   const [result, setResult] = useState<ApplicationResult | null>(null)
   const [opinion, setOpinion] = useState<string | null>(null)
   const [errors, setErrors] = useState<FieldErrors>({})
@@ -72,7 +78,7 @@ function ApplicationScreen({ preview, reference, scope }: { preview: boolean; re
       const loaded = await readCurrentApplication(deps.application, () => live() && !pending.current, () => !uploads?.pending())
       if (loaded.kind === 'ignored') return
       if (loaded.kind === 'empty') {
-        setResult(null); setDraft(emptyDraft()); setOpinion(null); setCityName(''); setErrors({}); setLocked(false)
+        setResult(null); setDraft(initialType ? { merchantTypeCode: initialType } : emptyDraft()); setOpinion(null); setCityName(''); setErrors({}); setLocked(false)
         setCities(null); setTypeOpen(false); dirty.current = false
         setNotice(noCurrentApplicationNotice)
         return
