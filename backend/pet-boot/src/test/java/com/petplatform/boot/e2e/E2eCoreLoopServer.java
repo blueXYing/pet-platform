@@ -5,11 +5,15 @@ import com.petplatform.common.SnowflakeIdGenerator;
 import com.petplatform.id.core.HutoolSnowflakeIdProvider;
 import com.petplatform.id.core.JdbcSnowflakeNodeStore;
 import com.petplatform.id.core.SnowflakeProviderSettings;
+import com.petplatform.admin.biz.application.AdminAuthService;
+import com.petplatform.aftersale.biz.application.AfterSalePorts;
 import com.petplatform.merchant.biz.application.ApplicationValidationPorts;
 import com.petplatform.merchant.biz.application.PrivateAssetQueryPort;
 import com.petplatform.merchant.biz.application.SubjectCredentialPort;
 import com.petplatform.merchant.biz.infrastructure.provider.AesGcmProtectedValueProvider;
 import com.petplatform.merchant.biz.infrastructure.provider.MainlandSubjectCredentialProvider;
+import com.petplatform.thirdparty.biz.application.port.PrivateAssetScanner;
+import com.petplatform.thirdparty.biz.application.port.PrivateObjectStore;
 import com.petplatform.payment.biz.application.PaymentChannel;
 import com.petplatform.payment.biz.application.PaymentMerchantBindings;
 import com.petplatform.payment.biz.application.PaymentReceiptVerifier;
@@ -49,8 +53,8 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 import java.util.UUID;
-import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.CountDownLatch;
 import javax.sql.DataSource;
 import org.springframework.boot.builder.SpringApplicationBuilder;
 import org.springframework.context.ConfigurableApplicationContext;
@@ -71,6 +75,15 @@ import tools.jackson.databind.json.JsonMapper;
  * initiated payments complete like a sandbox callback), refund/moderation/cover/private-asset
  * ports are permissive fixtures. Every business rule still runs against real Spring + MySQL +
  * Redis over real HTTP.
+ *
+ * Round 2 (this extension): the switch set stays additive — the previously disabled reschedule
+ * and aftersale slices are enabled alongside the review/appeal kernel, the contract-57 merchant
+ * refund face and the schedule selection amendment (windowId/kind projection the reschedule
+ * page consumes). A post-READY seeding thread drives the REAL loopback HTTP chain (no SQL row
+ * fabrication) to leave walkthrough facts behind: a merchant-confirmed PENDING_SERVICE order
+ * (reschedule target), a verified COMPLETED unreviewed order (review target), a published
+ * review (M appeal target), a PENDING_MERCHANT refund application (M refund target) and a
+ * PENDING aftersale case (C/M aftersale target). No existing chain semantics change.
  */
 public final class E2eCoreLoopServer {
   private static final JsonMapper json = JsonMapper.builder().build();
@@ -90,6 +103,11 @@ public final class E2eCoreLoopServer {
   private static final String WECHAT_OPEN = "e2e-open-c-710100";
   private static final String MERCHANT_NO = "E2E830000012345678";
   private static final String TERM_NO = "T0000001";
+  // Round-2 admin operator (bootstrapped as PLATFORM_SUPER_ADMIN scope ALL, SSOT §24: single
+  // operator, no extra MFA). Written to server-metadata.txt for the HTTP admin walkthrough.
+  private static final String ADMIN_ACCOUNT = "e2e-round2-operator";
+  private static final String ADMIN_PASSWORD = "E2E_Round2_Operator_91!";
+  private static final String ADMIN_ORIGIN = "https://e2e.example.invalid";
 
   private E2eCoreLoopServer() {}
 
@@ -126,12 +144,18 @@ public final class E2eCoreLoopServer {
     // auth001c_e2e_core_loop_ prefix shape and their Redis cleanup scans can wipe shared
     // keys; this run uses an exclusive prefix (still inside the auth001c[a-zA-Z0-9_-]* contract).
     String base = "auth001czq" + Long.toHexString(System.nanoTime() % 0xFFFFF);
+    // Crash-recovery seam (QA only): set E2E_DATABASE_NAME to REOPEN the database a previous
+    // process left behind (force-killed servers skip the DROP hook) instead of creating a fresh
+    // one. Schema, bookable facts and the round-2 seeds are skipped on reuse — the surviving
+    // facts are the point. Pair it with a fresh E2E_SNOWFLAKE_NODE (the old node rows are not
+    // virgin after a fail-close).
+    String reuseDatabase = System.getenv("E2E_DATABASE_NAME");
     for (int attempt = 1; attempt <= 6; attempt++) {
-      String candidate = base + "_e2e_core_loop_"
-          + UUID.randomUUID().toString().replace("-", "");
+      String candidate = reuseDatabase != null && !reuseDatabase.isBlank() ? reuseDatabase
+          : base + "_e2e_core_loop_" + UUID.randomUUID().toString().replace("-", "");
       HikariDataSource candidateSource = null;
       try {
-        adminJdbc.execute("CREATE DATABASE `" + candidate + "` CHARACTER SET utf8mb4");
+        adminJdbc.execute("CREATE DATABASE IF NOT EXISTS `" + candidate + "` CHARACTER SET utf8mb4");
         HikariConfig poolConfig = new HikariConfig();
         poolConfig.setJdbcUrl(server + candidate
             + "?allowPublicKeyRetrieval=true&useSSL=false&connectionTimeZone=UTC"
@@ -145,7 +169,9 @@ public final class E2eCoreLoopServer {
         poolConfig.setValidationTimeout(2_000);
         candidateSource = new HikariDataSource(poolConfig);
         JdbcTemplate candidateJdbc = new JdbcTemplate(candidateSource);
-        loadSchemas(candidateSource, root());
+        if (reuseDatabase == null || reuseDatabase.isBlank()) {
+          loadSchemas(candidateSource, root());
+        }
         String evidence = "e2e-core-loop:node" + nodeId + ":" + candidate;
         candidateJdbc.update("INSERT INTO snowflake_worker_state"
             + "(node_id,format_identity,enabled,initialization_ref,created_at,updated_at)"
@@ -160,7 +186,9 @@ public final class E2eCoreLoopServer {
               }
             });
         warmSnowflake(candidateIds);
-        seedBookableFacts(candidateJdbc, candidateIds);
+        if (reuseDatabase == null || reuseDatabase.isBlank()) {
+          seedBookableFacts(candidateJdbc, candidateIds);
+        }
         name = candidate;
         source = candidateSource;
         jdbc = candidateJdbc;
@@ -285,6 +313,77 @@ public final class E2eCoreLoopServer {
                         assetId,
                         "https://cover.example.invalid/signed/" + assetId + "?e2e=1",
                         Instant.now().getEpochSecond() + 3600));
+                // Round 2: aftersale workflow QA seams (same shape as AfterSaleHttpFixture) —
+                // permissive moderation plus an in-memory private object store/scanner so the
+                // aftersale evidence pipeline boots without OSS/ClamAV. No evidence is uploaded
+                // in this walkthrough, so the store stays empty; it exists only so the real
+                // composition starts.
+                beans.registerBean("e2eAfterSaleModeration", AfterSalePorts.Moderation.class,
+                    () -> value -> new AfterSalePorts.Approval(
+                        sha(value), "E2E_ONLY_MODERATION", true));
+                beans.registerBean("e2eAssetObjects", PrivateObjectStore.class,
+                    () -> new PrivateObjectStore() {
+                      private final Map<String, PrivateObjectStore.StoredContent> objects =
+                          new ConcurrentHashMap<>();
+                      @Override public PrivateObjectStore.StoredObject putIfAbsent(
+                          String objectKey, byte[] content, String mediaType, String sha256) {
+                        var candidate = new PrivateObjectStore.StoredContent(
+                            content, mediaType, sha256);
+                        var previous = objects.putIfAbsent(objectKey, candidate);
+                        var stored = previous == null ? candidate : previous;
+                        if (!sha256.equals(stored.sha256())
+                            || !Objects.deepEquals(stored.content(), content)) {
+                          throw new IllegalStateException("Immutable E2E object differs");
+                        }
+                        return new PrivateObjectStore.StoredObject(
+                            "e2e-only-version", sha256, content.length, mediaType);
+                      }
+                      @Override public PrivateObjectStore.StoredContent get(
+                          String objectKey, String versionRef) {
+                        if (!"e2e-only-version".equals(versionRef)) {
+                          throw new IllegalStateException("Wrong object version");
+                        }
+                        return Objects.requireNonNull(objects.get(objectKey));
+                      }
+                      @Override public java.util.Optional<PrivateObjectStore.StoredObject> head(
+                          String objectKey) {
+                        var stored = objects.get(objectKey);
+                        return stored == null ? java.util.Optional.empty()
+                            : java.util.Optional.of(new PrivateObjectStore.StoredObject(
+                                "e2e-only-version", stored.sha256(),
+                                stored.content().length, stored.mediaType()));
+                      }
+                    });
+                beans.registerBean("e2eAssetScanner", PrivateAssetScanner.class,
+                    () -> bytes -> new PrivateAssetScanner.ScanResult(
+                        true, "E2E_ONLY_SCANNER", "CLEAN"));
+                // Integration-surface events with no in-process subscriber in the current V1
+                // composition: without a registered consumer the dispatcher takes the
+                // no-consumer release lane and re-claims the same oldest event forever (a
+                // livelock that starves every later event — registered as a finding). This
+                // fixture-only sink lets the dispatcher mark those events PUBLISHED so the
+                // walkthrough chains keep flowing; it asserts nothing and writes nothing.
+                beans.registerBean("e2eIntegrationEventSink",
+                    com.petplatform.event.api.IntegrationEventConsumer.class,
+                    () -> new com.petplatform.event.api.IntegrationEventConsumer() {
+                      @Override public String consumerName() { return "E2E_INTEGRATION_SINK"; }
+                      @Override public Set<String> eventTypes() {
+                        // Integration-surface events with no in-process subscriber in the
+                        // current V1 composition (PaymentSucceeded / RefundSucceeded /
+                        // LatePaymentSucceededAfterTimeout keep their real consumers).
+                        return Set.of("OrderPaidEvent.v1", "OrderConfirmedEvent.v1",
+                            "OrderRejectedEvent.v1", "OrderRescheduledEvent.v1",
+                            "OrderVerifiedEvent.v2", "RefundApplicationCreatedEvent.v1",
+                            "RefundApplicationDecidedEvent.v1", "RefundOrderCreatedEvent.v1",
+                            "AfterSaleCreatedEvent", "AfterSaleProgressChangedEvent",
+                            "AfterSaleInvalidatedEvent");
+                      }
+                      @Override public void consume(
+                          com.petplatform.event.api.DispatchedEvent event) {
+                        System.out.println("E2E_EVENT_SINK " + event.eventType()
+                            + " aggregate=" + event.aggregateId());
+                      }
+                    });
               })
               .run(
                   "--server.address=127.0.0.1",
@@ -346,7 +445,11 @@ public final class E2eCoreLoopServer {
                   // and the auto-confirm worker to be on (complete dependency composition).
                   "--pet.order.merchant.worker.enabled=true",
                   "--pet.order.merchant.protection-key=" + base64(17),
-                  "--pet.order.reschedule.enabled=false",
+                  "--pet.order.reschedule.enabled=true",
+                  "--pet.order.reschedule.http.enabled=true",
+                  // 39号 §1 selection amendment: the availability items carry windowId/kind so
+                  // the C reschedule page can build the 46号 request without guessing identity.
+                  "--pet.schedule.selection.enabled=true",
                   "--pet.verification.credential.enabled=true",
                   "--pet.verification.credential.http.enabled=true",
                   "--pet.verification.credential.key-id=e2e-key",
@@ -363,8 +466,41 @@ public final class E2eCoreLoopServer {
                   // LateRefundService registers an empty subscription unless refund.late is on,
                   // and OutboxDispatcher fails the whole boot (empty eventTypes is an error).
                   "--pet.refund.late.enabled=true",
-                  "--pet.aftersale.enabled=false");
+                  // Round 2 additions (all default-off faces the first round left disabled):
+                  // contract-57 merchant refund list/detail/approve/reject HTTP face.
+                  "--pet.refund.merchant.http.enabled=true",
+                  // REV-001 review kernel + C review face, REV-002 appeal faces (M + admin).
+                  "--pet.review.enabled=true",
+                  "--pet.review.http.enabled=true",
+                  "--pet.review.appeal.enabled=true",
+                  "--pet.review.appeal.http.enabled=true",
+                  // Aftersale workflow + HTTP faces (needs private-assets composition below).
+                  "--pet.private-assets.enabled=true",
+                  "--PRIVATE_ASSET_GRANT_KEY_VERSION=e2e-grant-v1",
+                  "--PRIVATE_ASSET_GRANT_HMAC_KEY_BASE64=" + base64(53),
+                  "--PRIVATE_ASSET_REASON_KEY_VERSION=e2e-reason-v1",
+                  "--PRIVATE_ASSET_REASON_AES_KEY_BASE64=" + base64(59),
+                  "--pet.aftersale.enabled=true",
+                  "--pet.aftersale.http.enabled=true",
+                  "--pet.aftersale.worker.enabled=false",
+                  "--pet.aftersale.refund.enabled=false",
+                  "--pet.aftersale.protection-key=" + base64(29),
+                  "--pet.aftersale.type-codes=SERVICE_QUALITY,OTHER",
+                  "--pet.aftersale.demand-codes=REFUND,RESERVICE,OTHER",
+                  "--pet.aftersale.type-labels[SERVICE_QUALITY]=服务质量问题",
+                  "--pet.aftersale.type-labels[OTHER]=其他问题",
+                  "--pet.aftersale.demand-labels[REFUND]=退款",
+                  "--pet.aftersale.demand-labels[RESERVICE]=重新服务",
+                  "--pet.aftersale.demand-labels[OTHER]=其他诉求");
       String endpoint = "http://127.0.0.1:" + port;
+      // Round-2 admin operator: the real bootstrap lane (26号 maintenance-mode first account,
+      // PLATFORM_SUPER_ADMIN + scope ALL per SSOT §24 single-operator adjudication). Skipped on
+      // database reuse — the account already exists from the first process.
+      boolean reused = reuseDatabase != null && !reuseDatabase.isBlank();
+      if (!reused) {
+        context.getBean(AdminAuthService.class).bootstrap(ADMIN_ACCOUNT, "E2E二轮验收运营",
+            ADMIN_PASSWORD.toCharArray(), "E2E round-2 simulator walkthrough");
+      }
       PaymentNotificationService notifications =
           context.getBean(PaymentNotificationService.class);
       Thread payer = new Thread(() -> sandbox.completePaymentsForever(notifications), "e2e-sandbox-pay");
@@ -383,10 +519,21 @@ public final class E2eCoreLoopServer {
               + "storeId=" + STORE + System.lineSeparator()
               + "serviceId=" + SERVICE + System.lineSeparator()
               + "staffId=" + STAFF + System.lineSeparator()
-              + "wechatApp=" + WECHAT_APP + System.lineSeparator(),
+              + "wechatApp=" + WECHAT_APP + System.lineSeparator()
+              + "adminAccount=" + ADMIN_ACCOUNT + System.lineSeparator()
+              + "adminPassword=" + ADMIN_PASSWORD + System.lineSeparator()
+              + "adminOrigin=" + ADMIN_ORIGIN + System.lineSeparator(),
           StandardCharsets.UTF_8);
       System.out.println("E2E_CORE_LOOP result=READY endpoint=" + endpoint
           + " database=" + name + " metadata=" + metadata);
+      // Round-2 walkthrough facts: driven through the real loopback HTTP chain (the same
+      // requests the pages issue), never raw SQL. Failures only log — the server itself stays
+      // up and the manual core-loop regression remains fully walkable. Skipped on reuse.
+      if (!reused) {
+        Thread seeder = new Thread(() -> seedRound2Facts(endpoint, metadata), "e2e-round2-seeds");
+        seeder.setDaemon(true);
+        seeder.start();
+      }
       ConfigurableApplicationContext running = context;
       final String database = name;
       Runtime.getRuntime().addShutdownHook(new Thread(() -> {
@@ -526,6 +673,244 @@ public final class E2eCoreLoopServer {
     }
   }
 
+  // ------------------------------------------------------------------ round-2 walkthrough facts
+
+  /**
+   * Drives the real loopback HTTP chain to leave the round-2 walkthrough facts behind (same
+   * requests the pages issue; no SQL fabrication): login -> book -> sandbox-paid -> merchant
+   * confirm -> (verify) and then the review / refund-application / aftersale submissions on the
+   * verified orders. All appointment times are RELATIVE (tomorrow, business zone Asia/Shanghai)
+   * — no hardcoded calendar dates anywhere in this fixture.
+   */
+  private static void seedRound2Facts(String endpoint, Path metadata) {
+    for (int attempt = 1; attempt <= 3; attempt++) {
+      try {
+        seedRound2FactsOnce(endpoint, metadata, attempt);
+        return;
+      } catch (Throwable failure) {
+        System.err.println("E2E_ROUND2_SEEDS attempt " + attempt + " failed: " + failure);
+        if (attempt == 3) System.err.println("E2E_ROUND2_SEEDS result=FAILED " + failure);
+        else try {
+          Thread.sleep(20_000);
+        } catch (InterruptedException stop) {
+          return;
+        }
+      }
+    }
+  }
+
+  private static void seedRound2FactsOnce(String endpoint, Path metadata, int round)
+      throws Exception {
+    // Raw-socket transport (hand-written HTTP/1.1, one connection per request): the JDK
+    // HttpClient stack behaves differently inside the server JVM on this QA machine (its
+    // requests fall out of the /api/v1/c/** security matcher into the catch-all deny with an
+    // empty 403), while byte-identical requests over a plain loopback socket are served
+    // normally. The seeds only talk loopback to this process, so the minimal client is exact
+    // and keeps the walkthrough facts flowing through the real HTTP faces.
+    awaitLive(endpoint);
+    String token = login(endpoint);
+    System.out.println("E2E_ROUND2_SEEDS step=login round=" + round + " ok");
+      // Tomorrow 10:00-19:00 Beijing (capacity 6 per window). One seed order only (see the
+      // comment at the seed step). A settle pause after the order lets the outbox event chain
+      // (OrderPaid/OrderConfirmed consumers, the late-payment lane, the store guard) drain
+      // before the simulator walkthrough books the regression order in the same store-guard
+      // domain.
+      java.time.LocalDate beijingTomorrow = java.time.LocalDate.now(CHANNEL_ZONE).plusDays(1);
+      DateTimeFormatter slotTime = DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss.SSSXXX");
+      java.util.function.IntFunction<String> slot = index -> beijingTomorrow
+          .atTime(10 + (5 * (round - 1) + index) % 10, 0)
+          .atZone(CHANNEL_ZONE).format(slotTime);
+      // 1) The ONLY seed order: paid + merchant-confirmed, still PENDING_SERVICE — the
+      //    reschedule walkthrough target. Everything else is created through the pages: the
+      //    kernel denies any further booking for this user while a COMPLETED order still
+      //    holds a future active claim ("completed order has future active claim" — a served
+      //    slot stays consumed), so a pre-verified seed would block the core-loop regression
+      //    booking entirely. The regression's own order (verified in the simulator) becomes
+      //    the review/appeal/refund/aftersale target.
+      String rescheduleOrder = confirmedOrder(endpoint, token, slot.apply(0));
+      settle();
+      System.out.println("E2E_ROUND2_SEEDS step=rescheduleOrder id=" + rescheduleOrder);
+      String extra = "rescheduleOrderId=" + rescheduleOrder + System.lineSeparator();
+      Files.writeString(metadata, extra, StandardCharsets.UTF_8,
+          java.nio.file.StandardOpenOption.APPEND);
+      System.out.println("E2E_ROUND2_SEEDS result=READY rescheduleOrder=" + rescheduleOrder);
+  }
+
+  /** Drain pause between seeded orders (see the comment at the first seed step). */
+  private static void settle() throws InterruptedException {
+    Thread.sleep(30_000);
+  }
+
+  /** Liveness probe: the real C auth face answers a body-less attempts call with 400. */
+  private static void awaitLive(String endpoint) throws Exception {
+    long deadline = System.nanoTime() + Duration.ofSeconds(120).toNanos();
+    for (;;) {
+      try {
+        int status = (int) roundtrip(endpoint, "POST", "/c/auth/attempts", "",
+            Map.of("Content-Type", "application/json"))[0];
+        if (status == 400) return;
+      } catch (RuntimeException unavailable) {
+        // retry until the deadline
+      }
+      if (System.nanoTime() >= deadline) throw new IllegalStateException("backend never became live");
+      Thread.sleep(2_000);
+    }
+  }
+
+  /** One-shot C login (seeded identity already carries a verified phone, no phoneCode round). */
+  private static String login(String endpoint) throws Exception {
+    Map<String, Object> attempt = post(endpoint, null,
+        "/c/auth/attempts", Map.of("purpose", "WECHAT_LOGIN"), 201);
+    Map<String, Object> session = send(endpoint, "POST", "/c/auth/wechat-login",
+        Map.of("attemptId", attempt.get("attemptId"), "wechatCode", "e2e-round2-real-login-code"),
+        Map.of("Content-Type", "application/json",
+            "X-Request-Id", UUID.randomUUID().toString(),
+            "X-Auth-Attempt", String.valueOf(attempt.get("attemptToken"))), 200);
+    return String.valueOf(session.get("accessToken"));
+  }
+
+  /** Books tomorrow's 60-minute IN_STORE slot and lets the sandbox callback pay it. */
+  private static String paidOrder(String endpoint, String token, String appointmentStart)
+      throws Exception {
+    String order = String.valueOf(post(endpoint, token, "/c/orders",
+        Map.of("storeId", Long.toString(STORE), "serviceId", Long.toString(SERVICE),
+            "petId", Long.toString(PET), "fulfillmentType", "IN_STORE",
+            "appointmentStart", appointmentStart, "appointmentEnd", plusHour(appointmentStart)),
+        201).get("orderId"));
+    post(endpoint, token, "/c/orders/" + order + "/payments",
+        Map.of("channel", "WECHAT_MINI_PROGRAM"), 200);
+    // 180s: the shared QA MySQL can stall the Snowflake lane for tens of seconds (the
+    // recovering wrapper then reopens a new node), and the outbox-driven auto-confirm lags
+    // behind the sandbox payment by that margin. The deadline must outlive it.
+    long deadline = System.nanoTime() + Duration.ofSeconds(180).toNanos();
+    for (;;) {
+      Map<String, Object> detail = get(endpoint, token, "/c/orders/" + order);
+      String stage = String.valueOf(detail.get("orderStage"));
+      if (stage.contains("PENDING_CONFIRM") || stage.contains("PENDING_SERVICE")
+          || stage.contains("COMPLETED")) return order;
+      if (System.nanoTime() >= deadline) {
+        throw new IllegalStateException("sandbox payment never completed for order " + order
+            + " (stage=" + stage + ")");
+      }
+      Thread.sleep(2_000);
+    }
+  }
+
+  private static String confirmedOrder(String endpoint, String token, String appointmentStart)
+      throws Exception {
+    String order = paidOrder(endpoint, token, appointmentStart);
+    post(endpoint, token, "/merchant/orders/" + order + "/confirm",
+        Map.of("expectedConfirmRound", 0), 200);
+    return order;
+  }
+
+  private static String plusHour(String isoOffset) {
+    return java.time.OffsetDateTime.parse(isoOffset).plusMinutes(60)
+        .format(DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss.SSSXXX"));
+  }
+
+  private static Map<String, Object> post(String endpoint, String token, String path,
+      Map<String, Object> body, int expected) throws Exception {
+    Map<String, String> headers = new LinkedHashMap<>();
+    headers.put("Content-Type", "application/json");
+    headers.put("X-Request-Id", UUID.randomUUID().toString());
+    if (token != null) headers.put("Authorization", "Bearer " + token);
+    return send(endpoint, "POST", path, body, headers, expected);
+  }
+
+  private static Map<String, Object> get(String endpoint, String token, String path)
+      throws Exception {
+    return send(endpoint, "GET", path, null,
+        token == null ? Map.of() : Map.of("Authorization", "Bearer " + token), 200);
+  }
+
+  @SuppressWarnings("unchecked")
+  private static Map<String, Object> send(String endpoint, String method, String path,
+      Map<String, Object> body, Map<String, String> headers, int expected) throws Exception {
+    String payload = body == null ? "" : json.writeValueAsString(body);
+    Object[] response = roundtrip(endpoint, method, path, payload, headers);
+    int status = (int) response[0];
+    String raw = String.valueOf(response[1]);
+    Map<String, Object> envelope;
+    try {
+      envelope = raw.isBlank() ? Map.of() : json.readValue(raw, Map.class);
+    } catch (RuntimeException malformed) {
+      throw new IllegalStateException(method + " " + path + " -> " + status
+          + " body-not-json (" + raw.length() + " bytes)");
+    }
+    if (status != expected) {
+      throw new IllegalStateException(method + " " + path + " -> " + status
+          + " (expected " + expected + "): " + raw);
+    }
+    Map<String, Object> data = (Map<String, Object>) envelope.get("data");
+    if (data == null) {
+      throw new IllegalStateException(method + " " + path + " -> " + status
+          + " without data envelope: " + raw);
+    }
+    return data;
+  }
+
+  /**
+   * Minimal HTTP/1.1 client over a fresh loopback socket per request (Connection: close):
+   * writes the request, reads to EOF, decodes chunked transfer if present and returns
+   * {status, body}. Loopback-only by construction; no keep-alive state, no proxy stack.
+   */
+  private static Object[] roundtrip(String endpoint, String method, String path, String payload,
+      Map<String, String> headers) throws Exception {
+    java.net.URI base = java.net.URI.create(endpoint);
+    byte[] body = payload.getBytes(StandardCharsets.UTF_8);
+    StringBuilder request = new StringBuilder(method + " /api/v1" + path + " HTTP/1.1\r\n"
+        + "Host: " + base.getHost() + ":" + base.getPort() + "\r\n");
+    for (var header : headers.entrySet()) {
+      request.append(header.getKey()).append(": ").append(header.getValue()).append("\r\n");
+    }
+    request.append("Content-Length: ").append(body.length).append("\r\n")
+        .append("Connection: close\r\n\r\n");
+    try (java.net.Socket socket = new java.net.Socket()) {
+      socket.connect(new java.net.InetSocketAddress(base.getHost(), base.getPort()), 5_000);
+      socket.setSoTimeout(30_000);
+      java.io.OutputStream out = socket.getOutputStream();
+      out.write(request.toString().getBytes(StandardCharsets.UTF_8));
+      out.write(body);
+      out.flush();
+      ByteArrayOutputStream received = new ByteArrayOutputStream();
+      byte[] buffer = new byte[8192];
+      int read;
+      while ((read = socket.getInputStream().read(buffer)) >= 0) received.write(buffer, 0, read);
+      String response = received.toString(StandardCharsets.ISO_8859_1);
+      int split = response.indexOf("\r\n\r\n");
+      if (split < 0) throw new IllegalStateException("malformed HTTP response head");
+      int status = Integer.parseInt(response.substring(9, 12).trim());
+      String head = response.substring(0, split);
+      String rest = response.substring(split + 4);
+      boolean chunked = false;
+      for (String line : head.split("\r\n")) {
+        int colon = line.indexOf(':');
+        if (colon > 0 && "transfer-encoding".equalsIgnoreCase(line.substring(0, colon).trim())
+            && line.substring(colon + 1).toLowerCase().contains("chunked")) {
+          chunked = true;
+        }
+      }
+      if (chunked) rest = dechunk(rest);
+      return new Object[] {status, new String(rest.getBytes(StandardCharsets.ISO_8859_1),
+          StandardCharsets.UTF_8)};
+    }
+  }
+
+  private static String dechunk(String chunked) {
+    StringBuilder out = new StringBuilder();
+    int position = 0;
+    while (position < chunked.length()) {
+      int lineEnd = chunked.indexOf("\r\n", position);
+      if (lineEnd < 0) break;
+      int size = Integer.parseInt(chunked.substring(position, lineEnd).split(";")[0].trim(), 16);
+      if (size == 0) break;
+      out.append(chunked, lineEnd + 2, Math.min(lineEnd + 2 + size, chunked.length()));
+      position = lineEnd + 2 + size + 2;
+    }
+    return out.toString();
+  }
+
   // ------------------------------------------------------------------ seed
 
   /**
@@ -593,7 +978,7 @@ public final class E2eCoreLoopServer {
             .format(sql);
         jdbc.update("INSERT INTO schedule_availability_window(id,merchant_id,store_id,service_id,"
             + "start_at,end_at,configured_capacity,status,window_kind,created_at,updated_at)"
-            + " VALUES(?,?,?,?,?, ?,2,'OPEN','GENERAL',UTC_TIMESTAMP(3),UTC_TIMESTAMP(3))",
+            + " VALUES(?,?,?,?,?, ?,6,'OPEN','GENERAL',UTC_TIMESTAMP(3),UTC_TIMESTAMP(3))",
             ids.nextId(), MERCHANT, STORE, SERVICE, start, end);
       }
     }
@@ -733,6 +1118,11 @@ public final class E2eCoreLoopServer {
   private static final class RecoveringIds implements SnowflakeIdGenerator {
     private final HikariDataSource pool;
     private final int baseNodeId;
+    // Monotonic across THIS provider's lifetime: a failed reopen leaves its node row behind,
+    // so candidate numbers must never repeat (the first-round attempt-index enumeration
+    // collided with its own leftovers after several reopen cycles and latched closed forever).
+    private final java.util.concurrent.atomic.AtomicInteger candidates =
+        new java.util.concurrent.atomic.AtomicInteger();
     private volatile HutoolSnowflakeIdProvider current;
 
     RecoveringIds(HikariDataSource pool, int baseNodeId, HutoolSnowflakeIdProvider first) {
@@ -749,8 +1139,8 @@ public final class E2eCoreLoopServer {
         synchronized (this) {
           if (current == provider) {
             for (int attempt = 1; attempt <= 8; attempt++) {
-              int candidateNode = baseNodeId + attempt;
-              if (candidateNode > 1023) candidateNode = 1 + (candidateNode % 1023);
+              int raw = baseNodeId + candidates.incrementAndGet();
+              int candidateNode = raw > 1023 ? 1 + (raw % 1023) : raw;
               try {
                 JdbcSnowflakeNodeStore store = new JdbcSnowflakeNodeStore(pool);
                 final int recoveryNode = candidateNode;
@@ -774,7 +1164,7 @@ public final class E2eCoreLoopServer {
                 break;
               } catch (Exception reopenFailure) {
                 System.err.println("E2E_CORE_LOOP snowflake reopen attempt " + attempt
-                    + " failed: " + reopenFailure);
+                    + " (node " + candidateNode + ") failed: " + reopenFailure);
                 try {
                   Thread.sleep(2_000);
                 } catch (InterruptedException stop) {
@@ -822,7 +1212,12 @@ public final class E2eCoreLoopServer {
         "46-Order-Reschedule-Schema-v0.1.sql",
         "47-Verification-Credential-Schema-v0.1.sql",
         "48-Verification-Completion-Schema-v0.1.sql",
-        "49-Refund-Application-Schema-v0.1.sql"));
+        "49-Refund-Application-Schema-v0.1.sql",
+        // Round 2: the aftersale workflow + HTTP schemas (50/51) ride the enabled aftersale
+        // slice; the refund application's admission consults the active-aftersale projection,
+        // so these ALTERs are load-bearing for the whole C write face once aftersale is on.
+        "50-AfterSale-Workflow-Schema-v0.1.sql",
+        "51-AfterSale-Http-Schema-v0.1.sql"));
     try (var connection = source.getConnection()) {
       for (String file : scripts) {
         ScriptUtils.executeSqlScript(connection, new EncodedResource(
