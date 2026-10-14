@@ -79,6 +79,12 @@ public final class CBearerSessionFilter extends OncePerRequestFilter {
         || path.equals("/api/v1/c/points/tasks")
         || path.equals("/api/v1/c/points/claims")
         || path.equals("/api/v1/c/points/referral-bindings")
+        // Favorite/footprint surface (contract 58): MINIAPP Bearer enforced on every method —
+        // user-private data, no anonymous route in this family.
+        || path.equals("/api/v1/c/favorites")
+        || path.startsWith("/api/v1/c/favorites/")
+        || path.equals("/api/v1/c/footprints")
+        || path.startsWith("/api/v1/c/footprints/")
         // C order routes (contract 10 §3.5/§3.6/§3.7): MINIAPP Bearer enforced; reads, creation
         // and payment initiation all need the session; the deeper order subpaths keep their own
         // explicit patterns below.

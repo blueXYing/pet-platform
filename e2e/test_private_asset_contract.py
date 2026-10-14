@@ -50,7 +50,7 @@ class PrivateAssetContractRegressions(unittest.TestCase):
         # C face cGetSignInStatus/cSignIn/cListPointsTasks/cClaimPointsReward/
         # cBindReferralCode plus admin face adminGetPointsTaskConfig/
         # adminUpdatePointsTaskConfig; the earn surface only accrues, never spends).
-        self.assertEqual(result['operations'], 156)
+        self.assertEqual(result['operations'], 163)
         self.assertEqual(result['privateAssetOperations'], 3)
         self.assertEqual(result['legacyOperations'], 14)
         self.assertEqual(result['aftersaleOperations'], 24)
@@ -71,6 +71,7 @@ class PrivateAssetContractRegressions(unittest.TestCase):
         self.assertEqual(result['reviewAppealHttpOperations'], 6)
         self.assertEqual(result['merchantRefundHttpOperations'], 4)
         self.assertEqual(result['pointsTaskOperations'], 7)
+        self.assertEqual(result['favtrackHttpOperations'], 7)
 
     def test_all_private_operations_require_current_bearer_audience_and_default_off(self):
         for name in PRIVATE_ASSET_OPERATIONS:

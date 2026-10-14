@@ -1,0 +1,54 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.petplatform.user.biz.infrastructure.persistence.mapper.FootprintMapper">
+
+    <!-- user_browse_footprint statements (SQL06 user section, Contract 58). Deduplication is the
+         unique key (user_id, target_type, target_id): a repeated view touches last_viewed_at so
+         the target bubbles back to the head of the fixed last_viewed_at DESC, id DESC ordering. -->
+
+    <sql id="footprintColumns">id,user_id,target_type,target_id,last_viewed_at,created_at,updated_at</sql>
+
+    <select id="selectUserStatus" resultType="string">
+        SELECT status FROM user_account WHERE id=#{userId}
+    </select>
+
+    <select id="selectFootprint" resultType="com.petplatform.user.biz.infrastructure.persistence.entity.FootprintEntity">
+        SELECT <include refid="footprintColumns"/>
+        FROM user_browse_footprint
+        WHERE user_id=#{userId} AND target_type=#{targetType} AND target_id=#{targetId}
+    </select>
+
+    <select id="selectFootprintById" resultType="com.petplatform.user.biz.infrastructure.persistence.entity.FootprintEntity">
+        SELECT <include refid="footprintColumns"/>
+        FROM user_browse_footprint
+        WHERE id=#{footprintId} AND user_id=#{userId}
+    </select>
+
+    <insert id="insertFootprint">
+        INSERT INTO user_browse_footprint (id,user_id,target_type,target_id,last_viewed_at,created_at,updated_at)
+        VALUES (#{id},#{userId},#{targetType},#{targetId},NOW(3),NOW(3),NOW(3))
+    </insert>
+
+    <update id="touchFootprint">
+        UPDATE user_browse_footprint
+        SET last_viewed_at=NOW(3), updated_at=NOW(3)
+        WHERE id=#{footprintId} AND user_id=#{userId}
+    </update>
+
+    <delete id="deleteFootprint">
+        DELETE FROM user_browse_footprint WHERE id=#{footprintId} AND user_id=#{userId}
+    </delete>
+
+    <select id="countFootprints" resultType="long">
+        SELECT COUNT(*) FROM user_browse_footprint WHERE user_id=#{userId}
+    </select>
+
+    <select id="selectFootprintPage" resultType="com.petplatform.user.biz.infrastructure.persistence.entity.FootprintEntity">
+        SELECT <include refid="footprintColumns"/>
+        FROM user_browse_footprint
+        WHERE user_id=#{userId}
+        ORDER BY last_viewed_at DESC, id DESC
+        LIMIT #{limit} OFFSET #{offset}
+    </select>
+
+</mapper>

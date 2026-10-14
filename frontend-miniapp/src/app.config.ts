@@ -65,5 +65,8 @@ export default defineAppConfig({
     // Points earn slice (58号 / 32号 ruling second batch): sign-in calendar, referral tasks and
     // reward claim pages, entered from the mine tab; points only accrue in V1.
     { root: 'consumer/pages/points-tasks', pages: ['signin', 'tasks', 'rewards'] },
+    // Favorite/footprint lists (contract 58, 32号裁决第二节批次, CCR-C-FAVTRACK-001):
+    // my favorites + my footprints; detail rows route to the existing store-services pages.
+    { root: 'consumer/pages/favtrack', pages: ['favorites', 'footprints'] },
   ],
 })

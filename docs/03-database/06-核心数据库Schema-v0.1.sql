@@ -64,6 +64,34 @@ CREATE TABLE user_pet (
     KEY idx_pet_user_default (user_id, is_default)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
+-- 用户收藏与浏览足迹（32号裁决第二节批次；Contract 58 / CCR-C-FAVTRACK-001）。
+-- 用户私有数据：收藏为当前关系行，取消即删除；足迹按 (user, target) 去重，
+-- 每次浏览刷新 last_viewed_at 置顶。target_type 仅 SERVICE / STORE（V1 C 端读侧范围）。
+CREATE TABLE user_favorite (
+    id                    BIGINT       NOT NULL COMMENT 'Snowflake PK',
+    user_id               BIGINT       NOT NULL,
+    target_type           VARCHAR(16)  NOT NULL COMMENT 'SERVICE / STORE',
+    target_id             BIGINT       NOT NULL COMMENT 'service_item.id 或 merchant_store.id',
+    created_at            DATETIME(3)  NOT NULL,
+    updated_at            DATETIME(3)  NOT NULL,
+    PRIMARY KEY (id),
+    UNIQUE KEY uk_favorite_target (user_id, target_type, target_id),
+    KEY idx_favorite_user_created (user_id, created_at)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
+CREATE TABLE user_browse_footprint (
+    id                    BIGINT       NOT NULL COMMENT 'Snowflake PK',
+    user_id               BIGINT       NOT NULL,
+    target_type           VARCHAR(16)  NOT NULL COMMENT 'SERVICE / STORE',
+    target_id             BIGINT       NOT NULL,
+    last_viewed_at        DATETIME(3)  NOT NULL COMMENT '最近一次浏览时间，重复浏览刷新置顶',
+    created_at            DATETIME(3)  NOT NULL,
+    updated_at            DATETIME(3)  NOT NULL,
+    PRIMARY KEY (id),
+    UNIQUE KEY uk_footprint_target (user_id, target_type, target_id),
+    KEY idx_footprint_user_viewed (user_id, last_viewed_at)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
 -- ============================================================
 -- 1. 商家 / 门店 / 服务 / 服务人员
 -- ============================================================

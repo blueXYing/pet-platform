@@ -30,6 +30,8 @@ export const consumerPageSections = {
   addressList: 'mine', addressNew: 'mine', addressEdit: 'mine',
   // Points mall display-state page (32号裁决第二节: 只赚不花, 商城=能看不能换).
   mallPage: 'mine',
+  // Favorite/footprint lists (contract 58, 32号裁决第二节批次): mine-section subpages.
+  favoriteList: 'mine', footprintList: 'mine',
   // Booking create + payment initiation slice (10号 §3.4/§3.5/§3.6).
   bookingCreate: 'services', bookingPay: 'mine',
   // Become-provider entry slice (32号 §2): entered from the mine grid, rides the mine section.

@@ -56,6 +56,9 @@ public class CSessionSecurityConfiguration {
           boolean reviewAppealHttpEnabled,
       @Value("${pet.points.task.http.enabled:false}")
           boolean pointsTaskHttpEnabled)
+      boolean reviewAppealHttpEnabled,
+      @Value("${pet.favtrack.http.enabled:false}")
+      boolean favoriteFootprintHttpEnabled)
       throws Exception {
     http.securityMatcher("/api/v1/c/**", "/api/v1/merchant/**")
         .csrf(c -> c.disable())
@@ -251,10 +254,29 @@ public class CSessionSecurityConfiguration {
               // MINIAPP session on the /api/v1/merchant/ prefix; the OWNER admission is
               // re-proven inside each command's store-guarded transaction on every call.
               a.requestMatchers(HttpMethod.GET,
-                      "/api/v1/merchant/reviews", "/api/v1/merchant/reviews/*")
+                  "/api/v1/merchant/reviews", "/api/v1/merchant/reviews/*")
                   .permitAll();
               a.requestMatchers(HttpMethod.POST,
-                      "/api/v1/merchant/reviews/*/appeal")
+                  "/api/v1/merchant/reviews/*/appeal")
+                  .permitAll();
+            }
+            if (favoriteFootprintHttpEnabled) {
+              // Favorite/footprint C face (contract 58 / 10号 §3.16): user-private reads and
+              // writes; the MINIAPP Bearer is enforced by the filter's protectedPath list, and
+              // the favorite/footprint configuration additionally requires both catalog query
+              // slices for target admission, so the switch alone opens nothing half-assembled.
+              a.requestMatchers(HttpMethod.GET,
+                  "/api/v1/c/favorites",
+                  "/api/v1/c/favorites/*/*",
+                  "/api/v1/c/footprints")
+                  .permitAll();
+              a.requestMatchers(HttpMethod.POST,
+                  "/api/v1/c/favorites/*/*",
+                  "/api/v1/c/footprints/*/*")
+                  .permitAll();
+              a.requestMatchers(HttpMethod.DELETE,
+                  "/api/v1/c/favorites/*/*",
+                  "/api/v1/c/footprints/*")
                   .permitAll();
             }
             if (pointsTaskHttpEnabled) {

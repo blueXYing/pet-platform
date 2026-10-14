@@ -22,8 +22,22 @@ class ContractSmokeRegressions(unittest.TestCase):
         # update/delete/set-default; the legacy 14/11/3 subset stays untouched.
         self.assertEqual(result['addressOperations'], 6)
         self.assertEqual(result['pointsTaskOperations'], 7)
-        self.assertEqual(result['operations'], 156)
+        self.assertEqual(result['favtrackHttpOperations'], 7)
+        self.assertEqual(result['operations'], 163)
         self.assertGreater(result['stringIdProperties'], 0)
+        # Contract 58 favorite/footprint face (2026-10-13): seven reviewed operations.
+        self.assertEqual(result['favtrackHttpOperations'], 7)
+
+    def test_favtrack_switch_change_rejected(self):
+        self.spec['paths']['/c/favorites/{targetType}/{targetId}']['post']['x-assembly-switch'] = 'pet.other.enabled'
+        with self.assertRaisesRegex(AssertionError, 'Favtrack HTTP switch changed'):
+            check(self.spec)
+
+    def test_favtrack_bodyless_write_rejected_when_body_added(self):
+        self.spec['paths']['/c/favorites/{targetType}/{targetId}']['post']['requestBody'] = {
+            'required': True, 'content': {'application/json': {'schema': {'type': 'object'}}}}
+        with self.assertRaisesRegex(AssertionError, 'Favtrack routes must stay business-body-free'):
+            check(self.spec)
 
     def test_local_reference_chain_and_allof_string_pass(self):
         self.spec['components']['schemas']['IdAlias'] = {'$ref': '#/components/schemas/PublicId'}

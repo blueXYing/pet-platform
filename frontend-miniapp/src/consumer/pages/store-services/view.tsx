@@ -63,7 +63,7 @@ export function ServiceRow({ line, idPrefix, onOpen, onBook }: { line: ServiceCa
  * every field the nine-field projection does not carry (rating, monthly sold, distance, tags,
  * intro, opening hours, promo, reviews) stays DESIGN-SAMPLE copy registered as contract gaps.
  */
-export function StoreServicesDesign({ store: storeView, listTop, servicesNode, reviewTop, notice, footer, onBack, serviceCover, onRefreshCover }: {
+export function StoreServicesDesign({ store: storeView, listTop, servicesNode, reviewTop, notice, footer, onBack, serviceCover, onRefreshCover, favoriteNode }: {
   store: StoreDetailView | null
   listTop: number
   servicesNode: ReactNode
@@ -74,6 +74,8 @@ export function StoreServicesDesign({ store: storeView, listTop, servicesNode, r
   onBack: () => void
   serviceCover?: ServiceCoverView | null
   onRefreshCover?: () => void
+  /** Contract 58 favorite toggle entry (128:3200 BUTTON-25 形态): owned by the host page. */
+  favoriteNode?: ReactNode
 }) {
   const store = {
     ...designSamples.store,
@@ -89,6 +91,7 @@ export function StoreServicesDesign({ store: storeView, listTop, servicesNode, r
     <View className='svc-abs svc-bg-base' style={at(reviewBottom, { height: `calc(var(--svc-unit) * ${reviewBottom - 75})` })} />
     <Button id='svc-nav-back' className='svc-nav-back' ariaLabel='返回' onClick={onBack}><Image src={svcAssets.navBack} mode='scaleToFill' /></Button>
     <Text className='svc-abs svc-nav-title'>商家详情</Text>
+    {favoriteNode && <View className='svc-abs svc-nav-favorite'>{favoriteNode}</View>}
     {serviceCover !== undefined
       ? <ServiceCover cover={serviceCover} onRefresh={onRefreshCover || (() => {})} />
       : <Image className='svc-abs svc-banner' src={svcAssets.storeBanner} mode='aspectFill' />}

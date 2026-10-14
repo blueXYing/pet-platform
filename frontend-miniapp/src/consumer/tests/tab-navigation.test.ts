@@ -68,6 +68,9 @@ test('mine hub routes only to delivered real pages', () => {
     '/consumer/pages/orders/list',
     '/consumer/pages/coupon-points/coupons',
     '/consumer/pages/coupon-points/points',
+    // 收藏/足迹（contract 58，32号裁决第二节批次）两页已交付，进入枢纽静态路由表。
+    '/consumer/pages/favtrack/favorites',
+    '/consumer/pages/favtrack/footprints',
     '/consumer/pages/notification-preferences/index',
     '/consumer/pages/pet-archive/index',
     '/consumer/pages/profile-edit/index',

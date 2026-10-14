@@ -73,5 +73,15 @@
             <groupId>com.petplatform</groupId>
             <artifactId>pet-schedule-api</artifactId>
         </dependency>
+        <!-- Contract 58 (favorites/footprints): target admission + list enrichment go through
+             the frozen C catalog *-api surfaces; never the other modules' biz or persistence. -->
+        <dependency>
+            <groupId>com.petplatform</groupId>
+            <artifactId>pet-service-api</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>com.petplatform</groupId>
+            <artifactId>pet-merchant-api</artifactId>
+        </dependency>
     </dependencies>
 </project>
