@@ -23,26 +23,26 @@ ORD-001,商家主动接单/拒单,Transaction Backend,EPIC-08,ST-CONF-01,P0,PAY-
 ORD-002,30分钟自动接单 Task Handler,Transaction Backend,EPIC-08,ST-CONF-01,P0,"ORD-001,PLAT-004",backend/pet-order-*,"CONF-002,CONF-005,TASK-003",5,DONE
 ORD-003,用户一次改期与预约 swap/confirmRound,Transaction Backend,EPIC-08,ST-RES-01,P0,"ORD-001,SCH-003",backend/pet-order-* backend/pet-schedule-*,"RES-001~RES-006,CON-006",5,DONE
 REF-001,服务开始前自动全额退款,Transaction Backend,EPIC-09,ST-REF-01,P0,"TX-001,REF-002,REF-003",backend/pet-refund-* backend/pet-order-*,REF-001~REF-003,5,DONE
-REF-002,服务开始后退款申请、商家同意/拒绝,Transaction Backend,EPIC-09,ST-REF-02,P0,TX-001,backend/pet-refund-* backend/pet-order-*,REF-004~REF-010,5,IN_PROGRESS
-REF-003,RefundOrder/渠道退款/UNKNOWN查单核心,Transaction Backend,EPIC-09,ST-REF-03,P0,"PAY-001,PLAT-003,PLAT-004",backend/pet-refund-* backend/pet-payment-api,"REF-011~REF-013,FLT-006,FLT-007",5,IN_PROGRESS
+REF-002,服务开始后退款申请、商家同意/拒绝,Transaction Backend,EPIC-09,ST-REF-02,P0,TX-001,backend/pet-refund-* backend/pet-order-*,REF-004~REF-010,5,DONE
+REF-003,RefundOrder/渠道退款/UNKNOWN查单核心,Transaction Backend,EPIC-09,ST-REF-03,P0,"PAY-001,PLAT-003,PLAT-004",backend/pet-refund-* backend/pet-payment-api,"REF-011~REF-013,FLT-006,FLT-007",5,DONE
 REF-004,24小时商家退款超时自动批准,Transaction Backend,EPIC-09,ST-REF-02,P0,"REF-002,REF-003,PLAT-004",backend/pet-refund-*,"REF-009,TASK-004",6,BLOCKED
 VER-001,核销码/核销资格/成功核销,Transaction Backend,EPIC-10,ST-VER-01,P0,ORD-001,backend/pet-verification-* backend/pet-order-*,"VER-001~VER-003,VER-007",5,DONE
 VER-002,OrderOperationGuard VERIFY×CREATE_REFUND,Transaction Backend,EPIC-10,ST-VER-01,P0,"VER-001,REF-003",backend/pet-order-* backend/pet-verification-* backend/pet-refund-*,"VER-004~VER-006,CON-007,CON-008",6,DONE
 AFS-001,售后资格、创建、证据与状态机,Transaction Backend,EPIC-11,ST-AFS-01,P0,"REF-002,VER-001",backend/pet-aftersale-*,AFS-001~AFS-007,6,DONE
-AFS-002,运营售后终局裁决 FULL/PARTIAL/REJECT/RESERVICE,Transaction Backend,EPIC-11,ST-AFS-02,P0,"AFS-001,REF-003",backend/pet-aftersale-* backend/pet-refund-api backend/pet-admin-api,AFS-008~AFS-014,6,IN_PROGRESS
+AFS-002,运营售后终局裁决 FULL/PARTIAL/REJECT/RESERVICE,Transaction Backend,EPIC-11,ST-AFS-02,P0,"AFS-001,REF-003",backend/pet-aftersale-* backend/pet-refund-api backend/pet-admin-api,AFS-008~AFS-014,6,DONE
 CPN-001,优惠券冻结/消费/支付超时释放,Backend Core,EPIC-12,ST-CPN-01,P1,TX-001,backend/pet-coupon-*,CPN-001~CPN-004,6,BLOCKED
 CPN-002,退款成功返券与迟到支付来源NOOP,Backend Core,EPIC-12,ST-CPN-01,P1,"CPN-001,REF-003",backend/pet-coupon-*,"REF-014~REF-016,REF-019,CPN-005",7,BLOCKED
-PTS-001,签到/邀请/任务/订单奖励积分账本,Backend Core,EPIC-13,ST-PTS-01,P1,PLAT-002,backend/pet-points-*,"PTS-001,PTS-002",6,BLOCKED
+PTS-001,签到/邀请/任务/订单奖励积分账本,Backend Core,EPIC-13,ST-PTS-01,P1,PLAT-002,backend/pet-points-*,"PTS-001,PTS-002",6,IN_PROGRESS
 PTS-002,退款成功订单奖励积分扣回,Backend Core,EPIC-13,ST-PTS-01,P1,"PTS-001,REF-003",backend/pet-points-*,"REF-017,REF-018,PTS-003,PTS-004",7,BLOCKED
 REV-001,评价资格、创建、40/40/20评分,Backend Core,EPIC-14,ST-REV-01,P1,VER-001,backend/pet-review-*,REV-001~REV-010,7,DONE
-REV-002,评价申诉一次与部分退款scoreIncluded联动,Backend Core,EPIC-14,ST-REV-02,P1,"REV-001,AFS-002",backend/pet-review-*,"REV-005,REV-006,REV-011",7,BLOCKED
+REV-002,评价申诉一次与部分退款scoreIncluded联动,Backend Core,EPIC-14,ST-REV-02,P1,"REV-001,AFS-002",backend/pet-review-*,"REV-005,REV-006,REV-011",7,DONE
 NTF-001,统一站内通知与强制业务通知,Backend Core,EPIC-15,ST-NTF-01,P1,PLAT-003,backend/pet-notification-*,"MSG-001,MSG-002",6,DONE
 NTF-002,外部微信 Delivery Adapter/Retry 骨架,Backend Core,EPIC-15,ST-NTF-01,P1,"NTF-001,PLAT-004",backend/pet-notification-*,"MSG-003,TASK-007",8,DONE
 COM-001,社区动态/发布/详情/互动基础,Backend Core,EPIC-16,ST-COM-01,P1,AUTH-001,backend/pet-community-*,社区PRD验收,8,BLOCKED
 THD-001,第三方团购核销Provider与独立台账,Backend Core,EPIC-17,ST-3RD-01,P1,MER-001,backend/pet-thirdparty-*,3RD-001~3RD-003,7,BLOCKED
 ADM-001,运营商家/服务治理API,Backend Core,EPIC-18,ST-ADM-01,P0,"MER-001,SVC-001,AUTH-001",backend/pet-admin-*,"MER-001~MER-003,PERM-002,PERM-005",7,IN_PROGRESS
 ADM-002,运营订单/退款/核销查询与异常处置API,Transaction Backend,EPIC-18,ST-ADM-02,P0,"REF-003,VER-001",backend/pet-admin-* backend/pet-order-api backend/pet-refund-api,"运营P0,PERM-002,PERM-004~PERM-006",7,BLOCKED
-ADM-003,运营售后/评价治理API,Transaction Backend,EPIC-18,ST-ADM-03,P0,"AFS-002,REV-001",backend/pet-admin-*,"AFS/REV运营验收,PERM-001,PERM-005,PERM-006",8,BLOCKED
+ADM-003,运营售后/评价治理API,Transaction Backend,EPIC-18,ST-ADM-03,P0,"AFS-002,REV-001",backend/pet-admin-*,"AFS/REV运营验收,PERM-001,PERM-005,PERM-006",8,DONE
 C-001,统一微信小程序壳、用户路由、状态与平台Mock,C-End Frontend,EPIC-20,ST-FE-C-01,P0,GOV-001,frontend-miniapp/* frontend-miniapp/config/** frontend-miniapp/src/app* frontend-miniapp/src/consumer/** frontend-miniapp/src/shared/**,"typecheck,MINI-001,MINI-003,MINI-004,MINI-005",1,DONE
 C-002,C端登录/个人中心/宠物档案,C-End Frontend,EPIC-02,ST-ID-01,P0,C-001,frontend-miniapp/src/consumer/**,"C端登录/宠物E2E,MINI-004,VIS-001~VIS-004",2,DONE
 C-003,C端首页/商家服务/商家详情/预约页,C-End Frontend,EPIC-04,ST-SVC-01,P0,C-001,frontend-miniapp/src/consumer/**,"Mock UI + contract,MINI-004,VIS-001~VIS-004",2,DONE
@@ -56,8 +56,8 @@ M-004,商家退款/核销/售后/评价/第三方核销/消息,Merchant Frontend
 A-001,React运营网页壳、路由、权限与Mock,Admin Frontend,EPIC-20,ST-FE-A-01,P0,GOV-001,frontend-admin/**,"typecheck,WEB-001,WEB-002,PERM-005",1,DONE
 A-002,运营商家/服务/排期/员工治理页面,Admin Frontend,EPIC-18,ST-ADM-01,P0,A-001,frontend-admin/**,"Mock UI + contract,WEB-002,PERM-002,PERM-005",2,BLOCKED
 A-003,运营订单/退款/核销页面,Admin Frontend,EPIC-18,ST-ADM-02,P0,A-001,frontend-admin/**,"交易运营E2E,WEB-002,PERM-002,PERM-004~PERM-006",3,BLOCKED
-A-004,运营售后终裁/评价申诉页面,Admin Frontend,EPIC-18,ST-ADM-03,P0,A-001,frontend-admin/**,"AFS/REV运营E2E,WEB-002,PERM-001,PERM-004~PERM-006",4,BLOCKED
-A-005,运营优惠券/积分/社区/百科/台账/系统设置,Admin Frontend,EPIC-18,ST-ADM-04,P1,A-001,frontend-admin/**,"运营P1,WEB-002,PERM-002~PERM-006",5,BLOCKED
+A-004,运营售后终裁/评价申诉页面,Admin Frontend,EPIC-18,ST-ADM-03,P0,A-001,frontend-admin/**,"AFS/REV运营E2E,WEB-002,PERM-001,PERM-004~PERM-006",4,DONE
+A-005,运营优惠券/积分/社区/百科/台账/系统设置,Admin Frontend,EPIC-18,ST-ADM-04,P1,A-001,frontend-admin/**,"运营P1,WEB-002,PERM-002~PERM-006",5,IN_PROGRESS
 QA-001,测试框架、ArchUnit、Contract Smoke、CI首轮,QA,EPIC-20,ST-QA-01,P0,GOV-001,e2e/** backend/pet-architecture-test .github/workflows,ARCH-001~ARCH-005,1,DONE
 QA-002,Schedule容量/优惠券冻结并发测试,QA,EPIC-20,ST-QA-02,P0,"SCH-003,CPN-001",e2e/** backend/**/src/test,CON-001~CON-003,6,BLOCKED
 QA-003,支付超时×回调/迟到支付并发测试,QA,EPIC-20,ST-QA-02,P0,PAY-004,e2e/** backend/**/src/test,"CON-014,CON-015,FLT-003~FLT-005",7,BLOCKED

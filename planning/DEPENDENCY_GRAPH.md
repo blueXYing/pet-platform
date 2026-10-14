@@ -45,6 +45,14 @@ flowchart TD
 
   PAY2 --> LATE[PAY-004 Late Payment Auto Refund]
   REF3 --> LATE
+
+  AFSD -->|原路退回 #160| REF3
+
+  USER --> FAV[收藏/足迹 #155·契约58]
+  USER --> ADDR[地址簿管理 #158·契约59]
+  MER --> BEPROV[成为服务者入口 #161]
+  ORD --> PTASK[签到/拉新赚取 #157·契约60]
+  PTASK --> MALL[积分商城展示态 #162]
 ```
 
 前端 C/M/Admin 基于 Contract/Mock 可与后端并行，不要求等待所有后端节点完成。
@@ -71,3 +79,12 @@ PLAT-004公共交接补充：接口与明确测试替身固定可开始开发，
 - `REV-001 Review`：依赖 VER-001（核销事实决定评价资格），依 ISSUE_CATALOG 既有 Dependencies 列；已由 PR#134 交付（资格判定单真源在 ORDER 域，review-biz 依赖 order-api）。
 
 节点交付状态（DONE/IN_PROGRESS/BLOCKED）不在本图维护，以 [ISSUE_CATALOG](ISSUE_CATALOG.csv) 为准（已重核至 2026-10-10）。QA-005 现状如实登记：核心交易闭环模拟器 E2E 一轮已全链通过（PR#133），运营Web主链 E2E 与二轮验收未做，故 IN_PROGRESS。
+
+## 2026-10-14 目录重核注记
+
+本批（PR#143~#163）新增两类结构变化：
+
+1. **补画既有 Issue 间已交付的执行边**：`AFS-002 -->|原路退回 #160| REF-003`——32号裁决落定 OD-W0-001（V1 售后退款走微信支付原路退回，不做冻结/分账/提现/保证金，见 [32号裁决补充](../docs/01-prd/32-售后资金出路与未建页面裁决补充-v1.0.md)），PR#160 将 FULL/PARTIAL 终局决定接入既有 RefundAfterSaleCommandApi.create + AFTERSALE_REFUND_SUBMIT/CHANNEL_QUERY durable 任务族（WechatOriginalRouteRefundFundingAuthority，默认关闭 `pet.aftersale.refund.enabled`）。
+2. **新增 32号裁决七页批能力节点**（FAV/ADDR/BEPROV/PTASK/MALL）：这些能力由 2026-10-13 用户裁决（PR#154）新增，**无既有 Issue 行**（原 66 行任务清单不含；本次重核未自造 IssueID，其状态与证据以重核 PR body 及 PR#155/#157/#158/#161/#162 为准）。锚点依据：收藏/足迹与地址簿落在 pet-user 域（58/59号契约）；成为服务者复用既有商家入驻申请链（merchantTypeCode 既有字典，零新契约）；签到/拉新赚取依赖订单首付事实（OrderQueryApi.firstPaidAt 只读加法，60号契约）；积分商城展示态复用积分读侧（只赚不花，无新后端面）。
+
+既有依赖边结构无其他变化：视觉批次（#143/#148~#150/#152/#153）与测试修复（#146/#147/#159/#163）零功能面改动；#144/#145 为既有 REV-002/REF-002 范围内切片；#156 为 QA-005 范围内二轮验收（QA-005 仍 IN_PROGRESS：二轮模拟器矩阵 6 场景已过，售后平台裁决 UI、refund_order 禁核销反向分支、运营Web主链整链与物理真机未覆盖，详见 WORK_STATE 40.0）。节点交付状态仍以 [ISSUE_CATALOG](ISSUE_CATALOG.csv) 为准（已重核至 2026-10-14：DONE 47 / IN_PROGRESS 7 / BLOCKED 12）。
