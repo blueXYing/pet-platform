@@ -68,5 +68,8 @@ export default defineAppConfig({
     // Favorite/footprint lists (contract 58, 32号裁决第二节批次, CCR-C-FAVTRACK-001):
     // my favorites + my footprints; detail rows route to the existing store-services pages.
     { root: 'consumer/pages/favtrack', pages: ['favorites', 'footprints'] },
+    // Encyclopedia browse slice (contract 62, PRD 5.1.4): category/keyword/tag list + breed
+    // detail with the ability radar; mine-grid entry, anonymous-browsable per PRD.
+    { root: 'consumer/pages/baike', pages: ['index', 'detail'] },
   ],
 })

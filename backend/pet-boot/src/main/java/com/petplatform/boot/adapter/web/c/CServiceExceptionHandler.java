@@ -27,7 +27,8 @@ import org.springframework.web.method.annotation.MethodArgumentTypeMismatchExcep
         CScheduleController.class, CCouponController.class, CPointsController.class,
         COrderCreateController.class,
         CVerificationCredentialController.class, CAddressController.class,
-        CFavoriteController.class, CFootprintController.class})
+        CFavoriteController.class, CFootprintController.class,
+        CEncyclopediaController.class})
 @Order(0)
 public class CServiceExceptionHandler {
 
@@ -46,6 +47,8 @@ public class CServiceExceptionHandler {
             Map.entry("ADDRESS_LIMIT_EXCEEDED", 400),
             Map.entry("STORE_NOT_FOUND", 404),
             Map.entry("SERVICE_NOT_FOUND", 404),
+            // Encyclopedia content (contract 62): published-only visibility, offline/missing alike.
+            Map.entry("BREED_NOT_FOUND", 404),
             Map.entry("COMMON_CONFLICT", 409),
             Map.entry("IDEMPOTENCY_KEY_CONFLICT", 409),
             // Service write slice (ADM-001): workbench commands surface through C-session routes.

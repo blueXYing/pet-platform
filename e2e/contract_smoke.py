@@ -377,6 +377,36 @@ def check_notification_preferences(spec, operation, method, path):
     assert set(update['required']) == {'interactionEnabled', 'externalPushEnabled'}, 'Preference update must be a full two-switch PUT'
 
 
+def check_baike_operations(spec, operation, method, path):
+    # Contract 62 (PRD 5.1.4): anonymous-browse read trio. GET-only forever; the STR-D8-style
+    # security pair ({} or bearerAuth) is what makes anonymous browsing real on the wire.
+    name = operation['operationId']
+    expected_method, expected_path, required_codes = BAIKE_OPERATIONS[name]
+    assert (method, path) == (expected_method, expected_path), f'Encyclopedia operation moved: {name}'
+    assert method == 'get', f'Encyclopedia face must stay read-only: {name}'
+    assert operation.get('security') == [{}, {'bearerAuth': []}], f'Encyclopedia anonymous pair changed: {name}'
+    assert operation.get('x-implementation-status') == 'IMPLEMENTED_DEFAULT_OFF', f'Encyclopedia status changed: {name}'
+    assert operation.get('x-default-enabled') is False, f'Encyclopedia must stay default off: {name}'
+    assert operation.get('x-contract') == '62-Baike-Content-Contract-v0.1.md', f'Encyclopedia authority changed: {name}'
+    assert operation.get('x-assembly-switch') == 'pet.encyclopedia.query.enabled', f'Encyclopedia switch changed: {name}'
+    assert operation.get('x-route-party') == 'USER' and operation.get('x-audience') == 'MINIAPP', f'Encyclopedia identity changed: {name}'
+    responses = operation['responses']
+    assert set(responses) == set(required_codes), f'Encyclopedia response surface changed: {name}'
+    envelopes = {
+        'cListEncyclopediaCategories': 'BaikeCategoryListEnvelope',
+        'cListEncyclopediaBreeds': 'BaikeBreedPageEnvelope',
+        'cGetEncyclopediaBreed': 'BaikeBreedDetailEnvelope',
+    }
+    for code in required_codes:
+        response = dereference(spec, responses[code])
+        assert response['headers']['Cache-Control']['schema'] == {'type': 'string', 'enum': ['no-store']}, \
+            f'Encyclopedia caching changed: {name} {code}'
+        expected = {'$ref': '#/components/schemas/BaikeErrorEnvelope'} if code != '200' \
+            else {'$ref': '#/components/schemas/' + envelopes[name]}
+        assert response['content']['application/json']['schema'] == expected, f'Encyclopedia envelope changed: {name} {code}'
+    assert 'requestBody' not in operation, f'Encyclopedia GET must stay bodyless: {name}'
+
+
 def check_address_operations(spec, operation, method, path):
     name = operation['operationId']
     expected_method, expected_path, required_codes = ADDRESS_OPERATIONS[name]
@@ -571,6 +601,19 @@ POINTS_TASK_OPERATIONS = {
     'adminUpdatePointsTaskConfig': (
         'put', '/admin/points-task-config',
         ('200', '400', '401', '403', '409', '500', '503')),
+}
+
+# Contract 62 encyclopedia content read face (PRD 5.1.4): anonymous-browse GET trio, read-only.
+BAIKE_OPERATIONS = {
+    'cListEncyclopediaCategories': (
+        'get', '/c/encyclopedia/categories',
+        ('200', '400', '401', '500')),
+    'cListEncyclopediaBreeds': (
+        'get', '/c/encyclopedia/breeds',
+        ('200', '400', '401', '500')),
+    'cGetEncyclopediaBreed': (
+        'get', '/c/encyclopedia/breeds/{breedId}',
+        ('200', '400', '401', '404', '500')),
 }
 
 
@@ -1621,6 +1664,8 @@ def check(spec):
                 check_favtrack_http(spec, operation, method, path)
             if operation_id in POINTS_TASK_OPERATIONS:
                 check_points_task(spec, operation, method, path)
+            if operation_id in BAIKE_OPERATIONS:
+                check_baike_operations(spec, operation, method, path)
             if operation_id in ADMIN_TRADE_OPERATIONS:
                 check_admin_trade(spec, operation, method, path)
 
@@ -1638,7 +1683,7 @@ def check(spec):
     assert legacy_writes == 11, 'Legacy write surface changed'
     assert legacy_creates == LEGACY_CREATES, 'Legacy create surface changed'
 
-    assert operations == LEGACY_OPERATIONS.keys() | AUTH_OPERATIONS.keys() | MERCHANT_OPERATIONS.keys() | APPLICATION_OPERATIONS.keys() | PRIVATE_ASSET_OPERATIONS.keys() | SERVICE_CATALOG_OPERATIONS.keys() | STORE_CATALOG_OPERATIONS.keys() | SERVICE_WRITE_OPERATIONS.keys() | SCHEDULE_AVAILABILITY_OPERATIONS.keys() | SCHEDULE_WRITE_OPERATIONS.keys() | CREDENTIAL_OPERATIONS.keys() | AFTERSALE_OPERATIONS.keys() | COUPON_POINTS_READ_OPERATIONS.keys() | VERIFICATION_HTTP_OPERATIONS.keys() | NOTIFICATION_PREFERENCE_OPERATIONS.keys() | STAFF_INVITATION_LIST_OPERATIONS.keys() | ORDER_WRITE_OPERATIONS.keys() | REFUND_HTTP_OPERATIONS.keys() | MERCHANT_ORDER_LIST_OPERATIONS.keys() | RESCHEDULE_HTTP_OPERATIONS.keys() | REVIEW_HTTP_OPERATIONS.keys() | REVIEW_APPEAL_HTTP_OPERATIONS.keys() | MERCHANT_REFUND_HTTP_OPERATIONS.keys() | FAVTRACK_HTTP_OPERATIONS.keys() | ADDRESS_OPERATIONS.keys() | POINTS_TASK_OPERATIONS.keys() | ADMIN_TRADE_OPERATIONS.keys(), 'Unexpected or missing reviewed operations'
+    assert operations == LEGACY_OPERATIONS.keys() | AUTH_OPERATIONS.keys() | MERCHANT_OPERATIONS.keys() | APPLICATION_OPERATIONS.keys() | PRIVATE_ASSET_OPERATIONS.keys() | SERVICE_CATALOG_OPERATIONS.keys() | STORE_CATALOG_OPERATIONS.keys() | SERVICE_WRITE_OPERATIONS.keys() | SCHEDULE_AVAILABILITY_OPERATIONS.keys() | SCHEDULE_WRITE_OPERATIONS.keys() | CREDENTIAL_OPERATIONS.keys() | AFTERSALE_OPERATIONS.keys() | COUPON_POINTS_READ_OPERATIONS.keys() | VERIFICATION_HTTP_OPERATIONS.keys() | NOTIFICATION_PREFERENCE_OPERATIONS.keys() | STAFF_INVITATION_LIST_OPERATIONS.keys() | ORDER_WRITE_OPERATIONS.keys() | REFUND_HTTP_OPERATIONS.keys() | MERCHANT_ORDER_LIST_OPERATIONS.keys() | RESCHEDULE_HTTP_OPERATIONS.keys() | REVIEW_HTTP_OPERATIONS.keys() | REVIEW_APPEAL_HTTP_OPERATIONS.keys() | MERCHANT_REFUND_HTTP_OPERATIONS.keys() | FAVTRACK_HTTP_OPERATIONS.keys() | ADDRESS_OPERATIONS.keys() | POINTS_TASK_OPERATIONS.keys() | BAIKE_OPERATIONS.keys() | ADMIN_TRADE_OPERATIONS.keys(), 'Unexpected or missing reviewed operations'
 
     schemes = spec['components']['securitySchemes']
     assert schemes['bearerAuth']['type'] == 'http' and schemes['bearerAuth']['scheme'] == 'bearer'
@@ -1696,6 +1741,7 @@ def check(spec):
             'merchantRefundHttpOperations': len(operations & MERCHANT_REFUND_HTTP_OPERATIONS.keys()),
             'favtrackHttpOperations': len(operations & FAVTRACK_HTTP_OPERATIONS.keys()),
             'pointsTaskOperations': len(operations & POINTS_TASK_OPERATIONS.keys()),
+            'baikeOperations': len(operations & BAIKE_OPERATIONS.keys()),
             'refundHttpOperations': len(operations & REFUND_HTTP_OPERATIONS.keys()),
             'serviceWriteOperations': len(operations & SERVICE_WRITE_OPERATIONS.keys()),
             'storeCatalogOperations': len(operations & STORE_CATALOG_OPERATIONS.keys()),

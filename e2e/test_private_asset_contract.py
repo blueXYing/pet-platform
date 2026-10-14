@@ -50,11 +50,17 @@ class PrivateAssetContractRegressions(unittest.TestCase):
         # C face cGetSignInStatus/cSignIn/cListPointsTasks/cClaimPointsReward/
         # cBindReferralCode plus admin face adminGetPointsTaskConfig/
         # adminUpdatePointsTaskConfig; the earn surface only accrues, never spends).
+        # 163 = 150 + 13 parallel-batch operations (favorites/footprints 7 + addresses 6).
+        # 166 = 163 + 3 contract-62 encyclopedia read operations (2026-10-14: anonymous-browse
+        # GET trio cListEncyclopediaCategories/cListEncyclopediaBreeds/cGetEncyclopediaBreed;
+        # the face is read-only and accrues no writes).
         # 170 = 163 + 7 contract-63 admin trade read operations (63号 ADM-002/A-003:
         # seven GET-only routes — adminListTradeOrders/adminGetTradeOrder/
         # adminListTradeOrderStatusLogs/adminListTradeRefunds/adminGetTradeRefund/
         # adminListTradeVerifications/adminGetTradeVerification; no write route).
-        self.assertEqual(result['operations'], 170)
+        # 173 = 166 + 7 contract-63 operations merged with the contract-62 base (union of
+        # both parallel slices: 163 baseline + 3 encyclopedia + 7 admin trade read).
+        self.assertEqual(result['operations'], 173)
         self.assertEqual(result['privateAssetOperations'], 3)
         self.assertEqual(result['legacyOperations'], 14)
         self.assertEqual(result['aftersaleOperations'], 24)

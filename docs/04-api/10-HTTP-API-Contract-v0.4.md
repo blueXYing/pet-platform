@@ -300,6 +300,30 @@ AddressView: addressId/contactName(1..32)/contactPhone(11位大陆手机号)/reg
 
 ---
 
+## 3.2.3 宠物百科内容读侧（新增，62号契约）
+
+[Contract62](62-Baike-Content-Contract-v0.1.md)；新装配开关 `pet.encyclopedia.query.enabled`（默认 false；C 端安全链仍整体骑 `pet.auth.c.enabled`）；SQL62 `encyclopedia_category`/`encyclopedia_breed`（含正式种子内容，归属内容域 pet-community-biz）。
+
+```text
+GET /api/v1/c/encyclopedia/categories
+GET /api/v1/c/encyclopedia/breeds?categoryCode=&keyword=&tag=&page=&pageSize=
+GET /api/v1/c/encyclopedia/breeds/{breedId}
+```
+
+```text
+匿名可浏览（PRD「所有用户；未登录用户可浏览」，STR-D8 同款：无 Authorization 头匿名通过，
+携带无效/过期 Bearer 仍 401）；GET-only，未知 query 参数整单 400；page 缺省 1（≤10000）、
+pageSize 缺省 20（1..50）。分类枚举五值为 PRD 5.1.4 原文（DOG/CAT/REPTILE/BIRD/INSECT），
+仅返回启用字典项；列表/详情恒过滤 status='PUBLISHED'，下线/不存在详情统一 404 BREED_NOT_FOUND
+防枚举；keyword ≤40 码点（trim 后）对 name/aliases 包含匹配（LIKE 通配符按字面量转义），
+tag 精确匹配平台标签字典，排序 sort_no ASC,id ASC；详情含 bodyType/facts/radar/
+descriptionHtml/careAdviceHtml/healthTipsHtml 与同分类 related[]（前 3，排除自身）；
+健康内容页面前端固定叠加科普免责声明（PRD：医疗和健康内容仅用于科普，不替代兽医诊断）。
+纯读侧：无写路由、无幂等键、无 Outbox；运营编辑/下线写侧属 A-005 另轮。
+```
+
+---
+
 ## 3.3 商家与服务
 
 ```text

@@ -1,0 +1,61 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.petplatform.community.biz.infrastructure.persistence.mapper.EncyclopediaQueryMapper">
+
+    <!-- encyclopedia_category / encyclopedia_breed (SQL 62, contract 62): published-only read face. -->
+
+    <select id="selectEnabledCategories" resultType="com.petplatform.community.biz.infrastructure.persistence.entity.EncyclopediaCategoryEntity">
+        SELECT id,category_code,category_name,status,sort_no
+        FROM encyclopedia_category WHERE status='ENABLED'
+        ORDER BY sort_no ASC, id ASC
+    </select>
+
+    <select id="selectEnabledCategoryByCode" resultType="com.petplatform.community.biz.infrastructure.persistence.entity.EncyclopediaCategoryEntity">
+        SELECT id,category_code,category_name,status,sort_no
+        FROM encyclopedia_category WHERE category_code=#{categoryCode} AND status='ENABLED'
+    </select>
+
+    <!-- Published breeds only (PRD: 前端只显示运营发布且未下线内容). The keyword pattern is
+         pre-escaped in the kernel (backslash/%/_ bound as literals); tag uses an exact
+         JSON_CONTAINS match against the platform tag dictionary. -->
+    <sql id="publishedBreedWhere">
+        FROM encyclopedia_breed b
+        JOIN encyclopedia_category c ON c.id=b.category_id AND c.status='ENABLED'
+        WHERE b.status='PUBLISHED'
+        <if test="categoryId != null">AND b.category_id=#{categoryId}</if>
+        <if test="keywordPattern != null">AND (LOWER(b.name) LIKE #{keywordPattern} OR LOWER(b.aliases) LIKE #{keywordPattern})</if>
+        <if test="tag != null">AND JSON_CONTAINS(b.tags, JSON_QUOTE(#{tag}))</if>
+    </sql>
+
+    <select id="selectPublishedBreeds" resultType="com.petplatform.community.biz.infrastructure.persistence.entity.EncyclopediaBreedJoinEntity">
+        SELECT b.id,b.category_id,b.name,b.aliases,b.tags,b.summary,b.cover_url,b.sort_no,c.category_code,c.category_name
+        <include refid="publishedBreedWhere"/>
+        ORDER BY b.sort_no ASC, b.id ASC
+        LIMIT #{limit} OFFSET #{offset}
+    </select>
+
+    <select id="countPublishedBreeds" resultType="long">
+        SELECT COUNT(*)
+        <include refid="publishedBreedWhere"/>
+    </select>
+
+    <select id="selectPublishedBreedById" resultType="com.petplatform.community.biz.infrastructure.persistence.entity.EncyclopediaBreedJoinEntity">
+        SELECT b.id,b.category_id,b.name,b.aliases,b.tags,b.summary,b.cover_url,b.body_type,b.facts,b.radar,
+               b.description_html,b.care_advice_html,b.health_tips_html,b.status,b.sort_no,
+               c.category_code,c.category_name
+        FROM encyclopedia_breed b
+        JOIN encyclopedia_category c ON c.id=b.category_id AND c.status='ENABLED'
+        WHERE b.id=#{breedId} AND b.status='PUBLISHED'
+    </select>
+
+    <!-- Related (contract 62): same enabled category, published, self excluded, curated order. -->
+    <select id="selectRelatedPublishedBreeds" resultType="com.petplatform.community.biz.infrastructure.persistence.entity.EncyclopediaBreedJoinEntity">
+        SELECT b.id,b.category_id,b.name,b.aliases,b.tags,b.summary,b.cover_url,b.sort_no,c.category_code,c.category_name
+        FROM encyclopedia_breed b
+        JOIN encyclopedia_category c ON c.id=b.category_id AND c.status='ENABLED'
+        WHERE b.status='PUBLISHED' AND b.category_id=#{categoryId} AND b.id&lt;&gt;#{excludeBreedId}
+        ORDER BY b.sort_no ASC, b.id ASC
+        LIMIT #{limit}
+    </select>
+
+</mapper>

@@ -11,7 +11,7 @@ import { deltaLabel, formatLedgerTime, pointsBizTypeLabels, type PointsLedgerVie
 import avatar from '../../assets/profile/avatar.png'
 import stripTop from './assets/strip-top.jpg'
 import {
-  MINE_ADDRESS_BOOK_URL, MINE_BECOME_PROVIDER_URL, MINE_DEVELOPER_SHELL_URL, MINE_MERCHANT_WORKSPACE_URL, MINE_POINTS_MALL_URL, mineCard, mineHubEntries, phoneGuideCopy,
+  MINE_ADDRESS_BOOK_URL, MINE_BAIKE_URL, MINE_BECOME_PROVIDER_URL, MINE_DEVELOPER_SHELL_URL, MINE_MERCHANT_WORKSPACE_URL, MINE_POINTS_MALL_URL, mineCard, mineHubEntries, phoneGuideCopy,
   type MineCard, type MineStats,
 } from './model'
 import './mine.css'
@@ -317,6 +317,12 @@ export default function MinePage() {
             <Button id='mine-svc-address' className='mine-cell' hoverClass='none' onClick={() => open(MINE_ADDRESS_BOOK_URL)}>
               <View className='mine-cell-chip'><View className='mi-svc-address' /></View>
               <Text className='mine-cell-label'>地址管理</Text>
+            </Button>
+            {/* 宠物百科（契约 62 / PRD 5.1.4）：真实入口；PRD 5.1 百科从首页模块或个人中心进入，
+                沿「我的服务」格位家族（同地址管理），匿名可浏览。 */}
+            <Button id='mine-hub-baike' className='mine-cell' hoverClass='none' ariaLabel='宠物百科，未登录也可浏览' onClick={() => open(MINE_BAIKE_URL)}>
+              <View className='mine-cell-chip'><View className='mi-svc-baike' /></View>
+              <Text className='mine-cell-label'>宠物百科</Text>
             </Button>
           </View>
         </View>

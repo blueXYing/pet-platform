@@ -42,9 +42,25 @@
             <artifactId>mybatis-spring-boot-starter</artifactId>
             <version>${mybatis-spring-boot.version}</version>
         </dependency>
+        <!-- Contract 62 baike read side: JSON columns (aliases/tags/facts/radar) decode in
+             the community kernel; no JDBC executor enters production code (22号 ruling). -->
+        <dependency>
+            <groupId>com.fasterxml.jackson.core</groupId>
+            <artifactId>jackson-databind</artifactId>
+        </dependency>
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-test</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.junit.jupiter</groupId>
+            <artifactId>junit-jupiter</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>com.mysql</groupId>
+            <artifactId>mysql-connector-j</artifactId>
             <scope>test</scope>
         </dependency>
     </dependencies>

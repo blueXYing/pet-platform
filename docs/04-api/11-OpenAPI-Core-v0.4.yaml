@@ -13143,6 +13143,167 @@ paths:
           $ref: '#/components/responses/AddressHttpError'
       x-route-party: USER
       x-audience: MINIAPP
+  /c/encyclopedia/categories:
+    get:
+      tags:
+      - C-Encyclopedia
+      operationId: cListEncyclopediaCategories
+      summary: 启用百科分类字典（PRD 5.1.4 五分类）
+      x-implementation-status: IMPLEMENTED_DEFAULT_OFF
+      x-default-enabled: false
+      x-contract: 62-Baike-Content-Contract-v0.1.md
+      x-assembly-switch: pet.encyclopedia.query.enabled
+      description: 62号契约。仅返回 status='ENABLED' 的分类（sort_no ASC,id ASC）；分类枚举
+        五值为 PRD 5.1.4 原文，不新增不改名。匿名可浏览（PRD「所有用户；未登录用户可浏览」，
+        STR-D8 同款）；query 全禁止。
+      security:
+      - {}
+      - bearerAuth: []
+      responses:
+        '200':
+          description: 启用分类字典
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                enum:
+                - no-store
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BaikeCategoryListEnvelope'
+        '400':
+          $ref: '#/components/responses/BaikeHttpError'
+        '401':
+          $ref: '#/components/responses/BaikeHttpError'
+        '500':
+          $ref: '#/components/responses/BaikeHttpError'
+      x-route-party: USER
+      x-audience: MINIAPP
+  /c/encyclopedia/breeds:
+    get:
+      tags:
+      - C-Encyclopedia
+      operationId: cListEncyclopediaBreeds
+      summary: 品种内容分页列表（分类/关键词/标签筛选，仅已发布未下线）
+      x-implementation-status: IMPLEMENTED_DEFAULT_OFF
+      x-default-enabled: false
+      x-contract: 62-Baike-Content-Contract-v0.1.md
+      x-assembly-switch: pet.encyclopedia.query.enabled
+      description: 62号契约。恒过滤 status='PUBLISHED'；categoryCode 必须是启用字典项（未知/
+        停用 400），缺省 DOG（PRD 默认值）；keyword ≤40 码点（trim 后）对 name/aliases 包含
+        匹配（LIKE 通配符按字面量转义）；tag 精确匹配平台标签字典；排序 sort_no ASC,id ASC；
+        未知 query 参数整单 400。
+      security:
+      - {}
+      - bearerAuth: []
+      parameters:
+      - name: categoryCode
+        in: query
+        schema:
+          type: string
+          enum:
+          - DOG
+          - CAT
+          - REPTILE
+          - BIRD
+          - INSECT
+          default: DOG
+      - name: keyword
+        in: query
+        description: 搜索关键词（品种名或别名，去除首尾空格后 ≤40 码点，PRD 5.1.4）。
+        schema:
+          type: string
+          minLength: 1
+          maxLength: 120
+      - name: tag
+        in: query
+        description: 品种标签精确筛选（PRD：品种标签用于筛选）。
+        schema:
+          type: string
+          minLength: 1
+          maxLength: 30
+      - name: page
+        in: query
+        schema:
+          type: integer
+          minimum: 1
+          maximum: 10000
+          default: 1
+      - name: pageSize
+        in: query
+        schema:
+          type: integer
+          minimum: 1
+          maximum: 50
+          default: 20
+      responses:
+        '200':
+          description: 品种卡片分页（列表卡不携带详情富文本）
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                enum:
+                - no-store
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BaikeBreedPageEnvelope'
+        '400':
+          $ref: '#/components/responses/BaikeHttpError'
+        '401':
+          $ref: '#/components/responses/BaikeHttpError'
+        '500':
+          $ref: '#/components/responses/BaikeHttpError'
+      x-route-party: USER
+      x-audience: MINIAPP
+  /c/encyclopedia/breeds/{breedId}:
+    get:
+      tags:
+      - C-Encyclopedia
+      operationId: cGetEncyclopediaBreed
+      summary: 品种详情（含同分类相关推荐）
+      x-implementation-status: IMPLEMENTED_DEFAULT_OFF
+      x-default-enabled: false
+      x-contract: 62-Baike-Content-Contract-v0.1.md
+      x-assembly-switch: pet.encyclopedia.query.enabled
+      description: 62号契约。不存在/未发布/已下线统一 404 BREED_NOT_FOUND 防枚举；详情含
+        bodyType/facts/radar/descriptionHtml/careAdviceHtml/healthTipsHtml 与 related[]
+        （同分类已发布、排除自身、前 3）；健康内容由 C 端详情页固定叠加科普免责声明（PRD：
+        医疗和健康内容仅用于科普，不替代兽医诊断）。
+      security:
+      - {}
+      - bearerAuth: []
+      parameters:
+      - name: breedId
+        in: path
+        required: true
+        schema:
+          $ref: '#/components/schemas/PublicId'
+      responses:
+        '200':
+          description: 品种详情投影（status 恒 PUBLISHED）
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                enum:
+                - no-store
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BaikeBreedDetailEnvelope'
+        '400':
+          $ref: '#/components/responses/BaikeHttpError'
+        '401':
+          $ref: '#/components/responses/BaikeHttpError'
+        '404':
+          $ref: '#/components/responses/BaikeHttpError'
+        '500':
+          $ref: '#/components/responses/BaikeHttpError'
+      x-route-party: USER
+      x-audience: MINIAPP
   /admin/trade/orders:
     get:
       tags:
@@ -13742,6 +13903,20 @@ components:
         application/json:
           schema:
             $ref: '#/components/schemas/AddressErrorEnvelope'
+    BaikeHttpError:
+      description: 百科读侧错误（62号）；400含 COMMON_INVALID_ARGUMENT（未知/停用分类、
+        超限 keyword、非法分页、未知参数），401 COMMON_UNAUTHORIZED（携带无效 Bearer），
+        404 防枚举 BREED_NOT_FOUND，500 COMMON_INTERNAL_ERROR，data=null。
+      headers:
+        Cache-Control:
+          schema:
+            type: string
+            enum:
+            - no-store
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/BaikeErrorEnvelope'
     PointsTaskHttpError:
       description: 签到/拉新/积分配置错误；复用Error12 §2通用码（409含幂等异参
         IDEMPOTENCY_KEY_CONFLICT、当日重复签到与终局冲突COMMON_CONFLICT），data=null。
@@ -13769,6 +13944,362 @@ components:
           schema:
             $ref: '#/components/schemas/FavTrackErrorEnvelope'
   schemas:
+    BaikeCategory:
+      type: object
+      additionalProperties: false
+      required:
+      - categoryCode
+      - categoryName
+      - sortOrder
+      properties:
+        categoryCode:
+          type: string
+          enum:
+          - DOG
+          - CAT
+          - REPTILE
+          - BIRD
+          - INSECT
+        categoryName:
+          type: string
+          minLength: 1
+          maxLength: 16
+        sortOrder:
+          type: integer
+    BaikeCategoryListData:
+      type: object
+      additionalProperties: false
+      required:
+      - items
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/BaikeCategory'
+    BaikeCategoryListEnvelope:
+      type: object
+      additionalProperties: false
+      required:
+      - success
+      - code
+      - message
+      - data
+      - traceId
+      properties:
+        success:
+          type: boolean
+          enum:
+          - true
+        code:
+          type: string
+          enum:
+          - SUCCESS
+        message:
+          type: string
+          minLength: 1
+        data:
+          $ref: '#/components/schemas/BaikeCategoryListData'
+        traceId:
+          type: string
+          minLength: 1
+    BaikeBreedCard:
+      type: object
+      additionalProperties: false
+      required:
+      - breedId
+      - categoryCode
+      - categoryName
+      - name
+      - aliases
+      - tags
+      - summary
+      - coverUrl
+      properties:
+        breedId:
+          $ref: '#/components/schemas/PublicId'
+        categoryCode:
+          type: string
+          enum:
+          - DOG
+          - CAT
+          - REPTILE
+          - BIRD
+          - INSECT
+        categoryName:
+          type: string
+          minLength: 1
+          maxLength: 16
+        name:
+          type: string
+          minLength: 1
+          maxLength: 30
+        aliases:
+          type: array
+          items:
+            type: string
+            minLength: 1
+            maxLength: 50
+        tags:
+          type: array
+          maxItems: 10
+          items:
+            type: string
+            minLength: 1
+            maxLength: 30
+        summary:
+          type: string
+          minLength: 1
+          maxLength: 120
+        coverUrl:
+          type: string
+          nullable: true
+          maxLength: 512
+    BaikeBreedPageData:
+      type: object
+      additionalProperties: false
+      required:
+      - items
+      - page
+      - pageSize
+      - total
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/BaikeBreedCard'
+        page:
+          type: integer
+          minimum: 1
+        pageSize:
+          type: integer
+          minimum: 1
+          maximum: 50
+        total:
+          type: integer
+          minimum: 0
+    BaikeBreedPageEnvelope:
+      type: object
+      additionalProperties: false
+      required:
+      - success
+      - code
+      - message
+      - data
+      - traceId
+      properties:
+        success:
+          type: boolean
+          enum:
+          - true
+        code:
+          type: string
+          enum:
+          - SUCCESS
+        message:
+          type: string
+          minLength: 1
+        data:
+          $ref: '#/components/schemas/BaikeBreedPageData'
+        traceId:
+          type: string
+          minLength: 1
+    BaikeBreedFact:
+      type: object
+      additionalProperties: false
+      required:
+      - label
+      - value
+      properties:
+        label:
+          type: string
+          minLength: 1
+          maxLength: 16
+        value:
+          type: string
+          minLength: 1
+          maxLength: 32
+    BaikeBreedRadar:
+      type: object
+      additionalProperties: false
+      required:
+      - companion
+      - shedding
+      - intelligence
+      - easyCare
+      - exercise
+      properties:
+        companion:
+          type: integer
+          minimum: 1
+          maximum: 5
+        shedding:
+          type: integer
+          minimum: 1
+          maximum: 5
+        intelligence:
+          type: integer
+          minimum: 1
+          maximum: 5
+        easyCare:
+          type: integer
+          minimum: 1
+          maximum: 5
+        exercise:
+          type: integer
+          minimum: 1
+          maximum: 5
+    BaikeBreedDetailData:
+      type: object
+      additionalProperties: false
+      required:
+      - breedId
+      - categoryCode
+      - categoryName
+      - name
+      - aliases
+      - tags
+      - summary
+      - coverUrl
+      - bodyType
+      - facts
+      - radar
+      - descriptionHtml
+      - careAdviceHtml
+      - healthTipsHtml
+      - status
+      - related
+      properties:
+        breedId:
+          $ref: '#/components/schemas/PublicId'
+        categoryCode:
+          type: string
+          enum:
+          - DOG
+          - CAT
+          - REPTILE
+          - BIRD
+          - INSECT
+        categoryName:
+          type: string
+          minLength: 1
+          maxLength: 16
+        name:
+          type: string
+          minLength: 1
+          maxLength: 30
+        aliases:
+          type: array
+          items:
+            type: string
+            minLength: 1
+            maxLength: 50
+        tags:
+          type: array
+          maxItems: 10
+          items:
+            type: string
+            minLength: 1
+            maxLength: 30
+        summary:
+          type: string
+          minLength: 1
+          maxLength: 120
+        coverUrl:
+          type: string
+          nullable: true
+          maxLength: 512
+        bodyType:
+          type: string
+          nullable: true
+          maxLength: 32
+        facts:
+          type: array
+          items:
+            $ref: '#/components/schemas/BaikeBreedFact'
+        radar:
+          allOf:
+          - $ref: '#/components/schemas/BaikeBreedRadar'
+          nullable: true
+        descriptionHtml:
+          type: string
+          nullable: true
+          maxLength: 6000
+        careAdviceHtml:
+          type: string
+          nullable: true
+          maxLength: 4000
+        healthTipsHtml:
+          type: string
+          nullable: true
+          maxLength: 4000
+        status:
+          type: string
+          enum:
+          - PUBLISHED
+        related:
+          type: array
+          maxItems: 3
+          items:
+            $ref: '#/components/schemas/BaikeBreedCard'
+    BaikeBreedDetailEnvelope:
+      type: object
+      additionalProperties: false
+      required:
+      - success
+      - code
+      - message
+      - data
+      - traceId
+      properties:
+        success:
+          type: boolean
+          enum:
+          - true
+        code:
+          type: string
+          enum:
+          - SUCCESS
+        message:
+          type: string
+          minLength: 1
+        data:
+          $ref: '#/components/schemas/BaikeBreedDetailData'
+        traceId:
+          type: string
+          minLength: 1
+    BaikeErrorEnvelope:
+      type: object
+      additionalProperties: false
+      required:
+      - success
+      - code
+      - message
+      - data
+      - traceId
+      properties:
+        success:
+          type: boolean
+          enum:
+          - false
+        code:
+          type: string
+          enum:
+          - COMMON_INVALID_ARGUMENT
+          - COMMON_UNAUTHORIZED
+          - BREED_NOT_FOUND
+          - COMMON_INTERNAL_ERROR
+        message:
+          type: string
+          minLength: 1
+        data:
+          type: object
+          nullable: true
+          enum:
+          - null
+        traceId:
+          type: string
+          minLength: 1
+
     VerificationCredentialIssue:
       type: object
       additionalProperties: false
