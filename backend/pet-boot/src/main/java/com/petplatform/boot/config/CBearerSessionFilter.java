@@ -126,7 +126,12 @@ public final class CBearerSessionFilter extends OncePerRequestFilter {
     return path.equals("/api/v1/c/stores")
         || path.matches("/api/v1/c/stores/[^/]+")
         || path.matches("/api/v1/c/stores/[^/]+/services")
-        || path.matches("/api/v1/c/services/[^/]+");
+        || path.matches("/api/v1/c/services/[^/]+")
+        // Encyclopedia public reads (contract 62, PRD "所有用户；未登录用户可浏览"): same
+        // anonymous-GET semantics — no bearer passes through, a carried bearer is validated.
+        || path.equals("/api/v1/c/encyclopedia/categories")
+        || path.equals("/api/v1/c/encyclopedia/breeds")
+        || path.matches("/api/v1/c/encyclopedia/breeds/[^/]+");
   }
 
   @Override

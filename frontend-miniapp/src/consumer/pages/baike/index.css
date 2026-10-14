@@ -1,0 +1,76 @@
+/* 品种百科列表页（设计稿 245:5375，登记表 §4.16）。官方色值 #5baae8/#c0ecff/#f0fbff/#daf4ff；
+   头带沿用 profile-edit 族（#fff6e5 + #cdeede 底边）；.cpn-page 前缀抬 specificity 压 button 原生重置。
+   WXSS 铁律：button 全重置（不用 margin !important）、无 button 嵌套、状态仅 className、禁 data-*。 */
+.cpn-page.bk-page { position: fixed; inset: 0; display: flex; flex-direction: column; background: #f0fbff; }
+.bk-page view, .bk-page button, .bk-page image, .bk-page text, .bk-page input { box-sizing: border-box; }
+.bk-page button { padding: 0; margin: 0; border: 0; border-radius: 0; background: transparent; font: inherit; line-height: normal; text-align: left; }
+.bk-page button::after { border: 0; }
+.bk-page button[disabled] { opacity: .65; color: inherit; }
+
+.bk-status-area { height: var(--bk-top); flex-shrink: 0; }
+
+/* 头带（原稿 86 高：返回组 y64，标题「宠物信息」居中——标题按语义落「品种百科」记偏差）。 */
+.bk-header { position: relative; height: calc(var(--bk-unit) * 46); flex-shrink: 0; background: #fff6e5; border-bottom: calc(var(--bk-unit) * 2) solid #cdeede; }
+.bk-back { position: absolute; left: calc(var(--bk-unit) * 19); top: calc(var(--bk-unit) * 7); width: calc(var(--bk-unit) * 32); height: calc(var(--bk-unit) * 32); }
+.bk-back-icon { width: 100%; height: 100%; display: block; }
+.bk-title { position: absolute; left: 0; right: 0; top: calc(var(--bk-unit) * 11); text-align: center; font-size: calc(var(--bk-unit) * 18); line-height: calc(var(--bk-unit) * 24); font-weight: 600; color: #1f2b30; }
+
+.bk-body { flex: 1; min-height: 0; }
+
+/* 搜索条（原稿 y126 h27 白底圆角：放大镜左、搜索钮右）。 */
+.bk-search { display: flex; align-items: center; margin: calc(var(--bk-unit) * 14) calc(var(--bk-unit) * 29) 0; height: calc(var(--bk-unit) * 34); border-radius: calc(var(--bk-unit) * 17); background: #ffffff; border: calc(var(--bk-unit) * 1) solid #c0ecff; }
+.bk-search-icon { width: calc(var(--bk-unit) * 12); height: calc(var(--bk-unit) * 12); margin-left: calc(var(--bk-unit) * 13); border: calc(var(--bk-unit) * 2) solid #577683; border-radius: 50%; position: relative; flex-shrink: 0; }
+.bk-search-icon::after { content: ''; position: absolute; right: calc(var(--bk-unit) * -5); bottom: calc(var(--bk-unit) * -3); width: calc(var(--bk-unit) * 6); height: calc(var(--bk-unit) * 2); background: #577683; border-radius: calc(var(--bk-unit) * 1); transform: rotate(45deg); }
+.bk-search-input { flex: 1; min-width: 0; height: calc(var(--bk-unit) * 32); padding: 0 calc(var(--bk-unit) * 10); font-size: calc(var(--bk-unit) * 13); color: #1f2b30; }
+.bk-search-placeholder { color: #9db8c2; }
+.bk-search-btn { flex-shrink: 0; margin-right: calc(var(--bk-unit) * 5); padding: 0 calc(var(--bk-unit) * 14); height: calc(var(--bk-unit) * 24); border-radius: calc(var(--bk-unit) * 12); background: #5baae8; color: #ffffff; font-size: calc(var(--bk-unit) * 12); line-height: calc(var(--bk-unit) * 24); }
+.bk-hit { color: #2f83c7; font-weight: 600; }
+
+/* 标签筛选胶囊（原稿两行榜单胶囊位，文案为设计占位——落地为品种标签筛选，记偏差）。 */
+.bk-tags { display: flex; flex-wrap: wrap; gap: calc(var(--bk-unit) * 8); margin: calc(var(--bk-unit) * 12) calc(var(--bk-unit) * 29) 0; }
+.bk-tag { padding: calc(var(--bk-unit) * 4) calc(var(--bk-unit) * 12); border-radius: calc(var(--bk-unit) * 14); background: #ffffff; border: calc(var(--bk-unit) * 1) solid #c0ecff; font-size: calc(var(--bk-unit) * 12); line-height: calc(var(--bk-unit) * 17); color: #37474f; }
+.bk-tag-on { background: #daf4ff; border-color: #5baae8; color: #2f83c7; font-weight: 500; }
+
+/* 分类 tab（原稿白卡横排按钮 93.5x48；PRD 五分类 → 五等分，图标切图缺稿以文字落地）。 */
+.bk-cats { display: flex; gap: calc(var(--bk-unit) * 4); margin: calc(var(--bk-unit) * 12) calc(var(--bk-unit) * 13) 0; padding: calc(var(--bk-unit) * 5); border-radius: calc(var(--bk-unit) * 10); background: #ffffff; box-shadow: 0 calc(var(--bk-unit) * 2) calc(var(--bk-unit) * 6) rgba(87, 118, 131, 0.10); }
+.bk-cat { flex: 1; display: flex; align-items: center; justify-content: center; height: calc(var(--bk-unit) * 44); border-radius: calc(var(--bk-unit) * 8); }
+.bk-cat-name { font-size: calc(var(--bk-unit) * 14); line-height: calc(var(--bk-unit) * 20); color: #577683; }
+.bk-cat-on { background: #daf4ff; }
+.bk-cat-on .bk-cat-name { color: #2f83c7; font-weight: 600; }
+
+/* 品种卡（原稿 367.57x130.74：左图 102.88 圆角，右名称+别名+两行简介+标签 chips）。 */
+.bk-list { padding: calc(var(--bk-unit) * 12) calc(var(--bk-unit) * 17) 0; }
+.bk-card { display: flex; width: 100%; background: #ffffff; border-radius: calc(var(--bk-unit) * 10); box-shadow: 0 calc(var(--bk-unit) * 2) calc(var(--bk-unit) * 6) rgba(87, 118, 131, 0.10); padding: calc(var(--bk-unit) * 15); margin-bottom: calc(var(--bk-unit) * 12); }
+.bk-cover { position: relative; width: calc(var(--bk-unit) * 103); height: calc(var(--bk-unit) * 103); border-radius: calc(var(--bk-unit) * 8); overflow: hidden; flex-shrink: 0; background: #daf4ff; }
+.bk-cover-img { position: absolute; inset: 0; width: 100%; height: 100%; }
+.bk-cover-letter { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; font-size: calc(var(--bk-unit) * 34); font-weight: 600; color: rgba(47, 131, 199, 0.55); }
+.bk-cover-img + .bk-cover-letter { display: none; }
+.bk-cover-dog { background: #daf4ff; }
+.bk-cover-cat { background: #ffe9d6; }
+.bk-cover-reptile { background: #d6f5e2; }
+.bk-cover-bird { background: #e5e0ff; }
+.bk-cover-insect { background: #fdeccf; }
+.bk-card-main { flex: 1; min-width: 0; margin-left: calc(var(--bk-unit) * 13); display: flex; flex-direction: column; }
+.bk-card-head { display: flex; align-items: baseline; gap: calc(var(--bk-unit) * 6); min-width: 0; }
+.bk-card-name { font-size: calc(var(--bk-unit) * 17); line-height: calc(var(--bk-unit) * 22); font-weight: 600; color: #1f2b30; flex-shrink: 0; }
+.bk-card-alias { font-size: calc(var(--bk-unit) * 11); line-height: calc(var(--bk-unit) * 15); color: #9db8c2; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.bk-card-summary { margin-top: calc(var(--bk-unit) * 6); font-size: calc(var(--bk-unit) * 12); line-height: calc(var(--bk-unit) * 18); color: #577683; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; }
+.bk-card-tags { display: flex; gap: calc(var(--bk-unit) * 6); margin-top: calc(var(--bk-unit) * 8); }
+.bk-chip { padding: calc(var(--bk-unit) * 2) calc(var(--bk-unit) * 9); border-radius: calc(var(--bk-unit) * 10); background: #f0fbff; border: calc(var(--bk-unit) * 1) solid #c0ecff; }
+.bk-chip-text { font-size: calc(var(--bk-unit) * 11); line-height: calc(var(--bk-unit) * 15); color: #2f83c7; }
+
+/* 状态区（骨架/错误/空态，PRD：首次加载骨架屏、明确空状态和可继续操作入口）。 */
+.bk-state { padding: calc(var(--bk-unit) * 40) calc(var(--bk-unit) * 29); text-align: center; }
+.bk-state-text { font-size: calc(var(--bk-unit) * 13); line-height: calc(var(--bk-unit) * 20); color: #577683; }
+.bk-state-btn { display: inline-block; margin-top: calc(var(--bk-unit) * 12); padding: calc(var(--bk-unit) * 8) calc(var(--bk-unit) * 20); border-radius: calc(var(--bk-unit) * 18); background: #5baae8; color: #ffffff; font-size: calc(var(--bk-unit) * 13); line-height: calc(var(--bk-unit) * 18); }
+.bk-skeleton-card { display: flex; padding: calc(var(--bk-unit) * 15); margin-bottom: calc(var(--bk-unit) * 12); border-radius: calc(var(--bk-unit) * 10); background: #ffffff; }
+.bk-skeleton-img { width: calc(var(--bk-unit) * 103); height: calc(var(--bk-unit) * 103); border-radius: calc(var(--bk-unit) * 8); background: #e2f2fb; }
+.bk-skeleton-lines { flex: 1; margin-left: calc(var(--bk-unit) * 13); padding-top: calc(var(--bk-unit) * 6); }
+.bk-skeleton-line { height: calc(var(--bk-unit) * 16); border-radius: calc(var(--bk-unit) * 4); background: #e2f2fb; margin-bottom: calc(var(--bk-unit) * 10); }
+.bk-skeleton-short { width: 60%; }
+
+.bk-more { padding: calc(var(--bk-unit) * 6) 0 calc(var(--bk-unit) * 10); text-align: center; }
+.bk-more-text { font-size: calc(var(--bk-unit) * 12); line-height: calc(var(--bk-unit) * 17); color: #9db8c2; }
+.bk-notice { display: block; padding: 0 calc(var(--bk-unit) * 29) calc(var(--bk-unit) * 10); text-align: center; font-size: calc(var(--bk-unit) * 12); line-height: calc(var(--bk-unit) * 18); color: #e8756a; }
+.bk-tail { padding: calc(var(--bk-unit) * 8) 0 calc(var(--bk-unit) * 24); text-align: center; }
+.bk-tail text { font-size: calc(var(--bk-unit) * 11); line-height: calc(var(--bk-unit) * 16); color: #9db8c2; }

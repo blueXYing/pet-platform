@@ -57,7 +57,9 @@ public class CSessionSecurityConfiguration {
       @Value("${pet.points.task.http.enabled:false}")
           boolean pointsTaskHttpEnabled,
       @Value("${pet.favtrack.http.enabled:false}")
-      boolean favoriteFootprintHttpEnabled)
+      boolean favoriteFootprintHttpEnabled,
+      @Value("${pet.encyclopedia.query.enabled:false}")
+      boolean encyclopediaQueryEnabled)
       throws Exception {
     http.securityMatcher("/api/v1/c/**", "/api/v1/merchant/**")
         .csrf(c -> c.disable())
@@ -276,6 +278,17 @@ public class CSessionSecurityConfiguration {
               a.requestMatchers(HttpMethod.DELETE,
                   "/api/v1/c/favorites/*/*",
                   "/api/v1/c/footprints/*")
+                  .permitAll();
+            }
+            if (encyclopediaQueryEnabled) {
+              // Encyclopedia public read face (contract 62, PRD 5.1.4): GET-only, anonymous
+              // browse per the STR-D8 ruling (PRD "所有用户；未登录用户可浏览"); the optional
+              // session filter still 401s a carried invalid bearer, non-GET stays denied and
+              // the switch keeps the family unreachable when not assembled.
+              a.requestMatchers(HttpMethod.GET,
+                      "/api/v1/c/encyclopedia/categories",
+                      "/api/v1/c/encyclopedia/breeds",
+                      "/api/v1/c/encyclopedia/breeds/*")
                   .permitAll();
             }
             if (pointsTaskHttpEnabled) {

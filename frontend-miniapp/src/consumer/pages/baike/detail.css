@@ -1,0 +1,96 @@
+/* 品种百科详情页（设计稿 253:953，登记表 §4.16）。官方色值 #5baae8/#c0ecff/#f0fbff；
+   头带沿 profile-edit 族；.cpn-page 前缀抬 specificity。WXSS 铁律：button 全重置、
+   无嵌套、状态仅 className、禁 data-*。 */
+.cpn-page.bkd-page { position: fixed; inset: 0; display: flex; flex-direction: column; background: #f0fbff; }
+.bkd-page view, .bkd-page button, .bkd-page image, .bkd-page text { box-sizing: border-box; }
+.bkd-page button { padding: 0; margin: 0; border: 0; border-radius: 0; background: transparent; font: inherit; line-height: normal; text-align: left; }
+.bkd-page button::after { border: 0; }
+.bkd-page button[disabled] { opacity: .65; color: inherit; }
+
+.bkd-status-area { height: var(--bkd-top); flex-shrink: 0; }
+.bkd-header { position: relative; height: calc(var(--bkd-unit) * 46); flex-shrink: 0; background: #fff6e5; border-bottom: calc(var(--bkd-unit) * 2) solid #cdeede; }
+.bkd-back { position: absolute; left: calc(var(--bkd-unit) * 19); top: calc(var(--bkd-unit) * 7); width: calc(var(--bkd-unit) * 32); height: calc(var(--bkd-unit) * 32); }
+.bkd-back-icon { width: 100%; height: 100%; display: block; }
+.bkd-title { position: absolute; left: 0; right: 0; top: calc(var(--bkd-unit) * 11); text-align: center; font-size: calc(var(--bkd-unit) * 18); line-height: calc(var(--bkd-unit) * 24); font-weight: 600; color: #1f2b30; }
+
+.bkd-body { flex: 1; min-height: 0; }
+
+/* hero（原稿奶油带：名称 h1 32 + 体型签 + 别名行 + 标签 chips + 简介 + 右侧封面 99.55x112）。 */
+.bkd-hero { display: flex; margin: calc(var(--bkd-unit) * 14) calc(var(--bkd-unit) * 13) 0; padding: calc(var(--bkd-unit) * 14); border-radius: calc(var(--bkd-unit) * 12); background: #fff6e5; border: calc(var(--bkd-unit) * 1) solid #cdeede; }
+.bkd-hero-main { flex: 1; min-width: 0; }
+.bkd-hero-head { display: flex; align-items: center; gap: calc(var(--bkd-unit) * 8); flex-wrap: wrap; }
+.bkd-hero-name { font-size: calc(var(--bkd-unit) * 22); line-height: calc(var(--bkd-unit) * 30); font-weight: 700; color: #1f2b30; }
+.bkd-body-chip { padding: calc(var(--bkd-unit) * 2) calc(var(--bkd-unit) * 8); border-radius: calc(var(--bkd-unit) * 10); background: #c0ecff; }
+.bkd-body-chip-text { font-size: calc(var(--bkd-unit) * 11); line-height: calc(var(--bkd-unit) * 15); color: #2f83c7; }
+.bkd-hero-alias { display: block; margin-top: calc(var(--bkd-unit) * 6); font-size: calc(var(--bkd-unit) * 12); line-height: calc(var(--bkd-unit) * 17); color: #577683; }
+.bkd-hero-tags { display: flex; flex-wrap: wrap; gap: calc(var(--bkd-unit) * 6); margin-top: calc(var(--bkd-unit) * 8); }
+.bkd-chip { padding: calc(var(--bkd-unit) * 2) calc(var(--bkd-unit) * 9); border-radius: calc(var(--bkd-unit) * 10); background: #ffffff; border: calc(var(--bkd-unit) * 1) solid #c0ecff; }
+.bkd-chip-text { font-size: calc(var(--bkd-unit) * 11); line-height: calc(var(--bkd-unit) * 15); color: #2f83c7; }
+.bkd-hero-summary { display: block; margin-top: calc(var(--bkd-unit) * 8); font-size: calc(var(--bkd-unit) * 12); line-height: calc(var(--bkd-unit) * 19); color: #37474f; }
+.bkd-hero-cover { position: relative; width: calc(var(--bkd-unit) * 100); height: calc(var(--bkd-unit) * 112); margin-left: calc(var(--bkd-unit) * 12); border-radius: calc(var(--bkd-unit) * 10); overflow: hidden; flex-shrink: 0; }
+.bkd-hero-cover-img { position: absolute; inset: 0; width: 100%; height: 100%; }
+.bkd-hero-cover-letter { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; font-size: calc(var(--bkd-unit) * 36); font-weight: 600; color: rgba(47, 131, 199, 0.55); }
+
+.bkd-cover-dog { background: #daf4ff; }
+.bkd-cover-cat { background: #ffe9d6; }
+.bkd-cover-reptile { background: #d6f5e2; }
+.bkd-cover-bird { background: #e5e0ff; }
+.bkd-cover-insect { background: #fdeccf; }
+
+/* 事实卡三枚（原稿 134x95 白卡：label 上 value 下）。 */
+.bkd-facts { display: flex; gap: calc(var(--bkd-unit) * 6); margin: calc(var(--bkd-unit) * 10) calc(var(--bkd-unit) * 13) 0; }
+.bkd-fact { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; height: calc(var(--bkd-unit) * 78); border-radius: calc(var(--bkd-unit) * 10); background: #ffffff; box-shadow: 0 calc(var(--bkd-unit) * 2) calc(var(--bkd-unit) * 6) rgba(87, 118, 131, 0.10); padding: calc(var(--bkd-unit) * 8); }
+.bkd-fact-label { font-size: calc(var(--bkd-unit) * 12); line-height: calc(var(--bkd-unit) * 17); color: #577683; }
+.bkd-fact-value { margin-top: calc(var(--bkd-unit) * 4); font-size: calc(var(--bkd-unit) * 13); line-height: calc(var(--bkd-unit) * 18); font-weight: 600; color: #1f2b30; text-align: center; }
+
+/* 分区（原稿白卡 + 20px 标题）。 */
+.bkd-section { margin: calc(var(--bkd-unit) * 12) calc(var(--bkd-unit) * 13) 0; padding: calc(var(--bkd-unit) * 16); border-radius: calc(var(--bkd-unit) * 12); background: #ffffff; box-shadow: 0 calc(var(--bkd-unit) * 2) calc(var(--bkd-unit) * 6) rgba(87, 118, 131, 0.10); }
+.bkd-section-title { display: block; font-size: calc(var(--bkd-unit) * 16); line-height: calc(var(--bkd-unit) * 22); font-weight: 600; color: #1f2b30; }
+.bkd-section-sub { display: block; font-size: calc(var(--bkd-unit) * 14); line-height: calc(var(--bkd-unit) * 20); font-weight: 600; color: #1f2b30; }
+
+/* 雷达（原稿 260x240 五维图：画布 + 环绕文字标签）。 */
+.bkd-radar-wrap { position: relative; width: calc(var(--bkd-unit) * 260); height: calc(var(--bkd-unit) * 200); margin: calc(var(--bkd-unit) * 6) auto 0; }
+.bkd-radar-canvas { width: calc(var(--bkd-unit) * 260); height: calc(var(--bkd-unit) * 200); }
+.bkd-radar-label { position: absolute; font-size: calc(var(--bkd-unit) * 11); line-height: calc(var(--bkd-unit) * 15); color: #577683; white-space: nowrap; }
+.bkd-radar-label-0 { left: 50%; top: calc(var(--bkd-unit) * -4); transform: translateX(-50%); }
+.bkd-radar-label-1 { right: calc(var(--bkd-unit) * -18); top: 34%; }
+.bkd-radar-label-2 { right: calc(var(--bkd-unit) * -10); bottom: calc(var(--bkd-unit) * 2); }
+.bkd-radar-label-3 { left: calc(var(--bkd-unit) * -10); bottom: calc(var(--bkd-unit) * 2); }
+.bkd-radar-label-4 { left: calc(var(--bkd-unit) * -18); top: 34%; }
+
+.bkd-care { margin-top: calc(var(--bkd-unit) * 12); padding-top: calc(var(--bkd-unit) * 12); border-top: calc(var(--bkd-unit) * 1) solid #f0fbff; }
+.bkd-care-title { display: block; font-size: calc(var(--bkd-unit) * 14); line-height: calc(var(--bkd-unit) * 20); font-weight: 600; color: #1f2b30; }
+
+.bkd-personality { margin-bottom: calc(var(--bkd-unit) * 12); }
+.bkd-personality-chips { display: flex; flex-wrap: wrap; gap: calc(var(--bkd-unit) * 8); margin-top: calc(var(--bkd-unit) * 8); }
+
+/* 富文本（品种描述 h3 分节：起源历史/外貌特征/气质与行为）。 */
+.bkd-rich { margin-top: calc(var(--bkd-unit) * 10); font-size: calc(var(--bkd-unit) * 13); line-height: calc(var(--bkd-unit) * 21); color: #37474f; }
+.bkd-rich h3 { font-size: calc(var(--bkd-unit) * 14); line-height: calc(var(--bkd-unit) * 20); font-weight: 600; color: #1f2b30; margin: calc(var(--bkd-unit) * 10) 0 calc(var(--bkd-unit) * 4); }
+.bkd-rich h4 { font-size: calc(var(--bkd-unit) * 13); line-height: calc(var(--bkd-unit) * 19); font-weight: 600; color: #1f2b30; margin: calc(var(--bkd-unit) * 8) 0 calc(var(--bkd-unit) * 4); }
+.bkd-rich p { margin: calc(var(--bkd-unit) * 4) 0; }
+.bkd-rich ul { padding-left: calc(var(--bkd-unit) * 18); }
+.bkd-rich li { margin: calc(var(--bkd-unit) * 2) 0; }
+.bkd-rich strong { font-weight: 600; }
+
+/* 科普免责声明（PRD 硬规则：固定渲染）。 */
+.bkd-disclaimer { margin-top: calc(var(--bkd-unit) * 12); padding: calc(var(--bkd-unit) * 10) calc(var(--bkd-unit) * 12); border-radius: calc(var(--bkd-unit) * 8); background: #fff6e5; }
+.bkd-disclaimer-text { font-size: calc(var(--bkd-unit) * 11); line-height: calc(var(--bkd-unit) * 17); color: #b07b4f; }
+
+/* 相关推荐（横滑小卡）。 */
+.bkd-related { width: 100%; margin-top: calc(var(--bkd-unit) * 10); white-space: nowrap; }
+.bkd-related-card { display: inline-block; vertical-align: top; width: calc(var(--bkd-unit) * 128); margin-right: calc(var(--bkd-unit) * 10); padding: calc(var(--bkd-unit) * 10); border-radius: calc(var(--bkd-unit) * 10); background: #f0fbff; border: calc(var(--bkd-unit) * 1) solid #c0ecff; }
+.bkd-related-cover { position: relative; width: 100%; height: calc(var(--bkd-unit) * 84); border-radius: calc(var(--bkd-unit) * 8); overflow: hidden; }
+.bkd-related-img { position: absolute; inset: 0; width: 100%; height: 100%; }
+.bkd-related-letter { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; font-size: calc(var(--bkd-unit) * 28); font-weight: 600; color: rgba(47, 131, 199, 0.55); }
+.bkd-related-name { display: block; margin-top: calc(var(--bkd-unit) * 8); font-size: calc(var(--bkd-unit) * 14); line-height: calc(var(--bkd-unit) * 19); font-weight: 600; color: #1f2b30; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.bkd-related-summary { display: -webkit-box; margin-top: calc(var(--bkd-unit) * 4); font-size: calc(var(--bkd-unit) * 11); line-height: calc(var(--bkd-unit) * 16); color: #577683; white-space: normal; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; }
+
+.bkd-state { padding: calc(var(--bkd-unit) * 48) calc(var(--bkd-unit) * 29); text-align: center; }
+.bkd-state-text { font-size: calc(var(--bkd-unit) * 13); line-height: calc(var(--bkd-unit) * 20); color: #577683; }
+.bkd-state-btn { display: inline-block; margin-top: calc(var(--bkd-unit) * 12); padding: calc(var(--bkd-unit) * 8) calc(var(--bkd-unit) * 20); border-radius: calc(var(--bkd-unit) * 18); background: #5baae8; color: #ffffff; font-size: calc(var(--bkd-unit) * 13); line-height: calc(var(--bkd-unit) * 18); }
+.bkd-skeleton-hero { height: calc(var(--bkd-unit) * 140); border-radius: calc(var(--bkd-unit) * 12); background: #e2f2fb; margin: calc(var(--bkd-unit) * 14) calc(var(--bkd-unit) * 13) 0; }
+.bkd-skeleton-block { height: calc(var(--bkd-unit) * 96); border-radius: calc(var(--bkd-unit) * 12); background: #e2f2fb; margin: calc(var(--bkd-unit) * 12) calc(var(--bkd-unit) * 13) 0; }
+
+.bkd-tail { padding: calc(var(--bkd-unit) * 16) 0 calc(var(--bkd-unit) * 24); text-align: center; }
+.bkd-tail text { font-size: calc(var(--bkd-unit) * 11); line-height: calc(var(--bkd-unit) * 16); color: #9db8c2; }

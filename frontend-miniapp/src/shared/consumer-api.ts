@@ -436,7 +436,7 @@ export class ConsumerApi {
    *  stale context switches. */
   async anonymousRequest<T>(spec: RequestSpec, decode: (data: unknown) => T): Promise<T> {
     if (spec.method !== 'GET'
-      || !/^\/api\/v1\/c\/(stores(\/[1-9][0-9]{0,18}(\/services)?)?|services\/[1-9][0-9]{0,18})$/.test(spec.path)) throw new Error('INVALID_PATH')
+      || !/^\/api\/v1\/c\/(stores(\/[1-9][0-9]{0,18}(\/services)?)?|services\/[1-9][0-9]{0,18}|encyclopedia\/categories|encyclopedia\/breeds(\/[1-9][0-9]{0,18})?)$/.test(spec.path)) throw new Error('INVALID_PATH')
     const ticket = this.scope.current ? this.scope.capture() : null
     const value = await this.send(spec)
     if (ticket) ticket.assertCurrent()

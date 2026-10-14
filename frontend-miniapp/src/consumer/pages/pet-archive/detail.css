@@ -39,6 +39,8 @@
 .pet-detail-line-v { left: calc(var(--pet-unit) * 211.15362069749153); top: calc(var(--pet-unit) * 262.5); width: calc(var(--pet-unit) * 0.6930589900084669); height: calc(var(--pet-unit) * 188); }
 .pet-detail-label { font-size: calc(var(--pet-unit) * 10); line-height: calc(var(--pet-unit) * 15); color: #b89682; }
 .pet-detail-value { font-size: calc(var(--pet-unit) * 12); line-height: calc(var(--pet-unit) * 16); color: #2e1d16; }
+/* 品种百科互跳（契约 62）：Text→Button 同位同字形；颜色补 button UA 差异，视觉零变化。 */
+.pet-detail-breed-link { color: #2e1d16; text-align: left; width: calc(var(--pet-unit) * 130); height: calc(var(--pet-unit) * 16); }
 .pet-detail-label-breed, .pet-detail-label-birth, .pet-detail-label-chip { left: calc(var(--pet-unit) * 98); }
 .pet-detail-label-sex, .pet-detail-label-weight, .pet-detail-label-age { left: calc(var(--pet-unit) * 254); }
 .pet-detail-label-breed { top: calc(var(--pet-unit) * 274); }

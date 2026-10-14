@@ -90,6 +90,13 @@ export default function PetArchiveDetail() {
     if (!pet) return
     Taro.navigateTo({ url: `/consumer/pages/pet-archive/form?preview=${preview ? '1' : '0'}&scenario=${scenario}&petId=${encodeURIComponent(pet.petId)}` }).catch(() => setNotice('页面跳转失败，请重试'))
   }
+  // 品种百科互跳（契约 62 / PRD 5.1.4 核心功能 4：从宠物档案进入对应品种的养护指南）：
+  // 品种值沿用原稿一比一画布定位（Text→Button 同类同位，视觉零变化），带品种名关键词进百科列表。
+  function openBaike() {
+    if (!pet || !pet.breedName) return
+    Taro.navigateTo({ url: `/consumer/pages/baike/index?keyword=${encodeURIComponent(pet.breedName)}` })
+      .catch(() => setNotice('页面跳转失败，请重试'))
+  }
   function notWired(label: string) {
     setNotice(preview ? `“${label}”页面尚未接入本次预览` : `“${label}”功能尚未接通`)
   }
@@ -136,7 +143,7 @@ export default function PetArchiveDetail() {
         <View className='pet-abs pet-detail-line pet-detail-line-h3' />
         <View className='pet-abs pet-detail-line pet-detail-line-v' />
         <Text className='pet-abs pet-detail-label pet-detail-label-breed'>品种</Text>
-        <Text className='pet-abs pet-detail-value pet-detail-value-breed'>{pet.breedName || ''}</Text>
+        <Button id='pet-detail-value-breed' className='pet-abs pet-detail-value pet-detail-value-breed pet-detail-breed-link' ariaLabel='查看品种百科' onClick={openBaike}>{pet.breedName || ''}</Button>
         <Text className='pet-abs pet-detail-label pet-detail-label-sex'>性别</Text>
         <Text className='pet-abs pet-detail-value pet-detail-value-sex'>{sexLabel(pet.sex)}</Text>
         <Text className='pet-abs pet-detail-label pet-detail-label-birth'>出生日期</Text>

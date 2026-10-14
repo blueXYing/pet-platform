@@ -36,5 +36,7 @@ export const consumerPageSections = {
   bookingCreate: 'services', bookingPay: 'mine',
   // Become-provider entry slice (32号 §2): entered from the mine grid, rides the mine section.
   becomeProvider: 'mine',
+  // Encyclopedia browse slice (contract 62, PRD 5.1.4): mine-grid entry, anonymous-browsable.
+  baikeList: 'mine', baikeDetail: 'mine',
 } as const satisfies Record<string, ConsumerNavigationKey>
 export type ConsumerNavigationPage = keyof typeof consumerPageSections

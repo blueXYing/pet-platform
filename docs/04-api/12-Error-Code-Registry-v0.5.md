@@ -489,6 +489,7 @@ HTTP 映射只属于 Adapter 层；内部 Java API 通过稳定 code 表达同�
 | PET_NOT_FOUND | 宠物不存在/已删除/归属不符（防枚举统一语义，内部与HTTP同义） | 404 |
 | ADDRESS_NOT_FOUND | 地址不存在/已删除/归属不符（防枚举统一语义，59号） | 404 |
 | ADDRESS_LIMIT_EXCEEDED | 单用户 ACTIVE 地址超上限 20 条（59号） | 400 |
+| BREED_NOT_FOUND | 百科品种不存在/未发布/已下线（防枚举统一语义，62号） | 404 |
 
 ## 14. 使用规则
 
