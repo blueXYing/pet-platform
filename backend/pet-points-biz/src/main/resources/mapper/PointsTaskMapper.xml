@@ -1,0 +1,149 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.petplatform.points.biz.infrastructure.persistence.mapper.PointsTaskMapper">
+    <update id="setTimeZoneUtc">SET time_zone = '+00:00'</update>
+    <update id="setLockWaitTimeout2Seconds">SET innodb_lock_wait_timeout = 2</update>
+
+    <!-- command_idempotency (14号 shared physical table; points task rows use a length-prefixed
+         request-key-v1 string, same convention as the notification/service domains). -->
+    <select id="selectBindingForUpdate"
+            resultType="com.petplatform.points.biz.infrastructure.persistence.entity.PointsTaskBindingEntity">
+        SELECT id, canonical_version, params_sha256, params_canonical, status, receipt_json
+        FROM command_idempotency
+        WHERE request_key = #{requestKey}
+        FOR UPDATE
+    </select>
+    <insert id="insertBinding">
+        INSERT INTO command_idempotency(id, request_key, canonical_version, params_sha256,
+                                        params_canonical, status, receipt_json, created_at)
+        VALUES (#{id}, #{requestKey}, #{canonicalVersion}, #{paramsSha256}, #{paramsCanonical},
+                'RESERVED', NULL, UTC_TIMESTAMP(3))
+    </insert>
+    <update id="markBindingSucceeded">
+        UPDATE command_idempotency
+        SET status = 'SUCCEEDED', receipt_json = #{receiptJson}, succeeded_at = UTC_TIMESTAMP(3)
+        WHERE request_key = #{requestKey} AND status = 'RESERVED'
+    </update>
+
+    <!-- points_task_config (SQL58 §1, singleton GLOBAL row) -->
+    <select id="selectConfig"
+            resultType="com.petplatform.points.biz.infrastructure.persistence.entity.PointsTaskConfigEntity">
+        SELECT id, scope, sign_in_daily_points, sign_in_streak_bonus_points,
+               invite_per_invitee_points, invite_monthly_reward_cap,
+               invite_milestone_bonus_points, first_order_points, profile_complete_points,
+               version, created_at, updated_at
+        FROM points_task_config
+        WHERE scope = #{scope}
+    </select>
+    <insert id="upsertConfig">
+        INSERT INTO points_task_config
+            (id, scope, sign_in_daily_points, sign_in_streak_bonus_points,
+             invite_per_invitee_points, invite_monthly_reward_cap,
+             invite_milestone_bonus_points, first_order_points, profile_complete_points,
+             version, created_at, updated_at)
+        VALUES (#{id}, #{scope}, #{signInDailyPoints}, #{signInStreakBonusPoints},
+                #{invitePerInviteePoints}, #{inviteMonthlyRewardCap},
+                #{inviteMilestoneBonusPoints}, #{firstOrderPoints}, #{profileCompletePoints},
+                0, #{now}, #{now})
+        ON DUPLICATE KEY UPDATE
+            sign_in_daily_points = #{signInDailyPoints},
+            sign_in_streak_bonus_points = #{signInStreakBonusPoints},
+            invite_per_invitee_points = #{invitePerInviteePoints},
+            invite_monthly_reward_cap = #{inviteMonthlyRewardCap},
+            invite_milestone_bonus_points = #{inviteMilestoneBonusPoints},
+            first_order_points = #{firstOrderPoints},
+            profile_complete_points = #{profileCompletePoints},
+            version = version + 1,
+            updated_at = #{now}
+    </insert>
+
+    <!-- points_sign_in (SQL58 §2); sign_date is an Asia/Shanghai calendar day (S1) -->
+    <select id="selectSignInByDate"
+            resultType="com.petplatform.points.biz.infrastructure.persistence.entity.PointsSignInEntity">
+        SELECT id, user_id, sign_date, points, streak_after, ledger_id, created_at
+        FROM points_sign_in
+        WHERE user_id = #{userId} AND sign_date = #{signDate}
+    </select>
+    <insert id="insertSignIn">
+        INSERT INTO points_sign_in(id, user_id, sign_date, points, streak_after, ledger_id, created_at)
+        VALUES (#{id}, #{userId}, #{signDate}, #{points}, #{streakAfter}, #{ledgerId}, #{createdAt})
+    </insert>
+    <select id="selectRecentSignInDates" resultType="java.time.LocalDate">
+        SELECT sign_date
+        FROM points_sign_in
+        WHERE user_id = #{userId}
+        ORDER BY sign_date DESC
+        LIMIT #{limitRows}
+    </select>
+
+    <!-- points_referral_binding (SQL58 §3) -->
+    <select id="selectBindingByInvitee"
+            resultType="com.petplatform.points.biz.infrastructure.persistence.entity.PointsReferralBindingEntity">
+        SELECT id, inviter_id, invitee_id, invite_code, state, reward_period, rewarded_at,
+               reward_ledger_id, created_at
+        FROM points_referral_binding
+        WHERE invitee_id = #{inviteeId}
+    </select>
+    <insert id="insertReferralBinding">
+        INSERT INTO points_referral_binding
+            (id, inviter_id, invitee_id, invite_code, state, created_at)
+        VALUES (#{id}, #{inviterId}, #{inviteeId}, #{inviteCode}, 'BOUND', #{createdAt})
+    </insert>
+    <select id="selectBoundBindings"
+            resultType="com.petplatform.points.biz.infrastructure.persistence.entity.PointsReferralBindingEntity">
+        SELECT id, inviter_id, invitee_id, invite_code, state, reward_period, rewarded_at,
+               reward_ledger_id, created_at
+        FROM points_referral_binding
+        WHERE inviter_id = #{inviterId} AND state = 'BOUND'
+        ORDER BY created_at ASC, id ASC
+        LIMIT #{limitRows}
+    </select>
+    <select id="selectRewardedBindings"
+            resultType="com.petplatform.points.biz.infrastructure.persistence.entity.PointsReferralBindingEntity">
+        SELECT id, inviter_id, invitee_id, invite_code, state, reward_period, rewarded_at,
+               reward_ledger_id, created_at
+        FROM points_referral_binding
+        WHERE inviter_id = #{inviterId} AND state = 'REWARDED'
+    </select>
+    <update id="markBindingRewarded">
+        UPDATE points_referral_binding
+        SET state = 'REWARDED', reward_period = #{rewardPeriod}, reward_ledger_id = #{rewardLedgerId},
+            rewarded_at = #{rewardedAt}
+        WHERE id = #{id} AND state = 'BOUND'
+    </update>
+
+    <!-- points_task_award (SQL58 §4) -->
+    <select id="selectAward"
+            resultType="com.petplatform.points.biz.infrastructure.persistence.entity.PointsTaskAwardEntity">
+        SELECT id, user_id, task_code, points, ledger_id, created_at
+        FROM points_task_award
+        WHERE user_id = #{userId} AND task_code = #{taskCode}
+    </select>
+    <insert id="insertAward">
+        INSERT INTO points_task_award(id, user_id, task_code, points, ledger_id, created_at)
+        VALUES (#{id}, #{userId}, #{taskCode}, #{points}, #{ledgerId}, #{createdAt})
+    </insert>
+
+    <!-- points_ledger / points_account (SQL06 §9 shared tables): earn-only writes, delta > 0.
+         The account upsert is a single atomic balance increment (no read-modify-write race);
+         balance_after is selected back inside the same transaction. -->
+    <insert id="insertLedger">
+        INSERT INTO points_ledger(id, user_id, biz_type, biz_id, order_id, delta, balance_after,
+                                  request_id, created_at)
+        VALUES (#{id}, #{userId}, #{bizType}, #{bizId}, NULL, #{delta}, #{balanceAfter},
+                #{requestId}, #{createdAt})
+    </insert>
+    <insert id="upsertAccountBalance">
+        INSERT INTO points_account(id, user_id, balance, version, created_at, updated_at)
+        VALUES (#{id}, #{userId}, #{delta}, 0, #{now}, #{now})
+        ON DUPLICATE KEY UPDATE
+            balance = balance + #{delta},
+            version = version + 1,
+            updated_at = #{now}
+    </insert>
+    <select id="selectBalance" resultType="java.lang.Long">
+        SELECT balance
+        FROM points_account
+        WHERE user_id = #{userId}
+    </select>
+</mapper>

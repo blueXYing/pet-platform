@@ -72,6 +72,13 @@ public final class CBearerSessionFilter extends OncePerRequestFilter {
         || path.startsWith("/api/v1/c/coupons/")
         || path.equals("/api/v1/c/points/balance")
         || path.equals("/api/v1/c/points/ledger")
+        // Points earn family (contract 58 / 32号 ruling): sign-in status/command, task-center
+        // read, reward claims and referral bindings — all session-scoped, Bearer enforced.
+        || path.equals("/api/v1/c/points/sign-in")
+        || path.equals("/api/v1/c/points/sign-in/status")
+        || path.equals("/api/v1/c/points/tasks")
+        || path.equals("/api/v1/c/points/claims")
+        || path.equals("/api/v1/c/points/referral-bindings")
         // C order routes (contract 10 §3.5/§3.6/§3.7): MINIAPP Bearer enforced; reads, creation
         // and payment initiation all need the session; the deeper order subpaths keep their own
         // explicit patterns below.

@@ -622,6 +622,23 @@
 
 素材登记：`consumer/pages/points-mall/assets/` 六件商品原切图（128:2764/2785/2804/2823/2842/2861，327x327@2x，114.7~164.0KB，manifest 含 sha256/designBox）；返回箭头 128:2682（21x20 `#7B5B4A`）与积分硬币 128:2775（13x16 `#5BAAE8`）SVG 原矢量 base64 内嵌 `points-mall.css`；`mine.css` 新增 `mi-svc-pet`（pet 分包 entry-paw 字节复用 base64）。
 
+### 4.12 签到 / 拉新任务 / 奖励领取 三页实现登记（2026-10-13，58 号切片）
+
+复核方法：与 §4.11 同源缓存素材（`D:/Temp/figma-mcp/user-end-page1.raw`），提取 `690:11773`（签到日历）、`129:5854`（拉新任务面板）、`129:7677`（奖励领取面板）三帧 XML 树（零 API 配额；树文件 `D:/Temp/figma-mcp/signin-tree.txt`、`invite-tree.txt`、`reward-tree.txt`）。三页为 32 号裁决第二节"未建页面批次"首批，功能接 58 号契约（CCR-POINTS-TASK-001），视觉沿用原稿版式与官方色（主蓝 `#5baae8`/描边 `#c0ecff`/浅蓝底 `#f0fbff`）。
+
+| 页面 | 画板 | 落地 |
+|---|---|---|
+| 签到日历 `consumer/pages/points-tasks/signin` | `690:11773` | 周条（近 7 自然日，已签点亮）+ 连签天数 + 立即签到按钮（POST sign-in，当日已签置灰）+ 三快捷入口（拉新任务/奖励领取/积分明细——前两者进本分包两页，积分明细为既有积分明细页占位入口）。入"我的"页签到占位卡（连签数接真实 status，失败保持 0 占位语义）。 |
+| 拉新任务 `consumer/pages/points-tasks/tasks` | `129:5854` | 面板式：标题+关闭（返回）、任务行四条（INVITE_PER_HEAD/FIRST_ORDER/SIGN_IN/COMMUNITY_POST——COMMUNITY_POST 恒 NOT_OPEN 文案"暂未开放"）、本人邀请码 + 复制按钮（V1 无邀请落地页，复制口令式文本，不切分享卡片素材）。 |
+| 奖励领取 `consumer/pages/points-tasks/rewards` | `129:7677` | 面板式：三里程碑行（SIGN_IN_STREAK_7/INVITE_MILESTONE_3/PROFILE_COMPLETE）+ 领取按钮（POST claims；CLAIMABLE 才可点，CLAIMED 显已领取）。 |
+
+登记偏差（补稿或功能交付后按 21号验收补充）：
+
+1. **129:7677 标题栏文字**：原稿标题栏写「拉新任务」，与 129:5854 重复且画面内容为奖励里程碑——判定为原稿笔误，实现按「奖励领取」。
+2. **签到日历整月网格**（`690:11773` 下方月历区）：58 号契约只回近 7 日 week 数组，月历无数据契约不虚构，落地为周条（7 日）+连签数口径。
+3. **消费类元素**：32 号裁决第二节第 1 条积分只赚取/扣回不消费，本三页不出现任何兑换/抵扣动作（商城展示态另页登记）。
+4. **邀请分享素材**：原稿分享卡片视觉 V1 无邀请落地页承接，落地为复制邀请码文本，素材不切。
+
 ## 5. 维护规则
 
 - Figma 文件更新后（比对 §1 的 version 字段），由任一 Worker 重新执行 depth=2 抓取并更新 §3；同名不同 id 的 frame 是不同状态稿，全部保留。

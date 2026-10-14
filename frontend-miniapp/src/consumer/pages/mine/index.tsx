@@ -6,6 +6,7 @@ import { consumerApi, consumerSession, consumerStorage } from '../../../shared/c
 import { integrationMessage } from '../../../shared/consumer-api'
 import { RealProfileRepository } from '../../api/repositories'
 import { RealCouponPointsRepository } from '../../coupon-points/repository'
+import { RealPointsTaskRepository } from '../../points-tasks/repository'
 import { deltaLabel, formatLedgerTime, pointsBizTypeLabels, type PointsLedgerView } from '../../coupon-points/model'
 import avatar from '../../assets/profile/avatar.png'
 import stripTop from './assets/strip-top.jpg'
@@ -52,6 +53,9 @@ export default function MinePage() {
   const { revision } = useWorkspace('real')
   const [profileRepository] = useState(() => new RealProfileRepository(consumerApi))
   const [couponPointsRepository] = useState(() => new RealCouponPointsRepository(consumerApi))
+  const [pointsTaskRepository] = useState(() => new RealPointsTaskRepository(consumerApi))
+  // 58 号签到切片：连签数接真实 status；读取失败软降级保持 0 占位语义（不阻塞卡片）。
+  const [signInStreak, setSignInStreak] = useState(0)
   const [card, setCard] = useState<MineCard>(() => mineCard({
     outcome: consumerSession.outcome(),
     nickname: '',
@@ -81,12 +85,14 @@ export default function MinePage() {
       let phoneMasked: string | null = consumerApi.currentSession?.phoneMasked ?? null
       let stats: MineStats = { coupons: null, points: null }
       if (outcome === 'authenticated') {
-        // 三路读取失败均软降级（卡片仍可用）；会话过期由 ConsumerApi 401 自动恢复兜底。
-        const [profile, coupons, points] = await Promise.all([
+        // 四路读取失败均软降级（卡片仍可用）；会话过期由 ConsumerApi 401 自动恢复兜底。
+        const [profile, coupons, points, signIn] = await Promise.all([
           profileRepository.load().catch(() => null),
           couponPointsRepository.listCoupons('AVAILABLE', 1, 1).then(page => page.total).catch(() => null),
           couponPointsRepository.balance().then(value => value.balance).catch(() => null),
+          pointsTaskRepository.signInStatus().then(status => status.streak).catch(() => null),
         ])
+        setSignInStreak(signIn ?? 0)
         nickname = profile?.nickname || ''
         if (profile?.phoneMasked) phoneMasked = profile.phoneMasked
         stats = { coupons, points }
@@ -236,13 +242,15 @@ export default function MinePage() {
           </View>
         </View>}
         {notice && <View className='mine-notice' role='status'><Text id='mine-notice'>{notice}</Text></View>}
-        {/* 每日签到卡：V1 无签到写路径，纯视觉占位（周条为真实日历），登记表 §4.6。 */}
-        <View className='mine-signin' ariaLabel='签到功能暂未接通'>
+        {/* 每日签到卡（58 号切片接通）：整卡入口进签到日历页；连签数接真实 status，
+            读取失败保持 0 占位语义；周条仍为真实日历（已签点亮在签到页内呈现）。 */}
+        <Button id='mine-hub-signin' className='mine-signin' hoverClass='none'
+          ariaLabel='进入每日签到' onClick={() => open('/consumer/pages/points-tasks/signin')}>
           <View className='mine-signin-head'>
             <View className='mine-signin-title'><View className='mi-signin-cal' /><Text>每日签到</Text></View>
             <View className='mine-signin-streak'>
               <Text>连续签到</Text>
-              <Text className='mine-signin-streak-num'>0</Text>
+              <Text className='mine-signin-streak-num'>{signInStreak}</Text>
               <Text> 天</Text>
             </View>
           </View>
@@ -252,18 +260,20 @@ export default function MinePage() {
               <Text className='mine-signin-day-date'>{day.date}</Text>
             </View>)}
           </View>
-          <View className='mine-signin-action'><Text>立即签到 · 得 5 积分</Text></View>
-        </View>
+          <View className='mine-signin-action'><Text>立即签到 · 赚积分</Text></View>
+        </Button>
         <View className='mine-quick'>
-          {/* 拉新任务/奖励领取：V1 无对应页面，视觉占位（无交互）；积分明细沿既有积分页入口。 */}
-          <View className='mine-quick-cell'>
+          {/* 拉新任务/奖励领取（58 号切片接通）：面板页入口；积分明细沿既有积分页入口。 */}
+          <Button id='mine-hub-points-tasks' className='mine-quick-cell' hoverClass='none'
+            onClick={() => open('/consumer/pages/points-tasks/tasks')}>
             <View className='mine-quick-chip is-accent'><View className='mi-quick-invite' /></View>
             <Text className='mine-quick-label'>拉新任务</Text>
-          </View>
-          <View className='mine-quick-cell'>
+          </Button>
+          <Button id='mine-hub-points-rewards' className='mine-quick-cell' hoverClass='none'
+            onClick={() => open('/consumer/pages/points-tasks/rewards')}>
             <View className='mine-quick-chip'><View className='mi-quick-reward' /></View>
             <Text className='mine-quick-label'>奖励领取</Text>
-          </View>
+          </Button>
           <Button id='mine-hub-points' className='mine-quick-cell' hoverClass='none' onClick={() => open(hubPoints.url)}>
             <View className='mine-quick-chip'><View className='mi-quick-points' /></View>
             <Text className='mine-quick-label'>积分明细</Text>

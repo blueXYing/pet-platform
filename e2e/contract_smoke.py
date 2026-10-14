@@ -515,6 +515,36 @@ MERCHANT_REFUND_HTTP_OPERATIONS = {
         ('200', '400', '401', '403', '404', '409', '503')),
 }
 
+# Points earn family (contract-58 / 32号 ruling second batch, 2026-10-13): sign-in + referral
+# earn surface plus the ops-configured grant amounts. V1 points only accrue and get clawed
+# back — no spend/exchange route exists in this family. The three POST commands are
+# supplement-23 bound commands (same-requestId same-params replay, different-params 409);
+# the daily re-sign with a fresh requestId is the 409 COMMON_CONFLICT pair. Reads carry no
+# X-Request-Id; every reply is no-store.
+POINTS_TASK_OPERATIONS = {
+    'cGetSignInStatus': (
+        'get', '/c/points/sign-in/status',
+        ('200', '400', '401', '500', '503')),
+    'cSignIn': (
+        'post', '/c/points/sign-in',
+        ('200', '400', '401', '409', '500', '503')),
+    'cListPointsTasks': (
+        'get', '/c/points/tasks',
+        ('200', '400', '401', '500', '503')),
+    'cClaimPointsReward': (
+        'post', '/c/points/claims',
+        ('200', '400', '401', '409', '500', '503')),
+    'cBindReferralCode': (
+        'post', '/c/points/referral-bindings',
+        ('200', '400', '401', '409', '500', '503')),
+    'adminGetPointsTaskConfig': (
+        'get', '/admin/points-task-config',
+        ('200', '400', '401', '403', '500', '503')),
+    'adminUpdatePointsTaskConfig': (
+        'put', '/admin/points-task-config',
+        ('200', '400', '401', '403', '409', '500', '503')),
+}
+
 
 def check_order_write(spec, operation, method, path):
     name = operation['operationId']
@@ -662,6 +692,48 @@ def check_merchant_refund_http(spec, operation, method, path):
             assert set(request['required']) == {'reasonText'}, 'Merchant refund reject must keep reasonText alone'
             reason = request['properties']['reasonText']
             assert reason.get('type') == 'string' and reason.get('minLength') == 1 and reason.get('maxLength') == 500,                 'Merchant refund reject reason bounds changed'
+
+
+def check_points_task(spec, operation, method, path):
+    name = operation['operationId']
+    expected_method, expected_path, required_codes = POINTS_TASK_OPERATIONS[name]
+    assert (method, path) == (expected_method, expected_path), f'Points task operation moved: {name}'
+    assert operation.get('security') == [{'bearerAuth': []}], f'Points task security changed: {name}'
+    assert operation.get('x-implementation-status') == 'IMPLEMENTED_DEFAULT_OFF', f'Points task status changed: {name}'
+    assert operation.get('x-default-enabled') is False, f'Points task must stay default off: {name}'
+    assert operation.get('x-contract') == '58-Points-Task-Contract-v0.1.md', f'Points task authority changed: {name}'
+    assert operation.get('x-assembly-switch') == 'pet.points.task.http.enabled', f'Points task switch changed: {name}'
+    admin_side = name.startswith('admin')
+    assert operation.get('x-route-party') == ('OPS' if admin_side else 'USER'), f'Points task identity changed: {name}'
+    assert operation.get('x-audience') == ('ADMIN_WEB' if admin_side else 'MINIAPP'), f'Points task audience changed: {name}'
+    if admin_side:
+        expected_actions = ['points.task.config.read' if method == 'get' else 'points.task.config.write']
+        assert operation.get('x-required-actions') == expected_actions, f'Points task action gate changed: {name}'
+    responses = operation['responses']
+    assert set(responses) == set(required_codes), f'Points task response surface changed: {name}'
+    for code in required_codes:
+        if code != '200':
+            assert dereference(spec, responses[code])['content']['application/json']['schema']                 == {'$ref': '#/components/schemas/PointsTaskErrorEnvelope'}, f'Points task error envelope changed: {name} {code}'
+    success = responses['200']
+    cache = success['headers']['Cache-Control']['schema']
+    assert cache == {'type': 'string', 'enum': ['no-store']}, f'Points task caching changed: {name}'
+    envelope_by_name = {
+        'cGetSignInStatus': 'SignInStatusEnvelope',
+        'cSignIn': 'SignInReceiptEnvelope',
+        'cListPointsTasks': 'PointsTasksEnvelope',
+        'cClaimPointsReward': 'PointsClaimReceiptEnvelope',
+        'cBindReferralCode': 'PointsBindingReceiptEnvelope',
+        'adminGetPointsTaskConfig': 'PointsTaskConfigEnvelope',
+        'adminUpdatePointsTaskConfig': 'PointsTaskConfigEnvelope',
+    }
+    assert success['content'] == {'application/json': {'schema': {'$ref':             '#/components/schemas/' + envelope_by_name[name]}}}, f'Points task success envelope changed: {name}'
+    # No spend/exchange route can appear in this family: every grant is a positive accrual.
+    tasks = spec['components']['schemas']['PointsTasksData']
+    assert tasks.get('additionalProperties') is False, 'Points tasks projection opened'
+    claim = spec['components']['schemas']['PointsTaskClaimRequest']
+    assert claim['properties']['claimType']['enum'] == ['INVITE_PER_HEAD', 'FIRST_ORDER',         'SIGN_IN_STREAK_7', 'INVITE_MILESTONE_3', 'PROFILE_COMPLETE'], 'Points claim types changed'
+    config_update = spec['components']['schemas']['PointsTaskConfigUpdate']
+    assert set(config_update['required']) == {'signInDailyPoints', 'signInStreakBonusPoints',         'invitePerInviteePoints', 'inviteMonthlyRewardCap', 'inviteMilestoneBonusPoints',         'firstOrderPoints', 'profileCompletePoints'}, 'Points config full-put fields changed'
 
 
 def check_staff_invitation_list(spec, operation, method, path):
@@ -1393,6 +1465,9 @@ def check(spec):
             if operation_id in MERCHANT_REFUND_HTTP_OPERATIONS:
                 check_merchant_refund_http(spec, operation, method, path)
 
+            if operation_id in POINTS_TASK_OPERATIONS:
+                check_points_task(spec, operation, method, path)
+
             if method in {'post', 'put', 'patch', 'delete'}:
                 assert {'$ref': '#/components/parameters/RequestId'} in parameters, f'Missing request ID: {operation_id}'
                 writes += 1
@@ -1407,7 +1482,7 @@ def check(spec):
     assert legacy_writes == 11, 'Legacy write surface changed'
     assert legacy_creates == LEGACY_CREATES, 'Legacy create surface changed'
 
-    assert operations == LEGACY_OPERATIONS.keys() | AUTH_OPERATIONS.keys() | MERCHANT_OPERATIONS.keys() | APPLICATION_OPERATIONS.keys() | PRIVATE_ASSET_OPERATIONS.keys() | SERVICE_CATALOG_OPERATIONS.keys() | STORE_CATALOG_OPERATIONS.keys() | SERVICE_WRITE_OPERATIONS.keys() | SCHEDULE_AVAILABILITY_OPERATIONS.keys() | SCHEDULE_WRITE_OPERATIONS.keys() | CREDENTIAL_OPERATIONS.keys() | AFTERSALE_OPERATIONS.keys() | COUPON_POINTS_READ_OPERATIONS.keys() | VERIFICATION_HTTP_OPERATIONS.keys() | NOTIFICATION_PREFERENCE_OPERATIONS.keys() | ADDRESS_OPERATIONS.keys() | STAFF_INVITATION_LIST_OPERATIONS.keys() | ORDER_WRITE_OPERATIONS.keys() | REFUND_HTTP_OPERATIONS.keys() | MERCHANT_ORDER_LIST_OPERATIONS.keys() | RESCHEDULE_HTTP_OPERATIONS.keys() | REVIEW_HTTP_OPERATIONS.keys() | REVIEW_APPEAL_HTTP_OPERATIONS.keys() | MERCHANT_REFUND_HTTP_OPERATIONS.keys(), 'Unexpected or missing reviewed operations'
+    assert operations == LEGACY_OPERATIONS.keys() | AUTH_OPERATIONS.keys() | MERCHANT_OPERATIONS.keys() | APPLICATION_OPERATIONS.keys() | PRIVATE_ASSET_OPERATIONS.keys() | SERVICE_CATALOG_OPERATIONS.keys() | STORE_CATALOG_OPERATIONS.keys() | SERVICE_WRITE_OPERATIONS.keys() | SCHEDULE_AVAILABILITY_OPERATIONS.keys() | SCHEDULE_WRITE_OPERATIONS.keys() | CREDENTIAL_OPERATIONS.keys() | AFTERSALE_OPERATIONS.keys() | COUPON_POINTS_READ_OPERATIONS.keys() | VERIFICATION_HTTP_OPERATIONS.keys() | NOTIFICATION_PREFERENCE_OPERATIONS.keys() | STAFF_INVITATION_LIST_OPERATIONS.keys() | ORDER_WRITE_OPERATIONS.keys() | REFUND_HTTP_OPERATIONS.keys() | MERCHANT_ORDER_LIST_OPERATIONS.keys() | RESCHEDULE_HTTP_OPERATIONS.keys() | REVIEW_HTTP_OPERATIONS.keys() | REVIEW_APPEAL_HTTP_OPERATIONS.keys() | MERCHANT_REFUND_HTTP_OPERATIONS.keys() | POINTS_TASK_OPERATIONS.keys() | ADDRESS_OPERATIONS.keys(), 'Unexpected or missing reviewed operations'
 
     schemes = spec['components']['securitySchemes']
     assert schemes['bearerAuth']['type'] == 'http' and schemes['bearerAuth']['scheme'] == 'bearer'
@@ -1463,6 +1538,7 @@ def check(spec):
 
             'reviewAppealHttpOperations': len(operations & REVIEW_APPEAL_HTTP_OPERATIONS.keys()),
             'merchantRefundHttpOperations': len(operations & MERCHANT_REFUND_HTTP_OPERATIONS.keys()),
+            'pointsTaskOperations': len(operations & POINTS_TASK_OPERATIONS.keys()),
             'refundHttpOperations': len(operations & REFUND_HTTP_OPERATIONS.keys()),
             'serviceWriteOperations': len(operations & SERVICE_WRITE_OPERATIONS.keys()),
             'storeCatalogOperations': len(operations & STORE_CATALOG_OPERATIONS.keys()),

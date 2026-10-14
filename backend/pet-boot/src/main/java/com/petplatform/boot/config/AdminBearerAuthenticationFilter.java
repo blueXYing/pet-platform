@@ -50,7 +50,10 @@ public final class AdminBearerAuthenticationFilter extends OncePerRequestFilter 
           // Review appeal governance (contract 56 / REV-002): ADMIN_WEB Bearer enforced;
           // the review.appeal.* action codes are re-checked by the kernel per call/replay.
           || path.equals("/api/v1/admin/review-appeals")
-          || path.startsWith("/api/v1/admin/review-appeals/")) {
+          || path.startsWith("/api/v1/admin/review-appeals/")
+          // Points task config (contract 58 / 32号 ruling second batch): ADMIN_WEB Bearer;
+          // points.task.config.read/write are re-checked by the controller per request.
+          || path.equals("/api/v1/admin/points-task-config")) {
         try {
           AdminAuthService service = services.getIfAvailable();
           if (service == null) throw AdminAuthFailure.unavailable();

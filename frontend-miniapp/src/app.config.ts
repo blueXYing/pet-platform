@@ -62,5 +62,8 @@ export default defineAppConfig({
     // Points mall display-state page (32号裁决第二节: 只赚不花——商品陈列、兑换置灰禁用,
     // 商品为设计样例无商品后端; entry from the mine hub, one compact line per the convention).
     { root: 'consumer/pages/points-mall', pages: ['index'] },
+    // Points earn slice (58号 / 32号 ruling second batch): sign-in calendar, referral tasks and
+    // reward claim pages, entered from the mine tab; points only accrue in V1.
+    { root: 'consumer/pages/points-tasks', pages: ['signin', 'tasks', 'rewards'] },
   ],
 })

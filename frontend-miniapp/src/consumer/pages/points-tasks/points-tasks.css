@@ -1,0 +1,86 @@
+/* 58 号切片（签到/拉新任务/奖励领取）。measures: 签到 690:11773、拉新面板 129:5854
+   （DIV-335 y355 h490）、奖励面板 129:7677，402 设计 px；--ptk-unit = windowWidth/402
+   （coupon-points 先例）。官方色值：主蓝 #5baae8 / 描边 #c0ecff / 浅蓝底 #f0fbff。
+   WXSS 铁律：button 全量重置（0-1-1 家族覆盖 .ptk-page button 原生样式）、选择器不嵌套、
+   不使用 data-* 属性。 */
+.ptk-page { --ptk-status-top: 0px; min-height: 100vh; background: #f0fbff; color: #1d0d07; font-family: Roboto, "Noto Sans SC", sans-serif; }
+.ptk-page view, .ptk-page button, .ptk-page image, .ptk-page text { box-sizing: border-box; }
+.ptk-page button { padding: 0; margin: 0; border: 0; border-radius: 0; background: transparent; font: inherit; line-height: normal; text-align: left; }
+.ptk-page button::after { border: 0; }
+.ptk-page button[disabled] { opacity: .65; color: inherit; }
+.ptk-design { position: relative; min-height: 100vh; }
+.ptk-status-area { height: var(--ptk-status-top); }
+
+/* 面板式页面（129:5854/129:7677）：暗化背景 + 底部白面板（圆角 16，头部 61 高）。 */
+.ptk-veil { min-height: 100vh; background: rgba(29, 13, 7, .45); display: flex; flex-direction: column; justify-content: flex-end; }
+.ptk-panel { background: #ffffff; border-radius: calc(var(--ptk-unit) * 16) calc(var(--ptk-unit) * 16) 0 0; padding-bottom: calc(var(--ptk-unit) * 24); }
+.ptk-panel-head { display: flex; align-items: center; justify-content: space-between; height: calc(var(--ptk-unit) * 61); padding: 0 calc(var(--ptk-unit) * 17); }
+.ptk-panel-title { font-size: calc(var(--ptk-unit) * 18); line-height: calc(var(--ptk-unit) * 26); font-weight: 700; color: #1d0d07; }
+.ptk-page .ptk-panel-close { width: calc(var(--ptk-unit) * 34); height: calc(var(--ptk-unit) * 34); display: flex; align-items: center; justify-content: center; }
+/* 关闭 X：两条交叉线（无切图，纯 CSS）。 */
+.ptk-close-glyph { position: relative; width: calc(var(--ptk-unit) * 13); height: calc(var(--ptk-unit) * 13); }
+.ptk-close-glyph::before { content: ''; position: absolute; left: calc(var(--ptk-unit) * 5.5); top: 0; width: calc(var(--ptk-unit) * 2); height: calc(var(--ptk-unit) * 13); border-radius: calc(var(--ptk-unit) * 1); background: #5baae8; transform: rotate(45deg); }
+.ptk-close-glyph::after { content: ''; position: absolute; left: calc(var(--ptk-unit) * 5.5); top: 0; width: calc(var(--ptk-unit) * 2); height: calc(var(--ptk-unit) * 13); border-radius: calc(var(--ptk-unit) * 1); background: #5baae8; transform: rotate(-45deg); }
+
+/* 状态与提示。 */
+.ptk-state { padding: calc(var(--ptk-unit) * 42) calc(var(--ptk-unit) * 29); font-size: calc(var(--ptk-unit) * 14); line-height: calc(var(--ptk-unit) * 24); color: #577683; }
+.ptk-page .ptk-state-action { display: block; margin-top: calc(var(--ptk-unit) * 8); color: #3185ba; font-size: calc(var(--ptk-unit) * 12); line-height: calc(var(--ptk-unit) * 18); }
+.ptk-notice { display: block; padding: calc(var(--ptk-unit) * 10) calc(var(--ptk-unit) * 29); font-size: calc(var(--ptk-unit) * 11); line-height: calc(var(--ptk-unit) * 17); color: #402e26; }
+
+/* 行（任务/奖励：129:5854 DIV-345 族 368x89；图标 42 + 文案三行 + 右侧徽章/按钮）。 */
+.ptk-rows { padding: 0 calc(var(--ptk-unit) * 17); }
+.ptk-row { display: flex; align-items: center; padding: calc(var(--ptk-unit) * 13) 0; border-bottom: calc(var(--ptk-unit) * 1) solid #f0fbff; }
+.ptk-row:last-child { border-bottom: 0; }
+.ptk-row-ico { flex-shrink: 0; width: calc(var(--ptk-unit) * 43); height: calc(var(--ptk-unit) * 43); border-radius: calc(var(--ptk-unit) * 12); background: #c0ecff; display: flex; align-items: center; justify-content: center; }
+/* 图标芯片内核：白点 + 蓝弧近似（几何近似，无切图配额）。 */
+.ptk-row-ico-dot { width: calc(var(--ptk-unit) * 14); height: calc(var(--ptk-unit) * 14); border-radius: 50%; background: #ffffff; }
+.ptk-row-main { flex: 1; min-width: 0; margin-left: calc(var(--ptk-unit) * 13); }
+.ptk-row-title { display: block; font-size: calc(var(--ptk-unit) * 15); line-height: calc(var(--ptk-unit) * 22); font-weight: 500; color: #1d0d07; }
+.ptk-row-desc { display: block; margin-top: calc(var(--ptk-unit) * 2); font-size: calc(var(--ptk-unit) * 12); line-height: calc(var(--ptk-unit) * 18); color: #577683; }
+.ptk-row-points { display: block; margin-top: calc(var(--ptk-unit) * 2); font-size: calc(var(--ptk-unit) * 12); line-height: calc(var(--ptk-unit) * 18); color: #5baae8; font-weight: 500; }
+.ptk-badge { flex-shrink: 0; min-width: calc(var(--ptk-unit) * 49); height: calc(var(--ptk-unit) * 25); padding: 0 calc(var(--ptk-unit) * 8); border-radius: calc(var(--ptk-unit) * 13); background: #f0fbff; display: flex; align-items: center; justify-content: center; font-size: calc(var(--ptk-unit) * 12); line-height: calc(var(--ptk-unit) * 16); color: #577683; }
+.ptk-badge.is-progress { color: #3c3c3c; }
+.ptk-page .ptk-claim { flex-shrink: 0; width: calc(var(--ptk-unit) * 51); height: calc(var(--ptk-unit) * 30); border-radius: calc(var(--ptk-unit) * 15); background: #5baae8; display: flex; align-items: center; justify-content: center; }
+.ptk-claim text { font-size: calc(var(--ptk-unit) * 12); line-height: calc(var(--ptk-unit) * 16); color: #ffffff; }
+.ptk-page .ptk-claim.is-done { background: #f0fbff; }
+.ptk-claim.is-done text { color: #577683; }
+
+/* 邀请码条（58 号 inviteCode；V1 无邀请落地页，仅复制口令）。 */
+.ptk-invite { margin: calc(var(--ptk-unit) * 14) calc(var(--ptk-unit) * 17) 0; border: calc(var(--ptk-unit) * 1) dashed #c0ecff; border-radius: calc(var(--ptk-unit) * 12); padding: calc(var(--ptk-unit) * 12) calc(var(--ptk-unit) * 13); background: #f0fbff; }
+.ptk-invite-label { display: block; font-size: calc(var(--ptk-unit) * 11); line-height: calc(var(--ptk-unit) * 16); color: #577683; }
+.ptk-invite-line { display: flex; align-items: center; justify-content: space-between; margin-top: calc(var(--ptk-unit) * 6); }
+.ptk-invite-code { font-size: calc(var(--ptk-unit) * 16); line-height: calc(var(--ptk-unit) * 22); font-weight: 700; color: #3185ba; letter-spacing: calc(var(--ptk-unit) * 1); }
+.ptk-page .ptk-invite-copy { padding: calc(var(--ptk-unit) * 6) calc(var(--ptk-unit) * 14); border-radius: calc(var(--ptk-unit) * 14); background: #5baae8; }
+.ptk-invite-copy text { font-size: calc(var(--ptk-unit) * 11); line-height: calc(var(--ptk-unit) * 15); color: #ffffff; }
+
+/* 签到页（690:11773 DIV-60：白卡 343 宽 + 头部 + 周条 + 按钮 + 三快捷）。 */
+.ptk-signin-card { margin: calc(var(--ptk-unit) * 20) calc(var(--ptk-unit) * 29) 0; background: #ffffff; border: calc(var(--ptk-unit) * 1) solid #c0ecff; border-radius: calc(var(--ptk-unit) * 16); padding: calc(var(--ptk-unit) * 16); }
+.ptk-signin-head { display: flex; align-items: center; justify-content: space-between; }
+.ptk-signin-title { display: flex; align-items: center; }
+.ptk-signin-cal { width: calc(var(--ptk-unit) * 17); height: calc(var(--ptk-unit) * 17); margin-right: calc(var(--ptk-unit) * 8); border: calc(var(--ptk-unit) * 1.5) solid #5baae8; border-radius: calc(var(--ptk-unit) * 3); position: relative; }
+.ptk-signin-cal::before { content: ''; position: absolute; left: calc(var(--ptk-unit) * (-1)); top: calc(var(--ptk-unit) * 3); width: calc(var(--ptk-unit) * 17); height: calc(var(--ptk-unit) * 2.5); background: #5baae8; }
+.ptk-signin-title text { font-size: calc(var(--ptk-unit) * 14); line-height: calc(var(--ptk-unit) * 20); font-weight: 700; color: #53bfee; }
+.ptk-signin-streak { font-size: calc(var(--ptk-unit) * 12); line-height: calc(var(--ptk-unit) * 16); color: #53bfee; }
+.ptk-signin-streak-num { font-size: calc(var(--ptk-unit) * 16); line-height: calc(var(--ptk-unit) * 15); font-weight: 700; }
+.ptk-signin-week { display: flex; justify-content: space-between; margin-top: calc(var(--ptk-unit) * 14); }
+.ptk-signin-day { display: flex; flex-direction: column; align-items: center; width: calc(var(--ptk-unit) * 32); }
+.ptk-signin-day-circle { width: calc(var(--ptk-unit) * 32); height: calc(var(--ptk-unit) * 32); border-radius: 50%; background: #f0fbff; display: flex; align-items: center; justify-content: center; }
+.ptk-signin-day-circle text { font-size: calc(var(--ptk-unit) * 12); line-height: calc(var(--ptk-unit) * 16); color: #53bfee; }
+.ptk-signin-day.is-signed .ptk-signin-day-circle { background: #5baae8; }
+.ptk-signin-day.is-signed .ptk-signin-day-circle text { color: #ffffff; }
+.ptk-signin-day-date { margin-top: calc(var(--ptk-unit) * 4); font-size: calc(var(--ptk-unit) * 9); line-height: calc(var(--ptk-unit) * 13.5); color: #53bfee; }
+.ptk-page .ptk-signin-action { display: flex; align-items: center; justify-content: center; margin-top: calc(var(--ptk-unit) * 16); height: calc(var(--ptk-unit) * 36); border-radius: calc(var(--ptk-unit) * 18); background: #5baae8; }
+.ptk-signin-action text { font-size: calc(var(--ptk-unit) * 13); line-height: calc(var(--ptk-unit) * 18); color: #ffffff; font-weight: 500; }
+.ptk-page .ptk-signin-action.is-done { background: #c0ecff; }
+.ptk-signin-action.is-done text { color: #3c3c3c; }
+
+/* 三快捷（690:11773 DIV-130：三枚 109x85，图标 40 + 文案）。 */
+.ptk-shortcuts { display: flex; justify-content: space-between; margin: calc(var(--ptk-unit) * 12) calc(var(--ptk-unit) * 29) 0; }
+.ptk-page .ptk-shortcut { width: calc(var(--ptk-unit) * 109); padding: calc(var(--ptk-unit) * 14) 0 calc(var(--ptk-unit) * 10); display: flex; flex-direction: column; align-items: center; background: #ffffff; border: calc(var(--ptk-unit) * 1) solid #c0ecff; border-radius: calc(var(--ptk-unit) * 12); }
+.ptk-shortcut-ico { width: calc(var(--ptk-unit) * 40); height: calc(var(--ptk-unit) * 40); border-radius: 50%; background: #c0ecff; display: flex; align-items: center; justify-content: center; }
+.ptk-shortcut-ico-dot { width: calc(var(--ptk-unit) * 13); height: calc(var(--ptk-unit) * 13); border-radius: 50%; background: #ffffff; }
+.ptk-shortcut-label { margin-top: calc(var(--ptk-unit) * 6); font-size: calc(var(--ptk-unit) * 12); line-height: calc(var(--ptk-unit) * 14); color: #3c3c3c; }
+
+/* 签到成功 toast（690:12138：151x30 圆角胶囊，居中悬浮）。 */
+.ptk-toast { position: fixed; left: 50%; top: calc(var(--ptk-unit) * 242); transform: translateX(-50%); z-index: 30; height: calc(var(--ptk-unit) * 30); padding: 0 calc(var(--ptk-unit) * 16); border-radius: calc(var(--ptk-unit) * 15); background: rgba(29, 13, 7, .72); display: flex; align-items: center; }
+.ptk-toast text { font-size: calc(var(--ptk-unit) * 12); line-height: calc(var(--ptk-unit) * 16); color: #ffffff; }

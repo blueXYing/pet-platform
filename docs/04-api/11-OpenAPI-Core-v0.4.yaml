@@ -3659,6 +3659,78 @@ paths:
                 $ref: '#/components/schemas/ReviewAppealDecisionReceiptEnvelope'
         '409':
           $ref: '#/components/responses/Conflict'
+  /admin/points-task-config:
+    get:
+      tags:
+      - Admin-Points-Task
+      summary: 签到/拉新积分量配置读（points.task.config.read）
+      operationId: adminGetPointsTaskConfig
+      x-implementation-status: IMPLEMENTED_DEFAULT_OFF
+      x-default-enabled: false
+      x-contract: 58-Points-Task-Contract-v0.1.md
+      x-assembly-switch: pet.points.task.http.enabled
+      x-route-party: OPS
+      x-audience: ADMIN_WEB
+      x-required-actions: [points.task.config.read]
+      description: 58号§4.1（32号裁决第二节：签到与拉新积分量后台可配置）。无行读内置缺省
+        （5/30/50/3/100/100/20），version "0"、updatedAt null；query 全禁止。
+      security:
+      - bearerAuth: []
+      responses:
+        '400': {$ref: '#/components/responses/PointsTaskHttpError'}
+        '401': {$ref: '#/components/responses/PointsTaskHttpError'}
+        '403': {$ref: '#/components/responses/PointsTaskHttpError'}
+        '500': {$ref: '#/components/responses/PointsTaskHttpError'}
+        '503': {$ref: '#/components/responses/PointsTaskHttpError'}
+        '200':
+          description: 当前配置投影
+          headers:
+            Cache-Control:
+              schema: {type: string, enum: [no-store]}
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PointsTaskConfigEnvelope'
+    put:
+      tags:
+      - Admin-Points-Task
+      summary: 全量保存七项积分量配置（points.task.config.write；requestId幂等）
+      operationId: adminUpdatePointsTaskConfig
+      x-implementation-status: IMPLEMENTED_DEFAULT_OFF
+      x-default-enabled: false
+      x-contract: 58-Points-Task-Contract-v0.1.md
+      x-assembly-switch: pet.points.task.http.enabled
+      x-route-party: OPS
+      x-audience: ADMIN_WEB
+      x-required-actions: [points.task.config.write]
+      description: 58号§4.2。七字段全部必填整数、严格 JSON（未知字段/显式 null/重复键/尾随
+        token 均400）；同 requestId 同参重放首成回执、异参 409；配置即时生效（既有流水不回改）。
+      security:
+      - bearerAuth: []
+      parameters:
+      - $ref: '#/components/parameters/RequestId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PointsTaskConfigUpdate'
+      responses:
+        '400': {$ref: '#/components/responses/PointsTaskHttpError'}
+        '401': {$ref: '#/components/responses/PointsTaskHttpError'}
+        '403': {$ref: '#/components/responses/PointsTaskHttpError'}
+        '409': {$ref: '#/components/responses/PointsTaskHttpError'}
+        '500': {$ref: '#/components/responses/PointsTaskHttpError'}
+        '503': {$ref: '#/components/responses/PointsTaskHttpError'}
+        '200':
+          description: 保存后的配置投影（首存与幂等重放同形）
+          headers:
+            Cache-Control:
+              schema: {type: string, enum: [no-store]}
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PointsTaskConfigEnvelope'
   /merchant/orders:
     get:
       tags:
@@ -12150,6 +12222,186 @@ paths:
           $ref: '#/components/responses/NotificationPreferenceHttpError'
       x-route-party: USER
       x-audience: MINIAPP
+  /c/points/sign-in/status:
+    get:
+      tags:
+      - C-Points
+      operationId: cGetSignInStatus
+      summary: 签到状态（今日已签+连签数+近7天）
+      x-implementation-status: IMPLEMENTED_DEFAULT_OFF
+      x-default-enabled: false
+      x-contract: 58-Points-Task-Contract-v0.1.md
+      x-assembly-switch: pet.points.task.http.enabled
+      description: 58号§3.1（32号裁决第二节）。Asia/Shanghai 自然日口径；连签=自今日（或昨日）
+        向前连续自然日数，断签清零不回补（保守口径 S2）；query 全禁止。
+      security:
+      - bearerAuth: []
+      responses:
+        '400': {$ref: '#/components/responses/PointsTaskHttpError'}
+        '401': {$ref: '#/components/responses/PointsTaskHttpError'}
+        '500': {$ref: '#/components/responses/PointsTaskHttpError'}
+        '503': {$ref: '#/components/responses/PointsTaskHttpError'}
+        '200':
+          description: 签到状态投影
+          headers:
+            Cache-Control:
+              schema: {type: string, enum: [no-store]}
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SignInStatusEnvelope'
+      x-route-party: USER
+      x-audience: MINIAPP
+  /c/points/sign-in:
+    post:
+      tags:
+      - C-Points
+      operationId: cSignIn
+      summary: 每日签到（空对象；requestId幂等；当日重复409）
+      x-implementation-status: IMPLEMENTED_DEFAULT_OFF
+      x-default-enabled: false
+      x-contract: 58-Points-Task-Contract-v0.1.md
+      x-assembly-switch: pet.points.task.http.enabled
+      description: 58号§3.2。体为空 JSON 对象（严格解析）；S1~S3：UTC+8 自然日一次、固定面额、
+        biz_type=SIGN_IN、points_ledger 配账即时入账；同 requestId 重放首次回执，换新 requestId
+        当日再签 409 COMMON_CONFLICT。V1 积分只赚取/扣回不消费。
+      security:
+      - bearerAuth: []
+      parameters:
+      - $ref: '#/components/parameters/RequestId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PointsSignInRequest'
+      responses:
+        '400': {$ref: '#/components/responses/PointsTaskHttpError'}
+        '401': {$ref: '#/components/responses/PointsTaskHttpError'}
+        '409': {$ref: '#/components/responses/PointsTaskHttpError'}
+        '500': {$ref: '#/components/responses/PointsTaskHttpError'}
+        '503': {$ref: '#/components/responses/PointsTaskHttpError'}
+        '200':
+          description: 签到回执（首签与幂等重放同形）
+          headers:
+            Cache-Control:
+              schema: {type: string, enum: [no-store]}
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SignInReceiptEnvelope'
+      x-route-party: USER
+      x-audience: MINIAPP
+  /c/points/tasks:
+    get:
+      tags:
+      - C-Points
+      operationId: cListPointsTasks
+      summary: 任务面板+奖励面板共用投影（含邀请码）
+      x-implementation-status: IMPLEMENTED_DEFAULT_OFF
+      x-default-enabled: false
+      x-contract: 58-Points-Task-Contract-v0.1.md
+      x-assembly-switch: pet.points.task.http.enabled
+      description: 58号§3.3。一读供拉新任务（129:5854）与奖励领取（129:7677）两页；inviteCode
+        为确定性可逆码（P+base36+校验位）；COMMUNITY_POST 恒 NOT_OPEN（V1 无社区积分规则，
+        文案"暂未开放"）；query 全禁止。
+      security:
+      - bearerAuth: []
+      responses:
+        '400': {$ref: '#/components/responses/PointsTaskHttpError'}
+        '401': {$ref: '#/components/responses/PointsTaskHttpError'}
+        '500': {$ref: '#/components/responses/PointsTaskHttpError'}
+        '503': {$ref: '#/components/responses/PointsTaskHttpError'}
+        '200':
+          description: 任务与奖励投影
+          headers:
+            Cache-Control:
+              schema: {type: string, enum: [no-store]}
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PointsTasksEnvelope'
+      x-route-party: USER
+      x-audience: MINIAPP
+  /c/points/claims:
+    post:
+      tags:
+      - C-Points
+      operationId: cClaimPointsReward
+      summary: 领取任务/里程碑奖励（requestId幂等；无可领取409）
+      x-implementation-status: IMPLEMENTED_DEFAULT_OFF
+      x-default-enabled: false
+      x-contract: 58-Points-Task-Contract-v0.1.md
+      x-assembly-switch: pet.points.task.http.enabled
+      description: 58号§3.4（M1/A2：除每日签到外全部显式领取，无事件自动发放）。多人头一次
+        领取生成多行 ledger（biz_type=INVITE/TASK）；一次性里程碑已领过再领 409；月上限截断。
+      security:
+      - bearerAuth: []
+      parameters:
+      - $ref: '#/components/parameters/RequestId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PointsTaskClaimRequest'
+      responses:
+        '400': {$ref: '#/components/responses/PointsTaskHttpError'}
+        '401': {$ref: '#/components/responses/PointsTaskHttpError'}
+        '409': {$ref: '#/components/responses/PointsTaskHttpError'}
+        '500': {$ref: '#/components/responses/PointsTaskHttpError'}
+        '503': {$ref: '#/components/responses/PointsTaskHttpError'}
+        '200':
+          description: 领取回执（首领与幂等重放同形）
+          headers:
+            Cache-Control:
+              schema: {type: string, enum: [no-store]}
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PointsClaimReceiptEnvelope'
+      x-route-party: USER
+      x-audience: MINIAPP
+  /c/points/referral-bindings:
+    post:
+      tags:
+      - C-Points
+      operationId: cBindReferralCode
+      summary: 绑定邀请码（终身一次；requestId幂等）
+      x-implementation-status: IMPLEMENTED_DEFAULT_OFF
+      x-default-enabled: false
+      x-contract: 58-Points-Task-Contract-v0.1.md
+      x-assembly-switch: pet.points.task.http.enabled
+      description: 58号§3.5（R1~R4 保守口径）。无效码/用户不存在/自邀 400；被邀请人已有订单史
+        400/409（不符合新用户条件）；已绑定终局 409。绑定后完成首笔支付才算拉新成立
+        （firstPaidAt>绑定时刻）。
+      security:
+      - bearerAuth: []
+      parameters:
+      - $ref: '#/components/parameters/RequestId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PointsTaskBindingRequest'
+      responses:
+        '400': {$ref: '#/components/responses/PointsTaskHttpError'}
+        '401': {$ref: '#/components/responses/PointsTaskHttpError'}
+        '409': {$ref: '#/components/responses/PointsTaskHttpError'}
+        '500': {$ref: '#/components/responses/PointsTaskHttpError'}
+        '503': {$ref: '#/components/responses/PointsTaskHttpError'}
+        '200':
+          description: 绑定回执（首绑与幂等重放同形）
+          headers:
+            Cache-Control:
+              schema: {type: string, enum: [no-store]}
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PointsBindingReceiptEnvelope'
+      x-route-party: USER
+      x-audience: MINIAPP
   /c/staff/invitations:
     get:
       tags:
@@ -12739,6 +12991,19 @@ components:
         application/json:
           schema:
             $ref: '#/components/schemas/AddressErrorEnvelope'
+    PointsTaskHttpError:
+      description: 签到/拉新/积分配置错误；复用Error12 §2通用码（409含幂等异参
+        IDEMPOTENCY_KEY_CONFLICT、当日重复签到与终局冲突COMMON_CONFLICT），data=null。
+      headers:
+        Cache-Control:
+          schema:
+            type: string
+            enum:
+            - no-store
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/PointsTaskErrorEnvelope'
   schemas:
     VerificationCredentialIssue:
       type: object
@@ -20905,6 +21170,464 @@ components:
         traceId:
           type: string
           minLength: 1
+    PointsTaskErrorEnvelope:
+      type: object
+      additionalProperties: false
+      required:
+      - success
+      - code
+      - message
+      - data
+      - traceId
+      properties:
+        success:
+          type: boolean
+          enum:
+          - false
+        code:
+          type: string
+          enum:
+          - COMMON_INVALID_ARGUMENT
+          - COMMON_UNAUTHORIZED
+          - COMMON_FORBIDDEN
+          - COMMON_CONFLICT
+          - IDEMPOTENCY_KEY_CONFLICT
+          - COMMON_DEPENDENCY_UNAVAILABLE
+          - COMMON_INTERNAL_ERROR
+        message:
+          type: string
+          minLength: 1
+        data:
+          type: object
+          nullable: true
+          enum:
+          - null
+        traceId:
+          type: string
+          minLength: 1
+    PointsSignInRequest:
+      type: object
+      additionalProperties: false
+      maxProperties: 0
+      description: 签到命令体恒为空 JSON 对象（严格解析，未知字段即400）。
+    SignInStatusData:
+      type: object
+      additionalProperties: false
+      required:
+      - signedToday
+      - streak
+      - dailyPoints
+      - week
+      properties:
+        signedToday:
+          type: boolean
+        streak:
+          type: integer
+          format: int64
+          minimum: 0
+        dailyPoints:
+          type: string
+          pattern: ^(0|[1-9][0-9]{0,18})(?![\s\S])$
+          description: 运营配置的每日签到面额，BIGINT 传输安全用 String。
+        week:
+          type: array
+          minItems: 7
+          maxItems: 7
+          items:
+            $ref: '#/components/schemas/SignInWeekDay'
+    SignInWeekDay:
+      type: object
+      additionalProperties: false
+      required:
+      - date
+      - signed
+      properties:
+        date:
+          type: string
+          pattern: ^[0-9]{4}-[0-9]{2}-[0-9]{2}$
+        signed:
+          type: boolean
+    SignInStatusEnvelope:
+      allOf:
+      - $ref: '#/components/schemas/BaseEnvelope'
+      - type: object
+        properties:
+          data:
+            $ref: '#/components/schemas/SignInStatusData'
+    SignInReceiptData:
+      type: object
+      additionalProperties: false
+      required:
+      - signedDate
+      - points
+      - streakAfter
+      - ledgerId
+      - balanceAfter
+      properties:
+        signedDate:
+          type: string
+          pattern: ^[0-9]{4}-[0-9]{2}-[0-9]{2}$
+        points:
+          type: string
+          pattern: ^(0|[1-9][0-9]{0,18})(?![\s\S])$
+        streakAfter:
+          type: integer
+          format: int64
+          minimum: 1
+        ledgerId:
+          type: string
+          pattern: ^(0|[1-9][0-9]{0,18})(?![\s\S])$
+        balanceAfter:
+          type: string
+          pattern: ^(0|[1-9][0-9]{0,18})(?![\s\S])$
+    SignInReceiptEnvelope:
+      allOf:
+      - $ref: '#/components/schemas/BaseEnvelope'
+      - type: object
+        properties:
+          data:
+            $ref: '#/components/schemas/SignInReceiptData'
+    PointsTaskSignInSummary:
+      type: object
+      additionalProperties: false
+      required:
+      - signedToday
+      - streak
+      - dailyPoints
+      properties:
+        signedToday:
+          type: boolean
+        streak:
+          type: integer
+          format: int64
+          minimum: 0
+        dailyPoints:
+          type: string
+          pattern: ^(0|[1-9][0-9]{0,18})(?![\s\S])$
+    PointsTaskInviteOverview:
+      type: object
+      additionalProperties: false
+      required:
+      - perInviteePoints
+      - monthlyRewardCap
+      - rewardedThisMonth
+      - claimableCount
+      - milestoneRewarded
+      - milestoneStatus
+      - milestoneProgress
+      properties:
+        perInviteePoints:
+          type: string
+          pattern: ^(0|[1-9][0-9]{0,18})(?![\s\S])$
+        monthlyRewardCap:
+          type: integer
+          format: int64
+          minimum: 0
+          maximum: 100
+        rewardedThisMonth:
+          type: integer
+          format: int64
+          minimum: 0
+        claimableCount:
+          type: integer
+          format: int64
+          minimum: 0
+        milestoneRewarded:
+          type: integer
+          format: int64
+          minimum: 0
+        milestoneStatus:
+          type: string
+          enum:
+          - NOT_ACHIEVED
+          - CLAIMABLE
+          - CLAIMED
+        milestoneProgress:
+          type: string
+          pattern: ^[0-9]{1,3}/3$
+    PointsTaskRow:
+      type: object
+      additionalProperties: false
+      required:
+      - taskCode
+      - title
+      - description
+      - points
+      - status
+      - progress
+      properties:
+        taskCode:
+          type: string
+          enum:
+          - INVITE_PER_HEAD
+          - FIRST_ORDER
+          - SIGN_IN
+          - COMMUNITY_POST
+        title:
+          type: string
+          minLength: 1
+        description:
+          type: string
+        points:
+          type: string
+          pattern: ^(0|[1-9][0-9]{0,18})(?![\s\S])$
+        status:
+          type: string
+          enum:
+          - CLAIMABLE
+          - CLAIMED
+          - NOT_ACHIEVED
+          - NOT_OPEN
+          - DONE_TODAY
+        progress:
+          type: string
+    PointsRewardRow:
+      type: object
+      additionalProperties: false
+      required:
+      - rewardCode
+      - title
+      - description
+      - points
+      - status
+      - progress
+      properties:
+        rewardCode:
+          type: string
+          enum:
+          - SIGN_IN_STREAK_7
+          - INVITE_MILESTONE_3
+          - PROFILE_COMPLETE
+        title:
+          type: string
+          minLength: 1
+        description:
+          type: string
+        points:
+          type: string
+          pattern: ^(0|[1-9][0-9]{0,18})(?![\s\S])$
+        status:
+          type: string
+          enum:
+          - NOT_ACHIEVED
+          - CLAIMABLE
+          - CLAIMED
+        progress:
+          type: string
+    PointsTasksData:
+      type: object
+      additionalProperties: false
+      required:
+      - inviteCode
+      - signIn
+      - invite
+      - tasks
+      - rewards
+      properties:
+        inviteCode:
+          type: string
+          pattern: ^[A-Za-z0-9]{1,32}$
+          description: 本人邀请码（R1：确定性可逆，服务端按需重新生成，无状态）。
+        signIn:
+          $ref: '#/components/schemas/PointsTaskSignInSummary'
+        invite:
+          $ref: '#/components/schemas/PointsTaskInviteOverview'
+        tasks:
+          type: array
+          minItems: 4
+          maxItems: 4
+          items:
+            $ref: '#/components/schemas/PointsTaskRow'
+        rewards:
+          type: array
+          minItems: 3
+          maxItems: 3
+          items:
+            $ref: '#/components/schemas/PointsRewardRow'
+    PointsTasksEnvelope:
+      allOf:
+      - $ref: '#/components/schemas/BaseEnvelope'
+      - type: object
+        properties:
+          data:
+            $ref: '#/components/schemas/PointsTasksData'
+    PointsTaskClaimRequest:
+      type: object
+      additionalProperties: false
+      required:
+      - claimType
+      properties:
+        claimType:
+          type: string
+          enum:
+          - INVITE_PER_HEAD
+          - FIRST_ORDER
+          - SIGN_IN_STREAK_7
+          - INVITE_MILESTONE_3
+          - PROFILE_COMPLETE
+    PointsClaimReceiptData:
+      type: object
+      additionalProperties: false
+      required:
+      - claimType
+      - pointsGranted
+      - ledgerIds
+      - balanceAfter
+      properties:
+        claimType:
+          type: string
+          enum:
+          - INVITE_PER_HEAD
+          - FIRST_ORDER
+          - SIGN_IN_STREAK_7
+          - INVITE_MILESTONE_3
+          - PROFILE_COMPLETE
+        pointsGranted:
+          type: string
+          pattern: ^(0|[1-9][0-9]{0,18})(?![\s\S])$
+        ledgerIds:
+          type: array
+          minItems: 1
+          items:
+            type: string
+            pattern: ^(0|[1-9][0-9]{0,18})(?![\s\S])$
+          description: 多人头一次领取生成多行 ledger（每被邀请人一行）。
+        balanceAfter:
+          type: string
+          pattern: ^(0|[1-9][0-9]{0,18})(?![\s\S])$
+    PointsClaimReceiptEnvelope:
+      allOf:
+      - $ref: '#/components/schemas/BaseEnvelope'
+      - type: object
+        properties:
+          data:
+            $ref: '#/components/schemas/PointsClaimReceiptData'
+    PointsTaskBindingRequest:
+      type: object
+      additionalProperties: false
+      required:
+      - inviteCode
+      properties:
+        inviteCode:
+          type: string
+          pattern: ^[A-Za-z0-9]{1,32}$
+    PointsBindingReceiptData:
+      type: object
+      additionalProperties: false
+      required:
+      - bindingId
+      - createdAt
+      properties:
+        bindingId:
+          type: string
+          pattern: ^(0|[1-9][0-9]{0,18})(?![\s\S])$
+        createdAt:
+          type: string
+          nullable: true
+    PointsBindingReceiptEnvelope:
+      allOf:
+      - $ref: '#/components/schemas/BaseEnvelope'
+      - type: object
+        properties:
+          data:
+            $ref: '#/components/schemas/PointsBindingReceiptData'
+    PointsTaskConfigUpdate:
+      type: object
+      additionalProperties: false
+      required:
+      - signInDailyPoints
+      - signInStreakBonusPoints
+      - invitePerInviteePoints
+      - inviteMonthlyRewardCap
+      - inviteMilestoneBonusPoints
+      - firstOrderPoints
+      - profileCompletePoints
+      properties:
+        signInDailyPoints:
+          type: integer
+          format: int64
+          minimum: 1
+          maximum: 1000
+        signInStreakBonusPoints:
+          type: integer
+          format: int64
+          minimum: 0
+          maximum: 1000
+        invitePerInviteePoints:
+          type: integer
+          format: int64
+          minimum: 0
+          maximum: 1000
+        inviteMonthlyRewardCap:
+          type: integer
+          format: int64
+          minimum: 0
+          maximum: 100
+        inviteMilestoneBonusPoints:
+          type: integer
+          format: int64
+          minimum: 0
+          maximum: 1000
+        firstOrderPoints:
+          type: integer
+          format: int64
+          minimum: 0
+          maximum: 1000
+        profileCompletePoints:
+          type: integer
+          format: int64
+          minimum: 0
+          maximum: 1000
+    PointsTaskConfigData:
+      type: object
+      additionalProperties: false
+      required:
+      - signInDailyPoints
+      - signInStreakBonusPoints
+      - invitePerInviteePoints
+      - inviteMonthlyRewardCap
+      - inviteMilestoneBonusPoints
+      - firstOrderPoints
+      - profileCompletePoints
+      - version
+      - updatedAt
+      properties:
+        signInDailyPoints:
+          type: string
+          pattern: ^(0|[1-9][0-9]{0,18})(?![\s\S])$
+        signInStreakBonusPoints:
+          type: string
+          pattern: ^(0|[1-9][0-9]{0,18})(?![\s\S])$
+        invitePerInviteePoints:
+          type: string
+          pattern: ^(0|[1-9][0-9]{0,18})(?![\s\S])$
+        inviteMonthlyRewardCap:
+          type: string
+          pattern: ^(0|[1-9][0-9]{0,18})(?![\s\S])$
+        inviteMilestoneBonusPoints:
+          type: string
+          pattern: ^(0|[1-9][0-9]{0,18})(?![\s\S])$
+        firstOrderPoints:
+          type: string
+          pattern: ^(0|[1-9][0-9]{0,18})(?![\s\S])$
+        profileCompletePoints:
+          type: string
+          pattern: ^(0|[1-9][0-9]{0,18})(?![\s\S])$
+        version:
+          type: string
+          pattern: ^(0|[1-9][0-9]{0,18})(?![\s\S])$
+          description: points_task_config.version BIGINT 计数器按 String 传输；0=内置缺省。
+        updatedAt:
+          type: string
+          nullable: true
+          description: 最近一次成功保存的偏移毫秒时间戳；从未写过（读默认值）时为 null。
+    PointsTaskConfigEnvelope:
+      allOf:
+      - $ref: '#/components/schemas/BaseEnvelope'
+      - type: object
+        properties:
+          data:
+            $ref: '#/components/schemas/PointsTaskConfigData'
     StaffInvitationSummary:
       type: object
       additionalProperties: false

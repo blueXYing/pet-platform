@@ -65,6 +65,13 @@
         <include refid="mineProjection"/>
         WHERE id = #{id} AND user_id = #{userId}
     </select>
+    <!-- 07号 §7.1 amendment (contract 58 / CCR-POINTS-TASK-001): pure fact read for the
+         points referral kernel. Only the instant is exposed; no session subject is needed. -->
+    <select id="selectFirstPaidAt" resultType="java.time.LocalDateTime">
+        SELECT MIN(paid_at)
+        FROM pet_order
+        WHERE user_id = #{userId} AND payment_status = 'PAID' AND paid_at IS NOT NULL
+    </select>
     <!--
       Merchant order list (contract 10 §4.1 supplement): same projection and the same
       displayStatus truth-table branches as the C-end statements above; the store scope is

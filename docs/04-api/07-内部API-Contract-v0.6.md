@@ -550,6 +550,14 @@ order API 拆为 Query / Command / OperationGuard 三类。
 > `OrderQueryApiImpl`（只读 MyBatis 查询，主体固定为 QueryContext 会话用户），
 > 服务 HTTP Contract 10 §3.7。下方 `checkRefundEligibility`/`checkVerificationEligibility`/
 > `checkReviewEligibility` 仍为文档形态，待各自切片实现。
+>
+> **增补（2026-10-13，58 号积分任务切片）**：新增登记
+> `firstPaidAt(UserOrderFactQuery) -> OffsetDateTime`——指定用户全部自有订单中最早的成功
+> 支付时刻（`MIN(paid_at)`，payment_status='PAID'），无则 null。纯跨域事实读：供 points 域
+> 拉新保守口径使用（被邀请人"注册并下单"= 首付事实，绑定后首付才算拉新成立，CCR
+> POINTS-TASK-001 P3/R3）；无会话主体冒充，仅暴露时刻不暴露任何订单字段，无枚举面。
+> biz→api 只读模式与 `checkReviewEligibility` 同一先例（ARCH-002：事件路径读订单持久层
+> 被禁，PaymentSucceeded/OrderPaid 载荷无 userId）。
 
 ```java
 public interface OrderQueryApi {
@@ -558,6 +566,9 @@ public interface OrderQueryApi {
     OrderSnapshotDTO getOrder(OrderIdQuery query);
 
     PageResult<OrderSnapshotDTO> listMyOrders(MyOrderListQuery query);
+
+    // 已实现（58 号积分任务切片增补，2026-10-13；纯跨域事实读）
+    OffsetDateTime firstPaidAt(UserOrderFactQuery query);
 
     // 待实现
     RefundEligibilityDTO checkRefundEligibility(

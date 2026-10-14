@@ -105,6 +105,25 @@ public final class OrderQueryService {
                 deadline == null ? null : deadline.plusDays(30), outcome.rejectCode());
     }
 
+    /**
+     * 07号 §7.1 amendment (contract 58 / CCR-POINTS-TASK-001 P3): earliest successful payment
+     * instant over the named user's own orders, null when none. Pure fact read — no session
+     * subject impersonation, no order fields beyond the instant.
+     */
+    public java.time.OffsetDateTime firstPaidAt(
+            com.petplatform.order.api.query.OrderQueryApi.UserOrderFactQuery query) {
+        Objects.requireNonNull(query, "query is required");
+        long user;
+        try {
+            user = IDS.fromApi(query.userId());
+        } catch (IllegalArgumentException invalidSubject) {
+            return null;
+        }
+        java.time.LocalDateTime firstPaid =
+                store.read(mapper -> mapper.selectFirstPaidAt(user));
+        return instant(firstPaid);
+    }
+
     private static long subject(QueryContext context) {
         Objects.requireNonNull(context, "context is required");
         if (context.operatorId() == null) {
