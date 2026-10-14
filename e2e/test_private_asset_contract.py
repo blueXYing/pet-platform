@@ -54,7 +54,13 @@ class PrivateAssetContractRegressions(unittest.TestCase):
         # 166 = 163 + 3 contract-62 encyclopedia read operations (2026-10-14: anonymous-browse
         # GET trio cListEncyclopediaCategories/cListEncyclopediaBreeds/cGetEncyclopediaBreed;
         # the face is read-only and accrues no writes).
-        self.assertEqual(result['operations'], 166)
+        # 170 = 163 + 7 contract-63 admin trade read operations (63号 ADM-002/A-003:
+        # seven GET-only routes — adminListTradeOrders/adminGetTradeOrder/
+        # adminListTradeOrderStatusLogs/adminListTradeRefunds/adminGetTradeRefund/
+        # adminListTradeVerifications/adminGetTradeVerification; no write route).
+        # 173 = 166 + 7 contract-63 operations merged with the contract-62 base (union of
+        # both parallel slices: 163 baseline + 3 encyclopedia + 7 admin trade read).
+        self.assertEqual(result['operations'], 173)
         self.assertEqual(result['privateAssetOperations'], 3)
         self.assertEqual(result['legacyOperations'], 14)
         self.assertEqual(result['aftersaleOperations'], 24)

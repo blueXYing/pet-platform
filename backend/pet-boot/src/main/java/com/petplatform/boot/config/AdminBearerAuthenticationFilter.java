@@ -53,7 +53,11 @@ public final class AdminBearerAuthenticationFilter extends OncePerRequestFilter 
           || path.startsWith("/api/v1/admin/review-appeals/")
           // Points task config (contract 58 / 32号 ruling second batch): ADMIN_WEB Bearer;
           // points.task.config.read/write are re-checked by the controller per request.
-          || path.equals("/api/v1/admin/points-task-config")) {
+          || path.equals("/api/v1/admin/points-task-config")
+          // Platform trade read face (contract 63 / ADM-002+A-003): ADMIN_WEB Bearer;
+          // order.*/refund.read action codes and the ALL data scope are re-checked by the
+          // controller and each kernel per request.
+          || path.startsWith("/api/v1/admin/trade/")) {
         try {
           AdminAuthService service = services.getIfAvailable();
           if (service == null) throw AdminAuthFailure.unavailable();

@@ -25,7 +25,10 @@ class ContractSmokeRegressions(unittest.TestCase):
         self.assertEqual(result['favtrackHttpOperations'], 7)
         # Encyclopedia read face (contract 62, 2026-10-14): anonymous-browse GET trio.
         self.assertEqual(result['baikeOperations'], 3)
-        self.assertEqual(result['operations'], 166)
+        # Contract 63 admin trade read face (2026-10-14, ADM-002/A-003): seven GET routes.
+        self.assertEqual(result['adminTradeOperations'], 7)
+        # Union of both parallel slices: 163 baseline + 3 encyclopedia + 7 admin trade read.
+        self.assertEqual(result['operations'], 173)
         self.assertGreater(result['stringIdProperties'], 0)
         # Contract 58 favorite/footprint face (2026-10-13): seven reviewed operations.
         self.assertEqual(result['favtrackHttpOperations'], 7)

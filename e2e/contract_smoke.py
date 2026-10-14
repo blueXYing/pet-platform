@@ -617,6 +617,35 @@ BAIKE_OPERATIONS = {
 }
 
 
+# Contract 63 (2026-10-14, ADM-002/A-003): platform trade read face. Seven GET-only
+# operations; every error response reuses the shared ErrorEnvelope components. No write
+# route exists in this family: channel-query/retry (HTTP10 section 5.2), abnormal-close
+# (section 5.5) and merchant disable (section 5.6) stay drafted outside this registry.
+ADMIN_TRADE_OPERATIONS = {
+    'adminListTradeOrders': (
+        'get', '/admin/trade/orders',
+        ('200', '400', '401', '403', '503')),
+    'adminGetTradeOrder': (
+        'get', '/admin/trade/orders/{orderId}',
+        ('200', '400', '401', '403', '404', '503')),
+    'adminListTradeOrderStatusLogs': (
+        'get', '/admin/trade/orders/{orderId}/status-logs',
+        ('200', '400', '401', '403', '404', '503')),
+    'adminListTradeRefunds': (
+        'get', '/admin/trade/refunds',
+        ('200', '400', '401', '403', '503')),
+    'adminGetTradeRefund': (
+        'get', '/admin/trade/refunds/{refundOrderId}',
+        ('200', '400', '401', '403', '404', '503')),
+    'adminListTradeVerifications': (
+        'get', '/admin/trade/verifications',
+        ('200', '400', '401', '403', '503')),
+    'adminGetTradeVerification': (
+        'get', '/admin/trade/verifications/{verificationId}',
+        ('200', '400', '401', '403', '404', '503')),
+}
+
+
 def check_order_write(spec, operation, method, path):
     name = operation['operationId']
     expected_method, expected_path, required_codes = ORDER_WRITE_OPERATIONS[name]
@@ -857,6 +886,49 @@ def check_points_task(spec, operation, method, path):
     assert claim['properties']['claimType']['enum'] == ['INVITE_PER_HEAD', 'FIRST_ORDER',         'SIGN_IN_STREAK_7', 'INVITE_MILESTONE_3', 'PROFILE_COMPLETE'], 'Points claim types changed'
     config_update = spec['components']['schemas']['PointsTaskConfigUpdate']
     assert set(config_update['required']) == {'signInDailyPoints', 'signInStreakBonusPoints',         'invitePerInviteePoints', 'inviteMonthlyRewardCap', 'inviteMilestoneBonusPoints',         'firstOrderPoints', 'profileCompletePoints'}, 'Points config full-put fields changed'
+
+
+def check_admin_trade(spec, operation, method, path):
+    name = operation['operationId']
+    expected_method, expected_path, required_codes = ADMIN_TRADE_OPERATIONS[name]
+    assert (method, path) == (expected_method, expected_path), f'Trade query operation moved: {name}'
+    assert operation.get('security') == [{'bearerAuth': []}], f'Trade query security changed: {name}'
+    assert operation.get('x-implementation-status') == 'IMPLEMENTED_DEFAULT_OFF', f'Trade query status changed: {name}'
+    assert operation.get('x-default-enabled') is False, f'Trade query must stay default off: {name}'
+    assert operation.get('x-contract') == '63-Admin-Trade-Query-Contract-v0.1.md', f'Trade query authority changed: {name}'
+    assert operation.get('x-assembly-switch') == 'pet.admin.trade.http.enabled', f'Trade query switch changed: {name}'
+    assert operation.get('x-route-party') == 'OPS' and operation.get('x-audience') == 'ADMIN_WEB', f'Trade query identity changed: {name}'
+    assert operation.get('x-required-actions') == [TRADE_ROUTE_ACTIONS[name]], f'Trade query action gate changed: {name}'
+    assert 'requestBody' not in operation, f'Trade query must stay bodyless: {name}'
+    responses = operation['responses']
+    assert set(responses) == set(required_codes), f'Trade query response surface changed: {name}'
+    for code in required_codes:
+        if code != '200':
+            assert dereference(spec, responses[code])['content']['application/json']['schema']                 == {'$ref': '#/components/schemas/ErrorEnvelope'}, f'Trade query error envelope changed: {name} {code}'
+    success = responses['200']
+    cache = success['headers']['Cache-Control']['schema']
+    assert cache == {'type': 'string', 'enum': ['no-store']}, f'Trade query caching changed: {name}'
+    envelope_by_name = {
+        'adminListTradeOrders': 'AdminTradeOrderPageEnvelope',
+        'adminGetTradeOrder': 'AdminTradeOrderDetailEnvelope',
+        'adminListTradeOrderStatusLogs': 'AdminTradeStatusLogPageEnvelope',
+        'adminListTradeRefunds': 'AdminTradeRefundPageEnvelope',
+        'adminGetTradeRefund': 'AdminTradeRefundDetailEnvelope',
+        'adminListTradeVerifications': 'AdminTradeVerificationPageEnvelope',
+        'adminGetTradeVerification': 'AdminTradeVerificationDetailEnvelope',
+    }
+    assert success['content'] == {'application/json': {'schema': {'$ref':             '#/components/schemas/' + envelope_by_name[name]}}}, f'Trade query success envelope changed: {name}'
+
+
+TRADE_ROUTE_ACTIONS = {
+    'adminListTradeOrders': 'order.read',
+    'adminGetTradeOrder': 'order.read',
+    'adminListTradeOrderStatusLogs': 'order.status-log.read',
+    'adminListTradeRefunds': 'refund.read',
+    'adminGetTradeRefund': 'refund.read',
+    'adminListTradeVerifications': 'order.verification-log.read',
+    'adminGetTradeVerification': 'order.verification-log.read',
+}
 
 
 def check_staff_invitation_list(spec, operation, method, path):
@@ -1594,6 +1666,8 @@ def check(spec):
                 check_points_task(spec, operation, method, path)
             if operation_id in BAIKE_OPERATIONS:
                 check_baike_operations(spec, operation, method, path)
+            if operation_id in ADMIN_TRADE_OPERATIONS:
+                check_admin_trade(spec, operation, method, path)
 
             if method in {'post', 'put', 'patch', 'delete'}:
                 assert {'$ref': '#/components/parameters/RequestId'} in parameters, f'Missing request ID: {operation_id}'
@@ -1609,7 +1683,7 @@ def check(spec):
     assert legacy_writes == 11, 'Legacy write surface changed'
     assert legacy_creates == LEGACY_CREATES, 'Legacy create surface changed'
 
-    assert operations == LEGACY_OPERATIONS.keys() | AUTH_OPERATIONS.keys() | MERCHANT_OPERATIONS.keys() | APPLICATION_OPERATIONS.keys() | PRIVATE_ASSET_OPERATIONS.keys() | SERVICE_CATALOG_OPERATIONS.keys() | STORE_CATALOG_OPERATIONS.keys() | SERVICE_WRITE_OPERATIONS.keys() | SCHEDULE_AVAILABILITY_OPERATIONS.keys() | SCHEDULE_WRITE_OPERATIONS.keys() | CREDENTIAL_OPERATIONS.keys() | AFTERSALE_OPERATIONS.keys() | COUPON_POINTS_READ_OPERATIONS.keys() | VERIFICATION_HTTP_OPERATIONS.keys() | NOTIFICATION_PREFERENCE_OPERATIONS.keys() | STAFF_INVITATION_LIST_OPERATIONS.keys() | ORDER_WRITE_OPERATIONS.keys() | REFUND_HTTP_OPERATIONS.keys() | MERCHANT_ORDER_LIST_OPERATIONS.keys() | RESCHEDULE_HTTP_OPERATIONS.keys() | REVIEW_HTTP_OPERATIONS.keys() | REVIEW_APPEAL_HTTP_OPERATIONS.keys() | MERCHANT_REFUND_HTTP_OPERATIONS.keys() | FAVTRACK_HTTP_OPERATIONS.keys() | ADDRESS_OPERATIONS.keys() | POINTS_TASK_OPERATIONS.keys() | BAIKE_OPERATIONS.keys(), 'Unexpected or missing reviewed operations'
+    assert operations == LEGACY_OPERATIONS.keys() | AUTH_OPERATIONS.keys() | MERCHANT_OPERATIONS.keys() | APPLICATION_OPERATIONS.keys() | PRIVATE_ASSET_OPERATIONS.keys() | SERVICE_CATALOG_OPERATIONS.keys() | STORE_CATALOG_OPERATIONS.keys() | SERVICE_WRITE_OPERATIONS.keys() | SCHEDULE_AVAILABILITY_OPERATIONS.keys() | SCHEDULE_WRITE_OPERATIONS.keys() | CREDENTIAL_OPERATIONS.keys() | AFTERSALE_OPERATIONS.keys() | COUPON_POINTS_READ_OPERATIONS.keys() | VERIFICATION_HTTP_OPERATIONS.keys() | NOTIFICATION_PREFERENCE_OPERATIONS.keys() | STAFF_INVITATION_LIST_OPERATIONS.keys() | ORDER_WRITE_OPERATIONS.keys() | REFUND_HTTP_OPERATIONS.keys() | MERCHANT_ORDER_LIST_OPERATIONS.keys() | RESCHEDULE_HTTP_OPERATIONS.keys() | REVIEW_HTTP_OPERATIONS.keys() | REVIEW_APPEAL_HTTP_OPERATIONS.keys() | MERCHANT_REFUND_HTTP_OPERATIONS.keys() | FAVTRACK_HTTP_OPERATIONS.keys() | ADDRESS_OPERATIONS.keys() | POINTS_TASK_OPERATIONS.keys() | BAIKE_OPERATIONS.keys() | ADMIN_TRADE_OPERATIONS.keys(), 'Unexpected or missing reviewed operations'
 
     schemes = spec['components']['securitySchemes']
     assert schemes['bearerAuth']['type'] == 'http' and schemes['bearerAuth']['scheme'] == 'bearer'
@@ -1674,6 +1748,7 @@ def check(spec):
             'staffInvitationListOperations': len(operations & STAFF_INVITATION_LIST_OPERATIONS.keys()),
             'orderWriteOperations': len(operations & ORDER_WRITE_OPERATIONS.keys()),
             'addressOperations': len(operations & ADDRESS_OPERATIONS.keys()),
+            'adminTradeOperations': len(operations & ADMIN_TRADE_OPERATIONS.keys()),
             'resolvedRefs': len(refs), 'stringIdProperties': ids}
 
 

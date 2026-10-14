@@ -17,13 +17,17 @@ public final class AdminPermissionEvaluator {
    * (CCR-REVIEW-APPEAL-001, contract 56): review.appeal.read / review.appeal.decide. The two
    * points-task codes are registered on behalf of the contract-58 earn slice (CCR-POINTS-TASK-001,
    * 32号 ruling: 签到与拉新积分量后台可配置): points.task.config.read / points.task.config.write.
+   * The four trade codes are registered on behalf of the contract-63 platform trade read slice
+   * (ADM-002/A-003, AUTH-001 RBAC proposal matrix rows 7/8): order.read, order.status-log.read,
+   * order.verification-log.read, refund.read — GET-only reads; no trade write action exists.
    */
   public static final Set<String> DEPLOYED_ACTIONS =
       Set.of("merchant.application.read", "merchant.application.decide",
           "merchant.identity.reveal", "service.review.read", "service.review.decide",
           "service.force.offline", "aftersale.read", "aftersale.handle", "aftersale.decide",
           "review.appeal.read", "review.appeal.decide",
-          "points.task.config.read", "points.task.config.write");
+          "points.task.config.read", "points.task.config.write",
+          "order.read", "order.status-log.read", "order.verification-log.read", "refund.read");
 
   public static List<String> evaluate(
       boolean superAdmin, Collection<String> grants, Set<String> deployed) {

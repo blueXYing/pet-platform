@@ -871,3 +871,7 @@ AFTERSALE_PROOF_INVALID / AFTERSALE_TASK_CONFLICT 亦作为耐久恢复隔离问
 2026-10-01 CCR-AFS-CONFLICT-001 已批准：两个售后确定冲突码不用于请求锁忙、异参绑定、当前会话/权限缺失或提交前权限版本变化；这些仍分别沿 COMMON_CONFLICT、IDEMPOTENCY_KEY_CONFLICT、401/403，权限版本变化沿 COMMON_CONFLICT。成功UUID重放仍先返回原回执并重新授权；失败命令准入原参数绑定不可改。收到两个确定码可以刷新并人工确认新命令，不能把所有409当可换UUID重试。P4缺必需assessment/hash或非法hash为400，只有合法但过期集合hash为确定冲突。
 
 CCR-AFS-PAGE-OPTIONS-001 已批准目录读取：目录不完整/代码名称不一致的已开启适配为503 COMMON_DEPENDENCY_UNAVAILABLE；完整目录未知提交code为400 COMMON_INVALID_ARGUMENT。无成功空目录或生产默认假目录。
+
+## 运营交易查询 HTTP 状态映射（2026-10-14 63 号 ADM-002/A-003 切片）
+
+七条只读 GET（`/api/v1/admin/trade/**`，HTTP10 §5.11）：400 `COMMON_INVALID_ARGUMENT`（未知查询参数、分页/过滤词汇/时间跨度越界）；401 `COMMON_UNAUTHORIZED`（会话缺失/失效/吊销）；403 `COMMON_FORBIDDEN`（动作码 `order.read`/`order.status-log.read`/`order.verification-log.read`/`refund.read` 未授予、受众非 ADMIN_WEB、dataScope 非 ALL——CITY/MERCHANT fail-closed）；404 `COMMON_NOT_FOUND`（未知 ID 与越范围 ID 同形，防枚举）；503 `COMMON_DEPENDENCY_UNAVAILABLE`（授权决断或投影不可读）。无写路由：无 409/幂等码面。无新增错误码。

@@ -68,7 +68,12 @@ public final class AdminAuthorizationService implements AdminAuthorizationQueryA
     if (!("merchant.application.read".equals(query.actionCode()) || "aftersale.read".equals(query.actionCode())
             // REV-002 review appeal list (contract 56): collection entry check for the
             // single ops reader face; the per-resource check re-runs with the store scope.
-            || "review.appeal.read".equals(query.actionCode()))
+            || "review.appeal.read".equals(query.actionCode())
+            // Contract-63 platform trade lists (ADM-002/A-003, AUTH-001 matrix rows 7/8):
+            // GET-only collection entry checks; per-resource reads re-check with the scope.
+            || "order.read".equals(query.actionCode())
+            || "order.verification-log.read".equals(query.actionCode())
+            || "refund.read".equals(query.actionCode()))
         || query.phase() != AdminActionCheckQuery.CheckPhase.READ_RESULT)
       throw AdminAuthFailure.invalid();
     return checkCurrent(
