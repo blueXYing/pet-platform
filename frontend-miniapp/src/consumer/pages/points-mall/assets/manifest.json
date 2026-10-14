@@ -1,0 +1,79 @@
+{
+  "sourceVersion": "2026-10-10 user-end-page1 (per §4.11 cache baseline)",
+  "scale": 2,
+  "note": "Raw 2x REST image exports of node 128:2614 product photos (Figma file bp2vpcjjA5vZbHvtKkA8wl, dev token, 2026-10-13); do not edit in place.",
+  "assets": [
+    {
+      "file": "128-2764-mall-product-1@2x.png",
+      "nodes": "128:2764",
+      "designBox": [
+        31,
+        171,
+        163.5,
+        163.5
+      ],
+      "bytes": 149338,
+      "sha256": "f022237ef25fb379f455aed9fe649c9159dc3d564ef06019e66239ae5a17a0ba"
+    },
+    {
+      "file": "128-2785-mall-product-2@2x.png",
+      "nodes": "128:2785",
+      "designBox": [
+        208.5,
+        171,
+        163.5,
+        163.5
+      ],
+      "bytes": 149257,
+      "sha256": "d44ba9dfeca52dd5af9e976d16f0bed164cbc087a7db35696dc32c016a1311f6"
+    },
+    {
+      "file": "128-2804-mall-product-3@2x.png",
+      "nodes": "128:2804",
+      "designBox": [
+        31,
+        426.5,
+        163.5,
+        163.5
+      ],
+      "bytes": 148147,
+      "sha256": "59998e0184afa71f1437d56a55cb0a63928ce0eb2782d08d3965b35336a28fc2"
+    },
+    {
+      "file": "128-2823-mall-product-4@2x.png",
+      "nodes": "128:2823",
+      "designBox": [
+        208.5,
+        426.5,
+        163.5,
+        163.5
+      ],
+      "bytes": 114723,
+      "sha256": "9e5d11738140235a571ff556af751053ea03479eadcd6aaa6489bdc311078f45"
+    },
+    {
+      "file": "128-2842-mall-product-5@2x.png",
+      "nodes": "128:2842",
+      "designBox": [
+        31,
+        682,
+        163.5,
+        163.5
+      ],
+      "bytes": 164026,
+      "sha256": "d185928135197491acb88b7502dd3f3ff76c14225dde4b6cfc31ce91ce073e21"
+    },
+    {
+      "file": "128-2861-mall-product-6@2x.png",
+      "nodes": "128:2861",
+      "designBox": [
+        208.5,
+        682,
+        163.5,
+        163.5
+      ],
+      "bytes": 131440,
+      "sha256": "4a261fbb0d171899839a8989a90c72dc116e3a26d5dc6d0a47a51653af4e8eea"
+    }
+  ]
+}

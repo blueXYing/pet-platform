@@ -98,3 +98,9 @@
 - app.config.ts subPackages 追加一行带注释（家族惯例）。
 - frontend-admin 有 FixtureApp + playwright；改动页面后跑 npm run build（含 typecheck）+ 看 tests/ 是否有路由冒烟需要更新。
 - 设计稿三树已提取到 D:/Temp/figma-mcp/signin-tree.txt、invite-tree.txt、reward-tree.txt。
+
+## 收尾（第三棒）
+
+- 提交 5bd2feb（62 文件）已推送；**PR #157**：https://github.com/blueXYing/pet-platform/pull/157（base develop，未合并——红线遵守）。
+- 未提交 project.config.json（无改动）；日志 txt 留工作树未跟踪。
+- 若 #155（并行同为 +7 计数）先合：rebase 后把 test_private_asset_contract.py 的 operations==150 与（若有）家族数解到 157。

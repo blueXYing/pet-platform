@@ -67,8 +67,11 @@ class ScheduleAvailabilityHttpTest {
   // overlapped "today" once reached, dragging the now-relative windows into the
   // aggregation query (expected 3, got 4) and turning static windows in-progress.
   // Business-zone (Asia/Shanghai) days keep the day-split semantics intact.
+  // D1 starts at +2 days: the now-relative windows (utcMinus/Plus 90/240min) can land on
+  // "tomorrow" when the suite runs 22:30-00:00 Asia/Shanghai, and a +1-day D1 range would
+  // absorb that in-progress window again (the exact "expected 3, got 4" #147 was fixing).
   private static final java.time.LocalDate D1 =
-      java.time.LocalDate.now(java.time.ZoneId.of("Asia/Shanghai")).plusDays(1);
+      java.time.LocalDate.now(java.time.ZoneId.of("Asia/Shanghai")).plusDays(2);
   private static final java.time.LocalDate D2 = D1.plusDays(1);
   private static final java.time.LocalDate D2P = D2.plusDays(1);
 

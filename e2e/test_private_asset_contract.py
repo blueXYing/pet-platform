@@ -50,7 +50,7 @@ class PrivateAssetContractRegressions(unittest.TestCase):
         # C face cGetSignInStatus/cSignIn/cListPointsTasks/cClaimPointsReward/
         # cBindReferralCode plus admin face adminGetPointsTaskConfig/
         # adminUpdatePointsTaskConfig; the earn surface only accrues, never spends).
-        self.assertEqual(result['operations'], 150)
+        self.assertEqual(result['operations'], 156)
         self.assertEqual(result['privateAssetOperations'], 3)
         self.assertEqual(result['legacyOperations'], 14)
         self.assertEqual(result['aftersaleOperations'], 24)

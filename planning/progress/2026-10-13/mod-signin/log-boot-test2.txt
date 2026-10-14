@@ -1,0 +1,248 @@
+2026-10-13T22:33:27.148+08:00  INFO [traceId= requestId=] 31816 --- [pet-platform] [           main] o.a.maven.surefire.booter.ForkedBooter   : Starting ForkedBooter v3.5.6 using Java 21.0.11 with PID 31816 (started by Administrator in C:\Users\Administrator\Desktop\wt-mod-signin\backend\pet-boot)
+2026-10-13T22:33:27.151+08:00  INFO [traceId= requestId=] 31816 --- [pet-platform] [           main] o.a.maven.surefire.booter.ForkedBooter   : The following 1 profile is active: "local"
+2026-10-13T22:33:28.461+08:00  INFO [traceId= requestId=] 31816 --- [pet-platform] [           main] .s.d.r.c.RepositoryConfigurationDelegate : Multiple Spring Data modules found, entering strict repository configuration mode
+2026-10-13T22:33:28.463+08:00  INFO [traceId= requestId=] 31816 --- [pet-platform] [           main] .s.d.r.c.RepositoryConfigurationDelegate : Bootstrapping Spring Data Redis repositories in DEFAULT mode.
+2026-10-13T22:33:28.503+08:00  INFO [traceId= requestId=] 31816 --- [pet-platform] [           main] .s.d.r.c.RepositoryConfigurationDelegate : Finished Spring Data repository scanning in 25 ms. Found 0 Redis repository interfaces.
+2026-10-13T22:33:28.781+08:00  WARN [traceId= requestId=] 31816 --- [pet-platform] [           main] o.m.s.mapper.ClassPathMapperScanner      : No MyBatis mapper was found in '[com.petplatform.boot]' package. Please check your configuration.
+2026-10-13T22:33:29.373+08:00  INFO [traceId= requestId=] 31816 --- [pet-platform] [           main] o.s.boot.tomcat.TomcatWebServer          : Tomcat initialized with port 8080 (http)
+2026-10-13T22:33:29.388+08:00  INFO [traceId= requestId=] 31816 --- [pet-platform] [           main] o.apache.catalina.core.StandardService   : Starting service [Tomcat]
+2026-10-13T22:33:29.388+08:00  INFO [traceId= requestId=] 31816 --- [pet-platform] [           main] o.apache.catalina.core.StandardEngine    : Starting Servlet engine: [Apache Tomcat/11.0.24]
+2026-10-13T22:33:29.428+08:00  INFO [traceId= requestId=] 31816 --- [pet-platform] [           main] b.w.c.s.WebApplicationContextInitializer : Root WebApplicationContext: initialization completed in 2234 ms
+2026-10-13T22:33:31.562+08:00  INFO [traceId= requestId=] 31816 --- [pet-platform] [           main] r$InitializeUserDetailsManagerConfigurer : Global AuthenticationManager configured with UserDetailsService bean with name noImplicitDefaultAccounts
+2026-10-13T22:33:31.593+08:00  WARN [traceId= requestId=] 31816 --- [pet-platform] [sion-controller] c.p.id.core.HutoolSnowflakeIdProvider    : Snowflake provider failed closed: OPERATION_TIMEOUT
+2026-10-13T22:33:32.396+08:00  INFO [traceId= requestId=] 31816 --- [pet-platform] [           main] o.s.b.a.e.web.EndpointLinksResolver      : Exposing 3 endpoints beneath base path '/actuator'
+2026-10-13T22:33:32.463+08:00  INFO [traceId= requestId=] 31816 --- [pet-platform] [           main] o.s.boot.tomcat.TomcatWebServer          : Tomcat started on port 8080 (http) with context path '/'
+2026-10-13T22:33:32.474+08:00  INFO [traceId= requestId=] 31816 --- [pet-platform] [           main] o.a.maven.surefire.booter.ForkedBooter   : Started ForkedBooter in 5.739 seconds (process running for 10.592)
+2026-10-13T22:33:32.657+08:00  INFO [traceId= requestId=] 31816 --- [pet-platform] [nio-8080-exec-1] o.a.c.c.C.[Tomcat].[localhost].[/]       : Initializing Spring DispatcherServlet 'dispatcherServlet'
+2026-10-13T22:33:32.658+08:00  INFO [traceId= requestId=] 31816 --- [pet-platform] [nio-8080-exec-1] o.s.web.servlet.DispatcherServlet        : Initializing Servlet 'dispatcherServlet'
+2026-10-13T22:33:32.659+08:00  INFO [traceId= requestId=] 31816 --- [pet-platform] [nio-8080-exec-1] o.s.web.servlet.DispatcherServlet        : Completed initialization in 1 ms
+2026-10-13T22:33:32.811+08:00 ERROR [traceId=0207efc4-003c-44e9-be39-f2f6205c48ac requestId=55502043-2841-4cf8-8811-29fc87b13050] 31816 --- [pet-platform] [nio-8080-exec-5] c.p.b.a.web.c.CServiceExceptionHandler   : Unhandled C-end exception: java.lang.IllegalStateException
+2026-10-13T22:33:32.849+08:00 ERROR [traceId=ab1ac9b4-fee5-466c-ac36-1e9338149def requestId=d838c41b-221f-41f2-b7f6-3fccd71f621f] 31816 --- [pet-platform] [nio-8080-exec-6] c.p.b.a.web.c.CServiceExceptionHandler   : Unhandled C-end exception: java.lang.IllegalStateException
+2026-10-13T22:33:32.860+08:00 ERROR [traceId=01e948ab-d1d4-4171-a44b-c7be682698e7 requestId=cf3c12dd-9e62-40d9-a805-0ed65e1fa1db] 31816 --- [pet-platform] [nio-8080-exec-7] c.p.b.a.web.c.CServiceExceptionHandler   : Unhandled C-end exception: java.lang.IllegalStateException
+2026-10-13T22:33:32.868+08:00 ERROR [traceId=de4c1978-57d7-4943-b9f6-3d21fb035944 requestId=e0cb7f5d-d71c-4afb-9e8e-d6a3f384e0e6] 31816 --- [pet-platform] [nio-8080-exec-9] c.p.b.a.web.c.CServiceExceptionHandler   : Unhandled C-end exception: java.lang.IllegalStateException
+2026-10-13T22:33:32.878+08:00 ERROR [traceId=f4b62c90-cc99-47f1-ac7d-7d3cfc9bfdec requestId=2c2f45f9-dac7-4c82-831e-58cd2762b170] 31816 --- [pet-platform] [io-8080-exec-10] c.p.b.a.web.c.CServiceExceptionHandler   : Unhandled C-end exception: java.lang.IllegalStateException
+2026-10-13T22:33:32.888+08:00 ERROR [traceId=58047b63-2de2-483f-a17e-21d19eefd034 requestId=b6f906de-9a50-45ac-b994-662e9f302f78] 31816 --- [pet-platform] [nio-8080-exec-8] c.p.b.a.web.c.CServiceExceptionHandler   : Unhandled C-end exception: java.lang.IllegalStateException
+2026-10-13T22:33:32.895+08:00  INFO [traceId= requestId=] 31816 --- [pet-platform] [           main] o.s.boot.tomcat.GracefulShutdown         : Commencing graceful shutdown. Waiting for active requests to complete
+2026-10-13T22:33:32.898+08:00  INFO [traceId= requestId=] 31816 --- [pet-platform] [tomcat-shutdown] o.s.boot.tomcat.GracefulShutdown         : Graceful shutdown complete
+[ERROR] Tests run: 8, Failures: 6, Errors: 1, Skipped: 0, Time elapsed: 20.49 s <<< FAILURE! -- in com.petplatform.boot.auth.CAuthHttpTest
+[ERROR] com.petplatform.boot.auth.CAuthHttpTest.oneShotLoginAndSecondLoginReuseTheSameAccount -- Time elapsed: 0.083 s <<< FAILURE!
+org.opentest4j.AssertionFailedError: expected: <201> but was: <500>
+	at org.junit.jupiter.api.AssertionFailureBuilder.build(AssertionFailureBuilder.java:158)
+	at org.junit.jupiter.api.AssertionFailureBuilder.buildAndThrow(AssertionFailureBuilder.java:139)
+	at org.junit.jupiter.api.AssertEquals.failNotEqual(AssertEquals.java:201)
+	at org.junit.jupiter.api.AssertEquals.assertEquals(AssertEquals.java:152)
+	at org.junit.jupiter.api.AssertEquals.assertEquals(AssertEquals.java:147)
+	at org.junit.jupiter.api.Assertions.assertEquals(Assertions.java:558)
+	at com.petplatform.boot.auth.CAuthHttpTest.attempt(CAuthHttpTest.java:161)
+	at com.petplatform.boot.auth.CAuthHttpTest.login(CAuthHttpTest.java:173)
+	at com.petplatform.boot.auth.CAuthHttpTest.oneShotLoginAndSecondLoginReuseTheSameAccount(CAuthHttpTest.java:255)
+
+[ERROR] com.petplatform.boot.auth.CAuthHttpTest.wechatChainRunsThroughRealHttpFromAttemptToPetsAndProfile -- Time elapsed: 0.009 s <<< FAILURE!
+org.opentest4j.AssertionFailedError: expected: <201> but was: <500>
+	at org.junit.jupiter.api.AssertionFailureBuilder.build(AssertionFailureBuilder.java:158)
+	at org.junit.jupiter.api.AssertionFailureBuilder.buildAndThrow(AssertionFailureBuilder.java:139)
+	at org.junit.jupiter.api.AssertEquals.failNotEqual(AssertEquals.java:201)
+	at org.junit.jupiter.api.AssertEquals.assertEquals(AssertEquals.java:152)
+	at org.junit.jupiter.api.AssertEquals.assertEquals(AssertEquals.java:147)
+	at org.junit.jupiter.api.Assertions.assertEquals(Assertions.java:558)
+	at com.petplatform.boot.auth.CAuthHttpTest.attempt(CAuthHttpTest.java:161)
+	at com.petplatform.boot.auth.CAuthHttpTest.wechatChainRunsThroughRealHttpFromAttemptToPetsAndProfile(CAuthHttpTest.java:185)
+
+[ERROR] com.petplatform.boot.auth.CAuthHttpTest.invalidCredentialsAndProviderOutageMapExactly -- Time elapsed: 0.010 s <<< FAILURE!
+org.opentest4j.AssertionFailedError: expected: <201> but was: <500>
+	at org.junit.jupiter.api.AssertionFailureBuilder.build(AssertionFailureBuilder.java:158)
+	at org.junit.jupiter.api.AssertionFailureBuilder.buildAndThrow(AssertionFailureBuilder.java:139)
+	at org.junit.jupiter.api.AssertEquals.failNotEqual(AssertEquals.java:201)
+	at org.junit.jupiter.api.AssertEquals.assertEquals(AssertEquals.java:152)
+	at org.junit.jupiter.api.AssertEquals.assertEquals(AssertEquals.java:147)
+	at org.junit.jupiter.api.Assertions.assertEquals(Assertions.java:558)
+	at com.petplatform.boot.auth.CAuthHttpTest.attempt(CAuthHttpTest.java:161)
+	at com.petplatform.boot.auth.CAuthHttpTest.invalidCredentialsAndProviderOutageMapExactly(CAuthHttpTest.java:265)
+
+[ERROR] com.petplatform.boot.auth.CAuthHttpTest.sessionExpiryEndsAccessWhileFrozenStillReadsButCannotWrite -- Time elapsed: 0.010 s <<< FAILURE!
+org.opentest4j.AssertionFailedError: expected: <201> but was: <500>
+	at org.junit.jupiter.api.AssertionFailureBuilder.build(AssertionFailureBuilder.java:158)
+	at org.junit.jupiter.api.AssertionFailureBuilder.buildAndThrow(AssertionFailureBuilder.java:139)
+	at org.junit.jupiter.api.AssertEquals.failNotEqual(AssertEquals.java:201)
+	at org.junit.jupiter.api.AssertEquals.assertEquals(AssertEquals.java:152)
+	at org.junit.jupiter.api.AssertEquals.assertEquals(AssertEquals.java:147)
+	at org.junit.jupiter.api.Assertions.assertEquals(Assertions.java:558)
+	at com.petplatform.boot.auth.CAuthHttpTest.attempt(CAuthHttpTest.java:161)
+	at com.petplatform.boot.auth.CAuthHttpTest.login(CAuthHttpTest.java:173)
+	at com.petplatform.boot.auth.CAuthHttpTest.sessionExpiryEndsAccessWhileFrozenStillReadsButCannotWrite(CAuthHttpTest.java:301)
+
+[ERROR] com.petplatform.boot.auth.CAuthHttpTest.idempotencyConflictAndForeignPetsStayRejected -- Time elapsed: 0.008 s <<< FAILURE!
+org.opentest4j.AssertionFailedError: expected: <201> but was: <500>
+	at org.junit.jupiter.api.AssertionFailureBuilder.build(AssertionFailureBuilder.java:158)
+	at org.junit.jupiter.api.AssertionFailureBuilder.buildAndThrow(AssertionFailureBuilder.java:139)
+	at org.junit.jupiter.api.AssertEquals.failNotEqual(AssertEquals.java:201)
+	at org.junit.jupiter.api.AssertEquals.assertEquals(AssertEquals.java:152)
+	at org.junit.jupiter.api.AssertEquals.assertEquals(AssertEquals.java:147)
+	at org.junit.jupiter.api.Assertions.assertEquals(Assertions.java:558)
+	at com.petplatform.boot.auth.CAuthHttpTest.attempt(CAuthHttpTest.java:161)
+	at com.petplatform.boot.auth.CAuthHttpTest.login(CAuthHttpTest.java:173)
+	at com.petplatform.boot.auth.CAuthHttpTest.idempotencyConflictAndForeignPetsStayRejected(CAuthHttpTest.java:325)
+
+[ERROR] com.petplatform.boot.auth.CAuthHttpTest.phoneOwnedByAnotherAccountIs409OverHttp -- Time elapsed: 0.010 s <<< FAILURE!
+org.opentest4j.AssertionFailedError: expected: <201> but was: <500>
+	at org.junit.jupiter.api.AssertionFailureBuilder.build(AssertionFailureBuilder.java:158)
+	at org.junit.jupiter.api.AssertionFailureBuilder.buildAndThrow(AssertionFailureBuilder.java:139)
+	at org.junit.jupiter.api.AssertEquals.failNotEqual(AssertEquals.java:201)
+	at org.junit.jupiter.api.AssertEquals.assertEquals(AssertEquals.java:152)
+	at org.junit.jupiter.api.AssertEquals.assertEquals(AssertEquals.java:147)
+	at org.junit.jupiter.api.Assertions.assertEquals(Assertions.java:558)
+	at com.petplatform.boot.auth.CAuthHttpTest.attempt(CAuthHttpTest.java:161)
+	at com.petplatform.boot.auth.CAuthHttpTest.login(CAuthHttpTest.java:173)
+	at com.petplatform.boot.auth.CAuthHttpTest.phoneOwnedByAnotherAccountIs409OverHttp(CAuthHttpTest.java:346)
+
+[ERROR] com.petplatform.boot.auth.CAuthHttpTest -- Time elapsed: 20.49 s <<< ERROR!
+org.springframework.dao.RecoverableDataAccessException: 
+StatementCallback; SQL [DROP DATABASE IF EXISTS `auth001c_http_833d01a9074a4b749a3d1d286b3ddd60`]; Communications link failure
+
+The last packet successfully received from the server was 5,004 milliseconds ago. The last packet sent successfully to the server was 5,004 milliseconds ago.
+	at org.springframework.jdbc.support.SQLExceptionSubclassTranslator.doTranslate(SQLExceptionSubclassTranslator.java:119)
+	at org.springframework.jdbc.support.AbstractFallbackSQLExceptionTranslator.translate(AbstractFallbackSQLExceptionTranslator.java:102)
+	at org.springframework.jdbc.core.JdbcTemplate.translateException(JdbcTemplate.java:1549)
+	at org.springframework.jdbc.core.JdbcTemplate.execute(JdbcTemplate.java:427)
+	at org.springframework.jdbc.core.JdbcTemplate.execute(JdbcTemplate.java:461)
+	at com.petplatform.boot.auth.CAuthHttpTest$HttpFixture.dropDatabase(CAuthHttpTest.java:469)
+	at com.petplatform.boot.auth.CAuthHttpTest$HttpFixture.close(CAuthHttpTest.java:488)
+	at com.petplatform.boot.auth.CAuthHttpTest.stop(CAuthHttpTest.java:91)
+Caused by: com.mysql.cj.jdbc.exceptions.CommunicationsException: Communications link failure
+
+The last packet successfully received from the server was 5,004 milliseconds ago. The last packet sent successfully to the server was 5,004 milliseconds ago.
+	at com.mysql.cj.jdbc.exceptions.SQLError.createCommunicationsException(SQLError.java:165)
+	at com.mysql.cj.jdbc.exceptions.SQLExceptionsMapping.translateException(SQLExceptionsMapping.java:55)
+	at com.mysql.cj.jdbc.StatementImpl.executeInternal(StatementImpl.java:839)
+	at com.mysql.cj.jdbc.StatementImpl.execute(StatementImpl.java:687)
+	at org.springframework.jdbc.core.JdbcTemplate$1ExecuteStatementCallback.doInStatement(JdbcTemplate.java:452)
+	at org.springframework.jdbc.core.JdbcTemplate.execute(JdbcTemplate.java:412)
+	... 4 more
+Caused by: com.mysql.cj.exceptions.CJCommunicationsException: Communications link failure
+
+The last packet successfully received from the server was 5,004 milliseconds ago. The last packet sent successfully to the server was 5,004 milliseconds ago.
+	at java.base/jdk.internal.reflect.DirectConstructorHandleAccessor.newInstance(DirectConstructorHandleAccessor.java:62)
+	at java.base/java.lang.reflect.Constructor.newInstanceWithCaller(Constructor.java:502)
+	at java.base/java.lang.reflect.Constructor.newInstance(Constructor.java:486)
+	at com.mysql.cj.exceptions.ExceptionFactory.createException(ExceptionFactory.java:52)
+	at com.mysql.cj.exceptions.ExceptionFactory.createException(ExceptionFactory.java:95)
+	at com.mysql.cj.exceptions.ExceptionFactory.createException(ExceptionFactory.java:140)
+	at com.mysql.cj.exceptions.ExceptionFactory.createCommunicationsException(ExceptionFactory.java:156)
+	at com.mysql.cj.protocol.a.NativeProtocol.readMessage(NativeProtocol.java:590)
+	at com.mysql.cj.protocol.a.NativeProtocol.checkErrorMessage(NativeProtocol.java:767)
+	at com.mysql.cj.protocol.a.NativeProtocol.sendCommand(NativeProtocol.java:706)
+	at com.mysql.cj.protocol.a.NativeProtocol.sendQueryPacket(NativeProtocol.java:938)
+	at com.mysql.cj.NativeSession.execSQL(NativeSession.java:817)
+	at com.mysql.cj.jdbc.StatementImpl.executeInternal(StatementImpl.java:791)
+	... 7 more
+Caused by: java.net.SocketTimeoutException: Read timed out
+	at java.base/sun.nio.ch.NioSocketImpl.timedRead(NioSocketImpl.java:278)
+	at java.base/sun.nio.ch.NioSocketImpl.implRead(NioSocketImpl.java:304)
+	at java.base/sun.nio.ch.NioSocketImpl.read(NioSocketImpl.java:346)
+	at java.base/sun.nio.ch.NioSocketImpl$1.read(NioSocketImpl.java:796)
+	at java.base/java.net.Socket$SocketInputStream.read(Socket.java:1099)
+	at com.mysql.cj.protocol.ReadAheadInputStream.fill(ReadAheadInputStream.java:91)
+	at com.mysql.cj.protocol.ReadAheadInputStream.readFromUnderlyingStreamIfNecessary(ReadAheadInputStream.java:130)
+	at com.mysql.cj.protocol.ReadAheadInputStream.read(ReadAheadInputStream.java:157)
+	at java.base/java.io.FilterInputStream.read(FilterInputStream.java:119)
+	at com.mysql.cj.protocol.FullReadInputStream.readFully(FullReadInputStream.java:55)
+	at com.mysql.cj.protocol.a.SimplePacketReader.readHeaderLocal(SimplePacketReader.java:72)
+	at com.mysql.cj.protocol.a.SimplePacketReader.readHeader(SimplePacketReader.java:54)
+	at com.mysql.cj.protocol.a.SimplePacketReader.readHeader(SimplePacketReader.java:36)
+	at com.mysql.cj.protocol.a.TimeTrackingPacketReader.readHeader(TimeTrackingPacketReader.java:43)
+	at com.mysql.cj.protocol.a.TimeTrackingPacketReader.readHeader(TimeTrackingPacketReader.java:32)
+	at com.mysql.cj.protocol.a.MultiPacketReader.readHeader(MultiPacketReader.java:45)
+	at com.mysql.cj.protocol.a.MultiPacketReader.readHeader(MultiPacketReader.java:35)
+	at com.mysql.cj.protocol.a.NativeProtocol.readMessage(NativeProtocol.java:584)
+	... 12 more
+
+2026-10-13T22:34:08.588+08:00  INFO [traceId= requestId=] 31816 --- [pet-platform] [           main] o.a.maven.surefire.booter.ForkedBooter   : Starting ForkedBooter v3.5.6 using Java 21.0.11 with PID 31816 (started by Administrator in C:\Users\Administrator\Desktop\wt-mod-signin\backend\pet-boot)
+2026-10-13T22:34:08.588+08:00  INFO [traceId= requestId=] 31816 --- [pet-platform] [           main] o.a.maven.surefire.booter.ForkedBooter   : The following 1 profile is active: "local"
+2026-10-13T22:34:09.047+08:00  INFO [traceId= requestId=] 31816 --- [pet-platform] [           main] .s.d.r.c.RepositoryConfigurationDelegate : Multiple Spring Data modules found, entering strict repository configuration mode
+2026-10-13T22:34:09.047+08:00  INFO [traceId= requestId=] 31816 --- [pet-platform] [           main] .s.d.r.c.RepositoryConfigurationDelegate : Bootstrapping Spring Data Redis repositories in DEFAULT mode.
+2026-10-13T22:34:09.060+08:00  INFO [traceId= requestId=] 31816 --- [pet-platform] [           main] .s.d.r.c.RepositoryConfigurationDelegate : Finished Spring Data repository scanning in 11 ms. Found 0 Redis repository interfaces.
+2026-10-13T22:34:09.103+08:00  WARN [traceId= requestId=] 31816 --- [pet-platform] [           main] o.m.s.mapper.ClassPathMapperScanner      : No MyBatis mapper was found in '[com.petplatform.boot]' package. Please check your configuration.
+2026-10-13T22:34:09.148+08:00  INFO [traceId= requestId=] 31816 --- [pet-platform] [           main] o.s.boot.tomcat.TomcatWebServer          : Tomcat initialized with port 8080 (http)
+2026-10-13T22:34:09.149+08:00  INFO [traceId= requestId=] 31816 --- [pet-platform] [           main] o.apache.catalina.core.StandardService   : Starting service [Tomcat]
+2026-10-13T22:34:09.149+08:00  INFO [traceId= requestId=] 31816 --- [pet-platform] [           main] o.apache.catalina.core.StandardEngine    : Starting Servlet engine: [Apache Tomcat/11.0.24]
+2026-10-13T22:34:09.165+08:00  INFO [traceId= requestId=] 31816 --- [pet-platform] [           main] b.w.c.s.WebApplicationContextInitializer : Root WebApplicationContext: initialization completed in 576 ms
+2026-10-13T22:34:11.397+08:00  INFO [traceId= requestId=] 31816 --- [pet-platform] [           main] r$InitializeUserDetailsManagerConfigurer : Global AuthenticationManager configured with UserDetailsService bean with name noImplicitDefaultAccounts
+2026-10-13T22:34:11.552+08:00  INFO [traceId= requestId=] 31816 --- [pet-platform] [           main] o.s.b.a.e.web.EndpointLinksResolver      : Exposing 3 endpoints beneath base path '/actuator'
+2026-10-13T22:34:11.563+08:00  INFO [traceId= requestId=] 31816 --- [pet-platform] [           main] o.s.boot.tomcat.TomcatWebServer          : Tomcat started on port 8080 (http) with context path '/'
+2026-10-13T22:34:11.570+08:00  INFO [traceId= requestId=] 31816 --- [pet-platform] [           main] o.a.maven.surefire.booter.ForkedBooter   : Started ForkedBooter in 3.002 seconds (process running for 49.687)
+2026-10-13T22:34:11.812+08:00  INFO [traceId= requestId=] 31816 --- [pet-platform] [nio-8080-exec-1] o.a.c.c.C.[Tomcat].[localhost].[/]       : Initializing Spring DispatcherServlet 'dispatcherServlet'
+2026-10-13T22:34:11.812+08:00  INFO [traceId= requestId=] 31816 --- [pet-platform] [nio-8080-exec-1] o.s.web.servlet.DispatcherServlet        : Initializing Servlet 'dispatcherServlet'
+2026-10-13T22:34:11.814+08:00  INFO [traceId= requestId=] 31816 --- [pet-platform] [nio-8080-exec-1] o.s.web.servlet.DispatcherServlet        : Completed initialization in 2 ms
+2026-10-13T22:34:12.497+08:00  INFO [traceId= requestId=] 31816 --- [pet-platform] [           main] o.s.boot.tomcat.GracefulShutdown         : Commencing graceful shutdown. Waiting for active requests to complete
+2026-10-13T22:34:12.500+08:00  INFO [traceId= requestId=] 31816 --- [pet-platform] [tomcat-shutdown] o.s.boot.tomcat.GracefulShutdown         : Graceful shutdown complete
+2026-10-13T22:34:17.573+08:00  INFO [traceId= requestId=] 31816 --- [pet-platform] [           main] o.a.maven.surefire.booter.ForkedBooter   : Starting ForkedBooter v3.5.6 using Java 21.0.11 with PID 31816 (started by Administrator in C:\Users\Administrator\Desktop\wt-mod-signin\backend\pet-boot)
+2026-10-13T22:34:17.573+08:00  INFO [traceId= requestId=] 31816 --- [pet-platform] [           main] o.a.maven.surefire.booter.ForkedBooter   : The following 1 profile is active: "local"
+2026-10-13T22:34:18.002+08:00  INFO [traceId= requestId=] 31816 --- [pet-platform] [           main] .s.d.r.c.RepositoryConfigurationDelegate : Multiple Spring Data modules found, entering strict repository configuration mode
+2026-10-13T22:34:18.002+08:00  INFO [traceId= requestId=] 31816 --- [pet-platform] [           main] .s.d.r.c.RepositoryConfigurationDelegate : Bootstrapping Spring Data Redis repositories in DEFAULT mode.
+2026-10-13T22:34:18.014+08:00  INFO [traceId= requestId=] 31816 --- [pet-platform] [           main] .s.d.r.c.RepositoryConfigurationDelegate : Finished Spring Data repository scanning in 10 ms. Found 0 Redis repository interfaces.
+2026-10-13T22:34:18.045+08:00  WARN [traceId= requestId=] 31816 --- [pet-platform] [           main] o.m.s.mapper.ClassPathMapperScanner      : No MyBatis mapper was found in '[com.petplatform.boot]' package. Please check your configuration.
+2026-10-13T22:34:18.063+08:00  INFO [traceId= requestId=] 31816 --- [pet-platform] [           main] o.s.boot.tomcat.TomcatWebServer          : Tomcat initialized with port 8080 (http)
+2026-10-13T22:34:18.063+08:00  INFO [traceId= requestId=] 31816 --- [pet-platform] [           main] o.apache.catalina.core.StandardService   : Starting service [Tomcat]
+2026-10-13T22:34:18.063+08:00  INFO [traceId= requestId=] 31816 --- [pet-platform] [           main] o.apache.catalina.core.StandardEngine    : Starting Servlet engine: [Apache Tomcat/11.0.24]
+2026-10-13T22:34:18.077+08:00  INFO [traceId= requestId=] 31816 --- [pet-platform] [           main] b.w.c.s.WebApplicationContextInitializer : Root WebApplicationContext: initialization completed in 503 ms
+2026-10-13T22:34:19.448+08:00  INFO [traceId= requestId=] 31816 --- [pet-platform] [           main] r$InitializeUserDetailsManagerConfigurer : Global AuthenticationManager configured with UserDetailsService bean with name noImplicitDefaultAccounts
+2026-10-13T22:34:19.541+08:00  INFO [traceId= requestId=] 31816 --- [pet-platform] [           main] o.s.b.a.e.web.EndpointLinksResolver      : Exposing 3 endpoints beneath base path '/actuator'
+2026-10-13T22:34:19.550+08:00  INFO [traceId= requestId=] 31816 --- [pet-platform] [           main] o.s.boot.tomcat.TomcatWebServer          : Tomcat started on port 8080 (http) with context path '/'
+2026-10-13T22:34:19.553+08:00  INFO [traceId= requestId=] 31816 --- [pet-platform] [           main] o.a.maven.surefire.booter.ForkedBooter   : Started ForkedBooter in 2.0 seconds (process running for 57.67)
+2026-10-13T22:34:19.733+08:00  INFO [traceId= requestId=] 31816 --- [pet-platform] [nio-8080-exec-1] o.a.c.c.C.[Tomcat].[localhost].[/]       : Initializing Spring DispatcherServlet 'dispatcherServlet'
+2026-10-13T22:34:19.733+08:00  INFO [traceId= requestId=] 31816 --- [pet-platform] [nio-8080-exec-1] o.s.web.servlet.DispatcherServlet        : Initializing Servlet 'dispatcherServlet'
+2026-10-13T22:34:19.734+08:00  INFO [traceId= requestId=] 31816 --- [pet-platform] [nio-8080-exec-1] o.s.web.servlet.DispatcherServlet        : Completed initialization in 1 ms
+2026-10-13T22:34:20.313+08:00  INFO [traceId= requestId=] 31816 --- [pet-platform] [           main] o.s.boot.tomcat.GracefulShutdown         : Commencing graceful shutdown. Waiting for active requests to complete
+2026-10-13T22:34:20.315+08:00  INFO [traceId= requestId=] 31816 --- [pet-platform] [tomcat-shutdown] o.s.boot.tomcat.GracefulShutdown         : Graceful shutdown complete
+[ERROR] Tests run: 2, Failures: 0, Errors: 1, Skipped: 0, Time elapsed: 38.80 s <<< FAILURE! -- in com.petplatform.boot.auth.PointsTaskHttpTest
+[ERROR] com.petplatform.boot.auth.PointsTaskHttpTest.cFaceSignInTasksReferralStrictBodiesAndIdempotency -- Time elapsed: 31.38 s <<< ERROR!
+org.springframework.jdbc.BadSqlGrammarException: PreparedStatementCallback; bad SQL grammar [INSERT INTO pet_order(id, order_no, user_id, merchant_id, store_id, service_id, pet_id, reservation_id, order_stage, payment_status, fulfillment_type, original_amount, pay_amount, appointment_start_at, appointment_end_at, paid_at, created_at, updated_at) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,UTC_TIMESTAMP(3),UTC_TIMESTAMP(3),UTC_TIMESTAMP(3))]
+	at org.springframework.jdbc.support.SQLStateSQLExceptionTranslator.doTranslate(SQLStateSQLExceptionTranslator.java:134)
+	at org.springframework.jdbc.support.AbstractFallbackSQLExceptionTranslator.translate(AbstractFallbackSQLExceptionTranslator.java:102)
+	at org.springframework.jdbc.support.AbstractFallbackSQLExceptionTranslator.translate(AbstractFallbackSQLExceptionTranslator.java:111)
+	at org.springframework.jdbc.core.JdbcTemplate.translateException(JdbcTemplate.java:1549)
+	at org.springframework.jdbc.core.JdbcTemplate.execute(JdbcTemplate.java:689)
+	at org.springframework.jdbc.core.JdbcTemplate.update(JdbcTemplate.java:966)
+	at org.springframework.jdbc.core.JdbcTemplate.update(JdbcTemplate.java:1010)
+	at org.springframework.jdbc.core.JdbcTemplate.update(JdbcTemplate.java:1020)
+	at com.petplatform.boot.auth.PointsTaskHttpTest.cFaceSignInTasksReferralStrictBodiesAndIdempotency(PointsTaskHttpTest.java:205)
+Caused by: java.sql.SQLException: Column count doesn't match value count at row 1
+	at com.mysql.cj.jdbc.exceptions.SQLError.createSQLException(SQLError.java:121)
+	at com.mysql.cj.jdbc.exceptions.SQLExceptionsMapping.translateException(SQLExceptionsMapping.java:114)
+	at com.mysql.cj.jdbc.ClientPreparedStatement.executeInternal(ClientPreparedStatement.java:988)
+	at com.mysql.cj.jdbc.ClientPreparedStatement.executeUpdateInternal(ClientPreparedStatement.java:1166)
+	at com.mysql.cj.jdbc.ClientPreparedStatement.executeUpdateInternal(ClientPreparedStatement.java:1101)
+	at com.mysql.cj.jdbc.ClientPreparedStatement.executeLargeUpdate(ClientPreparedStatement.java:1448)
+	at com.mysql.cj.jdbc.ClientPreparedStatement.executeUpdate(ClientPreparedStatement.java:1084)
+	at org.springframework.jdbc.core.JdbcTemplate.lambda$update$0(JdbcTemplate.java:971)
+	at org.springframework.jdbc.core.JdbcTemplate.execute(JdbcTemplate.java:670)
+	... 4 more
+
+[ERROR] Failures: 
+[ERROR]   CAuthHttpTest.idempotencyConflictAndForeignPetsStayRejected:325->login:173->attempt:161 expected: <201> but was: <500>
+[ERROR]   CAuthHttpTest.invalidCredentialsAndProviderOutageMapExactly:265->attempt:161 expected: <201> but was: <500>
+[ERROR]   CAuthHttpTest.oneShotLoginAndSecondLoginReuseTheSameAccount:255->login:173->attempt:161 expected: <201> but was: <500>
+[ERROR]   CAuthHttpTest.phoneOwnedByAnotherAccountIs409OverHttp:346->login:173->attempt:161 expected: <201> but was: <500>
+[ERROR]   CAuthHttpTest.sessionExpiryEndsAccessWhileFrozenStillReadsButCannotWrite:301->login:173->attempt:161 expected: <201> but was: <500>
+[ERROR]   CAuthHttpTest.wechatChainRunsThroughRealHttpFromAttemptToPetsAndProfile:185->attempt:161 expected: <201> but was: <500>
+[ERROR] Errors: 
+[ERROR] com.petplatform.boot.auth.CAuthHttpTest.<beforeAll>
+[ERROR]   Run 1: CAuthHttpTest.stop:91 ? RecoverableDataAccess StatementCallback; SQL [DROP DATABASE IF EXISTS `auth001c_http_833d01a9074a4b749a3d1d286b3ddd60`]; Communications link failure
+
+The last packet successfully received from the server was 5,004 milliseconds ago. The last packet sent successfully to the server was 5,004 milliseconds ago.
+[ERROR]   PointsTaskHttpTest.cFaceSignInTasksReferralStrictBodiesAndIdempotency:205 ? BadSqlGrammar PreparedStatementCallback; bad SQL grammar [INSERT INTO pet_order(id, order_no, user_id, merchant_id, store_id, service_id, pet_id, reservation_id, order_stage, payment_status, fulfillment_type, original_amount, pay_amount, appointment_start_at, appointment_end_at, paid_at, created_at, updated_at) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,UTC_TIMESTAMP(3),UTC_TIMESTAMP(3),UTC_TIMESTAMP(3))]
+[ERROR] Tests run: 10, Failures: 6, Errors: 2, Skipped: 0
+[ERROR] Failed to execute goal org.apache.maven.plugins:maven-surefire-plugin:3.5.6:test (default-test) on project pet-boot: There are test failures.
+[ERROR] 
+[ERROR] See C:\Users\Administrator\Desktop\wt-mod-signin\backend\pet-boot\target\surefire-reports for the individual test results.
+[ERROR] See dump files (if any exist) [date].dump, [date]-jvmRun[N].dump and [date].dumpstream.
+[ERROR] -> [Help 1]
+[ERROR] 
+[ERROR] To see the full stack trace of the errors, re-run Maven with the -e switch.
+[ERROR] Re-run Maven using the -X switch to enable full debug logging.
+[ERROR] 
+[ERROR] For more information about the errors and possible solutions, please read the following articles:
+[ERROR] [Help 1] http://cwiki.apache.org/confluence/display/MAVEN/MojoFailureException
+[ERROR] 
+[ERROR] After correcting the problems, you can resume the build with the command
+[ERROR]   mvn <args> -rf :pet-boot

@@ -274,6 +274,30 @@ PUT 请求: {nickname?(1~64), avatarUrl?(≤512,https)}；幂等X-Request-Id；4
 不包含手机号换绑/注销（AUTH后续）。
 ```
 
+## 3.2.2 收货/服务地址簿（新增，59号契约，32号裁决第二节）
+
+[Contract59](59-User-Address-Contract-v0.1.md)（CCR-USR-ADDRESS-001）；沿 `pet.auth.c.enabled` 装配（同宠物档案，无新开关）；SQL55 `user_address`。
+
+```text
+GET    /api/v1/c/addresses
+POST   /api/v1/c/addresses
+GET    /api/v1/c/addresses/{addressId}
+PUT    /api/v1/c/addresses/{addressId}
+DELETE /api/v1/c/addresses/{addressId}
+POST   /api/v1/c/addresses/{addressId}/set-default
+```
+
+```text
+AddressView: addressId/contactName(1..32)/contactPhone(11位大陆手机号)/region(1..64)/
+             detail(1..256)/isDefault/status(ACTIVE|DELETED)
+单用户 ACTIVE 上限 20（第 21 条 400 ADDRESS_LIMIT_EXCEEDED，保守值 2026-10-13 披露）；
+默认地址唯一（清旧默认同事务，删除默认后无默认直至再设置）；软删除，订单不引用本表
+（下单地址仍走 order_booking_input_snapshot 文本快照，地址簿仅 C 端录入源，59号 §下单链接法）；
+归属反例（不存在/他人/已删除）统一 404 ADDRESS_NOT_FOUND 防枚举；写操作 X-Request-Id
+幂等按23号（POST 201/200）；冻结用户写 403 USER_FROZEN；本人读侧返回明文 contactPhone
+（列表页前端按设计稿脱敏展示）；query 全禁止；无微信 chooseAddress/chooseLocation 接入。
+```
+
 ---
 
 ## 3.3 商家与服务

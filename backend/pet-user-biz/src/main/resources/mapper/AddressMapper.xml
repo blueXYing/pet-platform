@@ -1,0 +1,54 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.petplatform.user.biz.infrastructure.persistence.mapper.AddressMapper">
+
+    <!-- user_address (SQL55, contract 59): owner-scoped CRUD, soft delete, single default. -->
+
+    <select id="selectAddressById" resultType="com.petplatform.user.biz.infrastructure.persistence.entity.AddressEntity">
+        SELECT id,user_id,contact_name,contact_phone,region,detail,is_default,status
+        FROM user_address WHERE id=#{addressId}
+    </select>
+
+    <select id="selectAddressByIdForUpdate" resultType="com.petplatform.user.biz.infrastructure.persistence.entity.AddressEntity">
+        SELECT id,user_id,contact_name,contact_phone,region,detail,is_default,status
+        FROM user_address WHERE id=#{addressId} FOR UPDATE
+    </select>
+
+    <select id="selectActiveAddressesByOwner" resultType="com.petplatform.user.biz.infrastructure.persistence.entity.AddressEntity">
+        SELECT id,user_id,contact_name,contact_phone,region,detail,is_default,status
+        FROM user_address WHERE user_id=#{ownerUserId} AND status='ACTIVE'
+        ORDER BY is_default DESC, created_at ASC, id ASC
+    </select>
+
+    <select id="countActiveByOwner" resultType="long">
+        SELECT COUNT(*) FROM user_address WHERE user_id=#{ownerUserId} AND status='ACTIVE'
+    </select>
+
+    <insert id="insertAddress" parameterType="com.petplatform.user.biz.infrastructure.persistence.entity.AddressEntity">
+        INSERT INTO user_address
+        (id,user_id,contact_name,contact_phone,region,detail,is_default,status,version,created_at,updated_at)
+        VALUES (#{id},#{userId},#{contactName},#{contactPhone},#{region},#{detail},#{isDefault},'ACTIVE',0,NOW(3),NOW(3))
+    </insert>
+
+    <update id="updateAddressFields" parameterType="com.petplatform.user.biz.infrastructure.persistence.entity.AddressEntity">
+        UPDATE user_address SET contact_name=#{contactName},contact_phone=#{contactPhone},region=#{region},detail=#{detail},is_default=#{isDefault},
+        version=version+1,updated_at=NOW(3)
+        WHERE id=#{id} AND user_id=#{userId} AND status='ACTIVE'
+    </update>
+
+    <update id="softDeleteAddress">
+        UPDATE user_address SET status='DELETED',is_default=0,version=version+1,updated_at=NOW(3)
+        WHERE id=#{addressId} AND user_id=#{ownerUserId} AND status='ACTIVE'
+    </update>
+
+    <update id="markDefault">
+        UPDATE user_address SET is_default=1,version=version+1,updated_at=NOW(3)
+        WHERE id=#{addressId} AND user_id=#{ownerUserId} AND status='ACTIVE'
+    </update>
+
+    <update id="clearDefaultExcept">
+        UPDATE user_address SET is_default=0,updated_at=NOW(3)
+        WHERE user_id=#{ownerUserId} AND is_default=1 AND id&lt;&gt;#{keepAddressId} AND status='ACTIVE'
+    </update>
+
+</mapper>

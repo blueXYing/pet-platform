@@ -95,6 +95,15 @@ public class CSessionSecurityConfiguration {
                     "/api/v1/c/profile")
                 .permitAll();
             a.requestMatchers(HttpMethod.POST, "/api/v1/c/pets", "/api/v1/c/profile").permitAll();
+            // Address book (contract 59): the six user-domain routes ride pet.auth.c.enabled
+            // exactly like pets/profile — the MINIAPP Bearer session is enforced by the
+            // filter's protectedPath list, ownership stays in the AddressService kernel.
+            a.requestMatchers(
+                    HttpMethod.GET, "/api/v1/c/addresses", "/api/v1/c/addresses/*").permitAll();
+            a.requestMatchers(HttpMethod.POST, "/api/v1/c/addresses").permitAll();
+            a.requestMatchers(HttpMethod.POST, "/api/v1/c/addresses/*/set-default").permitAll();
+            a.requestMatchers(HttpMethod.PUT, "/api/v1/c/addresses/*").permitAll();
+            a.requestMatchers(HttpMethod.DELETE, "/api/v1/c/addresses/*").permitAll();
             // Inbox reads (CCR-W2-NOTIFICATION-001): MINIAPP Bearer enforced by the filter.
             a.requestMatchers("/api/v1/c/notifications", "/api/v1/c/notifications/**")
                 .permitAll();

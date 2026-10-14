@@ -176,7 +176,12 @@ jobs:
         working-directory: frontend-miniapp
         run: npm ci
       - name: Maven verify
-        run: mvn -B -f backend/pom.xml clean verify
+        # C1 灰度实验：Maven 模块级并行（每核 1 线程，surefire 模块内仍串行）。
+        # 前置条件已满足——#146 已将两个时间敏感测试确定性化：
+        #  - MerchantOrderHttpAcceptanceTest（先停 orderAutoConfirmWorker 再断言，消除钉时钟竞态）
+        #  - IdProviderProcessMySqlTest（@Timeout 300s + 子进程等待余量 120s 级，面向饱和并行 runner 调优）
+        # 判据/回退协议见 PR 描述；失败即回退本 commit。
+        run: mvn -B -T 1C -f backend/pom.xml clean verify
       - name: Preserve actual backend evidence
         if: always()
         uses: actions/upload-artifact@v4

@@ -24,6 +24,7 @@ tags:
 - name: Merchant-Profile
 - name: Merchant-Application
 - name: Private-Asset
+- name: C-Address
 paths:
   /c/orders/{orderId}/verification-code:
     get:
@@ -4151,7 +4152,7 @@ paths:
       tags:
       - Admin-Aftersale
       operationId: decideAftersale
-      summary: 非出款最终决定
+      summary: 售后最终决定（含原路退回退款）
       x-implementation-status: IMPLEMENTED_DEFAULT_OFF
       x-default-enabled: false
       x-contract: 51-AfterSale-Http-Contract-v0.1.md
@@ -4214,16 +4215,20 @@ paths:
           application/json:
             schema:
               $ref: '#/components/schemas/AfterSaleDecisionRequest'
-      description: 仅REJECT/RESERVICE/OTHER执行。FULL/PARTIAL合法请求先检查当前ADMIN会话、decide及资源权，再固定503；内部资金开关/Provider不能开启公开出款。
+      description: 五类终局决定均可执行（32号裁决）。FULL_REFUND/PARTIAL_REFUND必须携带正金额refundAmount（FULL=订单真实实付、PARTIAL>0且<实付，违例400 AFTERSALE_AMOUNT_INVALID），经真实决定事务原子创建原路退回退款单并交给AFTERSALE_REFUND_SUBMIT/CHANNEL_QUERY durable任务族；成功回执refundOrderId为退款单ID。pet.aftersale.refund.enabled=false（默认）时退款型fail-closed 503 COMMON_DEPENDENCY_UNAVAILABLE，无决定/退款单/ORDER投影。REJECT/RESERVICE/OTHER要求refundAmount=null。
       x-route-party: OPS
       x-audience: ADMIN_WEB
       x-required-actions:
       - aftersale.decide
-      x-public-refund-enabled: false
+      x-public-refund-enabled: true
+      x-public-refund-switch: pet.aftersale.refund.enabled
+      x-refund-execution: AFTERSALE_REFUND_SUBMIT/AFTERSALE_REFUND_CHANNEL_QUERY durable tasks, async, original WeChat route
       x-executable-decision-types:
       - REJECT
       - RESERVICE
       - OTHER
+      - FULL_REFUND
+      - PARTIAL_REFUND
   /admin/orders/{orderId}/abnormal-close:
     post:
       tags:
@@ -12450,6 +12455,294 @@ paths:
           $ref: '#/components/responses/StaffInvitationHttpError'
       x-route-party: USER
       x-audience: MINIAPP
+  /c/addresses:
+    get:
+      tags:
+      - C-Address
+      operationId: cListMyAddresses
+      summary: 我的地址列表（默认在前）
+      x-implementation-status: IMPLEMENTED_DEFAULT_OFF
+      x-default-enabled: false
+      x-contract: 59-User-Address-Contract-v0.1.md
+      x-assembly-switch: pet.auth.c.enabled
+      description: 59号契约（32号裁决第二节地址管理）。本人 ACTIVE 地址全量列表，固定排序
+        is_default DESC, created_at ASC, id ASC；query 全禁止。单用户上限 20 条由写侧校验，
+        列表不 hiding 状态差异（软删除行不返回）。订单不引用本表——下单地址仍走
+        order_booking_input_snapshot 文本快照。
+      security:
+      - bearerAuth: []
+      responses:
+        '200':
+          description: 本人地址列表（无地址时空数组）
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                enum:
+                - no-store
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AddressListEnvelope'
+        '400':
+          $ref: '#/components/responses/AddressHttpError'
+        '401':
+          $ref: '#/components/responses/AddressHttpError'
+        '500':
+          $ref: '#/components/responses/AddressHttpError'
+        '503':
+          $ref: '#/components/responses/AddressHttpError'
+      x-route-party: USER
+      x-audience: MINIAPP
+    post:
+      tags:
+      - C-Address
+      operationId: cCreateAddress
+      summary: 新增地址（requestId幂等，201/200）
+      x-implementation-status: IMPLEMENTED_DEFAULT_OFF
+      x-default-enabled: false
+      x-contract: 59-User-Address-Contract-v0.1.md
+      x-assembly-switch: pet.auth.c.enabled
+      description: 59号契约。严格 JSON：contactName(1..32码点)/contactPhone(11位大陆手机号)/
+        region(1..64)/detail(1..256) 必填，isDefault 可省（默认 false）；未知字段、显式
+        null、尾随 token 均 400。单用户 ACTIVE 上限 20，第 21 条 400
+        ADDRESS_LIMIT_EXCEEDED。置默认与清旧默认同事务。同 requestId 同参重放返回首回执
+        （200），异参 409 IDEMPOTENCY_KEY_CONFLICT。冻结用户 403 USER_FROZEN。
+      security:
+      - bearerAuth: []
+      parameters:
+      - $ref: '#/components/parameters/RequestId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AddressUpsert'
+      responses:
+        '200':
+          description: 同 requestId 幂等重放首回执
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                enum:
+                - no-store
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AddressEnvelope'
+        '201':
+          description: 首次创建成功
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                enum:
+                - no-store
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AddressEnvelope'
+        '400':
+          $ref: '#/components/responses/AddressHttpError'
+        '401':
+          $ref: '#/components/responses/AddressHttpError'
+        '403':
+          $ref: '#/components/responses/AddressHttpError'
+        '409':
+          $ref: '#/components/responses/AddressHttpError'
+        '500':
+          $ref: '#/components/responses/AddressHttpError'
+        '503':
+          $ref: '#/components/responses/AddressHttpError'
+      x-route-party: USER
+      x-audience: MINIAPP
+  /c/addresses/{addressId}:
+    get:
+      tags:
+      - C-Address
+      operationId: cGetMyAddress
+      summary: 地址详情（防枚举404）
+      x-implementation-status: IMPLEMENTED_DEFAULT_OFF
+      x-default-enabled: false
+      x-contract: 59-User-Address-Contract-v0.1.md
+      x-assembly-switch: pet.auth.c.enabled
+      description: 59号契约。非本人/不存在/已删除统一 404 ADDRESS_NOT_FOUND（防枚举，不区分）。
+        本人读侧返回明文 contactPhone（用户自录收货联系电话，宠物档案同口径；C 端列表页
+        按设计稿做展示层脱敏）。query 全禁止。
+      security:
+      - bearerAuth: []
+      parameters:
+      - $ref: '#/components/parameters/AddressId'
+      responses:
+        '200':
+          description: 地址详情
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                enum:
+                - no-store
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AddressEnvelope'
+        '400':
+          $ref: '#/components/responses/AddressHttpError'
+        '401':
+          $ref: '#/components/responses/AddressHttpError'
+        '404':
+          $ref: '#/components/responses/AddressHttpError'
+        '500':
+          $ref: '#/components/responses/AddressHttpError'
+        '503':
+          $ref: '#/components/responses/AddressHttpError'
+      x-route-party: USER
+      x-audience: MINIAPP
+    put:
+      tags:
+      - C-Address
+      operationId: cUpdateMyAddress
+      summary: 全量编辑地址（requestId幂等）
+      x-implementation-status: IMPLEMENTED_DEFAULT_OFF
+      x-default-enabled: false
+      x-contract: 59-User-Address-Contract-v0.1.md
+      x-assembly-switch: pet.auth.c.enabled
+      description: 59号契约。全量替换 contactName/contactPhone/region/detail；isDefault 可省
+        （缺省保持现值），置默认与清旧默认同事务。严格 JSON 同创建。防枚举 404 与幂等
+        语义同创建。
+      security:
+      - bearerAuth: []
+      parameters:
+      - $ref: '#/components/parameters/RequestId'
+      - $ref: '#/components/parameters/AddressId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AddressUpsert'
+      responses:
+        '200':
+          description: 编辑后的地址投影
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                enum:
+                - no-store
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AddressEnvelope'
+        '400':
+          $ref: '#/components/responses/AddressHttpError'
+        '401':
+          $ref: '#/components/responses/AddressHttpError'
+        '403':
+          $ref: '#/components/responses/AddressHttpError'
+        '404':
+          $ref: '#/components/responses/AddressHttpError'
+        '409':
+          $ref: '#/components/responses/AddressHttpError'
+        '500':
+          $ref: '#/components/responses/AddressHttpError'
+        '503':
+          $ref: '#/components/responses/AddressHttpError'
+      x-route-party: USER
+      x-audience: MINIAPP
+    delete:
+      tags:
+      - C-Address
+      operationId: cDeleteMyAddress
+      summary: 软删除地址（requestId幂等）
+      x-implementation-status: IMPLEMENTED_DEFAULT_OFF
+      x-default-enabled: false
+      x-contract: 59-User-Address-Contract-v0.1.md
+      x-assembly-switch: pet.auth.c.enabled
+      description: 59号契约。软删除（status=DELETED），不物理删除；订单快照不依赖本表，
+        删除不影响存量订单。删除默认地址后该用户无默认直至再设置。回执
+        {addressId,status}。防枚举 404 与幂等语义同创建。
+      security:
+      - bearerAuth: []
+      parameters:
+      - $ref: '#/components/parameters/RequestId'
+      - $ref: '#/components/parameters/AddressId'
+      responses:
+        '200':
+          description: 删除回执（status=DELETED）
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                enum:
+                - no-store
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AddressDeleteEnvelope'
+        '400':
+          $ref: '#/components/responses/AddressHttpError'
+        '401':
+          $ref: '#/components/responses/AddressHttpError'
+        '403':
+          $ref: '#/components/responses/AddressHttpError'
+        '404':
+          $ref: '#/components/responses/AddressHttpError'
+        '409':
+          $ref: '#/components/responses/AddressHttpError'
+        '500':
+          $ref: '#/components/responses/AddressHttpError'
+        '503':
+          $ref: '#/components/responses/AddressHttpError'
+      x-route-party: USER
+      x-audience: MINIAPP
+  /c/addresses/{addressId}/set-default:
+    post:
+      tags:
+      - C-Address
+      operationId: cSetDefaultAddress
+      summary: 设为默认地址（requestId幂等）
+      x-implementation-status: IMPLEMENTED_DEFAULT_OFF
+      x-default-enabled: false
+      x-contract: 59-User-Address-Contract-v0.1.md
+      x-assembly-switch: pet.auth.c.enabled
+      description: 59号契约。无业务体（允许空对象/无体）；默认地址唯一——置默认与清旧默认
+        同事务。回执同详情投影。防枚举 404 与幂等语义同创建。
+      security:
+      - bearerAuth: []
+      parameters:
+      - $ref: '#/components/parameters/RequestId'
+      - $ref: '#/components/parameters/AddressId'
+      responses:
+        '200':
+          description: 设默认后的地址投影
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                enum:
+                - no-store
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AddressEnvelope'
+        '400':
+          $ref: '#/components/responses/AddressHttpError'
+        '401':
+          $ref: '#/components/responses/AddressHttpError'
+        '403':
+          $ref: '#/components/responses/AddressHttpError'
+        '404':
+          $ref: '#/components/responses/AddressHttpError'
+        '409':
+          $ref: '#/components/responses/AddressHttpError'
+        '500':
+          $ref: '#/components/responses/AddressHttpError'
+        '503':
+          $ref: '#/components/responses/AddressHttpError'
+      x-route-party: USER
+      x-audience: MINIAPP
 components:
   securitySchemes:
     bearerAuth:
@@ -12548,6 +12841,13 @@ components:
       required: true
       schema:
         $ref: '#/components/schemas/PublicId'
+    AddressId:
+      name: addressId
+      in: path
+      required: true
+      schema:
+        $ref: '#/components/schemas/PublicId'
+      description: 59号；非本人/不存在/已删除统一 404 ADDRESS_NOT_FOUND（防枚举）。
     Page:
       name: page
       in: query
@@ -12678,6 +12978,19 @@ components:
         application/json:
           schema:
             $ref: '#/components/schemas/NotificationPreferenceErrorEnvelope'
+    AddressHttpError:
+      description: 地址簿错误（59号）；400含上限 ADDRESS_LIMIT_EXCEEDED，404含防枚举
+        ADDRESS_NOT_FOUND，409含幂等异参 IDEMPOTENCY_KEY_CONFLICT，data=null。
+      headers:
+        Cache-Control:
+          schema:
+            type: string
+            enum:
+            - no-store
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/AddressErrorEnvelope'
     PointsTaskHttpError:
       description: 签到/拉新/积分配置错误；复用Error12 §2通用码（409含幂等异参
         IDEMPOTENCY_KEY_CONFLICT、当日重复签到与终局冲突COMMON_CONFLICT），data=null。
@@ -19710,7 +20023,7 @@ components:
           minLength: 1
           maxLength: 500
           pattern: \S
-      description: REJECT/RESERVICE/OTHER要求refundAmount=null。FULL/PARTIAL公开关闭：合法正金额且当前会话、decide动作及资源获权后固定503。
+      description: REJECT/RESERVICE/OTHER要求refundAmount=null。FULL_REFUND/PARTIAL_REFUND要求正金额refundAmount（精确两位字符串；FULL=订单真实实付金额，PARTIAL>0且严格小于实付，内核按PAYMENT权威事实裁定，违例400 AFTERSALE_AMOUNT_INVALID）；退款型在pet.aftersale.refund.enabled=false时503 fail-closed（32号裁决/CCR-AFS-FUNDING-001）。
     AfterSaleReceipt:
       type: object
       additionalProperties: false
@@ -19785,6 +20098,7 @@ components:
           maxLength: 19
           x-maximum-decimal: '9223372036854775807'
           nullable: true
+          description: 退款型终局决定（FULL_REFUND/PARTIAL_REFUND，32号裁决）成功时为已创建的原路退回退款单ID；渠道执行由AFTERSALE_REFUND_SUBMIT/CHANNEL_QUERY任务族异步完成。其余动作为null。
     AfterSaleEligibility:
       type: object
       additionalProperties: false
@@ -20644,6 +20958,203 @@ components:
           enum:
           - COMMON_INVALID_ARGUMENT
           - COMMON_UNAUTHORIZED
+          - COMMON_CONFLICT
+          - IDEMPOTENCY_KEY_CONFLICT
+          - COMMON_INTERNAL_ERROR
+          - COMMON_DEPENDENCY_UNAVAILABLE
+        message:
+          type: string
+          minLength: 1
+        data:
+          type: object
+          nullable: true
+          enum:
+          - null
+        traceId:
+          type: string
+          minLength: 1
+    AddressUpsert:
+      type: object
+      additionalProperties: false
+      required:
+      - contactName
+      - contactPhone
+      - region
+      - detail
+      properties:
+        contactName:
+          type: string
+          minLength: 1
+          maxLength: 32
+          description: 收货人姓名，1..32 Unicode 码点、非全空白。
+        contactPhone:
+          type: string
+          pattern: '^1[3-9][0-9]{9}$'
+          description: 大陆手机号（11 位数字）。
+        region:
+          type: string
+          minLength: 1
+          maxLength: 64
+          description: 所在地区（省/市/区），1..64 码点、非全空白。
+        detail:
+          type: string
+          minLength: 1
+          maxLength: 256
+          description: 详细地址，1..256 码点、非全空白。
+        isDefault:
+          type: boolean
+          description: 创建可省（默认 false）；编辑可省（缺省保持现值）。置默认与清旧默认同事务。
+    AddressData:
+      type: object
+      additionalProperties: false
+      required:
+      - addressId
+      - contactName
+      - contactPhone
+      - region
+      - detail
+      - isDefault
+      - status
+      properties:
+        addressId:
+          $ref: '#/components/schemas/PublicId'
+        contactName:
+          type: string
+          minLength: 1
+          maxLength: 32
+        contactPhone:
+          type: string
+          pattern: '^1[3-9][0-9]{9}$'
+          description: 本人读侧明文返回（用户自录收货联系电话，宠物档案同口径）；C 端列表页
+            按设计稿做展示层脱敏。
+        region:
+          type: string
+          minLength: 1
+          maxLength: 64
+        detail:
+          type: string
+          minLength: 1
+          maxLength: 256
+        isDefault:
+          type: boolean
+        status:
+          type: string
+          enum:
+          - ACTIVE
+          - DELETED
+    AddressEnvelope:
+      type: object
+      additionalProperties: false
+      required:
+      - success
+      - code
+      - message
+      - data
+      - traceId
+      properties:
+        success:
+          type: boolean
+          enum:
+          - true
+        code:
+          type: string
+          enum:
+          - SUCCESS
+        message:
+          type: string
+          minLength: 1
+        data:
+          $ref: '#/components/schemas/AddressData'
+        traceId:
+          type: string
+          minLength: 1
+    AddressListEnvelope:
+      type: object
+      additionalProperties: false
+      required:
+      - success
+      - code
+      - message
+      - data
+      - traceId
+      properties:
+        success:
+          type: boolean
+          enum:
+          - true
+        code:
+          type: string
+          enum:
+          - SUCCESS
+        message:
+          type: string
+          minLength: 1
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/AddressData'
+        traceId:
+          type: string
+          minLength: 1
+    AddressDeleteEnvelope:
+      type: object
+      additionalProperties: false
+      required:
+      - success
+      - code
+      - message
+      - data
+      - traceId
+      properties:
+        success:
+          type: boolean
+          enum:
+          - true
+        code:
+          type: string
+          enum:
+          - SUCCESS
+        message:
+          type: string
+          minLength: 1
+        data:
+          type: object
+          additionalProperties: false
+          required:
+          - addressId
+          - status
+          properties:
+            addressId:
+              $ref: '#/components/schemas/PublicId'
+            status:
+              type: string
+              enum:
+              - DELETED
+        traceId:
+          type: string
+          minLength: 1
+    AddressErrorEnvelope:
+      type: object
+      additionalProperties: false
+      required:
+      - success
+      - code
+      - message
+      - data
+      - traceId
+      properties:
+        success:
+          type: boolean
+          enum:
+          - false
+        code:
+          type: string
+          enum:
+          - COMMON_INVALID_ARGUMENT
+          - ADDRESS_LIMIT_EXCEEDED
+          - COMMON_UNAUTHORIZED
+          - USER_FROZEN
+          - ADDRESS_NOT_FOUND
           - COMMON_CONFLICT
           - IDEMPOTENCY_KEY_CONFLICT
           - COMMON_INTERNAL_ERROR

@@ -7,7 +7,17 @@ import com.petplatform.admin.biz.application.AdminAuthService;
 import com.petplatform.aftersale.biz.application.AfterSalePorts;
 import com.petplatform.common.*;
 import com.petplatform.event.api.IntegrationEventPublisher;
+import com.petplatform.merchant.biz.apiimpl.BookingMerchantFactsApiImpl;
+import com.petplatform.merchant.biz.apiimpl.MerchantCurrentStaffFactsApiImpl;
+import com.petplatform.merchant.biz.application.PersistentApplicationReviewFactsReader;
+import com.petplatform.order.biz.apiimpl.OrderCreationApiImpl;
+import com.petplatform.order.biz.apiimpl.OrderProtectionFactsApiImpl;
 import com.petplatform.order.biz.application.MerchantOrderPorts;
+import com.petplatform.schedule.biz.apiimpl.ReservationHoldApiImpl;
+import com.petplatform.schedule.biz.apiimpl.ScheduleCapacityProofApiImpl;
+import com.petplatform.schedule.biz.apiimpl.ScheduleProtectionFactsApiImpl;
+import com.petplatform.service.biz.apiimpl.BookingServiceFactsApiImpl;
+import com.petplatform.user.biz.apiimpl.BookingUserFactsApiImpl;
 import com.petplatform.payment.biz.application.PaymentRefundChannel;
 import com.petplatform.refund.biz.application.*;
 import com.petplatform.thirdparty.biz.application.port.*;
@@ -179,6 +189,48 @@ final class AfterSaleHttpFixture implements AutoCloseable {
         var issued=credentials.issue(new VerificationCredentialApi.Issue(user(BUYER),id,view.credentialVersion(),"INITIAL"));as(ownerToken);
         var result=context.getBean(VerificationCompletionService.class).verify(new VerificationCompletionApi.Command(user(OWNER),id,STORE,issued.code(),issued.credentialVersion(),true));
         assertEquals("VERIFIED",result.resultCode());RequestContextHolder.resetRequestAttributes();return id;}
+    /** Same-store second verified order for ruling-32 sibling assertions: extend only static
+     * availability, advance the controlled clock past the first completed reservation's claim
+     * end, and rebook through the real APIs with the same live clock (the inherited foundation
+     * booking chain reads the system clock and would see the first claim as still future). */
+    String secondVerifiedOrder()throws Exception{
+        var foundation=ordinary.t.r.f.f;
+        foundation.db.jdbc.update("UPDATE schedule_availability_window SET end_at='2030-01-01 13:00:00' WHERE id=710500");
+        var start=OffsetDateTime.parse("2030-01-01T11:00:00Z");
+        var previousEnd=foundation.db.jdbc.queryForObject("SELECT MAX(end_at) FROM schedule_reservation",
+                LocalDateTime.class).atOffset(ZoneOffset.UTC);
+        at(previousEnd.plusSeconds(1).toInstant());
+        assertTrue(clock.instant().isBefore(start.toInstant()));
+        var source=foundation.db.source;var guard=foundation.guard;
+        var schedule=new ScheduleProtectionFactsApiImpl(source,guard);
+        var staff=new MerchantCurrentStaffFactsApiImpl(source,guard);
+        var orders=new OrderProtectionFactsApiImpl(source,guard,schedule,staff,clock);
+        var proof=new ScheduleCapacityProofApiImpl(source,guard,schedule,staff,orders,clock,10_000);
+        var hold=new ReservationHoldApiImpl(source,IDS::incrementAndGet,guard,schedule,proof,orders,clock);
+        var booking=new OrderCreationApiImpl(source,IDS::incrementAndGet,new BookingUserFactsApiImpl(source,guard),
+                new BookingMerchantFactsApiImpl(source,guard,new PersistentApplicationReviewFactsReader(source,IDS::incrementAndGet)),
+                new BookingServiceFactsApiImpl(source,guard),guard,hold,new BookingCreateAcceptanceTest.InputProtector(),null,clock);
+        String id=booking.create(new com.petplatform.order.api.dto.OrderCreationTypes.CreateOrderCommand(
+                user(BUYER),STORE,"710401","710200","IN_STORE",start,start.plusMinutes(90),
+                null,null,"710500",null,null,null,null,null)).orderId();
+        var payment=foundation.prepare(id,rid());
+        var notice=foundation.notice(payment,"SUCCESS","QA_AFS_HTTP_2ND_"+IDS.incrementAndGet(),payment.amount(),payment.amount());
+        foundation.notification.receive(notice.headers(),notice.body());
+        var event=foundation.db.jdbc.queryForObject("SELECT * FROM integration_event_outbox WHERE event_type='PaymentSucceededEvent.v1' AND JSON_UNQUOTE(JSON_EXTRACT(payload,'$.orderId'))=?",
+                (rs,n)->new com.petplatform.event.api.DispatchedEvent(rs.getString("event_id"),rs.getString("event_type"),
+                        rs.getInt("event_version"),rs.getTimestamp("occurred_at").toInstant().atOffset(ZoneOffset.UTC),
+                        rs.getString("aggregate_type"),rs.getLong("aggregate_id"),rs.getString("trace_id"),rs.getString("payload")),id);
+        foundation.result.consume(event);ordinary.t.confirm(id,0);
+        at(start.plusSeconds(20).toInstant());
+        // The clock jump retires the sessions issued at construction; re-login all three parties
+        // (same reason AfterSaleFixture.secondVerifiedOrder refreshes its identities).
+        loginBuyer();loginOwner();loginAdmin();
+        var credentials=context.getBean(VerificationCredentialService.class);as(buyerToken);
+        var view=credentials.read(id,new QueryContext("qa-http-source",OperatorType.USER,BUYER));
+        var issued=credentials.issue(new VerificationCredentialApi.Issue(user(BUYER),id,view.credentialVersion(),"INITIAL"));as(ownerToken);
+        var result=context.getBean(VerificationCompletionService.class).verify(new VerificationCompletionApi.Command(user(OWNER),id,STORE,issued.code(),issued.credentialVersion(),true));
+        assertEquals("VERIFIED",result.resultCode());RequestContextHolder.resetRequestAttributes();return id;
+    }
     void as(String token){AfterSaleIdentityFixture.bearer(token);}
     CommandContext user(String id){return new CommandContext(rid(),"qa-http-source",OperatorType.USER,id,"MINIAPP");}
     void at(Instant value){ordinary.source.fixed.set(value);}
@@ -205,6 +257,7 @@ final class AfterSaleHttpFixture implements AutoCloseable {
     record Reply(int status,Map<String,Object> envelope,HttpHeaders headers){
         @SuppressWarnings("unchecked") Map<String,Object> data(){return (Map<String,Object>)envelope.get("data");}
         String value(String name){return Objects.toString(data().get(name),null);}
+        String code(){return Objects.toString(envelope.get("code"),null);}
         @Override public String toString(){return "Reply[status="+status+",code="+envelope.get("code")+"]";}
     }
     static Map<String,Object> createBody(){return new LinkedHashMap<>(Map.of("typeCode","QA_QUALITY","demandCode","QA_REFUND","description","Independent HTTP report of a real service problem","evidenceAssetIds",List.of()));}

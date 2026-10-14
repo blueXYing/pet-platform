@@ -179,8 +179,19 @@ test('A-004 UTC supplement and nonrefund decision use stable UUID/string CAS and
   const decision = calls.find(c => c.path.endsWith('/decisions'));
   expect(decision?.body).toEqual({ expectedVersion: '9007199254741001', decisionType: 'RESERVICE', reason: '商家人工联系用户安排重新服务', refundAmount: null });
   for (const call of [supplement, decision]) expect(call?.requestId).toMatch(/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/);
-  await expect(page.getByRole('option', { name: '全额退款', exact: true })).toHaveCount(0);
-  await expect(page.getByRole('option', { name: '部分退款', exact: true })).toHaveCount(0);
+  // Ruling 32: refund adjudications are selectable and submit an exact two-decimal string amount.
+  await page.getByLabel('终局类型').selectOption('PARTIAL_REFUND');
+  await expect(page.getByLabel('退款金额（元）')).toBeVisible();
+  await page.getByLabel('终局原因', { exact: true }).fill('按服务争议裁定部分退款');
+  await page.getByLabel('确认基于双方证据作出最终处理').check();
+  await expect(page.getByRole('button', { name: '提交最终决定' })).toBeDisabled();
+  await page.getByLabel('退款金额（元）').fill('35');
+  await expect(page.getByRole('button', { name: '提交最终决定' })).toBeDisabled();
+  await page.getByLabel('退款金额（元）').fill('35.00');
+  await page.getByRole('button', { name: '提交最终决定' }).click();
+  await expect(page.getByText('最终裁决已提交，以工单刷新结果为准。')).toBeVisible();
+  const refundDecision = calls.filter(c => c.path.endsWith('/decisions')).pop();
+  expect(refundDecision?.body).toEqual({ expectedVersion: '9007199254741001', decisionType: 'PARTIAL_REFUND', reason: '按服务争议裁定部分退款', refundAmount: '35.00' });
 });
 
 test('A-004 lost ACK survives refresh AND route unload; original payload and UUID alone resolve it', async ({ page }) => {
@@ -502,7 +513,7 @@ test('A-004 API fails closed on number IDs, bad envelope, foreign grants and sta
     let finish!: (r: Response) => void;
     const delayed = createAfterSaleClient(() => new Promise<Response>(resolve => { finish = resolve; })); delayed.resetContext('test-token');
     const read = delayed.list({ merchantId, storeId, page: 1, pageSize: 20 }); delayed.changeScope(); finish(Response.json({ code: 'SUCCESS', message: 'ok', data: {}, traceId: 'test' }));
-    const funding = await failure(client.send({ caseId, action: 'decisions', requestId: crypto.randomUUID(), label: 'bad', body: { expectedVersion: '0', decisionType: 'FULL_REFUND', refundAmount: '35.00', reason: '不能由前端开放资金裁决' } } as unknown as PendingIntent));
+    const funding = await failure(client.send({ caseId, action: 'decisions', requestId: crypto.randomUUID(), label: 'bad', body: { expectedVersion: '0', decisionType: 'FULL_REFUND', refundAmount: 35.00, reason: '退款金额必须是精确两位小数字符串' } } as unknown as PendingIntent));
     return { numericId, badEnvelope: await failure(malformedEnvelope.get(caseId)), foreignGrant, stale: await failure(read), funding, calls };
   }, { caseId: CASE, merchantId: MERCHANT, storeId: STORE, payload: detail() });
   expect(result).toEqual({ numericId: 'INVALID_RESPONSE', badEnvelope: 'INVALID_RESPONSE', foreignGrant: 'INVALID_READ_URL', stale: 'STALE_CONTEXT', funding: 'INVALID_ARGUMENT', calls: 1 });

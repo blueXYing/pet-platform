@@ -195,7 +195,7 @@ class S1ContractMappingTest {
     }
 
     @Test
-    void contract51PinsRealAftersaleRoutesStrictBodiesAndClosedPublicFunding() {
+    void contract51PinsRealAftersaleRoutesStrictBodiesAndExecutablePublicFunding() {
         Map<String, Object> create = at(api, "paths", "/c/orders/{orderId}/aftersales", "post");
         Map<String, Object> decision = at(api, "paths", "/admin/aftersales/{afterSaleId}/decisions", "post");
         assertFalse(at(api, "paths").containsKey("/admin/aftersales/{afterSaleId}/decision"),
@@ -219,8 +219,12 @@ class S1ContractMappingTest {
         assertEquals("OPS", decision.get("x-route-party"));
         assertEquals("ADMIN_WEB", decision.get("x-audience"));
         assertEquals(List.of("aftersale.decide"), decision.get("x-required-actions"));
-        assertEquals(false, decision.get("x-public-refund-enabled"));
-        assertEquals(List.of("REJECT", "RESERVICE", "OTHER"), decision.get("x-executable-decision-types"));
+        // Ruling 32 (2026-10-13): public funding decisions are executable via the original
+        // WeChat refund route behind pet.aftersale.refund.enabled (previously fail-closed).
+        assertEquals(true, decision.get("x-public-refund-enabled"));
+        assertEquals("pet.aftersale.refund.enabled", decision.get("x-public-refund-switch"));
+        assertEquals(List.of("REJECT", "RESERVICE", "OTHER", "FULL_REFUND", "PARTIAL_REFUND"),
+            decision.get("x-executable-decision-types"));
         assertFalse(at(decision, "responses").containsKey("201"));
         Map<String, Object> createBody = resolve(at(create, "requestBody", "content", "application/json", "schema"));
         assertEquals(Set.of("typeCode", "demandCode", "description", "evidenceAssetIds"), new HashSet<>((List<?>) createBody.get("required")));
