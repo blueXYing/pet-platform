@@ -1191,7 +1191,8 @@ def check_aftersale_operation(spec, operation, method, path):
         assert operation.get('x-catalog-source') == 'SAME_REASON_POLICY_AS_CREATE' and operation.get('x-incomplete-catalog-error') == 'COMMON_DEPENDENCY_UNAVAILABLE', 'AFS catalog authority/failclosed changed'
         assert responses['200']['content']['application/json']['schema'] == {'$ref': '#/components/schemas/AfterSaleOptionsEnvelope'}, 'AFS catalog response changed'
     if name == 'decideAftersale':
-        assert operation.get('x-public-refund-enabled') is False and operation.get('x-executable-decision-types') == ['REJECT', 'RESERVICE', 'OTHER'], 'AFS public funding opened'
+        assert operation.get('x-public-refund-enabled') is True and operation.get('x-public-refund-switch') == 'pet.aftersale.refund.enabled', 'AFS ruling-32 refund switch changed'
+        assert operation.get('x-executable-decision-types') == ['REJECT', 'RESERVICE', 'OTHER', 'FULL_REFUND', 'PARTIAL_REFUND'], 'AFS executable decision types changed'
     if 'ConsumeAftersaleEvidenceGrant' in name:
         assert '410' in responses and set(responses['200']['content']) == {'image/jpeg', 'image/png'}, 'AFS private image response changed'
     if method == 'post' and name != 'uploadAftersaleEvidenceAsset':

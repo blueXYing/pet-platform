@@ -4,6 +4,9 @@ import { RequestFailure, type Transport } from '../request';
 export const CASE_STATUSES = ['PENDING', 'PROCESSING', 'WAITING_SUPPLEMENT', 'RESOLVED', 'INVALIDATED', 'WITHDRAWN', 'CLOSED'] as const;
 export type CaseStatus = typeof CASE_STATUSES[number];
 export type NonRefundDecision = 'REJECT' | 'RESERVICE' | 'OTHER';
+/** Ruling 32: refund adjudications execute the WeChat original route through the kernel. */
+export type DecisionType = NonRefundDecision | 'FULL_REFUND' | 'PARTIAL_REFUND';
+export const REFUND_DECISIONS: readonly DecisionType[] = ['FULL_REFUND', 'PARTIAL_REFUND'];
 export type CaseSummary = {
   afterSaleId: string; orderId: string; merchantId: string; storeId: string; status: CaseStatus; version: string;
   sourceStage: 'VERIFIED' | 'UNVERIFIED_POST_START'; typeCode: string; demandCode: string;
@@ -25,7 +28,7 @@ export type ActionBody = { expectedVersion: string } & (
   { newProblemAssessment?: string; expectedFinalSetVersion?: string } |
   { targetParty: 'USER' | 'MERCHANT'; reason: string; deadline: string } |
   { priorFinalCaseId: string; reason: string } |
-  { decisionType: NonRefundDecision; reason: string; refundAmount: null }
+  { decisionType: DecisionType; reason: string; refundAmount: string | null }
 );
 export type PendingIntent = { caseId: string; action: Action | 'grant'; requestId: string; label: string; body: ActionBody | { reason: string }; batchId?: string; assetId?: string };
 export class AfterSaleFailure extends RequestFailure {
@@ -82,7 +85,16 @@ function checkIntent(intent: PendingIntent, replay = false) {
     case 'accept': ok = (b.newProblemAssessment === undefined || text(b.newProblemAssessment)) && (b.expectedFinalSetVersion === undefined || typeof b.expectedFinalSetVersion === 'string' && HASH.test(b.expectedFinalSetVersion)); break;
     case 'supplement-requests': ok = ['USER', 'MERCHANT'].includes(b.targetParty as string) && text(b.reason) && validUtc(b.deadline) && (replay || Date.parse(b.deadline) > Date.now()); break;
     case 'close-duplicate': ok = validId(b.priorFinalCaseId) && text(b.reason); break;
-    case 'decisions': ok = ['REJECT', 'RESERVICE', 'OTHER'].includes(b.decisionType as string) && text(b.reason) && b.refundAmount === null; break;
+    case 'decisions': {
+      // FULL must equal the real paid amount and PARTIAL stay strictly below it; the
+      // kernel derives both from the authoritative payment fact, the client only
+      // prechecks shape (exact two decimals, positive).
+      const type = b.decisionType as string;
+      const refund = type === 'FULL_REFUND' || type === 'PARTIAL_REFUND';
+      ok = ['REJECT', 'RESERVICE', 'OTHER', 'FULL_REFUND', 'PARTIAL_REFUND'].includes(type) && text(b.reason)
+        && (refund ? typeof b.refundAmount === 'string' && money(b.refundAmount) && !/^0\.00(?![\s\S])/.test(b.refundAmount) : b.refundAmount === null);
+      break;
+    }
   }
   if (!ok) throw new AfterSaleFailure('INVALID_ARGUMENT', 0);
 }

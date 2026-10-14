@@ -1,10 +1,10 @@
 # AfterSale HTTP Contract v0.1
 
-状态：APPROVED / IMPLEMENTATION_IN_PROGRESS，2026-09-30；不表示测试已经通过或生产已开放。授权为用户在“先冻结售后HTTP契约、实现C本人/商家OWNER/获权运营非出款HTTP，再接页面”之后回复“那么请你开始”。[CCR](../../planning/ccr/CCR-W2-API-001/aftersale-http-proposal.md) 记录技术范围。产品规则沿 [SSOT §40](../00-ssot/01-SSOT-宠物平台V1.0-最终业务基线.md)、[PRD31](../01-prd/31-售后流程人工裁决补充-v1.0.md) 和 [Contract50](50-AfterSale-Workflow-Contract-v0.1.md)。
+状态：APPROVED / IMPLEMENTATION_IN_PROGRESS，2026-09-30；2026-10-13 按[32号裁决](../../01-prd/32-售后资金出路与未建页面裁决补充-v1.0.md)修订退款裁决公开执行（[CCR-AFS-FUNDING-001](../../planning/ccr/CCR-AFS-FUNDING-001.md)）；不表示测试已经通过或生产已开放。授权为用户在“先冻结售后HTTP契约、实现C本人/商家OWNER/获权运营非出款HTTP，再接页面”之后回复“那么请你开始”。[CCR](../../planning/ccr/CCR-W2-API-001/aftersale-http-proposal.md) 记录技术范围。产品规则沿 [SSOT §40](../00-ssot/01-SSOT-宠物平台V1.0-最终业务基线.md)、[PRD31](../01-prd/31-售后流程人工裁决补充-v1.0.md) 和 [Contract50](50-AfterSale-Workflow-Contract-v0.1.md)。
 
 ## 1. 本批边界与身份
 
-本批为三端非出款 HTTP、按当前权限限定门店的分页和私有证据接口；无页面、STAFF、跨店运营聚合、生产迁移/开关授权。FULL_REFUND/PARTIAL_REFUND 的内部 A2 能力不改，但公开 HTTP 始终关闭；真实资金 Provider 不阻塞非出款流程开发。
+本批为三端非出款 HTTP、按当前权限限定门店的分页和私有证据接口；无页面、STAFF、跨店运营聚合、生产迁移/开关授权。FULL_REFUND/PARTIAL_REFUND 的内部 A2 能力不改；2026-10-13 起[32号裁决](../../01-prd/32-售后资金出路与未建页面裁决补充-v1.0.md)解除其公开 HTTP 关闭，退款执行按原路退回语义接入既有退款执行链（详见 §3 与 [CCR-AFS-FUNDING-001](../../planning/ccr/CCR-AFS-FUNDING-001.md)），整体仍默认关闭，启用需显式开关。
 
 C 路由严格 USER 本人；merchant 严格当前 OWNER，不能仅因同一个 USER 是买家而放过商家路由；admin 严格 ADMIN_WEB 当前会话、aftersale.read/handle/decide 与当前 MER 资源范围。RouteParty=USER/MERCHANT/OPS 由路由构建，域事务和成功重放再次验证。没有客户端 context/actor/session/party 业务授权字段。
 
@@ -29,7 +29,7 @@ FROZEN 当前用户、商家/店按已批准只读语义可查看获权历史/�
 | POST | /admin/aftersales/{afterSaleId}/accept | aftersale.handle 受理 |
 | POST | /admin/aftersales/{afterSaleId}/supplement-requests | aftersale.handle 要求指定方补证 |
 | POST | /admin/aftersales/{afterSaleId}/close-duplicate | aftersale.handle 引用同单真实旧非退款终局关闭重复问题 |
-| POST | /admin/aftersales/{afterSaleId}/decisions | aftersale.decide，公开只执行三类非退款决定 |
+| POST | /admin/aftersales/{afterSaleId}/decisions | aftersale.decide，五类终局决定；退款型按32号裁决执行原路退回 |
 | POST | /c/aftersale-evidence-assets | C/M 共用本人图片预上传 |
 | POST | /{c,merchant,admin}/aftersales/{afterSaleId}/evidence-batches/{batchId}/assets/{assetId}/read-grants | 按当前端别签发只读 grant |
 | GET | /{c,merchant,admin}/aftersale-evidence-read-grants/{token} | 当前同端同会话单次消费 |
@@ -55,7 +55,7 @@ FROZEN 当前用户、商家/店按已批准只读语义可查看获权历史/�
 
 字符串不可空白。问题/诉求必须由真实配置目录验证；意见限定 AGREE/PARTLY_AGREE/DISAGREE/NEED_USER_SUPPLEMENT。P4 原规则不变：已有非退款终局时必须提交新问题说明，Accept 必须有当前终局集合版本与运营评估；重复问题只 PENDING→CLOSED，引用真实同单旧终局，无新 decision。HTTP 不以描述 hash 自动判断新问题。
 
-公开 Decision 的 REJECT/RESERVICE/OTHER 要求 refundAmount 为 null，走真实决定事务。FULL_REFUND/PARTIAL_REFUND 仅作为已知但关闭的类型：当前真实会话及 decide 动作权限通过、字段格式与正金额合法、OPS 资源读取获权后，固定 503 COMMON_DEPENDENCY_UNAVAILABLE，绝不调用内部 decide/REFUND；内部退款开关或 Provider 不改变本限制。格式错误仍 400，缺会话/权限仍 401/403。
+公开 Decision 的 REJECT/RESERVICE/OTHER 要求 refundAmount 为 null，走真实决定事务。~~FULL_REFUND/PARTIAL_REFUND 仅作为已知但关闭的类型……固定 503~~ 2026-10-13 [32号裁决](../../01-prd/32-售后资金出路与未建页面裁决补充-v1.0.md)（[CCR-AFS-FUNDING-001](../../planning/ccr/CCR-AFS-FUNDING-001.md)）解除该关闭：五类 decisionType 全部可执行，FULL_REFUND/PARTIAL_REFUND 必须携带正金额 refundAmount（精确两位字符串），经真实决定事务按微信支付原路退回语义创建退款单并交给既有 AFTERSALE_REFUND_SUBMIT / AFTERSALE_REFUND_CHANNEL_QUERY durable 任务族执行。金额语义由内核裁定：FULL_REFUND 必须等于订单真实实付金额、PARTIAL_REFUND 大于 0 且严格小于实付，违例 400 AFTERSALE_AMOUNT_INVALID（409/终局/幂等语义同下文不变）。`pet.aftersale.refund.enabled=false`（默认）时资金资格适配 fail-closed：合法退款型请求进入内核后 503 COMMON_DEPENDENCY_UNAVAILABLE，不产生决定、退款单或 ORDER 投影，独立原参数准入绑定仍保留。退款型成功回执的 refundOrderId 为已创建退款单 ID（原为 null）；渠道网络提交从不在决定事务内发生。格式错误仍 400，缺会话/权限仍 401/403。
 
 JSON envelope 固定四项 `code/message/data/traceId`，不加 success。成功 code=SUCCESS/message=ok；失败 data=null，保留安全错误码及 traceId，不暴露内部异常/SQL。创建真实首次提交 201，持久成功重放 200，依据 CreationResult，不根据当前工单状态/时点猜测。其余主 JSON 成功 200。
 
@@ -95,8 +95,8 @@ CaseView 字段由 OpenAPI 的 AfterSaleCaseDetail 完整定义：允许当前�
 
 ## 6. 错误、开关与验收
 
-主状态映射：400 参数/金额；401 会话；403 权限；404 资源；409 资格、互斥、活动工单、CAS、幂等、终态、旧轮/过期补证；422 内容审核；429 限流；503 来源/任务/依赖不可证或公开退款关闭；意外内部错误500安全包装。完整码见 [Error12](12-Error-Code-Registry-v0.5.md)。图片另有409未READY、410grant失效、413体积、415媒体、422安全处理拒绝。
+主状态映射：400 参数/金额；401 会话；403 权限；404 资源；409 资格、互斥、活动工单、CAS、幂等、终态、旧轮/过期补证；422 内容审核；429 限流；503 来源/任务/依赖不可证或退款资金开关关闭；意外内部错误500安全包装。完整码见 [Error12](12-Error-Code-Registry-v0.5.md)。图片另有409未READY、410grant失效、413体积、415媒体、422安全处理拒绝。
 
-pet.aftersale.enabled/http.enabled/worker.enabled/refund.enabled 全部默认 false。HTTP 要求 workflow=true 且 pet.auth.admin.enabled=true；workflow 继续要求 pet.refund.application.enabled、pet.verification.completion.enabled、pet.private-assets.enabled、pet.auth.c.enabled。worker 独立开关，生产启用前须启动补证任务 worker；隔离测试可关闭自动调度并主动驱动真实 worker。无恒真身份/审核/原因/资金适配。
+pet.aftersale.enabled/http.enabled/worker.enabled/refund.enabled 全部默认 false。HTTP 要求 workflow=true 且 pet.auth.admin.enabled=true；workflow 继续要求 pet.refund.application.enabled、pet.verification.completion.enabled、pet.private-assets.enabled、pet.auth.c.enabled。worker 独立开关，生产启用前须启动补证任务 worker；隔离测试可关闭自动调度并主动驱动真实 worker。无恒真身份/审核/原因/资金适配。2026-10-13 起 refund.enabled=true 时装配真实原路退回资金资格适配（`WechatOriginalRouteRefundFundingAuthority`，证据窗口 24h、UNSETTLED、ALLOWED 以 PAYMENT 权威成功事实全字段比对为准）；false 时该适配不存在，退款型裁决 fail-closed 503，非退款流程不受影响。生产启用退款执行另需渠道凭据与 worker（AFTERSALE_REFUND_SUBMIT/CHANNEL_QUERY 任务族沿用 42/49 号契约）。
 
 OpenAPI11 是本批可机读输入/输出表面。验收包括三端真实会话、OWNER/CITY当前范围、冻结只读、严格 JSON/金额/时间/UUID、201/200、同键换端、补证与非退款终局、证据单次消费和旧内部契约回归。具体通过记录由本批 closeout/CI 提供，本契约不冒充已通过。
