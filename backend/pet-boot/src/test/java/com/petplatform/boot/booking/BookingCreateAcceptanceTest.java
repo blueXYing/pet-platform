@@ -908,7 +908,10 @@ class BookingCreateAcceptanceTest {
             manager = new DataSourceTransactionManager(source);
             admin.execute("CREATE DATABASE `" + name + "` CHARACTER SET utf8mb4");
             try {
-                for (String schema : SCHEMA) if (completionSchema || (!schema.startsWith("48-") && !schema.startsWith("49-"))) script(schema);
+                // The pre-48/49 minimal world (completionSchema=false) also excludes 63: the
+                // disposal constraint references the source_biz_id/source_decision_id columns
+                // that SQL49 adds, exactly like the 48/49 completion schemas it follows.
+                for (String schema : SCHEMA) if (completionSchema || (!schema.startsWith("48-") && !schema.startsWith("49-") && !schema.startsWith("63-"))) script(schema);
             } catch (Exception failure) {
                 close();
                 throw failure;
