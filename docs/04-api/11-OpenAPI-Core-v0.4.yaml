@@ -15645,6 +15645,12 @@ components:
           pattern: '^[1-9][0-9]{0,18}(?![\s\S])'
           x-maximum-decimal: '9223372036854775807'
           nullable: true
+          description: >-
+            Contract 61 coupon lifecycle slice (2026-10-14): optional own AVAILABLE coupon
+            instance frozen inside the 38 kernel transaction; the receipt payAmount is the
+            discounted amount. Ineligible/lost-race coupon answers 409 COUPON_NOT_AVAILABLE with
+            no business rows; with the coupon provider unassembled
+            (pet.coupon.lifecycle.enabled=false) a non-null id keeps the legacy fail-closed 503.
         serviceAddress:
           type: string
           minLength: 1

@@ -75,8 +75,10 @@ public class BookingCreationConfiguration {
     @Bean OrderCreationApi orderCreationApi(DataSource source,SnowflakeIdGenerator ids,
             BookingUserFactsApi users,BookingMerchantFactsApi merchants,BookingServiceFactsApi services,
             ScheduleCapacityGuardApi guard,ReservationHoldApi hold,OrderCreationInputProtection protection,
-            OrderCreationRemarkPolicy remarkPolicy,ObjectProvider<Clock> clocks){
+            OrderCreationRemarkPolicy remarkPolicy,ObjectProvider<Clock> clocks,
+            ObjectProvider<com.petplatform.coupon.api.command.CouponCommandApi> coupons){
+        // Contract 61: absent provider keeps the legacy fail-closed coupon-create behavior.
         return new OrderCreationApiImpl(source,ids,users,merchants,services,guard,hold,protection,
-                remarkPolicy,clocks.getIfAvailable(Clock::systemUTC));
+                remarkPolicy,coupons.getIfAvailable(),clocks.getIfAvailable(Clock::systemUTC));
     }
 }

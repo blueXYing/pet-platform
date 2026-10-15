@@ -44,6 +44,7 @@ public final class OrderExpiryApiImpl implements OrderExpiryApi {
     private final BookingPaymentExposureApi payments;
     private final PaymentExpiryCoordinationApi paymentCoordination;
     private final BookingCouponExposureApi coupons;
+    private final com.petplatform.coupon.api.command.CouponCommandApi couponCommands;
     private final OrderExpiryStore orders;
     private final JdbcAsyncTaskSubmitter tasks;
     private final TransactionTemplate transaction;
@@ -51,13 +52,22 @@ public final class OrderExpiryApiImpl implements OrderExpiryApi {
     public OrderExpiryApiImpl(DataSource source, SnowflakeIdGenerator ids,
             ScheduleCapacityGuardApi guard, ReservationExpiryApi reservations,
             BookingPaymentExposureApi payments, BookingCouponExposureApi coupons) {
-        this(source, ids, guard, reservations, payments, coupons, null);
+        this(source, ids, guard, reservations, payments, coupons, null, null);
     }
 
     public OrderExpiryApiImpl(DataSource source, SnowflakeIdGenerator ids,
             ScheduleCapacityGuardApi guard, ReservationExpiryApi reservations,
             BookingPaymentExposureApi payments, BookingCouponExposureApi coupons,
             PaymentExpiryCoordinationApi paymentCoordination) {
+        this(source, ids, guard, reservations, payments, coupons, paymentCoordination, null);
+    }
+
+    /** Contract 61 slice: coupon release rides the same guarded close when the lifecycle is on. */
+    public OrderExpiryApiImpl(DataSource source, SnowflakeIdGenerator ids,
+            ScheduleCapacityGuardApi guard, ReservationExpiryApi reservations,
+            BookingPaymentExposureApi payments, BookingCouponExposureApi coupons,
+            PaymentExpiryCoordinationApi paymentCoordination,
+            com.petplatform.coupon.api.command.CouponCommandApi couponCommands) {
         this.source = Objects.requireNonNull(source);
         this.ids = Objects.requireNonNull(ids);
         this.guard = Objects.requireNonNull(guard);
@@ -65,6 +75,7 @@ public final class OrderExpiryApiImpl implements OrderExpiryApi {
         this.payments = Objects.requireNonNull(payments);
         this.paymentCoordination = paymentCoordination;
         this.coupons = Objects.requireNonNull(coupons);
+        this.couponCommands = couponCommands;
         this.orders = new OrderExpiryStore(source);
         this.tasks = new JdbcAsyncTaskSubmitter(source, ids);
         this.transaction = new TransactionTemplate(new DataSourceTransactionManager(source));
@@ -177,8 +188,10 @@ public final class OrderExpiryApiImpl implements OrderExpiryApi {
         if (!"INIT".equals(order.paymentStatus())
                 || !"UNVERIFIED".equals(order.verificationStatus())
                 || order.cancelReason() != null || order.payAmount() == null
-                || order.payAmount().signum() <= 0 || order.discountAmount() == null
-                || order.discountAmount().signum() != 0)
+                || order.payAmount().signum() <= 0
+                // Contract 61: a positive booked discount is a frozen-coupon order, releaseable
+                // at close; negative or missing amounts stay uncertain.
+                || order.discountAmount() == null || order.discountAmount().signum() < 0)
             throw unavailable("ORDER payment or verification state is uncertain");
         if (orders.databaseNow().isBefore(input.deadline()))
             return new Preflight(null, ExpireOrderResult.NOT_DUE);
@@ -228,14 +241,24 @@ public final class OrderExpiryApiImpl implements OrderExpiryApi {
                 || !"UNVERIFIED".equals(order.verificationStatus())
                 || order.cancelReason() != null
                 || order.payAmount() == null || order.payAmount().signum() <= 0
-                || order.discountAmount() == null || order.discountAmount().signum() != 0) {
+                || order.discountAmount() == null || order.discountAmount().signum() < 0) {
             throw unavailable("ORDER payment or verification state is uncertain");
         }
         OffsetDateTime now = orders.databaseNow();
         if (now.isBefore(input.deadline())) return ExpireOrderResult.NOT_DUE;
         // An UNKNOWN, initiated, frozen, or unreadable owner fact throws and rolls back.
         payments.requireSafeToExpire(input.command().orderId(), storeId, input.deadline(), context);
-        coupons.requireNoCoupon(input.command().orderId(), storeId, context);
+        // Contract 61 (CPN-001): a booked discount must be the order's frozen coupon — release it
+        // inside this close transaction; a zero discount order must bind no coupon at all.
+        if (order.discountAmount().signum() > 0) {
+            if (couponCommands == null) {
+                throw unavailable("coupon release provider is not implemented");
+            }
+            couponCommands.release(new com.petplatform.coupon.api.command.CouponCommandApi.CouponReleaseCommand(
+                    input.command().context(), input.command().orderId(), storeId, now));
+        } else {
+            coupons.requireNoCoupon(input.command().orderId(), storeId, context);
+        }
         if (orders.cancel(input.orderId(), order.version(), input.deadline(), now) != 1) {
             throw unavailable("ORDER expiry compare-and-set failed");
         }

@@ -29,7 +29,7 @@
     VALUES
       (#{id},#{orderNo},#{userId},#{merchantId},#{storeId},#{serviceId},#{petId},#{reservationId},
        NULL,'PENDING_PAYMENT','INIT','UNVERIFIED',#{fulfillmentType},
-       #{price},0.00,#{price},0.00,0,
+       #{price},#{discountAmount},#{payAmount},0.00,0,
        #{appointmentStart},#{appointmentEnd},#{paymentExpireAt},0,UTC_TIMESTAMP(3),UTC_TIMESTAMP(3))
   </insert>
   <insert id="insertServiceSnapshot">

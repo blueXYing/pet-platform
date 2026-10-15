@@ -5,12 +5,14 @@ import {
   PREVIEW_BOOKING_SERVICE, PREVIEW_BOOKING_STORE, PREVIEW_BOOKING_TODAY, PREVIEW_PAY_ORDER, PREVIEW_PICKUP_SERVICE,
   PICKUP_SELECTION_ENABLED, availabilityQuery, availabilityReadMessage,
   beijingClock, beijingToday, bookingCreateMessage, bookingDates, bookingFormError, bookingFormErrorLabels,
-  bookingPaymentMessage, buildOrderRequest, canInitiatePayment, decodeAvailability, decodeAvailabilityItem,
-  decodeCreateOrderReceipt, decodePaymentReceipt, draftFromCommandData, fulfillmentModes, isBookingScenario,
+  bookingPaymentMessage, buildOrderRequest, canInitiatePayment, couponOptions, decodeAvailability, decodeAvailabilityItem,
+  decodeCreateOrderReceipt, decodePaymentReceipt, discountedAmount, draftFromCommandData, fulfillmentModes,
+  isBookingScenario,
   paymentDeadline, paymentGateNotice, paymentSandboxNotice, pickupCandidates, pickupReturnIntervalInvalid,
   receiptBadge, returnCandidates, slotViews, validateBookingFixtures, windowLabel, bookingSheetTitle,
   PreviewBookingRepository, type AvailabilityItem, type BookingDraft,
 } from '../booking/model'
+import type { CouponView } from '../coupon-points/model'
 import { ORDER_CREATE_SLOT, RealBookingRepository, paymentSlot } from '../booking/repository'
 import { ApiError } from '../../shared/request'
 import { ConsumerApi, type LocalStore } from '../../shared/consumer-api'
@@ -192,32 +194,34 @@ test('booking dates anchor to the business-zone today with weekday labels', () =
   assert.equal(beijingToday(Date.parse('2026-09-30T20:00:00.000Z')), '2026-10-01') // UTC 尚在 09-30
 })
 
-// ---- §3.5 请求构造（11号 oneOf 履约分支；couponInstanceId 不携带） ----
+// ---- §3.5 请求构造（11号 oneOf 履约分支；61号起 couponInstanceId 非空才携带） ----
 
 const storeDraft: BookingDraft = {
   storeId: '957002', serviceId: '20001', petId: '30001', fulfillmentType: 'IN_STORE',
   appointmentStart: '2026-10-01T09:15:00.000+08:00', appointmentEnd: '2026-10-01T10:45:00.000+08:00',
   pickupStart: null, returnStart: null, selectedPickupWindowId: null, selectedReturnWindowId: null,
-  serviceAddress: '', remark: '  怕生，请提前沟通  ',
+  serviceAddress: '', remark: '  怕生，请提前沟通  ', couponInstanceId: null,
 }
 const pickupDraft: BookingDraft = {
   storeId: '957002', serviceId: PREVIEW_PICKUP_SERVICE, petId: '30001', fulfillmentType: 'PICKUP_DELIVERY',
   appointmentStart: '', appointmentEnd: '',
   pickupStart: '2026-10-01T09:00:00.000+08:00', returnStart: '2026-10-01T11:00:00.000+08:00',
   selectedPickupWindowId: '20190001', selectedReturnWindowId: '20190003',
-  serviceAddress: '  上海市徐汇区某路100弄5号201室  ', remark: '',
+  serviceAddress: '  上海市徐汇区某路100弄5号201室  ', remark: '', couponInstanceId: null,
 }
 
-test('buildOrderRequest emits the fulfillment branches; remark trimmed; coupon key never present', () => {
+test('buildOrderRequest emits the fulfillment branches; remark trimmed; coupon key only with a selection', () => {
   assert.deepEqual(buildOrderRequest(storeDraft), {
     storeId: '957002', serviceId: '20001', petId: '30001', fulfillmentType: 'IN_STORE',
     appointmentStart: '2026-10-01T09:15:00.000+08:00', appointmentEnd: '2026-10-01T10:45:00.000+08:00',
     remark: '怕生，请提前沟通',
   })
-  assert.equal('couponInstanceId' in buildOrderRequest(storeDraft), false) // 本切片边界
+  assert.equal('couponInstanceId' in buildOrderRequest(storeDraft), false) // 不用券不携带该键
   assert.equal('pickupStart' in buildOrderRequest(storeDraft), false)     // 到店分支不带接送键
   const quiet = buildOrderRequest({ ...storeDraft, remark: '   ' })
   assert.equal('remark' in quiet, false) // 空白备注不入 JSON
+  // 61号：选中券时携带 couponInstanceId（契约 61 §7；资格以服务端冻结判定为准）。
+  assert.equal(buildOrderRequest({ ...storeDraft, couponInstanceId: '40001' }).couponInstanceId, '40001')
   // 接送分支：五键必填（含双方向选窗 ID 与服务地址），不带 toStore 两键；地址原文 trim。
   assert.deepEqual(buildOrderRequest(pickupDraft), {
     storeId: '957002', serviceId: '20002', petId: '30001', fulfillmentType: 'PICKUP_DELIVERY',
@@ -243,9 +247,42 @@ test('form validation walks every contract branch with Chinese labels', () => {
   // 接送服务地址必填非空白（38号）。
   assert.equal(bookingFormError({ ...pickupDraft, serviceAddress: '   ' }), 'address')
   assert.equal(bookingFormError({ ...storeDraft, remark: '长'.repeat(501) }), 'remark')
+  // 61号：couponInstanceId 非法形态按 coupon 分支呈现。
+  assert.equal(bookingFormError({ ...storeDraft, couponInstanceId: 'abc' }), 'coupon')
   for (const key of Object.keys(bookingFormErrorLabels) as (keyof typeof bookingFormErrorLabels)[]) assert.ok(bookingFormErrorLabels[key])
   assert.throws(() => buildOrderRequest({ ...storeDraft, petId: '' }), /BOOKING_FORM_PET/)
   assert.throws(() => buildOrderRequest({ ...pickupDraft, serviceAddress: ' ' }), /BOOKING_FORM_ADDRESS/)
+})
+
+// ---- 61号 下单选券展示助手：AVAILABLE + 门槛 + 正数应付过滤，最优抵扣在前；展示提示非授权 ----
+
+const couponWire: CouponView = {
+  couponId: '40001', name: '新客满减券', amountOff: '20.00', thresholdAmount: '100.00',
+  scopeSummary: '全场通用', typeLabel: '满减券', validTo: '2026-12-31', status: 'AVAILABLE',
+  usedAt: null,
+}
+const couponOptionsView = (overrides: Partial<CouponView> = {}): CouponView =>
+  ({ ...couponWire, ...overrides })
+
+test('couponOptions keeps threshold-passing positive-discount coupons, best discount first', () => {
+  const options = couponOptions([
+    couponOptionsView({ couponId: '40001', amountOff: '20.00', thresholdAmount: '50.00' }),
+    couponOptionsView({ couponId: '40002', amountOff: '50.00', thresholdAmount: null }),
+    couponOptionsView({ couponId: '40003', amountOff: '90.00', thresholdAmount: null }),  // 抵扣 >= 服务价
+    couponOptionsView({ couponId: '40004', amountOff: '20.00', thresholdAmount: '500.00' }), // 门槛不满足
+    couponOptionsView({ couponId: '40005', status: 'USED' }),
+    couponOptionsView({ couponId: '40006', amountOff: null }),
+  ], '80.00')
+  assert.deepEqual(options.map(coupon => coupon.couponId), ['40002', '40001'])
+})
+
+test('discountedAmount returns the two-decimal payable and refuses zero/negative outcomes', () => {
+  const coupon = couponOptionsView({ amountOff: '20.00' })
+  assert.equal(discountedAmount('80.00', coupon), '60.00')
+  assert.equal(discountedAmount('128.00', coupon), '108.00')
+  assert.equal(discountedAmount('20.00', coupon), null)     // 折后应付非正数：冻结会被 409 拒绝
+  assert.equal(discountedAmount('80.00', couponOptionsView({ amountOff: null })), null)
+  assert.equal(discountedAmount('80.00', null), null)
 })
 
 // ---- 接送硬规则：returnStart >= pickupStart + 120 分钟 + 方向窗（C 端置灰联动，SCH-D4/ROC-2） ----
