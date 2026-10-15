@@ -15,6 +15,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 import org.slf4j.MDC;
+import org.springframework.http.MediaType;
 
 /**
  * Contract-63 boundary helpers: route identity, bounded strict query input, decimal strings and
@@ -23,6 +24,8 @@ import org.slf4j.MDC;
  * plus the ALL data-scope gate, unknown query parameters rejected.
  */
 final class AdminTradeHttpSupport {
+    private static final tools.jackson.databind.ObjectReader JSON =
+            com.petplatform.boot.config.MerchantJsonReaderFactory.strictReader();
     private AdminTradeHttpSupport() {}
 
     static AdminSessionView session(HttpServletRequest r, String action) {
@@ -126,6 +129,53 @@ final class AdminTradeHttpSupport {
         return body("SUCCESS", "ok", data, trace(r));
     }
 
+    /**
+     * Contract-63 v0.2 disposal writes: one terminal X-Request-Id header (23号幂等契约), no
+     * query string parameters and an empty body where the draft defines none.
+     */
+    static String requestId(HttpServletRequest r) {
+        if (r.getParameterMap() != null && !r.getParameterMap().isEmpty()) throw invalid();
+        if (java.util.Collections.list(r.getHeaders("X-Request-Id")).size() != 1) throw invalid();
+        try {
+            return PublicContractChecks.requireTerminalRequestId(r.getHeader("X-Request-Id"));
+        } catch (IllegalArgumentException bad) {
+            throw invalid();
+        }
+    }
+
+    static void noBody(HttpServletRequest r) {
+        try {
+            if (r.getInputStream().read() != -1) throw invalid();
+        } catch (java.io.IOException failure) {
+            throw invalid();
+        }
+    }
+
+    /** Bounded strict JSON object body with string-only fields (mirrors the aftersale boundary). */
+    static Map<String, String> stringBody(HttpServletRequest r, String... fields) {
+        try {
+            var content = MediaType.parseMediaType(r.getContentType());
+            if (!"application".equalsIgnoreCase(content.getType())
+                    || !"json".equalsIgnoreCase(content.getSubtype())) throw invalid();
+            byte[] raw = r.getInputStream().readNBytes(32769);
+            if (raw.length == 0 || raw.length > 32768) throw invalid();
+            var root = JSON.readTree(raw);
+            if (root == null || !root.isObject()) throw invalid();
+            var allowed = Set.of(fields);
+            var values = new LinkedHashMap<String, String>();
+            for (var field : root.properties()) {
+                if (!allowed.contains(field.getKey()) || !field.getValue().isNull()
+                        && !field.getValue().isTextual()) throw invalid();
+                if (!field.getValue().isNull()) values.put(field.getKey(), field.getValue().textValue());
+            }
+            return values;
+        } catch (ApiException known) {
+            throw known;
+        } catch (Exception malformed) {
+            throw invalid();
+        }
+    }
+
     static Map<String, Object> error(RuntimeException e, HttpServletRequest r) {
         String code = e instanceof ApiException a
                 ? a.code()
@@ -135,6 +185,8 @@ final class AdminTradeHttpSupport {
             case "COMMON_UNAUTHORIZED" -> 401;
             case "COMMON_FORBIDDEN" -> 403;
             case "COMMON_NOT_FOUND" -> 404;
+            case "COMMON_CONFLICT", "IDEMPOTENCY_KEY_CONFLICT", "ORDER_STATE_NOT_ALLOWED",
+                 "ORDER_REFUND_ALREADY_CREATED", "ORDER_OPERATION_BUSY", "ORDER_CONFIRM_DEADLINE_PASSED" -> 409;
             case "COMMON_DEPENDENCY_UNAVAILABLE" -> 503;
             default -> 500;
         };
@@ -144,6 +196,7 @@ final class AdminTradeHttpSupport {
             case 401 -> "登录已失效，请重新登录";
             case 403 -> "无权执行该操作";
             case 404 -> "资源不存在";
+            case 409 -> "当前状态或请求参数冲突，请刷新后核对";
             case 503 -> "服务暂不可用，请稍后重试";
             default -> "内部错误，请稍后重试";
         };

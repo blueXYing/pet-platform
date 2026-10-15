@@ -1,0 +1,53 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<!-- Contract-63 v0.2 operator disposal. ORDER-owned SQL only; no substitution; the close walks
+     the existing state machine (order_stage → CANCELED, fact ADMIN_ABNORMAL_CLOSE) under the
+     same unfulfilled-order guards as the merchant-reject close. -->
+<mapper namespace="com.petplatform.order.biz.infrastructure.persistence.mapper.OrderAdminDispositionMapper">
+  <update id="setTimeZoneUtc">SET SESSION time_zone = '+00:00'</update>
+  <update id="setLockWaitTimeout2Seconds">SET SESSION innodb_lock_wait_timeout = 2</update>
+
+  <select id="locateStore" resultType="string" useCache="false" flushCache="true">
+    SELECT store_id FROM pet_order WHERE id=#{orderId}
+  </select>
+
+  <update id="closeAbnormal">
+    UPDATE pet_order SET order_stage='CANCELED',canceled_at=#{canceledAt,jdbcType=TIMESTAMP},
+      cancel_reason='ADMIN_ABNORMAL_CLOSE',refund_order_id=#{refundId},version=version+1,updated_at=#{now}
+    WHERE id=#{orderId} AND version=#{version}
+      AND order_stage IN ('PENDING_CONFIRM','PENDING_SERVICE')
+      AND payment_status='PAID' AND verification_status='UNVERIFIED'
+      AND canceled_at IS NULL AND cancel_reason IS NULL AND refund_order_id IS NULL
+      AND current_refund_application_id IS NULL AND current_aftersale_id IS NULL AND refunded_amount=0
+  </update>
+
+  <insert id="insertAction">
+    INSERT INTO order_admin_action(id,order_id,store_id,action_type,reason_code,reason,
+      order_version_before,refund_order_id,acted_by_operator_id,acted_at,authz_version,request_id,trace_id,created_at)
+    VALUES(#{id},#{orderId},#{storeId},'ABNORMAL_CLOSE',#{reasonCode},#{reason},#{orderVersionBefore},
+      #{refundId},#{operatorId},#{actedAt},#{authzVersion},#{requestId},#{traceId},#{now})
+  </insert>
+
+  <select id="selectByRequest" resultType="com.petplatform.order.biz.infrastructure.persistence.mapper.OrderAdminDispositionMapper$ActionRow" useCache="false" flushCache="true">
+    SELECT id,order_id,store_id,action_type,reason_code,reason,order_version_before,refund_order_id,
+      acted_by_operator_id,acted_at,authz_version,request_id,trace_id
+    FROM order_admin_action WHERE request_id=#{requestId}
+  </select>
+
+  <select id="selectByOrder" resultType="com.petplatform.order.biz.infrastructure.persistence.mapper.OrderAdminDispositionMapper$ActionRow" useCache="false" flushCache="true">
+    SELECT id,order_id,store_id,action_type,reason_code,reason,order_version_before,refund_order_id,
+      acted_by_operator_id,acted_at,authz_version,request_id,trace_id
+    FROM order_admin_action WHERE order_id=#{orderId} AND action_type='ABNORMAL_CLOSE'
+  </select>
+
+  <insert id="insertLog">
+    INSERT INTO order_status_log(id,order_id,dimension,from_status,to_status,event_type,operator_type,operator_id,request_id,remark,created_at)
+    VALUES(#{id},#{orderId},'ORDER_STAGE',#{fromStage},'CANCELED','ORDER_ADMIN_ABNORMAL_CLOSED','PLATFORM',#{operatorId},#{requestId},#{remark},#{now})
+  </insert>
+
+  <update id="projectRefund">
+    UPDATE pet_order SET refunded_amount=#{amount},version=version+1,updated_at=UTC_TIMESTAMP(3)
+    WHERE id=#{orderId} AND refund_order_id=#{refundId} AND order_stage='CANCELED'
+      AND cancel_reason='ADMIN_ABNORMAL_CLOSE' AND refunded_amount=0
+  </update>
+</mapper>

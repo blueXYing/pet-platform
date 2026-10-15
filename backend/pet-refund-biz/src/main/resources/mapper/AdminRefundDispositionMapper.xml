@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<!-- Contract-63 v0.2 refund disposal audit. REFUND-owned SQL only; no substitution. -->
+<mapper namespace="com.petplatform.refund.biz.infrastructure.persistence.mapper.AdminRefundDispositionMapper">
+  <update id="setTimeZoneUtc">SET SESSION time_zone = '+00:00'</update>
+  <update id="setLockWaitTimeout2Seconds">SET SESSION innodb_lock_wait_timeout = 2</update>
+
+  <select id="locateStore" resultType="string" useCache="false" flushCache="true">
+    SELECT store_id FROM refund_execution WHERE refund_order_id=#{refundOrderId}
+  </select>
+
+  <insert id="insertAction">
+    INSERT INTO refund_admin_action(id,refund_order_id,order_id,action_type,task_key,task_state,
+      refund_status,acted_by_operator_id,acted_at,authz_version,request_id,trace_id,created_at)
+    VALUES(#{id},#{refundOrderId},#{orderId},#{actionType},#{taskKey},#{taskState},#{refundStatus},
+      #{operatorId},#{actedAt},#{authzVersion},#{requestId},#{traceId},#{now})
+  </insert>
+
+  <select id="selectByRequest" resultType="com.petplatform.refund.biz.infrastructure.persistence.mapper.AdminRefundDispositionMapper$ActionRow" useCache="false" flushCache="true">
+    SELECT id,refund_order_id,order_id,action_type,task_key,task_state,refund_status,
+      acted_by_operator_id,acted_at,authz_version,request_id,trace_id
+    FROM refund_admin_action WHERE request_id=#{requestId}
+  </select>
+</mapper>

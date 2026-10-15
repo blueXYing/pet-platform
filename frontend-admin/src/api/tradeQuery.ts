@@ -1,8 +1,9 @@
 import { RequestFailure, type Transport } from '../request';
 
-// Contract 63 (HTTP10 §5.11): the platform trade read face. Seven GET-only routes; every id,
+// Contract 63 (HTTP10 §5.11 reads; §5.2/§5.5/§5.6 v0.2 disposal writes, ruling doc 33): the
+// platform trade face. Seven GET routes plus four high-privilege disposal writes; every id,
 // version and money value stays a string end to end and no display state is derived client
-// side — the server projects DisplayOrderStatus. No write route exists in this family.
+// side — the server projects DisplayOrderStatus.
 export const DISPLAY_STATUSES = [
   'PENDING_PAYMENT', 'PENDING_CONFIRM', 'PENDING_SERVICE', 'COMPLETED', 'CANCELED',
   'REFUND_PENDING_CONFIRM', 'REFUNDING', 'REFUNDED', 'PARTIAL_REFUND', 'AFTERSALE',
@@ -14,8 +15,10 @@ export const REFUND_STATUSES = ['CREATED', 'PROCESSING', 'SUCCESS', 'FAILED', 'U
 export type RefundStatus = typeof REFUND_STATUSES[number];
 export const REFUND_SOURCE_TYPES = [
   'PRESTART_AUTO', 'MERCHANT_REJECT_ORDER', 'MERCHANT_APPROVED', 'MERCHANT_TIMEOUT_AUTO',
-  'AFTERSALE_DECISION', 'LATE_PAYMENT_TIMEOUT',
+  'AFTERSALE_DECISION', 'LATE_PAYMENT_TIMEOUT', 'ADMIN_ABNORMAL_CLOSE',
 ] as const;
+export const ABNORMAL_REASONS = ['STORE_OFFLINE', 'QUALIFICATION_INVALID', 'MERCHANT_UNREACHABLE', 'OTHER'] as const;
+export type AbnormalReason = typeof ABNORMAL_REASONS[number];
 export type RefundSourceType = typeof REFUND_SOURCE_TYPES[number];
 export const VERIFY_METHODS = ['SCAN', 'MANUAL'] as const;
 export type VerifyMethod = typeof VERIFY_METHODS[number];
@@ -72,6 +75,15 @@ export type VerificationDetail = VerificationSummary & {
   attempts: { attemptId: string; result: string; failReason: string | null; attemptedAt: string }[];
   riskAttempts: { riskAttemptId: string; resultCode: string; countsFailure: boolean; attemptedAt: string }[];
 };
+export type DispositionReceipt = {
+  refundOrderId: string; action: 'CHANNEL_QUERY' | 'RETRY'; taskKey: string;
+  taskState: string; refundStatus: string; occurredAt: string;
+};
+export type AbnormalCloseReceipt = {
+  orderId: string; orderStage: 'CANCELED'; cancelReason: 'ADMIN_ABNORMAL_CLOSE';
+  refundOrderId: string; occurredAt: string;
+};
+export type MerchantDisableReceipt = { merchantId: string; status: 'OFFLINE'; occurredAt: string };
 export type Page<T> = { page: number; pageSize: number; total: number; items: T[] };
 export type OrderFilters = {
   displayStatus: DisplayStatus | undefined;
@@ -100,6 +112,8 @@ export class TradeQueryFailure extends RequestFailure {
 const MAX = '9223372036854775807';
 const UTC_MILLI = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z(?![\s\S])/;
 const ROOT = '/api/v1/admin/trade';
+// Disposal writes sit at the HTTP10 §5.2/§5.5/§5.6 drafted paths (63号 v0.2 implementing contract).
+const ROOT_ORIG = '/api/v1/admin';
 export function validId(value: unknown): value is string {
   return typeof value === 'string' && /^[1-9][0-9]{0,18}(?![\s\S])/.test(value) && (value.length < MAX.length || value <= MAX);
 }
@@ -228,6 +242,7 @@ export function refundSourceLabel(value: string) {
     PRESTART_AUTO: '服务前自动退款', MERCHANT_REJECT_ORDER: '商家拒单',
     MERCHANT_APPROVED: '商家同意', MERCHANT_TIMEOUT_AUTO: '24小时超时自动退款',
     AFTERSALE_DECISION: '运营售后裁决', LATE_PAYMENT_TIMEOUT: '迟到支付自动退款',
+    ADMIN_ABNORMAL_CLOSE: '运营异常关单',
   } as Record<string, string>)[value] ?? value;
 }
 export function refundStatusLabel(value: string) {
@@ -285,6 +300,49 @@ export function createTradeQueryClient(transport: Transport = fetch) {
     void field;
     return value;
   }
+  async function writeEnvelope(path: string, requestId: string, body?: Record<string, string>): Promise<unknown> {
+    if (!token) throw new TradeQueryFailure('UNAUTHENTICATED', 401);
+    const started = epoch;
+    const headers = new Headers({
+      Accept: 'application/json', Authorization: `Bearer ${token}`, 'X-Request-Id': requestId,
+    });
+    if (body !== undefined) headers.set('Content-Type', 'application/json');
+    const res = await transport(new Request(new URL(path, window.location.origin), {
+      method: 'POST', headers, credentials: 'omit', redirect: 'error', cache: 'no-store',
+      body: body === undefined ? undefined : JSON.stringify(body),
+    }));
+    failStale(started);
+    if (res.status === 401 || res.status === 403) {
+      epoch++; token = undefined;
+      throw new TradeQueryFailure(res.status === 401 ? 'UNAUTHENTICATED' : 'FORBIDDEN', res.status);
+    }
+    let payload: unknown;
+    try { payload = await res.json(); } catch { throw new TradeQueryFailure('INVALID_RESPONSE', res.status); }
+    failStale(started);
+    if (!record(payload)) throw new TradeQueryFailure('INVALID_RESPONSE', res.status);
+    const out = payload as Record<string, unknown>;
+    if (typeof out.code !== 'string' || typeof out.message !== 'string' || typeof out.traceId !== 'string') {
+      throw new TradeQueryFailure('INVALID_RESPONSE', res.status);
+    }
+    if (!res.ok || out.code !== 'SUCCESS') {
+      if (out.data !== null) throw new TradeQueryFailure('INVALID_RESPONSE', res.status);
+      throw new TradeQueryFailure(out.code, res.status, out.traceId);
+    }
+    if (out.message !== 'ok') throw new TradeQueryFailure('INVALID_RESPONSE', res.status, out.traceId);
+    return out.data;
+  }
+  const disposition = (v: unknown): v is DispositionReceipt =>
+    exact(v, ['refundOrderId', 'action', 'taskKey', 'taskState', 'refundStatus', 'occurredAt'])
+    && validId(v.refundOrderId) && ['CHANNEL_QUERY', 'RETRY'].includes(v.action as string)
+    && typeof v.taskKey === 'string' && v.taskKey.length >= 1 && typeof v.taskState === 'string'
+    && typeof v.refundStatus === 'string' && utc(v.occurredAt);
+  const abnormalCloseReceipt = (v: unknown): v is AbnormalCloseReceipt =>
+    exact(v, ['orderId', 'orderStage', 'cancelReason', 'refundOrderId', 'occurredAt'])
+    && validId(v.orderId) && v.orderStage === 'CANCELED' && v.cancelReason === 'ADMIN_ABNORMAL_CLOSE'
+    && validId(v.refundOrderId) && utc(v.occurredAt);
+  const merchantDisableReceipt = (v: unknown): v is MerchantDisableReceipt =>
+    exact(v, ['merchantId', 'status', 'occurredAt']) && validId(v.merchantId)
+    && v.status === 'OFFLINE' && utc(v.occurredAt);
   return {
     resetContext,
     async listOrders(page: number, filters: Partial<OrderFilters> = {}, pageSize = 20): Promise<Page<OrderSummary>> {
@@ -350,6 +408,36 @@ export function createTradeQueryClient(transport: Transport = fetch) {
       if (!validId(verificationId)) throw new TradeQueryFailure('INVALID_ARGUMENT', 0);
       const data = await envelope(`${ROOT}/verifications/${verificationId}`);
       if (!verificationDetail(data)) throw new TradeQueryFailure('INVALID_RESPONSE', 200);
+      return data;
+    },
+    // Contract 63 v0.2 disposal actions (HTTP10 §5.2/§5.5/§5.6; ruling doc 33). The kernel
+    // binds every write to the terminal X-Request-Id and replays its audit receipt.
+    async channelQueryRefund(refundOrderId: string, requestId: string): Promise<DispositionReceipt> {
+      if (!validId(refundOrderId)) throw new TradeQueryFailure('INVALID_ARGUMENT', 0);
+      const data = await writeEnvelope(`${ROOT_ORIG}/refunds/${refundOrderId}/channel-query`, requestId);
+      if (!disposition(data)) throw new TradeQueryFailure('INVALID_RESPONSE', 200);
+      return data;
+    },
+    async retryRefund(refundOrderId: string, requestId: string): Promise<DispositionReceipt> {
+      if (!validId(refundOrderId)) throw new TradeQueryFailure('INVALID_ARGUMENT', 0);
+      const data = await writeEnvelope(`${ROOT_ORIG}/refunds/${refundOrderId}/retry`, requestId);
+      if (!disposition(data)) throw new TradeQueryFailure('INVALID_RESPONSE', 200);
+      return data;
+    },
+    async abnormalCloseOrder(orderId: string, reasonCode: AbnormalReason, reason: string, requestId: string): Promise<AbnormalCloseReceipt> {
+      if (!validId(orderId) || !ABNORMAL_REASONS.includes(reasonCode) || reason.trim().length < 10 || reason.length > 500) {
+        throw new TradeQueryFailure('INVALID_ARGUMENT', 0);
+      }
+      const data = await writeEnvelope(`${ROOT_ORIG}/orders/${orderId}/abnormal-close`, requestId, { reasonCode, reason });
+      if (!abnormalCloseReceipt(data)) throw new TradeQueryFailure('INVALID_RESPONSE', 200);
+      return data;
+    },
+    async disableMerchant(merchantId: string, reason: string, requestId: string): Promise<MerchantDisableReceipt> {
+      if (!validId(merchantId) || reason.trim().length < 10 || reason.length > 500) {
+        throw new TradeQueryFailure('INVALID_ARGUMENT', 0);
+      }
+      const data = await writeEnvelope(`${ROOT_ORIG}/merchants/${merchantId}/disable`, requestId, { reason });
+      if (!merchantDisableReceipt(data)) throw new TradeQueryFailure('INVALID_RESPONSE', 200);
       return data;
     },
   };

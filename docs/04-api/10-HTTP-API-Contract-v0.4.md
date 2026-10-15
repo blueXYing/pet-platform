@@ -1508,6 +1508,11 @@ POST /api/v1/admin/refunds/{refundId}/retry
 
 `retry` 只重试渠道动作，不创建第二张业务退款单。
 
+> 实现注记（2026-10-15，33 号裁决）：查单/重试已按 [63号 v0.2 处置面](63-Admin-Trade-Query-Contract-v0.1.md)
+> 交付（默认关，`pet.admin.trade.http.enabled` 家族）：动作码 `refund.channel.query` / `refund.retry`
+> （提案 `refund.channel-query` 按部署词法拼作点分段，PR 披露）；重推既有 durable 退款任务族，
+> 不创建第二张业务退款单。
+
 ---
 
 ## 5.3 售后列表与详情
@@ -1560,6 +1565,13 @@ Request：
 完整审计
 ```
 
+> 实现注记（2026-10-15，33 号裁决）：异常关单已按 [63号 v0.2 处置面](63-Admin-Trade-Query-Contract-v0.1.md)
+> 交付（默认关，`pet.admin.trade.http.enabled` 家族）：动作码 `order.abnormal.close`（提案
+> `order.abnormal-close` 按部署词法拼作点分段，PR 披露）；固定语义异常关闭+全额退款，走 order
+> 既有状态机（`cancel_reason='ADMIN_ABNORMAL_CLOSE'` 事实新值），全额退款经退款内核 source
+> `ADMIN_ABNORMAL_CLOSE`；二次确认为运营 UI 同一人确认（22 号补充口径），完整审计在 order
+> 内核 append-only 审计行。
+
 ---
 
 ## 5.6 商家下线
@@ -1583,6 +1595,10 @@ Request：
 ```
 
 不能因为有存量订单直接拒绝“下线”动作。
+
+> 实现注记（2026-10-15，33 号裁决）：商家下线已按 [63号 v0.2 处置面](63-Admin-Trade-Query-Contract-v0.1.md)
+> 交付（默认关，`pet.admin.trade.http.enabled` 家族）：动作码 `merchant.disable`；复用既有商家
+> 状态词表 ACTIVE→OFFLINE，新订单经既有准入事实停止，存量订单/退款/售后照常。
 
 ---
 

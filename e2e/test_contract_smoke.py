@@ -15,8 +15,10 @@ class ContractSmokeRegressions(unittest.TestCase):
 
     def test_current_document_passes(self):
         result = check(self.spec)
-        self.assertEqual(result['legacyOperations'], 14)
-        self.assertEqual(result['legacyWrites'], 11)
+        # abnormalCloseOrder graduated to the contract-63 v0.2 disposal face (2026-10-15,
+        # ruling doc 33); the remaining legacy surface is untouched.
+        self.assertEqual(result['legacyOperations'], 13)
+        self.assertEqual(result['legacyWrites'], 10)
         self.assertEqual(result['legacyCreates'], 3)
         # Address book family (contract 59, 2026-10-13): six routes — list/detail/create/
         # update/delete/set-default; the legacy 14/11/3 subset stays untouched.
@@ -25,10 +27,12 @@ class ContractSmokeRegressions(unittest.TestCase):
         self.assertEqual(result['favtrackHttpOperations'], 7)
         # Encyclopedia read face (contract 62, 2026-10-14): anonymous-browse GET trio.
         self.assertEqual(result['baikeOperations'], 3)
-        # Contract 63 admin trade read face (2026-10-14, ADM-002/A-003): seven GET routes.
-        self.assertEqual(result['adminTradeOperations'], 7)
-        # Union of both parallel slices: 163 baseline + 3 encyclopedia + 7 admin trade read.
-        self.assertEqual(result['operations'], 173)
+        # Contract 63 admin trade face (2026-10-14 reads, 2026-10-15 v0.2 disposal writes,
+        # ruling doc 33): seven GET reads + four disposal writes = eleven routes.
+        self.assertEqual(result['adminTradeOperations'], 11)
+        # 163 baseline + 3 encyclopedia + 7 admin trade reads + 3 new disposal paths
+        # (channel-query/retry/disable; abnormal-close existed as the graduated legacy draft).
+        self.assertEqual(result['operations'], 176)
         self.assertGreater(result['stringIdProperties'], 0)
         # Contract 58 favorite/footprint face (2026-10-13): seven reviewed operations.
         self.assertEqual(result['favtrackHttpOperations'], 7)

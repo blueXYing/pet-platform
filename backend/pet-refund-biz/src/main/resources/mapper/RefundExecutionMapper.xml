@@ -34,6 +34,17 @@
     VALUES(#{refundId},#{refundNo},#{orderId},#{paymentId},#{paymentNo},#{storeId},#{merchantId},#{userId},
       #{successEventId},NULL,'MERCHANT_REJECT_ORDER',#{sourceEventId},#{tradeNo},#{amount},#{amount},#{paidAt},'CNY',#{requestId},#{eventId},#{now},#{now})
   </insert>
+  <insert id="insertAdminRefund">
+    INSERT INTO refund_order(id,refund_no,order_id,refund_type,source_type,refund_amount,refund_ratio,status,initiator_type,channel,created_at,updated_at)
+    VALUES(#{refundId},#{refundNo},#{orderId},'FULL','ADMIN_ABNORMAL_CLOSE',#{amount},1.000000,'CREATED','OPS','LAKALA',#{now},#{now})
+  </insert>
+  <insert id="insertAdminExecution">
+    INSERT INTO refund_execution(refund_order_id,refund_no,order_id,payment_id,payment_no,store_id,merchant_id,user_id,
+      payment_success_event_id,late_event_id,source_type,source_event_id,channel_trade_no,channel_paid_amount,refund_amount,
+      channel_paid_at,currency,request_id,created_event_id,created_at,updated_at)
+    VALUES(#{refundId},#{refundNo},#{orderId},#{paymentId},#{paymentNo},#{storeId},#{merchantId},#{userId},
+      #{successEventId},NULL,'ADMIN_ABNORMAL_CLOSE',#{sourceEventId},#{tradeNo},#{amount},#{amount},#{paidAt},'CNY',#{requestId},#{eventId},#{now},#{now})
+  </insert>
   <select id="successProofCount" resultType="java.lang.Integer">
     SELECT COUNT(*) FROM refund_transaction WHERE refund_id=#{refundId}
       AND BINARY request_id=BINARY #{receipt} AND action IN ('REFUND','QUERY','CALLBACK')
@@ -101,7 +112,7 @@
     SELECT e.refund_order_id,e.store_id,r.source_type FROM refund_execution e
     JOIN refund_order r ON r.id=e.refund_order_id
     WHERE r.status IN ('CREATED','PROCESSING','UNKNOWN') AND e.refund_order_id&gt;#{after}
-      AND ((#{late}=TRUE AND r.source_type='LATE_PAYMENT_TIMEOUT') OR (#{merchant}=TRUE AND r.source_type='MERCHANT_REJECT_ORDER') OR (#{application}=TRUE AND r.source_type IN ('MERCHANT_APPROVED','MERCHANT_TIMEOUT_AUTO','PRESTART_AUTO')) OR (#{aftersale}=TRUE AND r.source_type='AFTERSALE_DECISION'))
+      AND ((#{late}=TRUE AND r.source_type='LATE_PAYMENT_TIMEOUT') OR (#{merchant}=TRUE AND r.source_type='MERCHANT_REJECT_ORDER') OR (#{application}=TRUE AND r.source_type IN ('MERCHANT_APPROVED','MERCHANT_TIMEOUT_AUTO','PRESTART_AUTO')) OR (#{aftersale}=TRUE AND r.source_type='AFTERSALE_DECISION') OR (#{adminClose}=TRUE AND r.source_type='ADMIN_ABNORMAL_CLOSE'))
     ORDER BY e.refund_order_id LIMIT 100
   </select>
   <select id="persistedFirstQueryAt" resultType="java.time.LocalDateTime">SELECT first_query_at FROM refund_execution WHERE refund_order_id=#{refund} FOR UPDATE</select>
