@@ -86,3 +86,19 @@ CREATE TABLE merchant_governance_action (
     CONSTRAINT chk_merchant_governance_trace CHECK (trace_id IS NULL OR OCTET_LENGTH(trace_id) <= 128)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci
   COMMENT='商家治理动作审计（63号v0.2 下线；append-only；requestId 幂等绑定）';
+
+-- The abnormal-close refund joins the existing refund_execution fact table as a new event-proof
+-- source family (ADMIN_ABNORMAL_CLOSE, proof shape identical to MERCHANT_REJECT_ORDER: an
+-- ORDER-owned source_event_id, no late_event_id, no business decision pair). Same
+-- constraint-only extension pattern as SQL49 (application sources) and SQL50 (aftersale):
+-- drop and re-add chk_refund_source with every existing branch preserved, no data backfill.
+ALTER TABLE refund_execution DROP CHECK chk_refund_source,
+ ADD CONSTRAINT chk_refund_source CHECK (
+  (source_biz_id IS NULL AND source_decision_id IS NULL AND
+   ((source_type IS NULL AND source_event_id IS NULL AND late_event_id IS NOT NULL)
+    OR (source_type IS NOT NULL AND source_event_id IS NOT NULL AND source_event_id>0 AND
+     ((source_type='LATE_PAYMENT_TIMEOUT' AND late_event_id IS NOT NULL AND late_event_id=source_event_id)
+      OR (source_type IN ('MERCHANT_REJECT_ORDER','ADMIN_ABNORMAL_CLOSE') AND late_event_id IS NULL)))))
+  OR (source_type IS NOT NULL AND source_type IN ('MERCHANT_APPROVED','MERCHANT_TIMEOUT_AUTO','PRESTART_AUTO','AFTERSALE_DECISION')
+   AND source_biz_id IS NOT NULL AND source_biz_id>0 AND source_decision_id IS NOT NULL AND source_decision_id>0
+   AND late_event_id IS NULL AND source_event_id IS NULL));

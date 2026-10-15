@@ -50,7 +50,7 @@ public final class OrderAdminCloseFactsApiImpl implements OrderAdminCloseFactsAp
           ||!"CANCELED".equals(r.orderStage)||!"ADMIN_ABNORMAL_CLOSE".equals(r.cancelReason)
           ||!"PAID".equals(r.paymentStatus)||!"UNVERIFIED".equals(r.verificationStatus)
           ||r.storeId!=IDS.fromApi(storeId)||r.refundOrderId==null
-          ||r.refundOrderId!=actions.getFirst().refundOrderId
+          ||r.refundOrderId.longValue()!=actions.getFirst().refundOrderId.longValue()
           ||r.canceledAt==null||!r.canceledAt.atOffset(ZoneOffset.UTC).isEqual(actions.getFirst().actedAt.atOffset(ZoneOffset.UTC))
           ||r.paidAt==null||p.paidAt()==null||!r.paidAt.atOffset(ZoneOffset.UTC).isEqual(p.paidAt())
           ||r.payAmount==null||p.paidAmount()==null||r.payAmount.compareTo(p.paidAmount())!=0

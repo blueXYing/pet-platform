@@ -65,11 +65,11 @@ public final class AdminMerchantDispositionService implements AdminMerchantDispo
         validate(c);
         String requestId=c.context().requestId();
         var replayed=store.mapper().selectByRequest(requestId);
-        if(replayed!=null&&!replayed.isEmpty())return receipt(replayed.getFirst());
+        if(replayed!=null&&!replayed.isEmpty()){requireReplayPayload(replayed.getFirst(),c);return receipt(replayed.getFirst());}
         try {
             return tx.execute(s -> {
                 var rows=store.mapper().selectByRequest(requestId);
-                if(rows!=null&&!rows.isEmpty())return receipt(rows.getFirst());
+                if(rows!=null&&!rows.isEmpty()){requireReplayPayload(rows.getFirst(),c);return receipt(rows.getFirst());}
                 MerchantRow m=store.mapper().selectMerchantForUpdate(IDS.fromApi(c.merchantId()));
                 if(m==null)throw notFound();
                 Decision decision=authorization.check(new Check(
@@ -92,6 +92,14 @@ public final class AdminMerchantDispositionService implements AdminMerchantDispo
 
     private static DisableReceipt receipt(ActionRow row) {
         return new DisableReceipt(IDS.toApi(row.merchantId),"OFFLINE",row.actedAt.atOffset(ZoneOffset.UTC));
+    }
+
+    /** Same terminal requestId must replay the SAME payload; any difference is a 409 conflict. */
+    private static void requireReplayPayload(ActionRow row,DisableCommand c) {
+        boolean same=Long.toString(row.merchantId).equals(c.merchantId())
+            &&row.reason.equals(c.reason())
+            &&Long.parseLong(c.context().operatorId())==row.actedByOperatorId;
+        if(!same)throw conflict("IDEMPOTENCY_KEY_CONFLICT");
     }
 
     private static void requireDecision(Decision decision) {

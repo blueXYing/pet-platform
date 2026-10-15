@@ -83,7 +83,7 @@ public final class AdminOrderDispositionService implements AdminOrderDisposition
         validate(c);
         String requestId=c.context().requestId();
         var replayed=dispositions.mapper().selectByRequest(requestId);
-        if(!replayed.isEmpty())return receipt(replayed.getFirst());
+        if(!replayed.isEmpty()){requireReplayPayload(replayed.getFirst(),c);return receipt(replayed.getFirst());}
         var location=paidStore.locate(IDS.fromApi(c.orderId()));
         if(location.size()!=1)throw notFound();
         String storeId=IDS.toApi(location.getFirst().storeId());
@@ -92,7 +92,7 @@ public final class AdminOrderDispositionService implements AdminOrderDisposition
             return tx.execute(s -> {
                 paidStore.sessionDefaults();
                 var rows=dispositions.mapper().selectByRequest(requestId);
-                if(!rows.isEmpty())return receipt(rows.getFirst());
+                if(!rows.isEmpty()){requireReplayPayload(rows.getFirst(),c);return receipt(rows.getFirst());}
                 OrderAutoConfirmMapper.Row r=orders.lock(IDS.fromApi(c.orderId()));
                 if(r==null||r.storeId==null||IDS.toApi(r.storeId).compareTo(storeId)!=0)throw notFound();
                 guard.acquire(List.of(storeId),system);
@@ -112,13 +112,16 @@ public final class AdminOrderDispositionService implements AdminOrderDisposition
                 OffsetDateTime now=paidStore.databaseNow();
                 if(dispositions.mapper().closeAbnormal(r.id,refundId,utc(now),utc(now),r.version)!=1)
                     throw conflict("ORDER_STATE_NOT_ALLOWED");
-                createRefund.createForAbnormalClose(c.orderId(),IDS.toApi(proof(r).paymentId()),
-                    storeId,IDS.toApi(refundId),system);
+                // The append-only audit proof is written BEFORE the refund creation: the refund
+                // kernel reads the closed-order proof (order_admin_action row included) inside
+                // this same commit, exactly like the merchant-reject chain reads its facts.
                 dispositions.mapper().insertAction(actionId,r.id,r.storeId,c.reasonCode(),c.reason(),
                     r.version,refundId,IDS.fromApi(c.context().operatorId()),
                     utc(now),decision.authzVersion(),requestId,c.context().traceId(),utc(now));
                 dispositions.mapper().insertLog(logId,r.id,r.orderStage,
                     IDS.fromApi(c.context().operatorId()),requestId,"reasonCode="+c.reasonCode(),utc(now));
+                createRefund.createForAbnormalClose(c.orderId(),IDS.toApi(proof(r).paymentId()),
+                    storeId,IDS.toApi(refundId),system);
                 return new AbnormalCloseReceipt(c.orderId(),"CANCELED","ADMIN_ABNORMAL_CLOSE",
                     IDS.toApi(refundId),now);
             });
@@ -157,6 +160,14 @@ public final class AdminOrderDispositionService implements AdminOrderDisposition
         return new AbnormalCloseReceipt(IDS.toApi(row.orderId),"CANCELED",
             "ADMIN_ABNORMAL_CLOSE",IDS.toApi(row.refundOrderId),
             row.actedAt.atOffset(ZoneOffset.UTC));
+    }
+
+    /** Same terminal requestId must replay the SAME payload; any difference is a 409 conflict. */
+    private static void requireReplayPayload(ActionRow row,AbnormalCloseCommand c) {
+        boolean same=Long.toString(row.orderId).equals(c.orderId())
+            &&c.reasonCode().equals(row.reasonCode)&&c.reason().equals(row.reason)
+            &&Long.parseLong(c.context().operatorId())==row.actedByOperatorId;
+        if(!same)throw conflict("IDEMPOTENCY_KEY_CONFLICT");
     }
 
     private static void requireDecision(AdminTradeAuthorizationPort.Decision decision) {

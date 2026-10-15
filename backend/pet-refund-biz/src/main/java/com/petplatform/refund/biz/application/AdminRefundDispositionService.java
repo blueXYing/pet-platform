@@ -70,10 +70,12 @@ public final class AdminRefundDispositionService implements AdminRefundDispositi
         validate(command);
         String refundId=command.refundOrderId();
         String requestId=command.context().requestId();
-        // A committed action replays verbatim without re-triggering anything.
+        // A committed action replays verbatim without re-triggering anything; the replay must
+        // bind the SAME payload (action, refund and operator identity) or it is a 409 conflict.
         AdminRefundDispositionStore.ActionRow replayed=store.byRequest(requestId);
         if (replayed!=null) {
-            if(!action.equals(replayed.actionType())||!refundId.equals(Long.toString(replayed.refundOrderId())))
+            if(!action.equals(replayed.actionType())||!refundId.equals(Long.toString(replayed.refundOrderId()))
+                ||replayed.actedByOperatorId()!=Long.parseLong(command.context().operatorId()))
                 throw conflict("IDEMPOTENCY_KEY_CONFLICT");
             return new DispositionReceipt(refundId, action, replayed.taskKey(), replayed.taskState(),
                 replayed.refundStatus(), replayed.actedAt().atOffset(ZoneOffset.UTC));

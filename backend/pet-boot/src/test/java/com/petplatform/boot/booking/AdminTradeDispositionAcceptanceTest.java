@@ -12,6 +12,8 @@ import com.petplatform.order.api.command.AdminOrderDispositionApi.AbnormalCloseR
 import com.petplatform.order.biz.apiimpl.AdminOrderRefundProjectionConsumer;
 import com.petplatform.order.biz.apiimpl.OrderAdminCloseFactsApiImpl;
 import com.petplatform.payment.biz.apiimpl.PaymentSuccessFactsApiImpl;
+import com.petplatform.payment.biz.apiimpl.*;
+import com.petplatform.payment.biz.application.*;
 import com.petplatform.refund.api.command.AdminRefundDispositionApi.DispositionCommand;
 import com.petplatform.refund.api.command.AdminRefundDispositionApi.DispositionReceipt;
 import com.petplatform.refund.api.query.AdminRefundQueryApi.AdminAuthorization;
@@ -70,8 +72,9 @@ class AdminTradeDispositionAcceptanceTest {
             assertEquals(1, f.f.f.count("SELECT COUNT(*) FROM order_status_log WHERE event_type='ORDER_ADMIN_ABNORMAL_CLOSED' AND operator_type='PLATFORM'"));
             assertEquals(1, f.f.f.count("SELECT COUNT(*) FROM async_task WHERE task_type='ADMIN_REFUND_SUBMIT'"));
             assertEquals(0, f.f.f.db.jdbc.queryForObject("SELECT refunded_amount FROM pet_order", BigDecimal.class).signum());
-            // A refund already exists: any fresh close request conflicts.
-            MerchantOrderAcceptanceTest.code("ORDER_REFUND_ALREADY_CREATED",
+            // The order is no longer closable: a fresh close request is refused by the same
+            // unfulfilled-order guard (409) — the existing refund stays the only one.
+            MerchantOrderAcceptanceTest.code("ORDER_STATE_NOT_ALLOWED",
                 () -> f.orders.abnormalClose(f.closeCommand(o, "OTHER")));
             // Hard rules stay intact: the verification window is untouched by the close.
             assertEquals("UNVERIFIED", f.f.f.text("SELECT verification_status FROM pet_order"));
@@ -88,10 +91,11 @@ class AdminTradeDispositionAcceptanceTest {
     }
 
     @Test void abnormalCloseRefusesFulfilledBlockedAndClosedOrders() throws Exception {
+        // In-flight aftersale / refund application: the ORDER guard refuses (409) — the action
+        // refuses rather than invalidates, so the 未履约售后核销窗口 stays untouched.
         for (String change : List.of(
                 "UPDATE pet_order SET current_aftersale_id=88",
-                "UPDATE pet_order SET current_refund_application_id=77",
-                "UPDATE payment_order SET status='RECONCILIATION_REQUIRED'")) {
+                "UPDATE pet_order SET current_refund_application_id=77")) {
             try (var f = new F()) {
                 String o = f.paid();
                 f.f.f.db.jdbc.update(change);
@@ -100,6 +104,16 @@ class AdminTradeDispositionAcceptanceTest {
                 assertEquals(0, f.f.f.count("SELECT COUNT(*) FROM order_admin_action"));
                 assertEquals(0, f.f.f.count("SELECT COUNT(*) FROM refund_order"));
             }
+        }
+        try (var f = new F()) {
+            String o = f.paid();
+            f.f.f.db.jdbc.update("UPDATE payment_order SET status='RECONCILIATION_REQUIRED'");
+            // A payment whose settled success cannot be proven fails closed (503) — the same
+            // kernel discipline as the merchant-reject close (requireSucceeded before any write).
+            MerchantOrderAcceptanceTest.code(CommonApiCodes.DEPENDENCY_UNAVAILABLE,
+                () -> f.orders.abnormalClose(f.closeCommand(o, "STORE_OFFLINE")));
+            assertEquals(0, f.f.f.count("SELECT COUNT(*) FROM order_admin_action"));
+            assertEquals(0, f.f.f.count("SELECT COUNT(*) FROM refund_order"));
         }
         try (var f = new F()) {
             String o = f.paid();
@@ -147,18 +161,21 @@ class AdminTradeDispositionAcceptanceTest {
             // A CREATED refund has no channel fact to query yet.
             MerchantOrderAcceptanceTest.code(CommonApiCodes.CONFLICT,
                 () -> f.refundActions.channelQuery(f.queryCommand(close.refundOrderId())));
-            // The submit-family trigger re-arms the exact existing task and writes the audit row.
-            DispositionReceipt retry = f.refundActions.retry(f.queryCommand(close.refundOrderId()));
+            // The submit-family trigger re-arms the exact existing task and writes the audit row;
+            // the same terminal requestId replays the stored receipt verbatim.
+            var retryCommand = f.queryCommand(close.refundOrderId());
+            DispositionReceipt retry = f.refundActions.retry(retryCommand);
             assertEquals("READY", retry.taskState());
             assertEquals("ADMIN_REFUND_SUBMIT:" + close.refundOrderId() + ":0", retry.taskKey());
-            assertEquals(retry, f.refundActions.retry(f.queryCommand(close.refundOrderId())));
+            assertEquals(retry, f.refundActions.retry(retryCommand));
             assertEquals(1, f.f.f.count("SELECT COUNT(*) FROM refund_admin_action WHERE action_type='RETRY'"));
             // Same requestId bound to a different operator identity conflicts.
-            var retryCommand = f.queryCommand(close.refundOrderId());
             f.refundActions.retry(retryCommand);
             MerchantOrderAcceptanceTest.code(CommonApiCodes.IDEMPOTENCY_KEY_CONFLICT,
                 () -> f.refundActions.retry(new DispositionCommand(close.refundOrderId(),
-                    retryCommand.context(), new AdminAuthorization("9007199254740994", 1))));
+                    new CommandContext(retryCommand.context().requestId(), retryCommand.context().traceId(),
+                        OperatorType.PLATFORM_OPERATOR, "9007199254740994", "ADMIN_WEB"),
+                    retryCommand.authorization())));
             // Drive the refund to SUCCESS through the existing worker machinery.
             assertTrue(f.executor(false).execute(close.refundOrderId(), "710302", false, "qa").done());
             assertEquals("SUCCESS", f.f.f.text("SELECT status FROM refund_order"));
@@ -171,7 +188,8 @@ class AdminTradeDispositionAcceptanceTest {
                 AdminTradeDispositionAcceptanceTest::id, f.refunds, new DenyAll());
             MerchantOrderAcceptanceTest.code(CommonApiCodes.FORBIDDEN,
                 () -> deniedActions.retry(f.queryCommand(close.refundOrderId())));
-            assertEquals(2, f.f.f.count("SELECT COUNT(*) FROM refund_admin_action"));
+            // One committed action row only: replays, conflicts and denials never write again.
+            assertEquals(1, f.f.f.count("SELECT COUNT(*) FROM refund_admin_action"));
         }
     }
 
@@ -261,7 +279,37 @@ class AdminTradeDispositionAcceptanceTest {
 
         String paid() throws Exception { return f.paid(); }
 
-        RefundExecutionService executor(boolean unknown) { return f.executor(unknown); }
+        /**
+         * Worker wiring that knows the ADMIN_ABNORMAL_CLOSE source family: the shared
+         * {@link MerchantOrderAcceptanceTest} executor builds its refund services without the
+         * admin-close facts, so this slice drives its own refund kernel/payment boundary pair.
+         */
+        RefundExecutionService executor(boolean unknown) {
+            PaymentRefundChannel channel = new PaymentRefundChannel() {
+                public VerifiedResult submit(RefundRequest request) {
+                    f.sends.incrementAndGet(); if (unknown) throw new IllegalStateException("connection lost");
+                    return success(request);
+                }
+                public VerifiedResult query(RefundRequest request) {
+                    f.queries.incrementAndGet(); return success(request);
+                }
+                private VerifiedResult success(RefundRequest request) {
+                    return new VerifiedResult("SUCCESS", request.refundNo(), "ADMIN_REFUND_01", 12800, 12800L,
+                        java.time.LocalDateTime.now(java.time.ZoneId.of("Asia/Shanghai"))
+                            .minusSeconds(1).truncatedTo(java.time.temporal.ChronoUnit.SECONDS), "d".repeat(64));
+                }
+            };
+            var payment = new com.petplatform.payment.biz.application.PaymentRefundService(f.f.db.source,
+                AdminTradeDispositionAcceptanceTest::id, f.f.guard,
+                new com.petplatform.order.biz.apiimpl.OrderLatePaymentFactsApiImpl(f.f.db.source, f.f.guard, f.f.reservationExpiry),
+                paid, refunds, channel,
+                new com.petplatform.payment.biz.application.PaymentRefundService.Settings(
+                    "127.0.0.1", "https://qa.invalid/refund", java.time.ZoneId.of("Asia/Shanghai")),
+                java.time.Clock.systemUTC(), f.facts,
+                null, null, null, null, null, adminCloseFacts);
+            return new RefundExecutionService(refunds, payment,
+                new com.petplatform.payment.biz.apiimpl.PaymentRefundResultFactsApiImpl(f.f.db.source, f.f.guard));
+        }
 
         com.petplatform.event.api.DispatchedEvent event(String type) { return f.event(type); }
 
