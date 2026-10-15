@@ -60,7 +60,9 @@ class PrivateAssetContractRegressions(unittest.TestCase):
         # adminListTradeVerifications/adminGetTradeVerification; no write route).
         # 173 = 166 + 7 contract-63 operations merged with the contract-62 base (union of
         # both parallel slices: 163 baseline + 3 encyclopedia + 7 admin trade read).
-        self.assertEqual(result['operations'], 173)
+        # 181 = 173 + 8 contract-64 admin governance read operations (2026-10-15, ADM-001
+        # gap slice: five merchant-ledger/staff routes + three schedule view routes; GET-only).
+        self.assertEqual(result['operations'], 181)
         self.assertEqual(result['privateAssetOperations'], 3)
         self.assertEqual(result['legacyOperations'], 14)
         self.assertEqual(result['aftersaleOperations'], 24)

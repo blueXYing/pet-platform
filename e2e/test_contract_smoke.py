@@ -27,8 +27,12 @@ class ContractSmokeRegressions(unittest.TestCase):
         self.assertEqual(result['baikeOperations'], 3)
         # Contract 63 admin trade read face (2026-10-14, ADM-002/A-003): seven GET routes.
         self.assertEqual(result['adminTradeOperations'], 7)
-        # Union of both parallel slices: 163 baseline + 3 encyclopedia + 7 admin trade read.
-        self.assertEqual(result['operations'], 173)
+        # Contract 64 admin governance read face (2026-10-15, ADM-001 gap slice): eight GET
+        # routes over the merchant and schedule kernels (ledger/staff/members/invitations +
+        # windows/staff-windows/reservations); read-only, no governance write action.
+        self.assertEqual(result['adminGovernanceOperations'], 8)
+        # 163 baseline + 3 encyclopedia + 7 admin trade read + 8 admin governance read.
+        self.assertEqual(result['operations'], 181)
         self.assertGreater(result['stringIdProperties'], 0)
         # Contract 58 favorite/footprint face (2026-10-13): seven reviewed operations.
         self.assertEqual(result['favtrackHttpOperations'], 7)

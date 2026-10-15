@@ -875,3 +875,7 @@ CCR-AFS-PAGE-OPTIONS-001 已批准目录读取：目录不完整/代码名称不
 ## 运营交易查询 HTTP 状态映射（2026-10-14 63 号 ADM-002/A-003 切片）
 
 七条只读 GET（`/api/v1/admin/trade/**`，HTTP10 §5.11）：400 `COMMON_INVALID_ARGUMENT`（未知查询参数、分页/过滤词汇/时间跨度越界）；401 `COMMON_UNAUTHORIZED`（会话缺失/失效/吊销）；403 `COMMON_FORBIDDEN`（动作码 `order.read`/`order.status-log.read`/`order.verification-log.read`/`refund.read` 未授予、受众非 ADMIN_WEB、dataScope 非 ALL——CITY/MERCHANT fail-closed）；404 `COMMON_NOT_FOUND`（未知 ID 与越范围 ID 同形，防枚举）；503 `COMMON_DEPENDENCY_UNAVAILABLE`（授权决断或投影不可读）。无写路由：无 409/幂等码面。无新增错误码。
+
+## 运营治理查询 HTTP 状态映射（2026-10-15 64 号 ADM-001 治理补齐切片）
+
+八条只读 GET（`/api/v1/admin/governance/**`，HTTP10 §5.12）：400 `COMMON_INVALID_ARGUMENT`（未知查询参数、分页/过滤词汇/时间跨度越界或未成对）；401 `COMMON_UNAUTHORIZED`（会话缺失/失效/吊销）；403 `COMMON_FORBIDDEN`（动作码 `merchant.read`/`schedule.read`/`merchant.staff.read` 未授予、受众非 ADMIN_WEB、dataScope 非 ALL——CITY/MERCHANT fail-closed）；404 `COMMON_NOT_FOUND`（未知/越范围商家 ID 与 403 同形，防枚举）；503 `COMMON_DEPENDENCY_UNAVAILABLE`（授权决断或投影不可读）。无写路由：无 409/幂等码面。无新增错误码。

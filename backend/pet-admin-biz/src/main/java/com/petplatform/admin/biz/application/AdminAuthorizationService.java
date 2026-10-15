@@ -73,7 +73,12 @@ public final class AdminAuthorizationService implements AdminAuthorizationQueryA
             // GET-only collection entry checks; per-resource reads re-check with the scope.
             || "order.read".equals(query.actionCode())
             || "order.verification-log.read".equals(query.actionCode())
-            || "refund.read".equals(query.actionCode()))
+            || "refund.read".equals(query.actionCode())
+            // Contract-64 platform governance lists (ADM-001 gap slice): GET-only collection
+            // entry checks; merchant-scoped reads re-check the merchant row with the scope.
+            || "merchant.read".equals(query.actionCode())
+            || "schedule.read".equals(query.actionCode())
+            || "merchant.staff.read".equals(query.actionCode()))
         || query.phase() != AdminActionCheckQuery.CheckPhase.READ_RESULT)
       throw AdminAuthFailure.invalid();
     return checkCurrent(

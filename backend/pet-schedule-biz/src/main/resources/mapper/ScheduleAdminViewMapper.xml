@@ -1,0 +1,104 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.petplatform.schedule.biz.infrastructure.persistence.mapper.ScheduleAdminViewMapper">
+    <!--
+      Contract 64 schedule view (PRD 6.2.5 只读监管). Read-only over module-owned tables:
+      schedule_availability_window / staff_availability_window / schedule_reservation (06),
+      schedule_reservation_claim (37). Occupancy counts reuse the 53号 SOLD_OUT notion: claims
+      on the window's original row whose reservation is CONFIRMED (confirmed_count) or an
+      unexpired TEMP_LOCKED (temp_locked_count, compared against the bound `now` read-only
+      fact). All filters bind with #{}; the service validates vocabularies first.
+    -->
+    <sql id="windowFilter">
+        <if test="merchantId != null">AND w.merchant_id = #{merchantId}</if>
+        <if test="storeId != null">AND w.store_id = #{storeId}</if>
+        <if test="serviceId != null">AND w.service_id = #{serviceId}</if>
+        <if test="windowKind != null">AND w.window_kind = #{windowKind}</if>
+        <if test="status != null">AND w.status = #{status}</if>
+        <if test="startFrom != null">AND w.start_at &gt;= #{startFrom}</if>
+        <if test="startTo != null">AND w.start_at &lt;= #{startTo}</if>
+    </sql>
+
+    <select id="countWindows" resultType="long">
+        SELECT COUNT(*)
+        FROM schedule_availability_window w
+        <where>
+            <include refid="windowFilter"/>
+        </where>
+    </select>
+
+    <select id="selectWindowPage" resultType="com.petplatform.schedule.biz.infrastructure.persistence.entity.ScheduleAdminViewRows$AdminWindowRow">
+        SELECT w.id, w.merchant_id, w.store_id, w.service_id, w.window_kind,
+               w.start_at, w.end_at, w.configured_capacity, w.status, w.version, w.updated_at,
+               (SELECT COUNT(*) FROM schedule_reservation_claim cl
+                    JOIN schedule_reservation r ON r.id = cl.reservation_id AND r.status = 'CONFIRMED'
+                    WHERE cl.window_id = w.id) AS confirmed_count,
+               (SELECT COUNT(*) FROM schedule_reservation_claim cl
+                    JOIN schedule_reservation r ON r.id = cl.reservation_id
+                    WHERE cl.window_id = w.id AND r.status = 'TEMP_LOCKED'
+                        AND r.lock_expire_at IS NOT NULL AND r.lock_expire_at &gt; #{now}) AS temp_locked_count
+        FROM schedule_availability_window w
+        <where>
+            <include refid="windowFilter"/>
+        </where>
+        ORDER BY w.start_at DESC, w.id DESC
+        LIMIT #{limit} OFFSET #{offset}
+    </select>
+
+    <sql id="staffWindowFilter">
+        <if test="storeId != null">AND sw.store_id = #{storeId}</if>
+        <if test="staffId != null">AND sw.staff_id = #{staffId}</if>
+        <if test="status != null">AND sw.status = #{status}</if>
+        <if test="startFrom != null">AND sw.start_at &gt;= #{startFrom}</if>
+        <if test="startTo != null">AND sw.start_at &lt;= #{startTo}</if>
+    </sql>
+
+    <select id="countStaffWindows" resultType="long">
+        SELECT COUNT(*)
+        FROM staff_availability_window sw
+        <where>
+            <include refid="staffWindowFilter"/>
+        </where>
+    </select>
+
+    <select id="selectStaffWindowPage" resultType="com.petplatform.schedule.biz.infrastructure.persistence.entity.ScheduleAdminViewRows$AdminStaffWindowRow">
+        SELECT sw.id, sw.store_id, sw.staff_id, sw.start_at, sw.end_at,
+               sw.status, sw.version, sw.updated_at
+        FROM staff_availability_window sw
+        <where>
+            <include refid="staffWindowFilter"/>
+        </where>
+        ORDER BY sw.start_at DESC, sw.id DESC
+        LIMIT #{limit} OFFSET #{offset}
+    </select>
+
+    <sql id="reservationFilter">
+        <if test="merchantId != null">AND r.merchant_id = #{merchantId}</if>
+        <if test="storeId != null">AND r.store_id = #{storeId}</if>
+        <if test="serviceId != null">AND r.service_id = #{serviceId}</if>
+        <if test="orderId != null">AND r.order_id = #{orderId}</if>
+        <if test="status != null">AND r.status = #{status}</if>
+        <if test="startFrom != null">AND r.start_at &gt;= #{startFrom}</if>
+        <if test="startTo != null">AND r.start_at &lt;= #{startTo}</if>
+    </sql>
+
+    <select id="countReservations" resultType="long">
+        SELECT COUNT(*)
+        FROM schedule_reservation r
+        <where>
+            <include refid="reservationFilter"/>
+        </where>
+    </select>
+
+    <select id="selectReservationPage" resultType="com.petplatform.schedule.biz.infrastructure.persistence.entity.ScheduleAdminViewRows$AdminReservationRow">
+        SELECT r.id, r.order_id, r.store_id, r.service_id, r.fulfillment_type,
+               r.start_at, r.end_at, r.pickup_start_at, r.return_start_at, r.status,
+               r.lock_expire_at, r.capacity_snapshot, r.qualified_staff_count_snapshot, r.created_at
+        FROM schedule_reservation r
+        <where>
+            <include refid="reservationFilter"/>
+        </where>
+        ORDER BY r.start_at DESC, r.id DESC
+        LIMIT #{limit} OFFSET #{offset}
+    </select>
+</mapper>

@@ -17,6 +17,13 @@ import { createServiceReviewClient } from './api/serviceReview';
 import ServiceReviewListPage from './pages/ServiceReviewListPage';
 import ServiceReviewDetailPage from './pages/ServiceReviewDetailPage';
 import { createTradeQueryClient } from './api/tradeQuery';
+import { createMerchantGovernanceClient } from './api/merchantGovernance';
+import { createScheduleViewClient } from './api/scheduleView';
+import { createStaffGovernanceClient } from './api/staffGovernance';
+import MerchantLedgerListPage from './pages/MerchantLedgerListPage';
+import MerchantLedgerDetailPage from './pages/MerchantLedgerDetailPage';
+import ScheduleViewPage from './pages/ScheduleViewPage';
+import StaffGovernancePage from './pages/StaffGovernancePage';
 import TradeOrderListPage from './pages/TradeOrderListPage';
 import TradeOrderDetailPage from './pages/TradeOrderDetailPage';
 import TradeRefundListPage from './pages/TradeRefundListPage';
@@ -33,6 +40,9 @@ const reviewAppeals = createReviewAppealClient();
 const pointsTaskConfig = createPointsTaskConfigClient();
 const serviceReview = createServiceReviewClient();
 const tradeQuery = createTradeQueryClient();
+const merchantGovernance = createMerchantGovernanceClient();
+const scheduleView = createScheduleViewClient();
+const staffGovernance = createStaffGovernanceClient();
 
 export function App() {
   const [token, setToken] = useState<string>();
@@ -54,6 +64,9 @@ export function App() {
     pointsTaskConfig.resetContext(nextToken);
     serviceReview.resetContext(nextToken);
     tradeQuery.resetContext(nextToken);
+    merchantGovernance.resetContext(nextToken);
+    scheduleView.resetContext(nextToken);
+    staffGovernance.resetContext(nextToken);
     try {
       const nextSession = await sessions.session(nextToken);
       const nextPermissions = await sessions.permissions(nextToken);
@@ -84,6 +97,9 @@ export function App() {
     pointsTaskConfig.resetContext();
     serviceReview.resetContext();
     tradeQuery.resetContext();
+    merchantGovernance.resetContext();
+    scheduleView.resetContext();
+    staffGovernance.resetContext();
   }, [token]);
 
   if (location.pathname !== '/login' && !token) return <Navigate to="/login" replace />;
@@ -95,18 +111,21 @@ export function App() {
   const canReadOrders = permissions?.actionCodes.includes('order.read') === true;
   const canReadRefunds = permissions?.actionCodes.includes('refund.read') === true;
   const canReadVerifications = permissions?.actionCodes.includes('order.verification-log.read') === true;
+  const canReadLedger = permissions?.actionCodes.includes('merchant.read') === true;
+  const canReadSchedule = permissions?.actionCodes.includes('schedule.read') === true;
+  const canReadStaff = permissions?.actionCodes.includes('merchant.staff.read') === true;
   const guard = (element: ReactNode, action = READ_ACTION) => {
     if (!token) return <Navigate to="/login" replace />;
     if (bootstrap === 'loading') return <p role="status">会话加载中</p>;
     if (bootstrap === 'failed') return <div role="alert"><h2>会话或权限查询失败，访问已关闭</h2><button onClick={signOut}>返回登录</button></div>;
-    if (!permissions?.actionCodes.includes(action)) return <div role="alert"><h2>{action === READ_ACTION ? '403 · 无申请审核权限' : action === 'aftersale.read' ? '403 · 无售后查看权限' : action === 'review.appeal.read' ? '403 · 无评价申诉权限' : action === 'service.review.read' ? '403 · 无服务审核权限' : action === 'order.read' ? '403 · 无订单查询权限' : action === 'refund.read' ? '403 · 无退款单查询权限' : action === 'order.verification-log.read' ? '403 · 无核销记录权限' : '403 · 无积分任务配置权限'}</h2><p>当前账号未授予 {action}。</p></div>;
+    if (!permissions?.actionCodes.includes(action)) return <div role="alert"><h2>{action === READ_ACTION ? '403 · 无申请审核权限' : action === 'aftersale.read' ? '403 · 无售后查看权限' : action === 'review.appeal.read' ? '403 · 无评价申诉权限' : action === 'service.review.read' ? '403 · 无服务审核权限' : action === 'order.read' ? '403 · 无订单查询权限' : action === 'refund.read' ? '403 · 无退款单查询权限' : action === 'order.verification-log.read' ? '403 · 无核销记录权限' : action === 'merchant.read' ? '403 · 无商家台账权限' : action === 'schedule.read' ? '403 · 无排期查看权限' : action === 'merchant.staff.read' ? '403 · 无员工治理权限' : '403 · 无积分任务配置权限'}</h2><p>当前账号未授予 {action}。</p></div>;
     return element;
   };
 
   return <>
     {location.pathname !== '/login' && <header>
       <strong>宠物平台 · 运营工作台</strong>
-      <nav className="workbench-nav" aria-label="工作台导航">{canRead && <Link to="/merchant-applications">商家申请审核</Link>}{canReadAftersale && <Link to="/aftersales">售后工单</Link>}{canReadAppeals && <Link to="/review-appeals">评价申诉</Link>}{canReadPointsConfig && <Link to="/points-task-config">积分任务配置</Link>}{canReadServices && <Link to="/services">服务审核</Link>}{canReadOrders && <Link to="/trade/orders">订单总览</Link>}{canReadRefunds && <Link to="/trade/refunds">退款单</Link>}{canReadVerifications && <Link to="/trade/verifications">核销记录</Link>}</nav>
+      <nav className="workbench-nav" aria-label="工作台导航">{canRead && <Link to="/merchant-applications">商家申请审核</Link>}{canReadAftersale && <Link to="/aftersales">售后工单</Link>}{canReadAppeals && <Link to="/review-appeals">评价申诉</Link>}{canReadPointsConfig && <Link to="/points-task-config">积分任务配置</Link>}{canReadServices && <Link to="/services">服务审核</Link>}{canReadOrders && <Link to="/trade/orders">订单总览</Link>}{canReadRefunds && <Link to="/trade/refunds">退款单</Link>}{canReadVerifications && <Link to="/trade/verifications">核销记录</Link>}{canReadLedger && <Link to="/governance/merchants">商家台账</Link>}{canReadSchedule && <Link to="/governance/schedule">排期查看</Link>}{canReadStaff && <Link to="/governance/staff">员工治理</Link>}</nav>
       {session && <span>运营 {session.operatorId} · 会话至 {session.expiresAt}</span>}
       {token && <button onClick={signOut}>退出</button>}
     </header>}
@@ -128,6 +147,10 @@ export function App() {
       <Route path="/trade/refunds/:refundOrderId" element={guard(<TradeRefundDetailPage key={location.pathname} client={tradeQuery} onAuthLost={signOut} />, 'refund.read')} />
       <Route path="/trade/verifications" element={guard(<TradeVerificationListPage client={tradeQuery} onAuthLost={signOut} />, 'order.verification-log.read')} />
       <Route path="/trade/verifications/:verificationId" element={guard(<TradeVerificationDetailPage key={location.pathname} client={tradeQuery} onAuthLost={signOut} />, 'order.verification-log.read')} />
+      <Route path="/governance/merchants" element={guard(<MerchantLedgerListPage client={merchantGovernance} onAuthLost={signOut} />, 'merchant.read')} />
+      <Route path="/governance/merchants/:merchantId" element={guard(<MerchantLedgerDetailPage key={location.pathname} client={merchantGovernance} onAuthLost={signOut} />, 'merchant.read')} />
+      <Route path="/governance/schedule" element={guard(<ScheduleViewPage client={scheduleView} onAuthLost={signOut} />, 'schedule.read')} />
+      <Route path="/governance/staff" element={guard(<StaffGovernancePage client={staffGovernance} onAuthLost={signOut} />, 'merchant.staff.read')} />
       <Route path="*" element={<main style={{ padding: 32 }}><h1>404 · 页面不存在</h1><p><Link to="/">返回工作台</Link></p></main>} />
     </Routes>
   </>;

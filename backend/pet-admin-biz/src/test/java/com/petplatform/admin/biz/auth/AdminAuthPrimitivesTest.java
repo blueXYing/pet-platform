@@ -69,7 +69,11 @@ class AdminAuthPrimitivesTest {
             "points.task.config.read", "points.task.config.write",
             // Contract-63 platform trade read slice (ADM-002/A-003, AUTH-001 matrix rows 7/8):
             // GET-only query enforcement points ship in the same slice.
-            "order.read", "order.status-log.read", "order.verification-log.read", "refund.read"),
+            "order.read", "order.status-log.read", "order.verification-log.read", "refund.read",
+            // Contract-64 platform governance read slice (ADM-001 gap slice): merchant.read
+            // (matrix row 3) + schedule.read/merchant.staff.read (PRD 6.2.5/6.2.6 read-only
+            // supervision, SSOT §29/§30); GET-only, no governance write action exists.
+            "merchant.read", "schedule.read", "merchant.staff.read"),
         AdminPermissionEvaluator.DEPLOYED_ACTIONS);
     assertEquals(AdminPermissionEvaluator.DEPLOYED_ACTIONS.stream().sorted().toList(),AdminPermissionEvaluator.evaluate(true,List.of("refund.retry"),AdminPermissionEvaluator.DEPLOYED_ACTIONS));
         assertEquals(List.of(),AdminPermissionEvaluator.evaluate(false,List.of("refund.retry"),AdminPermissionEvaluator.DEPLOYED_ACTIONS));

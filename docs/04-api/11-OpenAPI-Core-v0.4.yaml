@@ -13655,6 +13655,448 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/AdminTradeVerificationDetailEnvelope'
+  /admin/governance/merchants:
+    get:
+      tags:
+      - Admin-Governance
+      summary: 商家台账列表（merchant.read）
+      operationId: adminListGovernanceMerchants
+      x-implementation-status: IMPLEMENTED_DEFAULT_OFF
+      x-default-enabled: false
+      x-contract: 64-Admin-Governance-Contract-v0.1.md
+      x-assembly-switch: pet.admin.governance.http.enabled
+      x-route-party: OPS
+      x-audience: ADMIN_WEB
+      x-required-actions: [merchant.read]
+      description: 64号（HTTP10 §5.12）。四层状态+资质/签约事实只读台账；脱敏（手机号仅掩码、子商户号仅后 4 位）；dataScope 非 ALL 一律 403；固定排序 created_at DESC, id DESC。
+      security:
+      - bearerAuth: []
+      parameters:
+      - name: page
+        in: query
+        required: false
+        schema: {type: integer, minimum: 1, maximum: 10000, default: 1}
+      - name: pageSize
+        in: query
+        required: false
+        schema: {type: integer, minimum: 1, maximum: 100, default: 20}
+      - name: status
+        in: query
+        required: false
+        description: merchant.status 词汇（SQL06）。
+        schema: {type: string, enum: [APPLYING, ACTIVE, OFFLINE, FROZEN, CANCELED]}
+      - name: storeStatus
+        in: query
+        required: false
+        description: 按名下任一门店状态匹配。
+        schema: {type: string, enum: [ACTIVE, OFFLINE, FROZEN]}
+      - name: cityCode
+        in: query
+        required: false
+        schema: {type: string, minLength: 1, maxLength: 64}
+      - name: merchantTypeCode
+        in: query
+        required: false
+        schema: {type: string, minLength: 1, maxLength: 32}
+      - name: keyword
+        in: query
+        required: false
+        description: 2..64 字符，按商家名/名下门店名 LIKE。
+        schema: {type: string, minLength: 2, maxLength: 64}
+      - name: createdFrom
+        in: query
+        required: false
+        description: UTC，成对提供，跨度 ≤366 天。
+        schema: {type: string, format: date-time}
+      - name: createdTo
+        in: query
+        required: false
+        schema: {type: string, format: date-time}
+      responses:
+        '400': {$ref: '#/components/responses/BadRequest'}
+        '401': {$ref: '#/components/responses/Unauthorized'}
+        '403': {$ref: '#/components/responses/Forbidden'}
+        '503': {$ref: '#/components/responses/DependencyUnavailable'}
+        '200':
+          description: 成功
+          headers:
+            Cache-Control:
+              schema: {type: string, enum: [no-store]}
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AdminGovernanceMerchantPageEnvelope'
+  /admin/governance/merchants/{merchantId}:
+    get:
+      tags:
+      - Admin-Governance
+      summary: 商家台账详情（merchant.read）
+      operationId: adminGetGovernanceMerchant
+      x-implementation-status: IMPLEMENTED_DEFAULT_OFF
+      x-default-enabled: false
+      x-contract: 64-Admin-Governance-Contract-v0.1.md
+      x-assembly-switch: pet.admin.governance.http.enabled
+      x-route-party: OPS
+      x-audience: ADMIN_WEB
+      x-required-actions: [merchant.read]
+      description: 64号。档案+门店（无电话/坐标）+申请事实+签约事实（28号当前版本语义）；未知/越范围商家与 403 同形 404 防枚举；内核每次以 AdminResourceScope 重验。
+      security:
+      - bearerAuth: []
+      parameters:
+      - name: merchantId
+        in: path
+        required: true
+        schema: {$ref: '#/components/schemas/PublicId'}
+      responses:
+        '400': {$ref: '#/components/responses/BadRequest'}
+        '401': {$ref: '#/components/responses/Unauthorized'}
+        '403': {$ref: '#/components/responses/Forbidden'}
+        '404': {$ref: '#/components/responses/NotFound'}
+        '503': {$ref: '#/components/responses/DependencyUnavailable'}
+        '200':
+          description: 成功
+          headers:
+            Cache-Control:
+              schema: {type: string, enum: [no-store]}
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AdminGovernanceMerchantDetailEnvelope'
+  /admin/governance/merchants/{merchantId}/staff:
+    get:
+      tags:
+      - Admin-Governance
+      summary: 员工档案列表（只读）（merchant.staff.read）
+      operationId: adminListGovernanceMerchantStaff
+      x-implementation-status: IMPLEMENTED_DEFAULT_OFF
+      x-default-enabled: false
+      x-contract: 64-Admin-Governance-Contract-v0.1.md
+      x-assembly-switch: pet.admin.governance.http.enabled
+      x-route-party: OPS
+      x-audience: ADMIN_WEB
+      x-required-actions: [merchant.staff.read]
+      description: 64号。35号词汇只读监管（SSOT §30：运营无员工写动作）；手机号仅掩码；排序 staff_id ASC。
+      security:
+      - bearerAuth: []
+      parameters:
+      - name: merchantId
+        in: path
+        required: true
+        schema: {$ref: '#/components/schemas/PublicId'}
+      - name: storeId
+        in: query
+        required: false
+        schema: {$ref: '#/components/schemas/PublicId'}
+      - name: employmentStatus
+        in: query
+        required: false
+        schema: {type: string, enum: [ACTIVE, INACTIVE]}
+      - name: serviceEnabled
+        in: query
+        required: false
+        schema: {type: string, enum: ['true', 'false']}
+      responses:
+        '400': {$ref: '#/components/responses/BadRequest'}
+        '401': {$ref: '#/components/responses/Unauthorized'}
+        '403': {$ref: '#/components/responses/Forbidden'}
+        '404': {$ref: '#/components/responses/NotFound'}
+        '503': {$ref: '#/components/responses/DependencyUnavailable'}
+        '200':
+          description: 成功
+          headers:
+            Cache-Control:
+              schema: {type: string, enum: [no-store]}
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AdminGovernanceStaffPageEnvelope'
+  /admin/governance/merchants/{merchantId}/staff-members:
+    get:
+      tags:
+      - Admin-Governance
+      summary: 成员绑定列表（只读）（merchant.staff.read）
+      operationId: adminListGovernanceStaffMembers
+      x-implementation-status: IMPLEMENTED_DEFAULT_OFF
+      x-default-enabled: false
+      x-contract: 64-Admin-Governance-Contract-v0.1.md
+      x-assembly-switch: pet.admin.governance.http.enabled
+      x-route-party: OPS
+      x-audience: ADMIN_WEB
+      x-required-actions: [merchant.staff.read]
+      description: 64号。52/54号词汇只读监管；授权与回收以 grant 状态与动作集呈现；姓名/掩码手机号来自 CONFIRMED 邀请行（54号 §4 同源）。
+      security:
+      - bearerAuth: []
+      parameters:
+      - name: merchantId
+        in: path
+        required: true
+        schema: {$ref: '#/components/schemas/PublicId'}
+      - name: storeId
+        in: query
+        required: false
+        schema: {$ref: '#/components/schemas/PublicId'}
+      - name: status
+        in: query
+        required: false
+        description: 52号 member 状态词汇；REVOKED 随 D3 裁决才可能落行。
+        schema: {type: string, enum: [ENABLED, DISABLED, REVOKED]}
+      responses:
+        '400': {$ref: '#/components/responses/BadRequest'}
+        '401': {$ref: '#/components/responses/Unauthorized'}
+        '403': {$ref: '#/components/responses/Forbidden'}
+        '404': {$ref: '#/components/responses/NotFound'}
+        '503': {$ref: '#/components/responses/DependencyUnavailable'}
+        '200':
+          description: 成功
+          headers:
+            Cache-Control:
+              schema: {type: string, enum: [no-store]}
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AdminGovernanceStaffMemberPageEnvelope'
+  /admin/governance/merchants/{merchantId}/staff-members/invitations:
+    get:
+      tags:
+      - Admin-Governance
+      summary: 邀请记录列表（只读）（merchant.staff.read）
+      operationId: adminListGovernanceStaffInvitations
+      x-implementation-status: IMPLEMENTED_DEFAULT_OFF
+      x-default-enabled: false
+      x-contract: 64-Admin-Governance-Contract-v0.1.md
+      x-assembly-switch: pet.admin.governance.http.enabled
+      x-route-party: OPS
+      x-audience: ADMIN_WEB
+      x-required-actions: [merchant.staff.read]
+      description: 64号。54号邀请状态机只读投影；排序 id DESC（54号 §7 口径）；手机号仅掩码。
+      security:
+      - bearerAuth: []
+      parameters:
+      - name: merchantId
+        in: path
+        required: true
+        schema: {$ref: '#/components/schemas/PublicId'}
+      - name: storeId
+        in: query
+        required: false
+        schema: {$ref: '#/components/schemas/PublicId'}
+      - name: status
+        in: query
+        required: false
+        schema: {type: string, enum: [INVITED, CONFIRMED, CANCELED]}
+      responses:
+        '400': {$ref: '#/components/responses/BadRequest'}
+        '401': {$ref: '#/components/responses/Unauthorized'}
+        '403': {$ref: '#/components/responses/Forbidden'}
+        '404': {$ref: '#/components/responses/NotFound'}
+        '503': {$ref: '#/components/responses/DependencyUnavailable'}
+        '200':
+          description: 成功
+          headers:
+            Cache-Control:
+              schema: {type: string, enum: [no-store]}
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AdminGovernanceStaffInvitationPageEnvelope'
+  /admin/governance/schedule/windows:
+    get:
+      tags:
+      - Admin-Governance
+      summary: 服务时段分布（含占用）（schedule.read）
+      operationId: adminListGovernanceScheduleWindows
+      x-implementation-status: IMPLEMENTED_DEFAULT_OFF
+      x-default-enabled: false
+      x-contract: 64-Admin-Governance-Contract-v0.1.md
+      x-assembly-switch: pet.admin.governance.http.enabled
+      x-route-party: OPS
+      x-audience: ADMIN_WEB
+      x-required-actions: [schedule.read]
+      description: 64号（6.2.5 只读监管）。confirmedCount/tempLockedCount 与 53号 SOLD_OUT 口径同源（原窗有效 claim）；利用率由前端以 confirmedCount/configuredCapacity 呈现；运营不代商家改排期（写入=商家 53号面）。
+      security:
+      - bearerAuth: []
+      parameters:
+      - name: page
+        in: query
+        required: false
+        schema: {type: integer, minimum: 1, maximum: 10000, default: 1}
+      - name: pageSize
+        in: query
+        required: false
+        schema: {type: integer, minimum: 1, maximum: 100, default: 20}
+      - name: merchantId
+        in: query
+        required: false
+        schema: {$ref: '#/components/schemas/PublicId'}
+      - name: storeId
+        in: query
+        required: false
+        schema: {$ref: '#/components/schemas/PublicId'}
+      - name: serviceId
+        in: query
+        required: false
+        schema: {$ref: '#/components/schemas/PublicId'}
+      - name: windowKind
+        in: query
+        required: false
+        schema: {type: string, enum: [GENERAL, PICKUP, RETURN]}
+      - name: status
+        in: query
+        required: false
+        description: 53号三值词汇（SOLD_OUT 为系统派生态）。
+        schema: {type: string, enum: [OPEN, CLOSED, SOLD_OUT]}
+      - name: startFrom
+        in: query
+        required: false
+        description: UTC，按窗口 start_at，成对提供，跨度 ≤92 天。
+        schema: {type: string, format: date-time}
+      - name: startTo
+        in: query
+        required: false
+        schema: {type: string, format: date-time}
+      responses:
+        '400': {$ref: '#/components/responses/BadRequest'}
+        '401': {$ref: '#/components/responses/Unauthorized'}
+        '403': {$ref: '#/components/responses/Forbidden'}
+        '503': {$ref: '#/components/responses/DependencyUnavailable'}
+        '200':
+          description: 成功
+          headers:
+            Cache-Control:
+              schema: {type: string, enum: [no-store]}
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AdminGovernanceScheduleWindowPageEnvelope'
+  /admin/governance/schedule/staff-windows:
+    get:
+      tags:
+      - Admin-Governance
+      summary: 员工排班时段（只读）（schedule.read）
+      operationId: adminListGovernanceScheduleStaffWindows
+      x-implementation-status: IMPLEMENTED_DEFAULT_OFF
+      x-default-enabled: false
+      x-contract: 64-Admin-Governance-Contract-v0.1.md
+      x-assembly-switch: pet.admin.governance.http.enabled
+      x-route-party: OPS
+      x-audience: ADMIN_WEB
+      x-required-actions: [schedule.read]
+      description: 64号。staff_availability_window 无商家列，门店归属经 storeId 承载；不跨模块连商家表。
+      security:
+      - bearerAuth: []
+      parameters:
+      - name: page
+        in: query
+        required: false
+        schema: {type: integer, minimum: 1, maximum: 10000, default: 1}
+      - name: pageSize
+        in: query
+        required: false
+        schema: {type: integer, minimum: 1, maximum: 100, default: 20}
+      - name: storeId
+        in: query
+        required: false
+        schema: {$ref: '#/components/schemas/PublicId'}
+      - name: staffId
+        in: query
+        required: false
+        schema: {$ref: '#/components/schemas/PublicId'}
+      - name: status
+        in: query
+        required: false
+        schema: {type: string, enum: [AVAILABLE, CLOSED]}
+      - name: startFrom
+        in: query
+        required: false
+        description: UTC，成对提供，跨度 ≤92 天。
+        schema: {type: string, format: date-time}
+      - name: startTo
+        in: query
+        required: false
+        schema: {type: string, format: date-time}
+      responses:
+        '400': {$ref: '#/components/responses/BadRequest'}
+        '401': {$ref: '#/components/responses/Unauthorized'}
+        '403': {$ref: '#/components/responses/Forbidden'}
+        '503': {$ref: '#/components/responses/DependencyUnavailable'}
+        '200':
+          description: 成功
+          headers:
+            Cache-Control:
+              schema: {type: string, enum: [no-store]}
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AdminGovernanceScheduleStaffWindowPageEnvelope'
+  /admin/governance/schedule/reservations:
+    get:
+      tags:
+      - Admin-Governance
+      summary: 预约占用/锁定记录（只读）（schedule.read）
+      operationId: adminListGovernanceScheduleReservations
+      x-implementation-status: IMPLEMENTED_DEFAULT_OFF
+      x-default-enabled: false
+      x-contract: 64-Admin-Governance-Contract-v0.1.md
+      x-assembly-switch: pet.admin.governance.http.enabled
+      x-route-party: OPS
+      x-audience: ADMIN_WEB
+      x-required-actions: [schedule.read]
+      description: 64号。含接送 pickup/return 原始事实（返程 ≥上门+120 分钟的还原核查由运营人工比对，服务端不派生）；不携带用户身份，orderId 关联 63号 trade 面。
+      security:
+      - bearerAuth: []
+      parameters:
+      - name: page
+        in: query
+        required: false
+        schema: {type: integer, minimum: 1, maximum: 10000, default: 1}
+      - name: pageSize
+        in: query
+        required: false
+        schema: {type: integer, minimum: 1, maximum: 100, default: 20}
+      - name: merchantId
+        in: query
+        required: false
+        schema: {$ref: '#/components/schemas/PublicId'}
+      - name: storeId
+        in: query
+        required: false
+        schema: {$ref: '#/components/schemas/PublicId'}
+      - name: serviceId
+        in: query
+        required: false
+        schema: {$ref: '#/components/schemas/PublicId'}
+      - name: orderId
+        in: query
+        required: false
+        schema: {$ref: '#/components/schemas/PublicId'}
+      - name: status
+        in: query
+        required: false
+        description: EXPIRED/RELEASED 即 6.2.5 临时锁定超时释放记录。
+        schema: {type: string, enum: [TEMP_LOCKED, CONFIRMED, RELEASED, EXPIRED]}
+      - name: startFrom
+        in: query
+        required: false
+        description: UTC，按预约 start_at，成对提供，跨度 ≤92 天。
+        schema: {type: string, format: date-time}
+      - name: startTo
+        in: query
+        required: false
+        schema: {type: string, format: date-time}
+      responses:
+        '400': {$ref: '#/components/responses/BadRequest'}
+        '401': {$ref: '#/components/responses/Unauthorized'}
+        '403': {$ref: '#/components/responses/Forbidden'}
+        '503': {$ref: '#/components/responses/DependencyUnavailable'}
+        '200':
+          description: 成功
+          headers:
+            Cache-Control:
+              schema: {type: string, enum: [no-store]}
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AdminGovernanceScheduleReservationPageEnvelope'
 components:
   securitySchemes:
     bearerAuth:
@@ -23965,6 +24407,298 @@ components:
         properties:
           data:
             $ref: '#/components/schemas/AdminTradeVerificationDetail'
+    AdminGovernanceMerchantSummary:
+      type: object
+      additionalProperties: false
+      required: [merchantId, merchantName, status, merchantTypeCode, cityCode, storeCount, activeStoreCount, applicationStatus, signingStatus, providerMerchantNoMasked, createdAt]
+      properties:
+        merchantId: {$ref: '#/components/schemas/PublicId'}
+        merchantName: {type: string, minLength: 1, maxLength: 128}
+        status: {type: string, enum: [APPLYING, ACTIVE, OFFLINE, FROZEN, CANCELED]}
+        merchantTypeCode: {type: string, nullable: true, minLength: 1, maxLength: 32}
+        cityCode: {type: string, nullable: true, minLength: 1, maxLength: 64}
+        storeCount: {type: integer, minimum: 0}
+        activeStoreCount: {type: integer, minimum: 0}
+        applicationStatus: {type: string, nullable: true, enum: [DRAFT, REVIEWING, APPROVED, REJECTED]}
+        signingStatus: {type: string, nullable: true, enum: [SIGNED, NOT_SIGNED]}
+        providerMerchantNoMasked: {type: string, nullable: true, maxLength: 8, description: '****+后4位；无签约标识为 null。'}
+        createdAt: {$ref: '#/components/schemas/AuthTimestamp'}
+    AdminGovernanceMerchantDetail:
+      allOf:
+      - $ref: '#/components/schemas/AdminGovernanceMerchantSummary'
+      - type: object
+        additionalProperties: false
+        required: [stores, application, signing]
+        properties:
+          stores:
+            type: array
+            items:
+              type: object
+              additionalProperties: false
+              required: [storeId, storeName, address, status]
+              properties:
+                storeId: {$ref: '#/components/schemas/PublicId'}
+                storeName: {type: string, minLength: 1, maxLength: 128}
+                address: {type: string, minLength: 1, maxLength: 255}
+                status: {type: string, enum: [ACTIVE, OFFLINE, FROZEN]}
+          application:
+            nullable: true
+            type: object
+            additionalProperties: false
+            required: [applicationId, applicationNo, status, submittedAt, reviewedAt]
+            properties:
+              applicationId: {$ref: '#/components/schemas/PublicId'}
+              applicationNo: {type: string, nullable: true, minLength: 1, maxLength: 22}
+              status: {type: string, enum: [DRAFT, REVIEWING, APPROVED, REJECTED]}
+              submittedAt: {$ref: '#/components/schemas/AuthTimestamp'}
+              reviewedAt: {$ref: '#/components/schemas/AuthTimestamp'}
+          signing:
+            nullable: true
+            type: object
+            additionalProperties: false
+            required: [signingStatus, agreementVersion, acceptedAt]
+            properties:
+              signingStatus: {type: string, enum: [SIGNED, NOT_SIGNED]}
+              agreementVersion: {type: string, minLength: 1, maxLength: 64}
+              acceptedAt: {$ref: '#/components/schemas/AuthTimestamp'}
+
+    AdminGovernanceStaffProfile:
+      type: object
+      additionalProperties: false
+      required: [staffId, storeId, staffName, phoneMasked, employmentStatus, serviceEnabled, version, createdAt, updatedAt]
+      properties:
+        staffId: {$ref: '#/components/schemas/PublicId'}
+        storeId: {$ref: '#/components/schemas/PublicId'}
+        staffName: {type: string, minLength: 1, maxLength: 64}
+        phoneMasked: {type: string, nullable: true, description: '1xx****xxxx 掩码；无手机号事实为 null。'}
+        employmentStatus: {type: string, enum: [ACTIVE, INACTIVE]}
+        serviceEnabled: {type: boolean}
+        version: {type: string, pattern: '^(0|[1-9][0-9]{0,17})$'}
+        createdAt: {$ref: '#/components/schemas/AuthTimestamp'}
+        updatedAt: {$ref: '#/components/schemas/AuthTimestamp'}
+
+    AdminGovernanceStaffMember:
+      type: object
+      additionalProperties: false
+      required: [memberId, storeId, status, memberName, phoneMasked, grantedActions, grantRevoked, memberVersion, grantVersion, createdAt, updatedAt]
+      properties:
+        memberId: {$ref: '#/components/schemas/PublicId'}
+        storeId: {$ref: '#/components/schemas/PublicId'}
+        status: {type: string, enum: [ENABLED, DISABLED, REVOKED]}
+        memberName: {type: string, nullable: true, maxLength: 64}
+        phoneMasked: {type: string, nullable: true}
+        grantedActions:
+          type: array
+          items: {type: string, minLength: 1, maxLength: 100}
+        grantRevoked: {type: boolean}
+        memberVersion: {type: string, pattern: '^(0|[1-9][0-9]{0,17})$'}
+        grantVersion: {type: string, nullable: true, pattern: '^(0|[1-9][0-9]{0,17})$'}
+        createdAt: {$ref: '#/components/schemas/AuthTimestamp'}
+        updatedAt: {$ref: '#/components/schemas/AuthTimestamp'}
+
+    AdminGovernanceStaffInvitation:
+      type: object
+      additionalProperties: false
+      required: [invitationId, storeId, memberName, phoneMasked, status, grantedActions, invitedBy, invitedAt, updatedAt]
+      properties:
+        invitationId: {$ref: '#/components/schemas/PublicId'}
+        storeId: {$ref: '#/components/schemas/PublicId'}
+        memberName: {type: string, minLength: 1, maxLength: 64}
+        phoneMasked: {type: string, description: '1xx****xxxx 掩码（54号注册手机号恒脱敏）。'}
+        status: {type: string, enum: [INVITED, CONFIRMED, CANCELED]}
+        grantedActions:
+          type: array
+          items: {type: string, minLength: 1, maxLength: 100}
+        invitedBy: {$ref: '#/components/schemas/PublicId'}
+        invitedAt: {$ref: '#/components/schemas/AuthTimestamp'}
+        updatedAt: {$ref: '#/components/schemas/AuthTimestamp'}
+
+    AdminGovernanceScheduleWindow:
+      type: object
+      additionalProperties: false
+      required: [windowId, merchantId, storeId, serviceId, windowKind, startAt, endAt, configuredCapacity, status, version, updatedAt, confirmedCount, tempLockedCount]
+      properties:
+        windowId: {$ref: '#/components/schemas/PublicId'}
+        merchantId: {$ref: '#/components/schemas/PublicId'}
+        storeId: {$ref: '#/components/schemas/PublicId'}
+        serviceId: {$ref: '#/components/schemas/PublicId'}
+        windowKind: {type: string, enum: [GENERAL, PICKUP, RETURN]}
+        startAt: {$ref: '#/components/schemas/AuthTimestamp'}
+        endAt: {$ref: '#/components/schemas/AuthTimestamp'}
+        configuredCapacity: {type: integer, minimum: 0}
+        status: {type: string, enum: [OPEN, CLOSED, SOLD_OUT]}
+        version: {type: string, pattern: '^(0|[1-9][0-9]{0,17})$'}
+        updatedAt: {$ref: '#/components/schemas/AuthTimestamp'}
+        confirmedCount: {type: integer, minimum: 0}
+        tempLockedCount: {type: integer, minimum: 0}
+
+    AdminGovernanceScheduleStaffWindow:
+      type: object
+      additionalProperties: false
+      required: [windowId, storeId, staffId, startAt, endAt, status, version, updatedAt]
+      properties:
+        windowId: {$ref: '#/components/schemas/PublicId'}
+        storeId: {$ref: '#/components/schemas/PublicId'}
+        staffId: {$ref: '#/components/schemas/PublicId'}
+        startAt: {$ref: '#/components/schemas/AuthTimestamp'}
+        endAt: {$ref: '#/components/schemas/AuthTimestamp'}
+        status: {type: string, enum: [AVAILABLE, CLOSED]}
+        version: {type: string, pattern: '^(0|[1-9][0-9]{0,17})$'}
+        updatedAt: {$ref: '#/components/schemas/AuthTimestamp'}
+
+    AdminGovernanceScheduleReservation:
+      type: object
+      additionalProperties: false
+      required: [reservationId, orderId, storeId, serviceId, fulfillmentType, startAt, endAt, pickupStartAt, returnStartAt, status, lockExpireAt, capacitySnapshot, qualifiedStaffCountSnapshot, createdAt]
+      properties:
+        reservationId: {$ref: '#/components/schemas/PublicId'}
+        orderId: {$ref: '#/components/schemas/PublicId'}
+        storeId: {$ref: '#/components/schemas/PublicId'}
+        serviceId: {$ref: '#/components/schemas/PublicId'}
+        fulfillmentType: {type: string, enum: [IN_STORE, PICKUP_DELIVERY]}
+        startAt: {$ref: '#/components/schemas/AuthTimestamp'}
+        endAt: {$ref: '#/components/schemas/AuthTimestamp'}
+        pickupStartAt: {allOf: [{$ref: '#/components/schemas/AuthTimestamp'}], nullable: true}
+        returnStartAt: {allOf: [{$ref: '#/components/schemas/AuthTimestamp'}], nullable: true}
+        status: {type: string, enum: [TEMP_LOCKED, CONFIRMED, RELEASED, EXPIRED]}
+        lockExpireAt: {allOf: [{$ref: '#/components/schemas/AuthTimestamp'}], nullable: true}
+        capacitySnapshot: {type: integer, minimum: 0}
+        qualifiedStaffCountSnapshot: {type: integer, minimum: 0}
+        createdAt: {$ref: '#/components/schemas/AuthTimestamp'}
+
+    AdminGovernanceMerchantPageEnvelope:
+      allOf:
+      - $ref: '#/components/schemas/BaseEnvelope'
+      - type: object
+        properties:
+          data:
+            type: object
+            additionalProperties: false
+            required: [page, pageSize, total, items]
+            properties:
+              page: {type: integer}
+              pageSize: {type: integer}
+              total: {type: integer}
+              items:
+                type: array
+                items:
+                  $ref: '#/components/schemas/AdminGovernanceMerchantSummary'
+
+    AdminGovernanceMerchantDetailEnvelope:
+      allOf:
+      - $ref: '#/components/schemas/BaseEnvelope'
+      - type: object
+        properties:
+          data:
+            $ref: '#/components/schemas/AdminGovernanceMerchantDetail'
+
+    AdminGovernanceStaffPageEnvelope:
+      allOf:
+      - $ref: '#/components/schemas/BaseEnvelope'
+      - type: object
+        properties:
+          data:
+            type: object
+            additionalProperties: false
+            required: [page, pageSize, total, items]
+            properties:
+              page: {type: integer}
+              pageSize: {type: integer}
+              total: {type: integer}
+              items:
+                type: array
+                items:
+                  $ref: '#/components/schemas/AdminGovernanceStaffProfile'
+
+    AdminGovernanceStaffMemberPageEnvelope:
+      allOf:
+      - $ref: '#/components/schemas/BaseEnvelope'
+      - type: object
+        properties:
+          data:
+            type: object
+            additionalProperties: false
+            required: [page, pageSize, total, items]
+            properties:
+              page: {type: integer}
+              pageSize: {type: integer}
+              total: {type: integer}
+              items:
+                type: array
+                items:
+                  $ref: '#/components/schemas/AdminGovernanceStaffMember'
+
+    AdminGovernanceStaffInvitationPageEnvelope:
+      allOf:
+      - $ref: '#/components/schemas/BaseEnvelope'
+      - type: object
+        properties:
+          data:
+            type: object
+            additionalProperties: false
+            required: [page, pageSize, total, items]
+            properties:
+              page: {type: integer}
+              pageSize: {type: integer}
+              total: {type: integer}
+              items:
+                type: array
+                items:
+                  $ref: '#/components/schemas/AdminGovernanceStaffInvitation'
+
+    AdminGovernanceScheduleWindowPageEnvelope:
+      allOf:
+      - $ref: '#/components/schemas/BaseEnvelope'
+      - type: object
+        properties:
+          data:
+            type: object
+            additionalProperties: false
+            required: [page, pageSize, total, items]
+            properties:
+              page: {type: integer}
+              pageSize: {type: integer}
+              total: {type: integer}
+              items:
+                type: array
+                items:
+                  $ref: '#/components/schemas/AdminGovernanceScheduleWindow'
+
+    AdminGovernanceScheduleStaffWindowPageEnvelope:
+      allOf:
+      - $ref: '#/components/schemas/BaseEnvelope'
+      - type: object
+        properties:
+          data:
+            type: object
+            additionalProperties: false
+            required: [page, pageSize, total, items]
+            properties:
+              page: {type: integer}
+              pageSize: {type: integer}
+              total: {type: integer}
+              items:
+                type: array
+                items:
+                  $ref: '#/components/schemas/AdminGovernanceScheduleStaffWindow'
+
+    AdminGovernanceScheduleReservationPageEnvelope:
+      allOf:
+      - $ref: '#/components/schemas/BaseEnvelope'
+      - type: object
+        properties:
+          data:
+            type: object
+            additionalProperties: false
+            required: [page, pageSize, total, items]
+            properties:
+              page: {type: integer}
+              pageSize: {type: integer}
+              total: {type: integer}
+              items:
+                type: array
+                items:
+                  $ref: '#/components/schemas/AdminGovernanceScheduleReservation'
   examples:
     AuthApprovedExample1:
       summary: Accepted AUTH example; fictional data, no Provider success claim

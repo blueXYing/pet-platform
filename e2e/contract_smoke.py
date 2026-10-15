@@ -646,6 +646,39 @@ ADMIN_TRADE_OPERATIONS = {
 }
 
 
+# Contract 64 (2026-10-15, ADM-001 gap slice / A-002 phase 2): platform governance read
+# face. Eight GET-only operations over the merchant and schedule kernels; every error
+# response reuses the shared ErrorEnvelope components. No write route exists in this
+# family: merchant disable/freeze (HTTP10 section 5.6) and every staff disposition stay
+# outside it (SSOT section 30 grants the operator no staff write action).
+ADMIN_GOVERNANCE_OPERATIONS = {
+    'adminListGovernanceMerchants': (
+        'get', '/admin/governance/merchants',
+        ('200', '400', '401', '403', '503')),
+    'adminGetGovernanceMerchant': (
+        'get', '/admin/governance/merchants/{merchantId}',
+        ('200', '400', '401', '403', '404', '503')),
+    'adminListGovernanceMerchantStaff': (
+        'get', '/admin/governance/merchants/{merchantId}/staff',
+        ('200', '400', '401', '403', '404', '503')),
+    'adminListGovernanceStaffMembers': (
+        'get', '/admin/governance/merchants/{merchantId}/staff-members',
+        ('200', '400', '401', '403', '404', '503')),
+    'adminListGovernanceStaffInvitations': (
+        'get', '/admin/governance/merchants/{merchantId}/staff-members/invitations',
+        ('200', '400', '401', '403', '404', '503')),
+    'adminListGovernanceScheduleWindows': (
+        'get', '/admin/governance/schedule/windows',
+        ('200', '400', '401', '403', '503')),
+    'adminListGovernanceScheduleStaffWindows': (
+        'get', '/admin/governance/schedule/staff-windows',
+        ('200', '400', '401', '403', '503')),
+    'adminListGovernanceScheduleReservations': (
+        'get', '/admin/governance/schedule/reservations',
+        ('200', '400', '401', '403', '503')),
+}
+
+
 def check_order_write(spec, operation, method, path):
     name = operation['operationId']
     expected_method, expected_path, required_codes = ORDER_WRITE_OPERATIONS[name]
@@ -929,6 +962,51 @@ TRADE_ROUTE_ACTIONS = {
     'adminListTradeVerifications': 'order.verification-log.read',
     'adminGetTradeVerification': 'order.verification-log.read',
 }
+
+GOVERNANCE_ROUTE_ACTIONS = {
+    'adminListGovernanceMerchants': 'merchant.read',
+    'adminGetGovernanceMerchant': 'merchant.read',
+    'adminListGovernanceMerchantStaff': 'merchant.staff.read',
+    'adminListGovernanceStaffMembers': 'merchant.staff.read',
+    'adminListGovernanceStaffInvitations': 'merchant.staff.read',
+    'adminListGovernanceScheduleWindows': 'schedule.read',
+    'adminListGovernanceScheduleStaffWindows': 'schedule.read',
+    'adminListGovernanceScheduleReservations': 'schedule.read',
+}
+
+GOVERNANCE_ENVELOPES = {
+    'adminListGovernanceMerchants': 'AdminGovernanceMerchantPageEnvelope',
+    'adminGetGovernanceMerchant': 'AdminGovernanceMerchantDetailEnvelope',
+    'adminListGovernanceMerchantStaff': 'AdminGovernanceStaffPageEnvelope',
+    'adminListGovernanceStaffMembers': 'AdminGovernanceStaffMemberPageEnvelope',
+    'adminListGovernanceStaffInvitations': 'AdminGovernanceStaffInvitationPageEnvelope',
+    'adminListGovernanceScheduleWindows': 'AdminGovernanceScheduleWindowPageEnvelope',
+    'adminListGovernanceScheduleStaffWindows': 'AdminGovernanceScheduleStaffWindowPageEnvelope',
+    'adminListGovernanceScheduleReservations': 'AdminGovernanceScheduleReservationPageEnvelope',
+}
+
+
+def check_admin_governance(spec, operation, method, path):
+    name = operation['operationId']
+    expected_method, expected_path, required_codes = ADMIN_GOVERNANCE_OPERATIONS[name]
+    assert (method, path) == (expected_method, expected_path), f'Governance operation moved: {name}'
+    assert operation.get('security') == [{'bearerAuth': []}], f'Governance security changed: {name}'
+    assert operation.get('x-implementation-status') == 'IMPLEMENTED_DEFAULT_OFF', f'Governance status changed: {name}'
+    assert operation.get('x-default-enabled') is False, f'Governance must stay default off: {name}'
+    assert operation.get('x-contract') == '64-Admin-Governance-Contract-v0.1.md', f'Governance authority changed: {name}'
+    assert operation.get('x-assembly-switch') == 'pet.admin.governance.http.enabled', f'Governance switch changed: {name}'
+    assert operation.get('x-route-party') == 'OPS' and operation.get('x-audience') == 'ADMIN_WEB', f'Governance identity changed: {name}'
+    assert operation.get('x-required-actions') == [GOVERNANCE_ROUTE_ACTIONS[name]], f'Governance action gate changed: {name}'
+    assert 'requestBody' not in operation, f'Governance must stay bodyless: {name}'
+    responses = operation['responses']
+    assert set(responses) == set(required_codes), f'Governance response surface changed: {name}'
+    for code in required_codes:
+        if code != '200':
+            assert dereference(spec, responses[code])['content']['application/json']['schema']                 == {'$ref': '#/components/schemas/ErrorEnvelope'}, f'Governance error envelope changed: {name} {code}'
+    success = responses['200']
+    cache = success['headers']['Cache-Control']['schema']
+    assert cache == {'type': 'string', 'enum': ['no-store']}, f'Governance caching changed: {name}'
+    assert success['content'] == {'application/json': {'schema': {'$ref':             '#/components/schemas/' + GOVERNANCE_ENVELOPES[name]}}}, f'Governance success envelope changed: {name}'
 
 
 def check_staff_invitation_list(spec, operation, method, path):
@@ -1668,6 +1746,8 @@ def check(spec):
                 check_baike_operations(spec, operation, method, path)
             if operation_id in ADMIN_TRADE_OPERATIONS:
                 check_admin_trade(spec, operation, method, path)
+            if operation_id in ADMIN_GOVERNANCE_OPERATIONS:
+                check_admin_governance(spec, operation, method, path)
 
             if method in {'post', 'put', 'patch', 'delete'}:
                 assert {'$ref': '#/components/parameters/RequestId'} in parameters, f'Missing request ID: {operation_id}'
@@ -1683,7 +1763,7 @@ def check(spec):
     assert legacy_writes == 11, 'Legacy write surface changed'
     assert legacy_creates == LEGACY_CREATES, 'Legacy create surface changed'
 
-    assert operations == LEGACY_OPERATIONS.keys() | AUTH_OPERATIONS.keys() | MERCHANT_OPERATIONS.keys() | APPLICATION_OPERATIONS.keys() | PRIVATE_ASSET_OPERATIONS.keys() | SERVICE_CATALOG_OPERATIONS.keys() | STORE_CATALOG_OPERATIONS.keys() | SERVICE_WRITE_OPERATIONS.keys() | SCHEDULE_AVAILABILITY_OPERATIONS.keys() | SCHEDULE_WRITE_OPERATIONS.keys() | CREDENTIAL_OPERATIONS.keys() | AFTERSALE_OPERATIONS.keys() | COUPON_POINTS_READ_OPERATIONS.keys() | VERIFICATION_HTTP_OPERATIONS.keys() | NOTIFICATION_PREFERENCE_OPERATIONS.keys() | STAFF_INVITATION_LIST_OPERATIONS.keys() | ORDER_WRITE_OPERATIONS.keys() | REFUND_HTTP_OPERATIONS.keys() | MERCHANT_ORDER_LIST_OPERATIONS.keys() | RESCHEDULE_HTTP_OPERATIONS.keys() | REVIEW_HTTP_OPERATIONS.keys() | REVIEW_APPEAL_HTTP_OPERATIONS.keys() | MERCHANT_REFUND_HTTP_OPERATIONS.keys() | FAVTRACK_HTTP_OPERATIONS.keys() | ADDRESS_OPERATIONS.keys() | POINTS_TASK_OPERATIONS.keys() | BAIKE_OPERATIONS.keys() | ADMIN_TRADE_OPERATIONS.keys(), 'Unexpected or missing reviewed operations'
+    assert operations == LEGACY_OPERATIONS.keys() | AUTH_OPERATIONS.keys() | MERCHANT_OPERATIONS.keys() | APPLICATION_OPERATIONS.keys() | PRIVATE_ASSET_OPERATIONS.keys() | SERVICE_CATALOG_OPERATIONS.keys() | STORE_CATALOG_OPERATIONS.keys() | SERVICE_WRITE_OPERATIONS.keys() | SCHEDULE_AVAILABILITY_OPERATIONS.keys() | SCHEDULE_WRITE_OPERATIONS.keys() | CREDENTIAL_OPERATIONS.keys() | AFTERSALE_OPERATIONS.keys() | COUPON_POINTS_READ_OPERATIONS.keys() | VERIFICATION_HTTP_OPERATIONS.keys() | NOTIFICATION_PREFERENCE_OPERATIONS.keys() | STAFF_INVITATION_LIST_OPERATIONS.keys() | ORDER_WRITE_OPERATIONS.keys() | REFUND_HTTP_OPERATIONS.keys() | MERCHANT_ORDER_LIST_OPERATIONS.keys() | RESCHEDULE_HTTP_OPERATIONS.keys() | REVIEW_HTTP_OPERATIONS.keys() | REVIEW_APPEAL_HTTP_OPERATIONS.keys() | MERCHANT_REFUND_HTTP_OPERATIONS.keys() | FAVTRACK_HTTP_OPERATIONS.keys() | ADDRESS_OPERATIONS.keys() | POINTS_TASK_OPERATIONS.keys() | BAIKE_OPERATIONS.keys() | ADMIN_TRADE_OPERATIONS.keys() | ADMIN_GOVERNANCE_OPERATIONS.keys(), 'Unexpected or missing reviewed operations'
 
     schemes = spec['components']['securitySchemes']
     assert schemes['bearerAuth']['type'] == 'http' and schemes['bearerAuth']['scheme'] == 'bearer'
@@ -1749,6 +1829,7 @@ def check(spec):
             'orderWriteOperations': len(operations & ORDER_WRITE_OPERATIONS.keys()),
             'addressOperations': len(operations & ADDRESS_OPERATIONS.keys()),
             'adminTradeOperations': len(operations & ADMIN_TRADE_OPERATIONS.keys()),
+            'adminGovernanceOperations': len(operations & ADMIN_GOVERNANCE_OPERATIONS.keys()),
             'resolvedRefs': len(refs), 'stringIdProperties': ids}
 
 

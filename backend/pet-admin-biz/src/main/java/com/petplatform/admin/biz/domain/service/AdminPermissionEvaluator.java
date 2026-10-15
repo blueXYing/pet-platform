@@ -20,6 +20,10 @@ public final class AdminPermissionEvaluator {
    * The four trade codes are registered on behalf of the contract-63 platform trade read slice
    * (ADM-002/A-003, AUTH-001 RBAC proposal matrix rows 7/8): order.read, order.status-log.read,
    * order.verification-log.read, refund.read — GET-only reads; no trade write action exists.
+   * The three governance codes are registered on behalf of the contract-64 platform governance
+   * read slice (ADM-001 gap / A-002 phase 2): merchant.read (AUTH-001 matrix row 3) and
+   * schedule.read / merchant.staff.read (PRD 6.2.5/6.2.6 read-only supervision, SSOT §29/§30;
+   * proposed codes disclosed in contract 64 — no governance write action exists).
    */
   public static final Set<String> DEPLOYED_ACTIONS =
       Set.of("merchant.application.read", "merchant.application.decide",
@@ -27,7 +31,8 @@ public final class AdminPermissionEvaluator {
           "service.force.offline", "aftersale.read", "aftersale.handle", "aftersale.decide",
           "review.appeal.read", "review.appeal.decide",
           "points.task.config.read", "points.task.config.write",
-          "order.read", "order.status-log.read", "order.verification-log.read", "refund.read");
+          "order.read", "order.status-log.read", "order.verification-log.read", "refund.read",
+          "merchant.read", "schedule.read", "merchant.staff.read");
 
   public static List<String> evaluate(
       boolean superAdmin, Collection<String> grants, Set<String> deployed) {
