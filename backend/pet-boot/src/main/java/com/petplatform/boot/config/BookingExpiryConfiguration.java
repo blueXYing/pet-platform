@@ -48,8 +48,11 @@ public class BookingExpiryConfiguration {
     @Bean OrderExpiryApi orderExpiryApi(DataSource source,SnowflakeIdGenerator ids,
             ScheduleCapacityGuardApi guard,ReservationExpiryApi reservations,
             BookingPaymentExposureApi payments,BookingCouponExposureApi coupons,
-            ObjectProvider<PaymentExpiryCoordinationApi> coordination) {
-        return new OrderExpiryApiImpl(source,ids,guard,reservations,payments,coupons,coordination.getIfAvailable());
+            ObjectProvider<PaymentExpiryCoordinationApi> coordination,
+            ObjectProvider<com.petplatform.coupon.api.command.CouponCommandApi> couponCommands) {
+        // Contract 61: close releases the frozen coupon when the lifecycle switch is on.
+        return new OrderExpiryApiImpl(source,ids,guard,reservations,payments,coupons,
+                coordination.getIfAvailable(),couponCommands.getIfAvailable());
     }
     @Bean
     @ConditionalOnProperty(prefix="pet.order.expiry.worker",name="enabled",havingValue="true")

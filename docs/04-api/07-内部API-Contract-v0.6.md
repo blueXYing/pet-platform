@@ -1091,6 +1091,11 @@ public interface CouponQueryApi {
 
 ### 12.2 CouponCommandApi
 
+> **实现状态（2026-10-14，61 号券生命周期切片）**：已实现（pet-coupon-api `CouponCommandApi` +
+> pet-coupon-biz `CouponCommandApiImpl`，冻结/消费/释放内联于 ORDER 既有 guard 事务，幂等台账
+> `CPN:FREEZE|CONSUME|RELEASE:{orderId}`；命令/结果 record 形状以 61 号 §3-§5 为准）。装配开关
+> `pet.coupon.lifecycle.enabled` 默认 false，未装配时 38 号内核维持"券冻结提供器未实现"503 失败关闭。
+
 ```java
 public interface CouponCommandApi {
 

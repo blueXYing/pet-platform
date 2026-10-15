@@ -1,5 +1,6 @@
 import { ApiError } from '../../shared/request'
 import { ConsumerApi, id } from '../../shared/consumer-api'
+import { decodeCouponPage, type CouponView } from '../coupon-points/model'
 import {
   availabilityQuery, buildOrderRequest, decodeAvailability, decodeCreateOrderReceipt, decodePaymentReceipt,
   PAYMENT_CHANNEL, type AvailabilityView, type BookingDeps, type BookingDraft,
@@ -29,6 +30,16 @@ export class RealBookingRepository implements BookingDeps {
   async availability(serviceId: string, storeId: string, date: string): Promise<AvailabilityView> {
     const query = availabilityQuery(serviceId, storeId, date)
     return this.api.request({ method: 'GET', path: query.path, data: query.data }, decodeAvailability)
+  }
+  /**
+   * 61号选券入口展示源：复用 §3.15.1 我的优惠券 AVAILABLE 读面（服务端权威过滤本人可用券；
+   * FROZEN/RISK_FROZEN 任何桶永不返回）。只取首页 50 张作展示提示，最终资格以冻结判定为准。
+   */
+  async availableCoupons(): Promise<readonly CouponView[]> {
+    const page = await this.api.request(
+      { method: 'GET', path: '/api/v1/c/coupons', data: { status: 'AVAILABLE', page: 1, pageSize: 50 } },
+      decodeCouponPage)
+    return page.items
   }
   async create(draft: BookingDraft): Promise<CreateOrderReceipt> {
     const slot = ORDER_CREATE_SLOT

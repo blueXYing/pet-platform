@@ -22,6 +22,10 @@
             <artifactId>pet-event-api</artifactId>
         </dependency>
         <dependency>
+            <groupId>com.petplatform</groupId>
+            <artifactId>pet-event-core</artifactId>
+        </dependency>
+        <dependency>
             <groupId>com.fasterxml.jackson.core</groupId>
             <artifactId>jackson-databind</artifactId>
         </dependency>

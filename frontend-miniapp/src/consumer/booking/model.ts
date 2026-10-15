@@ -18,11 +18,15 @@
 // - POST /api/v1/c/orders/{orderId}/payments（§3.6）：请求体固定 {channel:'WECHAT_MINI_PROGRAM'}
 //   （V1 不展示支付方式选择）；回执 paymentId/paymentNo/channel/wechatPayParameters 五键。
 //   支付渠道为无正式渠道参数的沙箱态（40号）：回执如实呈现，不虚构支付成功、不调起收银台。
-// 边界（PR 登记）：优惠券选择（couponInstanceId）不在本切片，请求体一律不携带该键；
+// 优惠券选择（61号券生命周期切片解锁）：BookingSheet 从 §3.15.1 AVAILABLE 读面取本人可用券做
+// 展示提示，couponInstanceId 非空才随 CreateOrderRequest 提交；资格与折后应付以服务端冻结
+// 判定为准（409 COUPON_NOT_AVAILABLE 按 23号 retire 语义释放槽位去券重选）。
+// 边界（既有 PR 登记）：
 // 接送履约已随 36号公开选窗字段同步切片解锁（PICKUP_SELECTION_ENABLED=true，#128 失败关闭
 // 注记移除）；本切片仍不发送 kind 查询参数。
 
 import { ApiError } from '../../shared/request'
+import type { CouponView } from '../coupon-points/model'
 import { displayOrderStatuses, displayStatusLabels, statusVariant, type DisplayOrderStatus } from '../orders/model'
 
 // ---- §3.4 可预约时段（严格 exact-key 解码，失败关闭） ----
@@ -198,6 +202,28 @@ export function fulfillmentModes(current: FulfillmentKind): readonly Fulfillment
   ]
 }
 
+// ---- 61号 下单选券（展示提示；资格以冻结时服务端判定为准） ----
+
+/** §3.15.1 读面挑出的可用券选项：仅 AVAILABLE、门槛（如有）不超过当前服务价，最优抵扣在前。 */
+export function couponOptions(coupons: readonly CouponView[], salePrice: string): readonly CouponView[] {
+  const price = Number(salePrice)
+  return coupons
+    .filter(coupon => coupon.status === 'AVAILABLE'
+      && coupon.amountOff !== null
+      && Number(coupon.amountOff) > 0
+      && Number(coupon.amountOff) < price
+      && (coupon.thresholdAmount === null || Number(coupon.thresholdAmount) <= price))
+    .sort((left, right) => Number(right.amountOff) - Number(left.amountOff))
+}
+
+/** 折后应付展示串（两位小数）；券不可产生正数应付时返回 null（冻结会被服务端 409 拒绝）。 */
+export function discountedAmount(salePrice: string, coupon: CouponView | null): string | null {
+  if (coupon === null || coupon.amountOff === null) return null
+  const payable = Number(salePrice) - Number(coupon.amountOff)
+  if (!(payable > 0)) return null
+  return payable.toFixed(2)
+}
+
 /** 预约半屏弹层标题（690:4506 原稿头部为「预约上门」；到店履约按现有文案体系适配为
  *  「到店预约」，展示值由模块层唯一给出，弹层与直连页共用）。 */
 export function bookingSheetTitle(fulfillmentType: FulfillmentKind): string {
@@ -213,6 +239,8 @@ export type BookingDraft = Readonly<{
   selectedReturnWindowId: string | null
   serviceAddress: string
   remark: string
+  // 61号：所选平台券实例（§3.15.1 读面挑出）；null = 不使用优惠。
+  couponInstanceId: string | null
 }>
 /** 接送硬规则（§3.5 强校验 + SSOT）：returnStart >= pickupStart + 120 分钟（C 端置灰联动）。 */
 export function pickupReturnIntervalInvalid(pickupStart: string, returnStart: string): boolean {
@@ -227,7 +255,7 @@ export function returnCandidates(items: readonly AvailabilityItem[], pickupStart
   return items.filter(item => item.kind === 'RETURN' && !pickupReturnIntervalInvalid(pickupStart, item.start))
 }
 export type BookingFormError = 'store' | 'service' | 'pet' | 'window' | 'pickup' | 'return' | 'interval'
-  | 'selection' | 'address' | 'remark'
+  | 'selection' | 'address' | 'remark' | 'coupon'
 /** 草稿里的时刻值按契约词法校验（复用解码器口径；非法值按表单错误呈现，不抛出）。 */
 const isInstantLike = (value: string): boolean => {
   try { offsetInstant(value); return true } catch { return false }
@@ -245,6 +273,7 @@ export const bookingFormErrorLabels: Readonly<Record<BookingFormError, string>> 
   selection: '所选时段暂无选窗信息（排期选窗装配未开放），请稍后重试或选择到店服务',
   address: '请填写接送服务地址（省市区＋详细地址）',
   remark: '备注最多500字',
+  coupon: '所选优惠券参数无效，请重新选择或取消用券',
 }
 export function bookingFormError(draft: BookingDraft): BookingFormError | null {
   if (!/^[1-9][0-9]{0,18}$/.test(draft.storeId)) return 'store'
@@ -262,6 +291,7 @@ export function bookingFormError(draft: BookingDraft): BookingFormError | null {
     if (!isInstantLike(draft.appointmentStart) || !isInstantLike(draft.appointmentEnd)) return 'window'
   }
   if ([...draft.remark].length > 500) return 'remark'
+  if (draft.couponInstanceId !== null && !isIdLike(draft.couponInstanceId)) return 'coupon'
   return null
 }
 /** 构造 CreateOrderRequest（11号 oneOf 履约分支）：四键全必填；到店带 appointmentStart/
@@ -288,6 +318,7 @@ export function buildOrderRequest(draft: BookingDraft): Record<string, unknown> 
     request.appointmentEnd = draft.appointmentEnd
   }
   if (remark) request.remark = remark
+  if (draft.couponInstanceId !== null) request.couponInstanceId = draft.couponInstanceId
   return request
 }
 
@@ -308,6 +339,7 @@ export function draftFromCommandData(data: unknown): BookingDraft | null {
       selectedReturnWindowId: pickup ? isIdText(v.selectedReturnWindowId) : null,
       serviceAddress: pickup ? plainText(v.serviceAddress, 65536) : '',
       remark: v.remark === undefined ? '' : plainText(v.remark, 500),
+      couponInstanceId: v.couponInstanceId === undefined ? null : isIdText(v.couponInstanceId),
     })
     // buildOrderRequest 会重排/裁剪键；与原载荷全等校验（顺序无关）确认无字段漂移。
     const original: Record<string, unknown> = {}
@@ -324,6 +356,7 @@ export function draftFromCommandData(data: unknown): BookingDraft | null {
       selectedReturnWindowId: pickup ? String(request.selectedReturnWindowId) : null,
       serviceAddress: pickup ? String(request.serviceAddress) : '',
       remark: v.remark === undefined ? '' : String(v.remark),
+      couponInstanceId: request.couponInstanceId === undefined ? null : String(request.couponInstanceId),
     }
   } catch {
     return null
@@ -401,7 +434,7 @@ const createCodeMessages: Readonly<Record<string, string>> = {
   SCHEDULE_NOT_AVAILABLE: '排期已变化，请重新选择时段',
   SCHEDULE_CAPACITY_EXCEEDED: '该时段已约满，请重新选择时段',
   SCHEDULE_PICKUP_RETURN_INTERVAL_INVALID: '接送间隔不足 120 分钟，请重新选择送回时段',
-  COUPON_NOT_AVAILABLE: '优惠券不可用，请移除后重试',
+  COUPON_NOT_AVAILABLE: '所选优惠券不可用或已被占用，请取消用券或换一张后重试',
   IDEMPOTENCY_KEY_CONFLICT: '该请求编号已被其他内容使用，请勿重复提交，稍后重试',
 }
 export function bookingCreateMessage(error: unknown): string {
@@ -496,6 +529,8 @@ const fixtureWindows = (dayOffset: number, pickup = false): AvailabilityItem[] =
 
 export type BookingDeps = {
   availability(serviceId: string, storeId: string, date: string): Promise<AvailabilityView>
+  /** 61号选券入口展示源；preview 通道返回空数组（券选择仅真实登录态开放）。 */
+  availableCoupons(): Promise<readonly CouponView[]>
   create(draft: BookingDraft): Promise<CreateOrderReceipt>
   pay(orderId: string): Promise<PaymentReceipt>
 }
@@ -512,6 +547,9 @@ export class PreviewBookingRepository implements BookingDeps {
     if (!(date.startsWith('2026-10-')) || offset < 0 || offset > 6) return { items: [] }
     // 接送服务按 39号 selection 投影返回 PICKUP/RETURN 方向窗；到店服务为 GENERAL。
     return { items: fixtureWindows(offset, serviceId === PREVIEW_PICKUP_SERVICE).map(item => ({ ...item })) }
+  }
+  async availableCoupons(): Promise<readonly CouponView[]> {
+    return []
   }
   async create(draft: BookingDraft): Promise<CreateOrderReceipt> {
     if (this.scenario === 'conflict') throw new ApiError('SCHEDULE_CAPACITY_EXCEEDED', 409)

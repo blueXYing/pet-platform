@@ -67,6 +67,7 @@ public final class OrderCreationService {
     private final ReservationHoldApi reservations;
     private final OrderCreationInputProtection protection;
     private final OrderCreationRemarkPolicy remarkPolicy;
+    private final com.petplatform.coupon.api.command.CouponCommandApi coupons;
     private final Clock clock;
     private final OrderCreationStore store;
     private final JdbcAsyncTaskSubmitter tasks;
@@ -78,6 +79,17 @@ public final class OrderCreationService {
             BookingServiceFactsApi services, ScheduleCapacityGuardApi guard,
             ReservationHoldApi reservations, OrderCreationInputProtection protection,
             OrderCreationRemarkPolicy remarkPolicy, Clock clock) {
+        this(source, ids, users, merchants, services, guard, reservations, protection,
+                remarkPolicy, null, clock);
+    }
+
+    /** Contract 61 slice: the coupon freeze provider is optional and fail-closed when absent. */
+    public OrderCreationService(DataSource source, SnowflakeIdGenerator ids,
+            BookingUserFactsApi users, BookingMerchantFactsApi merchants,
+            BookingServiceFactsApi services, ScheduleCapacityGuardApi guard,
+            ReservationHoldApi reservations, OrderCreationInputProtection protection,
+            OrderCreationRemarkPolicy remarkPolicy,
+            com.petplatform.coupon.api.command.CouponCommandApi coupons, Clock clock) {
         this.ids = Objects.requireNonNull(ids);
         this.users = Objects.requireNonNull(users);
         this.merchants = Objects.requireNonNull(merchants);
@@ -86,6 +98,7 @@ public final class OrderCreationService {
         this.reservations = Objects.requireNonNull(reservations);
         this.protection = protection;
         this.remarkPolicy = remarkPolicy;
+        this.coupons = coupons;
         this.clock = Objects.requireNonNull(clock);
         this.store = new OrderCreationStore(Objects.requireNonNull(source));
         this.tasks = new JdbcAsyncTaskSubmitter(source, ids);
@@ -201,9 +214,6 @@ public final class OrderCreationService {
         PetSnapshotDTO pet = users.readCurrentPet(input.userId(), command.petId(),
                 command.storeId(), context);
         verifyFacts(input, merchant, service, pet);
-        if (command.couponInstanceId() != null) {
-            throw unavailable("coupon freeze provider is not implemented");
-        }
         long orderId = nextId();
         long orderNo = nextId();
         HoldResult held = reservations.hold(new HoldCommand(command.context(), Long.toString(orderId),
@@ -212,9 +222,21 @@ public final class OrderCreationService {
                 command.pickupStart(), command.returnStart(), command.selectedGeneralWindowId(),
                 command.selectedPickupWindowId(), command.selectedReturnWindowId()));
         verifyHold(input, held, orderId);
-        writeOrder(input, merchant, service, pet, held, orderId, orderNo);
+        // Contract 61 (CPN-001): freeze inside this same guarded transaction after the hold is
+        // proven, then book the discounted payable. The freeze is a row-level CAS on the coupon
+        // plus its ledger row; any failure here rolls the whole business transaction back.
+        BigDecimal discount = BigDecimal.ZERO;
+        if (command.couponInstanceId() != null) {
+            if (coupons == null) throw unavailable("coupon freeze provider is not implemented");
+            discount = coupons.freeze(new com.petplatform.coupon.api.command.CouponCommandApi.CouponFreezeCommand(
+                    command.context(), Long.toString(orderId), command.couponInstanceId(),
+                    input.userId(), command.storeId(), service.price(), held.holdExpireAt()))
+                    .discountAmount();
+        }
+        BigDecimal payAmount = service.price().subtract(discount);
+        writeOrder(input, merchant, service, pet, held, orderId, orderNo, discount, payAmount);
         Receipt receipt = new Receipt(Long.toString(orderId), Long.toString(orderNo),
-                MONEY.format(service.price()), held.holdExpireAt().toString());
+                MONEY.format(payAmount), held.holdExpireAt().toString());
         store.succeed(input.key(), serializeReceipt(receipt));
         OrderExpiryTaskSubmission.submit(tasks, orderId, IDS.fromApi(held.reservationId()),
                 held.holdExpireAt());
@@ -538,7 +560,7 @@ public final class OrderCreationService {
 
     private void writeOrder(Prepared input, BookingMerchantFacts merchant,
             BookingServiceFacts service, PetSnapshotDTO pet, HoldResult held,
-            long orderId, long orderNo) {
+            long orderId, long orderNo, BigDecimal discount, BigDecimal payAmount) {
         CreateOrderCommand command = input.command();
         Map<String, Object> order = values();
         order.put("id", orderId);
@@ -551,6 +573,8 @@ public final class OrderCreationService {
         order.put("reservationId", IDS.fromApi(held.reservationId()));
         order.put("fulfillmentType", command.fulfillmentType());
         order.put("price", service.price());
+        order.put("discountAmount", discount);
+        order.put("payAmount", payAmount);
         order.put("appointmentStart", utc(held.startAt()));
         order.put("appointmentEnd", utc(held.endAt()));
         order.put("paymentExpireAt", utc(held.holdExpireAt()));

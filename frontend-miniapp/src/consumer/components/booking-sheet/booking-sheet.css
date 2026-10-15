@@ -126,3 +126,13 @@
 .bks-sheet .bks-quick-chip.is-selected { background: #c0ecff; border-color: #5baae8; }
 .bks-sheet .bks-quick-name { font-size: calc(var(--bks-unit) * 12); line-height: calc(var(--bks-unit) * 16); font-weight: 500; color: #1d0d07; }
 .bks-sheet .bks-quick-text { font-size: calc(var(--bks-unit) * 10); line-height: calc(var(--bks-unit) * 14); color: #577683; overflow: hidden; text-overflow: ellipsis; max-width: 100%; display: block; }
+
+/* 61号选券入口 chips（券生命周期切片）：复用地址簿快选的 chip 语言（白底 #c0ecff 描边、
+   选中 #c0ecff 底 #5baae8 描边）；类名变体表达状态，不用 data-*；.bks-sheet 两段选择器
+   抬优先级抵消原生 button 重置。 */
+.bks-sheet .bks-coupons { margin-top: calc(var(--bks-unit) * 6); }
+.bks-sheet .bks-coupon-chip { display: inline-flex; flex-direction: column; gap: calc(var(--bks-unit) * 2); vertical-align: top; margin: 0 calc(var(--bks-unit) * 8) calc(var(--bks-unit) * 8) 0; padding: calc(var(--bks-unit) * 8) calc(var(--bks-unit) * 12); max-width: calc(var(--bks-unit) * 220); background: #ffffff; border: calc(var(--bks-unit) * 1) solid #c0ecff; border-radius: calc(var(--bks-unit) * 8); }
+.bks-sheet .bks-coupon-chip.is-selected { background: #c0ecff; border-color: #5baae8; }
+.bks-sheet .bks-coupon-name { font-size: calc(var(--bks-unit) * 12); line-height: calc(var(--bks-unit) * 16); font-weight: 500; color: #1d0d07; overflow: hidden; text-overflow: ellipsis; max-width: 100%; display: block; }
+.bks-sheet .bks-coupon-discount { font-size: calc(var(--bks-unit) * 12); line-height: calc(var(--bks-unit) * 16); font-weight: 700; color: #ff9500; }
+.bks-sheet .bks-coupon-threshold { font-size: calc(var(--bks-unit) * 10); line-height: calc(var(--bks-unit) * 14); color: #577683; }

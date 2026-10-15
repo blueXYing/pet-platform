@@ -12,6 +12,7 @@ import com.petplatform.common.OperatorType;
 import com.petplatform.common.PublicContractChecks;
 import com.petplatform.common.QueryContext;
 import com.petplatform.common.SnowflakeIdGenerator;
+import com.petplatform.coupon.api.query.BookingCouponExposureApi;
 import com.petplatform.event.api.DispatchedEvent;
 import com.petplatform.event.api.IntegrationEvent;
 import com.petplatform.event.api.IntegrationEventConsumer;
@@ -64,6 +65,8 @@ public final class OrderPaymentResultApiImpl implements OrderPaymentResultApi, I
     private final ReservationExpiryApi expiry;
     private final IntegrationEventPublisher outbox;
     private final JdbcOutboxConsumeGuard consumeGuard;
+    private final BookingCouponExposureApi couponExposure;
+    private final com.petplatform.coupon.api.command.CouponCommandApi couponCommands;
     private final OrderPaymentStore orders;
     private final OrderExpiryStore expiredOrders;
     private final TransactionTemplate transaction;
@@ -80,6 +83,21 @@ public final class OrderPaymentResultApiImpl implements OrderPaymentResultApi, I
             ScheduleCapacityGuardApi guard, PaymentSuccessFactsApi payments,
             ReservationConfirmApi confirmation, ReservationExpiryApi expiry,
             IntegrationEventPublisher outbox, boolean autoConfirmTasksEnabled) {
+        this(source, ids, guard, payments, confirmation, expiry, outbox, autoConfirmTasksEnabled,
+                null, null);
+    }
+
+    /**
+     * Contract 61 slice: coupon consume rides the paid-marking transaction when the lifecycle is
+     * on; the no-coupon proof keeps the discount-free path honest. Both nullable for slices
+     * without the coupon lifecycle.
+     */
+    public OrderPaymentResultApiImpl(DataSource source, SnowflakeIdGenerator ids,
+            ScheduleCapacityGuardApi guard, PaymentSuccessFactsApi payments,
+            ReservationConfirmApi confirmation, ReservationExpiryApi expiry,
+            IntegrationEventPublisher outbox, boolean autoConfirmTasksEnabled,
+            BookingCouponExposureApi couponExposure,
+            com.petplatform.coupon.api.command.CouponCommandApi couponCommands) {
         this.source = Objects.requireNonNull(source);
         this.ids = Objects.requireNonNull(ids);
         this.guard = Objects.requireNonNull(guard);
@@ -87,6 +105,8 @@ public final class OrderPaymentResultApiImpl implements OrderPaymentResultApi, I
         this.confirmation = Objects.requireNonNull(confirmation);
         this.expiry = Objects.requireNonNull(expiry);
         this.outbox = Objects.requireNonNull(outbox);
+        this.couponExposure = couponExposure;
+        this.couponCommands = couponCommands;
         this.autoConfirmTasks = autoConfirmTasksEnabled ? new JdbcAsyncTaskSubmitter(source, ids) : null;
         this.consumeGuard = new JdbcOutboxConsumeGuard(source, ids);
         this.orders = new OrderPaymentStore(source);
@@ -184,8 +204,23 @@ public final class OrderPaymentResultApiImpl implements OrderPaymentResultApi, I
         if (!"INIT".equals(order.paymentStatus()) || !"UNVERIFIED".equals(order.verificationStatus())
                 || order.cancelReason() != null || order.payAmount() == null
                 || order.payAmount().compareTo(payment.paidAmount()) != 0
-                || order.discountAmount() == null || order.discountAmount().signum() != 0) {
+                || order.discountAmount() == null || order.discountAmount().signum() < 0) {
             throw unavailable("ORDER payable amount or status disagrees with PAYMENT");
+        }
+        // Contract 61 (CPN-001): a booked discount must be this order's frozen coupon and is
+        // consumed (FROZEN -> USED) inside this same guarded transaction; a zero-discount order
+        // must bind no coupon at all.
+        String couponInstanceId = null;
+        if (order.discountAmount().signum() > 0) {
+            if (couponCommands == null) {
+                throw unavailable("coupon consume provider is not implemented");
+            }
+            couponInstanceId = couponCommands.consume(
+                    new com.petplatform.coupon.api.command.CouponCommandApi.CouponConsumeCommand(
+                            input.command().context(), input.command().orderId(), storeId,
+                            payment.paidAt())).couponInstanceId();
+        } else if (couponExposure != null) {
+            couponExposure.requireNoCoupon(input.command().orderId(), storeId, context);
         }
         OffsetDateTime confirmDeadline = payment.paidAt().plusMinutes(30);
         if (orders.markPaid(order, payment.paidAt(), confirmDeadline) != 1)
@@ -208,7 +243,7 @@ public final class OrderPaymentResultApiImpl implements OrderPaymentResultApi, I
         Map<String, Object> payload = new LinkedHashMap<>();
         payload.put("orderId", orderId);
         payload.put("reservationId", reservationId);
-        payload.put("couponInstanceId", null);
+        payload.put("couponInstanceId", couponInstanceId);
         payload.put("paidAt", payment.paidAt().toString());
         payload.put("confirmDeadline", confirmDeadline.toString());
         outbox.publish(new IntegrationEvent<>(IDS.toApi(nextId()), "OrderPaidEvent.v1", 1,

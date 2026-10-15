@@ -238,6 +238,14 @@ FULL:
 
 PARTIAL:
   不返券
+```
+
+> 实现状态（2026-10-14，[61 号](../04-api/61-Coupon-Lifecycle-Contract-v0.1.md)）：消费者
+> `COUPON_REFUND_RESTORE` 已交付（pet-coupon-biz，装配开关 `pet.coupon.lifecycle.enabled` 默认
+> false）。判定按 refundSource/refundType：`LATE_PAYMENT_TIMEOUT` 一律 NOOP（迟到支付来源的券从未
+> 被消费，不返券、不二次释放，SSOT §二十二）；`PARTIAL` 不返券；`FULL` 且本订单存在 USED 券则按
+> 上述规则恢复（`expire_at <= succeededAt` 时券已过期，保持 USED 不恢复）；本订单无券 NOOP。幂等：
+> 事件 claim + 台账 `CPN:RESTORE:{refundOrderId}` + 状态 CAS。
 
 LATE_PAYMENT_TIMEOUT:
   支付超时关闭时优惠券已经释放
