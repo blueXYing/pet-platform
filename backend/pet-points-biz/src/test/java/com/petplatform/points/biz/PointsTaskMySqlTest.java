@@ -87,12 +87,24 @@ class PointsTaskMySqlTest {
   /** Per-user fact source (the fixed() factory is global; tests need per-invitee truth). */
   private static final class MapFacts implements PointsTaskFacts {
     final Map<Long, OffsetDateTime> firstPaid = new HashMap<>();
+    final Map<Long, String> firstPaidOrders = new HashMap<>();
     final Map<Long, Boolean> enabled = new HashMap<>();
     final Map<Long, String> nicknames = new HashMap<>();
 
     @Override
     public OffsetDateTime firstPaidAt(String userId) {
       return firstPaid.get(Long.parseLong(userId));
+    }
+
+    @Override
+    public PointsTaskFacts.FirstPaidOrder firstPaidOrder(String userId) {
+      long user = Long.parseLong(userId);
+      String orderId = firstPaidOrders.get(user);
+      if (orderId == null && firstPaid.containsKey(user)) {
+        orderId = Long.toString(6_000_000_000_000_000L + user);
+      }
+      return orderId == null ? null
+          : new PointsTaskFacts.FirstPaidOrder(orderId, firstPaid.get(user));
     }
 
     @Override
@@ -332,6 +344,13 @@ class PointsTaskMySqlTest {
     facts.nicknames.put(INVITEE_A, "豆豆妈");
     AwardClaimReceipt order = commands.claimReward(claim(INVITEE_A, uuid(), "FIRST_ORDER"));
     assertEquals("100", order.pointsGranted());
+    // Contract 60 §7 (PTS-001): the first-order reward is order-bound (ORDER_REWARD ledger line
+    // carrying the resolved first paid order id), not a plain TASK line.
+    String firstOrderId = Long.toString(6_000_000_000_000_000L + INVITEE_A);
+    assertEquals(1, database.jdbc().queryForObject(
+        "SELECT COUNT(*) FROM points_ledger WHERE user_id=? AND biz_type='ORDER_REWARD' "
+            + "AND order_id=? AND delta=100",
+        Integer.class, INVITEE_A, Long.parseLong(firstOrderId)));
     AwardClaimReceipt profile = commands.claimReward(claim(INVITEE_A, uuid(), "PROFILE_COMPLETE"));
     assertEquals("20", profile.pointsGranted());
     assertEquals("120", profile.balanceAfter());

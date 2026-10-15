@@ -17,6 +17,18 @@ public interface PointsTaskFacts {
    */
   OffsetDateTime firstPaidAt(String userId);
 
+  /**
+   * Identity of the user's earliest paid order, null when the user never completed a payment
+   * (contract 60 §7, CCR-POINTS-ORDER-001 P1). Pure read over the caller's own order facts —
+   * the boot adapter pages {@code OrderQueryApi.listMyOrders} with the same subject, so no
+   * order-module change and no cross-user surface opens. Feeds the order binding of the
+   * FIRST_ORDER award so contract 60 §7 refund clawback can find the reward by order.
+   */
+  FirstPaidOrder firstPaidOrder(String userId);
+
+  /** First paid order identity: canonical decimal orderId string plus the paid instant. */
+  record FirstPaidOrder(String orderId, OffsetDateTime paidAt) {}
+
   /** Whether the internal user id exists and is enabled (R1 invite-code validity). */
   boolean userEnabled(String userId);
 
@@ -31,12 +43,18 @@ public interface PointsTaskFacts {
   /** Mutable fixed facts used by kernel tests and boot adapters. */
   final class PointsTaskFixed implements PointsTaskFacts {
     public OffsetDateTime firstPaidAt;
+    public FirstPaidOrder firstPaidOrder;
     public boolean enabled = true;
     public String nickname = "";
 
     @Override
     public OffsetDateTime firstPaidAt(String userId) {
       return firstPaidAt;
+    }
+
+    @Override
+    public FirstPaidOrder firstPaidOrder(String userId) {
+      return firstPaidOrder;
     }
 
     @Override

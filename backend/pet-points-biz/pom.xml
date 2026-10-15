@@ -21,6 +21,11 @@
             <groupId>com.petplatform</groupId>
             <artifactId>pet-event-api</artifactId>
         </dependency>
+        <!-- Contract 60 §7 clawback consumer: the outbox consume guard (integration_event_consume_log). -->
+        <dependency>
+            <groupId>com.petplatform</groupId>
+            <artifactId>pet-event-core</artifactId>
+        </dependency>
         <dependency>
             <groupId>com.petplatform</groupId>
             <artifactId>pet-points-api</artifactId>

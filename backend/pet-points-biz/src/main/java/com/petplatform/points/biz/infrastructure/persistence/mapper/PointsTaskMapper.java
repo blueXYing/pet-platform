@@ -87,6 +87,23 @@ public interface PointsTaskMapper {
             @Param("delta") long delta, @Param("balanceAfter") long balanceAfter,
             @Param("requestId") String requestId, @Param("createdAt") LocalDateTime createdAt);
 
+    /** Order-bound earn/clawback line (SQL06 §9 ORDER_REWARD / REFUND_CLAWBACK, 60号 §7). */
+    int insertOrderLedger(@Param("id") long id, @Param("userId") long userId,
+            @Param("bizType") String bizType, @Param("bizId") Long bizId,
+            @Param("orderId") long orderId, @Param("delta") long delta,
+            @Param("balanceAfter") long balanceAfter,
+            @Param("requestId") String requestId, @Param("createdAt") LocalDateTime createdAt);
+
+    /**
+     * Positive order-reward lines of one order, locked FOR UPDATE so concurrent clawback
+     * deliveries of that order serialize (contract 60 §7; index idx_points_order_type).
+     */
+    List<com.petplatform.points.biz.infrastructure.persistence.entity.PointsOrderRewardLedgerEntity>
+    lockOrderRewardLedger(@Param("orderId") long orderId);
+
+    /** Absolute clawback total already booked for the order (biz_type REFUND_CLAWBACK). */
+    Long selectClawedTotal(@Param("orderId") long orderId);
+
     int upsertAccountBalance(@Param("id") long id, @Param("userId") long userId,
             @Param("delta") long delta, @Param("now") LocalDateTime now);
 

@@ -49,8 +49,10 @@ import org.springframework.transaction.support.TransactionSynchronizationManager
  * one sign-in per Asia/Shanghai calendar day at a fixed ops-configured amount with no escalating
  * multipliers; referral rewards only for an invitee who had zero order history at binding time
  * and completed a payment strictly after the binding, capped per month; every reward except the
- * daily sign-in itself is claim-driven (no background issuance, no event consumption). All
- * ledger writes are positive accruals — V1 points are earned and clawed back, never spent.
+ * daily sign-in is claim-driven (A2, CCR-POINTS-TASK-001), and the first-order reward is bound
+ * to the user's earliest paid order at claim time so contract 60 §7 refund clawback can find it
+ * by order (CCR-POINTS-ORDER-001). All ledger writes are positive accruals here — V1 points are
+ * earned and clawed back, never spent; the clawback side lives in the refund consumer.
  */
 public final class PointsTaskService {
   private static final DecimalPublicIdCodec IDS = new DecimalPublicIdCodec();
@@ -356,8 +358,24 @@ public final class PointsTaskService {
           if (facts.firstPaidAt(IDS.toApi(user)) == null) {
             conflict("完成首次下单后可领取");
           }
+          // Contract 60 §7 (PTS-001): the first-order reward is granted once per user and is
+          // bound to the earliest paid order so the refund clawback can find it by order.
+          com.petplatform.points.biz.domain.service.PointsTaskFacts.FirstPaidOrder firstPaid =
+              facts.firstPaidOrder(IDS.toApi(user));
+          if (firstPaid == null) {
+            unavailable("首笔支付订单不可定位");
+          }
+          long orderId;
+          try {
+            orderId = IDS.fromApi(firstPaid.orderId());
+          } catch (IllegalArgumentException malformedOrderId) {
+            throw new ApiException(CommonApiCodes.INTERNAL_ERROR, "首付订单标识非法");
+          }
+          if (orderId <= 0) {
+            throw new ApiException(CommonApiCodes.INTERNAL_ERROR, "首付订单标识非法");
+          }
           balanceAtLeastZero(m, user);
-          balanceAfter = grantAward(m, user, claimType, config.firstOrderPoints(),
+          balanceAfter = grantOrderReward(m, user, orderId, config.firstOrderPoints(),
               context.requestId(), ledgerIds);
           granted = config.firstOrderPoints();
         }
@@ -492,12 +510,54 @@ public final class PointsTaskService {
     return balance;
   }
 
+  /** Order-bound accrual variant: identical discipline, ledger line carries order_id (60号 §7). */
+  private long accrueOrderReward(PointsTaskMapper m, long user, long bizId, long orderId,
+      long delta, String ledgerRequestId, long ledgerId, LocalDateTime now) {
+    if (delta <= 0 || delta > 10_000) {
+      throw new ApiException(CommonApiCodes.INTERNAL_ERROR, "积分发放数额非法");
+    }
+    if (ledgerRequestId == null || ledgerRequestId.length() > 64) {
+      throw new ApiException(CommonApiCodes.INTERNAL_ERROR, "积分流水幂等键非法");
+    }
+    if (orderId <= 0) {
+      throw new ApiException(CommonApiCodes.INTERNAL_ERROR, "积分流水的订单绑定非法");
+    }
+    m.upsertAccountBalance(store.nextId(), user, delta, now);
+    Long balance = m.selectBalance(user);
+    if (balance == null || balance < 0) {
+      throw new ApiException(CommonApiCodes.INTERNAL_ERROR, "积分账户余额非法");
+    }
+    if (m.insertOrderLedger(ledgerId, user, "ORDER_REWARD", bizId, orderId, delta, balance,
+        ledgerRequestId, now) != 1) {
+      throw new ApiException(CommonApiCodes.INTERNAL_ERROR, "积分流水写入失败");
+    }
+    return balance;
+  }
+
   private long grantAward(PointsTaskMapper m, long user, String taskCode, long points,
       String requestId, List<Long> ledgerIds) {
     long awardId = store.nextId();
     long ledgerId = store.nextId();
     long balanceAfter = accrue(m, user, "TASK", awardId, points, requestId, ledgerId, nowUtc());
     if (m.insertAward(awardId, user, taskCode, points, ledgerId, nowUtc()) != 1) {
+      throw new ApiException(CommonApiCodes.INTERNAL_ERROR, "任务奖励写入失败");
+    }
+    ledgerIds.add(ledgerId);
+    return balanceAfter;
+  }
+
+  /**
+   * First-order reward (contract 60 §7 / CCR-POINTS-ORDER-001 P1): one TASK_AWARD row keyed by
+   * the user (uk user+code, once per user) plus one order-bound ORDER_REWARD ledger line keyed
+   * by the first paid order — the fact contract 60 §7 clawback scans by order.
+   */
+  private long grantOrderReward(PointsTaskMapper m, long user, long orderId, long points,
+      String requestId, List<Long> ledgerIds) {
+    long awardId = store.nextId();
+    long ledgerId = store.nextId();
+    long balanceAfter = accrueOrderReward(m, user, awardId, orderId, points, requestId,
+        ledgerId, nowUtc());
+    if (m.insertAward(awardId, user, CLAIM_FIRST_ORDER, points, ledgerId, nowUtc()) != 1) {
       throw new ApiException(CommonApiCodes.INTERNAL_ERROR, "任务奖励写入失败");
     }
     ledgerIds.add(ledgerId);

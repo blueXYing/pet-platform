@@ -1,13 +1,13 @@
-# 60-Points-Task-Contract-v0.1（签到 + 拉新任务 + 运营配置）
+# 60-Points-Task-Contract-v0.1（签到 + 拉新任务 + 运营配置；§7 增补订单奖励/退款扣回）
 
-裁决链：32号裁决第二节（2026-10-13）+ CCR-POINTS-TASK-001（细则定稿，PR 披露回禀）。本契约为该切片的权威 HTTP 表面；与 10 号总契约并存，10 号 §3.15.4/§5.9 摘要指向本文件。
+裁决链：32号裁决第二节（2026-10-13）+ CCR-POINTS-TASK-001（细则定稿，PR 披露回禀）+ CCR-POINTS-ORDER-001（2026-10-15 增补，PTS-001/PTS-002，见 §7）。本契约为该切片的权威 HTTP 表面；与 10 号总契约并存，10 号 §3.15.4/§5.9 摘要指向本文件。
 
 ## 1. 范围与硬边界
 
-- 积分只赚取/扣回，不消费（AGENTS 硬规则）：本契约只有赚取路径（SIGN_IN/INVITE/TASK 三流水类型），无兑换/抵扣/转赠/消费。
-- 一切配账走 `points_ledger` + `points_account`（06 号 §9）；本切片无 REFUND_CLAWBACK 写路径（退款扣回仍属 PTS-002 家族，不在本切片）。
-- 写操作 requestId 幂等（23 号 + 14 号绑定表）；读操作无 X-Request-Id。
-- 主体恒为会话用户（C 面）/RBAC 动作码持有者（admin 面）；无跨用户坐标。
+- 积分只赚取/扣回，不消费（AGENTS 硬规则）：本契约只有赚取与扣回路径（SIGN_IN/INVITE/TASK/ORDER_REWARD/REFUND_CLAWBACK 五流水类型），无兑换/抵扣/转赠/消费。
+- 一切配账走 `points_ledger` + `points_account`（06 号 §9）；PTS-002 退款扣回已交付（§7，事件消费面，无新 HTTP 路由）。
+- 写操作 requestId 幂等（23 号 + 14 号绑定表）；读操作无 X-Request-Id；事件消费幂等走 outbox consume-log（08 号 §15/§21）+ `uk_points_request` 台账双保险。
+- 主体恒为会话用户（C 面）/RBAC 动作码持有者（admin 面）；退款扣回主体来自本模块台账（事件载荷无 userId，07 号 §7.1 增补注记）。
 
 ## 2. 装配开关（21 号清单 §1.11）
 
@@ -15,6 +15,7 @@
 |---|---|---|---|
 | `pet.points.task.enabled` | false | `PointsTaskConfiguration`（内核） | [硬] Snowflake bean（PLAT-002） |
 | `pet.points.task.http.enabled` | false | `CPointsTaskController`（另需 auth.c）、`AdminPointsTaskConfigController`（另需 auth.admin） | [硬] points.task.enabled（guard 启动失败） |
+| `pet.points.refund-clawback.enabled` | false | `PointsRefundClawbackConfiguration` → `POINTS_REFUND_CLAWBACK` 消费者（§7） | [硬] Snowflake bean（PLAT-002）+ `pet.outbox.enabled`（JdbcOutboxConsumeGuard）；关则 RefundSucceededEvent 待命不派发（同券 #168 装配形） |
 
 ## 3. C 端表面（MINIAPP / USER / bearerAuth / Cache-Control: no-store）
 
@@ -87,4 +88,29 @@ RBAC：`points.task.config.write`。全量 PUT（七字段全部必填整数；�
 
 ## 6. 细则速查（全文见 CCR-POINTS-TASK-001"细则定稿"，PR 披露回禀）
 
-S1 每日一次（UTC+8 自然日）；S2 固定面额无连签递增；S3 连签7天一次性里程碑（当前连签口径）；R1 确定性邀请码；R2 绑定=终身一次且被邀请人须零订单史；R3 人头=绑定后完成首笔支付（firstPaidAt>绑定时刻）；R4 月上限（0=关）；M1 里程碑一次性（INVITE_3 按已领取人头数、PROFILE 按昵称非空、FIRST_ORDER 按 firstPaidAt）；M2 社区动态 NOT_OPEN；A1 配账纪律；A2 除签到外全部显式领取、无事件自动发放；A3 服务端时间口径。
+S1 每日一次（UTC+8 自然日）；S2 固定面额无连签递增；S3 连签7天一次性里程碑（当前连签口径）；R1 确定性邀请码；R2 绑定=终身一次且被邀请人须零订单史；R3 人头=绑定后完成首笔支付（firstPaidAt>绑定时刻）；R4 月上限（0=关）；M1 里程碑一次性（INVITE_3 按已领取人头数、PROFILE 按昵称非空、FIRST_ORDER 按 firstPaidAt）；M2 社区动态 NOT_OPEN；A1 配账纪律；A2 除签到外全部显式领取、无事件自动发放（§7 首单奖励保留显式领取，领取即绑单）；A3 服务端时间口径。
+
+## 7. 增补（2026-10-15）：订单奖励与退款扣回（PTS-001/PTS-002，CCR-POINTS-ORDER-001）
+
+无新 HTTP 路由、无新错误码、无 OpenAPI/10号/07号变化（11号 operations 计数不变）。HTTP 表面只有 §3.4 既有 `cClaimPointsReward(FIRST_ORDER)` 一条路径，回执形状不变。
+
+### 7.1 赚取（PTS-001，订单奖励绑定）
+
+- 事实口径：首笔成功支付 = `OrderQueryApi.firstPaidAt`（07号 §7.1 增补，MIN(paid_at)，payment_status='PAID'，含迟到支付标记为 PAID 的订单）；首笔支付订单标识经 `listMyOrders` 同主体只读分页解析（boot 适配器，防御上限 5000 单，超出 fail-closed 503），订单模块零改动（ARCH-002：事件载荷无 userId、事件路径禁读订单持久层——事件驱动自动发放结构性不可达，A2 显式领取保留，领取即绑单）。
+- 领取 `cClaimPointsReward(FIRST_ORDER)`：仍要求 firstPaidAt 非空；成立则一次发放 `firstOrderPoints`（运营配置，即时读），台账 biz_type=`ORDER_REWARD`、order_id=首笔支付订单、biz_id=award 行 id；`points_task_award` 终局行不变（uk user+code，每用户一次 ⇒ 每订单至多一次）。首单 fact 与订单解析分叉时 fail-closed 503。
+- 回执与幂等：同 §3.4（23 号绑定表同 requestId 重放首成回执、异参 409）。
+
+### 7.2 扣回（PTS-002，事件消费）
+
+- 消费者 `POINTS_REFUND_CLAWBACK`（pet-points-biz/event，开关 §2 行 3），消费 `RefundSucceededEvent.v1`（08 号目录 points 已登记），事务内 outbox claim + ORDER_REWARD 行 `FOR UPDATE` 串行化同订单并发退款。
+- 判定矩阵（08 号目录 §8 points + SSOT §10.1）：
+  - 本订单无 ORDER_REWARD 台账 → 权威 NOOP（从未发分：含迟到支付来源未领取场景，09 号 §29.2；非首单订单退款亦 NOOP）；
+  - FULL → 扣回该订单剩余全部未扣奖励；
+  - PARTIAL → 每次按 `round_half_up(本单累计发放 × refundAmount / originalPaidAmount)` 记账，单次以剩余未扣额封顶，多次部分退款累计不超过本单发放额；
+  - 未知 refundType / 金额越界（负数、scale>2、PARTIAL 超原付）→ fail-closed 503，派发重试至搁置（同券消费者）。
+- 台账：biz_type=`REFUND_CLAWBACK`、order_id=订单、biz_id=refundOrderId、delta 为负、balance_after 扣后读回；request_id=`PTS:CLAWBACK:{refundOrderId}`（uk_points_request 二次防重）。余额数学上有界不为负，读回为负即分歧 fail-closed 503。
+- 只动 ORDER_REWARD/REFUND_CLAWBACK 台账；签到/拉新/里程碑等其他来源积分不触碰。
+
+### 7.3 CCR-POINTS-ORDER-001 登记（要点）
+
+P1 发放面额=运营配置 firstOrderPoints，领取时即时读快照入账；P2 赚取触发=显式领取（A2 保留）+首笔支付订单绑定，事件驱动自动发放因 OrderPaid/PaymentSucceeded 载荷无 userId 且订单模块本切片禁改而不可达，登记为 V1 明确取舍；P3 扣回时点=RefundSucceededEvent.v1 消费事务内；P4 迟到支付来源不特判——按台账有无奖励流水自然 NOOP/扣回（09 号 §29.2 同源）；P5 取整=HALF_UP（四舍五入，SSOT §10.1）；P6 多次退款：每次部分退款按发放额×当次比例记账、以剩余未扣额封顶，累计不超过本单发放额（退款比例合计 100% 时奖励全额扣回）；P7 扣回后不改变 points_task_award 终局状态（任务面板仍显 CLAIMED，净额由流水呈现）。
