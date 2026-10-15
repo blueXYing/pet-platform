@@ -877,7 +877,10 @@ class BookingCreateAcceptanceTest {
                 "46-Order-Reschedule-Schema-v0.1.sql",
                 "47-Verification-Credential-Schema-v0.1.sql",
                 "48-Verification-Completion-Schema-v0.1.sql",
-                "49-Refund-Application-Schema-v0.1.sql");
+                "49-Refund-Application-Schema-v0.1.sql",
+                // Contract-63 v0.2 disposal audit tables (33号 ruling); production runs the
+                // same DDL as the opt-in V32 admin-trade migration, never on startup.
+                "63-Admin-Trade-Disposition-Schema-v0.1.sql");
         private final String name = "qa_booking_" + UUID.randomUUID().toString().replace("-", "");
         private final JdbcTemplate admin;
         final DataSource source;

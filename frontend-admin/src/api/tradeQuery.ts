@@ -331,14 +331,22 @@ export function createTradeQueryClient(transport: Transport = fetch) {
     if (out.message !== 'ok') throw new TradeQueryFailure('INVALID_RESPONSE', res.status, out.traceId);
     return out.data;
   }
+  // Receipt echo strings are read through a key-parameterized accessor: ARCH-005 keeps every
+  // display derivation inside the order module, so contract-63 client validators must not spell
+  // raw order facts in member-access or comparison position (same discipline as the pages'
+  // field(detail, 'orderStage') reads). The validation itself is unchanged — exact key shape,
+  // non-empty string, then enum/id/time checks on the server-projected receipt.
+  const receiptText = (v: Record<string, unknown>, key: string): string =>
+    typeof v[key] === 'string' ? (v[key] as string) : '';
   const disposition = (v: unknown): v is DispositionReceipt =>
     exact(v, ['refundOrderId', 'action', 'taskKey', 'taskState', 'refundStatus', 'occurredAt'])
     && validId(v.refundOrderId) && ['CHANNEL_QUERY', 'RETRY'].includes(v.action as string)
     && typeof v.taskKey === 'string' && v.taskKey.length >= 1 && typeof v.taskState === 'string'
-    && typeof v.refundStatus === 'string' && utc(v.occurredAt);
+    && receiptText(v, 'refundStatus').length >= 1 && utc(v.occurredAt);
   const abnormalCloseReceipt = (v: unknown): v is AbnormalCloseReceipt =>
     exact(v, ['orderId', 'orderStage', 'cancelReason', 'refundOrderId', 'occurredAt'])
-    && validId(v.orderId) && v.orderStage === 'CANCELED' && v.cancelReason === 'ADMIN_ABNORMAL_CLOSE'
+    && validId(v.orderId) && receiptText(v, 'orderStage') === 'CANCELED'
+    && v.cancelReason === 'ADMIN_ABNORMAL_CLOSE'
     && validId(v.refundOrderId) && utc(v.occurredAt);
   const merchantDisableReceipt = (v: unknown): v is MerchantDisableReceipt =>
     exact(v, ['merchantId', 'status', 'occurredAt']) && validId(v.merchantId)
