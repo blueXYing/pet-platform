@@ -41,8 +41,9 @@ import tools.jackson.databind.json.JsonMapper;
  * pet.auth.admin + pet.points.task(.http).enabled): the C sign-in/task/referral family with
  * strict bodies, terminal X-Request-Id idempotency and the daily-conflict 409, plus the admin
  * config GET/PUT pair with the full-put validation and replay/conflict semantics. The order
- * first-payment fact arrives through a stub OrderQueryApi bean so the fail-closed 503 shape is
- * observable when the order read side is not assembled at all.
+ * first-payment facts arrive through the REAL assembled order read beans (OrderQueryApi plus
+ * the order-owned OrderFirstPaidFactsApi port, CCR-POINTS-ORDER-001), so the FIRST_ORDER
+ * binding is proven end to end against real pet_order rows.
  */
 class PointsTaskHttpTest {
   private static final String ORIGIN = "https://points.example.invalid";
@@ -219,6 +220,56 @@ class PointsTaskHttpTest {
 
     assertEquals(400, send("POST", "/c/points/claims", Map.of("claimType", "NO_SUCH"),
         bearer(inviterToken, UUID.randomUUID().toString())).status());
+  }
+
+  @Test
+  void firstOrderClaimBindsTheEarliestPaidOrderThroughTheOrderOwnedFactPort() throws Exception {
+    // CCR-POINTS-ORDER-001 closure: the first-paid-order fact now flows through the order
+    // domain's own O(1) port (pet-order-api OrderFirstPaidFactsApi) instead of the boot-side
+    // listMyOrders pagination scan; the FIRST_ORDER claim must bind the same earliest paid
+    // order the former scan resolved, here over the real assembled HTTP stack.
+    Map<String, Object> user = consumerLogin("points-firstorder", "13800007703");
+    long userId = Long.parseLong(str(user, "userId"));
+    String token = str(user, "accessToken");
+
+    assertEquals(409, send("POST", "/c/points/claims", Map.of("claimType", "FIRST_ORDER"),
+        bearer(token, UUID.randomUUID().toString())).status());
+    order(9_400_000_000_003_101L, userId, "PENDING_PAYMENT", "INIT", null);
+    assertEquals(409, send("POST", "/c/points/claims", Map.of("claimType", "FIRST_ORDER"),
+        bearer(token, UUID.randomUUID().toString())).status());
+
+    // Two paid orders: the strictly earlier paid instant must win the binding, the later one
+    // must be ignored — the exact semantics the former pagination scan implemented.
+    long earliest = 9_400_000_000_003_102L;
+    order(earliest, userId, "PENDING_SERVICE", "PAID", LocalDateTime.now().minusDays(1));
+    long later = 9_400_000_000_003_103L;
+    order(later, userId, "PENDING_SERVICE", "PAID", LocalDateTime.now());
+
+    Reply claimed = send("POST", "/c/points/claims", Map.of("claimType", "FIRST_ORDER"),
+        bearer(token, UUID.randomUUID().toString()));
+    assertEquals(200, claimed.status());
+    assertEquals("100", claimed.data().get("pointsGranted"));
+    assertEquals(earliest, db.jdbc.queryForObject(
+        "SELECT order_id FROM points_ledger WHERE user_id=? AND biz_type='ORDER_REWARD'",
+        Long.class, userId));
+
+    assertEquals(409, send("POST", "/c/points/claims", Map.of("claimType", "FIRST_ORDER"),
+        bearer(token, UUID.randomUUID().toString())).status());
+  }
+
+  /** Order insert with an optional paid instant; paid null means unpaid (INIT). */
+  private void order(long orderId, long userId, String stage, String paymentStatus,
+      LocalDateTime paidAt) {
+    db.jdbc.update("INSERT INTO pet_order(id, order_no, user_id, merchant_id, store_id,"
+            + " service_id, pet_id, reservation_id, order_stage, payment_status,"
+            + " fulfillment_type, original_amount, pay_amount, appointment_start_at,"
+            + " appointment_end_at, paid_at, created_at, updated_at) VALUES"
+            + "(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,COALESCE(?, UTC_TIMESTAMP(3)),"
+            + "UTC_TIMESTAMP(3),UTC_TIMESTAMP(3))",
+        orderId, orderId, userId, 1L, 1L, 1L, 1L, 9_400_000_000_003_000L + (orderId % 1000),
+        stage, paymentStatus, "IN_STORE", new java.math.BigDecimal("66.00"),
+        new java.math.BigDecimal("66.00"), LocalDateTime.now().plusDays(2),
+        LocalDateTime.now().plusDays(2).plusHours(1), paidAt);
   }
 
   @Test

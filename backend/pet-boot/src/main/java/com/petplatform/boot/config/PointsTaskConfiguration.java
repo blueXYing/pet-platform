@@ -2,12 +2,11 @@ package com.petplatform.boot.config;
 
 import com.petplatform.common.ApiException;
 import com.petplatform.common.CommonApiCodes;
-import com.petplatform.common.OperatorType;
-import com.petplatform.common.PageResult;
-import com.petplatform.common.QueryContext;
 import com.petplatform.common.SnowflakeIdGenerator;
-import com.petplatform.order.api.dto.OrderSnapshotDTO;
+import com.petplatform.order.api.dto.OrderFirstPaidFact;
+import com.petplatform.order.api.query.OrderFirstPaidFactsApi;
 import com.petplatform.order.api.query.OrderQueryApi;
+import com.petplatform.order.biz.apiimpl.OrderFirstPaidFactsApiImpl;
 import com.petplatform.points.biz.apiimpl.PointsTaskCommandApiImpl;
 import com.petplatform.points.biz.apiimpl.PointsTaskQueryApiImpl;
 import com.petplatform.points.biz.domain.service.PointsTaskFacts;
@@ -37,8 +36,8 @@ public class PointsTaskConfiguration {
   PointsTaskFacts pointsTaskFacts(
       ObjectProvider<OrderQueryApi> orders, DataSource source) {
     UserQueryApi users = new UserQueryApiImpl(source);
-    OrderQueryApi orderQuery = orders.getIfAvailable();
-    return new BootPointsTaskFacts(orderQuery, users);
+    OrderFirstPaidFactsApi firstPaidOrders = new OrderFirstPaidFactsApiImpl(source);
+    return new BootPointsTaskFacts(orders.getIfAvailable(), users, firstPaidOrders);
   }
 
   @Bean
@@ -70,19 +69,24 @@ public class PointsTaskConfiguration {
     }
   }
 
-  /** Boot-level adapter over the order/user API modules; pure reads, fail-closed. */
+  /**
+   * Boot-level adapter over the order/user API modules; pure reads, fail-closed. The
+   * first-paid-order fact is carried from the order-owned O(1) port (07号 §7.1 amendment,
+   * contract 60 §7 / CCR-POINTS-ORDER-001 closure): boot no longer projects the fact itself by
+   * paging {@code listMyOrders}, so the former 5000-order defensive scan cap — a property of
+   * that paging implementation, not of the fact — is gone with it, and every order volume
+   * resolves the same deterministic earliest-paid answer without a fail-closed ceiling.
+   */
   private static final class BootPointsTaskFacts implements PointsTaskFacts {
-    /** Defensive scan cap: 50 pages x 100 = 5_000 own orders; beyond that fail closed. */
-    private static final int PAGE_SIZE = 100;
-    private static final int MAX_PAGES = 50;
-    private static final String FACTS_TRACE = "PTS:FIRST_PAID_ORDER_FACT";
-
     private final OrderQueryApi orders;
     private final UserQueryApi users;
+    private final OrderFirstPaidFactsApi firstPaidOrders;
 
-    BootPointsTaskFacts(OrderQueryApi orders, UserQueryApi users) {
+    BootPointsTaskFacts(OrderQueryApi orders, UserQueryApi users,
+        OrderFirstPaidFactsApi firstPaidOrders) {
       this.orders = orders;
       this.users = Objects.requireNonNull(users);
+      this.firstPaidOrders = Objects.requireNonNull(firstPaidOrders);
     }
 
     @Override
@@ -95,50 +99,17 @@ public class PointsTaskConfiguration {
     }
 
     /**
-     * Contract 60 §7 (CCR-POINTS-ORDER-001 P1): earliest paid order of the user, resolved over
-     * the caller's own {@code listMyOrders} read with the same subject — no order-module change,
-     * no cross-user surface (the payment events carry no owner, 07号 §7.1 note). Deterministic
-     * tie-break on the canonical orderId; a scan beyond the cap fails closed.
+     * Contract 60 §7 (CCR-POINTS-ORDER-001): identity of the user's earliest paid order, read
+     * straight from the order domain's own projection — same paid-set filter and deterministic
+     * tie-break the former local scan implemented, now a single indexed row read on the order
+     * side (07号 §7.1.1).
      */
     @Override
     public PointsTaskFacts.FirstPaidOrder firstPaidOrder(String userId) {
-      if (orders == null) {
-        throw new ApiException(CommonApiCodes.DEPENDENCY_UNAVAILABLE,
-            "订单事实不可用（订单读侧未装配）");
-      }
-      String bestOrderId = null;
-      java.time.OffsetDateTime bestPaidAt = null;
-      long total = 0;
-      for (int page = 1; page <= MAX_PAGES; page++) {
-        PageResult<OrderSnapshotDTO> result = orders.listMyOrders(
-            new OrderQueryApi.MyOrderListQuery(null, page, PAGE_SIZE,
-                new QueryContext(FACTS_TRACE, OperatorType.USER, userId)));
-        total = result.total();
-        for (OrderSnapshotDTO snapshot : result.items()) {
-          if (!"PAID".equals(snapshot.paymentStatus()) || snapshot.paidAt() == null) {
-            continue;
-          }
-          boolean better = bestPaidAt == null
-              || snapshot.paidAt().toInstant().isBefore(bestPaidAt.toInstant())
-              || (snapshot.paidAt().toInstant().equals(bestPaidAt.toInstant())
-                  && compareDecimalStrings(snapshot.orderId(), bestOrderId) < 0);
-          if (better) {
-            bestOrderId = snapshot.orderId();
-            bestPaidAt = snapshot.paidAt();
-          }
-        }
-        if ((long) page * PAGE_SIZE >= total) {
-          return bestOrderId == null ? null : new PointsTaskFacts.FirstPaidOrder(bestOrderId, bestPaidAt);
-        }
-      }
-      throw new ApiException(CommonApiCodes.DEPENDENCY_UNAVAILABLE,
-          "订单事实扫描超出上限，首单定位失败");
-    }
-
-    /** Numeric compare over canonical decimal id strings; malformed ids sort last. */
-    private static int compareDecimalStrings(String left, String right) {
-      int byLength = Integer.compare(left.length(), right.length());
-      return byLength != 0 ? byLength : left.compareTo(right);
+      OrderFirstPaidFact fact = firstPaidOrders.firstPaidOrder(
+          new OrderFirstPaidFactsApi.UserOrderFactQuery(userId));
+      return fact == null ? null
+          : new PointsTaskFacts.FirstPaidOrder(fact.orderId(), fact.paidAt());
     }
 
     @Override

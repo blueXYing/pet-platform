@@ -23,6 +23,12 @@ public interface OrderQueryMapper {
     /** 07号 §7.1 amendment (contract 58): earliest successful payment instant, null when none. */
     java.time.LocalDateTime selectFirstPaidAt(@Param("userId") long userId);
 
+    /**
+     * 07号 §7.1 amendment (contract 60 §7 / CCR-POINTS-ORDER-001): the user's earliest paid
+     * order row (id + paid_at projection), ordered paid_at ASC then id ASC, null when none.
+     */
+    OrderQueryViewEntity selectFirstPaidOrder(@Param("userId") long userId);
+
     long countForStore(@Param("merchantId") long merchantId, @Param("storeId") long storeId,
             @Param("displayStatus") String displayStatus);
 

@@ -124,6 +124,28 @@ public final class OrderQueryService {
         return instant(firstPaid);
     }
 
+    /**
+     * 07号 §7.1 amendment (contract 60 §7 / CCR-POINTS-ORDER-001 O(1) closure): the named
+     * user's earliest paid order as a single indexed row read, null when none. Same paid-set
+     * filter as {@link #firstPaidAt} (payment_status='PAID', paid_at present, late payments
+     * included); the deterministic tie-break is the smallest canonical orderId. Pure fact read
+     * — the projection carries the identity and instant only.
+     */
+    public com.petplatform.order.api.dto.OrderFirstPaidFact firstPaidOrder(
+            com.petplatform.order.api.query.OrderFirstPaidFactsApi.UserOrderFactQuery query) {
+        Objects.requireNonNull(query, "query is required");
+        long user;
+        try {
+            user = IDS.fromApi(query.userId());
+        } catch (IllegalArgumentException invalidSubject) {
+            return null;
+        }
+        OrderQueryViewEntity row = store.read(mapper -> mapper.selectFirstPaidOrder(user));
+        return row == null ? null
+                : new com.petplatform.order.api.dto.OrderFirstPaidFact(
+                        IDS.toApi(row.getId()), instant(row.getPaidAt()));
+    }
+
     private static long subject(QueryContext context) {
         Objects.requireNonNull(context, "context is required");
         if (context.operatorId() == null) {

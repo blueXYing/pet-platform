@@ -589,6 +589,35 @@ public interface OrderQueryApi {
 }
 ```
 
+#### 7.1.1 OrderFirstPaidFactsApi（2026-10-16 增补，积分首付事实 O(1) 收口，CCR POINTS-ORDER-001）
+
+> **已实现**：独立只读事实端口 `OrderFirstPaidFactsApi`（`com.petplatform.order.api.query`）
+> ——`firstPaidOrder(UserOrderFactQuery) -> OrderFirstPaidFact`（`orderId` 为 pet_order id
+> 的规范十进制字符串 + `paidAt`）。指定用户全部自有订单中最早的成功支付订单：与
+> `firstPaidAt` 同一付费集（payment_status='PAID' 且 paid_at 非空，含迟到支付保持关闭但
+> 标记 PAID 的订单），最早 paid_at 取胜，同一时刻以最小规范 orderId 稳定决胜；无付费则
+> null，非法 userId 与"无订单"同样读 null（不报错、不区分）。单条索引行读（O(1)），替代
+> PR#170 boot 侧 `listMyOrders` 全量分页解析及其 5000 单防御上限——该上限属分页实现而非
+> 事实本身，新端口无无界扫描，上限随实现一并移除（60 号 §7 同步收口披露）。纯跨域事实读：
+> order 拥有事实与读侧投影（ARCH-005），boot 只搬运；仅暴露订单标识与时刻，不暴露其余
+> 订单字段，无会话主体、无枚举面、零新 HTTP 路由（11 号 operations 计数不变）。实现为
+> pet-order-biz `OrderFirstPaidFactsApiImpl` + 本模块 `OrderQueryMapper.xml`（生产 SQL
+> 纪律）。
+
+```java
+public interface OrderFirstPaidFactsApi {
+
+    // 已实现（2026-10-16，CCR POINTS-ORDER-001；纯跨域事实读，O(1)）
+    OrderFirstPaidFact firstPaidOrder(UserOrderFactQuery query);
+
+    // userId 为 pet_order.user_id 的规范十进制字符串形态
+    record UserOrderFactQuery(String userId) {}
+}
+
+// orderId：pet_order id 规范十进制字符串；paidAt：该笔成功支付时刻
+public record OrderFirstPaidFact(String orderId, OffsetDateTime paidAt) {}
+```
+
 ### 7.2 OrderCommandApi
 
 2026-09-29：正常付款原子任务和SYSTEM只读排查见[43号契约](43-Auto-Confirm-Task-Preparation-Contract-v0.1.md)。已批准 A 与 B 剩余内部执行见[44号契约](44-Auto-Confirm-Execution-Recovery-Contract-v0.1.md)：实际 Java 入口为独立 `OrderAutoConfirmApi.autoConfirm`、`OrderAutoConfirmRepairApi.repairMissingTask` 和 `RefundOrderFactsApi.findByOrder`。下方原聚合接口中的 `autoConfirmOrder` 是概念索引，不是额外实现入口；首轮0、默认关闭、不含商家确认/拒单和改期1。
