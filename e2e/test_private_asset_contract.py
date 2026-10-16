@@ -66,7 +66,10 @@ class PrivateAssetContractRegressions(unittest.TestCase):
         # gap slice: five merchant-ledger/staff routes + three schedule view routes; GET-only).
         # 205 = 204 + 1 contract-65 v0.2 §4.3 grant route (user ruling 2026-10-16,
         # CCR-CPN-GRANT-001 minimum; kernel switch pet.coupon.grant.enabled stays default off).
-        self.assertEqual(result['operations'], 205)
+        # 206 = 205 + 1 contract-65 v0.3 §4.4 void route (user ruling 2026-10-16 doc 36
+        # minimal authorization, CCR-CPN-VOID-001; kernel switch pet.coupon.void.enabled
+        # stays default off).
+        self.assertEqual(result['operations'], 206)
         self.assertEqual(result['privateAssetOperations'], 3)
         # abnormalCloseOrder graduated to the contract-63 v0.2 disposal face (2026-10-15).
         self.assertEqual(result['legacyOperations'], 13)
