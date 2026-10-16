@@ -24,7 +24,9 @@ LEGACY_OPERATIONS = {
     'merchantApproveRefund': ('post', '/merchant/refund-applications/{applicationId}/approve'),
     'merchantRejectRefund': ('post', '/merchant/refund-applications/{applicationId}/reject'),
     'verifyPlatformOrder': ('post', '/merchant/orders/{orderId}/verification'),
-    'abnormalCloseOrder': ('post', '/admin/orders/{orderId}/abnormal-close'),
+    # abnormalCloseOrder (draft POST /admin/orders/{orderId}/abnormal-close) graduated from this
+    # family on 2026-10-15: implemented as adminAbnormalCloseTradeOrder inside the contract-63
+    # v0.2 disposal face (ruling doc 33), so it is pinned by ADMIN_TRADE_OPERATIONS now.
 }
 LEGACY_CREATES = {'createOrder', 'applyRefund', 'createReview'}
 LEGACY_CREATE_SCHEMAS = {
@@ -617,10 +619,10 @@ BAIKE_OPERATIONS = {
 }
 
 
-# Contract 63 (2026-10-14, ADM-002/A-003): platform trade read face. Seven GET-only
-# operations; every error response reuses the shared ErrorEnvelope components. No write
-# route exists in this family: channel-query/retry (HTTP10 section 5.2), abnormal-close
-# (section 5.5) and merchant disable (section 5.6) stay drafted outside this registry.
+# Contract 63 (2026-10-14 read face; 2026-10-15 v0.2 disposal extension, ruling doc 33):
+# platform trade face. Seven GET-only reads + four high-privilege writes — channel-query/retry
+# (HTTP10 section 5.2), abnormal-close (section 5.5) and merchant disable (section 5.6), all on
+# the same pet.admin.trade.http.enabled face switch, writes bound to a terminal X-Request-Id.
 ADMIN_TRADE_OPERATIONS = {
     'adminListTradeOrders': (
         'get', '/admin/trade/orders',
@@ -643,6 +645,18 @@ ADMIN_TRADE_OPERATIONS = {
     'adminGetTradeVerification': (
         'get', '/admin/trade/verifications/{verificationId}',
         ('200', '400', '401', '403', '404', '503')),
+    'adminChannelQueryTradeRefund': (
+        'post', '/admin/refunds/{refundId}/channel-query',
+        ('200', '400', '401', '403', '404', '409', '503')),
+    'adminRetryTradeRefund': (
+        'post', '/admin/refunds/{refundId}/retry',
+        ('200', '400', '401', '403', '404', '409', '503')),
+    'adminAbnormalCloseTradeOrder': (
+        'post', '/admin/orders/{orderId}/abnormal-close',
+        ('200', '400', '401', '403', '404', '409', '503')),
+    'adminDisableTradeMerchant': (
+        'post', '/admin/merchants/{merchantId}/disable',
+        ('200', '400', '401', '403', '404', '409', '503')),
 }
 
 
@@ -932,6 +946,9 @@ def check_admin_trade(spec, operation, method, path):
     assert operation.get('x-assembly-switch') == 'pet.admin.trade.http.enabled', f'Trade query switch changed: {name}'
     assert operation.get('x-route-party') == 'OPS' and operation.get('x-audience') == 'ADMIN_WEB', f'Trade query identity changed: {name}'
     assert operation.get('x-required-actions') == [TRADE_ROUTE_ACTIONS[name]], f'Trade query action gate changed: {name}'
+    if name in ADMIN_TRADE_DISPOSAL_ENVELOPES:
+        check_admin_trade_disposal(spec, operation, name)
+        return
     assert 'requestBody' not in operation, f'Trade query must stay bodyless: {name}'
     responses = operation['responses']
     assert set(responses) == set(required_codes), f'Trade query response surface changed: {name}'
@@ -961,6 +978,10 @@ TRADE_ROUTE_ACTIONS = {
     'adminGetTradeRefund': 'refund.read',
     'adminListTradeVerifications': 'order.verification-log.read',
     'adminGetTradeVerification': 'order.verification-log.read',
+    'adminChannelQueryTradeRefund': 'refund.channel.query',
+    'adminRetryTradeRefund': 'refund.retry',
+    'adminAbnormalCloseTradeOrder': 'order.abnormal.close',
+    'adminDisableTradeMerchant': 'merchant.disable',
 }
 
 GOVERNANCE_ROUTE_ACTIONS = {
@@ -1007,6 +1028,38 @@ def check_admin_governance(spec, operation, method, path):
     cache = success['headers']['Cache-Control']['schema']
     assert cache == {'type': 'string', 'enum': ['no-store']}, f'Governance caching changed: {name}'
     assert success['content'] == {'application/json': {'schema': {'$ref':             '#/components/schemas/' + GOVERNANCE_ENVELOPES[name]}}}, f'Governance success envelope changed: {name}'
+
+
+# Contract 63 v0.2 disposal writes: X-Request-Id bound; bodyless where the draft defines none.
+ADMIN_TRADE_DISPOSAL_ENVELOPES = {
+    'adminChannelQueryTradeRefund': ('AdminRefundDispositionEnvelope', None),
+    'adminRetryTradeRefund': ('AdminRefundDispositionEnvelope', None),
+    'adminAbnormalCloseTradeOrder': ('AdminAbnormalCloseEnvelope', 'AdminAbnormalCloseRequest'),
+    'adminDisableTradeMerchant': ('AdminMerchantDisableEnvelope', 'AdminMerchantDisableRequest'),
+}
+
+
+def check_admin_trade_disposal(spec, operation, name):
+    envelope, request = ADMIN_TRADE_DISPOSAL_ENVELOPES[name]
+    parameters = operation.get('parameters', [])
+    assert {'$ref': '#/components/parameters/RequestId'} in parameters, f'Disposal request ID missing: {name}'
+    if request is None:
+        assert 'requestBody' not in operation, f'Disposal route must stay bodyless: {name}'
+    else:
+        body = dereference(spec, operation['requestBody'])
+        assert body.get('required') is True, f'Disposal body must be required: {name}'
+        assert body['content']['application/json']['schema'] == {
+            '$ref': '#/components/schemas/' + request}, f'Disposal body schema changed: {name}'
+    responses = operation['responses']
+    for code, expected in responses.items():
+        if code == '200':
+            success = responses[code]
+            cache = success['headers']['Cache-Control']['schema']
+            assert cache == {'type': 'string', 'enum': ['no-store']}, f'Disposal caching changed: {name}'
+            assert success['content'] == {'application/json': {'schema': {
+                '$ref': '#/components/schemas/' + envelope}}}, f'Disposal envelope changed: {name}'
+        else:
+            assert dereference(spec, responses[code])['content']['application/json']['schema']                 == {'$ref': '#/components/schemas/ErrorEnvelope'}, f'Disposal error envelope changed: {name} {code}'
 
 
 def check_staff_invitation_list(spec, operation, method, path):
@@ -1760,7 +1813,7 @@ def check(spec):
                         if parameter['name'] == name and parameter['in'] == 'path':
                             string_schema(spec, parameter['schema'], name, allow_nullable=False)
     assert legacy_seen == LEGACY_OPERATIONS.keys(), f'Legacy operations missing: {LEGACY_OPERATIONS.keys() - legacy_seen}'
-    assert legacy_writes == 11, 'Legacy write surface changed'
+    assert legacy_writes == 10, 'Legacy write surface changed'
     assert legacy_creates == LEGACY_CREATES, 'Legacy create surface changed'
 
     assert operations == LEGACY_OPERATIONS.keys() | AUTH_OPERATIONS.keys() | MERCHANT_OPERATIONS.keys() | APPLICATION_OPERATIONS.keys() | PRIVATE_ASSET_OPERATIONS.keys() | SERVICE_CATALOG_OPERATIONS.keys() | STORE_CATALOG_OPERATIONS.keys() | SERVICE_WRITE_OPERATIONS.keys() | SCHEDULE_AVAILABILITY_OPERATIONS.keys() | SCHEDULE_WRITE_OPERATIONS.keys() | CREDENTIAL_OPERATIONS.keys() | AFTERSALE_OPERATIONS.keys() | COUPON_POINTS_READ_OPERATIONS.keys() | VERIFICATION_HTTP_OPERATIONS.keys() | NOTIFICATION_PREFERENCE_OPERATIONS.keys() | STAFF_INVITATION_LIST_OPERATIONS.keys() | ORDER_WRITE_OPERATIONS.keys() | REFUND_HTTP_OPERATIONS.keys() | MERCHANT_ORDER_LIST_OPERATIONS.keys() | RESCHEDULE_HTTP_OPERATIONS.keys() | REVIEW_HTTP_OPERATIONS.keys() | REVIEW_APPEAL_HTTP_OPERATIONS.keys() | MERCHANT_REFUND_HTTP_OPERATIONS.keys() | FAVTRACK_HTTP_OPERATIONS.keys() | ADDRESS_OPERATIONS.keys() | POINTS_TASK_OPERATIONS.keys() | BAIKE_OPERATIONS.keys() | ADMIN_TRADE_OPERATIONS.keys() | ADMIN_GOVERNANCE_OPERATIONS.keys(), 'Unexpected or missing reviewed operations'

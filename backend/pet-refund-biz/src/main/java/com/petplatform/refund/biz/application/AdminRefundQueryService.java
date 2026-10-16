@@ -43,7 +43,7 @@ public final class AdminRefundQueryService {
     static final Set<String> STATUSES = Set.of("CREATED", "PROCESSING", "SUCCESS", "FAILED", "UNKNOWN");
     static final Set<String> SOURCE_TYPES = Set.of(
             "PRESTART_AUTO", "MERCHANT_REJECT_ORDER", "MERCHANT_APPROVED", "MERCHANT_TIMEOUT_AUTO",
-            "AFTERSALE_DECISION", "LATE_PAYMENT_TIMEOUT");
+            "AFTERSALE_DECISION", "LATE_PAYMENT_TIMEOUT", "ADMIN_ABNORMAL_CLOSE");
     static final Set<String> REFUND_TYPES = Set.of("FULL", "PARTIAL");
     private static final DecimalPublicIdCodec IDS = new DecimalPublicIdCodec();
 

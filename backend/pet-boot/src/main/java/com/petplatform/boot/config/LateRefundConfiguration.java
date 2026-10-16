@@ -66,7 +66,7 @@ import com.petplatform.task.core.TaskDatabaseClock;
 
 /** Internal late-payment refund composition. All execution and live provider beans are opt-in. */
 @Configuration(proxyBeanMethods = false)
-@org.springframework.boot.autoconfigure.condition.ConditionalOnExpression("${pet.payment.foundation.enabled:false} and (${pet.refund.late.enabled:false} or ${pet.order.merchant.enabled:false} or ${pet.aftersale.enabled:false})")
+@org.springframework.boot.autoconfigure.condition.ConditionalOnExpression("${pet.payment.foundation.enabled:false} and (${pet.refund.late.enabled:false} or ${pet.order.merchant.enabled:false} or ${pet.aftersale.enabled:false} or ${pet.admin.trade.http.enabled:false})")
 @EnableConfigurationProperties(PaymentDispatchConfiguration.DispatchSettings.class)
 public class LateRefundConfiguration {
     private static final String SUBMIT = "REFUND_SUBMIT";
@@ -95,12 +95,14 @@ public class LateRefundConfiguration {
             ObjectProvider<com.petplatform.order.api.query.OrderAfterSaleRefundFactsApi> aftersaleOrders,
             ObjectProvider<com.petplatform.aftersale.api.query.AfterSaleRefundFactsApi> aftersales,
             ObjectProvider<com.petplatform.refund.api.query.RefundAfterSaleFactsApi> aftersaleRefunds,
+            ObjectProvider<com.petplatform.order.api.query.OrderAdminCloseFactsApi> adminCloseOrders,
             org.springframework.core.env.Environment environment) {
         var ordinary=applicationOrders.getIfAvailable();
         var aftersale=environment.getProperty("pet.aftersale.enabled",Boolean.class,false)?aftersaleOrders.getObject():null;
+        var adminClose=environment.getProperty("pet.admin.trade.http.enabled",Boolean.class,false)?adminCloseOrders.getIfAvailable():null;
         return new LateRefundService(source, ids, guard, orders, payments, outbox,merchantOrders.getIfAvailable(),
             environment.getProperty("pet.refund.late.enabled",Boolean.class,false),ordinary,ordinary==null?null:applications::getObject,
-            aftersale,aftersale==null?null:aftersales::getObject,aftersale==null?null:aftersaleRefunds.getObject());
+            aftersale,aftersale==null?null:aftersales::getObject,aftersale==null?null:aftersaleRefunds.getObject(),adminClose);
     }
 
     @Bean PaymentRefundResultFactsApi paymentRefundResultFactsApi(DataSource source,
@@ -150,6 +152,7 @@ public class LateRefundConfiguration {
             ObjectProvider<com.petplatform.order.api.query.OrderAfterSaleRefundFactsApi> aftersaleOrders,
             ObjectProvider<com.petplatform.aftersale.api.query.AfterSaleRefundFactsApi> aftersales,
             ObjectProvider<com.petplatform.payment.api.query.RefundFundingEligibilityFactsApi> funding,
+            ObjectProvider<com.petplatform.order.api.query.OrderAdminCloseFactsApi> adminCloseOrders,
             org.springframework.core.env.Environment environment) {
         try {
             String zone = lakala.channelTimeZone();
@@ -158,10 +161,12 @@ public class LateRefundConfiguration {
                     dispatch.notifyUrl(), ZoneId.of(zone));
             boolean afsRefund=environment.getProperty("pet.aftersale.refund.enabled",Boolean.class,false);
             boolean afs=environment.getProperty("pet.aftersale.enabled",Boolean.class,false);
+            boolean trade=environment.getProperty("pet.admin.trade.http.enabled",Boolean.class,false);
             return new PaymentRefundService(source, ids, guard, orders, payments, refunds,
                     channel, settings, clocks.getIfAvailable(Clock::systemUTC),merchantOrders.getIfAvailable(),
                     applicationOrders.getIfAvailable(),applications.getIfAvailable(),afs?aftersaleOrders.getObject():null,
-                    afs?aftersales.getObject():null,afsRefund?funding.getObject():null);
+                    afs?aftersales.getObject():null,afsRefund?funding.getObject():null,
+                    trade?adminCloseOrders.getIfAvailable():null);
         } catch (Exception failure) {
             throw new IllegalStateException("Refund execution settings unavailable");
         }
@@ -220,7 +225,8 @@ public class LateRefundConfiguration {
     public static TaskRegistration<RefundPayload> registration(String type,
             RefundExecutionService execution, DataSource source) {
         if (!Set.of(SUBMIT,QUERY,"MERCHANT_REFUND_SUBMIT","MERCHANT_REFUND_CHANNEL_QUERY",
-                "APPLICATION_REFUND_SUBMIT","APPLICATION_REFUND_CHANNEL_QUERY","AFTERSALE_REFUND_SUBMIT","AFTERSALE_REFUND_CHANNEL_QUERY").contains(type)) throw new IllegalArgumentException();
+                "APPLICATION_REFUND_SUBMIT","APPLICATION_REFUND_CHANNEL_QUERY","AFTERSALE_REFUND_SUBMIT","AFTERSALE_REFUND_CHANNEL_QUERY",
+                "ADMIN_REFUND_SUBMIT","ADMIN_REFUND_CHANNEL_QUERY").contains(type)) throw new IllegalArgumentException();
         Objects.requireNonNull(execution);
         var databaseClock = new TaskDatabaseClock(Objects.requireNonNull(source));
         return new TaskRegistration<>(new TaskHandler<>() {
@@ -229,7 +235,7 @@ public class LateRefundConfiguration {
                     RefundPayload payload) {
                 var result = execution.execute(payload.refundOrderId(), payload.storeId(),
                         type.endsWith("REFUND_CHANNEL_QUERY"), task.traceId(),
-                        type.startsWith("AFTERSALE_")?"AFTERSALE_DECISION":type.startsWith("APPLICATION_")?"APPLICATION":type.startsWith("MERCHANT_")?"MERCHANT_REJECT_ORDER":"LATE_PAYMENT_TIMEOUT");
+                        type.startsWith("AFTERSALE_")?"AFTERSALE_DECISION":type.startsWith("APPLICATION_")?"APPLICATION":type.startsWith("MERCHANT_")?"MERCHANT_REJECT_ORDER":type.startsWith("ADMIN_")?"ADMIN_ABNORMAL_CLOSE":"LATE_PAYMENT_TIMEOUT");
                 if (result.done()) return new TaskExecutionResult.Success("REFUND_COORDINATED");
                 OffsetDateTime next = result.nextQueryAt();
                 if (next == null) throw new IllegalStateException("Refund query deadline absent");

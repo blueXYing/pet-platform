@@ -20,11 +20,14 @@ import org.yaml.snakeyaml.constructor.SafeConstructor;
 
 /** Static affected-contract checks; neither live HTTP nor database idempotency tests. */
 class S1ContractMappingTest {
+    // abnormalCloseOrder (draft POST /admin/orders/{orderId}/abnormal-close) graduated from the
+    // S1 family on 2026-10-15: implemented as adminAbnormalCloseTradeOrder inside the contract-63
+    // v0.2 disposal face (user ruling doc 33), so it is pinned by that family's own checks.
     private static final Set<String> LEGACY_OPERATIONS = Set.of(
             "createOrder", "listMyOrders", "getMyOrder", "createOrderPayment", "rescheduleOrder",
             "applyRefund", "getReviewEligibility", "createReview",
             "merchantConfirmOrder", "merchantRejectOrder", "merchantApproveRefund", "merchantRejectRefund",
-            "verifyPlatformOrder", "abnormalCloseOrder");
+            "verifyPlatformOrder");
     private static final Set<String> LEGACY_CREATES = Set.of(
             "createOrder", "applyRefund", "createReview");
     private static final Set<String> LEGACY_SCHEMAS = Set.of(
@@ -107,8 +110,8 @@ class S1ContractMappingTest {
         }
         assertEquals(LEGACY_OPERATIONS, seen, "AUTH additions must preserve every S1 business operation");
         assertEquals(LEGACY_CREATES, seenCreates);
-        assertEquals(14, operations, "Two former AFS drafts are pinned separately by Contract51");
-        assertEquals(11, writes);
+        assertEquals(13, operations, "Former AFS drafts and the abnormal-close draft (contract-63 v0.2 disposal, doc 33) are pinned separately");
+        assertEquals(10, writes);
         assertEquals(3, creates);
     }
 

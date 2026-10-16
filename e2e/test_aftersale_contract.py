@@ -24,7 +24,9 @@ class AfterSaleContractTest(unittest.TestCase):
     def test_family_is_separate_from_remaining_legacy_and_default_closed(self):
         result = check(self.spec)
         self.assertEqual(24, result['aftersaleOperations'])
-        self.assertEqual(14, result['legacyOperations'])
+        # abnormalCloseOrder graduated to the contract-63 v0.2 disposal face (2026-10-15,
+        # ruling doc 33); the remaining S1 legacy surface is untouched.
+        self.assertEqual(13, result['legacyOperations'])
         path = '/c/aftersales'
         self.reject(lambda s: s['paths'][path]['get'].__setitem__('x-default-enabled', True), 'AFS default-off')
         self.reject(lambda s: s['paths'][path]['get'].__setitem__('x-implementation-status', 'INTERNAL_ONLY'), 'AFS default-off')

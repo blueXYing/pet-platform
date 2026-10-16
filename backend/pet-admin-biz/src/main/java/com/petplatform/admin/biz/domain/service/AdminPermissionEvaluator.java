@@ -24,6 +24,13 @@ public final class AdminPermissionEvaluator {
    * read slice (ADM-001 gap / A-002 phase 2): merchant.read (AUTH-001 matrix row 3) and
    * schedule.read / merchant.staff.read (PRD 6.2.5/6.2.6 read-only supervision, SSOT §29/§30;
    * proposed codes disclosed in contract 64 — no governance write action exists).
+   * order.verification-log.read, refund.read — GET-only reads. The four disposal codes are
+   * registered on behalf of the contract-63 v0.2 disposal slice (user ruling 2026-10-15, doc 33;
+   * AUTH-001 matrix rows 4/7/8): refund.channel.query, refund.retry, order.abnormal.close,
+   * merchant.disable. Proposal spellings "refund.channel-query" / "order.abnormal-close" use
+   * hyphens; the AUTH action-code lexicon (AdminActionCheckQuery) only admits lowercase dotted
+   * segments, so the deployed spelling is the dotted correction — same implementation-phase
+   * spelling correction as service.force.offline, PR-disclosed.
    */
   public static final Set<String> DEPLOYED_ACTIONS =
       Set.of("merchant.application.read", "merchant.application.decide",
@@ -32,7 +39,8 @@ public final class AdminPermissionEvaluator {
           "review.appeal.read", "review.appeal.decide",
           "points.task.config.read", "points.task.config.write",
           "order.read", "order.status-log.read", "order.verification-log.read", "refund.read",
-          "merchant.read", "schedule.read", "merchant.staff.read");
+          "merchant.read", "schedule.read", "merchant.staff.read",
+          "refund.channel.query", "refund.retry", "order.abnormal.close", "merchant.disable");
 
   public static List<String> evaluate(
       boolean superAdmin, Collection<String> grants, Set<String> deployed) {

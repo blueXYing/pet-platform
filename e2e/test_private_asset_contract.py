@@ -58,13 +58,16 @@ class PrivateAssetContractRegressions(unittest.TestCase):
         # seven GET-only routes — adminListTradeOrders/adminGetTradeOrder/
         # adminListTradeOrderStatusLogs/adminListTradeRefunds/adminGetTradeRefund/
         # adminListTradeVerifications/adminGetTradeVerification; no write route).
-        # 173 = 166 + 7 contract-63 operations merged with the contract-62 base (union of
-        # both parallel slices: 163 baseline + 3 encyclopedia + 7 admin trade read).
-        # 181 = 173 + 8 contract-64 admin governance read operations (2026-10-15, ADM-001
+        # 176 = 173 + 3 new contract-63 v0.2 disposal paths (33号裁决 2026-10-15: refund
+        # channel-query/retry + merchant disable; abnormal-close already existed as the legacy
+        # draft that graduated into the disposal face; union slices stay:
+        # 163 baseline + 3 encyclopedia + 7 admin trade reads).
+        # 184 = 176 + 8 contract-64 admin governance read operations (2026-10-15, ADM-001
         # gap slice: five merchant-ledger/staff routes + three schedule view routes; GET-only).
-        self.assertEqual(result['operations'], 181)
+        self.assertEqual(result['operations'], 184)
         self.assertEqual(result['privateAssetOperations'], 3)
-        self.assertEqual(result['legacyOperations'], 14)
+        # abnormalCloseOrder graduated to the contract-63 v0.2 disposal face (2026-10-15).
+        self.assertEqual(result['legacyOperations'], 13)
         self.assertEqual(result['aftersaleOperations'], 24)
         self.assertEqual(result['authOperations'], 36)
         self.assertEqual(result['merchantOperations'], 8)

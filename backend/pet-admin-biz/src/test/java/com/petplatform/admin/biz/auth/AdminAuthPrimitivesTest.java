@@ -73,10 +73,16 @@ class AdminAuthPrimitivesTest {
             // Contract-64 platform governance read slice (ADM-001 gap slice): merchant.read
             // (matrix row 3) + schedule.read/merchant.staff.read (PRD 6.2.5/6.2.6 read-only
             // supervision, SSOT §29/§30); GET-only, no governance write action exists.
-            "merchant.read", "schedule.read", "merchant.staff.read"),
+            "merchant.read", "schedule.read", "merchant.staff.read",
+            // Contract-63 v0.2 disposal face (33号 ruling, 2026-10-15, AUTH-001 matrix rows 4/7/8):
+            // the four disposal write enforcement points ship in the same face; proposal spellings
+            // "refund.channel-query"/"order.abnormal-close" deploy as dotted segments.
+            "refund.channel.query", "refund.retry", "order.abnormal.close", "merchant.disable"),
         AdminPermissionEvaluator.DEPLOYED_ACTIONS);
     assertEquals(AdminPermissionEvaluator.DEPLOYED_ACTIONS.stream().sorted().toList(),AdminPermissionEvaluator.evaluate(true,List.of("refund.retry"),AdminPermissionEvaluator.DEPLOYED_ACTIONS));
-        assertEquals(List.of(),AdminPermissionEvaluator.evaluate(false,List.of("refund.retry"),AdminPermissionEvaluator.DEPLOYED_ACTIONS));
+        // A proposed-but-undeployed code (merchant.freeze: AUTH-001 matrix row, explicitly not
+        // implemented in V1) grants nothing to a non-super-admin even when granted.
+        assertEquals(List.of(),AdminPermissionEvaluator.evaluate(false,List.of("merchant.freeze"),AdminPermissionEvaluator.DEPLOYED_ACTIONS));
         // Pure template behavior; this test does not register a production action.
         assertEquals(List.of("test.read"),AdminPermissionEvaluator.evaluate(false,List.of("test.read","test.read","unknown"),Set.of("test.read")));
     }

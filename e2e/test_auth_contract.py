@@ -243,10 +243,12 @@ class AuthSurfaceRegressions(unittest.TestCase):
 
     def test_reviewed_surface_is_named_and_independently_counted(self):
         result = check(self.spec)
-        self.assertEqual(len(LEGACY_OPERATIONS), 14)
+        # abnormalCloseOrder graduated to the contract-63 v0.2 disposal face (2026-10-15,
+        # ruling doc 33); the remaining S1 legacy surface is untouched.
+        self.assertEqual(len(LEGACY_OPERATIONS), 13)
         self.assertEqual(len(AUTH_OPERATIONS), 36)
-        self.assertEqual(result['legacyOperations'], 14)
-        self.assertEqual(result['legacyWrites'], 11)
+        self.assertEqual(result['legacyOperations'], 13)
+        self.assertEqual(result['legacyWrites'], 10)
         self.assertEqual(result['legacyCreates'], 3)
         self.assertEqual(result['aftersaleOperations'], 24)
         self.assertEqual(result['authOperations'], 36)

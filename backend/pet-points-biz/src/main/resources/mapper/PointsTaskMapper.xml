@@ -133,6 +133,29 @@
         VALUES (#{id}, #{userId}, #{bizType}, #{bizId}, NULL, #{delta}, #{balanceAfter},
                 #{requestId}, #{createdAt})
     </insert>
+    <!-- Order-bound line (SQL06 §9 order_id + idx_points_order_type; contract 60 §7):
+         ORDER_REWARD earns positive, REFUND_CLAWBACK books negative. -->
+    <insert id="insertOrderLedger">
+        INSERT INTO points_ledger(id, user_id, biz_type, biz_id, order_id, delta, balance_after,
+                                  request_id, created_at)
+        VALUES (#{id}, #{userId}, #{bizType}, #{bizId}, #{orderId}, #{delta}, #{balanceAfter},
+                #{requestId}, #{createdAt})
+    </insert>
+    <!-- PTS-002 clawback scan: positive ORDER_REWARD lines of one order, locked FOR UPDATE so
+         concurrent refund deliveries of the same order serialize on the row locks. -->
+    <select id="lockOrderRewardLedger"
+            resultType="com.petplatform.points.biz.infrastructure.persistence.entity.PointsOrderRewardLedgerEntity">
+        SELECT id, user_id, biz_id, delta, created_at
+        FROM points_ledger
+        WHERE order_id = #{orderId} AND biz_type = 'ORDER_REWARD' AND delta &gt; 0
+        ORDER BY id ASC
+        FOR UPDATE
+    </select>
+    <select id="selectClawedTotal" resultType="java.lang.Long">
+        SELECT COALESCE(SUM(-delta), 0)
+        FROM points_ledger
+        WHERE order_id = #{orderId} AND biz_type = 'REFUND_CLAWBACK' AND delta &lt; 0
+    </select>
     <insert id="upsertAccountBalance">
         INSERT INTO points_account(id, user_id, balance, version, created_at, updated_at)
         VALUES (#{id}, #{userId}, #{delta}, 0, #{now}, #{now})

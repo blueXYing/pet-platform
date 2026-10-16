@@ -37,6 +37,9 @@ public final class RefundExecutionStore {
     public void insertMerchant(java.util.Map<String,Object> row) {
         if(mapper.insertMerchantRefund(row)!=1||mapper.insertMerchantExecution(row)!=1)throw new IllegalStateException("Refund insert failed");
     }
+    public void insertAdminClose(java.util.Map<String,Object> row) {
+        if(mapper.insertAdminRefund(row)!=1||mapper.insertAdminExecution(row)!=1)throw new IllegalStateException("Refund insert failed");
+    }
     public void sessionDefaults() { mapper.setUtcTimeZone(); mapper.setLockWaitTimeout(); }
     public LocalDateTime databaseNow() { return mapper.databaseNow(); }
     public void insertRefundOrder(long refundId, long refundNo, long orderId,
@@ -79,6 +82,7 @@ public final class RefundExecutionStore {
     public int insertIssue(long refundId, String code) { return mapper.insertIssue(refundId, code); }
     public List<RefundMapperRows.Candidate> scanOpen(long after,boolean late,boolean merchant) { return scanOpen(after,late,merchant,false); }
     public List<RefundMapperRows.Candidate> scanOpen(long after,boolean late,boolean merchant,boolean application) { return scanOpen(after,late,merchant,application,false); }
-    public List<RefundMapperRows.Candidate> scanOpen(long after,boolean late,boolean merchant,boolean application,boolean aftersale) { return mapper.scanOpen(after,late,merchant,application,aftersale); }
+    public List<RefundMapperRows.Candidate> scanOpen(long after,boolean late,boolean merchant,boolean application,boolean aftersale) { return scanOpen(after,late,merchant,application,aftersale,false); }
+    public List<RefundMapperRows.Candidate> scanOpen(long after,boolean late,boolean merchant,boolean application,boolean aftersale,boolean adminClose) { return mapper.scanOpen(after,late,merchant,application,aftersale,adminClose); }
     public LocalDateTime persistedFirstQueryAt(long refund){return mapper.persistedFirstQueryAt(refund);}
 }
