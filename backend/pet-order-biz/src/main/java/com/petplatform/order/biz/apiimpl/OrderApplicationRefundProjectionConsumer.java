@@ -60,7 +60,8 @@ public final class OrderApplicationRefundProjectionConsumer implements Integrati
                     ||n.path("originalPaidAmount").decimalValue().signum()<=0||n.path("originalPaidAmount").decimalValue().scale()>2)throw unavailable();
             OffsetDateTime at=OffsetDateTime.parse(text(n,"succeededAt"));PublicContractChecks.requireMillisecondPrecision(at);
             if(event.occurredAt()==null||!event.occurredAt().isEqual(at))throw unavailable();
-            if(Set.of("LATE_PAYMENT_TIMEOUT","MERCHANT_REJECT_ORDER").contains(sourceType))return;
+            // ADMIN_ABNORMAL_CLOSE (contract-63 v0.2) is owned by the ORDER_ADMIN_REFUND consumer.
+            if(Set.of("LATE_PAYMENT_TIMEOUT","MERCHANT_REJECT_ORDER","ADMIN_ABNORMAL_CLOSE").contains(sourceType))return;
             // 2026-10-05 user adjudication: PRESTART_AUTO (pre-service auto refund) is a known application source.
             if(!Set.of("MERCHANT_APPROVED","MERCHANT_TIMEOUT_AUTO","PRESTART_AUTO").contains(sourceType))throw unavailable();
             QueryContext q=new QueryContext(event.traceId(),OperatorType.SYSTEM,null);String store=locations.locate(order,q).storeId();

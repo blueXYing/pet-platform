@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<!-- Contract-63 v0.2 merchant governance. MERCHANT-owned SQL only; no substitution. The disable
+     walks the existing merchant status vocabulary (ACTIVE -> OFFLINE, SSOT §15): new orders stop
+     through the existing eligibility facts, in-flight orders/refunds keep their own admission. -->
+<mapper namespace="com.petplatform.merchant.biz.infrastructure.persistence.mapper.AdminMerchantDispositionMapper">
+  <update id="setTimeZoneUtc">SET SESSION time_zone = '+00:00'</update>
+  <update id="setLockWaitTimeout2Seconds">SET SESSION innodb_lock_wait_timeout = 2</update>
+
+  <select id="selectMerchantForUpdate" resultType="com.petplatform.merchant.biz.infrastructure.persistence.mapper.AdminMerchantDispositionMapper$MerchantRow">
+    SELECT id,status,version FROM merchant WHERE id=#{merchantId} FOR UPDATE
+  </select>
+
+  <update id="disableMerchant">
+    UPDATE merchant SET status='OFFLINE',version=version+1,updated_at=#{now}
+    WHERE id=#{merchantId} AND status='ACTIVE'
+  </update>
+
+  <insert id="insertAction">
+    INSERT INTO merchant_governance_action(id,merchant_id,action_type,reason,status_before,
+      merchant_version,acted_by_operator_id,acted_at,authz_version,request_id,trace_id,created_at)
+    VALUES(#{id},#{merchantId},'DISABLE',#{reason},#{statusBefore},#{merchantVersion},#{operatorId},
+      #{actedAt},#{authzVersion},#{requestId},#{traceId},#{now})
+  </insert>
+
+  <select id="selectByRequest" resultType="com.petplatform.merchant.biz.infrastructure.persistence.mapper.AdminMerchantDispositionMapper$ActionRow" useCache="false" flushCache="true">
+    SELECT id,merchant_id,action_type,reason,status_before,merchant_version,acted_by_operator_id,
+      acted_at,authz_version,request_id,trace_id
+    FROM merchant_governance_action WHERE request_id=#{requestId}
+  </select>
+</mapper>

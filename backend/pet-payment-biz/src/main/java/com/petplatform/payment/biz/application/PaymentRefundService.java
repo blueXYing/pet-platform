@@ -56,6 +56,7 @@ public final class PaymentRefundService implements PaymentRefundApi {
     private final ScheduleCapacityGuardApi guard;
     private final OrderLatePaymentFactsApi orders;
     private final OrderMerchantRejectFactsApi merchantOrders;
+    private final com.petplatform.order.api.query.OrderAdminCloseFactsApi adminCloseOrders;
     private final OrderRefundApplicationFactsApi applicationOrders;
     private final RefundApplicationApprovalFactsApi applicationApprovals;
     private final com.petplatform.order.api.query.OrderAfterSaleRefundFactsApi aftersaleOrders;
@@ -105,8 +106,20 @@ public final class PaymentRefundService implements PaymentRefundApi {
             com.petplatform.order.api.query.OrderAfterSaleRefundFactsApi aftersaleOrders,
             com.petplatform.aftersale.api.query.AfterSaleRefundFactsApi aftersaleDecisions,
             com.petplatform.payment.api.query.RefundFundingEligibilityFactsApi funding) {
+        this(source,ids,guard,orders,paymentFacts,refundFacts,channel,settings,clock,merchantOrders,
+            applicationOrders,applicationApprovals,aftersaleOrders,aftersaleDecisions,funding,null);
+    }
+    public PaymentRefundService(DataSource source,SnowflakeIdGenerator ids,ScheduleCapacityGuardApi guard,
+            OrderLatePaymentFactsApi orders,PaymentSuccessFactsApi paymentFacts,RefundExecutionFactsApi refundFacts,
+            PaymentRefundChannel channel,Settings settings,Clock clock,OrderMerchantRejectFactsApi merchantOrders,
+            OrderRefundApplicationFactsApi applicationOrders,RefundApplicationApprovalFactsApi applicationApprovals,
+            com.petplatform.order.api.query.OrderAfterSaleRefundFactsApi aftersaleOrders,
+            com.petplatform.aftersale.api.query.AfterSaleRefundFactsApi aftersaleDecisions,
+            com.petplatform.payment.api.query.RefundFundingEligibilityFactsApi funding,
+            com.petplatform.order.api.query.OrderAdminCloseFactsApi adminCloseOrders) {
         if((aftersaleOrders==null)!=(aftersaleDecisions==null)||funding!=null&&aftersaleOrders==null)throw new IllegalArgumentException("After-sale funding dependencies incomplete");
         this.aftersaleOrders=aftersaleOrders;this.aftersaleDecisions=aftersaleDecisions;this.funding=funding;
+        this.adminCloseOrders=adminCloseOrders;
         this.merchantOrders=merchantOrders;
         this.applicationOrders=applicationOrders;
         this.applicationApprovals=applicationApprovals;
@@ -350,6 +363,11 @@ public final class PaymentRefundService implements PaymentRefundApi {
                 origin = merchantOrders.requireRejected(orderId, Long.toString(input.paymentId()),
                         input.storeId(), context);
             }
+            case "ADMIN_ABNORMAL_CLOSE" -> {
+                if (adminCloseOrders == null) throw unavailable();
+                origin = adminCloseOrders.requireClosed(orderId, Long.toString(input.paymentId()),
+                        input.storeId(), context);
+            }
             case "MERCHANT_APPROVED", "MERCHANT_TIMEOUT_AUTO", "PRESTART_AUTO" -> {
                 if (applicationOrders == null || applicationApprovals == null) throw unavailable();
                 origin = applicationOrders.requireApprovedRefund(orderId,
@@ -418,7 +436,7 @@ public final class PaymentRefundService implements PaymentRefundApi {
                         || business.sourceBizId() != null || business.sourceDecisionId() != null)
                     throw unavailable();
             }
-            case "MERCHANT_REJECT_ORDER" -> {
+            case "MERCHANT_REJECT_ORDER", "ADMIN_ABNORMAL_CLOSE" -> {
                 if (!validFactId(business.sourceEventId()) || business.lateEventId() != null
                         || business.sourceBizId() != null || business.sourceDecisionId() != null)
                     throw unavailable();

@@ -4232,39 +4232,53 @@ paths:
   /admin/orders/{orderId}/abnormal-close:
     post:
       tags:
-      - Admin-Order
-      summary: 运营异常关闭并退款
-      operationId: abnormalCloseOrder
+      - Admin-Trade-Query
+      summary: 运营异常关闭订单（order.abnormal.close）
+      operationId: adminAbnormalCloseTradeOrder
+      x-implementation-status: IMPLEMENTED_DEFAULT_OFF
+      x-default-enabled: false
+      x-contract: 63-Admin-Trade-Query-Contract-v0.1.md
+      x-assembly-switch: pet.admin.trade.http.enabled
+      x-route-party: OPS
+      x-audience: ADMIN_WEB
+      x-required-actions: [order.abnormal.close]
+      description: 63号 v0.2（HTTP10 §5.5，33号裁决 2026-10-15）。固定语义异常关闭+全额退款，
+        非正常运营代接单。走 order 既有状态机（order_stage→CANCELED，cancel_reason=
+        ADMIN_ABNORMAL_CLOSE 事实新值，不新增订单状态）；守卫与商家拒单关闭同款
+        （PAID+UNVERIFIED、无在途售后/退款申请、无既有退款单——在途售后拒绝而非失效）。
+        全额退款经退款内核 source ADMIN_ABNORMAL_CLOSE 创建，金额=渠道实付。
+        X-Request-Id 幂等绑定审计行。原 v0.1 草案操作 abnormalCloseOrder 由本实现替代
+        （reasonCode 定词表、reason 10..500 必填，动作码/开关/信封入 63 处置族）。
       security:
       - bearerAuth: []
       parameters:
-      - $ref: '#/components/parameters/OrderId'
       - $ref: '#/components/parameters/RequestId'
+      - name: orderId
+        in: path
+        required: true
+        schema: {$ref: '#/components/schemas/PublicId'}
       requestBody:
         required: true
         content:
           application/json:
             schema:
-              type: object
-              required:
-              - reason
-              properties:
-                reasonCode:
-                  type: string
-                reason:
-                  type: string
-                  maxLength: 500
+              $ref: '#/components/schemas/AdminAbnormalCloseRequest'
       responses:
-        '401':
-          $ref: '#/components/responses/Unauthorized'
-        '403':
-          $ref: '#/components/responses/Forbidden'
-        '503':
-          $ref: '#/components/responses/DependencyUnavailable'
+        '400': {$ref: '#/components/responses/BadRequest'}
+        '401': {$ref: '#/components/responses/Unauthorized'}
+        '403': {$ref: '#/components/responses/Forbidden'}
+        '404': {$ref: '#/components/responses/NotFound'}
+        '409': {$ref: '#/components/responses/Conflict'}
+        '503': {$ref: '#/components/responses/DependencyUnavailable'}
         '200':
           description: 成功
-        '409':
-          $ref: '#/components/responses/Conflict'
+          headers:
+            Cache-Control:
+              schema: {type: string, enum: [no-store]}
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AdminAbnormalCloseEnvelope'
   /c/auth/attempts:
     post:
       operationId: cAuthCreateAttempt
@@ -13472,7 +13486,7 @@ paths:
       x-audience: ADMIN_WEB
       x-required-actions: [refund.read]
       description: 63号（HTTP10 §5.2 查询面）。refund_order 平台只读列表；一笔订单最多一张业务退款单。
-        channel-query/retry 保持草案（本切片不实现）。
+        channel-query/retry 与异常关单/商家下线已由 v0.2 处置面实现（33号裁决 2026-10-15）。
       security:
       - bearerAuth: []
       parameters:
@@ -13491,7 +13505,7 @@ paths:
       - name: sourceType
         in: query
         required: false
-        schema: {type: string, enum: [PRESTART_AUTO, MERCHANT_REJECT_ORDER, MERCHANT_APPROVED, MERCHANT_TIMEOUT_AUTO, AFTERSALE_DECISION, LATE_PAYMENT_TIMEOUT]}
+        schema: {type: string, enum: [PRESTART_AUTO, MERCHANT_REJECT_ORDER, MERCHANT_APPROVED, MERCHANT_TIMEOUT_AUTO, AFTERSALE_DECISION, LATE_PAYMENT_TIMEOUT, ADMIN_ABNORMAL_CLOSE]}
       - name: refundType
         in: query
         required: false
@@ -13655,6 +13669,134 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/AdminTradeVerificationDetailEnvelope'
+  /admin/refunds/{refundId}/channel-query:
+    post:
+      tags:
+      - Admin-Trade-Query
+      summary: 退款渠道查单（refund.channel.query）
+      operationId: adminChannelQueryTradeRefund
+      x-implementation-status: IMPLEMENTED_DEFAULT_OFF
+      x-default-enabled: false
+      x-contract: 63-Admin-Trade-Query-Contract-v0.1.md
+      x-assembly-switch: pet.admin.trade.http.enabled
+      x-route-party: OPS
+      x-audience: ADMIN_WEB
+      x-required-actions: [refund.channel.query]
+      description: 63号 v0.2（HTTP10 §5.2，33号裁决 2026-10-15）。重推该退款既有
+        REFUND_CHANNEL_QUERY 任务族（按 source 前缀解析）；不创建第二张业务退款单（SSOT §22）。
+        任务不存在按原排期补建，DEAD/CANCELED 由 owner recovery 复活，在途原样返回；
+        退款 SUCCESS 或未提交过渠道（CREATED）409。X-Request-Id 幂等绑定审计行，同 ID 重放原回执。
+      security:
+      - bearerAuth: []
+      parameters:
+      - $ref: '#/components/parameters/RequestId'
+      - name: refundId
+        in: path
+        required: true
+        schema: {$ref: '#/components/schemas/PublicId'}
+      responses:
+        '400': {$ref: '#/components/responses/BadRequest'}
+        '401': {$ref: '#/components/responses/Unauthorized'}
+        '403': {$ref: '#/components/responses/Forbidden'}
+        '404': {$ref: '#/components/responses/NotFound'}
+        '409': {$ref: '#/components/responses/Conflict'}
+        '503': {$ref: '#/components/responses/DependencyUnavailable'}
+        '200':
+          description: 成功（含在途幂等现状回执）
+          headers:
+            Cache-Control:
+              schema: {type: string, enum: [no-store]}
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AdminRefundDispositionEnvelope'
+  /admin/refunds/{refundId}/retry:
+    post:
+      tags:
+      - Admin-Trade-Query
+      summary: 退款渠道重试（refund.retry）
+      operationId: adminRetryTradeRefund
+      x-implementation-status: IMPLEMENTED_DEFAULT_OFF
+      x-default-enabled: false
+      x-contract: 63-Admin-Trade-Query-Contract-v0.1.md
+      x-assembly-switch: pet.admin.trade.http.enabled
+      x-route-party: OPS
+      x-audience: ADMIN_WEB
+      x-required-actions: [refund.retry]
+      description: 63号 v0.2（HTTP10 §5.2，33号裁决 2026-10-15）。重推该退款既有 REFUND_SUBMIT
+        任务族；只重试渠道动作，PAYMENT 持久边界决定可提交或需查单；不创建第二张业务退款单。
+        退款 SUCCESS 409。X-Request-Id 幂等绑定审计行，同 ID 重放原回执。
+      security:
+      - bearerAuth: []
+      parameters:
+      - $ref: '#/components/parameters/RequestId'
+      - name: refundId
+        in: path
+        required: true
+        schema: {$ref: '#/components/schemas/PublicId'}
+      responses:
+        '400': {$ref: '#/components/responses/BadRequest'}
+        '401': {$ref: '#/components/responses/Unauthorized'}
+        '403': {$ref: '#/components/responses/Forbidden'}
+        '404': {$ref: '#/components/responses/NotFound'}
+        '409': {$ref: '#/components/responses/Conflict'}
+        '503': {$ref: '#/components/responses/DependencyUnavailable'}
+        '200':
+          description: 成功
+          headers:
+            Cache-Control:
+              schema: {type: string, enum: [no-store]}
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AdminRefundDispositionEnvelope'
+  /admin/merchants/{merchantId}/disable:
+    post:
+      tags:
+      - Admin-Trade-Query
+      summary: 商家下线（merchant.disable）
+      operationId: adminDisableTradeMerchant
+      x-implementation-status: IMPLEMENTED_DEFAULT_OFF
+      x-default-enabled: false
+      x-contract: 63-Admin-Trade-Query-Contract-v0.1.md
+      x-assembly-switch: pet.admin.trade.http.enabled
+      x-route-party: OPS
+      x-audience: ADMIN_WEB
+      x-required-actions: [merchant.disable]
+      description: 63号 v0.2（HTTP10 §5.6，33号裁决 2026-10-15）。SSOT §15：立即下线，停止新订单
+        （既有准入事实对非 ACTIVE fail-closed），存量订单继续履约、存量退款/售后继续处理；
+        有在途订单不拒绝本动作。复用既有商家状态词表 ACTIVE→OFFLINE（不新增状态）。
+        X-Request-Id 幂等绑定审计行，同 ID 重放原回执。
+      security:
+      - bearerAuth: []
+      parameters:
+      - $ref: '#/components/parameters/RequestId'
+      - name: merchantId
+        in: path
+        required: true
+        schema: {$ref: '#/components/schemas/PublicId'}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AdminMerchantDisableRequest'
+      responses:
+        '400': {$ref: '#/components/responses/BadRequest'}
+        '401': {$ref: '#/components/responses/Unauthorized'}
+        '403': {$ref: '#/components/responses/Forbidden'}
+        '404': {$ref: '#/components/responses/NotFound'}
+        '409': {$ref: '#/components/responses/Conflict'}
+        '503': {$ref: '#/components/responses/DependencyUnavailable'}
+        '200':
+          description: 成功
+          headers:
+            Cache-Control:
+              schema: {type: string, enum: [no-store]}
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AdminMerchantDisableEnvelope'
 components:
   securitySchemes:
     bearerAuth:
@@ -23775,7 +23917,7 @@ components:
         refundNo: {$ref: '#/components/schemas/PublicId'}
         orderId: {$ref: '#/components/schemas/PublicId'}
         refundType: {type: string, enum: [FULL, PARTIAL]}
-        sourceType: {type: string, enum: [PRESTART_AUTO, MERCHANT_REJECT_ORDER, MERCHANT_APPROVED, MERCHANT_TIMEOUT_AUTO, AFTERSALE_DECISION, LATE_PAYMENT_TIMEOUT]}
+        sourceType: {type: string, enum: [PRESTART_AUTO, MERCHANT_REJECT_ORDER, MERCHANT_APPROVED, MERCHANT_TIMEOUT_AUTO, AFTERSALE_DECISION, LATE_PAYMENT_TIMEOUT, ADMIN_ABNORMAL_CLOSE]}
         status: {type: string, enum: [CREATED, PROCESSING, SUCCESS, FAILED, UNKNOWN]}
         refundAmount: {$ref: '#/components/schemas/DecimalAmountOutput'}
         initiatorType: {type: string, enum: [SYSTEM, MERCHANT, OPS]}
@@ -23965,6 +24107,74 @@ components:
         properties:
           data:
             $ref: '#/components/schemas/AdminTradeVerificationDetail'
+    AdminRefundDispositionReceipt:
+      type: object
+      additionalProperties: false
+      required: [refundOrderId, action, taskKey, taskState, refundStatus, occurredAt]
+      properties:
+        refundOrderId: {$ref: '#/components/schemas/PublicId'}
+        action: {type: string, enum: [CHANNEL_QUERY, RETRY]}
+        taskKey: {type: string, description: '重推的既有 durable 任务键（前缀REFUND_*:refundId:0）。'}
+        taskState:
+          type: string
+          enum: [READY, RUNNING, RETRY_WAIT, SUCCEEDED, DEAD, CANCELED]
+          description: '动作后该任务的 async_task 状态（在途任务原样返回现状）。'
+        refundStatus: {type: string, description: '退款单当前状态（内核事实）。'}
+        occurredAt: {type: string, format: date-time}
+    AdminRefundDispositionEnvelope:
+      allOf:
+      - $ref: '#/components/schemas/BaseEnvelope'
+      - type: object
+        properties:
+          data:
+            $ref: '#/components/schemas/AdminRefundDispositionReceipt'
+    AdminAbnormalCloseRequest:
+      type: object
+      additionalProperties: false
+      required: [reasonCode, reason]
+      properties:
+        reasonCode:
+          type: string
+          enum: [STORE_OFFLINE, QUALIFICATION_INVALID, MERCHANT_UNREACHABLE, OTHER]
+        reason: {type: string, minLength: 10, maxLength: 500}
+    AdminAbnormalCloseReceipt:
+      type: object
+      additionalProperties: false
+      required: [orderId, orderStage, cancelReason, refundOrderId, occurredAt]
+      properties:
+        orderId: {$ref: '#/components/schemas/PublicId'}
+        orderStage: {type: string, enum: [CANCELED]}
+        cancelReason: {type: string, enum: [ADMIN_ABNORMAL_CLOSE]}
+        refundOrderId: {$ref: '#/components/schemas/PublicId'}
+        occurredAt: {type: string, format: date-time}
+    AdminAbnormalCloseEnvelope:
+      allOf:
+      - $ref: '#/components/schemas/BaseEnvelope'
+      - type: object
+        properties:
+          data:
+            $ref: '#/components/schemas/AdminAbnormalCloseReceipt'
+    AdminMerchantDisableRequest:
+      type: object
+      additionalProperties: false
+      required: [reason]
+      properties:
+        reason: {type: string, minLength: 10, maxLength: 500}
+    AdminMerchantDisableReceipt:
+      type: object
+      additionalProperties: false
+      required: [merchantId, status, occurredAt]
+      properties:
+        merchantId: {$ref: '#/components/schemas/PublicId'}
+        status: {type: string, enum: [OFFLINE]}
+        occurredAt: {type: string, format: date-time}
+    AdminMerchantDisableEnvelope:
+      allOf:
+      - $ref: '#/components/schemas/BaseEnvelope'
+      - type: object
+        properties:
+          data:
+            $ref: '#/components/schemas/AdminMerchantDisableReceipt'
   examples:
     AuthApprovedExample1:
       summary: Accepted AUTH example; fictional data, no Provider success claim

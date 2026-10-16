@@ -254,7 +254,7 @@ class MerchantOrderAcceptanceTest {
             assertEquals("AUTO",f.f.text("SELECT confirm_mode FROM pet_order"));assertEquals(0,f.f.count("SELECT COUNT(*) FROM refund_order"));
         }
     }
-    private static void code(String code,org.junit.jupiter.api.function.Executable work){assertEquals(code,assertThrows(ApiException.class,work).code());}
+    static void code(String code,org.junit.jupiter.api.function.Executable work){assertEquals(code,assertThrows(ApiException.class,work).code());}
     static final class F implements AutoCloseable {
         final PaymentFoundationAcceptanceTest.Fixture f=new PaymentFoundationAcceptanceTest.Fixture(Clock.systemUTC(),true);
         final OrderMerchantRejectFactsApiImpl facts=new OrderMerchantRejectFactsApiImpl(f.db.source,f.guard,new ReservationConfirmApiImpl(f.db.source,IDS::incrementAndGet,f.guard,new ScheduleProtectionFactsApiImpl(f.db.source,f.guard),new OrderPaymentFactsApiImpl(f.db.source,f.guard)));
