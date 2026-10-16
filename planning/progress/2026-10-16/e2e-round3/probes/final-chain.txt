@@ -1,0 +1,15 @@
+Traceback (most recent call last):
+  File "D:\Temp\e2e-r3\final-chain.py", line 29, in <module>
+    token = l['data']['accessToken']
+TypeError: 'NoneType' object is not subscriptable
+Traceback (most recent call last):
+  File "D:\Temp\e2e-r3\final-chain.py", line 30, in <module>
+    token = l['data']['accessToken']
+TypeError: 'NoneType' object is not subscriptable
+{"login": {"http": 200, "userId": "710100"}}
+CLAIM 200 {"claimType": "FIRST_ORDER", "pointsGranted": "100", "ledgerIds": ["104433857549627393"], "balanceAfter": "100"}
+ORDERS [('104433327607689216', 'PENDING_SERVICE', 'PAID')]
+REFUND 403 {"code": "COMMON_FORBIDDEN", "message": "Forbidden", "data": null, "traceId": "ce19bdd8-1903-4ecf-9649-b129c6f58809"}
+C1 201 {"orderId": "104433857939697664", "orderNo": "104433857939697665", "displayStatus": "PENDING_PAYMENT", "payAmount": "50.00", "paymentExpireAt": "2026-10-16T04:32:52.027Z"}
+C2 201 {"orderId": "104433858124247040", "orderNo": "104433858124247041", "displayStatus": "PENDING_PAYMENT", "payAmount": "50.00", "paymentExpireAt": "2026-10-16T04:32:52.072Z"}
+DONE

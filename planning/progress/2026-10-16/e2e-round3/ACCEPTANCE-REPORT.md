@@ -55,7 +55,11 @@
 
 ### 2.4 滚动补录（写报告后落地的终态）
 
-- （待补）
+- 第三轮走查后期环境雪花风暴持续（共享 33440 被主会话重度占用），异步任务在退避队列中反复重试。为在健康窗口内完成剩余终态，第二次重建走查库（`auth001czqa8750_e2e_core_loop_06588ddbe8544ddcb57b48e5593d5ea5`，node 75）后以 `probes/final-chain.py` 于 boot 后健康窗口内一次性驱动：
+  - `CLAIM FIRST_ORDER` 200（+100，balanceAfter 100，X-Request-Id 见 probes/final-chain.txt）——**PTS-001 领取绑定发放在新库复现通过**；
+  - 券单 C1=104433857939697664（冻 716011）/C2=104433858124247040（冻 716012）各 201 ¥50.00，paymentExpireAt=04:32:52Z；
+  - 种子单 104433327607689216 退款申请 201：**`AUTO_APPROVED` / `route=AUTO_FULL_BEFORE_SERVICE` / `displayStatus=REFUNDING`**（申请编号 104434082871844864）——服务前退款自动全额再次实证；`REFUND_APPLICATION_CREATE SUCCEEDED`（refund_order 已建，`RefundOrderCreatedEvent.v1` 出站）。
+  - 终态（APPLICATION_REFUND_SUBMIT 的渠道执行 → `RefundSucceededEvent.v1` → PTS-002 REFUND_CLAWBACK -100；RESERVATION_HOLD_EXPIRE 关单 → 券 RELEASE）：任务均已在队列/退避中（本稿定稿时环境风暴未息，async_task 行持久存在，环境恢复后由 worker 自动补完）。**如实标注：A5/C3 的终态 DB 证据在本轮环境窗口内未落地，链路触发证据已齐。**
 
 ## 3. 发现的问题清单（只定界取证，未修）
 
