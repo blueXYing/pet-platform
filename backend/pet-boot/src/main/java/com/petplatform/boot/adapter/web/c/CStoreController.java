@@ -39,7 +39,7 @@ import org.springframework.web.bind.annotation.RestController;
  * subject never changes visibility.
  */
 @RestController
-@ConditionalOnProperty(prefix = "pet.store.query", name = "enabled", havingValue = "true")
+@ConditionalOnProperty(prefix = "pet.store.query", name = "enabled", havingValue = "true", matchIfMissing = true)
 public class CStoreController {
 
     private static final java.util.regex.Pattern CITY =

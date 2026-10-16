@@ -67,7 +67,7 @@ import tools.jackson.databind.ObjectReader;
 @RestController
 @RequestMapping(value = "/api/v1/merchant", produces = MediaType.APPLICATION_JSON_VALUE)
 @ConditionalOnProperty(prefix = "pet.schedule.command.http", name = "enabled",
-        havingValue = "true")
+        havingValue = "true", matchIfMissing = true)
 public final class MerchantScheduleController {
 
     private static final ObjectReader STRICT =

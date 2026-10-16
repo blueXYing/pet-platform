@@ -111,7 +111,7 @@ public class RefundApplicationConfiguration {
                 RefundApplicationPorts.SessionAuthority sessions,RefundApplicationPorts.OwnerAuthority owners,
                 RefundApplicationPorts.ReasonPolicy reasons,RefundApplicationPorts.Moderation moderation,
                 RefundApplicationPorts.Protection protection,RefundApplicationPorts.TaskRecovery recovery,
-                @Value("${pet.refund.pre-service-auto-refund.enabled:false}") boolean preServiceAutoRefund) {
+                @Value("${pet.refund.pre-service-auto-refund.enabled:true}") boolean preServiceAutoRefund) {
             return new RefundApplicationService(source,ids,guard,orders,payments,outbox,sessions,owners,reasons,moderation,protection,recovery,preServiceAutoRefund);
         }
         @Bean OrderApplicationRefundProjectionConsumer applicationRefundProjection(DataSource source,SnowflakeIdGenerator ids,

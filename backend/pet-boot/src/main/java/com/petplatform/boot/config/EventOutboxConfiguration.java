@@ -29,7 +29,7 @@ import org.springframework.context.annotation.Configuration;
  * the outbox tables to exist — no migration is executed or implied here.
  */
 @Configuration(proxyBeanMethods = false)
-@ConditionalOnProperty(prefix = "pet.outbox", name = "enabled", havingValue = "true")
+@ConditionalOnProperty(prefix = "pet.outbox", name = "enabled", havingValue = "true", matchIfMissing = true)
 @ConditionalOnBean(SnowflakeIdGenerator.class)
 public class EventOutboxConfiguration {
 
@@ -49,7 +49,7 @@ public class EventOutboxConfiguration {
   @ConditionalOnProperty(
       prefix = "pet.merchant.application",
       name = "notifications-enabled",
-      havingValue = "true")
+      havingValue = "true", matchIfMissing = true)
   MerchantApplicationReviewedConsumer merchantApplicationReviewedConsumer(
       DataSource dataSource,
       SnowflakeIdGenerator ids,
@@ -70,7 +70,7 @@ public class EventOutboxConfiguration {
     @ConditionalOnProperty(
             prefix = "pet.service.review",
             name = "notifications-enabled",
-            havingValue = "true")
+            havingValue = "true", matchIfMissing = true)
     ServiceReviewedConsumer serviceReviewedConsumer(
       DataSource dataSource,
       SnowflakeIdGenerator ids,
@@ -88,7 +88,7 @@ public class EventOutboxConfiguration {
     @ConditionalOnProperty(
             prefix = "pet.merchant.staff",
             name = "notifications-enabled",
-            havingValue = "true")
+            havingValue = "true", matchIfMissing = true)
     MerchantStaffInvitationConsumer merchantStaffInvitationConsumer(
             DataSource dataSource,
             SnowflakeIdGenerator ids,
@@ -103,7 +103,7 @@ public class EventOutboxConfiguration {
     @ConditionalOnProperty(
             prefix = "pet.merchant.staff",
             name = "notifications-enabled",
-            havingValue = "true")
+            havingValue = "true", matchIfMissing = true)
     MerchantStaffMemberConsumer merchantStaffMemberConsumer(
             DataSource dataSource,
             SnowflakeIdGenerator ids,
@@ -121,7 +121,7 @@ public class EventOutboxConfiguration {
     @ConditionalOnProperty(
             prefix = "pet.merchant.staff",
             name = "notifications-enabled",
-            havingValue = "true")
+            havingValue = "true", matchIfMissing = true)
     MerchantStaffGrantConsumer merchantStaffGrantConsumer(
             DataSource dataSource,
             SnowflakeIdGenerator ids,

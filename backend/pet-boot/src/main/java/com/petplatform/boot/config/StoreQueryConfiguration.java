@@ -15,7 +15,7 @@ import org.springframework.context.annotation.Configuration;
  * exist. Default off in production until the deployment gate opens it.
  */
 @Configuration(proxyBeanMethods = false)
-@ConditionalOnProperty(prefix = "pet.store.query", name = "enabled", havingValue = "true")
+@ConditionalOnProperty(prefix = "pet.store.query", name = "enabled", havingValue = "true", matchIfMissing = true)
 public class StoreQueryConfiguration {
 
     @Bean

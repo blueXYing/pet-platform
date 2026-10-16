@@ -18,7 +18,7 @@ import org.springframework.context.annotation.Configuration;
  */
 @Configuration(proxyBeanMethods = false)
 @ConditionalOnProperty(prefix = "pet.points.refund-clawback", name = "enabled",
-        havingValue = "true")
+        havingValue = "true", matchIfMissing = true)
 public class PointsRefundClawbackConfiguration {
 
     @Bean

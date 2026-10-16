@@ -40,10 +40,12 @@ logging:
   pattern:
     level: "%5p [traceId=%X{traceId:-} requestId=%X{requestId:-}]"
 
-# C-end (mini-program) auth slice. Off by default; when pet.auth.c.enabled=true the real
-# WeChat provider additionally needs app-id/app-secret. Fill them in the git-ignored
-# application-local.yml (copy application-local.yml.example) or via the environment
-# variables below at deployment time. Never commit real credentials.
+# Platform capability switches. Per the 2026-10-16 deployment ruling (doc 35), every
+# platform-owned capability face defaults ON and is decoupled from release events; only
+# faces whose enablement hard-requires third-party credentials or deployment-specific
+# opt-ins stay default-off (payment channels, OSS, real WeChat delivery, isolated
+# migrations, session keys). Missing credentials fail closed (503) by design; see
+# docs/08-engineering/21-部署开关组合清单-v1.0.md for the full dependency matrix.
 pet:
   aftersale:
     enabled: false
@@ -54,6 +56,16 @@ pet:
     http:
       enabled: false
   schedule:
+    query:
+      # C-end minute-level bookable-slot read (41号): default ON per the 2026-10-16 ruling.
+      enabled: true
+      selection:
+        # 36号 selection window query rides the query slice; default ON with it.
+        enabled: true
+    protection:
+      # Shared reservation guard/facts/proof foundation: default ON. Boot-safe (no
+      # external credentials); every guarded write domain depends on these beans.
+      enabled: true
     command:
       # SCH-004 merchant schedule write side (service windows, staff availability windows,
       # capabilities, workbench reads). Default off; enabling additionally requires the
@@ -72,6 +84,11 @@ pet:
         enabled: false
       http:
         enabled: false
+    # 2026-10-08 ruling: pre-service refund applications are automatic full approvals
+    # (product hard rule 服务前退款自动全额). Default ON per the 2026-10-16 ruling; read only
+    # when the refund-application kernel assembles.
+    pre-service-auto-refund:
+      enabled: true
     merchant:
       # Contract 57 M refund face (pending list/detail/approve/reject on the 49号 kernel):
       # off by default; enabling additionally requires pet.refund.application.enabled (the
@@ -101,11 +118,25 @@ pet:
       enabled: false
       http:
         enabled: false
-  merchant:
+    # K1 v0.2 staff-aware verification authority: default ON so the verification kernel,
+    # when its credential chain goes live at deployment, starts with the staff path enabled
+    # (owner path is tried first and keeps its semantics; merchant.staff-identity is
+    # required and defaults ON as well).
     staff-identity:
-      # Contract 52 STAFF identity read kernel: off by default. The member binding command,
-      # grant writers, action catalog and verification mapping are pending the approved CCR.
-      enabled: false
+      enabled: true
+  merchant:
+    application:
+      # Merchant onboarding itself stays behind pet.merchant.application.enabled (it needs the
+      # production Snowflake bean and open-city configuration); its station-notification
+      # consumer defaults ON so approved/reviewed events dispatch as soon as the outbox runs.
+      notifications-enabled: true
+    staff:
+      # Contract-54 invitation/member/grant station notifications: default ON (dispatched by
+      # the outbox once pet.outbox.enabled=true).
+      notifications-enabled: true
+    staff-identity:
+      # Contract 52 STAFF identity read kernel: default ON per the 2026-10-16 ruling.
+      enabled: true
     staff-member:
       # Contract 54 invite-confirm binding (D1-a; verify-only catalog D2): off by default.
       # Requires pet.schedule.protection.enabled for the shared store guard; the employee
@@ -133,11 +164,41 @@ pet:
         enabled: false
   private-assets:
     enabled: ${PRIVATE_ASSETS_ENABLED:false}
+  service:
+    query:
+      # C-end service catalog read: default ON per the 2026-10-16 ruling (boot-safe).
+      enabled: true
+    command:
+      # SCH/SVC write side stays behind its kernel switch: it requires the production
+      # Snowflake bean (pet.auth.admin.enabled) at boot.
+      enabled: false
+      http:
+        enabled: false
+      migration-enabled: false
+      migration-database:
+    review:
+      # Service review station notifications: default ON (dispatched once the outbox runs).
+      notifications-enabled: true
   store:
     query:
-      # C-end store catalog (STR-D6): off by default; needs pet.auth.c.enabled and
-      # pet.merchant.application.enabled with their real dependencies when on.
-      enabled: ${STORE_QUERY_ENABLED:false}
+      # C-end store catalog (STR-D6): default ON per the 2026-10-16 ruling; goes live with
+      # pet.auth.c.enabled (route security) at deployment.
+      enabled: ${STORE_QUERY_ENABLED:true}
+  encyclopedia:
+    # Contract-62 public read face: default ON per the 2026-10-16 ruling (boot-safe).
+    query:
+      enabled: true
+  admin:
+    governance:
+      http:
+        # Contract-64 governance query face: default ON; assembles only with
+        # pet.auth.admin.enabled (session keys), otherwise silently inert.
+        enabled: true
+    ops:
+      http:
+        # Contract-65 ops console face: default ON; assembles only with
+        # pet.auth.admin.enabled, otherwise silently inert.
+        enabled: true
   auth:
     c:
       enabled: ${AUTH_C_ENABLED:false}
@@ -146,10 +207,11 @@ pet:
       wechat:
         app-id: ${AUTH_WECHAT_APP_ID:}
         app-secret: ${AUTH_WECHAT_APP_SECRET:}
-  # Contract 58 favorite/footprint C face (32号裁决第二节批次; 10号 §3.16): off by default.
-  # Enabling additionally requires pet.auth.c.enabled (real MINIAPP session) plus both C
-  # catalog query slices (pet.service.query.enabled + pet.store.query.enabled) for target
-  # admission and list enrichment; the assembly fails closed when either catalog is missing.
+  # Contract 58 favorite/footprint C face (32号裁决第二节批次; 10号 §3.16): default ON per the
+  # 2026-10-16 ruling. The face assembles only with pet.auth.c.enabled (real MINIAPP session)
+  # plus both C catalog query slices (pet.service.query.enabled + pet.store.query.enabled, both
+  # default ON) for target admission and list enrichment; the assembly fails closed when either
+  # catalog is missing, so it goes live together with the C session domain at deployment.
   favtrack:
     http:
-      enabled: false
+      enabled: true

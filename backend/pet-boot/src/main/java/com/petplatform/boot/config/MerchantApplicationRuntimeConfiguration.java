@@ -31,7 +31,7 @@ import org.springframework.context.annotation.Configuration;
  * supplied here. Enabling requires every real dependency bean to exist.
  */
 @Configuration(proxyBeanMethods = false)
-@ConditionalOnProperty(prefix = "pet.merchant.application", name = "enabled", havingValue = "true")
+@ConditionalOnProperty(prefix = "pet.merchant.application", name = "enabled", havingValue = "true", matchIfMissing = true)
 public class MerchantApplicationRuntimeConfiguration {
   @Bean
   @ConditionalOnMissingBean(SubjectCredentialPort.class)

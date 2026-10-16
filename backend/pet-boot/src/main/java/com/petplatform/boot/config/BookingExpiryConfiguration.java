@@ -26,7 +26,7 @@ import org.springframework.context.annotation.Configuration;
 
 /** Internal, opt-in expiry for proven no-payment/no-coupon bookings. No channel calls or public commands. */
 @Configuration(proxyBeanMethods=false)
-@ConditionalOnProperty(prefix="pet.order.expiry",name="enabled",havingValue="true")
+@ConditionalOnProperty(prefix="pet.order.expiry",name="enabled",havingValue="true", matchIfMissing=true)
 public class BookingExpiryConfiguration {
     private static final String TYPE="RESERVATION_HOLD_EXPIRE";
     @Bean BookingPaymentExposureApi bookingPaymentExposureApi(DataSource source,ScheduleCapacityGuardApi guard,
@@ -55,12 +55,12 @@ public class BookingExpiryConfiguration {
                 coordination.getIfAvailable(),couponCommands.getIfAvailable());
     }
     @Bean
-    @ConditionalOnProperty(prefix="pet.order.expiry.worker",name="enabled",havingValue="true")
+    @ConditionalOnProperty(prefix="pet.order.expiry.worker",name="enabled",havingValue="true", matchIfMissing=true)
     public TaskRegistration<ExpiryPayload> bookingExpiryRegistration(OrderExpiryApi orders,ObjectProvider<Clock> clocks) {
         return registration(orders,clocks.getIfAvailable(Clock::systemUTC));
     }
     @Bean(initMethod="start",destroyMethod="close")
-    @ConditionalOnProperty(prefix="pet.order.expiry.worker",name="enabled",havingValue="true")
+    @ConditionalOnProperty(prefix="pet.order.expiry.worker",name="enabled",havingValue="true", matchIfMissing=true)
     AsyncTaskWorker bookingExpiryWorker(DataSource source,SnowflakeIdGenerator ids,
             TaskRegistration<ExpiryPayload> bookingExpiryRegistration,ObjectProvider<Clock> clocks) {
         return AsyncTaskWorker.create(source,ids,"booking-expiry-"+UUID.randomUUID(),clocks.getIfAvailable(Clock::systemUTC),

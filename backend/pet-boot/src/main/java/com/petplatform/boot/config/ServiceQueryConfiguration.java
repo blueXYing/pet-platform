@@ -17,7 +17,7 @@ import org.springframework.context.annotation.Configuration;
  * rows without a cover binding keep working.
  */
 @Configuration(proxyBeanMethods = false)
-@ConditionalOnProperty(prefix = "pet.service.query", name = "enabled", havingValue = "true")
+@ConditionalOnProperty(prefix = "pet.service.query", name = "enabled", havingValue = "true", matchIfMissing = true)
 public class ServiceQueryConfiguration {
 
     @Bean

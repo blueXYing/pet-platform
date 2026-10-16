@@ -30,7 +30,7 @@ import org.springframework.context.annotation.Configuration;
 
 /** Internal creation only. No HTTP route, production migration or payment; durable expiry is submitted with every create. */
 @Configuration(proxyBeanMethods=false)
-@ConditionalOnProperty(prefix="pet.order.creation",name="enabled",havingValue="true")
+@ConditionalOnProperty(prefix="pet.order.creation",name="enabled",havingValue="true", matchIfMissing=true)
 public class BookingCreationConfiguration {
     @Bean BookingUserFactsApi bookingUserFactsApi(DataSource source,ScheduleCapacityGuardApi guard){
         return new BookingUserFactsApiImpl(source,guard);

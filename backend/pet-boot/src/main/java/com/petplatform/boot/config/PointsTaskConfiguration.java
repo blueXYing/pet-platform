@@ -29,7 +29,7 @@ import org.springframework.context.annotation.Configuration;
  * (ARCH-002); missing order/user providers fail closed with COMMON_DEPENDENCY_UNAVAILABLE.
  */
 @Configuration(proxyBeanMethods = false)
-@ConditionalOnProperty(prefix = "pet.points.task", name = "enabled", havingValue = "true")
+@ConditionalOnProperty(prefix = "pet.points.task", name = "enabled", havingValue = "true", matchIfMissing = true)
 public class PointsTaskConfiguration {
 
   @Bean

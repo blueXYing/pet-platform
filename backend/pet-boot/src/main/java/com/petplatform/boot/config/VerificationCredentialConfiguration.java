@@ -46,7 +46,7 @@ public class VerificationCredentialConfiguration {
   @Bean CredentialPorts.Sessions credentialSessions(MerchantOrderPorts.SessionAuthority current){return current::requireCurrent;}
   @Bean
   @ConditionalOnMissingBean(CredentialPorts.AttemptAuthority.class)
-  @ConditionalOnProperty(name="pet.verification.staff-identity.enabled",havingValue="false",matchIfMissing=true)
+  @ConditionalOnProperty(name="pet.verification.staff-identity.enabled",havingValue="false")
   CredentialPorts.AttemptAuthority ownerVerificationAuthority(CredentialPorts.Sessions sessions,MerchantOrderAuthorityApi merchant){
    return (context,merchantId,storeId)->{
     if(context==null||context.operatorType()!=com.petplatform.common.OperatorType.USER||context.operatorId()==null)
@@ -64,7 +64,7 @@ public class VerificationCredentialConfiguration {
    */
   @Bean
   @ConditionalOnMissingBean(CredentialPorts.AttemptAuthority.class)
-  @ConditionalOnProperty(name="pet.verification.staff-identity.enabled",havingValue="true")
+  @ConditionalOnProperty(name="pet.verification.staff-identity.enabled",havingValue="true",matchIfMissing=true)
   public CredentialPorts.AttemptAuthority staffAwareVerificationAuthority(CredentialPorts.Sessions sessions,MerchantOrderAuthorityApi merchant,
    com.petplatform.merchant.api.query.MerchantStaffIdentityQueryApi staffIdentity){
    return (context,merchantId,storeId)->{

@@ -6,7 +6,7 @@ import org.springframework.boot.context.properties.EnableConfigurationProperties
 import org.springframework.context.annotation.*;
 
 @Configuration(proxyBeanMethods = false)
-@ConditionalOnProperty(prefix = "pet.merchant.application", name = "enabled", havingValue = "true")
+@ConditionalOnProperty(prefix = "pet.merchant.application", name = "enabled", havingValue = "true", matchIfMissing = true)
 @EnableConfigurationProperties(MerchantApplicationCityProperties.class)
 public class MerchantApplicationCityConfiguration {
   @Bean

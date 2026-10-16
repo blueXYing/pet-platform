@@ -19,7 +19,7 @@ import org.springframework.context.annotation.Configuration;
  * RefundSucceededEvent rows simply wait (dispatched once enabled).
  */
 @Configuration(proxyBeanMethods = false)
-@ConditionalOnProperty(prefix = "pet.coupon.lifecycle", name = "enabled", havingValue = "true")
+@ConditionalOnProperty(prefix = "pet.coupon.lifecycle", name = "enabled", havingValue = "true", matchIfMissing = true)
 public class CouponLifecycleConfiguration {
 
     @Bean
