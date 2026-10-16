@@ -400,7 +400,8 @@ def s6_refund_queries(endpoint):
     items = listing["response"]["data"]["items"]
     assert len(items) >= 2, f"expected application+aftersale refunds, got {len(items)}"
     sources = sorted({item["sourceType"] for item in items})
-    assert "APPLICATION" in sources and "AFTERSALE" in sources, f"source types: {sources}"
+    assert "PRESTART_AUTO" in sources and "AFTERSALE_DECISION" in sources, \
+        f"source types: {sources}"
     succeeded = call("S6-refunds-succeeded", endpoint, "GET",
                      "/api/v1/admin/trade/refunds?status=SUCCESS&page=1&pageSize=50",
                      token=ADMIN_TOKEN, expect=200)

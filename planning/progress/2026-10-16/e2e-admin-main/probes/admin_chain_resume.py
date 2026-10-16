@@ -17,8 +17,8 @@ import time
 sys.path.insert(0, __file__.rsplit("/", 1)[0] if "/" in __file__ else ".")
 import admin_main_chain as p  # noqa: E402
 
-AFTERSALE_REFUND = "104486458681122816"
-APPLICATION_REFUND = "104488242980077568"
+AFTERSALE_REFUND = "104498021626454016"  # fresh-db run 2026-10-16 16:36
+APPLICATION_REFUND = "PENDING_S5_APPLY"  # filled by poll_placeholder below
 
 
 def poll_success(endpoint, refund_id, label, budget_s=1500):
@@ -44,8 +44,37 @@ def main():
     endpoint = meta["endpoint"]
     p.TRANSCRIPT = sys.argv[2]
     p.admin_login(endpoint, meta)
+    # S1 tail: the application detail face (the probe run started before the fixture material
+    # patch landed in this database).
+    p.call("S1b-application-detail", endpoint, "GET",
+           "/api/v1/admin/merchant-applications/710600", token=p.ADMIN_TOKEN, expect=200)
     aftersale = poll_success(endpoint, AFTERSALE_REFUND, "S4-refund")
-    application = poll_success(endpoint, APPLICATION_REFUND, "S5-refund")
+    # Resolve the application refund id from the fresh database state (the probe run may not
+    # have reached S5 yet; the driver applies only if no application exists yet).
+    listing = p.call("S5-resolve", endpoint, "GET",
+                     f"/api/v1/admin/trade/refunds?orderId={meta['adminChainRefundTargetOrderId']}"
+                     f"&page=1&pageSize=20", token=p.ADMIN_TOKEN, expect=200)
+    items = (listing["response"] or {}).get("data", {}).get("items", [])
+    application_id = items[0]["refundOrderId"] if items else None
+    if application_id is None:
+        c_token = p.c_login(endpoint)
+        applied = p.call("S5-refund-apply", endpoint, "POST",
+                         f"/api/v1/c/orders/{meta['adminChainRefundTargetOrderId']}/refund-applications",
+                         {"reasonCode": "PLAN_CHANGED", "reasonText": "E2E：行程变化，服务前申请退款"},
+                         token=c_token, expect=None)
+        data = (applied["response"] or {}).get("data") or {}
+        print("S5 apply:", applied["status"], data.get("applicationStatus"), data.get("route"))
+        for _ in range(20):
+            listing = p.call("S5-resolve", endpoint, "GET",
+                             f"/api/v1/admin/trade/refunds?orderId={meta['adminChainRefundTargetOrderId']}"
+                             f"&page=1&pageSize=20", token=p.ADMIN_TOKEN, expect=200)
+            items = (listing["response"] or {}).get("data", {}).get("items", [])
+            if items:
+                application_id = items[0]["refundOrderId"]
+                break
+            time.sleep(15)
+    assert application_id, "application refund never projected"
+    application = poll_success(endpoint, application_id, "S5-refund")
 
     # S5 refund projection via the admin list face (poll-style assertion).
     listing = p.call("S5-refund-list-by-order", endpoint, "GET",
@@ -59,12 +88,13 @@ def main():
 
     if aftersale and application:
         p.s6_refund_queries(endpoint)
-    p.S3_REFUNDS.extend([AFTERSALE_REFUND, APPLICATION_REFUND])
+    p.S3_REFUNDS.extend([AFTERSALE_REFUND, application_id])
+    APPLICATION_REFUND_RESOLVED = application_id
     p.s3_disposition_attempts(endpoint, meta)
     p.s6b_governance(endpoint, meta)
     p.s7_ops_attempts(endpoint)
     summary = {"results": p.RESULTS,
-               "refundIds": {"aftersale": AFTERSALE_REFUND, "application": APPLICATION_REFUND},
+               "refundIds": {"aftersale": AFTERSALE_REFUND, "application": application_id},
                "meta": {k: v for k, v in meta.items() if "Password" not in k}}
     out = sys.argv[3]
     with open(out, "w", encoding="utf-8") as handle:
