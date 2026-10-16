@@ -28,6 +28,8 @@
 
 内部 prepare 接受 USER 的可信 CommandContext 和 orderId。先检查当前用户，再在独立短事务持久化二进制 requestKey 与原 orderId/userId 绑定；后续资格或配置失败也不允许同键换订单。执行事务为同库 READ_COMMITTED：锁请求绑定 → 同门店 guard → USER 当前资格 → ORDER 公共当前事实 → 服务端商户绑定 → PAYMENT 行。每订单仅一条 payment_order，原十分钟截止不延长，不重开已关闭订单。
 
+可付资格以订单当前事实为准：`PENDING_PAYMENT`/`INIT`/`UNVERIFIED`、支付窗口未过、且应收集金额 `pay_amount` > 0。2026-10-16 起（61 号券生命周期切片补记）：带券订单的 `discount_amount` > 0 不阻断发起——`pay_amount` 已是折后应付（38 号创建内核冻结折扣后计算），渠道按 `pay_amount` 收款；负折扣仍视为事实不一致并拒绝。读侧 canPay 与本门控校验同一对象（状态与 `pay_amount`），不得回退为按原价拒券单。
+
 同键异参沿23号返回 IDEMPOTENCY_KEY_CONFLICT；锁等待超时/死锁返回 COMMON_CONFLICT 并要求原键重试。数据库连接类异常导致提交结果不明时，仅用原绑定在权威主库事务中有限恢复一次；已提交则重放，仍无法确认则503，不能换 requestId 或再造付款编号。
 
 商户/门店归属、金额和截止时间来自 ORDER；merchant_no/term_no/sub_appid 来自服务端配置。消费者请求不能指定收款对象、金额、最终支付状态或密钥。成功意图重放重新核对当前用户与订单归属，不获取或重放过期微信参数。

@@ -46,7 +46,11 @@ export default function BaikeListPage() {
   const [refreshing, setRefreshing] = useState(false)
   const [notice, setNotice] = useState('')
   const mounted = useRef(true)
-  const sequence = useRef(0)
+  // F3R-1 修复：分类字典（bootstrap）与品种列表（load）是两类独立资源，各用独立卫兵。
+  // 原实现共用一个 sequence：挂载 effect 先发列表请求，useDidShow 随后触发 bootstrap 的
+  // ++sequence 作废在途列表回调（3/3 复现骨架屏死锁，网络 200 而列表零渲染）。
+  const listSequence = useRef(0)
+  const dictSequence = useRef(0)
   const repository = useRef(preview ? previewRepository(scope, scenario) : new RealBaikeRepository(consumerApi))
   const [platformInfo] = useState(() => Taro.getWindowInfo())
   const unit = platformInfo.windowWidth / 402
@@ -56,36 +60,36 @@ export default function BaikeListPage() {
   } as CSSProperties
 
   const load = useCallback(async (next: { category: CategoryCode; keyword: string; tag: string | null; page: number }, append: boolean) => {
-    const current = ++sequence.current
+    const current = ++listSequence.current
     if (!append) setPhase('loading')
     try {
       const value = await scope.run(undefined, () => repository.current.page({
         categoryCode: next.category, keyword: next.keyword, tag: next.tag, page: next.page, pageSize: PAGE_SIZE,
       }))
-      if (!mounted.current || current !== sequence.current) return
+      if (!mounted.current || current !== listSequence.current) return
       setItems(previous => append ? [...previous, ...value.items] : value.items)
       setTotal(value.total)
       setPage(next.page)
       setPhase('ready')
     } catch {
-      if (!mounted.current || current !== sequence.current) return
+      if (!mounted.current || current !== listSequence.current) return
       if (append) setNotice('加载失败，请稍后重试')
       else setPhase('load-error')
     }
   }, [scope])
 
   const bootstrap = useCallback(async () => {
-    const current = ++sequence.current
+    const current = ++dictSequence.current
     setPhase('loading')
     try {
       const dictionary = await scope.run(undefined, () => repository.current.categories())
-      if (!mounted.current || current !== sequence.current) return
+      if (!mounted.current || current !== dictSequence.current) return
       setCategories(dictionary)
       // PRD 默认值 狗狗；字典首项即 DOG，以服务端字典序为准。
       const first = dictionary[0]?.categoryCode ?? 'DOG'
       setCategory(previous => (previous === 'DOG' || dictionary.some(item => item.categoryCode === previous)) ? previous : first)
     } catch {
-      if (!mounted.current || current !== sequence.current) return
+      if (!mounted.current || current !== dictSequence.current) return
       setPhase('load-error')
     }
   }, [scope])
@@ -94,7 +98,7 @@ export default function BaikeListPage() {
   })
   useEffect(() => {
     mounted.current = true
-    return () => { mounted.current = false; sequence.current++ }
+    return () => { mounted.current = false; listSequence.current++; dictSequence.current++ }
   }, [])
   useEffect(() => {
     // 分类/关键词/标签任一变化 → 回第一页整表刷新（PRD：切换分类后显示加载状态）。
