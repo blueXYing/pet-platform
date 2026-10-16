@@ -8,7 +8,6 @@ import com.petplatform.common.CommandContext;
 import com.petplatform.common.OperatorType;
 import com.petplatform.common.QueryContext;
 import com.petplatform.common.SnowflakeIdGenerator;
-import com.petplatform.community.api.command.AdminEncyclopediaCommandApi.AdminAuthorization;
 import com.petplatform.community.api.command.AdminEncyclopediaCommandApi.BreedStatusCommand;
 import com.petplatform.community.api.command.AdminEncyclopediaCommandApi.CategoryStatusCommand;
 import com.petplatform.community.api.command.AdminEncyclopediaCommandApi.UpdateBreedCommand;
@@ -48,9 +47,14 @@ import org.springframework.jdbc.datasource.init.ScriptUtils;
 class AdminEncyclopediaMySqlTest {
     private static final java.time.OffsetDateTime CHECKED =
             java.time.OffsetDateTime.parse("2026-10-16T00:00:00.000Z");
-    private static final AdminAuthorization AUTH = new AdminAuthorization("9007199254740993", 1);
+    /** Query-surface authorization (AdminEncyclopediaQueryApi record component). */
+    private static final com.petplatform.community.api.query.AdminEncyclopediaQueryApi.AdminAuthorization AUTH =
+            new com.petplatform.community.api.query.AdminEncyclopediaQueryApi.AdminAuthorization(
+                    "9007199254740993", 1);
+    /** Command-surface authorization (AdminEncyclopediaCommandApi record component). */
     private static final com.petplatform.community.api.command.AdminEncyclopediaCommandApi.AdminAuthorization WRITE_AUTH =
-            new com.petplatform.community.api.command.AdminEncyclopediaCommandApi.AdminAuthorization("9007199254740993", 1);
+            new com.petplatform.community.api.command.AdminEncyclopediaCommandApi.AdminAuthorization(
+                    "9007199254740993", 1);
     private static final QueryContext QUERY = new QueryContext("t0", OperatorType.PLATFORM_OPERATOR, "9007199254740993");
 
     @Test void categoriesListCountersAndMaintenanceRoundTrip() throws Exception {
@@ -60,7 +64,7 @@ class AdminEncyclopediaMySqlTest {
             var dog = page.items().get(0);
             assertEquals("DOG", dog.categoryCode());
             assertEquals(0, dog.breedCount());
-            assertEquals("0", dog.version());
+            assertEquals(0L, dog.version());
 
             d.seedBreed(8101L, 710001L, "贵宾犬", "PUBLISHED");
             d.seedBreed(8102L, 710001L, "金毛寻回犬", "OFFLINE");
@@ -72,20 +76,20 @@ class AdminEncyclopediaMySqlTest {
                     0, command("r1"), WRITE_AUTH));
             assertEquals("狗狗", updated.categoryName());
             assertEquals(9, updated.sortNo());
-            assertEquals("1", updated.version());
+            assertEquals(1L, updated.version());
 
             // expectedVersion guard: a stale version answers 409.
             ApiException stale = assertThrows(ApiException.class,
                     () -> d.commands().updateCategory(new UpdateCategoryCommand("DOG", "狗狗", 1,
-                            0, command("r2"), WRITE_AUTH))));
+                            0, command("r2"), WRITE_AUTH)));
             assertEquals(CommonApiCodes.CONFLICT, stale.code());
 
             var disabled = d.commands().disableCategory(new CategoryStatusCommand("DOG", 1, command("r3"), WRITE_AUTH));
             assertEquals("DISABLED", disabled.status());
-            assertEquals("2", disabled.version());
+            assertEquals(2L, disabled.version());
             // Re-disable is a state-guard miss → 409 (version moved but status guard fires).
             ApiException repeat = assertThrows(ApiException.class,
-                    () -> d.commands().disableCategory(new CategoryStatusCommand("DOG", 2, command("r4"), WRITE_AUTH))));
+                    () -> d.commands().disableCategory(new CategoryStatusCommand("DOG", 2, command("r4"), WRITE_AUTH)));
             assertEquals(CommonApiCodes.CONFLICT, repeat.code());
             var enabled = d.commands().enableCategory(new CategoryStatusCommand("DOG", 2, command("r5"), WRITE_AUTH));
             assertEquals("ENABLED", enabled.status());
@@ -110,19 +114,19 @@ class AdminEncyclopediaMySqlTest {
             var maintained = d.commands().updateBreed(new UpdateBreedCommand("8101",
                     "贵宾犬简介更新", null, "小型", List.of("泰迪"), List.of("新手友好"), 5, 0,
                     command("b1"), WRITE_AUTH));
-            assertEquals("5", maintained.version());
+            assertEquals(1L, maintained.version());
             assertEquals(5, maintained.sortNo());
 
-            var offlineNow = d.commands().offlineBreed(new BreedStatusCommand("8101", 5, command("b2"), WRITE_AUTH));
+            var offlineNow = d.commands().offlineBreed(new BreedStatusCommand("8101", 1, command("b2"), WRITE_AUTH));
             assertEquals("OFFLINE", offlineNow.status());
             // C-end semantics stay untouched: the admin face moved the row, the C read face
             // answers 404 for offline ids — covered by the contract-62 tests, not re-proven here.
 
-            var published = d.commands().publishBreed(new BreedStatusCommand("8101", 6, command("b3"), WRITE_AUTH));
+            var published = d.commands().publishBreed(new BreedStatusCommand("8101", 2, command("b3"), WRITE_AUTH));
             assertEquals("PUBLISHED", published.status());
 
             ApiException badVersion = assertThrows(ApiException.class,
-                    () -> d.commands().publishBreed(new BreedStatusCommand("8101", 6, command("b4"), WRITE_AUTH))));
+                    () -> d.commands().publishBreed(new BreedStatusCommand("8101", 6, command("b4"), WRITE_AUTH)));
             assertEquals(CommonApiCodes.CONFLICT, badVersion.code());
         }
     }
@@ -137,7 +141,7 @@ class AdminEncyclopediaMySqlTest {
             assertEquals(first, replay);
             // Same requestId + different params → 409 IDEMPOTENCY_KEY_CONFLICT.
             ApiException conflict = assertThrows(ApiException.class,
-                    () -> d.commands().offlineBreed(new BreedStatusCommand("8101", 1, command("same-1"), WRITE_AUTH))));
+                    () -> d.commands().offlineBreed(new BreedStatusCommand("8101", 1, command("same-1"), WRITE_AUTH)));
             assertEquals(CommonApiCodes.IDEMPOTENCY_KEY_CONFLICT, conflict.code());
             // The binding stored exactly one row for the namespace+scope+requestId.
             assertEquals(1, d.jdbc.queryForObject(
@@ -198,6 +202,10 @@ class AdminEncyclopediaMySqlTest {
                         new FileSystemResource(root.resolve("docs/03-database/62-Baike-Content-Schema-v0.1.sql")),
                         StandardCharsets.UTF_8));
                 }
+                // SQL62 ships the real V1 seed content (five categories + curated breeds);
+                // drop the breeds so every test starts from a deterministic empty table while
+                // the closed five-code category dictionary stays seeded.
+                jdbc.update("DELETE FROM encyclopedia_breed");
             } catch (Exception failure) { close(); throw failure; }
         }
 
