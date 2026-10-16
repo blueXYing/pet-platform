@@ -37,12 +37,14 @@ public final class AdminPermissionEvaluator {
    * coupon.instance.read (rows 13/14 proposal spellings "coupon-template.*" /
    * "coupon-instance.*" dotted-corrected like refund.channel.query), points.ledger.read
    * (row 15 family, ledger supervision read) and system.parameter.read (row 23 proposal
-   * "system-parameter.read" dotted-corrected). Row 14 void/return and row 23 configure stay
-   * unregistered — no SSOT authorization exists for instance-status writes or runtime
-   * configuration (CCR-ADM-A005-OPS-001). The eleventh ops-console code coupon.instance.grant
+   * "system-parameter.read" dotted-corrected). The eleventh ops-console code coupon.instance.grant
    * is registered on behalf of the contract-65 §4.3 grant channel slice (user ruling
    * 2026-10-16, CCR-CPN-GRANT-001): one AVAILABLE instance per terminal requestId from an
-   * ACTIVE template; row 14 void/return stay unregistered.
+   * ACTIVE template. The twelfth ops-console code coupon.instance.void is registered on behalf
+   * of the contract-65 §4.4 void channel slice (user ruling 2026-10-16 doc 36, minimal
+   * authorization): one AVAILABLE instance per terminal requestId, non-AVAILABLE states
+   * rejected (CCR-CPN-VOID-001); row 14 return and the batch/risk-freeze family stay
+   * unregistered.
    */
   public static final Set<String> DEPLOYED_ACTIONS =
       Set.of("merchant.application.read", "merchant.application.decide",
@@ -56,7 +58,7 @@ public final class AdminPermissionEvaluator {
           "encyclopedia.read", "encyclopedia.manage", "encyclopedia.publish",
           "breed.read", "breed.manage",
           "coupon.template.read", "coupon.template.manage", "coupon.instance.read",
-          "coupon.instance.grant",
+          "coupon.instance.grant", "coupon.instance.void",
           "points.ledger.read", "system.parameter.read");
 
   public static List<String> evaluate(

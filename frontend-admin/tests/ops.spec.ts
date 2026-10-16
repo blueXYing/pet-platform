@@ -8,6 +8,7 @@ const OPERATOR = '901';
 const ACTIONS = [
   'encyclopedia.read', 'encyclopedia.manage', 'encyclopedia.publish', 'breed.read', 'breed.manage',
   'coupon.template.read', 'coupon.template.manage', 'coupon.instance.read', 'coupon.instance.grant',
+  'coupon.instance.void',
   'points.ledger.read', 'system.parameter.read',
 ];
 function envelope(data: unknown, status = 200) { return { status, json: { code: 'SUCCESS', message: 'ok', data, traceId: 'fixture-ops' } }; }
@@ -160,8 +161,14 @@ test('A-005 券发放：未授予 coupon.instance.grant 时入口 fail-closed', 
   await expect(page.locator('tbody tr').first().getByRole('button', { name: '发放' })).toHaveCount(0);
 });
 
-test('A-005 券实例台账：只读——页面不渲染任何作废/返还/冻结动作', async ({ page }) => {
+test('A-005 券实例台账：AVAILABLE 行作废入口带二次确认，回执为终端请求编号写', async ({ page }) => {
   await signIn(page);
+  const voids: { body: unknown; requestId: string | null; path: string }[] = [];
+  page.on('request', req => {
+    if (req.url().includes('/api/v1/admin/coupon-instances/910000000000861/void') && req.method() === 'POST') {
+      voids.push({ body: req.postDataJSON(), requestId: req.headers()['x-request-id'] ?? null, path: new URL(req.url()).pathname });
+    }
+  });
   await page.route('**/api/v1/admin/coupon-instances?*', route => route.fulfill(envelope(pageEnvelope([instanceRow]))));
   await page.route('**/api/v1/admin/coupon-instances/910000000000861', route =>
     route.fulfill(envelope({
@@ -169,15 +176,52 @@ test('A-005 券实例台账：只读——页面不渲染任何作废/返还/冻
       freezeExpireAt: null, updatedAt: '2026-10-03T08:00:00.000Z',
       ledger: [{ ledgerId: '910000000000881', action: 'ISSUE', fromStatus: null, toStatus: 'AVAILABLE', orderId: null, requestId: 'CPN:ISSUE:t', remark: null, createdAt: '2026-10-03T08:00:00.000Z' }],
     })));
+  await page.route('**/api/v1/admin/coupon-instances/910000000000861/void', route =>
+    route.fulfill(envelope({
+      instanceId: '910000000000861', templateId: '910000000000851', userId: '910000000000701',
+      status: 'VOID', occurredAt: '2026-10-16T03:00:00.000Z',
+    })));
   await page.getByRole('link', { name: '券实例台账' }).click();
   const row = page.locator('tbody tr').first();
   await expect(row).toContainText('可领取');
-  await expect(page.getByRole('button', { name: '作废' })).toHaveCount(0);
+  // Return / risk-freeze stay unauthorized and unrendered (CCR-ADM-A005-OPS-001).
   await expect(page.getByRole('button', { name: '返还' })).toHaveCount(0);
   await expect(page.getByRole('button', { name: '冻结' })).toHaveCount(0);
-  await row.getByRole('button', { name: '时间轴' }).click();
-  await expect(page.getByText('状态时间轴')).toBeVisible();
-  await expect(page.getByText('ISSUE')).toBeVisible();
+  await row.getByRole('button', { name: '作废' }).click();
+  const dialog = page.locator('section[aria-label="作废确认"]');
+  await expect(dialog).toBeVisible();
+  // Double confirm: the submit stays disabled until reason + checkbox are present.
+  await expect(dialog.getByRole('button', { name: '确认作废' })).toBeDisabled();
+  await expect(voids).toHaveLength(0);
+  await dialog.getByLabel('作废原因').fill('风控核实为异常渠道券，予以作废');
+  await dialog.getByRole('checkbox').check();
+  await dialog.getByRole('button', { name: '确认作废' }).click();
+  await expect(page.locator('section[aria-label="作废回执"]')).toContainText('910000000000861');
+  expect(voids).toHaveLength(1);
+  expect(voids[0].body).toEqual({ reason: '风控核实为异常渠道券，予以作废' });
+  expect(voids[0].requestId).toMatch(/^[0-9a-f-]{36}$/);
+  expect(voids[0].path).toBe('/api/v1/admin/coupon-instances/910000000000861/void');
+  await expect(page.getByText('已作废：券实例 910000000000861')).toBeVisible();
+});
+
+test('A-005 券实例台账：非 AVAILABLE 状态不渲染作废入口（FROZEN 在途保护）', async ({ page }) => {
+  await signIn(page);
+  await page.route('**/api/v1/admin/coupon-instances?*', route => route.fulfill(envelope(pageEnvelope([
+    { ...instanceRow, status: 'FROZEN', orderId: '910000000000777' },
+    { ...instanceRow, instanceId: '910000000000862', status: 'USED', usedAt: '2026-10-05T08:00:00.000Z' },
+  ]))));
+  await page.getByRole('link', { name: '券实例台账' }).click();
+  await expect(page.locator('tbody tr')).toHaveCount(2);
+  await expect(page.getByRole('button', { name: '作废' })).toHaveCount(0);
+});
+
+test('A-005 券作废：未授予 coupon.instance.void 时入口 fail-closed', async ({ page }) => {
+  await signIn(page, ACTIONS.filter(code => code !== 'coupon.instance.void'));
+  await page.route('**/api/v1/admin/coupon-instances?*', route => route.fulfill(envelope(pageEnvelope([instanceRow]))));
+  await page.getByRole('link', { name: '券实例台账' }).click();
+  await page.locator('tbody tr').first().getByRole('button', { name: '作废' }).click();
+  await expect(page.getByRole('alert')).toContainText('未授予 coupon.instance.void');
+  await expect(page.locator('section[aria-label="作废确认"]')).toHaveCount(0);
 });
 
 test('A-005 积分台账与系统设置：事实透传、设置面明确只读', async ({ page }) => {

@@ -1756,14 +1756,17 @@ POST /api/v1/admin/coupon-templates/{templateId}/enable|offline
 GET  /api/v1/admin/coupon-instances
 GET  /api/v1/admin/coupon-instances/{instanceId}
 POST /api/v1/admin/coupon-instances/grant
+POST /api/v1/admin/coupon-instances/{instanceId}/void
 GET  /api/v1/admin/points/ledger
 GET  /api/v1/admin/settings/runtime
 ```
 
-二十一条路由随 `pet.admin.ops.http.enabled`（默认 false）+ `pet.auth.admin.enabled` 装配；动作码
+二十二条路由随 `pet.admin.ops.http.enabled`（默认 false）+ `pet.auth.admin.enabled` 装配；动作码
 `encyclopedia.read/manage/publish`、`breed.read/manage`（矩阵行 21）、`coupon.template.read/manage`、
 `coupon.instance.read`（行 13/14 提案连字符拼写的点分落地）、`coupon.instance.grant`（v0.2 发放渠道，
 用户裁决 2026-10-16，提案矩阵无提案码、点分词法新造登记——CCR-CPN-GRANT-001 §3）、
+`coupon.instance.void`（v0.3 作废渠道，用户裁决 2026-10-16 最小授权 36 号，提案矩阵行 14 提案
+`coupon-instance.void` 的点分落地）、
 `points.ledger.read`（行 15 族）、`system.parameter.read`（行 23 提案拼写点分落地），随切片登记部署
 清单。控制器快照校验 + community/coupon/points 内核授权端口每次重验；dataScope 非 ALL 一律 403。
 写动作（分类维护/停用启用、品种维护/上下线、券模板建/编/启/停）终结性 X-Request-Id 幂等（14 号
@@ -1773,8 +1776,15 @@ command_idempotency 绑定，同参重放回执、异参 409）+ expectedVersion
 模板可用性守卫=61 号冻结前置④（非 ACTIVE 或不在有效期 409）；`coupon_ledger` ISSUE 行为发放审计；
 内核另受 `pet.coupon.grant.enabled`（默认 false，21 号清单）门控，开关关闭时该路由 503 失败关闭
 （61 号提供器未装配语义），默认值翻转随 35 号开关放开裁决统一处理。发放后 C 端
-`GET /api/v1/c/coupons?status=AVAILABLE` 立即可见（10 号 §3.15.1 零改动）。除发放外券实例无任何
-写路由（作废/返还/风控冻结 CCR-ADM-A005-OPS-001 未登记不做）；设置面只读（运行时写配置无授权，同 CCR）。
+`GET /api/v1/c/coupons?status=AVAILABLE` 立即可见（10 号 §3.15.1 零改动）。
+作废路由（65 号 v0.3 §4.4，2026-10-16 用户裁决"治理写动作最小授权"36 号）：作废指定单张
+AVAILABLE 券实例（USED/FROZEN/RISK_FROZEN/EXPIRED 一律 409——FROZEN 被在途订单锁定的券不许
+作废）；落点 `status='VOID'`（新终态，Schema06 词表注记同步披露）；`coupon_ledger` VOID 行
+（`CPN:VOID:{instanceId}`）为作废审计，body 必填 reason（10–200 字）；内核另受
+`pet.coupon.void.enabled`（默认 false，21 号清单）门控，开关关闭时该路由 503 失败关闭；
+C 端三桶（AVAILABLE/USED/EXPIRED）不含 VOID 即时不可见（读侧零改动）；作废后是否补偿 CCR
+登记最小实现=不补偿（CCR-CPN-VOID-001）。除发放/作废外券实例无任何写路由（批量作废/返还/
+风控冻结/解冻 CCR-ADM-A005-OPS-001 未登记不做）；设置面只读（运行时写配置无授权，同 CCR）。
 
 ---
 

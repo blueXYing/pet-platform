@@ -24,6 +24,23 @@ public interface CouponAdminMapper {
     /** Row-locked read for the grant guard (status/window checked under the same lock). */
     AdminTemplateEntity selectTemplateForUpdate(@Param("templateId") long templateId);
 
+    /** Row-locked read for the void guard (status checked under the same lock). */
+    AdminInstanceEntity selectInstanceForUpdate(@Param("instanceId") long instanceId);
+
+    /** Void write: terminal AVAILABLE→VOID transition (CAS on the AVAILABLE state). */
+    int voidInstance(
+            @Param("instanceId") long instanceId,
+            @Param("now") LocalDateTime now);
+
+    /** Void audit: the append-only VOID ledger row (uk request_id, terminal once forever). */
+    int insertVoidLedger(
+            @Param("id") long id,
+            @Param("instanceId") long instanceId,
+            @Param("userId") long userId,
+            @Param("requestId") String requestId,
+            @Param("remark") String remark,
+            @Param("now") LocalDateTime now);
+
     /** Grant write: one AVAILABLE instance inheriting the template validity window. */
     int insertInstance(
             @Param("id") long id,

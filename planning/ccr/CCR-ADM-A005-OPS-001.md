@@ -15,6 +15,10 @@
    改用户券状态；PRD §7.3 运营分支要求"作废必须通知用户/风控核查通过解冻"，通知域与风控事实
    契约均不在仓。影响：券实例台账页只读（65 号 §4.2），页面无任何实例动作按钮（测试钉
    `frontend-admin/tests/ops.spec.ts` 券实例只读用例）。
+   **【2026-10-16 更新】单张作废已按用户裁决"治理写动作最小授权"（36 号）放开为 65 号 §4.4
+   最小实现（动作码 `coupon.instance.void` 已登记部署，开关 `pet.coupon.void.enabled` 默认关，
+   仅 AVAILABLE 可作废、不通知、无补偿），见 [CCR-CPN-VOID-001](CCR-CPN-VOID-001.md) §1；
+   批量作废/风控冻结/解冻/手动返还维持本项登记不做。**
 2. **券活动/批次/发放渠道**（矩阵行 13 的 campaign 族）：61 号 V1 边界明确"无券模板管理/发放渠道
    （券实例仅运营侧数据，导入路径 V1 不做）"；本切片交付模板管理面后，`total_stock/issued_count`
    仍无发放入口，编辑守卫以 `issued_count>0` 为"已被引用"事实。
@@ -48,11 +52,14 @@
 `service.force.offline`/`refund.channel.query` 同款实现期拼写更正，PR 披露）；`points.ledger.read`
 （行 15 族积分监管读侧）；`system.parameter.read`（行 23 提案 `system-parameter.read` 点分落地）。
 **【2026-10-16 增补】`coupon.instance.grant`（发放渠道最小实现，用户裁决，见
-[CCR-CPN-GRANT-001](CCR-CPN-GRANT-001.md) §3）。**
+[CCR-CPN-GRANT-001](CCR-CPN-GRANT-001.md) §3）；`coupon.instance.void`（作废渠道最小实现，
+用户裁决"治理写动作最小授权"36 号，见 [CCR-CPN-VOID-001](CCR-CPN-VOID-001.md) §3）。**
 
 ## 裁决请求（如需推进，请逐项批准）
 
 以上 1~9 项各自需要：①用户裁决授权该动作；②对应业务契约（通知/风控/资金/审计存储口径）补齐；
 ③动作码按矩阵行登记部署。在裁决前，本平台的运营杠杆为：券模板停用（不再发放新资格）、券发放
-（最小实现已放开，CCR-CPN-GRANT-001）、百科上下线（C 端即时可见性）、售后裁决（51 号）、
-63 号 v0.2 处置动作（33 号裁决）。
+（最小实现已放开，CCR-CPN-GRANT-001）、券作废（最小实现已放开，36 号裁决，
+CCR-CPN-VOID-001——仅 AVAILABLE 单张、不通知、无补偿）、百科上下线（C 端即时可见性）、
+售后裁决（51 号）、63 号 v0.2 处置动作（33 号裁决）及商家治理页停用入口（36 号裁决，
+复用 63 号路由）。

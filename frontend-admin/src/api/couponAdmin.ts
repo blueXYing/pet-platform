@@ -1,13 +1,16 @@
 import { RequestFailure, type Transport } from '../request';
 
 // Contract-65 coupon governance face (PRD 6.4, A-005): template management (create DRAFT /
-// white-listed edit / enable / offline / trial calculation), the read-only instance ledger
-// and the §4.3 grant channel (user ruling 2026-10-16, CCR-CPN-GRANT-001 minimum: one user,
-// one ACTIVE template, one AVAILABLE instance per terminal requestId). No instance-status
-// write exists on the wire (作废/返还 CCR-ADM-A005-OPS-001) — the client cannot express one.
+// white-listed edit / enable / offline / trial calculation), the read-only instance ledger,
+// the §4.3 grant channel (user ruling 2026-10-16, CCR-CPN-GRANT-001 minimum: one user, one
+// ACTIVE template, one AVAILABLE instance per terminal requestId) and the §4.4 void channel
+// (user ruling 2026-10-16 doc 36 minimal authorization, CCR-CPN-VOID-001 minimum: one
+// AVAILABLE instance per terminal requestId; USED/FROZEN/RISK_FROZEN/EXPIRED answer 409).
+// The only remaining instance-status writes (批量作废/返还/风控冻结) stay off the wire
+// (CCR-ADM-A005-OPS-001) — the client cannot express them.
 export const TEMPLATE_STATUSES = ['DRAFT', 'ACTIVE', 'OFFLINE'] as const;
 export type TemplateStatus = typeof TEMPLATE_STATUSES[number];
-export const INSTANCE_STATUSES = ['AVAILABLE', 'FROZEN', 'USED', 'EXPIRED', 'RISK_FROZEN'] as const;
+export const INSTANCE_STATUSES = ['AVAILABLE', 'FROZEN', 'USED', 'EXPIRED', 'RISK_FROZEN', 'VOID'] as const;
 export type InstanceStatus = typeof INSTANCE_STATUSES[number];
 
 export class CouponAdminFailure extends RequestFailure {
@@ -56,6 +59,10 @@ export type AdminInstanceDetail = AdminInstanceSummary & {
 export type GrantReceipt = {
   instanceId: string; templateId: string; userId: string; status: InstanceStatus;
   expireAt: string; occurredAt: string;
+};
+export type VoidReceipt = {
+  instanceId: string; templateId: string; userId: string; status: InstanceStatus;
+  occurredAt: string;
 };
 export type Page<T> = { page: number; pageSize: number; total: number; items: T[] };
 
@@ -159,6 +166,16 @@ function isGrantReceipt(v: unknown): v is GrantReceipt {
     && typeof r.occurredAt === 'string' && UTC.test(r.occurredAt);
 }
 
+function isVoidReceipt(v: unknown): v is VoidReceipt {
+  if (typeof v !== 'object' || v === null) return false;
+  const r = v as Record<string, unknown>;
+  return typeof r.instanceId === 'string' && DECIMAL_ID.test(r.instanceId)
+    && typeof r.templateId === 'string' && DECIMAL_ID.test(r.templateId)
+    && typeof r.userId === 'string' && DECIMAL_ID.test(r.userId)
+    && r.status === 'VOID'
+    && typeof r.occurredAt === 'string' && UTC.test(r.occurredAt);
+}
+
 export type TemplateDraft = {
   name: string; amountOff: string; thresholdAmount: string | null;
   validStartAt: string; validEndAt: string; scopeSummary: string | null; typeLabel: string | null;
@@ -258,6 +275,16 @@ export function createCouponAdminClient(transport: Transport = fetch) {
       return envelope<GrantReceipt>(`${ROOT}/coupon-instances/grant`, {
         method: 'POST', body: { templateId, userId }, requestId,
       }, isGrantReceipt);
+    },
+
+    /** §4.4 void channel: one AVAILABLE instance → VOID per terminal requestId (kernel-owned idempotency). */
+    async voidInstance(instanceId: string, reason: string, requestId: string) {
+      if (!DECIMAL_ID.test(instanceId)) {
+        throw new CouponAdminFailure('INVALID_ARGUMENT', 0);
+      }
+      return envelope<VoidReceipt>(`${ROOT}/coupon-instances/${instanceId}/void`, {
+        method: 'POST', body: { reason }, requestId,
+      }, isVoidReceipt);
     },
   };
 }

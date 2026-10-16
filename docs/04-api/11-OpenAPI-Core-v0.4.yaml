@@ -15038,6 +15038,53 @@ paths:
               schema:
                 $ref: '#/components/schemas/AdminOpsCouponGrantEnvelope'
 
+  /admin/coupon-instances/{instanceId}/void:
+    post:
+      tags:
+      - Admin-Ops
+      summary: 券作废（coupon.instance.void）
+      operationId: adminVoidCouponInstance
+      x-implementation-status: IMPLEMENTED_DEFAULT_OFF
+      x-default-enabled: false
+      x-contract: 65-Admin-Ops-Console-Contract-v0.1.md
+      x-assembly-switch: pet.admin.ops.http.enabled
+      x-kernel-switch: pet.coupon.void.enabled
+      x-route-party: OPS
+      x-audience: ADMIN_WEB
+      x-required-actions: [coupon.instance.void]
+      description: |-
+        65号 v0.3 §4.4（用户裁决 2026-10-16 治理写动作最小授权，36 号；CCR-CPN-VOID-001 最小实现）。作废指定单张 AVAILABLE 券实例：USED/FROZEN/RISK_FROZEN/EXPIRED 一律 409（FROZEN 被在途订单锁定的券不许作废）；落点 status='VOID'（新终态，Schema06 词表注记同步披露）；coupon_ledger VOID 行（CPN:VOID:{instanceId}）为作废审计；C 端三桶（AVAILABLE/USED/EXPIRED）不含 VOID 即时不可见；无补偿路径（CCR-CPN-VOID-001 最小实现=不补偿）。终结性 X-Request-Id 幂等（14号 command_idempotency，同参重放回执、异参 409）。路由随 pet.admin.ops.http.enabled 面（x-assembly-switch）装配；内核另受 pet.coupon.void.enabled 门控（x-kernel-switch，默认关）——内核未装配时本路由 503 失败关闭（61号提供器未装配语义）。
+      security:
+      - bearerAuth: []
+      parameters:
+      - name: instanceId
+        in: path
+        required: true
+        schema: {$ref: '#/components/schemas/PublicId'}
+      - $ref: '#/components/parameters/RequestId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AdminOpsCouponVoidRequest'
+      responses:
+        '400': {$ref: '#/components/responses/BadRequest'}
+        '401': {$ref: '#/components/responses/Unauthorized'}
+        '403': {$ref: '#/components/responses/Forbidden'}
+        '404': {$ref: '#/components/responses/NotFound'}
+        '409': {$ref: '#/components/responses/Conflict'}
+        '503': {$ref: '#/components/responses/DependencyUnavailable'}
+        '200':
+          description: 成功
+          headers:
+            Cache-Control:
+              schema: {type: string, enum: [no-store]}
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AdminOpsCouponVoidEnvelope'
+
   /admin/points/ledger:
     get:
       tags:
@@ -26085,6 +26132,32 @@ components:
           data:
             $ref: '#/components/schemas/AdminOpsCouponGrant'
 
+    AdminOpsCouponVoidRequest:
+      type: object
+      additionalProperties: false
+      required: [reason]
+      properties:
+        reason: {type: string, minLength: 10, maxLength: 200}
+
+    AdminOpsCouponVoid:
+      type: object
+      additionalProperties: false
+      required: [instanceId, templateId, userId, status, occurredAt]
+      properties:
+        instanceId: {$ref: '#/components/schemas/PublicId'}
+        templateId: {$ref: '#/components/schemas/PublicId'}
+        userId: {$ref: '#/components/schemas/PublicId'}
+        status: {type: string, enum: [VOID]}
+        occurredAt: {$ref: '#/components/schemas/AuthTimestamp'}
+
+    AdminOpsCouponVoidEnvelope:
+      allOf:
+      - $ref: '#/components/schemas/BaseEnvelope'
+      - type: object
+        properties:
+          data:
+            $ref: '#/components/schemas/AdminOpsCouponVoid'
+
     AdminOpsTrialCalculation:
       type: object
       additionalProperties: false
@@ -26121,7 +26194,7 @@ components:
         templateId: {$ref: '#/components/schemas/PublicId'}
         templateName: {type: string, minLength: 1, maxLength: 128}
         userId: {$ref: '#/components/schemas/PublicId'}
-        status: {type: string, enum: [AVAILABLE, FROZEN, USED, EXPIRED, RISK_FROZEN]}
+        status: {type: string, enum: [AVAILABLE, FROZEN, USED, EXPIRED, RISK_FROZEN, VOID]}
         amountOff: {$ref: '#/components/schemas/DecimalAmountOutput'}
         thresholdAmount:
           allOf: [{type: string, nullable: true}, {$ref: '#/components/schemas/DecimalAmountOutput'}]
