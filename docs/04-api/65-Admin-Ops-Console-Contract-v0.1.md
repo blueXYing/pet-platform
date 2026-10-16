@@ -1,24 +1,24 @@
-# 运营治理台二期 HTTP 契约 v0.1（百科 / 券 / 台账 / 系统设置，A-005）
+# 运营治理台二期 HTTP 契约 v0.2（百科 / 券 / 台账 / 系统设置 / 券发放，A-005）
 
-状态：IMPLEMENTED_INTERNAL_DEFAULT_OFF，最终以实现 PR 的 CI 为准。2026-10-16。
+状态：IMPLEMENTED_INTERNAL_DEFAULT_OFF，最终以实现 PR 的 CI 为准。v0.1 2026-10-16；**v0.2 2026-10-16 增补 §4.3 券发放渠道**（用户裁决 2026-10-16："做券发放渠道——此前券只能数据库造数，运营台只能管模板，'发券给用户'缺失导致券功能空转"；最小实现按 [CCR-CPN-GRANT-001](../../planning/ccr/CCR-CPN-GRANT-001.md) 冻结，文件名沿用 v0.1 不改，x-contract 钉不变）。
 来源：运营端 PRD `docs/01-prd/04-PRD-运营端-V1.0-最终基线.docx` §6.4（优惠券管理）/§6.10（宠物百科与品种库）/§6.5（积分与任务管理：积分流水）/§6.11（基础台账表）/§6.13（系统设置）；HTTP10 §5.8 优惠券/积分/审计草案与权限矩阵（OD-W0-003）行 13/14/15/21/23；[61 号](61-Coupon-Lifecycle-Contract-v0.1.md)（券生命周期与 rule_json 冻结结构）、[62 号](62-Baike-Content-Contract-v0.1.md)（百科读侧，其"运营编辑/发布/下线写侧与权限面（A-005）"遗留由本契约收口）；SSOT §9（券规则唯一口径）、§24（单运营无双人复核）、§25（无 MFA 门禁）；[63 号](63-Admin-Trade-Query-Contract-v0.1.md)/[64 号](64-Admin-Governance-Contract-v0.1.md) 鉴权与边界先例。动作码提案矩阵行 13/14/15/21/23 的连字符拼写按 AUTH 词法（`AdminActionCheckQuery`，小写点分段）落地为点分拼写（`service.force.offline`/`refund.channel.query` 同款实现期拼写更正，PR 披露）。
 
-本契约为运营治理台二期（券模板管理、券实例台账、百科分类/品种维护与上下线、积分台账、系统设置运行时开关视图）唯一契约文档（65 号预分配位）。**社区治理（HTTP10 矩阵行 20）用户已裁决不在本切片**，一行不做。
+本契约为运营治理台二期（券模板管理、券实例台账、券发放渠道、百科分类/品种维护与上下线、积分台账、系统设置运行时开关视图）唯一契约文档（65 号预分配位）。**社区治理（HTTP10 矩阵行 20）用户已裁决不在本切片**，一行不做。
 
 ## 1. 范围与产品边界
 
 四块范围与其 PRD 依据：
 
 1. **百科内容治理**（PRD §6.10，权限矩阵行 21）：分类停用/启用/编辑/排序、品种上下线/编辑维护 + 运营读侧（全状态列表/详情）。收口 62 号遗留"分类停用、内容上下线暂无运营面（A-005 前只能改库）"。
-2. **券治理**（PRD §6.4.1 券模板管理 + §6.4.3 券实例台账，权限矩阵行 13/14）：券模板读/建/编/启用/停用/试算 + 券实例台账读面（列表/详情/状态时间轴）。券规则唯一口径为 SSOT §9（退款返券/部分退款不返），本契约不新增任何券状态词表、不改变 61 号冻结语义（模板 `ACTIVE` 是冻结前置④，模板停用后新订单不可再用该模板券——61 号既有事实，本面只是给出运营杠杆，PR 披露）。
+2. **券治理**（PRD §6.4.1 券模板管理 + §6.4.3 券实例台账，权限矩阵行 13/14；**v0.2 增 §4.3 发放渠道**，用户裁决 2026-10-16）：券模板读/建/编/启用/停用/试算 + 券实例台账读面（列表/详情/状态时间轴）+ 发放渠道最小实现（单用户单次按 ACTIVE 模板发一张 AVAILABLE 实例，CCR-CPN-GRANT-001）。券规则唯一口径为 SSOT §9（退款返券/部分退款不返），本契约不新增任何券状态词表、不改变 61 号冻结语义（模板 `ACTIVE` 是冻结前置④，模板停用后新订单不可再用该模板券——61 号既有事实，本面只是给出运营杠杆，PR 披露）。
 3. **台账**（PRD §6.5 积分流水 + §6.11，权限矩阵行 15）：积分台账读面（HTTP10 §5.8 草案 `GET /admin/points/ledger`）。商家台账（64 号已交付）、券实例台账（本契约第 2 块）不重做。
 4. **系统设置**（PRD §6.11.1 系统参数台账 + §6.13，权限矩阵行 23）：系统设置运行时开关视图（只读）——把 21 号《部署开关组合清单》登记的 `pet.*` 装配开关及其当前实际状态作为只读面输出，**不新造配置机制**（系统参数运行时写入不在 V1；PRD"系统参数台账·双人复核"已被 SSOT §24 单运营裁决覆盖为无需第二人，但运行时写配置仍无授权，见 §6 CCR）。
 
-**不在本切片（CCR 登记，一行不做）**：券实例写动作（作废/风控冻结/解冻/手动返还/批量作废——SSOT §9 未授权直接改用户券状态）；券活动/批次/发放渠道（61 号 V1 边界"无券模板管理/发放渠道"中发放半边 + 导入路径 V1 不做）；券模板"领取后 N 天"有效期模式（需 Schema/61 号冻结语义扩展）；百科分类/品种新增与删除、导出（分类枚举五值 PRD 不可自定义新增；品种新增需封面图上传通道，V1 运营侧无素材通道；导出不在 V1 已批准范围，63 号 v0.2 同口径）；资金台账专项面（PRD §6.11.1 明示详见《资金管理 V1.4》，该文件不在仓，字段级口径缺失，不发明）；统一审计日志面 `GET /admin/audit-logs`（审计行分散于各内核处置表 + 文件 sink，统一存储未决）；后台账号/角色管理写面（权限矩阵行 26，AUTH owner 专项，V1 单运营种子账号，无授权矩阵登记）；消息公告/通知模板面（矩阵行 24，无契约无事件）。
+**不在本切片（CCR 登记，一行不做）**：券实例写动作（作废/风控冻结/解冻/手动返还/批量作废——SSOT §9 未授权直接改用户券状态）；券活动/批次与"导入路径"（发放渠道已按用户裁决以最小实现放开为 §4.3，批量/持有上限/频控/库存扣减等扩展项仍 CCR-CPN-GRANT-001 §2 待裁；券实例仅运营侧数据的导入路径 V1 不做）；券模板"领取后 N 天"有效期模式（需 Schema/61 号冻结语义扩展）；百科分类/品种新增与删除、导出（分类枚举五值 PRD 不可自定义新增；品种新增需封面图上传通道，V1 运营侧无素材通道；导出不在 V1 已批准范围，63 号 v0.2 同口径）；资金台账专项面（PRD §6.11.1 明示详见《资金管理 V1.4》，该文件不在仓，字段级口径缺失，不发明）；统一审计日志面 `GET /admin/audit-logs`（审计行分散于各内核处置表 + 文件 sink，统一存储未决）；后台账号/角色管理写面（权限矩阵行 26，AUTH owner 专项，V1 单运营种子账号，无授权矩阵登记）；消息公告/通知模板面（矩阵行 24，无契约无事件）。
 
 ## 2. 鉴权、开关与边界（沿 63/64 号先例）
 
-- 新装配开关 `pet.admin.ops.http.enabled`（默认 **false**），与 `pet.auth.admin.enabled` 双条件装配全部内核与控制器（63 号 `pet.admin.trade.http.enabled` 同款：http=true 而内核 bean 缺失直接启动失败）；HTTP 置 true 而内核关闭直接装配失败。21 号清单同步登记。
+- 新装配开关 `pet.admin.ops.http.enabled`（默认 **false**），与 `pet.auth.admin.enabled` 双条件装配全部内核与控制器（63 号 `pet.admin.trade.http.enabled` 同款：http=true 而内核 bean 缺失直接启动失败）；HTTP 置 true 而内核关闭直接装配失败。21 号清单同步登记。**v0.2 增第二装配开关 `pet.coupon.grant.enabled`（默认 false）**：仅门控 §4.3 发放内核（`CouponGrantConfiguration`，另需 `pet.auth.admin.enabled`）；该开关关闭而 ops 面开启时，发放路由以 503 `COMMON_DEPENDENCY_UNAVAILABLE` 失败关闭（61 号"提供器未装配"语义），不随面整体装配失败。默认值翻转随 35 号开关放开裁决统一处理。21 号清单同步登记两行。
 - 全部路由真实 ADMIN_WEB Bearer 会话（`AdminBearerAuthenticationFilter`），控制器做会话快照动作码 + `ALL` 数据范围门禁（本面全部资源为全平台字典/配置/台账，CITY/MERCHANT fail-closed 403，CCR-PERM-001 §3 同口径）；每个内核经注入的模块本地授权端口在事务/读取前重验会话、动作码与范围（快照永非授权证据）。
 - `Cache-Control: no-store` 全路由；信封 `{code,message,data,traceId}`；未知 query 参数整单 400；分页 `page` 缺省 1（1..10000）、`pageSize` 缺省 20（1..100）；ID 全部 Snowflake 十进制 String；金额两位小数字符串；时间 ISO-8601 UTC 毫秒。
 - 写路由（POST/PUT）一律终结性 `X-Request-Id`（23 号幂等契约）：幂等绑定在本内核 `command_idempotency`（14 号共享物理表）append-only 行内完成，同 ID 异参重放 409 `IDEMPOTENCY_KEY_CONFLICT`，同 ID 同参重放返回首次成功回执；状态冲突 409 `COMMON_CONFLICT`；资源不存在/不可见 404 `COMMON_NOT_FOUND`（防枚举）。
@@ -51,7 +51,7 @@
 
 ## 4. 券治理（pet-coupon-api/biz）
 
-动作码：`coupon.template.read` / `coupon.template.manage`（矩阵行 13 提案 `coupon-template.read/manage` 的点分落地；行 13 的 campaign 族 V1 无业务不登记）、`coupon.instance.read`（矩阵行 14 提案 `coupon-instance.read` 的点分落地；行 14 的 void/return 写码**不登记**，见 §6 CCR）。
+动作码：`coupon.template.read` / `coupon.template.manage`（矩阵行 13 提案 `coupon-template.read/manage` 的点分落地；行 13 的 campaign 族 V1 无业务不登记）、`coupon.instance.read`（矩阵行 14 提案 `coupon-instance.read` 的点分落地）、`coupon.instance.grant`（v0.2，发放渠道，用户裁决 2026-10-16，CCR-CPN-GRANT-001 §3；行 14 的 void/return 写码**不登记**，见 §6 CCR）。
 
 ### 4.1 券模板管理
 
@@ -80,8 +80,24 @@
 | GET `/api/v1/admin/coupon-instances` | coupon.instance.read | page/pageSize/templateId?/status?(AVAILABLE\|FROZEN\|USED\|EXPIRED\|RISK_FROZEN)/orderId?/createdFrom?/createdTo? | 实例分页（`instanceId/templateId/templateName/userId/status/discountAmount/thresholdAmount/originalExpireAt/expireAt/orderId/frozenAt/usedAt/createdAt`） | 400/401/403 |
 | GET `/api/v1/admin/coupon-instances/{instanceId}` | coupon.instance.read | — | 实例全字段 + `ledger[]`（`coupon_ledger` 时间轴：`action/fromStatus/toStatus/orderId/remark/createdAt`，`created_at ASC,id ASC`） | 400/401/403/404 |
 
-- 状态词表为 61 号既有实例词表（含 `RISK_FROZEN`），只读展示、不新增；面额/门槛为发放时快照（`rule_json` 读模板现值，PRD 快照列 V1 无独立列——PR 披露：61 号模型实例不冗余快照金额，展示取模板当前 rule 值，作废/返还写动作不存在故无快照漂移风险面）。
-- 无任何实例写路由（作废/返还/风控冻结/解冻/批量作废全部 CCR，§6）；`coupon_ledger` 只读透传。
+- 状态词表为 61 号既有实例词表（含 `RISK_FROZEN`），只读展示、不新增；面额/门槛为发放时快照（`rule_json` 读模板现值，PRD 快照列 V1 无独立列——PR 披露：61 号模型实例不冗余快照金额，展示取模板当前 rule 值，作废/返还写动作不存在故无快照漂移风险面；v0.2 后实例只能由发放渠道产生，金额随模板 rule 现值展示的口径不变——PR 披露）。
+- 除 §4.3 发放路由外无任何实例写路由（作废/返还/风控冻结/解冻/批量作废全部 CCR，§6）；`coupon_ledger` 只读透传。
+
+### 4.3 券发放渠道（v0.2，用户裁决 2026-10-16）
+
+| 方法/路径 | 动作码 | 装配开关 | 请求 | 成功 data | 关键错误 |
+|---|---|---|---|---|---|
+| POST `/api/v1/admin/coupon-instances/grant` | coupon.instance.grant | ops 面 + `pet.coupon.grant.enabled`（内核关=503 失败关闭） | `{templateId, userId}`（双 Snowflake 十进制 String）；终结性 X-Request-Id | `{instanceId, templateId, userId, status:"AVAILABLE", expireAt, occurredAt}`（X-Request-Id 幂等，同参重放返回首次回执） | 400（词法）/401/403（动作码或范围）/404（模板不存在，防枚举）/409（模板非 ACTIVE、不在有效期内、幂等异参）/503（内核未装配/授权决断不可用） |
+
+语义与硬规则（最小实现，扩展项 CCR-CPN-GRANT-001 §2 待裁，不发明）：
+
+- **单次一张**：一个终端 `X-Request-Id` 向一个用户按一个 ACTIVE 模板发放恰好一张实例；批量发放/单用户同模板持有上限/发放频控均不存在（CCR-CPN-GRANT-001 §2，待用户裁决）。
+- **模板可用性守卫 = 61 号 §3 冻结前置④的"模板可用"事实原样执行**：发放时刻模板 `status='ACTIVE'` 且 `now ∈ [valid_start_at, valid_end_at]`，任一不满足 409（非 ACTIVE / 不在有效期内，同码不同文案）；模板不存在 404 防枚举。守卫在行锁（`SELECT ... FOR UPDATE`）事务内与写入同事务，模板 offline 与发放并发安全。
+- **实例落点**：`status='AVAILABLE'`，`original_expire_at = expire_at = 模板 valid_end_at`（61 号模型无实例级独立有效期；有效期内使用走既有冻结/核销/释放/过期生命周期，本面零改动衔接）。
+- **幂等与审计**：23 号幂等契约，绑定在本内核 `command_idempotency`（14 号共享物理表）——同 ID 同参重放返回首次回执、异参 409 `IDEMPOTENCY_KEY_CONFLICT`；`coupon_ledger` 写 ISSUE 行（`request_id='CPN:GRANT:{instanceId}'` uk，`from_status=NULL`、`to_status='AVAILABLE'`，remark 记 `operator={operatorId};source={channel}`）——61 号既有词表零新增，ISSUE 行即发放审计事实。
+- **模板计数**：`issued_count` 同事务 +1；既有 `issued_count>0` 编辑守卫随之自然生效（已发放模板关键字段不可修改，§4.1 既有规则）。`total_stock` 不扣减、不校验（V1 恒为 NULL=不限量，库存语义待裁）。
+- **鉴权**：控制器快照校验 `coupon.instance.grant` + ALL 范围（CITY/MERCHANT 403），内核在事务前经模块本地授权端口当前读重验（§2 既有纪律）；目标用户存在性不做跨域校验（券域不依赖 user 域，仅 Snowflake 词法校验——CCR-CPN-GRANT-001 §2 待裁项）。
+- **C 端联动零改动**：发放后实例立即可见于既有 `GET /api/v1/c/coupons?status=AVAILABLE`（10 号 §3.15.1）；下单选券冻结走 61 号既有链路。发放不产生任何通知（16 号消息目录无此类型，CCR-CPN-GRANT-001 §2）。
 
 ## 5. 积分台账与系统设置
 
@@ -97,8 +113,8 @@
 
 登记文件：`planning/ccr/CCR-ADM-A005-OPS-001.md`。SSOT/已批裁决未授权的运营动作，本切片一律不实现：
 
-1. **券实例写动作**（矩阵行 14 void/return 提案码不登记）：作废/批量作废/风控冻结/解冻/手动返还——SSOT §9 仅封板退款返券自动化规则，无运营直改用户券状态授权；PRD §7.3 运营分支（作废需通知用户、风控冻结）需通知域与风控事实契约，均不在仓。
-2. **券活动/批次/发放渠道**：61 号 V1 边界保留"发放渠道 V1 不做"；模板 `total_stock/issued_count` 列保留零管理（无发放即无消耗）。
+1. **券实例写动作**（矩阵行 14 void/return 提案码不登记）：作废/批量作废/风控冻结/解冻/手动返还——SSOT §9 仅封板退款返券自动化规则，无运营直改用户券状态授权；PRD §7.3 运营分支（作废需通知用户、风控冻结）需通知域与风控事实契约，均不在仓。发放渠道（§4.3）不属于本项：其唯一写效果是新增 AVAILABLE 实例，不改任何既有实例状态。
+2. **券活动/批次与发放渠道扩展项**：61 号 V1 边界"发放渠道 V1 不做"已被 2026-10-16 用户裁决部分放开为 §4.3 最小实现；批量发放/单用户同模板持有上限/发放频控/`total_stock` 库存扣减/目标用户存在性校验/发放通知，统一登记 [CCR-CPN-GRANT-001](../../planning/ccr/CCR-CPN-GRANT-001.md) §2 待裁。券活动/批次（campaign 族）与导入路径维持不做。
 3. **券模板"领取后 N 天"有效期模式**：需 Schema 新列与 61 号实例到期语义扩展。
 4. **百科分类/品种新增与删除、导出**：分类枚举五值 PRD 不可自定义新增；品种新增需运营侧封面图上传通道（V1 私有素材通道仅售后证据）；导出不在 V1 已批准范围（63 号 v0.2 同口径）。
 5. **资金台账专项面**：PRD §6.11.1 明示详见《资金管理 V1.4》（不在仓），字段级口径缺失；既有资金事实读侧由 63 号（退款执行事实）与订单金额投影覆盖。
@@ -108,13 +124,14 @@
 
 ## 7. 验收
 
-真实回环 HTTP（隔离 MySQL 33440/Redis 16379，env 同 CI 名）：百科分类/品种全状态读写回环、C 端读侧联动（停用分类消失/品种下线 404）、券模板全生命周期（建→编→启→停→编辑守卫）+ 试算资格矩阵、券实例台账与时间轴、积分台账过滤与排序、设置开关视图、未授权动作 403、CITY/MERCHANT 范围 403、幂等同参重放 200/异参 409、乐观锁 409、防枚举 404。`check-persistence-style.py`、architecture-test、OpenAPI11 e2e 计数钉（184→204）、前端 typecheck/build/playwright 全绿。
+真实回环 HTTP（隔离 MySQL 33440/Redis 16379，env 同 CI 名）：百科分类/品种全状态读写回环、C 端读侧联动（停用分类消失/品种下线 404）、券模板全生命周期（建→编→启→停→编辑守卫）+ 试算资格矩阵、券实例台账与时间轴、积分台账过滤与排序、设置开关视图、未授权动作 403、CITY/MERCHANT 范围 403、幂等同参重放 200/异参 409、乐观锁 409、防枚举 404。**v0.2 增**：发放内核真实 MySQL 回环（真实 MySQL 隔离库：ACTIVE 在窗模板发放→AVAILABLE 实例+ISSUE 台账+issued_count 消耗、同参幂等重放回执/异参 409、DRAFT/OFFLINE/过窗/未生效/未知模板守卫 409/404、越权 fail-closed 403/503、C 端 AVAILABLE 桶立即可见且他人不可见——`CouponGrantMySqlTest`）。`check-persistence-style.py`、architecture-test、OpenAPI11 e2e 计数钉（184→205）、前端 typecheck/build/playwright 全绿。
 
 ## 8. 偏差与披露
 
-1. 权限矩阵行 13/14 提案连字符拼写（`coupon-template.*`/`coupon-instance.*`）按 AUTH 词法落地为点分（`coupon.template.*`/`coupon.instance.*`）；行 21/23 提案拼写本就合规，原样登记。
-2. 21 号清单增 `pet.admin.ops.http.enabled` 一行（默认 false，软依赖 `pet.auth.admin.enabled`）。
+1. 权限矩阵行 13/14 提案连字符拼写（`coupon-template.*`/`coupon-instance.*`）按 AUTH 词法落地为点分（`coupon.template.*`/`coupon.instance.*`）；行 21/23 提案拼写本就合规，原样登记。**v0.2**：`coupon.instance.grant` 在提案矩阵无提案码，按同一点分词法新造并登记部署（CCR-CPN-GRANT-001 §3），PR 披露。
+2. 21 号清单增 `pet.admin.ops.http.enabled` 一行（默认 false，软依赖 `pet.auth.admin.enabled`）。**v0.2 再增 `pet.coupon.grant.enabled` 一行（默认 false，硬依赖 `pet.auth.admin.enabled`）；默认值翻转随 35 号开关放开裁决统一处理，本契约不自行翻转。**
 3. 券模板停用改变新订单冻结资格（61 号前置④既有事实）与本面组合后的产品行为，PR 描述披露；已 FROZEN 实例的既有释放/核销链路不受影响（读的是实例状态非模板状态）。
-4. 券实例金额快照取模板现值（61 号模型无实例级快照列）；在无实例写动作的前提下无漂移面。
+4. 券实例金额快照取模板现值（61 号模型无实例级快照列）；v0.1 在无实例写动作的前提下无漂移面，**v0.2 起实例由发放渠道产生且面额/门槛展示仍读模板现值（61 号模型不冗余快照列）——发放后编辑模板被 `issued_count>0` 守卫阻止，Active 模板发放前后 rule 不变的窗口内无漂移，PR 披露**。
 5. PRD §6.10"停用分类需过敏感词校验/品种联动校验影响条数"在本模型的落地偏差（枚举封闭/无外键引用）见 §3 披露。
-6. 错误码复用 12 号既有通用码（400/401/403/404/409/500/503），**零新增错误码**，12 号不改。
+6. 错误码复用 12 号既有通用码（400/401/403/404/409/500/503），**零新增错误码**，12 号不改（发放守卫复用 `COMMON_CONFLICT`/`COMMON_NOT_FOUND`/`COMMON_DEPENDENCY_UNAVAILABLE`）。
+7. **v0.2**：61 号 §1"无券模板管理/发放渠道"边界的发放半边由 2026-10-16 用户裁决放开（最小实现 CCR-CPN-GRANT-001），61 号契约文档本身零改动（其冻结/消费/释放/返券四链路与 rule_json 冻结结构不受影响；发放产生的模板 ACTIVE 即满足冻结前置④的既有事实）；事件族零新增（发放为同步内核写，不经 Outbox/AsyncTask，与 63 号 v0.2"无事件 by design"先例同口径——PR 披露）。
