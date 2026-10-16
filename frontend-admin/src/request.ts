@@ -27,9 +27,17 @@ export function createWebClient(transport: Transport = fetch) {
       }
       const response = await transport(new Request(url, { method, headers, credentials, redirect: 'error', body: options.body === undefined ? undefined : JSON.stringify(options.body) }));
       if (started !== epoch) throw new RequestFailure('STALE_CONTEXT', 0);
-      if (response.status === 401 || response.status === 403) {
+      if (response.status === 401) {
+        // Session invalidation is the 401 semantic only: it clears the context so every later
+        // call goes out unauthenticated.
         epoch++; token = undefined;
-        throw new RequestFailure(response.status === 401 ? 'UNAUTHENTICATED' : 'FORBIDDEN', response.status);
+        throw new RequestFailure('UNAUTHENTICATED', response.status);
+      }
+      if (response.status === 403) {
+        // FA-3 (2026-10-16): FORBIDDEN means "valid session, insufficient permission" — it must
+        // NOT drop the token/epoch, which logged the operator out after any single 403 (the ops
+        // consoles died exactly this way). Pages render it as a permission notice instead.
+        throw new RequestFailure('FORBIDDEN', response.status);
       }
       let payload: Envelope<T>;
       try { payload = await response.json() as Envelope<T>; }

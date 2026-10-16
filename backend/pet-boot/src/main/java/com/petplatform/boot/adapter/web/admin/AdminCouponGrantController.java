@@ -26,7 +26,6 @@ import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RestController;
 
 /**
@@ -62,7 +61,10 @@ public class AdminCouponGrantController {
       value = "/api/v1/admin/coupon-instances/grant",
       consumes = MediaType.APPLICATION_JSON_VALUE,
       produces = MediaType.APPLICATION_JSON_VALUE)
-  Map<String, Object> grant(@RequestBody String raw, HttpServletRequest req) {
+  Map<String, Object> grant(HttpServletRequest req) {
+    // No @RequestBody binding here: stringBody reads the stream directly, and a binding would
+    // consume it first so every grant answered 400 (FA-3 face defect found by the 2026-10-16
+    // booted regression; the void channel never had the parameter).
     AdminSessionView session = session(req, "coupon.instance.grant");
     Map<String, String> body =
         AdminTradeHttpSupport.stringBody(req, "templateId", "userId");

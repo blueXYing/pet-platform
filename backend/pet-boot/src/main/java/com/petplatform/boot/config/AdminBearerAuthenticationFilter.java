@@ -61,7 +61,24 @@ public final class AdminBearerAuthenticationFilter extends OncePerRequestFilter 
           // Platform governance read face (contract 64 / ADM-001 gap slice): ADMIN_WEB Bearer;
           // merchant.read/schedule.read/merchant.staff.read action codes and the ALL data
           // scope are re-checked by the controller and each kernel per request.
-          || path.startsWith("/api/v1/admin/governance/")) {
+          || path.startsWith("/api/v1/admin/governance/")
+          // Contract-63 v0.2 disposal writes (user ruling 2026-10-15, doc 33, FA-1): the same
+          // face switch as the trade reads; refund.channel.query / refund.retry /
+          // order.abnormal.close / merchant.disable are re-checked inside each kernel's own
+          // commit. These four routes own their subtrees — no other admin face answers there.
+          || path.startsWith("/api/v1/admin/refunds/")
+          || (path.startsWith("/api/v1/admin/orders/") && path.endsWith("/abnormal-close"))
+          || (path.startsWith("/api/v1/admin/merchants/") && path.endsWith("/disable"))
+          // Platform ops console face (contract 65 / A-005, FA-3): ADMIN_WEB Bearer; the
+          // encyclopedia.* / breed.* / coupon.* / points.ledger.read / system.parameter.read
+          // action codes and the ALL data scope are re-checked by the controller and each
+          // kernel per request. Without these entries the face answered 401 behind the chain
+          // permit.
+          || path.startsWith("/api/v1/admin/encyclopedia/")
+          || path.startsWith("/api/v1/admin/coupon-templates")
+          || path.startsWith("/api/v1/admin/coupon-instances")
+          || path.equals("/api/v1/admin/points/ledger")
+          || path.equals("/api/v1/admin/settings/runtime")) {
         try {
           AdminAuthService service = services.getIfAvailable();
           if (service == null) throw AdminAuthFailure.unavailable();
