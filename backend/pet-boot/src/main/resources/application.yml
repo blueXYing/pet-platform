@@ -40,11 +40,19 @@ logging:
   pattern:
     level: "%5p [traceId=%X{traceId:-} requestId=%X{requestId:-}]"
 
-# C-end (mini-program) auth slice. Off by default; when pet.auth.c.enabled=true the real
-# WeChat provider additionally needs app-id/app-secret. Fill them in the git-ignored
-# application-local.yml (copy application-local.yml.example) or via the environment
-# variables below at deployment time. Never commit real credentials.
+# Platform capability switches. Per the 2026-10-16 deployment ruling (doc 35), every
+# platform-owned capability face defaults ON and is decoupled from release events; only
+# faces whose enablement hard-requires third-party credentials or deployment-specific
+# opt-ins stay default-off (payment channels, OSS, real WeChat delivery, isolated
+# migrations, session keys). Missing credentials fail closed (503) by design; see
+# docs/08-engineering/21-部署开关组合清单-v1.0.md for the full dependency matrix.
 pet:
+  outbox:
+    # Transactional Outbox + Dispatcher (13号): default ON per the 2026-10-16 ruling — the
+    # coupon restore, points clawback and station-notification consumers all ride it. Needs
+    # the production Snowflake bean (pet.auth.admin.enabled) and the outbox tables; events
+    # with no registered consumer wait durably (the no-consumer lane never claims rows).
+    enabled: true
   aftersale:
     enabled: false
     refund:
@@ -54,12 +62,24 @@ pet:
     http:
       enabled: false
   schedule:
+    query:
+      # C-end minute-level bookable-slot read (41号): default OFF (35号 B-class blocker) —
+      # its assembly hard-requires ServiceQueryApiImpl, which chains to the merchant
+      # application kernel (OSS identity-material port). Opens together with the C catalog.
+      enabled: false
+      selection:
+        # 36号 selection window query rides the query slice.
+        enabled: false
+    protection:
+      # Shared reservation guard/facts/proof foundation: default ON. Boot-safe (no
+      # external credentials); every guarded write domain depends on these beans.
+      enabled: true
     command:
       # SCH-004 merchant schedule write side (service windows, staff availability windows,
-      # capabilities, workbench reads). Default off; enabling additionally requires the
-      # reservation protection foundation beans (pet.schedule.protection.enabled) and, for
-      # the HTTP routes, pet.schedule.command.http.enabled. The V29 migration is a separate
-      # explicit opt-in (migration-enabled + migration-database=schw001_*).
+      # capabilities, workbench reads). Default OFF (35号 B-class blocker): its admission gate
+      # chains to MerchantAdmissionQueryApi (merchant application kernel) and its facts to
+      # ServiceQueryApi. The V29 migration stays a separate explicit opt-in (migration-enabled
+      # + migration-database=schw001_*).
       enabled: false
       http:
         enabled: false
@@ -72,6 +92,11 @@ pet:
         enabled: false
       http:
         enabled: false
+    # 2026-10-08 ruling: pre-service refund applications are automatic full approvals
+    # (product hard rule 服务前退款自动全额). Default ON per the 2026-10-16 ruling; read only
+    # when the refund-application kernel assembles.
+    pre-service-auto-refund:
+      enabled: true
     merchant:
       # Contract 57 M refund face (pending list/detail/approve/reject on the 49号 kernel):
       # off by default; enabling additionally requires pet.refund.application.enabled (the
@@ -101,11 +126,28 @@ pet:
       enabled: false
       http:
         enabled: false
-  merchant:
+    # K1 v0.2 staff-aware verification authority: default ON so the verification kernel,
+    # when its credential chain goes live at deployment, starts with the staff path enabled
+    # (owner path is tried first and keeps its semantics; merchant.staff-identity is
+    # required and defaults ON as well).
     staff-identity:
-      # Contract 52 STAFF identity read kernel: off by default. The member binding command,
-      # grant writers, action catalog and verification mapping are pending the approved CCR.
-      enabled: false
+      enabled: true
+  merchant:
+    application:
+      # Merchant onboarding (C1) stays default OFF (B-class blocker): enabling requires the
+      # subject/protection self-issued key ports AND the private-asset (OSS) query port for
+      # identity material. Its station-notification consumer defaults ON so approved/reviewed
+      # events dispatch as soon as the outbox and the kernel run.
+      notifications-enabled: true
+    staff:
+      # Merchant staff profile writes (35号): default ON; audit facts / protection ports
+      # missing at runtime answer 503 fail-closed. The Contract-54 invitation/member/grant
+      # station notifications ride the same prefix (dispatched by the outbox).
+      enabled: true
+      notifications-enabled: true
+    staff-identity:
+      # Contract 52 STAFF identity read kernel: default ON per the 2026-10-16 ruling.
+      enabled: true
     staff-member:
       # Contract 54 invite-confirm binding (D1-a; verify-only catalog D2): off by default.
       # Requires pet.schedule.protection.enabled for the shared store guard; the employee
@@ -113,6 +155,17 @@ pet:
       # opt-in (migration-enabled/migration-database, isolated staffb001_ databases only).
       enabled: ${STAFF_MEMBER_ENABLED:false}
   order:
+    creation:
+      # 38号 atomic booking kernel: default ON per the 2026-10-16 ruling (needs the
+      # production Snowflake bean and the reservation protection foundation at boot; address
+      # / remark encryption without pet.merchant.protection.enabled answers 503 fail-closed).
+      enabled: true
+    expiry:
+      # 39号 reservation hold expiry: default ON; the durable worker (10-minute hold
+      # auto-close) rides the async_task infrastructure tables.
+      enabled: true
+      worker:
+        enabled: true
     reschedule:
       enabled: false
       http:
@@ -131,13 +184,70 @@ pet:
         enabled: false
       inspection:
         enabled: false
+  coupon:
+    grant:
+      # Coupon issuance channel (PR #180): opens with the ops console (union of
+      # ruling 35 + #183 FA fixes); requires the admin session base to be useful.
+      enabled: true
+    void:
+      # Coupon instance void (PR #182): same ruling union as grant.
+      enabled: true
+    lifecycle:
+      # Contract-61 coupon lifecycle kernel: default ON per the 2026-10-16 ruling (freeze
+      # joins the 38 create transaction, consume rides the 41 payment result, the restore
+      # consumer rides the outbox).
+      enabled: true
+  points:
+    task:
+      # Contract-58 sign-in + referral earn kernel: default ON (needs the production
+      # Snowflake bean; cross-domain facts reads answer 503 fail-closed when missing).
+      enabled: true
+      http:
+        enabled: true
+    refund-clawback:
+      # PTS-002 refund clawback consumer: default ON (dispatched by the outbox).
+      enabled: true
   private-assets:
     enabled: ${PRIVATE_ASSETS_ENABLED:false}
+  service:
+    query:
+      # C-end service catalog read: default OFF (35号 B-class blocker) — its assembly
+      # hard-requires MerchantDisplayEligibilityApi from the merchant application kernel.
+      enabled: false
+    command:
+      # Merchant service write side (review/on-shelf): default OFF (35号 B-class blocker) —
+      # its admission port chains to the merchant application kernel. The real S3 cover
+      # presigner stays behind pet.service.cover-signing.enabled and answers 503 fail-closed
+      # without it.
+      enabled: false
+      migration-enabled: false
+      migration-database:
+    review:
+      # Service review station notifications: default ON (dispatched once the outbox runs).
+      notifications-enabled: true
   store:
     query:
-      # C-end store catalog (STR-D6): off by default; needs pet.auth.c.enabled and
-      # pet.merchant.application.enabled with their real dependencies when on.
+      # C-end store catalog (STR-D6): default OFF (35号 B-class blocker) — it requires the
+      # ApplicationReviewFactsReader bean from the merchant application kernel; the routes
+      # additionally ride the C session domain's security chain at deployment.
       enabled: ${STORE_QUERY_ENABLED:false}
+  encyclopedia:
+    # Contract-62 public read face: default ON per the 2026-10-16 ruling (boot-safe).
+    query:
+      enabled: true
+  admin:
+    governance:
+      http:
+        # Contract-64 governance query face: default ON; assembles only with
+        # pet.auth.admin.enabled (session keys), otherwise silently inert.
+        enabled: true
+    ops:
+      http:
+        # Contract-65 ops console face: default ON (union of ruling 35 + PR #183):
+        # the FA-2 double-bean wiring, FA-1/FA-3 security-chain permits and FA-5
+        # lexicon were fixed by the admin-face fix batch (#183), so the held
+        # category is obsolete — opens together with coupon grant/void below.
+        enabled: true
   auth:
     c:
       enabled: ${AUTH_C_ENABLED:false}
@@ -146,10 +256,10 @@ pet:
       wechat:
         app-id: ${AUTH_WECHAT_APP_ID:}
         app-secret: ${AUTH_WECHAT_APP_SECRET:}
-  # Contract 58 favorite/footprint C face (32号裁决第二节批次; 10号 §3.16): off by default.
-  # Enabling additionally requires pet.auth.c.enabled (real MINIAPP session) plus both C
-  # catalog query slices (pet.service.query.enabled + pet.store.query.enabled) for target
-  # admission and list enrichment; the assembly fails closed when either catalog is missing.
+  # Contract 58 favorite/footprint C face (32号裁决第二节批次; 10号 §3.16): default OFF
+  # (35号 B-class blocker) — the face hard-requires both C catalog query slices
+  # (pet.service.query.enabled + pet.store.query.enabled), which chain to the merchant
+  # application kernel; it goes live together with the C session domain and the catalogs.
   favtrack:
     http:
       enabled: false

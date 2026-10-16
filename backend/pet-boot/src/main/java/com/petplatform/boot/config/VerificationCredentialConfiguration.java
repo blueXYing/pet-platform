@@ -46,7 +46,7 @@ public class VerificationCredentialConfiguration {
   @Bean CredentialPorts.Sessions credentialSessions(MerchantOrderPorts.SessionAuthority current){return current::requireCurrent;}
   @Bean
   @ConditionalOnMissingBean(CredentialPorts.AttemptAuthority.class)
-  @ConditionalOnProperty(name="pet.verification.staff-identity.enabled",havingValue="false",matchIfMissing=true)
+  @ConditionalOnProperty(name="pet.verification.staff-identity.enabled",havingValue="false")
   CredentialPorts.AttemptAuthority ownerVerificationAuthority(CredentialPorts.Sessions sessions,MerchantOrderAuthorityApi merchant){
    return (context,merchantId,storeId)->{
     if(context==null||context.operatorType()!=com.petplatform.common.OperatorType.USER||context.operatorId()==null)
@@ -57,14 +57,14 @@ public class VerificationCredentialConfiguration {
    };
   }
   /**
-   * K1 v0.2 staff-aware authority, default off. OWNER is tried first (unchanged semantics);
+   * K1 v0.2 staff-aware authority, default ON per the 2026-10-16 ruling (doc 35). OWNER is tried first (unchanged semantics);
    * a non-owner session must pass the contract-52 member action gate (merchant.order.verify
    * only, FROZEN/OFFLINE fail closed per D5) and resolve a traceable grant staffId, else the
    * command is refused. Everything re-reads inside the caller's guarded transaction.
    */
   @Bean
   @ConditionalOnMissingBean(CredentialPorts.AttemptAuthority.class)
-  @ConditionalOnProperty(name="pet.verification.staff-identity.enabled",havingValue="true")
+  @ConditionalOnProperty(name="pet.verification.staff-identity.enabled",havingValue="true",matchIfMissing=true)
   public CredentialPorts.AttemptAuthority staffAwareVerificationAuthority(CredentialPorts.Sessions sessions,MerchantOrderAuthorityApi merchant,
    com.petplatform.merchant.api.query.MerchantStaffIdentityQueryApi staffIdentity){
    return (context,merchantId,storeId)->{

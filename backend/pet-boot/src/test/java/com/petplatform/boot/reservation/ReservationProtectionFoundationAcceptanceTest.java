@@ -79,9 +79,12 @@ class ReservationProtectionFoundationAcceptanceTest {
     private static final String ONE_PM = "2030-01-01 13:00:00";
 
     @Test
-    void foundationBeansAreAbsentByDefaultAndPresentOnlyWhenExplicitlyEnabled() throws Exception {
+    void foundationBeansAreAbsentWhenExplicitlyOffAndPresentWhenExplicitlyEnabled() throws Exception {
+        // Ruling 35 (2026-10-16) flips the platform capability switches to default ON; the
+        // fail-closed check closes the switch explicitly.
         var runner = new ApplicationContextRunner()
-                .withUserConfiguration(ReservationProtectionFoundationConfiguration.class);
+                .withUserConfiguration(ReservationProtectionFoundationConfiguration.class)
+                .withPropertyValues("pet.schedule.protection.enabled=false");
         runner.run(context -> {
             assertFalse(context.containsBean("scheduleCapacityGuardApi"));
             assertFalse(context.containsBean("scheduleCapacityProofApi"));

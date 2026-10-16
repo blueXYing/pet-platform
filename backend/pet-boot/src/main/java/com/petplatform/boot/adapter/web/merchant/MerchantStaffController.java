@@ -17,7 +17,7 @@ import tools.jackson.databind.ObjectReader;
 /** Approved owner-only staff profile routes. The blocked disable route is intentionally absent. */
 @RestController
 @RequestMapping(value = "/api/v1/merchant/staff", produces = MediaType.APPLICATION_JSON_VALUE)
-@ConditionalOnProperty(prefix = "pet.merchant.staff", name = "enabled", havingValue = "true")
+@ConditionalOnProperty(prefix = "pet.merchant.staff", name = "enabled", havingValue = "true", matchIfMissing = true)
 public final class MerchantStaffController {
     private static final ObjectReader STRICT = com.petplatform.boot.config.MerchantJsonReaderFactory.strictReader();
     private final MerchantStaffApiImpl staff;

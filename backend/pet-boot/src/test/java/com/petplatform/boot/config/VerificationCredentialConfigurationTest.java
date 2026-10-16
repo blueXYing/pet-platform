@@ -8,8 +8,9 @@ import org.springframework.boot.test.context.runner.ApplicationContextRunner;
 import javax.sql.DataSource;
 import java.util.Map;
 class VerificationCredentialConfigurationTest {
- private ApplicationContextRunner base(){return new ApplicationContextRunner().withUserConfiguration(VerificationCredentialConfiguration.class);}
- @Test void defaultOffDoesNotTouchDatabase(){var s=mock(DataSource.class);base().withBean(DataSource.class,()->s).run(c->{assertThat(c).hasNotFailed();assertThat(c).doesNotHaveBean(VerificationCredentialApi.class);assertThat(c).doesNotHaveBean(VerificationCompletionApi.class);verifyNoInteractions(s);});}
+ private ApplicationContextRunner base(){return new ApplicationContextRunner().withUserConfiguration(VerificationCredentialConfiguration.class)
+ .withPropertyValues("pet.verification.credential.enabled=false","pet.verification.staff-identity.enabled=false");}
+ @Test void explicitOffDoesNotTouchDatabase(){var s=mock(DataSource.class);base().withBean(DataSource.class,()->s).run(c->{assertThat(c).hasNotFailed();assertThat(c).doesNotHaveBean(VerificationCredentialApi.class);assertThat(c).doesNotHaveBean(VerificationCompletionApi.class);verifyNoInteractions(s);});}
  @Test void httpWithoutKernelFailsClosed(){base().withPropertyValues("pet.verification.credential.http.enabled=true").run(c->assertThat(c).hasFailed());
   base().withPropertyValues("pet.verification.completion.http.enabled=true").run(c->assertThat(c).hasFailed());}
  @Test void httpSwitchComposesOnTopOfTheEnabledKernel(){enabled().withBean(CredentialProtection.class,()->keys()).withPropertyValues("pet.verification.credential.http.enabled=true","pet.verification.completion.enabled=true","pet.verification.completion.http.enabled=true").run(c->{assertThat(c).hasNotFailed();assertThat(c).hasSingleBean(VerificationCredentialApi.class);assertThat(c).hasSingleBean(VerificationCompletionApi.class);});}

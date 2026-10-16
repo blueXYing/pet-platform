@@ -16,7 +16,7 @@ import org.springframework.context.annotation.Configuration;
  * grant writers, action catalog and verification mapping are still pending the approved CCR.
  */
 @Configuration(proxyBeanMethods = false)
-@ConditionalOnProperty(prefix = "pet.merchant.staff-identity", name = "enabled", havingValue = "true")
+@ConditionalOnProperty(prefix = "pet.merchant.staff-identity", name = "enabled", havingValue = "true", matchIfMissing = true)
 public class MerchantStaffIdentityConfiguration {
     @Bean
     MerchantStaffIdentityApiImpl merchantStaffIdentityApi(DataSource source,

@@ -167,8 +167,11 @@ public final class CouponVoidService {
         }
         Decision decision = authorization.check(new Check(
                 auth.sessionId(), auth.sessionGeneration(), context.operatorId(),
+                // Coupon rows carry no authorization-relevant version; the owner's scope DTO
+                // requires a non-blank fact, rendered "0" like the contract-63 kernels'
+                // absent-version columns (AdminResourceScope validates, the owner never reads).
                 "coupon.instance.void", new Resource("COUPON_INSTANCE",
-                        Long.toUnsignedString(instanceId), null, null, null),
+                        Long.toUnsignedString(instanceId), null, null, "0"),
                 "COUPON_INSTANCE_VOID", Phase.EXECUTE));
         if (decision == null || decision.checkedAt() == null || decision.authzVersion() == null
                 || decision.authzVersion().isBlank()) {

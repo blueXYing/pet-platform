@@ -29,7 +29,7 @@ import org.springframework.web.bind.annotation.RestController;
  * depends on a subject. This adapter only maps query strings and rejects unknown parameters.
  */
 @RestController
-@ConditionalOnProperty(prefix = "pet.encyclopedia.query", name = "enabled", havingValue = "true")
+@ConditionalOnProperty(prefix = "pet.encyclopedia.query", name = "enabled", havingValue = "true", matchIfMissing = true)
 public class CEncyclopediaController {
 
     private final EncyclopediaContentService encyclopedia;

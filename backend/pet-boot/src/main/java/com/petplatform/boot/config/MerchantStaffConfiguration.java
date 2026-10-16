@@ -15,7 +15,7 @@ import org.springframework.context.annotation.Configuration;
 
 /** Explicitly off until SQL06, SQL28, SQL29 and SQL35 are installed in the same merchant DB. */
 @Configuration(proxyBeanMethods = false)
-@ConditionalOnProperty(prefix = "pet.merchant.staff", name = "enabled", havingValue = "true")
+@ConditionalOnProperty(prefix = "pet.merchant.staff", name = "enabled", havingValue = "true", matchIfMissing = true)
 public class MerchantStaffConfiguration {
     @Bean
     MerchantStaffApiImpl merchantStaffApi(DataSource source, SnowflakeIdGenerator ids,

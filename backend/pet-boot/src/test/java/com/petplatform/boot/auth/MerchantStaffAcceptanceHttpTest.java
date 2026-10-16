@@ -421,7 +421,7 @@ class MerchantStaffAcceptanceHttpTest {
   }
 
   @Test
-  void defaultSwitchOmitsStaffRoutesAndEnabledSwitchStillHasNoDisableHandler() throws Exception {
+  void explicitOffSwitchOmitsStaffRoutesAndEnabledSwitchStillHasNoDisableHandler() throws Exception {
     assertEquals(1, context.getBeansOfType(MerchantStaffController.class).size());
     assertFalse(staffMappings(context).stream().anyMatch(route -> route.contains("/disable")));
     String token = str(consumerLogin("staff-default-off", "13800007887"), "accessToken");
@@ -442,6 +442,9 @@ class MerchantStaffAcceptanceHttpTest {
                 "--spring.flyway.enabled=false",
                 "--spring.main.banner-mode=off",
                 "--spring.jmx.enabled=false",
+                // Ruling 35 (2026-10-16) defaults the staff kernel ON; this negative keeps its
+                // fail-closed semantics with the switch explicitly closed.
+                "--pet.merchant.staff.enabled=false",
                 "--pet.auth.c.enabled=true",
                 "--pet.auth.c.redis-host=" + db.redisHost,
                 "--pet.auth.c.redis-port=" + db.redisPort,

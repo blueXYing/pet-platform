@@ -71,7 +71,8 @@ import tools.jackson.databind.ObjectReader;
  * (nine routes), coupon template management + instance ledger (nine routes), points ledger and
  * the read-only runtime switch view (two routes) — twenty routes over the community/coupon/
  * points kernels plus the boot environment. Same ADMIN_WEB bearer chain, ALL data scope and the
- * {@code pet.admin.ops.http.enabled} face switch as the contract-63/64 faces — default off.
+ * {@code pet.admin.ops.http.enabled} face switch as the contract-63/64 faces — default OFF,
+ * held for the 65号 wiring fix (ruling doc 35 B-class: E2E findings FA-2/FA-1/FA-3).
  * Reads relay kernel-owned projections verbatim; writes take one terminal X-Request-Id (the
  * idempotency binding lives in the owning kernel) and an expectedVersion optimistic guard. No
  * adapter-side fact building, no sensitive material; runtime settings are strictly read-only

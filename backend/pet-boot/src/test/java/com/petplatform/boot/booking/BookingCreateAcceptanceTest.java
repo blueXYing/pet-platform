@@ -126,9 +126,13 @@ class BookingCreateAcceptanceTest {
     }
 
     @Test
-    void bootWiringIsDefaultOffAndDoubleOptInRunsTheRealInternalKernel() throws Exception {
+    void bootWiringIsExplicitOffAndDoubleOptInRunsTheRealInternalKernel() throws Exception {
+        // Ruling 35 (2026-10-16) flips the platform capability switches to default ON; this
+        // test keeps its fail-closed semantics by closing both switches explicitly.
         var runner = new ApplicationContextRunner().withUserConfiguration(
-                ReservationProtectionFoundationConfiguration.class, BookingCreationConfiguration.class);
+                        ReservationProtectionFoundationConfiguration.class, BookingCreationConfiguration.class)
+                .withPropertyValues("pet.schedule.protection.enabled=false",
+                        "pet.order.creation.enabled=false");
         runner.run(context -> {
             assertFalse(context.containsBean("orderCreationApi"));
             assertFalse(context.containsBean("reservationHoldApi"));

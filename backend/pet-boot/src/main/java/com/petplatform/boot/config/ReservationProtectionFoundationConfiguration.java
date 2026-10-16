@@ -20,7 +20,7 @@ import org.springframework.context.annotation.Configuration;
 
 /** Internal foundation only: does not install schema or expose booking/management routes. */
 @Configuration(proxyBeanMethods = false)
-@ConditionalOnProperty(prefix = "pet.schedule.protection", name = "enabled", havingValue = "true")
+@ConditionalOnProperty(prefix = "pet.schedule.protection", name = "enabled", havingValue = "true", matchIfMissing = true)
 public class ReservationProtectionFoundationConfiguration {
     @Bean
     ScheduleCapacityGuardApi scheduleCapacityGuardApi(DataSource source) {

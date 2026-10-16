@@ -21,7 +21,8 @@ import org.springframework.context.annotation.Configuration;
 /**
  * SCH-004 merchant schedule write slice (PRD29, 34号 §2~§4, write-proposal v0.2): service
  * window / staff availability / capability maintenance commands plus the workbench reads,
- * default OFF via pet.schedule.command.enabled. Enabling additionally requires the reservation
+ * default OFF via pet.schedule.command.enabled (35号 B-class blocker: its admission gate chains
+ * to the merchant application kernel). It additionally requires the reservation
  * protection foundation (pet.schedule.protection.enabled=true) whose shared beans provide the
  * per-store guard, the SCH facts, the MER staff facts and the ORDER assignment facts — the
  * write commands fail closed without them. Assembly stays on the schedule module's apiimpl /
