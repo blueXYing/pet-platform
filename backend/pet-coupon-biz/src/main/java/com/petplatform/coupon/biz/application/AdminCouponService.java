@@ -64,7 +64,7 @@ public final class AdminCouponService implements AdminCouponQueryApi,
     static final int MAX_PAGE_SIZE = 100;
     private static final Set<String> TEMPLATE_STATUSES = Set.of("DRAFT", "ACTIVE", "OFFLINE");
     private static final Set<String> INSTANCE_STATUSES =
-            Set.of("AVAILABLE", "FROZEN", "USED", "EXPIRED", "RISK_FROZEN");
+            Set.of("AVAILABLE", "FROZEN", "USED", "EXPIRED", "RISK_FROZEN", "VOID");
 
     private final CouponAdminStore store;
     private final Port authorization;

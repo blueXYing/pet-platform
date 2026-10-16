@@ -172,13 +172,13 @@ export function App() {
       <Route path="/trade/verifications" element={guard(<TradeVerificationListPage client={tradeQuery} onAuthLost={signOut} />, 'order.verification-log.read')} />
       <Route path="/trade/verifications/:verificationId" element={guard(<TradeVerificationDetailPage key={location.pathname} client={tradeQuery} onAuthLost={signOut} />, 'order.verification-log.read')} />
       <Route path="/governance/merchants" element={guard(<MerchantLedgerListPage client={merchantGovernance} onAuthLost={signOut} />, 'merchant.read')} />
-      <Route path="/governance/merchants/:merchantId" element={guard(<MerchantLedgerDetailPage key={location.pathname} client={merchantGovernance} onAuthLost={signOut} />, 'merchant.read')} />
+      <Route path="/governance/merchants/:merchantId" element={guard(<MerchantLedgerDetailPage key={location.pathname} client={merchantGovernance} trade={tradeQuery} canDisable={permissions?.actionCodes.includes('merchant.disable') === true} onAuthLost={signOut} />, 'merchant.read')} />
       <Route path="/governance/schedule" element={guard(<ScheduleViewPage client={scheduleView} onAuthLost={signOut} />, 'schedule.read')} />
       <Route path="/governance/staff" element={guard(<StaffGovernancePage client={staffGovernance} onAuthLost={signOut} />, 'merchant.staff.read')} />
       <Route path="/ops/baike/categories" element={guard(<BaikeAdminCategoriesPage client={encyclopedia} canWrite={permissions?.actionCodes.includes('encyclopedia.manage') === true} onAuthLost={signOut} />, 'encyclopedia.read')} />
       <Route path="/ops/baike/breeds" element={guard(<BaikeAdminBreedsPage client={encyclopedia} canWrite={permissions?.actionCodes.includes('breed.manage') === true} canPublish={permissions?.actionCodes.includes('encyclopedia.publish') === true} onAuthLost={signOut} />, 'breed.read')} />
       <Route path="/ops/coupons/templates" element={guard(<CouponTemplatePage client={couponAdmin} canWrite={permissions?.actionCodes.includes('coupon.template.manage') === true} canGrant={permissions?.actionCodes.includes('coupon.instance.grant') === true} onAuthLost={signOut} />, 'coupon.template.read')} />
-      <Route path="/ops/coupons/instances" element={guard(<CouponInstanceLedgerPage client={couponAdmin} onAuthLost={signOut} />, 'coupon.instance.read')} />
+      <Route path="/ops/coupons/instances" element={guard(<CouponInstanceLedgerPage client={couponAdmin} canVoid={permissions?.actionCodes.includes('coupon.instance.void') === true} onAuthLost={signOut} />, 'coupon.instance.read')} />
       <Route path="/ops/ledger/points" element={guard(<PointsLedgerPage client={ledgerAdmin} onAuthLost={signOut} />, 'points.ledger.read')} />
       <Route path="/ops/settings/runtime" element={guard(<SettingsRuntimePage client={ledgerAdmin} onAuthLost={signOut} />, 'system.parameter.read')} />
       <Route path="*" element={<main style={{ padding: 32 }}><h1>404 · 页面不存在</h1><p><Link to="/">返回工作台</Link></p></main>} />

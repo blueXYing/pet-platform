@@ -7,7 +7,7 @@ import { expect, test, type Page } from '@playwright/test';
 test.use({ baseURL: 'http://127.0.0.1:4174' });
 const OPERATOR = '901';
 const MERCHANT = '910000000000101';
-const ACTIONS = ['merchant.read', 'schedule.read', 'merchant.staff.read'];
+const ACTIONS = ['merchant.read', 'schedule.read', 'merchant.staff.read', 'merchant.disable'];
 function envelope(data: unknown, status = 200) { return { status, json: { code: 'SUCCESS', message: 'ok', data, traceId: 'fixture-governance' } }; }
 const ledgerRow = {
   merchantId: MERCHANT, merchantName: '治理测试商家一', status: 'ACTIVE',
@@ -88,6 +88,48 @@ test('A-002 商家台账：列表+详情消费真实信封，脱敏与事实透�
   await expect(page.getByText('merchant-agreement-v1')).toBeVisible();
   expect(calls.every(call => call.authorization === 'Bearer fixture-admin-token')).toBe(true);
   expect(calls[0]?.path.startsWith('/api/v1/admin/governance/merchants?')).toBe(true);
+});
+
+test('A-002 商家治理详情：停用入口（36 号）带二次确认，走 63 号既有路由', async ({ page }) => {
+  await signIn(page);
+  const disables: { body: unknown; requestId: string | null; path: string }[] = [];
+  page.on('request', req => {
+    if (req.url().includes('/api/v1/admin/merchants/') && req.url().endsWith('/disable') && req.method() === 'POST') {
+      disables.push({ body: req.postDataJSON(), requestId: req.headers()['x-request-id'] ?? null, path: new URL(req.url()).pathname });
+    }
+  });
+  await page.route('**/api/v1/admin/governance/merchants?*', route => route.fulfill(envelope(pageEnvelope([ledgerRow]))));
+  await page.route(`**/api/v1/admin/governance/merchants/${MERCHANT}`, route => route.fulfill(envelope(detail)));
+  await page.route(`**/api/v1/admin/merchants/${MERCHANT}/disable`, route =>
+    route.fulfill({ status: 200, json: { code: 'SUCCESS', message: 'ok', data: { merchantId: MERCHANT, status: 'OFFLINE', occurredAt: '2026-10-16T03:00:00.000Z' }, traceId: 'fixture-governance' } }));
+  await page.getByRole('link', { name: '商家台账' }).click();
+  await page.locator('tbody tr').first().getByRole('link', { name: '详情' }).click();
+  const section = page.locator('section[aria-label="商家停用"]');
+  await expect(section).toBeVisible();
+  // Double confirm: submit stays disabled until reason + checkbox are present.
+  await expect(section.getByRole('button', { name: '下线该商家' })).toBeDisabled();
+  await expect(disables).toHaveLength(0);
+  await section.getByLabel('下线原因（必填，10–500 字）').fill('商家长期失联且门店停业，予以立即下线');
+  await section.getByRole('checkbox').check();
+  await section.getByRole('button', { name: '下线该商家' }).click();
+  expect(disables).toHaveLength(1);
+  expect(disables[0].body).toEqual({ reason: '商家长期失联且门店停业，予以立即下线' });
+  expect(disables[0].requestId).toMatch(/^[0-9a-f-]{36}$/);
+  expect(disables[0].path).toBe(`/api/v1/admin/merchants/${MERCHANT}/disable`);
+  await expect(section.getByRole('status')).toContainText('已下线');
+});
+
+test('A-002 商家治理详情：未授予 merchant.disable 时停用提交 fail-closed', async ({ page }) => {
+  await signIn(page, ACTIONS.filter(code => code !== 'merchant.disable'));
+  await page.route('**/api/v1/admin/governance/merchants?*', route => route.fulfill(envelope(pageEnvelope([ledgerRow]))));
+  await page.route(`**/api/v1/admin/governance/merchants/${MERCHANT}`, route => route.fulfill(envelope(detail)));
+  await page.getByRole('link', { name: '商家台账' }).click();
+  await page.locator('tbody tr').first().getByRole('link', { name: '详情' }).click();
+  const section = page.locator('section[aria-label="商家停用"]');
+  await expect(section).toBeVisible();
+  await expect(section.getByText('未授予 merchant.disable')).toBeVisible();
+  await expect(section.getByRole('button', { name: '下线该商家' })).toHaveCount(0);
+  await expect(section.getByRole('checkbox')).toHaveCount(0);
 });
 
 test('A-002 排期查看：三个只读 Tab 与占用事实', async ({ page }) => {

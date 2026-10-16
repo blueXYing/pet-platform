@@ -38,11 +38,13 @@ class ContractSmokeRegressions(unittest.TestCase):
         # coupon template management/instance ledger (9) + points ledger (1) + runtime
         # settings view (1) + the v0.2 §4.3 grant channel (1, user ruling 2026-10-16,
         # CCR-CPN-GRANT-001 minimum; kernel switch pet.coupon.grant.enabled stays default off)
-        # = twenty-one routes; no instance-status write exists (CCR-ADM-A005-OPS-001).
-        self.assertEqual(result['adminOpsOperations'], 21)
-        # Union 205 = 163 baseline + 3 encyclopedia + 11 admin trade (reads + disposal)
-        # + 8 governance + 21 ops console: 163 + 3 + 11 + 8 + 21 = 205.
-        self.assertEqual(result['operations'], 205)
+        # + the v0.3 §4.4 void channel (1, user ruling 2026-10-16 doc 36 minimal
+        # authorization, CCR-CPN-VOID-001; kernel switch pet.coupon.void.enabled stays
+        # default off) = twenty-two routes.
+        self.assertEqual(result['adminOpsOperations'], 22)
+        # Union 206 = 163 baseline + 3 encyclopedia + 11 admin trade (reads + disposal)
+        # + 8 governance + 22 ops console: 163 + 3 + 11 + 8 + 22 = 206.
+        self.assertEqual(result['operations'], 206)
         self.assertGreater(result['stringIdProperties'], 0)
         # Contract 58 favorite/footprint face (2026-10-13): seven reviewed operations.
         self.assertEqual(result['favtrackHttpOperations'], 7)

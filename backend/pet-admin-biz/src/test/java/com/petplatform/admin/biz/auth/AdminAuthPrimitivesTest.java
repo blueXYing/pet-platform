@@ -80,13 +80,14 @@ class AdminAuthPrimitivesTest {
             "refund.channel.query", "refund.retry", "order.abnormal.close", "merchant.disable",
             // Contract-65 ops console slice (A-005, matrix rows 21/13/14/15/23): the ten
             // encyclopedia/coupon/points-ledger/settings enforcement points ship in that face;
-            // row 14 void/return and row 23 configure stay unregistered (CCR-ADM-A005-OPS-001).
+            // row 14 return and row 23 configure stay unregistered (CCR-ADM-A005-OPS-001).
             // The grant channel adds coupon.instance.grant (user ruling 2026-10-16,
-            // CCR-CPN-GRANT-001); void/return stay unregistered.
+            // CCR-CPN-GRANT-001); the void channel adds coupon.instance.void (user ruling
+            // 2026-10-16 doc 36, CCR-CPN-VOID-001); batch void/return stay unregistered.
             "encyclopedia.read", "encyclopedia.manage", "encyclopedia.publish",
             "breed.read", "breed.manage",
             "coupon.template.read", "coupon.template.manage", "coupon.instance.read",
-            "coupon.instance.grant",
+            "coupon.instance.grant", "coupon.instance.void",
             "points.ledger.read", "system.parameter.read"),
         AdminPermissionEvaluator.DEPLOYED_ACTIONS);
     assertEquals(AdminPermissionEvaluator.DEPLOYED_ACTIONS.stream().sorted().toList(),AdminPermissionEvaluator.evaluate(true,List.of("refund.retry"),AdminPermissionEvaluator.DEPLOYED_ACTIONS));

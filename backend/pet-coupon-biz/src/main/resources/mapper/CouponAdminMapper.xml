@@ -4,9 +4,10 @@
 
     <!-- coupon_template / coupon_instance / coupon_ledger admin face (SQL06, contract 65):
          read-only ledger projections plus white-listed template maintenance with the
-         command_idempotency binding (14号 shared physical table). Instance-status actions
-         (void/return/risk-freeze) stay unwritten (CCR-ADM-A005-OPS-001); the only instance
-         write is the grant-channel ISSUE (contract 65 §4.3, CCR-CPN-GRANT-001 minimum). -->
+         command_idempotency binding (14号 shared physical table). Instance-status actions:
+         the grant-channel ISSUE (contract 65 §4.3, CCR-CPN-GRANT-001 minimum) and the void
+         channel (contract 65 §4.4, user ruling 2026-10-16 doc 36); batch void / return /
+         risk-freeze stay unwritten (CCR-ADM-A005-OPS-001). -->
 
     <select id="selectTemplates" resultType="com.petplatform.coupon.biz.infrastructure.persistence.entity.CouponAdminEntities$AdminTemplateEntity">
         SELECT id,name,status,total_stock,issued_count,valid_start_at,valid_end_at,rule_json,version,created_at,updated_at
@@ -35,6 +36,17 @@
     <select id="selectTemplateForUpdate" resultType="com.petplatform.coupon.biz.infrastructure.persistence.entity.CouponAdminEntities$AdminTemplateEntity">
         SELECT id,name,status,total_stock,issued_count,valid_start_at,valid_end_at,rule_json,version,created_at,updated_at
         FROM coupon_template WHERE id=#{templateId} FOR UPDATE
+    </select>
+
+    <!-- Void guard: the instance status fact is read under the row lock so a concurrent
+         freeze (booking create) and the void cannot interleave — only AVAILABLE can void. -->
+    <select id="selectInstanceForUpdate" resultType="com.petplatform.coupon.biz.infrastructure.persistence.entity.CouponAdminEntities$AdminInstanceEntity">
+        SELECT i.id,i.coupon_template_id AS template_id,t.name AS template_name,i.user_id,i.status,i.order_id,
+               i.frozen_at,i.freeze_expire_at,i.used_at,i.original_expire_at,i.expire_at,i.created_at,i.updated_at,
+               t.rule_json
+        FROM coupon_instance i
+        JOIN coupon_template t ON t.id=i.coupon_template_id
+        WHERE i.id=#{instanceId} FOR UPDATE
     </select>
 
     <sql id="adminInstanceWhere">
@@ -127,6 +139,25 @@
         SET issued_count = issued_count + 1, updated_at=#{now}
         WHERE id=#{templateId}
     </update>
+
+    <!-- Void write chain (contract 65 §4.4, user ruling 2026-10-16 doc 36): CAS from the only
+         voidable state; every other status (USED/FROZEN/RISK_FROZEN/EXPIRED) fails the CAS and
+         is rejected before any write. expire_at/order_id stay untouched — the VOID row keeps
+         the historical facts. -->
+    <update id="voidInstance">
+        UPDATE coupon_instance
+        SET status='VOID', version=version + 1, updated_at=#{now}
+        WHERE id=#{instanceId} AND status='AVAILABLE'
+    </update>
+
+    <insert id="insertVoidLedger">
+        INSERT INTO coupon_ledger
+            (id,coupon_instance_id,user_id,order_id,action,from_status,to_status,request_id,
+             remark,created_at)
+        VALUES
+            (#{id},#{instanceId},#{userId},NULL,'VOID','AVAILABLE','VOID',#{requestId},
+             #{remark},#{now})
+    </insert>
 
     <!-- command_idempotency (14号 shared physical table); coupon admin rows use the same
          length-prefixed request-key-v1 convention as points/community. -->

@@ -1011,7 +1011,10 @@ GOVERNANCE_ENVELOPES = {
 # routes over the community kernel), coupon template management + instance ledger (nine
 # routes over the coupon kernel), points ledger and the read-only runtime switch view (two
 # routes). One face switch pet.admin.ops.http.enabled; writes bound to a terminal
-# X-Request-Id; no instance-status write route exists (CCR-ADM-A005-OPS-001).
+# X-Request-Id. The only instance-status writes are the v0.2 §4.3 grant channel
+# (CCR-CPN-GRANT-001) and the v0.3 §4.4 void channel (user ruling 2026-10-16 doc 36,
+# CCR-CPN-VOID-001); batch void/return/risk-freeze stay unimplemented
+# (CCR-ADM-A005-OPS-001).
 ADMIN_OPS_OPERATIONS = {
     'adminListOpsEncyclopediaCategories': (
         'get', '/admin/encyclopedia/categories',
@@ -1074,6 +1077,13 @@ ADMIN_OPS_OPERATIONS = {
     'adminGrantCouponInstance': (
         'post', '/admin/coupon-instances/grant',
         ('200', '400', '401', '403', '404', '409', '503')),
+    # Contract-65 v0.3 §4.4 void channel (user ruling 2026-10-16 doc 36 minimal
+    # authorization, CCR-CPN-VOID-001 minimum): one AVAILABLE instance per terminal
+    # requestId; non-AVAILABLE states answer 409. Same face switch; kernel additionally
+    # gated by pet.coupon.void.enabled (default off → 503 fail-closed).
+    'adminVoidCouponInstance': (
+        'post', '/admin/coupon-instances/{instanceId}/void',
+        ('200', '400', '401', '403', '404', '409', '503')),
     'adminListPointsLedger': (
         'get', '/admin/points/ledger',
         ('200', '400', '401', '403', '503')),
@@ -1103,6 +1113,7 @@ OPS_ROUTE_ACTIONS = {
     'adminListCouponInstances': 'coupon.instance.read',
     'adminGetCouponInstance': 'coupon.instance.read',
     'adminGrantCouponInstance': 'coupon.instance.grant',
+    'adminVoidCouponInstance': 'coupon.instance.void',
     'adminListPointsLedger': 'points.ledger.read',
     'adminGetRuntimeSettings': 'system.parameter.read',
 }
@@ -1127,6 +1138,7 @@ OPS_ENVELOPES = {
     'adminListCouponInstances': 'AdminOpsInstancePageEnvelope',
     'adminGetCouponInstance': 'AdminOpsInstanceDetailEnvelope',
     'adminGrantCouponInstance': 'AdminOpsCouponGrantEnvelope',
+    'adminVoidCouponInstance': 'AdminOpsCouponVoidEnvelope',
     'adminListPointsLedger': 'AdminOpsPointsLedgerPageEnvelope',
     'adminGetRuntimeSettings': 'AdminOpsRuntimeSettingsEnvelope',
 }
