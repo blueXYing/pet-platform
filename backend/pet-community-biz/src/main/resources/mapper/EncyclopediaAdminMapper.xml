@@ -1,0 +1,117 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.petplatform.community.biz.infrastructure.persistence.mapper.EncyclopediaAdminMapper">
+
+    <!-- encyclopedia_category / encyclopedia_breed admin face (SQL 62, contract 65 §3):
+         all-status rows, white-listed field maintenance, version-guarded transitions and
+         the command_idempotency binding (14号 shared physical table). -->
+
+    <select id="selectCategories" resultType="com.petplatform.community.biz.infrastructure.persistence.entity.EncyclopediaAdminEntities$AdminCategoryEntity">
+        SELECT id,category_code,category_name,status,sort_no,version,created_at,updated_at
+        FROM encyclopedia_category
+        ORDER BY sort_no ASC, id ASC
+        LIMIT #{limit} OFFSET #{offset}
+    </select>
+
+    <select id="countCategories" resultType="long">
+        SELECT COUNT(*) FROM encyclopedia_category
+    </select>
+
+    <select id="selectCategoryByCode" resultType="com.petplatform.community.biz.infrastructure.persistence.entity.EncyclopediaAdminEntities$AdminCategoryEntity">
+        SELECT id,category_code,category_name,status,sort_no,version,created_at,updated_at
+        FROM encyclopedia_category
+        WHERE category_code=#{categoryCode}
+    </select>
+
+    <sql id="adminBreedWhere">
+        FROM encyclopedia_breed b
+        JOIN encyclopedia_category c ON c.id=b.category_id
+        <where>
+            <if test="status != null">AND b.status=#{status}</if>
+            <if test="categoryId != null">AND b.category_id=#{categoryId}</if>
+            <if test="keywordPattern != null">AND (LOWER(b.name) LIKE #{keywordPattern} OR LOWER(b.aliases) LIKE #{keywordPattern})</if>
+        </where>
+    </sql>
+
+    <select id="selectBreeds" resultType="com.petplatform.community.biz.infrastructure.persistence.entity.EncyclopediaAdminEntities$AdminBreedEntity">
+        SELECT b.id,b.category_id,b.name,b.aliases,b.tags,b.summary,b.cover_url,b.status,b.sort_no,b.version,b.updated_at,
+               c.category_code,c.category_name
+        <include refid="adminBreedWhere"/>
+        ORDER BY b.sort_no ASC, b.id ASC
+        LIMIT #{limit} OFFSET #{offset}
+    </select>
+
+    <select id="countBreeds" resultType="long">
+        SELECT COUNT(*)
+        <include refid="adminBreedWhere"/>
+    </select>
+
+    <select id="selectBreedById" resultType="com.petplatform.community.biz.infrastructure.persistence.entity.EncyclopediaAdminEntities$AdminBreedEntity">
+        SELECT b.id,b.category_id,b.name,b.aliases,b.tags,b.summary,b.cover_url,b.body_type,
+               b.description_html,b.care_advice_html,b.health_tips_html,b.status,b.sort_no,b.version,b.created_at,b.updated_at,
+               c.category_code,c.category_name
+        FROM encyclopedia_breed b
+        JOIN encyclopedia_category c ON c.id=b.category_id
+        WHERE b.id=#{breedId}
+    </select>
+
+    <select id="countBreedsByCategory" resultType="long">
+        SELECT COUNT(*) FROM encyclopedia_breed WHERE category_id=#{categoryId}
+    </select>
+
+    <select id="countPublishedBreedsByCategory" resultType="long">
+        SELECT COUNT(*) FROM encyclopedia_breed WHERE category_id=#{categoryId} AND status='PUBLISHED'
+    </select>
+
+    <!-- White-listed category maintenance: one statement covers edit (name+sort), enable and
+         disable; null members keep their column value. fromStatus guards state transitions
+         (enable: DISABLED→ENABLED, disable: ENABLED→DISABLED) so re-transitions version-bump
+         zero rows and the kernel answers 409. Version guard is the concurrency fact. -->
+    <update id="updateCategory">
+        UPDATE encyclopedia_category
+        SET category_name = COALESCE(#{categoryName}, category_name),
+            sort_no       = COALESCE(#{sortNo}, sort_no),
+            status        = COALESCE(#{status}, status),
+            version       = version + 1,
+            updated_at    = #{now}
+        WHERE category_code=#{categoryCode} AND version=#{expectedVersion}
+        <if test="fromStatus != null">AND status=#{fromStatus}</if>
+    </update>
+
+    <update id="updateBreedFields">
+        UPDATE encyclopedia_breed
+        SET summary=#{summary}, cover_url=#{coverUrl}, body_type=#{bodyType},
+            aliases=#{aliases}, tags=#{tags}, sort_no=#{sortNo},
+            version=version + 1, updated_at=#{now}
+        WHERE id=#{breedId} AND version=#{expectedVersion}
+    </update>
+
+    <update id="updateBreedStatus">
+        UPDATE encyclopedia_breed
+        SET status=#{toStatus}, version=version + 1, updated_at=#{now}
+        WHERE id=#{breedId} AND status=#{fromStatus} AND version=#{expectedVersion}
+    </update>
+
+    <!-- command_idempotency (14号 shared physical table); encyclopedia admin rows use the
+         length-prefixed request-key-v1 string, same convention as points/notification. -->
+    <select id="selectBindingForUpdate" resultType="com.petplatform.community.biz.infrastructure.persistence.entity.EncyclopediaAdminBindingEntity">
+        SELECT id, canonical_version, params_sha256, params_canonical, status, receipt_json
+        FROM command_idempotency
+        WHERE request_key = #{requestKey}
+        FOR UPDATE
+    </select>
+
+    <insert id="insertBinding">
+        INSERT INTO command_idempotency(id, request_key, canonical_version, params_sha256,
+                                        params_canonical, status, receipt_json, created_at)
+        VALUES (#{id}, #{requestKey}, #{canonicalVersion}, #{paramsSha256},
+                #{paramsCanonical}, 'RESERVED', NULL, UTC_TIMESTAMP(3))
+    </insert>
+
+    <update id="markBindingSucceeded">
+        UPDATE command_idempotency
+        SET status = 'SUCCEEDED', receipt_json = #{receiptJson}, succeeded_at = UTC_TIMESTAMP(3)
+        WHERE request_key = #{requestKey} AND status = 'RESERVED'
+    </update>
+
+</mapper>

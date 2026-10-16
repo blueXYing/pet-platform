@@ -34,9 +34,13 @@ class ContractSmokeRegressions(unittest.TestCase):
         # routes over the merchant and schedule kernels (ledger/staff/members/invitations +
         # windows/staff-windows/reservations); read-only, no governance write action.
         self.assertEqual(result['adminGovernanceOperations'], 8)
-        # Union 184 = 163 baseline + 3 encyclopedia + 11 admin trade (reads + disposal)
-        # + ... arithmetic: 163 + 3 + 7 + 3 disposal-new + 8 governance = 184.
-        self.assertEqual(result['operations'], 184)
+        # Contract 65 ops console face (2026-10-16, A-005): encyclopedia governance (9) +
+        # coupon template management/instance ledger (9) + points ledger (1) + runtime
+        # settings view (1) = twenty routes; no instance-status write exists (CCR-ADM-A005-OPS-001).
+        self.assertEqual(result['adminOpsOperations'], 20)
+        # Union 204 = 163 baseline + 3 encyclopedia + 11 admin trade (reads + disposal)
+        # + 8 governance + 20 ops console: 163 + 3 + 11 + 8 + 20 = 204.
+        self.assertEqual(result['operations'], 204)
         self.assertGreater(result['stringIdProperties'], 0)
         # Contract 58 favorite/footprint face (2026-10-13): seven reviewed operations.
         self.assertEqual(result['favtrackHttpOperations'], 7)

@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.petplatform.points.biz.infrastructure.persistence.mapper.AdminPointsQueryMapper">
+
+    <!-- points_ledger admin read face (SQL06 §9, contract 65 §5): read-only operator ledger
+         page, fixed ordering created_at DESC, id DESC. No write statement exists here. -->
+
+    <sql id="adminLedgerWhere">
+        FROM points_ledger
+        <where>
+            <if test="userId != null">AND user_id=#{userId}</if>
+            <if test="bizType != null">AND biz_type=#{bizType}</if>
+            <if test="createdFrom != null">AND created_at&gt;=#{createdFrom}</if>
+            <if test="createdTo != null">AND created_at&lt;=#{createdTo}</if>
+        </where>
+    </sql>
+
+    <select id="selectLedger" resultType="com.petplatform.points.biz.infrastructure.persistence.entity.AdminPointsLedgerEntity">
+        SELECT id,user_id,biz_type,biz_id,order_id,delta,balance_after,created_at
+        <include refid="adminLedgerWhere"/>
+        ORDER BY created_at DESC, id DESC
+        LIMIT #{limit} OFFSET #{offset}
+    </select>
+
+    <select id="countLedger" resultType="long">
+        SELECT COUNT(*)
+        <include refid="adminLedgerWhere"/>
+    </select>
+
+</mapper>

@@ -1007,6 +1007,143 @@ GOVERNANCE_ENVELOPES = {
 }
 
 
+# Contract 65 (2026-10-16, A-005 ops console second phase): encyclopedia governance (nine
+# routes over the community kernel), coupon template management + instance ledger (nine
+# routes over the coupon kernel), points ledger and the read-only runtime switch view (two
+# routes). One face switch pet.admin.ops.http.enabled; writes bound to a terminal
+# X-Request-Id; no instance-status write route exists (CCR-ADM-A005-OPS-001).
+ADMIN_OPS_OPERATIONS = {
+    'adminListOpsEncyclopediaCategories': (
+        'get', '/admin/encyclopedia/categories',
+        ('200', '400', '401', '403', '503')),
+    'adminUpdateOpsEncyclopediaCategory': (
+        'put', '/admin/encyclopedia/categories/{categoryCode}',
+        ('200', '400', '401', '403', '404', '409', '503')),
+    'adminEnableOpsEncyclopediaCategory': (
+        'post', '/admin/encyclopedia/categories/{categoryCode}/enable',
+        ('200', '400', '401', '403', '404', '409', '503')),
+    'adminDisableOpsEncyclopediaCategory': (
+        'post', '/admin/encyclopedia/categories/{categoryCode}/disable',
+        ('200', '400', '401', '403', '404', '409', '503')),
+    'adminListOpsEncyclopediaBreeds': (
+        'get', '/admin/encyclopedia/breeds',
+        ('200', '400', '401', '403', '503')),
+    'adminGetOpsEncyclopediaBreed': (
+        'get', '/admin/encyclopedia/breeds/{breedId}',
+        ('200', '400', '401', '403', '404', '503')),
+    'adminUpdateOpsEncyclopediaBreed': (
+        'put', '/admin/encyclopedia/breeds/{breedId}',
+        ('200', '400', '401', '403', '404', '409', '503')),
+    'adminPublishOpsEncyclopediaBreed': (
+        'post', '/admin/encyclopedia/breeds/{breedId}/publish',
+        ('200', '400', '401', '403', '404', '409', '503')),
+    'adminOfflineOpsEncyclopediaBreed': (
+        'post', '/admin/encyclopedia/breeds/{breedId}/offline',
+        ('200', '400', '401', '403', '404', '409', '503')),
+    'adminListCouponTemplates': (
+        'get', '/admin/coupon-templates',
+        ('200', '400', '401', '403', '503')),
+    'adminGetCouponTemplate': (
+        'get', '/admin/coupon-templates/{templateId}',
+        ('200', '400', '401', '403', '404', '503')),
+    'adminTrialCouponTemplate': (
+        'get', '/admin/coupon-templates/{templateId}/trial-calculation',
+        ('200', '400', '401', '403', '404', '503')),
+    'adminCreateCouponTemplate': (
+        'post', '/admin/coupon-templates',
+        ('200', '400', '401', '403', '409', '503')),
+    'adminUpdateCouponTemplate': (
+        'put', '/admin/coupon-templates/{templateId}',
+        ('200', '400', '401', '403', '404', '409', '503')),
+    'adminEnableCouponTemplate': (
+        'post', '/admin/coupon-templates/{templateId}/enable',
+        ('200', '400', '401', '403', '404', '409', '503')),
+    'adminOfflineCouponTemplate': (
+        'post', '/admin/coupon-templates/{templateId}/offline',
+        ('200', '400', '401', '403', '404', '409', '503')),
+    'adminListCouponInstances': (
+        'get', '/admin/coupon-instances',
+        ('200', '400', '401', '403', '503')),
+    'adminGetCouponInstance': (
+        'get', '/admin/coupon-instances/{instanceId}',
+        ('200', '400', '401', '403', '404', '503')),
+    'adminListPointsLedger': (
+        'get', '/admin/points/ledger',
+        ('200', '400', '401', '403', '503')),
+    'adminGetRuntimeSettings': (
+        'get', '/admin/settings/runtime',
+        ('200', '400', '401', '403', '503')),
+}
+
+
+OPS_ROUTE_ACTIONS = {
+    'adminListOpsEncyclopediaCategories': 'encyclopedia.read',
+    'adminUpdateOpsEncyclopediaCategory': 'encyclopedia.manage',
+    'adminEnableOpsEncyclopediaCategory': 'encyclopedia.manage',
+    'adminDisableOpsEncyclopediaCategory': 'encyclopedia.manage',
+    'adminListOpsEncyclopediaBreeds': 'encyclopedia.read',
+    'adminGetOpsEncyclopediaBreed': 'breed.read',
+    'adminUpdateOpsEncyclopediaBreed': 'breed.manage',
+    'adminPublishOpsEncyclopediaBreed': 'encyclopedia.publish',
+    'adminOfflineOpsEncyclopediaBreed': 'encyclopedia.publish',
+    'adminListCouponTemplates': 'coupon.template.read',
+    'adminGetCouponTemplate': 'coupon.template.read',
+    'adminTrialCouponTemplate': 'coupon.template.read',
+    'adminCreateCouponTemplate': 'coupon.template.manage',
+    'adminUpdateCouponTemplate': 'coupon.template.manage',
+    'adminEnableCouponTemplate': 'coupon.template.manage',
+    'adminOfflineCouponTemplate': 'coupon.template.manage',
+    'adminListCouponInstances': 'coupon.instance.read',
+    'adminGetCouponInstance': 'coupon.instance.read',
+    'adminListPointsLedger': 'points.ledger.read',
+    'adminGetRuntimeSettings': 'system.parameter.read',
+}
+
+OPS_ENVELOPES = {
+    'adminListOpsEncyclopediaCategories': 'AdminOpsCategoryPageEnvelope',
+    'adminUpdateOpsEncyclopediaCategory': 'AdminOpsCategoryMutationEnvelope',
+    'adminEnableOpsEncyclopediaCategory': 'AdminOpsCategoryMutationEnvelope',
+    'adminDisableOpsEncyclopediaCategory': 'AdminOpsCategoryMutationEnvelope',
+    'adminListOpsEncyclopediaBreeds': 'AdminOpsBreedPageEnvelope',
+    'adminGetOpsEncyclopediaBreed': 'AdminOpsBreedDetailEnvelope',
+    'adminUpdateOpsEncyclopediaBreed': 'AdminOpsBreedMutationEnvelope',
+    'adminPublishOpsEncyclopediaBreed': 'AdminOpsBreedMutationEnvelope',
+    'adminOfflineOpsEncyclopediaBreed': 'AdminOpsBreedMutationEnvelope',
+    'adminListCouponTemplates': 'AdminOpsTemplatePageEnvelope',
+    'adminGetCouponTemplate': 'AdminOpsTemplateDetailEnvelope',
+    'adminTrialCouponTemplate': 'AdminOpsTrialCalculationEnvelope',
+    'adminCreateCouponTemplate': 'AdminOpsTemplateMutationEnvelope',
+    'adminUpdateCouponTemplate': 'AdminOpsTemplateMutationEnvelope',
+    'adminEnableCouponTemplate': 'AdminOpsTemplateMutationEnvelope',
+    'adminOfflineCouponTemplate': 'AdminOpsTemplateMutationEnvelope',
+    'adminListCouponInstances': 'AdminOpsInstancePageEnvelope',
+    'adminGetCouponInstance': 'AdminOpsInstanceDetailEnvelope',
+    'adminListPointsLedger': 'AdminOpsPointsLedgerPageEnvelope',
+    'adminGetRuntimeSettings': 'AdminOpsRuntimeSettingsEnvelope',
+}
+
+
+def check_admin_ops(spec, operation, method, path):
+    name = operation['operationId']
+    expected_method, expected_path, required_codes = ADMIN_OPS_OPERATIONS[name]
+    assert (method, path) == (expected_method, expected_path), f'Ops operation moved: {name}'
+    assert operation.get('security') == [{'bearerAuth': []}], f'Ops security changed: {name}'
+    assert operation.get('x-implementation-status') == 'IMPLEMENTED_DEFAULT_OFF', f'Ops status changed: {name}'
+    assert operation.get('x-default-enabled') is False, f'Ops must stay default off: {name}'
+    assert operation.get('x-contract') == '65-Admin-Ops-Console-Contract-v0.1.md', f'Ops authority changed: {name}'
+    assert operation.get('x-assembly-switch') == 'pet.admin.ops.http.enabled', f'Ops switch changed: {name}'
+    assert operation.get('x-route-party') == 'OPS' and operation.get('x-audience') == 'ADMIN_WEB', f'Ops identity changed: {name}'
+    assert operation.get('x-required-actions') == [OPS_ROUTE_ACTIONS[name]], f'Ops action gate changed: {name}'
+    responses = operation['responses']
+    assert set(responses) == set(required_codes), f'Ops response surface changed: {name}'
+    for code in required_codes:
+        if code != '200':
+            assert dereference(spec, responses[code])['content']['application/json']['schema'] == {'$ref': '#/components/schemas/ErrorEnvelope'}, f'Ops error envelope changed: {name} {code}'
+    success = responses['200']
+    cache = success['headers']['Cache-Control']['schema']
+    assert cache == {'type': 'string', 'enum': ['no-store']}, f'Ops caching changed: {name}'
+    assert success['content'] == {'application/json': {'schema': {'$ref': '#/components/schemas/' + OPS_ENVELOPES[name]}}}, f'Ops success envelope changed: {name}'
+
 def check_admin_governance(spec, operation, method, path):
     name = operation['operationId']
     expected_method, expected_path, required_codes = ADMIN_GOVERNANCE_OPERATIONS[name]
@@ -1801,6 +1938,8 @@ def check(spec):
                 check_admin_trade(spec, operation, method, path)
             if operation_id in ADMIN_GOVERNANCE_OPERATIONS:
                 check_admin_governance(spec, operation, method, path)
+            if operation_id in ADMIN_OPS_OPERATIONS:
+                check_admin_ops(spec, operation, method, path)
 
             if method in {'post', 'put', 'patch', 'delete'}:
                 assert {'$ref': '#/components/parameters/RequestId'} in parameters, f'Missing request ID: {operation_id}'
@@ -1816,7 +1955,7 @@ def check(spec):
     assert legacy_writes == 10, 'Legacy write surface changed'
     assert legacy_creates == LEGACY_CREATES, 'Legacy create surface changed'
 
-    assert operations == LEGACY_OPERATIONS.keys() | AUTH_OPERATIONS.keys() | MERCHANT_OPERATIONS.keys() | APPLICATION_OPERATIONS.keys() | PRIVATE_ASSET_OPERATIONS.keys() | SERVICE_CATALOG_OPERATIONS.keys() | STORE_CATALOG_OPERATIONS.keys() | SERVICE_WRITE_OPERATIONS.keys() | SCHEDULE_AVAILABILITY_OPERATIONS.keys() | SCHEDULE_WRITE_OPERATIONS.keys() | CREDENTIAL_OPERATIONS.keys() | AFTERSALE_OPERATIONS.keys() | COUPON_POINTS_READ_OPERATIONS.keys() | VERIFICATION_HTTP_OPERATIONS.keys() | NOTIFICATION_PREFERENCE_OPERATIONS.keys() | STAFF_INVITATION_LIST_OPERATIONS.keys() | ORDER_WRITE_OPERATIONS.keys() | REFUND_HTTP_OPERATIONS.keys() | MERCHANT_ORDER_LIST_OPERATIONS.keys() | RESCHEDULE_HTTP_OPERATIONS.keys() | REVIEW_HTTP_OPERATIONS.keys() | REVIEW_APPEAL_HTTP_OPERATIONS.keys() | MERCHANT_REFUND_HTTP_OPERATIONS.keys() | FAVTRACK_HTTP_OPERATIONS.keys() | ADDRESS_OPERATIONS.keys() | POINTS_TASK_OPERATIONS.keys() | BAIKE_OPERATIONS.keys() | ADMIN_TRADE_OPERATIONS.keys() | ADMIN_GOVERNANCE_OPERATIONS.keys(), 'Unexpected or missing reviewed operations'
+    assert operations == LEGACY_OPERATIONS.keys() | AUTH_OPERATIONS.keys() | MERCHANT_OPERATIONS.keys() | APPLICATION_OPERATIONS.keys() | PRIVATE_ASSET_OPERATIONS.keys() | SERVICE_CATALOG_OPERATIONS.keys() | STORE_CATALOG_OPERATIONS.keys() | SERVICE_WRITE_OPERATIONS.keys() | SCHEDULE_AVAILABILITY_OPERATIONS.keys() | SCHEDULE_WRITE_OPERATIONS.keys() | CREDENTIAL_OPERATIONS.keys() | AFTERSALE_OPERATIONS.keys() | COUPON_POINTS_READ_OPERATIONS.keys() | VERIFICATION_HTTP_OPERATIONS.keys() | NOTIFICATION_PREFERENCE_OPERATIONS.keys() | STAFF_INVITATION_LIST_OPERATIONS.keys() | ORDER_WRITE_OPERATIONS.keys() | REFUND_HTTP_OPERATIONS.keys() | MERCHANT_ORDER_LIST_OPERATIONS.keys() | RESCHEDULE_HTTP_OPERATIONS.keys() | REVIEW_HTTP_OPERATIONS.keys() | REVIEW_APPEAL_HTTP_OPERATIONS.keys() | MERCHANT_REFUND_HTTP_OPERATIONS.keys() | FAVTRACK_HTTP_OPERATIONS.keys() | ADDRESS_OPERATIONS.keys() | POINTS_TASK_OPERATIONS.keys() | BAIKE_OPERATIONS.keys() | ADMIN_TRADE_OPERATIONS.keys() | ADMIN_GOVERNANCE_OPERATIONS.keys() | ADMIN_OPS_OPERATIONS.keys(), 'Unexpected or missing reviewed operations'
 
     schemes = spec['components']['securitySchemes']
     assert schemes['bearerAuth']['type'] == 'http' and schemes['bearerAuth']['scheme'] == 'bearer'
@@ -1883,6 +2022,7 @@ def check(spec):
             'addressOperations': len(operations & ADDRESS_OPERATIONS.keys()),
             'adminTradeOperations': len(operations & ADMIN_TRADE_OPERATIONS.keys()),
             'adminGovernanceOperations': len(operations & ADMIN_GOVERNANCE_OPERATIONS.keys()),
+            'adminOpsOperations': len(operations & ADMIN_OPS_OPERATIONS.keys()),
             'resolvedRefs': len(refs), 'stringIdProperties': ids}
 
 

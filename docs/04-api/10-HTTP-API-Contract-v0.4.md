@@ -1731,7 +1731,41 @@ GET /api/v1/admin/governance/schedule/reservations
 
 ---
 
+## 5.13 运营治理台二期（65 号，2026-10-16 A-005 切片：百科/券/台账/系统设置）
+
+> 本节为摘要；权威契约在 `65-Admin-Ops-Console-Contract-v0.1.md`。
+
+```text
+GET  /api/v1/admin/encyclopedia/categories
+PUT  /api/v1/admin/encyclopedia/categories/{categoryCode}
+POST /api/v1/admin/encyclopedia/categories/{categoryCode}/enable|disable
+GET  /api/v1/admin/encyclopedia/breeds
+GET  /api/v1/admin/encyclopedia/breeds/{breedId}
+PUT  /api/v1/admin/encyclopedia/breeds/{breedId}
+POST /api/v1/admin/encyclopedia/breeds/{breedId}/publish|offline
+GET  /api/v1/admin/coupon-templates
+GET  /api/v1/admin/coupon-templates/{templateId}
+GET  /api/v1/admin/coupon-templates/{templateId}/trial-calculation
+POST /api/v1/admin/coupon-templates
+PUT  /api/v1/admin/coupon-templates/{templateId}
+POST /api/v1/admin/coupon-templates/{templateId}/enable|offline
+GET  /api/v1/admin/coupon-instances
+GET  /api/v1/admin/coupon-instances/{instanceId}
+GET  /api/v1/admin/points/ledger
+GET  /api/v1/admin/settings/runtime
+```
+
+二十条路由随 `pet.admin.ops.http.enabled`（默认 false）+ `pet.auth.admin.enabled` 装配；动作码
+`encyclopedia.read/manage/publish`、`breed.read/manage`（矩阵行 21）、`coupon.template.read/manage`、
+`coupon.instance.read`（行 13/14 提案连字符拼写的点分落地）、`points.ledger.read`（行 15 族）、
+`system.parameter.read`（行 23 提案拼写点分落地），随切片登记部署清单。控制器快照校验 +
+community/coupon/points 内核授权端口每次重验；dataScope 非 ALL 一律 403。写动作（分类维护/
+停用启用、品种维护/上下线、券模板建/编/启/停）终结性 X-Request-Id 幂等（14 号 command_idempotency
+绑定，同参重放回执、异参 409）+ expectedVersion 乐观锁（失配 409）。券实例无任何写路由（作废/
+返还/风控冻结 CCR-ADM-A005-OPS-001 未登记不做）；设置面只读（运行时写配置无授权，同 CCR）。
+
 ---
+
 
 # 6. 拉卡拉回调
 
