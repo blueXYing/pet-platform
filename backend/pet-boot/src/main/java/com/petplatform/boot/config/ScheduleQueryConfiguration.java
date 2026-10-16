@@ -19,7 +19,7 @@ import org.springframework.context.annotation.Configuration;
  * enabled. Switch pet.schedule.query.enabled defaults to off.
  */
 @Configuration(proxyBeanMethods = false)
-@ConditionalOnProperty(prefix = "pet.schedule.query", name = "enabled", havingValue = "true", matchIfMissing = true)
+@ConditionalOnProperty(prefix = "pet.schedule.query", name = "enabled", havingValue = "true")
 public class ScheduleQueryConfiguration {
 
     @Bean
@@ -36,7 +36,7 @@ public class ScheduleQueryConfiguration {
     }
 
     @Bean
-    @ConditionalOnProperty(prefix="pet.schedule.selection",name="enabled",havingValue="true", matchIfMissing=true)
+    @ConditionalOnProperty(prefix="pet.schedule.selection",name="enabled",havingValue="true")
     com.petplatform.schedule.api.query.ScheduleSelectionQueryApi scheduleSelectionQueryApi(DataSource source,
             ServiceQueryApiImpl serviceFacts,ObjectProvider<QualifiedStaffFactsPort> staffFacts) {
         return new com.petplatform.schedule.biz.apiimpl.ScheduleSelectionQueryApiImpl(source,serviceFacts,staffFacts.getIfAvailable());

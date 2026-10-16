@@ -63,24 +63,26 @@ pet:
       enabled: false
   schedule:
     query:
-      # C-end minute-level bookable-slot read (41号): default ON per the 2026-10-16 ruling.
-      enabled: true
+      # C-end minute-level bookable-slot read (41号): default OFF (35号 B-class blocker) —
+      # its assembly hard-requires ServiceQueryApiImpl, which chains to the merchant
+      # application kernel (OSS identity-material port). Opens together with the C catalog.
+      enabled: false
       selection:
-        # 36号 selection window query rides the query slice; default ON with it.
-        enabled: true
+        # 36号 selection window query rides the query slice.
+        enabled: false
     protection:
       # Shared reservation guard/facts/proof foundation: default ON. Boot-safe (no
       # external credentials); every guarded write domain depends on these beans.
       enabled: true
     command:
       # SCH-004 merchant schedule write side (service windows, staff availability windows,
-      # capabilities, workbench reads). Default ON per the 2026-10-16 ruling; requires the
-      # reservation protection foundation beans (pet.schedule.protection.enabled, default ON
-      # below). The V29 migration stays a separate explicit opt-in (migration-enabled +
-      # migration-database=schw001_*).
-      enabled: true
+      # capabilities, workbench reads). Default OFF (35号 B-class blocker): its admission gate
+      # chains to MerchantAdmissionQueryApi (merchant application kernel) and its facts to
+      # ServiceQueryApi. The V29 migration stays a separate explicit opt-in (migration-enabled
+      # + migration-database=schw001_*).
+      enabled: false
       http:
-        enabled: true
+        enabled: false
       migration-enabled: false
       migration-database:
   refund:
@@ -202,13 +204,15 @@ pet:
     enabled: ${PRIVATE_ASSETS_ENABLED:false}
   service:
     query:
-      # C-end service catalog read: default ON per the 2026-10-16 ruling (boot-safe).
-      enabled: true
+      # C-end service catalog read: default OFF (35号 B-class blocker) — its assembly
+      # hard-requires MerchantDisplayEligibilityApi from the merchant application kernel.
+      enabled: false
     command:
-      # Merchant service write side (review/on-shelf): default ON per the 2026-10-16 ruling
-      # (needs the production Snowflake bean at boot); the real S3 cover presigner stays
-      # behind pet.service.cover-signing.enabled and answers 503 fail-closed without it.
-      enabled: true
+      # Merchant service write side (review/on-shelf): default OFF (35号 B-class blocker) —
+      # its admission port chains to the merchant application kernel. The real S3 cover
+      # presigner stays behind pet.service.cover-signing.enabled and answers 503 fail-closed
+      # without it.
+      enabled: false
       migration-enabled: false
       migration-database:
     review:
@@ -216,9 +220,10 @@ pet:
       notifications-enabled: true
   store:
     query:
-      # C-end store catalog (STR-D6): default ON per the 2026-10-16 ruling; goes live with
-      # pet.auth.c.enabled (route security) at deployment.
-      enabled: ${STORE_QUERY_ENABLED:true}
+      # C-end store catalog (STR-D6): default OFF (35号 B-class blocker) — it requires the
+      # ApplicationReviewFactsReader bean from the merchant application kernel; the routes
+      # additionally ride the C session domain's security chain at deployment.
+      enabled: ${STORE_QUERY_ENABLED:false}
   encyclopedia:
     # Contract-62 public read face: default ON per the 2026-10-16 ruling (boot-safe).
     query:
@@ -242,11 +247,10 @@ pet:
       wechat:
         app-id: ${AUTH_WECHAT_APP_ID:}
         app-secret: ${AUTH_WECHAT_APP_SECRET:}
-  # Contract 58 favorite/footprint C face (32号裁决第二节批次; 10号 §3.16): default ON per the
-  # 2026-10-16 ruling. The face assembles only with pet.auth.c.enabled (real MINIAPP session)
-  # plus both C catalog query slices (pet.service.query.enabled + pet.store.query.enabled, both
-  # default ON) for target admission and list enrichment; the assembly fails closed when either
-  # catalog is missing, so it goes live together with the C session domain at deployment.
+  # Contract 58 favorite/footprint C face (32号裁决第二节批次; 10号 §3.16): default OFF
+  # (35号 B-class blocker) — the face hard-requires both C catalog query slices
+  # (pet.service.query.enabled + pet.store.query.enabled), which chain to the merchant
+  # application kernel; it goes live together with the C session domain and the catalogs.
   favtrack:
     http:
-      enabled: true
+      enabled: false

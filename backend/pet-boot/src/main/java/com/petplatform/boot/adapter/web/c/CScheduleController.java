@@ -36,7 +36,7 @@ import org.springframework.web.bind.annotation.RestController;
  * capability/availability facts. Missing or unreadable facts still fail closed (503, SCH-D6).
  */
 @RestController
-@ConditionalOnProperty(prefix = "pet.schedule.query", name = "enabled", havingValue = "true", matchIfMissing = true)
+@ConditionalOnProperty(prefix = "pet.schedule.query", name = "enabled", havingValue = "true")
 public class CScheduleController {
 
     private static final DateTimeFormatter MINUTE_ISO =

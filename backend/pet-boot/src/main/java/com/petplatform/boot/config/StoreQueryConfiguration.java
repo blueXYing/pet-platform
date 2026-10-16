@@ -15,7 +15,7 @@ import org.springframework.context.annotation.Configuration;
  * exist. Default ON per the 2026-10-16 ruling (doc 35); the routes additionally ride the C session domain's security chain at deployment.
  */
 @Configuration(proxyBeanMethods = false)
-@ConditionalOnProperty(prefix = "pet.store.query", name = "enabled", havingValue = "true", matchIfMissing = true)
+@ConditionalOnProperty(prefix = "pet.store.query", name = "enabled", havingValue = "true")
 public class StoreQueryConfiguration {
 
     @Bean

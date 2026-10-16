@@ -35,7 +35,7 @@ import org.springframework.web.bind.annotation.RestController;
  * visibility.
  */
 @RestController
-@ConditionalOnProperty(prefix = "pet.service.query", name = "enabled", havingValue = "true", matchIfMissing = true)
+@ConditionalOnProperty(prefix = "pet.service.query", name = "enabled", havingValue = "true")
 public class CServiceController {
 
     private final ServiceQueryApiImpl services;
