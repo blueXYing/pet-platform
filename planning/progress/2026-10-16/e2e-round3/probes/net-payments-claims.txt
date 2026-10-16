@@ -1,0 +1,7 @@
+[wechatide] skill-call: client=ZCode tool=get_simulator_network
+{
+  "ok": true,
+  "tool": "get_simulator_network",
+  "clientName": "ZCode",
+  "result": ""
+}

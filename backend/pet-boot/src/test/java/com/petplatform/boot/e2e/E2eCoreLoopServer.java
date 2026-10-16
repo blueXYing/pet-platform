@@ -84,6 +84,19 @@ import tools.jackson.databind.json.JsonMapper;
  * (reschedule target), a verified COMPLETED unreviewed order (review target), a published
  * review (M appeal target), a PENDING_MERCHANT refund application (M refund target) and a
  * PENDING aftersale case (C/M aftersale target). No existing chain semantics change.
+ *
+ * Round 3 (2026-10-16 E2E matrix): additive again — the merged new-capability slices the
+ * walkthrough matrix exercises turn on here: contract-61 coupon lifecycle (freeze on create /
+ * consume on payment / release on payment-timeout close / restore on full refund), the
+ * contract-62 encyclopedia public read face (the 62 schema ships its own published seed
+ * content), the contract-58/60 points earn kernel plus its HTTP face and the PTS-002 refund
+ * clawback consumer. The refund execution chain must run end to end for the coupon-restore and
+ * points-clawback consumers to observe a real RefundSucceededEvent.v1, so the refund
+ * application worker and the pre-service auto-full-refund ruling switch are on, as is the
+ * booking expiry worker (payment-timeout close releases the frozen coupon). The booking seeds
+ * gain one ACTIVE coupon template (rule_json four-key amountOff/thresholdAmount/scopeSummary/
+ * typeLabel vocabulary) and three AVAILABLE instances for the seeded C user. No existing chain
+ * semantics change.
  */
 public final class E2eCoreLoopServer {
   private static final JsonMapper json = JsonMapper.builder().build();
@@ -428,7 +441,9 @@ public final class E2eCoreLoopServer {
                   "--pet.schedule.protection.enabled=true",
                   "--pet.order.creation.enabled=true",
                   "--pet.order.expiry.enabled=true",
-                  "--pet.order.expiry.worker.enabled=false",
+                  // Round 3: the expiry worker runs so a payment-timeout close releases the
+                  // frozen coupon (contract-61 release rides the guarded close).
+                  "--pet.order.expiry.worker.enabled=true",
                   "--pet.payment.foundation.enabled=true",
                   "--pet.payment.lakala.channel-time-zone=Asia/Shanghai",
                   "--pet.payment.dispatch.enabled=true",
@@ -459,7 +474,10 @@ public final class E2eCoreLoopServer {
                   "--pet.verification.completion.http.enabled=true",
                   "--pet.refund.application.enabled=true",
                   "--pet.refund.application.http.enabled=true",
-                  "--pet.refund.application.worker.enabled=false",
+                  // Round 3: the application worker runs so an approved application becomes a
+                  // real refund_order executed over the sandbox refund channel, publishing
+                  // RefundSucceededEvent.v1 for the coupon restore + points clawback consumers.
+                  "--pet.refund.application.worker.enabled=true",
                   "--pet.refund.application.protection-key=" + base64(13),
                   "--pet.refund.application.reason-codes=SCHEDULE_CONFLICT,PLAN_CHANGED,SERVICE_ISSUE",
                   // Composition constraint found during bring-up: with pet.outbox enabled,
@@ -491,7 +509,21 @@ public final class E2eCoreLoopServer {
                   "--pet.aftersale.type-labels[OTHER]=其他问题",
                   "--pet.aftersale.demand-labels[REFUND]=退款",
                   "--pet.aftersale.demand-labels[RESERVICE]=重新服务",
-                  "--pet.aftersale.demand-labels[OTHER]=其他诉求");
+                  "--pet.aftersale.demand-labels[OTHER]=其他诉求",
+                  // Round 3 additions (additive new-capability faces, all default-off):
+                  // contract-61 coupon lifecycle kernel — freeze joins the 38 create
+                  // transaction, consume rides the 41 payment result, release rides the 39
+                  // close, the restore consumer is dispatched by the outbox.
+                  "--pet.coupon.lifecycle.enabled=true",
+                  // contract-62 encyclopedia anonymous read face (categories/breeds/detail).
+                  "--pet.encyclopedia.query.enabled=true",
+                  // contract-58/60 points earn kernel + C HTTP face + PTS-002 refund clawback.
+                  "--pet.points.task.enabled=true",
+                  "--pet.points.task.http.enabled=true",
+                  "--pet.points.refund-clawback.enabled=true",
+                  // The 2026-10-08 ruling turns pre-service refunds into automatic full
+                  // approvals, so the C refund-apply walks the real execution chain.
+                  "--pet.refund.pre-service-auto-refund.enabled=true");
       String endpoint = "http://127.0.0.1:" + port;
       // Round-2 admin operator: the real bootstrap lane (26号 maintenance-mode first account,
       // PLATFORM_SUPER_ADMIN + scope ALL per SSOT §24 single-operator adjudication). Skipped on
@@ -982,6 +1014,24 @@ public final class E2eCoreLoopServer {
             ids.nextId(), MERCHANT, STORE, SERVICE, start, end);
       }
     }
+    // Round 3: contract-61 coupon walkthrough facts for the seeded C user. The template carries
+    // the CCR-C006 frozen four-key rule vocabulary; amountOff 10 stays below the 60.00 service
+    // price and the 50 threshold below it, so the coupon is eligible on every seeded slot.
+    // Three AVAILABLE instances: A (create->pay->used->full-refund restore), B (concurrent
+    // freeze lose/lose-win + payment-timeout close release), C (spare for list rendering).
+    jdbc.update("INSERT INTO coupon_template(id,name,status,total_stock,issued_count,"
+        + "valid_start_at,valid_end_at,rule_json,version,created_at,updated_at) VALUES"
+        + "(?,'E2E立减10元券','ACTIVE',100,3,UTC_TIMESTAMP(3) - INTERVAL 1 DAY,"
+        + "UTC_TIMESTAMP(3) + INTERVAL 30 DAY,'{\"amountOff\":10.00,\"thresholdAmount\":50.00,"
+        + "\"scopeSummary\":\"全部门店通用\",\"typeLabel\":\"满减券\"}',0,"
+        + "UTC_TIMESTAMP(3),UTC_TIMESTAMP(3))", 716001L);
+    for (long instance : new long[] {716011L, 716012L, 716013L}) {
+      jdbc.update("INSERT INTO coupon_instance(id,coupon_template_id,user_id,status,order_id,"
+          + "original_expire_at,expire_at,version,created_at,updated_at) VALUES"
+          + "(?,?,'710100','AVAILABLE',NULL,UTC_TIMESTAMP(3) + INTERVAL 30 DAY,"
+          + "UTC_TIMESTAMP(3) + INTERVAL 30 DAY,0,UTC_TIMESTAMP(3),UTC_TIMESTAMP(3))",
+          instance, 716001L);
+    }
   }
 
   /** Approved application + published and signed agreement projection (29/28 SQL shapes). */
@@ -1217,7 +1267,12 @@ public final class E2eCoreLoopServer {
         // slice; the refund application's admission consults the active-aftersale projection,
         // so these ALTERs are load-bearing for the whole C write face once aftersale is on.
         "50-AfterSale-Workflow-Schema-v0.1.sql",
-        "51-AfterSale-Http-Schema-v0.1.sql"));
+        "51-AfterSale-Http-Schema-v0.1.sql",
+        // Round 3: points earn kernel tables (58/60号; balances/ledger stay in SQL06 §9) and
+        // the encyclopedia content tables (62号, whose seed INSERTs ship the published breed
+        // content the C read face serves). Coupon tables live in SQL06 and need no extra file.
+        "60-Points-Task-Schema-v0.1.sql",
+        "62-Baike-Content-Schema-v0.1.sql"));
     try (var connection = source.getConnection()) {
       for (String file : scripts) {
         ScriptUtils.executeSqlScript(connection, new EncodedResource(
