@@ -36,11 +36,13 @@ class ContractSmokeRegressions(unittest.TestCase):
         self.assertEqual(result['adminGovernanceOperations'], 8)
         # Contract 65 ops console face (2026-10-16, A-005): encyclopedia governance (9) +
         # coupon template management/instance ledger (9) + points ledger (1) + runtime
-        # settings view (1) = twenty routes; no instance-status write exists (CCR-ADM-A005-OPS-001).
-        self.assertEqual(result['adminOpsOperations'], 20)
-        # Union 204 = 163 baseline + 3 encyclopedia + 11 admin trade (reads + disposal)
-        # + 8 governance + 20 ops console: 163 + 3 + 11 + 8 + 20 = 204.
-        self.assertEqual(result['operations'], 204)
+        # settings view (1) + the v0.2 §4.3 grant channel (1, user ruling 2026-10-16,
+        # CCR-CPN-GRANT-001 minimum; kernel switch pet.coupon.grant.enabled stays default off)
+        # = twenty-one routes; no instance-status write exists (CCR-ADM-A005-OPS-001).
+        self.assertEqual(result['adminOpsOperations'], 21)
+        # Union 205 = 163 baseline + 3 encyclopedia + 11 admin trade (reads + disposal)
+        # + 8 governance + 21 ops console: 163 + 3 + 11 + 8 + 21 = 205.
+        self.assertEqual(result['operations'], 205)
         self.assertGreater(result['stringIdProperties'], 0)
         # Contract 58 favorite/footprint face (2026-10-13): seven reviewed operations.
         self.assertEqual(result['favtrackHttpOperations'], 7)

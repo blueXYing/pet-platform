@@ -1067,6 +1067,13 @@ ADMIN_OPS_OPERATIONS = {
     'adminGetCouponInstance': (
         'get', '/admin/coupon-instances/{instanceId}',
         ('200', '400', '401', '403', '404', '503')),
+    # Contract-65 v0.2 §4.3 grant channel (user ruling 2026-10-16, CCR-CPN-GRANT-001 minimum).
+    # The route joins the ops face (x-assembly-switch); the kernel is additionally gated by
+    # pet.coupon.grant.enabled (x-kernel-switch, default off → the route answers 503
+    # fail-closed, 61号 provider-unassembled semantics).
+    'adminGrantCouponInstance': (
+        'post', '/admin/coupon-instances/grant',
+        ('200', '400', '401', '403', '404', '409', '503')),
     'adminListPointsLedger': (
         'get', '/admin/points/ledger',
         ('200', '400', '401', '403', '503')),
@@ -1095,6 +1102,7 @@ OPS_ROUTE_ACTIONS = {
     'adminOfflineCouponTemplate': 'coupon.template.manage',
     'adminListCouponInstances': 'coupon.instance.read',
     'adminGetCouponInstance': 'coupon.instance.read',
+    'adminGrantCouponInstance': 'coupon.instance.grant',
     'adminListPointsLedger': 'points.ledger.read',
     'adminGetRuntimeSettings': 'system.parameter.read',
 }
@@ -1118,6 +1126,7 @@ OPS_ENVELOPES = {
     'adminOfflineCouponTemplate': 'AdminOpsTemplateMutationEnvelope',
     'adminListCouponInstances': 'AdminOpsInstancePageEnvelope',
     'adminGetCouponInstance': 'AdminOpsInstanceDetailEnvelope',
+    'adminGrantCouponInstance': 'AdminOpsCouponGrantEnvelope',
     'adminListPointsLedger': 'AdminOpsPointsLedgerPageEnvelope',
     'adminGetRuntimeSettings': 'AdminOpsRuntimeSettingsEnvelope',
 }

@@ -1637,6 +1637,10 @@ GET          /api/v1/admin/audit-logs
 
 V1.0 运营端没有积分抵扣配置、积分商城、直播配置 API。
 
+> 实现注记（2026-10-16，65 号 v0.2 A-005）：券模板管理与券实例台账、券发放、积分台账已按
+> [§5.13](#513-运营治理台二期65-号2026-10-16-a-005-切片百科券台账系统设置v02-增券发放) 交付
+> （默认关）；通知/公告/审计日志三族维持草案未实现（CCR-ADM-A005-OPS-001）。
+
 ---
 
 ## 5.9 服务审核与治理（CCR-W2-API-001 服务写入方 v0.2，2026-09-22 已批）
@@ -1731,7 +1735,7 @@ GET /api/v1/admin/governance/schedule/reservations
 
 ---
 
-## 5.13 运营治理台二期（65 号，2026-10-16 A-005 切片：百科/券/台账/系统设置）
+## 5.13 运营治理台二期（65 号，2026-10-16 A-005 切片：百科/券/台账/系统设置；v0.2 增券发放）
 
 > 本节为摘要；权威契约在 `65-Admin-Ops-Console-Contract-v0.1.md`。
 
@@ -1751,18 +1755,26 @@ PUT  /api/v1/admin/coupon-templates/{templateId}
 POST /api/v1/admin/coupon-templates/{templateId}/enable|offline
 GET  /api/v1/admin/coupon-instances
 GET  /api/v1/admin/coupon-instances/{instanceId}
+POST /api/v1/admin/coupon-instances/grant
 GET  /api/v1/admin/points/ledger
 GET  /api/v1/admin/settings/runtime
 ```
 
-二十条路由随 `pet.admin.ops.http.enabled`（默认 false）+ `pet.auth.admin.enabled` 装配；动作码
+二十一条路由随 `pet.admin.ops.http.enabled`（默认 false）+ `pet.auth.admin.enabled` 装配；动作码
 `encyclopedia.read/manage/publish`、`breed.read/manage`（矩阵行 21）、`coupon.template.read/manage`、
-`coupon.instance.read`（行 13/14 提案连字符拼写的点分落地）、`points.ledger.read`（行 15 族）、
-`system.parameter.read`（行 23 提案拼写点分落地），随切片登记部署清单。控制器快照校验 +
-community/coupon/points 内核授权端口每次重验；dataScope 非 ALL 一律 403。写动作（分类维护/
-停用启用、品种维护/上下线、券模板建/编/启/停）终结性 X-Request-Id 幂等（14 号 command_idempotency
-绑定，同参重放回执、异参 409）+ expectedVersion 乐观锁（失配 409）。券实例无任何写路由（作废/
-返还/风控冻结 CCR-ADM-A005-OPS-001 未登记不做）；设置面只读（运行时写配置无授权，同 CCR）。
+`coupon.instance.read`（行 13/14 提案连字符拼写的点分落地）、`coupon.instance.grant`（v0.2 发放渠道，
+用户裁决 2026-10-16，提案矩阵无提案码、点分词法新造登记——CCR-CPN-GRANT-001 §3）、
+`points.ledger.read`（行 15 族）、`system.parameter.read`（行 23 提案拼写点分落地），随切片登记部署
+清单。控制器快照校验 + community/coupon/points 内核授权端口每次重验；dataScope 非 ALL 一律 403。
+写动作（分类维护/停用启用、品种维护/上下线、券模板建/编/启/停）终结性 X-Request-Id 幂等（14 号
+command_idempotency 绑定，同参重放回执、异参 409）+ expectedVersion 乐观锁（失配 409）。
+发放路由（65 号 v0.2 §4.3，2026-10-16 用户裁决"做券发放渠道"）：按一个 ACTIVE 模板向一个指定用户
+发放一张 AVAILABLE 券实例（单次一张，批量/持有上限/频控/库存扣减 CCR-CPN-GRANT-001 §2 待裁）；
+模板可用性守卫=61 号冻结前置④（非 ACTIVE 或不在有效期 409）；`coupon_ledger` ISSUE 行为发放审计；
+内核另受 `pet.coupon.grant.enabled`（默认 false，21 号清单）门控，开关关闭时该路由 503 失败关闭
+（61 号提供器未装配语义），默认值翻转随 35 号开关放开裁决统一处理。发放后 C 端
+`GET /api/v1/c/coupons?status=AVAILABLE` 立即可见（10 号 §3.15.1 零改动）。除发放外券实例无任何
+写路由（作废/返还/风控冻结 CCR-ADM-A005-OPS-001 未登记不做）；设置面只读（运行时写配置无授权，同 CCR）。
 
 ---
 

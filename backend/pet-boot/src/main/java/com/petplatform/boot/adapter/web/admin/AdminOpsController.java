@@ -157,6 +157,7 @@ public class AdminOpsController {
     {"pet.favtrack.http.enabled", "C"},
     {"pet.encyclopedia.query.enabled", "COMMUNITY"},
     {"pet.coupon.lifecycle.enabled", "COUPON"},
+    {"pet.coupon.grant.enabled", "COUPON"},
     {"pet.admin.trade.http.enabled", "ADMIN"},
     {"pet.admin.trade.worker.enabled", "ADMIN"},
     {"pet.admin.governance.http.enabled", "ADMIN"},

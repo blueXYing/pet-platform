@@ -1,9 +1,10 @@
 import { RequestFailure, type Transport } from '../request';
 
 // Contract-65 coupon governance face (PRD 6.4, A-005): template management (create DRAFT /
-// white-listed edit / enable / offline / trial calculation) and the read-only instance
-// ledger. No instance-status write exists on the wire (作废/返还 CCR-ADM-A005-OPS-001) — the
-// client cannot express one.
+// white-listed edit / enable / offline / trial calculation), the read-only instance ledger
+// and the §4.3 grant channel (user ruling 2026-10-16, CCR-CPN-GRANT-001 minimum: one user,
+// one ACTIVE template, one AVAILABLE instance per terminal requestId). No instance-status
+// write exists on the wire (作废/返还 CCR-ADM-A005-OPS-001) — the client cannot express one.
 export const TEMPLATE_STATUSES = ['DRAFT', 'ACTIVE', 'OFFLINE'] as const;
 export type TemplateStatus = typeof TEMPLATE_STATUSES[number];
 export const INSTANCE_STATUSES = ['AVAILABLE', 'FROZEN', 'USED', 'EXPIRED', 'RISK_FROZEN'] as const;
@@ -51,6 +52,10 @@ export type LedgerRow = {
 };
 export type AdminInstanceDetail = AdminInstanceSummary & {
   freezeExpireAt: string | null; updatedAt: string; ledger: LedgerRow[];
+};
+export type GrantReceipt = {
+  instanceId: string; templateId: string; userId: string; status: InstanceStatus;
+  expireAt: string; occurredAt: string;
 };
 export type Page<T> = { page: number; pageSize: number; total: number; items: T[] };
 
@@ -143,6 +148,17 @@ function isInstanceDetail(v: unknown): v is AdminInstanceDetail {
   });
 }
 
+function isGrantReceipt(v: unknown): v is GrantReceipt {
+  if (typeof v !== 'object' || v === null) return false;
+  const r = v as Record<string, unknown>;
+  return typeof r.instanceId === 'string' && DECIMAL_ID.test(r.instanceId)
+    && typeof r.templateId === 'string' && DECIMAL_ID.test(r.templateId)
+    && typeof r.userId === 'string' && DECIMAL_ID.test(r.userId)
+    && INSTANCE_STATUSES.includes(r.status as InstanceStatus)
+    && typeof r.expireAt === 'string' && UTC.test(r.expireAt)
+    && typeof r.occurredAt === 'string' && UTC.test(r.occurredAt);
+}
+
 export type TemplateDraft = {
   name: string; amountOff: string; thresholdAmount: string | null;
   validStartAt: string; validEndAt: string; scopeSummary: string | null; typeLabel: string | null;
@@ -232,6 +248,16 @@ export function createCouponAdminClient(transport: Transport = fetch) {
     async getInstance(instanceId: string) {
       if (!DECIMAL_ID.test(instanceId)) throw new CouponAdminFailure('INVALID_ARGUMENT', 0);
       return envelope<AdminInstanceDetail>(`${ROOT}/coupon-instances/${instanceId}`, {}, isInstanceDetail);
+    },
+
+    /** §4.3 grant channel: one AVAILABLE instance per terminal requestId (kernel-owned idempotency). */
+    async grantInstance(templateId: string, userId: string, requestId: string) {
+      if (!DECIMAL_ID.test(templateId) || !DECIMAL_ID.test(userId)) {
+        throw new CouponAdminFailure('INVALID_ARGUMENT', 0);
+      }
+      return envelope<GrantReceipt>(`${ROOT}/coupon-instances/grant`, {
+        method: 'POST', body: { templateId, userId }, requestId,
+      }, isGrantReceipt);
     },
   };
 }
