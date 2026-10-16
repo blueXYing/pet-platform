@@ -1,0 +1,35 @@
+{
+  "results": {
+    "S0": "PASS",
+    "S4-refund": "TIMEOUT status=CREATED",
+    "S5-refund": "TIMEOUT status=CREATED",
+    "S5-apply": "MISSING_PROJECTION items=[{'refundOrderId': '104499794323910656', 'refundNo': '104499794323910657', 'orderId': '104497435879268352', 'refundType': 'FULL', 'sourceType': 'PRESTART_AUTO', 'status': 'CREATED', 'refundAmount': '60.00', 'initiatorType': 'SYSTEM', 'channelRefundNo': None, 'succeededAt': None, 'createdAt': '2026-10-16T08:44:52.480Z'}]",
+    "S3": "FINDING_DEAD_FACE_403",
+    "S6-governance": "PASS",
+    "S7": "UNEXPECTED:encyclopedia-categories=403:COMMON_FORBIDDEN,encyclopedia-breeds=403:COMMON_FORBIDDEN,coupon-templates=403:COMMON_FORBIDDEN,coupon-instances=403:COMMON_FORBIDDEN,points-ledger=403:COMMON_FORBIDDEN,settings-runtime=403:COMMON_FORBIDDEN,points-task-config=200:SUCCESS,points-task-config-put=400:COMMON_INVALID_ARGUMENT"
+  },
+  "refundIds": {
+    "aftersale": "104498021626454016",
+    "application": "104499794323910656"
+  },
+  "meta": {
+    "endpoint": "http://127.0.0.1:18081",
+    "database": "auth001czq3c988_e2e_core_loop_e5b7cdf7a09f4cd99f5eb6cbeb8f2627",
+    "databaseLifecycle": "DROP_ON_PROCESS_SHUTDOWN",
+    "processId": "7856",
+    "snowflakeNodeId": "240",
+    "userId": "710100",
+    "petId": "710200",
+    "merchantId": "710301",
+    "storeId": "710302",
+    "serviceId": "710401",
+    "staffId": "710303",
+    "wechatApp": "e2e-wx-app",
+    "adminAccount": "e2e-round2-operator",
+    "adminOrigin": "https://e2e.example.invalid",
+    "adminChainCompletedOrderId": "104497398667403264",
+    "adminChainDispositionOrderId": "104497417206226944",
+    "adminChainRefundTargetOrderId": "104497435879268352",
+    "adminChainAfterSaleId": "104497448613175296"
+  }
+}

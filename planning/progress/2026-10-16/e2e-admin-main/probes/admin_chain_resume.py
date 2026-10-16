@@ -21,13 +21,17 @@ AFTERSALE_REFUND = "104498021626454016"  # fresh-db run 2026-10-16 16:36
 APPLICATION_REFUND = "PENDING_S5_APPLY"  # filled by poll_placeholder below
 
 
-def poll_success(endpoint, refund_id, label, budget_s=1500):
+def poll_success(endpoint, refund_id, label, budget_s=900, meta=None):
     started = time.time()
     last_status = None
+    entry_count = [0]
     while time.time() - started < budget_s:
+        if entry_count[0] % 3 == 0:
+            p.admin_login(endpoint, meta or {})  # fresh session (logins invalidate prior grants)
         entry = p.call(f"{label}-poll", endpoint, "GET",
                        f"/api/v1/admin/trade/refunds/{refund_id}", token=p.ADMIN_TOKEN,
                        expect=200)
+        entry_count[0] += 1
         if entry["response"] and entry["response"].get("data"):
             last_status = entry["response"]["data"]["status"]
             if last_status == "SUCCESS":
@@ -39,8 +43,18 @@ def poll_success(endpoint, refund_id, label, budget_s=1500):
     return None
 
 
+FALLBACK = {  # the reuse-mode boot truncates server-metadata.txt; the fresh-db ids stay here
+    "adminChainCompletedOrderId": "104497398667403264",
+    "adminChainDispositionOrderId": "104497417206226944",
+    "adminChainRefundTargetOrderId": "104497435879268352",
+    "adminChainAfterSaleId": "104497448613175296",
+}
+
+
 def main():
     meta = p.load_metadata(sys.argv[1])
+    for key, value in FALLBACK.items():
+        meta.setdefault(key, value)
     endpoint = meta["endpoint"]
     p.TRANSCRIPT = sys.argv[2]
     p.admin_login(endpoint, meta)
@@ -48,7 +62,7 @@ def main():
     # patch landed in this database).
     p.call("S1b-application-detail", endpoint, "GET",
            "/api/v1/admin/merchant-applications/710600", token=p.ADMIN_TOKEN, expect=200)
-    aftersale = poll_success(endpoint, AFTERSALE_REFUND, "S4-refund")
+    aftersale = poll_success(endpoint, AFTERSALE_REFUND, "S4-refund", meta=meta)
     # Resolve the application refund id from the fresh database state (the probe run may not
     # have reached S5 yet; the driver applies only if no application exists yet).
     listing = p.call("S5-resolve", endpoint, "GET",
@@ -74,7 +88,7 @@ def main():
                 break
             time.sleep(15)
     assert application_id, "application refund never projected"
-    application = poll_success(endpoint, application_id, "S5-refund")
+    application = poll_success(endpoint, application_id, "S5-refund", meta=meta)
 
     # S5 refund projection via the admin list face (poll-style assertion).
     listing = p.call("S5-refund-list-by-order", endpoint, "GET",

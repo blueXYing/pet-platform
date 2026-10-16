@@ -1421,6 +1421,12 @@ public final class E2eCoreLoopServer {
         "31-Private-Asset-Schema-v0.1.sql",
         "33-Service-Write-Schema-v0.1.sql",
         "35-Merchant-Staff-Audit-Schema-v0.1.sql",
+        // Round 4: the contract-52/54 staff identity + binding tables back the 64号 governance
+        // staff-members/invitations read face (without them those routes 500 on a missing
+        // table — fixture gap, not a product defect; the routes answer empty lists once the
+        // tables exist).
+        "52-Merchant-Staff-Identity-Schema-v0.1.sql",
+        "54-Merchant-Staff-Binding-Schema-v0.1.sql",
         "37-Reservation-Protection-Foundation-Schema-v0.1.sql",
         "38-Booking-Create-Schema-v0.1.sql",
         "39-Booking-Expiry-Schema-v0.1.sql",

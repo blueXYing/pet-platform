@@ -42,7 +42,9 @@
 
 ### 2.4 滚动补录（退款资金终态）
 
-两笔退款单（AFTERSALE_DECISION 104498021626454016 / PRESTART_AUTO 104499794323910656）的 `AFTERSALE_REFUND_SUBMIT`/`APPLICATION_REFUND_SUBMIT` 任务在共享 MySQL 雪花风暴（本库 console 51+ 次 fail-closed，含任务 claim 阶段）中按 REFUND_CHANNEL 退避策略重试。终态由 `admin_chain_resume.py` 落地补录于 `probes/admin-chain-transcript-final.jsonl` 与 `admin-chain-summary-final.json`（管理端 `/admin/trade/refunds/{id}` 读取为准）。
+两笔退款单（AFTERSALE_DECISION 104498021626454016 / PRESTART_AUTO 104499794323910656）的 `AFTERSALE_REFUND_SUBMIT`/`APPLICATION_REFUND_SUBMIT` 任务在共享 MySQL 雪花风暴（本库 console 100+ 次 fail-closed，含任务 claim 阶段）中按 REFUND_CHANNEL 退避策略重试：两任务均多次被 Reconciler 复活重排（retry 打满后重新入队），截至本稿定稿仍为 **CREATED（触发证据已齐，渠道资金终态未能在本场风暴窗口内落地）**。`admin-chain-transcript-final2.jsonl`/`admin-chain-summary-final2.json` 记录了管理端读侧的完整状态（两单 status=CREATED、channelRefundNo=null）；服务器日志（probes/server-console-final.log）记录了风暴自愈与任务重试全过程。**如实标注：S4/S5 的资金终态（refund status=SUCCESS + channelRefundNo）在本轮环境窗口内未落地，属环境阻塞（E-6），非产品缺陷——同一执行链（APPLICATION_REFUND_SUBMIT→渠道执行）在 round-3 走查中已实证落地。**
+
+补录：final 驱动在退款 TIMEOUT 后**无条件跑完了剩余链路**——S3 处置四动作 403 取证（FA-1，新库复现）、S6b 治理面 8 条路由（其中员工两条路由的 FA-7 经 schema 补齐后 200 空列表取证）、S7 ops 七条读路由 403 取证（FA-3 新库复现；注意 `points-task-config` 是 58号独立面、放行在案，GET 200 属预期，不计入 FA-3 集合；本驱动一次 PUT 400 为探针载荷形状问题，不作为证据）。
 
 ## 3. 发现的问题清单（只定界取证，未修）
 
@@ -54,12 +56,13 @@
 | **FA-4** | 中（测试域组合启动失败，未来生产组合预演） | `pet.admin.trade.http.enabled` + `pet.order.merchant.enabled` 同开时上下文启动失败：`ReservationRefundReleaseApi` 双 bean（`dispositionRefundRelease` 有 @ConditionalOnMissingBean、`merchantRefundRelease` 没有，注册顺序不保证）→ 63号 v0.2 全面推开会与商家面撞车 | probes/server-console-release-collision.log：`Parameter 5 of method merchantRefundProjection … 2 were found`；本 PR 以 BFPP 将 `merchantRefundRelease` 标 primary 规避（两 bean 同构 `ReservationRefundReleaseApiImpl(source,ids,guard,refunds)`，行为零变化） | 给 `merchantRefundRelease` 补 @ConditionalOnMissingBean 或合并为一处定义 |
 | **FA-5** | **高（63号两条只读路由全量 400，含 UI 连带）** | `AdminActionCheckQuery` 的 action-code 词法 `[a-z][a-z0-9]*(\.[a-z][a-z0-9]*)+` **不允许段内连字符**，而部署动作码 `order.status-log.read`、`order.verification-log.read` 段内带连字符 → 两条路由的授权入口校验每次抛 IllegalArgumentException → **400 COMMON_INVALID_ARGUMENT，任何授权（含超管）不可恢复**。波及面：`GET /admin/trade/orders/{id}/status-logs`、`GET /admin/trade/verifications(/[…])`，且前端订单详情页内嵌状态日志调用 → **订单详情控制台整页不可用** | 探针 S2 两条路由全量 400（transcript 163628）；代码定位 `AdminActionCheckQuery` 构造校验 vs `AdminPermissionEvaluator.DEPLOYED_ACTIONS`（注释自述曾把 `refund.channel-query` 点改拼写，但漏掉这两条）；UI 05/06 截图 | 二选一：词法放宽段内连字符，或部署码改点号拼写（需同步前端/契约），另开修复 Issue；**本审计不修** |
 | **FA-6** | 中（ADM-001 服务审核控制台不可用） | 服务审核 HTTP 面成功 envelope `message="成功"`，前端 `src/api/serviceReview.ts` 要求 `message==='ok'` → **任何响应（含空列表）都被前端拒渲染（INVALID_RESPONSE）** | 02 截图（alert: 服务查询失败（INVALID_RESPONSE））；HTTP 探针同路由 200（后端自测不校验 message，故此前未暴露） | 服务面 envelope 统一为 `ok`（与 trade/aftersale/governance 一致），另开修复 Issue |
+| FA-7 | 低（**测试夹具缺口，本 PR 已修**） | 64号治理面 `merchants/{id}/staff-members(/invitations)` 查 contract-52/54 员工身份表，而启动器 loadSchemas 从未加载这两个 schema → **500 COMMON_INTERNAL_ERROR**（表缺失，非产品缺陷） | 修复前：两条路由 500（transcript-final2 + debug 复现）；loadSchemas 补 `52-Merchant-Staff-Identity` + `54-Merchant-Staff-Binding` 后对运行库等价建表 → **两条路由 200 空列表**（probes/debug-staff-members-after-schema-fix.jsonl） | 已在本 PR 修（纯测试域）；后续对同一库复用重启时无需再处理 |
 
 ### 3.2 环境阻塞点与处置（如实记录）
 
 | 编号 | 现象 | 处置 |
 |---|---|---|
-| E-5（复现+补充） | 共享 MySQL 雪花风暴（本库 51+ 次 fail-closed，任务 claim 阶段也发号）令异步任务退避；**进程被环境硬杀后复用缝重启时，attempt-1 因旧自愈节点占用新节点号 DuplicateKey，catch 把复用库 DROP**（round-3 E-5 同源，本次连库带事实全部损失，现场：probes/server-console-e5-reuse-drop.log） | 全新建库重跑（node 89 一次通过）；建议给启动器提 Issue：复用模式失败不得 DROP 复用库 + 复用模式节点号应自动挑空闲 |
+| E-5（复现+补充） | 共享 MySQL 雪花风暴（本库 100+ 次 fail-closed，任务 claim 阶段也发号）令异步任务退避；**进程被环境硬杀后复用缝重启时，attempt-1 因旧自愈节点占用新节点号 DuplicateKey，catch 把复用库 DROP**（round-3 E-5 同源，第一次连库带事实全部损失，现场：probes/server-console-e5-reuse-drop.log）；另发现**复用模式启动会用 `Files.writeString` 覆盖 server-metadata.txt**，丢失 adminChain* 种子 id 行（driver 以 FALLBACK 常量兜底） | 全新建库重跑（node 89 一次通过；第二次复用重启换全新节点号 240 后成功，事实保留）；建议给启动器提 Issue：复用模式失败不得 DROP 复用库 + 复用模式节点号应自动挑空闲 + metadata 改追加写 |
 | E-6 | 风暴使两笔退款资金任务在 REFUND_CHANNEL 退避中反复 HANDLER_EXCEPTION | 不改代码；终态由 resume 驱动滚动补录（§2.4） |
 | E-7 | 启动器固定 origin 与前端代理基线不同源 | 测试域 Origin 桥（scripts/e2e-origin-shim.mjs），PR 披露，非生产行为 |
 
