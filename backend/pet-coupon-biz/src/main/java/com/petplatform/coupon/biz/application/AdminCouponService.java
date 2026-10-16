@@ -522,7 +522,10 @@ public final class AdminCouponService implements AdminCouponQueryApi,
             String actionCode, String resourceType, String resourceId) {
         Decision decision = authorization.check(new Check(
                 sessionId, sessionGeneration, context.operatorId(),
-                actionCode, new Resource(resourceType, resourceId, null, null, null),
+                // Coupon rows carry no authorization-relevant version; the owner's scope DTO
+                // requires a non-blank fact, rendered "0" like the contract-63 kernels'
+                // absent-version columns (AdminResourceScope validates, the owner never reads).
+                actionCode, new Resource(resourceType, resourceId, null, null, "0"),
                 actionCode.replace('.', '_').toUpperCase(Locale.ROOT), Phase.EXECUTE));
         requireDecision(decision);
     }

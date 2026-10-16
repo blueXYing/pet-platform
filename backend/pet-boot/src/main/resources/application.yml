@@ -185,6 +185,13 @@ pet:
       inspection:
         enabled: false
   coupon:
+    grant:
+      # Coupon issuance channel (PR #180): opens with the ops console (union of
+      # ruling 35 + #183 FA fixes); requires the admin session base to be useful.
+      enabled: true
+    void:
+      # Coupon instance void (PR #182): same ruling union as grant.
+      enabled: true
     lifecycle:
       # Contract-61 coupon lifecycle kernel: default ON per the 2026-10-16 ruling (freeze
       # joins the 38 create transaction, consume rides the 41 payment result, the restore
@@ -236,12 +243,11 @@ pet:
         enabled: true
     ops:
       http:
-        # Contract-65 ops console face: default OFF — "open after fix" (35号 B-class,
-        # E2E finding FA-2): the controller's by-type injection of the encyclopedia/coupon
-        # dual-face APIs is ambiguous (one kernel, two bean names, no qualifier), so any
-        # boot with an admin session fails today; FA-1/FA-3 add unfired security-chain
-        # permits. Opens together with the 65号 wiring fix.
-        enabled: false
+        # Contract-65 ops console face: default ON (union of ruling 35 + PR #183):
+        # the FA-2 double-bean wiring, FA-1/FA-3 security-chain permits and FA-5
+        # lexicon were fixed by the admin-face fix batch (#183), so the held
+        # category is obsolete — opens together with coupon grant/void below.
+        enabled: true
   auth:
     c:
       enabled: ${AUTH_C_ENABLED:false}

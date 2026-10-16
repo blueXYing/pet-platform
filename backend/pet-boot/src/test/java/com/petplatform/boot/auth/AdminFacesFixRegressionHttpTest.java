@@ -204,13 +204,15 @@ class AdminFacesFixRegressionHttpTest {
         assertEquals(200, ledger.status(), ledger.redacted());
         assertEquals(0, ((Number) ledger.data().get("total")).intValue());
 
-        // The grant POST reaches its controller with the kernel unassembled: fail-closed 503,
-        // never the chain's COMMON_FORBIDDEN 403 (the pre-fix answer).
+        // The grant POST reaches its kernel through the chain (FA-1): with the 35号 union
+        // opening pet.coupon.grant.enabled, the assembled kernel answers an unknown template
+        // with its own NOT_FOUND — never the chain's COMMON_FORBIDDEN 403 (the pre-fix
+        // answer), nor the fail-closed 503 of the previously unassembled channel.
         Reply grant = send("POST", "/api/v1/admin/coupon-instances/grant",
                 Map.of("templateId", "930000000000000001", "userId", "930000000000000002"),
                 bearer(token));
-        assertEquals(503, grant.status(), grant.redacted());
-        assertEquals("COMMON_DEPENDENCY_UNAVAILABLE", grant.envelope().get("code"));
+        assertEquals(404, grant.status(), grant.redacted());
+        assertEquals("COMMON_NOT_FOUND", grant.envelope().get("code"));
 
         // Anonymous still fails closed at the session boundary, not the chain.
         Reply anonymous = send("GET", "/api/v1/admin/settings/runtime", null, Map.of());
@@ -367,7 +369,7 @@ class AdminFacesFixRegressionHttpTest {
         }
     }
 
-    /** Local fixture: fresh database with the auth, core, baike and disposition schemas. */
+    /** Local fixture: fresh database with the auth, core, idempotency, baike and disposition schemas. */
     static final class Fixture implements AutoCloseable {
         final String name = "auth001_faces_" + UUID.randomUUID().toString().replace("-", "");
         final String prefix = name + ":";
@@ -411,6 +413,9 @@ class AdminFacesFixRegressionHttpTest {
                     // the refund_execution check constraint last redefined by 49号).
                     for (String schema : List.of(
                             "13-Async-Infra-Schema-v0.1.sql",
+                            // The grant route admits through the 14号 shared command_idempotency
+                            // binding once the 35号 union assembles the grant channel.
+                            "14-Command-Idempotency-Schema-v0.1.sql",
                             "31-Private-Asset-Schema-v0.1.sql",
                             "33-Service-Write-Schema-v0.1.sql",
                             "35-Merchant-Staff-Audit-Schema-v0.1.sql",

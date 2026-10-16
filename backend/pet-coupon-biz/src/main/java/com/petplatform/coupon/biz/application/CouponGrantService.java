@@ -165,8 +165,11 @@ public final class CouponGrantService {
         }
         Decision decision = authorization.check(new Check(
                 auth.sessionId(), auth.sessionGeneration(), context.operatorId(),
+                // Pre-load check: the template row is not locked yet, so no version fact exists;
+                // the owner's scope DTO requires a non-blank fact, rendered "0" like the
+                // contract-63 kernels' absent-version columns (validated, never read).
                 "coupon.instance.grant", new Resource("COUPON_TEMPLATE",
-                        Long.toUnsignedString(templateId), null, null, null),
+                        Long.toUnsignedString(templateId), null, null, "0"),
                 "COUPON_INSTANCE_GRANT", Phase.EXECUTE));
         if (decision == null || decision.checkedAt() == null || decision.authzVersion() == null
                 || decision.authzVersion().isBlank()) {
