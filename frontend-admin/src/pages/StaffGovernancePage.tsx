@@ -40,7 +40,8 @@ export default function StaffGovernancePage({ client, onAuthLost }: { client: St
       if (call === sequence.current) setQueried(merchant);
     } catch (caught) {
       if (call !== sequence.current) return;
-      if (caught instanceof GovernanceFailure && ['UNAUTHENTICATED', 'FORBIDDEN'].includes(caught.code)) { onAuthLost(); return; }
+      if (caught instanceof GovernanceFailure && caught.code === 'UNAUTHENTICATED') { onAuthLost(); return; }
+      if (caught instanceof GovernanceFailure && caught.code === 'FORBIDDEN') { setError('权限不足，无法执行该操作'); return; }
       if (caught instanceof GovernanceFailure && caught.code === 'STALE_CONTEXT') return;
       setError(caught instanceof GovernanceFailure && caught.code === 'COMMON_NOT_FOUND'
         ? '商家不存在（或不在授权范围内）' : governanceFailureText(caught, '员工治理查询失败'));

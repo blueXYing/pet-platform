@@ -32,7 +32,8 @@ export default function AfterSaleListPage({ client, onAuthLost }: { client: Afte
       setResult(data);
     } catch (caught) {
       if (call !== sequence.current) return;
-      if (caught instanceof AfterSaleFailure && ['UNAUTHENTICATED', 'FORBIDDEN'].includes(caught.code)) { onAuthLost(); return; }
+      if (caught instanceof AfterSaleFailure && caught.code === 'UNAUTHENTICATED') { onAuthLost(); return; }
+      if (caught instanceof AfterSaleFailure && caught.code === 'FORBIDDEN') { setError('权限不足，无法执行该操作'); return; }
       if (caught instanceof AfterSaleFailure && caught.code === 'STALE_CONTEXT') return;
       setError(caught instanceof AfterSaleFailure ? `售后查询失败（${caught.code}）${caught.traceId ? ` · 追踪 ${caught.traceId}` : ''}` : '售后查询失败，请重试。');
     } finally { if (call === sequence.current) setLoading(false); }

@@ -30,7 +30,8 @@ export default function ServiceReviewDetailPage({ client, canDecide, canForce, o
       .then(data => { if (call === sequence.current) setDetail(data); })
       .catch((caught: unknown) => {
         if (call !== sequence.current) return;
-        if (caught instanceof ServiceReviewFailure && ['UNAUTHENTICATED', 'FORBIDDEN'].includes(caught.code)) { onAuthLost(); return; }
+        if (caught instanceof ServiceReviewFailure && caught.code === 'UNAUTHENTICATED') { onAuthLost(); return; }
+        if (caught instanceof ServiceReviewFailure && caught.code === 'FORBIDDEN') { setError('权限不足，无法执行该操作'); return; }
         setError(caught instanceof ServiceReviewFailure ? `服务详情加载失败（${caught.code}）${caught.traceId ? ` · 追踪 ${caught.traceId}` : ''}` : '服务详情加载失败，请重试。');
       })
       .finally(() => { if (call === sequence.current) setLoading(false); });
@@ -47,7 +48,8 @@ export default function ServiceReviewDetailPage({ client, canDecide, canForce, o
       setNotice(`${decisionType === 'APPROVE' ? '已通过' : '已驳回'}：服务 ${receipt.serviceId} → ${serviceStatusLabel(receipt.status)}`);
       setDetail(await client.get(serviceId));
     } catch (caught) {
-      if (caught instanceof ServiceReviewFailure && ['UNAUTHENTICATED', 'FORBIDDEN'].includes(caught.code)) { onAuthLost(); return; }
+      if (caught instanceof ServiceReviewFailure && caught.code === 'UNAUTHENTICATED') { onAuthLost(); return; }
+      if (caught instanceof ServiceReviewFailure && caught.code === 'FORBIDDEN') { setError('权限不足，无法执行该操作'); return; }
       setActionError(caught instanceof ServiceReviewFailure ? `操作失败（${caught.code}）${caught.traceId ? ` · 追踪 ${caught.traceId}` : ''}` : '操作失败，请重试。');
     } finally { setBusy(false); }
   }
@@ -61,7 +63,8 @@ export default function ServiceReviewDetailPage({ client, canDecide, canForce, o
       setNotice(`已强制下架：服务 ${receipt.serviceId} → ${serviceStatusLabel(receipt.status)}`);
       setDetail(await client.get(serviceId));
     } catch (caught) {
-      if (caught instanceof ServiceReviewFailure && ['UNAUTHENTICATED', 'FORBIDDEN'].includes(caught.code)) { onAuthLost(); return; }
+      if (caught instanceof ServiceReviewFailure && caught.code === 'UNAUTHENTICATED') { onAuthLost(); return; }
+      if (caught instanceof ServiceReviewFailure && caught.code === 'FORBIDDEN') { setError('权限不足，无法执行该操作'); return; }
       setActionError(caught instanceof ServiceReviewFailure ? `操作失败（${caught.code}）${caught.traceId ? ` · 追踪 ${caught.traceId}` : ''}` : '操作失败，请重试。');
     } finally { setBusy(false); }
   }

@@ -42,7 +42,8 @@ export default function MerchantLedgerListPage({ client, onAuthLost }: { client:
       setResult(data);
     } catch (caught) {
       if (call !== sequence.current) return;
-      if (caught instanceof GovernanceFailure && ['UNAUTHENTICATED', 'FORBIDDEN'].includes(caught.code)) { onAuthLost(); return; }
+      if (caught instanceof GovernanceFailure && caught.code === 'UNAUTHENTICATED') { onAuthLost(); return; }
+      if (caught instanceof GovernanceFailure && caught.code === 'FORBIDDEN') { setError('权限不足，无法执行该操作'); return; }
       if (caught instanceof GovernanceFailure && caught.code === 'STALE_CONTEXT') return;
       setError(governanceFailureText(caught, '商家台账查询失败'));
     } finally { if (call === sequence.current) setLoading(false); }

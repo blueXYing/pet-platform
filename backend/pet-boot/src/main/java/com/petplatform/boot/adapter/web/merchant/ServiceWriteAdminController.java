@@ -88,14 +88,14 @@ public final class ServiceWriteAdminController {
         data.put("page", result.page());
         data.put("pageSize", result.pageSize());
         data.put("total", result.total());
-        return envelope(data, req);
+        return ok(data, req);
     }
 
     @GetMapping("/{serviceId}")
     Map<String, Object> get(@PathVariable String serviceId, HttpServletRequest req) {
         onlyParameters(req);
         AdminSessionView session = admin(req, "service.review.read");
-        return envelope(
+        return ok(
                 detail(
                         queries.getForReview(
                                 new ServiceReviewDetailQuery(
@@ -122,7 +122,7 @@ public final class ServiceWriteAdminController {
                                 opinion,
                                 serviceAuthorization(session),
                                 adminCommand(req, session)));
-        return envelope(receipt(result), req);
+        return ok(receipt(result), req);
     }
 
     @PostMapping(value = "/{serviceId}/force-offline", consumes = MediaType.APPLICATION_JSON_VALUE)
@@ -141,10 +141,26 @@ public final class ServiceWriteAdminController {
                                 reason,
                                 serviceAuthorization(session),
                                 adminCommand(req, session)));
-        return envelope(receipt(result), req);
+        return ok(receipt(result), req);
     }
 
     // ------------------------------------------------------------------ helpers
+
+    /**
+     * ADMIN_WEB envelope, not the merchant face's {@code envelope(...)}: every admin face emits
+     * message "ok" (HTTP10 §2.8 — clients depend only on {@code code}; the admin web client
+     * gates each envelope on that uniform message). Riding the merchant envelope stranded this
+     * face's responses behind the console's INVALID_RESPONSE gate (FA-6, 2026-10-16).
+     */
+    private static Map<String, Object> ok(Object data, HttpServletRequest req) {
+        Map<String, Object> out = new LinkedHashMap<>();
+        out.put("success", true);
+        out.put("code", "SUCCESS");
+        out.put("message", "ok");
+        out.put("data", data);
+        out.put("traceId", trace(req));
+        return out;
+    }
 
     private static Map<String, Object> receipt(ServiceItemResult r) {
         Map<String, Object> out = new LinkedHashMap<>();

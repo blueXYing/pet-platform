@@ -428,11 +428,15 @@ class ServiceWriteHttpTest {
     Reply reviewList =
         send("GET", "/api/v1/admin/services?status=REVIEWING", null, bearer(admin));
     assertEquals(200, reviewList.status(), reviewList.redacted());
+    // FA-6 (2026-10-16): this ADMIN_WEB face emits the uniform "ok" success message like every
+    // other admin face — the ops web client gates each envelope on it (HTTP10 §2.8: code only).
+    assertEquals("ok", reviewList.envelope().get("message"), reviewList.redacted());
     assertTrue(
         ((List<?>) reviewList.data().get("items")).stream()
             .anyMatch(row -> serviceId.equals(map(row).get("serviceId"))));
     Reply detail = send("GET", "/api/v1/admin/services/" + serviceId, null, bearer(admin));
     assertEquals(200, detail.status(), detail.redacted());
+    assertEquals("ok", detail.envelope().get("message"), detail.redacted());
     assertEquals(0, ((List<?>) detail.data().get("decisions")).size());
     assertEquals(1, ((Number) detail.data().get("submissionNo")).intValue());
     assertNotNull(detail.data().get("slaRemainingMinutes"));

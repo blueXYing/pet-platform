@@ -55,7 +55,14 @@ public class MerchantOrderConfiguration {
             var session=auth.resolveSession(CBearerSessionFilter.bearer(attrs.getRequest()));
             if(!user.equals(session.userId())||!"ACTIVE".equals(session.userStatus()))throw new ApiException(CommonApiCodes.FORBIDDEN,"Account cannot write orders");
         };}
-        @Bean ReservationRefundReleaseApi merchantRefundRelease(DataSource s,SnowflakeIdGenerator ids,ScheduleCapacityGuardApi guard,LateRefundService refunds){
+        /** Same-shape kernel as the contract-63 disposition face's reservationRefundRelease —
+         *  both switches on must yield exactly one bean (FA-4, 2026-10-16): the conditional
+         *  backs off whichever definition loses the registration race; the two definitions
+         *  construct the identical ReservationRefundReleaseApiImpl from the same dependencies,
+         *  so the survivor is behaviorally identical either way (same tie-break as
+         *  merchantRefundPresence/dispositionRefundPresence above). */
+        @Bean @ConditionalOnMissingBean(ReservationRefundReleaseApi.class)
+        ReservationRefundReleaseApi merchantRefundRelease(DataSource s,SnowflakeIdGenerator ids,ScheduleCapacityGuardApi guard,LateRefundService refunds){
             return new ReservationRefundReleaseApiImpl(s,ids,guard,refunds);
         }
         @Bean OrderMerchantRefundProjectionConsumer merchantRefundProjection(DataSource s,SnowflakeIdGenerator ids,ScheduleCapacityGuardApi guard,

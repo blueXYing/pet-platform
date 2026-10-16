@@ -28,7 +28,8 @@ export default function TradeRefundDetailPage({ client, onAuthLost }: { client: 
       .then(data => { if (call === sequence.current) setDetail(data); })
       .catch((caught: unknown) => {
         if (call !== sequence.current) return;
-        if (caught instanceof TradeQueryFailure && ['UNAUTHENTICATED', 'FORBIDDEN'].includes(caught.code)) { onAuthLost(); return; }
+        if (caught instanceof TradeQueryFailure && caught.code === 'UNAUTHENTICATED') { onAuthLost(); return; }
+        if (caught instanceof TradeQueryFailure && caught.code === 'FORBIDDEN') { setError('权限不足，无法执行该操作'); return; }
         setError(caught instanceof TradeQueryFailure ? `退款单详情加载失败（${caught.code}）${caught.traceId ? ` · 追踪 ${caught.traceId}` : ''}` : '退款单详情加载失败，请重试。');
       })
       .finally(() => { if (call === sequence.current) setLoading(false); });
@@ -44,7 +45,8 @@ export default function TradeRefundDetailPage({ client, onAuthLost }: { client: 
       const data = await client.getRefund(refundOrderId);
       if (call === sequence.current) setDetail(data);
     } catch (caught) {
-      if (caught instanceof TradeQueryFailure && ['UNAUTHENTICATED', 'FORBIDDEN'].includes(caught.code)) { onAuthLost(); return; }
+      if (caught instanceof TradeQueryFailure && caught.code === 'UNAUTHENTICATED') { onAuthLost(); return; }
+      if (caught instanceof TradeQueryFailure && caught.code === 'FORBIDDEN') { setError('权限不足，无法执行该操作'); return; }
       setActionError(caught instanceof TradeQueryFailure ? `操作失败（${caught.code}）${caught.traceId ? ` · 追踪 ${caught.traceId}` : ''}` : '操作失败，请重试。');
     } finally { setBusy(false); }
   }

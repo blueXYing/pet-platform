@@ -37,7 +37,8 @@ public class AdminAuthSecurityConfiguration {
       @Value("${pet.review.appeal.http.enabled:false}") boolean reviewAppealHttpEnabled,
       @Value("${pet.points.task.http.enabled:false}") boolean pointsTaskHttpEnabled,
       @Value("${pet.admin.trade.http.enabled:false}") boolean adminTradeHttpEnabled,
-      @Value("${pet.admin.governance.http.enabled:false}") boolean adminGovernanceHttpEnabled)
+      @Value("${pet.admin.governance.http.enabled:false}") boolean adminGovernanceHttpEnabled,
+      @Value("${pet.admin.ops.http.enabled:false}") boolean adminOpsHttpEnabled)
       throws Exception {
     http.securityMatcher("/api/v1/admin/**")
         .csrf(c -> c.disable())
@@ -87,6 +88,18 @@ public class AdminAuthSecurityConfiguration {
                   "/api/v1/admin/trade/refunds", "/api/v1/admin/trade/refunds/*",
                   "/api/v1/admin/trade/verifications", "/api/v1/admin/trade/verifications/*")
                   .permitAll();
+              // Contract-63 v0.2 disposal writes (user ruling 2026-10-15, doc 33): the four
+              // high-privilege POST routes ride the SAME face switch and kernel re-proofs —
+              // one terminal X-Request-Id plus the refund.channel.query / refund.retry /
+              // order.abnormal.close / merchant.disable action codes and resource scope are
+              // enforced inside each kernel's own commit (FA-1: the chain previously denied
+              // every disposal POST via anyRequest().denyAll(), an HTTP dead face).
+              a.requestMatchers(HttpMethod.POST,
+                  "/api/v1/admin/refunds/*/channel-query",
+                  "/api/v1/admin/refunds/*/retry",
+                  "/api/v1/admin/orders/*/abnormal-close",
+                  "/api/v1/admin/merchants/*/disable")
+                  .permitAll();
             }
             if (adminGovernanceHttpEnabled) {
               // Platform governance read face (contract 64 / ADM-001 gap slice): GET-only
@@ -101,6 +114,42 @@ public class AdminAuthSecurityConfiguration {
                   "/api/v1/admin/governance/schedule/windows",
                   "/api/v1/admin/governance/schedule/staff-windows",
                   "/api/v1/admin/governance/schedule/reservations")
+                  .permitAll();
+            }
+            if (adminOpsHttpEnabled) {
+              // Platform ops console face (contract 65 / A-005): encyclopedia governance, coupon
+              // template/instance management plus the grant/void channels, points ledger and the
+              // read-only runtime switch view. The ADMIN_WEB Bearer plus the encyclopedia.* /
+              // breed.* / coupon.template.* / coupon.instance.* / points.ledger.read /
+              // system.parameter.read action codes are enforced by the filter and re-checked by
+              // each kernel per call (FA-3: the chain previously denied every ops route).
+              a.requestMatchers(HttpMethod.GET,
+                  "/api/v1/admin/encyclopedia/categories",
+                  "/api/v1/admin/encyclopedia/breeds",
+                  "/api/v1/admin/encyclopedia/breeds/*",
+                  "/api/v1/admin/coupon-templates",
+                  "/api/v1/admin/coupon-templates/*",
+                  "/api/v1/admin/coupon-templates/*/trial-calculation",
+                  "/api/v1/admin/coupon-instances",
+                  "/api/v1/admin/coupon-instances/*",
+                  "/api/v1/admin/points/ledger",
+                  "/api/v1/admin/settings/runtime")
+                  .permitAll();
+              a.requestMatchers(HttpMethod.PUT,
+                  "/api/v1/admin/encyclopedia/categories/*",
+                  "/api/v1/admin/encyclopedia/breeds/*",
+                  "/api/v1/admin/coupon-templates/*")
+                  .permitAll();
+              a.requestMatchers(HttpMethod.POST,
+                  "/api/v1/admin/encyclopedia/categories/*/enable",
+                  "/api/v1/admin/encyclopedia/categories/*/disable",
+                  "/api/v1/admin/encyclopedia/breeds/*/publish",
+                  "/api/v1/admin/encyclopedia/breeds/*/offline",
+                  "/api/v1/admin/coupon-templates",
+                  "/api/v1/admin/coupon-templates/*/enable",
+                  "/api/v1/admin/coupon-templates/*/offline",
+                  "/api/v1/admin/coupon-instances/grant",
+                  "/api/v1/admin/coupon-instances/*/void")
                   .permitAll();
             }
             a.requestMatchers(

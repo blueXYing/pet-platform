@@ -17,7 +17,8 @@ public record AdminActionCheckQuery(
     if (sessionGeneration < 0) throw new IllegalArgumentException("Invalid session generation");
     if (actionCode == null
         || actionCode.length() > 100
-        || !actionCode.matches("[a-z][a-z0-9]*(\\.[a-z][a-z0-9]*)+"))
+        || !actionCode.matches(
+            "[a-z][a-z0-9]*(-[a-z0-9]+)*(\\.[a-z][a-z0-9]*(-[a-z0-9]+)*)+"))
       throw new IllegalArgumentException("Invalid action code");
     Objects.requireNonNull(resource, "resource");
     if (purpose == null || !purpose.matches("[A-Z][A-Z0-9_]{0,63}"))

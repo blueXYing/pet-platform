@@ -27,10 +27,14 @@ public final class AdminPermissionEvaluator {
    * The four disposal codes are registered on behalf of the contract-63 v0.2 disposal slice
    * (user ruling 2026-10-15, doc 33; AUTH-001 matrix rows 4/7/8): refund.channel.query,
    * refund.retry, order.abnormal.close, merchant.disable. Proposal spellings
-   * "refund.channel-query" / "order.abnormal-close" use hyphens; the AUTH action-code lexicon
-   * (AdminActionCheckQuery) only admits lowercase dotted segments, so the deployed spelling is
-   * the dotted correction — same implementation-phase spelling correction as
-   * service.force.offline, PR-disclosed. The ten ops-console codes are registered on behalf of
+   * "refund.channel-query" / "order.abnormal-close" use hyphens; at implementation time the
+   * AUTH action-code lexicon (AdminActionCheckQuery) only admitted lowercase dotted segments,
+   * so the deployed spelling was the dotted correction — same implementation-phase spelling
+   * correction as service.force.offline, PR-disclosed. On 2026-10-16 (FA-5 fix) the lexicon
+   * widened to admit hyphenated inner segments — the AUTH-001 matrix spellings
+   * order.status-log.read / order.verification-log.read (contract-63 read face) validate
+   * directly now; the earlier dotted corrections stay the deployed spellings. The ten
+   * ops-console codes are registered on behalf of
    * the contract-65 operations governance slice (A-005, matrix rows 21/13/14/15/23):
    * encyclopedia.read, encyclopedia.manage, encyclopedia.publish, breed.read, breed.manage
    * (row 21, dotted spellings as proposed), coupon.template.read, coupon.template.manage,
