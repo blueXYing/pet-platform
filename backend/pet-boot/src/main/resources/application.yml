@@ -236,9 +236,12 @@ pet:
         enabled: true
     ops:
       http:
-        # Contract-65 ops console face: default ON; assembles only with
-        # pet.auth.admin.enabled, otherwise silently inert.
-        enabled: true
+        # Contract-65 ops console face: default OFF — "open after fix" (35号 B-class,
+        # E2E finding FA-2): the controller's by-type injection of the encyclopedia/coupon
+        # dual-face APIs is ambiguous (one kernel, two bean names, no qualifier), so any
+        # boot with an admin session fails today; FA-1/FA-3 add unfired security-chain
+        # permits. Opens together with the 65号 wiring fix.
+        enabled: false
   auth:
     c:
       enabled: ${AUTH_C_ENABLED:false}
