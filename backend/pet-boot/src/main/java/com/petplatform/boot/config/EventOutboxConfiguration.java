@@ -62,7 +62,7 @@ public class EventOutboxConfiguration {
 
     // Role W wiring (2026-09-23): the consumer class from PR#69 is now on the classpath, so the
     // reserved registration lands here, gated by pet.service.review.notifications-enabled
-    // (default off) exactly like the merchant application consumer above. The consumer is
+    // (default ON per the 2026-10-16 ruling, doc 35) exactly like the merchant application consumer above. The consumer is
     // self-contained (recipient = event ownerUserId, ARCH-002): only its own store and the
     // shared Snowflake/guard beans are needed. With the switch off, pending ServiceReviewedEvent
     // rows keep waiting in the outbox (dispatched once enabled).
@@ -81,7 +81,7 @@ public class EventOutboxConfiguration {
     }
 
     // Contract-54 NTF slice (2026-10-06): the staff invitation/member lifecycle station
-    // notifications, gated by their own default-off switch exactly like the two review consumers
+    // notifications, gated by their own switch (default ON per doc 35) exactly like the two review consumers
     // above. Both consumers share one notification store shape; with the switch off the pending
     // events keep waiting in the outbox (dispatched once enabled).
     @Bean
@@ -115,7 +115,7 @@ public class EventOutboxConfiguration {
     }
 
     // Contract-54 NTF grant slice (2026-10-07 ruling): grant-actions / revoke-store station
-    // notifications ride the same default-off switch and store shape as the two staff consumers
+    // notifications ride the same switch (default ON per doc 35) and store shape as the two staff consumers
     // above; with the switch off the pending grant events keep waiting in the outbox.
     @Bean
     @ConditionalOnProperty(

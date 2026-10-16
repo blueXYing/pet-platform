@@ -9,7 +9,7 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
 /**
- * Contract 60 §7 refund clawback (PTS-002, CCR-POINTS-ORDER-001), default OFF — the same
+ * Contract 60 §7 refund clawback (PTS-002, CCR-POINTS-ORDER-001), default ON per the 2026-10-16 ruling (doc 35) — the same
  * assembly shape as the coupon restore consumer: the consumer is dispatched by the outbox once
  * both switches are on; with the switch off, pending {@code RefundSucceededEvent.v1} rows keep
  * waiting (dispatched once enabled). Requires a production Snowflake bean (PLAT-002, the same

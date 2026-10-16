@@ -57,7 +57,7 @@ public class VerificationCredentialConfiguration {
    };
   }
   /**
-   * K1 v0.2 staff-aware authority, default off. OWNER is tried first (unchanged semantics);
+   * K1 v0.2 staff-aware authority, default ON per the 2026-10-16 ruling (doc 35). OWNER is tried first (unchanged semantics);
    * a non-owner session must pass the contract-52 member action gate (merchant.order.verify
    * only, FROZEN/OFFLINE fail closed per D5) and resolve a traceable grant staffId, else the
    * command is refused. Everything re-reads inside the caller's guarded transaction.

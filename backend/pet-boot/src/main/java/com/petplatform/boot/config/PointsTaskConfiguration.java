@@ -22,7 +22,7 @@ import org.springframework.context.annotation.Configuration;
 
 /**
  * Contract 58 runtime (CCR-POINTS-TASK-001): sign-in + referral earn kernel plus the
- * ops-configured grant amounts, default off. Hard requirements: a production Snowflake bean
+ * ops-configured grant amounts, default ON per the 2026-10-16 ruling (doc 35). Hard requirements: a production Snowflake bean
  * (PLAT-002, the same constraint pet.auth.c carries) and the SQL58/SQL06 §9/SQL14 tables in the
  * connected database — no migration is executed here. The cross-domain facts adapter reads the
  * order first-payment instant and the user existence/nickname through the API modules only

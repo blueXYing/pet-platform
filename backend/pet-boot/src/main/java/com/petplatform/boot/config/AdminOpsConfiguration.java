@@ -27,7 +27,7 @@ import org.springframework.context.annotation.Configuration;
 
 /**
  * Contract-65 runtime (A-005 运营治理台二期): the platform encyclopedia/coupon/points kernels
- * behind {@code pet.admin.ops.http.enabled}, default off. The controller beans inject the
+ * behind {@code pet.admin.ops.http.enabled}, default ON per the 2026-10-16 ruling (doc 35); it assembles only with pet.auth.admin.enabled. The controller beans inject the
  * kernels directly, so http=true with a kernel missing fails bean resolution at startup — the
  * same fail-fast shape as the contract-63 trade face. Each kernel re-proves the current
  * session, action code and resource scope through its module-local authorization port, adapted

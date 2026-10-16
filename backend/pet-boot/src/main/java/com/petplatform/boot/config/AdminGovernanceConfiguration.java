@@ -22,7 +22,7 @@ import org.springframework.context.annotation.Configuration;
 
 /**
  * Contract-64 runtime (ADM-001 gap slice / A-002 phase 2): the merchant and schedule
- * governance read kernels behind {@code pet.admin.governance.http.enabled}, default off. The
+ * governance read kernels behind {@code pet.admin.governance.http.enabled}, default ON per the 2026-10-16 ruling (doc 35); it assembles only with pet.auth.admin.enabled. The
  * controller beans inject the kernels directly, so http=true with a kernel missing fails bean
  * resolution at startup — the same fail-fast shape as the contract-63 trade slice. Each
  * kernel re-proves the current session, action code and resource scope through its
