@@ -39,7 +39,8 @@ export default function MerchantLedgerDetailPage({ client, trade, canDisable, on
       .then(data => { if (call === sequence.current) setDetail(data); })
       .catch((caught: unknown) => {
         if (call !== sequence.current) return;
-        if (caught instanceof GovernanceFailure && ['UNAUTHENTICATED', 'FORBIDDEN'].includes(caught.code)) { onAuthLost(); return; }
+        if (caught instanceof GovernanceFailure && caught.code === 'UNAUTHENTICATED') { onAuthLost(); return; }
+        if (caught instanceof GovernanceFailure && caught.code === 'FORBIDDEN') { setError('权限不足，无法执行该操作'); return; }
         setError(caught instanceof GovernanceFailure && caught.code === 'COMMON_NOT_FOUND' ? '商家不存在（或不在授权范围内）' : governanceFailureText(caught, '商家详情查询失败'));
       })
       .finally(() => { if (call === sequence.current) setLoading(false); });

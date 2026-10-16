@@ -36,7 +36,8 @@ export default function TradeRefundListPage({ client, onAuthLost }: { client: Tr
       setApplied(next);
     } catch (caught) {
       if (call !== sequence.current) return;
-      if (caught instanceof TradeQueryFailure && ['UNAUTHENTICATED', 'FORBIDDEN'].includes(caught.code)) { onAuthLost(); return; }
+      if (caught instanceof TradeQueryFailure && caught.code === 'UNAUTHENTICATED') { onAuthLost(); return; }
+      if (caught instanceof TradeQueryFailure && caught.code === 'FORBIDDEN') { setError('权限不足，无法执行该操作'); return; }
       if (caught instanceof TradeQueryFailure && caught.code === 'STALE_CONTEXT') return;
       setError(caught instanceof TradeQueryFailure ? `退款单查询失败（${caught.code}）${caught.traceId ? ` · 追踪 ${caught.traceId}` : ''}` : '退款单查询失败，请重试。');
     } finally { if (call === sequence.current) setLoading(false); }

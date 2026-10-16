@@ -7,12 +7,8 @@ import com.petplatform.admin.api.dto.AdminResourceScope;
 import com.petplatform.admin.api.query.AdminAuthorizationQueryApi;
 import com.petplatform.common.ApiException;
 import com.petplatform.common.CommonApiCodes;
-import com.petplatform.community.api.command.AdminEncyclopediaCommandApi;
-import com.petplatform.community.api.query.AdminEncyclopediaQueryApi;
 import com.petplatform.community.biz.apiimpl.AdminEncyclopediaApiImpl;
 import com.petplatform.community.biz.application.AdminEncyclopediaAuthorizationPort.EncyclopediaPort;
-import com.petplatform.coupon.api.command.AdminCouponCommandApi;
-import com.petplatform.coupon.api.query.AdminCouponQueryApi;
 import com.petplatform.coupon.biz.apiimpl.AdminCouponApiImpl;
 import com.petplatform.coupon.biz.application.AdminCouponAuthorizationPort.CouponPort;
 import com.petplatform.points.api.query.AdminPointsQueryApi;
@@ -43,8 +39,14 @@ import org.springframework.context.annotation.Configuration;
     havingValue = "true")
 public class AdminOpsConfiguration {
 
+  /**
+   * One kernel bean per module, exposed under its implementation type (the ServiceWrite slice
+   * precedent): the impl serves the query and command faces through two interfaces, so two
+   * separately declared beans resolved ambiguous for the controller's constructor (2026-10-16
+   * ops-face boot failure, FA-2). Both controller params resolve to this single instance.
+   */
   @Bean
-  AdminEncyclopediaQueryApi adminEncyclopediaQueryApi(
+  AdminEncyclopediaApiImpl adminEncyclopediaApi(
       DataSource source,
       ObjectProvider<AdminAuthorizationQueryApi> authorization,
       ObjectProvider<java.time.Clock> clock,
@@ -56,14 +58,7 @@ public class AdminOpsConfiguration {
   }
 
   @Bean
-  AdminEncyclopediaCommandApi adminEncyclopediaCommandApi(
-      AdminEncyclopediaQueryApi queryKernel) {
-    // One kernel serves both faces; the query bean already proved the full dependency set.
-    return (AdminEncyclopediaCommandApi) queryKernel;
-  }
-
-  @Bean
-  AdminCouponQueryApi adminCouponQueryApi(
+  AdminCouponApiImpl adminCouponApi(
       DataSource source,
       ObjectProvider<AdminAuthorizationQueryApi> authorization,
       ObjectProvider<java.time.Clock> clock,
@@ -72,11 +67,6 @@ public class AdminOpsConfiguration {
         source, requireIds(ids),
         new CouponOpsAuthorizationAdapter(requireAuthorization(authorization)),
         clock.getIfAvailable(java.time.Clock::systemUTC));
-  }
-
-  @Bean
-  AdminCouponCommandApi adminCouponCommandApi(AdminCouponQueryApi couponKernel) {
-    return (AdminCouponCommandApi) couponKernel;
   }
 
   @Bean

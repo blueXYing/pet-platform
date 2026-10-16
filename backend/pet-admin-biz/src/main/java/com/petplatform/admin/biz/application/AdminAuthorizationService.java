@@ -78,7 +78,15 @@ public final class AdminAuthorizationService implements AdminAuthorizationQueryA
             // entry checks; merchant-scoped reads re-check the merchant row with the scope.
             || "merchant.read".equals(query.actionCode())
             || "schedule.read".equals(query.actionCode())
-            || "merchant.staff.read".equals(query.actionCode()))
+            || "merchant.staff.read".equals(query.actionCode())
+            // Contract-65 ops console lists (A-005): the four collection read faces re-prove
+            // their session through this owner on every list call; per-resource ops reads run
+            // through check() which carries no catalog gate (FA-3 second layer: without these
+            // entries the ops lists answered 400 behind the chain permit).
+            || "encyclopedia.read".equals(query.actionCode())
+            || "coupon.template.read".equals(query.actionCode())
+            || "coupon.instance.read".equals(query.actionCode())
+            || "points.ledger.read".equals(query.actionCode()))
         || query.phase() != AdminActionCheckQuery.CheckPhase.READ_RESULT)
       throw AdminAuthFailure.invalid();
     return checkCurrent(

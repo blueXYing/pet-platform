@@ -26,7 +26,8 @@ export default function ServiceReviewListPage({ client, onAuthLost }: { client: 
     } catch (caught) {
       if (call !== sequence.current) return;
       setLoading(false);
-      if (caught instanceof ServiceReviewFailure && ['UNAUTHENTICATED', 'FORBIDDEN'].includes(caught.code)) { onAuthLost(); return; }
+      if (caught instanceof ServiceReviewFailure && caught.code === 'UNAUTHENTICATED') { onAuthLost(); return; }
+      if (caught instanceof ServiceReviewFailure && caught.code === 'FORBIDDEN') { setError('权限不足，无法执行该操作'); return; }
       if (caught instanceof ServiceReviewFailure && caught.code === 'STALE_CONTEXT') return;
       setError(caught instanceof ServiceReviewFailure ? `服务查询失败（${caught.code}）${caught.traceId ? ` · 追踪 ${caught.traceId}` : ''}` : '服务查询失败，请重试。');
     }
