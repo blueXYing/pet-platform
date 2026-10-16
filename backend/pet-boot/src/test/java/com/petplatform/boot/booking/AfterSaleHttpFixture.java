@@ -90,7 +90,11 @@ final class AfterSaleHttpFixture implements AutoCloseable {
                     "pet.verification.credential","pet.verification.completion","pet.private-assets","pet.aftersale","pet.aftersale.http"))
                 properties.put(flag+".enabled",true);
             for(String flag:List.of("pet.aftersale.worker","pet.aftersale.refund","pet.order.auto-confirm.worker","pet.order.expiry.worker",
-                    "pet.order.merchant.worker","pet.refund.application.worker","pet.payment.dispatch","pet.outbox"))
+                    "pet.order.merchant.worker","pet.refund.application.worker","pet.payment.dispatch","pet.outbox",
+                    // Ruling 35 (2026-10-16) defaults the outbox-dispatched consumers ON; this
+                    // fixture pins pet.outbox.enabled=false, so close them explicitly (their
+                    // consume-guard bean only exists when the outbox assembles).
+                    "pet.coupon.lifecycle","pet.points.refund-clawback"))
                 properties.put(flag+".enabled",false);
             for(String auth:List.of("c","admin")){
                 properties.put("pet.auth."+auth+".redis-host",redisHost);properties.put("pet.auth."+auth+".redis-port",redisPort);
