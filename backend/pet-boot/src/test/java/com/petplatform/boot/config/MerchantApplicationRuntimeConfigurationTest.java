@@ -8,12 +8,16 @@ import org.junit.jupiter.api.Test;
 import org.springframework.boot.test.context.runner.ApplicationContextRunner;
 
 class MerchantApplicationRuntimeConfigurationTest {
-  private final ApplicationContextRunner context =
+
+  private static final ApplicationContextRunner context =
       new ApplicationContextRunner()
-          .withUserConfiguration(MerchantApplicationRuntimeConfiguration.class);
+          .withUserConfiguration(MerchantApplicationRuntimeConfiguration.class)
+          // Ruling 35 (2026-10-16) flips the platform capability switches to default ON;
+          // the fail-closed assembly checks close the switch explicitly.
+          .withPropertyValues("pet.merchant.application.enabled=false");
 
   @Test
-  void domainAssemblyIsDisabledByDefaultWithoutStartingAnyDependencies() {
+  void explicitOffKeepsDomainAssemblyUnassembledWithoutStartingAnyDependencies() {
     context.run(
         ctx -> {
           assertNull(ctx.getStartupFailure());

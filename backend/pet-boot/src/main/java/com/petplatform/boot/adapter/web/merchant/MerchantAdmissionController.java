@@ -15,7 +15,7 @@ import org.springframework.web.bind.annotation.*;
 /** GET /api/v1/merchant/auth/admission (CCR-W2-ADMISSION-001 §3): re-checked entry facts. */
 @RestController
 @RequestMapping(value = "/api/v1/merchant/auth/admission", produces = MediaType.APPLICATION_JSON_VALUE)
-@ConditionalOnProperty(prefix = "pet.merchant.application", name = "enabled", havingValue = "true")
+@ConditionalOnProperty(prefix = "pet.merchant.application", name = "enabled", havingValue = "true", matchIfMissing = true)
 public final class MerchantAdmissionController {
   private final MerchantAdmissionApiImpl admission;
 

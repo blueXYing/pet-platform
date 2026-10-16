@@ -39,7 +39,7 @@ import org.springframework.web.bind.annotation.RestController;
  */
 @RestController
 @RequestMapping(value = "/api/v1/admin/services", produces = MediaType.APPLICATION_JSON_VALUE)
-@ConditionalOnProperty(prefix = "pet.service.command", name = "enabled", havingValue = "true")
+@ConditionalOnProperty(prefix = "pet.service.command", name = "enabled", havingValue = "true", matchIfMissing = true)
 public final class ServiceWriteAdminController {
 
     private static final Set<String> STATUSES =

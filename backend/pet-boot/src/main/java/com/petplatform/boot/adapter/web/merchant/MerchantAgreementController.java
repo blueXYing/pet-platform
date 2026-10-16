@@ -15,7 +15,7 @@ import org.springframework.web.bind.annotation.*;
 
 @RestController
 @RequestMapping(value = "/api/v1/merchant/agreement", produces = MediaType.APPLICATION_JSON_VALUE)
-@ConditionalOnProperty(prefix = "pet.merchant.application", name = "enabled", havingValue = "true")
+@ConditionalOnProperty(prefix = "pet.merchant.application", name = "enabled", havingValue = "true", matchIfMissing = true)
 public final class MerchantAgreementController {
   private final MerchantAgreementApiImpl agreements;
 

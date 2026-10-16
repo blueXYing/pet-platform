@@ -47,6 +47,12 @@ logging:
 # migrations, session keys). Missing credentials fail closed (503) by design; see
 # docs/08-engineering/21-部署开关组合清单-v1.0.md for the full dependency matrix.
 pet:
+  outbox:
+    # Transactional Outbox + Dispatcher (13号): default ON per the 2026-10-16 ruling — the
+    # coupon restore, points clawback and station-notification consumers all ride it. Needs
+    # the production Snowflake bean (pet.auth.admin.enabled) and the outbox tables; events
+    # with no registered consumer wait durably (the no-consumer lane never claims rows).
+    enabled: true
   aftersale:
     enabled: false
     refund:
@@ -68,13 +74,13 @@ pet:
       enabled: true
     command:
       # SCH-004 merchant schedule write side (service windows, staff availability windows,
-      # capabilities, workbench reads). Default off; enabling additionally requires the
-      # reservation protection foundation beans (pet.schedule.protection.enabled) and, for
-      # the HTTP routes, pet.schedule.command.http.enabled. The V29 migration is a separate
-      # explicit opt-in (migration-enabled + migration-database=schw001_*).
-      enabled: false
+      # capabilities, workbench reads). Default ON per the 2026-10-16 ruling; requires the
+      # reservation protection foundation beans (pet.schedule.protection.enabled, default ON
+      # below). The V29 migration stays a separate explicit opt-in (migration-enabled +
+      # migration-database=schw001_*).
+      enabled: true
       http:
-        enabled: false
+        enabled: true
       migration-enabled: false
       migration-database:
   refund:
@@ -126,13 +132,18 @@ pet:
       enabled: true
   merchant:
     application:
-      # Merchant onboarding itself stays behind pet.merchant.application.enabled (it needs the
-      # production Snowflake bean and open-city configuration); its station-notification
-      # consumer defaults ON so approved/reviewed events dispatch as soon as the outbox runs.
+      # Merchant onboarding (C1): default ON per the 2026-10-16 ruling. Needs the production
+      # Snowflake bean and the admin authorization owner (deployment base); the open-city
+      # catalog defaults to an empty table (boot-safe, no open cities until configured).
+      enabled: true
+      # Station-notification consumer defaults ON so approved/reviewed events dispatch as
+      # soon as the outbox runs.
       notifications-enabled: true
     staff:
-      # Contract-54 invitation/member/grant station notifications: default ON (dispatched by
-      # the outbox once pet.outbox.enabled=true).
+      # Merchant staff profile writes (35号): default ON; audit facts / protection ports
+      # missing at runtime answer 503 fail-closed. The Contract-54 invitation/member/grant
+      # station notifications ride the same prefix (dispatched by the outbox).
+      enabled: true
       notifications-enabled: true
     staff-identity:
       # Contract 52 STAFF identity read kernel: default ON per the 2026-10-16 ruling.
@@ -144,6 +155,17 @@ pet:
       # opt-in (migration-enabled/migration-database, isolated staffb001_ databases only).
       enabled: ${STAFF_MEMBER_ENABLED:false}
   order:
+    creation:
+      # 38号 atomic booking kernel: default ON per the 2026-10-16 ruling (needs the
+      # production Snowflake bean and the reservation protection foundation at boot; address
+      # / remark encryption without pet.merchant.protection.enabled answers 503 fail-closed).
+      enabled: true
+    expiry:
+      # 39号 reservation hold expiry: default ON; the durable worker (10-minute hold
+      # auto-close) rides the async_task infrastructure tables.
+      enabled: true
+      worker:
+        enabled: true
     reschedule:
       enabled: false
       http:
@@ -162,6 +184,22 @@ pet:
         enabled: false
       inspection:
         enabled: false
+  coupon:
+    lifecycle:
+      # Contract-61 coupon lifecycle kernel: default ON per the 2026-10-16 ruling (freeze
+      # joins the 38 create transaction, consume rides the 41 payment result, the restore
+      # consumer rides the outbox).
+      enabled: true
+  points:
+    task:
+      # Contract-58 sign-in + referral earn kernel: default ON (needs the production
+      # Snowflake bean; cross-domain facts reads answer 503 fail-closed when missing).
+      enabled: true
+      http:
+        enabled: true
+    refund-clawback:
+      # PTS-002 refund clawback consumer: default ON (dispatched by the outbox).
+      enabled: true
   private-assets:
     enabled: ${PRIVATE_ASSETS_ENABLED:false}
   service:
@@ -169,11 +207,10 @@ pet:
       # C-end service catalog read: default ON per the 2026-10-16 ruling (boot-safe).
       enabled: true
     command:
-      # SCH/SVC write side stays behind its kernel switch: it requires the production
-      # Snowflake bean (pet.auth.admin.enabled) at boot.
-      enabled: false
-      http:
-        enabled: false
+      # Merchant service write side (review/on-shelf): default ON per the 2026-10-16 ruling
+      # (needs the production Snowflake bean at boot); the real S3 cover presigner stays
+      # behind pet.service.cover-signing.enabled and answers 503 fail-closed without it.
+      enabled: true
       migration-enabled: false
       migration-database:
     review:

@@ -117,8 +117,11 @@ class ScheduleSelectionHttpContractTest {
     }
 
     @Test
-    void expiryWorkerIsAbsentWithoutExplicitEnablement() {
+    void expiryWorkerIsAbsentWhenExplicitlyDisabled() {
+        // Ruling 35 (2026-10-16) flips the platform capability switches to default ON; the
+        // fail-closed check closes the switch explicitly.
         new ApplicationContextRunner().withUserConfiguration(BookingExpiryConfiguration.class)
+                .withPropertyValues("pet.order.expiry.worker.enabled=false")
                 .run(context -> assertFalse(context.containsBean("bookingExpiryWorker")));
     }
 
