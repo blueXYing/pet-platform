@@ -21,6 +21,32 @@ public interface CouponAdminMapper {
 
     AdminTemplateEntity selectTemplateById(@Param("templateId") long templateId);
 
+    /** Row-locked read for the grant guard (status/window checked under the same lock). */
+    AdminTemplateEntity selectTemplateForUpdate(@Param("templateId") long templateId);
+
+    /** Grant write: one AVAILABLE instance inheriting the template validity window. */
+    int insertInstance(
+            @Param("id") long id,
+            @Param("templateId") long templateId,
+            @Param("userId") long userId,
+            @Param("originalExpireAt") LocalDateTime originalExpireAt,
+            @Param("expireAt") LocalDateTime expireAt,
+            @Param("now") LocalDateTime now);
+
+    /** Grant audit: the append-only ISSUE ledger row (uk request_id). */
+    int insertIssueLedger(
+            @Param("id") long id,
+            @Param("instanceId") long instanceId,
+            @Param("userId") long userId,
+            @Param("requestId") String requestId,
+            @Param("remark") String remark,
+            @Param("now") LocalDateTime now);
+
+    /** Grant drawdown: issued_count is the only template counter the grant face maintains. */
+    int incrementIssuedCount(
+            @Param("templateId") long templateId,
+            @Param("now") LocalDateTime now);
+
     List<AdminInstanceEntity> selectInstances(
             @Param("templateId") Long templateId,
             @Param("status") String status,

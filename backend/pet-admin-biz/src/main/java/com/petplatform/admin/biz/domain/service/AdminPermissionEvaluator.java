@@ -39,7 +39,10 @@ public final class AdminPermissionEvaluator {
    * (row 15 family, ledger supervision read) and system.parameter.read (row 23 proposal
    * "system-parameter.read" dotted-corrected). Row 14 void/return and row 23 configure stay
    * unregistered — no SSOT authorization exists for instance-status writes or runtime
-   * configuration (CCR-ADM-A005-OPS-001).
+   * configuration (CCR-ADM-A005-OPS-001). The eleventh ops-console code coupon.instance.grant
+   * is registered on behalf of the contract-65 §4.3 grant channel slice (user ruling
+   * 2026-10-16, CCR-CPN-GRANT-001): one AVAILABLE instance per terminal requestId from an
+   * ACTIVE template; row 14 void/return stay unregistered.
    */
   public static final Set<String> DEPLOYED_ACTIONS =
       Set.of("merchant.application.read", "merchant.application.decide",
@@ -53,6 +56,7 @@ public final class AdminPermissionEvaluator {
           "encyclopedia.read", "encyclopedia.manage", "encyclopedia.publish",
           "breed.read", "breed.manage",
           "coupon.template.read", "coupon.template.manage", "coupon.instance.read",
+          "coupon.instance.grant",
           "points.ledger.read", "system.parameter.read");
 
   public static List<String> evaluate(
