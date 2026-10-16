@@ -116,10 +116,7 @@ class RefundApplyHttpAcceptanceTest {
 
     /** Post-service window: merchant confirmation with a 24h deadline; REJECTED may re-apply. */
     @Test void postServiceMerchantWindowReceiptAndRejectedRetry() throws Exception {
-        try (var f = new AfterSaleHttpFixture(Map.of("pet.refund.application.http.enabled", true,
-                // Ruling 35 (2026-10-16) defaults pre-service auto-approval ON (product hard
-                // rule); this negative pins the historical fail-closed lane explicitly.
-                "pet.refund.pre-service-auto-refund.enabled", false))) {
+        try (var f = new AfterSaleHttpFixture(Map.of("pet.refund.application.http.enabled", true))) {
             String order = f.verifiedOrder();
             String path = PATH(order);
 
@@ -158,7 +155,10 @@ class RefundApplyHttpAcceptanceTest {
 
     /** Fail-closed admission: outside both windows is 409; the unflagged pre-service route is 503. */
     @Test void outOfWindowAdmissionAndSwitchOffPreServiceStayFailClosed() throws Exception {
-        try (var f = new AfterSaleHttpFixture(Map.of("pet.refund.application.http.enabled", true))) {
+        try (var f = new AfterSaleHttpFixture(Map.of("pet.refund.application.http.enabled", true,
+                // Ruling 35 (2026-10-16) defaults pre-service auto-approval ON (product hard
+                // rule); this negative pins the historical fail-closed lane explicitly.
+                "pet.refund.pre-service-auto-refund.enabled", false))) {
             // Paid but not yet merchant-confirmed: neither §3.9 window pair — 49号 REFUND_NOT_ELIGIBLE.
             String unconfirmed = f.ordinary.t.r.f.paid();
             assertError(f.send("POST", PATH(unconfirmed), body(), f.buyerToken), 409, "REFUND_NOT_ELIGIBLE");
