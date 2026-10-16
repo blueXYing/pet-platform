@@ -96,8 +96,8 @@ S1 每日一次（UTC+8 自然日）；S2 固定面额无连签递增；S3 连�
 
 ### 7.1 赚取（PTS-001，订单奖励绑定）
 
-- 事实口径：首笔成功支付 = `OrderQueryApi.firstPaidAt`（07号 §7.1 增补，MIN(paid_at)，payment_status='PAID'，含迟到支付标记为 PAID 的订单）；首笔支付订单标识经 `listMyOrders` 同主体只读分页解析（boot 适配器，防御上限 5000 单，超出 fail-closed 503），订单模块零改动（ARCH-002：事件载荷无 userId、事件路径禁读订单持久层——事件驱动自动发放结构性不可达，A2 显式领取保留，领取即绑单）。
-- 领取 `cClaimPointsReward(FIRST_ORDER)`：仍要求 firstPaidAt 非空；成立则一次发放 `firstOrderPoints`（运营配置，即时读），台账 biz_type=`ORDER_REWARD`、order_id=首笔支付订单、biz_id=award 行 id；`points_task_award` 终局行不变（uk user+code，每用户一次 ⇒ 每订单至多一次）。首单 fact 与订单解析分叉时 fail-closed 503。
+- 事实口径：首笔成功支付 = `OrderQueryApi.firstPaidAt`（07号 §7.1 增补，MIN(paid_at)，payment_status='PAID'，含迟到支付标记为 PAID 的订单）；首笔支付订单标识自 2026-10-16 起改读 order 域自有 O(1) 事实端口 `OrderFirstPaidFactsApi.firstPaidOrder`（07号 §7.1.1 增补：最早 paid_at、最小规范 id 决胜，单条索引行读；CCR-POINTS-ORDER-001 收口，替代原 PR#170 boot 侧 `listMyOrders` 全量分页解析——其 5000 单防御上限属分页实现而非事实，随实现移除，任何订单量下不再 fail-closed 503；同一付费集与决胜口径，行为等价由测试保证）。订单模块外的适配只搬运事实（ARCH-005），事件驱动自动发放仍结构性不可达（ARCH-002：事件载荷无 userId、事件路径禁读订单持久层——A2 显式领取保留，领取即绑单）。
+- 领取 `cClaimPointsReward(FIRST_ORDER)`：仍要求 firstPaidAt 非空；成立则一次发放 `firstOrderPoints`（运营配置，即时读），台账 biz_type=`ORDER_REWARD`、order_id=首笔支付订单、biz_id=award 行 id；`points_task_award` 终局行不变（uk user+code，每用户一次 ⇒ 每订单至多一次）。首付事实端口不可用时 fail-closed 503。
 - 回执与幂等：同 §3.4（23 号绑定表同 requestId 重放首成回执、异参 409）。
 
 ### 7.2 扣回（PTS-002，事件消费）
@@ -114,3 +114,7 @@ S1 每日一次（UTC+8 自然日）；S2 固定面额无连签递增；S3 连�
 ### 7.3 CCR-POINTS-ORDER-001 登记（要点）
 
 P1 发放面额=运营配置 firstOrderPoints，领取时即时读快照入账；P2 赚取触发=显式领取（A2 保留）+首笔支付订单绑定，事件驱动自动发放因 OrderPaid/PaymentSucceeded 载荷无 userId 且订单模块本切片禁改而不可达，登记为 V1 明确取舍；P3 扣回时点=RefundSucceededEvent.v1 消费事务内；P4 迟到支付来源不特判——按台账有无奖励流水自然 NOOP/扣回（09 号 §29.2 同源）；P5 取整=HALF_UP（四舍五入，SSOT §10.1）；P6 多次退款：每次部分退款按发放额×当次比例记账、以剩余未扣额封顶，累计不超过本单发放额（退款比例合计 100% 时奖励全额扣回）；P7 扣回后不改变 points_task_award 终局状态（任务面板仍显 CLAIMED，净额由流水呈现）。
+
+### 7.4 收口（2026-10-16）：首笔支付订单标识 O(1) 事实查询
+
+CCR-POINTS-ORDER-001 遗留的实现缺口（boot 适配器经 `listMyOrders` 全量分页解析首单，O(全量订单)，防御上限 5000 单 fail-closed）由 order 域自有只读事实端口 `OrderFirstPaidFactsApi.firstPaidOrder`（07号 §7.1.1）收口：单条索引行读 O(1)，同一付费集与"最早 paid_at、最小规范 id 决胜"口径，boot 适配器只搬运事实（ARCH-005）；5000 单上限属旧分页实现，随实现移除。07号 §7.1.1 为本事实面的契约登记；完整裁决记录见 `planning/ccr/CCR-POINTS-ORDER-001.md`（状态：RESOLVED）。

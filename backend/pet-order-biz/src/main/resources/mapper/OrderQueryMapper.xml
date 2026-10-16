@@ -72,6 +72,16 @@
         FROM pet_order
         WHERE user_id = #{userId} AND payment_status = 'PAID' AND paid_at IS NOT NULL
     </select>
+    <!-- 07号 §7.1 amendment (contract 60 §7 / CCR-POINTS-ORDER-001 O(1) closure): the named
+         user's earliest paid order as a single indexed row read — earliest paid_at, smallest id
+         as the deterministic tie-break. Only id/paid_at are projected; no session subject. -->
+    <select id="selectFirstPaidOrder" resultType="com.petplatform.order.biz.infrastructure.persistence.entity.OrderQueryViewEntity">
+        SELECT id, paid_at
+        FROM pet_order
+        WHERE user_id = #{userId} AND payment_status = 'PAID' AND paid_at IS NOT NULL
+        ORDER BY paid_at ASC, id ASC
+        LIMIT 1
+    </select>
     <!--
       Merchant order list (contract 10 §4.1 supplement): same projection and the same
       displayStatus truth-table branches as the C-end statements above; the store scope is
