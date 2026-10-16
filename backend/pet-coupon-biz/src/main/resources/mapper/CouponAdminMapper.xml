@@ -1,0 +1,118 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.petplatform.coupon.biz.infrastructure.persistence.mapper.CouponAdminMapper">
+
+    <!-- coupon_template / coupon_instance / coupon_ledger admin face (SQL06, contract 65 §4):
+         read-only ledger projections plus white-listed template maintenance with the
+         command_idempotency binding (14号 shared physical table). Instance rows are never
+         written from this face (CCR-ADM-A005-OPS-001). -->
+
+    <select id="selectTemplates" resultType="com.petplatform.coupon.biz.infrastructure.persistence.entity.CouponAdminEntities$AdminTemplateEntity">
+        SELECT id,name,status,total_stock,issued_count,valid_start_at,valid_end_at,rule_json,version,created_at,updated_at
+        FROM coupon_template
+        <where>
+            <if test="status != null">AND status=#{status}</if>
+        </where>
+        ORDER BY created_at DESC, id DESC
+        LIMIT #{limit} OFFSET #{offset}
+    </select>
+
+    <select id="countTemplates" resultType="long">
+        SELECT COUNT(*) FROM coupon_template
+        <where>
+            <if test="status != null">AND status=#{status}</if>
+        </where>
+    </select>
+
+    <select id="selectTemplateById" resultType="com.petplatform.coupon.biz.infrastructure.persistence.entity.CouponAdminEntities$AdminTemplateEntity">
+        SELECT id,name,status,total_stock,issued_count,valid_start_at,valid_end_at,rule_json,version,created_at,updated_at
+        FROM coupon_template WHERE id=#{templateId}
+    </select>
+
+    <sql id="adminInstanceWhere">
+        FROM coupon_instance i
+        JOIN coupon_template t ON t.id=i.coupon_template_id
+        <where>
+            <if test="templateId != null">AND i.coupon_template_id=#{templateId}</if>
+            <if test="status != null">AND i.status=#{status}</if>
+            <if test="orderId != null">AND i.order_id=#{orderId}</if>
+            <if test="createdFrom != null">AND i.created_at&gt;=#{createdFrom}</if>
+            <if test="createdTo != null">AND i.created_at&lt;=#{createdTo}</if>
+        </where>
+    </sql>
+
+    <select id="selectInstances" resultType="com.petplatform.coupon.biz.infrastructure.persistence.entity.CouponAdminEntities$AdminInstanceEntity">
+        SELECT i.id,i.coupon_template_id AS template_id,t.name AS template_name,i.user_id,i.status,i.order_id,
+               i.frozen_at,i.freeze_expire_at,i.used_at,i.original_expire_at,i.expire_at,i.created_at,i.updated_at,
+               t.rule_json
+        <include refid="adminInstanceWhere"/>
+        ORDER BY i.created_at DESC, i.id DESC
+        LIMIT #{limit} OFFSET #{offset}
+    </select>
+
+    <select id="countInstances" resultType="long">
+        SELECT COUNT(*)
+        <include refid="adminInstanceWhere"/>
+    </select>
+
+    <select id="selectInstanceById" resultType="com.petplatform.coupon.biz.infrastructure.persistence.entity.CouponAdminEntities$AdminInstanceEntity">
+        SELECT i.id,i.coupon_template_id AS template_id,t.name AS template_name,i.user_id,i.status,i.order_id,
+               i.frozen_at,i.freeze_expire_at,i.used_at,i.original_expire_at,i.expire_at,i.created_at,i.updated_at,
+               t.rule_json
+        FROM coupon_instance i
+        JOIN coupon_template t ON t.id=i.coupon_template_id
+        WHERE i.id=#{instanceId}
+    </select>
+
+    <!-- Template rule amounts for the instance ledger card (发放时快照取模板现值, contract 65 §8.4). -->
+    <select id="selectLedgerByInstance" resultType="com.petplatform.coupon.biz.infrastructure.persistence.entity.CouponAdminEntities$AdminLedgerEntity">
+        SELECT id,coupon_instance_id,user_id,order_id,action,from_status,to_status,request_id,remark,created_at
+        FROM coupon_ledger
+        WHERE coupon_instance_id=#{instanceId}
+        ORDER BY created_at ASC, id ASC
+    </select>
+
+    <insert id="insertTemplate">
+        INSERT INTO coupon_template
+            (id,name,status,total_stock,issued_count,valid_start_at,valid_end_at,rule_json,version,created_at,updated_at)
+        VALUES
+            (#{id},#{name},#{status},NULL,0,#{validStartAt},#{validEndAt},#{ruleJson},0,#{now},#{now})
+    </insert>
+
+    <update id="updateTemplateFields">
+        UPDATE coupon_template
+        SET name=#{name}, valid_start_at=#{validStartAt}, valid_end_at=#{validEndAt},
+            rule_json=#{ruleJson}, version=version + 1, updated_at=#{now}
+        WHERE id=#{templateId} AND version=#{expectedVersion} AND issued_count=0
+          AND status IN ('DRAFT','ACTIVE')
+    </update>
+
+    <update id="updateTemplateStatus">
+        UPDATE coupon_template
+        SET status=#{toStatus}, version=version + 1, updated_at=#{now}
+        WHERE id=#{templateId} AND status=#{fromStatus} AND version=#{expectedVersion}
+    </update>
+
+    <!-- command_idempotency (14号 shared physical table); coupon admin rows use the same
+         length-prefixed request-key-v1 convention as points/community. -->
+    <select id="selectBindingForUpdate" resultType="com.petplatform.coupon.biz.infrastructure.persistence.entity.CouponAdminBindingEntity">
+        SELECT id, canonical_version, params_sha256, params_canonical, status, receipt_json
+        FROM command_idempotency
+        WHERE request_key = #{requestKey}
+        FOR UPDATE
+    </select>
+
+    <insert id="insertBinding">
+        INSERT INTO command_idempotency(id, request_key, canonical_version, params_sha256,
+                                        params_canonical, status, receipt_json, created_at)
+        VALUES (#{id}, #{requestKey}, #{canonicalVersion}, #{paramsSha256},
+                #{paramsCanonical}, 'RESERVED', NULL, UTC_TIMESTAMP(3))
+    </insert>
+
+    <update id="markBindingSucceeded">
+        UPDATE command_idempotency
+        SET status = 'SUCCEEDED', receipt_json = #{receiptJson}, succeeded_at = UTC_TIMESTAMP(3)
+        WHERE request_key = #{requestKey} AND status = 'RESERVED'
+    </update>
+
+</mapper>

@@ -24,13 +24,22 @@ public final class AdminPermissionEvaluator {
    * read slice (ADM-001 gap / A-002 phase 2): merchant.read (AUTH-001 matrix row 3) and
    * schedule.read / merchant.staff.read (PRD 6.2.5/6.2.6 read-only supervision, SSOT §29/§30;
    * proposed codes disclosed in contract 64 — no governance write action exists).
-   * order.verification-log.read, refund.read — GET-only reads. The four disposal codes are
-   * registered on behalf of the contract-63 v0.2 disposal slice (user ruling 2026-10-15, doc 33;
-   * AUTH-001 matrix rows 4/7/8): refund.channel.query, refund.retry, order.abnormal.close,
-   * merchant.disable. Proposal spellings "refund.channel-query" / "order.abnormal-close" use
-   * hyphens; the AUTH action-code lexicon (AdminActionCheckQuery) only admits lowercase dotted
-   * segments, so the deployed spelling is the dotted correction — same implementation-phase
-   * spelling correction as service.force.offline, PR-disclosed.
+   * The four disposal codes are registered on behalf of the contract-63 v0.2 disposal slice
+   * (user ruling 2026-10-15, doc 33; AUTH-001 matrix rows 4/7/8): refund.channel.query,
+   * refund.retry, order.abnormal.close, merchant.disable. Proposal spellings
+   * "refund.channel-query" / "order.abnormal-close" use hyphens; the AUTH action-code lexicon
+   * (AdminActionCheckQuery) only admits lowercase dotted segments, so the deployed spelling is
+   * the dotted correction — same implementation-phase spelling correction as
+   * service.force.offline, PR-disclosed. The ten ops-console codes are registered on behalf of
+   * the contract-65 operations governance slice (A-005, matrix rows 21/13/14/15/23):
+   * encyclopedia.read, encyclopedia.manage, encyclopedia.publish, breed.read, breed.manage
+   * (row 21, dotted spellings as proposed), coupon.template.read, coupon.template.manage,
+   * coupon.instance.read (rows 13/14 proposal spellings "coupon-template.*" /
+   * "coupon-instance.*" dotted-corrected like refund.channel.query), points.ledger.read
+   * (row 15 family, ledger supervision read) and system.parameter.read (row 23 proposal
+   * "system-parameter.read" dotted-corrected). Row 14 void/return and row 23 configure stay
+   * unregistered — no SSOT authorization exists for instance-status writes or runtime
+   * configuration (CCR-ADM-A005-OPS-001).
    */
   public static final Set<String> DEPLOYED_ACTIONS =
       Set.of("merchant.application.read", "merchant.application.decide",
@@ -40,7 +49,11 @@ public final class AdminPermissionEvaluator {
           "points.task.config.read", "points.task.config.write",
           "order.read", "order.status-log.read", "order.verification-log.read", "refund.read",
           "merchant.read", "schedule.read", "merchant.staff.read",
-          "refund.channel.query", "refund.retry", "order.abnormal.close", "merchant.disable");
+          "refund.channel.query", "refund.retry", "order.abnormal.close", "merchant.disable",
+          "encyclopedia.read", "encyclopedia.manage", "encyclopedia.publish",
+          "breed.read", "breed.manage",
+          "coupon.template.read", "coupon.template.manage", "coupon.instance.read",
+          "points.ledger.read", "system.parameter.read");
 
   public static List<String> evaluate(
       boolean superAdmin, Collection<String> grants, Set<String> deployed) {

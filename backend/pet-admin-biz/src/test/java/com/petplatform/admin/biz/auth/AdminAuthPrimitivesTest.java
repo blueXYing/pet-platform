@@ -77,7 +77,14 @@ class AdminAuthPrimitivesTest {
             // Contract-63 v0.2 disposal face (33号 ruling, 2026-10-15, AUTH-001 matrix rows 4/7/8):
             // the four disposal write enforcement points ship in the same face; proposal spellings
             // "refund.channel-query"/"order.abnormal-close" deploy as dotted segments.
-            "refund.channel.query", "refund.retry", "order.abnormal.close", "merchant.disable"),
+            "refund.channel.query", "refund.retry", "order.abnormal.close", "merchant.disable",
+            // Contract-65 ops console slice (A-005, matrix rows 21/13/14/15/23): the ten
+            // encyclopedia/coupon/points-ledger/settings enforcement points ship in that face;
+            // row 14 void/return and row 23 configure stay unregistered (CCR-ADM-A005-OPS-001).
+            "encyclopedia.read", "encyclopedia.manage", "encyclopedia.publish",
+            "breed.read", "breed.manage",
+            "coupon.template.read", "coupon.template.manage", "coupon.instance.read",
+            "points.ledger.read", "system.parameter.read"),
         AdminPermissionEvaluator.DEPLOYED_ACTIONS);
     assertEquals(AdminPermissionEvaluator.DEPLOYED_ACTIONS.stream().sorted().toList(),AdminPermissionEvaluator.evaluate(true,List.of("refund.retry"),AdminPermissionEvaluator.DEPLOYED_ACTIONS));
         // A proposed-but-undeployed code (merchant.freeze: AUTH-001 matrix row, explicitly not

@@ -9,6 +9,7 @@ info:
 servers:
 - url: /api/v1
 tags:
+- name: Admin-Ops
 - name: C-Order
 - name: C-Refund
 - name: C-Aftersale
@@ -14239,6 +14240,850 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/AdminMerchantDisableEnvelope'
+  /admin/encyclopedia/categories:
+    get:
+      tags:
+      - Admin-Ops
+      summary: 百科分类台账（encyclopedia.read）
+      operationId: adminListOpsEncyclopediaCategories
+      x-implementation-status: IMPLEMENTED_DEFAULT_OFF
+      x-default-enabled: false
+      x-contract: 65-Admin-Ops-Console-Contract-v0.1.md
+      x-assembly-switch: pet.admin.ops.http.enabled
+      x-route-party: OPS
+      x-audience: ADMIN_WEB
+      x-required-actions: [encyclopedia.read]
+      description: 65号（PRD 6.10.1）。全状态分类分页+引用计数；dataScope 非 ALL 一律 403；固定排序 sort_no ASC, id ASC。分类枚举五值封闭，无新增/删除路由（CCR-ADM-A005-OPS-001）。
+      security:
+      - bearerAuth: []
+      parameters:
+      - name: page
+        in: query
+        required: false
+        schema: {type: integer, minimum: 1, maximum: 10000, default: 1}
+      - name: pageSize
+        in: query
+        required: false
+        schema: {type: integer, minimum: 1, maximum: 100, default: 20}
+      responses:
+        '400': {$ref: '#/components/responses/BadRequest'}
+        '401': {$ref: '#/components/responses/Unauthorized'}
+        '403': {$ref: '#/components/responses/Forbidden'}
+        '503': {$ref: '#/components/responses/DependencyUnavailable'}
+        '200':
+          description: 成功
+          headers:
+            Cache-Control:
+              schema: {type: string, enum: [no-store]}
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AdminOpsCategoryPageEnvelope'
+
+  /admin/encyclopedia/categories/{categoryCode}:
+    put:
+      tags:
+      - Admin-Ops
+      summary: 百科分类维护（encyclopedia.manage）
+      operationId: adminUpdateOpsEncyclopediaCategory
+      x-implementation-status: IMPLEMENTED_DEFAULT_OFF
+      x-default-enabled: false
+      x-contract: 65-Admin-Ops-Console-Contract-v0.1.md
+      x-assembly-switch: pet.admin.ops.http.enabled
+      x-route-party: OPS
+      x-audience: ADMIN_WEB
+      x-required-actions: [encyclopedia.manage]
+      description: 65号（PRD 6.10.1）。展示名（2..10 码点）与排序（0..999）维护；expectedVersion 乐观锁（失配 409）；X-Request-Id 幂等（同参重放回执、异参 409 IDEMPOTENCY_KEY_CONFLICT）。
+      security:
+      - bearerAuth: []
+      parameters:
+      - $ref: '#/components/parameters/RequestId'
+      - name: categoryCode
+        in: path
+        required: true
+        schema: {type: string, minLength: 2, maxLength: 16, pattern: '^[A-Z]{2,16}$'}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AdminOpsCategoryUpdateRequest'
+      responses:
+        '400': {$ref: '#/components/responses/BadRequest'}
+        '401': {$ref: '#/components/responses/Unauthorized'}
+        '403': {$ref: '#/components/responses/Forbidden'}
+        '404': {$ref: '#/components/responses/NotFound'}
+        '409': {$ref: '#/components/responses/Conflict'}
+        '503': {$ref: '#/components/responses/DependencyUnavailable'}
+        '200':
+          description: 成功
+          headers:
+            Cache-Control:
+              schema: {type: string, enum: [no-store]}
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AdminOpsCategoryMutationEnvelope'
+
+  /admin/encyclopedia/categories/{categoryCode}/enable:
+    post:
+      tags:
+      - Admin-Ops
+      summary: 百科分类启用（encyclopedia.manage）
+      operationId: adminEnableOpsEncyclopediaCategory
+      x-implementation-status: IMPLEMENTED_DEFAULT_OFF
+      x-default-enabled: false
+      x-contract: 65-Admin-Ops-Console-Contract-v0.1.md
+      x-assembly-switch: pet.admin.ops.http.enabled
+      x-route-party: OPS
+      x-audience: ADMIN_WEB
+      x-required-actions: [encyclopedia.manage]
+      description: 65号（PRD 6.10.1）。启用语义：DISABLED→ENABLED / ENABLED→DISABLED，重复迁移 409；停用分类对 C 端读侧（62号）立即不可见；expectedVersion 乐观锁；X-Request-Id 幂等。
+      security:
+      - bearerAuth: []
+      parameters:
+      - $ref: '#/components/parameters/RequestId'
+      - name: categoryCode
+        in: path
+        required: true
+        schema: {type: string, minLength: 2, maxLength: 16, pattern: '^[A-Z]{2,16}$'}
+      responses:
+        '400': {$ref: '#/components/responses/BadRequest'}
+        '401': {$ref: '#/components/responses/Unauthorized'}
+        '403': {$ref: '#/components/responses/Forbidden'}
+        '404': {$ref: '#/components/responses/NotFound'}
+        '409': {$ref: '#/components/responses/Conflict'}
+        '503': {$ref: '#/components/responses/DependencyUnavailable'}
+        '200':
+          description: 成功
+          headers:
+            Cache-Control:
+              schema: {type: string, enum: [no-store]}
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AdminOpsCategoryMutationEnvelope'
+
+  /admin/encyclopedia/categories/{categoryCode}/disable:
+    post:
+      tags:
+      - Admin-Ops
+      summary: 百科分类停用（encyclopedia.manage）
+      operationId: adminDisableOpsEncyclopediaCategory
+      x-implementation-status: IMPLEMENTED_DEFAULT_OFF
+      x-default-enabled: false
+      x-contract: 65-Admin-Ops-Console-Contract-v0.1.md
+      x-assembly-switch: pet.admin.ops.http.enabled
+      x-route-party: OPS
+      x-audience: ADMIN_WEB
+      x-required-actions: [encyclopedia.manage]
+      description: 65号（PRD 6.10.1）。停用语义：DISABLED→ENABLED / ENABLED→DISABLED，重复迁移 409；停用分类对 C 端读侧（62号）立即不可见；expectedVersion 乐观锁；X-Request-Id 幂等。
+      security:
+      - bearerAuth: []
+      parameters:
+      - $ref: '#/components/parameters/RequestId'
+      - name: categoryCode
+        in: path
+        required: true
+        schema: {type: string, minLength: 2, maxLength: 16, pattern: '^[A-Z]{2,16}$'}
+      responses:
+        '400': {$ref: '#/components/responses/BadRequest'}
+        '401': {$ref: '#/components/responses/Unauthorized'}
+        '403': {$ref: '#/components/responses/Forbidden'}
+        '404': {$ref: '#/components/responses/NotFound'}
+        '409': {$ref: '#/components/responses/Conflict'}
+        '503': {$ref: '#/components/responses/DependencyUnavailable'}
+        '200':
+          description: 成功
+          headers:
+            Cache-Control:
+              schema: {type: string, enum: [no-store]}
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AdminOpsCategoryMutationEnvelope'
+
+  /admin/encyclopedia/breeds:
+    get:
+      tags:
+      - Admin-Ops
+      summary: 百科品种台账（encyclopedia.read）
+      operationId: adminListOpsEncyclopediaBreeds
+      x-implementation-status: IMPLEMENTED_DEFAULT_OFF
+      x-default-enabled: false
+      x-contract: 65-Admin-Ops-Console-Contract-v0.1.md
+      x-assembly-switch: pet.admin.ops.http.enabled
+      x-route-party: OPS
+      x-audience: ADMIN_WEB
+      x-required-actions: [encyclopedia.read]
+      description: 65号（PRD 6.10.2）。全状态品种分页；固定排序 sort_no ASC, id ASC。
+      security:
+      - bearerAuth: []
+      parameters:
+      - name: page
+        in: query
+        required: false
+        schema: {type: integer, minimum: 1, maximum: 10000, default: 1}
+      - name: pageSize
+        in: query
+        required: false
+        schema: {type: integer, minimum: 1, maximum: 100, default: 20}
+      - name: status
+        in: query
+        required: false
+        description: 缺省全状态（运营视角）；C 端读侧恒 PUBLISHED 过滤不变。
+        schema: {type: string, enum: [PUBLISHED, OFFLINE]}
+      - name: categoryCode
+        in: query
+        required: false
+        schema: {type: string, enum: [DOG, CAT, REPTILE, BIRD, INSECT]}
+      - name: keyword
+        in: query
+        required: false
+        description: 1..40 码点，name/aliases 字面包含（通配符转义）。
+        schema: {type: string, minLength: 1, maxLength: 40}
+      responses:
+        '400': {$ref: '#/components/responses/BadRequest'}
+        '401': {$ref: '#/components/responses/Unauthorized'}
+        '403': {$ref: '#/components/responses/Forbidden'}
+        '503': {$ref: '#/components/responses/DependencyUnavailable'}
+        '200':
+          description: 成功
+          headers:
+            Cache-Control:
+              schema: {type: string, enum: [no-store]}
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AdminOpsBreedPageEnvelope'
+
+  /admin/encyclopedia/breeds/{breedId}:
+    get:
+      tags:
+      - Admin-Ops
+      summary: 百科品种详情（breed.read）
+      operationId: adminGetOpsEncyclopediaBreed
+      x-implementation-status: IMPLEMENTED_DEFAULT_OFF
+      x-default-enabled: false
+      x-contract: 65-Admin-Ops-Console-Contract-v0.1.md
+      x-assembly-switch: pet.admin.ops.http.enabled
+      x-route-party: OPS
+      x-audience: ADMIN_WEB
+      x-required-actions: [breed.read]
+      description: 65号（PRD 6.10.2）。任意状态全字段（含富文本列原文）；未知 404 防枚举。
+      security:
+      - bearerAuth: []
+      parameters:
+      - name: breedId
+        in: path
+        required: true
+        schema: {$ref: '#/components/schemas/PublicId'}
+      responses:
+        '400': {$ref: '#/components/responses/BadRequest'}
+        '401': {$ref: '#/components/responses/Unauthorized'}
+        '403': {$ref: '#/components/responses/Forbidden'}
+        '404': {$ref: '#/components/responses/NotFound'}
+        '503': {$ref: '#/components/responses/DependencyUnavailable'}
+        '200':
+          description: 成功
+          headers:
+            Cache-Control:
+              schema: {type: string, enum: [no-store]}
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AdminOpsBreedDetailEnvelope'
+    put:
+      tags:
+      - Admin-Ops
+      summary: 百科品种维护（breed.manage）
+      operationId: adminUpdateOpsEncyclopediaBreed
+      x-implementation-status: IMPLEMENTED_DEFAULT_OFF
+      x-default-enabled: false
+      x-contract: 65-Admin-Ops-Console-Contract-v0.1.md
+      x-assembly-switch: pet.admin.ops.http.enabled
+      x-route-party: OPS
+      x-audience: ADMIN_WEB
+      x-required-actions: [breed.manage]
+      description: 65号（PRD 6.10.2）。白名单字段维护（summary/coverUrl/bodyType/aliases/tags/sortOrder）；富文本列本面不可写（CCR-ADM-A005-OPS-001）；expectedVersion 乐观锁；X-Request-Id 幂等。
+      security:
+      - bearerAuth: []
+      parameters:
+      - $ref: '#/components/parameters/RequestId'
+      - name: breedId
+        in: path
+        required: true
+        schema: {$ref: '#/components/schemas/PublicId'}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AdminOpsBreedUpdateRequest'
+      responses:
+        '400': {$ref: '#/components/responses/BadRequest'}
+        '401': {$ref: '#/components/responses/Unauthorized'}
+        '403': {$ref: '#/components/responses/Forbidden'}
+        '404': {$ref: '#/components/responses/NotFound'}
+        '409': {$ref: '#/components/responses/Conflict'}
+        '503': {$ref: '#/components/responses/DependencyUnavailable'}
+        '200':
+          description: 成功
+          headers:
+            Cache-Control:
+              schema: {type: string, enum: [no-store]}
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AdminOpsBreedMutationEnvelope'
+
+  /admin/encyclopedia/breeds/{breedId}/publish:
+    post:
+      tags:
+      - Admin-Ops
+      summary: 百科品种上线（encyclopedia.publish）
+      operationId: adminPublishOpsEncyclopediaBreed
+      x-implementation-status: IMPLEMENTED_DEFAULT_OFF
+      x-default-enabled: false
+      x-contract: 65-Admin-Ops-Console-Contract-v0.1.md
+      x-assembly-switch: pet.admin.ops.http.enabled
+      x-route-party: OPS
+      x-audience: ADMIN_WEB
+      x-required-actions: [encyclopedia.publish]
+      description: 65号（PRD 6.10.2，62号遗留收口）。PUBLISHED↔OFFLINE；下线后 C 端列表消失、详情 404 BREED_NOT_FOUND（62号既有读侧语义）；不删除/不改写内容列；expectedVersion 乐观锁；X-Request-Id 幂等。
+      security:
+      - bearerAuth: []
+      parameters:
+      - $ref: '#/components/parameters/RequestId'
+      - name: breedId
+        in: path
+        required: true
+        schema: {$ref: '#/components/schemas/PublicId'}
+      responses:
+        '400': {$ref: '#/components/responses/BadRequest'}
+        '401': {$ref: '#/components/responses/Unauthorized'}
+        '403': {$ref: '#/components/responses/Forbidden'}
+        '404': {$ref: '#/components/responses/NotFound'}
+        '409': {$ref: '#/components/responses/Conflict'}
+        '503': {$ref: '#/components/responses/DependencyUnavailable'}
+        '200':
+          description: 成功
+          headers:
+            Cache-Control:
+              schema: {type: string, enum: [no-store]}
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AdminOpsBreedMutationEnvelope'
+
+  /admin/encyclopedia/breeds/{breedId}/offline:
+    post:
+      tags:
+      - Admin-Ops
+      summary: 百科品种下线（encyclopedia.publish）
+      operationId: adminOfflineOpsEncyclopediaBreed
+      x-implementation-status: IMPLEMENTED_DEFAULT_OFF
+      x-default-enabled: false
+      x-contract: 65-Admin-Ops-Console-Contract-v0.1.md
+      x-assembly-switch: pet.admin.ops.http.enabled
+      x-route-party: OPS
+      x-audience: ADMIN_WEB
+      x-required-actions: [encyclopedia.publish]
+      description: 65号（PRD 6.10.2，62号遗留收口）。PUBLISHED↔OFFLINE；下线后 C 端列表消失、详情 404 BREED_NOT_FOUND（62号既有读侧语义）；不删除/不改写内容列；expectedVersion 乐观锁；X-Request-Id 幂等。
+      security:
+      - bearerAuth: []
+      parameters:
+      - $ref: '#/components/parameters/RequestId'
+      - name: breedId
+        in: path
+        required: true
+        schema: {$ref: '#/components/schemas/PublicId'}
+      responses:
+        '400': {$ref: '#/components/responses/BadRequest'}
+        '401': {$ref: '#/components/responses/Unauthorized'}
+        '403': {$ref: '#/components/responses/Forbidden'}
+        '404': {$ref: '#/components/responses/NotFound'}
+        '409': {$ref: '#/components/responses/Conflict'}
+        '503': {$ref: '#/components/responses/DependencyUnavailable'}
+        '200':
+          description: 成功
+          headers:
+            Cache-Control:
+              schema: {type: string, enum: [no-store]}
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AdminOpsBreedMutationEnvelope'
+
+  /admin/coupon-templates:
+    get:
+      tags:
+      - Admin-Ops
+      summary: 券模板列表（coupon.template.read）
+      operationId: adminListCouponTemplates
+      x-implementation-status: IMPLEMENTED_DEFAULT_OFF
+      x-default-enabled: false
+      x-contract: 65-Admin-Ops-Console-Contract-v0.1.md
+      x-assembly-switch: pet.admin.ops.http.enabled
+      x-route-party: OPS
+      x-audience: ADMIN_WEB
+      x-required-actions: [coupon.template.read]
+      description: 65号（PRD 6.4.1，HTTP10 §5.8 草案族）。模板分页，金额为模板 rule_json 现值投影；固定排序 created_at DESC, id DESC。
+      security:
+      - bearerAuth: []
+      parameters:
+      - name: page
+        in: query
+        required: false
+        schema: {type: integer, minimum: 1, maximum: 10000, default: 1}
+      - name: pageSize
+        in: query
+        required: false
+        schema: {type: integer, minimum: 1, maximum: 100, default: 20}
+      - name: status
+        in: query
+        required: false
+        schema: {type: string, enum: [DRAFT, ACTIVE, OFFLINE]}
+      responses:
+        '400': {$ref: '#/components/responses/BadRequest'}
+        '401': {$ref: '#/components/responses/Unauthorized'}
+        '403': {$ref: '#/components/responses/Forbidden'}
+        '503': {$ref: '#/components/responses/DependencyUnavailable'}
+        '200':
+          description: 成功
+          headers:
+            Cache-Control:
+              schema: {type: string, enum: [no-store]}
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AdminOpsTemplatePageEnvelope'
+    post:
+      tags:
+      - Admin-Ops
+      summary: 券模板创建（coupon.template.manage）
+      operationId: adminCreateCouponTemplate
+      x-implementation-status: IMPLEMENTED_DEFAULT_OFF
+      x-default-enabled: false
+      x-contract: 65-Admin-Ops-Console-Contract-v0.1.md
+      x-assembly-switch: pet.admin.ops.http.enabled
+      x-route-party: OPS
+      x-audience: ADMIN_WEB
+      x-required-actions: [coupon.template.manage]
+      description: 65号（PRD 6.4.1）。创建即 DRAFT；满减券门槛必须大于面额；有效期固定日期模式（领取后 N 天模式 V1 不做，CCR）；rule_json 按 61号 §2 冻结四键落库；X-Request-Id 幂等。
+      security:
+      - bearerAuth: []
+      parameters:
+      - $ref: '#/components/parameters/RequestId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AdminOpsTemplateCreateRequest'
+      responses:
+        '400': {$ref: '#/components/responses/BadRequest'}
+        '401': {$ref: '#/components/responses/Unauthorized'}
+        '403': {$ref: '#/components/responses/Forbidden'}
+        '409': {$ref: '#/components/responses/Conflict'}
+        '503': {$ref: '#/components/responses/DependencyUnavailable'}
+        '200':
+          description: 成功
+          headers:
+            Cache-Control:
+              schema: {type: string, enum: [no-store]}
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AdminOpsTemplateMutationEnvelope'
+
+  /admin/coupon-templates/{templateId}:
+    get:
+      tags:
+      - Admin-Ops
+      summary: 券模板详情（coupon.template.read）
+      operationId: adminGetCouponTemplate
+      x-implementation-status: IMPLEMENTED_DEFAULT_OFF
+      x-default-enabled: false
+      x-contract: 65-Admin-Ops-Console-Contract-v0.1.md
+      x-assembly-switch: pet.admin.ops.http.enabled
+      x-route-party: OPS
+      x-audience: ADMIN_WEB
+      x-required-actions: [coupon.template.read]
+      description: 65号（PRD 6.4.1）。全字段含 rule_json 四键投影（61号 §2 冻结结构）；未知 404。
+      security:
+      - bearerAuth: []
+      parameters:
+      - name: templateId
+        in: path
+        required: true
+        schema: {$ref: '#/components/schemas/PublicId'}
+      responses:
+        '400': {$ref: '#/components/responses/BadRequest'}
+        '401': {$ref: '#/components/responses/Unauthorized'}
+        '403': {$ref: '#/components/responses/Forbidden'}
+        '404': {$ref: '#/components/responses/NotFound'}
+        '503': {$ref: '#/components/responses/DependencyUnavailable'}
+        '200':
+          description: 成功
+          headers:
+            Cache-Control:
+              schema: {type: string, enum: [no-store]}
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AdminOpsTemplateDetailEnvelope'
+    put:
+      tags:
+      - Admin-Ops
+      summary: 券模板编辑（coupon.template.manage）
+      operationId: adminUpdateCouponTemplate
+      x-implementation-status: IMPLEMENTED_DEFAULT_OFF
+      x-default-enabled: false
+      x-contract: 65-Admin-Ops-Console-Contract-v0.1.md
+      x-assembly-switch: pet.admin.ops.http.enabled
+      x-route-party: OPS
+      x-audience: ADMIN_WEB
+      x-required-actions: [coupon.template.manage]
+      description: 65号（PRD 6.4.1）。仅 DRAFT/ACTIVE 且 issuedCount=0 可编辑（一经发放关键字段不可修改，需停用后新建——V1 无活动口径：发放即 issued_count>0）；OFFLINE 不可编辑；expectedVersion 乐观锁；X-Request-Id 幂等。
+      security:
+      - bearerAuth: []
+      parameters:
+      - $ref: '#/components/parameters/RequestId'
+      - name: templateId
+        in: path
+        required: true
+        schema: {$ref: '#/components/schemas/PublicId'}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AdminOpsTemplateUpdateRequest'
+      responses:
+        '400': {$ref: '#/components/responses/BadRequest'}
+        '401': {$ref: '#/components/responses/Unauthorized'}
+        '403': {$ref: '#/components/responses/Forbidden'}
+        '404': {$ref: '#/components/responses/NotFound'}
+        '409': {$ref: '#/components/responses/Conflict'}
+        '503': {$ref: '#/components/responses/DependencyUnavailable'}
+        '200':
+          description: 成功
+          headers:
+            Cache-Control:
+              schema: {type: string, enum: [no-store]}
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AdminOpsTemplateMutationEnvelope'
+
+  /admin/coupon-templates/{templateId}/trial-calculation:
+    get:
+      tags:
+      - Admin-Ops
+      summary: 券模板试算（coupon.template.read）
+      operationId: adminTrialCouponTemplate
+      x-implementation-status: IMPLEMENTED_DEFAULT_OFF
+      x-default-enabled: false
+      x-contract: 65-Admin-Ops-Console-Contract-v0.1.md
+      x-assembly-switch: pet.admin.ops.http.enabled
+      x-route-party: OPS
+      x-audience: ADMIN_WEB
+      x-required-actions: [coupon.template.read]
+      description: 65号（PRD 6.4.1 试算）。冻结资格语义（61号 ③④⑥⑦）的纯读投影；eligible=false 携带首因；不改任何状态。
+      security:
+      - bearerAuth: []
+      parameters:
+      - name: templateId
+        in: path
+        required: true
+        schema: {$ref: '#/components/schemas/PublicId'}
+      - name: orderAmount
+        in: query
+        required: true
+        description: 试算订单金额，两位小数。
+        schema: {$ref: '#/components/schemas/DecimalAmount'}
+      responses:
+        '400': {$ref: '#/components/responses/BadRequest'}
+        '401': {$ref: '#/components/responses/Unauthorized'}
+        '403': {$ref: '#/components/responses/Forbidden'}
+        '404': {$ref: '#/components/responses/NotFound'}
+        '503': {$ref: '#/components/responses/DependencyUnavailable'}
+        '200':
+          description: 成功
+          headers:
+            Cache-Control:
+              schema: {type: string, enum: [no-store]}
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AdminOpsTrialCalculationEnvelope'
+
+  /admin/coupon-templates/{templateId}/enable:
+    post:
+      tags:
+      - Admin-Ops
+      summary: 券模板启用（coupon.template.manage）
+      operationId: adminEnableCouponTemplate
+      x-implementation-status: IMPLEMENTED_DEFAULT_OFF
+      x-default-enabled: false
+      x-contract: 65-Admin-Ops-Console-Contract-v0.1.md
+      x-assembly-switch: pet.admin.ops.http.enabled
+      x-route-party: OPS
+      x-audience: ADMIN_WEB
+      x-required-actions: [coupon.template.manage]
+      description: 65号（PRD 6.4.1）。DRAFT→ACTIVE（ACTIVE 后满足 61号冻结前置④）/ ACTIVE→OFFLINE（停用不修改、不作废任何已发实例；已 FROZEN 实例释放/核销链路不受影响）；OFFLINE/ACTIVE 不可再启用 409；X-Request-Id 幂等。
+      security:
+      - bearerAuth: []
+      parameters:
+      - $ref: '#/components/parameters/RequestId'
+      - name: templateId
+        in: path
+        required: true
+        schema: {$ref: '#/components/schemas/PublicId'}
+      responses:
+        '400': {$ref: '#/components/responses/BadRequest'}
+        '401': {$ref: '#/components/responses/Unauthorized'}
+        '403': {$ref: '#/components/responses/Forbidden'}
+        '404': {$ref: '#/components/responses/NotFound'}
+        '409': {$ref: '#/components/responses/Conflict'}
+        '503': {$ref: '#/components/responses/DependencyUnavailable'}
+        '200':
+          description: 成功
+          headers:
+            Cache-Control:
+              schema: {type: string, enum: [no-store]}
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AdminOpsTemplateMutationEnvelope'
+
+  /admin/coupon-templates/{templateId}/offline:
+    post:
+      tags:
+      - Admin-Ops
+      summary: 券模板停用（coupon.template.manage）
+      operationId: adminOfflineCouponTemplate
+      x-implementation-status: IMPLEMENTED_DEFAULT_OFF
+      x-default-enabled: false
+      x-contract: 65-Admin-Ops-Console-Contract-v0.1.md
+      x-assembly-switch: pet.admin.ops.http.enabled
+      x-route-party: OPS
+      x-audience: ADMIN_WEB
+      x-required-actions: [coupon.template.manage]
+      description: 65号（PRD 6.4.1）。DRAFT→ACTIVE（ACTIVE 后满足 61号冻结前置④）/ ACTIVE→OFFLINE（停用不修改、不作废任何已发实例；已 FROZEN 实例释放/核销链路不受影响）；OFFLINE/ACTIVE 不可再启用 409；X-Request-Id 幂等。
+      security:
+      - bearerAuth: []
+      parameters:
+      - $ref: '#/components/parameters/RequestId'
+      - name: templateId
+        in: path
+        required: true
+        schema: {$ref: '#/components/schemas/PublicId'}
+      responses:
+        '400': {$ref: '#/components/responses/BadRequest'}
+        '401': {$ref: '#/components/responses/Unauthorized'}
+        '403': {$ref: '#/components/responses/Forbidden'}
+        '404': {$ref: '#/components/responses/NotFound'}
+        '409': {$ref: '#/components/responses/Conflict'}
+        '503': {$ref: '#/components/responses/DependencyUnavailable'}
+        '200':
+          description: 成功
+          headers:
+            Cache-Control:
+              schema: {type: string, enum: [no-store]}
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AdminOpsTemplateMutationEnvelope'
+
+  /admin/coupon-instances:
+    get:
+      tags:
+      - Admin-Ops
+      summary: 券实例台账（coupon.instance.read）
+      operationId: adminListCouponInstances
+      x-implementation-status: IMPLEMENTED_DEFAULT_OFF
+      x-default-enabled: false
+      x-contract: 65-Admin-Ops-Console-Contract-v0.1.md
+      x-assembly-switch: pet.admin.ops.http.enabled
+      x-route-party: OPS
+      x-audience: ADMIN_WEB
+      x-required-actions: [coupon.instance.read]
+      description: 65号（PRD 6.4.3，HTTP10 §5.8 草案族）。实例分页（面额/门槛取模板现值投影，65号 §8.4）；固定排序 created_at DESC, id DESC。无任何实例写路由（作废/返还/风控冻结 CCR-ADM-A005-OPS-001）。
+      security:
+      - bearerAuth: []
+      parameters:
+      - name: page
+        in: query
+        required: false
+        schema: {type: integer, minimum: 1, maximum: 10000, default: 1}
+      - name: pageSize
+        in: query
+        required: false
+        schema: {type: integer, minimum: 1, maximum: 100, default: 20}
+      - name: templateId
+        in: query
+        required: false
+        schema: {$ref: '#/components/schemas/PublicId'}
+      - name: status
+        in: query
+        required: false
+        description: 61号既有实例状态词表，只读展示。
+        schema: {type: string, enum: [AVAILABLE, FROZEN, USED, EXPIRED, RISK_FROZEN]}
+      - name: orderId
+        in: query
+        required: false
+        schema: {$ref: '#/components/schemas/PublicId'}
+      - name: createdFrom
+        in: query
+        required: false
+        schema: {type: string, format: date-time}
+      - name: createdTo
+        in: query
+        required: false
+        schema: {type: string, format: date-time}
+      responses:
+        '400': {$ref: '#/components/responses/BadRequest'}
+        '401': {$ref: '#/components/responses/Unauthorized'}
+        '403': {$ref: '#/components/responses/Forbidden'}
+        '503': {$ref: '#/components/responses/DependencyUnavailable'}
+        '200':
+          description: 成功
+          headers:
+            Cache-Control:
+              schema: {type: string, enum: [no-store]}
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AdminOpsInstancePageEnvelope'
+
+  /admin/coupon-instances/{instanceId}:
+    get:
+      tags:
+      - Admin-Ops
+      summary: 券实例详情（coupon.instance.read）
+      operationId: adminGetCouponInstance
+      x-implementation-status: IMPLEMENTED_DEFAULT_OFF
+      x-default-enabled: false
+      x-contract: 65-Admin-Ops-Console-Contract-v0.1.md
+      x-assembly-switch: pet.admin.ops.http.enabled
+      x-route-party: OPS
+      x-audience: ADMIN_WEB
+      x-required-actions: [coupon.instance.read]
+      description: 65号（PRD 6.4.3）。实例全字段 + coupon_ledger 状态时间轴（created_at ASC, id ASC）；未知 404 防枚举。
+      security:
+      - bearerAuth: []
+      parameters:
+      - name: instanceId
+        in: path
+        required: true
+        schema: {$ref: '#/components/schemas/PublicId'}
+      responses:
+        '400': {$ref: '#/components/responses/BadRequest'}
+        '401': {$ref: '#/components/responses/Unauthorized'}
+        '403': {$ref: '#/components/responses/Forbidden'}
+        '404': {$ref: '#/components/responses/NotFound'}
+        '503': {$ref: '#/components/responses/DependencyUnavailable'}
+        '200':
+          description: 成功
+          headers:
+            Cache-Control:
+              schema: {type: string, enum: [no-store]}
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AdminOpsInstanceDetailEnvelope'
+
+  /admin/points/ledger:
+    get:
+      tags:
+      - Admin-Ops
+      summary: 积分台账（points.ledger.read）
+      operationId: adminListPointsLedger
+      x-implementation-status: IMPLEMENTED_DEFAULT_OFF
+      x-default-enabled: false
+      x-contract: 65-Admin-Ops-Console-Contract-v0.1.md
+      x-assembly-switch: pet.admin.ops.http.enabled
+      x-route-party: OPS
+      x-audience: ADMIN_WEB
+      x-required-actions: [points.ledger.read]
+      description: 65号（PRD 6.5 积分流水，HTTP10 §5.8 草案路由）。只读流水分页（用户/来源/数量/余额/时间+订单关联），固定排序 created_at DESC, id DESC；无调整/冻结/扣回写路由（CCR-ADM-A005-OPS-001）。
+      security:
+      - bearerAuth: []
+      parameters:
+      - name: page
+        in: query
+        required: false
+        schema: {type: integer, minimum: 1, maximum: 10000, default: 1}
+      - name: pageSize
+        in: query
+        required: false
+        schema: {type: integer, minimum: 1, maximum: 100, default: 20}
+      - name: userId
+        in: query
+        required: false
+        schema: {$ref: '#/components/schemas/PublicId'}
+      - name: bizType
+        in: query
+        required: false
+        description: points_ledger 既有词表（SSOT §10 只赚取/扣回）。
+        schema: {type: string, enum: [SIGN_IN, INVITE, TASK, ORDER_REWARD, REFUND_CLAWBACK]}
+      - name: createdFrom
+        in: query
+        required: false
+        schema: {type: string, format: date-time}
+      - name: createdTo
+        in: query
+        required: false
+        schema: {type: string, format: date-time}
+      responses:
+        '400': {$ref: '#/components/responses/BadRequest'}
+        '401': {$ref: '#/components/responses/Unauthorized'}
+        '403': {$ref: '#/components/responses/Forbidden'}
+        '503': {$ref: '#/components/responses/DependencyUnavailable'}
+        '200':
+          description: 成功
+          headers:
+            Cache-Control:
+              schema: {type: string, enum: [no-store]}
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AdminOpsPointsLedgerPageEnvelope'
+
+  /admin/settings/runtime:
+    get:
+      tags:
+      - Admin-Ops
+      summary: 系统设置运行时开关视图（system.parameter.read）
+      operationId: adminGetRuntimeSettings
+      x-implementation-status: IMPLEMENTED_DEFAULT_OFF
+      x-default-enabled: false
+      x-contract: 65-Admin-Ops-Console-Contract-v0.1.md
+      x-assembly-switch: pet.admin.ops.http.enabled
+      x-route-party: OPS
+      x-audience: ADMIN_WEB
+      x-required-actions: [system.parameter.read]
+      description: 65号（PRD 6.11.1 系统参数台账·开关视图 / 6.13，21号《部署开关组合清单》）。pet.* 装配开关及其 Environment 实时取值的只读视图；不提供任何运行时写配置（V1 配置仅部署期 env，CCR-ADM-A005-OPS-001）。
+      security:
+      - bearerAuth: []
+      parameters: []
+      responses:
+        '400': {$ref: '#/components/responses/BadRequest'}
+        '401': {$ref: '#/components/responses/Unauthorized'}
+        '403': {$ref: '#/components/responses/Forbidden'}
+        '503': {$ref: '#/components/responses/DependencyUnavailable'}
+        '200':
+          description: 成功
+          headers:
+            Cache-Control:
+              schema: {type: string, enum: [no-store]}
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AdminOpsRuntimeSettingsEnvelope'
+
 components:
   securitySchemes:
     bearerAuth:
@@ -24909,6 +25754,422 @@ components:
         properties:
           data:
             $ref: '#/components/schemas/AdminMerchantDisableReceipt'
+    AdminOpsCategorySummary:
+      type: object
+      additionalProperties: false
+      required: [categoryCode, categoryName, status, sortOrder, breedCount, publishedBreedCount, version, createdAt, updatedAt]
+      properties:
+        categoryCode: {type: string, enum: [DOG, CAT, REPTILE, BIRD, INSECT]}
+        categoryName: {type: string, minLength: 1, maxLength: 16}
+        status: {type: string, enum: [ENABLED, DISABLED]}
+        sortOrder: {type: integer, minimum: 0, maximum: 999}
+        breedCount: {type: integer, minimum: 0}
+        publishedBreedCount: {type: integer, minimum: 0}
+        version: {type: string, pattern: '^[0-9]{1,20}$'}
+        createdAt: {$ref: '#/components/schemas/AuthTimestamp'}
+        updatedAt: {$ref: '#/components/schemas/AuthTimestamp'}
+
+    AdminOpsCategoryPageEnvelope:
+      allOf:
+      - $ref: '#/components/schemas/BaseEnvelope'
+      - type: object
+        properties:
+          data:
+            type: object
+            additionalProperties: false
+            required: [page, pageSize, total, items]
+            properties:
+              page: {type: integer}
+              pageSize: {type: integer}
+              total: {type: integer}
+              items:
+                type: array
+                items:
+                  $ref: '#/components/schemas/AdminOpsCategorySummary'
+
+    AdminOpsCategoryUpdateRequest:
+      type: object
+      additionalProperties: false
+      required: [categoryName, sortOrder, expectedVersion]
+      properties:
+        categoryName: {type: string, minLength: 2, maxLength: 10}
+        sortOrder: {type: integer, minimum: 0, maximum: 999}
+        expectedVersion: {type: string, pattern: '^[0-9]{1,20}$'}
+
+    AdminOpsCategoryMutation:
+      type: object
+      additionalProperties: false
+      required: [categoryCode, categoryName, status, sortOrder, version, occurredAt]
+      properties:
+        categoryCode: {type: string, enum: [DOG, CAT, REPTILE, BIRD, INSECT]}
+        categoryName: {type: string, minLength: 1, maxLength: 16}
+        status: {type: string, enum: [ENABLED, DISABLED]}
+        sortOrder: {type: integer, minimum: 0, maximum: 999}
+        version: {type: string, pattern: '^[0-9]{1,20}$'}
+        occurredAt: {$ref: '#/components/schemas/AuthTimestamp'}
+
+    AdminOpsCategoryMutationEnvelope:
+      allOf:
+      - $ref: '#/components/schemas/BaseEnvelope'
+      - type: object
+        properties:
+          data:
+            $ref: '#/components/schemas/AdminOpsCategoryMutation'
+
+    AdminOpsBreedCard:
+      type: object
+      additionalProperties: false
+      required: [breedId, categoryCode, categoryName, name, aliases, tags, summary, coverUrl, status, sortOrder, version, updatedAt]
+      properties:
+        breedId: {$ref: '#/components/schemas/PublicId'}
+        categoryCode: {type: string, enum: [DOG, CAT, REPTILE, BIRD, INSECT]}
+        categoryName: {type: string, minLength: 1, maxLength: 16}
+        name: {type: string, minLength: 1, maxLength: 30}
+        aliases:
+          type: array
+          maxItems: 5
+          items: {type: string, minLength: 1, maxLength: 50}
+        tags:
+          type: array
+          maxItems: 10
+          items: {type: string, minLength: 1, maxLength: 30}
+        summary: {type: string, minLength: 1, maxLength: 120}
+        coverUrl: {type: string, nullable: true, maxLength: 512}
+        status: {type: string, enum: [PUBLISHED, OFFLINE]}
+        sortOrder: {type: integer, minimum: 0, maximum: 9999}
+        version: {type: string, pattern: '^[0-9]{1,20}$'}
+        updatedAt: {$ref: '#/components/schemas/AuthTimestamp'}
+
+    AdminOpsBreedPageEnvelope:
+      allOf:
+      - $ref: '#/components/schemas/BaseEnvelope'
+      - type: object
+        properties:
+          data:
+            type: object
+            additionalProperties: false
+            required: [page, pageSize, total, items]
+            properties:
+              page: {type: integer}
+              pageSize: {type: integer}
+              total: {type: integer}
+              items:
+                type: array
+                items:
+                  $ref: '#/components/schemas/AdminOpsBreedCard'
+
+    AdminOpsBreedDetail:
+      allOf:
+      - $ref: '#/components/schemas/AdminOpsBreedCard'
+      - type: object
+        additionalProperties: false
+        required: [bodyType, descriptionHtml, careAdviceHtml, healthTipsHtml, createdAt]
+        properties:
+          bodyType: {type: string, nullable: true, maxLength: 32}
+          descriptionHtml: {type: string, nullable: true, maxLength: 9000}
+          careAdviceHtml: {type: string, nullable: true, maxLength: 6000}
+          healthTipsHtml: {type: string, nullable: true, maxLength: 6000}
+          createdAt: {$ref: '#/components/schemas/AuthTimestamp'}
+
+    AdminOpsBreedDetailEnvelope:
+      allOf:
+      - $ref: '#/components/schemas/BaseEnvelope'
+      - type: object
+        properties:
+          data:
+            $ref: '#/components/schemas/AdminOpsBreedDetail'
+
+    AdminOpsBreedUpdateRequest:
+      type: object
+      additionalProperties: false
+      required: [summary, coverUrl, bodyType, aliases, tags, sortOrder, expectedVersion]
+      properties:
+        summary: {type: string, minLength: 1, maxLength: 120}
+        coverUrl: {type: string, nullable: true, maxLength: 512}
+        bodyType: {type: string, nullable: true, maxLength: 32}
+        aliases:
+          type: array
+          maxItems: 5
+          items: {type: string, minLength: 1, maxLength: 50}
+        tags:
+          type: array
+          maxItems: 10
+          items: {type: string, minLength: 1, maxLength: 30}
+        sortOrder: {type: integer, minimum: 0, maximum: 9999}
+        expectedVersion: {type: string, pattern: '^[0-9]{1,20}$'}
+
+    AdminOpsBreedMutation:
+      type: object
+      additionalProperties: false
+      required: [breedId, name, status, sortOrder, version, occurredAt]
+      properties:
+        breedId: {$ref: '#/components/schemas/PublicId'}
+        name: {type: string, minLength: 1, maxLength: 30}
+        status: {type: string, enum: [PUBLISHED, OFFLINE]}
+        sortOrder: {type: integer, minimum: 0, maximum: 9999}
+        version: {type: string, pattern: '^[0-9]{1,20}$'}
+        occurredAt: {$ref: '#/components/schemas/AuthTimestamp'}
+
+    AdminOpsBreedMutationEnvelope:
+      allOf:
+      - $ref: '#/components/schemas/BaseEnvelope'
+      - type: object
+        properties:
+          data:
+            $ref: '#/components/schemas/AdminOpsBreedMutation'
+
+    AdminOpsTemplateSummary:
+      type: object
+      additionalProperties: false
+      required: [templateId, name, status, amountOff, thresholdAmount, validStartAt, validEndAt, totalStock, issuedCount, version, createdAt, updatedAt]
+      properties:
+        templateId: {$ref: '#/components/schemas/PublicId'}
+        name: {type: string, minLength: 1, maxLength: 128}
+        status: {type: string, enum: [DRAFT, ACTIVE, OFFLINE]}
+        amountOff: {$ref: '#/components/schemas/DecimalAmountOutput'}
+        thresholdAmount:
+          allOf: [{type: string, nullable: true}, {$ref: '#/components/schemas/DecimalAmountOutput'}]
+        validStartAt: {$ref: '#/components/schemas/AuthTimestamp'}
+        validEndAt: {$ref: '#/components/schemas/AuthTimestamp'}
+        totalStock: {type: string, nullable: true, pattern: '^[0-9]{1,19}$'}
+        issuedCount: {type: string, pattern: '^[0-9]{1,19}$'}
+        version: {type: string, pattern: '^[0-9]{1,20}$'}
+        createdAt: {$ref: '#/components/schemas/AuthTimestamp'}
+        updatedAt: {$ref: '#/components/schemas/AuthTimestamp'}
+
+    AdminOpsTemplatePageEnvelope:
+      allOf:
+      - $ref: '#/components/schemas/BaseEnvelope'
+      - type: object
+        properties:
+          data:
+            type: object
+            additionalProperties: false
+            required: [page, pageSize, total, items]
+            properties:
+              page: {type: integer}
+              pageSize: {type: integer}
+              total: {type: integer}
+              items:
+                type: array
+                items:
+                  $ref: '#/components/schemas/AdminOpsTemplateSummary'
+
+    AdminOpsTemplateDetail:
+      allOf:
+      - $ref: '#/components/schemas/AdminOpsTemplateSummary'
+      - type: object
+        additionalProperties: false
+        required: [scopeSummary, typeLabel]
+        properties:
+          scopeSummary: {type: string, nullable: true, maxLength: 64}
+          typeLabel: {type: string, nullable: true, maxLength: 16}
+
+    AdminOpsTemplateDetailEnvelope:
+      allOf:
+      - $ref: '#/components/schemas/BaseEnvelope'
+      - type: object
+        properties:
+          data:
+            $ref: '#/components/schemas/AdminOpsTemplateDetail'
+
+    AdminOpsTemplateCreateRequest:
+      type: object
+      additionalProperties: false
+      required: [name, amountOff, validStartAt, validEndAt]
+      properties:
+        name: {type: string, minLength: 2, maxLength: 50}
+        amountOff: {$ref: '#/components/schemas/DecimalAmount'}
+        thresholdAmount: {type: string, nullable: true, allOf: [{$ref: '#/components/schemas/DecimalAmount'}]}
+        validStartAt: {$ref: '#/components/schemas/AuthTimestamp'}
+        validEndAt: {$ref: '#/components/schemas/AuthTimestamp'}
+        scopeSummary: {type: string, nullable: true, maxLength: 64}
+        typeLabel: {type: string, nullable: true, maxLength: 16}
+
+    AdminOpsTemplateUpdateRequest:
+      allOf:
+      - $ref: '#/components/schemas/AdminOpsTemplateCreateRequest'
+      - type: object
+        additionalProperties: false
+        required: [expectedVersion]
+        properties:
+          expectedVersion: {type: string, pattern: '^[0-9]{1,20}$'}
+
+    AdminOpsTemplateMutation:
+      type: object
+      additionalProperties: false
+      required: [templateId, name, status, version, occurredAt]
+      properties:
+        templateId: {$ref: '#/components/schemas/PublicId'}
+        name: {type: string, minLength: 1, maxLength: 128}
+        status: {type: string, enum: [DRAFT, ACTIVE, OFFLINE]}
+        version: {type: string, pattern: '^[0-9]{1,20}$'}
+        occurredAt: {$ref: '#/components/schemas/AuthTimestamp'}
+
+    AdminOpsTemplateMutationEnvelope:
+      allOf:
+      - $ref: '#/components/schemas/BaseEnvelope'
+      - type: object
+        properties:
+          data:
+            $ref: '#/components/schemas/AdminOpsTemplateMutation'
+
+    AdminOpsTrialCalculation:
+      type: object
+      additionalProperties: false
+      required: [templateId, orderAmount, thresholdAmount, discountAmount, payAmount, eligible, ineligibleReason]
+      properties:
+        templateId: {$ref: '#/components/schemas/PublicId'}
+        orderAmount: {$ref: '#/components/schemas/DecimalAmountOutput'}
+        thresholdAmount:
+          allOf: [{type: string, nullable: true}, {$ref: '#/components/schemas/DecimalAmountOutput'}]
+        discountAmount:
+          allOf: [{type: string, nullable: true}, {$ref: '#/components/schemas/DecimalAmountOutput'}]
+        payAmount:
+          allOf: [{type: string, nullable: true}, {$ref: '#/components/schemas/DecimalAmountOutput'}]
+        eligible: {type: boolean}
+        ineligibleReason:
+          type: string
+          nullable: true
+          enum: [BELOW_THRESHOLD, NOT_ACTIVE, NOT_YET_VALID, EXPIRED, DISCOUNT_EXCEEDS_AMOUNT, RULE_UNREADABLE]
+
+    AdminOpsTrialCalculationEnvelope:
+      allOf:
+      - $ref: '#/components/schemas/BaseEnvelope'
+      - type: object
+        properties:
+          data:
+            $ref: '#/components/schemas/AdminOpsTrialCalculation'
+
+    AdminOpsInstanceSummary:
+      type: object
+      additionalProperties: false
+      required: [instanceId, templateId, templateName, userId, status, amountOff, thresholdAmount, originalExpireAt, expireAt, orderId, frozenAt, usedAt, createdAt]
+      properties:
+        instanceId: {$ref: '#/components/schemas/PublicId'}
+        templateId: {$ref: '#/components/schemas/PublicId'}
+        templateName: {type: string, minLength: 1, maxLength: 128}
+        userId: {$ref: '#/components/schemas/PublicId'}
+        status: {type: string, enum: [AVAILABLE, FROZEN, USED, EXPIRED, RISK_FROZEN]}
+        amountOff: {$ref: '#/components/schemas/DecimalAmountOutput'}
+        thresholdAmount:
+          allOf: [{type: string, nullable: true}, {$ref: '#/components/schemas/DecimalAmountOutput'}]
+        originalExpireAt: {$ref: '#/components/schemas/AuthTimestamp'}
+        expireAt: {$ref: '#/components/schemas/AuthTimestamp'}
+        orderId: {type: string, nullable: true, pattern: '^[1-9][0-9]{0,18}$'}
+        frozenAt: {type: string, nullable: true, allOf: [{$ref: '#/components/schemas/AuthTimestamp'}]}
+        usedAt: {type: string, nullable: true, allOf: [{$ref: '#/components/schemas/AuthTimestamp'}]}
+        createdAt: {$ref: '#/components/schemas/AuthTimestamp'}
+
+    AdminOpsInstancePageEnvelope:
+      allOf:
+      - $ref: '#/components/schemas/BaseEnvelope'
+      - type: object
+        properties:
+          data:
+            type: object
+            additionalProperties: false
+            required: [page, pageSize, total, items]
+            properties:
+              page: {type: integer}
+              pageSize: {type: integer}
+              total: {type: integer}
+              items:
+                type: array
+                items:
+                  $ref: '#/components/schemas/AdminOpsInstanceSummary'
+
+    AdminOpsLedgerRow:
+      type: object
+      additionalProperties: false
+      required: [ledgerId, action, fromStatus, toStatus, orderId, requestId, remark, createdAt]
+      properties:
+        ledgerId: {$ref: '#/components/schemas/PublicId'}
+        action: {type: string, enum: [ISSUE, FREEZE, CONSUME, RELEASE, REFUND_RESTORE, EXPIRE, RISK_FREEZE]}
+        fromStatus: {type: string, nullable: true, maxLength: 32}
+        toStatus: {type: string, minLength: 1, maxLength: 32}
+        orderId: {type: string, nullable: true, pattern: '^[1-9][0-9]{0,18}$'}
+        requestId: {type: string, minLength: 1, maxLength: 64}
+        remark: {type: string, nullable: true, maxLength: 500}
+        createdAt: {$ref: '#/components/schemas/AuthTimestamp'}
+
+    AdminOpsInstanceDetail:
+      allOf:
+      - $ref: '#/components/schemas/AdminOpsInstanceSummary'
+      - type: object
+        additionalProperties: false
+        required: [freezeExpireAt, updatedAt, ledger]
+        properties:
+          freezeExpireAt: {type: string, nullable: true, allOf: [{$ref: '#/components/schemas/AuthTimestamp'}]}
+          updatedAt: {$ref: '#/components/schemas/AuthTimestamp'}
+          ledger:
+            type: array
+            items:
+              $ref: '#/components/schemas/AdminOpsLedgerRow'
+
+    AdminOpsInstanceDetailEnvelope:
+      allOf:
+      - $ref: '#/components/schemas/BaseEnvelope'
+      - type: object
+        properties:
+          data:
+            $ref: '#/components/schemas/AdminOpsInstanceDetail'
+
+    AdminOpsPointsLedgerRow:
+      type: object
+      additionalProperties: false
+      required: [ledgerId, userId, bizType, delta, balanceAfter, orderId, createdAt]
+      properties:
+        ledgerId: {$ref: '#/components/schemas/PublicId'}
+        userId: {$ref: '#/components/schemas/PublicId'}
+        bizType: {type: string, enum: [SIGN_IN, INVITE, TASK, ORDER_REWARD, REFUND_CLAWBACK]}
+        delta: {type: string, pattern: '^-[1-9][0-9]{0,17}$|^[1-9][0-9]{0,17}$'}
+        balanceAfter: {type: string, pattern: '^[0-9]{1,19}$'}
+        orderId: {type: string, nullable: true, pattern: '^[1-9][0-9]{0,18}$'}
+        createdAt: {$ref: '#/components/schemas/AuthTimestamp'}
+
+    AdminOpsPointsLedgerPageEnvelope:
+      allOf:
+      - $ref: '#/components/schemas/BaseEnvelope'
+      - type: object
+        properties:
+          data:
+            type: object
+            additionalProperties: false
+            required: [page, pageSize, total, items]
+            properties:
+              page: {type: integer}
+              pageSize: {type: integer}
+              total: {type: integer}
+              items:
+                type: array
+                items:
+                  $ref: '#/components/schemas/AdminOpsPointsLedgerRow'
+
+    AdminOpsRuntimeSettings:
+      type: object
+      additionalProperties: false
+      required: [switches, readOnly]
+      properties:
+        switches:
+          type: array
+          items:
+            type: object
+            additionalProperties: false
+            required: [key, enabled, phase]
+            properties:
+              key: {type: string, minLength: 1, maxLength: 64, pattern: '^pet\.[a-z0-9.-]+$'}
+              enabled: {type: boolean}
+              phase: {type: string, enum: [ADMIN, C, INFRA, MERCHANT, CATALOG, SCHEDULE, ORDER, PAYMENT, REFUND, AFTERSALE, VERIFICATION, REVIEW, POINTS, COMMUNITY, COUPON]}
+        readOnly: {type: boolean, enum: [true]}
+
+    AdminOpsRuntimeSettingsEnvelope:
+      allOf:
+      - $ref: '#/components/schemas/BaseEnvelope'
+      - type: object
+        properties:
+          data:
+            $ref: '#/components/schemas/AdminOpsRuntimeSettings'
   examples:
     AuthApprovedExample1:
       summary: Accepted AUTH example; fictional data, no Provider success claim
