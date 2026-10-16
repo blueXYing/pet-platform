@@ -12,7 +12,9 @@ import org.springframework.context.annotation.Configuration;
  * C-end store catalog (CCR-W2-API-001 store read, STR-D6): assembled only with the merchant
  * application module (its review-facts reader feeds the shared eligibility policy) and the
  * approved SVC-D5/D6 fifth-query machinery; enabling requires every real dependency bean to
- * exist. Default ON per the 2026-10-16 ruling (doc 35); the routes additionally ride the C session domain's security chain at deployment.
+ * exist. Default OFF (35号 B-class blocker: it requires the ApplicationReviewFactsReader bean
+ * from the merchant application kernel); the routes additionally ride the C session domain's
+ * security chain at deployment.
  */
 @Configuration(proxyBeanMethods = false)
 @ConditionalOnProperty(prefix = "pet.store.query", name = "enabled", havingValue = "true")
