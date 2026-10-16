@@ -4,7 +4,7 @@ import { useCallback, useEffect, useRef, useState, type CSSProperties } from 're
 import { useWorkspace } from '../../../shared/workspace-react'
 import { consumerApi } from '../../../shared/consumer-runtime'
 import { ConsumerPageLayout } from '../../components/page-layout'
-import { inviteShareText, taskRowStatusLabels, type TasksView } from '../../points-tasks/model'
+import { inviteShareText, taskRowStatusLabels, type TaskRowView, type TasksView } from '../../points-tasks/model'
 import { RealPointsTaskRepository, isPointsTaskUnauthorized } from '../../points-tasks/repository'
 import './points-tasks.css'
 
@@ -12,8 +12,18 @@ import './points-tasks.css'
 // 面板（标题+关闭）；任务行四条来自 GET tasks 服务端投影——COMMUNITY_POST 恒 NOT_OPEN，
 // 文案"暂未开放"（V1 无社区积分规则，M2）。本人邀请码确定性可逆（R1），V1 无邀请落地页，
 // 分享动作落地为复制口令文本（偏差 4：不切原稿分享卡片素材）。读取失败失败关闭。
-// 积分只赚取/扣回不消费；领取动作统一走奖励页（A2：除签到外显式领取）。
+// 积分只赚取/扣回不消费；除签到外全部显式领取（A2）。
+// F3R-4 修复：CLAIMABLE 任务行（FIRST_ORDER/INVITE_PER_HEAD）原样只有文字徽章无动作，
+// 接上既有 POST /c/points/claims（api.write 幂等槽按 claimType 分槽，契约 60 §3.4 既有
+// 路径零新增）；领取成功/失败后刷新投影，与奖励页同口径。
 type Phase = 'loading' | 'ready' | 'expired' | 'load-error'
+
+/** 契约 60 内可经 POST claims 领取的任务行（SIGN_IN 走签到；COMMUNITY_POST 恒 NOT_OPEN）。 */
+const CLAIMABLE_TASK_CODES = ['INVITE_PER_HEAD', 'FIRST_ORDER'] as const
+type ClaimableTaskCode = typeof CLAIMABLE_TASK_CODES[number]
+function isClaimableTaskCode(code: TaskRowView['taskCode']): code is ClaimableTaskCode {
+  return (CLAIMABLE_TASK_CODES as readonly string[]).includes(code)
+}
 
 export default function PointsTasksPage() {
   const route = useRouter()
@@ -23,6 +33,7 @@ export default function PointsTasksPage() {
   const [phase, setPhase] = useState<Phase>('loading')
   const [tasks, setTasks] = useState<TasksView | null>(null)
   const [notice, setNotice] = useState('')
+  const [busy, setBusy] = useState('')
   const mounted = useRef(true)
   const sequence = useRef(0)
   const previousRevision = useRef(revision)
@@ -69,6 +80,28 @@ export default function PointsTasksPage() {
       setNotice(`复制失败，请手动记录邀请码 ${tasks.inviteCode}`)
     }
   }
+  // F3R-4：CLAIMABLE 任务行领取（claimType = taskCode，幂等槽分槽同奖励页）。
+  // 服务端 409（已领/未达成口径翻转）与 PENDING_WRITE 均提示后刷新，不虚构状态。
+  // 契约内可领取的任务行只有 INVITE_PER_HEAD / FIRST_ORDER（SIGN_IN 走签到、
+  // COMMUNITY_POST 恒 NOT_OPEN），运行时同样收窄，非可领取码不渲染按钮也不发请求。
+  async function claim(row: TaskRowView) {
+    if (busy || preview || row.status !== 'CLAIMABLE' || !isClaimableTaskCode(row.taskCode)) return
+    setBusy(row.taskCode); setNotice('')
+    const claimCode = row.taskCode
+    try {
+      const receipt = await scope.run(undefined, () => repository.current!.claimReward(claimCode))
+      if (!mounted.current) return
+      setNotice(`领取成功，+${receipt.pointsGranted} 积分已入账。`)
+      await load()
+    } catch (error) {
+      if (!mounted.current) return
+      setNotice(error instanceof Error && error.message === 'PENDING_WRITE_CHANGED'
+        ? '领取请求处理中，请稍候' : '当前不可领取，已刷新状态。')
+      await load()
+    } finally {
+      if (mounted.current) setBusy('')
+    }
+  }
   const ready = phase === 'ready' && tasks !== null
   return <ConsumerPageLayout page='pointsPage' unit={unit} className='ptk-page'
     navigation={{ idPrefix: 'ptt', disabled: !ready, onSelect: () => {} }} style={style}>
@@ -99,9 +132,14 @@ export default function PointsTasksPage() {
                 <Text className='ptk-row-desc'>{row.description}</Text>
                 <Text className='ptk-row-points'>{row.points === '0' ? '暂未开放' : `${row.points} 积分`}</Text>
               </View>
-              <View className={`ptk-badge${row.status === 'DONE_TODAY' || row.status === 'CLAIMED' ? '' : ' is-progress'}`}>
-                <Text>{taskRowStatusLabels[row.status]}</Text>
-              </View>
+              {row.status === 'CLAIMABLE' && isClaimableTaskCode(row.taskCode)
+                ? <Button className='ptk-claim' disabled={busy === row.taskCode || preview}
+                  id={`ptt-claim-${row.taskCode}`} onClick={() => void claim(row)}>
+                    <Text>{busy === row.taskCode ? '领取中…' : taskRowStatusLabels.CLAIMABLE}</Text>
+                  </Button>
+                : <View className={`ptk-badge${row.status === 'DONE_TODAY' || row.status === 'CLAIMED' ? '' : ' is-progress'}`}>
+                    <Text>{taskRowStatusLabels[row.status]}</Text>
+                  </View>}
             </View>)}
           </View>
           <View className='ptk-invite' id='ptt-invite'>

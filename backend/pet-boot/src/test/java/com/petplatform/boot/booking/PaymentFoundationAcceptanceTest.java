@@ -536,12 +536,151 @@ class PaymentFoundationAcceptanceTest {
     }
   }
 
+  @Test
+  void couponOrderPreparesTheDiscountedAmountWhileClosedAndPaidOnesStayRejected() throws Exception {
+    try (Fixture f = new Fixture(Clock.systemUTC())) {
+      // The seeded world allows exactly one concurrent 90-minute booking (one staff member,
+      // window capacity 1); this gate regression books three orders in one fixture, so widen
+      // both in the same direct-row style the other slices use for state arrangement.
+      for (int extra = 0; extra < 2; extra++) {
+        long staffId = id();
+        f.db.jdbc.update("INSERT INTO merchant_staff(id,merchant_id,store_id,staff_name,"
+            + "employment_status,service_enabled,created_at,updated_at)"
+            + " VALUES(?,?,?,'加座员工','ACTIVE',1,UTC_TIMESTAMP(3),UTC_TIMESTAMP(3))",
+            staffId, Long.parseLong(MERCHANT), Long.parseLong(STORE));
+        f.db.jdbc.update("INSERT INTO staff_service_capability(id,staff_id,service_id,"
+            + "status,created_at,updated_at) VALUES(?,?,?,'ENABLED',UTC_TIMESTAMP(3),UTC_TIMESTAMP(3))",
+            id(), staffId, 710401L);
+        f.db.jdbc.update("INSERT INTO staff_availability_window(id,store_id,staff_id,start_at,"
+            + "end_at,status,created_at,updated_at) VALUES(?,?,?,'2030-01-01 08:00:00',"
+            + "'2030-01-01 14:00:00','AVAILABLE',UTC_TIMESTAMP(3),UTC_TIMESTAMP(3))",
+            id(), Long.parseLong(STORE), staffId);
+      }
+      f.db.jdbc.update("UPDATE schedule_availability_window SET configured_capacity=3 "
+          + "WHERE id=710500");
+
+      // The discount-free baseline is untouched (128.00 flows are asserted by the other
+      // slices in this class): a booked coupon must not block the intent — the gate
+      // validates the order state and the discounted collectible pay_amount (F3R-3), and
+      // the channel amount equals the discounted pay_amount, never the original price.
+      long couponId = f.seedCoupon("{\"amountOff\":\"20\",\"thresholdAmount\":\"100.00\"}");
+      CreateOrderResult couponBooking = f.bookWithCoupon(Long.toString(couponId));
+      assertEquals("FROZEN", f.text("SELECT status FROM coupon_instance WHERE id=?", couponId));
+      PreparedPayment intent = f.prepare(couponBooking.orderId(), UUID.randomUUID().toString());
+      assertFalse(intent.replayed());
+      assertEquals(new BigDecimal("108.00"), intent.amount());
+      assertEquals("108.00", f.text("SELECT amount FROM payment_order WHERE id=?",
+          Long.parseLong(intent.paymentId())));
+
+      // A payment-timeout close of an unpaid coupon order releases the coupon; afterwards
+      // the closed order still cannot start a payment. (A prepared intent makes the close
+      // hold for payment reconciliation on purpose — that path is the coordination
+      // acceptance test's subject, so this slice closes an order with no payment row.)
+      long closedCoupon = f.seedCoupon("{\"amountOff\":\"20\",\"thresholdAmount\":\"100.00\"}");
+      CreateOrderResult closedBooking = f.bookWithCoupon(Long.toString(closedCoupon));
+      long reservation = f.db.jdbc.queryForObject(
+          "SELECT reservation_id FROM pet_order WHERE id=?", Long.class,
+          Long.parseLong(closedBooking.orderId()));
+      var couponExpiry = new OrderExpiryApiImpl(f.db.source, PaymentFoundationAcceptanceTest::id,
+          f.guard, f.reservationExpiry, new BookingPaymentExposureApiImpl(f.db.source, f.guard),
+          new BookingCouponExposureApiImpl(f.db.source, f.guard), null, couponCommands(f.db));
+      OffsetDateTime due = OffsetDateTime.now(ZoneOffset.UTC).minusMinutes(1)
+          .truncatedTo(ChronoUnit.MILLIS);
+      f.db.jdbc.update("UPDATE pet_order SET payment_expire_at=? WHERE id=?",
+          due.toLocalDateTime(), Long.parseLong(closedBooking.orderId()));
+      f.db.jdbc.update("UPDATE schedule_reservation SET lock_expire_at=? WHERE id=?",
+          due.toLocalDateTime(), reservation);
+      assertEquals(ExpireOrderResult.CLOSED, couponExpiry.expire(new ExpireOrderCommand(
+          new CommandContext("TASK:RESERVATION_HOLD_EXPIRE:" + reservation + ":0",
+              "pay-qa-coupon-expire", OperatorType.SYSTEM, null, "ASYNC_TASK"),
+          closedBooking.orderId(), Long.toString(reservation), 0, due)));
+      assertEquals("AVAILABLE", f.text("SELECT status FROM coupon_instance WHERE id=?",
+          closedCoupon));
+      assertCode("COMMON_CONFLICT", () -> f.prepare(closedBooking.orderId(),
+          UUID.randomUUID().toString()));
+      assertEquals(0L, f.count("SELECT COUNT(*) FROM payment_order WHERE order_id="
+          + closedBooking.orderId()));
+
+      // A PAID coupon order is likewise beyond the payability window's eligibility.
+      long secondCoupon = f.seedCoupon("{\"amountOff\":\"20\",\"thresholdAmount\":\"100.00\"}");
+      CreateOrderResult paidBooking = f.bookWithCoupon(Long.toString(secondCoupon));
+      f.db.jdbc.update("UPDATE pet_order SET order_stage='PENDING_CONFIRM',"
+          + " payment_status='PAID' WHERE id=?", Long.parseLong(paidBooking.orderId()));
+      assertCode("COMMON_CONFLICT", () -> f.prepare(paidBooking.orderId(),
+          UUID.randomUUID().toString()));
+    }
+  }
+
   private static String rawUtc(OffsetDateTime time) {
     return time.withOffsetSameInstant(ZoneOffset.UTC)
         .format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss.SSS'000'"));
   }
 
   private static long id() { return IDS.incrementAndGet(); }
+
+  /**
+   * In-module contract 61 CouponCommandApi stand-in mirroring the row-level CAS (the real
+   * statement semantics live in pet-coupon-biz; biz modules never depend on each other, not
+   * even in tests). Same shape as the order-module test double; package-private so the
+   * coordination acceptance test can wire coupon-bearing orders too.
+   */
+  static com.petplatform.coupon.api.command.CouponCommandApi couponCommands(
+      BookingCreateAcceptanceTest.Database db) {
+    return new com.petplatform.coupon.api.command.CouponCommandApi() {
+      @Override public CouponFreezeResult freeze(CouponFreezeCommand command) {
+        long couponId = Long.parseLong(command.couponInstanceId());
+        int frozen = db.jdbc.update(
+            "UPDATE coupon_instance SET status='FROZEN', order_id=?,"
+            + " frozen_at=UTC_TIMESTAMP(3), freeze_expire_at=?, version=version+1,"
+            + " updated_at=UTC_TIMESTAMP(3)"
+            + " WHERE id=? AND user_id=? AND status='AVAILABLE'"
+            + " AND expire_at > UTC_TIMESTAMP(3)",
+            Long.parseLong(command.orderId()), stamp(command.freezeExpireAt()), couponId,
+            Long.parseLong(command.userId()));
+        if (frozen != 1) throw new ApiException("COUPON_NOT_AVAILABLE", "coupon lost");
+        String rule = db.jdbc.queryForObject(
+            "SELECT t.rule_json FROM coupon_instance i"
+            + " JOIN coupon_template t ON t.id=i.coupon_template_id WHERE i.id=?",
+            String.class, couponId);
+        var matcher = java.util.regex.Pattern.compile(
+            "\"amountOff\":\\s?\"([0-9]+(?:\\.[0-9]{1,2})?)\"").matcher(rule);
+        if (!matcher.find()) throw new ApiException("COUPON_NOT_AVAILABLE", "no rule");
+        BigDecimal discount = new BigDecimal(matcher.group(1));
+        if (discount.compareTo(command.orderAmount()) >= 0) {
+          throw new ApiException("COUPON_NOT_AVAILABLE", "not discountable");
+        }
+        return new CouponFreezeResult(command.couponInstanceId(), discount);
+      }
+      @Override public CouponConsumeResult consume(CouponConsumeCommand command) {
+        long couponId = db.jdbc.queryForObject(
+            "SELECT id FROM coupon_instance WHERE order_id=? AND status='FROZEN'"
+            + " FOR UPDATE", Long.class, Long.parseLong(command.orderId()));
+        db.jdbc.update("UPDATE coupon_instance SET status='USED', used_at=?,"
+            + " version=version+1, updated_at=UTC_TIMESTAMP(3)"
+            + " WHERE id=? AND status='FROZEN' AND order_id=?",
+            stamp(command.consumedAt()), couponId, Long.parseLong(command.orderId()));
+        return new CouponConsumeResult(Long.toString(couponId));
+      }
+      @Override public CouponReleaseResult release(CouponReleaseCommand command) {
+        long orderId = Long.parseLong(command.orderId());
+        long couponId = db.jdbc.queryForObject(
+            "SELECT id FROM coupon_instance WHERE order_id=? AND status='FROZEN'"
+            + " FOR UPDATE", Long.class, orderId);
+        db.jdbc.update("UPDATE coupon_instance SET status=CASE WHEN expire_at > ?"
+            + " THEN 'AVAILABLE' ELSE 'EXPIRED' END, order_id=NULL, frozen_at=NULL,"
+            + " freeze_expire_at=NULL, version=version+1, updated_at=UTC_TIMESTAMP(3)"
+            + " WHERE id=? AND status='FROZEN' AND order_id=?",
+            stamp(command.closedAt()), couponId, orderId);
+        String landing = db.jdbc.queryForObject(
+            "SELECT status FROM coupon_instance WHERE id=?", String.class, couponId);
+        return new CouponReleaseResult(Long.toString(couponId), landing);
+      }
+    };
+  }
+
+  private static LocalDateTime stamp(OffsetDateTime value) {
+    return value == null ? null : LocalDateTime.ofInstant(value.toInstant(), ZoneOffset.UTC);
+  }
 
   /** Simulates a DB commit that succeeded while only the client acknowledgement was lost. */
   private static final class LostSecondCommitSource extends DelegatingDataSource {
@@ -593,6 +732,11 @@ class PaymentFoundationAcceptanceTest {
     final ReservationExpiryApiImpl reservationExpiry;
     final TransactionalOutboxPublisher publisher;
     final KeyPair channelKey;
+    private final Clock clock;
+    private final BookingUserFactsApiImpl users;
+    private final BookingMerchantFactsApiImpl merchants;
+    private final BookingServiceFactsApiImpl services;
+    private final ReservationHoldApiImpl hold;
     private final OrderCreationApiImpl creation;
 
     Fixture(Clock clock) throws Exception {
@@ -603,6 +747,7 @@ class PaymentFoundationAcceptanceTest {
       db = new BookingCreateAcceptanceTest.Database();
       try {
         db.seedBookableFacts();
+        this.clock = clock;
         guard = new ScheduleCapacityGuardApiImpl(db.source);
         var scheduleFacts = new ScheduleProtectionFactsApiImpl(db.source, guard);
         var staffFacts = new MerchantCurrentStaffFactsApiImpl(db.source, guard);
@@ -610,14 +755,15 @@ class PaymentFoundationAcceptanceTest {
             staffFacts, clock);
         var proof = new ScheduleCapacityProofApiImpl(db.source, guard, scheduleFacts,
             staffFacts, orderFacts, clock, 10_000);
-        var hold = new ReservationHoldApiImpl(db.source, PaymentFoundationAcceptanceTest::id,
+        hold = new ReservationHoldApiImpl(db.source, PaymentFoundationAcceptanceTest::id,
             guard, scheduleFacts, proof, orderFacts, clock);
         var approval = new PersistentApplicationReviewFactsReader(db.source,
             PaymentFoundationAcceptanceTest::id);
-        var users = new BookingUserFactsApiImpl(db.source, guard);
+        users = new BookingUserFactsApiImpl(db.source, guard);
+        merchants = new BookingMerchantFactsApiImpl(db.source, guard, approval);
+        services = new BookingServiceFactsApiImpl(db.source, guard);
         creation = new OrderCreationApiImpl(db.source, PaymentFoundationAcceptanceTest::id,
-            users, new BookingMerchantFactsApiImpl(db.source, guard, approval),
-            new BookingServiceFactsApiImpl(db.source, guard), guard, hold,
+            users, merchants, services, guard, hold,
             new BookingCreateAcceptanceTest.InputProtector(), null, clock);
         var orderPayment = new OrderPaymentFactsApiImpl(db.source, guard);
         preparation = new PaymentPreparationApiImpl(db.source, PaymentFoundationAcceptanceTest::id,
@@ -666,6 +812,35 @@ class PaymentFoundationAcceptanceTest {
           "pay-qa-create", OperatorType.USER, USER, "MINIAPP"), STORE, "710401", "710200",
           "IN_STORE", start, start.plusMinutes(90), null, null, "710500", null, null,
           null, null, null));
+    }
+
+    /** Books the same fixture slot with a coupon frozen by the contract 61 stand-in below. */
+    CreateOrderResult bookWithCoupon(String couponInstanceId) {
+      var couponCreation = new OrderCreationApiImpl(db.source, PaymentFoundationAcceptanceTest::id,
+          users, merchants, services, guard, hold,
+          new BookingCreateAcceptanceTest.InputProtector(), null, couponCommands(db), clock);
+      OffsetDateTime start = OffsetDateTime.parse("2030-01-01T09:00:00Z");
+      return couponCreation.create(new CreateOrderCommand(new CommandContext(
+          UUID.randomUUID().toString(), "pay-qa-create", OperatorType.USER, USER, "MINIAPP"),
+          STORE, "710401", "710200", "IN_STORE", start, start.plusMinutes(90), null, null,
+          "710500", null, null, couponInstanceId, null, null));
+    }
+
+    /** Seeds one ACTIVE template plus one own AVAILABLE instance with the given rule. */
+    long seedCoupon(String ruleJson) {
+      long templateId = id();
+      long instanceId = id();
+      db.jdbc.update("INSERT INTO coupon_template(id,name,status,total_stock,issued_count,"
+          + "valid_start_at,valid_end_at,rule_json,version,created_at,updated_at)"
+          + " VALUES(?,'测试券','ACTIVE',100,0,'2020-01-01 00:00:00.000',"
+          + "'2099-12-31 23:59:59.000',?,0,UTC_TIMESTAMP(3),UTC_TIMESTAMP(3))", templateId, ruleJson);
+      db.jdbc.update("INSERT INTO coupon_instance(id,coupon_template_id,user_id,status,"
+          + "order_id,frozen_at,freeze_expire_at,used_at,original_expire_at,expire_at,"
+          + "version,created_at,updated_at) VALUES(?,?,?,'AVAILABLE',NULL,NULL,NULL,"
+          + "NULL,'2099-12-31 23:59:59.000','2099-12-31 23:59:59.000',0,"
+          + "UTC_TIMESTAMP(3),UTC_TIMESTAMP(3))",
+          instanceId, templateId, Long.parseLong(USER));
+      return instanceId;
     }
 
     PreparedPayment prepare(String orderId, String requestId) {

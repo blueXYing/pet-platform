@@ -67,8 +67,12 @@ public final class OrderPaymentFactsApiImpl implements OrderPaymentFactsApi {
 
     @Override public void requirePayableForPreparation(String orderId,String storeId,QueryContext context) {
         var fact=readForPayment(orderId,storeId,context);
+        // Contract 61 (CPN-001): pay_amount is the collectible amount — a booked coupon discount
+        // rides along and the channel collects the discounted payAmount; only a negative discount
+        // (never produced by the freeze kernel) is an inconsistent fact.
         if(!"PENDING_PAYMENT".equals(fact.orderStage()) || !"INIT".equals(fact.paymentStatus())
-                || !"UNVERIFIED".equals(fact.verificationStatus()) || fact.discountAmount().signum()!=0
+                || !"UNVERIFIED".equals(fact.verificationStatus())
+                || fact.discountAmount()==null || fact.discountAmount().signum()<0
                 || fact.payAmount().signum()<=0 || !fact.paymentExpireAt().isAfter(orders.databaseNow())) {
             throw new ApiException(CommonApiCodes.CONFLICT,"order is not eligible for payment intent");
         }
@@ -102,8 +106,11 @@ public final class OrderPaymentFactsApiImpl implements OrderPaymentFactsApi {
         if (expectedDeadline == null || !fact.paymentExpireAt().isEqual(expectedDeadline))
             throw unavailable("ORDER expiry deadline changed");
         if (!"PENDING_PAYMENT".equals(fact.orderStage())) return false;
+        // Contract 61: a positive booked discount is a frozen-coupon order whose pay_amount is
+        // the collectible amount; expiry facts stay consistent as long as the discount is
+        // non-negative and the discounted amount is collectible.
         if (!"INIT".equals(fact.paymentStatus()) || !"UNVERIFIED".equals(fact.verificationStatus())
-                || fact.discountAmount().signum() != 0 || fact.payAmount().signum() <= 0)
+                || fact.discountAmount().signum() < 0 || fact.payAmount().signum() <= 0)
             throw unavailable("ORDER expiry facts inconsistent");
         return !orders.databaseNow().isBefore(expectedDeadline);
     }

@@ -421,6 +421,44 @@ class PaymentCoordinationAcceptanceTest {
         }
     }
 
+    @Test
+    void couponOrderExpiryReconcilesWithoutFactsInconsistencyAndCloseReleasesTheCoupon()
+            throws Exception {
+        try (Fixture fixture = new Fixture(false)) {
+            long couponId = fixture.foundation.seedCoupon(
+                    "{\"amountOff\":\"20\",\"thresholdAmount\":\"100.00\"}");
+            var booking = fixture.foundation.bookWithCoupon(Long.toString(couponId));
+            assertEquals("108.00", booking.payAmount());
+            // A prepared-unsent intent rides the same discounted payability facts (the gate
+            // accepts the booked discount and stores the discounted channel amount).
+            fixture.foundation.prepare(booking.orderId(), UUID.randomUUID().toString());
+            assertEquals("108.00", fixture.foundation.text(
+                    "SELECT amount FROM payment_order WHERE order_id=?",
+                    Long.parseLong(booking.orderId())));
+            // F3R-3 second half: expiry reconciliation must not answer "facts inconsistent"
+            // for a booked discount; a prepared-unsent payment fences exactly like before.
+            OffsetDateTime deadline = fixture.expireOriginalDeadlineForTest(booking.orderId());
+            assertEquals(ExpiryEvidence.FENCED_UNSENT, fixture.dispatch.reconcileForExpiry(
+                    expiryCommand(booking.orderId(), deadline)));
+            assertEquals("FENCED_UNSENT", fixture.foundation.text(
+                    "SELECT state FROM payment_dispatch WHERE payment_id=(SELECT id FROM "
+                            + "payment_order WHERE order_id=?)", Long.parseLong(booking.orderId())));
+            Long reservationId = fixture.foundation.db.jdbc.queryForObject(
+                    "SELECT reservation_id FROM pet_order WHERE id=?", Long.class,
+                    Long.parseLong(booking.orderId()));
+            assertEquals(ExpireOrderResult.CLOSED, fixture.couponOrderExpiry.expire(
+                    new ExpireOrderCommand(new CommandContext("TASK:RESERVATION_HOLD_EXPIRE:"
+                            + reservationId + ":0", "pay-coordination-coupon-expiry-qa",
+                            OperatorType.SYSTEM, null, "ASYNC_TASK"), booking.orderId(),
+                            Long.toString(reservationId), 0, deadline)));
+            assertEquals("CANCELED", fixture.foundation.text(
+                    "SELECT order_stage FROM pet_order WHERE id=?",
+                    Long.parseLong(booking.orderId())));
+            assertEquals("AVAILABLE", fixture.foundation.text(
+                    "SELECT status FROM coupon_instance WHERE id=?", couponId));
+        }
+    }
+
     private static Connection loseAckAfterRealCommit(Connection actual, AtomicBoolean armed,
             AtomicInteger lostAcks) {
         return (Connection) Proxy.newProxyInstance(Connection.class.getClassLoader(),
@@ -458,6 +496,7 @@ class PaymentCoordinationAcceptanceTest {
         final ScriptedChannel channel = new ScriptedChannel();
         final PaymentDispatchService dispatch;
         final OrderExpiryApiImpl orderExpiry;
+        final OrderExpiryApiImpl couponOrderExpiry;
         final PaymentDispatchService.Settings settings;
 
         Fixture(boolean terminalCloseCapability) throws Exception {
@@ -495,6 +534,14 @@ class PaymentCoordinationAcceptanceTest {
                                 foundation.guard, true),
                         new BookingCouponExposureApiImpl(foundation.db.source, foundation.guard),
                         dispatch);
+                // Contract 61 slice: the same close with the coupon release provider assembled,
+                // for coupon-bearing orders whose discount rides the guarded close.
+                couponOrderExpiry = new OrderExpiryApiImpl(foundation.db.source,
+                        IDS::incrementAndGet, foundation.guard, reservationExpiry,
+                        new BookingPaymentExposureApiImpl(foundation.db.source,
+                                foundation.guard, true),
+                        new BookingCouponExposureApiImpl(foundation.db.source, foundation.guard),
+                        dispatch, PaymentFoundationAcceptanceTest.couponCommands(foundation.db));
             } catch (Exception failure) {
                 foundation.close();
                 throw failure;

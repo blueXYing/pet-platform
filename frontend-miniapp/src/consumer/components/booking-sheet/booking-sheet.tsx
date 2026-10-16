@@ -91,6 +91,11 @@ export function BookingSheet({ serviceId, storeId: storeIdParam, preview, scenar
   const [coverNow, setCoverNow] = useState(Date.now)
   const mounted = useRef(true)
   const sequence = useRef(0)
+  // 侧读卫兵（F3R-2 修复）：门店名/券列表两个悬浮读与槽位读取分属不同失效域。
+  // 槽位 sequence 由 loadSlots 递增（phase ready 后同步触发），若侧读回调也挂 sequence，
+  // 会被同轮 loadSlots 作废——券区 5/5 次打开必现不渲染即此因。侧读只在重新 loadService、
+  // 卸载或 revision 变化（登录态翻转）时作废。
+  const sideRead = useRef(0)
   const restored = useRef(false)
   const [platformInfo] = useState(() => Taro.getWindowInfo())
   const unit = platformInfo.windowWidth / 402
@@ -99,6 +104,7 @@ export function BookingSheet({ serviceId, storeId: storeIdParam, preview, scenar
   const loadService = useCallback(async () => {
     const currentRevision = scope.revision
     const current = ++sequence.current
+    const sideToken = ++sideRead.current
     if (!isContractId(serviceId)) { setPhase('invalid'); return }
     setNotice('')
     const catalog = preview ? new PreviewServiceRepository() : new RealServiceRepository(consumerApi)
@@ -114,9 +120,10 @@ export function BookingSheet({ serviceId, storeId: storeIdParam, preview, scenar
       setService(detail)
       setCoverNow(Date.now())
       // 门店名：§3.3.2 匿名详情投影（可选增强，失败不阻断预约，显示门店ID占位）。
+      // 侧读挂在独立卫兵上：槽位 sequence 由 loadSlots 递增，不作废本批侧读。
       void runCatalogRead(scope, () => storeRepository.detail(detail.storeId))
-        .then(store => { if (mounted.current && current === sequence.current) setStoreName(store.storeName) })
-        .catch(() => { if (mounted.current && current === sequence.current) setStoreName(null) })
+        .then(store => { if (mounted.current && sideToken === sideRead.current) setStoreName(store.storeName) })
+        .catch(() => { if (mounted.current && sideToken === sideRead.current) setStoreName(null) })
       if (preview) {
         const list = await petRepository.load()
         if (!mounted.current || current !== sequence.current) return
@@ -133,9 +140,11 @@ export function BookingSheet({ serviceId, storeId: storeIdParam, preview, scenar
       setPets(list)
       setPetId(previous => previous ?? list.find(pet => pet.isDefault)?.petId ?? list[0]?.petId ?? null)
       // 选券展示源（61号）：与宠物档案同批懒加载；失败静默降级为「不用券」。
+      // 同挂侧读卫兵（F3R-2）：完成回调不再受 setPhase('ready') 触发的 loadSlots
+      // 作废，券区稳定渲染；重新 loadService/useDidShow 会递增卫兵自然重读。
       void scope.run(undefined, () => (preview ? bookingRepository : realRepository).availableCoupons())
-        .then(list => { if (mounted.current && current === sequence.current) setCoupons(list) })
-        .catch(() => { if (mounted.current && current === sequence.current) setCoupons([]) })
+        .then(list => { if (mounted.current && sideToken === sideRead.current) setCoupons(list) })
+        .catch(() => { if (mounted.current && sideToken === sideRead.current) setCoupons([]) })
       // 幂等恢复：上次提交结果未确认时按原命令载荷还原选择（23号：同载荷重试同一 X-Request-Id）。
       const pending = consumerApi.pendingCommand(ORDER_CREATE_SLOT)
       const draft = pending ? draftFromCommandData(pending.data) : null
@@ -192,7 +201,7 @@ export function BookingSheet({ serviceId, storeId: storeIdParam, preview, scenar
     setDate(today)
     if (!preview && !isContractId(serviceId)) { setPhase('invalid'); return }
     void loadService()
-    return () => { mounted.current = false; sequence.current++ }
+    return () => { mounted.current = false; sequence.current++; sideRead.current++ }
   }, [loadService, preview, serviceId])
   useEffect(() => { if (phase === 'ready' && service && date) void loadSlots(date) }, [phase, service, date, loadSlots])
   // 地址簿快选懒加载：接送弹层就绪后按会话坐标读一次地址簿（revision 变化即登录/
