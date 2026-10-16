@@ -3,7 +3,7 @@
 - 日期：2026-10-16（北京时间）
 - worktree：`C:/Users/Administrator/Desktop/wt-e2e-admin`，分支 `codex/e2e-admin-main-20261016`，基线 develop `2f822f43`（含 #165~#179 全部）
 - 验收人：QA-005 运营 Web 主链 E2E 代理（ZCode）
-- 结论（详见 §2/§3）：**主链 7 段中 6 段真实贯通，1 段（63号 v0.2 处置动作）被死面阻断**；共登记 **5 个新发现（FA-1~FA-5，均只定界取证、未改生产代码）**，外加 1 个已知环境坑复现（E-5）。前端真后端浏览器走查 **Playwright 1 passed**（17 张截图）。
+- 结论（详见 §2/§3）：**主链 7 段中 6 段真实贯通，1 段（63号 v0.2 处置动作）被死面阻断**；共登记 **FA-1~FA-6 六个产品缺陷（只定界取证、未修）+ FA-7 夹具缺口（已修）+ FA-8 #180 交付缺陷（本 PR 携带一行修复）**，外加 1 个已知环境坑复现与补充（E-5）。前端真后端浏览器走查 **Playwright 1 passed**（17 张截图）。
 
 ## 0. 交付物（本 PR）
 
@@ -57,6 +57,7 @@
 | **FA-5** | **高（63号两条只读路由全量 400，含 UI 连带）** | `AdminActionCheckQuery` 的 action-code 词法 `[a-z][a-z0-9]*(\.[a-z][a-z0-9]*)+` **不允许段内连字符**，而部署动作码 `order.status-log.read`、`order.verification-log.read` 段内带连字符 → 两条路由的授权入口校验每次抛 IllegalArgumentException → **400 COMMON_INVALID_ARGUMENT，任何授权（含超管）不可恢复**。波及面：`GET /admin/trade/orders/{id}/status-logs`、`GET /admin/trade/verifications(/[…])`，且前端订单详情页内嵌状态日志调用 → **订单详情控制台整页不可用** | 探针 S2 两条路由全量 400（transcript 163628）；代码定位 `AdminActionCheckQuery` 构造校验 vs `AdminPermissionEvaluator.DEPLOYED_ACTIONS`（注释自述曾把 `refund.channel-query` 点改拼写，但漏掉这两条）；UI 05/06 截图 | 二选一：词法放宽段内连字符，或部署码改点号拼写（需同步前端/契约），另开修复 Issue；**本审计不修** |
 | **FA-6** | 中（ADM-001 服务审核控制台不可用） | 服务审核 HTTP 面成功 envelope `message="成功"`，前端 `src/api/serviceReview.ts` 要求 `message==='ok'` → **任何响应（含空列表）都被前端拒渲染（INVALID_RESPONSE）** | 02 截图（alert: 服务查询失败（INVALID_RESPONSE））；HTTP 探针同路由 200（后端自测不校验 message，故此前未暴露） | 服务面 envelope 统一为 `ok`（与 trade/aftersale/governance 一致），另开修复 Issue |
 | FA-7 | 低（**测试夹具缺口，本 PR 已修**） | 64号治理面 `merchants/{id}/staff-members(/invitations)` 查 contract-52/54 员工身份表，而启动器 loadSchemas 从未加载这两个 schema → **500 COMMON_INTERNAL_ERROR**（表缺失，非产品缺陷） | 修复前：两条路由 500（transcript-final2 + debug 复现）；loadSchemas 补 `52-Merchant-Staff-Identity` + `54-Merchant-Staff-Binding` 后对运行库等价建表 → **两条路由 200 空列表**（probes/debug-staff-members-after-schema-fix.jsonl） | 已在本 PR 修（纯测试域）；后续对同一库复用重启时无需再处理 |
+| FA-8 | 中（**#180 交付缺陷，本 PR 携带修复**） | 券模板页"发放"入口未按 `canGrant` 隐藏：按钮仅按 `row.status==='ACTIVE'` 渲染，`canGrant` 只挡点击（grantGuard 弹错）→ 未授予账号看得到入口，违反 #180 自带 PERM-005 fail-closed 用例（ops.spec:156 期望 count=0） | 本地 12 连跑复现间歇红（1/12）：用例断言 `toHaveCount(0)` 与表格数据加载赛跑，表格未渲染瞬间断言即通过——CI 偶发绿属侥幸；快照取证（flake-hunt.log error-context）显示未授权账号渲染了"发放"按钮 | 本 PR 修复：`{canGrant && row.status === 'ACTIVE' && …}`（未授予即隐藏，语义不变）；修后 fail-closed 12 连跑 24/24、全量 83/83、CI web-build 复绿 |
 
 ### 3.2 环境阻塞点与处置（如实记录）
 
