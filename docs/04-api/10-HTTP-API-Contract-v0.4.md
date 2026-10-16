@@ -1706,6 +1706,31 @@ fail-closed 403，CCR-PERM-001 §3）。脱敏：不回传手机号/地址联系
 
 ---
 
+## 5.12 运营治理查询（64 号，2026-10-15 ADM-001 治理补齐 / A-002 第二期切片）
+
+> 本节为摘要；权威契约在 `64-Admin-Governance-Contract-v0.1.md`。
+
+```text
+GET /api/v1/admin/governance/merchants
+GET /api/v1/admin/governance/merchants/{merchantId}
+GET /api/v1/admin/governance/merchants/{merchantId}/staff
+GET /api/v1/admin/governance/merchants/{merchantId}/staff-members
+GET /api/v1/admin/governance/merchants/{merchantId}/staff-members/invitations
+GET /api/v1/admin/governance/schedule/windows
+GET /api/v1/admin/governance/schedule/staff-windows
+GET /api/v1/admin/governance/schedule/reservations
+```
+
+八条只读路由随 `pet.admin.governance.http.enabled`（默认 false）+ `pet.auth.admin.enabled` 装配；
+动作码 `merchant.read`（AUTH-001 提案矩阵第 3 行）/ `schedule.read` / `merchant.staff.read`
+（6.2.5/6.2.6 只读监管拟议码，随切片登记部署清单），控制器快照校验 + merchant/schedule 内核
+`AdminAuthorizationQueryApi` 每次重验；governance 面要求数据范围 `ALL`（CITY/MERCHANT 因商家/
+员工/排期行缺统一权威城市归属事实 fail-closed 403，CCR-PERM-001 §3）。脱敏：手机号仅掩码、
+子商户号仅后 4 位、不回传证件/协议内容/密文。排期面只读（SCH-004/53 号写侧归商家）；§5.6 商家
+下线/冻结与一切运营员工处置保持草案未实现（SSOT §30 未授权运营写动作，需 CCR 登记）。
+
+---
+
 ---
 
 # 6. 拉卡拉回调

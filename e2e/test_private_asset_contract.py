@@ -62,7 +62,9 @@ class PrivateAssetContractRegressions(unittest.TestCase):
         # channel-query/retry + merchant disable; abnormal-close already existed as the legacy
         # draft that graduated into the disposal face; union slices stay:
         # 163 baseline + 3 encyclopedia + 7 admin trade reads).
-        self.assertEqual(result['operations'], 176)
+        # 184 = 176 + 8 contract-64 admin governance read operations (2026-10-15, ADM-001
+        # gap slice: five merchant-ledger/staff routes + three schedule view routes; GET-only).
+        self.assertEqual(result['operations'], 184)
         self.assertEqual(result['privateAssetOperations'], 3)
         # abnormalCloseOrder graduated to the contract-63 v0.2 disposal face (2026-10-15).
         self.assertEqual(result['legacyOperations'], 13)

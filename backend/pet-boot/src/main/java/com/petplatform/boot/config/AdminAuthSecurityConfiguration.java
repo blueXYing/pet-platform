@@ -36,7 +36,8 @@ public class AdminAuthSecurityConfiguration {
       @Value("${pet.aftersale.http.enabled:false}") boolean afterSaleHttpEnabled,
       @Value("${pet.review.appeal.http.enabled:false}") boolean reviewAppealHttpEnabled,
       @Value("${pet.points.task.http.enabled:false}") boolean pointsTaskHttpEnabled,
-      @Value("${pet.admin.trade.http.enabled:false}") boolean adminTradeHttpEnabled)
+      @Value("${pet.admin.trade.http.enabled:false}") boolean adminTradeHttpEnabled,
+      @Value("${pet.admin.governance.http.enabled:false}") boolean adminGovernanceHttpEnabled)
       throws Exception {
     http.securityMatcher("/api/v1/admin/**")
         .csrf(c -> c.disable())
@@ -85,6 +86,21 @@ public class AdminAuthSecurityConfiguration {
                   "/api/v1/admin/trade/orders/*/status-logs",
                   "/api/v1/admin/trade/refunds", "/api/v1/admin/trade/refunds/*",
                   "/api/v1/admin/trade/verifications", "/api/v1/admin/trade/verifications/*")
+                  .permitAll();
+            }
+            if (adminGovernanceHttpEnabled) {
+              // Platform governance read face (contract 64 / ADM-001 gap slice): GET-only
+              // routes; the ADMIN_WEB Bearer plus the merchant.read/schedule.read/
+              // merchant.staff.read action codes are enforced by the filter and re-checked by
+              // each kernel per call.
+              a.requestMatchers(HttpMethod.GET,
+                  "/api/v1/admin/governance/merchants", "/api/v1/admin/governance/merchants/*",
+                  "/api/v1/admin/governance/merchants/*/staff",
+                  "/api/v1/admin/governance/merchants/*/staff-members",
+                  "/api/v1/admin/governance/merchants/*/staff-members/invitations",
+                  "/api/v1/admin/governance/schedule/windows",
+                  "/api/v1/admin/governance/schedule/staff-windows",
+                  "/api/v1/admin/governance/schedule/reservations")
                   .permitAll();
             }
             a.requestMatchers(

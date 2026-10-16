@@ -1,0 +1,164 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.petplatform.merchant.biz.infrastructure.persistence.mapper.AdminMerchantGovernanceMapper">
+    <!--
+      Contract 64 merchant governance face (PRD 6.2.2/6.2.6, ADM-001 gap slice). Read-only
+      joins over module-owned tables only: merchant/merchant_store (06), merchant_profile_compat
+      + merchant_application (29), merchant_agreement_current/acceptance/version (28),
+      merchant_staff (06), merchant_member/_store_grant/_store_action (52),
+      merchant_member_invitation/_invitation_action (54). All filters bind with #{}; static
+      XML branches only, the service validates every vocabulary first. Store aggregates are
+      scalar subqueries keyed off the outer merchant id; the signing join targets the current
+      published agreement version (28号 semantics: acceptance row present ⇒ SIGNED).
+    -->
+    <sql id="ledgerJoins">
+        FROM merchant m
+        LEFT JOIN merchant_profile_compat c ON c.merchant_id = m.id
+        LEFT JOIN merchant_application a ON a.reserved_merchant_id = m.id
+        LEFT JOIN merchant_agreement_current cur ON cur.agreement_key = 'MERCHANT'
+        LEFT JOIN merchant_agreement_acceptance acc
+            ON acc.merchant_id = m.id AND acc.agreement_version_id = cur.agreement_version_id
+        LEFT JOIN merchant_agreement_version v ON v.id = cur.agreement_version_id
+    </sql>
+    <sql id="ledgerColumns">
+        SELECT m.id, m.merchant_name, m.status, m.provider_merchant_no, m.created_at, m.version,
+            c.merchant_type_code, c.city_code,
+            a.id AS application_id, a.application_no, a.status AS application_status,
+            a.submitted_at AS application_submitted_at, a.reviewed_at AS application_reviewed_at,
+            acc.accepted_at AS signing_accepted_at, v.agreement_version,
+            (SELECT COUNT(*) FROM merchant_store s WHERE s.merchant_id = m.id) AS store_count,
+            (SELECT COUNT(*) FROM merchant_store s
+                WHERE s.merchant_id = m.id AND s.status = 'ACTIVE') AS active_store_count
+    </sql>
+    <sql id="ledgerFilter">
+        <if test="status != null">AND m.status = #{status}</if>
+        <if test="cityCode != null">AND c.city_code = #{cityCode}</if>
+        <if test="merchantTypeCode != null">AND c.merchant_type_code = #{merchantTypeCode}</if>
+        <if test="storeStatus != null">AND EXISTS (
+            SELECT 1 FROM merchant_store s WHERE s.merchant_id = m.id AND s.status = #{storeStatus})</if>
+        <if test="keyword != null">AND (m.merchant_name LIKE #{keyword} OR EXISTS (
+            SELECT 1 FROM merchant_store s WHERE s.merchant_id = m.id AND s.store_name LIKE #{keyword}))</if>
+        <if test="createdFrom != null">AND m.created_at &gt;= #{createdFrom}</if>
+        <if test="createdTo != null">AND m.created_at &lt;= #{createdTo}</if>
+    </sql>
+
+    <select id="countLedger" resultType="long">
+        SELECT COUNT(*) FROM merchant m
+        LEFT JOIN merchant_profile_compat c ON c.merchant_id = m.id
+        <where>
+            <include refid="ledgerFilter"/>
+        </where>
+    </select>
+
+    <select id="selectLedgerPage" resultType="com.petplatform.merchant.biz.infrastructure.persistence.entity.AdminMerchantGovernanceEntities$AdminMerchantLedgerRow">
+        <include refid="ledgerColumns"/>
+        <include refid="ledgerJoins"/>
+        <where>
+            <include refid="ledgerFilter"/>
+        </where>
+        ORDER BY m.created_at DESC, m.id DESC
+        LIMIT #{limit} OFFSET #{offset}
+    </select>
+
+    <select id="selectLedgerRow" resultType="com.petplatform.merchant.biz.infrastructure.persistence.entity.AdminMerchantGovernanceEntities$AdminMerchantLedgerRow">
+        <include refid="ledgerColumns"/>
+        <include refid="ledgerJoins"/>
+        WHERE m.id = #{merchantId}
+    </select>
+
+    <select id="selectStores" resultType="com.petplatform.merchant.biz.infrastructure.persistence.entity.AdminMerchantGovernanceEntities$AdminStoreRow">
+        SELECT id, store_name, address, status
+        FROM merchant_store
+        WHERE merchant_id = #{merchantId}
+        ORDER BY id ASC
+    </select>
+
+    <sql id="staffFilter">
+        <if test="storeId != null">AND store_id = #{storeId}</if>
+        <if test="employmentStatus != null">AND employment_status = #{employmentStatus}</if>
+        <if test="serviceEnabled != null">AND service_enabled = #{serviceEnabled}</if>
+    </sql>
+
+    <select id="countStaff" resultType="long">
+        SELECT COUNT(*) FROM merchant_staff
+        WHERE merchant_id = #{merchantId}
+        <include refid="staffFilter"/>
+    </select>
+
+    <select id="selectStaffPage" resultType="com.petplatform.merchant.biz.infrastructure.persistence.entity.AdminMerchantGovernanceEntities$AdminStaffRow">
+        SELECT id, store_id, staff_name, phone, employment_status, service_enabled,
+               version, created_at, updated_at
+        FROM merchant_staff
+        WHERE merchant_id = #{merchantId}
+        <include refid="staffFilter"/>
+        ORDER BY id ASC
+        LIMIT #{limit} OFFSET #{offset}
+    </select>
+
+    <!-- member + its grant + the CONFIRMED invitation that carries name/phone (54号 §4 source).
+         V1 binding invariant: one member owns at most one grant, so the grant join is 1:1;
+         a member without any grant row keeps null grant facts (grantRevoked=false in service). -->
+    <sql id="memberFilter">
+        <if test="storeId != null">AND g.store_id = #{storeId}</if>
+        <if test="status != null">AND mb.status = #{status}</if>
+    </sql>
+
+    <select id="selectMemberPage" resultType="com.petplatform.merchant.biz.infrastructure.persistence.entity.AdminMerchantGovernanceEntities$AdminMemberRow">
+        SELECT mb.id AS member_id, g.store_id AS store_id, mb.status AS member_status,
+               mb.version AS member_version, g.status AS grant_status, g.version AS grant_version,
+               inv.member_name AS member_name, inv.phone AS phone,
+               mb.created_at AS created_at, mb.updated_at AS updated_at
+        FROM merchant_member mb
+        LEFT JOIN merchant_member_store_grant g ON g.member_id = mb.id
+        LEFT JOIN merchant_member_invitation inv ON inv.member_id = mb.id AND inv.status = 'CONFIRMED'
+        WHERE mb.merchant_id = #{merchantId}
+        <include refid="memberFilter"/>
+        ORDER BY mb.id ASC
+        LIMIT #{limit} OFFSET #{offset}
+    </select>
+
+    <select id="countMembers" resultType="long">
+        SELECT COUNT(*)
+        FROM merchant_member mb
+        LEFT JOIN merchant_member_store_grant g ON g.member_id = mb.id
+        WHERE mb.merchant_id = #{merchantId}
+        <include refid="memberFilter"/>
+    </select>
+
+    <select id="selectMemberActions" resultType="com.petplatform.merchant.biz.infrastructure.persistence.entity.AdminMerchantGovernanceEntities$AdminActionRefRow">
+        SELECT member_id AS owner_id, action_code AS action_code
+        FROM merchant_member_store_action
+        WHERE member_id IN
+        <foreach collection="memberIds" item="memberId" open="(" separator="," close=")">#{memberId}</foreach>
+        ORDER BY member_id ASC, action_code ASC
+    </select>
+
+    <sql id="invitationFilter">
+        <if test="storeId != null">AND store_id = #{storeId}</if>
+        <if test="status != null">AND status = #{status}</if>
+    </sql>
+
+    <select id="selectInvitationPage" resultType="com.petplatform.merchant.biz.infrastructure.persistence.entity.AdminMerchantGovernanceEntities$AdminInvitationRow">
+        SELECT id, store_id, member_name, phone, status, invited_by, created_at, updated_at
+        FROM merchant_member_invitation
+        WHERE merchant_id = #{merchantId}
+        <include refid="invitationFilter"/>
+        ORDER BY id DESC
+        LIMIT #{limit} OFFSET #{offset}
+    </select>
+
+    <select id="countInvitations" resultType="long">
+        SELECT COUNT(*)
+        FROM merchant_member_invitation
+        WHERE merchant_id = #{merchantId}
+        <include refid="invitationFilter"/>
+    </select>
+
+    <select id="selectInvitationActions" resultType="com.petplatform.merchant.biz.infrastructure.persistence.entity.AdminMerchantGovernanceEntities$AdminActionRefRow">
+        SELECT invitation_id AS owner_id, action_code AS action_code
+        FROM merchant_member_invitation_action
+        WHERE invitation_id IN
+        <foreach collection="invitationIds" item="invitationId" open="(" separator="," close=")">#{invitationId}</foreach>
+        ORDER BY invitation_id ASC, action_code ASC
+    </select>
+</mapper>

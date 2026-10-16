@@ -30,9 +30,13 @@ class ContractSmokeRegressions(unittest.TestCase):
         # Contract 63 admin trade face (2026-10-14 reads, 2026-10-15 v0.2 disposal writes,
         # ruling doc 33): seven GET reads + four disposal writes = eleven routes.
         self.assertEqual(result['adminTradeOperations'], 11)
-        # 163 baseline + 3 encyclopedia + 7 admin trade reads + 3 new disposal paths
-        # (channel-query/retry/disable; abnormal-close existed as the graduated legacy draft).
-        self.assertEqual(result['operations'], 176)
+        # Contract 64 admin governance read face (2026-10-15, ADM-001 gap slice): eight GET
+        # routes over the merchant and schedule kernels (ledger/staff/members/invitations +
+        # windows/staff-windows/reservations); read-only, no governance write action.
+        self.assertEqual(result['adminGovernanceOperations'], 8)
+        # Union 184 = 163 baseline + 3 encyclopedia + 11 admin trade (reads + disposal)
+        # + ... arithmetic: 163 + 3 + 7 + 3 disposal-new + 8 governance = 184.
+        self.assertEqual(result['operations'], 184)
         self.assertGreater(result['stringIdProperties'], 0)
         # Contract 58 favorite/footprint face (2026-10-13): seven reviewed operations.
         self.assertEqual(result['favtrackHttpOperations'], 7)

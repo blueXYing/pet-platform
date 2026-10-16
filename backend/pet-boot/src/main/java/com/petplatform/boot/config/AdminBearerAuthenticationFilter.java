@@ -57,7 +57,11 @@ public final class AdminBearerAuthenticationFilter extends OncePerRequestFilter 
           // Platform trade read face (contract 63 / ADM-002+A-003): ADMIN_WEB Bearer;
           // order.*/refund.read action codes and the ALL data scope are re-checked by the
           // controller and each kernel per request.
-          || path.startsWith("/api/v1/admin/trade/")) {
+          || path.startsWith("/api/v1/admin/trade/")
+          // Platform governance read face (contract 64 / ADM-001 gap slice): ADMIN_WEB Bearer;
+          // merchant.read/schedule.read/merchant.staff.read action codes and the ALL data
+          // scope are re-checked by the controller and each kernel per request.
+          || path.startsWith("/api/v1/admin/governance/")) {
         try {
           AdminAuthService service = services.getIfAvailable();
           if (service == null) throw AdminAuthFailure.unavailable();

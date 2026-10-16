@@ -19,6 +19,11 @@ public final class AdminPermissionEvaluator {
    * 32号 ruling: 签到与拉新积分量后台可配置): points.task.config.read / points.task.config.write.
    * The four trade codes are registered on behalf of the contract-63 platform trade read slice
    * (ADM-002/A-003, AUTH-001 RBAC proposal matrix rows 7/8): order.read, order.status-log.read,
+   * order.verification-log.read, refund.read — GET-only reads; no trade write action exists.
+   * The three governance codes are registered on behalf of the contract-64 platform governance
+   * read slice (ADM-001 gap / A-002 phase 2): merchant.read (AUTH-001 matrix row 3) and
+   * schedule.read / merchant.staff.read (PRD 6.2.5/6.2.6 read-only supervision, SSOT §29/§30;
+   * proposed codes disclosed in contract 64 — no governance write action exists).
    * order.verification-log.read, refund.read — GET-only reads. The four disposal codes are
    * registered on behalf of the contract-63 v0.2 disposal slice (user ruling 2026-10-15, doc 33;
    * AUTH-001 matrix rows 4/7/8): refund.channel.query, refund.retry, order.abnormal.close,
@@ -34,6 +39,7 @@ public final class AdminPermissionEvaluator {
           "review.appeal.read", "review.appeal.decide",
           "points.task.config.read", "points.task.config.write",
           "order.read", "order.status-log.read", "order.verification-log.read", "refund.read",
+          "merchant.read", "schedule.read", "merchant.staff.read",
           "refund.channel.query", "refund.retry", "order.abnormal.close", "merchant.disable");
 
   public static List<String> evaluate(
