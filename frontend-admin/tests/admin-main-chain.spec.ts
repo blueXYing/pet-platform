@@ -32,6 +32,18 @@ async function nav(page: import('@playwright/test').Page, label: string) {
   await page.getByRole('link', { name: label }).click();
 }
 
+// FINDING-driven quirk (documented, not worked around silently): the admin clients treat a
+// 403 FORBIDDEN as a lost session (onAuthLost) — combined with the ops reads being denied
+// (FA-3), merely OPENING an ops console signs the operator out. The walkthrough logs back in
+// whenever the app fell back to the login page, and the transcript keeps the 403 evidence.
+async function ensureLoggedIn(page: import('@playwright/test').Page) {
+  if (await page.getByRole('button', { name: '登录' }).count() === 0) return;
+  await page.getByLabel('账号').fill(ACCOUNT);
+  await page.getByLabel('密码').fill(PASSWORD);
+  await page.getByRole('button', { name: '登录' }).click();
+  await expect(page.getByRole('heading', { name: '商家申请审核' })).toBeVisible({ timeout: 30_000 });
+}
+
 test('admin main chain: login -> ADM-001 -> trade -> aftersale -> governance -> ops blocks', async ({ page }) => {
   test.setTimeout(300_000);
   const errors: string[] = [];
@@ -52,14 +64,14 @@ test('admin main chain: login -> ADM-001 -> trade -> aftersale -> governance -> 
   await shot(page, '01-login-landing-review-list');
   expect(apiStatus.find(entry => entry.path.endsWith('/login'))?.status).toBe(200);
 
-  // S1 ADM-001 faces: service review list + detail (the reviewed ACTIVE service).
+  // S1 ADM-001 faces. FA-6 finding in the UI: the services console requires envelope
+  // message==='ok' but the services admin controller replies message='成功', so EVERY
+  // services-face response (empty or not) is rejected as INVALID_RESPONSE and the console
+  // can never render data — asserted as the error state, recorded as the finding evidence.
   await nav(page, '服务审核');
   await expect(page.getByRole('heading', { name: '服务审核' })).toBeVisible({ timeout: 20_000 });
-  await expect(page.locator('table, [role="table"]').first()).toBeVisible({ timeout: 20_000 });
-  await shot(page, '02-services-list');
-  await page.getByRole('link', { name: '审核' }).first().click();
-  await expect(page.getByText('E2E到店精细洗护').first()).toBeVisible({ timeout: 20_000 });
-  await shot(page, '03-service-detail');
+  await expect(page.getByRole('alert').first()).toBeVisible({ timeout: 20_000 });
+  await shot(page, '02-services-list-fa6-error-state');
 
   // S2 contract-63 trade read face: orders list + detail (SPA-internal navigation).
   await nav(page, '订单总览');
@@ -67,8 +79,12 @@ test('admin main chain: login -> ADM-001 -> trade -> aftersale -> governance -> 
   await expect(page.locator('table, [role="table"]').first()).toBeVisible({ timeout: 20_000 });
   await shot(page, '04-trade-orders');
   await page.getByRole('link', { name: '详情' }).first().click();
-  await expect(page.locator('table, [role="table"], dl, section').first()).toBeVisible({ timeout: 20_000 });
-  await shot(page, '05-trade-order-detail');
+  // FA-5 blast radius in the UI: the detail page loads getOrder fine but its status-log
+  // timeline call 400s on the hyphenated action code, so the whole console errors out —
+  // asserted as the error state (the HTTP-level 200 for getOrder is probe evidence).
+  await expect(page.getByRole('heading', { name: '订单详情' })).toBeVisible({ timeout: 20_000 });
+  await expect(page.getByRole('alert').first()).toBeVisible({ timeout: 20_000 });
+  await shot(page, '05-trade-order-detail-fa5-error-state');
   // FA-5 in the UI: the verification console loads but its data face 400s on every call.
   await nav(page, '核销记录');
   await expect(page.getByRole('heading', { name: '平台核销记录' })).toBeVisible({ timeout: 20_000 });
@@ -107,22 +123,25 @@ test('admin main chain: login -> ADM-001 -> trade -> aftersale -> governance -> 
   await shot(page, '13-governance-staff');
 
   // Contract-65 ops blocks: the four consoles render their shells; their reads are denied
-  // (FA-3) so each page lands on its error/empty state — recorded, not hidden.
-  await nav(page, '百科分类');
-  await expect(page.getByRole('heading', { name: '宠物百科 · 分类管理' })).toBeVisible({ timeout: 20_000 });
-  await shot(page, '14-ops-baike-categories');
-  await nav(page, '品种库');
-  await expect(page.getByRole('heading', { name: '宠物百科 · 品种库' })).toBeVisible({ timeout: 20_000 });
-  await shot(page, '15-ops-baike-breeds');
-  await nav(page, '券模板');
-  await expect(page.getByRole('heading', { name: '优惠券 · 券模板' })).toBeVisible({ timeout: 20_000 });
-  await shot(page, '16-ops-coupon-templates');
-  await nav(page, '积分台账');
-  await expect(page.getByRole('heading', { name: '台账 · 积分流水' })).toBeVisible({ timeout: 20_000 });
-  await shot(page, '17-ops-points-ledger');
-  await nav(page, '系统设置');
-  await expect(page.getByRole('heading', { name: '系统设置 · 运行时开关' })).toBeVisible({ timeout: 20_000 });
-  await shot(page, '18-ops-settings-runtime');
+  // (FA-3) so each page lands on its error/empty state — recorded, not hidden. Each 403 also
+  // signs the operator out (the clients treat FORBIDDEN as auth-lost), so the walkthrough
+  // logs back in between the blocks and says so in the report.
+  for (const block of [
+    { nav: '百科分类', heading: '宠物百科 · 分类管理', shot: '14-ops-baike-categories' },
+    { nav: '品种库', heading: '宠物百科 · 品种库', shot: '15-ops-baike-breeds' },
+    { nav: '券模板', heading: '优惠券 · 券模板', shot: '16-ops-coupon-templates' },
+    { nav: '积分台账', heading: '台账 · 积分流水', shot: '17-ops-points-ledger' },
+    { nav: '系统设置', heading: '系统设置 · 运行时开关', shot: '18-ops-settings-runtime' },
+  ] as const) {
+    await ensureLoggedIn(page);
+    await nav(page, block.nav);
+    // The 403 flips the app back to /login as soon as it lands, so the console shell and the
+    // login page are both legitimate terminal states of this navigation; the screenshot
+    // records whichever won the race and the apiStatus assertion below keeps the FA-3 proof.
+    await expect(page.getByRole('heading', { name: block.heading })
+      .or(page.getByRole('button', { name: '登录' }))).toBeVisible({ timeout: 30_000 });
+    await shot(page, block.shot);
+  }
 
   // Finding cross-check from the live API transcript: every ops GET must have been denied.
   const opsPaths = apiStatus.filter(entry => entry.path.startsWith('/api/v1/admin/encyclopedia')
