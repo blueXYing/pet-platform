@@ -16,7 +16,7 @@ import org.springframework.web.bind.annotation.*;
 @RequestMapping(
     value = "/api/v1/c/merchant-application-cities",
     produces = MediaType.APPLICATION_JSON_VALUE)
-@ConditionalOnProperty(prefix = "pet.merchant.application", name = "enabled", havingValue = "true", matchIfMissing = true)
+@ConditionalOnProperty(prefix = "pet.merchant.application", name = "enabled", havingValue = "true")
 public final class MerchantApplicationCityController {
   private final ObjectProvider<MerchantApplicationCityCatalog> catalogs;
 

@@ -132,12 +132,10 @@ pet:
       enabled: true
   merchant:
     application:
-      # Merchant onboarding (C1): default ON per the 2026-10-16 ruling. Needs the production
-      # Snowflake bean and the admin authorization owner (deployment base); the open-city
-      # catalog defaults to an empty table (boot-safe, no open cities until configured).
-      enabled: true
-      # Station-notification consumer defaults ON so approved/reviewed events dispatch as
-      # soon as the outbox runs.
+      # Merchant onboarding (C1) stays default OFF (B-class blocker): enabling requires the
+      # subject/protection self-issued key ports AND the private-asset (OSS) query port for
+      # identity material. Its station-notification consumer defaults ON so approved/reviewed
+      # events dispatch as soon as the outbox and the kernel run.
       notifications-enabled: true
     staff:
       # Merchant staff profile writes (35号): default ON; audit facts / protection ports

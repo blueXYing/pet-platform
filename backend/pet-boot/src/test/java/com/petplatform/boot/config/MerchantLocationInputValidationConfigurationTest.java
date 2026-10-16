@@ -8,15 +8,12 @@ import org.junit.jupiter.api.Test;
 import org.springframework.boot.test.context.runner.ApplicationContextRunner;
 
 class MerchantLocationInputValidationConfigurationTest {
-  // Ruling 35 (2026-10-16) flips the platform capability switches to default ON; the
-  // fail-closed check closes the switch explicitly.
   private final ApplicationContextRunner context =
       new ApplicationContextRunner()
-          .withUserConfiguration(MerchantLocationInputValidationConfiguration.class)
-          .withPropertyValues("pet.merchant.application.enabled=false");
+          .withUserConfiguration(MerchantLocationInputValidationConfiguration.class);
 
   @Test
-  void validatorIsAbsentWhenMerchantApplicationIsExplicitlyDisabled() {
+  void validatorIsAbsentWhenMerchantApplicationIsDisabled() {
     context.run(
         result -> {
           assertNull(result.getStartupFailure());

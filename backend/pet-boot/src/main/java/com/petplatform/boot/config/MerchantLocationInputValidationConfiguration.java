@@ -7,7 +7,7 @@ import org.springframework.context.annotation.*;
 
 /** Default local input validator; it performs no map call or geographic restriction. */
 @Configuration(proxyBeanMethods = false)
-@ConditionalOnProperty(prefix = "pet.merchant.application", name = "enabled", havingValue = "true", matchIfMissing = true)
+@ConditionalOnProperty(prefix = "pet.merchant.application", name = "enabled", havingValue = "true")
 public class MerchantLocationInputValidationConfiguration {
   @Bean
   @ConditionalOnMissingBean(MapValidationPort.class)
