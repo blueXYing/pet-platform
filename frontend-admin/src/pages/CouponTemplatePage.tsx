@@ -151,7 +151,7 @@ export default function CouponTemplatePage({ client, canWrite, canGrant, onAuthL
             {row.status === 'ACTIVE' && <button disabled={busy} onClick={guard(() => void act(
               () => client.setTemplateEnabled(row.templateId, row.version, false, crypto.randomUUID()), '已停用'))}>停用</button>}
             {row.status !== 'OFFLINE' && row.issuedCount === '0' && <button disabled={busy} onClick={guard(() => void client.getTemplate(row.templateId).then(setEditing).catch(cause => setError(cause instanceof Error ? `读取失败（${cause.message}）` : '读取失败')))}>编辑</button>}
-            {row.status === 'ACTIVE' && <button disabled={busy} onClick={grantGuard(() => { setEditing(undefined); setGranting(row); setGrantConfirm(false); setGrantReceipt(undefined); })}>发放</button>}
+            {canGrant && row.status === 'ACTIVE' && <button disabled={busy} onClick={grantGuard(() => { setEditing(undefined); setGranting(row); setGrantConfirm(false); setGrantReceipt(undefined); })}>发放</button>}
           </td>
         </tr>)}
         {rows.length === 0 && <tr><td colSpan={9}>无模板</td></tr>}

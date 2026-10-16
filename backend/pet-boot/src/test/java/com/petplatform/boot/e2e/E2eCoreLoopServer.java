@@ -97,6 +97,22 @@ import tools.jackson.databind.json.JsonMapper;
  * gain one ACTIVE coupon template (rule_json four-key amountOff/thresholdAmount/scopeSummary/
  * typeLabel vocabulary) and three AVAILABLE instances for the seeded C user. No existing chain
  * semantics change.
+ *
+ * Round 4 (2026-10-16 admin web main chain, QA-005): additive again — the operations-console
+ * faces the admin walkthrough exercises turn on here: the contract-63 trade read face plus its
+ * v0.2 disposal kernels and durable ADMIN_REFUND_* workers, the contract-64 governance read
+ * face, the contract-65 ops kernels (encyclopedia/coupon/points/settings), and the A-004
+ * ruling-32 aftersale original-route refund execution (worker + funding authority). The 63
+ * disposal-audit schema joins the isolated schema load. A post-READY admin-chain seeding
+ * thread (run after the round-2 seeder so the store-guard domain stays serial) drives the real
+ * loopback HTTP chain to leave walkthrough facts behind: a verified COMPLETED order on a fully
+ * past appointment (the A-004 adjudication + trade verification-log target — a COMPLETED order
+ * with a future active claim would refuse to serve order facts), a second PENDING_SERVICE
+ * order (disposition attempt target) and a third PENDING_SERVICE order (the C pre-service
+ * refund-application target), plus a PENDING aftersale case (SERVICE_QUALITY/REFUND) created
+ * by the buyer on the completed order. Availability windows gain yesterday so the completed
+ * target's appointment can be fully past; staff availability widens to match. No existing
+ * chain semantics change.
  */
 public final class E2eCoreLoopServer {
   private static final JsonMapper json = JsonMapper.builder().build();
@@ -245,6 +261,22 @@ public final class E2eCoreLoopServer {
           new SpringApplicationBuilder(PetPlatformApplication.class)
               .initializers(ctx -> {
                 var beans = (GenericApplicationContext) ctx;
+                // Round-4 composition tie-break (QA finding FA-4, test-domain only): with
+                // pet.admin.trade.http.enabled AND pet.order.merchant.enabled both on, two
+                // identical ReservationRefundReleaseApi beans register (dispositionRefundRelease
+                // guards with @ConditionalOnMissingBean but merchantRefundRelease does not, and
+                // registration order is not guaranteed) — the context fails to boot on the
+                // ambiguity. Both construct the same
+                // ReservationRefundReleaseApiImpl(source, ids, guard, refunds), so marking the
+                // merchant one primary changes no behavior; production defaults keep the trade
+                // face off and never hit the collision.
+                beans.registerBean("e2eReleasePrimaryTieBreak",
+                    org.springframework.beans.factory.config.BeanFactoryPostProcessor.class,
+                    () -> beanFactory -> {
+                      if (beanFactory.containsBeanDefinition("merchantRefundRelease")) {
+                        beanFactory.getBeanDefinition("merchantRefundRelease").setPrimary(true);
+                      }
+                    });
                 beans.registerBean("e2eDataSource", DataSource.class, () -> pool);
                 beans.registerBean("e2eIds", SnowflakeIdGenerator.class, () -> recoveringIds);
                 // Any real wx.login code from the DevTools simulator maps to the seeded identity;
@@ -500,8 +532,10 @@ public final class E2eCoreLoopServer {
                   "--PRIVATE_ASSET_REASON_AES_KEY_BASE64=" + base64(59),
                   "--pet.aftersale.enabled=true",
                   "--pet.aftersale.http.enabled=true",
-                  "--pet.aftersale.worker.enabled=false",
-                  "--pet.aftersale.refund.enabled=false",
+                  // Round 4: the ruling-32 original-route funding authority turns the switch
+                  // on (the false default below was the round-2 fixture setting; duplicate
+                  // command-line keys are joined and fail Boolean conversion, so the old line
+                  // is replaced, not repeated).
                   "--pet.aftersale.protection-key=" + base64(29),
                   "--pet.aftersale.type-codes=SERVICE_QUALITY,OTHER",
                   "--pet.aftersale.demand-codes=REFUND,RESERVICE,OTHER",
@@ -521,9 +555,31 @@ public final class E2eCoreLoopServer {
                   "--pet.points.task.enabled=true",
                   "--pet.points.task.http.enabled=true",
                   "--pet.points.refund-clawback.enabled=true",
-                  // The 2026-10-08 ruling turns pre-service refunds into automatic full
-                  // approvals, so the C refund-apply walks the real execution chain.
-                  "--pet.refund.pre-service-auto-refund.enabled=true");
+          // The 2026-10-08 ruling turns pre-service refunds into automatic full
+          // approvals, so the C refund-apply walks the real execution chain.
+          "--pet.refund.pre-service-auto-refund.enabled=true",
+          // Round 4 additions (admin web main chain, additive; test-domain only — the
+          // production defaults stay unchanged):
+          // contract-63 trade read face + v0.2 disposal kernels and their durable
+          // ADMIN_REFUND_SUBMIT/ADMIN_REFUND_CHANNEL_QUERY workers (worker requires the
+          // payment foundation, which is already on).
+          "--pet.admin.trade.http.enabled=true",
+          "--pet.admin.trade.worker.enabled=true",
+          // contract-64 governance read face (merchants/schedule/staff).
+          "--pet.admin.governance.http.enabled=true",
+          // contract-65 ops face CANNOT be enabled in this fixture (QA finding, no production
+          // change allowed here): with pet.admin.ops.http.enabled=true the context fails to
+          // boot — AdminOpsController's AdminEncyclopediaCommandApi constructor parameter
+          // matches TWO beans (AdminEncyclopediaApiImpl implements both the query and the
+          // command face, and AdminOpsConfiguration exposes it twice) with no @Primary and no
+          // retained parameter names. The switch stays off; the ops routes still answer the
+          // walkthrough with the security chain's deny (403), which is the documented finding.
+          // "--pet.admin.ops.http.enabled=true",
+          // A-004 ruling-32 aftersale original-route refund execution: the funding authority
+          // rides the succeeded payment's WeChat route; the worker family executes the
+          // AFTERSALE_REFUND_SUBMIT/CHANNEL_QUERY tasks and supplement timeouts.
+          "--pet.aftersale.refund.enabled=true",
+          "--pet.aftersale.worker.enabled=true");
       String endpoint = "http://127.0.0.1:" + port;
       // Round-2 admin operator: the real bootstrap lane (26号 maintenance-mode first account,
       // PLATFORM_SUPER_ADMIN + scope ALL per SSOT §24 single-operator adjudication). Skipped on
@@ -562,7 +618,10 @@ public final class E2eCoreLoopServer {
       // requests the pages issue), never raw SQL. Failures only log — the server itself stays
       // up and the manual core-loop regression remains fully walkable. Skipped on reuse.
       if (!reused) {
-        Thread seeder = new Thread(() -> seedRound2Facts(endpoint, metadata), "e2e-round2-seeds");
+        Thread seeder = new Thread(() -> {
+          seedRound2Facts(endpoint, metadata);
+          seedAdminChainFacts(endpoint, metadata);
+        }, "e2e-round2-seeds");
         seeder.setDaemon(true);
         seeder.start();
       }
@@ -771,6 +830,107 @@ public final class E2eCoreLoopServer {
   /** Drain pause between seeded orders (see the comment at the first seed step). */
   private static void settle() throws InterruptedException {
     Thread.sleep(30_000);
+  }
+
+  // ------------------------------------------------------------------ round-4 admin-chain facts
+
+  /**
+   * Round-4 admin walkthrough facts through the same real loopback HTTP chain (same transport
+   * and helpers as the round-2 seeder; runs AFTER it so the store-guard domain stays serial):
+   * a past-appointment order booked, sandbox-paid, merchant-confirmed, credential-issued and
+   * merchant-verified to COMPLETED (the A-004 adjudication + trade verification-log target),
+   * a second PENDING_SERVICE order (the disposition attempt target) and a third PENDING_SERVICE
+   * order (the C pre-service refund-application target), then a PENDING aftersale case
+   * (SERVICE_QUALITY/REFUND, requested 60.00) created by the buyer on the completed order.
+   * Every id lands in server-metadata.txt for the probe driver. Failures only log — the server
+   * stays up and the walkthrough remains walkable. Skipped on reuse.
+   */
+  private static void seedAdminChainFacts(String endpoint, Path metadata) {
+    for (int attempt = 1; attempt <= 3; attempt++) {
+      try {
+        seedAdminChainFactsOnce(endpoint, metadata, attempt);
+        return;
+      } catch (Throwable failure) {
+        System.err.println("E2E_ADMIN_SEEDS attempt " + attempt + " failed: " + failure);
+        if (attempt == 3) System.err.println("E2E_ADMIN_SEEDS result=FAILED " + failure);
+        else try {
+          Thread.sleep(20_000);
+        } catch (InterruptedException stop) {
+          return;
+        }
+      }
+    }
+  }
+
+  private static void seedAdminChainFactsOnce(String endpoint, Path metadata, int attempt)
+      throws Exception {
+    awaitLive(endpoint);
+    String token = login(endpoint);
+    System.out.println("E2E_ADMIN_SEEDS step=login attempt=" + attempt);
+    // The A-004 target: a fully past appointment (yesterday evening Beijing) so the COMPLETED
+    // order keeps no future active claim — OrderProtectionFactsApiImpl refuses to serve facts
+    // for one, which would block the aftersale kernel with a 503. Slots shift with the attempt
+    // index: a failed earlier attempt leaves CONFIRMED claims on its slots and the capacity
+    // guard refuses the same user's overlapping rebooking (409 SCHEDULE_CAPACITY_EXCEEDED).
+    DateTimeFormatter slotTime = DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss.SSSXXX");
+    String pastSlot = java.time.LocalDate.now(CHANNEL_ZONE).minusDays(1).atTime(9 + attempt, 0)
+        .atZone(CHANNEL_ZONE).format(slotTime);
+    String completed = verifiedOrder(endpoint, token, pastSlot);
+    System.out.println("E2E_ADMIN_SEEDS step=completedOrder id=" + completed);
+    java.time.LocalDate beijingTomorrow = java.time.LocalDate.now(CHANNEL_ZONE).plusDays(1);
+    java.util.function.IntFunction<String> futureSlot = hour -> beijingTomorrow.atTime(hour, 0)
+        .atZone(CHANNEL_ZONE).format(slotTime);
+    String disposition = confirmedOrder(endpoint, token, futureSlot.apply(9 + 2 * attempt));
+    System.out.println("E2E_ADMIN_SEEDS step=dispositionTarget id=" + disposition);
+    String refundTarget = confirmedOrder(endpoint, token, futureSlot.apply(10 + 2 * attempt));
+    System.out.println("E2E_ADMIN_SEEDS step=refundTarget id=" + refundTarget);
+    // Order ids land in the metadata BEFORE the case creation so a partial failure still
+    // leaves the walkthrough targets behind.
+    Files.writeString(metadata,
+        "adminChainCompletedOrderId=" + completed + System.lineSeparator()
+            + "adminChainDispositionOrderId=" + disposition + System.lineSeparator()
+            + "adminChainRefundTargetOrderId=" + refundTarget + System.lineSeparator(),
+        StandardCharsets.UTF_8, java.nio.file.StandardOpenOption.APPEND);
+    Map<String, Object> aftersale = post(endpoint, token, "/c/orders/" + completed + "/aftersales",
+        Map.of("typeCode", "SERVICE_QUALITY", "demandCode", "REFUND",
+            "description", "E2E运营链种子：服务完成后发起的服务质量退款诉求",
+            "requestedAmount", "60.00", "evidenceAssetIds", List.of()), 201);
+    String caseId = String.valueOf(aftersale.get("afterSaleId"));
+    System.out.println("E2E_ADMIN_SEEDS step=aftersaleCase id=" + caseId);
+    Files.writeString(metadata, "adminChainAfterSaleId=" + caseId + System.lineSeparator(),
+        StandardCharsets.UTF_8, java.nio.file.StandardOpenOption.APPEND);
+    System.out.println("E2E_ADMIN_SEEDS result=READY completed=" + completed
+        + " disposition=" + disposition + " refundTarget=" + refundTarget
+        + " aftersale=" + caseId);
+  }
+
+  /**
+   * Books the 60-minute IN_STORE appointment, lets the sandbox callback pay it, merchant-confirms,
+   * issues the C verification credential (INITIAL, version 0) and completes the merchant verify
+   * with the issued code (the buyer doubles as the merchant owner in this fixture). The code
+   * expires five minutes after issuance, so the verify runs immediately.
+   */
+  private static String verifiedOrder(String endpoint, String token, String appointmentStart)
+      throws Exception {
+    String order = confirmedOrder(endpoint, token, appointmentStart);
+    Map<String, Object> issued = post(endpoint, token,
+        "/c/orders/" + order + "/verification-code",
+        Map.of("expectedCredentialVersion", "0", "refreshKind", "INITIAL"), 200);
+    Map<String, Object> verified = post(endpoint, token,
+        "/merchant/orders/" + order + "/verification",
+        Map.of("verificationCode", issued.get("code")), 200);
+    if (!"VERIFIED".equals(verified.get("resultCode"))) {
+      throw new IllegalStateException("verification failed for order " + order + ": " + verified);
+    }
+    long deadline = System.nanoTime() + Duration.ofSeconds(60).toNanos();
+    for (;;) {
+      String stage = String.valueOf(get(endpoint, token, "/c/orders/" + order).get("orderStage"));
+      if (stage.contains("COMPLETED")) return order;
+      if (System.nanoTime() >= deadline) {
+        throw new IllegalStateException("order " + order + " never completed (stage=" + stage + ")");
+      }
+      Thread.sleep(2_000);
+    }
   }
 
   /** Liveness probe: the real C auth face answers a body-less attempts call with 400. */
@@ -990,17 +1150,19 @@ public final class E2eCoreLoopServer {
         + "updated_at) VALUES(?,?,?,'ENABLED',UTC_TIMESTAMP(3),UTC_TIMESTAMP(3))",
         ids.nextId(), STAFF, SERVICE);
     // Wide staff availability covering all seeded service windows (whole-minute bounds: the
-    // schedule kernel rejects seconds/millis in availability intervals).
+    // schedule kernel rejects seconds/millis in availability intervals). Round 4: widened to
+    // start two days back so the past-appointment completed target stays staff-covered.
     java.time.LocalDateTime availableFrom = java.time.LocalDateTime.now(java.time.ZoneOffset.UTC)
-        .minusDays(1).truncatedTo(java.time.temporal.ChronoUnit.HOURS);
+        .minusDays(2).truncatedTo(java.time.temporal.ChronoUnit.HOURS);
     jdbc.update("INSERT INTO staff_availability_window(id,store_id,staff_id,start_at,end_at,status,"
         + "created_at,updated_at) VALUES(?,?,?,?,?,'AVAILABLE',UTC_TIMESTAMP(3),UTC_TIMESTAMP(3))",
-        ids.nextId(), STORE, STAFF, availableFrom, availableFrom.plusDays(10));
-    // GENERAL windows: 60-minute slots over today and tomorrow 09:00-20:00 Beijing time
-    // (business zone Asia/Shanghai == UTC+8, so 01:00-12:00 UTC).
+        ids.nextId(), STORE, STAFF, availableFrom, availableFrom.plusDays(12));
+    // GENERAL windows: 60-minute slots over yesterday, today and tomorrow 09:00-20:00 Beijing
+    // time (business zone Asia/Shanghai == UTC+8, so 01:00-12:00 UTC). Round 4: yesterday
+    // joined so the admin-chain completed target can book a fully past appointment.
     java.time.LocalDate beijingToday = java.time.LocalDate.now(CHANNEL_ZONE);
     DateTimeFormatter sql = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
-    for (int day = 0; day < 2; day++) {
+    for (int day = -1; day <= 1; day++) {
       for (int hour = 9; hour <= 19; hour++) {
         String start = beijingToday.plusDays(day).atTime(hour, 0)
             .atZone(CHANNEL_ZONE).withZoneSameInstant(java.time.ZoneOffset.UTC)
@@ -1053,8 +1215,17 @@ public final class E2eCoreLoopServer {
     jdbc.update("UPDATE merchant_application SET current_revision_id=? WHERE id=?", revision, application);
     seedMaterial(jdbc, ids, application, creditMaterial, 710700L, "BUSINESS_LICENSE", "a".repeat(64), USER);
     seedMaterial(jdbc, ids, application, identityMaterial, 710701L, "ID_CARD_FRONT", "b".repeat(64), USER);
+    // Round 4: the review-detail face (MerchantApplicationService detail invariant) refuses a
+    // submitted revision without STORE_PHOTO >= 1 and exactly one ID_CARD_BACK — the two-shot
+    // seed projection above left the admin application detail 503ing fail-closed. The store
+    // photo and ID back ride the same revision as first-class materials.
+    long storePhotoMaterial = 710611L, idBackMaterial = 710612L;
+    seedMaterial(jdbc, ids, application, storePhotoMaterial, 710702L, "STORE_PHOTO", "c".repeat(64), USER);
+    seedMaterial(jdbc, ids, application, idBackMaterial, 710703L, "ID_CARD_BACK", "d".repeat(64), USER);
     for (Object[] row : List.of(new Object[] {creditMaterial, "BUSINESS_LICENSE"},
-            new Object[] {identityMaterial, "ID_CARD_FRONT"})) {
+            new Object[] {identityMaterial, "ID_CARD_FRONT"},
+            new Object[] {storePhotoMaterial, "STORE_PHOTO"},
+            new Object[] {idBackMaterial, "ID_CARD_BACK"})) {
       jdbc.update("INSERT INTO merchant_application_revision_material(application_id,revision_id,"
           + "material_id,material_type,position) VALUES(?,?,?,?,1)", application, revision,
           row[0], row[1]);
@@ -1250,6 +1421,12 @@ public final class E2eCoreLoopServer {
         "31-Private-Asset-Schema-v0.1.sql",
         "33-Service-Write-Schema-v0.1.sql",
         "35-Merchant-Staff-Audit-Schema-v0.1.sql",
+        // Round 4: the contract-52/54 staff identity + binding tables back the 64号 governance
+        // staff-members/invitations read face (without them those routes 500 on a missing
+        // table — fixture gap, not a product defect; the routes answer empty lists once the
+        // tables exist).
+        "52-Merchant-Staff-Identity-Schema-v0.1.sql",
+        "54-Merchant-Staff-Binding-Schema-v0.1.sql",
         "37-Reservation-Protection-Foundation-Schema-v0.1.sql",
         "38-Booking-Create-Schema-v0.1.sql",
         "39-Booking-Expiry-Schema-v0.1.sql",
@@ -1268,6 +1445,9 @@ public final class E2eCoreLoopServer {
         // so these ALTERs are load-bearing for the whole C write face once aftersale is on.
         "50-AfterSale-Workflow-Schema-v0.1.sql",
         "51-AfterSale-Http-Schema-v0.1.sql",
+        // Round 4: the contract-63 v0.2 disposal audit schema (order_admin_action) behind the
+        // enabled admin trade face; the Flyway opt-in lane stays off in this fixture.
+        "63-Admin-Trade-Disposition-Schema-v0.1.sql",
         // Round 3: points earn kernel tables (58/60号; balances/ledger stay in SQL06 §9) and
         // the encyclopedia content tables (62号, whose seed INSERTs ship the published breed
         // content the C read face serves). Coupon tables live in SQL06 and need no extra file.
