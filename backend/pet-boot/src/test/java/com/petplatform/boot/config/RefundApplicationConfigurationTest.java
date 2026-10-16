@@ -117,9 +117,11 @@ class RefundApplicationConfigurationTest {
                 .run(c -> assertThat(c).hasFailed());
     }
 
-    /** REF-001: the pre-service auto full refund switch is off unless explicitly enabled. */
-    @Test void preServiceAutoRefundStaysOffByDefaultAndPassesThroughWhenEnabled() {
-        dependencies("").run(c -> {
+    /** REF-001: the pre-service auto full refund switch follows its explicit flag. Ruling 35
+     * (2026-10-16) flips the flag default ON (the 2026-10-08 product hard rule), so the
+     * fail-closed check closes it explicitly instead of relying on the absent-property default. */
+    @Test void preServiceAutoRefundFollowsTheExplicitFlag() {
+        dependencies("").withPropertyValues("pet.refund.pre-service-auto-refund.enabled=false").run(c -> {
             assertThat(c).hasNotFailed();
             assertThat(c.getBean(RefundApplicationService.class).preServiceAutoRefund()).isFalse();
         });
