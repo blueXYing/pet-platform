@@ -2,10 +2,11 @@
 <!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
 <mapper namespace="com.petplatform.coupon.biz.infrastructure.persistence.mapper.CouponAdminMapper">
 
-    <!-- coupon_template / coupon_instance / coupon_ledger admin face (SQL06, contract 65 §4):
+    <!-- coupon_template / coupon_instance / coupon_ledger admin face (SQL06, contract 65):
          read-only ledger projections plus white-listed template maintenance with the
-         command_idempotency binding (14号 shared physical table). Instance rows are never
-         written from this face (CCR-ADM-A005-OPS-001). -->
+         command_idempotency binding (14号 shared physical table). Instance-status actions
+         (void/return/risk-freeze) stay unwritten (CCR-ADM-A005-OPS-001); the only instance
+         write is the grant-channel ISSUE (contract 65 §4.3, CCR-CPN-GRANT-001 minimum). -->
 
     <select id="selectTemplates" resultType="com.petplatform.coupon.biz.infrastructure.persistence.entity.CouponAdminEntities$AdminTemplateEntity">
         SELECT id,name,status,total_stock,issued_count,valid_start_at,valid_end_at,rule_json,version,created_at,updated_at
@@ -27,6 +28,13 @@
     <select id="selectTemplateById" resultType="com.petplatform.coupon.biz.infrastructure.persistence.entity.CouponAdminEntities$AdminTemplateEntity">
         SELECT id,name,status,total_stock,issued_count,valid_start_at,valid_end_at,rule_json,version,created_at,updated_at
         FROM coupon_template WHERE id=#{templateId}
+    </select>
+
+    <!-- Grant guard: status/validity-window usability fact (61号 §3 precondition ④) is read
+         under the row lock so the offline transition cannot interleave with issuance. -->
+    <select id="selectTemplateForUpdate" resultType="com.petplatform.coupon.biz.infrastructure.persistence.entity.CouponAdminEntities$AdminTemplateEntity">
+        SELECT id,name,status,total_stock,issued_count,valid_start_at,valid_end_at,rule_json,version,created_at,updated_at
+        FROM coupon_template WHERE id=#{templateId} FOR UPDATE
     </select>
 
     <sql id="adminInstanceWhere">
@@ -91,6 +99,33 @@
         UPDATE coupon_template
         SET status=#{toStatus}, version=version + 1, updated_at=#{now}
         WHERE id=#{templateId} AND status=#{fromStatus} AND version=#{expectedVersion}
+    </update>
+
+    <!-- Grant write chain (contract 65 §4.3, user ruling 2026-10-16): instance + ISSUE ledger
+         + issued_count drawdown commit or roll back together inside the grant execution
+         transaction; total_stock stays unmanaged (unlimited, CCR-CPN-GRANT-001). -->
+    <insert id="insertInstance">
+        INSERT INTO coupon_instance
+            (id,coupon_template_id,user_id,status,order_id,frozen_at,freeze_expire_at,used_at,
+             original_expire_at,expire_at,version,created_at,updated_at)
+        VALUES
+            (#{id},#{templateId},#{userId},'AVAILABLE',NULL,NULL,NULL,NULL,
+             #{originalExpireAt},#{expireAt},0,#{now},#{now})
+    </insert>
+
+    <insert id="insertIssueLedger">
+        INSERT INTO coupon_ledger
+            (id,coupon_instance_id,user_id,order_id,action,from_status,to_status,request_id,
+             remark,created_at)
+        VALUES
+            (#{id},#{instanceId},#{userId},NULL,'ISSUE',NULL,'AVAILABLE',#{requestId},
+             #{remark},#{now})
+    </insert>
+
+    <update id="incrementIssuedCount">
+        UPDATE coupon_template
+        SET issued_count = issued_count + 1, updated_at=#{now}
+        WHERE id=#{templateId}
     </update>
 
     <!-- command_idempotency (14号 shared physical table); coupon admin rows use the same

@@ -7,7 +7,7 @@ test.use({ baseURL: 'http://127.0.0.1:4174' });
 const OPERATOR = '901';
 const ACTIONS = [
   'encyclopedia.read', 'encyclopedia.manage', 'encyclopedia.publish', 'breed.read', 'breed.manage',
-  'coupon.template.read', 'coupon.template.manage', 'coupon.instance.read',
+  'coupon.template.read', 'coupon.template.manage', 'coupon.instance.read', 'coupon.instance.grant',
   'points.ledger.read', 'system.parameter.read',
 ];
 function envelope(data: unknown, status = 200) { return { status, json: { code: 'SUCCESS', message: 'ok', data, traceId: 'fixture-ops' } }; }
@@ -119,6 +119,45 @@ test('A-005 券模板：无发放即无编辑入口的守卫呈现与试算', as
   // issuedCount > 0: no edit button on the wire-facing row.
   await expect(row.getByRole('button', { name: '编辑' })).toHaveCount(0);
   await row.getByRole('button', { name: '停用' }).click();
+});
+
+test('A-005 券发放：ACTIVE 模板行发放入口带二次确认，回执为终端请求编号写', async ({ page }) => {
+  await signIn(page);
+  const grants: { body: unknown; requestId: string | null }[] = [];
+  page.on('request', req => {
+    if (req.url().includes('/api/v1/admin/coupon-instances/grant') && req.method() === 'POST') {
+      grants.push({ body: req.postDataJSON(), requestId: req.headers()['x-request-id'] ?? null });
+    }
+  });
+  await page.route('**/api/v1/admin/coupon-templates?*', route => route.fulfill(envelope(pageEnvelope([templateRow]))));
+  await page.route('**/api/v1/admin/coupon-instances/grant', route =>
+    route.fulfill(envelope({
+      instanceId: '910000000000891', templateId: '910000000000851', userId: '910000000000701',
+      status: 'AVAILABLE', expireAt: '2027-01-01T00:00:00.000Z', occurredAt: '2026-10-16T01:00:00.000Z',
+    })));
+  await page.getByRole('link', { name: '券模板' }).click();
+  const row = page.locator('tbody tr').first();
+  await row.getByRole('button', { name: '发放' }).click();
+  const dialog = page.locator('section[aria-label="发放确认"]');
+  await expect(dialog).toBeVisible();
+  // Double confirm: the submit stays disabled until the checkbox is ticked.
+  await expect(dialog.getByRole('button', { name: '确认发放' })).toBeDisabled();
+  await expect(grants).toHaveLength(0);
+  await dialog.getByLabel('用户 ID').fill('910000000000701');
+  await dialog.getByRole('checkbox').check();
+  await dialog.getByRole('button', { name: '确认发放' }).click();
+  await expect(page.locator('section[aria-label="发放回执"]')).toContainText('910000000000891');
+  expect(grants).toHaveLength(1);
+  expect(grants[0].body).toEqual({ templateId: '910000000000851', userId: '910000000000701' });
+  expect(grants[0].requestId).toMatch(/^[0-9a-f-]{36}$/);
+  await expect(page.getByText('已发放：券实例 910000000000891')).toBeVisible();
+});
+
+test('A-005 券发放：未授予 coupon.instance.grant 时入口 fail-closed', async ({ page }) => {
+  await signIn(page, ACTIONS.filter(code => code !== 'coupon.instance.grant'));
+  await page.route('**/api/v1/admin/coupon-templates?*', route => route.fulfill(envelope(pageEnvelope([templateRow]))));
+  await page.getByRole('link', { name: '券模板' }).click();
+  await expect(page.locator('tbody tr').first().getByRole('button', { name: '发放' })).toHaveCount(0);
 });
 
 test('A-005 券实例台账：只读——页面不渲染任何作废/返还/冻结动作', async ({ page }) => {
