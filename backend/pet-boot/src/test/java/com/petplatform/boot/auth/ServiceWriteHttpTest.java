@@ -115,6 +115,9 @@ class ServiceWriteHttpTest {
     props.put("pet.merchant.application.open-cities[0].name", "成都");
     props.put("pet.merchant.application.enabled", true);
     props.put("pet.outbox.enabled", true);
+    // Ruling 35 (2026-10-16) defaults the review-notification consumer ON; this negative
+    // (consumer absence + undelivered rows) closes it explicitly.
+    props.put("pet.service.review.notifications-enabled", false);
     props.put("pet.service.query.enabled", true);
     props.put("pet.service.command.enabled", true);
     try {

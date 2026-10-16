@@ -116,7 +116,10 @@ class RefundApplyHttpAcceptanceTest {
 
     /** Post-service window: merchant confirmation with a 24h deadline; REJECTED may re-apply. */
     @Test void postServiceMerchantWindowReceiptAndRejectedRetry() throws Exception {
-        try (var f = new AfterSaleHttpFixture(Map.of("pet.refund.application.http.enabled", true))) {
+        try (var f = new AfterSaleHttpFixture(Map.of("pet.refund.application.http.enabled", true,
+                // Ruling 35 (2026-10-16) defaults pre-service auto-approval ON (product hard
+                // rule); this negative pins the historical fail-closed lane explicitly.
+                "pet.refund.pre-service-auto-refund.enabled", false))) {
             String order = f.verifiedOrder();
             String path = PATH(order);
 
