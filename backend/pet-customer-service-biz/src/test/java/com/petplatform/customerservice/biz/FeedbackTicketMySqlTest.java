@@ -221,7 +221,7 @@ class FeedbackTicketMySqlTest {
 
         FeedbackTicketService serviceAs(long userId, UserActiveGuard guard) {
             return new FeedbackTicketService(new FeedbackTicketStore(dataSource),
-                    guard::requireActiveUser, IDS::incrementAndGet, java.time.Clock.systemUTC());
+                    guard, IDS::incrementAndGet, java.time.Clock.systemUTC());
         }
 
         JdbcTemplate jdbc() {
