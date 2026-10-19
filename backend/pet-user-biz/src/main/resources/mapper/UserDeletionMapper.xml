@@ -2,17 +2,59 @@
 <!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
 <mapper namespace="com.petplatform.user.biz.infrastructure.persistence.mapper.UserDeletionMapper">
     <!--
-      Contract 66 account deletion (CCR-USR-DELETION-001): one append-only audit row per
-      accepted deletion (66号 Schema — never updated/deleted) plus the guarded account flip
-      into the SQL06 §1 CANCELED state. Bound values only (PERSISTENCE-XML gate).
+      Contract 66 account deletion (CCR-USR-DELETION-001 v0.2 cooling period). The request row
+      is the deletion fact and the cooling-period state machine: PENDING → (user revocation,
+      CAS) CANCELED / (due durable task SQL13 ACCOUNT_DELETION_EXEC, row-locked) ACCEPTED —
+      or an auto-cancel when the due-task precheck re-run blocks or the account is frozen
+      (blockers snapshot recorded; never a partial deletion). The only guarded account flip
+      into the SQL06 §1 CANCELED state happens inside the due-task execution transaction.
+      Bound values only (PERSISTENCE-XML gate); UTC clock everywhere.
     -->
     <insert id="insertDeletionRequest">
         INSERT INTO user_deletion_request
-            (id, user_id, request_id, acknowledged, outcome, blockers_json, created_at)
+            (id, user_id, request_id, acknowledged, status, blockers_json, cooldown_days,
+             effective_at, created_at, updated_at)
         VALUES
-            (#{id}, #{userId}, #{requestId}, #{acknowledged}, #{outcome},
-             #{blockersJson, javaType=String, jdbcType=VARCHAR}, UTC_TIMESTAMP(3))
+            (#{id}, #{userId}, #{requestId}, #{acknowledged}, #{status},
+             #{blockersJson, javaType=String, jdbcType=VARCHAR}, #{cooldownDays}, #{effectiveAt},
+             UTC_TIMESTAMP(3), UTC_TIMESTAMP(3))
     </insert>
+    <select id="findPendingByUser" resultType="com.petplatform.user.biz.infrastructure.persistence.mapper.UserDeletionMapper$UserDeletionRequestRow">
+        SELECT id, user_id AS userId, request_id AS requestId, status,
+               cancel_request_id AS cancelRequestId, cooldown_days AS cooldownDays,
+               effective_at AS effectiveAt, canceled_at AS canceledAt, executed_at AS executedAt,
+               created_at AS createdAt, updated_at AS updatedAt
+        FROM user_deletion_request
+        WHERE user_id = #{userId} AND status = 'PENDING'
+        ORDER BY created_at DESC, id DESC
+        LIMIT 1
+    </select>
+    <select id="selectByIdForUpdate" resultType="com.petplatform.user.biz.infrastructure.persistence.mapper.UserDeletionMapper$UserDeletionRequestRow">
+        SELECT id, user_id AS userId, request_id AS requestId, status,
+               cancel_request_id AS cancelRequestId, cooldown_days AS cooldownDays,
+               effective_at AS effectiveAt, canceled_at AS canceledAt, executed_at AS executedAt,
+               created_at AS createdAt, updated_at AS updatedAt
+        FROM user_deletion_request
+        WHERE id = #{id}
+        FOR UPDATE
+    </select>
+    <update id="cancelPending">
+        UPDATE user_deletion_request
+        SET status = 'CANCELED', canceled_at = UTC_TIMESTAMP(3),
+            cancel_request_id = #{cancelRequestId}, updated_at = UTC_TIMESTAMP(3)
+        WHERE id = #{id} AND status = 'PENDING'
+    </update>
+    <update id="autoCancelPending">
+        UPDATE user_deletion_request
+        SET status = 'CANCELED', canceled_at = UTC_TIMESTAMP(3), blockers_json = #{blockersJson},
+            updated_at = UTC_TIMESTAMP(3)
+        WHERE id = #{id} AND status = 'PENDING'
+    </update>
+    <update id="markExecuted">
+        UPDATE user_deletion_request
+        SET status = 'ACCEPTED', executed_at = UTC_TIMESTAMP(3), updated_at = UTC_TIMESTAMP(3)
+        WHERE id = #{id} AND status = 'PENDING'
+    </update>
     <update id="cancelAccount">
         UPDATE user_account
         SET status = 'CANCELED', version = version + 1, updated_at = UTC_TIMESTAMP(3)

@@ -93,5 +93,12 @@
             <groupId>com.petplatform</groupId>
             <artifactId>pet-aftersale-api</artifactId>
         </dependency>
+        <!-- Contract 66 v0.2 cooling period: the durable expiry task rides the shared SQL13
+             task core (JdbcAsyncTaskSubmitter producer + TaskRegistration worker binding),
+             the same infrastructure dependency shape as pet-order-biz. -->
+        <dependency>
+            <groupId>com.petplatform</groupId>
+            <artifactId>pet-task-core</artifactId>
+        </dependency>
     </dependencies>
 </project>
