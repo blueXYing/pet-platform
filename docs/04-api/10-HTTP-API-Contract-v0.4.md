@@ -1470,6 +1470,51 @@ POST /api/v1/merchant/notifications/{notificationId}/read
 
 ---
 
+## 4.16 店铺资料（2026-10-19 M 端收尾切片，27号 §6.4 补充）
+
+```text
+GET /api/v1/merchant/store-profile?merchantId&storeId
+PUT /api/v1/merchant/store-profile        （Header X-Request-Id 必填）
+```
+
+装配开关 `pet.merchant.store-profile.http.enabled`（默认 false，OpenAPI11 `IMPLEMENTED_DEFAULT_OFF`）；
+字段、门禁、幂等与审计以 27号 §6.4 为准：读为 OWNER 存量资料读取家族（OFFLINE/FROZEN 可读）；
+写为全字段替换（JSON 严格读：显式 null 非法、未知字段非法；文本空串清空、数组空清空、promoLevel 0=未设置），
+门禁=OWNER+merchant/store ACTIVE+申请 APPROVED+协议 SIGNED，expectedVersion 乐观锁，同事务审计
+（仅字段名清单）。错误映射：400/401/403/404（同形防枚举）/409（COMMON_CONFLICT、IDEMPOTENCY_KEY_CONFLICT）/503；
+无新增错误码；`Cache-Control: no-store`。
+
+## 4.17 商家客户档案（69号，只读派生）
+
+```text
+GET /api/v1/merchant/customers?merchantId&storeId&nickname?&page&pageSize
+GET /api/v1/merchant/customers/{userId}?merchantId&storeId
+```
+
+装配开关 `pet.order.customer.http.enabled`（默认 false，同 §4.1 列表同一 runtime 链）。数据 100% 从
+本店订单派生（merchantId+storeId 双键，guard+requireOwnerRead 复验）；手机号仅脱敏
+（`1xx****xxxx`，无明文接口）；宠物仅名字/类别/品种级（order_pet_snapshot 投影，无健康字段）；
+排序 totalSpend DESC、userId 升序；nickname 为有界包含搜索（≤64 码点，扫描上限 1000）。
+错误：400 参数、401 会话、403 非 OWNER/越权同形、404 客户无本店订单、503 事实不可读；无新增错误码。
+隐私边界（69号 §1）：无导出/营销触达/跨店聚合/备注写面，全部 CCR 登记待裁。
+
+## 4.18 商家经营统计（70号，只读聚合）
+
+```text
+GET /api/v1/merchant/stats/overview?merchantId&storeId&range?
+GET /api/v1/merchant/stats/services/top?merchantId&storeId&range?&limit?
+GET /api/v1/merchant/stats/revenue-trend?merchantId&storeId&range?
+```
+
+装配开关 `pet.order.stats.http.enabled`（默认 false，与 §4.17 同 runtime 链）。range 词汇
+`TODAY/LAST_7D/LAST_30D`（默认 LAST_7D；自定义区间为登记偏差）；指标口径（净营收扣除成功退款、
+核销率=核销完成/已支付、退款率=退款订单/已支付、评价均分仅 score_included=1）以 70号 §2 为准；
+金额两位小数字符串、比率一位小数无 % 号、不可计算为 null（页面 `--`）；环比=等长紧邻前窗。
+评价均分经 review 域只读事实面（ReviewQueryApi.getStoreScoreSummary），评价内核未装配时为 null。
+错误：400/401/403/503；无新增错误码；无写入路径（无 409/幂等码面）。
+
+---
+
 # 5. 运营端 API
 
 运营端统一要求：

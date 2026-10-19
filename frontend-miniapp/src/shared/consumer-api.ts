@@ -103,6 +103,22 @@ export function isMerchantRefundTargetPath(spec: RequestSpec): boolean {
   return (spec.method === 'GET' && /^\/api\/v1\/merchant\/refund-applications\/[1-9][0-9]{0,18}$/.test(spec.path))
     || isMerchantRefundDecisionPath(spec)
 }
+
+// Contracts 69/70/27 M faces (switches pet.order.customer.http.enabled /
+// pet.order.stats.http.enabled / pet.merchant.store-profile.http.enabled, default OFF):
+// the customer reads and the store-profile read/update carry the caller's merchant
+// coordinates, re-proven under the store guard server-side per call and replay.
+export function isMerchantCustomerPath(spec: RequestSpec): boolean {
+  if (spec.method === 'GET' && spec.path === '/api/v1/merchant/customers') return true
+  return spec.method === 'GET' && /^\/api\/v1\/merchant\/customers\/[1-9][0-9]{0,18}$/.test(spec.path)
+}
+export function isMerchantStatsPath(spec: RequestSpec): boolean {
+  return spec.method === 'GET'
+    && /^\/api\/v1\/merchant\/stats\/(overview|services\/top|revenue-trend)$/.test(spec.path)
+}
+export function isMerchantStoreProfilePath(spec: RequestSpec): boolean {
+  return (spec.method === 'GET' || spec.method === 'PUT') && spec.path === '/api/v1/merchant/store-profile'
+}
 export function decodePrivateAsset(value: unknown): PrivateAssetReceipt {
   const v = object(value)
   if (Object.keys(v).sort().join(',') !== 'assetId,bytes,mediaType,objectSha256,status' || v.status !== 'READY' || typeof v.objectSha256 !== 'string' || !/^[a-f0-9]{64}(?![\s\S])/.test(v.objectSha256) || !['image/jpeg', 'image/png'].includes(v.mediaType) || !Number.isSafeInteger(v.bytes) || v.bytes < 1 || v.bytes > 10485760) throw new Error('INVALID_RESPONSE')
@@ -194,18 +210,21 @@ export class ConsumerApi {
     // detail GET and the approve/reject commands all carry merchantId+storeId equal to the
     // workspace ticket; the server re-proves the OWNER relation per call anyway.
     const merchantRefundPath = isMerchantRefundListPath(spec) || isMerchantRefundTargetPath(spec)
+    const merchantCustomerPath = isMerchantCustomerPath(spec)
+    const merchantStatsPath = isMerchantStatsPath(spec)
+    const merchantStoreProfilePath = isMerchantStoreProfilePath(spec)
     const favoriteFootprintPath = isFavoriteFootprintPath(spec)
     if (/^\/api\/v1\/(c|merchant)\/aftersale/.test(spec.path) && !afterSalePath) throw new Error('INVALID_PATH')
     if (/^\/api\/v1\/merchant\/reviews(\/|$)/.test(spec.path) && !merchantReviewPath) throw new Error('INVALID_PATH')
     if (/^\/api\/v1\/c\/(favorites|footprints)(\/|$)/.test(spec.path) && !favoriteFootprintPath) throw new Error('INVALID_PATH')
-    if (!/^\/api\/v1\/c\/[a-z0-9/-]+$/.test(spec.path) && !agreementPath && !admissionPath && !categoryPath && !serviceCommandPath && !afterSalePath && !schedulePath && !verificationPath && !merchantOrderAction && !merchantOrderList && !merchantReviewPath && !merchantRefundPath && !favoriteFootprintPath) throw new Error('INVALID_PATH')
+    if (!/^\/api\/v1\/c\/[a-z0-9/-]+$/.test(spec.path) && !agreementPath && !admissionPath && !categoryPath && !serviceCommandPath && !afterSalePath && !schedulePath && !verificationPath && !merchantOrderAction && !merchantOrderList && !merchantReviewPath && !merchantRefundPath && !merchantCustomerPath && !merchantStatsPath && !merchantStoreProfilePath && !favoriteFootprintPath) throw new Error('INVALID_PATH')
     if (spec.method !== 'GET' && !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}(?![\s\S])/i.test(spec.requestId || '')) throw new Error('REQUEST_ID_REQUIRED')
     const response = await this.transport({ ...spec, headers: { 'Content-Type': 'application/json', ...(spec.requestId ? { 'X-Request-Id': spec.requestId } : {}), ...headers } })
     if (afterSalePath) return afterSaleEnvelope(response)
     const body = object(response.data)
     if (response.statusCode < 200 || response.statusCode >= 300 || body.code !== 'SUCCESS') throw new ApiError(typeof body.code === 'string' ? body.code : 'INVALID_RESPONSE', response.statusCode)
     const applicationPath = /^\/api\/v1\/c\/merchant-applications(?:\/|$)/.test(spec.path) || spec.path === '/api/v1/c/merchant-application-cities'
-    if ((agreementPath || applicationPath || admissionPath || categoryPath || serviceCommandPath || schedulePath || verificationPath || merchantOrderAction || merchantOrderList || merchantRefundPath) && body.success !== true) throw new Error('INVALID_RESPONSE')
+    if ((agreementPath || applicationPath || admissionPath || categoryPath || serviceCommandPath || schedulePath || verificationPath || merchantOrderAction || merchantOrderList || merchantRefundPath || merchantCustomerPath || merchantStatsPath || merchantStoreProfilePath) && body.success !== true) throw new Error('INVALID_RESPONSE')
     return body.data
   }
   private clear() {
@@ -358,6 +377,17 @@ export class ConsumerApi {
         || spec.data?.merchantId !== ticket.context.merchantId
         || spec.data?.storeId !== ticket.context.storeId)) throw new Error('WORKSPACE_PATH_MISMATCH')
       if (merchantRefundDecision && !ticket.context.storeId) throw new Error('WORKSPACE_PATH_MISMATCH')
+      // Contracts 69/27 M faces: customer reads and the store-profile read/update carry the
+      // exact workspace coordinates (aftersale-list discipline); the update body addresses
+      // the selected store while the server re-proves OWNER per call and replay.
+      const merchantCustomerRead = isMerchantCustomerPath(spec)
+      if (merchantCustomerRead && (!ticket.context.storeId
+        || spec.data?.merchantId !== ticket.context.merchantId
+        || spec.data?.storeId !== ticket.context.storeId)) throw new Error('WORKSPACE_PATH_MISMATCH')
+      if (isMerchantStoreProfilePath(spec) && !ticket.context.storeId) throw new Error('WORKSPACE_PATH_MISMATCH')
+      if (isMerchantStoreProfilePath(spec) && spec.data
+        && (spec.data.merchantId !== ticket.context.merchantId
+          || spec.data.storeId !== ticket.context.storeId)) throw new Error('WORKSPACE_PATH_MISMATCH')
       const targetFree = spec.path === '/api/v1/merchant/service-categories' || afterSalePath && spec.path !== '/api/v1/merchant/aftersales' || verificationPath || merchantOrderAction || merchantRefundDecision
       if (!targetFree && spec.data?.merchantId !== ticket.context.merchantId) throw new Error('WORKSPACE_PATH_MISMATCH')
     } else if (ticket.context.workspace !== 'consumer' && !isStaffInvitationPath(spec.path)) throw new Error('WORKSPACE_PATH_MISMATCH')

@@ -36,7 +36,7 @@
         WHERE merchant_id = #{merchantId} AND store_id = #{storeId}
     </select>
 
-    <select id="pageStoreCustomers" resultType="com.petplatform.order.biz.infrastructure.persistence.entity.MerchantReadProjectionEntities.CustomerAggregate">
+    <select id="pageStoreCustomers" resultType="com.petplatform.order.biz.infrastructure.persistence.entity.MerchantReadProjectionEntities$CustomerAggregate">
         SELECT t.user_id, t.order_count, t.total_spend, t.last_visit_at,
                p.pet_name AS top_pet_name, p.pet_type AS top_pet_type, p.breed_name AS top_breed_name
         FROM (
@@ -51,7 +51,7 @@
     </select>
 
     <!-- Nickname-search scan (contract 69 §2): same projection, capped row budget. -->
-    <select id="scanStoreCustomers" resultType="com.petplatform.order.biz.infrastructure.persistence.entity.MerchantReadProjectionEntities.CustomerAggregate">
+    <select id="scanStoreCustomers" resultType="com.petplatform.order.biz.infrastructure.persistence.entity.MerchantReadProjectionEntities$CustomerAggregate">
         SELECT t.user_id, t.order_count, t.total_spend, t.last_visit_at,
                p.pet_name AS top_pet_name, p.pet_type AS top_pet_type, p.breed_name AS top_breed_name
         FROM (
@@ -65,7 +65,7 @@
         ORDER BY t.total_spend DESC, t.user_id ASC
     </select>
 
-    <select id="storeCustomerAggregate" resultType="com.petplatform.order.biz.infrastructure.persistence.entity.MerchantReadProjectionEntities.CustomerAggregate">
+    <select id="storeCustomerAggregate" resultType="com.petplatform.order.biz.infrastructure.persistence.entity.MerchantReadProjectionEntities$CustomerAggregate">
         SELECT o.user_id,
                COUNT(*) AS order_count,
                SUM(GREATEST(o.pay_amount - o.refunded_amount, 0)) AS total_spend,
@@ -87,7 +87,7 @@
 
     <!-- Breed-level pet list only: pet_name/pet_type/breed_name are selected; the snapshot's
          weight/health columns are deliberately not projected (privacy ruling, contract 69 §1). -->
-    <select id="storeCustomerPets" resultType="com.petplatform.order.biz.infrastructure.persistence.entity.MerchantReadProjectionEntities.CustomerPet">
+    <select id="storeCustomerPets" resultType="com.petplatform.order.biz.infrastructure.persistence.entity.MerchantReadProjectionEntities$CustomerPet">
         SELECT DISTINCT s.pet_id, s.pet_name, s.pet_type, s.breed_name
         FROM order_pet_snapshot s
         JOIN pet_order o ON o.id = s.order_id
@@ -96,7 +96,7 @@
         LIMIT #{limit}
     </select>
 
-    <select id="statsWindowTotals" resultType="com.petplatform.order.biz.infrastructure.persistence.entity.MerchantReadProjectionEntities.StatsTotals">
+    <select id="statsWindowTotals" resultType="com.petplatform.order.biz.infrastructure.persistence.entity.MerchantReadProjectionEntities$StatsTotals">
         SELECT COUNT(*) AS order_count,
                SUM(o.paid_at IS NOT NULL) AS paid_order_count,
                SUM(o.verified_at IS NOT NULL) AS verified_order_count,
@@ -107,7 +107,7 @@
           AND o.created_at &gt;= #{from} AND o.created_at &lt; #{to}
     </select>
 
-    <select id="statsWindowCustomers" resultType="com.petplatform.order.biz.infrastructure.persistence.entity.MerchantReadProjectionEntities.CustomerWindowCount">
+    <select id="statsWindowCustomers" resultType="com.petplatform.order.biz.infrastructure.persistence.entity.MerchantReadProjectionEntities$CustomerWindowCount">
         SELECT COUNT(*) AS customer_count,
                SUM(c.order_count &gt;= 2) AS repeat_customer_count
         FROM (
@@ -129,7 +129,7 @@
         ) first_orders
     </select>
 
-    <select id="statsServiceTop" resultType="com.petplatform.order.biz.infrastructure.persistence.entity.MerchantReadProjectionEntities.ServiceTopRow">
+    <select id="statsServiceTop" resultType="com.petplatform.order.biz.infrastructure.persistence.entity.MerchantReadProjectionEntities$ServiceTopRow">
         SELECT t.service_id, latest.service_name, t.order_count, t.revenue
         FROM (
             SELECT o.service_id,
@@ -157,7 +157,7 @@
         ORDER BY t.order_count DESC, t.service_id ASC
     </select>
 
-    <select id="statsRevenueTrend" resultType="com.petplatform.order.biz.infrastructure.persistence.entity.MerchantReadProjectionEntities.TrendRow">
+    <select id="statsRevenueTrend" resultType="com.petplatform.order.biz.infrastructure.persistence.entity.MerchantReadProjectionEntities$TrendRow">
         SELECT DATE_FORMAT(o.created_at, '%Y-%m-%d') AS bucket_date,
                SUM(GREATEST(o.pay_amount - o.refunded_amount, 0)) AS revenue,
                COUNT(*) AS order_count

@@ -689,6 +689,16 @@
 
 素材登记：无新增切图（页内图标为文字/CSS 线稿变体；`mine.css` 新增 `mi-svc-baike` 书本线稿 base64 同族 `#577683`；返回钮复用 `assets/profile/back.png`）。
 
+### 4.18 M 端收尾三页四帧（2026-10-19，27号 §6.4 店铺资料 / 69号 客户档案 / 70号 经营统计）
+
+2026-10-19 用户裁决"全做"的 M 端 C1 真缺口收尾（审计报告 §6 #10–#14）。四帧按契约实施，登记以下偏差（原稿保留 §3 不删）：
+
+- **我的-店铺信息（25:20684）→ `merchant/pages/shop-info/index`**：帧内资质证照上传（营业执照/宠物医生执照/医生姓名执业编号）、门店定位重选、店铺头像/更换头像、营业状态开关（休息中/暂停营业）均不实施——资质变更是否需运营复审 SSOT 未写（CCR 待裁），营业/处罚状态仅投影 merchant/merchant_store 既有事实（营业中/已下线/已冻结，只读）；可维护面=店铺基础信息（简介/公告/促销等级/促销标题/促销文案/店铺照片/营业时间），27号 §6.4；营业时间字段为信息性维护面，不参与 53号分钟级排期计算（偏差）。照片上传入口本切片未置入页面（STORE_PHOTO 用途管线后端已就绪）。
+- **首页-客户管理（23:12738）/客户详情（23:13478）→ `merchant/pages/customers/index|detail`**：帧内明文手机号（13612342211 式）按隐私裁决改为脱敏（138****0100）；昵称搜索替代帧的"姓名/手机号/宠物"搜索（手机号/订单号搜索涉明文红线，CCR 待裁）；详情帧的体重/性别/年龄/疫苗/驱虫/健康备注/商家备注全部不投影（69号 §1 隐私红线 + CCR 待裁），宠物仅名字/类别/品种级；"最近到店 今天/昨天/3天前"以 verified_at 派生相对标签实现。
+- **首页-今日营收-数据统计（5:3759）/首页-数据统计（143:5192，同稿两稿）→ `merchant/pages/stats/index`**：区间 tab 沿 PRD 5.14 快捷区间（今日/近7天/近30天，默认近7天），帧内"本周/本月/本年"与"自定义"不实施（CCR 登记待裁）；环比保留（↑/↓ 百分比）；拒单率/排期利用率/服务下钻/客户消费分层不做（70号 §6 CCR 待裁）；指标口径全部从既有 order 读侧聚合（净营收扣除成功退款），评价均分经 review 事实面（内核未装配显示 --）；营收趋势为 UTC 日桶柱状（空档补零）。
+
+页面视觉沿 M 端现行页面规范（schedule/page.css 家族 measures/tokens：header #FFF6E5、body #F0FBFF、cards white r17 border #C0ECFF、primary #5BAAE8）。WXSS 铁律执行：`.msi/.mcu/.mst-page` 前缀按钮重置（0,1,1）、动作类复合选择器（0,2,0）、状态仅 className 变体、禁 data-*。工作台入口：店铺信息=OWNER+ALLOWED（写族）；客户管理/数据统计=OWNER+allowed|limited 且 merchant.order.read（存量读取族）。后端开关默认关闭（`pet.merchant.store-profile.http.enabled` / `pet.order.customer.http.enabled` / `pet.order.stats.http.enabled`），OpenAPI11 `IMPLEMENTED_DEFAULT_OFF`。
+
 ## 5. 维护规则
 
 - Figma 文件更新后（比对 §1 的 version 字段），由任一 Worker 重新执行 depth=2 抓取并更新 §3；同名不同 id 的 frame 是不同状态稿，全部保留。

@@ -1,0 +1,344 @@
+  /merchant/store-profile:
+    get:
+      tags:
+      - Merchant-Profile
+      summary: merchantGetStoreProfile
+      operationId: merchantGetStoreProfile
+      x-contract-status: IMPLEMENTED_DEFAULT_OFF
+      x-default-enabled: false
+      x-contract: 27-Merchant-Domain-Contract-v0.1.md
+      x-assembly-switch: pet.merchant.store-profile.http.enabled
+      x-route-party: MERCHANT
+      x-audience: MINIAPP
+      description: 店铺资料读侧（27号 §6.4 补充，PRD 5.7）：OWNER 存量资料读取家族
+                （OFFLINE/FROZEN 可读；门店不存在或越权同形 404 防枚举）。只读段为审核
+                回填事实 + 经营状态投影，资料段为商家自维护店铺基础信息（首次保存前行
+                惰性创建，默认 version=0 全 NULL）。
+      security:
+      - bearerAuth: []
+      parameters:
+      - $ref: '#/components/parameters/MerchantIdQuery'
+      - $ref: '#/components/parameters/StoreIdQuery'
+      responses:
+        '200':
+          description: '店铺资料投影（readonly + profile + version）。Cache-Control: no-store。'
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                enum: [no-store]
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MerchantStoreProfileEnvelope'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '503':
+          $ref: '#/components/responses/DependencyUnavailable'
+    put:
+      tags:
+      - Merchant-Profile
+      summary: merchantUpdateStoreProfile
+      operationId: merchantUpdateStoreProfile
+      x-contract-status: IMPLEMENTED_DEFAULT_OFF
+      x-default-enabled: false
+      x-contract: 27-Merchant-Domain-Contract-v0.1.md
+      x-assembly-switch: pet.merchant.store-profile.http.enabled
+      x-route-party: MERCHANT
+      x-audience: MINIAPP
+      description: 店铺资料全字段替换（命令 merchant.store.profile.update）：OWNER+ACTIVE+
+                APPROVED+SIGNED 写族门禁；JSON 严格读（显式 null/未知字段 400；文本空串清空、
+                数组空清空、promoLevel 0=未设置）；expectedVersion 乐观锁；X-Request-Id 幂等
+                （首报文 201、成功重放 200）；同事务审计仅记字段名清单。photoAssetIds 须经
+                STORE_PHOTO 用途私有权属解析（READY 图片）。
+      security:
+      - bearerAuth: []
+      parameters:
+      - name: X-Request-Id
+        in: header
+        required: true
+        schema:
+          type: string
+          format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/MerchantStoreProfileUpdateRequest'
+      responses:
+        '200':
+          description: 保存后投影（幂等成功重放同回执）。
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                enum: [no-store]
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MerchantStoreProfileEnvelope'
+        '201':
+          description: 首次保存成功回执。
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MerchantStoreProfileEnvelope'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '503':
+          $ref: '#/components/responses/DependencyUnavailable'
+  /merchant/customers:
+    get:
+      tags:
+      - Merchant-Order
+      summary: merchantListCustomers
+      operationId: merchantListCustomers
+      x-contract-status: IMPLEMENTED_DEFAULT_OFF
+      x-default-enabled: false
+      x-contract: 69-Merchant-Customer-Profile-Read-Contract-v0.1.md
+      x-assembly-switch: pet.order.customer.http.enabled
+      x-route-party: MERCHANT
+      x-audience: MINIAPP
+      description: 派生客户列表（69号，PRD 5.12 最小实现）：本店订单按 user_id 分组派生，
+                零新事实源、零跨店行。手机号仅脱敏；排序 totalSpend DESC、userId ASC；
+                nickname 为有界包含搜索（≤64 码点，扫描上限 1000）。OWNER 坐标在门店
+                guard 事务内 requireOwnerRead 复验（同 /merchant/orders §4.1）。只读，
+                无 X-Request-Id。
+      security:
+      - bearerAuth: []
+      parameters:
+      - $ref: '#/components/parameters/MerchantIdQuery'
+      - $ref: '#/components/parameters/StoreIdQuery'
+      - name: nickname
+        in: query
+        required: false
+        schema:
+          type: string
+          minLength: 1
+          maxLength: 64
+      - $ref: '#/components/parameters/Page'
+      - $ref: '#/components/parameters/PageSize'
+      responses:
+        '200':
+          description: 'PageResult 信封（userId/nickname/phoneMasked/orderCount/totalSpend/
+            avgTicket/lastVisitAt/topPet）。Cache-Control: no-store。'
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                enum: [no-store]
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MerchantCustomerPageEnvelope'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '503':
+          $ref: '#/components/responses/DependencyUnavailable'
+  /merchant/customers/{userId}:
+    get:
+      tags:
+      - Merchant-Order
+      summary: merchantGetCustomer
+      operationId: merchantGetCustomer
+      x-contract-status: IMPLEMENTED_DEFAULT_OFF
+      x-default-enabled: false
+      x-contract: 69-Merchant-Customer-Profile-Read-Contract-v0.1.md
+      x-assembly-switch: pet.order.customer.http.enabled
+      x-route-party: MERCHANT
+      x-audience: MINIAPP
+      description: 派生客户详情（69号）：列表行投影 + 本店订单宠物去重列表（名字/类别/品种级，
+                最多 20；体重/疫苗/驱虫/健康备注不投影）。本店无任何订单的 userId 与越权
+                同形 404（防枚举）。
+      security:
+      - bearerAuth: []
+      parameters:
+      - name: userId
+        in: path
+        required: true
+        schema:
+          $ref: '#/components/schemas/PublicId'
+      - $ref: '#/components/parameters/MerchantIdQuery'
+      - $ref: '#/components/parameters/StoreIdQuery'
+      responses:
+        '200':
+          description: 客户详情投影。Cache-Control: no-store。
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                enum: [no-store]
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MerchantCustomerDetailEnvelope'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '503':
+          $ref: '#/components/responses/DependencyUnavailable'
+  /merchant/stats/overview:
+    get:
+      tags:
+      - Merchant-Order
+      summary: merchantStatsOverview
+      operationId: merchantStatsOverview
+      x-contract-status: IMPLEMENTED_DEFAULT_OFF
+      x-default-enabled: false
+      x-contract: 70-Merchant-Business-Stats-Read-Contract-v0.1.md
+      x-assembly-switch: pet.order.stats.http.enabled
+      x-route-party: MERCHANT
+      x-audience: MINIAPP
+      description: 经营统计概览（70号，PRD 5.14）：单店订单聚合 + 评价均分事实面（评价内核
+                未装配时 reviewAvg=null 显示 --）。range 词汇 TODAY/LAST_7D/LAST_30D（默认
+                LAST_7D）；净营收扣除成功退款；比率一位小数无百分号；环比=等长紧邻前窗。
+      security:
+      - bearerAuth: []
+      parameters:
+      - $ref: '#/components/parameters/MerchantIdQuery'
+      - $ref: '#/components/parameters/StoreIdQuery'
+      - name: range
+        in: query
+        required: false
+        schema:
+          type: string
+          enum: [TODAY, LAST_7D, LAST_30D]
+      responses:
+        '200':
+          description: 概览投影（含 deltas 环比与 generatedAt）。Cache-Control: no-store。
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                enum: [no-store]
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MerchantStatsOverviewEnvelope'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '503':
+          $ref: '#/components/responses/DependencyUnavailable'
+  /merchant/stats/services/top:
+    get:
+      tags:
+      - Merchant-Order
+      summary: merchantStatsServiceTop
+      operationId: merchantStatsServiceTop
+      x-contract-status: IMPLEMENTED_DEFAULT_OFF
+      x-default-enabled: false
+      x-contract: 70-Merchant-Business-Stats-Read-Contract-v0.1.md
+      x-assembly-switch: pet.order.stats.http.enabled
+      x-route-party: MERCHANT
+      x-audience: MINIAPP
+      description: 热门服务排行（70号）：周期内创建订单按 service_id 聚合，orderCount 降序、
+                serviceId 升序，limit 1..5 默认 5；serviceName 取最新快照名（可空）。
+      security:
+      - bearerAuth: []
+      parameters:
+      - $ref: '#/components/parameters/MerchantIdQuery'
+      - $ref: '#/components/parameters/StoreIdQuery'
+      - name: range
+        in: query
+        required: false
+        schema:
+          type: string
+          enum: [TODAY, LAST_7D, LAST_30D]
+      - name: limit
+        in: query
+        required: false
+        schema:
+          type: integer
+          minimum: 1
+          maximum: 5
+      responses:
+        '200':
+          description: Top 服务行列表。Cache-Control: no-store。
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                enum: [no-store]
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MerchantStatsServiceTopEnvelope'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '503':
+          $ref: '#/components/responses/DependencyUnavailable'
+  /merchant/stats/revenue-trend:
+    get:
+      tags:
+      - Merchant-Order
+      summary: merchantStatsRevenueTrend
+      operationId: merchantStatsRevenueTrend
+      x-contract-status: IMPLEMENTED_DEFAULT_OFF
+      x-default-enabled: false
+      x-contract: 70-Merchant-Business-Stats-Read-Contract-v0.1.md
+      x-assembly-switch: pet.order.stats.http.enabled
+      x-route-party: MERCHANT
+      x-audience: MINIAPP
+      description: 营收趋势（70号）：UTC 日桶（TODAY 单桶、LAST_7D 7 桶、LAST_30D 30 桶），
+                空档补零；桶为 date(YYYY-MM-DD)/revenue/orderCount。
+      security:
+      - bearerAuth: []
+      parameters:
+      - $ref: '#/components/parameters/MerchantIdQuery'
+      - $ref: '#/components/parameters/StoreIdQuery'
+      - name: range
+        in: query
+        required: false
+        schema:
+          type: string
+          enum: [TODAY, LAST_7D, LAST_30D]
+      responses:
+        '200':
+          description: 日桶列表。Cache-Control: no-store。
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                enum: [no-store]
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MerchantStatsTrendEnvelope'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '503':
+          $ref: '#/components/responses/DependencyUnavailable'
