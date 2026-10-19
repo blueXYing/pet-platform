@@ -10,6 +10,8 @@ public interface PetMapper {
 
     UserAccountEntity selectUserById(@Param("userId") long userId);
 
+    List<UserAccountEntity> selectUsersByIds(@Param("userIds") List<Long> userIds);
+
     PetEntity selectPetById(@Param("petId") long petId);
 
     PetEntity selectPetByIdForUpdate(@Param("petId") long petId);

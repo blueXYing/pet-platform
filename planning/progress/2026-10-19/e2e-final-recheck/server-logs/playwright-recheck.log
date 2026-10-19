@@ -1,0 +1,14 @@
+[WebServer] (!) Your Vite config uses features that are unsupported by `configLoader: 'native'`, which is planned to become the default in a future major version of Vite:
+[WebServer]   - import "./api-proxy-middleware" without a file extension (vite.config.ts:3:42). Add the file extension
+[WebServer]   - import "./proxy-guard" without a file extension (api-proxy-middleware.ts:3:63). Add the file extension
+[WebServer] Set `VITE_CONFIG_NATIVE_IGNORE_WARNING=true` to suppress this warning.
+[WebServer] (!) Your Vite config uses features that are unsupported by `configLoader: 'native'`, which is planned to become the default in a future major version of Vite:
+[WebServer]   - import "./api-proxy-middleware" without a file extension (vite.config.ts:3:42). Add the file extension
+[WebServer]   - import "./proxy-guard" without a file extension (api-proxy-middleware.ts:3:63). Add the file extension
+[WebServer] Set `VITE_CONFIG_NATIVE_IGNORE_WARNING=true` to suppress this warning.
+
+Running 1 test using 1 worker
+
+  ok 1 tests\admin-fa-fixes-recheck.spec.ts:43:1 › admin FA-fixes recheck: service review renders, trade detail/verification 200, disposal POST 200, ops blocks render with one session (4.8s)
+
+  1 passed (11.2s)

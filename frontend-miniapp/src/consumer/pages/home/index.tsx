@@ -1,7 +1,12 @@
 import { Button, Image, ScrollView, Text, View } from '@tarojs/components'
-import Taro from '@tarojs/taro'
-import { useState, type CSSProperties } from 'react'
+import Taro, { useDidShow } from '@tarojs/taro'
+import { useCallback, useEffect, useRef, useState, type CSSProperties } from 'react'
 import { switchConsumerTab } from '../../components/navigation/switch'
+import CityPicker from '../../city/picker'
+import { readSelectedCity, writeSelectedCity } from '../../city/model'
+import type { StoreCity } from '../../store/model'
+import { consumerApi } from '../../../shared/consumer-runtime'
+import { decodeCityList } from '../../store/model'
 import searchIcon from '../../assets/home/home-search.png'
 import bellIcon from '../../assets/home/home-bell.png'
 import brandLogo from '../../assets/home/brand-logo@2x.png'
@@ -19,8 +24,11 @@ import './home.css'
 // logo + 搜索/铃铛）与平台保障体系（白卡 + #c0ecff 图标芯片）逐块落地；宠物档案分区以入口卡
 // 呈现（首页无读侧拉取——功能/契约零改动，不虚构宠物/疫苗数据，占位头像用平台既有 avatar）。
 // 原稿营销位（热门活动）、热门服务与宠友圈热门板块无 V1 后端与社区域（COM-001 未启动），
-// 维持 §4.4 裁决不实现；定位城市（62:9）无 C 端定位能力不实现；原稿「宠物百科」链接属
-// 品种百科（V1 范围外）不实现。全部入口仍指向已交付真实页面。
+// 维持 §4.4 裁决不实现；原稿「宠物百科」链接属品种百科（V1 范围外）不实现。
+// 2026-10-19 城市选择裁决回补头部城市芯片（61:599 头部本有：定位 pin #5baae8 + 城市名 #383838
+// + 下拉箭头 #3c3c3c；§4.11 偏差2 的「定位城市不实现」随裁决修订为「手动选择城市」）：目录来自
+// §3.3.4 /c/cities（匿名），选择持久化本地存储、门店目录页展示时读取并按城市刷新；V1 无定位能力
+// （§4.4 维持），pin 仅作芯片图形不入定位语义。全部入口仍指向已交付真实页面。
 const guarantee = [
   { key: 'certified', title: '实名认证', body: '所有服务者均通过身份认证与资质审核', icon: iconCertified },
   { key: 'rating', title: '服务评分', body: '真实用户评价，透明公开的评分体系', icon: iconRating },
@@ -33,6 +41,26 @@ export default function HomePage() {
   const unit = info.windowWidth / 402
   // 静默登录在 app 启动（workspace-react launch）完成；本页无登录态依赖。
   const style = { '--home-unit': `${unit}px`, '--home-top': `${info.statusBarHeight || 0}px` } as CSSProperties
+  // 城市芯片（§3.3.4）：目录匿名读，失败静默退回本地选择；选择写本地存储（门店目录页展示时读取）。
+  const [cities, setCities] = useState<StoreCity[]>([])
+  const [selectedCity, setSelectedCity] = useState<string | undefined>(() => readSelectedCity().cityCode)
+  const [cityPickerOpen, setCityPickerOpen] = useState(false)
+  const mounted = useRef(true)
+  useEffect(() => { mounted.current = true; return () => { mounted.current = false } }, [])
+  const loadCities = useCallback(() => {
+    consumerApi.anonymousRequest({ method: 'GET', path: '/api/v1/c/cities' }, decodeCityList)
+      .then(catalog => { if (mounted.current && catalog.length) setCities(catalog) })
+      .catch(() => { /* 目录不可用：芯片回退本地选择/默认名，面板不打开选项 */ })
+  }, [])
+  useDidShow(() => { setSelectedCity(readSelectedCity().cityCode); loadCities() })
+  function pickCity(next: string | undefined) {
+    setCityPickerOpen(false)
+    setSelectedCity(next)
+    writeSelectedCity(next)
+  }
+  const cityName = selectedCity !== undefined
+    ? (cities.find(entry => entry.cityCode === selectedCity)?.cityName || selectedCity)
+    : (cities[0]?.cityName || '成都')
   function openStores() {
     Taro.navigateTo({ url: '/consumer/pages/store-services/stores' }).catch(() => Taro.showToast({ title: '页面打开失败，请重试', icon: 'none' }))
   }
@@ -47,6 +75,17 @@ export default function HomePage() {
     <Image className='home-bg-doodle' src={textureDoodle} mode='scaleToFill' />
     <View className='home-header'>
       <Image className='home-brand-logo' src={brandLogo} mode='aspectFit' />
+      <View className='home-city-anchor'>
+        <Button id='home-city' ariaLabel={`当前城市${cityName}，点按切换`} className='home-city-chip' hoverClass='none'
+          onClick={() => setCityPickerOpen(open => !open)}>
+          <View className='home-city-pin' />
+          <Text className='home-city-name'>{cityName}</Text>
+          <View className='home-city-caret' />
+        </Button>
+        {cityPickerOpen && <CityPicker idPrefix='home-city' unit={unit}
+          cities={cities} current={selectedCity} includeAll={false}
+          onPick={(next: string | undefined) => pickCity(next)} />}
+      </View>
       <View className='home-header-actions'>
         <Button id='home-search' ariaLabel='找门店与服务' className='home-icon-link' hoverClass='none' onClick={openStores}>
           <Image className='home-icon-search' src={searchIcon} mode='scaleToFill' />

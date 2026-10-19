@@ -69,11 +69,7 @@ class PrivateAssetContractRegressions(unittest.TestCase):
         # 206 = 205 + 1 contract-65 v0.3 §4.4 void route (user ruling 2026-10-16 doc 36
         # minimal authorization, CCR-CPN-VOID-001; kernel switch pet.coupon.void.enabled
         # stays default off).
-        # 211 = 206 + 3 contract-66/67 c-settings routes (2026-10-19 user ruling "全做",
-        # CCR-USR-DELETION-001 / CCR-CS-FEEDBACK-001: 2 settings-deletion + 3 feedback;
-        # kernel switches pet.usersettings.http.enabled / pet.feedback.http.enabled stay
-        # default off).
-        self.assertEqual(result['operations'], 211)
+        self.assertEqual(result['operations'], 224)  # 206 + 6 wiring batch (68号 records x4 + services/cities)
         self.assertEqual(result['privateAssetOperations'], 3)
         # abnormalCloseOrder graduated to the contract-63 v0.2 disposal face (2026-10-15).
         self.assertEqual(result['legacyOperations'], 13)

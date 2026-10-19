@@ -128,6 +128,16 @@
         LIMIT #{offset}, #{limit}
     </select>
 
+    <!-- Contract-70 stats aggregate: one indexed store read over (store_id, score_included,
+         created_at); the composite average keeps the stored one-decimal scale. -->
+    <select id="storeScoreSummary"
+            resultType="com.petplatform.review.biz.infrastructure.persistence.entity.ReviewScoreSummaryEntity">
+        SELECT COUNT(*) AS review_count, AVG(r.composite_score) AS avg_score
+        FROM review r
+        WHERE r.store_id = #{storeId} AND r.score_included = 1
+          AND r.created_at &gt;= #{from} AND r.created_at &lt; #{to}
+    </select>
+
     <!-- O read face: order id joins back through the appealed review; same stable ordering. -->
     <select id="countAppeals" resultType="long">
         SELECT COUNT(*)

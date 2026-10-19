@@ -82,6 +82,12 @@ public final class ReviewApiImpl implements ReviewQueryApi, ReviewCommandApi {
     }
 
     @Override
+    public com.petplatform.review.api.query.ReviewQueryApi.ScoreSummary getStoreScoreSummary(
+            com.petplatform.review.api.query.ReviewQueryApi.StoreScoreSummaryQuery query) {
+        return service.getStoreScoreSummary(query);
+    }
+
+    @Override
     public ReviewDetail getStoreReview(StoreReviewGetQuery query) {
         return service.getStoreReview(query);
     }

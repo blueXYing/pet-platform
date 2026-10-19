@@ -1,0 +1,15 @@
+endpoint=http://127.0.0.1:18081
+database=auth001czq7ddf7_e2e_core_loop_bf0b7902554d443897f5b14235862ccf
+databaseLifecycle=DROP_ON_PROCESS_SHUTDOWN
+processId=34732
+snowflakeNodeId=777
+userId=710100
+petId=710200
+merchantId=710301
+storeId=710302
+serviceId=710401
+staffId=710303
+wechatApp=e2e-wx-app
+adminAccount=e2e-round2-operator
+adminPassword=E2E_Round2_Operator_91!
+adminOrigin=https://e2e.example.invalid

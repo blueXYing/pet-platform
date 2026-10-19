@@ -49,6 +49,25 @@ public interface ReviewQueryApi {
         throw new UnsupportedOperationException("appeal detail unavailable");
     }
 
+    /**
+     * Contract-70 stats fact read: one store's score_included review aggregate over a
+     * created_at window (created UTC anchors). Internal facts read like
+     * OrderQueryApi.firstPaidAt — the consuming stats service re-proves the OWNER coordinate
+     * under the store guard, and a count+average payload opens no enumeration surface. Works
+     * with the review kernel alone (no appeal assembly required); null avgScore when the
+     * window holds no included reviews.
+     */
+    default ScoreSummary getStoreScoreSummary(StoreScoreSummaryQuery query) {
+        throw new UnsupportedOperationException("store score summary unavailable");
+    }
+
+    /** merchantId/storeId are canonical decimal strings; the window is half-open. */
+    record StoreScoreSummaryQuery(CommandContext context, String merchantId, String storeId,
+            java.time.OffsetDateTime from, java.time.OffsetDateTime to) {}
+
+    /** avgScore is one decimal 0.0..5.0 as wire string; null when the window has no reviews. */
+    record ScoreSummary(long reviewCount, String avgScore) {}
+
     record StoreReviewListQuery(CommandContext context, String merchantId, String storeId,
             Integer page, Integer pageSize) {
         public StoreReviewListQuery {

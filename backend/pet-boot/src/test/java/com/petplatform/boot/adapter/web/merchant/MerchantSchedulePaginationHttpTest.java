@@ -146,6 +146,12 @@ class MerchantSchedulePaginationHttpTest {
             public ServiceSnapshotDTO getVisibleService(ServiceSnapshotQuery query) {
                 throw new UnsupportedOperationException();
             }
+
+            @Override
+            public com.petplatform.service.api.dto.ServiceSnapshotPageDTO searchVisibleServices(
+                    com.petplatform.service.api.query.CatalogServiceSearchQuery query) {
+                throw new UnsupportedOperationException("catalog search not used by this slice");
+            }
         };
         Clock clock = Clock.fixed(Instant.parse("2026-10-07T00:00:00Z"), ZoneOffset.UTC);
         ScheduleCapacityProofApiImpl proof =

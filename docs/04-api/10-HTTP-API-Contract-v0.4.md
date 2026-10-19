@@ -1,5 +1,3 @@
-> 2026-09-29: [Contract 46](46-Order-Reschedule-Contract-v0.1.md) extends merchant expectedConfirmRound to 0/1, using each round's immutable deadline. Historical round-0 examples below remain valid. 2026-10-07: consumer reschedule HTTP is implemented default off (§3.8 note).
-
 # 宠物平台 V1.0 HTTP / OpenAPI Controller Contract v0.4
 
 > 文档定位：定义 C 端小程序、商家端、运营端与第三方回调的 HTTP Controller 契约；内部模块之间仍优先使用 Java `*-api` Contract，不因为当前单体部署而通过 HTTP 绕一圈。  
@@ -274,54 +272,6 @@ PUT 请求: {nickname?(1~64), avatarUrl?(≤512,https)}；幂等X-Request-Id；4
 不包含手机号换绑/注销（AUTH后续）。
 ```
 
-## 3.2.2 收货/服务地址簿（新增，59号契约，32号裁决第二节）
-
-[Contract59](59-User-Address-Contract-v0.1.md)（CCR-USR-ADDRESS-001）；沿 `pet.auth.c.enabled` 装配（同宠物档案，无新开关）；SQL55 `user_address`。
-
-```text
-GET    /api/v1/c/addresses
-POST   /api/v1/c/addresses
-GET    /api/v1/c/addresses/{addressId}
-PUT    /api/v1/c/addresses/{addressId}
-DELETE /api/v1/c/addresses/{addressId}
-POST   /api/v1/c/addresses/{addressId}/set-default
-```
-
-```text
-AddressView: addressId/contactName(1..32)/contactPhone(11位大陆手机号)/region(1..64)/
-             detail(1..256)/isDefault/status(ACTIVE|DELETED)
-单用户 ACTIVE 上限 20（第 21 条 400 ADDRESS_LIMIT_EXCEEDED，保守值 2026-10-13 披露）；
-默认地址唯一（清旧默认同事务，删除默认后无默认直至再设置）；软删除，订单不引用本表
-（下单地址仍走 order_booking_input_snapshot 文本快照，地址簿仅 C 端录入源，59号 §下单链接法）；
-归属反例（不存在/他人/已删除）统一 404 ADDRESS_NOT_FOUND 防枚举；写操作 X-Request-Id
-幂等按23号（POST 201/200）；冻结用户写 403 USER_FROZEN；本人读侧返回明文 contactPhone
-（列表页前端按设计稿脱敏展示）；query 全禁止；无微信 chooseAddress/chooseLocation 接入。
-```
-
----
-
-## 3.2.3 宠物百科内容读侧（新增，62号契约）
-
-[Contract62](62-Baike-Content-Contract-v0.1.md)；新装配开关 `pet.encyclopedia.query.enabled`（默认 false；C 端安全链仍整体骑 `pet.auth.c.enabled`）；SQL62 `encyclopedia_category`/`encyclopedia_breed`（含正式种子内容，归属内容域 pet-community-biz）。
-
-```text
-GET /api/v1/c/encyclopedia/categories
-GET /api/v1/c/encyclopedia/breeds?categoryCode=&keyword=&tag=&page=&pageSize=
-GET /api/v1/c/encyclopedia/breeds/{breedId}
-```
-
-```text
-匿名可浏览（PRD「所有用户；未登录用户可浏览」，STR-D8 同款：无 Authorization 头匿名通过，
-携带无效/过期 Bearer 仍 401）；GET-only，未知 query 参数整单 400；page 缺省 1（≤10000）、
-pageSize 缺省 20（1..50）。分类枚举五值为 PRD 5.1.4 原文（DOG/CAT/REPTILE/BIRD/INSECT），
-仅返回启用字典项；列表/详情恒过滤 status='PUBLISHED'，下线/不存在详情统一 404 BREED_NOT_FOUND
-防枚举；keyword ≤40 码点（trim 后）对 name/aliases 包含匹配（LIKE 通配符按字面量转义），
-tag 精确匹配平台标签字典，排序 sort_no ASC,id ASC；详情含 bodyType/facts/radar/
-descriptionHtml/careAdviceHtml/healthTipsHtml 与同分类 related[]（前 3，排除自身）；
-健康内容页面前端固定叠加科普免责声明（PRD：医疗和健康内容仅用于科普，不替代兽医诊断）。
-纯读侧：无写路由、无幂等键、无 Outbox；运营编辑/下线写侧属 A-005 另轮。
-```
-
 ---
 
 ## 3.3 商家与服务
@@ -337,92 +287,19 @@ GET /api/v1/c/services/{serviceId}
 
 存量订单详情读取订单快照，不实时依赖当前服务是否已下线。
 
-**匿名浏览语义（CCR-W2-API-001 门店读侧 STR-D8，2026-09-22 用户裁决，四条路由统一）**：按最终 C 端 PRD §5.1.13/14"所有用户浏览；已登录用户可进入预约"，上述四条 GET 路由**匿名可访问，Bearer 可选**——无 Authorization 头匿名放行；携带 Bearer 时校验，无效/过期仍 401 `COMMON_UNAUTHORIZED`（匿名放行不掩盖坏凭证）；有效会话正常解析主体。可选主体不改变可见性（可见性合取不含用户主体条件）。非 GET 方法与其余 C 端路由维持既有强制会话/denyAll。
+---
 
-## 3.3.1 门店服务列表与服务详情（新增，CCR-W2-API-001 服务域 v0.3 已批；补齐 PR#65 漏同步）
-
-```text
-GET /api/v1/c/stores/{storeId}/services?page&pageSize
-GET /api/v1/c/services/{serviceId}
-```
-
-会话：匿名可访问、Bearer 可选（见上方“匿名浏览语义”，STR-D8 四条路由统一）；无效/过期凭证仍 401 `COMMON_UNAUTHORIZED`。读操作无 requestId 幂等要求（23 号）。
-
-可见性（SVC-D1b）：C 端可见性 = `service.status=ACTIVE` ∧ 商家 `merchantEnabled` ∧ 门店 `storeEnabled` ∧ `acceptsNewOrders` 四条件合取，同事务判定。任一条件不满足：列表中不出现；详情返回 404 `SERVICE_NOT_FOUND`，与"服务不存在"同响应、不区分原因（防探测），与"只展示当前允许新预约的商家/门店/服务"（§3.3）一致，避免"列表隐藏了、详情链接还能打开"。HTTP 详情响应不携带 bookability 子对象（可见即基本资格合格）；资格原因细分仅保留在内部 `checkBookable` 的 `reasonCodes`，供 ORD/SCH 使用。此"可预约"仅指基本资格合格，不代表所选时间还有空位，更不代表订单预约成功（空位查询 §3.4 与下单 §3.5 由排期/订单域另行检查）。
-
-| 操作 | 成功 | 关键错误 |
-|---|---|---|
-| GET `/api/v1/c/stores/{storeId}/services?page&pageSize` | 200 分页 `StoreServiceItemView[]`；仅返回 D1b 可见性合取通过的服务 | 400 参数；401 无效凭证（匿名可访问） |
-| GET `/api/v1/c/services/{serviceId}` | 200 `ServiceDetailView`（可见即资格合格，D1b） | 404 `SERVICE_NOT_FOUND`（不存在 / OFFLINE / DRAFT / 商家或门店停用或不接新单——一律同响应不区分原因）；400；401 无效凭证 |
-
-失败关闭：任何事实源异常/未知（查询失败、字段缺失、状态值非法）→ C 端不可见或整体 503 `COMMON_DEPENDENCY_UNAVAILABLE`，绝不降级为可见/可预约；确认不存在或不可见（404 `SERVICE_NOT_FOUND`）与事实源故障（503）不得混同。
-
-列表归属语义：`storeId` 不存在或不可见 → 200 空列表（页面显示"暂无服务"，不暴露门店状态细节，不与"门店存在但无服务"区分探测）；详情不可见一律 404（D1b）。
-
-服务详情 `ServiceDetailView` 示例：
-
-```json
-{
-  "serviceId": "20001", "merchantId": "957001", "storeId": "957002",
-  "serviceName": "宠物美容-基础洗护", "categoryId": "957003", "categoryName": "美容",
-  "salePrice": "128.00", "durationMinutes": 45,
-  "fulfillmentType": "IN_STORE", "description": "含洗护、吹干、基础梳理"
-}
-```
-
-门店服务列表项 `StoreServiceItemView`：详情字段去掉 `description`（列表不显全文）；不暴露 `version`；分页信封 `items/page/pageSize/total`，排序 `created_at DESC, id DESC`，`page` 1..10000、`pageSize` 1..50（与通知列表一致）。
-
-校验（违规 `COMMON_INVALID_ARGUMENT`/400，details 指明字段）：`serviceId`/`storeId` 为雪花 ID 字符串（公共 ID Codec），路径参数非法即 400；`fulfillmentType` 仅 IN_STORE/PICKUP_DELIVERY，存储值非法时读侧失败关闭（503）。
-
-金额与快照（SVC-D3）：HTTP 投影 `salePrice` 为十进制字符串两位小数（如 `"128.00"`，纯传输格式防精度损失）；快照为查询时值拷贝，主数据后续修改不改变已返回副本；存量订单展示旧价格/旧资料走订单域订单快照，不经本接口。
-
-#### 封面展示增补（CCR-W2-API-001 服务写入方 v0.2，2026-09-22 已批）
-
-`GET /api/v1/c/services/{serviceId}` 成功 data（匿名可访问、Bearer 可选；可见=ACTIVE ∧ merchantEnabled ∧ storeEnabled ∧ acceptsNewOrders，不可见一律 404 不区分原因）：
-
-```json
-{
-  "serviceId": "...", "merchantId": "...", "storeId": "...",
-  "serviceName": "...", "categoryId": "...", "categoryName": "...",
-  "salePrice": "128.00", "durationMinutes": 60, "fulfillmentType": "IN_STORE",
-  "description": "...",
-  "cover": {"coverAssetId": "...", "coverUrl": "https://...", "coverUrlExpiresAt": "2026-09-22T12:00:00Z"}
-}
-```
-
-- `cover` 仅在服务可见且有封面绑定时返回（列表项同形状减 `description`）；无封面绑定为 `cover: null`；REVIEWING/REJECTED/OFFLINE/DRAFT 一律 404 不携带。
-- `coverUrl` 为短时效签名 URL（复用 CCR-OSS-001 公开素材签名机制），客户端按 `coverUrlExpiresAt` 到期前刷新；签名端口不可用且有封面 → 503 失败关闭，不返回未签名 URL。
-- 金额两位小数 String；`Cache-Control: no-store`。
-
-## 3.3.2 门店浏览（CCR-W2-API-001 门店读侧 STR-D1～D8，2026-09-22 已批；装配开关 `pet.store.query.enabled` 默认关闭）
-
-**GET `/api/v1/c/stores?city&page&pageSize`**（列表，匿名可 GET，见上）：
-
-- Query 仅 `city?`、`page?`（1..10000，默认1）、`pageSize?`（1..50，默认20）；未知参数/非法值 400 `COMMON_INVALID_ARGUMENT`。
-- `city` 语义：城市范围由服务端开放城市目录控制（`MerchantApplicationCityCatalog`，现仅成都）；显式传值必须词法合法（`[a-z][a-z0-9_-]{0,31}`）且属于目录，否则 400；**省略 = 隐式限定为当前全部开放城市集合**（不硬编码城市名）；目录空配置 503 失败关闭。
-- 200 信封 `items/page/pageSize/total`；排序固定 `merchantId,storeId` 数值升序；不支持 sort/距离/评分排序与 keyword/categoryId 筛选（延后，未知参数 400）。
-- 列表项九字段：`storeId、merchantId、storeName、merchantName、address、longitude?、latitude?、phoneMasked?、cityCode`；无 merchantStatus/storeStatus/version 恒真字段；电话仅掩码投影（完整号码与拨号能力不在本切片，待裁决）。
-
-**GET `/api/v1/c/stores/{storeId}`**（详情，匿名可 GET）：字段集与列表项相同（详情无增量字段）；`storeId` 雪花 ID 十进制 String，非法 400。
-
-- 可见性 = 三条件合取（`merchant.status==ACTIVE` ∧ `store.status==ACTIVE` ∧ 审核APPROVED+签约SIGNED，同 27号 §4 资格策略；**不含"服务 ACTIVE"**——有店无服务仍可见，店内空服务列表由 §3.3.1 路由返回空页）。
-- 错误两分（不得混同）：确认不存在或任一条件不满足 → 详情 404 `STORE_NOT_FOUND` 不区分原因（防探测），列表隐藏；事实源故障、读取失败、状态未知、`merchant_profile_compat` 城市事实损坏（通过资格合取但缺行或 city_code 词法非法）→ 列表**整页** 503 `COMMON_DEPENDENCY_UNAVAILABLE`、详情 503，不降级空页；开放城市确证无可见门店 → 200 空页（与 503 严格区分）。
-- 配套完整性程序（用户裁决要求）：存量 SQL 巡检+告警+修复 runbook 见 `planning/issues/wave-2/MER-001-store-read/INTEGRITY-RUNBOOK.md`。
-- 与 `/c/stores/{storeId}/services` 的配合：同一不可见门店，本路由 404、店内服务列表 200 空页——各自已批语义并存；C 端页面以详情路由为门店可访问性判据。---
-
-## 3.4 可预约时间查询（CCR-W2-API-001 排期域 SCH-001，2026-09-23 已批；装配开关 `pet.schedule.query.enabled` 默认关闭）
+## 3.4 可预约时间查询
 
 ### GET `/api/v1/c/services/{serviceId}/availability`
 
 Query：
 
 ```text
-storeId      必填，雪花 ID String；与服务归属门店不一致 → 404 SERVICE_NOT_FOUND（防探测，与不可见同响应）
-startDate    必填，yyyy-MM-DD（平台业务时区 Asia/Shanghai 解释为 [当日00:00, 次日00:00)）
-endDate      必填，yyyy-MM-DD，endDate>=startDate，跨度 ≤31 天
+storeId
+startDate
+endDate
 ```
-
-未知 query 参数拒绝（400）。会话（SCH-D1）：**登录态**——本路由不属 STR-D8 匿名四路由，MINIAPP Bearer 强制（无 Authorization 401 `COMMON_UNAUTHORIZED`；携带无效/过期 401）。读操作无 requestId 幂等要求（23 号 §3）。
 
 返回：
 
@@ -444,7 +321,7 @@ endDate      必填，yyyy-MM-DD，endDate>=startDate，跨度 ≤31 天
 内部调用：
 
 ```text
-ScheduleQueryApi.queryAvailability   （07 号 §6.1/§6.1.1：可见性经 checkBookable，容量 min 公式，人员事实经 QualifiedStaffFactsPort）
+ScheduleQueryApi.queryAvailability
 ```
 
 规则：
@@ -454,53 +331,9 @@ ScheduleQueryApi.queryAvailability   （07 号 §6.1/§6.1.1：可见性经 chec
 - 有效容量由服务端计算；
 - C 端不能自行用前端人数计算容量。
 
-细化（SCH-D1～D11 裁决，[决定回执](../../planning/ccr/CCR-W2-API-001/schedule-availability-decisions.md)）：
-
-- **可见性先行（错误两分，不得混同）**：服务不存在/OFFLINE/DRAFT/REVIEWING/REJECTED/商家停用/门店停用/不接新单/storeId 不一致 → 404 `SERVICE_NOT_FOUND`（不区分原因，防探测，SVC-D1b 同语义）；服务或商家事实源故障/状态未知 → 503 `COMMON_DEPENDENCY_UNAVAILABLE`（失败关闭，不降级空页）。
-- **容量失败关闭（SCH-D6/SCH2）**：容量=SSOT §12.2 `min(配置容量, 可用服务人员数)`；SCH-002已接通真实员工、具体服务能力及整个窗口排班覆盖（07号§4.4）。明确无合格人员=0/available=false；提供器缺席、读失败或未知状态仍503 `COMMON_DEPENDENCY_UNAVAILABLE`，不能伪造容量或默认可约。默认关闭不变，SQL播种事实仅用于测试。
-- **窗口过滤与排序**：仅返回 `status='OPEN'` 窗口（CLOSED 不返回；临时停业=不开窗/关窗，无独立事实）；已结束窗口（end≤now）不返回；进行中窗口返回且 `available=false`；跨天窗口（寄养/过夜）与查询区间部分相交时**整体返回不切割**；items 按 `start` 升序；无可约窗口=200 空 `items`（与 404/503 严格三区分）。
-- **响应投影**：items 元素仅 start/end/effectiveCapacity/occupiedCount/remainingCapacity/available 六字段（不暴露 windowId/version/status/配置容量/人员数细分；`available=false` 统一表达不可约/已占满，不引入状态枚举——商家端日历细分状态归写入方切片 SCH-004）；时间带偏移 ISO-8601 分钟精度、业务时区 +08:00 投影；不携带 fulfillmentType。
-- **上门接送型（SCH-D4）**：窗口集不区分上门/送回候选（同一窗口集供 C 端分别选择）；120 分钟间隔与跨天送回约束不在查询侧（C 端置灰联动，服务端最终校验归 SCH-003 hold/订单侧）；`window_kind` Schema 增补由写入方（SCH-004）届时裁决，不得把同一组窗口宣称为已完成双时段排期。
-- **提前预约窗口（SCH-D5）**：V1 不引入最短提前预约时长（PRD/SSOT 无条款）；唯一时间门禁=过去窗口过滤；最远可约由 31 天跨度上限间接约束。
-- **边界**：本查询为展示投影，不构成预约授权租约；所选时段下单瞬间可能失效（"排期已变化，请重新选择"由 SCH-003/TX-001 承接）。
-- **交付口径（SCH-D3/D6）**：写入方（SCH-004 后端/M-002 页面）交付前，"商家开窗→消费者查到→预约"真实链路未验收；本路由已接通SCH-002真实人员查询，但写入方及SCH-003占用权威链仍未齐备；展示可用性不等于预约成功或并发防超卖。
-
 ---
 
 ## 3.5 创建订单
-
-> **实现状态（2026-10-07，C 端下单 HTTP 切片）**：本路由已实现，随 `pet.auth.c.enabled` 装配（默认关闭；
-> OpenAPI11 `x-implementation-status=IMPLEMENTED_DEFAULT_OFF`）。实现要点：控制器只做装配与投影，预约资格、
-> 归属与幂等全部在 38 号原子下单内核（`OrderCreationApi.create`）；请求体严格按 11 号
-> `CreateOrderRequest` 形状（未知字段/非可空字段显式 null/重复键/尾随 token 均 400），`X-Request-Id`
-> 沿 23 号终端 UUID；首次创建 201、同 key 同参重放 200 返回首次成功回执（orderId/orderNo/displayStatus/
-> payAmount/paymentExpireAt 五字段），同 key 异参 409 `IDEMPOTENCY_KEY_CONFLICT`；错误面按 12 号既有码
-> （含 `SCHEDULE_CAPACITY_EXCEEDED`/`SERVICE_NOT_BOOKABLE`/`PET_NOT_FOUND` 等 409/404 家族）。
-> 实施细则钉死如下（均按既有契约语义，未新增产品规则）：
-> - ~~请求未携带选窗 ID 与接送服务地址（本节及 11 号均无该字段）~~（2026-10-07 36 号联合契约公开选窗
->   字段同步切片解锁：11 号 `CreateOrderRequest` 已按 36 号 ROC-2/ROC-3 与 38 号原文增补
->   `selectedPickupWindowId`/`selectedReturnWindowId`/`selectedGeneralWindowId`/`serviceAddress`，
->   履约分支互斥沿 46 号改期请求的 oneOf 惯例）。接送（PICKUP_DELIVERY）必填双方向窗 ID 与服务地址，
->   缺窗 ID/缺地址/间隔不足 120 分钟按内核既有面 400 `COMMON_INVALID_ARGUMENT`；到店（IN_STORE）
->   `selectedGeneralWindowId` 可选，缺省仍由服务端在锁内解析唯一完整容纳所选分钟区间的原窗（38 号
->   "到店无ID只能唯一原窗完整容纳"）。窗口开始值与所选窗一致、同店同服务同 kind OPEN、返程
->   `>= 上门 + 120 分钟`、容量与人员证明全部在 36/38 号内核锁内复核，HTTP 层只做形状门禁，不猜测或
->   臆造窗口 ID；选窗 ID 的展示来源为 §3.4 可约 items 的 39 号 selection 增补（`windowId`/`kind`，
->   `pet.schedule.selection.enabled` 装配）。
-> - ~~`couponInstanceId` 字段按 CPN 未启现状如实透传：null（缺省）即无券；非空时内核按"券冻结提供器未
->   实现"失败关闭 503 `COMMON_DEPENDENCY_UNAVAILABLE` 且不创建任何业务行（38 号既有语义）。~~
->   （2026-10-14 [61 号](61-Coupon-Lifecycle-Contract-v0.1.md) 券生命周期切片解锁真实冻结语义：
->   null/缺省即无券；非空时 38 号内核锁内冻结所选券并计算折后应付——回执 `payAmount` 为折后金额。
->   券不可用/门槛不满足/并发被占一律 409 `COUPON_NOT_AVAILABLE` 且不创建任何业务行（幂等键可携新
->   载荷重试）；券提供器未装配（`pet.coupon.lifecycle.enabled=false`）时维持 503
->   `COMMON_DEPENDENCY_UNAVAILABLE` 失败关闭。选券列表沿用 §3.15.1 `status=AVAILABLE` 读面，
->   客户端门槛过滤仅作展示提示，最终资格以冻结时服务端判定为准。）
-> - `remark` 形状上限 500 字符（11 号 maxLength），内核另按 200 字符内容规则校验；~~未配置真实备注审核
->   提供器时非空备注 503 失败关闭（38 号既有语义）~~（2026-10-08 用户裁决：V1 宽容直收，未配置真实备注
->   审核提供器时非空备注按 38 号长度/字符规则校验通过后直接加密收存、不再 503，不走审核；备注审核机制
->   V2 交付。原号增补，不改 11 号 schema）。`serviceAddress`（仅接送）形状上限 65536 字符，
->   内核按非空白＋65536 UTF-8 字节技术上限校验并加密快照落库（38 号既有语义）。
-> - 内核装配开关（`pet.order.creation.enabled` 等）未开启时，路由随会话开关存在但失败关闭 503，不半执行。
 
 ### POST `/api/v1/c/orders`
 
@@ -522,22 +355,18 @@ Request：
   "appointmentEnd": "2026-09-12T10:45:00+08:00",
   "pickupStart": null,
   "returnStart": null,
-  "selectedGeneralWindowId": null,
   "couponInstanceId": "40001",
   "remark": "怕生，请提前沟通"
 }
 ```
 
-接送（PICKUP_DELIVERY 分支必填五键，禁止到店两键与 GENERAL 窗 ID）：
+接送：
 
 ```json
 {
   "fulfillmentType": "PICKUP_DELIVERY",
   "pickupStart": "2026-09-12T09:00:00+08:00",
-  "returnStart": "2026-09-12T11:00:00+08:00",
-  "selectedPickupWindowId": "2019000000000000101",
-  "selectedReturnWindowId": "2019000000000000102",
-  "serviceAddress": "上海市徐汇区某路100弄5号201室"
+  "returnStart": "2026-09-12T11:00:00+08:00"
 }
 ```
 
@@ -545,8 +374,6 @@ Request：
 
 ```text
 returnStart >= pickupStart + 120 minutes
-pickupStart/returnStart 须等于所选 PICKUP/RETURN 原窗开始值（36号 ROC-2 锁内复核）
-两方向不得为同一原窗；serviceAddress 非空白（省市区＋详细地址，38号）
 ```
 
 Response：
@@ -589,19 +416,6 @@ IDEMPOTENCY_KEY_CONFLICT
 
 ## 3.6 发起支付
 
-> **实现状态（2026-10-07，C 端支付发起 HTTP 切片）**：本路由已实现，随 `pet.auth.c.enabled` 装配（默认
-> 关闭；OpenAPI11 `x-implementation-status=IMPLEMENTED_DEFAULT_OFF`）。实现要点：控制器只做装配与投影，
-> 支付意图、渠道派发与短期参数全部在 40/41 号既有内核（`PaymentInitiationApi.create`，内部先走
-> `PaymentPreparationApi` 请求绑定）；`channel` 固定只接受 `WECHAT_MINI_PROGRAM`（本节"客户端固定传输"
-> 的落地：其余值或缺失均 400，服务端不代客户端猜渠道）；`X-Request-Id` 沿 23 号终端 UUID。重复发起语义
-> 按内核既有事实钉死：同 key 同参重放返回原支付单与同一组仍有效的微信参数（不再向渠道重复预下单）；同
-> key 换订单 409 `IDEMPOTENCY_KEY_CONFLICT`；新 key 对同一订单仍返回**同一张**支付单（每订单仅一条
-> payment_order，paymentNo/金额/期限不变，41 号既有语义），响应恒 200。非本人订单 403
-> `COMMON_FORBIDDEN`；订单非待支付或支付窗口已过（canPay=false，含迟到支付订单保持关闭）为 409
-> `COMMON_CONFLICT`（内核 `requirePayableForPreparation` 既有判定，40 号"原十分钟截止不延长"）；
-> 渠道结果未知等协调态为 503 `COMMON_DEPENDENCY_UNAVAILABLE`。本切片不做真实渠道外呼——渠道适配
-> 沿 PAY 域既有 stub/sandbox 语义，正式渠道联调与生产启用仍按 41 号 §5 门禁。
-
 ### POST `/api/v1/c/orders/{orderId}/payments`
 
 Header：`X-Request-Id` 必填。
@@ -643,27 +457,6 @@ PaymentApi.createPayment
 
 ## 3.7 C 端订单查询
 
-> **实现状态（2026-10-07，C-004 读取切片；同日返工补 actions）**：本节两条 GET 已实现，随 `pet.auth.c.enabled`
-> 装配（默认关闭；OpenAPI11 `x-implementation-status=IMPLEMENTED_DEFAULT_OFF`）。实现要点：
-> `displayStatus` 由 order 域按技术基线 §5 优先级统一计算，C 端只读投影；列表固定排序
-> `created_at DESC, id DESC`（稳定分页），分页边界 page>=1、pageSize 1..100 默认 20；
-> 详情（与列表项同投影）返回 `orderId/orderNo/displayStatus/orderStage/paymentStatus/refundApplicationStatus/refundStatus/afterSaleStatus/verificationStatus/payAmount/appointmentStart/appointmentEnd/verifiedAt/actions`；
-> `refundStatus` 取 ORDER 域自身投影词汇 `null/CREATED/SUCCESS`；非本人或不存在订单
-> 一律同一 404（防枚举）；两条路由 `Cache-Control: no-store`。与 §3.11 核销码路由共存，互不影响。
->
-> **§3.8 改期切片读侧增补（2026-10-07，登记变更）**：详情与列表同一投影新增三个原始事实键
-> `serviceId`/`storeId`（改期页调用 §3.4 可约时段所需坐标）与 `orderVersion`（46号 §3.8 的
-> expectedOrderVersion 公开版本读侧来源；409 后页面重读取新值）。均为只读原始事实，不含推导，
-> OpenAPI11 OrderDetailData 同步增补；写入门槛仍全部在各自内核。
->
-> **actions（六布尔，随详情/列表同投影返回；逐条依据）**——读侧 UI 入口投影，写命令仍在各自内核守卫内复验：
-> - `canPay`：`order_stage=PENDING_PAYMENT` 且 `payment_status∈{INIT,PAYING}` 且未过 `payment_expire_at` 且无 refund_order（依据：SSOT 待支付生命周期 + 40号支付窗口；迟到支付订单保持关闭，过期即不可付）。
-> - `canReschedule`：`PENDING_CONFIRM/PENDING_SERVICE`+`PAID`+`UNVERIFIED`+`reschedule_count=0`+当前早于预约开始+无 refund_order（依据：46号准入原文；每单最多 1 次改期）。
-> - `canApplyRefund`：`PENDING_SERVICE+UNVERIFIED` 或 `COMPLETED+VERIFIED`，`PAID`、未取消、未退分文、无 refund_order、已确认、无在途申请（REJECTED 可再申请）（依据：49号 ORDER 准入 normal()/bind；§3.9 服务前自动全额、服务后商家 24h 两窗口均可发起）。
-> - `canShowVerificationCode`：`PENDING_SERVICE`+`PAID`+`UNVERIFIED`+无 refund_order+未退分文+未取消+已确认（依据：47号§4 视图与 48号内核核销资格既有判定；SSOT：未履约售后与在途退款申请在 refund_order 创建前均不禁止核销，故 aftersale/refund_application 状态不参与本布尔）。
-> - `canReview`：`VERIFIED` 且 `verified_at` 起 30 天内；其后部分退款成功（`refunded_amount<pay_amount`）仍为 true（依据：07号§7.7 必须已核销/30 天/部分退款仍 eligible）；**全额退款（REFUNDED）与退款中（REFUNDING）保守 false 待裁**（§7.7 仅明文保证部分退款情形）。
-> - `canApplyAfterSale`：`PENDING_SERVICE+UNVERIFIED`（须已过预约开始且存在被拒申请，依据 50号 policy + REF-001 服务前走退款申请而非售后）或 `COMPLETED+VERIFIED`（锚点 `verified_at`），均在锚点起 7 天窗口内；且 `PAID`、未取消、未退分文、无 refund_order、已确认、无在途申请、无活跃售后单（依据：50号 AfterSaleEligibilityPolicy 既有判定）。
-
 ```text
 GET /api/v1/c/orders
 GET /api/v1/c/orders/{orderId}
@@ -702,18 +495,16 @@ pageSize
 
 ### POST `/api/v1/c/orders/{orderId}/reschedule`
 
-2026-09-29 R1/R2/R3已批准，正式语义由[46号契约](46-Order-Reschedule-Contract-v0.1.md)补充。> **实现状态（2026-10-07，§3.8 切片）**：两个前置（真实核销码失效 #114/#116、公开版本读侧）已满足，本路由翻为 `IMPLEMENTED_DEFAULT_OFF`（`pet.order.reschedule.http.enabled` + `pet.order.reschedule.enabled` + `pet.auth.c.enabled` 多层默认关闭；HTTP 置 true 而内核关闭直接装配失败）。实现要点：会话取当前真实 USER；严格 JSON（未知字段/显式 null/重复键/尾随内容/混合到店与接送分支均 400）；五元组幂等首交与受保护重放同一 200 首次成功回执；每单一次/已核销/任意来源 refund_order/容量不足/区间无变化/版本不符等准入全在 46号内核；全部回执 no-store。公开版本读侧由 §3.7 详情/列表投影新增 `orderVersion`（连同 `serviceId`/`storeId` 原始事实，供改期页调用 §3.4 与携带 expectedOrderVersion）补齐——本切片登记的读侧增补。
-
 Header：`X-Request-Id` 必填。
 
 Request：
 
 ```json
 {
-  "expectedOrderVersion": "1",
   "appointmentStart": "2026-09-13T14:10:00+08:00",
   "appointmentEnd": "2026-09-13T15:40:00+08:00",
-  "selectedGeneralWindowId": "20190001"
+  "pickupStart": null,
+  "returnStart": null
 }
 ```
 
@@ -724,7 +515,7 @@ Request：
 同一商家
 同一服务
 每单最多 1 次
-完整证明新时段可用后原子交换同一预约及claim，保留不可变新旧历史，失败不释放原预约
+新预约成功后才释放旧预约
 改期成功 → PENDING_CONFIRM
 confirmDeadline 重新计算 30 分钟
 ```
@@ -743,8 +534,6 @@ SCHEDULE_CAPACITY_EXCEEDED
 ## 3.9 申请退款
 
 ### POST `/api/v1/c/orders/{orderId}/refund-applications`
-
-> 2026-10-07 C-005 退款申请切片注记：本路由随 OpenAPI11 翻为 `IMPLEMENTED_DEFAULT_OFF`（`pet.refund.application.http.enabled` + `pet.auth.c.enabled` 双层默认关闭），实现以 [Contract49](49-Refund-Application-Contract-v0.1.md) 内核与 OpenAPI11 为准。首报文 201、持久成功重放 200（同 `X-Request-Id` 同参与当前权限复验）；严格 JSON（未知字段/显式 `reasonCode` null/重复键/尾随内容均 400），路径 ID 为正十进制 String；准入判定（两窗口、单活动申请、REJECTED 可再申请、任何来源 refund_order 禁新申请）全在 REFUND 内核。首回执固定为申请事实（`applicationId/applicationStatus/route/merchantDeadline/refundOrderId/displayStatus`，时间为毫秒精度）；`refund_order` 由耐久任务 `REFUND_APPLICATION_CREATE` 异步创建，故首回执 `refundOrderId=null`（下方示例中 `"601"` 仅为形状示意），服务前自动全额口径以 `applicationStatus=AUTO_APPROVED` + `route=AUTO_FULL_BEFORE_SERVICE` 如实表达；错误码映射见 Error12 §6。
 
 Header：`X-Request-Id` 必填。
 
@@ -805,20 +594,7 @@ GET /api/v1/c/orders/{orderId}/refund
 
 ## 3.11 核销码
 
-正式实现以 [Contract47](47-Verification-Credential-Contract-v0.1.md)（v0.2，2026-10-06 核销 HTTP 切片）与 OpenAPI11 为准；默认 `pet.verification.credential.enabled=false` + `pet.verification.credential.http.enabled=false` 分层关闭，随 `pet.auth.c.enabled` 装配：
-
-```text
-GET  /api/v1/c/orders/{orderId}/verification-code   （订单本人只读完整视图，仅 ACTIVE 回显码）
-POST /api/v1/c/orders/{orderId}/verification-code   （签发/刷新：X-Request-Id + {expectedCredentialVersion, refreshKind}）
-```
-
-GET 返回 `orderId/credentialVersion/status(NONE|ACTIVE|EXPIRED|INVALIDATED|LOCKED)/code?/expiresAt?/refreshAfter?/lockedUntil?`（替代下方旧 verificationStatus 示例）；POST 成功返回 `orderId/credentialId/credentialVersion/code/issuedAt/expiresAt/refreshAfter`，首次与幂等重放均 200，第6次手动刷新 429 `COMMON_RATE_LIMITED`。两条路由一律 `Cache-Control: no-store`，未知字段/显式null/重复键 400；仅 ACTIVE 回显码。
-
-若 `refund_order` 已创建，返回 409 `VERIFICATION_BLOCKED_BY_REFUND`。
-
-售后处理中但退款单尚未创建，不应仅因 `afterSaleStatus=PROCESSING` 拒绝核销码。
-
-### GET `/api/v1/c/orders/{orderId}/verification-code`（旧示例，已被上方完整视图替代）
+### GET `/api/v1/c/orders/{orderId}/verification-code`
 
 权限：订单本人。
 
@@ -835,25 +611,72 @@ Response：
 }
 ```
 
+若 `refund_order` 已创建，返回：
+
+```text
+VERIFICATION_BLOCKED_BY_REFUND
+```
+
+售后处理中但退款单尚未创建，不应仅因 `afterSaleStatus=PROCESSING` 拒绝核销码。
+
 ---
 
 ## 3.12 发起售后
 
-正式实现以 [Contract51](51-AfterSale-Http-Contract-v0.1.md) 及 OpenAPI11 为准。`POST /api/v1/c/orders/{orderId}/aftersales` 接受 typeCode/demandCode/description/requestedAmount/evidenceAssetIds/newProblemStatement，路径提供 orderId。UUID 原值幂等；首次201/同参重放200，完整 Receipt 四字段 envelope。`GET /api/v1/c/orders/{orderId}/aftersale-eligibility` 只读真实本人资格，七天边界沿 Contract50。
+### POST `/api/v1/c/orders/{orderId}/aftersales`
 
-2026-10-01 已批准申请目录：`GET /api/v1/c/aftersale-options`，当前MINIAPP USER，无query/body，返回精确`{typeOptions:[{code,label}],demandOptions:[{code,label}]}`。每组1..100，code大写目录键1..64、唯一且ASCII升序，label1..64Unicode码点及首尾空白限制见51号；读与新创建校验同一权威完整配置，无硬编码默认值。目录缺名称/不一致503，成功历史重放仍返回原回执。仍沿同一默认关闭HTTP开关。
+Header：`X-Request-Id` 必填。
 
-已批准确定冲突：新命令在当前动作授权复验通过后，工单CAS不匹配409 AFTERSALE_VERSION_CONFLICT；P4合法历史hash不匹配409 AFTERSALE_FINAL_SET_CONFLICT，均无业务副作用但原Admission参数保留。P4缺核对材料400；锁忙/权限版本复验变化仍COMMON_CONFLICT，异参仍IDEMPOTENCY_KEY_CONFLICT。先刷新并人工确认再用新UUID；成功重放先于CAS。具体边界见51号/Error12。
+Request：
+
+```json
+{
+  "type": "SERVICE_DISPUTE",
+  "description": "服务未按约完成",
+  "requestedAmount": "128.00",
+  "evidenceFileIds": ["file-1", "file-2"]
+}
+```
+
+`type` 的具体用户侧分类字典后续可配置；不影响裁决状态机。
+
+资格：
+
+```text
+已核销：
+verifiedAt + 7天内
+
+未核销：
+预约开始已到 + 商家已拒绝退款
+并在 appointmentStart + 7天内
+```
+
+Response：
+
+```json
+{
+  "afterSaleId": "701",
+  "status": "PENDING"
+}
+```
+
+售后创建本身不禁止核销。
+
+---
 
 ## 3.13 售后查询与补充证据
 
-C：GET `/api/v1/c/aftersales`、GET `/api/v1/c/aftersales/{afterSaleId}`；POST 后缀 `/evidence`、`/withdraw`。本人端别在事务内和重放复验，字段/分页/私有图授权遵 Contract51。无复审/二次申诉接口。
+```text
+GET  /api/v1/c/aftersales/{afterSaleId}
+POST /api/v1/c/aftersales/{afterSaleId}/evidence
+POST /api/v1/c/aftersales/{afterSaleId}/withdraw
+```
+
+不存在“售后复审/二次申诉” Endpoint。
 
 ---
 
 ## 3.14 评价
-
-> 2026-10-07 REV-001 评价切片注记：本节两路由随 OpenAPI11 翻为 `IMPLEMENTED_DEFAULT_OFF`（`pet.review.http.enabled` + `pet.auth.c.enabled` 双层默认关闭）。资格判定单真源在 ORDER 域（07号 §7.7 `OrderQueryApi.checkReviewEligibility`，与 §3.7 `actions.canReview` 同一分支），REVIEW 内核仅叠加自身事实（一单一评 → `rejectCode=REVIEW_ALREADY_EXISTS`）；**2026-10-07 用户裁决回归：退款成功（REFUNDED）与退款中（REFUNDING）不可评价**（`rejectCode=REVIEW_NOT_ELIGIBLE`），已核销后部分退款仍可评价但 `scoreIncluded=false`（SSOT §11.2，公开展示不计分）。POST 严格 JSON（未知字段/非整数或越界评分/重复键/尾随内容均 400，三维评分 1~5 整数、`content` ≤2000 码点、`mediaFileIds` 媒体能力未开放——非空数组 400 如实拒绝）；`X-Request-Id` 五元组幂等（首报文 201、受保护重放 200，回执固定 `reviewId/scoreIncluded`）；40/40/20 综合分（门店40%+服务40%+人员20%，1 位小数）为内核事实，不接受客户端提交；错误码映射见 Error12 §11。评价申诉（REV-002）不在本切片。GET 404 沿订单读取族防探测语义（他人/未知订单同应答）。
 
 ### GET `/api/v1/c/orders/{orderId}/review-eligibility`
 
@@ -910,7 +733,6 @@ REVIEW_ALREADY_EXISTS
 
 ```text
 GET /api/v1/c/coupons
-GET /api/v1/c/coupons/{couponId}
 GET /api/v1/c/points/balance
 GET /api/v1/c/points/ledger
 GET /api/v1/c/notifications
@@ -919,34 +741,6 @@ POST /api/v1/c/notifications/{notificationId}/read
 GET /api/v1/c/notification-preferences
 PUT /api/v1/c/notification-preferences
 ```
-
-### 3.15.1 我的优惠券（CCR-C006 P1，2026-10-06 批准）
-
-`GET /api/v1/c/coupons?status=AVAILABLE|USED|EXPIRED&page=&pageSize=`：当前登录用户自己的
-`coupon_instance` 投影分页（默认 AVAILABLE，非法 `status` 400；分页 1≤page≤10000、1≤pageSize≤50，
-默认 1/20；固定排序 `expire_at ASC, id ASC`）。D2：FROZEN/RISK_FROZEN 在任何桶、任何路由永不返回。
-返回字段 `couponId`/`name`/`amountOff`/`thresholdAmount`/`scopeSummary`/`typeLabel`/`validTo`(ISO 日期)/
-`status`/`usedAt`(ISO 时间戳|null)。D1：`amountOff`(两位小数 String)/`thresholdAmount`(两位小数
-String|null，null=无门槛)/`scopeSummary`(≤64)/`typeLabel`(≤16) 均为服务端 `rule_json` 投影，
-结构未冻结（待 CPN-001）；投影键恒返回（服务端固定输出全部字段），规则缺失/未冻结时对应值为
-null（11 号 OpenAPI 对应字段已标 nullable），前端不得解析 `rule_json`。排序为服务端保证
-（`expire_at ASC, id ASC`）；`validTo` 投影仅日期粒度，客户端不可据此复现完整排序。
-
-`GET /api/v1/c/coupons/{couponId}`：单券同投影；非本人券、不存在券与冻结态券一律同一
-COMMON_NOT_FOUND 404（不区分，防枚举）；query 全禁止。
-
-### 3.15.2 我的积分（CCR-C006 P1）
-
-`GET /api/v1/c/points/balance`：`balance` 为非负整数 String（BIGINT 传输安全，上限 19 位十进制，与 11 号 pattern 及 x-maximum-decimal 一致）；无账户行读作
-`"0"`；query 全禁止。
-
-`GET /api/v1/c/points/ledger?page=&pageSize=`：`ledgerId`/`bizType`（SIGN_IN/INVITE/TASK/
-ORDER_REWARD/REFUND_CLAWBACK 五枚举）/`delta`（带符号非零整数 String，扣回为负）/
-`balanceAfter`（整数 String）/`createdAt`（ISO 时间戳）；固定排序 `created_at DESC, id DESC`。
-
-错误码引用 12 号 §2 既有通用码：400=COMMON_INVALID_ARGUMENT（未登录 401=COMMON_UNAUTHORIZED、
-非本人券 404=COMMON_NOT_FOUND、内部失败 500=COMMON_INTERNAL_ERROR），无新增码。默认随
-`pet.auth.c.enabled` 装配（IMPLEMENTED_DEFAULT_OFF）。
 
 通知偏好只能影响：
 
@@ -965,93 +759,7 @@ AFTERSALE
 AUDIT
 ```
 
-### 3.15.3 通知偏好（SSOT §16.4，本切片落地）
-
-`GET /api/v1/c/notification-preferences`：当前登录用户自己的偏好投影；query 全禁止。偏好项
-严格只有两个（SSOT §16.4 + SQL06 §11 `notification_preference`）：`interactionEnabled`（普通
-互动提醒）与 `externalPushEnabled`（微信外部推送偏好）。返回
-`{interactionEnabled, externalPushEnabled, version, updatedAt}`：`version` 为 BIGINT 计数器按
-String 传输（`0`=从未写过，每次成功更新 +1）；`updatedAt` 为偏移毫秒时间戳，从未写过（读
-schema 默认值）时为 null；无行读作默认 `{true, true}`。订单/退款/核销/售后/审核类站内消息
-不可关闭，不属于偏好项，任何参数不得影响。
-
-`PUT /api/v1/c/notification-preferences`：全量替换两个开关。Header `X-Request-Id` 必填（终端
-UUID，23 号）；严格 JSON：字段必须且只能是 `interactionEnabled`/`externalPushEnabled` 两个
-boolean，未知字段、显式 null、非 boolean、重复键、尾随 token 均 400；query 全禁止。更新按
-23 号公共幂等：五元组键 `notification.preference.update|USER|<userId>|USER_SELF|<requestId>`
-绑定受保护参数（canonical-v1，14 号 `command_idempotency`），同 requestId 同参重放首次成功
-回执；同 requestId 异参 409 `IDEMPOTENCY_KEY_CONFLICT`；争锁忙 409 `COMMON_CONFLICT`；无行
-插入（version=0），既有行 version+1，业务写与绑定 SUCCEEDED 同事务提交。返回与 GET 相同
-投影。`externalPushEnabled` 仅记录偏好——微信外投发送能力 V1 搁置（PR #108 登记搁置），本
-切片不含任何外发逻辑。
-
-错误码引用 12 号 §2 既有通用码：400=COMMON_INVALID_ARGUMENT、401=COMMON_UNAUTHORIZED、
-409=IDEMPOTENCY_KEY_CONFLICT（幂等异参）/COMMON_CONFLICT（忙）、500=COMMON_INTERNAL_ERROR、
-503=COMMON_DEPENDENCY_UNAVAILABLE，无新增码。默认随 `pet.auth.c.enabled` 装配
-（IMPLEMENTED_DEFAULT_OFF）；两端点 `Cache-Control: no-store`。
-
-### 3.15.4 签到 / 拉新 / 任务奖励（58 号，32 号裁决第二节，2026-10-13）
-
-> 本节为摘要；权威契约在 `60-Points-Task-Contract-v0.1.md`（CCR-POINTS-TASK-001 细则定稿）。
-
-```text
-GET  /api/v1/c/points/sign-in/status
-POST /api/v1/c/points/sign-in
-GET  /api/v1/c/points/tasks
-POST /api/v1/c/points/claims
-POST /api/v1/c/points/referral-bindings
-```
-
-五路全部为登录会话主体（MINIAPP Bearer，CBearerSessionFilter protectedPath），随
-`pet.points.task.http.enabled` 装配（另需 `pet.auth.c.enabled`，默认全关）。签到为每日一次
-（UTC+8 自然日）固定面额命令，当日换新 requestId 再签 409；除签到外一切奖励（首单/资料/
-连签里程碑/拉新人头/拉新里程碑）均为**显式领取**命令，无可领取 409。拉新成立条件=被邀请人
-绑定时零订单史且绑定后完成首笔支付；邀请码为确定性可逆码。全部写命令走 23 号公共幂等 +
-14 号绑定表，配账只写正向 `points_ledger`/`points_account`（biz_type SIGN_IN/INVITE/TASK）。
-积分量七项由运营后台配置（见 §5.10）。错误面全部复用 12 号 §2 通用码；`no-store` 全端点。
-
-V1.0 仍不提供积分抵现/积分商城/兑换/转赠 Endpoint（32 号裁决第二节第 1 条：积分只赚取/
-扣回不消费，商城页为展示态）；§3.15.1/§3.15.2 的券/积分为只读查询。2026-10-13 起，
-签到/邀请/任务**赚取**写路径由本节（58 号）提供——此前"不存在赚取写路径"的表述自本批
-起失效，消费侧禁令不变。
-
----
-
-## 3.16 收藏与浏览足迹（58号契约，32号裁决第二节批次；CCR-C-FAVTRACK-001 已批）
-
-> 实现注记（2026-10-13，FAV-001）：七路由已按 [58号契约](58-Favorite-Footprint-Contract-v0.1.md)
-> 装配（默认关闭，开关 `pet.favtrack.http.enabled`，[硬] 前置 `pet.auth.c.enabled` +
-> `pet.service.query.enabled` + `pet.store.query.enabled`，见 21号清单）；字段、错误映射与
-> C 端两页以 58 号为准，本节为 C 端路由族登记。用户私有读写：全家族真实 MINIAPP Bearer
-> 会话，无匿名路由；`Cache-Control: no-store`；ID String、时间 ISO-8601 UTC 毫秒。
-
-- `POST /api/v1/c/favorites/{targetType}/{targetId}`：加收藏，无业务体；Header
-  `X-Request-Id` 必填（终态 UUID，23号 §5 五元组，namespace `favorite.add`）。首建 **201**；
-  requestId 重放与业务重复（目标已收藏，行锁防重复）**200** 同当前行回执
-  `{favoriteId,targetType,targetId,favoritedAt,favorited:true,created}`。
-- `DELETE /api/v1/c/favorites/{targetType}/{targetId}`：取消=当前关系行硬删除，缺席仍 200
-  `{targetType,targetId,removed}`；Header `X-Request-Id` 必填。
-- `GET /api/v1/c/favorites?targetType&page&pageSize`：本人收藏列表，固定排序
-  created_at DESC, id DESC；targetType 可选（`SERVICE|STORE`）；page 1..10000 默认 1、
-  pageSize 1..50 默认 20；PageResult 信封。未知/重复查询参数 400。行含目录展示投影
-  `{targetAvailable,title,categoryLabel,salePrice,storeId,coverUrl}`；目标下架行保留、
-  `targetAvailable=false`、展示列 null。
-- `GET /api/v1/c/favorites/{targetType}/{targetId}`：收藏状态探针；未收藏 200
-  `favoriteId=null`（绝不 404）；仅当前会话主体（他人收藏不可见，防枚举）。
-- `POST /api/v1/c/footprints/{targetType}/{targetId}`：上报一次浏览（客户端埋点，登录态
-  详情页加载成功后调用；匿名浏览不产生足迹），无业务体；Header `X-Request-Id` 必填。
-  首见 **201**，重放与重复浏览 **200**；`{footprintId,targetType,targetId,lastViewedAt,created}`。
-- `GET /api/v1/c/footprints?page&pageSize`：本人足迹列表；(user,target) 唯一键去重、重复浏览
-  刷新置顶；固定排序 last_viewed_at DESC, id DESC；分页界同上；行投影同收藏列表（时间列
-  `lastViewedAt`）。
-- `DELETE /api/v1/c/footprints/{footprintId}`：删单条，本人过滤硬删，不存在/非本人仍 200
-  `{footprintId,deleted:false}`；Header `X-Request-Id` 必填。
-
-targetType 恰为 `SERVICE|STORE`（其他 400）；targetId 正整数 BIGINT String；目标准入经既有
-C 目录可见性 API，隐藏/缺失统一 404 目录家族码（SERVICE_NOT_FOUND/STORE_NOT_FOUND，
-防枚举）；目录 facts 故障整页 503 fail-closed；写前置 `user_account.status=ACTIVE`（否则
-403 USER_FROZEN）；同 requestId 异参 409 IDEMPOTENCY_KEY_CONFLICT。Schema：SQL06 用户节
-`user_favorite`/`user_browse_footprint` 两表（58号），无 Event/任务变更。
+V1.0 不提供积分抵现/积分商城 Endpoint。
 
 ## 3.17 设置枢纽与账号注销（66号契约，用户裁决 2026-10-19 收尾批次"全做"；CCR-USR-DELETION-001）
 
@@ -1127,53 +835,6 @@ GET /api/v1/merchant/orders/{orderId}
 
 商家列表中的状态同样使用服务端 `displayStatus`。
 
-### GET `/api/v1/merchant/orders`（商家订单列表，2026-10-07 列表读侧切片增补）
-
-> 本节为 #129 后续切片补齐的商家订单列表读侧（此前 M 端按单号进入处理页）。实现以
-> §3.7 C 端订单读侧先例与仓库惯例起草：固定排序 `created_at DESC, id DESC`（稳定分页）；
-> 分页边界 page>=1、pageSize 1..100 默认 20；PageResult 信封 `items/page/pageSize/total`；
-> `Cache-Control: no-store`；只读、无 X-Request-Id（GET 不绑定幂等）。随
-> `pet.order.merchant.http.enabled` 装配（与 §4.2/§4.3 同开关及同一验证依赖链，默认关闭；
-> OpenAPI11 `merchantListOrders` 带 `IMPLEMENTED_DEFAULT_OFF`）。
-
-Query：
-
-```text
-merchantId    必填，正十进制 String（商家坐标，沿 §4.4 售后列表/53号排期坐标惯例由客户端携带）
-storeId       必填，正十进制 String（商家坐标；merchantId+storeId 必须为登录主账号当前自有门店）
-displayStatus 可选，DisplayOrderStatus 十值之一（与 §3.7 同词汇同过滤语义；缺省=不过滤=「全部」）
-page          可选，>=1，默认 1
-pageSize      可选，1..100，默认 20
-```
-
-权限与作用域：MINIAPP Bearer 会话（CBearerSessionFilter）+ OWNER 主账号商家坐标校验——
-服务端在门店 guard 事务内以 `MerchantOrderAuthorityApi.requireOwnerRead`（ACTIVE/OFFLINE/
-FROZEN 存量履约读侧语义，同 51号售后读侧）重验 merchantId+storeId 归属；查询按
-`merchant_id+store_id` 双键过滤，商家只能看到本店订单（跨店隔离）。非本店坐标、不存在
-的商家/门店与非 OWNER 会话一律同一 403 `COMMON_FORBIDDEN`（防枚举，不区分“不存在/无权/
-他店”）；displayStatus 非法值 400 `COMMON_INVALID_ARGUMENT`；未登录 401。
-
-列表项字段集为商家运营所需最小集（本切片披露；不复制 C 端 OrderDetailData 全集与 actions
-六布尔——商家写命令仍在 #129 处理页/核销页各自内核守卫内复验）：
-
-```json
-{
-  "orderId": "...",
-  "orderNo": "...",
-  "displayStatus": "PENDING_CONFIRM",
-  "payAmount": "128.00",
-  "appointmentStart": "2026-10-08T02:00:00.000Z",
-  "appointmentEnd": "2026-10-08T03:30:00.000Z",
-  "paidAt": "2026-10-07T09:00:00.000Z"
-}
-```
-
-`displayStatus` 由 ORDER 域统一计算（技术基线 §5，同 §3.7），前端禁止按底层字段重算；
-`paidAt` 为事实字段（待接单 30 分钟规则的锚点事实，页面只呈现不推导截止）。点单进入
-#129 处理页（`orderId` 透传）；工作台「订单处理」入口改挂本列表。商家端「待接单」tab 即
-`displayStatus=PENDING_CONFIRM` 过滤。M 端订单详情读侧（`GET /merchant/orders/{orderId}`）
-仍不在本切片范围。
-
 ---
 
 ## 4.2 接单
@@ -1191,9 +852,7 @@ Header：`X-Request-Id` 必填。
 30分钟内未处理系统自动接单
 ```
 
-2026-09-29已批准45号首切片：先接通主账号、round0；员工产品权限保留待后续账号授权接入。请求为`{"expectedConfirmRound":0,"internalNote":"可省略的店内备注"}`，备注0～200 Unicode码点，不能为null，不对C端公开。新的商家决定在锁内DB时间严格小于paidAt+30分钟时接受；等待锁越界也拒绝。返回首次成功的不可变回执，重放重新鉴权；当前订单状态由读侧查询，不混入幂等回执。完整字段、准入和事务见[45号](45-Merchant-Order-Actions-Contract-v0.1.md)。默认关闭。
-
-2026-10-07手动面切片：`MerchantOrderController` 已装配本路由（严格 JSON、未知/重复字段 400、UUID `X-Request-Id` 幂等、`Cache-Control: no-store`；OWNER 主账号门禁在命令 guard 事务内每次执行与重放重验）。随 `pet.order.merchant.http.enabled` 默认关闭（该开关要求命令主开关、退款 Worker、payment.foundation 与 auto-confirm 生产/Worker 齐备才装配，安全链 permitAll 同开关分位开启、MINIAPP Bearer 由会话过滤器强制）；生产启用前须显式提供敏感词审核 Provider 与 `pet.order.merchant.protection-key`。OpenAPI11 本 operation 已翻 `IMPLEMENTED_DEFAULT_OFF` 带全 responses；自动接单 Task 与手动命令竞争按 45 号先提交者胜。商家端处理页随本切片交付（按单进入；M 端暂无商家订单列表读侧，列表读侧交付后补列表入口）。
+返回最新订单状态。
 
 ---
 
@@ -1205,13 +864,12 @@ Request：
 
 ```json
 {
-  "expectedConfirmRound": 0,
   "reasonCode": "OTHER",
   "reasonText": "门店临时无法履约"
 }
 ```
 
-2026-09-29 D1/D2/D3已批准冻结五类编码：SCHEDULE_CONFLICT（排期冲突）、STAFF_UNAVAILABLE（人员不足）、PET_NOT_MATCHED（宠物情况不匹配）、TEMPORARY_CLOSURE（门店临时停业）、OTHER（其他）。reasonCode/reasonText必填；原因5～200 Unicode码点、非全空白且须敏感词审核。首切片主账号/round0，截止及回执同4.2，未知字段/重复键拒绝。
+具体 `reasonCode` 字典不在此版本擅自冻结。
 
 拒单成功后：
 
@@ -1220,10 +878,6 @@ Request：
 ```
 
 商家在订单确认后不再有普通拒单/取消接口。
-
-拒单决定、ORDER关闭/退款指针、REFUND全额建单/执行绑定/任务及Outbox同事务。建单即禁止后续核销；渠道最终成功才释放预约，UNKNOWN/失败仍退款中。正式契约见45号；本切片不开放用户主动退款或生产渠道。
-
-2026-10-07手动面切片：本路由与 4.2 同一 Controller/开关/幂等/no-store/鉴权重验语义；reasonCode 五类编码与 reasonText 5～200 码点在 HTTP 面先行 400 校验，敏感词审核在 durable 占号后、业务事务前执行（未通过不放行）。拒单成功回执携带 `refundOrderId`；同 requestId 同参重放返回首次回执。前端处理页拒单必填原因（五类编码选择 + 原因文本），成功/失败回执与错误面中文映射随页交付；M 端无商家订单列表读侧，按单进入处理。
 
 ---
 
@@ -1235,8 +889,6 @@ GET /api/v1/merchant/refund-applications/{applicationId}
 ```
 
 仅显示该商家有权限处理的 `PENDING_MERCHANT` 申请。
-
-2026-10-10 商家退款 HTTP 切片：本节与 §4.5/§4.6 四路由已按 57 号契约装配（默认关闭，开关 `pet.refund.merchant.http.enabled`，见 21 号清单）；字段、错误映射与 M 端页面以 57 号为准，本草案保留为基线口径。
 
 ---
 
@@ -1299,8 +951,6 @@ REFUND_APPLICATION_ALREADY_PROCESSED
 
 ## 4.7 平台订单核销
 
-正式实现以 [Contract48](48-Verification-Completion-Contract-v0.1.md) K2（v0.3，2026-10-06 核销 HTTP 切片）与 OpenAPI11 为准；默认 `pet.verification.completion.enabled=false` + `pet.verification.completion.http.enabled=false` 分层关闭。回执 200 携带 `orderId/attemptId/resultCode/verificationId/verifiedAt/orderVersion`（无效码/过期码/风险锁为已提交业务结果，后三字段 null）；错误 400/401/403/404(K1 防枚举)/409/503，一律 no-store；商家端不掌握 expectedCredentialVersion，由服务端经只读 currentVersion 解析（见48号 K2 v0.3）。失败关闭矩阵（FROZEN、STAFF 无 grant/未确认/撤权/停用、refund_order 后禁核销、核销后禁重复）沿 48号 K1 v0.2 与 Error12 既有裁决。
-
 ### POST `/api/v1/merchant/orders/{orderId}/verification`
 
 Header：`X-Request-Id` 必填。
@@ -1344,38 +994,48 @@ refund_order 先创建
 
 ## 4.8 排期管理
 
-正式实现以 [Contract53](53-Schedule-Write-Contract-v0.1.md)、[SQL53](../03-database/53-Schedule-Write-Schema-v0.1.sql) 与 OpenAPI11 为准；默认 `pet.schedule.command.enabled=false`、`pet.schedule.command.http.enabled=false` 分层关闭。
-
 ```text
-GET    /api/v1/merchant/stores/{storeId}/availability-windows        （工作台列表，含 CLOSED/SOLD_OUT/version，status 可按 SOLD_OUT 过滤）
-POST   /api/v1/merchant/stores/{storeId}/availability-windows        （创建，kind×履约方式 400 校验，首次 201）
-PUT    /api/v1/merchant/stores/{storeId}/availability-windows/{windowId}   （编辑 OPEN/SOLD_OUT 窗，expectedVersion；占用禁止改时间/降容量；升容量同事务按占用重判）
-POST   /api/v1/merchant/stores/{storeId}/availability-windows/{windowId}/close   （reason 必填；占用含 SOLD_OUT 满窗 409）
-POST   /api/v1/merchant/stores/{storeId}/availability-windows/{windowId}/open    （重开核验重叠 409；重开后系统按占用重判，可返回 SOLD_OUT）
-POST   /api/v1/merchant/stores/{storeId}/availability-windows/batch-close        （日历日范围部分关闭，closedWindows/blockedWindows；单次条目>200 整笔 400）
+GET    /api/v1/merchant/stores/{storeId}/availability-windows
+POST   /api/v1/merchant/stores/{storeId}/availability-windows
+PUT    /api/v1/merchant/stores/{storeId}/availability-windows/{windowId}
+DELETE /api/v1/merchant/stores/{storeId}/availability-windows/{windowId}
 ```
 
-`window_kind=GENERAL/PICKUP/RETURN`（37号增列）创建后身份固定；同店同服务同 kind OPEN 窗不重叠、相邻半开可衔接；关闭/重开保留历史，无 DELETE/物理删除。周循环模板字段 `dayOfWeek/repeatWeekly/copyNextWeek` V1.0 仍禁止出现。所有写路由 UUID `X-Request-Id` 幂等（23号），OWNER 主账号门禁，同事务共同门店闸门 + append-only 审计。窗口状态 `OPEN/CLOSED/SOLD_OUT`：SOLD_OUT 为系统派生"已约满"态（有效占用达容量自动进入；退款释放/超时过期取消/换期释放于同一事务回 OPEN；商家不可手工置位或强制可约，升容量放行并按占用重判），口径见 Contract53 §3.1；批量条目 200 上限见 Contract53 §3.2（2026-10-05 裁决）。
+Request：
+
+```json
+{
+  "serviceId": "20001",
+  "startAt": "2026-09-12T09:15:00+08:00",
+  "endAt": "2026-09-12T18:10:00+08:00",
+  "configuredCapacity": 5
+}
+```
+
+没有周循环模板字段：
+
+```text
+dayOfWeek
+repeatWeekly
+copyNextWeek
+```
+
+这些字段 V1.0 Contract 中禁止出现。
 
 ---
 
 ## 4.9 服务人员可用时间
 
-员工排班写入与员工服务能力 GET/PUT 正式实现以 [Contract53](53-Schedule-Write-Contract-v0.1.md) 为准（默认关闭同 §4.8）：
-
 ```text
-GET/POST /api/v1/merchant/staff/{staffId}/availability-windows
-PUT      /api/v1/merchant/staff/{staffId}/availability-windows/{windowId}
-POST     /api/v1/merchant/staff/{staffId}/availability-windows/{windowId}/close   （reason 必填）
-POST     /api/v1/merchant/staff/{staffId}/availability-windows/{windowId}/open
-GET/PUT  /api/v1/merchant/staff/{staffId}/service-capabilities           （SCHC-2 集合头 CAS）
+GET    /api/v1/merchant/staff/{staffId}/availability-windows
+POST   /api/v1/merchant/staff/{staffId}/availability-windows
+PUT    /api/v1/merchant/staff/{staffId}/availability-windows/{windowId}
+DELETE /api/v1/merchant/staff/{staffId}/availability-windows/{windowId}
 ```
-
-排班减少可用性（close/缩短/移动）受 36号 当前指派保护与全店可行性复核约束；能力撤销同款保护，过期版本 409 COMMON_CONFLICT；既有明细无集合头为 LEGACY_UNVERSIONED，503 隔离等待盘点回填。旧草案 DELETE 路由不实现（SCHW-D3 软关闭承接）。
 
 用户 C 端没有选择服务人员 Endpoint。
 
-商家可在履约前/内部规则允许时指派人员（归 SCH-003/ORDER 命令域，07号 §6.2，本批不动）：
+商家可在履约前/内部规则允许时指派人员：
 
 ### POST `/api/v1/merchant/orders/{orderId}/staff-assignment`
 
@@ -1408,31 +1068,6 @@ IN_STORE / PICKUP_DELIVERY
 
 不提供商品直售、套餐、次卡 API。
 
-### 4.10.1 服务项目管理形态（CCR-W2-API-001 服务写入方 v0.2，2026-09-22 已批）
-
-六路由细化 + 类目只读（MINIAPP Bearer；写请求 X-Request-Id UUID；首次创建 201、重放 200）：
-
-| 方法/路径 | 请求 | 成功 data | 关键错误 |
-|---|---|---|---|
-| GET `/api/v1/merchant/services` | query merchantId、storeId、status?、page(1..10000)/pageSize(1..100，默认20) | 本店全状态分页（含 latestRejection、submissionNo、submittedAt） | 400/401/404（无归属防枚举） |
-| POST `/api/v1/merchant/services` | body 业务字段（草稿宽松）；X-Request-Id | 201 `{serviceId,merchantId,storeId,status:"DRAFT",version}` | 400/401/404/409（不可经营 SERVICE_STATE_NOT_ALLOWED）/409 异参重放 IDEMPOTENCY_KEY_CONFLICT |
-| GET `/api/v1/merchant/services/{serviceId}` | query merchantId、storeId | 详情（含状态/最近驳回） | 404（非本店同响应） |
-| PUT `/api/v1/merchant/services/{serviceId}` | body 业务字段 + expectedVersion；X-Request-Id | `{serviceId,status,version}` | 409 SERVICE_STATE_NOT_ALLOWED（ACTIVE/REVIEWING 不可编辑）/409 COMMON_CONFLICT（版本） |
-| POST `/api/v1/merchant/services/{serviceId}/online` | body expectedVersion；X-Request-Id | `{serviceId,status:"REVIEWING",version}`（提交审核/重新提交，submitted_at/submission_no 递增） | 400（必填不齐含封面）/409（非 DRAFT/REJECTED/OFFLINE） |
-| POST `/api/v1/merchant/services/{serviceId}/offline` | body expectedVersion；X-Request-Id | `{serviceId,status:"OFFLINE",version}` | 409（非 ACTIVE） |
-| GET `/api/v1/merchant/service-categories` | 无参数 | `{items:[{categoryId,categoryName,sortNo}]}`（仅 ENABLED，sort_no 升序） | 401 |
-
-业务字段（body，均可空存草稿）：`serviceName`(2-50)、`categoryId`（提交时须命中 ENABLED）、`fulfillmentType`(IN_STORE|PICKUP_DELIVERY)、`price`/`listPrice`（两位小数 String；price>0；listPrice≥price）、`durationMinutes`(1..10080)、`coverAssetId`（提交时必填且属本人 SERVICE_COVER 素材）、`applicablePetTypes`(DOG/CAT/EXOTIC/ALL 数组，ALL 互斥)、`staffRequirement`(≤200)、`verificationRequired`(默认 true)、`description`(≤1000)、`aftersaleNote`/`remark`(≤500)。PUT 为全量替换。
-
-错误码适用面定稿（2026-09-22 与前端对齐）：
-
-- 商家提交审核缺必填（含封面/ENABLED 类目等）→ 400 `COMMON_INVALID_ARGUMENT`（message 指明字段）；`SERVICE_REVIEW_REASON_REQUIRED` **仅**用于运营 REJECT 缺/短于 10 字意见，不覆盖商家提交场景。
-- `online`/`offline`/`decision`/`force-offline` 的 `expectedVersion` 一律放 **body**（对齐 27 号写命令惯例，不放 query）。
-- 商家工作台列表/详情字段定稿：`serviceId/merchantId/storeId/serviceName/categoryId/categoryName/status/price/listPrice/durationMinutes/fulfillmentType/coverAssetId/applicablePetTypes(数组)/staffRequirement/verificationRequired/description/aftersaleNote/remark/submissionNo/submittedAt/version/updatedAt/latestRejection{decisionId,submissionNo,decisionType,opinion,decidedAt}`；草案名 `latestDecision` 定稿为 `latestRejection`（仅承载最近一次 REJECT；APPROVE 不出现在工作台列表行）。
-- C 端封面字段定稿：`cover.coverUrl`（可空 String，仅可见时返回，签名 URL）、`cover.coverAssetId`、`cover.coverUrlExpiresAt`。
-
-状态机与门禁见 07 号 §5.2/§5.3（商家任何动作不产生 ACTIVE；商家/门店不可经营 409；无归属 404 防枚举）。
-
 ---
 
 ## 4.11 员工
@@ -1450,7 +1085,7 @@ POST   /api/v1/merchant/staff/{staffId}/disable
 
 ## 4.12 售后商家侧
 
-商家不是最终裁决方。本批按 [Contract51](51-AfterSale-Http-Contract-v0.1.md) 接入真实 OWNER；列表必须 merchantId+storeId，FROZEN 只读，不放宽补证/意见写权。
+商家不是最终裁决方。
 
 ```text
 GET  /api/v1/merchant/aftersales
@@ -1482,10 +1117,6 @@ POST /api/v1/merchant/reviews/{reviewId}/appeal
 每条评价最多申诉一次。
 
 评价申诉不等于售后复审。
-
-> 实现注记（2026-10-10，REV-002）：列表/详情/申诉三路由已按 [56号 评价申诉契约](56-Review-Appeal-Contract-v0.1.md)
-> 交付（默认关，`pet.review.appeal.enabled` + `pet.review.appeal.http.enabled`）；`reply`
-> 不在本切片（评价回复为独立能力，SSOT §11.3 未列）。
 
 ---
 
@@ -1574,22 +1205,70 @@ POST /api/v1/admin/refunds/{refundId}/retry
 
 `retry` 只重试渠道动作，不创建第二张业务退款单。
 
-> 实现注记（2026-10-15，33 号裁决）：查单/重试已按 [63号 v0.2 处置面](63-Admin-Trade-Query-Contract-v0.1.md)
-> 交付（默认关，`pet.admin.trade.http.enabled` 家族）：动作码 `refund.channel.query` / `refund.retry`
-> （提案 `refund.channel-query` 按部署词法拼作点分段，PR 披露）；重推既有 durable 退款任务族，
-> 不创建第二张业务退款单。
-
 ---
 
 ## 5.3 售后列表与详情
 
-GET `/api/v1/admin/aftersales` 与 GET `/api/v1/admin/aftersales/{afterSaleId}`，要求当前 aftersale.read。列表本批必须 merchantId+storeId，在当前 MER 范围授权后 SQL 分页；跨店运营聚合后续交付，不能使用历史城市快照。字段、三端权限和私有图见 [Contract51](51-AfterSale-Http-Contract-v0.1.md)。
+```text
+GET /api/v1/admin/aftersales
+GET /api/v1/admin/aftersales/{afterSaleId}
+```
 
-## 5.4 售后受理与裁决
+---
 
-POST `/api/v1/admin/aftersales/{afterSaleId}/accept`、`/supplement-requests`、`/close-duplicate` 要求 aftersale.handle；POST `/decisions` 要求 aftersale.decide。旧未实现单数 `/decision` 草案由复数正式路径替代。
+## 5.4 售后裁决
 
-每项 body 必含 expectedVersion，其他精确字段见 Contract51/OpenAPI11。公开仅执行 REJECT/RESERVICE/OTHER，refundAmount 必须 null；FULL_REFUND/PARTIAL_REFUND 格式合法且当前会话、decide及资源权限通过后始终503 COMMON_DEPENDENCY_UNAVAILABLE，不调用内部资金决定。内部 Contract50 原子退款能力不变。首次终局、无复审、不代商家裁决规则不变。
+### POST `/api/v1/admin/aftersales/{afterSaleId}/decision`
+
+Header：`X-Request-Id` 必填。
+
+Request：全额退款
+
+```json
+{
+  "decisionType": "FULL_REFUND",
+  "refundAmount": "128.00",
+  "reason": "经证据核验，支持买家退款"
+}
+```
+
+部分退款：
+
+```json
+{
+  "decisionType": "PARTIAL_REFUND",
+  "refundAmount": "64.00",
+  "reason": "部分服务已完成，裁决退还部分费用"
+}
+```
+
+其他：
+
+```json
+{
+  "decisionType": "REJECT",
+  "refundAmount": null,
+  "reason": "现有证据不足以支持退款"
+}
+```
+
+合法枚举：
+
+```text
+FULL_REFUND
+PARTIAL_REFUND
+REJECT
+RESERVICE
+OTHER
+```
+
+规则：
+
+- 运营首次裁决为最终裁决；
+- 不提供复审 Endpoint；
+- 退款金额不能超过实付；
+- 退款型裁决只有在 `refund_order` 创建成功后才形成禁止核销边界；
+- 若当前未履约售后已因核销先成功而 INVALIDATED，则拒绝退款型裁决执行。
 
 ---
 
@@ -1631,13 +1310,6 @@ Request：
 完整审计
 ```
 
-> 实现注记（2026-10-15，33 号裁决）：异常关单已按 [63号 v0.2 处置面](63-Admin-Trade-Query-Contract-v0.1.md)
-> 交付（默认关，`pet.admin.trade.http.enabled` 家族）：动作码 `order.abnormal.close`（提案
-> `order.abnormal-close` 按部署词法拼作点分段，PR 披露）；固定语义异常关闭+全额退款，走 order
-> 既有状态机（`cancel_reason='ADMIN_ABNORMAL_CLOSE'` 事实新值），全额退款经退款内核 source
-> `ADMIN_ABNORMAL_CLOSE`；二次确认为运营 UI 同一人确认（22 号补充口径），完整审计在 order
-> 内核 append-only 审计行。
-
 ---
 
 ## 5.6 商家下线
@@ -1662,10 +1334,6 @@ Request：
 
 不能因为有存量订单直接拒绝“下线”动作。
 
-> 实现注记（2026-10-15，33 号裁决）：商家下线已按 [63号 v0.2 处置面](63-Admin-Trade-Query-Contract-v0.1.md)
-> 交付（默认关，`pet.admin.trade.http.enabled` 家族）：动作码 `merchant.disable`；复用既有商家
-> 状态词表 ACTIVE→OFFLINE，新订单经既有准入事实停止，存量订单/退款/售后照常。
-
 ---
 
 ## 5.7 评价治理
@@ -1678,10 +1346,6 @@ POST /api/v1/admin/review-appeals/{appealId}/decision
 ```
 
 这是评价治理，不是售后复审。
-
-> 实现注记（2026-10-10，REV-002）：三条路由已按 [56号 评价申诉契约](56-Review-Appeal-Contract-v0.1.md)
-> 交付（默认关）：动作码 `review.appeal.read` / `review.appeal.decide`；裁决类型
-> APPROVED（评价隐藏）/ REJECTED（维持展示），终局、无复审。
 
 ---
 
@@ -1697,157 +1361,7 @@ GET          /api/v1/admin/audit-logs
 
 V1.0 运营端没有积分抵扣配置、积分商城、直播配置 API。
 
-> 实现注记（2026-10-16，65 号 v0.2 A-005）：券模板管理与券实例台账、券发放、积分台账已按
-> [§5.13](#513-运营治理台二期65-号2026-10-16-a-005-切片百科券台账系统设置v02-增券发放) 交付
-> （默认关）；通知/公告/审计日志三族维持草案未实现（CCR-ADM-A005-OPS-001）。
-
 ---
-
-## 5.9 服务审核与治理（CCR-W2-API-001 服务写入方 v0.2，2026-09-22 已批）
-
-```text
-GET  /api/v1/admin/services
-GET  /api/v1/admin/services/{serviceId}
-POST /api/v1/admin/services/{serviceId}/decision
-POST /api/v1/admin/services/{serviceId}/force-offline
-```
-
-真实运营会话（ADMIN_WEB Bearer）+ 动作码 `service.review.read` / `service.review.decide` / `service.force.offline`；决定与强制下架在事务内做数据库权威复核。运营不代商家新增/编辑/上下架服务（PRD 运营端 §3.3，无对应路由）。
-
-> 动作码拼写更正（2026-09-22 实现阶段）：AUTH 域动作码词法为小写点分段（`AdminActionCheckQuery`：`[a-z][a-z0-9]*(\.[a-z][a-z0-9]*)+`），已批意图"forceOffline"按词法落地为 `service.force.offline`；语义与裁决不变，PR 披露。
-
-| 方法/路径 | 动作码 | 请求 | 成功 data | 关键错误 |
-|---|---|---|---|---|
-| GET `/api/v1/admin/services` | service.review.read | query status?/categoryId?/merchantId?/page/pageSize | 审核分页（submittedAt、slaRemainingMinutes（按 24h SLA）、rejectCount、submissionNo） | 400/401/403 |
-| GET `/api/v1/admin/services/{serviceId}` | service.review.read | — | 详情 + `decisions[]` 历史驳回记录（append-only） | 404 |
-| POST `/api/v1/admin/services/{serviceId}/decision` | service.review.decide | body `{decisionType: APPROVE|REJECT, opinion?, expectedVersion}`；X-Request-Id | `{serviceId,status,version,decisionId}`（APPROVE→ACTIVE；REJECT→REJECTED） | 400 SERVICE_REVIEW_REASON_REQUIRED（REJECT 缺/短于10字意见）/409（非 REVIEWING 或版本失配） |
-| POST `/api/v1/admin/services/{serviceId}/force-offline` | service.force.offline | body `{reason, expectedVersion}`；X-Request-Id | `{serviceId,status:"OFFLINE",version,actionId}`（落治理审计） | 400（reason 10-500）/409（非 ACTIVE） |
-
-- 审核决定（APPROVE/REJECT）在决定事务内写 `ServiceReviewedEvent.v1` 到事务性 Outbox（Event08）；通知消费侧（MERCHANT 收件箱）由通知域切片承接，未接通前完整审核流程不标完成。
-- 强制下架是否通知商家＝剩余问题（本轮不发事件）。
-
----
-
-## 5.10 签到/拉新积分量配置（58 号 §4，32 号裁决第二节，2026-10-13）
-
-> 本节为摘要；权威契约在 `60-Points-Task-Contract-v0.1.md` §4。
-
-```text
-GET /api/v1/admin/points-task-config
-PUT /api/v1/admin/points-task-config
-```
-
-真实运营会话（ADMIN_WEB Bearer）+ 动作码 `points.task.config.read` /
-`points.task.config.write`（单运营 V1，无第二审批人，SSOT §24）；随
-`pet.points.task.http.enabled` 装配（另需 `pet.auth.admin.enabled`，默认关）。GET 无行读内置
-缺省（5/30/50/3/100/100/20，version "0"）。PUT 为全量七字段整数（严格 JSON，范围见 58 号
-§4.2），23 号公共幂等，配置即时生效（新领取按新值，既有流水不回改）。错误面复用 12 号 §2
-通用码；`no-store`。V1 无积分消费类配置（抵现/商城/兑换不存在，32 号裁决第二节第 1 条）。
-
----
-
-## 5.11 运营交易查询（63 号，2026-10-14 ADM-002/A-003 切片）
-
-> 本节为摘要；权威契约在 `63-Admin-Trade-Query-Contract-v0.1.md`。
-
-```text
-GET /api/v1/admin/trade/orders
-GET /api/v1/admin/trade/orders/{orderId}
-GET /api/v1/admin/trade/orders/{orderId}/status-logs
-GET /api/v1/admin/trade/refunds
-GET /api/v1/admin/trade/refunds/{refundOrderId}
-GET /api/v1/admin/trade/verifications
-GET /api/v1/admin/trade/verifications/{verificationId}
-```
-
-七条只读路由随 `pet.admin.trade.http.enabled`（默认 false）+ `pet.auth.admin.enabled` 装配；动作码
-`order.read` / `order.status-log.read` / `order.verification-log.read` / `refund.read`（AUTH-001
-提案矩阵第 7/8 行，随切片登记部署清单），控制器快照校验 + 模块内核 `AdminAuthorizationQueryApi`
-每次重验；trade 面要求数据范围 `ALL`（CITY/MERCHANT 因订单/退款/核销域缺权威城市/商家归属事实
-fail-closed 403，CCR-PERM-001 §3）。脱敏：不回传手机号/地址联系人明文/凭证密文/申请理由密文。
-§5.2 `channel-query`/`retry`、§5.5 `abnormal-close`、§5.6 商家下线保持草案未实现（需各自写内核
-切片）；部分退款仅运营售后裁决（51 号，A-004 已交付）。
-
----
-
-## 5.12 运营治理查询（64 号，2026-10-15 ADM-001 治理补齐 / A-002 第二期切片）
-
-> 本节为摘要；权威契约在 `64-Admin-Governance-Contract-v0.1.md`。
-
-```text
-GET /api/v1/admin/governance/merchants
-GET /api/v1/admin/governance/merchants/{merchantId}
-GET /api/v1/admin/governance/merchants/{merchantId}/staff
-GET /api/v1/admin/governance/merchants/{merchantId}/staff-members
-GET /api/v1/admin/governance/merchants/{merchantId}/staff-members/invitations
-GET /api/v1/admin/governance/schedule/windows
-GET /api/v1/admin/governance/schedule/staff-windows
-GET /api/v1/admin/governance/schedule/reservations
-```
-
-八条只读路由随 `pet.admin.governance.http.enabled`（默认 false）+ `pet.auth.admin.enabled` 装配；
-动作码 `merchant.read`（AUTH-001 提案矩阵第 3 行）/ `schedule.read` / `merchant.staff.read`
-（6.2.5/6.2.6 只读监管拟议码，随切片登记部署清单），控制器快照校验 + merchant/schedule 内核
-`AdminAuthorizationQueryApi` 每次重验；governance 面要求数据范围 `ALL`（CITY/MERCHANT 因商家/
-员工/排期行缺统一权威城市归属事实 fail-closed 403，CCR-PERM-001 §3）。脱敏：手机号仅掩码、
-子商户号仅后 4 位、不回传证件/协议内容/密文。排期面只读（SCH-004/53 号写侧归商家）；§5.6 商家
-下线/冻结与一切运营员工处置保持草案未实现（SSOT §30 未授权运营写动作，需 CCR 登记）。
-
----
-
-## 5.13 运营治理台二期（65 号，2026-10-16 A-005 切片：百科/券/台账/系统设置；v0.2 增券发放）
-
-> 本节为摘要；权威契约在 `65-Admin-Ops-Console-Contract-v0.1.md`。
-
-```text
-GET  /api/v1/admin/encyclopedia/categories
-PUT  /api/v1/admin/encyclopedia/categories/{categoryCode}
-POST /api/v1/admin/encyclopedia/categories/{categoryCode}/enable|disable
-GET  /api/v1/admin/encyclopedia/breeds
-GET  /api/v1/admin/encyclopedia/breeds/{breedId}
-PUT  /api/v1/admin/encyclopedia/breeds/{breedId}
-POST /api/v1/admin/encyclopedia/breeds/{breedId}/publish|offline
-GET  /api/v1/admin/coupon-templates
-GET  /api/v1/admin/coupon-templates/{templateId}
-GET  /api/v1/admin/coupon-templates/{templateId}/trial-calculation
-POST /api/v1/admin/coupon-templates
-PUT  /api/v1/admin/coupon-templates/{templateId}
-POST /api/v1/admin/coupon-templates/{templateId}/enable|offline
-GET  /api/v1/admin/coupon-instances
-GET  /api/v1/admin/coupon-instances/{instanceId}
-POST /api/v1/admin/coupon-instances/grant
-POST /api/v1/admin/coupon-instances/{instanceId}/void
-GET  /api/v1/admin/points/ledger
-GET  /api/v1/admin/settings/runtime
-```
-
-二十二条路由随 `pet.admin.ops.http.enabled`（默认 false）+ `pet.auth.admin.enabled` 装配；动作码
-`encyclopedia.read/manage/publish`、`breed.read/manage`（矩阵行 21）、`coupon.template.read/manage`、
-`coupon.instance.read`（行 13/14 提案连字符拼写的点分落地）、`coupon.instance.grant`（v0.2 发放渠道，
-用户裁决 2026-10-16，提案矩阵无提案码、点分词法新造登记——CCR-CPN-GRANT-001 §3）、
-`coupon.instance.void`（v0.3 作废渠道，用户裁决 2026-10-16 最小授权 36 号，提案矩阵行 14 提案
-`coupon-instance.void` 的点分落地）、
-`points.ledger.read`（行 15 族）、`system.parameter.read`（行 23 提案拼写点分落地），随切片登记部署
-清单。控制器快照校验 + community/coupon/points 内核授权端口每次重验；dataScope 非 ALL 一律 403。
-写动作（分类维护/停用启用、品种维护/上下线、券模板建/编/启/停）终结性 X-Request-Id 幂等（14 号
-command_idempotency 绑定，同参重放回执、异参 409）+ expectedVersion 乐观锁（失配 409）。
-发放路由（65 号 v0.2 §4.3，2026-10-16 用户裁决"做券发放渠道"）：按一个 ACTIVE 模板向一个指定用户
-发放一张 AVAILABLE 券实例（单次一张，批量/持有上限/频控/库存扣减 CCR-CPN-GRANT-001 §2 待裁）；
-模板可用性守卫=61 号冻结前置④（非 ACTIVE 或不在有效期 409）；`coupon_ledger` ISSUE 行为发放审计；
-内核另受 `pet.coupon.grant.enabled`（默认 false，21 号清单）门控，开关关闭时该路由 503 失败关闭
-（61 号提供器未装配语义），默认值翻转随 35 号开关放开裁决统一处理。发放后 C 端
-`GET /api/v1/c/coupons?status=AVAILABLE` 立即可见（10 号 §3.15.1 零改动）。
-作废路由（65 号 v0.3 §4.4，2026-10-16 用户裁决"治理写动作最小授权"36 号）：作废指定单张
-AVAILABLE 券实例（USED/FROZEN/RISK_FROZEN/EXPIRED 一律 409——FROZEN 被在途订单锁定的券不许
-作废）；落点 `status='VOID'`（新终态，Schema06 词表注记同步披露）；`coupon_ledger` VOID 行
-（`CPN:VOID:{instanceId}`）为作废审计，body 必填 reason（10–200 字）；内核另受
-`pet.coupon.void.enabled`（默认 false，21 号清单）门控，开关关闭时该路由 503 失败关闭；
-C 端三桶（AVAILABLE/USED/EXPIRED）不含 VOID 即时不可见（读侧零改动）；作废后是否补偿 CCR
-登记最小实现=不补偿（CCR-CPN-VOID-001）。除发放/作废外券实例无任何写路由（批量作废/返还/
-风控冻结/解冻 CCR-ADM-A005-OPS-001 未登记不做）；设置面只读（运行时写配置无授权，同 CCR）。
-
----
-
 
 # 6. 拉卡拉回调
 
@@ -2508,14 +2022,3 @@ Scope提案：`{mode,cityCodes,merchantIds}`。授予请求mode=ALL/CITY/MERCHAN
 [30号补充](30-Merchant-Application-Contract-v0.1.md)与OpenAPI11新增本人申请4操作、运营审核6操作，全部标CONTRACT_SYNC_CANDIDATE_NOT_IMPLEMENTED。申请人仅看本人；运营仅看已提交版本并先过滤scope再分页。人工核验/释放/决定必须当前领取人，不能构造内部双人审批。
 
 applicationId等主键使用Snowflake String；applicationNo按原PRD为SQ+YYYYMMDD+8位随机码，首次提交生成、重提不变，不套PublicId数字词法。revisionNo为正序号String。默认详情仅脱敏，不接受GET reveal参数，不在URL放敏感用途；原件读取依赖独立私有资产授权契约。无新的运行时路由或Provider就绪声明。
-
-## 2026-09-24 已批准：SCH-003 / ORDER 预约保护的 HTTP 同步边界
-
-[36号联合契约](36-Reservation-Order-Protection-Contract-v0.1.md)的 ROC-1～6 已批，当前状态仍为 `ACCEPTED_CONTRACT_NOT_IMPLEMENTED`。现有 §3.4 六字段可约 `items` 不返回原 `windowId/kind`，§3.5 创建与改期请求未携接送两个所选窗 ID 或到店 GENERAL 原窗 ID；不能以旧响应猜 ID、宣称接送双 claim 或跨服务容量写已可用。后续实现切片须同步 07/10/11 的选窗字段、请求/错误与客户端合同，并在服务端锁内完成 36 号复核；本次追加不创建 HTTP 路由、不更改当前响应或 `x-contract-status`，相关入口未实现时失败关闭。
-
-## 创建订单内核阶段状态（2026-09-27）
-
-[38号内部内核](38-Atomic-Booking-Create-Contract-v0.1.md)已实现真实占位与待支付订单原子写入、地址/备注加密快照和持久幂等。~~当前没有开放本文件§3.5 HTTP路由，也没有改变§3.4现行六字段响应~~（2026-10-07 C 端下单/支付发起 HTTP 切片按 §3.5/§3.6 实现注记交付 §3.5 与 §3.6 两条 POST，默认关闭；§3.4 现行六字段响应未改变）；~~选窗ID/类型、服务地址及完整结算配套须后续同步公开合同与适配器后启用（接送履约在公开合同补齐选窗字段前按 §3.5 实现注记失败关闭）~~（2026-10-07 36号联合契约公开选窗字段同步切片按 §3.5 实现注记交付：`selectedPickupWindowId`/`selectedReturnWindowId`/`selectedGeneralWindowId`/`serviceAddress` 已进 11 号公开 `CreateOrderRequest`，接送履约下单解锁，全部校验仍由 36/38 号内核锁内复核；选窗 ID 展示来源为 §3.4 的 39 号 selection 增补）。~~优惠券~~（2026-10-14 61 号券生命周期切片按 §3.5 实现注记交付真实冻结语义：有券下单锁内冻结并折算应付，409 `COUPON_NOT_AVAILABLE` 失败面与 503 失败关闭并存，随 `pet.coupon.lifecycle.enabled` 默认关闭）、~~生产备注审核~~（2026-10-08 用户裁决：V1 备注宽容直收、不走审核，见 §3.5 备注段增补；审核机制 V2 交付）、自动到期关闭与支付未接齐，不能把无券内部测试当作完整C端下单上线。
-
-## 核销码 V1/V2 正式补充
-2026-09-29用户批准V1/V2，执行[47号契约](47-Verification-Credential-Contract-v0.1.md)。覆盖§3.11：GET仅只读，POST生成/刷新带requestId和expectedCredentialVersion；新完整视图替代旧verificationStatus示例。第三次独立失败锁15分钟且换码不能绕过。~~两个路由均NOT_IMPLEMENTED，不注册公开入口~~（2026-10-06 核销 HTTP 切片按 47号 v0.2 交付，默认关闭）；~~不表示商家核销完成接口已交付~~（§4.7 商家核销路由同批按 48号 K2 v0.3 交付，默认关闭）。

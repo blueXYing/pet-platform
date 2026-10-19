@@ -53,6 +53,9 @@ final class MySqlUserDomainTestDatabase implements AutoCloseable {
                 ScriptUtils.executeSqlScript(connection, new EncodedResource(
                         new FileSystemResource(root.resolve("docs/03-database/55-User-Address-Schema-v0.1.sql")),
                         StandardCharsets.UTF_8));
+                ScriptUtils.executeSqlScript(connection, new EncodedResource(
+                        new FileSystemResource(root.resolve("docs/03-database/68-Pet-Health-Record-Schema-v0.1.sql")),
+                        StandardCharsets.UTF_8));
             }
             System.out.println("USR-001 real MySQL " + version + "; new database " + name);
         } catch (Exception failure) {

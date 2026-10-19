@@ -1,0 +1,444 @@
+    MerchantStoreProfileReadonlyFacts:
+      type: object
+      additionalProperties: false
+      required: [storeName, address, cityCode, phoneMasked, longitude, latitude,
+        merchantStatus, storeStatus, operatingStatus, applicationStatus]
+      properties:
+        storeName:
+          type: string
+          minLength: 1
+          maxLength: 128
+        address:
+          type: string
+          minLength: 1
+          maxLength: 255
+        cityCode:
+          type: [string, 'null']
+        phoneMasked:
+          type: [string, 'null']
+          pattern: '^1[0-9]{2}\*{4}[0-9]{4}$'
+        longitude:
+          type: [string, 'null']
+        latitude:
+          type: [string, 'null']
+        merchantStatus:
+          type: string
+          enum: [APPLYING, ACTIVE, OFFLINE, FROZEN, CANCELED]
+        storeStatus:
+          type: string
+          enum: [ACTIVE, OFFLINE, FROZEN]
+        operatingStatus:
+          type: string
+          enum: [OPERATING, OFFLINE, FROZEN]
+        applicationStatus:
+          type: [string, 'null']
+    MerchantStoreProfileBusinessHour:
+      type: object
+      additionalProperties: false
+      required: [days, start, end]
+      properties:
+        days:
+          type: array
+          items:
+            type: integer
+            minimum: 1
+            maximum: 7
+          minItems: 1
+          maxItems: 7
+        start:
+          type: string
+          pattern: '^([01][0-9]|2[0-3]):[0-5][0-9]$'
+        end:
+          type: string
+          pattern: '^([01][0-9]|2[0-3]):[0-5][0-9]$'
+    MerchantStoreProfileProfile:
+      type: object
+      additionalProperties: false
+      required: [intro, announcement, photoAssetIds, businessHours, promoLevel,
+        promoTitle, promoText, version]
+      properties:
+        intro:
+          type: [string, 'null']
+          maxLength: 500
+        announcement:
+          type: [string, 'null']
+          maxLength: 200
+        photoAssetIds:
+          type: array
+          maxItems: 6
+          items:
+            $ref: '#/components/schemas/PublicId'
+        businessHours:
+          type: array
+          maxItems: 7
+          items:
+            $ref: '#/components/schemas/MerchantStoreProfileBusinessHour'
+        promoLevel:
+          type: [integer, 'null']
+          minimum: 1
+          maximum: 9
+        promoTitle:
+          type: [string, 'null']
+          maxLength: 100
+        promoText:
+          type: [string, 'null']
+          maxLength: 100
+        version:
+          type: string
+          pattern: ^(0|[1-9][0-9]{0,18})$
+    MerchantStoreProfileData:
+      type: object
+      additionalProperties: false
+      required: [merchantId, storeId, readonly, profile]
+      properties:
+        merchantId:
+          $ref: '#/components/schemas/PublicId'
+        storeId:
+          $ref: '#/components/schemas/PublicId'
+        readonly:
+          $ref: '#/components/schemas/MerchantStoreProfileReadonlyFacts'
+        profile:
+          $ref: '#/components/schemas/MerchantStoreProfileProfile'
+    MerchantStoreProfileEnvelope:
+      type: object
+      additionalProperties: false
+      required: [success, code, message, data, traceId]
+      properties:
+        success:
+          type: boolean
+          enum: [true]
+        code:
+          type: string
+          enum: [SUCCESS]
+        message:
+          type: string
+          minLength: 1
+        data:
+          $ref: '#/components/schemas/MerchantStoreProfileData'
+        traceId:
+          type: string
+          minLength: 1
+    MerchantStoreProfileUpdateRequest:
+      type: object
+      additionalProperties: false
+      required: [merchantId, storeId, intro, announcement, photoAssetIds,
+        businessHours, promoLevel, promoTitle, promoText, expectedVersion]
+      description: 全字段替换（27号 §6.4）：所有键必须出现；显式 null 非法；文本空串清空、
+        数组空清空、promoLevel 0=未设置。
+      properties:
+        merchantId:
+          $ref: '#/components/schemas/PublicId'
+        storeId:
+          $ref: '#/components/schemas/PublicId'
+        intro:
+          type: string
+          maxLength: 500
+        announcement:
+          type: string
+          maxLength: 200
+        photoAssetIds:
+          type: array
+          maxItems: 6
+          items:
+            $ref: '#/components/schemas/PublicId'
+        businessHours:
+          type: array
+          maxItems: 7
+          items:
+            $ref: '#/components/schemas/MerchantStoreProfileBusinessHour'
+        promoLevel:
+          type: integer
+          minimum: 0
+          maximum: 9
+        promoTitle:
+          type: string
+          maxLength: 100
+        promoText:
+          type: string
+          maxLength: 100
+        expectedVersion:
+          type: string
+          pattern: ^(0|[1-9][0-9]{0,18})$
+    MerchantCustomerPet:
+      type: object
+      additionalProperties: false
+      required: [petName, petType, breedName]
+      properties:
+        petName:
+          type: string
+          minLength: 1
+          maxLength: 64
+        petType:
+          type: string
+          minLength: 1
+          maxLength: 32
+        breedName:
+          type: [string, 'null']
+    MerchantCustomerRow:
+      type: object
+      additionalProperties: false
+      required: [userId, nickname, phoneMasked, orderCount, totalSpend, avgTicket,
+        lastVisitAt, topPet]
+      properties:
+        userId:
+          $ref: '#/components/schemas/PublicId'
+        nickname:
+          type: [string, 'null']
+        phoneMasked:
+          type: [string, 'null']
+          pattern: '^1[0-9]{2}\*{4}[0-9]{4}$'
+        orderCount:
+          type: integer
+          minimum: 0
+        totalSpend:
+          type: string
+          pattern: '^[0-9]+\.[0-9]{2}$'
+        avgTicket:
+          type: [string, 'null']
+          pattern: '^[0-9]+\.[0-9]{2}$'
+        lastVisitAt:
+          type: [string, 'null']
+          format: date-time
+        topPet:
+          oneOf:
+          - type: 'null'
+          - $ref: '#/components/schemas/MerchantCustomerPet'
+    MerchantCustomerPageData:
+      type: object
+      additionalProperties: false
+      required: [items, page, pageSize, total]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/MerchantCustomerRow'
+        page:
+          type: integer
+          minimum: 1
+        pageSize:
+          type: integer
+          minimum: 1
+          maximum: 100
+        total:
+          type: integer
+          minimum: 0
+    MerchantCustomerPageEnvelope:
+      type: object
+      additionalProperties: false
+      required: [success, code, message, data, traceId]
+      properties:
+        success:
+          type: boolean
+          enum: [true]
+        code:
+          type: string
+          enum: [SUCCESS]
+        message:
+          type: string
+          minLength: 1
+        data:
+          $ref: '#/components/schemas/MerchantCustomerPageData'
+        traceId:
+          type: string
+          minLength: 1
+    MerchantCustomerDetailData:
+      allOf:
+      - $ref: '#/components/schemas/MerchantCustomerRow'
+      - type: object
+        additionalProperties: false
+        required: [pets]
+        properties:
+          pets:
+            type: array
+            maxItems: 20
+            items:
+              $ref: '#/components/schemas/MerchantCustomerPet'
+    MerchantCustomerDetailEnvelope:
+      type: object
+      additionalProperties: false
+      required: [success, code, message, data, traceId]
+      properties:
+        success:
+          type: boolean
+          enum: [true]
+        code:
+          type: string
+          enum: [SUCCESS]
+        message:
+          type: string
+          minLength: 1
+        data:
+          $ref: '#/components/schemas/MerchantCustomerDetailData'
+        traceId:
+          type: string
+          minLength: 1
+    MerchantStatsDeltas:
+      type: object
+      additionalProperties: false
+      required: [revenue, orderCount, newCustomers, avgTicket]
+      properties:
+        revenue:
+          type: [string, 'null']
+          pattern: '^-?[0-9]+(\.[0-9])?$'
+        orderCount:
+          type: [string, 'null']
+          pattern: '^-?[0-9]+(\.[0-9])?$'
+        newCustomers:
+          type: [string, 'null']
+          pattern: '^-?[0-9]+(\.[0-9])?$'
+        avgTicket:
+          type: [string, 'null']
+          pattern: '^-?[0-9]+(\.[0-9])?$'
+    MerchantStatsOverviewData:
+      type: object
+      additionalProperties: false
+      required: [range, revenue, orderCount, newCustomers, avgTicket,
+        verifiedOrderCount, verifyRate, refundOrderCount, refundRate, repeatRate,
+        reviewAvg, deltas, generatedAt]
+      properties:
+        range:
+          type: string
+          enum: [TODAY, LAST_7D, LAST_30D]
+        revenue:
+          type: string
+          pattern: '^[0-9]+\.[0-9]{2}$'
+        orderCount:
+          type: integer
+          minimum: 0
+        newCustomers:
+          type: integer
+          minimum: 0
+        avgTicket:
+          type: [string, 'null']
+          pattern: '^[0-9]+\.[0-9]{2}$'
+        verifiedOrderCount:
+          type: integer
+          minimum: 0
+        verifyRate:
+          type: [string, 'null']
+          pattern: '^[0-9]+\.[0-9]$'
+        refundOrderCount:
+          type: integer
+          minimum: 0
+        refundRate:
+          type: [string, 'null']
+          pattern: '^[0-9]+\.[0-9]$'
+        repeatRate:
+          type: [string, 'null']
+          pattern: '^[0-9]+\.[0-9]$'
+        reviewAvg:
+          type: [string, 'null']
+          pattern: '^[0-5]\.[0-9]$'
+        deltas:
+          $ref: '#/components/schemas/MerchantStatsDeltas'
+        generatedAt:
+          type: string
+          format: date-time
+    MerchantStatsOverviewEnvelope:
+      type: object
+      additionalProperties: false
+      required: [success, code, message, data, traceId]
+      properties:
+        success:
+          type: boolean
+          enum: [true]
+        code:
+          type: string
+          enum: [SUCCESS]
+        message:
+          type: string
+          minLength: 1
+        data:
+          $ref: '#/components/schemas/MerchantStatsOverviewData'
+        traceId:
+          type: string
+          minLength: 1
+    MerchantStatsServiceTopData:
+      type: object
+      additionalProperties: false
+      required: [range, items]
+      properties:
+        range:
+          type: string
+          enum: [TODAY, LAST_7D, LAST_30D]
+        items:
+          type: array
+          maxItems: 5
+          items:
+            type: object
+            additionalProperties: false
+            required: [serviceId, serviceName, orderCount, revenue]
+            properties:
+              serviceId:
+                $ref: '#/components/schemas/PublicId'
+              serviceName:
+                type: [string, 'null']
+              orderCount:
+                type: integer
+                minimum: 0
+              revenue:
+                type: string
+                pattern: '^[0-9]+\.[0-9]{2}$'
+    MerchantStatsServiceTopEnvelope:
+      type: object
+      additionalProperties: false
+      required: [success, code, message, data, traceId]
+      properties:
+        success:
+          type: boolean
+          enum: [true]
+        code:
+          type: string
+          enum: [SUCCESS]
+        message:
+          type: string
+          minLength: 1
+        data:
+          $ref: '#/components/schemas/MerchantStatsServiceTopData'
+        traceId:
+          type: string
+          minLength: 1
+    MerchantStatsTrendData:
+      type: object
+      additionalProperties: false
+      required: [range, buckets]
+      properties:
+        range:
+          type: string
+          enum: [TODAY, LAST_7D, LAST_30D]
+        buckets:
+          type: array
+          maxItems: 30
+          items:
+            type: object
+            additionalProperties: false
+            required: [date, revenue, orderCount]
+            properties:
+              date:
+                type: string
+                pattern: '^[0-9]{4}-[0-9]{2}-[0-9]{2}$'
+              revenue:
+                type: string
+                pattern: '^[0-9]+\.[0-9]{2}$'
+              orderCount:
+                type: integer
+                minimum: 0
+    MerchantStatsTrendEnvelope:
+      type: object
+      additionalProperties: false
+      required: [success, code, message, data, traceId]
+      properties:
+        success:
+          type: boolean
+          enum: [true]
+        code:
+          type: string
+          enum: [SUCCESS]
+        message:
+          type: string
+          minLength: 1
+        data:
+          $ref: '#/components/schemas/MerchantStatsTrendData'
+        traceId:
+          type: string
+          minLength: 1

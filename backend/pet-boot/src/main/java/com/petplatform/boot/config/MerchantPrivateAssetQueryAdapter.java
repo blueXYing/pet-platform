@@ -11,10 +11,18 @@ import java.util.Objects;
 /** Composition-root bridge from MER's narrow port to the private-asset owner API. */
 public final class MerchantPrivateAssetQueryAdapter implements PrivateAssetQueryPort {
   public static final String MERCHANT_APPLICATION_PURPOSE = "MERCHANT_APPLICATION_MATERIAL";
+  /** Store photos (27号 §6.4 supplement): same pipeline, its own purpose vocabulary. */
+  public static final String STORE_PHOTO_PURPOSE = "STORE_PHOTO";
   private final PrivateAssetApi assets;
+  private final String purpose;
 
   public MerchantPrivateAssetQueryAdapter(PrivateAssetApi assets) {
+    this(assets, MERCHANT_APPLICATION_PURPOSE);
+  }
+
+  public MerchantPrivateAssetQueryAdapter(PrivateAssetApi assets, String purpose) {
     this.assets = Objects.requireNonNull(assets);
+    this.purpose = Objects.requireNonNull(purpose);
   }
 
   @Override
@@ -25,7 +33,7 @@ public final class MerchantPrivateAssetQueryAdapter implements PrivateAssetQuery
               new ResolveOwnedPrivateAssetsQuery(
                   Long.toString(ownerUserId),
                   assetIds.stream().map(String::valueOf).toList(),
-                  MERCHANT_APPLICATION_PURPOSE))
+                  purpose))
           .stream()
           .map(
               fact -> {

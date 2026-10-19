@@ -3433,6 +3433,345 @@ paths:
                 $ref: '#/components/schemas/CreateReviewResponseEnvelope'
         '409':
           $ref: '#/components/responses/Conflict'
+  /merchant/store-profile:
+    get:
+      tags:
+      - Merchant-Profile
+      summary: merchantGetStoreProfile
+      operationId: merchantGetStoreProfile
+      x-contract-status: IMPLEMENTED_DEFAULT_OFF
+      x-default-enabled: false
+      x-contract: 27-Merchant-Domain-Contract-v0.1.md
+      x-assembly-switch: pet.merchant.store-profile.http.enabled
+      x-route-party: MERCHANT
+      x-audience: MINIAPP
+      description: 店铺资料读侧（27号 §6.4 补充，PRD 5.7）：OWNER 存量资料读取家族
+                （OFFLINE/FROZEN 可读；门店不存在或越权同形 404 防枚举）。只读段为审核
+                回填事实 + 经营状态投影，资料段为商家自维护店铺基础信息（首次保存前行
+                惰性创建，默认 version=0 全 NULL）。
+      security:
+      - bearerAuth: []
+      parameters:
+      - $ref: '#/components/parameters/MerchantIdQuery'
+      - $ref: '#/components/parameters/StoreIdQuery'
+      responses:
+        '200':
+          description: '店铺资料投影（readonly + profile + version）。Cache-Control: no-store。'
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                enum: [no-store]
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MerchantStoreProfileEnvelope'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '503':
+          $ref: '#/components/responses/DependencyUnavailable'
+    put:
+      tags:
+      - Merchant-Profile
+      summary: merchantUpdateStoreProfile
+      operationId: merchantUpdateStoreProfile
+      x-contract-status: IMPLEMENTED_DEFAULT_OFF
+      x-default-enabled: false
+      x-contract: 27-Merchant-Domain-Contract-v0.1.md
+      x-assembly-switch: pet.merchant.store-profile.http.enabled
+      x-route-party: MERCHANT
+      x-audience: MINIAPP
+      description: 店铺资料全字段替换（命令 merchant.store.profile.update）：OWNER+ACTIVE+
+                APPROVED+SIGNED 写族门禁；JSON 严格读（显式 null/未知字段 400；文本空串清空、
+                数组空清空、promoLevel 0=未设置）；expectedVersion 乐观锁；X-Request-Id 幂等
+                （首报文 201、成功重放 200）；同事务审计仅记字段名清单。photoAssetIds 须经
+                STORE_PHOTO 用途私有权属解析（READY 图片）。
+      security:
+      - bearerAuth: []
+      parameters:
+      - $ref: '#/components/parameters/RequestId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/MerchantStoreProfileUpdateRequest'
+      responses:
+        '200':
+          description: 保存后投影（幂等成功重放同回执）。
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                enum: [no-store]
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MerchantStoreProfileEnvelope'
+        '201':
+          description: 首次保存成功回执。
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MerchantStoreProfileEnvelope'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '503':
+          $ref: '#/components/responses/DependencyUnavailable'
+  /merchant/customers:
+    get:
+      tags:
+      - Merchant-Order
+      summary: merchantListCustomers
+      operationId: merchantListCustomers
+      x-contract-status: IMPLEMENTED_DEFAULT_OFF
+      x-default-enabled: false
+      x-contract: 69-Merchant-Customer-Profile-Read-Contract-v0.1.md
+      x-assembly-switch: pet.order.customer.http.enabled
+      x-route-party: MERCHANT
+      x-audience: MINIAPP
+      description: 派生客户列表（69号，PRD 5.12 最小实现）：本店订单按 user_id 分组派生，
+                零新事实源、零跨店行。手机号仅脱敏；排序 totalSpend DESC、userId ASC；
+                nickname 为有界包含搜索（≤64 码点，扫描上限 1000）。OWNER 坐标在门店
+                guard 事务内 requireOwnerRead 复验（同 /merchant/orders §4.1）。只读，
+                无 X-Request-Id。
+      security:
+      - bearerAuth: []
+      parameters:
+      - $ref: '#/components/parameters/MerchantIdQuery'
+      - $ref: '#/components/parameters/StoreIdQuery'
+      - name: nickname
+        in: query
+        required: false
+        schema:
+          type: string
+          minLength: 1
+          maxLength: 64
+      - $ref: '#/components/parameters/Page'
+      - $ref: '#/components/parameters/PageSize'
+      responses:
+        '200':
+          description: 'PageResult 信封（userId/nickname/phoneMasked/orderCount/totalSpend/
+            avgTicket/lastVisitAt/topPet）。Cache-Control: no-store。'
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                enum: [no-store]
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MerchantCustomerPageEnvelope'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '503':
+          $ref: '#/components/responses/DependencyUnavailable'
+  /merchant/customers/{userId}:
+    get:
+      tags:
+      - Merchant-Order
+      summary: merchantGetCustomer
+      operationId: merchantGetCustomer
+      x-contract-status: IMPLEMENTED_DEFAULT_OFF
+      x-default-enabled: false
+      x-contract: 69-Merchant-Customer-Profile-Read-Contract-v0.1.md
+      x-assembly-switch: pet.order.customer.http.enabled
+      x-route-party: MERCHANT
+      x-audience: MINIAPP
+      description: 派生客户详情（69号）：列表行投影 + 本店订单宠物去重列表（名字/类别/品种级，
+                最多 20；体重/疫苗/驱虫/健康备注不投影）。本店无任何订单的 userId 与越权
+                同形 404（防枚举）。
+      security:
+      - bearerAuth: []
+      parameters:
+      - name: userId
+        in: path
+        required: true
+        schema:
+          $ref: '#/components/schemas/PublicId'
+      - $ref: '#/components/parameters/MerchantIdQuery'
+      - $ref: '#/components/parameters/StoreIdQuery'
+      responses:
+        '200':
+          description: '客户详情投影。Cache-Control: no-store。'
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                enum: [no-store]
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MerchantCustomerDetailEnvelope'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '503':
+          $ref: '#/components/responses/DependencyUnavailable'
+  /merchant/stats/overview:
+    get:
+      tags:
+      - Merchant-Order
+      summary: merchantStatsOverview
+      operationId: merchantStatsOverview
+      x-contract-status: IMPLEMENTED_DEFAULT_OFF
+      x-default-enabled: false
+      x-contract: 70-Merchant-Business-Stats-Read-Contract-v0.1.md
+      x-assembly-switch: pet.order.stats.http.enabled
+      x-route-party: MERCHANT
+      x-audience: MINIAPP
+      description: 经营统计概览（70号，PRD 5.14）：单店订单聚合 + 评价均分事实面（评价内核
+                未装配时 reviewAvg=null 显示 --）。range 词汇 TODAY/LAST_7D/LAST_30D（默认
+                LAST_7D）；净营收扣除成功退款；比率一位小数无百分号；环比=等长紧邻前窗。
+      security:
+      - bearerAuth: []
+      parameters:
+      - $ref: '#/components/parameters/MerchantIdQuery'
+      - $ref: '#/components/parameters/StoreIdQuery'
+      - name: range
+        in: query
+        required: false
+        schema:
+          type: string
+          enum: [TODAY, LAST_7D, LAST_30D]
+      responses:
+        '200':
+          description: '概览投影（含 deltas 环比与 generatedAt）。Cache-Control: no-store。'
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                enum: [no-store]
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MerchantStatsOverviewEnvelope'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '503':
+          $ref: '#/components/responses/DependencyUnavailable'
+  /merchant/stats/services/top:
+    get:
+      tags:
+      - Merchant-Order
+      summary: merchantStatsServiceTop
+      operationId: merchantStatsServiceTop
+      x-contract-status: IMPLEMENTED_DEFAULT_OFF
+      x-default-enabled: false
+      x-contract: 70-Merchant-Business-Stats-Read-Contract-v0.1.md
+      x-assembly-switch: pet.order.stats.http.enabled
+      x-route-party: MERCHANT
+      x-audience: MINIAPP
+      description: 热门服务排行（70号）：周期内创建订单按 service_id 聚合，orderCount 降序、
+                serviceId 升序，limit 1..5 默认 5；serviceName 取最新快照名（可空）。
+      security:
+      - bearerAuth: []
+      parameters:
+      - $ref: '#/components/parameters/MerchantIdQuery'
+      - $ref: '#/components/parameters/StoreIdQuery'
+      - name: range
+        in: query
+        required: false
+        schema:
+          type: string
+          enum: [TODAY, LAST_7D, LAST_30D]
+      - name: limit
+        in: query
+        required: false
+        schema:
+          type: integer
+          minimum: 1
+          maximum: 5
+      responses:
+        '200':
+          description: 'Top 服务行列表。Cache-Control: no-store。'
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                enum: [no-store]
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MerchantStatsServiceTopEnvelope'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '503':
+          $ref: '#/components/responses/DependencyUnavailable'
+  /merchant/stats/revenue-trend:
+    get:
+      tags:
+      - Merchant-Order
+      summary: merchantStatsRevenueTrend
+      operationId: merchantStatsRevenueTrend
+      x-contract-status: IMPLEMENTED_DEFAULT_OFF
+      x-default-enabled: false
+      x-contract: 70-Merchant-Business-Stats-Read-Contract-v0.1.md
+      x-assembly-switch: pet.order.stats.http.enabled
+      x-route-party: MERCHANT
+      x-audience: MINIAPP
+      description: 营收趋势（70号）：UTC 日桶（TODAY 单桶、LAST_7D 7 桶、LAST_30D 30 桶），
+                空档补零；桶为 date(YYYY-MM-DD)/revenue/orderCount。
+      security:
+      - bearerAuth: []
+      parameters:
+      - $ref: '#/components/parameters/MerchantIdQuery'
+      - $ref: '#/components/parameters/StoreIdQuery'
+      - name: range
+        in: query
+        required: false
+        schema:
+          type: string
+          enum: [TODAY, LAST_7D, LAST_30D]
+      responses:
+        '200':
+          description: '日桶列表。Cache-Control: no-store。'
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                enum: [no-store]
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MerchantStatsTrendEnvelope'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '503':
+          $ref: '#/components/responses/DependencyUnavailable'
   /merchant/reviews:
     get:
       tags:
@@ -8619,6 +8958,15 @@ paths:
         schema:
           type: string
           pattern: '^[a-z][a-z0-9_-]{0,31}$'
+      - name: keyword
+        in: query
+        description: 'Search supplement (HTTP10 §3.3.2, 2026-10-19 ruling): 1..30 code
+          points after trimming; case-insensitive substring match on storeName and
+          merchantName only. Omitted means no keyword filter.'
+        schema:
+          type: string
+          minLength: 1
+          maxLength: 30
       - name: page
         in: query
         schema:
@@ -8860,6 +9208,101 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/MerErrorEnvelope'
+  /c/services:
+    get:
+      tags:
+      - Store-Catalog
+      operationId: cSearchCatalogServices
+      summary: C catalog keyword search over visible services (paginated)
+      x-implementation-status: IMPLEMENTED_DEFAULT_OFF
+      x-default-enabled: false
+      x-contract: 10-HTTP-API-Contract-v0.4.md
+      x-assembly-switch: pet.service.query.enabled
+      description: HTTP10 §3.3.3 (2026-10-19 search ruling). Same four-condition visibility
+        conjunction and projection as the per-store page; keyword (required, 1..30 code
+        points after trimming) matches serviceName/categoryName case-insensitively. Fixed
+        merchant/store/service ascending order; total counts visible rows only. Anonymous
+        GET per STR-D8; a carried bearer is validated.
+      security:
+      - {}
+      - bearerAuth: []
+      parameters:
+      - name: keyword
+        in: query
+        required: true
+        description: 1..30 code points after trimming; matched on service and category names.
+        schema:
+          type: string
+          minLength: 1
+          maxLength: 30
+      - name: page
+        in: query
+        schema:
+          type: integer
+          minimum: 1
+          maximum: 10000
+          default: 1
+      - name: pageSize
+        in: query
+        schema:
+          type: integer
+          minimum: 1
+          maximum: 50
+          default: 20
+      responses:
+        '200':
+          description: Service catalog projection (same item shape as §3.3.1); see HTTP
+            contract 10 section 3.3.3.
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                enum:
+                - no-store
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MerErrorEnvelope'
+        '400':
+          description: Invalid, duplicate or unknown arguments (blank/oversized keyword).
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                enum:
+                - no-store
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MerErrorEnvelope'
+        '401':
+          description: Carried bearer invalid or expired; anonymous requests without an
+            Authorization header are allowed (STR-D8).
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                enum:
+                - no-store
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MerErrorEnvelope'
+        '503':
+          description: Facts source failure, unknown status; whole page fails closed, never
+            an empty page.
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                enum:
+                - no-store
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MerErrorEnvelope'
+      x-route-party: USER
+      x-audience: MINIAPP
   /c/services/{serviceId}:
     get:
       tags:
@@ -9053,6 +9496,62 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/MerErrorEnvelope'
+  /c/cities:
+    get:
+      tags:
+      - Store-Catalog
+      operationId: cListOpenCities
+      summary: Open-city directory for C catalog browsing (anonymous)
+      x-implementation-status: IMPLEMENTED_DEFAULT_OFF
+      x-default-enabled: false
+      x-contract: 10-HTTP-API-Contract-v0.4.md
+      x-assembly-switch: pet.store.query.enabled
+      description: HTTP10 §3.3.4 (2026-10-19 city-selection ruling). The same trusted
+        startup catalog that bounds every store/service city filter, exposed as code/name
+        pairs only — no application data, so the read is anonymous per the STR-D8 catalog
+        discipline. Unconfigured or empty catalog fails closed 503 (never an implicit
+        "no cities"). Query is forbidden.
+      security:
+      - {}
+      responses:
+        '200':
+          description: Open-city directory (code/name pairs, server-controlled order).
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                enum:
+                - no-store
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CityListEnvelope'
+        '400':
+          description: Unknown query arguments (query is forbidden).
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                enum:
+                - no-store
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MerErrorEnvelope'
+        '503':
+          description: City catalog not configured or unavailable; fail closed.
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                enum:
+                - no-store
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MerErrorEnvelope'
+      x-route-party: USER
+      x-audience: MINIAPP
   /c/merchant-application-cities:
     get:
       tags:
@@ -10259,6 +10758,223 @@ paths:
             schema:
               $ref: '#/components/schemas/AppDecisionRequest'
       x-requires-current-claimant: true
+  /c/pets/{petId}/vaccination-records:
+    get:
+      tags:
+      - C-Pet-Health-Record
+      operationId: cListVaccinationRecords
+      summary: 本人宠物的疫苗记录列表（仅 ACTIVE）
+      x-implementation-status: IMPLEMENTED_DEFAULT_OFF
+      x-default-enabled: false
+      x-contract: 68-Pet-Health-Record-Contract-v0.1.md
+      x-assembly-switch: pet.auth.c.enabled
+      description: 68号契约（2026-10-19 裁决回补，推翻登记表 §4.11 原范围排除登记）。
+        PRD 5.1.3 疫苗记录字段表；固定排序 record_date ASC, id ASC；仅 ACTIVE。
+        归属反例（不存在/他人/已删除宠物）统一 404 PET_NOT_FOUND 防枚举；query 全禁止。
+      security:
+      - bearerAuth: []
+      parameters:
+      - $ref: '#/components/parameters/PetId'
+      responses:
+        '200':
+          description: 疫苗记录列表（无记录时空数组）
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                enum:
+                - no-store
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PetHealthRecordListEnvelope'
+        '400':
+          $ref: '#/components/responses/PetHealthRecordHttpError'
+        '401':
+          $ref: '#/components/responses/PetHealthRecordHttpError'
+        '404':
+          $ref: '#/components/responses/PetHealthRecordHttpError'
+        '500':
+          $ref: '#/components/responses/PetHealthRecordHttpError'
+        '503':
+          $ref: '#/components/responses/PetHealthRecordHttpError'
+      x-route-party: USER
+      x-audience: MINIAPP
+    post:
+      tags:
+      - C-Pet-Health-Record
+      operationId: cCreateVaccinationRecord
+      summary: 添加疫苗记录（requestId幂等，201/200，同事务审计）
+      x-implementation-status: IMPLEMENTED_DEFAULT_OFF
+      x-default-enabled: false
+      x-contract: 68-Pet-Health-Record-Contract-v0.1.md
+      x-assembly-switch: pet.auth.c.enabled
+      description: 68号契约。严格 JSON：recordDate（yyyy-MM-dd，不得晚于当天）/vaccineName
+        （1..50码点）必填；doseNumber（1..20）/nextRecordDate（不得早于 recordDate）/note
+        （≤200码点）可选；未知字段、显式 null、尾随 token 均 400。每宠每类 ACTIVE 上限
+        200 条，超出 400 PET_HEALTH_RECORD_LIMIT_EXCEEDED。幂等键
+        pet.health-record.create|USER|<userId>|USER_SELF|<requestId>；同 requestId 同参
+        重放返回首回执（200），异参 409。冻结用户 403 USER_FROZEN。每次首交成功同事务
+        写元数据审计（不含健康内容），重放不重复。
+      security:
+      - bearerAuth: []
+      parameters:
+      - $ref: '#/components/parameters/RequestId'
+      - $ref: '#/components/parameters/PetId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/VaccinationRecordUpsert'
+      responses:
+        '200':
+          description: 同 requestId 幂等重放首回执
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                enum:
+                - no-store
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PetHealthRecordEnvelope'
+        '201':
+          description: 首次创建成功
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                enum:
+                - no-store
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PetHealthRecordEnvelope'
+        '400':
+          $ref: '#/components/responses/PetHealthRecordHttpError'
+        '401':
+          $ref: '#/components/responses/PetHealthRecordHttpError'
+        '403':
+          $ref: '#/components/responses/PetHealthRecordHttpError'
+        '404':
+          $ref: '#/components/responses/PetHealthRecordHttpError'
+        '409':
+          $ref: '#/components/responses/PetHealthRecordHttpError'
+        '500':
+          $ref: '#/components/responses/PetHealthRecordHttpError'
+        '503':
+          $ref: '#/components/responses/PetHealthRecordHttpError'
+      x-route-party: USER
+      x-audience: MINIAPP
+  /c/pets/{petId}/deworming-records:
+    get:
+      tags:
+      - C-Pet-Health-Record
+      operationId: cListDewormingRecords
+      summary: 本人宠物的驱虫记录列表（仅 ACTIVE）
+      x-implementation-status: IMPLEMENTED_DEFAULT_OFF
+      x-default-enabled: false
+      x-contract: 68-Pet-Health-Record-Contract-v0.1.md
+      x-assembly-switch: pet.auth.c.enabled
+      description: 68号契约。PRD 5.1.3 驱虫记录字段表；固定排序 record_date ASC, id ASC；
+        仅 ACTIVE。归属反例统一 404 PET_NOT_FOUND 防枚举；query 全禁止。
+      security:
+      - bearerAuth: []
+      parameters:
+      - $ref: '#/components/parameters/PetId'
+      responses:
+        '200':
+          description: 驱虫记录列表（无记录时空数组）
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                enum:
+                - no-store
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PetHealthRecordListEnvelope'
+        '400':
+          $ref: '#/components/responses/PetHealthRecordHttpError'
+        '401':
+          $ref: '#/components/responses/PetHealthRecordHttpError'
+        '404':
+          $ref: '#/components/responses/PetHealthRecordHttpError'
+        '500':
+          $ref: '#/components/responses/PetHealthRecordHttpError'
+        '503':
+          $ref: '#/components/responses/PetHealthRecordHttpError'
+      x-route-party: USER
+      x-audience: MINIAPP
+    post:
+      tags:
+      - C-Pet-Health-Record
+      operationId: cCreateDewormingRecord
+      summary: 添加驱虫记录（requestId幂等，201/200，同事务审计）
+      x-implementation-status: IMPLEMENTED_DEFAULT_OFF
+      x-default-enabled: false
+      x-contract: 68-Pet-Health-Record-Contract-v0.1.md
+      x-assembly-switch: pet.auth.c.enabled
+      description: 68号契约。严格 JSON：recordDate（yyyy-MM-dd，不得晚于当天）/
+        dewormingType（EXTERNAL|INTERNAL|INTERNAL_EXTERNAL，PRD 三枚举全集）必填；
+        productName（≤50码点）/nextRecordDate（不得早于 recordDate）/note（≤200码点）
+        可选；未知字段、显式 null、尾随 token 均 400。上限/幂等/审计/冻结语义与疫苗记录
+        同（68号 §硬规则）。
+      security:
+      - bearerAuth: []
+      parameters:
+      - $ref: '#/components/parameters/RequestId'
+      - $ref: '#/components/parameters/PetId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DewormingRecordUpsert'
+      responses:
+        '200':
+          description: 同 requestId 幂等重放首回执
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                enum:
+                - no-store
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PetHealthRecordEnvelope'
+        '201':
+          description: 首次创建成功
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                enum:
+                - no-store
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PetHealthRecordEnvelope'
+        '400':
+          $ref: '#/components/responses/PetHealthRecordHttpError'
+        '401':
+          $ref: '#/components/responses/PetHealthRecordHttpError'
+        '403':
+          $ref: '#/components/responses/PetHealthRecordHttpError'
+        '404':
+          $ref: '#/components/responses/PetHealthRecordHttpError'
+        '409':
+          $ref: '#/components/responses/PetHealthRecordHttpError'
+        '500':
+          $ref: '#/components/responses/PetHealthRecordHttpError'
+        '503':
+          $ref: '#/components/responses/PetHealthRecordHttpError'
+      x-route-party: USER
+      x-audience: MINIAPP
   /c/aftersale-options:
     get:
       tags:
@@ -15499,6 +16215,13 @@ components:
       schema:
         $ref: '#/components/schemas/PublicId'
       description: 59号；非本人/不存在/已删除统一 404 ADDRESS_NOT_FOUND（防枚举）。
+    PetId:
+      name: petId
+      in: path
+      required: true
+      schema:
+        $ref: '#/components/schemas/PublicId'
+      description: 68号健康记录子路由；非本人/不存在/已删除宠物统一 404 PET_NOT_FOUND（防枚举）。
     Page:
       name: page
       in: query
@@ -15647,6 +16370,19 @@ components:
         application/json:
           schema:
             $ref: '#/components/schemas/NotificationPreferenceErrorEnvelope'
+    PetHealthRecordHttpError:
+      description: 健康记录错误（68号）；400含上限 PET_HEALTH_RECORD_LIMIT_EXCEEDED，404含
+        防枚举 PET_NOT_FOUND，409含幂等异参 IDEMPOTENCY_KEY_CONFLICT，data=null。
+      headers:
+        Cache-Control:
+          schema:
+            type: string
+            enum:
+            - no-store
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/PetHealthRecordErrorEnvelope'
     AddressHttpError:
       description: 地址簿错误（59号）；400含上限 ADDRESS_LIMIT_EXCEEDED，404含防枚举
         ADDRESS_NOT_FOUND，409含幂等异参 IDEMPOTENCY_KEY_CONFLICT，data=null。
@@ -18165,6 +18901,475 @@ components:
         total:
           type: integer
           minimum: 0
+    MerchantStoreProfileReadonlyFacts:
+      type: object
+      additionalProperties: false
+      required: [storeName, address, cityCode, phoneMasked, longitude, latitude,
+        merchantStatus, storeStatus, operatingStatus, applicationStatus]
+      properties:
+        storeName:
+          type: string
+          minLength: 1
+          maxLength: 128
+        address:
+          type: string
+          minLength: 1
+          maxLength: 255
+        cityCode:
+          type: string
+          nullable: true
+        phoneMasked:
+          type: string
+          nullable: true
+          pattern: '^1[0-9]{2}\*{4}[0-9]{4}$'
+        longitude:
+          type: string
+          nullable: true
+        latitude:
+          type: string
+          nullable: true
+        merchantStatus:
+          type: string
+          enum: [APPLYING, ACTIVE, OFFLINE, FROZEN, CANCELED]
+        storeStatus:
+          type: string
+          enum: [ACTIVE, OFFLINE, FROZEN]
+        operatingStatus:
+          type: string
+          enum: [OPERATING, OFFLINE, FROZEN]
+        applicationStatus:
+          type: string
+          nullable: true
+    MerchantStoreProfileBusinessHour:
+      type: object
+      additionalProperties: false
+      required: [days, start, end]
+      properties:
+        days:
+          type: array
+          items:
+            type: integer
+            minimum: 1
+            maximum: 7
+          minItems: 1
+          maxItems: 7
+        start:
+          type: string
+          pattern: '^([01][0-9]|2[0-3]):[0-5][0-9]$'
+        end:
+          type: string
+          pattern: '^([01][0-9]|2[0-3]):[0-5][0-9]$'
+    MerchantStoreProfileProfile:
+      type: object
+      additionalProperties: false
+      required: [intro, announcement, photoAssetIds, businessHours, promoLevel,
+        promoTitle, promoText, version]
+      properties:
+        intro:
+          type: string
+          nullable: true
+          maxLength: 500
+        announcement:
+          type: string
+          nullable: true
+          maxLength: 200
+        photoAssetIds:
+          type: array
+          maxItems: 6
+          items:
+            $ref: '#/components/schemas/PublicId'
+        businessHours:
+          type: array
+          maxItems: 7
+          items:
+            $ref: '#/components/schemas/MerchantStoreProfileBusinessHour'
+        promoLevel:
+          type: integer
+          nullable: true
+          minimum: 1
+          maximum: 9
+        promoTitle:
+          type: string
+          nullable: true
+          maxLength: 100
+        promoText:
+          type: string
+          nullable: true
+          maxLength: 100
+        version:
+          type: string
+          pattern: ^(0|[1-9][0-9]{0,18})$
+    MerchantStoreProfileData:
+      type: object
+      additionalProperties: false
+      required: [merchantId, storeId, readonly, profile]
+      properties:
+        merchantId:
+          $ref: '#/components/schemas/PublicId'
+        storeId:
+          $ref: '#/components/schemas/PublicId'
+        readonly:
+          $ref: '#/components/schemas/MerchantStoreProfileReadonlyFacts'
+        profile:
+          $ref: '#/components/schemas/MerchantStoreProfileProfile'
+    MerchantStoreProfileEnvelope:
+      type: object
+      additionalProperties: false
+      required: [success, code, message, data, traceId]
+      properties:
+        success:
+          type: boolean
+          enum: [true]
+        code:
+          type: string
+          enum: [SUCCESS]
+        message:
+          type: string
+          minLength: 1
+        data:
+          $ref: '#/components/schemas/MerchantStoreProfileData'
+        traceId:
+          type: string
+          minLength: 1
+    MerchantStoreProfileUpdateRequest:
+      type: object
+      additionalProperties: false
+      required: [merchantId, storeId, intro, announcement, photoAssetIds,
+        businessHours, promoLevel, promoTitle, promoText, expectedVersion]
+      description: 全字段替换（27号 §6.4）：所有键必须出现；显式 null 非法；文本空串清空、
+        数组空清空、promoLevel 0=未设置。
+      properties:
+        merchantId:
+          $ref: '#/components/schemas/PublicId'
+        storeId:
+          $ref: '#/components/schemas/PublicId'
+        intro:
+          type: string
+          maxLength: 500
+        announcement:
+          type: string
+          maxLength: 200
+        photoAssetIds:
+          type: array
+          maxItems: 6
+          items:
+            $ref: '#/components/schemas/PublicId'
+        businessHours:
+          type: array
+          maxItems: 7
+          items:
+            $ref: '#/components/schemas/MerchantStoreProfileBusinessHour'
+        promoLevel:
+          type: integer
+          minimum: 0
+          maximum: 9
+        promoTitle:
+          type: string
+          maxLength: 100
+        promoText:
+          type: string
+          maxLength: 100
+        expectedVersion:
+          type: string
+          pattern: ^(0|[1-9][0-9]{0,18})$
+    MerchantCustomerPet:
+      type: object
+      description: 常用宠物（名字/品种级投影，69号隐私口径）；行内 topPet 为 null 时该键
+        省略（OAS3 子集不表达 nullable ref，消费端对 null/省略等价处理）。
+      additionalProperties: false
+      required: [petName, petType, breedName]
+      properties:
+        petName:
+          type: string
+          minLength: 1
+          maxLength: 64
+        petType:
+          type: string
+          minLength: 1
+          maxLength: 32
+        breedName:
+          type: string
+          nullable: true
+    MerchantCustomerRow:
+      type: object
+      additionalProperties: false
+      required: [userId, nickname, phoneMasked, orderCount, totalSpend, avgTicket,
+        lastVisitAt]
+      properties:
+        userId:
+          $ref: '#/components/schemas/PublicId'
+        nickname:
+          type: string
+          nullable: true
+        phoneMasked:
+          type: string
+          nullable: true
+          pattern: '^1[0-9]{2}\*{4}[0-9]{4}$'
+        orderCount:
+          type: integer
+          minimum: 0
+        totalSpend:
+          type: string
+          pattern: '^[0-9]+\.[0-9]{2}$'
+        avgTicket:
+          type: string
+          nullable: true
+          pattern: '^[0-9]+\.[0-9]{2}$'
+        lastVisitAt:
+          type: string
+          nullable: true
+          format: date-time
+        topPet:
+          $ref: '#/components/schemas/MerchantCustomerPet'
+    MerchantCustomerPageData:
+      type: object
+      additionalProperties: false
+      required: [items, page, pageSize, total]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/MerchantCustomerRow'
+        page:
+          type: integer
+          minimum: 1
+        pageSize:
+          type: integer
+          minimum: 1
+          maximum: 100
+        total:
+          type: integer
+          minimum: 0
+    MerchantCustomerPageEnvelope:
+      type: object
+      additionalProperties: false
+      required: [success, code, message, data, traceId]
+      properties:
+        success:
+          type: boolean
+          enum: [true]
+        code:
+          type: string
+          enum: [SUCCESS]
+        message:
+          type: string
+          minLength: 1
+        data:
+          $ref: '#/components/schemas/MerchantCustomerPageData'
+        traceId:
+          type: string
+          minLength: 1
+    MerchantCustomerDetailData:
+      allOf:
+      - $ref: '#/components/schemas/MerchantCustomerRow'
+      - type: object
+        additionalProperties: false
+        required: [pets]
+        properties:
+          pets:
+            type: array
+            maxItems: 20
+            items:
+              $ref: '#/components/schemas/MerchantCustomerPet'
+    MerchantCustomerDetailEnvelope:
+      type: object
+      additionalProperties: false
+      required: [success, code, message, data, traceId]
+      properties:
+        success:
+          type: boolean
+          enum: [true]
+        code:
+          type: string
+          enum: [SUCCESS]
+        message:
+          type: string
+          minLength: 1
+        data:
+          $ref: '#/components/schemas/MerchantCustomerDetailData'
+        traceId:
+          type: string
+          minLength: 1
+    MerchantStatsDeltas:
+      type: object
+      additionalProperties: false
+      required: [revenue, orderCount, newCustomers, avgTicket]
+      properties:
+        revenue:
+          type: string
+          nullable: true
+          pattern: '^-?[0-9]+(\.[0-9])?$'
+        orderCount:
+          type: string
+          nullable: true
+          pattern: '^-?[0-9]+(\.[0-9])?$'
+        newCustomers:
+          type: string
+          nullable: true
+          pattern: '^-?[0-9]+(\.[0-9])?$'
+        avgTicket:
+          type: string
+          nullable: true
+          pattern: '^-?[0-9]+(\.[0-9])?$'
+    MerchantStatsOverviewData:
+      type: object
+      additionalProperties: false
+      required: [range, revenue, orderCount, newCustomers, avgTicket,
+        verifiedOrderCount, verifyRate, refundOrderCount, refundRate, repeatRate,
+        reviewAvg, deltas, generatedAt]
+      properties:
+        range:
+          type: string
+          enum: [TODAY, LAST_7D, LAST_30D]
+        revenue:
+          type: string
+          pattern: '^[0-9]+\.[0-9]{2}$'
+        orderCount:
+          type: integer
+          minimum: 0
+        newCustomers:
+          type: integer
+          minimum: 0
+        avgTicket:
+          type: string
+          nullable: true
+          pattern: '^[0-9]+\.[0-9]{2}$'
+        verifiedOrderCount:
+          type: integer
+          minimum: 0
+        verifyRate:
+          type: string
+          nullable: true
+          pattern: '^[0-9]+\.[0-9]$'
+        refundOrderCount:
+          type: integer
+          minimum: 0
+        refundRate:
+          type: string
+          nullable: true
+          pattern: '^[0-9]+\.[0-9]$'
+        repeatRate:
+          type: string
+          nullable: true
+          pattern: '^[0-9]+\.[0-9]$'
+        reviewAvg:
+          type: string
+          nullable: true
+          pattern: '^[0-5]\.[0-9]$'
+        deltas:
+          $ref: '#/components/schemas/MerchantStatsDeltas'
+        generatedAt:
+          type: string
+          format: date-time
+    MerchantStatsOverviewEnvelope:
+      type: object
+      additionalProperties: false
+      required: [success, code, message, data, traceId]
+      properties:
+        success:
+          type: boolean
+          enum: [true]
+        code:
+          type: string
+          enum: [SUCCESS]
+        message:
+          type: string
+          minLength: 1
+        data:
+          $ref: '#/components/schemas/MerchantStatsOverviewData'
+        traceId:
+          type: string
+          minLength: 1
+    MerchantStatsServiceTopData:
+      type: object
+      additionalProperties: false
+      required: [range, items]
+      properties:
+        range:
+          type: string
+          enum: [TODAY, LAST_7D, LAST_30D]
+        items:
+          type: array
+          maxItems: 5
+          items:
+            type: object
+            additionalProperties: false
+            required: [serviceId, serviceName, orderCount, revenue]
+            properties:
+              serviceId:
+                $ref: '#/components/schemas/PublicId'
+              serviceName:
+                type: string
+                nullable: true
+              orderCount:
+                type: integer
+                minimum: 0
+              revenue:
+                type: string
+                pattern: '^[0-9]+\.[0-9]{2}$'
+    MerchantStatsServiceTopEnvelope:
+      type: object
+      additionalProperties: false
+      required: [success, code, message, data, traceId]
+      properties:
+        success:
+          type: boolean
+          enum: [true]
+        code:
+          type: string
+          enum: [SUCCESS]
+        message:
+          type: string
+          minLength: 1
+        data:
+          $ref: '#/components/schemas/MerchantStatsServiceTopData'
+        traceId:
+          type: string
+          minLength: 1
+    MerchantStatsTrendData:
+      type: object
+      additionalProperties: false
+      required: [range, buckets]
+      properties:
+        range:
+          type: string
+          enum: [TODAY, LAST_7D, LAST_30D]
+        buckets:
+          type: array
+          maxItems: 30
+          items:
+            type: object
+            additionalProperties: false
+            required: [date, revenue, orderCount]
+            properties:
+              date:
+                type: string
+                pattern: '^[0-9]{4}-[0-9]{2}-[0-9]{2}$'
+              revenue:
+                type: string
+                pattern: '^[0-9]+\.[0-9]{2}$'
+              orderCount:
+                type: integer
+                minimum: 0
+    MerchantStatsTrendEnvelope:
+      type: object
+      additionalProperties: false
+      required: [success, code, message, data, traceId]
+      properties:
+        success:
+          type: boolean
+          enum: [true]
+        code:
+          type: string
+          enum: [SUCCESS]
+        message:
+          type: string
+          minLength: 1
+        data:
+          $ref: '#/components/schemas/MerchantStatsTrendData'
+        traceId:
+          type: string
+          minLength: 1
     MerchantOrderPageEnvelope:
       type: object
       additionalProperties: false
@@ -18373,6 +19578,294 @@ components:
           minLength: 1
     AftersaleDecisionRequest:
       $ref: '#/components/schemas/AfterSaleDecisionRequest'
+    VaccinationRecordUpsert:
+      type: object
+      additionalProperties: false
+      required:
+      - recordDate
+      - vaccineName
+      properties:
+        recordDate:
+          type: string
+          format: date
+          description: 接种日期；不得晚于当天（68号 §字段校验）。
+        vaccineName:
+          type: string
+          minLength: 1
+          maxLength: 50
+          description: 疫苗名称，1..50 Unicode 码点、非全空白。
+        doseNumber:
+          type: integer
+          minimum: 1
+          maximum: 20
+          description: 接种针次（PRD"展示第几针"），可省。
+        nextRecordDate:
+          type: string
+          format: date
+          description: 下次接种日期，可省；不得早于 recordDate。
+        note:
+          type: string
+          maxLength: 200
+          description: 备注，≤200 码点，可省。
+    DewormingRecordUpsert:
+      type: object
+      additionalProperties: false
+      required:
+      - recordDate
+      - dewormingType
+      properties:
+        recordDate:
+          type: string
+          format: date
+          description: 驱虫日期；不得晚于当天（68号 §字段校验）。
+        dewormingType:
+          type: string
+          enum:
+          - EXTERNAL
+          - INTERNAL
+          - INTERNAL_EXTERNAL
+          description: 体外/体内/内外同驱（PRD 三枚举全集；设计稿 96:3006 仅两枚举，按 PRD，PR 登记偏差）。
+        productName:
+          type: string
+          maxLength: 50
+          description: 产品名称，≤50 码点，可省。
+        nextRecordDate:
+          type: string
+          format: date
+          description: 下次驱虫日期，可省；不得早于 recordDate。
+        note:
+          type: string
+          maxLength: 200
+          description: 备注，≤200 码点，可省。
+    PetHealthRecordData:
+      type: object
+      additionalProperties: false
+      required:
+      - recordId
+      - petId
+      - recordType
+      - recordDate
+      - status
+      properties:
+        recordId:
+          $ref: '#/components/schemas/PublicId'
+        petId:
+          $ref: '#/components/schemas/PublicId'
+        recordType:
+          type: string
+          enum:
+          - VACCINATION
+          - DEWORMING
+        recordDate:
+          type: string
+          format: date
+        vaccineName:
+          type: string
+          maxLength: 50
+          nullable: true
+          description: 仅 VACCINATION 记录携带。
+        doseNumber:
+          type: integer
+          minimum: 1
+          maximum: 20
+          nullable: true
+          description: 仅 VACCINATION 记录携带。
+        dewormingType:
+          type: string
+          enum:
+          - EXTERNAL
+          - INTERNAL
+          - INTERNAL_EXTERNAL
+          nullable: true
+          description: 仅 DEWORMING 记录携带。
+        productName:
+          type: string
+          maxLength: 50
+          nullable: true
+          description: 仅 DEWORMING 记录携带。
+        nextRecordDate:
+          type: string
+          format: date
+          nullable: true
+        note:
+          type: string
+          maxLength: 200
+          nullable: true
+        status:
+          type: string
+          enum:
+          - ACTIVE
+          description: 68号无删除路由；恒 ACTIVE（DISABLED 为后续编辑/删除切片预留）。
+      description: 原始事实投影（设计稿"接种状态"chips 为 C 端按 nextRecordDate 派生的展示态，
+        不入库不进契约）。
+    PetHealthRecordEnvelope:
+      type: object
+      additionalProperties: false
+      required:
+      - success
+      - code
+      - message
+      - data
+      - traceId
+      properties:
+        success:
+          type: boolean
+          enum:
+          - true
+        code:
+          type: string
+          enum:
+          - SUCCESS
+        message:
+          type: string
+          minLength: 1
+        data:
+          type: object
+          additionalProperties: false
+          required:
+          - petId
+          - recordId
+          - recordType
+          - status
+          properties:
+            petId:
+              $ref: '#/components/schemas/PublicId'
+            recordId:
+              $ref: '#/components/schemas/PublicId'
+            recordType:
+              type: string
+              enum:
+              - VACCINATION
+              - DEWORMING
+            status:
+              type: string
+              enum:
+              - ACTIVE
+        traceId:
+          type: string
+          minLength: 1
+    PetHealthRecordListEnvelope:
+      type: object
+      additionalProperties: false
+      required:
+      - success
+      - code
+      - message
+      - data
+      - traceId
+      properties:
+        success:
+          type: boolean
+          enum:
+          - true
+        code:
+          type: string
+          enum:
+          - SUCCESS
+        message:
+          type: string
+          minLength: 1
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/PetHealthRecordData'
+        traceId:
+          type: string
+          minLength: 1
+    PetHealthRecordErrorEnvelope:
+      type: object
+      additionalProperties: false
+      required:
+      - success
+      - code
+      - message
+      - data
+      - traceId
+      properties:
+        success:
+          type: boolean
+          enum:
+          - false
+        code:
+          type: string
+          enum:
+          - COMMON_INVALID_ARGUMENT
+          - PET_HEALTH_RECORD_LIMIT_EXCEEDED
+          - COMMON_UNAUTHORIZED
+          - USER_FROZEN
+          - PET_NOT_FOUND
+          - COMMON_CONFLICT
+          - IDEMPOTENCY_KEY_CONFLICT
+          - COMMON_INTERNAL_ERROR
+          - COMMON_DEPENDENCY_UNAVAILABLE
+        message:
+          type: string
+          minLength: 1
+        data:
+          type: object
+          nullable: true
+          enum:
+          - null
+        traceId:
+          type: string
+          minLength: 1
+    CityListEnvelope:
+      type: object
+      additionalProperties: false
+      required:
+      - success
+      - code
+      - message
+      - data
+      - traceId
+      properties:
+        success:
+          type: boolean
+          enum:
+          - true
+        code:
+          type: string
+          enum:
+          - SUCCESS
+        message:
+          type: string
+          minLength: 1
+        data:
+          type: array
+          items:
+            type: object
+            additionalProperties: false
+            required:
+            - cityCode
+            - cityName
+            properties:
+              cityCode:
+                type: string
+                pattern: '^[a-z][a-z0-9_-]{0,31}$'
+                description: 服务端目录词法（§3.3.2 city 参数同形）。
+              cityName:
+                type: string
+                minLength: 1
+                maxLength: 64
+      description: HTTP10 §3.3.4（2026-10-19 城市选择裁决）：开放城市目录，服务端顺序原样返回。
+    OrderMerchantContact:
+      type: object
+      additionalProperties: false
+      required:
+      - phoneMasked
+      - phone
+      properties:
+        phoneMasked:
+          type: string
+          nullable: true
+          description: 展示掩码（§3.3.2 同一掩码规则）；门店无电话时为 null。
+        phone:
+          type: string
+          nullable: true
+          description: 拨号用完整号码——仅本字段出现在鉴权、本人、no-store 的 §3.7 详情读侧；
+            目录/列表读侧永不返回完整号码。门店无电话时为 null。
+      description: §3.7 联系电话增补（2026-10-19 裁决，PRD 5.1.17"点击'联系电话'：唤起系统拨号"）。
+        仅详情投影携带；门店行缺失或商家事实源故障时整节为 null（订单事实不受影响，登记的不对称降级）。
     OrderDetailData:
       type: object
       properties:
@@ -18441,6 +19934,8 @@ components:
           x-precision: milliseconds
           description: 带偏移ISO-8601；服务端拒绝非零亚毫秒，不截断或舍入。
           nullable: true
+        merchantContact:
+          $ref: '#/components/schemas/OrderMerchantContact'
         actions:
           $ref: '#/components/schemas/OrderActions'
     OrderActions:

@@ -131,4 +131,13 @@ button { padding: 0; margin: 0; border: 0; border-radius: 0; background: transpa
 .sdir-store-line text { font-size: calc(var(--svc-unit) * 11); line-height: calc(var(--svc-unit) * 16); color: #577683; }
 .sdir-more { display: block; margin: calc(var(--svc-unit) * 8) auto 0; width: max-content; padding: calc(var(--svc-unit) * 8) calc(var(--svc-unit) * 22); border: calc(var(--svc-unit) * 1) solid #c0ecff; border-radius: calc(var(--svc-unit) * 100); color: #3185ba; font-size: calc(var(--svc-unit) * 12); }
 .sdir-notice { display: block; margin-top: calc(var(--svc-unit) * 12); font-size: calc(var(--svc-unit) * 12); line-height: calc(var(--svc-unit) * 18); color: #402e26; }
+/* 搜索件 + 城市锚点（2026-10-19 C 端接线；77:1267 词汇 + 76:761 面板）。WXSS 铁律：
+   button 复合选择器压原生重置，状态仅 className 变体。 */
+.sdir-city-anchor { position: absolute; left: 50%; transform: translateX(-50%); top: calc(var(--svc-unit) * 42); z-index: 30; }
+.sdir-city-anchor .sdir-city { position: static; transform: none; }
+.sdir-search { display: flex; align-items: center; gap: calc(var(--svc-unit) * 8); margin-bottom: calc(var(--svc-unit) * 16); }
+.sdir-search .sdir-search-input { flex: 1; height: calc(var(--svc-unit) * 38); padding: 0 calc(var(--svc-unit) * 14); background: #fff; border: calc(var(--svc-unit) * 1) solid #c0ecff; border-radius: calc(var(--svc-unit) * 19); font-size: calc(var(--svc-unit) * 13); color: #1d0d07; }
+.sdir-search .sdir-search-placeholder { color: #9bb3bd; }
+.sdir-search .sdir-search-button { flex: none; width: calc(var(--svc-unit) * 64); height: calc(var(--svc-unit) * 38); border-radius: calc(var(--svc-unit) * 19); background: #5baae8; color: #ffffff; font-size: calc(var(--svc-unit) * 13); font-weight: 600; line-height: calc(var(--svc-unit) * 38); text-align: center; padding: 0; }
+.sdir-search .sdir-search-clear { flex: none; color: #3185ba; font-size: calc(var(--svc-unit) * 12); padding: 0 calc(var(--svc-unit) * 4); background: transparent; border: none; line-height: calc(var(--svc-unit) * 38); }
 .sdir-tail { margin-top: calc(var(--svc-unit) * 18); font-size: calc(var(--svc-unit) * 10); line-height: calc(var(--svc-unit) * 15); color: #9bb3bd; text-align: center; }

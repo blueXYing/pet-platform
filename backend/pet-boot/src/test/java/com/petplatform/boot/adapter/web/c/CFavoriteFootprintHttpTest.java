@@ -100,6 +100,12 @@ class CFavoriteFootprintHttpTest {
         }
 
         @Override
+        public com.petplatform.service.api.dto.ServiceSnapshotPageDTO searchVisibleServices(
+                com.petplatform.service.api.query.CatalogServiceSearchQuery query) {
+            throw new UnsupportedOperationException();
+        }
+
+        @Override
         public com.petplatform.service.api.dto.ServiceBookabilityDTO checkBookable(
                 com.petplatform.service.api.query.ServiceBookabilityQuery query) {
             throw new UnsupportedOperationException();
