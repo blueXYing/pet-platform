@@ -54,19 +54,23 @@ class AccountDeletionMySqlTest {
 
         FakeFacts(List<String> ownerStores) { this.ownerStores = ownerStores; }
 
-        @Override public boolean userHasBlockingOrder(UserDeletionFactQuery query) {
+        @Override public boolean userHasBlockingOrder(
+                OrderDeletionFactsApi.UserDeletionFactQuery query) {
             return userOrdersBlocking;
         }
 
-        @Override public boolean storesHaveBlockingOrder(StoreDeletionFactQuery query) {
+        @Override public boolean storesHaveBlockingOrder(
+                OrderDeletionFactsApi.StoreDeletionFactQuery query) {
             return storeOrdersBlocking;
         }
 
-        @Override public boolean userHasOpenCase(UserDeletionFactQuery query) {
+        @Override public boolean userHasOpenCase(
+                AfterSaleDeletionFactsApi.UserDeletionFactQuery query) {
             return userCasesOpen;
         }
 
-        @Override public boolean storesHaveOpenCase(StoreDeletionFactQuery query) {
+        @Override public boolean storesHaveOpenCase(
+                AfterSaleDeletionFactsApi.StoreDeletionFactQuery query) {
             return storeCasesOpen;
         }
     }
@@ -147,14 +151,14 @@ class AccountDeletionMySqlTest {
             assertTrue(replay.replayed());
             assertEquals(outcome.receipt().deletedAt(), replay.receipt().deletedAt());
             assertEquals(1, db.jdbc.queryForObject(
-                    "SELECT COUNT(*) FROM user_deletion_request", Integer.class, USER));
+                    "SELECT COUNT(*) FROM user_deletion_request", Integer.class));
 
             // A different requestId on the canceled account conflicts (no second row).
             ApiException conflict = assertThrows(ApiException.class,
                     () -> service.deleteAccount(command(USER, UUID.randomUUID().toString())));
             assertEquals("COMMON_CONFLICT", conflict.code());
             assertEquals(1, db.jdbc.queryForObject(
-                    "SELECT COUNT(*) FROM user_deletion_request", Integer.class, USER));
+                    "SELECT COUNT(*) FROM user_deletion_request", Integer.class));
         }
     }
 
@@ -172,7 +176,7 @@ class AccountDeletionMySqlTest {
             assertEquals("ACTIVE", db.jdbc.queryForObject(
                     "SELECT status FROM user_account WHERE id=?", String.class, USER));
             assertEquals(0, db.jdbc.queryForObject(
-                    "SELECT COUNT(*) FROM user_deletion_request", Integer.class, USER));
+                    "SELECT COUNT(*) FROM user_deletion_request", Integer.class));
 
             // The blocker clears; the same account can still delete under a fresh requestId.
             facts.userOrdersBlocking = false;
@@ -182,7 +186,7 @@ class AccountDeletionMySqlTest {
             assertEquals("CANCELED", db.jdbc.queryForObject(
                     "SELECT status FROM user_account WHERE id=?", String.class, USER));
             assertEquals(1, db.jdbc.queryForObject(
-                    "SELECT COUNT(*) FROM user_deletion_request", Integer.class, USER));
+                    "SELECT COUNT(*) FROM user_deletion_request", Integer.class));
         }
     }
 
@@ -196,11 +200,11 @@ class AccountDeletionMySqlTest {
             assertEquals("USER_FROZEN", frozen.code());
 
             // Non-USER operator contexts never reach the kernel body.
-            CommandContext merchantContext = new CommandContext(UUID.randomUUID().toString(),
-                    "trace", OperatorType.MERCHANT, "7100", "M_WEB");
+            CommandContext staffContext = new CommandContext(UUID.randomUUID().toString(),
+                    "trace", OperatorType.MERCHANT_STAFF, "7100", "M_WEB");
             assertThrows(IllegalArgumentException.class,
                     () -> service.deleteAccount(new AccountDeletionService.DeleteAccountCommand(
-                            merchantContext, true)));
+                            staffContext, true)));
 
             // acknowledged=false is a plain 400 before any binding is created.
             ApiException notAcknowledged = assertThrows(ApiException.class,

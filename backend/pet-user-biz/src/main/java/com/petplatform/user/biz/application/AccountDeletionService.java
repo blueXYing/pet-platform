@@ -3,6 +3,7 @@ package com.petplatform.user.biz.application;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.petplatform.common.ApiException;
 import com.petplatform.common.CommandContext;
+import com.petplatform.common.CommonApiCodes;
 import com.petplatform.common.OperatorType;
 import com.petplatform.common.PublicContractChecks;
 import com.petplatform.common.QueryContext;
@@ -226,7 +227,7 @@ public final class AccountDeletionService {
     }
 
     private String isoNow() {
-        return java.time.format.DateTimeFormatterBuilder().appendInstant(3).toFormatter()
+        return new java.time.format.DateTimeFormatterBuilder().appendInstant(3).toFormatter()
                 .format(clock.instant());
     }
 }

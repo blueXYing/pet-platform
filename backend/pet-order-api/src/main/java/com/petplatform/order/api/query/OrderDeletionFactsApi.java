@@ -1,5 +1,7 @@
 package com.petplatform.order.api.query;
 
+import java.util.List;
+
 /**
  * Read-only cross-domain fact port: whether the caller-named subject still has orders that
  * block account deletion (contract 66 / PRD 5.1.29 precheck; CCR-USR-DELETION-001). The
