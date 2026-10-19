@@ -150,6 +150,28 @@ test('detail decoder fails closed on contract violations', () => {
   assert.throws(() => decodeOrderDetail(withFields(wireDetail, { actions: actionsWithout('canReview') })), /INVALID_RESPONSE/)
 })
 
+test('detail decoder reads the §3.7 merchantContact section and fails closed on malformed shapes', () => {
+  // 登记增补（2026-10-19 裁决）：{phoneMasked, phone} 双键、可独立 null；缺失整节按 null 读。
+  const withContact = decodeOrderDetail(withFields(JSON.parse(JSON.stringify(wireDetail)),
+    { merchantContact: { phoneMasked: '021-****-1234', phone: '021-6888-1234' } }))
+  assert.equal(withContact.merchantContact && withContact.merchantContact.phone, '021-6888-1234')
+  const nullBoth = decodeOrderDetail(withFields(JSON.parse(JSON.stringify(wireDetail)),
+    { merchantContact: { phoneMasked: null, phone: null } }))
+  assert.equal(nullBoth.merchantContact && nullBoth.merchantContact.phoneMasked, null)
+  for (const bad of [
+    { phoneMasked: '021-****-1234' },                       // 缺 phone 键
+    { phone: null },                                        // 缺 phoneMasked 键
+    { phoneMasked: 21, phone: null },                       // 类型错
+    { phoneMasked: null, phone: null, storeName: 'x' },     // 契约外键
+  ]) {
+    assert.throws(() => decodeOrderDetail(withFields(JSON.parse(JSON.stringify(wireDetail)),
+      { merchantContact: bad })), /INVALID_RESPONSE/, JSON.stringify(bad))
+  }
+  assert.throws(() => decodeOrderDetail(withFields(JSON.parse(JSON.stringify(wireDetail)),
+    { merchantContact: '021-6888-1234' })), /INVALID_RESPONSE/) // 非对象
+  assert.equal(decodeOrderDetail(JSON.parse(JSON.stringify(wireDetail))).merchantContact, null) // 缺省=null
+})
+
 test('page decoder enforces the paging envelope and rejects oversized item arrays', () => {
   const item = JSON.parse(JSON.stringify(wireDetail))
   const decoded = decodeOrderPage({ items: [item, item], page: 1, pageSize: 20, total: 2 })

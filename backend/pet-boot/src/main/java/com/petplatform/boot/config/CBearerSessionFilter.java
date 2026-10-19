@@ -115,6 +115,7 @@ public final class CBearerSessionFilter extends OncePerRequestFilter {
         || path.startsWith("/api/v1/c/services/");
   }
 
+
   /**
    * STR-D8 (store-read v0.2, PRD "all users browse"): the four browse routes accept an anonymous
    * GET. A request without an Authorization header passes through anonymously; a carried bearer is
@@ -123,7 +124,10 @@ public final class CBearerSessionFilter extends OncePerRequestFilter {
    */
   static boolean optionalSessionPath(String path, String method) {
     if (!"GET".equals(method)) return false;
-    return path.equals("/api/v1/c/stores")
+    return path.equals("/api/v1/c/services")
+        // C catalog keyword search (HTTP10 §3.3.3, 2026-10-19 search ruling): same STR-D8
+        // discipline as the per-store page — anonymous GET passes, a carried bearer validates.
+        || path.equals("/api/v1/c/stores")
         || path.matches("/api/v1/c/stores/[^/]+")
         || path.matches("/api/v1/c/stores/[^/]+/services")
         || path.matches("/api/v1/c/services/[^/]+")

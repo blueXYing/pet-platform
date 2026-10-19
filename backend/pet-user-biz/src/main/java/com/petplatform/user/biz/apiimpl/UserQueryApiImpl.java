@@ -9,6 +9,7 @@ import com.petplatform.user.api.query.UserIdQuery;
 import com.petplatform.user.api.query.UserQueryApi;
 import com.petplatform.user.biz.application.PetService;
 import com.petplatform.user.biz.infrastructure.persistence.PetStore;
+import java.util.List;
 import java.util.Objects;
 import javax.sql.DataSource;
 
@@ -40,6 +41,21 @@ public final class UserQueryApiImpl implements UserQueryApi {
         }
         return new PetSnapshotDTO(Long.toUnsignedString(pet.id()), Long.toUnsignedString(pet.userId()),
                 pet.name(), pet.petType(), pet.breedName(), pet.sex(), pet.weightKg(), pet.healthNote());
+    }
+
+    @Override
+    public List<UserBasicDTO> listUsers(UserQueryApi.UserBasicsQuery query) {
+        Objects.requireNonNull(query, "query is required");
+        if (query.userIds() == null || query.userIds().isEmpty() || query.userIds().size() > 200) {
+            throw new IllegalArgumentException("userIds must hold 1..200 ids");
+        }
+        List<Long> ids = query.userIds().stream().map(id -> PetService.numericId(id, "userId")).toList();
+        List<UserBasicDTO> out = new java.util.ArrayList<>(ids.size());
+        for (PetStore.UserRow user : store.findUsers(ids)) {
+            out.add(new UserBasicDTO(Long.toUnsignedString(user.id()), mask(user.phone()),
+                    user.nickname(), UserStatus.valueOf(user.status())));
+        }
+        return List.copyOf(out);
     }
 
     @Override

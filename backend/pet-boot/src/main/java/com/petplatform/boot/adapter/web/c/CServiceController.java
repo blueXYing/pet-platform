@@ -10,6 +10,7 @@ import com.petplatform.common.OperatorType;
 import com.petplatform.common.QueryContext;
 import com.petplatform.service.api.dto.ServiceSnapshotDTO;
 import com.petplatform.service.api.dto.ServiceSnapshotPageDTO;
+import com.petplatform.service.api.query.CatalogServiceSearchQuery;
 import com.petplatform.service.api.query.ServiceSnapshotQuery;
 import com.petplatform.service.api.query.StoreServiceSnapshotQuery;
 import com.petplatform.service.biz.apiimpl.ServiceQueryApiImpl;
@@ -27,12 +28,12 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 /**
- * GET /api/v1/c/stores/{storeId}/services and GET /api/v1/c/services/{serviceId}
- * (CCR-W2-API-001 service domain, HTTP10 3.3.1). Visibility = the approved four-condition
- * conjunction; hidden or missing resources answer 404 indistinguishably, facts failures 503.
- * Session is optional per the store-read STR-D8 ruling (PRD "all users browse"): anonymous GET
- * passes, an invalid carried bearer still 401s, and the optional subject never changes
- * visibility.
+ * GET /api/v1/c/stores/{storeId}/services, GET /api/v1/c/services/{serviceId} and
+ * GET /api/v1/c/services (keyword search; CCR-W2-API-001 service domain, HTTP10 3.3.1/3.3.3).
+ * Visibility = the approved four-condition conjunction; hidden or missing resources answer 404
+ * indistinguishably, facts failures 503. Session is optional per the store-read STR-D8 ruling
+ * (PRD "all users browse"): anonymous GET passes, an invalid carried bearer still 401s, and the
+ * optional subject never changes visibility.
  */
 @RestController
 @ConditionalOnProperty(prefix = "pet.service.query", name = "enabled", havingValue = "true")
@@ -64,6 +65,34 @@ public class CServiceController {
                                 parse(page, 1, 10_000, "page"),
                                 parse(pageSize, 20, 50, "pageSize"),
                                 context));
+        Map<String, Object> data = new LinkedHashMap<>();
+        data.put("items", value.items().stream().map(CServiceController::summary).toList());
+        data.put("page", value.page());
+        data.put("pageSize", value.pageSize());
+        data.put("total", value.total());
+        return ApiResponse.success(data, trace(req));
+    }
+
+    /**
+     * HTTP10 §3.3.3 C catalog keyword search (2026-10-19 ruling): same projection as the
+     * per-store page, matched on serviceName/categoryName by the service domain; the caller
+     * narrows results with the keyword (1..30 code points after trimming) and pages over the
+     * honest visible total.
+     */
+    @GetMapping("/api/v1/c/services")
+    public ApiResponse<Map<String, Object>> search(
+            @RequestParam(required = false) String keyword,
+            @RequestParam(required = false) String page,
+            @RequestParam(required = false) String pageSize,
+            HttpServletRequest req) {
+        rejectUnknownParameters(req, "keyword");
+        ServiceSnapshotPageDTO value =
+                services.searchVisibleServices(
+                        new CatalogServiceSearchQuery(
+                                requiredKeyword(keyword),
+                                parse(page, 1, 10_000, "page"),
+                                parse(pageSize, 20, 50, "pageSize"),
+                                context(req)));
         Map<String, Object> data = new LinkedHashMap<>();
         data.put("items", value.items().stream().map(CServiceController::summary).toList());
         data.put("page", value.page());
@@ -124,6 +153,15 @@ public class CServiceController {
         return new QueryContext(trace(req), null, null);
     }
 
+    /** §3.3.3 keyword: required on this route, 1..30 code points after trimming. */
+    private static String requiredKeyword(String raw) {
+        String trimmed = raw == null ? "" : raw.strip();
+        if (trimmed.isEmpty() || trimmed.codePointCount(0, trimmed.length()) > 30) {
+            throw invalid("keyword");
+        }
+        return trimmed;
+    }
+
     private static int parse(String raw, int fallback, int max, String field) {
         if (raw == null || raw.isEmpty()) return fallback;
         if (!raw.matches("[0-9]{1,5}")) throw invalid(field);
@@ -132,13 +170,15 @@ public class CServiceController {
         return value;
     }
 
-    private static void rejectUnknownParameters(HttpServletRequest req) {
-        for (String name : new String[] {"page", "pageSize"}) {
+    private static void rejectUnknownParameters(HttpServletRequest req, String... extra) {
+        java.util.Set<String> known = new java.util.HashSet<>(java.util.Set.of("page", "pageSize"));
+        known.addAll(java.util.Arrays.asList(extra));
+        for (String name : known) {
             String[] values = req.getParameterValues(name);
             if (values != null && values.length > 1) throw invalid(name);
         }
         for (String name : req.getParameterMap().keySet()) {
-            if (!"page".equals(name) && !"pageSize".equals(name)) throw invalid(name);
+            if (!known.contains(name)) throw invalid(name);
         }
     }
 

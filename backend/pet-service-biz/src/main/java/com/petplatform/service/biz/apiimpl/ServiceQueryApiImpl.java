@@ -44,4 +44,10 @@ public final class ServiceQueryApiImpl implements ServiceQueryApi {
     public ServiceSnapshotDTO getVisibleService(ServiceSnapshotQuery query) {
         return service.visibleService(query);
     }
+
+    @Override
+    public ServiceSnapshotPageDTO searchVisibleServices(
+            com.petplatform.service.api.query.CatalogServiceSearchQuery query) {
+        return service.catalogSearch(query);
+    }
 }

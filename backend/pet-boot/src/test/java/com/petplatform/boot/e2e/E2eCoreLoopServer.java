@@ -154,6 +154,12 @@ public final class E2eCoreLoopServer {
       throw new IllegalArgumentException("Dedicated local Redis is required");
     }
     int port = Integer.parseInt(System.getenv().getOrDefault("E2E_PORT", "18081"));
+    // E2E_BIND (QA-only seam, 2026-10-19 real-device walkthrough): optional bind-address
+    // override. The default stays 127.0.0.1 — loopback-only, behavior unchanged for every
+    // existing run; setting E2E_BIND=0.0.0.0 exposes the port on the LAN so the WeChat
+    // DevTools PHONE simulator can reach this backend (the desktop simulator talks loopback
+    // either way). No other boot property changes with it.
+    String bindAddress = System.getenv().getOrDefault("E2E_BIND", "127.0.0.1");
     int nodeId = Integer.parseInt(System.getenv().getOrDefault("E2E_SNOWFLAKE_NODE", "23"));
     Path directory = Files.createDirectories(Path.of(System.getenv()
         .getOrDefault("E2E_RUNTIME_DIR", "D:/Temp/e2e-core-loop")));
@@ -431,7 +437,7 @@ public final class E2eCoreLoopServer {
                     });
               })
               .run(
-                  "--server.address=127.0.0.1",
+                  "--server.address=" + bindAddress,
                   "--server.port=" + port,
                   "--spring.flyway.enabled=false",
                   "--spring.main.banner-mode=off",
@@ -613,7 +619,7 @@ public final class E2eCoreLoopServer {
               + "adminOrigin=" + ADMIN_ORIGIN + System.lineSeparator(),
           StandardCharsets.UTF_8);
       System.out.println("E2E_CORE_LOOP result=READY endpoint=" + endpoint
-          + " database=" + name + " metadata=" + metadata);
+          + " bind=" + bindAddress + " database=" + name + " metadata=" + metadata);
       // Round-2 walkthrough facts: driven through the real loopback HTTP chain (the same
       // requests the pages issue), never raw SQL. Failures only log — the server itself stays
       // up and the manual core-loop regression remains fully walkable. Skipped on reuse.

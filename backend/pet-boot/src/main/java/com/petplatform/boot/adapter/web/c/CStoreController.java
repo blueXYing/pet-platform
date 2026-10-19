@@ -63,6 +63,7 @@ public class CStoreController {
     @GetMapping("/api/v1/c/stores")
     public ApiResponse<Map<String, Object>> list(
             @RequestParam(required = false) String city,
+            @RequestParam(required = false) String keyword,
             @RequestParam(required = false) String page,
             @RequestParam(required = false) String pageSize,
             HttpServletRequest req) {
@@ -72,6 +73,7 @@ public class CStoreController {
                 stores.pageDisplayStores(
                         new MerchantStoreDisplayPageQuery(
                                 cityCodes,
+                                keyword(keyword),
                                 parse(page, 1, 10_000, "page"),
                                 parse(pageSize, 20, 50, "pageSize"),
                                 context(req)));
@@ -100,6 +102,20 @@ public class CStoreController {
             throw missing;
         }
         return ApiResponse.success(view(value), trace(req));
+    }
+
+    /**
+     * HTTP10 §3.3.2 search supplement (2026-10-19 ruling): optional keyword, 1..30 code points
+     * after trimming; an absent parameter stays absent (no filter), a blank-only value is 400
+     * (the caller clears the search instead of sending spaces).
+     */
+    private static String keyword(String raw) {
+        if (raw == null) return null;
+        String trimmed = raw.strip();
+        if (trimmed.isEmpty() || trimmed.codePointCount(0, trimmed.length()) > 30) {
+            throw invalid("keyword");
+        }
+        return trimmed;
     }
 
     /**
@@ -157,12 +173,13 @@ public class CStoreController {
     }
 
     private static void rejectUnknownParameters(HttpServletRequest req) {
-        for (String name : new String[] {"city", "page", "pageSize"}) {
+        for (String name : new String[] {"city", "keyword", "page", "pageSize"}) {
             String[] values = req.getParameterValues(name);
             if (values != null && values.length > 1) throw invalid(name);
         }
         for (String name : req.getParameterMap().keySet()) {
-            if (!"city".equals(name) && !"page".equals(name) && !"pageSize".equals(name)) {
+            if (!"city".equals(name) && !"keyword".equals(name)
+                    && !"page".equals(name) && !"pageSize".equals(name)) {
                 throw invalid(name);
             }
         }

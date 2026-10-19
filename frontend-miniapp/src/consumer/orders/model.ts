@@ -62,14 +62,20 @@ export type OrderDetailView = Readonly<{
   serviceId: string | null
   storeId: string | null
   orderVersion: string | null
+  // §3.7 联系电话增补（2026-10-19 裁决，PRD 5.1.17 唤起拨号）：商家业务电话，掩码展示 +
+  // 完整号码拨号（仅详情读侧携带）；门店无电话/商家事实不可用时为 null（登记的不对称降级）。
+  merchantContact: MerchantContact | null
 }>
+
+/** §3.7 merchantContact 节：phoneMasked 展示、phone 拨号；两者可独立为 null（门店无电话）。 */
+export type MerchantContact = Readonly<{ phoneMasked: string | null; phone: string | null }>
 
 /** 分页信封沿 C 端既有分页契约惯例（CouponInstancePageData/PointsLedgerPageData 同构）。 */
 export type OrderPage = Readonly<{ items: readonly OrderDetailView[]; page: number; pageSize: number; total: number }>
 
 const invalid = (): never => { throw new Error('INVALID_RESPONSE') }
 /** OrderDetailData 全键集合（11号 schema）：exact-key 白名单。 */
-const orderDetailKeys = ['actions', 'afterSaleStatus', 'appointmentEnd', 'appointmentStart', 'displayStatus', 'orderId',
+const orderDetailKeys = ['actions', 'afterSaleStatus', 'appointmentEnd', 'appointmentStart', 'displayStatus', 'merchantContact', 'orderId',
   'orderNo', 'orderStage', 'orderVersion', 'payAmount', 'paymentStatus', 'refundApplicationStatus', 'refundStatus',
   'serviceId', 'storeId', 'verifiedAt', 'verificationStatus']
 /** 严格 exact-key：只允许 OrderDetailData 键集合，未知键失败关闭（沿仓库惯例）。 */
@@ -152,7 +158,21 @@ export function decodeOrderDetail(value: unknown): OrderDetailView {
     serviceId: optionalField(v, 'serviceId', isIdText),
     storeId: optionalField(v, 'storeId', isIdText),
     orderVersion: optionalField(v, 'orderVersion', x => typeof x === 'string' && /^(0|[1-9][0-9]{0,18})(?![\s\S])/.test(x) ? x : invalid()),
+    merchantContact: optionalField(v, 'merchantContact', decodeMerchantContact),
   }
+}
+
+/** §3.7 merchantContact 解码：exact-key 双键，值可为 null 但类型必须正确。 */
+function decodeMerchantContact(value: unknown): MerchantContact {
+  const v = objectLike(value)
+  for (const key of Object.keys(v)) if (key !== 'phoneMasked' && key !== 'phone') invalid()
+  if (!('phoneMasked' in v) || !('phone' in v)) invalid()
+  const phoneText = (x: any): string | null => {
+    if (x === null) return null
+    if (typeof x !== 'string' || x.length < 1 || x.length > 32) invalid()
+    return x
+  }
+  return { phoneMasked: phoneText(v.phoneMasked), phone: phoneText(v.phone) }
 }
 
 function decodePageNumbers(v: Record<string, any>): { page: number; pageSize: number; total: number } {
@@ -308,7 +328,7 @@ type Fixture = (Partial<OrderDetailView> & Pick<OrderDetailView, 'orderId' | 'or
 const base = (over: Fixture): OrderDetailView => ({
   orderStage: null, paymentStatus: null, verificationStatus: null, refundApplicationStatus: null,
   refundStatus: null, afterSaleStatus: null, verifiedAt: null, actions: null,
-  serviceId: null, storeId: null, orderVersion: null, ...over,
+  serviceId: null, storeId: null, orderVersion: null, merchantContact: null, ...over,
 })
 
 // 十个 displayStatus 全覆盖 + 一单一事实：核销码入口（PENDING_SERVICE+canShowVerificationCode）、
@@ -322,9 +342,11 @@ const normalOrders: readonly OrderDetailView[] = [
     actions: { canPay: false, canReschedule: false, canApplyRefund: true, canShowVerificationCode: false, canReview: false, canApplyAfterSale: false } }),
   // 核销码入口样例：已支付待服务、未核销，服务端返回 canShowVerificationCode=true。
   // §3.8 改期切片：同一样例单也是改期入口样例（canReschedule=true + 读侧增补三事实）。
+  // §3.7 联系电话增补：同一样例单也是拨号入口样例（设计稿 129:11378 面板，样例号段 400-xxx）。
   base({ orderId: PREVIEW_VERIFY_ORDER, orderNo: '2026100100003', displayStatus: 'PENDING_SERVICE', payAmount: '80.00',
     appointmentStart: at(12, 14, 0), appointmentEnd: at(12, 15, 0), orderStage: 'PENDING_SERVICE', paymentStatus: 'PAID',
     verificationStatus: 'UNVERIFIED', serviceId: PREVIEW_BOOKING_SERVICE_ID, storeId: PREVIEW_BOOKING_STORE_ID, orderVersion: '0',
+    merchantContact: { phoneMasked: '021-****-1234', phone: '021-6888-1234' },
     actions: { canPay: false, canReschedule: true, canApplyRefund: true, canShowVerificationCode: true, canReview: false, canApplyAfterSale: false } }),
   base({ orderId: '900101001990004', orderNo: '2026100100004', displayStatus: 'COMPLETED', payAmount: '156.00',
     appointmentStart: at(6, 10, 0), appointmentEnd: at(6, 12, 0), orderStage: 'COMPLETED', paymentStatus: 'PAID',

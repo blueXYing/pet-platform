@@ -385,6 +385,26 @@ class CStoreControllerHttpTest {
     assertEquals(200, cityList.status(), cityList.redacted());
     assertEquals(list.data().get("total"), cityList.data().get("total"));
 
+    // §3.3.2 keyword 搜索增补（2026-10-19 裁决）：门店名/商家名大小写不敏感子串；与 city 可组合；
+    // 未命中=200 空页（与 503 严格区分）；超长 keyword 400；keyword 不改变九字段投影与排序。
+    Reply keywordAll = send("GET", "/api/v1/c/stores?keyword=%E8%90%8C%E5%AE%A0", null, bearer(token));
+    assertEquals(200, keywordAll.status(), keywordAll.redacted());
+    assertEquals(2L, ((Number) keywordAll.data().get("total")).longValue(), "两店名都含 萌宠");
+    Reply keywordOne = send("GET", "/api/v1/c/stores?keyword=%E9%AB%98%E6%96%B0", null, bearer(token));
+    assertEquals(1L, ((Number) keywordOne.data().get("total")).longValue(), "只有高新分店命中");
+    assertEquals(String.valueOf(storeIdBig),
+        str(map(((List<?>) keywordOne.data().get("items")).get(0)), "storeId"));
+    Reply keywordAndCity = send("GET", "/api/v1/c/stores?keyword=%E8%90%8C%E5%AE%A0&city=chengdu", null, bearer(token));
+    assertEquals(2L, ((Number) keywordAndCity.data().get("total")).longValue());
+    assertTrue(((List<?>) send("GET", "/api/v1/c/stores?keyword=%E4%B8%8D%E5%AD%98%E5%9C%A8", null, bearer(token))
+            .data().get("items")).isEmpty(), "未命中=200 空页");
+    assertEquals(400, send("GET", "/api/v1/c/stores?keyword=" + "%E8%B6%85".repeat(31), null, bearer(token)).status(),
+        "31 code points over the bound");
+    assertEquals(200, send("GET", "/api/v1/c/stores?keyword=" + "%E8%B6%85".repeat(30), null, bearer(token)).status(),
+        "exactly 30 code points stays legal");
+    assertEquals(400, send("GET", "/api/v1/c/stores?keyword=%20", null, bearer(token)).status(),
+        "blank-only keyword is rejected (caller clears the search instead)");
+
     // P2: numeric ordering (small id first although the second id has an extra digit), paging,
     // honest total on the far page.
     Reply pageOne = send("GET", "/api/v1/c/stores?pageSize=1&page=1", null, bearer(token));
@@ -434,7 +454,8 @@ class CStoreControllerHttpTest {
             "city=Abc",
             "city=",
             "sort=distance",
-            "keyword=meng",
+            // keyword graduated to a supported parameter (§3.3.2 supplement 2026-10-19);
+            // its own bound/blank rejections are pinned in the keyword block above.
             "categoryId=1",
             "page=0",
             "pageSize=51",
@@ -535,7 +556,7 @@ class CStoreControllerHttpTest {
     assertEquals(
         String.valueOf(storeId),
         display
-            .pageDisplayStores(new MerchantStoreDisplayPageQuery(List.of("chengdu"), 1, 20, otherCtx))
+            .pageDisplayStores(new MerchantStoreDisplayPageQuery(List.of("chengdu"), null, 1, 20, otherCtx))
             .items()
             .get(0)
             .storeId());

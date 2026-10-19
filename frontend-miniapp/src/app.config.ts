@@ -36,8 +36,13 @@ export default defineAppConfig({
       'pages/order-list/index', 'pages/order-confirm/index',
       // Review appeal M face (56号 / REV-002, one compact line per the app.config convention):
       // OWNER review list with the one-appeal-per-review entry and status overlay.
-      'pages/reviews/index'] },
-    { root: 'consumer/pages/pet-archive', pages: ['index', 'detail', 'form'] },
+      'pages/reviews/index',
+      // M-side finish slice (27 §6.4 store profile / 69 derived customers / 70 stats, switches
+      // default OFF server-side): shop info form, customer list + detail, stats dashboard.
+      'pages/shop-info/index', 'pages/customers/index', 'pages/customers/detail', 'pages/stats/index'] },
+    // Contract 68 (2026-10-19 ruling): vaccine/deworming record add forms ride the pet-archive
+    // subpackage (the two design frames 96:2580/96:3006), one compact line per the convention.
+    { root: 'consumer/pages/pet-archive', pages: ['index', 'detail', 'form', 'vaccine-form', 'deworm-form'] },
     { root: 'consumer/pages/merchant-application', pages: ['index', 'signing'] },
     { root: 'consumer/pages/store-services', pages: ['index', 'service-detail', 'stores'] },
     { root: 'consumer/pages/coupon-points', pages: ['coupons', 'coupon-detail', 'points'] },

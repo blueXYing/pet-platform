@@ -1,0 +1,26 @@
+package com.petplatform.merchant.api.command;
+
+import com.petplatform.common.CommandContext;
+import com.petplatform.merchant.api.dto.MerchantStoreProfileDTO;
+import java.util.List;
+
+/**
+ * Full-replace store profile update (contract 27 §6.4 supplement, command
+ * {@code merchant.store.profile.update}). Every editable field participates in the replace:
+ * an omitted JSON key clears the field, an explicit JSON null is 400. The write gate is the
+ * staff-write family (real OWNER + merchant/store ACTIVE + APPROVED application + signed
+ * agreement) and the command rides the supplement-23 idempotency binding with the
+ * expectedVersion optimistic lock.
+ */
+public record UpdateStoreProfileCommand(
+        String merchantId,
+        String storeId,
+        String intro,
+        String announcement,
+        List<String> photoAssetIds,
+        List<MerchantStoreProfileDTO.BusinessHour> businessHours,
+        Integer promoLevel,
+        String promoTitle,
+        String promoText,
+        String expectedVersion,
+        CommandContext context) {}

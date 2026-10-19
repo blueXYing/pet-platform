@@ -1,6 +1,8 @@
 package com.petplatform.order.biz.infrastructure.persistence;
 
 import com.petplatform.order.biz.infrastructure.persistence.mapper.OrderQueryMapper;
+import com.petplatform.order.biz.infrastructure.persistence.mapper.OrderQueryMerchantReadMapper;
+import java.util.function.BiFunction;
 import java.util.Objects;
 import java.util.function.Function;
 import javax.sql.DataSource;
@@ -33,7 +35,7 @@ public final class OrderQueryStore {
             configuration.setLocalCacheScope(LocalCacheScope.STATEMENT);
             factory.setConfiguration(configuration);
             factory.setMapperLocations(new PathMatchingResourcePatternResolver()
-                    .getResources("classpath*:mapper/OrderQueryMapper.xml"));
+                    .getResources("classpath*:mapper/OrderQuery*.xml"));
             sql = new SqlSessionTemplate(Objects.requireNonNull(factory.getObject()));
         } catch (Exception failure) {
             throw new IllegalStateException("order query mapper initialization failed", failure);
@@ -42,5 +44,11 @@ public final class OrderQueryStore {
 
     public <T> T read(Function<OrderQueryMapper, T> work) {
         return transaction.execute(status -> work.apply(sql.getMapper(OrderQueryMapper.class)));
+    }
+
+    /** Contracts 69/70 derived reads: same read transaction, second statement family. */
+    public <T> T read(BiFunction<OrderQueryMapper, OrderQueryMerchantReadMapper, T> work) {
+        return transaction.execute(status -> work.apply(sql.getMapper(OrderQueryMapper.class),
+                sql.getMapper(OrderQueryMerchantReadMapper.class)));
     }
 }
