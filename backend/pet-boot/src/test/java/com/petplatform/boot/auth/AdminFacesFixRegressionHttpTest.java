@@ -76,6 +76,10 @@ class AdminFacesFixRegressionHttpTest {
         props.put("pet.auth.c.cache-prefix", "auth001c_facesfix:");
         props.put("pet.admin.trade.http.enabled", true);
         props.put("pet.admin.ops.http.enabled", true);
+        // The 35号 union opening: the grant channel rides the ops face but is gated by its own
+        // switch (production default stays off until the unified flip); FA-1 asserts the
+        // assembled kernel's own NOT_FOUND, so this regression boots with it explicitly on.
+        props.put("pet.coupon.grant.enabled", true);
         // The shared store capacity guard (schedule protection foundation) backs the trade
         // disposition kernels and the merchant order face alike; the booking expiry kernel
         // provides the reservation release facts the late-refund service reads.
