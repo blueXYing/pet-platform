@@ -1142,13 +1142,21 @@ GOVERNANCE_ENVELOPES = {
 # (CCR-CPN-GRANT-001) and the v0.3 §4.4 void channel (user ruling 2026-10-16 doc 36,
 # CCR-CPN-VOID-001); batch void/return/risk-freeze stay unimplemented
 # (CCR-ADM-A005-OPS-001).
+# M-side finish slice family (2026-10-19) + the deepening expansion (2026-10-19 second
+# ruling): store profile GET/PUT (27 section 6.4, now with the store-facts/businessStatus/
+# avatar fields), derived customer list/detail (69), the OWNER customer-note write (69
+# expansion), stats overview/top/trend (70) + the service drill-down page and the schedule
+# utilization read (70 expansion; CUSTOM from/to <=92 days rides the same GETs).
 MERCHANT_CONSOLE_OPERATIONS = {
     'merchantGetCustomer': ('get', '/merchant/customers/{userId}', ('200', '400', '401', '403', '404', '503')),
     'merchantGetStoreProfile': ('get', '/merchant/store-profile', ('200', '400', '401', '404', '503')),
     'merchantListCustomers': ('get', '/merchant/customers', ('200', '400', '401', '403', '503')),
     'merchantStatsOverview': ('get', '/merchant/stats/overview', ('200', '400', '401', '403', '503')),
     'merchantStatsRevenueTrend': ('get', '/merchant/stats/revenue-trend', ('200', '400', '401', '403', '503')),
+    'merchantStatsScheduleUtilization': ('get', '/merchant/stats/schedule-utilization', ('200', '400', '401', '403', '503')),
+    'merchantStatsServiceOrders': ('get', '/merchant/stats/services/{serviceId}/orders', ('200', '400', '401', '403', '404', '503')),
     'merchantStatsServiceTop': ('get', '/merchant/stats/services/top', ('200', '400', '401', '403', '503')),
+    'merchantUpdateCustomerNote': ('put', '/merchant/customers/{userId}/note', ('200', '201', '400', '401', '403', '404', '409', '503')),
     'merchantUpdateStoreProfile': ('put', '/merchant/store-profile', ('200', '201', '400', '401', '403', '404', '409', '503')),
 }
 ADMIN_OPS_OPERATIONS = {

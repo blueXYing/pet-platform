@@ -22,14 +22,21 @@ final class MySqlMerchantDomainTestDatabase implements AutoCloseable {
     private boolean created;
 
     MySqlMerchantDomainTestDatabase() throws Exception {
-        String url = System.getenv().getOrDefault(
-                "MER001_MYSQL_URL", "jdbc:mysql://127.0.0.1:33450/");
+        // CI-统一 env 名 AUTH_MYSQL_*（铁律）：优先读 AUTH_MYSQL_*，兼容回退既有
+        // MER001_*（CI 同库同密码，行为不变），本地默认 127.0.0.1:33440。
+        String url = System.getenv().containsKey("AUTH_MYSQL_URL")
+                ? System.getenv("AUTH_MYSQL_URL")
+                : System.getenv().getOrDefault("MER001_MYSQL_URL", "jdbc:mysql://127.0.0.1:33440/");
         if (!url.matches("jdbc:mysql://(127\\.0\\.0\\.1|localhost):[0-9]+/")) {
             throw new IllegalArgumentException(
-                    "MER001_MYSQL_URL must name a local isolated server, with no database or parameters");
+                    "AUTH_MYSQL_URL/MER001_MYSQL_URL must name a local isolated server, with no database or parameters");
         }
-        String user = System.getenv().getOrDefault("MER001_MYSQL_USER", "root");
-        String password = System.getenv().getOrDefault("MER001_MYSQL_PASSWORD", "");
+        String user = System.getenv().containsKey("AUTH_MYSQL_USER")
+                ? System.getenv("AUTH_MYSQL_USER")
+                : System.getenv().getOrDefault("MER001_MYSQL_USER", "root");
+        String password = System.getenv().containsKey("AUTH_MYSQL_PASSWORD")
+                ? System.getenv("AUTH_MYSQL_PASSWORD")
+                : System.getenv().getOrDefault("MER001_MYSQL_PASSWORD", "");
         admin = new JdbcTemplate(source(url, user, password));
         dataSource = source(url + name, user, password);
         jdbc = new JdbcTemplate(dataSource);
@@ -93,9 +100,12 @@ final class MySqlMerchantDomainTestDatabase implements AutoCloseable {
 
     /** A separate DataSource pointed at this same random database for snapshot tests. */
     JdbcTemplate independentJdbc() {
-        String url = System.getenv().getOrDefault(
-                "MER001_MYSQL_URL", "jdbc:mysql://127.0.0.1:33450/");
-        String user = System.getenv().getOrDefault("MER001_MYSQL_USER", "root");
+        String url = System.getenv().containsKey("AUTH_MYSQL_URL")
+                ? System.getenv("AUTH_MYSQL_URL")
+                : System.getenv().getOrDefault("MER001_MYSQL_URL", "jdbc:mysql://127.0.0.1:33440/");
+        String user = System.getenv().containsKey("AUTH_MYSQL_USER")
+                ? System.getenv("AUTH_MYSQL_USER")
+                : System.getenv().getOrDefault("MER001_MYSQL_USER", "root");
         String password = System.getenv().getOrDefault("MER001_MYSQL_PASSWORD", "");
         return new JdbcTemplate(source(url + name, user, password));
     }

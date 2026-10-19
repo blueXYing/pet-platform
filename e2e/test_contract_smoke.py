@@ -47,9 +47,11 @@ class ContractSmokeRegressions(unittest.TestCase):
         self.assertEqual(result['catalogSearchOperations'], 1)
         self.assertEqual(result['cityOperations'], 1)
         self.assertEqual(result['petHealthRecordOperations'], 4)
-        # Union 212 = 206 + 1 catalog search + 1 city directory + 4 health records
-        # (206 = 163 baseline + 3 encyclopedia + 11 admin trade + 8 governance + 22 ops console).
-        self.assertEqual(result['operations'], 219)
+        # Union 222 = 219 + 3 M-side deepening expansion operations (2026-10-19 second
+        # ruling: customer-note write, service drill-down, schedule utilization; the
+        # CUSTOM from/to params ride the existing stats GETs without new operationIds).
+        self.assertEqual(result['operations'], 222)
+        self.assertEqual(result['merchantConsoleOperations'], 10)
         self.assertGreater(result['stringIdProperties'], 0)
         # Contract 58 favorite/footprint face (2026-10-13): seven reviewed operations.
         self.assertEqual(result['favtrackHttpOperations'], 7)

@@ -887,4 +887,9 @@ CCR-AFS-PAGE-OPTIONS-001 已批准目录读取：目录不完整/代码名称不
 
 店铺资料两路由（HTTP10 §4.16，`pet.merchant.store-profile.http.enabled`）：400 `COMMON_INVALID_ARGUMENT`（严格 JSON、ID/版本/字段边界/素材不合法）；401 `COMMON_UNAUTHORIZED`；403 `COMMON_FORBIDDEN`（非 OWNER 主账号）；404 `COMMON_NOT_FOUND`（门店不存在或越权同形，防枚举）；409 `COMMON_CONFLICT`（expectedVersion 冲突）、`IDEMPOTENCY_KEY_CONFLICT`（同 key 异参）；503 `COMMON_DEPENDENCY_UNAVAILABLE`（审核/协议/素材/门店事实不可读）。无新增错误码。
 
-客户档案与经营统计五路由（HTTP10 §4.17/§4.18，`pet.order.customer.http.enabled` / `pet.order.stats.http.enabled`）：只读切片，无 409/幂等码面；400 `COMMON_INVALID_ARGUMENT`（坐标/分页/搜索词/range/limit 非法）；401 `COMMON_UNAUTHORIZED`；403 `COMMON_FORBIDDEN`（非 OWNER 坐标同形防枚举）；404 `COMMON_NOT_FOUND`（客户无本店订单）；503 `COMMON_DEPENDENCY_UNAVAILABLE`（用户档案/门店/评分事实不可读）。无新增错误码。
+客户档案与经营统计路由（HTTP10 §4.17/§4.18，`pet.order.customer.http.enabled` / `pet.order.stats.http.enabled`；2026-10-19 扩展后共读六 + 写一）：
+
+- 只读面（客户列表/详情、统计 overview/services-top/revenue-trend/服务下钻/排期利用率）：无 409/幂等码面；400 `COMMON_INVALID_ARGUMENT`（坐标/分页/搜索词/尾号/range/from-to/limit 非法——CUSTOM 超 92 天窗/倒序/格式非法同此）；401 `COMMON_UNAUTHORIZED`；403 `COMMON_FORBIDDEN`（非 OWNER 坐标同形防枚举）；404 `COMMON_NOT_FOUND`（客户无本店订单；服务下钻窗口内无该服务订单同形防枚举）；503 `COMMON_DEPENDENCY_UNAVAILABLE`（用户档案/门店/评分/排期事实不可读）。
+- 备注写路由（PUT `/merchant/customers/{userId}/note`，命令 `merchant.customer.note.update`）：400 `COMMON_INVALID_ARGUMENT`（严格 JSON/note>200 码点/版本格式）；401/403 同上（写权 requireOwner，FROZEN 拒绝）；404 同形防枚举；409 `COMMON_CONFLICT`（expectedVersion 冲突）、`IDEMPOTENCY_KEY_CONFLICT`（同 key 异参）；503（绑定/审计/事实不可读）。
+
+无新增错误码。

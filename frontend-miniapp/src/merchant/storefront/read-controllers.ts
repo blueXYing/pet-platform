@@ -355,7 +355,7 @@ export class ServiceOrdersController {
   private state: {
     phase: 'idle' | 'loading' | 'entry' | 'error' | 'ready'
     notice: string
-    page: ServiceOrdersPageState
+    page: ServiceOrdersPageState | null
     loadingMore: boolean
   }
   private listeners = new Set<() => void>()
@@ -421,7 +421,12 @@ export class ServiceOrdersController {
     }
   }
 
-  private publishSet(patch: Partial<{ phase: 'idle' | 'loading' | 'entry' | 'error' | 'ready'; notice: string; page: ServiceOrdersPageState; loadingMore: boolean }>) {
+  private publishSet(patch: Partial<{
+    phase: 'idle' | 'loading' | 'entry' | 'error' | 'ready'
+    notice: string
+    page: ServiceOrdersPageState | null
+    loadingMore: boolean
+  }>) {
     this.state = { ...this.state, ...patch }
     this.publish()
   }
