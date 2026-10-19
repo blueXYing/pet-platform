@@ -1,0 +1,44 @@
+09:56:13.511 [main] INFO com.zaxxer.hikari.HikariDataSource -- e2e-core-loop - Starting...
+09:56:13.525 [main] INFO com.zaxxer.hikari.pool.HikariPool -- e2e-core-loop - Added connection com.mysql.cj.jdbc.ConnectionImpl@4f5991f6
+09:56:13.526 [main] INFO com.zaxxer.hikari.HikariDataSource -- e2e-core-loop - Start completed.
+2026-10-19T09:56:22.134+08:00  INFO [traceId= requestId=] 37272 --- [pet-platform] [           main] c.p.boot.e2e.E2eCoreLoopServer           : Starting E2eCoreLoopServer using Java 21.0.11 with PID 37272 (C:\Users\Administrator\Desktop\wt-e2e-final\backend\pet-boot\target\test-classes started by Administrator in C:\Users\Administrator\Desktop\wt-e2e-final\backend\pet-boot)
+2026-10-19T09:56:22.135+08:00  INFO [traceId= requestId=] 37272 --- [pet-platform] [           main] c.p.boot.e2e.E2eCoreLoopServer           : The following 1 profile is active: "local"
+2026-10-19T09:56:23.350+08:00  INFO [traceId= requestId=] 37272 --- [pet-platform] [           main] .s.d.r.c.RepositoryConfigurationDelegate : Multiple Spring Data modules found, entering strict repository configuration mode
+2026-10-19T09:56:23.351+08:00  INFO [traceId= requestId=] 37272 --- [pet-platform] [           main] .s.d.r.c.RepositoryConfigurationDelegate : Bootstrapping Spring Data Redis repositories in DEFAULT mode.
+2026-10-19T09:56:23.393+08:00  INFO [traceId= requestId=] 37272 --- [pet-platform] [           main] .s.d.r.c.RepositoryConfigurationDelegate : Finished Spring Data repository scanning in 30 ms. Found 0 Redis repository interfaces.
+2026-10-19T09:56:23.617+08:00  WARN [traceId= requestId=] 37272 --- [pet-platform] [           main] o.m.s.mapper.ClassPathMapperScanner      : No MyBatis mapper was found in '[com.petplatform.boot]' package. Please check your configuration.
+2026-10-19T09:56:24.218+08:00  INFO [traceId= requestId=] 37272 --- [pet-platform] [           main] o.s.boot.tomcat.TomcatWebServer          : Tomcat initialized with port 18081 (http)
+2026-10-19T09:56:24.235+08:00  INFO [traceId= requestId=] 37272 --- [pet-platform] [           main] o.apache.catalina.core.StandardService   : Starting service [Tomcat]
+2026-10-19T09:56:24.235+08:00  INFO [traceId= requestId=] 37272 --- [pet-platform] [           main] o.apache.catalina.core.StandardEngine    : Starting Servlet engine: [Apache Tomcat/11.0.24]
+2026-10-19T09:56:24.311+08:00  INFO [traceId= requestId=] 37272 --- [pet-platform] [           main] b.w.c.s.WebApplicationContextInitializer : Root WebApplicationContext: initialization completed in 2142 ms
+2026-10-19T09:56:30.690+08:00  INFO [traceId= requestId=] 37272 --- [pet-platform] [           main] r$InitializeUserDetailsManagerConfigurer : Global AuthenticationManager configured with UserDetailsService bean with name noImplicitDefaultAccounts
+2026-10-19T09:56:33.934+08:00  INFO [traceId= requestId=] 37272 --- [pet-platform] [           main] o.s.b.a.e.web.EndpointLinksResolver      : Exposing 3 endpoints beneath base path '/actuator'
+2026-10-19T09:56:33.992+08:00  INFO [traceId= requestId=] 37272 --- [pet-platform] [           main] o.s.boot.tomcat.TomcatWebServer          : Tomcat started on port 18081 (http) with context path '/'
+2026-10-19T09:56:34.000+08:00  INFO [traceId= requestId=] 37272 --- [pet-platform] [           main] c.p.boot.e2e.E2eCoreLoopServer           : Started E2eCoreLoopServer in 12.2 seconds (process running for 22.855)
+E2E_CORE_LOOP result=READY endpoint=http://127.0.0.1:18081 bind=127.0.0.1 database=auth001czq28db6_e2e_core_loop_d792db0cc70d4cc5891593074396ac15 metadata=D:\Temp\e2e-final-recheck\server-metadata.txt
+2026-10-19T09:56:34.243+08:00  INFO [traceId= requestId=] 37272 --- [pet-platform] [.1-18081-exec-4] o.a.c.c.C.[Tomcat].[localhost].[/]       : Initializing Spring DispatcherServlet 'dispatcherServlet'
+2026-10-19T09:56:34.243+08:00  INFO [traceId= requestId=] 37272 --- [pet-platform] [.1-18081-exec-4] o.s.web.servlet.DispatcherServlet        : Initializing Servlet 'dispatcherServlet'
+2026-10-19T09:56:34.244+08:00  INFO [traceId= requestId=] 37272 --- [pet-platform] [.1-18081-exec-4] o.s.web.servlet.DispatcherServlet        : Completed initialization in 1 ms
+E2E_ROUND2_SEEDS step=login round=1 ok
+E2E_SANDBOX_PAY paymentId=105484205860827136 paid=true replayed=false
+E2E_EVENT_SINK OrderPaidEvent.v1 aggregate=105484205546254336
+E2E_EVENT_SINK OrderConfirmedEvent.v1 aggregate=105484205546254336
+E2E_ROUND2_SEEDS step=rescheduleOrder id=105484205546254336
+E2E_ROUND2_SEEDS result=READY rescheduleOrder=105484205546254336
+E2E_ADMIN_SEEDS step=login attempt=1
+E2E_SANDBOX_PAY paymentId=105484349381521408 paid=true replayed=false
+E2E_EVENT_SINK OrderPaidEvent.v1 aggregate=105484349238915072
+E2E_ADMIN_SEEDS step=completedOrder id=105484349238915072
+E2E_EVENT_SINK OrderConfirmedEvent.v1 aggregate=105484349238915072
+E2E_EVENT_SINK OrderVerifiedEvent.v2 aggregate=105484349238915072
+E2E_SANDBOX_PAY paymentId=105484367605772288 paid=true replayed=false
+E2E_EVENT_SINK OrderPaidEvent.v1 aggregate=105484367475748864
+E2E_ADMIN_SEEDS step=dispositionTarget id=105484367475748864
+E2E_EVENT_SINK OrderConfirmedEvent.v1 aggregate=105484367475748864
+E2E_SANDBOX_PAY paymentId=105484384861138944 paid=true replayed=false
+E2E_EVENT_SINK OrderPaidEvent.v1 aggregate=105484384752087040
+E2E_ADMIN_SEEDS step=refundTarget id=105484384752087040
+E2E_ADMIN_SEEDS step=aftersaleCase id=105484394025693184
+E2E_ADMIN_SEEDS result=READY completed=105484349238915072 disposition=105484367475748864 refundTarget=105484384752087040 aftersale=105484394025693184
+E2E_EVENT_SINK OrderConfirmedEvent.v1 aggregate=105484384752087040
+E2E_EVENT_SINK AfterSaleCreatedEvent aggregate=105484394025693184
