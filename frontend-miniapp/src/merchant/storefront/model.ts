@@ -32,12 +32,42 @@ export const operatingLabel: Record<string, string> = {
   OPERATING: '营业中',
   OFFLINE: '已下线',
   FROZEN: '已冻结',
+  RESTING: '休息中',
+}
+
+export const businessStatusLabel: Record<string, string> = {
+  OPEN: '营业中',
+  RESTING: '休息中',
 }
 
 export const rangeLabel: Record<string, string> = {
   TODAY: '今日',
   LAST_7D: '近 7 天',
   LAST_30D: '近 30 天',
+  CUSTOM: '自定义',
+}
+
+/** 自定义区间的展示语言：YYYY-MM-DD 起；CUSTOM 由页面直接渲染 from/to。 */
+export function windowLabel(range: string, from?: string, to?: string): string {
+  if (range === 'CUSTOM') return from && to ? `${from} ~ ${to}` : '自定义'
+  return rangeLabel[range] ?? range
+}
+
+/** 90 天内最近可用的自定义区间默认值（护栏 ≤92 天）。 */
+export function defaultCustomWindow(now: Date): { from: string; to: string } {
+  const day = (value: Date) => value.toISOString().slice(0, 10)
+  const to = day(now)
+  const from = day(new Date(now.getTime() - 29 * 86_400_000))
+  return { from, to }
+}
+
+/** 校验客户端自定义区间：合法日期、from<=to、≤92 个 UTC 日（与 70号 §1 护栏一致）。 */
+export function validCustomWindow(from: string, to: string): boolean {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(from) || !/^\d{4}-\d{2}-\d{2}$/.test(to)) return false
+  const a = Date.parse(`${from}T00:00:00Z`)
+  const b = Date.parse(`${to}T00:00:00Z`)
+  if (!Number.isFinite(a) || !Number.isFinite(b) || a > b) return false
+  return (b - a) / 86_400_000 + 1 <= 92
 }
 
 /** 环比展示语言：↑/↓ + 百分比；null 显示 --（PRD 5.14 异常边界）。 */

@@ -124,8 +124,8 @@ public final class MerchantCustomerQueryService {
                     .map(pet -> new PetView(pet.getPetName(), pet.getPetType(), pet.getBreedName()))
                     .toList();
             var noteRow = mapper.storeCustomerNote(storeKey, userId);
-            CustomerDetail.NoteView note = noteRow == null || noteRow.getNote() == null ? null
-                    : new CustomerDetail.NoteView(noteRow.getNote(),
+            MerchantCustomerQueryApi.NoteView note = noteRow == null || noteRow.getNote() == null ? null
+                    : new MerchantCustomerQueryApi.NoteView(noteRow.getNote(),
                             Long.toString(noteRow.getVersion()),
                             noteRow.getUpdatedAt().atOffset(ZoneOffset.UTC));
             return new CustomerDetail(row, pets, note);

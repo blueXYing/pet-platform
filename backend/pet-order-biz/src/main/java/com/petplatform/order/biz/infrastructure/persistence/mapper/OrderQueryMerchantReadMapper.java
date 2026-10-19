@@ -59,7 +59,7 @@ public interface OrderQueryMerchantReadMapper {
             @Param("storeId") long storeId, @Param("serviceId") long serviceId,
             @Param("from") LocalDateTime from, @Param("to") LocalDateTime to);
 
-    List<ServiceOrderRow> statsServiceOrders(@Param("merchantId") long merchantId,
+    List<ServiceOrderRowEntity> statsServiceOrders(@Param("merchantId") long merchantId,
             @Param("storeId") long storeId, @Param("serviceId") long serviceId,
             @Param("from") LocalDateTime from, @Param("to") LocalDateTime to,
             @Param("limit") int limit, @Param("offset") long offset);

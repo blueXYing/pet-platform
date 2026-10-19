@@ -58,8 +58,8 @@ public final class MerchantCustomerNoteService implements MerchantCustomerNoteCo
         this.guard = Objects.requireNonNull(guard, "guard is required");
         this.authority = Objects.requireNonNull(authority, "authority is required");
         this.ids = Objects.requireNonNull(ids, "ids are required");
-        this.mapper = com.petplatform.order.biz.infrastructure.persistence.OrderMybatis
-                .template(source).getMapper(OrderCustomerNoteMapper.class);
+        this.mapper = new com.petplatform.order.biz.infrastructure.persistence.OrderCustomerNoteStore(
+                source).mapper();
         this.tx = new TransactionTemplate(new DataSourceTransactionManager(source));
         tx.setPropagationBehavior(TransactionDefinition.PROPAGATION_REQUIRES_NEW);
         tx.setIsolationLevel(TransactionDefinition.ISOLATION_READ_COMMITTED);
@@ -71,7 +71,6 @@ public final class MerchantCustomerNoteService implements MerchantCustomerNoteCo
         Intent intent = intent(command);
         if (TransactionSynchronizationManager.isActualTransactionActive())
             throw unavailable("customer note command requires no outer transaction");
-        String store = coordinate(intent.storeId);
         // Reserve the supplement-23 binding without holding the store guard (45号 decide shape).
         OrderCustomerNoteMapper.Binding admitted = tx.execute(s -> {
             sessionDefaults();
@@ -79,12 +78,12 @@ public final class MerchantCustomerNoteService implements MerchantCustomerNoteCo
             input.put("id", next());
             input.put("namespace", NAMESPACE);
             input.put("actor", intent.actor);
-            input.put("scope", scope(store));
+            input.put("scope", scope(intent.storeId));
             input.put("requestId", intent.requestId.getBytes(StandardCharsets.UTF_8));
             input.put("hash", sha(intent.canonical));
             input.put("canonical", intent.canonical);
             mapper.reserve(input);
-            return sameParams(mapper.binding(key(store, intent)), intent.canonical);
+            return sameParams(mapper.binding(key(intent.storeId, intent)), intent.canonical);
         });
         try {
             return execute(intent, admitted);
@@ -101,13 +100,13 @@ public final class MerchantCustomerNoteService implements MerchantCustomerNoteCo
         return tx.execute(s -> {
             sessionDefaults();
             OrderCustomerNoteMapper.Binding binding = sameParams(
-                    mapper.binding(key(coordinate(intent.storeId), intent)), intent.canonical());
+                    mapper.binding(key(intent.storeId, intent)), intent.canonical());
             // Guard + real-OWNER write proof (write family: FROZEN denied) runs before both the
             // replay and the write, so a replay can never outlive its authority.
-            guard.acquire(List.of(intent.storeId), new QueryContext(intent.trace,
+            guard.acquire(List.of(Long.toString(intent.storeId)), new QueryContext(intent.trace,
                     OperatorType.SYSTEM, null));
-            authority.requireOwner(intent.merchantId, intent.storeId,
-                    new QueryContext(intent.trace, OperatorType.USER, intent.operator));
+            authority.requireOwner(Long.toString(intent.merchantId), Long.toString(intent.storeId),
+                    new QueryContext(intent.trace, OperatorType.USER, IDS.toApi(intent.actor)));
             if ("SUCCEEDED".equals(binding.state)) return readReceipt(binding.resultBytes);
             if (!"RESERVED".equals(binding.state)) throw unavailable("command binding is damaged");
             OrderCustomerNoteMapper.NoteRow row = mapper.lockNote(intent.storeId, intent.userId);
@@ -240,11 +239,11 @@ public final class MerchantCustomerNoteService implements MerchantCustomerNoteCo
 
     private OrderCustomerNoteMapper.Binding sameParams(OrderCustomerNoteMapper.Binding binding,
             byte[] canonical) {
+        // 同 45号 decide：hash 为 SHA-256 的 hex 字符串；canonical 字节逐位比较。
         if (binding == null || !"canonical-v1".equals(binding.canonicalVersion)
-                || binding.canonicalBytes == null
-                || !MessageDigest.isEqual(sha(canonical),
-                        binding.payloadSha256 == null ? new byte[0]
-                                : sha(binding.canonicalBytes))
+                || binding.canonicalBytes == null || binding.payloadSha256 == null
+                || !MessageDigest.isEqual(sha(canonical).getBytes(StandardCharsets.US_ASCII),
+                        binding.payloadSha256.getBytes(StandardCharsets.US_ASCII))
                 || !MessageDigest.isEqual(canonical, binding.canonicalBytes))
             throw unavailable("customer note command binding is damaged");
         return binding;
@@ -270,9 +269,10 @@ public final class MerchantCustomerNoteService implements MerchantCustomerNoteCo
         }
     }
 
-    private static byte[] sha(byte[] payload) {
+    private static String sha(byte[] payload) {
         try {
-            return MessageDigest.getInstance("SHA-256").digest(payload);
+            return java.util.HexFormat.of().formatHex(
+                    MessageDigest.getInstance("SHA-256").digest(payload));
         } catch (java.security.NoSuchAlgorithmException impossible) {
             throw new IllegalStateException(impossible);
         }

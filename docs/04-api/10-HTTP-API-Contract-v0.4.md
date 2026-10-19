@@ -1537,39 +1537,56 @@ PUT /api/v1/merchant/store-profile        （Header X-Request-Id 必填）
 
 装配开关 `pet.merchant.store-profile.http.enabled`（默认 false，OpenAPI11 `IMPLEMENTED_DEFAULT_OFF`）；
 字段、门禁、幂等与审计以 27号 §6.4 为准：读为 OWNER 存量资料读取家族（OFFLINE/FROZEN 可读）；
-写为全字段替换（JSON 严格读：显式 null 非法、未知字段非法；文本空串清空、数组空清空、promoLevel 0=未设置），
-门禁=OWNER+merchant/store ACTIVE+申请 APPROVED+协议 SIGNED，expectedVersion 乐观锁，同事务审计
-（仅字段名清单）。错误映射：400/401/403/404（同形防枚举）/409（COMMON_CONFLICT、IDEMPOTENCY_KEY_CONFLICT）/503；
+写为全字段替换（JSON 严格读：显式 null 非法、未知字段非法；文本空串清空、数组空清空、promoLevel 0=未设置）。
+**2026-10-19 扩展**：可编辑字段增补 storeName（1-128）/address（1-255）/phone（5-32 位数字，空串清除）——CCR 最小口径：
+这三项店铺事实变更不触发运营复审，落字段名审计；profile 增补 avatarAssetId（STORE_PHOTO READY 素材，空串清除）与
+businessStatus（OPEN/RESTING，空串=OPEN 投影）；readonly.operatingStatus 枚举增补 RESTING（平台 OFFLINE/FROZEN 恒优先）；
+店铺照片/头像页内上传走 31号管线 purpose=STORE_PHOTO（上传管线见 31号 契约增补）。门禁=OWNER+merchant/store ACTIVE+申请
+APPROVED+协议 SIGNED，expectedVersion 乐观锁，同事务审计（仅字段名清单）。
+错误映射：400/401/403/404（同形防枚举）/409（COMMON_CONFLICT、IDEMPOTENCY_KEY_CONFLICT）/503；
 无新增错误码；`Cache-Control: no-store`。
 
-## 4.17 商家客户档案（69号，只读派生）
+## 4.17 商家客户档案（69号 + 2026-10-19 扩展）
 
 ```text
-GET /api/v1/merchant/customers?merchantId&storeId&nickname?&page&pageSize
+GET /api/v1/merchant/customers?merchantId&storeId&nickname?&orderNoSuffix?&page&pageSize
 GET /api/v1/merchant/customers/{userId}?merchantId&storeId
+PUT /api/v1/merchant/customers/{userId}/note        （Header X-Request-Id 必填；2026-10-19 扩展）
 ```
 
 装配开关 `pet.order.customer.http.enabled`（默认 false，同 §4.1 列表同一 runtime 链）。数据 100% 从
 本店订单派生（merchantId+storeId 双键，guard+requireOwnerRead 复验）；手机号仅脱敏
 （`1xx****xxxx`，无明文接口）；宠物仅名字/类别/品种级（order_pet_snapshot 投影，无健康字段）；
-排序 totalSpend DESC、userId 升序；nickname 为有界包含搜索（≤64 码点，扫描上限 1000）。
-错误：400 参数、401 会话、403 非 OWNER/越权同形、404 客户无本店订单、503 事实不可读；无新增错误码。
-隐私边界（69号 §1）：无导出/营销触达/跨店聚合/备注写面，全部 CCR 登记待裁。
+排序 totalSpend DESC、userId 升序；nickname 为有界包含搜索（≤64 码点，扫描上限 1000）；
+**orderNoSuffix（2026-10-19 扩展）为 2..10 位数字订单号尾号搜索，仅命中本店订单尾匹配（含前导零），
+与 nickname 互斥（同给 400）**；详情响应增补 `note:{content,version,updatedAt}|null`。
+备注写面（2026-10-19 扩展，69号 §3）：body `{merchantId,storeId,note,expectedVersion}` 严格读，
+note 0..200 码点空串=清空；命令 `merchant.customer.note.update`，真实 OWNER 写权（requireOwner，FROZEN 拒绝）
+于 guard 事务内复验，supplement-23 幂等（重放原回执/异参 409），expectedVersion 乐观锁，
+同事务审计（69 伴随表，仅字段名）；无本店订单的 userId 404 同形防枚举。
+错误：400 参数、401 会话、403 非 OWNER/越权同形、404 客户无本店订单、409 版本/幂等冲突、503 事实不可读；
+无新增错误码。隐私边界（69号 §1 二次扩展后）：无导出/营销触达/跨店聚合/明文手机号/健康字段，仍 CCR 登记。
 
-## 4.18 商家经营统计（70号，只读聚合）
+## 4.18 商家经营统计（70号 + 2026-10-19 扩展，只读聚合）
 
 ```text
-GET /api/v1/merchant/stats/overview?merchantId&storeId&range?
-GET /api/v1/merchant/stats/services/top?merchantId&storeId&range?&limit?
-GET /api/v1/merchant/stats/revenue-trend?merchantId&storeId&range?
+GET /api/v1/merchant/stats/overview?merchantId&storeId&range?&from?&to?
+GET /api/v1/merchant/stats/services/top?merchantId&storeId&range?&from?&to?&limit?
+GET /api/v1/merchant/stats/revenue-trend?merchantId&storeId&range?&from?&to?
+GET /api/v1/merchant/stats/services/{serviceId}/orders?merchantId&storeId&range?&from?&to?&page&pageSize   （2026-10-19 扩展）
+GET /api/v1/merchant/stats/schedule-utilization?merchantId&storeId&range?&from?&to?                        （2026-10-19 扩展）
 ```
 
 装配开关 `pet.order.stats.http.enabled`（默认 false，与 §4.17 同 runtime 链）。range 词汇
-`TODAY/LAST_7D/LAST_30D`（默认 LAST_7D；自定义区间为登记偏差）；指标口径（净营收扣除成功退款、
-核销率=核销完成/已支付、退款率=退款订单/已支付、评价均分仅 score_included=1）以 70号 §2 为准；
-金额两位小数字符串、比率一位小数无 % 号、不可计算为 null（页面 `--`）；环比=等长紧邻前窗。
+`TODAY/LAST_7D/LAST_30D/CUSTOM`（默认 LAST_7D；**CUSTOM 携 from/to，UTC 闭区间 ≤92 天，护栏即性能护栏；
+倒序/超限/格式非法 400**；环比=等长紧邻前窗）；指标口径（净营收扣除成功退款、核销率=核销完成/已支付、
+退款率=退款订单/已支付、评价均分仅 score_included=1、**拒单率=商家拒单取消（cancel_reason=MERCHANT_REJECT_ORDER）/
+已支付**）以 70号 §2 为准；金额两位小数字符串、比率一位小数无 % 号、不可计算为 null（页面 `--`）。
 评价均分经 review 域只读事实面（ReviewQueryApi.getStoreScoreSummary），评价内核未装配时为 null。
-错误：400/401/403/503；无新增错误码；无写入路径（无 409/幂等码面）。
+**排期利用率经 schedule-api 新只读端口 ScheduleUtilizationQueryApi（53号排期读侧聚合：OPEN 窗口重叠产能×容量、
+CONFIRMED 预约重叠分钟），端口未装配时三值 null，装配后读失败 503。**
+**服务下钻**为该服务窗口内订单明细分页（只读，创建时间倒序+id 稳定序；窗口内无该服务订单 404 防枚举；行无客户字段）。
+错误：400/401/403/404（仅下钻）/503；无新增错误码；无写入路径（无 409/幂等码面）。
 
 ---
 

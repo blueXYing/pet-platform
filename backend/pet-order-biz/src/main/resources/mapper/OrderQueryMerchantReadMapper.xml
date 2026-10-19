@@ -188,7 +188,7 @@
           AND o.created_at &gt;= #{from} AND o.created_at &lt; #{to}
     </select>
 
-    <select id="statsServiceOrders" resultType="com.petplatform.order.biz.infrastructure.persistence.entity.MerchantReadProjectionEntities$ServiceOrderRow">
+    <select id="statsServiceOrders" resultType="com.petplatform.order.biz.infrastructure.persistence.entity.MerchantReadProjectionEntities$ServiceOrderRowEntity">
         SELECT o.id, o.order_no, o.order_stage, o.pay_amount, o.refunded_amount,
                o.created_at, o.appointment_start_at, o.verified_at
         FROM pet_order o

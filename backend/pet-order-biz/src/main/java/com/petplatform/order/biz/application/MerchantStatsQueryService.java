@@ -276,11 +276,11 @@ public final class MerchantStatsQueryService {
     private record Window(String range, LocalDateTime from, LocalDateTime to, LocalDateTime previousFrom) {}
 
     private static LocalDate day(String value) {
+        if (value == null || !value.matches("\\d{4}-\\d{2}-\\d{2}")) invalid();
         try {
-            if (value == null || !value.matches("\\d{4}-\\d{2}-\\d{2}")) invalid();
             return LocalDate.parse(value, DAY);
         } catch (DateTimeParseException malformed) {
-            return invalid();
+            throw invalid();
         }
     }
 
@@ -347,7 +347,8 @@ public final class MerchantStatsQueryService {
         }
     }
 
-    private static void invalid() {
+    /** Always-throws helper: usable both as a statement and in throwable positions. */
+    private static ApiException invalid() {
         throw new ApiException(CommonApiCodes.INVALID_ARGUMENT, "统计参数不合法");
     }
 

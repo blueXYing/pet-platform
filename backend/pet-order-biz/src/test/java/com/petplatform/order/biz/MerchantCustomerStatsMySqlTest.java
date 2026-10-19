@@ -335,8 +335,8 @@ class MerchantCustomerStatsMySqlTest {
                             OperatorType.USER, "8300000000000099", "MINIAPP")));
             assertEquals("1", saved.version());
             // The detail face carries the note.
-            var detail = reads.getCustomer(new CustomerGetQuery(Long.toString(MERCHANT),
-                    Long.toString(STORE), ALICE_STR, context()));
+            var detail = reads.getCustomer(new MerchantCustomerQueryApi.CustomerGetQuery(
+                    Long.toString(MERCHANT), Long.toString(STORE), ALICE_STR, context()));
             assertEquals("对猫毛过敏，注意戴手套", detail.note().content());
             assertEquals("1", detail.note().version());
             // CAS: a stale expectedVersion is 409.
@@ -430,9 +430,12 @@ class MerchantCustomerStatsMySqlTest {
                 ScriptUtils.executeSqlScript(connection, new EncodedResource(
                         new FileSystemResource(root().resolve("docs/03-database/06-核心数据库Schema-v0.1.sql")),
                         StandardCharsets.UTF_8));
-                // Companion schemas for the 2026-10-19 expansion: the 42号 refund-execution base
-                // (required by the 45号 ALTER) + the 45号 command binding rows + the 69号 note
-                // tables (no FKs into 06).
+                // Companion schemas for the 2026-10-19 expansion: 40号 adds pet_order.cancel_reason
+                // (the 拒单率 fact); the 42号 refund-execution base (required by the 45号 ALTER);
+                // the 45号 command binding rows; the 69号 note tables (no FKs into 06).
+                ScriptUtils.executeSqlScript(connection, new EncodedResource(
+                        new FileSystemResource(root().resolve("docs/03-database/40-Payment-Foundation-Schema-v0.1.sql")),
+                        StandardCharsets.UTF_8));
                 ScriptUtils.executeSqlScript(connection, new EncodedResource(
                         new FileSystemResource(root().resolve("docs/03-database/42-Late-Refund-Execution-Schema-v0.1.sql")),
                         StandardCharsets.UTF_8));
@@ -450,6 +453,11 @@ class MerchantCustomerStatsMySqlTest {
                     ALICE, "13800000100", "爱丽丝");
             jdbc.update("INSERT INTO user_account(id,phone,nickname,status,version,created_at,updated_at) VALUES(?,?,?,'ACTIVE',0,UTC_TIMESTAMP(3),UTC_TIMESTAMP(3))",
                     BOB, "13900000200", "鲍勃");
+            // 69号备注伴随表 FK 指向 merchant_store（同 27号伴随表先例）：补本店种子行。
+            jdbc.update("INSERT INTO merchant(id,owner_user_id,merchant_name,status,version,created_at,updated_at) VALUES(?,?,?,'ACTIVE',0,UTC_TIMESTAMP(3),UTC_TIMESTAMP(3))",
+                    MERCHANT, "8300000000000099", "统计测试商家");
+            jdbc.update("INSERT INTO merchant_store(id,merchant_id,store_name,address,status,version,created_at,updated_at) VALUES(?,?,?,'测试地址 1 号','ACTIVE',0,UTC_TIMESTAMP(3),UTC_TIMESTAMP(3))",
+                    STORE, MERCHANT, "统计测试门店");
         }
 
         MerchantCustomerQueryApi customers(UserQueryApi users) {
@@ -505,14 +513,20 @@ class MerchantCustomerStatsMySqlTest {
 
         private static MerchantOrderAuthorityApi authority() {
             return new MerchantOrderAuthorityApi() {
-                @Override
-                public void requireOwner(String merchantId, String storeId, QueryContext context) {}
-                @Override
-                public void requireOwnerRead(String merchantId, String storeId, QueryContext context) {
+                void check(String merchantId, String storeId) {
                     if (!Long.toString(STORE).equals(storeId)
                             || !Long.toString(MERCHANT).equals(merchantId)) {
                         throw new ApiException(CommonApiCodes.FORBIDDEN, "foreign coordinate");
                     }
+                }
+                @Override
+                public void requireOwner(String merchantId, String storeId, QueryContext context) {
+                    // Mirror production: the write family verifies the same coordinate.
+                    check(merchantId, storeId);
+                }
+                @Override
+                public void requireOwnerRead(String merchantId, String storeId, QueryContext context) {
+                    check(merchantId, storeId);
                 }
             };
         }

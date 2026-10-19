@@ -39,3 +39,8 @@
 .mcu-notice { margin-top: calc(var(--mcu-unit) * 12); font-size: calc(var(--mcu-unit) * 12); line-height: calc(var(--mcu-unit) * 18); color: #a83232; }
 .mcu-tail { display: block; margin-top: calc(var(--mcu-unit) * 18); font-size: calc(var(--mcu-unit) * 10); line-height: calc(var(--mcu-unit) * 15); color: #9bb3bd; text-align: center; }
 .mcu-bottom-space { height: calc(var(--mcu-unit) * 28); flex: none; }
+/* 2026-10-19 扩展：搜索模式切换（昵称/订单尾号）与商家内部备注（69号扩展面）。 */
+.mcu-page .mcu-search-mode { flex: none; padding: calc(var(--mcu-unit) * 9) calc(var(--mcu-unit) * 16); border: calc(var(--mcu-unit) * 1.5) solid #e5e7eb; border-radius: calc(var(--mcu-unit) * 100); color: #6b7280; font-size: calc(var(--mcu-unit) * 12.5); }
+.mcu-page .mcu-search-mode-on { border-color: #5baae8; background: #e8f4fd; color: #2b7cc0; font-weight: 600; }
+.mcu-note-input { width: 100%; min-height: calc(var(--mcu-unit) * 64); background: #f9fafb; border: calc(var(--mcu-unit) * 1.16) solid #e5e7eb; border-radius: calc(var(--mcu-unit) * 11.6); padding: calc(var(--mcu-unit) * 12) calc(var(--mcu-unit) * 14); font-size: calc(var(--mcu-unit) * 13.555); line-height: calc(var(--mcu-unit) * 21); color: #111827; }
+.mcu-page .mcu-note-save { align-self: flex-end; }

@@ -54,7 +54,9 @@ assert.deepEqual(packages.map(p => ({ root: p.root, pages: p.pages })), [
     // Review appeal M face (56号 / REV-002): OWNER review list + one-appeal entry.
     'pages/reviews/index',
     // M-side finish slice (27 §6.4 / 69 / 70): shop info, customers list + detail, stats.
-    'pages/shop-info/index', 'pages/customers/index', 'pages/customers/detail', 'pages/stats/index'] },
+    'pages/shop-info/index', 'pages/customers/index', 'pages/customers/detail', 'pages/stats/index',
+    // 2026-10-19 CCR expansion: 70号 service drill-down page.
+    'pages/stats/service-orders'] },
   { root: 'consumer/pages/pet-archive', pages: ['index', 'detail', 'form', 'vaccine-form', 'deworm-form'] },
   { root: 'consumer/pages/merchant-application', pages: ['index', 'signing'] },
   { root: 'consumer/pages/store-services', pages: ['index', 'service-detail', 'stores'] },

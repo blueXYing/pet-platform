@@ -29,3 +29,14 @@
 .msi-receipt { margin: calc(var(--msi-unit) * 12) calc(var(--msi-unit) * 17) 0; padding: calc(var(--msi-unit) * 10) calc(var(--msi-unit) * 14); border-radius: calc(var(--msi-unit) * 12); background: #d7f0d0; color: #2f6b2f; font-size: calc(var(--msi-unit) * 12); line-height: calc(var(--msi-unit) * 18); }
 .msi-page .msi-save { display: flex; align-items: center; justify-content: center; margin: calc(var(--msi-unit) * 18) calc(var(--msi-unit) * 17) 0; height: calc(var(--msi-unit) * 46.5); border-radius: calc(var(--msi-unit) * 11.6); background: #5baae8; color: #fff; font-size: calc(var(--msi-unit) * 15); font-weight: 600; }
 .msi-bottom-space { height: calc(var(--msi-unit) * 28); flex: none; }
+/* 2026-10-19 扩展：营业状态开关 / 头像 / 店铺照片页内上传（27号 §6.4 扩展面）。 */
+.msi-switch-row { display: flex; gap: calc(var(--msi-unit) * 10); }
+.msi-page .msi-switch { padding: calc(var(--msi-unit) * 8) calc(var(--msi-unit) * 20); border: calc(var(--msi-unit) * 1.5) solid #e5e7eb; border-radius: calc(var(--msi-unit) * 100); color: #6b7280; font-size: calc(var(--msi-unit) * 13); }
+.msi-page .msi-switch-on { border-color: #5baae8; background: #e8f4fd; color: #2b7cc0; font-weight: 600; }
+.msi-avatar-row { display: flex; align-items: center; gap: calc(var(--msi-unit) * 10); }
+.msi-page .msi-photo-add { align-self: flex-start; padding: calc(var(--msi-unit) * 8) calc(var(--msi-unit) * 20); border: calc(var(--msi-unit) * 1.5) dashed #9cc8e4; border-radius: calc(var(--msi-unit) * 12); color: #3185ba; font-size: calc(var(--msi-unit) * 13); }
+.msi-page .msi-avatar-clear { align-self: flex-start; padding: calc(var(--msi-unit) * 8) calc(var(--msi-unit) * 20); border: calc(var(--msi-unit) * 1.5) solid #e5b7b7; border-radius: calc(var(--msi-unit) * 12); color: #a83232; font-size: calc(var(--msi-unit) * 13); }
+.msi-photo-row { display: flex; flex-wrap: wrap; gap: calc(var(--msi-unit) * 8); }
+.msi-photo-item { display: flex; align-items: center; gap: calc(var(--msi-unit) * 6); padding: calc(var(--msi-unit) * 6) calc(var(--msi-unit) * 10); border: calc(var(--msi-unit) * 1.5) solid #c0ecff; border-radius: calc(var(--msi-unit) * 12); background: #f9fbfe; }
+.msi-photo-id { font-size: calc(var(--msi-unit) * 11.5); line-height: calc(var(--msi-unit) * 16); color: #374151; }
+.msi-page .msi-photo-remove { padding: calc(var(--msi-unit) * 2) calc(var(--msi-unit) * 8); border-radius: calc(var(--msi-unit) * 8); color: #a83232; font-size: calc(var(--msi-unit) * 11.5); }
