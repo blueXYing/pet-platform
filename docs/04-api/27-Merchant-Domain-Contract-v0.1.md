@@ -156,3 +156,24 @@ MER更新商家状态并持久化既有 `MerchantDisabledEvent.v1`，payload保�
 ## 2026-09-24 员工基础五操作实现补充
 
 用户已确认读写门槛及独立审计/内部命令补充，见[35号契约](35-Merchant-Staff-Management-Contract-v0.1.md)与[批准回执](../../planning/ccr/CCR-W2-API-001/merchant-staff-implementation-decisions.md)。列表/详情为真实主账号范围只读；新增/编辑/启用要求真实APPROVED+SIGNED+merchant/store ACTIVE。disable原门禁保持。既有手机号清空/脱敏与外部字段不变；本条不等于实现已交付或生产开关已开启。
+
+## 2026-10-19 店铺资料读写补充（M 端 5.7，PRD 5.7 店铺资料，帧 25:20684）
+
+M 端收尾切片（用户 2026-10-19 裁决"全做"）：店铺基础详细信息由商家自行维护。审核基础信息（商家名称、联系人、手机号、商家类型、城市、定位、营业执照、身份证件）仍为入驻申请链路（30号）事实。**2026-10-19 二次扩展（用户裁决"继续扩展CCR"）调整最小口径**：商家名称/门店地址/联系电话（merchant_store 行的 store_name/address/phone 三项）经同一全字段替换写面开放商家自维护——**CCR 最小口径：这三项字段的变更不触发运营复审**（资质类字段——营业执照/身份证件/商家类型/城市/定位——仍不开放任何变更面，无复审流程），每次变更在 `merchant_store_profile_audit` 落字段名清单审计（不存值）；地址文本变更不做地图重校验（32号地图校验仅入驻申请链路适用，偏差登记）。营业状态中的"休息中"开关与店铺头像自本补充起**开放**（见 §6.4 扩展段）；门店定位重选仍不开放（登记表 §4 偏差 + CCR 待裁）。平台营业事实仅投影 merchant/merchant_store 既有状态：ACTIVE→营业中、OFFLINE→已下线、FROZEN→已冻结（运营处罚态商家只读，仅可查看，申诉走既有 merchant.penalty.appeal 链路）。
+
+### 6.4 店铺资料读与写（已批准，装配默认关闭）
+
+存储为伴随表[27-Merchant-Store-Profile-Schema-v0.1.sql](../03-database/27-Merchant-Store-Profile-Schema-v0.1.sql)（`merchant_store_profile` + `merchant_store_profile_audit`，SQL06 表结构不动——但 2026-10-19 扩展起 merchant_store 行的 store_name/address/phone 经本写面更新，同事务同版本纪律；同 29号 compat 先例）。行在首次保存时惰性创建；首次保存前读取返回全 NULL 字段 + version=0 的默认投影。
+
+| 方法/路径 | 请求 | data |
+|---|---|---|
+| GET `/merchant/store-profile` | query merchantId、storeId；OWNER 本人主账号 | StoreProfileDTO |
+| PUT `/merchant/store-profile` | body 全字段替换 + expectedVersion；X-Request-Id；OWNER 本人主账号 | StoreProfileDTO（保存后投影） |
+
+StoreProfileDTO 两段：`readonly`（storeName、address、cityCode、phoneMasked、longitude/latitude 可空、merchantStatus、storeStatus、operatingStatus 投影枚举 OPERATING/OFFLINE/FROZEN/**RESTING**（2026-10-19 扩展）、applicationStatus）+ `profile`（intro 0-500 码点可空、announcement 0-200 可空、photoAssetIds 0-6 个正十进制 String 数组可空、businessHours 可空、promoLevel 1-9 可空、promoTitle/promoText 0-100 可空、**avatarAssetId 正十进制 String 可空（2026-10-19 扩展，STORE_PHOTO 用途 READY 私有素材）**、**businessStatus 枚举 OPEN/RESTING（2026-10-19 扩展，空串=清除回 OPEN 投影）**、version）。
+
+PUT 全字段替换语义（同 27号 §6.1 PUT staff）：请求体必须携带全部可编辑字段（JSON 严格读：显式 null 非法、未知字段非法）。**2026-10-19 扩展后可编辑字段**：storeName（1-128 码点，必填非空白）、address（1-255 码点，必填非空白）、phone（5-32 位数字，空串=清除存储 NULL）、intro/announcement/promoTitle/promoText 以空字符串清空，photoAssetIds/businessHours 以空数组清空，promoLevel 以 0 表示未设置（存储 NULL），avatarAssetId 以空串清除，businessStatus 以空串清除（投影 OPEN）。businessHours 为结构化数组，每段 `{days:[1-7 整数去重升序],start:"HH:MM",end:"HH:MM"}`，最多 7 段、全天不重叠，end>start；该字段 V1 仅为信息性维护面，不参与 53号分钟级排期计算（偏差披露）。photoAssetIds/avatarAssetId 每个资产必须为当前 OWNER 以 `STORE_PHOTO` 用途上传的 READY 私有素材（31号管线，复用 SERVICE_COVER 同族主账号门禁；**上传管线自本补充起接受 purpose=STORE_PHOTO**，31号增补同步）；任一资产不满足为 400。写路径门禁同员工写族：真实 OWNER + merchant/store ACTIVE + 申请 APPROVED + 协议 SIGNED；命令名 `merchant.store.profile.update`，幂等 scope、独立短事务绑定、同事务审计（仅字段名清单，不存值——扩展字段的变更同样仅记名）与版本乐观锁沿 §7 全套纪律。merchant_store 行事实更新（store_name/address/phone）在命令同一事务内、`lockOwnedScope` 行锁保护下执行；expectedVersion 冲突 409 COMMON_CONFLICT。
+
+读侧为存量资料读取家族：OWNER 复验后，OFFLINE/FROZEN 门店仍可读（写侧维持 ACTIVE 门禁， LIMITED 时入口隐藏、服务端 fail-closed）。**operatingStatus 投影（2026-10-19 扩展）**：merchant+store 均 ACTIVE 时按 profile.businessStatus 投影——OPEN→OPERATING、RESTING→RESTING（休息中，商家自设展示态，C 端外显属后续切片）；平台态 OFFLINE/FROZEN 恒优先于 RESTING。响应 `Cache-Control: no-store`。错误映射：400 字段/版本/资产非法、401 会话、403 非 OWNER、404 门店不存在或越权（同形防枚举）、409 版本冲突/IDEMPOTENCY_KEY_CONFLICT、503 事实不可读。无新增错误码。
+
+HTTP 路由 `pet.merchant.store-profile.http.enabled` 装配（默认 false，OpenAPI11 `IMPLEMENTED_DEFAULT_OFF`）；审核状态事实复用既有 ApplicationReviewFactsReader 链。本补充不改变 30号申请链路任何语义；C 端门店外显（MerchantStoreDisplayDTO 投影）不在本切片范围，店铺资料 C 端展示属后续切片。

@@ -124,6 +124,22 @@ export default function MerchantWorkbenchPage() {
     controller.handoffToChild()
     Taro.navigateTo({ url: '/merchant/pages/refund/index' }).catch(() => controller.handoffCancelled())
   }
+  // Store profile maintenance (27 §6.4): the write gate is the staff-write family —
+  // OWNER + ACTIVE + APPROVED + SIGNED server-side, so the entry stays ALLOWED-only.
+  function openShopInfo() {
+    controller.handoffToChild()
+    Taro.navigateTo({ url: '/merchant/pages/shop-info/index' }).catch(() => controller.handoffCancelled())
+  }
+  // Derived customers (69) + business stats (70): read-only existing-material family, same
+  // gate as the order list — readable for LIMITED, gated on merchant.order.read.
+  function openCustomers() {
+    controller.handoffToChild()
+    Taro.navigateTo({ url: '/merchant/pages/customers/index' }).catch(() => controller.handoffCancelled())
+  }
+  function openStats() {
+    controller.handoffToChild()
+    Taro.navigateTo({ url: '/merchant/pages/stats/index' }).catch(() => controller.handoffCancelled())
+  }
   const view = state.view
   const heroTitle = state.status === 'idle' ? '正在进入工作台…'
     : state.status === 'checking' ? '正在校验工作台准入…'
@@ -222,6 +238,23 @@ export default function MerchantWorkbenchPage() {
           {view.membershipKind === 'OWNER' && (state.status === 'allowed' || state.status === 'limited') && view.allowedActions.includes('merchant.review.read') && <>
             <Button id='workbench-reviews' className='mwb-cell' onClick={openReviews}>
               <View className='mwb-cell-icon mwb-icon-reviews' /><Text className='mwb-cell-label'>评价管理</Text>
+            </Button>
+          </>}
+          {/* M-side finish slice: derived customer list (69) and stats dashboard (70) are
+              read-only existing-material entries, gated on the merchant.order.read action. */}
+          {view.membershipKind === 'OWNER' && (state.status === 'allowed' || state.status === 'limited') && view.allowedActions.includes('merchant.order.read') && <>
+            <Button id='workbench-customers' className='mwb-cell' onClick={openCustomers}>
+              <View className='mwb-cell-icon mwb-icon-aftersales' /><Text className='mwb-cell-label'>客户管理</Text>
+            </Button>
+            <Button id='workbench-stats' className='mwb-cell' onClick={openStats}>
+              <View className='mwb-cell-icon mwb-icon-orders' /><Text className='mwb-cell-label'>数据统计</Text>
+            </Button>
+          </>}
+          {/* Store profile (27 §6.4): owner self-maintenance — ALLOWED only, mirroring the
+              services/members write-family gating (LIMITED suspends new business writes). */}
+          {view.membershipKind === 'OWNER' && state.status === 'allowed' && <>
+            <Button id='workbench-shop-info' className='mwb-cell' onClick={openShopInfo}>
+              <View className='mwb-cell-icon mwb-icon-services' /><Text className='mwb-cell-label'>店铺信息</Text>
             </Button>
           </>}
         </View>

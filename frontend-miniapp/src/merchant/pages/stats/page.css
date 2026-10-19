@@ -1,0 +1,48 @@
+/* 数据统计（mst，70号 M 面）— M 端家族 tokens，同 schedule/page.css 先例。
+   WXSS 铁律：按钮重置 .mst-page button（0,1,1）、动作按钮复合类（0,2,0）、状态仅 className。 */
+.mst-page { --mst-status-top: 0px; min-height: 100vh; background: #f0fbff; color: #1d0d07; font-family: Roboto, 'Noto Sans SC', sans-serif; display: flex; flex-direction: column; }
+.mst-page view, .mst-page button, .mst-page text { box-sizing: border-box; }
+.mst-page button { margin: 0; padding: 0; border: 0; border-radius: 0; background: transparent; font: inherit; line-height: normal; }
+.mst-page button::after { border: 0; }
+.mst-page button[disabled] { opacity: .65; color: inherit; }
+.mst-status-area { height: var(--mst-status-top); flex: none; }
+.mst-header { position: relative; flex: none; height: calc(var(--mst-unit) * 86); background: #fff6e5; display: flex; align-items: center; }
+.mst-back { margin-left: calc(var(--mst-unit) * 14); padding: calc(var(--mst-unit) * 8) calc(var(--mst-unit) * 14); border-radius: calc(var(--mst-unit) * 100); border: calc(var(--mst-unit) * 1.5) solid #c0ecff; color: #3185ba; font-size: calc(var(--mst-unit) * 13); }
+.mst-back image { width: calc(var(--mst-unit) * 16); height: calc(var(--mst-unit) * 16); }
+.mst-title { position: absolute; left: 0; right: 0; text-align: center; font-size: calc(var(--mst-unit) * 16); line-height: calc(var(--mst-unit) * 24); font-weight: 700; color: #3c3c3c; font-family: Outfit, Roboto, 'Noto Sans SC', sans-serif; pointer-events: none; }
+.mst-state { padding: calc(var(--mst-unit) * 48) calc(var(--mst-unit) * 29); font-size: calc(var(--mst-unit) * 14); line-height: calc(var(--mst-unit) * 24); color: #577683; display: flex; flex-direction: column; gap: calc(var(--mst-unit) * 14); }
+.mst-page .mst-primary { align-self: flex-start; padding: calc(var(--mst-unit) * 10) calc(var(--mst-unit) * 24); border-radius: calc(var(--mst-unit) * 12); background: #5baae8; color: #fff; font-size: calc(var(--mst-unit) * 13.5); font-weight: 600; }
+.mst-body { flex: 1; padding: 0 calc(var(--mst-unit) * 17); }
+.mst-alert { margin-top: calc(var(--mst-unit) * 12); padding: calc(var(--mst-unit) * 10) calc(var(--mst-unit) * 14); border-radius: calc(var(--mst-unit) * 12); background: #fdeec8; color: #7a4a1d; font-size: calc(var(--mst-unit) * 12); line-height: calc(var(--mst-unit) * 18); }
+.mst-range-row { display: flex; gap: calc(var(--mst-unit) * 10); margin-top: calc(var(--mst-unit) * 12); }
+/* Pills outrank the reset like sch-chip (0,2,0 after the 0,1,1 reset); selected variant after base. */
+.mst-page .mst-range { flex: 1; padding: calc(var(--mst-unit) * 8.4) 0; border: calc(var(--mst-unit) * 1.16) solid #e5e7eb; border-radius: calc(var(--mst-unit) * 8); background: #f9fafb; font-size: calc(var(--mst-unit) * 13); line-height: calc(var(--mst-unit) * 20); color: #4b5563; text-align: center; }
+.mst-range.mst-range-selected { background: #5baae8; border-color: #5baae8; color: #fff; }
+.mst-grid { display: flex; flex-wrap: wrap; gap: calc(var(--mst-unit) * 10); margin-top: calc(var(--mst-unit) * 12); }
+.mst-metric { width: calc(50% - calc(var(--mst-unit) * 5)); padding: calc(var(--mst-unit) * 12) calc(var(--mst-unit) * 14); background: #fff; border: calc(var(--mst-unit) * 1.5) solid #c0ecff; border-radius: calc(var(--mst-unit) * 12); display: flex; flex-direction: column; gap: calc(var(--mst-unit) * 4); }
+.mst-metric-label { font-size: calc(var(--mst-unit) * 11.5); line-height: calc(var(--mst-unit) * 16); color: #6b7280; }
+.mst-metric-value { font-size: calc(var(--mst-unit) * 19); line-height: calc(var(--mst-unit) * 26); font-weight: 700; color: #111827; }
+.mst-delta { font-size: calc(var(--mst-unit) * 11); line-height: calc(var(--mst-unit) * 16); color: #2f6b2f; }
+.mst-delta.mst-delta-down { color: #a83232; }
+.mst-card { margin-top: calc(var(--mst-unit) * 12); padding: calc(var(--mst-unit) * 14) calc(var(--mst-unit) * 16); background: #fff; border: calc(var(--mst-unit) * 1.5) solid #c0ecff; border-radius: calc(var(--mst-unit) * 17); display: flex; flex-direction: column; gap: calc(var(--mst-unit) * 8); }
+.mst-card-title { font-size: calc(var(--mst-unit) * 14); line-height: calc(var(--mst-unit) * 20); font-weight: 600; color: #1d0d07; }
+.mst-kv { display: flex; align-items: baseline; justify-content: space-between; }
+.mst-kv-label { font-size: calc(var(--mst-unit) * 12.5); line-height: calc(var(--mst-unit) * 20); color: #6b7280; }
+.mst-kv-value { font-size: calc(var(--mst-unit) * 14); line-height: calc(var(--mst-unit) * 20); font-weight: 600; color: #111827; }
+.mst-hint { font-size: calc(var(--mst-unit) * 10.5); line-height: calc(var(--mst-unit) * 16); color: #9ca3af; }
+.mst-empty { font-size: calc(var(--mst-unit) * 12.5); line-height: calc(var(--mst-unit) * 19); color: #577683; }
+.mst-top-row { display: flex; align-items: center; gap: calc(var(--mst-unit) * 10); }
+.mst-top-rank { flex: none; width: calc(var(--mst-unit) * 20); height: calc(var(--mst-unit) * 20); border-radius: calc(var(--mst-unit) * 100); background: #c0ecff; color: #3185ba; font-size: calc(var(--mst-unit) * 11); line-height: calc(var(--mst-unit) * 20); text-align: center; }
+.mst-top-name { flex: 1; font-size: calc(var(--mst-unit) * 13); line-height: calc(var(--mst-unit) * 20); color: #111827; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.mst-top-count { flex: none; font-size: calc(var(--mst-unit) * 12); line-height: calc(var(--mst-unit) * 18); color: #6b7280; }
+.mst-trend { display: flex; align-items: flex-end; justify-content: space-between; gap: calc(var(--mst-unit) * 4); }
+.mst-trend-col { flex: 1; display: flex; flex-direction: column; align-items: center; gap: calc(var(--mst-unit) * 4); }
+.mst-trend-bar-zone { height: calc(var(--mst-unit) * 96); display: flex; align-items: flex-end; }
+.mst-trend-bar { width: calc(var(--mst-unit) * 12); border-radius: calc(var(--mst-unit) * 4); background: #5baae8; min-height: calc(var(--mst-unit) * 2); }
+.mst-trend-day { font-size: calc(var(--mst-unit) * 9); line-height: calc(var(--mst-unit) * 13); color: #9ca3af; }
+.mst-notice { margin-top: calc(var(--mst-unit) * 12); font-size: calc(var(--mst-unit) * 12); line-height: calc(var(--mst-unit) * 18); color: #a83232; }
+.mst-tail { display: block; margin-top: calc(var(--mst-unit) * 18); font-size: calc(var(--mst-unit) * 10); line-height: calc(var(--mst-unit) * 15); color: #9bb3bd; text-align: center; }
+.mst-bottom-space { height: calc(var(--mst-unit) * 28); flex: none; }
+/* 2026-10-19 扩展：自定义区间卡（CUSTOM from/to ≤92 天，70号扩展面）。 */
+.mst-page .mst-custom .mst-primary { margin-top: calc(var(--mst-unit) * 8); }
+.mst-page .mst-top-row { display: flex; width: 100%; text-align: left; align-items: center; gap: calc(var(--mst-unit) * 10); padding: calc(var(--mst-unit) * 8) 0; }

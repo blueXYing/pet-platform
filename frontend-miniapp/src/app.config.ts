@@ -36,7 +36,13 @@ export default defineAppConfig({
       'pages/order-list/index', 'pages/order-confirm/index',
       // Review appeal M face (56号 / REV-002, one compact line per the app.config convention):
       // OWNER review list with the one-appeal-per-review entry and status overlay.
-      'pages/reviews/index'] },
+      'pages/reviews/index',
+      // M-side finish slice (27 §6.4 store profile / 69 derived customers / 70 stats, switches
+      // default OFF server-side): shop info form, customer list + detail, stats dashboard.
+      'pages/shop-info/index', 'pages/customers/index', 'pages/customers/detail', 'pages/stats/index',
+      // 2026-10-19 CCR expansion: the 70号 service drill-down page (Top5 row → paged
+      // read-only order rows of one window service).
+      'pages/stats/service-orders'] },
     // Contract 68 (2026-10-19 ruling): vaccine/deworming record add forms ride the pet-archive
     // subpackage (the two design frames 96:2580/96:3006), one compact line per the convention.
     { root: 'consumer/pages/pet-archive', pages: ['index', 'detail', 'form', 'vaccine-form', 'deworm-form'] },
@@ -73,5 +79,13 @@ export default defineAppConfig({
     // Encyclopedia browse slice (contract 62, PRD 5.1.4): category/keyword/tag list + breed
     // detail with the ability radar; mine-grid entry, anonymous-browsable per PRD.
     { root: 'consumer/pages/baike', pages: ['index', 'detail'] },
+    // Settings hub slice (contract 66, PRD 5.1.29; user ruling 2026-10-19 "全做"): the hub
+    // page + the deletion flow page + the privacy-policy/user-agreement static content pages
+    // (WeChat review hard requirement); one compact line per the app.config convention.
+    { root: 'consumer/pages/settings', pages: ['index', 'deletion', 'privacy-policy', 'user-agreement'] },
+    // Help & service slice (contract 67, PRD 5.1.25 minimum: static FAQ + hotline call).
+    { root: 'consumer/pages/help', pages: ['index'] },
+    // Feedback slice (contract 67, PRD 5.1.28 complaint class): create + my-ticket list.
+    { root: 'consumer/pages/feedback', pages: ['index', 'list'] },
   ],
 })

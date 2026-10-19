@@ -52,7 +52,11 @@ assert.deepEqual(packages.map(p => ({ root: p.root, pages: p.pages })), [
     'pages/staff-workbench/index', 'pages/staff-invitation/index', 'pages/staff-verify/index',
     'pages/order-list/index', 'pages/order-confirm/index',
     // Review appeal M face (56号 / REV-002): OWNER review list + one-appeal entry.
-    'pages/reviews/index'] },
+    'pages/reviews/index',
+    // M-side finish slice (27 §6.4 / 69 / 70): shop info, customers list + detail, stats.
+    'pages/shop-info/index', 'pages/customers/index', 'pages/customers/detail', 'pages/stats/index',
+    // 2026-10-19 CCR expansion: 70号 service drill-down page.
+    'pages/stats/service-orders'] },
   { root: 'consumer/pages/pet-archive', pages: ['index', 'detail', 'form', 'vaccine-form', 'deworm-form'] },
   { root: 'consumer/pages/merchant-application', pages: ['index', 'signing'] },
   { root: 'consumer/pages/store-services', pages: ['index', 'service-detail', 'stores'] },
@@ -77,7 +81,13 @@ assert.deepEqual(packages.map(p => ({ root: p.root, pages: p.pages })), [
   { root: 'consumer/pages/favtrack', pages: ['favorites', 'footprints'] },
   // Encyclopedia browse slice (contract 62, PRD 5.1.4): breed list + detail.
   { root: 'consumer/pages/baike', pages: ['index', 'detail'] },
-], 'Merchant workspace, pet archive, merchant application, store services, coupon/points, aftersale and notification preference pages must be registered in the single app')
+  // Settings hub slice (contract 66, PRD 5.1.29): hub + deletion flow + static policy pages.
+  { root: 'consumer/pages/settings', pages: ['index', 'deletion', 'privacy-policy', 'user-agreement'] },
+  // Help & service slice (contract 67, PRD 5.1.25 minimum): static FAQ + hotline call.
+  { root: 'consumer/pages/help', pages: ['index'] },
+  // Feedback slice (contract 67, PRD 5.1.28): create + my-ticket list.
+  { root: 'consumer/pages/feedback', pages: ['index', 'list'] },
+], 'Merchant workspace, pet archive, merchant application, store services, coupon/points, aftersale, settings hub, help and feedback pages must be registered in the single app')
 for (const [folder, pages] of [['consumer/pages/aftersale', ['index', 'detail', 'apply']], ['merchant/pages/aftersale', ['index', 'detail']], ['merchant/pages/reviews', ['index']]]) {
   for (const page of pages) for (const extension of ['js', 'json', 'wxml', 'wxss']) {
     assert.ok(fs.existsSync(path.join(root, `${folder}/${page}.${extension}`)), `Aftersale page build artifact missing: ${folder}/${page}.${extension}`)
@@ -105,6 +115,25 @@ for (const page of ['list', 'detail', 'refund-apply', 'reschedule', 'review']) {
 for (const extension of ['js', 'json', 'wxml', 'wxss']) {
   assert.ok(fs.existsSync(path.join(root, 'consumer/pages/notification-preferences/index.' + extension)),
     'Notification preference page artifact missing: ' + extension)
+}
+// Settings hub slice (contract 66): hub, deletion flow and the two static policy pages.
+for (const page of ['index', 'deletion', 'privacy-policy', 'user-agreement']) {
+  for (const extension of ['js', 'json', 'wxml', 'wxss']) {
+    assert.ok(fs.existsSync(path.join(root, `consumer/pages/settings/${page}.` + extension)),
+      `Settings page artifact missing: settings/${page}.${extension}`)
+  }
+}
+// Help & service slice (contract 67).
+for (const extension of ['js', 'json', 'wxml', 'wxss']) {
+  assert.ok(fs.existsSync(path.join(root, 'consumer/pages/help/index.' + extension)),
+    'Help page artifact missing: help/index.' + extension)
+}
+// Feedback slice (contract 67): create + my-ticket list.
+for (const page of ['index', 'list']) {
+  for (const extension of ['js', 'json', 'wxml', 'wxss']) {
+    assert.ok(fs.existsSync(path.join(root, `consumer/pages/feedback/${page}.` + extension)),
+      `Feedback page artifact missing: feedback/${page}.${extension}`)
+  }
 }
 // Booking create + payment initiation slice (10号 §3.4/§3.5/§3.6).
 for (const page of ['create', 'pay']) {

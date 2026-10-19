@@ -1,0 +1,46 @@
+/* 客户管理/客户详情（mcu，69号 M 面）— M 端家族 tokens，同 schedule/page.css 先例。
+   WXSS 铁律：按钮重置 .mcu-page button（0,1,1）、动作按钮复合类（0,2,0）、状态仅 className。 */
+.mcu-page { --mcu-status-top: 0px; min-height: 100vh; background: #f0fbff; color: #1d0d07; font-family: Roboto, 'Noto Sans SC', sans-serif; display: flex; flex-direction: column; }
+.mcu-page view, .mcu-page button, .mcu-page text, .mcu-page input { box-sizing: border-box; }
+.mcu-page button { margin: 0; padding: 0; border: 0; border-radius: 0; background: transparent; font: inherit; line-height: normal; }
+.mcu-page button::after { border: 0; }
+.mcu-page button[disabled] { opacity: .65; color: inherit; }
+.mcu-status-area { height: var(--mcu-status-top); flex: none; }
+.mcu-header { position: relative; flex: none; height: calc(var(--mcu-unit) * 86); background: #fff6e5; display: flex; align-items: center; }
+.mcu-back { margin-left: calc(var(--mcu-unit) * 14); padding: calc(var(--mcu-unit) * 8) calc(var(--mcu-unit) * 14); border-radius: calc(var(--mcu-unit) * 100); border: calc(var(--mcu-unit) * 1.5) solid #c0ecff; color: #3185ba; font-size: calc(var(--mcu-unit) * 13); }
+.mcu-back image { width: calc(var(--mcu-unit) * 16); height: calc(var(--mcu-unit) * 16); }
+.mcu-title { position: absolute; left: 0; right: 0; text-align: center; font-size: calc(var(--mcu-unit) * 16); line-height: calc(var(--mcu-unit) * 24); font-weight: 700; color: #3c3c3c; font-family: Outfit, Roboto, 'Noto Sans SC', sans-serif; pointer-events: none; }
+.mcu-state { padding: calc(var(--mcu-unit) * 48) calc(var(--mcu-unit) * 29); font-size: calc(var(--mcu-unit) * 14); line-height: calc(var(--mcu-unit) * 24); color: #577683; display: flex; flex-direction: column; gap: calc(var(--mcu-unit) * 14); }
+.mcu-page .mcu-primary { align-self: flex-start; padding: calc(var(--mcu-unit) * 10) calc(var(--mcu-unit) * 24); border-radius: calc(var(--mcu-unit) * 12); background: #5baae8; color: #fff; font-size: calc(var(--mcu-unit) * 13.5); font-weight: 600; }
+.mcu-alert { margin: calc(var(--mcu-unit) * 12) calc(var(--mcu-unit) * 17) 0; padding: calc(var(--mcu-unit) * 10) calc(var(--mcu-unit) * 14); border-radius: calc(var(--mcu-unit) * 12); background: #fdeec8; color: #7a4a1d; font-size: calc(var(--mcu-unit) * 12); line-height: calc(var(--mcu-unit) * 18); }
+.mcu-search-row { display: flex; gap: calc(var(--mcu-unit) * 10); margin: calc(var(--mcu-unit) * 12) calc(var(--mcu-unit) * 17) 0; }
+.mcu-search { flex: 1; height: calc(var(--mcu-unit) * 40); background: #fff; border: calc(var(--mcu-unit) * 1.5) solid #c0ecff; border-radius: calc(var(--mcu-unit) * 100); padding: 0 calc(var(--mcu-unit) * 17); font-size: calc(var(--mcu-unit) * 13); color: #111827; }
+.mcu-page .mcu-search-action { flex: none; padding: calc(var(--mcu-unit) * 9) calc(var(--mcu-unit) * 22); border-radius: calc(var(--mcu-unit) * 100); background: #5baae8; color: #fff; font-size: calc(var(--mcu-unit) * 13); font-weight: 600; }
+.mcu-count { display: block; margin: calc(var(--mcu-unit) * 12) calc(var(--mcu-unit) * 17) 0; font-size: calc(var(--mcu-unit) * 12); line-height: calc(var(--mcu-unit) * 18); color: #6b7280; }
+.mcu-list { flex: 1; padding: 0 calc(var(--mcu-unit) * 17); }
+.mcu-card { display: block; width: 100%; text-align: left; margin-top: calc(var(--mcu-unit) * 12); padding: calc(var(--mcu-unit) * 14) calc(var(--mcu-unit) * 16); background: #fff; border: calc(var(--mcu-unit) * 1.5) solid #c0ecff; border-radius: calc(var(--mcu-unit) * 17); }
+.mcu-line { display: flex; align-items: baseline; gap: calc(var(--mcu-unit) * 8); }
+.mcu-card-head { justify-content: space-between; }
+.mcu-name { font-size: calc(var(--mcu-unit) * 15); line-height: calc(var(--mcu-unit) * 22); font-weight: 600; color: #111827; }
+.mcu-phone { font-size: calc(var(--mcu-unit) * 12); line-height: calc(var(--mcu-unit) * 18); color: #6b7280; }
+.mcu-visit { flex: none; font-size: calc(var(--mcu-unit) * 10.5); line-height: calc(var(--mcu-unit) * 16); color: #3185ba; }
+.mcu-card-body { margin-top: calc(var(--mcu-unit) * 8); align-items: center; justify-content: space-between; }
+.mcu-pet { flex: 1; font-size: calc(var(--mcu-unit) * 12.5); line-height: calc(var(--mcu-unit) * 18); color: #374151; }
+.mcu-metrics { display: flex; gap: calc(var(--mcu-unit) * 18); }
+.mcu-metrics-row { margin-top: calc(var(--mcu-unit) * 12); justify-content: space-between; }
+.mcu-metric { display: flex; flex-direction: column; align-items: center; gap: calc(var(--mcu-unit) * 2); }
+.mcu-metric-value { font-size: calc(var(--mcu-unit) * 14); line-height: calc(var(--mcu-unit) * 20); font-weight: 600; color: #111827; }
+.mcu-metric-label { font-size: calc(var(--mcu-unit) * 10); line-height: calc(var(--mcu-unit) * 14); color: #9ca3af; }
+.mcu-card-title { display: block; margin-bottom: calc(var(--mcu-unit) * 8); font-size: calc(var(--mcu-unit) * 14); line-height: calc(var(--mcu-unit) * 20); font-weight: 600; color: #1d0d07; }
+.mcu-value { font-size: calc(var(--mcu-unit) * 13); line-height: calc(var(--mcu-unit) * 20); color: #111827; }
+.mcu-hint { display: block; margin-top: calc(var(--mcu-unit) * 8); font-size: calc(var(--mcu-unit) * 10.5); line-height: calc(var(--mcu-unit) * 16); color: #9ca3af; }
+.mcu-empty { margin-top: calc(var(--mcu-unit) * 24); padding: calc(var(--mcu-unit) * 24) calc(var(--mcu-unit) * 16); background: #fff; border: calc(var(--mcu-unit) * 1.5) solid #c0ecff; border-radius: calc(var(--mcu-unit) * 17); font-size: calc(var(--mcu-unit) * 13); line-height: calc(var(--mcu-unit) * 21); color: #577683; text-align: center; }
+.mcu-page .mcu-more { display: block; margin: calc(var(--mcu-unit) * 16) auto 0; width: max-content; padding: calc(var(--mcu-unit) * 8) calc(var(--mcu-unit) * 24); border: calc(var(--mcu-unit) * 1.5) solid #c0ecff; border-radius: calc(var(--mcu-unit) * 100); color: #3185ba; font-size: calc(var(--mcu-unit) * 13); }
+.mcu-notice { margin-top: calc(var(--mcu-unit) * 12); font-size: calc(var(--mcu-unit) * 12); line-height: calc(var(--mcu-unit) * 18); color: #a83232; }
+.mcu-tail { display: block; margin-top: calc(var(--mcu-unit) * 18); font-size: calc(var(--mcu-unit) * 10); line-height: calc(var(--mcu-unit) * 15); color: #9bb3bd; text-align: center; }
+.mcu-bottom-space { height: calc(var(--mcu-unit) * 28); flex: none; }
+/* 2026-10-19 扩展：搜索模式切换（昵称/订单尾号）与商家内部备注（69号扩展面）。 */
+.mcu-page .mcu-search-mode { flex: none; padding: calc(var(--mcu-unit) * 9) calc(var(--mcu-unit) * 16); border: calc(var(--mcu-unit) * 1.5) solid #e5e7eb; border-radius: calc(var(--mcu-unit) * 100); color: #6b7280; font-size: calc(var(--mcu-unit) * 12.5); }
+.mcu-page .mcu-search-mode-on { border-color: #5baae8; background: #e8f4fd; color: #2b7cc0; font-weight: 600; }
+.mcu-note-input { width: 100%; min-height: calc(var(--mcu-unit) * 64); background: #f9fafb; border: calc(var(--mcu-unit) * 1.16) solid #e5e7eb; border-radius: calc(var(--mcu-unit) * 11.6); padding: calc(var(--mcu-unit) * 12) calc(var(--mcu-unit) * 14); font-size: calc(var(--mcu-unit) * 13.555); line-height: calc(var(--mcu-unit) * 21); color: #111827; }
+.mcu-page .mcu-note-save { align-self: flex-end; }

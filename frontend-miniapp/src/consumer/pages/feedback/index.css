@@ -1,0 +1,33 @@
+/* 意见反馈提交页（设计稿 130:17185 布局语义；fb-* 页内前缀）。
+   WXSS 铁律：button 全重置、无嵌套、状态仅 className、禁 data-*。 */
+.cpn-page.fb-page { position: fixed; inset: 0; display: flex; flex-direction: column; background: #f0fbff; }
+.fb-page view, .fb-page button, .fb-page image, .fb-page text, .fb-page input, .fb-page textarea { box-sizing: border-box; }
+.fb-page button { padding: 0; margin: 0; border: 0; border-radius: 0; background: transparent; font: inherit; line-height: normal; text-align: left; }
+.fb-page button::after { border: 0; }
+.fb-page button[disabled] { opacity: .65; color: inherit; }
+
+.fb-status-area { height: var(--fb-top); flex-shrink: 0; }
+.fb-header { position: relative; height: calc(var(--fb-unit) * 46); flex-shrink: 0; background: #fff6e5; border-bottom: calc(var(--fb-unit) * 2) solid #cdeede; }
+.fb-back { position: absolute; left: calc(var(--fb-unit) * 19); top: calc(var(--fb-unit) * 7); width: calc(var(--fb-unit) * 32); height: calc(var(--fb-unit) * 32); }
+.fb-back-icon { width: 100%; height: 100%; display: block; }
+.fb-title { position: absolute; left: 0; right: 0; top: calc(var(--fb-unit) * 11); text-align: center; font-size: calc(var(--fb-unit) * 18); line-height: calc(var(--fb-unit) * 24); font-weight: 600; color: #1f2b30; }
+.fb-list-entry { position: absolute; right: calc(var(--fb-unit) * 16); top: calc(var(--fb-unit) * 11); color: #3185ba; font-size: calc(var(--fb-unit) * 13); }
+
+.fb-body { flex: 1; min-height: 0; padding: calc(var(--fb-unit) * 14) calc(var(--fb-unit) * 17) calc(var(--fb-unit) * 40); }
+.fb-label { display: block; margin: calc(var(--fb-unit) * 10) calc(var(--fb-unit) * 4) calc(var(--fb-unit) * 8); font-size: calc(var(--fb-unit) * 13); color: #577683; }
+.fb-types { display: flex; flex-wrap: wrap; gap: calc(var(--fb-unit) * 8); }
+.fb-type-chip { padding: calc(var(--fb-unit) * 8) calc(var(--fb-unit) * 16); border-radius: calc(var(--fb-unit) * 16); background: #ffffff; border: calc(var(--fb-unit) * 1) solid #c0ecff; font-size: calc(var(--fb-unit) * 13); line-height: calc(var(--fb-unit) * 18); color: #37474f; text-align: center; }
+.fb-type-on { background: #daf4ff; border-color: #5baae8; color: #2f83c7; font-weight: 600; }
+
+.fb-input-card { background: #ffffff; border: calc(var(--fb-unit) * 1) solid #c0ecff; border-radius: calc(var(--fb-unit) * 12); padding: calc(var(--fb-unit) * 4) calc(var(--fb-unit) * 14); }
+.fb-input { width: 100%; height: calc(var(--fb-unit) * 44); font-size: calc(var(--fb-unit) * 14); color: #1f2b30; }
+.fb-placeholder { color: #9db8c2; }
+
+.fb-content-card { position: relative; background: #ffffff; border: calc(var(--fb-unit) * 1) solid #c0ecff; border-radius: calc(var(--fb-unit) * 12); padding: calc(var(--fb-unit) * 12) calc(var(--fb-unit) * 14) calc(var(--fb-unit) * 30); }
+.fb-textarea { width: 100%; min-height: calc(var(--fb-unit) * 160); font-size: calc(var(--fb-unit) * 14); line-height: 1.7; color: #1f2b30; }
+.fb-counter { position: absolute; right: calc(var(--fb-unit) * 14); bottom: calc(var(--fb-unit) * 8); font-size: calc(var(--fb-unit) * 12); color: #9db8c2; }
+
+.fb-submit { display: block; width: 100%; margin-top: calc(var(--fb-unit) * 24); padding: calc(var(--fb-unit) * 13) 0; border-radius: calc(var(--fb-unit) * 22); background: #5baae8; color: #ffffff; font-size: calc(var(--fb-unit) * 15); text-align: center; }
+.fb-submit[disabled] { background: #c9e4f6; }
+.fb-notice { display: block; margin: calc(var(--fb-unit) * 12) calc(var(--fb-unit) * 4) 0; font-size: calc(var(--fb-unit) * 13); color: #b3574a; }
+.fb-login { display: block; width: 100%; margin-top: calc(var(--fb-unit) * 12); padding: calc(var(--fb-unit) * 12) 0; border-radius: calc(var(--fb-unit) * 22); background: #ffffff; border: calc(var(--fb-unit) * 1) solid #5baae8; color: #2f83c7; font-size: calc(var(--fb-unit) * 15); text-align: center; }

@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.petplatform.schedule.biz.infrastructure.persistence.mapper.ScheduleUtilizationMapper">
+  <!--
+    Contract 70 §2 排期利用率 (2026-10-19 CCR expansion): SCH-owned read aggregates only.
+    availableMinutes = Σ over OPEN schedule_availability_window rows of
+      overlap(window,[from,to)) minutes × configured_capacity;
+    bookedMinutes    = Σ over CONFIRMED schedule_reservation rows of
+      overlap(reservation,[from,to)) minutes.
+    GREATEST(0, …) guards reversed rows; minute granularity is exact (minute-aligned facts,
+    SSOT §13). Both statements carry the merchant+store double key and use the store-prefixed
+    index of their table (idx_schedule_service_time / idx_reservation_service_time).
+  -->
+  <select id="availableMinutes" resultType="long">
+    SELECT COALESCE(SUM(
+               GREATEST(0, TIMESTAMPDIFF(MINUTE, GREATEST(w.start_at, #{from}), LEAST(w.end_at, #{to})))
+                   * w.configured_capacity), 0)
+    FROM schedule_availability_window w
+    WHERE w.merchant_id = #{merchantId} AND w.store_id = #{storeId} AND w.status = 'OPEN'
+      AND w.start_at &lt; #{to} AND w.end_at &gt; #{from}
+  </select>
+
+  <select id="bookedMinutes" resultType="long">
+    SELECT COALESCE(SUM(
+               GREATEST(0, TIMESTAMPDIFF(MINUTE, GREATEST(r.start_at, #{from}), LEAST(r.end_at, #{to})))), 0)
+    FROM schedule_reservation r
+    WHERE r.merchant_id = #{merchantId} AND r.store_id = #{storeId} AND r.status = 'CONFIRMED'
+      AND r.start_at &lt; #{to} AND r.end_at &gt; #{from}
+  </select>
+</mapper>

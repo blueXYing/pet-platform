@@ -36,11 +36,13 @@ final class StaffBindingMySqlTestDatabase implements AutoCloseable {
     private boolean created;
 
     StaffBindingMySqlTestDatabase() throws Exception {
-        String prefix = System.getenv().containsKey("STAFFB_MYSQL_URL") ? "STAFFB"
-                : System.getenv().containsKey("MER001_MYSQL_URL") ? "MER001"
-                : System.getenv().containsKey("AUTH_MYSQL_URL") ? "AUTH" : "STAFFB";
+        // CI-统一 env 名 AUTH_MYSQL_*（铁律）：优先读 AUTH_MYSQL_*，兼容回退既有
+        // STAFFB_*/MER001_*（CI 同库同密码，行为不变），本地默认 127.0.0.1:33440。
+        String prefix = System.getenv().containsKey("AUTH_MYSQL_URL") ? "AUTH"
+                : System.getenv().containsKey("STAFFB_MYSQL_URL") ? "STAFFB"
+                : System.getenv().containsKey("MER001_MYSQL_URL") ? "MER001" : "AUTH";
         String url = System.getenv().getOrDefault(prefix + "_MYSQL_URL",
-                "jdbc:mysql://127.0.0.1:3306/");
+                "jdbc:mysql://127.0.0.1:33440/");
         if (!url.matches("jdbc:mysql://(127\\.0\\.0\\.1|localhost):[0-9]+/")) {
             throw new IllegalArgumentException(
                     prefix + "_MYSQL_URL must target a local isolated server, database-less");

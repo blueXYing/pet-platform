@@ -19,6 +19,7 @@ import com.petplatform.review.biz.infrastructure.persistence.ReviewStore;
 import com.petplatform.review.biz.infrastructure.persistence.entity.AppealListRowEntity;
 import com.petplatform.review.biz.infrastructure.persistence.entity.ReviewAppealRowEntity;
 import com.petplatform.review.biz.infrastructure.persistence.entity.ReviewListRowEntity;
+import com.petplatform.review.biz.infrastructure.persistence.entity.ReviewScoreSummaryEntity;
 import com.petplatform.review.biz.infrastructure.persistence.entity.ReviewRowEntity;
 import java.math.BigDecimal;
 import java.time.Clock;
@@ -382,6 +383,28 @@ public final class ReviewService implements ReviewQueryApi, ReviewCommandApi {
     }
 
     // ------------------------------------------------------------------ appeal reads (REV-002)
+
+    @Override
+    public ReviewQueryApi.ScoreSummary getStoreScoreSummary(ReviewQueryApi.StoreScoreSummaryQuery query) {
+        Objects.requireNonNull(query, "query is required");
+        if (query.context() == null || query.context().operatorType() == null
+                || query.merchantId() == null || query.storeId() == null
+                || query.from() == null || query.to() == null || !query.from().isBefore(query.to())) {
+            throw new ApiException(CommonApiCodes.INVALID_ARGUMENT, "score summary window is invalid");
+        }
+        long storeId = IDS.fromApi(query.storeId());
+        // The consuming stats service has already re-proven the OWNER coordinate under the
+        // store guard; this read is the store-scoped aggregate only (contract 70 §4).
+        ReviewScoreSummaryEntity row = store.execute(m -> m.storeScoreSummary(storeId,
+                query.from().toInstant().atOffset(ZoneOffset.UTC).toLocalDateTime(),
+                query.to().toInstant().atOffset(ZoneOffset.UTC).toLocalDateTime()));
+        if (row == null || row.getReviewCount() == null) {
+            throw new ApiException(CommonApiCodes.DEPENDENCY_UNAVAILABLE, "score summary is unavailable");
+        }
+        String avg = row.getAvgScore() == null || row.getReviewCount() == 0
+                ? null : row.getAvgScore().setScale(1, java.math.RoundingMode.HALF_UP).toPlainString();
+        return new ReviewQueryApi.ScoreSummary(row.getReviewCount(), avg);
+    }
 
     @Override
     public ReviewPage listStoreReviews(StoreReviewListQuery query) {

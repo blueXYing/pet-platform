@@ -68,6 +68,11 @@ public interface ReviewCommandMapper {
 
     long countStoreReviews(@Param("merchantId") long merchantId, @Param("storeId") long storeId);
 
+    /** Contract-70 aggregate: score_included=1 reviews of the store in the created window. */
+    com.petplatform.review.biz.infrastructure.persistence.entity.ReviewScoreSummaryEntity storeScoreSummary(
+            @Param("storeId") long storeId, @Param("from") java.time.LocalDateTime from,
+            @Param("to") java.time.LocalDateTime to);
+
     List<ReviewListRowEntity> pageStoreReviews(@Param("merchantId") long merchantId,
             @Param("storeId") long storeId, @Param("offset") long offset,
             @Param("limit") int limit);

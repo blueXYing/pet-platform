@@ -31,6 +31,11 @@ public class MerchantOrderConfiguration {
         boolean worker=e.getProperty("pet.order.merchant.worker.enabled",Boolean.class,false);
         if((http||worker)&&!enabled || enabled&&!e.getProperty("pet.payment.foundation.enabled",Boolean.class,false)
             ||http&&(!worker||!e.getProperty("pet.order.auto-confirm.enabled",Boolean.class,false)||!e.getProperty("pet.order.auto-confirm.worker.enabled",Boolean.class,false)))throw new IllegalStateException("Merchant order flags require complete payment, command and worker dependencies");
+        // Contracts 69/70 read slices ride the same runtime chain as the §4.1 list (store guard
+        // + OWNER authority); their HTTP flags stay independently default-off.
+        boolean customer=e.getProperty("pet.order.customer.http.enabled",Boolean.class,false);
+        boolean stats=e.getProperty("pet.order.stats.http.enabled",Boolean.class,false);
+        if((customer||stats)&&!enabled)throw new IllegalStateException("Merchant read slices require pet.order.merchant.enabled");
         return new Object();
     }
     @Configuration(proxyBeanMethods=false)
@@ -45,6 +50,39 @@ public class MerchantOrderConfiguration {
         @Bean com.petplatform.order.api.query.MerchantOrderQueryApi merchantOrderQueryApi(DataSource s,
             ScheduleCapacityGuardApi guard,MerchantOrderAuthorityApi authority){
             return new com.petplatform.order.biz.apiimpl.MerchantOrderQueryApiImpl(s,guard,authority);
+        }
+        /** Contract 69 derived customers (read-only; masked user basics via the user module). */
+        @Bean com.petplatform.order.api.query.MerchantCustomerQueryApi merchantCustomerQueryApi(DataSource s,
+            ScheduleCapacityGuardApi guard,MerchantOrderAuthorityApi authority){
+            return new com.petplatform.order.biz.apiimpl.MerchantCustomerQueryApiImpl(s,guard,authority,
+                new com.petplatform.user.biz.apiimpl.UserQueryApiImpl(s));
+        }
+        /** Contract 70 stats (read-only); the review average rides the optional score port. */
+        @Bean com.petplatform.order.api.query.MerchantStatsQueryApi merchantStatsQueryApi(DataSource s,
+            ScheduleCapacityGuardApi guard,MerchantOrderAuthorityApi authority,
+            org.springframework.beans.factory.ObjectProvider<com.petplatform.review.api.query.ReviewQueryApi> reviews){
+            com.petplatform.order.api.query.StoreReviewScoreFactsApi scores = reviews.getIfAvailable() == null
+                ? null
+                : query -> {
+                    var summary = reviews.getObject().getStoreScoreSummary(
+                        new com.petplatform.review.api.query.ReviewQueryApi.StoreScoreSummaryQuery(
+                            new com.petplatform.common.CommandContext(java.util.UUID.randomUUID().toString(),
+                                "merchant-stats", com.petplatform.common.OperatorType.SYSTEM, null, "MINIAPP"),
+                            query.merchantId(), query.storeId(), query.from(), query.to()));
+                    return new com.petplatform.order.api.query.StoreReviewScoreFactsApi.ScoreSummary(
+                        summary.reviewCount(), summary.avgScore());
+                };
+            // 排期利用率 (contract 70 expansion): SCH read-side aggregate over the store's own
+            // windows + confirmed reservations; the port rides the same runtime chain.
+            com.petplatform.schedule.api.query.ScheduleUtilizationQueryApi utilization =
+                new com.petplatform.schedule.biz.apiimpl.ScheduleUtilizationQueryApiImpl(s);
+            return new com.petplatform.order.biz.apiimpl.MerchantStatsQueryApiImpl(s,guard,authority,scores,
+                utilization,java.time.Clock.systemUTC());
+        }
+        /** Contract 69 expansion: the store's single internal customer note (OWNER write). */
+        @Bean com.petplatform.order.api.query.MerchantCustomerNoteCommandApi merchantCustomerNoteCommandApi(
+            DataSource s,SnowflakeIdGenerator ids,ScheduleCapacityGuardApi guard,MerchantOrderAuthorityApi authority){
+            return new com.petplatform.order.biz.apiimpl.MerchantCustomerNoteCommandApiImpl(s,guard,authority,ids);
         }
         @Bean @ConditionalOnMissingBean(MerchantOrderPorts.Protection.class)
         MerchantOrderPorts.Protection merchantOrderProtection(@Value("${pet.order.merchant.protection-key}") String key){

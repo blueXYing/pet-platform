@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.petplatform.aftersale.biz.infrastructure.persistence.mapper.AfterSaleDeletionFactsMapper">
+    <!--
+      Contract 66 deletion-blocking fact (PRD 5.1.29 precheck; CCR-USR-DELETION-001). Open =
+      the domain's own active case set (active_flag=1, status PENDING/PROCESSING/
+      WAITING_SUPPLEMENT) — the same set the DisplayOrderStatus AFTERSALE tab projects.
+      Bound values only (PERSISTENCE-XML gate).
+    -->
+    <sql id="openPredicate">
+        active_flag = 1 AND status IN ('PENDING', 'PROCESSING', 'WAITING_SUPPLEMENT')
+    </sql>
+    <select id="countOpenForUser" resultType="long">
+        SELECT COUNT(*) FROM aftersale_case
+        WHERE user_id = #{userId} AND <include refid="openPredicate"/>
+    </select>
+    <select id="countOpenForStores" resultType="long">
+        SELECT COUNT(*) FROM aftersale_case
+        WHERE store_id IN
+        <foreach collection="storeIds" item="storeId" open="(" separator="," close=")">#{storeId}</foreach>
+          AND <include refid="openPredicate"/>
+    </select>
+</mapper>

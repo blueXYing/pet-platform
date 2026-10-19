@@ -30,6 +30,13 @@ public final class PetStore {
                 : new UserRow(row.getId(), row.getPhone(), row.getNickname(), row.getStatus());
     }
 
+    /** Contract 69 batch read; absent ids are missing from the result (caller decides). */
+    public List<UserRow> findUsers(List<Long> userIds) {
+        return pets().selectUsersByIds(userIds).stream()
+                .map(row -> new UserRow(row.getId(), row.getPhone(), row.getNickname(), row.getStatus()))
+                .toList();
+    }
+
     public PetRow findPet(long petId, boolean forUpdate) {
         PetEntity row = forUpdate ? pets().selectPetByIdForUpdate(petId) : pets().selectPetById(petId);
         return row == null ? null : toRow(row);
