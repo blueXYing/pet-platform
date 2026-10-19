@@ -423,6 +423,9 @@ GET /api/v1/c/services/{serviceId}
 
 **GET `/api/v1/c/stores?city&page&pageSize`**（列表，匿名可 GET，见上）：
 
+- Query 仅 `city?`、`page?`（1..10000，默认1）、`pageSize?`（1..50，默认20）；未知参数/非法值 400 `COMMON_INVALID_ARGUMENT`。
+- `city` 语义：城市范围由服务端开放城市目录控制（`MerchantApplicationCityCatalog`，现仅成都）；显式传值必须词法合法（`[a-z][a-z0-9_-]{0,31}`）且属于目录，否则 400；**省略 = 隐式限定为当前全部开放城市集合**（不硬编码城市名）；目录空配置 503 失败关闭。
+- 200 信封 `items/page/pageSize/total`；排序固定 `merchantId,storeId` 数值升序；不支持 sort/距离/评分排序与 keyword/categoryId 筛选（延后，未知参数 400）。
 - Query 仅 `city?`、`keyword?`（§3.3.2 搜索增补 2026-10-19：trim 后 1..30 码点，省略=不过滤；仅对 `storeName`/`merchantName` 做大小写不敏感子串匹配，无排名无分词）、`page?`（1..10000，默认1）、`pageSize?`（1..50，默认20）；未知参数/非法值 400 `COMMON_INVALID_ARGUMENT`。
 - `city` 语义：城市范围由服务端开放城市目录控制（`MerchantApplicationCityCatalog`，现仅成都）；显式传值必须词法合法（`[a-z][a-z0-9_-]{0,31}`）且属于目录，否则 400；**省略 = 隐式限定为当前全部开放城市集合**（不硬编码城市名）；目录空配置 503 失败关闭。
 - 200 信封 `items/page/pageSize/total`；排序固定 `merchantId,storeId` 数值升序（keyword 过滤不改变排序键）；不支持 sort/距离/评分排序与 categoryId 筛选（延后，未知参数 400）。**keyword 搜索增补（2026-10-19 裁决，首页搜索接线）**：keyword 只收窄门店目录（可见性合取与城市过滤先行，同名匹配后仍按固定排序分页，total 为过滤后可见数）；服务关键词搜索走 §3.3.3 独立路由，本路由不匹配服务名。
@@ -433,6 +436,7 @@ GET /api/v1/c/services/{serviceId}
 - 可见性 = 三条件合取（`merchant.status==ACTIVE` ∧ `store.status==ACTIVE` ∧ 审核APPROVED+签约SIGNED，同 27号 §4 资格策略；**不含"服务 ACTIVE"**——有店无服务仍可见，店内空服务列表由 §3.3.1 路由返回空页）。
 - 错误两分（不得混同）：确认不存在或任一条件不满足 → 详情 404 `STORE_NOT_FOUND` 不区分原因（防探测），列表隐藏；事实源故障、读取失败、状态未知、`merchant_profile_compat` 城市事实损坏（通过资格合取但缺行或 city_code 词法非法）→ 列表**整页** 503 `COMMON_DEPENDENCY_UNAVAILABLE`、详情 503，不降级空页；开放城市确证无可见门店 → 200 空页（与 503 严格区分）。
 - 配套完整性程序（用户裁决要求）：存量 SQL 巡检+告警+修复 runbook 见 `planning/issues/wave-2/MER-001-store-read/INTEGRITY-RUNBOOK.md`。
+- 与 `/c/stores/{storeId}/services` 的配合：同一不可见门店，本路由 404、店内服务列表 200 空页——各自已批语义并存；C 端页面以详情路由为门店可访问性判据。---
 - 与 `/c/stores/{storeId}/services` 的配合：同一不可见门店，本路由 404、店内服务列表 200 空页——各自已批语义并存；C 端页面以详情路由为门店可访问性判据。### 3.3.3 服务目录关键词搜索（新增，2026-10-19 C 端接线裁决；装配开关 `pet.service.query.enabled` 默认关闭）
 
 **GET `/api/v1/c/services?keyword&page&pageSize`**（全局服务搜索，匿名可 GET，STR-D8 同款：无 Authorization 头匿名通过，携带无效/过期 Bearer 仍 401）：
@@ -1521,6 +1525,51 @@ ThirdPartyGroupBuyVerificationApi.verify
 GET  /api/v1/merchant/notifications
 POST /api/v1/merchant/notifications/{notificationId}/read
 ```
+
+---
+
+## 4.16 店铺资料（2026-10-19 M 端收尾切片，27号 §6.4 补充）
+
+```text
+GET /api/v1/merchant/store-profile?merchantId&storeId
+PUT /api/v1/merchant/store-profile        （Header X-Request-Id 必填）
+```
+
+装配开关 `pet.merchant.store-profile.http.enabled`（默认 false，OpenAPI11 `IMPLEMENTED_DEFAULT_OFF`）；
+字段、门禁、幂等与审计以 27号 §6.4 为准：读为 OWNER 存量资料读取家族（OFFLINE/FROZEN 可读）；
+写为全字段替换（JSON 严格读：显式 null 非法、未知字段非法；文本空串清空、数组空清空、promoLevel 0=未设置），
+门禁=OWNER+merchant/store ACTIVE+申请 APPROVED+协议 SIGNED，expectedVersion 乐观锁，同事务审计
+（仅字段名清单）。错误映射：400/401/403/404（同形防枚举）/409（COMMON_CONFLICT、IDEMPOTENCY_KEY_CONFLICT）/503；
+无新增错误码；`Cache-Control: no-store`。
+
+## 4.17 商家客户档案（69号，只读派生）
+
+```text
+GET /api/v1/merchant/customers?merchantId&storeId&nickname?&page&pageSize
+GET /api/v1/merchant/customers/{userId}?merchantId&storeId
+```
+
+装配开关 `pet.order.customer.http.enabled`（默认 false，同 §4.1 列表同一 runtime 链）。数据 100% 从
+本店订单派生（merchantId+storeId 双键，guard+requireOwnerRead 复验）；手机号仅脱敏
+（`1xx****xxxx`，无明文接口）；宠物仅名字/类别/品种级（order_pet_snapshot 投影，无健康字段）；
+排序 totalSpend DESC、userId 升序；nickname 为有界包含搜索（≤64 码点，扫描上限 1000）。
+错误：400 参数、401 会话、403 非 OWNER/越权同形、404 客户无本店订单、503 事实不可读；无新增错误码。
+隐私边界（69号 §1）：无导出/营销触达/跨店聚合/备注写面，全部 CCR 登记待裁。
+
+## 4.18 商家经营统计（70号，只读聚合）
+
+```text
+GET /api/v1/merchant/stats/overview?merchantId&storeId&range?
+GET /api/v1/merchant/stats/services/top?merchantId&storeId&range?&limit?
+GET /api/v1/merchant/stats/revenue-trend?merchantId&storeId&range?
+```
+
+装配开关 `pet.order.stats.http.enabled`（默认 false，与 §4.17 同 runtime 链）。range 词汇
+`TODAY/LAST_7D/LAST_30D`（默认 LAST_7D；自定义区间为登记偏差）；指标口径（净营收扣除成功退款、
+核销率=核销完成/已支付、退款率=退款订单/已支付、评价均分仅 score_included=1）以 70号 §2 为准；
+金额两位小数字符串、比率一位小数无 % 号、不可计算为 null（页面 `--`）；环比=等长紧邻前窗。
+评价均分经 review 域只读事实面（ReviewQueryApi.getStoreScoreSummary），评价内核未装配时为 null。
+错误：400/401/403/503；无新增错误码；无写入路径（无 409/幂等码面）。
 
 ---
 

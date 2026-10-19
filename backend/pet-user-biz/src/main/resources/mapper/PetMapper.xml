@@ -8,6 +8,13 @@
         SELECT id,phone,nickname,status FROM user_account WHERE id=#{userId}
     </select>
 
+    <!-- Contract 69 batch basics for derived merchant customer projections; same masked-column
+         discipline as selectUserById (raw phone returns only to the user-domain masker). -->
+    <select id="selectUsersByIds" resultType="com.petplatform.user.biz.infrastructure.persistence.entity.UserAccountEntity">
+        SELECT id,phone,nickname,status FROM user_account WHERE id IN
+        <foreach collection="userIds" item="uid" open="(" separator="," close=")">#{uid}</foreach>
+    </select>
+
     <select id="selectPetById" resultType="com.petplatform.user.biz.infrastructure.persistence.entity.PetEntity">
         SELECT id,user_id,name,pet_type,breed_name,birth_date,sex,weight_kg,
                sterilization_status,vaccine_status,health_note,avatar_url,is_default,status

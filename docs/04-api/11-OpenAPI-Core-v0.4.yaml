@@ -3433,6 +3433,345 @@ paths:
                 $ref: '#/components/schemas/CreateReviewResponseEnvelope'
         '409':
           $ref: '#/components/responses/Conflict'
+  /merchant/store-profile:
+    get:
+      tags:
+      - Merchant-Profile
+      summary: merchantGetStoreProfile
+      operationId: merchantGetStoreProfile
+      x-contract-status: IMPLEMENTED_DEFAULT_OFF
+      x-default-enabled: false
+      x-contract: 27-Merchant-Domain-Contract-v0.1.md
+      x-assembly-switch: pet.merchant.store-profile.http.enabled
+      x-route-party: MERCHANT
+      x-audience: MINIAPP
+      description: 店铺资料读侧（27号 §6.4 补充，PRD 5.7）：OWNER 存量资料读取家族
+                （OFFLINE/FROZEN 可读；门店不存在或越权同形 404 防枚举）。只读段为审核
+                回填事实 + 经营状态投影，资料段为商家自维护店铺基础信息（首次保存前行
+                惰性创建，默认 version=0 全 NULL）。
+      security:
+      - bearerAuth: []
+      parameters:
+      - $ref: '#/components/parameters/MerchantIdQuery'
+      - $ref: '#/components/parameters/StoreIdQuery'
+      responses:
+        '200':
+          description: '店铺资料投影（readonly + profile + version）。Cache-Control: no-store。'
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                enum: [no-store]
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MerchantStoreProfileEnvelope'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '503':
+          $ref: '#/components/responses/DependencyUnavailable'
+    put:
+      tags:
+      - Merchant-Profile
+      summary: merchantUpdateStoreProfile
+      operationId: merchantUpdateStoreProfile
+      x-contract-status: IMPLEMENTED_DEFAULT_OFF
+      x-default-enabled: false
+      x-contract: 27-Merchant-Domain-Contract-v0.1.md
+      x-assembly-switch: pet.merchant.store-profile.http.enabled
+      x-route-party: MERCHANT
+      x-audience: MINIAPP
+      description: 店铺资料全字段替换（命令 merchant.store.profile.update）：OWNER+ACTIVE+
+                APPROVED+SIGNED 写族门禁；JSON 严格读（显式 null/未知字段 400；文本空串清空、
+                数组空清空、promoLevel 0=未设置）；expectedVersion 乐观锁；X-Request-Id 幂等
+                （首报文 201、成功重放 200）；同事务审计仅记字段名清单。photoAssetIds 须经
+                STORE_PHOTO 用途私有权属解析（READY 图片）。
+      security:
+      - bearerAuth: []
+      parameters:
+      - $ref: '#/components/parameters/RequestId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/MerchantStoreProfileUpdateRequest'
+      responses:
+        '200':
+          description: 保存后投影（幂等成功重放同回执）。
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                enum: [no-store]
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MerchantStoreProfileEnvelope'
+        '201':
+          description: 首次保存成功回执。
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MerchantStoreProfileEnvelope'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '503':
+          $ref: '#/components/responses/DependencyUnavailable'
+  /merchant/customers:
+    get:
+      tags:
+      - Merchant-Order
+      summary: merchantListCustomers
+      operationId: merchantListCustomers
+      x-contract-status: IMPLEMENTED_DEFAULT_OFF
+      x-default-enabled: false
+      x-contract: 69-Merchant-Customer-Profile-Read-Contract-v0.1.md
+      x-assembly-switch: pet.order.customer.http.enabled
+      x-route-party: MERCHANT
+      x-audience: MINIAPP
+      description: 派生客户列表（69号，PRD 5.12 最小实现）：本店订单按 user_id 分组派生，
+                零新事实源、零跨店行。手机号仅脱敏；排序 totalSpend DESC、userId ASC；
+                nickname 为有界包含搜索（≤64 码点，扫描上限 1000）。OWNER 坐标在门店
+                guard 事务内 requireOwnerRead 复验（同 /merchant/orders §4.1）。只读，
+                无 X-Request-Id。
+      security:
+      - bearerAuth: []
+      parameters:
+      - $ref: '#/components/parameters/MerchantIdQuery'
+      - $ref: '#/components/parameters/StoreIdQuery'
+      - name: nickname
+        in: query
+        required: false
+        schema:
+          type: string
+          minLength: 1
+          maxLength: 64
+      - $ref: '#/components/parameters/Page'
+      - $ref: '#/components/parameters/PageSize'
+      responses:
+        '200':
+          description: 'PageResult 信封（userId/nickname/phoneMasked/orderCount/totalSpend/
+            avgTicket/lastVisitAt/topPet）。Cache-Control: no-store。'
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                enum: [no-store]
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MerchantCustomerPageEnvelope'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '503':
+          $ref: '#/components/responses/DependencyUnavailable'
+  /merchant/customers/{userId}:
+    get:
+      tags:
+      - Merchant-Order
+      summary: merchantGetCustomer
+      operationId: merchantGetCustomer
+      x-contract-status: IMPLEMENTED_DEFAULT_OFF
+      x-default-enabled: false
+      x-contract: 69-Merchant-Customer-Profile-Read-Contract-v0.1.md
+      x-assembly-switch: pet.order.customer.http.enabled
+      x-route-party: MERCHANT
+      x-audience: MINIAPP
+      description: 派生客户详情（69号）：列表行投影 + 本店订单宠物去重列表（名字/类别/品种级，
+                最多 20；体重/疫苗/驱虫/健康备注不投影）。本店无任何订单的 userId 与越权
+                同形 404（防枚举）。
+      security:
+      - bearerAuth: []
+      parameters:
+      - name: userId
+        in: path
+        required: true
+        schema:
+          $ref: '#/components/schemas/PublicId'
+      - $ref: '#/components/parameters/MerchantIdQuery'
+      - $ref: '#/components/parameters/StoreIdQuery'
+      responses:
+        '200':
+          description: '客户详情投影。Cache-Control: no-store。'
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                enum: [no-store]
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MerchantCustomerDetailEnvelope'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '503':
+          $ref: '#/components/responses/DependencyUnavailable'
+  /merchant/stats/overview:
+    get:
+      tags:
+      - Merchant-Order
+      summary: merchantStatsOverview
+      operationId: merchantStatsOverview
+      x-contract-status: IMPLEMENTED_DEFAULT_OFF
+      x-default-enabled: false
+      x-contract: 70-Merchant-Business-Stats-Read-Contract-v0.1.md
+      x-assembly-switch: pet.order.stats.http.enabled
+      x-route-party: MERCHANT
+      x-audience: MINIAPP
+      description: 经营统计概览（70号，PRD 5.14）：单店订单聚合 + 评价均分事实面（评价内核
+                未装配时 reviewAvg=null 显示 --）。range 词汇 TODAY/LAST_7D/LAST_30D（默认
+                LAST_7D）；净营收扣除成功退款；比率一位小数无百分号；环比=等长紧邻前窗。
+      security:
+      - bearerAuth: []
+      parameters:
+      - $ref: '#/components/parameters/MerchantIdQuery'
+      - $ref: '#/components/parameters/StoreIdQuery'
+      - name: range
+        in: query
+        required: false
+        schema:
+          type: string
+          enum: [TODAY, LAST_7D, LAST_30D]
+      responses:
+        '200':
+          description: '概览投影（含 deltas 环比与 generatedAt）。Cache-Control: no-store。'
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                enum: [no-store]
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MerchantStatsOverviewEnvelope'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '503':
+          $ref: '#/components/responses/DependencyUnavailable'
+  /merchant/stats/services/top:
+    get:
+      tags:
+      - Merchant-Order
+      summary: merchantStatsServiceTop
+      operationId: merchantStatsServiceTop
+      x-contract-status: IMPLEMENTED_DEFAULT_OFF
+      x-default-enabled: false
+      x-contract: 70-Merchant-Business-Stats-Read-Contract-v0.1.md
+      x-assembly-switch: pet.order.stats.http.enabled
+      x-route-party: MERCHANT
+      x-audience: MINIAPP
+      description: 热门服务排行（70号）：周期内创建订单按 service_id 聚合，orderCount 降序、
+                serviceId 升序，limit 1..5 默认 5；serviceName 取最新快照名（可空）。
+      security:
+      - bearerAuth: []
+      parameters:
+      - $ref: '#/components/parameters/MerchantIdQuery'
+      - $ref: '#/components/parameters/StoreIdQuery'
+      - name: range
+        in: query
+        required: false
+        schema:
+          type: string
+          enum: [TODAY, LAST_7D, LAST_30D]
+      - name: limit
+        in: query
+        required: false
+        schema:
+          type: integer
+          minimum: 1
+          maximum: 5
+      responses:
+        '200':
+          description: 'Top 服务行列表。Cache-Control: no-store。'
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                enum: [no-store]
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MerchantStatsServiceTopEnvelope'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '503':
+          $ref: '#/components/responses/DependencyUnavailable'
+  /merchant/stats/revenue-trend:
+    get:
+      tags:
+      - Merchant-Order
+      summary: merchantStatsRevenueTrend
+      operationId: merchantStatsRevenueTrend
+      x-contract-status: IMPLEMENTED_DEFAULT_OFF
+      x-default-enabled: false
+      x-contract: 70-Merchant-Business-Stats-Read-Contract-v0.1.md
+      x-assembly-switch: pet.order.stats.http.enabled
+      x-route-party: MERCHANT
+      x-audience: MINIAPP
+      description: 营收趋势（70号）：UTC 日桶（TODAY 单桶、LAST_7D 7 桶、LAST_30D 30 桶），
+                空档补零；桶为 date(YYYY-MM-DD)/revenue/orderCount。
+      security:
+      - bearerAuth: []
+      parameters:
+      - $ref: '#/components/parameters/MerchantIdQuery'
+      - $ref: '#/components/parameters/StoreIdQuery'
+      - name: range
+        in: query
+        required: false
+        schema:
+          type: string
+          enum: [TODAY, LAST_7D, LAST_30D]
+      responses:
+        '200':
+          description: '日桶列表。Cache-Control: no-store。'
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                enum: [no-store]
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MerchantStatsTrendEnvelope'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '503':
+          $ref: '#/components/responses/DependencyUnavailable'
   /merchant/reviews:
     get:
       tags:
@@ -17898,6 +18237,475 @@ components:
         total:
           type: integer
           minimum: 0
+    MerchantStoreProfileReadonlyFacts:
+      type: object
+      additionalProperties: false
+      required: [storeName, address, cityCode, phoneMasked, longitude, latitude,
+        merchantStatus, storeStatus, operatingStatus, applicationStatus]
+      properties:
+        storeName:
+          type: string
+          minLength: 1
+          maxLength: 128
+        address:
+          type: string
+          minLength: 1
+          maxLength: 255
+        cityCode:
+          type: string
+          nullable: true
+        phoneMasked:
+          type: string
+          nullable: true
+          pattern: '^1[0-9]{2}\*{4}[0-9]{4}$'
+        longitude:
+          type: string
+          nullable: true
+        latitude:
+          type: string
+          nullable: true
+        merchantStatus:
+          type: string
+          enum: [APPLYING, ACTIVE, OFFLINE, FROZEN, CANCELED]
+        storeStatus:
+          type: string
+          enum: [ACTIVE, OFFLINE, FROZEN]
+        operatingStatus:
+          type: string
+          enum: [OPERATING, OFFLINE, FROZEN]
+        applicationStatus:
+          type: string
+          nullable: true
+    MerchantStoreProfileBusinessHour:
+      type: object
+      additionalProperties: false
+      required: [days, start, end]
+      properties:
+        days:
+          type: array
+          items:
+            type: integer
+            minimum: 1
+            maximum: 7
+          minItems: 1
+          maxItems: 7
+        start:
+          type: string
+          pattern: '^([01][0-9]|2[0-3]):[0-5][0-9]$'
+        end:
+          type: string
+          pattern: '^([01][0-9]|2[0-3]):[0-5][0-9]$'
+    MerchantStoreProfileProfile:
+      type: object
+      additionalProperties: false
+      required: [intro, announcement, photoAssetIds, businessHours, promoLevel,
+        promoTitle, promoText, version]
+      properties:
+        intro:
+          type: string
+          nullable: true
+          maxLength: 500
+        announcement:
+          type: string
+          nullable: true
+          maxLength: 200
+        photoAssetIds:
+          type: array
+          maxItems: 6
+          items:
+            $ref: '#/components/schemas/PublicId'
+        businessHours:
+          type: array
+          maxItems: 7
+          items:
+            $ref: '#/components/schemas/MerchantStoreProfileBusinessHour'
+        promoLevel:
+          type: integer
+          nullable: true
+          minimum: 1
+          maximum: 9
+        promoTitle:
+          type: string
+          nullable: true
+          maxLength: 100
+        promoText:
+          type: string
+          nullable: true
+          maxLength: 100
+        version:
+          type: string
+          pattern: ^(0|[1-9][0-9]{0,18})$
+    MerchantStoreProfileData:
+      type: object
+      additionalProperties: false
+      required: [merchantId, storeId, readonly, profile]
+      properties:
+        merchantId:
+          $ref: '#/components/schemas/PublicId'
+        storeId:
+          $ref: '#/components/schemas/PublicId'
+        readonly:
+          $ref: '#/components/schemas/MerchantStoreProfileReadonlyFacts'
+        profile:
+          $ref: '#/components/schemas/MerchantStoreProfileProfile'
+    MerchantStoreProfileEnvelope:
+      type: object
+      additionalProperties: false
+      required: [success, code, message, data, traceId]
+      properties:
+        success:
+          type: boolean
+          enum: [true]
+        code:
+          type: string
+          enum: [SUCCESS]
+        message:
+          type: string
+          minLength: 1
+        data:
+          $ref: '#/components/schemas/MerchantStoreProfileData'
+        traceId:
+          type: string
+          minLength: 1
+    MerchantStoreProfileUpdateRequest:
+      type: object
+      additionalProperties: false
+      required: [merchantId, storeId, intro, announcement, photoAssetIds,
+        businessHours, promoLevel, promoTitle, promoText, expectedVersion]
+      description: 全字段替换（27号 §6.4）：所有键必须出现；显式 null 非法；文本空串清空、
+        数组空清空、promoLevel 0=未设置。
+      properties:
+        merchantId:
+          $ref: '#/components/schemas/PublicId'
+        storeId:
+          $ref: '#/components/schemas/PublicId'
+        intro:
+          type: string
+          maxLength: 500
+        announcement:
+          type: string
+          maxLength: 200
+        photoAssetIds:
+          type: array
+          maxItems: 6
+          items:
+            $ref: '#/components/schemas/PublicId'
+        businessHours:
+          type: array
+          maxItems: 7
+          items:
+            $ref: '#/components/schemas/MerchantStoreProfileBusinessHour'
+        promoLevel:
+          type: integer
+          minimum: 0
+          maximum: 9
+        promoTitle:
+          type: string
+          maxLength: 100
+        promoText:
+          type: string
+          maxLength: 100
+        expectedVersion:
+          type: string
+          pattern: ^(0|[1-9][0-9]{0,18})$
+    MerchantCustomerPet:
+      type: object
+      description: 常用宠物（名字/品种级投影，69号隐私口径）；行内 topPet 为 null 时该键
+        省略（OAS3 子集不表达 nullable ref，消费端对 null/省略等价处理）。
+      additionalProperties: false
+      required: [petName, petType, breedName]
+      properties:
+        petName:
+          type: string
+          minLength: 1
+          maxLength: 64
+        petType:
+          type: string
+          minLength: 1
+          maxLength: 32
+        breedName:
+          type: string
+          nullable: true
+    MerchantCustomerRow:
+      type: object
+      additionalProperties: false
+      required: [userId, nickname, phoneMasked, orderCount, totalSpend, avgTicket,
+        lastVisitAt]
+      properties:
+        userId:
+          $ref: '#/components/schemas/PublicId'
+        nickname:
+          type: string
+          nullable: true
+        phoneMasked:
+          type: string
+          nullable: true
+          pattern: '^1[0-9]{2}\*{4}[0-9]{4}$'
+        orderCount:
+          type: integer
+          minimum: 0
+        totalSpend:
+          type: string
+          pattern: '^[0-9]+\.[0-9]{2}$'
+        avgTicket:
+          type: string
+          nullable: true
+          pattern: '^[0-9]+\.[0-9]{2}$'
+        lastVisitAt:
+          type: string
+          nullable: true
+          format: date-time
+        topPet:
+          $ref: '#/components/schemas/MerchantCustomerPet'
+    MerchantCustomerPageData:
+      type: object
+      additionalProperties: false
+      required: [items, page, pageSize, total]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/MerchantCustomerRow'
+        page:
+          type: integer
+          minimum: 1
+        pageSize:
+          type: integer
+          minimum: 1
+          maximum: 100
+        total:
+          type: integer
+          minimum: 0
+    MerchantCustomerPageEnvelope:
+      type: object
+      additionalProperties: false
+      required: [success, code, message, data, traceId]
+      properties:
+        success:
+          type: boolean
+          enum: [true]
+        code:
+          type: string
+          enum: [SUCCESS]
+        message:
+          type: string
+          minLength: 1
+        data:
+          $ref: '#/components/schemas/MerchantCustomerPageData'
+        traceId:
+          type: string
+          minLength: 1
+    MerchantCustomerDetailData:
+      allOf:
+      - $ref: '#/components/schemas/MerchantCustomerRow'
+      - type: object
+        additionalProperties: false
+        required: [pets]
+        properties:
+          pets:
+            type: array
+            maxItems: 20
+            items:
+              $ref: '#/components/schemas/MerchantCustomerPet'
+    MerchantCustomerDetailEnvelope:
+      type: object
+      additionalProperties: false
+      required: [success, code, message, data, traceId]
+      properties:
+        success:
+          type: boolean
+          enum: [true]
+        code:
+          type: string
+          enum: [SUCCESS]
+        message:
+          type: string
+          minLength: 1
+        data:
+          $ref: '#/components/schemas/MerchantCustomerDetailData'
+        traceId:
+          type: string
+          minLength: 1
+    MerchantStatsDeltas:
+      type: object
+      additionalProperties: false
+      required: [revenue, orderCount, newCustomers, avgTicket]
+      properties:
+        revenue:
+          type: string
+          nullable: true
+          pattern: '^-?[0-9]+(\.[0-9])?$'
+        orderCount:
+          type: string
+          nullable: true
+          pattern: '^-?[0-9]+(\.[0-9])?$'
+        newCustomers:
+          type: string
+          nullable: true
+          pattern: '^-?[0-9]+(\.[0-9])?$'
+        avgTicket:
+          type: string
+          nullable: true
+          pattern: '^-?[0-9]+(\.[0-9])?$'
+    MerchantStatsOverviewData:
+      type: object
+      additionalProperties: false
+      required: [range, revenue, orderCount, newCustomers, avgTicket,
+        verifiedOrderCount, verifyRate, refundOrderCount, refundRate, repeatRate,
+        reviewAvg, deltas, generatedAt]
+      properties:
+        range:
+          type: string
+          enum: [TODAY, LAST_7D, LAST_30D]
+        revenue:
+          type: string
+          pattern: '^[0-9]+\.[0-9]{2}$'
+        orderCount:
+          type: integer
+          minimum: 0
+        newCustomers:
+          type: integer
+          minimum: 0
+        avgTicket:
+          type: string
+          nullable: true
+          pattern: '^[0-9]+\.[0-9]{2}$'
+        verifiedOrderCount:
+          type: integer
+          minimum: 0
+        verifyRate:
+          type: string
+          nullable: true
+          pattern: '^[0-9]+\.[0-9]$'
+        refundOrderCount:
+          type: integer
+          minimum: 0
+        refundRate:
+          type: string
+          nullable: true
+          pattern: '^[0-9]+\.[0-9]$'
+        repeatRate:
+          type: string
+          nullable: true
+          pattern: '^[0-9]+\.[0-9]$'
+        reviewAvg:
+          type: string
+          nullable: true
+          pattern: '^[0-5]\.[0-9]$'
+        deltas:
+          $ref: '#/components/schemas/MerchantStatsDeltas'
+        generatedAt:
+          type: string
+          format: date-time
+    MerchantStatsOverviewEnvelope:
+      type: object
+      additionalProperties: false
+      required: [success, code, message, data, traceId]
+      properties:
+        success:
+          type: boolean
+          enum: [true]
+        code:
+          type: string
+          enum: [SUCCESS]
+        message:
+          type: string
+          minLength: 1
+        data:
+          $ref: '#/components/schemas/MerchantStatsOverviewData'
+        traceId:
+          type: string
+          minLength: 1
+    MerchantStatsServiceTopData:
+      type: object
+      additionalProperties: false
+      required: [range, items]
+      properties:
+        range:
+          type: string
+          enum: [TODAY, LAST_7D, LAST_30D]
+        items:
+          type: array
+          maxItems: 5
+          items:
+            type: object
+            additionalProperties: false
+            required: [serviceId, serviceName, orderCount, revenue]
+            properties:
+              serviceId:
+                $ref: '#/components/schemas/PublicId'
+              serviceName:
+                type: string
+                nullable: true
+              orderCount:
+                type: integer
+                minimum: 0
+              revenue:
+                type: string
+                pattern: '^[0-9]+\.[0-9]{2}$'
+    MerchantStatsServiceTopEnvelope:
+      type: object
+      additionalProperties: false
+      required: [success, code, message, data, traceId]
+      properties:
+        success:
+          type: boolean
+          enum: [true]
+        code:
+          type: string
+          enum: [SUCCESS]
+        message:
+          type: string
+          minLength: 1
+        data:
+          $ref: '#/components/schemas/MerchantStatsServiceTopData'
+        traceId:
+          type: string
+          minLength: 1
+    MerchantStatsTrendData:
+      type: object
+      additionalProperties: false
+      required: [range, buckets]
+      properties:
+        range:
+          type: string
+          enum: [TODAY, LAST_7D, LAST_30D]
+        buckets:
+          type: array
+          maxItems: 30
+          items:
+            type: object
+            additionalProperties: false
+            required: [date, revenue, orderCount]
+            properties:
+              date:
+                type: string
+                pattern: '^[0-9]{4}-[0-9]{2}-[0-9]{2}$'
+              revenue:
+                type: string
+                pattern: '^[0-9]+\.[0-9]{2}$'
+              orderCount:
+                type: integer
+                minimum: 0
+    MerchantStatsTrendEnvelope:
+      type: object
+      additionalProperties: false
+      required: [success, code, message, data, traceId]
+      properties:
+        success:
+          type: boolean
+          enum: [true]
+        code:
+          type: string
+          enum: [SUCCESS]
+        message:
+          type: string
+          minLength: 1
+        data:
+          $ref: '#/components/schemas/MerchantStatsTrendData'
+        traceId:
+          type: string
+          minLength: 1
     MerchantOrderPageEnvelope:
       type: object
       additionalProperties: false

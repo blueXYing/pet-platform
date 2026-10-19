@@ -1,0 +1,67 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.petplatform.merchant.biz.infrastructure.persistence.mapper.MerchantStoreProfileMapper">
+  <update id="setTimeZoneUtc">SET time_zone = '+00:00'</update>
+  <update id="setLockWaitTimeout2Seconds">SET innodb_lock_wait_timeout = 2</update>
+
+  <!-- Owner scope facts: merchant/store opening facts + the compat city (same join family as
+       the staff mapper scope statements; city is nullable for legacy merchants). -->
+  <sql id="scopeColumns">
+    m.id AS merchant_id,m.owner_user_id,m.status AS merchant_status,
+    s.id AS store_id,s.store_name,s.address,s.longitude,s.latitude,s.phone,s.status AS store_status,
+    p.city_code
+  </sql>
+  <select id="selectOwnedScope" resultType="com.petplatform.merchant.biz.infrastructure.persistence.entity.MerchantStoreProfileRowEntity$Scope">
+    SELECT <include refid="scopeColumns"/>
+    FROM merchant m JOIN merchant_store s ON s.merchant_id=m.id
+      LEFT JOIN merchant_profile_compat p ON p.merchant_id=m.id
+    WHERE m.id=#{merchantId} AND s.id=#{storeId} AND m.owner_user_id=#{ownerUserId}
+  </select>
+  <select id="lockOwnedScope" resultType="com.petplatform.merchant.biz.infrastructure.persistence.entity.MerchantStoreProfileRowEntity$Scope">
+    SELECT <include refid="scopeColumns"/>
+    FROM merchant m JOIN merchant_store s ON s.merchant_id=m.id
+      LEFT JOIN merchant_profile_compat p ON p.merchant_id=m.id
+    WHERE m.id=#{merchantId} AND s.id=#{storeId} AND m.owner_user_id=#{ownerUserId}
+    FOR UPDATE
+  </select>
+  <select id="lockApplication" resultType="long">
+    SELECT id FROM merchant_application WHERE reserved_merchant_id=#{merchantId} FOR UPDATE
+  </select>
+
+  <sql id="profileColumns">store_id,merchant_id,intro,announcement,business_hours,promo_level,promo_title,promo_text,photo_asset_ids,version</sql>
+  <select id="selectProfile" resultType="com.petplatform.merchant.biz.infrastructure.persistence.entity.MerchantStoreProfileRowEntity">
+    SELECT <include refid="profileColumns"/> FROM merchant_store_profile WHERE store_id=#{storeId}
+  </select>
+  <select id="lockProfile" resultType="com.petplatform.merchant.biz.infrastructure.persistence.entity.MerchantStoreProfileRowEntity">
+    SELECT <include refid="profileColumns"/> FROM merchant_store_profile WHERE store_id=#{storeId} FOR UPDATE
+  </select>
+  <insert id="insertProfile">
+    INSERT INTO merchant_store_profile(store_id,merchant_id,intro,announcement,business_hours,promo_level,promo_title,promo_text,photo_asset_ids,version,created_at,updated_at)
+    VALUES(#{storeId},#{merchantId},#{intro},#{announcement},#{businessHours},#{promoLevel},#{promoTitle},#{promoText},#{photoAssetIds},1,#{now},#{now})
+  </insert>
+  <update id="updateProfile">
+    UPDATE merchant_store_profile
+    SET intro=#{intro},announcement=#{announcement},business_hours=#{businessHours},promo_level=#{promoLevel},
+        promo_title=#{promoTitle},promo_text=#{promoText},photo_asset_ids=#{photoAssetIds},
+        version=version+1,updated_at=#{now}
+    WHERE store_id=#{storeId} AND merchant_id=#{merchantId} AND version=#{expectedVersion}
+  </update>
+
+  <insert id="insertAudit">
+    INSERT INTO merchant_store_profile_audit(id,actor_type,actor_id,action_code,merchant_id,store_id,request_key,request_id,trace_id,from_version,to_version,changed_fields,occurred_at)
+    VALUES(#{id},'USER',#{actorId},#{action},#{merchantId},#{storeId},#{requestKey},#{requestId},#{traceId},#{fromVersion},#{toVersion},#{changedFields},#{now})
+  </insert>
+
+  <!-- Supplement-23 command binding: same module table and statements as the staff writes. -->
+  <insert id="insertBinding">
+    INSERT INTO merchant_command_idempotency(id,request_key,canonical_version,params_sha256,params_canonical,status,receipt_json,trace_id,created_at,succeeded_at)
+    VALUES(#{id},#{requestKey},#{canonicalVersion},#{paramsSha256},#{paramsCanonical},'RESERVED',NULL,#{traceId},UTC_TIMESTAMP(3),NULL)
+  </insert>
+  <select id="selectBindingForUpdate" resultType="com.petplatform.merchant.biz.infrastructure.persistence.entity.MerchantCommandBindingEntity">
+    SELECT id,canonical_version,params_sha256,params_canonical,status,receipt_json FROM merchant_command_idempotency WHERE request_key=#{requestKey} FOR UPDATE
+  </select>
+  <update id="markBindingSucceeded">
+    UPDATE merchant_command_idempotency SET status='SUCCEEDED',receipt_json=#{receiptJson},succeeded_at=UTC_TIMESTAMP(3)
+    WHERE request_key=#{requestKey} AND status='RESERVED'
+  </update>
+</mapper>

@@ -148,6 +148,14 @@ pet:
     staff-identity:
       # Contract 52 STAFF identity read kernel: default ON per the 2026-10-16 ruling.
       enabled: true
+    store-profile:
+      # Contract 27 §6.4 supplement (2026-10-19 M-side finish slice): store profile read +
+      # full-replace update over the companion tables (27-Merchant-Store-Profile schema).
+      # The runtime bean defaults off; the HTTP routes ride store-profile.http.enabled on
+      # top of it. Photo assets speak the STORE_PHOTO purpose through the 31 pipeline.
+      enabled: ${STORE_PROFILE_ENABLED:false}
+      http:
+        enabled: false
     staff-member:
       # Contract 54 invite-confirm binding (D1-a; verify-only catalog D2): off by default.
       # Requires pet.schedule.protection.enabled for the shared store guard; the employee
@@ -176,6 +184,15 @@ pet:
         enabled: false
       worker:
         enabled: false
+      # M-side finish slice (2026-10-19): derived customer list/detail (contract 69) and
+      # business stats (contract 70) read slices ride the same runtime chain as
+      # pet.order.merchant.enabled (store guard + OWNER re-proof); HTTP routes default off.
+      customer:
+        http:
+          enabled: false
+      stats:
+        http:
+          enabled: false
     auto-confirm:
       enabled: false
       worker:

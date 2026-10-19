@@ -882,3 +882,9 @@ CCR-AFS-PAGE-OPTIONS-001 已批准目录读取：目录不完整/代码名称不
 ## 运营治理查询 HTTP 状态映射（2026-10-15 64 号 ADM-001 治理补齐切片）
 
 八条只读 GET（`/api/v1/admin/governance/**`，HTTP10 §5.12）：400 `COMMON_INVALID_ARGUMENT`（未知查询参数、分页/过滤词汇/时间跨度越界或未成对）；401 `COMMON_UNAUTHORIZED`（会话缺失/失效/吊销）；403 `COMMON_FORBIDDEN`（动作码 `merchant.read`/`schedule.read`/`merchant.staff.read` 未授予、受众非 ADMIN_WEB、dataScope 非 ALL——CITY/MERCHANT fail-closed）；404 `COMMON_NOT_FOUND`（未知/越范围商家 ID 与 403 同形，防枚举）；503 `COMMON_DEPENDENCY_UNAVAILABLE`（授权决断或投影不可读）。无写路由：无 409/幂等码面。无新增错误码。
+
+## M 端收尾切片 HTTP 状态映射（2026-10-19 27号 §6.4 店铺资料 / 69号 客户档案 / 70号 经营统计）
+
+店铺资料两路由（HTTP10 §4.16，`pet.merchant.store-profile.http.enabled`）：400 `COMMON_INVALID_ARGUMENT`（严格 JSON、ID/版本/字段边界/素材不合法）；401 `COMMON_UNAUTHORIZED`；403 `COMMON_FORBIDDEN`（非 OWNER 主账号）；404 `COMMON_NOT_FOUND`（门店不存在或越权同形，防枚举）；409 `COMMON_CONFLICT`（expectedVersion 冲突）、`IDEMPOTENCY_KEY_CONFLICT`（同 key 异参）；503 `COMMON_DEPENDENCY_UNAVAILABLE`（审核/协议/素材/门店事实不可读）。无新增错误码。
+
+客户档案与经营统计五路由（HTTP10 §4.17/§4.18，`pet.order.customer.http.enabled` / `pet.order.stats.http.enabled`）：只读切片，无 409/幂等码面；400 `COMMON_INVALID_ARGUMENT`（坐标/分页/搜索词/range/limit 非法）；401 `COMMON_UNAUTHORIZED`；403 `COMMON_FORBIDDEN`（非 OWNER 坐标同形防枚举）；404 `COMMON_NOT_FOUND`（客户无本店订单）；503 `COMMON_DEPENDENCY_UNAVAILABLE`（用户档案/门店/评分事实不可读）。无新增错误码。
