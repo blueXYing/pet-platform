@@ -1015,6 +1015,16 @@ GOVERNANCE_ENVELOPES = {
 # (CCR-CPN-GRANT-001) and the v0.3 §4.4 void channel (user ruling 2026-10-16 doc 36,
 # CCR-CPN-VOID-001); batch void/return/risk-freeze stay unimplemented
 # (CCR-ADM-A005-OPS-001).
+MERCHANT_CONSOLE_OPERATIONS = {
+    'merchantGetStoreProfile': ('get', '/merchants/{merchantId}/store-profile', (200, 403, 404)),
+    'merchantUpdateStoreProfile': ('put', '/merchants/{merchantId}/store-profile', (200, 400, 403, 404, 409)),
+    'merchantListCustomers': ('get', '/merchants/{merchantId}/customers', (200, 400, 403)),
+    'merchantGetCustomer': ('get', '/merchants/{merchantId}/customers/{customerId}', (200, 400, 403, 404)),
+    'merchantStatsOverview': ('get', '/merchants/{merchantId}/stats/overview', (200, 400, 403)),
+    'merchantStatsServiceTop': ('get', '/merchants/{merchantId}/stats/service-top', (200, 400, 403)),
+    'merchantStatsRevenueTrend': ('get', '/merchants/{merchantId}/stats/revenue-trend', (200, 400, 403)),
+}
+
 ADMIN_OPS_OPERATIONS = {
     'adminListOpsEncyclopediaCategories': (
         'get', '/admin/encyclopedia/categories',
@@ -1976,7 +1986,7 @@ def check(spec):
     assert legacy_writes == 10, 'Legacy write surface changed'
     assert legacy_creates == LEGACY_CREATES, 'Legacy create surface changed'
 
-    assert operations == LEGACY_OPERATIONS.keys() | AUTH_OPERATIONS.keys() | MERCHANT_OPERATIONS.keys() | APPLICATION_OPERATIONS.keys() | PRIVATE_ASSET_OPERATIONS.keys() | SERVICE_CATALOG_OPERATIONS.keys() | STORE_CATALOG_OPERATIONS.keys() | SERVICE_WRITE_OPERATIONS.keys() | SCHEDULE_AVAILABILITY_OPERATIONS.keys() | SCHEDULE_WRITE_OPERATIONS.keys() | CREDENTIAL_OPERATIONS.keys() | AFTERSALE_OPERATIONS.keys() | COUPON_POINTS_READ_OPERATIONS.keys() | VERIFICATION_HTTP_OPERATIONS.keys() | NOTIFICATION_PREFERENCE_OPERATIONS.keys() | STAFF_INVITATION_LIST_OPERATIONS.keys() | ORDER_WRITE_OPERATIONS.keys() | REFUND_HTTP_OPERATIONS.keys() | MERCHANT_ORDER_LIST_OPERATIONS.keys() | RESCHEDULE_HTTP_OPERATIONS.keys() | REVIEW_HTTP_OPERATIONS.keys() | REVIEW_APPEAL_HTTP_OPERATIONS.keys() | MERCHANT_REFUND_HTTP_OPERATIONS.keys() | FAVTRACK_HTTP_OPERATIONS.keys() | ADDRESS_OPERATIONS.keys() | POINTS_TASK_OPERATIONS.keys() | BAIKE_OPERATIONS.keys() | ADMIN_TRADE_OPERATIONS.keys() | ADMIN_GOVERNANCE_OPERATIONS.keys() | ADMIN_OPS_OPERATIONS.keys(), 'Unexpected or missing reviewed operations'
+    assert operations == MERCHANT_CONSOLE_OPERATIONS.keys() | LEGACY_OPERATIONS.keys() | AUTH_OPERATIONS.keys() | MERCHANT_OPERATIONS.keys() | APPLICATION_OPERATIONS.keys() | PRIVATE_ASSET_OPERATIONS.keys() | SERVICE_CATALOG_OPERATIONS.keys() | STORE_CATALOG_OPERATIONS.keys() | SERVICE_WRITE_OPERATIONS.keys() | SCHEDULE_AVAILABILITY_OPERATIONS.keys() | SCHEDULE_WRITE_OPERATIONS.keys() | CREDENTIAL_OPERATIONS.keys() | AFTERSALE_OPERATIONS.keys() | COUPON_POINTS_READ_OPERATIONS.keys() | VERIFICATION_HTTP_OPERATIONS.keys() | NOTIFICATION_PREFERENCE_OPERATIONS.keys() | STAFF_INVITATION_LIST_OPERATIONS.keys() | ORDER_WRITE_OPERATIONS.keys() | REFUND_HTTP_OPERATIONS.keys() | MERCHANT_ORDER_LIST_OPERATIONS.keys() | RESCHEDULE_HTTP_OPERATIONS.keys() | REVIEW_HTTP_OPERATIONS.keys() | REVIEW_APPEAL_HTTP_OPERATIONS.keys() | MERCHANT_REFUND_HTTP_OPERATIONS.keys() | FAVTRACK_HTTP_OPERATIONS.keys() | ADDRESS_OPERATIONS.keys() | POINTS_TASK_OPERATIONS.keys() | BAIKE_OPERATIONS.keys() | ADMIN_TRADE_OPERATIONS.keys() | ADMIN_GOVERNANCE_OPERATIONS.keys() | ADMIN_OPS_OPERATIONS.keys() | MERCHANT_CONSOLE_OPERATIONS.keys(), 'Unexpected or missing reviewed operations'
 
     schemes = spec['components']['securitySchemes']
     assert schemes['bearerAuth']['type'] == 'http' and schemes['bearerAuth']['scheme'] == 'bearer'
@@ -2044,6 +2054,7 @@ def check(spec):
             'adminTradeOperations': len(operations & ADMIN_TRADE_OPERATIONS.keys()),
             'adminGovernanceOperations': len(operations & ADMIN_GOVERNANCE_OPERATIONS.keys()),
             'adminOpsOperations': len(operations & ADMIN_OPS_OPERATIONS.keys()),
+            'merchantConsoleOperations': len(operations & MERCHANT_CONSOLE_OPERATIONS.keys()),
             'resolvedRefs': len(refs), 'stringIdProperties': ids}
 
 

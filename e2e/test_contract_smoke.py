@@ -44,7 +44,7 @@ class ContractSmokeRegressions(unittest.TestCase):
         self.assertEqual(result['adminOpsOperations'], 22)
         # Union 206 = 163 baseline + 3 encyclopedia + 11 admin trade (reads + disposal)
         # + 8 governance + 22 ops console: 163 + 3 + 11 + 8 + 22 = 206.
-        self.assertEqual(result['operations'], 206)
+        self.assertEqual(result['operations'], 213)
         self.assertGreater(result['stringIdProperties'], 0)
         # Contract 58 favorite/footprint face (2026-10-13): seven reviewed operations.
         self.assertEqual(result['favtrackHttpOperations'], 7)

@@ -3493,12 +3493,7 @@ paths:
       security:
       - bearerAuth: []
       parameters:
-      - name: X-Request-Id
-        in: header
-        required: true
-        schema:
-          type: string
-          format: uuid
+      - $ref: '#/components/parameters/RequestId'
       requestBody:
         required: true
         content:
