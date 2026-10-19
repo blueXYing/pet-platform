@@ -298,6 +298,31 @@ AddressView: addressId/contactName(1..32)/contactPhone(11位大陆手机号)/reg
 （列表页前端按设计稿脱敏展示）；query 全禁止；无微信 chooseAddress/chooseLocation 接入。
 ```
 
+### 3.2.2a 宠物健康记录（疫苗/驱虫）子资源（新增，68号契约，2026-10-19 裁决）
+
+[Contract68](68-Pet-Health-Record-Contract-v0.1.md)（2026-10-19 用户裁决回补疫苗/驱虫记录添加两帧 96:2580/96:3006，**推翻登记表 §4.11 原"疫苗驱虫记录添加"范围排除登记**）；沿 `pet.auth.c.enabled` 装配（与宠物档案/地址簿同用户域装配，无新开关）；SQL68 `user_pet_health_record` + `user_pet_health_record_audit`。
+
+```text
+GET  /api/v1/c/pets/{petId}/vaccination-records
+POST /api/v1/c/pets/{petId}/vaccination-records
+GET  /api/v1/c/pets/{petId}/deworming-records
+POST /api/v1/c/pets/{petId}/deworming-records
+```
+
+```text
+疫苗记录 Upsert: recordDate(必填,yyyy-MM-dd不得晚于当天)/vaccineName(必填,1..50码点)/
+                doseNumber?(1..20)/nextRecordDate?(不得早于recordDate)/note?(≤200码点)
+驱虫记录 Upsert: recordDate(必填,不得晚于当天)/dewormingType(必填,EXTERNAL|INTERNAL|INTERNAL_EXTERNAL)/
+                productName?(≤50码点)/nextRecordDate?/note?（同上）
+列表: 固定排序 record_date ASC, id ASC；仅 ACTIVE；V1 无编辑/删除路由（status 列为后续切片预留）。
+防枚举: 宠物不存在/他人/已删除统一 404 PET_NOT_FOUND；写操作 X-Request-Id 幂等按23号
+（POST 201/200，键 pet.health-record.create|USER|<userId>|USER_SELF|<requestId>）；冻结用户写 403 USER_FROZEN；
+每宠每类 ACTIVE 上限 200（第 201 条 400 PET_HEALTH_RECORD_LIMIT_EXCEEDED，保守值 PR 披露）；
+每次首交成功同事务写元数据审计（35号同款、不含健康内容明文），幂等重放不重复记账；
+设计稿"接种状态"chips（已接种/待接种/即将到期）为 C 端按 nextRecordDate 派生的展示态，不入库不进契约；
+附件图片（PRD 字段表有）V1 不做（无宠物记录图片上传管线，PR 偏差登记）。
+```
+
 ---
 
 ## 3.2.3 宠物百科内容读侧（新增，62号契约）
@@ -398,9 +423,9 @@ GET /api/v1/c/services/{serviceId}
 
 **GET `/api/v1/c/stores?city&page&pageSize`**（列表，匿名可 GET，见上）：
 
-- Query 仅 `city?`、`page?`（1..10000，默认1）、`pageSize?`（1..50，默认20）；未知参数/非法值 400 `COMMON_INVALID_ARGUMENT`。
+- Query 仅 `city?`、`keyword?`（§3.3.2 搜索增补 2026-10-19：trim 后 1..30 码点，省略=不过滤；仅对 `storeName`/`merchantName` 做大小写不敏感子串匹配，无排名无分词）、`page?`（1..10000，默认1）、`pageSize?`（1..50，默认20）；未知参数/非法值 400 `COMMON_INVALID_ARGUMENT`。
 - `city` 语义：城市范围由服务端开放城市目录控制（`MerchantApplicationCityCatalog`，现仅成都）；显式传值必须词法合法（`[a-z][a-z0-9_-]{0,31}`）且属于目录，否则 400；**省略 = 隐式限定为当前全部开放城市集合**（不硬编码城市名）；目录空配置 503 失败关闭。
-- 200 信封 `items/page/pageSize/total`；排序固定 `merchantId,storeId` 数值升序；不支持 sort/距离/评分排序与 keyword/categoryId 筛选（延后，未知参数 400）。
+- 200 信封 `items/page/pageSize/total`；排序固定 `merchantId,storeId` 数值升序（keyword 过滤不改变排序键）；不支持 sort/距离/评分排序与 categoryId 筛选（延后，未知参数 400）。**keyword 搜索增补（2026-10-19 裁决，首页搜索接线）**：keyword 只收窄门店目录（可见性合取与城市过滤先行，同名匹配后仍按固定排序分页，total 为过滤后可见数）；服务关键词搜索走 §3.3.3 独立路由，本路由不匹配服务名。
 - 列表项九字段：`storeId、merchantId、storeName、merchantName、address、longitude?、latitude?、phoneMasked?、cityCode`；无 merchantStatus/storeStatus/version 恒真字段；电话仅掩码投影（完整号码与拨号能力不在本切片，待裁决）。
 
 **GET `/api/v1/c/stores/{storeId}`**（详情，匿名可 GET）：字段集与列表项相同（详情无增量字段）；`storeId` 雪花 ID 十进制 String，非法 400。
@@ -408,7 +433,26 @@ GET /api/v1/c/services/{serviceId}
 - 可见性 = 三条件合取（`merchant.status==ACTIVE` ∧ `store.status==ACTIVE` ∧ 审核APPROVED+签约SIGNED，同 27号 §4 资格策略；**不含"服务 ACTIVE"**——有店无服务仍可见，店内空服务列表由 §3.3.1 路由返回空页）。
 - 错误两分（不得混同）：确认不存在或任一条件不满足 → 详情 404 `STORE_NOT_FOUND` 不区分原因（防探测），列表隐藏；事实源故障、读取失败、状态未知、`merchant_profile_compat` 城市事实损坏（通过资格合取但缺行或 city_code 词法非法）→ 列表**整页** 503 `COMMON_DEPENDENCY_UNAVAILABLE`、详情 503，不降级空页；开放城市确证无可见门店 → 200 空页（与 503 严格区分）。
 - 配套完整性程序（用户裁决要求）：存量 SQL 巡检+告警+修复 runbook 见 `planning/issues/wave-2/MER-001-store-read/INTEGRITY-RUNBOOK.md`。
-- 与 `/c/stores/{storeId}/services` 的配合：同一不可见门店，本路由 404、店内服务列表 200 空页——各自已批语义并存；C 端页面以详情路由为门店可访问性判据。---
+- 与 `/c/stores/{storeId}/services` 的配合：同一不可见门店，本路由 404、店内服务列表 200 空页——各自已批语义并存；C 端页面以详情路由为门店可访问性判据。### 3.3.3 服务目录关键词搜索（新增，2026-10-19 C 端接线裁决；装配开关 `pet.service.query.enabled` 默认关闭）
+
+**GET `/api/v1/c/services?keyword&page&pageSize`**（全局服务搜索，匿名可 GET，STR-D8 同款：无 Authorization 头匿名通过，携带无效/过期 Bearer 仍 401）：
+
+- Query 仅 `keyword`（必填，trim 后 1..30 码点，空串/超长 400）、`page?`（1..10000，默认1）、`pageSize?`（1..50，默认20）；未知参数/重复参数 400。
+- 匹配面：`serviceName`/`categoryName` 大小写不敏感子串（列排序规则 utf8mb4_0900_ai_ci；LIKE 通配符字面化）；**无排名、无分词**——是目录读侧的过滤参数，不是搜索引擎。
+- 可见性：与 §3.3.1 同一四条件合取（`ACTIVE` ∧ merchantEnabled ∧ storeEnabled ∧ acceptsNewOrders），同一读快照内按不同 (merchantId, storeId) 对各判一次事实；不合格行隐藏，事实源故障整页 503 失败关闭（绝不降级空页），确认无匹配 = 200 空页（与 503 严格区分）。
+- 投影：列表项与 §3.3.1 `StoreServiceItemView` 同形（含 `storeId` 供跳转）；排序固定 `merchantId, storeId, serviceId` 数值升序；`total` 为可见行数（诚实总数）；封面签发规则同 §3.3.1 增补（可见行才签发，签名失败 503）。
+- `Cache-Control: no-store`；读操作无 requestId 幂等要求。
+
+### 3.3.4 开放城市目录（新增，2026-10-19 城市选择裁决；装配开关 `pet.store.query.enabled` 默认关闭）
+
+**GET `/api/v1/c/cities`**（匿名 GET；城市选择弹层与门店/服务目录的城市过滤字典同源）：
+
+- 数据源：`MerchantApplicationCityCatalog`（启动期受信目录，`pet.merchant.application.open-cities` 配置）——与 §3.3.2 `city` 参数、§3.3.3 城市过滤的边界同一目录；仅暴露 `cityCode`/`cityName` 键值对，不含任何申请数据，故匿名可读。
+- 响应 `{items: [{cityCode, cityName}...]}`，服务端目录顺序原样返回；`Cache-Control: no-store`。
+- query 全禁止（未知参数 400）；目录未配置/为空 → 503 `COMMON_DEPENDENCY_UNAVAILABLE` 失败关闭（绝不隐式"无城市"）。
+- 与 `/api/v1/c/merchant-application-cities`（商家入驻用、MINIAPP Bearer 强制）并存互不影响：本路由是 C 端目录浏览的匿名伴生读侧，不取代入驻路由的会话语义。
+
+---
 
 ## 3.4 可预约时间查询（CCR-W2-API-001 排期域 SCH-001，2026-09-23 已批；装配开关 `pet.schedule.query.enabled` 默认关闭）
 
@@ -650,6 +694,16 @@ PaymentApi.createPayment
 > 详情（与列表项同投影）返回 `orderId/orderNo/displayStatus/orderStage/paymentStatus/refundApplicationStatus/refundStatus/afterSaleStatus/verificationStatus/payAmount/appointmentStart/appointmentEnd/verifiedAt/actions`；
 > `refundStatus` 取 ORDER 域自身投影词汇 `null/CREATED/SUCCESS`；非本人或不存在订单
 > 一律同一 404（防枚举）；两条路由 `Cache-Control: no-store`。与 §3.11 核销码路由共存，互不影响。
+>
+> **§3.7 联系电话读侧增补（2026-10-19，登记变更；PRD 5.1.17"点击'联系电话'：唤起系统拨号"）**：
+> 详情投影新增 `merchantContact`（`{phoneMasked, phone}` 或 `null`）——商家域门店行的业务联系电话，
+> `phoneMasked` 供展示（§3.3.2 同一掩码规则）、`phone` 为拨号用完整号码。**完整号码仅出现在本条
+> 鉴权（MINIAPP Bearer）、本人（非本人/不存在一律 404 防枚举）、no-store 的详情读侧**；列表投影与
+> 目录读侧永不携带完整号码（掩码口径按 SSOT 不变）。门店行无电话或商家事实源故障时整节 `null`
+> （登记的不对称降级：订单事实已成功，增补字段降级不随商家事实失败而 503）；可见性判定**故意不做**
+> §3.3.2 三条件合取——已支付订单在商家后续停业/不接新单时仍需可联系（PRD 待服务/售后阶段"仍可
+> 联系电话商家"）。数据面为 merchant 域新增内部只读事实端口 `MerchantStoreContactQueryApi`
+> （行存在为唯一门槛），boot 适配层组合，order 域契约零改动。
 >
 > **§3.8 改期切片读侧增补（2026-10-07，登记变更）**：详情与列表同一投影新增三个原始事实键
 > `serviceId`/`storeId`（改期页调用 §3.4 可约时段所需坐标）与 `orderVersion`（46号 §3.8 的

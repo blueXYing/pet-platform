@@ -54,6 +54,16 @@ public class CAuthConfiguration {
         return new com.petplatform.merchant.biz.apiimpl.MerchantStoreContactApiImpl(source);
     }
 
+    /** Health records (contract 68, 2026-10-19 ruling): same user-domain assembly as pets. */
+    @Bean
+    com.petplatform.user.biz.application.PetHealthRecordService petHealthRecordService(
+            DataSource source, ObjectProvider<SnowflakeIdGenerator> ids) {
+        SnowflakeIdGenerator idProvider = ids.getIfAvailable();
+        return new com.petplatform.user.biz.application.PetHealthRecordService(source,
+                Objects.requireNonNull(idProvider,
+                        "PLAT-002 ID provider required before C health-record writes can start"));
+    }
+
     /** Address book (contract 59, ruling-32 second batch): same user-domain assembly as pets. */
     @Bean
     com.petplatform.user.biz.application.AddressService addressService(
