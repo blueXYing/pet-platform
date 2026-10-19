@@ -1,6 +1,7 @@
 -- Merchant store profile (27号 §6.4 supplement, 2026-10-19): merchant-maintained store
 -- basic information (PRD 5.7 店铺基础信息). Companion tables only — SQL06 merchant /
--- merchant_store are intentionally untouched, same discipline as SQL29's
+-- merchant_store rows are written (store facts name/address/phone, 2026-10-19 CCR expansion)
+-- but the SQL06 table structure is untouched, same discipline as SQL29's
 -- merchant_profile_compat. Isolated validation input, NOT default Flyway.
 -- UTC timestamps. One row per store, lazily created by the first approved-owner save;
 -- reads before the first save project the documented defaults (version 0, all fields NULL).
@@ -17,6 +18,8 @@ CREATE TABLE merchant_store_profile (
     promo_title       VARCHAR(100)  NULL COMMENT '促销文案标题 0-100 码点，NULL=未设置',
     promo_text        VARCHAR(100)  NULL COMMENT '促销文案说明 0-100 码点，NULL=未设置',
     photo_asset_ids   TEXT          NULL COMMENT '店铺照片私有素材 ID 数组的规范 JSON 文本（ASCII 数字字符串，0-6 个，null 元素非法；服务端校验+所有权解析），NULL=未设置',
+    avatar_asset_id   BIGINT        NULL COMMENT '店铺头像私有素材 ID（STORE_PHOTO 用途 READY 图片，同照片管线），NULL=未设置',
+    business_status   VARCHAR(16)   NULL COMMENT '营业状态开关 OPEN/RESTING（休息中），NULL=未设置（按 OPEN 投影）',
     version           BIGINT        NOT NULL DEFAULT 0,
     created_at        DATETIME(3)   NOT NULL,
     updated_at        DATETIME(3)   NOT NULL,
@@ -24,6 +27,8 @@ CREATE TABLE merchant_store_profile (
     KEY idx_mer_store_profile_merchant (merchant_id),
     CONSTRAINT chk_mer_store_profile_ids CHECK (store_id > 0 AND merchant_id > 0 AND version >= 0),
     CONSTRAINT chk_mer_store_profile_promo CHECK (promo_level IS NULL OR promo_level BETWEEN 1 AND 9),
+    CONSTRAINT chk_mer_store_profile_status CHECK (business_status IS NULL OR business_status IN ('OPEN', 'RESTING')),
+    CONSTRAINT chk_mer_store_profile_avatar CHECK (avatar_asset_id IS NULL OR avatar_asset_id > 0),
     CONSTRAINT fk_mer_store_profile_store FOREIGN KEY (store_id) REFERENCES merchant_store(id),
     CONSTRAINT fk_mer_store_profile_merchant FOREIGN KEY (merchant_id) REFERENCES merchant(id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;

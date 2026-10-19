@@ -2,7 +2,7 @@ package com.petplatform.merchant.biz.infrastructure.persistence.entity;
 
 import java.time.LocalDateTime;
 
-/** One merchant_store_profile row (27号 §6.4 supplement; SQL06 untouched). */
+/** One merchant_store_profile row (27号 §6.4 supplement; 2026-10-19 expansion columns). */
 public final class MerchantStoreProfileRowEntity {
     private Long storeId;
     private Long merchantId;
@@ -13,6 +13,8 @@ public final class MerchantStoreProfileRowEntity {
     private String promoTitle;
     private String promoText;
     private String photoAssetIds;
+    private Long avatarAssetId;
+    private String businessStatus;
     private Long version;
 
     public Long getStoreId() { return storeId; }
@@ -33,6 +35,10 @@ public final class MerchantStoreProfileRowEntity {
     public void setPromoText(String promoText) { this.promoText = promoText; }
     public String getPhotoAssetIds() { return photoAssetIds; }
     public void setPhotoAssetIds(String photoAssetIds) { this.photoAssetIds = photoAssetIds; }
+    public Long getAvatarAssetId() { return avatarAssetId; }
+    public void setAvatarAssetId(Long avatarAssetId) { this.avatarAssetId = avatarAssetId; }
+    public String getBusinessStatus() { return businessStatus; }
+    public void setBusinessStatus(String businessStatus) { this.businessStatus = businessStatus; }
     public Long getVersion() { return version; }
     public void setVersion(Long version) { this.version = version; }
 

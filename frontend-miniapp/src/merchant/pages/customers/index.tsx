@@ -34,9 +34,10 @@ async function backToWorkbench() {
   } catch { await Taro.showToast({ title: '返回失败，请重试', icon: 'none' }) }
 }
 
-// 客户管理 M 面（69号 / PRD 5.12，帧 23:12738 偏差已登记）：只读派生客户列表——
-// 脱敏手机号、昵称、消费笔数/累计/客单价、最近到店、常用宠物（名字/品种级）。
-// 隐私红线：不导出、不营销触达、不含健康字段；昵称搜索为有界包含匹配（手机号/订单号搜索 CCR 待裁）。
+// 客户管理 M 面（69号 + 2026-10-19 扩展 / PRD 5.12，帧 23:12738 偏差已登记）：只读派生客户
+// 列表——脱敏手机号、昵称、消费笔数/累计/客单价、最近到店、常用宠物（名字/品种级）。
+// 搜索（扩展）：昵称包含匹配 / 订单号尾号（仅命中本店订单尾号，2-10 位数字，非隐私面）。
+// 隐私红线不变：不导出、不营销触达、不含健康字段、无明文手机号/完整手机号搜索。
 export default function MerchantCustomersPage() {
   const { controller, state, style } = useCustomers()
   return <View className='mcu-page' style={style}>
@@ -51,8 +52,15 @@ export default function MerchantCustomersPage() {
       {state.phase === 'entry' && <Button className='mcu-primary' onClick={() => void Taro.redirectTo({ url: '/merchant/pages/workspace/index' })}>去商家工作台</Button>}
     </View> : <>
       {state.frozen && <View className='mcu-alert'>门店受限，客户档案只读。</View>}
+      <View className='mcu-search-row' role='tablist'>
+        <Button id='mcu-mode-nickname' className={state.searchMode === 'nickname' ? 'mcu-search-mode mcu-search-mode-on' : 'mcu-search-mode'}
+          onClick={() => controller.switchSearchMode('nickname')}>昵称</Button>
+        <Button id='mcu-mode-suffix' className={state.searchMode === 'orderNoSuffix' ? 'mcu-search-mode mcu-search-mode-on' : 'mcu-search-mode'}
+          onClick={() => controller.switchSearchMode('orderNoSuffix')}>订单尾号</Button>
+      </View>
       <View className='mcu-search-row'>
-        <Input className='mcu-search' value={state.search} placeholder='搜索客户昵称'
+        <Input className='mcu-search' value={state.search}
+          placeholder={state.searchMode === 'nickname' ? '搜索客户昵称' : '输入本店订单号尾号（2-10 位数字）'}
           onInput={event => controller.editSearch(String(event.detail.value))}
           onConfirm={() => void controller.search()} />
         <Button id='mcu-search-btn' className='mcu-search-action' onClick={() => void controller.search()}>搜索</Button>

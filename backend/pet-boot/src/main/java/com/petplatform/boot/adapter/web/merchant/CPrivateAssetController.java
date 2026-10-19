@@ -31,7 +31,10 @@ public final class CPrivateAssetController {
   private static final Set<String> MEDIA_TYPES = Set.of("image/jpeg", "image/png");
   /** CCR-W2-API-001 store read: SERVICE_COVER shares the pipeline (31 supplement, MER writer). */
   static final String SERVICE_COVER_PURPOSE = "SERVICE_COVER";
-  private static final Set<String> PURPOSES = Set.of(MERCHANT_APPLICATION_PURPOSE, SERVICE_COVER_PURPOSE);
+  /** 27号 §6.4 expansion (2026-10-19): store photos/avatar ride the same immutable pipeline. */
+  static final String STORE_PHOTO_PURPOSE = "STORE_PHOTO";
+  private static final Set<String> PURPOSES =
+          Set.of(MERCHANT_APPLICATION_PURPOSE, SERVICE_COVER_PURPOSE, STORE_PHOTO_PURPOSE);
   private final PrivateAssetApi assets;
   private final ObjectProvider<MerchantAdmissionApiImpl> admissions;
 
@@ -65,7 +68,8 @@ public final class CPrivateAssetController {
       throw invalid();
     }
     var session = mini(request);
-    if (SERVICE_COVER_PURPOSE.equals(purpose)) requireMerchantMainAccount(request, session);
+    if (SERVICE_COVER_PURPOSE.equals(purpose) || STORE_PHOTO_PURPOSE.equals(purpose))
+        requireMerchantMainAccount(request, session);
     UploadPrivateAssetResult result;
     try (var content = new PushbackInputStream(file.getInputStream(), 8)) {
       String mediaType = serverMediaType(content, file.getContentType());

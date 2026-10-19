@@ -64,11 +64,24 @@ public final class MerchantCustomerQueryService {
         long merchant = coordinate(query.merchantId());
         long storeKey = coordinate(query.storeId());
         String nickname = normalizedNickname(query.nickname());
+        String suffix = normalizedSuffix(query.orderNoSuffix());
+        if (nickname != null && suffix != null) {
+            throw new ApiException(CommonApiCodes.INVALID_ARGUMENT, "昵称与订单号尾号搜索不可同时使用");
+        }
         int page = query.page() < 1 ? 1 : query.page();
         int pageSize = query.pageSize() <= 0 ? DEFAULT_PAGE_SIZE
                 : Math.min(query.pageSize(), MAX_PAGE_SIZE);
         return store.read((queries, mapper) -> {
             proveOwnership(query.merchantId(), query.storeId(), query.context());
+            if (suffix != null) {
+                // 订单号尾号搜索 (2026-10-19 expansion): the SQL matches only this store's own
+                // order tails; the aggregate projection and ranking stay identical.
+                long total = mapper.countStoreCustomersByOrderSuffix(merchant, storeKey, suffix);
+                List<CustomerRow> items = total == 0 ? List.of()
+                        : project(mapper.pageStoreCustomersByOrderSuffix(merchant, storeKey,
+                                suffix, pageSize, (long) (page - 1) * pageSize));
+                return new PageResult<>(items, total, page, pageSize);
+            }
             if (nickname == null) {
                 long total = mapper.countStoreCustomers(merchant, storeKey);
                 List<CustomerRow> items = total == 0 ? List.of()
@@ -110,7 +123,12 @@ public final class MerchantCustomerQueryService {
                     DETAIL_PET_CAP).stream()
                     .map(pet -> new PetView(pet.getPetName(), pet.getPetType(), pet.getBreedName()))
                     .toList();
-            return new CustomerDetail(row, pets);
+            var noteRow = mapper.storeCustomerNote(storeKey, userId);
+            MerchantCustomerQueryApi.NoteView note = noteRow == null || noteRow.getNote() == null ? null
+                    : new MerchantCustomerQueryApi.NoteView(noteRow.getNote(),
+                            Long.toString(noteRow.getVersion()),
+                            noteRow.getUpdatedAt().atOffset(ZoneOffset.UTC));
+            return new CustomerDetail(row, pets, note);
         });
     }
 
@@ -182,6 +200,15 @@ public final class MerchantCustomerQueryService {
         if (value == null || value.isEmpty()) return null;
         if (value.codePointCount(0, value.length()) > 64) {
             throw new ApiException(CommonApiCodes.INVALID_ARGUMENT, "搜索词过长");
+        }
+        return value;
+    }
+
+    /** 2..10 digits; leading zeros are part of the tail (RIGHT tail match in SQL). */
+    static String normalizedSuffix(String value) {
+        if (value == null || value.isEmpty()) return null;
+        if (!value.matches("[0-9]{2,10}")) {
+            throw new ApiException(CommonApiCodes.INVALID_ARGUMENT, "订单号尾号须为 2-10 位数字");
         }
         return value;
     }

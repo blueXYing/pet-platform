@@ -1,14 +1,14 @@
-import { Button, Image, ScrollView, Text, View } from '@tarojs/components'
+import { Button, Image, Picker, ScrollView, Text, View } from '@tarojs/components'
 import Taro, { useDidHide, useDidShow } from '@tarojs/taro'
 import { useEffect, useState, useSyncExternalStore, type CSSProperties } from 'react'
 import { consumerApi, consumerStorage } from '../../../shared/consumer-runtime'
 import { merchantStorefrontDeps } from '../../storefront/repository'
 import { MerchantStatsController } from '../../storefront/read-controllers'
-import { deltaLabel, rangeLabel } from '../../storefront/model'
+import { deltaLabel, rangeLabel, validCustomWindow, windowLabel } from '../../storefront/model'
 import navBack from '../aftersale/assets/nav-back@3x.png'
 import './page.css'
 
-const RANGES = ['TODAY', 'LAST_7D', 'LAST_30D'] as const
+const RANGES = ['TODAY', 'LAST_7D', 'LAST_30D', 'CUSTOM'] as const
 
 function useStats() {
   const [controller] = useState(() => {
@@ -44,14 +44,14 @@ function MetricCard(props: { label: string; value: string; delta: string | null;
   </View>
 }
 
-// 数据统计 M 面（70号 / PRD 5.14，帧 5:3759 / 143:5192 偏差已登记）：
-// PRD 快捷区间（今日/近7天/近30天，默认近7天；帧内"本周/本月/本年"与自定义区间为登记偏差）、
-// 概览指标（净营收/订单量/新增客户/客单价 + 环比；核销率/退款率/复购率/评价均分）、
-// 热门服务 Top5、营收趋势（按 UTC 日桶，空档补 0）。
+// 数据统计 M 面（70号 + 2026-10-19 CCR 扩展，帧 5:3759 / 143:5192 偏差已登记）：
+// 快捷区间 + 自定义区间（from/to ≤92 个 UTC 日）、概览指标（净营收/订单量/新增客户/客单价 +
+// 环比；核销率/退款率/复购率/评价均分/拒单率）、热门服务 Top5（可下钻）、营收趋势、排期利用率。
 export default function MerchantStatsPage() {
   const { controller, state, style } = useStats()
   const overview = state.overview
   const maxRevenue = Math.max(1, ...state.trend.map(bucket => Number(bucket.revenue)))
+  const customValid = validCustomWindow(state.custom.from, state.custom.to)
   return <View className='mst-page' style={style}>
     <View className='mst-status-area' />
     <View className='mst-header'>
@@ -70,6 +70,24 @@ export default function MerchantStatsPage() {
           disabled={state.loadingRange}
           onClick={() => void controller.selectRange(range)}>{rangeLabel[range]}</Button>)}
       </View>
+      {state.range === 'CUSTOM' && <View className='mst-card mst-custom'>
+        <View className='mst-kv'>
+          <Text className='mst-kv-label'>开始日期</Text>
+          <Picker mode='date' value={state.custom.from} end={state.custom.to}
+            onChange={event => controller.editCustomWindow(String(event.detail.value), state.custom.to)}>
+            <Text className='mst-kv-value'>{state.custom.from}</Text>
+          </Picker>
+        </View>
+        <View className='mst-kv'>
+          <Text className='mst-kv-label'>结束日期</Text>
+          <Picker mode='date' value={state.custom.to} start={state.custom.from}
+            onChange={event => controller.editCustomWindow(state.custom.from, String(event.detail.value))}>
+            <Text className='mst-kv-value'>{state.custom.to}</Text>
+          </Picker>
+        </View>
+        <Button className='mst-primary' disabled={state.loadingRange || !customValid}
+          onClick={() => void controller.applyCustomWindow()}>应用区间（最长 92 天）</Button>
+      </View>}
       {overview && <>
         <View className='mst-grid'>
           <MetricCard label='营业额' value={overview.revenue} delta={overview.deltas.revenue} unitPrefix='¥' />
@@ -80,23 +98,36 @@ export default function MerchantStatsPage() {
         <View className='mst-card'>
           <Text className='mst-card-title'>履约与质量</Text>
           <View className='mst-kv'><Text className='mst-kv-label'>核销率</Text><Text className='mst-kv-value'>{overview.verifyRate ? `${overview.verifyRate}%` : '--'}</Text></View>
+          <View className='mst-kv'><Text className='mst-kv-label'>拒单率</Text><Text className='mst-kv-value'>{overview.rejectRate ? `${overview.rejectRate}%` : '--'}</Text></View>
           <View className='mst-kv'><Text className='mst-kv-label'>退款率</Text><Text className='mst-kv-value'>{overview.refundRate ? `${overview.refundRate}%` : '--'}</Text></View>
           <View className='mst-kv'><Text className='mst-kv-label'>复购率</Text><Text className='mst-kv-value'>{overview.repeatRate ? `${overview.repeatRate}%` : '--'}</Text></View>
           <View className='mst-kv'><Text className='mst-kv-label'>评价均分</Text><Text className='mst-kv-value'>{overview.reviewAvg ?? '--'}</Text></View>
-          <Text className='mst-hint'>净营收已扣除成功退款金额；评价均分仅统计有效完成订单评价（70号口径）。统计更新时间 {overview.generatedAt.slice(0, 16).replace('T', ' ')}Z</Text>
+          <Text className='mst-hint'>净营收已扣除成功退款；拒单率=商家拒单取消数/已支付订单数；评价均分仅统计有效完成订单评价（70号口径）。统计更新时间 {overview.generatedAt.slice(0, 16).replace('T', ' ')}Z</Text>
         </View>
       </>}
       <View className='mst-card'>
         <Text className='mst-card-title'>热门服务 Top 5</Text>
         {state.topItems.length === 0 && <Text className='mst-empty'>该周期暂无服务订单</Text>}
-        {state.topItems.map((item, index) => <View key={item.serviceId} className='mst-top-row'>
+        {state.topItems.map((item, index) => <Button key={item.serviceId} id={`mst-top-${item.serviceId}`}
+          className='mst-top-row' onClick={() => { void openDrillDown(item.serviceId, state) }}>
           <Text className='mst-top-rank'>{index + 1}</Text>
           <Text className='mst-top-name'>{item.serviceName ?? '已下架服务'}</Text>
           <Text className='mst-top-count'>{item.orderCount} 单 · ¥{item.revenue}</Text>
-        </View>)}
+        </Button>)}
+        {state.topItems.length > 0 && <Text className='mst-hint'>点击服务行查看该周期订单明细（只读）。</Text>}
       </View>
       <View className='mst-card'>
-        <Text className='mst-card-title'>营收趋势（{rangeLabel[state.range]}）</Text>
+        <Text className='mst-card-title'>排期利用率</Text>
+        <View className='mst-kv'><Text className='mst-kv-label'>可用产能</Text>
+          <Text className='mst-kv-value'>{state.utilization?.availableMinutes != null ? `${state.utilization.availableMinutes} 分钟` : '--'}</Text></View>
+        <View className='mst-kv'><Text className='mst-kv-label'>已约占用</Text>
+          <Text className='mst-kv-value'>{state.utilization?.bookedMinutes != null ? `${state.utilization.bookedMinutes} 分钟` : '--'}</Text></View>
+        <View className='mst-kv'><Text className='mst-kv-label'>利用率</Text>
+          <Text className='mst-kv-value'>{state.utilization?.utilizationRate ? `${state.utilization.utilizationRate}%` : '--'}</Text></View>
+        <Text className='mst-hint'>OPEN 排期窗口产能与已确认预约占用（53号排期读侧聚合，70号扩展口径）。</Text>
+      </View>
+      <View className='mst-card'>
+        <Text className='mst-card-title'>营收趋势（{windowLabel(state.range, state.custom.from, state.custom.to)}）</Text>
         <View className='mst-trend'>
           {state.trend.map(bucket => <View key={bucket.date} className='mst-trend-col'>
             <View className='mst-trend-bar-zone'>
@@ -111,4 +142,14 @@ export default function MerchantStatsPage() {
       <View className='mst-bottom-space' />
     </ScrollView>}
   </View>
+}
+
+async function openDrillDown(serviceId: string, state: { range: string; custom: { from: string; to: string } }) {
+  const query = state.range === 'CUSTOM'
+    ? `&from=${state.custom.from}&to=${state.custom.to}` : ''
+  try {
+    await Taro.navigateTo({
+      url: `/merchant/pages/stats/service-orders?serviceId=${serviceId}&range=${state.range}${query}`,
+    })
+  } catch { await Taro.showToast({ title: '打开失败，请重试', icon: 'none' }) }
 }
