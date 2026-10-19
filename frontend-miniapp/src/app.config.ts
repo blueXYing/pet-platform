@@ -71,5 +71,13 @@ export default defineAppConfig({
     // Encyclopedia browse slice (contract 62, PRD 5.1.4): category/keyword/tag list + breed
     // detail with the ability radar; mine-grid entry, anonymous-browsable per PRD.
     { root: 'consumer/pages/baike', pages: ['index', 'detail'] },
+    // Settings hub slice (contract 66, PRD 5.1.29; user ruling 2026-10-19 "全做"): the hub
+    // page + the deletion flow page + the privacy-policy/user-agreement static content pages
+    // (WeChat review hard requirement); one compact line per the app.config convention.
+    { root: 'consumer/pages/settings', pages: ['index', 'deletion', 'privacy-policy', 'user-agreement'] },
+    // Help & service slice (contract 67, PRD 5.1.25 minimum: static FAQ + hotline call).
+    { root: 'consumer/pages/help', pages: ['index'] },
+    // Feedback slice (contract 67, PRD 5.1.28 complaint class): create + my-ticket list.
+    { root: 'consumer/pages/feedback', pages: ['index', 'list'] },
   ],
 })

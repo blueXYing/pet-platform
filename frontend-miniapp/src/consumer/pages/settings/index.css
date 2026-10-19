@@ -1,0 +1,27 @@
+/* 设置枢纽页（设计稿 131:18372 语义；沿 profile-edit/baike 家族语言）。
+   官方色值 #5baae8/#c0ecff/#f0fbff/#fff6e5/#cdeede；.cpn-page 前缀抬 specificity 压 button 原生重置。
+   WXSS 铁律：button 全重置（不用 margin !important）、无 button 嵌套、状态仅 className、禁 data-*。 */
+.cpn-page.st-page { position: fixed; inset: 0; display: flex; flex-direction: column; background: #f0fbff; }
+.st-page view, .st-page button, .st-page image, .st-page text { box-sizing: border-box; }
+.st-page button { padding: 0; margin: 0; border: 0; border-radius: 0; background: transparent; font: inherit; line-height: normal; text-align: left; }
+.st-page button::after { border: 0; }
+.st-page button[disabled] { opacity: .65; color: inherit; }
+
+.st-status-area { height: var(--st-top); flex-shrink: 0; }
+.st-header { position: relative; height: calc(var(--st-unit) * 46); flex-shrink: 0; background: #fff6e5; border-bottom: calc(var(--st-unit) * 2) solid #cdeede; }
+.st-back { position: absolute; left: calc(var(--st-unit) * 19); top: calc(var(--st-unit) * 7); width: calc(var(--st-unit) * 32); height: calc(var(--st-unit) * 32); }
+.st-back-icon { width: 100%; height: 100%; display: block; }
+.st-title { position: absolute; left: 0; right: 0; top: calc(var(--st-unit) * 11); text-align: center; font-size: calc(var(--st-unit) * 18); line-height: calc(var(--st-unit) * 24); font-weight: 600; color: #1f2b30; }
+
+.st-body { flex: 1; min-height: 0; overflow-y: auto; padding: calc(var(--st-unit) * 14) calc(var(--st-unit) * 17) calc(var(--st-unit) * 40); }
+.st-group-title { display: block; margin: calc(var(--st-unit) * 10) calc(var(--st-unit) * 4) calc(var(--st-unit) * 8); font-size: calc(var(--st-unit) * 13); color: #577683; }
+.st-card { background: #ffffff; border: calc(var(--st-unit) * 1) solid #c0ecff; border-radius: calc(var(--st-unit) * 12); overflow: hidden; }
+.st-row { display: flex; align-items: center; width: 100%; min-height: calc(var(--st-unit) * 48); padding: calc(var(--st-unit) * 12) calc(var(--st-unit) * 16); gap: calc(var(--st-unit) * 10); }
+.st-row-btn { border-bottom: calc(var(--st-unit) * 1) solid #eaf6fd; }
+.st-row-label { flex: 1; min-width: 0; font-size: calc(var(--st-unit) * 15); color: #1f2b30; }
+.st-row-value { flex-shrink: 0; font-size: calc(var(--st-unit) * 14); color: #577683; }
+.st-chevron { flex-shrink: 0; width: calc(var(--st-unit) * 8); height: calc(var(--st-unit) * 8); margin-left: calc(var(--st-unit) * 4); border-top: calc(var(--st-unit) * 2) solid #9db8c2; border-right: calc(var(--st-unit) * 2) solid #9db8c2; transform: rotate(45deg); }
+
+.st-logout { display: block; width: 100%; margin-top: calc(var(--st-unit) * 24); padding: calc(var(--st-unit) * 13) 0; border-radius: calc(var(--st-unit) * 22); background: #ffffff; border: calc(var(--st-unit) * 1) solid #5baae8; color: #2f83c7; font-size: calc(var(--st-unit) * 15); text-align: center; }
+.st-deletion { display: block; width: 100%; margin-top: calc(var(--st-unit) * 12); padding: calc(var(--st-unit) * 13) 0; border-radius: calc(var(--st-unit) * 22); background: #ffffff; border: calc(var(--st-unit) * 1) solid #e2b7ad; color: #b3574a; font-size: calc(var(--st-unit) * 15); text-align: center; }
+.st-notice { display: block; margin: calc(var(--st-unit) * 12) calc(var(--st-unit) * 4) 0; font-size: calc(var(--st-unit) * 13); color: #b3574a; }

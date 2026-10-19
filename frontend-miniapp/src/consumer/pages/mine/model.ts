@@ -63,6 +63,13 @@ export const MINE_ADDRESS_BOOK_URL = '/consumer/pages/address/index'
 export const MINE_BAIKE_URL = '/consumer/pages/baike/index'
 // 积分商城展示态页（32号裁决第二节：只赚不花，商城=能看不能换；126:675 我的服务第三格原稿格位）。
 export const MINE_POINTS_MALL_URL = '/consumer/pages/points-mall/index'
+// 设置枢纽/帮助与客服/意见反馈（契约 66/67 收尾批次，2026-10-19 裁决"全做"）：
+// mine 网格三格原为视觉占位，本次接通真实子页（设置枢纽含注销/协议入口；
+// 帮助与客服=FAQ+热线；意见反馈=工单提交+我的反馈列表）。
+export const MINE_SETTINGS_URL = '/consumer/pages/settings/index'
+export const MINE_HELP_URL = '/consumer/pages/help/index'
+export const MINE_FEEDBACK_URL = '/consumer/pages/feedback/index'
+export const MINE_FEEDBACK_LIST_URL = '/consumer/pages/feedback/list'
 
 export const phoneGuideCopy = {
   title: '授权手机号，完善账号',
