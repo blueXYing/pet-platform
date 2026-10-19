@@ -73,8 +73,8 @@ public final class FeedbackTicketService {
         this(store, activeUsers, ids, java.time.Clock.systemUTC());
     }
 
-    FeedbackTicketService(FeedbackTicketStore store, UserActiveStatusApi activeUsers,
-                          SnowflakeIdGenerator ids, java.time.Clock clock) {
+    public FeedbackTicketService(FeedbackTicketStore store, UserActiveStatusApi activeUsers,
+                                 SnowflakeIdGenerator ids, java.time.Clock clock) {
         this.store = Objects.requireNonNull(store, "store is required");
         this.activeUsers = Objects.requireNonNull(activeUsers, "user active-status port is required");
         this.ids = Objects.requireNonNull(ids, "PLAT-002 ID provider is required");

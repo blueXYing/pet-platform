@@ -108,6 +108,8 @@ class OrderDeletionFactsMySqlTest {
                     // projection columns, so the fixture needs the same ALTER chain as the
                     // production truth table.
                     for (String file : List.of("06-核心数据库Schema-v0.1.sql",
+                            "42-Late-Refund-Execution-Schema-v0.1.sql",
+                            "45-Merchant-Order-Actions-Schema-v0.1.sql",
                             "48-Verification-Completion-Schema-v0.1.sql",
                             "49-Refund-Application-Schema-v0.1.sql")) {
                         ScriptUtils.executeSqlScript(connection, new EncodedResource(
@@ -140,7 +142,9 @@ class OrderDeletionFactsMySqlTest {
                     VALUES(?,?,?,?,?,?,?,?+5000,?,'PAID','IN_STORE',100.00,100.00,?,?,?,?,?,
                            UTC_TIMESTAMP(3), UTC_TIMESTAMP(3))
                     """, id, id, userId, 7100L, storeId, 7200L, 7500L, id, stage,
-                    refundApplicationStatus, refundOrderId, refundedAmount,
+                    refundApplicationStatus, refundOrderId,
+                    // 42/45 projections carry NOT NULL refunded_amount; production defaults it to 0.
+                    refundedAmount == null ? "0.00" : refundedAmount,
                     "2030-01-01 09:00:00", "2030-01-01 10:00:00");
         }
 
