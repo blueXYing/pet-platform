@@ -238,13 +238,13 @@ public class AdminOpsController {
       @PathVariable String categoryCode, @RequestBody String raw, HttpServletRequest req) {
     noQuery(req);
     AdminSessionView session = session(req, "encyclopedia.manage");
-    JsonNode body = strictObject(raw, "categoryName", "sortNo", "expectedVersion");
+    JsonNode body = strictObject(raw, "categoryName", "sortOrder", "expectedVersion");
     var receipt =
         encyclopediaCommands.updateCategory(
             new UpdateCategoryCommand(
                 categoryText(categoryCode),
                 text(body, "categoryName"),
-                intField(body, "sortNo"),
+                intField(body, "sortOrder"),
                 longField(body, "expectedVersion"),
                 command(req, session),
                 encyclopediaCommandAuthorization(session)));
@@ -318,7 +318,7 @@ public class AdminOpsController {
     noQuery(req);
     AdminSessionView session = session(req, "breed.manage");
     JsonNode body =
-        strictObject(raw, "summary", "coverUrl", "bodyType", "aliases", "tags", "sortNo",
+        strictObject(raw, "summary", "coverUrl", "bodyType", "aliases", "tags", "sortOrder",
             "expectedVersion");
     var receipt =
         encyclopediaCommands.updateBreed(
@@ -329,7 +329,7 @@ public class AdminOpsController {
                 optionalText(body, "bodyType"),
                 stringArray(body, "aliases"),
                 stringArray(body, "tags"),
-                intField(body, "sortNo"),
+                intField(body, "sortOrder"),
                 longField(body, "expectedVersion"),
                 command(req, session),
                 encyclopediaCommandAuthorization(session)));
@@ -377,13 +377,13 @@ public class AdminOpsController {
   Map<String, Object> createCategory(@RequestBody String raw, HttpServletRequest req) {
     noQuery(req);
     AdminSessionView session = session(req, "encyclopedia.manage");
-    JsonNode body = strictObject(raw, "categoryCode", "categoryName", "sortNo");
+    JsonNode body = strictObject(raw, "categoryCode", "categoryName", "sortOrder");
     var receipt =
         encyclopediaCommands.createCategory(
             new CreateCategoryCommand(
                 categoryText(text(body, "categoryCode")),
                 text(body, "categoryName"),
-                intField(body, "sortNo"),
+                intField(body, "sortOrder"),
                 command(req, session),
                 encyclopediaCommandAuthorization(session)));
     return ok(categoryFields(receipt), req);
@@ -395,7 +395,7 @@ public class AdminOpsController {
     AdminSessionView session = session(req, "breed.manage");
     JsonNode body =
         strictObject(raw, "categoryCode", "name", "summary", "coverUrl", "bodyType",
-            "aliases", "tags", "sortNo");
+            "aliases", "tags", "sortOrder");
     var receipt =
         encyclopediaCommands.createBreed(
             new CreateBreedCommand(
@@ -406,7 +406,7 @@ public class AdminOpsController {
                 optionalText(body, "bodyType"),
                 stringArray(body, "aliases"),
                 stringArray(body, "tags"),
-                intField(body, "sortNo"),
+                intField(body, "sortOrder"),
                 command(req, session),
                 encyclopediaCommandAuthorization(session)));
     return ok(breedMutationFields(receipt), req);
@@ -723,7 +723,7 @@ public class AdminOpsController {
     data.put("summary", row.summary());
     data.put("coverUrl", row.coverUrl());
     data.put("status", row.status());
-    data.put("sortNo", row.sortNo());
+    data.put("sortOrder", row.sortNo());
     data.put("version", Long.toString(row.version()));
     data.put("updatedAt", time(row.updatedAt()));
     return data;

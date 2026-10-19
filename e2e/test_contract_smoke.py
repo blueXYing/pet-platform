@@ -40,20 +40,25 @@ class ContractSmokeRegressions(unittest.TestCase):
         # CCR-CPN-GRANT-001 minimum; kernel switch pet.coupon.grant.enabled stays default off)
         # + the v0.3 §4.4 void channel (1, user ruling 2026-10-16 doc 36 minimal
         # authorization, CCR-CPN-VOID-001; kernel switch pet.coupon.void.enabled stays
-        # default off) = twenty-two routes.
-        self.assertEqual(result['adminOpsOperations'], 22)
-        # Contract 66 user settings/deletion face (2026-10-19, user ruling "全做";
-        # CCR-USR-DELETION-001): precheck read + idempotent deletion write = two routes
-        # (pet.usersettings.http.enabled default off).
-        self.assertEqual(result['userSettingsOperations'], 2)
+        # default off) + the v0.4 encyclopedia节 additions (2026-10-19 user ruling
+        # "继续扩展CCR": category create + breed create + bounded CSV export = 3) =
+        # twenty-five routes.
+        self.assertEqual(result['adminOpsOperations'], 25)
+        # Contract 66 user settings/deletion face (2026-10-19, user ruling "全做"; v0.2
+        # cooling period "继续扩展CCR", CCR-USR-DELETION-001): precheck read + cooling write
+        # + status read + CAS cancel = four routes (pet.usersettings.http.enabled default off).
+        self.assertEqual(result['userSettingsOperations'], 4)
         # Contract 67 feedback ticket face (2026-10-19, PRD 5.1.28 complaint class;
-        # CCR-CS-FEEDBACK-001): create + list + owner detail = three routes
+        # CCR-CS-FEEDBACK-001): create + list + owner detail = three C routes
         # (pet.feedback.http.enabled default off).
         self.assertEqual(result['feedbackHttpOperations'], 3)
-        # Union 211 = 163 baseline + 3 encyclopedia + 11 admin trade (reads + disposal)
-        # + 8 governance + 22 ops console + 2 settings/deletion + 3 feedback:
-        # 163 + 3 + 11 + 8 + 22 + 2 + 3 = 211.
-        self.assertEqual(result['operations'], 211)
+        # Contract 67 v0.2 feedback ops face (user ruling "继续扩展CCR"): ops list + verbatim
+        # detail + process + resolve = four admin routes (complaint.read/handle/decide).
+        self.assertEqual(result['feedbackOpsOperations'], 4)
+        # Union 220 = the previous pin 211 + 9 new routes in this batch: 2 deletion-cooling
+        # routes (status read + CAS cancel) + 4 feedback ops (list/detail/process/resolve)
+        # + 3 encyclopedia节 (category create + breed create + CSV export).
+        self.assertEqual(result['operations'], 220)
         self.assertGreater(result['stringIdProperties'], 0)
         # Contract 58 favorite/footprint face (2026-10-13): seven reviewed operations.
         self.assertEqual(result['favtrackHttpOperations'], 7)

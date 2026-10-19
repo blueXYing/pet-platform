@@ -1,6 +1,6 @@
 # 反馈工单（投诉类）HTTP 契约 v0.1（67 号）
 
-状态：IMPLEMENTED_INTERNAL_DEFAULT_OFF，最终以实现 PR 的 CI 为准。v0.1 2026-10-19。
+状态：IMPLEMENTED_INTERNAL_DEFAULT_OFF，最终以实现 PR 的 CI 为准。v0.1 2026-10-19；**v0.2 2026-10-19 附件与运营处置面**（用户裁决"继续扩展CCR"：①图片附件走 31号私有资产管线新增 `FEEDBACK_ATTACHMENT` 用途（0..6 张/单）；②运营处置面=列表筛选+原文详情+`PENDING→PROCESSING→RESOLVED` 状态流转（回复 ≤1000 码点）+事件审计，动作码 `complaint.read/handle/decide` 登记部署；③C 端详情可见状态与运营回复）。文件名沿用 v0.1 不改，x-contract 钉不变。
 来源：C 端 PRD `docs/01-prd/02-PRD-C端用户-V1.0-最终基线.docx` §5.1.28 售后与投诉之**投诉类（平台意见反馈）**（四类型/联系方式选填/500 字/提交生成投诉工单/查看运营回复和处理结论）；SSOT §17（AI 客服不做、人工客服做、承载方式未决）；[10 号](10-HTTP-API-Contract-v0.4.md) 权限矩阵既有 `complaint.read/assign/handle/decide` 运营占位（10 号，运营面无路由）；[23 号](23-公共接口与幂等契约补充-v0.1.md) §5。设计稿：帧 `130:17185`（意见反馈）、`130:16491`/`130:16704`（帮助与客服及展开态，登记表 §3）。
 最小实现口径按 [CCR-CS-FEEDBACK-001](../../planning/ccr/CCR-CS-FEEDBACK-001.md) 冻结（文本工单无附件、运营处置面不在本切片、人工客服承载=帮助中心静态内容+客服联系方式电话唤起）。
 
@@ -8,14 +8,15 @@
 
 ## 1. 范围与产品边界
 
-1. **提交反馈工单**（PRD 5.1.28 投诉类核心功能）：已登录用户提交 {类型(必填四值), 联系方式(选填), 内容(必填 ≤500 字)} → 生成 `PENDING`（待处理）工单。
-2. **我的反馈列表 / 详情**：本人工单分页列表与单条详情；详情含"运营回复和处理结论"字段位（V1 恒为空数组/空值——运营处置面不在本切片，PR 披露）。
+1. **提交反馈工单**（PRD 5.1.28 投诉类核心功能）：已登录用户提交 {类型(必填四值), 联系方式(选填), 内容(必填 ≤500 字), 图片附件(选填 0..6 张——v0.2)} → 生成 `PENDING`（待处理）工单。
+2. **我的反馈列表 / 详情**：本人工单分页列表与单条详情；详情含状态、附件 id 列表、处理时间线与**运营回复**（v0.2：工单被办结后恰一条 `{reply≤1000码点, repliedAt}`）。
+3. **运营处置面（v0.2）**：`GET /admin/feedback-tickets`（status/type 筛选分页）+ `GET /admin/feedback-tickets/{ticketId}`（工单内容/联系方式**运营侧展示原样**——用户裁决脱敏纪律；含 owner userId 与附件 assetId 列表）+ `POST .../{ticketId}/process`（PENDING→PROCESSING）+ `POST .../{ticketId}/resolve`（PROCESSING→RESOLVED，body `{reply}` 1..1000 码点）。两写路由终结性 X-Request-Id 幂等 + 乐观锁 CAS + 同事务 PROCESSING/RESOLVED 审计行（actor=运营者）。
 
-**不在本切片（CCR-CS-FEEDBACK-001 登记，一行不做）**：反馈图片附件（PRD 最多 6 张每张 5MB——私有资产上传通道为售后证据专用契约 31 号，反馈附件需扩展该契约或新立通道，另立项）；运营处置面（assign/handle/decide 路由，运营台切片；权限矩阵占位不动）；工单状态流转（V1 提交后恒 `PENDING`，词表冻结五值待运营面启用）；补充举证（待补充态无触发方）；内容安全审核（评价域审核通道不外借，工单进入运营处理流程由人工看单，PRD"反馈内容审核：提交后进入运营处理流程"）；IM/在线会话（V1 无 IM 硬规则）。
+**不在本切片（CCR-CS-FEEDBACK-001 登记，一行不做）**：~~反馈图片附件~~【v0.2 已放开，31号管线 `FEEDBACK_ATTACHMENT` 用途】；~~运营处置面~~【v0.2 已放开，见上】；**工单分派/SLA/24 小时时效提醒**（`complaint.assign` 不登记，无分派语义；时效提醒无通道）；补充举证（`WAITING_SUPPLEMENT` 态无触发方，状态词表保留但不可达）；`CLOSED` 态（V1 无关闭路由，RESOLVED 即终态）；内容安全审核（评价域审核通道不外借，工单由人工看单）；提交回执通知（16号消息目录无此类型）；IM/在线会话（V1 无 IM 硬规则）；统一工单列表（投诉+售后混合，售后已有独立列表）。
 
 ## 2. 鉴权、开关与边界
 
-- 装配开关 `pet.feedback.http.enabled`（默认 **false**），硬前置 `pet.auth.c.enabled=true`（双条件装配；21 号清单同步登记）。全部路由真实 MINIAPP Bearer 会话，无匿名路由。
+- 装配开关 `pet.feedback.http.enabled`（默认 **false**），硬前置 `pet.auth.c.enabled=true`（双条件装配；21 号清单同步登记）。C 端路由真实 MINIAPP Bearer 会话，无匿名路由。**v0.2 运营处置四路由**另需 `pet.auth.admin.enabled` + `pet.admin.ops.http.enabled`（真实 ADMIN_WEB Bearer + ALL 数据范围，63/64/65 号同款），控制器快照校验动作码 + 内核经模块本地授权端口当前读重验（快照永非授权证据）。
 - `Cache-Control: no-store` 全路由；信封 `{code,message,data,traceId}`；未知 query 参数整单 400（列表仅 page/pageSize）；工单号全部 Snowflake 十进制 String；时间 ISO-8601 UTC 毫秒。
 - 写路由（POST）终结性 `X-Request-Id`（23 号 §5，namespace `feedback.create`，scope USER_SELF）：幂等绑定在本模块本地 `feedback_command_idempotency`（23 号同构物理表，字段结构同 SQL14——骨架模块不共享 user 模块命令表，遵守"不从本模块访问他模块 CommandIdempotencyStore"既有裁决口径）；同 ID 异参 409 `IDEMPOTENCY_KEY_CONFLICT`，同 ID 同参重放返回首次回执（首执 201 / 重放 200）。
 - 展示态零推导（ARCH-005）；内容/联系方式仅本人可读（owner-scoped），不做跨人投影。
@@ -27,18 +28,19 @@
 
 | 方法/路径 | 请求 | 成功 data | 关键错误 |
 |---|---|---|---|
-| POST `/api/v1/c/feedback-tickets` | 终结性 X-Request-Id；严格 JSON `{type, contact?, content}` | `{ticketId, type, status: "PENDING", createdAt}`（首执 201 / 同参重放 200 同回执） | 400/401/403(USER_FROZEN)/409/503 |
+| POST `/api/v1/c/feedback-tickets` | 终结性 X-Request-Id；严格 JSON `{type, contact?, content, attachmentAssetIds?}`（v0.2 附件 0..6 个 Snowflake String，经 31号 `resolveOwned` 重证=本人所有+`FEEDBACK_ATTACHMENT`+READY，不满足 400/404；PRD"每张 5MB"沿管线 10MiB 上界——披露） | `{ticketId, type, status: "PENDING", createdAt}`（首执 201 / 同参重放 200 同回执；附件列表属幂等相等性事实） | 400/401/403(USER_FROZEN)/409/503 |
 | GET `/api/v1/c/feedback-tickets?page&pageSize` | page 1..10000 默认 1；pageSize 1..50 默认 20 | PageResult：`{items: [FeedbackTicketSummary], page, pageSize, total}` | 400/401/503 |
-| GET `/api/v1/c/feedback-tickets/{ticketId}` | 路径参数 String ID | `FeedbackTicketDetail`（summary 全字段 + `contact` + `events[]` + `replies: []`） | 400/401/404/503 |
+| GET `/api/v1/c/feedback-tickets/{ticketId}` | 路径参数 String ID | `FeedbackTicketDetail`（summary 全字段 + `contact` + `attachmentAssetIds[]` + `events[]` + `replies[]`） | 400/401/404/503 |
 
 ### 3.1 字段口径（冻结）
 
 - `type` 四值枚举（PRD 5.1.28 原文四类型，不新增不改名）：`FEATURE_SUGGESTION`（功能建议）/ `BUG_REPORT`（问题反馈）/ `SERVICE_COMPLAINT`（服务投诉）/ `OTHER`（其他）。未知值 400 `FEEDBACK_TYPE_INVALID`。
 - `contact`：选填，1..64 码点字符串（提示语"手机号或微信号，方便我们联系您"由前端渲染；服务端不做格式校验——PRD 未限定格式，电话/微信号/其他联系方式均可）；缺省存 null；**仅详情视图返回，列表不返回**（最小暴露面）。
 - `content`：必填，1..500 码点（PRD"500字以内"）；前后端同限。
+- `attachmentAssetIds`（v0.2）：选填，0..6 个 Snowflake String，重复/词法非法 400；内核经 31号端口重证后落 `feedback_ticket_attachment` 绑定行（ticket_id+asset_id uk）；详情/运营详情以 id 列表回显（图片渲染签名 URL 通道不在 V1——CCR 待裁）。
 - `FeedbackTicketSummary`：`{ticketId, type, status, contentPreview, createdAt}`；`contentPreview` ≤ 50 码点截断（服务端截断，UTF-8 码点安全）；固定排序 `created_at DESC, id DESC`。
-- `FeedbackTicketDetail`：summary 全字段 + `content`（全文）+ `contact`（null 或原文）+ `events[]`（`{action, createdAt}` 词表冻结 `SUBMITTED`，V1 仅此一值）+ `replies: []`（运营回复字段位恒空数组）+ `resolution: null`（处理结论字段位恒 null）。
-- 状态词表（PRD 5.1.28 统一工单状态机，冻结登记）：`PENDING`（待处理）/ `PROCESSING`（处理中）/ `WAITING_SUPPLEMENT`（待补充）/ `RESOLVED`（已处理）/ `CLOSED`（已关闭）。V1 只落 `PENDING`，无任何迁移路由。
+- `FeedbackTicketDetail`：summary 全字段 + `content`（全文）+ `contact`（null 或原文）+ `attachmentAssetIds[]` + `events[]`（`{action, createdAt}`；动作词表 v0.2：`SUBMITTED|PROCESSING|RESOLVED`）+ `replies[]`（v0.2：办结后恰一条 `{reply(1..1000码点), repliedAt}`，C 端可见）+ `resolution: null`（字段位保留；V1 回复即结论口径——披露）。
+- 状态词表（PRD 5.1.28 统一工单状态机，冻结登记）：`PENDING`（待处理）/ `PROCESSING`（处理中）/ `WAITING_SUPPLEMENT`（待补充）/ `RESOLVED`（已处理）/ `CLOSED`（已关闭）。**v0.2 状态机开放 `PENDING→PROCESSING→RESOLVED` 两跳**（process/resolve 路由）；`WAITING_SUPPLEMENT/CLOSED` 维持不可达（无触发方/无关闭路由）；RESOLVED 为 V1 终态（无后续迁移）。运营列表 status 筛选仅开放可达三值。
 
 ### 3.2 防枚举与写守卫
 
@@ -59,23 +61,25 @@
 
 ## 5. 装配与模块边界
 
-- pet-customer-service-biz 骨架模块首次落业务：`FeedbackTicketService`（application）+ `FeedbackTicketStore`/Mapper XML（infrastructure）+ `FeedbackCommandIdempotencyStore`（23 号同构）。pet-boot 新增 `FeedbackConfiguration`（双开关装配）与 `CFeedbackController`。
-- 写守卫的用户状态事实：优先复用 pet-user-api 既有只读端口；若既有端口语义不匹配（需"仅状态、无会话"纯事实），在 pet-user-api 增补只读状态端口 `UserActiveStatusApi`（user-biz 实现，纯事实读、无授权语义，沿 OrderFirstPaidFactsApi 先例）——实现期择一并 PR 披露，两向均为 api 依赖非 biz 依赖。
-- 内容脱敏存储：SSOT 无反馈内容脱敏条款（全文 0 命中），最小口径=原文存储 + owner-scoped 读 + 列表不回传联系方式；若后续运营面/导出面立项，需先过隐私口径裁决。CCR-CS-FEEDBACK-001 §2 登记。
+- pet-customer-service-biz 骨架模块首次落业务：`FeedbackTicketService`（application）+ `FeedbackTicketStore`/Mapper XML（infrastructure）+ `FeedbackCommandIdempotencyStore`（23 号同构）。pet-boot 新增 `FeedbackConfiguration`（双开关装配）与 `CFeedbackController`；**v0.2 增 `AdminFeedbackOpsController`**（另需 `pet.auth.admin.enabled`+`pet.admin.ops.http.enabled`）与模块本地授权端口 `FeedbackOpsAuthorizationPort`（boot 级适配到 admin 授权 owner，fail-closed——决断不可用 503，绝不静默放行）。
+- 写守卫的用户状态事实：pet-user-api 只读端口 `UserActiveStatusApi`（user-biz 实现，纯事实读、无授权语义，沿 OrderFirstPaidFactsApi 先例）；附件重证：**v0.2 窄端口 `FeedbackAssetProofPort`**（仅 `resolveOwned` 视图）由 boot 适配到 thirdparty-api `PrivateAssetApi`——31 号切片未装配时附件提交 503 失败关闭，纯文本工单不受影响；api 依赖非 biz 依赖，不触碰私有 Mapper。
+- 内容脱敏存储：SSOT 无反馈内容脱敏条款（全文 0 命中），口径=原文存储 + owner-scoped 读 + 列表不回传联系方式；**v0.2 运营处置读=用户裁决放行（工单内容运营侧展示原样）**，日志脱敏沿既有。
+- 31 号 purpose 枚举最小扩展：`FEEDBACK_ATTACHMENT` 加入 `UPLOAD_PURPOSES` 与 C 端上传路由用途集（同一不可变上传/扫描/收敛管线，无新错误码、无 31 号 Schema 变更）；PR 披露。
 
 ## 6. 设计偏差登记（帧 `130:17185` / `130:16491` / `130:16704`，登记表同步）
 
 | 帧元素 | 处理 | 依据 |
 |---|---|---|
-| 意见反馈：上传图片位 | V1 不做（帧稿未见上传控件，PRD 有 6 张附件——按 PRD 从宽应为有；通道缺失，CCR 另立项） | 帧与 PRD 冲突处按最小实现 + CCR |
+| 意见反馈：上传图片位 | **v0.2 已放开**（PRD 6 张附件口径落地；31号管线 `FEEDBACK_ATTACHMENT` 用途，C 端创建页九宫格上传 ≤6 张） | 用户裁决 2026-10-19"继续扩展CCR" |
 | 反馈类型四胶囊/联系方式选填/500 字/提交 | 1:1 还原 | PRD 5.1.28 |
 | 帮助与客服：在线客服"7×24"文案 | 改写为人工客服口径（V1 无 AI 客服；承载=客服联系方式展示+电话唤起） | SSOT §17 + AGENTS 硬规则 |
 | FAQ 答案（取消订单"服务开始前2小时免费取消"等） | 按平台已批规则改写（V1 无 C 端普通取消入口；服务前退款自动全额） | 10 号 §4.3 + 退款硬规则 |
 | 帮助与客服底部 tab | 不还原 | 同 66 号 §6 tab 口径 |
 | 联系客服按钮 | `wx.makePhoneCall` 唤起客服热线（热线号常量，CCR 登记待运营配置） | 最小承载 CCR-CS-FEEDBACK-001 |
+| 我的反馈列表/详情 | 列表无原稿沿 C 端现行列表家族语言（缺稿口径）；详情=列表页半屏（状态/附件数/时间线/运营回复） | 缺稿页沿现行规范，PR 披露 |
 
 ## 7. 测试口径
 
-- customer-service 域内核真实 MySQL 回环（隔离库）：提交 happy path（工单行 + SUBMITTED 审计行）、四类型词表、content 边界（1/500/501）、contact 边界、幂等同参 200 回执/异参 409、列表分页与排序、contentPreview 截断、详情 owner 防枚举 404、FROZEN 403、频控 429。
-- 装配：开关默认关；缺 auth.c 启动失败。
-- 前端：意见反馈提交页/我的反馈列表页/帮助与客服页 smoke + typecheck + build；package-check 同步。
+- customer-service 域内核真实 MySQL 回环（隔离库，env 同 CI 名 AUTH_MYSQL_*）：提交 happy path（工单行 + SUBMITTED 审计行）、四类型词表、content 边界（1/500/501）、contact 边界、**附件重证矩阵**（0..6 边界/重复/词法/非本人 404/非 READY 400/幂等相等性含附件列表）、幂等同参 200 回执/异参 409、列表分页与排序、contentPreview 截断、详情 owner 防枚举 404、FROZEN 403、频控 429；**v0.2 运营处置**：列表 status/type 筛选与越界 400、原文详情（owner+contact 原样）、process/resolve 幂等回执/异参 409、非预期状态 409、reply 1..1000 边界、审计行动词序（SUBMITTED→PROCESSING→RESOLVED）、C 端详情可见回复。
+- 装配：开关默认关；缺 auth.c 启动失败；运营面缺 admin 会话/ops 面不装配；授权决断不可用 503 fail-closed。
+- 前端：意见反馈提交页（含附件上传）/我的反馈列表页（详情半屏）/帮助与客服页 smoke + typecheck + build；package-check 同步。

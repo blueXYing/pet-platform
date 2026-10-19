@@ -493,6 +493,7 @@ HTTP 映射只属于 Adapter 层；内部 Java API 通过稳定 code 表达同�
 | DELETION_BLOCKED | 账号注销存在前置阻塞（未完结订单/处理中售后/名下商家未完结业务，66号；阻塞明细由 precheck 读侧承载） | 409 |
 | FEEDBACK_TYPE_INVALID | 反馈类型不在 PRD 5.1.28 四值词表（67号） | 400 |
 | FEEDBACK_TICKET_NOT_FOUND | 反馈工单不存在/非本人（防枚举统一语义，67号） | 404 |
+| ENCYCLOPEDIA_EXPORT_TOO_LARGE | 百科 CSV 导出内容超过 1MB 内核有界上限（65号 v0.4 百科节，2026-10-19"继续扩展CCR"；任何响应体提交前失败关闭） | 413 |
 
 ## 14. 使用规则
 

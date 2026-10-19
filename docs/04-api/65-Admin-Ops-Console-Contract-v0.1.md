@@ -14,7 +14,7 @@
 3. **台账**（PRD §6.5 积分流水 + §6.11，权限矩阵行 15）：积分台账读面（HTTP10 §5.8 草案 `GET /admin/points/ledger`）。商家台账（64 号已交付）、券实例台账（本契约第 2 块）不重做。
 4. **系统设置**（PRD §6.11.1 系统参数台账 + §6.13，权限矩阵行 23）：系统设置运行时开关视图（只读）——把 21 号《部署开关组合清单》登记的 `pet.*` 装配开关及其当前实际状态作为只读面输出，**不新造配置机制**（系统参数运行时写入不在 V1；PRD"系统参数台账·双人复核"已被 SSOT §24 单运营裁决覆盖为无需第二人，但运行时写配置仍无授权，见 §6 CCR）。
 
-**不在本切片（CCR 登记，一行不做）**：券实例写动作（批量作废/风控冻结/解冻/手动返还——SSOT §9 未授权直接改用户券状态；单张作废已按 2026-10-16 用户裁决最小授权 36 号放开为 §4.4）；券活动/批次与"导入路径"（发放渠道已按用户裁决以最小实现放开为 §4.3，批量/持有上限/频控/库存扣减等扩展项仍 CCR-CPN-GRANT-001 §2 待裁；券实例仅运营侧数据的导入路径 V1 不做）；券模板"领取后 N 天"有效期模式（需 Schema/61 号冻结语义扩展）；百科分类/品种新增与删除、导出（分类枚举五值 PRD 不可自定义新增；品种新增需封面图上传通道，V1 运营侧无素材通道；导出不在 V1 已批准范围，63 号 v0.2 同口径）；资金台账专项面（PRD §6.11.1 明示详见《资金管理 V1.4》，该文件不在仓，字段级口径缺失，不发明）；统一审计日志面 `GET /admin/audit-logs`（审计行分散于各内核处置表 + 文件 sink，统一存储未决）；后台账号/角色管理写面（权限矩阵行 26，AUTH owner 专项，V1 单运营种子账号，无授权矩阵登记）；消息公告/通知模板面（矩阵行 24，无契约无事件）。
+**不在本切片（CCR 登记，一行不做）**：券实例写动作（批量作废/风控冻结/解冻/手动返还——SSOT §9 未授权直接改用户券状态；单张作废已按 2026-10-16 用户裁决最小授权 36 号放开为 §4.4）；券活动/批次与"导入路径"（发放渠道已按用户裁决以最小实现放开为 §4.3，批量/持有上限/频控/库存扣减等扩展项仍 CCR-CPN-GRANT-001 §2 待裁；券实例仅运营侧数据的导入路径 V1 不做）；券模板"领取后 N 天"有效期模式（需 Schema/61 号冻结语义扩展）；~~百科分类/品种新增与删除、导出~~【**v0.4 2026-10-19 用户裁决"继续扩展CCR"已放开：分类/品种新增（同款守卫）与 CSV 导出（有界），见 §3；删除仍不做**】；资金台账专项面（PRD §6.11.1 明示详见《资金管理 V1.4》，该文件不在仓，字段级口径缺失，不发明）；统一审计日志面 `GET /admin/audit-logs`（审计行分散于各内核处置表 + 文件 sink，统一存储未决）；后台账号/角色管理写面（权限矩阵行 26，AUTH owner 专项，V1 单运营种子账号，无授权矩阵登记）；消息公告/通知模板面（矩阵行 24，无契约无事件）。
 
 ## 2. 鉴权、开关与边界（沿 63/64 号先例）
 
@@ -28,26 +28,34 @@
 
 ## 3. 百科治理（pet-community-api/biz `baike` 子域）
 
-动作码：`encyclopedia.read`（读字典/列表）、`encyclopedia.manage`（分类维护写）、`encyclopedia.publish`（品种上下线）、`breed.read`（品种详情读）、`breed.manage`（品种编辑维护）——矩阵行 21 全行登记部署（编 D，获权编辑可直发，SSOT §24 无第二人）。
+动作码：`encyclopedia.read`（读字典/列表 + **v0.4 CSV 导出**）、`encyclopedia.manage`（分类维护写 + **v0.4 分类新增**）、`encyclopedia.publish`（品种上下线）、`breed.read`（品种详情读）、`breed.manage`（品种编辑维护 + **v0.4 品种新增**）——矩阵行 21 全行登记部署（编 D，获权编辑可直发，SSOT §24 无第二人）。零新增动作码。
+
+**v0.4 增补（2026-10-19 用户裁决"继续扩展CCR"，百科节）**：分类/品种**新增**（字典枚举不再封闭）与 CSV 导出。同款守卫=与编辑一致的 14 号 command_idempotency 幂等绑定（同参重放首回执/异参 409）+ 模块本地授权端口重验 + 乐观/唯一键守卫；无删除路由。
 
 | 方法/路径 | 动作码 | 请求 | 成功 data | 关键错误 |
 |---|---|---|---|---|
-| GET `/api/v1/admin/encyclopedia/categories` | encyclopedia.read | page/pageSize | 全状态分类分页（`categoryCode/categoryName/status/sortNo/breedCount/publishedBreedCount/version/createdAt/updatedAt`） | 400/401/403 |
-| PUT `/api/v1/admin/encyclopedia/categories/{categoryCode}` | encyclopedia.manage | `{categoryName(2..10码点), sortNo(0..999), expectedVersion}` | `{categoryCode,categoryName,sortNo,status,version}` | 400/401/403/404/409 |
+| GET `/api/v1/admin/encyclopedia/categories` | encyclopedia.read | page/pageSize | 全状态分类分页（`categoryCode/categoryName/status/sortOrder/breedCount/publishedBreedCount/version/createdAt/updatedAt`） | 400/401/403 |
+| POST `/api/v1/admin/encyclopedia/categories` | encyclopedia.manage | `{categoryCode(词法 2..16：A-Z 数字下划线), categoryName(2..10码点), sortOrder(0..999)}`；终结性 X-Request-Id | `{categoryCode,categoryName,status:"ENABLED",sortOrder,version:0,occurredAt}`（幂等） | 400（词法）/401/403/409（编码重复）/503 |
+| PUT `/api/v1/admin/encyclopedia/categories/{categoryCode}` | encyclopedia.manage | `{categoryName(2..10码点), sortOrder(0..999), expectedVersion}` | `{categoryCode,categoryName,sortOrder,status,version}` | 400/401/403/404/409 |
 | POST `/api/v1/admin/encyclopedia/categories/{categoryCode}/enable` | encyclopedia.manage | 无 body | `{categoryCode,status:"ENABLED",version}` | 404/409（已启用） |
 | POST `/api/v1/admin/encyclopedia/categories/{categoryCode}/disable` | encyclopedia.manage | 无 body | `{categoryCode,status:"DISABLED",version}` | 404/409（已停用） |
-| GET `/api/v1/admin/encyclopedia/breeds` | encyclopedia.read | page/pageSize/status?(PUBLISHED\|OFFLINE)/categoryCode?/keyword? | 全状态品种分页卡（C 端 BreedCardView 字段 + `status/sortNo/version/updatedAt`） | 400/401/403 |
-| GET `/api/v1/admin/encyclopedia/breeds/{breedId}` | breed.read | — | 全字段详情（C 端 BreedDetailView 字段 + `status/sortNo/version/createdAt/updatedAt`），OFFLINE 行同应答 | 400/401/403/404 |
-| PUT `/api/v1/admin/encyclopedia/breeds/{breedId}` | breed.manage | `{summary(≤120), coverUrl(≤512), bodyType(≤32), aliases[](≤5,单个≤50), tags[](≤10,单个≤30), sortNo(0..9999), expectedVersion}` | `{breedId,status,sortNo,version}` | 400/401/403/404/409 |
+| GET `/api/v1/admin/encyclopedia/breeds` | encyclopedia.read | page/pageSize/status?(PUBLISHED\|OFFLINE)/categoryCode?/keyword? | 全状态品种分页卡（C 端 BreedCardView 字段 + `status/sortOrder/version/updatedAt`） | 400/401/403 |
+| POST `/api/v1/admin/encyclopedia/breeds` | breed.manage | `{categoryCode(必须存在且 ENABLED), name(1..30码点，同类别唯一), summary(1..120), coverUrl?(≤512，URL 维护), bodyType?(≤32), aliases?(≤5×50), tags?(≤10×30), sortOrder(0..9999)}`；终结性 X-Request-Id | `{breedId,name,status:"OFFLINE",sortOrder,version:0,occurredAt}`（幂等） | 400/401/403/404（分类不存在）/409（重名或分类停用）/503 |
+| GET `/api/v1/admin/encyclopedia/breeds/{breedId}` | breed.read | — | 全字段详情（C 端 BreedDetailView 字段 + `status/sortOrder/version/createdAt/updatedAt`），OFFLINE 行同应答 | 400/401/403/404 |
+| PUT `/api/v1/admin/encyclopedia/breeds/{breedId}` | breed.manage | `{summary(≤120), coverUrl(≤512), bodyType(≤32), aliases[](≤5,单个≤50), tags[](≤10,单个≤30), sortOrder(0..9999), expectedVersion}` | `{breedId,status,sortOrder,version}` | 400/401/403/404/409 |
 | POST `/api/v1/admin/encyclopedia/breeds/{breedId}/publish` | encyclopedia.publish | 无 body | `{breedId,status:"PUBLISHED",version}` | 404/409（已发布） |
 | POST `/api/v1/admin/encyclopedia/breeds/{breedId}/offline` | encyclopedia.publish | 无 body | `{breedId,status:"OFFLINE",version}` | 404/409（已下线） |
+| GET `/api/v1/admin/encyclopedia/export` | encyclopedia.read | — | `text/csv` 双段文档（分类段含计数 + 品种段清单卡字段；富文本列不入导出；RFC 4180，UTF-8；`Content-Disposition` 文件名 `encyclopedia-export-{UTC时间戳}.csv`） | 400/401/403/**413（ENCYCLOPEDIA_EXPORT_TOO_LARGE）**/503 |
 
 语义与硬规则：
-- 分类枚举五值（DOG/CAT/REPTILE/BIRD/INSECT）与 C 端 5.1.4/62 号一致，**不新增不改名**；路径以 `categoryCode` 寻址，`categoryName` 为展示名（PRD 2-10 字，编辑不可跨成另一枚举名）；停用分类对 C 端立即不可见（读侧既有 `status='ENABLED'` 过滤），重新启用立即恢复——62 号读侧零改动。
+- **v0.4 字典开放**：分类枚举不再封闭五值——新增分类词法 2..16（A-Z 数字下划线，uk 防重 409），born `ENABLED` version 0；既有编辑/上下线路由按 `categoryCode` 寻址（词法校验 + DB 存在性 404），C 端 62 号读侧按启用字典表自然展示新分类（读侧零改动）。**删除路由仍不存在**（字典行只停用不删除）。
+- **v0.4 品种新增**：宿主分类必须存在且 `ENABLED`（404/409）；name 同类别唯一（uk 防重 409）；born `OFFLINE`（先维护再发布——publish 路由既有语义衔接）；富文本列（description/careAdvice/healthTips）本面不可写（既有披露），发布空正文品种由运营自行判断（C 端有占位回退）；封面仍为 URL 维护（无上传通道，既有口径）。
+- **v0.4 CSV 导出**：只读字典数据、无任何隐私物料（无用户字段）；内核有界生成 ≤1MiB（`ENCYCLOPEDIA_EXPORT_TOO_LARGE` 413 新码，12 号登记），超限在任何响应体提交前失败关闭；流式拼装逐行计数，不构建无界缓冲。
+- 分类枚举五值（DOG/CAT/REPTILE/BIRD/INSECT）为 62 号种子初始字典；路径以 `categoryCode` 寻址，`categoryName` 为展示名（PRD 2-10 字）；停用分类对 C 端立即不可见（读侧既有 `status='ENABLED'` 过滤），重新启用立即恢复——62 号读侧零改动。
 - 品种状态词表沿用 62 号 `PUBLISHED/OFFLINE`：下线即 C 端列表消失、详情 404 `BREED_NOT_FOUND`（既有读侧语义）；上下线不删除/不改写任何内容列。PRD"停用品种时提示是否一并下线已发布词条"不适用：62 号模型中品种即词条本体（单一内容行），无第二内容对象——PR 披露。PRD"档案引用数校验"不适用：宠物档案品种为自由文本无外键（62 号 §7 偏差 7）——PR 披露。
-- 品种编辑为白名单字段维护：富文本列（description/careAdvice/healthTips）本面**不可编辑**（无富文本编辑器与安全白名单校验通道，V1 内容以 62 号种子为准）——请求不含这些字段，PR 披露；文本/标签/排序/封面 URL 维护按上表边界校验（长度/个数/码点，超界 400）。
-- 版本：全部写动作带 `expectedVersion` 乐观锁（失配 409 `COMMON_CONFLICT`）；`version` 递增同 62 号列语义。
-- C 端读侧（62 号三条路由）与种子数据零改动；C 端测试不因本面变化（读侧过滤事实不变）。
+- 品种编辑为白名单字段维护：富文本列本面**不可编辑**（既有披露）；文本/标签/排序/封面 URL 维护按上表边界校验（长度/个数/码点，超界 400）。
+- 版本：全部写动作带 `expectedVersion` 乐观锁（失配 409 `COMMON_CONFLICT`）；新增动作为 version 0 起点无 expectedVersion（uk 防重并发安全）。
+- C 端读侧（62 号三条路由）过滤事实零改动；新增字典行按既有过滤自然生效。
 
 ## 4. 券治理（pet-coupon-api/biz）
 
@@ -131,7 +139,7 @@
 1. **券实例写动作**（矩阵行 14 return 提案码不登记）：~~作废~~/批量作废/风控冻结/解冻/手动返还——SSOT §9 仅封板退款返券自动化规则，无运营直改用户券状态授权；PRD §7.3 运营分支（作废需通知用户、风控冻结）需通知域与风控事实契约，均不在仓。**【2026-10-16 更新】单张作废已按用户裁决"治理写动作最小授权"（36 号）放开为 §4.4 最小实现（不通知、无补偿，[CCR-CPN-VOID-001](../../planning/ccr/CCR-CPN-VOID-001.md) §2 登记待裁项）；批量作废/风控冻结/解冻/手动返还维持不做。**发放渠道（§4.3）不属于本项：其唯一写效果是新增 AVAILABLE 实例，不改任何既有实例状态。
 2. **券活动/批次与发放渠道扩展项**：61 号 V1 边界"发放渠道 V1 不做"已被 2026-10-16 用户裁决部分放开为 §4.3 最小实现；批量发放/单用户同模板持有上限/发放频控/`total_stock` 库存扣减/目标用户存在性校验/发放通知，统一登记 [CCR-CPN-GRANT-001](../../planning/ccr/CCR-CPN-GRANT-001.md) §2 待裁。券活动/批次（campaign 族）与导入路径维持不做。
 3. **券模板"领取后 N 天"有效期模式**：需 Schema 新列与 61 号实例到期语义扩展。
-4. **百科分类/品种新增与删除、导出**：分类枚举五值 PRD 不可自定义新增；品种新增需运营侧封面图上传通道（V1 私有素材通道仅售后证据）；导出不在 V1 已批准范围（63 号 v0.2 同口径）。
+4. **百科分类/品种新增与删除、导出**：~~分类枚举五值 PRD 不可自定义新增；品种新增需运营侧封面图上传通道（V1 私有素材通道仅售后证据）；导出不在 V1 已批准范围（63 号 v0.2 同口径）~~【**2026-10-19 用户裁决"继续扩展CCR"放开：分类/品种新增（同款守卫，字典枚举开放、born ENABLED/OFFLINE）与有界 CSV 导出（413 上限新码）已落地为 §3 v0.4；品种删除仍不做（无删除路由）；封面仍 URL 维护**】。
 5. **资金台账专项面**：PRD §6.11.1 明示详见《资金管理 V1.4》（不在仓），字段级口径缺失；既有资金事实读侧由 63 号（退款执行事实）与订单金额投影覆盖。
 6. **统一审计日志面**（HTTP10 §5.8 `GET /admin/audit-logs`）：审计行分散于各内核处置表（63 号 v0.2）与文件 sink（AUTH），统一存储/口径未决。
 7. **后台账号/角色管理写面**（矩阵行 26 全族）与 **消息公告/通知模板面**（行 24）：AUTH/通知 owner 专项契约，V1 单运营种子账号，无事件契约。
@@ -139,7 +147,7 @@
 
 ## 7. 验收
 
-真实回环 HTTP（隔离 MySQL 33440/Redis 16379，env 同 CI 名）：百科分类/品种全状态读写回环、C 端读侧联动（停用分类消失/品种下线 404）、券模板全生命周期（建→编→启→停→编辑守卫）+ 试算资格矩阵、券实例台账与时间轴、积分台账过滤与排序、设置开关视图、未授权动作 403、CITY/MERCHANT 范围 403、幂等同参重放 200/异参 409、乐观锁 409、防枚举 404。**v0.2 增**：发放内核真实 MySQL 回环（真实 MySQL 隔离库：ACTIVE 在窗模板发放→AVAILABLE 实例+ISSUE 台账+issued_count 消耗、同参幂等重放回执/异参 409、DRAFT/OFFLINE/过窗/未生效/未知模板守卫 409/404、越权 fail-closed 403/503、C 端 AVAILABLE 桶立即可见且他人不可见——`CouponGrantMySqlTest`）。`check-persistence-style.py`、architecture-test、OpenAPI11 e2e 计数钉（184→205；**v0.3 起再增作废路由 205→206**）、前端 typecheck/build/playwright 全绿。**v0.3 增**：作废内核真实 MySQL 回环（隔离库：AVAILABLE 实例作废→VOID 行+VOID 台账（`CPN:VOID:{instanceId}`+operator/reason remark）、同参幂等重放回执/异参 409、USED/FROZEN/EXPIRED/未知实例守卫 409/404、越权 fail-closed 403/503、C 端三桶即时不可见且他人无感——`CouponVoidMySqlTest`）。
+真实回环 HTTP（隔离 MySQL 33440/Redis 16379，env 同 CI 名）：百科分类/品种全状态读写回环、C 端读侧联动（停用分类消失/品种下线 404）、券模板全生命周期（建→编→启→停→编辑守卫）+ 试算资格矩阵、券实例台账与时间轴、积分台账过滤与排序、设置开关视图、未授权动作 403、CITY/MERCHANT 范围 403、幂等同参重放 200/异参 409、乐观锁 409、防枚举 404。**v0.2 增**：发放内核真实 MySQL 回环（真实 MySQL 隔离库：ACTIVE 在窗模板发放→AVAILABLE 实例+ISSUE 台账+issued_count 消耗、同参幂等重放回执/异参 409、DRAFT/OFFLINE/过窗/未生效/未知模板守卫 409/404、越权 fail-closed 403/503、C 端 AVAILABLE 桶立即可见且他人不可见——`CouponGrantMySqlTest`）。`check-persistence-style.py`、architecture-test、OpenAPI11 e2e 计数钉（184→205；**v0.3 起再增作废路由 205→206**）、前端 typecheck/build/playwright 全绿。**v0.3 增**：作废内核真实 MySQL 回环（隔离库：AVAILABLE 实例作废→VOID 行+VOID 台账（`CPN:VOID:{instanceId}`+operator/reason remark）、同参幂等重放回执/异参 409、USED/FROZEN/EXPIRED/未知实例守卫 409/404、越权 fail-closed 403/503、C 端三桶即时不可见且他人无感——`CouponVoidMySqlTest`）。**v0.4 增（百科节，本 PR）**：新增内核真实 MySQL 回环（分类新增 born ENABLED/重复 409/词法 400/新码可编辑；品种新增 born OFFLINE/重名 409/宿主停用 409；创建幂等同参重放；导出双段 CSV 内容+1MiB 有界+文件名钉——`AdminEncyclopediaMySqlTest` 扩展）；OpenAPI 计数钉 211→**220**（+2 注销冷静期 +4 反馈运营面 +3 百科节）；运营台前端 sortOrder 请求键修正（既有缺陷随批修复，见 §8.10）。
 
 ## 8. 偏差与披露
 
@@ -152,3 +160,4 @@
 7. **v0.2**：61 号 §1"无券模板管理/发放渠道"边界的发放半边由 2026-10-16 用户裁决放开（最小实现 CCR-CPN-GRANT-001），61 号契约文档本身零改动（其冻结/消费/释放/返券四链路与 rule_json 冻结结构不受影响；发放产生的模板 ACTIVE 即满足冻结前置④的既有事实）；事件族零新增（发放为同步内核写，不经 Outbox/AsyncTask，与 63 号 v0.2"无事件 by design"先例同口径——PR 披露）。
 8. **v0.3**：实例状态词表新增 `VOID` 终态、coupon_ledger 动作词表新增 `VOID`（Schema06 注记同步，纯词表注记无 DDL）；作废不通知用户（PRD §7.3"作废需通知"的通知域不在仓，CCR-CPN-VOID-001 §2 待裁）；作废无补偿（CCR-CPN-VOID-001 §2 最小实现=不补偿）；作废旧券不释放模板计数（`issued_count` 只增不减——发放事实历史，作废不改发放流水）；事件族零新增（作废为同步内核写，同披露 7 口径）。
 9. **v0.3**：`reason` 为必填审计字段（10..200 码点，merchant.disable 10..500 口径的券域收紧版——ledger remark 500 上限约束），落 `coupon_ledger.remark`，不做独立处置审计表（与 63 号 merchant_governance_action 表不同形，PR 披露）。
+10. **v0.4（百科节，2026-10-19"继续扩展CCR"）**：①分类/品种新增为同步内核写（无事件 by design 同 §2 口径）；新增分类/品种 born ENABLED/OFFLINE、uk 防重（重复 409）、无删除路由；②导出为只读字典数据（无用户/隐私字段），413 `ENCYCLOPEDIA_EXPORT_TOO_LARGE` 为 12 号新登记码（本切片此前零新增码口径就此打破，PR 披露）；③**既有缺陷随批修复**：运营台控制器 PUT 分类/品种与新增路由原读请求键 `sortNo`，而契约/运营台前端发 `sortOrder`（真实请求会 400）——实现已对齐 `sortOrder`，分类行响应投影键同步修正；④OpenAPI 字典 categoryCode 枚举钉（五值）开放为词法 pattern（`^[A-Z][A-Z0-9_]{1,15}$`），C 端 62 号读侧过滤事实零改动。

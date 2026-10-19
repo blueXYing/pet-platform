@@ -480,6 +480,14 @@ USER_SETTINGS_OPERATIONS = {
     'cDeleteAccount': (
         'post', '/c/account/deletion',
         ('200', '201', '400', '401', '403', '409', '500', '503')),
+    # Contract-66 v0.2 cooling period (user ruling 2026-10-19 "继续扩展CCR"): the
+    # revocation-prompt status read and the CAS cancel write join the same face/switch.
+    'cGetDeletionStatus': (
+        'get', '/c/account/deletion-status',
+        ('200', '401')),
+    'cCancelDeletion': (
+        'post', '/c/account/deletion-cancel',
+        ('200', '201', '400', '401', '409', '500', '503')),
 }
 
 # Feedback tickets (contract 67, PRD 5.1.28 complaint class; CCR-CS-FEEDBACK-001 minimum):
@@ -501,6 +509,72 @@ FEEDBACK_HTTP_OPERATIONS = {
 }
 
 
+# Contract-67 v0.2 feedback ops face (user ruling 2026-10-19 "继续扩展CCR"; matrix row 18
+# complaint family, assign stays unregistered): ops list/detail over the verbatim ticket plus
+# the two transitions PENDING→PROCESSING→RESOLVED with the single ≤1000-codepoint reply.
+# Rides the feedback slice switch (kernel) plus the admin session/ops-face chain; the kernel
+# re-proves session/action through the module-local authorization port.
+FEEDBACK_OPS_OPERATIONS = {
+    'adminListFeedbackTickets': (
+        'get', '/admin/feedback-tickets',
+        ('200', '400', '401', '403', '503')),
+    'adminGetFeedbackTicket': (
+        'get', '/admin/feedback-tickets/{ticketId}',
+        ('200', '400', '401', '403', '404', '503')),
+    'adminProcessFeedbackTicket': (
+        'post', '/admin/feedback-tickets/{ticketId}/process',
+        ('200', '400', '401', '403', '404', '409', '503')),
+    'adminResolveFeedbackTicket': (
+        'post', '/admin/feedback-tickets/{ticketId}/resolve',
+        ('200', '400', '401', '403', '404', '409', '503')),
+}
+
+FEEDBACK_OPS_ROUTE_ACTIONS = {
+    'adminListFeedbackTickets': 'complaint.read',
+    'adminGetFeedbackTicket': 'complaint.read',
+    'adminProcessFeedbackTicket': 'complaint.handle',
+    'adminResolveFeedbackTicket': 'complaint.decide',
+}
+
+FEEDBACK_OPS_ENVELOPES = {
+    'adminListFeedbackTickets': 'FeedbackOpsPageEnvelope',
+    'adminGetFeedbackTicket': 'FeedbackOpsDetailEnvelope',
+    'adminProcessFeedbackTicket': 'FeedbackOpsTransitionEnvelope',
+    'adminResolveFeedbackTicket': 'FeedbackOpsTransitionEnvelope',
+}
+
+
+def check_feedback_ops(spec, operation, method, path):
+    name = operation['operationId']
+    expected_method, expected_path, required_codes = FEEDBACK_OPS_OPERATIONS[name]
+    assert (method, path) == (expected_method, expected_path), f'Feedback ops operation moved: {name}'
+    assert operation.get('security') == [{'bearerAuth': []}], f'Feedback ops security changed: {name}'
+    assert operation.get('x-implementation-status') == 'IMPLEMENTED_DEFAULT_OFF', f'Feedback ops status changed: {name}'
+    assert operation.get('x-default-enabled') is False, f'Feedback ops must stay default off: {name}'
+    assert operation.get('x-contract') == '67-Feedback-Ticket-Contract-v0.1.md', f'Feedback ops authority changed: {name}'
+    assert operation.get('x-assembly-switch') == 'pet.feedback.http.enabled', f'Feedback ops switch changed: {name}'
+    assert operation.get('x-route-party') == 'OPS' and operation.get('x-audience') == 'ADMIN_WEB', f'Feedback ops identity changed: {name}'
+    assert operation.get('x-required-actions') == [FEEDBACK_OPS_ROUTE_ACTIONS[name]], f'Feedback ops action gate changed: {name}'
+    responses = operation['responses']
+    assert set(responses) == set(required_codes), f'Feedback ops response surface changed: {name}'
+    for code in required_codes:
+        if code != '200':
+            assert dereference(spec, responses[code])['content']['application/json']['schema'] == {'$ref': '#/components/schemas/ErrorEnvelope'}, f'Feedback ops error envelope changed: {name} {code}'
+    success = responses['200']
+    cache = success['headers']['Cache-Control']['schema']
+    assert cache == {'type': 'string', 'enum': ['no-store']}, f'Feedback ops caching changed: {name}'
+    assert success['content'] == {'application/json': {'schema': {'$ref': '#/components/schemas/' + FEEDBACK_OPS_ENVELOPES[name]}}}, f'Feedback ops success envelope changed: {name}'
+    if name == 'adminResolveFeedbackTicket':
+        body = dereference(spec, operation['requestBody'])
+        assert body.get('required') is True, 'Feedback resolve body must be required'
+        request = dereference(spec, body['content']['application/json']['schema'])
+        assert request.get('additionalProperties') is False and request['required'] == ['reply'], 'Feedback resolve body opened'
+        assert request['properties']['reply']['maxLength'] == 1000, 'Feedback reply bound changed'
+    detail = spec['components']['schemas']['FeedbackOpsDetail']
+    assert 'contact' in detail['properties'], 'Feedback ops detail lost the contact field'
+    assert detail['properties']['events']['items']['properties']['action']['enum'] == ['SUBMITTED', 'PROCESSING', 'RESOLVED'], 'Feedback audit vocabulary changed'
+
+
 def check_user_settings(spec, operation, method, path):
     name = operation['operationId']
     expected_method, expected_path, required_codes = USER_SETTINGS_OPERATIONS[name]
@@ -516,6 +590,8 @@ def check_user_settings(spec, operation, method, path):
     success_envelopes = {
         'cGetDeletionPrecheck': 'DeletionPrecheckEnvelope',
         'cDeleteAccount': 'DeletionReceiptEnvelope',
+        'cGetDeletionStatus': 'DeletionStatusEnvelope',
+        'cCancelDeletion': 'DeletionCancelEnvelope',
     }
     for code in responses:
         response = dereference(spec, responses[code])
@@ -534,8 +610,18 @@ def check_user_settings(spec, operation, method, path):
     assert request['properties']['acknowledged']['enum'] == [True], 'Deletion acknowledgement loosened'
     envelope = spec['components']['schemas']['DeletionErrorEnvelope']
     assert 'DELETION_BLOCKED' in envelope['properties']['code']['enum'], 'Deletion blocked code missing'
-    receipt = spec['components']['schemas']['DeletionReceiptEnvelope']['properties']['data']
-    assert receipt['properties']['status']['enum'] == ['CANCELED'], 'Deletion outcome word changed'
+    if name == 'cDeleteAccount':
+        receipt = spec['components']['schemas']['DeletionReceiptEnvelope']['properties']['data']
+        assert receipt['properties']['status']['enum'] == ['PENDING'], 'Deletion outcome word changed'
+        assert set(receipt['required']) == {'userId', 'status', 'requestedAt', 'effectiveAt',
+            'cooldownDays'}, 'Deletion cooling receipt shape changed'
+        assert receipt['properties']['cooldownDays']['maximum'] == 30, 'Deletion cooldown bound changed'
+    if name == 'cGetDeletionStatus':
+        status = spec['components']['schemas']['DeletionStatusEnvelope']['properties']['data']
+        assert status['properties']['status']['enum'] == ['NONE', 'PENDING'], 'Deletion status word changed'
+    if name == 'cCancelDeletion':
+        cancel = spec['components']['schemas']['DeletionCancelEnvelope']['properties']['data']
+        assert cancel['properties']['status']['enum'] == ['CANCELED'], 'Cancel outcome word changed'
     if method == 'get':
         assert 'requestBody' not in operation and not [p for p in operation.get('parameters', []) if p.get('in') == 'query'], 'Precheck query opened'
 
@@ -571,11 +657,15 @@ def check_feedback_http(spec, operation, method, path):
     assert create.get('additionalProperties') is False and create['required'] == ['type', 'content'], 'Feedback create body opened'
     assert create['properties']['type']['enum'] == types, 'Feedback type vocabulary changed'
     assert create['properties']['content']['maxLength'] == 500, 'Feedback content bound changed'
+    # v0.2: 0..6 attachment asset ids ride the create body (31号 FEEDBACK_ATTACHMENT port).
+    assert create['properties']['attachmentAssetIds']['maxItems'] == 6, 'Feedback attachment bound changed'
     summary = spec['components']['schemas']['FeedbackTicketSummary']
     assert summary['properties']['status']['enum'] == statuses, 'Feedback status vocabulary changed'
     assert 'contact' not in summary['properties'], 'Feedback summary leaked the contact field'
     detail = spec['components']['schemas']['FeedbackTicketDetailEnvelope']['properties']['data']
-    assert detail['properties']['replies']['maxItems'] == 0, 'Feedback reply slot opened'
+    # v0.2: at most one ops reply (the single RESOLVED transition) and the attachment ids.
+    assert detail['properties']['replies']['maxItems'] == 1, 'Feedback reply slot shape changed'
+    assert detail['properties']['attachmentAssetIds']['maxItems'] == 6, 'Feedback attachment projection changed'
     assert detail['properties']['resolution']['enum'] == [None], 'Feedback resolution slot opened'
     envelope = spec['components']['schemas']['FeedbackErrorEnvelope']
     for code in ('FEEDBACK_TYPE_INVALID', 'FEEDBACK_TICKET_NOT_FOUND', 'COMMON_RATE_LIMITED', 'USER_FROZEN'):
@@ -1137,6 +1227,17 @@ ADMIN_OPS_OPERATIONS = {
     'adminListOpsEncyclopediaCategories': (
         'get', '/admin/encyclopedia/categories',
         ('200', '400', '401', '403', '503')),
+    # Contract-65 v0.4 encyclopedia节 (user ruling 2026-10-19 "继续扩展CCR"): the dictionary
+    # opens — category/breed creation with the edit guard family, plus the bounded CSV export.
+    'adminCreateOpsEncyclopediaCategory': (
+        'post', '/admin/encyclopedia/categories',
+        ('200', '400', '401', '403', '409', '503')),
+    'adminCreateOpsEncyclopediaBreed': (
+        'post', '/admin/encyclopedia/breeds',
+        ('200', '400', '401', '403', '404', '409', '503')),
+    'adminExportOpsEncyclopedia': (
+        'get', '/admin/encyclopedia/export',
+        ('200', '400', '401', '403', '413', '503')),
     'adminUpdateOpsEncyclopediaCategory': (
         'put', '/admin/encyclopedia/categories/{categoryCode}',
         ('200', '400', '401', '403', '404', '409', '503')),
@@ -1213,6 +1314,9 @@ ADMIN_OPS_OPERATIONS = {
 
 OPS_ROUTE_ACTIONS = {
     'adminListOpsEncyclopediaCategories': 'encyclopedia.read',
+    'adminCreateOpsEncyclopediaCategory': 'encyclopedia.manage',
+    'adminCreateOpsEncyclopediaBreed': 'breed.manage',
+    'adminExportOpsEncyclopedia': 'encyclopedia.read',
     'adminUpdateOpsEncyclopediaCategory': 'encyclopedia.manage',
     'adminEnableOpsEncyclopediaCategory': 'encyclopedia.manage',
     'adminDisableOpsEncyclopediaCategory': 'encyclopedia.manage',
@@ -1238,6 +1342,8 @@ OPS_ROUTE_ACTIONS = {
 
 OPS_ENVELOPES = {
     'adminListOpsEncyclopediaCategories': 'AdminOpsCategoryPageEnvelope',
+    'adminCreateOpsEncyclopediaCategory': 'AdminOpsCategoryMutationEnvelope',
+    'adminCreateOpsEncyclopediaBreed': 'AdminOpsBreedMutationEnvelope',
     'adminUpdateOpsEncyclopediaCategory': 'AdminOpsCategoryMutationEnvelope',
     'adminEnableOpsEncyclopediaCategory': 'AdminOpsCategoryMutationEnvelope',
     'adminDisableOpsEncyclopediaCategory': 'AdminOpsCategoryMutationEnvelope',
@@ -1266,6 +1372,21 @@ def check_admin_ops(spec, operation, method, path):
     name = operation['operationId']
     expected_method, expected_path, required_codes = ADMIN_OPS_OPERATIONS[name]
     assert (method, path) == (expected_method, expected_path), f'Ops operation moved: {name}'
+    if name == 'adminExportOpsEncyclopedia':
+        # The CSV export answers a bounded text/csv document; errors keep the JSON envelope.
+        assert operation.get('security') == [{'bearerAuth': []}], 'Export security changed'
+        assert operation.get('x-required-actions') == ['encyclopedia.read'], 'Export action gate changed'
+        assert operation.get('x-contract') == '65-Admin-Ops-Console-Contract-v0.1.md', 'Export authority changed'
+        assert operation.get('x-assembly-switch') == 'pet.admin.ops.http.enabled', 'Export switch changed'
+        responses = operation['responses']
+        assert set(responses) == set(required_codes), 'Export response surface changed'
+        assert set(responses['200']['content']) == {'text/csv'}, 'Export success content changed'
+        assert responses['200']['content']['text/csv']['schema'] == {'type': 'string'}, 'Export csv schema changed'
+        for code in required_codes:
+            if code != '200':
+                assert dereference(spec, responses[code])['content']['application/json']['schema'] == {'$ref': '#/components/schemas/ErrorEnvelope'}, f'Export error envelope changed: {code}'
+        return
+    assert operation.get('security') == [{'bearerAuth': []}], f'Ops security changed: {name}'
     assert operation.get('security') == [{'bearerAuth': []}], f'Ops security changed: {name}'
     assert operation.get('x-implementation-status') == 'IMPLEMENTED_DEFAULT_OFF', f'Ops status changed: {name}'
     assert operation.get('x-default-enabled') is False, f'Ops must stay default off: {name}'
@@ -2083,6 +2204,8 @@ def check(spec):
                 check_admin_governance(spec, operation, method, path)
             if operation_id in ADMIN_OPS_OPERATIONS:
                 check_admin_ops(spec, operation, method, path)
+            if operation_id in FEEDBACK_OPS_OPERATIONS:
+                check_feedback_ops(spec, operation, method, path)
 
             if method in {'post', 'put', 'patch', 'delete'}:
                 assert {'$ref': '#/components/parameters/RequestId'} in parameters, f'Missing request ID: {operation_id}'
@@ -2098,7 +2221,7 @@ def check(spec):
     assert legacy_writes == 10, 'Legacy write surface changed'
     assert legacy_creates == LEGACY_CREATES, 'Legacy create surface changed'
 
-    assert operations == LEGACY_OPERATIONS.keys() | AUTH_OPERATIONS.keys() | MERCHANT_OPERATIONS.keys() | APPLICATION_OPERATIONS.keys() | PRIVATE_ASSET_OPERATIONS.keys() | SERVICE_CATALOG_OPERATIONS.keys() | STORE_CATALOG_OPERATIONS.keys() | SERVICE_WRITE_OPERATIONS.keys() | SCHEDULE_AVAILABILITY_OPERATIONS.keys() | SCHEDULE_WRITE_OPERATIONS.keys() | CREDENTIAL_OPERATIONS.keys() | AFTERSALE_OPERATIONS.keys() | COUPON_POINTS_READ_OPERATIONS.keys() | VERIFICATION_HTTP_OPERATIONS.keys() | NOTIFICATION_PREFERENCE_OPERATIONS.keys() | STAFF_INVITATION_LIST_OPERATIONS.keys() | ORDER_WRITE_OPERATIONS.keys() | REFUND_HTTP_OPERATIONS.keys() | MERCHANT_ORDER_LIST_OPERATIONS.keys() | RESCHEDULE_HTTP_OPERATIONS.keys() | REVIEW_HTTP_OPERATIONS.keys() | REVIEW_APPEAL_HTTP_OPERATIONS.keys() | MERCHANT_REFUND_HTTP_OPERATIONS.keys() | FAVTRACK_HTTP_OPERATIONS.keys() | ADDRESS_OPERATIONS.keys() | USER_SETTINGS_OPERATIONS.keys() | FEEDBACK_HTTP_OPERATIONS.keys() | POINTS_TASK_OPERATIONS.keys() | BAIKE_OPERATIONS.keys() | ADMIN_TRADE_OPERATIONS.keys() | ADMIN_GOVERNANCE_OPERATIONS.keys() | ADMIN_OPS_OPERATIONS.keys(), 'Unexpected or missing reviewed operations'
+    assert operations == LEGACY_OPERATIONS.keys() | AUTH_OPERATIONS.keys() | MERCHANT_OPERATIONS.keys() | APPLICATION_OPERATIONS.keys() | PRIVATE_ASSET_OPERATIONS.keys() | SERVICE_CATALOG_OPERATIONS.keys() | STORE_CATALOG_OPERATIONS.keys() | SERVICE_WRITE_OPERATIONS.keys() | SCHEDULE_AVAILABILITY_OPERATIONS.keys() | SCHEDULE_WRITE_OPERATIONS.keys() | CREDENTIAL_OPERATIONS.keys() | AFTERSALE_OPERATIONS.keys() | COUPON_POINTS_READ_OPERATIONS.keys() | VERIFICATION_HTTP_OPERATIONS.keys() | NOTIFICATION_PREFERENCE_OPERATIONS.keys() | STAFF_INVITATION_LIST_OPERATIONS.keys() | ORDER_WRITE_OPERATIONS.keys() | REFUND_HTTP_OPERATIONS.keys() | MERCHANT_ORDER_LIST_OPERATIONS.keys() | RESCHEDULE_HTTP_OPERATIONS.keys() | REVIEW_HTTP_OPERATIONS.keys() | REVIEW_APPEAL_HTTP_OPERATIONS.keys() | MERCHANT_REFUND_HTTP_OPERATIONS.keys() | FAVTRACK_HTTP_OPERATIONS.keys() | ADDRESS_OPERATIONS.keys() | USER_SETTINGS_OPERATIONS.keys() | FEEDBACK_HTTP_OPERATIONS.keys() | FEEDBACK_OPS_OPERATIONS.keys() | POINTS_TASK_OPERATIONS.keys() | BAIKE_OPERATIONS.keys() | ADMIN_TRADE_OPERATIONS.keys() | ADMIN_GOVERNANCE_OPERATIONS.keys() | ADMIN_OPS_OPERATIONS.keys(), 'Unexpected or missing reviewed operations'
 
     schemes = spec['components']['securitySchemes']
     assert schemes['bearerAuth']['type'] == 'http' and schemes['bearerAuth']['scheme'] == 'bearer'
@@ -2165,6 +2288,7 @@ def check(spec):
             'addressOperations': len(operations & ADDRESS_OPERATIONS.keys()),
             'userSettingsOperations': len(operations & USER_SETTINGS_OPERATIONS.keys()),
             'feedbackHttpOperations': len(operations & FEEDBACK_HTTP_OPERATIONS.keys()),
+            'feedbackOpsOperations': len(operations & FEEDBACK_OPS_OPERATIONS.keys()),
             'adminTradeOperations': len(operations & ADMIN_TRADE_OPERATIONS.keys()),
             'adminGovernanceOperations': len(operations & ADMIN_GOVERNANCE_OPERATIONS.keys()),
             'adminOpsOperations': len(operations & ADMIN_OPS_OPERATIONS.keys()),
