@@ -543,6 +543,12 @@ class ScheduleMerchantCommandMySqlTest {
                 public ServiceSnapshotDTO getVisibleService(ServiceSnapshotQuery query) {
                     throw new UnsupportedOperationException();
                 }
+
+            @Override
+            public com.petplatform.service.api.dto.ServiceSnapshotPageDTO searchVisibleServices(
+                    com.petplatform.service.api.query.CatalogServiceSearchQuery query) {
+                throw new UnsupportedOperationException("catalog search not used by this slice");
+            }
             };
             proof = new ScheduleCapacityProofApiImpl(db.source, guard, facts, merchant, orders,
                     Clock.fixed(NOW, ZoneOffset.UTC), 1000);

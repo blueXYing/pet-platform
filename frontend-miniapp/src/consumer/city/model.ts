@@ -2,7 +2,7 @@
 // V1 无 C 端定位能力（§4.4 裁剪维持）：城市仅手动选择，默认展示服务端目录首位；
 // 选择持久化于本地存储，门店目录页（stores）在每次展示时读取并按城市刷新（PRD 5.1.2
 // "切换城市……刷新商家"——百科/内容入口无城市维度契约，登记为范围外）。
-import Taro from '@tarojs/taro'
+// Taro 惰性获取（仓库可测模块惯例：模块顶层不进 @tarojs/taro，node 单测只走纯函数）。
 import type { StoreCity } from '../store/model'
 
 const STORAGE_KEY = 'consumer:city'
@@ -10,18 +10,38 @@ const STORAGE_KEY = 'consumer:city'
 /** 全部开放城市（未选择态）：目录查询省略 city 参数。 */
 export const ALL_CITIES = '__all__'
 
-export function readSelectedCity(): { cityCode?: string } {
+type TaroStorage = {
+  getStorageSync: (key: string) => unknown
+  setStorageSync: (key: string, value: unknown) => void
+  removeStorageSync: (key: string) => void
+}
+
+function taro(): TaroStorage | null {
   try {
-    const raw = Taro.getStorageSync(STORAGE_KEY)
-    if (typeof raw === 'string' && /^[a-z][a-z0-9_-]{0,31}$/.test(raw)) return { cityCode: raw }
-  } catch { /* 存储不可用时退回未选择态 */ }
+    // weapp 构建由 webpack 静态打包；node 单测环境下模块初始化失败被吞掉，返回 null 走回退。
+    return require('@tarojs/taro') as TaroStorage
+  } catch {
+    return null
+  }
+}
+
+export function readSelectedCity(): { cityCode?: string } {
+  const t = taro()
+  if (t) {
+    try {
+      const raw = t.getStorageSync(STORAGE_KEY)
+      if (typeof raw === 'string' && /^[a-z][a-z0-9_-]{0,31}$/.test(raw)) return { cityCode: raw }
+    } catch { /* 存储不可用时退回未选择态 */ }
+  }
   return {}
 }
 
 export function writeSelectedCity(cityCode: string | undefined): void {
+  const t = taro()
+  if (!t) return
   try {
-    if (cityCode === undefined) Taro.removeStorageSync(STORAGE_KEY)
-    else Taro.setStorageSync(STORAGE_KEY, cityCode)
+    if (cityCode === undefined) t.removeStorageSync(STORAGE_KEY)
+    else t.setStorageSync(STORAGE_KEY, cityCode)
   } catch { /* 存储不可用时静默（下次展示重读） */ }
 }
 
