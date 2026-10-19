@@ -5,7 +5,7 @@
 - 执行人：E2E 收尾代理（ZCode）
 - 结论速览：
   - **任务 A（E2E_BIND）完成**：双启动验证通过（默认 127.0.0.1 行为不变 / `E2E_BIND=0.0.0.0` 手机可达），代码为 test sources 单文件 3 处改动，commit `cc97c60f`；
-  - **任务 B（模拟器复检）矩阵 3 组 11 项：10 项通过、1 项滚动中**（券返还的资金终态被共享 MySQL 雪花风暴拖入退避，触发链证据已齐，见 §2.4）；
+  - **任务 B（模拟器复检）矩阵 3 组 11 项：9 项通过、2 项如实标注**（A5 触发链全过、资金终态未落地；A6 券返还依赖 A5 渠道执行——E-6 风暴全夜持续，三个库窗口均未落地，async_task 行持久存在由 worker 自动补完；详见 §2.4）；
   - FA 修复后运营面 UI 级复验**全绿**（新增 opt-in live spec `admin-fa-fixes-recheck.spec.ts`，Playwright 1 passed），并新发现 **FL-1/FL-2 两个确定性前端缺陷（只定界不修）**；
   - 生产代码零改动（E2E_BIND 在 test sources）；契约零变化。
 
@@ -42,8 +42,8 @@
 | A2 | 券冻结 | **通过** | DB：`coupon_instance 716011 FROZEN order_id=105492144382377984`、`coupon_ledger FREEZE AVAILABLE→FROZEN request_id=CPN:FREEZE:…`；C 端 AVAILABLE 桶 3→2 |
 | A3 | 支付成功券变已用（C 端桶 + DB 双证） | **通过** | UI：订单详情 ¥50.00「去支付」可达（截图 05，F3R-3 修复后折后单可付）→ 确认支付页（截图 06）→ 支付单 105494226833342464 已发起 → 沙箱自动回调；支付后券页 AVAILABLE 桶剩 2 张（截图 07）。DB：`pet_order PENDING_CONFIRM/PAID 60.00/10.00/50.00`、`payment_order PAID`、`coupon_instance 716011 USED`、`coupon_ledger CONSUME FROZEN→USED request_id=CPN:CONSUME:…` |
 | A4 | 服务前退款自动全额 | **观察（口径正确）** | 退款申请经 UI 提交（截图 08/09，申请编号 105500611154321408）：提交时预约 11:00 已开始（环境杀进程重启耗尽了服务前窗口），平台按窗口口径正确路由「服务后商家 24 小时处理」——**窗口判定行为正确**；服务前自动全额路径此前两轮已两度实证（round-3 §2.4、round-4 S5） |
-| A5 | 退款成功 | **触发链已齐，资金终态滚动中** | 商家批准 HTTP 200（`APPROVED`，decisionId 105501326832619520；买家即商家主的 fixture 等价驱动，披露）→ `refund_order 105501328820719616 MERCHANT_APPROVED FULL 50.00 CREATED`、`APPLICATION_REFUND_SUBMIT` 任务在 RETRY_WAIT（E-6 风暴退避，重试 6/8，Reconciler 兜底复活） |
-| A6 | 退款成功券返还 AVAILABLE | **滚动中（§2.4）** | 依赖 A5 渠道执行 → `RefundSucceededEvent.v1` → 券返还消费者；消费语义已有 DB/单测背书，C 端终态证据待任务落地后补录 |
+| A5 | 退款成功 | **触发链全过，资金终态未在环境窗口内落地（E-6）** | 商家批准 HTTP 200（`APPROVED`，decisionId 105501326832619520；买家即商家主的 fixture 等价驱动，披露）→ `refund_order 105501328820719616 MERCHANT_APPROVED FULL 50.00 CREATED`、`APPLICATION_REFUND_SUBMIT` 任务在 RETRY_WAIT（E-6 风暴退避，重试 6/8，Reconciler 兜底复活） |
+| A6 | 退款成功券返还 AVAILABLE | **未落地（依赖 A5 渠道执行，E-6；§2.4）** | 依赖 A5 渠道执行 → `RefundSucceededEvent.v1` → 券返还消费者；消费语义已有 DB/单测背书，C 端终态证据待任务落地后补录 |
 
 ### 2.2 任务 B-2：两个界面竞态复测（F3R-2/F3R-1 修复后）
 
@@ -63,9 +63,14 @@
 | C5 | 运营台四块页面正常（FA-2/FA-3，ops 默认开） | **通过 5/5** | r09~r13：百科分类/品种库/券模板/积分台账/系统设置五块全部渲染数据、0 alert、全程同一会话（apiStatus 断言全部 ops GET = 200；修复前 403 死面 + 打不开开关） |
 | C6 | 403 不再误登出 | **间接通过** | 五块 ops 浏览全程会话保持（修复前首遇 ops 403 即登出）；FORBIDDEN→权限提示的 13 页改造在 #183 自带回归覆盖；本 walk 为超管 ALL scope 无自然 403 面，如实标注为间接验证 |
 
-### 2.4 滚动补录（写报告后落地的终态）
+### 2.4 滚动补录（E-6 风暴下的终态处置，如实记录）
 
-- （占位：券返还终态；任务落地后更新本节。）
+- **A5/A6 终态在本轮三个环境窗口内均未落地；触发链已全部取证在案，async_task 行持久存在，环境恢复后由 worker 自动补完**（与 round-3 §2.4、round-4 §2.4 同口径）：
+  - 首库 `auth001czq7ddf7…`：商家批准路径退款单 `105501328820719616 MERCHANT_APPROVED FULL 50.00 CREATED`，`APPLICATION_REFUND_SUBMIT` 退避至 7/8 后进程被环境击杀；
+  - 二库 `auth001czq6f71b…`（E-5 复用自毁后重建）：服务前自动全额路径重跑 201 `AUTO_APPROVED/AUTO_FULL_BEFORE_SERVICE`，退款单 `105526710706622464 CREATED`，退避 6/8 后再次被环境击杀；
+  - 末库 `auth001czq437b…`（本节记录主体）：完整重跑触发链全部落地——折后单 `105542738543280128 PENDING_SERVICE 60/10/50`、券 716011 `FREEZE→CONSUME USED`（C 端桶出桶）、`refund_order 105542801067769856 PRESTART_AUTO FULL 50.00 CREATED`（**服务前自动全额路由的退款单本体首次取证**）、`APPLICATION_REFUND_SUBMIT RETRY_WAIT 4/8 HANDLER_EXCEPTION`（probes/final-db-state.txt + probes/coupon-chain-rerun.txt 全transcript）；
+  - 佐证说明：同一执行链（APPLICATION_REFUND_SUBMIT→渠道执行→`RefundSucceededEvent.v1`→券返还/积分扣回消费者）在 round-3 final-chain 走查中已实证落地；券返还消费语义另有 DB/单测背书。
+- **E-5 两次新增实锤（复用缝自毁）**：① 进程被环境杀后复用重启，`E2E_SNOWFLAKE_NODE=1500` 触发 `ck_id_node` 检查约束（节点号有上界，1500 越界），attempt-1 失败 → catch 把复用库 DROP（首库残留终态丢失）；② 复用重启选 960 与自愈梯子撞号 DuplicateKey → 同样 DROP（二库丢失）。两次均为 QA 环境损耗，不影响已落盘证据；此前轮次"复用模式失败不得 DROP 复用库 + 节点号自动挑空闲"的启动器 Issue 建议再次成立且更紧迫。
 
 ### 2.5 截图索引
 
