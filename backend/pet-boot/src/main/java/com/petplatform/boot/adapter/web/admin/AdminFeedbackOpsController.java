@@ -153,7 +153,7 @@ public class AdminFeedbackOpsController {
     data.put("ticketId", outcome.receipt().ticketId());
     data.put("status", outcome.receipt().status());
     data.put("version", Long.toString(outcome.receipt().version()));
-    data.put("occurredAt", outcome.receipt().occurredAt().toString());
+    data.put("occurredAt", outcome.receipt().occurredAt());
     return data;
   }
 

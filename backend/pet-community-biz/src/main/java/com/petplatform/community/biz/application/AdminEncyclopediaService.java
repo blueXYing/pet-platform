@@ -71,7 +71,7 @@ public final class AdminEncyclopediaService
 
     private static final Set<String> BREED_STATUSES = Set.of("PUBLISHED", "OFFLINE");
     /** v0.4 export byte ceiling; the kernel fails closed before any body byte is committed. */
-    static final int EXPORT_MAX_BYTES = 1024 * 1024;
+    public static final int EXPORT_MAX_BYTES = 1024 * 1024;
 
     private final EncyclopediaAdminStore store;
     private final Port authorization;
@@ -320,10 +320,13 @@ public final class AdminEncyclopediaService
                                 row.getVersion() == null ? 0 : row.getVersion(),
                                 row.getCreatedAt(), row.getUpdatedAt()))
                         .toList());
-        String generatedAt = now().toString();
+        String generatedAt = java.time.format.DateTimeFormatter
+                .ofPattern("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'").withZone(ZoneOffset.UTC)
+                .format(clock.instant());
         byte[] csv = EncyclopediaCsvDocuments.generate(categories, breeds, generatedAt);
-        return new EncyclopediaExport("encyclopedia-export-"
-                + generatedAt.replaceAll("[-:.]", "").substring(0, 15) + "Z.csv", csv);
+        String stamp = java.time.format.DateTimeFormatter.ofPattern("yyyyMMdd'T'HHmmss")
+                .withZone(ZoneOffset.UTC).format(clock.instant());
+        return new EncyclopediaExport("encyclopedia-export-" + stamp + "Z.csv", csv);
     }
 
     // ----------------------------------------------------------------- helpers

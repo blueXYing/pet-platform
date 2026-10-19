@@ -10,11 +10,14 @@ import com.petplatform.common.QueryContext;
 import com.petplatform.common.SnowflakeIdGenerator;
 import com.petplatform.community.api.command.AdminEncyclopediaCommandApi.BreedStatusCommand;
 import com.petplatform.community.api.command.AdminEncyclopediaCommandApi.CategoryStatusCommand;
+import com.petplatform.community.api.command.AdminEncyclopediaCommandApi.CreateBreedCommand;
+import com.petplatform.community.api.command.AdminEncyclopediaCommandApi.CreateCategoryCommand;
 import com.petplatform.community.api.command.AdminEncyclopediaCommandApi.UpdateBreedCommand;
 import com.petplatform.community.api.command.AdminEncyclopediaCommandApi.UpdateCategoryCommand;
 import com.petplatform.community.api.query.AdminEncyclopediaQueryApi.AdminBreedDetailQuery;
 import com.petplatform.community.api.query.AdminEncyclopediaQueryApi.AdminBreedListQuery;
 import com.petplatform.community.api.query.AdminEncyclopediaQueryApi.AdminCategoryListQuery;
+import com.petplatform.community.api.query.AdminEncyclopediaQueryApi.AdminExportQuery;
 import com.petplatform.community.biz.application.AdminEncyclopediaAuthorizationPort;
 import com.petplatform.community.biz.application.AdminEncyclopediaService;
 import com.petplatform.community.biz.infrastructure.persistence.EncyclopediaAdminStore;
@@ -147,6 +150,62 @@ class AdminEncyclopediaMySqlTest {
             assertEquals(1, d.jdbc.queryForObject(
                     "SELECT COUNT(*) FROM command_idempotency WHERE request_key LIKE 'rk-v1:encyclopedia.breed.offline:%same-1'",
                     Integer.class));
+        }
+    }
+
+    @Test void creationAndExportFollowTheV04Contract() throws Exception {
+        try (Database d = new Database()) {
+            // Category creation: a new dictionary code, born ENABLED with version 0.
+            var created = d.commands().createCategory(new CreateCategoryCommand("RABBIT", "兔子", 6,
+                    command("c1"), WRITE_AUTH));
+            assertEquals("RABBIT", created.categoryCode());
+            assertEquals("ENABLED", created.status());
+            assertEquals(0L, created.version());
+            // Same requestId + same params replays the first receipt.
+            assertEquals(created, d.commands().createCategory(new CreateCategoryCommand("RABBIT",
+                    "兔子", 6, command("c1"), WRITE_AUTH)));
+            // Duplicate code and bad lexemes are rejected before any write.
+            ApiException duplicate = assertThrows(ApiException.class,
+                    () -> d.commands().createCategory(new CreateCategoryCommand("RABBIT", "兔兔", 7,
+                            command("c2"), WRITE_AUTH)));
+            assertEquals(CommonApiCodes.CONFLICT, duplicate.code());
+            ApiException lexeme = assertThrows(ApiException.class,
+                    () -> d.commands().createCategory(new CreateCategoryCommand("rabbit", "兔兔", 7,
+                            command("c3"), WRITE_AUTH)));
+            assertEquals(CommonApiCodes.INVALID_ARGUMENT, lexeme.code());
+            // The enum is open: the edit face addresses the new code directly.
+            var updated = d.commands().updateCategory(new UpdateCategoryCommand("RABBIT", "兔宝宝", 7,
+                    0, command("c4"), WRITE_AUTH));
+            assertEquals(1L, updated.version());
+
+            // Breed creation under an ENABLED category: born OFFLINE (maintain-then-publish).
+            var breed = d.commands().createBreed(new CreateBreedCommand("RABBIT", "荷兰垂耳兔",
+                    "垂耳兔简介", null, "小型", List.of("垂耳"), List.of("新手友好"), 1,
+                    command("b1"), WRITE_AUTH));
+            assertEquals("OFFLINE", breed.status());
+            assertEquals(0L, breed.version());
+            // Duplicate name within the same category → 409; disabled host category → 409.
+            ApiException dupBreed = assertThrows(ApiException.class,
+                    () -> d.commands().createBreed(new CreateBreedCommand("RABBIT", "荷兰垂耳兔",
+                            "另一简介", null, null, List.of(), List.of(), 2, command("b2"), WRITE_AUTH)));
+            assertEquals(CommonApiCodes.CONFLICT, dupBreed.code());
+            d.commands().disableCategory(new CategoryStatusCommand("RABBIT", 1, command("c5"), WRITE_AUTH));
+            ApiException hostDisabled = assertThrows(ApiException.class,
+                    () -> d.commands().createBreed(new CreateBreedCommand("RABBIT", "侏儒兔",
+                            "侏儒兔简介", null, null, List.of(), List.of(), 3, command("b3"), WRITE_AUTH)));
+            assertEquals(CommonApiCodes.CONFLICT, hostDisabled.code());
+
+            // Export: the bounded CSV carries both sections and the new dictionary rows.
+            var export = d.api().exportAll(new AdminExportQuery(QUERY, AUTH));
+            assertTrue(export.fileName().matches("encyclopedia-export-.*Z[.]csv"));
+            assertTrue(export.csv().length <= AdminEncyclopediaService.EXPORT_MAX_BYTES);
+            String csv = new String(export.csv(), StandardCharsets.UTF_8);
+            assertTrue(csv.startsWith("# "));
+            assertTrue(csv.contains("categoryCode,categoryName,status,sortNo,breedCount,publishedBreedCount,"));
+            assertTrue(csv.contains("breedId,categoryCode,breedName,aliases,tags,summary,"));
+            assertTrue(csv.contains("RABBIT"));
+            assertTrue(csv.contains("荷兰垂耳兔"));
+            assertTrue(csv.contains("DOG"));
         }
     }
 

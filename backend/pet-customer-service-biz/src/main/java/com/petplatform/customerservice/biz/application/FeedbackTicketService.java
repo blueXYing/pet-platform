@@ -12,7 +12,6 @@ import com.petplatform.customerservice.biz.infrastructure.persistence.mapper.Fee
 import com.petplatform.thirdparty.api.dto.PrivateAssetTypes.PrivateAssetStatus;
 import com.petplatform.thirdparty.api.dto.PrivateAssetTypes.ResolveOwnedPrivateAssetsQuery;
 import com.petplatform.user.api.query.UserActiveStatusApi;
-import java.time.OffsetDateTime;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
@@ -109,7 +108,7 @@ public final class FeedbackTicketService {
                                  String ticketId, String reply) {}
 
     public record TransitionReceipt(String ticketId, String status, long version,
-                                    OffsetDateTime occurredAt) {}
+                                    String occurredAt) {}
 
     public record ProcessOutcome(TransitionReceipt receipt, boolean replayed) {}
 
@@ -292,7 +291,7 @@ public final class FeedbackTicketService {
         Map<String, Object> params = new LinkedHashMap<>();
         params.put("ticketId", command.ticketId());
         params.put("toStatus", STATUS_PROCESSING);
-        TransitionReceipt receipt = runBound(params, context, PROCESS_NAMESPACE, ticketId,
+        return runBound(params, context, PROCESS_NAMESPACE, ticketId,
                 key -> {
                     FeedbackTicketMapper.TicketRow row = requireTicket(ticketId);
                     if (!STATUS_PENDING.equals(row.status)) throw conflict();
@@ -304,7 +303,6 @@ public final class FeedbackTicketService {
                             actorId(context.operatorId()), null);
                     return receipt(key, ticketId, STATUS_PROCESSING, row.version + 1);
                 });
-        return new ProcessOutcome(receipt, false);
     }
 
     /** PROCESSING → RESOLVED carrying the single ops reply (1..1000 codepoints). */
@@ -318,7 +316,7 @@ public final class FeedbackTicketService {
         params.put("ticketId", command.ticketId());
         params.put("toStatus", STATUS_RESOLVED);
         params.put("reply", reply);
-        TransitionReceipt receipt = runBound(params, context, RESOLVE_NAMESPACE, ticketId,
+        return runBound(params, context, RESOLVE_NAMESPACE, ticketId,
                 key -> {
                     FeedbackTicketMapper.TicketRow row = requireTicket(ticketId);
                     if (!STATUS_PROCESSING.equals(row.status)) throw conflict();
@@ -330,7 +328,6 @@ public final class FeedbackTicketService {
                             actorId(context.operatorId()), null);
                     return receipt(key, ticketId, STATUS_RESOLVED, row.version + 1);
                 });
-        return new ProcessOutcome(receipt, false);
     }
 
     /**
@@ -338,7 +335,7 @@ public final class FeedbackTicketService {
      * kernel work and mark the binding succeeded in one commit each. Same-key different-bytes
      * replay is a 409 key conflict.
      */
-    private TransitionReceipt runBound(Map<String, Object> params, CommandContext context,
+    private ProcessOutcome runBound(Map<String, Object> params, CommandContext context,
             String namespace, long ticketId, java.util.function.Function<String, TransitionReceipt> work) {
         String requestKey = namespace + "|OPS|" + context.operatorId() + "|OPS_ALL|"
                 + context.requestId();
@@ -364,7 +361,7 @@ public final class FeedbackTicketService {
             throw new ApiException("IDEMPOTENCY_KEY_CONFLICT", "相同 requestId 对应不同参数");
         }
         if (replay.isPresent()) {
-            return deserializeReceipt(replay.orElseThrow());
+            return new ProcessOutcome(deserializeReceipt(replay.orElseThrow()), true);
         }
         TransitionReceipt receipt = store.execution().execute(status -> {
             requireBinding(store.mapper(), requestKey);
@@ -375,7 +372,7 @@ public final class FeedbackTicketService {
             }
             return done;
         });
-        return receipt;
+        return new ProcessOutcome(receipt, false);
     }
 
     private FeedbackTicketMapper.Binding requireBinding(FeedbackTicketMapper mapper, String requestKey) {
@@ -395,7 +392,7 @@ public final class FeedbackTicketService {
     /** Builds the transition receipt; runBound persists it once on the binding. */
     private TransitionReceipt receipt(String requestKey, long ticketId, String status, long version) {
         return new TransitionReceipt(Long.toUnsignedString(ticketId), status,
-                version, clock.instant().atOffset(java.time.ZoneOffset.UTC));
+                version, isoNow());
     }
 
     // ------------------------------------------------------------------ frame
