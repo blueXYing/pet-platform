@@ -14,6 +14,7 @@ import com.petplatform.thirdparty.api.dto.PrivateAssetTypes.ResolveOwnedPrivateA
 import com.petplatform.user.api.query.UserActiveStatusApi;
 import java.time.OffsetDateTime;
 import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -92,18 +93,19 @@ public final class FeedbackTicketService {
 
     public record CreateOutcome(TicketSummary receipt, boolean replayed) {}
 
-    public record OpsAuthorization(String sessionId, long sessionGeneration) {}
-
-    public record OpsListQuery(OpsAuthorization authorization, QueryContext context,
+    public record OpsListQuery(FeedbackOpsAuthorizationPort.Authorization authorization,
+                               QueryContext context,
                                String status, String type, Integer page, Integer pageSize) {}
 
-    public record OpsTicketQuery(OpsAuthorization authorization, QueryContext context,
+    public record OpsTicketQuery(FeedbackOpsAuthorizationPort.Authorization authorization,
+                                 QueryContext context, String ticketId) {}
+
+    public record ProcessCommand(CommandContext context,
+                                 FeedbackOpsAuthorizationPort.Authorization authorization,
                                  String ticketId) {}
 
-    public record ProcessCommand(CommandContext context, OpsAuthorization authorization,
-                                 String ticketId) {}
-
-    public record ResolveCommand(CommandContext context, OpsAuthorization authorization,
+    public record ResolveCommand(CommandContext context,
+                                 FeedbackOpsAuthorizationPort.Authorization authorization,
                                  String ticketId, String reply) {}
 
     public record TransitionReceipt(String ticketId, String status, long version,
@@ -285,7 +287,7 @@ public final class FeedbackTicketService {
     public ProcessOutcome processTicket(ProcessCommand command) {
         CommandContext context = trustedOperatorContext(command.context());
         long ticketId = parseTicketId(command.ticketId());
-        authorizeRow(command.authorization(), operatorContext(context), "complaint.handle", ticketId,
+        authorizeRow(command.authorization(), operatorContextOf(context), "complaint.handle", ticketId,
                 FeedbackOpsAuthorizationPort.Phase.EXECUTE);
         Map<String, Object> params = new LinkedHashMap<>();
         params.put("ticketId", command.ticketId());
@@ -310,7 +312,7 @@ public final class FeedbackTicketService {
         CommandContext context = trustedOperatorContext(command.context());
         long ticketId = parseTicketId(command.ticketId());
         String reply = requireText(command.reply(), 1, REPLY_MAX, "reply");
-        authorizeRow(command.authorization(), operatorContext(context), "complaint.decide", ticketId,
+        authorizeRow(command.authorization(), operatorContextOf(context), "complaint.decide", ticketId,
                 FeedbackOpsAuthorizationPort.Phase.EXECUTE);
         Map<String, Object> params = new LinkedHashMap<>();
         params.put("ticketId", command.ticketId());
@@ -376,6 +378,14 @@ public final class FeedbackTicketService {
         return receipt;
     }
 
+    private FeedbackTicketMapper.Binding requireBinding(FeedbackTicketMapper mapper, String requestKey) {
+        FeedbackTicketMapper.Binding binding = mapper.selectBindingForUpdate(requestKey);
+        if (binding == null) {
+            throw new IllegalStateException("Idempotency binding disappeared; transaction rolled back");
+        }
+        return binding;
+    }
+
     private FeedbackTicketMapper.TicketRow requireTicket(long ticketId) {
         FeedbackTicketMapper.TicketRow row = store.mapper().findTicketForOps(ticketId);
         if (row == null) throw notFound();
@@ -388,7 +398,31 @@ public final class FeedbackTicketService {
                 version, clock.instant().atOffset(java.time.ZoneOffset.UTC));
     }
 
+    // ------------------------------------------------------------------ frame
+
+    public static final class ParamsConflict extends RuntimeException {
+        public ParamsConflict() {
+            super("same requestId with different parameters");
+        }
+    }
+
+    private static QueryContext operatorContextOf(CommandContext context) {
+        return new QueryContext(context.traceId(), context.operatorType(), context.operatorId());
+    }
+
     // ------------------------------------------------------------------ helpers
+
+    private void enforceRateLimit(long userId) {
+        long minute = clock.instant().getEpochSecond() / 60;
+        String key = Long.toUnsignedString(userId);
+        Window updated = rateWindow.compute(key, (ignored, current) -> current == null
+                || current.minute() != minute ? new Window(minute, 1)
+                : new Window(current.minute(), current.count() + 1));
+        if (updated.count() > RATE_LIMIT_PER_MINUTE) {
+            throw new ApiException(com.petplatform.common.CommonApiCodes.RATE_LIMITED,
+                    "提交过于频繁，请稍后重试");
+        }
+    }
 
     /** Re-proves every attachment READY and owned by the submitter under the 31号 purpose. */
     private List<Long> validateAttachments(CommandContext context, List<String> assetIdTexts) {

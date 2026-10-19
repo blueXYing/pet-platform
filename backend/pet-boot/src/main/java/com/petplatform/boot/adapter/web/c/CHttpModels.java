@@ -43,6 +43,18 @@ public final class CHttpModels {
             return b;
         }
 
+        /** Optional string-array field (contract 67 v0.2 attachment ids); absent maps to null. */
+        @SuppressWarnings("unchecked")
+        public java.util.List<String> stringList(String name) {
+            Object v = fields.get(name);
+            if (v == null) return null;
+            if (!(v instanceof java.util.List<?> list)
+                    || list.stream().anyMatch(item -> !(item instanceof String))) {
+                throw new IllegalArgumentException(name + " must be a string array");
+            }
+            return (java.util.List<String>) list;
+        }
+
         @Override
         public String toString() {
             return "CRequest[REDACTED]";

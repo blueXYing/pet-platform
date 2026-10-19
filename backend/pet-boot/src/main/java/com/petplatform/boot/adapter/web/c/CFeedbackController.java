@@ -27,8 +27,9 @@ import org.springframework.web.bind.annotation.RestController;
  * /api/v1/c/feedback-tickets face (contract 67 via HTTP10 §3.18): owner-scoped projections
  * pass through the kernel verbatim (ARCH-005 — the adapter adds no derived field); creation
  * is 201 on first execution and 200 on same-key idempotent replay (supplement 23 §5). The
- * detail view carries the frozen reply/resolution field slots (empty in V1 — the ops face is
- * a separate slice). A non-owner or missing ticket is one indistinguishable 404.
+ * v0.2 create body carries the optional attachment id list (0..6 FEEDBACK_ATTACHMENT assets
+ * re-proved in the kernel); the detail view renders the ops reply once resolved. A non-owner
+ * or missing ticket is one indistinguishable 404.
  */
 @RestController
 @RequestMapping("/api/v1/c/feedback-tickets")
@@ -36,7 +37,8 @@ import org.springframework.web.bind.annotation.RestController;
         name = {"auth.c.enabled", "feedback.http.enabled"}, havingValue = "true")
 public class CFeedbackController {
 
-    private static final Set<String> CREATE_FIELDS = Set.of("type", "contact", "content");
+    private static final Set<String> CREATE_FIELDS = Set.of("type", "contact", "content",
+            "attachmentAssetIds");
 
     private final FeedbackTicketService tickets;
 
@@ -66,7 +68,7 @@ public class CFeedbackController {
         FeedbackTicketService.CreateOutcome outcome = tickets.create(
                 new FeedbackTicketService.CreateFeedbackCommand(
                         context(req, view), body.string("type"), body.string("contact"),
-                        body.string("content")));
+                        body.string("content"), body.stringList("attachmentAssetIds")));
         response.setStatus(outcome.replayed() ? 200 : 201);
         Map<String, Object> data = new LinkedHashMap<>();
         data.put("ticketId", outcome.receipt().ticketId());
@@ -106,13 +108,19 @@ public class CFeedbackController {
         data.put("contact", detail.contact());
         data.put("contentPreview", detail.contentPreview());
         data.put("createdAt", detail.createdAt());
+        data.put("attachmentAssetIds", detail.attachmentAssetIds());
         data.put("events", detail.events().stream().map(event -> {
             Map<String, Object> item = new LinkedHashMap<>();
             item.put("action", event.action());
             item.put("createdAt", event.createdAt());
             return item;
         }).toList());
-        data.put("replies", detail.replies());
+        data.put("replies", detail.replies().stream().map(reply -> {
+            Map<String, Object> item = new LinkedHashMap<>();
+            item.put("reply", reply.reply());
+            item.put("repliedAt", reply.repliedAt());
+            return item;
+        }).toList());
         data.put("resolution", detail.resolution());
         return ApiResponse.success(data, CShared.trace(req));
     }
