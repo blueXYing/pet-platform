@@ -1,7 +1,8 @@
-// 意见反馈（契约 67 / PRD 5.1.28 投诉类；设计稿 130:17185）。纯视图模型。
+// 意见反馈（契约 67 v0.2 / PRD 5.1.28 投诉类；设计稿 130:17185）。纯视图模型。
 // 字段口径=PRD 原文：四类型胶囊（功能建议/问题反馈/服务投诉/其他）、联系方式选填
-// （提示语「手机号或微信号，方便我们联系您」）、内容必填 500 字以内。图片附件 V1 不做
-// （CCR-CS-FEEDBACK-001 §3.1：私有资产通道为售后专用，反馈附件另立项）。
+// （提示语「手机号或微信号，方便我们联系您」）、内容必填 500 字以内。v0.2（2026-10-19
+// 用户裁决"继续扩展CCR"）放开图片附件（走 31号私有资产管线 FEEDBACK_ATTACHMENT 用途，
+// 每单 ≤6 张）与运营回复展示（RESOLVED 单详情可见回复）。
 
 export type FeedbackType = 'FEATURE_SUGGESTION' | 'BUG_REPORT' | 'SERVICE_COMPLAINT' | 'OTHER'
 
@@ -57,6 +58,8 @@ export type FeedbackTicketSummary = Readonly<{
   createdAt: string
 }>
 
+export type FeedbackReply = Readonly<{ reply: string; repliedAt: string }>
+
 export type FeedbackTicketDetail = Readonly<{
   ticketId: string
   type: FeedbackType
@@ -65,8 +68,9 @@ export type FeedbackTicketDetail = Readonly<{
   contact: string | null
   contentPreview: string
   createdAt: string
+  attachmentAssetIds: readonly string[]
   events: readonly { action: string; createdAt: string }[]
-  replies: readonly unknown[]
+  replies: readonly FeedbackReply[]
   resolution: null
 }>
 
@@ -122,8 +126,21 @@ export function decodeTicketDetail(value: unknown): FeedbackTicketDetail {
   }
   if (v.contact !== null && typeof v.contact !== 'string') throw new Error('INVALID_RESPONSE')
   if (v.resolution !== null) throw new Error('INVALID_RESPONSE')
-  // 冻结字段位：V1 运营处置面不存在，replies 恒为空数组（OpenAPI maxItems 0）。
-  if (v.replies.length > 0) throw new Error('INVALID_RESPONSE')
+  // v0.2 附件位：0..6 个 Snowflake String（31号 FEEDBACK_ATTACHMENT 资产 id）。
+  if (!Array.isArray(v.attachmentAssetIds)
+      || v.attachmentAssetIds.length > 6
+      || v.attachmentAssetIds.some(item => !/^[1-9][0-9]{0,18}$/.test(String(item)))) {
+    throw new Error('INVALID_RESPONSE')
+  }
+  // v0.2 回复位：RESOLVED 单最多一条运营回复（reply 1..1000 码点 + 回复时刻）。
+  if (v.replies.length > 1) throw new Error('INVALID_RESPONSE')
+  const replies = v.replies.map(item => {
+    if (typeof item !== 'object' || item === null) throw new Error('INVALID_RESPONSE')
+    const row = item as Record<string, unknown>
+    if (typeof row.reply !== 'string' || row.reply.length === 0
+        || typeof row.repliedAt !== 'string') throw new Error('INVALID_RESPONSE')
+    return { reply: row.reply, repliedAt: row.repliedAt } as FeedbackReply
+  })
   const events = v.events.map(item => {
     if (typeof item !== 'object' || item === null) throw new Error('INVALID_RESPONSE')
     const row = item as Record<string, unknown>
@@ -133,8 +150,9 @@ export function decodeTicketDetail(value: unknown): FeedbackTicketDetail {
     ...summary,
     content: v.content,
     contact: v.contact as string | null,
+    attachmentAssetIds: v.attachmentAssetIds.map(item => String(item)),
     events,
-    replies: v.replies,
+    replies,
     resolution: null,
   }
 }

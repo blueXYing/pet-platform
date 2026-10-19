@@ -11,9 +11,11 @@ import {
 export class RealFeedbackRepository {
   constructor(private api: typeof consumerApi) {}
 
-  async create(type: FeedbackType, contact: string | null, content: string): Promise<FeedbackTicketSummary> {
+  async create(type: FeedbackType, contact: string | null, content: string,
+      attachmentAssetIds: readonly string[]): Promise<FeedbackTicketSummary> {
     const data: Record<string, unknown> = { type, content }
     if (contact !== null) data.contact = contact
+    if (attachmentAssetIds.length > 0) data.attachmentAssetIds = [...attachmentAssetIds]
     return this.api.write('feedback:create', {
       method: 'POST', path: '/api/v1/c/feedback-tickets', data,
     }, decodeCreateReceipt)

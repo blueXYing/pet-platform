@@ -31,3 +31,10 @@
 .fb-submit[disabled] { background: #c9e4f6; }
 .fb-notice { display: block; margin: calc(var(--fb-unit) * 12) calc(var(--fb-unit) * 4) 0; font-size: calc(var(--fb-unit) * 13); color: #b3574a; }
 .fb-login { display: block; width: 100%; margin-top: calc(var(--fb-unit) * 12); padding: calc(var(--fb-unit) * 12) 0; border-radius: calc(var(--fb-unit) * 22); background: #ffffff; border: calc(var(--fb-unit) * 1) solid #5baae8; color: #2f83c7; font-size: calc(var(--fb-unit) * 15); text-align: center; }
+
+/* v0.2 附件位：缩略图九宫格 + 移除角标 + 添加格。 */
+.fb-attachments { display: flex; flex-wrap: wrap; gap: calc(8 * var(--fb-unit)); margin-bottom: calc(16 * var(--fb-unit)); }
+.fb-attachment { position: relative; width: calc(72 * var(--fb-unit)); height: calc(72 * var(--fb-unit)); border-radius: calc(8 * var(--fb-unit)); overflow: visible; }
+.fb-attachment-thumb { width: 100%; height: 100%; border-radius: calc(8 * var(--fb-unit)); }
+.fb-attachment-remove { position: absolute; top: calc(-8 * var(--fb-unit)); right: calc(-8 * var(--fb-unit)); width: calc(20 * var(--fb-unit)); height: calc(20 * var(--fb-unit)); line-height: calc(18 * var(--fb-unit)); padding: 0; border-radius: 50%; background: rgba(0, 0, 0, 0.55); color: #ffffff; font-size: calc(14 * var(--fb-unit)); text-align: center; }
+.fb-attachment-add { width: calc(72 * var(--fb-unit)); height: calc(72 * var(--fb-unit)); display: flex; align-items: center; justify-content: center; border: 1px dashed #c8c8c8; border-radius: calc(8 * var(--fb-unit)); background: #f7f7f7; color: #8a8a8a; font-size: calc(24 * var(--fb-unit)); padding: 0; }

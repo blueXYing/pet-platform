@@ -19,7 +19,25 @@ export type DeletionBlocker = Readonly<{
 
 export type DeletionPrecheck = Readonly<{ blocked: boolean; blockers: readonly DeletionBlocker[] }>
 
-export type DeletionReceipt = Readonly<{ userId: string; status: string; deletedAt: string }>
+// v0.2 冷静期回执：注销请求落库进入 7 天（可配）冷静期，账号保持 ACTIVE 可正常使用。
+export type DeletionReceipt = Readonly<{
+  userId: string
+  status: 'PENDING'
+  requestedAt: string
+  effectiveAt: string
+  cooldownDays: number
+}>
+
+// v0.2 冷静期状态读侧（"申请中可撤销"提示的数据源）。
+export type DeletionStatusView = Readonly<{
+  status: 'NONE' | 'PENDING'
+  requestedAt?: string
+  effectiveAt?: string
+  cooldownDays?: number
+}>
+
+// v0.2 撤销回执：冷静期内撤销仅翻转注销请求单状态，账号从未离开 ACTIVE。
+export type CancelReceipt = Readonly<{ userId: string; status: 'CANCELED'; canceledAt: string }>
 
 export const blockerFallbackLabels: Record<DeletionBlockerCode, string> = {
   USER_ORDERS_UNSETTLED: '存在未完结订单',
@@ -51,10 +69,34 @@ export function decodePrecheck(value: unknown): DeletionPrecheck {
 export function decodeDeletionReceipt(value: unknown): DeletionReceipt {
   if (typeof value !== 'object' || value === null) throw new Error('INVALID_RESPONSE')
   const v = value as Record<string, unknown>
-  if (typeof v.userId !== 'string' || v.status !== 'CANCELED' || typeof v.deletedAt !== 'string') {
+  if (typeof v.userId !== 'string' || v.status !== 'PENDING'
+      || typeof v.requestedAt !== 'string' || typeof v.effectiveAt !== 'string'
+      || typeof v.cooldownDays !== 'number') {
     throw new Error('INVALID_RESPONSE')
   }
-  return { userId: v.userId, status: v.status, deletedAt: v.deletedAt }
+  return {
+    userId: v.userId, status: 'PENDING', requestedAt: v.requestedAt,
+    effectiveAt: v.effectiveAt, cooldownDays: v.cooldownDays,
+  }
+}
+
+export function decodeDeletionStatus(value: unknown): DeletionStatusView {
+  if (typeof value !== 'object' || value === null) throw new Error('INVALID_RESPONSE')
+  const v = value as Record<string, unknown>
+  if (v.status !== 'NONE' && v.status !== 'PENDING') throw new Error('INVALID_RESPONSE')
+  if (v.status === 'NONE') return { status: 'NONE' }
+  if (typeof v.requestedAt !== 'string' || typeof v.effectiveAt !== 'string'
+      || typeof v.cooldownDays !== 'number') throw new Error('INVALID_RESPONSE')
+  return { status: 'PENDING', requestedAt: v.requestedAt, effectiveAt: v.effectiveAt, cooldownDays: v.cooldownDays }
+}
+
+export function decodeCancelReceipt(value: unknown): CancelReceipt {
+  if (typeof value !== 'object' || value === null) throw new Error('INVALID_RESPONSE')
+  const v = value as Record<string, unknown>
+  if (typeof v.userId !== 'string' || v.status !== 'CANCELED' || typeof v.canceledAt !== 'string') {
+    throw new Error('INVALID_RESPONSE')
+  }
+  return { userId: v.userId, status: 'CANCELED', canceledAt: v.canceledAt }
 }
 
 // ---------------------------------------------------------------- 帮助与客服（67号 / PRD 5.1.25）

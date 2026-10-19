@@ -3,24 +3,35 @@ import Taro, { useDidShow, useRouter } from '@tarojs/taro'
 import { useEffect, useRef, useState, type CSSProperties } from 'react'
 import { consumerApi } from '../../../shared/consumer-runtime'
 import { RealSettingsRepository } from '../../settings/repository'
-import { blockerFallbackLabels, type DeletionPrecheck, type DeletionReceipt } from '../../settings/model'
+import {
+  blockerFallbackLabels,
+  type CancelReceipt, type DeletionPrecheck, type DeletionReceipt, type DeletionStatusView,
+} from '../../settings/model'
 import backIcon from '../../assets/profile/back.png'
 import './deletion.css'
 
-// 注销账号页（契约 66 §3/§4 / PRD 5.1.29；CCR-USR-DELETION-001 最小实现：同步注销、
-// 无冷静期/申请中态）。流程：进入即拉前置校验 → 有阻塞则渲染阻塞明细且不可提交；
-// 无阻塞展示影响确认 → 勾选确认 → 提交（ConsumerApi.write 幂等槽 settings:deletion）→
-// 成功后本地会话即死（服务端 CANCELED），清本地态回「我的」tab。开关关闭期（默认）请求
-// 404/503 失败关闭，不降级不伪造成功。
-type Phase = 'loading' | 'ready' | 'load-error' | 'submitting' | 'done'
+// 注销账号页（契约 66 §3/§4 v0.2 冷静期 / PRD 5.1.29；CCR-USR-DELETION-001 v0.2：
+// 默认 7 天可配冷静期）。流程：进入并行拉前置校验+冷静期状态 → 申请中（PENDING）渲染
+// 冷静期横幅（到期时刻+撤销按钮，账号期间可正常使用，撤销=请求单 CAS 回 CANCELED）；
+// 无申请时按前置校验渲染阻塞明细或影响确认 → 勾选确认 → 提交（幂等槽 settings:deletion）
+// → 回执展示冷静期信息。到期由平台 durable 任务执行注销（账号届时才置 CANCELED、登录失效）。
+// 开关关闭期（默认）请求 404/503 失败关闭，不降级不伪造成功。
+type Phase = 'loading' | 'ready' | 'pending' | 'load-error' | 'submitting' | 'canceling' | 'done'
 const MINE_TAB_URL = '/consumer/pages/mine/index'
 
 const deletionImpacts = [
-  '账号立即注销：所有登录会话失效，无法再使用本微信登录该账号。',
-  '账号置为注销状态后无法自行恢复；如有异议需联系客服人工处理。',
-  '你名下的商家资料、宠物档案、订单与售后记录将按平台保留策略处理。',
-  '存在未完结订单、处理中售后或名下商家未完结业务时，注销会被拦截。',
+  '提交后进入 7 天冷静期：期间账号可正常登录使用，可随时回到本页撤销。',
+  '冷静期到期时平台自动执行注销：所有登录会话失效，无法再使用本微信登录该账号。',
+  '冷静期内再次出现未完结订单、处理中售后或名下商家未完结业务时，到期注销会自动作废。',
+  '注销后账号数据按平台保留策略处理；冷静期内数据不做任何删除或改动。',
 ] as const
+
+function formatIso(iso: string): string {
+  const parsed = new Date(iso)
+  if (Number.isNaN(parsed.getTime())) return iso
+  const pad = (value: number) => String(value).padStart(2, '0')
+  return `${parsed.getFullYear()}-${pad(parsed.getMonth() + 1)}-${pad(parsed.getDate())} ${pad(parsed.getHours())}:${pad(parsed.getMinutes())}`
+}
 
 export default function AccountDeletionPage() {
   const route = useRouter()
@@ -34,8 +45,10 @@ export default function AccountDeletionPage() {
   const [repository] = useState(() => new RealSettingsRepository(consumerApi))
   const [phase, setPhase] = useState<Phase>('loading')
   const [precheck, setPrecheck] = useState<DeletionPrecheck | null>(null)
+  const [pending, setPending] = useState<DeletionStatusView | null>(null)
   const [acknowledged, setAcknowledged] = useState(false)
   const [receipt, setReceipt] = useState<DeletionReceipt | null>(null)
+  const [cancelReceipt, setCancelReceipt] = useState<CancelReceipt | null>(null)
   const [notice, setNotice] = useState('')
   const mounted = useRef(true)
   useEffect(() => () => { mounted.current = false }, [])
@@ -52,13 +65,19 @@ export default function AccountDeletionPage() {
           : { blocked: false, blockers: [] }
         if (!mounted.current) return
         setPrecheck(demo)
-        setPhase('ready')
+        setPending(scenario === 'pending'
+          ? { status: 'PENDING', requestedAt: new Date().toISOString(), effectiveAt: new Date(Date.now() + 7 * 86400000).toISOString(), cooldownDays: 7 }
+          : { status: 'NONE' })
+        setPhase(scenario === 'pending' ? 'pending' : 'ready')
         return
       }
-      const result = await repository.precheck()
+      const [precheckResult, statusResult] = await Promise.all([
+        repository.precheck(), repository.deletionStatus(),
+      ])
       if (!mounted.current) return
-      setPrecheck(result)
-      setPhase('ready')
+      setPrecheck(precheckResult)
+      setPending(statusResult)
+      setPhase(statusResult.status === 'PENDING' ? 'pending' : 'ready')
     } catch {
       if (!mounted.current) return
       setPhase('load-error')
@@ -72,7 +91,10 @@ export default function AccountDeletionPage() {
     try {
       if (preview) {
         if (!mounted.current) return
-        setReceipt({ userId: 'preview', status: 'CANCELED', deletedAt: new Date().toISOString() })
+        setReceipt({
+          userId: 'preview', status: 'PENDING', requestedAt: new Date().toISOString(),
+          effectiveAt: new Date(Date.now() + 7 * 86400000).toISOString(), cooldownDays: 7,
+        })
         setPhase('done')
         return
       }
@@ -83,7 +105,29 @@ export default function AccountDeletionPage() {
     } catch {
       if (!mounted.current) return
       setPhase('ready')
-      setNotice('注销未完成，请稍后重试；若提示存在未完结业务，请先完结后再来。')
+      setNotice('注销申请未完成，请稍后重试；若提示存在未完结业务，请先完结后再来。')
+    }
+  }
+
+  async function cancelPending() {
+    if (phase !== 'pending') return
+    setPhase('canceling')
+    setNotice('')
+    try {
+      if (preview) {
+        if (!mounted.current) return
+        setCancelReceipt({ userId: 'preview', status: 'CANCELED', canceledAt: new Date().toISOString() })
+        setPhase('done')
+        return
+      }
+      const result = await repository.cancelDeletion()
+      if (!mounted.current) return
+      setCancelReceipt(result)
+      setPhase('done')
+    } catch {
+      if (!mounted.current) return
+      setPhase('pending')
+      setNotice('撤销未完成，请稍后重试；若注销已到期执行，本页会显示账号已注销。')
     }
   }
 
@@ -111,12 +155,29 @@ export default function AccountDeletionPage() {
         <Button id='del-retry' className='del-state-btn' hoverClass='none' onClick={() => void load()}>重试</Button>
       </View>}
       {phase === 'done' && receipt !== null && <View className='del-card'>
-        <Text className='del-card-title'>账号已注销</Text>
-        <Text className='del-impact'>注销时间：{receipt.deletedAt}</Text>
-        <Text className='del-impact'>本机的登录状态已退出。</Text>
+        <Text className='del-card-title'>注销申请已提交</Text>
+        <Text className='del-impact'>冷静期 {receipt.cooldownDays} 天，到期时间：{formatIso(receipt.effectiveAt)}。</Text>
+        <Text className='del-impact'>冷静期内账号可正常使用；如改变主意，请回到本页撤销。</Text>
         <Button id='del-finish' className='del-primary' hoverClass='none' onClick={() => void finish()}>完成</Button>
       </View>}
-      {(phase === 'ready' || phase === 'submitting') && precheck !== null && <>
+      {phase === 'done' && receipt === null && cancelReceipt !== null && <View className='del-card'>
+        <Text className='del-card-title'>已撤销注销申请</Text>
+        <Text className='del-impact'>你的账号继续保持正常使用，本次注销申请已作废。</Text>
+        <Button id='del-finish-cancel' className='del-primary' hoverClass='none' onClick={() => void finish()}>完成</Button>
+      </View>}
+      {(phase === 'pending' || phase === 'canceling') && pending !== null
+        && pending.status === 'PENDING' && <View className='del-card del-card-pending'>
+        <Text className='del-card-title'>注销申请处理中（冷静期 {pending.cooldownDays} 天）</Text>
+        <Text className='del-impact'>申请时间：{formatIso(pending.requestedAt ?? '')}</Text>
+        <Text className='del-impact'>到期执行时间：{formatIso(pending.effectiveAt ?? '')}</Text>
+        <Text className='del-impact'>冷静期内你的账号可正常登录与使用；到期平台将自动执行注销并使登录失效。改变主意请在到期前撤销。</Text>
+        <Button id='del-cancel' className='del-primary' hoverClass='none'
+          disabled={phase === 'canceling'} onClick={() => void cancelPending()}>
+          {phase === 'canceling' ? '正在撤销…' : '撤销注销申请'}
+        </Button>
+      </View>}
+      {(phase === 'ready' || phase === 'submitting') && precheck !== null
+        && pending !== null && pending.status !== 'PENDING' && <>
         {precheck.blocked && <View className='del-card del-card-blocked'>
           <Text className='del-card-title'>暂时无法注销</Text>
           {precheck.blockers.map(blocker => <View key={blocker.code} className='del-blocker' id={`del-blocker-${blocker.code}`}>
@@ -144,6 +205,8 @@ export default function AccountDeletionPage() {
         </>}
         {notice !== '' && <Text id='del-notice' className='st-notice'>{notice}</Text>}
       </>}
+      {(phase === 'pending' || phase === 'canceling') && notice !== ''
+        && <Text id='del-notice-pending' className='st-notice'>{notice}</Text>}
       {preview && <Text className='del-preview-note'>预览模式：本地样例数据，仅用于设计验收，不发起真实请求。</Text>}
     </ScrollView>
   </View>
