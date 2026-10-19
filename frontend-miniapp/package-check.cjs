@@ -52,7 +52,9 @@ assert.deepEqual(packages.map(p => ({ root: p.root, pages: p.pages })), [
     'pages/staff-workbench/index', 'pages/staff-invitation/index', 'pages/staff-verify/index',
     'pages/order-list/index', 'pages/order-confirm/index',
     // Review appeal M face (56号 / REV-002): OWNER review list + one-appeal entry.
-    'pages/reviews/index'] },
+    'pages/reviews/index',
+    // M-side finish slice (27 §6.4 / 69 / 70): shop info, customers list + detail, stats.
+    'pages/shop-info/index', 'pages/customers/index', 'pages/customers/detail', 'pages/stats/index'] },
   { root: 'consumer/pages/pet-archive', pages: ['index', 'detail', 'form'] },
   { root: 'consumer/pages/merchant-application', pages: ['index', 'signing'] },
   { root: 'consumer/pages/store-services', pages: ['index', 'service-detail', 'stores'] },
