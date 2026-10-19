@@ -3559,6 +3559,14 @@ paths:
           type: string
           minLength: 1
           maxLength: 64
+      - name: orderNoSuffix
+        in: query
+        required: false
+        description: 订单号尾号搜索（2026-10-19 扩展，69号 §2）：2..10 位数字（含前导零），
+          仅命中本店订单 order_no 尾匹配的派生客户；与 nickname 互斥（同给 400）。
+        schema:
+          type: string
+          pattern: '^[0-9]{2,10}$'
       - $ref: '#/components/parameters/Page'
       - $ref: '#/components/parameters/PageSize'
       responses:
@@ -3580,6 +3588,69 @@ paths:
           $ref: '#/components/responses/Unauthorized'
         '403':
           $ref: '#/components/responses/Forbidden'
+        '503':
+          $ref: '#/components/responses/DependencyUnavailable'
+  /merchant/customers/{userId}/note:
+    put:
+      tags:
+      - Merchant-Order
+      summary: merchantUpdateCustomerNote
+      operationId: merchantUpdateCustomerNote
+      x-contract-status: IMPLEMENTED_DEFAULT_OFF
+      x-default-enabled: false
+      x-contract: 69-Merchant-Customer-Profile-Read-Contract-v0.1.md
+      x-assembly-switch: pet.order.customer.http.enabled
+      x-route-party: MERCHANT
+      x-audience: MINIAPP
+      description: 商家内部备注写（2026-10-19 扩展，69号 §3，命令
+                merchant.customer.note.update）：真实 OWNER 写权（requireOwner，FROZEN 拒绝）
+                于门店 guard 事务内复验；目标须为本店派生客户（无本店订单 404 同形防枚举）；
+                note 0..200 码点、空串=清空；supplement-23 幂等（首报文 201、同参重放 200、
+                异参 409 IDEMPOTENCY_KEY_CONFLICT）；expectedVersion 乐观锁；同事务审计仅记
+                字段名。备注仅商家端可见，不进 C 端/事件。
+      security:
+      - bearerAuth: []
+      parameters:
+      - $ref: '#/components/parameters/RequestId'
+      - name: userId
+        in: path
+        required: true
+        schema:
+          $ref: '#/components/schemas/PublicId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/MerchantCustomerNoteUpdateRequest'
+      responses:
+        '200':
+          description: 保存/幂等成功重放回执。
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                enum: [no-store]
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MerchantCustomerNoteEnvelope'
+        '201':
+          description: 首次保存成功回执。
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MerchantCustomerNoteEnvelope'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
         '503':
           $ref: '#/components/responses/DependencyUnavailable'
   /merchant/customers/{userId}:
@@ -3609,7 +3680,8 @@ paths:
       - $ref: '#/components/parameters/StoreIdQuery'
       responses:
         '200':
-          description: '客户详情投影。Cache-Control: no-store。'
+          description: '客户详情投影（2026-10-19 扩展：含 note 内部备注，未设置为 null）。
+            Cache-Control: no-store。'
           headers:
             Cache-Control:
               schema:
@@ -3641,9 +3713,12 @@ paths:
       x-assembly-switch: pet.order.stats.http.enabled
       x-route-party: MERCHANT
       x-audience: MINIAPP
-      description: 经营统计概览（70号，PRD 5.14）：单店订单聚合 + 评价均分事实面（评价内核
-                未装配时 reviewAvg=null 显示 --）。range 词汇 TODAY/LAST_7D/LAST_30D（默认
-                LAST_7D）；净营收扣除成功退款；比率一位小数无百分号；环比=等长紧邻前窗。
+      description: 经营统计概览（70号 + 2026-10-19 扩展，PRD 5.14）：单店订单聚合 + 评价
+                均分事实面（评价内核未装配时 reviewAvg=null 显示 --）。range 词汇
+                TODAY/LAST_7D/LAST_30D/CUSTOM（默认 LAST_7D；CUSTOM 携 from/to，UTC 闭区间
+                ≤92 天，倒序/超限 400）；净营收扣除成功退款；拒单率=商家拒单取消
+                （cancel_reason=MERCHANT_REJECT_ORDER）/已支付；比率一位小数无百分号；
+                环比=等长紧邻前窗。
       security:
       - bearerAuth: []
       parameters:
@@ -3654,10 +3729,25 @@ paths:
         required: false
         schema:
           type: string
-          enum: [TODAY, LAST_7D, LAST_30D]
+          enum: [TODAY, LAST_7D, LAST_30D, CUSTOM]
+      - name: from
+        in: query
+        required: false
+        description: 自定义区间起点（range=CUSTOM 必填，ISO 日期）。
+        schema:
+          type: string
+          pattern: '^[0-9]{4}-[0-9]{2}-[0-9]{2}$'
+      - name: to
+        in: query
+        required: false
+        description: 自定义区间终点（range=CUSTOM 必填，含当日）。
+        schema:
+          type: string
+          pattern: '^[0-9]{4}-[0-9]{2}-[0-9]{2}$'
       responses:
         '200':
-          description: '概览投影（含 deltas 环比与 generatedAt）。Cache-Control: no-store。'
+          description: '概览投影（含 rejectRate 拒单率、deltas 环比与 generatedAt）。
+            Cache-Control: no-store。'
           headers:
             Cache-Control:
               schema:
@@ -3667,6 +3757,134 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/MerchantStatsOverviewEnvelope'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '503':
+          $ref: '#/components/responses/DependencyUnavailable'
+  /merchant/stats/services/{serviceId}/orders:
+    get:
+      tags:
+      - Merchant-Order
+      summary: merchantStatsServiceOrders
+      operationId: merchantStatsServiceOrders
+      x-contract-status: IMPLEMENTED_DEFAULT_OFF
+      x-default-enabled: false
+      x-contract: 70-Merchant-Business-Stats-Read-Contract-v0.1.md
+      x-assembly-switch: pet.order.stats.http.enabled
+      x-route-party: MERCHANT
+      x-audience: MINIAPP
+      description: 服务下钻（2026-10-19 扩展，70号 §2/§3）：Top5 行进入的服务维度订单明细
+                分页（只读）。该服务在窗口内的本店订单行（orderNo/stage/金额/下单与预约/
+                核销时间），创建时间倒序+id 稳定序；行无客户字段。窗口内无该服务订单 → 404
+                同形防枚举。
+      security:
+      - bearerAuth: []
+      parameters:
+      - $ref: '#/components/parameters/MerchantIdQuery'
+      - $ref: '#/components/parameters/StoreIdQuery'
+      - name: serviceId
+        in: path
+        required: true
+        schema:
+          $ref: '#/components/schemas/PublicId'
+      - name: range
+        in: query
+        required: false
+        schema:
+          type: string
+          enum: [TODAY, LAST_7D, LAST_30D, CUSTOM]
+      - name: from
+        in: query
+        required: false
+        schema:
+          type: string
+          pattern: '^[0-9]{4}-[0-9]{2}-[0-9]{2}$'
+      - name: to
+        in: query
+        required: false
+        schema:
+          type: string
+          pattern: '^[0-9]{4}-[0-9]{2}-[0-9]{2}$'
+      - $ref: '#/components/parameters/Page'
+      - $ref: '#/components/parameters/PageSize'
+      responses:
+        '200':
+          description: '服务订单明细分页。Cache-Control: no-store。'
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                enum: [no-store]
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MerchantStatsServiceOrdersEnvelope'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '503':
+          $ref: '#/components/responses/DependencyUnavailable'
+  /merchant/stats/schedule-utilization:
+    get:
+      tags:
+      - Merchant-Order
+      summary: merchantStatsScheduleUtilization
+      operationId: merchantStatsScheduleUtilization
+      x-contract-status: IMPLEMENTED_DEFAULT_OFF
+      x-default-enabled: false
+      x-contract: 70-Merchant-Business-Stats-Read-Contract-v0.1.md
+      x-assembly-switch: pet.order.stats.http.enabled
+      x-route-party: MERCHANT
+      x-audience: MINIAPP
+      description: 排期利用率（2026-10-19 扩展，70号 §2）：53号排期读侧聚合——availableMinutes
+                为 OPEN 排期窗口与窗口重叠分钟×configured_capacity 之和，bookedMinutes 为
+                CONFIRMED 预约重叠分钟之和，utilizationRate=booked/available（一位小数，
+                分母 0 → null）。经 schedule-api 只读端口；端口未装配时三值 null（--），
+                装配后读失败 503。
+      security:
+      - bearerAuth: []
+      parameters:
+      - $ref: '#/components/parameters/MerchantIdQuery'
+      - $ref: '#/components/parameters/StoreIdQuery'
+      - name: range
+        in: query
+        required: false
+        schema:
+          type: string
+          enum: [TODAY, LAST_7D, LAST_30D, CUSTOM]
+      - name: from
+        in: query
+        required: false
+        schema:
+          type: string
+          pattern: '^[0-9]{4}-[0-9]{2}-[0-9]{2}$'
+      - name: to
+        in: query
+        required: false
+        schema:
+          type: string
+          pattern: '^[0-9]{4}-[0-9]{2}-[0-9]{2}$'
+      responses:
+        '200':
+          description: '排期利用率投影。Cache-Control: no-store。'
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                enum: [no-store]
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MerchantStatsUtilizationEnvelope'
         '400':
           $ref: '#/components/responses/BadRequest'
         '401':
@@ -3699,7 +3917,21 @@ paths:
         required: false
         schema:
           type: string
-          enum: [TODAY, LAST_7D, LAST_30D]
+          enum: [TODAY, LAST_7D, LAST_30D, CUSTOM]
+      - name: from
+        in: query
+        required: false
+        description: 自定义区间起点（range=CUSTOM 必填，ISO 日期）。
+        schema:
+          type: string
+          pattern: '^[0-9]{4}-[0-9]{2}-[0-9]{2}$'
+      - name: to
+        in: query
+        required: false
+        description: 自定义区间终点（range=CUSTOM 必填，含当日）。
+        schema:
+          type: string
+          pattern: '^[0-9]{4}-[0-9]{2}-[0-9]{2}$'
       - name: limit
         in: query
         required: false
@@ -3751,10 +3983,24 @@ paths:
         required: false
         schema:
           type: string
-          enum: [TODAY, LAST_7D, LAST_30D]
+          enum: [TODAY, LAST_7D, LAST_30D, CUSTOM]
+      - name: from
+        in: query
+        required: false
+        description: 自定义区间起点（range=CUSTOM 必填，ISO 日期）。
+        schema:
+          type: string
+          pattern: '^[0-9]{4}-[0-9]{2}-[0-9]{2}$'
+      - name: to
+        in: query
+        required: false
+        description: 自定义区间终点（range=CUSTOM 必填，含当日）。
+        schema:
+          type: string
+          pattern: '^[0-9]{4}-[0-9]{2}-[0-9]{2}$'
       responses:
         '200':
-          description: '日桶列表。Cache-Control: no-store。'
+          description: '日桶列表（TODAY 为单日桶；CUSTOM 最多 92 桶）。Cache-Control: no-store。'
           headers:
             Cache-Control:
               schema:
@@ -16006,7 +16252,7 @@ paths:
       x-audience: ADMIN_WEB
       x-required-actions: [coupon.instance.grant]
       description: |-
-        65号 v0.2 §4.3（用户裁决 2026-10-16，CCR-CPN-GRANT-001 最小实现）。按一个 ACTIVE 模板向一个指定用户发放一张 AVAILABLE 券实例；模板可用性守卫=61号 §3 冻结前置④（ACTIVE 且发放时刻在有效期内，否则 409）；实例 expire_at 继承模板 valid_end_at；coupon_ledger ISSUE 行（CPN:GRANT:{instanceId}）为发放审计。单次一张（批量/持有上限/频控/库存扣减 CCR 待裁）。终结性 X-Request-Id 幂等（14号 command_idempotency，同参重放回执、异参 409）。路由随 pet.admin.ops.http.enabled 面（x-assembly-switch）装配；内核另受 pet.coupon.grant.enabled 门控（x-kernel-switch，默认关）——内核未装配时本路由 503 失败关闭（61号提供器未装配语义）。
+        65号 v0.2 §4.3（用户裁决 2026-10-16，CCR-CPN-GRANT-001 最小实现）+ v0.4 强化批（用户裁决 2026-10-19 "继续扩展CCR"）。按一个 ACTIVE 模板发放 AVAILABLE 券实例：单发 {templateId, userId} 一张；批量 {templateId, userIds(≤100, 去重)} 逐用户一张。守卫链=61号 §3 冻结前置④（ACTIVE 且在有效期内，否则 409）→ 目标用户存在性（user 域只读端口，不存在 404）→ 单用户同模板 AVAILABLE+FROZEN 持有上限（pet.coupon.grant.max-per-template 默认 10，超限 409）→ 同操作者同用户同模板 60 秒滑动窗频控（DB 计数，重复 409）→ total_stock 库存扣减（非空时 issued_count<total_stock 才可发，售罄 409；NULL 不限量）。实例 expire_at 继承模板 valid_end_at；coupon_ledger ISSUE 行（CPN:GRANT:{instanceId}）为发放审计。单发 X-Request-Id 幂等同参重放回执、异参 409；批量逐用户独立幂等与独立事务（部分失败不回滚已成功者，回执逐用户 GRANTED/REJECTED 明细）。路由随 pet.admin.ops.http.enabled 面（x-assembly-switch）装配；内核另受 pet.coupon.grant.enabled 门控（x-kernel-switch，默认关）——内核未装配时本路由 503 失败关闭（61号提供器未装配语义）。
       security:
       - bearerAuth: []
       parameters:
@@ -19402,7 +19648,7 @@ components:
           enum: [ACTIVE, OFFLINE, FROZEN]
         operatingStatus:
           type: string
-          enum: [OPERATING, OFFLINE, FROZEN]
+          enum: [OPERATING, OFFLINE, FROZEN, RESTING]
         applicationStatus:
           type: string
           nullable: true
@@ -19429,8 +19675,18 @@ components:
       type: object
       additionalProperties: false
       required: [intro, announcement, photoAssetIds, businessHours, promoLevel,
-        promoTitle, promoText, version]
+        promoTitle, promoText, avatarAssetId, businessStatus, version]
       properties:
+        avatarAssetId:
+          type: string
+          nullable: true
+          pattern: ^[1-9][0-9]{0,18}$
+          description: 店铺头像素材（2026-10-19 扩展，STORE_PHOTO READY 私有素材）；null=未设置。
+        businessStatus:
+          type: string
+          nullable: true
+          enum: [OPEN, RESTING]
+          description: 营业状态开关（2026-10-19 扩展）；null=未设置（投影 OPEN）。
         intro:
           type: string
           nullable: true
@@ -19500,15 +19756,30 @@ components:
     MerchantStoreProfileUpdateRequest:
       type: object
       additionalProperties: false
-      required: [merchantId, storeId, intro, announcement, photoAssetIds,
-        businessHours, promoLevel, promoTitle, promoText, expectedVersion]
-      description: 全字段替换（27号 §6.4）：所有键必须出现；显式 null 非法；文本空串清空、
-        数组空清空、promoLevel 0=未设置。
+      required: [merchantId, storeId, storeName, address, phone, intro, announcement,
+        photoAssetIds, businessHours, promoLevel, promoTitle, promoText,
+        avatarAssetId, businessStatus, expectedVersion]
+      description: 全字段替换（27号 §6.4 + 2026-10-19 扩展）：所有键必须出现；显式 null 非法；
+        文本空串清空、数组空清空、promoLevel 0=未设置；storeName/address 必填非空白、
+        phone 5-32 位数字空串清除（三项店铺事实变更不触发运营复审，落字段名审计）；
+        avatarAssetId/businessStatus 空串清除（businessStatus 清除=OPEN 投影）。
       properties:
         merchantId:
           $ref: '#/components/schemas/PublicId'
         storeId:
           $ref: '#/components/schemas/PublicId'
+        storeName:
+          type: string
+          minLength: 1
+          maxLength: 128
+        address:
+          type: string
+          minLength: 1
+          maxLength: 255
+        phone:
+          type: string
+          pattern: '^[0-9]{5,32}$'
+          description: 店铺联系电话；空串=清除（存储 NULL）。掩码仅对 1xx****xxxx 形态展示。
         intro:
           type: string
           maxLength: 500
@@ -19630,13 +19901,30 @@ components:
       - $ref: '#/components/schemas/MerchantCustomerRow'
       - type: object
         additionalProperties: false
-        required: [pets]
+        required: [pets, note]
         properties:
           pets:
             type: array
             maxItems: 20
             items:
               $ref: '#/components/schemas/MerchantCustomerPet'
+          note:
+            type: object
+            nullable: true
+            additionalProperties: false
+            required: [content, version, updatedAt]
+            properties:
+              content:
+                type: string
+                nullable: true
+                maxLength: 200
+              version:
+                type: string
+                pattern: ^(0|[1-9][0-9]{0,18})$
+              updatedAt:
+                type: string
+                format: date-time
+            description: 商家内部备注（2026-10-19 扩展）；null=未设置。仅商家端可见。
     MerchantCustomerDetailEnvelope:
       type: object
       additionalProperties: false
@@ -19682,11 +19970,11 @@ components:
       additionalProperties: false
       required: [range, revenue, orderCount, newCustomers, avgTicket,
         verifiedOrderCount, verifyRate, refundOrderCount, refundRate, repeatRate,
-        reviewAvg, deltas, generatedAt]
+        reviewAvg, rejectRate, deltas, generatedAt]
       properties:
         range:
           type: string
-          enum: [TODAY, LAST_7D, LAST_30D]
+          enum: [TODAY, LAST_7D, LAST_30D, CUSTOM]
         revenue:
           type: string
           pattern: '^[0-9]+\.[0-9]{2}$'
@@ -19722,6 +20010,12 @@ components:
           type: string
           nullable: true
           pattern: '^[0-5]\.[0-9]$'
+        rejectRate:
+          type: string
+          nullable: true
+          pattern: '^[0-9]+\.[0-9]$'
+          description: 拒单率（2026-10-19 扩展）：商家拒单取消/已支付订单数，一位小数；
+            分母 0 → null（--）。
         deltas:
           $ref: '#/components/schemas/MerchantStatsDeltas'
         generatedAt:
@@ -19753,7 +20047,7 @@ components:
       properties:
         range:
           type: string
-          enum: [TODAY, LAST_7D, LAST_30D]
+          enum: [TODAY, LAST_7D, LAST_30D, CUSTOM]
         items:
           type: array
           maxItems: 5
@@ -19799,10 +20093,10 @@ components:
       properties:
         range:
           type: string
-          enum: [TODAY, LAST_7D, LAST_30D]
+          enum: [TODAY, LAST_7D, LAST_30D, CUSTOM]
         buckets:
           type: array
-          maxItems: 30
+          maxItems: 92
           items:
             type: object
             additionalProperties: false
@@ -19833,6 +20127,195 @@ components:
           minLength: 1
         data:
           $ref: '#/components/schemas/MerchantStatsTrendData'
+        traceId:
+          type: string
+          minLength: 1
+    MerchantCustomerNoteUpdateRequest:
+      type: object
+      additionalProperties: false
+      required: [merchantId, storeId, note, expectedVersion]
+      description: 商家内部备注全量写（2026-10-19 扩展，69号 §3）：显式 null 非法；
+        note 0..200 码点、空串=清空；expectedVersion 首存 0。
+      properties:
+        merchantId:
+          $ref: '#/components/schemas/PublicId'
+        storeId:
+          $ref: '#/components/schemas/PublicId'
+        note:
+          type: string
+          maxLength: 200
+        expectedVersion:
+          type: string
+          pattern: ^(0|[1-9][0-9]{0,18})$
+    MerchantCustomerNoteData:
+      type: object
+      additionalProperties: false
+      required: [userId, note]
+      properties:
+        userId:
+          $ref: '#/components/schemas/PublicId'
+        note:
+          type: object
+          additionalProperties: false
+          required: [content, version, updatedAt]
+          properties:
+            content:
+              type: string
+              nullable: true
+              maxLength: 200
+            version:
+              type: string
+              pattern: ^(0|[1-9][0-9]{0,18})$
+            updatedAt:
+              type: string
+              format: date-time
+    MerchantCustomerNoteEnvelope:
+      type: object
+      additionalProperties: false
+      required: [success, code, message, data, traceId]
+      properties:
+        success:
+          type: boolean
+          enum: [true]
+        code:
+          type: string
+          enum: [SUCCESS]
+        message:
+          type: string
+          minLength: 1
+        data:
+          $ref: '#/components/schemas/MerchantCustomerNoteData'
+        traceId:
+          type: string
+          minLength: 1
+    MerchantStatsServiceOrdersData:
+      type: object
+      additionalProperties: false
+      required: [serviceId, serviceName, range, page, pageSize, total, items]
+      properties:
+        serviceId:
+          $ref: '#/components/schemas/PublicId'
+        serviceName:
+          type: string
+          nullable: true
+        range:
+          type: string
+          enum: [TODAY, LAST_7D, LAST_30D, CUSTOM]
+        page:
+          type: integer
+          minimum: 1
+        pageSize:
+          type: integer
+          minimum: 1
+          maximum: 100
+        total:
+          type: integer
+          minimum: 0
+        items:
+          type: array
+          maxItems: 100
+          items:
+            type: object
+            additionalProperties: false
+            required: [orderId, orderNo, orderStage, payAmount, refundedAmount,
+              createdAt, appointmentStartAt, verifiedAt]
+            properties:
+              orderId:
+                $ref: '#/components/schemas/PublicId'
+              orderNo:
+                type: string
+                nullable: true
+                pattern: '^[0-9]{1,19}$'
+              displayStatus:
+                type: string
+                enum: [PENDING_PAYMENT, PENDING_CONFIRM, PENDING_SERVICE, COMPLETED, CANCELED,
+                  REFUND_PENDING_CONFIRM, REFUNDING, REFUNDED, PARTIAL_REFUND, AFTERSALE]
+                description: order 域统一 DisplayOrderStatus 投影（技术基线/ARCH-005）；
+                  下钻行只发投影，裸 stage 不过面。
+              payAmount:
+                type: string
+                pattern: '^[0-9]+\.[0-9]{2}$'
+              refundedAmount:
+                type: string
+                pattern: '^[0-9]+\.[0-9]{2}$'
+              createdAt:
+                type: string
+                nullable: true
+                format: date-time
+              appointmentStartAt:
+                type: string
+                nullable: true
+                format: date-time
+              verifiedAt:
+                type: string
+                nullable: true
+                format: date-time
+    MerchantStatsServiceOrdersEnvelope:
+      type: object
+      additionalProperties: false
+      required: [success, code, message, data, traceId]
+      properties:
+        success:
+          type: boolean
+          enum: [true]
+        code:
+          type: string
+          enum: [SUCCESS]
+        message:
+          type: string
+          minLength: 1
+        data:
+          $ref: '#/components/schemas/MerchantStatsServiceOrdersData'
+        traceId:
+          type: string
+          minLength: 1
+    MerchantStatsUtilizationData:
+      type: object
+      additionalProperties: false
+      required: [range, from, to, availableMinutes, bookedMinutes, utilizationRate]
+      properties:
+        range:
+          type: string
+          enum: [TODAY, LAST_7D, LAST_30D, CUSTOM]
+        from:
+          type: string
+          pattern: '^[0-9]{4}-[0-9]{2}-[0-9]{2}$'
+          description: 窗口起点（UTC 日；快捷区间为服务端计算值，CUSTOM 为回显）。
+        to:
+          type: string
+          pattern: '^[0-9]{4}-[0-9]{2}-[0-9]{2}$'
+          description: 窗口终点（闭区间含当日）。
+        availableMinutes:
+          type: integer
+          nullable: true
+          minimum: 0
+          description: OPEN 排期窗口重叠产能分钟（×configured_capacity）；端口未装配为 null。
+        bookedMinutes:
+          type: integer
+          nullable: true
+          minimum: 0
+          description: CONFIRMED 预约重叠分钟；端口未装配为 null。
+        utilizationRate:
+          type: string
+          nullable: true
+          pattern: '^[0-9]+\.[0-9]$'
+          description: 一位小数百分数（无 % 号）；分母 0 或端口未装配为 null（--）。
+    MerchantStatsUtilizationEnvelope:
+      type: object
+      additionalProperties: false
+      required: [success, code, message, data, traceId]
+      properties:
+        success:
+          type: boolean
+          enum: [true]
+        code:
+          type: string
+          enum: [SUCCESS]
+        message:
+          type: string
+          minLength: 1
+        data:
+          $ref: '#/components/schemas/MerchantStatsUtilizationData'
         traceId:
           type: string
           minLength: 1
@@ -28849,10 +29332,19 @@ components:
     AdminOpsCouponGrantRequest:
       type: object
       additionalProperties: false
-      required: [templateId, userId]
+      required: [templateId]
+      oneOf:
+      - required: [userId]
+      - required: [userIds]
       properties:
         templateId: {$ref: '#/components/schemas/PublicId'}
         userId: {$ref: '#/components/schemas/PublicId'}
+        userIds:
+          type: array
+          items: {$ref: '#/components/schemas/PublicId'}
+          minItems: 1
+          maxItems: 100
+          uniqueItems: true
 
     AdminOpsCouponGrant:
       type: object
@@ -28866,13 +29358,41 @@ components:
         expireAt: {$ref: '#/components/schemas/AuthTimestamp'}
         occurredAt: {$ref: '#/components/schemas/AuthTimestamp'}
 
+    AdminOpsCouponGrantBatch:
+      type: object
+      additionalProperties: false
+      required: [templateId, results, grantedCount, rejectedCount, occurredAt]
+      properties:
+        templateId: {$ref: '#/components/schemas/PublicId'}
+        results:
+          type: array
+          items: {$ref: '#/components/schemas/AdminOpsCouponGrantBatchItem'}
+        grantedCount: {type: integer, format: int32, minimum: 0}
+        rejectedCount: {type: integer, format: int32, minimum: 0}
+        occurredAt: {$ref: '#/components/schemas/AuthTimestamp'}
+
+    AdminOpsCouponGrantBatchItem:
+      type: object
+      additionalProperties: false
+      required: [userId, status]
+      properties:
+        userId: {$ref: '#/components/schemas/PublicId'}
+        status: {type: string, enum: [GRANTED, REJECTED]}
+        instanceId: {$ref: '#/components/schemas/PublicId'}
+        expireAt: {$ref: '#/components/schemas/AuthTimestamp'}
+        occurredAt: {$ref: '#/components/schemas/AuthTimestamp'}
+        code: {type: string}
+        message: {type: string}
+
     AdminOpsCouponGrantEnvelope:
       allOf:
       - $ref: '#/components/schemas/BaseEnvelope'
       - type: object
         properties:
           data:
-            $ref: '#/components/schemas/AdminOpsCouponGrant'
+            oneOf:
+            - $ref: '#/components/schemas/AdminOpsCouponGrant'
+            - $ref: '#/components/schemas/AdminOpsCouponGrantBatch'
 
     AdminOpsCouponVoidRequest:
       type: object

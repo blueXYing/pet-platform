@@ -22,13 +22,21 @@ public interface MerchantStoreProfileMapper {
         @Param("intro") String intro, @Param("announcement") String announcement,
         @Param("businessHours") String businessHours, @Param("promoLevel") Integer promoLevel,
         @Param("promoTitle") String promoTitle, @Param("promoText") String promoText,
-        @Param("photoAssetIds") String photoAssetIds, @Param("now") LocalDateTime now);
+        @Param("photoAssetIds") String photoAssetIds, @Param("avatarAssetId") Long avatarAssetId,
+        @Param("businessStatus") String businessStatus, @Param("now") LocalDateTime now);
     int updateProfile(@Param("storeId") long storeId, @Param("merchantId") long merchantId,
         @Param("intro") String intro, @Param("announcement") String announcement,
         @Param("businessHours") String businessHours, @Param("promoLevel") Integer promoLevel,
         @Param("promoTitle") String promoTitle, @Param("promoText") String promoText,
-        @Param("photoAssetIds") String photoAssetIds, @Param("expectedVersion") long expectedVersion,
+        @Param("photoAssetIds") String photoAssetIds, @Param("avatarAssetId") Long avatarAssetId,
+        @Param("businessStatus") String businessStatus, @Param("expectedVersion") long expectedVersion,
         @Param("now") LocalDateTime now);
+
+    /** Merchant-maintained store facts (2026-10-19 CCR expansion): name/address/phone only —
+     *  city/location/qualification stay audit-owned. Runs under the lockOwnedScope row lock. */
+    int updateStoreFacts(@Param("storeId") long storeId, @Param("merchantId") long merchantId,
+        @Param("storeName") String storeName, @Param("address") String address,
+        @Param("phone") String phone, @Param("now") LocalDateTime now);
 
     int insertAudit(@Param("id") long id, @Param("actorId") long actorId,
         @Param("action") String action, @Param("merchantId") long merchantId,

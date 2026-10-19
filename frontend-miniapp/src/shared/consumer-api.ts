@@ -6,7 +6,7 @@ export type Session = { sessionId: string; userId: string; audience: 'MINIAPP'; 
 type Grant = Session & { accessToken: string; tokenType: 'Bearer' }
 type Attempt = { attemptId: string; attemptToken: string; nextStep: string }
 export type Command = RequestSpec & { requestId: string }
-export type PrivateUploadTransport = (input: { filePath: string; requestId: string; authorization: string; purpose?: 'MERCHANT_APPLICATION_MATERIAL' | 'SERVICE_COVER' | 'FEEDBACK_ATTACHMENT' }) => Promise<{ statusCode: number; data: unknown }>
+export type PrivateUploadTransport = (input: { filePath: string; requestId: string; authorization: string; purpose?: 'MERCHANT_APPLICATION_MATERIAL' | 'SERVICE_COVER' | 'STORE_PHOTO' | 'FEEDBACK_ATTACHMENT' }) => Promise<{ statusCode: number; data: unknown }>
 export type PrivateAssetReceipt = { assetId: string; status: 'READY'; objectSha256: string; mediaType: 'image/jpeg' | 'image/png'; bytes: number }
 export type AfterSaleAssetTransport = {
   upload(input: { filePath: string; requestId: string; authorization: string }): Promise<{ statusCode: number; data: unknown }>
@@ -474,13 +474,13 @@ export class ConsumerApi {
     return decode(value)
   }
   /** Only this typed operation can use the MINIAPP credential for multipart upload. */
-  async uploadPrivateAsset(input: { filePath: string; requestId: string; ownerUserId: string; purpose?: 'MERCHANT_APPLICATION_MATERIAL' | 'SERVICE_COVER' | 'FEEDBACK_ATTACHMENT' }): Promise<PrivateAssetReceipt> {
+  async uploadPrivateAsset(input: { filePath: string; requestId: string; ownerUserId: string; purpose?: 'MERCHANT_APPLICATION_MATERIAL' | 'SERVICE_COVER' | 'STORE_PHOTO' | 'FEEDBACK_ATTACHMENT' }): Promise<PrivateAssetReceipt> {
     const ticket = this.scope.capture()
     const credential = this.credential
     if (!credential || !this.currentSession || credential.sessionId !== this.currentSession.sessionId || credential.userId !== this.currentSession.userId || input.ownerUserId !== this.currentSession.userId || ticket.context.userId !== input.ownerUserId) throw new ApiError('COMMON_UNAUTHORIZED', 401)
     const purpose = input.purpose ?? 'MERCHANT_APPLICATION_MATERIAL'
-    if (!['MERCHANT_APPLICATION_MATERIAL', 'SERVICE_COVER', 'FEEDBACK_ATTACHMENT'].includes(purpose)) throw new Error('UPLOAD_PURPOSE_INVALID')
-    if (purpose === 'SERVICE_COVER') {
+    if (!['MERCHANT_APPLICATION_MATERIAL', 'SERVICE_COVER', 'STORE_PHOTO', 'FEEDBACK_ATTACHMENT'].includes(purpose)) throw new Error('UPLOAD_PURPOSE_INVALID')
+    if (purpose === 'SERVICE_COVER' || purpose === 'STORE_PHOTO') {
       if (ticket.context.workspace !== 'merchant' || !ticket.context.merchantId || !ticket.context.storeId) throw new Error('WORKSPACE_PATH_MISMATCH')
     } else if (ticket.context.workspace !== 'consumer') throw new Error('WORKSPACE_PATH_MISMATCH')
     if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(input.requestId)) throw new Error('REQUEST_ID_REQUIRED')
@@ -498,6 +498,21 @@ export class ConsumerApi {
       if (error instanceof ApiError && error.statusCode === 401) this.clear()
       throw error
     }
+  }
+  /** 店铺照片/头像上传入口（27号 §6.4 扩展，2026-10-19）：STORE_PHOTO 用途的私有小图上传，
+   *  仅商家工作区主账号可用；READY 回执只代表素材就绪，随全字段替换保存后生效。 */
+  async uploadStorePhotoAsset(filePath: string): Promise<PrivateAssetReceipt> {
+    const ticket = this.scope.capture()
+    if (ticket.context.workspace !== 'merchant' || !ticket.context.merchantId || !ticket.context.storeId) {
+      throw new Error('MERCHANT_ENTRY_REQUIRED')
+    }
+    const requestId = await this.uuid()
+    ticket.assertCurrent()
+    return this.uploadPrivateAsset({
+      filePath, requestId,
+      ownerUserId: ticket.context.userId,
+      purpose: 'STORE_PHOTO',
+    })
   }
   pendingDeletes() { return Object.keys(this.pending).filter(key => key.startsWith('delete:') && this.pendingCommand(key)).map(key => key.slice(7)) }
   pendingCommands(prefix: string) {

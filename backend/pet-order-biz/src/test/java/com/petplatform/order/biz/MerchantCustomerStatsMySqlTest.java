@@ -76,7 +76,7 @@ class MerchantCustomerStatsMySqlTest {
             db.orderInStore(9_199L, OTHER_STORE, ALICE, "2026-10-17 09:00:00", "999.00", "0.00", false);
 
             PageResult<CustomerRow> page = api.listCustomers(new CustomerListQuery(
-                    Long.toString(MERCHANT), Long.toString(STORE), null, 1, 20, context()));
+                    Long.toString(MERCHANT), Long.toString(STORE), null, null, 1, 20, context()));
             assertEquals(2, page.total());
             // Spend ranking: ALICE 300 + 150 net = 450; BOB 0 (fully refunded, order counted).
             assertEquals(ALICE_STR, page.items().get(0).userId());
@@ -110,17 +110,17 @@ class MerchantCustomerStatsMySqlTest {
             db.order(9_110L, ALICE, "2026-10-12 08:00:00", "120.00", "0.00", false);
             db.order(9_111L, BOB, "2026-10-12 09:00:00", "80.00", "0.00", false);
             PageResult<CustomerRow> hit = api.listCustomers(new CustomerListQuery(
-                    Long.toString(MERCHANT), Long.toString(STORE), "爱丽丝", 1, 20, context()));
+                    Long.toString(MERCHANT), Long.toString(STORE), "爱丽丝", null, 1, 20, context()));
             assertEquals(1, hit.total());
             assertEquals(ALICE_STR, hit.items().get(0).userId());
             PageResult<CustomerRow> miss = api.listCustomers(new CustomerListQuery(
-                    Long.toString(MERCHANT), Long.toString(STORE), "不存在", 1, 20, context()));
+                    Long.toString(MERCHANT), Long.toString(STORE), "不存在", null, 1, 20, context()));
             assertEquals(0, miss.total());
             assertTrue(miss.items().isEmpty());
             // Foreign coordinates: the authority seam answers the same 403 as production.
             assertEquals(CommonApiCodes.FORBIDDEN, assertThrows(ApiException.class,
                     () -> api.listCustomers(new CustomerListQuery(Long.toString(MERCHANT),
-                            Long.toString(OTHER_STORE), null, 1, 20, context()))).code());
+                            Long.toString(OTHER_STORE), null, null, 1, 20, context()))).code());
         }
     }
 
@@ -195,16 +195,212 @@ class MerchantCustomerStatsMySqlTest {
         }
     }
 
+    /** 2026-10-19 expansion: CUSTOM from/to window with the 92-day guardrail and the reject
+     *  rate (merchant-rejected cancels over paid orders), previous window equal length. */
+    @Test
+    void customWindowAndRejectRateFollowTheRegisteredRules() throws Exception {
+        try (Database db = new Database()) {
+            // CUSTOM window [2026-09-01, 2026-09-30]: 30 closed days; previous [08-02, 09-01).
+            db.order(9_140L, ALICE, "2026-09-05 08:00:00", "300.00", "0.00", true);
+            db.canceledOrder(9_141L, BOB, "2026-09-10 09:00:00", "MERCHANT_REJECT_ORDER"); // rejected after pay
+            db.canceledOrder(9_142L, BOB, "2026-09-11 09:00:00", "USER_CLOSE"); // plain close, never paid
+            db.order(9_143L, BOB, "2026-10-15 09:00:00", "50.00", "0.00", true); // outside the window
+            MerchantStatsQueryApi api = db.stats(null);
+            Overview view = api.overview(statsCustom("2026-09-01", "2026-09-30"));
+            assertEquals("CUSTOM", view.range());
+            assertEquals(3, view.orderCount());       // 09-05 + two cancels; 10-15 excluded
+            // paid = the completed order + the merchant reject (paid then fully refunded); the
+            // plain close was never paid.
+            assertEquals("50.0", view.rejectRate());  // 1 reject / 2 paid, one decimal down
+            assertEquals(1, view.refundOrderCount()); // only the reject carries refunded > 0
+            // The 92-day guardrail, the inverted interval and the loose date format are 400.
+            assertEquals(CommonApiCodes.INVALID_ARGUMENT, assertThrows(ApiException.class,
+                    () -> api.overview(statsCustom("2026-01-01", "2026-04-03"))).code()); // 93 days
+            assertEquals(CommonApiCodes.INVALID_ARGUMENT, assertThrows(ApiException.class,
+                    () -> api.overview(statsCustom("2026-10-02", "2026-10-01"))).code());
+            assertEquals(CommonApiCodes.INVALID_ARGUMENT, assertThrows(ApiException.class,
+                    () -> api.overview(statsCustom("2026-9-1", "2026-09-30"))).code());
+            // Trend buckets cover exactly the custom window's days.
+            var trend = api.revenueTrend(statsCustom("2026-09-01", "2026-09-03"));
+            assertEquals(3, trend.size());
+            assertEquals("2026-09-01", trend.get(0).date());
+            // The utilization port absence keeps the whole metric null ("--").
+            assertNull(api.scheduleUtilization(stats("LAST_7D")).utilizationRate());
+        }
+    }
+
+    @Test
+    void scheduleUtilizationReadsTheSchFactsPort() throws Exception {
+        try (Database db = new Database()) {
+            var port = new com.petplatform.schedule.api.query.ScheduleUtilizationQueryApi() {
+                @Override
+                public Utilization utilization(UtilizationQuery query) {
+                    return new Utilization(600L, 90L);
+                }
+            };
+            MerchantStatsQueryApi api = db.stats(null, port);
+            var view = api.scheduleUtilization(stats("LAST_7D"));
+            assertEquals(600L, view.availableMinutes());
+            assertEquals(90L, view.bookedMinutes());
+            assertEquals("15.0", view.utilizationRate()); // one decimal down
+            var failing = new com.petplatform.schedule.api.query.ScheduleUtilizationQueryApi() {
+                @Override
+                public Utilization utilization(UtilizationQuery query) {
+                    throw new IllegalStateException("schedule facts exploded");
+                }
+            };
+            assertEquals(CommonApiCodes.DEPENDENCY_UNAVAILABLE, assertThrows(ApiException.class,
+                    () -> db.stats(null, failing).scheduleUtilization(stats("LAST_7D"))).code());
+        }
+    }
+
+    /** 2026-10-19 expansion: the service drill-down — paged read-only rows of one window
+     *  service, anti-enumeration 404 for services without window orders. */
+    @Test
+    void serviceDrillDownListsWindowOrdersPaged() throws Exception {
+        try (Database db = new Database()) {
+            db.order(9_150L, ALICE, "2026-10-13 08:00:00", "100.00", "0.00", true, 501L);
+            db.order(9_151L, BOB, "2026-10-14 09:00:00", "120.00", "20.00", true, 501L);
+            db.order(9_152L, ALICE, "2026-10-16 10:00:00", "90.00", "0.00", true, 501L);
+            db.order(9_153L, BOB, "2026-10-18 11:00:00", "70.00", "0.00", true, 502L);
+            db.serviceSnapshot(9_151L, 501L, "猫咪洗澡");
+            MerchantStatsQueryApi api = db.stats(null);
+            var page = api.serviceOrders(stats("LAST_7D"), "501", 1, 2);
+            assertEquals("501", page.serviceId());
+            assertEquals("猫咪洗澡", page.serviceName());
+            assertEquals(3, page.total());
+            assertEquals(2, page.items().size());
+            // Newest creation first; the row keeps this store's own order facts only.
+            assertEquals("9152", page.items().get(0).orderId());
+            assertEquals("120.00", page.items().get(1).payAmount().toPlainString());
+            assertEquals("20.00", page.items().get(1).refundedAmount().toPlainString());
+            var second = api.serviceOrders(stats("LAST_7D"), "501", 2, 2);
+            assertEquals(1, second.items().size());
+            assertEquals("9150", second.items().get(0).orderId());
+            // A service with no window orders is the same anti-enumeration NOT_FOUND.
+            assertEquals(CommonApiCodes.NOT_FOUND, assertThrows(ApiException.class,
+                    () -> api.serviceOrders(stats("LAST_7D"), "503", 1, 20)).code());
+            assertEquals(CommonApiCodes.FORBIDDEN, assertThrows(ApiException.class,
+                    () -> api.serviceOrders(new StatsQuery(Long.toString(MERCHANT),
+                            Long.toString(OTHER_STORE), "LAST_7D", null, null, null, context()),
+                            "501", 1, 20)).code());
+        }
+    }
+
+    /** 2026-10-19 expansion: the order-no-suffix search hits only this store's own tails. */
+    @Test
+    void orderNoSuffixSearchMatchesOnlyStoreOrders() throws Exception {
+        try (Database db = new Database()) {
+            MerchantCustomerQueryApi api = db.customers(null);
+            // order_no = id in the fixture: ALICE 9160 → tail "9160"; BOB 9161 → "9161".
+            db.order(9_160L, ALICE, "2026-10-12 08:00:00", "300.00", "0.00", true);
+            db.order(9_161L, BOB, "2026-10-13 09:00:00", "200.00", "0.00", true);
+            // Another store's order for ALICE must never widen the hit set.
+            db.orderInStore(9_169L, OTHER_STORE, ALICE, "2026-10-14 08:00:00", "999.00", "0.00", false);
+            var hit = api.listCustomers(new CustomerListQuery(Long.toString(MERCHANT),
+                    Long.toString(STORE), null, "9160", 1, 20, context()));
+            assertEquals(1, hit.total());
+            assertEquals(ALICE_STR, hit.items().get(0).userId());
+            // Leading zeros are part of the tail: no order ends in "0160".
+            var padded = api.listCustomers(new CustomerListQuery(Long.toString(MERCHANT),
+                    Long.toString(STORE), null, "0160", 1, 20, context()));
+            assertEquals(0, padded.total());
+            // Foreign coordinate stays 403; malformed suffixes and the double filter are 400.
+            assertEquals(CommonApiCodes.FORBIDDEN, assertThrows(ApiException.class,
+                    () -> api.listCustomers(new CustomerListQuery(Long.toString(MERCHANT),
+                            Long.toString(OTHER_STORE), null, "9160", 1, 20, context()))).code());
+            assertEquals(CommonApiCodes.INVALID_ARGUMENT, assertThrows(ApiException.class,
+                    () -> api.listCustomers(new CustomerListQuery(Long.toString(MERCHANT),
+                            Long.toString(STORE), null, "1", 1, 20, context()))).code());
+            assertEquals(CommonApiCodes.INVALID_ARGUMENT, assertThrows(ApiException.class,
+                    () -> api.listCustomers(new CustomerListQuery(Long.toString(MERCHANT),
+                            Long.toString(STORE), "爱丽丝", "9160", 1, 20, context()))).code());
+        }
+    }
+
+    /** 2026-10-19 expansion: the merchant-internal note — lazy create, CAS, replay, audit. */
+    @Test
+    void customerNoteWritesCreateCasAndReplay() throws Exception {
+        try (Database db = new Database()) {
+            db.order(9_170L, ALICE, "2026-10-12 08:00:00", "300.00", "0.00", true);
+            MerchantCustomerQueryApi reads = db.customers(null);
+            java.util.concurrent.atomic.AtomicLong counter =
+                    new java.util.concurrent.atomic.AtomicLong(7_500_000_000_000_000L);
+            com.petplatform.common.SnowflakeIdGenerator ids = counter::incrementAndGet;
+            var notes = db.notes(ids);
+            String requestId = UUID.randomUUID().toString();
+            var saved = notes.updateNote(new com.petplatform.order.api.query.MerchantCustomerNoteCommandApi.UpdateNoteCommand(
+                    Long.toString(MERCHANT), Long.toString(STORE), ALICE_STR, "对猫毛过敏，注意戴手套",
+                    "0", new com.petplatform.common.CommandContext(requestId, "test",
+                            OperatorType.USER, "8300000000000099", "MINIAPP")));
+            assertEquals("1", saved.version());
+            // The detail face carries the note.
+            var detail = reads.getCustomer(new MerchantCustomerQueryApi.CustomerGetQuery(
+                    Long.toString(MERCHANT), Long.toString(STORE), ALICE_STR, context()));
+            assertEquals("对猫毛过敏，注意戴手套", detail.note().content());
+            assertEquals("1", detail.note().version());
+            // CAS: a stale expectedVersion is 409.
+            assertEquals(CommonApiCodes.CONFLICT, assertThrows(ApiException.class,
+                    () -> notes.updateNote(new com.petplatform.order.api.query.MerchantCustomerNoteCommandApi.UpdateNoteCommand(
+                            Long.toString(MERCHANT), Long.toString(STORE), ALICE_STR, "旧版本",
+                            "0", new com.petplatform.common.CommandContext(UUID.randomUUID().toString(),
+                                    "test", OperatorType.USER, "8300000000000099", "MINIAPP")))).code());
+            // Second write rides the version; the audit keeps the field name only.
+            notes.updateNote(new com.petplatform.order.api.query.MerchantCustomerNoteCommandApi.UpdateNoteCommand(
+                    Long.toString(MERCHANT), Long.toString(STORE), ALICE_STR, "第二版备注", "1",
+                    new com.petplatform.common.CommandContext(UUID.randomUUID().toString(), "test",
+                            OperatorType.USER, "8300000000000099", "MINIAPP")));
+            assertEquals("第二版备注", db.jdbc.queryForObject(
+                    "SELECT note FROM merchant_customer_note WHERE store_id=" + STORE, String.class));
+            assertEquals(2, db.jdbc.queryForObject(
+                    "SELECT COUNT(*) FROM merchant_customer_note_audit", Integer.class));
+            // Same requestId + same payload replays without a second write.
+            var replay = notes.updateNote(new com.petplatform.order.api.query.MerchantCustomerNoteCommandApi.UpdateNoteCommand(
+                    Long.toString(MERCHANT), Long.toString(STORE), ALICE_STR, "对猫毛过敏，注意戴手套",
+                    "0", new com.petplatform.common.CommandContext(requestId, "test",
+                            OperatorType.USER, "8300000000000099", "MINIAPP")));
+            assertEquals("1", replay.version());
+            assertEquals(2, db.jdbc.queryForObject(
+                    "SELECT COUNT(*) FROM merchant_customer_note_audit", Integer.class));
+            // A user with no store order is the anti-enumeration NOT_FOUND.
+            assertEquals(CommonApiCodes.NOT_FOUND, assertThrows(ApiException.class,
+                    () -> notes.updateNote(new com.petplatform.order.api.query.MerchantCustomerNoteCommandApi.UpdateNoteCommand(
+                            Long.toString(MERCHANT), Long.toString(STORE), "8300000000000103",
+                            "无订单客户", "0", new com.petplatform.common.CommandContext(
+                                    UUID.randomUUID().toString(), "test", OperatorType.USER,
+                                    "8300000000000099", "MINIAPP")))).code());
+            // Foreign coordinate is 403; the empty string clears the note (stored NULL).
+            assertEquals(CommonApiCodes.FORBIDDEN, assertThrows(ApiException.class,
+                    () -> notes.updateNote(new com.petplatform.order.api.query.MerchantCustomerNoteCommandApi.UpdateNoteCommand(
+                            Long.toString(MERCHANT), Long.toString(OTHER_STORE), ALICE_STR, "越权",
+                            "2", new com.petplatform.common.CommandContext(UUID.randomUUID().toString(),
+                                    "test", OperatorType.USER, "8300000000000099", "MINIAPP")))).code());
+            notes.updateNote(new com.petplatform.order.api.query.MerchantCustomerNoteCommandApi.UpdateNoteCommand(
+                    Long.toString(MERCHANT), Long.toString(STORE), ALICE_STR, "", "2",
+                    new com.petplatform.common.CommandContext(UUID.randomUUID().toString(), "test",
+                            OperatorType.USER, "8300000000000099", "MINIAPP")));
+            assertNull(db.jdbc.queryForObject(
+                    "SELECT note FROM merchant_customer_note WHERE store_id=" + STORE, String.class));
+        }
+    }
+
     private static QueryContext context() {
         return new QueryContext("test", OperatorType.USER, "8300000000000099");
     }
 
     private static StatsQuery stats(String range) {
-        return new StatsQuery(Long.toString(MERCHANT), Long.toString(STORE), range, null, context());
+        return new StatsQuery(Long.toString(MERCHANT), Long.toString(STORE), range, null, null,
+                null, context());
     }
 
     private static StatsQuery statsTop(String range, int limit) {
-        return new StatsQuery(Long.toString(MERCHANT), Long.toString(STORE), range, limit, context());
+        return new StatsQuery(Long.toString(MERCHANT), Long.toString(STORE), range, limit, null,
+                null, context());
+    }
+
+    private static StatsQuery statsCustom(String from, String to) {
+        return new StatsQuery(Long.toString(MERCHANT), Long.toString(STORE), "CUSTOM", null, from,
+                to, context());
     }
 
     private static final String ALICE_STR = "8300000000000101";
@@ -234,6 +430,30 @@ class MerchantCustomerStatsMySqlTest {
                 ScriptUtils.executeSqlScript(connection, new EncodedResource(
                         new FileSystemResource(root().resolve("docs/03-database/06-核心数据库Schema-v0.1.sql")),
                         StandardCharsets.UTF_8));
+                // Companion schemas for the 2026-10-19 expansion: 40号 adds pet_order.cancel_reason
+                // (the 拒单率 fact); 48/49号 add the aftersale/refund-application status
+                // projections the DisplayOrderStatus truth table reads; the 42号 refund-execution
+                // base (required by the 45号 ALTER); the 45号 command binding rows; the 69号 note
+                // tables (no FKs into 06).
+                ScriptUtils.executeSqlScript(connection, new EncodedResource(
+                        new FileSystemResource(root().resolve("docs/03-database/40-Payment-Foundation-Schema-v0.1.sql")),
+                        StandardCharsets.UTF_8));
+                ScriptUtils.executeSqlScript(connection, new EncodedResource(
+                        new FileSystemResource(root().resolve("docs/03-database/42-Late-Refund-Execution-Schema-v0.1.sql")),
+                        StandardCharsets.UTF_8));
+                // 45号 adds refund_execution.chk_refund_source that 49号 drops/extends — order matters.
+                ScriptUtils.executeSqlScript(connection, new EncodedResource(
+                        new FileSystemResource(root().resolve("docs/03-database/45-Merchant-Order-Actions-Schema-v0.1.sql")),
+                        StandardCharsets.UTF_8));
+                ScriptUtils.executeSqlScript(connection, new EncodedResource(
+                        new FileSystemResource(root().resolve("docs/03-database/48-Verification-Completion-Schema-v0.1.sql")),
+                        StandardCharsets.UTF_8));
+                ScriptUtils.executeSqlScript(connection, new EncodedResource(
+                        new FileSystemResource(root().resolve("docs/03-database/49-Refund-Application-Schema-v0.1.sql")),
+                        StandardCharsets.UTF_8));
+                ScriptUtils.executeSqlScript(connection, new EncodedResource(
+                        new FileSystemResource(root().resolve("docs/03-database/69-Merchant-Customer-Note-Schema-v0.1.sql")),
+                        StandardCharsets.UTF_8));
             } catch (Exception failure) {
                 try { close(); } catch (Exception cleanup) { failure.addSuppressed(cleanup); }
                 throw failure;
@@ -242,6 +462,11 @@ class MerchantCustomerStatsMySqlTest {
                     ALICE, "13800000100", "爱丽丝");
             jdbc.update("INSERT INTO user_account(id,phone,nickname,status,version,created_at,updated_at) VALUES(?,?,?,'ACTIVE',0,UTC_TIMESTAMP(3),UTC_TIMESTAMP(3))",
                     BOB, "13900000200", "鲍勃");
+            // 69号备注伴随表 FK 指向 merchant_store（同 27号伴随表先例）：补本店种子行。
+            jdbc.update("INSERT INTO merchant(id,owner_user_id,merchant_name,status,version,created_at,updated_at) VALUES(?,?,?,'ACTIVE',0,UTC_TIMESTAMP(3),UTC_TIMESTAMP(3))",
+                    MERCHANT, "8300000000000099", "统计测试商家");
+            jdbc.update("INSERT INTO merchant_store(id,merchant_id,store_name,address,status,version,created_at,updated_at) VALUES(?,?,?,'测试地址 1 号','ACTIVE',0,UTC_TIMESTAMP(3),UTC_TIMESTAMP(3))",
+                    STORE, MERCHANT, "统计测试门店");
         }
 
         MerchantCustomerQueryApi customers(UserQueryApi users) {
@@ -267,7 +492,19 @@ class MerchantCustomerStatsMySqlTest {
         }
 
         MerchantStatsQueryApi stats(StoreReviewScoreFactsApi reviewScores) {
-            return new MerchantStatsQueryApiImpl(source, guard(), authority(), reviewScores, CLOCK);
+            return stats(reviewScores, null);
+        }
+
+        MerchantStatsQueryApi stats(StoreReviewScoreFactsApi reviewScores,
+                com.petplatform.schedule.api.query.ScheduleUtilizationQueryApi utilization) {
+            return new MerchantStatsQueryApiImpl(source, guard(), authority(), reviewScores,
+                    utilization, CLOCK);
+        }
+
+        com.petplatform.order.api.query.MerchantCustomerNoteCommandApi notes(
+                com.petplatform.common.SnowflakeIdGenerator ids) {
+            return new com.petplatform.order.biz.apiimpl.MerchantCustomerNoteCommandApiImpl(
+                    source, guard(), authority(), ids);
         }
 
         private static String masked(String phone) {
@@ -285,14 +522,20 @@ class MerchantCustomerStatsMySqlTest {
 
         private static MerchantOrderAuthorityApi authority() {
             return new MerchantOrderAuthorityApi() {
-                @Override
-                public void requireOwner(String merchantId, String storeId, QueryContext context) {}
-                @Override
-                public void requireOwnerRead(String merchantId, String storeId, QueryContext context) {
+                void check(String merchantId, String storeId) {
                     if (!Long.toString(STORE).equals(storeId)
                             || !Long.toString(MERCHANT).equals(merchantId)) {
                         throw new ApiException(CommonApiCodes.FORBIDDEN, "foreign coordinate");
                     }
+                }
+                @Override
+                public void requireOwner(String merchantId, String storeId, QueryContext context) {
+                    // Mirror production: the write family verifies the same coordinate.
+                    check(merchantId, storeId);
+                }
+                @Override
+                public void requireOwnerRead(String merchantId, String storeId, QueryContext context) {
+                    check(merchantId, storeId);
                 }
             };
         }
@@ -317,6 +560,26 @@ class MerchantCustomerStatsMySqlTest {
                     """, id, id, userId, MERCHANT, STORE, serviceId, 7600L, id + 5000,
                     verified ? "VERIFIED" : "UNVERIFIED", new BigDecimal(pay), new BigDecimal(pay),
                     new BigDecimal(refunded), verified ? createdAt : null, createdAt);
+        }
+
+        /** A canceled order: the merchant-reject family paid and was fully refunded; a plain
+         *  close was never paid. Feeds the 拒单率 denominator/numerator rules. */
+        void canceledOrder(long id, long userId, String createdAt, String cancelReason) {
+            boolean rejected = "MERCHANT_REJECT_ORDER".equals(cancelReason);
+            jdbc.update("""
+                    INSERT INTO pet_order
+                    (id,order_no,user_id,merchant_id,store_id,service_id,pet_id,reservation_id,
+                     order_stage,payment_status,verification_status,fulfillment_type,cancel_reason,
+                     original_amount,discount_amount,pay_amount,refunded_amount,
+                     appointment_start_at,appointment_end_at,paid_at,
+                     created_at,updated_at)
+                    VALUES(?,?,?,?,?,?,?,?, 'CANCELED','PAID','UNVERIFIED','IN_STORE',?,
+                           ?,0.00,?,?, '2030-01-01 09:00:00','2030-01-01 10:00:00',?,
+                           ?, UTC_TIMESTAMP(3))
+                    """, id, id, userId, MERCHANT, STORE, 7500L, 7600L, id + 5000,
+                    cancelReason, new BigDecimal("100.00"), new BigDecimal("100.00"),
+                    rejected ? new BigDecimal("100.00") : new BigDecimal("0.00"),
+                    rejected ? createdAt : null, createdAt);
         }
 
         void orderInStore(long id, long storeId, long userId, String createdAt, String pay,

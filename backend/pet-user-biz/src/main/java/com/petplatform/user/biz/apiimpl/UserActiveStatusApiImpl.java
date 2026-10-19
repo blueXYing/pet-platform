@@ -2,8 +2,11 @@ package com.petplatform.user.biz.apiimpl;
 
 import com.petplatform.common.ApiException;
 import com.petplatform.common.CommonApiCodes;
+import com.petplatform.common.OperatorType;
+import com.petplatform.common.QueryContext;
 import com.petplatform.user.api.query.UserActiveStatusApi;
 import com.petplatform.user.biz.infrastructure.persistence.UserAuthStore;
+import java.util.List;
 import java.util.Objects;
 import java.util.Set;
 import javax.sql.DataSource;
@@ -14,6 +17,7 @@ import javax.sql.DataSource;
  * USER_FROZEN write-refusal code, unknown rows to unauthorized, unreadable words to 503.
  */
 public final class UserActiveStatusApiImpl implements UserActiveStatusApi {
+    private static final com.petplatform.common.DecimalPublicIdCodec IDS = new com.petplatform.common.DecimalPublicIdCodec();
     private final UserAuthStore auth;
 
     public UserActiveStatusApiImpl(DataSource dataSource) {
@@ -47,4 +51,30 @@ public final class UserActiveStatusApiImpl implements UserActiveStatusApi {
     private static ApiException unavailable() {
         return new ApiException(CommonApiCodes.DEPENDENCY_UNAVAILABLE, "服务暂不可用，请稍后重试");
     }
+
+    @Override
+    public String currentStatus(String userId, QueryContext context) {
+        long id = id(userId);
+        if (context == null || context.operatorType() != OperatorType.PLATFORM_OPERATOR
+                || context.operatorId() == null || context.operatorId().isBlank()) {
+            throw new ApiException(CommonApiCodes.FORBIDDEN,
+                    "user status probe belongs to platform operators");
+        }
+        List<String> rows = auth.bookingAccountStatus(id, false);
+        return rows.isEmpty() ? null : rows.getFirst();
+    }
+
+    private static long id(String value) {
+        if (value == null) throw invalid();
+        try {
+            return IDS.fromApi(value);
+        } catch (IllegalArgumentException malformed) {
+            throw invalid();
+        }
+    }
+
+    private static ApiException invalid() {
+        return new ApiException(CommonApiCodes.INVALID_ARGUMENT, "invalid user id");
+    }
+
 }

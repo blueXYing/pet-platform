@@ -7,13 +7,16 @@ import java.time.OffsetDateTime;
 import java.util.List;
 
 /**
- * Derived customer read surface for the merchant store (contract 69, PRD 5.12 minimal ruling
- * 2026-10-19): every customer is a user_id grouping of the store's own pet_order rows — zero
+ * Derived customer read surface for the merchant store (contract 69, PRD 5.12; 2026-10-19 CCR
+ * expansion): every customer is a user_id grouping of the store's own pet_order rows — zero
  * new fact sources, zero cross-store rows. The nickname/masked-phone projection comes from the
  * user domain's existing masked basic read; the pet projection is the store's own
- * order_pet_snapshot reduced to name + type/breed level (no health fields, read-only, no
- * export/marketing surface). The OWNER merchant coordinate is re-proven per call inside the
- * store guard transaction by the merchant authority port, mirroring the §4.1 list.
+ * order_pet_snapshot reduced to name + type/breed level (no health fields, no export/marketing
+ * surface). The OWNER merchant coordinate is re-proven per call inside the store guard
+ * transaction by the merchant authority port, mirroring the §4.1 list. The 2026-10-19
+ * expansion adds the order-no-suffix search (hits only when one of THIS store's orders has a
+ * matching decimal tail — no credential enters the path) and the single merchant-internal note
+ * carried on the detail (write face: {@link MerchantCustomerNoteCommandApi}).
  */
 public interface MerchantCustomerQueryApi {
 
@@ -30,11 +33,18 @@ public interface MerchantCustomerQueryApi {
     /** Name + breed-level pet projection only (privacy ruling: no sex/age/weight/vaccine/notes). */
     record PetView(String petName, String petType, String breedName) {}
 
-    /** Derived detail: the summary plus the store's deduped pet list for this customer. */
-    record CustomerDetail(CustomerRow customer, List<PetView> pets) {}
+    /** The store's single internal note for one derived customer; null until the first save. */
+    record NoteView(String content, String version, OffsetDateTime updatedAt) {}
 
-    /** nickname is an optional contains filter (1..64 code points); page 1.., pageSize 1..100. */
-    record CustomerListQuery(String merchantId, String storeId, String nickname,
+    /** Derived detail: summary + deduped pet list + the store's internal note (may be null). */
+    record CustomerDetail(CustomerRow customer, List<PetView> pets, NoteView note) {}
+
+    /**
+     * nickname is an optional contains filter (1..64 code points); orderNoSuffix is the optional
+     * order-no tail filter (2..10 digits, hits only this store's orders). The two filters are
+     * mutually exclusive; page 1.., pageSize 1..100.
+     */
+    record CustomerListQuery(String merchantId, String storeId, String nickname, String orderNoSuffix,
             int page, int pageSize, QueryContext context) {}
 
     /** userId is the canonical decimal string of the customer; coordinates are the store's. */

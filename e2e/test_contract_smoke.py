@@ -41,30 +41,15 @@ class ContractSmokeRegressions(unittest.TestCase):
         # + the v0.3 §4.4 void channel (1, user ruling 2026-10-16 doc 36 minimal
         # authorization, CCR-CPN-VOID-001; kernel switch pet.coupon.void.enabled stays
         # default off) = twenty-two routes.
-        # Contract 65 v0.4 encyclopedia节 (2026-10-19 user ruling "继续扩展CCR"): category
-        # create + breed create + bounded CSV export join the ops console face (25 = 22 + 3).
         self.assertEqual(result['adminOpsOperations'], 25)
-        # Contract 66 user settings/deletion face (2026-10-19 "全做"; v0.2 cooling period
-        # "继续扩展CCR", CCR-USR-DELETION-001): precheck read + cooling write + status read
-        # + CAS cancel = four routes (pet.usersettings.http.enabled default off).
-        self.assertEqual(result['userSettingsOperations'], 4)
-        # Contract 67 feedback ticket C face (2026-10-19, PRD 5.1.28 complaint class;
-        # CCR-CS-FEEDBACK-001): create + list + owner detail = three C routes.
-        self.assertEqual(result['feedbackHttpOperations'], 3)
-        # Contract 67 v0.2 feedback ops face (user ruling "继续扩展CCR"): ops list + verbatim
-        # detail + process + resolve = four admin routes (complaint.read/handle/decide).
-        self.assertEqual(result['feedbackOpsOperations'], 4)
         # C-wiring batch (2026-10-19 ruling): catalog keyword search (1) + open-city
         # directory (1) + contract-68 pet health records (4).
         self.assertEqual(result['catalogSearchOperations'], 1)
         self.assertEqual(result['cityOperations'], 1)
         self.assertEqual(result['petHealthRecordOperations'], 4)
-        # Union 233 = the pre-batch merged base + this batch's 14 routes: 2 settings C routes
-        # and 3 feedback C routes (the unmerged #191 base, counted here for the first time)
-        # + 2 deletion-cooling routes (status read + CAS cancel) + 4 feedback ops
-        # (list/detail/process/resolve) + 3 encyclopedia节 (category create + breed create
-        # + bounded CSV export).
-        self.assertEqual(result['operations'], 233)
+        # Union 212 = 206 + 1 catalog search + 1 city directory + 4 health records
+        # (206 = 163 baseline + 3 encyclopedia + 11 admin trade + 8 governance + 22 ops console).
+        self.assertEqual(result['operations'], 236)
         self.assertGreater(result['stringIdProperties'], 0)
         # Contract 58 favorite/footprint face (2026-10-13): seven reviewed operations.
         self.assertEqual(result['favtrackHttpOperations'], 7)

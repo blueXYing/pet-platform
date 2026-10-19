@@ -43,3 +43,6 @@
 .mst-notice { margin-top: calc(var(--mst-unit) * 12); font-size: calc(var(--mst-unit) * 12); line-height: calc(var(--mst-unit) * 18); color: #a83232; }
 .mst-tail { display: block; margin-top: calc(var(--mst-unit) * 18); font-size: calc(var(--mst-unit) * 10); line-height: calc(var(--mst-unit) * 15); color: #9bb3bd; text-align: center; }
 .mst-bottom-space { height: calc(var(--mst-unit) * 28); flex: none; }
+/* 2026-10-19 扩展：自定义区间卡（CUSTOM from/to ≤92 天，70号扩展面）。 */
+.mst-page .mst-custom .mst-primary { margin-top: calc(var(--mst-unit) * 8); }
+.mst-page .mst-top-row { display: flex; width: 100%; text-align: left; align-items: center; gap: calc(var(--mst-unit) * 10); padding: calc(var(--mst-unit) * 8) 0; }

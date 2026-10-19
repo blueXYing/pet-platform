@@ -113,9 +113,36 @@
         WHERE id=#{templateId} AND status=#{fromStatus} AND version=#{expectedVersion}
     </update>
 
+    <!-- Grant guards (contract 65 §4.3 hardening batch, user ruling 2026-10-19 "继续扩展CCR",
+         CCR-CPN-GRANT-001 §1 extensions). All three run inside the grant execution
+         transaction after selectTemplateForUpdate serialized the template row:
+           hold cap    = AVAILABLE+FROZEN instances of (user, template) vs configured max;
+           frequency   = ISSUE ledger rows (operator remark prefix) of (user, template)
+                         inside the sliding window — coupon_instance join keeps it indexed;
+           stock       = the conditional drawdown below refuses when total_stock is set and
+                         exhausted (NULL stays unlimited). -->
+    <select id="countHeldInstances" resultType="long">
+        SELECT COUNT(*) FROM coupon_instance
+        WHERE coupon_template_id=#{templateId} AND user_id=#{userId}
+          AND status IN ('AVAILABLE','FROZEN')
+    </select>
+
+    <select id="countRecentOperatorGrants" resultType="long">
+        SELECT COUNT(*)
+        FROM coupon_ledger l
+        JOIN coupon_instance i ON i.id = l.coupon_instance_id
+        WHERE l.action='ISSUE'
+          AND i.coupon_template_id=#{templateId}
+          AND l.user_id=#{userId}
+          AND l.remark LIKE CONCAT('operator=', #{operatorId}, ';%')
+          AND l.created_at &gt; #{since}
+    </select>
+
     <!-- Grant write chain (contract 65 §4.3, user ruling 2026-10-16): instance + ISSUE ledger
          + issued_count drawdown commit or roll back together inside the grant execution
-         transaction; total_stock stays unmanaged (unlimited, CCR-CPN-GRANT-001). -->
+         transaction. total_stock drawdown joins the same statement (2026-10-19 hardening):
+         a template with total_stock set can only draw while issued_count is below it; NULL
+         stays unlimited. The row is already locked, so the predicate is defense in depth. -->
     <insert id="insertInstance">
         INSERT INTO coupon_instance
             (id,coupon_template_id,user_id,status,order_id,frozen_at,freeze_expire_at,used_at,
@@ -137,7 +164,7 @@
     <update id="incrementIssuedCount">
         UPDATE coupon_template
         SET issued_count = issued_count + 1, updated_at=#{now}
-        WHERE id=#{templateId}
+        WHERE id=#{templateId} AND (total_stock IS NULL OR issued_count &lt; total_stock)
     </update>
 
     <!-- Void write chain (contract 65 §4.4, user ruling 2026-10-16 doc 36): CAS from the only

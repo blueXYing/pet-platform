@@ -50,6 +50,25 @@ public interface CouponAdminMapper {
             @Param("expireAt") LocalDateTime expireAt,
             @Param("now") LocalDateTime now);
 
+    /**
+     * Grant guard (hardening 2026-10-19): AVAILABLE+FROZEN instances the user already holds
+     * of the template, compared against the configured per-template hold cap.
+     */
+    long countHeldInstances(
+            @Param("templateId") long templateId,
+            @Param("userId") long userId);
+
+    /**
+     * Grant guard (hardening 2026-10-19): ISSUE ledger rows the operator produced for the
+     * (user, template) pair inside the sliding frequency window; the remark carries the
+     * operator audit prefix written by the grant itself.
+     */
+    long countRecentOperatorGrants(
+            @Param("templateId") long templateId,
+            @Param("userId") long userId,
+            @Param("operatorId") String operatorId,
+            @Param("since") LocalDateTime since);
+
     /** Grant audit: the append-only ISSUE ledger row (uk request_id). */
     int insertIssueLedger(
             @Param("id") long id,
@@ -59,7 +78,11 @@ public interface CouponAdminMapper {
             @Param("remark") String remark,
             @Param("now") LocalDateTime now);
 
-    /** Grant drawdown: issued_count is the only template counter the grant face maintains. */
+    /**
+     * Grant drawdown: issued_count is the only template counter the grant face maintains.
+     * Hardening 2026-10-19: the statement refuses (returns 0) once total_stock is set and
+     * exhausted; NULL stays unlimited. The row is already locked by the guard read.
+     */
     int incrementIssuedCount(
             @Param("templateId") long templateId,
             @Param("now") LocalDateTime now);
