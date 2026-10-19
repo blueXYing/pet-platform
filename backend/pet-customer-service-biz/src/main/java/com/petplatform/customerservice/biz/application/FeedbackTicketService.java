@@ -40,7 +40,7 @@ public final class FeedbackTicketService {
     static final int PREVIEW_MAX = 50;
     static final int PAGE_MAX = 10_000;
     static final int PAGE_SIZE_MAX = 50;
-    static final int RATE_LIMIT_PER_MINUTE = 5;
+    public static final int RATE_LIMIT_PER_MINUTE = 5;
 
     public record TicketSummary(String ticketId, String type, String status,
                                 String contentPreview, String createdAt) {}
