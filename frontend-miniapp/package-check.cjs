@@ -36,7 +36,7 @@ for (const extension of ['js', 'json', 'wxml', 'wxss']) {
   assert.ok(fs.existsSync(path.join(root, 'consumer/pages/messages/index.' + extension)),
     'C-006 messages page artifact missing: ' + extension)
 }
-for (const page of ['index', 'detail', 'form']) {
+for (const page of ['index', 'detail', 'form', 'vaccine-form', 'deworm-form']) {
   for (const extension of ['js', 'json', 'wxml', 'wxss']) {
     assert.ok(fs.existsSync(path.join(root, `consumer/pages/pet-archive/${page}.` + extension)),
       `C-002 pet page artifact missing: ${page}.${extension}`)
@@ -53,7 +53,7 @@ assert.deepEqual(packages.map(p => ({ root: p.root, pages: p.pages })), [
     'pages/order-list/index', 'pages/order-confirm/index',
     // Review appeal M face (56号 / REV-002): OWNER review list + one-appeal entry.
     'pages/reviews/index'] },
-  { root: 'consumer/pages/pet-archive', pages: ['index', 'detail', 'form'] },
+  { root: 'consumer/pages/pet-archive', pages: ['index', 'detail', 'form', 'vaccine-form', 'deworm-form'] },
   { root: 'consumer/pages/merchant-application', pages: ['index', 'signing'] },
   { root: 'consumer/pages/store-services', pages: ['index', 'service-detail', 'stores'] },
   { root: 'consumer/pages/coupon-points', pages: ['coupons', 'coupon-detail', 'points'] },

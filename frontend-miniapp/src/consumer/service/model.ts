@@ -170,6 +170,22 @@ export class PreviewServiceRepository implements ServiceCatalogDeps {
     if (!found) throw new ServiceMockError('SERVICE_NOT_FOUND', 404)
     return { ...found }
   }
+  /** HTTP10 §3.3.3 preview：夹具上的关键词过滤（serviceName/categoryName 子串），语义同真实路由。 */
+  async search(keyword: string, page = 1, pageSize = 20): Promise<ServicePage> {
+    await this.pause()
+    if (this.failLoad) { this.failLoad = false; throw new ServiceMockError('COMMON_DEPENDENCY_UNAVAILABLE', 503) }
+    const trimmed = keyword.trim()
+    if (trimmed.length < 1 || [...trimmed].length > 30) throw new ServiceMockError('COMMON_INVALID_ARGUMENT', 400)
+    const lowered = trimmed.toLowerCase()
+    const matched = this.services.filter(service =>
+      service.serviceName.toLowerCase().includes(lowered)
+      || service.categoryName.toLowerCase().includes(lowered))
+    const bounded = Math.min(Math.max(1, Math.trunc(page)), 10000)
+    const size = Math.min(Math.max(1, Math.trunc(pageSize)), 50)
+    const start = (bounded - 1) * size
+    return { items: matched.slice(start, start + size).map(({ description: _description, ...item }) => ({ ...item })),
+      page: bounded, pageSize: size, total: matched.length }
+  }
 }
 export class ServiceMockError extends Error {
   constructor(readonly code: string, readonly statusCode: number) { super(code) }

@@ -49,9 +49,12 @@ public class CPetController {
             "sterilizationStatus", "vaccineStatus", "healthNote", "avatarUrl", "isDefault");
 
     private final PetService pets;
+    private final com.petplatform.user.biz.application.PetHealthRecordService healthRecords;
 
-    public CPetController(PetService pets) {
+    public CPetController(PetService pets,
+            com.petplatform.user.biz.application.PetHealthRecordService healthRecords) {
         this.pets = pets;
+        this.healthRecords = healthRecords;
     }
 
     private static MiniSessionView session(HttpServletRequest req) {
@@ -122,6 +125,99 @@ public class CPetController {
         return ApiResponse.success(
                 receipt(pets.deletePet(new DeletePet(context(req, view), petId))),
                 CShared.trace(req));
+    }
+
+    // ---------------------------------------------- health records (contract 68)
+
+    private static final Set<String> VACCINE_FIELDS = Set.of(
+            "recordDate", "vaccineName", "doseNumber", "nextRecordDate", "note");
+    private static final Set<String> DEWORM_FIELDS = Set.of(
+            "recordDate", "dewormingType", "productName", "nextRecordDate", "note");
+
+    /** Contract 68: PRD 5.1.3 vaccine record sub-resource; 201 first / 200 idempotent replay. */
+    @PostMapping("/{petId}/vaccination-records")
+    public ApiResponse<Map<String, Object>> createVaccination(
+            @PathVariable String petId, @RequestBody Request body, HttpServletRequest req,
+            HttpServletResponse response) {
+        body.require(VACCINE_FIELDS, "recordDate", "vaccineName");
+        MiniSessionView view = session(req);
+        var command = new com.petplatform.user.api.command.PetHealthRecordCommands.CreateVaccinationRecord(
+                context(req, view), petId, date(body.string("recordDate")),
+                body.string("vaccineName"), integer(body.string("doseNumber"), "doseNumber"),
+                date(body.string("nextRecordDate")), body.string("note"));
+        var outcome = healthRecords.createVaccinationOutcome(command);
+        response.setStatus(outcome.replayed() ? 200 : 201);
+        return ApiResponse.success(recordBody(outcome.receipt()), CShared.trace(req));
+    }
+
+    @GetMapping("/{petId}/vaccination-records")
+    public ApiResponse<List<Map<String, Object>>> listVaccination(
+            @PathVariable String petId, HttpServletRequest req) {
+        MiniSessionView view = session(req);
+        return ApiResponse.success(
+                healthRecords.listVaccinationRecords(petId, view.userId()).stream()
+                        .map(CPetController::recordBody).toList(),
+                CShared.trace(req));
+    }
+
+    /** Contract 68: PRD 5.1.3 deworming record sub-resource; 201 first / 200 idempotent replay. */
+    @PostMapping("/{petId}/deworming-records")
+    public ApiResponse<Map<String, Object>> createDeworming(
+            @PathVariable String petId, @RequestBody Request body, HttpServletRequest req,
+            HttpServletResponse response) {
+        body.require(DEWORM_FIELDS, "recordDate", "dewormingType");
+        MiniSessionView view = session(req);
+        var command = new com.petplatform.user.api.command.PetHealthRecordCommands.CreateDewormingRecord(
+                context(req, view), petId, date(body.string("recordDate")),
+                body.string("dewormingType"), body.string("productName"),
+                date(body.string("nextRecordDate")), body.string("note"));
+        var outcome = healthRecords.createDewormingOutcome(command);
+        response.setStatus(outcome.replayed() ? 200 : 201);
+        return ApiResponse.success(recordBody(outcome.receipt()), CShared.trace(req));
+    }
+
+    @GetMapping("/{petId}/deworming-records")
+    public ApiResponse<List<Map<String, Object>>> listDeworming(
+            @PathVariable String petId, HttpServletRequest req) {
+        MiniSessionView view = session(req);
+        return ApiResponse.success(
+                healthRecords.listDewormingRecords(petId, view.userId()).stream()
+                        .map(CPetController::recordBody).toList(),
+                CShared.trace(req));
+    }
+
+    /** Contract 68 wire form: ids decimal String, dates ISO yyyy-MM-dd, facts only. */
+    private static Map<String, Object> recordBody(com.petplatform.user.api.dto.PetHealthRecordView record) {
+        Map<String, Object> body = new LinkedHashMap<>();
+        body.put("recordId", record.recordId());
+        body.put("petId", record.petId());
+        body.put("recordType", record.recordType());
+        body.put("recordDate", record.recordDate() == null ? null : record.recordDate().toString());
+        body.put("vaccineName", record.vaccineName());
+        body.put("doseNumber", record.doseNumber());
+        body.put("dewormingType", record.dewormingType());
+        body.put("productName", record.productName());
+        body.put("nextRecordDate", record.nextRecordDate() == null ? null : record.nextRecordDate().toString());
+        body.put("note", record.note());
+        body.put("status", record.status());
+        return body;
+    }
+
+    private static Map<String, Object> recordBody(com.petplatform.user.api.command.PetHealthRecordCommands.CreateRecordReceipt receipt) {
+        Map<String, Object> body = new LinkedHashMap<>();
+        body.put("petId", receipt.petId());
+        body.put("recordId", receipt.recordId());
+        body.put("recordType", receipt.recordType());
+        body.put("status", receipt.status());
+        return body;
+    }
+
+    private static Integer integer(String value, String field) {
+        if (value == null || value.isEmpty()) return null;
+        if (!value.matches("[1-9][0-9]{0,2}")) {
+            throw new IllegalArgumentException(field + " must be a positive integer 1..20");
+        }
+        return Integer.valueOf(value);
     }
 
     // ------------------------------------------------------------------ mapping

@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.petplatform.user.biz.infrastructure.persistence.mapper.PetHealthRecordMapper">
+
+    <!-- SQL68 (contract 68, 2026-10-19 ruling): user_pet_health_record plus the same-transaction
+         audit rows. Metadata-only audit (35号 style): never the health content itself. -->
+
+    <select id="selectActiveRecords" resultType="com.petplatform.user.biz.infrastructure.persistence.entity.PetHealthRecordEntity">
+        SELECT id,user_id,pet_id,record_type,record_date,vaccine_name,dose_number,
+               deworming_type,product_name,next_record_date,note,status
+        FROM user_pet_health_record
+        WHERE pet_id=#{petId} AND record_type=#{recordType} AND status='ACTIVE'
+        ORDER BY record_date ASC, id ASC
+    </select>
+
+    <select id="countActiveByType" resultType="long">
+        SELECT COUNT(*)
+        FROM user_pet_health_record
+        WHERE pet_id=#{petId} AND record_type=#{recordType} AND status='ACTIVE'
+    </select>
+
+    <insert id="insertRecord" parameterType="com.petplatform.user.biz.infrastructure.persistence.entity.PetHealthRecordEntity">
+        INSERT INTO user_pet_health_record
+        (id,user_id,pet_id,record_type,record_date,vaccine_name,dose_number,
+         deworming_type,product_name,next_record_date,note,status,version,created_at,updated_at)
+        VALUES (#{id},#{userId},#{petId},#{recordType},#{recordDate},#{vaccineName},#{doseNumber},
+         #{dewormingType},#{productName},#{nextRecordDate},#{note},'ACTIVE',0,NOW(3),NOW(3))
+    </insert>
+
+    <insert id="insertAudit" parameterType="com.petplatform.user.biz.infrastructure.persistence.entity.PetHealthRecordAuditEntity">
+        INSERT INTO user_pet_health_record_audit
+        (id,actor_id,action_code,record_id,pet_id,record_type,request_key,request_id,trace_id,occurred_at)
+        VALUES (#{id},#{actorId},#{actionCode},#{recordId},#{petId},#{recordType},#{requestKey},#{requestId},#{traceId},NOW(3))
+    </insert>
+</mapper>

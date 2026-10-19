@@ -164,6 +164,31 @@ function DetailScreen({ preview, scenario, orderId }: { preview: boolean; scenar
         {canShowVerifyBlock(detail)
           ? <VerifyCodeBlock key={detail.orderId} preview={preview} scenario={scenario} orderId={detail.orderId} />
           : <View className='ord-verify-note'><Text id='ord-verify-absent'>{verifyAbsenceNotice(detail)}</Text></View>}
+        {/* §3.7 联系电话增补（2026-10-19 裁决，PRD 5.1.17"点击'联系电话'：唤起系统拨号"）：
+            仅凭服务端 merchantContact 节挂载（门店无电话/商家事实不可用时节为 null 不渲染）。
+            展示用 phoneMasked；拨打电话走 wx.makePhoneCall（完整号码仅存在于本人详情读侧）；
+            复制号码走剪贴板。形态沿设计稿 129:11378 面板（服务热线 + 复制/拨打双钮）。 */}
+        {detail.merchantContact && (detail.merchantContact.phone || detail.merchantContact.phoneMasked)
+          ? <View className='ord-refund-entry ord-contact'>
+              <View className='ord-refund-entry-head'>
+                <Text className='ord-refund-entry-title'>联系电话</Text>
+              </View>
+              <View className='ord-contact-line'>
+                <Text className='ord-contact-label'>服务热线</Text>
+                <Text id='ord-contact-number' className='ord-contact-number'>{detail.merchantContact.phoneMasked || detail.merchantContact.phone}</Text>
+              </View>
+              {detail.merchantContact.phoneMasked && detail.merchantContact.phone
+                && detail.merchantContact.phoneMasked !== detail.merchantContact.phone
+                ? <Text className='ord-verify-hint'>拨打商家电话咨询服务与预约事宜。</Text>
+                : null}
+              <View className='ord-contact-actions'>
+                {detail.merchantContact.phone && <Button id='ord-contact-dial' className='ord-contact-button ord-contact-dial'
+                  onClick={() => { void Taro.makePhoneCall({ phoneNumber: detail.merchantContact!.phone || '' }).catch(() => setNotice('拨号失败，请重试')) }}>拨打电话</Button>}
+                {detail.merchantContact.phone && <Button id='ord-contact-copy' className='ord-contact-button'
+                  onClick={() => { void Taro.setClipboardData({ data: detail.merchantContact!.phone || '' }).catch(() => setNotice('复制失败，请重试')) }}>复制号码</Button>}
+              </View>
+            </View>
+          : null}
         {/* C-005 退款入口：仅凭服务端 actions.canApplyRefund（§3.7 事实字段，ARCH-005 不在页面推导），
             两窗口口径文案与页面归 src/consumer/orders/refund.ts。 */}
         {canApplyRefundEntry(detail) && <View className='ord-refund-entry'>

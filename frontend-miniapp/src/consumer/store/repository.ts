@@ -1,6 +1,6 @@
 import type { ConsumerApi } from '../../shared/consumer-api'
 import type { WorkspaceScope } from '../../shared/workspace'
-import { decodeStore, decodeStorePage, type StoreCity, type StoreDetailView, type StoreDirectoryDeps, type StoreListQuery, type StorePage } from './model'
+import { decodeCityList, decodeStore, decodeStorePage, type StoreCity, type StoreDetailView, type StoreDirectoryDeps, type StoreListQuery, type StorePage } from './model'
 
 function isStatus(error: unknown, statusCode: number): boolean {
   return typeof error === 'object' && error !== null && 'statusCode' in error && (error as { statusCode?: number }).statusCode === statusCode
@@ -24,19 +24,24 @@ export function runCatalogRead<T>(scope: WorkspaceScope, operation: () => Promis
  * Real wiring for GET /api/v1/c/stores and /api/v1/c/stores/{storeId} (role B implementing).
  * Reads are anonymous per the 2026-09-22 adjudication, so they go through
  * ConsumerApi.anonymousRequest and fail closed until the backend ships. The open-city catalog
- * is injected (pages pass the approved /c/merchant-application-cities directory — the store
- * proposal scopes the city parameter to that same boot-side catalog, STR-D3).
+ * defaults to the anonymous §3.3.4 /c/cities directory (2026-10-19 city-selection ruling; the
+ * same boot-side trusted catalog the city filter bounds); callers may still inject the
+ * authenticated /c/merchant-application-cities directory where a session exists.
  */
 export class RealStoreRepository implements StoreDirectoryDeps {
-  constructor(private api: ConsumerApi, private cityCatalog: () => Promise<StoreCity[]>) {}
+  constructor(private api: ConsumerApi, private cityCatalog?: () => Promise<StoreCity[]>) {}
   cities() {
-    // The catalog route stays an authenticated consumer read; if it 401s the page keeps the
-    // default (omit city = all open cities), so the anonymous listing still renders.
-    return this.cityCatalog()
+    // §3.3.4 匿名开放城市目录优先（匿名用户也可选城市）；注入的认证目录（入驻路由）作回退。
+    // 任一目录读取失败时页面保留默认（省略 city = 全部开放城市），匿名列表仍可渲染。
+    return this.cityCatalog
+      ? this.cityCatalog()
+      : this.api.anonymousRequest({ method: 'GET', path: '/api/v1/c/cities' }, decodeCityList)
   }
-  list({ city, page = 1, pageSize = 20 }: StoreListQuery): Promise<StorePage> {
+  list({ city, keyword, page = 1, pageSize = 20 }: StoreListQuery): Promise<StorePage> {
     const data: Record<string, unknown> = { page, pageSize }
     if (city !== undefined) data.city = city
+    // HTTP10 §3.3.2 搜索增补（2026-10-19）：keyword 收窄门店目录（服务名匹配走 /c/services §3.3.3）。
+    if (keyword !== undefined) data.keyword = keyword
     return this.api.anonymousRequest({ method: 'GET', path: '/api/v1/c/stores', data }, decodeStorePage)
   }
   detail(storeId: string): Promise<StoreDetailView> {

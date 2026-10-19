@@ -70,7 +70,13 @@ class OrderQueryHttpTest {
         fixture = new Fixture();
         seed(fixture);
         orders = new COrderQueryController(new OrderQueryApiImpl(fixture.source,
-                java.time.Clock.fixed(NOW, java.time.ZoneOffset.UTC)));
+                java.time.Clock.fixed(NOW, java.time.ZoneOffset.UTC)),
+                // §3.7 联系电话增补：本测试聚焦订单事实投影，merchantContact 组合走 provider 缺席
+                // 分支（null 节不渲染），由契约 68 切片的内核测试覆盖 contact 读侧本身。
+                new org.springframework.beans.factory.ObjectProvider<com.petplatform.merchant.api.query.MerchantStoreContactQueryApi>() {
+                    @Override public com.petplatform.merchant.api.query.MerchantStoreContactQueryApi getIfAvailable() { return null; }
+                    @Override public com.petplatform.merchant.api.query.MerchantStoreContactQueryApi getObject() { throw new IllegalStateException("not configured"); }
+                });
     }
 
     @AfterEach

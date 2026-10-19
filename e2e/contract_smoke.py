@@ -337,6 +337,39 @@ ADDRESS_OPERATIONS = {
         ('200', '400', '401', '403', '404', '409', '500', '503')),
 }
 
+# HTTP10 §3.3.3/§3.3.4 (2026-10-19 C-wiring batch): the C catalog keyword search route rides the
+# service-query assembly with the STR-D8 anonymous pair; the open-city directory is the
+# store-catalog's anonymous companion (code/name pairs only, pure-anonymous security).
+CATALOG_SEARCH_OPERATIONS = {
+    'cSearchCatalogServices': (
+        'get', '/c/services',
+        ('200', '400', '401', '503')),
+}
+CITY_OPERATIONS = {
+    'cListOpenCities': (
+        'get', '/c/cities',
+        ('200', '400', '503')),
+}
+
+# Contract 68 pet health records (2026-10-19 ruling; the same ruling overturns the registry
+# §4.11 scope exclusion for the two add frames): owner-scoped list + idempotent create for the
+# vaccine and deworming facets, the same supplement-23 frame as the address book, plus the
+# metadata-only same-transaction audit.
+PET_HEALTH_RECORD_OPERATIONS = {
+    'cListVaccinationRecords': (
+        'get', '/c/pets/{petId}/vaccination-records',
+        ('200', '400', '401', '404', '500', '503')),
+    'cCreateVaccinationRecord': (
+        'post', '/c/pets/{petId}/vaccination-records',
+        ('200', '201', '400', '401', '403', '404', '409', '500', '503')),
+    'cListDewormingRecords': (
+        'get', '/c/pets/{petId}/deworming-records',
+        ('200', '400', '401', '404', '500', '503')),
+    'cCreateDewormingRecord': (
+        'post', '/c/pets/{petId}/deworming-records',
+        ('200', '201', '400', '401', '403', '404', '409', '500', '503')),
+}
+
 
 def check_notification_preferences(spec, operation, method, path):
     name = operation['operationId']
@@ -463,6 +496,100 @@ def check_address_operations(spec, operation, method, path):
     envelope = spec['components']['schemas']['AddressErrorEnvelope']
     assert 'ADDRESS_LIMIT_EXCEEDED' in envelope['properties']['code']['enum'], 'Address cap error code missing'
     assert 'ADDRESS_NOT_FOUND' in envelope['properties']['code']['enum'], 'Address anti-enumeration code missing'
+
+
+# HTTP10 §3.3.3 C catalog keyword search (2026-10-19 ruling): the service-domain global route
+# keeps the four-condition visibility inside the service module; the HTTP face only validates
+# the keyword bounds and pages over the honest visible total. Same STR-D8 anonymous discipline
+# and no-store caching as the rest of the catalog family.
+def check_catalog_search(spec, operation, method, path):
+    name = operation['operationId']
+    expected_method, expected_path, required_codes = CATALOG_SEARCH_OPERATIONS[name]
+    assert (method, path) == (expected_method, expected_path), f'Catalog search moved: {name}'
+    assert method == 'get', f'Catalog search must stay read-only: {name}'
+    assert operation.get('security') == ANONYMOUS_BROWSE_SECURITY, f'Catalog search security changed: {name}'
+    assert operation.get('x-implementation-status') == 'IMPLEMENTED_DEFAULT_OFF', f'Catalog search status changed: {name}'
+    assert operation.get('x-default-enabled') is False, f'Catalog search must stay default off: {name}'
+    assert operation.get('x-contract') == '10-HTTP-API-Contract-v0.4.md', f'Catalog search authority changed: {name}'
+    assert operation.get('x-assembly-switch') == 'pet.service.query.enabled', f'Catalog search switch changed: {name}'
+    responses = operation['responses']
+    assert set(responses) == set(required_codes), f'Catalog search response surface changed: {name}'
+    for code in responses:
+        response = dereference(spec, responses[code])
+        assert response['headers']['Cache-Control']['schema'] == {'type': 'string', 'enum': ['no-store']}, \
+            f'Catalog search caching changed: {name} {code}'
+        assert response['content']['application/json']['schema'] == {'$ref': '#/components/schemas/MerErrorEnvelope'}, \
+            f'Catalog search envelope changed: {name}'
+    keyword = [dereference(spec, p) for p in operation.get('parameters', []) if dereference(spec, p).get('name') == 'keyword']
+    assert len(keyword) == 1 and keyword[0].get('required') is True, 'Catalog search keyword must be a required query parameter'
+    assert keyword[0]['schema']['maxLength'] == 30, 'Catalog search keyword bound changed'
+    assert 'requestBody' not in operation, f'Catalog search GET must stay bodyless: {name}'
+
+
+# HTTP10 §3.3.4 open-city directory (2026-10-19 ruling): pure-anonymous GET (a carried bearer is
+# not even resolved — the route has no session semantics), code/name pairs of the trusted startup
+# catalog, query forbidden, 503 fail-closed on an unconfigured catalog.
+def check_city_directory(spec, operation, method, path):
+    name = operation['operationId']
+    expected_method, expected_path, required_codes = CITY_OPERATIONS[name]
+    assert (method, path) == (expected_method, expected_path), f'City directory moved: {name}'
+    assert method == 'get', f'City directory must stay read-only: {name}'
+    assert operation.get('security') == [{}], f'City directory must stay pure-anonymous: {name}'
+    assert operation.get('x-implementation-status') == 'IMPLEMENTED_DEFAULT_OFF', f'City directory status changed: {name}'
+    assert operation.get('x-default-enabled') is False, f'City directory must stay default off: {name}'
+    assert operation.get('x-contract') == '10-HTTP-API-Contract-v0.4.md', f'City directory authority changed: {name}'
+    assert operation.get('x-assembly-switch') == 'pet.store.query.enabled', f'City directory switch changed: {name}'
+    assert not operation.get('parameters'), f'City directory must stay parameter-free: {name}'
+    responses = operation['responses']
+    assert set(responses) == set(required_codes), f'City directory response surface changed: {name}'
+    for code in responses:
+        response = dereference(spec, responses[code])
+        assert response['headers']['Cache-Control']['schema'] == {'type': 'string', 'enum': ['no-store']}, \
+            f'City directory caching changed: {name} {code}'
+        expected = {'$ref': '#/components/schemas/MerErrorEnvelope'} if code != '200' \
+            else {'$ref': '#/components/schemas/CityListEnvelope'}
+        assert response['content']['application/json']['schema'] == expected, f'City directory envelope changed: {name}'
+    envelope = dereference(spec, spec['components']['schemas']['CityListEnvelope'])
+    items = dereference(spec, envelope['properties']['data']['items'])
+    assert set(items['required']) == {'cityCode', 'cityName'}, 'City directory item fields changed'
+
+
+# Contract 68 pet health records (2026-10-19 ruling): the same owner-scoped, anti-enumerated,
+# supplement-23 idempotent frame as the address book, capped per pet per type, with the
+# metadata-only audit written in the same transaction as the first submission.
+def check_pet_health_records(spec, operation, method, path):
+    name = operation['operationId']
+    expected_method, expected_path, required_codes = PET_HEALTH_RECORD_OPERATIONS[name]
+    assert (method, path) == (expected_method, expected_path), f'Health record operation moved: {name}'
+    assert operation.get('security') == [{'bearerAuth': []}], f'Health record security changed: {name}'
+    assert operation.get('x-implementation-status') == 'IMPLEMENTED_DEFAULT_OFF', f'Health record status changed: {name}'
+    assert operation.get('x-default-enabled') is False, f'Health record must stay default off: {name}'
+    assert operation.get('x-contract') == '68-Pet-Health-Record-Contract-v0.1.md', f'Health record authority changed: {name}'
+    assert operation.get('x-assembly-switch') == 'pet.auth.c.enabled', f'Health record switch changed: {name}'
+    responses = operation['responses']
+    assert set(responses) == set(required_codes), f'Health record response surface changed: {name}'
+    for code in responses:
+        response = dereference(spec, responses[code])
+        assert response['headers']['Cache-Control']['schema'] == {'type': 'string', 'enum': ['no-store']}, \
+            f'Health record caching changed: {name} {code}'
+        expected = {'$ref': '#/components/schemas/PetHealthRecordErrorEnvelope'} if code != '200' and code != '201' \
+            else {'$ref': '#/components/schemas/PetHealthRecordEnvelope'}
+        if code == '200' and method == 'get':
+            expected = {'$ref': '#/components/schemas/PetHealthRecordListEnvelope'}
+        assert response['content']['application/json']['schema'] == expected, f'Health record envelope changed: {name}'
+    assert not [p for p in operation.get('parameters', []) if dereference(spec, p).get('in') == 'query'], \
+        f'Health record query opened: {name}'
+    if method == 'get':
+        assert 'requestBody' not in operation, f'Health record GET must stay bodyless: {name}'
+    else:
+        body = dereference(spec, operation['requestBody'])
+        assert body.get('required') is True, f'Health record write body must be required: {name}'
+        request = dereference(spec, body['content']['application/json']['schema'])
+        upsert = 'VaccinationRecordUpsert' if name == 'cCreateVaccinationRecord' else 'DewormingRecordUpsert'
+        assert request is spec['components']['schemas'][upsert], f'Health record write body changed: {name}'
+    error = spec['components']['schemas']['PetHealthRecordErrorEnvelope']
+    assert 'PET_HEALTH_RECORD_LIMIT_EXCEEDED' in error['properties']['code']['enum'], 'Health record cap code missing'
+    assert 'PET_NOT_FOUND' in error['properties']['code']['enum'], 'Health record anti-enumeration code missing'
 
 
 # Staff invitation list (contract 54 §7 slice, 2026-10-07): the employee-side self-service
@@ -1961,6 +2088,12 @@ def check(spec):
                 check_admin_governance(spec, operation, method, path)
             if operation_id in ADMIN_OPS_OPERATIONS:
                 check_admin_ops(spec, operation, method, path)
+            if operation_id in CATALOG_SEARCH_OPERATIONS:
+                check_catalog_search(spec, operation, method, path)
+            if operation_id in CITY_OPERATIONS:
+                check_city_directory(spec, operation, method, path)
+            if operation_id in PET_HEALTH_RECORD_OPERATIONS:
+                check_pet_health_records(spec, operation, method, path)
 
             if method in {'post', 'put', 'patch', 'delete'}:
                 assert {'$ref': '#/components/parameters/RequestId'} in parameters, f'Missing request ID: {operation_id}'
@@ -1976,7 +2109,7 @@ def check(spec):
     assert legacy_writes == 10, 'Legacy write surface changed'
     assert legacy_creates == LEGACY_CREATES, 'Legacy create surface changed'
 
-    assert operations == LEGACY_OPERATIONS.keys() | AUTH_OPERATIONS.keys() | MERCHANT_OPERATIONS.keys() | APPLICATION_OPERATIONS.keys() | PRIVATE_ASSET_OPERATIONS.keys() | SERVICE_CATALOG_OPERATIONS.keys() | STORE_CATALOG_OPERATIONS.keys() | SERVICE_WRITE_OPERATIONS.keys() | SCHEDULE_AVAILABILITY_OPERATIONS.keys() | SCHEDULE_WRITE_OPERATIONS.keys() | CREDENTIAL_OPERATIONS.keys() | AFTERSALE_OPERATIONS.keys() | COUPON_POINTS_READ_OPERATIONS.keys() | VERIFICATION_HTTP_OPERATIONS.keys() | NOTIFICATION_PREFERENCE_OPERATIONS.keys() | STAFF_INVITATION_LIST_OPERATIONS.keys() | ORDER_WRITE_OPERATIONS.keys() | REFUND_HTTP_OPERATIONS.keys() | MERCHANT_ORDER_LIST_OPERATIONS.keys() | RESCHEDULE_HTTP_OPERATIONS.keys() | REVIEW_HTTP_OPERATIONS.keys() | REVIEW_APPEAL_HTTP_OPERATIONS.keys() | MERCHANT_REFUND_HTTP_OPERATIONS.keys() | FAVTRACK_HTTP_OPERATIONS.keys() | ADDRESS_OPERATIONS.keys() | POINTS_TASK_OPERATIONS.keys() | BAIKE_OPERATIONS.keys() | ADMIN_TRADE_OPERATIONS.keys() | ADMIN_GOVERNANCE_OPERATIONS.keys() | ADMIN_OPS_OPERATIONS.keys(), 'Unexpected or missing reviewed operations'
+    assert operations == LEGACY_OPERATIONS.keys() | AUTH_OPERATIONS.keys() | MERCHANT_OPERATIONS.keys() | APPLICATION_OPERATIONS.keys() | PRIVATE_ASSET_OPERATIONS.keys() | SERVICE_CATALOG_OPERATIONS.keys() | STORE_CATALOG_OPERATIONS.keys() | SERVICE_WRITE_OPERATIONS.keys() | SCHEDULE_AVAILABILITY_OPERATIONS.keys() | SCHEDULE_WRITE_OPERATIONS.keys() | CREDENTIAL_OPERATIONS.keys() | AFTERSALE_OPERATIONS.keys() | COUPON_POINTS_READ_OPERATIONS.keys() | VERIFICATION_HTTP_OPERATIONS.keys() | NOTIFICATION_PREFERENCE_OPERATIONS.keys() | STAFF_INVITATION_LIST_OPERATIONS.keys() | ORDER_WRITE_OPERATIONS.keys() | REFUND_HTTP_OPERATIONS.keys() | MERCHANT_ORDER_LIST_OPERATIONS.keys() | RESCHEDULE_HTTP_OPERATIONS.keys() | REVIEW_HTTP_OPERATIONS.keys() | REVIEW_APPEAL_HTTP_OPERATIONS.keys() | MERCHANT_REFUND_HTTP_OPERATIONS.keys() | FAVTRACK_HTTP_OPERATIONS.keys() | ADDRESS_OPERATIONS.keys() | POINTS_TASK_OPERATIONS.keys() | BAIKE_OPERATIONS.keys() | ADMIN_TRADE_OPERATIONS.keys() | ADMIN_GOVERNANCE_OPERATIONS.keys() | ADMIN_OPS_OPERATIONS.keys() | CATALOG_SEARCH_OPERATIONS.keys() | CITY_OPERATIONS.keys() | PET_HEALTH_RECORD_OPERATIONS.keys(), 'Unexpected or missing reviewed operations'
 
     schemes = spec['components']['securitySchemes']
     assert schemes['bearerAuth']['type'] == 'http' and schemes['bearerAuth']['scheme'] == 'bearer'
@@ -2044,6 +2177,9 @@ def check(spec):
             'adminTradeOperations': len(operations & ADMIN_TRADE_OPERATIONS.keys()),
             'adminGovernanceOperations': len(operations & ADMIN_GOVERNANCE_OPERATIONS.keys()),
             'adminOpsOperations': len(operations & ADMIN_OPS_OPERATIONS.keys()),
+            'catalogSearchOperations': len(operations & CATALOG_SEARCH_OPERATIONS.keys()),
+            'cityOperations': len(operations & CITY_OPERATIONS.keys()),
+            'petHealthRecordOperations': len(operations & PET_HEALTH_RECORD_OPERATIONS.keys()),
             'resolvedRefs': len(refs), 'stringIdProperties': ids}
 
 

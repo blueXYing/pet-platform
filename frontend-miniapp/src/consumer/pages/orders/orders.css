@@ -136,6 +136,14 @@
 .ordd .ord-refund-entry { margin: calc(var(--ord-unit) * 16.7) calc(var(--ord-unit) * 21.5) 0; width: auto; border-radius: calc(var(--ord-unit) * 16.7); }
 .ordd .ord-refund-entry-title { font-size: calc(var(--ord-unit) * 14.6); font-weight: 700; color: #111827; }
 .ordd .ord-refund-entry-link { align-self: stretch; margin-top: calc(var(--ord-unit) * 12.5); height: calc(var(--ord-unit) * 49.2); border-radius: calc(var(--ord-unit) * 12.85); background: #5baae8; color: #ffffff; font-size: calc(var(--ord-unit) * 15); line-height: calc(var(--ord-unit) * 21.4); font-weight: 600; text-align: center; }
+/* §3.7 联系电话区块（2026-10-19 裁决；卡壳复用 .ord-refund-entry 家族，129:11378 面板词汇：
+   服务热线 label #8aa0ac 12.5 + 号码 #5baae8 700 21，复制/拨打双钮等宽，拨打主蓝实心）。 */
+.ordd .ord-contact-line { display: flex; align-items: baseline; justify-content: space-between; gap: calc(var(--ord-unit) * 8); margin-top: calc(var(--ord-unit) * 8); }
+.ordd .ord-contact-label { font-size: calc(var(--ord-unit) * 12.5); color: #8aa0ac; }
+.ordd .ord-contact-number { font-size: calc(var(--ord-unit) * 21); font-weight: 700; color: #5baae8; }
+.ordd .ord-contact-actions { display: flex; gap: calc(var(--ord-unit) * 10); margin-top: calc(var(--ord-unit) * 12.5); }
+.ordd .ord-contact-button { flex: 1; height: calc(var(--ord-unit) * 42); border-radius: calc(var(--ord-unit) * 12.85); background: #ffffff; border: calc(var(--ord-unit) * 1) solid #5baae8; color: #3c3c3c; font-size: calc(var(--ord-unit) * 14); font-weight: 600; text-align: center; }
+.ordd .ord-contact-dial { background: #5baae8; border-color: #5baae8; color: #ffffff; }
 .ordd .ord-preview-note { padding: calc(var(--ord-unit) * 16) calc(var(--ord-unit) * 21.5); }
 
 /* ---- 以下为退款/改期/评价页共享词汇（详情页已迁 .ordd 作用域，本节不再被 detail.tsx 引用） ----

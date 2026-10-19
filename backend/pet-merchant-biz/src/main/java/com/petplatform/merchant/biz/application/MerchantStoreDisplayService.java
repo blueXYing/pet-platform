@@ -60,6 +60,10 @@ public final class MerchantStoreDisplayService {
         if (page < 1 || page > 10_000) invalid("page is invalid");
         if (pageSize < 1 || pageSize > 50) invalid("pageSize is invalid");
         Set<String> cities = Set.copyOf(query.cityCodes());
+        // Same bound as the HTTP adapter (HTTP10 §3.3.2): 1..30 code points after trimming.
+        String keyword = query.keyword() == null ? null : query.keyword().strip();
+        if (keyword != null && (keyword.isEmpty()
+                || keyword.codePointCount(0, keyword.length()) > 30)) invalid("keyword is invalid");
         return store.read(mapper -> {
             List<MerchantStoreDisplayRowEntity> rows = mapper.selectDisplayStoreCandidates();
             Map<Long, MerchantEligibilityFactsReader.Facts> factsByMerchant = new HashMap<>();
@@ -78,6 +82,13 @@ public final class MerchantStoreDisplayService {
                 }
                 String city = cityFact(row);
                 if (!cities.contains(city)) continue;
+                // HTTP10 §3.3.2 search supplement (2026-10-19): case-insensitive substring
+                // match on the two catalog names only; a blank keyword never filters.
+                if (keyword != null && !keyword.isEmpty()
+                        && !containsIgnoreCase(row.getStoreName(), keyword)
+                        && !containsIgnoreCase(row.getMerchantName(), keyword)) {
+                    continue;
+                }
                 visible.add(row);
             }
             long total = visible.size();
@@ -88,6 +99,10 @@ public final class MerchantStoreDisplayService {
             }
             return new MerchantStoreDisplayPageDTO(items, page, pageSize, total);
         });
+    }
+
+    private static boolean containsIgnoreCase(String value, String keyword) {
+        return value != null && value.toLowerCase(java.util.Locale.ROOT).contains(keyword);
     }
 
     /** C store detail: NOT_FOUND unless the three-condition conjunction holds; 404-indistinguishable. */

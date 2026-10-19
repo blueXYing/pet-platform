@@ -23,4 +23,12 @@ public interface ServiceQueryApi {
 
     /** C visibility rule (HTTP10 3.3.1): NOT_FOUND unless the four-condition conjunction holds. */
     ServiceSnapshotDTO getVisibleService(ServiceSnapshotQuery query);
+
+    /**
+     * HTTP10 §3.3.3 C catalog keyword search (2026-10-19 ruling): ACTIVE services matching the
+     * keyword whose merchant/store pair passes the same four-condition conjunction, fixed
+     * merchant/store/service ascending order, honest visible total. Read-only, anonymous OK.
+     */
+    ServiceSnapshotPageDTO searchVisibleServices(
+            com.petplatform.service.api.query.CatalogServiceSearchQuery query);
 }
