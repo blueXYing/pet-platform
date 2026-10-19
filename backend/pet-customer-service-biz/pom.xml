@@ -25,6 +25,12 @@
             <groupId>com.petplatform</groupId>
             <artifactId>pet-customer-service-api</artifactId>
         </dependency>
+        <!-- Contract 67 (feedback tickets): the write guard consumes the user-owned
+             active-status fact *-api port; api-only, no biz dependency. -->
+        <dependency>
+            <groupId>com.petplatform</groupId>
+            <artifactId>pet-user-api</artifactId>
+        </dependency>
         <dependency>
             <groupId>org.springframework</groupId>
             <artifactId>spring-context</artifactId>

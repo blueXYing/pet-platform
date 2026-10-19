@@ -263,3 +263,16 @@ pet:
   favtrack:
     http:
       enabled: false
+  # Contract-66 user settings hub / account-deletion C face (PRD 5.1.29; CCR-USR-DELETION-001):
+  # default OFF — the slice assembles only with pet.auth.c.enabled AND
+  # pet.merchant.application.enabled (the OWNER-membership surface), composing the order and
+  # aftersale leaf deletion-fact ports; missing ports are assembly errors, never fallbacks.
+  usersettings:
+    http:
+      enabled: false
+  # Contract-67 feedback-ticket C face (PRD 5.1.28 complaint class; CCR-CS-FEEDBACK-001):
+  # default OFF — assembles only with pet.auth.c.enabled; the write guard consumes the
+  # user-owned active-status fact port.
+  feedback:
+    http:
+      enabled: false

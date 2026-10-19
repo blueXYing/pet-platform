@@ -1,0 +1,67 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.petplatform.customerservice.biz.infrastructure.persistence.mapper.FeedbackTicketMapper">
+    <!--
+      Contract 67 feedback tickets (PRD 5.1.28 complaint class; CCR-CS-FEEDBACK-001). The
+      ticket row is the owner-scoped projection (fixed sort created_at DESC, id DESC); the
+      event table is append-only audit; the command binding mirrors SQL14 field-for-field on
+      a module-local table (never another module's command table). Bound values only
+      (PERSISTENCE-XML gate); status word list is frozen at the service boundary.
+    -->
+    <insert id="insertTicket">
+        INSERT INTO feedback_ticket
+            (id, user_id, type, contact, content, status, version, created_at, updated_at)
+        VALUES
+            (#{id}, #{userId}, #{type}, #{contact, javaType=String, jdbcType=VARCHAR}, #{content},
+             #{status}, 0, UTC_TIMESTAMP(3), UTC_TIMESTAMP(3))
+    </insert>
+    <insert id="insertEvent">
+        INSERT INTO feedback_ticket_event
+            (id, ticket_id, action, actor_type, actor_id, detail, created_at)
+        VALUES
+            (#{id}, #{ticketId}, #{action}, #{actorType}, #{actorId},
+             #{detail, javaType=String, jdbcType=VARCHAR}, UTC_TIMESTAMP(3))
+    </insert>
+    <sql id="ticketColumns">
+        id, user_id, type, contact, content, status, version, created_at, updated_at
+    </sql>
+    <select id="findTicket" resultType="com.petplatform.customerservice.biz.infrastructure.persistence.mapper.FeedbackTicketMapper$TicketRow">
+        SELECT <include refid="ticketColumns"/>
+        FROM feedback_ticket
+        WHERE id = #{id} AND user_id = #{userId}
+    </select>
+    <select id="countMine" resultType="long">
+        SELECT COUNT(*) FROM feedback_ticket WHERE user_id = #{userId}
+    </select>
+    <select id="selectMinePage" resultType="com.petplatform.customerservice.biz.infrastructure.persistence.mapper.FeedbackTicketMapper$TicketRow">
+        SELECT <include refid="ticketColumns"/>
+        FROM feedback_ticket
+        WHERE user_id = #{userId}
+        ORDER BY created_at DESC, id DESC
+        LIMIT #{limit} OFFSET #{offset}
+    </select>
+    <select id="selectEvents" resultType="com.petplatform.customerservice.biz.infrastructure.persistence.mapper.FeedbackTicketMapper$EventRow">
+        SELECT id, action, created_at
+        FROM feedback_ticket_event
+        WHERE ticket_id = #{ticketId}
+        ORDER BY created_at ASC, id ASC
+    </select>
+    <insert id="insertBinding">
+        INSERT INTO feedback_command_idempotency
+            (id, request_key, canonical_version, params_sha256, params_canonical, status, created_at)
+        VALUES
+            (#{id}, #{requestKey}, #{canonicalVersion}, #{paramsSha256}, #{paramsCanonical},
+             'RESERVED', UTC_TIMESTAMP(3))
+    </insert>
+    <select id="selectBindingForUpdate" resultType="com.petplatform.customerservice.biz.infrastructure.persistence.mapper.FeedbackTicketMapper$Binding">
+        SELECT id, request_key, canonical_version, params_sha256, params_canonical, status, receipt_json
+        FROM feedback_command_idempotency
+        WHERE request_key = #{requestKey}
+        FOR UPDATE
+    </select>
+    <update id="markSucceeded">
+        UPDATE feedback_command_idempotency
+        SET status = 'SUCCEEDED', receipt_json = #{receiptJson}, succeeded_at = UTC_TIMESTAMP(3)
+        WHERE request_key = #{requestKey} AND status = 'RESERVED'
+    </update>
+</mapper>

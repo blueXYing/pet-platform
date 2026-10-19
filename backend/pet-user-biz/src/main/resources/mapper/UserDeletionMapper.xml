@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.petplatform.user.biz.infrastructure.persistence.mapper.UserDeletionMapper">
+    <!--
+      Contract 66 account deletion (CCR-USR-DELETION-001): one append-only audit row per
+      accepted deletion (66号 Schema — never updated/deleted) plus the guarded account flip
+      into the SQL06 §1 CANCELED state. Bound values only (PERSISTENCE-XML gate).
+    -->
+    <insert id="insertDeletionRequest">
+        INSERT INTO user_deletion_request
+            (id, user_id, request_id, acknowledged, outcome, blockers_json, created_at)
+        VALUES
+            (#{id}, #{userId}, #{requestId}, #{acknowledged}, #{outcome},
+             #{blockersJson, javaType=String, jdbcType=VARCHAR}, UTC_TIMESTAMP(3))
+    </insert>
+    <update id="cancelAccount">
+        UPDATE user_account
+        SET status = 'CANCELED', version = version + 1, updated_at = UTC_TIMESTAMP(3)
+        WHERE id = #{userId} AND status = #{expectedStatus}
+    </update>
+</mapper>
