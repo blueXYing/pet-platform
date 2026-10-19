@@ -1,0 +1,40 @@
+login ok userId=710100
+login ok userId=710100
+NON-JSON 403 /c/orders: 
+create order attempt 1 -> 403 {"raw": ""}
+NON-JSON 403 /c/orders: 
+create order attempt 2 -> 403 {"raw": ""}
+NON-JSON 403 /c/orders: 
+create order attempt 3 -> 403 {"raw": ""}
+NON-JSON 403 /c/orders: 
+create order attempt 4 -> 403 {"raw": ""}
+NON-JSON 403 /c/orders: 
+create order attempt 5 -> 403 {"raw": ""}
+NON-JSON 403 /c/orders: 
+create order attempt 6 -> 403 {"raw": ""}
+login ok userId=710100
+create order attempt 1 -> 409 {"code": "SCHEDULE_CAPACITY_EXCEEDED", "message": "schedule capacity is unavailable", "data": null, "traceId": "053e728f-9930-41db-adf0-81296ee5127c", "success": false}
+create order attempt 2 -> 409 {"code": "SCHEDULE_CAPACITY_EXCEEDED", "message": "schedule capacity is unavailable", "data": null, "traceId": "102a78fb-91a3-4dc0-9a1e-f92f54fc86dc", "success": false}
+create order attempt 3 -> 409 {"code": "SCHEDULE_CAPACITY_EXCEEDED", "message": "schedule capacity is unavailable", "data": null, "traceId": "e2ffa0e4-3799-4505-8908-b914bcb82040", "success": false}
+create order attempt 4 -> 409 {"code": "SCHEDULE_CAPACITY_EXCEEDED", "message": "schedule capacity is unavailable", "data": null, "traceId": "5c611ad2-e4a4-448b-af71-d4fb5beb46d0", "success": false}
+create order attempt 5 -> 409 {"code": "SCHEDULE_CAPACITY_EXCEEDED", "message": "schedule capacity is unavailable", "data": null, "traceId": "08fde0ae-9b34-4baf-9b81-1a9ffd53d45e", "success": false}
+create order attempt 6 -> 409 {"code": "SCHEDULE_CAPACITY_EXCEEDED", "message": "schedule capacity is unavailable", "data": null, "traceId": "cb2a5682-d505-4ef0-9dc2-2bd350be998a", "success": false}
+login ok userId=710100
+create order attempt 1 -> 201 {"code": "SUCCESS", "message": "ok", "data": {"orderId": "105526627898478592", "orderNo": "105526627898478593", "displayStatus": "PENDING_PAYMENT", "payAmount": "50.00", "paymentExpireAt": "2026-10-19T04:55:08.686Z"}, "traceId": "e53db78b-9
+payment intent -> 200
+order stage after sandbox pay: PENDING_CONFIRM
+refund apply -> 409 {"code": "REFUND_NOT_ELIGIBLE", "message": "\u5f53\u524d\u8ba2\u5355\u72b6\u6001\u6216\u8bf7\u6c42\u53c2\u6570\u51b2\u7a81\uff0c\u8bf7\u5237\u65b0\u540e\u6838\u5bf9", "data": null, "traceId": "a4b7a0f5-ac0c-45ff-908f-965fe9b32a07"}
+login ok userId=710100
+picked slot 2026-10-20T09:00:00+08:00 ~ 2026-10-20T10:00:00+0800
+create order attempt 1 -> 400 {"code": "COMMON_INVALID_ARGUMENT", "message": "\u8bf7\u6c42\u53c2\u6570\u4e0d\u5408\u6cd5", "data": null, "traceId": "c1e83370-bd42-4dcf-9185-0cc13f6a11b8", "success": false}
+create order attempt 2 -> 400 {"code": "COMMON_INVALID_ARGUMENT", "message": "\u8bf7\u6c42\u53c2\u6570\u4e0d\u5408\u6cd5", "data": null, "traceId": "cf761fa4-33c3-400f-8c40-89c4ba264b8e", "success": false}
+create order attempt 3 -> 400 {"code": "COMMON_INVALID_ARGUMENT", "message": "\u8bf7\u6c42\u53c2\u6570\u4e0d\u5408\u6cd5", "data": null, "traceId": "8eb96d82-8a0e-4c12-a78e-35008242a349", "success": false}
+create order attempt 4 -> 400 {"code": "COMMON_INVALID_ARGUMENT", "message": "\u8bf7\u6c42\u53c2\u6570\u4e0d\u5408\u6cd5", "data": null, "traceId": "9d3fedfe-edcf-4733-8ea8-749682a66181", "success": false}
+create order attempt 5 -> 400 {"code": "COMMON_INVALID_ARGUMENT", "message": "\u8bf7\u6c42\u53c2\u6570\u4e0d\u5408\u6cd5", "data": null, "traceId": "5210d2bc-b416-43da-b601-0270125ce566", "success": false}
+create order attempt 6 -> 400 {"code": "COMMON_INVALID_ARGUMENT", "message": "\u8bf7\u6c42\u53c2\u6570\u4e0d\u5408\u6cd5", "data": null, "traceId": "94f1f024-dae0-46b7-a5ee-3f487d2bb235", "success": false}
+login ok userId=710100
+picked slot 2026-10-20T09:00:00+08:00 ~ 2026-10-20T10:00:00+08:00
+create order attempt 1 -> 201 {"code": "SUCCESS", "message": "ok", "data": {"orderId": "105542738543280128", "orderNo": "105542738543280129", "displayStatus": "PENDING_PAYMENT", "payAmount": "50.00", "paymentExpireAt": "2026-10-19T05:59:09.762Z"}, "traceId": "7469f302-6
+payment intent -> 200
+order stage after sandbox pay: PENDING_CONFIRM
+refund apply -> 409 {"code": "REFUND_NOT_ELIGIBLE", "message": "\u5f53\u524d\u8ba2\u5355\u72b6\u6001\u6216\u8bf7\u6c42\u53c2\u6570\u51b2\u7a81\uff0c\u8bf7\u5237\u65b0\u540e\u6838\u5bf9", "data": null, "traceId": "f220fa6d-0edc-4805-a180-34a61088f083"}

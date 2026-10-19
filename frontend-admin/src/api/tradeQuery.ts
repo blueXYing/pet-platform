@@ -167,14 +167,21 @@ function statusLog(v: unknown): v is StatusLog {
     && typeof v.eventType === 'string' && typeof v.operatorType === 'string'
     && optional(v.operatorId, validId) && optional(v.remark, x => typeof x === 'string') && utc(v.createdAt);
 }
-function refundSummary(v: unknown): v is RefundSummary {
-  return exact(v, ['refundOrderId', 'refundNo', 'orderId', 'refundType', 'sourceType', 'status', 'refundAmount', 'initiatorType', 'channelRefundNo', 'succeededAt', 'createdAt'])
-    && validId(v.refundOrderId) && validId(v.refundNo) && validId(v.orderId)
+// Summary field constraints are shared by the list-row validator (exact 11 keys) and the
+// detail validator (exact 13 keys, contract allOf AdminTradeRefundSummary + {application,
+// execution}); the detail validator must NOT re-run the summary key-set exact on the same
+// object (13 keys can never also equal 11) — only the field checks are shared.
+const REFUND_SUMMARY_KEYS = ['refundOrderId', 'refundNo', 'orderId', 'refundType', 'sourceType', 'status', 'refundAmount', 'initiatorType', 'channelRefundNo', 'succeededAt', 'createdAt'];
+function refundSummaryFields(v: Record<string, unknown>): boolean {
+  return validId(v.refundOrderId) && validId(v.refundNo) && validId(v.orderId)
     && ['FULL', 'PARTIAL'].includes(v.refundType as string)
     && REFUND_SOURCE_TYPES.includes(v.sourceType as RefundSourceType)
     && REFUND_STATUSES.includes(v.status as RefundStatus) && money(v.refundAmount)
     && typeof v.initiatorType === 'string' && optional(v.channelRefundNo, x => typeof x === 'string')
     && optional(v.succeededAt, utc) && utc(v.createdAt);
+}
+function refundSummary(v: unknown): v is RefundSummary {
+  return exact(v, REFUND_SUMMARY_KEYS) && refundSummaryFields(v);
 }
 function applicationView(v: unknown): v is RefundApplicationView {
   return exact(v, ['applicationId', 'status', 'requestedAmount', 'merchantDeadline', 'decidedAt'])
@@ -187,7 +194,7 @@ function executionView(v: unknown): v is RefundExecutionView {
     && v.currency === 'CNY';
 }
 function refundDetail(v: unknown): v is RefundDetail {
-  if (!exact(v, [...['refundOrderId', 'refundNo', 'orderId', 'refundType', 'sourceType', 'status', 'refundAmount', 'initiatorType', 'channelRefundNo', 'succeededAt', 'createdAt'], 'application', 'execution']) || !refundSummary(v)) return false;
+  if (!exact(v, [...REFUND_SUMMARY_KEYS, 'application', 'execution']) || !refundSummaryFields(v)) return false;
   const raw = v as Record<string, unknown>;
   const application = raw.application;
   if (application !== null && !applicationView(application)) return false;
@@ -195,10 +202,17 @@ function refundDetail(v: unknown): v is RefundDetail {
   if (execution !== null && !executionView(execution)) return false;
   return true;
 }
-function verificationSummary(v: unknown): v is VerificationSummary {
-  return exact(v, ['verificationId', 'verificationNo', 'orderId', 'storeId', 'verifyMethod', 'verifiedAt'])
-    && validId(v.verificationId) && validId(v.verificationNo) && validId(v.orderId) && validId(v.storeId)
+// Same split as the refund face: the detail validator shares the summary field checks but
+// asserts the flat 9-key detail shape exactly once (contract allOf AdminTradeVerificationSummary
+// + {operatorStaffId, attempts, riskAttempts}); re-running the 6-key summary exact would be
+// unsatisfiable against the detail payload.
+const VERIFICATION_SUMMARY_KEYS = ['verificationId', 'verificationNo', 'orderId', 'storeId', 'verifyMethod', 'verifiedAt'];
+function verificationSummaryFields(v: Record<string, unknown>): boolean {
+  return validId(v.verificationId) && validId(v.verificationNo) && validId(v.orderId) && validId(v.storeId)
     && VERIFY_METHODS.includes(v.verifyMethod as VerifyMethod) && utc(v.verifiedAt);
+}
+function verificationSummary(v: unknown): v is VerificationSummary {
+  return exact(v, VERIFICATION_SUMMARY_KEYS) && verificationSummaryFields(v);
 }
 function attempt(v: unknown): v is VerificationDetail['attempts'][number] {
   return exact(v, ['attemptId', 'result', 'failReason', 'attemptedAt'])
@@ -211,8 +225,8 @@ function riskAttempt(v: unknown): v is VerificationDetail['riskAttempts'][number
     && typeof v.countsFailure === 'boolean' && utc(v.attemptedAt);
 }
 function verificationDetail(v: unknown): v is VerificationDetail {
-  if (!exact(v, [...['verificationId', 'verificationNo', 'orderId', 'storeId', 'verifyMethod', 'verifiedAt'], 'operatorStaffId', 'attempts', 'riskAttempts'])
-    || !verificationSummary(v)) return false;
+  if (!exact(v, [...VERIFICATION_SUMMARY_KEYS, 'operatorStaffId', 'attempts', 'riskAttempts'])
+    || !verificationSummaryFields(v)) return false;
   const raw = v as Record<string, unknown>;
   if (!validId(raw.operatorStaffId) || !Array.isArray(raw.attempts) || !Array.isArray(raw.riskAttempts)) return false;
   return (raw.attempts as unknown[]).every(attempt) && (raw.riskAttempts as unknown[]).every(riskAttempt);

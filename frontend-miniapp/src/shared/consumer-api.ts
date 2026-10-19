@@ -460,13 +460,14 @@ export class ConsumerApi {
     return saved?.userId === this.currentSession?.userId && saved?.userId === this.scope.current?.userId && saved.command ? JSON.parse(JSON.stringify(saved.command)) as Command : undefined
   }
   /** Store-catalog reads are anonymous-browsable (user adjudication 2026-09-22 on the
-   *  /c/stores contract; STR-D8 unifies all four C catalog GET routes): no credential, no
+   *  /c/stores contract; STR-D8 unifies all C catalog GET routes): no credential, no
    *  session requirement, and no workspace context needed; anything else keeps the
    *  authenticated request() path. When a context does exist, a scope ticket still guards
-   *  stale context switches. */
+   *  stale context switches. 2026-10-19 C-wiring batch adds the §3.3.3 catalog keyword
+   *  search (/c/services, exact path) and the §3.3.4 open-city directory (/c/cities). */
   async anonymousRequest<T>(spec: RequestSpec, decode: (data: unknown) => T): Promise<T> {
     if (spec.method !== 'GET'
-      || !/^\/api\/v1\/c\/(stores(\/[1-9][0-9]{0,18}(\/services)?)?|services\/[1-9][0-9]{0,18}|encyclopedia\/categories|encyclopedia\/breeds(\/[1-9][0-9]{0,18})?)$/.test(spec.path)) throw new Error('INVALID_PATH')
+      || !/^\/api\/v1\/c\/(stores(\/[1-9][0-9]{0,18}(\/services)?)?|services(\/[1-9][0-9]{0,18})?|encyclopedia\/categories|encyclopedia\/breeds(\/[1-9][0-9]{0,18})?|cities)$/.test(spec.path)) throw new Error('INVALID_PATH')
     const ticket = this.scope.current ? this.scope.capture() : null
     const value = await this.send(spec)
     if (ticket) ticket.assertCurrent()

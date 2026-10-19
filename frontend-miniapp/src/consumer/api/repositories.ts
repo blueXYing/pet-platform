@@ -1,6 +1,7 @@
 import { ConsumerApi, object, id } from '../../shared/consumer-api'
 import type { ProfileDraft } from '../profile/model'
 import { draftToContract, type PetView, type PetDraft, type PetType } from '../pet/model'
+import { decodeHealthRecord, decodeHealthRecordList } from '../pet/health-record'
 import { decodeServiceDetail, decodeServicePage, type ServiceDetailView, type ServicePage } from '../service/model'
 
 function text(value: unknown, nullable = false): string | null {
@@ -82,6 +83,25 @@ export class RealPetRepository {
       return { petId, status: 'DISABLED' as const }
     })
   }
+  // ---- 宠物健康记录（契约 68，2026-10-19 裁决）：本人宠物的记录列表 + 幂等添加。 ----
+  listHealthRecords(petId: string, recordType: 'vaccination-records' | 'deworming-records') {
+    id(petId)
+    return this.api.request(
+      { method: 'GET', path: `/api/v1/c/pets/${petId}/${recordType}` },
+      decodeHealthRecordList)
+  }
+  createVaccinationRecord(petId: string, body: Record<string, unknown>) {
+    id(petId)
+    return this.api.write(`pet-health-record:vaccine:${petId}`,
+      { method: 'POST', path: `/api/v1/c/pets/${petId}/vaccination-records`, data: body },
+      decodeHealthRecord)
+  }
+  createDewormingRecord(petId: string, body: Record<string, unknown>) {
+    id(petId)
+    return this.api.write(`pet-health-record:deworm:${petId}`,
+      { method: 'POST', path: `/api/v1/c/pets/${petId}/deworming-records`, data: body },
+      decodeHealthRecord)
+  }
 }
 /** Frozen C service-catalog read slice (CCR-W2-API-001 SVC-D2): list + detail, read-only.
  *  STR-D8 makes all four C catalog GET routes anonymous-browsable, so these two read routes
@@ -91,6 +111,14 @@ export class RealServiceRepository {
   list(storeId: string, page = 1, pageSize = 20): Promise<ServicePage> {
     id(storeId)
     return this.api.anonymousRequest({ method: 'GET', path: `/api/v1/c/stores/${storeId}/services`, data: { page, pageSize } }, decodeServicePage)
+  }
+  /** HTTP10 §3.3.3 目录关键词搜索（2026-10-19 裁决）：匿名 GET，keyword 必填 1..30 码点。 */
+  search(keyword: string, page = 1, pageSize = 20): Promise<ServicePage> {
+    const trimmed = keyword.trim()
+    if (trimmed.length < 1 || [...trimmed].length > 30) return Promise.reject(new Error('INVALID_KEYWORD'))
+    return this.api.anonymousRequest(
+      { method: 'GET', path: '/api/v1/c/services', data: { keyword: trimmed, page, pageSize } },
+      decodeServicePage)
   }
   detail(serviceId: string): Promise<ServiceDetailView> {
     id(serviceId)

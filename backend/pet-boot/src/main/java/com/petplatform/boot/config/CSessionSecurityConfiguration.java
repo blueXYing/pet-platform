@@ -132,13 +132,17 @@ public class CSessionSecurityConfiguration {
             // Service catalog (CCR-W2-API-001 service domain): anonymous GET per the store-read
             // STR-D8 ruling (PRD "all users browse"); the filter validates a carried bearer.
             a.requestMatchers("/api/v1/c/stores/*/services").permitAll();
-            a.requestMatchers("/api/v1/c/services/*").permitAll();
+            a.requestMatchers("/api/v1/c/services", "/api/v1/c/services/*").permitAll();
             if (storeQueryEnabled) {
               // Store catalog (CCR-W2-API-001 store read, STR-D8): GET-only registration behind
               // the assembly switch; non-GET stays denied and the switch keeps it unreachable
               // when the slice is not assembled.
               a.requestMatchers(HttpMethod.GET, "/api/v1/c/stores", "/api/v1/c/stores/*")
                   .permitAll();
+              // Open-city directory read (HTTP10 §3.3.4, 2026-10-19 city-selection ruling):
+              // anonymous companion of the store/service catalog (code/name pairs only), same
+              // switch, GET-only.
+              a.requestMatchers(HttpMethod.GET, "/api/v1/c/cities").permitAll();
             }
             a.requestMatchers(HttpMethod.PUT, "/api/v1/c/pets/*", "/api/v1/c/profile").permitAll();
             a.requestMatchers(HttpMethod.DELETE, "/api/v1/c/pets/*").permitAll();

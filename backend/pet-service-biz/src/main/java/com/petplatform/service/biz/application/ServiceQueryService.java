@@ -17,8 +17,10 @@ import com.petplatform.service.biz.infrastructure.persistence.ServiceReadStore;
 import com.petplatform.service.biz.infrastructure.persistence.entity.ServiceItemReadEntity;
 import java.math.BigDecimal;
 import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 
@@ -110,6 +112,59 @@ public final class ServiceQueryService {
             for (ServiceItemReadEntity row : rows) items.add(withCoverUrl(toSnapshot(row)));
             return new ServiceSnapshotPageDTO(List.copyOf(items), page, pageSize, total);
         });
+    }
+
+    /**
+     * HTTP10 §3.3.3 C catalog keyword search (2026-10-19 ruling). Same visibility machinery as
+     * {@link #storePage}: ACTIVE rows, one eligibility read per distinct merchant/store pair
+     * inside the single read-only snapshot, ineligible rows silently hidden, facts failures
+     * fail closed as 503 — never an empty-page degradation. Candidates are matched in SQL on
+     * the service and category names (pre-escaped LIKE, case-insensitive by column collation);
+     * the visible total is computed after eligibility so pagination stays honest, and the fixed
+     * merchant/store/service ascending order mirrors the store catalog discipline.
+     */
+    public ServiceSnapshotPageDTO catalogSearch(com.petplatform.service.api.query.CatalogServiceSearchQuery query) {
+        if (query == null) invalid("query is required");
+        if (query.context() == null) invalid("query context is required");
+        String keyword = query.keyword() == null ? null : query.keyword().strip();
+        if (keyword == null || keyword.isEmpty()
+                || keyword.codePointCount(0, keyword.length()) > 30) invalid("keyword is invalid");
+        int page = query.page();
+        int pageSize = query.pageSize();
+        if (page < 1 || page > 10_000) invalid("page is invalid");
+        if (pageSize < 1 || pageSize > 50) invalid("pageSize is invalid");
+        return store.read(mapper -> {
+            List<ServiceItemReadEntity> matched = mapper.selectActiveServiceCandidates(likeEscape(keyword));
+            Map<String, MerchantDisplayEligibilityDTO> factsByPair = new LinkedHashMap<>();
+            List<ServiceItemReadEntity> visible = new ArrayList<>(Math.min(matched.size(), 256));
+            for (ServiceItemReadEntity row : matched) {
+                if (row.getId() == null || row.getId() <= 0
+                        || row.getMerchantId() == null || row.getMerchantId() <= 0
+                        || row.getStoreId() == null || row.getStoreId() <= 0) {
+                    unavailable("service identity facts are invalid");
+                }
+                MerchantDisplayEligibilityDTO facts = factsByPair.computeIfAbsent(
+                        row.getMerchantId() + ":" + row.getStoreId(),
+                        ignored -> displayFacts(row, query.context()));
+                if (!facts.merchantEnabled() || !facts.storeEnabled() || !facts.acceptsNewOrders()) {
+                    continue; // Confirmed ineligible: hidden, never an error.
+                }
+                visible.add(row);
+            }
+            long total = visible.size();
+            List<ServiceSnapshotDTO> items = new ArrayList<>(Math.min(pageSize, visible.size()));
+            long from = (page - 1L) * pageSize;
+            for (long index = from; index < from + pageSize && index < total; index++) {
+                items.add(withCoverUrl(toSnapshot(visible.get((int) index))));
+            }
+            return new ServiceSnapshotPageDTO(List.copyOf(items), page, pageSize, total);
+        });
+    }
+
+    /** LIKE wildcard literalisation for the §3.3.3 keyword match (escape char is a backslash). */
+    private static String likeEscape(String keyword) {
+        String backslash = "\\";
+        return keyword.replace(backslash, "\\\\").replace("%", "\\%").replace("_", "\\_");
     }
 
     /** C visibility rule: NOT_FOUND unless the four-condition conjunction holds. */

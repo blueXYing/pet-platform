@@ -1,0 +1,104 @@
+12:37:22.742 [main] INFO com.zaxxer.hikari.HikariDataSource -- e2e-core-loop - Starting...
+12:37:22.755 [main] INFO com.zaxxer.hikari.pool.HikariPool -- e2e-core-loop - Added connection com.mysql.cj.jdbc.ConnectionImpl@4f5991f6
+12:37:22.756 [main] INFO com.zaxxer.hikari.HikariDataSource -- e2e-core-loop - Start completed.
+2026-10-19T12:37:31.292+08:00  INFO [traceId= requestId=] 25636 --- [pet-platform] [           main] c.p.boot.e2e.E2eCoreLoopServer           : Starting E2eCoreLoopServer using Java 21.0.11 with PID 25636 (C:\Users\Administrator\Desktop\wt-e2e-final\backend\pet-boot\target\test-classes started by Administrator in C:\Users\Administrator\Desktop\wt-e2e-final\backend\pet-boot)
+2026-10-19T12:37:31.294+08:00  INFO [traceId= requestId=] 25636 --- [pet-platform] [           main] c.p.boot.e2e.E2eCoreLoopServer           : The following 1 profile is active: "local"
+2026-10-19T12:37:33.205+08:00  INFO [traceId= requestId=] 25636 --- [pet-platform] [           main] .s.d.r.c.RepositoryConfigurationDelegate : Multiple Spring Data modules found, entering strict repository configuration mode
+2026-10-19T12:37:33.209+08:00  INFO [traceId= requestId=] 25636 --- [pet-platform] [           main] .s.d.r.c.RepositoryConfigurationDelegate : Bootstrapping Spring Data Redis repositories in DEFAULT mode.
+2026-10-19T12:37:33.276+08:00  INFO [traceId= requestId=] 25636 --- [pet-platform] [           main] .s.d.r.c.RepositoryConfigurationDelegate : Finished Spring Data repository scanning in 44 ms. Found 0 Redis repository interfaces.
+2026-10-19T12:37:33.556+08:00  WARN [traceId= requestId=] 25636 --- [pet-platform] [           main] o.m.s.mapper.ClassPathMapperScanner      : No MyBatis mapper was found in '[com.petplatform.boot]' package. Please check your configuration.
+2026-10-19T12:37:34.365+08:00  INFO [traceId= requestId=] 25636 --- [pet-platform] [           main] o.s.boot.tomcat.TomcatWebServer          : Tomcat initialized with port 18081 (http)
+2026-10-19T12:37:34.383+08:00  INFO [traceId= requestId=] 25636 --- [pet-platform] [           main] o.apache.catalina.core.StandardService   : Starting service [Tomcat]
+2026-10-19T12:37:34.384+08:00  INFO [traceId= requestId=] 25636 --- [pet-platform] [           main] o.apache.catalina.core.StandardEngine    : Starting Servlet engine: [Apache Tomcat/11.0.24]
+2026-10-19T12:37:34.451+08:00  INFO [traceId= requestId=] 25636 --- [pet-platform] [           main] b.w.c.s.WebApplicationContextInitializer : Root WebApplicationContext: initialization completed in 3097 ms
+2026-10-19T12:37:43.389+08:00  INFO [traceId= requestId=] 25636 --- [pet-platform] [           main] r$InitializeUserDetailsManagerConfigurer : Global AuthenticationManager configured with UserDetailsService bean with name noImplicitDefaultAccounts
+2026-10-19T12:37:48.573+08:00  INFO [traceId= requestId=] 25636 --- [pet-platform] [           main] o.s.b.a.e.web.EndpointLinksResolver      : Exposing 3 endpoints beneath base path '/actuator'
+2026-10-19T12:37:48.666+08:00  INFO [traceId= requestId=] 25636 --- [pet-platform] [           main] o.s.boot.tomcat.TomcatWebServer          : Tomcat started on port 18081 (http) with context path '/'
+2026-10-19T12:37:48.681+08:00  INFO [traceId= requestId=] 25636 --- [pet-platform] [           main] c.p.boot.e2e.E2eCoreLoopServer           : Started E2eCoreLoopServer in 17.875 seconds (process running for 26.497)
+E2E_CORE_LOOP result=READY endpoint=http://127.0.0.1:18081 bind=0.0.0.0 database=auth001czq6f71b_e2e_core_loop_8e1c7b3dc6414719bc7ded9ad86ef899 metadata=D:\Temp\e2e-final-recheck\server-metadata.txt
+2026-10-19T12:37:49.007+08:00  INFO [traceId= requestId=] 25636 --- [pet-platform] [.0-18081-exec-2] o.a.c.c.C.[Tomcat].[localhost].[/]       : Initializing Spring DispatcherServlet 'dispatcherServlet'
+2026-10-19T12:37:49.007+08:00  INFO [traceId= requestId=] 25636 --- [pet-platform] [.0-18081-exec-2] o.s.web.servlet.DispatcherServlet        : Initializing Servlet 'dispatcherServlet'
+2026-10-19T12:37:49.009+08:00  INFO [traceId= requestId=] 25636 --- [pet-platform] [.0-18081-exec-2] o.s.web.servlet.DispatcherServlet        : Completed initialization in 2 ms
+E2E_ROUND2_SEEDS step=login round=1 ok
+E2E_SANDBOX_PAY paymentId=105524785403617280 paid=true replayed=false
+E2E_EVENT_SINK OrderPaidEvent.v1 aggregate=105524784858357760
+E2E_EVENT_SINK OrderConfirmedEvent.v1 aggregate=105524784858357760
+E2E_ROUND2_SEEDS step=rescheduleOrder id=105524784858357760
+E2E_ROUND2_SEEDS result=READY rescheduleOrder=105524784858357760
+E2E_ADMIN_SEEDS step=login attempt=1
+E2E_SANDBOX_PAY paymentId=105524920804139008 paid=true replayed=false
+E2E_EVENT_SINK OrderPaidEvent.v1 aggregate=105524920531509248
+E2E_EVENT_SINK OrderConfirmedEvent.v1 aggregate=105524920531509248
+E2E_ADMIN_SEEDS step=completedOrder id=105524920531509248
+E2E_EVENT_SINK OrderVerifiedEvent.v2 aggregate=105524920531509248
+E2E_SANDBOX_PAY paymentId=105524939867250688 paid=true replayed=false
+E2E_EVENT_SINK OrderPaidEvent.v1 aggregate=105524939724644352
+E2E_ADMIN_SEEDS step=dispositionTarget id=105524939724644352
+E2E_EVENT_SINK OrderConfirmedEvent.v1 aggregate=105524939724644352
+E2E_SANDBOX_PAY paymentId=105524948729815040 paid=true replayed=false
+E2E_EVENT_SINK OrderPaidEvent.v1 aggregate=105524948570431488
+E2E_ADMIN_SEEDS step=refundTarget id=105524948570431488
+E2E_ADMIN_SEEDS step=aftersaleCase id=105524957948895232
+E2E_ADMIN_SEEDS result=READY completed=105524920531509248 disposition=105524939724644352 refundTarget=105524948570431488 aftersale=105524957948895232
+E2E_EVENT_SINK OrderConfirmedEvent.v1 aggregate=105524948570431488
+E2E_EVENT_SINK AfterSaleCreatedEvent aggregate=105524957948895232
+2026-10-19T12:40:21.038+08:00  WARN [traceId= requestId=] 25636 --- [pet-platform] [sion-controller] c.p.id.core.HutoolSnowflakeIdProvider    : Snowflake provider failed closed: OPERATION_TIMEOUT
+2026-10-19T12:40:24.327+08:00  WARN [traceId= requestId=] 25636 --- [pet-platform] [sion-controller] c.p.id.core.HutoolSnowflakeIdProvider    : Snowflake provider failed closed: OPERATION_TIMEOUT
+E2E_CORE_LOOP snowflake reopen attempt 1 (node 951) failed: java.lang.IllegalStateException: Provider unavailable: OPERATION_TIMEOUT
+E2E_CORE_LOOP snowflake reopen attempt 2 (node 952) failed: java.lang.IllegalStateException: Provider unavailable: OPERATION_TIMEOUT
+2026-10-19T12:40:28.388+08:00  WARN [traceId= requestId=] 25636 --- [pet-platform] [sion-controller] c.p.id.core.HutoolSnowflakeIdProvider    : Snowflake provider failed closed: OPERATION_TIMEOUT
+E2E_CORE_LOOP snowflake recovered on node 953
+2026-10-19T12:40:34.304+08:00  WARN [traceId= requestId=] 25636 --- [pet-platform] [sion-controller] c.p.id.core.HutoolSnowflakeIdProvider    : Snowflake provider failed closed: OPERATION_TIMEOUT
+E2E_CORE_LOOP snowflake recovered on node 954
+2026-10-19T12:40:38.084+08:00  WARN [traceId= requestId=] 25636 --- [pet-platform] [sion-controller] c.p.id.core.HutoolSnowflakeIdProvider    : Snowflake provider failed closed: OPERATION_TIMEOUT
+E2E_CORE_LOOP snowflake recovered on node 955
+2026-10-19T12:40:42.575+08:00  WARN [traceId= requestId=] 25636 --- [pet-platform] [sion-controller] c.p.id.core.HutoolSnowflakeIdProvider    : Snowflake provider failed closed: OPERATION_TIMEOUT
+E2E_CORE_LOOP snowflake recovered on node 956
+2026-10-19T12:45:03.984+08:00  WARN [traceId= requestId=] 25636 --- [pet-platform] [sion-controller] c.p.id.core.HutoolSnowflakeIdProvider    : Snowflake provider failed closed: ACTION_FAILED
+E2E_CORE_LOOP snowflake recovered on node 957
+E2E_SANDBOX_PAY paymentId=105526628217245696 paid=true replayed=false
+E2E_EVENT_SINK OrderPaidEvent.v1 aggregate=105526627898478592
+E2E_EVENT_SINK OrderConfirmedEvent.v1 aggregate=105526627898478592
+E2E_EVENT_SINK RefundApplicationCreatedEvent.v1 aggregate=105526707778998272
+E2E_EVENT_SINK RefundApplicationDecidedEvent.v1 aggregate=105526707778998272
+E2E_EVENT_SINK RefundOrderCreatedEvent.v1 aggregate=105526710706622464
+2026-10-19T12:49:08.092+08:00  WARN [traceId= requestId=] 25636 --- [pet-platform] [sion-controller] c.p.id.core.HutoolSnowflakeIdProvider    : Snowflake provider failed closed: OPERATION_TIMEOUT
+E2E_CORE_LOOP snowflake recovered on node 958
+2026-10-19T12:49:17.337+08:00  WARN [traceId= requestId=] 25636 --- [pet-platform] [sion-controller] c.p.id.core.HutoolSnowflakeIdProvider    : Snowflake provider failed closed: OPERATION_TIMEOUT
+E2E_CORE_LOOP snowflake recovered on node 959
+2026-10-19T12:49:23.372+08:00  WARN [traceId= requestId=] 25636 --- [pet-platform] [sion-controller] c.p.id.core.HutoolSnowflakeIdProvider    : Snowflake provider failed closed: OPERATION_TIMEOUT
+E2E_CORE_LOOP snowflake reopen attempt 1 (node 960) failed: java.lang.IllegalStateException: Provider unavailable: OPERATION_TIMEOUT
+2026-10-19T12:49:24.859+08:00  WARN [traceId= requestId=] 25636 --- [pet-platform] [sion-controller] c.p.id.core.HutoolSnowflakeIdProvider    : Snowflake provider failed closed: OPERATION_TIMEOUT
+E2E_CORE_LOOP snowflake reopen attempt 2 (node 961) failed: java.lang.IllegalStateException: Provider unavailable: OPERATION_TIMEOUT
+2026-10-19T12:49:29.276+08:00  WARN [traceId= requestId=] 25636 --- [pet-platform] [sion-controller] c.p.id.core.HutoolSnowflakeIdProvider    : Snowflake provider failed closed: OPERATION_TIMEOUT
+E2E_CORE_LOOP snowflake recovered on node 962
+2026-10-19T12:49:42.244+08:00  WARN [traceId= requestId=] 25636 --- [pet-platform] [sion-controller] c.p.id.core.HutoolSnowflakeIdProvider    : Snowflake provider failed closed: OPERATION_TIMEOUT
+E2E_CORE_LOOP snowflake recovered on node 963
+2026-10-19T12:49:52.515+08:00  WARN [traceId= requestId=] 25636 --- [pet-platform] [sion-controller] c.p.id.core.HutoolSnowflakeIdProvider    : Snowflake provider failed closed: OPERATION_TIMEOUT
+E2E_CORE_LOOP snowflake recovered on node 964
+2026-10-19T12:52:05.609+08:00  WARN [traceId= requestId=] 25636 --- [pet-platform] [sion-controller] c.p.id.core.HutoolSnowflakeIdProvider    : Snowflake provider failed closed: OPERATION_TIMEOUT
+E2E_CORE_LOOP snowflake reopen attempt 1 (node 965) failed: java.lang.IllegalStateException: Provider unavailable: OPERATION_TIMEOUT
+2026-10-19T12:52:09.932+08:00  WARN [traceId= requestId=] 25636 --- [pet-platform] [sion-controller] c.p.id.core.HutoolSnowflakeIdProvider    : Snowflake provider failed closed: OPERATION_TIMEOUT
+E2E_CORE_LOOP snowflake reopen attempt 2 (node 966) failed: java.lang.IllegalStateException: Provider unavailable: OPERATION_TIMEOUT
+2026-10-19T12:52:14.116+08:00  WARN [traceId= requestId=] 25636 --- [pet-platform] [sion-controller] c.p.id.core.HutoolSnowflakeIdProvider    : Snowflake provider failed closed: OPERATION_TIMEOUT
+E2E_CORE_LOOP snowflake recovered on node 967
+2026-10-19T12:52:19.258+08:00  WARN [traceId= requestId=] 25636 --- [pet-platform] [sion-controller] c.p.id.core.HutoolSnowflakeIdProvider    : Snowflake provider failed closed: OPERATION_TIMEOUT
+E2E_CORE_LOOP snowflake recovered on node 968
+2026-10-19T12:52:23.367+08:00  WARN [traceId= requestId=] 25636 --- [pet-platform] [sion-controller] c.p.id.core.HutoolSnowflakeIdProvider    : Snowflake provider failed closed: OPERATION_TIMEOUT
+E2E_CORE_LOOP snowflake recovered on node 969
+2026-10-19T12:52:26.985+08:00  WARN [traceId= requestId=] 25636 --- [pet-platform] [sion-controller] c.p.id.core.HutoolSnowflakeIdProvider    : Snowflake provider failed closed: OPERATION_TIMEOUT
+E2E_CORE_LOOP snowflake recovered on node 970
+2026-10-19T12:54:41.305+08:00  WARN [traceId= requestId=] 25636 --- [pet-platform] [sion-controller] c.p.id.core.HutoolSnowflakeIdProvider    : Snowflake provider failed closed: OPERATION_TIMEOUT
+E2E_CORE_LOOP snowflake reopen attempt 1 (node 971) failed: java.lang.IllegalStateException: Provider unavailable: OPERATION_TIMEOUT
+2026-10-19T12:54:45.363+08:00  WARN [traceId= requestId=] 25636 --- [pet-platform] [sion-controller] c.p.id.core.HutoolSnowflakeIdProvider    : Snowflake provider failed closed: OPERATION_TIMEOUT
+E2E_CORE_LOOP snowflake recovered on node 972
+2026-10-19T12:57:35.042+08:00  WARN [traceId= requestId=] 25636 --- [pet-platform] [sion-controller] c.p.id.core.HutoolSnowflakeIdProvider    : Snowflake provider failed closed: OPERATION_TIMEOUT
+E2E_CORE_LOOP snowflake recovered on node 973
+2026-10-19T12:57:40.654+08:00  WARN [traceId= requestId=] 25636 --- [pet-platform] [sion-controller] c.p.id.core.HutoolSnowflakeIdProvider    : Snowflake provider failed closed: OPERATION_TIMEOUT
+E2E_CORE_LOOP snowflake reopen attempt 1 (node 974) failed: java.lang.IllegalStateException: Provider unavailable: OPERATION_TIMEOUT
+2026-10-19T12:57:42.275+08:00  WARN [traceId= requestId=] 25636 --- [pet-platform] [sion-controller] c.p.id.core.HutoolSnowflakeIdProvider    : Snowflake provider failed closed: OPERATION_TIMEOUT
+E2E_CORE_LOOP snowflake recovered on node 975
+2026-10-19T12:59:12.087+08:00  WARN [traceId= requestId=] 25636 --- [pet-platform] [sion-controller] c.p.id.core.HutoolSnowflakeIdProvider    : Snowflake provider failed closed: OPERATION_TIMEOUT
+E2E_CORE_LOOP snowflake recovered on node 976
+2026-10-19T12:59:25.915+08:00  WARN [traceId= requestId=] 25636 --- [pet-platform] [sion-controller] c.p.id.core.HutoolSnowflakeIdProvider    : Snowflake provider failed closed: ACTION_FAILED
+E2E_CORE_LOOP snowflake recovered on node 977

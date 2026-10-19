@@ -45,6 +45,8 @@ public class CServiceExceptionHandler {
             // Address book (contract 59): anti-enumeration 404 and the conservative cap 400.
             Map.entry("ADDRESS_NOT_FOUND", 404),
             Map.entry("ADDRESS_LIMIT_EXCEEDED", 400),
+            // Health records (contract 68): the conservative per-type cap is a 400 rejection.
+            Map.entry("PET_HEALTH_RECORD_LIMIT_EXCEEDED", 400),
             Map.entry("STORE_NOT_FOUND", 404),
             Map.entry("SERVICE_NOT_FOUND", 404),
             // Encyclopedia content (contract 62): published-only visibility, offline/missing alike.

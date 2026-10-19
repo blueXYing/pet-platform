@@ -1,0 +1,8 @@
+/* 城市选择面板（设计源 76:761：#f8f5ee 面板 r12、行 174x36、「当前城市」#b89682 10、
+   当前城市行 #5a4135 14 + 右缘 ✓、其余行 #383838 14；WXSS 铁律：button 复合选择器压原生重置、
+   状态仅 className 变体）。 --city-unit 由宿主页按 windowWidth/402 传入。 */
+.city-picker { position: absolute; z-index: 30; width: calc(var(--city-unit) * 174); padding: calc(var(--city-unit) * 6) 0; background: #f8f5ee; border-radius: calc(var(--city-unit) * 12); box-shadow: 0 calc(var(--city-unit) * 6) calc(var(--city-unit) * 18) rgba(31, 24, 18, 0.12); }
+.city-picker-label { display: block; padding: calc(var(--city-unit) * 6) calc(var(--city-unit) * 12) calc(var(--city-unit) * 2); font-size: calc(var(--city-unit) * 10); line-height: calc(var(--city-unit) * 15); color: #b89682; }
+.city-picker .city-picker-row { display: flex; align-items: center; justify-content: space-between; width: auto; height: calc(var(--city-unit) * 36); margin: 0; padding: 0 calc(var(--city-unit) * 12); background: transparent; border: none; border-radius: 0; font-size: calc(var(--city-unit) * 14); line-height: calc(var(--city-unit) * 20); color: #383838; text-align: left; }
+.city-picker .city-picker-row.is-current { color: #5a4135; font-weight: 500; }
+.city-picker .city-picker-check { font-size: calc(var(--city-unit) * 12); color: #5a4135; }

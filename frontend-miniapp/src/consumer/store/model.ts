@@ -83,7 +83,7 @@ export function decodeCityList(value: unknown): StoreCity[] {
   })
 }
 
-export type StoreListQuery = Readonly<{ city?: string; page: number; pageSize: number }>
+export type StoreListQuery = Readonly<{ city?: string; keyword?: string; page: number; pageSize: number }>
 export type StoreDirectoryDeps = {
   cities(): Promise<StoreCity[]>
   list(query: StoreListQuery): Promise<StorePage>
@@ -113,7 +113,7 @@ export class PreviewStoreRepository implements StoreDirectoryDeps {
     await this.pause()
     return fixtureCities.map(city => ({ ...city }))
   }
-  async list({ city, page = 1, pageSize = 20 }: StoreListQuery): Promise<StorePage> {
+  async list({ city, keyword, page = 1, pageSize = 20 }: StoreListQuery): Promise<StorePage> {
     await this.pause()
     if (this.failNext) { this.failNext = false; throw new StoreMockError('COMMON_DEPENDENCY_UNAVAILABLE', 503) }
     if (city !== undefined && !fixtureCities.some(entry => entry.cityCode === city)) {
@@ -121,7 +121,12 @@ export class PreviewStoreRepository implements StoreDirectoryDeps {
     }
     const bounded = Math.min(Math.max(1, Math.trunc(page)), 10000)
     const size = Math.min(Math.max(1, Math.trunc(pageSize)), 50)
-    const scoped = city === undefined ? this.stores : this.stores.filter(store => store.cityCode === city)
+    const lowered = keyword === undefined ? null : keyword.toLowerCase()
+    const scoped = this.stores
+      .filter(store => city === undefined || store.cityCode === city)
+      .filter(store => lowered === null
+        || store.storeName.toLowerCase().includes(lowered)
+        || store.merchantName.toLowerCase().includes(lowered))
     const sorted = [...scoped].sort((a, b) => BigInt(a.merchantId) < BigInt(b.merchantId) ? -1 : BigInt(a.merchantId) > BigInt(b.merchantId) ? 1 : BigInt(a.storeId) < BigInt(b.storeId) ? -1 : 1)
     const start = (bounded - 1) * size
     return { items: sorted.slice(start, start + size).map(store => ({ ...store })), page: bounded, pageSize: size, total: sorted.length }

@@ -8,6 +8,10 @@ import { consumerApi } from '../../../shared/consumer-runtime'
 import { integrationMessage } from '../../../shared/consumer-api'
 import { realPetRepository } from '../../api/page-repository'
 import { deriveAgeLabel, formatWeightDisplay, isPreviewScenario, PreviewPetRepository, previewRepository, previewSupplement, sexLabel, breedAgeLine, type PetPhase, type PetView } from '../../pet/model'
+import {
+  dewormingDateLine, dewormingTypeLabels, vaccineDateLine, vaccineStatusLabel,
+  decodeHealthRecordList, type HealthRecordView,
+} from '../../pet/health-record'
 import stripMain from './assets/strip-main.png'
 import stripBottom from './assets/strip-detail-bottom.png'
 import panelBasic from './assets/panel-basic.png'
@@ -38,6 +42,8 @@ export default function PetArchiveDetail() {
   const { scope, revision, context } = useWorkspace(preview ? 'preview' : 'real')
   const [phase, setPhase] = useState<PetPhase>('loading')
   const [pet, setPet] = useState<PetView | null>(null)
+  const [vaccineRecords, setVaccineRecords] = useState<HealthRecordView[]>([])
+  const [dewormRecords, setDewormRecords] = useState<HealthRecordView[]>([])
   const [notice, setNotice] = useState('')
   const mounted = useRef(true)
   const sequence = useRef(0)
@@ -58,6 +64,19 @@ export default function PetArchiveDetail() {
       if (!mounted.current || current !== sequence.current || currentRevision !== scope.revision) return
       setPet(found); setPhase(found ? 'ready' : 'load-error')
       if (!found) setNotice('没有找到这只宠物')
+      // 契约 68 记录列表（真实态）：两路独立读取，单路失败不拖垮档案页（记录分区按空态呈现）。
+      if (found && !preview) {
+        try {
+          const vaccine = await scope.run(undefined, () => realPetRepository().listHealthRecords(found.petId, 'vaccination-records'))
+          if (mounted.current && current === sequence.current && currentRevision === scope.revision) setVaccineRecords(decodeHealthRecordList(vaccine))
+        } catch { if (mounted.current && current === sequence.current) setVaccineRecords([]) }
+        try {
+          const deworm = await scope.run(undefined, () => realPetRepository().listHealthRecords(found.petId, 'deworming-records'))
+          if (mounted.current && current === sequence.current && currentRevision === scope.revision) setDewormRecords(decodeHealthRecordList(deworm))
+        } catch { if (mounted.current && current === sequence.current) setDewormRecords([]) }
+      } else if (mounted.current && current === sequence.current && currentRevision === scope.revision) {
+        setVaccineRecords([]); setDewormRecords([])
+      }
     } catch {
       if (mounted.current && current === sequence.current && currentRevision === scope.revision) setPhase('load-error')
     }
@@ -97,11 +116,33 @@ export default function PetArchiveDetail() {
     Taro.navigateTo({ url: `/consumer/pages/baike/index?keyword=${encodeURIComponent(pet.breedName)}` })
       .catch(() => setNotice('页面跳转失败，请重试'))
   }
-  function notWired(label: string) {
-    setNotice(preview ? `“${label}”页面尚未接入本次预览` : `“${label}”功能尚未接通`)
+  // 契约 68：添加按钮接通独立表单页（96:2580/96:3006，vaccine-form/deworm-form 分包页）。
+  function addVaccineRecord() {
+    if (!pet) return
+    Taro.navigateTo({ url: `/consumer/pages/pet-archive/vaccine-form?petId=${encodeURIComponent(pet.petId)}` })
+      .catch(() => setNotice('页面跳转失败，请重试'))
+  }
+  function addDewormRecord() {
+    if (!pet) return
+    Taro.navigateTo({ url: `/consumer/pages/pet-archive/deworm-form?petId=${encodeURIComponent(pet.petId)}` })
+      .catch(() => setNotice('页面跳转失败，请重试'))
   }
   const ready = phase === 'ready' && pet
   const supplement = previewSupplement(preview && ready ? pet.petId : undefined)
+  // 记录分区数据源：preview 走设计样例（无契约时代登记的视觉样例）；真实态走契约 68 读侧，
+  // 行状态胶囊按 nextRecordDate 派生（68号 §字段：设计稿"接种状态"chips = 展示态，不入库）。
+  const vaccineRecordLines = preview
+    ? supplement.vaccineRecords
+    : vaccineRecords.map(record => ({
+        name: record.vaccineName || '', date: vaccineDateLine(record),
+        status: vaccineStatusLabel(record, today),
+      }))
+  const dewormRecordLines = preview
+    ? supplement.dewormRecords
+    : dewormRecords.map(record => ({
+        name: dewormingTypeLabels[record.dewormingType || 'EXTERNAL'],
+        brand: record.productName || '', date: dewormingDateLine(record),
+      }))
   const tag = supplement.tag
   const photo = ready ? pet.avatarUrl || (preview ? (pet.petId === '30001' ? petPhoto : pet.petId === '30002' ? catPhoto : null) : null) : null
   return <ConsumerPageLayout page='petDetail' unit={unit} navigation={{ idPrefix: 'pet', disabled: phase !== 'ready', onSelect: key => void switchConsumerTab(key), referencePlacement: referenceCanvas ? { bottom: 0, height: 61 } : undefined }} className={`pet-page pet-detail-page${referenceCanvas ? ' pet-reference-canvas' : ''}`} style={style}>
@@ -156,7 +197,7 @@ export default function PetArchiveDetail() {
         <Text className='pet-abs pet-detail-value pet-detail-value-age'>{deriveAgeLabel(pet.birthDate, today)}</Text>
         <Image className='pet-abs pet-detail-tape-a' src={tapeA} mode='scaleToFill' />
         <Text className='pet-abs pet-detail-section pet-detail-section-vaccine'>疫苗记录</Text>
-        <Button id='pet-add-vaccine' className='pet-abs pet-detail-add pet-detail-add-vaccine' ariaLabel='添加疫苗记录' onClick={() => notWired('疫苗记录添加')}>
+        <Button id='pet-add-vaccine' className='pet-abs pet-detail-add pet-detail-add-vaccine' ariaLabel='添加疫苗记录' onClick={addVaccineRecord}>
           <Image className='pet-detail-add-icon' src={iconAdd} mode='scaleToFill' />
           <Text className='pet-detail-add-label'>添加</Text>
         </Button>
@@ -164,8 +205,8 @@ export default function PetArchiveDetail() {
         <View className='pet-abs pet-detail-line pet-detail-line-r2' />
         <View className='pet-abs pet-detail-line pet-detail-line-r3' />
         <View className='pet-abs pet-detail-line pet-detail-line-r4' />
-        {!supplement.vaccineRecords.length && <Text className='pet-abs pet-detail-record-empty pet-detail-vaccine-empty'>{preview ? '暂无记录' : '记录功能尚未接通'}</Text>}
-        {supplement.vaccineRecords.map((record, index) => {
+        {!vaccineRecordLines.length && <Text className='pet-abs pet-detail-record-empty pet-detail-vaccine-empty'>暂无记录</Text>}
+        {vaccineRecordLines.map((record, index) => {
           const circle = [538, 614, 697.5][index]
           const expiring = record.status === '即将到期'
           return <View key={record.name} className={`pet-detail-record pet-detail-record-${index}`} style={{ top: `calc(var(--pet-unit) * ${circle})` }}>
@@ -179,15 +220,15 @@ export default function PetArchiveDetail() {
         })}
         <Image className='pet-abs pet-detail-tape-b' src={tapeB} mode='scaleToFill' />
         <Text className='pet-abs pet-detail-section pet-detail-section-deworm'>驱虫记录</Text>
-        <Button id='pet-add-deworm' className='pet-abs pet-detail-add pet-detail-add-deworm' ariaLabel='添加驱虫记录' onClick={() => notWired('驱虫记录添加')}>
+        <Button id='pet-add-deworm' className='pet-abs pet-detail-add pet-detail-add-deworm' ariaLabel='添加驱虫记录' onClick={addDewormRecord}>
           <Image className='pet-detail-add-icon' src={iconAdd} mode='scaleToFill' />
           <Text className='pet-detail-add-label'>添加</Text>
         </Button>
         <View className='pet-abs pet-detail-line pet-detail-line-d1' />
         <View className='pet-abs pet-detail-line pet-detail-line-d2' />
         <View className='pet-abs pet-detail-line pet-detail-line-d3' />
-        {!supplement.dewormRecords.length && <Text className='pet-abs pet-detail-record-empty pet-detail-deworm-empty'>{preview ? '暂无记录' : '记录功能尚未接通'}</Text>}
-        {supplement.dewormRecords.map((record, index) => {
+        {!dewormRecordLines.length && <Text className='pet-abs pet-detail-record-empty pet-detail-deworm-empty'>暂无记录</Text>}
+        {dewormRecordLines.map((record, index) => {
           const base = [873, 949][index]
           return <View key={record.name} className='pet-detail-record' style={{ top: `calc(var(--pet-unit) * ${base})` }}>
             <Image className='pet-detail-record-icon' src={recordDeworm} mode='scaleToFill' />
