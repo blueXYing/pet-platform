@@ -130,7 +130,7 @@ public class AdminCouponGrantController {
   }
 
   private static GrantBody grantBody(HttpServletRequest req) {
-    com.fasterxml.jackson.databind.JsonNode root;
+    tools.jackson.databind.JsonNode root;
     try {
       var content = MediaType.parseMediaType(req.getContentType());
       if (!"application".equalsIgnoreCase(content.getType())
@@ -139,7 +139,7 @@ public class AdminCouponGrantController {
       }
       byte[] raw = req.getInputStream().readNBytes(32769);
       if (raw.length == 0 || raw.length > 32768) throw AdminTradeHttpSupport.invalid();
-      root = new com.fasterxml.jackson.databind.ObjectMapper().readTree(raw);
+      root = AdminTradeHttpSupport.readStrictJson(raw);
     } catch (ApiException known) {
       throw known;
     } catch (Exception malformed) {
