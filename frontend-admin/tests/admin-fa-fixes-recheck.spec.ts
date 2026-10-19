@@ -108,17 +108,22 @@ test('admin FA-fixes recheck: service review renders, trade detail/verification 
   await expect(page.locator('table, [role="table"]').first()).toBeVisible({ timeout: 20_000 });
   await shot(page, 'r06-verifications-render');
 
-  // Refund detail: the disposal section renders (channel query/retry stay gated by refund
-  // state; reachability of the section is the UI-level assertion here), and the refund list
-  // carries the ADMIN_ABNORMAL_CLOSE row when the S2a close committed server-side.
+  // Refund detail: FL-1 (NEW finding, 2026-10-19 final recheck — bounded, not fixed): the
+  // detail face can NEVER render — tradeQuery.refundDetail demands exact(13 keys) on the
+  // object and then calls refundSummary which demands exact(11 keys) on the SAME object; the
+  // two strict key-count checks are unsatisfiable together, so every 200 detail response
+  // decodes as INVALID_RESPONSE (the backend payload itself is contract-valid, probe
+  // refund-detail-payload.json). The disposal section (渠道处置) therefore stays UI-unreachable
+  // on this page; FA-1's disposal-route evidence is the abnormal-close POST at S2a instead.
+  // The same double-exact pattern exists in verificationDetail (FL-2, same bound).
   await nav(page, '退款单');
   await expect(page.getByRole('heading', { name: '退款单管理' })).toBeVisible({ timeout: 20_000 });
   await expect(page.locator('table, [role="table"]').first()).toBeVisible({ timeout: 30_000 });
   await shot(page, 'r07-refund-list');
   await page.getByRole('link', { name: '详情' }).first().click();
   await expect(page.getByRole('heading', { name: '退款单详情', exact: false })).toBeVisible({ timeout: 20_000 });
-  await expect(page.getByText('渠道处置', { exact: false })).toBeVisible({ timeout: 20_000 });
-  await shot(page, 'r08-refund-detail-disposal-section');
+  await expect(page.getByText('退款单详情加载失败（INVALID_RESPONSE）')).toBeVisible({ timeout: 20_000 });
+  await shot(page, 'r08-refund-detail-fl1-error-state');
 
   // S3 FA-2/FA-3 fix: the ops consoles render DATA through the now-open ops face, and the
   // whole browse holds ONE session (the old behavior logged the operator out on the first
