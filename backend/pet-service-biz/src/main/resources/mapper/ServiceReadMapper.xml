@@ -49,4 +49,30 @@
         WHERE s.store_id = #{storeId}
           AND s.status = 'ACTIVE'
     </select>
+
+    <!-- HTTP10 §3.3.3 C catalog keyword search (2026-10-19 ruling): substring match on the
+         service and category names only (column collation utf8mb4_0900_ai_ci makes it
+         case-insensitive); the keyword arrives pre-escaped, so LIKE wildcards stay literal.
+         Eligibility filtering stays in the application layer, exactly like the store catalog. -->
+    <select id="selectActiveServiceCandidates"
+            resultType="com.petplatform.service.biz.infrastructure.persistence.entity.ServiceItemReadEntity">
+        SELECT s.id,
+               s.merchant_id,
+               s.store_id,
+               s.category_id,
+               c.category_name,
+               s.service_name,
+               s.description,
+               s.price,
+               s.duration_minutes,
+               s.fulfillment_type,
+               s.cover_asset_id,
+               s.status
+        FROM service_item s
+        LEFT JOIN service_category c ON c.id = s.category_id
+        WHERE s.status = 'ACTIVE'
+          AND (s.service_name LIKE CONCAT('%', #{keyword}, '%') ESCAPE '\\'
+               OR c.category_name LIKE CONCAT('%', #{keyword}, '%') ESCAPE '\\')
+        ORDER BY s.merchant_id ASC, s.store_id ASC, s.id ASC
+    </select>
 </mapper>

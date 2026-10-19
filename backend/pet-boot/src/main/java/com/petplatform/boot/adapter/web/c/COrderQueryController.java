@@ -4,6 +4,9 @@ import static com.petplatform.boot.adapter.web.c.CShared.trace;
 
 import com.petplatform.boot.config.CBearerSessionFilter;
 import com.petplatform.common.ApiException;
+import com.petplatform.merchant.api.dto.MerchantStoreContactDTO;
+import com.petplatform.merchant.api.query.MerchantStoreContactQueryApi;
+import com.petplatform.merchant.api.query.StoreIdQuery;
 import com.petplatform.common.ApiResponse;
 import com.petplatform.common.CommonApiCodes;
 import com.petplatform.common.OperatorType;
@@ -16,6 +19,7 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import java.util.LinkedHashMap;
 import java.util.Map;
+import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.http.HttpHeaders;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -38,9 +42,13 @@ import org.springframework.web.bind.annotation.RestController;
 public class COrderQueryController {
 
     private final OrderQueryApiImpl orders;
+    private final ObjectProvider<MerchantStoreContactQueryApi> storeContacts;
 
-    public COrderQueryController(OrderQueryApiImpl orders) {
+    public COrderQueryController(
+            OrderQueryApiImpl orders,
+            ObjectProvider<MerchantStoreContactQueryApi> storeContacts) {
         this.orders = orders;
+        this.storeContacts = storeContacts;
     }
 
     @org.springframework.web.bind.annotation.ModelAttribute
@@ -90,8 +98,32 @@ public class COrderQueryController {
                 new com.petplatform.order.api.query.OrderQueryApi.OrderIdQuery(
                         orderId,
                         new QueryContext(trace(req), OperatorType.USER, session.userId())));
-        return ApiResponse.success(
-                com.petplatform.order.biz.application.OrderSnapshotWire.fields(value), trace(req));
+        Map<String, Object> body =
+                com.petplatform.order.biz.application.OrderSnapshotWire.fields(value);
+        // §3.7 contact supplement (2026-10-19 ruling, PRD 5.1.17 "联系电话唤起拨号"): the
+        // store's business line joins the owner-scoped detail projection. Enrichment only —
+        // a missing/ineligible contact source degrades to a null section; order facts never
+        // fail because merchant facts fail.
+        body.put("merchantContact", merchantContact(value.storeId()));
+        return ApiResponse.success(body, trace(req));
+    }
+
+    /** Masked display number plus the dialable line; null when absent or unavailable. */
+    private Map<String, Object> merchantContact(String storeId) {
+        MerchantStoreContactQueryApi contacts = storeContacts.getIfAvailable();
+        if (contacts == null) return null;
+        try {
+            MerchantStoreContactDTO contact = contacts.getStoreContact(new StoreIdQuery(storeId, null));
+            if (contact.phone() == null && contact.phoneMasked() == null) return null;
+            Map<String, Object> section = new LinkedHashMap<>();
+            section.put("phoneMasked", contact.phoneMasked());
+            section.put("phone", contact.phone());
+            return section;
+        } catch (RuntimeException unavailable) {
+            // ApiException is a RuntimeException: one catch covers both; the order read above
+            // already succeeded and must never fail because merchant facts failed.
+            return null;
+        }
     }
 
     private static MiniSessionView session(HttpServletRequest req) {

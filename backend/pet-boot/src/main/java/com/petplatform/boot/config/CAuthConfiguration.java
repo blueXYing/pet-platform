@@ -42,6 +42,18 @@ public class CAuthConfiguration {
                 "PLAT-002 ID provider required before C pet writes can start"));
     }
 
+    /**
+     * Order-contact store phone read (HTTP10 §3.7 supplement, 2026-10-19 ruling): the C order
+     * detail adapter composes the merchant domain's contact line onto the owner-scoped order
+     * read. Rides the C session assembly (same gate as the order routes), never the store
+     * catalog switch — an existing order must stay contactable regardless of catalog assembly.
+     */
+    @Bean
+    com.petplatform.merchant.api.query.MerchantStoreContactQueryApi merchantStoreContactApi(
+            DataSource source) {
+        return new com.petplatform.merchant.biz.apiimpl.MerchantStoreContactApiImpl(source);
+    }
+
     /** Address book (contract 59, ruling-32 second batch): same user-domain assembly as pets. */
     @Bean
     com.petplatform.user.biz.application.AddressService addressService(
