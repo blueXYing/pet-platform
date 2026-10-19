@@ -184,7 +184,10 @@ final class AdminTradeHttpSupport {
             case "COMMON_INVALID_ARGUMENT" -> 400;
             case "COMMON_UNAUTHORIZED" -> 401;
             case "COMMON_FORBIDDEN" -> 403;
-            case "COMMON_NOT_FOUND" -> 404;
+            case "COMMON_NOT_FOUND", "FEEDBACK_TICKET_NOT_FOUND" -> 404;
+            // Contract-67 v0.2 feedback ops + contract-65 v0.4 export cap domain codes.
+            case "FEEDBACK_TYPE_INVALID" -> 400;
+            case "ENCYCLOPEDIA_EXPORT_TOO_LARGE" -> 413;
             case "COMMON_CONFLICT", "IDEMPOTENCY_KEY_CONFLICT", "ORDER_STATE_NOT_ALLOWED",
                  "ORDER_REFUND_ALREADY_CREATED", "ORDER_OPERATION_BUSY", "ORDER_CONFIRM_DEADLINE_PASSED" -> 409;
             case "COMMON_DEPENDENCY_UNAVAILABLE" -> 503;
@@ -196,6 +199,7 @@ final class AdminTradeHttpSupport {
             case 401 -> "登录已失效，请重新登录";
             case 403 -> "无权执行该操作";
             case 404 -> "资源不存在";
+            case 413 -> "导出内容超过上限";
             case 409 -> "当前状态或请求参数冲突，请刷新后核对";
             case 503 -> "服务暂不可用，请稍后重试";
             default -> "内部错误，请稍后重试";

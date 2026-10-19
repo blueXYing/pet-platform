@@ -62,6 +62,33 @@ public interface EncyclopediaAdminMapper {
             @Param("expectedVersion") long expectedVersion,
             @Param("now") java.time.LocalDateTime now);
 
+    /** v0.4 category creation: born ENABLED, version 0 (duplicate code answers a unique-key race). */
+    int insertCategory(
+            @Param("id") long id,
+            @Param("categoryCode") String categoryCode,
+            @Param("categoryName") String categoryName,
+            @Param("sortNo") int sortNo,
+            @Param("now") java.time.LocalDateTime now);
+
+    /** v0.4 breed creation: born OFFLINE, version 0 (duplicate category+name answers the uk). */
+    int insertBreed(
+            @Param("id") long id,
+            @Param("categoryId") long categoryId,
+            @Param("name") String name,
+            @Param("aliases") String aliases,
+            @Param("tags") String tags,
+            @Param("summary") String summary,
+            @Param("coverUrl") String coverUrl,
+            @Param("bodyType") String bodyType,
+            @Param("sortNo") int sortNo,
+            @Param("now") java.time.LocalDateTime now);
+
+    /** v0.4 export: every category row in dictionary order. */
+    List<AdminCategoryEntity> selectAllCategoriesForExport();
+
+    /** v0.4 export: every breed row with its category code/name, dictionary order. */
+    List<AdminBreedEntity> selectAllBreedsForExport();
+
     int insertBinding(
             @Param("id") long id,
             @Param("requestKey") String requestKey,
