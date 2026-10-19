@@ -1825,12 +1825,18 @@ GET  /api/v1/admin/settings/runtime
 清单。控制器快照校验 + community/coupon/points 内核授权端口每次重验；dataScope 非 ALL 一律 403。
 写动作（分类维护/停用启用、品种维护/上下线、券模板建/编/启/停）终结性 X-Request-Id 幂等（14 号
 command_idempotency 绑定，同参重放回执、异参 409）+ expectedVersion 乐观锁（失配 409）。
-发放路由（65 号 v0.2 §4.3，2026-10-16 用户裁决"做券发放渠道"）：按一个 ACTIVE 模板向一个指定用户
-发放一张 AVAILABLE 券实例（单次一张，批量/持有上限/频控/库存扣减 CCR-CPN-GRANT-001 §2 待裁）；
-模板可用性守卫=61 号冻结前置④（非 ACTIVE 或不在有效期 409）；`coupon_ledger` ISSUE 行为发放审计；
-内核另受 `pet.coupon.grant.enabled`（默认 false，21 号清单）门控，开关关闭时该路由 503 失败关闭
-（61 号提供器未装配语义），默认值翻转随 35 号开关放开裁决统一处理。发放后 C 端
-`GET /api/v1/c/coupons?status=AVAILABLE` 立即可见（10 号 §3.15.1 零改动）。
+发放路由（65 号 v0.2 §4.3，2026-10-16 用户裁决"做券发放渠道"；v0.4 2026-10-19 强化批用户裁决
+"继续扩展CCR"）：按一个 ACTIVE 模板发放 AVAILABLE 券实例——单发 `{templateId, userId}` 一张，
+批量 `{templateId, userIds}`（非空、≤100、去重，否则 400）逐用户一张；守卫链=61 号冻结前置④
+（非 ACTIVE 或不在有效期 409）→ 目标用户存在性（user 域只读端口，不存在 404，消灭无主券）→
+单用户同模板 AVAILABLE+FROZEN 持有上限（`pet.coupon.grant.max-per-template` 默认 10，超限 409）→
+同操作者同用户同模板 60 秒滑动窗频控（DB 计数，重复 409）→ `total_stock` 库存扣减（非空时
+`issued_count<total_stock` 才可发，售罄 409；NULL 不限量）；`coupon_ledger` ISSUE 行为发放审计；
+单发 X-Request-Id 幂等同参重放回执、异参 409，批量逐用户独立幂等与独立事务（回执逐用户
+GRANTED/REJECTED 明细，部分失败不回滚已成功者）；内核另受 `pet.coupon.grant.enabled`（默认
+false，21 号清单）门控，开关关闭时该路由 503 失败关闭（61 号提供器未装配语义），默认值翻转随
+35 号开关放开裁决统一处理。发放后 C 端 `GET /api/v1/c/coupons?status=AVAILABLE` 立即可见
+（10 号 §3.15.1 零改动）。
 作废路由（65 号 v0.3 §4.4，2026-10-16 用户裁决"治理写动作最小授权"36 号）：作废指定单张
 AVAILABLE 券实例（USED/FROZEN/RISK_FROZEN/EXPIRED 一律 409——FROZEN 被在途订单锁定的券不许
 作废）；落点 `status='VOID'`（新终态，Schema06 词表注记同步披露）；`coupon_ledger` VOID 行

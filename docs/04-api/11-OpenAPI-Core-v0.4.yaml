@@ -15387,7 +15387,7 @@ paths:
       x-audience: ADMIN_WEB
       x-required-actions: [coupon.instance.grant]
       description: |-
-        65号 v0.2 §4.3（用户裁决 2026-10-16，CCR-CPN-GRANT-001 最小实现）。按一个 ACTIVE 模板向一个指定用户发放一张 AVAILABLE 券实例；模板可用性守卫=61号 §3 冻结前置④（ACTIVE 且发放时刻在有效期内，否则 409）；实例 expire_at 继承模板 valid_end_at；coupon_ledger ISSUE 行（CPN:GRANT:{instanceId}）为发放审计。单次一张（批量/持有上限/频控/库存扣减 CCR 待裁）。终结性 X-Request-Id 幂等（14号 command_idempotency，同参重放回执、异参 409）。路由随 pet.admin.ops.http.enabled 面（x-assembly-switch）装配；内核另受 pet.coupon.grant.enabled 门控（x-kernel-switch，默认关）——内核未装配时本路由 503 失败关闭（61号提供器未装配语义）。
+        65号 v0.2 §4.3（用户裁决 2026-10-16，CCR-CPN-GRANT-001 最小实现）+ v0.4 强化批（用户裁决 2026-10-19 "继续扩展CCR"）。按一个 ACTIVE 模板发放 AVAILABLE 券实例：单发 {templateId, userId} 一张；批量 {templateId, userIds(≤100, 去重)} 逐用户一张。守卫链=61号 §3 冻结前置④（ACTIVE 且在有效期内，否则 409）→ 目标用户存在性（user 域只读端口，不存在 404）→ 单用户同模板 AVAILABLE+FROZEN 持有上限（pet.coupon.grant.max-per-template 默认 10，超限 409）→ 同操作者同用户同模板 60 秒滑动窗频控（DB 计数，重复 409）→ total_stock 库存扣减（非空时 issued_count<total_stock 才可发，售罄 409；NULL 不限量）。实例 expire_at 继承模板 valid_end_at；coupon_ledger ISSUE 行（CPN:GRANT:{instanceId}）为发放审计。单发 X-Request-Id 幂等同参重放回执、异参 409；批量逐用户独立幂等与独立事务（部分失败不回滚已成功者，回执逐用户 GRANTED/REJECTED 明细）。路由随 pet.admin.ops.http.enabled 面（x-assembly-switch）装配；内核另受 pet.coupon.grant.enabled 门控（x-kernel-switch，默认关）——内核未装配时本路由 503 失败关闭（61号提供器未装配语义）。
       security:
       - bearerAuth: []
       parameters:
@@ -26794,10 +26794,19 @@ components:
     AdminOpsCouponGrantRequest:
       type: object
       additionalProperties: false
-      required: [templateId, userId]
+      required: [templateId]
+      oneOf:
+      - required: [userId]
+      - required: [userIds]
       properties:
         templateId: {$ref: '#/components/schemas/PublicId'}
         userId: {$ref: '#/components/schemas/PublicId'}
+        userIds:
+          type: array
+          items: {$ref: '#/components/schemas/PublicId'}
+          minItems: 1
+          maxItems: 100
+          uniqueItems: true
 
     AdminOpsCouponGrant:
       type: object
@@ -26811,13 +26820,41 @@ components:
         expireAt: {$ref: '#/components/schemas/AuthTimestamp'}
         occurredAt: {$ref: '#/components/schemas/AuthTimestamp'}
 
+    AdminOpsCouponGrantBatch:
+      type: object
+      additionalProperties: false
+      required: [templateId, results, grantedCount, rejectedCount, occurredAt]
+      properties:
+        templateId: {$ref: '#/components/schemas/PublicId'}
+        results:
+          type: array
+          items: {$ref: '#/components/schemas/AdminOpsCouponGrantBatchItem'}
+        grantedCount: {type: integer, format: int32, minimum: 0}
+        rejectedCount: {type: integer, format: int32, minimum: 0}
+        occurredAt: {$ref: '#/components/schemas/AuthTimestamp'}
+
+    AdminOpsCouponGrantBatchItem:
+      type: object
+      additionalProperties: false
+      required: [userId, status]
+      properties:
+        userId: {$ref: '#/components/schemas/PublicId'}
+        status: {type: string, enum: [GRANTED, REJECTED]}
+        instanceId: {$ref: '#/components/schemas/PublicId'}
+        expireAt: {$ref: '#/components/schemas/AuthTimestamp'}
+        occurredAt: {$ref: '#/components/schemas/AuthTimestamp'}
+        code: {type: string}
+        message: {type: string}
+
     AdminOpsCouponGrantEnvelope:
       allOf:
       - $ref: '#/components/schemas/BaseEnvelope'
       - type: object
         properties:
           data:
-            $ref: '#/components/schemas/AdminOpsCouponGrant'
+            oneOf:
+            - $ref: '#/components/schemas/AdminOpsCouponGrant'
+            - $ref: '#/components/schemas/AdminOpsCouponGrantBatch'
 
     AdminOpsCouponVoidRequest:
       type: object

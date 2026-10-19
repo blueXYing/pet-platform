@@ -143,6 +143,8 @@ HTTP 映射只属于 Adapter 层；内部 Java API 通过稳定 code 表达同�
 | COUPON_ALREADY_USED | 已使用 |
 | COUPON_COMPENSATION_PENDING | 权益补偿处理中 |
 
+运营发放路由 HTTP 状态映射（2026-10-19 强化批，65 号 §4.3 v0.4 路由）：400 严格 JSON/批量形态非法（`userId` 与 `userIds` 恰现其一、`userIds` 非空/去重/≤100）/ID 词法（沿 `COMMON_INVALID_ARGUMENT`）；401 会话缺失/失效；403 动作码 `coupon.instance.grant` 缺失或数据范围非 ALL；404 `COMMON_NOT_FOUND`（模板不存在与目标用户不存在统一防枚举，消灭无主券）；409 `COMMON_CONFLICT`（模板非 ACTIVE/不在有效期/`total_stock` 售罄/单用户同模板持有超限/同操作者同用户同模板 60 秒频控）及 `IDEMPOTENCY_KEY_CONFLICT`（单发同 key 异参）；503 `COMMON_DEPENDENCY_UNAVAILABLE`（内核开关未装配/授权决断不可用/目标用户存在性读不可用）；未识别内部异常统一 500 `COMMON_INTERNAL_ERROR` 安全包装。无新增错误码；批量部分失败按逐用户明细回执（HTTP 200），授权/基础设施失败终止整单且已成功用户不回滚。
+
 ## 10. POINTS
 
 | Code | 含义 |
@@ -432,6 +434,8 @@ HTTP 映射只属于 Adapter 层；内部 Java API 通过稳定 code 表达同�
 | COUPON_FREEZE_EXPIRED | 冻结已失效 |
 | COUPON_ALREADY_USED | 已使用 |
 | COUPON_COMPENSATION_PENDING | 权益补偿处理中 |
+
+运营发放路由 HTTP 状态映射（2026-10-19 强化批，65 号 §4.3 v0.4 路由）：400 严格 JSON/批量形态非法（`userId` 与 `userIds` 恰现其一、`userIds` 非空/去重/≤100）/ID 词法（沿 `COMMON_INVALID_ARGUMENT`）；401 会话缺失/失效；403 动作码 `coupon.instance.grant` 缺失或数据范围非 ALL；404 `COMMON_NOT_FOUND`（模板不存在与目标用户不存在统一防枚举，消灭无主券）；409 `COMMON_CONFLICT`（模板非 ACTIVE/不在有效期/`total_stock` 售罄/单用户同模板持有超限/同操作者同用户同模板 60 秒频控）及 `IDEMPOTENCY_KEY_CONFLICT`（单发同 key 异参）；503 `COMMON_DEPENDENCY_UNAVAILABLE`（内核开关未装配/授权决断不可用/目标用户存在性读不可用）；未识别内部异常统一 500 `COMMON_INTERNAL_ERROR` 安全包装。无新增错误码；批量部分失败按逐用户明细回执（HTTP 200），授权/基础设施失败终止整单且已成功用户不回滚。
 
 ## 10. POINTS
 
@@ -726,6 +730,8 @@ HTTP 映射只属于 Adapter 层；内部 Java API 通过稳定 code 表达同�
 | COUPON_FREEZE_EXPIRED | 冻结已失效 |
 | COUPON_ALREADY_USED | 已使用 |
 | COUPON_COMPENSATION_PENDING | 权益补偿处理中 |
+
+运营发放路由 HTTP 状态映射（2026-10-19 强化批，65 号 §4.3 v0.4 路由）：400 严格 JSON/批量形态非法（`userId` 与 `userIds` 恰现其一、`userIds` 非空/去重/≤100）/ID 词法（沿 `COMMON_INVALID_ARGUMENT`）；401 会话缺失/失效；403 动作码 `coupon.instance.grant` 缺失或数据范围非 ALL；404 `COMMON_NOT_FOUND`（模板不存在与目标用户不存在统一防枚举，消灭无主券）；409 `COMMON_CONFLICT`（模板非 ACTIVE/不在有效期/`total_stock` 售罄/单用户同模板持有超限/同操作者同用户同模板 60 秒频控）及 `IDEMPOTENCY_KEY_CONFLICT`（单发同 key 异参）；503 `COMMON_DEPENDENCY_UNAVAILABLE`（内核开关未装配/授权决断不可用/目标用户存在性读不可用）；未识别内部异常统一 500 `COMMON_INTERNAL_ERROR` 安全包装。无新增错误码；批量部分失败按逐用户明细回执（HTTP 200），授权/基础设施失败终止整单且已成功用户不回滚。
 
 ## 10. POINTS
 

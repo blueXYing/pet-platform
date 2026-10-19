@@ -9,21 +9,31 @@ import com.petplatform.common.CommonApiCodes;
 import com.petplatform.coupon.api.command.AdminCouponGrantApi;
 import com.petplatform.coupon.biz.apiimpl.AdminCouponGrantApiImpl;
 import com.petplatform.coupon.biz.application.AdminCouponAuthorizationPort.CouponPort;
+import com.petplatform.coupon.biz.application.CouponGrantService.Settings;
+import com.petplatform.user.api.query.UserActiveStatusApi;
+import com.petplatform.user.biz.apiimpl.UserActiveStatusApiImpl;
 import java.util.Objects;
 import org.springframework.beans.factory.ObjectProvider;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
 /**
- * Contract-65 §4.3 coupon grant channel runtime (user ruling 2026-10-16), behind its own
- * {@code pet.coupon.grant.enabled} switch, default off — the default value stays with the
- * 35号 switch-liberation ruling owner for a unified flip (registered in the 21号 list). This
- * configuration only exists when the admin authorization owner is also assembled
- * (pet.auth.admin.enabled): the grant kernel re-proves every command against the
- * authorization owner through the boot-level adapter below, so http-less auth means no
- * kernel bean and the contract-65 grant route answers 503 fail-closed (61号
- * provider-unassembled semantics), never an open write.
+ * Contract-65 §4.3 coupon grant channel runtime (user rulings 2026-10-16 minimum +
+ * 2026-10-19 hardening batch), behind its own {@code pet.coupon.grant.enabled} switch,
+ * default off — the default value stays with the 35号 switch-liberation ruling owner for a
+ * unified flip (registered in the 21号 list). This configuration only exists when the admin
+ * authorization owner is also assembled (pet.auth.admin.enabled): the grant kernel re-proves
+ * every command against the authorization owner through the boot-level adapter below, so
+ * http-less auth means no kernel bean and the contract-65 grant route answers 503
+ * fail-closed (61号 provider-unassembled semantics), never an open write. The hardening
+ * batch additionally binds the user owner's read-only {@link UserActiveStatusApi} (plain
+ * bean, absent only if the user owner is not on the classpath) into the module-local
+ * existence port, and rides {@code pet.coupon.grant.max-per-template} (default 10) for the
+ * per-user-template hold cap; the 60-second frequency window and the 100-user batch limit
+ * are ruled constants, not settings.
  */
 @Configuration(proxyBeanMethods = false)
 @ConditionalOnProperty(
@@ -33,15 +43,42 @@ import org.springframework.context.annotation.Configuration;
 public class CouponGrantConfiguration {
 
   @Bean
+  @ConditionalOnMissingBean(UserActiveStatusApi.class)
+  UserActiveStatusApi userActiveStatusApi(javax.sql.DataSource source) {
+    return new UserActiveStatusApiImpl(source);
+  }
+
+  @Bean
   AdminCouponGrantApi adminCouponGrantApi(
       javax.sql.DataSource source,
       ObjectProvider<AdminAuthorizationQueryApi> authorization,
       ObjectProvider<java.time.Clock> clock,
-      ObjectProvider<com.petplatform.common.SnowflakeIdGenerator> ids) {
+      ObjectProvider<com.petplatform.common.SnowflakeIdGenerator> ids,
+      UserActiveStatusApi userStatus,
+      @Value("${pet.coupon.grant.max-per-template:10}") int maxPerTemplate) {
     return new AdminCouponGrantApiImpl(
         source, requireIds(ids),
         new CouponGrantAuthorizationAdapter(requireAuthorization(authorization)),
+        new CouponGrantUserFactsAdapter(userStatus),
+        new Settings(maxPerTemplate, 100),
         clock.getIfAvailable(java.time.Clock::systemUTC));
+  }
+
+  /** Boot-level adapter: coupon kernel existence port → user owner read-only status probe. */
+  static final class CouponGrantUserFactsAdapter
+      implements com.petplatform.coupon.biz.application.AdminCouponUserFactsPort.CouponPort {
+    private final UserActiveStatusApi userStatus;
+
+    CouponGrantUserFactsAdapter(UserActiveStatusApi userStatus) {
+      this.userStatus = Objects.requireNonNull(userStatus);
+    }
+
+    @Override
+    public boolean exists(long userId, String operatorId) {
+      return userStatus.exists(Long.toUnsignedString(userId),
+          new com.petplatform.common.QueryContext(
+              "coupon-grant", com.petplatform.common.OperatorType.PLATFORM_OPERATOR, operatorId));
+    }
   }
 
   private static com.petplatform.common.SnowflakeIdGenerator requireIds(

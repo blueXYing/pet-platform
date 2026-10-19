@@ -65,7 +65,23 @@ class CouponVoidMySqlTest {
     private static final long USER_B = 9_700_000_000_000_602L;
     private static final OffsetDateTime START = OffsetDateTime.parse("2026-01-01T00:00:00.000Z");
     private static final OffsetDateTime END = OffsetDateTime.parse("2027-01-01T00:00:00.000Z");
-    private static final Clock CLOCK = Clock.fixed(Instant.parse("2026-10-16T00:00:00Z"), ZoneOffset.UTC);
+
+    /** Deterministic clock; tick() jumps 61s so the ruled 60s grant-frequency window opens. */
+    static final class TickClock extends java.time.Clock {
+        private final java.util.concurrent.atomic.AtomicLong seconds;
+
+        TickClock(Instant start) {
+            this.seconds = new java.util.concurrent.atomic.AtomicLong(start.getEpochSecond());
+        }
+
+        void tick() {
+            seconds.addAndGet(61);
+        }
+
+        @Override public java.time.ZoneId getZone() { return ZoneOffset.UTC; }
+        @Override public Clock withZone(java.time.ZoneId zone) { return this; }
+        @Override public Instant instant() { return Instant.ofEpochSecond(seconds.get()); }
+    }
 
     @Test void voidAvailableInstanceLandsVoidRowLedgerAndCBucketInvisibility() throws Exception {
         try (Database d = new Database()) {
@@ -240,6 +256,7 @@ class CouponVoidMySqlTest {
         final DataSource source;
         final JdbcTemplate jdbc;
         final AtomicLong ids = new AtomicLong(9_700_000_000_000_700L);
+        final TickClock clock = new TickClock(Instant.parse("2026-10-16T00:00:00Z"));
         private final long now = System.currentTimeMillis();
 
         Database() throws Exception {
@@ -272,16 +289,34 @@ class CouponVoidMySqlTest {
                         new FileSystemResource(root.resolve("docs/03-database/06-核心数据库Schema-v0.1.sql")),
                         StandardCharsets.UTF_8));
                 }
+                seedUser(USER_A);
+                seedUser(USER_B);
             } catch (Exception failure) { close(); throw failure; }
         }
 
         AdminCouponService admin() {
             return new AdminCouponService(new CouponAdminStore(source, ids::incrementAndGet),
-                allowPort(), CLOCK);
+                allowPort(), clock);
         }
 
         AdminCouponGrantApiImpl grantKernel() {
-            return new AdminCouponGrantApiImpl(source, ids::incrementAndGet, allowPort(), CLOCK);
+            return new AdminCouponGrantApiImpl(source, ids::incrementAndGet, allowPort(),
+                userFactsPort(), com.petplatform.coupon.biz.application.CouponGrantService
+                        .Settings.defaults(), clock);
+        }
+
+        /** In-module stub of the user owner's existence port, backed by the seeded user_account rows. */
+        com.petplatform.coupon.biz.application.AdminCouponUserFactsPort.CouponPort userFactsPort() {
+            return (userId, operatorId) -> {
+                Long count = jdbc.queryForObject(
+                        "SELECT COUNT(*) FROM user_account WHERE id=?", Long.class, userId);
+                return count != null && count > 0;
+            };
+        }
+
+        void seedUser(long userId) {
+            jdbc.update("INSERT INTO user_account(id,status,password_enabled,version,created_at,updated_at)"
+                    + " VALUES(?,'ACTIVE',0,0,UTC_TIMESTAMP(3),UTC_TIMESTAMP(3))", userId);
         }
 
         AdminCouponVoidApiImpl voidKernel() {
@@ -290,7 +325,7 @@ class CouponVoidMySqlTest {
 
         AdminCouponVoidApiImpl voidKernel(boolean allowed, boolean available) {
             return new AdminCouponVoidApiImpl(source, ids::incrementAndGet,
-                allowPort(allowed, available), CLOCK);
+                allowPort(allowed, available), clock);
         }
 
         CouponQueryApiImpl cQueries() {
@@ -298,6 +333,7 @@ class CouponVoidMySqlTest {
         }
 
         String grant(String templateId, String requestId) {
+            clock.tick();
             return grantKernel().grant(new GrantCouponCommand(templateId,
                     Long.toUnsignedString(USER_A), command(requestId), GRANT_AUTH)).instanceId();
         }

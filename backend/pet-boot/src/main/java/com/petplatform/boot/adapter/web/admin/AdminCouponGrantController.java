@@ -14,6 +14,9 @@ import com.petplatform.common.CommandContext;
 import com.petplatform.common.CommonApiCodes;
 import com.petplatform.common.OperatorType;
 import com.petplatform.coupon.api.command.AdminCouponGrantApi;
+import com.petplatform.coupon.api.command.AdminCouponGrantApi.BatchGrantCouponCommand;
+import com.petplatform.coupon.api.command.AdminCouponGrantApi.BatchGrantItem;
+import com.petplatform.coupon.api.command.AdminCouponGrantApi.BatchGrantReceipt;
 import com.petplatform.coupon.api.command.AdminCouponGrantApi.GrantCouponCommand;
 import com.petplatform.coupon.api.command.AdminCouponGrantApi.GrantReceipt;
 import jakarta.servlet.http.HttpServletRequest;
@@ -62,27 +65,53 @@ public class AdminCouponGrantController {
       consumes = MediaType.APPLICATION_JSON_VALUE,
       produces = MediaType.APPLICATION_JSON_VALUE)
   Map<String, Object> grant(HttpServletRequest req) {
-    // No @RequestBody binding here: stringBody reads the stream directly, and a binding would
+    // No @RequestBody binding here: grantBody reads the stream directly, and a binding would
     // consume it first so every grant answered 400 (FA-3 face defect found by the 2026-10-16
     // booted regression; the void channel never had the parameter).
     AdminSessionView session = session(req, "coupon.instance.grant");
-    Map<String, String> body =
-        AdminTradeHttpSupport.stringBody(req, "templateId", "userId");
-    String templateId = body.get("templateId");
-    String userId = body.get("userId");
-    if (templateId == null || userId == null) {
-      throw AdminTradeHttpSupport.invalid();
-    }
+    GrantBody body = grantBody(req);
     AdminCouponGrantApi kernel = grantKernel.getIfAvailable();
     if (kernel == null) {
       // pet.coupon.grant.enabled=false: the face stays visible but the write fails closed.
       throw new ApiException(
           CommonApiCodes.DEPENDENCY_UNAVAILABLE, "coupon grant channel is not assembled");
     }
+    if (body.batch()) {
+      // §4.3 hardening (user ruling 2026-10-19): per-user independent idempotency, guards
+      // and transactions; the receipt lists one status line per requested user.
+      BatchGrantReceipt receipt =
+          kernel.grantBatch(
+              new BatchGrantCouponCommand(
+                  id(body.templateId()), body.userIds(), command(req, session),
+                  authorization(session)));
+      java.util.List<Map<String, Object>> results = new java.util.ArrayList<>(receipt.results().size());
+      for (BatchGrantItem item : receipt.results()) {
+        Map<String, Object> line = new LinkedHashMap<>();
+        line.put("userId", item.userId());
+        line.put("status", item.status());
+        if ("GRANTED".equals(item.status())) {
+          line.put("instanceId", item.instanceId());
+          line.put("expireAt", time(item.expireAt()));
+          line.put("occurredAt", time(item.occurredAt()));
+        } else {
+          line.put("code", item.code());
+          line.put("message", item.message());
+        }
+        results.add(line);
+      }
+      Map<String, Object> data = new LinkedHashMap<>();
+      data.put("templateId", receipt.templateId());
+      data.put("results", results);
+      data.put("grantedCount", receipt.grantedCount());
+      data.put("rejectedCount", receipt.rejectedCount());
+      data.put("occurredAt", time(receipt.occurredAt()));
+      return ok(data, req);
+    }
     GrantReceipt receipt =
         kernel.grant(
             new GrantCouponCommand(
-                id(templateId), id(userId), command(req, session), authorization(session)));
+                id(body.templateId()), id(body.userId()), command(req, session),
+                authorization(session)));
     Map<String, Object> data = new LinkedHashMap<>();
     data.put("instanceId", receipt.instanceId());
     data.put("templateId", receipt.templateId());
@@ -91,6 +120,56 @@ public class AdminCouponGrantController {
     data.put("expireAt", time(receipt.expireAt()));
     data.put("occurredAt", time(receipt.occurredAt()));
     return ok(data, req);
+  }
+
+  /** Strict {templateId, userId} XOR {templateId, userIds[]} body (hardening 2026-10-19). */
+  private record GrantBody(String templateId, String userId, java.util.List<String> userIds) {
+    boolean batch() {
+      return userIds != null;
+    }
+  }
+
+  private static GrantBody grantBody(HttpServletRequest req) {
+    com.fasterxml.jackson.databind.JsonNode root;
+    try {
+      var content = MediaType.parseMediaType(req.getContentType());
+      if (!"application".equalsIgnoreCase(content.getType())
+          || !"json".equalsIgnoreCase(content.getSubtype())) {
+        throw AdminTradeHttpSupport.invalid();
+      }
+      byte[] raw = req.getInputStream().readNBytes(32769);
+      if (raw.length == 0 || raw.length > 32768) throw AdminTradeHttpSupport.invalid();
+      root = new com.fasterxml.jackson.databind.ObjectMapper().readTree(raw);
+    } catch (ApiException known) {
+      throw known;
+    } catch (Exception malformed) {
+      throw AdminTradeHttpSupport.invalid();
+    }
+    if (root == null || !root.isObject()) throw AdminTradeHttpSupport.invalid();
+    for (var field : root.properties()) {
+      if (!"templateId".equals(field.getKey()) && !"userId".equals(field.getKey())
+          && !"userIds".equals(field.getKey())) {
+        throw AdminTradeHttpSupport.invalid();
+      }
+    }
+    var templateNode = root.get("templateId");
+    if (templateNode == null || !templateNode.isTextual()) throw AdminTradeHttpSupport.invalid();
+    var userNode = root.get("userId");
+    var usersNode = root.get("userIds");
+    // Exactly one recipient variant; explicit nulls count as absent (stringBody convention).
+    boolean single = userNode != null && userNode.isTextual();
+    boolean batch = usersNode != null && usersNode.isArray();
+    if (single == batch) throw AdminTradeHttpSupport.invalid();
+    if (single) {
+      return new GrantBody(templateNode.textValue(), userNode.textValue(), null);
+    }
+    java.util.List<String> userIds = new java.util.ArrayList<>();
+    for (var entry : usersNode) {
+      if (entry == null || !entry.isTextual()) throw AdminTradeHttpSupport.invalid();
+      userIds.add(entry.textValue());
+    }
+    if (userIds.isEmpty()) throw AdminTradeHttpSupport.invalid();
+    return new GrantBody(templateNode.textValue(), null, java.util.List.copyOf(userIds));
   }
 
   private static CommandContext command(HttpServletRequest req, AdminSessionView session) {
