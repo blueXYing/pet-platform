@@ -378,11 +378,11 @@ class FeedbackTicketMySqlTest {
         }
 
         /** Fixed-owner service; the ACTIVE guard is the lambda (real port has its own wiring). */
-        FeedbackTicketService service(UserActiveStatusApi guard) {
+        FeedbackTicketService service(UserActiveGuard guard) {
             return serviceAs(USER, guard);
         }
 
-        FeedbackTicketService serviceAs(long userId, UserActiveStatusApi guard) {
+        FeedbackTicketService serviceAs(long userId, UserActiveGuard guard) {
             return new FeedbackTicketService(new FeedbackTicketStore(dataSource),
                     guard, IDS::incrementAndGet,
                     query -> {
@@ -423,7 +423,6 @@ class FeedbackTicketMySqlTest {
                                     OffsetDateTime.now(), "authz-test", null);
                         }
                     });
-                    guard, IDS::incrementAndGet, java.time.Clock.systemUTC());
         }
 
         JdbcTemplate jdbc() {
