@@ -15,7 +15,7 @@
 |---|---|---|
 | E2E_BIND | `backend/pet-boot/src/test/java/com/petplatform/boot/e2e/E2eCoreLoopServer.java` | `--server.address` 改为 `E2E_BIND` env 可覆盖（默认 127.0.0.1 行为不变）；READY 日志带 `bind=<address>`；真机验收前置 |
 | 复验 spec | `frontend-admin/tests/admin-fa-fixes-recheck.spec.ts` | 断言 #183/#185 修复后的行为（旧 admin-main-chain.spec 断言的是修复前错误态，对修复后后端必红）；LIVE_JOINT_BASE opt-in，CI 不跑 |
-| 证据 | `planning/progress/2026-10-19/e2e-final-recheck/` | 本报告 + screenshots/（admin 13 张 + miniapp 13 张）+ probes/（探针脚本、网络取证、载荷）+ logs/（服务端 console ×3、metadata、Playwright 日志） |
+| 证据 | `planning/progress/2026-10-19/e2e-final-recheck/` | 本报告 + screenshots/（admin 13 张 + miniapp 13 张）+ probes/（探针脚本、网络取证、载荷）+ server-logs/（服务端 console ×6、metadata、Playwright/轮询日志；.gitignore 的 logs/ 与 *.log 规则曾静默丢弃，已 force-add） |
 
 不提交物（本地使用）：`frontend-miniapp/project.config.json`（真实 appid + urlCheck=false，从主工作区拷贝后本地改 urlCheck，git 状态保持未提交）；`backend/pet-boot/cp.txt`（构建产物）。
 
@@ -57,7 +57,7 @@
 | # | 矩阵项 | 结果 | 证据（截图号对应 screenshots/admin/） |
 |---|---|---|---|
 | C1 | 服务审核控制台渲染（FA-6，"ok"口径） | **通过** | r02：列表渲染、0 alert（修复前任何响应被 `message!=='ok'` 拒渲染） |
-| C2 | 订单详情页 200（FA-5 连字码） | **通过** | r04：详情渲染 + 履约层可见 + 0 alert（修复前 `order.status-log.read` 词法 400 连带整页报错）；权限集含 `order.status-log.read`/`order.verification-log.read`（logs/server-metadata 同库探针） |
+| C2 | 订单详情页 200（FA-5 连字码） | **通过** | r04：详情渲染 + 履约层可见 + 0 alert（修复前 `order.status-log.read` 词法 400 连带整页报错）；权限集含 `order.status-log.read`/`order.verification-log.read`（server-logs/server-metadata-final.txt） |
 | C3 | 核销记录页 200（FA-5） | **通过** | r06：表格渲染、0 alert（修复前全量 400 COMMON_INVALID_ARGUMENT） |
 | C4 | 处置按钮可达（FA-1，不再 403） | **通过（含环境注记）** | 异常关单 UI 真点（首轮）：POST 过安全链入内核——订单 105485164972326912 → **CANCELED** + 新建 `refund_order 105505504552431616 ADMIN_ABNORMAL_CLOSE FULL 60.00`（服务端 console `RefundOrderCreatedEvent.v1` 在案）；信封因 E-6 风暴在事后发号步骤 500（`COMMON_INTERNAL_ERROR`，trace a0a98ab0…）——**不是 403**，修复语义成立；复跑轮 r05 截图显示已关单后的按钮停用态与提示文案。商家下线按钮同页渲染可达（未点击，避免破坏走查商家）。渠道查单/重试按钮因两张退款单均非 PROCESSING 态未点击（按钮状态门控正确） |
 | C5 | 运营台四块页面正常（FA-2/FA-3，ops 默认开） | **通过 5/5** | r09~r13：百科分类/品种库/券模板/积分台账/系统设置五块全部渲染数据、0 alert、全程同一会话（apiStatus 断言全部 ops GET = 200；修复前 403 死面 + 打不开开关） |
@@ -125,4 +125,4 @@
 2. 小程序：`NODE_ENV=development PET_C_API_ORIGIN=http://127.0.0.1:18081 PET_ALLOW_LOCAL_HTTP=true npm run build:weapp`；真实 appid project.config.json（urlCheck=false，不入库）；换包 debug_clear_cache 全套。
 3. 运营面：`frontend-admin` npm ci → npm run build → `node scripts/e2e-origin-shim.mjs` → `ADMIN_API_PROXY_TARGET=http://127.0.0.1:18083 ADMIN_API_PROXY_ORIGIN=http://127.0.0.1:18082 npx vite preview --host 127.0.0.1 --port 18082` → `LIVE_JOINT_BASE=http://127.0.0.1:18082 E2E_ADMIN_EVIDENCE_DIR=<dir> E2E_DISPOSITION_ORDER_ID=<可关单种子单> npx playwright test tests/admin-fa-fixes-recheck.spec.ts`。
 
-证据目录：`planning/progress/2026-10-19/e2e-final-recheck/`（本报告、screenshots/、probes/、logs/）。
+证据目录：`planning/progress/2026-10-19/e2e-final-recheck/`（本报告、screenshots/、probes/、server-logs/）。
