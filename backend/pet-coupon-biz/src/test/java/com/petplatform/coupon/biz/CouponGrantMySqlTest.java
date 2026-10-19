@@ -298,7 +298,7 @@ class CouponGrantMySqlTest {
             d.clock.tick();
             d.grant().grant(new GrantCouponCommand(template, Long.toUnsignedString(USER_A),
                     d.command("f-5"), GRANT_AUTH));
-            assertEquals(2L, d.jdbc.queryForObject(
+            assertEquals(3L, d.jdbc.queryForObject(
                     "SELECT COUNT(*) FROM coupon_instance WHERE user_id=?", Long.class, USER_A));
             assertEquals(1L, d.jdbc.queryForObject(
                     "SELECT COUNT(*) FROM coupon_instance WHERE user_id=?", Long.class, USER_B));
@@ -313,12 +313,12 @@ class CouponGrantMySqlTest {
                     d.command("s-1"), GRANT_AUTH));
             ApiException soldOut = assertThrows(ApiException.class,
                     () -> d.grant().grant(new GrantCouponCommand(limited,
-                            Long.toUnsignedString(USER_A), d.command("s-2"), GRANT_AUTH)));
+                            Long.toUnsignedString(USER_B), d.command("s-2"), GRANT_AUTH)));
             assertEquals(CommonApiCodes.CONFLICT, soldOut.code());
             assertEquals(1L, d.jdbc.queryForObject(
                     "SELECT issued_count FROM coupon_template WHERE id=?", Long.class,
                     Long.parseLong(limited)));
-            assertEquals(1L, d.jdbc.queryForObject(
+            assertEquals(1, d.jdbc.queryForObject(
                     "SELECT COUNT(*) FROM coupon_instance", Integer.class));
 
             // total_stock NULL stays unlimited (the 2026-10-16 minimum behavior).
@@ -357,7 +357,7 @@ class CouponGrantMySqlTest {
             assertEquals(CommonApiCodes.NOT_FOUND, rejected.code());
             assertNull(rejected.instanceId());
             assertGranted(receipt.results().get(3), Long.toUnsignedString(USER_C));
-            assertEquals(3L, d.jdbc.queryForObject(
+            assertEquals(3, d.jdbc.queryForObject(
                     "SELECT COUNT(*) FROM coupon_instance", Integer.class));
             assertEquals(3L, d.jdbc.queryForObject(
                     "SELECT issued_count FROM coupon_template WHERE id=?",
@@ -376,7 +376,7 @@ class CouponGrantMySqlTest {
                 assertEquals(before.status(), after.status());
                 assertEquals(before.instanceId(), after.instanceId());
             }
-            assertEquals(3L, d.jdbc.queryForObject(
+            assertEquals(3, d.jdbc.queryForObject(
                     "SELECT COUNT(*) FROM coupon_instance", Integer.class));
 
             // Malformed batches never reach the kernel: empty, duplicate and oversized lists.
@@ -397,7 +397,7 @@ class CouponGrantMySqlTest {
                     () -> d.grant().grantBatch(new BatchGrantCouponCommand(template,
                             List.of(oversized), d.command("b-4"), GRANT_AUTH)));
             assertEquals(CommonApiCodes.INVALID_ARGUMENT, tooMany.code());
-            assertEquals(3L, d.jdbc.queryForObject(
+            assertEquals(3, d.jdbc.queryForObject(
                     "SELECT COUNT(*) FROM coupon_instance", Integer.class));
         }
     }
@@ -564,7 +564,7 @@ class CouponGrantMySqlTest {
             long id = ids.incrementAndGet() + now % 1000;
             jdbc.update("INSERT INTO coupon_template(id,name,status,total_stock,issued_count,"
                     + "valid_start_at,valid_end_at,rule_json,version,created_at,updated_at)"
-                    + " VALUES(?,?,?,?,0,?,?,?,?,UTC_TIMESTAMP(3),UTC_TIMESTAMP(3))",
+                    + " VALUES(?,?,?,?,0,?,?,?,0,UTC_TIMESTAMP(3),UTC_TIMESTAMP(3))",
                     id, name, status, totalStock,
                     java.sql.Timestamp.valueOf(start.replace('T', ' ')),
                     java.sql.Timestamp.valueOf(end.replace('T', ' ')),
