@@ -103,9 +103,17 @@ class OrderDeletionFactsMySqlTest {
             admin.execute("CREATE DATABASE `" + name + "` CHARACTER SET utf8mb4");
             try {
                 try (Connection connection = source.getConnection()) {
-                    ScriptUtils.executeSqlScript(connection, new EncodedResource(
-                            new FileSystemResource(root().resolve("docs/03-database/06-核心数据库Schema-v0.1.sql")),
-                            StandardCharsets.UTF_8));
+                    // 06 base + 48/49 projections: the blocking predicate reads the
+                    // refund_application_status (49) and refund_order_id/refunded_amount (06)
+                    // projection columns, so the fixture needs the same ALTER chain as the
+                    // production truth table.
+                    for (String file : List.of("06-核心数据库Schema-v0.1.sql",
+                            "48-Verification-Completion-Schema-v0.1.sql",
+                            "49-Refund-Application-Schema-v0.1.sql")) {
+                        ScriptUtils.executeSqlScript(connection, new EncodedResource(
+                                new FileSystemResource(root().resolve("docs/03-database/" + file)),
+                                StandardCharsets.UTF_8));
+                    }
                 }
             } catch (Exception failure) {
                 try {

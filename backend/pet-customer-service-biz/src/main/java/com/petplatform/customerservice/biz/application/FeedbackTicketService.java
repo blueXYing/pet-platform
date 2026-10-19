@@ -265,8 +265,13 @@ public final class FeedbackTicketService {
     }
 
     private static String iso(java.time.LocalDateTime value) {
-        return java.time.format.DateTimeFormatterBuilder().appendInstant(3).toFormatter()
+        return new java.time.format.DateTimeFormatterBuilder().appendInstant(3).toFormatter()
                 .format(value.toInstant(java.time.ZoneOffset.UTC));
+    }
+
+    private String isoNow() {
+        return new java.time.format.DateTimeFormatterBuilder().appendInstant(3).toFormatter()
+                .format(clock.instant());
     }
 
     /** Pet-user style decimal Snowflake parsing; module-local to avoid cross-module helpers. */
