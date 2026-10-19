@@ -73,7 +73,7 @@ class AdminFacesFixRegressionHttpTest {
         props.put("pet.auth.c.enabled", true);
         props.put("pet.auth.c.redis-host", fixture.redisHost);
         props.put("pet.auth.c.redis-port", fixture.redisPort);
-        props.put("pet.auth.c.cache-prefix", fixture.prefix);
+        props.put("pet.auth.c.cache-prefix", "auth001c_facesfix:");
         props.put("pet.admin.trade.http.enabled", true);
         props.put("pet.admin.ops.http.enabled", true);
         // The shared store capacity guard (schedule protection foundation) backs the trade
@@ -142,7 +142,7 @@ class AdminFacesFixRegressionHttpTest {
                                     }
                                 });
                     })
-                    .run();
+                    .run(props.entrySet().stream().map(e -> "--" + e.getKey() + "=" + e.getValue()).toArray(String[]::new));
             base = "http://127.0.0.1:" + context.getEnvironment().getProperty("local.server.port");
             context.getBean(AdminAuthService.class)
                     .bootstrap("qa-owner", "QA Owner", PASSWORD.toCharArray(),
