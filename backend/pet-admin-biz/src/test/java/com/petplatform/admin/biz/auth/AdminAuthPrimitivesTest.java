@@ -88,7 +88,12 @@ class AdminAuthPrimitivesTest {
             "breed.read", "breed.manage",
             "coupon.template.read", "coupon.template.manage", "coupon.instance.read",
             "coupon.instance.grant", "coupon.instance.void",
-            "points.ledger.read", "system.parameter.read"),
+            "points.ledger.read", "system.parameter.read",
+            // Contract-67 v0.2 feedback ops face (user ruling 2026-10-19 "继续扩展CCR", matrix
+            // row 18): the three complaint enforcement points ship in that face (C-side
+            // controller snapshot gate + AdminFeedbackOpsController + kernel port re-proof);
+            // row 18's complaint.assign stays unregistered — no dispatch in V1.
+            "complaint.read", "complaint.handle", "complaint.decide"),
         AdminPermissionEvaluator.DEPLOYED_ACTIONS);
     assertEquals(AdminPermissionEvaluator.DEPLOYED_ACTIONS.stream().sorted().toList(),AdminPermissionEvaluator.evaluate(true,List.of("refund.retry"),AdminPermissionEvaluator.DEPLOYED_ACTIONS));
         // A proposed-but-undeployed code (merchant.freeze: AUTH-001 matrix row, explicitly not
