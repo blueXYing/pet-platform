@@ -67,6 +67,30 @@
 
 - （占位：券返还终态；任务落地后更新本节。）
 
+### 2.5 截图索引
+
+| 文件（screenshots/miniapp/） | 内容 |
+|---|---|
+| 00-home-baseline.jpg | 模拟器首页基线（tabbar 五格） |
+| 01/02-sheet-open5-create-host-slots.jpg | 预约弹层宿主 1/宿主 2 打开态（B1 竞态复测，含分钟级时段） |
+| 03/04-coupon-area-visible / coupon-716011-selected-pay50.jpg | 选券区渲染 + 选中 716011 后底部按钮 ¥50.00 |
+| 05-order-detail-payable-50.jpg | 折后单详情「去支付 ¥50.00」可达（F3R-3 修复） |
+| 06-pay-confirm-page-50.jpg | 确认支付页（LAKALA_WECHAT 沙箱发起） |
+| 07-coupons-available-2-after-consume.jpg | 支付后券桶 AVAILABLE 剩 2 张（716011 出桶） |
+| 08/09-refund-apply / submitted-post-service-route.jpg | 退款申请表单 + 提交后「服务后商家 24 小时处理」路由（窗口口径正确） |
+| 10/11/12-baike-openN-list-rendered.jpg | 百科页 3 次独立新开首载即渲染（F3R-1 修复） |
+
+| 文件（screenshots/admin/） | 内容 |
+|---|---|
+| r01-login-landing.png | 运营真登录落地（商家申请审核） |
+| r02-service-review-renders.png | 服务审核控制台渲染（FA-6 修复） |
+| r03/r04-trade-orders / order-detail-timeline-renders.png | 订单总览 + 详情含履约层（FA-5 修复） |
+| r05-abnormal-close-outcome.png | 异常关单处置区（复跑轮为已关单停用态；首轮真点 POST 证据见 §2.3 C4） |
+| r06-verifications-render.png | 核销记录页渲染（FA-5 修复） |
+| r07-refund-list.png | 退款单列表（2 张：ADMIN_ABNORMAL_CLOSE 60.00 + MERCHANT_APPROVED 50.00） |
+| r08-refund-detail-fl1-error-state.png | FL-1 定界：详情页 INVALID_RESPONSE 错误态 |
+| r09~r13-ops-*.png | 五块 ops 控制台渲染数据、同一会话（FA-2/FA-3 修复 + ops 默认开） |
+
 ## 3. 新发现问题清单（只定界取证、未修）
 
 | 编号 | 级别 | 问题 | 定界证据 | 处置建议 |
