@@ -25,6 +25,23 @@
             <groupId>com.petplatform</groupId>
             <artifactId>pet-customer-service-api</artifactId>
         </dependency>
+        <!-- Contract 67 (feedback tickets): the write guard consumes the user-owned
+             active-status fact *-api port; api-only, no biz dependency. -->
+        <dependency>
+            <groupId>com.petplatform</groupId>
+            <artifactId>pet-user-api</artifactId>
+        </dependency>
+        <!-- Supplement-23 canonical params + receipt (de)serialization (module-local). -->
+        <dependency>
+            <groupId>com.fasterxml.jackson.core</groupId>
+            <artifactId>jackson-databind</artifactId>
+        </dependency>
+        <!-- Kernel MySQL acceptance tests (isolated local server). -->
+        <dependency>
+            <groupId>com.mysql</groupId>
+            <artifactId>mysql-connector-j</artifactId>
+            <scope>test</scope>
+        </dependency>
         <dependency>
             <groupId>org.springframework</groupId>
             <artifactId>spring-context</artifactId>

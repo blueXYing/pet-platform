@@ -498,6 +498,122 @@ def check_address_operations(spec, operation, method, path):
     assert 'ADDRESS_NOT_FOUND' in envelope['properties']['code']['enum'], 'Address anti-enumeration code missing'
 
 
+# User settings hub / account deletion (contract 66, PRD 5.1.29; user ruling 2026-10-19
+# "全做"; CCR-USR-DELETION-001 minimum): the precheck read + the idempotent deletion write,
+# riding pet.usersettings.http.enabled (hard preconditions pet.auth.c.enabled and
+# pet.merchant.application.enabled — the OWNER-membership surface). The blocking fact is
+# composed in the user kernel from the order/aftersale leaf fact ports; the CANCELED flip is
+# the SQL06 §1 word and login refusal / session death stay the auth slice's existing
+# semantics (zero new code there). Synchronous cancel: no cooldown, no "applying" state,
+# no purge AsyncTask (all CCR §2).
+USER_SETTINGS_OPERATIONS = {
+    'cGetDeletionPrecheck': (
+        'get', '/c/account/deletion-precheck',
+        ('200', '400', '401', '503')),
+    'cDeleteAccount': (
+        'post', '/c/account/deletion',
+        ('200', '201', '400', '401', '403', '409', '500', '503')),
+}
+
+# Feedback tickets (contract 67, PRD 5.1.28 complaint class; CCR-CS-FEEDBACK-001 minimum):
+# C-side create/list/get over the customer-service skeleton module's first business face,
+# riding pet.feedback.http.enabled (hard precondition pet.auth.c.enabled). Frozen five-value
+# status word with V1 permanently PENDING (no ops face); text-only tickets (image attachments
+# are a separate asset-channel ruling); owner-scoped reads with one indistinguishable 404;
+# the detail view carries the empty reply/resolution field slots.
+FEEDBACK_HTTP_OPERATIONS = {
+    'cCreateFeedbackTicket': (
+        'post', '/c/feedback-tickets',
+        ('200', '201', '400', '401', '403', '409', '429', '500', '503')),
+    'cListFeedbackTickets': (
+        'get', '/c/feedback-tickets',
+        ('200', '400', '401', '503')),
+    'cGetFeedbackTicket': (
+        'get', '/c/feedback-tickets/{ticketId}',
+        ('200', '400', '401', '404', '503')),
+}
+
+
+def check_user_settings(spec, operation, method, path):
+    name = operation['operationId']
+    expected_method, expected_path, required_codes = USER_SETTINGS_OPERATIONS[name]
+    assert (method, path) == (expected_method, expected_path), f'Deletion operation moved: {name}'
+    assert operation.get('security') == [{'bearerAuth': []}], f'Deletion security changed: {name}'
+    assert operation.get('x-implementation-status') == 'IMPLEMENTED_DEFAULT_OFF', f'Deletion status changed: {name}'
+    assert operation.get('x-default-enabled') is False, f'Deletion must stay default off: {name}'
+    assert operation.get('x-contract') == '66-User-Settings-Deletion-Contract-v0.1.md', f'Deletion authority changed: {name}'
+    assert operation.get('x-assembly-switch') == 'pet.usersettings.http.enabled', f'Deletion assembly switch changed: {name}'
+    assert operation.get('x-route-party') == 'USER' and operation.get('x-audience') == 'MINIAPP', f'Deletion identity changed: {name}'
+    responses = operation['responses']
+    assert set(responses) == set(required_codes), f'Deletion response surface changed: {name}'
+    success_envelopes = {
+        'cGetDeletionPrecheck': 'DeletionPrecheckEnvelope',
+        'cDeleteAccount': 'DeletionReceiptEnvelope',
+    }
+    for code in responses:
+        response = dereference(spec, responses[code])
+        cache = response['headers']['Cache-Control']['schema']
+        assert cache == {'type': 'string', 'enum': ['no-store']}, f'Deletion caching changed: {name} {code}'
+        schema = response['content']['application/json']['schema']
+        expected = {'$ref': '#/components/schemas/DeletionErrorEnvelope'} if code not in {'200', '201'} \
+            else {'$ref': '#/components/schemas/' + success_envelopes[name]}
+        assert schema == expected, f'Deletion envelope changed: {name} {code}'
+    blocker = spec['components']['schemas']['DeletionBlocker']
+    assert blocker.get('additionalProperties') is False, 'Deletion blocker projection opened'
+    assert blocker['properties']['code']['enum'] == ['USER_ORDERS_UNSETTLED', 'USER_AFTERSALES_OPEN',
+        'OWNER_STORE_ORDERS_UNSETTLED', 'OWNER_STORE_AFTERSALES_OPEN'], 'Deletion blocker catalog changed'
+    request = spec['components']['schemas']['DeletionRequest']
+    assert request.get('additionalProperties') is False and request['required'] == ['acknowledged'], 'Deletion body opened'
+    assert request['properties']['acknowledged']['enum'] == [True], 'Deletion acknowledgement loosened'
+    envelope = spec['components']['schemas']['DeletionErrorEnvelope']
+    assert 'DELETION_BLOCKED' in envelope['properties']['code']['enum'], 'Deletion blocked code missing'
+    receipt = spec['components']['schemas']['DeletionReceiptEnvelope']['properties']['data']
+    assert receipt['properties']['status']['enum'] == ['CANCELED'], 'Deletion outcome word changed'
+    if method == 'get':
+        assert 'requestBody' not in operation and not [p for p in operation.get('parameters', []) if p.get('in') == 'query'], 'Precheck query opened'
+
+
+def check_feedback_http(spec, operation, method, path):
+    name = operation['operationId']
+    expected_method, expected_path, required_codes = FEEDBACK_HTTP_OPERATIONS[name]
+    assert (method, path) == (expected_method, expected_path), f'Feedback operation moved: {name}'
+    assert operation.get('security') == [{'bearerAuth': []}], f'Feedback security changed: {name}'
+    assert operation.get('x-implementation-status') == 'IMPLEMENTED_DEFAULT_OFF', f'Feedback status changed: {name}'
+    assert operation.get('x-default-enabled') is False, f'Feedback must stay default off: {name}'
+    assert operation.get('x-contract') == '67-Feedback-Ticket-Contract-v0.1.md', f'Feedback authority changed: {name}'
+    assert operation.get('x-assembly-switch') == 'pet.feedback.http.enabled', f'Feedback assembly switch changed: {name}'
+    assert operation.get('x-route-party') == 'USER' and operation.get('x-audience') == 'MINIAPP', f'Feedback identity changed: {name}'
+    responses = operation['responses']
+    assert set(responses) == set(required_codes), f'Feedback response surface changed: {name}'
+    success_envelopes = {
+        'cCreateFeedbackTicket': 'FeedbackTicketCreateEnvelope',
+        'cListFeedbackTickets': 'FeedbackTicketPageEnvelope',
+        'cGetFeedbackTicket': 'FeedbackTicketDetailEnvelope',
+    }
+    for code in responses:
+        response = dereference(spec, responses[code])
+        cache = response['headers']['Cache-Control']['schema']
+        assert cache == {'type': 'string', 'enum': ['no-store']}, f'Feedback caching changed: {name} {code}'
+        schema = response['content']['application/json']['schema']
+        expected = {'$ref': '#/components/schemas/FeedbackErrorEnvelope'} if code not in {'200', '201'} \
+            else {'$ref': '#/components/schemas/' + success_envelopes[name]}
+        assert schema == expected, f'Feedback envelope changed: {name} {code}'
+    types = ['FEATURE_SUGGESTION', 'BUG_REPORT', 'SERVICE_COMPLAINT', 'OTHER']
+    statuses = ['PENDING', 'PROCESSING', 'WAITING_SUPPLEMENT', 'RESOLVED', 'CLOSED']
+    create = spec['components']['schemas']['FeedbackTicketCreate']
+    assert create.get('additionalProperties') is False and create['required'] == ['type', 'content'], 'Feedback create body opened'
+    assert create['properties']['type']['enum'] == types, 'Feedback type vocabulary changed'
+    assert create['properties']['content']['maxLength'] == 500, 'Feedback content bound changed'
+    summary = spec['components']['schemas']['FeedbackTicketSummary']
+    assert summary['properties']['status']['enum'] == statuses, 'Feedback status vocabulary changed'
+    assert 'contact' not in summary['properties'], 'Feedback summary leaked the contact field'
+    detail = spec['components']['schemas']['FeedbackTicketDetailEnvelope']['properties']['data']
+    assert detail['properties']['replies']['maxItems'] == 0, 'Feedback reply slot opened'
+    assert detail['properties']['resolution']['enum'] == [None], 'Feedback resolution slot opened'
+    envelope = spec['components']['schemas']['FeedbackErrorEnvelope']
+    for code in ('FEEDBACK_TYPE_INVALID', 'FEEDBACK_TICKET_NOT_FOUND', 'COMMON_RATE_LIMITED', 'USER_FROZEN'):
+        assert code in envelope['properties']['code']['enum'], f'Feedback error code missing: {code}'
+
 # HTTP10 §3.3.3 C catalog keyword search (2026-10-19 ruling): the service-domain global route
 # keeps the four-condition visibility inside the service module; the HTTP face only validates
 # the keyword bounds and pages over the honest visible total. Same STR-D8 anonymous discipline
@@ -2078,6 +2194,10 @@ def check(spec):
                 check_notification_preferences(spec, operation, method, path)
             if operation_id in ADDRESS_OPERATIONS:
                 check_address_operations(spec, operation, method, path)
+            if operation_id in USER_SETTINGS_OPERATIONS:
+                check_user_settings(spec, operation, method, path)
+            if operation_id in FEEDBACK_HTTP_OPERATIONS:
+                check_feedback_http(spec, operation, method, path)
             if operation_id in STAFF_INVITATION_LIST_OPERATIONS:
                 check_staff_invitation_list(spec, operation, method, path)
             if operation_id in ORDER_WRITE_OPERATIONS:
@@ -2126,7 +2246,7 @@ def check(spec):
     assert legacy_writes == 10, 'Legacy write surface changed'
     assert legacy_creates == LEGACY_CREATES, 'Legacy create surface changed'
 
-    assert operations == LEGACY_OPERATIONS.keys() | AUTH_OPERATIONS.keys() | MERCHANT_OPERATIONS.keys() | APPLICATION_OPERATIONS.keys() | PRIVATE_ASSET_OPERATIONS.keys() | SERVICE_CATALOG_OPERATIONS.keys() | STORE_CATALOG_OPERATIONS.keys() | SERVICE_WRITE_OPERATIONS.keys() | SCHEDULE_AVAILABILITY_OPERATIONS.keys() | SCHEDULE_WRITE_OPERATIONS.keys() | CREDENTIAL_OPERATIONS.keys() | AFTERSALE_OPERATIONS.keys() | COUPON_POINTS_READ_OPERATIONS.keys() | VERIFICATION_HTTP_OPERATIONS.keys() | NOTIFICATION_PREFERENCE_OPERATIONS.keys() | STAFF_INVITATION_LIST_OPERATIONS.keys() | ORDER_WRITE_OPERATIONS.keys() | REFUND_HTTP_OPERATIONS.keys() | MERCHANT_ORDER_LIST_OPERATIONS.keys() | RESCHEDULE_HTTP_OPERATIONS.keys() | REVIEW_HTTP_OPERATIONS.keys() | REVIEW_APPEAL_HTTP_OPERATIONS.keys() | MERCHANT_REFUND_HTTP_OPERATIONS.keys() | FAVTRACK_HTTP_OPERATIONS.keys() | ADDRESS_OPERATIONS.keys() | POINTS_TASK_OPERATIONS.keys() | BAIKE_OPERATIONS.keys() | ADMIN_TRADE_OPERATIONS.keys() | ADMIN_GOVERNANCE_OPERATIONS.keys() | ADMIN_OPS_OPERATIONS.keys() | CATALOG_SEARCH_OPERATIONS.keys() | CITY_OPERATIONS.keys() | PET_HEALTH_RECORD_OPERATIONS.keys() | MERCHANT_CONSOLE_OPERATIONS.keys(), 'Unexpected or missing reviewed operations'
+    assert operations == LEGACY_OPERATIONS.keys() | AUTH_OPERATIONS.keys() | MERCHANT_OPERATIONS.keys() | APPLICATION_OPERATIONS.keys() | PRIVATE_ASSET_OPERATIONS.keys() | SERVICE_CATALOG_OPERATIONS.keys() | STORE_CATALOG_OPERATIONS.keys() | SERVICE_WRITE_OPERATIONS.keys() | SCHEDULE_AVAILABILITY_OPERATIONS.keys() | SCHEDULE_WRITE_OPERATIONS.keys() | CREDENTIAL_OPERATIONS.keys() | AFTERSALE_OPERATIONS.keys() | COUPON_POINTS_READ_OPERATIONS.keys() | VERIFICATION_HTTP_OPERATIONS.keys() | NOTIFICATION_PREFERENCE_OPERATIONS.keys() | STAFF_INVITATION_LIST_OPERATIONS.keys() | ORDER_WRITE_OPERATIONS.keys() | REFUND_HTTP_OPERATIONS.keys() | MERCHANT_ORDER_LIST_OPERATIONS.keys() | RESCHEDULE_HTTP_OPERATIONS.keys() | REVIEW_HTTP_OPERATIONS.keys() | REVIEW_APPEAL_HTTP_OPERATIONS.keys() | MERCHANT_REFUND_HTTP_OPERATIONS.keys() | FAVTRACK_HTTP_OPERATIONS.keys() | ADDRESS_OPERATIONS.keys() | USER_SETTINGS_OPERATIONS.keys() | FEEDBACK_HTTP_OPERATIONS.keys() | POINTS_TASK_OPERATIONS.keys() | BAIKE_OPERATIONS.keys() | ADMIN_TRADE_OPERATIONS.keys() | ADMIN_GOVERNANCE_OPERATIONS.keys() | ADMIN_OPS_OPERATIONS.keys() | CATALOG_SEARCH_OPERATIONS.keys() | CITY_OPERATIONS.keys() | PET_HEALTH_RECORD_OPERATIONS.keys() | MERCHANT_CONSOLE_OPERATIONS.keys(), 'Unexpected or missing reviewed operations'
 
     schemes = spec['components']['securitySchemes']
     assert schemes['bearerAuth']['type'] == 'http' and schemes['bearerAuth']['scheme'] == 'bearer'
@@ -2191,6 +2311,8 @@ def check(spec):
             'staffInvitationListOperations': len(operations & STAFF_INVITATION_LIST_OPERATIONS.keys()),
             'orderWriteOperations': len(operations & ORDER_WRITE_OPERATIONS.keys()),
             'addressOperations': len(operations & ADDRESS_OPERATIONS.keys()),
+            'userSettingsOperations': len(operations & USER_SETTINGS_OPERATIONS.keys()),
+            'feedbackHttpOperations': len(operations & FEEDBACK_HTTP_OPERATIONS.keys()),
             'adminTradeOperations': len(operations & ADMIN_TRADE_OPERATIONS.keys()),
             'adminGovernanceOperations': len(operations & ADMIN_GOVERNANCE_OPERATIONS.keys()),
             'adminOpsOperations': len(operations & ADMIN_OPS_OPERATIONS.keys()),
