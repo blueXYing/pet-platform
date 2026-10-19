@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.petplatform.order.biz.infrastructure.persistence.mapper.OrderDeletionFactsMapper">
+    <!--
+      Contract 66 deletion-blocking fact (PRD 5.1.29 precheck; CCR-USR-DELETION-001). The
+      blocking predicate mirrors the order-domain DisplayOrderStatus truth table restricted to
+      the five PRD-named states, as fixed XML branches over pet_order projection columns — the
+      same source columns and semantics as OrderQueryMapper.displayFilter:
+        PENDING_PAYMENT / PENDING_CONFIRM / PENDING_SERVICE -> order_stage IN (...)
+        REFUND_PENDING_CONFIRM  -> refund_order_id IS NULL AND refund_application_status = 'PENDING_MERCHANT'
+        REFUNDING               -> refund_order_id IS NOT NULL AND refunded_amount = 0
+      The AFTERSALE display branch is intentionally absent: open aftersale cases belong to the
+      aftersale domain's deletion fact (one blocker, one owner). Or-semantics: any branch hit
+      blocks, overlapping projections still count once per order row (EXISTS over the row).
+    -->
+    <sql id="blockingPredicate">
+        (
+            order_stage IN ('PENDING_PAYMENT', 'PENDING_CONFIRM', 'PENDING_SERVICE')
+            OR (refund_order_id IS NULL AND refund_application_status = 'PENDING_MERCHANT')
+            OR (refund_order_id IS NOT NULL AND refunded_amount = 0)
+        )
+    </sql>
+    <select id="countBlockingForUser" resultType="long">
+        SELECT COUNT(*)
+        FROM pet_order
+        WHERE user_id = #{userId}
+          AND <include refid="blockingPredicate"/>
+    </select>
+    <select id="countBlockingForStores" resultType="long">
+        SELECT COUNT(*)
+        FROM pet_order
+        WHERE store_id IN
+        <foreach collection="storeIds" item="storeId" open="(" separator="," close=")">#{storeId}</foreach>
+          AND <include refid="blockingPredicate"/>
+    </select>
+</mapper>

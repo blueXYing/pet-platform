@@ -83,5 +83,15 @@
             <groupId>com.petplatform</groupId>
             <artifactId>pet-merchant-api</artifactId>
         </dependency>
+        <!-- Contract 66 (account deletion precheck): OWNER stores block through the order and
+             aftersale leaf fact *-api ports (OrderFirstPaidFactsApi precedent); api-only, no biz. -->
+        <dependency>
+            <groupId>com.petplatform</groupId>
+            <artifactId>pet-order-api</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>com.petplatform</groupId>
+            <artifactId>pet-aftersale-api</artifactId>
+        </dependency>
     </dependencies>
 </project>

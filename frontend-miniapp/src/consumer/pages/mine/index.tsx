@@ -11,7 +11,7 @@ import { deltaLabel, formatLedgerTime, pointsBizTypeLabels, type PointsLedgerVie
 import avatar from '../../assets/profile/avatar.png'
 import stripTop from './assets/strip-top.jpg'
 import {
-  MINE_ADDRESS_BOOK_URL, MINE_BAIKE_URL, MINE_BECOME_PROVIDER_URL, MINE_DEVELOPER_SHELL_URL, MINE_MERCHANT_WORKSPACE_URL, MINE_POINTS_MALL_URL, mineCard, mineHubEntries, phoneGuideCopy,
+  MINE_ADDRESS_BOOK_URL, MINE_BAIKE_URL, MINE_BECOME_PROVIDER_URL, MINE_DEVELOPER_SHELL_URL, MINE_FEEDBACK_URL, MINE_HELP_URL, MINE_MERCHANT_WORKSPACE_URL, MINE_POINTS_MALL_URL, MINE_SETTINGS_URL, mineCard, mineHubEntries, phoneGuideCopy,
   type MineCard, type MineStats,
 } from './model'
 import './mine.css'
@@ -27,7 +27,7 @@ import './mine.css'
 // 地址管理/积分商城/成为服务者三格接通真实子页（契约 59/展示态 §4.15/become-provider）。
 const GUIDE_KEY = 'pet.c.phone-guide.v1'
 
-const [hubOrders, hubCoupons, hubPoints, hubFavorites, hubFootprints, hubPreferences, hubPets, hubProfile] = mineHubEntries
+const [hubOrders, hubCoupons, hubPoints, hubFavorites, hubFootprints, , hubPets, hubProfile] = mineHubEntries
 // 原稿 126:675 订单五状态入口：工程订单列表不收状态参数，统一落既有列表页（行为与现状一致）。
 const orderStatusEntries = [
   { key: 'wait', label: '待服务' },
@@ -336,21 +336,26 @@ export default function MinePage() {
               <View className='mine-cell-chip'><View className='mi-svc-provider' /></View>
               <Text className='mine-cell-label'>成为服务者</Text>
             </Button>
-            <View className='mine-cell'>
+            {/* 帮助与客服（契约 67 / PRD 5.1.25 收尾批次）：原视觉占位格位接真实子页
+                （FAQ+人工客服热线，CCR-CS-FEEDBACK-001）。 */}
+            <Button id='mine-hub-help' className='mine-cell' hoverClass='none' onClick={() => open(MINE_HELP_URL)}>
               <View className='mine-cell-chip'><View className='mi-svc-help' /></View>
               <Text className='mine-cell-label'>帮助与客服</Text>
-            </View>
-            <View className='mine-cell'>
+            </Button>
+            {/* 意见反馈（契约 67 / PRD 5.1.28 投诉类收尾批次）：原视觉占位格位接真实工单子页。 */}
+            <Button id='mine-hub-feedback' className='mine-cell' hoverClass='none' onClick={() => open(MINE_FEEDBACK_URL)}>
               <View className='mine-cell-chip'><View className='mi-svc-feedback' /></View>
               <Text className='mine-cell-label'>意见反馈</Text>
-            </View>
+            </Button>
             <Button id='mine-stat-pets' className='mine-cell' hoverClass='none' onClick={() => open(hubPets.url)}>
               <View className='mine-cell-chip'><View className='mi-svc-pet' /></View>
               <Text className='mine-cell-label'>宠物档案</Text>
             </Button>
-            <Button id='mine-hub-preferences' className='mine-cell' hoverClass='none' onClick={() => open(hubPreferences.url)}>
+            {/* 设置（契约 66 / PRD 5.1.29 收尾批次）：枢纽页接通；通知偏好/地址/协议/注销
+                全部收入枢纽（原「通知偏好」格位并入，页面本体保留、枢纽内入口可达）。 */}
+            <Button id='mine-hub-settings' className='mine-cell' hoverClass='none' onClick={() => open(MINE_SETTINGS_URL)}>
               <View className='mine-cell-chip'><View className='mi-svc-settings' /></View>
-              <Text className='mine-cell-label'>通知偏好</Text>
+              <Text className='mine-cell-label'>设置</Text>
             </Button>
           </View>
         </View>

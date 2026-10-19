@@ -15890,6 +15890,226 @@ paths:
               schema:
                 $ref: '#/components/schemas/AdminOpsRuntimeSettingsEnvelope'
 
+  /c/account/deletion-precheck:
+    get:
+      tags:
+      - C-Settings
+      operationId: cGetDeletionPrecheck
+      summary: 注销前置校验（PRD 5.1.29 阻塞明细）
+      x-implementation-status: IMPLEMENTED_DEFAULT_OFF
+      x-default-enabled: false
+      x-contract: 66-User-Settings-Deletion-Contract-v0.1.md
+      x-assembly-switch: pet.usersettings.http.enabled
+      description: 66号 §3（CCR-USR-DELETION-001）。四类 PRD 阻塞（本人未完结订单五 displayStatus/本人处理中售后/名下 OWNER 商家门店未完结订单/名下门店处理中售后）按目录序投影；事实端口 fail-closed 503，绝不读作"无阻塞"。无任何 query 参数。
+      security:
+      - bearerAuth: []
+      responses:
+        '200':
+          description: 前置校验投影（blocked=blockers 非空）
+          headers:
+            Cache-Control:
+              schema: {type: string, enum: [no-store]}
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DeletionPrecheckEnvelope'
+        '400':
+          $ref: '#/components/responses/DeletionHttpError'
+        '401':
+          $ref: '#/components/responses/DeletionHttpError'
+        '503':
+          $ref: '#/components/responses/DeletionHttpError'
+      x-route-party: USER
+      x-audience: MINIAPP
+  /c/account/deletion:
+    post:
+      tags:
+      - C-Settings
+      operationId: cDeleteAccount
+      summary: 账号注销（requestId 幂等，201/200）
+      x-implementation-status: IMPLEMENTED_DEFAULT_OFF
+      x-default-enabled: false
+      x-contract: 66-User-Settings-Deletion-Contract-v0.1.md
+      x-assembly-switch: pet.usersettings.http.enabled
+      description: 66号 §4（CCR-USR-DELETION-001 最小实现：同步注销，无冷静期/申请中态/清理 AsyncTask）。严格 JSON {acknowledged:true}；前置校验在行锁事务内重跑（阻塞 409 DELETION_BLOCKED，明细由 deletion-precheck 承载）；同事务追加 append-only user_deletion_request 审计行并将 user_account.status 置 CANCELED（SQL06 §1 既有词表）。注销即生效：既有 resolveSession 对 CANCELED 立即 401、登录链拒绝（零新代码）。同 requestId 同参重放返回首回执（200），异参 409 IDEMPOTENCY_KEY_CONFLICT。
+      security:
+      - bearerAuth: []
+      parameters:
+      - $ref: '#/components/parameters/RequestId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DeletionRequest'
+      responses:
+        '200':
+          description: 同 requestId 幂等重放首回执
+          headers:
+            Cache-Control:
+              schema: {type: string, enum: [no-store]}
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DeletionReceiptEnvelope'
+        '201':
+          description: 首次注销成功
+          headers:
+            Cache-Control:
+              schema: {type: string, enum: [no-store]}
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DeletionReceiptEnvelope'
+        '400':
+          $ref: '#/components/responses/DeletionHttpError'
+        '401':
+          $ref: '#/components/responses/DeletionHttpError'
+        '403':
+          $ref: '#/components/responses/DeletionHttpError'
+        '409':
+          $ref: '#/components/responses/DeletionHttpError'
+        '500':
+          $ref: '#/components/responses/DeletionHttpError'
+        '503':
+          $ref: '#/components/responses/DeletionHttpError'
+      x-route-party: USER
+      x-audience: MINIAPP
+  /c/feedback-tickets:
+    get:
+      tags:
+      - C-Feedback
+      operationId: cListFeedbackTickets
+      summary: 我的反馈工单列表（owner-scoped 分页）
+      x-implementation-status: IMPLEMENTED_DEFAULT_OFF
+      x-default-enabled: false
+      x-contract: 67-Feedback-Ticket-Contract-v0.1.md
+      x-assembly-switch: pet.feedback.http.enabled
+      description: 67号 §3（CCR-CS-FEEDBACK-001）。本人工单分页，固定排序 created_at DESC, id DESC；page 1..10000 默认 1、pageSize 1..50 默认 20；摘要不回传联系方式（最小暴露面）。
+      security:
+      - bearerAuth: []
+      parameters:
+      - name: page
+        in: query
+        required: false
+        schema: {type: integer, minimum: 1, maximum: 10000, default: 1}
+      - name: pageSize
+        in: query
+        required: false
+        schema: {type: integer, minimum: 1, maximum: 50, default: 20}
+      responses:
+        '200':
+          description: 本人工单分页
+          headers:
+            Cache-Control:
+              schema: {type: string, enum: [no-store]}
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FeedbackTicketPageEnvelope'
+        '400':
+          $ref: '#/components/responses/FeedbackHttpError'
+        '401':
+          $ref: '#/components/responses/FeedbackHttpError'
+        '503':
+          $ref: '#/components/responses/FeedbackHttpError'
+      x-route-party: USER
+      x-audience: MINIAPP
+    post:
+      tags:
+      - C-Feedback
+      operationId: cCreateFeedbackTicket
+      summary: 提交反馈工单（requestId 幂等，201/200）
+      x-implementation-status: IMPLEMENTED_DEFAULT_OFF
+      x-default-enabled: false
+      x-contract: 67-Feedback-Ticket-Contract-v0.1.md
+      x-assembly-switch: pet.feedback.http.enabled
+      description: 67号 §3（PRD 5.1.28 投诉类；CCR-CS-FEEDBACK-001 最小实现：文本工单无附件、状态词表冻结五值且 V1 恒 PENDING）。严格 JSON：type 四值词表（FEEDBACK_TYPE_INVALID 400）、contact 选填 1..64、content 必填 1..500 码点；写前置 user_account.status=ACTIVE（403 USER_FROZEN）；单用户每分钟 5 单（429 COMMON_RATE_LIMITED）。同 requestId 同参重放首回执（200），异参 409。
+      security:
+      - bearerAuth: []
+      parameters:
+      - $ref: '#/components/parameters/RequestId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/FeedbackTicketCreate'
+      responses:
+        '200':
+          description: 同 requestId 幂等重放首回执
+          headers:
+            Cache-Control:
+              schema: {type: string, enum: [no-store]}
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FeedbackTicketCreateEnvelope'
+        '201':
+          description: 首次提交成功
+          headers:
+            Cache-Control:
+              schema: {type: string, enum: [no-store]}
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FeedbackTicketCreateEnvelope'
+        '400':
+          $ref: '#/components/responses/FeedbackHttpError'
+        '401':
+          $ref: '#/components/responses/FeedbackHttpError'
+        '403':
+          $ref: '#/components/responses/FeedbackHttpError'
+        '409':
+          $ref: '#/components/responses/FeedbackHttpError'
+        '429':
+          $ref: '#/components/responses/FeedbackHttpError'
+        '500':
+          $ref: '#/components/responses/FeedbackHttpError'
+        '503':
+          $ref: '#/components/responses/FeedbackHttpError'
+      x-route-party: USER
+      x-audience: MINIAPP
+  /c/feedback-tickets/{ticketId}:
+    get:
+      tags:
+      - C-Feedback
+      operationId: cGetFeedbackTicket
+      summary: 反馈工单详情（owner 防枚举 404）
+      x-implementation-status: IMPLEMENTED_DEFAULT_OFF
+      x-default-enabled: false
+      x-contract: 67-Feedback-Ticket-Contract-v0.1.md
+      x-assembly-switch: pet.feedback.http.enabled
+      description: 67号 §3.1（CCR-CS-FEEDBACK-001）。本人工单全字段：content 全文 + contact（仅详情返回）+ events（词表冻结 SUBMITTED）+ replies/resolution 字段位（V1 恒空——运营处置面不在切片）。非本人/不存在统一 404 FEEDBACK_TICKET_NOT_FOUND。
+      security:
+      - bearerAuth: []
+      parameters:
+      - name: ticketId
+        in: path
+        required: true
+        schema:
+          type: string
+          pattern: '^[1-9][0-9]{0,18}$'
+      responses:
+        '200':
+          description: 工单详情
+          headers:
+            Cache-Control:
+              schema: {type: string, enum: [no-store]}
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FeedbackTicketDetailEnvelope'
+        '400':
+          $ref: '#/components/responses/FeedbackHttpError'
+        '401':
+          $ref: '#/components/responses/FeedbackHttpError'
+        '404':
+          $ref: '#/components/responses/FeedbackHttpError'
+        '503':
+          $ref: '#/components/responses/FeedbackHttpError'
+      x-route-party: USER
+      x-audience: MINIAPP
 components:
   securitySchemes:
     bearerAuth:
@@ -16037,6 +16257,24 @@ components:
         pattern: ^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}(?![\s\S])
       description: Original command UUID for result recovery; not a new GET idempotency key.
   responses:
+    DeletionHttpError:
+      description: 设置/注销错误信封（66号 §5）
+      headers:
+        Cache-Control:
+          schema: {type: string, enum: [no-store]}
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/DeletionErrorEnvelope'
+    FeedbackHttpError:
+      description: 反馈工单错误信封（67号 §4）
+      headers:
+        Cache-Control:
+          schema: {type: string, enum: [no-store]}
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/FeedbackErrorEnvelope'
     BadRequest:
       description: 请求字段、格式或枚举不合法。
       content:
@@ -16199,6 +16437,432 @@ components:
           schema:
             $ref: '#/components/schemas/FavTrackErrorEnvelope'
   schemas:
+    DeletionPrecheckEnvelope:
+      type: object
+      additionalProperties: false
+      required:
+      - success
+      - code
+      - message
+      - data
+      - traceId
+      properties:
+        success:
+          type: boolean
+          enum:
+          - true
+        code:
+          type: string
+          enum:
+          - SUCCESS
+        message:
+          type: string
+          minLength: 1
+        data:
+          type: object
+          additionalProperties: false
+          required:
+          - blocked
+          - blockers
+          properties:
+            blocked:
+              type: boolean
+            blockers:
+              type: array
+              items:
+                $ref: '#/components/schemas/DeletionBlocker'
+        traceId:
+          type: string
+          minLength: 1
+    DeletionBlocker:
+      type: object
+      additionalProperties: false
+      required:
+      - code
+      - label
+      - detail
+      properties:
+        code:
+          type: string
+          enum:
+          - USER_ORDERS_UNSETTLED
+          - USER_AFTERSALES_OPEN
+          - OWNER_STORE_ORDERS_UNSETTLED
+          - OWNER_STORE_AFTERSALES_OPEN
+        label:
+          type: string
+          minLength: 1
+        detail:
+          type: string
+          minLength: 1
+    DeletionRequest:
+      type: object
+      additionalProperties: false
+      required:
+      - acknowledged
+      properties:
+        acknowledged:
+          type: boolean
+          enum:
+          - true
+    DeletionReceiptEnvelope:
+      type: object
+      additionalProperties: false
+      required:
+      - success
+      - code
+      - message
+      - data
+      - traceId
+      properties:
+        success:
+          type: boolean
+          enum:
+          - true
+        code:
+          type: string
+          enum:
+          - SUCCESS
+        message:
+          type: string
+          minLength: 1
+        data:
+          type: object
+          additionalProperties: false
+          required:
+          - userId
+          - status
+          - deletedAt
+          properties:
+            userId:
+              $ref: '#/components/schemas/PublicId'
+            status:
+              type: string
+              enum:
+              - CANCELED
+            deletedAt:
+              type: string
+              minLength: 1
+        traceId:
+          type: string
+          minLength: 1
+    FeedbackTicketCreate:
+      type: object
+      additionalProperties: false
+      required:
+      - type
+      - content
+      properties:
+        type:
+          type: string
+          enum:
+          - FEATURE_SUGGESTION
+          - BUG_REPORT
+          - SERVICE_COMPLAINT
+          - OTHER
+        contact:
+          type: string
+          minLength: 1
+          maxLength: 64
+        content:
+          type: string
+          minLength: 1
+          maxLength: 500
+    FeedbackTicketSummary:
+      type: object
+      additionalProperties: false
+      required:
+      - ticketId
+      - type
+      - status
+      - contentPreview
+      - createdAt
+      properties:
+        ticketId:
+          $ref: '#/components/schemas/PublicId'
+        type:
+          type: string
+          enum:
+          - FEATURE_SUGGESTION
+          - BUG_REPORT
+          - SERVICE_COMPLAINT
+          - OTHER
+        status:
+          type: string
+          enum:
+          - PENDING
+          - PROCESSING
+          - WAITING_SUPPLEMENT
+          - RESOLVED
+          - CLOSED
+        contentPreview:
+          type: string
+          minLength: 1
+        createdAt:
+          type: string
+          minLength: 1
+    FeedbackTicketCreateEnvelope:
+      type: object
+      additionalProperties: false
+      required:
+      - success
+      - code
+      - message
+      - data
+      - traceId
+      properties:
+        success:
+          type: boolean
+          enum:
+          - true
+        code:
+          type: string
+          enum:
+          - SUCCESS
+        message:
+          type: string
+          minLength: 1
+        data:
+          type: object
+          additionalProperties: false
+          required:
+          - ticketId
+          - type
+          - status
+          - createdAt
+          properties:
+            ticketId:
+              $ref: '#/components/schemas/PublicId'
+            type:
+              type: string
+              enum:
+              - FEATURE_SUGGESTION
+              - BUG_REPORT
+              - SERVICE_COMPLAINT
+              - OTHER
+            status:
+              type: string
+              enum:
+              - PENDING
+            createdAt:
+              type: string
+              minLength: 1
+        traceId:
+          type: string
+          minLength: 1
+    FeedbackTicketPageEnvelope:
+      type: object
+      additionalProperties: false
+      required:
+      - success
+      - code
+      - message
+      - data
+      - traceId
+      properties:
+        success:
+          type: boolean
+          enum:
+          - true
+        code:
+          type: string
+          enum:
+          - SUCCESS
+        message:
+          type: string
+          minLength: 1
+        data:
+          type: object
+          additionalProperties: false
+          required:
+          - items
+          - page
+          - pageSize
+          - total
+          properties:
+            items:
+              type: array
+              items:
+                $ref: '#/components/schemas/FeedbackTicketSummary'
+            page:
+              type: integer
+              minimum: 1
+              maximum: 10000
+            pageSize:
+              type: integer
+              minimum: 1
+              maximum: 50
+            total:
+              type: integer
+              minimum: 0
+        traceId:
+          type: string
+          minLength: 1
+    FeedbackTicketDetailEnvelope:
+      type: object
+      additionalProperties: false
+      required:
+      - success
+      - code
+      - message
+      - data
+      - traceId
+      properties:
+        success:
+          type: boolean
+          enum:
+          - true
+        code:
+          type: string
+          enum:
+          - SUCCESS
+        message:
+          type: string
+          minLength: 1
+        data:
+          type: object
+          additionalProperties: false
+          required:
+          - ticketId
+          - type
+          - status
+          - content
+          - contact
+          - contentPreview
+          - createdAt
+          - events
+          - replies
+          - resolution
+          properties:
+            ticketId:
+              $ref: '#/components/schemas/PublicId'
+            type:
+              type: string
+              enum:
+              - FEATURE_SUGGESTION
+              - BUG_REPORT
+              - SERVICE_COMPLAINT
+              - OTHER
+            status:
+              type: string
+              enum:
+              - PENDING
+              - PROCESSING
+              - WAITING_SUPPLEMENT
+              - RESOLVED
+              - CLOSED
+            content:
+              type: string
+              minLength: 1
+            contact:
+              type: string
+              nullable: true
+            contentPreview:
+              type: string
+              minLength: 1
+            createdAt:
+              type: string
+              minLength: 1
+            events:
+              type: array
+              items:
+                type: object
+                additionalProperties: false
+                required:
+                - action
+                - createdAt
+                properties:
+                  action:
+                    type: string
+                    enum:
+                    - SUBMITTED
+                  createdAt:
+                    type: string
+                    minLength: 1
+            replies:
+              type: array
+              maxItems: 0
+            resolution:
+              nullable: true
+              enum:
+              - null
+        traceId:
+          type: string
+          minLength: 1
+    DeletionErrorEnvelope:
+      type: object
+      additionalProperties: false
+      required:
+      - success
+      - code
+      - message
+      - data
+      - traceId
+      properties:
+        success:
+          type: boolean
+          enum:
+          - false
+        code:
+          type: string
+          enum:
+          - COMMON_INVALID_ARGUMENT
+          - COMMON_UNAUTHORIZED
+          - USER_FROZEN
+          - DELETION_BLOCKED
+          - COMMON_CONFLICT
+          - IDEMPOTENCY_KEY_CONFLICT
+          - COMMON_INTERNAL_ERROR
+          - COMMON_DEPENDENCY_UNAVAILABLE
+        message:
+          type: string
+          minLength: 1
+        data:
+          type: object
+          nullable: true
+          enum:
+          - null
+        traceId:
+          type: string
+          minLength: 1
+    FeedbackErrorEnvelope:
+      type: object
+      additionalProperties: false
+      required:
+      - success
+      - code
+      - message
+      - data
+      - traceId
+      properties:
+        success:
+          type: boolean
+          enum:
+          - false
+        code:
+          type: string
+          enum:
+          - COMMON_INVALID_ARGUMENT
+          - FEEDBACK_TYPE_INVALID
+          - COMMON_UNAUTHORIZED
+          - USER_FROZEN
+          - FEEDBACK_TICKET_NOT_FOUND
+          - COMMON_CONFLICT
+          - COMMON_RATE_LIMITED
+          - IDEMPOTENCY_KEY_CONFLICT
+          - COMMON_INTERNAL_ERROR
+          - COMMON_DEPENDENCY_UNAVAILABLE
+        message:
+          type: string
+          minLength: 1
+        data:
+          type: object
+          nullable: true
+          enum:
+          - null
+        traceId:
+          type: string
+          minLength: 1
     BaikeCategory:
       type: object
       additionalProperties: false
