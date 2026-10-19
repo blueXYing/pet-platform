@@ -71,8 +71,8 @@
 
 | 编号 | 级别 | 问题 | 定界证据 | 处置建议 |
 |---|---|---|---|---|
-| **FL-1** | 高（前端确定性缺陷，退款详情面死） | 退款单详情页**永远** INVALID_RESPONSE：`tradeQuery.refundDetail` 先 `exact(13 键)` 再调 `refundSummary`→`exact(11 键)`，同一对象键数不可能同时等于 13 和 11 → 任何 200 详情响应都解码失败 | UI：r08 截图（退款单详情加载失败（INVALID_RESPONSE），两张退款单均复现）；后端载荷契约合法：`GET /admin/trade/refunds/{id}` 200 13 键 envelope（probes/refund-detail-payload.json）；node 复刻解码器：`exact13=true, exact11=false → return false`；bundle 反查（App-BkhsPWUY.js）解码器与源码一致，排除构建过期。波及面：详情页内嵌「渠道处置」（渠道查单/重试）UI 不可达 | 删掉 refundDetail 内层 `refundSummary(v)` 调用或改为非 exact 的键存在性校验；另开 Issue。#181 以来从未被 UI 覆盖（旧 spec 从未点进详情页） |
-| **FL-2** | 中（同型缺陷，核销详情面死） | `verificationDetail` 同一双重 exact 模式（exact 9 键 + verificationSummary exact 6 键）→ 核销详情页永远 INVALID_RESPONSE | 代码同上文件相邻函数；`TradeVerificationDetailPage` 调用 `getVerification`。核销**列表**页正常（行对象恰 6 键） | 同 FL-1 一并修复 |
+| **FL-1** | 高（前端确定性缺陷，退款详情面死） | 退款单详情页**永远** INVALID_RESPONSE：`tradeQuery.refundDetail`（src/api/tradeQuery.ts L189-196）先 `exact(13 键)` 再调 `refundSummary`（L170-178）→`exact(11 键)`，同一对象键数不可能同时等于 13 和 11 → 任何 200 详情响应都解码失败 | UI：r08 截图（退款单详情加载失败（INVALID_RESPONSE），两张退款单均复现）；后端载荷契约合法：`GET /admin/trade/refunds/{id}` 200 13 键 envelope（probes/refund-detail-payload.json）；node 复刻解码器：`exact13=true, exact11=false → return false`；bundle 反查（App-BkhsPWUY.js）解码器与源码一致，排除构建过期。波及面：详情页内嵌「渠道处置」（渠道查单/重试）UI 不可达 | 删掉 refundDetail 内层 `refundSummary(v)` 调用或改为非 exact 的键存在性校验；另开 Issue。#181 以来从未被 UI 覆盖（旧 spec 从未点进详情页） |
+| **FL-2** | 中（同型缺陷，核销详情面死） | `verificationDetail`（L213-222）同一双重 exact 模式（exact 9 键 + verificationSummary L198 exact 6 键）→ 核销详情页永远 INVALID_RESPONSE | 代码同上文件相邻函数；`TradeVerificationDetailPage` 调用 `getVerification`。核销**列表**页正常（行对象恰 6 键） | 同 FL-1 一并修复 |
 | FL-3 | 低（测试域文档失真） | `E2eCoreLoopServer` 内 65号 ops 注释（L570-577）仍称"开关打不开/保持关闭"，#183/#185 后已失真（yml 默认开、启动即装配）；本 PR 不动该注释（超出 E2E_BIND scope） | 对比注释与 application.yml L244-246 | 随下次启动器维护顺手更新 |
 
 ### 3.1 环境阻塞点与处置（如实记录）
