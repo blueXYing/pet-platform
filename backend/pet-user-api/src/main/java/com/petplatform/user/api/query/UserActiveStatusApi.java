@@ -14,4 +14,16 @@ public interface UserActiveStatusApi {
      * the account row is missing; 503-family when the stored status is unreadable.
      */
     void requireActiveUser(String userId);
+
+    /**
+     * Coupon-grant existence probe (contract-65 §4.3 hardening, ruling 2026-10-19): the
+     * account status word (ACTIVE/FROZEN/CANCELED) in any status, or null when no account
+     * row exists — the caller owns the not-found mapping.
+     */
+    String currentStatus(String userId, com.petplatform.common.QueryContext context);
+
+    /** Existence convenience: true only when {@link #currentStatus} finds the account row. */
+    default boolean exists(String userId, com.petplatform.common.QueryContext context) {
+        return currentStatus(userId, context) != null;
+    }
 }

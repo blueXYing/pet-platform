@@ -221,7 +221,7 @@ class FeedbackTicketMySqlTest {
 
         FeedbackTicketService serviceAs(long userId, UserActiveGuard guard) {
             return new FeedbackTicketService(new FeedbackTicketStore(dataSource),
-                    guard::requireActiveUser, IDS::incrementAndGet, java.time.Clock.systemUTC());
+                    guard, IDS::incrementAndGet, java.time.Clock.systemUTC());
         }
 
         JdbcTemplate jdbc() {
@@ -264,6 +264,10 @@ class FeedbackTicketMySqlTest {
 
     @FunctionalInterface
     interface UserActiveGuard extends com.petplatform.user.api.query.UserActiveStatusApi {
+        @Override
+        default String currentStatus(String userId, com.petplatform.common.QueryContext context) {
+            return "ACTIVE";
+        }
         @Override
         default void requireActiveUser(String userId) {
             requireActive(Long.parseLong(userId));

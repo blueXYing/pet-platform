@@ -135,6 +135,8 @@ HTTP 映射只属于 Adapter 层；内部 Java API 通过稳定 code 表达同�
 | COUPON_ALREADY_USED | 已使用 |
 | COUPON_COMPENSATION_PENDING | 权益补偿处理中 |
 
+运营发放路由 HTTP 状态映射（2026-10-19 强化批，65 号 §4.3 v0.4 路由）：400 严格 JSON/批量形态非法（`userId` 与 `userIds` 恰现其一、`userIds` 非空/去重/≤100）/ID 词法（沿 `COMMON_INVALID_ARGUMENT`）；401 会话缺失/失效；403 动作码 `coupon.instance.grant` 缺失或数据范围非 ALL；404 `COMMON_NOT_FOUND`（模板不存在与目标用户不存在统一防枚举，消灭无主券）；409 `COMMON_CONFLICT`（模板非 ACTIVE/不在有效期/`total_stock` 售罄/单用户同模板持有超限/同操作者同用户同模板 60 秒频控）及 `IDEMPOTENCY_KEY_CONFLICT`（单发同 key 异参）；503 `COMMON_DEPENDENCY_UNAVAILABLE`（内核开关未装配/授权决断不可用/目标用户存在性读不可用）；未识别内部异常统一 500 `COMMON_INTERNAL_ERROR` 安全包装。无新增错误码；批量部分失败按逐用户明细回执（HTTP 200），授权/基础设施失败终止整单且已成功用户不回滚。
+
 ## 10. POINTS
 
 | Code | 含义 |
@@ -160,6 +162,103 @@ HTTP 映射只属于 Adapter 层；内部 Java API 通过稳定 code 表达同�
 
 | Code | 含义 |
 |---|---|
+| REFUND_NOT_ELIGIBLE | 当前订单不可退款 |
+| REFUND_APPLICATION_NOT_FOUND | 退款申请不存在 |
+| REFUND_APPLICATION_ALREADY_PROCESSED | 退款申请已处理 |
+| REFUND_MERCHANT_REASON_REQUIRED | 商家拒绝必须填写原因 |
+| REFUND_MERCHANT_DEADLINE_PASSED | 商家处理窗口已过，已由系统接管 |
+| REFUND_PARTIAL_NOT_ALLOWED | 当前来源不允许部分退款 |
+| REFUND_AMOUNT_INVALID | 退款金额不合法 |
+| REFUND_ORDER_ALREADY_EXISTS | 一单已存在业务退款单 |
+| REFUND_SOURCE_INVALID_AFTER_VERIFICATION | 当前退款来源依赖“未履约”事实，但核销已先成功使该来源失效；不表示核销后所有退款都被禁止 |
+| REFUND_CHANNEL_SUBMIT_FAILED | 渠道退款提交失败 |
+| REFUND_CHANNEL_STATUS_UNKNOWN | 渠道状态未知 |
+| LATE_PAYMENT_AUTO_REFUND_FAILED | 迟到支付自动退款多次技术重试仍未成功，进入一致性异常处理 |
+
+退款申请 C 端 HTTP 状态映射（2026-10-07 C-005 退款申请切片，10号 §3.9/49号路由）：400 严格 JSON/UUID/路径 ID/`reasonCode` 结构不合法（含未配置原因字典，沿 `COMMON_INVALID_ARGUMENT`）；401 会话缺失/失效；403 非订单本人、账号非 ACTIVE 或未知订单（49号 locate 防探测语义）；409 `COMMON_CONFLICT`/`IDEMPOTENCY_KEY_CONFLICT`/`ORDER_OPERATION_BUSY` 及 49号准入拒绝（`REFUND_NOT_ELIGIBLE` 窗口或状态不符、`REFUND_APPLICATION_ALREADY_PROCESSED` 在途申请、`REFUND_ORDER_ALREADY_EXISTS`/`REFUND_ALREADY_EXISTS` 已有退款单、`REFUND_MERCHANT_DEADLINE_PASSED`）；503 `COMMON_DEPENDENCY_UNAVAILABLE` 及服务前开关关闭时的既有桩码 `REFUND_BEFORE_SERVICE_NOT_IMPLEMENTED`（能力未开放，非业务终态）；未识别内部异常统一 500 `COMMON_INTERNAL_ERROR` 安全包装。无新增错误码；REJECTED 后再申请走新 `X-Request-Id` 新行，不将 409 当可换号盲重试。
+
+改期 C 端 HTTP 状态映射（2026-10-07 §3.8 切片，10号 §3.8/46号路由）：400 严格 JSON（未知字段/显式 null/重复键/尾随内容/oneOf 分支混用）/非终端 UUID/路径 ID 不合法；401 会话缺失/失效；403 非订单本人、账号非 ACTIVE 或未知订单（46号 locate 防探测语义）；409 `COMMON_CONFLICT`（CAS 版本不符或区间无实质变化，均不消耗唯一机会）、`IDEMPOTENCY_KEY_CONFLICT`（同 key 异参）、`ORDER_OPERATION_BUSY`、`ORDER_RESCHEDULE_LIMIT_REACHED`（每单一次已用）、`ORDER_RESCHEDULE_AFTER_START`（已到原预约开始）、`ORDER_STATE_NOT_ALLOWED`（已核销/已完成/已取消）、`ORDER_REFUND_ALREADY_CREATED`（任意来源退款单）、`SCHEDULE_SWAP_FAILED`/`SCHEDULE_CAPACITY_EXCEEDED`（新时段容量或人员证明失败，原预约保持）；503 `COMMON_DEPENDENCY_UNAVAILABLE`；未识别内部异常统一 500 `COMMON_INTERNAL_ERROR` 安全包装。无新增错误码；200 首交与受保护重放同回执，CAS 冲突后按重读的新 `orderVersion` 重试，不换号盲重试。
+
+## 7. VERIFICATION
+
+| Code | 含义 |
+|---|---|
+| VERIFICATION_NOT_ALLOWED | 当前订单不允许核销 |
+| VERIFICATION_CODE_INVALID | 核销码无效 |
+| VERIFICATION_CODE_EXPIRED | 核销码已过期 |
+| VERIFICATION_STORE_MISMATCH | 核销门店不一致 |
+| VERIFICATION_STAFF_FORBIDDEN | 当前员工无核销权限 |
+| VERIFICATION_RISK_LOCKED | 风控临时锁定 |
+| VERIFICATION_BLOCKED_BY_REFUND | 退款单已先创建，禁止核销 |
+| VERIFICATION_ALREADY_DONE | 已核销，不可重复核销 |
+
+核销 HTTP 状态映射（2026-10-06 核销 HTTP 切片，47号§4/48号K2 路由）：`VERIFICATION_NOT_ALLOWED`、`VERIFICATION_STORE_MISMATCH`、`VERIFICATION_RISK_LOCKED`（签发拒绝）、`VERIFICATION_BLOCKED_BY_REFUND`、`VERIFICATION_ALREADY_DONE` 均 HTTP409；`VERIFICATION_CODE_INVALID`、`VERIFICATION_CODE_EXPIRED`、`VERIFICATION_RISK_LOCKED` 在商家扫码核销回执中是已提交业务结果（HTTP200、`resultCode` 字段、后三字段 null），不是传输错误；手动刷新第6次沿 `COMMON_RATE_LIMITED` HTTP429。权限/会话/依赖沿 COMMON_*（401/403/503），K1 防枚举沿 404。无新增错误码。
+
+## 8. AFTERSALE
+
+| Code | 含义 |
+|---|---|
+| AFTERSALE_NOT_ELIGIBLE | 不满足售后时效/资格 |
+| AFTERSALE_NOT_FOUND | 售后单不存在 |
+| AFTERSALE_STATE_NOT_ALLOWED | 当前售后状态不允许操作 |
+| AFTERSALE_ALREADY_INVALIDATED | 当前售后已失效 |
+| AFTERSALE_DECISION_FINAL | 已作最终裁决，不支持复审 |
+| AFTERSALE_REFUND_BLOCKED_BY_VERIFICATION | 核销先成功使当前未履约售后失效 |
+| AFTERSALE_AMOUNT_INVALID | 裁决退款金额不合法 |
+
+## 9. COUPON
+
+| Code | 含义 |
+|---|---|
+| COUPON_NOT_FOUND | 券不存在 |
+| COUPON_NOT_AVAILABLE | 券不可用 |
+| COUPON_SCOPE_MISMATCH | 不满足使用范围 |
+| COUPON_THRESHOLD_NOT_MET | 未达到使用门槛 |
+| COUPON_ALREADY_FROZEN | 已被其他订单冻结 |
+| COUPON_FREEZE_EXPIRED | 冻结已失效 |
+| COUPON_ALREADY_USED | 已使用 |
+| COUPON_COMPENSATION_PENDING | 权益补偿处理中 |
+
+运营发放路由 HTTP 状态映射（2026-10-19 强化批，65 号 §4.3 v0.4 路由）：400 严格 JSON/批量形态非法（`userId` 与 `userIds` 恰现其一、`userIds` 非空/去重/≤100）/ID 词法（沿 `COMMON_INVALID_ARGUMENT`）；401 会话缺失/失效；403 动作码 `coupon.instance.grant` 缺失或数据范围非 ALL；404 `COMMON_NOT_FOUND`（模板不存在与目标用户不存在统一防枚举，消灭无主券）；409 `COMMON_CONFLICT`（模板非 ACTIVE/不在有效期/`total_stock` 售罄/单用户同模板持有超限/同操作者同用户同模板 60 秒频控）及 `IDEMPOTENCY_KEY_CONFLICT`（单发同 key 异参）；503 `COMMON_DEPENDENCY_UNAVAILABLE`（内核开关未装配/授权决断不可用/目标用户存在性读不可用）；未识别内部异常统一 500 `COMMON_INTERNAL_ERROR` 安全包装。无新增错误码；批量部分失败按逐用户明细回执（HTTP 200），授权/基础设施失败终止整单且已成功用户不回滚。
+
+## 10. POINTS
+
+| Code | 含义 |
+|---|---|
+| POINTS_ACCOUNT_NOT_FOUND | 积分账户不存在 |
+| POINTS_LEDGER_DUPLICATE | 相同业务流水已处理 |
+| POINTS_REWARD_INVALID | 奖励积分参数不合法 |
+| POINTS_CLAWBACK_INVALID | 扣回参数不合法 |
+| POINTS_CLAWBACK_ALREADY_DONE | 本业务扣回已完成 |
+
+## 11. REVIEW
+
+| Code | 含义 |
+|---|---|
+| REVIEW_NOT_ELIGIBLE | 当前订单无评价资格 |
+| REVIEW_NOT_VERIFIED | 未核销订单不可评价 |
+| REVIEW_WINDOW_EXPIRED | 核销后 30 天评价窗口已过 |
+| REVIEW_ALREADY_EXISTS | 一单已评价 |
+| REVIEW_APPEAL_ALREADY_USED | 每条评价最多申诉一次 |
+| REVIEW_NOT_FOUND | 评价不存在 |
+
+评价 C 端 HTTP 状态映射（2026-10-07 REV-001 评价切片，10号 §3.14 路由）：400 严格 JSON/UUID/路径 ID/评分非 1~5 整数/`content` 超 2000 码点/非空 `mediaFileIds`（媒体能力未开放，沿 `COMMON_INVALID_ARGUMENT` 如实拒绝）；401 会话缺失/失效；403 账号非 ACTIVE；404 订单不存在或非本人（沿订单读取族防探测语义，与 GET `/c/orders/{id}` 同应答）；409 `REVIEW_NOT_VERIFIED`（未核销）、`REVIEW_WINDOW_EXPIRED`（超核销后 30 天）、`REVIEW_ALREADY_EXISTS`（一单一评）、`REVIEW_NOT_ELIGIBLE`（退款成功/退款中，2026-10-07 用户裁决）及 `COMMON_CONFLICT`/`IDEMPOTENCY_KEY_CONFLICT`；503 `COMMON_DEPENDENCY_UNAVAILABLE`；未识别异常统一 500 `COMMON_INTERNAL_ERROR`。无新增错误码。
+
+评价申诉 HTTP 状态映射（2026-10-10 REV-002 评价申诉切片，56号 路由）：400 严格 JSON/UUID/路径 ID/`reason` 空白或超 1000 码点/`decisionType` 非 APPROVED|REJECTED；401 会话缺失/失效；403 M 面 OWNER 门禁（含商家/门店非 ACTIVE 写拒绝）或 O 面动作码 `review.appeal.read`/`review.appeal.decide` 缺失；404 M 面 `REVIEW_NOT_FOUND`（评价不存在与非本店统一防枚举）、O 面 `COMMON_NOT_FOUND`（申诉不存在）；409 `REVIEW_APPEAL_ALREADY_USED`（每条评价最多申诉一次，含 uk_review_appeal_once 竞态兜底）、`COMMON_CONFLICT`（已裁决终局改判/请求锁忙）、`IDEMPOTENCY_KEY_CONFLICT`；503 `COMMON_DEPENDENCY_UNAVAILABLE`；未识别异常统一 500 `COMMON_INTERNAL_ERROR`。无新增错误码。
+
+## 12. MERCHANT / SERVICE
+
+| Code | 含义 | 建议 HTTP |
+|---|---|---:|
+| MERCHANT_NOT_FOUND | 商家不存在 | 404 |
+| MERCHANT_DISABLED | 商家不可接受新订单 | 409 |
+| STORE_NOT_FOUND | 门店不存在 | 404 |
+| STORE_DISABLED | 门店不可接受新订单 | 409 |
+| SERVICE_NOT_FOUND | 服务不存在 | 404 |
+| SERVICE_NOT_BOOKABLE | 服务当前不可预约 | 409 |
+| SERVICE_FULFILLMENT_NOT_SUPPORTED | 履约方式不支持 | 400 |
+| SERVICE_STATE_NOT_ALLOWED | 服务当前状态不允许该操作（写入方状态机违规：编辑 ACTIVE/REVIEWING、对非 DRAFT/REJECTED/OFFLINE 提交、对非 ACTIVE 下架、对非 REVIEWING 审核决定、对非 ACTIVE 强制下架；或商家/门店事实明确但不可经营）（CCR-W2-API-001 服务写入方 v0.2，2026-09-22 已批） | 409 |
+| SERVICE_REVIEW_REASON_REQUIRED | 审核驳回缺少必填意见（10-500 字）（同批） | 400 |
 | MERCHANT_NOT_FOUND | 商家不存在 |
 | MERCHANT_DISABLED | 商家不可接受新订单 |
 | STORE_NOT_FOUND | 门店不存在 |
@@ -424,6 +523,8 @@ HTTP 映射只属于 Adapter 层；内部 Java API 通过稳定 code 表达同�
 | COUPON_FREEZE_EXPIRED | 冻结已失效 |
 | COUPON_ALREADY_USED | 已使用 |
 | COUPON_COMPENSATION_PENDING | 权益补偿处理中 |
+
+运营发放路由 HTTP 状态映射（2026-10-19 强化批，65 号 §4.3 v0.4 路由）：400 严格 JSON/批量形态非法（`userId` 与 `userIds` 恰现其一、`userIds` 非空/去重/≤100）/ID 词法（沿 `COMMON_INVALID_ARGUMENT`）；401 会话缺失/失效；403 动作码 `coupon.instance.grant` 缺失或数据范围非 ALL；404 `COMMON_NOT_FOUND`（模板不存在与目标用户不存在统一防枚举，消灭无主券）；409 `COMMON_CONFLICT`（模板非 ACTIVE/不在有效期/`total_stock` 售罄/单用户同模板持有超限/同操作者同用户同模板 60 秒频控）及 `IDEMPOTENCY_KEY_CONFLICT`（单发同 key 异参）；503 `COMMON_DEPENDENCY_UNAVAILABLE`（内核开关未装配/授权决断不可用/目标用户存在性读不可用）；未识别内部异常统一 500 `COMMON_INTERNAL_ERROR` 安全包装。无新增错误码；批量部分失败按逐用户明细回执（HTTP 200），授权/基础设施失败终止整单且已成功用户不回滚。
 
 ## 10. POINTS
 

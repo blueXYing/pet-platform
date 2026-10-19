@@ -28,6 +28,11 @@ final class AdminTradeHttpSupport {
             com.petplatform.boot.config.MerchantJsonReaderFactory.strictReader();
     private AdminTradeHttpSupport() {}
 
+    /** Shared strict reader for face-local body parsers (keeps ObjectMapper out of controllers). */
+    static tools.jackson.databind.JsonNode readStrictJson(byte[] raw) {
+        return JSON.readTree(raw);
+    }
+
     static AdminSessionView session(HttpServletRequest r, String action) {
         if (java.util.Collections.list(r.getHeaders("Authorization")).size() != 1) {
             throw new ApiException(CommonApiCodes.UNAUTHORIZED, "Session required");

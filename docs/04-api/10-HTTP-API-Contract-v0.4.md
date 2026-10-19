@@ -1425,6 +1425,158 @@ V1.0 运营端没有积分抵扣配置、积分商城、直播配置 API。
 
 ---
 
+## 5.9 服务审核与治理（CCR-W2-API-001 服务写入方 v0.2，2026-09-22 已批）
+
+```text
+GET  /api/v1/admin/services
+GET  /api/v1/admin/services/{serviceId}
+POST /api/v1/admin/services/{serviceId}/decision
+POST /api/v1/admin/services/{serviceId}/force-offline
+```
+
+真实运营会话（ADMIN_WEB Bearer）+ 动作码 `service.review.read` / `service.review.decide` / `service.force.offline`；决定与强制下架在事务内做数据库权威复核。运营不代商家新增/编辑/上下架服务（PRD 运营端 §3.3，无对应路由）。
+
+> 动作码拼写更正（2026-09-22 实现阶段）：AUTH 域动作码词法为小写点分段（`AdminActionCheckQuery`：`[a-z][a-z0-9]*(\.[a-z][a-z0-9]*)+`），已批意图"forceOffline"按词法落地为 `service.force.offline`；语义与裁决不变，PR 披露。
+
+| 方法/路径 | 动作码 | 请求 | 成功 data | 关键错误 |
+|---|---|---|---|---|
+| GET `/api/v1/admin/services` | service.review.read | query status?/categoryId?/merchantId?/page/pageSize | 审核分页（submittedAt、slaRemainingMinutes（按 24h SLA）、rejectCount、submissionNo） | 400/401/403 |
+| GET `/api/v1/admin/services/{serviceId}` | service.review.read | — | 详情 + `decisions[]` 历史驳回记录（append-only） | 404 |
+| POST `/api/v1/admin/services/{serviceId}/decision` | service.review.decide | body `{decisionType: APPROVE|REJECT, opinion?, expectedVersion}`；X-Request-Id | `{serviceId,status,version,decisionId}`（APPROVE→ACTIVE；REJECT→REJECTED） | 400 SERVICE_REVIEW_REASON_REQUIRED（REJECT 缺/短于10字意见）/409（非 REVIEWING 或版本失配） |
+| POST `/api/v1/admin/services/{serviceId}/force-offline` | service.force.offline | body `{reason, expectedVersion}`；X-Request-Id | `{serviceId,status:"OFFLINE",version,actionId}`（落治理审计） | 400（reason 10-500）/409（非 ACTIVE） |
+
+- 审核决定（APPROVE/REJECT）在决定事务内写 `ServiceReviewedEvent.v1` 到事务性 Outbox（Event08）；通知消费侧（MERCHANT 收件箱）由通知域切片承接，未接通前完整审核流程不标完成。
+- 强制下架是否通知商家＝剩余问题（本轮不发事件）。
+
+---
+
+## 5.10 签到/拉新积分量配置（58 号 §4，32 号裁决第二节，2026-10-13）
+
+> 本节为摘要；权威契约在 `60-Points-Task-Contract-v0.1.md` §4。
+
+```text
+GET /api/v1/admin/points-task-config
+PUT /api/v1/admin/points-task-config
+```
+
+真实运营会话（ADMIN_WEB Bearer）+ 动作码 `points.task.config.read` /
+`points.task.config.write`（单运营 V1，无第二审批人，SSOT §24）；随
+`pet.points.task.http.enabled` 装配（另需 `pet.auth.admin.enabled`，默认关）。GET 无行读内置
+缺省（5/30/50/3/100/100/20，version "0"）。PUT 为全量七字段整数（严格 JSON，范围见 58 号
+§4.2），23 号公共幂等，配置即时生效（新领取按新值，既有流水不回改）。错误面复用 12 号 §2
+通用码；`no-store`。V1 无积分消费类配置（抵现/商城/兑换不存在，32 号裁决第二节第 1 条）。
+
+---
+
+## 5.11 运营交易查询（63 号，2026-10-14 ADM-002/A-003 切片）
+
+> 本节为摘要；权威契约在 `63-Admin-Trade-Query-Contract-v0.1.md`。
+
+```text
+GET /api/v1/admin/trade/orders
+GET /api/v1/admin/trade/orders/{orderId}
+GET /api/v1/admin/trade/orders/{orderId}/status-logs
+GET /api/v1/admin/trade/refunds
+GET /api/v1/admin/trade/refunds/{refundOrderId}
+GET /api/v1/admin/trade/verifications
+GET /api/v1/admin/trade/verifications/{verificationId}
+```
+
+七条只读路由随 `pet.admin.trade.http.enabled`（默认 false）+ `pet.auth.admin.enabled` 装配；动作码
+`order.read` / `order.status-log.read` / `order.verification-log.read` / `refund.read`（AUTH-001
+提案矩阵第 7/8 行，随切片登记部署清单），控制器快照校验 + 模块内核 `AdminAuthorizationQueryApi`
+每次重验；trade 面要求数据范围 `ALL`（CITY/MERCHANT 因订单/退款/核销域缺权威城市/商家归属事实
+fail-closed 403，CCR-PERM-001 §3）。脱敏：不回传手机号/地址联系人明文/凭证密文/申请理由密文。
+§5.2 `channel-query`/`retry`、§5.5 `abnormal-close`、§5.6 商家下线保持草案未实现（需各自写内核
+切片）；部分退款仅运营售后裁决（51 号，A-004 已交付）。
+
+---
+
+## 5.12 运营治理查询（64 号，2026-10-15 ADM-001 治理补齐 / A-002 第二期切片）
+
+> 本节为摘要；权威契约在 `64-Admin-Governance-Contract-v0.1.md`。
+
+```text
+GET /api/v1/admin/governance/merchants
+GET /api/v1/admin/governance/merchants/{merchantId}
+GET /api/v1/admin/governance/merchants/{merchantId}/staff
+GET /api/v1/admin/governance/merchants/{merchantId}/staff-members
+GET /api/v1/admin/governance/merchants/{merchantId}/staff-members/invitations
+GET /api/v1/admin/governance/schedule/windows
+GET /api/v1/admin/governance/schedule/staff-windows
+GET /api/v1/admin/governance/schedule/reservations
+```
+
+八条只读路由随 `pet.admin.governance.http.enabled`（默认 false）+ `pet.auth.admin.enabled` 装配；
+动作码 `merchant.read`（AUTH-001 提案矩阵第 3 行）/ `schedule.read` / `merchant.staff.read`
+（6.2.5/6.2.6 只读监管拟议码，随切片登记部署清单），控制器快照校验 + merchant/schedule 内核
+`AdminAuthorizationQueryApi` 每次重验；governance 面要求数据范围 `ALL`（CITY/MERCHANT 因商家/
+员工/排期行缺统一权威城市归属事实 fail-closed 403，CCR-PERM-001 §3）。脱敏：手机号仅掩码、
+子商户号仅后 4 位、不回传证件/协议内容/密文。排期面只读（SCH-004/53 号写侧归商家）；§5.6 商家
+下线/冻结与一切运营员工处置保持草案未实现（SSOT §30 未授权运营写动作，需 CCR 登记）。
+
+---
+
+## 5.13 运营治理台二期（65 号，2026-10-16 A-005 切片：百科/券/台账/系统设置；v0.2 增券发放）
+
+> 本节为摘要；权威契约在 `65-Admin-Ops-Console-Contract-v0.1.md`。
+
+```text
+GET  /api/v1/admin/encyclopedia/categories
+PUT  /api/v1/admin/encyclopedia/categories/{categoryCode}
+POST /api/v1/admin/encyclopedia/categories/{categoryCode}/enable|disable
+GET  /api/v1/admin/encyclopedia/breeds
+GET  /api/v1/admin/encyclopedia/breeds/{breedId}
+PUT  /api/v1/admin/encyclopedia/breeds/{breedId}
+POST /api/v1/admin/encyclopedia/breeds/{breedId}/publish|offline
+GET  /api/v1/admin/coupon-templates
+GET  /api/v1/admin/coupon-templates/{templateId}
+GET  /api/v1/admin/coupon-templates/{templateId}/trial-calculation
+POST /api/v1/admin/coupon-templates
+PUT  /api/v1/admin/coupon-templates/{templateId}
+POST /api/v1/admin/coupon-templates/{templateId}/enable|offline
+GET  /api/v1/admin/coupon-instances
+GET  /api/v1/admin/coupon-instances/{instanceId}
+POST /api/v1/admin/coupon-instances/grant
+POST /api/v1/admin/coupon-instances/{instanceId}/void
+GET  /api/v1/admin/points/ledger
+GET  /api/v1/admin/settings/runtime
+```
+
+二十二条路由随 `pet.admin.ops.http.enabled`（默认 false）+ `pet.auth.admin.enabled` 装配；动作码
+`encyclopedia.read/manage/publish`、`breed.read/manage`（矩阵行 21）、`coupon.template.read/manage`、
+`coupon.instance.read`（行 13/14 提案连字符拼写的点分落地）、`coupon.instance.grant`（v0.2 发放渠道，
+用户裁决 2026-10-16，提案矩阵无提案码、点分词法新造登记——CCR-CPN-GRANT-001 §3）、
+`coupon.instance.void`（v0.3 作废渠道，用户裁决 2026-10-16 最小授权 36 号，提案矩阵行 14 提案
+`coupon-instance.void` 的点分落地）、
+`points.ledger.read`（行 15 族）、`system.parameter.read`（行 23 提案拼写点分落地），随切片登记部署
+清单。控制器快照校验 + community/coupon/points 内核授权端口每次重验；dataScope 非 ALL 一律 403。
+写动作（分类维护/停用启用、品种维护/上下线、券模板建/编/启/停）终结性 X-Request-Id 幂等（14 号
+command_idempotency 绑定，同参重放回执、异参 409）+ expectedVersion 乐观锁（失配 409）。
+发放路由（65 号 v0.2 §4.3，2026-10-16 用户裁决"做券发放渠道"；v0.4 2026-10-19 强化批用户裁决
+"继续扩展CCR"）：按一个 ACTIVE 模板发放 AVAILABLE 券实例——单发 `{templateId, userId}` 一张，
+批量 `{templateId, userIds}`（非空、≤100、去重，否则 400）逐用户一张；守卫链=61 号冻结前置④
+（非 ACTIVE 或不在有效期 409）→ 目标用户存在性（user 域只读端口，不存在 404，消灭无主券）→
+单用户同模板 AVAILABLE+FROZEN 持有上限（`pet.coupon.grant.max-per-template` 默认 10，超限 409）→
+同操作者同用户同模板 60 秒滑动窗频控（DB 计数，重复 409）→ `total_stock` 库存扣减（非空时
+`issued_count<total_stock` 才可发，售罄 409；NULL 不限量）；`coupon_ledger` ISSUE 行为发放审计；
+单发 X-Request-Id 幂等同参重放回执、异参 409，批量逐用户独立幂等与独立事务（回执逐用户
+GRANTED/REJECTED 明细，部分失败不回滚已成功者）；内核另受 `pet.coupon.grant.enabled`（默认
+false，21 号清单）门控，开关关闭时该路由 503 失败关闭（61 号提供器未装配语义），默认值翻转随
+35 号开关放开裁决统一处理。发放后 C 端 `GET /api/v1/c/coupons?status=AVAILABLE` 立即可见
+（10 号 §3.15.1 零改动）。
+作废路由（65 号 v0.3 §4.4，2026-10-16 用户裁决"治理写动作最小授权"36 号）：作废指定单张
+AVAILABLE 券实例（USED/FROZEN/RISK_FROZEN/EXPIRED 一律 409——FROZEN 被在途订单锁定的券不许
+作废）；落点 `status='VOID'`（新终态，Schema06 词表注记同步披露）；`coupon_ledger` VOID 行
+（`CPN:VOID:{instanceId}`）为作废审计，body 必填 reason（10–200 字）；内核另受
+`pet.coupon.void.enabled`（默认 false，21 号清单）门控，开关关闭时该路由 503 失败关闭；
+C 端三桶（AVAILABLE/USED/EXPIRED）不含 VOID 即时不可见（读侧零改动）；作废后是否补偿 CCR
+登记最小实现=不补偿（CCR-CPN-VOID-001）。除发放/作废外券实例无任何写路由（批量作废/返还/
+风控冻结/解冻 CCR-ADM-A005-OPS-001 未登记不做）；设置面只读（运行时写配置无授权，同 CCR）。
+
+---
+
+
 # 6. 拉卡拉回调
 
 ## 6.1 支付回调
