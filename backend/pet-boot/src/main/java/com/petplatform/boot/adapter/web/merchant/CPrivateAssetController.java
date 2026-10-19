@@ -31,7 +31,10 @@ public final class CPrivateAssetController {
   private static final Set<String> MEDIA_TYPES = Set.of("image/jpeg", "image/png");
   /** CCR-W2-API-001 store read: SERVICE_COVER shares the pipeline (31 supplement, MER writer). */
   static final String SERVICE_COVER_PURPOSE = "SERVICE_COVER";
-  private static final Set<String> PURPOSES = Set.of(MERCHANT_APPLICATION_PURPOSE, SERVICE_COVER_PURPOSE);
+  /** Contract-67 v0.2: feedback-ticket attachments ride the same C-end pipeline (67号 §5). */
+  static final String FEEDBACK_ATTACHMENT_PURPOSE = "FEEDBACK_ATTACHMENT";
+  private static final Set<String> PURPOSES = Set.of(MERCHANT_APPLICATION_PURPOSE,
+      SERVICE_COVER_PURPOSE, FEEDBACK_ATTACHMENT_PURPOSE);
   private final PrivateAssetApi assets;
   private final ObjectProvider<MerchantAdmissionApiImpl> admissions;
 
