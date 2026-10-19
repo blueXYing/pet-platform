@@ -198,7 +198,7 @@ export type CustomerPage = Readonly<{ page: number; pageSize: number; total: num
 const instant = (v: unknown): string => typeof v === 'string' && /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/.test(v)
   && Number.isFinite(Date.parse(v)) && new Date(v).toISOString() === v ? v : fail()
 const money = (v: unknown): string => typeof v === 'string' && /^\d+\.\d{2}$/.test(v) ? v : fail()
-const nullable = <T>(v: unknown, decode: (x: unknown) => T): T | null => v === null ? null : decode(v)
+const nullable = <T>(v: unknown, decode: (x: unknown) => T): T | null => v === null || v === undefined ? null : decode(v)
 
 function petView(value: unknown): PetView {
   const v = exact(value, 'petName,petType,breedName')
