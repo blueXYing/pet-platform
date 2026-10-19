@@ -313,8 +313,18 @@ public final class MerchantStatsQueryService {
     }
 
     private static ServiceOrderRow serviceOrder(ServiceOrderRowEntity row) {
+        // DisplayOrderStatus 由 order 域统一计算（技术基线铁律/ARCH-005）：下钻行只发投影，
+        // 裸 stage 不过面；不可读投影为 503 完整性失败（与 §4.1 列表同一真值表）。
+        String display;
+        try {
+            display = OrderDisplayStatus.compute(new OrderDisplayStatus.Facts(row.getOrderStage(),
+                    row.getRefundOrderId(), row.getRefundedAmount(), row.getPayAmount(),
+                    row.getRefundApplicationStatus(), row.getAftersaleStatus()));
+        } catch (RuntimeException unreadable) {
+            throw new ApiException(CommonApiCodes.DEPENDENCY_UNAVAILABLE, "订单状态投影不可用");
+        }
         return new ServiceOrderRow(IDS.toApi(row.getId()), row.getOrderNo() == null ? null
-                : row.getOrderNo().toString(), row.getOrderStage(), money(row.getPayAmount()),
+                : row.getOrderNo().toString(), display, money(row.getPayAmount()),
                 money(row.getRefundedAmount()),
                 row.getCreatedAt() == null ? null : row.getCreatedAt().atOffset(ZoneOffset.UTC),
                 row.getAppointmentStartAt() == null ? null

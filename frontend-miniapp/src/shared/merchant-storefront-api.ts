@@ -390,11 +390,13 @@ export type StatsOverview = Readonly<{
 }>
 export type StatsServiceRow = Readonly<{ serviceId: string; serviceName: string | null; orderCount: number; revenue: string }>
 export type TrendBucket = Readonly<{ date: string; revenue: string; orderCount: number }>
-/** 服务下钻只读行：本店自身订单事实，无客户字段。 */
+/** 服务下钻只读行：本店自身订单事实（displayStatus 为 order 域统一投影，10 值呈现词汇），
+ *  无客户字段；页面只呈现不推导（ARCH-005）。 */
 export type StatsServiceOrderRow = Readonly<{
   orderId: string
   orderNo: string | null
-  orderStage: string
+  displayStatus: 'PENDING_PAYMENT' | 'PENDING_CONFIRM' | 'PENDING_SERVICE' | 'COMPLETED' | 'CANCELED'
+    | 'REFUND_PENDING_CONFIRM' | 'REFUNDING' | 'REFUNDED' | 'PARTIAL_REFUND' | 'AFTERSALE'
   payAmount: string
   refundedAmount: string
   createdAt: string | null
@@ -490,11 +492,13 @@ export function decodeStatsServiceOrders(value: unknown): StatsServiceOrdersPage
     serviceName: nullable(v.serviceName, x => typeof x === 'string' && x.length >= 1 ? x : fail()),
     range: v.range, page: v.page, pageSize: v.pageSize, total: v.total,
     items: Object.freeze(v.items.map(item => {
-      const row = exact(item, 'orderId,orderNo,orderStage,payAmount,refundedAmount,createdAt,appointmentStartAt,verifiedAt')
+      const row = exact(item, 'orderId,orderNo,displayStatus,payAmount,refundedAmount,createdAt,appointmentStartAt,verifiedAt')
+      const statuses = ['PENDING_PAYMENT', 'PENDING_CONFIRM', 'PENDING_SERVICE', 'COMPLETED', 'CANCELED',
+        'REFUND_PENDING_CONFIRM', 'REFUNDING', 'REFUNDED', 'PARTIAL_REFUND', 'AFTERSALE']
       return {
         orderId: id(row.orderId),
         orderNo: nullable(row.orderNo, x => typeof x === 'string' && /^[0-9]{1,19}$/.test(x) ? x : fail()),
-        orderStage: typeof row.orderStage === 'string' && row.orderStage ? row.orderStage : fail(),
+        displayStatus: statuses.includes(row.displayStatus as string) ? row.displayStatus as never : fail(),
         payAmount: money(row.payAmount), refundedAmount: money(row.refundedAmount),
         createdAt: nullable(row.createdAt, instant),
         appointmentStartAt: nullable(row.appointmentStartAt, instant),

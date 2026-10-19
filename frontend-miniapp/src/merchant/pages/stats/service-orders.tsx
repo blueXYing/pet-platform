@@ -4,17 +4,13 @@ import { useEffect, useState, useSyncExternalStore, type CSSProperties } from 'r
 import { consumerApi, consumerStorage } from '../../../shared/consumer-runtime'
 import { merchantStorefrontDeps } from '../../storefront/repository'
 import { ServiceOrdersController } from '../../storefront/read-controllers'
+import { merchantDisplayStatusLabels } from '../../order/model'
 import { windowLabel } from '../../storefront/model'
 import navBack from '../aftersale/assets/nav-back@3x.png'
 import './page.css'
 
-const STAGE_LABEL: Record<string, string> = {
-  PENDING_PAYMENT: '待支付',
-  PENDING_CONFIRM: '待确认',
-  PENDING_SERVICE: '待服务',
-  COMPLETED: '已完成',
-  CANCELED: '已关闭',
-}
+// 服务下钻 M 面（70号 2026-10-19 扩展）：Top5 行进入的本店订单明细分页，只读。
+// displayStatus 为 order 域统一投影，页面只呈现不推导（ARCH-005）。
 
 // 服务下钻 M 面（70号 2026-10-19 扩展）：Top5 行进入的本店订单明细分页，只读。
 function useServiceOrders() {
@@ -72,7 +68,7 @@ export default function MerchantServiceOrdersPage() {
       <Text className='mst-tail'>{page.serviceName ?? '已下架服务'} · {windowLabel(page.range)} · 共 {page.total} 单（只读）</Text>
       {page.items.map(row => <View key={row.orderId} className='mst-card'>
         <View className='mst-kv'><Text className='mst-kv-label'>订单号</Text><Text className='mst-kv-value'>{row.orderNo ?? row.orderId}</Text></View>
-        <View className='mst-kv'><Text className='mst-kv-label'>状态</Text><Text className='mst-kv-value'>{STAGE_LABEL[row.orderStage] ?? row.orderStage}</Text></View>
+        <View className='mst-kv'><Text className='mst-kv-label'>状态</Text><Text className='mst-kv-value'>{merchantDisplayStatusLabels[row.displayStatus]}</Text></View>
         <View className='mst-kv'><Text className='mst-kv-label'>实付</Text><Text className='mst-kv-value'>¥{row.payAmount}</Text></View>
         <View className='mst-kv'><Text className='mst-kv-label'>已退</Text><Text className='mst-kv-value'>¥{row.refundedAmount}</Text></View>
         <View className='mst-kv'><Text className='mst-kv-label'>下单时间</Text><Text className='mst-kv-value'>{serviceOrderTime(row.createdAt)}</Text></View>

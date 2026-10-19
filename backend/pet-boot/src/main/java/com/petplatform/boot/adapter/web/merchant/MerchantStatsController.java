@@ -19,6 +19,7 @@ import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.http.MediaType;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.ModelAttribute;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
@@ -171,7 +172,7 @@ public final class MerchantStatsController {
             Map<String, Object> item = new LinkedHashMap<>();
             item.put("orderId", row.orderId());
             item.put("orderNo", row.orderNo());
-            item.put("orderStage", row.orderStage());
+            item.put("displayStatus", row.displayStatus());
             item.put("payAmount", amount(row.payAmount()));
             item.put("refundedAmount", amount(row.refundedAmount()));
             item.put("createdAt", time(row.createdAt()));

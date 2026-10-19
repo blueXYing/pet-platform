@@ -431,16 +431,25 @@ class MerchantCustomerStatsMySqlTest {
                         new FileSystemResource(root().resolve("docs/03-database/06-核心数据库Schema-v0.1.sql")),
                         StandardCharsets.UTF_8));
                 // Companion schemas for the 2026-10-19 expansion: 40号 adds pet_order.cancel_reason
-                // (the 拒单率 fact); the 42号 refund-execution base (required by the 45号 ALTER);
-                // the 45号 command binding rows; the 69号 note tables (no FKs into 06).
+                // (the 拒单率 fact); 48/49号 add the aftersale/refund-application status
+                // projections the DisplayOrderStatus truth table reads; the 42号 refund-execution
+                // base (required by the 45号 ALTER); the 45号 command binding rows; the 69号 note
+                // tables (no FKs into 06).
                 ScriptUtils.executeSqlScript(connection, new EncodedResource(
                         new FileSystemResource(root().resolve("docs/03-database/40-Payment-Foundation-Schema-v0.1.sql")),
                         StandardCharsets.UTF_8));
                 ScriptUtils.executeSqlScript(connection, new EncodedResource(
                         new FileSystemResource(root().resolve("docs/03-database/42-Late-Refund-Execution-Schema-v0.1.sql")),
                         StandardCharsets.UTF_8));
+                // 45号 adds refund_execution.chk_refund_source that 49号 drops/extends — order matters.
                 ScriptUtils.executeSqlScript(connection, new EncodedResource(
                         new FileSystemResource(root().resolve("docs/03-database/45-Merchant-Order-Actions-Schema-v0.1.sql")),
+                        StandardCharsets.UTF_8));
+                ScriptUtils.executeSqlScript(connection, new EncodedResource(
+                        new FileSystemResource(root().resolve("docs/03-database/48-Verification-Completion-Schema-v0.1.sql")),
+                        StandardCharsets.UTF_8));
+                ScriptUtils.executeSqlScript(connection, new EncodedResource(
+                        new FileSystemResource(root().resolve("docs/03-database/49-Refund-Application-Schema-v0.1.sql")),
                         StandardCharsets.UTF_8));
                 ScriptUtils.executeSqlScript(connection, new EncodedResource(
                         new FileSystemResource(root().resolve("docs/03-database/69-Merchant-Customer-Note-Schema-v0.1.sql")),

@@ -77,11 +77,16 @@ public final class MerchantReadProjectionEntities {
         public void setRevenue(BigDecimal revenue) { this.revenue = revenue; }
     }
 
-    /** One drilled-down order row of a service (this store's own facts, no customer fields). */
+    /** One drilled-down order row of a service (this store's own facts, no customer fields).
+     *  displayStatus is the order-domain's single authoritative projection (ARCH-005/tech
+     *  baseline: only order computes it) — raw stage never crosses the surface. */
     public static final class ServiceOrderRowEntity {
         private Long id;
         private Long orderNo;
         private String orderStage;
+        private Long refundOrderId;
+        private String refundApplicationStatus;
+        private String aftersaleStatus;
         private BigDecimal payAmount;
         private BigDecimal refundedAmount;
         private LocalDateTime createdAt;
@@ -94,6 +99,12 @@ public final class MerchantReadProjectionEntities {
         public void setOrderNo(Long orderNo) { this.orderNo = orderNo; }
         public String getOrderStage() { return orderStage; }
         public void setOrderStage(String orderStage) { this.orderStage = orderStage; }
+        public Long getRefundOrderId() { return refundOrderId; }
+        public void setRefundOrderId(Long refundOrderId) { this.refundOrderId = refundOrderId; }
+        public String getRefundApplicationStatus() { return refundApplicationStatus; }
+        public void setRefundApplicationStatus(String refundApplicationStatus) { this.refundApplicationStatus = refundApplicationStatus; }
+        public String getAftersaleStatus() { return aftersaleStatus; }
+        public void setAftersaleStatus(String aftersaleStatus) { this.aftersaleStatus = aftersaleStatus; }
         public BigDecimal getPayAmount() { return payAmount; }
         public void setPayAmount(BigDecimal payAmount) { this.payAmount = payAmount; }
         public BigDecimal getRefundedAmount() { return refundedAmount; }

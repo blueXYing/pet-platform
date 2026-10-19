@@ -50,8 +50,10 @@ public interface MerchantStatsQueryApi {
 
     record TrendBucket(String date, BigDecimal revenue, long orderCount) {}
 
-    /** One drilled-down order: this store's own facts only, newest creation first. */
-    record ServiceOrderRow(String orderId, String orderNo, String orderStage, BigDecimal payAmount,
+    /** One drilled-down order: this store's own facts only, newest creation first. displayStatus
+     *  is the order-domain's single authoritative projection (tech baseline; ARCH-005) — the
+     *  raw stage never crosses the surface. */
+    record ServiceOrderRow(String orderId, String orderNo, String displayStatus, BigDecimal payAmount,
             BigDecimal refundedAmount, OffsetDateTime createdAt, OffsetDateTime appointmentStartAt,
             OffsetDateTime verifiedAt) {}
 

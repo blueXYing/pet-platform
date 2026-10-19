@@ -189,7 +189,9 @@
     </select>
 
     <select id="statsServiceOrders" resultType="com.petplatform.order.biz.infrastructure.persistence.entity.MerchantReadProjectionEntities$ServiceOrderRowEntity">
-        SELECT o.id, o.order_no, o.order_stage, o.pay_amount, o.refunded_amount,
+        SELECT o.id, o.order_no, o.order_stage, o.refund_order_id,
+               o.refund_application_status, o.aftersale_status,
+               o.pay_amount, o.refunded_amount,
                o.created_at, o.appointment_start_at, o.verified_at
         FROM pet_order o
         WHERE o.merchant_id = #{merchantId} AND o.store_id = #{storeId}

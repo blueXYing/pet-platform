@@ -72,8 +72,8 @@ function fixture() {
       const result: StatsServiceOrdersPage = {
         serviceId, serviceName: '猫咪洗澡', range, page: page2, pageSize: 20, total: 2,
         items: [
-          { orderId: '9152', orderNo: '9152', orderStage: 'COMPLETED', payAmount: '90.00', refundedAmount: '0.00', createdAt: '2026-10-16T10:00:00.000Z', appointmentStartAt: '2026-10-17T09:00:00.000Z', verifiedAt: '2026-10-17T10:00:00.000Z' },
-          { orderId: '9151', orderNo: '9151', orderStage: 'COMPLETED', payAmount: '120.00', refundedAmount: '20.00', createdAt: '2026-10-14T09:00:00.000Z', appointmentStartAt: '2026-10-15T09:00:00.000Z', verifiedAt: null },
+          { orderId: '9152', orderNo: '9152', displayStatus: 'COMPLETED', payAmount: '90.00', refundedAmount: '0.00', createdAt: '2026-10-16T10:00:00.000Z', appointmentStartAt: '2026-10-17T09:00:00.000Z', verifiedAt: '2026-10-17T10:00:00.000Z' },
+          { orderId: '9151', orderNo: '9151', displayStatus: 'PARTIAL_REFUND', payAmount: '120.00', refundedAmount: '20.00', createdAt: '2026-10-14T09:00:00.000Z', appointmentStartAt: '2026-10-15T09:00:00.000Z', verifiedAt: null },
         ],
       }
       return result
