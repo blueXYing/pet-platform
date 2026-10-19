@@ -1053,6 +1053,66 @@ C 目录可见性 API，隐藏/缺失统一 404 目录家族码（SERVICE_NOT_FO
 403 USER_FROZEN）；同 requestId 异参 409 IDEMPOTENCY_KEY_CONFLICT。Schema：SQL06 用户节
 `user_favorite`/`user_browse_footprint` 两表（58号），无 Event/任务变更。
 
+## 3.17 设置枢纽与账号注销（66号契约，用户裁决 2026-10-19 收尾批次"全做"；CCR-USR-DELETION-001）
+
+> 实现注记（2026-10-19，C-SETTINGS-001）：两路由按 [66号契约](66-User-Settings-Deletion-Contract-v0.1.md)
+> 装配（默认关闭，开关 `pet.usersettings.http.enabled`，[硬] 前置 `pet.auth.c.enabled` +
+> `pet.merchant.application.enabled`（OWNER 成员资格面），见 21号清单）。设置页其余子项复用
+> 既有已批面（通知偏好 §3.15、地址 §3.2.2、profile 手机号脱敏、auth/logout），本节只登记注销族。
+> 全路由真实 MINIAPP Bearer 会话；`Cache-Control: no-store`；ID String、时间 ISO-8601 UTC 毫秒。
+> 注销最小实现=同步置 CANCELED（SQL06 §1 既有词表）+append-only 审计行；冷静期/"申请中"态/
+> 数据清理 AsyncTask/注销撤销（PRD 有句无口径）全部 CCR-USR-DELETION-001 §2 待裁，一行不做。
+
+- `GET /api/v1/c/account/deletion-precheck`：注销前置校验（PRD 5.1.29 业务规则原文四类阻塞）。
+  无 query 无 body。data `{blocked, blockers:[{code,label,detail}]}`；code 词表冻结四值
+  `USER_ORDERS_UNSETTLED`（本人待支付/待确认/待服务/退款待确认/退款中订单——order 域事实端口
+  `OrderDeletionFactsApi`，displayStatus 真值表由 order 域自有固定 XML 分支投影）/`USER_AFTERSALES_OPEN`
+  （本人处理中售后——aftersale 域 `AfterSaleDeletionFactsApi`，active 集合）/`OWNER_STORE_ORDERS_UNSETTLED`
+  /`OWNER_STORE_AFTERSALES_OPEN`（名下 OWNER 商家门店，经既有 `listMemberships`）；顺序固定、
+  `blocked = blockers 非空`。事实端口不可用整单 503 fail-closed（绝不读作"无阻塞"）。400/401/503。
+- `POST /api/v1/c/account/deletion`：Header `X-Request-Id` 必填（终态 UUID，23号 §5 五元组，
+  namespace `account.deletion`，scope USER_SELF）；严格 JSON `{acknowledged:true}`（未知字段/显式
+  null/假值 400）。前置校验在行锁事务内重跑：阻塞 409 `DELETION_BLOCKED`（信封 data=null，明细由
+  precheck 承载）；通过则同事务追加 `user_deletion_request` append-only 审计行（outcome=ACCEPTED，
+  blockers_json=NULL）并将 `user_account.status` 置 `CANCELED`（乐观锁）。首执 **201**；同 requestId
+  同参重放 **200** 首回执；异参 409 `IDEMPOTENCY_KEY_CONFLICT`；FROZEN 403 `USER_FROZEN`；已注销
+  冲突 409。注销即生效：既有 `resolveSession` 对 CANCELED 立即 401、微信登录链拒绝（零新代码）。
+  回执 `{userId,status:"CANCELED",deletedAt}`。无事件 by design（V1 无跨域消费方）、无 AsyncTask——PR 披露。
+- Schema：`user_deletion_request`（66号 Schema，append-only）；核心表零改（CANCELED 为既有词表）。
+  设计偏差（帧 `131:18372`）：修改密码/支付设置行不渲染；推送通知/消息提醒开关行改入口（承载
+  §3.15 既有页）；注销入口为 PRD 明确要求新增（原稿无此元素）；清除缓存/关于为端侧静态行为。
+
+## 3.18 意见反馈工单（67号契约，用户裁决 2026-10-19 收尾批次"全做"；CCR-CS-FEEDBACK-001）
+
+> 实现注记（2026-10-19，C-FEEDBACK-001）：三路由按 [67号契约](67-Feedback-Ticket-Contract-v0.1.md)
+> 装配（默认关闭，开关 `pet.feedback.http.enabled`，[硬] 前置 `pet.auth.c.enabled`，见 21号清单）。
+> 工单域落 pet-customer-service-biz（骨架模块首次落业务）；售后类（订单售后工单）仍归 50/51号
+> 既有售后域，不并入。全路由真实 MINIAPP Bearer 会话；`Cache-Control: no-store`；工单号 String。
+> 最小实现：文本工单无附件（PRD 6 张图片需私有资产通道扩展，CCR §3.1）、状态词表冻结五值且
+> V1 恒 `PENDING`（运营处置面不在切片，`complaint.*` 权限占位不动）、`replies`/`resolution` 为
+> 详情字段位恒空（PR 披露）。帮助与客服（PRD 5.1.25）承载=静态 FAQ 内容页+客服热线电话唤起
+> （V1 无 IM/无 AI，SSOT §21 第 4 项承载方式待裁，CCR §2/§4；FAQ 答案按平台已批规则改写，
+> 帧偏差登记见登记表新小节）。无事件、无 Outbox/AsyncTask（提交回执无通知，16号消息目录无此类型）。
+
+- `POST /api/v1/c/feedback-tickets`：Header `X-Request-Id` 必填（23号 §5，namespace `feedback.create`，
+  scope USER_SELF，模块本地 `feedback_command_idempotency`（SQL14 同构，不跨模块共享命令表））；
+  严格 JSON：`type` 必填四值 `FEATURE_SUGGESTION|BUG_REPORT|SERVICE_COMPLAINT|OTHER`（未知 400
+  `FEEDBACK_TYPE_INVALID`）/`contact` 选填 1..64 码点/`content` 必填 1..500 码点。写前置
+  `user_account.status=ACTIVE`（403 `USER_FROZEN`，经 user-api 只读状态端口 `UserActiveStatusApi`）；
+  单用户每分钟 5 单（429 `COMMON_RATE_LIMITED`，模块内易失计数器——披露非安全边界）。同事务写
+  `feedback_ticket`（status=PENDING）+ `feedback_ticket_event`（SUBMITTED，append-only 审计）。
+  首执 **201** `{ticketId,type,status:"PENDING",createdAt}`；同参重放 **200** 同回执；异参 409。
+- `GET /api/v1/c/feedback-tickets?page&pageSize`：本人工单分页；page 1..10000 默认 1、pageSize
+  1..50 默认 20；固定排序 `created_at DESC, id DESC`；摘要 `{ticketId,type,status,contentPreview
+  (≤50码点服务端截断),createdAt}`——**摘要不回传联系方式**（最小暴露面）。
+- `GET /api/v1/c/feedback-tickets/{ticketId}`：本人详情；非本人/不存在统一 404
+  `FEEDBACK_TICKET_NOT_FOUND`（防枚举），ticketId 非 Snowflake 词法 400。data=摘要全字段+
+  `content` 全文+`contact`（null 或原文，仅详情返回）+`events[]`（词表冻结 `SUBMITTED`）+
+  `replies:[]`（恒空）+`resolution:null`。
+- 内容脱敏存储口径：SSOT 无反馈内容条款（全文 0 命中）→ 最小口径=原文存储+owner-scoped 读+
+  列表不回传 contact（CCR-CS-FEEDBACK-001 §2）；后续运营处置面/导出面立项前需先过隐私裁决。
+- Schema：`feedback_ticket`/`feedback_ticket_event`/`feedback_command_idempotency`（67号 Schema）。
+
 ---
 
 # 4. 商家端 API

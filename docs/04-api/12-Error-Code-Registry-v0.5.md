@@ -490,6 +490,9 @@ HTTP 映射只属于 Adapter 层；内部 Java API 通过稳定 code 表达同�
 | ADDRESS_NOT_FOUND | 地址不存在/已删除/归属不符（防枚举统一语义，59号） | 404 |
 | ADDRESS_LIMIT_EXCEEDED | 单用户 ACTIVE 地址超上限 20 条（59号） | 400 |
 | BREED_NOT_FOUND | 百科品种不存在/未发布/已下线（防枚举统一语义，62号） | 404 |
+| DELETION_BLOCKED | 账号注销存在前置阻塞（未完结订单/处理中售后/名下商家未完结业务，66号；阻塞明细由 precheck 读侧承载） | 409 |
+| FEEDBACK_TYPE_INVALID | 反馈类型不在 PRD 5.1.28 四值词表（67号） | 400 |
+| FEEDBACK_TICKET_NOT_FOUND | 反馈工单不存在/非本人（防枚举统一语义，67号） | 404 |
 
 ## 14. 使用规则
 

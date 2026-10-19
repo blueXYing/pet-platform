@@ -42,9 +42,18 @@ class ContractSmokeRegressions(unittest.TestCase):
         # authorization, CCR-CPN-VOID-001; kernel switch pet.coupon.void.enabled stays
         # default off) = twenty-two routes.
         self.assertEqual(result['adminOpsOperations'], 22)
-        # Union 206 = 163 baseline + 3 encyclopedia + 11 admin trade (reads + disposal)
-        # + 8 governance + 22 ops console: 163 + 3 + 11 + 8 + 22 = 206.
-        self.assertEqual(result['operations'], 206)
+        # Contract 66 user settings/deletion face (2026-10-19, user ruling "全做";
+        # CCR-USR-DELETION-001): precheck read + idempotent deletion write = two routes
+        # (pet.usersettings.http.enabled default off).
+        self.assertEqual(result['userSettingsOperations'], 2)
+        # Contract 67 feedback ticket face (2026-10-19, PRD 5.1.28 complaint class;
+        # CCR-CS-FEEDBACK-001): create + list + owner detail = three routes
+        # (pet.feedback.http.enabled default off).
+        self.assertEqual(result['feedbackHttpOperations'], 3)
+        # Union 211 = 163 baseline + 3 encyclopedia + 11 admin trade (reads + disposal)
+        # + 8 governance + 22 ops console + 2 settings/deletion + 3 feedback:
+        # 163 + 3 + 11 + 8 + 22 + 2 + 3 = 211.
+        self.assertEqual(result['operations'], 211)
         self.assertGreater(result['stringIdProperties'], 0)
         # Contract 58 favorite/footprint face (2026-10-13): seven reviewed operations.
         self.assertEqual(result['favtrackHttpOperations'], 7)

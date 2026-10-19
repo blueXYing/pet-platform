@@ -45,7 +45,7 @@
 
 语义与硬规则：
 
-- **前置校验在行锁事务内重跑**（§3 同一内核组合，任一阻塞 409 `DELETION_BLOCKED` 且 data 携带 blockers；binding 保持 RESERVED，换参重试以新 requestId 发起）。
+- **前置校验在行锁事务内重跑**（§3 同一内核组合，任一阻塞 409 `DELETION_BLOCKED`；全局信封 data=null，message 汇总首个阻塞短句——阻塞明细由前端先行调用 §3 precheck 渲染，收到 409 后重取 precheck 刷新；binding 保持 RESERVED，换参重试以新 requestId 发起）。
 - 同事务落两笔持久事实：
   1. `user_deletion_request` 追加一行（66 号 Schema：id / user_id / request_id / acknowledged / outcome / blockers_json / created_at；**append-only，永不 UPDATE/DELETE——本行即注销审计事实**，含操作者=本人、请求 id、阻塞校验结果快照）；outcome=`ACCEPTED`。
   2. `user_account.status` ACTIVE/FROZEN → `CANCELED`（SQL06 §1 既有词表，乐观锁 version 递增）。

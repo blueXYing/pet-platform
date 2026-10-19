@@ -85,8 +85,10 @@ function requireString(value: unknown): string {
 export function decodeTicketSummary(value: unknown): FeedbackTicketSummary {
   if (typeof value !== 'object' || value === null) throw new Error('INVALID_RESPONSE')
   const v = value as Record<string, unknown>
-  if (!isFeedbackType(v.type) || !isFeedbackType || typeof v.status !== 'string'
-      || typeof v.contentPreview !== 'string') throw new Error('INVALID_RESPONSE')
+  if (!isFeedbackType(v.type) || typeof v.status !== 'string'
+      || !(v.status in feedbackStatusLabels) || typeof v.contentPreview !== 'string') {
+    throw new Error('INVALID_RESPONSE')
+  }
   const ticketId = requireString(v.ticketId)
   if (!/^[1-9][0-9]{0,18}$/.test(ticketId)) throw new Error('INVALID_RESPONSE')
   return {
@@ -120,6 +122,8 @@ export function decodeTicketDetail(value: unknown): FeedbackTicketDetail {
   }
   if (v.contact !== null && typeof v.contact !== 'string') throw new Error('INVALID_RESPONSE')
   if (v.resolution !== null) throw new Error('INVALID_RESPONSE')
+  // 冻结字段位：V1 运营处置面不存在，replies 恒为空数组（OpenAPI maxItems 0）。
+  if (v.replies.length > 0) throw new Error('INVALID_RESPONSE')
   const events = v.events.map(item => {
     if (typeof item !== 'object' || item === null) throw new Error('INVALID_RESPONSE')
     const row = item as Record<string, unknown>
