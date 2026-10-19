@@ -1,0 +1,532 @@
+10:58:55.636 [main] INFO com.zaxxer.hikari.HikariDataSource -- e2e-core-loop - Starting...
+10:58:55.687 [main] INFO com.zaxxer.hikari.pool.HikariPool -- e2e-core-loop - Added connection com.mysql.cj.jdbc.ConnectionImpl@5a755cc1
+10:58:55.689 [main] INFO com.zaxxer.hikari.HikariDataSource -- e2e-core-loop - Start completed.
+2026-10-19T10:58:57.925+08:00  INFO [traceId= requestId=] 34732 --- [pet-platform] [           main] c.p.boot.e2e.E2eCoreLoopServer           : Starting E2eCoreLoopServer using Java 21.0.11 with PID 34732 (C:\Users\Administrator\Desktop\wt-e2e-final\backend\pet-boot\target\test-classes started by Administrator in C:\Users\Administrator\Desktop\wt-e2e-final\backend\pet-boot)
+2026-10-19T10:58:57.926+08:00  INFO [traceId= requestId=] 34732 --- [pet-platform] [           main] c.p.boot.e2e.E2eCoreLoopServer           : The following 1 profile is active: "local"
+2026-10-19T10:59:00.105+08:00  INFO [traceId= requestId=] 34732 --- [pet-platform] [           main] .s.d.r.c.RepositoryConfigurationDelegate : Multiple Spring Data modules found, entering strict repository configuration mode
+2026-10-19T10:59:00.107+08:00  INFO [traceId= requestId=] 34732 --- [pet-platform] [           main] .s.d.r.c.RepositoryConfigurationDelegate : Bootstrapping Spring Data Redis repositories in DEFAULT mode.
+2026-10-19T10:59:00.143+08:00  INFO [traceId= requestId=] 34732 --- [pet-platform] [           main] .s.d.r.c.RepositoryConfigurationDelegate : Finished Spring Data repository scanning in 22 ms. Found 0 Redis repository interfaces.
+2026-10-19T10:59:00.355+08:00  WARN [traceId= requestId=] 34732 --- [pet-platform] [           main] o.m.s.mapper.ClassPathMapperScanner      : No MyBatis mapper was found in '[com.petplatform.boot]' package. Please check your configuration.
+2026-10-19T10:59:01.182+08:00  INFO [traceId= requestId=] 34732 --- [pet-platform] [           main] o.s.boot.tomcat.TomcatWebServer          : Tomcat initialized with port 18081 (http)
+2026-10-19T10:59:01.205+08:00  INFO [traceId= requestId=] 34732 --- [pet-platform] [           main] o.apache.catalina.core.StandardService   : Starting service [Tomcat]
+2026-10-19T10:59:01.205+08:00  INFO [traceId= requestId=] 34732 --- [pet-platform] [           main] o.apache.catalina.core.StandardEngine    : Starting Servlet engine: [Apache Tomcat/11.0.24]
+2026-10-19T10:59:01.336+08:00  INFO [traceId= requestId=] 34732 --- [pet-platform] [           main] b.w.c.s.WebApplicationContextInitializer : Root WebApplicationContext: initialization completed in 3374 ms
+2026-10-19T10:59:08.279+08:00  WARN [traceId= requestId=] 34732 --- [pet-platform] [sion-controller] c.p.id.core.HutoolSnowflakeIdProvider    : Snowflake provider failed closed: OPERATION_TIMEOUT
+2026-10-19T10:59:17.137+08:00  INFO [traceId= requestId=] 34732 --- [pet-platform] [           main] r$InitializeUserDetailsManagerConfigurer : Global AuthenticationManager configured with UserDetailsService bean with name noImplicitDefaultAccounts
+E2E_CORE_LOOP snowflake recovered on node 778
+2026-10-19T10:59:23.131+08:00  INFO [traceId= requestId=] 34732 --- [pet-platform] [           main] o.s.b.a.e.web.EndpointLinksResolver      : Exposing 3 endpoints beneath base path '/actuator'
+2026-10-19T10:59:23.276+08:00  INFO [traceId= requestId=] 34732 --- [pet-platform] [           main] o.s.boot.tomcat.TomcatWebServer          : Tomcat started on port 18081 (http) with context path '/'
+2026-10-19T10:59:23.290+08:00  INFO [traceId= requestId=] 34732 --- [pet-platform] [           main] c.p.boot.e2e.E2eCoreLoopServer           : Started E2eCoreLoopServer in 26.248 seconds (process running for 28.3)
+E2E_CORE_LOOP result=READY endpoint=http://127.0.0.1:18081 bind=0.0.0.0 database=auth001czq7ddf7_e2e_core_loop_bf0b7902554d443897f5b14235862ccf metadata=D:\Temp\e2e-final-recheck\server-metadata.txt
+2026-10-19T10:59:43.481+08:00  INFO [traceId= requestId=] 34732 --- [pet-platform] [.0-18081-exec-1] o.a.c.c.C.[Tomcat].[localhost].[/]       : Initializing Spring DispatcherServlet 'dispatcherServlet'
+2026-10-19T10:59:43.482+08:00  INFO [traceId= requestId=] 34732 --- [pet-platform] [.0-18081-exec-1] o.s.web.servlet.DispatcherServlet        : Initializing Servlet 'dispatcherServlet'
+2026-10-19T10:59:43.485+08:00  INFO [traceId= requestId=] 34732 --- [pet-platform] [.0-18081-exec-1] o.s.web.servlet.DispatcherServlet        : Completed initialization in 3 ms
+E2E_EVENT_SINK RefundApplicationCreatedEvent.v1 aggregate=105500611154321408
+2026-10-19T11:02:32.634+08:00  WARN [traceId= requestId=] 34732 --- [pet-platform] [sion-controller] c.p.id.core.HutoolSnowflakeIdProvider    : Snowflake provider failed closed: OPERATION_TIMEOUT
+E2E_CORE_LOOP snowflake recovered on node 779
+2026-10-19T11:02:40.061+08:00  WARN [traceId= requestId=] 34732 --- [pet-platform] [sion-controller] c.p.id.core.HutoolSnowflakeIdProvider    : Snowflake provider failed closed: OPERATION_TIMEOUT
+2026-10-19T11:02:42.735+08:00  WARN [traceId= requestId=] 34732 --- [pet-platform] [sion-controller] c.p.id.core.HutoolSnowflakeIdProvider    : Snowflake provider failed closed: OPERATION_TIMEOUT
+E2E_CORE_LOOP snowflake reopen attempt 1 (node 780) failed: java.lang.IllegalStateException: Provider unavailable: OPERATION_TIMEOUT
+E2E_CORE_LOOP snowflake recovered on node 781
+E2E_EVENT_SINK RefundApplicationDecidedEvent.v1 aggregate=105500611154321408
+E2E_EVENT_SINK RefundOrderCreatedEvent.v1 aggregate=105501328820719616
+2026-10-19T11:08:16.667+08:00  WARN [traceId= requestId=] 34732 --- [pet-platform] [sion-controller] c.p.id.core.HutoolSnowflakeIdProvider    : Snowflake provider failed closed: OPERATION_TIMEOUT
+E2E_CORE_LOOP snowflake recovered on node 782
+2026-10-19T11:08:25.571+08:00  WARN [traceId= requestId=] 34732 --- [pet-platform] [sion-controller] c.p.id.core.HutoolSnowflakeIdProvider    : Snowflake provider failed closed: OPERATION_TIMEOUT
+E2E_CORE_LOOP snowflake recovered on node 783
+2026-10-19T11:10:10.974+08:00  WARN [traceId= requestId=] 34732 --- [pet-platform] [sion-controller] c.p.id.core.HutoolSnowflakeIdProvider    : Snowflake provider failed closed: OPERATION_TIMEOUT
+E2E_CORE_LOOP snowflake recovered on node 784
+E2E_CORE_LOOP snowflake reopen attempt 1 (node 785) failed: java.lang.IllegalStateException: Provider unavailable: OPERATION_TIMEOUT
+2026-10-19T11:10:29.278+08:00  WARN [traceId= requestId=] 34732 --- [pet-platform] [sion-controller] c.p.id.core.HutoolSnowflakeIdProvider    : Snowflake provider failed closed: OPERATION_TIMEOUT
+2026-10-19T11:10:32.927+08:00  WARN [traceId= requestId=] 34732 --- [pet-platform] [sion-controller] c.p.id.core.HutoolSnowflakeIdProvider    : Snowflake provider failed closed: OPERATION_TIMEOUT
+E2E_CORE_LOOP snowflake reopen attempt 2 (node 786) failed: java.lang.IllegalStateException: Provider unavailable: OPERATION_TIMEOUT
+2026-10-19T11:10:33.410+08:00  WARN [traceId= requestId=] 34732 --- [pet-platform] [sion-controller] c.p.id.core.HutoolSnowflakeIdProvider    : Snowflake provider failed closed: OPERATION_TIMEOUT
+E2E_CORE_LOOP snowflake reopen attempt 3 (node 787) failed: java.lang.IllegalStateException: Provider unavailable: OPERATION_TIMEOUT
+2026-10-19T11:10:37.552+08:00  WARN [traceId= requestId=] 34732 --- [pet-platform] [sion-controller] c.p.id.core.HutoolSnowflakeIdProvider    : Snowflake provider failed closed: OPERATION_TIMEOUT
+E2E_CORE_LOOP snowflake recovered on node 788
+2026-10-19T11:10:43.624+08:00  WARN [traceId= requestId=] 34732 --- [pet-platform] [sion-controller] c.p.id.core.HutoolSnowflakeIdProvider    : Snowflake provider failed closed: OPERATION_TIMEOUT
+2026-10-19T11:11:22.774+08:00  WARN [traceId= requestId=] 34732 --- [pet-platform] [29-091cb27b85cd] com.zaxxer.hikari.pool.ProxyConnection   : e2e-core-loop - Connection com.mysql.cj.jdbc.ConnectionImpl@427768c1 marked as broken because of SQLSTATE(08S01), ErrorCode(0)
+
+com.mysql.cj.jdbc.exceptions.CommunicationsException: Communications link failure
+
+The last packet successfully received from the server was 16,566 milliseconds ago. The last packet sent successfully to the server was 16,566 milliseconds ago.
+	at com.mysql.cj.jdbc.exceptions.SQLError.createCommunicationsException(SQLError.java:165) ~[mysql-connector-j-9.7.0.jar:9.7.0]
+	at com.mysql.cj.jdbc.exceptions.SQLExceptionsMapping.translateException(SQLExceptionsMapping.java:55) ~[mysql-connector-j-9.7.0.jar:9.7.0]
+	at com.mysql.cj.jdbc.ClientPreparedStatement.executeInternal(ClientPreparedStatement.java:988) ~[mysql-connector-j-9.7.0.jar:9.7.0]
+	at com.mysql.cj.jdbc.ClientPreparedStatement.executeUpdateInternal(ClientPreparedStatement.java:1166) ~[mysql-connector-j-9.7.0.jar:9.7.0]
+	at com.mysql.cj.jdbc.ClientPreparedStatement.executeUpdateInternal(ClientPreparedStatement.java:1101) ~[mysql-connector-j-9.7.0.jar:9.7.0]
+	at com.mysql.cj.jdbc.ClientPreparedStatement.executeLargeUpdate(ClientPreparedStatement.java:1448) ~[mysql-connector-j-9.7.0.jar:9.7.0]
+	at com.mysql.cj.jdbc.ClientPreparedStatement.executeUpdate(ClientPreparedStatement.java:1084) ~[mysql-connector-j-9.7.0.jar:9.7.0]
+	at com.zaxxer.hikari.pool.ProxyPreparedStatement.executeUpdate(ProxyPreparedStatement.java:61) ~[HikariCP-7.0.2.jar:na]
+	at com.zaxxer.hikari.pool.HikariProxyPreparedStatement.executeUpdate(HikariProxyPreparedStatement.java) ~[HikariCP-7.0.2.jar:na]
+	at org.springframework.jdbc.core.JdbcTemplate.lambda$update$0(JdbcTemplate.java:971) ~[spring-jdbc-7.0.9.jar:7.0.9]
+	at org.springframework.jdbc.core.JdbcTemplate.execute(JdbcTemplate.java:670) ~[spring-jdbc-7.0.9.jar:7.0.9]
+	at org.springframework.jdbc.core.JdbcTemplate.update(JdbcTemplate.java:966) ~[spring-jdbc-7.0.9.jar:7.0.9]
+	at org.springframework.jdbc.core.JdbcTemplate.update(JdbcTemplate.java:1010) ~[spring-jdbc-7.0.9.jar:7.0.9]
+	at org.springframework.jdbc.core.JdbcTemplate.update(JdbcTemplate.java:1020) ~[spring-jdbc-7.0.9.jar:7.0.9]
+	at com.petplatform.boot.e2e.E2eCoreLoopServer$RecoveringIds.nextId(E2eCoreLoopServer.java:1376) ~[test-classes/:na]
+	at com.petplatform.task.core.JdbcAsyncTaskRepository.claim(JdbcAsyncTaskRepository.java:60) ~[pet-task-core-0.1.0-SNAPSHOT.jar:0.1.0-SNAPSHOT]
+	at com.petplatform.task.core.AsyncTaskWorker.runOne(AsyncTaskWorker.java:104) ~[pet-task-core-0.1.0-SNAPSHOT.jar:0.1.0-SNAPSHOT]
+	at com.petplatform.task.core.AsyncTaskWorker.pollBatch(AsyncTaskWorker.java:90) ~[pet-task-core-0.1.0-SNAPSHOT.jar:0.1.0-SNAPSHOT]
+	at com.petplatform.task.core.AsyncTaskWorker.lambda$start$3(AsyncTaskWorker.java:70) ~[pet-task-core-0.1.0-SNAPSHOT.jar:0.1.0-SNAPSHOT]
+	at java.base/java.util.concurrent.Executors$RunnableAdapter.call(Executors.java:572) ~[na:na]
+	at java.base/java.util.concurrent.FutureTask.runAndReset(FutureTask.java:358) ~[na:na]
+	at java.base/java.util.concurrent.ScheduledThreadPoolExecutor$ScheduledFutureTask.run(ScheduledThreadPoolExecutor.java:305) ~[na:na]
+	at java.base/java.util.concurrent.ThreadPoolExecutor.runWorker(ThreadPoolExecutor.java:1144) ~[na:na]
+	at java.base/java.util.concurrent.ThreadPoolExecutor$Worker.run(ThreadPoolExecutor.java:642) ~[na:na]
+	at java.base/java.lang.Thread.run(Thread.java:1583) ~[na:na]
+Caused by: com.mysql.cj.exceptions.CJCommunicationsException: Communications link failure
+
+The last packet successfully received from the server was 16,566 milliseconds ago. The last packet sent successfully to the server was 16,566 milliseconds ago.
+	at java.base/jdk.internal.reflect.DirectConstructorHandleAccessor.newInstance(DirectConstructorHandleAccessor.java:62) ~[na:na]
+	at java.base/java.lang.reflect.Constructor.newInstanceWithCaller(Constructor.java:502) ~[na:na]
+	at java.base/java.lang.reflect.Constructor.newInstance(Constructor.java:486) ~[na:na]
+	at com.mysql.cj.exceptions.ExceptionFactory.createException(ExceptionFactory.java:52) ~[mysql-connector-j-9.7.0.jar:9.7.0]
+	at com.mysql.cj.exceptions.ExceptionFactory.createException(ExceptionFactory.java:95) ~[mysql-connector-j-9.7.0.jar:9.7.0]
+	at com.mysql.cj.exceptions.ExceptionFactory.createException(ExceptionFactory.java:140) ~[mysql-connector-j-9.7.0.jar:9.7.0]
+	at com.mysql.cj.exceptions.ExceptionFactory.createCommunicationsException(ExceptionFactory.java:156) ~[mysql-connector-j-9.7.0.jar:9.7.0]
+	at com.mysql.cj.protocol.a.NativeProtocol.readMessage(NativeProtocol.java:590) ~[mysql-connector-j-9.7.0.jar:9.7.0]
+	at com.mysql.cj.protocol.a.NativeProtocol.checkErrorMessage(NativeProtocol.java:767) ~[mysql-connector-j-9.7.0.jar:9.7.0]
+	at com.mysql.cj.protocol.a.NativeProtocol.sendCommand(NativeProtocol.java:706) ~[mysql-connector-j-9.7.0.jar:9.7.0]
+	at com.mysql.cj.protocol.a.NativeProtocol.sendQueryPacket(NativeProtocol.java:938) ~[mysql-connector-j-9.7.0.jar:9.7.0]
+	at com.mysql.cj.NativeSession.execSQL(NativeSession.java:817) ~[mysql-connector-j-9.7.0.jar:9.7.0]
+	at com.mysql.cj.jdbc.ClientPreparedStatement.executeInternal(ClientPreparedStatement.java:963) ~[mysql-connector-j-9.7.0.jar:9.7.0]
+	... 22 common frames omitted
+Caused by: java.net.SocketTimeoutException: Read timed out
+	at java.base/sun.nio.ch.NioSocketImpl.timedRead(NioSocketImpl.java:278) ~[na:na]
+	at java.base/sun.nio.ch.NioSocketImpl.implRead(NioSocketImpl.java:304) ~[na:na]
+	at java.base/sun.nio.ch.NioSocketImpl.read(NioSocketImpl.java:346) ~[na:na]
+	at java.base/sun.nio.ch.NioSocketImpl$1.read(NioSocketImpl.java:796) ~[na:na]
+	at java.base/java.net.Socket$SocketInputStream.read(Socket.java:1099) ~[na:na]
+	at com.mysql.cj.protocol.ReadAheadInputStream.fill(ReadAheadInputStream.java:91) ~[mysql-connector-j-9.7.0.jar:9.7.0]
+	at com.mysql.cj.protocol.ReadAheadInputStream.readFromUnderlyingStreamIfNecessary(ReadAheadInputStream.java:130) ~[mysql-connector-j-9.7.0.jar:9.7.0]
+	at com.mysql.cj.protocol.ReadAheadInputStream.read(ReadAheadInputStream.java:157) ~[mysql-connector-j-9.7.0.jar:9.7.0]
+	at java.base/java.io.FilterInputStream.read(FilterInputStream.java:119) ~[na:na]
+	at com.mysql.cj.protocol.FullReadInputStream.readFully(FullReadInputStream.java:55) ~[mysql-connector-j-9.7.0.jar:9.7.0]
+	at com.mysql.cj.protocol.a.SimplePacketReader.readHeaderLocal(SimplePacketReader.java:72) ~[mysql-connector-j-9.7.0.jar:9.7.0]
+	at com.mysql.cj.protocol.a.SimplePacketReader.readHeader(SimplePacketReader.java:54) ~[mysql-connector-j-9.7.0.jar:9.7.0]
+	at com.mysql.cj.protocol.a.SimplePacketReader.readHeader(SimplePacketReader.java:36) ~[mysql-connector-j-9.7.0.jar:9.7.0]
+	at com.mysql.cj.protocol.a.TimeTrackingPacketReader.readHeader(TimeTrackingPacketReader.java:43) ~[mysql-connector-j-9.7.0.jar:9.7.0]
+	at com.mysql.cj.protocol.a.TimeTrackingPacketReader.readHeader(TimeTrackingPacketReader.java:32) ~[mysql-connector-j-9.7.0.jar:9.7.0]
+	at com.mysql.cj.protocol.a.MultiPacketReader.readHeader(MultiPacketReader.java:45) ~[mysql-connector-j-9.7.0.jar:9.7.0]
+	at com.mysql.cj.protocol.a.MultiPacketReader.readHeader(MultiPacketReader.java:35) ~[mysql-connector-j-9.7.0.jar:9.7.0]
+	at com.mysql.cj.protocol.a.NativeProtocol.readMessage(NativeProtocol.java:584) ~[mysql-connector-j-9.7.0.jar:9.7.0]
+	... 27 common frames omitted
+
+E2E_CORE_LOOP snowflake reopen attempt 1 (node 789) failed: org.springframework.dao.RecoverableDataAccessException: PreparedStatementCallback; SQL [INSERT INTO snowflake_worker_state(node_id,format_identity,enabled,initialization_ref,created_at,updated_at) VALUES(?,?,TRUE,?,UTC_TIMESTAMP(3),UTC_TIMESTAMP(3))]; Communications link failure
+
+The last packet successfully received from the server was 16,566 milliseconds ago. The last packet sent successfully to the server was 16,566 milliseconds ago.
+E2E_CORE_LOOP snowflake reopen attempt 2 (node 790) failed: java.lang.IllegalStateException: Provider unavailable: OPERATION_TIMEOUT
+2026-10-19T11:11:51.649+08:00  WARN [traceId= requestId=] 34732 --- [pet-platform] [sion-controller] c.p.id.core.HutoolSnowflakeIdProvider    : Snowflake provider failed closed: OPERATION_TIMEOUT
+E2E_CORE_LOOP snowflake reopen attempt 3 (node 791) failed: java.lang.IllegalStateException: Provider unavailable: OPERATION_TIMEOUT
+2026-10-19T11:12:03.907+08:00  WARN [traceId= requestId=] 34732 --- [pet-platform] [sion-controller] c.p.id.core.HutoolSnowflakeIdProvider    : Snowflake provider failed closed: OPERATION_TIMEOUT
+E2E_CORE_LOOP snowflake recovered on node 792
+2026-10-19T11:15:36.582+08:00  WARN [traceId= requestId=] 34732 --- [pet-platform] [sion-controller] c.p.id.core.HutoolSnowflakeIdProvider    : Snowflake provider failed closed: OPERATION_TIMEOUT
+E2E_CORE_LOOP snowflake recovered on node 793
+2026-10-19T11:16:06.829+08:00  WARN [traceId= requestId=] 34732 --- [pet-platform] [sion-controller] c.p.id.core.HutoolSnowflakeIdProvider    : Snowflake provider failed closed: OPERATION_TIMEOUT
+E2E_CORE_LOOP snowflake recovered on node 794
+E2E_CORE_LOOP snowflake recovered on node 795
+2026-10-19T11:18:07.887+08:00  WARN [traceId= requestId=] 34732 --- [pet-platform] [sion-controller] c.p.id.core.HutoolSnowflakeIdProvider    : Snowflake provider failed closed: OPERATION_TIMEOUT
+2026-10-19T11:18:10.153+08:00  WARN [traceId= requestId=] 34732 --- [pet-platform] [sion-controller] c.p.id.core.HutoolSnowflakeIdProvider    : Snowflake provider failed closed: OPERATION_TIMEOUT
+E2E_CORE_LOOP snowflake recovered on node 796
+2026-10-19T11:18:15.329+08:00  WARN [traceId= requestId=] 34732 --- [pet-platform] [sion-controller] c.p.id.core.HutoolSnowflakeIdProvider    : Snowflake provider failed closed: OPERATION_TIMEOUT
+E2E_CORE_LOOP snowflake recovered on node 797
+2026-10-19T11:19:40.209+08:00  WARN [traceId= requestId=] 34732 --- [pet-platform] [sion-controller] c.p.id.core.HutoolSnowflakeIdProvider    : Snowflake provider failed closed: OPERATION_TIMEOUT
+E2E_CORE_LOOP snowflake recovered on node 798
+2026-10-19T11:19:47.781+08:00  WARN [traceId= requestId=] 34732 --- [pet-platform] [sion-controller] c.p.id.core.HutoolSnowflakeIdProvider    : Snowflake provider failed closed: OPERATION_TIMEOUT
+E2E_CORE_LOOP snowflake recovered on node 799
+2026-10-19T11:19:59.693+08:00  WARN [traceId= requestId=] 34732 --- [pet-platform] [sion-controller] c.p.id.core.HutoolSnowflakeIdProvider    : Snowflake provider failed closed: OPERATION_TIMEOUT
+E2E_CORE_LOOP snowflake reopen attempt 1 (node 800) failed: java.lang.IllegalStateException: Provider unavailable: OPERATION_TIMEOUT
+2026-10-19T11:20:12.243+08:00  WARN [traceId= requestId=] 34732 --- [pet-platform] [sion-controller] c.p.id.core.HutoolSnowflakeIdProvider    : Snowflake provider failed closed: OPERATION_TIMEOUT
+E2E_CORE_LOOP snowflake recovered on node 801
+2026-10-19T11:20:26.430+08:00  WARN [traceId= requestId=] 34732 --- [pet-platform] [sion-controller] c.p.id.core.HutoolSnowflakeIdProvider    : Snowflake provider failed closed: OPERATION_TIMEOUT
+E2E_CORE_LOOP snowflake recovered on node 802
+2026-10-19T11:20:36.258+08:00  WARN [traceId= requestId=] 34732 --- [pet-platform] [sion-controller] c.p.id.core.HutoolSnowflakeIdProvider    : Snowflake provider failed closed: OPERATION_TIMEOUT
+E2E_CORE_LOOP snowflake recovered on node 803
+E2E_EVENT_SINK RefundOrderCreatedEvent.v1 aggregate=105505504552431616
+2026-10-19T11:21:17.131+08:00  WARN [traceId= requestId=] 34732 --- [pet-platform] [sion-controller] c.p.id.core.HutoolSnowflakeIdProvider    : Snowflake provider failed closed: OPERATION_TIMEOUT
+E2E_CORE_LOOP snowflake recovered on node 804
+2026-10-19T11:22:34.861+08:00  WARN [traceId= requestId=] 34732 --- [pet-platform] [sion-controller] c.p.id.core.HutoolSnowflakeIdProvider    : Snowflake provider failed closed: OPERATION_TIMEOUT
+E2E_CORE_LOOP snowflake reopen attempt 1 (node 805) failed: java.lang.IllegalStateException: Provider unavailable: OPERATION_TIMEOUT
+2026-10-19T11:22:53.818+08:00  WARN [traceId= requestId=] 34732 --- [pet-platform] [sion-controller] c.p.id.core.HutoolSnowflakeIdProvider    : Snowflake provider failed closed: OPERATION_TIMEOUT
+E2E_CORE_LOOP snowflake recovered on node 806
+2026-10-19T11:23:08.189+08:00  WARN [traceId= requestId=] 34732 --- [pet-platform] [sion-controller] c.p.id.core.HutoolSnowflakeIdProvider    : Snowflake provider failed closed: OPERATION_TIMEOUT
+E2E_CORE_LOOP snowflake reopen attempt 1 (node 807) failed: java.lang.IllegalStateException: Provider unavailable: OPERATION_TIMEOUT
+2026-10-19T11:23:11.891+08:00  WARN [traceId= requestId=] 34732 --- [pet-platform] [sion-controller] c.p.id.core.HutoolSnowflakeIdProvider    : Snowflake provider failed closed: OPERATION_TIMEOUT
+E2E_CORE_LOOP snowflake recovered on node 808
+2026-10-19T11:25:04.721+08:00  WARN [traceId= requestId=] 34732 --- [pet-platform] [sion-controller] c.p.id.core.HutoolSnowflakeIdProvider    : Snowflake provider failed closed: OPERATION_TIMEOUT
+E2E_CORE_LOOP snowflake recovered on node 809
+2026-10-19T11:25:22.164+08:00  WARN [traceId= requestId=] 34732 --- [pet-platform] [sion-controller] c.p.id.core.HutoolSnowflakeIdProvider    : Snowflake provider failed closed: OPERATION_TIMEOUT
+E2E_CORE_LOOP snowflake recovered on node 810
+2026-10-19T11:25:29.806+08:00  WARN [traceId= requestId=] 34732 --- [pet-platform] [sion-controller] c.p.id.core.HutoolSnowflakeIdProvider    : Snowflake provider failed closed: OPERATION_TIMEOUT
+E2E_CORE_LOOP snowflake recovered on node 811
+2026-10-19T11:25:36.492+08:00  WARN [traceId= requestId=] 34732 --- [pet-platform] [sion-controller] c.p.id.core.HutoolSnowflakeIdProvider    : Snowflake provider failed closed: OPERATION_TIMEOUT
+E2E_CORE_LOOP snowflake recovered on node 812
+2026-10-19T11:26:11.770+08:00  WARN [traceId= requestId=] 34732 --- [pet-platform] [sion-controller] c.p.id.core.HutoolSnowflakeIdProvider    : Snowflake provider failed closed: OPERATION_TIMEOUT
+E2E_CORE_LOOP snowflake recovered on node 813
+2026-10-19T11:26:27.163+08:00  WARN [traceId= requestId=] 34732 --- [pet-platform] [sion-controller] c.p.id.core.HutoolSnowflakeIdProvider    : Snowflake provider failed closed: OPERATION_TIMEOUT
+E2E_CORE_LOOP snowflake recovered on node 814
+2026-10-19T11:26:45.940+08:00  WARN [traceId= requestId=] 34732 --- [pet-platform] [sion-controller] c.p.id.core.HutoolSnowflakeIdProvider    : Snowflake provider failed closed: OPERATION_TIMEOUT
+E2E_CORE_LOOP snowflake recovered on node 815
+2026-10-19T11:28:33.807+08:00  WARN [traceId= requestId=] 34732 --- [pet-platform] [sion-controller] c.p.id.core.HutoolSnowflakeIdProvider    : Snowflake provider failed closed: OPERATION_TIMEOUT
+E2E_CORE_LOOP snowflake recovered on node 816
+E2E_CORE_LOOP snowflake recovered on node 817
+2026-10-19T11:28:44.110+08:00  WARN [traceId= requestId=] 34732 --- [pet-platform] [sion-controller] c.p.id.core.HutoolSnowflakeIdProvider    : Snowflake provider failed closed: OPERATION_TIMEOUT
+E2E_CORE_LOOP snowflake recovered on node 818
+2026-10-19T11:28:57.644+08:00  WARN [traceId= requestId=] 34732 --- [pet-platform] [sion-controller] c.p.id.core.HutoolSnowflakeIdProvider    : Snowflake provider failed closed: OPERATION_TIMEOUT
+E2E_CORE_LOOP snowflake recovered on node 819
+2026-10-19T11:29:31.305+08:00  WARN [traceId= requestId=] 34732 --- [pet-platform] [sion-controller] c.p.id.core.HutoolSnowflakeIdProvider    : Snowflake provider failed closed: OPERATION_TIMEOUT
+E2E_CORE_LOOP snowflake recovered on node 820
+2026-10-19T11:29:41.731+08:00  WARN [traceId= requestId=] 34732 --- [pet-platform] [sion-controller] c.p.id.core.HutoolSnowflakeIdProvider    : Snowflake provider failed closed: OPERATION_TIMEOUT
+2026-10-19T11:29:41.777+08:00  WARN [traceId= requestId=] 34732 --- [pet-platform] [sion-controller] c.p.id.core.HutoolSnowflakeIdProvider    : Snowflake provider failed closed: OPERATION_TIMEOUT
+E2E_CORE_LOOP snowflake recovered on node 821
+2026-10-19T11:30:39.848+08:00  WARN [traceId= requestId=] 34732 --- [pet-platform] [sion-controller] c.p.id.core.HutoolSnowflakeIdProvider    : Snowflake provider failed closed: OPERATION_TIMEOUT
+E2E_CORE_LOOP snowflake recovered on node 822
+2026-10-19T11:30:44.585+08:00  WARN [traceId= requestId=] 34732 --- [pet-platform] [sion-controller] c.p.id.core.HutoolSnowflakeIdProvider    : Snowflake provider failed closed: OPERATION_TIMEOUT
+E2E_CORE_LOOP snowflake recovered on node 823
+2026-10-19T11:30:48.368+08:00  WARN [traceId= requestId=] 34732 --- [pet-platform] [sion-controller] c.p.id.core.HutoolSnowflakeIdProvider    : Snowflake provider failed closed: OPERATION_TIMEOUT
+E2E_CORE_LOOP snowflake recovered on node 824
+E2E_CORE_LOOP snowflake recovered on node 825
+2026-10-19T11:31:06.785+08:00  WARN [traceId= requestId=] 34732 --- [pet-platform] [sion-controller] c.p.id.core.HutoolSnowflakeIdProvider    : Snowflake provider failed closed: OPERATION_TIMEOUT
+2026-10-19T11:31:07.566+08:00  WARN [traceId= requestId=] 34732 --- [pet-platform] [sion-controller] c.p.id.core.HutoolSnowflakeIdProvider    : Snowflake provider failed closed: OPERATION_TIMEOUT
+E2E_CORE_LOOP snowflake recovered on node 826
+2026-10-19T11:31:19.155+08:00  WARN [traceId= requestId=] 34732 --- [pet-platform] [sion-controller] c.p.id.core.HutoolSnowflakeIdProvider    : Snowflake provider failed closed: OPERATION_TIMEOUT
+E2E_CORE_LOOP snowflake recovered on node 827
+2026-10-19T11:31:26.529+08:00  WARN [traceId= requestId=] 34732 --- [pet-platform] [sion-controller] c.p.id.core.HutoolSnowflakeIdProvider    : Snowflake provider failed closed: OPERATION_TIMEOUT
+E2E_CORE_LOOP snowflake recovered on node 828
+2026-10-19T11:32:42.340+08:00  WARN [traceId= requestId=] 34732 --- [pet-platform] [sion-controller] c.p.id.core.HutoolSnowflakeIdProvider    : Snowflake provider failed closed: OPERATION_TIMEOUT
+E2E_CORE_LOOP snowflake recovered on node 829
+2026-10-19T11:32:57.196+08:00  WARN [traceId= requestId=] 34732 --- [pet-platform] [sion-controller] c.p.id.core.HutoolSnowflakeIdProvider    : Snowflake provider failed closed: OPERATION_TIMEOUT
+E2E_CORE_LOOP snowflake reopen attempt 1 (node 830) failed: java.lang.IllegalStateException: Provider unavailable: OPERATION_TIMEOUT
+2026-10-19T11:33:00.067+08:00  WARN [traceId= requestId=] 34732 --- [pet-platform] [sion-controller] c.p.id.core.HutoolSnowflakeIdProvider    : Snowflake provider failed closed: OPERATION_TIMEOUT
+E2E_CORE_LOOP snowflake recovered on node 831
+2026-10-19T11:34:26.446+08:00  WARN [traceId= requestId=] 34732 --- [pet-platform] [sion-controller] c.p.id.core.HutoolSnowflakeIdProvider    : Snowflake provider failed closed: OPERATION_TIMEOUT
+E2E_CORE_LOOP snowflake recovered on node 832
+2026-10-19T11:35:12.621+08:00  WARN [traceId= requestId=] 34732 --- [pet-platform] [sion-controller] c.p.id.core.HutoolSnowflakeIdProvider    : Snowflake provider failed closed: OPERATION_TIMEOUT
+E2E_CORE_LOOP snowflake reopen attempt 1 (node 833) failed: java.lang.IllegalStateException: Provider unavailable: OPERATION_TIMEOUT
+2026-10-19T11:35:15.614+08:00  WARN [traceId= requestId=] 34732 --- [pet-platform] [sion-controller] c.p.id.core.HutoolSnowflakeIdProvider    : Snowflake provider failed closed: OPERATION_TIMEOUT
+E2E_CORE_LOOP snowflake recovered on node 834
+E2E_CORE_LOOP snowflake recovered on node 835
+2026-10-19T11:35:47.579+08:00  WARN [traceId= requestId=] 34732 --- [pet-platform] [sion-controller] c.p.id.core.HutoolSnowflakeIdProvider    : Snowflake provider failed closed: OPERATION_TIMEOUT
+2026-10-19T11:35:59.207+08:00  WARN [traceId= requestId=] 34732 --- [pet-platform] [sion-controller] c.p.id.core.HutoolSnowflakeIdProvider    : Snowflake provider failed closed: OPERATION_TIMEOUT
+E2E_CORE_LOOP snowflake recovered on node 836
+2026-10-19T11:36:09.877+08:00  WARN [traceId= requestId=] 34732 --- [pet-platform] [sion-controller] c.p.id.core.HutoolSnowflakeIdProvider    : Snowflake provider failed closed: OPERATION_TIMEOUT
+E2E_CORE_LOOP snowflake recovered on node 837
+2026-10-19T11:36:23.409+08:00  WARN [traceId= requestId=] 34732 --- [pet-platform] [sion-controller] c.p.id.core.HutoolSnowflakeIdProvider    : Snowflake provider failed closed: ACTION_FAILED
+E2E_CORE_LOOP snowflake recovered on node 838
+2026-10-19T11:37:11.427+08:00  WARN [traceId= requestId=] 34732 --- [pet-platform] [sion-controller] c.p.id.core.HutoolSnowflakeIdProvider    : Snowflake provider failed closed: OPERATION_TIMEOUT
+E2E_CORE_LOOP snowflake recovered on node 839
+2026-10-19T11:37:14.799+08:00  WARN [traceId= requestId=] 34732 --- [pet-platform] [sion-controller] c.p.id.core.HutoolSnowflakeIdProvider    : Snowflake provider failed closed: OPERATION_TIMEOUT
+E2E_CORE_LOOP snowflake recovered on node 840
+2026-10-19T11:37:29.090+08:00  WARN [traceId= requestId=] 34732 --- [pet-platform] [sion-controller] c.p.id.core.HutoolSnowflakeIdProvider    : Snowflake provider failed closed: OPERATION_TIMEOUT
+E2E_CORE_LOOP snowflake reopen attempt 1 (node 841) failed: java.lang.IllegalStateException: Provider unavailable: OPERATION_TIMEOUT
+2026-10-19T11:37:31.191+08:00  WARN [traceId= requestId=] 34732 --- [pet-platform] [sion-controller] c.p.id.core.HutoolSnowflakeIdProvider    : Snowflake provider failed closed: OPERATION_TIMEOUT
+2026-10-19T11:38:07.599+08:00  WARN [traceId= requestId=] 34732 --- [pet-platform] [29-091cb27b85cd] com.zaxxer.hikari.pool.ProxyConnection   : e2e-core-loop - Connection com.mysql.cj.jdbc.ConnectionImpl@44b25ce2 marked as broken because of SQLSTATE(08S01), ErrorCode(0)
+
+com.mysql.cj.jdbc.exceptions.CommunicationsException: Communications link failure
+
+The last packet successfully received from the server was 15,005 milliseconds ago. The last packet sent successfully to the server was 15,005 milliseconds ago.
+	at com.mysql.cj.jdbc.exceptions.SQLError.createCommunicationsException(SQLError.java:165) ~[mysql-connector-j-9.7.0.jar:9.7.0]
+	at com.mysql.cj.jdbc.exceptions.SQLExceptionsMapping.translateException(SQLExceptionsMapping.java:55) ~[mysql-connector-j-9.7.0.jar:9.7.0]
+	at com.mysql.cj.jdbc.ClientPreparedStatement.executeInternal(ClientPreparedStatement.java:988) ~[mysql-connector-j-9.7.0.jar:9.7.0]
+	at com.mysql.cj.jdbc.ClientPreparedStatement.executeUpdateInternal(ClientPreparedStatement.java:1166) ~[mysql-connector-j-9.7.0.jar:9.7.0]
+	at com.mysql.cj.jdbc.ClientPreparedStatement.executeUpdateInternal(ClientPreparedStatement.java:1101) ~[mysql-connector-j-9.7.0.jar:9.7.0]
+	at com.mysql.cj.jdbc.ClientPreparedStatement.executeLargeUpdate(ClientPreparedStatement.java:1448) ~[mysql-connector-j-9.7.0.jar:9.7.0]
+	at com.mysql.cj.jdbc.ClientPreparedStatement.executeUpdate(ClientPreparedStatement.java:1084) ~[mysql-connector-j-9.7.0.jar:9.7.0]
+	at com.zaxxer.hikari.pool.ProxyPreparedStatement.executeUpdate(ProxyPreparedStatement.java:61) ~[HikariCP-7.0.2.jar:na]
+	at com.zaxxer.hikari.pool.HikariProxyPreparedStatement.executeUpdate(HikariProxyPreparedStatement.java) ~[HikariCP-7.0.2.jar:na]
+	at org.springframework.jdbc.core.JdbcTemplate.lambda$update$0(JdbcTemplate.java:971) ~[spring-jdbc-7.0.9.jar:7.0.9]
+	at org.springframework.jdbc.core.JdbcTemplate.execute(JdbcTemplate.java:670) ~[spring-jdbc-7.0.9.jar:7.0.9]
+	at org.springframework.jdbc.core.JdbcTemplate.update(JdbcTemplate.java:966) ~[spring-jdbc-7.0.9.jar:7.0.9]
+	at org.springframework.jdbc.core.JdbcTemplate.update(JdbcTemplate.java:1010) ~[spring-jdbc-7.0.9.jar:7.0.9]
+	at org.springframework.jdbc.core.JdbcTemplate.update(JdbcTemplate.java:1020) ~[spring-jdbc-7.0.9.jar:7.0.9]
+	at com.petplatform.boot.e2e.E2eCoreLoopServer$RecoveringIds.nextId(E2eCoreLoopServer.java:1376) ~[test-classes/:na]
+	at com.petplatform.task.core.JdbcAsyncTaskRepository.claim(JdbcAsyncTaskRepository.java:60) ~[pet-task-core-0.1.0-SNAPSHOT.jar:0.1.0-SNAPSHOT]
+	at com.petplatform.task.core.AsyncTaskWorker.runOne(AsyncTaskWorker.java:104) ~[pet-task-core-0.1.0-SNAPSHOT.jar:0.1.0-SNAPSHOT]
+	at com.petplatform.task.core.AsyncTaskWorker.pollBatch(AsyncTaskWorker.java:90) ~[pet-task-core-0.1.0-SNAPSHOT.jar:0.1.0-SNAPSHOT]
+	at com.petplatform.task.core.AsyncTaskWorker.lambda$start$3(AsyncTaskWorker.java:70) ~[pet-task-core-0.1.0-SNAPSHOT.jar:0.1.0-SNAPSHOT]
+	at java.base/java.util.concurrent.Executors$RunnableAdapter.call(Executors.java:572) ~[na:na]
+	at java.base/java.util.concurrent.FutureTask.runAndReset(FutureTask.java:358) ~[na:na]
+	at java.base/java.util.concurrent.ScheduledThreadPoolExecutor$ScheduledFutureTask.run(ScheduledThreadPoolExecutor.java:305) ~[na:na]
+	at java.base/java.util.concurrent.ThreadPoolExecutor.runWorker(ThreadPoolExecutor.java:1144) ~[na:na]
+	at java.base/java.util.concurrent.ThreadPoolExecutor$Worker.run(ThreadPoolExecutor.java:642) ~[na:na]
+	at java.base/java.lang.Thread.run(Thread.java:1583) ~[na:na]
+Caused by: com.mysql.cj.exceptions.CJCommunicationsException: Communications link failure
+
+The last packet successfully received from the server was 15,005 milliseconds ago. The last packet sent successfully to the server was 15,005 milliseconds ago.
+	at java.base/jdk.internal.reflect.DirectConstructorHandleAccessor.newInstance(DirectConstructorHandleAccessor.java:62) ~[na:na]
+	at java.base/java.lang.reflect.Constructor.newInstanceWithCaller(Constructor.java:502) ~[na:na]
+	at java.base/java.lang.reflect.Constructor.newInstance(Constructor.java:486) ~[na:na]
+	at com.mysql.cj.exceptions.ExceptionFactory.createException(ExceptionFactory.java:52) ~[mysql-connector-j-9.7.0.jar:9.7.0]
+	at com.mysql.cj.exceptions.ExceptionFactory.createException(ExceptionFactory.java:95) ~[mysql-connector-j-9.7.0.jar:9.7.0]
+	at com.mysql.cj.exceptions.ExceptionFactory.createException(ExceptionFactory.java:140) ~[mysql-connector-j-9.7.0.jar:9.7.0]
+	at com.mysql.cj.exceptions.ExceptionFactory.createCommunicationsException(ExceptionFactory.java:156) ~[mysql-connector-j-9.7.0.jar:9.7.0]
+	at com.mysql.cj.protocol.a.NativeProtocol.readMessage(NativeProtocol.java:590) ~[mysql-connector-j-9.7.0.jar:9.7.0]
+	at com.mysql.cj.protocol.a.NativeProtocol.checkErrorMessage(NativeProtocol.java:767) ~[mysql-connector-j-9.7.0.jar:9.7.0]
+	at com.mysql.cj.protocol.a.NativeProtocol.sendCommand(NativeProtocol.java:706) ~[mysql-connector-j-9.7.0.jar:9.7.0]
+	at com.mysql.cj.protocol.a.NativeProtocol.sendQueryPacket(NativeProtocol.java:938) ~[mysql-connector-j-9.7.0.jar:9.7.0]
+	at com.mysql.cj.NativeSession.execSQL(NativeSession.java:817) ~[mysql-connector-j-9.7.0.jar:9.7.0]
+	at com.mysql.cj.jdbc.ClientPreparedStatement.executeInternal(ClientPreparedStatement.java:963) ~[mysql-connector-j-9.7.0.jar:9.7.0]
+	... 22 common frames omitted
+Caused by: java.net.SocketTimeoutException: Read timed out
+	at java.base/sun.nio.ch.NioSocketImpl.timedRead(NioSocketImpl.java:278) ~[na:na]
+	at java.base/sun.nio.ch.NioSocketImpl.implRead(NioSocketImpl.java:304) ~[na:na]
+	at java.base/sun.nio.ch.NioSocketImpl.read(NioSocketImpl.java:346) ~[na:na]
+	at java.base/sun.nio.ch.NioSocketImpl$1.read(NioSocketImpl.java:796) ~[na:na]
+	at java.base/java.net.Socket$SocketInputStream.read(Socket.java:1099) ~[na:na]
+	at com.mysql.cj.protocol.ReadAheadInputStream.fill(ReadAheadInputStream.java:91) ~[mysql-connector-j-9.7.0.jar:9.7.0]
+	at com.mysql.cj.protocol.ReadAheadInputStream.readFromUnderlyingStreamIfNecessary(ReadAheadInputStream.java:130) ~[mysql-connector-j-9.7.0.jar:9.7.0]
+	at com.mysql.cj.protocol.ReadAheadInputStream.read(ReadAheadInputStream.java:157) ~[mysql-connector-j-9.7.0.jar:9.7.0]
+	at java.base/java.io.FilterInputStream.read(FilterInputStream.java:119) ~[na:na]
+	at com.mysql.cj.protocol.FullReadInputStream.readFully(FullReadInputStream.java:55) ~[mysql-connector-j-9.7.0.jar:9.7.0]
+	at com.mysql.cj.protocol.a.SimplePacketReader.readHeaderLocal(SimplePacketReader.java:72) ~[mysql-connector-j-9.7.0.jar:9.7.0]
+	at com.mysql.cj.protocol.a.SimplePacketReader.readHeader(SimplePacketReader.java:54) ~[mysql-connector-j-9.7.0.jar:9.7.0]
+	at com.mysql.cj.protocol.a.SimplePacketReader.readHeader(SimplePacketReader.java:36) ~[mysql-connector-j-9.7.0.jar:9.7.0]
+	at com.mysql.cj.protocol.a.TimeTrackingPacketReader.readHeader(TimeTrackingPacketReader.java:43) ~[mysql-connector-j-9.7.0.jar:9.7.0]
+	at com.mysql.cj.protocol.a.TimeTrackingPacketReader.readHeader(TimeTrackingPacketReader.java:32) ~[mysql-connector-j-9.7.0.jar:9.7.0]
+	at com.mysql.cj.protocol.a.MultiPacketReader.readHeader(MultiPacketReader.java:45) ~[mysql-connector-j-9.7.0.jar:9.7.0]
+	at com.mysql.cj.protocol.a.MultiPacketReader.readHeader(MultiPacketReader.java:35) ~[mysql-connector-j-9.7.0.jar:9.7.0]
+	at com.mysql.cj.protocol.a.NativeProtocol.readMessage(NativeProtocol.java:584) ~[mysql-connector-j-9.7.0.jar:9.7.0]
+	... 27 common frames omitted
+
+E2E_CORE_LOOP snowflake reopen attempt 2 (node 842) failed: org.springframework.dao.RecoverableDataAccessException: PreparedStatementCallback; SQL [INSERT INTO snowflake_worker_state(node_id,format_identity,enabled,initialization_ref,created_at,updated_at) VALUES(?,?,TRUE,?,UTC_TIMESTAMP(3),UTC_TIMESTAMP(3))]; Communications link failure
+
+The last packet successfully received from the server was 15,005 milliseconds ago. The last packet sent successfully to the server was 15,005 milliseconds ago.
+2026-10-19T11:38:31.041+08:00  WARN [traceId= requestId=] 34732 --- [pet-platform] [29-091cb27b85cd] com.zaxxer.hikari.pool.ProxyConnection   : e2e-core-loop - Connection com.mysql.cj.jdbc.ConnectionImpl@5ae24915 marked as broken because of SQLSTATE(08S01), ErrorCode(0)
+
+com.mysql.cj.jdbc.exceptions.CommunicationsException: Communications link failure
+
+The last packet successfully received from the server was 15,015 milliseconds ago. The last packet sent successfully to the server was 15,015 milliseconds ago.
+	at com.mysql.cj.jdbc.exceptions.SQLError.createCommunicationsException(SQLError.java:165) ~[mysql-connector-j-9.7.0.jar:9.7.0]
+	at com.mysql.cj.jdbc.exceptions.SQLExceptionsMapping.translateException(SQLExceptionsMapping.java:55) ~[mysql-connector-j-9.7.0.jar:9.7.0]
+	at com.mysql.cj.jdbc.ClientPreparedStatement.executeInternal(ClientPreparedStatement.java:988) ~[mysql-connector-j-9.7.0.jar:9.7.0]
+	at com.mysql.cj.jdbc.ClientPreparedStatement.executeUpdateInternal(ClientPreparedStatement.java:1166) ~[mysql-connector-j-9.7.0.jar:9.7.0]
+	at com.mysql.cj.jdbc.ClientPreparedStatement.executeUpdateInternal(ClientPreparedStatement.java:1101) ~[mysql-connector-j-9.7.0.jar:9.7.0]
+	at com.mysql.cj.jdbc.ClientPreparedStatement.executeLargeUpdate(ClientPreparedStatement.java:1448) ~[mysql-connector-j-9.7.0.jar:9.7.0]
+	at com.mysql.cj.jdbc.ClientPreparedStatement.executeUpdate(ClientPreparedStatement.java:1084) ~[mysql-connector-j-9.7.0.jar:9.7.0]
+	at com.zaxxer.hikari.pool.ProxyPreparedStatement.executeUpdate(ProxyPreparedStatement.java:61) ~[HikariCP-7.0.2.jar:na]
+	at com.zaxxer.hikari.pool.HikariProxyPreparedStatement.executeUpdate(HikariProxyPreparedStatement.java) ~[HikariCP-7.0.2.jar:na]
+	at org.springframework.jdbc.core.JdbcTemplate.lambda$update$0(JdbcTemplate.java:971) ~[spring-jdbc-7.0.9.jar:7.0.9]
+	at org.springframework.jdbc.core.JdbcTemplate.execute(JdbcTemplate.java:670) ~[spring-jdbc-7.0.9.jar:7.0.9]
+	at org.springframework.jdbc.core.JdbcTemplate.update(JdbcTemplate.java:966) ~[spring-jdbc-7.0.9.jar:7.0.9]
+	at org.springframework.jdbc.core.JdbcTemplate.update(JdbcTemplate.java:1010) ~[spring-jdbc-7.0.9.jar:7.0.9]
+	at org.springframework.jdbc.core.JdbcTemplate.update(JdbcTemplate.java:1020) ~[spring-jdbc-7.0.9.jar:7.0.9]
+	at com.petplatform.boot.e2e.E2eCoreLoopServer$RecoveringIds.nextId(E2eCoreLoopServer.java:1376) ~[test-classes/:na]
+	at com.petplatform.task.core.JdbcAsyncTaskRepository.claim(JdbcAsyncTaskRepository.java:60) ~[pet-task-core-0.1.0-SNAPSHOT.jar:0.1.0-SNAPSHOT]
+	at com.petplatform.task.core.AsyncTaskWorker.runOne(AsyncTaskWorker.java:104) ~[pet-task-core-0.1.0-SNAPSHOT.jar:0.1.0-SNAPSHOT]
+	at com.petplatform.task.core.AsyncTaskWorker.pollBatch(AsyncTaskWorker.java:90) ~[pet-task-core-0.1.0-SNAPSHOT.jar:0.1.0-SNAPSHOT]
+	at com.petplatform.task.core.AsyncTaskWorker.lambda$start$3(AsyncTaskWorker.java:70) ~[pet-task-core-0.1.0-SNAPSHOT.jar:0.1.0-SNAPSHOT]
+	at java.base/java.util.concurrent.Executors$RunnableAdapter.call(Executors.java:572) ~[na:na]
+	at java.base/java.util.concurrent.FutureTask.runAndReset(FutureTask.java:358) ~[na:na]
+	at java.base/java.util.concurrent.ScheduledThreadPoolExecutor$ScheduledFutureTask.run(ScheduledThreadPoolExecutor.java:305) ~[na:na]
+	at java.base/java.util.concurrent.ThreadPoolExecutor.runWorker(ThreadPoolExecutor.java:1144) ~[na:na]
+	at java.base/java.util.concurrent.ThreadPoolExecutor$Worker.run(ThreadPoolExecutor.java:642) ~[na:na]
+	at java.base/java.lang.Thread.run(Thread.java:1583) ~[na:na]
+Caused by: com.mysql.cj.exceptions.CJCommunicationsException: Communications link failure
+
+The last packet successfully received from the server was 15,015 milliseconds ago. The last packet sent successfully to the server was 15,015 milliseconds ago.
+	at java.base/jdk.internal.reflect.DirectConstructorHandleAccessor.newInstance(DirectConstructorHandleAccessor.java:62) ~[na:na]
+	at java.base/java.lang.reflect.Constructor.newInstanceWithCaller(Constructor.java:502) ~[na:na]
+	at java.base/java.lang.reflect.Constructor.newInstance(Constructor.java:486) ~[na:na]
+	at com.mysql.cj.exceptions.ExceptionFactory.createException(ExceptionFactory.java:52) ~[mysql-connector-j-9.7.0.jar:9.7.0]
+	at com.mysql.cj.exceptions.ExceptionFactory.createException(ExceptionFactory.java:95) ~[mysql-connector-j-9.7.0.jar:9.7.0]
+	at com.mysql.cj.exceptions.ExceptionFactory.createException(ExceptionFactory.java:140) ~[mysql-connector-j-9.7.0.jar:9.7.0]
+	at com.mysql.cj.exceptions.ExceptionFactory.createCommunicationsException(ExceptionFactory.java:156) ~[mysql-connector-j-9.7.0.jar:9.7.0]
+	at com.mysql.cj.protocol.a.NativeProtocol.readMessage(NativeProtocol.java:590) ~[mysql-connector-j-9.7.0.jar:9.7.0]
+	at com.mysql.cj.protocol.a.NativeProtocol.checkErrorMessage(NativeProtocol.java:767) ~[mysql-connector-j-9.7.0.jar:9.7.0]
+	at com.mysql.cj.protocol.a.NativeProtocol.sendCommand(NativeProtocol.java:706) ~[mysql-connector-j-9.7.0.jar:9.7.0]
+	at com.mysql.cj.protocol.a.NativeProtocol.sendQueryPacket(NativeProtocol.java:938) ~[mysql-connector-j-9.7.0.jar:9.7.0]
+	at com.mysql.cj.NativeSession.execSQL(NativeSession.java:817) ~[mysql-connector-j-9.7.0.jar:9.7.0]
+	at com.mysql.cj.jdbc.ClientPreparedStatement.executeInternal(ClientPreparedStatement.java:963) ~[mysql-connector-j-9.7.0.jar:9.7.0]
+	... 22 common frames omitted
+Caused by: java.net.SocketTimeoutException: Read timed out
+	at java.base/sun.nio.ch.NioSocketImpl.timedRead(NioSocketImpl.java:278) ~[na:na]
+	at java.base/sun.nio.ch.NioSocketImpl.implRead(NioSocketImpl.java:304) ~[na:na]
+	at java.base/sun.nio.ch.NioSocketImpl.read(NioSocketImpl.java:346) ~[na:na]
+	at java.base/sun.nio.ch.NioSocketImpl$1.read(NioSocketImpl.java:796) ~[na:na]
+	at java.base/java.net.Socket$SocketInputStream.read(Socket.java:1099) ~[na:na]
+	at com.mysql.cj.protocol.ReadAheadInputStream.fill(ReadAheadInputStream.java:91) ~[mysql-connector-j-9.7.0.jar:9.7.0]
+	at com.mysql.cj.protocol.ReadAheadInputStream.readFromUnderlyingStreamIfNecessary(ReadAheadInputStream.java:130) ~[mysql-connector-j-9.7.0.jar:9.7.0]
+	at com.mysql.cj.protocol.ReadAheadInputStream.read(ReadAheadInputStream.java:157) ~[mysql-connector-j-9.7.0.jar:9.7.0]
+	at java.base/java.io.FilterInputStream.read(FilterInputStream.java:119) ~[na:na]
+	at com.mysql.cj.protocol.FullReadInputStream.readFully(FullReadInputStream.java:55) ~[mysql-connector-j-9.7.0.jar:9.7.0]
+	at com.mysql.cj.protocol.a.SimplePacketReader.readHeaderLocal(SimplePacketReader.java:72) ~[mysql-connector-j-9.7.0.jar:9.7.0]
+	at com.mysql.cj.protocol.a.SimplePacketReader.readHeader(SimplePacketReader.java:54) ~[mysql-connector-j-9.7.0.jar:9.7.0]
+	at com.mysql.cj.protocol.a.SimplePacketReader.readHeader(SimplePacketReader.java:36) ~[mysql-connector-j-9.7.0.jar:9.7.0]
+	at com.mysql.cj.protocol.a.TimeTrackingPacketReader.readHeader(TimeTrackingPacketReader.java:43) ~[mysql-connector-j-9.7.0.jar:9.7.0]
+	at com.mysql.cj.protocol.a.TimeTrackingPacketReader.readHeader(TimeTrackingPacketReader.java:32) ~[mysql-connector-j-9.7.0.jar:9.7.0]
+	at com.mysql.cj.protocol.a.MultiPacketReader.readHeader(MultiPacketReader.java:45) ~[mysql-connector-j-9.7.0.jar:9.7.0]
+	at com.mysql.cj.protocol.a.MultiPacketReader.readHeader(MultiPacketReader.java:35) ~[mysql-connector-j-9.7.0.jar:9.7.0]
+	at com.mysql.cj.protocol.a.NativeProtocol.readMessage(NativeProtocol.java:584) ~[mysql-connector-j-9.7.0.jar:9.7.0]
+	... 27 common frames omitted
+
+E2E_CORE_LOOP snowflake reopen attempt 3 (node 843) failed: org.springframework.dao.RecoverableDataAccessException: PreparedStatementCallback; SQL [INSERT INTO snowflake_worker_state(node_id,format_identity,enabled,initialization_ref,created_at,updated_at) VALUES(?,?,TRUE,?,UTC_TIMESTAMP(3),UTC_TIMESTAMP(3))]; Communications link failure
+
+The last packet successfully received from the server was 15,015 milliseconds ago. The last packet sent successfully to the server was 15,015 milliseconds ago.
+2026-10-19T11:38:48.114+08:00  WARN [traceId= requestId=] 34732 --- [pet-platform] [29-091cb27b85cd] com.zaxxer.hikari.pool.ProxyConnection   : e2e-core-loop - Connection com.mysql.cj.jdbc.ConnectionImpl@68a2790 marked as broken because of SQLSTATE(08S01), ErrorCode(0)
+
+com.mysql.cj.jdbc.exceptions.CommunicationsException: Communications link failure
+
+The last packet successfully received from the server was 15,003 milliseconds ago. The last packet sent successfully to the server was 15,003 milliseconds ago.
+	at com.mysql.cj.jdbc.exceptions.SQLError.createCommunicationsException(SQLError.java:165) ~[mysql-connector-j-9.7.0.jar:9.7.0]
+	at com.mysql.cj.jdbc.exceptions.SQLExceptionsMapping.translateException(SQLExceptionsMapping.java:55) ~[mysql-connector-j-9.7.0.jar:9.7.0]
+	at com.mysql.cj.jdbc.ClientPreparedStatement.executeInternal(ClientPreparedStatement.java:988) ~[mysql-connector-j-9.7.0.jar:9.7.0]
+	at com.mysql.cj.jdbc.ClientPreparedStatement.executeUpdateInternal(ClientPreparedStatement.java:1166) ~[mysql-connector-j-9.7.0.jar:9.7.0]
+	at com.mysql.cj.jdbc.ClientPreparedStatement.executeUpdateInternal(ClientPreparedStatement.java:1101) ~[mysql-connector-j-9.7.0.jar:9.7.0]
+	at com.mysql.cj.jdbc.ClientPreparedStatement.executeLargeUpdate(ClientPreparedStatement.java:1448) ~[mysql-connector-j-9.7.0.jar:9.7.0]
+	at com.mysql.cj.jdbc.ClientPreparedStatement.executeUpdate(ClientPreparedStatement.java:1084) ~[mysql-connector-j-9.7.0.jar:9.7.0]
+	at com.zaxxer.hikari.pool.ProxyPreparedStatement.executeUpdate(ProxyPreparedStatement.java:61) ~[HikariCP-7.0.2.jar:na]
+	at com.zaxxer.hikari.pool.HikariProxyPreparedStatement.executeUpdate(HikariProxyPreparedStatement.java) ~[HikariCP-7.0.2.jar:na]
+	at org.springframework.jdbc.core.JdbcTemplate.lambda$update$0(JdbcTemplate.java:971) ~[spring-jdbc-7.0.9.jar:7.0.9]
+	at org.springframework.jdbc.core.JdbcTemplate.execute(JdbcTemplate.java:670) ~[spring-jdbc-7.0.9.jar:7.0.9]
+	at org.springframework.jdbc.core.JdbcTemplate.update(JdbcTemplate.java:966) ~[spring-jdbc-7.0.9.jar:7.0.9]
+	at org.springframework.jdbc.core.JdbcTemplate.update(JdbcTemplate.java:1010) ~[spring-jdbc-7.0.9.jar:7.0.9]
+	at org.springframework.jdbc.core.JdbcTemplate.update(JdbcTemplate.java:1020) ~[spring-jdbc-7.0.9.jar:7.0.9]
+	at com.petplatform.boot.e2e.E2eCoreLoopServer$RecoveringIds.nextId(E2eCoreLoopServer.java:1376) ~[test-classes/:na]
+	at com.petplatform.task.core.JdbcAsyncTaskRepository.claim(JdbcAsyncTaskRepository.java:60) ~[pet-task-core-0.1.0-SNAPSHOT.jar:0.1.0-SNAPSHOT]
+	at com.petplatform.task.core.AsyncTaskWorker.runOne(AsyncTaskWorker.java:104) ~[pet-task-core-0.1.0-SNAPSHOT.jar:0.1.0-SNAPSHOT]
+	at com.petplatform.task.core.AsyncTaskWorker.pollBatch(AsyncTaskWorker.java:90) ~[pet-task-core-0.1.0-SNAPSHOT.jar:0.1.0-SNAPSHOT]
+	at com.petplatform.task.core.AsyncTaskWorker.lambda$start$3(AsyncTaskWorker.java:70) ~[pet-task-core-0.1.0-SNAPSHOT.jar:0.1.0-SNAPSHOT]
+	at java.base/java.util.concurrent.Executors$RunnableAdapter.call(Executors.java:572) ~[na:na]
+	at java.base/java.util.concurrent.FutureTask.runAndReset(FutureTask.java:358) ~[na:na]
+	at java.base/java.util.concurrent.ScheduledThreadPoolExecutor$ScheduledFutureTask.run(ScheduledThreadPoolExecutor.java:305) ~[na:na]
+	at java.base/java.util.concurrent.ThreadPoolExecutor.runWorker(ThreadPoolExecutor.java:1144) ~[na:na]
+	at java.base/java.util.concurrent.ThreadPoolExecutor$Worker.run(ThreadPoolExecutor.java:642) ~[na:na]
+	at java.base/java.lang.Thread.run(Thread.java:1583) ~[na:na]
+Caused by: com.mysql.cj.exceptions.CJCommunicationsException: Communications link failure
+
+The last packet successfully received from the server was 15,003 milliseconds ago. The last packet sent successfully to the server was 15,003 milliseconds ago.
+	at java.base/jdk.internal.reflect.DirectConstructorHandleAccessor.newInstance(DirectConstructorHandleAccessor.java:62) ~[na:na]
+	at java.base/java.lang.reflect.Constructor.newInstanceWithCaller(Constructor.java:502) ~[na:na]
+	at java.base/java.lang.reflect.Constructor.newInstance(Constructor.java:486) ~[na:na]
+	at com.mysql.cj.exceptions.ExceptionFactory.createException(ExceptionFactory.java:52) ~[mysql-connector-j-9.7.0.jar:9.7.0]
+	at com.mysql.cj.exceptions.ExceptionFactory.createException(ExceptionFactory.java:95) ~[mysql-connector-j-9.7.0.jar:9.7.0]
+	at com.mysql.cj.exceptions.ExceptionFactory.createException(ExceptionFactory.java:140) ~[mysql-connector-j-9.7.0.jar:9.7.0]
+	at com.mysql.cj.exceptions.ExceptionFactory.createCommunicationsException(ExceptionFactory.java:156) ~[mysql-connector-j-9.7.0.jar:9.7.0]
+	at com.mysql.cj.protocol.a.NativeProtocol.readMessage(NativeProtocol.java:590) ~[mysql-connector-j-9.7.0.jar:9.7.0]
+	at com.mysql.cj.protocol.a.NativeProtocol.checkErrorMessage(NativeProtocol.java:767) ~[mysql-connector-j-9.7.0.jar:9.7.0]
+	at com.mysql.cj.protocol.a.NativeProtocol.sendCommand(NativeProtocol.java:706) ~[mysql-connector-j-9.7.0.jar:9.7.0]
+	at com.mysql.cj.protocol.a.NativeProtocol.sendQueryPacket(NativeProtocol.java:938) ~[mysql-connector-j-9.7.0.jar:9.7.0]
+	at com.mysql.cj.NativeSession.execSQL(NativeSession.java:817) ~[mysql-connector-j-9.7.0.jar:9.7.0]
+	at com.mysql.cj.jdbc.ClientPreparedStatement.executeInternal(ClientPreparedStatement.java:963) ~[mysql-connector-j-9.7.0.jar:9.7.0]
+	... 22 common frames omitted
+Caused by: java.net.SocketTimeoutException: Read timed out
+	at java.base/sun.nio.ch.NioSocketImpl.timedRead(NioSocketImpl.java:278) ~[na:na]
+	at java.base/sun.nio.ch.NioSocketImpl.implRead(NioSocketImpl.java:304) ~[na:na]
+	at java.base/sun.nio.ch.NioSocketImpl.read(NioSocketImpl.java:346) ~[na:na]
+	at java.base/sun.nio.ch.NioSocketImpl$1.read(NioSocketImpl.java:796) ~[na:na]
+	at java.base/java.net.Socket$SocketInputStream.read(Socket.java:1099) ~[na:na]
+	at com.mysql.cj.protocol.ReadAheadInputStream.fill(ReadAheadInputStream.java:91) ~[mysql-connector-j-9.7.0.jar:9.7.0]
+	at com.mysql.cj.protocol.ReadAheadInputStream.readFromUnderlyingStreamIfNecessary(ReadAheadInputStream.java:130) ~[mysql-connector-j-9.7.0.jar:9.7.0]
+	at com.mysql.cj.protocol.ReadAheadInputStream.read(ReadAheadInputStream.java:157) ~[mysql-connector-j-9.7.0.jar:9.7.0]
+	at java.base/java.io.FilterInputStream.read(FilterInputStream.java:119) ~[na:na]
+	at com.mysql.cj.protocol.FullReadInputStream.readFully(FullReadInputStream.java:55) ~[mysql-connector-j-9.7.0.jar:9.7.0]
+	at com.mysql.cj.protocol.a.SimplePacketReader.readHeaderLocal(SimplePacketReader.java:72) ~[mysql-connector-j-9.7.0.jar:9.7.0]
+	at com.mysql.cj.protocol.a.SimplePacketReader.readHeader(SimplePacketReader.java:54) ~[mysql-connector-j-9.7.0.jar:9.7.0]
+	at com.mysql.cj.protocol.a.SimplePacketReader.readHeader(SimplePacketReader.java:36) ~[mysql-connector-j-9.7.0.jar:9.7.0]
+	at com.mysql.cj.protocol.a.TimeTrackingPacketReader.readHeader(TimeTrackingPacketReader.java:43) ~[mysql-connector-j-9.7.0.jar:9.7.0]
+	at com.mysql.cj.protocol.a.TimeTrackingPacketReader.readHeader(TimeTrackingPacketReader.java:32) ~[mysql-connector-j-9.7.0.jar:9.7.0]
+	at com.mysql.cj.protocol.a.MultiPacketReader.readHeader(MultiPacketReader.java:45) ~[mysql-connector-j-9.7.0.jar:9.7.0]
+	at com.mysql.cj.protocol.a.MultiPacketReader.readHeader(MultiPacketReader.java:35) ~[mysql-connector-j-9.7.0.jar:9.7.0]
+	at com.mysql.cj.protocol.a.NativeProtocol.readMessage(NativeProtocol.java:584) ~[mysql-connector-j-9.7.0.jar:9.7.0]
+	... 27 common frames omitted
+
+E2E_CORE_LOOP snowflake reopen attempt 4 (node 844) failed: org.springframework.dao.RecoverableDataAccessException: PreparedStatementCallback; SQL [INSERT INTO snowflake_worker_state(node_id,format_identity,enabled,initialization_ref,created_at,updated_at) VALUES(?,?,TRUE,?,UTC_TIMESTAMP(3),UTC_TIMESTAMP(3))]; Communications link failure
+
+The last packet successfully received from the server was 15,003 milliseconds ago. The last packet sent successfully to the server was 15,003 milliseconds ago.
+2026-10-19T11:39:05.226+08:00  WARN [traceId= requestId=] 34732 --- [pet-platform] [29-091cb27b85cd] com.zaxxer.hikari.pool.ProxyConnection   : e2e-core-loop - Connection com.mysql.cj.jdbc.ConnectionImpl@4cbe6d60 marked as broken because of SQLSTATE(08S01), ErrorCode(0)
+
+com.mysql.cj.jdbc.exceptions.CommunicationsException: Communications link failure
+
+The last packet successfully received from the server was 15,029 milliseconds ago. The last packet sent successfully to the server was 15,029 milliseconds ago.
+	at com.mysql.cj.jdbc.exceptions.SQLError.createCommunicationsException(SQLError.java:165) ~[mysql-connector-j-9.7.0.jar:9.7.0]
+	at com.mysql.cj.jdbc.exceptions.SQLExceptionsMapping.translateException(SQLExceptionsMapping.java:55) ~[mysql-connector-j-9.7.0.jar:9.7.0]
+	at com.mysql.cj.jdbc.ClientPreparedStatement.executeInternal(ClientPreparedStatement.java:988) ~[mysql-connector-j-9.7.0.jar:9.7.0]
+	at com.mysql.cj.jdbc.ClientPreparedStatement.executeUpdateInternal(ClientPreparedStatement.java:1166) ~[mysql-connector-j-9.7.0.jar:9.7.0]
+	at com.mysql.cj.jdbc.ClientPreparedStatement.executeUpdateInternal(ClientPreparedStatement.java:1101) ~[mysql-connector-j-9.7.0.jar:9.7.0]
+	at com.mysql.cj.jdbc.ClientPreparedStatement.executeLargeUpdate(ClientPreparedStatement.java:1448) ~[mysql-connector-j-9.7.0.jar:9.7.0]
+	at com.mysql.cj.jdbc.ClientPreparedStatement.executeUpdate(ClientPreparedStatement.java:1084) ~[mysql-connector-j-9.7.0.jar:9.7.0]
+	at com.zaxxer.hikari.pool.ProxyPreparedStatement.executeUpdate(ProxyPreparedStatement.java:61) ~[HikariCP-7.0.2.jar:na]
+	at com.zaxxer.hikari.pool.HikariProxyPreparedStatement.executeUpdate(HikariProxyPreparedStatement.java) ~[HikariCP-7.0.2.jar:na]
+	at org.springframework.jdbc.core.JdbcTemplate.lambda$update$0(JdbcTemplate.java:971) ~[spring-jdbc-7.0.9.jar:7.0.9]
+	at org.springframework.jdbc.core.JdbcTemplate.execute(JdbcTemplate.java:670) ~[spring-jdbc-7.0.9.jar:7.0.9]
+	at org.springframework.jdbc.core.JdbcTemplate.update(JdbcTemplate.java:966) ~[spring-jdbc-7.0.9.jar:7.0.9]
+	at org.springframework.jdbc.core.JdbcTemplate.update(JdbcTemplate.java:1010) ~[spring-jdbc-7.0.9.jar:7.0.9]
+	at org.springframework.jdbc.core.JdbcTemplate.update(JdbcTemplate.java:1020) ~[spring-jdbc-7.0.9.jar:7.0.9]
+	at com.petplatform.boot.e2e.E2eCoreLoopServer$RecoveringIds.nextId(E2eCoreLoopServer.java:1376) ~[test-classes/:na]
+	at com.petplatform.task.core.JdbcAsyncTaskRepository.claim(JdbcAsyncTaskRepository.java:60) ~[pet-task-core-0.1.0-SNAPSHOT.jar:0.1.0-SNAPSHOT]
+	at com.petplatform.task.core.AsyncTaskWorker.runOne(AsyncTaskWorker.java:104) ~[pet-task-core-0.1.0-SNAPSHOT.jar:0.1.0-SNAPSHOT]
+	at com.petplatform.task.core.AsyncTaskWorker.pollBatch(AsyncTaskWorker.java:90) ~[pet-task-core-0.1.0-SNAPSHOT.jar:0.1.0-SNAPSHOT]
+	at com.petplatform.task.core.AsyncTaskWorker.lambda$start$3(AsyncTaskWorker.java:70) ~[pet-task-core-0.1.0-SNAPSHOT.jar:0.1.0-SNAPSHOT]
+	at java.base/java.util.concurrent.Executors$RunnableAdapter.call(Executors.java:572) ~[na:na]
+	at java.base/java.util.concurrent.FutureTask.runAndReset(FutureTask.java:358) ~[na:na]
+	at java.base/java.util.concurrent.ScheduledThreadPoolExecutor$ScheduledFutureTask.run(ScheduledThreadPoolExecutor.java:305) ~[na:na]
+	at java.base/java.util.concurrent.ThreadPoolExecutor.runWorker(ThreadPoolExecutor.java:1144) ~[na:na]
+	at java.base/java.util.concurrent.ThreadPoolExecutor$Worker.run(ThreadPoolExecutor.java:642) ~[na:na]
+	at java.base/java.lang.Thread.run(Thread.java:1583) ~[na:na]
+Caused by: com.mysql.cj.exceptions.CJCommunicationsException: Communications link failure
+
+The last packet successfully received from the server was 15,029 milliseconds ago. The last packet sent successfully to the server was 15,029 milliseconds ago.
+	at java.base/jdk.internal.reflect.DirectConstructorHandleAccessor.newInstance(DirectConstructorHandleAccessor.java:62) ~[na:na]
+	at java.base/java.lang.reflect.Constructor.newInstanceWithCaller(Constructor.java:502) ~[na:na]
+	at java.base/java.lang.reflect.Constructor.newInstance(Constructor.java:486) ~[na:na]
+	at com.mysql.cj.exceptions.ExceptionFactory.createException(ExceptionFactory.java:52) ~[mysql-connector-j-9.7.0.jar:9.7.0]
+	at com.mysql.cj.exceptions.ExceptionFactory.createException(ExceptionFactory.java:95) ~[mysql-connector-j-9.7.0.jar:9.7.0]
+	at com.mysql.cj.exceptions.ExceptionFactory.createException(ExceptionFactory.java:140) ~[mysql-connector-j-9.7.0.jar:9.7.0]
+	at com.mysql.cj.exceptions.ExceptionFactory.createCommunicationsException(ExceptionFactory.java:156) ~[mysql-connector-j-9.7.0.jar:9.7.0]
+	at com.mysql.cj.protocol.a.NativeProtocol.readMessage(NativeProtocol.java:590) ~[mysql-connector-j-9.7.0.jar:9.7.0]
+	at com.mysql.cj.protocol.a.NativeProtocol.checkErrorMessage(NativeProtocol.java:767) ~[mysql-connector-j-9.7.0.jar:9.7.0]
+	at com.mysql.cj.protocol.a.NativeProtocol.sendCommand(NativeProtocol.java:706) ~[mysql-connector-j-9.7.0.jar:9.7.0]
+	at com.mysql.cj.protocol.a.NativeProtocol.sendQueryPacket(NativeProtocol.java:938) ~[mysql-connector-j-9.7.0.jar:9.7.0]
+	at com.mysql.cj.NativeSession.execSQL(NativeSession.java:817) ~[mysql-connector-j-9.7.0.jar:9.7.0]
+	at com.mysql.cj.jdbc.ClientPreparedStatement.executeInternal(ClientPreparedStatement.java:963) ~[mysql-connector-j-9.7.0.jar:9.7.0]
+	... 22 common frames omitted
+Caused by: java.net.SocketTimeoutException: Read timed out
+	at java.base/sun.nio.ch.NioSocketImpl.timedRead(NioSocketImpl.java:278) ~[na:na]
+	at java.base/sun.nio.ch.NioSocketImpl.implRead(NioSocketImpl.java:304) ~[na:na]
+	at java.base/sun.nio.ch.NioSocketImpl.read(NioSocketImpl.java:346) ~[na:na]
+	at java.base/sun.nio.ch.NioSocketImpl$1.read(NioSocketImpl.java:796) ~[na:na]
+	at java.base/java.net.Socket$SocketInputStream.read(Socket.java:1099) ~[na:na]
+	at com.mysql.cj.protocol.ReadAheadInputStream.fill(ReadAheadInputStream.java:91) ~[mysql-connector-j-9.7.0.jar:9.7.0]
+	at com.mysql.cj.protocol.ReadAheadInputStream.readFromUnderlyingStreamIfNecessary(ReadAheadInputStream.java:130) ~[mysql-connector-j-9.7.0.jar:9.7.0]
+	at com.mysql.cj.protocol.ReadAheadInputStream.read(ReadAheadInputStream.java:157) ~[mysql-connector-j-9.7.0.jar:9.7.0]
+	at java.base/java.io.FilterInputStream.read(FilterInputStream.java:119) ~[na:na]
+	at com.mysql.cj.protocol.FullReadInputStream.readFully(FullReadInputStream.java:55) ~[mysql-connector-j-9.7.0.jar:9.7.0]
+	at com.mysql.cj.protocol.a.SimplePacketReader.readHeaderLocal(SimplePacketReader.java:72) ~[mysql-connector-j-9.7.0.jar:9.7.0]
+	at com.mysql.cj.protocol.a.SimplePacketReader.readHeader(SimplePacketReader.java:54) ~[mysql-connector-j-9.7.0.jar:9.7.0]
+	at com.mysql.cj.protocol.a.SimplePacketReader.readHeader(SimplePacketReader.java:36) ~[mysql-connector-j-9.7.0.jar:9.7.0]
+	at com.mysql.cj.protocol.a.TimeTrackingPacketReader.readHeader(TimeTrackingPacketReader.java:43) ~[mysql-connector-j-9.7.0.jar:9.7.0]
+	at com.mysql.cj.protocol.a.TimeTrackingPacketReader.readHeader(TimeTrackingPacketReader.java:32) ~[mysql-connector-j-9.7.0.jar:9.7.0]
+	at com.mysql.cj.protocol.a.MultiPacketReader.readHeader(MultiPacketReader.java:45) ~[mysql-connector-j-9.7.0.jar:9.7.0]
+	at com.mysql.cj.protocol.a.MultiPacketReader.readHeader(MultiPacketReader.java:35) ~[mysql-connector-j-9.7.0.jar:9.7.0]
+	at com.mysql.cj.protocol.a.NativeProtocol.readMessage(NativeProtocol.java:584) ~[mysql-connector-j-9.7.0.jar:9.7.0]
+	... 27 common frames omitted
+
+E2E_CORE_LOOP snowflake reopen attempt 5 (node 845) failed: org.springframework.dao.RecoverableDataAccessException: PreparedStatementCallback; SQL [INSERT INTO snowflake_worker_state(node_id,format_identity,enabled,initialization_ref,created_at,updated_at) VALUES(?,?,TRUE,?,UTC_TIMESTAMP(3),UTC_TIMESTAMP(3))]; Communications link failure
+
+The last packet successfully received from the server was 15,029 milliseconds ago. The last packet sent successfully to the server was 15,029 milliseconds ago.
+E2E_CORE_LOOP snowflake recovered on node 846
+2026-10-19T11:39:31.049+08:00  WARN [traceId= requestId=] 34732 --- [pet-platform] [sion-controller] c.p.id.core.HutoolSnowflakeIdProvider    : Snowflake provider failed closed: OPERATION_TIMEOUT
+E2E_CORE_LOOP snowflake recovered on node 847
+2026-10-19T11:40:02.518+08:00  WARN [traceId= requestId=] 34732 --- [pet-platform] [sion-controller] c.p.id.core.HutoolSnowflakeIdProvider    : Snowflake provider failed closed: OPERATION_TIMEOUT
+E2E_CORE_LOOP snowflake recovered on node 848
+2026-10-19T11:50:40.423+08:00  WARN [traceId= requestId=] 34732 --- [pet-platform] [sion-controller] c.p.id.core.HutoolSnowflakeIdProvider    : Snowflake provider failed closed: OPERATION_TIMEOUT
+E2E_CORE_LOOP snowflake reopen attempt 1 (node 849) failed: java.lang.IllegalStateException: Provider unavailable: ACTION_FAILED
+2026-10-19T11:50:43.068+08:00  WARN [traceId= requestId=] 34732 --- [pet-platform] [sion-controller] c.p.id.core.HutoolSnowflakeIdProvider    : Snowflake provider failed closed: ACTION_FAILED
+E2E_CORE_LOOP snowflake recovered on node 850
+2026-10-19T11:50:50.234+08:00  WARN [traceId= requestId=] 34732 --- [pet-platform] [sion-controller] c.p.id.core.HutoolSnowflakeIdProvider    : Snowflake provider failed closed: OPERATION_TIMEOUT
+E2E_CORE_LOOP snowflake reopen attempt 1 (node 851) failed: java.lang.IllegalStateException: Provider unavailable: OPERATION_TIMEOUT
+2026-10-19T11:50:55.694+08:00  WARN [traceId= requestId=] 34732 --- [pet-platform] [sion-controller] c.p.id.core.HutoolSnowflakeIdProvider    : Snowflake provider failed closed: OPERATION_TIMEOUT
+E2E_CORE_LOOP snowflake recovered on node 852
+2026-10-19T11:51:58.560+08:00  WARN [traceId= requestId=] 34732 --- [pet-platform] [sion-controller] c.p.id.core.HutoolSnowflakeIdProvider    : Snowflake provider failed closed: OPERATION_TIMEOUT
+E2E_CORE_LOOP snowflake recovered on node 853
+2026-10-19T11:52:26.656+08:00  WARN [traceId= requestId=] 34732 --- [pet-platform] [sion-controller] c.p.id.core.HutoolSnowflakeIdProvider    : Snowflake provider failed closed: OPERATION_TIMEOUT
+E2E_CORE_LOOP snowflake recovered on node 854
+2026-10-19T11:53:39.767+08:00  WARN [traceId= requestId=] 34732 --- [pet-platform] [sion-controller] c.p.id.core.HutoolSnowflakeIdProvider    : Snowflake provider failed closed: OPERATION_TIMEOUT
+E2E_CORE_LOOP snowflake recovered on node 855
+2026-10-19T11:53:47.150+08:00  WARN [traceId= requestId=] 34732 --- [pet-platform] [sion-controller] c.p.id.core.HutoolSnowflakeIdProvider    : Snowflake provider failed closed: OPERATION_TIMEOUT
+E2E_CORE_LOOP snowflake recovered on node 856
+2026-10-19T11:54:09.139+08:00  WARN [traceId= requestId=] 34732 --- [pet-platform] [sion-controller] c.p.id.core.HutoolSnowflakeIdProvider    : Snowflake provider failed closed: OPERATION_TIMEOUT
+E2E_CORE_LOOP snowflake recovered on node 857
+2026-10-19T11:54:35.821+08:00  WARN [traceId= requestId=] 34732 --- [pet-platform] [sion-controller] c.p.id.core.HutoolSnowflakeIdProvider    : Snowflake provider failed closed: OPERATION_TIMEOUT
+E2E_CORE_LOOP snowflake recovered on node 858
