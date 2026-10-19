@@ -1,10 +1,10 @@
 # Work State
 
 PROJECT: 宠物平台 V1.0
-STATE_VERSION: 41.0
-UPDATED_AT: 2026-10-16
+STATE_VERSION: 42.0
+UPDATED_AT: 2026-10-19
 CURRENT_PHASE: W2_WAVE_IN_PROGRESS
-CURRENT_STATUS: DOCS_ONLY_CATALOG_REAUDIT_THROUGH_20261016_ENGINEERING_STATE_UNCHANGED_FROM_40_0
+CURRENT_STATUS: DOCS_ONLY_CATALOG_REAUDIT_THROUGH_20261019_ENGINEERING_STATE_UNCHANGED_FROM_41_0
 VERIFIED_BASELINE: PR98 已合入 develop e3b846e5038aa617e42a919862f20a927057f53e。PR99 CCR head e2a6ce61d04ddfb783b0e245183e509a4734e0b8 的 CI36828547377 六项成功，实际后端报告140 suites/986 tests/0 failures/errors/skips；不覆盖本批正式资源与联调增量。本批head 4bb317f63a0851eb50325659acd557f338379d06的[CI36842324802](https://github.com/blueXYing/pet-platform/actions/runs/36842324802)六项全部SUCCESS（backend 2026-10-01T10:03:42Z完成），无遗留未核项。2026-10-02经用户批准完成5项VIS P1修复并经真实渲染像素级复验全部关闭（[VIS-OVERLAY §12](planning/progress/2026-10-01/aftersale-pages/joint/VIS-OVERLAY-HANDOFF.md)、[P1-FIX-VERIFICATION](planning/progress/2026-10-02/aftersale-vis/P1-FIX-VERIFICATION.md)），其间发现Taro 4.1.5动态data-*/WXSS属性选择器静默失配根因并改为类名变体。
 NEXT_PHASE: VIS规格级叠图、5项P1修复与像素级复验已完成（C apply/M list/M detail叠图边缘归零）。下一步：物理微信真机按DEVICE-PREP-HANDOFF清单验收（含P1-4修后真机复核）→人工审阅草稿，不自动合并。services页同类data-*/属性选择器迁移需独立Issue。
 NEXT_PHASE_APPROVED: 用户已授权多角色实施并要求子代理使用Figma，重连后回复“已连接”，两项具体CCR后回复“批准”，随后明确“开始下一步”。本轮完成最终PRD目录登记、独立资源及真实三端本机联调。生产启用、资金能力、SSOT变更、PR合并未获授权。目录中文内容已在最终PRD明确，不需重复产品裁决。
@@ -74,3 +74,19 @@ ISSUE_CATALOG 11 行翻转 BLOCKED/IN_PROGRESS→DONE（逐行证据）：SCH-00
 PRD 对齐（用户 2026-10-15 裁决"按 SSOT 执行"=售后全额退款券返还）：C 端 PRD §5.1.21「我的优惠券」退款返还规则中"订单售后存在退款时，该订单使用的抵扣券不返还（已核销不退）"与 SSOT §9.1 冲突，已修订为按 SSOT §9.1/§9.2 口径（售后全额退款且原券仍处有效期→恢复可用返还、不足 24h 延长至退款成功后 24h；部分退款不返），修订处插入修订注记 bullet 标注裁决来源与日期；登记文档 [docs/01-prd/34 号](docs/01-prd/34-售后退款优惠券返还SSOT对齐裁决补充-v1.0.md)，收口 CCR-CPN-LIFECYCLE-RULES-001 §2"待 PRD 修订轮"项。运营端 PRD §6.4 券实例状态机本已与 SSOT 一致，未改动；其余 PRD 内容零改动。
 
 遗留与红线不变：物理真机验收、运营Web主链整链 E2E、QA-004（#175 在途）、QA-005 三轮、A-002 写侧治理动作授权、ADM-001 写侧缺口、券实例无发放渠道（模板管理不在 Scope）、百科封面图正式素材、默认关闭开关（pet.coupon.lifecycle.enabled、pet.points.refund-clawback.enabled、pet.admin.trade.http.enabled、pet.admin.governance.http.enabled 等）不因状态翻 DONE 而开启；本批零代码/契约/Schema 改动，不合并本 PR。
+
+## 2026-10-19 目录重核（STATE_VERSION 42.0，纯文档）
+
+本版为 docs-only 版本升位：41.0 及以前各节工程事实原样保留，未重核未改写；Issue 级权威状态见 [ISSUE_CATALOG](planning/ISSUE_CATALOG.csv)（本次重核至 2026-10-19）。41.0 之后（2026-10-16~10-19）的工程推进由 PR#175~#185 与目录承担记录，HEAD 61f3ac82（#185 merge）。本批零代码/契约/Schema/Event 改动，仅新增部署 runbook 文档（见下）。
+
+重核范围：上次目录重核停在 2026-10-16（PR#177，41.0，其正文当时将 #175/#176 登记为"在途未合"）。本次先核实 #175（QA-004 并发矩阵）与 #176（三轮模拟器 E2E）确已合入（merge 07ed740f/68fbdaef，2026-10-16），再逐个经 `git log --merges` 与 PR body 核实其后 8 个 PR：#178 运营治理台二期（65号 20 路由：百科治理/券模板与实例台账/积分台账/系统设置只读开关视图，A-005 四块交付，九类未授权动作 CCR-ADM-A005-OPS-001 登记）、#179 三轮 E2E 四缺陷修复（F3R-1 百科首载死锁/F3R-2 选券区竞态/F3R-3 券单支付门控/F3R-4 任务领取入口，零新增路由）、#180 券发放渠道（65号 v0.2 §4.3，用户 2026-10-16 裁决，coupon.instance.grant + CCR-CPN-GRANT-001）、#181 运营Web主链真实链路 E2E（7 段链路 6 段贯通，登记 FA-1~FA-6 只取证）、#182 治理写动作最小授权一期（36号：券作废 coupon.instance.void + 商家治理页停用入口，65号 → v0.3，CCR-CPN-VOID-001）、#183 FA-1~FA-6 运营面缺陷修复（安全链放行/双 bean 装配歧义/动作码连字符词法/审核 envelope，零新路由）、#184 CI backend 超时 60→90 分钟（ci-only）、#185 35号开关放开（A 类 18 项默认开、B 类保持默认关列卡点，真机验收延后至正式上线前）。
+
+ISSUE_CATALOG 6 行翻转（逐行证据）：A-005→DONE（#178 四块交付+CCR 边界九类登记；#183 FA-2/FA-3 修复后 ops 面可达，#181 链路走查覆盖）；QA-004→DONE（#175 已合：RefundVerifyGuardConcurrencyMySqlTest 4 用例 14 屏障轮次，refund_order 创建后禁核销/核销先成功使未履约售后失效/核销×售后创建互斥/确定性锚点，3 轮全绿+同域回归 98/98）；QA-005→DONE（一轮核心闭环 #133、二轮走查矩阵 #156、三轮新能力矩阵 #176 已合、运营Web主链 #181 已合、FA-1~FA-6 修复 #183 已合；物理真机验收按用户 2026-10-16 裁决[35号 §一.2]延后至正式上线前统一执行——如实注记为上线前义务，不因此挂 IN_PROGRESS）；C-006→DONE（券 #168 选券入口+券列表/详情、#179 F3R-2 修复；积分 #157 签到拉新+#162 商城展示态+#170 订单奖励领取、#179 F3R-4 修复；消息 #64 收件箱读面[commit 4ec6439e 即标 c006]；百科 #165 两页、#179 F3R-1 修复；#176 三轮矩阵百科 B1~B5/积分 C1~C2 实测通过；社区子项经用户 2026-10-14 裁决关闭；真机/视觉验收同 35号延后口径）；ADM-001→DONE（#166 服务审核面+#183 FA-6 envelope 修复、#171 64号治理查询、#172 63号 v0.2 处置动作[33号授权]、#182 36号 商家停用内核复用+入口；36号裁决"最小授权=恰好两项"，员工处置等其余写动作未授权不做[SSOT §30 只读监管口径不变]——授权范围内无未交付项，写侧缺口由裁决收口而非债务）；A-002→DONE（#166 服务审核页+#171 治理查询三块页+#182 商家停用入口[MerchantLedgerDetailPage]；#181 运营主链 E2E 覆盖商家/服务治理浏览段，FA-6 由 #183 修复；超 36号授权的写动作页面按 fail-closed 不渲染，属裁决范围外而非欠账）。
+
+复核无误保持不变（4 行）：M-004/QA-002/QA-003 维持 41.0 已翻的 DONE（证据链复核无新发现）；COM-001/THD-001 维持 BLOCKED（用户 2026-10-14 裁决冻结，非欠账）。本次翻转后目录计数：DONE 64 / IN_PROGRESS 0 / BLOCKED 2。
+
+开关状态如实登记（#185 最终并集形态，commit a6ff55a2，以合并后 application.yml 为准）：`pet.admin.ops.http.enabled`/`pet.coupon.grant.enabled`/`pet.coupon.void.enabled` 在 #183 修复并入 #185 分支后已翻默认 true（yml 注释明示"held category is obsolete"）；[21号清单](docs/08-engineering/21-部署开关组合清单-v1.0.md) §1.12 三行文字仍写"待修复后再开/默认翻转随 35号统一处理"，落后于 yml 实际状态——本批纯文档不改该清单（其 DoD 归开关 owner），已在部署 runbook（见下）中以 yml 为权威并标注此差异，21号三行修正留后续 PR。
+
+新交付文档：[docs/09-deployment/01-上线部署Runbook-v1.0.md](docs/09-deployment/01-上线部署Runbook-v1.0.md)——纯文档新增（仓库原无 ops/ 目录与部署手册，docs/ 编号顺延 09）：前置条件（域名/备案/HTTPS 警告）、B 类凭据配置表（35号 §四逐项：键名+申请渠道+缺失失败行为）、部署步骤（MySQL/Redis→docs/03-database 全链 schema 顺序（引用 #183 补齐后的 E2eCoreLoopServer.loadSchemas 清单）→后端 jar→前端构建/小程序体验版）、冒烟清单、开关核对单、回滚要点（opt-in 迁移不可回滚+开关显式 false 语义）。
+
+遗留与红线不变：物理真机验收延后至正式上线前（35号 §一.2，QA-005 收口注记）；B 类未配凭据前交易闭环止步于"下单占位→10 分钟自动关闭"（35号 §七.1）；A 类 matchIfMissing 翻转后"删除 yml 行"≠关闭、显式 false 才是关（35号 §七.3）；21号清单 §1.12 三行文字滞后于 yml（见上，留后续修正）；生产合并迁移未建立（db/migration 仅有 README，opt-in 隔离迁移 V26~V32 永不默认开）；生产 SQL 零改动、生产迁移未执行、默认开关不因状态翻 DONE 而变化；本批除新增 runbook 文档外零文件改动，不合并本 PR（草稿）。
