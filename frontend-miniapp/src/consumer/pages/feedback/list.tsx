@@ -5,15 +5,15 @@ import { consumerApi } from '../../../shared/consumer-runtime'
 import { RealFeedbackRepository } from '../../feedback/repository'
 import {
   feedbackStatusFallback, feedbackStatusLabels, feedbackTypeLabel, formatTicketTime,
-  type FeedbackTicketSummary,
+  type FeedbackTicketDetail, type FeedbackTicketSummary,
 } from '../../feedback/model'
 import backIcon from '../../assets/profile/back.png'
 import './list.css'
 
-// 我的反馈列表页（67号 / PRD 5.1.28「查看运营回复和处理结论」的 C 端承载；反馈列表无原稿，
-// 沿 C 端现行列表家族语言实现——登记缺稿口径，不做 1:1 还原或 VIS 走查）。
-// 卡片：类型标签 + 状态标签 + 摘要 + 提交时间；点卡片进详情半屏（运营回复/处理结论字段位，
-// V1 恒为空——运营处置面不在切片，CCR-CS-FEEDBACK-001 §3.2）。分页 1..10000/pageSize 20。
+// 我的反馈列表页（67号 v0.2 / PRD 5.1.28「查看运营回复和处理结论」的 C 端承载；反馈列表无
+// 原稿，沿 C 端现行列表家族语言实现——登记缺稿口径，不做 1:1 还原或 VIS 走查）。
+// 卡片：类型标签 + 状态标签 + 摘要 + 提交时间；点卡片进详情半屏：状态/附件数/处理时间线
+// + 运营回复（v0.2 RESOLVED 单可见，CCR-CS-FEEDBACK-001 v0.2）。分页 1..10000/pageSize 20。
 const PAGE_SIZE = 20
 const FEEDBACK_NEW_URL = '/consumer/pages/feedback/index'
 const MINE_TAB_URL = '/consumer/pages/mine/index'
@@ -32,7 +32,7 @@ export default function FeedbackListPage() {
   const [total, setTotal] = useState(0)
   const [page, setPage] = useState(1)
   const [detailId, setDetailId] = useState<string | null>(null)
-  const [detail, setDetail] = useState<{ content: string; contact: string | null; replies: readonly unknown[] } | null>(null)
+  const [detail, setDetail] = useState<FeedbackTicketDetail | null>(null)
   const [notice, setNotice] = useState('')
 
   async function load(nextPage: number) {
@@ -54,7 +54,7 @@ export default function FeedbackListPage() {
     try {
       const result = await new RealFeedbackRepository(consumerApi).get(ticketId)
       setDetailId(ticketId)
-      setDetail({ content: result.content, contact: result.contact, replies: result.replies })
+      setDetail(result)
     } catch {
       setNotice('详情读取失败，请稍后重试。')
     }
@@ -123,12 +123,25 @@ export default function FeedbackListPage() {
             onClick={() => { setDetailId(null); setDetail(null) }}>关闭</Button>
         </View>
         <ScrollView className='fbl-sheet-body' scrollY enhanced showScrollbar={false}>
+          <Text className='fbl-sheet-label'>当前状态</Text>
+          <Text className='fbl-sheet-text'>{feedbackStatusLabels[detail.status] ?? feedbackStatusFallback}</Text>
           <Text className='fbl-sheet-label'>反馈内容</Text>
           <Text className='fbl-sheet-text'>{detail.content}</Text>
+          <Text className='fbl-sheet-label'>图片附件</Text>
+          <Text className='fbl-sheet-text'>{detail.attachmentAssetIds.length === 0 ? '无附件' : `${detail.attachmentAssetIds.length} 张图片`}</Text>
           <Text className='fbl-sheet-label'>联系方式</Text>
           <Text className='fbl-sheet-text'>{detail.contact ?? '未留下联系方式'}</Text>
+          <Text className='fbl-sheet-label'>处理进度</Text>
+          {detail.events.map((event, index) => <Text key={index} className='fbl-sheet-text'>
+            {`${event.action === 'SUBMITTED' ? '已提交' : event.action === 'PROCESSING' ? '处理中' : '已处理'} · ${formatTicketTime(event.createdAt)}`}
+          </Text>)}
           <Text className='fbl-sheet-label'>运营回复与处理结论</Text>
-          <Text className='fbl-sheet-text'>{detail.replies.length === 0 ? '暂无回复；工单将由运营跟进处理。' : ''}</Text>
+          {detail.replies.length === 0
+            ? <Text className='fbl-sheet-text'>暂无回复；工单将由运营跟进处理。</Text>
+            : detail.replies.map((reply, index) => <View key={index}>
+              <Text className='fbl-sheet-text'>{reply.reply}</Text>
+              <Text className='fbl-sheet-text'>{`回复时间：${formatTicketTime(reply.repliedAt)}`}</Text>
+            </View>)}
         </ScrollView>
       </View>
     </View>}

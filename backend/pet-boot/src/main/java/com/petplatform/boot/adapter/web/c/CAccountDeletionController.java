@@ -23,9 +23,11 @@ import org.springframework.web.bind.annotation.RestController;
 /**
  * /api/v1/c/account deletion face (contract 66 via HTTP10 §3.17): the precheck read projects
  * the kernel's blocker catalog verbatim (ARCH-005 — no adapter-side derivation), the deletion
- * write maps the session principal into the CommandContext(USER) and is 201 on first execution
- * and 200 on same-key idempotent replay (supplement 23 §5). This adapter never flips account
- * state itself; CANCELED sessions die through the auth slice's existing resolveSession check.
+ * write opens the v0.2 cooling period (account stays ACTIVE, the durable task executes the
+ * CANCELED flip at expiry), the status read drives the "可撤销" prompt and the cancel write
+ * CASes the cooling-period row back. Writes are 201 on first execution and 200 on same-key
+ * idempotent replay (supplement 23 §5). This adapter never flips account state itself;
+ * CANCELED sessions die through the auth slice's existing resolveSession check.
  */
 @RestController
 @RequestMapping("/api/v1/c/account")
@@ -35,6 +37,7 @@ import org.springframework.web.bind.annotation.RestController;
 public class CAccountDeletionController {
 
     private static final Set<String> DELETION_FIELDS = Set.of("acknowledged");
+    private static final Set<String> CANCEL_FIELDS = Set.of();
 
     private final AccountDeletionService deletions;
 
@@ -79,10 +82,44 @@ public class CAccountDeletionController {
         AccountDeletionService.DeletionOutcome outcome = deletions.deleteAccount(
                 new AccountDeletionService.DeleteAccountCommand(context(req, view), true));
         response.setStatus(outcome.replayed() ? 200 : 201);
+        AccountDeletionService.DeletionReceipt receipt = outcome.receipt();
         Map<String, Object> data = new LinkedHashMap<>();
-        data.put("userId", outcome.receipt().userId());
-        data.put("status", outcome.receipt().status());
-        data.put("deletedAt", outcome.receipt().deletedAt());
+        data.put("userId", receipt.userId());
+        data.put("status", receipt.status());
+        data.put("requestedAt", receipt.requestedAt());
+        data.put("effectiveAt", receipt.effectiveAt());
+        data.put("cooldownDays", receipt.cooldownDays());
+        return ApiResponse.success(data, CShared.trace(req));
+    }
+
+    @GetMapping("/deletion-status")
+    public ApiResponse<Map<String, Object>> status(HttpServletRequest req) {
+        MiniSessionView view = session(req);
+        AccountDeletionService.DeletionStatusView status = deletions.deletionStatus(view.userId());
+        Map<String, Object> data = new LinkedHashMap<>();
+        data.put("status", status.status());
+        if ("PENDING".equals(status.status())) {
+            data.put("requestedAt", status.requestedAt());
+            data.put("effectiveAt", status.effectiveAt());
+            data.put("cooldownDays", status.cooldownDays());
+        }
+        return ApiResponse.success(data, CShared.trace(req));
+    }
+
+    @PostMapping("/deletion-cancel")
+    public ApiResponse<Map<String, Object>> cancel(
+            @RequestBody(required = false) Request body, HttpServletRequest req,
+            HttpServletResponse response) {
+        if (body != null) body.require(CANCEL_FIELDS);
+        MiniSessionView view = session(req);
+        AccountDeletionService.CancelOutcome outcome = deletions.cancelDeletion(
+                new AccountDeletionService.CancelDeletionCommand(context(req, view)));
+        response.setStatus(outcome.replayed() ? 200 : 201);
+        AccountDeletionService.CancelReceipt receipt = outcome.receipt();
+        Map<String, Object> data = new LinkedHashMap<>();
+        data.put("userId", receipt.userId());
+        data.put("status", receipt.status());
+        data.put("canceledAt", receipt.canceledAt());
         return ApiResponse.success(data, CShared.trace(req));
     }
 

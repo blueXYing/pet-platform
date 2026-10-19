@@ -31,8 +31,16 @@ public final class PrivateAssetApiImpl implements PrivateAssetApi {
    * review visibility, never the safety chain.
    */
   public static final String SERVICE_COVER = "SERVICE_COVER";
+  /**
+   * Contract-67 v0.2 feedback slice (user ruling 2026-10-19 "继续扩展CCR"): feedback-ticket
+   * image attachments share the whole immutable upload/scan/ownership pipeline; the purpose
+   * only scopes ownership resolution (resolveOwned), never the safety chain. Per-PRD the
+   * ticket binds at most six attachments; the per-file bound stays this pipeline's 10 MiB.
+   */
+  public static final String FEEDBACK_ATTACHMENT = "FEEDBACK_ATTACHMENT";
   private static final java.util.Set<String> UPLOAD_PURPOSES =
-      java.util.Set.of(MERCHANT_APPLICATION_MATERIAL, SERVICE_COVER, "AFTERSALE_EVIDENCE");
+      java.util.Set.of(MERCHANT_APPLICATION_MATERIAL, SERVICE_COVER, "AFTERSALE_EVIDENCE",
+          FEEDBACK_ATTACHMENT);
   static final int MAX_BYTES = 10 * 1024 * 1024;
   private static final DecimalPublicIdCodec IDS = new DecimalPublicIdCodec();
 

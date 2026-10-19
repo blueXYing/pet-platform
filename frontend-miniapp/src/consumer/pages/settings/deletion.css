@@ -6,6 +6,7 @@
 .del-state-btn { align-self: flex-start; color: #2f83c7; font-size: calc(var(--st-unit) * 14); padding: calc(var(--st-unit) * 6) 0; }
 .del-card { background: #ffffff; border: calc(var(--st-unit) * 1) solid #c0ecff; border-radius: calc(var(--st-unit) * 12); padding: calc(var(--st-unit) * 16); display: flex; flex-direction: column; gap: calc(var(--st-unit) * 10); margin-bottom: calc(var(--st-unit) * 14); }
 .del-card-blocked { border-color: #e2b7ad; }
+.del-card-pending { border-color: #b7cfe2; }
 .del-card-title { font-size: calc(var(--st-unit) * 16); font-weight: 600; color: #1f2b30; }
 .del-impact { font-size: calc(var(--st-unit) * 13); line-height: 1.7; color: #577683; }
 .del-blocker { display: flex; flex-direction: column; gap: calc(var(--st-unit) * 4); border-top: calc(var(--st-unit) * 1) solid #f1e3df; padding-top: calc(var(--st-unit) * 10); }

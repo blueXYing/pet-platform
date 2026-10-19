@@ -761,15 +761,18 @@ AUDIT
 
 V1.0 不提供积分抵现/积分商城 Endpoint。
 
-## 3.17 设置枢纽与账号注销（66号契约，用户裁决 2026-10-19 收尾批次"全做"；CCR-USR-DELETION-001）
+## 3.17 设置枢纽与账号注销（66号契约 v0.2 冷静期，用户裁决 2026-10-19 收尾批次"全做"+"继续扩展CCR"；CCR-USR-DELETION-001）
 
-> 实现注记（2026-10-19，C-SETTINGS-001）：两路由按 [66号契约](66-User-Settings-Deletion-Contract-v0.1.md)
+> 实现注记（2026-10-19，C-SETTINGS-001 + v0.2 冷静期扩展）：四路由按 [66号契约](66-User-Settings-Deletion-Contract-v0.1.md)
 > 装配（默认关闭，开关 `pet.usersettings.http.enabled`，[硬] 前置 `pet.auth.c.enabled` +
 > `pet.merchant.application.enabled`（OWNER 成员资格面），见 21号清单）。设置页其余子项复用
 > 既有已批面（通知偏好 §3.15、地址 §3.2.2、profile 手机号脱敏、auth/logout），本节只登记注销族。
 > 全路由真实 MINIAPP Bearer 会话；`Cache-Control: no-store`；ID String、时间 ISO-8601 UTC 毫秒。
-> 注销最小实现=同步置 CANCELED（SQL06 §1 既有词表）+append-only 审计行；冷静期/"申请中"态/
-> 数据清理 AsyncTask/注销撤销（PRD 有句无口径）全部 CCR-USR-DELETION-001 §2 待裁，一行不做。
+> **v0.2 冷静期口径（用户裁决 2026-10-19）**：注销请求落库进入冷静期（`pet.usersettings.deletion.cooldown-days`
+> 可配，默认 7 天、有界 1..30），期间账号恒 ACTIVE（登录/使用不受限、可撤销）；到期由 durable 任务
+> `ACCOUNT_DELETION_EXEC`（SQL13，`enqueueAt`=effective_at，请求事务内提交）执行 CANCELED 化；
+> 到期重跑前置校验，出现阻塞或账号 FROZEN 则自动作废请求（blockers 快照落审计行），不产生部分注销。
+> 数据保留口径不变（零删除零匿名化）。v0.1 同步注销口径废止。
 
 - `GET /api/v1/c/account/deletion-precheck`：注销前置校验（PRD 5.1.29 业务规则原文四类阻塞）。
   无 query 无 body。data `{blocked, blockers:[{code,label,detail}]}`；code 词表冻结四值
@@ -780,46 +783,79 @@ V1.0 不提供积分抵现/积分商城 Endpoint。
   `blocked = blockers 非空`。事实端口不可用整单 503 fail-closed（绝不读作"无阻塞"）。400/401/503。
 - `POST /api/v1/c/account/deletion`：Header `X-Request-Id` 必填（终态 UUID，23号 §5 五元组，
   namespace `account.deletion`，scope USER_SELF）；严格 JSON `{acknowledged:true}`（未知字段/显式
-  null/假值 400）。前置校验在行锁事务内重跑：阻塞 409 `DELETION_BLOCKED`（信封 data=null，明细由
-  precheck 承载）；通过则同事务追加 `user_deletion_request` append-only 审计行（outcome=ACCEPTED，
-  blockers_json=NULL）并将 `user_account.status` 置 `CANCELED`（乐观锁）。首执 **201**；同 requestId
+  null/假值 400）。前置校验在行锁事务内重跑：阻塞 409 `DELETION_BLOCKED`；已有 PENDING 申请
+  409 `COMMON_CONFLICT`（账号行锁串行化，至多一个冷静期单）。通过则同事务落 `user_deletion_request`
+  PENDING 行（含 cooldown_days 快照与 effective_at）并提交 durable 到期任务。首执 **201**；同 requestId
   同参重放 **200** 首回执；异参 409 `IDEMPOTENCY_KEY_CONFLICT`；FROZEN 403 `USER_FROZEN`；已注销
-  冲突 409。注销即生效：既有 `resolveSession` 对 CANCELED 立即 401、微信登录链拒绝（零新代码）。
-  回执 `{userId,status:"CANCELED",deletedAt}`。无事件 by design（V1 无跨域消费方）、无 AsyncTask——PR 披露。
-- Schema：`user_deletion_request`（66号 Schema，append-only）；核心表零改（CANCELED 为既有词表）。
-  设计偏差（帧 `131:18372`）：修改密码/支付设置行不渲染；推送通知/消息提醒开关行改入口（承载
-  §3.15 既有页）；注销入口为 PRD 明确要求新增（原稿无此元素）；清除缓存/关于为端侧静态行为。
+  冲突 409。回执 `{userId,status:"PENDING",requestedAt,effectiveAt,cooldownDays}`。**冷静期内登录照常**
+  （既有会话/登录链零改动），设置枢纽/注销页横幅提示"申请中，可撤销"。
+- `GET /api/v1/c/account/deletion-status`：冷静期状态读。data `{status:"NONE"}` 或
+  `{status:"PENDING",requestedAt,effectiveAt,cooldownDays}`。401。
+- `POST /api/v1/c/account/deletion-cancel`：撤销（namespace `account.deletion.cancel`，终结性
+  X-Request-Id，无 body）。CAS `user_deletion_request` PENDING→CANCELED（记 canceled_at 与
+  cancel_request_id）；账号从未离开 ACTIVE，无账号状态迁移。无 PENDING 申请 409 `COMMON_CONFLICT`。
+  首执 **201**/重放 **200**，回执 `{userId,status:"CANCELED",canceledAt}`。撤销后可重新发起注销（新行）。
+  到期任务（user-biz 内核 `executeDueDeletion`）：行锁重读请求行（非 PENDING 即 ALREADY_RESOLVED，
+  任务 Cancelled）→ 账号 FROZEN 自动作废 → 前置校验阻塞自动作废（blockers_json 快照）→ 否则同事务
+  `user_account`→CANCELED + 请求行 ACCEPTED（executed_at）；既有 `resolveSession`/登录拒绝语义随之生效，
+  零新代码。
+- Schema：`user_deletion_request`（66号 Schema v0.2 状态机行：PENDING/CANCELED/ACCEPTED，撤销列与
+  执行列；重复提交/并发由账号行锁+唯一键保证至多一个 PENDING）；核心表零改（CANCELED 为既有词表）。
+  durable 任务沿 SQL13 `async_task`（uk task_key=`ACCOUNT_DELETION_EXEC:{rowId}`，retryPolicy 同名，
+  自动作废/已终局不重试）。设计偏差（帧 `131:18372`）：修改密码/支付设置行不渲染；推送通知/消息提醒
+  开关行改入口（承载 §3.15 既有页）；注销入口为 PRD 明确要求新增（原稿无此元素）；清除缓存/关于为
+  端侧静态行为；设置枢纽注销入口行带"申请中，点入可撤销"徽标（v0.2 提示落点，PR 口径=登录后提示）。
 
-## 3.18 意见反馈工单（67号契约，用户裁决 2026-10-19 收尾批次"全做"；CCR-CS-FEEDBACK-001）
+## 3.18 意见反馈工单（67号契约 v0.2，用户裁决 2026-10-19 收尾批次"全做"+"继续扩展CCR"；CCR-CS-FEEDBACK-001）
 
-> 实现注记（2026-10-19，C-FEEDBACK-001）：三路由按 [67号契约](67-Feedback-Ticket-Contract-v0.1.md)
-> 装配（默认关闭，开关 `pet.feedback.http.enabled`，[硬] 前置 `pet.auth.c.enabled`，见 21号清单）。
+> 实现注记（2026-10-19，C-FEEDBACK-001 + v0.2 附件/运营处置扩展）：C 端三路由按
+> [67号契约](67-Feedback-Ticket-Contract-v0.1.md) 装配（默认关闭，开关 `pet.feedback.http.enabled`，
+> [硬] 前置 `pet.auth.c.enabled`，见 21号清单）；**v0.2 增运营处置面四路由**
+> `/api/v1/admin/feedback-tickets`（另需 `pet.auth.admin.enabled` + `pet.admin.ops.http.enabled`，
+> 动作码 `complaint.read/complaint.handle/complaint.decide` 登记部署——矩阵行 18，
+> `complaint.assign` 不登记=分派/SLA 不做；单运营无分派语义）。
 > 工单域落 pet-customer-service-biz（骨架模块首次落业务）；售后类（订单售后工单）仍归 50/51号
-> 既有售后域，不并入。全路由真实 MINIAPP Bearer 会话；`Cache-Control: no-store`；工单号 String。
-> 最小实现：文本工单无附件（PRD 6 张图片需私有资产通道扩展，CCR §3.1）、状态词表冻结五值且
-> V1 恒 `PENDING`（运营处置面不在切片，`complaint.*` 权限占位不动）、`replies`/`resolution` 为
-> 详情字段位恒空（PR 披露）。帮助与客服（PRD 5.1.25）承载=静态 FAQ 内容页+客服热线电话唤起
-> （V1 无 IM/无 AI，SSOT §21 第 4 项承载方式待裁，CCR §2/§4；FAQ 答案按平台已批规则改写，
-> 帧偏差登记见登记表新小节）。无事件、无 Outbox/AsyncTask（提交回执无通知，16号消息目录无此类型）。
+> 既有售后域，不并入。全路由真实 Bearer 会话（C=MINIAPP / 运营=ADMIN_WEB + ALL 范围）；
+> `Cache-Control: no-store`；工单号 String。帮助与客服（PRD 5.1.25）承载=静态 FAQ 内容页+
+> 客服热线电话唤起（V1 无 IM/无 AI；FAQ 答案按平台已批规则改写）。无事件、无 Outbox/AsyncTask。
 
 - `POST /api/v1/c/feedback-tickets`：Header `X-Request-Id` 必填（23号 §5，namespace `feedback.create`，
   scope USER_SELF，模块本地 `feedback_command_idempotency`（SQL14 同构，不跨模块共享命令表））；
   严格 JSON：`type` 必填四值 `FEATURE_SUGGESTION|BUG_REPORT|SERVICE_COMPLAINT|OTHER`（未知 400
-  `FEEDBACK_TYPE_INVALID`）/`contact` 选填 1..64 码点/`content` 必填 1..500 码点。写前置
+  `FEEDBACK_TYPE_INVALID`）/`contact` 选填 1..64 码点/`content` 必填 1..500 码点/
+  `attachmentAssetIds` 选填 0..6 个 Snowflake String（**v0.2 附件**：每个 assetId 经 31号
+  `PrivateAssetApi.resolveOwned` 重证=提交人所有 + `purpose=FEEDBACK_ATTACHMENT` + READY，
+  不满足 400/404；上传走既有 `POST /api/v1/c/private-assets` 同一管线，31号 purpose 枚举最小扩展；
+  PRD"每张 5MB"未单独钳制，沿管线 10MiB 上界——披露）。写前置
   `user_account.status=ACTIVE`（403 `USER_FROZEN`，经 user-api 只读状态端口 `UserActiveStatusApi`）；
   单用户每分钟 5 单（429 `COMMON_RATE_LIMITED`，模块内易失计数器——披露非安全边界）。同事务写
-  `feedback_ticket`（status=PENDING）+ `feedback_ticket_event`（SUBMITTED，append-only 审计）。
-  首执 **201** `{ticketId,type,status:"PENDING",createdAt}`；同参重放 **200** 同回执；异参 409。
+  `feedback_ticket`（status=PENDING）+ 附件绑定行 + `feedback_ticket_event`（SUBMITTED，append-only
+  审计）。首执 **201** `{ticketId,type,status:"PENDING",createdAt}`；同参重放 **200** 同回执
+  （附件列表属于幂等相等性事实）；异参 409。
 - `GET /api/v1/c/feedback-tickets?page&pageSize`：本人工单分页；page 1..10000 默认 1、pageSize
   1..50 默认 20；固定排序 `created_at DESC, id DESC`；摘要 `{ticketId,type,status,contentPreview
   (≤50码点服务端截断),createdAt}`——**摘要不回传联系方式**（最小暴露面）。
 - `GET /api/v1/c/feedback-tickets/{ticketId}`：本人详情；非本人/不存在统一 404
   `FEEDBACK_TICKET_NOT_FOUND`（防枚举），ticketId 非 Snowflake 词法 400。data=摘要全字段+
-  `content` 全文+`contact`（null 或原文，仅详情返回）+`events[]`（词表冻结 `SUBMITTED`）+
-  `replies:[]`（恒空）+`resolution:null`。
-- 内容脱敏存储口径：SSOT 无反馈内容条款（全文 0 命中）→ 最小口径=原文存储+owner-scoped 读+
-  列表不回传 contact（CCR-CS-FEEDBACK-001 §2）；后续运营处置面/导出面立项前需先过隐私裁决。
-- Schema：`feedback_ticket`/`feedback_ticket_event`/`feedback_command_idempotency`（67号 Schema）。
+  `content` 全文+`contact`（null 或原文，仅详情返回）+`attachmentAssetIds[]`（v0.2）+
+  `events[]`（动作词表 v0.2：`SUBMITTED|PROCESSING|RESOLVED`）+`replies[]`（v0.2：工单被办结后
+  恰一条 `{reply≤1000码点,repliedAt}`，C 端可见运营回复）+`resolution:null`（字段位保留，
+  V1 回复即结论口径——披露）。
+- **运营处置面（v0.2）**：`GET /api/v1/admin/feedback-tickets?page&pageSize&status?&type?`（status
+  仅 `PENDING|PROCESSING|RESOLVED`——`WAITING_SUPPLEMENT/CLOSED` 维持不可达；type 四值）；
+  `GET /api/v1/admin/feedback-tickets/{ticketId}`（工单内容/联系方式**运营侧展示原样**（用户裁决
+  2026-10-19 脱敏纪律），另含 owner userId 与附件 assetId 列表；未知 404 防枚举）；
+  `POST /api/v1/admin/feedback-tickets/{ticketId}/process`（PENDING→PROCESSING，无 body；
+  namespace `feedback.process`）/`POST /api/v1/admin/feedback-tickets/{ticketId}/resolve`
+  （PROCESSING→RESOLVED，body `{reply}` 1..1000 码点；namespace `feedback.resolve`）——两写路由均
+  终结性 X-Request-Id 幂等（scope OPS_ALL）、乐观锁 CAS（非预期状态 409）、同事务写
+  PROCESSING/RESOLVED 审计行（actor=运营者）；内核经模块本地授权端口当前读重验会话/动作码/范围。
+  无 assign/SLA/时效提醒（CCR 待裁）；RESOLVED 后无后续迁移路由。
+- 内容脱敏存储口径：SSOT 无反馈内容条款（全文 0 命中）→ 原文存储+owner-scoped 读+列表不回传
+  contact；**v0.2 运营处置读=用户裁决放行（工单内容运营侧展示原样）**，日志脱敏沿既有。
+- Schema：`feedback_ticket`（v0.2 增 reply/reply_operator_id/replied_at 列与 ops 状态索引）/
+  `feedback_ticket_attachment`（v0.2 新表）/`feedback_ticket_event`/`feedback_command_idempotency`
+  （67号 Schema v0.2）。
 
 ---
 

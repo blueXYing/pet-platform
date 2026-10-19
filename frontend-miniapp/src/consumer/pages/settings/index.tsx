@@ -3,6 +3,7 @@ import Taro, { useRouter } from '@tarojs/taro'
 import { useEffect, useState, type CSSProperties } from 'react'
 import { consumerApi } from '../../../shared/consumer-runtime'
 import { RealProfileRepository } from '../../api/repositories'
+import { RealSettingsRepository } from '../../settings/repository'
 import backIcon from '../../assets/profile/back.png'
 import './index.css'
 
@@ -46,12 +47,17 @@ export default function SettingsPage() {
   } as CSSProperties
   // 手机号脱敏展示（既有 /c/profile 只读投影；失败软降级为「未绑定」占位，不阻塞枢纽页）。
   const [phoneMasked, setPhoneMasked] = useState(preview ? '138****5678' : '…')
+  // v0.2 冷静期提示（"登录后提示可撤销"的枢纽落点）：注销申请中时入口行展示「申请中」徽标。
+  const [deletionPending, setDeletionPending] = useState(preview)
   useEffect(() => {
     if (preview) return
     let alive = true
     void new RealProfileRepository(consumerApi).load()
       .then(profile => { if (alive) setPhoneMasked(profile.phoneMasked || '未绑定') })
       .catch(() => { if (alive) setPhoneMasked('未绑定') })
+    void new RealSettingsRepository(consumerApi).deletionStatus()
+      .then(status => { if (alive) setDeletionPending(status.status === 'PENDING') })
+      .catch(() => { if (alive) setDeletionPending(false) })
     return () => { alive = false }
   }, [preview])
   const [cache, setCache] = useState<CacheStat>(() => readCacheStat())
@@ -153,7 +159,7 @@ export default function SettingsPage() {
         退出登录
       </Button>
       <Button id='st-deletion' className='st-deletion' hoverClass='none' onClick={() => open(SETTINGS_DELETION_URL)}>
-        注销账号
+        注销账号{deletionPending ? '（申请中，点入可撤销）' : ''}
       </Button>
       {notice !== '' && <Text id='st-notice' className='st-notice'>{notice}</Text>}
     </View>

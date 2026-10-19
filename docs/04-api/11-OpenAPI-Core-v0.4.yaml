@@ -15202,6 +15202,209 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/AdminMerchantDisableEnvelope'
+  /admin/feedback-tickets:
+    get:
+      tags:
+      - Ops-Feedback
+      operationId: adminListFeedbackTickets
+      summary: 反馈工单运营列表（状态/类型筛选）
+      x-implementation-status: IMPLEMENTED_DEFAULT_OFF
+      x-default-enabled: false
+      x-contract: 67-Feedback-Ticket-Contract-v0.1.md
+      x-assembly-switch: pet.feedback.http.enabled
+      description: 67号 §5 v0.2 运营处置面（矩阵行 18 complaint.read；另需 pet.auth.admin.enabled + pet.admin.ops.http.enabled 装配，ALL 范围）。status 仅 PENDING/PROCESSING/RESOLVED（WAITING_SUPPLEMENT/CLOSED 维持不可达）；type 四值；固定排序 created_at DESC, id DESC。
+      security:
+      - bearerAuth: []
+      x-required-actions: [complaint.read]
+      parameters:
+      - name: page
+        in: query
+        required: false
+        schema: {type: integer, minimum: 1, maximum: 10000, default: 1}
+      - name: pageSize
+        in: query
+        required: false
+        schema: {type: integer, minimum: 1, maximum: 50, default: 20}
+      - name: status
+        in: query
+        required: false
+        schema: {type: string, enum: [PENDING, PROCESSING, RESOLVED]}
+      - name: type
+        in: query
+        required: false
+        schema: {type: string, enum: [FEATURE_SUGGESTION, BUG_REPORT, SERVICE_COMPLAINT, OTHER]}
+      responses:
+        '200':
+          description: 全部工单分页（摘要不回传联系方式）
+          headers:
+            Cache-Control:
+              schema: {type: string, enum: [no-store]}
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FeedbackOpsPageEnvelope'
+        '400': {$ref: '#/components/responses/BadRequest'}
+        '401': {$ref: '#/components/responses/Unauthorized'}
+        '403': {$ref: '#/components/responses/Forbidden'}
+        '503': {$ref: '#/components/responses/DependencyUnavailable'}
+      x-route-party: OPS
+      x-audience: ADMIN_WEB
+  /admin/feedback-tickets/{ticketId}:
+    get:
+      tags:
+      - Ops-Feedback
+      operationId: adminGetFeedbackTicket
+      summary: 反馈工单运营详情（原文+联系方式+附件+时间线）
+      x-implementation-status: IMPLEMENTED_DEFAULT_OFF
+      x-default-enabled: false
+      x-contract: 67-Feedback-Ticket-Contract-v0.1.md
+      x-assembly-switch: pet.feedback.http.enabled
+      description: 67号 §5 v0.2（complaint.read）。工单内容/联系方式运营侧展示原样（脱敏裁决口径），附件以 31号 assetId 列表承载，事件时间线含 SUBMITTED/PROCESSING/RESOLVED。未知工单 404 防枚举。
+      security:
+      - bearerAuth: []
+      x-required-actions: [complaint.read]
+      parameters:
+      - name: ticketId
+        in: path
+        required: true
+        schema: {$ref: '#/components/schemas/PublicId'}
+      responses:
+        '200':
+          description: 工单全投影
+          headers:
+            Cache-Control:
+              schema: {type: string, enum: [no-store]}
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FeedbackOpsDetailEnvelope'
+        '400': {$ref: '#/components/responses/BadRequest'}
+        '401': {$ref: '#/components/responses/Unauthorized'}
+        '403': {$ref: '#/components/responses/Forbidden'}
+        '404': {$ref: '#/components/responses/NotFound'}
+        '503': {$ref: '#/components/responses/DependencyUnavailable'}
+      x-route-party: OPS
+      x-audience: ADMIN_WEB
+  /admin/feedback-tickets/{ticketId}/process:
+    post:
+      tags:
+      - Ops-Feedback
+      operationId: adminProcessFeedbackTicket
+      summary: 受理工单（PENDING→PROCESSING，幂等）
+      x-implementation-status: IMPLEMENTED_DEFAULT_OFF
+      x-default-enabled: false
+      x-contract: 67-Feedback-Ticket-Contract-v0.1.md
+      x-assembly-switch: pet.feedback.http.enabled
+      description: 67号 §5 v0.2（complaint.handle）。终结性 X-Request-Id 幂等（namespace feedback.process，scope OPS_ALL）；乐观锁 CAS，非 PENDING 409；同事务写 PROCESSING 审计行（actor=运营者）。
+      security:
+      - bearerAuth: []
+      x-required-actions: [complaint.handle]
+      parameters:
+      - $ref: '#/components/parameters/RequestId'
+      - name: ticketId
+        in: path
+        required: true
+        schema: {$ref: '#/components/schemas/PublicId'}
+      responses:
+        '200':
+          description: 状态迁移回执
+          headers:
+            Cache-Control:
+              schema: {type: string, enum: [no-store]}
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FeedbackOpsTransitionEnvelope'
+        '400': {$ref: '#/components/responses/BadRequest'}
+        '401': {$ref: '#/components/responses/Unauthorized'}
+        '403': {$ref: '#/components/responses/Forbidden'}
+        '404': {$ref: '#/components/responses/NotFound'}
+        '409': {$ref: '#/components/responses/Conflict'}
+        '503': {$ref: '#/components/responses/DependencyUnavailable'}
+      x-route-party: OPS
+      x-audience: ADMIN_WEB
+  /admin/feedback-tickets/{ticketId}/resolve:
+    post:
+      tags:
+      - Ops-Feedback
+      operationId: adminResolveFeedbackTicket
+      summary: 办结工单（PROCESSING→RESOLVED，回复≤1000 码点，幂等）
+      x-implementation-status: IMPLEMENTED_DEFAULT_OFF
+      x-default-enabled: false
+      x-contract: 67-Feedback-Ticket-Contract-v0.1.md
+      x-assembly-switch: pet.feedback.http.enabled
+      description: 67号 §5 v0.2（complaint.decide）。终结性 X-Request-Id 幂等（namespace feedback.resolve）；reply 必填 1..1000 码点，落工单行并在 C 端详情可见；非 PROCESSING 409；同事务写 RESOLVED 审计行。
+      security:
+      - bearerAuth: []
+      x-required-actions: [complaint.decide]
+      parameters:
+      - $ref: '#/components/parameters/RequestId'
+      - name: ticketId
+        in: path
+        required: true
+        schema: {$ref: '#/components/schemas/PublicId'}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/FeedbackOpsResolveRequest'
+      responses:
+        '200':
+          description: 状态迁移回执（status=RESOLVED）
+          headers:
+            Cache-Control:
+              schema: {type: string, enum: [no-store]}
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FeedbackOpsTransitionEnvelope'
+        '400': {$ref: '#/components/responses/BadRequest'}
+        '401': {$ref: '#/components/responses/Unauthorized'}
+        '403': {$ref: '#/components/responses/Forbidden'}
+        '404': {$ref: '#/components/responses/NotFound'}
+        '409': {$ref: '#/components/responses/Conflict'}
+        '503': {$ref: '#/components/responses/DependencyUnavailable'}
+      x-route-party: OPS
+      x-audience: ADMIN_WEB
+  /admin/encyclopedia/export:
+    get:
+      tags:
+      - Ops-Encyclopedia
+      operationId: adminExportOpsEncyclopedia
+      summary: 百科分类+品种清单 CSV 导出（有界 1MB）
+      x-implementation-status: IMPLEMENTED_DEFAULT_OFF
+      x-default-enabled: false
+      x-contract: 65-Admin-Ops-Console-Contract-v0.1.md
+      x-assembly-switch: pet.admin.ops.http.enabled
+      description: 65号 §3 v0.4 百科节（encyclopedia.read；用户裁决 2026-10-19"继续扩展CCR"）。只读字典数据双段 CSV（分类含计数 + 品种清单卡字段，富文本列不入导出）；内核有界生成 ≤1MB，超限 413 ENCYCLOPEDIA_EXPORT_TOO_LARGE（任何响应体提交前失败关闭）。
+      security:
+      - bearerAuth: []
+      x-required-actions: [encyclopedia.read]
+      parameters: []
+      responses:
+        '200':
+          description: CSV 文档（UTF-8，RFC 4180，双段注释头）
+          headers:
+            Cache-Control:
+              schema: {type: string, enum: [no-store]}
+            Content-Disposition:
+              schema: {type: string, minLength: 1}
+          content:
+            text/csv:
+              schema: {type: string}
+        '400': {$ref: '#/components/responses/BadRequest'}
+        '401': {$ref: '#/components/responses/Unauthorized'}
+        '403': {$ref: '#/components/responses/Forbidden'}
+        '413':
+          description: 导出内容超过 1MB 上限
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+        '503': {$ref: '#/components/responses/DependencyUnavailable'}
+      x-route-party: OPS
+      x-audience: ADMIN_WEB
   /admin/encyclopedia/categories:
     get:
       tags:
@@ -15242,6 +15445,44 @@ paths:
               schema:
                 $ref: '#/components/schemas/AdminOpsCategoryPageEnvelope'
 
+    post:
+      tags:
+      - Ops-Encyclopedia
+      operationId: adminCreateOpsEncyclopediaCategory
+      summary: 新增分类（字典开放，born ENABLED，幂等）
+      x-implementation-status: IMPLEMENTED_DEFAULT_OFF
+      x-default-enabled: false
+      x-contract: 65-Admin-Ops-Console-Contract-v0.1.md
+      x-assembly-switch: pet.admin.ops.http.enabled
+      description: 65号 §3 v0.4 百科节（encyclopedia.manage；用户裁决 2026-10-19"继续扩展CCR"）。categoryCode 词法 2..16（A-Z 数字下划线），重复 409；categoryName 2..10 码点；sortNo 0..999；新增落 ENABLED version 0。终结性 X-Request-Id 幂等（14号 binding）。
+      security:
+      - bearerAuth: []
+      x-required-actions: [encyclopedia.manage]
+      parameters:
+      - $ref: '#/components/parameters/RequestId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AdminOpsCategoryCreate'
+      responses:
+        '200':
+          description: 分类新增回执
+          headers:
+            Cache-Control:
+              schema: {type: string, enum: [no-store]}
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AdminOpsCategoryMutationEnvelope'
+        '400': {$ref: '#/components/responses/BadRequest'}
+        '401': {$ref: '#/components/responses/Unauthorized'}
+        '403': {$ref: '#/components/responses/Forbidden'}
+        '409': {$ref: '#/components/responses/Conflict'}
+        '503': {$ref: '#/components/responses/DependencyUnavailable'}
+      x-route-party: OPS
+      x-audience: ADMIN_WEB
   /admin/encyclopedia/categories/{categoryCode}:
     put:
       tags:
@@ -15398,7 +15639,7 @@ paths:
       - name: categoryCode
         in: query
         required: false
-        schema: {type: string, enum: [DOG, CAT, REPTILE, BIRD, INSECT]}
+        schema: {type: string, pattern: '^[A-Z][A-Z0-9_]{1,15}$'}
       - name: keyword
         in: query
         required: false
@@ -15419,6 +15660,45 @@ paths:
               schema:
                 $ref: '#/components/schemas/AdminOpsBreedPageEnvelope'
 
+    post:
+      tags:
+      - Ops-Encyclopedia
+      operationId: adminCreateOpsEncyclopediaBreed
+      summary: 新增品种（born OFFLINE 先维护再发布，幂等）
+      x-implementation-status: IMPLEMENTED_DEFAULT_OFF
+      x-default-enabled: false
+      x-contract: 65-Admin-Ops-Console-Contract-v0.1.md
+      x-assembly-switch: pet.admin.ops.http.enabled
+      description: 65号 §3 v0.4 百科节（breed.manage；用户裁决 2026-10-19）。宿主分类必须存在且 ENABLED（否则 404/409）；name 1..30 码点同类别唯一（重复 409）；summary 1..120；封面 URL 维护（无上传通道，既有口径）；新增落 OFFLINE version 0（富文本列本面不可写，既有披露）。终结性 X-Request-Id 幂等。
+      security:
+      - bearerAuth: []
+      x-required-actions: [breed.manage]
+      parameters:
+      - $ref: '#/components/parameters/RequestId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AdminOpsBreedCreate'
+      responses:
+        '200':
+          description: 品种新增回执
+          headers:
+            Cache-Control:
+              schema: {type: string, enum: [no-store]}
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AdminOpsBreedMutationEnvelope'
+        '400': {$ref: '#/components/responses/BadRequest'}
+        '401': {$ref: '#/components/responses/Unauthorized'}
+        '403': {$ref: '#/components/responses/Forbidden'}
+        '404': {$ref: '#/components/responses/NotFound'}
+        '409': {$ref: '#/components/responses/Conflict'}
+        '503': {$ref: '#/components/responses/DependencyUnavailable'}
+      x-route-party: OPS
+      x-audience: ADMIN_WEB
   /admin/encyclopedia/breeds/{breedId}:
     get:
       tags:
@@ -16177,7 +16457,7 @@ paths:
       x-default-enabled: false
       x-contract: 66-User-Settings-Deletion-Contract-v0.1.md
       x-assembly-switch: pet.usersettings.http.enabled
-      description: 66号 §4（CCR-USR-DELETION-001 最小实现：同步注销，无冷静期/申请中态/清理 AsyncTask）。严格 JSON {acknowledged:true}；前置校验在行锁事务内重跑（阻塞 409 DELETION_BLOCKED，明细由 deletion-precheck 承载）；同事务追加 append-only user_deletion_request 审计行并将 user_account.status 置 CANCELED（SQL06 §1 既有词表）。注销即生效：既有 resolveSession 对 CANCELED 立即 401、登录链拒绝（零新代码）。同 requestId 同参重放返回首回执（200），异参 409 IDEMPOTENCY_KEY_CONFLICT。
+      description: 66号 §4 v0.2（CCR-USR-DELETION-001 冷静期，用户裁决 2026-10-19"继续扩展CCR"）。严格 JSON {acknowledged:true}；前置校验在行锁事务内重跑（阻塞 409 DELETION_BLOCKED）；通过则开冷静期——user_deletion_request 落 PENDING 行（effective_at=now+可配天数默认7，1..30 有界）并同事务提交 durable 任务 ACCOUNT_DELETION_EXEC（availableAt=effective_at）；冷静期内账号恒 ACTIVE（登录/使用/撤销不受限），到期由 durable 任务在行锁事务内重跑前置校验后执行 user_account CANCELED 化（阻塞/FROZEN 自动作废请求，不产生部分注销）。回执 {userId,status:"PENDING",requestedAt,effectiveAt,cooldownDays}。同 requestId 同参重放返回首回执（200），异参 409 IDEMPOTENCY_KEY_CONFLICT。
       security:
       - bearerAuth: []
       parameters:
@@ -16212,6 +16492,79 @@ paths:
         '401':
           $ref: '#/components/responses/DeletionHttpError'
         '403':
+          $ref: '#/components/responses/DeletionHttpError'
+        '409':
+          $ref: '#/components/responses/DeletionHttpError'
+        '500':
+          $ref: '#/components/responses/DeletionHttpError'
+        '503':
+          $ref: '#/components/responses/DeletionHttpError'
+      x-route-party: USER
+      x-audience: MINIAPP
+  /c/account/deletion-status:
+    get:
+      tags:
+      - C-Settings
+      operationId: cGetDeletionStatus
+      summary: 注销冷静期状态（"申请中可撤销"提示数据源）
+      x-implementation-status: IMPLEMENTED_DEFAULT_OFF
+      x-default-enabled: false
+      x-contract: 66-User-Settings-Deletion-Contract-v0.1.md
+      x-assembly-switch: pet.usersettings.http.enabled
+      description: 66号 §4.1 v0.2。NONE 或 PENDING{requestedAt,effectiveAt,cooldownDays}；设置枢纽/注销页横幅按此渲染"申请中，可撤销"。
+      security:
+      - bearerAuth: []
+      responses:
+        '200':
+          description: 冷静期状态投影
+          headers:
+            Cache-Control:
+              schema: {type: string, enum: [no-store]}
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DeletionStatusEnvelope'
+        '401':
+          $ref: '#/components/responses/DeletionHttpError'
+      x-route-party: USER
+      x-audience: MINIAPP
+  /c/account/deletion-cancel:
+    post:
+      tags:
+      - C-Settings
+      operationId: cCancelDeletion
+      summary: 撤销注销申请（冷静期内 CAS，201/200）
+      x-implementation-status: IMPLEMENTED_DEFAULT_OFF
+      x-default-enabled: false
+      x-contract: 66-User-Settings-Deletion-Contract-v0.1.md
+      x-assembly-switch: pet.usersettings.http.enabled
+      description: 66号 §4.2 v0.2（namespace account.deletion.cancel）。CAS PENDING→CANCELED（账号从未离开 ACTIVE，无账号状态迁移）；无 PENDING 申请 409 COMMON_CONFLICT。同 requestId 同参重放返回首回执（200）。
+      security:
+      - bearerAuth: []
+      parameters:
+      - $ref: '#/components/parameters/RequestId'
+      responses:
+        '200':
+          description: 同 requestId 幂等重放首回执
+          headers:
+            Cache-Control:
+              schema: {type: string, enum: [no-store]}
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DeletionCancelEnvelope'
+        '201':
+          description: 撤销成功
+          headers:
+            Cache-Control:
+              schema: {type: string, enum: [no-store]}
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DeletionCancelEnvelope'
+        '400':
+          $ref: '#/components/responses/DeletionHttpError'
+        '401':
           $ref: '#/components/responses/DeletionHttpError'
         '409':
           $ref: '#/components/responses/DeletionHttpError'
@@ -16270,7 +16623,7 @@ paths:
       x-default-enabled: false
       x-contract: 67-Feedback-Ticket-Contract-v0.1.md
       x-assembly-switch: pet.feedback.http.enabled
-      description: 67号 §3（PRD 5.1.28 投诉类；CCR-CS-FEEDBACK-001 最小实现：文本工单无附件、状态词表冻结五值且 V1 恒 PENDING）。严格 JSON：type 四值词表（FEEDBACK_TYPE_INVALID 400）、contact 选填 1..64、content 必填 1..500 码点；写前置 user_account.status=ACTIVE（403 USER_FROZEN）；单用户每分钟 5 单（429 COMMON_RATE_LIMITED）。同 requestId 同参重放首回执（200），异参 409。
+      description: 67号 §3（PRD 5.1.28 投诉类；v0.2：附件 0..6 张走 31号 FEEDBACK_ATTACHMENT 管线，运营处置面开放 PENDING→PROCESSING→RESOLVED）。严格 JSON：type 四值词表（FEEDBACK_TYPE_INVALID 400）、contact 选填 1..64、content 必填 1..500 码点；写前置 user_account.status=ACTIVE（403 USER_FROZEN）；单用户每分钟 5 单（429 COMMON_RATE_LIMITED）。同 requestId 同参重放首回执（200），异参 409。
       security:
       - bearerAuth: []
       parameters:
@@ -16751,6 +17104,92 @@ components:
           type: boolean
           enum:
           - true
+    DeletionStatusEnvelope:
+      type: object
+      additionalProperties: false
+      required:
+      - success
+      - code
+      - message
+      - data
+      - traceId
+      properties:
+        success:
+          type: boolean
+          enum:
+          - true
+        code:
+          type: string
+          enum:
+          - SUCCESS
+        message:
+          type: string
+          minLength: 1
+        data:
+          type: object
+          additionalProperties: false
+          required:
+          - status
+          properties:
+            status:
+              type: string
+              enum:
+              - NONE
+              - PENDING
+            requestedAt:
+              type: string
+              minLength: 1
+            effectiveAt:
+              type: string
+              minLength: 1
+            cooldownDays:
+              type: integer
+              minimum: 1
+              maximum: 30
+        traceId:
+          type: string
+          minLength: 1
+    DeletionCancelEnvelope:
+      type: object
+      additionalProperties: false
+      required:
+      - success
+      - code
+      - message
+      - data
+      - traceId
+      properties:
+        success:
+          type: boolean
+          enum:
+          - true
+        code:
+          type: string
+          enum:
+          - SUCCESS
+        message:
+          type: string
+          minLength: 1
+        data:
+          type: object
+          additionalProperties: false
+          required:
+          - userId
+          - status
+          - canceledAt
+          properties:
+            userId:
+              $ref: '#/components/schemas/PublicId'
+            status:
+              type: string
+              enum:
+              - CANCELED
+            canceledAt:
+              type: string
+              minLength: 1
+        traceId:
+          type: string
+          minLength: 1
     DeletionReceiptEnvelope:
       type: object
       additionalProperties: false
@@ -16778,17 +17217,26 @@ components:
           required:
           - userId
           - status
-          - deletedAt
+          - requestedAt
+          - effectiveAt
+          - cooldownDays
           properties:
             userId:
               $ref: '#/components/schemas/PublicId'
             status:
               type: string
               enum:
-              - CANCELED
-            deletedAt:
+              - PENDING
+            requestedAt:
               type: string
               minLength: 1
+            effectiveAt:
+              type: string
+              minLength: 1
+            cooldownDays:
+              type: integer
+              minimum: 1
+              maximum: 30
         traceId:
           type: string
           minLength: 1
@@ -16814,6 +17262,10 @@ components:
           type: string
           minLength: 1
           maxLength: 500
+        attachmentAssetIds:
+          type: array
+          maxItems: 6
+          items: {$ref: '#/components/schemas/PublicId'}
     FeedbackTicketSummary:
       type: object
       additionalProperties: false
@@ -16976,6 +17428,7 @@ components:
           - contact
           - contentPreview
           - createdAt
+          - attachmentAssetIds
           - events
           - replies
           - resolution
@@ -17022,12 +17475,25 @@ components:
                     type: string
                     enum:
                     - SUBMITTED
+                    - PROCESSING
+                    - RESOLVED
                   createdAt:
                     type: string
                     minLength: 1
+            attachmentAssetIds:
+              type: array
+              maxItems: 6
+              items: {$ref: '#/components/schemas/PublicId'}
             replies:
               type: array
-              maxItems: 0
+              maxItems: 1
+              items:
+                type: object
+                additionalProperties: false
+                required: [reply, repliedAt]
+                properties:
+                  reply: {type: string, minLength: 1, maxLength: 1000}
+                  repliedAt: {type: string, minLength: 1}
             resolution:
               nullable: true
               enum:
@@ -28491,7 +28957,7 @@ components:
       additionalProperties: false
       required: [categoryCode, categoryName, status, sortOrder, breedCount, publishedBreedCount, version, createdAt, updatedAt]
       properties:
-        categoryCode: {type: string, enum: [DOG, CAT, REPTILE, BIRD, INSECT]}
+        categoryCode: {type: string, pattern: '^[A-Z][A-Z0-9_]{1,15}$'}
         categoryName: {type: string, minLength: 1, maxLength: 16}
         status: {type: string, enum: [ENABLED, DISABLED]}
         sortOrder: {type: integer, minimum: 0, maximum: 999}
@@ -28528,12 +28994,129 @@ components:
         sortOrder: {type: integer, minimum: 0, maximum: 999}
         expectedVersion: {type: string, pattern: '^[0-9]{1,20}$'}
 
+    FeedbackOpsPageEnvelope:
+      allOf:
+      - $ref: '#/components/schemas/BaseEnvelope'
+      - type: object
+        properties:
+          data:
+            $ref: '#/components/schemas/FeedbackOpsPage'
+    FeedbackOpsPage:
+      type: object
+      additionalProperties: false
+      required: [items, page, pageSize, total]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/FeedbackTicketSummary'
+        page: {type: integer, minimum: 1, maximum: 10000}
+        pageSize: {type: integer, minimum: 1, maximum: 50}
+        total: {type: integer, minimum: 0}
+    FeedbackOpsDetailEnvelope:
+      allOf:
+      - $ref: '#/components/schemas/BaseEnvelope'
+      - type: object
+        properties:
+          data:
+            $ref: '#/components/schemas/FeedbackOpsDetail'
+    FeedbackOpsDetail:
+      type: object
+      additionalProperties: false
+      required: [ticketId, userId, type, status, content, contact, contentPreview, createdAt, attachmentAssetIds, events, replies]
+      properties:
+        ticketId: {$ref: '#/components/schemas/PublicId'}
+        userId: {$ref: '#/components/schemas/PublicId'}
+        type:
+          type: string
+          enum: [FEATURE_SUGGESTION, BUG_REPORT, SERVICE_COMPLAINT, OTHER]
+        status:
+          type: string
+          enum: [PENDING, PROCESSING, WAITING_SUPPLEMENT, RESOLVED, CLOSED]
+        content: {type: string, minLength: 1, maxLength: 500}
+        contact: {type: string, nullable: true, maxLength: 64}
+        contentPreview: {type: string, minLength: 1, maxLength: 50}
+        createdAt: {type: string, minLength: 1}
+        attachmentAssetIds:
+          type: array
+          maxItems: 6
+          items: {$ref: '#/components/schemas/PublicId'}
+        events:
+          type: array
+          items:
+            type: object
+            additionalProperties: false
+            required: [action, createdAt]
+            properties:
+              action: {type: string, enum: [SUBMITTED, PROCESSING, RESOLVED]}
+              createdAt: {type: string, minLength: 1}
+        replies:
+          type: array
+          maxItems: 1
+          items:
+            type: object
+            additionalProperties: false
+            required: [reply, repliedAt]
+            properties:
+              reply: {type: string, minLength: 1, maxLength: 1000}
+              repliedAt: {type: string, minLength: 1}
+    FeedbackOpsTransitionEnvelope:
+      allOf:
+      - $ref: '#/components/schemas/BaseEnvelope'
+      - type: object
+        properties:
+          data:
+            $ref: '#/components/schemas/FeedbackOpsTransition'
+    FeedbackOpsTransition:
+      type: object
+      additionalProperties: false
+      required: [ticketId, status, version, occurredAt]
+      properties:
+        ticketId: {$ref: '#/components/schemas/PublicId'}
+        status:
+          type: string
+          enum: [PROCESSING, RESOLVED]
+        version: {type: string, pattern: '^[0-9]{1,20}$'}
+        occurredAt: {type: string, format: date-time}
+    FeedbackOpsResolveRequest:
+      type: object
+      additionalProperties: false
+      required: [reply]
+      properties:
+        reply: {type: string, minLength: 1, maxLength: 1000}
+    AdminOpsCategoryCreate:
+      type: object
+      additionalProperties: false
+      required: [categoryCode, categoryName, sortOrder]
+      properties:
+        categoryCode: {type: string, pattern: '^[A-Z][A-Z0-9_]{1,15}$'}
+        categoryName: {type: string, minLength: 2, maxLength: 10}
+        sortOrder: {type: integer, minimum: 0, maximum: 999}
+    AdminOpsBreedCreate:
+      type: object
+      additionalProperties: false
+      required: [categoryCode, name, summary, coverUrl, bodyType, aliases, tags, sortOrder]
+      properties:
+        categoryCode: {type: string, pattern: '^[A-Z][A-Z0-9_]{1,15}$'}
+        name: {type: string, minLength: 1, maxLength: 30}
+        summary: {type: string, minLength: 1, maxLength: 120}
+        coverUrl: {type: string, nullable: true, maxLength: 512}
+        bodyType: {type: string, nullable: true, maxLength: 32}
+        aliases:
+          type: array
+          maxItems: 5
+          items: {type: string, minLength: 1, maxLength: 50}
+        tags:
+          type: array
+          maxItems: 10
+          items: {type: string, minLength: 1, maxLength: 30}
+        sortOrder: {type: integer, minimum: 0, maximum: 9999}
     AdminOpsCategoryMutation:
       type: object
       additionalProperties: false
       required: [categoryCode, categoryName, status, sortOrder, version, occurredAt]
       properties:
-        categoryCode: {type: string, enum: [DOG, CAT, REPTILE, BIRD, INSECT]}
+        categoryCode: {type: string, pattern: '^[A-Z][A-Z0-9_]{1,15}$'}
         categoryName: {type: string, minLength: 1, maxLength: 16}
         status: {type: string, enum: [ENABLED, DISABLED]}
         sortOrder: {type: integer, minimum: 0, maximum: 999}
@@ -28554,7 +29137,7 @@ components:
       required: [breedId, categoryCode, categoryName, name, aliases, tags, summary, coverUrl, status, sortOrder, version, updatedAt]
       properties:
         breedId: {$ref: '#/components/schemas/PublicId'}
-        categoryCode: {type: string, enum: [DOG, CAT, REPTILE, BIRD, INSECT]}
+        categoryCode: {type: string, pattern: '^[A-Z][A-Z0-9_]{1,15}$'}
         categoryName: {type: string, minLength: 1, maxLength: 16}
         name: {type: string, minLength: 1, maxLength: 30}
         aliases:

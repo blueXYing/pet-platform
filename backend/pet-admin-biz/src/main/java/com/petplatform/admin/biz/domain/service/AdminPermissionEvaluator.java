@@ -48,7 +48,12 @@ public final class AdminPermissionEvaluator {
    * of the contract-65 §4.4 void channel slice (user ruling 2026-10-16 doc 36, minimal
    * authorization): one AVAILABLE instance per terminal requestId, non-AVAILABLE states
    * rejected (CCR-CPN-VOID-001); row 14 return and the batch/risk-freeze family stay
-   * unregistered.
+   * unregistered. The three complaint codes are registered on behalf of the contract-67 v0.2
+   * feedback ops face (user ruling 2026-10-19 "继续扩展CCR", AUTH-001 matrix row 18, dotted
+   * spellings as proposed): complaint.read (list/detail), complaint.handle (the
+   * PENDING→PROCESSING transition) and complaint.decide (the PROCESSING→RESOLVED transition
+   * carrying the single ops reply). Row 18's complaint.assign stays unregistered — ticket
+   * dispatch/SLA is not in V1 (CCR-CS-FEEDBACK-001 v0.2 §5).
    */
   public static final Set<String> DEPLOYED_ACTIONS =
       Set.of("merchant.application.read", "merchant.application.decide",
@@ -63,7 +68,8 @@ public final class AdminPermissionEvaluator {
           "breed.read", "breed.manage",
           "coupon.template.read", "coupon.template.manage", "coupon.instance.read",
           "coupon.instance.grant", "coupon.instance.void",
-          "points.ledger.read", "system.parameter.read");
+          "points.ledger.read", "system.parameter.read",
+          "complaint.read", "complaint.handle", "complaint.decide");
 
   public static List<String> evaluate(
       boolean superAdmin, Collection<String> grants, Set<String> deployed) {

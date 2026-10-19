@@ -25,7 +25,20 @@ public interface AdminEncyclopediaQueryApi {
     /** Full breed detail in any status; unknown id answers COMMON_NOT_FOUND (anti-enumeration). */
     AdminBreedDetail getBreed(AdminBreedDetailQuery query);
 
+    /**
+     * v0.4 (2026-10-19 user ruling "继续扩展CCR") CSV export of the full category + breed
+     * lists (read-only dictionary data, no privacy material). The kernel generates the bytes
+     * bounded (1 MiB cap) and answers the ENCYCLOPEDIA_EXPORT_TOO_LARGE failure before any
+     * body is committed.
+     */
+    EncyclopediaExport exportAll(AdminExportQuery query);
+
     record AdminAuthorization(String sessionId, long sessionGeneration) {}
+
+    /** Bounded CSV document with its generated file name (UTC timestamp suffix). */
+    record EncyclopediaExport(String fileName, byte[] csv) {}
+
+    record AdminExportQuery(QueryContext context, AdminAuthorization authorization) {}
 
     /** All-status category row with read-side impact counters (PRD 6.10-1 统计只读). */
     record AdminCategoryRow(

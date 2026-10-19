@@ -62,13 +62,19 @@ pet:
   favtrack:
     http:
       enabled: false
-  # Contract-66 user settings hub / account-deletion C face (PRD 5.1.29; CCR-USR-DELETION-001):
-  # default OFF — the slice assembles only with pet.auth.c.enabled AND
+  # Contract-66 user settings hub / account-deletion C face (PRD 5.1.29; CCR-USR-DELETION-001
+  # v0.2 cooling period): default OFF — the slice assembles only with pet.auth.c.enabled AND
   # pet.merchant.application.enabled (the OWNER-membership surface), composing the order and
   # aftersale leaf deletion-fact ports; missing ports are assembly errors, never fallbacks.
+  # The cooling period is deployment configuration (v0.2 user ruling 2026-10-19: default 7
+  # days, bounded 1..30); the durable expiry worker below is independently opt-in (SQL13).
   usersettings:
     http:
       enabled: false
+    deletion:
+      cooldown-days: ${DELETION_COOLDOWN_DAYS:7}
+      worker:
+        enabled: ${DELETION_WORKER_ENABLED:false}
   # Contract-67 feedback-ticket C face (PRD 5.1.28 complaint class; CCR-CS-FEEDBACK-001):
   # default OFF — assembles only with pet.auth.c.enabled; the write guard consumes the
   # user-owned active-status fact port.

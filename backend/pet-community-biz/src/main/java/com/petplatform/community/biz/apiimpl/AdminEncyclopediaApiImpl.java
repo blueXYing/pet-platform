@@ -47,6 +47,24 @@ public final class AdminEncyclopediaApiImpl
     }
 
     @Override
+    public AdminEncyclopediaQueryApi.EncyclopediaExport exportAll(
+            AdminEncyclopediaQueryApi.AdminExportQuery query) {
+        return service.exportAll(query);
+    }
+
+    @Override
+    public AdminEncyclopediaCommandApi.CategoryMutation createCategory(
+            AdminEncyclopediaCommandApi.CreateCategoryCommand command) {
+        return service.createCategory(command);
+    }
+
+    @Override
+    public AdminEncyclopediaCommandApi.BreedMutation createBreed(
+            AdminEncyclopediaCommandApi.CreateBreedCommand command) {
+        return service.createBreed(command);
+    }
+
+    @Override
     public AdminEncyclopediaCommandApi.CategoryMutation updateCategory(
             AdminEncyclopediaCommandApi.UpdateCategoryCommand command) {
         return service.updateCategory(command);

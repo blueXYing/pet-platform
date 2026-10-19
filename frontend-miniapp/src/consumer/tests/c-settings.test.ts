@@ -1,8 +1,8 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
 import {
-  blockerFallbackLabels, decodeDeletionReceipt, decodePrecheck, faqGroups,
-  privacyPolicyDoc, SERVICE_HOTLINE, userAgreementDoc,
+  blockerFallbackLabels, decodeCancelReceipt, decodeDeletionReceipt, decodeDeletionStatus,
+  decodePrecheck, faqGroups, privacyPolicyDoc, SERVICE_HOTLINE, userAgreementDoc,
 } from '../settings/model'
 import {
   codePointLength, decodeCreateReceipt, decodeTicketDetail, decodeTicketPage,
@@ -29,10 +29,27 @@ test('deletion precheck decode keeps the frozen blocker catalog and blocked/len 
   assert.throws(() => decodePrecheck({ blocked: true, blockers: [] }))
 })
 
-test('deletion receipt decode only accepts the CANCELED outcome', () => {
-  const receipt = decodeDeletionReceipt({ userId: '620001', status: 'CANCELED', deletedAt: '2026-10-19T03:00:00.000Z' })
-  assert.equal(receipt.status, 'CANCELED')
-  assert.throws(() => decodeDeletionReceipt({ userId: '620001', status: 'DELETED', deletedAt: 'x' }))
+test('deletion receipt decode keeps the v0.2 cooling-period shape', () => {
+  // v0.2：注销请求落库=进入冷静期（PENDING+到期事实），账号保持 ACTIVE。
+  const receipt = decodeDeletionReceipt({
+    userId: '620001', status: 'PENDING', requestedAt: '2026-10-19T03:00:00.000Z',
+    effectiveAt: '2026-10-26T03:00:00.000Z', cooldownDays: 7,
+  })
+  assert.equal(receipt.status, 'PENDING')
+  assert.equal(receipt.cooldownDays, 7)
+  assert.throws(() => decodeDeletionReceipt({ userId: '620001', status: 'CANCELED', deletedAt: 'x' }))
+  // 冷静期状态读：NONE 或 PENDING+三事实；越界状态拒绝。
+  assert.equal(decodeDeletionStatus({ status: 'NONE' }).status, 'NONE')
+  const pending = decodeDeletionStatus({
+    status: 'PENDING', requestedAt: '2026-10-19T03:00:00.000Z',
+    effectiveAt: '2026-10-26T03:00:00.000Z', cooldownDays: 7,
+  })
+  assert.equal(pending.status, 'PENDING')
+  assert.throws(() => decodeDeletionStatus({ status: 'DONE' }))
+  // 撤销回执：仅 CANCELED。
+  const cancel = decodeCancelReceipt({ userId: '620001', status: 'CANCELED', canceledAt: '2026-10-19T04:00:00.000Z' })
+  assert.equal(cancel.status, 'CANCELED')
+  assert.throws(() => decodeCancelReceipt({ userId: '620001', status: 'PENDING', canceledAt: 'x' }))
 })
 
 test('feedback type vocabulary stays the four PRD values with stable labels', () => {
@@ -62,13 +79,41 @@ test('ticket decoders keep owner-scoped shapes and reject unexpected fields', ()
   const created = decodeCreateReceipt({ ticketId: '730001', type: 'BUG_REPORT', status: 'PENDING', createdAt: 'x' })
   assert.equal(created.ticketId, '730001')
   const detail = decodeTicketDetail({
-    ...summary, content: '全文', contact: null,
+    ...summary, content: '全文', contact: null, attachmentAssetIds: ['730100'],
     events: [{ action: 'SUBMITTED', createdAt: '2026-10-19T03:00:00.000Z' }],
     replies: [], resolution: null,
   })
   assert.equal(detail.content, '全文')
   assert.equal(detail.replies.length, 0)
-  assert.throws(() => decodeTicketDetail({ ...summary, content: '全文', contact: null, events: [], replies: [{ text: '提前出现回复' }], resolution: null }))
+  assert.deepEqual(detail.attachmentAssetIds, ['730100'])
+  // v0.2：RESOLVED 单详情可见一条运营回复（≤1 条）。
+  const resolved = decodeTicketDetail({
+    ...summary, status: 'RESOLVED', content: '全文', contact: null, attachmentAssetIds: [],
+    events: [
+      { action: 'SUBMITTED', createdAt: '2026-10-19T03:00:00.000Z' },
+      { action: 'RESOLVED', createdAt: '2026-10-19T05:00:00.000Z' },
+    ],
+    replies: [{ reply: '已修复，感谢反馈', repliedAt: '2026-10-19T05:00:00.000Z' }],
+    resolution: null,
+  })
+  assert.equal(resolved.replies[0].reply, '已修复，感谢反馈')
+  assert.throws(() => decodeTicketDetail({
+    ...summary, content: '全文', contact: null, attachmentAssetIds: [],
+    events: [], replies: [{ text: '缺 repliedAt 的回复' }], resolution: null,
+  }))
+  assert.throws(() => decodeTicketDetail({
+    ...summary, content: '全文', contact: null, attachmentAssetIds: [],
+    events: [],
+    replies: [
+      { reply: '一', repliedAt: '2026-10-19T05:00:00.000Z' },
+      { reply: '二', repliedAt: '2026-10-19T06:00:00.000Z' },
+    ],
+    resolution: null,
+  }))
+  assert.throws(() => decodeTicketDetail({
+    ...summary, content: '全文', contact: null, attachmentAssetIds: ['bad-id'],
+    events: [], replies: [], resolution: null,
+  }))
   // CLOSED 在冻结状态词表内，列表解码接受；越界状态才拒绝。
   assert.throws(() => decodeTicketPage({ items: [{ ...summary, status: 'REOPENED' }], page: 1, pageSize: 20, total: 1 }))
   assert.equal(decodeTicketPage({ items: [{ ...summary, status: 'CLOSED' }], page: 1, pageSize: 20, total: 1 }).total, 1)

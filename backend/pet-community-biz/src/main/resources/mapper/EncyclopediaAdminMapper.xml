@@ -101,6 +101,48 @@
         FOR UPDATE
     </select>
 
+    <!-- v0.4 (2026-10-19 "继续扩展CCR") category creation: born ENABLED, version 0; the
+         uk_encyclopedia_category_code unique key is the duplicate guard (kernel 409). -->
+    <insert id="insertCategory">
+        INSERT INTO encyclopedia_category
+            (id, category_code, category_name, status, sort_no, version, created_at, updated_at)
+        VALUES
+            (#{id}, #{categoryCode}, #{categoryName}, 'ENABLED', #{sortNo}, 0, #{now}, #{now})
+    </insert>
+
+    <!-- v0.4 breed creation: born OFFLINE (maintain-then-publish), version 0; the
+         uk_breed_category_name unique key is the duplicate guard (kernel 409). Rich-text
+         columns stay NULL (not writable on this face, 65号 §3 disclosure). -->
+    <insert id="insertBreed">
+        INSERT INTO encyclopedia_breed
+            (id, category_id, name, aliases, tags, summary, cover_url, body_type,
+             status, sort_no, version, created_at, updated_at)
+        VALUES
+            (#{id}, #{categoryId}, #{name},
+             #{aliases, javaType=String, jdbcType=VARCHAR},
+             #{tags, javaType=String, jdbcType=VARCHAR},
+             #{summary},
+             #{coverUrl, javaType=String, jdbcType=VARCHAR},
+             #{bodyType, javaType=String, jdbcType=VARCHAR},
+             'OFFLINE', #{sortNo}, 0, #{now}, #{now})
+    </insert>
+
+    <!-- v0.4 export: full dictionary snapshots in stable dictionary order. -->
+    <select id="selectAllCategoriesForExport" resultType="com.petplatform.community.biz.infrastructure.persistence.entity.EncyclopediaAdminEntities$AdminCategoryEntity">
+        SELECT id,category_code,category_name,status,sort_no,version,created_at,updated_at
+        FROM encyclopedia_category
+        ORDER BY sort_no ASC, id ASC
+    </select>
+
+    <select id="selectAllBreedsForExport" resultType="com.petplatform.community.biz.infrastructure.persistence.entity.EncyclopediaAdminEntities$AdminBreedEntity">
+        SELECT b.id,b.category_id,b.name,b.aliases,b.tags,b.summary,b.cover_url,b.body_type,
+               b.status,b.sort_no,b.version,b.created_at,b.updated_at,
+               c.category_code,c.category_name
+        FROM encyclopedia_breed b
+        JOIN encyclopedia_category c ON c.id=b.category_id
+        ORDER BY c.sort_no ASC, c.id ASC, b.sort_no ASC, b.id ASC
+    </select>
+
     <insert id="insertBinding">
         INSERT INTO command_idempotency(id, request_key, canonical_version, params_sha256,
                                         params_canonical, status, receipt_json, created_at)

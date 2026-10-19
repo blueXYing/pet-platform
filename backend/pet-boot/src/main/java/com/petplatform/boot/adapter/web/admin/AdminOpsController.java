@@ -19,6 +19,8 @@ import com.petplatform.common.CommandContext;
 import com.petplatform.common.OperatorType;
 import com.petplatform.common.QueryContext;
 import com.petplatform.community.api.command.AdminEncyclopediaCommandApi.BreedMutation;
+import com.petplatform.community.api.command.AdminEncyclopediaCommandApi.CreateBreedCommand;
+import com.petplatform.community.api.command.AdminEncyclopediaCommandApi.CreateCategoryCommand;
 import com.petplatform.community.api.command.AdminEncyclopediaCommandApi.BreedStatusCommand;
 import com.petplatform.community.api.command.AdminEncyclopediaCommandApi.CategoryMutation;
 import com.petplatform.community.api.command.AdminEncyclopediaCommandApi.CategoryStatusCommand;
@@ -29,6 +31,7 @@ import com.petplatform.community.api.command.AdminEncyclopediaCommandApi;
 import com.petplatform.community.api.query.AdminEncyclopediaQueryApi.AdminAuthorization;
 import com.petplatform.community.api.query.AdminEncyclopediaQueryApi.AdminBreedDetailQuery;
 import com.petplatform.community.api.query.AdminEncyclopediaQueryApi.AdminBreedListQuery;
+import com.petplatform.community.api.query.AdminEncyclopediaQueryApi.AdminExportQuery;
 import com.petplatform.community.api.query.AdminEncyclopediaQueryApi.AdminCategoryListQuery;
 import com.petplatform.coupon.api.command.AdminCouponCommandApi.CreateTemplateCommand;
 import com.petplatform.coupon.api.command.AdminCouponCommandApi.TemplateStatusCommand;
@@ -235,13 +238,13 @@ public class AdminOpsController {
       @PathVariable String categoryCode, @RequestBody String raw, HttpServletRequest req) {
     noQuery(req);
     AdminSessionView session = session(req, "encyclopedia.manage");
-    JsonNode body = strictObject(raw, "categoryName", "sortNo", "expectedVersion");
+    JsonNode body = strictObject(raw, "categoryName", "sortOrder", "expectedVersion");
     var receipt =
         encyclopediaCommands.updateCategory(
             new UpdateCategoryCommand(
                 categoryText(categoryCode),
                 text(body, "categoryName"),
-                intField(body, "sortNo"),
+                intField(body, "sortOrder"),
                 longField(body, "expectedVersion"),
                 command(req, session),
                 encyclopediaCommandAuthorization(session)));
@@ -315,7 +318,7 @@ public class AdminOpsController {
     noQuery(req);
     AdminSessionView session = session(req, "breed.manage");
     JsonNode body =
-        strictObject(raw, "summary", "coverUrl", "bodyType", "aliases", "tags", "sortNo",
+        strictObject(raw, "summary", "coverUrl", "bodyType", "aliases", "tags", "sortOrder",
             "expectedVersion");
     var receipt =
         encyclopediaCommands.updateBreed(
@@ -326,7 +329,7 @@ public class AdminOpsController {
                 optionalText(body, "bodyType"),
                 stringArray(body, "aliases"),
                 stringArray(body, "tags"),
-                intField(body, "sortNo"),
+                intField(body, "sortOrder"),
                 longField(body, "expectedVersion"),
                 command(req, session),
                 encyclopediaCommandAuthorization(session)));
@@ -366,6 +369,61 @@ public class AdminOpsController {
                 id(breedId), longField(body, "expectedVersion"),
                 command(req, session), encyclopediaCommandAuthorization(session)));
     return ok(breedMutationFields(receipt), req);
+  }
+
+  // --------------------------------------------- encyclopedia v0.4 create + export
+
+  @PostMapping(value = "/api/v1/admin/encyclopedia/categories", consumes = MediaType.APPLICATION_JSON_VALUE)
+  Map<String, Object> createCategory(@RequestBody String raw, HttpServletRequest req) {
+    noQuery(req);
+    AdminSessionView session = session(req, "encyclopedia.manage");
+    JsonNode body = strictObject(raw, "categoryCode", "categoryName", "sortOrder");
+    var receipt =
+        encyclopediaCommands.createCategory(
+            new CreateCategoryCommand(
+                categoryText(text(body, "categoryCode")),
+                text(body, "categoryName"),
+                intField(body, "sortOrder"),
+                command(req, session),
+                encyclopediaCommandAuthorization(session)));
+    return ok(categoryFields(receipt), req);
+  }
+
+  @PostMapping(value = "/api/v1/admin/encyclopedia/breeds", consumes = MediaType.APPLICATION_JSON_VALUE)
+  Map<String, Object> createBreed(@RequestBody String raw, HttpServletRequest req) {
+    noQuery(req);
+    AdminSessionView session = session(req, "breed.manage");
+    JsonNode body =
+        strictObject(raw, "categoryCode", "name", "summary", "coverUrl", "bodyType",
+            "aliases", "tags", "sortOrder");
+    var receipt =
+        encyclopediaCommands.createBreed(
+            new CreateBreedCommand(
+                categoryText(text(body, "categoryCode")),
+                text(body, "name"),
+                text(body, "summary"),
+                optionalText(body, "coverUrl"),
+                optionalText(body, "bodyType"),
+                stringArray(body, "aliases"),
+                stringArray(body, "tags"),
+                intField(body, "sortOrder"),
+                command(req, session),
+                encyclopediaCommandAuthorization(session)));
+    return ok(breedMutationFields(receipt), req);
+  }
+
+  /** v0.4 bounded CSV export (1 MiB cap, kernel fail-closed 413 before any body). */
+  @GetMapping(value = "/api/v1/admin/encyclopedia/export", produces = "text/csv")
+  ResponseEntity<byte[]> exportEncyclopedia(HttpServletRequest req) {
+    onlyParameters(req);
+    AdminSessionView session = session(req, "encyclopedia.read");
+    var export = encyclopediaQuery.exportAll(
+        new AdminExportQuery(query(req, session), authorization(session)));
+    return ResponseEntity.ok()
+        .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + export.fileName() + "\"")
+        .header(HttpHeaders.CACHE_CONTROL, "no-store")
+        .contentType(org.springframework.http.MediaType.parseMediaType("text/csv;charset=UTF-8"))
+        .body(export.csv());
   }
 
   // ------------------------------------------------------------------- coupon
@@ -665,7 +723,7 @@ public class AdminOpsController {
     data.put("summary", row.summary());
     data.put("coverUrl", row.coverUrl());
     data.put("status", row.status());
-    data.put("sortNo", row.sortNo());
+    data.put("sortOrder", row.sortNo());
     data.put("version", Long.toString(row.version()));
     data.put("updatedAt", time(row.updatedAt()));
     return data;

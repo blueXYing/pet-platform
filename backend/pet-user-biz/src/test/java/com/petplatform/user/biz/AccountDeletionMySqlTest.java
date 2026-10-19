@@ -2,6 +2,8 @@ package com.petplatform.user.biz;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -32,12 +34,14 @@ import org.springframework.jdbc.datasource.DriverManagerDataSource;
 import org.springframework.jdbc.datasource.init.ScriptUtils;
 
 /**
- * Contract-66 deletion kernel over isolated real MySQL (PRD 5.1.29; CCR-USR-DELETION-001):
- * the precheck composes the four PRD blockers in catalog order, the write is the
- * supplement-23 idempotent command appending the immutable audit row and flipping
- * user_account.status to CANCELED in one transaction, blocked attempts write nothing, FROZEN
- * cannot delete, a concurrent second requestId finds the account already CANCELED, and the
- * audit table never grows a second row for the same account.
+ * Contract-66 deletion kernel over isolated real MySQL (PRD 5.1.29; CCR-USR-DELETION-001
+ * v0.2 cooling period): the precheck composes the four PRD blockers in catalog order; the
+ * write opens the cooling period — request row PENDING with effective_at = created + 7d
+ * (bounded config), the durable ACCOUNT_DELETION_EXEC task enqueued at effective_at inside
+ * the same transaction, and the account stays ACTIVE (login keeps working); revocation CASes
+ * PENDING → CANCELED; the due execution re-proves precheck/FROZEN then flips the account to
+ * CANCELED and completes the row to ACCEPTED, or auto-cancels with the blocker snapshot —
+ * never a partial deletion.
  */
 class AccountDeletionMySqlTest {
 
@@ -126,7 +130,7 @@ class AccountDeletionMySqlTest {
     }
 
     @Test
-    void deletionWritesAuditRowAndFlipsStatusThenReplaysReceipt() throws Exception {
+    void deletionOpensCoolingPeriodKeepsAccountActiveAndReplays() throws Exception {
         try (Database db = new Database()) {
             db.seedUser(USER, "13800002002", "ACTIVE");
             FakeFacts facts = new FakeFacts(List.of());
@@ -135,37 +139,182 @@ class AccountDeletionMySqlTest {
 
             var outcome = service.deleteAccount(command(USER, requestId));
             assertFalse(outcome.replayed());
-            assertEquals("CANCELED", outcome.receipt().status());
+            assertEquals("PENDING", outcome.receipt().status());
             assertEquals(Long.toString(USER), outcome.receipt().userId());
-            assertEquals("CANCELED", db.jdbc.queryForObject(
+            assertEquals(7, outcome.receipt().cooldownDays());
+            assertNotNull(outcome.receipt().effectiveAt());
+            // The account stays ACTIVE throughout the cooling window (login keeps working).
+            assertEquals("ACTIVE", db.jdbc.queryForObject(
                     "SELECT status FROM user_account WHERE id=?", String.class, USER));
+            // Exactly one PENDING request row with the cooldown facts.
             assertEquals(1, db.jdbc.queryForObject(
                     "SELECT COUNT(*) FROM user_deletion_request WHERE user_id=?", Integer.class, USER));
-            assertEquals("ACCEPTED", db.jdbc.queryForObject(
-                    "SELECT outcome FROM user_deletion_request WHERE user_id=?", String.class, USER));
+            assertEquals("PENDING", db.jdbc.queryForObject(
+                    "SELECT status FROM user_deletion_request WHERE user_id=?", String.class, USER));
             assertEquals(requestId, db.jdbc.queryForObject(
                     "SELECT request_id FROM user_deletion_request WHERE user_id=?", String.class, USER));
+            assertEquals(7, (int) db.jdbc.queryForObject(
+                    "SELECT cooldown_days FROM user_deletion_request WHERE user_id=?", Integer.class, USER));
+            // effective_at = created_at + 7 days (UTC millisecond facts; minute-tight window —
+            // the service clock and the DB clock may skew by a few milliseconds).
+            var window = db.jdbc.queryForMap(
+                    "SELECT TIMESTAMPDIFF(MINUTE, created_at, effective_at) AS minutes"
+                    + " FROM user_deletion_request WHERE user_id=?", USER);
+            long minutes = ((Number) window.get("minutes")).longValue();
+            assertTrue(minutes <= 7 * 24 * 60 && minutes > 7 * 24 * 60 - 2,
+                    "cooldown window drift: " + minutes);
+            // The durable expiry task is enqueued at effective_at in the same commit.
+            assertEquals(1, db.jdbc.queryForObject(
+                    "SELECT COUNT(*) FROM async_task WHERE task_type='ACCOUNT_DELETION_EXEC'"
+                    + " AND task_key LIKE 'ACCOUNT_DELETION_EXEC:%'", Integer.class));
+            assertEquals(1, db.jdbc.queryForObject(
+                    "SELECT COUNT(*) FROM async_task t JOIN user_deletion_request r"
+                    + " ON t.task_key = CONCAT('ACCOUNT_DELETION_EXEC:', r.id)"
+                    + " WHERE r.user_id=? AND t.execute_at = r.effective_at",
+                    Integer.class, USER));
 
-            // Same-key replay returns the first receipt (no second audit row, idempotent 200).
+            // Status read mirrors the cooling period.
+            var status = service.deletionStatus(Long.toString(USER));
+            assertEquals("PENDING", status.status());
+            assertEquals(7, status.cooldownDays());
+
+            // Same-key replay returns the first receipt (no second row, idempotent 200).
             var replay = service.deleteAccount(command(USER, requestId));
             assertTrue(replay.replayed());
-            assertEquals(outcome.receipt().deletedAt(), replay.receipt().deletedAt());
+            assertEquals(outcome.receipt().effectiveAt(), replay.receipt().effectiveAt());
             assertEquals(1, db.jdbc.queryForObject(
                     "SELECT COUNT(*) FROM user_deletion_request", Integer.class));
+            assertEquals(1, db.jdbc.queryForObject(
+                    "SELECT COUNT(*) FROM async_task WHERE task_type='ACCOUNT_DELETION_EXEC'", Integer.class));
 
-            // A different requestId on the canceled account conflicts (no second row).
-            ApiException conflict = assertThrows(ApiException.class,
+            // A second concurrent-ish request under a fresh requestId conflicts on the
+            // account-row lock ordering (at most one PENDING per user).
+            ApiException duplicate = assertThrows(ApiException.class,
                     () -> service.deleteAccount(command(USER, UUID.randomUUID().toString())));
-            assertEquals("COMMON_CONFLICT", conflict.code());
+            assertEquals("COMMON_CONFLICT", duplicate.code());
             assertEquals(1, db.jdbc.queryForObject(
                     "SELECT COUNT(*) FROM user_deletion_request", Integer.class));
         }
     }
 
     @Test
-    void blockedDeletionWritesNothingAndRecoversWhenBlockerClears() throws Exception {
+    void revocationCasCancelRestoresNoneAndReplays() throws Exception {
         try (Database db = new Database()) {
             db.seedUser(USER, "13800002003", "ACTIVE");
+            FakeFacts facts = new FakeFacts(List.of());
+            AccountDeletionService service = db.service(facts, OWNER_MEMBERSHIPS);
+            service.deleteAccount(command(USER, UUID.randomUUID().toString()));
+
+            // Cancel CASes the request row; the account never left ACTIVE.
+            String cancelRequestId = UUID.randomUUID().toString();
+            var cancel = service.cancelDeletion(new AccountDeletionService.CancelDeletionCommand(
+                    userContext(USER, cancelRequestId)));
+            assertFalse(cancel.replayed());
+            assertEquals("CANCELED", cancel.receipt().status());
+            assertEquals("ACTIVE", db.jdbc.queryForObject(
+                    "SELECT status FROM user_account WHERE id=?", String.class, USER));
+            assertEquals("CANCELED", db.jdbc.queryForObject(
+                    "SELECT status FROM user_deletion_request WHERE user_id=?", String.class, USER));
+            assertNotNull(db.jdbc.queryForObject(
+                    "SELECT canceled_at FROM user_deletion_request WHERE user_id=?",
+                    java.sql.Timestamp.class, USER));
+            assertEquals("NONE", service.deletionStatus(Long.toString(USER)).status());
+
+            // Cancel replay returns the first receipt; a second cancel with a new requestId 409s.
+            var replay = service.cancelDeletion(new AccountDeletionService.CancelDeletionCommand(
+                    userContext(USER, cancelRequestId)));
+            assertTrue(replay.replayed());
+            ApiException nothing = assertThrows(ApiException.class,
+                    () -> service.cancelDeletion(new AccountDeletionService.CancelDeletionCommand(
+                            userContext(USER, UUID.randomUUID().toString()))));
+            assertEquals("COMMON_CONFLICT", nothing.code());
+
+            // After revocation a fresh deletion request is allowed (new row, new task).
+            var again = service.deleteAccount(command(USER, UUID.randomUUID().toString()));
+            assertFalse(again.replayed());
+            assertEquals(2, db.jdbc.queryForObject(
+                    "SELECT COUNT(*) FROM user_deletion_request WHERE user_id=?", Integer.class, USER));
+            assertEquals(1, db.jdbc.queryForObject(
+                    "SELECT COUNT(*) FROM user_deletion_request WHERE user_id=? AND status='PENDING'",
+                    Integer.class, USER));
+        }
+    }
+
+    @Test
+    void dueExecutionFlipsAccountAndCompletesRequest() throws Exception {
+        try (Database db = new Database()) {
+            db.seedUser(USER, "13800002004", "ACTIVE");
+            FakeFacts facts = new FakeFacts(List.of());
+            AccountDeletionService service = db.service(facts, OWNER_MEMBERSHIPS);
+            service.deleteAccount(command(USER, UUID.randomUUID().toString()));
+            long rowId = db.jdbc.queryForObject(
+                    "SELECT id FROM user_deletion_request WHERE user_id=? AND status='PENDING'",
+                    Long.class, USER);
+
+            assertEquals(AccountDeletionService.DueExecution.EXECUTED, service.executeDueDeletion(rowId));
+            assertEquals("CANCELED", db.jdbc.queryForObject(
+                    "SELECT status FROM user_account WHERE id=?", String.class, USER));
+            assertEquals("ACCEPTED", db.jdbc.queryForObject(
+                    "SELECT status FROM user_deletion_request WHERE id=?", String.class, rowId));
+            assertNotNull(db.jdbc.queryForObject(
+                    "SELECT executed_at FROM user_deletion_request WHERE id=?",
+                    java.sql.Timestamp.class, rowId));
+
+            // Idempotent: a redelivered task finds the row resolved and cancels silently.
+            assertEquals(AccountDeletionService.DueExecution.ALREADY_RESOLVED,
+                    service.executeDueDeletion(rowId));
+            assertEquals(1, db.jdbc.queryForObject(
+                    "SELECT COUNT(*) FROM user_deletion_request", Integer.class));
+        }
+    }
+
+    @Test
+    void dueExecutionAutoCancelsOnNewBlockersOrFrozenAccount() throws Exception {
+        try (Database db = new Database()) {
+            db.seedUser(USER, "13800002005", "ACTIVE");
+            FakeFacts facts = new FakeFacts(List.of("7001"));
+            AccountDeletionService service = db.service(facts, OWNER_MEMBERSHIPS);
+            service.deleteAccount(command(USER, UUID.randomUUID().toString()));
+            long rowId = db.jdbc.queryForObject(
+                    "SELECT id FROM user_deletion_request WHERE user_id=? AND status='PENDING'",
+                    Long.class, USER);
+
+            // A blocker that appeared during the cooling window auto-cancels the request.
+            facts.userOrdersBlocking = true;
+            assertEquals(AccountDeletionService.DueExecution.AUTO_CANCELED_BLOCKED,
+                    service.executeDueDeletion(rowId));
+            assertEquals("ACTIVE", db.jdbc.queryForObject(
+                    "SELECT status FROM user_account WHERE id=?", String.class, USER));
+            assertEquals("CANCELED", db.jdbc.queryForObject(
+                    "SELECT status FROM user_deletion_request WHERE id=?", String.class, rowId));
+            String blockers = db.jdbc.queryForObject(
+                    "SELECT blockers_json FROM user_deletion_request WHERE id=?", String.class, rowId);
+            assertTrue(blockers.contains("USER_ORDERS_UNSETTLED"));
+            assertNull(db.jdbc.queryForObject(
+                    "SELECT executed_at FROM user_deletion_request WHERE id=?",
+                    java.sql.Timestamp.class, rowId));
+
+            // FROZEN at expiry also auto-cancels (frozen accounts never get deleted by the task).
+            db.seedUser(620_002L, "13800002006", "ACTIVE");
+            AccountDeletionService frozenService = db.service(new FakeFacts(List.of()), OWNER_MEMBERSHIPS);
+            frozenService.deleteAccount(command(620_002L, UUID.randomUUID().toString()));
+            db.jdbc.update("UPDATE user_account SET status='FROZEN' WHERE id=?", 620_002L);
+            long frozenRow = db.jdbc.queryForObject(
+                    "SELECT id FROM user_deletion_request WHERE user_id=? AND status='PENDING'",
+                    Long.class, 620_002L);
+            assertEquals(AccountDeletionService.DueExecution.AUTO_CANCELED_FROZEN,
+                    frozenService.executeDueDeletion(frozenRow));
+            assertEquals("FROZEN", db.jdbc.queryForObject(
+                    "SELECT status FROM user_account WHERE id=?", String.class, 620_002L));
+            assertEquals("CANCELED", db.jdbc.queryForObject(
+                    "SELECT status FROM user_deletion_request WHERE id=?", String.class, frozenRow));
+        }
+    }
+
+    @Test
+    void blockedDeletionWritesNothingAndFrozenUsersAreRefused() throws Exception {
+        try (Database db = new Database()) {
+            db.seedUser(USER, "13800002007", "ACTIVE");
             FakeFacts facts = new FakeFacts(List.of("7001"));
             facts.userOrdersBlocking = true;
             AccountDeletionService service = db.service(facts, OWNER_MEMBERSHIPS);
@@ -177,26 +326,13 @@ class AccountDeletionMySqlTest {
                     "SELECT status FROM user_account WHERE id=?", String.class, USER));
             assertEquals(0, db.jdbc.queryForObject(
                     "SELECT COUNT(*) FROM user_deletion_request", Integer.class));
+            assertEquals(0, db.jdbc.queryForObject(
+                    "SELECT COUNT(*) FROM async_task WHERE task_type='ACCOUNT_DELETION_EXEC'", Integer.class));
 
-            // The blocker clears; the same account can still delete under a fresh requestId.
-            facts.userOrdersBlocking = false;
-            facts.storeOrdersBlocking = false;
-            var outcome = service.deleteAccount(command(USER, UUID.randomUUID().toString()));
-            assertFalse(outcome.replayed());
-            assertEquals("CANCELED", db.jdbc.queryForObject(
-                    "SELECT status FROM user_account WHERE id=?", String.class, USER));
-            assertEquals(1, db.jdbc.queryForObject(
-                    "SELECT COUNT(*) FROM user_deletion_request", Integer.class));
-        }
-    }
-
-    @Test
-    void frozenUsersAreRefusedAndGuardsHold() throws Exception {
-        try (Database db = new Database()) {
-            db.seedUser(USER, "13800002004", "FROZEN");
-            AccountDeletionService service = db.service(new FakeFacts(List.of()), OWNER_MEMBERSHIPS);
+            db.seedUser(620_003L, "13800002008", "FROZEN");
+            AccountDeletionService frozenService = db.service(new FakeFacts(List.of()), OWNER_MEMBERSHIPS);
             ApiException frozen = assertThrows(ApiException.class,
-                    () -> service.deleteAccount(command(USER, UUID.randomUUID().toString())));
+                    () -> frozenService.deleteAccount(command(620_003L, UUID.randomUUID().toString())));
             assertEquals("USER_FROZEN", frozen.code());
 
             // Non-USER operator contexts never reach the kernel body.
@@ -223,7 +359,7 @@ class AccountDeletionMySqlTest {
         return new AccountDeletionService.DeleteAccountCommand(userContext(userId, requestId), true);
     }
 
-    /** Isolated real-MySQL fixture over schemas 06 + 14 + 66; dropped on close. */
+    /** Isolated real-MySQL fixture over schemas 06 + 13 + 14 + 66; dropped on close. */
     private static final class Database implements AutoCloseable {
         private final String name = "usrdel001_" + UUID.randomUUID().toString().replace("-", "");
         private final JdbcTemplate admin;
@@ -244,12 +380,17 @@ class AccountDeletionMySqlTest {
             try {
                 try (Connection connection = dataSource.getConnection()) {
                     for (String file : List.of("06-核心数据库Schema-v0.1.sql",
+                            "13-Async-Infra-Schema-v0.1.sql",
                             "14-Command-Idempotency-Schema-v0.1.sql",
                             "66-User-Settings-Deletion-Schema-v0.1.sql")) {
                         ScriptUtils.executeSqlScript(connection, new EncodedResource(
                                 new FileSystemResource(root().resolve("docs/03-database/" + file)),
                                 StandardCharsets.UTF_8));
                     }
+                    // Same fixture drift the task-core MySQL tests carry: the SQL13 doc lacks the
+                    // submitted_execute_at column the durable mapper already persists.
+                    connection.createStatement().execute(
+                            "ALTER TABLE async_task ADD COLUMN submitted_execute_at DATETIME(3) NULL");
                 }
             } catch (Exception failure) {
                 try {
@@ -265,7 +406,7 @@ class AccountDeletionMySqlTest {
                                        AfterSaleDeletionFactsApi aftersales,
                                        MerchantAdmissionQueryApi memberships) {
             return new AccountDeletionService(dataSource, IDS::incrementAndGet, orders, aftersales,
-                    memberships);
+                    memberships, 7, java.time.Clock.systemUTC());
         }
 
         AccountDeletionService service(FakeFacts facts, MerchantAdmissionQueryApi memberships) {
