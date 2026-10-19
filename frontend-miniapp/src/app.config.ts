@@ -37,7 +37,9 @@ export default defineAppConfig({
       // Review appeal M face (56号 / REV-002, one compact line per the app.config convention):
       // OWNER review list with the one-appeal-per-review entry and status overlay.
       'pages/reviews/index'] },
-    { root: 'consumer/pages/pet-archive', pages: ['index', 'detail', 'form'] },
+    // Contract 68 (2026-10-19 ruling): vaccine/deworming record add forms ride the pet-archive
+    // subpackage (the two design frames 96:2580/96:3006), one compact line per the convention.
+    { root: 'consumer/pages/pet-archive', pages: ['index', 'detail', 'form', 'vaccine-form', 'deworm-form'] },
     { root: 'consumer/pages/merchant-application', pages: ['index', 'signing'] },
     { root: 'consumer/pages/store-services', pages: ['index', 'service-detail', 'stores'] },
     { root: 'consumer/pages/coupon-points', pages: ['coupons', 'coupon-detail', 'points'] },
