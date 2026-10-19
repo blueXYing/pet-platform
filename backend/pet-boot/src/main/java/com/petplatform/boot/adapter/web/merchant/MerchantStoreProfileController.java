@@ -67,9 +67,11 @@ public final class MerchantStoreProfileController {
         JsonNode body = StrictProfileBody.parse(raw);
         MerchantStoreProfileDTO dto = commands.updateStoreProfile(new UpdateStoreProfileCommand(
                 id(text(body, "merchantId")), id(text(body, "storeId")),
+                text(body, "storeName"), text(body, "address"), text(body, "phone"),
                 text(body, "intro"), text(body, "announcement"),
                 photoIds(body.get("photoAssetIds")), businessHours(body.get("businessHours")),
                 promoLevel(body.get("promoLevel")), text(body, "promoTitle"), text(body, "promoText"),
+                singleAsset(body.get("avatarAssetId")), text(body, "businessStatus"),
                 text(body, "expectedVersion"),
                 userCommand(request)));
         return envelope(wire(dto), request);
@@ -101,9 +103,20 @@ public final class MerchantStoreProfileController {
         profile.put("promoLevel", value.promoLevel());
         profile.put("promoTitle", value.promoTitle());
         profile.put("promoText", value.promoText());
+        profile.put("avatarAssetId", value.avatarAssetId());
+        profile.put("businessStatus", value.businessStatus());
         profile.put("version", value.version());
         out.put("profile", profile);
         return out;
+    }
+
+    /** Single STORE_PHOTO avatar reference: empty string clears; otherwise a positive id. */
+    private static String singleAsset(JsonNode node) {
+        if (node == null || !node.isTextual()) throw invalid();
+        String value = node.asText();
+        if (value.isEmpty()) return value;
+        if (!value.matches("[1-9][0-9]{0,18}")) throw invalid();
+        return value;
     }
 
     private static List<String> photoIds(JsonNode node) {
@@ -151,10 +164,14 @@ public final class MerchantStoreProfileController {
         return node.asText();
     }
 
-    /** Strict full-replace body: every key present exactly once, explicit nulls rejected. */
+    /** Strict full-replace body: every key present exactly once, explicit nulls rejected.
+     *  2026-10-19 expansion adds the store facts (storeName/address/phone), the avatar asset
+     *  and the business status switch. */
     private static final class StrictProfileBody {
-        private static final Set<String> KEYS = Set.of("merchantId", "storeId", "intro", "announcement",
-                "photoAssetIds", "businessHours", "promoLevel", "promoTitle", "promoText", "expectedVersion");
+        private static final Set<String> KEYS = Set.of("merchantId", "storeId", "storeName",
+                "address", "phone", "intro", "announcement", "photoAssetIds", "businessHours",
+                "promoLevel", "promoTitle", "promoText", "avatarAssetId", "businessStatus",
+                "expectedVersion");
 
         private static JsonNode parse(String raw) {
             JsonNode body;

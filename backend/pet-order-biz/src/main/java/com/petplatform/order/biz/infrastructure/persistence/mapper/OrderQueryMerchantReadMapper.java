@@ -1,8 +1,10 @@
 package com.petplatform.order.biz.infrastructure.persistence.mapper;
 
 import com.petplatform.order.biz.infrastructure.persistence.entity.MerchantReadProjectionEntities.CustomerAggregate;
+import com.petplatform.order.biz.infrastructure.persistence.entity.MerchantReadProjectionEntities.CustomerNoteRow;
 import com.petplatform.order.biz.infrastructure.persistence.entity.MerchantReadProjectionEntities.CustomerPet;
 import com.petplatform.order.biz.infrastructure.persistence.entity.MerchantReadProjectionEntities.CustomerWindowCount;
+import com.petplatform.order.biz.infrastructure.persistence.entity.MerchantReadProjectionEntities.ServiceOrderRowEntity;
 import com.petplatform.order.biz.infrastructure.persistence.entity.MerchantReadProjectionEntities.ServiceTopRow;
 import com.petplatform.order.biz.infrastructure.persistence.entity.MerchantReadProjectionEntities.StatsTotals;
 import com.petplatform.order.biz.infrastructure.persistence.entity.MerchantReadProjectionEntities.TrendRow;
@@ -31,6 +33,9 @@ public interface OrderQueryMerchantReadMapper {
     List<CustomerPet> storeCustomerPets(@Param("merchantId") long merchantId,
             @Param("storeId") long storeId, @Param("userId") long userId, @Param("limit") int limit);
 
+    /** The store's single internal note row for one derived customer; null before first save. */
+    CustomerNoteRow storeCustomerNote(@Param("storeId") long storeId, @Param("userId") long userId);
+
     StatsTotals statsWindowTotals(@Param("merchantId") long merchantId,
             @Param("storeId") long storeId, @Param("from") LocalDateTime from,
             @Param("to") LocalDateTime to);
@@ -49,4 +54,23 @@ public interface OrderQueryMerchantReadMapper {
     List<TrendRow> statsRevenueTrend(@Param("merchantId") long merchantId,
             @Param("storeId") long storeId, @Param("from") LocalDateTime from,
             @Param("to") LocalDateTime to);
+
+    long statsServiceOrderTotal(@Param("merchantId") long merchantId,
+            @Param("storeId") long storeId, @Param("serviceId") long serviceId,
+            @Param("from") LocalDateTime from, @Param("to") LocalDateTime to);
+
+    List<ServiceOrderRow> statsServiceOrders(@Param("merchantId") long merchantId,
+            @Param("storeId") long storeId, @Param("serviceId") long serviceId,
+            @Param("from") LocalDateTime from, @Param("to") LocalDateTime to,
+            @Param("limit") int limit, @Param("offset") long offset);
+
+    String statsServiceLatestName(@Param("merchantId") long merchantId,
+            @Param("storeId") long storeId, @Param("serviceId") long serviceId);
+
+    long countStoreCustomersByOrderSuffix(@Param("merchantId") long merchantId,
+            @Param("storeId") long storeId, @Param("suffix") String suffix);
+
+    List<CustomerAggregate> pageStoreCustomersByOrderSuffix(@Param("merchantId") long merchantId,
+            @Param("storeId") long storeId, @Param("suffix") String suffix,
+            @Param("limit") int limit, @Param("offset") long offset);
 }

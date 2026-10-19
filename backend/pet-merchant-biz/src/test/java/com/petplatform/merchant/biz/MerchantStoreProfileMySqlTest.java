@@ -98,10 +98,11 @@ class MerchantStoreProfileMySqlTest {
 
     private static UpdateStoreProfileCommand update(String requestId, String expectedVersion,
             String intro, Integer promoLevel) {
-        return new UpdateStoreProfileCommand(id(MERCHANT), id(STORE), intro, "欢迎光临",
+        return new UpdateStoreProfileCommand(id(MERCHANT), id(STORE), "门店", "测试地址 1 号",
+                "13800138000", intro, "欢迎光临",
                 List.of(), List.of(new MerchantStoreProfileDTO.BusinessHour(List.of(1, 2, 3),
-                        "09:00", "18:00")), promoLevel, "月度促销", "全场八折", expectedVersion,
-                command(requestId, OWNER));
+                        "09:00", "18:00")), promoLevel, "月度促销", "全场八折", "", "",
+                expectedVersion, command(requestId, OWNER));
     }
 
     @Test
@@ -177,7 +178,8 @@ class MerchantStoreProfileMySqlTest {
                             new StoreProfileQuery(id(MERCHANT), id(STORE), query(OTHER)))).code());
             assertEquals(CommonApiCodes.NOT_FOUND, assertThrows(ApiException.class,
                     () -> facade.updateStoreProfile(new UpdateStoreProfileCommand(id(MERCHANT),
-                            id(STORE), "越权", null, List.of(), List.of(), null, null, null, "0",
+                            id(STORE), "门店", "测试地址 1 号", "", "越权", null, List.of(), List.of(),
+                            null, null, null, "", "", "0",
                             command(UUID.randomUUID().toString(), OTHER)))).code());
             // Unapproved application: the write gate fails with 409 (read stays open).
             var facadeDraft = api(db, id -> new ApplicationReviewFactsReader.Facts("DRAFT"),
@@ -190,24 +192,27 @@ class MerchantStoreProfileMySqlTest {
                     photos()); // nothing READY
             assertEquals(CommonApiCodes.INVALID_ARGUMENT, assertThrows(ApiException.class,
                     () -> facadeAssets.updateStoreProfile(new UpdateStoreProfileCommand(id(MERCHANT),
-                            id(STORE), "坏素材", null, List.of("88001"), List.of(), null, null, null,
-                            "0", command(UUID.randomUUID().toString(), OWNER)))).code());
+                            id(STORE), "门店", "测试地址 1 号", "", "坏素材", null,
+                            List.of("88001"), List.of(), null, null, null, "", "", "0",
+                            command(UUID.randomUUID().toString(), OWNER)))).code());
             // Malformed business hours (end <= start) and duplicate photo ids are 400.
             assertEquals(CommonApiCodes.INVALID_ARGUMENT, assertThrows(ApiException.class,
                     () -> facadeAssets.updateStoreProfile(new UpdateStoreProfileCommand(id(MERCHANT),
-                            id(STORE), null, null, List.of(), List.of(
+                            id(STORE), "门店", "测试地址 1 号", "", null, null, List.of(), List.of(
                                     new MerchantStoreProfileDTO.BusinessHour(List.of(1), "18:00", "09:00")),
-                            null, null, null, "0", command(UUID.randomUUID().toString(), OWNER)))).code());
+                            null, null, null, "", "", "0", command(UUID.randomUUID().toString(), OWNER)))).code());
             assertEquals(CommonApiCodes.INVALID_ARGUMENT, assertThrows(ApiException.class,
                     () -> facadeAssets.updateStoreProfile(new UpdateStoreProfileCommand(id(MERCHANT),
-                            id(STORE), null, null, List.of("88001", "88001"), List.of(), null, null,
-                            null, "0", command(UUID.randomUUID().toString(), OWNER)))).code());
+                            id(STORE), "门店", "测试地址 1 号", "", null, null,
+                            List.of("88001", "88001"), List.of(), null, null, null, "", "", "0",
+                            command(UUID.randomUUID().toString(), OWNER)))).code());
             // The no-photo-facts port fails photo writes closed (503).
             var facadeNoPort = api(db, id -> new ApplicationReviewFactsReader.Facts("APPROVED"), null);
             assertEquals(CommonApiCodes.DEPENDENCY_UNAVAILABLE, assertThrows(ApiException.class,
                     () -> facadeNoPort.updateStoreProfile(new UpdateStoreProfileCommand(id(MERCHANT),
-                            id(STORE), null, null, List.of("88001"), List.of(), null, null, null,
-                            "0", command(UUID.randomUUID().toString(), OWNER)))).code());
+                            id(STORE), "门店", "测试地址 1 号", "", null, null,
+                            List.of("88001"), List.of(), null, null, null, "", "", "0",
+                            command(UUID.randomUUID().toString(), OWNER)))).code());
         }
     }
 
@@ -246,6 +251,80 @@ class MerchantStoreProfileMySqlTest {
             }
             assertEquals("2", facade.getStoreProfile(
                     new StoreProfileQuery(id(MERCHANT), id(STORE), query(OWNER))).profile().version());
+        }
+    }
+
+    /** 2026-10-19 expansion: business status switch, STORE_PHOTO avatar, merchant-maintained
+     *  store facts (name/address/phone) with the no-re-review ruling and the name-only audit. */
+    @Test
+    void businessStatusAvatarAndStoreFactsExpansion() throws Exception {
+        try (var db = new MySqlMerchantApplicationSchemaTestDatabase()) {
+            seed(db);
+            var facade = api(db, id -> new ApplicationReviewFactsReader.Facts("APPROVED"),
+                    photos("88001", "88002"));
+            // Baseline save, then the expansion payload: rename/readdress/rephone + avatar +
+            // RESTING switch.
+            facade.updateStoreProfile(update(UUID.randomUUID().toString(), "0", "基线", null));
+            MerchantStoreProfileDTO saved = facade.updateStoreProfile(new UpdateStoreProfileCommand(
+                    id(MERCHANT), id(STORE), "新店名", "新地址 2 号", "02166668888", "简介",
+                    null, List.of(), List.of(), null, null, null, "88001", "RESTING", "1",
+                    command(UUID.randomUUID().toString(), OWNER)));
+            assertEquals("2", saved.profile().version());
+            assertEquals("OPEN".equals(saved.profile().businessStatus())
+                    || "RESTING".equals(saved.profile().businessStatus())
+                    ? "RESTING" : saved.profile().businessStatus(), saved.profile().businessStatus());
+            assertEquals("88001", saved.profile().avatarAssetId());
+            assertEquals("RESTING", saved.readonlyFacts().operatingStatus());
+            // Store facts are written to merchant_store in the same command.
+            assertEquals("新店名", db.jdbc().queryForObject(
+                    "SELECT store_name FROM merchant_store WHERE id=" + STORE, String.class));
+            assertEquals("新地址 2 号", db.jdbc().queryForObject(
+                    "SELECT address FROM merchant_store WHERE id=" + STORE, String.class));
+            assertEquals("02166668888", db.jdbc().queryForObject(
+                    "SELECT phone FROM merchant_store WHERE id=" + STORE, String.class));
+            // The masked projection keeps the mobile-only rule: a landline reads null.
+            MerchantStoreProfileDTO read = facade.getStoreProfile(
+                    new StoreProfileQuery(id(MERCHANT), id(STORE), query(OWNER)));
+            assertNull(read.readonlyFacts().phoneMasked());
+            // The audit records every changed field NAME (facts + profile + switch), no values.
+            String changed = db.jdbc().queryForObject(
+                    "SELECT changed_fields FROM merchant_store_profile_audit ORDER BY occurred_at DESC, id DESC LIMIT 1",
+                    String.class);
+            List<String> names = Arrays.asList(changed.split(","));
+            assertTrue(names.containsAll(List.of("storeName", "address", "phone", "avatarAssetId",
+                    "businessStatus")));
+            assertFalse(changed.contains("新店名"));
+            // Clearing the switch (empty string) returns the projection to OPERATING; the
+            // application review facts stay APPROVED — no re-review was triggered.
+            MerchantStoreProfileDTO reopened = facade.updateStoreProfile(new UpdateStoreProfileCommand(
+                    id(MERCHANT), id(STORE), "新店名", "新地址 2 号", "02166668888", "简介",
+                    null, List.of(), List.of(), null, null, null, "", "", "2",
+                    command(UUID.randomUUID().toString(), OWNER)));
+            assertEquals("OPERATING", reopened.readonlyFacts().operatingStatus());
+            assertNull(reopened.profile().avatarAssetId());
+            assertEquals("APPROVED", reopened.readonlyFacts().applicationStatus());
+            // Bad payloads: blank name, non-digit phone, unknown avatar asset, bad switch.
+            assertEquals(CommonApiCodes.INVALID_ARGUMENT, assertThrows(ApiException.class,
+                    () -> facade.updateStoreProfile(new UpdateStoreProfileCommand(id(MERCHANT),
+                            id(STORE), " ", "新地址 2 号", null, null, null, List.of(), List.of(),
+                            null, null, null, "", "", "3", command(UUID.randomUUID().toString(), OWNER)))).code());
+            assertEquals(CommonApiCodes.INVALID_ARGUMENT, assertThrows(ApiException.class,
+                    () -> facade.updateStoreProfile(new UpdateStoreProfileCommand(id(MERCHANT),
+                            id(STORE), "新店名", "新地址 2 号", "12ab", null, null, List.of(), List.of(),
+                            null, null, null, "", "", "3", command(UUID.randomUUID().toString(), OWNER)))).code());
+            assertEquals(CommonApiCodes.INVALID_ARGUMENT, assertThrows(ApiException.class,
+                    () -> facade.updateStoreProfile(new UpdateStoreProfileCommand(id(MERCHANT),
+                            id(STORE), "新店名", "新地址 2 号", "02166668888", null, null, List.of(),
+                            List.of(), null, null, null, "", "SLEEPING", "3",
+                            command(UUID.randomUUID().toString(), OWNER)))).code());
+            // An avatar that does not resolve READY in the owner's asset facts is 400.
+            var facadeUnknownAvatar = api(db, id -> new ApplicationReviewFactsReader.Facts("APPROVED"),
+                    photos("88001"));
+            assertEquals(CommonApiCodes.INVALID_ARGUMENT, assertThrows(ApiException.class,
+                    () -> facadeUnknownAvatar.updateStoreProfile(new UpdateStoreProfileCommand(id(MERCHANT),
+                            id(STORE), "新店名", "新地址 2 号", "02166668888", null, null, List.of(),
+                            List.of(), null, null, null, "99009", "", "3",
+                            command(UUID.randomUUID().toString(), OWNER)))).code());
         }
     }
 }

@@ -96,11 +96,20 @@
         LIMIT #{limit}
     </select>
 
+    <!-- The store's single internal note for one derived customer (contract 69 expansion,
+         companion table 69-Merchant-Customer-Note). Read side of the detail face. -->
+    <select id="storeCustomerNote" resultType="com.petplatform.order.biz.infrastructure.persistence.entity.MerchantReadProjectionEntities$CustomerNoteRow">
+        SELECT store_id, merchant_id, user_id, note, version, updated_at
+        FROM merchant_customer_note
+        WHERE store_id = #{storeId} AND user_id = #{userId}
+    </select>
+
     <select id="statsWindowTotals" resultType="com.petplatform.order.biz.infrastructure.persistence.entity.MerchantReadProjectionEntities$StatsTotals">
         SELECT COUNT(*) AS order_count,
                SUM(o.paid_at IS NOT NULL) AS paid_order_count,
                SUM(o.verified_at IS NOT NULL) AS verified_order_count,
                SUM(o.refunded_amount &gt; 0) AS refund_order_count,
+               SUM(o.order_stage = 'CANCELED' AND o.cancel_reason = 'MERCHANT_REJECT_ORDER') AS reject_order_count,
                SUM(GREATEST(o.pay_amount - o.refunded_amount, 0)) AS revenue
         FROM pet_order o
         WHERE o.merchant_id = #{merchantId} AND o.store_id = #{storeId}
@@ -166,5 +175,78 @@
           AND o.created_at &gt;= #{from} AND o.created_at &lt; #{to}
         GROUP BY bucket_date
         ORDER BY bucket_date ASC
+    </select>
+
+    <!-- 服务下钻 (contract 70 §3 expansion, 2026-10-19): read-only order rows of one service
+         inside the window. The service must appear in this store's window orders or the caller
+         raises the anti-enumeration 404; listing keeps the store double key so cross-store
+         rows never exist. Newest creation first as the stable order. -->
+    <select id="statsServiceOrderTotal" resultType="long">
+        SELECT COUNT(*) FROM pet_order o
+        WHERE o.merchant_id = #{merchantId} AND o.store_id = #{storeId}
+          AND o.service_id = #{serviceId}
+          AND o.created_at &gt;= #{from} AND o.created_at &lt; #{to}
+    </select>
+
+    <select id="statsServiceOrders" resultType="com.petplatform.order.biz.infrastructure.persistence.entity.MerchantReadProjectionEntities$ServiceOrderRow">
+        SELECT o.id, o.order_no, o.order_stage, o.pay_amount, o.refunded_amount,
+               o.created_at, o.appointment_start_at, o.verified_at
+        FROM pet_order o
+        WHERE o.merchant_id = #{merchantId} AND o.store_id = #{storeId}
+          AND o.service_id = #{serviceId}
+          AND o.created_at &gt;= #{from} AND o.created_at &lt; #{to}
+        ORDER BY o.created_at DESC, o.id DESC
+        LIMIT #{limit} OFFSET #{offset}
+    </select>
+
+    <!-- Same latest-snapshot-name family as statsServiceTop: MAX(name) over the rows whose
+         created_at equals the store's latest snapshot creation for that service. -->
+    <select id="statsServiceLatestName" resultType="string">
+        SELECT MAX(s.service_name)
+        FROM order_service_snapshot s
+        JOIN pet_order po ON po.id = s.order_id
+        WHERE po.merchant_id = #{merchantId} AND po.store_id = #{storeId}
+          AND s.service_id = #{serviceId}
+          AND s.created_at = (
+              SELECT MAX(s2.created_at) FROM order_service_snapshot s2
+              JOIN pet_order po2 ON po2.id = s2.order_id
+              WHERE s2.service_id = #{serviceId}
+                AND po2.merchant_id = #{merchantId} AND po2.store_id = #{storeId})
+    </select>
+
+    <!-- 订单号尾号搜索 (contract 69 §2 expansion, 2026-10-19): a customer hits only when one of
+         THIS store's own orders has an order_no whose decimal tail equals the suffix (leading
+         zeros included via RIGHT/CHAR_LENGTH). The scan stays inside the store's own rows
+         (store_id leading the index); no plaintext credential ever enters the path. -->
+    <sql id="orderSuffixMatchedUsers">
+        SELECT DISTINCT o.user_id
+        FROM pet_order o
+        WHERE o.merchant_id = #{merchantId} AND o.store_id = #{storeId}
+          AND RIGHT(CAST(o.order_no AS char), CHAR_LENGTH(#{suffix})) = #{suffix}
+    </sql>
+
+    <select id="countStoreCustomersByOrderSuffix" resultType="long">
+        SELECT COUNT(*) FROM (<include refid="orderSuffixMatchedUsers"/>) matched
+    </select>
+
+    <select id="pageStoreCustomersByOrderSuffix" resultType="com.petplatform.order.biz.infrastructure.persistence.entity.MerchantReadProjectionEntities$CustomerAggregate">
+        SELECT t.user_id, t.order_count, t.total_spend, t.last_visit_at,
+               p.pet_name AS top_pet_name, p.pet_type AS top_pet_type, p.breed_name AS top_breed_name
+        FROM (
+            SELECT o.user_id,
+                   COUNT(*) AS order_count,
+                   SUM(GREATEST(o.pay_amount - o.refunded_amount, 0)) AS total_spend,
+                   MAX(o.verified_at) AS last_visit_at
+            FROM pet_order o
+            WHERE o.merchant_id = #{merchantId} AND o.store_id = #{storeId}
+              AND o.user_id IN (<include refid="orderSuffixMatchedUsers"/>)
+            GROUP BY o.user_id
+            ORDER BY total_spend DESC, user_id ASC
+            LIMIT #{limit} OFFSET #{offset}
+        ) t
+        LEFT JOIN (
+            <include refid="latestStorePetPerUser"/>
+        ) p ON p.user_id = t.user_id
+        ORDER BY t.total_spend DESC, t.user_id ASC
     </select>
 </mapper>

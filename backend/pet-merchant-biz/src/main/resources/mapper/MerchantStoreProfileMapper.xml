@@ -28,7 +28,7 @@
     SELECT id FROM merchant_application WHERE reserved_merchant_id=#{merchantId} FOR UPDATE
   </select>
 
-  <sql id="profileColumns">store_id,merchant_id,intro,announcement,business_hours,promo_level,promo_title,promo_text,photo_asset_ids,version</sql>
+  <sql id="profileColumns">store_id,merchant_id,intro,announcement,business_hours,promo_level,promo_title,promo_text,photo_asset_ids,avatar_asset_id,business_status,version</sql>
   <select id="selectProfile" resultType="com.petplatform.merchant.biz.infrastructure.persistence.entity.MerchantStoreProfileRowEntity">
     SELECT <include refid="profileColumns"/> FROM merchant_store_profile WHERE store_id=#{storeId}
   </select>
@@ -36,15 +36,25 @@
     SELECT <include refid="profileColumns"/> FROM merchant_store_profile WHERE store_id=#{storeId} FOR UPDATE
   </select>
   <insert id="insertProfile">
-    INSERT INTO merchant_store_profile(store_id,merchant_id,intro,announcement,business_hours,promo_level,promo_title,promo_text,photo_asset_ids,version,created_at,updated_at)
-    VALUES(#{storeId},#{merchantId},#{intro},#{announcement},#{businessHours},#{promoLevel},#{promoTitle},#{promoText},#{photoAssetIds},1,#{now},#{now})
+    INSERT INTO merchant_store_profile(store_id,merchant_id,intro,announcement,business_hours,promo_level,promo_title,promo_text,photo_asset_ids,avatar_asset_id,business_status,version,created_at,updated_at)
+    VALUES(#{storeId},#{merchantId},#{intro},#{announcement},#{businessHours},#{promoLevel},#{promoTitle},#{promoText},#{photoAssetIds},#{avatarAssetId},#{businessStatus},1,#{now},#{now})
   </insert>
   <update id="updateProfile">
     UPDATE merchant_store_profile
     SET intro=#{intro},announcement=#{announcement},business_hours=#{businessHours},promo_level=#{promoLevel},
         promo_title=#{promoTitle},promo_text=#{promoText},photo_asset_ids=#{photoAssetIds},
+        avatar_asset_id=#{avatarAssetId},business_status=#{businessStatus},
         version=version+1,updated_at=#{now}
     WHERE store_id=#{storeId} AND merchant_id=#{merchantId} AND version=#{expectedVersion}
+  </update>
+
+  <!-- 2026-10-19 CCR expansion: merchant-maintained store facts (name/address/phone). The
+       qualification/city/location columns of SQL06 are never touched here; the statement runs
+       inside the store-profile command transaction under the FOR UPDATE scope row lock. -->
+  <update id="updateStoreFacts">
+    UPDATE merchant_store
+    SET store_name=#{storeName},address=#{address},phone=#{phone},updated_at=#{now}
+    WHERE id=#{storeId} AND merchant_id=#{merchantId}
   </update>
 
   <insert id="insertAudit">

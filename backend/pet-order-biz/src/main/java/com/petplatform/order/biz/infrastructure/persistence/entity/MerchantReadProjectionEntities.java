@@ -60,6 +60,7 @@ public final class MerchantReadProjectionEntities {
         private Long paidOrderCount;
         private Long verifiedOrderCount;
         private Long refundOrderCount;
+        private Long rejectOrderCount;
         private BigDecimal revenue;
 
         public Long getOrderCount() { return orderCount; }
@@ -70,8 +71,39 @@ public final class MerchantReadProjectionEntities {
         public void setVerifiedOrderCount(Long verifiedOrderCount) { this.verifiedOrderCount = verifiedOrderCount; }
         public Long getRefundOrderCount() { return refundOrderCount; }
         public void setRefundOrderCount(Long refundOrderCount) { this.refundOrderCount = refundOrderCount; }
+        public Long getRejectOrderCount() { return rejectOrderCount; }
+        public void setRejectOrderCount(Long rejectOrderCount) { this.rejectOrderCount = rejectOrderCount; }
         public BigDecimal getRevenue() { return revenue; }
         public void setRevenue(BigDecimal revenue) { this.revenue = revenue; }
+    }
+
+    /** One drilled-down order row of a service (this store's own facts, no customer fields). */
+    public static final class ServiceOrderRowEntity {
+        private Long id;
+        private Long orderNo;
+        private String orderStage;
+        private BigDecimal payAmount;
+        private BigDecimal refundedAmount;
+        private LocalDateTime createdAt;
+        private LocalDateTime appointmentStartAt;
+        private LocalDateTime verifiedAt;
+
+        public Long getId() { return id; }
+        public void setId(Long id) { this.id = id; }
+        public Long getOrderNo() { return orderNo; }
+        public void setOrderNo(Long orderNo) { this.orderNo = orderNo; }
+        public String getOrderStage() { return orderStage; }
+        public void setOrderStage(String orderStage) { this.orderStage = orderStage; }
+        public BigDecimal getPayAmount() { return payAmount; }
+        public void setPayAmount(BigDecimal payAmount) { this.payAmount = payAmount; }
+        public BigDecimal getRefundedAmount() { return refundedAmount; }
+        public void setRefundedAmount(BigDecimal refundedAmount) { this.refundedAmount = refundedAmount; }
+        public LocalDateTime getCreatedAt() { return createdAt; }
+        public void setCreatedAt(LocalDateTime createdAt) { this.createdAt = createdAt; }
+        public LocalDateTime getAppointmentStartAt() { return appointmentStartAt; }
+        public void setAppointmentStartAt(LocalDateTime appointmentStartAt) { this.appointmentStartAt = appointmentStartAt; }
+        public LocalDateTime getVerifiedAt() { return verifiedAt; }
+        public void setVerifiedAt(LocalDateTime verifiedAt) { this.verifiedAt = verifiedAt; }
     }
 
     /** Per-customer counts for the repeat rate (window-scoped). */
@@ -100,6 +132,29 @@ public final class MerchantReadProjectionEntities {
         public void setOrderCount(Long orderCount) { this.orderCount = orderCount; }
         public BigDecimal getRevenue() { return revenue; }
         public void setRevenue(BigDecimal revenue) { this.revenue = revenue; }
+    }
+
+    /** The store's single internal note for one derived customer (contract 69 expansion). */
+    public static final class CustomerNoteRow {
+        private Long storeId;
+        private Long merchantId;
+        private Long userId;
+        private String note;
+        private Long version;
+        private LocalDateTime updatedAt;
+
+        public Long getStoreId() { return storeId; }
+        public void setStoreId(Long storeId) { this.storeId = storeId; }
+        public Long getMerchantId() { return merchantId; }
+        public void setMerchantId(Long merchantId) { this.merchantId = merchantId; }
+        public Long getUserId() { return userId; }
+        public void setUserId(Long userId) { this.userId = userId; }
+        public String getNote() { return note; }
+        public void setNote(String note) { this.note = note; }
+        public Long getVersion() { return version; }
+        public void setVersion(Long version) { this.version = version; }
+        public LocalDateTime getUpdatedAt() { return updatedAt; }
+        public void setUpdatedAt(LocalDateTime updatedAt) { this.updatedAt = updatedAt; }
     }
 
     /** One UTC daily bucket of the revenue trend. */

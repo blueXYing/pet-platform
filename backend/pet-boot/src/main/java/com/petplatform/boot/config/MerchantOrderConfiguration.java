@@ -72,8 +72,17 @@ public class MerchantOrderConfiguration {
                     return new com.petplatform.order.api.query.StoreReviewScoreFactsApi.ScoreSummary(
                         summary.reviewCount(), summary.avgScore());
                 };
+            // 排期利用率 (contract 70 expansion): SCH read-side aggregate over the store's own
+            // windows + confirmed reservations; the port rides the same runtime chain.
+            com.petplatform.schedule.api.query.ScheduleUtilizationQueryApi utilization =
+                new com.petplatform.schedule.biz.apiimpl.ScheduleUtilizationQueryApiImpl(s);
             return new com.petplatform.order.biz.apiimpl.MerchantStatsQueryApiImpl(s,guard,authority,scores,
-                java.time.Clock.systemUTC());
+                utilization,java.time.Clock.systemUTC());
+        }
+        /** Contract 69 expansion: the store's single internal customer note (OWNER write). */
+        @Bean com.petplatform.order.api.query.MerchantCustomerNoteCommandApi merchantCustomerNoteCommandApi(
+            DataSource s,SnowflakeIdGenerator ids,ScheduleCapacityGuardApi guard,MerchantOrderAuthorityApi authority){
+            return new com.petplatform.order.biz.apiimpl.MerchantCustomerNoteCommandApiImpl(s,guard,authority,ids);
         }
         @Bean @ConditionalOnMissingBean(MerchantOrderPorts.Protection.class)
         MerchantOrderPorts.Protection merchantOrderProtection(@Value("${pet.order.merchant.protection-key}") String key){
