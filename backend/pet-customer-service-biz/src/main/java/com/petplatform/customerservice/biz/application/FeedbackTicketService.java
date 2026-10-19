@@ -73,6 +73,12 @@ public final class FeedbackTicketService {
         this(store, activeUsers, ids, java.time.Clock.systemUTC());
     }
 
+    /** Assembler-facing convenience: the store stays module-internal (ARCH-002). */
+    public FeedbackTicketService(javax.sql.DataSource dataSource, UserActiveStatusApi activeUsers,
+                                 SnowflakeIdGenerator ids) {
+        this(new FeedbackTicketStore(dataSource), activeUsers, ids, java.time.Clock.systemUTC());
+    }
+
     public FeedbackTicketService(FeedbackTicketStore store, UserActiveStatusApi activeUsers,
                                  SnowflakeIdGenerator ids, java.time.Clock clock) {
         this.store = Objects.requireNonNull(store, "store is required");

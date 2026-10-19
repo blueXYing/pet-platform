@@ -65,7 +65,7 @@ class FeedbackTicketMySqlTest {
                     "SELECT COUNT(*) FROM feedback_ticket WHERE user_id=?", Integer.class, USER));
             assertEquals(1, db.jdbc.queryForObject(
                     "SELECT COUNT(*) FROM feedback_ticket_event WHERE action='SUBMITTED'",
-                    Integer.class, USER));
+                    Integer.class));
 
             // Same-key same-params replay returns the first receipt without new rows.
             var replay = service.create(create(requestId, "SERVICE_COMPLAINT",
@@ -73,7 +73,7 @@ class FeedbackTicketMySqlTest {
             assertTrue(replay.replayed());
             assertEquals(outcome.receipt().ticketId(), replay.receipt().ticketId());
             assertEquals(1, db.jdbc.queryForObject(
-                    "SELECT COUNT(*) FROM feedback_ticket", Integer.class, USER));
+                    "SELECT COUNT(*) FROM feedback_ticket", Integer.class));
 
             // Same key, different bytes: 409.
             ApiException conflict = assertThrows(ApiException.class,
@@ -106,7 +106,7 @@ class FeedbackTicketMySqlTest {
                     () -> service.create(create(UUID.randomUUID().toString(), "OTHER", "微".repeat(65), "内容")));
             assertEquals("COMMON_INVALID_ARGUMENT", longContact.code());
             assertEquals(0, db.jdbc.queryForObject(
-                    "SELECT COUNT(*) FROM feedback_ticket", Integer.class, USER));
+                    "SELECT COUNT(*) FROM feedback_ticket", Integer.class));
         }
     }
 
@@ -155,10 +155,10 @@ class FeedbackTicketMySqlTest {
                     () -> service.create(create(UUID.randomUUID().toString(), "OTHER", null, "内容")));
             assertEquals("USER_FROZEN", frozen.code());
             assertEquals(0, db.jdbc.queryForObject(
-                    "SELECT COUNT(*) FROM feedback_ticket", Integer.class, USER));
+                    "SELECT COUNT(*) FROM feedback_ticket", Integer.class));
             assertEquals(0, db.jdbc.queryForObject(
                     "SELECT COUNT(*) FROM feedback_command_idempotency WHERE status='SUCCEEDED'",
-                    Integer.class, USER));
+                    Integer.class));
 
             // The limiter is per-user: five creations pass, the sixth is a 429.
             FeedbackTicketService open = db.service(userId -> { });

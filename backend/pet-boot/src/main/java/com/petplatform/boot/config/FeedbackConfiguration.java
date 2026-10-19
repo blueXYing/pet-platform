@@ -2,7 +2,6 @@ package com.petplatform.boot.config;
 
 import com.petplatform.common.SnowflakeIdGenerator;
 import com.petplatform.customerservice.biz.application.FeedbackTicketService;
-import com.petplatform.customerservice.biz.infrastructure.persistence.FeedbackTicketStore;
 import com.petplatform.user.api.query.UserActiveStatusApi;
 import com.petplatform.user.biz.apiimpl.UserActiveStatusApiImpl;
 import javax.sql.DataSource;
@@ -33,8 +32,9 @@ public class FeedbackConfiguration {
             DataSource source,
             ObjectProvider<SnowflakeIdGenerator> ids,
             UserActiveStatusApi activeUsers) {
-        return new FeedbackTicketService(new FeedbackTicketStore(source), activeUsers,
-                idProvider(ids));
+        // The store stays module-internal (ARCH-002): boot never names another module's
+        // persistence package.
+        return new FeedbackTicketService(source, activeUsers, idProvider(ids));
     }
 
     private static SnowflakeIdGenerator idProvider(ObjectProvider<SnowflakeIdGenerator> ids) {
