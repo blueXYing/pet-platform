@@ -89,14 +89,14 @@ class OrderDeletionFactsMySqlTest {
         private final JdbcTemplate jdbc;
 
         Database() throws Exception {
-            String url = System.getenv().getOrDefault("ORDER_DEL_FACT_MYSQL_URL",
+            String url = System.getenv().getOrDefault("AUTH_MYSQL_URL",
                     "jdbc:mysql://127.0.0.1:33440/");
             if (!url.matches("jdbc:mysql://(127\\.0\\.0\\.1|localhost):[0-9]+/")) {
                 throw new IllegalArgumentException(
-                        "ORDER_DEL_FACT_MYSQL_URL must target a local isolated server, database-less");
+                        "AUTH_MYSQL_URL must target a local isolated server, database-less");
             }
-            String user = System.getenv().getOrDefault("ORDER_DEL_FACT_MYSQL_USER", "root");
-            String password = System.getenv().getOrDefault("ORDER_DEL_FACT_MYSQL_PASSWORD", "");
+            String user = System.getenv().getOrDefault("AUTH_MYSQL_USER", "root");
+            String password = System.getenv().getOrDefault("AUTH_MYSQL_PASSWORD", "");
             admin = new JdbcTemplate(source(url, user, password));
             source = source(url + name, user, password);
             jdbc = new JdbcTemplate(source);

@@ -231,12 +231,12 @@ class AccountDeletionMySqlTest {
         private final JdbcTemplate jdbc;
 
         Database() throws Exception {
-            String url = System.getenv().getOrDefault("USRDEL_MYSQL_URL", "jdbc:mysql://127.0.0.1:33440/");
+            String url = System.getenv().getOrDefault("AUTH_MYSQL_URL", "jdbc:mysql://127.0.0.1:33440/");
             if (!url.matches("jdbc:mysql://(127\\.0\\.0\\.1|localhost):[0-9]+/")) {
-                throw new IllegalArgumentException("USRDEL_MYSQL_URL must name a local isolated server");
+                throw new IllegalArgumentException("AUTH_MYSQL_URL must name a local isolated server");
             }
-            String user = System.getenv().getOrDefault("USRDEL_MYSQL_USER", "root");
-            String password = System.getenv().getOrDefault("USRDEL_MYSQL_PASSWORD", "");
+            String user = System.getenv().getOrDefault("AUTH_MYSQL_USER", "root");
+            String password = System.getenv().getOrDefault("AUTH_MYSQL_PASSWORD", "");
             admin = new JdbcTemplate(source(url, user, password));
             dataSource = source(url + name, user, password);
             jdbc = new JdbcTemplate(dataSource);
