@@ -1,0 +1,170 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.petplatform.order.biz.infrastructure.persistence.mapper.OrderQueryMerchantReadMapper">
+    <!--
+      Contracts 69/70 (derived customers + business stats): store-scoped read aggregates only.
+      Every statement is double-key scoped to merchant_id + store_id, runs AFTER the service's
+      schedule guard + OWNER re-proof, and touches only order-domain tables (pet_order,
+      order_service_snapshot, order_pet_snapshot) — no cross-module persistence (ARCH-002).
+      The net-revenue expression is GREATEST(pay_amount - refunded_amount, 0): a fully refunded
+      order contributes zero revenue but still counts as an order (PRD 5.14/5.12 wording).
+      Window statements use the store-prefixed index plus the created_at range bound.
+    -->
+    <sql id="latestStorePetPerUser">
+        SELECT k.user_id, s.pet_name, s.pet_type, s.breed_name
+        FROM (
+            SELECT po.user_id, po.id AS order_id,
+                   ROW_NUMBER() OVER (PARTITION BY po.user_id ORDER BY po.created_at DESC, po.id DESC) AS rn
+            FROM pet_order po
+            WHERE po.merchant_id = #{merchantId} AND po.store_id = #{storeId}
+        ) k
+        JOIN order_pet_snapshot s ON s.order_id = k.order_id
+        WHERE k.rn = 1
+    </sql>
+    <sql id="customerAggregateBody">
+        SELECT o.user_id,
+               COUNT(*) AS order_count,
+               SUM(GREATEST(o.pay_amount - o.refunded_amount, 0)) AS total_spend,
+               MAX(o.verified_at) AS last_visit_at
+        FROM pet_order o
+        WHERE o.merchant_id = #{merchantId} AND o.store_id = #{storeId}
+        GROUP BY o.user_id
+    </sql>
+
+    <select id="countStoreCustomers" resultType="long">
+        SELECT COUNT(DISTINCT user_id) FROM pet_order
+        WHERE merchant_id = #{merchantId} AND store_id = #{storeId}
+    </select>
+
+    <select id="pageStoreCustomers" resultType="com.petplatform.order.biz.infrastructure.persistence.entity.MerchantReadProjectionEntities.CustomerAggregate">
+        SELECT t.user_id, t.order_count, t.total_spend, t.last_visit_at,
+               p.pet_name AS top_pet_name, p.pet_type AS top_pet_type, p.breed_name AS top_breed_name
+        FROM (
+            <include refid="customerAggregateBody"/>
+            ORDER BY total_spend DESC, user_id ASC
+            LIMIT #{limit} OFFSET #{offset}
+        ) t
+        LEFT JOIN (
+            <include refid="latestStorePetPerUser"/>
+        ) p ON p.user_id = t.user_id
+        ORDER BY t.total_spend DESC, t.user_id ASC
+    </select>
+
+    <!-- Nickname-search scan (contract 69 §2): same projection, capped row budget. -->
+    <select id="scanStoreCustomers" resultType="com.petplatform.order.biz.infrastructure.persistence.entity.MerchantReadProjectionEntities.CustomerAggregate">
+        SELECT t.user_id, t.order_count, t.total_spend, t.last_visit_at,
+               p.pet_name AS top_pet_name, p.pet_type AS top_pet_type, p.breed_name AS top_breed_name
+        FROM (
+            <include refid="customerAggregateBody"/>
+            ORDER BY total_spend DESC, user_id ASC
+            LIMIT #{limit}
+        ) t
+        LEFT JOIN (
+            <include refid="latestStorePetPerUser"/>
+        ) p ON p.user_id = t.user_id
+        ORDER BY t.total_spend DESC, t.user_id ASC
+    </select>
+
+    <select id="storeCustomerAggregate" resultType="com.petplatform.order.biz.infrastructure.persistence.entity.MerchantReadProjectionEntities.CustomerAggregate">
+        SELECT o.user_id,
+               COUNT(*) AS order_count,
+               SUM(GREATEST(o.pay_amount - o.refunded_amount, 0)) AS total_spend,
+               MAX(o.verified_at) AS last_visit_at,
+               latest.pet_name AS top_pet_name, latest.pet_type AS top_pet_type,
+               latest.breed_name AS top_breed_name
+        FROM pet_order o
+        LEFT JOIN (
+            SELECT s.pet_name, s.pet_type, s.breed_name
+            FROM order_pet_snapshot s
+            JOIN pet_order po ON po.id = s.order_id
+            WHERE po.user_id = #{userId} AND po.merchant_id = #{merchantId} AND po.store_id = #{storeId}
+            ORDER BY po.created_at DESC, po.id DESC
+            LIMIT 1
+        ) latest ON TRUE
+        WHERE o.merchant_id = #{merchantId} AND o.store_id = #{storeId} AND o.user_id = #{userId}
+        GROUP BY o.user_id, latest.pet_name, latest.pet_type, latest.breed_name
+    </select>
+
+    <!-- Breed-level pet list only: pet_name/pet_type/breed_name are selected; the snapshot's
+         weight/health columns are deliberately not projected (privacy ruling, contract 69 §1). -->
+    <select id="storeCustomerPets" resultType="com.petplatform.order.biz.infrastructure.persistence.entity.MerchantReadProjectionEntities.CustomerPet">
+        SELECT DISTINCT s.pet_id, s.pet_name, s.pet_type, s.breed_name
+        FROM order_pet_snapshot s
+        JOIN pet_order o ON o.id = s.order_id
+        WHERE o.merchant_id = #{merchantId} AND o.store_id = #{storeId} AND o.user_id = #{userId}
+        ORDER BY s.pet_id DESC
+        LIMIT #{limit}
+    </select>
+
+    <select id="statsWindowTotals" resultType="com.petplatform.order.biz.infrastructure.persistence.entity.MerchantReadProjectionEntities.StatsTotals">
+        SELECT COUNT(*) AS order_count,
+               SUM(o.paid_at IS NOT NULL) AS paid_order_count,
+               SUM(o.verified_at IS NOT NULL) AS verified_order_count,
+               SUM(o.refunded_amount &gt; 0) AS refund_order_count,
+               SUM(GREATEST(o.pay_amount - o.refunded_amount, 0)) AS revenue
+        FROM pet_order o
+        WHERE o.merchant_id = #{merchantId} AND o.store_id = #{storeId}
+          AND o.created_at &gt;= #{from} AND o.created_at &lt; #{to}
+    </select>
+
+    <select id="statsWindowCustomers" resultType="com.petplatform.order.biz.infrastructure.persistence.entity.MerchantReadProjectionEntities.CustomerWindowCount">
+        SELECT COUNT(*) AS customer_count,
+               SUM(c.order_count &gt;= 2) AS repeat_customer_count
+        FROM (
+            SELECT o.user_id, COUNT(*) AS order_count
+            FROM pet_order o
+            WHERE o.merchant_id = #{merchantId} AND o.store_id = #{storeId}
+              AND o.created_at &gt;= #{from} AND o.created_at &lt; #{to}
+            GROUP BY o.user_id
+        ) c
+    </select>
+
+    <select id="statsNewCustomers" resultType="long">
+        SELECT COUNT(*) FROM (
+            SELECT o.user_id
+            FROM pet_order o
+            WHERE o.merchant_id = #{merchantId} AND o.store_id = #{storeId}
+            GROUP BY o.user_id
+            HAVING MIN(o.created_at) &gt;= #{from} AND MIN(o.created_at) &lt; #{to}
+        ) first_orders
+    </select>
+
+    <select id="statsServiceTop" resultType="com.petplatform.order.biz.infrastructure.persistence.entity.MerchantReadProjectionEntities.ServiceTopRow">
+        SELECT t.service_id, latest.service_name, t.order_count, t.revenue
+        FROM (
+            SELECT o.service_id,
+                   COUNT(*) AS order_count,
+                   SUM(GREATEST(o.pay_amount - o.refunded_amount, 0)) AS revenue
+            FROM pet_order o
+            WHERE o.merchant_id = #{merchantId} AND o.store_id = #{storeId}
+              AND o.created_at &gt;= #{from} AND o.created_at &lt; #{to}
+            GROUP BY o.service_id
+            ORDER BY order_count DESC, service_id ASC
+            LIMIT #{limit}
+        ) t
+        LEFT JOIN (
+            SELECT s.service_id, MAX(s.service_name) AS service_name
+            FROM order_service_snapshot s
+            JOIN pet_order po ON po.id = s.order_id
+            WHERE po.merchant_id = #{merchantId} AND po.store_id = #{storeId}
+              AND s.created_at = (
+                  SELECT MAX(s2.created_at) FROM order_service_snapshot s2
+                  JOIN pet_order po2 ON po2.id = s2.order_id
+                  WHERE s2.service_id = s.service_id
+                    AND po2.merchant_id = #{merchantId} AND po2.store_id = #{storeId})
+            GROUP BY s.service_id
+        ) latest ON latest.service_id = t.service_id
+        ORDER BY t.order_count DESC, t.service_id ASC
+    </select>
+
+    <select id="statsRevenueTrend" resultType="com.petplatform.order.biz.infrastructure.persistence.entity.MerchantReadProjectionEntities.TrendRow">
+        SELECT DATE_FORMAT(o.created_at, '%Y-%m-%d') AS bucket_date,
+               SUM(GREATEST(o.pay_amount - o.refunded_amount, 0)) AS revenue,
+               COUNT(*) AS order_count
+        FROM pet_order o
+        WHERE o.merchant_id = #{merchantId} AND o.store_id = #{storeId}
+          AND o.created_at &gt;= #{from} AND o.created_at &lt; #{to}
+        GROUP BY bucket_date
+        ORDER BY bucket_date ASC
+    </select>
+</mapper>
