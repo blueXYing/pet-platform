@@ -86,7 +86,8 @@ export default function OnboardingPage() {
     applyAnim(next, 'full')
   }
 
-  // 唯一的入场触发点：Swiper 自身 onChange（点「下一页」与手指滑动都会触发）。
+  // 入场触发点：Swiper 自身 onChange（落定索引）+ onAnimationFinish 兜底（过渡结束事件，
+  // 两者都带 current，重复到达由 animRef 守卫挡掉）。
   // 以落定索引为准，天然覆盖左右两个方向、跨屏与回弹；不依赖触摸事件（实测合成/真实
   // 手势下事件时序不稳定，预测在慢速拖动时还会提前把动画播完）。
   const onSettle = (index: number) => {
@@ -107,6 +108,7 @@ export default function OnboardingPage() {
           current={current}
           duration={450}
           onChange={(e) => onSettle(e.detail.current)}
+          onAnimationFinish={(e) => onSettle(e.detail.current)}
         >
           {/* 屏1（10:108）：橘猫举鱼 + 花瓣装饰 + 「一站式养宠生活圈」 */}
           <SwiperItem>
