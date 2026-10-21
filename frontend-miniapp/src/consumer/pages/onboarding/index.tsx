@@ -14,26 +14,33 @@ import sceneBg from './assets/scene-bg@2x.jpg'
 import ownerCat from './assets/owner-cat@2x.png'
 import brandLogoS from './assets/brand-logo-s@2x.png'
 import brandLogoM from './assets/brand-logo-m@2x.png'
+import title1 from './assets/text/title-1@3x.png'
+import title2 from './assets/text/title-2@3x.png'
+import title3 from './assets/text/title-3@3x.png'
+import sub1 from './assets/text/sub-1@3x.png'
+import sub2 from './assets/text/sub-2@3x.png'
+import sub3Cn from './assets/text/sub-3-cn@3x.png'
+import sub3En from './assets/text/sub-3-en@3x.png'
+import labelSkip from './assets/text/btn-skip@3x.png'
+import labelNext from './assets/text/btn-next@3x.png'
+import labelStart from './assets/text/btn-start@3x.png'
 import './onboarding.css'
 
 // 开屏引导（用户 2026-10-21 裁决新增；设计源：登记表「登录广告展示界面1/2/3」10:108 / 33:40 /
-// 33:58，402x874）。三屏静态引导，仅首次打开显示（home onLoad 探测首启标记 navigateTo 进来，
+// 33:58，402x874）。三屏静态引导，仅首次打开显示（启动页按首启标记 redirectTo 进来，
 // 跳过/「开始体验」写 consumer:onboarding-done 后 switchTab 回首页）。第三屏文案保留原稿
 // 「发动态、晒萌宠 找同城伙伴」（含社区表述；社区 V1 经 2026-10-14 裁决不做，宣传口径偏差
-// 已随本裁决接受）。布局按 Figma 节点绝对坐标 ×(windowWidth/402) 还原；底部圆点/按钮锚定屏底
-// （设计底部留白 47/48 设计px），避免长屏设备溢出。按钮为 View 无表单语义，规避原生 button
-// 样式重置坑（前端技术基线 v0.7）；禁 data-*。
+// 已随本裁决接受）。布局按 Figma 节点绝对坐标 ×(windowWidth/402) 还原；底部圆点/按钮锚定屏底。
 //
-// 翻页动画（2026-10-21 三轮用户反馈定稿）：
-// ① 两种翻页方式、两个方向都播放同一组入场——点「下一页」、手指左滑、手指右滑一致。
-// ② 两档强度：full（点按钮：整屏缩放淡入 + 图片淡入上浮 + 文字错峰）/ swipe（手指滑动：图片
-//    纯缩放 ob-zoom，不改透明度 + 文字错峰）。swipe 不用透明度，是为了保证拖动过程中两屏同时
-//    可见时中间不露白（用户 2026-10-21 截图反馈）；纯缩放同样有明显动效，不会显得"没动画"。
-// ③ 统一由 Swiper 自身 onChange 触发入场（点按钮与手指滑动、左右两个方向都走这一条路）：
-//    以落定索引为准，天然覆盖跨屏与回弹；不再依赖触摸事件——实测慢速拖动时若提前起播，
-//    动画会在松手前播完，落定反而看不到。
-// ④ animation 走运行时内联 style（WXSS keyframes 内 calc(var()) 不生效，位移用 rpx 固定值）。
-// ⑤ 各屏按钮带静态标记类（ob-skip-1/ob-next-1/ob-next-2/ob-start-3），供自动化按屏定位。
+// 字体口径（2026-10-21 用户裁决）：设计字体 Lovely Little Jelly / 喵喵绘本体 未随稿提供，
+// 按前端技术基线「缺字体先登记、不私自替换」——保留系统字体，只落实可对齐的排版参数
+// （字号 30/20/14、行高 36.36/18.2/11.34、锁定两行不自动换行、开始体验字距 2.88）；
+// 字体本身差异在登记表 §4.19 记为已知偏差。
+//
+// 翻页动画：点「下一页」为 full 档（整屏缩放淡入 + 图片淡入上浮 + 文字错峰），手指滑动为
+// swipe 档（图片纯缩放不改透明度，避免拖动中露白 + 文字错峰）。页码以触摸位移判定为主、
+// swiper 的 onChange/onAnimationFinish 作落定校正；手势信号只更新圆点与动画，不驱动翻页。
+// 分页圆点为页面级共享指示器（高亮项胶囊伸缩 + 弹性放大），屏3 整组淡出。
 
 const EASE = 'cubic-bezier(0.22, 1, 0.36, 1)'
 const LAST = 2
@@ -54,20 +61,16 @@ export default function OnboardingPage() {
   const unit = info.windowWidth / 402
   const style = { '--ob-unit': `${unit}px` } as CSSProperties
   const [current, setCurrent] = useState(0)
-  // viewIndex：当前实际展示的屏（驱动圆点与入场动画）。用户手指滑动时 Swiper 的 change
-  // 事件在部分环境不送达（实测：点按钮能收到、滑动收不到，圆点因此停在第一枚），所以以
-  // 触摸位移判定为主、change/finish 事件为校正；两者都写入同一 ref，避免相互覆盖。
+  // viewIndex：当前实际展示的屏（驱动圆点与入场动画）。Swiper 的 change 事件在手指滑动路径
+  // 上不送达（实测），故以触摸位移判定为主、事件为落定校正。
   const [viewIndex, setViewIndex] = useState(0)
   const viewRef = useRef(0)
-  // 本轮入场目标屏与模式；首屏 full（首启完整入场）。ref 与 state 同源：触摸回调需要即时真值。
   const [animAt, setAnimAt] = useState(0)
   const [mode, setMode] = useState<Mode>('full')
   const animRef = useRef<{ index: number; mode: Mode }>({ index: 0, mode: 'full' })
-  // 最近一次起播时间：点「下一页」设定的 full 优先级高于随后到达的 onChange，
-  // 避免同一跳被 swipe 模式覆盖（onChange 可能晚于按钮 handler 送达）。
+  // 最近一次起播时间：按钮设定的 full 优先级高于随后到达的事件，避免同一跳被重复判定。
   const appliedAt = useRef(0)
-  // 触摸回调里不能用渲染期闭包的 current（手势期间可能已变），用 ref 取实时值。
-  const currentRef = useRef(0)
+  const gestureLock = useRef(0)
 
   const applyAnim = (index: number, nextMode: Mode) => {
     const prev = animRef.current
@@ -78,17 +81,16 @@ export default function OnboardingPage() {
     setMode(nextMode)
   }
 
-  // 结束引导：写标记后 switchTab 回首页（home 为 tab 页，switchTab 同时清空返回栈，
-  // 用户不能再退回引导；实测本页 Taro.navigateBack 静默不生效，改用 switchTab 语义更贴合）。
+  // 结束引导：写标记后 switchTab 回首页（home 为 tab 页，switchTab 同时清空返回栈；
+  // 实测本页 Taro.navigateBack 静默不生效，改用 switchTab 语义更贴合）。
   const finish = useCallback(() => {
     markOnboardingDone()
     void Taro.switchTab({ url: '/consumer/pages/home/index' })
   }, [])
 
-  /** 切到某屏：圆点/动画的唯一入口（ref 与 state 同源）。 */
+  /** 切到某屏：圆点与动画的唯一入口。 */
   const goTo = (index: number, nextMode: Mode) => {
     viewRef.current = index
-    currentRef.current = index
     setViewIndex(index)
     applyAnim(index, nextMode)
   }
@@ -99,41 +101,27 @@ export default function OnboardingPage() {
     goTo(next, 'full')
   }
 
-  // 手指滑动：松手瞬间按位移判定目标屏（dy 忽略，横向阈值 30）。慢拖也不影响——动画在
-  // 松手时起播，与 Swiper 的 450ms 回落同步，不会像"拖动中就起播"那样提前播完。
+  // 手指滑动：松手按位移判定目标屏（阈值 60px），只更新圆点与动画；翻页由原生手势完成，
+  // 此处若 setCurrent 会与手势本身叠加成两页（曾出现"想滑到第2页却直接到第3页"）。
   const touchStartX = useRef(0)
-  const onTouchStart = (e: BaseEventOrig) => {
-    const detail = e as unknown as { touches?: Array<{ clientX: number }> }
-    touchStartX.current = detail.touches?.[0]?.clientX ?? touchStartX.current
-  }
-  const onTouchEnd = (e: BaseEventOrig) => {
-    const detail = e as unknown as { changedTouches?: Array<{ clientX: number }> }
-    const dx = (detail.changedTouches?.[0]?.clientX ?? touchStartX.current) - touchStartX.current
-    applyGesture(dx)
-  }
-
-  // 入场触发点：Swiper 自身 onChange（落定索引）+ onAnimationFinish 兜底（过渡结束事件，
-  // 两者都带 current，重复到达由 animRef 守卫挡掉）。
-  // 以落定索引为准，天然覆盖左右两个方向、跨屏与回弹；不依赖触摸事件（实测合成/真实
-  // 手势下事件时序不稳定，预测在慢速拖动时还会提前把动画播完）。
-  // 过渡事件兜底：滑动开始时原生 swiper 会带位移方向（实测按钮前进 dx=+屏宽），
-  // 据此判断目标屏。窗口期内（刚由按钮/触摸设定过）跳过，避免对同一跳重复判定。
-  // 同一次手势只认第一路信号：transition 往往先到，触摸判定随后到；若两路各推进一页，
-  // 会出现"想滑到第 2 页却直接到第 3 页"（用户 2026-10-21 反馈）。
-  const gestureLock = useRef(0)
   const applyGesture = (dx: number) => {
     if (Date.now() - gestureLock.current < 600) return
     if (Date.now() - appliedAt.current < 400) return
     const target = predictOnboardingTarget(viewRef.current, dx, LAST)
     if (target === null) return
     gestureLock.current = Date.now()
-    // 只更新圆点与入场动画；swiper 的翻页由原生手势自己完成（此处 setCurrent 会叠加成两页）
     goTo(target, 'swipe')
   }
-
-
+  const onTouchStart = (e: BaseEventOrig) => {
+    const detail = e as unknown as { touches?: Array<{ clientX: number }> }
+    touchStartX.current = detail.touches?.[0]?.clientX ?? touchStartX.current
+  }
+  const onTouchEnd = (e: BaseEventOrig) => {
+    const detail = e as unknown as { changedTouches?: Array<{ clientX: number }> }
+    applyGesture((detail.changedTouches?.[0]?.clientX ?? touchStartX.current) - touchStartX.current)
+  }
+  // 落定真值校正（按钮路径 700ms 内不覆盖）。
   const onSettle = (index: number) => {
-    // 落定真值：手势判定若与真实落点不符，以事件为准校正（按钮路径 700ms 内不覆盖）。
     if (index === viewRef.current) return
     if (Date.now() - appliedAt.current < 700) return
     setCurrent(index)
@@ -146,66 +134,65 @@ export default function OnboardingPage() {
 
   return (
     <View className="ob-page" style={style} onTouchStart={onTouchStart} onTouchEnd={onTouchEnd}>
-        <Swiper
-          className="ob-swiper"
-          current={current}
-          duration={450}
-          onChange={(e) => onSettle(e.detail.current)}
-          onAnimationFinish={(e) => onSettle(e.detail.current)}
-        >
-          {/* 屏1（10:108）：橘猫举鱼 + 花瓣装饰 + 「一站式养宠生活圈」 */}
-          <SwiperItem>
-            <View className="ob-slide" style={slideEnter(mode === 'full' && img(0))}>
-              <Image className="ob-s1-decor" style={enter(img(0), imgKey, 0)} src={decorBand} mode="scaleToFill" />
-              <Image className="ob-s1-petal-tl" style={enter(img(0), imgKey, 0.08)} src={petalTl} mode="scaleToFill" />
-              <Image className="ob-s1-petal-mr" style={enter(img(0), imgKey, 0.16)} src={petalMr} mode="scaleToFill" />
-              <Image className="ob-s1-petal-bl" style={enter(img(0), imgKey, 0.16)} src={petalBl} mode="scaleToFill" />
-              <View className="ob-s1-cat-wrap" style={enter(img(0), imgKey, 0.12)}>
-                <Image className="ob-s1-cat ob-float" src={catFish} mode="scaleToFill" />
-              </View>
-              <Image className="ob-logo-s" style={enter(img(0), imgKey, 0.08)} src={brandLogoS} mode="scaleToFill" />
-              <View className="ob-title ob-s1-title" style={enter(text(0), 'ob-rise', 0.26)}>{'一站式养宠生活圈\n上门喂养 遛狗 洗护'}</View>
-              <View className="ob-subtitle ob-s1-subtitle" style={enter(text(0), 'ob-rise', 0.36)}>{'Your nearby pet spirit \nwork platform'}</View>
-              <View className="ob-btn-skip ob-skip-1" style={enter(text(0), 'ob-rise', 0.46)} hoverClass="ob-pressed" hoverStayTime={100} onClick={finish}>跳过</View>
-              <View className="ob-btn-next ob-next-1" style={enter(text(0), 'ob-rise', 0.46)} hoverClass="ob-pressed" hoverStayTime={100} onClick={goNext}>下一页</View>
+      <Swiper
+        className="ob-swiper"
+        current={current}
+        duration={450}
+        onChange={(e) => onSettle(e.detail.current)}
+        onAnimationFinish={(e) => onSettle(e.detail.current)}
+      >
+        {/* 屏1（10:108）：橘猫举鱼 + 花瓣装饰 + 「一站式养宠生活圈」 */}
+        <SwiperItem>
+          <View className="ob-slide" style={slideEnter(mode === 'full' && img(0))}>
+            <Image className="ob-s1-decor" style={enter(img(0), imgKey, 0)} src={decorBand} mode="scaleToFill" />
+            <Image className="ob-s1-petal-tl" style={enter(img(0), imgKey, 0.08)} src={petalTl} mode="scaleToFill" />
+            <Image className="ob-s1-petal-mr" style={enter(img(0), imgKey, 0.16)} src={petalMr} mode="scaleToFill" />
+            <Image className="ob-s1-petal-bl" style={enter(img(0), imgKey, 0.16)} src={petalBl} mode="scaleToFill" />
+            <View className="ob-s1-cat-wrap" style={enter(img(0), imgKey, 0.12)}>
+              <Image className="ob-s1-cat ob-float" src={catFish} mode="scaleToFill" />
             </View>
-          </SwiperItem>
-          {/* 屏2（33:40）：花环背景 + 端坐橘猫 + 「一键召唤 附近的宠托师」 */}
-          <SwiperItem>
-            <View className="ob-slide" style={slideEnter(mode === 'full' && img(1))}>
-              <Image className="ob-s2-bg" style={enter(mode === 'full' && img(1), imgKey, 0)} src={wreathBg} mode="scaleToFill" />
-              <View className="ob-s2-cat-wrap" style={enter(img(1), imgKey, 0.12)}>
-                <Image className="ob-s2-cat ob-float" src={catSit} mode="scaleToFill" />
-              </View>
-              <Image className="ob-logo-m" style={enter(img(1), imgKey, 0.08)} src={brandLogoM} mode="scaleToFill" />
-              <View className="ob-title ob-s2-title" style={enter(text(1), 'ob-rise', 0.26)}>{'一键召唤\n附近的宠托师'}</View>
-              <View className="ob-subtitle ob-s2-subtitle" style={enter(text(1), 'ob-rise', 0.36)}>{'One-click\nsummon nearby pet trainers'}</View>
-              <View className="ob-btn-skip ob-skip-2" style={enter(text(1), 'ob-rise', 0.46)} hoverClass="ob-pressed" hoverStayTime={100} onClick={finish}>跳过</View>
-              <View className="ob-btn-next ob-next-2" style={enter(text(1), 'ob-rise', 0.46)} hoverClass="ob-pressed" hoverStayTime={100} onClick={goNext}>下一页</View>
+            <Image className="ob-logo-s" style={enter(img(0), imgKey, 0.08)} src={brandLogoS} mode="scaleToFill" />
+            <Image className="ob-title ob-s1-title" style={enter(text(0), 'ob-rise', 0.26)} src={title1} mode="scaleToFill" />
+            <Image className="ob-subtitle ob-s1-subtitle" style={enter(text(0), 'ob-rise', 0.36)} src={sub1} mode="scaleToFill" />
+            <View className="ob-btn-skip ob-skip-1" style={enter(text(0), 'ob-rise', 0.46)} hoverClass="ob-pressed" hoverStayTime={100} onClick={finish}><Image className="ob-btn-label" src={labelSkip} mode="scaleToFill" /></View>
+            <View className="ob-btn-next ob-next-1" style={enter(text(0), 'ob-rise', 0.46)} hoverClass="ob-pressed" hoverStayTime={100} onClick={goNext}><Image className="ob-btn-label" src={labelNext} mode="scaleToFill" /></View>
+          </View>
+        </SwiperItem>
+        {/* 屏2（33:40）：花环背景 + 端坐橘猫 + 「一键召唤 附近的宠托师」 */}
+        <SwiperItem>
+          <View className="ob-slide" style={slideEnter(mode === 'full' && img(1))}>
+            <Image className="ob-s2-bg" style={enter(mode === 'full' && img(1), imgKey, 0)} src={wreathBg} mode="scaleToFill" />
+            <View className="ob-s2-cat-wrap" style={enter(img(1), imgKey, 0.12)}>
+              <Image className="ob-s2-cat ob-float" src={catSit} mode="scaleToFill" />
             </View>
-          </SwiperItem>
-          {/* 屏3（33:58）：主人撸猫插画 + 「发动态、晒萌宠 找同城伙伴」（原稿文案保留）+ 开始体验 */}
-          <SwiperItem>
-            <View className="ob-slide" style={slideEnter(mode === 'full' && img(2))}>
-              <Image className="ob-s3-bg" style={enter(mode === 'full' && img(2), imgKey, 0)} src={sceneBg} mode="aspectFill" />
-              <View className="ob-s3-strip-wrap" style={enter(img(2), imgKey, 0.12)}>
-                <Image className="ob-s3-strip ob-float" src={ownerCat} mode="scaleToFill" />
-              </View>
-              <Image className="ob-logo-m" style={enter(img(2), imgKey, 0.08)} src={brandLogoM} mode="scaleToFill" />
-              <View className="ob-title ob-s3-title" style={enter(text(2), 'ob-rise', 0.26)}>{'发动态、晒萌宠\n找同城伙伴'}</View>
-              <View className="ob-s3-sub-cn" style={enter(text(2), 'ob-rise', 0.36)}>你需要的, 这里全都有</View>
-              <View className="ob-s3-sub-en" style={enter(text(2), 'ob-rise', 0.36)}>{'Service appointment\nSuper worry-free'}</View>
-              <View className="ob-btn-start ob-start-3" style={enter(text(2), 'ob-rise', 0.46)} hoverClass="ob-pressed" hoverStayTime={100} onClick={finish}>开始体验</View>
+            <Image className="ob-logo-m" style={enter(img(1), imgKey, 0.08)} src={brandLogoM} mode="scaleToFill" />
+            <Image className="ob-title ob-s2-title" style={enter(text(1), 'ob-rise', 0.26)} src={title2} mode="scaleToFill" />
+            <Image className="ob-subtitle ob-s2-subtitle" style={enter(text(1), 'ob-rise', 0.36)} src={sub2} mode="scaleToFill" />
+            <View className="ob-btn-skip ob-skip-2" style={enter(text(1), 'ob-rise', 0.46)} hoverClass="ob-pressed" hoverStayTime={100} onClick={finish}><Image className="ob-btn-label" src={labelSkip} mode="scaleToFill" /></View>
+            <View className="ob-btn-next ob-next-2" style={enter(text(1), 'ob-rise', 0.46)} hoverClass="ob-pressed" hoverStayTime={100} onClick={goNext}><Image className="ob-btn-label" src={labelNext} mode="scaleToFill" /></View>
+          </View>
+        </SwiperItem>
+        {/* 屏3（33:58）：主人撸猫插画 + 「发动态、晒萌宠 找同城伙伴」（原稿文案保留）+ 开始体验 */}
+        <SwiperItem>
+          <View className="ob-slide" style={slideEnter(mode === 'full' && img(2))}>
+            <Image className="ob-s3-bg" style={enter(mode === 'full' && img(2), imgKey, 0)} src={sceneBg} mode="aspectFill" />
+            <View className="ob-s3-strip-wrap" style={enter(img(2), imgKey, 0.12)}>
+              <Image className="ob-s3-strip ob-float" src={ownerCat} mode="scaleToFill" />
             </View>
-          </SwiperItem>
-        </Swiper>
-        {/* 分页圆点：页面级共享指示器（不再随每屏各自渲染，切换时才有连续动画）。
-            屏3 原稿无圆点 → current=2 时淡出。高亮项做胶囊伸缩 + 弹性放大。 */}
-        <View className={viewIndex >= LAST ? 'ob-dots ob-dots-hidden' : 'ob-dots'}>
-          {[0, 1, 2].map((index) => (
-            <View key={index} className={viewIndex === index ? 'ob-dot ob-dot-on' : 'ob-dot'} />
-          ))}
-        </View>
+            <Image className="ob-logo-m" style={enter(img(2), imgKey, 0.08)} src={brandLogoM} mode="scaleToFill" />
+            <Image className="ob-title ob-s3-title" style={enter(text(2), 'ob-rise', 0.26)} src={title3} mode="scaleToFill" />
+            <Image className="ob-s3-sub-cn" style={enter(text(2), 'ob-rise', 0.36)} src={sub3Cn} mode="scaleToFill" />
+            <Image className="ob-s3-sub-en" style={enter(text(2), 'ob-rise', 0.36)} src={sub3En} mode="scaleToFill" />
+            <View className="ob-btn-start ob-start-3" style={enter(text(2), 'ob-rise', 0.46)} hoverClass="ob-pressed" hoverStayTime={100} onClick={finish}><Image className="ob-btn-label" src={labelStart} mode="scaleToFill" /></View>
+          </View>
+        </SwiperItem>
+      </Swiper>
+      {/* 分页圆点：页面级共享指示器；屏3 原稿无圆点 → 淡出 */}
+      <View className={viewIndex >= LAST ? 'ob-dots ob-dots-hidden' : 'ob-dots'}>
+        {[0, 1, 2].map((index) => (
+          <View key={index} className={viewIndex === index ? 'ob-dot ob-dot-on' : 'ob-dot'} />
+        ))}
+      </View>
     </View>
   )
 }

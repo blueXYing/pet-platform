@@ -14,8 +14,10 @@
 .ob-slide { position: relative; width: 100%; height: 100%; overflow: hidden; }
 .ob-slide Image { display: block; }
 
-.ob-title { position: absolute; font-size: calc(var(--ob-unit) * 30); line-height: calc(var(--ob-unit) * 36.4); color: #000000; font-weight: 400; white-space: pre-line; z-index: 3; }
-.ob-subtitle { position: absolute; font-size: calc(var(--ob-unit) * 20); line-height: calc(var(--ob-unit) * 18.2); color: #b09a8a; font-weight: 400; white-space: pre-line; z-index: 3; }
+/* 文案用 Figma 原稿文字层切图（设计字体 Lovely Little Jelly / 喵喵绘本体 未随稿提供，
+   按前端技术基线「缺字体先登记、不私自替换」——用原稿渲染结果代替系统字体）。
+   尺寸即 Figma 文本框尺寸，见各 .ob-sX-* 规则。 */
+.ob-title, .ob-subtitle { position: absolute; z-index: 3; display: block; }
 
 /* —— keyframes（仅位移/透明度/缩放，不依赖变量） —— */
 @keyframes ob-enter {
@@ -49,23 +51,23 @@
 .ob-s1-petal-bl { position: absolute; left: calc(var(--ob-unit) * 36); top: calc(var(--ob-unit) * 463); width: calc(var(--ob-unit) * 113); height: calc(var(--ob-unit) * 51); z-index: 1; }
 .ob-s1-cat-wrap { position: absolute; left: calc(var(--ob-unit) * 23); top: calc(var(--ob-unit) * 148); width: calc(var(--ob-unit) * 358); height: calc(var(--ob-unit) * 315); z-index: 2; }
 .ob-s1-cat { width: 100%; height: 100%; }
-.ob-s1-title { left: calc(var(--ob-unit) * 72); top: calc(var(--ob-unit) * 529); width: calc(var(--ob-unit) * 255); }
-.ob-s1-subtitle { left: calc(var(--ob-unit) * 103); top: calc(var(--ob-unit) * 649); width: calc(var(--ob-unit) * 193); }
+.ob-s1-title { left: calc(var(--ob-unit) * 72); top: calc(var(--ob-unit) * 529); width: calc(var(--ob-unit) * 255); height: calc(var(--ob-unit) * 72); }
+.ob-s1-subtitle { left: calc(var(--ob-unit) * 103); top: calc(var(--ob-unit) * 649); width: calc(var(--ob-unit) * 193); height: calc(var(--ob-unit) * 36); }
 
 /* 屏2（33:40）：花环全屏背景(824x1464) + 端坐橘猫(360x480) */
 .ob-s2-bg { position: absolute; left: calc(var(--ob-unit) * -212); top: calc(var(--ob-unit) * -590); width: calc(var(--ob-unit) * 824); height: calc(var(--ob-unit) * 1464); z-index: 0; }
 .ob-s2-cat-wrap { position: absolute; left: calc(var(--ob-unit) * 19); top: calc(var(--ob-unit) * 69); width: calc(var(--ob-unit) * 360); height: calc(var(--ob-unit) * 480); z-index: 1; }
 .ob-s2-cat { width: 100%; height: 100%; }
-.ob-s2-title { left: calc(var(--ob-unit) * 109); top: calc(var(--ob-unit) * 529); width: calc(var(--ob-unit) * 180); }
-.ob-s2-subtitle { left: calc(var(--ob-unit) * 80); top: calc(var(--ob-unit) * 642); width: calc(var(--ob-unit) * 238); }
+.ob-s2-title { left: calc(var(--ob-unit) * 109); top: calc(var(--ob-unit) * 529); width: calc(var(--ob-unit) * 180); height: calc(var(--ob-unit) * 72); }
+.ob-s2-subtitle { left: calc(var(--ob-unit) * 80); top: calc(var(--ob-unit) * 642); width: calc(var(--ob-unit) * 238); height: calc(var(--ob-unit) * 36); }
 
 /* 屏3（33:58）：整屏背景(402x874 aspectFill 铺满) + 主人撸猫插画条(402x225) */
 .ob-s3-bg { position: absolute; left: 0; top: 0; width: 100%; height: 100%; z-index: 0; }
 .ob-s3-strip-wrap { position: absolute; left: 0; top: calc(var(--ob-unit) * 282); width: calc(var(--ob-unit) * 402); height: calc(var(--ob-unit) * 225); z-index: 1; }
 .ob-s3-strip { width: 100%; height: 100%; }
-.ob-s3-title { left: calc(var(--ob-unit) * 94); top: calc(var(--ob-unit) * 507); width: calc(var(--ob-unit) * 210); }
-.ob-s3-sub-cn { position: absolute; left: calc(var(--ob-unit) * 103); top: calc(var(--ob-unit) * 651); font-size: calc(var(--ob-unit) * 20); line-height: calc(var(--ob-unit) * 18.2); color: #b09a8a; z-index: 3; }
-.ob-s3-sub-en { position: absolute; left: calc(var(--ob-unit) * 143); top: calc(var(--ob-unit) * 676); font-size: calc(var(--ob-unit) * 14); line-height: calc(var(--ob-unit) * 11.4); color: #b09a8a; z-index: 3; }
+.ob-s3-title { left: calc(var(--ob-unit) * 94); top: calc(var(--ob-unit) * 507); width: calc(var(--ob-unit) * 210); height: calc(var(--ob-unit) * 72); }
+.ob-s3-sub-cn { position: absolute; left: calc(var(--ob-unit) * 103); top: calc(var(--ob-unit) * 651); width: calc(var(--ob-unit) * 197); height: calc(var(--ob-unit) * 18); z-index: 3; display: block; }
+.ob-s3-sub-en { position: absolute; left: calc(var(--ob-unit) * 143); top: calc(var(--ob-unit) * 676); width: calc(var(--ob-unit) * 116); height: calc(var(--ob-unit) * 22); z-index: 3; display: block; }
 
 /* 品牌 logo：屏1 Group35(65x65 @169,44)，屏2/3 Group36(72x83 @165,37)，原稿层序最顶 */
 .ob-logo-s { position: absolute; left: calc(var(--ob-unit) * 169); top: calc(var(--ob-unit) * 44); width: calc(var(--ob-unit) * 65); height: calc(var(--ob-unit) * 65); z-index: 5; }
@@ -90,3 +92,10 @@
 .ob-btn-next { position: absolute; left: calc(var(--ob-unit) * 133); bottom: calc(var(--ob-unit) * 47); width: calc(var(--ob-unit) * 246); height: calc(var(--ob-unit) * 56); border-radius: calc(var(--ob-unit) * 13); background: #5baae8; color: #ffffff; font-size: calc(var(--ob-unit) * 20); display: flex; align-items: center; justify-content: center; z-index: 4; transition: transform 0.15s ease, opacity 0.15s ease; }
 .ob-btn-start { position: absolute; left: calc(var(--ob-unit) * 20); bottom: calc(var(--ob-unit) * 48); width: calc(var(--ob-unit) * 361); height: calc(var(--ob-unit) * 56); border-radius: calc(var(--ob-unit) * 13); background: #5baae8; color: #ffffff; font-size: calc(var(--ob-unit) * 24); display: flex; align-items: center; justify-content: center; z-index: 4; transition: transform 0.15s ease, opacity 0.15s ease; }
 .ob-pressed { transform: scale(0.95); opacity: 0.88; }
+
+/* 按钮文字同为原稿切图，在按钮容器内居中（尺寸=Figma 文字框） */
+/* 按钮文字同为原稿切图，尺寸=Figma 文字框；按钮容器 flex 居中 */
+.ob-btn-label { display: block; }
+.ob-btn-skip .ob-btn-label { width: calc(var(--ob-unit) * 42); height: calc(var(--ob-unit) * 24); }
+.ob-btn-next .ob-btn-label { width: calc(var(--ob-unit) * 62); height: calc(var(--ob-unit) * 24); }
+.ob-btn-start .ob-btn-label { width: calc(var(--ob-unit) * 108); height: calc(var(--ob-unit) * 29); }
