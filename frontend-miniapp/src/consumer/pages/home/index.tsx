@@ -20,6 +20,7 @@ import iconRating from '../../assets/home/guarantee-rating@2x.png'
 import iconInsurance from '../../assets/home/guarantee-insurance@2x.png'
 import iconEscrow from '../../assets/home/guarantee-escrow@2x.png'
 import placeholderAvatar from '../../assets/profile/avatar.png'
+import cityPawIcon from '../../assets/home/home-city-paw@3x.png'
 import './home.css'
 
 // 首页（tabbar+login 切片，用户 2026-10-08 裁决；2026-10-13 按 Figma 新版 61:599 视觉对齐）。
@@ -126,7 +127,7 @@ export default function HomePage() {
       <View className='home-city-anchor'>
         <Button id='home-city' ariaLabel={`当前城市${cityName}，点按切换`} className='home-city-chip' hoverClass='none'
           onClick={() => setCityPickerOpen(open => !open)}>
-          <View className='home-city-pin' />
+          <Image className='home-city-pin' src={cityPawIcon} mode='aspectFit' />
           <Text className='home-city-name'>{cityName}</Text>
           <View className='home-city-caret' />
         </Button>
