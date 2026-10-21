@@ -87,5 +87,8 @@ export default defineAppConfig({
     { root: 'consumer/pages/help', pages: ['index'] },
     // Feedback slice (contract 67, PRD 5.1.28 complaint class): create + my-ticket list.
     { root: 'consumer/pages/feedback', pages: ['index', 'list'] },
+    // Onboarding splash (user ruling 2026-10-21; figma 10:108/33:40/33:58): first-launch-only
+    // three-screen guide; subpackage keeps the ~1MB 2x strips within the per-package limit.
+    { root: 'consumer/pages/onboarding', pages: ['index'] },
   ],
 })
