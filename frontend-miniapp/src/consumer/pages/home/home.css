@@ -17,20 +17,21 @@
   display: flex; align-items: flex-end; justify-content: space-between;
   padding: 0 calc(var(--home-unit) * 31) calc(var(--home-unit) * 9) calc(var(--home-unit) * 9);
 }
-.home-brand-logo { width: calc(var(--home-unit) * 73); height: calc(var(--home-unit) * 37); }
-.home-header-actions { display: flex; align-items: flex-end; gap: calc(var(--home-unit) * 24); }
+.home-brand-logo { position: absolute; left: calc(var(--home-unit) * 9); width: calc(var(--home-unit) * 73); height: calc(var(--home-unit) * 37); }
+/* 右侧图标：绝对定位到胶囊左侧并与胶囊垂直居中（避免被微信「···」胶囊遮挡） */
+.home-header-actions { position: absolute; display: flex; align-items: center; gap: calc(var(--home-unit) * 16); height: calc(var(--home-unit) * 24); }
 /* 城市芯片（61:599 头部：pin #5baae8 27.6x32 + 城市名 #383838 12 + 下拉箭头 #3c3c3c 7.4x4.5；
    2026-10-19 城市选择裁决回补，V1 无定位能力——pin 仅作芯片图形）。pin/箭头为按原稿矢量
    实测自绘 SVG base64（become-provider 4.16 同法）。 */
-.home-city-anchor { position: absolute; left: calc(var(--home-unit) * 92); bottom: calc(var(--home-unit) * 2); z-index: 30; }
+.home-city-anchor { position: absolute; left: calc(var(--home-unit) * 92); z-index: 30; }
 .home-city-chip { display: flex; align-items: center; gap: calc(var(--home-unit) * 4); padding: 0; background: transparent; border: none; line-height: 1; }
 .home-city-pin { width: calc(var(--home-unit) * 27); height: calc(var(--home-unit) * 32); }
 .home-city-name { font-size: calc(var(--home-unit) * 12); line-height: calc(var(--home-unit) * 15); color: #383838; }
 .home-city-caret { width: calc(var(--home-unit) * 8); height: calc(var(--home-unit) * 5); background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 8 5'%3E%3Cpath fill='%233c3c3c' d='M.6.6h6.8c.5 0 .8.6.4 1L4.4 4.7c-.2.3-.6.3-.8 0L.2 1.6c-.4-.4-.1-1 .4-1Z'/%3E%3C/svg%3E") no-repeat center / contain; }
-.home-icon-link { display: flex; align-items: center; justify-content: center; line-height: 1; padding: 0; background: transparent; margin-bottom: calc(var(--home-unit) * 7); }
-.home-icon-link + .home-icon-link { margin-bottom: calc(var(--home-unit) * 7); }
+.home-icon-link { display: flex; align-items: center; justify-content: center; line-height: 1; padding: 0; background: transparent; }
+
 .home-icon-search { width: calc(var(--home-unit) * 19); height: calc(var(--home-unit) * 19); }
-.home-icon-bell { width: calc(var(--home-unit) * 24); height: calc(var(--home-unit) * 24); }
+.home-icon-bell { width: calc(var(--home-unit) * 19); height: calc(var(--home-unit) * 22); }
 
 .home-body { flex: 1; height: 0; position: relative; z-index: 2; padding: calc(var(--home-unit) * 196) 0 calc(var(--home-unit) * 24); box-sizing: border-box; }
 

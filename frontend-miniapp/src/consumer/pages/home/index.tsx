@@ -52,6 +52,23 @@ export default function HomePage() {
   const [selectedCity, setSelectedCity] = useState<string | undefined>(() => readSelectedCity().cityCode)
   const [cityPickerOpen, setCityPickerOpen] = useState(false)
   const todayISO = new Date().toISOString().slice(0, 10)
+  // 头部对齐基准：微信右上角胶囊（开发者工具/真机都有），头部元素避让并与其垂直居中。
+  const menuRect = useState(() => {
+    try { return Taro.getMenuButtonBoundingClientRect() } catch { return null }
+  })[0]
+  const headerTop = menuRect ? menuRect.top : (info.statusBarHeight || 0) + 6
+  const headerCenter = headerTop + (menuRect ? menuRect.height : 32) / 2
+  const HEADER_LOGO_H = 37 * unit
+  const HEADER_CHIP_H = 32 * unit
+  const HEADER_ICON_H = 24 * unit
+  const headerLayout = {
+    logo: { top: `${headerCenter - HEADER_LOGO_H / 2}px` },
+    chip: { top: `${headerCenter - HEADER_CHIP_H / 2}px` },
+    actions: {
+      top: `${headerCenter - HEADER_ICON_H / 2}px`,
+      right: `${menuRect ? info.windowWidth - menuRect.left + 10 * unit : 24 * unit}px`,
+    },
+  } as const
   const mounted = useRef(true)
   useEffect(() => { mounted.current = true; return () => { mounted.current = false } }, [])
   // 宠物档案读侧（设计 61:599：标题「宠物档案 N 只萌宠」+ 宠物行 + 疫苗/驱虫状态 + 宠物百科入口）。
@@ -123,8 +140,8 @@ export default function HomePage() {
     <View className='home-bg-cream' />
     <Image className='home-bg-doodle' src={textureDoodle} mode='scaleToFill' />
     <View className='home-header'>
-      <Image className='home-brand-logo' src={brandLogo} mode='aspectFit' />
-      <View className='home-city-anchor'>
+      <Image className='home-brand-logo' style={headerLayout.logo} src={brandLogo} mode='aspectFit' />
+      <View className='home-city-anchor' style={headerLayout.chip}>
         <Button id='home-city' ariaLabel={`当前城市${cityName}，点按切换`} className='home-city-chip' hoverClass='none'
           onClick={() => setCityPickerOpen(open => !open)}>
           <Image className='home-city-pin' src={cityPawIcon} mode='aspectFit' />
@@ -135,7 +152,7 @@ export default function HomePage() {
           cities={cities} current={selectedCity} includeAll={false}
           onPick={(next: string | undefined) => pickCity(next)} />}
       </View>
-      <View className='home-header-actions'>
+      <View className='home-header-actions' style={headerLayout.actions}>
         <Button id='home-search' ariaLabel='找门店与服务' className='home-icon-link' hoverClass='none' onClick={openStores}>
           <Image className='home-icon-search' src={searchIcon} mode='scaleToFill' />
         </Button>
