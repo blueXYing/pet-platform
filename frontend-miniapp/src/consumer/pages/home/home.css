@@ -32,11 +32,12 @@
 .home-icon-search { width: calc(var(--home-unit) * 19); height: calc(var(--home-unit) * 19); }
 .home-icon-bell { width: calc(var(--home-unit) * 24); height: calc(var(--home-unit) * 24); }
 
-.home-body { flex: 1; height: 0; position: relative; z-index: 2; padding: calc(var(--home-unit) * 249) 0 calc(var(--home-unit) * 24); box-sizing: border-box; }
+.home-body { flex: 1; height: 0; position: relative; z-index: 2; padding: calc(var(--home-unit) * 196) 0 calc(var(--home-unit) * 24); box-sizing: border-box; }
 
 /* 宠物档案入口卡（原稿 245:4155 分区 + Rectangle 16 卡壳：白底 #5baae8 描边；无首页读侧，不虚构宠物/疫苗数据） */
 .home-pet-section { padding: 0 calc(var(--home-unit) * 12); position: relative; z-index: 5; }
-.home-pet-card { background: #ffffff; border-radius: calc(var(--home-unit) * 16); padding: calc(var(--home-unit) * 12) calc(var(--home-unit) * 12) calc(var(--home-unit) * 6); box-shadow: 0 calc(var(--home-unit) * 6) calc(var(--home-unit) * 18) rgba(91, 170, 232, 0.14); }
+.home-pet-paper { position: absolute; left: calc(var(--home-unit) * 18); right: calc(var(--home-unit) * 18); top: calc(var(--home-unit) * 10); bottom: calc(var(--home-unit) * -12); background: #d8f0fc; border-radius: calc(var(--home-unit) * 16); transform: rotate(-1.4deg); z-index: 0; }
+.home-pet-card { position: relative; z-index: 1; background: #ffffff; border-radius: calc(var(--home-unit) * 16); padding: calc(var(--home-unit) * 12) calc(var(--home-unit) * 12) calc(var(--home-unit) * 6); box-shadow: 0 calc(var(--home-unit) * 6) calc(var(--home-unit) * 18) rgba(91, 170, 232, 0.14); }
 .home-pet-head { display: flex; align-items: flex-end; margin-bottom: calc(var(--home-unit) * 8); }
 .home-pet-h1 { font-size: calc(var(--home-unit) * 18); line-height: calc(var(--home-unit) * 26); font-weight: 700; color: #1c0c07; }
 .home-pet-count { margin-left: calc(var(--home-unit) * 8); margin-bottom: calc(var(--home-unit) * 3); font-size: calc(var(--home-unit) * 11); color: #53bfed; }

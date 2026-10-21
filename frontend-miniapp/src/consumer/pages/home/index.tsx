@@ -147,6 +147,7 @@ export default function HomePage() {
       {/* 宠物档案（设计 61:599：标题 + N 只萌宠 + 宠物行（性别/品种年龄/最近疫苗或驱虫）+ 宠物百科）。
           已登录且读到 ACTIVE 宠物时展示真实明细；否则回退为建卡入口，不虚构数据。 */}
       <View className='home-pet-section'>
+        <View className='home-pet-paper' />
         <View className='home-pet-card'>
           <View className='home-pet-head'>
             <Text className='home-pet-h1'>宠物档案</Text>
