@@ -1,0 +1,10 @@
+/* 启动页「初始界面」（Figma 10:89，402x874）：整幅画板单图铺满。
+   冷启动首帧即是品牌画面，避免先闪首页；固定停留后按首启标记路由。背景色与画板天空同色，
+   图片解码前也不会露出白底。 */
+.sp-page { width: 100vw; height: 100vh; overflow: hidden; background: #5aa9e6; }
+.sp-page .sp-art { width: 100vw; height: 100vh; display: block; }
+.sp-in { animation: sp-fade 0.32s ease-out; }
+@keyframes sp-fade {
+  from { opacity: 0.6; }
+  to { opacity: 1; }
+}

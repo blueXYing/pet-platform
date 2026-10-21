@@ -17,7 +17,6 @@ import iconRating from '../../assets/home/guarantee-rating@2x.png'
 import iconInsurance from '../../assets/home/guarantee-insurance@2x.png'
 import iconEscrow from '../../assets/home/guarantee-escrow@2x.png'
 import placeholderAvatar from '../../assets/profile/avatar.png'
-import { readOnboardingDone } from '../onboarding/model'
 import './home.css'
 
 // 首页（tabbar+login 切片，用户 2026-10-08 裁决；2026-10-13 按 Figma 新版 61:599 视觉对齐）。
@@ -48,13 +47,6 @@ export default function HomePage() {
   const [cityPickerOpen, setCityPickerOpen] = useState(false)
   const mounted = useRef(true)
   useEffect(() => { mounted.current = true; return () => { mounted.current = false } }, [])
-  // 开屏引导首启探测（用户 2026-10-21 裁决）：仅首次打开显示；完成/跳过由引导页写
-  // consumer:onboarding-done 标记后 navigateBack，本页不再探测。静默登录在 app 层进行，不受影响。
-  useEffect(() => {
-    if (!readOnboardingDone()) {
-      Taro.navigateTo({ url: '/consumer/pages/onboarding/index' }).catch(() => { /* 打开失败不阻断首页 */ })
-    }
-  }, [])
   const loadCities = useCallback(() => {
     consumerApi.anonymousRequest({ method: 'GET', path: '/api/v1/c/cities' }, decodeCityList)
       .then(catalog => { if (mounted.current && catalog.length) setCities(catalog) })
