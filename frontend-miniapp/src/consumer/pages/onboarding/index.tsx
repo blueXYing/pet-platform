@@ -123,11 +123,6 @@ export default function OnboardingPage() {
               <Image className="ob-logo-s" style={enter(img(0), imgKey, 0.08)} src={brandLogoS} mode="scaleToFill" />
               <View className="ob-title ob-s1-title" style={enter(text(0), 'ob-rise', 0.26)}>{'一站式养宠生活圈\n上门喂养 遛狗 洗护'}</View>
               <View className="ob-subtitle ob-s1-subtitle" style={enter(text(0), 'ob-rise', 0.36)}>{'Your nearby pet spirit \nwork platform'}</View>
-              <View className="ob-dots" style={enter(text(0), 'ob-rise', 0.46)}>
-                <View className="ob-dot ob-dot-on" />
-                <View className="ob-dot" />
-                <View className="ob-dot" />
-              </View>
               <View className="ob-btn-skip ob-skip-1" style={enter(text(0), 'ob-rise', 0.46)} hoverClass="ob-pressed" hoverStayTime={100} onClick={finish}>跳过</View>
               <View className="ob-btn-next ob-next-1" style={enter(text(0), 'ob-rise', 0.46)} hoverClass="ob-pressed" hoverStayTime={100} onClick={goNext}>下一页</View>
             </View>
@@ -142,11 +137,6 @@ export default function OnboardingPage() {
               <Image className="ob-logo-m" style={enter(img(1), imgKey, 0.08)} src={brandLogoM} mode="scaleToFill" />
               <View className="ob-title ob-s2-title" style={enter(text(1), 'ob-rise', 0.26)}>{'一键召唤\n附近的宠托师'}</View>
               <View className="ob-subtitle ob-s2-subtitle" style={enter(text(1), 'ob-rise', 0.36)}>{'One-click\nsummon nearby pet trainers'}</View>
-              <View className="ob-dots" style={enter(text(1), 'ob-rise', 0.46)}>
-                <View className="ob-dot" />
-                <View className="ob-dot ob-dot-on" />
-                <View className="ob-dot" />
-              </View>
               <View className="ob-btn-skip ob-skip-2" style={enter(text(1), 'ob-rise', 0.46)} hoverClass="ob-pressed" hoverStayTime={100} onClick={finish}>跳过</View>
               <View className="ob-btn-next ob-next-2" style={enter(text(1), 'ob-rise', 0.46)} hoverClass="ob-pressed" hoverStayTime={100} onClick={goNext}>下一页</View>
             </View>
@@ -166,6 +156,13 @@ export default function OnboardingPage() {
             </View>
           </SwiperItem>
         </Swiper>
+        {/* 分页圆点：页面级共享指示器（不再随每屏各自渲染，切换时才有连续动画）。
+            屏3 原稿无圆点 → current=2 时淡出。高亮项做胶囊伸缩 + 弹性放大。 */}
+        <View className={current >= LAST ? 'ob-dots ob-dots-hidden' : 'ob-dots'}>
+          {[0, 1, 2].map((index) => (
+            <View key={index} className={current === index ? 'ob-dot ob-dot-on' : 'ob-dot'} />
+          ))}
+        </View>
     </View>
   )
 }

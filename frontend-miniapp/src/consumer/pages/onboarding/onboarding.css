@@ -71,11 +71,18 @@
 .ob-logo-s { position: absolute; left: calc(var(--ob-unit) * 169); top: calc(var(--ob-unit) * 44); width: calc(var(--ob-unit) * 65); height: calc(var(--ob-unit) * 65); z-index: 5; }
 .ob-logo-m { position: absolute; left: calc(var(--ob-unit) * 165); top: calc(var(--ob-unit) * 37); width: calc(var(--ob-unit) * 72); height: calc(var(--ob-unit) * 83); z-index: 5; }
 
-/* 分页圆点（屏1/2；屏3 原稿无圆点）：每屏自带一组、当前项静态高亮为胶囊形，
-   gap 4 设计px；入场随元素错峰最后一批出现 */
-.ob-dots { position: absolute; left: calc(var(--ob-unit) * 175); bottom: calc(var(--ob-unit) * 128); display: flex; gap: calc(var(--ob-unit) * 4); z-index: 4; }
-.ob-dot { width: calc(var(--ob-unit) * 14); height: calc(var(--ob-unit) * 14); border-radius: calc(var(--ob-unit) * 7); background: #ebebeb; }
-.ob-dot-on { width: calc(var(--ob-unit) * 28); background: #5baae8; }
+/* 分页圆点（屏1/2；屏3 原稿无圆点）：页面级共享指示器——不随每屏各自渲染，
+   切换时高亮项才具备连续动画：宽度 14→28 胶囊伸缩 + 背景色渐变 + 弹性放大一次。
+   屏3 用 ob-dots-hidden 淡出（原稿无圆点）。 */
+.ob-dots { position: absolute; left: calc(var(--ob-unit) * 175); bottom: calc(var(--ob-unit) * 128); display: flex; gap: calc(var(--ob-unit) * 4); z-index: 6; transition: opacity 0.25s ease; }
+.ob-dots-hidden { opacity: 0; }
+.ob-dot { width: calc(var(--ob-unit) * 14); height: calc(var(--ob-unit) * 14); border-radius: calc(var(--ob-unit) * 7); background: #ebebeb; transition: width 0.38s cubic-bezier(0.22, 1, 0.36, 1), background-color 0.3s ease; }
+.ob-dot-on { width: calc(var(--ob-unit) * 28); background: #5baae8; animation: ob-dot-pop 0.42s cubic-bezier(0.34, 1.56, 0.64, 1); }
+@keyframes ob-dot-pop {
+  0% { transform: scale(1); }
+  45% { transform: scale(1.28); }
+  100% { transform: scale(1); }
+}
 
 /* 按钮：跳过=白底 r13 黑字20（104x56 @x20）；下一页=蓝底白字20（246x56 @x133）；开始体验=蓝底白字24（361x56 @x20）。
    View 实现，无原生 button 重置坑；hoverClass=ob-pressed 按压缩放 */
