@@ -109,10 +109,7 @@ export default function OnboardingPage() {
   const onTouchEnd = (e: BaseEventOrig) => {
     const detail = e as unknown as { changedTouches?: Array<{ clientX: number }> }
     const dx = (detail.changedTouches?.[0]?.clientX ?? touchStartX.current) - touchStartX.current
-    const target = predictOnboardingTarget(viewRef.current, dx, LAST)
-    if (target === null) return
-    setCurrent(target)
-    goTo(target, 'swipe')
+    applyGesture(dx)
   }
 
   // 入场触发点：Swiper 自身 onChange（落定索引）+ onAnimationFinish 兜底（过渡结束事件，
@@ -121,18 +118,22 @@ export default function OnboardingPage() {
   // 手势下事件时序不稳定，预测在慢速拖动时还会提前把动画播完）。
   // 过渡事件兜底：滑动开始时原生 swiper 会带位移方向（实测按钮前进 dx=+屏宽），
   // 据此判断目标屏。窗口期内（刚由按钮/触摸设定过）跳过，避免对同一跳重复判定。
-  const onTransition = (e: BaseEventOrig) => {
-    if (Date.now() - appliedAt.current < 700) return
-    const dx = (e.detail as { dx?: number } | undefined)?.dx
-    if (typeof dx !== 'number' || dx === 0) return
-    const target = dx > 0 ? Math.min(viewRef.current + 1, LAST) : Math.max(viewRef.current - 1, 0)
-    if (target === viewRef.current) return
-    setCurrent(target)
+  // 同一次手势只认第一路信号：transition 往往先到，触摸判定随后到；若两路各推进一页，
+  // 会出现"想滑到第 2 页却直接到第 3 页"（用户 2026-10-21 反馈）。
+  const gestureLock = useRef(0)
+  const applyGesture = (dx: number) => {
+    if (Date.now() - gestureLock.current < 600) return
+    if (Date.now() - appliedAt.current < 400) return
+    const target = predictOnboardingTarget(viewRef.current, dx, LAST)
+    if (target === null) return
+    gestureLock.current = Date.now()
+    // 只更新圆点与入场动画；swiper 的翻页由原生手势自己完成（此处 setCurrent 会叠加成两页）
     goTo(target, 'swipe')
   }
 
+
   const onSettle = (index: number) => {
-    // 事件校正：仅在触摸判定与实际不一致时修正（按钮路径已由 goTo 设定，700ms 内不覆盖）。
+    // 落定真值：手势判定若与真实落点不符，以事件为准校正（按钮路径 700ms 内不覆盖）。
     if (index === viewRef.current) return
     if (Date.now() - appliedAt.current < 700) return
     setCurrent(index)
@@ -150,7 +151,6 @@ export default function OnboardingPage() {
           current={current}
           duration={450}
           onChange={(e) => onSettle(e.detail.current)}
-          onTransition={onTransition}
           onAnimationFinish={(e) => onSettle(e.detail.current)}
         >
           {/* 屏1（10:108）：橘猫举鱼 + 花瓣装饰 + 「一站式养宠生活圈」 */}
