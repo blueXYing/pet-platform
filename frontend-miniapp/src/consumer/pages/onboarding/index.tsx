@@ -33,18 +33,19 @@ import './onboarding.css'
 
 const EASE = 'cubic-bezier(0.22, 1, 0.36, 1)'
 
-/** 元素入场：激活屏下发延迟播放指定 keyframes；非激活屏置透明（回翻即重播）。 */
-function enter(active: boolean, keyframes: 'ob-rise' | 'ob-pop', delay: number): CSSProperties {
-  return active
+/** 元素入场：指定屏播放延迟入场动画；其余屏不施加任何隐藏/动画。
+ *  关键：非当前屏必须保持常态可见——滑动过程中两屏同时在可视区，隐藏会造成中间露白。 */
+function enter(play: boolean, keyframes: 'ob-rise' | 'ob-pop', delay: number): CSSProperties {
+  return play
     ? { animation: `${keyframes} 0.55s ${delay}s ${EASE} backwards` }
-    : { opacity: 0 }
+    : {}
 }
 
-/** 整屏入场：轻缩放淡入，与元素错峰叠加形成层次。 */
-function slideEnter(active: boolean): CSSProperties {
-  return active
+/** 整屏入场：轻缩放淡入；同样只在入场目标屏播放，其余屏常态可见。 */
+function slideEnter(play: boolean): CSSProperties {
+  return play
     ? { animation: `ob-enter 0.45s ${EASE}` }
-    : { opacity: 0 }
+    : {}
 }
 
 export default function OnboardingPage() {
@@ -52,6 +53,9 @@ export default function OnboardingPage() {
   const unit = info.windowWidth / 402
   const style = { '--ob-unit': `${unit}px` } as CSSProperties
   const [current, setCurrent] = useState(0)
+  // animateAt：本轮入场的屏序号。首屏默认入场；点「下一页」时目标屏入场；滑动切屏不入场
+  // （Swiper 自带位移已提供动效，再叠入场会闪一下）。保持常驻可见，见 enter() 注释。
+  const [animateAt, setAnimateAt] = useState(0)
 
   // 结束引导：写标记后 switchTab 回首页（home 为 tab 页，switchTab 同时清空返回栈，
   // 用户不能再退回引导；实测本页 Taro.navigateBack 静默不生效，改用 switchTab 语义更贴合）。
@@ -60,7 +64,12 @@ export default function OnboardingPage() {
     void Taro.switchTab({ url: '/consumer/pages/home/index' })
   }, [])
 
-  const onSlide = (index: number) => current === index
+  const show = (index: number) => animateAt === index
+  const goNext = () => {
+    const next = Math.min(current + 1, 2)
+    setAnimateAt(next)
+    setCurrent(next)
+  }
 
   return (
     <View className="ob-page" style={style}>
@@ -72,57 +81,57 @@ export default function OnboardingPage() {
       >
         {/* 屏1（10:108）：橘猫举鱼 + 花瓣装饰 + 「一站式养宠生活圈」 */}
         <SwiperItem>
-          <View className="ob-slide" style={slideEnter(onSlide(0))}>
-            <Image className="ob-s1-decor" style={enter(onSlide(0), 'ob-rise', 0)} src={decorBand} mode="scaleToFill" />
-            <Image className="ob-s1-petal-tl" style={enter(onSlide(0), 'ob-rise', 0.08)} src={petalTl} mode="scaleToFill" />
-            <Image className="ob-s1-petal-mr" style={enter(onSlide(0), 'ob-rise', 0.16)} src={petalMr} mode="scaleToFill" />
-            <Image className="ob-s1-petal-bl" style={enter(onSlide(0), 'ob-rise', 0.16)} src={petalBl} mode="scaleToFill" />
-            <View className="ob-s1-cat-wrap" style={enter(onSlide(0), 'ob-pop', 0.12)}>
+          <View className="ob-slide" style={slideEnter(show(0))}>
+            <Image className="ob-s1-decor" style={enter(show(0), 'ob-rise', 0)} src={decorBand} mode="scaleToFill" />
+            <Image className="ob-s1-petal-tl" style={enter(show(0), 'ob-rise', 0.08)} src={petalTl} mode="scaleToFill" />
+            <Image className="ob-s1-petal-mr" style={enter(show(0), 'ob-rise', 0.16)} src={petalMr} mode="scaleToFill" />
+            <Image className="ob-s1-petal-bl" style={enter(show(0), 'ob-rise', 0.16)} src={petalBl} mode="scaleToFill" />
+            <View className="ob-s1-cat-wrap" style={enter(show(0), 'ob-pop', 0.12)}>
               <Image className="ob-s1-cat ob-float" src={catFish} mode="scaleToFill" />
             </View>
-            <Image className="ob-logo-s" style={enter(onSlide(0), 'ob-rise', 0.08)} src={brandLogoS} mode="scaleToFill" />
-            <View className="ob-title ob-s1-title" style={enter(onSlide(0), 'ob-rise', 0.26)}>{'一站式养宠生活圈\n上门喂养 遛狗 洗护'}</View>
-            <View className="ob-subtitle ob-s1-subtitle" style={enter(onSlide(0), 'ob-rise', 0.36)}>{'Your nearby pet spirit \nwork platform'}</View>
-            <View className="ob-dots" style={enter(onSlide(0), 'ob-rise', 0.46)}>
+            <Image className="ob-logo-s" style={enter(show(0), 'ob-rise', 0.08)} src={brandLogoS} mode="scaleToFill" />
+            <View className="ob-title ob-s1-title" style={enter(show(0), 'ob-rise', 0.26)}>{'一站式养宠生活圈\n上门喂养 遛狗 洗护'}</View>
+            <View className="ob-subtitle ob-s1-subtitle" style={enter(show(0), 'ob-rise', 0.36)}>{'Your nearby pet spirit \nwork platform'}</View>
+            <View className="ob-dots" style={enter(show(0), 'ob-rise', 0.46)}>
               <View className="ob-dot ob-dot-on" />
               <View className="ob-dot" />
               <View className="ob-dot" />
             </View>
-            <View className="ob-btn-skip ob-skip-1" style={enter(onSlide(0), 'ob-rise', 0.46)} hoverClass="ob-pressed" hoverStayTime={100} onClick={finish}>跳过</View>
-            <View className="ob-btn-next ob-next-1" style={enter(onSlide(0), 'ob-rise', 0.46)} hoverClass="ob-pressed" hoverStayTime={100} onClick={() => setCurrent(c => Math.min(c + 1, 2))}>下一页</View>
+            <View className="ob-btn-skip ob-skip-1" style={enter(show(0), 'ob-rise', 0.46)} hoverClass="ob-pressed" hoverStayTime={100} onClick={finish}>跳过</View>
+            <View className="ob-btn-next ob-next-1" style={enter(show(0), 'ob-rise', 0.46)} hoverClass="ob-pressed" hoverStayTime={100} onClick={goNext}>下一页</View>
           </View>
         </SwiperItem>
         {/* 屏2（33:40）：花环背景 + 端坐橘猫 + 「一键召唤 附近的宠托师」 */}
         <SwiperItem>
-          <View className="ob-slide" style={slideEnter(onSlide(1))}>
-            <Image className="ob-s2-bg" style={enter(onSlide(1), 'ob-rise', 0)} src={wreathBg} mode="scaleToFill" />
-            <View className="ob-s2-cat-wrap" style={enter(onSlide(1), 'ob-pop', 0.12)}>
+          <View className="ob-slide" style={slideEnter(show(1))}>
+            <Image className="ob-s2-bg" style={enter(show(1), 'ob-rise', 0)} src={wreathBg} mode="scaleToFill" />
+            <View className="ob-s2-cat-wrap" style={enter(show(1), 'ob-pop', 0.12)}>
               <Image className="ob-s2-cat ob-float" src={catSit} mode="scaleToFill" />
             </View>
-            <Image className="ob-logo-m" style={enter(onSlide(1), 'ob-rise', 0.08)} src={brandLogoM} mode="scaleToFill" />
-            <View className="ob-title ob-s2-title" style={enter(onSlide(1), 'ob-rise', 0.26)}>{'一键召唤\n附近的宠托师'}</View>
-            <View className="ob-subtitle ob-s2-subtitle" style={enter(onSlide(1), 'ob-rise', 0.36)}>{'One-click\nsummon nearby pet trainers'}</View>
-            <View className="ob-dots" style={enter(onSlide(1), 'ob-rise', 0.46)}>
+            <Image className="ob-logo-m" style={enter(show(1), 'ob-rise', 0.08)} src={brandLogoM} mode="scaleToFill" />
+            <View className="ob-title ob-s2-title" style={enter(show(1), 'ob-rise', 0.26)}>{'一键召唤\n附近的宠托师'}</View>
+            <View className="ob-subtitle ob-s2-subtitle" style={enter(show(1), 'ob-rise', 0.36)}>{'One-click\nsummon nearby pet trainers'}</View>
+            <View className="ob-dots" style={enter(show(1), 'ob-rise', 0.46)}>
               <View className="ob-dot" />
               <View className="ob-dot ob-dot-on" />
               <View className="ob-dot" />
             </View>
-            <View className="ob-btn-skip ob-skip-2" style={enter(onSlide(1), 'ob-rise', 0.46)} hoverClass="ob-pressed" hoverStayTime={100} onClick={finish}>跳过</View>
-            <View className="ob-btn-next ob-next-2" style={enter(onSlide(1), 'ob-rise', 0.46)} hoverClass="ob-pressed" hoverStayTime={100} onClick={() => setCurrent(c => Math.min(c + 1, 2))}>下一页</View>
+            <View className="ob-btn-skip ob-skip-2" style={enter(show(1), 'ob-rise', 0.46)} hoverClass="ob-pressed" hoverStayTime={100} onClick={finish}>跳过</View>
+            <View className="ob-btn-next ob-next-2" style={enter(show(1), 'ob-rise', 0.46)} hoverClass="ob-pressed" hoverStayTime={100} onClick={goNext}>下一页</View>
           </View>
         </SwiperItem>
         {/* 屏3（33:58）：主人撸猫插画 + 「发动态、晒萌宠 找同城伙伴」（原稿文案保留）+ 开始体验 */}
         <SwiperItem>
-          <View className="ob-slide" style={slideEnter(onSlide(2))}>
-            <Image className="ob-s3-bg" style={enter(onSlide(2), 'ob-rise', 0)} src={sceneBg} mode="aspectFill" />
-            <View className="ob-s3-strip-wrap" style={enter(onSlide(2), 'ob-pop', 0.12)}>
+          <View className="ob-slide" style={slideEnter(show(2))}>
+            <Image className="ob-s3-bg" style={enter(show(2), 'ob-rise', 0)} src={sceneBg} mode="aspectFill" />
+            <View className="ob-s3-strip-wrap" style={enter(show(2), 'ob-pop', 0.12)}>
               <Image className="ob-s3-strip ob-float" src={ownerCat} mode="scaleToFill" />
             </View>
-            <Image className="ob-logo-m" style={enter(onSlide(2), 'ob-rise', 0.08)} src={brandLogoM} mode="scaleToFill" />
-            <View className="ob-title ob-s3-title" style={enter(onSlide(2), 'ob-rise', 0.26)}>{'发动态、晒萌宠\n找同城伙伴'}</View>
-            <View className="ob-s3-sub-cn" style={enter(onSlide(2), 'ob-rise', 0.36)}>你需要的, 这里全都有</View>
-            <View className="ob-s3-sub-en" style={enter(onSlide(2), 'ob-rise', 0.36)}>{'Service appointment\nSuper worry-free'}</View>
-            <View className="ob-btn-start ob-start-3" style={enter(onSlide(2), 'ob-rise', 0.46)} hoverClass="ob-pressed" hoverStayTime={100} onClick={finish}>开始体验</View>
+            <Image className="ob-logo-m" style={enter(show(2), 'ob-rise', 0.08)} src={brandLogoM} mode="scaleToFill" />
+            <View className="ob-title ob-s3-title" style={enter(show(2), 'ob-rise', 0.26)}>{'发动态、晒萌宠\n找同城伙伴'}</View>
+            <View className="ob-s3-sub-cn" style={enter(show(2), 'ob-rise', 0.36)}>你需要的, 这里全都有</View>
+            <View className="ob-s3-sub-en" style={enter(show(2), 'ob-rise', 0.36)}>{'Service appointment\nSuper worry-free'}</View>
+            <View className="ob-btn-start ob-start-3" style={enter(show(2), 'ob-rise', 0.46)} hoverClass="ob-pressed" hoverStayTime={100} onClick={finish}>开始体验</View>
           </View>
         </SwiperItem>
       </Swiper>
