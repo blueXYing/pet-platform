@@ -1,8 +1,7 @@
 import { Image, Swiper, SwiperItem, View } from '@tarojs/components'
-import type { ITouchEvent } from '@tarojs/components'
 import Taro from '@tarojs/taro'
 import { useCallback, useRef, useState, type CSSProperties } from 'react'
-import { markOnboardingDone, predictOnboardingTarget } from './model'
+import { markOnboardingDone } from './model'
 import decorBand from './assets/decor-band@2x.png'
 import petalTl from './assets/petal-tl@2x.png'
 import petalMr from './assets/petal-mr@2x.png'
@@ -29,8 +28,9 @@ import './onboarding.css'
 // ② 两档强度：full（点按钮：整屏缩放淡入 + 图片淡入上浮 + 文字错峰）/ swipe（手指滑动：图片
 //    纯缩放 ob-zoom，不改透明度 + 文字错峰）。swipe 不用透明度，是为了保证拖动过程中两屏同时
 //    可见时中间不露白（用户 2026-10-21 截图反馈）；纯缩放同样有明显动效，不会显得"没动画"。
-// ③ 滑动方向在触摸阶段预测目标屏并立即起播（touchmove 过阈值即触发，touchend 兜底），动画与
-//    滑入同步；落定后 onChange 用真值纠偏，预测失败也不会缺席。
+// ③ 统一由 Swiper 自身 onChange 触发入场（点按钮与手指滑动、左右两个方向都走这一条路）：
+//    以落定索引为准，天然覆盖跨屏与回弹；不再依赖触摸事件——实测慢速拖动时若提前起播，
+//    动画会在松手前播完，落定反而看不到。
 // ④ animation 走运行时内联 style（WXSS keyframes 内 calc(var()) 不生效，位移用 rpx 固定值）。
 // ⑤ 各屏按钮带静态标记类（ob-skip-1/ob-next-1/ob-next-2/ob-start-3），供自动化按屏定位。
 
@@ -57,6 +57,9 @@ export default function OnboardingPage() {
   const [animAt, setAnimAt] = useState(0)
   const [mode, setMode] = useState<Mode>('full')
   const animRef = useRef<{ index: number; mode: Mode }>({ index: 0, mode: 'full' })
+  // 最近一次起播时间：点「下一页」设定的 full 优先级高于随后到达的 onChange，
+  // 避免同一跳被 swipe 模式覆盖（onChange 可能晚于按钮 handler 送达）。
+  const appliedAt = useRef(0)
   // 触摸回调里不能用渲染期闭包的 current（手势期间可能已变），用 ref 取实时值。
   const currentRef = useRef(0)
 
@@ -64,6 +67,7 @@ export default function OnboardingPage() {
     const prev = animRef.current
     if (prev.index === index && prev.mode === nextMode) return
     animRef.current = { index, mode: nextMode }
+    appliedAt.current = Date.now()
     setAnimAt(index)
     setMode(nextMode)
   }
@@ -82,32 +86,13 @@ export default function OnboardingPage() {
     applyAnim(next, 'full')
   }
 
-  // 滑动：touchmove 越过阈值即预测目标屏并起播，touchend 兜底（快速轻扫可能没有 move 事件）。
-  const touchStartX = useRef(0)
-  const gestured = useRef(false)
-  const predict = (dx: number) => {
-    const target = predictOnboardingTarget(currentRef.current, dx, LAST)
-    if (target === null) return
-    gestured.current = true
-    applyAnim(target, 'swipe')
-  }
-  const onTouchStart = (e: ITouchEvent) => {
-    touchStartX.current = e.touches[0]?.clientX ?? e.changedTouches[0]?.clientX ?? touchStartX.current
-    gestured.current = false
-  }
-  const onTouchMove = (e: ITouchEvent) => {
-    if (gestured.current) return
-    const x = e.touches[0]?.clientX ?? touchStartX.current
-    predict(x - touchStartX.current)
-  }
-  const onTouchEnd = (e: ITouchEvent) => {
-    const x = e.changedTouches[0]?.clientX ?? touchStartX.current
-    predict(x - touchStartX.current)
-  }
-  // 落定真值纠偏：预测错（回弹、跨屏）时按真实索引补播；与方向、触发方式无关。
+  // 唯一的入场触发点：Swiper 自身 onChange（点「下一页」与手指滑动都会触发）。
+  // 以落定索引为准，天然覆盖左右两个方向、跨屏与回弹；不依赖触摸事件（实测合成/真实
+  // 手势下事件时序不稳定，预测在慢速拖动时还会提前把动画播完）。
   const onSettle = (index: number) => {
     currentRef.current = index
     if (animRef.current.index === index) return
+    if (Date.now() - appliedAt.current < 700) return
     applyAnim(index, 'swipe')
   }
 
@@ -117,12 +102,6 @@ export default function OnboardingPage() {
 
   return (
     <View className="ob-page" style={style}>
-      <View
-        className="ob-touch"
-        onTouchStart={(e) => onTouchStart(e as unknown as ITouchEvent)}
-        onTouchMove={(e) => onTouchMove(e as unknown as ITouchEvent)}
-        onTouchEnd={(e) => onTouchEnd(e as unknown as ITouchEvent)}
-      >
         <Swiper
           className="ob-swiper"
           current={current}
@@ -185,7 +164,6 @@ export default function OnboardingPage() {
             </View>
           </SwiperItem>
         </Swiper>
-      </View>
     </View>
   )
 }

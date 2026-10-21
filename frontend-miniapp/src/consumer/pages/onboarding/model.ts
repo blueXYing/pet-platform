@@ -41,11 +41,3 @@ export function markOnboardingDone(): void {
     // 写入失败不阻断返回首页；下次启动会再看一次引导，无业务副作用。
   }
 }
-
-/** 滑动方向 → 目标屏序号（两个方向对称）。返回 null 表示不换屏（位移不足或已在端点）。
- *  设计约束：dx < 0（手指左移）为前进一屏，dx > 0（手指右移）为后退一屏。 */
-export function predictOnboardingTarget(current: number, dx: number, last: number = 2, threshold: number = 30): number | null {
-  if (Math.abs(dx) < threshold) return null
-  const target = dx < 0 ? Math.min(current + 1, last) : Math.max(current - 1, 0)
-  return target === current ? null : target
-}
