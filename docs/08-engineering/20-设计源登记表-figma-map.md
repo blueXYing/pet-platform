@@ -711,7 +711,7 @@ mine 页接线（`consumer/pages/mine`）：「帮助与客服」「意见反馈
 
 ## 4.19 C 端开屏引导三屏（2026-10-21，37号裁决；PR: C-ONBOARDING-001）
 
-用户 2026-10-21 验收期裁决新增（PRD 原无此条目，37号裁决文档为授权依据）：`10:108` / `33:40` / `33:58`（402x874）落地为 `consumer/pages/onboarding` 普通分包——静态三屏 Swiper，仅首次打开显示（`consumer:onboarding-done` 本地标记，完成/跳过均写），再次冷启动直达首页。第三屏文案保留原稿「发动态、晒萌宠 找同城伙伴」（社区 V1 不做的宣传口径偏差经裁决接受）；「登录广告」画板原名不采用运营化形态（V1 无广告配置能力）。原切图 11 张（背景 JPG q80 / 透明 PNG 256 色）压缩至约 1MB，分包 1042KB 合规、主包零增量；布局按节点绝对坐标 ×(windowWidth/402)，按钮/圆点平台蓝 #5baae8（Figma fills；副题 #ffffff 为失效层按渲染实测 #B09A8A）。接线：home 首次 mount 探测标记 navigateTo，finish 写标记 navigateBack。门禁：typecheck/build:weapp/单测 614 全绿；模拟器逐屏截图与原稿对比及首启→完成→冷启动不再现全链路验证通过。
+用户 2026-10-21 验收期裁决新增（PRD 原无此条目，37号裁决文档为授权依据）：`10:108` / `33:40` / `33:58`（402x874）落地为 `consumer/pages/onboarding` 普通分包——静态三屏 Swiper，仅首次打开显示（`consumer:onboarding-done` 本地标记，完成/跳过均写），再次冷启动直达首页。第三屏文案保留原稿「发动态、晒萌宠 找同城伙伴」（社区 V1 不做的宣传口径偏差经裁决接受）；「登录广告」画板原名不采用运营化形态（V1 无广告配置能力）。原切图 11 张（背景 JPG q80 / 透明 PNG 256 色）压缩至约 1MB，分包 1042KB 合规、主包零增量；布局按节点绝对坐标 ×(windowWidth/402)，按钮/圆点平台蓝 #5baae8（Figma fills；副题 #ffffff 为失效层按渲染实测 #B09A8A）。接线：home 首次 mount 探测标记 navigateTo，finish 写标记 navigateBack。门禁：typecheck/build:weapp/单测 614 全绿；模拟器逐屏截图与原稿对比及首启→完成→冷启动不再现全链路验证通过。翻页动画（2026-10-21 用户反馈「翻页交互太普通」增补）：整屏轻缩放淡入 + 元素错峰入场（背景→花瓣/logo→插画 pop→标题→副题→圆点/按钮）+ 插画呼吸浮动 + 按钮 hoverClass 按压缩放；animation 由运行时内联 style 下发（WXSS keyframes 内 calc(var()) 不生效，位移用 rpx 固定值）；结束引导用 switchTab 回首页（本页 Taro.navigateBack 实测静默不生效）；各屏按钮带静态标记类便于自动化按屏定位。工程坑：DevTools 编译缓存会使新构建不生效（表现为运行时代码与产物不一致），需 debug_clear_cache cleanCompileCache 后 refresh。
 
 ## 5. 维护规则
 

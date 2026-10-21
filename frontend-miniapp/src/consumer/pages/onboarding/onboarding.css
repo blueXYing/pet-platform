@@ -3,7 +3,12 @@
    留白锚定屏底（dots bottom 128 / 按钮 bottom 47~48 设计px），长屏不溢出、短屏不裁按钮。
    色值以 Figma fills 为准：按钮 #5baae8（平台蓝）、圆点高亮 #5baae8 / 常态 #ebebeb；
    英文/中文副题 Figma 标 #ffffff 为失效层，渲染实测 #B09A8A（浅棕灰）按实测落地。
-   状态样式一律 className 变体，禁 data-*（前端技术基线 v0.7）。 */
+   状态样式一律 className 变体，禁 data-*（前端技术基线 v0.7）。
+   翻页动画（2026-10-21 用户反馈增强）：入场 animation 由页面运行时下发内联 style（见 index.tsx
+   enter()/slideEnter()），此处只定 @keyframes 与静态几何；keyframes 内 calc(var()) 在 WXSS
+   不生效，位移一律 rpx 固定值（设计px × 750/402 ≈ ×1.866）。主插画用 wrap 容器承载入场缩放、
+   内层 Image 由 .ob-float 常驻呼吸浮动——两者分属不同元素，animation 不互相覆盖。 */
+
 .ob-page { width: 100vw; height: 100vh; overflow: hidden; background: #fff9f2; }
 .ob-swiper { width: 100%; height: 100%; }
 .ob-slide { position: relative; width: 100%; height: 100%; overflow: hidden; }
@@ -12,24 +17,47 @@
 .ob-title { position: absolute; font-size: calc(var(--ob-unit) * 30); line-height: calc(var(--ob-unit) * 36.4); color: #000000; font-weight: 400; white-space: pre-line; z-index: 3; }
 .ob-subtitle { position: absolute; font-size: calc(var(--ob-unit) * 20); line-height: calc(var(--ob-unit) * 18.2); color: #b09a8a; font-weight: 400; white-space: pre-line; z-index: 3; }
 
+/* —— keyframes（仅位移/透明度/缩放，不依赖变量） —— */
+@keyframes ob-enter {
+  from { opacity: 0.35; transform: scale(0.97); }
+  to { opacity: 1; transform: scale(1); }
+}
+@keyframes ob-rise {
+  from { opacity: 0; transform: translateY(67rpx); }
+  to { opacity: 1; transform: translateY(0); }
+}
+@keyframes ob-pop {
+  from { opacity: 0; transform: translateY(82rpx) scale(0.94); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+@keyframes ob-float {
+  from { transform: translateY(0); }
+  to { transform: translateY(-13rpx); }
+}
+/* 呼吸浮动：入场（0.55s + 0.12s 延迟）结束后起步，缓慢上下往复 */
+.ob-float { animation: ob-float 3.8s 0.8s ease-in-out infinite alternate; }
+
 /* 屏1（10:108）：装饰带(Intersect 导出 684x541.5) → 花瓣×3 → 橘猫举鱼 → 文案 */
 .ob-s1-decor { position: absolute; left: calc(var(--ob-unit) * -135); top: calc(var(--ob-unit) * 299); width: calc(var(--ob-unit) * 684); height: calc(var(--ob-unit) * 541.5); z-index: 0; }
 .ob-s1-petal-tl { position: absolute; left: calc(var(--ob-unit) * 28); top: calc(var(--ob-unit) * 98); width: calc(var(--ob-unit) * 269); height: calc(var(--ob-unit) * 122); z-index: 1; }
 .ob-s1-petal-mr { position: absolute; left: calc(var(--ob-unit) * 163); top: calc(var(--ob-unit) * 305); width: calc(var(--ob-unit) * 159); height: calc(var(--ob-unit) * 73); z-index: 1; }
 .ob-s1-petal-bl { position: absolute; left: calc(var(--ob-unit) * 36); top: calc(var(--ob-unit) * 463); width: calc(var(--ob-unit) * 113); height: calc(var(--ob-unit) * 51); z-index: 1; }
-.ob-s1-cat { position: absolute; left: calc(var(--ob-unit) * 23); top: calc(var(--ob-unit) * 148); width: calc(var(--ob-unit) * 358); height: calc(var(--ob-unit) * 315); z-index: 2; }
+.ob-s1-cat-wrap { position: absolute; left: calc(var(--ob-unit) * 23); top: calc(var(--ob-unit) * 148); width: calc(var(--ob-unit) * 358); height: calc(var(--ob-unit) * 315); z-index: 2; }
+.ob-s1-cat { width: 100%; height: 100%; }
 .ob-s1-title { left: calc(var(--ob-unit) * 72); top: calc(var(--ob-unit) * 529); width: calc(var(--ob-unit) * 255); }
 .ob-s1-subtitle { left: calc(var(--ob-unit) * 103); top: calc(var(--ob-unit) * 649); width: calc(var(--ob-unit) * 193); }
 
 /* 屏2（33:40）：花环全屏背景(824x1464) + 端坐橘猫(360x480) */
 .ob-s2-bg { position: absolute; left: calc(var(--ob-unit) * -212); top: calc(var(--ob-unit) * -590); width: calc(var(--ob-unit) * 824); height: calc(var(--ob-unit) * 1464); z-index: 0; }
-.ob-s2-cat { position: absolute; left: calc(var(--ob-unit) * 19); top: calc(var(--ob-unit) * 69); width: calc(var(--ob-unit) * 360); height: calc(var(--ob-unit) * 480); z-index: 1; }
+.ob-s2-cat-wrap { position: absolute; left: calc(var(--ob-unit) * 19); top: calc(var(--ob-unit) * 69); width: calc(var(--ob-unit) * 360); height: calc(var(--ob-unit) * 480); z-index: 1; }
+.ob-s2-cat { width: 100%; height: 100%; }
 .ob-s2-title { left: calc(var(--ob-unit) * 109); top: calc(var(--ob-unit) * 529); width: calc(var(--ob-unit) * 180); }
 .ob-s2-subtitle { left: calc(var(--ob-unit) * 80); top: calc(var(--ob-unit) * 642); width: calc(var(--ob-unit) * 238); }
 
 /* 屏3（33:58）：整屏背景(402x874 aspectFill 铺满) + 主人撸猫插画条(402x225) */
 .ob-s3-bg { position: absolute; left: 0; top: 0; width: 100%; height: 100%; z-index: 0; }
-.ob-s3-strip { position: absolute; left: calc(var(--ob-unit) * 0); top: calc(var(--ob-unit) * 282); width: calc(var(--ob-unit) * 402); height: calc(var(--ob-unit) * 225); z-index: 1; }
+.ob-s3-strip-wrap { position: absolute; left: 0; top: calc(var(--ob-unit) * 282); width: calc(var(--ob-unit) * 402); height: calc(var(--ob-unit) * 225); z-index: 1; }
+.ob-s3-strip { width: 100%; height: 100%; }
 .ob-s3-title { left: calc(var(--ob-unit) * 94); top: calc(var(--ob-unit) * 507); width: calc(var(--ob-unit) * 210); }
 .ob-s3-sub-cn { position: absolute; left: calc(var(--ob-unit) * 103); top: calc(var(--ob-unit) * 651); font-size: calc(var(--ob-unit) * 20); line-height: calc(var(--ob-unit) * 18.2); color: #b09a8a; z-index: 3; }
 .ob-s3-sub-en { position: absolute; left: calc(var(--ob-unit) * 143); top: calc(var(--ob-unit) * 676); font-size: calc(var(--ob-unit) * 14); line-height: calc(var(--ob-unit) * 11.4); color: #b09a8a; z-index: 3; }
@@ -38,12 +66,15 @@
 .ob-logo-s { position: absolute; left: calc(var(--ob-unit) * 169); top: calc(var(--ob-unit) * 44); width: calc(var(--ob-unit) * 65); height: calc(var(--ob-unit) * 65); z-index: 5; }
 .ob-logo-m { position: absolute; left: calc(var(--ob-unit) * 165); top: calc(var(--ob-unit) * 37); width: calc(var(--ob-unit) * 72); height: calc(var(--ob-unit) * 83); z-index: 5; }
 
-/* 分页圆点（屏1/2；屏3 原稿无圆点）：三颗 14x14 @y732，步进 18 → gap 4；高亮随屏 */
+/* 分页圆点（屏1/2；屏3 原稿无圆点）：每屏自带一组、当前项静态高亮为胶囊形，
+   gap 4 设计px；入场随元素错峰最后一批出现 */
 .ob-dots { position: absolute; left: calc(var(--ob-unit) * 175); bottom: calc(var(--ob-unit) * 128); display: flex; gap: calc(var(--ob-unit) * 4); z-index: 4; }
-.ob-dot { width: calc(var(--ob-unit) * 14); height: calc(var(--ob-unit) * 14); border-radius: 50%; background: #ebebeb; }
-.ob-dot-on { background: #5baae8; }
+.ob-dot { width: calc(var(--ob-unit) * 14); height: calc(var(--ob-unit) * 14); border-radius: calc(var(--ob-unit) * 7); background: #ebebeb; }
+.ob-dot-on { width: calc(var(--ob-unit) * 28); background: #5baae8; }
 
-/* 按钮：跳过=白底 r13 黑字20（104x56 @x20）；下一页=蓝底白字20（246x56 @x133）；开始体验=蓝底白字24（361x56 @x20）。View 实现，无原生 button 重置坑 */
-.ob-btn-skip { position: absolute; left: calc(var(--ob-unit) * 20); bottom: calc(var(--ob-unit) * 47); width: calc(var(--ob-unit) * 104); height: calc(var(--ob-unit) * 56); border-radius: calc(var(--ob-unit) * 13); background: #ffffff; color: #000000; font-size: calc(var(--ob-unit) * 20); display: flex; align-items: center; justify-content: center; z-index: 4; }
-.ob-btn-next { position: absolute; left: calc(var(--ob-unit) * 133); bottom: calc(var(--ob-unit) * 47); width: calc(var(--ob-unit) * 246); height: calc(var(--ob-unit) * 56); border-radius: calc(var(--ob-unit) * 13); background: #5baae8; color: #ffffff; font-size: calc(var(--ob-unit) * 20); display: flex; align-items: center; justify-content: center; z-index: 4; }
-.ob-btn-start { position: absolute; left: calc(var(--ob-unit) * 20); bottom: calc(var(--ob-unit) * 48); width: calc(var(--ob-unit) * 361); height: calc(var(--ob-unit) * 56); border-radius: calc(var(--ob-unit) * 13); background: #5baae8; color: #ffffff; font-size: calc(var(--ob-unit) * 24); display: flex; align-items: center; justify-content: center; z-index: 4; }
+/* 按钮：跳过=白底 r13 黑字20（104x56 @x20）；下一页=蓝底白字20（246x56 @x133）；开始体验=蓝底白字24（361x56 @x20）。
+   View 实现，无原生 button 重置坑；hoverClass=ob-pressed 按压缩放 */
+.ob-btn-skip { position: absolute; left: calc(var(--ob-unit) * 20); bottom: calc(var(--ob-unit) * 47); width: calc(var(--ob-unit) * 104); height: calc(var(--ob-unit) * 56); border-radius: calc(var(--ob-unit) * 13); background: #ffffff; color: #000000; font-size: calc(var(--ob-unit) * 20); display: flex; align-items: center; justify-content: center; z-index: 4; transition: transform 0.15s ease, opacity 0.15s ease; }
+.ob-btn-next { position: absolute; left: calc(var(--ob-unit) * 133); bottom: calc(var(--ob-unit) * 47); width: calc(var(--ob-unit) * 246); height: calc(var(--ob-unit) * 56); border-radius: calc(var(--ob-unit) * 13); background: #5baae8; color: #ffffff; font-size: calc(var(--ob-unit) * 20); display: flex; align-items: center; justify-content: center; z-index: 4; transition: transform 0.15s ease, opacity 0.15s ease; }
+.ob-btn-start { position: absolute; left: calc(var(--ob-unit) * 20); bottom: calc(var(--ob-unit) * 48); width: calc(var(--ob-unit) * 361); height: calc(var(--ob-unit) * 56); border-radius: calc(var(--ob-unit) * 13); background: #5baae8; color: #ffffff; font-size: calc(var(--ob-unit) * 24); display: flex; align-items: center; justify-content: center; z-index: 4; transition: transform 0.15s ease, opacity 0.15s ease; }
+.ob-pressed { transform: scale(0.95); opacity: 0.88; }
