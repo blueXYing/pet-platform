@@ -1,7 +1,8 @@
 import { Image, Swiper, SwiperItem, View } from '@tarojs/components'
+import type { BaseEventOrig } from '@tarojs/components'
 import Taro from '@tarojs/taro'
 import { useCallback, useRef, useState, type CSSProperties } from 'react'
-import { markOnboardingDone } from './model'
+import { markOnboardingDone, predictOnboardingTarget } from './model'
 import decorBand from './assets/decor-band@2x.png'
 import petalTl from './assets/petal-tl@2x.png'
 import petalMr from './assets/petal-mr@2x.png'
@@ -53,6 +54,11 @@ export default function OnboardingPage() {
   const unit = info.windowWidth / 402
   const style = { '--ob-unit': `${unit}px` } as CSSProperties
   const [current, setCurrent] = useState(0)
+  // viewIndex：当前实际展示的屏（驱动圆点与入场动画）。用户手指滑动时 Swiper 的 change
+  // 事件在部分环境不送达（实测：点按钮能收到、滑动收不到，圆点因此停在第一枚），所以以
+  // 触摸位移判定为主、change/finish 事件为校正；两者都写入同一 ref，避免相互覆盖。
+  const [viewIndex, setViewIndex] = useState(0)
+  const viewRef = useRef(0)
   // 本轮入场目标屏与模式；首屏 full（首启完整入场）。ref 与 state 同源：触摸回调需要即时真值。
   const [animAt, setAnimAt] = useState(0)
   const [mode, setMode] = useState<Mode>('full')
@@ -79,22 +85,58 @@ export default function OnboardingPage() {
     void Taro.switchTab({ url: '/consumer/pages/home/index' })
   }, [])
 
+  /** 切到某屏：圆点/动画的唯一入口（ref 与 state 同源）。 */
+  const goTo = (index: number, nextMode: Mode) => {
+    viewRef.current = index
+    currentRef.current = index
+    setViewIndex(index)
+    applyAnim(index, nextMode)
+  }
+
   const goNext = () => {
-    const next = Math.min(currentRef.current + 1, LAST)
-    currentRef.current = next
+    const next = Math.min(viewRef.current + 1, LAST)
     setCurrent(next)
-    applyAnim(next, 'full')
+    goTo(next, 'full')
+  }
+
+  // 手指滑动：松手瞬间按位移判定目标屏（dy 忽略，横向阈值 30）。慢拖也不影响——动画在
+  // 松手时起播，与 Swiper 的 450ms 回落同步，不会像"拖动中就起播"那样提前播完。
+  const touchStartX = useRef(0)
+  const onTouchStart = (e: BaseEventOrig) => {
+    const detail = e as unknown as { touches?: Array<{ clientX: number }> }
+    touchStartX.current = detail.touches?.[0]?.clientX ?? touchStartX.current
+  }
+  const onTouchEnd = (e: BaseEventOrig) => {
+    const detail = e as unknown as { changedTouches?: Array<{ clientX: number }> }
+    const dx = (detail.changedTouches?.[0]?.clientX ?? touchStartX.current) - touchStartX.current
+    const target = predictOnboardingTarget(viewRef.current, dx, LAST)
+    if (target === null) return
+    setCurrent(target)
+    goTo(target, 'swipe')
   }
 
   // 入场触发点：Swiper 自身 onChange（落定索引）+ onAnimationFinish 兜底（过渡结束事件，
   // 两者都带 current，重复到达由 animRef 守卫挡掉）。
   // 以落定索引为准，天然覆盖左右两个方向、跨屏与回弹；不依赖触摸事件（实测合成/真实
   // 手势下事件时序不稳定，预测在慢速拖动时还会提前把动画播完）。
-  const onSettle = (index: number) => {
-    currentRef.current = index
-    if (animRef.current.index === index) return
+  // 过渡事件兜底：滑动开始时原生 swiper 会带位移方向（实测按钮前进 dx=+屏宽），
+  // 据此判断目标屏。窗口期内（刚由按钮/触摸设定过）跳过，避免对同一跳重复判定。
+  const onTransition = (e: BaseEventOrig) => {
     if (Date.now() - appliedAt.current < 700) return
-    applyAnim(index, 'swipe')
+    const dx = (e.detail as { dx?: number } | undefined)?.dx
+    if (typeof dx !== 'number' || dx === 0) return
+    const target = dx > 0 ? Math.min(viewRef.current + 1, LAST) : Math.max(viewRef.current - 1, 0)
+    if (target === viewRef.current) return
+    setCurrent(target)
+    goTo(target, 'swipe')
+  }
+
+  const onSettle = (index: number) => {
+    // 事件校正：仅在触摸判定与实际不一致时修正（按钮路径已由 goTo 设定，700ms 内不覆盖）。
+    if (index === viewRef.current) return
+    if (Date.now() - appliedAt.current < 700) return
+    setCurrent(index)
+    goTo(index, 'swipe')
   }
 
   const text = (index: number) => animAt === index
@@ -102,12 +144,13 @@ export default function OnboardingPage() {
   const imgKey = mode === 'full' ? 'ob-pop' : 'ob-zoom'
 
   return (
-    <View className="ob-page" style={style}>
+    <View className="ob-page" style={style} onTouchStart={onTouchStart} onTouchEnd={onTouchEnd}>
         <Swiper
           className="ob-swiper"
           current={current}
           duration={450}
           onChange={(e) => onSettle(e.detail.current)}
+          onTransition={onTransition}
           onAnimationFinish={(e) => onSettle(e.detail.current)}
         >
           {/* 屏1（10:108）：橘猫举鱼 + 花瓣装饰 + 「一站式养宠生活圈」 */}
@@ -158,9 +201,9 @@ export default function OnboardingPage() {
         </Swiper>
         {/* 分页圆点：页面级共享指示器（不再随每屏各自渲染，切换时才有连续动画）。
             屏3 原稿无圆点 → current=2 时淡出。高亮项做胶囊伸缩 + 弹性放大。 */}
-        <View className={current >= LAST ? 'ob-dots ob-dots-hidden' : 'ob-dots'}>
+        <View className={viewIndex >= LAST ? 'ob-dots ob-dots-hidden' : 'ob-dots'}>
           {[0, 1, 2].map((index) => (
-            <View key={index} className={current === index ? 'ob-dot ob-dot-on' : 'ob-dot'} />
+            <View key={index} className={viewIndex === index ? 'ob-dot ob-dot-on' : 'ob-dot'} />
           ))}
         </View>
     </View>
