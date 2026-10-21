@@ -31,6 +31,11 @@
   from { opacity: 0; transform: translateY(82rpx) scale(0.94); }
   to { opacity: 1; transform: translateY(0) scale(1); }
 }
+/* 滑动路径的图片入场：纯缩放、不改透明度——拖动中两屏同处可视区时不会露白 */
+@keyframes ob-zoom {
+  from { transform: scale(0.92); }
+  to { transform: scale(1); }
+}
 @keyframes ob-float {
   from { transform: translateY(0); }
   to { transform: translateY(-13rpx); }
