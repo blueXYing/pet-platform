@@ -7,6 +7,9 @@ import { readSelectedCity, writeSelectedCity } from '../../city/model'
 import type { StoreCity } from '../../store/model'
 import { consumerApi } from '../../../shared/consumer-runtime'
 import { decodeCityList } from '../../store/model'
+import { useWorkspace } from '../../../shared/workspace-react'
+import { realPetRepository } from '../../api/page-repository'
+import { breedAgeLine, sexLabel, type PetView } from '../../pet/model'
 import searchIcon from '../../assets/home/home-search.png'
 import bellIcon from '../../assets/home/home-bell.png'
 import brandLogo from '../../assets/home/brand-logo@2x.png'
@@ -36,6 +39,8 @@ const guarantee = [
   { key: 'escrow', title: '担保交易', body: '资金由平台托管，服务完成后安全结算', icon: iconEscrow },
 ] as const
 
+type PetBadge = Readonly<{ title: string; line: string; tone: 'vaccine' | 'deworm' }>
+
 export default function HomePage() {
   const [info] = useState(() => Taro.getWindowInfo())
   const unit = info.windowWidth / 402
@@ -45,14 +50,57 @@ export default function HomePage() {
   const [cities, setCities] = useState<StoreCity[]>([])
   const [selectedCity, setSelectedCity] = useState<string | undefined>(() => readSelectedCity().cityCode)
   const [cityPickerOpen, setCityPickerOpen] = useState(false)
+  const todayISO = new Date().toISOString().slice(0, 10)
   const mounted = useRef(true)
   useEffect(() => { mounted.current = true; return () => { mounted.current = false } }, [])
+  // 宠物档案读侧（设计 61:599：标题「宠物档案 N 只萌宠」+ 宠物行 + 疫苗/驱虫状态 + 宠物百科入口）。
+  // 匿名/未登录/读取失败一律回退到入口卡，不虚构数据；最多展示 2 只（与设计稿一致）。
+  const { scope, revision, context } = useWorkspace('real')
+  const petRepo = useRef(realPetRepository())
+  const [pets, setPets] = useState<PetView[]>([])
+  const [petBadges, setPetBadges] = useState<Record<string, PetBadge>>({})
+  const petSequence = useRef(0)
+  const loadPets = useCallback(async () => {
+    const seq = ++petSequence.current
+    if (!scope.current || scope.current.workspace !== 'consumer') { setPets([]); setPetBadges({}); return }
+    try {
+      const list = await scope.run(undefined, () => petRepo.current.load())
+      if (!mounted.current || seq !== petSequence.current) return
+      const top = list.filter(pet => pet.status === 'ACTIVE').slice(0, 2)
+      setPets(top)
+      const entries = await Promise.all(top.map(async (pet): Promise<readonly [string, PetBadge] | null> => {
+        try {
+          const [vaccines, deworms] = await Promise.all([
+            scope.run(undefined, () => petRepo.current.listHealthRecords(pet.petId, 'vaccination-records')),
+            scope.run(undefined, () => petRepo.current.listHealthRecords(pet.petId, 'deworming-records')),
+          ])
+          const latest = [
+            ...vaccines.map(record => ({ record, tone: 'vaccine' as const })),
+            ...deworms.map(record => ({ record, tone: 'deworm' as const })),
+          ].sort((a, b) => b.record.recordDate.localeCompare(a.record.recordDate))[0]
+          if (!latest) return null
+          const title = latest.tone === 'vaccine'
+            ? (latest.record.vaccineName || '疫苗')
+            : (latest.record.productName || (latest.record.dewormingType === 'EXTERNAL' ? '体外驱虫' : latest.record.dewormingType === 'INTERNAL' ? '体内驱虫' : '内外同驱'))
+          const line = `${latest.tone === 'vaccine' ? '疫苗' : '驱虫'} · ${latest.record.recordDate}`
+          return [pet.petId, { title, line, tone: latest.tone }] as const
+        } catch { return null }
+      }))
+      if (!mounted.current || seq !== petSequence.current) return
+      const map: Record<string, PetBadge> = {}
+      entries.forEach(entry => { if (entry) map[entry[0]] = entry[1] })
+      setPetBadges(map)
+    } catch {
+      if (mounted.current && seq === petSequence.current) { setPets([]); setPetBadges({}) }
+    }
+  }, [scope])
   const loadCities = useCallback(() => {
     consumerApi.anonymousRequest({ method: 'GET', path: '/api/v1/c/cities' }, decodeCityList)
       .then(catalog => { if (mounted.current && catalog.length) setCities(catalog) })
       .catch(() => { /* 目录不可用：芯片回退本地选择/默认名，面板不打开选项 */ })
   }, [])
-  useDidShow(() => { setSelectedCity(readSelectedCity().cityCode); loadCities() })
+  useDidShow(() => { setSelectedCity(readSelectedCity().cityCode); loadCities(); void loadPets() })
+  useEffect(() => { void loadPets() }, [loadPets, revision, context])
   function pickCity(next: string | undefined) {
     setCityPickerOpen(false)
     setSelectedCity(next)
@@ -96,16 +144,57 @@ export default function HomePage() {
       </View>
     </View>
     <ScrollView className='home-body' scrollY enhanced showScrollbar={false}>
-      {/* 宠物档案分区（新版 245:4155 标题行 + 卡片壳）：无首页读侧，入口卡不虚构宠物/疫苗数据 */}
+      {/* 宠物档案（设计 61:599：标题 + N 只萌宠 + 宠物行（性别/品种年龄/最近疫苗或驱虫）+ 宠物百科）。
+          已登录且读到 ACTIVE 宠物时展示真实明细；否则回退为建卡入口，不虚构数据。 */}
       <View className='home-pet-section'>
-        <Button id='home-pets' className='home-pet-card' hoverClass='none' onClick={() => open('/consumer/pages/pet-archive/index')}>
-          <Image className='home-pet-avatar' src={placeholderAvatar} mode='scaleToFill' />
-          <View className='home-pet-info'>
-            <Text className='home-pet-title'>宠物档案</Text>
-            <Text className='home-pet-sub'>爱宠资料 · 品种 · 疫苗与驱虫记录</Text>
+        <View className='home-pet-card'>
+          <View className='home-pet-head'>
+            <Text className='home-pet-h1'>宠物档案</Text>
+            {pets.length > 0 && <Text className='home-pet-count'>{`${pets.length} 只萌宠`}</Text>}
+            <View className='home-pet-more' onClick={() => open('/consumer/pages/baike/index')}>
+              <Text className='home-pet-more-text'>宠物百科</Text>
+              <Text className='home-pet-more-go'>›</Text>
+            </View>
           </View>
-          <Text className='home-pet-go'>›</Text>
-        </Button>
+          {pets.length === 0 && (
+            <Button id='home-pets' className='home-pet-empty' hoverClass='none' onClick={() => open('/consumer/pages/pet-archive/index')}>
+              <Image className='home-pet-avatar' src={placeholderAvatar} mode='scaleToFill' />
+              <View className='home-pet-info'>
+                <Text className='home-pet-title'>创建爱宠档案</Text>
+                <Text className='home-pet-sub'>爱宠资料 · 品种 · 疫苗与驱虫记录</Text>
+              </View>
+              <Text className='home-pet-go'>›</Text>
+            </Button>
+          )}
+          {pets.map(pet => {
+            const badge = petBadges[pet.petId]
+            const sex = sexLabel(pet.sex)
+            return (
+              <Button key={pet.petId} className='home-pet-row' hoverClass='none' onClick={() => open(`/consumer/pages/pet-archive/detail?petId=${pet.petId}`)}>
+                <Image className='home-pet-row-avatar' src={pet.avatarUrl || placeholderAvatar} mode='aspectFill' />
+                <View className='home-pet-row-main'>
+                  <View className='home-pet-row-name'>
+                    <Text className='home-pet-name'>{pet.name}</Text>
+                    {sex !== '' && (
+                      <View className={pet.sex === 'MALE' ? 'home-pet-sex home-pet-sex-male' : 'home-pet-sex home-pet-sex-female'}>
+                        <Text className={pet.sex === 'MALE' ? 'home-pet-sex-text' : 'home-pet-sex-text home-pet-sex-text-female'}>{sex}</Text>
+                      </View>
+                    )}
+                  </View>
+                  <Text className='home-pet-breed'>{breedAgeLine(pet, todayISO)}</Text>
+                </View>
+                {badge && (
+                  <View className='home-pet-chip'>
+                    <View className={badge.tone === 'vaccine' ? 'home-pet-chip-pill home-pet-chip-pill-vaccine' : 'home-pet-chip-pill home-pet-chip-pill-deworm'}>
+                      <Text className={badge.tone === 'vaccine' ? 'home-pet-chip-title' : 'home-pet-chip-title home-pet-chip-title-deworm'}>{badge.title}</Text>
+                    </View>
+                    <Text className='home-pet-chip-line'>{badge.line}</Text>
+                  </View>
+                )}
+              </Button>
+            )
+          })}
+        </View>
       </View>
       {/* 功能入口（§4.4 功能版子集；原稿该区域为营销位/热门服务——无 V1 后端维持裁剪，入口卡沿白卡家族呈现） */}
       <Button id='home-stores' className='home-hero' hoverClass='none' onClick={openStores}>
