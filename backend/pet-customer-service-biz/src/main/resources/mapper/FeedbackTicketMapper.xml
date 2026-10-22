@@ -2,11 +2,15 @@
 <!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
 <mapper namespace="com.petplatform.customerservice.biz.infrastructure.persistence.mapper.FeedbackTicketMapper">
     <!--
-      Contract 67 feedback tickets (PRD 5.1.28 complaint class; CCR-CS-FEEDBACK-001). The
-      ticket row is the owner-scoped projection (fixed sort created_at DESC, id DESC); the
-      event table is append-only audit; the command binding mirrors SQL14 field-for-field on
+      Contract 67 feedback tickets (PRD 5.1.28 complaint class; CCR-CS-FEEDBACK-001 + the
+      2026-10-19 "继续扩展CCR" extension). The ticket row is the owner-scoped projection
+      (fixed sort created_at DESC, id DESC; the ops list shares the sort); the event table is
+      append-only audit (SUBMITTED by the submitter, PROCESSING/RESOLVED by the operator);
+      reply text lives on the ticket row (single RESOLVED transition per ticket, contract 67
+      v0.2). Attachments bind READY FEEDBACK_ATTACHMENT assets that the kernel re-proved
+      through the 31号 port at creation. The command binding mirrors SQL14 field-for-field on
       a module-local table (never another module's command table). Bound values only
-      (PERSISTENCE-XML gate); status word list is frozen at the service boundary.
+      (PERSISTENCE-XML gate); status words are frozen at the service boundary.
     -->
     <insert id="insertTicket">
         INSERT INTO feedback_ticket
@@ -22,21 +26,50 @@
             (#{id}, #{ticketId}, #{action}, #{actorType}, #{actorId},
              #{detail, javaType=String, jdbcType=VARCHAR}, UTC_TIMESTAMP(3))
     </insert>
+    <insert id="insertAttachment">
+        INSERT INTO feedback_ticket_attachment
+            (id, ticket_id, asset_id, sort_no, created_at)
+        VALUES
+            (#{id}, #{ticketId}, #{assetId}, #{sortNo}, UTC_TIMESTAMP(3))
+    </insert>
     <sql id="ticketColumns">
-        id, user_id, type, contact, content, status, version, created_at, updated_at
+        id, user_id, type, contact, content, status, version, reply, reply_operator_id,
+        created_at, updated_at, replied_at
     </sql>
     <select id="findTicket" resultType="com.petplatform.customerservice.biz.infrastructure.persistence.mapper.FeedbackTicketMapper$TicketRow">
         SELECT <include refid="ticketColumns"/>
         FROM feedback_ticket
         WHERE id = #{id} AND user_id = #{userId}
     </select>
+    <select id="findTicketForOps" resultType="com.petplatform.customerservice.biz.infrastructure.persistence.mapper.FeedbackTicketMapper$TicketRow">
+        SELECT <include refid="ticketColumns"/>
+        FROM feedback_ticket
+        WHERE id = #{id}
+    </select>
     <select id="countMine" resultType="long">
         SELECT COUNT(*) FROM feedback_ticket WHERE user_id = #{userId}
+    </select>
+    <select id="countForOps" resultType="long">
+        SELECT COUNT(*) FROM feedback_ticket
+        <where>
+            <if test="status != null">AND status = #{status}</if>
+            <if test="type != null">AND type = #{type}</if>
+        </where>
     </select>
     <select id="selectMinePage" resultType="com.petplatform.customerservice.biz.infrastructure.persistence.mapper.FeedbackTicketMapper$TicketRow">
         SELECT <include refid="ticketColumns"/>
         FROM feedback_ticket
         WHERE user_id = #{userId}
+        ORDER BY created_at DESC, id DESC
+        LIMIT #{limit} OFFSET #{offset}
+    </select>
+    <select id="selectOpsPage" resultType="com.petplatform.customerservice.biz.infrastructure.persistence.mapper.FeedbackTicketMapper$TicketRow">
+        SELECT <include refid="ticketColumns"/>
+        FROM feedback_ticket
+        <where>
+            <if test="status != null">AND status = #{status}</if>
+            <if test="type != null">AND type = #{type}</if>
+        </where>
         ORDER BY created_at DESC, id DESC
         LIMIT #{limit} OFFSET #{offset}
     </select>
@@ -46,6 +79,25 @@
         WHERE ticket_id = #{ticketId}
         ORDER BY created_at ASC, id ASC
     </select>
+    <select id="selectAttachments" resultType="com.petplatform.customerservice.biz.infrastructure.persistence.mapper.FeedbackTicketMapper$AttachmentRow">
+        SELECT asset_id AS assetId, sort_no AS sortNo
+        FROM feedback_ticket_attachment
+        WHERE ticket_id = #{ticketId}
+        ORDER BY sort_no ASC, asset_id ASC
+    </select>
+    <!-- Optimistic transition PENDING → PROCESSING; 0 rows means raced or wrong state. -->
+    <update id="markProcessing">
+        UPDATE feedback_ticket
+        SET status = 'PROCESSING', version = version + 1, updated_at = UTC_TIMESTAMP(3)
+        WHERE id = #{id} AND status = #{expectedStatus} AND version = #{expectedVersion}
+    </update>
+    <!-- Optimistic transition PROCESSING → RESOLVED carrying the single ops reply. -->
+    <update id="markResolved">
+        UPDATE feedback_ticket
+        SET status = 'RESOLVED', version = version + 1, updated_at = UTC_TIMESTAMP(3),
+            reply = #{reply}, reply_operator_id = #{actorId}, replied_at = UTC_TIMESTAMP(3)
+        WHERE id = #{id} AND status = 'PROCESSING' AND version = #{expectedVersion}
+    </update>
     <insert id="insertBinding">
         INSERT INTO feedback_command_idempotency
             (id, request_key, canonical_version, params_sha256, params_canonical, status, created_at)

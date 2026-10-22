@@ -10,6 +10,8 @@ import com.petplatform.common.QueryContext;
 import com.petplatform.community.api.command.AdminEncyclopediaCommandApi;
 import com.petplatform.community.api.query.AdminEncyclopediaQueryApi;
 import com.petplatform.community.api.command.AdminEncyclopediaCommandApi.BreedMutation;
+import com.petplatform.community.api.command.AdminEncyclopediaCommandApi.CreateBreedCommand;
+import com.petplatform.community.api.command.AdminEncyclopediaCommandApi.CreateCategoryCommand;
 import com.petplatform.community.api.command.AdminEncyclopediaCommandApi.BreedStatusCommand;
 import com.petplatform.community.api.command.AdminEncyclopediaCommandApi.CategoryMutation;
 import com.petplatform.community.api.command.AdminEncyclopediaCommandApi.CategoryStatusCommand;
@@ -19,6 +21,8 @@ import com.petplatform.community.api.query.AdminEncyclopediaQueryApi.AdminBreedC
 import com.petplatform.community.api.query.AdminEncyclopediaQueryApi.AdminBreedDetail;
 import com.petplatform.community.api.query.AdminEncyclopediaQueryApi.AdminBreedDetailQuery;
 import com.petplatform.community.api.query.AdminEncyclopediaQueryApi.AdminBreedListQuery;
+import com.petplatform.community.api.query.AdminEncyclopediaQueryApi.AdminExportQuery;
+import com.petplatform.community.api.query.AdminEncyclopediaQueryApi.EncyclopediaExport;
 import com.petplatform.community.api.query.AdminEncyclopediaQueryApi.AdminCategoryListQuery;
 import com.petplatform.community.api.query.AdminEncyclopediaQueryApi.AdminCategoryRow;
 import com.petplatform.community.biz.application.AdminEncyclopediaAuthorizationPort.Check;
@@ -32,6 +36,8 @@ import com.petplatform.community.biz.infrastructure.persistence.EncyclopediaAdmi
 import com.petplatform.community.biz.infrastructure.persistence.entity.EncyclopediaAdminEntities.AdminBreedEntity;
 import com.petplatform.community.biz.infrastructure.persistence.entity.EncyclopediaAdminEntities.AdminCategoryEntity;
 import com.petplatform.community.biz.infrastructure.persistence.mapper.EncyclopediaAdminMapper;
+import org.springframework.dao.DuplicateKeyException;
+
 import java.time.LocalDateTime;
 import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
@@ -50,9 +56,12 @@ import java.util.Set;
  * (controller snapshots are never evidence); writes bind requestId idempotency on
  * command_idempotency (14号) with same-parameter replay returning the first receipt and
  * cross-parameter replay answering 409 IDEMPOTENCY_KEY_CONFLICT, plus an expectedVersion
- * optimistic guard (0 updated rows → 409 COMMON_CONFLICT). Category creation/deletion does not
- * exist (five-code PRD enum is closed); breed creation/deletion/export stay outside V1 and rich
- * text is not writable from this face (CCR-ADM-A005-OPS-001).
+ * optimistic guard (0 updated rows → 409 COMMON_CONFLICT). v0.4 (2026-10-19 user ruling
+ * "继续扩展CCR") opens creation and export with the same guard family:
+ * createCategory mints a new dictionary code (lexical 2..16, born ENABLED), createBreed mints
+ * an OFFLINE breed under an ENABLED category, and exportAll streams the bounded (1 MiB)
+ * read-only CSV document — no deletion route exists and rich text stays non-writable
+ * (CCR-ADM-A005-OPS-001 §4 as amended).
  */
 public final class AdminEncyclopediaService
         implements AdminEncyclopediaQueryApi, AdminEncyclopediaCommandApi {
@@ -61,7 +70,8 @@ public final class AdminEncyclopediaService
     static final int KEYWORD_LIMIT = 40;
 
     private static final Set<String> BREED_STATUSES = Set.of("PUBLISHED", "OFFLINE");
-    private static final Set<String> CATEGORY_CODES = Set.of("DOG", "CAT", "REPTILE", "BIRD", "INSECT");
+    /** v0.4 export byte ceiling; the kernel fails closed before any body byte is committed. */
+    public static final int EXPORT_MAX_BYTES = 1024 * 1024;
 
     private final EncyclopediaAdminStore store;
     private final Port authorization;
@@ -206,6 +216,117 @@ public final class AdminEncyclopediaService
     @Override
     public BreedMutation offlineBreed(BreedStatusCommand command) {
         return breedTransition(command, "OFFLINE", "PUBLISHED", "encyclopedia.breed.offline");
+    }
+
+    @Override
+    public CategoryMutation createCategory(CreateCategoryCommand command) {
+        Objects.requireNonNull(command, "command is required");
+        String code = categoryCodeLexeme(command.categoryCode());
+        String name = displayText(command.categoryName(), 2, 10, "categoryName");
+        if (command.sortNo() < 0 || command.sortNo() > 999) invalid("sortNo is outside 0..999");
+        Map<String, Object> params = new LinkedHashMap<>();
+        params.put("categoryCode", code);
+        params.put("categoryName", name);
+        params.put("sortNo", command.sortNo());
+        return runBound(params, command.context(), command.authorization(),
+                "encyclopedia.category.create", "encyclopedia.manage", "ENCYCLOPEDIA_CATEGORY", code,
+                key -> {
+                    LocalDateTime now = nowUtc();
+                    try {
+                        if (store.execute(m -> m.insertCategory(store.nextId(), code, name,
+                                command.sortNo(), now)) != 1) {
+                            throw conflict();
+                        }
+                    } catch (DuplicateKeyException duplicate) {
+                        throw conflict();
+                    }
+                    AdminCategoryEntity row = store.read(m -> m.selectCategoryByCode(code));
+                    if (row == null) throw notFound();
+                    return receipt(key, "categoryCode", row.getCategoryCode(), row.getCategoryName(),
+                            row.getStatus(), row.getSortNo(), row.getVersion());
+                },
+                AdminEncyclopediaService::categoryMutationOf);
+    }
+
+    @Override
+    public BreedMutation createBreed(CreateBreedCommand command) {
+        Objects.requireNonNull(command, "command is required");
+        String code = categoryCodeLexeme(command.categoryCode());
+        String name = displayText(command.name(), 1, 30, "name");
+        String summary = displayText(command.summary(), 1, 120, "summary");
+        String coverUrl = optionalText(command.coverUrl(), 512, "coverUrl");
+        String bodyType = optionalText(command.bodyType(), 32, "bodyType");
+        List<String> aliases = strings(command.aliases(), 5, 50, "aliases");
+        List<String> tags = strings(command.tags(), 10, 30, "tags");
+        if (command.sortNo() < 0 || command.sortNo() > 9999) invalid("sortNo is outside 0..9999");
+        Map<String, Object> params = new LinkedHashMap<>();
+        params.put("categoryCode", code);
+        params.put("name", name);
+        params.put("summary", summary);
+        params.put("coverUrl", coverUrl);
+        params.put("bodyType", bodyType);
+        params.put("aliases", aliases);
+        params.put("tags", tags);
+        params.put("sortNo", command.sortNo());
+        return runBound(params, command.context(), command.authorization(),
+                "encyclopedia.breed.create", "breed.manage", "ENCYCLOPEDIA_BREED", name,
+                key -> {
+                    AdminCategoryEntity category = store.read(m -> m.selectCategoryByCode(code));
+                    if (category == null) throw notFound();
+                    if (!"ENABLED".equals(category.getStatus())) {
+                        throw conflict();
+                    }
+                    long breedId = store.nextId();
+                    try {
+                        if (store.execute(m -> m.insertBreed(breedId, category.getId(), name,
+                                encodeStrings(aliases), encodeStrings(tags), summary, coverUrl,
+                                bodyType, command.sortNo(), nowUtc())) != 1) {
+                            throw conflict();
+                        }
+                    } catch (DuplicateKeyException duplicate) {
+                        throw conflict();
+                    }
+                    AdminBreedEntity row = store.read(m -> m.selectBreedById(breedId));
+                    if (row == null) throw notFound();
+                    return receipt(key, "breedId", Long.toUnsignedString(row.getId()), row.getName(),
+                            row.getStatus(), row.getSortNo(), row.getVersion());
+                },
+                AdminEncyclopediaService::breedMutationOf);
+    }
+
+    @Override
+    public EncyclopediaExport exportAll(AdminExportQuery query) {
+        Objects.requireNonNull(query, "query is required");
+        QueryContext context = operator(query.context());
+        authorizeCollection(query.authorization(), context, "encyclopedia.read", "ENCYCLOPEDIA_READ");
+        List<EncyclopediaCsvDocuments.CategoryRow> categories = store.read(m ->
+                m.selectAllCategoriesForExport().stream()
+                        .map(row -> new EncyclopediaCsvDocuments.CategoryRow(
+                                row.getCategoryCode(), row.getCategoryName(), row.getStatus(),
+                                row.getSortNo() == null ? 0 : row.getSortNo(),
+                                m.countBreedsByCategory(row.getId()),
+                                m.countPublishedBreedsByCategory(row.getId()),
+                                row.getVersion() == null ? 0 : row.getVersion(),
+                                row.getCreatedAt(), row.getUpdatedAt()))
+                        .toList());
+        List<EncyclopediaCsvDocuments.BreedRow> breeds = store.read(m ->
+                m.selectAllBreedsForExport().stream()
+                        .map(row -> new EncyclopediaCsvDocuments.BreedRow(
+                                row.getId() == null ? "" : Long.toUnsignedString(row.getId()),
+                                row.getCategoryCode(), row.getName(), row.getAliases(),
+                                row.getTags(), row.getSummary(), row.getCoverUrl(),
+                                row.getBodyType(), row.getStatus(),
+                                row.getSortNo() == null ? 0 : row.getSortNo(),
+                                row.getVersion() == null ? 0 : row.getVersion(),
+                                row.getCreatedAt(), row.getUpdatedAt()))
+                        .toList());
+        String generatedAt = java.time.format.DateTimeFormatter
+                .ofPattern("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'").withZone(ZoneOffset.UTC)
+                .format(clock.instant());
+        byte[] csv = EncyclopediaCsvDocuments.generate(categories, breeds, generatedAt);
+        String stamp = java.time.format.DateTimeFormatter.ofPattern("yyyyMMdd'T'HHmmss")
+                .withZone(ZoneOffset.UTC).format(clock.instant());
+        return new EncyclopediaExport("encyclopedia-export-" + stamp + "Z.csv", csv);
     }
 
     // ----------------------------------------------------------------- helpers
@@ -499,8 +620,7 @@ public final class AdminEncyclopediaService
 
     private Long categoryFilter(String categoryCode) {
         if (categoryCode == null || categoryCode.isBlank()) return null;
-        String code = categoryCode.trim();
-        if (!CATEGORY_CODES.contains(code)) invalid("unknown categoryCode");
+        String code = categoryCodeLexeme(categoryCode.trim());
         AdminCategoryEntity row = store.read(m -> m.selectCategoryByCode(code));
         if (row == null) throw notFound();
         return row.getId();
@@ -527,8 +647,15 @@ public final class AdminEncyclopediaService
     }
 
     private static String requiredCode(String categoryCode) {
-        if (categoryCode == null || !CATEGORY_CODES.contains(categoryCode)) {
-            invalid("categoryCode must name a dictionary entry");
+        // v0.4: the PRD five-code enum is open — the code lexeme is validated here and the
+        // dictionary row itself is proven inside the write work (404 on unknown).
+        return categoryCodeLexeme(categoryCode);
+    }
+
+    /** v0.4 dictionary code lexeme: 2..16 chars of A-Z, digits and underscore. */
+    private static String categoryCodeLexeme(String categoryCode) {
+        if (categoryCode == null || !categoryCode.matches("[A-Z][A-Z0-9_]{1,15}")) {
+            invalid("categoryCode must be 2..16 chars of A-Z, digits and underscore");
         }
         return categoryCode;
     }

@@ -41,7 +41,7 @@ class ContractSmokeRegressions(unittest.TestCase):
         # + the v0.3 §4.4 void channel (1, user ruling 2026-10-16 doc 36 minimal
         # authorization, CCR-CPN-VOID-001; kernel switch pet.coupon.void.enabled stays
         # default off) = twenty-two routes.
-        self.assertEqual(result['adminOpsOperations'], 22)
+        self.assertEqual(result['adminOpsOperations'], 25)
         # C-wiring batch (2026-10-19 ruling): catalog keyword search (1) + open-city
         # directory (1) + contract-68 pet health records (4).
         self.assertEqual(result['catalogSearchOperations'], 1)
@@ -49,7 +49,7 @@ class ContractSmokeRegressions(unittest.TestCase):
         self.assertEqual(result['petHealthRecordOperations'], 4)
         # Union 212 = 206 + 1 catalog search + 1 city directory + 4 health records
         # (206 = 163 baseline + 3 encyclopedia + 11 admin trade + 8 governance + 22 ops console).
-        self.assertEqual(result['operations'], 227)
+        self.assertEqual(result['operations'], 236)
         self.assertGreater(result['stringIdProperties'], 0)
         # Contract 58 favorite/footprint face (2026-10-13): seven reviewed operations.
         self.assertEqual(result['favtrackHttpOperations'], 7)

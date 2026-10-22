@@ -31,6 +31,13 @@
             <groupId>com.petplatform</groupId>
             <artifactId>pet-user-api</artifactId>
         </dependency>
+        <!-- Contract 67 v0.2 attachments: creation re-proves attachment ownership/READY state
+             through the thirdparty-owned private-asset *-api port (31号); api-only, no biz
+             dependency, no private Mapper access. -->
+        <dependency>
+            <groupId>com.petplatform</groupId>
+            <artifactId>pet-thirdparty-api</artifactId>
+        </dependency>
         <!-- Supplement-23 canonical params + receipt (de)serialization (module-local). -->
         <dependency>
             <groupId>com.fasterxml.jackson.core</groupId>

@@ -17,38 +17,66 @@
   display: flex; align-items: flex-end; justify-content: space-between;
   padding: 0 calc(var(--home-unit) * 31) calc(var(--home-unit) * 9) calc(var(--home-unit) * 9);
 }
-.home-brand-logo { width: calc(var(--home-unit) * 73); height: calc(var(--home-unit) * 37); }
-.home-header-actions { display: flex; align-items: flex-end; gap: calc(var(--home-unit) * 24); }
+.home-brand-logo { position: absolute; left: calc(var(--home-unit) * 9); width: calc(var(--home-unit) * 73); height: calc(var(--home-unit) * 37); }
+/* 右侧图标：绝对定位到胶囊左侧并与胶囊垂直居中（避免被微信「···」胶囊遮挡） */
+.home-header-actions { position: absolute; display: flex; align-items: center; gap: calc(var(--home-unit) * 16); height: calc(var(--home-unit) * 24); }
 /* 城市芯片（61:599 头部：pin #5baae8 27.6x32 + 城市名 #383838 12 + 下拉箭头 #3c3c3c 7.4x4.5；
    2026-10-19 城市选择裁决回补，V1 无定位能力——pin 仅作芯片图形）。pin/箭头为按原稿矢量
    实测自绘 SVG base64（become-provider 4.16 同法）。 */
-.home-city-anchor { position: absolute; left: calc(var(--home-unit) * 92); bottom: calc(var(--home-unit) * 2); z-index: 30; }
+.home-city-anchor { position: absolute; left: calc(var(--home-unit) * 92); z-index: 30; }
 .home-city-chip { display: flex; align-items: center; gap: calc(var(--home-unit) * 4); padding: 0; background: transparent; border: none; line-height: 1; }
-.home-city-pin { width: calc(var(--home-unit) * 28); height: calc(var(--home-unit) * 32); background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 28 32'%3E%3Cpath fill='%235baae8' d='M14 0C6.4 0 .3 6 .3 13.5c0 4.6 2.3 8.2 4.9 11 2.5 2.7 5.6 4.9 8 6.9a1.3 1.3 0 0 0 1.6 0c2.4-2 5.5-4.2 8-6.9 2.6-2.8 4.9-6.4 4.9-11C27.7 6 21.6 0 14 0Z'/%3E%3Cpath fill='%23fff6e5' d='M14 8.2c-2.3-2.3-6-1.8-7.4.9-1 2-.5 4.3 1.1 5.9l4.9 4.8c.4.4 1 .4 1.4 0l4.9-4.8c1.6-1.6 2.1-3.9 1.1-5.9-1.4-2.7-5.1-3.2-7.4-.9Z'/%3E%3C/svg%3E") no-repeat center / contain; }
+.home-city-pin { width: calc(var(--home-unit) * 27); height: calc(var(--home-unit) * 32); }
 .home-city-name { font-size: calc(var(--home-unit) * 12); line-height: calc(var(--home-unit) * 15); color: #383838; }
 .home-city-caret { width: calc(var(--home-unit) * 8); height: calc(var(--home-unit) * 5); background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 8 5'%3E%3Cpath fill='%233c3c3c' d='M.6.6h6.8c.5 0 .8.6.4 1L4.4 4.7c-.2.3-.6.3-.8 0L.2 1.6c-.4-.4-.1-1 .4-1Z'/%3E%3C/svg%3E") no-repeat center / contain; }
-.home-icon-link { display: flex; align-items: center; justify-content: center; line-height: 1; padding: 0; background: transparent; margin-bottom: calc(var(--home-unit) * 7); }
-.home-icon-link + .home-icon-link { margin-bottom: calc(var(--home-unit) * 7); }
-.home-icon-search { width: calc(var(--home-unit) * 19); height: calc(var(--home-unit) * 19); }
-.home-icon-bell { width: calc(var(--home-unit) * 24); height: calc(var(--home-unit) * 24); }
+.home-icon-link { display: flex; align-items: center; justify-content: center; line-height: 1; padding: 0; background: transparent; }
 
-.home-body { flex: 1; height: 0; position: relative; z-index: 2; padding: calc(var(--home-unit) * 249) 0 calc(var(--home-unit) * 24); box-sizing: border-box; }
+.home-icon-search { width: calc(var(--home-unit) * 19); height: calc(var(--home-unit) * 19); }
+.home-icon-bell { width: calc(var(--home-unit) * 19); height: calc(var(--home-unit) * 22); }
+
+.home-body { flex: 1; height: 0; position: relative; z-index: 2; padding: calc(var(--home-unit) * 196) 0 calc(var(--home-unit) * 24); box-sizing: border-box; }
 
 /* 宠物档案入口卡（原稿 245:4155 分区 + Rectangle 16 卡壳：白底 #5baae8 描边；无首页读侧，不虚构宠物/疫苗数据） */
-.home-pet-section { padding: 0 calc(var(--home-unit) * 50); }
-.home-pet-card {
-  display: flex; align-items: center; text-align: left;
-  height: calc(var(--home-unit) * 69); padding: 0 calc(var(--home-unit) * 12);
-  background: #ffffff; border: calc(var(--home-unit) * 1) solid #5baae8;
-  border-radius: calc(var(--home-unit) * 10);
-}
+.home-pet-section { padding: 0 calc(var(--home-unit) * 12); position: relative; z-index: 5; }
+.home-pet-paper { position: absolute; left: calc(var(--home-unit) * 18); right: calc(var(--home-unit) * 18); top: calc(var(--home-unit) * 10); bottom: calc(var(--home-unit) * -12); background: #d8f0fc; border-radius: calc(var(--home-unit) * 16); transform: rotate(-1.4deg); z-index: 0; }
+.home-pet-card { position: relative; z-index: 1; background: #ffffff; border-radius: calc(var(--home-unit) * 16); padding: calc(var(--home-unit) * 12) calc(var(--home-unit) * 12) calc(var(--home-unit) * 6); box-shadow: 0 calc(var(--home-unit) * 6) calc(var(--home-unit) * 18) rgba(91, 170, 232, 0.14); }
+.home-pet-head { display: flex; align-items: flex-end; margin-bottom: calc(var(--home-unit) * 8); }
+.home-pet-h1 { font-size: calc(var(--home-unit) * 18); line-height: calc(var(--home-unit) * 26); font-weight: 700; color: #1c0c07; }
+.home-pet-count { margin-left: calc(var(--home-unit) * 8); margin-bottom: calc(var(--home-unit) * 3); font-size: calc(var(--home-unit) * 11); color: #53bfed; }
+.home-pet-more { margin-left: auto; display: flex; align-items: center; margin-bottom: calc(var(--home-unit) * 2); }
+.home-pet-more-text { font-size: calc(var(--home-unit) * 11); color: #5baae8; }
+.home-pet-more-go { margin-left: calc(var(--home-unit) * 2); font-size: calc(var(--home-unit) * 12); color: #5baae8; }
+
+/* 宠物行（设计 61:599：50,377 302x69 描边 r9；头像 55x46；名字 14/700；性别胶囊 32x19；
+   品种年龄 11 #9e7660；右侧状态胶囊 80x19 双行：疫苗绿 #cdeddd / 驱虫橙 #ffcfba） */
+.home-pet-row { display: flex; align-items: center; width: 100%; margin-bottom: calc(var(--home-unit) * 8); padding: calc(var(--home-unit) * 8); border: calc(var(--home-unit) * 1) solid #c0ecff; border-radius: calc(var(--home-unit) * 9); background: #ffffff; }
+.home-pet-row-avatar { width: calc(var(--home-unit) * 46); height: calc(var(--home-unit) * 46); border-radius: calc(var(--home-unit) * 8); background: #c0ecff; }
+.home-pet-row-main { flex: 1; margin-left: calc(var(--home-unit) * 10); display: flex; flex-direction: column; }
+.home-pet-row-name { display: flex; align-items: center; flex-wrap: nowrap; }
+.home-pet-name { font-size: calc(var(--home-unit) * 14); line-height: calc(var(--home-unit) * 20); font-weight: 700; color: #1c0c07; white-space: nowrap; }
+.home-pet-sex { display: flex; align-items: center; justify-content: center; height: calc(var(--home-unit) * 19); line-height: calc(var(--home-unit) * 19); margin-left: calc(var(--home-unit) * 6); padding: 0 calc(var(--home-unit) * 6); border-radius: 9999px; }
+.home-pet-sex-male { background: #5baae8; }
+.home-pet-sex-female { background: #ffceba; }
+.home-pet-sex-text { font-size: calc(var(--home-unit) * 10); line-height: calc(var(--home-unit) * 19); color: #ffffff; }
+.home-pet-sex-text-female { color: #774a00; }
+.home-pet-breed { margin-top: calc(var(--home-unit) * 2); font-size: calc(var(--home-unit) * 11); line-height: calc(var(--home-unit) * 16); color: #9e7660; white-space: nowrap; }
+
+/* 状态胶囊（设计：标题在 80x19 胶囊内，日期行在胶囊下方，右对齐） */
+.home-pet-chip { display: flex; flex-direction: column; align-items: flex-end; margin-left: calc(var(--home-unit) * 6); }
+.home-pet-chip-pill { min-width: calc(var(--home-unit) * 70); height: calc(var(--home-unit) * 19); padding: 0 calc(var(--home-unit) * 8); border-radius: 9999px; display: flex; align-items: center; justify-content: center; align-self: flex-end; }
+.home-pet-chip-pill-vaccine { background: #cdeddd; }
+.home-pet-chip-pill-deworm { background: #ffcfba; }
+.home-pet-chip-title { font-size: calc(var(--home-unit) * 10); line-height: calc(var(--home-unit) * 19); color: #003226; white-space: nowrap; }
+.home-pet-chip-title-deworm { color: #312520; }
+.home-pet-chip-line { margin-top: calc(var(--home-unit) * 1); font-size: calc(var(--home-unit) * 10); line-height: calc(var(--home-unit) * 15); color: #b89682; white-space: nowrap; }
+
+/* 无宠物/匿名：回退为建卡入口（沿用旧卡样式） */
+.home-pet-empty { display: flex; align-items: center; text-align: left; width: 100%; height: calc(var(--home-unit) * 62); padding: 0 calc(var(--home-unit) * 4); }
 .home-pet-avatar { width: calc(var(--home-unit) * 46); height: calc(var(--home-unit) * 46); border-radius: calc(var(--home-unit) * 10); background: #c0ecff; }
 .home-pet-info { display: flex; flex-direction: column; margin-left: calc(var(--home-unit) * 12); }
 .home-pet-title { font-size: calc(var(--home-unit) * 16); line-height: calc(var(--home-unit) * 22); font-weight: 700; color: #1d0d07; }
 .home-pet-sub { margin-top: calc(var(--home-unit) * 2); font-size: calc(var(--home-unit) * 11); line-height: calc(var(--home-unit) * 16); color: #577683; }
 .home-pet-go { margin-left: auto; font-size: calc(var(--home-unit) * 20); line-height: 1; color: #53bfee; }
 
-/* 功能入口（§4.4 功能版子集，白卡家族；原稿该区域为营销位/热门服务——维持裁剪不留白） */
 .home-hero {
   margin: calc(var(--home-unit) * 24) calc(var(--home-unit) * 18) 0;
   display: flex; flex-direction: column; align-items: flex-start; text-align: left;

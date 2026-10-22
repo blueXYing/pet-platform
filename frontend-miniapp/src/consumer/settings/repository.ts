@@ -1,5 +1,8 @@
 import { consumerApi } from '../../shared/consumer-runtime'
-import { decodeDeletionReceipt, decodePrecheck, type DeletionPrecheck, type DeletionReceipt } from './model'
+import {
+  decodeCancelReceipt, decodeDeletionReceipt, decodeDeletionStatus, decodePrecheck,
+  type CancelReceipt, type DeletionPrecheck, type DeletionReceipt, type DeletionStatusView,
+} from './model'
 
 // 设置枢纽真实仓库（契约 66 via HTTP10 §3.17）。注销前置校验为登录态只读；注销提交走
 // 23号 X-Request-Id 幂等槽 settings:deletion（首次 201 / 同键重放 200 同回执）。
@@ -18,5 +21,19 @@ export class RealSettingsRepository {
       path: '/api/v1/c/account/deletion',
       data: { acknowledged: true },
     }, decodeDeletionReceipt)
+  }
+
+  /** v0.2 冷静期状态读：设置枢纽/注销页"申请中可撤销"横幅的数据源。 */
+  async deletionStatus(): Promise<DeletionStatusView> {
+    return this.api.request({ method: 'GET', path: '/api/v1/c/account/deletion-status' }, decodeDeletionStatus)
+  }
+
+  /** v0.2 冷静期撤销：CAS 注销请求单 PENDING→CANCELED（幂等槽 settings:deletion-cancel）。 */
+  async cancelDeletion(): Promise<CancelReceipt> {
+    return this.api.write('settings:deletion-cancel', {
+      method: 'POST',
+      path: '/api/v1/c/account/deletion-cancel',
+      data: {},
+    }, decodeCancelReceipt)
   }
 }

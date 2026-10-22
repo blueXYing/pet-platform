@@ -28,7 +28,10 @@ import org.springframework.web.method.annotation.MethodArgumentTypeMismatchExcep
         COrderCreateController.class,
         CVerificationCredentialController.class, CAddressController.class,
         CFavoriteController.class, CFootprintController.class,
-        CEncyclopediaController.class})
+        CEncyclopediaController.class,
+        // Settings/deletion (contract 66) and feedback tickets (contract 67): the domain
+        // codes below carry their registry statuses on the C face (v0.2 extension batch).
+        CAccountDeletionController.class, CFeedbackController.class})
 @Order(0)
 public class CServiceExceptionHandler {
 
@@ -51,6 +54,11 @@ public class CServiceExceptionHandler {
             Map.entry("SERVICE_NOT_FOUND", 404),
             // Encyclopedia content (contract 62): published-only visibility, offline/missing alike.
             Map.entry("BREED_NOT_FOUND", 404),
+            // Account deletion (contract 66 v0.2): precheck blockers are business conflicts.
+            Map.entry("DELETION_BLOCKED", 409),
+            // Feedback tickets (contract 67): frozen type word and anti-enumeration 404.
+            Map.entry("FEEDBACK_TYPE_INVALID", 400),
+            Map.entry("FEEDBACK_TICKET_NOT_FOUND", 404),
             Map.entry("COMMON_CONFLICT", 409),
             Map.entry("IDEMPOTENCY_KEY_CONFLICT", 409),
             // Service write slice (ADM-001): workbench commands surface through C-session routes.
