@@ -5,6 +5,7 @@ import com.petplatform.common.SnowflakeIdGenerator;
 import com.petplatform.id.core.HutoolSnowflakeIdProvider;
 import com.petplatform.id.core.JdbcSnowflakeNodeStore;
 import com.petplatform.id.core.PreviousJvmExitVerifier;
+import com.petplatform.id.core.SimpleSnowflakeIdProvider;
 import com.petplatform.id.core.SnowflakeProviderSettings;
 import com.petplatform.user.biz.application.WechatSessionProvider;
 import io.lettuce.core.RedisClient;
@@ -366,10 +367,14 @@ class CAuthHttpTest {
         final DataSource source;
         final JdbcTemplate jdbc;
         final JdbcTemplate admin;
-        HutoolSnowflakeIdProvider ids;
+        SnowflakeIdGenerator ids;
         boolean created;
 
         HttpFixture() throws Exception {
+            this(true);
+        }
+
+        HttpFixture(boolean coordinatedSnowflake) throws Exception {
             String server = required("AUTH_MYSQL_URL");
             if (!server.matches("jdbc:mysql://(127\\.0\\.0\\.1|localhost):[0-9]+/")) {
                 throw new IllegalArgumentException("Dedicated local MySQL required");
@@ -398,27 +403,31 @@ class CAuthHttpTest {
                     ScriptUtils.executeSqlScript(c, new FileSystemResource(
                             root.resolve("docs/03-database/14-Command-Idempotency-Schema-v0.1.sql")));
                 }
-                String evidence = "qa-c-auth-http-virgin:" + name;
-                jdbc.update("INSERT INTO snowflake_worker_state(node_id,format_identity,enabled,initialization_ref,created_at,updated_at)"
-                        + " VALUES(19,?,TRUE,?,NOW(3),NOW(3))", SnowflakeProviderSettings.FORMAT_IDENTITY, evidence);
-                ids = new HutoolSnowflakeIdProvider(new JdbcSnowflakeNodeStore(source),
-                        new SnowflakeProviderSettings(19),
-                        old -> {
-                            if (!created || old.nodeId() != 19 || old.incarnation() != null
-                                    || old.fence() != 0 || old.reservedThrough() != -1
-                                    || !evidence.equals(old.initializationRef())) {
-                                throw new IllegalStateException("Not this fixture's virgin node");
-                            }
-                        });
-                long deadline = System.nanoTime() + Duration.ofSeconds(5).toNanos();
-                while (true) {
-                    try {
-                        ids.nextId();
-                        break;
-                    } catch (IllegalStateException e) {
-                        if (!e.getMessage().contains("WARMING") || System.nanoTime() >= deadline) throw e;
-                        Thread.sleep(20);
+                if (coordinatedSnowflake) {
+                    String evidence = "qa-c-auth-http-virgin:" + name;
+                    jdbc.update("INSERT INTO snowflake_worker_state(node_id,format_identity,enabled,initialization_ref,created_at,updated_at)"
+                            + " VALUES(19,?,TRUE,?,NOW(3),NOW(3))", SnowflakeProviderSettings.FORMAT_IDENTITY, evidence);
+                    ids = new HutoolSnowflakeIdProvider(new JdbcSnowflakeNodeStore(source),
+                            new SnowflakeProviderSettings(19),
+                            old -> {
+                                if (!created || old.nodeId() != 19 || old.incarnation() != null
+                                        || old.fence() != 0 || old.reservedThrough() != -1
+                                        || !evidence.equals(old.initializationRef())) {
+                                    throw new IllegalStateException("Not this fixture's virgin node");
+                                }
+                            });
+                    long deadline = System.nanoTime() + Duration.ofSeconds(5).toNanos();
+                    while (true) {
+                        try {
+                            ids.nextId();
+                            break;
+                        } catch (IllegalStateException e) {
+                            if (!e.getMessage().contains("WARMING") || System.nanoTime() >= deadline) throw e;
+                            Thread.sleep(20);
+                        }
                     }
+                } else {
+                    ids = new SimpleSnowflakeIdProvider(new SnowflakeProviderSettings(19));
                 }
             } catch (Exception e) {
                 close();
@@ -484,7 +493,13 @@ class CAuthHttpTest {
                 System.getLogger(HttpFixture.class.getName())
                         .log(System.Logger.Level.WARNING, "Redis cleanup unavailable");
             } finally {
-                if (ids != null) ids.close();
+                if (ids instanceof AutoCloseable closeable) {
+                    try {
+                        closeable.close();
+                    } catch (Exception ignored) {
+                        // Test fixture cleanup continues with the database/Redis teardown.
+                    }
+                }
                 dropDatabase();
                 created = false;
                 try {

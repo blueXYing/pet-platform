@@ -2,8 +2,7 @@ package com.petplatform.boot.e2e;
 
 import com.petplatform.boot.PetPlatformApplication;
 import com.petplatform.common.SnowflakeIdGenerator;
-import com.petplatform.id.core.HutoolSnowflakeIdProvider;
-import com.petplatform.id.core.JdbcSnowflakeNodeStore;
+import com.petplatform.id.core.SimpleSnowflakeIdProvider;
 import com.petplatform.id.core.SnowflakeProviderSettings;
 import com.petplatform.admin.biz.application.AdminAuthService;
 import com.petplatform.aftersale.biz.application.AfterSalePorts;
@@ -169,11 +168,10 @@ public final class E2eCoreLoopServer {
     JdbcTemplate adminJdbc = new JdbcTemplate(rawSource(server, mysqlUser, mysqlPassword));
     HikariDataSource source = null;
     ConfigurableApplicationContext context = null;
-    // The shared local MySQL also serves sibling QA agents; the Snowflake single-flight
-    // acquisition has a hard 1s budget, so a busy instance can time the first attempt out.
-    // Retry the whole isolated fixture (fresh database each time) before giving up.
+    // Keep the isolated-fixture retry for ordinary boot/schema/seed contention. Snowflake is now
+    // a stateless single-instance provider, so it no longer participates in this retry.
     String name = null;
-    HutoolSnowflakeIdProvider ids = null;
+    SnowflakeIdGenerator ids = null;
     JdbcTemplate jdbc = null;
     // Unique namespace token: sibling QA fixtures on this machine use the same
     // auth001c_e2e_core_loop_ prefix shape and their Redis cleanup scans can wipe shared
@@ -182,8 +180,7 @@ public final class E2eCoreLoopServer {
     // Crash-recovery seam (QA only): set E2E_DATABASE_NAME to REOPEN the database a previous
     // process left behind (force-killed servers skip the DROP hook) instead of creating a fresh
     // one. Schema, bookable facts and the round-2 seeds are skipped on reuse — the surviving
-    // facts are the point. Pair it with a fresh E2E_SNOWFLAKE_NODE (the old node rows are not
-    // virgin after a fail-close).
+    // facts are the point. Keep E2E_SNOWFLAKE_NODE unique per concurrently running server.
     String reuseDatabase = System.getenv("E2E_DATABASE_NAME");
     for (int attempt = 1; attempt <= 6; attempt++) {
       String candidate = reuseDatabase != null && !reuseDatabase.isBlank() ? reuseDatabase
@@ -207,20 +204,8 @@ public final class E2eCoreLoopServer {
         if (reuseDatabase == null || reuseDatabase.isBlank()) {
           loadSchemas(candidateSource, root());
         }
-        String evidence = "e2e-core-loop:node" + nodeId + ":" + candidate;
-        candidateJdbc.update("INSERT INTO snowflake_worker_state"
-            + "(node_id,format_identity,enabled,initialization_ref,created_at,updated_at)"
-            + " VALUES(?,?,TRUE,?,UTC_TIMESTAMP(3),UTC_TIMESTAMP(3))",
-            nodeId, SnowflakeProviderSettings.FORMAT_IDENTITY, evidence);
-        HutoolSnowflakeIdProvider candidateIds = new HutoolSnowflakeIdProvider(
-            new JdbcSnowflakeNodeStore(candidateSource), new SnowflakeProviderSettings(nodeId),
-            old -> {
-              if (old.nodeId() != nodeId || old.incarnation() != null || old.fence() != 0
-                  || old.reservedThrough() != -1 || !evidence.equals(old.initializationRef())) {
-                throw new IllegalStateException("Not this fixture's virgin node");
-              }
-            });
-        warmSnowflake(candidateIds);
+        SnowflakeIdGenerator candidateIds =
+            new SimpleSnowflakeIdProvider(new SnowflakeProviderSettings(nodeId));
         if (reuseDatabase == null || reuseDatabase.isBlank()) {
           seedBookableFacts(candidateJdbc, candidateIds);
         }
@@ -248,8 +233,7 @@ public final class E2eCoreLoopServer {
       }
     }
     final HikariDataSource pool = source;
-    final HutoolSnowflakeIdProvider finalIds = Objects.requireNonNull(ids);
-    final RecoveringIds recoveringIds = new RecoveringIds(pool, nodeId, finalIds);
+    final SnowflakeIdGenerator finalIds = Objects.requireNonNull(ids);
     try {
       // Payment dispatch requires a real parameter-key file (AES-128 key material, Base64).
       byte[] parameterKey = key(41);
@@ -284,7 +268,7 @@ public final class E2eCoreLoopServer {
                       }
                     });
                 beans.registerBean("e2eDataSource", DataSource.class, () -> pool);
-                beans.registerBean("e2eIds", SnowflakeIdGenerator.class, () -> recoveringIds);
+                beans.registerBean("e2eIds", SnowflakeIdGenerator.class, () -> finalIds);
                 // Any real wx.login code from the DevTools simulator maps to the seeded identity;
                 // the seeded account already carries a verified phone so login completes in one shot.
                 beans.registerBean("e2eWechat", WechatSessionProvider.class, () ->
@@ -1333,80 +1317,6 @@ public final class E2eCoreLoopServer {
     return digest;
   }
 
-  // ------------------------------------------------------------------ recovering snowflake
-
-  /**
-   * QA-only resilience wrapper: the production Snowflake single-flight lane is deliberately
-   * fail-closed (1s budget, lease renewal), and this shared QA machine (sibling agent builds,
-   * 4-way parallel acceptance) can blow that budget once in a while. The wrapper transparently
-   * reopens a NEW virgin node when the current provider latches closed, so a long walkthrough
-   * survives a transient stall. Both node ids are real Snowflake nodes; IDs stay unique.
-   */
-  private static final class RecoveringIds implements SnowflakeIdGenerator {
-    private final HikariDataSource pool;
-    private final int baseNodeId;
-    // Monotonic across THIS provider's lifetime: a failed reopen leaves its node row behind,
-    // so candidate numbers must never repeat (the first-round attempt-index enumeration
-    // collided with its own leftovers after several reopen cycles and latched closed forever).
-    private final java.util.concurrent.atomic.AtomicInteger candidates =
-        new java.util.concurrent.atomic.AtomicInteger();
-    private volatile HutoolSnowflakeIdProvider current;
-
-    RecoveringIds(HikariDataSource pool, int baseNodeId, HutoolSnowflakeIdProvider first) {
-      this.pool = pool;
-      this.baseNodeId = baseNodeId;
-      this.current = first;
-    }
-
-    @Override public long nextId() {
-      HutoolSnowflakeIdProvider provider = current;
-      try {
-        return provider.nextId();
-      } catch (RuntimeException closed) {
-        synchronized (this) {
-          if (current == provider) {
-            for (int attempt = 1; attempt <= 8; attempt++) {
-              int raw = baseNodeId + candidates.incrementAndGet();
-              int candidateNode = raw > 1023 ? 1 + (raw % 1023) : raw;
-              try {
-                JdbcSnowflakeNodeStore store = new JdbcSnowflakeNodeStore(pool);
-                final int recoveryNode = candidateNode;
-                final String recoveryEvidence = "e2e-core-loop-recover:node" + candidateNode
-                    + ":" + System.nanoTime();
-                new JdbcTemplate(pool).update("INSERT INTO snowflake_worker_state"
-                    + "(node_id,format_identity,enabled,initialization_ref,created_at,updated_at)"
-                    + " VALUES(?,?,TRUE,?,UTC_TIMESTAMP(3),UTC_TIMESTAMP(3))",
-                    candidateNode, SnowflakeProviderSettings.FORMAT_IDENTITY, recoveryEvidence);
-                HutoolSnowflakeIdProvider reopened = new HutoolSnowflakeIdProvider(store,
-                    new SnowflakeProviderSettings(recoveryNode),
-                    old -> {
-                      if (old.nodeId() != recoveryNode || old.incarnation() != null || old.fence() != 0
-                          || old.reservedThrough() != -1 || !recoveryEvidence.equals(old.initializationRef())) {
-                        throw new IllegalStateException("Not this fixture's recovery node");
-                      }
-                    });
-                warmSnowflake(reopened);
-                current = reopened;
-                System.err.println("E2E_CORE_LOOP snowflake recovered on node " + candidateNode);
-                break;
-              } catch (Exception reopenFailure) {
-                System.err.println("E2E_CORE_LOOP snowflake reopen attempt " + attempt
-                    + " (node " + candidateNode + ") failed: " + reopenFailure);
-                try {
-                  Thread.sleep(2_000);
-                } catch (InterruptedException stop) {
-                  Thread.currentThread().interrupt();
-                  throw closed;
-                }
-              }
-            }
-          }
-          return current.nextId();
-        }
-      }
-    }
-  }
-
   // ------------------------------------------------------------------ helpers
 
   private static void loadSchemas(DataSource source, Path root) throws Exception {
@@ -1475,21 +1385,6 @@ public final class E2eCoreLoopServer {
             + "&connectTimeout=1000&socketTimeout=5000&createDatabaseIfNotExist=false",
             user, password);
     return raw;
-  }
-
-  private static void warmSnowflake(HutoolSnowflakeIdProvider ids) throws InterruptedException {
-    long deadline = System.nanoTime() + Duration.ofSeconds(5).toNanos();
-    for (;;) {
-      try {
-        ids.nextId();
-        break;
-      } catch (IllegalStateException warming) {
-        if (!warming.getMessage().contains("WARMING") || System.nanoTime() >= deadline) {
-          throw warming;
-        }
-        Thread.sleep(20);
-      }
-    }
   }
 
   private static Path root() {

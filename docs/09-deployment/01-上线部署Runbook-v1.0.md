@@ -52,7 +52,7 @@
 
 ### 2.1 部署基座：管理端会话（`pet.auth.admin.enabled=true`）
 
-全平台 ID 提供器（生产 Snowflake）唯一来源，**任何部署都必须先配它**；配好后 A 类开关全部自动生效。以下键缺任一 = 启动失败。
+全平台 ID 提供器（生产 Snowflake）唯一来源，**任何部署都必须先配它**；配好后 A 类开关全部自动生效。除 `pet.auth.admin.node-id` 有单实例缺省（1）外，以下键缺任一 = 启动失败。
 
 | 键 | 去哪申请/怎么生成 | 不配会怎样 |
 |---|---|---|
@@ -62,7 +62,9 @@
 | `pet.auth.admin.origin` | 管理端可信 origin，必须 `https://<PLACEHOLDER:管理端域名>`（本机调试允许 localhost/127.0.0.1 http） | 启动失败 "HTTPS origin or isolated loopback origin required" |
 | `pet.auth.admin.redis-host` / `redis-port` / `redis-password` | 指向 §3.1 的 Redis | 启动失败（授权缓存无法装配） |
 | `pet.auth.admin.audit-path` | 宿主机上一个**显式文件路径**（如 `/var/log/pet/admin-audit.log`），目录需可写 | 启动失败 "Explicit durable audit sink path required" |
-| `pet.auth.admin.node-id` | Snowflake 节点号；多实例部署必须互异（节点状态落库，见 docs/03-database/25号） | 缺省 -1 单机可用；多实例不配会撞节点 |
+| `pet.auth.admin.node-id` | Snowflake 节点号（0..1023）；单实例用一个固定值，多实例必须互异 | 缺省 1，单实例可直接用；多实例不配会撞节点（重复 ID） |
+
+> 2026-10-22 起默认装配为**单实例** `SimpleSnowflakeIdProvider`（Hutool 直发，不读写 `snowflake_worker_state`，无租约/fail-closed）。需要多实例自动协调、跨重启高水位时，切回 `pet-id-core` 的数据库租约实现并配置可信 `PreviousJvmExitVerifier`；见 [CCR-PLAT-002-SINGLE-NODE-20261022](../../planning/ccr/CCR-PLAT-002-SINGLE-NODE-20261022.md)。
 
 ### 2.2 微信小程序会话（`pet.auth.c.enabled=true`，C 端一切路由的总闸）
 
