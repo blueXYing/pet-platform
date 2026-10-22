@@ -4,8 +4,7 @@ import com.petplatform.admin.biz.application.AdminAuthService;
 import com.petplatform.admin.biz.infrastructure.provider.AdminSecretCodec;
 import com.petplatform.boot.PetPlatformApplication;
 import com.petplatform.common.SnowflakeIdGenerator;
-import com.petplatform.id.core.HutoolSnowflakeIdProvider;
-import com.petplatform.id.core.JdbcSnowflakeNodeStore;
+import com.petplatform.id.core.SimpleSnowflakeIdProvider;
 import com.petplatform.id.core.SnowflakeProviderSettings;
 import com.petplatform.merchant.biz.application.ApplicationValidationPorts;
 import com.petplatform.merchant.biz.application.PrivateAssetQueryPort;
@@ -131,20 +130,8 @@ public final class M002IntegrationServer {
       jdbc.update("INSERT INTO merchant_subject_lookup_policy"
           + "(policy_slot,key_version,algorithm,created_at)"
           + " VALUES(1,'qa-only-v1','HMAC-SHA-256',UTC_TIMESTAMP(3))");
-      String evidence = "m002-ci-virgin:" + name + ":node" + nodeId;
-      jdbc.update("INSERT INTO snowflake_worker_state"
-          + "(node_id,format_identity,enabled,initialization_ref,created_at,updated_at)"
-          + " VALUES(?,?,TRUE,?,UTC_TIMESTAMP(3),UTC_TIMESTAMP(3))",
-          nodeId, SnowflakeProviderSettings.FORMAT_IDENTITY, evidence);
-      HutoolSnowflakeIdProvider ids = new HutoolSnowflakeIdProvider(
-          new JdbcSnowflakeNodeStore(source), new SnowflakeProviderSettings(nodeId),
-          old -> {
-            if (old.nodeId() != nodeId || old.incarnation() != null || old.fence() != 0
-                || old.reservedThrough() != -1 || !evidence.equals(old.initializationRef())) {
-              throw new IllegalStateException("Not this fixture's virgin node");
-            }
-          });
-      warmSnowflake(ids);
+      SnowflakeIdGenerator ids =
+          new SimpleSnowflakeIdProvider(new SnowflakeProviderSettings(nodeId));
 
       byte[] adminMac = key(3), adminAes = key(7);
       AesGcmProtectedValueProvider protector =
@@ -371,21 +358,6 @@ public final class M002IntegrationServer {
             + "&connectTimeout=1000&socketTimeout=5000&createDatabaseIfNotExist=false",
             user, password);
     return raw;
-  }
-
-  private static void warmSnowflake(HutoolSnowflakeIdProvider ids) throws InterruptedException {
-    long deadline = System.nanoTime() + Duration.ofSeconds(5).toNanos();
-    for (;;) {
-      try {
-        ids.nextId();
-        break;
-      } catch (IllegalStateException warming) {
-        if (!warming.getMessage().contains("WARMING") || System.nanoTime() >= deadline) {
-          throw warming;
-        }
-        Thread.sleep(20);
-      }
-    }
   }
 
   private static Path root() {

@@ -16,7 +16,7 @@ public class AdminAuthProperties {
       encryptionKeyBase64,
       auditPath,
       migrationDatabase;
-  private int redisPort = 6379, nodeId = -1;
+  private int redisPort = 6379, nodeId = 1;
 
   public boolean isEnabled() {
     return enabled;

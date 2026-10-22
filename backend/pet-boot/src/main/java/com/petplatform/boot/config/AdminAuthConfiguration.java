@@ -10,7 +10,6 @@ import java.time.Clock;
 import java.util.Base64;
 import javax.sql.DataSource;
 import org.flywaydb.core.Flyway;
-import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.boot.autoconfigure.condition.*;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.annotation.*;
@@ -36,12 +35,11 @@ public class AdminAuthConfiguration {
 
   @Bean
   @ConditionalOnMissingBean(SnowflakeIdGenerator.class)
-  HutoolSnowflakeIdProvider adminIdProvider(
-      DataSource source, AdminAuthProperties p, ObjectProvider<PreviousJvmExitVerifier> verifier) {
-    return new HutoolSnowflakeIdProvider(
-        new JdbcSnowflakeNodeStore(source),
-        new SnowflakeProviderSettings(p.getNodeId()),
-        verifier.getIfAvailable(PreviousJvmExitVerifier::rejecting));
+  SnowflakeIdGenerator adminIdProvider(AdminAuthProperties p) {
+    // Single-instance deployment: use the configured node id directly. The database-coordinated
+    // provider (HutoolSnowflakeIdProvider) remains available for a future multi-instance rollout;
+    // it is deliberately not the default because a transient DB/renewal stall would fail closed.
+    return new SimpleSnowflakeIdProvider(new SnowflakeProviderSettings(p.getNodeId()));
   }
 
   @Bean

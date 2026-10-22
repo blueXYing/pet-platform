@@ -1,5 +1,7 @@
 # PLAT-002 S2 Hutool组件交接
 
+> **2026-10-22 单实例默认切换：** `pet-boot` 默认装配 `SimpleSnowflakeIdProvider`（Hutool 直发、配置 node-id、无数据库租约/续租/fail-closed）；本文件描述的数据库协调组件保留给未来多实例，但不再是默认装配。裁决见 [CCR-PLAT-002-SINGLE-NODE-20261022](../../planning/ccr/CCR-PLAT-002-SINGLE-NODE-20261022.md)。下文为组件历史交付快照，生产启用门禁针对协调组件仍然有效。
+
 > 2026-09-16 PR36后核查：以远端develop b91a014为准，新增池化多连接/非UTC与续租迟到ACK回归，结果见[整合收尾报告](../../planning/progress/2026-09-16/ID_INTEGRATION_CLOSEOUT.md)。当前事务已绑定同一DataSource连接，未复现PR36的跨连接时区推测；未更改1秒保护或生产持久层。下文为原组件交付快照，尤其“没有boot Bean”已被后续AdminAuthConfiguration可选装配更新，但可信宿主退出证明仍默认拒绝。
 
 > 2026-09-16 状态同步：PR16已合入；以下是组件交付时快照，生产门禁仍有效。当前合并事实见 planning/progress/2026-09-16/PROGRESS_SYNC.md。

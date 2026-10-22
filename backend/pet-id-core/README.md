@@ -1,5 +1,11 @@
 # Hutool Snowflake component
 
+> **2026-10-22 single-instance default:** `pet-boot` now assembles
+> [`SimpleSnowflakeIdProvider`](src/main/java/com/petplatform/id/core/SimpleSnowflakeIdProvider.java)
+> (Hutool only, configured node id, no database lease/renewal/fail-closed). The coordinated
+> provider described below remains available for a future multi-instance deployment; it is not
+> the default. See [CCR-PLAT-002-SINGLE-NODE-20261022](../../planning/ccr/CCR-PLAT-002-SINGLE-NODE-20261022.md).
+
 This opt-in component implements the accepted PLAT-002 S2 adapter over SQL25. It is not a
 Spring bean, boot migration, production host adapter, or general business idempotency service.
 The original `pet-common` interfaces remain unchanged. See [HANDOFF](HANDOFF.md) for evidence.
