@@ -4,7 +4,7 @@ const path = require('node:path')
 const assert = require('node:assert/strict')
 const root = path.join(__dirname, 'dist')
 const app = JSON.parse(fs.readFileSync(path.join(root, 'app.json'), 'utf8'))
-assert.deepEqual(app.pages, ['consumer/pages/home/index', 'consumer/pages/services/index', 'consumer/pages/community/index', 'consumer/pages/messages/index', 'consumer/pages/mine/index', 'consumer/pages/shell/index', 'consumer/pages/diagnostics/index', 'consumer/pages/profile-edit/index'])
+assert.deepEqual(app.pages, ['consumer/pages/splash/index', 'consumer/pages/home/index', 'consumer/pages/services/index', 'consumer/pages/community/index', 'consumer/pages/messages/index', 'consumer/pages/mine/index', 'consumer/pages/shell/index', 'consumer/pages/diagnostics/index', 'consumer/pages/profile-edit/index'])
 // Native tabBar (2026-10-08 adjudication): five equal tabs, main-package pages only, icons are
 // the registry-extracted original cuts (no selected-state variant — registered design deviation).
 assert.deepEqual(app.tabBar, {
@@ -87,6 +87,8 @@ assert.deepEqual(packages.map(p => ({ root: p.root, pages: p.pages })), [
   { root: 'consumer/pages/help', pages: ['index'] },
   // Feedback slice (contract 67, PRD 5.1.28): create + my-ticket list.
   { root: 'consumer/pages/feedback', pages: ['index', 'list'] },
+  // Onboarding guide (37号裁决, 2026-10-21): first-launch-only three-screen subpackage.
+  { root: 'consumer/pages/onboarding', pages: ['index'] },
 ], 'Merchant workspace, pet archive, merchant application, store services, coupon/points, aftersale, settings hub, help and feedback pages must be registered in the single app')
 for (const [folder, pages] of [['consumer/pages/aftersale', ['index', 'detail', 'apply']], ['merchant/pages/aftersale', ['index', 'detail']], ['merchant/pages/reviews', ['index']]]) {
   for (const page of pages) for (const extension of ['js', 'json', 'wxml', 'wxss']) {
