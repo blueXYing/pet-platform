@@ -1,6 +1,8 @@
 export default defineAppConfig({
   // Tab pages must be main-package pages; the first entry is the launch page (home).
-  pages: ['consumer/pages/home/index', 'consumer/pages/services/index', 'consumer/pages/community/index', 'consumer/pages/messages/index', 'consumer/pages/mine/index', 'consumer/pages/shell/index', 'consumer/pages/diagnostics/index', 'consumer/pages/profile-edit/index'],
+  // 启动页必须是主包且为 pages[0]（子包不能作为启动页）：冷启动先呈现「初始界面」(Figma 10:89)，
+  // 再按首启标记 redirectTo 引导页（子包）或 switchTab 首页——避免先渲染首页再跳转导致闪屏。
+  pages: ['consumer/pages/splash/index', 'consumer/pages/home/index', 'consumer/pages/services/index', 'consumer/pages/community/index', 'consumer/pages/messages/index', 'consumer/pages/mine/index', 'consumer/pages/shell/index', 'consumer/pages/diagnostics/index', 'consumer/pages/profile-edit/index'],
   window: { navigationBarTitleText: '宠物生活服务', backgroundColor: '#f5f5f5' },
   // 用户 2026-10-08 裁决：V1 用原生 tabBar 等分布局；设计稿“宠友圈中间凸起”登记为设计偏差留补稿轮。
   // 图标沿用导航登记表提取的原切图（无选中态变体，选中差异仅文字色，同登记偏差）。
@@ -87,5 +89,8 @@ export default defineAppConfig({
     { root: 'consumer/pages/help', pages: ['index'] },
     // Feedback slice (contract 67, PRD 5.1.28 complaint class): create + my-ticket list.
     { root: 'consumer/pages/feedback', pages: ['index', 'list'] },
+    // Onboarding splash (user ruling 2026-10-21; figma 10:108/33:40/33:58): first-launch-only
+    // three-screen guide; subpackage keeps the ~1MB 2x strips within the per-package limit.
+    { root: 'consumer/pages/onboarding', pages: ['index'] },
   ],
 })

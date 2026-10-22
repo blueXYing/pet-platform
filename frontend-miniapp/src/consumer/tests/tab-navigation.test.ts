@@ -13,14 +13,18 @@ test('the five navigation keys register exactly one native tab route each', () =
   assert.equal(new Set(Object.values(consumerTabRoutes)).size, 5)
 })
 
-test('app.config registers the tab pages in the main package with the home page as launch entry', async () => {
+test('app.config 启动页为品牌启动页、tab 页均在主包', async () => {
   ;(globalThis as Record<string, unknown>).defineAppConfig = (value: unknown) => value
   const config = (await import('../../app.config')).default as {
     pages: string[]
     tabBar: { list: Array<{ pagePath: string; text: string; iconPath: string; selectedIconPath: string }> }
     subPackages: Array<{ root: string }>
   }
-  assert.equal(config.pages[0], 'consumer/pages/home/index')
+  // 启动页改为「初始界面」品牌启动页（Figma 10:89，37号裁决补齐）：冷启动先呈现品牌画面，
+  // 再按首启标记 redirectTo 引导页或 switchTab 首页——避免先渲染首页再跳转的闪屏。
+  assert.equal(config.pages[0], 'consumer/pages/splash/index')
+  assert.equal(config.pages[1], 'consumer/pages/home/index')
+  assert.ok(!config.subPackages.some(pack => config.pages[0].startsWith(pack.root + '/')), '启动页必须在主包')
   const tabPages = config.tabBar.list.map(tab => tab.pagePath)
   assert.equal(tabPages.length, 5)
   for (const page of tabPages) {
