@@ -561,6 +561,10 @@
 
 素材登记：`consumer/assets/home/` 新增 brand-logo@2x.png（5.2KB）、guarantee-certified/rating/insurance/escrow@2x.png（0.9~1.8KB）、huaban-grid@2x.jpg（31KB）、huaban-doodle@2x.jpg（60KB），manifest 含 sha256 与源版本 2408620332145508244；门店页 `store-services/assets/` 零变化（复核确认）。
 
+**2026-10-21 城市芯片图标按稿修正**：原为自绘「定位针+爱心」SVG（与稿不符，用户指出应为小狗脚印）；现按 Figma `Location-Heart-Pin`（62:9，含 62:11 蓝色水滴 / 62:8 深色脚印 / 62:7 掌垫奶油填充）三层合成 `home-city-paw@3x.png`，尺寸 27x32 设计px，浅色文字前的爱心错误改为脚印。
+
+**2026-10-21 宠物档案分区按稿重做（用户裁决「做错的重新做」）**：此前为入口卡（不虚构数据）；现按 `61:599` 落真实明细——标题「宠物档案 + N 只萌宠 + 宠物百科 ›」，宠物行含头像、姓名、性别胶囊（男蓝 #5baae8/女橙 #ffceba）、品种·年龄（`breedAgeLine`），右侧状态胶囊（标题在 80x19 胶囊内、日期行在下方：疫苗绿 `#cdeddd`/驱虫橙 `#ffcfba`），来源 `/api/v1/c/pets` + `/pets/{id}/vaccination-records|deworming-records`（取最近一条），最多 2 只；匿名/未登录/读取失败回退建卡入口。行点击进宠物详情、百科入口进 `baike/index`。已裁决不做的仍不做：营销位/热门服务/宠友圈热门/定位城市/品种百科链接。
+
 ### 4.14 C 端地址管理三页（2026-10-13）
 
 复核方法：2026-10-13 从工作树缓存素材（`D:/Temp/figma-mcp/user-end-page1.raw`，2026-10-10 版全量 SSE，提取 `129:13141`/`129:13533`/`129:13731` 三帧 XML 树——零 API 配额，存 `D:/Temp/figma-mcp/addr-{list,edit,new}.xml`），另消耗 **1 次** REST images 调用（三帧 scale=2 渲染核对色值；dev token，渲染图存 `D:/Temp/figma-mcp/addr-render-url-129-*.png`）。落地：契约 59（`docs/04-api/59-User-Address-Contract-v0.1.md`，CCR-USR-ADDRESS-001）+ HTTP10 §3.2.2 六路由后端切片 + C 端三页（32号裁决第二批「七页全做」之地址管理页）。
