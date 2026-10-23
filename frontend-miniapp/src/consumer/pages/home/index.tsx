@@ -21,6 +21,7 @@ import iconInsurance from '../../assets/home/guarantee-insurance@2x.png'
 import iconEscrow from '../../assets/home/guarantee-escrow@2x.png'
 import placeholderAvatar from '../../assets/profile/avatar.png'
 import cityPawIcon from '../../assets/home/home-city-paw@3x.png'
+import petTape from '../../assets/home/pet-tape@3x.png'
 import './home.css'
 
 // 首页（tabbar+login 切片，用户 2026-10-08 裁决；2026-10-13 按 Figma 新版 61:599 视觉对齐）。
@@ -33,6 +34,8 @@ import './home.css'
 // + 下拉箭头 #3c3c3c；§4.11 偏差2 的「定位城市不实现」随裁决修订为「手动选择城市」）：目录来自
 // §3.3.4 /c/cities（匿名），选择持久化本地存储、门店目录页展示时读取并按城市刷新；V1 无定位能力
 // （§4.4 维持），pin 仅作芯片图形不入定位语义。全部入口仍指向已交付真实页面。
+// 2026-10-23 修正芯片脚印切图：62:9 画框 39.9635 含 6.2px 透明内缩，恢复 117x96@3x
+// 带留白切图并以 39x32 设计px 呈现（紧裁切图会贴住 button 左缘被 overflow 裁切）。
 const guarantee = [
   { key: 'certified', title: '实名认证', body: '所有服务者均通过身份认证与资质审核', icon: iconCertified },
   { key: 'rating', title: '服务评分', body: '真实用户评价，透明公开的评分体系', icon: iconRating },
@@ -136,7 +139,10 @@ export default function HomePage() {
   function goMessages() { void switchConsumerTab('messages') }
   return <View className='home-page' style={style}>
     {/* 分层背景（设计 z 序）：网格纸纹（61:31，状态栏起 787 高）→ 奶油头带（0..86）→ 手绘涂鸦带（62:49，86..331）→ #f0fbff 主体 */}
-    <Image className='home-bg-grid' src={textureGrid} mode='scaleToFill' />
+    {/* 网格纸纹只铺到宠物分区底部（高度按行数计算），不延伸到找门店等后续模块；裁剪不缩放 */}
+    <View className='home-bg-grid-clip' style={{ height: `${(420.41 + 85 * Math.max(1, pets.length)) * unit}px` }}>
+      <Image className='home-bg-grid' src={textureGrid} mode='scaleToFill' />
+    </View>
     <View className='home-bg-cream' />
     <Image className='home-bg-doodle' src={textureDoodle} mode='scaleToFill' />
     <View className='home-header'>
@@ -165,14 +171,23 @@ export default function HomePage() {
       {/* 宠物档案（设计 61:599：标题 + N 只萌宠 + 宠物行（性别/品种年龄/最近疫苗或驱虫）+ 宠物百科）。
           已登录且读到 ACTIVE 宠物时展示真实明细；否则回退为建卡入口，不虚构数据。 */}
       <View className='home-pet-section'>
-        <View className='home-pet-paper' />
-        <View className='home-pet-card'>
+        <View className='home-pet-blue-paper' />
+        <View className='home-pet-white-paper' />
+        <Image className='home-pet-tape' src={petTape} mode='scaleToFill' />
+        <View className='home-pet-content'>
           <View className='home-pet-head'>
-            <Text className='home-pet-h1'>宠物档案</Text>
-            {pets.length > 0 && <Text className='home-pet-count'>{`${pets.length} 只萌宠`}</Text>}
+            <View className='home-pet-head-left'>
+              <Text className='home-pet-h1'>宠物档案</Text>
+              {pets.length > 0 && <Text className='home-pet-count'>{`${pets.length} 只萌宠`}</Text>}
+              <Button id='home-pet-add' className='home-pet-add' ariaLabel='添加宠物' hoverClass='none'
+                onClick={() => open('/consumer/pages/pet-archive/form')}>
+                <Text className='home-pet-add-text'>+</Text>
+              </Button>
+            </View>
             <View className='home-pet-more' onClick={() => open('/consumer/pages/baike/index')}>
+              <View className='home-pet-more-icon' />
               <Text className='home-pet-more-text'>宠物百科</Text>
-              <Text className='home-pet-more-go'>›</Text>
+              <View className='home-pet-more-chevron' />
             </View>
           </View>
           {pets.length === 0 && (
@@ -205,6 +220,7 @@ export default function HomePage() {
                 {badge && (
                   <View className='home-pet-chip'>
                     <View className={badge.tone === 'vaccine' ? 'home-pet-chip-pill home-pet-chip-pill-vaccine' : 'home-pet-chip-pill home-pet-chip-pill-deworm'}>
+                      <View className={badge.tone === 'vaccine' ? 'home-pet-chip-icon home-pet-chip-icon-vaccine' : 'home-pet-chip-icon home-pet-chip-icon-deworm'} />
                       <Text className={badge.tone === 'vaccine' ? 'home-pet-chip-title' : 'home-pet-chip-title home-pet-chip-title-deworm'}>{badge.title}</Text>
                     </View>
                     <Text className='home-pet-chip-line'>{badge.line}</Text>
