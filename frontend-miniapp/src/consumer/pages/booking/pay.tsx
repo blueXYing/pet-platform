@@ -123,7 +123,7 @@ function PayScreen({ preview, scenario, orderId }: { preview: boolean; scenario:
   // 幂等恢复提示：真实模式存在未确认的发起命令时，按钮文案改为重试原发起（同一 X-Request-Id）。
   const pendingLaunch = !preview && consumerApi.pendingCommand(paymentSlot(orderId)) !== undefined
   return <ConsumerPageLayout page='bookingPay' unit={unit} className='bkg-page' style={style}
-    navigation={{ idPrefix: 'bkp', disabled: phase === 'loading', onSelect: key => { void switchConsumerTab(key) } }}>
+    navigation={preview ? { idPrefix: 'bkp', disabled: phase === 'loading', onSelect: key => { void switchConsumerTab(key) } } : undefined}>
     <View className='bkg-design'>
       <View className='bkg-status-area' />
       <View className='bkg-nav'>

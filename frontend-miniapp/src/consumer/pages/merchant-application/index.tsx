@@ -159,7 +159,7 @@ function ApplicationScreen({ preview, reference, scope, initialType }: { preview
     if (Taro.getCurrentPages().length > 1) await Taro.navigateBack()
     else await Taro.switchTab({ url: '/consumer/pages/mine/index' })
   }
-  return <ConsumerPageLayout page='merchantApplication' unit={unit} className={`application-page${reference ? ' application-reference' : ''}`} style={style} navigation={{ idPrefix: 'application', disabled: busy, onSelect: key => void switchConsumerTab(key) }}>
+  return <ConsumerPageLayout page='merchantApplication' unit={unit} className={`application-page${reference ? ' application-reference' : ''}`} style={style} navigation={preview ? { idPrefix: 'application', disabled: busy, onSelect: key => void switchConsumerTab(key) } : undefined}>
     <MerchantApplicationView draft={draft} result={result} errors={errors} notice={notice} busy={busy} loading={loading} preview={preview} loggedIn={loggedIn} locked={locked} opinion={opinion} cityName={cityName} cities={cities} typeOpen={typeOpen} edit={edit}
       onBack={() => void leave()} onTypes={() => setTypeOpen(value => !value)} onCity={() => void perform(async () => { const values = await deps.cities(); if (live()) setCities(values) })}
       onCitySelect={city => { if (running.current || pending.current || !editableApplication(result)) return; edit('cityCode', city.code); setCityName(city.name); setCities(null) }}

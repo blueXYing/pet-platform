@@ -15,6 +15,8 @@ type Props = PropsWithChildren<{
 
 // One owner for bottom navigation and its reserved content space, including subpackage pages.
 // Pure business sections remain children; they never mount another global navigation bar.
+// 2026-10-26 user ruling: non-root product pages omit `navigation`; preview/reference routes pass it
+// only for Figma comparison. Root tab pages use the native tabBar and never mount this bar.
 export function ConsumerPageLayout({ className, style, unit, page, navigation, children }: Props) {
   const [keyboardHeight, setKeyboardHeight] = useState(0)
   useEffect(() => {

@@ -121,7 +121,7 @@ function RefundApplyScreen({ preview, scenario, orderId }: { preview: boolean; s
   const badge = detail === null ? null : orderStatusBadge(detail)
   const receiptBadge = state.receipt === null ? null : receiptStatusBadge(state.receipt)
   return <ConsumerPageLayout page='orderDetail' unit={unit} className='ord-page' style={style}
-    navigation={{ idPrefix: 'rfd', disabled: state.phase === 'loading', onSelect: key => { void switchConsumerTab(key) } }}>
+    navigation={preview ? { idPrefix: 'rfd', disabled: state.phase === 'loading', onSelect: key => { void switchConsumerTab(key) } } : undefined}>
     {/* 视觉按设计源 129:10572（我的-我的订单-申请售后，2026-10-12 新版缓存）重做：奶油头带
         #fff6e5 → 白内容区、订单卡 #f0fbff+#c0ecff 描边 r13（x=12.5 宽 377，金额 27/700 #53bfee）、
         输入件 #f9fffe 底 #c0ecff 描边 r8 + 0/500 右下、主按钮 335x44 r12 #5baae8。原稿「售后类型」

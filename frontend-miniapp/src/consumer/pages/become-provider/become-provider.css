@@ -9,9 +9,9 @@
 .bep-page button { padding: 0; margin: 0; border: 0; border-radius: 0; background: transparent; font: inherit; line-height: normal; text-align: left; }
 .bep-page button::after { border: 0; }
 
-/* 半屏面板层：遮罩铺满导航保留区以上，面板贴自绘底部导航上沿（原稿面板浮于「我的」页
-   与底部 tab 之上；独立路由页以遮罩+面板承载同形态，偏差登记 §4.16）。 */
-.bep-design { position: fixed; left: 0; right: 0; top: 0; bottom: calc(var(--bep-unit) * 62 + env(safe-area-inset-bottom)); display: flex; flex-direction: column; justify-content: flex-end; }
+/* 半屏面板层：原稿面板浮于「我的」页与底部 tab 之上；独立路由页以遮罩+面板承载同形态。
+   2026-10-26 用户裁决：非根页不显示全局底栏，面板直接贴安全区底部（偏差登记 §4.16/§4.20）。 */
+.bep-design { position: fixed; left: 0; right: 0; top: 0; bottom: env(safe-area-inset-bottom); display: flex; flex-direction: column; justify-content: flex-end; }
 .bep-mask { position: absolute; left: 0; right: 0; top: 0; bottom: 0; background: rgba(0, 0, 0, .3); }
 .bep-sheet { position: relative; background: #ffffff; border-radius: calc(var(--bep-unit) * 17.155) calc(var(--bep-unit) * 17.155) 0 0; padding: calc(var(--bep-unit) * 17.15) calc(var(--bep-unit) * 21.5) calc(var(--bep-unit) * 12.86); }
 

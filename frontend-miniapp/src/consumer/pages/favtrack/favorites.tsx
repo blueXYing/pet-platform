@@ -151,7 +151,7 @@ export default function FavoritesPage() {
   const ready = phase === 'ready'
   return <View>
     <ConsumerPageLayout page='favoriteList' unit={unit} className={`fvt-page${booking ? ' bks-lock' : ''}`}
-      navigation={{ idPrefix: 'fvt', disabled: !ready, onSelect: key => void switchConsumerTab(key) }} style={style}>
+      navigation={preview ? { idPrefix: 'fvt', disabled: !ready, onSelect: key => void switchConsumerTab(key) } : undefined} style={style}>
       <View className='fvt-status-area' />
       <View className='fvt-nav'>
         <Button id='fav-back' ariaLabel='返回' className='fvt-nav-back' onClick={() => void goBack()}>

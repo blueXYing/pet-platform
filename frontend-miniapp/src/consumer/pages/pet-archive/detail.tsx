@@ -145,7 +145,7 @@ export default function PetArchiveDetail() {
       }))
   const tag = supplement.tag
   const photo = ready ? pet.avatarUrl || (preview ? (pet.petId === '30001' ? petPhoto : pet.petId === '30002' ? catPhoto : null) : null) : null
-  return <ConsumerPageLayout page='petDetail' unit={unit} navigation={{ idPrefix: 'pet', disabled: phase !== 'ready', onSelect: key => void switchConsumerTab(key), referencePlacement: referenceCanvas ? { bottom: 0, height: 61 } : undefined }} className={`pet-page pet-detail-page${referenceCanvas ? ' pet-reference-canvas' : ''}`} style={style}>
+  return <ConsumerPageLayout page='petDetail' unit={unit} navigation={preview ? { idPrefix: 'pet', disabled: phase !== 'ready', onSelect: key => void switchConsumerTab(key), referencePlacement: referenceCanvas ? { bottom: 0, height: 61 } : undefined } : undefined} className={`pet-page pet-detail-page${referenceCanvas ? ' pet-reference-canvas' : ''}`} style={style}>
     <View className='pet-status-area' />
     <View className='pet-design pet-detail-design' data-phase={phase}>
       <Image className='pet-abs pet-detail-strip1' src={stripMain} mode='scaleToFill' />

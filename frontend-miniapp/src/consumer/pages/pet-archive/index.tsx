@@ -122,7 +122,7 @@ export default function PetArchiveList() {
   }
   const extraRows = Math.max(0, pets.length - 2) * 85
   const ready = phase === 'ready'
-  return <ConsumerPageLayout page='petList' unit={unit} navigation={{ idPrefix: 'pet', disabled: phase !== 'ready', onSelect: key => void switchConsumerTab(key), referencePlacement: undefined }} className={`pet-page pet-list-page${referenceCanvas ? ' pet-reference-canvas' : ''}`} style={style}>
+  return <ConsumerPageLayout page='petList' unit={unit} navigation={preview ? { idPrefix: 'pet', disabled: phase !== 'ready', onSelect: key => void switchConsumerTab(key), referencePlacement: undefined } : undefined} className={`pet-page pet-list-page${referenceCanvas ? ' pet-reference-canvas' : ''}`} style={style}>
     <View className='pet-status-area' />
     <View className='pet-design pet-list-design' data-phase={phase} style={{ '--pet-list-extra': `${extraRows * unit}px` } as CSSProperties}>
       <Image className='pet-list-strip' src={stripMain} mode='scaleToFill' />

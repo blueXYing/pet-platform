@@ -180,7 +180,7 @@ function RescheduleScreen({ preview, scenario, orderId }: { preview: boolean; sc
 
   const badge = detail === null ? null : orderStatusBadge(detail)
   return <ConsumerPageLayout page='orderDetail' unit={unit} className='ord-page' style={style}
-    navigation={{ idPrefix: 'rsc', disabled: state.phase === 'loading', onSelect: key => { void switchConsumerTab(key) } }}>
+    navigation={preview ? { idPrefix: 'rsc', disabled: state.phase === 'loading', onSelect: key => { void switchConsumerTab(key) } } : undefined}>
     {/* 视觉按设计源 237:1038（我的-我的订单-待服务-订单改期，2026-10-12 新版缓存）重做：弹层
         语言整页承载——白底 + #f0fbff 摘要条 + LABEL 16/#3c3c3c + 时段槽 89.9x30（#f0fbff+#acd5e8
         描边 / 激活 #85d2f3 白字）+ 主按钮 335x44 r12 #5baae8。原稿 INPUT 行为时间展示（工程由

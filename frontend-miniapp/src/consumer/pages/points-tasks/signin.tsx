@@ -87,7 +87,7 @@ export default function SignInPage() {
   const dailyPoints = ready ? status.dailyPoints : '5'
   const signedToday = ready && status.signedToday
   return <ConsumerPageLayout page='pointsPage' unit={unit} className='ptk-page'
-    navigation={{ idPrefix: 'ptk', disabled: !ready, onSelect: () => {} }} style={style}>
+    navigation={preview ? { idPrefix: 'ptk', disabled: !ready, onSelect: () => {} } : undefined} style={style}>
     <View className='ptk-design'>
       <View className='ptk-status-area' />
       {phase === 'loading' && <View className='ptk-state' role='status'><Text>正在读取签到状态…</Text></View>}

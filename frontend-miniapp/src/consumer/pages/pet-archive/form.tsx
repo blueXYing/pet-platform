@@ -146,7 +146,7 @@ export default function PetArchiveForm() {
   }
   const editable = ['ready', 'saving', 'save-error'].includes(phase)
   const fieldsLocked = phase === 'saving' || (!preview && !!consumerApi.pendingCommand(savedPetId.current ? `pet:${savedPetId.current}` : 'pet:create'))
-  return <ConsumerPageLayout page='petForm' unit={unit} navigation={{ idPrefix: 'pet', disabled: !editable || phase === 'saving', onSelect: key => leave(key), referencePlacement: referenceCanvas ? { top: designHeight === 1067 ? 991 : 990 } : undefined }} className={`pet-page pet-form-page${referenceCanvas ? ' pet-reference-canvas' : ''}`} style={style}>
+  return <ConsumerPageLayout page='petForm' unit={unit} navigation={preview ? { idPrefix: 'pet', disabled: !editable || phase === 'saving', onSelect: key => leave(key), referencePlacement: referenceCanvas ? { top: designHeight === 1067 ? 991 : 990 } : undefined } : undefined} className={`pet-page pet-form-page${referenceCanvas ? ' pet-reference-canvas' : ''}`} style={style}>
     <View className='pet-status-area' />
     <View className='pet-design pet-form-design' data-phase={phase} style={{ height: `calc(var(--pet-unit) * ${designHeight})` }}>
       <Image className='pet-abs pet-form-strip1' src={stripMain} mode='scaleToFill' />

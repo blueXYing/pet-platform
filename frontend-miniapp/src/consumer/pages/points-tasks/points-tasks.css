@@ -11,9 +11,10 @@
 .ptk-design { position: relative; min-height: 100vh; }
 .ptk-status-area { height: var(--ptk-status-top); }
 
-/* 面板式页面（129:5854/129:7677）：暗化背景 + 底部白面板（圆角 16，头部 61 高）。 */
+/* 面板式页面（129:5854/129:7677）：暗化背景 + 底部白面板（圆角 16，头部 61 高）。
+   2026-10-26 非根页无全局底栏：面板自身补安全区；预览底栏覆盖时的安全区为不可见冗余。 */
 .ptk-veil { min-height: 100vh; background: rgba(29, 13, 7, .45); display: flex; flex-direction: column; justify-content: flex-end; }
-.ptk-panel { background: #ffffff; border-radius: calc(var(--ptk-unit) * 16) calc(var(--ptk-unit) * 16) 0 0; padding-bottom: calc(var(--ptk-unit) * 24); }
+.ptk-panel { background: #ffffff; border-radius: calc(var(--ptk-unit) * 16) calc(var(--ptk-unit) * 16) 0 0; padding-bottom: calc(var(--ptk-unit) * 24 + env(safe-area-inset-bottom)); }
 .ptk-panel-head { display: flex; align-items: center; justify-content: space-between; height: calc(var(--ptk-unit) * 61); padding: 0 calc(var(--ptk-unit) * 17); }
 .ptk-panel-title { font-size: calc(var(--ptk-unit) * 18); line-height: calc(var(--ptk-unit) * 26); font-weight: 700; color: #1d0d07; }
 .ptk-page .ptk-panel-close { width: calc(var(--ptk-unit) * 34); height: calc(var(--ptk-unit) * 34); display: flex; align-items: center; justify-content: center; }

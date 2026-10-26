@@ -156,7 +156,7 @@ export default function StoreDirectoryPage() {
     ? (catalogCities[0]?.cityName || '全部开放城市')
     : (catalogCities.find(entry => entry.cityCode === city)?.cityName || city)
   const noResults = ready && searching && items.length === 0 && (serviceHits === null || serviceHits.length === 0)
-  return <ConsumerPageLayout page='storeDirectory' unit={unit} navigation={{ idPrefix: 'sdir', disabled: !ready, onSelect: key => void switchConsumerTab(key), referencePlacement: undefined }} className='svc-page sdir-page' style={style}>
+  return <ConsumerPageLayout page='storeDirectory' unit={unit} navigation={preview ? { idPrefix: 'sdir', disabled: !ready, onSelect: key => void switchConsumerTab(key), referencePlacement: undefined } : undefined} className='svc-page sdir-page' style={style}>
     <View className='svc-status-area' />
     <View className='sdir-top'>
       <View className='svc-abs svc-bg-blue' />

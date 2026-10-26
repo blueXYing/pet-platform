@@ -79,7 +79,7 @@ export default function PointsRewardsPage() {
   }
   const ready = phase === 'ready' && tasks !== null
   return <ConsumerPageLayout page='pointsPage' unit={unit} className='ptk-page'
-    navigation={{ idPrefix: 'ptr', disabled: !ready, onSelect: () => {} }} style={style}>
+    navigation={preview ? { idPrefix: 'ptr', disabled: !ready, onSelect: () => {} } : undefined} style={style}>
     <View className='ptk-design'>
       <View className='ptk-status-area' />
       {phase === 'loading' && <View className='ptk-state' role='status'><Text>正在读取奖励…</Text></View>}

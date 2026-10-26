@@ -127,7 +127,7 @@ export default function FootprintsPage() {
   const ready = phase === 'ready'
   const groups = ready ? groupFootprints(now, rows) : []
   return <ConsumerPageLayout page='footprintList' unit={unit} className='fvt-page'
-    navigation={{ idPrefix: 'trk', disabled: !ready, onSelect: key => void switchConsumerTab(key) }} style={style}>
+    navigation={preview ? { idPrefix: 'trk', disabled: !ready, onSelect: key => void switchConsumerTab(key) } : undefined} style={style}>
     <View className='fvt-status-area' />
     <View className='fvt-nav'>
       <Button id='trk-back' ariaLabel='返回' className='fvt-nav-back' onClick={() => void goBack()}>

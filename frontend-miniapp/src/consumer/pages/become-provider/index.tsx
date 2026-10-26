@@ -2,7 +2,6 @@ import { Button, Text, View } from '@tarojs/components'
 import Taro, { useDidShow, useRouter } from '@tarojs/taro'
 import { useState, type CSSProperties } from 'react'
 import { ConsumerPageLayout } from '../../components/page-layout'
-import { switchConsumerTab } from '../../components/navigation/switch'
 import {
   applicationEntryUrl, isProviderTypeCode, providerCopy, providerTypeHint,
   serviceTypePageUrl, takeStagedProviderType, type ProviderTypeCode,
@@ -43,8 +42,7 @@ export default function BecomeProviderPage() {
     }
     await Taro.navigateTo({ url: applicationEntryUrl(selected) })
   }
-  return <ConsumerPageLayout page='becomeProvider' unit={unit} className='bep-page' style={style}
-    navigation={{ idPrefix: 'bepro', onSelect: key => { void switchConsumerTab(key) } }}>
+  return <ConsumerPageLayout page='becomeProvider' unit={unit} className='bep-page' style={style}>
     <View className='bep-design'>
       <View className='bep-mask' ariaLabel='关闭成为服务者' onClick={() => void close()} catchMove />
       <View className='bep-sheet' catchMove>

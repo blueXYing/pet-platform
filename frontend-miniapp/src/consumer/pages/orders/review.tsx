@@ -133,7 +133,7 @@ function ReviewScreen({ preview, scenario, orderId }: { preview: boolean; scenar
   const badge = detail === null ? null : orderStatusBadge(detail)
   const composite = compositePreview(draft)
   return <ConsumerPageLayout page='orderDetail' unit={unit} className='ord-page' style={style}
-    navigation={{ idPrefix: 'rvw', disabled: state.phase === 'loading', onSelect: key => { void switchConsumerTab(key) } }}>
+    navigation={preview ? { idPrefix: 'rvw', disabled: state.phase === 'loading', onSelect: key => { void switchConsumerTab(key) } } : undefined}>
     {/* 视觉按设计源 129:12416（我的-我的订单-评价，2026-10-12 新版缓存）重做：覆盖层整页白底、
         评分大卡 #f0fbff r14（x=14 宽 373 pad17.7，维度标签 15/500 #5a4135 + 星组 31x31 间距 4.4、
         激活 #ff9500 / 未激活白）、文字评价白底 #c0ecff 描边 + 0/2000 右下、提交按钮 335x44 r12

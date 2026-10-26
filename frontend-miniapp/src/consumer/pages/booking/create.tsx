@@ -36,7 +36,7 @@ export default function BookingCreatePage() {
   // position:fixed 全屏遮罩，不依赖页面容器。
   return <View>
     <ConsumerPageLayout page='bookingCreate' unit={unit} className='bkg-page bks-lock' style={style}
-      navigation={{ idPrefix: 'bkg', onSelect: key => { void switchConsumerTab(key) } }}>
+      navigation={preview ? { idPrefix: 'bkg', onSelect: key => { void switchConsumerTab(key) } } : undefined}>
       <View className='bkg-design'>
         <View className='bkg-status-area' />
         <View className='bkg-nav'>
