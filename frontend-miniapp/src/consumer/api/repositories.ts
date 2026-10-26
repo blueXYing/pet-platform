@@ -1,7 +1,7 @@
 import { ConsumerApi, object, id } from '../../shared/consumer-api'
 import type { ProfileDraft } from '../profile/model'
 import { draftToContract, type PetView, type PetDraft, type PetType } from '../pet/model'
-import { decodeHealthRecord, decodeHealthRecordList } from '../pet/health-record'
+import { decodeHealthRecordList, decodeHealthRecordReceipt } from '../pet/health-record'
 import { decodeServiceDetail, decodeServicePage, type ServiceDetailView, type ServicePage } from '../service/model'
 
 function text(value: unknown, nullable = false): string | null {
@@ -101,13 +101,13 @@ export class RealPetRepository {
     id(petId)
     return this.api.write(`pet-health-record:vaccine:${petId}`,
       { method: 'POST', path: `/api/v1/c/pets/${petId}/vaccination-records`, data: body },
-      decodeHealthRecord)
+      decodeHealthRecordReceipt)
   }
   createDewormingRecord(petId: string, body: Record<string, unknown>) {
     id(petId)
     return this.api.write(`pet-health-record:deworm:${petId}`,
       { method: 'POST', path: `/api/v1/c/pets/${petId}/deworming-records`, data: body },
-      decodeHealthRecord)
+      decodeHealthRecordReceipt)
   }
 }
 /** Frozen C service-catalog read slice (CCR-W2-API-001 SVC-D2): list + detail, read-only.

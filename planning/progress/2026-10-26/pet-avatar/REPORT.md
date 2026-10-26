@@ -16,14 +16,15 @@
 - **健康记录添加半框（2026-10-26 用户反馈）**：疫苗/驱虫记录添加不再是 `vaccine-form`/`deworm-form` 三级页；档案详情直接打开 `HealthRecordFormSheet`（96:2580/96:3006 面板：21px 侧距、46px 标题栏、#f0fbff 面板、白底 #c0ecff 输入、药丸取消/保存、close 96:2850、safe-area）。旧路由重定向到 `detail?recordSheet=...` 并打开半框。契约 68 字段不变；接种状态仍为读侧派生展示态，不作为表单字段；针次/备注选填保留，半框内部滚动。
 - **详情页固定头部（2026-10-26 用户反馈）**：`consumer/pages/pet-archive/detail` 的「宠物信息」头部/返回/编辑改为 viewport fixed（含状态栏高度），只让下方身份卡与记录区随页面滚动；`referenceCanvas` 预览保留设计画布内绝对定位。
 - **健康记录接口修复（2026-10-26 用户反馈）**：C 安全链白名单漏 `/pets/*/vaccination-records`、`/pets/*/deworming-records`，真实请求 403；`doseNumber` 按契约是整数，但控制器只接受 String，前端/接口传 number 返回 400；E2E loadSchemas 漏 SQL 68，本地 GET 500。已补安全匹配、整数解析、E2E schema；新增 `PetHealthRecordSecurityChainHttpTest`，本地库补建 68 两表并重启。
+- **健康记录保存误报修复（2026-10-26 二次反馈）**：契约 68 的 POST 回执只有 `{recordId,petId,recordType,status}`，前端却复用完整记录解码器 `decodeHealthRecord`，服务端已写入、客户端抛 `INVALID_RESPONSE` 显示“保存失败”。新增 `decodeHealthRecordReceipt` 专用于 POST，保存成功后仍由 `onSaved` GET 刷新列表；补回执解码单测与 `RealPetRepository` 幂等槽回归。
 - **契约/设计登记**：`docs/08-engineering/20-设计源登记表-figma-map.md` §4.7 偏差 13；`assets/manifest.json` 登记两个默认头像节点、字节和 sha256。
 
 ## 验证
 
 - 前端 `npm run typecheck`：PASS
-- 前端单测：**622 / 622**（新增首页默认头像回退、3 只展示/模块内滚动、新建返回首页、根页自定义 tabBar 同步、记录添加半框/旧路由重定向、详情固定头部断言）
+- 前端单测：**624 / 624**（新增首页默认头像回退、3 只展示/模块内滚动、新建返回首页、根页自定义 tabBar 同步、记录添加半框/旧路由重定向、详情固定头部、健康记录 POST 回执解码断言）
 - `python3 backend/tools/run-frontend-gate.py miniapp-build`：**PASS**
-- `check:package`：总包 **8,171,299** 字节，预算内
+- `check:package`：总包 **8,171,616** 字节，预算内
 - 后端 JDK 21 `mvn compile` / `test-compile`：PASS（pet-user-biz / pet-thirdparty-biz / pet-boot 及依赖）
 - `PetValidatorAvatarTest`：PASS（asset ref 与 https 校验）
 - `check-module-deps.py`：PASS
@@ -44,7 +45,7 @@
   - 疫苗记录添加：详情页点击「添加」直接打开底部半框，不进入三级页；`vaccine-record-sheet.png`，内部上滑可到备注/按钮 `vaccine-record-sheet-scrolled.png`；关闭后回到详情 `record-sheet-closed-detail.png`
   - 驱虫记录添加：同一半框形态 `deworm-record-sheet.png`
   - 旧 `vaccine-form` 深链重定向到详情并打开半框：`vaccine-record-sheet-direct.png`
-  - 健康记录接口：GET 列表 200；不存在宠物的 POST 不再 403/400（返回业务 404），前端可正常提交数字针次
+  - 健康记录接口：GET 列表 200；不存在宠物的 POST 不再 403/400（返回业务 404），前端可正常提交数字针次；用户已写入的 2 条记录 GET 形状与前端解码器一致，POST 回执修复后不再误报失败
   - 详情页顶部「宠物信息」固定：`detail-fixed-header-top.png`、滚动后 `detail-fixed-header-scrolled.png`
 
 ## 遗留 / 环境说明

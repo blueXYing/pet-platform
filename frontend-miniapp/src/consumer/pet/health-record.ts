@@ -71,6 +71,27 @@ export function decodeHealthRecordList(value: unknown): HealthRecordView[] {
   return (value as unknown[]).map(decodeHealthRecord)
 }
 
+// POST 回执（契约 68 §路由：201 首次 / 200 同 requestId 重放）只含 {petId,recordId,recordType,status}，
+// 不是完整记录投影；页面保存后由 onSaved 重新 GET 列表，因此这里不能复用 decodeHealthRecord。
+export type HealthRecordReceipt = Readonly<{
+  recordId: string
+  petId: string
+  recordType: HealthRecordType
+  status: 'ACTIVE'
+}>
+const receiptKeys = ['recordId', 'petId', 'recordType', 'status']
+export function decodeHealthRecordReceipt(value: unknown): HealthRecordReceipt {
+  const v = objectLike(value)
+  for (const key of Object.keys(v)) if (!receiptKeys.includes(key)) invalid()
+  if (Object.keys(v).length !== receiptKeys.length) invalid()
+  return {
+    recordId: isId(v.recordId),
+    petId: isId(v.petId),
+    recordType: oneOf(v.recordType, ['VACCINATION', 'DEWORMING'] as const),
+    status: oneOf(v.status, ['ACTIVE'] as const),
+  }
+}
+
 // ---- 展示派生（contract 68：设计稿 96:2580 状态 chips = 日期派生展示态，非契约字段） ----
 
 /** 疫苗行状态：无下次日期=已接种；下次日期已过=待接续；未来 30 天内=即将到期；其余=已接种。 */

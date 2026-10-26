@@ -148,6 +148,25 @@ test('real pet creation uses the draft petType instead of the legacy action shee
   h.fail(async () => ok({ petId: 9007199254740992 }))
   await assert.rejects(pets.get('30001'), /INVALID_RESPONSE/)
 })
+test('health record create decodes the contract-68 receipt and clears the idempotency slot', async () => {
+  const h = setup(async request => {
+    const deworm = request.path.endsWith('/deworming-records')
+    return { statusCode: 201, data: { code: 'SUCCESS', data: {
+      recordId: deworm ? '9600000000000003' : '9600000000000002', petId: '30001',
+      recordType: deworm ? 'DEWORMING' : 'VACCINATION', status: 'ACTIVE',
+    } } }
+  }); await login(h.api)
+  const pets = new RealPetRepository(h.api, async () => { throw new Error('type chooser must not run') })
+  const vaccine = await pets.createVaccinationRecord('30001', {
+    recordDate: '2026-07-26', vaccineName: '矿泉疫苗', doseNumber: 3, nextRecordDate: '2027-12-26',
+  })
+  assert.equal(vaccine.recordId, '9600000000000002')
+  assert.equal(h.calls.at(-1)?.data?.doseNumber, 3)
+  assert.equal(h.api.pendingCommand('pet-health-record:vaccine:30001'), undefined)
+  const deworm = await pets.createDewormingRecord('30001', { recordDate: '2026-07-26', dewormingType: 'EXTERNAL' })
+  assert.equal(deworm.recordType, 'DEWORMING')
+  assert.equal(h.api.pendingCommand('pet-health-record:deworm:30001'), undefined)
+})
 test('pet avatar upload id is sent as avatarAssetId and a signed read URL is never written back', async () => {
   const h = setup(async () => ok(fixturePets[0])); await login(h.api)
   const pets = new RealPetRepository(h.api, async () => { throw new Error('legacy type chooser must not run') })
