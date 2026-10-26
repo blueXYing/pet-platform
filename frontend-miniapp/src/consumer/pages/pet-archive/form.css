@@ -13,7 +13,6 @@
 .pet-form-navtitle { left: calc(var(--pet-unit) * 167.732421875); top: calc(var(--pet-unit) * 45); font-size: calc(var(--pet-unit) * 16); line-height: calc(var(--pet-unit) * 24); font-weight: 700; color: #3c3c3c; z-index: 2; }
 .pet-form-navedit { left: calc(var(--pet-unit) * 348.490234375); top: calc(var(--pet-unit) * 49.515); width: calc(var(--pet-unit) * 13.5); height: calc(var(--pet-unit) * 14.97); }
 .pet-form-title { left: calc(var(--pet-unit) * 41); top: calc(var(--pet-unit) * 135); font-size: calc(var(--pet-unit) * 16); line-height: calc(var(--pet-unit) * 24); font-weight: 700; color: #1d0d07; }
-.pet-form-chevron { left: calc(var(--pet-unit) * 338); top: calc(var(--pet-unit) * 133); width: calc(var(--pet-unit) * 20.84375); height: calc(var(--pet-unit) * 28); }
 .pet-form-state { position: absolute; top: calc(var(--pet-unit) * 160); left: 0; right: 0; z-index: 6; }
 .pet-form-field { position: absolute; left: calc(var(--pet-unit) * 29); width: calc(var(--pet-unit) * 343); }
 .pet-form-label { display: block; font-size: calc(var(--pet-unit) * 12); line-height: calc(var(--pet-unit) * 16); color: #7b5b4a; height: calc(var(--pet-unit) * 16); }
