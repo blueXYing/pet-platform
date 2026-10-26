@@ -31,7 +31,7 @@
 
 ## 遗留 / 环境说明
 
-- 本地 18081 后端是从 Windows 独立工程副本启动的旧构建，尚未重新编译本分支后端；因此本地“选择图片→上传”会在旧接口返回失败（UI 会保留本地预览），真实上传需用本分支后端重建并重启。生产/CI 口径以 CCR 为准。
-- 本地 E2E 服务器使用内存 `PrivateObjectStore` 夹具、无 OSS 签名器；`PetAvatarSigningApi` 在无 OSS 环境按设计跳过，宠物保存带 `avatarAssetId` 会失败关闭（503），不会伪造头像 URL。真实 OSS 环境才返回签名 URL。
+- 本地 18081 已用本分支后端重建/重启（复用原数据库，Snowflake node 41）。E2E 测试域新增 `PetAvatarSigningApi` 夹具，把上传对象签名成 `data:` URL；已通过真实 HTTP 验证：上传 PNG → `avatarAssetId` 创建宠物 → 返回 `data:image/png;base64,...` 头像。测试宠物 `头像测试`，petId `108091698969743360`（本地夹具数据，可删除）。生产仍走 OSS 受控签名 URL，不使用 data URL。
+- 本地 E2E 的 data URL 签名仅为离线验收夹具，不改变生产 `PetAvatarSigningApiImpl` 的 OSS/HTTPS/24h 校验。
 - 物理真机 VIS、私有对象读取签名过期/刷新尚未在本轮实机执行。
 - 头像上传目前为整图上传，裁剪/旋转/相册不在本轮（由既有图片规范化管线处理）。

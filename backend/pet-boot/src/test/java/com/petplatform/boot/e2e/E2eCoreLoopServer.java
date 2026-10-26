@@ -11,6 +11,7 @@ import com.petplatform.merchant.biz.application.PrivateAssetQueryPort;
 import com.petplatform.merchant.biz.application.SubjectCredentialPort;
 import com.petplatform.merchant.biz.infrastructure.provider.AesGcmProtectedValueProvider;
 import com.petplatform.merchant.biz.infrastructure.provider.MainlandSubjectCredentialProvider;
+import com.petplatform.thirdparty.api.PetAvatarSigningApi;
 import com.petplatform.thirdparty.biz.application.port.PrivateAssetScanner;
 import com.petplatform.thirdparty.biz.application.port.PrivateObjectStore;
 import com.petplatform.payment.biz.application.PaymentChannel;
@@ -356,8 +357,7 @@ public final class E2eCoreLoopServer {
                 beans.registerBean("e2eAfterSaleModeration", AfterSalePorts.Moderation.class,
                     () -> value -> new AfterSalePorts.Approval(
                         sha(value), "E2E_ONLY_MODERATION", true));
-                beans.registerBean("e2eAssetObjects", PrivateObjectStore.class,
-                    () -> new PrivateObjectStore() {
+                var e2eAssetObjects = new PrivateObjectStore() {
                       private final Map<String, PrivateObjectStore.StoredContent> objects =
                           new ConcurrentHashMap<>();
                       @Override public PrivateObjectStore.StoredObject putIfAbsent(
@@ -388,6 +388,27 @@ public final class E2eCoreLoopServer {
                                 "e2e-only-version", stored.sha256(),
                                 stored.content().length, stored.mediaType()));
                       }
+                    };
+                beans.registerBean("e2eAssetObjects", PrivateObjectStore.class, () -> e2eAssetObjects);
+                // CCR-C-PET-AVATAR-001 local E2E seam: no OSS in this fixture; return a data URL
+                // for the owner's READY PET_AVATAR object so the real upload/save path is testable.
+                beans.registerBean("e2ePetAvatarSigner", PetAvatarSigningApi.class,
+                    () -> (ownerUserId, assetId) -> {
+                      var row = new JdbcTemplate(pool).queryForMap(
+                          "SELECT owner_user_id,purpose,status,object_key,object_version_ref,media_type"
+                              + " FROM private_asset WHERE id=?", Long.parseLong(assetId));
+                      String media = (String) row.get("media_type");
+                      if (!"PET_AVATAR".equals(row.get("purpose")) || !"READY".equals(row.get("status"))
+                          || ((Number) row.get("owner_user_id")).longValue() != Long.parseLong(ownerUserId)
+                          || (!"image/jpeg".equals(media) && !"image/png".equals(media))) {
+                        throw new IllegalStateException("E2E pet avatar asset is not owned READY PET_AVATAR");
+                      }
+                      var stored = e2eAssetObjects.get(
+                          (String) row.get("object_key"), (String) row.get("object_version_ref"));
+                      return new PetAvatarSigningApi.SignedPetAvatar(assetId,
+                          "data:" + stored.mediaType() + ";base64,"
+                              + Base64.getEncoder().encodeToString(stored.content()),
+                          Instant.now().plusSeconds(3600));
                     });
                 beans.registerBean("e2eAssetScanner", PrivateAssetScanner.class,
                     () -> bytes -> new PrivateAssetScanner.ScanResult(
