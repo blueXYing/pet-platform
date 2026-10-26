@@ -292,6 +292,16 @@
       "sha256": "f94537d260baca3bfabdd45e4eaab81097cc9688149e9646645ccd4ae05dd9b6",
       "source": "Figma 688:479 export (2026-10-26)",
       "sourceByteIdentical": "VERIFIED"
+    },
+    {
+      "file": "sheet-close.png",
+      "nodes": "96:2850",
+      "nodeName": "I-239",
+      "placement": "331,382 20.844x28 record sheet close icon",
+      "bytes": 375,
+      "sha256": "abd126c150e2c7d009da8210a44b5df318f275822903a7af58d8bffc532913c2",
+      "source": "Figma 96:2850 screenshot (2026-10-26 record sheet)",
+      "sourceByteIdentical": "UNVERIFIED"
     }
   ],
   "sharedNavigation": "consumer/assets/navigation/manifest.json; full source render bounds shared with profile-edit"

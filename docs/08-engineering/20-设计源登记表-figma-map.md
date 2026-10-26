@@ -737,6 +737,13 @@ mine 页接线（`consumer/pages/mine`）：「帮助与客服」「意见反馈
 - **布局**：非根页无导航时 `consumer-page-layout-without-navigation` 去除 80px 预留；底部固定操作条/半屏面板贴 `env(safe-area-inset-bottom)`。`become-provider` 半屏面板与 `store-services` 固定操作条已按无导航调整。
 - **偏差**：Figma 二级页底栏为设计残留，不按图还原；页面底部以原画布/安全区收口，不为复刻底栏补图。
 
+## 4.21 宠物健康记录添加底部半框（2026-10-26 用户裁决）
+
+- **问题**：疫苗/驱虫记录添加原实现为 `vaccine-form`/`deworm-form` 独立分包页（96:2580/96:3006 面板被拆成三级页）；Figma 为档案详情页上的底部半框（`96:2840`/`96:2842` 圆角面板、`96:2848` 标题、`96:2850` 关闭、`96:2962` 疫苗名称、`96:2969` 接种日期、`96:2979` 下次接种日期、`96:3001`/`96:3003` 取消/保存；`96:2989` 接种状态为设计展示层）。
+- **落地**：档案详情 `pet-add-vaccine`/`pet-add-deworm` 打开 `HealthRecordFormSheet`（遮挡层 + 21px 侧距、46px 标题栏、#f0fbff 面板、白底 #c0ecff 输入、药丸按钮、safe-area 底部），不再 `navigateTo`。疫苗/驱虫旧路由保留兼容，重定向到 `detail?recordSheet=vaccine|deworm` 并打开半框。
+- **契约边界**：契约 68 字段表不变；`接种状态` 仍为 `nextRecordDate` 派生的读侧展示态，不作为可提交表单字段；PRD 的针次/备注选填字段保留，因字段多于 Figma 面板，半框内部局部滚动。`717:530` 设计 tabBar 为页面参考残留，不在半框内复刻。
+- **素材**：`sheet-close.png`（96:2850，21x28）入 `consumer/pages/pet-archive/assets` 并登记 manifest。
+
 ## 5. 维护规则
 
 - Figma 文件更新后（比对 §1 的 version 字段），由任一 Worker 重新执行 depth=2 抓取并更新 §3；同名不同 id 的 frame 是不同状态稿，全部保留。

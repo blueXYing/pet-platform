@@ -1,1 +1,1 @@
-export default definePageConfig({ navigationStyle: 'custom', backgroundColor: '#FFFFFF', disableScroll: false })
+export default definePageConfig({ navigationStyle: 'custom', backgroundColor: '#F0FBFF', disableScroll: false })

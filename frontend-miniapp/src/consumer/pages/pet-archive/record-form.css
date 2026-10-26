@@ -1,25 +1,31 @@
-/* 契约 68 记录添加表单（96:2580/96:3006 面板词汇）：家族奶油头带 + 白卡面板 + 输入件
-   #f0fbff/#c0ecff r8（become-provider 4.16 设计变量同源）；状态仅 className 变体（is-current）、
-   无 data-*；button 复合选择器压原生重置。 */
-.pet-record-form-page { background: #f0fbff; min-height: 100vh; }
-.pet-record-header { position: relative; display: flex; align-items: center; height: calc(var(--pet-unit) * 44); padding-top: var(--pet-status-top, 0px); background: #fff6e5; }
-.pet-record-header .pet-record-back { display: flex; align-items: center; justify-content: center; width: calc(var(--pet-unit) * 32); height: calc(var(--pet-unit) * 32); margin-left: calc(var(--pet-unit) * 19); padding: 0; background: transparent; border: none; }
-.pet-record-header .pet-record-back image { width: calc(var(--pet-unit) * 20); height: calc(var(--pet-unit) * 20); }
-.pet-record-title { position: absolute; left: 50%; transform: translateX(-50%); font-size: calc(var(--pet-unit) * 16); line-height: calc(var(--pet-unit) * 24); font-weight: 700; color: #1d0d07; }
-.pet-record-body { padding: calc(var(--pet-unit) * 16) calc(var(--pet-unit) * 21) calc(var(--pet-unit) * 30); }
-.pet-record-panel { padding: calc(var(--pet-unit) * 16); background: #ffffff; border: calc(var(--pet-unit) * 1) solid #c0ecff; border-radius: calc(var(--pet-unit) * 12); }
-.pet-record-label { display: block; margin: calc(var(--pet-unit) * 14) 0 calc(var(--pet-unit) * 6); font-size: calc(var(--pet-unit) * 12.9); line-height: calc(var(--pet-unit) * 18); color: #577683; }
-.pet-record-panel .pet-record-input { width: auto; height: calc(var(--pet-unit) * 42); padding: 0 calc(var(--pet-unit) * 12); background: #f0fbff; border: calc(var(--pet-unit) * 1) solid #c0ecff; border-radius: calc(var(--pet-unit) * 8); font-size: calc(var(--pet-unit) * 14); color: #1d0d07; }
-.pet-record-panel .pet-record-picker { display: flex; align-items: center; }
-.pet-record-placeholder { color: #9bb3bd; }
-.pet-record-panel .pet-record-textarea { width: 100%; min-height: calc(var(--pet-unit) * 76); padding: calc(var(--pet-unit) * 10) calc(var(--pet-unit) * 12); background: #f0fbff; border: calc(var(--pet-unit) * 1) solid #c0ecff; border-radius: calc(var(--pet-unit) * 8); font-size: calc(var(--pet-unit) * 14); color: #1d0d07; box-sizing: border-box; }
-.pet-record-chips { display: flex; flex-wrap: wrap; gap: calc(var(--pet-unit) * 8); }
-.pet-record-chips .pet-record-chip { padding: calc(var(--pet-unit) * 6) calc(var(--pet-unit) * 14); background: #f0fbff; border: calc(var(--pet-unit) * 1) solid #c0ecff; border-radius: calc(var(--pet-unit) * 14); font-size: calc(var(--pet-unit) * 12); line-height: calc(var(--pet-unit) * 17); color: #3c3c3c; }
-.pet-record-chips .pet-record-chip.is-current { background: #c0ecff; border-color: #5baae8; color: #1d4f68; font-weight: 600; }
-.pet-record-error { display: block; margin-top: calc(var(--pet-unit) * 6); font-size: calc(var(--pet-unit) * 11); line-height: calc(var(--pet-unit) * 17); color: #a23e2d; }
-.pet-record-actions { display: flex; gap: calc(var(--pet-unit) * 12); margin-top: calc(var(--pet-unit) * 20); }
-.pet-record-actions .pet-record-button { flex: 1; height: calc(var(--pet-unit) * 44); border-radius: calc(var(--pet-unit) * 22); font-size: calc(var(--pet-unit) * 15); font-weight: 600; text-align: center; line-height: calc(var(--pet-unit) * 44); }
-.pet-record-actions .pet-record-cancel { background: #ffffff; border: calc(var(--pet-unit) * 1) solid #5baae8; color: #3c3c3c; }
-.pet-record-actions .pet-record-save { background: #5baae8; border: none; color: #ffffff; }
-.pet-record-actions .pet-record-save[disabled] { opacity: 0.6; }
-.pet-record-tail { margin-top: calc(var(--pet-unit) * 18); font-size: calc(var(--pet-unit) * 10); line-height: calc(var(--pet-unit) * 15); color: #9bb3bd; text-align: center; }
+/* 契约 68 记录添加半框（Figma 96:2580/96:3006 面板词汇）：402 设计稿 21px 侧边距、
+   46px 标题栏、#f0fbff 底、白色 #c0ecff 输入、40px 药丸按钮。 */
+.pet-record-sheet-mask { position: fixed; inset: 0; z-index: 90; display: flex; align-items: flex-end; background: rgba(29, 13, 7, 0.46); animation: pet-record-mask-in 0.2s ease-out; }
+.pet-record-sheet { position: relative; display: flex; flex-direction: column; width: calc(var(--pet-unit) * 358); height: calc(var(--pet-unit) * 494); margin-left: calc(var(--pet-unit) * 21); margin-right: calc(var(--pet-unit) * 23); overflow: hidden; background: #f0fbff; border-radius: calc(var(--pet-unit) * 9) calc(var(--pet-unit) * 9) 0 0; animation: pet-record-sheet-up 0.28s cubic-bezier(0.2, 0.8, 0.2, 1); }
+.pet-record-sheet-head { display: flex; flex-shrink: 0; align-items: center; height: calc(var(--pet-unit) * 46); padding: 0 calc(var(--pet-unit) * 27) 0 calc(var(--pet-unit) * 32); box-sizing: border-box; }
+.pet-record-sheet-title { flex: 1; font-size: calc(var(--pet-unit) * 16); line-height: calc(var(--pet-unit) * 24); font-weight: 700; color: #1d0d07; }
+.pet-record-sheet-close { display: flex; flex-shrink: 0; align-items: center; justify-content: center; width: calc(var(--pet-unit) * 20.84); height: calc(var(--pet-unit) * 28); padding: 0; margin: 0; background: transparent; border: 0; line-height: 1; }
+.pet-record-sheet-close::after { border: 0; }
+.pet-record-sheet-closeicon { width: calc(var(--pet-unit) * 20.84); height: calc(var(--pet-unit) * 28); }
+.pet-record-sheet-body { width: 100%; height: calc(var(--pet-unit) * 384); }
+.pet-record-sheet-fields { padding: calc(var(--pet-unit) * 18) calc(var(--pet-unit) * 9) calc(var(--pet-unit) * 8); box-sizing: border-box; }
+.pet-record-sheet-field { margin-bottom: calc(var(--pet-unit) * 16); }
+.pet-record-sheet-label { display: block; margin-bottom: calc(var(--pet-unit) * 6); font-size: calc(var(--pet-unit) * 12); line-height: calc(var(--pet-unit) * 16); color: #7b5b4a; }
+.pet-record-sheet-input { display: flex; align-items: center; width: 100%; height: calc(var(--pet-unit) * 42); padding: 0 calc(var(--pet-unit) * 13); box-sizing: border-box; background: #ffffff; border: calc(var(--pet-unit) * 1) solid #c0ecff; border-radius: calc(var(--pet-unit) * 8); font-size: calc(var(--pet-unit) * 14); line-height: calc(var(--pet-unit) * 20); color: #2e1d16; }
+.pet-record-sheet-picker { position: relative; }
+.pet-record-sheet-placeholder { color: #b89682; }
+.pet-record-sheet-dateicon { position: absolute; right: calc(var(--pet-unit) * 15); width: calc(var(--pet-unit) * 16); height: calc(var(--pet-unit) * 15); }
+.pet-record-sheet-textarea { width: 100%; min-height: calc(var(--pet-unit) * 76); padding: calc(var(--pet-unit) * 10) calc(var(--pet-unit) * 13); box-sizing: border-box; background: #ffffff; border: calc(var(--pet-unit) * 1) solid #c0ecff; border-radius: calc(var(--pet-unit) * 8); font-size: calc(var(--pet-unit) * 14); line-height: calc(var(--pet-unit) * 20); color: #2e1d16; }
+.pet-record-sheet-chips { display: flex; flex-wrap: wrap; gap: calc(var(--pet-unit) * 8); }
+.pet-record-sheet-chips .pet-record-sheet-chip { padding: calc(var(--pet-unit) * 8) calc(var(--pet-unit) * 14); background: #f0fbff; border: calc(var(--pet-unit) * 1) solid #c0ecff; border-radius: calc(var(--pet-unit) * 9999); font-size: calc(var(--pet-unit) * 13); line-height: calc(var(--pet-unit) * 18); color: #7b5b4a; }
+.pet-record-sheet-chips .pet-record-sheet-chip.is-current { background: #85d2f3; border-color: #85d2f3; color: #f8f5ee; font-weight: 500; }
+.pet-record-sheet-error { display: block; margin-top: calc(var(--pet-unit) * 6); font-size: calc(var(--pet-unit) * 11); line-height: calc(var(--pet-unit) * 17); color: #a23e2d; }
+.pet-record-sheet-notice { margin-bottom: calc(var(--pet-unit) * 8); }
+.pet-record-sheet-actions { display: flex; flex-shrink: 0; gap: calc(var(--pet-unit) * 12); height: calc(var(--pet-unit) * 64); padding: calc(var(--pet-unit) * 12) calc(var(--pet-unit) * 9); box-sizing: border-box; }
+.pet-record-sheet-actions .pet-record-sheet-button { flex: 1; height: calc(var(--pet-unit) * 40); padding: 0; margin: 0; border: 0; border-radius: calc(var(--pet-unit) * 9999); font-size: calc(var(--pet-unit) * 14); line-height: calc(var(--pet-unit) * 40); font-weight: 500; text-align: center; }
+.pet-record-sheet-actions .pet-record-sheet-button::after { border: 0; }
+.pet-record-sheet-actions .pet-record-sheet-cancel { background: #c0ecff; color: #2e1d16; }
+.pet-record-sheet-actions .pet-record-sheet-save { background: #ffe2bd; color: #3c3c3c; }
+.pet-record-sheet-actions .pet-record-sheet-button[disabled] { opacity: 0.6; }
+@keyframes pet-record-sheet-up { from { transform: translateY(100%); } to { transform: translateY(0); } }
+@keyframes pet-record-mask-in { from { opacity: 0; } to { opacity: 1; } }

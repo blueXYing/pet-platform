@@ -12,6 +12,7 @@ import {
   dewormingDateLine, dewormingTypeLabels, vaccineDateLine, vaccineStatusLabel,
   decodeHealthRecordList, type HealthRecordView,
 } from '../../pet/health-record'
+import { HealthRecordFormSheet, type HealthRecordFormKind } from './record-form'
 import stripMain from './assets/strip-main.png'
 import stripBottom from './assets/strip-detail-bottom.png'
 import panelBasic from './assets/panel-basic.png'
@@ -46,6 +47,8 @@ export default function PetArchiveDetail() {
   const [pet, setPet] = useState<PetView | null>(null)
   const [vaccineRecords, setVaccineRecords] = useState<HealthRecordView[]>([])
   const [dewormRecords, setDewormRecords] = useState<HealthRecordView[]>([])
+  const [recordSheet, setRecordSheet] = useState<HealthRecordFormKind | null>(
+    route.params.recordSheet === 'vaccine' ? 'VACCINATION' : route.params.recordSheet === 'deworm' ? 'DEWORMING' : null)
   const [notice, setNotice] = useState('')
   const mounted = useRef(true)
   const sequence = useRef(0)
@@ -118,16 +121,14 @@ export default function PetArchiveDetail() {
     Taro.navigateTo({ url: `/consumer/pages/baike/index?keyword=${encodeURIComponent(pet.breedName)}` })
       .catch(() => setNotice('页面跳转失败，请重试'))
   }
-  // 契约 68：添加按钮接通独立表单页（96:2580/96:3006，vaccine-form/deworm-form 分包页）。
+  // 契约 68：添加按钮在原档案页打开底部半框（96:2580/96:3006），不再 navigateTo 三级页。
   function addVaccineRecord() {
     if (!pet) return
-    Taro.navigateTo({ url: `/consumer/pages/pet-archive/vaccine-form?petId=${encodeURIComponent(pet.petId)}` })
-      .catch(() => setNotice('页面跳转失败，请重试'))
+    setRecordSheet('VACCINATION')
   }
   function addDewormRecord() {
     if (!pet) return
-    Taro.navigateTo({ url: `/consumer/pages/pet-archive/deworm-form?petId=${encodeURIComponent(pet.petId)}` })
-      .catch(() => setNotice('页面跳转失败，请重试'))
+    setRecordSheet('DEWORMING')
   }
   const ready = phase === 'ready' && pet
   const supplement = previewSupplement(preview && ready ? pet.petId : undefined)
@@ -249,6 +250,8 @@ export default function PetArchiveDetail() {
       </>}
       {notice && ready && <Text id='pet-notice' className='pet-notice pet-detail-notice'>{notice}</Text>}
     </View>
+    {phase === 'ready' && pet && recordSheet && <HealthRecordFormSheet kind={recordSheet} petId={pet.petId} preview={preview}
+      onClose={() => setRecordSheet(null)} onSaved={() => { setRecordSheet(null); void load() }} />}
   </ConsumerPageLayout>
 }
 function todayISO() {

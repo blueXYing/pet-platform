@@ -13,14 +13,15 @@
 - **首页回退修正（2026-10-26 用户反馈追加）**：首页「宠物档案」分区原用 `pet.avatarUrl || placeholderAvatar`，无上传头像的宠物显示通用人像占位图；档案列表/详情已按类型回退默认猫/狗，导致同一宠物在首页与详情不一致。现首页与列表/详情统一：`DOG` 回退默认狗、`CAT` 回退默认猫、`OTHER` 保留通用占位图；新增静态断言防回归。
 - **首页展示与新建返回（2026-10-26 用户二次反馈）**：首页宠物档案同屏最多展示 3 只，超出部分在**宠物档案模块内局部滚动**查看；标题显示宠物总数；不使用「查看全部」跳转或下拉框。新建宠物保存成功后 `Taro.switchTab` 返回首页；编辑保存仍留在表单。
 - **根页自定义 tabBar（2026-10-26 追加裁决）**：原生 tabBar 在 `navigateTo` 二级页开始时先隐藏、目标页首帧尚未出现，造成空档闪烁。用户选择改为同款自定义 tabBar：`src/custom-tab-bar`（CoverView/CoverImage，白底/原图标/选中文字色 `#53bfee`，50px + safe-area 高度），5 个根页在 `useDidShow` 同步选中项，页面底部预留 bar 高度；二级页仍不显示底栏。自定义 bar 随 tab 页一起被二级页覆盖，消除原生栏先隐藏的空档。
+- **健康记录添加半框（2026-10-26 用户反馈）**：疫苗/驱虫记录添加不再是 `vaccine-form`/`deworm-form` 三级页；档案详情直接打开 `HealthRecordFormSheet`（96:2580/96:3006 面板：21px 侧距、46px 标题栏、#f0fbff 面板、白底 #c0ecff 输入、药丸取消/保存、close 96:2850、safe-area）。旧路由重定向到 `detail?recordSheet=...` 并打开半框。契约 68 字段不变；接种状态仍为读侧派生展示态，不作为表单字段；针次/备注选填保留，半框内部滚动。
 - **契约/设计登记**：`docs/08-engineering/20-设计源登记表-figma-map.md` §4.7 偏差 13；`assets/manifest.json` 登记两个默认头像节点、字节和 sha256。
 
 ## 验证
 
 - 前端 `npm run typecheck`：PASS
-- 前端单测：**620 / 620**（新增首页默认头像回退、3 只展示/模块内滚动、新建返回首页、根页自定义 tabBar 同步断言）
+- 前端单测：**621 / 621**（新增首页默认头像回退、3 只展示/模块内滚动、新建返回首页、根页自定义 tabBar 同步、记录添加半框/旧路由重定向断言）
 - `python3 backend/tools/run-frontend-gate.py miniapp-build`：**PASS**
-- `check:package`：总包 **8,167,554** 字节，预算内
+- `check:package`：总包 **8,170,714** 字节，预算内
 - 后端 JDK 21 `mvn compile` / `test-compile`：PASS（pet-user-biz / pet-thirdparty-biz / pet-boot 及依赖）
 - `PetValidatorAvatarTest`：PASS（asset ref 与 https 校验）
 - `check-module-deps.py`：PASS
@@ -37,6 +38,9 @@
   - 新建宠物保存成功后自动回到首页：`home-after-create-return.png`（截图中的测试宠物已删除）
   - 自定义 tabBar 根页：首页/服务/宠友圈/消息/我的均显示并同步选中态（`root-custom-tabbar-home.png`/`root-custom-tabbar-services.png`/`root-custom-tabbar-community.png`/`root-custom-tabbar-messages.png`/`root-custom-tabbar-mine.png`）
   - 二级页（宠物详情）不显示自定义底栏：`custom-tabbar-detail-no-bar.png`；从首页点击宠物进入详情时不再出现原生 tabBar 先隐藏的空档
+  - 疫苗记录添加：详情页点击「添加」直接打开底部半框，不进入三级页；`vaccine-record-sheet.png`，内部上滑可到备注/按钮 `vaccine-record-sheet-scrolled.png`；关闭后回到详情 `record-sheet-closed-detail.png`
+  - 驱虫记录添加：同一半框形态 `deworm-record-sheet.png`
+  - 旧 `vaccine-form` 深链重定向到详情并打开半框：`vaccine-record-sheet-direct.png`
 
 ## 遗留 / 环境说明
 
