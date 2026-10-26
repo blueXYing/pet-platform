@@ -167,5 +167,8 @@ export function healthRecordErrorMessage(error: unknown): string {
   if (code === 'IDEMPOTENCY_KEY_CONFLICT') return '提交参数与上次不一致，请重试'
   if (code === 'PET_NOT_FOUND') return '宠物不存在或已删除'
   if (code === 'USER_FROZEN') return '账号不可用，无法保存'
+  if ((error as Error)?.message === 'PENDING_WRITE_CHANGED') return '上次保存结果尚未确认，请保持原内容点击保存重试'
+  if ((error as Error)?.message === 'STALE_CONTEXT') return '登录状态已变化，请重新进入页面后再试'
+  if ((error as ApiError)?.statusCode === 401) return '登录已失效，请重新登录后再保存'
   return '保存失败，请稍后重试'
 }

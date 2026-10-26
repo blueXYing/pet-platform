@@ -50,6 +50,12 @@ test('health record POST receipt decoder accepts the contract-68 acknowledgement
   assert.throws(() => decodeHealthRecordReceipt({ petId: receipt.petId, recordType: receipt.recordType, status: receipt.status }), /INVALID_RESPONSE/)
 })
 
+test('health record save errors explain pending replay and expired login', () => {
+  assert.equal(healthRecordErrorMessage(new Error('PENDING_WRITE_CHANGED')), '上次保存结果尚未确认，请保持原内容点击保存重试')
+  assert.equal(healthRecordErrorMessage(new Error('STALE_CONTEXT')), '登录状态已变化，请重新进入页面后再试')
+  assert.equal(healthRecordErrorMessage(new Error('INVALID_RESPONSE')), '保存失败，请稍后重试')
+})
+
 test('status/date display derivations follow the registered display rules', () => {
   const today = '2026-10-19'
   assert.equal(vaccineStatusLabel(decodeHealthRecord(wireRecord), today), '已接种')

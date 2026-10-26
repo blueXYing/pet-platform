@@ -38,7 +38,9 @@ export function HealthRecordFormSheet({ kind, petId, preview, onClose, onSaved }
   const [dewormDraft, setDewormDraft] = useState<DewormDraft>({ ...emptyDewormDraft })
   const [errors, setErrors] = useState<Record<string, string>>({})
   const [notice, setNotice] = useState('')
+  const [pendingLocked, setPendingLocked] = useState(false)
   const saving = useRef(false)
+  const slot = `pet-health-record:${isVaccine ? 'vaccine' : 'deworm'}:${petId}`
   const [windowInfo] = useState(() => Taro.getWindowInfo())
   const safeBottom = Math.max(0, windowInfo.screenHeight - (windowInfo.safeArea?.bottom ?? windowInfo.screenHeight))
   const today = todayISO()
@@ -46,8 +48,8 @@ export function HealthRecordFormSheet({ kind, petId, preview, onClose, onSaved }
   useEffect(() => {
     // 未确认提交重进还原（23号惯例）：幂等槽里有 pending 命令则回填。
     if (preview || !petId) return
-    const pending = consumerApi.pendingCommand(`pet-health-record:${isVaccine ? 'vaccine' : 'deworm'}:${petId}`)
-    if (!pending?.data) return
+    const pending = consumerApi.pendingCommand(slot)
+    if (!pending?.data) { setPendingLocked(false); return }
     const body = pending.data as Record<string, unknown>
     if (isVaccine) {
       setVaccineDraft({
@@ -67,8 +69,9 @@ export function HealthRecordFormSheet({ kind, petId, preview, onClose, onSaved }
       })
     }
     setPhase('save-error')
-    setNotice('上次提交结果尚未确认，请重试原保存')
-  }, [preview, petId, isVaccine])
+    setPendingLocked(true)
+    setNotice('')
+  }, [preview, petId, isVaccine, slot])
 
   function close() {
     if (saving.current) return
@@ -76,10 +79,12 @@ export function HealthRecordFormSheet({ kind, petId, preview, onClose, onSaved }
   }
   function editVaccine<K extends keyof VaccineDraft>(key: K, value: VaccineDraft[K]) {
     if (saving.current) return
+    if (pendingLocked) { setNotice('上次提交结果尚未确认，请直接点击保存重试'); return }
     setVaccineDraft(old => ({ ...old, [key]: value })); setNotice(''); setErrors({})
   }
   function editDeworm<K extends keyof DewormDraft>(key: K, value: DewormDraft[K]) {
     if (saving.current) return
+    if (pendingLocked) { setNotice('上次提交结果尚未确认，请直接点击保存重试'); return }
     setDewormDraft(old => ({ ...old, [key]: value })); setNotice(''); setErrors({})
   }
   async function save() {
@@ -101,6 +106,8 @@ export function HealthRecordFormSheet({ kind, petId, preview, onClose, onSaved }
       onSaved()
     } catch (error) {
       if (currentRevision !== scope.revision) return
+      // 明确拒绝会清掉幂等槽；此时允许用户修改内容后重新发起。未知结果仍锁定原内容重试。
+      if (!consumerApi.pendingCommand(slot)) setPendingLocked(false)
       saving.current = false; setPhase('save-error'); setNotice(healthRecordErrorMessage(error))
     }
   }
@@ -136,6 +143,9 @@ export function HealthRecordFormSheet({ kind, petId, preview, onClose, onSaved }
       </View>
       <ScrollView className='pet-record-sheet-body' scrollY enhanced showScrollbar={false}>
         <View className='pet-record-sheet-fields'>
+          {pendingLocked && <Text className='pet-record-sheet-error pet-record-sheet-pending'>
+            上次提交结果尚未确认，请直接点击「保存」重试；重试不会重复添加。
+          </Text>}
           {isVaccine && <>
             <View className='pet-record-sheet-field'>
               <Text className='pet-record-sheet-label'>疫苗名称</Text>

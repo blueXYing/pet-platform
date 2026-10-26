@@ -21,6 +21,7 @@
 .pet-record-sheet-chips .pet-record-sheet-chip.is-current { background: #85d2f3; border-color: #85d2f3; color: #f8f5ee; font-weight: 500; }
 .pet-record-sheet-error { display: block; margin-top: calc(var(--pet-unit) * 6); font-size: calc(var(--pet-unit) * 11); line-height: calc(var(--pet-unit) * 17); color: #a23e2d; }
 .pet-record-sheet-notice { margin-bottom: calc(var(--pet-unit) * 8); }
+.pet-record-sheet-pending { margin-bottom: calc(var(--pet-unit) * 8); }
 .pet-record-sheet-actions { display: flex; flex-shrink: 0; gap: calc(var(--pet-unit) * 12); height: calc(var(--pet-unit) * 64); padding: calc(var(--pet-unit) * 12) calc(var(--pet-unit) * 9); box-sizing: border-box; }
 .pet-record-sheet-actions .pet-record-sheet-button { flex: 1; height: calc(var(--pet-unit) * 40); padding: 0; margin: 0; border: 0; border-radius: calc(var(--pet-unit) * 9999); font-size: calc(var(--pet-unit) * 14); line-height: calc(var(--pet-unit) * 40); font-weight: 500; text-align: center; }
 .pet-record-sheet-actions .pet-record-sheet-button::after { border: 0; }

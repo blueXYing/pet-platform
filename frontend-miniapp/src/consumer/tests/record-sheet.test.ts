@@ -18,6 +18,8 @@ test('health record add is a detail-page bottom sheet and legacy routes redirect
   assert.match(sheet, /pet-record-sheet-close/)
   assert.match(sheet, /pet-record-sheet-actions/)
   assert.match(sheet, /接种状态.*读侧展示态/)
+  assert.match(sheet, /pendingLocked/)
+  assert.match(sheet, /请直接点击「保存」重试/)
 
   const vaccine = readFileSync(new URL('../pages/pet-archive/vaccine-form.tsx', import.meta.url), 'utf8')
   const deworm = readFileSync(new URL('../pages/pet-archive/deworm-form.tsx', import.meta.url), 'utf8')
