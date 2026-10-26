@@ -20,6 +20,8 @@ import iconRating from '../../assets/home/guarantee-rating@2x.png'
 import iconInsurance from '../../assets/home/guarantee-insurance@2x.png'
 import iconEscrow from '../../assets/home/guarantee-escrow@2x.png'
 import placeholderAvatar from '../../assets/profile/avatar.png'
+import defaultCatAvatar from '../pet-archive/assets/pet-default-cat.png'
+import defaultDogAvatar from '../pet-archive/assets/pet-default-dog.png'
 import cityPawIcon from '../../assets/home/home-city-paw@3x.png'
 import petTape from '../../assets/home/pet-tape@3x.png'
 import './home.css'
@@ -203,9 +205,12 @@ export default function HomePage() {
           {pets.map(pet => {
             const badge = petBadges[pet.petId]
             const sex = sexLabel(pet.sex)
+            // Match the archive list/detail: a pet without an uploaded avatar falls back to
+            // its type default (dog/cat); OTHER keeps the generic profile placeholder.
+            const fallbackAvatar = pet.petType === 'DOG' ? defaultDogAvatar : pet.petType === 'CAT' ? defaultCatAvatar : placeholderAvatar
             return (
               <Button key={pet.petId} className='home-pet-row' hoverClass='none' onClick={() => open(`/consumer/pages/pet-archive/detail?petId=${pet.petId}`)}>
-                <Image className='home-pet-row-avatar' src={pet.avatarUrl || placeholderAvatar} mode='aspectFill' />
+                <Image className='home-pet-row-avatar' src={pet.avatarUrl || fallbackAvatar} mode='aspectFill' />
                 <View className='home-pet-row-main'>
                   <View className='home-pet-row-name'>
                     <Text className='home-pet-name'>{pet.name}</Text>

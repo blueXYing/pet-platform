@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict'
+import { readFileSync } from 'node:fs'
 import test from 'node:test'
 import {
   PreviewPetRepository, breedAgeLine, deriveAgeLabel, fixturePets, formatWeightDisplay,
@@ -131,6 +132,14 @@ test('visual record fixtures never assign dog medical records or chip to other p
     assert.deepEqual(previewSupplement(id).vaccineRecords, [])
     assert.deepEqual(previewSupplement(id).dewormRecords, [])
   }
+})
+
+test('home pet archive falls back to the same cat/dog default avatar as list and detail', () => {
+  const source = readFileSync(new URL('../pages/home/index.tsx', import.meta.url), 'utf8')
+  assert.match(source, /import defaultCatAvatar from '\.\.\/pet-archive\/assets\/pet-default-cat\.png'/)
+  assert.match(source, /import defaultDogAvatar from '\.\.\/pet-archive\/assets\/pet-default-dog\.png'/)
+  assert.match(source, /const fallbackAvatar = pet\.petType === 'DOG' \? defaultDogAvatar : pet\.petType === 'CAT' \? defaultCatAvatar : placeholderAvatar/)
+  assert.match(source, /src=\{pet\.avatarUrl \|\| fallbackAvatar\}/)
 })
 
 test('impossible calendar dates are rejected instead of deriving an age', () => {
