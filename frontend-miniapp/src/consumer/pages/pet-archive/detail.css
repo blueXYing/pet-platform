@@ -7,17 +7,22 @@
 .pet-detail-strip1 { left: 0; top: calc(var(--pet-unit) * 35); width: calc(var(--pet-unit) * 402); height: calc(var(--pet-unit) * 787); }
 .pet-detail-strip2 { left: 0; top: calc(var(--pet-unit) * 789); width: calc(var(--pet-unit) * 402); height: calc(var(--pet-unit) * 459); }
 .pet-detail-bottombar { left: 0; top: calc(var(--pet-unit) * 1190); width: calc(var(--pet-unit) * 402); height: calc(var(--pet-unit) * 86); background: #cdeede; }
-.pet-detail-header { left: 0; top: 0; width: calc(var(--pet-unit) * 402); height: calc(var(--pet-unit) * 86); background: #fff6e5; }
+.pet-detail-header { position: fixed; left: 0; top: 0; width: 100%; height: calc(var(--pet-status-top) + var(--pet-unit) * 86); background: #fff6e5; z-index: 20; }
 .pet-detail-panel-vaccine { left: calc(var(--pet-unit) * -10); top: calc(var(--pet-unit) * 429); width: calc(var(--pet-unit) * 429); height: calc(var(--pet-unit) * 393); }
 .pet-detail-panel-lower { left: calc(var(--pet-unit) * -14); top: calc(var(--pet-unit) * 779); width: calc(var(--pet-unit) * 429); height: calc(var(--pet-unit) * 408.7879638671875); }
 .pet-detail-panel-basic { left: calc(var(--pet-unit) * 21); top: calc(var(--pet-unit) * 100.125); width: calc(var(--pet-unit) * 363); height: calc(var(--pet-unit) * 386.307373046875); }
 /* Rectangle 16 declares no corner radius in spec.json while the pinned reference frame renders rounded corners; 9 matches the visible rounding (registered in HANDOFF). */
 .pet-detail-identity { box-sizing: border-box; left: calc(var(--pet-unit) * 53); top: calc(var(--pet-unit) * 105); width: calc(var(--pet-unit) * 302); height: calc(var(--pet-unit) * 108); background: #f0fbff; border: calc(var(--pet-unit) * 1) solid #c0ecff; border-radius: calc(var(--pet-unit) * 9); }
 .pet-detail-photo { left: calc(var(--pet-unit) * 59); top: calc(var(--pet-unit) * 132); width: calc(var(--pet-unit) * 65); height: calc(var(--pet-unit) * 54); }
-.pet-detail-back { left: calc(var(--pet-unit) * 31); top: calc(var(--pet-unit) * 39.739); width: calc(var(--pet-unit) * 28.8); height: calc(var(--pet-unit) * 34.5); display: flex; align-items: center; justify-content: center; z-index: 4; }
+.pet-detail-back { position: fixed; left: calc(var(--pet-unit) * 31); top: calc(var(--pet-status-top) + var(--pet-unit) * 39.739); width: calc(var(--pet-unit) * 28.8); height: calc(var(--pet-unit) * 34.5); display: flex; align-items: center; justify-content: center; z-index: 22; }
 .pet-detail-back image { width: calc(var(--pet-unit) * 8.8575439453125); height: calc(var(--pet-unit) * 14.522697448730469); }
-.pet-detail-navtitle { left: calc(var(--pet-unit) * 167.732421875); top: calc(var(--pet-unit) * 45); font-size: calc(var(--pet-unit) * 16); line-height: calc(var(--pet-unit) * 24); font-weight: 700; color: #3c3c3c; z-index: 2; }
-.pet-detail-edit { left: calc(var(--pet-unit) * 338.49); top: calc(var(--pet-unit) * 39.515); width: calc(var(--pet-unit) * 34); height: calc(var(--pet-unit) * 34.97); display: flex; align-items: center; justify-content: center; z-index: 4; }
+.pet-detail-navtitle { position: fixed; left: calc(var(--pet-unit) * 167.732421875); top: calc(var(--pet-status-top) + var(--pet-unit) * 45); font-size: calc(var(--pet-unit) * 16); line-height: calc(var(--pet-unit) * 24); font-weight: 700; color: #3c3c3c; z-index: 21; }
+.pet-detail-edit { position: fixed; left: calc(var(--pet-unit) * 338.49); top: calc(var(--pet-status-top) + var(--pet-unit) * 39.515); width: calc(var(--pet-unit) * 34); height: calc(var(--pet-unit) * 34.97); display: flex; align-items: center; justify-content: center; z-index: 22; }
+/* Reference-canvas screenshots keep the Figma header at its design y, not viewport-fixed. */
+.pet-reference-canvas .pet-detail-header { position: absolute; top: 0; left: 0; width: calc(var(--pet-unit) * 402); height: calc(var(--pet-unit) * 86); }
+.pet-reference-canvas .pet-detail-back { position: absolute; top: calc(var(--pet-unit) * 39.739); z-index: 4; }
+.pet-reference-canvas .pet-detail-navtitle { position: absolute; top: calc(var(--pet-unit) * 45); z-index: 2; }
+.pet-reference-canvas .pet-detail-edit { position: absolute; top: calc(var(--pet-unit) * 39.515); z-index: 4; }
 .pet-detail-edit image { width: calc(var(--pet-unit) * 13.5); height: calc(var(--pet-unit) * 14.97); }
 .pet-detail-name { left: calc(var(--pet-unit) * 134); top: calc(var(--pet-unit) * 130.75); font-size: calc(var(--pet-unit) * 14); line-height: calc(var(--pet-unit) * 20); font-weight: 700; color: #1d0d07; }
 .pet-detail-sexpill { left: calc(var(--pet-unit) * 170); top: calc(var(--pet-unit) * 131.25); width: calc(var(--pet-unit) * 32); height: calc(var(--pet-unit) * 19); border-radius: calc(var(--pet-unit) * 9999); background: #c0ecff; display: flex; align-items: center; justify-content: center; }
