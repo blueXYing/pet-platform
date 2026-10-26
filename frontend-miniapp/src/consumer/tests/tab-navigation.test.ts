@@ -1,11 +1,12 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
+import { readFileSync } from 'node:fs'
 import { consumerNavigationItems, consumerTabRoutes, type ConsumerNavigationKey } from '../components/navigation/model'
 import { mineCard, mineHubEntries, MINE_DEVELOPER_SHELL_URL, MINE_MERCHANT_WORKSPACE_URL } from '../pages/mine/model'
 
 // tab 路由登记 + 「我的」页投影（用户 2026-10-08 裁决）。
 
-test('the five navigation keys register exactly one native tab route each', () => {
+test('the five navigation keys register exactly one tab route each', () => {
   assert.deepEqual(consumerNavigationItems.map(item => item.key), ['home', 'services', 'community', 'messages', 'mine'])
   for (const item of consumerNavigationItems) {
     assert.match(consumerTabRoutes[item.key], /^\/consumer\/pages\/(home|services|community|messages|mine)\/index$/)
@@ -17,7 +18,7 @@ test('app.config 启动页为品牌启动页、tab 页均在主包', async () =>
   ;(globalThis as Record<string, unknown>).defineAppConfig = (value: unknown) => value
   const config = (await import('../../app.config')).default as {
     pages: string[]
-    tabBar: { list: Array<{ pagePath: string; text: string; iconPath: string; selectedIconPath: string }> }
+    tabBar: { custom?: boolean; list: Array<{ pagePath: string; text: string; iconPath: string; selectedIconPath: string }> }
     subPackages: Array<{ root: string }>
   }
   // 启动页改为「初始界面」品牌启动页（Figma 10:89，37号裁决补齐）：冷启动先呈现品牌画面，
@@ -25,6 +26,7 @@ test('app.config 启动页为品牌启动页、tab 页均在主包', async () =>
   assert.equal(config.pages[0], 'consumer/pages/splash/index')
   assert.equal(config.pages[1], 'consumer/pages/home/index')
   assert.ok(!config.subPackages.some(pack => config.pages[0].startsWith(pack.root + '/')), '启动页必须在主包')
+  assert.equal(config.tabBar.custom, true)
   const tabPages = config.tabBar.list.map(tab => tab.pagePath)
   assert.equal(tabPages.length, 5)
   for (const page of tabPages) {
@@ -81,6 +83,15 @@ test('mine hub routes only to delivered real pages', () => {
     '/merchant/pages/workspace/index',
     '/consumer/pages/shell/index',
   ])
+})
+
+test('root tab pages publish the selected index and reserve custom tabBar height', () => {
+  const roots = [['home', 0], ['services', 1], ['community', 2], ['messages', 3], ['mine', 4]] as const
+  for (const [page, index] of roots) {
+    const source = readFileSync(new URL(`../pages/${page}/index.tsx`, import.meta.url), 'utf8')
+    assert.match(source, new RegExp(`syncCustomTabBar\\(${index}\\)`), `${page} must sync custom tabBar`)
+    assert.match(source, /<RootTabBarSpacer \/>/, `${page} must reserve custom tabBar height`)
+  }
 })
 
 test('tab route registry stays in sync with the navigation keys type', () => {

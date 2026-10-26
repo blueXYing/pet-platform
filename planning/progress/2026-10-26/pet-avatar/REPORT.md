@@ -12,14 +12,15 @@
 - **真实上传**：C 私有素材新增 `PET_AVATAR` 用途（`POST /api/v1/c/private-assets`，消费者本人，复用不可变上传/扫描/规范化/10MiB 管线）；宠物创建/更新接受 `avatarAssetId`，服务端校验 owner/purpose/READY 后写入内部不透明 `asset:<id>`；`PetView.avatarUrl` 读取时通过 `PetAvatarSigningApi` 返回短期签名 URL。CCR：`planning/ccr/CCR-C-PET-AVATAR-001.md`。无 SQL06 Schema 变更。
 - **首页回退修正（2026-10-26 用户反馈追加）**：首页「宠物档案」分区原用 `pet.avatarUrl || placeholderAvatar`，无上传头像的宠物显示通用人像占位图；档案列表/详情已按类型回退默认猫/狗，导致同一宠物在首页与详情不一致。现首页与列表/详情统一：`DOG` 回退默认狗、`CAT` 回退默认猫、`OTHER` 保留通用占位图；新增静态断言防回归。
 - **首页展示与新建返回（2026-10-26 用户二次反馈）**：首页宠物档案同屏最多展示 3 只，超出部分在**宠物档案模块内局部滚动**查看；标题显示宠物总数；不使用「查看全部」跳转或下拉框。新建宠物保存成功后 `Taro.switchTab` 返回首页；编辑保存仍留在表单。
+- **根页自定义 tabBar（2026-10-26 追加裁决）**：原生 tabBar 在 `navigateTo` 二级页开始时先隐藏、目标页首帧尚未出现，造成空档闪烁。用户选择改为同款自定义 tabBar：`src/custom-tab-bar`（CoverView/CoverImage，白底/原图标/选中文字色 `#53bfee`，50px + safe-area 高度），5 个根页在 `useDidShow` 同步选中项，页面底部预留 bar 高度；二级页仍不显示底栏。自定义 bar 随 tab 页一起被二级页覆盖，消除原生栏先隐藏的空档。
 - **契约/设计登记**：`docs/08-engineering/20-设计源登记表-figma-map.md` §4.7 偏差 13；`assets/manifest.json` 登记两个默认头像节点、字节和 sha256。
 
 ## 验证
 
 - 前端 `npm run typecheck`：PASS
-- 前端单测：**619 / 619**（新增首页默认头像回退、3 只展示/模块内滚动、新建返回首页断言）
+- 前端单测：**620 / 620**（新增首页默认头像回退、3 只展示/模块内滚动、新建返回首页、根页自定义 tabBar 同步断言）
 - `python3 backend/tools/run-frontend-gate.py miniapp-build`：**PASS**
-- `check:package`：总包 **8,159,803** 字节，预算内
+- `check:package`：总包 **8,167,554** 字节，预算内
 - 后端 JDK 21 `mvn compile` / `test-compile`：PASS（pet-user-biz / pet-thirdparty-biz / pet-boot 及依赖）
 - `PetValidatorAvatarTest`：PASS（asset ref 与 https 校验）
 - `check-module-deps.py`：PASS
@@ -34,6 +35,8 @@
   - 首页 5 只宠物时同屏只展示前 3 只，标题显示总数：`home-three-pets.png`
   - 在宠物档案模块内局部上滑后显示其余宠物（满满/旺财/豆豆），不滚动整页、不使用下拉框：`home-pet-scroll-more.png`
   - 新建宠物保存成功后自动回到首页：`home-after-create-return.png`（截图中的测试宠物已删除）
+  - 自定义 tabBar 根页：首页/服务/宠友圈/消息/我的均显示并同步选中态（`root-custom-tabbar-home.png`/`root-custom-tabbar-services.png`/`root-custom-tabbar-community.png`/`root-custom-tabbar-messages.png`/`root-custom-tabbar-mine.png`）
+  - 二级页（宠物详情）不显示自定义底栏：`custom-tabbar-detail-no-bar.png`；从首页点击宠物进入详情时不再出现原生 tabBar 先隐藏的空档
 
 ## 遗留 / 环境说明
 

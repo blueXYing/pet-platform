@@ -2,6 +2,8 @@ import { Button, Image, ScrollView, Text, View } from '@tarojs/components'
 import Taro, { useDidShow } from '@tarojs/taro'
 import { useCallback, useEffect, useRef, useState, type CSSProperties } from 'react'
 import { switchConsumerTab } from '../../components/navigation/switch'
+import { syncCustomTabBar } from '../../components/navigation/custom-tab-bar'
+import { RootTabBarSpacer } from '../../components/navigation/root-tab-bar-spacer'
 import CityPicker from '../../city/picker'
 import { readSelectedCity, writeSelectedCity } from '../../city/model'
 import type { StoreCity } from '../../store/model'
@@ -125,7 +127,7 @@ export default function HomePage() {
       .then(catalog => { if (mounted.current && catalog.length) setCities(catalog) })
       .catch(() => { /* 目录不可用：芯片回退本地选择/默认名，面板不打开选项 */ })
   }, [])
-  useDidShow(() => { setSelectedCity(readSelectedCity().cityCode); loadCities(); void loadPets() })
+  useDidShow(() => { syncCustomTabBar(0); setSelectedCity(readSelectedCity().cityCode); loadCities(); void loadPets() })
   useEffect(() => { void loadPets() }, [loadPets, revision, context])
   function pickCity(next: string | undefined) {
     setCityPickerOpen(false)
@@ -277,6 +279,7 @@ export default function HomePage() {
         </View>
       </View>
       <View className='home-tail'><Text>页面数据：入口聚合页（门店目录匿名可浏览；其余页面自带真实/预览通道）</Text></View>
+      <RootTabBarSpacer />
     </ScrollView>
   </View>
 }

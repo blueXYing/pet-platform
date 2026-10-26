@@ -5,9 +5,10 @@ const assert = require('node:assert/strict')
 const root = path.join(__dirname, 'dist')
 const app = JSON.parse(fs.readFileSync(path.join(root, 'app.json'), 'utf8'))
 assert.deepEqual(app.pages, ['consumer/pages/splash/index', 'consumer/pages/home/index', 'consumer/pages/services/index', 'consumer/pages/community/index', 'consumer/pages/messages/index', 'consumer/pages/mine/index', 'consumer/pages/shell/index', 'consumer/pages/diagnostics/index', 'consumer/pages/profile-edit/index'])
-// Native tabBar (2026-10-08 adjudication): five equal tabs, main-package pages only, icons are
-// the registry-extracted original cuts (no selected-state variant — registered design deviation).
+// Custom tabBar (2026-10-26 user ruling): five equal root tabs, main-package pages only, icons
+// are the registry-extracted original cuts (no selected-state variant — registered deviation).
 assert.deepEqual(app.tabBar, {
+  custom: true,
   color: '#3c3c3c', selectedColor: '#53bfee', backgroundColor: '#ffffff', borderStyle: 'black',
   list: [
     { pagePath: 'consumer/pages/home/index', text: '首页', iconPath: 'consumer/assets/navigation/home.png', selectedIconPath: 'consumer/assets/navigation/home.png' },
@@ -20,6 +21,10 @@ assert.deepEqual(app.tabBar, {
 for (const tab of app.tabBar.list) {
   assert.ok(app.pages.includes(tab.pagePath), 'tab page must be a main-package page: ' + tab.pagePath)
   assert.ok(fs.existsSync(path.join(root, tab.iconPath)), 'tab icon missing from dist: ' + tab.iconPath)
+}
+for (const extension of ['js', 'json', 'wxml', 'wxss']) {
+  assert.ok(fs.existsSync(path.join(root, 'custom-tab-bar/index.' + extension)),
+    'custom-tab-bar artifact missing: ' + extension)
 }
 // Tab page artifacts (tabbar+login slice): home/services/community/mine are new main-package pages.
 for (const page of ['home/index', 'services/index', 'community/index', 'mine/index']) {

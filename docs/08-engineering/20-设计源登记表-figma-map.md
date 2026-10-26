@@ -733,6 +733,7 @@ mine 页接线（`consumer/pages/mine`）：「帮助与客服」「意见反馈
 - **问题**：Figma 多数二级/三级 frame 底部画有全局五等分 tabBar；小程序只有一级 tab 页显示原生 tabBar，二级页若再渲染 `ConsumerBottomNavigation`，从一级页 `navigateTo` 时会出现「原生栏隐藏 → 自定义栏出现」的交接空档。
 - **裁决**：仅 `home/services/community/messages/mine` 五个根 tab 页保留原生 tabBar；所有非根页面实际产品不显示底部导航。设计预览/对照通道（`preview=1`，含 `referenceCanvas=1`）保留自定义底栏，仅用于与 Figma 逐帧比对，不作为产品行为。
 - **落地**：29 处 `ConsumerPageLayout` 的 `navigation` 中，26 处改为 `preview ? {...} : undefined`；`aftersale/common`、`become-provider/index`、`become-provider/service-type` 无预览通道，直接移除。`app.config.ts` 原生 tabBar 不变。
+- **2026-10-26 追加裁决**：为消除原生 tabBar 在二级页跳转时先隐藏造成的空档，五个根 tab 页改用**同款自定义 tabBar**（`src/custom-tab-bar`，`tabBar.custom: true`）；仍仅五个根页显示，二级页不显示底栏；图标/选中色沿原口径，不新增 tab。
 - **布局**：非根页无导航时 `consumer-page-layout-without-navigation` 去除 80px 预留；底部固定操作条/半屏面板贴 `env(safe-area-inset-bottom)`。`become-provider` 半屏面板与 `store-services` 固定操作条已按无导航调整。
 - **偏差**：Figma 二级页底栏为设计残留，不按图还原；页面底部以原画布/安全区收口，不为复刻底栏补图。
 
