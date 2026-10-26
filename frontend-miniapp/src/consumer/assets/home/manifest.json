@@ -1,11 +1,12 @@
 {
   "sourceVersion": "2408620332145508244",
-  "note": "Home assets from the C-end file 2026-10-10 version (frame 首页1 61:599 new visual): search 62:27 / bell 62:43 re-rendered and verified byte-identical to the previous cut (kept original files); brand logo 687:45, guarantee icon vectors 75:30/75:35/75:44/75:40 rendered at scale 2 in one batched Figma images call. huaban-grid@2x.jpg re-encoded (JPEG q65) from the store-services 690-6661 cut, whose pixels are identical to the new 61:31 node render; huaban-doodle@2x.jpg is the 62:49 band (402x245) flattened onto the texture cream #fefaee (JPEG q70, STRETCH-free original pixels). The location pin (62:9) stays unused per the §4.4 verdict (no C-side geolocation).",
+  "note": "Home assets from the C-end file 2026-10-10 version (frame 首页1 61:599 new visual): search 62:27 / bell 62:43 re-rendered and verified byte-identical to the previous cut (kept original files); brand logo 687:45, guarantee icon vectors 75:30/75:35/75:44/75:40 rendered at scale 2 in one batched Figma images call. huaban-grid@2x.jpg re-encoded (JPEG q65) from the store-services 690-6661 cut, whose pixels are identical to the new 61:31 node render; huaban-doodle@2x.jpg is the 62:49 band (402x245) flattened onto the texture cream #fefaee (JPEG q70, STRETCH-free original pixels). The city pin 62:9 is used as the non-geolocation chip graphic after the 2026-10-19 manual-city decision (registry §4.11); 2026-10-23 restored the 117x96@3x composite with 6px left padding and cropped only vertically to the visible pin (83x96) so the button's overflow cannot clip the left edge. Pet section papers/tape/status/header icons are derived from 62:51 / 62:52 / 62:54 / 62:72 / 62:94 / 245:4163 / 245:4168 and embedded as WXSS data URIs (tape shipped as a 3x PNG).",
   "assets": [
     {
       "nodeId": "62:27",
       "file": "frontend-miniapp/src/consumer/assets/home/home-search.png",
       "scale": 2,
+      "designSize": "21x21 visible (frame 19x19, image overhang 5.26%)",
       "version": "2401180846436413285",
       "status": "DOWNLOADED",
       "sha256": "0bce2440cd951f6535869da86fc8a823289bf45af23f438ed5f27deb788d6589",
@@ -15,10 +16,81 @@
       "nodeId": "62:43",
       "file": "frontend-miniapp/src/consumer/assets/home/home-bell.png",
       "scale": 2,
+      "designSize": "21x24 visible (frame 24x24, 1.5px transparent left/right padding)",
       "version": "2401180846436413285",
       "status": "DOWNLOADED",
       "sha256": "72faa2f962bf5b3718430538a2fd747cee6e095a55ad8c41ec933d95ba37cef9",
       "bytes": 1512
+    },
+    {
+      "nodeId": "62:9",
+      "layers": ["62:11", "62:8", "62:7"],
+      "file": "frontend-miniapp/src/consumer/assets/home/home-city-paw@3x.png",
+      "scale": 3,
+      "designSize": "39x32 (frame 39.9635x39.9635; visible pin 27.576x32.166 inset 6.195/7.797; asset keeps 6px left/right transparent padding)",
+      "version": "2408620332145508244",
+      "status": "DERIVED_COMPOSITE",
+      "sha256": "36983a085f3e76022d2b29b032c06186342eaad87a90808795a261a3ed26517d",
+      "bytes": 2058
+    },
+    {
+      "nodeId": "62:51",
+      "file": "frontend-miniapp/src/consumer/assets/home/pet-blue-paper-straight.svg",
+      "designSize": "338x302 (left/top slanted; straight bottom per user 2026-10-23)",
+      "status": "DERIVED_STRAIGHT",
+      "derivedFrom": "frontend-miniapp/src/consumer/assets/home/pet-blue-paper.svg",
+      "sha256": "a3207a39cbeafde892a710329d9ea515317cf75f7ac2595a3f8ec18ab1844ff6",
+      "bytes": 272
+    },
+    {
+      "nodeId": "62:52",
+      "file": "frontend-miniapp/src/consumer/assets/home/pet-white-paper-rect.svg",
+      "designSize": "358.731x285.665 (straight top/left/right/bottom per user 2026-10-23)",
+      "status": "DERIVED_RECT",
+      "derivedFrom": "frontend-miniapp/src/consumer/assets/home/pet-white-paper.svg",
+      "sha256": "fdcc7b66d28cc4872d9bb4723d1f042dea8fe5533bde1c6359ae069871fe7a0a",
+      "bytes": 263
+    },
+    {
+      "nodeId": "62:54",
+      "file": "frontend-miniapp/src/consumer/assets/home/pet-tape@3x.png",
+      "scale": 3,
+      "designSize": "57x57",
+      "status": "RESIZED_PNG",
+      "sha256": "a1ecce0cdbdb030d79039f21fb68d2bc0f5134c17d3f1f57608b9089d8a0023f",
+      "bytes": 11448
+    },
+    {
+      "nodeId": "62:72",
+      "file": "frontend-miniapp/src/consumer/assets/home/pet-vaccine-icon.svg",
+      "designSize": "10.406x10",
+      "status": "DERIVED_VECTOR",
+      "sha256": "958ed9f27474f8161b5e418606da91da5e79ee5ec15cc72f8050644f67c7d23d",
+      "bytes": 1420
+    },
+    {
+      "nodeId": "62:94",
+      "file": "frontend-miniapp/src/consumer/assets/home/pet-deworm-icon.svg",
+      "designSize": "10.406x10",
+      "status": "DERIVED_VECTOR",
+      "sha256": "bb4939a91493bfd8efd21f35a52be9997626ebbd7e24f10d306d88cce3ac0cb8",
+      "bytes": 1062
+    },
+    {
+      "nodeId": "245:4163",
+      "file": "frontend-miniapp/src/consumer/assets/home/header-baike-icon.svg",
+      "designSize": "14.578x14",
+      "status": "DERIVED_VECTOR",
+      "sha256": "e2283e9a553ebc2d1eccc5e573cde9aa08edcc57b47cf3176b7d93031398fb00",
+      "bytes": 903
+    },
+    {
+      "nodeId": "245:4168",
+      "file": "frontend-miniapp/src/consumer/assets/home/header-chevron.svg",
+      "designSize": "14.578x14",
+      "status": "DERIVED_VECTOR",
+      "sha256": "5dc9d58f86655aa102b636970d2d5faea13729b2188a871f4657652f7f4dadc7",
+      "bytes": 333
     },
     {
       "nodeId": "687:45",
