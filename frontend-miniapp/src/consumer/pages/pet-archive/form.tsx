@@ -46,7 +46,7 @@ export default function PetArchiveForm() {
   const [avatarDirty, setAvatarDirty] = useState(false)
   const [notice, setNotice] = useState('')
   const [noticeKind, setNoticeKind] = useState<'info' | 'error'>('info')
-  const [designHeight, setDesignHeight] = useState(1242)
+  const [designHeight, setDesignHeight] = useState(1162)
   const mounted = useRef(true)
   const sequence = useRef(0)
   const previousRevision = useRef(revision)
@@ -68,13 +68,13 @@ export default function PetArchiveForm() {
       const pet = petId ? await scope.run(undefined, () => repository.current.get(petId)) : null
       if (!mounted.current || current !== sequence.current || currentRevision !== scope.revision) return
       let initial: PetDraft = { ...emptyDraft }
-      let height = 1242
+      let height = 1162
       if (petId) {
         if (!pet) { setPhase('load-error'); return }
         initial = { name: pet.name, petType: pet.petType, breedName: pet.breedName || '', birthDate: pet.birthDate || '', sex: pet.sex, weightInput: weightContractToInput(pet.weightKg), healthNote: pet.healthNote || '' }
       } else {
         initial = initialDraft(petId, scenario, null)
-        if (scenario === 'form-sister') height = 1243
+        if (scenario === 'form-sister') height = 1163
       }
       const pending = !preview && consumerApi.pendingCommand(petId ? `pet:${petId}` : 'pet:create')
       if (pending && pending.data) {
@@ -181,7 +181,7 @@ export default function PetArchiveForm() {
   const fieldsLocked = phase === 'saving' || avatarUploading || (!preview && !!consumerApi.pendingCommand(savedPetId.current ? `pet:${savedPetId.current}` : 'pet:create'))
   const defaultAvatar = draft.petType === 'DOG' ? defaultDogAvatar : draft.petType === 'CAT' ? defaultCatAvatar : null
   const avatarSource = avatarPreview || defaultAvatar
-  return <ConsumerPageLayout page='petForm' unit={unit} navigation={preview ? { idPrefix: 'pet', disabled: !editable || phase === 'saving', onSelect: key => leave(key), referencePlacement: referenceCanvas ? { top: designHeight === 1243 ? 1167 : 1166 } : undefined } : undefined} className={`pet-page pet-form-page${referenceCanvas ? ' pet-reference-canvas' : ''}`} style={style}>
+  return <ConsumerPageLayout page='petForm' unit={unit} navigation={preview ? { idPrefix: 'pet', disabled: !editable || phase === 'saving', onSelect: key => leave(key), referencePlacement: referenceCanvas ? { top: designHeight === 1163 ? 1087 : 1086 } : undefined } : undefined} className={`pet-page pet-form-page${referenceCanvas ? ' pet-reference-canvas' : ''}`} style={style}>
     <View className='pet-status-area' />
     <View className='pet-design pet-form-design' data-phase={phase} style={{ height: `calc(var(--pet-unit) * ${designHeight})` }}>
       <Image className='pet-abs pet-form-strip1' src={stripMain} mode='scaleToFill' />
@@ -212,16 +212,18 @@ export default function PetArchiveForm() {
             ))}
           </View>
         </View>
-        <Button id='pet-form-avatar' className='pet-abs pet-form-avatar-card' ariaLabel='更换头像'
-          disabled={fieldsLocked} hoverClass='none' onClick={() => void chooseAvatar()}>
-          {avatarSource
-            ? <Image className='pet-form-avatar-image' src={avatarSource} mode='aspectFill' />
-            : <View className='pet-form-avatar-image pet-form-avatar-empty'><Text className='pet-form-avatar-plus'>+</Text></View>}
-          <Text className='pet-form-avatar-label'>更换头像</Text>
-        </Button>
-        <View className='pet-abs pet-form-field pet-form-field-name'>
-          <Text className='pet-form-label'>宠物名字</Text>
-          <Input id='pet-form-name' className='pet-form-input' value={draft.name} maxlength={-1} disabled={fieldsLocked} ariaLabel='宠物名字' onInput={event => edit('name', event.detail.value)} adjustPosition />
+        <View className='pet-abs pet-form-profile-card'>
+          <Button id='pet-form-avatar' className='pet-form-avatar-action' ariaLabel='更换头像'
+            disabled={fieldsLocked} hoverClass='none' onClick={() => void chooseAvatar()}>
+            {avatarSource
+              ? <Image className='pet-form-avatar-image' src={avatarSource} mode='aspectFill' />
+              : <View className='pet-form-avatar-image pet-form-avatar-empty'><Text className='pet-form-avatar-plus'>+</Text></View>}
+            <Text className='pet-form-avatar-label'>更换头像</Text>
+          </Button>
+          <View className='pet-form-card-name'>
+            <Text className='pet-form-label'>宠物名字</Text>
+            <Input id='pet-form-name' className='pet-form-card-input' value={draft.name} maxlength={-1} disabled={fieldsLocked} ariaLabel='宠物名字' onInput={event => edit('name', event.detail.value)} adjustPosition />
+          </View>
         </View>
         <View className='pet-abs pet-form-field pet-form-field-breed'>
           <Text className='pet-form-label'>品种</Text>
