@@ -20,7 +20,7 @@
   - favtrack：`favorites` / `footprints`
 - **3 处无预览通道，直接移除**：`aftersale/common.tsx`（覆盖 index/detail/apply）、`become-provider/index.tsx`、`become-provider/service-type.tsx`；同时移除不再使用的 `switchConsumerTab` import。
 - `app.config.ts` 原生 tabBar 未改；五个根 tab 页继续使用原生栏。
-- 布局适配：`become-provider` 半屏面板 `.bep-design` 改为贴 `env(safe-area-inset-bottom)`；`store-services` 固定操作条在无导航布局下同样贴安全区（预览仍保留 62px 导航条位）。
+- 布局适配：`become-provider` 半屏面板 `.bep-design` 改为贴 `env(safe-area-inset-bottom)`；`store-services` 固定操作条在无导航布局下同样贴安全区（预览仍保留 62px 导航条位）；`points-tasks` 任务/奖励面板补底部安全区。
 - 登记：`docs/08-engineering/20-设计源登记表-figma-map.md` §4.20。
 - 门禁：新增 `frontend-miniapp/src/consumer/tests/subpage-navigation.test.ts`，静态扫描 `consumer/pages`，禁止无条件 `navigation` 回归。
 
@@ -37,7 +37,7 @@
 
 ## 证据
 
-- `real-pet-list.png`、`real-form.png`、`real-orders-list.png`、`real-store-directory.png`、`real-aftersale.png`、`real-points-mall.png`、`real-points-tasks.png`、`real-become-provider.png`、`real-booking-pay.png`：真实模式无底栏
+- `real-pet-list.png`、`real-form.png`、`real-orders-list.png`、`real-store-directory.png`、`real-aftersale.png`、`real-points-mall.png`、`real-points-tasks.png`、`real-points-tasks-bottom.png`、`real-become-provider.png`、`real-booking-pay.png`：真实模式无底栏；任务页底部截图确认面板安全区收口
 - `preview-form.png`：`preview=1` 保留底栏
 - `root-home-native-tabbar.png`：根 tab 首页原生 tabBar
 
@@ -45,5 +45,5 @@
 
 - 未执行物理真机 VIS；当前为开发者工具 + 真实 E2E 后端。
 - Figma 二级页底栏为设计残留；宠物详情/添加表单底部的原导航带仍属于画布高度的一部分（操作按钮均在带上方，无遮挡），未为复刻底栏补图。
-- 刘海/Home Indicator 设备上，`points-tasks` 等底部面板仅靠面板内边距与安全区收口，建议真机复核。
+- 刘海/Home Indicator 设备上，`points-tasks` 面板已补 `env(safe-area-inset-bottom)`；其余页面底部间距仍建议物理真机复核。
 - `store-services` 的 `.svc-bottombar` 当前无 TSX 引用（既有死样式）；已加无导航安全区兜底，防后续复活时再次假设 62px 导航条。
