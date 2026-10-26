@@ -142,15 +142,15 @@ test('home pet archive falls back to the same cat/dog default avatar as list and
   assert.match(source, /src=\{petAvatar\(pet\)\}/)
 })
 
-test('home shows up to three pets and a dropdown to find the rest', () => {
+test('home shows up to three rows and scrolls the rest inside the archive module', () => {
   const source = readFileSync(new URL('../pages/home/index.tsx', import.meta.url), 'utf8')
-  assert.match(source, /const top = active\.slice\(0, 3\)/)
-  assert.match(source, /setPets\(top\); setPetAll\(active\)/)
-  assert.match(source, /const extraPets = petAll\.slice\(pets\.length\)/)
-  assert.match(source, /extraPets\.length > 0/)
-  assert.match(source, /id='home-pet-menu-toggle'/)
-  assert.match(source, /id='home-pet-menu'/)
-  assert.match(source, /className='home-pet-menu-item'/)
+  assert.match(source, /const active = list\.filter\(pet => pet\.status === 'ACTIVE'\)/)
+  assert.match(source, /setPets\(active\)/)
+  assert.match(source, /const visiblePetRows = Math\.min\(pets\.length, 3\)/)
+  assert.match(source, /const petListHeight = visiblePetRows > 0 \? visiblePetRows \* 85 - 16 : 0/)
+  assert.match(source, /className='home-pet-scroll'/)
+  assert.match(source, /<ScrollView[^>]*scrollY enhanced showScrollbar=\{false\}/)
+  assert.doesNotMatch(source, /home-pet-menu/)
 })
 
 test('creating a pet returns to the home tab after a successful save', () => {

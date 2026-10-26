@@ -62,17 +62,7 @@
 .home-pet-head-left { display: flex; align-items: center; gap: calc(var(--home-unit) * 8); height: 100%; }
 .home-pet-h1 { font-size: calc(var(--home-unit) * 18); line-height: calc(var(--home-unit) * 28); font-weight: 700; color: #1d0d07; white-space: nowrap; }
 .home-pet-count { font-size: calc(var(--home-unit) * 11); line-height: calc(var(--home-unit) * 28); color: #53bfee; white-space: nowrap; }
-.home-pet-menu-toggle { display: flex; align-items: center; gap: calc(var(--home-unit) * 2); height: calc(var(--home-unit) * 28); padding: 0; background: transparent; line-height: 1; }
-.home-pet-menu-caret { font-size: calc(var(--home-unit) * 10); line-height: calc(var(--home-unit) * 28); color: #53bfee; transition: transform 0.15s ease; }
-.home-pet-menu-caret.is-open { transform: rotate(180deg); }
-.home-pet-menu { position: absolute; left: 0; top: calc(var(--home-unit) * 42); z-index: 30; width: 100%; max-height: calc(var(--home-unit) * 206); padding: calc(var(--home-unit) * 6); background: #f0fbff; border: calc(var(--home-unit) * 1) solid #5baae8; border-radius: calc(var(--home-unit) * 9); box-shadow: 0 calc(var(--home-unit) * 4) calc(var(--home-unit) * 12) rgba(29, 13, 7, 0.18); box-sizing: border-box; overflow: hidden; }
-.home-pet-menu-scroll { height: calc(var(--home-unit) * 192); }
-.home-pet-menu-item { display: flex; align-items: center; width: 100%; height: calc(var(--home-unit) * 64); padding: 0 calc(var(--home-unit) * 8); background: transparent; border-bottom: calc(var(--home-unit) * 1) solid #c0ecff; box-sizing: border-box; text-align: left; line-height: 1; }
-.home-pet-menu-item:last-child { border-bottom: none; }
-.home-pet-menu-avatar { flex-shrink: 0; width: calc(var(--home-unit) * 40); height: calc(var(--home-unit) * 34); border-radius: calc(var(--home-unit) * 6); background: #c0ecff; }
-.home-pet-menu-main { display: flex; flex-direction: column; min-width: 0; margin-left: calc(var(--home-unit) * 10); }
-.home-pet-menu-name { overflow: hidden; font-size: calc(var(--home-unit) * 12); line-height: calc(var(--home-unit) * 18); color: #1d0d07; white-space: nowrap; text-overflow: ellipsis; }
-.home-pet-menu-breed { overflow: hidden; font-size: calc(var(--home-unit) * 10); line-height: calc(var(--home-unit) * 15); color: #577683; white-space: nowrap; text-overflow: ellipsis; }
+.home-pet-scroll { width: 100%; }
 .home-pet-add { display: flex; align-items: center; justify-content: center; width: calc(var(--home-unit) * 22); height: calc(var(--home-unit) * 28); padding: 0; background: transparent; border: none; }
 .home-pet-add-text { font-size: calc(var(--home-unit) * 14); line-height: calc(var(--home-unit) * 28); font-weight: 700; color: #53bfee; }
 .home-pet-more { display: flex; align-items: center; gap: calc(var(--home-unit) * 2); height: calc(var(--home-unit) * 20); }

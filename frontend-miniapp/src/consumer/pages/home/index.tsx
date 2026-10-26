@@ -80,24 +80,21 @@ export default function HomePage() {
   const mounted = useRef(true)
   useEffect(() => { mounted.current = true; return () => { mounted.current = false } }, [])
   // 宠物档案读侧（设计 61:599：标题「宠物档案 N 只萌宠」+ 宠物行 + 疫苗/驱虫状态 + 宠物百科入口）。
-  // 匿名/未登录/读取失败一律回退到入口卡，不虚构数据；最多展示 3 只，标题显示总数，超过 3 只时提供下拉列表查找其他宠物。
+  // 匿名/未登录/读取失败一律回退到入口卡，不虚构数据；同屏最多展示 3 只，其余在模块内局部滚动查看。
   const { scope, revision, context } = useWorkspace('real')
   const petRepo = useRef(realPetRepository())
   const [pets, setPets] = useState<PetView[]>([])
-  const [petAll, setPetAll] = useState<PetView[]>([])
-  const [petMenuOpen, setPetMenuOpen] = useState(false)
   const [petBadges, setPetBadges] = useState<Record<string, PetBadge>>({})
   const petSequence = useRef(0)
   const loadPets = useCallback(async () => {
     const seq = ++petSequence.current
-    if (!scope.current || scope.current.workspace !== 'consumer') { setPets([]); setPetAll([]); setPetMenuOpen(false); setPetBadges({}); return }
+    if (!scope.current || scope.current.workspace !== 'consumer') { setPets([]); setPetBadges({}); return }
     try {
       const list = await scope.run(undefined, () => petRepo.current.load())
       if (!mounted.current || seq !== petSequence.current) return
       const active = list.filter(pet => pet.status === 'ACTIVE')
-      const top = active.slice(0, 3)
-      setPets(top); setPetAll(active)
-      const entries = await Promise.all(top.map(async (pet): Promise<readonly [string, PetBadge] | null> => {
+      setPets(active)
+      const entries = await Promise.all(active.map(async (pet): Promise<readonly [string, PetBadge] | null> => {
         try {
           const [vaccines, deworms] = await Promise.all([
             scope.run(undefined, () => petRepo.current.listHealthRecords(pet.petId, 'vaccination-records')),
@@ -120,7 +117,7 @@ export default function HomePage() {
       entries.forEach(entry => { if (entry) map[entry[0]] = entry[1] })
       setPetBadges(map)
     } catch {
-      if (mounted.current && seq === petSequence.current) { setPets([]); setPetAll([]); setPetMenuOpen(false); setPetBadges({}) }
+      if (mounted.current && seq === petSequence.current) { setPets([]); setPetBadges({}) }
     }
   }, [scope])
   const loadCities = useCallback(() => {
@@ -145,11 +142,12 @@ export default function HomePage() {
     Taro.navigateTo({ url: path }).catch(() => Taro.showToast({ title: '页面打开失败，请重试', icon: 'none' }))
   }
   function goMessages() { void switchConsumerTab('messages') }
-  const extraPets = petAll.slice(pets.length)
+  const visiblePetRows = Math.min(pets.length, 3)
+  const petListHeight = visiblePetRows > 0 ? visiblePetRows * 85 - 16 : 0
   return <View className='home-page' style={style}>
     {/* 分层背景（设计 z 序）：网格纸纹（61:31，状态栏起 787 高）→ 奶油头带（0..86）→ 手绘涂鸦带（62:49，86..331）→ #f0fbff 主体 */}
     {/* 网格纸纹只铺到宠物分区底部（高度按行数计算），不延伸到找门店等后续模块；裁剪不缩放 */}
-    <View className='home-bg-grid-clip' style={{ height: `${(420.41 + 85 * Math.max(1, pets.length)) * unit}px` }}>
+    <View className='home-bg-grid-clip' style={{ height: `${(420.41 + 85 * Math.max(1, visiblePetRows)) * unit}px` }}>
       <Image className='home-bg-grid' src={textureGrid} mode='scaleToFill' />
     </View>
     <View className='home-bg-cream' />
@@ -187,13 +185,7 @@ export default function HomePage() {
           <View className='home-pet-head'>
             <View className='home-pet-head-left'>
               <Text className='home-pet-h1'>宠物档案</Text>
-              {petAll.length > 0 && (extraPets.length > 0
-                ? <Button id='home-pet-menu-toggle' className='home-pet-menu-toggle' hoverClass='none'
-                    ariaLabel={`共${petAll.length}只萌宠，查看其他宠物`} onClick={() => setPetMenuOpen(open => !open)}>
-                    <Text className='home-pet-count'>{`${petAll.length} 只萌宠`}</Text>
-                    <Text className={`home-pet-menu-caret${petMenuOpen ? ' is-open' : ''}`}>▾</Text>
-                  </Button>
-                : <Text className='home-pet-count'>{`${petAll.length} 只萌宠`}</Text>)}
+              {pets.length > 0 && <Text className='home-pet-count'>{`${pets.length} 只萌宠`}</Text>}
               <Button id='home-pet-add' className='home-pet-add' ariaLabel='添加宠物' hoverClass='none'
                 onClick={() => open('/consumer/pages/pet-archive/form')}>
                 <Text className='home-pet-add-text'>+</Text>
@@ -205,22 +197,6 @@ export default function HomePage() {
               <View className='home-pet-more-chevron' />
             </View>
           </View>
-          {petMenuOpen && extraPets.length > 0 && (
-            <View id='home-pet-menu' className='home-pet-menu'>
-              <ScrollView className='home-pet-menu-scroll' style={{ height: `calc(var(--home-unit) * ${Math.min(extraPets.length, 3) * 64})` }} scrollY enhanced showScrollbar={false}>
-                {extraPets.map(pet => (
-                  <Button key={pet.petId} className='home-pet-menu-item' hoverClass='none'
-                    ariaLabel={`查看${pet.name}的档案`} onClick={() => { setPetMenuOpen(false); open(`/consumer/pages/pet-archive/detail?petId=${pet.petId}`) }}>
-                    <Image className='home-pet-menu-avatar' src={petAvatar(pet)} mode='aspectFill' />
-                    <View className='home-pet-menu-main'>
-                      <Text className='home-pet-menu-name'>{pet.name}</Text>
-                      <Text className='home-pet-menu-breed'>{breedAgeLine(pet, todayISO)}</Text>
-                    </View>
-                  </Button>
-                ))}
-              </ScrollView>
-            </View>
-          )}
           {pets.length === 0 && (
             <Button id='home-pets' className='home-pet-empty' hoverClass='none' onClick={() => open('/consumer/pages/pet-archive/index')}>
               <Image className='home-pet-avatar' src={placeholderAvatar} mode='scaleToFill' />
@@ -231,37 +207,41 @@ export default function HomePage() {
               <Text className='home-pet-go'>›</Text>
             </Button>
           )}
-          {pets.map(pet => {
-            const badge = petBadges[pet.petId]
-            const sex = sexLabel(pet.sex)
-            // Match the archive list/detail: a pet without an uploaded avatar falls back to
-            // its type default (dog/cat); OTHER keeps the generic profile placeholder.
-            return (
-              <Button key={pet.petId} className='home-pet-row' hoverClass='none' onClick={() => open(`/consumer/pages/pet-archive/detail?petId=${pet.petId}`)}>
-                <Image className='home-pet-row-avatar' src={petAvatar(pet)} mode='aspectFill' />
-                <View className='home-pet-row-main'>
-                  <View className='home-pet-row-name'>
-                    <Text className='home-pet-name'>{pet.name}</Text>
-                    {sex !== '' && (
-                      <View className={pet.sex === 'MALE' ? 'home-pet-sex home-pet-sex-male' : 'home-pet-sex home-pet-sex-female'}>
-                        <Text className={pet.sex === 'MALE' ? 'home-pet-sex-text' : 'home-pet-sex-text home-pet-sex-text-female'}>{sex}</Text>
+          {pets.length > 0 && (
+            <ScrollView className='home-pet-scroll' style={{ height: `calc(var(--home-unit) * ${petListHeight})` }} scrollY enhanced showScrollbar={false}>
+              {pets.map(pet => {
+                const badge = petBadges[pet.petId]
+                const sex = sexLabel(pet.sex)
+                // Match the archive list/detail: a pet without an uploaded avatar falls back to
+                // its type default (dog/cat); OTHER keeps the generic profile placeholder.
+                return (
+                  <Button key={pet.petId} className='home-pet-row' hoverClass='none' onClick={() => open(`/consumer/pages/pet-archive/detail?petId=${pet.petId}`)}>
+                    <Image className='home-pet-row-avatar' src={petAvatar(pet)} mode='aspectFill' />
+                    <View className='home-pet-row-main'>
+                      <View className='home-pet-row-name'>
+                        <Text className='home-pet-name'>{pet.name}</Text>
+                        {sex !== '' && (
+                          <View className={pet.sex === 'MALE' ? 'home-pet-sex home-pet-sex-male' : 'home-pet-sex home-pet-sex-female'}>
+                            <Text className={pet.sex === 'MALE' ? 'home-pet-sex-text' : 'home-pet-sex-text home-pet-sex-text-female'}>{sex}</Text>
+                          </View>
+                        )}
+                      </View>
+                      <Text className='home-pet-breed'>{breedAgeLine(pet, todayISO)}</Text>
+                    </View>
+                    {badge && (
+                      <View className='home-pet-chip'>
+                        <View className={badge.tone === 'vaccine' ? 'home-pet-chip-pill home-pet-chip-pill-vaccine' : 'home-pet-chip-pill home-pet-chip-pill-deworm'}>
+                          <View className={badge.tone === 'vaccine' ? 'home-pet-chip-icon home-pet-chip-icon-vaccine' : 'home-pet-chip-icon home-pet-chip-icon-deworm'} />
+                          <Text className={badge.tone === 'vaccine' ? 'home-pet-chip-title' : 'home-pet-chip-title home-pet-chip-title-deworm'}>{badge.title}</Text>
+                        </View>
+                        <Text className='home-pet-chip-line'>{badge.line}</Text>
                       </View>
                     )}
-                  </View>
-                  <Text className='home-pet-breed'>{breedAgeLine(pet, todayISO)}</Text>
-                </View>
-                {badge && (
-                  <View className='home-pet-chip'>
-                    <View className={badge.tone === 'vaccine' ? 'home-pet-chip-pill home-pet-chip-pill-vaccine' : 'home-pet-chip-pill home-pet-chip-pill-deworm'}>
-                      <View className={badge.tone === 'vaccine' ? 'home-pet-chip-icon home-pet-chip-icon-vaccine' : 'home-pet-chip-icon home-pet-chip-icon-deworm'} />
-                      <Text className={badge.tone === 'vaccine' ? 'home-pet-chip-title' : 'home-pet-chip-title home-pet-chip-title-deworm'}>{badge.title}</Text>
-                    </View>
-                    <Text className='home-pet-chip-line'>{badge.line}</Text>
-                  </View>
-                )}
-              </Button>
-            )
-          })}
+                  </Button>
+                )
+              })}
+            </ScrollView>
+          )}
         </View>
       </View>
       {/* 功能入口（§4.4 功能版子集；原稿该区域为营销位/热门服务——无 V1 后端维持裁剪，入口卡沿白卡家族呈现） */}
