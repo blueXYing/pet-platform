@@ -150,6 +150,7 @@ export default function PetArchiveForm() {
     if (Object.keys(invalid).length) { setNoticeKind('error'); setNotice(Object.values(invalid)[0]); return }
     saving.current = true; setPhase('saving'); setNotice('')
     const currentRevision = scope.revision
+    const creating = !petId
     if (!request.current || !sameDraft(request.current.draft, draft)) {
       // Preview transaction identity only; real writes require the approved UUID provider.
       request.current = { id: `preview-${Date.now()}-${++sequence.current}`, draft: { ...draft } }
@@ -161,6 +162,13 @@ export default function PetArchiveForm() {
       savedPetId.current = saved.petId
       const confirmed = preview ? pending.draft : { name: saved.name, petType: saved.petType, breedName: saved.breedName || '', birthDate: saved.birthDate || '', sex: saved.sex, weightInput: weightContractToInput(saved.weightKg), healthNote: saved.healthNote || '' }
       setDraft(confirmed); setBaseline(confirmed); setAvatarPreview(saved.avatarUrl || (preview ? avatarPreview : '')); setAvatarAssetId(null); setAvatarDirty(false); setPhase('ready'); setNoticeKind('info'); setNotice(preview ? '预览数据已更新' : '已保存'); request.current = null
+      if (!preview && creating) {
+        // Add flow returns to the home tab after the server confirms the create; edits stay.
+        try { await Taro.switchTab({ url: '/consumer/pages/home/index' }) }
+        catch {
+          if (mounted.current && currentRevision === scope.revision) { setNoticeKind('error'); setNotice('已保存，但返回首页失败，请手动返回') }
+        }
+      }
     } catch (error) {
       if (mounted.current && currentRevision === scope.revision) { setPhase('save-error'); setNoticeKind('error'); setNotice(preview ? '保存失败，请重试；已填写内容保留' : integrationMessage(error)) }
     } finally { saving.current = false }

@@ -138,8 +138,25 @@ test('home pet archive falls back to the same cat/dog default avatar as list and
   const source = readFileSync(new URL('../pages/home/index.tsx', import.meta.url), 'utf8')
   assert.match(source, /import defaultCatAvatar from '\.\.\/pet-archive\/assets\/pet-default-cat\.png'/)
   assert.match(source, /import defaultDogAvatar from '\.\.\/pet-archive\/assets\/pet-default-dog\.png'/)
-  assert.match(source, /const fallbackAvatar = pet\.petType === 'DOG' \? defaultDogAvatar : pet\.petType === 'CAT' \? defaultCatAvatar : placeholderAvatar/)
-  assert.match(source, /src=\{pet\.avatarUrl \|\| fallbackAvatar\}/)
+  assert.match(source, /function petAvatar\(pet: PetView\)/)
+  assert.match(source, /src=\{petAvatar\(pet\)\}/)
+})
+
+test('home shows up to three pets and a dropdown to find the rest', () => {
+  const source = readFileSync(new URL('../pages/home/index.tsx', import.meta.url), 'utf8')
+  assert.match(source, /const top = active\.slice\(0, 3\)/)
+  assert.match(source, /setPets\(top\); setPetAll\(active\)/)
+  assert.match(source, /const extraPets = petAll\.slice\(pets\.length\)/)
+  assert.match(source, /extraPets\.length > 0/)
+  assert.match(source, /id='home-pet-menu-toggle'/)
+  assert.match(source, /id='home-pet-menu'/)
+  assert.match(source, /className='home-pet-menu-item'/)
+})
+
+test('creating a pet returns to the home tab after a successful save', () => {
+  const source = readFileSync(new URL('../pages/pet-archive/form.tsx', import.meta.url), 'utf8')
+  assert.match(source, /const creating = !petId/)
+  assert.match(source, /await Taro\.switchTab\(\{ url: '\/consumer\/pages\/home\/index' \}\)/)
 })
 
 test('impossible calendar dates are rejected instead of deriving an age', () => {
