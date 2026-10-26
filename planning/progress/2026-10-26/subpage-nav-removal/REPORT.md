@@ -29,7 +29,7 @@
 - `npm run typecheck`：PASS
 - `npm test`：**615 / 615**，0 失败（原 614 + 新增静态门禁 1）
 - `python3 backend/tools/run-frontend-gate.py miniapp-build`：**PASS**
-- `check:package`：总包 **8,124,001** 字节，20 个普通分包，预算内
+- `check:package`：总包 **8,124,031** 字节，20 个普通分包，预算内
 - 微信开发者工具（Windows，iPhone 模拟器，真实 E2E 后端 `127.0.0.1:18081`）：
   - 真实模式 `.consumer-bottom-nav` 数量为 **0** 的代表页：宠物档案列表/添加表单、我的订单、门店目录、我的售后、积分商城、积分任务、成为服务者、入驻申请、确认支付
   - `preview=1` 宠物档案添加表单：`.consumer-bottom-nav` 数量 **1**，底栏贴视口底部（390x844 下 top 749.86 / height 94.14）
