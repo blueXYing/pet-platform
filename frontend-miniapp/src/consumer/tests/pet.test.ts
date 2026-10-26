@@ -6,7 +6,7 @@ import {
 } from '../pet/model'
 import { WorkspaceScope, StaleContextError } from '../../shared/workspace'
 
-const draft: PetDraft = { name: '豆豆', breedName: '金毛寻回犬', birthDate: '2024-06-18', sex: 'MALE', weightInput: '28.5kg', healthNote: '性格温顺' }
+const draft: PetDraft = { name: '豆豆', petType: 'DOG', breedName: '金毛寻回犬', birthDate: '2024-06-18', sex: 'MALE', weightInput: '28.5kg', healthNote: '性格温顺' }
 const today = '2026-09-15'
 
 test('weight input keeps the designed kg shape and serializes to the two-decimal contract string', () => {
@@ -60,7 +60,7 @@ test('preview repository save is idempotent per request and replay with other co
   await assert.rejects(repo.save('30001', { ...draft, name: '其他' }, 'request-1'), /REQUEST_CONFLICT/)
 })
 
-test('preview edit keeps contract-managed fields and create leaves petType unresolved', async () => {
+test('preview edit keeps contract-managed fields and create uses the selected petType', async () => {
   const repo = new PreviewPetRepository()
   await repo.save('30001', draft, 'request-2')
   const pets = await repo.load()
@@ -68,7 +68,7 @@ test('preview edit keeps contract-managed fields and create leaves petType unres
   assert.equal(doudou?.petType, 'DOG')
   assert.equal(doudou?.vaccineStatus, 'COMPLETE')
   const created = await repo.save(null, { ...draft, name: '新宠' }, 'request-3')
-  assert.equal(created.petType, 'OTHER')
+  assert.equal(created.petType, 'DOG')
   assert.match(created.petId, /^preview-/)
 })
 

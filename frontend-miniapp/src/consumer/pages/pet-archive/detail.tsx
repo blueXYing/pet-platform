@@ -21,6 +21,8 @@ import tapeA from './assets/tape-a.png'
 import tapeB from './assets/tape-b.png'
 import petPhoto from './assets/pet-photo-detail.png'
 import catPhoto from './assets/pet-photo-list-mimi.png'
+import defaultCatAvatar from './assets/pet-default-cat.png'
+import defaultDogAvatar from './assets/pet-default-dog.png'
 import navBack from './assets/nav-back.png'
 import navEdit from './assets/nav-edit.png'
 import tagIconVaccine from './assets/tag-icon-vaccine-blue.png'
@@ -144,7 +146,8 @@ export default function PetArchiveDetail() {
         brand: record.productName || '', date: dewormingDateLine(record),
       }))
   const tag = supplement.tag
-  const photo = ready ? pet.avatarUrl || (preview ? (pet.petId === '30001' ? petPhoto : pet.petId === '30002' ? catPhoto : null) : null) : null
+  const defaultPhoto = ready && pet ? (pet.petType === 'DOG' ? defaultDogAvatar : pet.petType === 'CAT' ? defaultCatAvatar : null) : null
+  const photo = ready && pet ? pet.avatarUrl || (preview ? (pet.petId === '30001' ? petPhoto : pet.petId === '30002' ? catPhoto : null) : defaultPhoto) : null
   return <ConsumerPageLayout page='petDetail' unit={unit} navigation={preview ? { idPrefix: 'pet', disabled: phase !== 'ready', onSelect: key => void switchConsumerTab(key), referencePlacement: referenceCanvas ? { bottom: 0, height: 61 } : undefined } : undefined} className={`pet-page pet-detail-page${referenceCanvas ? ' pet-reference-canvas' : ''}`} style={style}>
     <View className='pet-status-area' />
     <View className='pet-design pet-detail-design' data-phase={phase}>
@@ -165,7 +168,7 @@ export default function PetArchiveDetail() {
       </View>}
       {ready && <>
         <View className='pet-abs pet-detail-identity' />
-        {photo ? <Image className='pet-abs pet-detail-photo' src={photo} mode={pet.avatarUrl ? 'aspectFill' : 'aspectFit'} /> : <View className='pet-abs pet-detail-photo pet-avatar-empty'><Text>{pet.name.slice(0, 1)}</Text></View>}
+        {photo ? <Image className='pet-abs pet-detail-photo' src={photo} mode={(pet.avatarUrl || (!preview && defaultPhoto)) ? 'aspectFill' : 'aspectFit'} /> : <View className='pet-abs pet-detail-photo pet-avatar-empty'><Text>{pet.name.slice(0, 1)}</Text></View>}
         <View className='pet-abs pet-detail-identity-line'><Text className='pet-detail-name'>{pet.name}</Text>
         {sexLabel(pet.sex) && <View className={`pet-detail-sexpill${pet.sex === 'FEMALE' ? ' pet-detail-sexpill-female' : ''}`}><Text>{sexLabel(pet.sex)}</Text></View>}</View>
         <Text className='pet-abs pet-detail-breed'>{breedAgeLine(pet, today)}</Text>

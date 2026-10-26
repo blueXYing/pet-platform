@@ -10,21 +10,23 @@ import { integrationMessage } from '../../../shared/consumer-api'
 import { realPetRepository } from '../../api/page-repository'
 import {
   deriveAgeLabel, emptyDraft, formFixture, isPreviewScenario,
-  PreviewPetRepository, previewRepository, previewSupplement, sameDraft, validateDraft, weightContractToInput, type PetDraft, type PetPhase, type PetSex,
+  PreviewPetRepository, previewRepository, previewSupplement, sameDraft, validateDraft, weightContractToInput, type PetDraft, type PetPhase, type PetSex, type PetType,
 } from '../../pet/model'
 import stripMain from './assets/strip-main.png'
 import stripFormBottom from './assets/strip-form-bottom.png'
 import navBack from './assets/nav-back.png'
 import navEdit from './assets/nav-edit.png'
 import iconDate from './assets/icon-date.png'
+import defaultCatAvatar from './assets/pet-default-cat.png'
+import defaultDogAvatar from './assets/pet-default-dog.png'
 import './fonts.css'
 import './form.css'
 
 // Design states 95:1481 (brother) / 95:1844 (sister): identical fixture values, opposite sex selection.
 function initialDraft(petId: string | undefined, scenario: string, loaded: PetDraft | null): PetDraft {
   if (loaded) return loaded
-  if (scenario === 'form-brother') return { ...formFixture, sex: 'MALE' }
-  if (scenario === 'form-sister') return { ...formFixture, sex: 'FEMALE' }
+  if (scenario === 'form-brother') return { ...formFixture, sex: 'MALE', petType: 'DOG' }
+  if (scenario === 'form-sister') return { ...formFixture, sex: 'FEMALE', petType: 'CAT' }
   return { ...emptyDraft }
 }
 export default function PetArchiveForm() {
@@ -38,9 +40,13 @@ export default function PetArchiveForm() {
   const [draft, setDraft] = useState<PetDraft>({ ...emptyDraft })
   const [baseline, setBaseline] = useState<PetDraft>({ ...emptyDraft })
   const [errors, setErrors] = useState<ReturnType<typeof validateDraft>>({})
+  const [avatarPreview, setAvatarPreview] = useState('')
+  const [avatarAssetId, setAvatarAssetId] = useState<string | null>(null)
+  const [avatarUploading, setAvatarUploading] = useState(false)
+  const [avatarDirty, setAvatarDirty] = useState(false)
   const [notice, setNotice] = useState('')
   const [noticeKind, setNoticeKind] = useState<'info' | 'error'>('info')
-  const [designHeight, setDesignHeight] = useState(1066)
+  const [designHeight, setDesignHeight] = useState(1242)
   const mounted = useRef(true)
   const sequence = useRef(0)
   const previousRevision = useRef(revision)
@@ -62,21 +68,21 @@ export default function PetArchiveForm() {
       const pet = petId ? await scope.run(undefined, () => repository.current.get(petId)) : null
       if (!mounted.current || current !== sequence.current || currentRevision !== scope.revision) return
       let initial: PetDraft = { ...emptyDraft }
-      let height = 1066
+      let height = 1242
       if (petId) {
         if (!pet) { setPhase('load-error'); return }
-        initial = { name: pet.name, breedName: pet.breedName || '', birthDate: pet.birthDate || '', sex: pet.sex, weightInput: weightContractToInput(pet.weightKg), healthNote: pet.healthNote || '' }
+        initial = { name: pet.name, petType: pet.petType, breedName: pet.breedName || '', birthDate: pet.birthDate || '', sex: pet.sex, weightInput: weightContractToInput(pet.weightKg), healthNote: pet.healthNote || '' }
       } else {
         initial = initialDraft(petId, scenario, null)
-        if (scenario === 'form-sister') height = 1067
+        if (scenario === 'form-sister') height = 1243
       }
       const pending = !preview && consumerApi.pendingCommand(petId ? `pet:${petId}` : 'pet:create')
       if (pending && pending.data) {
         const p = pending.data
-        initial = { name: String(p.name), breedName: String(p.breedName || ''), birthDate: String(p.birthDate || ''), sex: p.sex as PetSex, weightInput: weightContractToInput(p.weightKg as string | null), healthNote: String(p.healthNote || '') }
+        initial = { name: String(p.name), petType: (['DOG', 'CAT', 'OTHER'].includes(String(p.petType)) ? p.petType : initial.petType) as PetType, breedName: String(p.breedName || ''), birthDate: String(p.birthDate || ''), sex: p.sex as PetSex, weightInput: weightContractToInput(p.weightKg as string | null), healthNote: String(p.healthNote || '') }
       }
       setDesignHeight(height)
-      setDraft(initial); setBaseline(initial); request.current = null; setPhase('ready')
+      setDraft(initial); setBaseline(initial); setAvatarPreview(pet?.avatarUrl || ''); setAvatarAssetId(null); setAvatarDirty(false); request.current = null; setPhase('ready')
       if (pending) { setPhase('save-error'); setNotice('上次保存结果尚未确认，请重试原操作') }
     } catch {
       if (mounted.current && current === sequence.current && currentRevision === scope.revision) setPhase('load-error')
@@ -92,7 +98,7 @@ export default function PetArchiveForm() {
       previousRevision.current = revision
       sequence.current++; request.current = null; saving.current = false
       savedPetId.current = petId || null
-      setDraft({ ...emptyDraft }); setBaseline({ ...emptyDraft }); setNotice(''); setErrors({})
+      setDraft({ ...emptyDraft }); setBaseline({ ...emptyDraft }); setAvatarPreview(''); setAvatarAssetId(null); setAvatarDirty(false); setNotice(''); setErrors({})
       repository.current = preview ? new PreviewPetRepository([]) : realPetRepository()
       setPhase('expired')
       if (!preview && context?.workspace === 'consumer') void load()
@@ -110,8 +116,36 @@ export default function PetArchiveForm() {
   function pickSex(value: PetSex) {
     edit('sex', value)
   }
+  async function chooseAvatar() {
+    if (!editable || fieldsLocked || avatarUploading) return
+    try {
+      const selected = await Taro.chooseMedia({ count: 1, mediaType: ['image'], sourceType: ['album', 'camera'], sizeType: ['original'] })
+      const tempFilePath = selected.tempFiles[0]?.tempFilePath
+      if (!tempFilePath) return
+      setAvatarPreview(tempFilePath); setAvatarDirty(true)
+      if (preview) {
+        setNoticeKind('info'); setNotice('头像预览已更新')
+        return
+      }
+      const ownerUserId = scope.current?.userId
+      if (!ownerUserId) throw new Error('COMMON_UNAUTHORIZED')
+      setAvatarUploading(true)
+      try {
+        const requestId = await consumerApi.uuid()
+        const receipt = await consumerApi.uploadPrivateAsset({ filePath: tempFilePath, requestId, ownerUserId, purpose: 'PET_AVATAR' })
+        setAvatarAssetId(receipt.assetId)
+        setNoticeKind('info')
+        setNotice('头像已上传；保存后生效')
+      } finally {
+        setAvatarUploading(false)
+      }
+    } catch (error) {
+      setNoticeKind('error')
+      setNotice(integrationMessage(error))
+    }
+  }
   async function save() {
-    if (saving.current || !['ready', 'save-error'].includes(phase)) return
+    if (saving.current || avatarUploading || !['ready', 'save-error'].includes(phase)) return
     const invalid = validateDraft(draft, today); setErrors(invalid)
     if (Object.keys(invalid).length) { setNoticeKind('error'); setNotice(Object.values(invalid)[0]); return }
     saving.current = true; setPhase('saving'); setNotice('')
@@ -122,11 +156,11 @@ export default function PetArchiveForm() {
     }
     const pending = request.current
     try {
-      const saved = await scope.run(undefined, () => repository.current.save(savedPetId.current, pending.draft, pending.id))
+      const saved = await scope.run(undefined, () => repository.current.save(savedPetId.current, pending.draft, pending.id, avatarAssetId))
       if (!mounted.current || currentRevision !== scope.revision) return
       savedPetId.current = saved.petId
-      const confirmed = preview ? pending.draft : { name: saved.name, breedName: saved.breedName || '', birthDate: saved.birthDate || '', sex: saved.sex, weightInput: weightContractToInput(saved.weightKg), healthNote: saved.healthNote || '' }
-      setDraft(confirmed); setBaseline(confirmed); setPhase('ready'); setNoticeKind('info'); setNotice(preview ? '预览数据已更新' : '已保存'); request.current = null
+      const confirmed = preview ? pending.draft : { name: saved.name, petType: saved.petType, breedName: saved.breedName || '', birthDate: saved.birthDate || '', sex: saved.sex, weightInput: weightContractToInput(saved.weightKg), healthNote: saved.healthNote || '' }
+      setDraft(confirmed); setBaseline(confirmed); setAvatarPreview(saved.avatarUrl || (preview ? avatarPreview : '')); setAvatarAssetId(null); setAvatarDirty(false); setPhase('ready'); setNoticeKind('info'); setNotice(preview ? '预览数据已更新' : '已保存'); request.current = null
     } catch (error) {
       if (mounted.current && currentRevision === scope.revision) { setPhase('save-error'); setNoticeKind('error'); setNotice(preview ? '保存失败，请重试；已填写内容保留' : integrationMessage(error)) }
     } finally { saving.current = false }
@@ -134,7 +168,7 @@ export default function PetArchiveForm() {
   async function leave(tab?: ConsumerNavigationKey) {
     if (saving.current) return
     const currentRevision = scope.revision
-    if (!sameDraft(draft, baseline)) {
+    if (!sameDraft(draft, baseline) || avatarDirty) {
       const result = await Taro.showModal({ title: '放弃修改？', content: '尚未保存的修改将不会保留。', confirmText: '放弃修改', cancelText: '继续编辑' })
       if (!result.confirm) return
     }
@@ -144,8 +178,10 @@ export default function PetArchiveForm() {
     else await Taro.switchTab({ url: '/consumer/pages/mine/index' })
   }
   const editable = ['ready', 'saving', 'save-error'].includes(phase)
-  const fieldsLocked = phase === 'saving' || (!preview && !!consumerApi.pendingCommand(savedPetId.current ? `pet:${savedPetId.current}` : 'pet:create'))
-  return <ConsumerPageLayout page='petForm' unit={unit} navigation={preview ? { idPrefix: 'pet', disabled: !editable || phase === 'saving', onSelect: key => leave(key), referencePlacement: referenceCanvas ? { top: designHeight === 1067 ? 991 : 990 } : undefined } : undefined} className={`pet-page pet-form-page${referenceCanvas ? ' pet-reference-canvas' : ''}`} style={style}>
+  const fieldsLocked = phase === 'saving' || avatarUploading || (!preview && !!consumerApi.pendingCommand(savedPetId.current ? `pet:${savedPetId.current}` : 'pet:create'))
+  const defaultAvatar = draft.petType === 'DOG' ? defaultDogAvatar : draft.petType === 'CAT' ? defaultCatAvatar : null
+  const avatarSource = avatarPreview || defaultAvatar
+  return <ConsumerPageLayout page='petForm' unit={unit} navigation={preview ? { idPrefix: 'pet', disabled: !editable || phase === 'saving', onSelect: key => leave(key), referencePlacement: referenceCanvas ? { top: designHeight === 1243 ? 1167 : 1166 } : undefined } : undefined} className={`pet-page pet-form-page${referenceCanvas ? ' pet-reference-canvas' : ''}`} style={style}>
     <View className='pet-status-area' />
     <View className='pet-design pet-form-design' data-phase={phase} style={{ height: `calc(var(--pet-unit) * ${designHeight})` }}>
       <Image className='pet-abs pet-form-strip1' src={stripMain} mode='scaleToFill' />
@@ -164,6 +200,25 @@ export default function PetArchiveForm() {
       </View>}
       {editable && <>
         <Text className='pet-abs pet-form-title'>添加宠物信息</Text>
+        <View className='pet-abs pet-form-field pet-form-field-type'>
+          <Text className='pet-form-label'>宠物类型</Text>
+          <View className='pet-form-typewrap'>
+            {([['DOG', '狗狗'], ['CAT', '猫猫'], ['OTHER', '其他']] as Array<[PetType, string]>).map(([value, label]) => (
+              <Button key={value} id={`pet-form-type-${value}`}
+                className={`pet-form-typebtn${draft.petType === value ? ' is-selected' : ''}`}
+                ariaLabel={`宠物类型：${label}${draft.petType === value ? '，已选择' : ''}`}
+                disabled={!!petId || fieldsLocked}
+                onClick={() => edit('petType', value)}>{label}</Button>
+            ))}
+          </View>
+        </View>
+        <Button id='pet-form-avatar' className='pet-abs pet-form-avatar-card' ariaLabel='更换头像'
+          disabled={fieldsLocked} hoverClass='none' onClick={() => void chooseAvatar()}>
+          {avatarSource
+            ? <Image className='pet-form-avatar-image' src={avatarSource} mode='aspectFill' />
+            : <View className='pet-form-avatar-image pet-form-avatar-empty'><Text className='pet-form-avatar-plus'>+</Text></View>}
+          <Text className='pet-form-avatar-label'>更换头像</Text>
+        </Button>
         <View className='pet-abs pet-form-field pet-form-field-name'>
           <Text className='pet-form-label'>宠物名字</Text>
           <Input id='pet-form-name' className='pet-form-input' value={draft.name} maxlength={-1} disabled={fieldsLocked} ariaLabel='宠物名字' onInput={event => edit('name', event.detail.value)} adjustPosition />
@@ -207,8 +262,8 @@ export default function PetArchiveForm() {
           <Text className='pet-form-label'>健康备注</Text>
           <Textarea id='pet-form-note' className='pet-form-textarea' value={draft.healthNote} maxlength={-1} disabled={fieldsLocked} ariaLabel='健康备注' onInput={event => edit('healthNote', event.detail.value)} adjustPosition showConfirmBar={false} />
         </View>
-        <Button id='pet-form-cancel' className='pet-abs pet-form-cancel' disabled={phase === 'saving'} onClick={() => void leave()}><Text className='pet-form-cancel-label'>取消</Text></Button>
-        <Button id='pet-form-save' className='pet-abs pet-form-save' disabled={phase === 'saving'} onClick={() => void save()}><Text className='pet-form-save-label'>{phase === 'saving' ? '保存中…' : '保存'}</Text></Button>
+        <Button id='pet-form-cancel' className='pet-abs pet-form-cancel' disabled={fieldsLocked} onClick={() => void leave()}><Text className='pet-form-cancel-label'>取消</Text></Button>
+        <Button id='pet-form-save' className='pet-abs pet-form-save' disabled={fieldsLocked} onClick={() => void save()}><Text className='pet-form-save-label'>{phase === 'saving' ? '保存中…' : '保存'}</Text></Button>
         {notice && <Text id='pet-notice' className={`pet-notice pet-form-notice${noticeKind === 'error' ? ' pet-form-notice-error' : ''}`}>{notice}</Text>}
       </>}
     </View>

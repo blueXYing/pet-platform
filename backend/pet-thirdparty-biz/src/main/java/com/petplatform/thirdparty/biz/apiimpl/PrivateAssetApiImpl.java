@@ -38,9 +38,11 @@ public final class PrivateAssetApiImpl implements PrivateAssetApi {
    * ticket binds at most six attachments; the per-file bound stays this pipeline's 10 MiB.
    */
   public static final String FEEDBACK_ATTACHMENT = "FEEDBACK_ATTACHMENT";
+  /** CCR-C-PET-AVATAR-001: consumer pet avatars share the immutable private-asset pipeline. */
+  public static final String PET_AVATAR = "PET_AVATAR";
   private static final java.util.Set<String> UPLOAD_PURPOSES =
       java.util.Set.of(MERCHANT_APPLICATION_MATERIAL, SERVICE_COVER, "AFTERSALE_EVIDENCE",
-          FEEDBACK_ATTACHMENT);
+          FEEDBACK_ATTACHMENT, PET_AVATAR);
   static final int MAX_BYTES = 10 * 1024 * 1024;
   private static final DecimalPublicIdCodec IDS = new DecimalPublicIdCodec();
 

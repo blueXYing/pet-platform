@@ -12,16 +12,34 @@ public final class PetCommands {
             CommandContext context,
             String name, String petType, String breedName, LocalDate birthDate, String sex,
             BigDecimal weightKg, String sterilizationStatus, String vaccineStatus,
-            String healthNote, String avatarUrl, boolean defaultPet
-    ) {}
+            String healthNote, String avatarAssetId, String avatarUrl, boolean defaultPet
+    ) {
+        /** Backward-compatible constructor for callers without the CCR-C-PET-AVATAR-001 asset id. */
+        public CreatePet(CommandContext context, String name, String petType, String breedName,
+                         LocalDate birthDate, String sex, BigDecimal weightKg,
+                         String sterilizationStatus, String vaccineStatus, String healthNote,
+                         String avatarUrl, boolean defaultPet) {
+            this(context, name, petType, breedName, birthDate, sex, weightKg, sterilizationStatus,
+                    vaccineStatus, healthNote, null, avatarUrl, defaultPet);
+        }
+    }
 
     public record UpdatePet(
             CommandContext context,
             String petId,
             String name, String breedName, LocalDate birthDate, String sex,
             BigDecimal weightKg, String sterilizationStatus, String vaccineStatus,
-            String healthNote, String avatarUrl, Boolean defaultPet
-    ) {}
+            String healthNote, String avatarAssetId, String avatarUrl, Boolean defaultPet
+    ) {
+        /** Backward-compatible constructor for callers without the CCR-C-PET-AVATAR-001 asset id. */
+        public UpdatePet(CommandContext context, String petId, String name, String breedName,
+                         LocalDate birthDate, String sex, BigDecimal weightKg,
+                         String sterilizationStatus, String vaccineStatus, String healthNote,
+                         String avatarUrl, Boolean defaultPet) {
+            this(context, petId, name, breedName, birthDate, sex, weightKg, sterilizationStatus,
+                    vaccineStatus, healthNote, null, avatarUrl, defaultPet);
+        }
+    }
 
     public record DeletePet(CommandContext context, String petId) {}
 

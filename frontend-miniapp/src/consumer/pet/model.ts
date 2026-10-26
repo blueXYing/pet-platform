@@ -12,7 +12,7 @@ export type PetView = Readonly<{
   healthNote: string | null; avatarUrl: string | null; isDefault: boolean; status: PetStatus
 }>
 export type PetDraft = Readonly<{
-  name: string; breedName: string; birthDate: string; sex: PetSex
+  name: string; petType: PetType; breedName: string; birthDate: string; sex: PetSex
   weightInput: string; healthNote: string
 }>
 export type PetPhase = 'loading' | 'ready' | 'saving' | 'load-error' | 'save-error' | 'expired' | 'unavailable'
@@ -72,11 +72,11 @@ export function validateDraft(draft: PetDraft, todayISO: string): PetDraftErrors
   return errors
 }
 export function sameDraft(a: PetDraft, b: PetDraft) {
-  return a.name === b.name && a.breedName === b.breedName && a.birthDate === b.birthDate && a.sex === b.sex && a.weightInput === b.weightInput && a.healthNote === b.healthNote
+  return a.name === b.name && a.petType === b.petType && a.breedName === b.breedName && a.birthDate === b.birthDate && a.sex === b.sex && a.weightInput === b.weightInput && a.healthNote === b.healthNote
 }
 export function draftToContract(draft: PetDraft): PetView {
   return {
-    petId: '', name: draft.name, petType: 'OTHER', breedName: draft.breedName.trim() || null,
+    petId: '', name: draft.name, petType: draft.petType, breedName: draft.breedName.trim() || null,
     birthDate: draft.birthDate || null, sex: draft.sex, weightKg: draft.weightInput.trim() ? weightInputToContract(draft.weightInput) : null,
     sterilizationStatus: null, vaccineStatus: null, healthNote: draft.healthNote.trim() || null,
     avatarUrl: null, isDefault: false, status: 'ACTIVE',
@@ -123,10 +123,10 @@ export const designSamples = {
   ],
 }
 export const formFixture: PetDraft = {
-  name: '豆豆', breedName: '金毛寻回犬', birthDate: '', sex: 'UNKNOWN',
+  name: '豆豆', petType: 'DOG', breedName: '金毛寻回犬', birthDate: '', sex: 'UNKNOWN',
   weightInput: '28.5kg', healthNote: '性格温顺粘人，喜欢球类玩具。对鸡肉不过敏，注意控制零食量。',
 }
-export const emptyDraft: PetDraft = { name: '', breedName: '', birthDate: '', sex: 'UNKNOWN', weightInput: '', healthNote: '' }
+export const emptyDraft: PetDraft = { name: '', petType: 'DOG', breedName: '', birthDate: '', sex: 'UNKNOWN', weightInput: '', healthNote: '' }
 
 // These visual-only records belong to the specific source fixture, never every pet.
 // This is NOT a new HTTP DTO: record/chip contracts still require CCR approval.
@@ -177,7 +177,7 @@ export class PreviewPetRepository {
     if (!found) throw new Error('PET_NOT_FOUND')
     return found
   }
-  async save(petId: string | null, draft: PetDraft, requestId: string): Promise<PetView> {
+  async save(petId: string | null, draft: PetDraft, requestId: string, _avatarAssetId: string | null = null): Promise<PetView> {
     await this.pause()
     if (Object.keys(validateDraft(draft, '9999-12-31')).length) throw new Error('INVALID_DRAFT')
     const request = { petId, draft: { ...draft } }

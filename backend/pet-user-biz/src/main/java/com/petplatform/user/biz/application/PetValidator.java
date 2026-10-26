@@ -63,6 +63,9 @@ final class PetValidator {
 
     static String avatar(String value) {
         if (value == null) return null;
+        // CCR-C-PET-AVATAR-001: the pet owner's uploaded avatar is stored as an opaque
+        // private-asset reference; clients never receive this internal form (PetView signs it).
+        if (value.matches("asset:[1-9][0-9]{0,18}")) return value;
         if (value.length() > 512 || !value.startsWith("https://")) {
             throw new IllegalArgumentException("avatarUrl must be an https URL of at most 512 characters");
         }

@@ -74,7 +74,7 @@ function rects(selectors) {
   await launch('consumer/pages/pet-archive/form', 'preview=1&scenario=form-brother', '添加宠物信息')
   const formRects = rects(['.pet-form-design', '#pet-form-name', '#pet-tab-home', '#pet-tab-services', '#pet-tab-mine'])
   const scale = formRects[0].width / 402
-  if (Math.abs(formRects[1].top - formRects[0].top - 235 * scale) > 2) throw new Error('direct form entry lost base positioning')
+  if (Math.abs(formRects[1].top - formRects[0].top - 411 * scale) > 2) throw new Error('direct form entry lost base positioning')
   if (!(formRects[2].left < formRects[3].left && formRects[3].left < formRects[4].left)) throw new Error('tab buttons overlap')
   screenshot('takeover-form-direct.png')
   check('direct form entry positions fields and separates all five tabs')
