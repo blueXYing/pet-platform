@@ -61,9 +61,9 @@
 .home-pet-head { display: flex; align-items: center; justify-content: space-between; height: calc(var(--home-unit) * 28); margin-bottom: calc(var(--home-unit) * 14); }
 .home-pet-head-left { display: flex; align-items: center; gap: calc(var(--home-unit) * 8); height: 100%; }
 .home-pet-h1 { font-size: calc(var(--home-unit) * 18); line-height: calc(var(--home-unit) * 28); font-weight: 700; color: #1d0d07; white-space: nowrap; }
-.home-pet-count { font-size: calc(var(--home-unit) * 11); line-height: calc(var(--home-unit) * 16.5); color: #53bfee; white-space: nowrap; }
-.home-pet-add { display: flex; align-items: center; justify-content: center; width: calc(var(--home-unit) * 22); height: calc(var(--home-unit) * 22); padding: 0; background: transparent; border: none; }
-.home-pet-add-text { font-size: calc(var(--home-unit) * 16); line-height: calc(var(--home-unit) * 20); font-weight: 700; color: #53bfee; }
+.home-pet-count { font-size: calc(var(--home-unit) * 11); line-height: calc(var(--home-unit) * 28); color: #53bfee; white-space: nowrap; }
+.home-pet-add { display: flex; align-items: center; justify-content: center; width: calc(var(--home-unit) * 22); height: calc(var(--home-unit) * 28); padding: 0; background: transparent; border: none; }
+.home-pet-add-text { font-size: calc(var(--home-unit) * 14); line-height: calc(var(--home-unit) * 28); font-weight: 700; color: #53bfee; }
 .home-pet-more { display: flex; align-items: center; gap: calc(var(--home-unit) * 2); height: calc(var(--home-unit) * 20); }
 .home-pet-more-icon { flex-shrink: 0; width: calc(var(--home-unit) * 14.594); height: calc(var(--home-unit) * 20); background: var(--pet-baike-icon) center / calc(var(--home-unit) * 10.496) calc(var(--home-unit) * 11.667) no-repeat; }
 .home-pet-more-text { font-size: calc(var(--home-unit) * 12); line-height: calc(var(--home-unit) * 18); color: #53bfee; white-space: nowrap; }
