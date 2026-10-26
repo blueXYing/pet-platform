@@ -1389,7 +1389,9 @@ public final class E2eCoreLoopServer {
         // the encyclopedia content tables (62号, whose seed INSERTs ship the published breed
         // content the C read face serves). Coupon tables live in SQL06 and need no extra file.
         "60-Points-Task-Schema-v0.1.sql",
-        "62-Baike-Content-Schema-v0.1.sql"));
+        "62-Baike-Content-Schema-v0.1.sql",
+        // Contract 68 health-record tables (vaccine/deworm add+list).
+        "68-Pet-Health-Record-Schema-v0.1.sql"));
     try (var connection = source.getConnection()) {
       for (String file : scripts) {
         ScriptUtils.executeSqlScript(connection, new EncodedResource(

@@ -29,6 +29,8 @@ public final class CHttpModels {
             }
         }
 
+        public Object value(String name) { return fields.get(name); }
+
         public String string(String name) {
             Object v = fields.get(name);
             if (v == null) return null;

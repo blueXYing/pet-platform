@@ -15,6 +15,7 @@
 - **根页自定义 tabBar（2026-10-26 追加裁决）**：原生 tabBar 在 `navigateTo` 二级页开始时先隐藏、目标页首帧尚未出现，造成空档闪烁。用户选择改为同款自定义 tabBar：`src/custom-tab-bar`（CoverView/CoverImage，白底/原图标/选中文字色 `#53bfee`，50px + safe-area 高度），5 个根页在 `useDidShow` 同步选中项，页面底部预留 bar 高度；二级页仍不显示底栏。自定义 bar 随 tab 页一起被二级页覆盖，消除原生栏先隐藏的空档。
 - **健康记录添加半框（2026-10-26 用户反馈）**：疫苗/驱虫记录添加不再是 `vaccine-form`/`deworm-form` 三级页；档案详情直接打开 `HealthRecordFormSheet`（96:2580/96:3006 面板：21px 侧距、46px 标题栏、#f0fbff 面板、白底 #c0ecff 输入、药丸取消/保存、close 96:2850、safe-area）。旧路由重定向到 `detail?recordSheet=...` 并打开半框。契约 68 字段不变；接种状态仍为读侧派生展示态，不作为表单字段；针次/备注选填保留，半框内部滚动。
 - **详情页固定头部（2026-10-26 用户反馈）**：`consumer/pages/pet-archive/detail` 的「宠物信息」头部/返回/编辑改为 viewport fixed（含状态栏高度），只让下方身份卡与记录区随页面滚动；`referenceCanvas` 预览保留设计画布内绝对定位。
+- **健康记录接口修复（2026-10-26 用户反馈）**：C 安全链白名单漏 `/pets/*/vaccination-records`、`/pets/*/deworming-records`，真实请求 403；`doseNumber` 按契约是整数，但控制器只接受 String，前端/接口传 number 返回 400；E2E loadSchemas 漏 SQL 68，本地 GET 500。已补安全匹配、整数解析、E2E schema；新增 `PetHealthRecordSecurityChainHttpTest`，本地库补建 68 两表并重启。
 - **契约/设计登记**：`docs/08-engineering/20-设计源登记表-figma-map.md` §4.7 偏差 13；`assets/manifest.json` 登记两个默认头像节点、字节和 sha256。
 
 ## 验证
@@ -26,6 +27,7 @@
 - 后端 JDK 21 `mvn compile` / `test-compile`：PASS（pet-user-biz / pet-thirdparty-biz / pet-boot 及依赖）
 - `PetValidatorAvatarTest`：PASS（asset ref 与 https 校验）
 - `check-module-deps.py`：PASS
+- 后端 `PetHealthRecordSecurityChainHttpTest`：**PASS 2/2**（booted C 安全链：带 Bearer 的疫苗/驱虫读写 200/201；匿名/伪 Bearer 401）
 - 微信开发者工具（当前构建）：
   - 狗狗类型：默认狗头像
   - 猫猫类型：默认猫头像
@@ -42,6 +44,7 @@
   - 疫苗记录添加：详情页点击「添加」直接打开底部半框，不进入三级页；`vaccine-record-sheet.png`，内部上滑可到备注/按钮 `vaccine-record-sheet-scrolled.png`；关闭后回到详情 `record-sheet-closed-detail.png`
   - 驱虫记录添加：同一半框形态 `deworm-record-sheet.png`
   - 旧 `vaccine-form` 深链重定向到详情并打开半框：`vaccine-record-sheet-direct.png`
+  - 健康记录接口：GET 列表 200；不存在宠物的 POST 不再 403/400（返回业务 404），前端可正常提交数字针次
   - 详情页顶部「宠物信息」固定：`detail-fixed-header-top.png`、滚动后 `detail-fixed-header-scrolled.png`
 
 ## 遗留 / 环境说明

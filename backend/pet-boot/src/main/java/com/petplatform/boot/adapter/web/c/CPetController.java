@@ -144,7 +144,7 @@ public class CPetController {
         MiniSessionView view = session(req);
         var command = new com.petplatform.user.api.command.PetHealthRecordCommands.CreateVaccinationRecord(
                 context(req, view), petId, date(body.string("recordDate")),
-                body.string("vaccineName"), integer(body.string("doseNumber"), "doseNumber"),
+                body.string("vaccineName"), integer(body.value("doseNumber"), "doseNumber"),
                 date(body.string("nextRecordDate")), body.string("note"));
         var outcome = healthRecords.createVaccinationOutcome(command);
         response.setStatus(outcome.replayed() ? 200 : 201);
@@ -213,12 +213,22 @@ public class CPetController {
         return body;
     }
 
-    private static Integer integer(String value, String field) {
-        if (value == null || value.isEmpty()) return null;
-        if (!value.matches("[1-9][0-9]{0,2}")) {
+    private static Integer integer(Object value, String field) {
+        if (value == null) return null;
+        Integer parsed;
+        if (value instanceof Integer i) {
+            parsed = i;
+        } else if (value instanceof Long l && l == l.intValue()) {
+            parsed = l.intValue();
+        } else if (value instanceof String s && s.matches("[1-9][0-9]{0,2}")) {
+            parsed = Integer.valueOf(s);
+        } else {
             throw new IllegalArgumentException(field + " must be a positive integer 1..20");
         }
-        return Integer.valueOf(value);
+        if (parsed < 1 || parsed > 20) {
+            throw new IllegalArgumentException(field + " must be a positive integer 1..20");
+        }
+        return parsed;
     }
 
     // ------------------------------------------------------------------ mapping

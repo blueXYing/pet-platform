@@ -96,9 +96,17 @@ public class CSessionSecurityConfiguration {
                     "/api/v1/c/auth/session",
                     "/api/v1/c/pets",
                     "/api/v1/c/pets/*",
+                    // Contract 68 health-record sub-resources: the pet owner reads and adds
+                    // vaccination/deworming rows. The filter's /api/v1/c/pets/ prefix still
+                    // enforces the MINIAPP Bearer; these matchers only open the security chain.
+                    "/api/v1/c/pets/*/vaccination-records",
+                    "/api/v1/c/pets/*/deworming-records",
                     "/api/v1/c/profile")
                 .permitAll();
-            a.requestMatchers(HttpMethod.POST, "/api/v1/c/pets", "/api/v1/c/profile").permitAll();
+            a.requestMatchers(HttpMethod.POST, "/api/v1/c/pets",
+                    "/api/v1/c/pets/*/vaccination-records",
+                    "/api/v1/c/pets/*/deworming-records",
+                    "/api/v1/c/profile").permitAll();
             // Address book (contract 59): the six user-domain routes ride pet.auth.c.enabled
             // exactly like pets/profile — the MINIAPP Bearer session is enforced by the
             // filter's protectedPath list, ownership stays in the AddressService kernel.
