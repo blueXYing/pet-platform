@@ -16,11 +16,6 @@ export default defineAppConfig({
       { pagePath: 'consumer/pages/mine/index', text: '我的', iconPath: 'consumer/assets/navigation/mine.png', selectedIconPath: 'consumer/assets/navigation/mine.png' },
     ],
   },
-  // 首页的宠物档案入口（列表/详情/添加）是主路径；预加载子包，缩短从原生 tabBar 页
-  // 切到带自定义底部导航的子页时，原生栏隐藏到子页导航出现之间的空档。
-  preloadRule: {
-    'consumer/pages/home/index': { network: 'all', packages: ['consumer/pages/pet-archive'] },
-  },
   permission: { 'scope.userLocation': { desc: '用于选择入驻店铺的位置与地址' } },
   requiredPrivateInfos: ['chooseLocation'],
   // M-001 internal shell shares this AppID; C-End owns ordinary subpackage registration.
