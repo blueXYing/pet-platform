@@ -104,7 +104,7 @@ export default function PointsTasksPage() {
   }
   const ready = phase === 'ready' && tasks !== null
   return <ConsumerPageLayout page='pointsPage' unit={unit} className='ptk-page'
-    navigation={{ idPrefix: 'ptt', disabled: !ready, onSelect: () => {} }} style={style}>
+    navigation={preview ? { idPrefix: 'ptt', disabled: !ready, onSelect: () => {} } : undefined} style={style}>
     <View className='ptk-design'>
       <View className='ptk-status-area' />
       {phase === 'loading' && <View className='ptk-state' role='status'><Text>正在读取任务…</Text></View>}

@@ -83,7 +83,7 @@ export default function PointsMallPage() {
   }
 
   return <ConsumerPageLayout page='mallPage' unit={unit} className='pml-page'
-    navigation={{ idPrefix: 'pml', onSelect: key => void switchConsumerTab(key) }}
+    navigation={preview ? { idPrefix: 'pml', onSelect: key => void switchConsumerTab(key) } : undefined}
     style={style}>
     <View className='pml-status-area' />
     <View className='pml-nav'>

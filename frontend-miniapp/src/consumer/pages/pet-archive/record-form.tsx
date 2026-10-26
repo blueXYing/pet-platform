@@ -125,7 +125,7 @@ export function HealthRecordFormPage({ kind }: { kind: HealthRecordFormKind }) {
   }
 
   const title = isVaccine ? '添加疫苗记录' : '添加驱虫记录'
-  return <ConsumerPageLayout page='petDetail' unit={unit} navigation={{ idPrefix: 'pet', disabled: phase === 'saving', onSelect: key => void switchConsumerTab(key) }} className='pet-page pet-record-form-page' style={style}>
+  return <ConsumerPageLayout page='petDetail' unit={unit} navigation={preview ? { idPrefix: 'pet', disabled: phase === 'saving', onSelect: key => void switchConsumerTab(key) } : undefined} className='pet-page pet-record-form-page' style={style}>
     <View className='pet-status-area' />
     <View className='pet-record-header'>
       <Button id='pet-record-back' className='pet-record-back' ariaLabel='返回' onClick={() => void leave()}>

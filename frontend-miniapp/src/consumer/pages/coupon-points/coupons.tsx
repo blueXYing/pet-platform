@@ -108,7 +108,7 @@ export default function CouponsPage() {
   // preview：ready 才出 tab（PR#105 行为不变）；real：首个桶成功后 tab 常驻，切换即服务端查询。
   const visible = preview ? couponsByStatus(coupons, tab) : coupons
   return <ConsumerPageLayout page='couponList' unit={unit} className='cpn-page'
-    navigation={{ idPrefix: 'cpn', disabled: !ready, onSelect: key => void switchConsumerTab(key) }}
+    navigation={preview ? { idPrefix: 'cpn', disabled: !ready, onSelect: key => void switchConsumerTab(key) } : undefined}
     style={style}>
     <View className='cpn-design'>
       <View className='cpn-status-area' />

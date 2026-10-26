@@ -34,7 +34,7 @@ function SigningScreen({ preview, merchantParam, scope }: { preview: boolean; me
   }
   const receiptVersion = state.receipt?.agreementVersion || ''
   const receiptTime = state.receipt?.acceptedAt || ''
-  return <ConsumerPageLayout page='merchantApplication' unit={unit} className='application-page signing-page' style={style} navigation={{ idPrefix: 'signing', disabled: state.busy, onSelect: key => void switchConsumerTab(key) }}>
+  return <ConsumerPageLayout page='merchantApplication' unit={unit} className='application-page signing-page' style={style} navigation={preview ? { idPrefix: 'signing', disabled: state.busy, onSelect: key => void switchConsumerTab(key) } : undefined}>
     <View className='application-design' data-state={state.phase}>
       <View className='application-header'><Button id='signing-back' ariaLabel='返回' disabled={state.busy} onClick={() => void leave()}><Image src={back} mode='scaleToFill' /></Button><Text>商家协议签署</Text></View>
       <View className='application-content'>

@@ -99,7 +99,7 @@ function DetailScreen({ preview, scenario, orderId }: { preview: boolean; scenar
   const ready = phase === 'ready' && detail !== null
   const badge = detail === null ? null : orderStatusBadge(detail)
   return <ConsumerPageLayout page='orderDetail' unit={unit} className='ord-page' style={style}
-    navigation={{ idPrefix: 'ord', disabled: phase === 'loading', onSelect: key => { void switchConsumerTab(key) } }}>
+    navigation={preview ? { idPrefix: 'ord', disabled: phase === 'loading', onSelect: key => { void switchConsumerTab(key) } } : undefined}>
     {/* 视觉按设计源 23:18010 族重做（登记表 §3 商家端「订单」，C 端纯视觉借用先例=列表页 0ef5aa2）：
         奶油头带 #fff6e5 + #f0fbff 内容区、白卡 #c0ecff 描边 r16.7、居中导航标题。功能/契约/ID 与
         aria 不变；详情样式一律走 .ordd 作用域（orders.css），不触碰退款/改期/评价共享词汇。 */}

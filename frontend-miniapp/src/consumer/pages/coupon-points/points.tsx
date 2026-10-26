@@ -103,7 +103,7 @@ export default function PointsPage() {
   }
   const ready = phase === 'ready'
   return <ConsumerPageLayout page='pointsPage' unit={unit} className='cpn-page'
-    navigation={{ idPrefix: 'cpt', disabled: !ready, onSelect: key => void switchConsumerTab(key) }}
+    navigation={preview ? { idPrefix: 'cpt', disabled: !ready, onSelect: key => void switchConsumerTab(key) } : undefined}
     style={style}>
     <View className='cpn-design'>
       <View className='cpn-status-area' />

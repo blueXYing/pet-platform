@@ -77,7 +77,7 @@ function VerifyScreen({ preview, scenario, initialOrderId }: { preview: boolean;
   const action = view ? actionFor(view.status) : null
   const remaining = view?.status === 'ACTIVE' ? remainingLabel(now, view.expiresAt) : ''
   return <ConsumerPageLayout page='orderVerify' unit={unit} className='ovv-page' style={style}
-    navigation={{ idPrefix: 'ovv', disabled: state.phase === 'loading', onSelect: key => { void switchConsumerTab(key) } }}>
+    navigation={preview ? { idPrefix: 'ovv', disabled: state.phase === 'loading', onSelect: key => { void switchConsumerTab(key) } } : undefined}>
     <View className='ovv-design'>
       <View className='ovv-status-area' />
       <View className='ovv-nav'>

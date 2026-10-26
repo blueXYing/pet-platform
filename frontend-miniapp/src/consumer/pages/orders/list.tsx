@@ -101,7 +101,7 @@ function ListScreen({ preview, scenario }: { preview: boolean; scenario: 'normal
   }
   const ready = phase === 'ready'
   return <ConsumerPageLayout page='orderList' unit={unit} className='ord-page' style={style}
-    navigation={{ idPrefix: 'ord', disabled: phase === 'loading', onSelect: key => { void switchConsumerTab(key) } }}>
+    navigation={preview ? { idPrefix: 'ord', disabled: phase === 'loading', onSelect: key => { void switchConsumerTab(key) } } : undefined}>
     {/* 视觉按设计源 129:9946（我的-我的订单主稿）重做：奶油导航区 #fff6e5 + #c0ecff 压线、
         #f0fbff 内容区、#eaf6f3 药丸 tab 容器、白卡 #c0ecff 描边 r13。功能/契约/ID 与 aria 不变；
         列表样式一律走 .ordl 作用域（orders.css），不触碰详情/退款/改期/评价共享词汇。 */}

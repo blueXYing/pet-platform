@@ -129,7 +129,7 @@ export default function ProfileEdit() {
     else await Taro.switchTab({ url: '/consumer/pages/mine/index' })
   }
   const editable = ['ready', 'saving', 'save-error'].includes(phase)
-  return <ConsumerPageLayout page='profileEdit' unit={referenceCanvas ? 1 : platformInfo.windowWidth / 402} navigation={{ idPrefix: 'profile', disabled: phase === 'saving', onSelect: key => leave(key), referencePlacement: referenceCanvas ? { bottom: 0 } : undefined }} className={`profile-page${referenceCanvas ? ' profile-reference-canvas' : ''}`} style={style}>
+  return <ConsumerPageLayout page='profileEdit' unit={referenceCanvas ? 1 : platformInfo.windowWidth / 402} navigation={preview ? { idPrefix: 'profile', disabled: phase === 'saving', onSelect: key => leave(key), referencePlacement: referenceCanvas ? { bottom: 0 } : undefined } : undefined} className={`profile-page${referenceCanvas ? ' profile-reference-canvas' : ''}`} style={style}>
     <View className='profile-status-area' />
     <View className='profile-design' data-phase={phase}>
       <View className='profile-header'>

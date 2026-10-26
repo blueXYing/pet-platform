@@ -96,9 +96,11 @@ button { padding: 0; margin: 0; border: 0; border-radius: 0; background: transpa
 .svc-review-text { margin-top: calc(var(--svc-unit) * 3); width: calc(var(--svc-unit) * 267); font-size: calc(var(--svc-unit) * 12); line-height: calc(var(--svc-unit) * 16.5); color: #577683; }
 
 /* 底部操作栏 (拨打电话/立即预约 out of this slice; explicit no-ops with notice).
-   Fixed above the shared bottom navigation — the design frame overlays it on scrolling
-   content at y1160; draft tabbar diff D1 recorded in the design inventory. */
+   Design preview keeps the shared 62px bottom navigation; real non-root pages have no global
+   nav (user ruling 2026-10-26), so the fixed bar sits on the safe area there. The design frame
+   overlays it on scrolling content at y1160; draft tabbar diff D1 recorded in the design inventory. */
 .svc-bottombar { position: fixed; left: 0; bottom: calc(var(--consumer-nav-unit) * 62 + env(safe-area-inset-bottom)); width: 100%; height: calc(var(--svc-unit) * 85); background: #f0fbff; z-index: 8; }
+.consumer-page-layout-without-navigation .svc-bottombar { bottom: env(safe-area-inset-bottom); }
 .svc-bottom-call { position: absolute; left: calc(var(--svc-unit) * 30); top: calc(var(--svc-unit) * 20); width: calc(var(--svc-unit) * 169); height: calc(var(--svc-unit) * 46); border-radius: calc(var(--svc-unit) * 23); background: #ffffff; border: calc(var(--svc-unit) * 1) solid #85d2f3; display: flex; align-items: center; justify-content: center; }
 .svc-bottom-call text { font-size: calc(var(--svc-unit) * 14); line-height: calc(var(--svc-unit) * 20); font-weight: 500; color: #577683; }
 .svc-bottom-book { position: absolute; left: calc(var(--svc-unit) * 207); top: calc(var(--svc-unit) * 20); width: calc(var(--svc-unit) * 169); height: calc(var(--svc-unit) * 46); border-radius: calc(var(--svc-unit) * 23); background: #c0ecff; display: flex; align-items: center; justify-content: center; }
