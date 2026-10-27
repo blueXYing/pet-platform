@@ -26,6 +26,10 @@
             <artifactId>pet-user-api</artifactId>
         </dependency>
         <dependency>
+            <groupId>com.petplatform</groupId>
+            <artifactId>pet-thirdparty-api</artifactId>
+        </dependency>
+        <dependency>
             <groupId>org.springframework</groupId>
             <artifactId>spring-context</artifactId>
         </dependency>

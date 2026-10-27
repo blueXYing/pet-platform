@@ -3,7 +3,7 @@ import assert from 'node:assert/strict'
 import { test } from 'node:test'
 
 import {
-  decodeHealthRecord, decodeHealthRecordList, dewormingDateLine, dewormingTypeLabels,
+  decodeHealthRecord, decodeHealthRecordList, decodeHealthRecordReceipt, dewormingDateLine, dewormingTypeLabels,
   healthRecordErrorMessage, validateDewormDraft, validateVaccineDraft, vaccineDateLine,
   vaccineStatusLabel, emptyVaccineDraft, emptyDewormDraft,
 } from '../pet/health-record'
@@ -38,6 +38,22 @@ test('health record decoder fails closed on contract violations', () => {
     assert.throws(() => decodeHealthRecord({ ...wireRecord, ...over }), /INVALID_RESPONSE/, JSON.stringify(over))
   }
   assert.throws(() => decodeHealthRecordList({ items: [] }), /INVALID_RESPONSE/)
+})
+
+test('health record POST receipt decoder accepts the contract-68 acknowledgement, not a full record', () => {
+  const receipt = { recordId: '9600000000000002', petId: '30001', recordType: 'VACCINATION', status: 'ACTIVE' }
+  assert.deepEqual(decodeHealthRecordReceipt(receipt), receipt)
+  // 2026-10-26 线上回归：POST 只返回回执，详情页保存后另行 GET 列表；
+  // 若误用 decodeHealthRecord 会因缺 recordDate 等字段抛 INVALID_RESPONSE，服务端已写入却显示保存失败。
+  assert.throws(() => decodeHealthRecordReceipt(wireRecord), /INVALID_RESPONSE/)
+  assert.throws(() => decodeHealthRecordReceipt({ ...receipt, status: 'DELETED' }), /INVALID_RESPONSE/)
+  assert.throws(() => decodeHealthRecordReceipt({ petId: receipt.petId, recordType: receipt.recordType, status: receipt.status }), /INVALID_RESPONSE/)
+})
+
+test('health record save errors explain pending replay and expired login', () => {
+  assert.equal(healthRecordErrorMessage(new Error('PENDING_WRITE_CHANGED')), '上次保存结果尚未确认，请保持原内容点击保存重试')
+  assert.equal(healthRecordErrorMessage(new Error('STALE_CONTEXT')), '登录状态已变化，请重新进入页面后再试')
+  assert.equal(healthRecordErrorMessage(new Error('INVALID_RESPONSE')), '保存失败，请稍后重试')
 })
 
 test('status/date display derivations follow the registered display rules', () => {

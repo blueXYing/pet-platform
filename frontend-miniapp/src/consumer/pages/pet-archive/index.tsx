@@ -16,6 +16,8 @@ import paw from './assets/entry-paw.png'
 import chevron from './assets/entry-chevron.png'
 import petDoudou from './assets/pet-photo-list-doudou.png'
 import petMimi from './assets/pet-photo-list-mimi.png'
+import defaultCatAvatar from './assets/pet-default-cat.png'
+import defaultDogAvatar from './assets/pet-default-dog.png'
 import tagVaccine from './assets/tag-icon-vaccine.png'
 import tagDeworm from './assets/tag-icon-deworm.png'
 import './fonts.css'
@@ -152,10 +154,11 @@ export default function PetArchiveList() {
       </View>}
       {ready && pets.map((pet, index) => {
         const photo = (preview ? petPhotos[pet.petId] : undefined)
+        const defaultPhoto = pet.petType === 'DOG' ? defaultDogAvatar : pet.petType === 'CAT' ? defaultCatAvatar : null
         const tag = previewSupplement(preview ? pet.petId : undefined).tag
         const top = 95 + index * 85
         return <Button key={pet.petId} id={`pet-card-${pet.petId}`} className='pet-list-card' style={{ top: `calc(var(--pet-unit) * ${top})` }} ariaLabel={`${pet.name}的档案`} onClick={() => openDetail(pet)} onLongPress={() => void removePet(pet)}>
-          {pet.avatarUrl ? <Image className='pet-list-photo pet-list-avatar' src={pet.avatarUrl} mode='aspectFill' /> : photo ? <Image className='pet-list-photo' src={photo.src} mode='scaleToFill' style={{ left: `calc(var(--pet-unit) * ${photo.x})`, top: `calc(var(--pet-unit) * ${photo.y})`, width: `calc(var(--pet-unit) * ${photo.w})`, height: `calc(var(--pet-unit) * ${photo.h})` }} /> : <View className='pet-list-photo pet-list-avatar pet-avatar-empty'><Text>{pet.name.slice(0, 1)}</Text></View>}
+          {pet.avatarUrl ? <Image className='pet-list-photo pet-list-avatar' src={pet.avatarUrl} mode='aspectFill' /> : photo ? <Image className='pet-list-photo' src={photo.src} mode='scaleToFill' style={{ left: `calc(var(--pet-unit) * ${photo.x})`, top: `calc(var(--pet-unit) * ${photo.y})`, width: `calc(var(--pet-unit) * ${photo.w})`, height: `calc(var(--pet-unit) * ${photo.h})` }} /> : defaultPhoto ? <Image className='pet-list-photo pet-list-avatar' src={defaultPhoto} mode='aspectFill' /> : <View className='pet-list-photo pet-list-avatar pet-avatar-empty'><Text>{pet.name.slice(0, 1)}</Text></View>}
           <View className='pet-list-identity'><Text className='pet-list-name'>{pet.name}</Text>
           {sexLabel(pet.sex) && <View className={`pet-list-sex${pet.sex === 'FEMALE' ? ' pet-list-sex-female' : ''}`}><Text>{sexLabel(pet.sex)}</Text></View>}</View>
           <Text className='pet-list-breed'>{breedAgeLine(pet, todayISO())}</Text>

@@ -1,6 +1,8 @@
 import { Button, Image, Text, View } from '@tarojs/components'
-import Taro from '@tarojs/taro'
+import Taro, { useDidShow } from '@tarojs/taro'
 import { useState, type CSSProperties } from 'react'
+import { syncCustomTabBar } from '../../components/navigation/custom-tab-bar'
+import { RootTabBarSpacer } from '../../components/navigation/root-tab-bar-spacer'
 import balloon from '../../assets/navigation/community.png'
 import './community.css'
 
@@ -11,6 +13,7 @@ export default function CommunityPage() {
   const [info] = useState(() => Taro.getWindowInfo())
   const unit = info.windowWidth / 402
   const style = { '--cmy-unit': `${unit}px`, '--cmy-top': `${info.statusBarHeight || 0}px` } as CSSProperties
+  useDidShow(() => { syncCustomTabBar(2) })
   function openStores() {
     Taro.navigateTo({ url: '/consumer/pages/store-services/stores' }).catch(() => Taro.showToast({ title: '页面打开失败，请重试', icon: 'none' }))
   }
@@ -28,6 +31,7 @@ export default function CommunityPage() {
           <Text className='cmy-action-text'>先去逛逛门店与服务</Text>
         </Button>
       </View>
+      <RootTabBarSpacer />
     </View>
   </View>
 }

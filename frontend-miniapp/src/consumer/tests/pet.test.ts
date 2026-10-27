@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict'
+import { readFileSync } from 'node:fs'
 import test from 'node:test'
 import {
   PreviewPetRepository, breedAgeLine, deriveAgeLabel, fixturePets, formatWeightDisplay,
@@ -6,7 +7,7 @@ import {
 } from '../pet/model'
 import { WorkspaceScope, StaleContextError } from '../../shared/workspace'
 
-const draft: PetDraft = { name: '豆豆', breedName: '金毛寻回犬', birthDate: '2024-06-18', sex: 'MALE', weightInput: '28.5kg', healthNote: '性格温顺' }
+const draft: PetDraft = { name: '豆豆', petType: 'DOG', breedName: '金毛寻回犬', birthDate: '2024-06-18', sex: 'MALE', weightInput: '28.5kg', healthNote: '性格温顺' }
 const today = '2026-09-15'
 
 test('weight input keeps the designed kg shape and serializes to the two-decimal contract string', () => {
@@ -60,7 +61,7 @@ test('preview repository save is idempotent per request and replay with other co
   await assert.rejects(repo.save('30001', { ...draft, name: '其他' }, 'request-1'), /REQUEST_CONFLICT/)
 })
 
-test('preview edit keeps contract-managed fields and create leaves petType unresolved', async () => {
+test('preview edit keeps contract-managed fields and create uses the selected petType', async () => {
   const repo = new PreviewPetRepository()
   await repo.save('30001', draft, 'request-2')
   const pets = await repo.load()
@@ -68,7 +69,7 @@ test('preview edit keeps contract-managed fields and create leaves petType unres
   assert.equal(doudou?.petType, 'DOG')
   assert.equal(doudou?.vaccineStatus, 'COMPLETE')
   const created = await repo.save(null, { ...draft, name: '新宠' }, 'request-3')
-  assert.equal(created.petType, 'OTHER')
+  assert.equal(created.petType, 'DOG')
   assert.match(created.petId, /^preview-/)
 })
 
@@ -131,6 +132,40 @@ test('visual record fixtures never assign dog medical records or chip to other p
     assert.deepEqual(previewSupplement(id).vaccineRecords, [])
     assert.deepEqual(previewSupplement(id).dewormRecords, [])
   }
+})
+
+test('home pet archive falls back to the same cat/dog default avatar as list and detail', () => {
+  const source = readFileSync(new URL('../pages/home/index.tsx', import.meta.url), 'utf8')
+  assert.match(source, /import defaultCatAvatar from '\.\.\/pet-archive\/assets\/pet-default-cat\.png'/)
+  assert.match(source, /import defaultDogAvatar from '\.\.\/pet-archive\/assets\/pet-default-dog\.png'/)
+  assert.match(source, /function petAvatar\(pet: PetView\)/)
+  assert.match(source, /src=\{petAvatar\(pet\)\}/)
+})
+
+test('form/detail default avatars use the transparent Figma 645:10 crop', () => {
+  for (const file of ['form.tsx', 'detail.tsx']) {
+    const source = readFileSync(new URL(`../pages/pet-archive/${file}`, import.meta.url), 'utf8')
+    assert.match(source, /pet-form-default-cat\.png/)
+    assert.match(source, /pet-form-default-dog\.png/)
+    assert.doesNotMatch(source, /pet-default-(cat|dog)\.png/)
+  }
+})
+
+test('home shows up to three rows and scrolls the rest inside the archive module', () => {
+  const source = readFileSync(new URL('../pages/home/index.tsx', import.meta.url), 'utf8')
+  assert.match(source, /const active = list\.filter\(pet => pet\.status === 'ACTIVE'\)/)
+  assert.match(source, /setPets\(active\)/)
+  assert.match(source, /const visiblePetRows = Math\.min\(pets\.length, 3\)/)
+  assert.match(source, /const petListHeight = visiblePetRows > 0 \? visiblePetRows \* 85 - 16 : 0/)
+  assert.match(source, /className='home-pet-scroll'/)
+  assert.match(source, /<ScrollView[^>]*scrollY enhanced showScrollbar=\{false\}/)
+  assert.doesNotMatch(source, /home-pet-menu/)
+})
+
+test('creating a pet returns to the home tab after a successful save', () => {
+  const source = readFileSync(new URL('../pages/pet-archive/form.tsx', import.meta.url), 'utf8')
+  assert.match(source, /const creating = !petId/)
+  assert.match(source, /await Taro\.switchTab\(\{ url: '\/consumer\/pages\/home\/index' \}\)/)
 })
 
 test('impossible calendar dates are rejected instead of deriving an age', () => {

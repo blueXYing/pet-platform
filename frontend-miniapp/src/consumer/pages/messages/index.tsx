@@ -2,6 +2,8 @@ import { Button, Image, Text, View } from '@tarojs/components'
 import Taro, { useDidShow } from '@tarojs/taro'
 import { useEffect, useState, useSyncExternalStore, type CSSProperties } from 'react'
 import { ConsumerPageLayout } from '../../components/page-layout'
+import { syncCustomTabBar } from '../../components/navigation/custom-tab-bar'
+import { RootTabBarSpacer } from '../../components/navigation/root-tab-bar-spacer'
 import { MessagesController, jumpLabelFor, routeForNotification } from '../../notifications/messages'
 import { realNotificationDeps } from '../../notifications/messages-runtime'
 import backIcon from '../../assets/messages/header-back.png'
@@ -34,7 +36,7 @@ export default function MessagesPage() {
   const [controller] = useState(() => new MessagesController(realNotificationDeps()))
   const state = useSyncExternalStore(controller.subscribe, controller.getSnapshot)
   const [stacked] = useState(() => Taro.getCurrentPages().length > 1)
-  useDidShow(() => { void controller.load() })
+  useDidShow(() => { syncCustomTabBar(3); void controller.load() })
   useEffect(() => () => controller.dispose(), [controller])
   async function back() {
     if (Taro.getCurrentPages().length > 1) await Taro.navigateBack()
@@ -113,6 +115,7 @@ export default function MessagesPage() {
           </View>
         </View>}
       </View>
+      <RootTabBarSpacer />
     </View>
   </ConsumerPageLayout>
 }

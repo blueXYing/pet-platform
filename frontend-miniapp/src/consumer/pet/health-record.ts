@@ -71,6 +71,27 @@ export function decodeHealthRecordList(value: unknown): HealthRecordView[] {
   return (value as unknown[]).map(decodeHealthRecord)
 }
 
+// POST 回执（契约 68 §路由：201 首次 / 200 同 requestId 重放）只含 {petId,recordId,recordType,status}，
+// 不是完整记录投影；页面保存后由 onSaved 重新 GET 列表，因此这里不能复用 decodeHealthRecord。
+export type HealthRecordReceipt = Readonly<{
+  recordId: string
+  petId: string
+  recordType: HealthRecordType
+  status: 'ACTIVE'
+}>
+const receiptKeys = ['recordId', 'petId', 'recordType', 'status']
+export function decodeHealthRecordReceipt(value: unknown): HealthRecordReceipt {
+  const v = objectLike(value)
+  for (const key of Object.keys(v)) if (!receiptKeys.includes(key)) invalid()
+  if (Object.keys(v).length !== receiptKeys.length) invalid()
+  return {
+    recordId: isId(v.recordId),
+    petId: isId(v.petId),
+    recordType: oneOf(v.recordType, ['VACCINATION', 'DEWORMING'] as const),
+    status: oneOf(v.status, ['ACTIVE'] as const),
+  }
+}
+
 // ---- 展示派生（contract 68：设计稿 96:2580 状态 chips = 日期派生展示态，非契约字段） ----
 
 /** 疫苗行状态：无下次日期=已接种；下次日期已过=待接续；未来 30 天内=即将到期；其余=已接种。 */
@@ -146,5 +167,8 @@ export function healthRecordErrorMessage(error: unknown): string {
   if (code === 'IDEMPOTENCY_KEY_CONFLICT') return '提交参数与上次不一致，请重试'
   if (code === 'PET_NOT_FOUND') return '宠物不存在或已删除'
   if (code === 'USER_FROZEN') return '账号不可用，无法保存'
+  if ((error as Error)?.message === 'PENDING_WRITE_CHANGED') return '上次保存结果尚未确认，请保持原内容点击保存重试'
+  if ((error as Error)?.message === 'STALE_CONTEXT') return '登录状态已变化，请重新进入页面后再试'
+  if ((error as ApiError)?.statusCode === 401) return '登录已失效，请重新登录后再保存'
   return '保存失败，请稍后重试'
 }

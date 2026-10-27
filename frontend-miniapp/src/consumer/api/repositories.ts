@@ -1,7 +1,7 @@
 import { ConsumerApi, object, id } from '../../shared/consumer-api'
 import type { ProfileDraft } from '../profile/model'
 import { draftToContract, type PetView, type PetDraft, type PetType } from '../pet/model'
-import { decodeHealthRecord, decodeHealthRecordList } from '../pet/health-record'
+import { decodeHealthRecordList, decodeHealthRecordReceipt } from '../pet/health-record'
 import { decodeServiceDetail, decodeServicePage, type ServiceDetailView, type ServicePage } from '../service/model'
 
 function text(value: unknown, nullable = false): string | null {
@@ -49,26 +49,33 @@ export class RealPetRepository {
     const pet = await this.api.request({ method: 'GET', path: `/api/v1/c/pets/${petId}` }, decodePet)
     this.loaded.set(petId, pet); return pet
   }
-  async save(petId: string | null, draft: PetDraft, _previewId: string) {
+  async save(petId: string | null, draft: PetDraft, _previewId: string, avatarAssetId: string | null = null) {
     this.checkScope()
     const ticket = this.api.scope.capture()
     const slot = petId ? `pet:${petId}` : 'pet:create'
     const pending = this.api.pendingCommand(slot)
     const mapped = draftToContract(draft)
+    const assetId = pending?.data?.avatarAssetId || avatarAssetId
     let data: Record<string, unknown>
     if (petId) {
       id(petId)
       const current = this.loaded.get(petId)
       if (!current) throw new Error('PET_NOT_LOADED')
       // PUT replaces nullable fields. Preserve existing non-form values rather than clearing them.
+      // avatarUrl is intentionally omitted: the server preserves the current avatar when no new
+      // avatarAssetId is supplied, and a signed read URL must never be written back as data.
       data = { name: mapped.name, breedName: mapped.breedName, birthDate: mapped.birthDate, sex: mapped.sex, weightKg: mapped.weightKg, healthNote: mapped.healthNote,
         sterilizationStatus: pending ? pending.data?.sterilizationStatus : current.sterilizationStatus,
         vaccineStatus: pending ? pending.data?.vaccineStatus : current.vaccineStatus,
-        avatarUrl: pending ? pending.data?.avatarUrl : current.avatarUrl, isDefault: pending ? pending.data?.isDefault : current.isDefault }
+        isDefault: pending ? pending.data?.isDefault : current.isDefault,
+        ...(assetId ? { avatarAssetId: String(assetId) } : {}) }
     } else {
-      const petType = pending?.data?.petType || await this.chooseType(); ticket.assertCurrent()
+      // The add form now chooses petType before save; the legacy action sheet remains only as a
+      // defensive fallback for any caller that has not supplied a draft type.
+      const petType = pending?.data?.petType || mapped.petType || await this.chooseType(); ticket.assertCurrent()
       if (!['DOG', 'CAT', 'OTHER'].includes(String(petType))) throw new Error('PET_TYPE_REQUIRED')
-      data = { name: mapped.name, petType, breedName: mapped.breedName, birthDate: mapped.birthDate, sex: mapped.sex, weightKg: mapped.weightKg, healthNote: mapped.healthNote }
+      data = { name: mapped.name, petType, breedName: mapped.breedName, birthDate: mapped.birthDate, sex: mapped.sex, weightKg: mapped.weightKg, healthNote: mapped.healthNote,
+        ...(assetId ? { avatarAssetId: String(assetId) } : {}) }
     }
     // C HTTP parser rejects explicit null. Omitted optional fields become null in the PUT command.
     data = Object.fromEntries(Object.entries(data).filter(([, value]) => value !== null && value !== undefined))
@@ -94,13 +101,13 @@ export class RealPetRepository {
     id(petId)
     return this.api.write(`pet-health-record:vaccine:${petId}`,
       { method: 'POST', path: `/api/v1/c/pets/${petId}/vaccination-records`, data: body },
-      decodeHealthRecord)
+      decodeHealthRecordReceipt)
   }
   createDewormingRecord(petId: string, body: Record<string, unknown>) {
     id(petId)
     return this.api.write(`pet-health-record:deworm:${petId}`,
       { method: 'POST', path: `/api/v1/c/pets/${petId}/deworming-records`, data: body },
-      decodeHealthRecord)
+      decodeHealthRecordReceipt)
   }
 }
 /** Frozen C service-catalog read slice (CCR-W2-API-001 SVC-D2): list + detail, read-only.

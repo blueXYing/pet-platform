@@ -1,5 +1,5 @@
-// One C-end navigation registry. The five top-level tabs are real native tabBar pages since the
-// 2026-10-08 tabbar+login slice (app.config.ts tabBar); subpages route to them via switchTab.
+// One C-end navigation registry. The five top-level tabs are custom-tabBar pages since the
+// 2026-10-26 transition ruling (app.config.ts tabBar.custom); subpages route to them via switchTab.
 // 本模块保持纯数据（无 Taro 依赖，node 测试可直接驱动）；switchTab 帮助函数在 switch.ts。
 export const consumerNavigationItems = [
   { key: 'home', label: '首页' },
@@ -11,8 +11,8 @@ export const consumerNavigationItems = [
 export type ConsumerNavigationKey = typeof consumerNavigationItems[number]['key']
 export type ConsumerNavigationItem = typeof consumerNavigationItems[number]
 
-// Native tabBar page routes (must stay main-package pages; registered in app.config.ts tabBar
-// and asserted by package-check.cjs).
+// TabBar page routes (must stay main-package pages; registered in app.config.ts tabBar and
+// asserted by package-check.cjs).
 export const consumerTabRoutes = {
   home: '/consumer/pages/home/index',
   services: '/consumer/pages/services/index',

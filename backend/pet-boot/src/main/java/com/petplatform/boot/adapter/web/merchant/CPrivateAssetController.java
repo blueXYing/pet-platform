@@ -35,10 +35,12 @@ public final class CPrivateAssetController {
   static final String FEEDBACK_ATTACHMENT_PURPOSE = "FEEDBACK_ATTACHMENT";
   /** 27号 §6.4 expansion (2026-10-19): store photos/avatar ride the same immutable pipeline. */
   static final String STORE_PHOTO_PURPOSE = "STORE_PHOTO";
-  
+  /** CCR-C-PET-AVATAR-001: consumer-selected pet avatars share the same immutable pipeline. */
+  static final String PET_AVATAR_PURPOSE = "PET_AVATAR";
+
   private static final Set<String> PURPOSES =
           Set.of(MERCHANT_APPLICATION_PURPOSE, SERVICE_COVER_PURPOSE, STORE_PHOTO_PURPOSE,
-                  FEEDBACK_ATTACHMENT_PURPOSE);
+                  FEEDBACK_ATTACHMENT_PURPOSE, PET_AVATAR_PURPOSE);
   private final PrivateAssetApi assets;
   private final ObjectProvider<MerchantAdmissionApiImpl> admissions;
 

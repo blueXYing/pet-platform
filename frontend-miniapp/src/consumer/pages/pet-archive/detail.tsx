@@ -12,6 +12,7 @@ import {
   dewormingDateLine, dewormingTypeLabels, vaccineDateLine, vaccineStatusLabel,
   decodeHealthRecordList, type HealthRecordView,
 } from '../../pet/health-record'
+import { HealthRecordFormSheet, type HealthRecordFormKind } from './record-form'
 import stripMain from './assets/strip-main.png'
 import stripBottom from './assets/strip-detail-bottom.png'
 import panelBasic from './assets/panel-basic.png'
@@ -21,6 +22,8 @@ import tapeA from './assets/tape-a.png'
 import tapeB from './assets/tape-b.png'
 import petPhoto from './assets/pet-photo-detail.png'
 import catPhoto from './assets/pet-photo-list-mimi.png'
+import defaultCatAvatar from './assets/pet-form-default-cat.png'
+import defaultDogAvatar from './assets/pet-form-default-dog.png'
 import navBack from './assets/nav-back.png'
 import navEdit from './assets/nav-edit.png'
 import tagIconVaccine from './assets/tag-icon-vaccine-blue.png'
@@ -44,6 +47,8 @@ export default function PetArchiveDetail() {
   const [pet, setPet] = useState<PetView | null>(null)
   const [vaccineRecords, setVaccineRecords] = useState<HealthRecordView[]>([])
   const [dewormRecords, setDewormRecords] = useState<HealthRecordView[]>([])
+  const [recordSheet, setRecordSheet] = useState<HealthRecordFormKind | null>(
+    route.params.recordSheet === 'vaccine' ? 'VACCINATION' : route.params.recordSheet === 'deworm' ? 'DEWORMING' : null)
   const [notice, setNotice] = useState('')
   const mounted = useRef(true)
   const sequence = useRef(0)
@@ -116,16 +121,14 @@ export default function PetArchiveDetail() {
     Taro.navigateTo({ url: `/consumer/pages/baike/index?keyword=${encodeURIComponent(pet.breedName)}` })
       .catch(() => setNotice('页面跳转失败，请重试'))
   }
-  // 契约 68：添加按钮接通独立表单页（96:2580/96:3006，vaccine-form/deworm-form 分包页）。
+  // 契约 68：添加按钮在原档案页打开底部半框（96:2580/96:3006），不再 navigateTo 三级页。
   function addVaccineRecord() {
     if (!pet) return
-    Taro.navigateTo({ url: `/consumer/pages/pet-archive/vaccine-form?petId=${encodeURIComponent(pet.petId)}` })
-      .catch(() => setNotice('页面跳转失败，请重试'))
+    setRecordSheet('VACCINATION')
   }
   function addDewormRecord() {
     if (!pet) return
-    Taro.navigateTo({ url: `/consumer/pages/pet-archive/deworm-form?petId=${encodeURIComponent(pet.petId)}` })
-      .catch(() => setNotice('页面跳转失败，请重试'))
+    setRecordSheet('DEWORMING')
   }
   const ready = phase === 'ready' && pet
   const supplement = previewSupplement(preview && ready ? pet.petId : undefined)
@@ -144,7 +147,8 @@ export default function PetArchiveDetail() {
         brand: record.productName || '', date: dewormingDateLine(record),
       }))
   const tag = supplement.tag
-  const photo = ready ? pet.avatarUrl || (preview ? (pet.petId === '30001' ? petPhoto : pet.petId === '30002' ? catPhoto : null) : null) : null
+  const defaultPhoto = ready && pet ? (pet.petType === 'DOG' ? defaultDogAvatar : pet.petType === 'CAT' ? defaultCatAvatar : null) : null
+  const photo = ready && pet ? pet.avatarUrl || (preview ? (pet.petId === '30001' ? petPhoto : pet.petId === '30002' ? catPhoto : null) : defaultPhoto) : null
   return <ConsumerPageLayout page='petDetail' unit={unit} navigation={preview ? { idPrefix: 'pet', disabled: phase !== 'ready', onSelect: key => void switchConsumerTab(key), referencePlacement: referenceCanvas ? { bottom: 0, height: 61 } : undefined } : undefined} className={`pet-page pet-detail-page${referenceCanvas ? ' pet-reference-canvas' : ''}`} style={style}>
     <View className='pet-status-area' />
     <View className='pet-design pet-detail-design' data-phase={phase}>
@@ -165,7 +169,7 @@ export default function PetArchiveDetail() {
       </View>}
       {ready && <>
         <View className='pet-abs pet-detail-identity' />
-        {photo ? <Image className='pet-abs pet-detail-photo' src={photo} mode={pet.avatarUrl ? 'aspectFill' : 'aspectFit'} /> : <View className='pet-abs pet-detail-photo pet-avatar-empty'><Text>{pet.name.slice(0, 1)}</Text></View>}
+        {photo ? <Image className='pet-abs pet-detail-photo' src={photo} mode={(pet.avatarUrl || (!preview && defaultPhoto)) ? 'aspectFill' : 'aspectFit'} /> : <View className='pet-abs pet-detail-photo pet-avatar-empty'><Text>{pet.name.slice(0, 1)}</Text></View>}
         <View className='pet-abs pet-detail-identity-line'><Text className='pet-detail-name'>{pet.name}</Text>
         {sexLabel(pet.sex) && <View className={`pet-detail-sexpill${pet.sex === 'FEMALE' ? ' pet-detail-sexpill-female' : ''}`}><Text>{sexLabel(pet.sex)}</Text></View>}</View>
         <Text className='pet-abs pet-detail-breed'>{breedAgeLine(pet, today)}</Text>
@@ -246,6 +250,8 @@ export default function PetArchiveDetail() {
       </>}
       {notice && ready && <Text id='pet-notice' className='pet-notice pet-detail-notice'>{notice}</Text>}
     </View>
+    {phase === 'ready' && pet && recordSheet && <HealthRecordFormSheet kind={recordSheet} petId={pet.petId} preview={preview}
+      onClose={() => setRecordSheet(null)} onSaved={() => { setRecordSheet(null); void load() }} />}
   </ConsumerPageLayout>
 }
 function todayISO() {

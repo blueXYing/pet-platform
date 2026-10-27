@@ -135,8 +135,8 @@ async function captureCanvas(name, canvasHeight, tileName) {
   const states = [
     { name: 'list', page: 'consumer/pages/pet-archive/index', query: 'preview=1&referenceCanvas=1', marker: '宠物档案', canvas: 312 },
     { name: 'detail', page: 'consumer/pages/pet-archive/detail', query: 'preview=1&petId=30001&referenceCanvas=1', marker: '基本信息', canvas: 1252 },
-    { name: 'form-brother', page: 'consumer/pages/pet-archive/form', query: 'preview=1&scenario=form-brother&referenceCanvas=1', marker: '添加宠物信息', canvas: 1066 },
-    { name: 'form-sister', page: 'consumer/pages/pet-archive/form', query: 'preview=1&scenario=form-sister&referenceCanvas=1', marker: '添加宠物信息', canvas: 1067 },
+    { name: 'form-brother', page: 'consumer/pages/pet-archive/form', query: 'preview=1&scenario=form-brother&referenceCanvas=1', marker: '添加宠物信息', canvas: 1162 },
+    { name: 'form-sister', page: 'consumer/pages/pet-archive/form', query: 'preview=1&scenario=form-sister&referenceCanvas=1', marker: '添加宠物信息', canvas: 1163 },
   ]
   for (const state of states) {
     if (process.env.PET_CAPTURE_MODE === 'device') continue

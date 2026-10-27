@@ -2,6 +2,8 @@ import { Button, Image, ScrollView, Text, View } from '@tarojs/components'
 import Taro, { useDidShow } from '@tarojs/taro'
 import { useCallback, useEffect, useRef, useState, type CSSProperties } from 'react'
 import { switchConsumerTab } from '../../components/navigation/switch'
+import { syncCustomTabBar } from '../../components/navigation/custom-tab-bar'
+import { RootTabBarSpacer } from '../../components/navigation/root-tab-bar-spacer'
 import CityPicker from '../../city/picker'
 import { readSelectedCity, writeSelectedCity } from '../../city/model'
 import type { StoreCity } from '../../store/model'
@@ -20,6 +22,8 @@ import iconRating from '../../assets/home/guarantee-rating@2x.png'
 import iconInsurance from '../../assets/home/guarantee-insurance@2x.png'
 import iconEscrow from '../../assets/home/guarantee-escrow@2x.png'
 import placeholderAvatar from '../../assets/profile/avatar.png'
+import defaultCatAvatar from '../pet-archive/assets/pet-default-cat.png'
+import defaultDogAvatar from '../pet-archive/assets/pet-default-dog.png'
 import cityPawIcon from '../../assets/home/home-city-paw@3x.png'
 import petTape from '../../assets/home/pet-tape@3x.png'
 import './home.css'
@@ -45,6 +49,9 @@ const guarantee = [
 
 type PetBadge = Readonly<{ title: string; line: string; tone: 'vaccine' | 'deworm' }>
 
+function petAvatar(pet: PetView) {
+  return pet.avatarUrl || (pet.petType === 'DOG' ? defaultDogAvatar : pet.petType === 'CAT' ? defaultCatAvatar : placeholderAvatar)
+}
 export default function HomePage() {
   const [info] = useState(() => Taro.getWindowInfo())
   const unit = info.windowWidth / 402
@@ -75,7 +82,7 @@ export default function HomePage() {
   const mounted = useRef(true)
   useEffect(() => { mounted.current = true; return () => { mounted.current = false } }, [])
   // 宠物档案读侧（设计 61:599：标题「宠物档案 N 只萌宠」+ 宠物行 + 疫苗/驱虫状态 + 宠物百科入口）。
-  // 匿名/未登录/读取失败一律回退到入口卡，不虚构数据；最多展示 2 只（与设计稿一致）。
+  // 匿名/未登录/读取失败一律回退到入口卡，不虚构数据；同屏最多展示 3 只，其余在模块内局部滚动查看。
   const { scope, revision, context } = useWorkspace('real')
   const petRepo = useRef(realPetRepository())
   const [pets, setPets] = useState<PetView[]>([])
@@ -87,9 +94,9 @@ export default function HomePage() {
     try {
       const list = await scope.run(undefined, () => petRepo.current.load())
       if (!mounted.current || seq !== petSequence.current) return
-      const top = list.filter(pet => pet.status === 'ACTIVE').slice(0, 2)
-      setPets(top)
-      const entries = await Promise.all(top.map(async (pet): Promise<readonly [string, PetBadge] | null> => {
+      const active = list.filter(pet => pet.status === 'ACTIVE')
+      setPets(active)
+      const entries = await Promise.all(active.map(async (pet): Promise<readonly [string, PetBadge] | null> => {
         try {
           const [vaccines, deworms] = await Promise.all([
             scope.run(undefined, () => petRepo.current.listHealthRecords(pet.petId, 'vaccination-records')),
@@ -120,7 +127,7 @@ export default function HomePage() {
       .then(catalog => { if (mounted.current && catalog.length) setCities(catalog) })
       .catch(() => { /* 目录不可用：芯片回退本地选择/默认名，面板不打开选项 */ })
   }, [])
-  useDidShow(() => { setSelectedCity(readSelectedCity().cityCode); loadCities(); void loadPets() })
+  useDidShow(() => { syncCustomTabBar(0); setSelectedCity(readSelectedCity().cityCode); loadCities(); void loadPets() })
   useEffect(() => { void loadPets() }, [loadPets, revision, context])
   function pickCity(next: string | undefined) {
     setCityPickerOpen(false)
@@ -137,10 +144,12 @@ export default function HomePage() {
     Taro.navigateTo({ url: path }).catch(() => Taro.showToast({ title: '页面打开失败，请重试', icon: 'none' }))
   }
   function goMessages() { void switchConsumerTab('messages') }
+  const visiblePetRows = Math.min(pets.length, 3)
+  const petListHeight = visiblePetRows > 0 ? visiblePetRows * 85 - 16 : 0
   return <View className='home-page' style={style}>
     {/* 分层背景（设计 z 序）：网格纸纹（61:31，状态栏起 787 高）→ 奶油头带（0..86）→ 手绘涂鸦带（62:49，86..331）→ #f0fbff 主体 */}
     {/* 网格纸纹只铺到宠物分区底部（高度按行数计算），不延伸到找门店等后续模块；裁剪不缩放 */}
-    <View className='home-bg-grid-clip' style={{ height: `${(420.41 + 85 * Math.max(1, pets.length)) * unit}px` }}>
+    <View className='home-bg-grid-clip' style={{ height: `${(420.41 + 85 * Math.max(1, visiblePetRows)) * unit}px` }}>
       <Image className='home-bg-grid' src={textureGrid} mode='scaleToFill' />
     </View>
     <View className='home-bg-cream' />
@@ -200,35 +209,41 @@ export default function HomePage() {
               <Text className='home-pet-go'>›</Text>
             </Button>
           )}
-          {pets.map(pet => {
-            const badge = petBadges[pet.petId]
-            const sex = sexLabel(pet.sex)
-            return (
-              <Button key={pet.petId} className='home-pet-row' hoverClass='none' onClick={() => open(`/consumer/pages/pet-archive/detail?petId=${pet.petId}`)}>
-                <Image className='home-pet-row-avatar' src={pet.avatarUrl || placeholderAvatar} mode='aspectFill' />
-                <View className='home-pet-row-main'>
-                  <View className='home-pet-row-name'>
-                    <Text className='home-pet-name'>{pet.name}</Text>
-                    {sex !== '' && (
-                      <View className={pet.sex === 'MALE' ? 'home-pet-sex home-pet-sex-male' : 'home-pet-sex home-pet-sex-female'}>
-                        <Text className={pet.sex === 'MALE' ? 'home-pet-sex-text' : 'home-pet-sex-text home-pet-sex-text-female'}>{sex}</Text>
+          {pets.length > 0 && (
+            <ScrollView className='home-pet-scroll' style={{ height: `calc(var(--home-unit) * ${petListHeight})` }} scrollY enhanced showScrollbar={false}>
+              {pets.map(pet => {
+                const badge = petBadges[pet.petId]
+                const sex = sexLabel(pet.sex)
+                // Match the archive list/detail: a pet without an uploaded avatar falls back to
+                // its type default (dog/cat); OTHER keeps the generic profile placeholder.
+                return (
+                  <Button key={pet.petId} className='home-pet-row' hoverClass='none' onClick={() => open(`/consumer/pages/pet-archive/detail?petId=${pet.petId}`)}>
+                    <Image className='home-pet-row-avatar' src={petAvatar(pet)} mode='aspectFill' />
+                    <View className='home-pet-row-main'>
+                      <View className='home-pet-row-name'>
+                        <Text className='home-pet-name'>{pet.name}</Text>
+                        {sex !== '' && (
+                          <View className={pet.sex === 'MALE' ? 'home-pet-sex home-pet-sex-male' : 'home-pet-sex home-pet-sex-female'}>
+                            <Text className={pet.sex === 'MALE' ? 'home-pet-sex-text' : 'home-pet-sex-text home-pet-sex-text-female'}>{sex}</Text>
+                          </View>
+                        )}
+                      </View>
+                      <Text className='home-pet-breed'>{breedAgeLine(pet, todayISO)}</Text>
+                    </View>
+                    {badge && (
+                      <View className='home-pet-chip'>
+                        <View className={badge.tone === 'vaccine' ? 'home-pet-chip-pill home-pet-chip-pill-vaccine' : 'home-pet-chip-pill home-pet-chip-pill-deworm'}>
+                          <View className={badge.tone === 'vaccine' ? 'home-pet-chip-icon home-pet-chip-icon-vaccine' : 'home-pet-chip-icon home-pet-chip-icon-deworm'} />
+                          <Text className={badge.tone === 'vaccine' ? 'home-pet-chip-title' : 'home-pet-chip-title home-pet-chip-title-deworm'}>{badge.title}</Text>
+                        </View>
+                        <Text className='home-pet-chip-line'>{badge.line}</Text>
                       </View>
                     )}
-                  </View>
-                  <Text className='home-pet-breed'>{breedAgeLine(pet, todayISO)}</Text>
-                </View>
-                {badge && (
-                  <View className='home-pet-chip'>
-                    <View className={badge.tone === 'vaccine' ? 'home-pet-chip-pill home-pet-chip-pill-vaccine' : 'home-pet-chip-pill home-pet-chip-pill-deworm'}>
-                      <View className={badge.tone === 'vaccine' ? 'home-pet-chip-icon home-pet-chip-icon-vaccine' : 'home-pet-chip-icon home-pet-chip-icon-deworm'} />
-                      <Text className={badge.tone === 'vaccine' ? 'home-pet-chip-title' : 'home-pet-chip-title home-pet-chip-title-deworm'}>{badge.title}</Text>
-                    </View>
-                    <Text className='home-pet-chip-line'>{badge.line}</Text>
-                  </View>
-                )}
-              </Button>
-            )
-          })}
+                  </Button>
+                )
+              })}
+            </ScrollView>
+          )}
         </View>
       </View>
       {/* 功能入口（§4.4 功能版子集；原稿该区域为营销位/热门服务——无 V1 后端维持裁剪，入口卡沿白卡家族呈现） */}
@@ -264,6 +279,7 @@ export default function HomePage() {
         </View>
       </View>
       <View className='home-tail'><Text>页面数据：入口聚合页（门店目录匿名可浏览；其余页面自带真实/预览通道）</Text></View>
+      <RootTabBarSpacer />
     </ScrollView>
   </View>
 }

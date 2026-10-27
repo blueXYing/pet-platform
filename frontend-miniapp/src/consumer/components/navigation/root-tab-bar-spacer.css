@@ -1,0 +1,1 @@
+.root-tab-bar-spacer { width: 100%; height: calc(50px + env(safe-area-inset-bottom)); }

@@ -5,13 +5,16 @@ import com.petplatform.common.SnowflakeIdGenerator;
 import com.petplatform.merchant.api.query.MerchantApplicationQueryApi;
 import com.petplatform.merchant.biz.application.PrivateAssetQueryPort;
 import com.petplatform.task.core.*;
+import com.petplatform.thirdparty.api.PetAvatarSigningApi;
 import com.petplatform.thirdparty.api.PrivateAssetApi;
 import com.petplatform.thirdparty.api.PrivateAssetReadAuthorizer;
+import com.petplatform.thirdparty.biz.apiimpl.PetAvatarSigningApiImpl;
 import com.petplatform.thirdparty.biz.apiimpl.PrivateAssetApiImpl;
 import com.petplatform.thirdparty.biz.apiimpl.PrivateAssetReconcileTaskHandler;
 import com.petplatform.thirdparty.biz.application.port.*;
 import com.petplatform.thirdparty.biz.infrastructure.oss.OssConnection;
 import com.petplatform.thirdparty.biz.infrastructure.oss.S3PrivateObjectStore;
+import com.petplatform.thirdparty.biz.infrastructure.oss.S3ServiceCoverObjectSigner;
 import com.petplatform.thirdparty.biz.infrastructure.provider.assetimage.*;
 import java.time.Clock;
 import java.time.Duration;
@@ -21,6 +24,7 @@ import javax.crypto.spec.GCMParameterSpec;
 import javax.crypto.spec.SecretKeySpec;
 import javax.sql.DataSource;
 import org.springframework.beans.factory.ObjectProvider;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.autoconfigure.condition.*;
 import org.springframework.context.annotation.*;
@@ -88,6 +92,27 @@ public class PrivateAssetRuntimeConfiguration {
   @ConditionalOnMissingBean(PrivateAssetWatermarkRenderer.class)
   PrivateAssetWatermarkRenderer privateAssetWatermarkRenderer() {
     return new ImageIoPrivateAssetWatermarkRenderer();
+  }
+
+  /** CCR-C-PET-AVATAR-001: one-day quantized GET for the owner's immutable pet avatar. */
+  @Bean(destroyMethod = "close")
+  @ConditionalOnMissingBean(PrivateObjectStore.class)
+  S3ServiceCoverObjectSigner petAvatarObjectSigner(
+      OssConnection connection,
+      ObjectProvider<Clock> clock,
+      @Value("${pet.pet-avatar.sign-window-seconds:86400}") long windowSeconds) {
+    return new S3ServiceCoverObjectSigner(
+        connection, clock.getIfAvailable(Clock::systemUTC), windowSeconds);
+  }
+
+  @Bean
+  @ConditionalOnMissingBean({PrivateObjectStore.class, PetAvatarSigningApi.class})
+  PetAvatarSigningApi petAvatarSigningApi(
+      DataSource source,
+      @Qualifier("petAvatarObjectSigner") ServiceCoverObjectSigner signer,
+      ObjectProvider<Clock> clock) {
+    return new PetAvatarSigningApiImpl(
+        source, signer, clock.getIfAvailable(Clock::systemUTC));
   }
 
   @Bean

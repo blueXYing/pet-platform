@@ -1,8 +1,6 @@
-import { ConsumerPageLayout } from '../../components/page-layout'
-import { switchConsumerTab } from '../../components/navigation/switch'
-import { Button, Image, Input, Picker, Text, Textarea, View } from '@tarojs/components'
-import Taro, { useRouter } from '@tarojs/taro'
-import { useCallback, useEffect, useRef, useState, type CSSProperties } from 'react'
+import { Button, Image, Input, Picker, ScrollView, Text, Textarea, View } from '@tarojs/components'
+import Taro from '@tarojs/taro'
+import { useEffect, useRef, useState } from 'react'
 import { useWorkspace } from '../../../shared/workspace-react'
 import { consumerApi } from '../../../shared/consumer-runtime'
 import { realPetRepository } from '../../api/page-repository'
@@ -11,24 +9,28 @@ import {
   validateDewormDraft, validateVaccineDraft,
   type DewormDraft, type HealthRecordType, type VaccineDraft,
 } from '../../pet/health-record'
-import navBack from './assets/nav-back.png'
-import './fonts.css'
+import sheetClose from './assets/sheet-close.png'
+import iconDate from './assets/icon-date.png'
 import './record-form.css'
 
-// 契约 68（2026-10-19 裁决回补，设计稿 96:2580 疫苗 / 96:3006 驱虫）：添加表单独立成页
-// （address/new+edit 弹层成页先例；原稿为档案详情页上的面板形态，登记偏差）。
-// 字段按 PRD 5.1.3 字段表：疫苗=名称/接种日期/针次?/下次接种日期?/备注?；驱虫=类型/驱虫日期/
-// 产品?/下次驱虫日期?/备注?。设计稿「接种状态」chips 不入表单（读侧日期派生展示态，contract 68
-// §字段登记）；驱虫类型按 PRD 三枚举全集（设计稿两枚举，登记偏差）。POST 幂等槽
-// pet-health-record:{vaccine|deworm}:{petId}（23号 X-Request-Id，未确认提交重进还原重试）。
+// 契约 68（2026-10-19 裁决回补，设计稿 96:2580/96:3006）：添加表单是档案详情页上的底部
+// 半框弹层（96:2841/96:2842 面板 + 96:2848 标题 + 96:3001/3003 行动按钮），不是三级页面。
+// 字段按 PRD 5.1.3：疫苗=名称/接种日期/针次?/下次接种日期?/备注?；驱虫=类型/日期/产品?/下次
+// 日期?/备注?。设计稿「接种状态」chips 是 nextRecordDate 派生的读侧展示态（contract 68 §字段），
+// 不作为可提交表单字段。POST 幂等槽 pet-health-record:{vaccine|deworm}:{petId}。
 type Phase = 'ready' | 'saving' | 'save-error'
 
 export type HealthRecordFormKind = Extract<HealthRecordType, 'VACCINATION' | 'DEWORMING'>
 
-export function HealthRecordFormPage({ kind }: { kind: HealthRecordFormKind }) {
-  const route = useRouter()
-  const preview = route.params.preview === '1'
-  const petId = route.params.petId || ''
+type Props = {
+  kind: HealthRecordFormKind
+  petId: string
+  preview: boolean
+  onClose: () => void
+  onSaved: () => void
+}
+
+export function HealthRecordFormSheet({ kind, petId, preview, onClose, onSaved }: Props) {
   const isVaccine = kind === 'VACCINATION'
   const { scope } = useWorkspace(preview ? 'preview' : 'real')
   const [phase, setPhase] = useState<Phase>('ready')
@@ -36,17 +38,18 @@ export function HealthRecordFormPage({ kind }: { kind: HealthRecordFormKind }) {
   const [dewormDraft, setDewormDraft] = useState<DewormDraft>({ ...emptyDewormDraft })
   const [errors, setErrors] = useState<Record<string, string>>({})
   const [notice, setNotice] = useState('')
+  const [pendingLocked, setPendingLocked] = useState(false)
   const saving = useRef(false)
-  const [platformInfo] = useState(() => Taro.getWindowInfo())
-  const unit = platformInfo.windowWidth / 402
-  const style = { '--pet-unit': `${unit}px` } as CSSProperties
+  const slot = `pet-health-record:${isVaccine ? 'vaccine' : 'deworm'}:${petId}`
+  const [windowInfo] = useState(() => Taro.getWindowInfo())
+  const safeBottom = Math.max(0, windowInfo.screenHeight - (windowInfo.safeArea?.bottom ?? windowInfo.screenHeight))
   const today = todayISO()
 
   useEffect(() => {
-    // 未确认提交重进还原（23号惯例，同 pet/address 表单）：幂等槽里有 pending 命令则回填。
+    // 未确认提交重进还原（23号惯例）：幂等槽里有 pending 命令则回填。
     if (preview || !petId) return
-    const pending = consumerApi.pendingCommand(`pet-health-record:${isVaccine ? 'vaccine' : 'deworm'}:${petId}`)
-    if (!pending?.data) return
+    const pending = consumerApi.pendingCommand(slot)
+    if (!pending?.data) { setPendingLocked(false); return }
     const body = pending.data as Record<string, unknown>
     if (isVaccine) {
       setVaccineDraft({
@@ -66,19 +69,22 @@ export function HealthRecordFormPage({ kind }: { kind: HealthRecordFormKind }) {
       })
     }
     setPhase('save-error')
-    setNotice('上次提交结果尚未确认，请重试原保存')
-  }, [preview, petId, isVaccine])
+    setPendingLocked(true)
+    setNotice('')
+  }, [preview, petId, isVaccine, slot])
 
-  const leave = useCallback(async () => {
-    if (Taro.getCurrentPages().length > 1) await Taro.navigateBack()
-    else await Taro.redirectTo({ url: `/consumer/pages/pet-archive/detail?petId=${encodeURIComponent(petId)}` })
-  }, [petId])
+  function close() {
+    if (saving.current) return
+    onClose()
+  }
   function editVaccine<K extends keyof VaccineDraft>(key: K, value: VaccineDraft[K]) {
     if (saving.current) return
+    if (pendingLocked) { setNotice('上次提交结果尚未确认，请直接点击保存重试'); return }
     setVaccineDraft(old => ({ ...old, [key]: value })); setNotice(''); setErrors({})
   }
   function editDeworm<K extends keyof DewormDraft>(key: K, value: DewormDraft[K]) {
     if (saving.current) return
+    if (pendingLocked) { setNotice('上次提交结果尚未确认，请直接点击保存重试'); return }
     setDewormDraft(old => ({ ...old, [key]: value })); setNotice(''); setErrors({})
   }
   async function save() {
@@ -97,9 +103,11 @@ export function HealthRecordFormPage({ kind }: { kind: HealthRecordFormKind }) {
       else await scope.run(undefined, () => repository.createDewormingRecord(petId, body))
       if (currentRevision !== scope.revision) return
       void Taro.showToast({ title: '已保存', icon: 'success' })
-      await leave()
+      onSaved()
     } catch (error) {
       if (currentRevision !== scope.revision) return
+      // 明确拒绝会清掉幂等槽；此时允许用户修改内容后重新发起。未知结果仍锁定原内容重试。
+      if (!consumerApi.pendingCommand(slot)) setPendingLocked(false)
       saving.current = false; setPhase('save-error'); setNotice(healthRecordErrorMessage(error))
     }
   }
@@ -125,92 +133,117 @@ export function HealthRecordFormPage({ kind }: { kind: HealthRecordFormKind }) {
   }
 
   const title = isVaccine ? '添加疫苗记录' : '添加驱虫记录'
-  return <ConsumerPageLayout page='petDetail' unit={unit} navigation={preview ? { idPrefix: 'pet', disabled: phase === 'saving', onSelect: key => void switchConsumerTab(key) } : undefined} className='pet-page pet-record-form-page' style={style}>
-    <View className='pet-status-area' />
-    <View className='pet-record-header'>
-      <Button id='pet-record-back' className='pet-record-back' ariaLabel='返回' onClick={() => void leave()}>
-        <Image src={navBack} mode='scaleToFill' />
-      </Button>
-      <Text className='pet-record-title'>{title}</Text>
-    </View>
-    <View className='pet-record-body'>
-      <View className='pet-record-panel'>
-        {isVaccine && <>
-          <Text className='pet-record-label'>疫苗名称</Text>
-          <Input id='pet-record-vaccine-name' className='pet-record-input' type='text' value={vaccineDraft.vaccineName}
-            placeholder='如：狂犬疫苗、犬六联疫苗' maxlength={50}
-            onInput={event => editVaccine('vaccineName', event.detail.value)} />
-          {errors.vaccineName && <Text className='pet-record-error'>{errors.vaccineName}</Text>}
-          <Text className='pet-record-label'>接种日期</Text>
-          <Picker id='pet-record-vaccine-date' mode='date' end={today} value={vaccineDraft.recordDate || today}
-            onChange={event => editVaccine('recordDate', event.detail.value)}>
-            <View className='pet-record-input pet-record-picker'>
-              <Text className={vaccineDraft.recordDate ? '' : 'pet-record-placeholder'}>{vaccineDraft.recordDate || '请选择接种日期'}</Text>
-            </View>
-          </Picker>
-          {errors.recordDate && <Text className='pet-record-error'>{errors.recordDate}</Text>}
-          <Text className='pet-record-label'>接种针次（选填）</Text>
-          <Input id='pet-record-vaccine-dose' className='pet-record-input' type='number' value={vaccineDraft.doseNumber}
-            placeholder='第几针（1~20）' maxlength={2}
-            onInput={event => editVaccine('doseNumber', event.detail.value)} />
-          {errors.doseNumber && <Text className='pet-record-error'>{errors.doseNumber}</Text>}
-          <Text className='pet-record-label'>下次接种日期（选填）</Text>
-          <Picker id='pet-record-vaccine-next' mode='date' value={vaccineDraft.nextRecordDate || today}
-            onChange={event => editVaccine('nextRecordDate', event.detail.value)}>
-            <View className='pet-record-input pet-record-picker'>
-              <Text className={vaccineDraft.nextRecordDate ? '' : 'pet-record-placeholder'}>{vaccineDraft.nextRecordDate || '请选择日期'}</Text>
-            </View>
-          </Picker>
-          {errors.nextRecordDate && <Text className='pet-record-error'>{errors.nextRecordDate}</Text>}
-        </>}
-        {!isVaccine && <>
-          <Text className='pet-record-label'>驱虫类型</Text>
-          <View className='pet-record-chips'>
-            {(Object.keys(dewormingTypeLabels) as (keyof typeof dewormingTypeLabels)[]).map(type =>
-              <Button key={type} id={`pet-record-type-${type}`} hoverClass='none'
-                className={`pet-record-chip${dewormDraft.dewormingType === type ? ' is-current' : ''}`}
-                onClick={() => editDeworm('dewormingType', type)}>
-                <Text>{dewormingTypeLabels[type]}</Text>
-              </Button>)}
-          </View>
-          <Text className='pet-record-label'>驱虫日期</Text>
-          <Picker id='pet-record-deworm-date' mode='date' end={today} value={dewormDraft.recordDate || today}
-            onChange={event => editDeworm('recordDate', event.detail.value)}>
-            <View className='pet-record-input pet-record-picker'>
-              <Text className={dewormDraft.recordDate ? '' : 'pet-record-placeholder'}>{dewormDraft.recordDate || '请选择驱虫日期'}</Text>
-            </View>
-          </Picker>
-          {errors.recordDate && <Text className='pet-record-error'>{errors.recordDate}</Text>}
-          <Text className='pet-record-label'>驱虫产品（选填）</Text>
-          <Input id='pet-record-deworm-product' className='pet-record-input' type='text' value={dewormDraft.productName}
-            placeholder='如：拜宠清、福来恩' maxlength={50}
-            onInput={event => editDeworm('productName', event.detail.value)} />
-          {errors.productName && <Text className='pet-record-error'>{errors.productName}</Text>}
-          <Text className='pet-record-label'>下次驱虫日期（选填）</Text>
-          <Picker id='pet-record-deworm-next' mode='date' value={dewormDraft.nextRecordDate || today}
-            onChange={event => editDeworm('nextRecordDate', event.detail.value)}>
-            <View className='pet-record-input pet-record-picker'>
-              <Text className={dewormDraft.nextRecordDate ? '' : 'pet-record-placeholder'}>{dewormDraft.nextRecordDate || '请选择日期'}</Text>
-            </View>
-          </Picker>
-          {errors.nextRecordDate && <Text className='pet-record-error'>{errors.nextRecordDate}</Text>}
-        </>}
-        <Text className='pet-record-label'>备注（选填）</Text>
-        <Textarea id='pet-record-note' className='pet-record-textarea' value={isVaccine ? vaccineDraft.note : dewormDraft.note}
-          placeholder='随记录展示（200 字以内）' maxlength={200}
-          onInput={event => (isVaccine ? editVaccine('note', event.detail.value) : editDeworm('note', event.detail.value))} />
-        {errors.note && <Text className='pet-record-error'>{errors.note}</Text>}
-        {notice && <Text id='pet-record-notice' className='pet-record-error'>{notice}</Text>}
-        <View className='pet-record-actions'>
-          <Button id='pet-record-cancel' className='pet-record-button pet-record-cancel' onClick={() => void leave()}>取消</Button>
-          <Button id='pet-record-save' className='pet-record-button pet-record-save' disabled={phase === 'saving'} onClick={() => void save()}>
-            {phase === 'saving' ? '保存中…' : '保存'}
-          </Button>
-        </View>
+  return <View className='pet-record-sheet-mask' catchMove onClick={close}>
+    <View className='pet-record-sheet' style={{ height: `calc(var(--pet-unit) * 494 + ${safeBottom}px)` }} catchMove onClick={event => event.stopPropagation()}>
+      <View className='pet-record-sheet-head'>
+        <Text className='pet-record-sheet-title'>{title}</Text>
+        <Button id='pet-record-close' className='pet-record-sheet-close' ariaLabel='关闭' disabled={phase === 'saving'} onClick={close}>
+          <Image className='pet-record-sheet-closeicon' src={sheetClose} mode='aspectFit' />
+        </Button>
       </View>
-      <View className='pet-record-tail'><Text>{preview ? '只读预览：本地样例数据，仅用于设计验收，不发起真实请求。' : '页面数据：真实接口（契约 68，添加幂等）。'}</Text></View>
+      <ScrollView className='pet-record-sheet-body' scrollY enhanced showScrollbar={false}>
+        <View className='pet-record-sheet-fields'>
+          {pendingLocked && <Text className='pet-record-sheet-error pet-record-sheet-pending'>
+            上次提交结果尚未确认，请直接点击「保存」重试；重试不会重复添加。
+          </Text>}
+          {isVaccine && <>
+            <View className='pet-record-sheet-field'>
+              <Text className='pet-record-sheet-label'>疫苗名称</Text>
+              <Input id='pet-record-vaccine-name' className='pet-record-sheet-input' type='text' value={vaccineDraft.vaccineName}
+                placeholder='如：狂犬疫苗、犬六联疫苗' maxlength={50} placeholderClass='pet-record-sheet-placeholder'
+                onInput={event => editVaccine('vaccineName', event.detail.value)} />
+              {errors.vaccineName && <Text className='pet-record-sheet-error'>{errors.vaccineName}</Text>}
+            </View>
+            <View className='pet-record-sheet-field'>
+              <Text className='pet-record-sheet-label'>接种日期</Text>
+              <Picker id='pet-record-vaccine-date' mode='date' end={today} value={vaccineDraft.recordDate || today}
+                onChange={event => editVaccine('recordDate', event.detail.value)}>
+                <View className='pet-record-sheet-input pet-record-sheet-picker'>
+                  <Text className={vaccineDraft.recordDate ? '' : 'pet-record-sheet-placeholder'}>{vaccineDraft.recordDate || '-/-/-'}</Text>
+                  <Image className='pet-record-sheet-dateicon' src={iconDate} mode='scaleToFill' />
+                </View>
+              </Picker>
+              {errors.recordDate && <Text className='pet-record-sheet-error'>{errors.recordDate}</Text>}
+            </View>
+            <View className='pet-record-sheet-field'>
+              <Text className='pet-record-sheet-label'>接种针次（选填）</Text>
+              <Input id='pet-record-vaccine-dose' className='pet-record-sheet-input' type='number' value={vaccineDraft.doseNumber}
+                placeholder='第几针（1~20）' maxlength={2} placeholderClass='pet-record-sheet-placeholder'
+                onInput={event => editVaccine('doseNumber', event.detail.value)} />
+              {errors.doseNumber && <Text className='pet-record-sheet-error'>{errors.doseNumber}</Text>}
+            </View>
+            <View className='pet-record-sheet-field'>
+              <Text className='pet-record-sheet-label'>下次接种日期（选填）</Text>
+              <Picker id='pet-record-vaccine-next' mode='date' value={vaccineDraft.nextRecordDate || today}
+                onChange={event => editVaccine('nextRecordDate', event.detail.value)}>
+                <View className='pet-record-sheet-input pet-record-sheet-picker'>
+                  <Text className={vaccineDraft.nextRecordDate ? '' : 'pet-record-sheet-placeholder'}>{vaccineDraft.nextRecordDate || '-/-/-'}</Text>
+                  <Image className='pet-record-sheet-dateicon' src={iconDate} mode='scaleToFill' />
+                </View>
+              </Picker>
+              {errors.nextRecordDate && <Text className='pet-record-sheet-error'>{errors.nextRecordDate}</Text>}
+            </View>
+          </>}
+          {!isVaccine && <>
+            <View className='pet-record-sheet-field'>
+              <Text className='pet-record-sheet-label'>驱虫类型</Text>
+              <View className='pet-record-sheet-chips'>
+                {(Object.keys(dewormingTypeLabels) as (keyof typeof dewormingTypeLabels)[]).map(type =>
+                  <Button key={type} id={`pet-record-type-${type}`} hoverClass='none'
+                    className={`pet-record-sheet-chip${dewormDraft.dewormingType === type ? ' is-current' : ''}`}
+                    onClick={() => editDeworm('dewormingType', type)}>
+                    <Text>{dewormingTypeLabels[type]}</Text>
+                  </Button>)}
+              </View>
+            </View>
+            <View className='pet-record-sheet-field'>
+              <Text className='pet-record-sheet-label'>驱虫日期</Text>
+              <Picker id='pet-record-deworm-date' mode='date' end={today} value={dewormDraft.recordDate || today}
+                onChange={event => editDeworm('recordDate', event.detail.value)}>
+                <View className='pet-record-sheet-input pet-record-sheet-picker'>
+                  <Text className={dewormDraft.recordDate ? '' : 'pet-record-sheet-placeholder'}>{dewormDraft.recordDate || '-/-/-'}</Text>
+                  <Image className='pet-record-sheet-dateicon' src={iconDate} mode='scaleToFill' />
+                </View>
+              </Picker>
+              {errors.recordDate && <Text className='pet-record-sheet-error'>{errors.recordDate}</Text>}
+            </View>
+            <View className='pet-record-sheet-field'>
+              <Text className='pet-record-sheet-label'>驱虫产品（选填）</Text>
+              <Input id='pet-record-deworm-product' className='pet-record-sheet-input' type='text' value={dewormDraft.productName}
+                placeholder='如：拜宠清、福来恩' maxlength={50} placeholderClass='pet-record-sheet-placeholder'
+                onInput={event => editDeworm('productName', event.detail.value)} />
+              {errors.productName && <Text className='pet-record-sheet-error'>{errors.productName}</Text>}
+            </View>
+            <View className='pet-record-sheet-field'>
+              <Text className='pet-record-sheet-label'>下次驱虫日期（选填）</Text>
+              <Picker id='pet-record-deworm-next' mode='date' value={dewormDraft.nextRecordDate || today}
+                onChange={event => editDeworm('nextRecordDate', event.detail.value)}>
+                <View className='pet-record-sheet-input pet-record-sheet-picker'>
+                  <Text className={dewormDraft.nextRecordDate ? '' : 'pet-record-sheet-placeholder'}>{dewormDraft.nextRecordDate || '-/-/-'}</Text>
+                  <Image className='pet-record-sheet-dateicon' src={iconDate} mode='scaleToFill' />
+                </View>
+              </Picker>
+              {errors.nextRecordDate && <Text className='pet-record-sheet-error'>{errors.nextRecordDate}</Text>}
+            </View>
+          </>}
+          <View className='pet-record-sheet-field'>
+            <Text className='pet-record-sheet-label'>备注（选填）</Text>
+            <Textarea id='pet-record-note' className='pet-record-sheet-textarea' value={isVaccine ? vaccineDraft.note : dewormDraft.note}
+              placeholder='随记录展示（200 字以内）' maxlength={200} placeholderClass='pet-record-sheet-placeholder'
+              onInput={event => (isVaccine ? editVaccine('note', event.detail.value) : editDeworm('note', event.detail.value))} />
+            {errors.note && <Text className='pet-record-sheet-error'>{errors.note}</Text>}
+          </View>
+          {notice && <Text id='pet-record-notice' className='pet-record-sheet-error pet-record-sheet-notice'>{notice}</Text>}
+        </View>
+      </ScrollView>
+      <View className='pet-record-sheet-actions'>
+        <Button id='pet-record-cancel' className='pet-record-sheet-button pet-record-sheet-cancel' disabled={phase === 'saving'} onClick={close}>取消</Button>
+        <Button id='pet-record-save' className='pet-record-sheet-button pet-record-sheet-save' disabled={phase === 'saving'} onClick={() => void save()}>
+          {phase === 'saving' ? '保存中…' : '保存'}
+        </Button>
+      </View>
     </View>
-  </ConsumerPageLayout>
+  </View>
 }
 
 function todayISO() {

@@ -4,9 +4,10 @@ export default defineAppConfig({
   // 再按首启标记 redirectTo 引导页（子包）或 switchTab 首页——避免先渲染首页再跳转导致闪屏。
   pages: ['consumer/pages/splash/index', 'consumer/pages/home/index', 'consumer/pages/services/index', 'consumer/pages/community/index', 'consumer/pages/messages/index', 'consumer/pages/mine/index', 'consumer/pages/shell/index', 'consumer/pages/diagnostics/index', 'consumer/pages/profile-edit/index'],
   window: { navigationBarTitleText: '宠物生活服务', backgroundColor: '#f5f5f5' },
-  // 用户 2026-10-08 裁决：V1 用原生 tabBar 等分布局；设计稿“宠友圈中间凸起”登记为设计偏差留补稿轮。
+  // 用户 2026-10-26 裁决：为消除原生 tabBar 在二级页跳转时先隐藏的空档，五个根 tab 页改用同款自定义 tabBar；二级页仍不显示底栏。
   // 图标沿用导航登记表提取的原切图（无选中态变体，选中差异仅文字色，同登记偏差）。
   tabBar: {
+    custom: true,
     color: '#3c3c3c', selectedColor: '#53bfee', backgroundColor: '#ffffff', borderStyle: 'black',
     list: [
       { pagePath: 'consumer/pages/home/index', text: '首页', iconPath: 'consumer/assets/navigation/home.png', selectedIconPath: 'consumer/assets/navigation/home.png' },

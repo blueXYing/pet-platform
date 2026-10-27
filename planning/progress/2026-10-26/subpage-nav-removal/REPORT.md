@@ -4,6 +4,8 @@
 
 用户 2026-10-26 确认：只保留五个根 tab 页（首页/服务/宠友圈/消息/我的）的原生 tabBar；其余页面实际产品不显示自定义底部导航。设计预览/对照通道（`preview=1`，含 `referenceCanvas=1`）保留自定义底栏，仅用于与 Figma 逐帧比对。
 
+> 2026-10-26 后续裁决：为消除原生 tabBar 在进入二级页时先隐藏造成的空档，五个根 tab 页改用同款自定义 tabBar；仍仅根页显示、二级页无底栏。见 `src/custom-tab-bar` 与当日 pet-avatar 进度报告。
+
 ## 改动范围
 
 审计到 `consumer/pages` 共 29 处 `ConsumerPageLayout` 的 `navigation` prop：

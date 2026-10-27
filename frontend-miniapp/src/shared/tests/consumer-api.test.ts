@@ -139,15 +139,45 @@ test('profile sends nickname only; real pet edit preserves non-form fields, stri
   const data = h.calls.at(-1)?.data
   assert.equal(data?.petType, undefined); assert.equal(data?.weightKg, '28.50'); assert.equal(data?.vaccineStatus, 'COMPLETE'); assert.equal(data?.sterilizationStatus, 'NEUTERED'); assert.equal(data?.isDefault, true)
 })
-test('real pet creation requires explicit approved type, never inherits design samples; no fallback on bad responses', async () => {
+test('real pet creation uses the draft petType instead of the legacy action sheet; no bad-response fallback', async () => {
   const h = setup(async () => ok(fixturePets[0])); await login(h.api)
-  const pets = new RealPetRepository(h.api, async () => 'CAT')
-  await pets.save(null, { ...emptyDraft, name: '真实猫' }, '')
+  const pets = new RealPetRepository(h.api, async () => { throw new Error('legacy type chooser must not run') })
+  await pets.save(null, { ...emptyDraft, petType: 'CAT', name: '真实猫' }, '')
   assert.equal(h.calls.at(-1)?.data?.petType, 'CAT'); assert.equal(h.calls.at(-1)?.data?.chipNumber, undefined)
   assert.equal(Object.values(h.calls.at(-1)!.data!).includes(null), false, 'C HTTP request parser rejects explicit null')
   h.fail(async () => ok({ petId: 9007199254740992 }))
   await assert.rejects(pets.get('30001'), /INVALID_RESPONSE/)
 })
+test('health record create decodes the contract-68 receipt and clears the idempotency slot', async () => {
+  const h = setup(async request => {
+    const deworm = request.path.endsWith('/deworming-records')
+    return { statusCode: 201, data: { code: 'SUCCESS', data: {
+      recordId: deworm ? '9600000000000003' : '9600000000000002', petId: '30001',
+      recordType: deworm ? 'DEWORMING' : 'VACCINATION', status: 'ACTIVE',
+    } } }
+  }); await login(h.api)
+  const pets = new RealPetRepository(h.api, async () => { throw new Error('type chooser must not run') })
+  const vaccine = await pets.createVaccinationRecord('30001', {
+    recordDate: '2026-07-26', vaccineName: '矿泉疫苗', doseNumber: 3, nextRecordDate: '2027-12-26',
+  })
+  assert.equal(vaccine.recordId, '9600000000000002')
+  assert.equal(h.calls.at(-1)?.data?.doseNumber, 3)
+  assert.equal(h.api.pendingCommand('pet-health-record:vaccine:30001'), undefined)
+  const deworm = await pets.createDewormingRecord('30001', { recordDate: '2026-07-26', dewormingType: 'EXTERNAL' })
+  assert.equal(deworm.recordType, 'DEWORMING')
+  assert.equal(h.api.pendingCommand('pet-health-record:deworm:30001'), undefined)
+})
+test('pet avatar upload id is sent as avatarAssetId and a signed read URL is never written back', async () => {
+  const h = setup(async () => ok(fixturePets[0])); await login(h.api)
+  const pets = new RealPetRepository(h.api, async () => { throw new Error('legacy type chooser must not run') })
+  await pets.get('30001')
+  await pets.save('30001', { ...emptyDraft, name: '修改' }, '', '801')
+  assert.equal(h.calls.at(-1)?.data?.avatarAssetId, '801')
+  assert.equal(Object.prototype.hasOwnProperty.call(h.calls.at(-1)?.data, 'avatarUrl'), false)
+  await pets.save(null, { ...emptyDraft, petType: 'CAT', name: '真实猫' }, '', '802')
+  assert.equal(h.calls.at(-1)?.data?.avatarAssetId, '802')
+})
+
 test('another server identity cannot restore stored credentials or recover another user pending command', async () => {
   const h = setup(async () => { throw new Error('lost ACK') }); await login(h.api)
   await assert.rejects(h.api.write('profile', { method: 'PUT', path: '/api/v1/c/profile', data: { nickname: 'A' } }, v => v))

@@ -6,7 +6,7 @@ export type Session = { sessionId: string; userId: string; audience: 'MINIAPP'; 
 type Grant = Session & { accessToken: string; tokenType: 'Bearer' }
 type Attempt = { attemptId: string; attemptToken: string; nextStep: string }
 export type Command = RequestSpec & { requestId: string }
-export type PrivateUploadTransport = (input: { filePath: string; requestId: string; authorization: string; purpose?: 'MERCHANT_APPLICATION_MATERIAL' | 'SERVICE_COVER' | 'STORE_PHOTO' | 'FEEDBACK_ATTACHMENT' }) => Promise<{ statusCode: number; data: unknown }>
+export type PrivateUploadTransport = (input: { filePath: string; requestId: string; authorization: string; purpose?: 'MERCHANT_APPLICATION_MATERIAL' | 'SERVICE_COVER' | 'STORE_PHOTO' | 'FEEDBACK_ATTACHMENT' | 'PET_AVATAR' }) => Promise<{ statusCode: number; data: unknown }>
 export type PrivateAssetReceipt = { assetId: string; status: 'READY'; objectSha256: string; mediaType: 'image/jpeg' | 'image/png'; bytes: number }
 export type AfterSaleAssetTransport = {
   upload(input: { filePath: string; requestId: string; authorization: string }): Promise<{ statusCode: number; data: unknown }>
@@ -474,12 +474,12 @@ export class ConsumerApi {
     return decode(value)
   }
   /** Only this typed operation can use the MINIAPP credential for multipart upload. */
-  async uploadPrivateAsset(input: { filePath: string; requestId: string; ownerUserId: string; purpose?: 'MERCHANT_APPLICATION_MATERIAL' | 'SERVICE_COVER' | 'STORE_PHOTO' | 'FEEDBACK_ATTACHMENT' }): Promise<PrivateAssetReceipt> {
+  async uploadPrivateAsset(input: { filePath: string; requestId: string; ownerUserId: string; purpose?: 'MERCHANT_APPLICATION_MATERIAL' | 'SERVICE_COVER' | 'STORE_PHOTO' | 'FEEDBACK_ATTACHMENT' | 'PET_AVATAR' }): Promise<PrivateAssetReceipt> {
     const ticket = this.scope.capture()
     const credential = this.credential
     if (!credential || !this.currentSession || credential.sessionId !== this.currentSession.sessionId || credential.userId !== this.currentSession.userId || input.ownerUserId !== this.currentSession.userId || ticket.context.userId !== input.ownerUserId) throw new ApiError('COMMON_UNAUTHORIZED', 401)
     const purpose = input.purpose ?? 'MERCHANT_APPLICATION_MATERIAL'
-    if (!['MERCHANT_APPLICATION_MATERIAL', 'SERVICE_COVER', 'STORE_PHOTO', 'FEEDBACK_ATTACHMENT'].includes(purpose)) throw new Error('UPLOAD_PURPOSE_INVALID')
+    if (!['MERCHANT_APPLICATION_MATERIAL', 'SERVICE_COVER', 'STORE_PHOTO', 'FEEDBACK_ATTACHMENT', 'PET_AVATAR'].includes(purpose)) throw new Error('UPLOAD_PURPOSE_INVALID')
     if (purpose === 'SERVICE_COVER' || purpose === 'STORE_PHOTO') {
       if (ticket.context.workspace !== 'merchant' || !ticket.context.merchantId || !ticket.context.storeId) throw new Error('WORKSPACE_PATH_MISMATCH')
     } else if (ticket.context.workspace !== 'consumer') throw new Error('WORKSPACE_PATH_MISMATCH')

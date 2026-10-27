@@ -1,6 +1,7 @@
 package com.petplatform.boot.config;
 
 import com.petplatform.common.SnowflakeIdGenerator;
+import com.petplatform.thirdparty.api.PetAvatarSigningApi;
 import com.petplatform.user.biz.application.PetService;
 import com.petplatform.user.biz.application.UserAuthService;
 import com.petplatform.user.biz.application.UserProfileService;
@@ -36,10 +37,12 @@ public class CAuthConfiguration {
     }
 
     @Bean
-    PetService petService(DataSource source, ObjectProvider<SnowflakeIdGenerator> ids) {
+    PetService petService(DataSource source, ObjectProvider<SnowflakeIdGenerator> ids,
+                          ObjectProvider<PetAvatarSigningApi> avatarSigning) {
         SnowflakeIdGenerator idProvider = ids.getIfAvailable();
         return new PetService(source, Objects.requireNonNull(idProvider,
-                "PLAT-002 ID provider required before C pet writes can start"));
+                "PLAT-002 ID provider required before C pet writes can start"),
+                avatarSigning.getIfAvailable());
     }
 
     /**

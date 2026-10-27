@@ -1,17 +1,22 @@
 @import './canvas.css';
 
 /* Nodes 95:1481 (brother, 402x1066) / 95:1844 (sister, 402x1067). All values are exact spec.json pageBounds. */
-.pet-form-design { min-height: calc(var(--pet-unit) * 1066); }
+.pet-form-design { min-height: calc(var(--pet-unit) * 1162); }
 .pet-form-strip1 { left: 0; top: calc(var(--pet-unit) * 35); width: calc(var(--pet-unit) * 402); height: calc(var(--pet-unit) * 787); }
-.pet-form-strip2 { left: 0; top: calc(var(--pet-unit) * 821); width: calc(var(--pet-unit) * 402); height: calc(var(--pet-unit) * 227); }
-.pet-form-header { left: 0; top: 0; width: calc(var(--pet-unit) * 402); height: calc(var(--pet-unit) * 86); background: #fff6e5; }
+.pet-form-strip2 { left: 0; top: calc(var(--pet-unit) * 917); width: calc(var(--pet-unit) * 402); height: calc(var(--pet-unit) * 227); }
+.pet-form-header { position: fixed; left: 0; top: 0; width: 100%; height: calc(var(--pet-status-top) + var(--pet-unit) * 86); background: #fff6e5; z-index: 20; }
 .pet-form-cardshadow { left: calc(var(--pet-unit) * 22); top: calc(var(--pet-unit) * 106); width: calc(var(--pet-unit) * 358); height: calc(var(--pet-unit) * 87); background: #85d2f3; }
 .pet-form-card { left: calc(var(--pet-unit) * 22); top: calc(var(--pet-unit) * 103); width: calc(var(--pet-unit) * 358); height: calc(var(--pet-unit) * 87); background: #f0fbff; }
-.pet-form-panel { left: calc(var(--pet-unit) * 22); top: calc(var(--pet-unit) * 191); width: calc(var(--pet-unit) * 358); height: calc(var(--pet-unit) * 786); background: #f0fbff; }
-.pet-form-back { left: calc(var(--pet-unit) * 31); top: calc(var(--pet-unit) * 39.739); width: calc(var(--pet-unit) * 28.8); height: calc(var(--pet-unit) * 34.5); display: flex; align-items: center; justify-content: center; z-index: 4; }
+.pet-form-panel { left: calc(var(--pet-unit) * 22); top: calc(var(--pet-unit) * 191); width: calc(var(--pet-unit) * 358); height: calc(var(--pet-unit) * 882); background: #f0fbff; }
+.pet-form-back { position: fixed; left: calc(var(--pet-unit) * 31); top: calc(var(--pet-status-top) + var(--pet-unit) * 39.739); width: calc(var(--pet-unit) * 28.8); height: calc(var(--pet-unit) * 34.5); display: flex; align-items: center; justify-content: center; z-index: 22; }
 .pet-form-back image { width: calc(var(--pet-unit) * 8.8575439453125); height: calc(var(--pet-unit) * 14.522697448730469); }
-.pet-form-navtitle { left: calc(var(--pet-unit) * 167.732421875); top: calc(var(--pet-unit) * 45); font-size: calc(var(--pet-unit) * 16); line-height: calc(var(--pet-unit) * 24); font-weight: 700; color: #3c3c3c; z-index: 2; }
-.pet-form-navedit { left: calc(var(--pet-unit) * 348.490234375); top: calc(var(--pet-unit) * 49.515); width: calc(var(--pet-unit) * 13.5); height: calc(var(--pet-unit) * 14.97); }
+.pet-form-navtitle { position: fixed; left: calc(var(--pet-unit) * 167.732421875); top: calc(var(--pet-status-top) + var(--pet-unit) * 45); font-size: calc(var(--pet-unit) * 16); line-height: calc(var(--pet-unit) * 24); font-weight: 700; color: #3c3c3c; z-index: 21; }
+.pet-form-navedit { position: fixed; left: calc(var(--pet-unit) * 348.490234375); top: calc(var(--pet-status-top) + var(--pet-unit) * 49.515); width: calc(var(--pet-unit) * 13.5); height: calc(var(--pet-unit) * 14.97); z-index: 22; }
+/* Reference-canvas screenshots keep the Figma canvas header at its design y, not viewport-fixed. */
+.pet-reference-canvas .pet-form-header { position: absolute; top: 0; left: 0; width: calc(var(--pet-unit) * 402); height: calc(var(--pet-unit) * 86); }
+.pet-reference-canvas .pet-form-back { position: absolute; top: calc(var(--pet-unit) * 39.739); z-index: 4; }
+.pet-reference-canvas .pet-form-navtitle { position: absolute; top: calc(var(--pet-unit) * 45); z-index: 2; }
+.pet-reference-canvas .pet-form-navedit { position: absolute; top: calc(var(--pet-unit) * 49.515); }
 .pet-form-title { left: calc(var(--pet-unit) * 41); top: calc(var(--pet-unit) * 135); font-size: calc(var(--pet-unit) * 16); line-height: calc(var(--pet-unit) * 24); font-weight: 700; color: #1d0d07; }
 .pet-form-state { position: absolute; top: calc(var(--pet-unit) * 160); left: 0; right: 0; z-index: 6; }
 .pet-form-field { position: absolute; left: calc(var(--pet-unit) * 29); width: calc(var(--pet-unit) * 343); }
@@ -20,14 +25,27 @@
 .pet-form-staticbox { box-sizing: border-box; margin-top: calc(var(--pet-unit) * 6); width: calc(var(--pet-unit) * 343); height: calc(var(--pet-unit) * 42); background: #d2f1ff; border: calc(var(--pet-unit) * 1) solid #c0ecff; border-radius: calc(var(--pet-unit) * 8); position: relative; }
 .pet-form-staticvalue { position: absolute; left: calc(var(--pet-unit) * 14); top: calc(var(--pet-unit) * 11); width: calc(var(--pet-unit) * 317); height: calc(var(--pet-unit) * 20); font-size: calc(var(--pet-unit) * 14); line-height: calc(var(--pet-unit) * 20); color: #2e1d16; white-space: nowrap; }
 .pet-form-staticvalue.is-placeholder { color: #b89682; font-weight: 500; }
-.pet-form-field-name { top: calc(var(--pet-unit) * 213); }
-.pet-form-field-breed { top: calc(var(--pet-unit) * 293); }
-.pet-form-field-sex { top: calc(var(--pet-unit) * 373); }
-.pet-form-field-age { top: calc(var(--pet-unit) * 455); }
-.pet-form-field-birth { top: calc(var(--pet-unit) * 535); }
-.pet-form-field-weight { top: calc(var(--pet-unit) * 617); }
-.pet-form-field-chip { top: calc(var(--pet-unit) * 697); }
-.pet-form-field-note { top: calc(var(--pet-unit) * 777); }
+.pet-form-field-type { top: calc(var(--pet-unit) * 213); }
+.pet-form-typewrap { box-sizing: border-box; margin-top: calc(var(--pet-unit) * 6); width: calc(var(--pet-unit) * 343); height: calc(var(--pet-unit) * 44); padding: calc(var(--pet-unit) * 4); border-radius: calc(var(--pet-unit) * 8); background: #d2f1ff; display: flex; }
+.pet-form-typebtn { flex: 1; height: calc(var(--pet-unit) * 36); border-radius: calc(var(--pet-unit) * 6); font-size: calc(var(--pet-unit) * 14) !important; line-height: calc(var(--pet-unit) * 20) !important; font-weight: 500 !important; color: #7b5b4a !important; display: flex; align-items: center; justify-content: center; }
+.pet-form-typebtn.is-selected { background: #ffffff !important; color: #5baae8 !important; }
+.pet-form-typebtn[disabled] { opacity: .65; }
+.pet-form-profile-card { left: calc(var(--pet-unit) * 29); top: calc(var(--pet-unit) * 291); width: calc(var(--pet-unit) * 343); height: calc(var(--pet-unit) * 86); box-sizing: border-box; padding: 0 calc(var(--pet-unit) * 16); background: #d2f1ff; border: calc(var(--pet-unit) * 1) solid #c0ecff; border-radius: calc(var(--pet-unit) * 10); display: flex; align-items: center; z-index: 3; }
+.pet-form-avatar-action { display: flex; align-items: center; width: calc(var(--pet-unit) * 136); height: calc(var(--pet-unit) * 86); padding: 0; margin: 0; background: transparent; border: 0; flex-shrink: 0; }
+.pet-form-avatar-image { width: calc(var(--pet-unit) * 65); height: calc(var(--pet-unit) * 54); border-radius: calc(var(--pet-unit) * 8); display: block; flex-shrink: 0; }
+.pet-form-avatar-empty { display: flex; align-items: center; justify-content: center; background: #c0ecff; }
+.pet-form-avatar-plus { font-size: calc(var(--pet-unit) * 20); line-height: 1; color: #ffffff; }
+.pet-form-avatar-label { margin-left: calc(var(--pet-unit) * 11); font-size: calc(var(--pet-unit) * 11); line-height: calc(var(--pet-unit) * 16.5); color: #b89682; white-space: nowrap; }
+.pet-form-card-name { flex: 1; min-width: 0; margin-left: calc(var(--pet-unit) * 12); }
+.pet-form-card-name .pet-form-label { color: #7b5b4a; }
+.pet-form-card-input { box-sizing: border-box; margin-top: calc(var(--pet-unit) * 4); width: 100%; height: calc(var(--pet-unit) * 34); background: #ffffff; border: calc(var(--pet-unit) * 1) solid #c0ecff; border-radius: calc(var(--pet-unit) * 8); padding: 0 calc(var(--pet-unit) * 10); font-size: calc(var(--pet-unit) * 14); line-height: calc(var(--pet-unit) * 20); color: #2e1d16; font-family: "C002 Pet Roboto", "C002 Pet CJK", "C002 Pet SC", Roboto, "Noto Sans SC", sans-serif; }
+.pet-form-field-breed { top: calc(var(--pet-unit) * 389); }
+.pet-form-field-sex { top: calc(var(--pet-unit) * 469); }
+.pet-form-field-age { top: calc(var(--pet-unit) * 551); }
+.pet-form-field-birth { top: calc(var(--pet-unit) * 631); }
+.pet-form-field-weight { top: calc(var(--pet-unit) * 713); }
+.pet-form-field-chip { top: calc(var(--pet-unit) * 793); }
+.pet-form-field-note { top: calc(var(--pet-unit) * 873); }
 /* Sex options keep their own position when selection changes. */
 .pet-form-sexwrap { margin-top: calc(var(--pet-unit) * 6); width: calc(var(--pet-unit) * 343); height: calc(var(--pet-unit) * 44); border-radius: calc(var(--pet-unit) * 9999); background: #d2f1ff; position: relative; }
 .pet-form-sexbtn { position: absolute; top: calc(var(--pet-unit) * 4); left: calc(var(--pet-unit) * 171.5); width: calc(var(--pet-unit) * 167.5); height: calc(var(--pet-unit) * 36); border-radius: calc(var(--pet-unit) * 9999); font-size: calc(var(--pet-unit) * 14) !important; line-height: calc(var(--pet-unit) * 20) !important; font-weight: 500 !important; color: #7b5b4a !important; }
@@ -39,12 +57,12 @@
 .pet-form-field-birth .pet-form-staticvalue { top: calc(var(--pet-unit) * 12); }
 .pet-form-dateicon { position: absolute; left: calc(var(--pet-unit) * 311); top: calc(var(--pet-unit) * 14.5); width: calc(var(--pet-unit) * 16); height: calc(var(--pet-unit) * 15); }
 .pet-form-textarea { box-sizing: border-box; margin-top: calc(var(--pet-unit) * 6); width: calc(var(--pet-unit) * 343); height: calc(var(--pet-unit) * 82); background: #d2f1ff; border: calc(var(--pet-unit) * 1) solid #c0ecff; border-radius: calc(var(--pet-unit) * 8); padding: calc(var(--pet-unit) * 11) calc(var(--pet-unit) * 13) calc(var(--pet-unit) * 9) calc(var(--pet-unit) * 14); font-size: calc(var(--pet-unit) * 14); line-height: calc(var(--pet-unit) * 20); color: #2e1d16; font-family: "C002 Pet Roboto", "C002 Pet CJK", "C002 Pet SC", Roboto, "Noto Sans SC", sans-serif; }
-.pet-form-cancel { position: absolute; left: calc(var(--pet-unit) * 29); top: calc(var(--pet-unit) * 907); width: calc(var(--pet-unit) * 165.5); height: calc(var(--pet-unit) * 40); border-radius: calc(var(--pet-unit) * 9999); background: #c0ecff !important; display: flex; align-items: center; justify-content: center; z-index: 3; }
+.pet-form-cancel { position: absolute; left: calc(var(--pet-unit) * 29); top: calc(var(--pet-unit) * 1003); width: calc(var(--pet-unit) * 165.5); height: calc(var(--pet-unit) * 40); border-radius: calc(var(--pet-unit) * 9999); background: #c0ecff !important; display: flex; align-items: center; justify-content: center; z-index: 3; }
 .pet-form-cancel-label { font-size: calc(var(--pet-unit) * 14); line-height: calc(var(--pet-unit) * 20); font-weight: 500; color: #2e1d16; }
-.pet-form-save { position: absolute; left: calc(var(--pet-unit) * 206.5); top: calc(var(--pet-unit) * 907); width: calc(var(--pet-unit) * 165.5); height: calc(var(--pet-unit) * 40); border-radius: calc(var(--pet-unit) * 9999); background: #ffe2bd !important; display: flex; align-items: center; justify-content: center; z-index: 3; }
+.pet-form-save { position: absolute; left: calc(var(--pet-unit) * 206.5); top: calc(var(--pet-unit) * 1003); width: calc(var(--pet-unit) * 165.5); height: calc(var(--pet-unit) * 40); border-radius: calc(var(--pet-unit) * 9999); background: #ffe2bd !important; display: flex; align-items: center; justify-content: center; z-index: 3; }
 .pet-form-save-label { font-size: calc(var(--pet-unit) * 14); line-height: calc(var(--pet-unit) * 20); font-weight: 500; color: #3c3c3c; }
 /* Validation/save notices have no drawn slot in the frame; they use the sample page's text styles in the gap under the buttons. */
-.pet-form-notice { left: calc(var(--pet-unit) * 29); top: calc(var(--pet-unit) * 951); width: calc(var(--pet-unit) * 343); }
+.pet-form-notice { left: calc(var(--pet-unit) * 29); top: calc(var(--pet-unit) * 1047); width: calc(var(--pet-unit) * 343); }
 .pet-form-notice-error { color: #b42318; }
 /* WeChat centers its native input text vertically; vertical padding offsets that text twice. */
 .pet-form-input { padding-top: 0; padding-bottom: 0; }

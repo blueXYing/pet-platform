@@ -14,6 +14,7 @@ import com.petplatform.user.api.command.PetCommands.PetReceipt;
 import com.petplatform.user.api.command.PetCommands.UpdatePet;
 import com.petplatform.user.api.dto.PetView;
 import com.petplatform.user.api.query.PetQueryApi;
+import com.petplatform.thirdparty.api.PetAvatarSigningApi;
 import com.petplatform.user.biz.infrastructure.persistence.CommandIdempotencyStore;
 import com.petplatform.user.biz.infrastructure.persistence.PetStore;
 import com.petplatform.user.biz.infrastructure.persistence.SessionControl;
@@ -43,16 +44,32 @@ public final class PetService implements PetCommandApi, PetQueryApi {
     private final SnowflakeIdGenerator ids;
     private final SessionControl sessionControl;
     private final TransactionTemplate execution;
+    private final PetAvatarSigningApi avatarSigner;
 
     public PetService(DataSource dataSource, SnowflakeIdGenerator ids) {
+        this(dataSource, ids, null);
+    }
+
+    public PetService(DataSource dataSource, SnowflakeIdGenerator ids, PetAvatarSigningApi avatarSigner) {
         this.store = new PetStore(dataSource);
         this.idempotency = new CommandIdempotencyStore(dataSource, ids);
         this.ids = Objects.requireNonNull(ids, "PLAT-002 ID provider is required");
         this.sessionControl = new SessionControl(dataSource);
+        this.avatarSigner = avatarSigner;
         this.execution = new TransactionTemplate(new DataSourceTransactionManager(dataSource));
         execution.setPropagationBehavior(TransactionDefinition.PROPAGATION_REQUIRES_NEW);
         execution.setIsolationLevel(TransactionDefinition.ISOLATION_READ_COMMITTED);
         execution.setTimeout(10);
+    }
+
+    /** Resolve a CCR-C-PET-AVATAR-001 asset id to the internal opaque reference. */
+    private String resolveAvatar(long userId, String avatarAssetId, String externalAvatarUrl) {
+        if (avatarAssetId == null) return externalAvatarUrl;
+        if (avatarSigner == null) {
+            throw new ApiException(CommonApiCodes.DEPENDENCY_UNAVAILABLE, "宠物头像暂不可用");
+        }
+        avatarSigner.signOwnedAvatar(Long.toUnsignedString(userId), avatarAssetId);
+        return "asset:" + avatarAssetId;
     }
 
     /** First-create versus idempotent-replay distinction for the HTTP adapter (23 §5: 201/200). */
@@ -70,6 +87,8 @@ public final class PetService implements PetCommandApi, PetQueryApi {
         long userId = actorUserId(context);
         requireActiveUser(userId);
         Map<String, Object> params = new LinkedHashMap<>();
+        params.put("avatarAssetId", command.avatarAssetId());
+        params.put("avatarUrl", command.avatarUrl());
         params.put("breedName", command.breedName());
         params.put("birthDate", command.birthDate() == null ? null : command.birthDate().toString());
         params.put("healthNote", command.healthNote());
@@ -83,11 +102,12 @@ public final class PetService implements PetCommandApi, PetQueryApi {
                 ignored -> {
                     long petId = freshId();
                     String sex = command.sex() == null ? "UNKNOWN" : command.sex();
+                    String avatar = resolveAvatar(userId, command.avatarAssetId(), command.avatarUrl());
                     if (command.defaultPet()) store.clearDefault(userId, petId);
                     store.insertPet(new PetStore.PetRow(petId, userId, command.name(), command.petType(),
                             command.breedName(), command.birthDate(), sex, command.weightKg(),
                             command.sterilizationStatus(), command.vaccineStatus(), command.healthNote(),
-                            command.avatarUrl(), command.defaultPet(), "ACTIVE"));
+                            avatar, command.defaultPet(), "ACTIVE"));
                     return toView(store.findPet(petId, false));
                 },
                 view -> {
@@ -104,6 +124,7 @@ public final class PetService implements PetCommandApi, PetQueryApi {
         validateUpdate(command);
         long userId = actorUserId(context);
         Map<String, Object> params = new LinkedHashMap<>();
+        params.put("avatarAssetId", command.avatarAssetId());
         params.put("avatarUrl", command.avatarUrl());
         params.put("birthDate", command.birthDate() == null ? null : command.birthDate().toString());
         params.put("breedName", command.breedName());
@@ -121,11 +142,14 @@ public final class PetService implements PetCommandApi, PetQueryApi {
                     PetStore.PetRow current = requireOwnedActivePet(petId, userId, true);
                     boolean nextDefault = command.defaultPet() == null ? current.isDefault() : command.defaultPet();
                     String sex = command.sex() == null ? "UNKNOWN" : command.sex();
+                    String avatar = command.avatarAssetId() != null
+                            ? resolveAvatar(userId, command.avatarAssetId(), null)
+                            : command.avatarUrl() != null ? command.avatarUrl() : current.avatarUrl();
                     if (nextDefault) store.clearDefault(userId, petId);
                     store.updatePetFields(new PetStore.PetRow(current.id(), current.userId(), command.name(),
                             current.petType(), command.breedName(), command.birthDate(), sex,
                             command.weightKg(), command.sterilizationStatus(), command.vaccineStatus(),
-                            command.healthNote(), command.avatarUrl(), nextDefault, current.status()));
+                            command.healthNote(), avatar, nextDefault, current.status()));
                     return toView(store.findPet(petId, false));
                 },
                 view -> {
@@ -157,7 +181,7 @@ public final class PetService implements PetCommandApi, PetQueryApi {
     @Override
     public List<PetView> listActivePets(String ownerUserId) {
         return store.listActivePets(numericId(ownerUserId, "ownerUserId")).stream()
-                .map(PetService::toView).toList();
+                .map(this::toView).toList();
     }
 
     @Override
@@ -277,10 +301,26 @@ public final class PetService implements PetCommandApi, PetQueryApi {
         }
     }
 
-    private static PetView toView(PetStore.PetRow pet) {
+    private PetView toView(PetStore.PetRow pet) {
+        String avatarUrl = pet.avatarUrl();
+        if (avatarUrl != null && avatarUrl.startsWith("asset:")) {
+            if (avatarSigner == null) {
+                avatarUrl = null;
+            } else {
+                try {
+                    avatarUrl = avatarSigner
+                            .signOwnedAvatar(Long.toUnsignedString(pet.userId()), avatarUrl.substring("asset:".length()))
+                            .signedUrl();
+                } catch (RuntimeException unavailable) {
+                    // A stale/unavailable private asset must not make the pet unreadable; the
+                    // client falls back to the type default avatar.
+                    avatarUrl = null;
+                }
+            }
+        }
         return new PetView(Long.toUnsignedString(pet.id()), pet.name(), pet.petType(), pet.breedName(),
                 pet.birthDate(), pet.sex(), pet.weightKg(), pet.sterilizationStatus(), pet.vaccineStatus(),
-                pet.healthNote(), pet.avatarUrl(), pet.isDefault(), pet.status());
+                pet.healthNote(), avatarUrl, pet.isDefault(), pet.status());
     }
 
     private String serialize(Object value) {

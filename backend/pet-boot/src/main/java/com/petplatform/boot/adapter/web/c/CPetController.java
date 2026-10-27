@@ -43,10 +43,10 @@ public class CPetController {
 
     private static final Set<String> CREATE_FIELDS = Set.of(
             "name", "petType", "breedName", "birthDate", "sex", "weightKg",
-            "sterilizationStatus", "vaccineStatus", "healthNote", "avatarUrl", "isDefault");
+            "sterilizationStatus", "vaccineStatus", "healthNote", "avatarAssetId", "avatarUrl", "isDefault");
     private static final Set<String> UPDATE_FIELDS = Set.of(
             "name", "breedName", "birthDate", "sex", "weightKg",
-            "sterilizationStatus", "vaccineStatus", "healthNote", "avatarUrl", "isDefault");
+            "sterilizationStatus", "vaccineStatus", "healthNote", "avatarAssetId", "avatarUrl", "isDefault");
 
     private final PetService pets;
     private final com.petplatform.user.biz.application.PetHealthRecordService healthRecords;
@@ -90,7 +90,8 @@ public class CPetController {
                 date(body.string("birthDate")), body.string("sex"),
                 weight(body.string("weightKg")), body.string("sterilizationStatus"),
                 body.string("vaccineStatus"), body.string("healthNote"),
-                body.string("avatarUrl"), Boolean.TRUE.equals(body.bool("isDefault")));
+                body.string("avatarAssetId"), externalAvatar(body),
+                Boolean.TRUE.equals(body.bool("isDefault")));
         PetService.CommandOutcome<PetView> outcome = pets.createPetOutcome(command);
         response.setStatus(outcome.replayed() ? 200 : 201);
         return ApiResponse.success(toBody(outcome.receipt()), CShared.trace(req));
@@ -114,7 +115,7 @@ public class CPetController {
                 date(body.string("birthDate")), body.string("sex"),
                 weight(body.string("weightKg")), body.string("sterilizationStatus"),
                 body.string("vaccineStatus"), body.string("healthNote"),
-                body.string("avatarUrl"), body.bool("isDefault"));
+                body.string("avatarAssetId"), externalAvatar(body), body.bool("isDefault"));
         return ApiResponse.success(toBody(pets.updatePet(command)), CShared.trace(req));
     }
 
@@ -143,7 +144,7 @@ public class CPetController {
         MiniSessionView view = session(req);
         var command = new com.petplatform.user.api.command.PetHealthRecordCommands.CreateVaccinationRecord(
                 context(req, view), petId, date(body.string("recordDate")),
-                body.string("vaccineName"), integer(body.string("doseNumber"), "doseNumber"),
+                body.string("vaccineName"), integer(body.value("doseNumber"), "doseNumber"),
                 date(body.string("nextRecordDate")), body.string("note"));
         var outcome = healthRecords.createVaccinationOutcome(command);
         response.setStatus(outcome.replayed() ? 200 : 201);
@@ -212,17 +213,36 @@ public class CPetController {
         return body;
     }
 
-    private static Integer integer(String value, String field) {
-        if (value == null || value.isEmpty()) return null;
-        if (!value.matches("[1-9][0-9]{0,2}")) {
+    private static Integer integer(Object value, String field) {
+        if (value == null) return null;
+        Integer parsed;
+        if (value instanceof Integer i) {
+            parsed = i;
+        } else if (value instanceof Long l && l == l.intValue()) {
+            parsed = l.intValue();
+        } else if (value instanceof String s && s.matches("[1-9][0-9]{0,2}")) {
+            parsed = Integer.valueOf(s);
+        } else {
             throw new IllegalArgumentException(field + " must be a positive integer 1..20");
         }
-        return Integer.valueOf(value);
+        if (parsed < 1 || parsed > 20) {
+            throw new IllegalArgumentException(field + " must be a positive integer 1..20");
+        }
+        return parsed;
     }
 
     // ------------------------------------------------------------------ mapping
 
     /** Wire form per HTTP10 §3.2: IDs as decimal String, weightKg as plain decimal String. */
+    /** Internal asset refs are accepted only via avatarAssetId, never as a client URL. */
+    private static String externalAvatar(Request body) {
+        String value = body.string("avatarUrl");
+        if (value != null && value.startsWith("asset:")) {
+            throw new IllegalArgumentException("avatarUrl must be an external https URL");
+        }
+        return value;
+    }
+
     private static Map<String, Object> toBody(PetView pet) {
         Map<String, Object> body = new LinkedHashMap<>();
         body.put("petId", pet.petId());

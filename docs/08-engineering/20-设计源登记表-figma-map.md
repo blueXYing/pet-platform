@@ -482,6 +482,7 @@
 10. **编辑资料「保密」选项**：原稿性别三选（保密/男/女），工程性别契约仅 MALE/FEMALE，维持两选。
 11. **底部 tab 栏**（原稿 `#c0ecff/#f0fbff` + 凸起核销 `#5baae8`）：沿 2026-10-08 原生 tabBar 裁决（§4.4 结论不变），不在本次范围。
 12. **宠物表单头部两枚无功能图标**（2026-10-26 用户裁决）：添加模式不再显示右上角「笔」（仅 `petId` 编辑模式显示）；「添加宠物信息」卡右上角无功能图标（原 `form-chevron.png`）整体移除。设计稿 `95:1481`/`95:1844` 含该两枚装饰，按用户裁决不还原，避免与返回/编辑语义冲突。
+13. **宠物表单头像与类型选择**（2026-10-26 用户裁决 + CCR-C-PET-AVATAR-001）：添加表单开头新增「宠物类型」三选一（狗狗/猫猫/其他），选择后无上传头像时展示 `688:480` 猫 / `688:479` 狗默认头像，`OTHER` 不展示默认头像；「更换头像」86px 卡按 `645:22`/`645:10`/`645:11` 落地，且头像与「宠物名字」输入在同一矩形卡内（`95:1764`/`95:1773`）；类型选择为 8px 小圆角矩形（非半圆）。表单在 `95:1481`/`95:1844` 基础上增加类型行与头像卡（1066/1067 → 1162/1163 设计px），并下移既有字段/按钮，属于布局偏差；真实上传走私有素材 `PET_AVATAR` 用途 + 24h 受控签名 URL，非公开静态 URL。 2026-10-27 修正：表单/详情默认头像不再直接使用 `688:480`/`688:479` 的蓝底方形导出，改为按 `645:10` 图像填充变换从 1080x1611 透明原图裁出 65x54（2x 130x108，透明底），与 `#d2f1ff` 卡面融合；首页/列表仍用 688 蓝底组件（与 `61:599` 一致），资源见 `pet-form-default-cat/dog.png`。
 
 素材登记：`mine/assets/strip-top.jpg`（纸纹 402×175@2x，28.8KB，主包）；29 个矢量图标/波浪 SVG base64 内嵌 `mine.css`/`coupon-points.css`（REST SVG 原矢量，fills 即原稿色）；build 后主包 922KB、宠物分包 1.79MB、全部 <2MB 内部预算（`check:package` 通过）。
 
@@ -732,8 +733,16 @@ mine 页接线（`consumer/pages/mine`）：「帮助与客服」「意见反馈
 - **问题**：Figma 多数二级/三级 frame 底部画有全局五等分 tabBar；小程序只有一级 tab 页显示原生 tabBar，二级页若再渲染 `ConsumerBottomNavigation`，从一级页 `navigateTo` 时会出现「原生栏隐藏 → 自定义栏出现」的交接空档。
 - **裁决**：仅 `home/services/community/messages/mine` 五个根 tab 页保留原生 tabBar；所有非根页面实际产品不显示底部导航。设计预览/对照通道（`preview=1`，含 `referenceCanvas=1`）保留自定义底栏，仅用于与 Figma 逐帧比对，不作为产品行为。
 - **落地**：29 处 `ConsumerPageLayout` 的 `navigation` 中，26 处改为 `preview ? {...} : undefined`；`aftersale/common`、`become-provider/index`、`become-provider/service-type` 无预览通道，直接移除。`app.config.ts` 原生 tabBar 不变。
+- **2026-10-26 追加裁决**：为消除原生 tabBar 在二级页跳转时先隐藏造成的空档，五个根 tab 页改用**同款自定义 tabBar**（`src/custom-tab-bar`，`tabBar.custom: true`）；仍仅五个根页显示，二级页不显示底栏；图标/选中色沿原口径，不新增 tab。
 - **布局**：非根页无导航时 `consumer-page-layout-without-navigation` 去除 80px 预留；底部固定操作条/半屏面板贴 `env(safe-area-inset-bottom)`。`become-provider` 半屏面板与 `store-services` 固定操作条已按无导航调整。
 - **偏差**：Figma 二级页底栏为设计残留，不按图还原；页面底部以原画布/安全区收口，不为复刻底栏补图。
+
+## 4.21 宠物健康记录添加底部半框（2026-10-26 用户裁决）
+
+- **问题**：疫苗/驱虫记录添加原实现为 `vaccine-form`/`deworm-form` 独立分包页（96:2580/96:3006 面板被拆成三级页）；Figma 为档案详情页上的底部半框（`96:2840`/`96:2842` 圆角面板、`96:2848` 标题、`96:2850` 关闭、`96:2962` 疫苗名称、`96:2969` 接种日期、`96:2979` 下次接种日期、`96:3001`/`96:3003` 取消/保存；`96:2989` 接种状态为设计展示层）。
+- **落地**：档案详情 `pet-add-vaccine`/`pet-add-deworm` 打开 `HealthRecordFormSheet`（遮挡层 + 21px 侧距、46px 标题栏、#f0fbff 面板、白底 #c0ecff 输入、药丸按钮、safe-area 底部），不再 `navigateTo`。疫苗/驱虫旧路由保留兼容，重定向到 `detail?recordSheet=vaccine|deworm` 并打开半框。
+- **契约边界**：契约 68 字段表不变；`接种状态` 仍为 `nextRecordDate` 派生的读侧展示态，不作为可提交表单字段；PRD 的针次/备注选填字段保留，因字段多于 Figma 面板，半框内部局部滚动。`717:530` 设计 tabBar 为页面参考残留，不在半框内复刻。
+- **素材**：`sheet-close.png`（96:2850，21x28）入 `consumer/pages/pet-archive/assets` 并登记 manifest。
 
 ## 5. 维护规则
 

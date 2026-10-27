@@ -62,6 +62,7 @@
 .home-pet-head-left { display: flex; align-items: center; gap: calc(var(--home-unit) * 8); height: 100%; }
 .home-pet-h1 { font-size: calc(var(--home-unit) * 18); line-height: calc(var(--home-unit) * 28); font-weight: 700; color: #1d0d07; white-space: nowrap; }
 .home-pet-count { font-size: calc(var(--home-unit) * 11); line-height: calc(var(--home-unit) * 28); color: #53bfee; white-space: nowrap; }
+.home-pet-scroll { width: 100%; }
 .home-pet-add { display: flex; align-items: center; justify-content: center; width: calc(var(--home-unit) * 22); height: calc(var(--home-unit) * 28); padding: 0; background: transparent; border: none; }
 .home-pet-add-text { font-size: calc(var(--home-unit) * 14); line-height: calc(var(--home-unit) * 28); font-weight: 700; color: #53bfee; }
 .home-pet-more { display: flex; align-items: center; gap: calc(var(--home-unit) * 2); height: calc(var(--home-unit) * 20); }
