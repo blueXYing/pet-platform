@@ -297,10 +297,10 @@
       "file": "pet-form-default-cat.png",
       "nodes": "688:480 / 645:10",
       "nodeName": "m 1 (transparent form crop)",
-      "placement": "form/detail default cat 65x54 (2x 130x108; Figma 645:10 image-fill crop, transparent)",
-      "bytes": 30187,
-      "sha256": "fb5f85ed82e4a946c54ac06586cc6af997229d2906264f9d9ed050bd18cc62c7",
-      "source": "Figma 688:480 image fill cropped with 645:10 frame transform (2026-10-27)",
+      "placement": "form/detail default cat 65x54 (2x 130x108; transparent crop y230..1128 keeps ear tips)",
+      "bytes": 28744,
+      "sha256": "21f3993bc12213325a927935baa847b9ee5598347ace77f0043892f9b7d8b1ab",
+      "source": "Figma 688:480 image fill, 65x54 crop shifted up for ear tips (2026-10-27)",
       "sourceByteIdentical": "DERIVED_CROP"
     },
     {
