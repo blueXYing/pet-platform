@@ -14,7 +14,7 @@
 
 ## 修正
 
-- 新增 **透明** 默认头像 `pet-form-default-cat.png` / `pet-form-default-dog.png`：从 Figma `1080x1611` 透明图像填充裁出 65x54（2x 130x108，RGBA）；狗按 `645:10` 的 frame 变换，猫额外上移裁切窗口（y230..1128）保留耳尖。
+- 新增 **透明** 默认头像 `pet-form-default-cat.png` / `pet-form-default-dog.png`：从 Figma `1080x1611` 透明图像填充裁出 65x54（2x 130x108，RGBA）；狗按 `645:10` 的 frame 变换；猫取 y250..1240 的完整头部（耳尖到下巴）等比缩放居中，保留透明侧边距，避免裁耳或裁下巴。
 - `consumer/pages/pet-archive/form` 与 `detail` 改用新透明资源；`home` 与 `pet-archive/list` 继续使用 688 蓝底组件（与 Figma `61:599` 一致）。
 - `assets/manifest.json` 登记两个派生资源、字节、sha256 与来源；688 资源标注为 home/list 专用。
 - 无 API/契约/Schema/Event 变化。
@@ -23,18 +23,18 @@
 
 - 前端 `npm run typecheck`：PASS
 - 前端单测：**626 / 626**（新增表单/详情透明资源静态断言）
-- `check:package`：本地联调包 **8,240,702** 字节，预算内
+- `check:package`：本地联调包 **8,238,179** 字节，预算内
 - 微信开发者工具（`pet-platform-merged`，已同步本地联调构建并刷新）：
   - 表单头像：蓝底方形消失，头像与 `#d2f1ff` 卡面融合，上下完整：`form-avatar-fixed.png`
-  - 猫咪头像：耳尖保留，不再被上缘裁切（y230..1128 裁切窗口）
+  - 猫咪头像：耳尖与下巴均完整，按完整头部等比缩放（y250..1240），不再顾头不顾腚
   - 详情头像：同样透明融合：`detail-avatar-fixed.png`
   - Figma `95:1481` 与实现头像并排对比：`compare-form-avatar.png`（左 Figma，右实现）
 
 ## 证据
 
 - `form-avatar-fixed.png`：表单默认狗头像
-- `form-cat-ears.png`：表单默认猫头像（耳尖保留）
-- `form-cat-avatar-zoom.png`：猫头像 4x 放大核验
+- `form-cat-full.png`：表单默认猫头像（耳尖+下巴完整）
+- `form-cat-full-zoom.png`：猫头像 4x 放大核验
 - `detail-avatar-fixed.png`：详情默认猫头像
 - `compare-form-avatar.png`：Figma `95:1481` vs 实现（65x54 槽位，4x 放大）
 
