@@ -16,7 +16,6 @@ import stripMain from './assets/strip-main.png'
 import stripFormBottom from './assets/strip-form-bottom.png'
 import navBack from './assets/nav-back.png'
 import navEdit from './assets/nav-edit.png'
-import formChevron from './assets/form-chevron.png'
 import iconDate from './assets/icon-date.png'
 import './fonts.css'
 import './form.css'
@@ -157,7 +156,7 @@ export default function PetArchiveForm() {
       <View className='pet-abs pet-form-panel' />
       <Button id='pet-form-back' className='pet-abs pet-form-back' ariaLabel='返回' disabled={phase === 'saving'} onClick={() => void leave()}><Image src={navBack} mode='scaleToFill' /></Button>
       <Text className='pet-abs pet-form-navtitle'>宠物信息</Text>
-      <Image className='pet-abs pet-form-navedit' src={navEdit} mode='scaleToFill' />
+      {petId && <Image className='pet-abs pet-form-navedit' src={navEdit} mode='scaleToFill' />}
       {!editable && <View className='pet-state pet-form-state' role='status'>
         <Text>{phase === 'loading' ? '正在加载宠物档案…' : phase === 'expired' ? '登录已失效，请重新登录' : phase === 'unavailable' ? '宠物服务暂不可用，请稍后再试' : '加载失败，请重试'}</Text>
         {!preview && phase === 'expired' && <Button className='pet-state-action' onClick={() => Taro.switchTab({ url: '/consumer/pages/mine/index' })}>去登录</Button>}
@@ -165,7 +164,6 @@ export default function PetArchiveForm() {
       </View>}
       {editable && <>
         <Text className='pet-abs pet-form-title'>添加宠物信息</Text>
-        <Image className='pet-abs pet-form-chevron' src={formChevron} mode='scaleToFill' />
         <View className='pet-abs pet-form-field pet-form-field-name'>
           <Text className='pet-form-label'>宠物名字</Text>
           <Input id='pet-form-name' className='pet-form-input' value={draft.name} maxlength={-1} disabled={fieldsLocked} ariaLabel='宠物名字' onInput={event => edit('name', event.detail.value)} adjustPosition />
