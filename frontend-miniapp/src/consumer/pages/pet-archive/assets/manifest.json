@@ -277,7 +277,7 @@
       "file": "pet-default-cat.png",
       "nodes": "688:480",
       "nodeName": "m 1",
-      "placement": "default cat avatar (45x47 export; displayed 65x54 in form card)",
+      "placement": "home/list default cat avatar (45x47 export; blue-background component)",
       "bytes": 4748,
       "sha256": "804e36ef86c3ed68b0fcc6c34389280e260acd862cf40ce54dee8f38cad7fc2e",
       "source": "Figma 688:480 export (2026-10-26)",
@@ -287,11 +287,31 @@
       "file": "pet-default-dog.png",
       "nodes": "688:479",
       "nodeName": "huaban-7000785516 1",
-      "placement": "default dog avatar (55x46 export; displayed 65x54 in form card)",
+      "placement": "home/list default dog avatar (55x46 export; blue-background component)",
       "bytes": 4618,
       "sha256": "f94537d260baca3bfabdd45e4eaab81097cc9688149e9646645ccd4ae05dd9b6",
       "source": "Figma 688:479 export (2026-10-26)",
       "sourceByteIdentical": "VERIFIED"
+    },
+    {
+      "file": "pet-form-default-cat.png",
+      "nodes": "688:480 / 645:10",
+      "nodeName": "m 1 (transparent form crop)",
+      "placement": "form/detail default cat 65x54 (2x 130x108; Figma 645:10 image-fill crop, transparent)",
+      "bytes": 30187,
+      "sha256": "fb5f85ed82e4a946c54ac06586cc6af997229d2906264f9d9ed050bd18cc62c7",
+      "source": "Figma 688:480 image fill cropped with 645:10 frame transform (2026-10-27)",
+      "sourceByteIdentical": "DERIVED_CROP"
+    },
+    {
+      "file": "pet-form-default-dog.png",
+      "nodes": "645:10",
+      "nodeName": "huaban-7000785516 1 (transparent form crop)",
+      "placement": "form/detail default dog 65x54 (2x 130x108; Figma 645:10 image-fill crop, transparent)",
+      "bytes": 21296,
+      "sha256": "342bd430e3a5bdbb394a363c78d564e564f96557c19ab79a098ad5af45ebe86e",
+      "source": "Figma 645:10 image fill cropped with its frame transform (2026-10-27)",
+      "sourceByteIdentical": "DERIVED_CROP"
     },
     {
       "file": "sheet-close.png",

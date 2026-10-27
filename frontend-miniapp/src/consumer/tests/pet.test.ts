@@ -142,6 +142,15 @@ test('home pet archive falls back to the same cat/dog default avatar as list and
   assert.match(source, /src=\{petAvatar\(pet\)\}/)
 })
 
+test('form/detail default avatars use the transparent Figma 645:10 crop', () => {
+  for (const file of ['form.tsx', 'detail.tsx']) {
+    const source = readFileSync(new URL(`../pages/pet-archive/${file}`, import.meta.url), 'utf8')
+    assert.match(source, /pet-form-default-cat\.png/)
+    assert.match(source, /pet-form-default-dog\.png/)
+    assert.doesNotMatch(source, /pet-default-(cat|dog)\.png/)
+  }
+})
+
 test('home shows up to three rows and scrolls the rest inside the archive module', () => {
   const source = readFileSync(new URL('../pages/home/index.tsx', import.meta.url), 'utf8')
   assert.match(source, /const active = list\.filter\(pet => pet\.status === 'ACTIVE'\)/)

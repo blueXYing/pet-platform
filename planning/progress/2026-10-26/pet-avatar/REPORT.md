@@ -18,6 +18,7 @@
 - **健康记录接口修复（2026-10-26 用户反馈）**：C 安全链白名单漏 `/pets/*/vaccination-records`、`/pets/*/deworming-records`，真实请求 403；`doseNumber` 按契约是整数，但控制器只接受 String，前端/接口传 number 返回 400；E2E loadSchemas 漏 SQL 68，本地 GET 500。已补安全匹配、整数解析、E2E schema；新增 `PetHealthRecordSecurityChainHttpTest`，本地库补建 68 两表并重启。
 - **健康记录保存误报修复（2026-10-26 二次反馈）**：契约 68 的 POST 回执只有 `{recordId,petId,recordType,status}`，前端却复用完整记录解码器 `decodeHealthRecord`，服务端已写入、客户端抛 `INVALID_RESPONSE` 显示“保存失败”。新增 `decodeHealthRecordReceipt` 专用于 POST，保存成功后仍由 `onSaved` GET 刷新列表；补回执解码单测与 `RealPetRepository` 幂等槽回归。
 - **未确认提交锁定与联调包同步（2026-10-26 三次反馈）**：用户实际测试的是 `C:\Users\Administrator\Desktop\pet-platform-merged`（仅 dist，16:54 构建），不包含回执修复，因此重编译 WSL 源码后其窗口仍是旧包。已按本地联调变量 `NODE_ENV=development PET_C_API_ORIGIN=http://127.0.0.1:18081 PET_ALLOW_LOCAL_HTTP=true ... npm run build:weapp` 重建，并同步 `dist` 到该联调项目、执行 `simulator_refresh`，首页 5 只宠物恢复。另：存在未确认幂等命令时锁定表单并提示直接重试原保存，避免修改内容触发本地 `PENDING_WRITE_CHANGED`（表现为“未调用接口”）；错误文案补充 401/STALE_CONTEXT。
+- **默认头像透明裁剪（2026-10-27 追加）**：表单/详情不再复用 688:480/479 的蓝底方形导出，改用按 645:10 图像填充裁出的透明 65x54 资源；首页/列表保留蓝底组件。详见 `planning/progress/2026-10-27/pet-default-avatar/REPORT.md`。
 - **契约/设计登记**：`docs/08-engineering/20-设计源登记表-figma-map.md` §4.7 偏差 13；`assets/manifest.json` 登记两个默认头像节点、字节和 sha256。
 
 ## 验证
