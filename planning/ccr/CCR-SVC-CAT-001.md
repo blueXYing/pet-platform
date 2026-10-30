@@ -61,6 +61,7 @@ PRD 已明确服务分类是平台统一字典，但当前实现仍是前端硬�
 ALTER TABLE service_category
     ADD COLUMN category_code VARCHAR(32) CHARACTER SET ascii COLLATE ascii_bin NULL AFTER id,
     ADD COLUMN parent_id     BIGINT NULL AFTER category_code,
+    ADD COLUMN version       INT NOT NULL DEFAULT 0 COMMENT '乐观锁版本，创建为0' AFTER status,
     ADD COLUMN icon_url      VARCHAR(512) NULL AFTER sort_no,
     ADD COLUMN description   VARCHAR(200) NULL AFTER icon_url;
 
@@ -94,6 +95,7 @@ ALTER TABLE service_category
 | description | String/null | ≤200 码点；热门服务卡片文案 |
 | sort_no | int | 0..9999；C 端排序第一键 |
 | status | enum | `ENABLED` / `DISABLED` |
+| version | int | ≥0；乐观锁，创建为 0，改名/图标/描述/排序/启停均 +1 |
 
 ### 3.2 分类审计表
 
