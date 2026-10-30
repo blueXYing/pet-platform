@@ -91,6 +91,11 @@ public final class MerchantStoreDisplayService {
                 }
                 String city = cityFact(row);
                 if (!cities.contains(city)) continue;
+                // Contract 74 §3.2 category filter: resolved by the service domain, composed
+                // here by AND with the store catalog's own visibility/city/keyword filters.
+                if (query.storeIds() != null && !query.storeIds().contains(row.getStoreId())) {
+                    continue;
+                }
                 // HTTP10 §3.3.2 search supplement (2026-10-19): case-insensitive substring
                 // match on the two catalog names only; a blank keyword never filters.
                 if (keyword != null && !keyword.isEmpty()

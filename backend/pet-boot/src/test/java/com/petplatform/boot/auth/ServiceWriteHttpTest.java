@@ -88,6 +88,17 @@ class ServiceWriteHttpTest {
                 new FileSystemResource(root().resolve("docs/03-database/" + file)),
                 StandardCharsets.UTF_8));
       }
+      // CCR-SVC-CAT-001 B-SVC-01: the merchant category projection reads the dictionary
+      // columns, so this fixture applies the approved V29 opt-in migration on its empty table
+      // before seeding (the backfill updates zero rows; seeds carry category_code explicitly).
+      ScriptUtils.executeSqlScript(
+          connection,
+          new EncodedResource(
+              new FileSystemResource(
+                  root().resolve(
+                      "backend/pet-boot/src/main/resources/db/service-migration/"
+                          + "V29__service_category_dictionary.sql")),
+              StandardCharsets.UTF_8));
     }
     db.jdbc.update(
         "INSERT INTO merchant_subject_lookup_policy(policy_slot,key_version,algorithm,created_at)"
@@ -234,13 +245,15 @@ class ServiceWriteHttpTest {
             "SELECT id FROM merchant_store WHERE merchant_id=?", Long.class, merchantId);
     long categoryId = db.ids.nextId();
     db.jdbc.update(
-        "INSERT INTO service_category(id,category_name,created_at,updated_at)"
-            + " VALUES(?,?,UTC_TIMESTAMP(3),UTC_TIMESTAMP(3))",
+        "INSERT INTO service_category(id,category_code,category_name,created_at,updated_at)"
+            + " VALUES(?,'PET_GROOMING',?,UTC_TIMESTAMP(3),UTC_TIMESTAMP(3))",
         categoryId, "洗护美容");
     long disabledCategoryId = db.ids.nextId();
     db.jdbc.update(
-        "INSERT INTO service_category(id,category_name,status,created_at,updated_at)"
-            + " VALUES(?,'已停用类目','DISABLED',UTC_TIMESTAMP(3),UTC_TIMESTAMP(3))",
+        "INSERT INTO service_category"
+            + "(id,category_code,category_name,status,created_at,updated_at)"
+            + " VALUES(?,'TEST_DISABLED','已停用类目','DISABLED',UTC_TIMESTAMP(3),"
+            + "UTC_TIMESTAMP(3))",
         disabledCategoryId);
 
     String merchant = String.valueOf(merchantId), store = String.valueOf(storeId);
@@ -569,6 +582,23 @@ class ServiceWriteHttpTest {
         ((List<?>) categories.data().get("items")).stream()
             .filter(c -> "洗护美容".equals(map(c).get("categoryName")))
             .count());
+    // B-SVC-05: the merchant projection adds the stable code and optional icon/description
+    // while keeping categoryId/categoryName/sortNo; DISABLED rows stay absent.
+    Map<String, Object> projection =
+        ((List<?>) categories.data().get("items")).stream()
+            .map(ServiceWriteHttpTest::map)
+            .filter(c -> "洗护美容".equals(c.get("categoryName")))
+            .findFirst()
+            .orElseThrow();
+    assertEquals("PET_GROOMING", projection.get("categoryCode"));
+    assertEquals(categoryId, Long.parseLong(str(projection, "categoryId")));
+    assertTrue(projection.containsKey("iconUrl"));
+    assertTrue(projection.containsKey("description"));
+    assertEquals(0, ((Number) projection.get("sortNo")).intValue());
+    assertTrue(
+        ((List<?>) categories.data().get("items")).stream()
+            .map(ServiceWriteHttpTest::map)
+            .noneMatch(c -> "已停用类目".equals(c.get("categoryName"))));
 
     // ---- Resubmission after fix: REJECTED -> REVIEWING (submissionNo=2) -> APPROVE -> ACTIVE.
     send(
@@ -817,8 +847,8 @@ class ServiceWriteHttpTest {
             "SELECT id FROM merchant_store WHERE merchant_id=?", Long.class, merchantId);
     long categoryId = db.ids.nextId();
     db.jdbc.update(
-        "INSERT INTO service_category(id,category_name,created_at,updated_at)"
-            + " VALUES(?,?,UTC_TIMESTAMP(3),UTC_TIMESTAMP(3))",
+        "INSERT INTO service_category(id,category_code,category_name,created_at,updated_at)"
+            + " VALUES(?,'TEST_HOME_WASH',?,UTC_TIMESTAMP(3),UTC_TIMESTAMP(3))",
         categoryId, "上门洗护");
     String merchant = String.valueOf(merchantId), store = String.valueOf(storeId);
 

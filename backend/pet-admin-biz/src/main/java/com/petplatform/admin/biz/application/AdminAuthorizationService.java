@@ -95,6 +95,8 @@ public final class AdminAuthorizationService implements AdminAuthorizationQueryA
             // CCR-COM-001 community moderation collection reads.
             || "community.post.read".equals(query.actionCode())
             || "community.report.read".equals(query.actionCode())
+            // CCR-SVC-CAT-001 B-SVC-02 admin service category list entry check.
+            || "service.category.read".equals(query.actionCode())
             || "coupon.campaign.read".equals(query.actionCode()))
         || query.phase() != AdminActionCheckQuery.CheckPhase.READ_RESULT)
       throw AdminAuthFailure.invalid();

@@ -126,6 +126,13 @@ public final class M002IntegrationServer {
               new FileSystemResource(root.resolve("docs/03-database/" + file)),
               StandardCharsets.UTF_8));
         }
+        // CCR-SVC-CAT-001 B-SVC-01: apply the approved opt-in V29 delta so the merchant
+        // dictionary projection can read category_code/icon_url/description.
+        ScriptUtils.executeSqlScript(connection, new EncodedResource(
+            new FileSystemResource(root.resolve(
+                "backend/pet-boot/src/main/resources/db/service-migration/"
+                    + "V29__service_category_dictionary.sql")),
+            StandardCharsets.UTF_8));
       }
       jdbc.update("INSERT INTO merchant_subject_lookup_policy"
           + "(policy_slot,key_version,algorithm,created_at)"
@@ -237,13 +244,16 @@ public final class M002IntegrationServer {
           jdbc.queryForObject(
               "SELECT id FROM merchant_agreement_version WHERE agreement_version='m002-ci-v1'",
               Long.class));
+      // V29 (CCR-SVC-CAT-001) tightened service_category.category_code to NOT NULL, so the
+      // fixture seeds the approved dictionary code and its stable sort order alongside.
       for (String[] category : new String[][] {
-          {"宠物美容", "1"}, {"宠物寄养", "2"}, {"遛狗陪护", "3"}, {"宠物训练", "4"},
-          {"上门喂养", "5"}, {"兽医助理", "6"}}) {
+          {"宠物美容", "PET_GROOMING", "1"}, {"宠物寄养", "PET_BOARDING", "2"},
+          {"遛狗陪护", "DOG_WALKING", "3"}, {"宠物训练", "PET_TRAINING", "4"},
+          {"上门喂养", "HOME_FEEDING", "5"}, {"兽医助理", "VET_ASSISTANT", "6"}}) {
         jdbc.update(
-            "INSERT INTO service_category(id,category_name,created_at,updated_at)"
-                + " VALUES(?,?,UTC_TIMESTAMP(3),UTC_TIMESTAMP(3))",
-            ids.nextId(), category[0]);
+            "INSERT INTO service_category(id,category_code,category_name,sort_no,created_at,updated_at)"
+                + " VALUES(?,?,?,?,UTC_TIMESTAMP(3),UTC_TIMESTAMP(3))",
+            ids.nextId(), category[1], category[0], Integer.parseInt(category[2]));
       }
       String adminToken = adminLogin(endpoint, jdbc, adminMac, adminAes);
       Path metadata = directory.resolve("server-metadata.txt");
