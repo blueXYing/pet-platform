@@ -11,6 +11,7 @@ import com.petplatform.community.api.CommunityApiCodes;
 import com.petplatform.community.api.CommunityPublicApi;
 import com.petplatform.community.api.dto.CommunityViews;
 import com.petplatform.boot.config.CBearerSessionFilter;
+import com.petplatform.boot.config.MerchantJsonReaderFactory;
 import com.petplatform.user.biz.application.UserAuthService.MiniSessionView;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
@@ -31,12 +32,16 @@ import org.springframework.web.bind.annotation.RequestPart;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.multipart.MultipartFile;
 import tools.jackson.databind.JsonNode;
+import tools.jackson.databind.ObjectReader;
 
 /** CCR-COM-001 public community HTTP face. */
 @RestController
 @ConditionalOnProperty(prefix = "pet", name = {"community.enabled", "community.c.http.enabled", "auth.c.enabled"},
         havingValue = "true")
 public class CommunityCController {
+
+    /** Default tree reader; keeps JsonMapper out of the controller (ARCH-004). */
+    private static final ObjectReader BODY = MerchantJsonReaderFactory.objectReader();
 
     private final CommunityPublicApi community;
 
@@ -396,7 +401,7 @@ public class CommunityCController {
 
     private static JsonNode body(String raw) {
         try {
-            JsonNode node = tools.jackson.databind.json.JsonMapper.builder().build().readTree(raw);
+            JsonNode node = BODY.readTree(raw);
             if (node == null || !node.isObject()) throw new IllegalArgumentException();
             return node;
         } catch (RuntimeException failure) {
