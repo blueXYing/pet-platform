@@ -1,5 +1,6 @@
 import { ConsumerPageLayout } from '../../components/page-layout'
 import { switchConsumerTab } from '../../components/navigation/switch'
+import { SubpageHeader } from '../../components/navigation/subpage-header'
 import { Button, Image, Text, View } from '@tarojs/components'
 import Taro, { useRouter, useDidShow } from '@tarojs/taro'
 import { useCallback, useEffect, useRef, useState, type CSSProperties } from 'react'
@@ -24,7 +25,6 @@ import petPhoto from './assets/pet-photo-detail.png'
 import catPhoto from './assets/pet-photo-list-mimi.png'
 import defaultCatAvatar from './assets/pet-form-default-cat.png'
 import defaultDogAvatar from './assets/pet-form-default-dog.png'
-import navBack from './assets/nav-back.png'
 import navEdit from './assets/nav-edit.png'
 import tagIconVaccine from './assets/tag-icon-vaccine-blue.png'
 import tagIconDeworm from './assets/tag-icon-deworm.png'
@@ -152,16 +152,25 @@ export default function PetArchiveDetail() {
   return <ConsumerPageLayout page='petDetail' unit={unit} navigation={preview ? { idPrefix: 'pet', disabled: phase !== 'ready', onSelect: key => void switchConsumerTab(key), referencePlacement: referenceCanvas ? { bottom: 0, height: 61 } : undefined } : undefined} className={`pet-page pet-detail-page${referenceCanvas ? ' pet-reference-canvas' : ''}`} style={style}>
     <View className='pet-status-area' />
     <View className='pet-design pet-detail-design' data-phase={phase}>
+      <SubpageHeader
+        title='宠物信息'
+        backId='pet-detail-back'
+        titleId='pet-detail-navtitle'
+        backAriaLabel='返回'
+        height={86}
+        reference={referenceCanvas}
+        background='cream'
+        onBack={() => void leave()}
+        right={<Button id='pet-detail-edit' className='pet-detail-edit' ariaLabel='编辑宠物信息' disabled={!ready} onClick={editPet}>
+          <Image className='pet-detail-edit-icon' src={navEdit} mode='scaleToFill' />
+        </Button>}
+      />
       <Image className='pet-abs pet-detail-strip1' src={stripMain} mode='scaleToFill' />
       <Image className='pet-abs pet-detail-strip2' src={stripBottom} mode='scaleToFill' />
       <View className='pet-abs pet-detail-bottombar' />
-      <View className='pet-abs pet-detail-header' />
       <Image className='pet-abs pet-detail-panel-vaccine' src={panelVaccine} mode='scaleToFill' />
       <Image className='pet-abs pet-detail-panel-lower' src={panelLower} mode='scaleToFill' />
       <Image className='pet-abs pet-detail-panel-basic' src={panelBasic} mode='scaleToFill' />
-        <Button id='pet-detail-back' className='pet-abs pet-detail-back' ariaLabel='返回' onClick={() => void leave()}><Image src={navBack} mode='scaleToFill' /></Button>
-        <Text className='pet-abs pet-detail-navtitle'>宠物信息</Text>
-        <Button id='pet-detail-edit' className='pet-abs pet-detail-edit' ariaLabel='编辑宠物信息' disabled={!ready} onClick={editPet}><Image src={navEdit} mode='scaleToFill' /></Button>
       {!ready && <View className='pet-state pet-detail-state' role='status'>
         <Text>{notice || (phase === 'loading' ? '正在加载宠物档案…' : phase === 'expired' ? '登录已失效，请重新登录' : phase === 'unavailable' ? '宠物服务暂不可用，请稍后再试' : '加载失败，请重试')}</Text>
         {!preview && phase === 'expired' && <Button className='pet-state-action' onClick={() => Taro.switchTab({ url: '/consumer/pages/mine/index' })}>去登录</Button>}

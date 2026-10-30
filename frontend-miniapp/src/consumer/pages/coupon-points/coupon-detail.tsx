@@ -1,15 +1,15 @@
-import { Button, Image, Text, View } from '@tarojs/components'
+import { Button, Text, View } from '@tarojs/components'
 import Taro, { useRouter } from '@tarojs/taro'
 import { useCallback, useEffect, useRef, useState, type CSSProperties } from 'react'
 import { useWorkspace } from '../../../shared/workspace-react'
 import { consumerApi } from '../../../shared/consumer-runtime'
 import { ConsumerPageLayout } from '../../components/page-layout'
+import { SubpageHeader, SubpageHeaderSpacer } from '../../components/navigation/subpage-header'
 import {
   isCouponPointsScenario, statusTabLabels, thresholdLabel,
   PreviewCouponPointsRepository, type CouponView,
 } from '../../coupon-points/model'
 import { RealCouponPointsRepository, isCouponNotFound, isCouponPointsUnauthorized } from '../../coupon-points/repository'
-import back from '../../assets/profile/back.png'
 import './coupon-points.css'
 
 // C-006 切片：优惠券详情（只读）。登记表内无"优惠券详情"原稿（仅 128:2078 列表页），
@@ -78,13 +78,8 @@ export default function CouponDetailPage() {
   }
   return <ConsumerPageLayout page='couponDetail' unit={unit} className='cpn-page' style={style}>
     <View className='cpn-design'>
-      <View className='cpn-status-area' />
-      <View className='cpn-nav'>
-        <Button id='cpnd-back' ariaLabel='返回' className='cpn-nav-back' onClick={() => void goBack()}>
-          <Image src={back} className='cpn-nav-back-icon' />
-        </Button>
-        <Text className='cpn-nav-title'>优惠券详情</Text>
-      </View>
+      <SubpageHeader title='优惠券详情' backId='cpnd-back' height={44} onBack={() => void goBack()} />
+      <SubpageHeaderSpacer height={44} />
       {phase === 'loading' && <View className='cpn-state' role='status'><Text>正在读取优惠券…</Text></View>}
       {phase === 'expired' && <View className='cpn-state' role='status'>
         <Text id='cpnd-login-hint'>登录后可查看我的优惠券。</Text>

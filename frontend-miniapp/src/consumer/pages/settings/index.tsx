@@ -1,10 +1,10 @@
-import { Button, Image, Text, View } from '@tarojs/components'
+import { Button, Text, View } from '@tarojs/components'
 import Taro, { useRouter } from '@tarojs/taro'
 import { useEffect, useState, type CSSProperties } from 'react'
 import { consumerApi } from '../../../shared/consumer-runtime'
 import { RealProfileRepository } from '../../api/repositories'
 import { RealSettingsRepository } from '../../settings/repository'
-import backIcon from '../../assets/profile/back.png'
+import { SubpageHeader } from '../../components/navigation/subpage-header'
 import './index.css'
 
 // 设置枢纽页（契约 66 / PRD 5.1.29；设计稿 131:18372，登记表偏差小节）。
@@ -102,13 +102,7 @@ export default function SettingsPage() {
   }
 
   return <View className='cpn-page st-page' style={style}>
-    <View className='st-status-area' />
-    <View className='st-header'>
-      <Button id='st-back' className='st-back' hoverClass='none' ariaLabel='返回' onClick={() => void back()}>
-        <Image src={backIcon} className='st-back-icon' />
-      </Button>
-      <Text className='st-title'>设置</Text>
-    </View>
+    <SubpageHeader title='设置' backId='st-back' fixed={false} height={46} onBack={() => void back()} />
     <View className='st-body'>
       <Text className='st-group-title'>账号与安全</Text>
       <View className='st-card'>

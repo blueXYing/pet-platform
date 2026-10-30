@@ -127,12 +127,16 @@
 .bks-sheet .bks-quick-name { font-size: calc(var(--bks-unit) * 12); line-height: calc(var(--bks-unit) * 16); font-weight: 500; color: #1d0d07; }
 .bks-sheet .bks-quick-text { font-size: calc(var(--bks-unit) * 10); line-height: calc(var(--bks-unit) * 14); color: #577683; overflow: hidden; text-overflow: ellipsis; max-width: 100%; display: block; }
 
-/* 61号选券入口 chips（券生命周期切片）：复用地址簿快选的 chip 语言（白底 #c0ecff 描边、
-   选中 #c0ecff 底 #5baae8 描边）；类名变体表达状态，不用 data-*；.bks-sheet 两段选择器
-   抬优先级抵消原生 button 重置。 */
-.bks-sheet .bks-coupons { margin-top: calc(var(--bks-unit) * 6); }
-.bks-sheet .bks-coupon-chip { display: inline-flex; flex-direction: column; gap: calc(var(--bks-unit) * 2); vertical-align: top; margin: 0 calc(var(--bks-unit) * 8) calc(var(--bks-unit) * 8) 0; padding: calc(var(--bks-unit) * 8) calc(var(--bks-unit) * 12); max-width: calc(var(--bks-unit) * 220); background: #ffffff; border: calc(var(--bks-unit) * 1) solid #c0ecff; border-radius: calc(var(--bks-unit) * 8); }
+/* 61号选券入口：标题行右侧「不使用优惠」胶囊 + 两列等宽券卡。券卡固定半宽，
+   避免 inline-flex 按内容撑开导致每张宽度参差；券名/门槛单行省略。 */
+.bks-sheet .bks-coupon-head { display: flex; align-items: center; justify-content: space-between; gap: calc(var(--bks-unit) * 8); }
+.bks-sheet .bks-coupon-none { flex-shrink: 0; height: calc(var(--bks-unit) * 26); padding: 0 calc(var(--bks-unit) * 12); border: calc(var(--bks-unit) * 1) solid #c0ecff; border-radius: calc(var(--bks-unit) * 9999); background: #ffffff; display: flex; align-items: center; justify-content: center; }
+.bks-sheet .bks-coupon-none-text { font-size: calc(var(--bks-unit) * 11); line-height: calc(var(--bks-unit) * 16); color: #577683; white-space: nowrap; }
+.bks-sheet .bks-coupon-none.is-selected { background: #c0ecff; border-color: #5baae8; }
+.bks-sheet .bks-coupon-none.is-selected .bks-coupon-none-text { color: #2f7fb8; font-weight: 500; }
+.bks-sheet .bks-coupons { display: flex; flex-wrap: wrap; gap: calc(var(--bks-unit) * 8); margin-top: calc(var(--bks-unit) * 8); }
+.bks-sheet .bks-coupon-chip { display: flex; flex-direction: column; align-items: flex-start; gap: calc(var(--bks-unit) * 2); width: calc((100% - calc(var(--bks-unit) * 8)) / 2); min-width: 0; padding: calc(var(--bks-unit) * 10) calc(var(--bks-unit) * 12); background: #ffffff; border: calc(var(--bks-unit) * 1) solid #c0ecff; border-radius: calc(var(--bks-unit) * 10); }
 .bks-sheet .bks-coupon-chip.is-selected { background: #c0ecff; border-color: #5baae8; }
-.bks-sheet .bks-coupon-name { font-size: calc(var(--bks-unit) * 12); line-height: calc(var(--bks-unit) * 16); font-weight: 500; color: #1d0d07; overflow: hidden; text-overflow: ellipsis; max-width: 100%; display: block; }
-.bks-sheet .bks-coupon-discount { font-size: calc(var(--bks-unit) * 12); line-height: calc(var(--bks-unit) * 16); font-weight: 700; color: #ff9500; }
-.bks-sheet .bks-coupon-threshold { font-size: calc(var(--bks-unit) * 10); line-height: calc(var(--bks-unit) * 14); color: #577683; }
+.bks-sheet .bks-coupon-name { width: 100%; display: block; font-size: calc(var(--bks-unit) * 12); line-height: calc(var(--bks-unit) * 16); font-weight: 500; color: #1d0d07; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.bks-sheet .bks-coupon-discount { font-size: calc(var(--bks-unit) * 16); line-height: calc(var(--bks-unit) * 20); font-weight: 700; color: #ff9500; }
+.bks-sheet .bks-coupon-threshold { width: 100%; font-size: calc(var(--bks-unit) * 10); line-height: calc(var(--bks-unit) * 14); color: #577683; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }

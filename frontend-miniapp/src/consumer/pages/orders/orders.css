@@ -14,22 +14,13 @@
 .ord-page button::after { border: 0; }
 .ord-page button[disabled] { opacity: .65; color: inherit; }
 .ord-design { position: relative; min-height: 100vh; }
-.ord-status-area { height: var(--ord-status-top); }
 .ord-preview-note { padding: calc(var(--ord-unit) * 16) calc(var(--ord-unit) * 29); font-size: calc(var(--ord-unit) * 10); line-height: calc(var(--ord-unit) * 15); color: #8aa0ac; }
-
-/* 顶部导航（129:9946：返回 32x32 + 标题 16/700，左对齐；coupons 同款）。 */
-.ord-nav { position: relative; height: calc(var(--ord-unit) * 44); display: flex; align-items: center; }
-.ord-nav-back { position: absolute; left: calc(var(--ord-unit) * 22); top: calc(var(--ord-unit) * 6); width: calc(var(--ord-unit) * 32); height: calc(var(--ord-unit) * 32); display: flex; align-items: center; justify-content: center; }
-.ord-nav-back-icon { font-size: calc(var(--ord-unit) * 22); line-height: 1; color: #3c3c3c; }
-.ord-nav-title { margin-left: calc(var(--ord-unit) * 62); font-size: calc(var(--ord-unit) * 16); line-height: calc(var(--ord-unit) * 24); font-weight: 700; color: #3c3c3c; }
 
 /* ---- 我的订单列表（129:9946 主稿，.ordl 作用域；按钮类样式用 .ord-page 前缀两段选择器
       抬优先级，压过上面 .ord-page button 的原生重置，coupons 同法） ---- */
 .ordl { display: block; min-height: 100vh; background: #f0fbff; }
-/* 奶油导航区 0..109：状态栏 + 44 高导航行 + 11 间距 + 36 药丸 tab + 18 底距，#c0ecff 压线。 */
+/* 头部由 SubpageHeader 提供；此带只承载 tab。 */
 .ordl-hero { background: #fff6e5; border-bottom: calc(var(--ord-unit) * 1) solid #c0ecff; padding-bottom: calc(var(--ord-unit) * 18); }
-.ordl .ord-nav-title { color: #1d0d07; }
-.ordl .ord-nav-back-icon { color: #7b5b4a; }
 /* 状态 tab：DIV-13 药丸容器 343x36 r9999 #eaf6f3 + 64x28 子胶囊（间距 4），激活 #5baae8 白字；
    契约十状态桶横向滚动承载（原稿 5 桶，“进行中”不可表达，PR 登记差异）。 */
 .ordl-tabs { display: block; margin: calc(var(--ord-unit) * 11) calc(var(--ord-unit) * 29) 0; width: calc(var(--ord-unit) * 343); height: calc(var(--ord-unit) * 36); border-radius: calc(var(--ord-unit) * 9999); background: #eaf6f3; overflow: hidden; white-space: nowrap; }
@@ -81,11 +72,6 @@
    WXSS 铁律：状态样式仅 className 变体（is-*），禁 data-*；按钮样式一律 .ord-page/.ordd 前缀
    抬特异度压 button 原生重置（0,1,1）——services 5e074a6 同法。 */
 .ordd { min-height: 100vh; background: #f0fbff; }
-.ordd-hero { background: #fff6e5; }
-/* 导航（23:18010：标题居中 16/700 #3c3c3c，返回矢量 8.9x14.5 rel x17；压过基础左对齐标题）。 */
-.ordd .ord-nav-title { position: absolute; left: 0; right: 0; margin-left: 0; text-align: center; color: #3c3c3c; }
-.ordd .ord-nav-back { left: calc(var(--ord-unit) * 5.5); }
-.ordd .ord-nav-back-icon { color: #3c3c3c; }
 /* 摘要卡（DIV-15：#ffffff + #c0ecff 描边 r16.7 pad16.7；首卡距头带 14；卡间距 16.7）。 */
 .ordd-summary { margin: calc(var(--ord-unit) * 14) calc(var(--ord-unit) * 21.5) 0; padding: calc(var(--ord-unit) * 16.7); background: #ffffff; border: calc(var(--ord-unit) * 1) solid #c0ecff; border-radius: calc(var(--ord-unit) * 16.7); }
 .ordd-card-head { display: flex; align-items: center; justify-content: space-between; gap: calc(var(--ord-unit) * 8); margin-bottom: calc(var(--ord-unit) * 12.5); }
@@ -288,9 +274,6 @@
    不渲染（PR 登记）。原稿「售后类型（仅退款/退货退款）」选中态 #85d2f3 实底——本页无该字段，
    词汇不引入。 ---- */
 .rfd { display: block; min-height: 100vh; background: #ffffff; }
-.rfd-hero { background: #fff6e5; }
-.rfd .ord-nav-title { color: #1d0d07; }
-.rfd .ord-nav-back-icon { color: #7b5b4a; }
 .rfd-body { padding-bottom: calc(var(--ord-unit) * 24); }
 /* 订单卡（DIV-13：#f0fbff + #c0ecff 描边 r13 pad13；订单号 19px 实测 #577683/金额 ¥ 27px 实测
    #53bfee——字段沿工程契约投影，封面/服务名/类目不在契约内不渲染）。 */

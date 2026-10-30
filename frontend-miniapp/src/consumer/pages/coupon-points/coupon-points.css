@@ -11,15 +11,10 @@
 .cpn-design { position: relative; min-height: 100vh; }
 /* 128:2078/129:8174 原稿分层:状态栏+导航在奶油底(#fff6e5),tab 以下整段浅蓝底(#f0fbff)。 */
 .cpn-body { background: #f0fbff; min-height: 85vh; padding-bottom: calc(var(--cpn-unit) * 24); }
-.cpn-status-area { height: var(--cpn-status-top); }
 .cpn-notice { display: block; padding: calc(var(--cpn-unit) * 12) calc(var(--cpn-unit) * 29); font-size: calc(var(--cpn-unit) * 12); line-height: calc(var(--cpn-unit) * 18); color: #402e26; }
 .cpn-preview-note { padding: calc(var(--cpn-unit) * 16) calc(var(--cpn-unit) * 29); font-size: calc(var(--cpn-unit) * 10); line-height: calc(var(--cpn-unit) * 15); color: #8aa0ac; }
 
 /* 顶部导航（128:2078：返回 32x32 + 标题 16/700，左对齐）。 */
-.cpn-nav { position: relative; height: calc(var(--cpn-unit) * 44); display: flex; align-items: center; }
-.cpn-nav-back { position: absolute; left: calc(var(--cpn-unit) * 22); top: calc(var(--cpn-unit) * 6); width: calc(var(--cpn-unit) * 32); height: calc(var(--cpn-unit) * 32); display: flex; align-items: center; justify-content: center; }
-.cpn-nav-back-icon { width: calc(var(--cpn-unit) * 11); height: calc(var(--cpn-unit) * 18); }
-.cpn-nav-title { margin-left: calc(var(--cpn-unit) * 62); font-size: calc(var(--cpn-unit) * 16); line-height: calc(var(--cpn-unit) * 24); font-weight: 700; color: #1d0d07; }
 
 /* 状态 tab（DIV-13 药丸 343x36 r9999 + 三个 109x28 按钮；激活态以 className 变体切换）。 */
 .cpn-tabs { margin: calc(var(--cpn-unit) * 13) calc(var(--cpn-unit) * 29) 0; height: calc(var(--cpn-unit) * 36); border-radius: calc(var(--cpn-unit) * 9999); background: #ffffff; display: flex; align-items: center; padding: calc(var(--cpn-unit) * 4); }

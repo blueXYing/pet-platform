@@ -4,6 +4,7 @@ import { useEffect, useRef, useState, useSyncExternalStore, type CSSProperties }
 import { useWorkspace } from '../../../shared/workspace-react'
 import { consumerApi } from '../../../shared/consumer-runtime'
 import { switchConsumerTab } from '../../components/navigation/switch'
+import { SubpageHeader, SubpageHeaderSpacer } from '../../components/navigation/subpage-header'
 import { ConsumerPageLayout } from '../../components/page-layout'
 // ARCH-005 分工：本页不触碰订单原始事实字段，事实→展示的推导（回执口径文案/徽标变体/入口门控/
 // 错误面映射）全部委托 src/consumer/orders/refund.ts（receiptHeadline/receiptBody/
@@ -128,15 +129,8 @@ function RefundApplyScreen({ preview, scenario, orderId }: { preview: boolean; s
         （仅退款/退货退款）/原因胶囊组（内置选项）/上传图片区块不在 §3.9 契约内不渲染——reasonCode
         为服务端字典文本输入（未封板不内置选项），PR 登记差异。功能/契约/ID/aria 零改动。 */}
     <View className='ord-design rfd'>
-      <View className='rfd-hero'>
-        <View className='ord-status-area' />
-        <View className='ord-nav'>
-          <Button id='rfd-back' ariaLabel='返回' className='ord-nav-back' onClick={() => void goBack()}>
-            <Text className='ord-nav-back-icon'>‹</Text>
-          </Button>
-          <Text className='ord-nav-title'>申请退款</Text>
-        </View>
-      </View>
+      <SubpageHeader title='申请退款' backId='rfd-back' height={44} onBack={() => void goBack()} />
+      <SubpageHeaderSpacer height={44} />
       {invalidOrderId && <View className='ord-state' role='status'><Text id='rfd-invalid'>订单链接无效，请从订单详情重新进入。</Text></View>}
       {state.phase === 'loading' && <View className='ord-state' role='status'><Text id='rfd-loading'>正在读取订单…</Text></View>}
       {state.phase === 'unauthorized' && <View className='ord-state' role='status'>
