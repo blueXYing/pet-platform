@@ -1,4 +1,5 @@
 import { expect, test } from '@playwright/test';
+import { chooseOption } from './helpers/antd';
 
 // LIVE integration against the real PR60 backend (no route mocks). Runs ONLY when
 // LIVE_JOINT_BASE is set, so CI and the normal suite never execute it:
@@ -94,8 +95,8 @@ test('real backend full review flow: detail, watermarked reads, verification, ap
   await expect(page.getByText('已核验').first()).toBeVisible({ timeout: 20000 });
 
   // Approve decision on the verified application (skipped when already decided).
-  if (await page.getByRole('option', { name: /通过（建立商家档案）/ }).isEnabled().catch(() => false)) {
-    await page.getByLabel('决定类型').selectOption('APPROVE');
+  if (await page.getByLabel('决定类型', { exact: true }).count() > 0) {
+    await chooseOption(page, '决定类型', '通过（建立商家档案）');
     await page.getByLabel(/审核意见/).fill('联调通过：材料齐全、核验一致');
     await page.getByLabel('我确认本决定基于已查看的材料与核验结果').check();
     await page.getByRole('button', { name: '提交审核决定' }).click();

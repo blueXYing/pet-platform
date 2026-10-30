@@ -1,4 +1,5 @@
 import { expect, test } from '@playwright/test';
+import { chooseOption } from './helpers/antd';
 
 test('WEB-001 routes, independent Mock and string values', async ({ page }) => {
   const errors: string[] = [];
@@ -7,7 +8,7 @@ test('WEB-001 routes, independent Mock and string values', async ({ page }) => {
   page.on('request', request => { if (request.url().includes('/api/v1/')) apiCalls.push(request.url()); });
   await page.goto('/');
   await expect(page.getByRole('heading', { name: '运营网页基础工程' })).toBeVisible();
-  await page.getByLabel('测试身份').selectOption('editor');
+  await chooseOption(page, '测试身份', '运营编辑（已授予）');
   await page.getByRole('link', { name: '权限示例' }).click();
   await page.getByRole('button', { name: '读取示例' }).click();
   await expect(page.getByRole('status')).toHaveText('2019267812367810561 / 128.00 / 示例完成');
@@ -22,26 +23,26 @@ test('WEB-001 routes, independent Mock and string values', async ({ page }) => {
 test('WEB-002 direct route, menus, buttons and fail-closed session', async ({ page }) => {
   await page.goto('/example');
   await expect(page.getByRole('heading', { name: '未登录' })).toBeVisible();
-  await page.getByLabel('测试身份').selectOption('denied');
+  await chooseOption(page, '测试身份', '运营管理员（未授予）');
   await expect(page.getByRole('heading', { name: '403 · 无权限' })).toBeVisible();
   await expect(page.getByRole('link', { name: '权限示例' })).toHaveCount(0);
-  await page.getByLabel('测试身份').selectOption('reader');
+  await chooseOption(page, '测试身份', '普通账号（仅查看）');
   await expect(page.getByRole('heading', { name: '权限示例' })).toBeVisible();
   await expect(page.getByRole('button', { name: '执行示例动作' })).toHaveCount(0);
-  await page.getByLabel('测试身份').selectOption('editor');
+  await chooseOption(page, '测试身份', '运营编辑（已授予）');
   await expect(page.getByRole('button', { name: '执行示例动作' })).toBeVisible();
-  await page.getByLabel('测试身份').selectOption('failed');
+  await chooseOption(page, '测试身份', '权限查询失败');
   await expect(page.getByRole('heading', { name: '权限查询失败，访问已关闭' })).toBeVisible();
   await expect(page.getByRole('button')).toHaveCount(0);
-  await page.getByLabel('测试身份').selectOption('anonymous');
+  await chooseOption(page, '测试身份', '未登录');
   await expect(page.getByRole('heading', { name: '未登录' })).toBeVisible();
 });
 
 test('PERM-005 fixture only: finance follows explicit grants, transport rejects bypass', async ({ page }) => {
   await page.goto('/example');
-  await page.getByLabel('测试身份').selectOption('finance');
+  await chooseOption(page, '测试身份', '财务只读（仅查看）');
   await expect(page.getByRole('button', { name: '执行示例动作' })).toHaveCount(0);
-  await page.getByLabel('测试身份').selectOption('financeGranted');
+  await chooseOption(page, '测试身份', '财务只读（显式授予动作）');
   await page.getByRole('button', { name: '执行示例动作' }).click();
   await expect(page.getByRole('status')).toContainText('示例完成');
   const result = await page.evaluate(async () => {

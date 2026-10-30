@@ -1,10 +1,11 @@
 import { useEffect, useRef, useState } from 'react';
-import { Link, useParams } from 'react-router-dom';
-import { ServiceReviewFailure, serviceStatusLabel, type ServiceDetail, type ServiceReviewClient } from '../api/serviceReview';
-
-function Field({ label, children }: { label: string; children: React.ReactNode }) {
-  return <div><dt>{label}</dt><dd>{children}</dd></div>;
-}
+import { useParams } from 'react-router-dom';
+import { Button, Checkbox, Input } from 'antd';
+import type { TableColumnsType } from 'antd';
+import { ServiceReviewFailure, serviceStatusLabel, type ServiceDecisionRow, type ServiceDetail, type ServiceReviewClient } from '../api/serviceReview';
+import { DataTable } from '../ui/DataTable';
+import { BackLink, PageContainer } from '../ui/PageContainer';
+import { ErrorAlert, FactList, InlineStatus, PreserveText, Section } from '../ui/bits';
 
 /** 服务审核详情：卷宗 + 历史驳回记录；APPROVE→ACTIVE、REJECT→REJECTED、ACTIVE 可强制下架。 */
 export default function ServiceReviewDetailPage({ client, canDecide, canForce, onAuthLost }: {
@@ -69,69 +70,64 @@ export default function ServiceReviewDetailPage({ client, canDecide, canForce, o
     } finally { setBusy(false); }
   }
   const versionOk = detail !== undefined;
-  return <main className="aftersale-page">
-    <p><Link to="/services">返回服务审核</Link></p>
-    <h1>服务审核</h1>
-    {error && <p role="alert">{error}</p>}
-    {loading && <p role="status">正在加载服务详情</p>}
-    {notice && <p role="status">{notice}</p>}
-    {actionError && <p role="alert">{actionError}</p>}
+  const decisionColumns: TableColumnsType<ServiceDecisionRow> = [
+    { title: '决定编号', dataIndex: 'decisionId' },
+    { title: '轮次', dataIndex: 'submissionNo' },
+    { title: '决定', dataIndex: 'decisionType' },
+    { title: '意见', render: (_, row) => row.opinion ?? '—' },
+    { title: '时间（UTC）', dataIndex: 'decidedAt' },
+  ];
+  return <PageContainer
+    title="服务审核"
+    back={<BackLink to="/services">返回服务审核</BackLink>}>
+    {error && <ErrorAlert>{error}</ErrorAlert>}
+    {loading && <InlineStatus>正在加载服务详情</InlineStatus>}
+    {notice && <InlineStatus>{notice}</InlineStatus>}
+    {actionError && <ErrorAlert>{actionError}</ErrorAlert>}
     {detail && <>
-      <dl className="snapshot">
-        <Field label="服务编号">{detail.serviceId}</Field>
-        <Field label="服务名称">{detail.serviceName}</Field>
-        <Field label="商家 / 门店">{detail.merchantId} / {detail.storeId}</Field>
-        <Field label="类目">{detail.categoryName ?? detail.categoryId}</Field>
-        <Field label="状态">{serviceStatusLabel(detail.status)}</Field>
-        <Field label="价格">{detail.price ?? '—'}{detail.listPrice ? `（划线 ${detail.listPrice}）` : ''}</Field>
-        <Field label="时长（分钟）">{detail.durationMinutes}</Field>
-        <Field label="履约方式">{detail.fulfillmentType}</Field>
-        <Field label="提交轮次">{detail.submissionNo}</Field>
-        <Field label="提交（UTC）">{detail.submittedAt}</Field>
-        <Field label="SLA 剩余（分钟）">{detail.slaRemainingMinutes ?? '—'}</Field>
-        <Field label="版本">{detail.version}</Field>
-      </dl>
-      <h2>服务描述</h2>
-      <p className="preserve-text">{detail.description ?? '—'}</p>
-      <h2>历史审核记录</h2>
-      {detail.decisions.length === 0
-        ? <p>暂无历史审核记录。</p>
-        : <div className="table-scroll"><table>
-            <thead><tr><th>决定编号</th><th>轮次</th><th>决定</th><th>意见</th><th>时间（UTC）</th></tr></thead>
-            <tbody>{detail.decisions.map(row => <tr key={row.decisionId}>
-              <td>{row.decisionId}</td>
-              <td>{row.submissionNo}</td>
-              <td>{row.decisionType}</td>
-              <td>{row.opinion ?? '—'}</td>
-              <td>{row.decidedAt}</td>
-            </tr>)}</tbody>
-          </table></div>}
-      <section>
-        <h2>审核决定（service.review.decide）</h2>
+      <FactList items={[
+        { label: '服务编号', value: detail.serviceId },
+        { label: '服务名称', value: detail.serviceName },
+        { label: '商家 / 门店', value: `${detail.merchantId} / ${detail.storeId}` },
+        { label: '类目', value: detail.categoryName ?? detail.categoryId },
+        { label: '状态', value: serviceStatusLabel(detail.status) },
+        { label: '价格', value: `${detail.price ?? '—'}${detail.listPrice ? `（划线 ${detail.listPrice}）` : ''}` },
+        { label: '时长（分钟）', value: detail.durationMinutes },
+        { label: '履约方式', value: detail.fulfillmentType },
+        { label: '提交轮次', value: detail.submissionNo },
+        { label: '提交（UTC）', value: detail.submittedAt },
+        { label: 'SLA 剩余（分钟）', value: detail.slaRemainingMinutes ?? '—' },
+        { label: '版本', value: detail.version },
+      ]} />
+      <Section title="服务描述">
+        <PreserveText>{detail.description ?? '—'}</PreserveText>
+      </Section>
+      <Section title="历史审核记录">
+        {detail.decisions.length === 0
+          ? <p>暂无历史审核记录。</p>
+          : <DataTable columns={decisionColumns} rows={detail.decisions} rowKey={row => row.decisionId} />}
+      </Section>
+      <Section title="审核决定（service.review.decide）">
         {!canDecide && <p className="hint">当前账号未授予 service.review.decide，按钮停用不代表后端放行。</p>}
-        <label>驳回意见（REJECT 必填，10–500 字）
-          <textarea value={opinion} onChange={event => setOpinion(event.target.value)} disabled={!canDecide || busy} />
+        <label className="filter-item">驳回意见（REJECT 必填，10–500 字）
+          <Input.TextArea style={{ width: 'min(100%, 720px)' }} rows={3} value={opinion} onChange={event => setOpinion(event.target.value)} disabled={!canDecide || busy} />
         </label>
         <div className="decision-actions">
-          <button disabled={!canDecide || busy || !versionOk} onClick={() => void decide('APPROVE')}>通过（上架）</button>
-          <button disabled={!canDecide || busy || !versionOk || opinion.trim().length < 10} onClick={() => void decide('REJECT')}>驳回</button>
+          <Button type="primary" disabled={!canDecide || busy || !versionOk} onClick={() => void decide('APPROVE')}>通过（上架）</Button>
+          <Button danger disabled={!canDecide || busy || !versionOk || opinion.trim().length < 10} onClick={() => void decide('REJECT')}>驳回</Button>
         </div>
-      </section>
-      <section>
-        <h2>强制下架（service.force.offline）</h2>
+      </Section>
+      <Section title="强制下架（service.force.offline）">
         {!canForce && <p className="hint">当前账号未授予 service.force.offline。仅 ACTIVE 服务可强制下架。</p>}
-        <label>下架原因（必填，10–500 字）
-          <textarea value={reason} onChange={event => setReason(event.target.value)} disabled={!canForce || busy} />
+        <label className="filter-item">下架原因（必填，10–500 字）
+          <Input.TextArea style={{ width: 'min(100%, 720px)' }} rows={3} value={reason} onChange={event => setReason(event.target.value)} disabled={!canForce || busy} />
         </label>
-        <label>
-          <input type="checkbox" checked={confirmed} onChange={event => setConfirmed(event.target.checked)} disabled={!canForce || busy} />
-          我确认对该服务执行强制下架（同一人二次确认，非第二人审批）
-        </label>
+        <div><Checkbox checked={confirmed} onChange={event => setConfirmed(event.target.checked)} disabled={!canForce || busy}>我确认对该服务执行强制下架（同一人二次确认，非第二人审批）</Checkbox></div>
         <div className="decision-actions">
-          <button disabled={!canForce || busy || !versionOk || reason.trim().length < 10 || !confirmed} onClick={() => void forceOffline()}>强制下架</button>
+          <Button danger disabled={!canForce || busy || !versionOk || reason.trim().length < 10 || !confirmed} onClick={() => void forceOffline()}>强制下架</Button>
         </div>
-      </section>
+      </Section>
       <p className="hint">决定与下架在服务内核事务内做数据库权威复核；运营不代商家新增/编辑/上下架服务。</p>
     </>}
-  </main>;
+  </PageContainer>;
 }
