@@ -1,6 +1,8 @@
 /* 「我的」tab 视觉重做（设计源：我的 126:675 新版，2026-10-10 稿；素材缓存
    planning/progress/2026-10-12/figma-mine/）。结构/文案/坐标/fills 取自
    nodes-all.json + node-126-675.json 精确树；图标/波浪为 REST SVG 原矢量 base64。
+   2026-10-30 对齐 690:10474（REST nodes JSON 精确值）：木夹贴纸、签到横向渐变、
+   头像/昵称/手机号规格、订单角标、区块间距 24/14 与标题-内容间距两档（12/4）。
    功能/契约零改动：状态机、模型（model.ts）、跳转 URL、requestId 幂等全部不变；
    签到/拉新/收藏/足迹/地址管理/成为服务者/帮助与客服/意见反馈/设置等
    无工程页面的原稿入口仅做视觉占位（无交互），登记表 §4.6 记偏差；
@@ -26,21 +28,23 @@
 .mine-body { flex: 1; height: 0; }
 .mine-scroll { position: relative; min-height: 100%; padding-bottom: calc(var(--mine-unit) * 48); }
 
-/* ===== 顶部装饰层（原稿 y0..~250：huaban 纸纹 402x175 STRETCH（<Image> 组件）+ 蓝白波浪）===== */
+/* ===== 顶部装饰层（原稿 y0..~250：huaban 纸纹 402x175 STRETCH（<Image> 组件）+ 蓝白波浪 + 木夹贴纸 52.4）===== */
 .mine-strip { position: absolute; left: 0; top: 0; width: 100%; height: calc(var(--mine-unit) * 175); pointer-events: none; }
 .mine-wave-blue { position: absolute; left: calc(var(--mine-unit) * 8); top: calc(var(--mine-unit) * 12); pointer-events: none; }
 .mine-wave-white { position: absolute; left: calc(var(--mine-unit) * -6); top: calc(var(--mine-unit) * 4); pointer-events: none; }
+/* huaban-6727256158（690:10582 @3x 导出）：Group 28 最上层（蓝白纸之上）。 */
+.mine-clip { position: absolute; left: calc(var(--mine-unit) * 12.6); top: calc(var(--mine-unit) * 4); width: calc(var(--mine-unit) * 52.4); height: calc(var(--mine-unit) * 52.4); pointer-events: none; }
 
-/* ===== 用户卡（IMG-5 头像 64 环 #c5e9f9 + 昵称 18/700 + 手机号 12）===== */
-.mine-user { position: relative; display: flex; align-items: center; padding: calc(var(--mine-unit) * 54) calc(var(--mine-unit) * 30) 0; }
+/* ===== 用户卡（IMG-5 头像 68.6 环 #c5e9f9 + 昵称 19.3/30/700 + 手机号 12.86）===== */
+.mine-user { position: relative; display: flex; align-items: center; padding: calc(var(--mine-unit) * 54) calc(var(--mine-unit) * 34) 0; }
 .mine-avatar {
-  width: calc(var(--mine-unit) * 64); height: calc(var(--mine-unit) * 64);
+  width: calc(var(--mine-unit) * 68.6); height: calc(var(--mine-unit) * 68.6);
   border-radius: 50%; border: calc(var(--mine-unit) * 2) solid #c5e9f9;
   background: #c0ecff; flex-shrink: 0;
 }
-.mine-user-main { flex: 1; display: flex; flex-direction: column; min-width: 0; margin-left: calc(var(--mine-unit) * 21); }
-.mine-nickname { font-size: calc(var(--mine-unit) * 18); line-height: calc(var(--mine-unit) * 28); font-weight: 700; color: #1d0d07; }
-.mine-phone { margin-top: calc(var(--mine-unit) * 4); font-size: calc(var(--mine-unit) * 12); line-height: calc(var(--mine-unit) * 17); color: #3c3c3c; }
+.mine-user-main { flex: 1; display: flex; flex-direction: column; min-width: 0; margin-left: calc(var(--mine-unit) * 16.4); }
+.mine-nickname { font-size: calc(var(--mine-unit) * 19.3); line-height: calc(var(--mine-unit) * 30); font-weight: 700; color: #1d0d07; }
+.mine-phone { margin-top: calc(var(--mine-unit) * 4); font-size: calc(var(--mine-unit) * 12.86); line-height: calc(var(--mine-unit) * 17.15); color: #3c3c3c; }
 .mine-user-go { width: calc(var(--mine-unit) * 34); height: calc(var(--mine-unit) * 34); display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
 
 /* ===== 统计条（Group 27：#f0fbff r11.2 + #577683 阴影；四项 图标/值/文案）===== */
@@ -76,13 +80,13 @@
 }
 .mine-guide-primary::after { border: none; }
 .mine-guide-primary[disabled] { background: #a7dcfa; color: #f0fbff; }
-.mine-guide-secondary {
+.mine-page .mine-guide-secondary {
   margin-top: calc(var(--mine-unit) * 8); background: transparent; color: #577683;
   font-size: calc(var(--mine-unit) * 12); line-height: calc(var(--mine-unit) * 18);
   padding: calc(var(--mine-unit) * 8) 0; text-align: center; border: none;
 }
 .mine-guide-secondary::after { border: none; }
-.mine-guide-collapsed { padding: calc(var(--mine-unit) * 6) 0; background: transparent; border: none; text-align: left; }
+.mine-page .mine-guide-collapsed { padding: calc(var(--mine-unit) * 6) 0; background: transparent; border: none; text-align: left; }
 .mine-guide-collapsed::after { border: none; }
 .mine-guide-collapsed-text { font-size: calc(var(--mine-unit) * 12); line-height: calc(var(--mine-unit) * 18); color: #5baae8; }
 .mine-notice {
@@ -93,12 +97,13 @@
   font-size: calc(var(--mine-unit) * 11); line-height: calc(var(--mine-unit) * 17); color: #7b5b4a;
 }
 
-/* ===== 每日签到卡（DIV-61：#c0ecff→#e4f6f3 渐变 r12 pad16；纯视觉占位无交互）===== */
-.mine-signin {
+/* ===== 每日签到卡（DIV-61：#c0ecff→#e4f6f3 横向渐变 r12 pad16；整卡入口进签到日历页）
+   （宿主是 <Button>：必须 .mine-page 前缀压过 .mine-page button 重置，下同）===== */
+.mine-page .mine-signin {
   position: relative;
-  margin: calc(var(--mine-unit) * 12) calc(var(--mine-unit) * 30) 0;
+  margin: calc(var(--mine-unit) * 24) calc(var(--mine-unit) * 30) 0;
   padding: calc(var(--mine-unit) * 16);
-  background: linear-gradient(180deg, #c0ecff 0%, #e4f6f3 100%);
+  background: linear-gradient(90deg, #c0ecff 0%, #e4f6f3 100%);
   border-radius: calc(var(--mine-unit) * 12);
 }
 .mine-signin-head { display: flex; align-items: center; justify-content: space-between; }
@@ -122,7 +127,7 @@
 
 /* ===== 快捷入口（DIV-130：拉新/奖励占位 + 积分明细真入口；白卡 109x85 描边 #c0ecff）===== */
 .mine-quick { position: relative; display: flex; gap: calc(var(--mine-unit) * 8); margin: calc(var(--mine-unit) * 12) calc(var(--mine-unit) * 30) 0; }
-.mine-quick-cell {
+.mine-page .mine-quick-cell {
   flex: 1; height: calc(var(--mine-unit) * 85);
   background: #ffffff; border: calc(var(--mine-unit) * 1) solid #c0ecff; border-radius: calc(var(--mine-unit) * 12);
   display: flex; flex-direction: column; align-items: center; justify-content: center; gap: calc(var(--mine-unit) * 6);
@@ -134,17 +139,28 @@
 .mine-quick-chip.is-accent { background: rgba(255, 207, 186, .68); }
 .mine-quick-label { font-size: calc(var(--mine-unit) * 11); line-height: calc(var(--mine-unit) * 13.2); color: #3c3c3c; }
 
-/* ===== 卡片家族（我的订单/我的服务/更多服务：白卡 r12 描边 #c0ecff）===== */
+/* ===== 卡片家族（我的订单/我的服务/更多服务：白卡 r12 描边 #c0ecff）=====
+   标题-内容间距原稿分两档：订单卡 12（margin-wrap padB 12）、服务/更多卡 4（H2 padB 4）。 */
 .mine-section { position: relative; margin: calc(var(--mine-unit) * 16) calc(var(--mine-unit) * 30) 0; padding: calc(var(--mine-unit) * 13); background: #ffffff; border: calc(var(--mine-unit) * 1) solid #c0ecff; border-radius: calc(var(--mine-unit) * 12); }
-.mine-section-head { display: flex; align-items: center; justify-content: space-between; padding: 0 calc(var(--mine-unit) * 12) calc(var(--mine-unit) * 10); }
+.mine-section-orders { margin-top: calc(var(--mine-unit) * 14); }
+.mine-section-head { display: flex; align-items: center; justify-content: space-between; padding: 0 calc(var(--mine-unit) * 12) calc(var(--mine-unit) * 4); }
+.mine-section-orders .mine-section-head { padding-bottom: calc(var(--mine-unit) * 12); }
 .mine-section-title { font-size: calc(var(--mine-unit) * 14); line-height: calc(var(--mine-unit) * 20); font-weight: 700; color: #3c3c3c; }
 
 /* 我的订单：全部订单链接 + 五状态入口（全部指向既有订单列表，行为与现状一致）*/
-.mine-orders-all { display: flex; align-items: center; gap: calc(var(--mine-unit) * 4); }
+.mine-orders-all { display: flex; align-items: center; gap: calc(var(--mine-unit) * 2); }
 .mine-orders-all-text { font-size: calc(var(--mine-unit) * 11); line-height: calc(var(--mine-unit) * 16.5); color: #3c3c3c; }
 .mine-orders-row { display: flex; padding-bottom: calc(var(--mine-unit) * 4); }
 .mine-order-item { flex: 1; display: flex; flex-direction: column; align-items: center; gap: calc(var(--mine-unit) * 6); }
-.mine-order-ico { width: calc(var(--mine-unit) * 36); height: calc(var(--mine-unit) * 36); display: flex; align-items: center; justify-content: center; }
+.mine-order-ico { position: relative; width: calc(var(--mine-unit) * 36); height: calc(var(--mine-unit) * 36); display: flex; align-items: center; justify-content: center; }
+/* 角标（SPAN-168 族：16 圆 #5baae8 白字 9/13.5；右上 -2 悬出；双位数右锚横向扩展）*/
+.mi-ord-badge {
+  position: absolute; top: calc(var(--mine-unit) * -2); right: calc(var(--mine-unit) * -2);
+  min-width: calc(var(--mine-unit) * 16); height: calc(var(--mine-unit) * 16); padding: 0 calc(var(--mine-unit) * 4);
+  border-radius: calc(var(--mine-unit) * 9999); background: #5baae8;
+  display: flex; align-items: center; justify-content: center;
+  font-size: calc(var(--mine-unit) * 9); line-height: calc(var(--mine-unit) * 13.5); color: #ffffff;
+}
 .mine-order-label { font-size: calc(var(--mine-unit) * 11); line-height: calc(var(--mine-unit) * 16.5); color: #577683; }
 
 /* 服务网格（我的服务/更多服务：44 圆角 chip #c0ecff + 图标 #577683 + 文案 11）*/
@@ -177,7 +193,7 @@
 
 /* ===== 页脚（退出登录 + 开发者工具：工程功能保留，原稿无对应区块）===== */
 .mine-footer { position: relative; margin-top: calc(var(--mine-unit) * 16); display: flex; flex-direction: column; align-items: stretch; gap: calc(var(--mine-unit) * 8); padding: 0 calc(var(--mine-unit) * 30); }
-.mine-logout {
+.mine-page .mine-logout {
   background: #ffffff; color: #e06c5a;
   font-size: calc(var(--mine-unit) * 14); line-height: calc(var(--mine-unit) * 20);
   padding: calc(var(--mine-unit) * 13) 0; text-align: center;
@@ -185,7 +201,7 @@
 }
 .mine-logout::after { border: none; }
 .mine-logout-hidden { display: none; }
-.mine-developer { padding: calc(var(--mine-unit) * 6) 0; background: transparent; border: none; text-align: center; }
+.mine-page .mine-developer { padding: calc(var(--mine-unit) * 6) 0; background: transparent; border: none; text-align: center; }
 .mine-developer::after { border: none; }
 .mine-developer-text { font-size: calc(var(--mine-unit) * 11); line-height: calc(var(--mine-unit) * 16); color: #9db6c2; }
 
