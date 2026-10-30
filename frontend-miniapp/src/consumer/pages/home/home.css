@@ -107,29 +107,10 @@
 .home-pet-sub { margin-top: calc(var(--home-unit) * 2); font-size: calc(var(--home-unit) * 11); line-height: calc(var(--home-unit) * 16); color: #577683; }
 .home-pet-go { margin-left: auto; font-size: calc(var(--home-unit) * 20); line-height: 1; color: #53bfee; }
 
-.home-hero {
-  margin: calc(var(--home-unit) * 24) calc(var(--home-unit) * 18) 0;
-  display: flex; flex-direction: column; align-items: flex-start; text-align: left;
-  padding: calc(var(--home-unit) * 14) calc(var(--home-unit) * 16);
-  background: #ffffff; border: calc(var(--home-unit) * 1) solid #c0ecff;
-  border-radius: calc(var(--home-unit) * 12);
-}
-.home-hero-title { font-size: calc(var(--home-unit) * 16); line-height: calc(var(--home-unit) * 22); font-weight: 700; color: #1d0d07; }
-.home-hero-sub { margin-top: calc(var(--home-unit) * 4); font-size: calc(var(--home-unit) * 11); line-height: calc(var(--home-unit) * 16); color: #577683; }
-.home-hero-go { margin-top: calc(var(--home-unit) * 8); font-size: calc(var(--home-unit) * 13); line-height: calc(var(--home-unit) * 18); color: #53bfee; font-weight: 600; }
-.home-grid { margin: calc(var(--home-unit) * 12) calc(var(--home-unit) * 18) 0; display: flex; gap: calc(var(--home-unit) * 12); }
-.home-cell {
-  flex: 1; display: flex; flex-direction: column; align-items: flex-start; text-align: left;
-  padding: calc(var(--home-unit) * 12) calc(var(--home-unit) * 10);
-  background: #ffffff; border: calc(var(--home-unit) * 1) solid #c0ecff;
-  border-radius: calc(var(--home-unit) * 12);
-}
-.home-cell-title { font-size: calc(var(--home-unit) * 13); line-height: calc(var(--home-unit) * 18); font-weight: 600; color: #1d0d07; }
-.home-cell-sub { margin-top: calc(var(--home-unit) * 3); font-size: calc(var(--home-unit) * 9.5); line-height: calc(var(--home-unit) * 13); color: #577683; }
-
 /* 平台保障体系（原稿 73:70 标题 + 73:145~149 四卡：白卡 #c0ecff 描边 + 38×38 图标芯片；
-   分区起页面底色切 #f0fbff——原稿 Rectangle 14 口径，全宽色带盖住纸纹收尾） */
-.home-section { margin: calc(var(--home-unit) * 32) 0 0; padding: 0 calc(var(--home-unit) * 18) calc(var(--home-unit) * 8); background: #f0fbff; }
+   分区起页面底色切 #f0fbff——原稿 Rectangle 14 口径，全宽色带盖住纸纹收尾。
+   内容位纸底结束（原稿 1024）到保障标题（1038）为 14px，功能入口卡已按稿移除。 */
+.home-section { margin: calc(var(--home-unit) * 14) 0 0; padding: 0 calc(var(--home-unit) * 18) calc(var(--home-unit) * 8); background: #f0fbff; }
 .home-section-title { font-size: calc(var(--home-unit) * 16); line-height: calc(var(--home-unit) * 24); font-weight: 700; color: #1d0d07; }
 .home-guarantee { margin-top: calc(var(--home-unit) * 10); display: grid; grid-template-columns: 1fr 1fr; gap: calc(var(--home-unit) * 14) calc(var(--home-unit) * 16); }
 .home-guarantee-card {
@@ -147,5 +128,3 @@
 .home-guarantee-text { display: flex; flex-direction: column; }
 .home-guarantee-title { font-size: calc(var(--home-unit) * 12); line-height: calc(var(--home-unit) * 16); font-weight: 700; color: #1d0d07; }
 .home-guarantee-body { margin-top: calc(var(--home-unit) * 3); font-size: calc(var(--home-unit) * 9.5); line-height: calc(var(--home-unit) * 13.5); color: #577683; }
-.home-tail { margin: calc(var(--home-unit) * 24) 0 calc(var(--home-unit) * 8); display: flex; justify-content: center; }
-.home-tail Text { font-size: calc(var(--home-unit) * 10); line-height: calc(var(--home-unit) * 15); color: #9bb3bd; }
