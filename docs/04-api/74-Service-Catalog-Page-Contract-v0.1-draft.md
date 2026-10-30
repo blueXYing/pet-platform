@@ -245,7 +245,7 @@ DDL 草案见 [CCR-SVC-CAT-001 §3](../../planning/ccr/CCR-SVC-CAT-001.md)。
 
 其余字段、排序、去重规则不变；无图时前端用设计系统占位，不虚构商家。
 
-### 3.6 首页内容位热门服务落地（契约 71 §10 v0.2 补充 / CCR-MKT-003）
+### 3.6 首页内容位热门服务落地（契约 71 §10 v0.3 更新 / CCR-MKT-003）
 
 `marketing_home_block.target_type` 白名单增加 `HOT_SERVICE`：
 
