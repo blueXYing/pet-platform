@@ -1,7 +1,12 @@
 import { useCallback, useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
+import { Button, Input, Select } from 'antd';
+import type { TableColumnsType } from 'antd';
 import { RequestFailure } from '../request';
 import { MERCHANT_TYPES, merchantTypeLabel, statusLabel, verificationLabel, type ApplicationStatus, type ApplicationSummary, type ListFilters } from '../api/merchantApplications';
+import { DataTable } from '../ui/DataTable';
+import { ErrorAlert, InlineStatus } from '../ui/bits';
+import { PageContainer } from '../ui/PageContainer';
 
 type Client = ReturnType<typeof import('../api/merchantApplications').createMerchantApplicationClient>;
 type FilterState = { status: string; merchantTypeCode: string; cityCode: string; keyword: string };
@@ -12,6 +17,13 @@ const FAILURE_TEXT: Record<string, string> = {
   INVALID_ARGUMENT: '筛选条件不合法',
   DEPENDENCY_UNAVAILABLE: '审核数据暂时不可用',
 };
+
+const STATUS_OPTIONS = [
+  { value: '', label: '全部' },
+  { value: 'REVIEWING', label: '审核中' },
+  { value: 'APPROVED', label: '已通过' },
+  { value: 'REJECTED', label: '未通过' },
+];
 
 export default function ReviewListPage({ client, canDecide, onAuthLost }: { client: Client; canDecide: boolean; onAuthLost: () => void }) {
   const [filters, setFilters] = useState<FilterState>({ status: '', merchantTypeCode: '', cityCode: '', keyword: '' });
@@ -40,54 +52,43 @@ export default function ReviewListPage({ client, canDecide, onAuthLost }: { clie
 
   useEffect(() => { query({ ...filters, page: 1, pageSize: 20 }); /* initial load */ }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
-  const totalPages = result ? Math.max(1, Math.ceil(result.total / result.pageSize)) : 1;
-  const page = result?.page ?? 1;
   const goto = (nextPage: number) => query({ ...filters, page: nextPage, pageSize: result?.pageSize ?? 20 });
-  return <main>
-    <h1>商家申请审核</h1>
+  const columns: TableColumnsType<ApplicationSummary> = [
+    { title: '申请编号', dataIndex: 'applicationNo' },
+    { title: '商家名称', dataIndex: 'merchantName' },
+    { title: '类型', render: (_, item) => merchantTypeLabel(item.merchantTypeCode) },
+    { title: '城市', dataIndex: 'cityCode' },
+    { title: '状态', render: (_, item) => statusLabel(item.status) },
+    { title: '核验', render: (_, item) => verificationLabel(item.subjectVerificationStatus) },
+    { title: '提交时间', dataIndex: 'submittedAt' },
+    { title: '', render: (_, item) => <Link to={`/merchant-applications/${item.applicationId}`}>打开</Link> },
+  ];
+  return <PageContainer title="商家申请审核">
     <form className="filters" onSubmit={event => { event.preventDefault(); void goto(1); }}>
-      <label>状态
-        <select value={filters.status} onChange={event => setFilters({ ...filters, status: event.target.value })}>
-          <option value="">全部</option>
-          <option value="REVIEWING">审核中</option>
-          <option value="APPROVED">已通过</option>
-          <option value="REJECTED">未通过</option>
-        </select>
+      <label className="filter-item">状态
+        <Select style={{ width: 160 }} value={filters.status} onChange={value => setFilters({ ...filters, status: value })} options={STATUS_OPTIONS} />
       </label>
-      <label>商家类型
-        <select value={filters.merchantTypeCode ?? ''} onChange={event => setFilters({ ...filters, merchantTypeCode: event.target.value })}>
-          <option value="">全部</option>
-          {MERCHANT_TYPES.map(type => <option key={type.code} value={type.code}>{type.label}</option>)}
-        </select>
+      <label className="filter-item">商家类型
+        <Select style={{ width: 160 }} value={filters.merchantTypeCode ?? ''} onChange={value => setFilters({ ...filters, merchantTypeCode: value })}
+          options={[{ value: '', label: '全部' }, ...MERCHANT_TYPES.map(type => ({ value: type.code, label: type.label }))]} />
       </label>
-      <label>城市编码<input value={filters.cityCode ?? ''} placeholder="如 CHENGDU" onChange={event => setFilters({ ...filters, cityCode: event.target.value })} /></label>
-      <label>关键词<input value={filters.keyword ?? ''} placeholder="商家名称/编号" onChange={event => setFilters({ ...filters, keyword: event.target.value })} /></label>
-      <button type="submit">查询</button>
+      <label className="filter-item">城市编码<Input style={{ width: 160 }} value={filters.cityCode ?? ''} placeholder="如 CHENGDU" onChange={event => setFilters({ ...filters, cityCode: event.target.value })} /></label>
+      <label className="filter-item">关键词<Input style={{ width: 200 }} value={filters.keyword ?? ''} placeholder="商家名称/编号" onChange={event => setFilters({ ...filters, keyword: event.target.value })} /></label>
+      <Button type="primary" htmlType="submit">查询</Button>
     </form>
     {canDecide ? <p className="hint">领取任务后审核；单人直接裁决，无双人审批。</p> : <p className="hint">当前账号仅可查看。</p>}
-    {loading && <p role="status">加载中</p>}
-    {error && <p role="alert">{error}</p>}
+    {loading && <InlineStatus>加载中</InlineStatus>}
+    {error && <ErrorAlert>{error}</ErrorAlert>}
     {result && !loading && (result.items.length === 0
       ? <p>没有符合条件的申请。</p>
-      : <table>
-        <thead><tr><th>申请编号</th><th>商家名称</th><th>类型</th><th>城市</th><th>状态</th><th>核验</th><th>提交时间</th><th></th></tr></thead>
-        <tbody>
-          {result.items.map(item => <tr key={item.applicationId}>
-            <td>{item.applicationNo}</td>
-            <td>{item.merchantName}</td>
-            <td>{merchantTypeLabel(item.merchantTypeCode)}</td>
-            <td>{item.cityCode}</td>
-            <td>{statusLabel(item.status)}</td>
-            <td>{verificationLabel(item.subjectVerificationStatus)}</td>
-            <td>{item.submittedAt}</td>
-            <td><Link to={`/merchant-applications/${item.applicationId}`}>打开</Link></td>
-          </tr>)}
-        </tbody>
-      </table>)}
-    {result && !loading && <nav className="pager" aria-label="分页">
-      <button disabled={page <= 1} onClick={() => goto(page - 1)}>上一页</button>
-      <span>第 {page} / {totalPages} 页 · 共 {result.total} 条</span>
-      <button disabled={page >= totalPages} onClick={() => goto(page + 1)}>下一页</button>
-    </nav>}
-  </main>;
+      : <DataTable
+        columns={columns}
+        rows={result.items}
+        rowKey={item => item.applicationId}
+        page={result.page}
+        pageSize={result.pageSize}
+        total={result.total}
+        onPageChange={page => goto(page)}
+      />)}
+  </PageContainer>;
 }

@@ -1,8 +1,13 @@
 import { useEffect, useRef, useState } from 'react';
+import { Button, Checkbox, ConfigProvider, Input, Select } from 'antd';
+import type { TableColumnsType } from 'antd';
 import {
   isCouponConflict, INSTANCE_STATUSES, type AdminInstanceDetail, type AdminInstanceSummary,
-  type CouponAdminClient, type InstanceStatus, type VoidReceipt,
+  type CouponAdminClient, type InstanceStatus, type LedgerRow, type VoidReceipt,
 } from '../api/couponAdmin';
+import { DataTable } from '../ui/DataTable';
+import { ErrorAlert, FactList, InlineStatus, StatusTag } from '../ui/bits';
+import { PageContainer } from '../ui/PageContainer';
 
 const STATUS_TEXT: Record<string, string> = {
   AVAILABLE: '可领取', FROZEN: '已冻结', USED: '已使用', EXPIRED: '已过期', RISK_FROZEN: '风控冻结',
@@ -94,87 +99,78 @@ export default function CouponInstanceLedgerPage({ client, canVoid, onAuthLost }
     }
   }
 
-  return <main className="page">
-    <h2>优惠券 · 券实例台账</h2>
-    <p className="hint">券资产全生命周期记录与状态时间轴。作废渠道为最小实现：仅"可领取"状态的实例可作废（已使用/被订单冻结/已过期的券一律拒绝，被订单锁着的券不许作废），作废即时生效、不可恢复、无补偿（CCR-CPN-VOID-001）；批量作废/返还/风控冻结在 V1 无授权（CCR-ADM-A005-OPS-001）。</p>
-    <form className="filters" onSubmit={event => { event.preventDefault(); void load(status, templateId); }}>
-      <label>状态
-        <select value={status} onChange={event => { setStatus(event.target.value as InstanceStatus | ''); void load(event.target.value as InstanceStatus | '', templateId); }}>
-          <option value="">全部</option>
-          {INSTANCE_STATUSES.map(value => <option key={value} value={value}>{STATUS_TEXT[value]}</option>)}
-        </select>
+  const columns: TableColumnsType<AdminInstanceSummary> = [
+    { title: '实例 ID', dataIndex: 'instanceId' },
+    { title: '券名称', dataIndex: 'templateName' },
+    { title: '状态', render: (_, row) => <StatusTag label={STATUS_TEXT[row.status]} status={row.status} /> },
+    { title: '面额', dataIndex: 'amountOff' },
+    { title: '门槛', render: (_, row) => row.thresholdAmount ?? '无门槛' },
+    { title: '用户', dataIndex: 'userId' },
+    { title: '到期', render: (_, row) => row.expireAt.slice(0, 10) },
+    { title: '订单', render: (_, row) => row.orderId ?? '—' },
+    { title: '操作', render: (_, row) => <>
+      {row.status === 'AVAILABLE' && <Button danger disabled={busy} onClick={voidGuard(row)}>作废</Button>}
+      <Button onClick={() => void openDetail(row.instanceId)}>时间轴</Button>
+    </> },
+  ];
+  const ledgerColumns: TableColumnsType<LedgerRow> = [
+    { title: '动作', dataIndex: 'action' },
+    { title: '前状态', render: (_, entry) => entry.fromStatus ?? '—' },
+    { title: '后状态', dataIndex: 'toStatus' },
+    { title: '订单', render: (_, entry) => entry.orderId ?? '—' },
+    { title: '时间', dataIndex: 'createdAt' },
+  ];
+
+  return <PageContainer
+    title="优惠券 · 券实例台账"
+    hint={'券资产全生命周期记录与状态时间轴。作废渠道为最小实现：仅"可领取"状态的实例可作废（已使用/被订单冻结/已过期的券一律拒绝，被订单锁着的券不许作废），作废即时生效、不可恢复、无补偿（CCR-CPN-VOID-001）；批量作废/返还/风控冻结在 V1 无授权（CCR-ADM-A005-OPS-001）。'}>
+    <form className="filter-bar" onSubmit={event => { event.preventDefault(); void load(status, templateId); }}>
+      <label className="filter-item">状态
+        <Select style={{ width: 160 }} value={status} onChange={value => { setStatus(value as InstanceStatus | ''); void load(value as InstanceStatus | '', templateId); }}
+          options={[{ value: '', label: '全部' }, ...INSTANCE_STATUSES.map(value => ({ value, label: STATUS_TEXT[value] }))]} />
       </label>
-      <label>模板 ID
-        <input value={templateId} onChange={event => setTemplateId(event.target.value)} placeholder="Snowflake ID" inputMode="numeric" />
+      <label className="filter-item">模板 ID
+        <Input style={{ width: 220 }} value={templateId} onChange={event => setTemplateId(event.target.value)} placeholder="Snowflake ID" inputMode="numeric" />
       </label>
-      <button type="submit">查询</button>
-      {error && <span role="alert">{error}</span>}
-      {notice && <output role="status">{notice}</output>}
+      <Button type="primary" htmlType="submit">查询</Button>
+      {error && <ErrorAlert>{error}</ErrorAlert>}
+      {notice && <InlineStatus>{notice}</InlineStatus>}
     </form>
-    {rows === undefined ? <p role="status">加载中</p> : <table>
-      <thead><tr>
-        <th>实例 ID</th><th>券名称</th><th>状态</th><th>面额</th><th>门槛</th><th>用户</th><th>到期</th><th>订单</th><th>操作</th>
-      </tr></thead>
-      <tbody>
-        {rows.map(row => <tr key={row.instanceId}>
-          <td>{row.instanceId}</td>
-          <td>{row.templateName}</td>
-          <td>{STATUS_TEXT[row.status]}</td>
-          <td>{row.amountOff}</td>
-          <td>{row.thresholdAmount ?? '无门槛'}</td>
-          <td>{row.userId}</td>
-          <td>{row.expireAt.slice(0, 10)}</td>
-          <td>{row.orderId ?? '—'}</td>
-          <td>
-            {row.status === 'AVAILABLE' && <button disabled={busy} onClick={voidGuard(row)}>作废</button>}
-            <button onClick={() => void openDetail(row.instanceId)}>时间轴</button>
-          </td>
-        </tr>)}
-        {rows.length === 0 && <tr><td colSpan={9}>无实例</td></tr>}
-      </tbody>
-    </table>}
+    {rows === undefined ? <InlineStatus>加载中</InlineStatus> : <ConfigProvider renderEmpty={() => '无实例'}>
+      <DataTable columns={columns} rows={rows} rowKey={row => row.instanceId} />
+    </ConfigProvider>}
     <p className="hint">共 {total} 行</p>
     {voiding && <section className="detail-card" aria-label="作废确认">
       <h3>作废：{voiding.instanceId}（{voiding.templateName}，面额 {voiding.amountOff}，用户 {voiding.userId}）</h3>
       <p className="hint">作废后该券对用户立即不可见且不可恢复，V1 无补偿路径（CCR-CPN-VOID-001）。</p>
       <form onSubmit={event => { event.preventDefault(); void submitVoid(); }}>
-        <label>作废原因（必填，10–200 字）
-          <textarea value={voidReason} onChange={event => setVoidReason(event.target.value)} disabled={busy} />
+        <label className="filter-item">作废原因（必填，10–200 字）
+          <Input.TextArea rows={3} value={voidReason} onChange={event => setVoidReason(event.target.value)} disabled={busy} />
         </label>
-        <label>
-          <input type="checkbox" checked={voidConfirm}
-            onChange={event => setVoidConfirm(event.target.checked)} disabled={busy} />
-          我确认作废该券实例（同一人二次确认，非第二人审批）
-        </label>
-        <button type="submit" disabled={busy || !voidConfirm}>确认作废</button>
-        <button type="button" disabled={busy} onClick={() => { setVoiding(undefined); setVoidConfirm(false); }}>取消</button>
+        <div>
+          <Checkbox checked={voidConfirm}
+            onChange={event => setVoidConfirm(event.target.checked)} disabled={busy}>
+            我确认作废该券实例（同一人二次确认，非第二人审批）
+          </Checkbox>
+        </div>
+        <Button danger type="primary" htmlType="submit" disabled={busy || !voidConfirm}>确认作废</Button>
+        <Button disabled={busy} onClick={() => { setVoiding(undefined); setVoidConfirm(false); }}>取消</Button>
       </form>
     </section>}
     {voidReceipt && <section className="detail-card" aria-label="作废回执">
       <h3>作废回执</h3>
-      <dl className="facts">
-        <dt>实例 ID</dt><dd>{voidReceipt.instanceId}</dd>
-        <dt>用户</dt><dd>{voidReceipt.userId}</dd>
-        <dt>状态</dt><dd>{STATUS_TEXT[voidReceipt.status]}</dd>
-        <dt>时间（UTC）</dt><dd>{voidReceipt.occurredAt}</dd>
-      </dl>
-      <button onClick={() => setVoidReceipt(undefined)}>关闭</button>
+      <FactList items={[
+        { label: '实例 ID', value: voidReceipt.instanceId },
+        { label: '用户', value: voidReceipt.userId },
+        { label: '状态', value: STATUS_TEXT[voidReceipt.status] },
+        { label: '时间（UTC）', value: voidReceipt.occurredAt },
+      ]} />
+      <Button onClick={() => setVoidReceipt(undefined)}>关闭</Button>
     </section>}
     {detail && <section className="detail-card" aria-label="实例时间轴">
       <h3>状态时间轴：{detail.instanceId}（{STATUS_TEXT[detail.status]}）</h3>
-      <table>
-        <thead><tr><th>动作</th><th>前状态</th><th>后状态</th><th>订单</th><th>时间</th></tr></thead>
-        <tbody>
-          {detail.ledger.map(row => <tr key={row.ledgerId}>
-            <td>{row.action}</td>
-            <td>{row.fromStatus ?? '—'}</td>
-            <td>{row.toStatus}</td>
-            <td>{row.orderId ?? '—'}</td>
-            <td>{row.createdAt}</td>
-          </tr>)}
-        </tbody>
-      </table>
-      <button onClick={() => setDetail(undefined)}>关闭</button>
+      <DataTable columns={ledgerColumns} rows={detail.ledger} rowKey={entry => entry.ledgerId} />
+      <Button onClick={() => setDetail(undefined)}>关闭</Button>
     </section>}
-  </main>;
+  </PageContainer>;
 }

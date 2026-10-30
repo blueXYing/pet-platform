@@ -1,5 +1,8 @@
 import { useCallback, useRef, useState, type ReactNode } from 'react';
 import { BrowserRouter, Link, Navigate, Route, Routes, useLocation } from 'react-router-dom';
+import { Button, type MenuProps } from 'antd';
+import { AdminProviders } from './ui/providers';
+import { AdminLayout } from './ui/AdminLayout';
 import { createAuthClient, createSessionClient, type AdminPermissions, type AdminSession } from './api/adminAuth';
 import { createMerchantApplicationClient } from './api/merchantApplications';
 import LoginPage from './pages/LoginPage';
@@ -55,6 +58,26 @@ const staffGovernance = createStaffGovernanceClient();
 const encyclopedia = createEncyclopediaAdminClient();
 const couponAdmin = createCouponAdminClient();
 const ledgerAdmin = createLedgerAdminClient();
+
+/** 403 文案与旧版逐字一致；缺省兜底是积分任务配置。 */
+const FORBIDDEN_TITLES: Record<string, string> = {
+  [READ_ACTION]: '403 · 无申请审核权限',
+  'aftersale.read': '403 · 无售后查看权限',
+  'review.appeal.read': '403 · 无评价申诉权限',
+  'service.review.read': '403 · 无服务审核权限',
+  'order.read': '403 · 无订单查询权限',
+  'refund.read': '403 · 无退款单查询权限',
+  'order.verification-log.read': '403 · 无核销记录权限',
+  'merchant.read': '403 · 无商家台账权限',
+  'schedule.read': '403 · 无排期查看权限',
+  'merchant.staff.read': '403 · 无员工治理权限',
+  'encyclopedia.read': '403 · 无百科台账权限',
+  'breed.read': '403 · 无品种详情权限',
+  'coupon.template.read': '403 · 无券模板权限',
+  'coupon.instance.read': '403 · 无券实例台账权限',
+  'points.ledger.read': '403 · 无积分台账权限',
+  'system.parameter.read': '403 · 无系统参数权限',
+};
 
 export function App() {
   const [token, setToken] = useState<string>();
@@ -140,52 +163,81 @@ export function App() {
   const canReadSettings = permissions?.actionCodes.includes('system.parameter.read') === true;
   const guard = (element: ReactNode, action = READ_ACTION) => {
     if (!token) return <Navigate to="/login" replace />;
-    if (bootstrap === 'loading') return <p role="status">会话加载中</p>;
-    if (bootstrap === 'failed') return <div role="alert"><h2>会话或权限查询失败，访问已关闭</h2><button onClick={signOut}>返回登录</button></div>;
-    if (!permissions?.actionCodes.includes(action)) return <div role="alert"><h2>{action === READ_ACTION ? '403 · 无申请审核权限' : action === 'aftersale.read' ? '403 · 无售后查看权限' : action === 'review.appeal.read' ? '403 · 无评价申诉权限' : action === 'service.review.read' ? '403 · 无服务审核权限' : action === 'order.read' ? '403 · 无订单查询权限' : action === 'refund.read' ? '403 · 无退款单查询权限' : action === 'order.verification-log.read' ? '403 · 无核销记录权限' : action === 'merchant.read' ? '403 · 无商家台账权限' : action === 'schedule.read' ? '403 · 无排期查看权限' : action === 'merchant.staff.read' ? '403 · 无员工治理权限' : action === 'encyclopedia.read' ? '403 · 无百科台账权限' : action === 'breed.read' ? '403 · 无品种详情权限' : action === 'coupon.template.read' ? '403 · 无券模板权限' : action === 'coupon.instance.read' ? '403 · 无券实例台账权限' : action === 'points.ledger.read' ? '403 · 无积分台账权限' : action === 'system.parameter.read' ? '403 · 无系统参数权限' : '403 · 无积分任务配置权限'}</h2><p>当前账号未授予 {action}。</p></div>;
+    if (bootstrap === 'loading') return <div className="page"><p role="status">会话加载中</p></div>;
+    if (bootstrap === 'failed') return <div className="page" role="alert"><h2>会话或权限查询失败，访问已关闭</h2><Button onClick={signOut}>返回登录</Button></div>;
+    if (!permissions?.actionCodes.includes(action)) return <div className="page" role="alert"><h2>{FORBIDDEN_TITLES[action] ?? '403 · 无积分任务配置权限'}</h2><p>当前账号未授予 {action}。</p></div>;
     return element;
   };
-
-  return <>
-    {location.pathname !== '/login' && <header>
-      <strong>宠物平台 · 运营工作台</strong>
-      <nav className="workbench-nav" aria-label="工作台导航">{canRead && <Link to="/merchant-applications">商家申请审核</Link>}{canReadAftersale && <Link to="/aftersales">售后工单</Link>}{canReadAppeals && <Link to="/review-appeals">评价申诉</Link>}{canReadPointsConfig && <Link to="/points-task-config">积分任务配置</Link>}{canReadServices && <Link to="/services">服务审核</Link>}{canReadOrders && <Link to="/trade/orders">订单总览</Link>}{canReadRefunds && <Link to="/trade/refunds">退款单</Link>}{canReadVerifications && <Link to="/trade/verifications">核销记录</Link>}{canReadLedger && <Link to="/governance/merchants">商家台账</Link>}{canReadSchedule && <Link to="/governance/schedule">排期查看</Link>}{canReadStaff && <Link to="/governance/staff">员工治理</Link>}{canReadEncyclopedia && <Link to="/ops/baike/categories">百科分类</Link>}{canReadBreeds && <Link to="/ops/baike/breeds">品种库</Link>}{canReadCoupons && <Link to="/ops/coupons/templates">券模板</Link>}{canReadInstances && <Link to="/ops/coupons/instances">券实例台账</Link>}{canReadPointsLedger && <Link to="/ops/ledger/points">积分台账</Link>}{canReadSettings && <Link to="/ops/settings/runtime">系统设置</Link>}</nav>
-      {session && <span>运营 {session.operatorId} · 会话至 {session.expiresAt}</span>}
-      {token && <button onClick={signOut}>退出</button>}
-    </header>}
-    <Routes>
-      <Route path="/login" element={token ? <Navigate to="/" replace /> : <LoginPage onAuthenticated={signIn} auth={auth} />} />
-      <Route path="/" element={permissions === undefined ? guard(<></>) : <Navigate to={canRead ? '/merchant-applications' : canReadAftersale ? '/aftersales' : canReadPointsConfig ? '/points-task-config' : '/merchant-applications'} replace />} />
-      <Route path="/merchant-applications" element={guard(<ReviewListPage client={applications} canDecide={permissions?.actionCodes.includes('merchant.application.decide') === true && permissions.actionCodes.includes('merchant.identity.reveal')} onAuthLost={signOut} />)} />
-      <Route path="/merchant-applications/:applicationId" element={guard(<ReviewDetailPage client={applications} canOperate={permissions?.actionCodes.includes('merchant.application.decide') === true && permissions.actionCodes.includes('merchant.identity.reveal')} onAuthLost={signOut} />)} />
-      <Route path="/aftersales" element={guard(<AfterSaleListPage client={aftersales} onAuthLost={signOut} />, 'aftersale.read')} />
-      <Route path="/aftersales/:afterSaleId" element={guard(<AfterSaleDetailPage key={location.pathname + location.search} client={aftersales} canHandle={permissions?.actionCodes.includes('aftersale.handle') === true} canDecide={permissions?.actionCodes.includes('aftersale.decide') === true} onAuthLost={signOut} />, 'aftersale.read')} />
-      <Route path="/review-appeals" element={guard(<ReviewAppealListPage client={reviewAppeals} canDecide={permissions?.actionCodes.includes('review.appeal.decide') === true} onAuthLost={signOut} />, 'review.appeal.read')} />
-      <Route path="/review-appeals/:appealId" element={guard(<ReviewAppealDetailPage key={location.pathname} client={reviewAppeals} canDecide={permissions?.actionCodes.includes('review.appeal.decide') === true} onAuthLost={signOut} />, 'review.appeal.read')} />
-      <Route path="/points-task-config" element={guard(<PointsTaskConfigPage client={pointsTaskConfig} canWrite={permissions?.actionCodes.includes('points.task.config.write') === true} onAuthLost={signOut} />, 'points.task.config.read')} />
-      <Route path="/services" element={guard(<ServiceReviewListPage client={serviceReview} onAuthLost={signOut} />, 'service.review.read')} />
-      <Route path="/services/:serviceId" element={guard(<ServiceReviewDetailPage key={location.pathname} client={serviceReview} canDecide={permissions?.actionCodes.includes('service.review.decide') === true} canForce={permissions?.actionCodes.includes('service.force.offline') === true} onAuthLost={signOut} />, 'service.review.read')} />
-      <Route path="/trade/orders" element={guard(<TradeOrderListPage client={tradeQuery} onAuthLost={signOut} />, 'order.read')} />
-      <Route path="/trade/orders/:orderId" element={guard(<TradeOrderDetailPage key={location.pathname} client={tradeQuery} onAuthLost={signOut} />, 'order.read')} />
-      <Route path="/trade/refunds" element={guard(<TradeRefundListPage client={tradeQuery} onAuthLost={signOut} />, 'refund.read')} />
-      <Route path="/trade/refunds/:refundOrderId" element={guard(<TradeRefundDetailPage key={location.pathname} client={tradeQuery} onAuthLost={signOut} />, 'refund.read')} />
-      <Route path="/trade/verifications" element={guard(<TradeVerificationListPage client={tradeQuery} onAuthLost={signOut} />, 'order.verification-log.read')} />
-      <Route path="/trade/verifications/:verificationId" element={guard(<TradeVerificationDetailPage key={location.pathname} client={tradeQuery} onAuthLost={signOut} />, 'order.verification-log.read')} />
-      <Route path="/governance/merchants" element={guard(<MerchantLedgerListPage client={merchantGovernance} onAuthLost={signOut} />, 'merchant.read')} />
-      <Route path="/governance/merchants/:merchantId" element={guard(<MerchantLedgerDetailPage key={location.pathname} client={merchantGovernance} trade={tradeQuery} canDisable={permissions?.actionCodes.includes('merchant.disable') === true} onAuthLost={signOut} />, 'merchant.read')} />
-      <Route path="/governance/schedule" element={guard(<ScheduleViewPage client={scheduleView} onAuthLost={signOut} />, 'schedule.read')} />
-      <Route path="/governance/staff" element={guard(<StaffGovernancePage client={staffGovernance} onAuthLost={signOut} />, 'merchant.staff.read')} />
-      <Route path="/ops/baike/categories" element={guard(<BaikeAdminCategoriesPage client={encyclopedia} canWrite={permissions?.actionCodes.includes('encyclopedia.manage') === true} onAuthLost={signOut} />, 'encyclopedia.read')} />
-      <Route path="/ops/baike/breeds" element={guard(<BaikeAdminBreedsPage client={encyclopedia} canWrite={permissions?.actionCodes.includes('breed.manage') === true} canPublish={permissions?.actionCodes.includes('encyclopedia.publish') === true} onAuthLost={signOut} />, 'breed.read')} />
-      <Route path="/ops/coupons/templates" element={guard(<CouponTemplatePage client={couponAdmin} canWrite={permissions?.actionCodes.includes('coupon.template.manage') === true} canGrant={permissions?.actionCodes.includes('coupon.instance.grant') === true} onAuthLost={signOut} />, 'coupon.template.read')} />
-      <Route path="/ops/coupons/instances" element={guard(<CouponInstanceLedgerPage client={couponAdmin} canVoid={permissions?.actionCodes.includes('coupon.instance.void') === true} onAuthLost={signOut} />, 'coupon.instance.read')} />
-      <Route path="/ops/ledger/points" element={guard(<PointsLedgerPage client={ledgerAdmin} onAuthLost={signOut} />, 'points.ledger.read')} />
-      <Route path="/ops/settings/runtime" element={guard(<SettingsRuntimePage client={ledgerAdmin} onAuthLost={signOut} />, 'system.parameter.read')} />
-      <Route path="*" element={<main style={{ padding: 32 }}><h1>404 · 页面不存在</h1><p><Link to="/">返回工作台</Link></p></main>} />
-    </Routes>
-  </>;
+  // 菜单项内放真实 <Link>：导航保持 link 角色（验收脚本按 link 名字点击），Menu onClick 兜底。
+  const menuItem = (key: string, label: string, show: boolean) => show ? { key, label: <Link to={key}>{label}</Link> } as const : false as const;
+  const menuGroups: NonNullable<MenuProps['items']> = [
+    { type: 'group', label: '审核中心', children: [
+      menuItem('/merchant-applications', '商家申请审核', canRead),
+      menuItem('/services', '服务审核', canReadServices),
+      menuItem('/aftersales', '售后工单', canReadAftersale),
+      menuItem('/review-appeals', '评价申诉', canReadAppeals),
+    ].filter(Boolean) as NonNullable<MenuProps['items']> },
+    { type: 'group', label: '交易', children: [
+      menuItem('/trade/orders', '订单总览', canReadOrders),
+      menuItem('/trade/refunds', '退款单', canReadRefunds),
+      menuItem('/trade/verifications', '核销记录', canReadVerifications),
+    ].filter(Boolean) as NonNullable<MenuProps['items']> },
+    { type: 'group', label: '治理', children: [
+      menuItem('/governance/merchants', '商家台账', canReadLedger),
+      menuItem('/governance/schedule', '排期查看', canReadSchedule),
+      menuItem('/governance/staff', '员工治理', canReadStaff),
+    ].filter(Boolean) as NonNullable<MenuProps['items']> },
+    { type: 'group', label: '运营', children: [
+      menuItem('/ops/coupons/templates', '券模板', canReadCoupons),
+      menuItem('/ops/coupons/instances', '券实例台账', canReadInstances),
+      menuItem('/ops/ledger/points', '积分台账', canReadPointsLedger),
+      menuItem('/points-task-config', '积分任务配置', canReadPointsConfig),
+      menuItem('/ops/baike/categories', '百科分类', canReadEncyclopedia),
+      menuItem('/ops/baike/breeds', '品种库', canReadBreeds),
+    ].filter(Boolean) as NonNullable<MenuProps['items']> },
+    { type: 'group', label: '系统', children: [
+      menuItem('/ops/settings/runtime', '系统设置', canReadSettings),
+    ].filter(Boolean) as NonNullable<MenuProps['items']> },
+  ];
+  const routes = <Routes>
+    <Route path="/login" element={token ? <Navigate to="/" replace /> : <LoginPage onAuthenticated={signIn} auth={auth} />} />
+    <Route path="/" element={permissions === undefined ? guard(<></>) : <Navigate to={canRead ? '/merchant-applications' : canReadAftersale ? '/aftersales' : canReadPointsConfig ? '/points-task-config' : '/merchant-applications'} replace />} />
+    <Route path="/merchant-applications" element={guard(<ReviewListPage client={applications} canDecide={permissions?.actionCodes.includes('merchant.application.decide') === true && permissions.actionCodes.includes('merchant.identity.reveal')} onAuthLost={signOut} />)} />
+    <Route path="/merchant-applications/:applicationId" element={guard(<ReviewDetailPage client={applications} canOperate={permissions?.actionCodes.includes('merchant.application.decide') === true && permissions.actionCodes.includes('merchant.identity.reveal')} onAuthLost={signOut} />)} />
+    <Route path="/aftersales" element={guard(<AfterSaleListPage client={aftersales} onAuthLost={signOut} />, 'aftersale.read')} />
+    <Route path="/aftersales/:afterSaleId" element={guard(<AfterSaleDetailPage key={location.pathname + location.search} client={aftersales} canHandle={permissions?.actionCodes.includes('aftersale.handle') === true} canDecide={permissions?.actionCodes.includes('aftersale.decide') === true} onAuthLost={signOut} />, 'aftersale.read')} />
+    <Route path="/review-appeals" element={guard(<ReviewAppealListPage client={reviewAppeals} canDecide={permissions?.actionCodes.includes('review.appeal.decide') === true} onAuthLost={signOut} />, 'review.appeal.read')} />
+    <Route path="/review-appeals/:appealId" element={guard(<ReviewAppealDetailPage key={location.pathname} client={reviewAppeals} canDecide={permissions?.actionCodes.includes('review.appeal.decide') === true} onAuthLost={signOut} />, 'review.appeal.read')} />
+    <Route path="/points-task-config" element={guard(<PointsTaskConfigPage client={pointsTaskConfig} canWrite={permissions?.actionCodes.includes('points.task.config.write') === true} onAuthLost={signOut} />, 'points.task.config.read')} />
+    <Route path="/services" element={guard(<ServiceReviewListPage client={serviceReview} onAuthLost={signOut} />, 'service.review.read')} />
+    <Route path="/services/:serviceId" element={guard(<ServiceReviewDetailPage key={location.pathname} client={serviceReview} canDecide={permissions?.actionCodes.includes('service.review.decide') === true} canForce={permissions?.actionCodes.includes('service.force.offline') === true} onAuthLost={signOut} />, 'service.review.read')} />
+    <Route path="/trade/orders" element={guard(<TradeOrderListPage client={tradeQuery} onAuthLost={signOut} />, 'order.read')} />
+    <Route path="/trade/orders/:orderId" element={guard(<TradeOrderDetailPage key={location.pathname} client={tradeQuery} onAuthLost={signOut} />, 'order.read')} />
+    <Route path="/trade/refunds" element={guard(<TradeRefundListPage client={tradeQuery} onAuthLost={signOut} />, 'refund.read')} />
+    <Route path="/trade/refunds/:refundOrderId" element={guard(<TradeRefundDetailPage key={location.pathname} client={tradeQuery} onAuthLost={signOut} />, 'refund.read')} />
+    <Route path="/trade/verifications" element={guard(<TradeVerificationListPage client={tradeQuery} onAuthLost={signOut} />, 'order.verification-log.read')} />
+    <Route path="/trade/verifications/:verificationId" element={guard(<TradeVerificationDetailPage key={location.pathname} client={tradeQuery} onAuthLost={signOut} />, 'order.verification-log.read')} />
+    <Route path="/governance/merchants" element={guard(<MerchantLedgerListPage client={merchantGovernance} onAuthLost={signOut} />, 'merchant.read')} />
+    <Route path="/governance/merchants/:merchantId" element={guard(<MerchantLedgerDetailPage key={location.pathname} client={merchantGovernance} trade={tradeQuery} canDisable={permissions?.actionCodes.includes('merchant.disable') === true} onAuthLost={signOut} />, 'merchant.read')} />
+    <Route path="/governance/schedule" element={guard(<ScheduleViewPage client={scheduleView} onAuthLost={signOut} />, 'schedule.read')} />
+    <Route path="/governance/staff" element={guard(<StaffGovernancePage client={staffGovernance} onAuthLost={signOut} />, 'merchant.staff.read')} />
+    <Route path="/ops/baike/categories" element={guard(<BaikeAdminCategoriesPage client={encyclopedia} canWrite={permissions?.actionCodes.includes('encyclopedia.manage') === true} onAuthLost={signOut} />, 'encyclopedia.read')} />
+    <Route path="/ops/baike/breeds" element={guard(<BaikeAdminBreedsPage client={encyclopedia} canWrite={permissions?.actionCodes.includes('breed.manage') === true} canPublish={permissions?.actionCodes.includes('encyclopedia.publish') === true} onAuthLost={signOut} />, 'breed.read')} />
+    <Route path="/ops/coupons/templates" element={guard(<CouponTemplatePage client={couponAdmin} canWrite={permissions?.actionCodes.includes('coupon.template.manage') === true} canGrant={permissions?.actionCodes.includes('coupon.instance.grant') === true} onAuthLost={signOut} />, 'coupon.template.read')} />
+    <Route path="/ops/coupons/instances" element={guard(<CouponInstanceLedgerPage client={couponAdmin} canVoid={permissions?.actionCodes.includes('coupon.instance.void') === true} onAuthLost={signOut} />, 'coupon.instance.read')} />
+    <Route path="/ops/ledger/points" element={guard(<PointsLedgerPage client={ledgerAdmin} onAuthLost={signOut} />, 'points.ledger.read')} />
+    <Route path="/ops/settings/runtime" element={guard(<SettingsRuntimePage client={ledgerAdmin} onAuthLost={signOut} />, 'system.parameter.read')} />
+    <Route path="*" element={<main style={{ padding: 32 }}><h1>404 · 页面不存在</h1><p><Link to="/">返回工作台</Link></p></main>} />
+  </Routes>;
+  if (location.pathname === '/login') return routes;
+  return <AdminLayout
+    menuItems={menuGroups}
+    identity={session && <span>运营 {session.operatorId} · 会话至 {session.expiresAt}</span>}
+    signOut={signOut}
+    pathname={location.pathname}
+  >{routes}</AdminLayout>;
 }
 
 export default function Root() {
-  return <BrowserRouter><App /></BrowserRouter>;
+  return <AdminProviders><BrowserRouter><App /></BrowserRouter></AdminProviders>;
 }

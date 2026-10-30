@@ -1,5 +1,10 @@
 import { useEffect, useRef, useState } from 'react';
+import { Checkbox } from 'antd';
+import type { TableColumnsType } from 'antd';
 import type { LedgerAdminClient, RuntimeSettings } from '../api/ledgerAdmin';
+import { DataTable } from '../ui/DataTable';
+import { ErrorAlert, InlineStatus } from '../ui/bits';
+import { PageContainer } from '../ui/PageContainer';
 
 /**
  * Contract-65 系统设置页 (PRD 6.11.1 系统参数台账·开关视图 / 6.13, A-005): a read-only view of
@@ -33,31 +38,24 @@ export default function SettingsRuntimePage({ client, onAuthLost }: {
   }, [client]);
 
   const rows = (settings?.switches ?? []).filter(row => !enabledOnly || row.enabled);
+  const columns: TableColumnsType<RuntimeSettings['switches'][number]> = [
+    { title: '开关', dataIndex: 'key' },
+    { title: '状态', render: (_, row) => row.enabled ? '开启' : '关闭' },
+    { title: '域', dataIndex: 'phase' },
+  ];
 
-  return <main className="page">
-    <h2>系统设置 · 运行时开关</h2>
-    <p className="hint">
-      只读视图：部署开关组合清单（21 号）登记的 pet.* 装配开关及其实时状态。
+  return <PageContainer
+    title="系统设置 · 运行时开关"
+    hint={<>只读视图：部署开关组合清单（21 号）登记的 pet.* 装配开关及其实时状态。
       V1 配置仅部署期环境变量，本页不可写、也无运行时配置中心（CCR-ADM-A005-OPS-001）；
-      积分量等已批准可配置参数走「积分任务配置」页。
-    </p>
-    <form className="filters" onSubmit={event => event.preventDefault()}>
-      <label>
-        <input type="checkbox" checked={enabledOnly} onChange={event => setEnabledOnly(event.target.checked)} />
-        仅显示已开启
-      </label>
-      {error && <span role="alert">{error}</span>}
+      积分量等已批准可配置参数走「积分任务配置」页。</>}>
+    <form className="filter-bar" onSubmit={event => event.preventDefault()}>
+      <Checkbox checked={enabledOnly} onChange={event => setEnabledOnly(event.target.checked)}>仅显示已开启</Checkbox>
     </form>
-    {settings === undefined ? <p role="status">加载中</p> : <table>
-      <thead><tr><th>开关</th><th>状态</th><th>域</th></tr></thead>
-      <tbody>
-        {rows.map(row => <tr key={row.key}>
-          <td>{row.key}</td>
-          <td>{row.enabled ? '开启' : '关闭'}</td>
-          <td>{row.phase}</td>
-        </tr>)}
-      </tbody>
-    </table>}
+    {error && <ErrorAlert>{error}</ErrorAlert>}
+    {settings === undefined
+      ? <InlineStatus>加载中</InlineStatus>
+      : <DataTable columns={columns} rows={rows} rowKey={row => row.key} />}
     <p className="hint">共 {rows.length} 项（登记 {settings?.switches.length ?? 0} 项）</p>
-  </main>;
+  </PageContainer>;
 }

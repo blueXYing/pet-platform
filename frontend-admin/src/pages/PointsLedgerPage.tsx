@@ -1,5 +1,10 @@
 import { useEffect, useRef, useState } from 'react';
+import { Button, ConfigProvider, Input, Select } from 'antd';
+import type { TableColumnsType } from 'antd';
 import { BIZ_TYPES, BIZ_TYPE_LABELS, type BizType, type LedgerAdminClient, type PointsLedgerRow } from '../api/ledgerAdmin';
+import { DataTable } from '../ui/DataTable';
+import { ErrorAlert, InlineStatus } from '../ui/bits';
+import { PageContainer } from '../ui/PageContainer';
 
 /**
  * Contract-65 积分台账页 (PRD 6.5 积分流水, HTTP10 §5.8 drafted route, A-005): read-only
@@ -36,39 +41,33 @@ export default function PointsLedgerPage({ client, onAuthLost }: {
 
   useEffect(() => { void load('', ''); return () => { sequence.current++; }; }, [client]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  return <main className="page">
-    <h2>台账 · 积分流水</h2>
-    <p className="hint">只读台账：用户、来源、数量、余额、时间（PRD 6.5）。积分只赚取/扣回，不消费（SSOT §10）；运营手工调整在 V1 无授权路由。</p>
-    <form className="filters" onSubmit={event => { event.preventDefault(); void load(userId, bizType); }}>
-      <label>用户 ID
-        <input value={userId} onChange={event => setUserId(event.target.value)} placeholder="Snowflake ID" inputMode="numeric" />
+  const columns: TableColumnsType<PointsLedgerRow> = [
+    { title: '流水 ID', dataIndex: 'ledgerId' },
+    { title: '用户', dataIndex: 'userId' },
+    { title: '来源', render: (_, row) => BIZ_TYPE_LABELS[row.bizType] },
+    { title: '变动', dataIndex: 'delta' },
+    { title: '余额', dataIndex: 'balanceAfter' },
+    { title: '订单', render: (_, row) => row.orderId ?? '—' },
+    { title: '时间', dataIndex: 'createdAt' },
+  ];
+
+  return <PageContainer
+    title="台账 · 积分流水"
+    hint="只读台账：用户、来源、数量、余额、时间（PRD 6.5）。积分只赚取/扣回，不消费（SSOT §10）；运营手工调整在 V1 无授权路由。">
+    <form className="filter-bar" onSubmit={event => { event.preventDefault(); void load(userId, bizType); }}>
+      <label className="filter-item">用户 ID
+        <Input style={{ width: 220 }} value={userId} onChange={event => setUserId(event.target.value)} placeholder="Snowflake ID" inputMode="numeric" />
       </label>
-      <label>来源
-        <select value={bizType} onChange={event => { setBizType(event.target.value as BizType | ''); void load(userId, event.target.value as BizType | ''); }}>
-          <option value="">全部</option>
-          {BIZ_TYPES.map(value => <option key={value} value={value}>{BIZ_TYPE_LABELS[value]}</option>)}
-        </select>
+      <label className="filter-item">来源
+        <Select style={{ width: 160 }} value={bizType} onChange={value => { setBizType(value as BizType | ''); void load(userId, value as BizType | ''); }}
+          options={[{ value: '', label: '全部' }, ...BIZ_TYPES.map(value => ({ value, label: BIZ_TYPE_LABELS[value] }))]} />
       </label>
-      <button type="submit">查询</button>
-      {error && <span role="alert">{error}</span>}
+      <Button type="primary" htmlType="submit">查询</Button>
+      {error && <ErrorAlert>{error}</ErrorAlert>}
     </form>
-    {rows === undefined ? <p role="status">加载中</p> : <table>
-      <thead><tr>
-        <th>流水 ID</th><th>用户</th><th>来源</th><th>变动</th><th>余额</th><th>订单</th><th>时间</th>
-      </tr></thead>
-      <tbody>
-        {rows.map(row => <tr key={row.ledgerId}>
-          <td>{row.ledgerId}</td>
-          <td>{row.userId}</td>
-          <td>{BIZ_TYPE_LABELS[row.bizType]}</td>
-          <td>{row.delta}</td>
-          <td>{row.balanceAfter}</td>
-          <td>{row.orderId ?? '—'}</td>
-          <td>{row.createdAt}</td>
-        </tr>)}
-        {rows.length === 0 && <tr><td colSpan={7}>无流水</td></tr>}
-      </tbody>
-    </table>}
+    {rows === undefined ? <InlineStatus>加载中</InlineStatus> : <ConfigProvider renderEmpty={() => '无流水'}>
+      <DataTable columns={columns} rows={rows} rowKey={row => row.ledgerId} />
+    </ConfigProvider>}
     <p className="hint">共 {total} 行</p>
-  </main>;
+  </PageContainer>;
 }

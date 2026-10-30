@@ -1,4 +1,5 @@
 import { expect, test, type Page, type Route } from '@playwright/test';
+import { chooseOption } from './helpers/antd';
 import type { Action, CaseDetail, CaseStatus, PendingIntent } from '../src/api/aftersales';
 
 // Contract fixtures run the real production UI/transport with intercepted HTTP.
@@ -151,7 +152,7 @@ test('A-004 duplicate problem quotes a genuine prior final without making a deci
   await signIn(page); await openCase(page); await page.getByRole('button', { name: '读取历史终局' }).click();
   await expect(page.getByLabel('已核对这笔终局及当前新问题说明')).toHaveCount(2);
   for (const box of await page.getByLabel('已核对这笔终局及当前新问题说明').all()) await box.check();
-  await page.getByLabel('引用历史终局').selectOption(PRIOR[1]);
+  await chooseOption(page, '引用历史终局', new RegExp('^' + PRIOR[1] + ' · '));
   await page.getByLabel('重复问题关闭原因').fill('重复提出已处理的问题，引用第二笔既有终局。');
   await page.getByLabel('确认本次为重复问题并引用原结论').check();
   await page.getByRole('button', { name: '关闭重复问题' }).click();
@@ -163,7 +164,7 @@ test('A-004 UTC supplement and nonrefund decision use stable UUID/string CAS and
   const calls = captures(page);
   await setupCases(page, detail('PROCESSING', '9007199254741001'), async route => { await route.fulfill(envelope(receipt('PROCESSING', '9007199254741002'))); });
   await signIn(page); await openCase(page);
-  await page.getByLabel('补证方', { exact: true }).selectOption('MERCHANT');
+  await chooseOption(page, '补证方', '商家');
   await page.getByLabel('补证原因', { exact: true }).fill('请提供本次服务完整现场照片');
   await page.getByLabel('补证截止（UTC 毫秒）').fill('2099-10-02T12:00:00.000+08:00');
   await expect(page.getByRole('button', { name: '提交补证要求' })).toBeDisabled();
@@ -172,7 +173,7 @@ test('A-004 UTC supplement and nonrefund decision use stable UUID/string CAS and
   await expect(page.getByText('补证要求已提交，以工单刷新结果为准。')).toBeVisible();
   const supplement = calls.find(c => c.path.endsWith('/supplement-requests'));
   expect(supplement?.body).toEqual({ expectedVersion: '9007199254741001', targetParty: 'MERCHANT', reason: '请提供本次服务完整现场照片', deadline: '2099-10-02T12:00:00.000Z' });
-  await page.getByLabel('终局类型').selectOption('RESERVICE');
+  await chooseOption(page, '终局类型', '重新服务（人工安排）');
   await page.getByLabel('终局原因', { exact: true }).fill('商家人工联系用户安排重新服务');
   await page.getByLabel('确认基于双方证据作出最终处理').check();
   await page.getByRole('button', { name: '提交最终决定' }).click();
@@ -180,7 +181,7 @@ test('A-004 UTC supplement and nonrefund decision use stable UUID/string CAS and
   expect(decision?.body).toEqual({ expectedVersion: '9007199254741001', decisionType: 'RESERVICE', reason: '商家人工联系用户安排重新服务', refundAmount: null });
   for (const call of [supplement, decision]) expect(call?.requestId).toMatch(/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/);
   // Ruling 32: refund adjudications are selectable and submit an exact two-decimal string amount.
-  await page.getByLabel('终局类型').selectOption('PARTIAL_REFUND');
+  await chooseOption(page, '终局类型', '部分退款');
   await expect(page.getByLabel('退款金额（元）')).toBeVisible();
   await page.getByLabel('终局原因', { exact: true }).fill('按服务争议裁定部分退款');
   await page.getByLabel('确认基于双方证据作出最终处理').check();
@@ -216,11 +217,11 @@ test('A-004 lost ACK survives refresh AND route unload; original payload and UUI
 async function fillBusiness(page: Page, action: Action) {
   if (action === 'accept') { await page.getByLabel('确认问题符合受理条件，已有终局时确属新问题').check(); await page.getByRole('button', { name: '受理工单' }).click(); }
   if (action === 'supplement-requests') { await page.getByLabel('补证原因', { exact: true }).fill('需要本次真实服务照片'); await page.getByLabel('补证截止（UTC 毫秒）').fill('2099-10-02T12:00:00.000Z'); await page.getByRole('button', { name: '提交补证要求' }).click(); }
-  if (action === 'decisions') { await page.getByLabel('终局类型').selectOption('OTHER'); await page.getByLabel('终局原因', { exact: true }).fill('原运营未确认的处理说明，仅本人可以恢复'); await page.getByLabel('确认基于双方证据作出最终处理').check(); await page.getByRole('button', { name: '提交最终决定' }).click(); }
+  if (action === 'decisions') { await chooseOption(page, '终局类型', '其他非退款处理'); await page.getByLabel('终局原因', { exact: true }).fill('原运营未确认的处理说明，仅本人可以恢复'); await page.getByLabel('确认基于双方证据作出最终处理').check(); await page.getByRole('button', { name: '提交最终决定' }).click(); }
   if (action === 'close-duplicate') {
     await page.getByRole('button', { name: '读取历史终局' }).click(); await expect(page.getByLabel('已核对这笔终局及当前新问题说明')).toHaveCount(2);
     for (const box of await page.getByLabel('已核对这笔终局及当前新问题说明').all()) await box.check();
-    await page.getByLabel('引用历史终局').selectOption(PRIOR[0]); await page.getByLabel('重复问题关闭原因').fill('重复原问题，引用第一笔原结论'); await page.getByLabel('确认本次为重复问题并引用原结论').check(); await page.getByRole('button', { name: '关闭重复问题' }).click();
+    await chooseOption(page, '引用历史终局', new RegExp('^' + PRIOR[0] + ' · ')); await page.getByLabel('重复问题关闭原因').fill('重复原问题，引用第一笔原结论'); await page.getByLabel('确认本次为重复问题并引用原结论').check(); await page.getByRole('button', { name: '关闭重复问题' }).click();
   }
 }
 for (const action of ['accept', 'supplement-requests', 'close-duplicate', 'decisions'] as const) {
