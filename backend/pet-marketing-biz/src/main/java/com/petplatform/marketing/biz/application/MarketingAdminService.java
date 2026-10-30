@@ -37,18 +37,29 @@ public final class MarketingAdminService extends MarketingSupport implements Mar
     private static final Set<String> PARTICIPATION = Set.of("PLATFORM_SELECTED", "MERCHANT_ENROLL");
     private static final Set<String> CAMPAIGN_STATUSES = Set.of(
             "DRAFT", "PENDING_REVIEW", "SCHEDULED", "ONLINE", "PAUSED", "ENDED", "CANCELED", "REJECTED");
-    private static final Set<String> POSITIONS = Set.of("HOME_BANNER", "HOME_ACTIVITY", "STORE_LIST_TOP");
+    private static final Set<String> POSITIONS = Set.of(
+            "HOME_BANNER", "HOME_ACTIVITY", "STORE_LIST_TOP", "HOT_SERVICE_TOP");
     private static final Set<String> HOME_BLOCK_POSITIONS = Set.of(
             "HOME_SERVICE", "HOME_COMMUNITY", "HOME_EXOTIC_PLANT");
     private static final Set<String> HOME_BLOCK_TEMPLATES = Set.of(
             "HOT_SERVICE_FEATURE", "COMMUNITY_HOT", "EXOTIC_PLANT");
     private static final Set<String> HOME_BLOCK_TARGETS = Set.of(
             "SERVICE_DIRECTORY", "SERVICE_CATEGORY", "STORE", "SERVICE", "CAMPAIGN",
-            "COMMUNITY", "MINIAPP_PATH", "NONE");
+            "COMMUNITY", "MINIAPP_PATH", "NONE", "HOT_SERVICE");
+    /**
+     * Contract 71 v0.3 §2.1/§4.1: when the strict dictionary validation is switched on, every
+     * {@code serviceCategoryCodes} element must be the lexical form of a service-dictionary
+     * code; the dictionary lookup itself rides the service-category port (never this module's
+     * SQL). With the switch off the historical loose lexical check stays, so existing data can
+     * be cleaned before the switch flips.
+     */
+    private static final String DICTIONARY_CATEGORY_CODE = "[A-Z][A-Z0-9_]{1,31}";
 
     private final MarketingCityCatalogPort cityCatalog;
     private final boolean allowHttpAssets;
     private final MarketingAssetObjectStore assetObjectStore;
+    private final MarketingServiceCategoryPort serviceCategories;
+    private final boolean categoryValidationEnabled;
 
     public MarketingAdminService(
             MarketingStore store,
@@ -58,12 +69,16 @@ public final class MarketingAdminService extends MarketingSupport implements Mar
             MarketingCityCatalogPort cityCatalog,
             Clock clock,
             boolean allowHttpAssets,
-            MarketingAssetObjectStore assetObjectStore) {
+            MarketingAssetObjectStore assetObjectStore,
+            MarketingServiceCategoryPort serviceCategories,
+            boolean categoryValidationEnabled) {
         super(store, Objects.requireNonNull(authorization), Objects.requireNonNull(storeFacts),
                 Objects.requireNonNull(couponFacts), clock);
         this.cityCatalog = Objects.requireNonNull(cityCatalog);
         this.allowHttpAssets = allowHttpAssets;
         this.assetObjectStore = Objects.requireNonNull(assetObjectStore);
+        this.serviceCategories = Objects.requireNonNull(serviceCategories);
+        this.categoryValidationEnabled = categoryValidationEnabled;
     }
 
     // ---------------------------------------------------------------- campaigns
@@ -720,6 +735,16 @@ public final class MarketingAdminService extends MarketingSupport implements Mar
                                 && mapper.countEnabledPlacements("HOME_BANNER", current.cityCode, nowUtc()) >= 3) {
                             conflict("PLACEMENT_LIMIT_EXCEEDED", "首页 Banner 最多同时启用 3 个");
                         }
+                        if ("HOT_SERVICE_TOP".equals(current.positionCode)
+                                && mapper.countEnabledPlacementRows("HOT_SERVICE_TOP") >= 1) {
+                            // Contract 71 v0.3 §4.2: platform-wide at most one ENABLED
+                            // HOT_SERVICE_TOP regardless of city bucket or投放窗口; cityCode
+                            // only scopes that single banner's visibility. Counted by status
+                            // (not by window) so two future windows can never both sit ENABLED.
+                            // The count runs in the same transaction as the conditional status
+                            // update, mirroring the HOME_BANNER limit guarantee.
+                            conflict("PLACEMENT_LIMIT_EXCEEDED", "热门服务顶部 Banner 全平台最多启用 1 个");
+                        }
                         to = "ENABLED";
                     } else {
                         if (!"ENABLED".equals(from)) conflict("CAMPAIGN_STATE_NOT_ALLOWED", "当前状态不能停用");
@@ -1022,8 +1047,21 @@ public final class MarketingAdminService extends MarketingSupport implements Mar
             if (!cityCatalog.isOpen(city)) invalid("cityCode is not open");
         }
         List<String> categories = stringList(input.serviceCategoryCodes());
-        for (String category : categories) {
-            if (!category.matches("[A-Za-z0-9_-]{1,32}")) invalid("serviceCategoryCode is invalid");
+        if (categoryValidationEnabled && !categories.isEmpty()) {
+            // Contract 71 v0.3: an empty array means "all categories" and is never validated;
+            // otherwise every element must be an enabled service-dictionary code, and any
+            // unknown/disabled/lexically invalid element is 400 SERVICE_CATEGORY_INVALID
+            // (12号 registry), with the offending code named in the message.
+            for (String category : categories) {
+                if (!category.matches(DICTIONARY_CATEGORY_CODE) || !serviceCategories.usable(category)) {
+                    throw new ApiException("SERVICE_CATEGORY_INVALID",
+                            "serviceCategoryCodes 含不可用服务分类: " + category);
+                }
+            }
+        } else {
+            for (String category : categories) {
+                if (!category.matches("[A-Za-z0-9_-]{1,32}")) invalid("serviceCategoryCode is invalid");
+            }
         }
         requireWindow(input.startAt(), input.endAt());
         OffsetDateTime enrollStart = input.enrollStartAt();
@@ -1237,7 +1275,10 @@ public final class MarketingAdminService extends MarketingSupport implements Mar
         String targetType = requireText(input.targetType(), 1, 32, "targetType");
         if (!HOME_BLOCK_TARGETS.contains(targetType)) invalid("targetType is invalid");
         String targetValue = optionalText(input.targetValue(), 255, "targetValue");
-        if ("NONE".equals(targetType)) {
+        if ("NONE".equals(targetType) || "HOT_SERVICE".equals(targetType)) {
+            // Contract 71 v0.3 §10: the C-side routes on targetType=HOT_SERVICE alone, so the
+            // target carries no jump value — same treatment as NONE. Every other type still
+            // requires a non-empty targetValue.
             targetValue = null;
         } else if (targetValue == null && "SERVICE_DIRECTORY".equals(targetType)) {
             targetValue = "ALL";

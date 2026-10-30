@@ -47,6 +47,8 @@ public class MarketingHttpExceptionHandler {
             Map.entry("CAMPAIGN_LANDING_INVALID", 409),
             Map.entry("CAMPAIGN_PAGE_INVALID", 400),
             Map.entry("PLACEMENT_LIMIT_EXCEEDED", 409),
+            // Contract 71 v0.3: campaign serviceCategoryCodes dictionary validation (12号 registry).
+            Map.entry("SERVICE_CATEGORY_INVALID", 400),
             Map.entry("ENROLLMENT_NOT_OPEN", 409),
             Map.entry("ENROLLMENT_ALREADY_EXISTS", 409),
             Map.entry("ENROLLMENT_QUOTA_EXCEEDED", 409),
