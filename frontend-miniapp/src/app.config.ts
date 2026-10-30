@@ -53,7 +53,9 @@ export default defineAppConfig({
     // subpackage (the two design frames 96:2580/96:3006), one compact line per the convention.
     { root: 'consumer/pages/pet-archive', pages: ['index', 'detail', 'form', 'vaccine-form', 'deworm-form'] },
     { root: 'consumer/pages/merchant-application', pages: ['index', 'signing'] },
-    { root: 'consumer/pages/store-services', pages: ['index', 'service-detail', 'stores'] },
+    // 2026-10-30 service-catalog slice (contract 74): hot-service secondary page (F-C-03,
+    // Figma 97:7825) rides the store-services subpackage; anonymous-browsable, no bottom bar.
+    { root: 'consumer/pages/store-services', pages: ['index', 'service-detail', 'stores', 'hot-services'] },
     { root: 'consumer/pages/coupon-points', pages: ['coupons', 'coupon-detail', 'points'] },
     { root: 'consumer/pages/aftersale', pages: ['index', 'detail', 'apply'] },
     // Order verification code slice (47号 §4 v0.2): explicit order-id entry, no order list yet.

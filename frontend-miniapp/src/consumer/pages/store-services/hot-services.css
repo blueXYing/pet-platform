@@ -1,0 +1,44 @@
+/* 热门服务二级页（F-C-03，设计源 97:7825，登记表 §4.26 偏差口径）。设计宽 402，运行时
+   unit=windowWidth/402；基座沿 page.css 的 svc 家族（button 原生重置、box-sizing、状态栏变量）。
+   WXSS 铁律：状态仅 className 变体，禁动态 data-* 属性选择器；本页无 keyframes。
+   版式值取 97:7825 画板实测（banner 343x120 r12；标题行 H2 18/28 + 「全部 >」12/16；
+   分类卡 165.5 宽 r12 白卡、双列、列距 12 行距 11.75；卡头图标 20x20 r4；描述 11/15.125）。 */
+.hotsvc-page { background: #f0fbff; }
+.hotsvc-body { position: relative; z-index: 2; padding: calc(var(--svc-unit) * 24) calc(var(--svc-unit) * 29.5) calc(var(--svc-unit) * 30); }
+
+/* 顶部 banner（HOT_SERVICE_TOP 投放位，74 §3.7）：单条；coverUrl 缺失渲染中性底版。 */
+.hotsvc-banner { position: relative; display: block; width: calc(var(--svc-unit) * 343); height: calc(var(--svc-unit) * 120); border-radius: calc(var(--svc-unit) * 12); overflow: hidden; text-align: left; }
+.hotsvc-banner-img { position: absolute; left: 0; top: 0; width: 100%; height: 100%; }
+/* 无投放图的中性底版（不伪造图）：浅蓝渐变 + 深化压字层。 */
+.hotsvc-banner-placeholder { background: linear-gradient(180deg, #9fd8f2 0%, #c9ecfb 100%); }
+.hotsvc-banner-shade { position: absolute; left: 0; top: 0; width: 100%; height: 100%; background: linear-gradient(180deg, rgba(0, 0, 0, 0.5) 0%, rgba(0, 0, 0, 0.2) 50%, rgba(0, 0, 0, 0) 100%); }
+.hotsvc-banner-body { position: absolute; left: calc(var(--svc-unit) * 16); top: calc(var(--svc-unit) * 26); width: calc(var(--svc-unit) * 311); }
+.hotsvc-banner-badge { display: flex; align-items: center; width: max-content; height: calc(var(--svc-unit) * 19); padding: 0 calc(var(--svc-unit) * 8); border-radius: calc(var(--svc-unit) * 9999); background: #f8f5ee; }
+.hotsvc-banner-badge-text { font-size: calc(var(--svc-unit) * 10); line-height: calc(var(--svc-unit) * 15); font-weight: 500; color: #402e26; white-space: nowrap; }
+.hotsvc-banner-title { display: block; margin-top: calc(var(--svc-unit) * 5); font-family: Outfit, Roboto, 'Noto Sans SC', sans-serif; font-size: calc(var(--svc-unit) * 18); line-height: calc(var(--svc-unit) * 23); font-weight: 700; color: #f8f5ee; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.hotsvc-banner-sub { display: block; margin-top: calc(var(--svc-unit) * 4); font-size: calc(var(--svc-unit) * 11); line-height: calc(var(--svc-unit) * 17); color: #f8f5ee; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+/* 标题行（97:7729）：H2 居左、「全部 >」居右切服务 tab。 */
+.hotsvc-heading { display: flex; align-items: center; justify-content: space-between; margin-top: calc(var(--svc-unit) * 28); height: calc(var(--svc-unit) * 28); }
+.hotsvc-heading-title { font-family: Outfit, Roboto, 'Noto Sans SC', sans-serif; font-size: calc(var(--svc-unit) * 18); line-height: calc(var(--svc-unit) * 28); font-weight: 700; color: #1d0d07; }
+.hotsvc-heading-link { flex: none; margin-left: calc(var(--svc-unit) * 12); padding: 0; background: transparent; border: none; font-size: calc(var(--svc-unit) * 12); line-height: calc(var(--svc-unit) * 16); font-weight: 500; color: #5baae8; }
+
+/* 分类卡网格（97:7735）：双列自动生成（/c/service-categories），无运营精选。 */
+.hotsvc-grid { display: flex; flex-wrap: wrap; align-content: flex-start; gap: calc(var(--svc-unit) * 11.75) calc(var(--svc-unit) * 12); margin-top: calc(var(--svc-unit) * 12); }
+.hotsvc-card { display: flex; flex-direction: column; width: calc(var(--svc-unit) * 165.5); height: calc(var(--svc-unit) * 164.25); padding: 0; background: #ffffff; border-radius: calc(var(--svc-unit) * 12); overflow: hidden; text-align: left; }
+/* 卡面插画槽：契约无对应字段（D-02 素材待补），固定中性占位块。 */
+.hotsvc-card-art { flex: none; width: 100%; height: calc(var(--svc-unit) * 64); background: #e8f4fb; }
+.hotsvc-card-body { flex: 1; min-height: 0; display: flex; flex-direction: column; align-items: flex-start; padding: calc(var(--svc-unit) * 10) calc(var(--svc-unit) * 12) calc(var(--svc-unit) * 12); }
+.hotsvc-card-head { flex: none; display: flex; align-items: center; gap: calc(var(--svc-unit) * 6); height: calc(var(--svc-unit) * 20); width: 100%; }
+.hotsvc-card-icon { flex: none; display: flex; align-items: center; justify-content: center; width: calc(var(--svc-unit) * 20); height: calc(var(--svc-unit) * 20); border-radius: calc(var(--svc-unit) * 4); background: #c0ecff; overflow: hidden; }
+.hotsvc-card-icon-img { width: 100%; height: 100%; }
+/* D-01 图标未到位的已知状态：中性占位块，不伪造图标。 */
+.hotsvc-card-icon-block { width: 100%; height: 100%; background: #dff3fc; }
+.hotsvc-card-name { flex: 1; min-width: 0; font-size: calc(var(--svc-unit) * 14); line-height: calc(var(--svc-unit) * 20); font-weight: 500; color: #1d0d07; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.hotsvc-card-desc { width: 100%; margin-top: calc(var(--svc-unit) * 4); font-size: calc(var(--svc-unit) * 11); line-height: calc(var(--svc-unit) * 15.125); color: #577683; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 3; overflow: hidden; }
+
+/* 状态与页脚（同 sdir 家族口径）。 */
+.hotsvc-state { margin-top: calc(var(--svc-unit) * 12); padding: calc(var(--svc-unit) * 24) calc(var(--svc-unit) * 12); background: #ffffff; border: calc(var(--svc-unit) * 1) solid #c0ecff; border-radius: calc(var(--svc-unit) * 12); font-size: calc(var(--svc-unit) * 12); line-height: calc(var(--svc-unit) * 19); color: #577683; display: flex; flex-direction: column; gap: calc(var(--svc-unit) * 10); }
+.hotsvc-state-action { align-self: flex-start; padding: 0; background: transparent; border: none; color: #167fab; font-size: calc(var(--svc-unit) * 12); }
+.hotsvc-tail { margin-top: calc(var(--svc-unit) * 18); display: flex; justify-content: center; }
+.hotsvc-tail text { font-size: calc(var(--svc-unit) * 10); line-height: calc(var(--svc-unit) * 15); color: #9bb3bd; }
