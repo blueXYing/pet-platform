@@ -7,11 +7,13 @@ import { integrationMessage } from '../../../shared/consumer-api'
 import { RealProfileRepository } from '../../api/repositories'
 import { RealCouponPointsRepository } from '../../coupon-points/repository'
 import { RealPointsTaskRepository } from '../../points-tasks/repository'
+import { RealOrderReadRepository } from '../../orders/repository'
 import { syncCustomTabBar } from '../../components/navigation/custom-tab-bar'
 import { RootTabBarSpacer } from '../../components/navigation/root-tab-bar-spacer'
 import { deltaLabel, formatLedgerTime, pointsBizTypeLabels, type PointsLedgerView } from '../../coupon-points/model'
 import avatar from '../../assets/profile/avatar.png'
 import stripTop from './assets/strip-top.jpg'
+import clipTop from './assets/clip-top.png'
 import {
   MINE_ADDRESS_BOOK_URL, MINE_BAIKE_URL, MINE_BECOME_PROVIDER_URL, MINE_DEVELOPER_SHELL_URL, MINE_FEEDBACK_URL, MINE_HELP_URL, MINE_MERCHANT_WORKSPACE_URL, MINE_POINTS_MALL_URL, MINE_SETTINGS_URL, mineCard, mineHubEntries, phoneGuideCopy,
   type MineCard, type MineStats,
@@ -27,17 +29,22 @@ import './mine.css'
 // 登记表 §4.6 记偏差。全部既有入口（订单/优惠券/积分明细页/宠物档案/通知偏好/编辑资料/
 // 商家工作台/退出登录/开发者工具）保留并沿用原 URL。2026-10-13（32号裁决第二批）：
 // 地址管理/积分商城/成为服务者三格接通真实子页（契约 59/展示态 §4.15/become-provider）。
+// 2026-10-30 视觉对齐 690:10474（节点 JSON 精确值）：补左上木夹贴纸、签到渐变改横向、
+// 头像/昵称/手机号规格校正、订单五格角标接真实 total、签到面额与商家横幅文案对齐原稿；
+// 原稿「金牌会员」徽章 V1 无会员字段，按本页不虚构未交付字段原则不渲染。
 const GUIDE_KEY = 'pet.c.phone-guide.v1'
 
 const [hubOrders, hubCoupons, hubPoints, hubFavorites, hubFootprints, , hubPets, hubProfile] = mineHubEntries
-// 原稿 126:675 订单五状态入口：工程订单列表不收状态参数，统一落既有列表页（行为与现状一致）。
+// 原稿订单五状态入口：工程订单列表不收状态参数，统一落既有列表页（行为与现状一致）；
+// 角标数按展示状态接真实 total（2026-10-30 视觉对齐 690:10474），读取失败软降级隐藏。
 const orderStatusEntries = [
-  { key: 'wait', label: '待服务' },
-  { key: 'doing', label: '进行中' },
-  { key: 'done', label: '已完成' },
-  { key: 'cancel', label: '已取消' },
-  { key: 'aftersale', label: '订单售后' },
+  { key: 'wait', label: '待服务', status: 'PENDING_SERVICE' },
+  { key: 'doing', label: '进行中', status: 'PENDING_CONFIRM' },
+  { key: 'done', label: '已完成', status: 'COMPLETED' },
+  { key: 'cancel', label: '已取消', status: 'CANCELED' },
+  { key: 'aftersale', label: '订单售后', status: 'AFTERSALE' },
 ] as const
+type OrderEntryKey = typeof orderStatusEntries[number]['key']
 const weekdayLabels = ['日', '一', '二', '三', '四', '五', '六'] as const
 // 原稿签到周条（三~二 7 格）：用真实日历（今天往前 7 天），不虚构签到状态。
 function weekStrip(): { day: string; date: string }[] {
@@ -56,8 +63,15 @@ export default function MinePage() {
   const [profileRepository] = useState(() => new RealProfileRepository(consumerApi))
   const [couponPointsRepository] = useState(() => new RealCouponPointsRepository(consumerApi))
   const [pointsTaskRepository] = useState(() => new RealPointsTaskRepository(consumerApi))
+  const [orderReadRepository] = useState(() => new RealOrderReadRepository(consumerApi))
   // 58 号签到切片：连签数接真实 status；读取失败软降级保持 0 占位语义（不阻塞卡片）。
+  // 2026-10-30：同回执的 dailyPoints 用于签到按钮面额文案（对齐原稿「立即签到 · 得 N 积分」）。
   const [signInStreak, setSignInStreak] = useState(0)
+  const [signInPoints, setSignInPoints] = useState<string | null>(null)
+  // 订单五状态角标（690:10474）：displayStatus total，任一读取失败该格隐藏。
+  const [orderCounts, setOrderCounts] = useState<Record<OrderEntryKey, number | null>>({
+    wait: null, doing: null, done: null, cancel: null, aftersale: null,
+  })
   const [card, setCard] = useState<MineCard>(() => mineCard({
     outcome: consumerSession.outcome(),
     nickname: '',
@@ -87,14 +101,23 @@ export default function MinePage() {
       let phoneMasked: string | null = consumerApi.currentSession?.phoneMasked ?? null
       let stats: MineStats = { coupons: null, points: null }
       if (outcome === 'authenticated') {
-        // 四路读取失败均软降级（卡片仍可用）；会话过期由 ConsumerApi 401 自动恢复兜底。
-        const [profile, coupons, points, signIn] = await Promise.all([
+        // 五路读取失败均软降级（卡片仍可用）；会话过期由 ConsumerApi 401 自动恢复兜底。
+        const [profile, coupons, points, signIn, counts] = await Promise.all([
           profileRepository.load().catch(() => null),
           couponPointsRepository.listCoupons('AVAILABLE', 1, 1).then(page => page.total).catch(() => null),
           couponPointsRepository.balance().then(value => value.balance).catch(() => null),
-          pointsTaskRepository.signInStatus().then(status => status.streak).catch(() => null),
+          pointsTaskRepository.signInStatus().catch(() => null),
+          // 五状态角标：pageSize=1 只取 total；单状态失败为 null（该格角标隐藏）。
+          Promise.all(orderStatusEntries.map(entry =>
+            orderReadRepository.list(entry.status, 1, 1).then(page => page.total).catch(() => null))),
         ])
-        setSignInStreak(signIn ?? 0)
+        setSignInStreak(signIn?.streak ?? 0)
+        setSignInPoints(signIn?.dailyPoints ?? null)
+        if (mounted.current) {
+          setOrderCounts({
+            wait: counts[0], doing: counts[1], done: counts[2], cancel: counts[3], aftersale: counts[4],
+          })
+        }
         nickname = profile?.nickname || ''
         if (profile?.phoneMasked) phoneMasked = profile.phoneMasked
         stats = { coupons, points }
@@ -187,6 +210,7 @@ export default function MinePage() {
         <Image className='mine-strip' src={stripTop} mode='scaleToFill' />
         <View className='mi-wave-blue mine-wave-blue' />
         <View className='mi-wave-white mine-wave-white' />
+        <Image className='mine-clip' src={clipTop} mode='scaleToFill' />
         {card.state === 'pending' && <View className='mine-card mine-card-pending' role='status'>
           <Text>正在同步登录状态…</Text>
         </View>}
@@ -263,7 +287,10 @@ export default function MinePage() {
               <Text className='mine-signin-day-date'>{day.date}</Text>
             </View>)}
           </View>
-          <View className='mine-signin-action'><Text>立即签到 · 赚积分</Text></View>
+          {/* 面额接真实 dailyPoints（690:10474 文案「立即签到 · 得 N 积分」）；status 读取失败回退无面额文案。 */}
+          <View className='mine-signin-action'>
+            <Text>{signInPoints === null ? '立即签到 · 赚积分' : `立即签到 · 得 ${signInPoints} 积分`}</Text>
+          </View>
         </Button>
         <View className='mine-quick'>
           {/* 拉新任务/奖励领取（58 号切片接通）：面板页入口；积分明细沿既有积分页入口。 */}
@@ -282,7 +309,7 @@ export default function MinePage() {
             <Text className='mine-quick-label'>积分明细</Text>
           </Button>
         </View>
-        <View className='mine-section'>
+        <View className='mine-section mine-section-orders'>
           <View className='mine-section-head'>
             <Text className='mine-section-title'>我的订单</Text>
             <Button id='mine-hub-orders' className='mine-orders-all' hoverClass='none' onClick={() => open(hubOrders.url)}>
@@ -292,8 +319,12 @@ export default function MinePage() {
           </View>
           <View className='mine-orders-row'>
             {orderStatusEntries.map(entry => <Button key={entry.key} id={`mine-order-${entry.key}`}
-              className='mine-order-item' hoverClass='none' onClick={() => open(hubOrders.url)}>
-              <View className='mine-order-ico'><View className={`mi-ord-${entry.key}`} /></View>
+              className='mine-order-item' hoverClass='none'
+              ariaLabel={orderCounts[entry.key] ? `${entry.label}，${orderCounts[entry.key]} 单` : entry.label}
+              onClick={() => open(hubOrders.url)}>
+              <View className='mine-order-ico'><View className={`mi-ord-${entry.key}`} />
+                {orderCounts[entry.key] ? <View className='mi-ord-badge'><Text>{orderCounts[entry.key]}</Text></View> : null}
+              </View>
               <Text className='mine-order-label'>{entry.label}</Text>
             </Button>)}
           </View>
@@ -361,11 +392,12 @@ export default function MinePage() {
             </Button>
           </View>
         </View>
+        {/* 文案对齐原稿（成为商家/入驻开店…）；落点沿既有工作台路径（model.ts 既有裁决，不新造导航层级）。 */}
         <Button id='mine-merchant' className='mine-banner' hoverClass='none' onClick={() => open(MINE_MERCHANT_WORKSPACE_URL)}>
           <View className='mine-banner-chip'><View className='mi-banner-shop' /></View>
           <View className='mine-banner-main'>
-            <Text className='mine-banner-title'>商家工作台</Text>
-            <Text className='mine-banner-sub'>商家与员工沿现有工作台路径进入</Text>
+            <Text className='mine-banner-title'>成为商家</Text>
+            <Text className='mine-banner-sub'>入驻开店，让更多宠友找到你</Text>
           </View>
           <View className='mine-banner-go'><View className='mi-chev-banner' /></View>
         </Button>
