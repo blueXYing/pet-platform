@@ -50,10 +50,13 @@
           AND s.status = 'ACTIVE'
     </select>
 
-    <!-- HTTP10 §3.3.3 C catalog keyword search (2026-10-19 ruling): substring match on the
-         service and category names only (column collation utf8mb4_0900_ai_ci makes it
-         case-insensitive); the keyword arrives pre-escaped, so LIKE wildcards stay literal.
-         Eligibility filtering stays in the application layer, exactly like the store catalog. -->
+    <!-- HTTP10 §3.3.3 / contract 74 §3.3 C catalog search: substring match on the service and
+         category names only (column collation utf8mb4_0900_ai_ci makes it case-insensitive); the
+         keyword arrives pre-escaped, so LIKE wildcards stay literal. categoryId is the resolved
+         enabled dictionary id and matches service_item.category_id exactly; keyword and category
+         combine with AND. Eligibility filtering stays in the application layer, exactly like the
+         store catalog. Category-only reads order by service id for stable paging (contract 74
+         §3.3); keyword reads keep the merchant/store/service discipline. -->
     <select id="selectActiveServiceCandidates"
             resultType="com.petplatform.service.biz.infrastructure.persistence.entity.ServiceItemReadEntity">
         SELECT s.id,
@@ -71,8 +74,83 @@
         FROM service_item s
         LEFT JOIN service_category c ON c.id = s.category_id
         WHERE s.status = 'ACTIVE'
-          AND (s.service_name LIKE CONCAT('%', #{keyword}, '%') ESCAPE '\\'
-               OR c.category_name LIKE CONCAT('%', #{keyword}, '%') ESCAPE '\\')
-        ORDER BY s.merchant_id ASC, s.store_id ASC, s.id ASC
+        <if test="categoryId != null">
+            AND s.category_id = #{categoryId}
+        </if>
+        <if test="keyword != null">
+            AND (s.service_name LIKE CONCAT('%', #{keyword}, '%') ESCAPE '\\'
+                 OR c.category_name LIKE CONCAT('%', #{keyword}, '%') ESCAPE '\\')
+        </if>
+        <choose>
+            <when test="categoryId != null and keyword == null">
+                ORDER BY s.id ASC
+            </when>
+            <otherwise>
+                ORDER BY s.merchant_id ASC, s.store_id ASC, s.id ASC
+            </otherwise>
+        </choose>
+    </select>
+
+    <!-- Contract 74 §3.1 C category dictionary read: enabled rows only, parent code resolved by
+         the self-join on parent_id (V1 is flat, but the field is part of the contract). The
+         approved C ordering is sort_no ASC, id ASC. -->
+    <select id="selectEnabledCategories"
+            resultType="com.petplatform.service.biz.infrastructure.persistence.entity.CatalogCategoryReadEntity">
+        SELECT c.id,
+               c.category_code,
+               p.category_code AS parent_code,
+               c.category_name,
+               c.icon_url,
+               c.description,
+               c.sort_no,
+               c.status
+        FROM service_category c
+        LEFT JOIN service_category p ON p.id = c.parent_id
+        WHERE c.status = 'ENABLED'
+        ORDER BY c.sort_no ASC, c.id ASC
+    </select>
+
+    <!-- Exact categoryCode lookup for the /c/services and /c/stores filters. ascii_bin makes the
+         match case-sensitive, so a lowercase probe never resolves to a stored code. -->
+    <select id="selectCategoryByCode"
+            resultType="com.petplatform.service.biz.infrastructure.persistence.entity.CatalogCategoryReadEntity">
+        SELECT c.id,
+               c.category_code,
+               p.category_code AS parent_code,
+               c.category_name,
+               c.icon_url,
+               c.description,
+               c.sort_no,
+               c.status
+        FROM service_category c
+        LEFT JOIN service_category p ON p.id = c.parent_id
+        WHERE c.category_code = #{categoryCode}
+    </select>
+
+    <!-- Contract 74 §3.1 grouped availability: one row per (enabled category, store) that holds
+         ACTIVE services. The application layer intersects store ids with the C-visible set and
+         sums the survivors, so the category list needs exactly one query — never one per
+         category. -->
+    <select id="countActiveServicesByCategoryStore"
+            resultType="com.petplatform.service.biz.infrastructure.persistence.entity.CatalogCategoryStoreCountEntity">
+        SELECT s.category_id,
+               s.store_id,
+               COUNT(*) AS service_count
+        FROM service_item s
+        INNER JOIN service_category c ON c.id = s.category_id
+        WHERE s.status = 'ACTIVE'
+          AND c.status = 'ENABLED'
+        GROUP BY s.category_id, s.store_id
+    </select>
+
+    <!-- Contract 74 §3.2 store filter: every store with at least one ACTIVE service in the
+         resolved category, ascending. Store visibility is a separate domain concern owned by the
+         store catalog; this read only feeds the id intersection. -->
+    <select id="selectActiveCategoryStoreIds" resultType="long">
+        SELECT DISTINCT s.store_id
+        FROM service_item s
+        WHERE s.category_id = #{categoryId}
+          AND s.status = 'ACTIVE'
+        ORDER BY s.store_id ASC
     </select>
 </mapper>

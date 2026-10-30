@@ -132,6 +132,9 @@ public final class CBearerSessionFilter extends OncePerRequestFilter {
   static boolean optionalSessionPath(String path, String method) {
     if (!"GET".equals(method)) return false;
     return path.equals("/api/v1/c/services")
+        // Contract 74 §3.1 C category list: same STR-D8 browse discipline — anonymous GET
+        // passes, a carried bearer is validated.
+        || path.equals("/api/v1/c/service-categories")
         // C catalog keyword search (HTTP10 §3.3.3, 2026-10-19 search ruling): same STR-D8
         // discipline as the per-store page — anonymous GET passes, a carried bearer validates.
         || path.equals("/api/v1/c/stores")
