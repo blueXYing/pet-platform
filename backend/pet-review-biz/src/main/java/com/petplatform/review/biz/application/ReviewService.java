@@ -13,6 +13,7 @@ import com.petplatform.order.api.dto.ReviewEligibilityDTO;
 import com.petplatform.order.api.query.OrderQueryApi.OrderIdQuery;
 import com.petplatform.order.api.query.OrderQueryApi;
 import com.petplatform.review.api.command.ReviewCommandApi;
+import com.petplatform.review.api.query.ReviewPublicFactsApi;
 import com.petplatform.review.api.query.ReviewQueryApi;
 import com.petplatform.schedule.api.protection.ScheduleCapacityGuardApi;
 import com.petplatform.review.biz.infrastructure.persistence.ReviewStore;
@@ -20,13 +21,17 @@ import com.petplatform.review.biz.infrastructure.persistence.entity.AppealListRo
 import com.petplatform.review.biz.infrastructure.persistence.entity.ReviewAppealRowEntity;
 import com.petplatform.review.biz.infrastructure.persistence.entity.ReviewListRowEntity;
 import com.petplatform.review.biz.infrastructure.persistence.entity.ReviewScoreSummaryEntity;
+import com.petplatform.review.biz.infrastructure.persistence.entity.ReviewStoreRatingRowEntity;
 import com.petplatform.review.biz.infrastructure.persistence.entity.ReviewRowEntity;
 import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.time.Clock;
 import java.time.LocalDateTime;
 import java.time.ZoneOffset;
 import java.time.format.DateTimeFormatterBuilder;
+import java.util.ArrayList;
 import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -46,7 +51,7 @@ import java.util.Set;
  * operator decisions are Schema06's terminal APPROVED/REJECTED only, APPROVED hides the review,
  * and no aftersale re-review exists anywhere in this surface.
  */
-public final class ReviewService implements ReviewQueryApi, ReviewCommandApi {
+public final class ReviewService implements ReviewQueryApi, ReviewCommandApi, ReviewPublicFactsApi {
     private static final DecimalPublicIdCodec IDS = new DecimalPublicIdCodec();
     private static final ObjectMapper JSON = new ObjectMapper();
     /** Contract 10 §3.14 / OpenAPI11 CreateReviewRequest: 1..5 per dimension, 2000 code points. */
@@ -406,6 +411,49 @@ public final class ReviewService implements ReviewQueryApi, ReviewCommandApi {
         return new ReviewQueryApi.ScoreSummary(row.getReviewCount(), avg);
     }
 
+    // ------------------------------------------------- public rating facts (B-STAT-01 / 74号 §6.1)
+
+    @Override
+    public List<ReviewPublicFactsApi.StoreRatingFact> getStoreRatings(
+            ReviewPublicFactsApi.StoreRatingQuery query) {
+        Objects.requireNonNull(query, "query is required");
+        Set<Long> requested = new LinkedHashSet<>();
+        for (String storeId : query.storeIds()) {
+            requested.add(storeId(storeId));
+        }
+        if (requested.isEmpty()) return List.of();
+        List<Long> storeIds = List.copyOf(requested);
+        // Full-history score_included=1 aggregate per store; one indexed batch read, no
+        // created_at window (74号 §6.1) and no review content in the projection.
+        List<ReviewStoreRatingRowEntity> rows =
+                store.execute(m -> m.storeRatingSummaries(storeIds));
+        Map<Long, ReviewStoreRatingRowEntity> byStore = new LinkedHashMap<>();
+        for (ReviewStoreRatingRowEntity row : rows) {
+            if (row == null || row.getStoreId() == null || row.getReviewCount() == null
+                    || row.getReviewCount() <= 0 || row.getAvgScore() == null) {
+                // A grouped row always has at least one included review and a non-null AVG;
+                // anything else is a damaged fact read, never a fake 0 score.
+                throw new ApiException(CommonApiCodes.DEPENDENCY_UNAVAILABLE,
+                        "store rating facts are unavailable");
+            }
+            byStore.put(row.getStoreId(), row);
+        }
+        List<ReviewPublicFactsApi.StoreRatingFact> facts = new ArrayList<>(storeIds.size());
+        for (long storeId : storeIds) {
+            ReviewStoreRatingRowEntity row = byStore.get(storeId);
+            if (row == null) {
+                // Explicit "no included reviews" fact; the consumer decides the <5 display.
+                facts.add(new ReviewPublicFactsApi.StoreRatingFact(
+                        IDS.toApi(storeId), 0L, null));
+            } else {
+                facts.add(new ReviewPublicFactsApi.StoreRatingFact(
+                        IDS.toApi(storeId), row.getReviewCount(),
+                        row.getAvgScore().setScale(1, RoundingMode.HALF_UP).toPlainString()));
+            }
+        }
+        return List.copyOf(facts);
+    }
+
     @Override
     public ReviewPage listStoreReviews(StoreReviewListQuery query) {
         Objects.requireNonNull(query, "query is required");
@@ -692,6 +740,15 @@ public final class ReviewService implements ReviewQueryApi, ReviewCommandApi {
             return IDS.fromApi(value);
         } catch (IllegalArgumentException invalid) {
             throw new ApiException(CommonApiCodes.INVALID_ARGUMENT, "订单编号不合法");
+        }
+    }
+
+    /** Public fact reads carry canonical decimal store ids, never user input. */
+    private static long storeId(String value) {
+        try {
+            return IDS.fromApi(value);
+        } catch (IllegalArgumentException invalid) {
+            throw new ApiException(CommonApiCodes.INVALID_ARGUMENT, "门店编号不合法");
         }
     }
 
