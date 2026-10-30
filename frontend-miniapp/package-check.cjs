@@ -77,7 +77,7 @@ assert.deepEqual(packages.map(p => ({ root: p.root, pages: p.pages })), [
     'pages/marketing/index'] },
   { root: 'consumer/pages/pet-archive', pages: ['index', 'detail', 'form', 'vaccine-form', 'deworm-form'] },
   { root: 'consumer/pages/merchant-application', pages: ['index', 'signing'] },
-  { root: 'consumer/pages/store-services', pages: ['index', 'service-detail', 'stores'] },
+  { root: 'consumer/pages/store-services', pages: ['index', 'service-detail', 'stores', 'hot-services'] },
   { root: 'consumer/pages/coupon-points', pages: ['coupons', 'coupon-detail', 'points'] },
   { root: 'consumer/pages/aftersale', pages: ['index', 'detail', 'apply'] },
   { root: 'consumer/pages/order-verify', pages: ['index'] },
@@ -204,7 +204,7 @@ for (const page of ['index', 'signing']) {
       `MER-001 application page artifact missing: ${page}.${extension}`)
   }
 }
-for (const page of ['index', 'service-detail', 'stores']) {
+for (const page of ['index', 'service-detail', 'stores', 'hot-services']) {
   for (const extension of ['js', 'json', 'wxml', 'wxss']) {
     assert.ok(fs.existsSync(path.join(root, `consumer/pages/store-services/${page}.` + extension)),
       `C-003 store-services page artifact missing: ${page}.${extension}`)

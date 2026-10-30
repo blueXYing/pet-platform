@@ -5,6 +5,8 @@
 // fixed merchantId,storeId numeric-ascending order, no sort/keyword/categoryId parameters).
 // Backend by role B; shapes here follow the proposal §2 and are the swap point if the frozen
 // authoritative contract differs when B-side lands.
+// 2026-10-30 contract 74 §3.2 adds the optional categoryCode query (precise filter, AND with
+// city/keyword); the nine-field response shape itself is unchanged, so the view types stay as-is.
 export type StorePromotion = Readonly<{ level: number | null; title: string | null; text: string | null }>
 export type StoreCampaign = Readonly<{
   campaignId: string; title: string; subtitle: string | null; tagName: string | null
@@ -115,7 +117,12 @@ export function decodeCityList(value: unknown): StoreCity[] {
   })
 }
 
-export type StoreListQuery = Readonly<{ city?: string; keyword?: string; page: number; pageSize: number }>
+export type StoreListQuery = Readonly<{
+  city?: string; keyword?: string
+  /** 74 §3.2 分类精确筛选：与 city/keyword 按 AND 组合；未知/停用 code 由读侧 400。 */
+  categoryCode?: string
+  page: number; pageSize: number
+}>
 export type StoreDirectoryDeps = {
   cities(): Promise<StoreCity[]>
   list(query: StoreListQuery): Promise<StorePage>
@@ -145,10 +152,15 @@ export class PreviewStoreRepository implements StoreDirectoryDeps {
     await this.pause()
     return fixtureCities.map(city => ({ ...city }))
   }
-  async list({ city, keyword, page = 1, pageSize = 20 }: StoreListQuery): Promise<StorePage> {
+  async list({ city, keyword, categoryCode, page = 1, pageSize = 20 }: StoreListQuery): Promise<StorePage> {
     await this.pause()
     if (this.failNext) { this.failNext = false; throw new StoreMockError('COMMON_DEPENDENCY_UNAVAILABLE', 503) }
     if (city !== undefined && !fixtureCities.some(entry => entry.cityCode === city)) {
+      throw new StoreMockError('COMMON_INVALID_ARGUMENT', 400)
+    }
+    // 74 §3.2 mirror: a lexically invalid categoryCode is 400; a valid one filters the mock
+    // fixtures (unmapped codes = the contract's "legal but no supply" 200 empty page).
+    if (categoryCode !== undefined && !/^[A-Z][A-Z0-9_]{1,31}(?![\s\S])/.test(categoryCode)) {
       throw new StoreMockError('COMMON_INVALID_ARGUMENT', 400)
     }
     const bounded = Math.min(Math.max(1, Math.trunc(page)), 10000)
@@ -156,6 +168,7 @@ export class PreviewStoreRepository implements StoreDirectoryDeps {
     const lowered = keyword === undefined ? null : keyword.toLowerCase()
     const scoped = this.stores
       .filter(store => city === undefined || store.cityCode === city)
+      .filter(store => categoryCode === undefined || fixtureStoreCategories[store.storeId] === categoryCode)
       .filter(store => lowered === null
         || store.storeName.toLowerCase().includes(lowered)
         || store.merchantName.toLowerCase().includes(lowered))
@@ -191,6 +204,9 @@ export const fixtureStores: StoreView[] = [
 /** A store that fails the visibility conjunction: absent from lists, detail answers 404. */
 export const fixtureInvisibleStoreId = '960002'
 
-/** The 11-category unified service dictionary rendered by the design grid (PRD §5.1.13;
- *  category filtering itself is deferred with the /c/stores contract — taps stay unwired). */
-export const directoryCategories = ['宠物美容', '遛狗陪护', '宠物寄养', '宠物训练', '上门喂养', '兽医助理', '小宠寄养', '异宠上门喂养', '异宠健康检查', '绿植养护', '植物代养'] as const
+/** Preview-only category mapping (NOT wire data): which dictionary category each fixture
+ *  store would serve, so the preview channel can exercise the 74 §3.2 categoryCode filter.
+ *  Lexically valid but unmapped codes answer the contract "no supply" way: a 200 empty page. */
+const fixtureStoreCategories: Record<string, string> = {
+  '957002': 'PET_GROOMING', '958002': 'VET_ASSISTANT', '959002': 'PLANT_CARE',
+}

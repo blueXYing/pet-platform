@@ -1,0 +1,38 @@
+{
+  "sourceVersion": "2408620332145508244",
+  "note": "Services tab (110:480) decorative icon vectors for F-C-02, fetched 2026-10-30 via the Figma Desktop MCP asset endpoint (localhost:3845, no PAT/token; file bp2vpcjjA5vZbHvtKkA8wl, C-end 宠物小程序). The 11 category grid icons are NOT cut here: D-01 素材未到位是已知登记状态, iconUrl=null renders the neutral #e4f6f3 tile placeholder until design ships them (74 §10 / registry §4.26).",
+  "assets": [
+    {
+      "nodeId": "690:6230",
+      "file": "frontend-miniapp/src/consumer/pages/services/assets/featured-star.svg",
+      "designSize": "9.507x9.05 (rating star inside Icon-115 10x10 frame)",
+      "status": "DOWNLOADED_SVG",
+      "sha256": "38446880ed825e71aa5a2a381b3358b1af664705e75b4fea32e3f935f5db4ea4",
+      "bytes": 375
+    },
+    {
+      "nodeId": "112:1424",
+      "file": "frontend-miniapp/src/consumer/pages/services/assets/heading-paw.svg",
+      "designSize": "15x15 (优质商家 heading paw, Group 24)",
+      "status": "DOWNLOADED_SVG",
+      "sha256": "cd82d90154be370032cbecc25dc55081017ce81eaa480505e92880d699df7d7b",
+      "bytes": 1559
+    },
+    {
+      "nodeId": "111:1118",
+      "file": "frontend-miniapp/src/consumer/pages/services/assets/heading-gift.svg",
+      "designSize": "13.325x12.667 (商家钜惠 heading icon inside Icon-355 16.66x16 frame)",
+      "status": "DOWNLOADED_SVG",
+      "sha256": "28c730b3d0df989fc68f4e83b645a445fe3afd0034ad60a6ea8d0923bd03ba75",
+      "bytes": 446
+    },
+    {
+      "nodeId": "111:1126",
+      "file": "frontend-miniapp/src/consumer/pages/services/assets/link-chevron.svg",
+      "designSize": "4.525x7.42 (限时特惠 link chevron)",
+      "status": "DOWNLOADED_SVG",
+      "sha256": "d68c2cb4a13492dd950b12a8bf0c6aa4a2273cfd44de2a4b95a8e9eb994ce587",
+      "bytes": 313
+    }
+  ]
+}

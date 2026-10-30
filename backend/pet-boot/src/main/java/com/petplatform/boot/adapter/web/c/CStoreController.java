@@ -7,6 +7,7 @@ import com.petplatform.boot.config.MerchantApplicationCityCatalog;
 import com.petplatform.common.ApiException;
 import com.petplatform.common.ApiResponse;
 import com.petplatform.common.CommonApiCodes;
+import com.petplatform.common.DecimalPublicIdCodec;
 import com.petplatform.common.OperatorType;
 import com.petplatform.common.QueryContext;
 import com.petplatform.marketing.api.MarketingPublicApi;
@@ -15,13 +16,18 @@ import com.petplatform.merchant.api.dto.MerchantStoreDisplayPageDTO;
 import com.petplatform.merchant.api.query.MerchantStoreDisplayPageQuery;
 import com.petplatform.merchant.api.query.MerchantStoreDisplayQuery;
 import com.petplatform.merchant.biz.apiimpl.MerchantStoreDisplayApiImpl;
+import com.petplatform.service.api.dto.CatalogServiceCategoryTypes.CatalogServiceCategoryStores;
+import com.petplatform.service.api.query.CatalogServiceCategoryStoresQuery;
+import com.petplatform.service.api.query.ServiceCatalogCategoryApi;
 import com.petplatform.user.biz.application.UserAuthService.MiniSessionView;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
+import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Set;
 import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.http.HttpHeaders;
@@ -38,6 +44,11 @@ import org.springframework.web.bind.annotation.RestController;
  * whole-page 503. Session is optional per STR-D8 (PRD "all users browse"): anonymous GET passes
  * through the bearer filter, an invalid or expired carried bearer still 401s, and the optional
  * subject never changes visibility.
+ *
+ * <p>Contract 74 §3.2 adds the optional {@code categoryCode} filter: the service domain resolves
+ * the exact enabled dictionary code to the stores that hold an ACTIVE service in it, and this
+ * controller hands that id set to the store page, which composes it with city/keyword/promoted by
+ * AND. The response projection is unchanged.
  */
 @RestController
 @ConditionalOnProperty(prefix = "pet.store.query", name = "enabled", havingValue = "true")
@@ -46,17 +57,26 @@ public class CStoreController {
     private static final java.util.regex.Pattern CITY =
             java.util.regex.Pattern.compile("[a-z][a-z0-9_-]{0,31}");
 
+    /** Contract 74 §2.1 stable categoryCode lexical shape. */
+    private static final java.util.regex.Pattern CATEGORY_CODE =
+            java.util.regex.Pattern.compile("[A-Z][A-Z0-9_]{1,31}");
+
+    private static final DecimalPublicIdCodec IDS = new DecimalPublicIdCodec();
+
     private final MerchantStoreDisplayApiImpl stores;
     private final ObjectProvider<MerchantApplicationCityCatalog> catalogs;
     private final ObjectProvider<MarketingPublicApi> marketing;
+    private final ObjectProvider<ServiceCatalogCategoryApi> serviceCategories;
 
     public CStoreController(
             MerchantStoreDisplayApiImpl stores,
             ObjectProvider<MerchantApplicationCityCatalog> catalogs,
-            ObjectProvider<MarketingPublicApi> marketing) {
+            ObjectProvider<MarketingPublicApi> marketing,
+            ObjectProvider<ServiceCatalogCategoryApi> serviceCategories) {
         this.stores = Objects.requireNonNull(stores, "stores is required");
         this.catalogs = catalogs;
         this.marketing = marketing;
+        this.serviceCategories = serviceCategories;
     }
 
     @ModelAttribute
@@ -68,12 +88,14 @@ public class CStoreController {
     public ApiResponse<Map<String, Object>> list(
             @RequestParam(required = false) String city,
             @RequestParam(required = false) String keyword,
+            @RequestParam(required = false) String categoryCode,
             @RequestParam(required = false) String promoted,
             @RequestParam(required = false) String page,
             @RequestParam(required = false) String pageSize,
             HttpServletRequest req) {
         rejectUnknownParameters(req);
         List<String> cityCodes = resolveCityCodes(city);
+        Set<Long> categoryStores = resolveCategoryStores(categoryCode, context(req));
         MerchantStoreDisplayPageDTO value =
                 stores.pageDisplayStores(
                         new MerchantStoreDisplayPageQuery(
@@ -82,7 +104,8 @@ public class CStoreController {
                                 parse(page, 1, 10_000, "page"),
                                 parse(pageSize, 20, 50, "pageSize"),
                                 context(req),
-                                promoted(promoted)));
+                                promoted(promoted),
+                                categoryStores));
         Map<String, Object> data = new LinkedHashMap<>();
         data.put("items", value.items().stream().map(CStoreController::view).toList());
         data.put("page", value.page());
@@ -171,6 +194,41 @@ public class CStoreController {
         return open.stream().map(MerchantApplicationCityCatalog.City::code).toList();
     }
 
+    /**
+     * Contract 74 §3.2 category filter: the service domain resolves the exact enabled dictionary
+     * code (unknown/disabled 400) to the stores holding an ACTIVE service in it. An absent
+     * parameter returns null (no filter); a legal category without supply returns an empty set,
+     * which correctly yields an empty 200 page. The service slice is a hard dependency of the
+     * filter; when it is not assembled the filter fails closed (503) instead of being ignored.
+     */
+    private Set<Long> resolveCategoryStores(String categoryCode, QueryContext context) {
+        if (categoryCode == null) return null;
+        if (!CATEGORY_CODE.matcher(categoryCode).matches()) throw invalid("categoryCode");
+        ServiceCatalogCategoryApi api = serviceCategories.getIfAvailable();
+        if (api == null) {
+            throw new ApiException(CommonApiCodes.DEPENDENCY_UNAVAILABLE, "服务分类暂时不可用");
+        }
+        CatalogServiceCategoryStores resolved;
+        try {
+            resolved =
+                    api.listCatalogCategoryStores(
+                            new CatalogServiceCategoryStoresQuery(categoryCode, context));
+        } catch (ApiException known) {
+            throw known;
+        } catch (RuntimeException failure) {
+            throw new ApiException(CommonApiCodes.DEPENDENCY_UNAVAILABLE, "服务分类暂时不可用");
+        }
+        Set<Long> storeIds = new HashSet<>();
+        for (String storeId : resolved.storeIds()) {
+            try {
+                storeIds.add(IDS.fromApi(storeId));
+            } catch (RuntimeException malformed) {
+                throw new ApiException(CommonApiCodes.DEPENDENCY_UNAVAILABLE, "服务分类门店事实无效");
+            }
+        }
+        return Set.copyOf(storeIds);
+    }
+
     /** STR-D8 optional session: anonymous stays anonymous; visibility never depends on it. */
     private static QueryContext context(HttpServletRequest req) {
         Object view = req.getAttribute(CBearerSessionFilter.VIEW);
@@ -219,12 +277,14 @@ public class CStoreController {
     }
 
     private static void rejectUnknownParameters(HttpServletRequest req) {
-        for (String name : new String[] {"city", "keyword", "promoted", "page", "pageSize"}) {
+        for (String name :
+                new String[] {"city", "keyword", "categoryCode", "promoted", "page", "pageSize"}) {
             String[] values = req.getParameterValues(name);
             if (values != null && values.length > 1) throw invalid(name);
         }
         for (String name : req.getParameterMap().keySet()) {
-            if (!"city".equals(name) && !"keyword".equals(name) && !"promoted".equals(name)
+            if (!"city".equals(name) && !"keyword".equals(name)
+                    && !"categoryCode".equals(name) && !"promoted".equals(name)
                     && !"page".equals(name) && !"pageSize".equals(name)) {
                 throw invalid(name);
             }

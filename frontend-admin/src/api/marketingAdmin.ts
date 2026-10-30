@@ -1,4 +1,4 @@
-import { createWebClient, type Transport } from '../request';
+import { createWebClient, RequestFailure, type Transport } from '../request';
 
 const ROOT = '/api/v1/admin/marketing';
 const COUPON_ROOT = '/api/v1/admin/coupon-campaigns';
@@ -165,3 +165,66 @@ export function createMarketingAdminClient(transport?: Transport) {
 }
 
 export type MarketingAdminClient = ReturnType<typeof createMarketingAdminClient>;
+
+// Wire whitelists mirror MarketingAdminService (contract 71 v0.3): POSITIONS and
+// HOME_BLOCK_TARGETS. Labels are operator-facing; the codes are what goes on the wire.
+export const PLACEMENT_POSITIONS = [
+  ['HOME_ACTIVITY', '首页活动位（活动钜惠）'],
+  ['HOME_BANNER', '首页 Banner'],
+  ['STORE_LIST_TOP', '商家列表置顶（商家钜惠）'],
+  ['HOT_SERVICE_TOP', '热门服务顶部 Banner（全平台最多启用 1 个）'],
+] as const;
+
+export const HOME_BLOCK_TARGET_TYPES = [
+  ['SERVICE_DIRECTORY', '服务目录'],
+  ['SERVICE_CATEGORY', '服务分类关键词'],
+  ['STORE', '门店'],
+  ['SERVICE', '单次服务'],
+  ['CAMPAIGN', '活动'],
+  ['COMMUNITY', '宠友圈'],
+  ['MINIAPP_PATH', '小程序路径'],
+  ['NONE', '无跳转'],
+  ['HOT_SERVICE', '热门服务'],
+] as const;
+
+// Contract 71 v0.3 §10: the C-side routes on targetType alone for NONE/HOT_SERVICE — the
+// server nulls targetValue regardless of what is sent, so the UI keeps those inputs blank.
+export function targetNeedsValue(targetType: string): boolean {
+  return targetType !== 'NONE' && targetType !== 'HOT_SERVICE';
+}
+
+// Readable operator-facing text per stable error code (docs/04-api/12号 registry marketing
+// batch + common codes) — the page never dumps raw code jargon.
+const FAILURE_TEXT: Record<string, string> = {
+  SERVICE_CATEGORY_INVALID: '保存失败：所选服务分类中有分类不存在或未启用，请在「服务分类」字典确认后重新勾选再保存',
+  PLACEMENT_LIMIT_EXCEEDED: '操作失败：已达位置启用上限——热门服务顶部 Banner 全平台最多同时启用 1 个，首页 Banner 同一城市最多同时启用 3 个。请先停用已启用的同位置 Banner 再试',
+  CAMPAIGN_LANDING_INVALID: '保存失败：投放窗口必须完全落在关联活动的时间窗口内',
+  CAMPAIGN_STATE_NOT_ALLOWED: '操作失败：当前状态不允许该操作，已为你刷新最新数据，请重试',
+  CAMPAIGN_NOT_FOUND: '该活动不存在或已被删除，已为你刷新列表',
+  COMMON_CONFLICT: '操作冲突：数据已被其他人修改，已为你刷新最新数据，请重试',
+  COMMON_NOT_FOUND: '数据不存在或已被删除，已为你刷新列表',
+  COMMON_INVALID_ARGUMENT: '保存失败：填写内容不符合要求，请检查名称/标题长度、时间窗口、城市与分类选择等字段后重试',
+  IDEMPOTENCY_KEY_CONFLICT: '相同请求正在处理中，请稍后重试',
+  COMMON_RATE_LIMITED: '操作过于频繁，请稍等片刻后重试',
+  COMMON_DEPENDENCY_UNAVAILABLE: '依赖服务暂不可用（功能未开放或后端繁忙），请稍后重试',
+  COMMON_INTERNAL_ERROR: '服务器开小差了，请稍后重试',
+  FORBIDDEN: '权限不足：当前账号未授予该操作所需权限',
+  INVALID_RESPONSE: '服务器响应格式异常，请稍后重试',
+  STALE_CONTEXT: '页面状态已过期，请刷新后重试',
+  INVALID_ADMIN_PATH: '请求地址非法，已阻止发送',
+};
+
+export function describeMarketingFailure(error: unknown, fallback = '操作失败'): string {
+  if (error instanceof RequestFailure) {
+    if (error.code === 'UNAUTHENTICATED') return '登录已失效，请重新登录';
+    return FAILURE_TEXT[error.code] ?? `${fallback}（${error.code}）`;
+  }
+  return error instanceof Error && error.message ? `${fallback}（${error.message}）` : fallback;
+}
+
+/** Codes whose readable text promises a data refresh — run() reloads lists after them. */
+export function isMarketingStale(error: unknown): boolean {
+  return error instanceof RequestFailure
+    && (error.code === 'COMMON_CONFLICT' || error.code === 'CAMPAIGN_STATE_NOT_ALLOWED'
+      || error.code === 'CAMPAIGN_NOT_FOUND' || error.code === 'COMMON_NOT_FOUND');
+}

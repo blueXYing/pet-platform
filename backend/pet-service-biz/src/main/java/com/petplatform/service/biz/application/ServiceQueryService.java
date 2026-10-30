@@ -3,26 +3,45 @@ package com.petplatform.service.biz.application;
 import com.petplatform.common.ApiException;
 import com.petplatform.common.CommonApiCodes;
 import com.petplatform.common.DecimalPublicIdCodec;
+import com.petplatform.common.QueryContext;
 import com.petplatform.merchant.api.dto.MerchantDisplayEligibilityDTO;
 import com.petplatform.merchant.api.query.MerchantDisplayEligibilityApi;
 import com.petplatform.merchant.api.query.MerchantDisplayEligibilityQuery;
+import com.petplatform.merchant.api.query.MerchantDisplayStoreIdsApi;
+import com.petplatform.merchant.api.query.MerchantDisplayStoreIdsQuery;
+import com.petplatform.service.api.dto.CatalogServiceCategoryTypes.CatalogServiceCategoryItem;
+import com.petplatform.service.api.dto.CatalogServiceCategoryTypes.CatalogServiceCategoryPage;
+import com.petplatform.service.api.dto.CatalogServiceCategoryTypes.CatalogServiceCategoryStores;
+import com.petplatform.service.api.dto.FeaturedStoreServiceTypes.FeaturedStoreServiceItem;
 import com.petplatform.service.api.dto.ServiceBookabilityDTO;
 import com.petplatform.service.api.dto.ServiceSnapshotDTO;
 import com.petplatform.service.api.dto.ServiceSnapshotPageDTO;
 import com.petplatform.service.api.enums.FulfillmentType;
+import com.petplatform.service.api.query.CatalogServiceCategoryQuery;
+import com.petplatform.service.api.query.CatalogServiceCategoryStoresQuery;
+import com.petplatform.service.api.query.CatalogServiceSearchQuery;
+import com.petplatform.service.api.query.FeaturedActiveServiceStoresQuery;
+import com.petplatform.service.api.query.FeaturedStoreServicesQuery;
 import com.petplatform.service.api.query.ServiceBookabilityQuery;
 import com.petplatform.service.api.query.ServiceSnapshotQuery;
 import com.petplatform.service.api.query.StoreServiceSnapshotQuery;
 import com.petplatform.service.biz.infrastructure.persistence.ServiceReadStore;
+import com.petplatform.service.biz.infrastructure.persistence.entity.CatalogCategoryReadEntity;
+import com.petplatform.service.biz.infrastructure.persistence.entity.CatalogCategoryStoreCountEntity;
+import com.petplatform.service.biz.infrastructure.persistence.entity.FeaturedStoreServiceRowEntity;
 import com.petplatform.service.biz.infrastructure.persistence.entity.ServiceItemReadEntity;
+import com.petplatform.service.biz.infrastructure.persistence.mapper.ServiceReadMapper;
 import java.math.BigDecimal;
 import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
+import java.util.regex.Pattern;
 
 /**
  * CCR-W2-API-001 service domain (SVC-001): read-only catalog slice. Visibility and bookability
@@ -46,16 +65,22 @@ public final class ServiceQueryService {
     /** Registry 12 §12 service-domain not-found code (SVC-D1b: 404, never COMMON_NOT_FOUND). */
     private static final String SERVICE_NOT_FOUND = "SERVICE_NOT_FOUND";
 
+    /** Contract 74 §2.1 stable categoryCode lexical shape (the same rule the write slice uses). */
+    private static final Pattern CATEGORY_CODE = Pattern.compile("[A-Z][A-Z0-9_]{1,31}");
+
     private final ServiceReadStore store;
     private final MerchantDisplayEligibilityApi merchantFacts;
+    private final MerchantDisplayStoreIdsApi displayStoreIds;
     private final ServiceWriteDependencies.ServiceCoverUrlPort coverUrls;
 
     public ServiceQueryService(
             ServiceReadStore store,
             MerchantDisplayEligibilityApi merchantFacts,
+            MerchantDisplayStoreIdsApi displayStoreIds,
             ServiceWriteDependencies.ServiceCoverUrlPort coverUrls) {
         this.store = Objects.requireNonNull(store, "store is required");
         this.merchantFacts = Objects.requireNonNull(merchantFacts, "merchantFacts is required");
+        this.displayStoreIds = Objects.requireNonNull(displayStoreIds, "displayStoreIds is required");
         this.coverUrls = coverUrls; // nullable on purpose: internal reads never sign a cover URL
     }
 
@@ -115,26 +140,38 @@ public final class ServiceQueryService {
     }
 
     /**
-     * HTTP10 §3.3.3 C catalog keyword search (2026-10-19 ruling). Same visibility machinery as
-     * {@link #storePage}: ACTIVE rows, one eligibility read per distinct merchant/store pair
-     * inside the single read-only snapshot, ineligible rows silently hidden, facts failures
-     * fail closed as 503 — never an empty-page degradation. Candidates are matched in SQL on
-     * the service and category names (pre-escaped LIKE, case-insensitive by column collation);
-     * the visible total is computed after eligibility so pagination stays honest, and the fixed
-     * merchant/store/service ascending order mirrors the store catalog discipline.
+     * Contract 74 §3.3 C catalog search: keyword and/or exact categoryCode, at least one present,
+     * AND when both. Same visibility machinery as {@link #storePage}: ACTIVE rows, one eligibility
+     * read per distinct merchant/store pair inside the single read-only snapshot, ineligible rows
+     * silently hidden, facts failures fail closed as 503 — never an empty-page degradation.
+     * Candidates are matched in SQL (pre-escaped LIKE for the keyword, exact id for the category);
+     * the visible total is computed after eligibility so pagination stays honest. Keyword reads
+     * keep the fixed merchant/store/service order; a category-only read orders by service id
+     * (contract 74 §3.3 stable paging).
      */
-    public ServiceSnapshotPageDTO catalogSearch(com.petplatform.service.api.query.CatalogServiceSearchQuery query) {
+    public ServiceSnapshotPageDTO catalogSearch(CatalogServiceSearchQuery query) {
         if (query == null) invalid("query is required");
         if (query.context() == null) invalid("query context is required");
         String keyword = query.keyword() == null ? null : query.keyword().strip();
-        if (keyword == null || keyword.isEmpty()
-                || keyword.codePointCount(0, keyword.length()) > 30) invalid("keyword is invalid");
+        if (keyword != null
+                && (keyword.isEmpty() || keyword.codePointCount(0, keyword.length()) > 30)) {
+            invalid("keyword is invalid");
+        }
+        String categoryCode = query.categoryCode();
+        if (categoryCode != null && !CATEGORY_CODE.matcher(categoryCode).matches()) {
+            invalid("categoryCode is invalid");
+        }
+        if (keyword == null && categoryCode == null) {
+            invalid("keyword or categoryCode is required");
+        }
         int page = query.page();
         int pageSize = query.pageSize();
         if (page < 1 || page > 10_000) invalid("page is invalid");
         if (pageSize < 1 || pageSize > 50) invalid("pageSize is invalid");
         return store.read(mapper -> {
-            List<ServiceItemReadEntity> matched = mapper.selectActiveServiceCandidates(likeEscape(keyword));
+            Long categoryId = categoryCode == null ? null : enabledCategoryId(mapper, categoryCode);
+            List<ServiceItemReadEntity> matched = mapper.selectActiveServiceCandidates(
+                    keyword == null ? null : likeEscape(keyword), categoryId);
             Map<String, MerchantDisplayEligibilityDTO> factsByPair = new LinkedHashMap<>();
             List<ServiceItemReadEntity> visible = new ArrayList<>(Math.min(matched.size(), 256));
             for (ServiceItemReadEntity row : matched) {
@@ -159,6 +196,261 @@ public final class ServiceQueryService {
             }
             return new ServiceSnapshotPageDTO(List.copyOf(items), page, pageSize, total);
         });
+    }
+
+    /**
+     * Contract 74 §3.1 C category availability. Enabled dictionary rows are combined with one
+     * grouped ACTIVE-service count per (category, store); the merchant domain supplies the
+     * C-visible store set for the requested open cities (three-condition conjunction + compat-city
+     * integrity) inside the same repeatable-read snapshot. A category survives only when at least
+     * one visible store holds an ACTIVE service in it; counts are the distinct surviving stores
+     * and the sum of their ACTIVE services. One category read + one grouped count + one merchant
+     * display-store read — never a query per category (contract 74 §11).
+     */
+    public CatalogServiceCategoryPage catalogCategories(CatalogServiceCategoryQuery query) {
+        if (query == null) invalid("query is required");
+        if (query.context() == null) invalid("query context is required");
+        List<String> cityCodes = query.cityCodes();
+        if (cityCodes.isEmpty()) return new CatalogServiceCategoryPage(List.of());
+        return store.read(mapper -> {
+            Set<Long> visibleStores = visibleStoreIds(cityCodes, query.context());
+            List<CatalogCategoryReadEntity> categories = mapper.selectEnabledCategories();
+            List<CatalogCategoryStoreCountEntity> buckets =
+                    mapper.countActiveServicesByCategoryStore();
+            Map<Long, long[]> aggregates = new HashMap<>();
+            for (CatalogCategoryStoreCountEntity bucket : buckets) {
+                if (bucket.getCategoryId() == null || bucket.getCategoryId() <= 0
+                        || bucket.getStoreId() == null || bucket.getStoreId() <= 0
+                        || bucket.getServiceCount() == null || bucket.getServiceCount() <= 0) {
+                    unavailable("service category availability facts are invalid");
+                }
+                if (!visibleStores.contains(bucket.getStoreId())) continue;
+                long[] aggregate = aggregates.computeIfAbsent(
+                        bucket.getCategoryId(), ignored -> new long[2]);
+                aggregate[0] += 1;
+                aggregate[1] += bucket.getServiceCount();
+            }
+            List<CatalogServiceCategoryItem> items = new ArrayList<>();
+            for (CatalogCategoryReadEntity category : categories) {
+                long[] aggregate = aggregates.get(category.getId());
+                if (aggregate == null) continue; // No visible supply: the category disappears.
+                items.add(categoryItem(category, aggregate));
+            }
+            return new CatalogServiceCategoryPage(items);
+        });
+    }
+
+    /**
+     * Contract 74 §3.2/§3.3 categoryCode resolution: an enabled dictionary row yields the distinct
+     * stores with ACTIVE services in that category, ascending. Unknown or disabled codes are
+     * INVALID_ARGUMENT (400); a legal category without supply is a normal empty list. The caller
+     * composes this with its own visibility read (store catalog) or the service visibility
+     * machinery above — service rows are never exposed here.
+     */
+    public CatalogServiceCategoryStores catalogCategoryStores(
+            CatalogServiceCategoryStoresQuery query) {
+        if (query == null) invalid("query is required");
+        if (query.context() == null) invalid("query context is required");
+        String categoryCode = query.categoryCode();
+        if (categoryCode == null || !CATEGORY_CODE.matcher(categoryCode).matches()) {
+            invalid("categoryCode is invalid");
+        }
+        return store.read(mapper -> {
+            long categoryId = enabledCategoryId(mapper, categoryCode);
+            List<Long> storeIds = mapper.selectActiveCategoryStoreIds(categoryId);
+            List<String> ids = new ArrayList<>(storeIds.size());
+            for (Long storeId : storeIds) {
+                if (storeId == null || storeId <= 0) {
+                    unavailable("service category store facts are invalid");
+                }
+                ids.add(IDS.toApi(storeId));
+            }
+            return new CatalogServiceCategoryStores(categoryCode, ids);
+        });
+    }
+
+    /**
+     * Contract 74 §3.4 featured-card candidates (B-CARD-01): distinct stores holding at least one
+     * ACTIVE service, optionally narrowed to the exact enabled category, ascending. Store
+     * C-visibility is composed by the caller over the merchant display-store facts; this read
+     * stays one grouped query and never exposes service rows.
+     */
+    public List<String> featuredStoreIds(FeaturedActiveServiceStoresQuery query) {
+        if (query == null) invalid("query is required");
+        if (query.context() == null) invalid("query context is required");
+        String categoryCode = query.categoryCode();
+        if (categoryCode != null && !CATEGORY_CODE.matcher(categoryCode).matches()) {
+            invalid("categoryCode is invalid");
+        }
+        return store.read(mapper -> {
+            Long categoryId = categoryCode == null ? null : enabledCategoryId(mapper, categoryCode);
+            List<Long> storeIds = mapper.selectActiveServiceStoreIds(categoryId);
+            List<String> ids = new ArrayList<>(storeIds.size());
+            for (Long storeId : storeIds) {
+                if (storeId == null || storeId <= 0) {
+                    unavailable("featured store facts are invalid");
+                }
+                ids.add(IDS.toApi(storeId));
+            }
+            return List.copyOf(ids);
+        });
+    }
+
+    /**
+     * Contract 74 §6.5 featured-card service enumeration (B-CARD-01): every ACTIVE service of the
+     * requested stores in one window-partitioned query. The per-service dictionary category is
+     * mandatory on the wire, so a missing category row is damaged facts and fails closed (503);
+     * the sold-count merge and the confirmed top-2 selection belong to the composing read after
+     * the order-domain facts arrive.
+     */
+    public List<FeaturedStoreServiceItem> featuredStoreServices(FeaturedStoreServicesQuery query) {
+        if (query == null) invalid("query is required");
+        if (query.context() == null) invalid("query context is required");
+        if (query.storeIds().size() > FeaturedStoreServicesQuery.MAX_STORE_IDS) {
+            invalid("storeIds is invalid");
+        }
+        Set<Long> ids = new LinkedHashSet<>();
+        for (String storeId : query.storeIds()) {
+            long value = targetId(storeId);
+            ids.add(value);
+        }
+        if (ids.isEmpty()) return List.of();
+        return store.read(mapper -> {
+            List<FeaturedStoreServiceRowEntity> rows =
+                    mapper.selectFeaturedStoreServices(List.copyOf(ids));
+            List<FeaturedStoreServiceItem> items = new ArrayList<>(rows.size());
+            for (FeaturedStoreServiceRowEntity row : rows) items.add(featuredServiceItem(row));
+            return List.copyOf(items);
+        });
+    }
+
+    /** Contract 74 §6.5 wire projection with fail-closed stored-fact validation. */
+    private static FeaturedStoreServiceItem featuredServiceItem(FeaturedStoreServiceRowEntity row) {
+        if (row.getServiceId() == null || row.getServiceId() <= 0
+                || row.getStoreId() == null || row.getStoreId() <= 0
+                || row.getMerchantId() == null || row.getMerchantId() <= 0
+                || row.getCategoryId() == null || row.getCategoryId() <= 0) {
+            unavailable("featured service identity facts are invalid");
+        }
+        if (row.getServiceName() == null || row.getServiceName().isBlank()
+                || row.getServiceName().codePointCount(0, row.getServiceName().length()) > 50) {
+            unavailable("featured service name facts are invalid");
+        }
+        if (row.getCategoryCode() == null || !CATEGORY_CODE.matcher(row.getCategoryCode()).matches()
+                || row.getCategoryName() == null || row.getCategoryName().isBlank()
+                || row.getCategoryName().codePointCount(0, row.getCategoryName().length()) > 20
+                || row.getCategorySortNo() == null
+                || row.getCategorySortNo() < 0 || row.getCategorySortNo() > 9999) {
+            unavailable("featured service category facts are invalid");
+        }
+        if (row.getSalePrice() == null || row.getSalePrice().compareTo(BigDecimal.ZERO) <= 0
+                || (row.getListPrice() != null
+                        && row.getListPrice().compareTo(row.getSalePrice()) < 0)
+                || row.getDurationMinutes() == null || row.getDurationMinutes() <= 0) {
+            unavailable("featured service price facts are invalid");
+        }
+        FulfillmentType fulfillment;
+        try {
+            fulfillment = FulfillmentType.valueOf(String.valueOf(row.getFulfillmentType()));
+        } catch (RuntimeException unknown) {
+            throw new ApiException(CommonApiCodes.DEPENDENCY_UNAVAILABLE,
+                    "featured service fulfillment type is unknown");
+        }
+        return new FeaturedStoreServiceItem(
+                IDS.toApi(row.getServiceId()),
+                IDS.toApi(row.getStoreId()),
+                IDS.toApi(row.getMerchantId()),
+                row.getServiceName(),
+                IDS.toApi(row.getCategoryId()),
+                row.getCategoryCode(),
+                row.getCategoryName(),
+                row.getCategorySortNo(),
+                row.getSalePrice(),
+                row.getListPrice(),
+                row.getDurationMinutes(),
+                fulfillment.name());
+    }
+
+    /** Resolves an exact, enabled category code to its id; unknown/disabled stay indistinguishable. */
+    private static long enabledCategoryId(ServiceReadMapper mapper, String categoryCode) {
+        CatalogCategoryReadEntity row = mapper.selectCategoryByCode(categoryCode);
+        if (row == null) invalid("categoryCode is invalid");
+        String status = row.getStatus();
+        if (!"ENABLED".equals(status) && !"DISABLED".equals(status)) {
+            unavailable("service category status is unknown");
+        }
+        if (row.getId() == null || row.getId() <= 0) {
+            unavailable("service category identity is invalid");
+        }
+        if (!"ENABLED".equals(status)) invalid("categoryCode is invalid");
+        return row.getId();
+    }
+
+    /** C-visible store set for the requested open cities, from the merchant display-domain read. */
+    private Set<Long> visibleStoreIds(List<String> cityCodes, QueryContext context) {
+        List<String> ids;
+        try {
+            ids = displayStoreIds.listDisplayStoreIds(
+                    new MerchantDisplayStoreIdsQuery(cityCodes, context));
+        } catch (ApiException known) {
+            throw known;
+        } catch (RuntimeException failure) {
+            unavailable("merchant display store facts unavailable");
+            return Set.of();
+        }
+        if (ids == null) unavailable("merchant display store facts are invalid");
+        Set<Long> stores = new HashSet<>();
+        for (String id : ids) {
+            try {
+                stores.add(IDS.fromApi(id));
+            } catch (RuntimeException malformed) {
+                unavailable("merchant display store facts are invalid");
+            }
+        }
+        return stores;
+    }
+
+    /** Contract 74 §3.1 wire projection with fail-closed stored-fact validation. */
+    private static CatalogServiceCategoryItem categoryItem(
+            CatalogCategoryReadEntity category, long[] aggregate) {
+        if (category.getId() == null || category.getId() <= 0) {
+            unavailable("service category identity is invalid");
+        }
+        String code = category.getCategoryCode();
+        if (code == null || !CATEGORY_CODE.matcher(code).matches()) {
+            unavailable("service category code is invalid");
+        }
+        String name = category.getCategoryName();
+        if (name == null || name.isBlank() || name.codePointCount(0, name.length()) > 20) {
+            unavailable("service category name is invalid");
+        }
+        Integer sortNo = category.getSortNo();
+        if (sortNo == null || sortNo < 0 || sortNo > 9999) {
+            unavailable("service category sort number is invalid");
+        }
+        String iconUrl = category.getIconUrl();
+        if (iconUrl != null && iconUrl.codePointCount(0, iconUrl.length()) > 512) {
+            unavailable("service category icon is invalid");
+        }
+        String description = category.getDescription();
+        if (description != null && description.codePointCount(0, description.length()) > 200) {
+            unavailable("service category description is invalid");
+        }
+        long storeCount = aggregate[0];
+        long serviceCount = aggregate[1];
+        if (storeCount <= 0 || serviceCount <= 0
+                || storeCount > Integer.MAX_VALUE || serviceCount > Integer.MAX_VALUE) {
+            unavailable("service category availability facts are invalid");
+        }
+        return new CatalogServiceCategoryItem(
+                code,
+                name,
+                category.getParentCode(),
+                iconUrl,
+                description,
+                sortNo,
+                (int) storeCount,
+                (int) serviceCount);
     }
 
     /** LIKE wildcard literalisation for the §3.3.3 keyword match (escape char is a backslash). */

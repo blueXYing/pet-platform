@@ -108,6 +108,9 @@ public interface MarketingMapper {
     long countEnabledPlacements(@Param("positionCode") String positionCode,
             @Param("cityCode") String cityCode, @Param("now") LocalDateTime now);
 
+    /** Status-only ENABLED count for position-wide limits (HOT_SERVICE_TOP: at most 1). */
+    long countEnabledPlacementRows(@Param("positionCode") String positionCode);
+
     int insertPlacement(PlacementRow row);
 
     int updatePlacement(PlacementRow row);

@@ -309,6 +309,13 @@
           AND start_at &lt; #{now} AND end_at &gt; #{now}
     </select>
 
+    <!-- 71 v0.3: platform-wide ENABLED count by status alone (no window predicate), so two
+         future-window HOT_SERVICE_TOP placements can never both sit ENABLED. -->
+    <select id="countEnabledPlacementRows" resultType="long">
+        SELECT COUNT(*) FROM marketing_placement
+        WHERE position_code=#{positionCode} AND status='ENABLED'
+    </select>
+
     <insert id="insertPlacement">
         INSERT INTO marketing_placement
             (id,position_code,campaign_id,city_code,title_override,subtitle_override,image_url_override,

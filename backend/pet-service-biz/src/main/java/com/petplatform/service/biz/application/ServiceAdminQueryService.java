@@ -177,7 +177,12 @@ public final class ServiceAdminQueryService {
                     for (ServiceCategoryEntity c : m.selectEnabledCategories()) {
                         items.add(
                                 new ServiceCategoryItem(
-                                        IDS.toApi(c.getId()), c.getCategoryName(), c.getSortNo()));
+                                        IDS.toApi(c.getId()),
+                                        c.getCategoryCode(),
+                                        c.getCategoryName(),
+                                        c.getIconUrl(),
+                                        c.getDescription(),
+                                        c.getSortNo()));
                     }
                     return new ServiceCategoryPage(List.copyOf(items));
                 });

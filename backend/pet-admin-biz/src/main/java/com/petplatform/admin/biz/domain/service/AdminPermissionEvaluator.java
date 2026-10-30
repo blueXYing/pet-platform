@@ -58,7 +58,10 @@ public final class AdminPermissionEvaluator {
   public static final Set<String> DEPLOYED_ACTIONS =
       Set.of("merchant.application.read", "merchant.application.decide",
           "merchant.identity.reveal", "service.review.read", "service.review.decide",
-          "service.force.offline", "aftersale.read", "aftersale.handle", "aftersale.decide",
+          "service.force.offline",
+          // CCR-SVC-CAT-001 B-SVC-02 service category dictionary face.
+          "service.category.read", "service.category.manage",
+          "aftersale.read", "aftersale.handle", "aftersale.decide",
           "review.appeal.read", "review.appeal.decide",
           "points.task.config.read", "points.task.config.write",
           "order.read", "order.status-log.read", "order.verification-log.read", "refund.read",
