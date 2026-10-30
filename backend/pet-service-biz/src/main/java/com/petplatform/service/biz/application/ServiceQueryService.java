@@ -12,6 +12,7 @@ import com.petplatform.merchant.api.query.MerchantDisplayStoreIdsQuery;
 import com.petplatform.service.api.dto.CatalogServiceCategoryTypes.CatalogServiceCategoryItem;
 import com.petplatform.service.api.dto.CatalogServiceCategoryTypes.CatalogServiceCategoryPage;
 import com.petplatform.service.api.dto.CatalogServiceCategoryTypes.CatalogServiceCategoryStores;
+import com.petplatform.service.api.dto.FeaturedStoreServiceTypes.FeaturedStoreServiceItem;
 import com.petplatform.service.api.dto.ServiceBookabilityDTO;
 import com.petplatform.service.api.dto.ServiceSnapshotDTO;
 import com.petplatform.service.api.dto.ServiceSnapshotPageDTO;
@@ -19,12 +20,15 @@ import com.petplatform.service.api.enums.FulfillmentType;
 import com.petplatform.service.api.query.CatalogServiceCategoryQuery;
 import com.petplatform.service.api.query.CatalogServiceCategoryStoresQuery;
 import com.petplatform.service.api.query.CatalogServiceSearchQuery;
+import com.petplatform.service.api.query.FeaturedActiveServiceStoresQuery;
+import com.petplatform.service.api.query.FeaturedStoreServicesQuery;
 import com.petplatform.service.api.query.ServiceBookabilityQuery;
 import com.petplatform.service.api.query.ServiceSnapshotQuery;
 import com.petplatform.service.api.query.StoreServiceSnapshotQuery;
 import com.petplatform.service.biz.infrastructure.persistence.ServiceReadStore;
 import com.petplatform.service.biz.infrastructure.persistence.entity.CatalogCategoryReadEntity;
 import com.petplatform.service.biz.infrastructure.persistence.entity.CatalogCategoryStoreCountEntity;
+import com.petplatform.service.biz.infrastructure.persistence.entity.FeaturedStoreServiceRowEntity;
 import com.petplatform.service.biz.infrastructure.persistence.entity.ServiceItemReadEntity;
 import com.petplatform.service.biz.infrastructure.persistence.mapper.ServiceReadMapper;
 import java.math.BigDecimal;
@@ -263,6 +267,108 @@ public final class ServiceQueryService {
             }
             return new CatalogServiceCategoryStores(categoryCode, ids);
         });
+    }
+
+    /**
+     * Contract 74 §3.4 featured-card candidates (B-CARD-01): distinct stores holding at least one
+     * ACTIVE service, optionally narrowed to the exact enabled category, ascending. Store
+     * C-visibility is composed by the caller over the merchant display-store facts; this read
+     * stays one grouped query and never exposes service rows.
+     */
+    public List<String> featuredStoreIds(FeaturedActiveServiceStoresQuery query) {
+        if (query == null) invalid("query is required");
+        if (query.context() == null) invalid("query context is required");
+        String categoryCode = query.categoryCode();
+        if (categoryCode != null && !CATEGORY_CODE.matcher(categoryCode).matches()) {
+            invalid("categoryCode is invalid");
+        }
+        return store.read(mapper -> {
+            Long categoryId = categoryCode == null ? null : enabledCategoryId(mapper, categoryCode);
+            List<Long> storeIds = mapper.selectActiveServiceStoreIds(categoryId);
+            List<String> ids = new ArrayList<>(storeIds.size());
+            for (Long storeId : storeIds) {
+                if (storeId == null || storeId <= 0) {
+                    unavailable("featured store facts are invalid");
+                }
+                ids.add(IDS.toApi(storeId));
+            }
+            return List.copyOf(ids);
+        });
+    }
+
+    /**
+     * Contract 74 §6.5 featured-card service enumeration (B-CARD-01): every ACTIVE service of the
+     * requested stores in one window-partitioned query. The per-service dictionary category is
+     * mandatory on the wire, so a missing category row is damaged facts and fails closed (503);
+     * the sold-count merge and the confirmed top-2 selection belong to the composing read after
+     * the order-domain facts arrive.
+     */
+    public List<FeaturedStoreServiceItem> featuredStoreServices(FeaturedStoreServicesQuery query) {
+        if (query == null) invalid("query is required");
+        if (query.context() == null) invalid("query context is required");
+        if (query.storeIds().size() > FeaturedStoreServicesQuery.MAX_STORE_IDS) {
+            invalid("storeIds is invalid");
+        }
+        Set<Long> ids = new LinkedHashSet<>();
+        for (String storeId : query.storeIds()) {
+            long value = targetId(storeId);
+            ids.add(value);
+        }
+        if (ids.isEmpty()) return List.of();
+        return store.read(mapper -> {
+            List<FeaturedStoreServiceRowEntity> rows =
+                    mapper.selectFeaturedStoreServices(List.copyOf(ids));
+            List<FeaturedStoreServiceItem> items = new ArrayList<>(rows.size());
+            for (FeaturedStoreServiceRowEntity row : rows) items.add(featuredServiceItem(row));
+            return List.copyOf(items);
+        });
+    }
+
+    /** Contract 74 §6.5 wire projection with fail-closed stored-fact validation. */
+    private static FeaturedStoreServiceItem featuredServiceItem(FeaturedStoreServiceRowEntity row) {
+        if (row.getServiceId() == null || row.getServiceId() <= 0
+                || row.getStoreId() == null || row.getStoreId() <= 0
+                || row.getMerchantId() == null || row.getMerchantId() <= 0
+                || row.getCategoryId() == null || row.getCategoryId() <= 0) {
+            unavailable("featured service identity facts are invalid");
+        }
+        if (row.getServiceName() == null || row.getServiceName().isBlank()
+                || row.getServiceName().codePointCount(0, row.getServiceName().length()) > 50) {
+            unavailable("featured service name facts are invalid");
+        }
+        if (row.getCategoryCode() == null || !CATEGORY_CODE.matcher(row.getCategoryCode()).matches()
+                || row.getCategoryName() == null || row.getCategoryName().isBlank()
+                || row.getCategoryName().codePointCount(0, row.getCategoryName().length()) > 20
+                || row.getCategorySortNo() == null
+                || row.getCategorySortNo() < 0 || row.getCategorySortNo() > 9999) {
+            unavailable("featured service category facts are invalid");
+        }
+        if (row.getSalePrice() == null || row.getSalePrice().compareTo(BigDecimal.ZERO) <= 0
+                || (row.getListPrice() != null
+                        && row.getListPrice().compareTo(row.getSalePrice()) < 0)
+                || row.getDurationMinutes() == null || row.getDurationMinutes() <= 0) {
+            unavailable("featured service price facts are invalid");
+        }
+        FulfillmentType fulfillment;
+        try {
+            fulfillment = FulfillmentType.valueOf(String.valueOf(row.getFulfillmentType()));
+        } catch (RuntimeException unknown) {
+            throw new ApiException(CommonApiCodes.DEPENDENCY_UNAVAILABLE,
+                    "featured service fulfillment type is unknown");
+        }
+        return new FeaturedStoreServiceItem(
+                IDS.toApi(row.getServiceId()),
+                IDS.toApi(row.getStoreId()),
+                IDS.toApi(row.getMerchantId()),
+                row.getServiceName(),
+                IDS.toApi(row.getCategoryId()),
+                row.getCategoryCode(),
+                row.getCategoryName(),
+                row.getCategorySortNo(),
+                row.getSalePrice(),
+                row.getListPrice(),
+                row.getDurationMinutes(),
+                fulfillment.name());
     }
 
     /** Resolves an exact, enabled category code to its id; unknown/disabled stay indistinguishable. */
