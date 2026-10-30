@@ -693,3 +693,53 @@ CCR-AFS-PAGE-OPTIONS-001 已批准目录读取：目录不完整/代码名称不
 - 备注写路由（PUT `/merchant/customers/{userId}/note`，命令 `merchant.customer.note.update`）：400 `COMMON_INVALID_ARGUMENT`（严格 JSON/note>200 码点/版本格式）；401/403 同上（写权 requireOwner，FROZEN 拒绝）；404 同形防枚举；409 `COMMON_CONFLICT`（expectedVersion 冲突）、`IDEMPOTENCY_KEY_CONFLICT`（同 key 异参）；503（绑定/审计/事实不可读）。
 
 无新增错误码。
+
+## 营销活动中心 HTTP 状态映射（2026-10-27 71/72 号，CCR-MKT-001）
+
+新增业务码：
+
+| Code | 含义 | 建议 HTTP |
+|---|---|---:|
+| CAMPAIGN_NOT_FOUND | 活动不存在或不可见（防枚举） | 404 |
+| CAMPAIGN_STATE_NOT_ALLOWED | 当前活动状态不允许该动作 | 409 |
+| CAMPAIGN_LANDING_INVALID | 活动/投放落地页无效 | 409 |
+| CAMPAIGN_PAGE_INVALID | 页面 Schema 不合法 | 400 |
+| PLACEMENT_LIMIT_EXCEEDED | 首页 Banner 同时启用超过 3 个 | 409 |
+| ENROLLMENT_NOT_OPEN | 不在报名窗口 | 409 |
+| ENROLLMENT_ALREADY_EXISTS | 同门店同活动已有有效报名 | 409 |
+| ENROLLMENT_QUOTA_EXCEEDED | 活动报名名额已满 | 409 |
+| ENROLLMENT_STATE_NOT_ALLOWED | 报名状态不允许该动作 | 409 |
+| MARKETING_STORE_NOT_ELIGIBLE | 门店当前不可见/不可参与 | 409 |
+| COUPON_CAMPAIGN_NOT_FOUND | 券活动不存在/不可见 | 404 |
+| COUPON_CAMPAIGN_NOT_CLAIMABLE | 券活动当前不可领取 | 409 |
+| COUPON_CAMPAIGN_SOLD_OUT | 券活动库存或预算耗尽 | 409 |
+| COUPON_CLAIM_LIMIT_REACHED | 达到每人限领 | 409 |
+| COUPON_CLAIMED | 已领取该活动券 | 409 |
+| MARKETING_ASSET_INVALID | 营销素材格式/尺寸不合法 | 400 |
+| MARKETING_ASSET_TOO_LARGE | 营销素材超过 2MiB | 413 |
+
+通用复用：400 `COMMON_INVALID_ARGUMENT`、401 `COMMON_UNAUTHORIZED`、403 `COMMON_FORBIDDEN`、
+404 `COMMON_NOT_FOUND`、409 `COMMON_CONFLICT`/`IDEMPOTENCY_KEY_CONFLICT`、
+503 `COMMON_DEPENDENCY_UNAVAILABLE`。C 端活动读失败隐藏模块；后台写失败不落业务行。
+
+## 社区 HTTP 状态映射（2026-10-28 73 号，CCR-COM-001）
+
+新增业务码：
+
+| Code | 含义 | 建议 HTTP |
+|---|---|---:|
+| COMMUNITY_POST_NOT_FOUND | 动态不存在/不可见/已下线（防枚举） | 404 |
+| COMMUNITY_COMMENT_NOT_FOUND | 评论不存在/不可见 | 404 |
+| COMMUNITY_TOPIC_NOT_FOUND | 话题不存在/已停用 | 404 |
+| COMMUNITY_USER_NOT_FOUND | 社区用户不存在 | 404 |
+| COMMUNITY_POST_INVALID | 动态正文/标题/图片数量不合法 | 400 |
+| COMMUNITY_COMMENT_INVALID | 评论正文不合法 | 400 |
+| COMMUNITY_REPORT_INVALID | 举报对象/原因不合法 | 400 |
+| COMMUNITY_MEDIA_INVALID | 社区图片格式/尺寸/归属不合法 | 400 |
+| COMMUNITY_MEDIA_TOO_LARGE | 社区图片超过 2MiB | 413 |
+| COMMUNITY_STATE_NOT_ALLOWED | 当前动态/评论状态不允许该动作 | 409 |
+| COMMUNITY_ALREADY_REPORTED | 同一用户已举报该对象 | 409 |
+
+通用复用：400 `COMMON_INVALID_ARGUMENT`、401 `COMMON_UNAUTHORIZED`、403 `COMMON_FORBIDDEN`、
+404 `COMMON_NOT_FOUND`、409 `COMMON_CONFLICT`/`IDEMPOTENCY_KEY_CONFLICT`、
+503 `COMMON_DEPENDENCY_UNAVAILABLE`。C 端公开读失败隐藏区块；写失败不落业务行。
