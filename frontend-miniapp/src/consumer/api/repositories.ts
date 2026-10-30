@@ -119,12 +119,15 @@ export class RealServiceRepository {
     id(storeId)
     return this.api.anonymousRequest({ method: 'GET', path: `/api/v1/c/stores/${storeId}/services`, data: { page, pageSize } }, decodeServicePage)
   }
-  /** HTTP10 §3.3.3 目录关键词搜索（2026-10-19 裁决）：匿名 GET，keyword 必填 1..30 码点。 */
-  search(keyword: string, page = 1, pageSize = 20): Promise<ServicePage> {
+  /** HTTP10 §3.3.3 目录关键词搜索（2026-10-19 裁决）：匿名 GET，keyword 必填 1..30 码点。
+   *  74 §3.3（2026-10-30）：可选 categoryCode 与 keyword 按 AND 组合，合法性由服务端裁决。 */
+  search(keyword: string, page = 1, pageSize = 20, categoryCode?: string): Promise<ServicePage> {
     const trimmed = keyword.trim()
     if (trimmed.length < 1 || [...trimmed].length > 30) return Promise.reject(new Error('INVALID_KEYWORD'))
+    const data: Record<string, unknown> = { keyword: trimmed, page, pageSize }
+    if (categoryCode) data.categoryCode = categoryCode
     return this.api.anonymousRequest(
-      { method: 'GET', path: '/api/v1/c/services', data: { keyword: trimmed, page, pageSize } },
+      { method: 'GET', path: '/api/v1/c/services', data },
       decodeServicePage)
   }
   detail(serviceId: string): Promise<ServiceDetailView> {
