@@ -31,14 +31,12 @@
 /* ===== 顶部装饰层（原稿 y0..~250：huaban 纸纹 402x175 STRETCH（<Image> 组件）+ 蓝白波浪 + 木夹贴纸 52.4）===== */
 .mine-strip { position: absolute; left: 0; top: 0; width: 100%; height: calc(var(--mine-unit) * 175); pointer-events: none; }
 .mine-wave-blue { position: absolute; left: calc(var(--mine-unit) * 8); top: calc(var(--mine-unit) * 12); pointer-events: none; }
-/* 白便签（Vector 3 690:10581）：本地几何 346x217 + 节点矩阵（旋转≈2.5°+斜切），
-   局部原点落在画板 (29.94,4)——不铺满全宽，两侧露出竖条纹底（690:10498）。 */
+/* 白便签（Vector 3 690:10581）：SVG 导出即 absoluteRenderBounds 烘焙后形状（345.9x216.8），
+   直接按画板 (27.67,18.37) 摆放，勿再加节点矩阵——底边落统计卡下缘，顶上 0~18 露竖条纹。 */
 .mine-wave-white {
   position: absolute;
-  left: calc(var(--mine-unit) * 29.94); top: calc(var(--mine-unit) * 4);
-  width: calc(var(--mine-unit) * 346); height: calc(var(--mine-unit) * 217);
-  transform: matrix(0.999, 0.0441, -0.1562, 0.9877, 0, 0);
-  transform-origin: 0 0;
+  left: calc(var(--mine-unit) * 27.67); top: calc(var(--mine-unit) * 18.37);
+  width: calc(var(--mine-unit) * 345.9); height: calc(var(--mine-unit) * 216.8);
   pointer-events: none;
 }
 /* huaban-6727256158（690:10582 @3x 导出）：Group 28 最上层（蓝白纸之上）。 */
