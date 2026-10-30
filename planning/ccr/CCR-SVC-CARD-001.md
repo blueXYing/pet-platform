@@ -130,7 +130,7 @@
    契约 71 §3.4 更新。
 2. `GET /api/v1/c/marketing/home-blocks` 的 `targetType` 白名单增加 `HOT_SERVICE`：
    首页热门服务卡点击进入热门服务二级页。
-   契约 71 §10（v0.2 补充）/CCR-MKT-003 更新。
+   契约 71 §10（v0.3 更新）/CCR-MKT-003 更新。
 3. 热门服务页顶部 banner 使用新增 `HOT_SERVICE_TOP` 投放位：
    - 契约 71 §2.3 投放位 `positionCode` 白名单增加 `HOT_SERVICE_TOP`；
    - C 端复用 `GET /api/v1/c/marketing/placements?positionCode=HOT_SERVICE_TOP&cityCode=`，

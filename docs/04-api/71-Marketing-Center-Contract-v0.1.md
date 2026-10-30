@@ -1,15 +1,33 @@
-# 营销活动中心契约 v0.1（MKT-001）
+# 营销活动中心契约 v0.3（MKT-001）
 
-状态：IMPLEMENTED_INTERNAL_DEFAULT_OFF，最终以实现 PR 的 CI 为准。2026-10-27。
+> 文件名沿用 `71-Marketing-Center-Contract-v0.1.md` 以兼容既有链接；契约版本以本标题和
+> 下方版本记录为准。
+
+状态：v0.3 契约（2026-10-30）。既有 v0.1 部分 IMPLEMENTED_INTERNAL_DEFAULT_OFF；
+v0.3 新增部分待实现，最终以实现 PR 的 CI 为准。
 依据：[38 号裁决补充](../01-prd/38-营销活动中心裁决补充-v1.0.md)、
 [CCR-MKT-001](../../planning/ccr/CCR-MKT-001.md)、C 端 PRD 5.1.2/5.1.13/5.1.14/5.1.21、
-商家端 PRD 5.7、运营端 PRD 6.4.2/6.11.5、Figma `689:1190`/`110:480`/`96:3328`/`96:4355`。
+商家端 PRD 5.7、运营端 PRD 6.4.2/6.11.5、
+Figma `689:1190`/`110:480`/`97:7825`/`96:3328`/`96:4355`。
+v0.3 关联：[CCR-SVC-CAT-001](../../planning/ccr/CCR-SVC-CAT-001.md)、
+[CCR-SVC-CARD-001](../../planning/ccr/CCR-SVC-CARD-001.md)、
+[74 号服务目录页契约](74-Service-Catalog-Page-Contract-v0.1-draft.md)、
+[71 号热门服务补丁草案](71-Marketing-Center-Contract-v0.1-hot-service-patch-draft.md)。
 券活动与领取的字段/规则以 [72 号](72-Coupon-Campaign-Contract-v0.1.md) 为准；券实例生命周期
 仍以 [61 号](61-Coupon-Lifecycle-Contract-v0.1.md) 为准。
 
+版本记录：
+
+| 版本 | 日期 | 变更 |
+|---|---|---|
+| v0.1 | 2026-10-27 | 初版（活动/投放位/报名/页面 Schema/券活动） |
+| v0.2 | 2026-10-28 | §10 首页运营内容位（CCR-MKT-003） |
+| v0.3 | 2026-10-30 | `HOT_SERVICE_TOP` 投放位；首页 `HOT_SERVICE` 落地；商家钜惠图片；活动分类字典校验 |
+
 ## 1. 范围与边界
 
-营销中心负责：活动位、活动会场、参与门店、商家报名、商家发起活动、页面 Schema、券活动投放位。
+营销中心负责：活动位、活动会场、参与门店、商家报名、商家发起活动、页面 Schema、券活动投放位、
+热门服务页顶部投放位（`HOT_SERVICE_TOP`）。
 不负责：券实例冻结/消费/释放/返券（61 号）、订单/支付/退款/核销/售后、商家资金结算/分摊。
 营销不得创建订单、不得修改 `pay_amount`、不得绕过券生命周期。
 
@@ -34,7 +52,7 @@
 | status | enum | `DRAFT/PENDING_REVIEW/SCHEDULED/ONLINE/PAUSED/ENDED/CANCELED/REJECTED` |
 | title/subtitle/tagCode/tagName/coverUrl | String | 标题 1..100，副标题 ≤200，角标 ≤32，封面/后台素材 URL 生产 HTTPS ≤512（本地 E2E 可显式 allow-http） |
 | cityCodes | String[] | 空数组=全部开放城市；否则必须是开放城市 |
-| serviceCategoryCodes | String[] | 空数组=全部；否则必须是服务字典启用分类 |
+| serviceCategoryCodes | String[] | 空数组=全部；否则每项 `^[A-Z][A-Z0-9_]{1,31}$`，必须是服务字典 `categoryCode` 且 `ENABLED`；停用分类不允许新选 |
 | startAt/endAt | ISO-8601 | 必须 `startAt < endAt` |
 | enrollStartAt/enrollEndAt | ISO-8601/null | `MERCHANT_ENROLL` 必填，且在活动期内 |
 | enrollmentQuota | int/null | 1..10000，null=不限 |
@@ -42,6 +60,11 @@
 | pageVersion | int | 当前发布版本，从 1 开始 |
 | version | int | 乐观锁 |
 | createdAt/updatedAt | ISO-8601 | UTC 毫秒 |
+
+`serviceCategoryCodes` 使用服务分类字典的 `categoryCode`（如 `PET_GROOMING`），不使用分类名或
+内部 `categoryId`；创建/编辑时经 service-api 校验。严格校验受
+`pet.marketing.campaign.category-validation.enabled` 控制（默认 false），存量清理完成后再开启；
+未知/停用/词法非法 code 返回 400 `SERVICE_CATEGORY_INVALID`。
 
 状态机：
 `DRAFT → PENDING_REVIEW（商家）→ SCHEDULED/ONLINE（运营发布）→ PAUSED → ENDED`；
@@ -67,18 +90,20 @@
 | 字段 | 类型 | 约束 |
 |---|---|---|
 | placementId | String | Snowflake |
-| positionCode | enum | `HOME_BANNER` / `HOME_ACTIVITY` / `STORE_LIST_TOP` |
+| positionCode | enum | `HOME_BANNER` / `HOME_ACTIVITY` / `STORE_LIST_TOP` / `HOT_SERVICE_TOP` |
 | campaignId | String | 必须指向 `SCHEDULED/ONLINE` 活动 |
 | cityCode | String/null | null=全部开放城市 |
 | titleOverride/subtitleOverride/imageUrlOverride | String/null | 覆盖活动展示字段；`imageUrlOverride` 可为后台素材 URL |
-| templateCode | String/null | 首页活动卡白名单模板，如 `new_user` / `beauty`；未知模板按通用版式 |
+| templateCode | String/null | 首页活动卡白名单模板，如 `new_user` / `beauty`；未知模板按通用版式；`HOT_SERVICE_TOP` 可空，使用固定 banner 版式 |
 | sortWeight | int | 0..9999 |
 | startAt/endAt | ISO-8601 | 投放窗口，必须在活动窗口内或相交 |
 | status | enum | `DRAFT/ENABLED/DISABLED` |
 | version | int | 乐观锁 |
 
-规则：`HOME_BANNER` 同时启用最多 3 条；投放位/活动/落地页任一失效，C 端隐藏并告警；
-跳转参数不得含手机号等敏感信息。同位置同城市按 `sortWeight ASC, placementId ASC` 稳定排序。
+规则：`HOME_BANNER` 同时启用最多 3 条；`HOT_SERVICE_TOP` 全平台最多 1 条启用（不分城市，
+`cityCode` 只决定该条展示范围：null=全部开放城市，具体城市=仅该城市可见）。
+投放位/活动/落地页任一失效，C 端隐藏并告警；跳转参数不得含手机号等敏感信息。
+同位置同城市按 `sortWeight ASC, placementId ASC` 稳定排序。
 
 ### 2.4 商家报名 `marketing_enrollment`
 
@@ -130,11 +155,12 @@ MINIAPP_PATH/COUPON_CLAIM/NONE`；`MINIAPP_PATH` 仅允许已审批白名单路�
 
 `GET /api/v1/c/marketing/placements?positionCode=HOME_ACTIVITY&cityCode=310100`
 
-- `positionCode` 必填，允许 `HOME_BANNER/HOME_ACTIVITY/STORE_LIST_TOP`；`cityCode` 可选。
+- `positionCode` 必填，允许 `HOME_BANNER/HOME_ACTIVITY/STORE_LIST_TOP/HOT_SERVICE_TOP`；`cityCode` 可选。
 - data：`{ items: [{ placementId, positionCode, campaignId, title, subtitle, tagCode, tagName,
   coverUrl, templateCode, startAt, endAt, jumpType, jumpParams }], version }`
 - 过滤：投放位 `ENABLED`、当前在投放窗口、活动 `ONLINE` 且当前在活动窗口、城市匹配；
-  落地页失效的条目不返回并告警。`HOME_BANNER` 最多 3 条。
+  落地页失效的条目不返回并告警。`HOME_BANNER` 最多 3 条；`HOT_SERVICE_TOP` 全平台最多 1 条，
+  按城市匹配后最多返回 1 条（`cityCode=null` 全部开放城市，具体城市仅该城市）。
 - 失败：400 参数非法；503 读取失败（C 端隐藏该模块，不阻塞页面）。
 
 ### 3.2 活动聚合页
@@ -178,10 +204,14 @@ data：
 
 `GET /api/v1/c/marketing/merchant-deals?cityCode=&limit=10`
 
-- data：`{ items: [{ storeId, storeName, merchantName, cityCode, address, offerTag, offerTitle,
-  offerCopy, source: "MERCHANT_PROMOTION"|"CAMPAIGN", campaignId, promotion }] }`
+- data：`{ items: [{ storeId, storeName, merchantName, cityCode, address, imageUrl,
+  imageUrlExpiresAt, offerTag, offerTitle, offerCopy,
+  source: "MERCHANT_PROMOTION"|"CAMPAIGN", campaignId, promotion }] }`
 - 来源：有有效商家促销（`promo_level/title/text` 非空）的门店 + `STORE_LIST_TOP` 投放活动
   当前可见参与门店；同店去重，活动来源优先；`limit` 1..20，默认 10。
+- `imageUrl`/`imageUrlExpiresAt`：`imageUrl` HTTPS ≤512；`source=CAMPAIGN` 时活动 `coverUrl` →
+  门店头像/首张照片；`source=MERCHANT_PROMOTION` 时门店头像/首张照片；无图返回 null。
+  私有素材返回签名 URL 与过期时间（ISO-8601 UTC 毫秒），公开素材 URL 时 `imageUrlExpiresAt` 可为 null。
 - 门店不可见/活动失效自动剔除；整页读取失败返回 503，C 端隐藏该横排。
 
 ### 3.5 门店详情营销投影
@@ -243,6 +273,10 @@ data：
 报名期内可报名）、券活动（若绑定，必须 ACTIVE/SCHEDULED 且模板有效）；发布成功复制草稿
 Schema 为发布快照并 `pageVersion+1`；商家发起活动只有 `PENDING_REVIEW` 可发布/驳回。
 
+`serviceCategoryCodes` 创建/编辑时经 service-api 校验字典 code；未知/停用/词法非法返回
+400 `SERVICE_CATEGORY_INVALID`。严格校验受
+`pet.marketing.campaign.category-validation.enabled`（默认 false）控制；存量清理后再开启。
+
 ### 4.2 投放位
 
 | 方法/路径 | 动作码 | 请求 | 成功 data |
@@ -254,7 +288,8 @@ Schema 为发布快照并 `pageVersion+1`；商家发起活动只有 `PENDING_RE
 | POST `/api/v1/admin/marketing/placements/{id}/disable` | marketing.placement.manage | `{expectedVersion}` | status/version |
 
 规则：启用时校验活动 `SCHEDULED/ONLINE`、窗口相交、落地页有效；`HOME_BANNER` 启用后
-同时启用数 ≤3；城市必须是开放城市。
+同时启用数 ≤3；`HOT_SERVICE_TOP` 全平台最多 1 条启用（计数与启停同事务，第二条
+409 `PLACEMENT_LIMIT_EXCEEDED`）；城市必须是开放城市。
 
 ### 4.3 商家报名审核
 
@@ -293,8 +328,8 @@ Schema 为发布快照并 `pageVersion+1`；商家发起活动只有 `PENDING_RE
 
 - `ENROLLING` 表示 `participationMode=MERCHANT_ENROLL`、`SCHEDULED/ONLINE`、当前在报名窗口、
   城市/服务分类与本店匹配；返回活动卡 + `enrolled` 状态 + `enrollmentStatus`。
-- 服务分类匹配：活动 `serviceCategoryCodes` 为空或与本店任一上架服务分类相交；
-  无服务分类不阻止报名（运营审核时判断）。
+- 服务分类匹配：活动 `serviceCategoryCodes` 为空或与本店任一上架服务分类的字典
+  `categoryCode` 相交；无服务分类不阻止报名（运营审核时判断）。
 
 ### 5.2 报名
 
@@ -336,13 +371,15 @@ Schema 为发布快照并 `pageVersion+1`；商家发起活动只有 `PENDING_RE
 
 错误码（12 号登记）：
 - `CAMPAIGN_NOT_FOUND` 404、`CAMPAIGN_STATE_NOT_ALLOWED` 409、`CAMPAIGN_LANDING_INVALID` 409、
-  `CAMPAIGN_PAGE_INVALID` 400、`PLACEMENT_LIMIT_EXCEEDED` 409、`ENROLLMENT_NOT_OPEN` 409、
+  `CAMPAIGN_PAGE_INVALID` 400、`PLACEMENT_LIMIT_EXCEEDED` 409（HOME_BANNER 最多 3 /
+  HOT_SERVICE_TOP 全平台最多 1）、`SERVICE_CATEGORY_INVALID` 400、`ENROLLMENT_NOT_OPEN` 409、
   `ENROLLMENT_ALREADY_EXISTS` 409、`ENROLLMENT_QUOTA_EXCEEDED` 409、`ENROLLMENT_STATE_NOT_ALLOWED` 409、
   `MARKETING_STORE_NOT_ELIGIBLE` 409、`COUPON_CAMPAIGN_NOT_CLAIMABLE` 409、
   `COUPON_CAMPAIGN_SOLD_OUT` 409、`COUPON_CLAIM_LIMIT_REACHED` 409、`COUPON_CLAIMED` 409、
   `MARKETING_ASSET_INVALID` 400、`MARKETING_ASSET_TOO_LARGE` 413。
 复用 `COMMON_INVALID_ARGUMENT`/`COMMON_NOT_FOUND`/`COMMON_CONFLICT`/`COMMON_DEPENDENCY_UNAVAILABLE`/
-`IDEMPOTENCY_KEY_CONFLICT`。
+`IDEMPOTENCY_KEY_CONFLICT`。`SERVICE_CATEGORY_INVALID` 用于活动创建/编辑时校验
+`serviceCategoryCodes`：未知/停用/词法非法均返回该码。
 
 幂等：全部写接口终结性 `X-Request-Id`；键空间 `MKT:{commandType}:{operatorType}:{operatorId}:{requestId}`
 （商家命令含 merchantId/storeId）；同 ID 同参重放返回首回执，异参 409；审计/领券写与业务行同事务。
@@ -359,6 +396,8 @@ Schema 为发布快照并 `pageVersion+1`；商家发起活动只有 `PENDING_RE
 
 买一送一、团购套餐/次卡/普通商品、折扣券类型、商家自主发券、商家资金结算/分摊、
 秒杀/拼团/裂变/会员卡/直播、个性化推荐、活动曝光/成交归因报表、被动发券自动触发。
+`HOT_SERVICE_TOP` 不做轮播/多条，全平台最多 1 条；热门服务页内的分类不做运营精选，
+由服务分类字典自动生成，首页内容位只作为入口。
 
 ## 10. v0.2 补充：首页运营内容位（2026-10-28，CCR-MKT-003）
 
@@ -377,5 +416,10 @@ Schema 为发布快照并 `pageVersion+1`；商家发起活动只有 `PENDING_RE
 
 C 端 `GET /api/v1/c/marketing/home-blocks?cityCode=` 返回当前 `ENABLED` 且窗口内内容位（城市为空
 或匹配；空/失败前端整块隐藏）。`targetType` 白名单：`SERVICE_DIRECTORY|SERVICE_CATEGORY|STORE|
-SERVICE|CAMPAIGN|COMMUNITY|MINIAPP_PATH|NONE`；目标由前端白名单解释。写操作 requestId 幂等、
-append-only 审计；模板变更仍需小程序发版，内容/图片/排序/上下线不需要。
+SERVICE|CAMPAIGN|COMMUNITY|MINIAPP_PATH|NONE|HOT_SERVICE`；`HOT_SERVICE` 允许 `targetValue=null`，
+点击进入热门服务二级页；热门页内的分类由服务分类字典自动生成，不由内容位配置。其他类型仍要求
+`targetValue` 非空。目标由前端白名单解释。写操作 requestId 幂等、append-only 审计；模板变更仍需
+小程序发版，内容/图片/排序/上下线不需要。
+
+Schema 同步：`marketing_home_block.target_type` CHECK 增加 `HOT_SERVICE`，并允许该类型
+`target_value` 为空；`marketing_placement.position_code` CHECK 增加 `HOT_SERVICE_TOP`。
