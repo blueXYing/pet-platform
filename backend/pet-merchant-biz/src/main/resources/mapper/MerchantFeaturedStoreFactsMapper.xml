@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.petplatform.merchant.biz.infrastructure.persistence.mapper.MerchantFeaturedStoreFactsMapper">
+
+    <!-- Contract 74 §3.4 featured-card store facts (B-CARD-02): one batched read for one card
+         page's stores. Same join family as the STR-D6 display candidates (merchant + store +
+         compat + owner-maintained profile), restricted to the caller's already-visibility-scoped
+         id set; the conjunction is re-evaluated per distinct merchant in the application layer.
+         The contact phone and coordinates are deliberately not selected — the card carries no PII. -->
+    <select id="selectFeaturedStoreFactRows"
+            resultType="com.petplatform.merchant.biz.infrastructure.persistence.entity.MerchantFeaturedStoreFactRowEntity">
+        SELECT m.id AS merchant_id,
+               m.merchant_name,
+               m.status AS merchant_status,
+               s.id AS store_id,
+               s.store_name,
+               s.address,
+               s.status AS store_status,
+               p.city_code AS city_code,
+               sp.intro AS intro,
+               sp.avatar_asset_id AS avatar_asset_id,
+               sp.promo_level AS promo_level,
+               sp.promo_title AS promo_title,
+               sp.promo_text AS promo_text
+        FROM merchant_store s
+        INNER JOIN merchant m ON m.id = s.merchant_id
+        LEFT JOIN merchant_profile_compat p ON p.merchant_id = m.id
+        LEFT JOIN merchant_store_profile sp ON sp.store_id = s.id
+        WHERE s.id IN
+        <foreach collection="storeIds" item="storeId" open="(" separator="," close=")">
+            #{storeId}
+        </foreach>
+        ORDER BY s.id ASC
+    </select>
+</mapper>

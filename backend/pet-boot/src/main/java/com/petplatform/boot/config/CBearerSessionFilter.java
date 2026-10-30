@@ -135,6 +135,10 @@ public final class CBearerSessionFilter extends OncePerRequestFilter {
         // Contract 74 §3.1 C category list: same STR-D8 browse discipline — anonymous GET
         // passes, a carried bearer is validated.
         || path.equals("/api/v1/c/service-categories")
+        // Contract 74 §3.4 featured store cards: same discipline — anonymous GET passes,
+        // a carried bearer is validated (the /c/stores/[^/]+ rule also covers this path;
+        // the explicit entry documents the featured read's own contract).
+        || path.equals("/api/v1/c/stores/featured")
         // C catalog keyword search (HTTP10 §3.3.3, 2026-10-19 search ruling): same STR-D8
         // discipline as the per-store page — anonymous GET passes, a carried bearer validates.
         || path.equals("/api/v1/c/stores")

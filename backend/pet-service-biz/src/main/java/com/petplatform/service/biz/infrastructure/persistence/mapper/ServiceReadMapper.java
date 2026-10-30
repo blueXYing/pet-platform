@@ -2,6 +2,7 @@ package com.petplatform.service.biz.infrastructure.persistence.mapper;
 
 import com.petplatform.service.biz.infrastructure.persistence.entity.CatalogCategoryReadEntity;
 import com.petplatform.service.biz.infrastructure.persistence.entity.CatalogCategoryStoreCountEntity;
+import com.petplatform.service.biz.infrastructure.persistence.entity.FeaturedStoreServiceRowEntity;
 import com.petplatform.service.biz.infrastructure.persistence.entity.ServiceItemReadEntity;
 import java.util.List;
 import org.apache.ibatis.annotations.Param;
@@ -40,4 +41,21 @@ public interface ServiceReadMapper {
 
     /** Distinct stores holding at least one ACTIVE service in the exact category, ascending. */
     List<Long> selectActiveCategoryStoreIds(@Param("categoryId") long categoryId);
+
+    /**
+     * Contract 74 §3.4 featured-card candidates (B-CARD-01): distinct stores holding at least one
+     * ACTIVE service, ascending; a null categoryId removes the category filter. Store visibility
+     * is a separate domain concern; this read only feeds the id intersection at composition.
+     */
+    List<Long> selectActiveServiceStoreIds(@Param("categoryId") Long categoryId);
+
+    /**
+     * Contract 74 §6.5 featured-card service enumeration (B-CARD-01): every ACTIVE service of the
+     * requested stores in ONE window-partitioned query (ROW_NUMBER over store_id), never a query
+     * per store. The window ranks by service id because pet_order sold counts belong to the order
+     * domain and cannot appear in this module's SQL; the composing read applies the confirmed
+     * sold-based top-2 after the order facts are merged in.
+     */
+    List<FeaturedStoreServiceRowEntity> selectFeaturedStoreServices(
+            @Param("storeIds") List<Long> storeIds);
 }

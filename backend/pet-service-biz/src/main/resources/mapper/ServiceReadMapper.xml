@@ -153,4 +153,61 @@
           AND s.status = 'ACTIVE'
         ORDER BY s.store_id ASC
     </select>
+
+    <!-- Contract 74 §3.4 featured-card candidates: distinct stores holding at least one ACTIVE
+         service, ascending; a null categoryId removes the category filter (one grouped read,
+         never a query per category or per store). -->
+    <select id="selectActiveServiceStoreIds" resultType="long">
+        SELECT DISTINCT s.store_id
+        FROM service_item s
+        WHERE s.status = 'ACTIVE'
+        <if test="categoryId != null">
+            AND s.category_id = #{categoryId}
+        </if>
+        ORDER BY s.store_id ASC
+    </select>
+
+    <!-- Contract 74 §6.5 featured-card service enumeration: every ACTIVE service of the requested
+         stores in ONE window-partitioned query (ROW_NUMBER over store_id, deterministic service-id
+         order), never a query per store. Sold counts live in pet_order (order domain) and can
+         never appear in this module's SQL, so the composing read merges the order facts and applies
+         the confirmed soldCount DESC, serviceId ASC top-2 selection afterwards. -->
+    <select id="selectFeaturedStoreServices"
+            resultType="com.petplatform.service.biz.infrastructure.persistence.entity.FeaturedStoreServiceRowEntity">
+        SELECT t.service_id,
+               t.store_id,
+               t.merchant_id,
+               t.service_name,
+               t.category_id,
+               t.category_code,
+               t.category_name,
+               t.category_sort_no,
+               t.sale_price,
+               t.list_price,
+               t.duration_minutes,
+               t.fulfillment_type
+        FROM (
+            SELECT s.id AS service_id,
+                   s.store_id,
+                   s.merchant_id,
+                   s.service_name,
+                   c.id AS category_id,
+                   c.category_code,
+                   c.category_name,
+                   c.sort_no AS category_sort_no,
+                   s.price AS sale_price,
+                   s.list_price,
+                   s.duration_minutes,
+                   s.fulfillment_type,
+                   ROW_NUMBER() OVER (PARTITION BY s.store_id ORDER BY s.id ASC) AS store_rank
+            FROM service_item s
+            LEFT JOIN service_category c ON c.id = s.category_id
+            WHERE s.status = 'ACTIVE'
+              AND s.store_id IN
+            <foreach collection="storeIds" item="storeId" open="(" separator="," close=")">
+                #{storeId}
+            </foreach>
+        ) t
+        ORDER BY t.store_id ASC, t.service_id ASC
+    </select>
 </mapper>
