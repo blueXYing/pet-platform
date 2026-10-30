@@ -37,11 +37,13 @@ export class RealStoreRepository implements StoreDirectoryDeps {
       ? this.cityCatalog()
       : this.api.anonymousRequest({ method: 'GET', path: '/api/v1/c/cities' }, decodeCityList)
   }
-  list({ city, keyword, page = 1, pageSize = 20 }: StoreListQuery): Promise<StorePage> {
+  list({ city, keyword, categoryCode, page = 1, pageSize = 20 }: StoreListQuery): Promise<StorePage> {
     const data: Record<string, unknown> = { page, pageSize }
     if (city !== undefined) data.city = city
     // HTTP10 §3.3.2 搜索增补（2026-10-19）：keyword 收窄门店目录（服务名匹配走 /c/services §3.3.3）。
     if (keyword !== undefined) data.keyword = keyword
+    // 74 §3.2（2026-10-30）：categoryCode 精确筛选，与 city/keyword 按 AND 组合；响应字段不变。
+    if (categoryCode !== undefined) data.categoryCode = categoryCode
     return this.api.anonymousRequest({ method: 'GET', path: '/api/v1/c/stores', data }, decodeStorePage)
   }
   detail(storeId: string): Promise<StoreDetailView> {

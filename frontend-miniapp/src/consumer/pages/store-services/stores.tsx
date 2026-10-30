@@ -4,41 +4,47 @@ import { useCallback, useEffect, useRef, useState, type CSSProperties } from 're
 import { useWorkspace } from '../../../shared/workspace-react'
 import { ConsumerPageLayout } from '../../components/page-layout'
 import { switchConsumerTab } from '../../components/navigation/switch'
+import { SubpageHeader, SubpageHeaderSpacer } from '../../components/navigation/subpage-header'
 import CityPicker from '../../city/picker'
 import { readSelectedCity, writeSelectedCity } from '../../city/model'
-import { PreviewStoreRepository, directoryCategories, isStoreScenario, type StoreCity, type StoreDirectoryDeps, type StoreView } from '../../store/model'
+import { PreviewStoreRepository, isStoreScenario, type StoreCity, type StoreDirectoryDeps, type StoreView } from '../../store/model'
 import { RealStoreRepository, runCatalogRead } from '../../store/repository'
 import { consumerApi } from '../../../shared/consumer-runtime'
 import { RealServiceRepository } from '../../api/repositories'
+import { PreviewServiceCatalogRepository, ServiceCatalogRepository, type ServiceCategoryView } from '../../service-catalog/model'
 import { PreviewServiceRepository, decodeServicePage, type ServiceItemView, type ServicePage } from '../../service/model'
 import iconLocation from './assets/690-6750-icon-location@2x.png'
 import iconPhone from './assets/690-6766-icon-phone@2x.png'
 import './page.css'
 
-// C-003 门店列表（服务tab）— design source: user frame 110:480（服务, 402x1478）with the V1
-// cuts registered in C-003-design-inputs/INVENTORY.md: only the nine frozen /c/stores fields
-// are bound; rating / monthly-sold / distance / hot services / promo strip have no contract
-// facts and are neither implemented nor fabricated; category filtering (STR-D7) stays unwired.
-// 2026-10-19 C 端接线裁决（审计 C1 #4/#5 回补）：
-// ① 搜索接线——门店目录页承载首页搜索（设计稿 77:1267「搜索服务、商家...」展开态；工程落目录页
-//    搜索件，登记偏差）：门店按 §3.3.2 keyword（storeName/merchantName 子串），服务按 §3.3.3
-//    （serviceName/categoryName）；服务搜索无城市维度（service_item 无城市事实，PR 登记偏差），
-//    门店结果按城市收窄；无结果时展示 PRD 5.1.2 要求的「清空条件」入口。
-// ② 城市选择——目录来源 §3.3.4 /c/cities（匿名），选择持久化本地存储并即时刷新；面板形态沿
-//    76:761（CityPicker 组件，与首页城市芯片共用）。
+// C-003 门店列表（服务tab）— design source: user frame 110:480（服务, 402x1478）。九字段契约
+// 之外的事实（评分/月售/距离）既不实现也不伪造；评级/资质标签 V1 不做（74 §10）。
+// 2026-10-19 C 端接线裁决：搜索接线（§3.3.2 keyword + §3.3.3 服务搜索）与城市选择（§3.3.4
+// /c/cities + 76:761 CityPicker 面板），见下方 load/pickCity。
+// 2026-10-30 F-C-04（契约 74 §3.1/§3.2/§3.3）：sdir-top 旧画布头部退役，统一 SubpageHeader
+// （标题行 + 底部工具行=城市芯片+搜索件）；分类 chips 数据来自 GET /c/service-categories
+// （不再硬编码 11 类名称数组）；点分类用 categoryCode 精确筛选 /c/stores（与 city/keyword 按
+// AND 组合，未知/停用 400 → 失败态）；服务搜索同步携带 categoryCode（§3.3 AND 组合）。分类
+// 图标素材未到位是已知状态（G-03/D-01）：iconUrl 缺失渲染占位块，不伪造图标。
 type Phase = 'loading' | 'ready' | 'load-error'
+type CategoriesPhase = 'loading' | 'ready' | 'error'
 const PAGE_SIZE = 20
+// 74 §2.1 categoryCode 词法；路由带入的非法词法参数直接忽略（避免必失败的请求）。
+const isCategoryCode = (value: string | undefined): value is string =>
+  value !== undefined && /^[A-Z][A-Z0-9_]{1,31}(?![\s\S])/.test(value)
 
 export default function StoreDirectoryPage() {
   const route = useRouter()
   const preview = route.params.preview === '1'
   const scenario = preview && isStoreScenario(route.params.scenario) ? route.params.scenario : 'normal'
   const initialKeyword = route.params.keyword ?? ''
+  const initialCategoryCode = isCategoryCode(route.params.categoryCode) ? route.params.categoryCode : undefined
   const { scope, revision } = useWorkspace(preview ? 'preview' : 'real')
   const [repository] = useState<StoreDirectoryDeps>(() => preview
     ? new PreviewStoreRepository(undefined, scenario)
     : new RealStoreRepository(consumerApi))
   const services = useRef(preview ? new PreviewServiceRepository() : new RealServiceRepository(consumerApi))
+  const catalog = useRef(preview ? new PreviewServiceCatalogRepository() : new ServiceCatalogRepository(consumerApi))
   const [phase, setPhase] = useState<Phase>('loading')
   const [cities, setCities] = useState<StoreCity[]>([])
   const [city, setCity] = useState<string | undefined>(undefined)
@@ -50,6 +56,10 @@ export default function StoreDirectoryPage() {
   // 搜索态：draft 为输入框内容，keyword 为已提交关键词（空串=非搜索态，恢复普通目录）。
   const [draft, setDraft] = useState(initialKeyword)
   const [keyword, setKeyword] = useState(initialKeyword)
+  // 分类态：categoryCode 为已提交筛选（undefined=全部）；chips 字典来自 /c/service-categories。
+  const [categoryCode, setCategoryCode] = useState<string | undefined>(initialCategoryCode)
+  const [categories, setCategories] = useState<readonly ServiceCategoryView[]>([])
+  const [categoriesPhase, setCategoriesPhase] = useState<CategoriesPhase>('loading')
   const [serviceHits, setServiceHits] = useState<ServiceItemView[] | null>(null)
   const [serviceTotal, setServiceTotal] = useState(0)
   const [cityPickerOpen, setCityPickerOpen] = useState(false)
@@ -63,16 +73,18 @@ export default function StoreDirectoryPage() {
     return () => Taro.offWindowResize(handler)
   }, [])
 
-  const load = useCallback(async (nextCity: string | undefined, nextKeyword: string) => {
+  const load = useCallback(async (nextCity: string | undefined, nextKeyword: string, nextCategoryCode: string | undefined) => {
     setPhase('loading'); setNotice('')
     const current = ++sequence.current
     const currentRevision = scope.revision
     const trimmed = nextKeyword.trim()
     try {
       // Anonymous-browsable per STR-D8: with no session the catalog read runs bare.
+      // 74 §3.2：categoryCode 精确筛选；未知/停用 400 走下方失败态（不吞错、不伪造空目录）。
       const result = await runCatalogRead(scope, () => repository.list({
         city: nextCity,
         keyword: trimmed === '' ? undefined : trimmed,
+        categoryCode: nextCategoryCode,
         page: 1,
         pageSize: PAGE_SIZE,
       }))
@@ -80,7 +92,7 @@ export default function StoreDirectoryPage() {
       setItems(result.items); setTotal(result.total); setPage(1); setPhase('ready')
       if (trimmed === '') { setServiceHits(null); setServiceTotal(0); return }
       try {
-        const servicesPage: ServicePage = await runCatalogRead(scope, () => services.current!.search(trimmed, 1, PAGE_SIZE))
+        const servicesPage: ServicePage = await runCatalogRead(scope, () => services.current!.search(trimmed, 1, PAGE_SIZE, nextCategoryCode))
         if (current !== sequence.current || currentRevision !== scope.revision) return
         setServiceHits(servicesPage.items); setServiceTotal(servicesPage.total)
       } catch {
@@ -94,14 +106,23 @@ export default function StoreDirectoryPage() {
       if (current === sequence.current) { setItems([]); setTotal(0); setServiceHits(null); setServiceTotal(0); setPhase('load-error') }
     }
   }, [repository, scope])
+  const loadCategories = useCallback(async (nextCity: string | undefined) => {
+    // 分类字典失败只降级 chips 行（可重试），不拖垮门店目录（74 §3.1：503 整块隐藏）。
+    setCategoriesPhase('loading')
+    try {
+      const rows = await runCatalogRead(scope, () => catalog.current!.serviceCategories(nextCity))
+      setCategories(rows); setCategoriesPhase('ready')
+    } catch { setCategoriesPhase('error') }
+  }, [catalog, scope])
   useDidShow(() => {
     // 城市选择持久化于本地存储（首页城市芯片与面板共用）：每次展示重读，切换即时生效。
     const stored = readSelectedCity().cityCode
     const next = stored !== undefined ? stored : city
     if (next !== city) setCity(next)
-    void load(next !== undefined ? next : city, keyword)
+    void load(next !== undefined ? next : city, keyword, categoryCode)
+    void loadCategories(next !== undefined ? next : city)
     // The open-city catalog (server-side §3.3.4 anonymous directory; 入驻目录作回退注入已移除).
-    void repository.cities().then(catalog => { if (catalog.length) setCities(catalog) }).catch(() => setNotice(''))
+    void repository.cities().then(catalog2 => { if (catalog2.length) setCities(catalog2) }).catch(() => setNotice(''))
   })
   async function loadMore() {
     if (loadingMore || items.length >= total) return
@@ -111,7 +132,7 @@ export default function StoreDirectoryPage() {
     const trimmed = keyword.trim()
     try {
       const result = await runCatalogRead(scope, () => repository.list({
-        city, keyword: trimmed === '' ? undefined : trimmed, page: page + 1, pageSize: PAGE_SIZE,
+        city, keyword: trimmed === '' ? undefined : trimmed, categoryCode, page: page + 1, pageSize: PAGE_SIZE,
       }))
       if (current !== sequence.current || currentRevision !== scope.revision) return
       const known = new Set(items.map(item => item.storeId))
@@ -124,16 +145,23 @@ export default function StoreDirectoryPage() {
     if (next === city) return
     setCity(next)
     writeSelectedCity(next)
-    void load(next, keyword)
+    void load(next, keyword, categoryCode)
+    void loadCategories(next)
   }
   function submitSearch() {
     const trimmed = draft.trim()
     setKeyword(trimmed)
-    void load(city, trimmed)
+    void load(city, trimmed, categoryCode)
   }
   function clearSearch() {
-    setDraft(''); setKeyword('')
-    void load(city, '')
+    // 「清空条件」= 清关键词 + 清分类筛选（PRD 5.1.2 无结果清空入口语义）。
+    setDraft(''); setKeyword(''); setCategoryCode(undefined)
+    void load(city, '', undefined)
+  }
+  function pickCategory(next: string | undefined) {
+    if (next === categoryCode) return
+    setCategoryCode(next)
+    void load(city, keyword, next)
   }
   function openStore(store: StoreView) {
     if (phase !== 'ready') return
@@ -143,13 +171,6 @@ export default function StoreDirectoryPage() {
   function openService(service: ServiceItemView) {
     Taro.navigateTo({ url: `/consumer/pages/store-services/service-detail?preview=${preview ? '1' : '0'}&serviceId=${encodeURIComponent(service.serviceId)}` })
       .catch(() => setNotice('页面跳转失败，请重试'))
-  }
-  function pickCategory(name: string) {
-    // 服务搜索按 serviceName/categoryName 匹配，分类 chip 直接作为关键词提交，
-    // 与首页运营内容位的 SERVICE_CATEGORY 落地目标共用同一条读路径。
-    setDraft(name)
-    setKeyword(name)
-    void load(city, name)
   }
 
   const ready = phase === 'ready'
@@ -161,34 +182,54 @@ export default function StoreDirectoryPage() {
     ? (catalogCities[0]?.cityName || '全部开放城市')
     : (catalogCities.find(entry => entry.cityCode === city)?.cityName || city)
   const noResults = ready && searching && items.length === 0 && (serviceHits === null || serviceHits.length === 0)
+  // chips：字典行 + 「全部」；路由带入/城市切换后不在字典里的选中 code 仍要可清除
+  // （campaign 页 activeTag 同款处理），标签用字典名，缺字典名时展示 code 本身。
+  const categoryChips: readonly { code?: string; name: string; iconUrl: string | null }[] = [
+    { name: '全部', iconUrl: null },
+    ...categories.map(category => ({ code: category.categoryCode, name: category.categoryName, iconUrl: category.iconUrl })),
+    ...(categoryCode !== undefined && !categories.some(category => category.categoryCode === categoryCode)
+      ? [{ code: categoryCode, name: categoryCode, iconUrl: null }]
+      : []),
+  ]
+  const showCategories = categoriesPhase !== 'loading' && (categories.length > 0 || categoryCode !== undefined)
   return <ConsumerPageLayout page='storeDirectory' unit={unit} navigation={preview ? { idPrefix: 'sdir', disabled: !ready, onSelect: key => void switchConsumerTab(key), referencePlacement: undefined } : undefined} className='svc-page sdir-page' style={style}>
-    <View className='svc-status-area' />
-    <View className='sdir-top'>
-      <View className='svc-abs svc-bg-blue' />
-      <View className='svc-abs svc-bg-cream' />
-      <View className='sdir-city-anchor'>
-        <Button id='sdir-city' className='sdir-city' onClick={() => setCityPickerOpen(open => !open)}>
-          <Text>{currentCityName}</Text>
-        </Button>
-        {cityPickerOpen && <CityPicker idPrefix='sdir-city' unit={unit}
-          cities={catalogCities} current={city} includeAll
-          onPick={(next: string | undefined) => pickCity(next)} />}
-      </View>
-      <Text className='sdir-title'>{searching ? '搜索结果' : '全部服务'}</Text>
-    </View>
-    <View className='sdir-body'>
-      {/* 搜索件（77:1267 词汇「搜索服务、商家...」）：提交后门店+服务两路搜索；PRD 5.1.2
-          「搜索无结果时展示清空条件入口」由 sdir-empty 承载。 */}
-      <View className='sdir-search'>
+    {/* 二级页统一头部（2026-10-28 用户裁决标题左对齐）；底部工具行承载城市芯片+搜索件，
+        分类 chips 在正文首行。110:480 原稿为 tab 页头部（logo/铃铛），此处为登记偏差
+        （C-04 设计登记表：stores 页统一 SubpageHeader）。 */}
+    <SubpageHeader title={searching ? '搜索结果' : '全部服务'} backId='sdir-back' height={113}
+      bottom={<View className='sdir-toolbar'>
+        <View className='sdir-city-anchor'>
+          <Button id='sdir-city' className='sdir-city' onClick={() => setCityPickerOpen(open => !open)}>
+            <Text>{currentCityName}</Text>
+          </Button>
+          {cityPickerOpen && <CityPicker idPrefix='sdir-city' unit={unit}
+            cities={catalogCities} current={city} includeAll
+            onPick={(next: string | undefined) => pickCity(next)} />}
+        </View>
+        {/* 搜索件（77:1267 词汇「搜索服务、商家...」）：提交后门店+服务两路搜索；PRD 5.1.2
+            「搜索无结果时展示清空条件入口」由 sdir-empty 承载。 */}
         <Input id='sdir-search-input' className='sdir-search-input' type='text'
           value={draft} placeholder='搜索服务、商家...' placeholderClass='sdir-search-placeholder'
           confirmType='search' onInput={event => setDraft(event.detail.value)}
           onConfirm={() => submitSearch()} />
         <Button id='sdir-search-submit' className='sdir-search-button' onClick={() => submitSearch()}>搜索</Button>
-        {searching && <Button id='sdir-search-clear' className='sdir-search-clear' onClick={() => clearSearch()}>清空条件</Button>}
-      </View>
-      {!searching && <View className='sdir-categories'>
-        {directoryCategories.map(name => <Button key={name} className='sdir-category' onClick={() => pickCategory(name)}><Text>{name}</Text></Button>)}
+        {(searching || categoryCode !== undefined) && <Button id='sdir-search-clear' className='sdir-search-clear' onClick={() => clearSearch()}>清空条件</Button>}
+      </View>} />
+    <SubpageHeaderSpacer height={113} />
+    <View className='sdir-body'>
+      {categoriesPhase === 'error' && <View className='sdir-state sdir-categories-state' role='status'>
+        <Text>分类加载失败，可继续浏览全部门店。</Text>
+        <Button id='sdir-categories-retry' className='sdir-state-action' onClick={() => void loadCategories(city)}>重新加载</Button>
+      </View>}
+      {showCategories && <View className='sdir-categories'>
+        {categoryChips.map(chip => <Button key={chip.code ?? 'sdir-category-all'}
+          className={`sdir-category${chip.code === categoryCode ? ' is-active' : ''}`}
+          onClick={() => pickCategory(chip.code)}>
+          {chip.iconUrl
+            ? <Image className='sdir-category-icon' src={chip.iconUrl} mode='aspectFit' />
+            : chip.code !== undefined && <View className='sdir-category-icon sdir-category-icon-placeholder' />}
+          <Text>{chip.name}</Text>
+        </Button>)}
       </View>}
       {searching && serviceHits !== null && <View className='sdir-services'>
         <Text className='sdir-heading'>服务{serviceTotal > 0 ? `（${serviceTotal}）` : ''}</Text>
@@ -204,9 +245,14 @@ export default function StoreDirectoryPage() {
       <Text className='sdir-heading'>{searching ? `门店${total > 0 ? `（${total}）` : ''}` : '门店'}</Text>
       {!ready && <View className='sdir-state' role='status'>
         <Text>{phase === 'loading' ? '正在加载门店…' : '加载失败，请重试。'}</Text>
-        {phase === 'load-error' && <Button id='sdir-retry' className='sdir-state-action' onClick={() => void load(city, keyword)}>重新加载</Button>}
+        {phase === 'load-error' && <Button id='sdir-retry' className='sdir-state-action' onClick={() => void load(city, keyword, categoryCode)}>重新加载</Button>}
       </View>}
-      {ready && !searching && items.length === 0 && <View className='sdir-state'><Text>当前城市暂无可展示的门店。</Text></View>}
+      {ready && !searching && categoryCode === undefined && items.length === 0 && <View className='sdir-state'><Text>当前城市暂无可展示的门店。</Text></View>}
+      {/* 分类筛选无供给（74 §3.2 合法 code + 200 空页）：明示清空入口，不静默回到全量。 */}
+      {ready && !searching && categoryCode !== undefined && items.length === 0 && <View className='sdir-state'>
+        <Text>该分类下暂无可展示的门店。</Text>
+        <Button id='sdir-empty-clear' className='sdir-state-action' onClick={() => clearSearch()}>清空条件</Button>
+      </View>}
       {ready && searching && items.length === 0 && serviceHits !== null && serviceHits.length > 0
         && <View className='sdir-state'><Text>没有匹配的门店。</Text></View>}
       {noResults && <View className='sdir-state' id='sdir-empty'>
@@ -224,7 +270,7 @@ export default function StoreDirectoryPage() {
         {loadingMore ? '正在加载…' : '加载更多'}
       </Button>}
       {notice && <Text id='sdir-notice' className='sdir-notice'>{notice}</Text>}
-      <View className='sdir-tail'><Text>页面数据：{preview ? '契约 Mock（preview=1，不联调）' : '真实接口（门店/城市/服务目录匿名可浏览）'}</Text></View>
+      <View className='sdir-tail'><Text>页面数据：{preview ? '契约 Mock（preview=1，不联调）' : '真实接口（门店/城市/服务分类/服务目录匿名可浏览）'}</Text></View>
     </View>
   </ConsumerPageLayout>
 }
