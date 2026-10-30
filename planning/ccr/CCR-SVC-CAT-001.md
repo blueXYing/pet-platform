@@ -1,12 +1,12 @@
 # CCR-SVC-CAT-001 服务分类字典与分类精确筛选
 
-- 状态：DRAFT（2026-10-30；本轮只写 CCR/契约草案，不动代码，待用户确认后实施）
+- 状态：APPROVED（2026-10-30 用户确认；实施按任务清单推进）
 - 关联：C 端 PRD 5.1.13；运营端 PRD 6.2.4/6.11.2；商家端 PRD 5.5；SSOT §24；
   Figma `97:7825`（热门服务）、`110:480`（服务 tab）；
   [71 号营销契约](../../docs/04-api/71-Marketing-Center-Contract-v0.1.md)、
   [71 号热门服务补丁草案](../../docs/04-api/71-Marketing-Center-Contract-v0.1-hot-service-patch-draft.md)、
   [CCR-MKT-003](CCR-MKT-003.md)、
-  [74 号服务目录页契约草案](../../docs/04-api/74-Service-Catalog-Page-Contract-v0.1-draft.md)
+  [74 号服务目录页契约](../../docs/04-api/74-Service-Catalog-Page-Contract-v0.1.md)
 - 用户已确认口径（2026-10-30）：
   1. 热门服务卡片的最小单元是**服务分类**；
   2. 热门分类由**服务字典自动生成**（启用 + 有可用商家 + 城市匹配，按字典排序），不做运营精选；
@@ -139,7 +139,7 @@ C 端分类列表只返回同时满足以下条件的分类：
 ## 5. 接口草案
 
 完整字段、示例与错误码见
-[74 号服务目录页契约草案](../../docs/04-api/74-Service-Catalog-Page-Contract-v0.1-draft.md)。
+[74 号服务目录页契约](../../docs/04-api/74-Service-Catalog-Page-Contract-v0.1.md)。
 
 ### 5.1 C 端
 
