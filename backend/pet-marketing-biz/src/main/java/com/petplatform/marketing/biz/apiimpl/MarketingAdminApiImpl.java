@@ -7,6 +7,7 @@ import com.petplatform.marketing.biz.application.MarketingAdminAuthorizationPort
 import com.petplatform.marketing.biz.application.MarketingAdminService;
 import com.petplatform.marketing.biz.application.MarketingCityCatalogPort;
 import com.petplatform.marketing.biz.application.MarketingCouponFactsPort;
+import com.petplatform.marketing.biz.application.MarketingServiceCategoryPort;
 import com.petplatform.marketing.biz.application.MarketingStoreFactsPort;
 import com.petplatform.marketing.biz.application.port.MarketingAssetObjectStore;
 import com.petplatform.marketing.biz.infrastructure.persistence.MarketingStore;
@@ -22,7 +23,8 @@ public final class MarketingAdminApiImpl implements MarketingAdminApi {
     public MarketingAdminApiImpl(DataSource dataSource, SnowflakeIdGenerator ids,
             MarketingAdminAuthorizationPort authorization, MarketingStoreFactsPort storeFacts,
             MarketingCouponFactsPort couponFacts, MarketingCityCatalogPort cityCatalog, Clock clock,
-            boolean allowHttpAssets, MarketingAssetObjectStore assetObjectStore) {
+            boolean allowHttpAssets, MarketingAssetObjectStore assetObjectStore,
+            MarketingServiceCategoryPort serviceCategories, boolean categoryValidationEnabled) {
         this.service = new MarketingAdminService(
                 new MarketingStore(Objects.requireNonNull(dataSource, "dataSource is required"),
                         Objects.requireNonNull(ids, "ids are required")),
@@ -30,7 +32,9 @@ public final class MarketingAdminApiImpl implements MarketingAdminApi {
                 Objects.requireNonNull(storeFacts, "storeFacts is required"),
                 Objects.requireNonNull(couponFacts, "couponFacts is required"),
                 Objects.requireNonNull(cityCatalog, "cityCatalog is required"),
-                clock, allowHttpAssets, Objects.requireNonNull(assetObjectStore, "assetObjectStore is required"));
+                clock, allowHttpAssets, Objects.requireNonNull(assetObjectStore, "assetObjectStore is required"),
+                Objects.requireNonNull(serviceCategories, "serviceCategories is required"),
+                categoryValidationEnabled);
     }
 
     @Override

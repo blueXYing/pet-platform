@@ -191,7 +191,8 @@ public class MarketingCController {
                         .sorted(Comparator.comparingInt((MerchantStoreDisplayDTO dto) ->
                                 dto.promoLevel() == null ? 99 : dto.promoLevel())
                                 .thenComparing(MerchantStoreDisplayDTO::storeId))
-                        .forEach(dto -> byStore.put(dto.storeId(), merchantDeal(dto, null)));
+                        .forEach(dto -> byStore.put(dto.storeId(),
+                                dealCard(merchantDeal(dto, null), null)));
             } catch (RuntimeException ignored) {
                 // A facts failure hides the rail; it never blocks the services page.
             }
@@ -206,7 +207,8 @@ public class MarketingCController {
                     if (card == null) continue;
                     card.put("source", "CAMPAIGN");
                     card.put("campaignId", placement.campaignId());
-                    byStore.put((String) card.get("storeId"), card);
+                    byStore.put((String) card.get("storeId"),
+                            dealCard(card, placement.coverUrl()));
                 }
             }
         } catch (RuntimeException ignored) {
@@ -220,6 +222,22 @@ public class MarketingCController {
     }
 
     // ---------------------------------------------------------------- composition
+
+    /**
+     * Contract 71 v0.3 §3.4 / 74 §3.5 deal image ({@code imageUrl/imageUrlExpiresAt}): the
+     * priority is store avatar → first store photo → campaign cover → null. The store-photo
+     * half rides the private-asset signing pipeline (31号), which today has no anonymous
+     * store-photo projection or STORE_PHOTO signing face to compose — until that cross-module
+     * contract lands, this card serves the public campaign cover (marketing asset URL,
+     * {@code imageUrlExpiresAt=null}) and stays null otherwise. No grant, object key, signing
+     * key or credential ever enters this response.
+     */
+    private static Map<String, Object> dealCard(Map<String, Object> card, String campaignCoverUrl) {
+        card.put("imageUrl", campaignCoverUrl == null || campaignCoverUrl.isBlank()
+                ? null : campaignCoverUrl);
+        card.put("imageUrlExpiresAt", null);
+        return card;
+    }
 
     private Map<String, Object> storeCard(MarketingViews.CampaignStoreLink link, String userId) {
         if (stores == null) return null;
