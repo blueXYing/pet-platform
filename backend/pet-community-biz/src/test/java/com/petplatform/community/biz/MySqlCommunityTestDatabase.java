@@ -57,6 +57,9 @@ final class MySqlCommunityTestDatabase implements AutoCloseable {
                 ScriptUtils.executeSqlScript(connection, new EncodedResource(
                         new FileSystemResource(root.resolve("docs/03-database/62-Baike-Content-Schema-v0.1.sql")),
                         StandardCharsets.UTF_8));
+                ScriptUtils.executeSqlScript(connection, new EncodedResource(
+                        new FileSystemResource(root.resolve("docs/03-database/64-Community-Storage-v0.1.sql")),
+                        StandardCharsets.UTF_8));
             }
             System.out.println("CMN-001 real MySQL " + version + "; new database " + name);
         } catch (Exception failure) {

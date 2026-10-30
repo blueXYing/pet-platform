@@ -59,7 +59,8 @@ public class CSessionSecurityConfiguration {
       @Value("${pet.favtrack.http.enabled:false}")
       boolean favoriteFootprintHttpEnabled,
       @Value("${pet.encyclopedia.query.enabled:false}")
-      boolean encyclopediaQueryEnabled)
+      boolean encyclopediaQueryEnabled,
+      @Value("${pet.community.c.http.enabled:false}") boolean communityHttpEnabled)
       throws Exception {
     http.securityMatcher("/api/v1/c/**", "/api/v1/merchant/**")
         .csrf(c -> c.disable())
@@ -303,6 +304,21 @@ public class CSessionSecurityConfiguration {
                       "/api/v1/c/encyclopedia/breeds/*")
                   .permitAll();
             }
+            if (communityHttpEnabled) {
+              // CCR-COM-001: public reads are anonymous GET; writes stay mandatory-session
+              // through CBearerSessionFilter. Media bytes are public and immutable.
+              a.requestMatchers("/api/v1/c/community/**").permitAll();
+            }
+            // Contract-71/72 marketing routes. Controllers are independently switch-gated;
+            // the chain only opens the transport, while CBearerSessionFilter enforces the
+            // MINIAPP session on merchant marketing and the C claim route and validates a
+            // carried bearer on the anonymous marketing GET family.
+            a.requestMatchers(HttpMethod.GET,
+                    "/api/v1/c/marketing/**",
+                    "/api/v1/c/coupon-campaigns/*").permitAll();
+            a.requestMatchers(HttpMethod.POST,
+                    "/api/v1/c/coupon-campaigns/*/claims").permitAll();
+            a.requestMatchers("/api/v1/merchant/marketing/**").permitAll();
             if (pointsTaskHttpEnabled) {
               // Points earn family (contract 58 / 32号 ruling second batch): sign-in,
               // task-center reads, reward claims and referral bindings. The MINIAPP Bearer

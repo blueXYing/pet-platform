@@ -208,4 +208,134 @@
         WHERE request_key = #{requestKey} AND status = 'RESERVED'
     </update>
 
+    <!-- coupon campaigns (contract 72) -->
+
+    <sql id="couponCampaignColumns">
+        c.id,c.name,c.template_id,c.audience_type,c.per_user_limit,c.total_limit,c.budget_limit,
+        c.issued_count,c.issued_amount,c.start_at,c.end_at,c.claim_method,c.status,c.version,
+        c.created_by_id,c.created_at,c.updated_at,
+        t.name AS template_name,t.status AS template_status,
+        t.valid_start_at AS template_valid_start_at,t.valid_end_at AS template_valid_end_at,
+        t.rule_json
+    </sql>
+
+    <select id="selectCouponCampaigns"
+            resultType="com.petplatform.coupon.biz.infrastructure.persistence.entity.CouponCampaignEntities$CampaignRow">
+        SELECT <include refid="couponCampaignColumns"/>
+        FROM coupon_campaign c
+        INNER JOIN coupon_template t ON t.id=c.template_id
+        <where>
+            <if test="status != null">AND c.status=#{status}</if>
+        </where>
+        ORDER BY c.created_at DESC, c.id DESC
+        LIMIT #{limit} OFFSET #{offset}
+    </select>
+
+    <select id="countCouponCampaigns" resultType="long">
+        SELECT COUNT(*) FROM coupon_campaign
+        <where>
+            <if test="status != null">AND status=#{status}</if>
+        </where>
+    </select>
+
+    <select id="selectCouponCampaignById"
+            resultType="com.petplatform.coupon.biz.infrastructure.persistence.entity.CouponCampaignEntities$CampaignRow">
+        SELECT <include refid="couponCampaignColumns"/>
+        FROM coupon_campaign c
+        INNER JOIN coupon_template t ON t.id=c.template_id
+        WHERE c.id=#{campaignId}
+    </select>
+
+    <select id="selectCouponCampaignForUpdate"
+            resultType="com.petplatform.coupon.biz.infrastructure.persistence.entity.CouponCampaignEntities$CampaignRow">
+        SELECT <include refid="couponCampaignColumns"/>
+        FROM coupon_campaign c
+        INNER JOIN coupon_template t ON t.id=c.template_id
+        WHERE c.id=#{campaignId}
+        FOR UPDATE
+    </select>
+
+    <insert id="insertCouponCampaign">
+        INSERT INTO coupon_campaign
+            (id,name,template_id,audience_type,per_user_limit,total_limit,budget_limit,
+             issued_count,issued_amount,start_at,end_at,claim_method,status,version,
+             created_by_id,created_at,updated_at)
+        VALUES
+            (#{id},#{name},#{templateId},#{audienceType},#{perUserLimit},#{totalLimit},#{budgetLimit},
+             0,0.00,#{startAt},#{endAt},#{claimMethod},#{status},1,#{createdById},#{now},#{now})
+    </insert>
+
+    <update id="updateCouponCampaign">
+        UPDATE coupon_campaign
+        SET name=#{name}, template_id=#{templateId}, audience_type=#{audienceType},
+            per_user_limit=#{perUserLimit}, total_limit=#{totalLimit}, budget_limit=#{budgetLimit},
+            start_at=#{startAt}, end_at=#{endAt}, version=version+1, updated_at=#{now}
+        WHERE id=#{campaignId} AND version=#{expectedVersion}
+    </update>
+
+    <update id="updateCouponCampaignStatus">
+        UPDATE coupon_campaign
+        SET status=#{toStatus}, version=version+1, updated_at=#{now}
+        WHERE id=#{campaignId} AND status=#{fromStatus} AND version=#{expectedVersion}
+    </update>
+
+    <update id="incrementCouponCampaignIssue">
+        UPDATE coupon_campaign
+        SET issued_count=issued_count+1,
+            issued_amount=issued_amount+#{amountOff},
+            updated_at=#{now}
+        WHERE id=#{campaignId}
+          AND status IN ('ACTIVE','SCHEDULED')
+          AND start_at &lt;= #{now} AND end_at &gt; #{now}
+          AND issued_count &lt; total_limit
+          AND issued_amount + #{amountOff} &lt;= budget_limit
+    </update>
+
+    <select id="selectCouponClaims"
+            resultType="com.petplatform.coupon.biz.infrastructure.persistence.entity.CouponCampaignEntities$ClaimRow">
+        SELECT id,campaign_id,user_id,coupon_instance_id,claimed_at,request_id
+        FROM coupon_claim
+        WHERE campaign_id=#{campaignId}
+        ORDER BY claimed_at DESC, id DESC
+        LIMIT #{limit} OFFSET #{offset}
+    </select>
+
+    <select id="countCouponClaims" resultType="long">
+        SELECT COUNT(*) FROM coupon_claim WHERE campaign_id=#{campaignId}
+    </select>
+
+    <select id="countUserClaims" resultType="long">
+        SELECT COUNT(*) FROM coupon_claim WHERE campaign_id=#{campaignId} AND user_id=#{userId}
+    </select>
+
+    <select id="selectClaimByCampaignUser"
+            resultType="com.petplatform.coupon.biz.infrastructure.persistence.entity.CouponCampaignEntities$ClaimRow">
+        SELECT id,campaign_id,user_id,coupon_instance_id,claimed_at,request_id
+        FROM coupon_claim
+        WHERE campaign_id=#{campaignId} AND user_id=#{userId}
+    </select>
+
+    <select id="selectClaimByRequestId"
+            resultType="com.petplatform.coupon.biz.infrastructure.persistence.entity.CouponCampaignEntities$ClaimRow">
+        SELECT id,campaign_id,user_id,coupon_instance_id,claimed_at,request_id
+        FROM coupon_claim
+        WHERE request_id=#{requestId}
+    </select>
+
+    <insert id="insertClaim">
+        INSERT INTO coupon_claim
+            (id,campaign_id,user_id,coupon_instance_id,claimed_at,request_id)
+        VALUES
+            (#{id},#{campaignId},#{userId},#{couponInstanceId},#{now},#{requestId})
+    </insert>
+
+    <insert id="insertCouponCampaignAudit">
+        INSERT INTO coupon_campaign_audit
+            (id,campaign_id,action_type,from_status,to_status,operator_id,request_id,trace_id,
+             detail_json,created_at)
+        VALUES
+            (#{id},#{campaignId},#{actionType},#{fromStatus},#{toStatus},#{operatorId},#{requestId},
+             #{traceId},#{detailJson},#{now})
+    </insert>
+
 </mapper>

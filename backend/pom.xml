@@ -60,6 +60,8 @@
         <module>pet-aftersale-biz</module>
         <module>pet-coupon-api</module>
         <module>pet-coupon-biz</module>
+        <module>pet-marketing-api</module>
+        <module>pet-marketing-biz</module>
         <module>pet-points-api</module>
         <module>pet-points-biz</module>
         <module>pet-review-api</module>
@@ -204,6 +206,16 @@
             <dependency>
                 <groupId>com.petplatform</groupId>
                 <artifactId>pet-coupon-biz</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>com.petplatform</groupId>
+                <artifactId>pet-marketing-api</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>com.petplatform</groupId>
+                <artifactId>pet-marketing-biz</artifactId>
                 <version>${project.version}</version>
             </dependency>
             <dependency>

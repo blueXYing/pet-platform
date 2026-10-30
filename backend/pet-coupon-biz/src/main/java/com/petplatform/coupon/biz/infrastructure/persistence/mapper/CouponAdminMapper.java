@@ -4,6 +4,9 @@ import com.petplatform.coupon.biz.infrastructure.persistence.entity.CouponAdminB
 import com.petplatform.coupon.biz.infrastructure.persistence.entity.CouponAdminEntities.AdminInstanceEntity;
 import com.petplatform.coupon.biz.infrastructure.persistence.entity.CouponAdminEntities.AdminLedgerEntity;
 import com.petplatform.coupon.biz.infrastructure.persistence.entity.CouponAdminEntities.AdminTemplateEntity;
+import com.petplatform.coupon.biz.infrastructure.persistence.entity.CouponCampaignEntities.CampaignRow;
+import com.petplatform.coupon.biz.infrastructure.persistence.entity.CouponCampaignEntities.ClaimRow;
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.List;
 import org.apache.ibatis.annotations.Param;
@@ -144,4 +147,91 @@ public interface CouponAdminMapper {
     int markBindingSucceeded(
             @Param("requestKey") String requestKey,
             @Param("receiptJson") String receiptJson);
+
+    // ---------------------------------------------------------- coupon campaigns (contract 72)
+
+    List<CampaignRow> selectCouponCampaigns(@Param("status") String status,
+            @Param("limit") int limit, @Param("offset") int offset);
+
+    long countCouponCampaigns(@Param("status") String status);
+
+    CampaignRow selectCouponCampaignById(@Param("campaignId") long campaignId);
+
+    CampaignRow selectCouponCampaignForUpdate(@Param("campaignId") long campaignId);
+
+    int insertCouponCampaign(
+            @Param("id") long id,
+            @Param("name") String name,
+            @Param("templateId") long templateId,
+            @Param("audienceType") String audienceType,
+            @Param("perUserLimit") int perUserLimit,
+            @Param("totalLimit") int totalLimit,
+            @Param("budgetLimit") BigDecimal budgetLimit,
+            @Param("startAt") LocalDateTime startAt,
+            @Param("endAt") LocalDateTime endAt,
+            @Param("claimMethod") String claimMethod,
+            @Param("status") String status,
+            @Param("createdById") long createdById,
+            @Param("now") LocalDateTime now);
+
+    int updateCouponCampaign(
+            @Param("campaignId") long campaignId,
+            @Param("name") String name,
+            @Param("templateId") long templateId,
+            @Param("audienceType") String audienceType,
+            @Param("perUserLimit") int perUserLimit,
+            @Param("totalLimit") int totalLimit,
+            @Param("budgetLimit") BigDecimal budgetLimit,
+            @Param("startAt") LocalDateTime startAt,
+            @Param("endAt") LocalDateTime endAt,
+            @Param("expectedVersion") long expectedVersion,
+            @Param("now") LocalDateTime now);
+
+    int updateCouponCampaignStatus(
+            @Param("campaignId") long campaignId,
+            @Param("fromStatus") String fromStatus,
+            @Param("toStatus") String toStatus,
+            @Param("expectedVersion") long expectedVersion,
+            @Param("now") LocalDateTime now);
+
+    /**
+     * Claim drawdown: total_limit and budget are checked in the same conditional statement
+     * that increments issued_count/issued_amount. Returns 0 when exhausted.
+     */
+    int incrementCouponCampaignIssue(
+            @Param("campaignId") long campaignId,
+            @Param("amountOff") BigDecimal amountOff,
+            @Param("now") LocalDateTime now);
+
+    List<ClaimRow> selectCouponClaims(@Param("campaignId") long campaignId,
+            @Param("limit") int limit, @Param("offset") int offset);
+
+    long countCouponClaims(@Param("campaignId") long campaignId);
+
+    long countUserClaims(@Param("campaignId") long campaignId, @Param("userId") long userId);
+
+    ClaimRow selectClaimByCampaignUser(@Param("campaignId") long campaignId,
+            @Param("userId") long userId);
+
+    ClaimRow selectClaimByRequestId(@Param("requestId") String requestId);
+
+    int insertClaim(
+            @Param("id") long id,
+            @Param("campaignId") long campaignId,
+            @Param("userId") long userId,
+            @Param("couponInstanceId") long couponInstanceId,
+            @Param("requestId") String requestId,
+            @Param("now") LocalDateTime now);
+
+    int insertCouponCampaignAudit(
+            @Param("id") long id,
+            @Param("campaignId") long campaignId,
+            @Param("actionType") String actionType,
+            @Param("fromStatus") String fromStatus,
+            @Param("toStatus") String toStatus,
+            @Param("operatorId") long operatorId,
+            @Param("requestId") String requestId,
+            @Param("traceId") String traceId,
+            @Param("detailJson") String detailJson,
+            @Param("now") LocalDateTime now);
 }

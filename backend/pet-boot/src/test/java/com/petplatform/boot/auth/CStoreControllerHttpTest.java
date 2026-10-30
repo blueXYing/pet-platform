@@ -556,7 +556,7 @@ class CStoreControllerHttpTest {
     assertEquals(
         String.valueOf(storeId),
         display
-            .pageDisplayStores(new MerchantStoreDisplayPageQuery(List.of("chengdu"), null, 1, 20, otherCtx))
+            .pageDisplayStores(new MerchantStoreDisplayPageQuery(List.of("chengdu"), null, 1, 20, otherCtx, false))
             .items()
             .get(0)
             .storeId());
