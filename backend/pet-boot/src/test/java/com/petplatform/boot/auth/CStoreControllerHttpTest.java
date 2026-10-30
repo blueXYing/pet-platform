@@ -363,14 +363,16 @@ class CStoreControllerHttpTest {
         new java.math.BigDecimal("99.00"), 40);
 
     // W2-STR-002 P1/P3/P4: default (all open cities) equals the explicit chengdu filter; nine
-    // fields, masked phone, no authority/always-true fields.
+    // frozen fields plus the optional promotion projection, masked phone, no authority/true fields.
     Reply list = send("GET", "/api/v1/c/stores?page=1&pageSize=20", null, bearer(token));
     assertEquals(200, list.status(), list.redacted());
     assertEquals(2L, ((Number) list.data().get("total")).longValue());
     List<?> items = (List<?>) list.data().get("items");
     Map<String, Object> first = map(items.get(0));
     assertEquals(String.valueOf(storeId), first.get("storeId"));
-    assertEquals(9, first.keySet().size());
+    assertEquals(10, first.keySet().size());
+    assertTrue(first.containsKey("promotion"));
+    assertNull(first.get("promotion"));
     assertEquals(String.valueOf(merchantId), first.get("merchantId"));
     assertEquals("锦江区萌宠之家", first.get("storeName"));
     assertEquals("测试门店地址", first.get("address"));
@@ -386,7 +388,7 @@ class CStoreControllerHttpTest {
     assertEquals(list.data().get("total"), cityList.data().get("total"));
 
     // §3.3.2 keyword 搜索增补（2026-10-19 裁决）：门店名/商家名大小写不敏感子串；与 city 可组合；
-    // 未命中=200 空页（与 503 严格区分）；超长 keyword 400；keyword 不改变九字段投影与排序。
+    // 未命中=200 空页（与 503 严格区分）；超长 keyword 400；keyword 不改变九字段 + promotion 投影与排序。
     Reply keywordAll = send("GET", "/api/v1/c/stores?keyword=%E8%90%8C%E5%AE%A0", null, bearer(token));
     assertEquals(200, keywordAll.status(), keywordAll.redacted());
     assertEquals(2L, ((Number) keywordAll.data().get("total")).longValue(), "两店名都含 萌宠");
@@ -417,10 +419,12 @@ class CStoreControllerHttpTest {
     assertTrue(((List<?>) send("GET", "/api/v1/c/stores?page=10000", null, bearer(token))
             .data().get("items")).isEmpty());
 
-    // P5: detail shares the list field set.
+    // P5: detail shares the list field set plus the optional campaign projection (§3.5).
     Reply detail = send("GET", "/api/v1/c/stores/" + storeId, null, bearer(token));
     assertEquals(200, detail.status(), detail.redacted());
-    assertEquals(first, detail.data());
+    Map<String, Object> expectedDetail = new HashMap<>(first);
+    expectedDetail.put("campaign", null);
+    assertEquals(expectedDetail, detail.data());
 
     // P6/P7 (W2-STR-005): the four browse routes accept an anonymous GET; visibility is
     // subject-independent (same payload as the logged-in call above).
