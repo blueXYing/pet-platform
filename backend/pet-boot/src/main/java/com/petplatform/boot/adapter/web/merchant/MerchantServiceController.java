@@ -141,7 +141,10 @@ public final class MerchantServiceController {
                         .map(c -> {
                             Map<String, Object> row = new LinkedHashMap<>();
                             row.put("categoryId", c.categoryId());
+                            row.put("categoryCode", c.categoryCode());
                             row.put("categoryName", c.categoryName());
+                            row.put("iconUrl", c.iconUrl());
+                            row.put("description", c.description());
                             row.put("sortNo", c.sortNo());
                             return row;
                         })

@@ -187,6 +187,12 @@ public class AdminAuthSecurityConfiguration {
               // Service review (ADM-001 write slice): real admin session + action codes are
               // enforced by AdminBearerAuthenticationFilter and the controller.
               a.requestMatchers("/api/v1/admin/services", "/api/v1/admin/services/**").permitAll();
+              // Service category dictionary (CCR-SVC-CAT-001 B-SVC-02): same switch and the
+              // service.category.read/manage action codes.
+              a.requestMatchers(
+                      "/api/v1/admin/service-categories",
+                      "/api/v1/admin/service-categories/**")
+                  .permitAll();
             }
             a.requestMatchers(
                     HttpMethod.GET,

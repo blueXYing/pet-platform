@@ -61,6 +61,8 @@ class AdminAuthPrimitivesTest {
             // ADM-001 service write slice (CCR-W2-API-001): the three service review codes now
             // have server-side enforcement points; force-offline uses the AUTH-lexicon spelling.
             "service.review.read", "service.review.decide", "service.force.offline",
+            // CCR-SVC-CAT-001 B-SVC-02 service category dictionary face.
+            "service.category.read", "service.category.manage",
             "aftersale.read", "aftersale.handle", "aftersale.decide",
             // REV-002 review appeal slice (contract 56): both enforcement points ship in it.
             "review.appeal.read", "review.appeal.decide",

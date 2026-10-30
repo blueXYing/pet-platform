@@ -47,6 +47,10 @@ public final class AdminBearerAuthenticationFilter extends OncePerRequestFilter 
           || path.startsWith("/api/v1/admin/private-asset-read-grants/")
           || path.equals("/api/v1/admin/services")
           || path.startsWith("/api/v1/admin/services/")
+          // Service category dictionary (CCR-SVC-CAT-001 B-SVC-02): ADMIN_WEB Bearer is
+          // resolved here; service.category.read/manage are re-proved by the controller.
+          || path.equals("/api/v1/admin/service-categories")
+          || path.startsWith("/api/v1/admin/service-categories/")
           // Review appeal governance (contract 56 / REV-002): ADMIN_WEB Bearer enforced;
           // the review.appeal.* action codes are re-checked by the kernel per call/replay.
           || path.equals("/api/v1/admin/review-appeals")
@@ -106,6 +110,7 @@ public final class AdminBearerAuthenticationFilter extends OncePerRequestFilter 
                       + (path.startsWith("/api/v1/admin/merchant-applications")
                               || path.startsWith("/api/v1/admin/private-asset-read-grants/")
                               || path.startsWith("/api/v1/admin/services")
+                              || path.startsWith("/api/v1/admin/service-categories")
                           ? "\"success\":false,"
                           : "")
                       + "\"code\":\""
