@@ -25,7 +25,7 @@ export function AdminLayout({ menuItems, identity, signOut, pathname, children }
         items={menuItems}
         selectedKeys={[pathname]}
         onClick={({ key }) => { if (key !== pathname) void navigate(key); }}
-        style={{ borderInlineEnd: 'none' }}
+        style={{ borderInlineEnd: 'none', paddingBottom: 48 }}
       />
     </Sider>
     <Layout>

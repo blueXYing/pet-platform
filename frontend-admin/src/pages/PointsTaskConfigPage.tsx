@@ -1,8 +1,13 @@
 import { useEffect, useRef, useState } from 'react';
+import { Button, Input } from 'antd';
+import type { TableColumnsType } from 'antd';
 import {
   CONFIG_FIELDS, isIdempotencyConflict, parseDraft, PointsTaskConfigFailure, draftFrom,
   type PointsTaskConfig, type PointsTaskConfigClient, type PointsTaskConfigDraft,
 } from '../api/pointsTaskConfig';
+import { DataTable } from '../ui/DataTable';
+import { ErrorAlert, InlineStatus } from '../ui/bits';
+import { PageContainer } from '../ui/PageContainer';
 
 const FAILURE_TEXT: Record<string, string> = {
   UNAUTHENTICATED: '登录已失效',
@@ -12,6 +17,8 @@ const FAILURE_TEXT: Record<string, string> = {
   INVALID_RESPONSE: '服务返回异常',
   DEPENDENCY_UNAVAILABLE: '配置数据暂时不可用',
 };
+
+type ConfigField = (typeof CONFIG_FIELDS)[number];
 
 /**
  * Contract58 admin config (32号 ruling: 签到/拉新积分量后台可配). Single operator edits and
@@ -93,34 +100,31 @@ export default function PointsTaskConfigPage({ client, canWrite, onAuthLost }: {
     }
   }
 
+  const configColumns = (current: PointsTaskConfigDraft): TableColumnsType<ConfigField> => [
+    { title: '配置项', render: (_, field) => field.label },
+    { title: '修改为', render: (_, field) => <>
+      <label className="sr-only" htmlFor={field.key}>{field.label}</label>
+      <Input id={field.key} name={field.key} type="number" inputMode="numeric" min={field.min} max={field.max}
+        step={1} value={current[field.key]} disabled={!canWrite || saving}
+        aria-describedby={`${field.key}-hint`} onChange={event => edit(field.key, event.target.value)} />
+    </> },
+    { title: '范围', render: (_, field) => `${field.min} ~ ${field.max}` },
+    { title: '说明', render: (_, field) => <span id={`${field.key}-hint`}>{field.hint}</span> },
+  ];
+
   const dirty = config !== undefined && draft !== undefined && payloadKey(draft) !== payloadKey(draftFrom(config));
-  return <main>
-    <h1>积分任务配置</h1>
-    <p className="hint">签到与拉新的积分发放量配置（58 号契约）。V1 积分只赚取/扣回、不消费：本页只调发放量，不涉及任何兑换或扣减路径。单运营编辑直接发布（24 号裁决），发布即刻生效于后续领取。</p>
-    {loading && <p role="status">加载中</p>}
-    {error && <p role="alert">{error}</p>}
-    {notice && <p role="status">{notice}</p>}
+  return <PageContainer
+    title="积分任务配置"
+    hint="签到与拉新的积分发放量配置（58 号契约）。V1 积分只赚取/扣回、不消费：本页只调发放量，不涉及任何兑换或扣减路径。单运营编辑直接发布（24 号裁决），发布即刻生效于后续领取。">
+    {loading && <InlineStatus>加载中</InlineStatus>}
+    {error && <ErrorAlert>{error}</ErrorAlert>}
+    {notice && <InlineStatus>{notice}</InlineStatus>}
     {config && draft && <form className="points-config" onSubmit={event => { event.preventDefault(); void save(); }}>
-      <table>
-        <thead><tr><th>配置项</th><th>修改为</th><th>范围</th><th>说明</th></tr></thead>
-        <tbody>
-          {CONFIG_FIELDS.map(field => <tr key={field.key}>
-            <th scope="row">{field.label}</th>
-            <td>
-              <label className="sr-only" htmlFor={field.key}>{field.label}</label>
-              <input id={field.key} name={field.key} type="number" inputMode="numeric" min={field.min} max={field.max}
-                step={1} value={draft[field.key]} disabled={!canWrite || saving}
-                aria-describedby={`${field.key}-hint`} onChange={event => edit(field.key, event.target.value)} />
-            </td>
-            <td>{field.min} ~ {field.max}</td>
-            <td id={`${field.key}-hint`}>{field.hint}</td>
-          </tr>)}
-        </tbody>
-      </table>
+      <DataTable columns={configColumns(draft)} rows={CONFIG_FIELDS} rowKey={field => field.key} />
       <p>版本 {config.version} · 上次更新 {config.updatedAt ? config.updatedAt.slice(0, 19).replace('T', ' ') : '尚未配置（内置缺省值生效）'}</p>
       {canWrite
-        ? <button type="submit" disabled={saving || !dirty}>{saving ? '保存中…' : dirty ? '保存并发布' : '无改动'}</button>
+        ? <Button type="primary" htmlType="submit" disabled={saving || !dirty}>{saving ? '保存中…' : dirty ? '保存并发布' : '无改动'}</Button>
         : <p>当前账号仅可查看。</p>}
     </form>}
-  </main>;
+  </PageContainer>;
 }

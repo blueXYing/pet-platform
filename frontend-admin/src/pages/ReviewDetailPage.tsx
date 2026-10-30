@@ -1,10 +1,16 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { Link, useParams } from 'react-router-dom';
+import { useParams } from 'react-router-dom';
+import { Button, Checkbox, DatePicker, Input, Select } from 'antd';
+import dayjs from 'dayjs';
+import type { TableColumnsType } from 'antd';
 import { RequestFailure } from '../request';
 import {
   decisionLabel, merchantTypeLabel, statusLabel, validateMaterialReferences, verificationLabel,
   type MaterialReference, type ReviewDetail,
 } from '../api/merchantApplications';
+import { DataTable } from '../ui/DataTable';
+import { BackLink, PageContainer } from '../ui/PageContainer';
+import { ErrorAlert, FactList, InlineStatus, Section } from '../ui/bits';
 
 type Client = ReturnType<typeof import('../api/merchantApplications').createMerchantApplicationClient>;
 
@@ -170,8 +176,8 @@ export default function ReviewDetailPage({ client, canOperate, onAuthLost }: { c
     confirmed: decisionConfirmed,
   }, id), '审核决定已提交');
 
-  if (!detail && !error) return <main><p role="status">加载中</p></main>;
-  if (!detail) return <main><h1>申请详情</h1><p role="alert">{error}</p><p><Link to="/merchant-applications">返回列表</Link></p></main>;
+  if (!detail && !error) return <main><InlineStatus>加载中</InlineStatus></main>;
+  if (!detail) return <PageContainer title="申请详情" back={<BackLink to="/merchant-applications">返回列表</BackLink>}><ErrorAlert>{error}</ErrorAlert></PageContainer>;
 
   const snapshot = detail.submittedRevision.snapshot;
   const taskClaimed = detail.task.status === 'CLAIMED';
@@ -202,112 +208,113 @@ export default function ReviewDetailPage({ client, canOperate, onAuthLost }: { c
     ...(snapshot.industryLicenseAssetId ? [{ label: '行业许可证', assetId: snapshot.industryLicenseAssetId }] : []),
   ];
 
-  return <main>
-    <h1>申请 {detail.applicationNo}</h1>
+  const evidenceColumns: TableColumnsType<EvidenceGroup> = [
+    { title: '证件', render: (_, group) => group.label },
+    { title: '证件主体', render: (_, group) => {
+      const draft = drafts[group.credentialType];
+      const viewed = groupViewed(group);
+      return <Input style={{ width: 160 }} aria-label={`${group.label} 证件主体`} value={draft?.subjectName ?? ''} disabled={!viewed} onChange={event => patchDraft(group.credentialType, { subjectName: event.target.value })} />;
+    } },
+    { title: '证号/信用代码', render: (_, group) => {
+      const draft = drafts[group.credentialType];
+      const viewed = groupViewed(group);
+      return <Input style={{ width: 160 }} aria-label={`${group.label} 证号`} value={draft?.identifier ?? ''} disabled={!viewed} onChange={event => patchDraft(group.credentialType, { identifier: event.target.value })} />;
+    } },
+    { title: '有效期', render: (_, group) => {
+      const draft = drafts[group.credentialType];
+      const viewed = groupViewed(group);
+      return <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+        <Select style={{ width: 160 }} aria-label={`${group.label} 有效期类型`} value={draft?.validityKind ?? 'DATED'} disabled={!viewed}
+          onChange={value => patchDraft(group.credentialType, value === 'LONG_TERM'
+            // Backend rules: validFrom is required for every credential and
+            // LONG_TERM requires validTo == null — switching clears it.
+            ? { validityKind: 'LONG_TERM', validTo: null }
+            : { validityKind: 'DATED' })}
+          options={[{ value: 'DATED', label: '有期限' }, { value: 'LONG_TERM', label: '长期' }]} />
+        <DatePicker style={{ width: 160 }} format="YYYY-MM-DD" aria-label={`${group.label} 生效日`} value={draft?.validFrom ? dayjs(draft.validFrom) : null} disabled={!viewed}
+          onChange={value => patchDraft(group.credentialType, { validFrom: value ? value.format('YYYY-MM-DD') : null })} />
+        {draft?.validityKind !== 'LONG_TERM' && <DatePicker style={{ width: 160 }} format="YYYY-MM-DD" aria-label={`${group.label} 到期日`} value={draft?.validTo ? dayjs(draft.validTo) : null} disabled={!viewed}
+          onChange={value => patchDraft(group.credentialType, { validTo: value ? value.format('YYYY-MM-DD') : null })} />}
+      </div>;
+    } },
+    { title: '查看状态', render: (_, group) => groupViewed(group) ? '已查看' : '未查看' },
+  ];
+
+  return <PageContainer title={`申请 ${detail.applicationNo}`}>
     <p>
       状态：<strong>{statusLabel(detail.status)}</strong> · 类型 {merchantTypeLabel(detail.merchantTypeCode)} · 城市 {detail.cityCode} ·
       核验 <strong>{verificationLabel(detail.subjectVerificationStatus)}</strong> · 提交于 {detail.submittedAt}
     </p>
-    {notice && <p role="status">{notice}</p>}
-    {error && <p role="alert">{error}</p>}
+    {notice && <InlineStatus>{notice}</InlineStatus>}
+    {error && <ErrorAlert>{error}</ErrorAlert>}
     {retry && <p>
-      <button onClick={() => void retry.run()} disabled={busy}>重试原操作（复用原请求标识）</button>
-      <button onClick={() => void load()} disabled={busy}>刷新申请状态</button>
+      <Button disabled={busy} onClick={() => void retry.run()}>重试原操作（复用原请求标识）</Button>
+      <Button disabled={busy} onClick={() => void load()}>刷新申请状态</Button>
       <span>{retry.kind === 'grant'
         ? '材料授权结果无法由申请快照判定；'
         : '申请快照与本次命令无 requestId 关联，不能证明其已终结；'}仅可通过重试原操作以同一请求标识取得幂等回执解除未决；刷新仅更新当前展示。</span>
     </p>}
 
-    <section aria-labelledby="snapshot-heading">
-      <h2 id="snapshot-heading">提交版本（第 {detail.submittedRevision.revisionNo} 版 · {detail.submittedRevision.createdAt}）</h2>
-      <dl className="snapshot">
-        <div><dt>商家名称</dt><dd>{snapshot.merchantName}</dd></div>
-        <div><dt>地址</dt><dd>{snapshot.address}（{snapshot.longitude ?? '—'}, {snapshot.latitude ?? '—'}）</dd></div>
-        <div><dt>简介</dt><dd>{snapshot.introduction || '—'}</dd></div>
-        <div><dt>联系人（脱敏）</dt><dd>{snapshot.contactNameMasked} / {snapshot.contactPhoneMasked} / {snapshot.emailMasked}</dd></div>
-      </dl>
-    </section>
+    <Section title={`提交版本（第 ${detail.submittedRevision.revisionNo} 版 · ${detail.submittedRevision.createdAt}）`}>
+      <FactList items={[
+        { label: '商家名称', value: snapshot.merchantName },
+        { label: '地址', value: `${snapshot.address}（${snapshot.longitude ?? '—'}, ${snapshot.latitude ?? '—'}）` },
+        { label: '简介', value: snapshot.introduction || '—' },
+        { label: '联系人（脱敏）', value: `${snapshot.contactNameMasked} / ${snapshot.contactPhoneMasked} / ${snapshot.emailMasked}` },
+      ]} />
+    </Section>
 
-    <section aria-labelledby="materials-heading">
-      <h2 id="materials-heading">申请材料</h2>
+    <Section title="申请材料">
       <p className="hint">查看材料会记入审计；每次授权仅可读取一次并带水印，重复查看需再次说明理由。</p>
-      {canOperate && <label>查看理由（10～500字）<input value={viewReason} onChange={event => setViewReason(event.target.value)} /></label>}
+      {canOperate && <label className="filter-item">查看理由（10～500字）<Input style={{ width: 'min(100%, 420px)' }} value={viewReason} onChange={event => setViewReason(event.target.value)} /></label>}
       <ul className="materials">
         {materials.map(item => <li key={item.assetId}>
           <span>{item.label}</span> <code>{item.assetId}</code>
           {canOperate && (previews[item.assetId]
-            ? <img src={previews[item.assetId]} alt={`${item.label} 水印读取结果`} height={160} />
-            : <button disabled={busy || retry !== null || viewReason.trim().length < 10} onClick={() => viewMaterial(item.assetId)}>申请一次性查看</button>)}
+            ? <img src={previews[item.assetId]} alt={`${item.label} 水印读取结果`} height={160} style={{ maxWidth: 'min(100%, 420px)', maxHeight: 300, objectFit: 'contain' }} />
+            : <Button disabled={busy || retry !== null || viewReason.trim().length < 10} onClick={() => viewMaterial(item.assetId)}>申请一次性查看</Button>)}
           {!canOperate && <span className="hint">需审核权限</span>}
         </li>)}
       </ul>
-    </section>
+    </Section>
 
-    <section aria-labelledby="task-heading">
-      <h2 id="task-heading">审核任务</h2>
+    <Section title="审核任务">
       <p>任务状态：{detail.task.status === 'AVAILABLE' ? '待领取' : `已领取（任务 ${detail.task.taskId}）`} · 任务版本 {detail.task.version}</p>
-      {canOperate && !taskClaimed && <button disabled={busy || retry !== null} onClick={() => void claim()}>领取任务</button>}
-      {canOperate && taskClaimed && <button disabled={busy || retry !== null} onClick={() => void release()}>释放任务</button>}
+      {canOperate && !taskClaimed && <Button disabled={busy || retry !== null} onClick={() => void claim()}>领取任务</Button>}
+      {canOperate && taskClaimed && <Button disabled={busy || retry !== null} onClick={() => void release()}>释放任务</Button>}
       {detail.latestDecision && <p>最近决定：{decisionLabel(detail.latestDecision.decisionType)} · {detail.latestDecision.decidedAt} · {detail.latestDecision.opinion}</p>}
-    </section>
+    </Section>
 
-    {canOperate && taskClaimed && <section aria-labelledby="verify-heading">
-      <h2 id="verify-heading">人工核验（主体/证件）</h2>
+    {canOperate && taskClaimed && <Section title="人工核验（主体/证件）">
       {!references.ok || evidenceGroups === null ? <>
-        <p role="alert">{references.issue}</p>
+        <ErrorAlert>{references.issue}</ErrorAlert>
         <p className="hint">核验证据必须引用提交版本登记的材料编号与摘要；投影缺失或不合法时提交保持禁用，不以资产编号或读取字节替代。</p>
-        <button disabled aria-disabled="true">提交人工核验（材料引用不可用）</button>
+        <Button disabled aria-disabled="true">提交人工核验（材料引用不可用）</Button>
       </> : <>
         <p className="hint">身份证须正反面都查看后合并为一条主体核验；每类证件一条证据，材料编号与摘要取自权威引用，重复类型会被后端拒绝。</p>
-        <table className="evidence">
-          <thead><tr><th>证件</th><th>证件主体</th><th>证号/信用代码</th><th>有效期</th><th>查看状态</th></tr></thead>
-          <tbody>
-            {evidenceGroups.map(group => {
-              const draft = drafts[group.credentialType];
-              const viewed = groupViewed(group);
-              return <tr key={group.credentialType}>
-                <th>{group.label}</th>
-                <td><input aria-label={`${group.label} 证件主体`} value={draft?.subjectName ?? ''} disabled={!viewed} onChange={event => patchDraft(group.credentialType, { subjectName: event.target.value })} /></td>
-                <td><input aria-label={`${group.label} 证号`} value={draft?.identifier ?? ''} disabled={!viewed} onChange={event => patchDraft(group.credentialType, { identifier: event.target.value })} /></td>
-              <td>
-                <select aria-label={`${group.label} 有效期类型`} value={draft?.validityKind ?? 'DATED'} disabled={!viewed} onChange={event => patchDraft(group.credentialType, event.target.value === 'LONG_TERM'
-                  // Backend rules: validFrom is required for every credential and
-                  // LONG_TERM requires validTo == null — switching clears it.
-                  ? { validityKind: 'LONG_TERM', validTo: null }
-                  : { validityKind: 'DATED' })}>
-                  <option value="DATED">有期限</option>
-                  <option value="LONG_TERM">长期</option>
-                </select>
-                <input type="date" aria-label={`${group.label} 生效日`} value={draft?.validFrom ?? ''} disabled={!viewed} onChange={event => patchDraft(group.credentialType, { validFrom: event.target.value || null })} />
-                {draft?.validityKind !== 'LONG_TERM' && <input type="date" aria-label={`${group.label} 到期日`} value={draft?.validTo ?? ''} disabled={!viewed} onChange={event => patchDraft(group.credentialType, { validTo: event.target.value || null })} />}
-              </td>
-                <td>{viewed ? '已查看' : '未查看'}</td>
-              </tr>;
-            })}
-          </tbody>
-        </table>
-        <label>核验说明（≥10字）<input value={verifyReason} onChange={event => setVerifyReason(event.target.value)} placeholder="如：已核对证件原件与主体一致，编号与有效期无误" /></label>
-        <label><input type="checkbox" checked={verifyConfirmed} onChange={event => setVerifyConfirmed(event.target.checked)} /> 我已逐项核对上述证件信息与所见材料一致</label>
-        <button disabled={busy || retry !== null || !verificationReady} onClick={() => void submitVerification()}>提交人工核验</button>
+        <DataTable columns={evidenceColumns} rows={evidenceGroups} rowKey={group => group.credentialType} />
+        <label className="filter-item">核验说明（≥10字）<Input style={{ width: 'min(100%, 560px)' }} value={verifyReason} onChange={event => setVerifyReason(event.target.value)} placeholder="如：已核对证件原件与主体一致，编号与有效期无误" /></label>
+        <div><Checkbox checked={verifyConfirmed} onChange={event => setVerifyConfirmed(event.target.checked)}>我已逐项核对上述证件信息与所见材料一致</Checkbox></div>
+        <Button disabled={busy || retry !== null || !verificationReady} onClick={() => void submitVerification()}>提交人工核验</Button>
       </>}
-    </section>}
+    </Section>}
 
-    {canOperate && taskClaimed && <section aria-labelledby="decision-heading">
-      <h2 id="decision-heading">审核决定</h2>
-      {approveBlocked && <p role="alert">主体核验未完成：仅“通过”需先完成人工核验；材料有问题时可正常选择拒绝或要求补正。</p>}
-      <label>决定类型
-        <select value={decisionType} onChange={event => setDecisionType(event.target.value as DecisionTypeValue)}>
-          <option value="APPROVE" disabled={approveBlocked}>通过（建立商家档案）</option>
-          <option value="REQUEST_CORRECTION">要求补正（申请人修改后重新提交）</option>
-          <option value="REJECT">拒绝</option>
-        </select>
+    {canOperate && taskClaimed && <Section title="审核决定">
+      {approveBlocked && <ErrorAlert>主体核验未完成：仅“通过”需先完成人工核验；材料有问题时可正常选择拒绝或要求补正。</ErrorAlert>}
+      <label className="filter-item">决定类型
+        <Select style={{ width: 360 }} aria-label="决定类型" value={decisionType} onChange={value => setDecisionType(value as DecisionTypeValue)}
+          options={[
+            { value: 'APPROVE', label: '通过（建立商家档案）', disabled: approveBlocked },
+            { value: 'REQUEST_CORRECTION', label: '要求补正（申请人修改后重新提交）' },
+            { value: 'REJECT', label: '拒绝' },
+          ]} />
       </label>
-      <label>审核意见{decisionNeedsOpinion ? '（必填）' : ''}<textarea value={opinion} onChange={event => setOpinion(event.target.value)} rows={3} /></label>
-      <label>内部备注（仅运营可见）<textarea value={internalNote} onChange={event => setInternalNote(event.target.value)} rows={2} /></label>
-      <label><input type="checkbox" checked={decisionConfirmed} onChange={event => setDecisionConfirmed(event.target.checked)} /> 我确认本决定基于已查看的材料与核验结果</label>
-      <button disabled={busy || retry !== null || !decisionReady} onClick={() => void submitDecision()}>提交审核决定</button>
-    </section>}
-  </main>;
+      <label className="filter-item">审核意见{decisionNeedsOpinion ? '（必填）' : ''}<Input.TextArea style={{ width: 'min(100%, 720px)' }} rows={3} value={opinion} onChange={event => setOpinion(event.target.value)} /></label>
+      <label className="filter-item">内部备注（仅运营可见）<Input.TextArea style={{ width: 'min(100%, 720px)' }} rows={2} value={internalNote} onChange={event => setInternalNote(event.target.value)} /></label>
+      <div><Checkbox checked={decisionConfirmed} onChange={event => setDecisionConfirmed(event.target.checked)}>我确认本决定基于已查看的材料与核验结果</Checkbox></div>
+      <Button disabled={busy || retry !== null || !decisionReady} onClick={() => void submitDecision()}>提交审核决定</Button>
+    </Section>}
+  </PageContainer>;
 }
 
 type DecisionTypeValue = 'APPROVE' | 'REJECT' | 'REQUEST_CORRECTION';

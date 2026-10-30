@@ -1,6 +1,11 @@
 import { useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { SERVICE_STATUSES, ServiceReviewFailure, serviceStatusLabel, type ServicePage, type ServiceReviewClient, type ServiceStatus } from '../api/serviceReview';
+import { Button, Input, Select } from 'antd';
+import type { TableColumnsType } from 'antd';
+import { SERVICE_STATUSES, ServiceReviewFailure, serviceStatusLabel, type ServicePage, type ServiceReviewClient, type ServiceStatus, type ServiceSummary } from '../api/serviceReview';
+import { DataTable } from '../ui/DataTable';
+import { ErrorAlert, InlineStatus } from '../ui/bits';
+import { PageContainer } from '../ui/PageContainer';
 
 /** 运营 PRD 6.2.4 服务项目审核与管理：审核列表（24h SLA 剩余、驳回次数）。 */
 export default function ServiceReviewListPage({ client, onAuthLost }: { client: ServiceReviewClient; onAuthLost: () => void }) {
@@ -34,43 +39,40 @@ export default function ServiceReviewListPage({ client, onAuthLost }: { client: 
   }
   const ID = /^[1-9][0-9]{0,18}$/;
   const valid = merchantId === '' || ID.test(merchantId);
-  const pages = result ? Math.min(10000, Math.max(1, Math.ceil(result.total / result.pageSize))) : 1;
-  return <main className="aftersale-page">
-    <h1>服务审核</h1>
-    <p className="hint">服务上/下架审核与强制下架。运营不代商家新增/编辑服务；审核与下架分别鉴权。</p>
+  const columns: TableColumnsType<ServiceSummary> = [
+    { title: '服务编号', dataIndex: 'serviceId' },
+    { title: '服务名称', dataIndex: 'serviceName' },
+    { title: '类目', render: (_, item) => item.categoryName ?? item.categoryId },
+    { title: '状态', render: (_, item) => serviceStatusLabel(item.status) },
+    { title: '价格', render: (_, item) => item.price ?? '—' },
+    { title: '提交轮次', dataIndex: 'submissionNo' },
+    { title: '提交（UTC）', dataIndex: 'submittedAt' },
+    { title: 'SLA 剩余（分钟）', render: (_, item) => item.slaRemainingMinutes ?? '—' },
+    { title: '驳回次数', dataIndex: 'rejectCount' },
+    { title: '操作', render: (_, item) => <Link to={`/services/${item.serviceId}`}>审核</Link> },
+  ];
+  return <PageContainer
+    title="服务审核"
+    hint="服务上/下架审核与强制下架。运营不代商家新增/编辑服务；审核与下架分别鉴权。">
     <form className="filters" onSubmit={event => { event.preventDefault(); if (valid) void query(1); }}>
-      <label>状态
-        <select value={status} onChange={event => { const next = event.target.value as ServiceStatus | ''; setStatus(next); void query(1, next); }}>
-          <option value="">全部</option>
-          {SERVICE_STATUSES.map(value => <option key={value} value={value}>{serviceStatusLabel(value)}</option>)}
-        </select>
+      <label className="filter-item">状态
+        <Select style={{ width: 160 }} value={status} onChange={value => { const next = value as ServiceStatus | ''; setStatus(next); void query(1, next); }}
+          options={[{ value: '', label: '全部' }, ...SERVICE_STATUSES.map(value => ({ value, label: serviceStatusLabel(value) }))]} />
       </label>
-      <label>商家编号<input inputMode="numeric" value={merchantId} onChange={event => setMerchantId(event.target.value)} /></label>
-      <button disabled={loading || !valid}>查询服务</button>
+      <label className="filter-item">商家编号<Input style={{ width: 160 }} inputMode="numeric" value={merchantId} onChange={event => setMerchantId(event.target.value)} /></label>
+      <Button type="primary" htmlType="submit" disabled={loading || !valid}>查询服务</Button>
     </form>
-    {error && <p role="alert">{error}</p>}
-    {loading && <p role="status">正在查询服务</p>}
-    {result && <>
-      <div className="table-scroll"><table>
-        <thead><tr><th>服务编号</th><th>服务名称</th><th>类目</th><th>状态</th><th>价格</th><th>提交轮次</th><th>提交（UTC）</th><th>SLA 剩余（分钟）</th><th>驳回次数</th><th>操作</th></tr></thead>
-        <tbody>{result.items.map(item => <tr key={item.serviceId}>
-          <td>{item.serviceId}</td>
-          <td>{item.serviceName}</td>
-          <td>{item.categoryName ?? item.categoryId}</td>
-          <td>{serviceStatusLabel(item.status)}</td>
-          <td>{item.price ?? '—'}</td>
-          <td>{item.submissionNo}</td>
-          <td>{item.submittedAt}</td>
-          <td>{item.slaRemainingMinutes ?? '—'}</td>
-          <td>{item.rejectCount}</td>
-          <td><Link to={`/services/${item.serviceId}`}>审核</Link></td>
-        </tr>)}</tbody>
-      </table></div>
-      <nav className="pager" aria-label="服务分页">
-        <button disabled={loading || result.page <= 1} onClick={() => void query(result.page - 1)}>上一页</button>
-        <span>第 {result.page} / {pages} 页 · 共 {result.total} 条</span>
-        <button disabled={loading || result.page >= pages} onClick={() => void query(result.page + 1)}>下一页</button>
-      </nav>
-    </>}
-  </main>;
+    {error && <ErrorAlert>{error}</ErrorAlert>}
+    {loading && <InlineStatus>正在查询服务</InlineStatus>}
+    {result && <DataTable
+      columns={columns}
+      rows={result.items}
+      rowKey={item => item.serviceId}
+      loading={loading}
+      page={result.page}
+      pageSize={result.pageSize}
+      total={result.total}
+      onPageChange={page => void query(page)}
+    />}
+  </PageContainer>;
 }

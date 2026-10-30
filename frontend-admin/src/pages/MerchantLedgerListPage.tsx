@@ -1,10 +1,16 @@
 import { useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
+import { Button, DatePicker, Input, Select } from 'antd';
+import dayjs from 'dayjs';
+import type { TableColumnsType } from 'antd';
 import {
   MERCHANT_STATUSES, STORE_STATUSES, merchantStatusLabel, signingLabel,
   type MerchantGovernanceClient, type MerchantLedgerFilters, type MerchantLedgerSummary,
 } from '../api/merchantGovernance';
 import { GovernanceFailure, governanceFailureText, type Page } from '../api/governanceHttp';
+import { DataTable } from '../ui/DataTable';
+import { ErrorAlert, InlineStatus, StatusTag } from '../ui/bits';
+import { PageContainer } from '../ui/PageContainer';
 
 type Filters = {
   status: string; storeStatus: string; cityCode: string; merchantTypeCode: string;
@@ -12,6 +18,7 @@ type Filters = {
 };
 const EMPTY: Filters = { status: '', storeStatus: '', cityCode: '', merchantTypeCode: '', keyword: '', createdFrom: '', createdTo: '' };
 const UTC_LOCAL = (value: string) => (value ? new Date(value).toISOString() : undefined);
+const LOCAL = 'YYYY-MM-DDTHH:mm';
 
 /** 运营 PRD 6.2.2 商家台账：全量商家统一档案视图（只读）；四层状态与签约事实均为服务端投影。 */
 export default function MerchantLedgerListPage({ client, onAuthLost }: { client: MerchantGovernanceClient; onAuthLost: () => void }) {
@@ -55,56 +62,50 @@ export default function MerchantLedgerListPage({ client, onAuthLost }: { client:
   const rangeOk = (!filters.createdFrom && !filters.createdTo)
     || (filters.createdFrom && filters.createdTo && filters.createdFrom <= filters.createdTo);
   const valid = keywordOk && rangeOk;
-  const pages = result ? Math.min(10000, Math.max(1, Math.ceil(result.total / result.pageSize))) : 1;
-  return <main className="aftersale-page">
-    <h1>商家台账</h1>
-    <p className="hint">运营 PRD 6.2.2：商家档案巡检与咨询应答入口（只读）。手机号与子商户号仅脱敏呈现；冻结/下线处置不在本页（HTTP10 §5.6 另切片）。</p>
-    <form className="filters" onSubmit={event => { event.preventDefault(); if (valid) void query(filters, 1); }}>
-      <label>商家状态
-        <select value={filters.status} onChange={event => patch('status', event.target.value)}>
-          <option value="">全部</option>
-          {MERCHANT_STATUSES.map(value => <option key={value} value={value}>{merchantStatusLabel(value)}</option>)}
-        </select>
+  const columns: TableColumnsType<MerchantLedgerSummary> = [
+    { title: '商家 ID', dataIndex: 'merchantId' },
+    { title: '名称', dataIndex: 'merchantName' },
+    { title: '状态', render: (_, item) => <StatusTag label={merchantStatusLabel(item.status)} status={item.status} /> },
+    { title: '类型', render: (_, item) => item.merchantTypeCode ?? '—' },
+    { title: '城市', render: (_, item) => item.cityCode ?? '—' },
+    { title: '门店（经营/总数）', render: (_, item) => `${item.activeStoreCount} / ${item.storeCount}` },
+    { title: '申请状态', render: (_, item) => applicationText(item) },
+    { title: '签约', render: (_, item) => signingLabel(item.signingStatus) },
+    { title: '子商户号', render: (_, item) => item.providerMerchantNoMasked ?? '—' },
+    { title: '入驻（UTC）', dataIndex: 'createdAt' },
+    { title: '操作', render: (_, item) => <Link to={`/governance/merchants/${item.merchantId}`}>详情</Link> },
+  ];
+  return <PageContainer
+    title="商家台账"
+    hint="运营 PRD 6.2.2：商家档案巡检与咨询应答入口（只读）。手机号与子商户号仅脱敏呈现；冻结/下线处置不在本页（HTTP10 §5.6 另切片）。">
+    <form className="filter-bar" onSubmit={event => { event.preventDefault(); if (valid) void query(filters, 1); }}>
+      <label className="filter-item">商家状态
+        <Select style={{ width: 160 }} value={filters.status} onChange={value => patch('status', value)}
+          options={[{ value: '', label: '全部' }, ...MERCHANT_STATUSES.map(value => ({ value, label: merchantStatusLabel(value) }))]} />
       </label>
-      <label>门店状态
-        <select value={filters.storeStatus} onChange={event => patch('storeStatus', event.target.value)}>
-          <option value="">全部</option>
-          {STORE_STATUSES.map(value => <option key={value} value={value}>{merchantStatusLabel(value)}</option>)}
-        </select>
+      <label className="filter-item">门店状态
+        <Select style={{ width: 160 }} value={filters.storeStatus} onChange={value => patch('storeStatus', value)}
+          options={[{ value: '', label: '全部' }, ...STORE_STATUSES.map(value => ({ value, label: merchantStatusLabel(value) }))]} />
       </label>
-      <label>城市<input value={filters.cityCode} onChange={event => patch('cityCode', event.target.value)} /></label>
-      <label>商家类型<input value={filters.merchantTypeCode} onChange={event => patch('merchantTypeCode', event.target.value)} /></label>
-      <label>关键词（商家/门店名）<input value={filters.keyword} onChange={event => patch('keyword', event.target.value)} /></label>
-      <label>入驻起<input type="datetime-local" value={filters.createdFrom} onChange={event => patch('createdFrom', event.target.value)} /></label>
-      <label>入驻止<input type="datetime-local" value={filters.createdTo} onChange={event => patch('createdTo', event.target.value)} /></label>
-      <button disabled={loading || !valid}>查询商家</button>
+      <label className="filter-item">城市<Input style={{ width: 160 }} value={filters.cityCode} onChange={event => patch('cityCode', event.target.value)} /></label>
+      <label className="filter-item">商家类型<Input style={{ width: 160 }} value={filters.merchantTypeCode} onChange={event => patch('merchantTypeCode', event.target.value)} /></label>
+      <label className="filter-item">关键词（商家/门店名）<Input style={{ width: 200 }} value={filters.keyword} onChange={event => patch('keyword', event.target.value)} /></label>
+      <label className="filter-item">入驻起<DatePicker showTime format="YYYY-MM-DD HH:mm" value={filters.createdFrom ? dayjs(filters.createdFrom) : null} onChange={value => patch('createdFrom', value ? value.format(LOCAL) : '')} /></label>
+      <label className="filter-item">入驻止<DatePicker showTime format="YYYY-MM-DD HH:mm" value={filters.createdTo ? dayjs(filters.createdTo) : null} onChange={value => patch('createdTo', value ? value.format(LOCAL) : '')} /></label>
+      <Button type="primary" htmlType="submit" disabled={loading || !valid}>查询商家</Button>
     </form>
-    {error && <p role="alert">{error}</p>}
-    {loading && <p role="status">正在查询商家台账</p>}
-    {result && <>
-      <div className="table-scroll"><table>
-        <thead><tr><th>商家 ID</th><th>名称</th><th>状态</th><th>类型</th><th>城市</th><th>门店（经营/总数）</th><th>申请状态</th><th>签约</th><th>子商户号</th><th>入驻（UTC）</th><th>操作</th></tr></thead>
-        <tbody>{result.items.map(item => <tr key={item.merchantId}>
-          <td>{item.merchantId}</td>
-          <td>{item.merchantName}</td>
-          <td>{merchantStatusLabel(item.status)}</td>
-          <td>{item.merchantTypeCode ?? '—'}</td>
-          <td>{item.cityCode ?? '—'}</td>
-          <td>{item.activeStoreCount} / {item.storeCount}</td>
-          <td>{applicationText(item)}</td>
-          <td>{signingLabel(item.signingStatus)}</td>
-          <td>{item.providerMerchantNoMasked ?? '—'}</td>
-          <td>{item.createdAt}</td>
-          <td><Link to={`/governance/merchants/${item.merchantId}`}>详情</Link></td>
-        </tr>)}</tbody>
-      </table></div>
-      <nav className="pager" aria-label="商家台账分页">
-        <button disabled={loading || result.page <= 1} onClick={() => void query(filters, result.page - 1)}>上一页</button>
-        <span>第 {result.page} / {pages} 页 · 共 {result.total} 条</span>
-        <button disabled={loading || result.page >= pages} onClick={() => void query(filters, result.page + 1)}>下一页</button>
-      </nav>
-    </>}
-  </main>;
+    {error && <ErrorAlert>{error}</ErrorAlert>}
+    {loading && <InlineStatus>正在查询商家台账</InlineStatus>}
+    {result && <DataTable
+      columns={columns}
+      rows={result.items}
+      rowKey={item => item.merchantId}
+      page={result.page}
+      pageSize={result.pageSize}
+      total={result.total}
+      onPageChange={page => void query(filters, page)}
+    />}
+  </PageContainer>;
 }
 
 function applicationText(item: MerchantLedgerSummary) {

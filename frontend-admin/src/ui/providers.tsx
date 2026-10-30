@@ -15,7 +15,8 @@ const theme = {
   },
 };
 
-/** 全局 Provider 壳：生产 App 与 fixture 工程壳共用，保证组件观感一致。 */
+/** 全局 Provider 壳：生产 App 与 fixture 工程壳共用，保证组件观感一致。
+ *  关闭两字按钮自动插空格：按钮可访问名必须与文案逐字一致（验收脚本 exact 断言）。 */
 export function AdminProviders({ children }: { children: ReactNode }) {
-  return <ConfigProvider locale={zhCN} theme={theme}><AntApp>{children}</AntApp></ConfigProvider>;
+  return <ConfigProvider locale={zhCN} theme={theme} button={{ autoInsertSpace: false }}><AntApp>{children}</AntApp></ConfigProvider>;
 }

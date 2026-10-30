@@ -168,7 +168,8 @@ export function App() {
     if (!permissions?.actionCodes.includes(action)) return <div className="page" role="alert"><h2>{FORBIDDEN_TITLES[action] ?? '403 · 无积分任务配置权限'}</h2><p>当前账号未授予 {action}。</p></div>;
     return element;
   };
-  const menuItem = (key: string, label: string, show: boolean) => show ? { key, label } as const : false as const;
+  // 菜单项内放真实 <Link>：导航保持 link 角色（验收脚本按 link 名字点击），Menu onClick 兜底。
+  const menuItem = (key: string, label: string, show: boolean) => show ? { key, label: <Link to={key}>{label}</Link> } as const : false as const;
   const menuGroups: NonNullable<MenuProps['items']> = [
     { type: 'group', label: '审核中心', children: [
       menuItem('/merchant-applications', '商家申请审核', canRead),
