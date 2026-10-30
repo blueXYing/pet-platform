@@ -13,7 +13,8 @@ import java.util.List;
  * authority.
  */
 public record MerchantStoreDisplayPageQuery(
-        List<String> cityCodes, String keyword, int page, int pageSize, QueryContext context) {
+        List<String> cityCodes, String keyword, int page, int pageSize, QueryContext context,
+        boolean promotedOnly) {
 
     public MerchantStoreDisplayPageQuery {
         cityCodes = cityCodes == null ? List.of() : List.copyOf(cityCodes);

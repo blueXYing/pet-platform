@@ -7,7 +7,7 @@ import { switchConsumerTab } from '../../components/navigation/switch'
 import { useWorkspace } from '../../../shared/workspace-react'
 import { SigningController } from '../../merchant-application/signing'
 import { signingRuntime } from '../../merchant-application/signing-runtime'
-import back from './assets/back.png'
+import { SubpageHeader, SubpageHeaderSpacer } from '../../components/navigation/subpage-header'
 import './index.scss'
 import './signing.scss'
 
@@ -36,7 +36,8 @@ function SigningScreen({ preview, merchantParam, scope }: { preview: boolean; me
   const receiptTime = state.receipt?.acceptedAt || ''
   return <ConsumerPageLayout page='merchantApplication' unit={unit} className='application-page signing-page' style={style} navigation={preview ? { idPrefix: 'signing', disabled: state.busy, onSelect: key => void switchConsumerTab(key) } : undefined}>
     <View className='application-design' data-state={state.phase}>
-      <View className='application-header'><Button id='signing-back' ariaLabel='返回' disabled={state.busy} onClick={() => void leave()}><Image src={back} mode='scaleToFill' /></Button><Text>商家协议签署</Text></View>
+      <SubpageHeader title='商家协议签署' backId='signing-back' height={48} backDisabled={state.busy} onBack={() => void leave()} />
+      <SubpageHeaderSpacer height={48} statusBar={false} />
       <View className='application-content'>
         <Text className='application-intro'>请阅读以下商家协议全文。勾选同意并签署后，签署版本与时间将以服务端记录为准。</Text>
         {state.phase === 'switching' && <View className='application-state' role='status'>签署工作区已切换，请重新进入签署。</View>}

@@ -10,17 +10,12 @@
 .bkg-page button::after { border: 0; }
 .bkg-page button[disabled] { opacity: .65; color: inherit; }
 .bkg-design { position: relative; min-height: 100vh; }
-.bkg-status-area { height: var(--bkg-status-top); }
 .bkg-state { padding: calc(var(--bkg-unit) * 42) calc(var(--bkg-unit) * 29); font-size: calc(var(--bkg-unit) * 14); line-height: calc(var(--bkg-unit) * 24); color: #577683; }
 .bkg-page .bkg-state-action { display: block; margin-top: calc(var(--bkg-unit) * 8); color: #3185ba; font-size: calc(var(--bkg-unit) * 12); line-height: calc(var(--bkg-unit) * 18); }
 .bkg-notice { display: block; margin: calc(var(--bkg-unit) * 10) calc(var(--bkg-unit) * 29) 0; font-size: calc(var(--bkg-unit) * 12); line-height: calc(var(--bkg-unit) * 18); color: #a23e2d; }
 .bkg-preview-note { padding: calc(var(--bkg-unit) * 16) calc(var(--bkg-unit) * 29); font-size: calc(var(--bkg-unit) * 10); line-height: calc(var(--bkg-unit) * 15); color: #8aa0ac; }
 
 /* 顶部导航（orders 同款：返回 32x32 + 标题 16/700）。 */
-.bkg-nav { position: relative; height: calc(var(--bkg-unit) * 44); display: flex; align-items: center; }
-.bkg-nav-back { position: absolute; left: calc(var(--bkg-unit) * 22); top: calc(var(--bkg-unit) * 6); width: calc(var(--bkg-unit) * 32); height: calc(var(--bkg-unit) * 32); display: flex; align-items: center; justify-content: center; }
-.bkg-nav-back-icon { font-size: calc(var(--bkg-unit) * 22); line-height: 1; color: #3c3c3c; }
-.bkg-nav-title { margin-left: calc(var(--bkg-unit) * 62); font-size: calc(var(--bkg-unit) * 16); line-height: calc(var(--bkg-unit) * 24); font-weight: 700; color: #3c3c3c; }
 
 /* 服务/回执摘要卡（690:4506 弹层头部：门店 + 费用；卡片字段=契约投影）。 */
 .bkg-body { padding-bottom: calc(var(--bkg-unit) * 96); }

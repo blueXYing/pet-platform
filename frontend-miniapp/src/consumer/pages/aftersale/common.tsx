@@ -2,7 +2,7 @@ import { Button, Image, Text, View } from '@tarojs/components'
 import Taro from '@tarojs/taro'
 import { useEffect, useState, type CSSProperties, type PropsWithChildren } from 'react'
 import { ConsumerPageLayout } from '../../components/page-layout'
-import backIcon from './assets/back.svg'
+import { SubpageHeader, SubpageHeaderSpacer } from '../../components/navigation/subpage-header'
 import addIcon from './assets/add.svg'
 import './page.scss'
 
@@ -16,7 +16,8 @@ export function AfterSaleFrame({ title, children }: PropsWithChildren<{ title: s
     else await Taro.redirectTo({ url: '/consumer/pages/shell/index' })
   }
   return <ConsumerPageLayout page='profileEdit' unit={unit} className='afs-page' style={style}>
-    <View className='afs-header'><Button id='afs-back' className='afs-back' ariaLabel='返回' onClick={() => void back()}><Image src={backIcon} className='afs-back-icon' /></Button><Text>{title}</Text></View>
+    <SubpageHeader title={title} backId='afs-back' height={74} onBack={() => void back()} />
+    <SubpageHeaderSpacer height={74} />
     <View className='afs-body'>{children}</View>
   </ConsumerPageLayout>
 }

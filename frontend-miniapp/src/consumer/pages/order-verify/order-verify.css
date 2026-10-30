@@ -4,10 +4,6 @@
 .ovv-page button { box-sizing: border-box; margin: 0; font-family: inherit; border: 0; }
 .ovv-page button::after { border: 0; }
 .ovv-design { display: flex; flex-direction: column; }
-.ovv-status-area { min-height: var(--ovv-top); background: #fff6e5; }
-.ovv-nav { display: flex; align-items: center; gap: calc(var(--ovv-unit) * 21); min-height: calc(var(--ovv-unit) * 74); padding: 0 calc(var(--ovv-unit) * 18); background: #fff6e5; font-weight: 700; font-size: calc(var(--ovv-unit) * 16); color: #3c3c3c; }
-.ovv-page .ovv-nav-back { display: flex; align-items: center; justify-content: center; width: calc(var(--ovv-unit) * 24); height: calc(var(--ovv-unit) * 40); padding: 0; background: transparent; }
-.ovv-nav-back-icon { font-size: calc(var(--ovv-unit) * 22); line-height: 1; color: #3c3c3c; }
 .ovv-body { display: flex; flex-direction: column; gap: calc(var(--ovv-unit) * 17.539); padding: calc(var(--ovv-unit) * 17) calc(var(--ovv-unit) * 13.506) calc(var(--ovv-unit) * 30) calc(var(--ovv-unit) * 12.506); }
 .ovv-card { display: flex; flex-direction: column; padding: calc(var(--ovv-unit) * 18.635); border: calc(var(--ovv-unit) * 1.096) solid #c0ecff; border-radius: calc(var(--ovv-unit) * 13.154); background: #fff; overflow: hidden; }
 .ovv-heading { font-size: calc(var(--ovv-unit) * 15.346); font-weight: 500; line-height: calc(var(--ovv-unit) * 21.923); }

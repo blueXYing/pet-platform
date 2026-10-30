@@ -21,11 +21,15 @@ export function createWebClient(transport: Transport = fetch) {
       const headers = new Headers({ Accept: 'application/json', ...(options.headers ?? {}) });
       if (token) headers.set('Authorization', `Bearer ${token}`);
       const method = options.method ?? 'GET';
+      const isForm = options.body instanceof FormData;
       if (method !== 'GET') {
         headers.set('X-Request-Id', options.requestId ?? crypto.randomUUID());
-        headers.set('Content-Type', 'application/json');
+        if (!isForm) headers.set('Content-Type', 'application/json');
       }
-      const response = await transport(new Request(url, { method, headers, credentials, redirect: 'error', body: options.body === undefined ? undefined : JSON.stringify(options.body) }));
+      const requestBody: BodyInit | undefined = options.body === undefined
+        ? undefined
+        : isForm ? options.body as FormData : JSON.stringify(options.body);
+      const response = await transport(new Request(url, { method, headers, credentials, redirect: 'error', body: requestBody }));
       if (started !== epoch) throw new RequestFailure('STALE_CONTEXT', 0);
       if (response.status === 401) {
         // Session invalidation is the 401 semantic only: it clears the context so every later

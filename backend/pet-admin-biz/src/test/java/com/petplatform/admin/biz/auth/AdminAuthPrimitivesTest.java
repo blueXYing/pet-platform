@@ -93,7 +93,13 @@ class AdminAuthPrimitivesTest {
             // row 18): the three complaint enforcement points ship in that face (C-side
             // controller snapshot gate + AdminFeedbackOpsController + kernel port re-proof);
             // row 18's complaint.assign stays unregistered — no dispatch in V1.
-            "complaint.read", "complaint.handle", "complaint.decide"),
+            "complaint.read", "complaint.handle", "complaint.decide",
+            "community.post.read", "community.post.moderate", "community.report.read",
+            "community.report.handle",
+            "marketing.campaign.read", "marketing.campaign.manage", "marketing.campaign.publish",
+            "marketing.placement.read", "marketing.placement.manage",
+            "marketing.enrollment.read", "marketing.enrollment.review",
+            "coupon.campaign.read", "coupon.campaign.manage", "coupon.campaign.publish"),
         AdminPermissionEvaluator.DEPLOYED_ACTIONS);
     assertEquals(AdminPermissionEvaluator.DEPLOYED_ACTIONS.stream().sorted().toList(),AdminPermissionEvaluator.evaluate(true,List.of("refund.retry"),AdminPermissionEvaluator.DEPLOYED_ACTIONS));
         // A proposed-but-undeployed code (merchant.freeze: AUTH-001 matrix row, explicitly not

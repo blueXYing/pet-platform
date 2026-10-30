@@ -4,12 +4,7 @@
 .profile-page button { padding: 0; margin: 0; border: 0; border-radius: 0; background: transparent; font: inherit; line-height: normal; }
 .profile-page button::after { border: 0; }
 .profile-page button[disabled] { opacity: .65; color: inherit; }
-.profile-status-area { height: var(--profile-status-top); background: #fff6e5; }
 .profile-design { min-height: calc(100vh - var(--profile-status-top) - var(--consumer-nav-reserve)); position: relative; }
-.profile-header { height: calc(var(--profile-unit) * 49); position: relative; background: #fff6e5; border-bottom: calc(var(--profile-unit) * 2) solid #cdeede; }
-.profile-back { position: absolute; left: calc(var(--profile-unit) * 19); top: calc(var(--profile-unit) * 8); width: calc(var(--profile-unit) * 32); height: calc(var(--profile-unit) * 32); }
-.profile-back image { width: 100%; height: 100%; display: block; }
-.profile-title { position: absolute; left: calc(var(--profile-unit) * 59); top: calc(var(--profile-unit) * 12); font-family: "C002 Noto CJK", "C002 Noto SC", Outfit, "Noto Sans SC", sans-serif; font-size: calc(var(--profile-unit) * 16); font-weight: 700; line-height: calc(var(--profile-unit) * 24); }
 .profile-form { width: calc(var(--profile-unit) * 343); margin-left: calc(var(--profile-unit) * 29); padding-top: calc(var(--profile-unit) * 16); }
 .profile-card { width: 100%; margin-bottom: calc(var(--profile-unit) * 16); background: #ffffff; border: calc(var(--profile-unit) * 1) solid #c0ecff; border-radius: calc(var(--profile-unit) * 12); padding: calc(var(--profile-unit) * 13); display: flex; align-items: center; justify-content: space-between; position: relative; }
 .profile-label { font-family: "C002 Roboto", "C002 Noto CJK", "C002 Noto SC", Roboto, "Noto Sans SC", sans-serif; font-size: calc(var(--profile-unit) * 14); line-height: calc(var(--profile-unit) * 20); font-weight: 400; color: #402e26; flex-shrink: 0; }
@@ -45,7 +40,6 @@
 .profile-count { position: absolute; top: calc(var(--profile-unit) * 127.75); left: calc(var(--profile-unit) * 13); width: calc(var(--profile-unit) * 317); height: calc(var(--profile-unit) * 17); margin: 0; }
 .profile-reference-canvas { width: var(--profile-design-width); min-height: 0; height: calc(var(--profile-unit) * 812); overflow: hidden; position: relative; }
 .profile-reference-canvas .profile-design { min-height: 0; height: 100%; padding-bottom: 0; }
-.profile-reference-canvas .profile-status-area { height: 0; }
 /* Text baselines follow source glyph placement; the input box itself is unchanged. */
 .profile-avatar-card > .profile-label, .profile-nickname-card > .profile-label, .profile-gender-card > .profile-label, .profile-phone-card > .profile-label, .profile-phone { top: calc(var(--profile-unit) * 2); }
 .profile-signature-card > .profile-label { top: calc(var(--profile-unit) * 16.5); }

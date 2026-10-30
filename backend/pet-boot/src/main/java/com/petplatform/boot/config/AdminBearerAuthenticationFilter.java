@@ -78,7 +78,14 @@ public final class AdminBearerAuthenticationFilter extends OncePerRequestFilter 
           || path.startsWith("/api/v1/admin/coupon-templates")
           || path.startsWith("/api/v1/admin/coupon-instances")
           || path.equals("/api/v1/admin/points/ledger")
-          || path.equals("/api/v1/admin/settings/runtime")) {
+          || path.equals("/api/v1/admin/settings/runtime")
+          // Contract-71/72 marketing center and coupon campaigns: ADMIN_WEB Bearer is
+          // resolved here; the marketing/coupon kernels re-prove their action codes.
+          || path.startsWith("/api/v1/admin/marketing/")
+          || path.startsWith("/api/v1/admin/coupon-campaigns")
+          // CCR-COM-001 community moderation: ADMIN_WEB Bearer enforced; action codes are
+          // re-proved by the community kernel per call.
+          || path.startsWith("/api/v1/admin/community/")) {
         try {
           AdminAuthService service = services.getIfAvailable();
           if (service == null) throw AdminAuthFailure.unavailable();

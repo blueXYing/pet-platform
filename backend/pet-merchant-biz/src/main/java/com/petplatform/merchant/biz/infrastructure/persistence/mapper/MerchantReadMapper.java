@@ -56,7 +56,15 @@ public interface MerchantReadMapper {
     java.util.List<com.petplatform.merchant.biz.infrastructure.persistence.entity.MerchantStoreDisplayRowEntity>
             selectDisplayStoreCandidates();
 
+    /** Same display query without the SQL27 profile join (marketing projection disabled). */
+    java.util.List<com.petplatform.merchant.biz.infrastructure.persistence.entity.MerchantStoreDisplayRowEntity>
+            selectDisplayStoreCandidatesPlain();
+
     /** STR-D6 single-store display row (null when the store does not exist). */
     com.petplatform.merchant.biz.infrastructure.persistence.entity.MerchantStoreDisplayRowEntity
             selectDisplayStore(@Param("storeId") long storeId);
+
+    /** Same single-store query without the SQL27 profile join. */
+    com.petplatform.merchant.biz.infrastructure.persistence.entity.MerchantStoreDisplayRowEntity
+            selectDisplayStorePlain(@Param("storeId") long storeId);
 }

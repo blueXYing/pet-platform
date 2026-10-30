@@ -1,0 +1,391 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.petplatform.community.biz.infrastructure.persistence.mapper.CommunityMapper">
+
+    <!-- CCR-COM-001 community tables. All ids are Snowflake BIGINT on the wire as Strings. -->
+
+    <sql id="postColumns">
+        p.id,p.author_user_id,p.title,p.content,p.topic_id,p.image_ids,p.visibility,p.status,
+        p.like_count,p.comment_count,p.favorite_count,p.view_count,p.version,p.published_at,
+        p.created_at,p.updated_at,
+        t.topic_code,t.name AS topic_name,t.description AS topic_description,
+        t.sort_weight AS topic_sort_weight
+    </sql>
+
+    <sql id="publicPostWhere">
+        p.status='PUBLISHED' AND p.visibility='PUBLIC'
+        <if test="topicId != null">AND p.topic_id=#{topicId}</if>
+    </sql>
+
+    <select id="selectEnabledTopics"
+            resultType="com.petplatform.community.biz.infrastructure.persistence.entity.CommunityEntities$TopicRow">
+        SELECT id,topic_code,name,description,status,sort_weight,created_at,updated_at
+        FROM community_topic
+        WHERE status='ENABLED'
+        ORDER BY sort_weight ASC, id ASC
+    </select>
+
+    <select id="selectTopicById"
+            resultType="com.petplatform.community.biz.infrastructure.persistence.entity.CommunityEntities$TopicRow">
+        SELECT id,topic_code,name,description,status,sort_weight,created_at,updated_at
+        FROM community_topic WHERE id=#{id}
+    </select>
+
+    <select id="selectTopicByCode"
+            resultType="com.petplatform.community.biz.infrastructure.persistence.entity.CommunityEntities$TopicRow">
+        SELECT id,topic_code,name,description,status,sort_weight,created_at,updated_at
+        FROM community_topic WHERE topic_code=#{topicCode}
+    </select>
+
+    <insert id="insertMedia">
+        INSERT INTO community_media
+            (id,owner_user_id,content_type,bytes,width,height,sha256,object_key,content,status,created_at)
+        VALUES
+            (#{id},#{ownerUserId},#{contentType},#{bytes},#{width},#{height},#{sha256},#{objectKey},
+             #{content},#{status},#{createdAt})
+    </insert>
+
+    <select id="selectMediaById"
+            resultType="com.petplatform.community.biz.infrastructure.persistence.entity.CommunityEntities$MediaRow">
+        SELECT id,owner_user_id,content_type,bytes,width,height,sha256,object_key,content,status,created_at
+        FROM community_media WHERE id=#{id} AND status='ACTIVE'
+    </select>
+
+    <insert id="insertPost">
+        INSERT INTO community_post
+            (id,author_user_id,title,content,topic_id,image_ids,visibility,status,like_count,
+             comment_count,favorite_count,view_count,version,published_at,created_at,updated_at)
+        VALUES
+            (#{id},#{authorUserId},#{title},#{content},#{topicId},#{imageIds},#{visibility},#{status},
+             0,0,0,0,1,#{publishedAt},#{createdAt},#{updatedAt})
+    </insert>
+
+    <select id="selectPostById"
+            resultType="com.petplatform.community.biz.infrastructure.persistence.entity.CommunityEntities$PostRow">
+        SELECT <include refid="postColumns"/>
+        FROM community_post p LEFT JOIN community_topic t ON t.id=p.topic_id
+        WHERE p.id=#{id}
+    </select>
+
+    <select id="selectPostForUpdate"
+            resultType="com.petplatform.community.biz.infrastructure.persistence.entity.CommunityEntities$PostRow">
+        SELECT <include refid="postColumns"/>
+        FROM community_post p LEFT JOIN community_topic t ON t.id=p.topic_id
+        WHERE p.id=#{id} FOR UPDATE
+    </select>
+
+    <select id="selectLatestPosts"
+            resultType="com.petplatform.community.biz.infrastructure.persistence.entity.CommunityEntities$PostRow">
+        SELECT <include refid="postColumns"/>
+        FROM community_post p LEFT JOIN community_topic t ON t.id=p.topic_id
+        WHERE <include refid="publicPostWhere"/>
+        ORDER BY p.published_at DESC, p.id DESC
+        LIMIT #{limit} OFFSET #{offset}
+    </select>
+
+    <select id="countLatestPosts" resultType="long">
+        SELECT COUNT(*) FROM community_post p
+        WHERE <include refid="publicPostWhere"/>
+    </select>
+
+    <select id="selectHotPosts"
+            resultType="com.petplatform.community.biz.infrastructure.persistence.entity.CommunityEntities$PostRow">
+        SELECT <include refid="postColumns"/>
+        FROM community_post p LEFT JOIN community_topic t ON t.id=p.topic_id
+        WHERE <include refid="publicPostWhere"/>
+        ORDER BY (p.like_count*3 + p.comment_count*2 + p.favorite_count*4) DESC,
+                 p.published_at DESC, p.id DESC
+        LIMIT #{limit} OFFSET #{offset}
+    </select>
+
+    <select id="countHotPosts" resultType="long">
+        SELECT COUNT(*) FROM community_post p
+        WHERE <include refid="publicPostWhere"/>
+    </select>
+
+    <select id="selectFollowingPosts"
+            resultType="com.petplatform.community.biz.infrastructure.persistence.entity.CommunityEntities$PostRow">
+        SELECT <include refid="postColumns"/>
+        FROM community_post p
+        JOIN community_follow f ON f.followee_user_id=p.author_user_id AND f.follower_user_id=#{viewerId}
+        LEFT JOIN community_topic t ON t.id=p.topic_id
+        WHERE p.status='PUBLISHED' AND p.visibility='PUBLIC'
+        ORDER BY p.published_at DESC, p.id DESC
+        LIMIT #{limit} OFFSET #{offset}
+    </select>
+
+    <select id="countFollowingPosts" resultType="long">
+        SELECT COUNT(*)
+        FROM community_post p
+        JOIN community_follow f ON f.followee_user_id=p.author_user_id AND f.follower_user_id=#{viewerId}
+        WHERE p.status='PUBLISHED' AND p.visibility='PUBLIC'
+    </select>
+
+    <select id="selectMyPosts"
+            resultType="com.petplatform.community.biz.infrastructure.persistence.entity.CommunityEntities$PostRow">
+        SELECT <include refid="postColumns"/>
+        FROM community_post p LEFT JOIN community_topic t ON t.id=p.topic_id
+        WHERE p.author_user_id=#{viewerId} AND p.status &lt;&gt; 'DELETED'
+        ORDER BY p.created_at DESC, p.id DESC
+        LIMIT #{limit} OFFSET #{offset}
+    </select>
+
+    <select id="countMyPosts" resultType="long">
+        SELECT COUNT(*) FROM community_post p
+        WHERE p.author_user_id=#{viewerId} AND p.status &lt;&gt; 'DELETED'
+    </select>
+
+    <select id="selectFavoritePosts"
+            resultType="com.petplatform.community.biz.infrastructure.persistence.entity.CommunityEntities$PostRow">
+        SELECT <include refid="postColumns"/>
+        FROM community_post p
+        JOIN community_post_favorite fp ON fp.post_id=p.id AND fp.user_id=#{viewerId}
+        LEFT JOIN community_topic t ON t.id=p.topic_id
+        WHERE p.status='PUBLISHED' AND p.visibility='PUBLIC'
+        ORDER BY fp.created_at DESC, p.id DESC
+        LIMIT #{limit} OFFSET #{offset}
+    </select>
+
+    <select id="countFavoritePosts" resultType="long">
+        SELECT COUNT(*)
+        FROM community_post p
+        JOIN community_post_favorite fp ON fp.post_id=p.id AND fp.user_id=#{viewerId}
+        WHERE p.status='PUBLISHED' AND p.visibility='PUBLIC'
+    </select>
+
+    <select id="selectAdminPosts"
+            resultType="com.petplatform.community.biz.infrastructure.persistence.entity.CommunityEntities$PostRow">
+        SELECT <include refid="postColumns"/>
+        FROM community_post p LEFT JOIN community_topic t ON t.id=p.topic_id
+        <where>
+            <if test="status != null">AND p.status=#{status}</if>
+            <if test="keyword != null">
+                AND (p.title LIKE #{keyword} OR p.content LIKE #{keyword})
+            </if>
+        </where>
+        ORDER BY p.created_at DESC, p.id DESC
+        LIMIT #{limit} OFFSET #{offset}
+    </select>
+
+    <select id="countAdminPosts" resultType="long">
+        SELECT COUNT(*) FROM community_post p
+        <where>
+            <if test="status != null">AND p.status=#{status}</if>
+            <if test="keyword != null">
+                AND (p.title LIKE #{keyword} OR p.content LIKE #{keyword})
+            </if>
+        </where>
+    </select>
+
+    <update id="updatePostStatus">
+        UPDATE community_post
+        SET status=#{toStatus},
+            published_at=CASE WHEN #{toStatus}='PUBLISHED' AND published_at IS NULL
+                              THEN #{now} ELSE published_at END,
+            version=version+1, updated_at=#{now}
+        WHERE id=#{id} AND status=#{fromStatus} AND version=#{expectedVersion}
+    </update>
+
+    <update id="incrementLikeCount">
+        UPDATE community_post SET like_count=GREATEST(0, like_count + #{delta}), updated_at=#{now}
+        WHERE id=#{postId}
+    </update>
+
+    <update id="incrementFavoriteCount">
+        UPDATE community_post SET favorite_count=GREATEST(0, favorite_count + #{delta}), updated_at=#{now}
+        WHERE id=#{postId}
+    </update>
+
+    <update id="incrementCommentCount">
+        UPDATE community_post SET comment_count=GREATEST(0, comment_count + #{delta}), updated_at=#{now}
+        WHERE id=#{postId}
+    </update>
+
+    <select id="selectComments"
+            resultType="com.petplatform.community.biz.infrastructure.persistence.entity.CommunityEntities$CommentRow">
+        SELECT id,post_id,author_user_id,content,status,created_at,updated_at
+        FROM community_comment
+        WHERE post_id=#{postId} AND status='PUBLISHED'
+        ORDER BY created_at ASC, id ASC
+        LIMIT #{limit} OFFSET #{offset}
+    </select>
+
+    <select id="countComments" resultType="long">
+        SELECT COUNT(*) FROM community_comment WHERE post_id=#{postId} AND status='PUBLISHED'
+    </select>
+
+    <insert id="insertComment">
+        INSERT INTO community_comment
+            (id,post_id,author_user_id,content,status,created_at,updated_at)
+        VALUES
+            (#{id},#{postId},#{authorUserId},#{content},#{status},#{createdAt},#{updatedAt})
+    </insert>
+
+    <select id="selectCommentById"
+            resultType="com.petplatform.community.biz.infrastructure.persistence.entity.CommunityEntities$CommentRow">
+        SELECT id,post_id,author_user_id,content,status,created_at,updated_at
+        FROM community_comment WHERE id=#{id}
+    </select>
+
+    <select id="selectCommentForUpdate"
+            resultType="com.petplatform.community.biz.infrastructure.persistence.entity.CommunityEntities$CommentRow">
+        SELECT id,post_id,author_user_id,content,status,created_at,updated_at
+        FROM community_comment WHERE id=#{id} FOR UPDATE
+    </select>
+
+    <update id="updateCommentStatus">
+        UPDATE community_comment SET status=#{toStatus}, updated_at=#{now}
+        WHERE id=#{id} AND status=#{fromStatus}
+    </update>
+
+    <select id="countPostsByAuthor" resultType="long">
+        SELECT COUNT(*) FROM community_post
+        WHERE author_user_id=#{authorId} AND status='PUBLISHED' AND visibility='PUBLIC'
+    </select>
+
+    <select id="countFollowers" resultType="long">
+        SELECT COUNT(*) FROM community_follow WHERE followee_user_id=#{userId}
+    </select>
+
+    <select id="countFollowing" resultType="long">
+        SELECT COUNT(*) FROM community_follow WHERE follower_user_id=#{userId}
+    </select>
+
+    <select id="selectLike"
+            resultType="com.petplatform.community.biz.infrastructure.persistence.entity.CommunityEntities$UserActionRow">
+        SELECT id,post_id AS target_id,created_at
+        FROM community_post_like WHERE post_id=#{postId} AND user_id=#{userId}
+    </select>
+
+    <select id="countLikes" resultType="long">
+        SELECT COUNT(*) FROM community_post_like WHERE post_id=#{postId}
+    </select>
+
+    <insert id="insertLike">
+        INSERT INTO community_post_like (id,post_id,user_id,created_at)
+        VALUES (#{id},#{postId},#{userId},#{now})
+    </insert>
+
+    <delete id="deleteLike">
+        DELETE FROM community_post_like WHERE post_id=#{postId} AND user_id=#{userId}
+    </delete>
+
+    <select id="selectFavorite"
+            resultType="com.petplatform.community.biz.infrastructure.persistence.entity.CommunityEntities$UserActionRow">
+        SELECT id,post_id AS target_id,created_at
+        FROM community_post_favorite WHERE post_id=#{postId} AND user_id=#{userId}
+    </select>
+
+    <select id="countFavorites" resultType="long">
+        SELECT COUNT(*) FROM community_post_favorite WHERE post_id=#{postId}
+    </select>
+
+    <insert id="insertFavorite">
+        INSERT INTO community_post_favorite (id,post_id,user_id,created_at)
+        VALUES (#{id},#{postId},#{userId},#{now})
+    </insert>
+
+    <delete id="deleteFavorite">
+        DELETE FROM community_post_favorite WHERE post_id=#{postId} AND user_id=#{userId}
+    </delete>
+
+    <select id="selectFollow"
+            resultType="com.petplatform.community.biz.infrastructure.persistence.entity.CommunityEntities$UserActionRow">
+        SELECT id,followee_user_id AS target_id,created_at
+        FROM community_follow WHERE follower_user_id=#{followerId} AND followee_user_id=#{followeeId}
+    </select>
+
+    <insert id="insertFollow">
+        INSERT INTO community_follow (id,follower_user_id,followee_user_id,created_at)
+        VALUES (#{id},#{followerId},#{followeeId},#{now})
+    </insert>
+
+    <delete id="deleteFollow">
+        DELETE FROM community_follow WHERE follower_user_id=#{followerId} AND followee_user_id=#{followeeId}
+    </delete>
+
+    <select id="selectReportByTargetReporter"
+            resultType="com.petplatform.community.biz.infrastructure.persistence.entity.CommunityEntities$ReportRow">
+        SELECT id,target_type,target_id,reporter_user_id,reason_code,reason_text,status,
+               handled_by,handled_at,handling_note,created_at,updated_at
+        FROM community_report
+        WHERE target_type=#{targetType} AND target_id=#{targetId} AND reporter_user_id=#{reporterId}
+    </select>
+
+    <insert id="insertReport">
+        INSERT INTO community_report
+            (id,target_type,target_id,reporter_user_id,reason_code,reason_text,status,
+             handled_by,handled_at,handling_note,created_at,updated_at)
+        VALUES
+            (#{id},#{targetType},#{targetId},#{reporterUserId},#{reasonCode},#{reasonText},#{status},
+             NULL,NULL,NULL,#{createdAt},#{updatedAt})
+    </insert>
+
+    <select id="selectReportForUpdate"
+            resultType="com.petplatform.community.biz.infrastructure.persistence.entity.CommunityEntities$ReportRow">
+        SELECT id,target_type,target_id,reporter_user_id,reason_code,reason_text,status,
+               handled_by,handled_at,handling_note,created_at,updated_at
+        FROM community_report WHERE id=#{id} FOR UPDATE
+    </select>
+
+    <select id="selectReports"
+            resultType="com.petplatform.community.biz.infrastructure.persistence.entity.CommunityEntities$ReportRow">
+        SELECT id,target_type,target_id,reporter_user_id,reason_code,reason_text,status,
+               handled_by,handled_at,handling_note,created_at,updated_at
+        FROM community_report
+        <where>
+            <if test="status != null">AND status=#{status}</if>
+        </where>
+        ORDER BY created_at ASC, id ASC
+        LIMIT #{limit} OFFSET #{offset}
+    </select>
+
+    <select id="countReports" resultType="long">
+        SELECT COUNT(*) FROM community_report
+        <where>
+            <if test="status != null">AND status=#{status}</if>
+        </where>
+    </select>
+
+    <update id="updateReportStatus">
+        UPDATE community_report
+        SET status=#{toStatus}, handled_by=#{handledBy}, handled_at=#{now},
+            handling_note=#{note}, updated_at=#{now}
+        WHERE id=#{id} AND status=#{fromStatus}
+    </update>
+
+    <insert id="insertCommunityAudit">
+        INSERT INTO community_audit
+            (id,target_type,target_id,action_type,from_status,to_status,operator_type,operator_id,
+             reason,request_id,trace_id,created_at)
+        VALUES
+            (#{id},#{targetType},#{targetId},#{actionType},#{fromStatus},#{toStatus},#{operatorType},
+             #{operatorId},#{reason},#{requestId},#{traceId},#{now})
+    </insert>
+
+    <select id="selectBinding"
+            resultType="com.petplatform.community.biz.infrastructure.persistence.entity.CommunityEntities$BindingRow">
+        SELECT id,request_key,command_type,params_sha256,params_canonical,status,receipt_json,
+               created_at,updated_at
+        FROM community_command_binding WHERE request_key=#{requestKey}
+    </select>
+
+    <insert id="insertBinding">
+        INSERT INTO community_command_binding
+            (id,request_key,command_type,params_sha256,params_canonical,status,receipt_json,
+             created_at,updated_at)
+        VALUES
+            (#{id},#{requestKey},#{commandType},#{paramsSha256},#{paramsCanonical},'IN_PROGRESS',NULL,
+             #{now},#{now})
+    </insert>
+
+    <update id="markBindingSucceeded">
+        UPDATE community_command_binding
+        SET status='SUCCEEDED', receipt_json=#{receiptJson}, updated_at=#{now}
+        WHERE request_key=#{requestKey}
+    </update>
+
+    <delete id="deleteBinding">
+        DELETE FROM community_command_binding WHERE request_key=#{requestKey}
+    </delete>
+</mapper>

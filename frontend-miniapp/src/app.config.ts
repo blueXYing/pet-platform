@@ -2,7 +2,7 @@ export default defineAppConfig({
   // Tab pages must be main-package pages; the first entry is the launch page (home).
   // 启动页必须是主包且为 pages[0]（子包不能作为启动页）：冷启动先呈现「初始界面」(Figma 10:89)，
   // 再按首启标记 redirectTo 引导页（子包）或 switchTab 首页——避免先渲染首页再跳转导致闪屏。
-  pages: ['consumer/pages/splash/index', 'consumer/pages/home/index', 'consumer/pages/services/index', 'consumer/pages/community/index', 'consumer/pages/messages/index', 'consumer/pages/mine/index', 'consumer/pages/shell/index', 'consumer/pages/diagnostics/index', 'consumer/pages/profile-edit/index'],
+  pages: ['consumer/pages/splash/index', 'consumer/pages/home/index', 'consumer/pages/services/index', 'consumer/pages/community/index', 'consumer/pages/community/detail', 'consumer/pages/community/publish', 'consumer/pages/messages/index', 'consumer/pages/mine/index', 'consumer/pages/shell/index', 'consumer/pages/diagnostics/index', 'consumer/pages/profile-edit/index'],
   window: { navigationBarTitleText: '宠物生活服务', backgroundColor: '#f5f5f5' },
   // 用户 2026-10-26 裁决：为消除原生 tabBar 在二级页跳转时先隐藏的空档，五个根 tab 页改用同款自定义 tabBar；二级页仍不显示底栏。
   // 图标沿用导航登记表提取的原切图（无选中态变体，选中差异仅文字色，同登记偏差）。
@@ -45,7 +45,10 @@ export default defineAppConfig({
       'pages/shop-info/index', 'pages/customers/index', 'pages/customers/detail', 'pages/stats/index',
       // 2026-10-19 CCR expansion: the 70号 service drill-down page (Top5 row → paged
       // read-only order rows of one window service).
-      'pages/stats/service-orders'] },
+      'pages/stats/service-orders',
+      // Contract-71 marketing center (CCR-MKT-001): enrollment + merchant-initiated
+      // campaigns. One page keeps the new surface compact; no C-side page is duplicated.
+      'pages/marketing/index'] },
     // Contract 68 (2026-10-19 ruling): vaccine/deworming record add forms ride the pet-archive
     // subpackage (the two design frames 96:2580/96:3006), one compact line per the convention.
     { root: 'consumer/pages/pet-archive', pages: ['index', 'detail', 'form', 'vaccine-form', 'deworm-form'] },
@@ -93,5 +96,8 @@ export default defineAppConfig({
     // Onboarding splash (user ruling 2026-10-21; figma 10:108/33:40/33:58): first-launch-only
     // three-screen guide; subpackage keeps the ~1MB 2x strips within the per-package limit.
     { root: 'consumer/pages/onboarding', pages: ['index'] },
+    // 营销活动中心（契约 71，CCR-MKT-001）：活动聚合页 + 通用 Schema 活动页；
+    // 新活动只改后台配置，不新增页面/发版。
+    { root: 'consumer/pages/marketing', pages: ['campaigns', 'campaign'] },
   ],
 })

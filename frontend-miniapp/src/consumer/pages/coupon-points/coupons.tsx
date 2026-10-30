@@ -1,16 +1,16 @@
-import { Button, Image, Text, View } from '@tarojs/components'
+import { Button, Text, View } from '@tarojs/components'
 import Taro, { useRouter } from '@tarojs/taro'
 import { useCallback, useEffect, useRef, useState, type CSSProperties } from 'react'
 import { useWorkspace } from '../../../shared/workspace-react'
 import { consumerApi } from '../../../shared/consumer-runtime'
 import { switchConsumerTab } from '../../components/navigation/switch'
 import { ConsumerPageLayout } from '../../components/page-layout'
+import { SubpageHeader, SubpageHeaderSpacer } from '../../components/navigation/subpage-header'
 import {
   couponsByStatus, isCouponPointsScenario, statusTabLabels, thresholdLabel,
   PreviewCouponPointsRepository, type CouponStatus, type CouponView,
 } from '../../coupon-points/model'
 import { RealCouponPointsRepository, isCouponPointsUnauthorized } from '../../coupon-points/repository'
-import back from '../../assets/profile/back.png'
 import './coupon-points.css'
 
 // C-006 切片：我的优惠券（只读）。设计源 128:2078（登记表 §3 用户端）。券查询契约已裁决并实现
@@ -111,13 +111,8 @@ export default function CouponsPage() {
     navigation={preview ? { idPrefix: 'cpn', disabled: !ready, onSelect: key => void switchConsumerTab(key) } : undefined}
     style={style}>
     <View className='cpn-design'>
-      <View className='cpn-status-area' />
-      <View className='cpn-nav'>
-        <Button id='cpn-back' ariaLabel='返回' className='cpn-nav-back' onClick={() => void goBack()}>
-          <Image src={back} className='cpn-nav-back-icon' />
-        </Button>
-        <Text className='cpn-nav-title'>优惠券</Text>
-      </View>
+      <SubpageHeader title='优惠券' backId='cpn-back' height={44} onBack={() => void goBack()} />
+      <SubpageHeaderSpacer height={44} />
       <View className='cpn-body'>
       {(preview ? ready : tabsShown) && <View className='cpn-tabs' role='tablist'>
         {(Object.keys(statusTabLabels) as CouponStatus[]).map(key => <Button key={key}

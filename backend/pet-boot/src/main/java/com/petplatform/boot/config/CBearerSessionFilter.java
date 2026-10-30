@@ -112,7 +112,14 @@ public final class CBearerSessionFilter extends OncePerRequestFilter {
         || path.equals("/api/v1/merchant/staff")
         || path.startsWith("/api/v1/merchant/staff/")
         || path.matches("/api/v1/c/stores/[^/]+/services")
-        || path.startsWith("/api/v1/c/services/");
+        || path.startsWith("/api/v1/c/services/")
+        // Contract-71 marketing center M face and C coupon claim: the MINIAPP session is
+        // mandatory; the marketing kernel re-proves store ownership server-side.
+        || path.startsWith("/api/v1/merchant/marketing/")
+        || path.matches("/api/v1/c/coupon-campaigns/[^/]+/claims")
+        // CCR-COM-001 writes: all non-GET community paths carry the MINIAPP Bearer. GET paths
+        // are optional-session above and never reach this branch.
+        || path.startsWith("/api/v1/c/community/");
   }
 
 
@@ -135,7 +142,14 @@ public final class CBearerSessionFilter extends OncePerRequestFilter {
         // anonymous-GET semantics — no bearer passes through, a carried bearer is validated.
         || path.equals("/api/v1/c/encyclopedia/categories")
         || path.equals("/api/v1/c/encyclopedia/breeds")
-        || path.matches("/api/v1/c/encyclopedia/breeds/[^/]+");
+        || path.matches("/api/v1/c/encyclopedia/breeds/[^/]+")
+        // Contract-71 marketing public reads + contract-72 coupon campaign detail: anonymous
+        // GET passes; a carried bearer is still validated (coupon claimed state).
+        || path.startsWith("/api/v1/c/marketing/")
+        || path.matches("/api/v1/c/coupon-campaigns/[^/]+")
+        // CCR-COM-001 public community reads (feed/detail/comments/topics/hot/profile/media):
+        // anonymous GET passes; writes remain mandatory-session through protectedPath.
+        || path.startsWith("/api/v1/c/community/");
   }
 
   @Override
@@ -189,7 +203,8 @@ public final class CBearerSessionFilter extends OncePerRequestFilter {
         || path.equals("/api/v1/merchant/orders")
         || path.startsWith("/api/v1/merchant/orders/")
         || path.equals("/api/v1/merchant/staff")
-        || path.startsWith("/api/v1/merchant/staff/");
+        || path.startsWith("/api/v1/merchant/staff/")
+        || path.startsWith("/api/v1/merchant/marketing/");
   }
 
   private static String traceJson(HttpServletRequest req) {

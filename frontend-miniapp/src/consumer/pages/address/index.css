@@ -7,14 +7,8 @@
 .addr-page button::after { border: 0; }
 .addr-page button[disabled] { opacity: .65; color: inherit; }
 
-.addr-status-area { height: var(--addr-top); flex-shrink: 0; }
 
 /* 头带（原稿 47 高：返回 32x32 左 19，标题 24 高左 59）。 */
-.addr-header { position: relative; height: calc(var(--addr-unit) * 47); flex-shrink: 0; background: #fff6e5; border-bottom: calc(var(--addr-unit) * 2) solid #cdeede; }
-.addr-back { position: absolute; left: calc(var(--addr-unit) * 19); top: calc(var(--addr-unit) * 8); width: calc(var(--addr-unit) * 32); height: calc(var(--addr-unit) * 32); }
-.addr-back-icon { width: 100%; height: 100%; display: block; }
-.addr-title { position: absolute; left: calc(var(--addr-unit) * 59); top: calc(var(--addr-unit) * 12); font-size: calc(var(--addr-unit) * 18); line-height: calc(var(--addr-unit) * 24); font-weight: 600; color: #1f2b30; }
-
 .addr-body { flex: 1; min-height: 0; }
 .addr-scroll { padding: calc(var(--addr-unit) * 16) calc(var(--addr-unit) * 29) calc(var(--addr-unit) * 96); }
 .addr-state { padding: calc(var(--addr-unit) * 48) calc(var(--addr-unit) * 16); text-align: center; font-size: calc(var(--addr-unit) * 13); line-height: calc(var(--addr-unit) * 20); color: #577683; }

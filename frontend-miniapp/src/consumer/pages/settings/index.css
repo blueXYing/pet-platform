@@ -7,12 +7,6 @@
 .st-page button::after { border: 0; }
 .st-page button[disabled] { opacity: .65; color: inherit; }
 
-.st-status-area { height: var(--st-top); flex-shrink: 0; }
-.st-header { position: relative; height: calc(var(--st-unit) * 46); flex-shrink: 0; background: #fff6e5; border-bottom: calc(var(--st-unit) * 2) solid #cdeede; }
-.st-back { position: absolute; left: calc(var(--st-unit) * 19); top: calc(var(--st-unit) * 7); width: calc(var(--st-unit) * 32); height: calc(var(--st-unit) * 32); }
-.st-back-icon { width: 100%; height: 100%; display: block; }
-.st-title { position: absolute; left: 0; right: 0; top: calc(var(--st-unit) * 11); text-align: center; font-size: calc(var(--st-unit) * 18); line-height: calc(var(--st-unit) * 24); font-weight: 600; color: #1f2b30; }
-
 .st-body { flex: 1; min-height: 0; overflow-y: auto; padding: calc(var(--st-unit) * 14) calc(var(--st-unit) * 17) calc(var(--st-unit) * 40); }
 .st-group-title { display: block; margin: calc(var(--st-unit) * 10) calc(var(--st-unit) * 4) calc(var(--st-unit) * 8); font-size: calc(var(--st-unit) * 13); color: #577683; }
 .st-card { background: #ffffff; border: calc(var(--st-unit) * 1) solid #c0ecff; border-radius: calc(var(--st-unit) * 12); overflow: hidden; }

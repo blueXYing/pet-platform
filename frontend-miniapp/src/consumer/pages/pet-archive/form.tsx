@@ -1,6 +1,7 @@
 import { ConsumerPageLayout } from '../../components/page-layout'
 import { type ConsumerNavigationKey } from '../../components/navigation/model'
 import { switchConsumerTab } from '../../components/navigation/switch'
+import { SubpageHeader } from '../../components/navigation/subpage-header'
 import { Button, Image, Input, Picker, Text, Textarea, View } from '@tarojs/components'
 import Taro, { useRouter } from '@tarojs/taro'
 import { useCallback, useEffect, useRef, useState, type CSSProperties } from 'react'
@@ -14,8 +15,6 @@ import {
 } from '../../pet/model'
 import stripMain from './assets/strip-main.png'
 import stripFormBottom from './assets/strip-form-bottom.png'
-import navBack from './assets/nav-back.png'
-import navEdit from './assets/nav-edit.png'
 import iconDate from './assets/icon-date.png'
 import defaultCatAvatar from './assets/pet-form-default-cat.png'
 import defaultDogAvatar from './assets/pet-form-default-dog.png'
@@ -194,13 +193,11 @@ export default function PetArchiveForm() {
     <View className='pet-design pet-form-design' data-phase={phase} style={{ height: `calc(var(--pet-unit) * ${designHeight})` }}>
       <Image className='pet-abs pet-form-strip1' src={stripMain} mode='scaleToFill' />
       <Image className='pet-abs pet-form-strip2' src={stripFormBottom} mode='scaleToFill' />
-      <View className='pet-abs pet-form-header' />
       <View className='pet-abs pet-form-cardshadow' />
       <View className='pet-abs pet-form-card' />
       <View className='pet-abs pet-form-panel' />
-      <Button id='pet-form-back' className='pet-abs pet-form-back' ariaLabel='返回' disabled={phase === 'saving'} onClick={() => void leave()}><Image src={navBack} mode='scaleToFill' /></Button>
-      <Text className='pet-abs pet-form-navtitle'>宠物信息</Text>
-      {petId && <Image className='pet-abs pet-form-navedit' src={navEdit} mode='scaleToFill' />}
+      <SubpageHeader title='宠物信息' backId='pet-form-back' height={86} reference={referenceCanvas}
+        backDisabled={phase === 'saving'} onBack={() => void leave()} />
       {!editable && <View className='pet-state pet-form-state' role='status'>
         <Text>{phase === 'loading' ? '正在加载宠物档案…' : phase === 'expired' ? '登录已失效，请重新登录' : phase === 'unavailable' ? '宠物服务暂不可用，请稍后再试' : '加载失败，请重试'}</Text>
         {!preview && phase === 'expired' && <Button className='pet-state-action' onClick={() => Taro.switchTab({ url: '/consumer/pages/mine/index' })}>去登录</Button>}

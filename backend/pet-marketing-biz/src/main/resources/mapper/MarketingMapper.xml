@@ -1,0 +1,584 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.petplatform.marketing.biz.infrastructure.persistence.mapper.MarketingMapper">
+
+    <sql id="campaignColumns">
+        id,campaign_code,name,owner_type,owner_merchant_id,owner_store_id,campaign_type,
+        participation_mode,status,title,subtitle,tag_code,tag_name,cover_url,city_codes,
+        service_category_codes,start_at,end_at,enroll_start_at,enroll_end_at,enrollment_quota,
+        coupon_campaign_id,page_schema_json,page_draft_version,published_page_schema_json,
+        page_version,sort_weight,reject_reason,version,created_by_type,created_by_id,
+        created_at,updated_at
+    </sql>
+
+    <sql id="campaignStoreColumns">
+        id,campaign_id,merchant_id,store_id,source,status,offer_tag,offer_title,offer_copy,
+        sort_weight,version,created_at,updated_at
+    </sql>
+
+    <sql id="placementColumns">
+        p.id,p.position_code,p.campaign_id,c.title AS campaign_title,p.city_code,
+        p.title_override,p.subtitle_override,p.image_url_override,p.template_code,p.sort_weight,
+        p.start_at,p.end_at,p.status,p.version,p.created_by_id,p.created_at,p.updated_at
+    </sql>
+
+    <sql id="enrollmentColumns">
+        e.id,e.campaign_id,c.title AS campaign_title,e.merchant_id,e.store_id,e.status,
+        e.offer_tag,e.offer_title,e.offer_copy,e.service_ids,e.materials,e.reject_reason,
+        e.submitted_at,e.decided_at,e.decided_by,e.version,e.created_at,e.updated_at
+    </sql>
+
+    <select id="selectCampaigns"
+            resultType="com.petplatform.marketing.biz.infrastructure.persistence.entity.MarketingEntities$CampaignRow">
+        SELECT <include refid="campaignColumns"/>
+        FROM marketing_campaign
+        <where>
+            <if test="status != null">AND status=#{status}</if>
+            <if test="ownerType != null">AND owner_type=#{ownerType}</if>
+            <if test="keyword != null">AND (name LIKE CONCAT('%',#{keyword},'%') OR title LIKE CONCAT('%',#{keyword},'%'))</if>
+        </where>
+        ORDER BY updated_at DESC, id DESC
+        LIMIT #{limit} OFFSET #{offset}
+    </select>
+
+    <select id="countCampaigns" resultType="long">
+        SELECT COUNT(*) FROM marketing_campaign
+        <where>
+            <if test="status != null">AND status=#{status}</if>
+            <if test="ownerType != null">AND owner_type=#{ownerType}</if>
+            <if test="keyword != null">AND (name LIKE CONCAT('%',#{keyword},'%') OR title LIKE CONCAT('%',#{keyword},'%'))</if>
+        </where>
+    </select>
+
+    <select id="selectCampaignById"
+            resultType="com.petplatform.marketing.biz.infrastructure.persistence.entity.MarketingEntities$CampaignRow">
+        SELECT <include refid="campaignColumns"/> FROM marketing_campaign WHERE id=#{id}
+    </select>
+
+    <select id="selectCampaignForUpdate"
+            resultType="com.petplatform.marketing.biz.infrastructure.persistence.entity.MarketingEntities$CampaignRow">
+        SELECT <include refid="campaignColumns"/> FROM marketing_campaign WHERE id=#{id} FOR UPDATE
+    </select>
+
+    <select id="selectPublicCampaigns"
+            resultType="com.petplatform.marketing.biz.infrastructure.persistence.entity.MarketingEntities$CampaignRow">
+        SELECT <include refid="campaignColumns"/>
+        FROM marketing_campaign
+        WHERE status IN ('SCHEDULED','ONLINE')
+          AND start_at &lt;= #{now} AND end_at &gt; #{now}
+        ORDER BY sort_weight ASC, start_at ASC, id ASC
+    </select>
+
+    <select id="selectOpenEnrollmentCampaigns"
+            resultType="com.petplatform.marketing.biz.infrastructure.persistence.entity.MarketingEntities$CampaignRow">
+        SELECT <include refid="campaignColumns"/>
+        FROM marketing_campaign
+        WHERE participation_mode='MERCHANT_ENROLL'
+          AND status IN ('SCHEDULED','ONLINE')
+          AND enroll_start_at IS NOT NULL AND enroll_end_at IS NOT NULL
+          AND enroll_start_at &lt;= #{now} AND enroll_end_at &gt; #{now}
+        ORDER BY sort_weight ASC, start_at ASC, id ASC
+    </select>
+
+    <select id="selectMyCampaigns"
+            resultType="com.petplatform.marketing.biz.infrastructure.persistence.entity.MarketingEntities$CampaignRow">
+        SELECT <include refid="campaignColumns"/>
+        FROM marketing_campaign
+        WHERE owner_type='MERCHANT' AND owner_merchant_id=#{merchantId} AND owner_store_id=#{storeId}
+        <if test="status != null">AND status=#{status}</if>
+        ORDER BY updated_at DESC, id DESC
+        LIMIT #{limit} OFFSET #{offset}
+    </select>
+
+    <select id="countMyCampaigns" resultType="long">
+        SELECT COUNT(*) FROM marketing_campaign
+        WHERE owner_type='MERCHANT' AND owner_merchant_id=#{merchantId} AND owner_store_id=#{storeId}
+        <if test="status != null">AND status=#{status}</if>
+    </select>
+
+    <insert id="insertCampaign">
+        INSERT INTO marketing_campaign
+            (id,campaign_code,name,owner_type,owner_merchant_id,owner_store_id,campaign_type,
+             participation_mode,status,title,subtitle,tag_code,tag_name,cover_url,city_codes,
+             service_category_codes,start_at,end_at,enroll_start_at,enroll_end_at,enrollment_quota,
+             coupon_campaign_id,page_schema_json,page_draft_version,published_page_schema_json,
+             page_version,sort_weight,reject_reason,version,created_by_type,created_by_id,
+             created_at,updated_at)
+        VALUES
+            (#{id},#{campaignCode},#{name},#{ownerType},#{ownerMerchantId},#{ownerStoreId},#{campaignType},
+             #{participationMode},#{status},#{title},#{subtitle},#{tagCode},#{tagName},#{coverUrl},#{cityCodes},
+             #{serviceCategoryCodes},#{startAt},#{endAt},#{enrollStartAt},#{enrollEndAt},#{enrollmentQuota},
+             #{couponCampaignId},#{pageSchemaJson},#{pageDraftVersion},#{publishedPageSchemaJson},
+             #{pageVersion},#{sortWeight},#{rejectReason},#{version},#{createdByType},#{createdById},
+             #{createdAt},#{updatedAt})
+    </insert>
+
+    <update id="updateCampaign">
+        UPDATE marketing_campaign
+        SET name=#{name}, campaign_type=#{campaignType}, participation_mode=#{participationMode},
+            title=#{title}, subtitle=#{subtitle}, tag_code=#{tagCode}, tag_name=#{tagName},
+            cover_url=#{coverUrl}, city_codes=#{cityCodes}, service_category_codes=#{serviceCategoryCodes},
+            start_at=#{startAt}, end_at=#{endAt}, enroll_start_at=#{enrollStartAt},
+            enroll_end_at=#{enrollEndAt}, enrollment_quota=#{enrollmentQuota},
+            coupon_campaign_id=#{couponCampaignId}, sort_weight=#{sortWeight},
+            version=version+1, updated_at=#{updatedAt}
+        WHERE id=#{id} AND version=#{version}
+    </update>
+
+    <update id="updateCampaignStatus">
+        UPDATE marketing_campaign
+        SET status=#{toStatus}, reject_reason=#{rejectReason}, version=version+1, updated_at=#{now}
+        WHERE id=#{id} AND status=#{fromStatus} AND version=#{expectedVersion}
+    </update>
+
+    <update id="updateCampaignPageDraft">
+        UPDATE marketing_campaign
+        SET page_schema_json=#{schemaJson}, page_draft_version=#{draftVersion},
+            version=version+1, updated_at=#{now}
+        WHERE id=#{id} AND version=#{expectedVersion}
+    </update>
+
+    <update id="touchCampaignVersion">
+        UPDATE marketing_campaign
+        SET version=version+1, updated_at=#{now}
+        WHERE id=#{id} AND version=#{expectedVersion}
+    </update>
+
+    <update id="publishCampaignPage">
+        UPDATE marketing_campaign
+        SET published_page_schema_json=page_schema_json,
+            page_version=#{pageVersion},
+            status=#{toStatus},
+            version=version+1,
+            updated_at=#{now}
+        WHERE id=#{id} AND status=#{fromStatus} AND version=#{expectedVersion}
+          AND page_schema_json IS NOT NULL AND page_draft_version &gt; 0
+    </update>
+
+    <update id="rollbackCampaignPage">
+        UPDATE marketing_campaign
+        SET page_schema_json=#{schemaJson}, published_page_schema_json=#{schemaJson},
+            page_draft_version=#{publishedVersion}, page_version=#{publishedVersion},
+            version=version+1, updated_at=#{now}
+        WHERE id=#{id} AND version=#{expectedVersion}
+    </update>
+
+    <insert id="insertPageVersion">
+        INSERT INTO marketing_page_version
+            (id,campaign_id,version,schema_json,published_by_type,published_by_id,published_at)
+        VALUES
+            (#{id},#{campaignId},#{version},#{schemaJson},#{publishedByType},#{publishedById},#{publishedAt})
+    </insert>
+
+    <select id="selectPageVersions"
+            resultType="com.petplatform.marketing.biz.infrastructure.persistence.entity.MarketingEntities$PageVersionRow">
+        SELECT id,campaign_id,version,schema_json,published_by_type,published_by_id,published_at
+        FROM marketing_page_version
+        WHERE campaign_id=#{campaignId}
+        ORDER BY version DESC
+    </select>
+
+    <select id="selectPageVersion"
+            resultType="com.petplatform.marketing.biz.infrastructure.persistence.entity.MarketingEntities$PageVersionRow">
+        SELECT id,campaign_id,version,schema_json,published_by_type,published_by_id,published_at
+        FROM marketing_page_version
+        WHERE campaign_id=#{campaignId} AND version=#{version}
+    </select>
+
+    <select id="selectMaxPageVersion" resultType="int">
+        SELECT COALESCE(MAX(version), 0) FROM marketing_page_version WHERE campaign_id=#{campaignId}
+    </select>
+
+    <delete id="deleteCampaignStores">
+        DELETE FROM marketing_campaign_store WHERE campaign_id=#{campaignId}
+    </delete>
+
+    <insert id="insertCampaignStore">
+        INSERT INTO marketing_campaign_store
+            (id,campaign_id,merchant_id,store_id,source,status,offer_tag,offer_title,offer_copy,
+             sort_weight,version,created_at,updated_at)
+        VALUES
+            (#{id},#{campaignId},#{merchantId},#{storeId},#{source},#{status},#{offerTag},#{offerTitle},
+             #{offerCopy},#{sortWeight},#{version},#{createdAt},#{updatedAt})
+    </insert>
+
+    <insert id="upsertCampaignStore">
+        INSERT INTO marketing_campaign_store
+            (id,campaign_id,merchant_id,store_id,source,status,offer_tag,offer_title,offer_copy,
+             sort_weight,version,created_at,updated_at)
+        VALUES
+            (#{id},#{campaignId},#{merchantId},#{storeId},#{source},#{status},#{offerTag},#{offerTitle},
+             #{offerCopy},#{sortWeight},#{version},#{createdAt},#{updatedAt})
+        ON DUPLICATE KEY UPDATE
+            merchant_id=VALUES(merchant_id), source=VALUES(source), status=VALUES(status),
+            offer_tag=VALUES(offer_tag), offer_title=VALUES(offer_title), offer_copy=VALUES(offer_copy),
+            sort_weight=VALUES(sort_weight), version=version+1, updated_at=VALUES(updated_at)
+    </insert>
+
+    <update id="removeCampaignStore">
+        UPDATE marketing_campaign_store
+        SET status='REMOVED', version=version+1, updated_at=#{now}
+        WHERE campaign_id=#{campaignId} AND store_id=#{storeId} AND status='ACTIVE'
+    </update>
+
+    <select id="selectCampaignStores"
+            resultType="com.petplatform.marketing.biz.infrastructure.persistence.entity.MarketingEntities$CampaignStoreRow">
+        SELECT <include refid="campaignStoreColumns"/>
+        FROM marketing_campaign_store
+        WHERE campaign_id=#{campaignId}
+        ORDER BY sort_weight ASC, id ASC
+    </select>
+
+    <select id="countCampaignStores" resultType="long">
+        SELECT COUNT(*) FROM marketing_campaign_store WHERE campaign_id=#{campaignId} AND status='ACTIVE'
+    </select>
+
+    <select id="selectCampaignStore"
+            resultType="com.petplatform.marketing.biz.infrastructure.persistence.entity.MarketingEntities$CampaignStoreRow">
+        SELECT <include refid="campaignStoreColumns"/>
+        FROM marketing_campaign_store
+        WHERE campaign_id=#{campaignId} AND store_id=#{storeId}
+    </select>
+
+    <select id="selectActiveStoreCampaigns"
+            resultType="com.petplatform.marketing.biz.infrastructure.persistence.entity.MarketingEntities$CampaignStoreRow">
+        SELECT cs.id,cs.campaign_id,cs.merchant_id,cs.store_id,cs.source,cs.status,
+               cs.offer_tag,cs.offer_title,cs.offer_copy,cs.sort_weight,cs.version,
+               cs.created_at,cs.updated_at
+        FROM marketing_campaign_store cs
+        INNER JOIN marketing_campaign c ON c.id=cs.campaign_id
+        WHERE cs.store_id=#{storeId} AND cs.status='ACTIVE'
+          AND c.status IN ('SCHEDULED','ONLINE')
+          AND c.start_at &lt;= #{now} AND c.end_at &gt; #{now}
+        ORDER BY c.sort_weight ASC, c.id ASC
+    </select>
+
+    <select id="selectPlacements"
+            resultType="com.petplatform.marketing.biz.infrastructure.persistence.entity.MarketingEntities$PlacementRow">
+        SELECT <include refid="placementColumns"/>
+        FROM marketing_placement p
+        INNER JOIN marketing_campaign c ON c.id=p.campaign_id
+        <where>
+            <if test="positionCode != null">AND p.position_code=#{positionCode}</if>
+            <if test="status != null">AND p.status=#{status}</if>
+        </where>
+        ORDER BY p.sort_weight ASC, p.id ASC
+        LIMIT #{limit} OFFSET #{offset}
+    </select>
+
+    <select id="countPlacements" resultType="long">
+        SELECT COUNT(*) FROM marketing_placement p
+        <where>
+            <if test="positionCode != null">AND p.position_code=#{positionCode}</if>
+            <if test="status != null">AND p.status=#{status}</if>
+        </where>
+    </select>
+
+    <select id="selectPlacementById"
+            resultType="com.petplatform.marketing.biz.infrastructure.persistence.entity.MarketingEntities$PlacementRow">
+        SELECT <include refid="placementColumns"/>
+        FROM marketing_placement p
+        INNER JOIN marketing_campaign c ON c.id=p.campaign_id
+        WHERE p.id=#{id}
+    </select>
+
+    <select id="selectPlacementForUpdate"
+            resultType="com.petplatform.marketing.biz.infrastructure.persistence.entity.MarketingEntities$PlacementRow">
+        SELECT <include refid="placementColumns"/>
+        FROM marketing_placement p
+        INNER JOIN marketing_campaign c ON c.id=p.campaign_id
+        WHERE p.id=#{id} FOR UPDATE
+    </select>
+
+    <select id="selectActivePlacements"
+            resultType="com.petplatform.marketing.biz.infrastructure.persistence.entity.MarketingEntities$PlacementRow">
+        SELECT <include refid="placementColumns"/>
+        FROM marketing_placement p
+        INNER JOIN marketing_campaign c ON c.id=p.campaign_id
+        WHERE p.position_code=#{positionCode} AND p.status='ENABLED'
+          AND p.start_at &lt;= #{now} AND p.end_at &gt; #{now}
+          AND c.status IN ('SCHEDULED','ONLINE')
+          AND c.start_at &lt;= #{now} AND c.end_at &gt; #{now}
+        ORDER BY p.sort_weight ASC, p.id ASC
+    </select>
+
+    <select id="countEnabledPlacements" resultType="long">
+        SELECT COUNT(*) FROM marketing_placement
+        WHERE position_code=#{positionCode} AND status='ENABLED'
+          <if test="cityCode != null">AND (city_code IS NULL OR city_code=#{cityCode})</if>
+          AND start_at &lt; #{now} AND end_at &gt; #{now}
+    </select>
+
+    <insert id="insertPlacement">
+        INSERT INTO marketing_placement
+            (id,position_code,campaign_id,city_code,title_override,subtitle_override,image_url_override,
+             template_code,sort_weight,start_at,end_at,status,version,created_by_id,created_at,updated_at)
+        VALUES
+            (#{id},#{positionCode},#{campaignId},#{cityCode},#{titleOverride},#{subtitleOverride},
+             #{imageUrlOverride},#{templateCode},#{sortWeight},#{startAt},#{endAt},#{status},#{version},#{createdById},
+             #{createdAt},#{updatedAt})
+    </insert>
+
+    <update id="updatePlacement">
+        UPDATE marketing_placement
+        SET position_code=#{positionCode}, campaign_id=#{campaignId}, city_code=#{cityCode},
+            title_override=#{titleOverride}, subtitle_override=#{subtitleOverride},
+            image_url_override=#{imageUrlOverride}, template_code=#{templateCode}, sort_weight=#{sortWeight},
+            start_at=#{startAt}, end_at=#{endAt}, version=version+1, updated_at=#{updatedAt}
+        WHERE id=#{id} AND version=#{version}
+    </update>
+
+    <update id="updatePlacementStatus">
+        UPDATE marketing_placement
+        SET status=#{toStatus}, version=version+1, updated_at=#{now}
+        WHERE id=#{id} AND status=#{fromStatus} AND version=#{expectedVersion}
+    </update>
+
+    <select id="selectEnrollments"
+            resultType="com.petplatform.marketing.biz.infrastructure.persistence.entity.MarketingEntities$EnrollmentRow">
+        SELECT <include refid="enrollmentColumns"/>
+        FROM marketing_enrollment e
+        INNER JOIN marketing_campaign c ON c.id=e.campaign_id
+        <where>
+            <if test="campaignId != null">AND e.campaign_id=#{campaignId}</if>
+            <if test="status != null">AND e.status=#{status}</if>
+        </where>
+        ORDER BY e.submitted_at DESC, e.id DESC
+        LIMIT #{limit} OFFSET #{offset}
+    </select>
+
+    <select id="countEnrollments" resultType="long">
+        SELECT COUNT(*) FROM marketing_enrollment e
+        <where>
+            <if test="campaignId != null">AND e.campaign_id=#{campaignId}</if>
+            <if test="status != null">AND e.status=#{status}</if>
+        </where>
+    </select>
+
+    <select id="selectEnrollmentById"
+            resultType="com.petplatform.marketing.biz.infrastructure.persistence.entity.MarketingEntities$EnrollmentRow">
+        SELECT <include refid="enrollmentColumns"/>
+        FROM marketing_enrollment e
+        INNER JOIN marketing_campaign c ON c.id=e.campaign_id
+        WHERE e.id=#{id}
+    </select>
+
+    <select id="selectEnrollmentForUpdate"
+            resultType="com.petplatform.marketing.biz.infrastructure.persistence.entity.MarketingEntities$EnrollmentRow">
+        SELECT <include refid="enrollmentColumns"/>
+        FROM marketing_enrollment e
+        INNER JOIN marketing_campaign c ON c.id=e.campaign_id
+        WHERE e.id=#{id} FOR UPDATE
+    </select>
+
+    <select id="selectEnrollmentByCampaignStore"
+            resultType="com.petplatform.marketing.biz.infrastructure.persistence.entity.MarketingEntities$EnrollmentRow">
+        SELECT <include refid="enrollmentColumns"/>
+        FROM marketing_enrollment e
+        INNER JOIN marketing_campaign c ON c.id=e.campaign_id
+        WHERE e.campaign_id=#{campaignId} AND e.store_id=#{storeId}
+    </select>
+
+    <select id="selectMerchantEnrollments"
+            resultType="com.petplatform.marketing.biz.infrastructure.persistence.entity.MarketingEntities$EnrollmentRow">
+        SELECT <include refid="enrollmentColumns"/>
+        FROM marketing_enrollment e
+        INNER JOIN marketing_campaign c ON c.id=e.campaign_id
+        WHERE e.merchant_id=#{merchantId} AND e.store_id=#{storeId}
+        <if test="status != null">AND e.status=#{status}</if>
+        ORDER BY e.submitted_at DESC, e.id DESC
+        LIMIT #{limit} OFFSET #{offset}
+    </select>
+
+    <select id="countMerchantEnrollments" resultType="long">
+        SELECT COUNT(*) FROM marketing_enrollment
+        WHERE merchant_id=#{merchantId} AND store_id=#{storeId}
+        <if test="status != null">AND status=#{status}</if>
+    </select>
+
+    <select id="countApprovedEnrollments" resultType="long">
+        SELECT COUNT(*) FROM marketing_enrollment WHERE campaign_id=#{campaignId} AND status='APPROVED'
+    </select>
+
+    <insert id="insertEnrollment">
+        INSERT INTO marketing_enrollment
+            (id,campaign_id,merchant_id,store_id,status,offer_tag,offer_title,offer_copy,
+             service_ids,materials,reject_reason,submitted_at,decided_at,decided_by,version,
+             created_at,updated_at)
+        VALUES
+            (#{id},#{campaignId},#{merchantId},#{storeId},#{status},#{offerTag},#{offerTitle},
+             #{offerCopy},#{serviceIds},#{materials},#{rejectReason},#{submittedAt},#{decidedAt},
+             #{decidedBy},#{version},#{createdAt},#{updatedAt})
+    </insert>
+
+    <update id="updateEnrollment">
+        UPDATE marketing_enrollment
+        SET status=#{status}, offer_tag=#{offerTag}, offer_title=#{offerTitle}, offer_copy=#{offerCopy},
+            service_ids=#{serviceIds}, materials=#{materials}, reject_reason=#{rejectReason},
+            submitted_at=#{submittedAt}, decided_at=#{decidedAt}, decided_by=#{decidedBy},
+            version=version+1, updated_at=#{updatedAt}
+        WHERE id=#{id} AND version=#{version}
+    </update>
+
+    <update id="updateEnrollmentStatus">
+        UPDATE marketing_enrollment
+        SET status=#{toStatus}, reject_reason=#{rejectReason}, decided_by=#{decidedBy},
+            decided_at=#{now}, version=version+1, updated_at=#{now}
+        WHERE id=#{id} AND status=#{fromStatus} AND version=#{expectedVersion}
+    </update>
+
+    <insert id="insertCampaignAudit">
+        INSERT INTO marketing_campaign_audit
+            (id,campaign_id,action_type,from_status,to_status,operator_type,operator_id,
+             request_id,trace_id,detail_json,created_at)
+        VALUES
+            (#{id},#{campaignId},#{actionType},#{fromStatus},#{toStatus},#{operatorType},
+             #{operatorId},#{requestId},#{traceId},#{detailJson},#{now})
+    </insert>
+
+    <insert id="insertEnrollmentAudit">
+        INSERT INTO marketing_enrollment_audit
+            (id,enrollment_id,action_type,from_status,to_status,operator_type,operator_id,
+             reason,request_id,trace_id,created_at)
+        VALUES
+            (#{id},#{enrollmentId},#{actionType},#{fromStatus},#{toStatus},#{operatorType},
+             #{operatorId},#{reason},#{requestId},#{traceId},#{now})
+    </insert>
+
+    <select id="selectBinding"
+            resultType="com.petplatform.marketing.biz.infrastructure.persistence.entity.MarketingEntities$BindingRow">
+        SELECT id,request_key,command_type,params_sha256,params_canonical,status,receipt_json,
+               created_at,updated_at
+        FROM marketing_command_idempotency
+        WHERE request_key=#{requestKey}
+    </select>
+
+    <insert id="insertBinding">
+        INSERT INTO marketing_command_idempotency
+            (id,request_key,command_type,params_sha256,params_canonical,status,receipt_json,
+             created_at,updated_at)
+        VALUES
+            (#{id},#{requestKey},#{commandType},#{paramsSha256},#{paramsCanonical},'IN_PROGRESS',NULL,
+             #{now},#{now})
+    </insert>
+
+    <update id="markBindingSucceeded">
+        UPDATE marketing_command_idempotency
+        SET status='SUCCEEDED', receipt_json=#{receiptJson}, updated_at=#{now}
+        WHERE request_key=#{requestKey}
+    </update>
+
+    <delete id="deleteBinding">
+        DELETE FROM marketing_command_idempotency WHERE request_key=#{requestKey}
+    </delete>
+
+    <insert id="insertAsset">
+        INSERT INTO marketing_asset
+            (id,content_type,bytes,width,height,sha256,object_key,content,status,created_by_id,created_at)
+        VALUES
+            (#{id},#{contentType},#{bytes},#{width},#{height},#{sha256},#{objectKey},#{content},#{status},
+             #{createdById},#{createdAt})
+    </insert>
+
+    <select id="selectAssetById"
+            resultType="com.petplatform.marketing.biz.infrastructure.persistence.entity.MarketingEntities$AssetRow">
+        SELECT id,content_type,bytes,width,height,sha256,object_key,content,status,created_by_id,created_at
+        FROM marketing_asset
+        WHERE id=#{id} AND status='ACTIVE'
+    </select>
+
+    <insert id="insertAssetAudit">
+        INSERT INTO marketing_asset_audit
+            (id,asset_id,action_type,operator_id,request_id,trace_id,created_at)
+        VALUES
+            (#{id},#{assetId},#{actionType},#{operatorId},#{requestId},#{traceId},#{now})
+    </insert>
+
+    <!-- CCR-MKT-003 home content blocks -->
+
+    <sql id="homeBlockColumns">
+        id,block_code,position_code,template_code,title,subtitle,tag_name,image_url,target_type,
+        target_value,city_code,sponsor_merchant_id,sponsor_store_id,sort_weight,start_at,end_at,
+        status,version,created_by_id,created_at,updated_at
+    </sql>
+
+    <select id="selectHomeBlocks"
+            resultType="com.petplatform.marketing.biz.infrastructure.persistence.entity.MarketingEntities$HomeBlockRow">
+        SELECT <include refid="homeBlockColumns"/>
+        FROM marketing_home_block
+        <where>
+            <if test="positionCode != null">AND position_code=#{positionCode}</if>
+            <if test="status != null">AND status=#{status}</if>
+        </where>
+        ORDER BY position_code ASC, sort_weight ASC, id ASC
+        LIMIT #{limit} OFFSET #{offset}
+    </select>
+
+    <select id="countHomeBlocks" resultType="long">
+        SELECT COUNT(*) FROM marketing_home_block
+        <where>
+            <if test="positionCode != null">AND position_code=#{positionCode}</if>
+            <if test="status != null">AND status=#{status}</if>
+        </where>
+    </select>
+
+    <select id="selectHomeBlockById"
+            resultType="com.petplatform.marketing.biz.infrastructure.persistence.entity.MarketingEntities$HomeBlockRow">
+        SELECT <include refid="homeBlockColumns"/>
+        FROM marketing_home_block WHERE id=#{id}
+    </select>
+
+    <select id="selectHomeBlockForUpdate"
+            resultType="com.petplatform.marketing.biz.infrastructure.persistence.entity.MarketingEntities$HomeBlockRow">
+        SELECT <include refid="homeBlockColumns"/>
+        FROM marketing_home_block WHERE id=#{id} FOR UPDATE
+    </select>
+
+    <select id="selectActiveHomeBlocks"
+            resultType="com.petplatform.marketing.biz.infrastructure.persistence.entity.MarketingEntities$HomeBlockRow">
+        SELECT <include refid="homeBlockColumns"/>
+        FROM marketing_home_block
+        WHERE status='ENABLED'
+          AND start_at &lt;= #{now} AND end_at &gt; #{now}
+          <if test="cityCode != null">AND (city_code IS NULL OR city_code=#{cityCode})</if>
+        ORDER BY position_code ASC, sort_weight ASC, id ASC
+    </select>
+
+    <insert id="insertHomeBlock">
+        INSERT INTO marketing_home_block
+            (id,block_code,position_code,template_code,title,subtitle,tag_name,image_url,target_type,
+             target_value,city_code,sponsor_merchant_id,sponsor_store_id,sort_weight,start_at,end_at,
+             status,version,created_by_id,created_at,updated_at)
+        VALUES
+            (#{id},#{blockCode},#{positionCode},#{templateCode},#{title},#{subtitle},#{tagName},
+             #{imageUrl},#{targetType},#{targetValue},#{cityCode},#{sponsorMerchantId},
+             #{sponsorStoreId},#{sortWeight},#{startAt},#{endAt},#{status},#{version},#{createdById},
+             #{createdAt},#{updatedAt})
+    </insert>
+
+    <update id="updateHomeBlock">
+        UPDATE marketing_home_block
+        SET block_code=#{blockCode}, position_code=#{positionCode}, template_code=#{templateCode},
+            title=#{title}, subtitle=#{subtitle}, tag_name=#{tagName}, image_url=#{imageUrl},
+            target_type=#{targetType}, target_value=#{targetValue}, city_code=#{cityCode},
+            sponsor_merchant_id=#{sponsorMerchantId}, sponsor_store_id=#{sponsorStoreId},
+            sort_weight=#{sortWeight}, start_at=#{startAt}, end_at=#{endAt},
+            version=version+1, updated_at=#{updatedAt}
+        WHERE id=#{id} AND version=#{version}
+    </update>
+
+    <update id="updateHomeBlockStatus">
+        UPDATE marketing_home_block
+        SET status=#{toStatus}, version=version+1, updated_at=#{now}
+        WHERE id=#{id} AND status=#{fromStatus} AND version=#{expectedVersion}
+    </update>
+
+    <insert id="insertHomeBlockAudit">
+        INSERT INTO marketing_home_block_audit
+            (id,home_block_id,action_type,from_status,to_status,operator_id,request_id,trace_id,
+             detail_json,created_at)
+        VALUES
+            (#{id},#{homeBlockId},#{actionType},#{fromStatus},#{toStatus},#{operatorId},#{requestId},
+             #{traceId},#{detailJson},#{now})
+    </insert>
+</mapper>

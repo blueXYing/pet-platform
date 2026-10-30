@@ -2272,3 +2272,32 @@ Scope提案：`{mode,cityCodes,merchantIds}`。授予请求mode=ALL/CITY/MERCHAN
 [30号补充](30-Merchant-Application-Contract-v0.1.md)与OpenAPI11新增本人申请4操作、运营审核6操作，全部标CONTRACT_SYNC_CANDIDATE_NOT_IMPLEMENTED。申请人仅看本人；运营仅看已提交版本并先过滤scope再分页。人工核验/释放/决定必须当前领取人，不能构造内部双人审批。
 
 applicationId等主键使用Snowflake String；applicationNo按原PRD为SQ+YYYYMMDD+8位随机码，首次提交生成、重提不变，不套PublicId数字词法。revisionNo为正序号String。默认详情仅脱敏，不接受GET reveal参数，不在URL放敏感用途；原件读取依赖独立私有资产授权契约。无新的运行时路由或Provider就绪声明。
+
+## 营销活动中心路由同步（2026-10-27，71/72 号）
+
+新增路由以 [71 号营销活动中心契约](71-Marketing-Center-Contract-v0.1.md) 与
+[72 号券活动契约](72-Coupon-Campaign-Contract-v0.1.md) 为唯一字段/错误/权限口径：
+
+- 运营端 `/api/v1/admin/marketing/**`、`/api/v1/admin/coupon-campaigns/**`；
+- 商家端 `/api/v1/merchant/marketing/**`；
+- C 端 `/api/v1/c/marketing/**`、`/api/v1/c/coupon-campaigns/**`；
+- 既有 `/api/v1/c/stores`、`/api/v1/c/stores/{storeId}` 增加可选 `promotion`/`campaign`
+  投影（无值时为 null，不改变可见性规则）。
+
+装配开关见 21 号清单 §5；默认关闭，迁移 opt-in。本同步不改变既有订单/支付/退款/售后/
+券生命周期路由语义。
+
+## 宠友圈社区路由同步（2026-10-28，73 号）
+
+新增路由以 [73 号宠友圈社区契约](73-Community-Contract-v0.1.md) 为准：
+
+- C 端 `/api/v1/c/community/posts`、`/posts/{id}`、`/posts/{id}/comments`、`/posts/{id}/likes`、
+  `/posts/{id}/favorites`、`/community/hot`、`/community/topics`、`/community/users/{id}`、
+  `/community/users/{id}/follow`、`/community/reports`、`/community/media`、
+  `/community/media/{id}`；
+- 运营端 `/api/v1/admin/community/posts`、`/posts/{id}/decision`、`/reports`、
+  `/reports/{id}/resolve`；
+- 首页运营内容位新增 `/api/v1/c/marketing/home-blocks` 与 `/api/v1/admin/marketing/home-blocks`，
+  归 71 号契约 v0.2（CCR-MKT-003）。
+
+公开读匿名；写操作 MINIAPP Bearer + `X-Request-Id`；运营写 ADMIN_WEB + 动作码。错误码与状态见 12 号注册表社区映射。

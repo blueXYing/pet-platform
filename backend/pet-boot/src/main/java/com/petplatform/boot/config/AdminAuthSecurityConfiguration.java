@@ -38,7 +38,8 @@ public class AdminAuthSecurityConfiguration {
       @Value("${pet.points.task.http.enabled:false}") boolean pointsTaskHttpEnabled,
       @Value("${pet.admin.trade.http.enabled:false}") boolean adminTradeHttpEnabled,
       @Value("${pet.admin.governance.http.enabled:false}") boolean adminGovernanceHttpEnabled,
-      @Value("${pet.admin.ops.http.enabled:false}") boolean adminOpsHttpEnabled)
+      @Value("${pet.admin.ops.http.enabled:false}") boolean adminOpsHttpEnabled,
+      @Value("${pet.community.admin.http.enabled:false}") boolean communityAdminHttpEnabled)
       throws Exception {
     http.securityMatcher("/api/v1/admin/**")
         .csrf(c -> c.disable())
@@ -151,6 +152,19 @@ public class AdminAuthSecurityConfiguration {
                   "/api/v1/admin/coupon-instances/grant",
                   "/api/v1/admin/coupon-instances/*/void")
                   .permitAll();
+            }
+            // Contract-71/72 marketing center + coupon campaigns. Controllers are
+            // independently switch-gated; the ADMIN_WEB Bearer and the marketing.*/
+            // coupon.campaign.* action codes are enforced by the filter and kernel.
+            a.requestMatchers(
+                    "/api/v1/admin/marketing/**",
+                    "/api/v1/admin/coupon-campaigns",
+                    "/api/v1/admin/coupon-campaigns/**")
+                .permitAll();
+            if (communityAdminHttpEnabled) {
+              // CCR-COM-001 community moderation: ADMIN_WEB Bearer plus community.* action
+              // codes are enforced by the filter and re-proved by the kernel per call.
+              a.requestMatchers("/api/v1/admin/community/**").permitAll();
             }
             a.requestMatchers(
                     HttpMethod.POST,

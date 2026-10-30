@@ -1391,7 +1391,10 @@ public final class E2eCoreLoopServer {
         "60-Points-Task-Schema-v0.1.sql",
         "62-Baike-Content-Schema-v0.1.sql",
         // Contract 68 health-record tables (vaccine/deworm add+list).
-        "68-Pet-Health-Record-Schema-v0.1.sql"));
+        "68-Pet-Health-Record-Schema-v0.1.sql",
+        // CCR-MKT-001/002/003 marketing center + home blocks and CCR-COM-001 community.
+        "63-Marketing-Storage-v0.1.sql",
+        "64-Community-Storage-v0.1.sql"));
     try (var connection = source.getConnection()) {
       for (String file : scripts) {
         ScriptUtils.executeSqlScript(connection, new EncodedResource(

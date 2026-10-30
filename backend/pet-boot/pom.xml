@@ -115,6 +115,14 @@
         </dependency>
         <dependency>
             <groupId>com.petplatform</groupId>
+            <artifactId>pet-marketing-api</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>com.petplatform</groupId>
+            <artifactId>pet-marketing-biz</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>com.petplatform</groupId>
             <artifactId>pet-points-api</artifactId>
         </dependency>
         <dependency>
