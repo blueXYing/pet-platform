@@ -138,6 +138,21 @@
           AND r.created_at &gt;= #{from} AND r.created_at &lt; #{to}
     </select>
 
+    <!-- 74号 §6.1 public rating fact: batch full-history aggregate, one row per store that has
+         score_included=1 reviews; the (store_id, score_included, created_at) index covers the
+         IN + score_included prefix and the GROUP BY store_id order. -->
+    <select id="storeRatingSummaries"
+            resultType="com.petplatform.review.biz.infrastructure.persistence.entity.ReviewStoreRatingRowEntity">
+        SELECT r.store_id AS store_id, COUNT(*) AS review_count, AVG(r.composite_score) AS avg_score
+        FROM review r
+        WHERE r.store_id IN
+        <foreach collection="storeIds" item="storeId" open="(" separator="," close=")">
+            #{storeId}
+        </foreach>
+          AND r.score_included = 1
+        GROUP BY r.store_id
+    </select>
+
     <!-- O read face: order id joins back through the appealed review; same stable ordering. -->
     <select id="countAppeals" resultType="long">
         SELECT COUNT(*)

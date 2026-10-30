@@ -73,6 +73,13 @@ public interface ReviewCommandMapper {
             @Param("storeId") long storeId, @Param("from") java.time.LocalDateTime from,
             @Param("to") java.time.LocalDateTime to);
 
+    /**
+     * 74号 §6.1 public rating fact: batch full-history score_included aggregate per store.
+     * Caller passes a non-empty distinct list; stores without included reviews have no row.
+     */
+    List<com.petplatform.review.biz.infrastructure.persistence.entity.ReviewStoreRatingRowEntity>
+            storeRatingSummaries(@Param("storeIds") List<Long> storeIds);
+
     List<ReviewListRowEntity> pageStoreReviews(@Param("merchantId") long merchantId,
             @Param("storeId") long storeId, @Param("offset") long offset,
             @Param("limit") int limit);
