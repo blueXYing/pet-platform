@@ -140,8 +140,11 @@ public class CSessionSecurityConfiguration {
                     "/api/v1/c/points/ledger").permitAll();
             // Service catalog (CCR-W2-API-001 service domain): anonymous GET per the store-read
             // STR-D8 ruling (PRD "all users browse"); the filter validates a carried bearer.
+            // Contract 74 §3.1 joins the same anonymous browse family.
             a.requestMatchers("/api/v1/c/stores/*/services").permitAll();
-            a.requestMatchers("/api/v1/c/services", "/api/v1/c/services/*").permitAll();
+            a.requestMatchers(
+                    "/api/v1/c/services", "/api/v1/c/services/*", "/api/v1/c/service-categories")
+                .permitAll();
             if (storeQueryEnabled) {
               // Store catalog (CCR-W2-API-001 store read, STR-D8): GET-only registration behind
               // the assembly switch; non-GET stays denied and the switch keeps it unreachable
