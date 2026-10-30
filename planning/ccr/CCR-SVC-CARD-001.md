@@ -1,12 +1,12 @@
 # CCR-SVC-CARD-001 服务页商家卡聚合读与营销投影
 
-- 状态：DRAFT（2026-10-30；本轮只写 CCR/契约草案，不动代码，待用户确认后实施）
+- 状态：APPROVED（2026-10-30 用户确认；实施按任务清单推进）
 - 关联：C 端 PRD 5.1.13（商家服务页）/5.1.14（商家详情）/5.1.27（评价）；
   70 号商家统计契约、56 号评价申诉契约、71 号营销契约；
   Figma `110:480`（服务 tab）、`97:7825`（热门服务）；
   [CCR-SVC-CAT-001](CCR-SVC-CAT-001.md)、
   [71 号热门服务补丁草案](../../docs/04-api/71-Marketing-Center-Contract-v0.1-hot-service-patch-draft.md)、
-  [74 号服务目录页契约草案](../../docs/04-api/74-Service-Catalog-Page-Contract-v0.1-draft.md)
+  [74 号服务目录页契约](../../docs/04-api/74-Service-Catalog-Page-Contract-v0.1.md)
 - 用户已确认口径（2026-10-30）：
   1. 服务 tab 全量对齐 `110:480`（分类 + 商家钜惠 + 优质商家）；
   2. 热门服务页分类由服务字典自动生成，不做运营精选；
@@ -62,7 +62,7 @@
 ## 3. 卡片字段与数据来源
 
 完整字段、示例与错误码见
-[74 号服务目录页契约草案](../../docs/04-api/74-Service-Catalog-Page-Contract-v0.1-draft.md)。
+[74 号服务目录页契约](../../docs/04-api/74-Service-Catalog-Page-Contract-v0.1.md)。
 
 | 卡片元素 | 数据来源 | V1 口径 | 现状 |
 |---|---|---|---|

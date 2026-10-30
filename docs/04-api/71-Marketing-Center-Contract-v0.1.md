@@ -11,7 +11,7 @@ v0.3 新增部分待实现，最终以实现 PR 的 CI 为准。
 Figma `689:1190`/`110:480`/`97:7825`/`96:3328`/`96:4355`。
 v0.3 关联：[CCR-SVC-CAT-001](../../planning/ccr/CCR-SVC-CAT-001.md)、
 [CCR-SVC-CARD-001](../../planning/ccr/CCR-SVC-CARD-001.md)、
-[74 号服务目录页契约](74-Service-Catalog-Page-Contract-v0.1-draft.md)、
+[74 号服务目录页契约](74-Service-Catalog-Page-Contract-v0.1.md)、
 [71 号热门服务补丁草案](71-Marketing-Center-Contract-v0.1-hot-service-patch-draft.md)。
 券活动与领取的字段/规则以 [72 号](72-Coupon-Campaign-Contract-v0.1.md) 为准；券实例生命周期
 仍以 [61 号](61-Coupon-Lifecycle-Contract-v0.1.md) 为准。

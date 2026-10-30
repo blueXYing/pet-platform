@@ -1,12 +1,12 @@
-# 服务目录页实施任务清单（草案）
+# 服务目录页实施任务清单
 
-状态：**DRAFT / 未开工**。2026-10-30。本清单只拆任务，不代表已批准实施、也不改代码。
+状态：**APPROVED / 实施中**（2026-10-30；C-01 契约合入、C-02 74 定稿完成；代码任务未开工）。
 
 来源：
 
 - [CCR-SVC-CAT-001](../../../ccr/CCR-SVC-CAT-001.md) 服务分类字典与分类筛选
 - [CCR-SVC-CARD-001](../../../ccr/CCR-SVC-CARD-001.md) 服务页商家卡聚合读
-- [74 号服务目录页契约草案](../../../../docs/04-api/74-Service-Catalog-Page-Contract-v0.1-draft.md)
+- [74 号服务目录页契约](../../../../docs/04-api/74-Service-Catalog-Page-Contract-v0.1.md)
 - [71 号热门服务补丁草案](../../../../docs/04-api/71-Marketing-Center-Contract-v0.1-hot-service-patch-draft.md)
 - Figma `97:7825`（热门服务）、`110:480`（服务 tab）
 

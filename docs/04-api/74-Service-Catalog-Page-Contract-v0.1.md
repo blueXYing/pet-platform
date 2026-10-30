@@ -1,14 +1,20 @@
-# 74-服务目录页契约 v0.1（草案）
+# 74-服务目录页契约 v0.1
 
-状态：**DRAFT / 未批准**。2026-10-30。本文件只定义接口与字段草案，不表示已实现；
-实施前需用户确认并按 AGENTS 完成 CCR 审批与 PR 披露。
+状态：**ACCEPTED_CONTRACT / 未实现**（2026-10-30 用户确认）。最终以实现 PR 的 CI 为准。
+本契约定义接口与字段；实现状态未实现，Schema/迁移见 CCR-SVC-CAT-001/CCR-SVC-CARD-001。
 
 来源：C 端 PRD 5.1.13/5.1.14/5.1.27；运营端 PRD 6.2.4/6.11.2；商家端 PRD 5.5；
 SSOT §24；Figma `97:7825`（热门服务）、`110:480`（服务 tab）；
 [CCR-SVC-CAT-001](../../planning/ccr/CCR-SVC-CAT-001.md)、
 [CCR-SVC-CARD-001](../../planning/ccr/CCR-SVC-CARD-001.md)、
-[71 号热门服务补丁草案](71-Marketing-Center-Contract-v0.1-hot-service-patch-draft.md)、
-70 号商家统计契约、56 号评价契约、71 号营销契约。
+[71 号营销活动中心契约 v0.3](71-Marketing-Center-Contract-v0.1.md)、
+70 号商家统计契约、56 号评价契约。
+
+版本记录：
+
+| 版本 | 日期 | 变更 |
+|---|---|---|
+| v0.1 | 2026-10-30 | 初版：服务分类字典、分类筛选、优质商家聚合读、营销投影增量 |
 
 ## 1. 范围与开关
 
@@ -61,7 +67,7 @@ C 端读匿名可用；携带非法 Bearer 仍 401；运营端使用 ADMIN_WEB B
 | 绿植养护 | `PLANT_CARE` | 100 |
 | 植物代养 | `PLANT_BOARDING` | 110 |
 
-DDL 草案见 [CCR-SVC-CAT-001 §3](../../planning/ccr/CCR-SVC-CAT-001.md)。
+DDL 见 [CCR-SVC-CAT-001 §3](../../planning/ccr/CCR-SVC-CAT-001.md)。
 
 ## 3. C 端接口
 
@@ -271,8 +277,8 @@ DDL 草案见 [CCR-SVC-CAT-001 §3](../../planning/ccr/CCR-SVC-CAT-001.md)。
   点击按既有投放位跳转规则（活动/门店/服务/分类/白名单路径）。
 - `templateCode` 可空；`HOT_SERVICE_TOP` 使用固定 banner 版式，不新增模板代码。
 - 失败：503 时整块隐藏；不阻塞分类卡。
-- 契约 71 §2.3/§3.1/§4.2 同步更新；详见
-  [71 号热门服务补丁草案](71-Marketing-Center-Contract-v0.1-hot-service-patch-draft.md) §2。
+- 契约 71 v0.3 §2.3/§3.1/§4.2 已同步；详见
+  [71 号营销活动中心契约 v0.3](71-Marketing-Center-Contract-v0.1.md) §2.3/§3.1/§4.2。
 
 ## 4. 运营端接口
 
@@ -466,9 +472,9 @@ DDL 草案见 [CCR-SVC-CAT-001 §3](../../planning/ccr/CCR-SVC-CAT-001.md)。
 - 一页 10~20 家门店无 N+1 查询；评分/销量聚合命中门店前导索引。
 - `check-persistence-style.py` 通过；SQL 仅在本模块 Mapper XML。
 
-## 12. 已收口事项
+## 12. 已确认事项
 
-本轮草案的待确认项已收口：
+本契约的待确认项已收口（2026-10-30）：
 
 1. 分类图标采用**方案 A**：复用既有后台素材上传，分类表单填写 HTTPS URL；
    不新增上传管线/接口。
@@ -476,5 +482,6 @@ DDL 草案见 [CCR-SVC-CAT-001 §3](../../planning/ccr/CCR-SVC-CAT-001.md)。
    `cityCode` 只决定这条 banner 的展示范围。后续如需轮播/多条，另开契约增量。
 3. 存量活动 `serviceCategoryCodes` 清理：运营在营销中心逐条修正，开发只提供只读报表；
    严格校验由 `pet.marketing.campaign.category-validation.enabled` 控制（默认 false），
-   存量清理完成后再开启（详见
-   [71 号热门服务补丁草案](71-Marketing-Center-Contract-v0.1-hot-service-patch-draft.md) §5.4/§11）。
+   存量清理完成后再开启（清理说明见
+   [71 号热门服务补丁草案](71-Marketing-Center-Contract-v0.1-hot-service-patch-draft.md) §5.4/§11，
+   该补丁已合入 71 v0.3）。

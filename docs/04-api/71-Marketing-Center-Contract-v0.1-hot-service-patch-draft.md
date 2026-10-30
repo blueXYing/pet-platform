@@ -8,7 +8,7 @@
 
 - [CCR-SVC-CAT-001](../../planning/ccr/CCR-SVC-CAT-001.md) 服务分类字典与分类筛选；
 - [CCR-SVC-CARD-001](../../planning/ccr/CCR-SVC-CARD-001.md) 服务页商家卡聚合读；
-- [74 号服务目录页契约草案](74-Service-Catalog-Page-Contract-v0.1-draft.md)；
+- [74 号服务目录页契约](74-Service-Catalog-Page-Contract-v0.1.md)；
 - C 端 PRD 5.1.13/5.1.14；运营端 PRD 6.11.5；
 - Figma `97:7825`（热门服务）、`110:480`（服务 tab）。
 
