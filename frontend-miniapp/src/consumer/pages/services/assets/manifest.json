@@ -1,6 +1,6 @@
 {
   "sourceVersion": "2408620332145508244",
-  "note": "Services tab (110:480) decorative icon vectors for F-C-02, fetched 2026-10-30 via the Figma Desktop MCP asset endpoint (localhost:3845, no PAT/token; file bp2vpcjjA5vZbHvtKkA8wl, C-end 宠物小程序). The 11 category grid icons are NOT cut here: D-01 素材未到位是已知登记状态, iconUrl=null renders the neutral #e4f6f3 tile placeholder until design ships them (74 §10 / registry §4.26).",
+  "note": "Services tab (110:480) decorative icon vectors for F-C-02, fetched 2026-10-30 via the Figma Desktop MCP asset endpoint (localhost:3845, no PAT/token; file bp2vpcjjA5vZbHvtKkA8wl, C-end 宠物小程序). The 11 category glyph fallbacks live in category-icons/manifest.json (D-01); backend iconUrl remains the first source, and a neutral #e4f6f3 tile is used only when neither exists (74 §10 / registry §4.26).",
   "assets": [
     {
       "nodeId": "690:6230",

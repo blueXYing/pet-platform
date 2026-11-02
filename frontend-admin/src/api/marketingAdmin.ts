@@ -120,6 +120,9 @@ export function createMarketingAdminClient(transport?: Transport) {
     createPlacement(input: Record<string, unknown>, requestId = crypto.randomUUID()) {
       return request<Receipt>(`${ROOT}/placements`, { method: 'POST', body: input, requestId });
     },
+    updatePlacement(placementId: string, input: Record<string, unknown>, expectedVersion: string, requestId = crypto.randomUUID()) {
+      return request<Receipt>(`${ROOT}/placements/${placementId}`, { method: 'PUT', body: { ...input, expectedVersion }, requestId });
+    },
     placementAction(placementId: string, action: 'enable' | 'disable', expectedVersion: string) {
       return request<Receipt>(`${ROOT}/placements/${placementId}/${action}`, { method: 'POST', body: { expectedVersion } });
     },

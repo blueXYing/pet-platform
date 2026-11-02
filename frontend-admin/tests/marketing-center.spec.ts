@@ -234,6 +234,28 @@ test('F-A-03 投放位：HOT_SERVICE_TOP 可选并随表单提交', async ({ pag
   expect(posts[0].body?.positionCode).toBe('HOT_SERVICE_TOP');
 });
 
+test('F-A-03 投放位编辑：PUT 携带 expectedVersion 与 requestId', async ({ page }) => {
+  const writes = captureWrites(page, MARKETING);
+  await stubReads(page, { placements: [placement] });
+  await page.route(`**${MARKETING}/placements/${placement.placementId}`, route => {
+    if (route.request().method() === 'PUT') return route.fulfill(envelope(receipt(placement.placementId)));
+    return route.continue();
+  });
+  await signIn(page);
+  await nav(page).getByRole('button', { name: '投放位' }).click();
+  await page.getByRole('button', { name: '编辑', exact: true }).click();
+  const form = section(page, `编辑投放位：${placement.placementId}`);
+  await expect(form.getByLabel('活动 ID')).toHaveValue(placement.campaignId);
+  await form.getByLabel('标题覆盖').fill('新标题');
+  await form.getByRole('button', { name: '保存修改' }).click();
+  await expect(navStatus(page)).toContainText('投放位已保存');
+  const puts = writes.filter(w => w.method === 'PUT' && w.path === `${MARKETING}/placements/${placement.placementId}`);
+  expect(puts).toHaveLength(1);
+  expect(puts[0].requestId).toMatch(UUID);
+  expect(puts[0].body?.expectedVersion).toBe('3');
+  expect(puts[0].body?.titleOverride).toBe('新标题');
+});
+
 test('F-A-03 启用 HOT_SERVICE_TOP 超限：409 给出全平台最多 1 条的可读提示', async ({ page }) => {
   await stubReads(page, { placements: [placement] });
   let enables = 0;

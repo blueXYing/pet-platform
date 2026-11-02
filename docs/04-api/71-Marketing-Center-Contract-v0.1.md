@@ -4,7 +4,7 @@
 > 下方版本记录为准。
 
 状态：v0.3 契约（2026-10-30）。既有 v0.1 部分 IMPLEMENTED_INTERNAL_DEFAULT_OFF；
-v0.3 新增部分待实现，最终以实现 PR 的 CI 为准。
+v0.3 新增部分随服务目录实现 PR 落地（IMPLEMENTED_INTERNAL_DEFAULT_OFF），F-C-05 视觉验收待补。
 依据：[38 号裁决补充](../01-prd/38-营销活动中心裁决补充-v1.0.md)、
 [CCR-MKT-001](../../planning/ccr/CCR-MKT-001.md)、C 端 PRD 5.1.2/5.1.13/5.1.14/5.1.21、
 商家端 PRD 5.7、运营端 PRD 6.4.2/6.11.5、
@@ -289,7 +289,7 @@ Schema 为发布快照并 `pageVersion+1`；商家发起活动只有 `PENDING_RE
 
 规则：启用时校验活动 `SCHEDULED/ONLINE`、窗口相交、落地页有效；`HOME_BANNER` 启用后
 同时启用数 ≤3；`HOT_SERVICE_TOP` 全平台最多 1 条启用（计数与启停同事务，第二条
-409 `PLACEMENT_LIMIT_EXCEEDED`）；城市必须是开放城市。
+409 `PLACEMENT_LIMIT_EXCEEDED`；生成列 + 唯一键兜底并发启用）；城市必须是开放城市。
 
 ### 4.3 商家报名审核
 

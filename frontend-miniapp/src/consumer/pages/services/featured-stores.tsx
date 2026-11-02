@@ -25,7 +25,7 @@ export type FeaturedStoresState = Readonly<{
   appendError: boolean
   loadMore(): void
   retryAppend(): void
-  reload(): void
+  reload(cityCode?: string): void
 }>
 
 export function useFeaturedStores(cityCode: string | undefined): FeaturedStoresState {
@@ -46,13 +46,17 @@ export function useFeaturedStores(cityCode: string | undefined): FeaturedStoresS
   const snapshot = useRef({ phase, cards, total })
   snapshot.current = { phase, cards, total }
 
-  const load = useCallback(async () => {
+  const load = useCallback(async (nextCity: string | undefined = cityRef.current) => {
+    // The page updates `city` and immediately reloads. Read the city passed by the caller
+    // before React has re-rendered; reading `cityRef.current` here would still hold the old
+    // city and leave the featured list on the previous city after a switch.
+    cityRef.current = nextCity
     const seq = ++sequence.current
     guard.current = { appending: false, appendError: false }
     setPhase('loading'); setCards([]); setTotal(0)
     setAppending(false); setAppendError(false)
     try {
-      const page = await repository.current!.featuredStores({ cityCode: cityRef.current, page: 1, pageSize: FEATURED_PAGE_SIZE })
+      const page = await repository.current!.featuredStores({ cityCode: nextCity, page: 1, pageSize: FEATURED_PAGE_SIZE })
       if (!mounted.current || seq !== sequence.current) return
       setCards(page.items); setTotal(page.total); setPhase('ready')
     } catch {
@@ -98,7 +102,7 @@ export function useFeaturedStores(cityCode: string | undefined): FeaturedStoresS
     phase, cards, total, appending, appendError,
     loadMore: () => { void loadMore() },
     retryAppend,
-    reload: () => { void load() },
+    reload: (cityCode?: string) => { void load(cityCode) },
   }
 }
 
@@ -175,7 +179,7 @@ export function FeaturedStoresSection(state: FeaturedStoresState) {
     {phase !== 'ready' && <View className='svc2-state' role='status'>
       <Text>{phase === 'loading' ? '正在加载优质商家…' : '优质商家加载失败，请重试。'}</Text>
       {phase === 'load-error' && <Button className='svc2-state-action' hoverClass='none'
-        onClick={state.reload}>重新加载</Button>}
+        onClick={() => state.reload()}>重新加载</Button>}
     </View>}
     {phase === 'ready' && cards.length === 0 && <View className='svc2-state'>
       <Text>当前城市暂无优质商家。</Text>

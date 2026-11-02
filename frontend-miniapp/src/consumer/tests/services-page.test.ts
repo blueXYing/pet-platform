@@ -131,6 +131,21 @@ test('the services page is dictionary-driven and routes categories by categoryCo
 
 // ── WXSS 铁律与素材登记门禁 ──
 
+test('city switches pass the target city to the featured reload and guard stale category reads', () => {
+  const index = source('index.tsx')
+  assert.match(index, /featured\.reload\(stored\)/)
+  assert.match(index, /featured\.reload\(next\)/)
+  const featured = source('featured-stores.tsx')
+  assert.match(featured, /reload\(cityCode\?: string\)/)
+  assert.match(featured, /const load = useCallback\(async \(nextCity/)
+
+  const hot = readFileSync(path.join(pageDir, '..', 'store-services', 'hot-services.tsx'), 'utf8')
+  assert.match(hot, /const next = stored/)
+  const stores = readFileSync(path.join(pageDir, '..', 'store-services', 'stores.tsx'), 'utf8')
+  assert.match(stores, /categorySequence/)
+  assert.match(stores, /current !== categorySequence\.current/)
+})
+
 test('services css obeys the WXSS iron rules and icon assets match the manifest', () => {
   const css = source('services.css')
   assert.equal(/\[data-/.test(css), false) // 禁动态 data-* 属性选择器
@@ -149,7 +164,28 @@ test('services css obeys the WXSS iron rules and icon assets match the manifest'
     assert.equal(bytes.length, asset.bytes, asset.file)
     assert.equal(createHash('sha256').update(bytes).digest('hex'), asset.sha256, asset.file)
   }
-  // 11 类图标 D-01 未到位：页面不含伪造的本地分类图标路径（iconUrl=null → tile 占位）。
+
+  // D-01/D-02：真实 Figma 切图兜底与 manifest 一致；后端 iconUrl 仍是第一优先级。
+  const verifyManifest = (file: string, expected: number) => {
+    const parsed = JSON.parse(readFileSync(file, 'utf8')) as {
+      assets: { file: string; sha256: string; bytes: number }[]
+    }
+    assert.equal(parsed.assets.length, expected, file)
+    for (const asset of parsed.assets) {
+      const relative = asset.file.replace(/^frontend-miniapp\//, '')
+      const target = path.join(root, ...relative.split('/'))
+      assert.ok(existsSync(target), `asset missing: ${asset.file}`)
+      const bytes = readFileSync(target)
+      assert.equal(bytes.length, asset.bytes, asset.file)
+      assert.equal(createHash('sha256').update(bytes).digest('hex'), asset.sha256, asset.file)
+    }
+  }
+  verifyManifest(path.join(pageDir, 'assets', 'category-icons', 'manifest.json'), 11)
+  verifyManifest(path.join(pageDir, '..', 'store-services', 'assets', 'hot-service-art', 'manifest.json'), 6)
   const index = source('index.tsx')
-  assert.doesNotMatch(index, /assets\/(pet-grooming|dog-walking|category-)/)
+  assert.match(index, /categoryIconFor/)
+  assert.match(index, /category\.iconUrl \?\? categoryIconFor/)
+  const hotPage = readFileSync(path.join(pageDir, '..', 'store-services', 'hot-services.tsx'), 'utf8')
+  assert.match(hotPage, /hotServiceArtFor/)
+  assert.match(hotPage, /hotsvc-card-art-img/)
 })

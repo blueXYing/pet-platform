@@ -13,7 +13,8 @@
 --   3. 回填后收紧 category_code NOT NULL + 全局唯一 + parent_id 索引；
 --   4. 新增 append-only service_category_audit 审计表。
 -- 不做：不改 service_item.category_id；不迁移商家服务归属；不建父子层级 UI/外键；
---       不改订单/支付/退款/核销/售后状态机；不 INSERT 新分类行。
+--       不改订单/支付/退款/核销/售后状态机；本文件不 INSERT 新分类行；初始 11 类种子
+--       由 docs/03-database/72-Service-Category-Seed-v0.1.sql（Flyway V30）统一提供。
 --
 -- 迁移顺序（必须按 A→E 执行；MySQL DDL 隐式提交，没有事务级回滚）：
 --   A. 先加可空字典列（category_code/parent_id/icon_url/description）与 version

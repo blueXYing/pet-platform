@@ -109,6 +109,15 @@ class ServiceCategoryAdminHttpTest {
                             "backend/pet-boot/src/main/resources/db/service-migration/"
                                 + "V29__service_category_dictionary.sql")),
                     StandardCharsets.UTF_8));
+            // V30 is the same shared 11-category seed used by production (docs/03-database/72).
+            ScriptUtils.executeSqlScript(
+                connection,
+                new EncodedResource(
+                    new FileSystemResource(
+                        root().resolve(
+                            "backend/pet-boot/src/main/resources/db/service-migration/"
+                                + "V30__service_category_seed.sql")),
+                    StandardCharsets.UTF_8));
           }
           return null;
         });
@@ -213,6 +222,17 @@ class ServiceCategoryAdminHttpTest {
   }
 
   // ---------------------------------------------------------------- acceptance
+
+  @Test
+  void seedSqlCreatesTheElevenStandardCategories() {
+    assertEquals(
+        11L,
+        count(
+            "SELECT COUNT(*) FROM service_category WHERE category_code IN"
+                + " ('PET_GROOMING','DOG_WALKING','PET_BOARDING','PET_TRAINING',"
+                + "'HOME_FEEDING','VET_ASSISTANT','SMALL_PET_BOARDING',"
+                + "'EXOTIC_HOME_FEEDING','EXOTIC_HEALTH_CHECK','PLANT_CARE','PLANT_BOARDING')"));
+  }
 
   @Test
   void crudReplayVersionCasAndAuditAreEnforced() throws Exception {

@@ -138,6 +138,9 @@ CREATE TABLE marketing_placement (
     start_at                DATETIME(3) NOT NULL,
     end_at                  DATETIME(3) NOT NULL,
     status                  VARCHAR(16) CHARACTER SET ascii COLLATE ascii_bin NOT NULL,
+    hot_service_top_singleton TINYINT GENERATED ALWAYS AS (
+        CASE WHEN position_code = 'HOT_SERVICE_TOP' AND status = 'ENABLED' THEN 1 ELSE NULL END
+    ) STORED COMMENT 'HOT_SERVICE_TOP 全平台单例：仅启用行取1，其余NULL；唯一键兜底',
     version                 INT NOT NULL DEFAULT 1,
     created_by_id           BIGINT NOT NULL,
     created_at              DATETIME(3) NOT NULL,
@@ -145,8 +148,9 @@ CREATE TABLE marketing_placement (
     PRIMARY KEY (id),
     KEY idx_marketing_placement_read (position_code, city_code, status, start_at, end_at, sort_weight, id),
     KEY idx_marketing_placement_campaign (campaign_id, status),
+    UNIQUE KEY uk_marketing_placement_hot_top_singleton (hot_service_top_singleton),
     CONSTRAINT chk_marketing_placement_position CHECK (
-        position_code IN ('HOME_BANNER','HOME_ACTIVITY','STORE_LIST_TOP')
+        position_code IN ('HOME_BANNER','HOME_ACTIVITY','STORE_LIST_TOP','HOT_SERVICE_TOP')
     ),
     CONSTRAINT chk_marketing_placement_status CHECK (status IN ('DRAFT','ENABLED','DISABLED')),
     CONSTRAINT chk_marketing_placement_time CHECK (start_at < end_at),
@@ -367,8 +371,8 @@ CREATE TABLE marketing_home_block (
         template_code IN ('HOT_SERVICE_FEATURE','COMMUNITY_HOT','EXOTIC_PLANT')
     ),
     CONSTRAINT chk_marketing_home_block_target CHECK (
-        target_type IN ('SERVICE_DIRECTORY','SERVICE_CATEGORY','STORE','SERVICE','CAMPAIGN','COMMUNITY','MINIAPP_PATH','NONE')
-        AND (target_type = 'NONE' OR target_value IS NOT NULL)
+        target_type IN ('SERVICE_DIRECTORY','SERVICE_CATEGORY','STORE','SERVICE','CAMPAIGN','COMMUNITY','MINIAPP_PATH','NONE','HOT_SERVICE')
+        AND (target_type IN ('NONE','HOT_SERVICE') OR target_value IS NOT NULL)
     ),
     CONSTRAINT chk_marketing_home_block_status CHECK (status IN ('DRAFT','ENABLED','DISABLED')),
     CONSTRAINT chk_marketing_home_block_time CHECK (start_at < end_at),

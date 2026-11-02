@@ -1,5 +1,6 @@
 package com.petplatform.marketing.biz.infrastructure.persistence.mapper;
 
+import com.petplatform.marketing.biz.infrastructure.persistence.entity.MarketingEntities;
 import com.petplatform.marketing.biz.infrastructure.persistence.entity.MarketingEntities.AssetRow;
 import com.petplatform.marketing.biz.infrastructure.persistence.entity.MarketingEntities.BindingRow;
 import com.petplatform.marketing.biz.infrastructure.persistence.entity.MarketingEntities.CampaignRow;
@@ -90,6 +91,9 @@ public interface MarketingMapper {
 
     List<CampaignStoreRow> selectActiveStoreCampaigns(@Param("storeId") long storeId,
             @Param("now") LocalDateTime now);
+
+    List<MarketingEntities.ActiveStoreCampaignRow> selectActiveStoreCampaignsForStores(
+            @Param("storeIds") List<Long> storeIds, @Param("now") LocalDateTime now);
 
     // ---------------------------------------------------------------- placements
 

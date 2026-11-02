@@ -8,10 +8,12 @@
 -- 目标：MySQL 8.0.16+（CHECK 约束需 8.0.16+，DROP CHECK 自 8.0.16 可用）；
 --       InnoDB / utf8mb4_0900_ai_ci；DATETIME(3) 一律 UTC。
 --
--- 变更范围（仅约束白名单，无列/索引变更）：
+-- 变更范围：
 --   1. marketing_placement.position_code 白名单增加 HOT_SERVICE_TOP
 --      （热门服务二级页顶部 banner 投放位）；
---   2. marketing_home_block.target_type 白名单增加 HOT_SERVICE；
+--   2. marketing_placement 新增生成列 hot_service_top_singleton + 唯一键，
+--      数据库层保证全平台最多 1 条 HOT_SERVICE_TOP ENABLED；
+--   3. marketing_home_block.target_type 白名单增加 HOT_SERVICE；
 --      并允许 targetType=HOT_SERVICE 时 target_value 为空（除 NONE / HOT_SERVICE 外，
 --      仍要求 target_value IS NOT NULL）。
 --
@@ -25,13 +27,20 @@ ALTER TABLE marketing_placement
     DROP CHECK chk_marketing_placement_position,
     ADD CONSTRAINT chk_marketing_placement_position CHECK (
         position_code IN ('HOME_BANNER','HOME_ACTIVITY','STORE_LIST_TOP','HOT_SERVICE_TOP')
-    );
+    ),
+    ADD COLUMN hot_service_top_singleton TINYINT GENERATED ALWAYS AS (
+        CASE WHEN position_code = 'HOT_SERVICE_TOP' AND status = 'ENABLED' THEN 1 ELSE NULL END
+    ) STORED COMMENT 'HOT_SERVICE_TOP 全平台单例：仅启用行取1，其余NULL；唯一键兜底';
+
+ALTER TABLE marketing_placement
+    ADD UNIQUE KEY uk_marketing_placement_hot_top_singleton (hot_service_top_singleton);
 
 -- 说明：74 号契约 §3.7 已确认 HOT_SERVICE_TOP 全平台最多 1 条 ENABLED；cityCode 只决定
--- 该条 banner 的展示范围。MySQL 无部分唯一索引，且该规则是业务校验，由 B-MKT-01 在
--- 应用层（创建/启用/编辑）校验并返回 409；本 Schema 不新增唯一键/生成列。
+-- 该条 banner 的展示范围。MySQL 无部分唯一索引，因此新增生成列
+-- hot_service_top_singleton（HOT_SERVICE_TOP+ENABLED=1，其余 NULL）并加唯一键，
+-- 由数据库兜底；应用层仍先返回 409 PLACEMENT_LIMIT_EXCEEDED。
 -- 现有 idx_marketing_placement_read(position_code, city_code, status, start_at, end_at,
--- sort_weight, id) 已覆盖该投放位读取，无需新增索引。
+-- sort_weight, id) 已覆盖该投放位读取，无需新增读取索引。
 
 -- ============================================================
 -- §2. marketing_home_block：新增 HOT_SERVICE，并允许其 target_value 为空
@@ -79,7 +88,7 @@ ORDER BY constraint_name;
 --     'HOT_SERVICE', NULL, 0, '2026-10-30 00:00:00.000', '2026-10-31 00:00:00.000',
 --     'DRAFT', 1, 1, '2026-10-30 00:00:00.000', '2026-10-30 00:00:00.000');
 
--- V5. 运营核对：HOT_SERVICE_TOP 启用条数期望为 0 或 1（应用层约束；>1 为违规数据）。
+-- V5. 运营核对：HOT_SERVICE_TOP 启用条数期望为 0 或 1；唯一键会拒绝第二条 ENABLED。
 SELECT COUNT(*) AS enabled_hot_service_top
 FROM marketing_placement
 WHERE position_code = 'HOT_SERVICE_TOP'
@@ -98,6 +107,9 @@ WHERE position_code = 'HOT_SERVICE_TOP'
 --           target_type IN ('SERVICE_DIRECTORY','SERVICE_CATEGORY','STORE','SERVICE','CAMPAIGN','COMMUNITY','MINIAPP_PATH','NONE')
 --           AND (target_type = 'NONE' OR target_value IS NOT NULL)
 --       );
+--   ALTER TABLE marketing_placement
+--       DROP INDEX uk_marketing_placement_hot_top_singleton,
+--       DROP COLUMN hot_service_top_singleton;
 --   ALTER TABLE marketing_placement
 --       DROP CHECK chk_marketing_placement_position,
 --       ADD CONSTRAINT chk_marketing_placement_position CHECK (

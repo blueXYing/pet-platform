@@ -1,7 +1,7 @@
 # 74-服务目录页契约 v0.1
 
-状态：**ACCEPTED_CONTRACT / 未实现**（2026-10-30 用户确认）。最终以实现 PR 的 CI 为准。
-本契约定义接口与字段；实现状态未实现，Schema/迁移见 CCR-SVC-CAT-001/CCR-SVC-CARD-001。
+状态：**ACCEPTED_CONTRACT / IMPLEMENTED_INTERNAL_DEFAULT_OFF**（2026-10-30 用户确认；2026-11-02 实现 PR；F-C-05 视觉验收待补）。
+本契约定义接口与字段；实现状态以本 PR 的 CI 与验收记录为准，Schema/迁移见 CCR-SVC-CAT-001/CCR-SVC-CARD-001。
 
 来源：C 端 PRD 5.1.13/5.1.14/5.1.27；运营端 PRD 6.2.4/6.11.2；商家端 PRD 5.5；
 SSOT §24；Figma `97:7825`（热门服务）、`110:480`（服务 tab）；
@@ -153,7 +153,7 @@ DDL 见 [CCR-SVC-CAT-001 §3](../../planning/ccr/CCR-SVC-CAT-001.md)。
       "merchantId": "710301",
       "storeName": "萌宠之家宠物店",
       "merchantName": "萌宠之家",
-      "cityCode": "310100",
+      "cityCode": "shanghai",
       "address": "上海市浦东新区世纪大道 100 号",
       "avatarUrl": "https://cdn.example/store/710302/avatar.jpg",
       "avatarUrlExpiresAt": "2026-11-30T12:00:00Z",
@@ -247,7 +247,7 @@ DDL 见 [CCR-SVC-CAT-001 §3](../../planning/ccr/CCR-SVC-CAT-001.md)。
 | 字段 | 类型 | 约束 |
 |---|---|---|
 | imageUrl | String/null | ≤512；门店头像/照片优先，活动封面兜底 |
-| imageUrlExpiresAt | ISO-8601/null | 与 imageUrl 同时为 null 或同时有值 |
+| imageUrlExpiresAt | ISO-8601/null | 签名素材与 imageUrl 成对；公开素材 URL 可为 null（71 v0.3 §3.4） |
 
 其余字段、排序、去重规则不变；无图时前端用设计系统占位，不虚构商家。
 
@@ -274,7 +274,9 @@ DDL 见 [CCR-SVC-CAT-001 §3](../../planning/ccr/CCR-SVC-CAT-001.md)。
   返回 `items`；热门服务页取 `sortWeight ASC, placementId ASC` 第一条；
   无启用投放位则隐藏 banner。
 - 展示字段：`title/subtitle/tagName/coverUrl` 与 `jumpType/jumpParams`；
-  点击按既有投放位跳转规则（活动/门店/服务/分类/白名单路径）。
+  点击按投放位跳转规则：后端实际发送 `CAMPAIGN_PAGE`（C 端兼容旧 `CAMPAIGN`），并支持
+  `STORE/SERVICE/SERVICE_CATEGORY/COMMUNITY/MINIAPP_PATH`；`MINIAPP_PATH` 仅接受
+  `/consumer/pages/` 或 `/merchant/pages/` 下且不含 `..` 的路径；其他类型 fail-closed。
 - `templateCode` 可空；`HOT_SERVICE_TOP` 使用固定 banner 版式，不新增模板代码。
 - 失败：503 时整块隐藏；不阻塞分类卡。
 - 契约 71 v0.3 §2.3/§3.1/§4.2 已同步；详见
@@ -434,7 +436,8 @@ DDL 见 [CCR-SVC-CAT-001 §3](../../planning/ccr/CCR-SVC-CAT-001.md)。
 
 ## 9. 迁移与兼容
 
-1. `service_category` 先加可空列，回填 11 个 code，再收紧 NOT NULL + UNIQUE。
+1. `service_category` 先加可空列（V29/70），回填 11 个 code，再收紧 NOT NULL + UNIQUE；
+   V30/72 以同一套 SQL 幂等插入 11 类初始字典（生产已有行则跳过）。
 2. `service_item.category_id` 不变；商家服务归属不迁移。
 3. `/merchant/service-categories` 增加 `categoryCode/iconUrl`，保留 `categoryId`。
 4. `/c/stores` 响应不变，仅新增可选 `categoryCode` 查询参数；旧前端不受影响。
@@ -443,7 +446,7 @@ DDL 见 [CCR-SVC-CAT-001 §3](../../planning/ccr/CCR-SVC-CAT-001.md)。
 7. 前端删除硬编码分类数组；分类点击改传 `categoryCode`。
 8. 设计登记表更新 `97:7825` / `110:480` / `stores` 的关系与偏差。
 9. 投放位枚举新增 `HOT_SERVICE_TOP`；`marketing_placement.position_code` 的 CHECK/白名单
-   与契约 71 同步更新。
+   与契约 71 同步更新；新增生成列 + 唯一键保证全平台最多 1 条 ENABLED。
 10. `marketing_home_block.target_type` 放宽 `target_value IS NOT NULL` 的 CHECK，允许
     `HOT_SERVICE` 为空。
 

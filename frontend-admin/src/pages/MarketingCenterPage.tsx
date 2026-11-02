@@ -73,6 +73,49 @@ function AssetPicker({ name, label, defaultValue, client, canManage, onFailure }
   </div>;
 }
 
+function PlacementForm({ placement, client, canManage, busy, onSubmit, onFailure, onCancel }: {
+  placement?: Placement; client: MarketingAdminClient; canManage: boolean; busy: boolean;
+  onSubmit: (input: Record<string, unknown>) => void;
+  onFailure: (caught: unknown) => void;
+  onCancel?: () => void;
+}) {
+  return <form onSubmit={event => {
+    event.preventDefault();
+    const form = new FormData(event.currentTarget);
+    onSubmit({
+      positionCode: String(form.get('positionCode') ?? 'HOME_ACTIVITY'),
+      campaignId: String(form.get('campaignId') ?? '').trim(),
+      cityCode: String(form.get('cityCode') ?? '').trim() || undefined,
+      titleOverride: String(form.get('titleOverride') ?? '').trim() || undefined,
+      subtitleOverride: String(form.get('subtitleOverride') ?? '').trim() || undefined,
+      imageUrlOverride: String(form.get('imageUrlOverride') ?? '').trim() || undefined,
+      templateCode: String(form.get('templateCode') ?? '').trim() || undefined,
+      sortWeight: Number(form.get('sortWeight') ?? 0),
+      startAt: iso(String(form.get('startAt') ?? '')),
+      endAt: iso(String(form.get('endAt') ?? '')),
+    });
+  }}>
+    <p className="hint">热门服务顶部 Banner 全平台最多同时启用 1 个（启用时校验，超限返回 409）；创建后为草稿，需在活动生效后启用。</p>
+    <label>位置<select name="positionCode" defaultValue={placement?.positionCode ?? 'HOME_ACTIVITY'}>
+      {PLACEMENT_POSITIONS.map(([value, label]) => <option key={value} value={value}>{label}</option>)}
+    </select></label>
+    <label>活动 ID<input name="campaignId" defaultValue={placement?.campaignId ?? ''} required /></label>
+    <label>城市编码（空=全部）<input name="cityCode" defaultValue={placement?.cityCode ?? ''} /></label>
+    <label>标题覆盖<input name="titleOverride" defaultValue={placement?.titleOverride ?? ''} maxLength={100} /></label>
+    <label>副标题覆盖<input name="subtitleOverride" defaultValue={placement?.subtitleOverride ?? ''} maxLength={200} /></label>
+    <AssetPicker name="imageUrlOverride" label="投放插画" defaultValue={placement?.imageUrlOverride}
+      client={client} canManage={canManage} onFailure={onFailure} />
+    <label>卡片模板<select name="templateCode" defaultValue={placement?.templateCode ?? ''}>
+      <option value="">通用模板</option><option value="new_user">新客活动卡</option><option value="beauty">美容活动卡</option>
+    </select></label>
+    <label>排序<input name="sortWeight" type="number" min={0} max={9999} defaultValue={placement?.sortWeight ?? 0} /></label>
+    <label>开始时间<input name="startAt" type="datetime-local" defaultValue={localInput(placement?.startAt ?? null)} required /></label>
+    <label>结束时间<input name="endAt" type="datetime-local" defaultValue={localInput(placement?.endAt ?? null)} required /></label>
+    <button type="submit" disabled={busy}>{placement ? '保存修改' : '创建投放位'}</button>
+    {placement && onCancel && <button type="button" disabled={busy} onClick={onCancel}>取消</button>}
+  </form>;
+}
+
 function HomeBlockForm({ block, client, canManage, busy, onSubmit, onFailure }: {
   block?: HomeBlock; client: MarketingAdminClient; canManage: boolean; busy: boolean;
   onSubmit: (input: Record<string, unknown>) => void; onFailure: (caught: unknown) => void;
@@ -148,6 +191,7 @@ export default function MarketingCenterPage({ client, couponClient, categoryClie
   const [tab, setTab] = useState<'campaigns' | 'placements' | 'home' | 'enrollments' | 'coupons'>('campaigns');
   const [campaigns, setCampaigns] = useState<Campaign[]>();
   const [placements, setPlacements] = useState<Placement[]>();
+  const [editingPlacement, setEditingPlacement] = useState<Placement>();
   const [enrollments, setEnrollments] = useState<Enrollment[]>();
   const [coupons, setCoupons] = useState<CouponCampaign[]>();
   const [homeBlocks, setHomeBlocks] = useState<HomeBlock[]>();
@@ -459,35 +503,19 @@ export default function MarketingCenterPage({ client, couponClient, categoryClie
     {tab === 'placements' && <>
       {canManage && <section className="detail-card">
         <h3>新建投放位</h3>
-        <form onSubmit={event => {
-          event.preventDefault();
-          const form = new FormData(event.currentTarget);
-          void run(() => client.createPlacement({
-            positionCode: String(form.get('positionCode') ?? 'HOME_ACTIVITY'),
-            campaignId: String(form.get('campaignId') ?? '').trim(),
-            cityCode: String(form.get('cityCode') ?? '').trim() || undefined,
-            titleOverride: String(form.get('titleOverride') ?? '').trim() || undefined,
-            subtitleOverride: String(form.get('subtitleOverride') ?? '').trim() || undefined,
-            imageUrlOverride: String(form.get('imageUrlOverride') ?? '').trim() || undefined,
-            templateCode: String(form.get('templateCode') ?? '').trim() || undefined,
-            sortWeight: Number(form.get('sortWeight') ?? 0),
-            startAt: iso(String(form.get('startAt') ?? '')),
-            endAt: iso(String(form.get('endAt') ?? '')),
-          }), '投放位已创建');
-        }}>
-          <p className="hint">热门服务顶部 Banner 全平台最多同时启用 1 个（启用时校验，超限返回 409）；创建后为草稿，需在活动生效后启用。</p>
-          <label>位置<select name="positionCode">{PLACEMENT_POSITIONS.map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select></label>
-          <label>活动 ID<input name="campaignId" required /></label>
-          <label>城市编码（空=全部）<input name="cityCode" /></label>
-          <label>标题覆盖<input name="titleOverride" maxLength={100} /></label>
-          <label>副标题覆盖<input name="subtitleOverride" maxLength={200} /></label>
-          <AssetPicker name="imageUrlOverride" label="投放插画" client={client} canManage={canManage} onFailure={caught => authOrError(caught, '素材上传失败')} />
-          <label>卡片模板<select name="templateCode" defaultValue=""><option value="">通用模板</option><option value="new_user">新客活动卡</option><option value="beauty">美容活动卡</option></select></label>
-          <label>排序<input name="sortWeight" type="number" min={0} max={9999} defaultValue={0} /></label>
-          <label>开始时间<input name="startAt" type="datetime-local" required /></label>
-          <label>结束时间<input name="endAt" type="datetime-local" required /></label>
-          <button type="submit" disabled={busy}>创建投放位</button>
-        </form>
+        <PlacementForm client={client} canManage={canManage} busy={busy}
+          onSubmit={input => void run(() => client.createPlacement(input), '投放位已创建')}
+          onFailure={caught => authOrError(caught, '素材上传失败')} />
+      </section>}
+      {canManage && editingPlacement && <section className="detail-card">
+        <h3>编辑投放位：{editingPlacement.placementId}</h3>
+        <PlacementForm placement={editingPlacement} client={client} canManage={canManage} busy={busy}
+          onSubmit={input => void run(async () => {
+            await client.updatePlacement(editingPlacement.placementId, input, editingPlacement.version);
+            setEditingPlacement(undefined);
+          }, '投放位已保存')}
+          onFailure={caught => authOrError(caught, '素材上传失败')}
+          onCancel={() => setEditingPlacement(undefined)} />
       </section>}
       {placements === undefined ? <p role="status">加载中</p> : <table>
         <thead><tr><th>ID</th><th>位置</th><th>活动</th><th>模板</th><th>城市</th><th>时间</th><th>状态</th><th>操作</th></tr></thead>
@@ -497,6 +525,7 @@ export default function MarketingCenterPage({ client, couponClient, categoryClie
           <td>{placement.startAt.slice(0, 16)} ~ {placement.endAt.slice(0, 16)}</td>
           <td>{STATUS_TEXT[placement.status] ?? placement.status}</td>
           <td>{canManage && <>
+            {placement.status !== 'ENABLED' && <button type="button" disabled={busy} onClick={() => setEditingPlacement(placement)}>编辑</button>}
             {placement.status !== 'ENABLED' && <button type="button" disabled={busy} onClick={() => void run(() => client.placementAction(placement.placementId, 'enable', placement.version), '投放位已启用')}>启用</button>}
             {placement.status === 'ENABLED' && <button type="button" disabled={busy} onClick={() => void run(() => client.placementAction(placement.placementId, 'disable', placement.version), '投放位已停用')}>停用</button>}
           </>}</td>

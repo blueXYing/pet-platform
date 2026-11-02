@@ -8,6 +8,9 @@ import com.petplatform.boot.config.MerchantApplicationCityCatalog.City;
 import com.petplatform.common.ApiException;
 import com.petplatform.common.CommonApiCodes;
 import com.petplatform.common.QueryContext;
+import com.petplatform.marketing.api.MarketingPublicApi;
+import com.petplatform.marketing.api.MarketingPublicApi.ActiveStoreCampaignView;
+import com.petplatform.marketing.api.dto.MarketingViews;
 import com.petplatform.merchant.api.query.MerchantDisplayStoreIdsApi;
 import com.petplatform.merchant.api.query.MerchantDisplayStoreIdsQuery;
 import com.petplatform.merchant.api.query.MerchantFeaturedStoreFactsApi;
@@ -214,10 +217,24 @@ class FeaturedStoreCardComposerTest {
         assertNull(promoted.promotion().offerTag(),
                 "the merchant profile has no tag fact; none may be invented");
         assertNull(promoted.promotion().campaignId(),
-                "the marketing public face has no batch campaign read: campaign stays null");
+                "without a campaign fact the merchant projection has no campaign id");
         Card plain = h.compose().items().stream()
                 .filter(card -> card.storeId().equals("200")).findFirst().orElseThrow();
         assertNull(plain.promotion());
+    }
+
+    @Test
+    void campaignPromotionWinsOverTheMerchantPromotion() {
+        Harness h = new Harness().candidates(100)
+                .promo(100, 2, "商家标题", "商家文案")
+                .campaign(100, "880000", "5折", "活动标题", "活动文案");
+        Card card = h.compose().items().get(0);
+        assertNotNull(card.promotion());
+        assertEquals("CAMPAIGN", card.promotion().source());
+        assertEquals("5折", card.promotion().offerTag());
+        assertEquals("活动标题", card.promotion().offerTitle());
+        assertEquals("活动文案", card.promotion().offerCopy());
+        assertEquals("880000", card.promotion().campaignId());
     }
 
     @Test
@@ -240,18 +257,22 @@ class FeaturedStoreCardComposerTest {
     // ---------------------------------------------------------------- fail-closed
 
     @Test
-    void avatarWithoutSignerFailsTheWholePageClosed() {
+    void avatarWithoutSignerDegradesToNullAvatar() {
         Harness h = new Harness().candidates(100, 200).avatar(100, "710901").withoutPhotoSigning();
-        ApiException failure = assertThrows(ApiException.class, h::compose);
-        assertEquals(CommonApiCodes.DEPENDENCY_UNAVAILABLE, failure.code(),
-                "a bound avatar without a real signer is 503, never an unsigned URL");
+        FeaturedStoreCardComposer.Page page = h.compose();
+        assertEquals(2, page.items().size());
+        assertNull(page.items().get(0).avatarUrl(),
+                "a bound avatar without a real signer renders null, never an unsigned URL");
+        assertNull(page.items().get(0).avatarUrlExpiresAt());
     }
 
     @Test
-    void avatarSigningFailureFailsClosed() {
+    void avatarSigningFailureDegradesToNullAvatar() {
         Harness h = new Harness().candidates(100).avatar(100, "710901").signingFailure();
-        ApiException failure = assertThrows(ApiException.class, h::compose);
-        assertEquals(CommonApiCodes.DEPENDENCY_UNAVAILABLE, failure.code());
+        FeaturedStoreCardComposer.Page page = h.compose();
+        assertEquals(1, page.items().size());
+        assertNull(page.items().get(0).avatarUrl());
+        assertNull(page.items().get(0).avatarUrlExpiresAt());
     }
 
     @Test
@@ -292,6 +313,7 @@ class FeaturedStoreCardComposerTest {
         private final Map<String, ReviewPublicFactsApi.StoreRatingFact> ratings = new HashMap<>();
         private final Map<String, Long> monthly = new HashMap<>();
         private final Map<String, Long> sold = new HashMap<>();
+        private final FakeMarketing marketing = new FakeMarketing();
         private boolean ratingFailure;
         private boolean salesFailure;
         private boolean withReviews = true;
@@ -305,7 +327,7 @@ class FeaturedStoreCardComposerTest {
                 candidates.put(id, true);
                 facts.put(id, new FeaturedStoreFact(Long.toString(id), "1",
                         "门店" + id, "商家1", "测试地址" + id, "chengdu",
-                        null, null, null, null, null));
+                        null, null, null, null, null, null));
             }
             return this;
         }
@@ -336,7 +358,15 @@ class FeaturedStoreCardComposerTest {
             FeaturedStoreFact before = facts.get(storeId);
             facts.put(storeId, new FeaturedStoreFact(before.storeId(), before.merchantId(),
                     before.storeName(), before.merchantName(), before.address(), before.cityCode(),
-                    before.intro(), before.avatarAssetId(), level, title, text));
+                    before.intro(), before.avatarAssetId(), before.photoAssetId(),
+                    level, title, text));
+            return this;
+        }
+
+        Harness campaign(long storeId, String campaignId, String offerTag, String title, String copy) {
+            marketing.campaigns.put(Long.toString(storeId), new ActiveStoreCampaignView(
+                    Long.toString(storeId), campaignId, "活动标题", "活动副标题", "活动标签",
+                    offerTag, title, copy));
             return this;
         }
 
@@ -344,8 +374,8 @@ class FeaturedStoreCardComposerTest {
             FeaturedStoreFact before = facts.get(storeId);
             facts.put(storeId, new FeaturedStoreFact(before.storeId(), before.merchantId(),
                     before.storeName(), before.merchantName(), before.address(), before.cityCode(),
-                    before.intro(), assetId, before.promoLevel(), before.promoTitle(),
-                    before.promoText()));
+                    before.intro(), assetId, before.photoAssetId(), before.promoLevel(),
+                    before.promoTitle(), before.promoText()));
             return this;
         }
 
@@ -389,6 +419,7 @@ class FeaturedStoreCardComposerTest {
                     withReviews ? provider(new FakeReviews()) : provider(null),
                     withSales ? provider(new FakeSales()) : provider(null),
                     withPhotoSigning ? provider(new FakeSigning()) : provider(null),
+                    provider(marketing),
                     merchantReads);
             return composer.compose(cityCode, null, page, pageSize, CTX);
         }
@@ -466,6 +497,52 @@ class FeaturedStoreCardComposerTest {
                     }
                 }
                 return rows;
+            }
+        }
+
+        private final class FakeMarketing implements MarketingPublicApi {
+            final Map<String, ActiveStoreCampaignView> campaigns = new HashMap<>();
+
+            @Override
+            public List<MarketingViews.PlacementCard> listPlacements(PublicPlacementQuery query) {
+                return List.of();
+            }
+
+            @Override
+            public MarketingViews.Page<MarketingViews.CampaignCard> listCampaigns(
+                    PublicCampaignListQuery query) {
+                return new MarketingViews.Page<>(List.of(), 1, 20, 0);
+            }
+
+            @Override
+            public List<MarketingViews.TagView> listTags(PublicTagQuery query) {
+                return List.of();
+            }
+
+            @Override
+            public MarketingViews.CampaignDetail getCampaign(PublicCampaignQuery query) {
+                return null;
+            }
+
+            @Override
+            public List<MarketingViews.HomeBlockCard> listHomeBlocks(PublicHomeBlockQuery query) {
+                return List.of();
+            }
+
+            @Override
+            public ActiveCampaignView activeCampaignForStore(String storeId) {
+                return null;
+            }
+
+            @Override
+            public List<ActiveStoreCampaignView> activeCampaignsForStores(List<String> storeIds) {
+                return storeIds.stream().map(campaigns::get)
+                        .filter(java.util.Objects::nonNull).toList();
+            }
+
+            @Override
+            public AssetContent asset(String assetId) {
+                return null;
             }
         }
 

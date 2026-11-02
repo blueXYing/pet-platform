@@ -137,6 +137,24 @@ class MarketingHotServiceMySqlTest {
     }
 
     @Test
+    void hotServiceTopUniqueIndexRejectsSecondEnabledRow() throws Exception {
+        try (Database db = new Database()) {
+            MarketingAdminApi admin = db.admin(false, new DictionaryStub());
+            String campaign = db.publishedEnrollCampaign(admin);
+            String first = db.placement(admin, campaign, "HOT_SERVICE_TOP", "shanghai");
+            assertEquals("ENABLED", enable(admin, first, 1).status());
+            String second = db.placement(admin, campaign, "HOT_SERVICE_TOP", "beijing");
+
+            // The application count gives the normal 409; the generated-column unique key is the
+            // database backstop for two concurrent enables belonging to different campaigns.
+            assertThrows(org.springframework.dao.DuplicateKeyException.class,
+                    () -> db.jdbc.update(
+                            "UPDATE marketing_placement SET status='ENABLED' WHERE id=?",
+                            Long.parseLong(second)));
+        }
+    }
+
+    @Test
     void hotServiceTopCAnswersZeroOrOneWithinCityScope() throws Exception {
         try (Database db = new Database()) {
             MarketingAdminApi admin = db.admin(false, new DictionaryStub());

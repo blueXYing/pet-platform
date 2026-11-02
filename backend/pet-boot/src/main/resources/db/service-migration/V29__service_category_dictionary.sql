@@ -10,9 +10,9 @@
 -- version = 0; service_item.category_id is untouched.
 --
 -- Executable on both an empty service_category table (backfill updates 0 rows) and an
--- existing dictionary holding the 11 standard rows. This file deliberately does NOT
--- INSERT the 11 dictionary rows: their Snowflake ids belong to the existing seed /
--- operations flow, and CCR-SVC-CAT-001 only authorizes a code backfill.
+-- existing dictionary holding the 11 standard rows. This file does NOT INSERT the 11
+-- dictionary rows; V30 (and docs/03-database/72) is the shared production/test seed that
+-- follows this migration.
 --
 -- Production safety: MySQL DDL implicitly commits, so a failed tightening step leaves
 -- the nullable columns and the backfill in place. Do not rerun this whole file in that

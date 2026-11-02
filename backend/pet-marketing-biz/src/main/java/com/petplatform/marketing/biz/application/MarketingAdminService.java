@@ -29,6 +29,7 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 import javax.imageio.ImageIO;
+import org.springframework.dao.DuplicateKeyException;
 
 /** Platform-ops marketing center (contract 71 §4). */
 public final class MarketingAdminService extends MarketingSupport implements MarketingAdminApi {
@@ -750,8 +751,17 @@ public final class MarketingAdminService extends MarketingSupport implements Mar
                         if (!"ENABLED".equals(from)) conflict("CAMPAIGN_STATE_NOT_ALLOWED", "当前状态不能停用");
                         to = "DISABLED";
                     }
-                    if (mapper.updatePlacementStatus(placementId, from, to,
-                            command.expectedVersion(), nowUtc()) != 1) conflict("投放位版本已变化");
+                    try {
+                        if (mapper.updatePlacementStatus(placementId, from, to,
+                                command.expectedVersion(), nowUtc()) != 1) {
+                            conflict("投放位版本已变化");
+                        }
+                    } catch (DuplicateKeyException duplicate) {
+                        // The generated-column unique key is the database backstop for the
+                        // platform-wide HOT_SERVICE_TOP singleton. The application count above
+                        // still gives the normal 409; this branch covers concurrent enables.
+                        conflict("PLACEMENT_LIMIT_EXCEEDED", "热门服务顶部 Banner 全平台最多启用 1 个");
+                    }
                     auditCampaign(mapper, current.campaignId,
                             enable ? "PLACEMENT_ENABLE" : "PLACEMENT_DISABLE",
                             from, to, context, jsonOf(Map.of("placementId", placementId)));

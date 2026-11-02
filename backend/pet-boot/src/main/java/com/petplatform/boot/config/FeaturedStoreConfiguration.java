@@ -1,5 +1,6 @@
 package com.petplatform.boot.config;
 
+import com.petplatform.marketing.api.MarketingPublicApi;
 import com.petplatform.merchant.api.query.MerchantDisplayStoreIdsApi;
 import com.petplatform.merchant.api.query.MerchantFeaturedStoreFactsApi;
 import com.petplatform.merchant.biz.apiimpl.MerchantFeaturedStoreFactsApiImpl;
@@ -28,7 +29,7 @@ import org.springframework.context.annotation.Configuration;
  * the review kernel's assembly and degrade to {@code available=false} when that kernel is off; the
  * merchant card facts reuse the merchant application slice's review-facts reader exactly like the
  * STR-D5/D6 display faces. The avatar signer exists only under the real private-asset pipeline;
- * stores with a bound avatar fail closed (503) without it, mirroring the cover-signing precedent.
+ * a store with a bound avatar but no signer degrades avatarUrl to null (the card still renders).
  */
 @Configuration(proxyBeanMethods = false)
 @ConditionalOnProperty(prefix = "pet.service.query", name = "enabled", havingValue = "true")
@@ -68,6 +69,7 @@ public class FeaturedStoreConfiguration {
             ObjectProvider<ReviewPublicFactsApi> reviews,
             ObjectProvider<ServiceCatalogSalesFactsApi> sales,
             ObjectProvider<StorePhotoSigningApi> photoSigning,
+            ObjectProvider<MarketingPublicApi> marketing,
             DataSource source) {
         // The merchant faces join the caller's active transaction on the shared DataSource (their
         // facts readers refuse to run outside one), so the composer supplies the same read-only
@@ -83,6 +85,6 @@ public class FeaturedStoreConfiguration {
         merchantReads.setTimeout(10);
         return new FeaturedStoreCardComposer(
                 catalogs, displayStoreIds, featuredCatalog, merchantFacts, reviews, sales,
-                photoSigning, merchantReads);
+                photoSigning, marketing, merchantReads);
     }
 }

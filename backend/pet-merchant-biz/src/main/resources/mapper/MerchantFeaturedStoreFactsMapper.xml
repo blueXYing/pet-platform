@@ -19,6 +19,7 @@
                p.city_code AS city_code,
                sp.intro AS intro,
                sp.avatar_asset_id AS avatar_asset_id,
+               sp.photo_asset_ids AS photo_asset_ids,
                sp.promo_level AS promo_level,
                sp.promo_title AS promo_title,
                sp.promo_text AS promo_text

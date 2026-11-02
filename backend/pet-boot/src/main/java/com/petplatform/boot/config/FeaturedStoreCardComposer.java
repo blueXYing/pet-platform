@@ -5,6 +5,8 @@ import com.petplatform.common.ApiException;
 import com.petplatform.common.CommonApiCodes;
 import com.petplatform.common.DecimalPublicIdCodec;
 import com.petplatform.common.QueryContext;
+import com.petplatform.marketing.api.MarketingPublicApi;
+import com.petplatform.marketing.api.MarketingPublicApi.ActiveStoreCampaignView;
 import com.petplatform.merchant.api.query.MerchantDisplayStoreIdsApi;
 import com.petplatform.merchant.api.query.MerchantDisplayStoreIdsQuery;
 import com.petplatform.merchant.api.query.MerchantFeaturedStoreFactsApi;
@@ -50,11 +52,11 @@ import org.springframework.beans.factory.ObjectProvider;
  * <p>Degradation follows contract 74 §6: a rating fact failure or an unassembled review kernel
  * renders {@code rating.available=false} (never a fake 0); a sales fact failure or an unassembled
  * order face renders {@code monthlySold}/{@code soldCount}=null. Store/service/category read
- * failures and damaged stored facts fail the whole page closed (503), as does a bound avatar whose
- * signer is missing or failing (the cover-signing precedent) — never an unsigned URL. The
- * marketing campaign projection is NOT composed: the marketing public face only offers a
- * single-store campaign read, and looping it per card would be the forbidden N+1, so the card
- * promotion is the merchant promotion projection and {@code campaignId} stays null.
+ * failures and damaged stored facts fail the whole page closed (503); a bound avatar whose signer
+ * is missing/failing degrades only {@code avatarUrl} to null, never an unsigned URL and never a
+ * whole-page failure. The marketing campaign projection is composed from ONE batched store-campaign
+ * read when the marketing public face is assembled; a campaign fact failure degrades to the
+ * merchant promotion instead of failing the card page.
  */
 public final class FeaturedStoreCardComposer {
     private static final DecimalPublicIdCodec IDS = new DecimalPublicIdCodec();
@@ -72,6 +74,7 @@ public final class FeaturedStoreCardComposer {
     private final ObjectProvider<ReviewPublicFactsApi> reviews;
     private final ObjectProvider<ServiceCatalogSalesFactsApi> sales;
     private final ObjectProvider<StorePhotoSigningApi> photoSigning;
+    private final ObjectProvider<MarketingPublicApi> marketing;
     /**
      * Read-only snapshot on the shared DataSource that both merchant faces join: their facts
      * readers require the caller's active merchant transaction (the same joining discipline as the
@@ -88,6 +91,7 @@ public final class FeaturedStoreCardComposer {
             ObjectProvider<ReviewPublicFactsApi> reviews,
             ObjectProvider<ServiceCatalogSalesFactsApi> sales,
             ObjectProvider<StorePhotoSigningApi> photoSigning,
+            ObjectProvider<MarketingPublicApi> marketing,
             org.springframework.transaction.support.TransactionTemplate merchantReads) {
         this.catalogs = catalogs;
         this.displayStoreIds = Objects.requireNonNull(displayStoreIds, "displayStoreIds is required");
@@ -96,6 +100,7 @@ public final class FeaturedStoreCardComposer {
         this.reviews = reviews;
         this.sales = sales;
         this.photoSigning = photoSigning;
+        this.marketing = marketing;
         this.merchantReads = Objects.requireNonNull(merchantReads, "merchantReads is required");
     }
 
@@ -201,6 +206,18 @@ public final class FeaturedStoreCardComposer {
         }
         final boolean salesRanked = salesAvailable;
         final boolean ratingRanked = ratingAvailable;
+        Map<String, ActiveStoreCampaignView> campaigns = new HashMap<>();
+        MarketingPublicApi marketingApi = marketing.getIfAvailable();
+        if (marketingApi != null) {
+            try {
+                for (ActiveStoreCampaignView campaign : chunked(apiIds(candidates),
+                        ids -> marketingApi.activeCampaignsForStores(ids))) {
+                    campaigns.put(campaign.storeId(), campaign);
+                }
+            } catch (RuntimeException degraded) {
+                campaigns.clear(); // Promotion degrades to merchant-owned facts; never 503.
+            }
+        }
         candidates.sort((a, b) -> compareCandidates(
                 a, b, ratings, monthlyByStore, ratingRanked, salesRanked));
         long total = candidates.size();
@@ -240,7 +257,7 @@ public final class FeaturedStoreCardComposer {
             FeaturedStoreFact fact = facts.get(storeId);
             if (fact == null) continue; // Vanished or turned ineligible between reads: drop.
             cards.add(card(storeId, fact, servicesByStore.get(storeId),
-                    ratings.get(storeId), monthlyByStore.get(storeId),
+                    campaigns.get(storeId), ratings.get(storeId), monthlyByStore.get(storeId),
                     ratingAvailable, salesAvailable, soldByService));
         }
         return new Page(cards, page, pageSize, total);
@@ -252,6 +269,7 @@ public final class FeaturedStoreCardComposer {
             String storeId,
             FeaturedStoreFact fact,
             List<FeaturedStoreServiceItem> storeServices,
+            ActiveStoreCampaignView campaign,
             ReviewPublicFactsApi.StoreRatingFact rating,
             Long monthlySold,
             boolean ratingAvailable,
@@ -263,26 +281,24 @@ public final class FeaturedStoreCardComposer {
         String avatarExpiresAt = null;
         if (fact.avatarAssetId() != null) {
             StorePhotoSigningApi signing = photoSigning.getIfAvailable();
-            if (signing == null) unavailable("store avatar signer is unavailable");
-            StorePhotoSigningApi.SignedStorePhoto signed;
-            try {
-                signed = signing.signStorePhoto(fact.avatarAssetId(),
-                        new QueryContext(
-                                java.util.UUID.randomUUID().toString(),
-                                com.petplatform.common.OperatorType.SYSTEM,
-                                "featured-store-avatar"));
-            } catch (ApiException known) {
-                throw known;
-            } catch (RuntimeException failure) {
-                unavailable("store avatar signer is unavailable");
-                return null;
+            if (signing != null) {
+                try {
+                    StorePhotoSigningApi.SignedStorePhoto signed = signing.signStorePhoto(
+                            fact.avatarAssetId(),
+                            new QueryContext(
+                                    java.util.UUID.randomUUID().toString(),
+                                    com.petplatform.common.OperatorType.SYSTEM,
+                                    "featured-store-avatar"));
+                    if (signed != null && signed.signedUrl() != null
+                            && !signed.signedUrl().isBlank() && signed.expiresAt() != null) {
+                        avatarUrl = signed.signedUrl();
+                        avatarExpiresAt = signed.expiresAt().toString();
+                    }
+                } catch (RuntimeException ignored) {
+                    // A damaged/unavailable avatar must not hide the whole merchant page. The
+                    // contract allows avatarUrl=null; the card keeps every other fact.
+                }
             }
-            if (signed == null || signed.signedUrl() == null || signed.signedUrl().isBlank()
-                    || signed.expiresAt() == null) {
-                unavailable("store avatar signature is invalid");
-            }
-            avatarUrl = signed.signedUrl();
-            avatarExpiresAt = signed.expiresAt().toString();
         }
         return new Card(
                 fact.storeId(),
@@ -302,7 +318,7 @@ public final class FeaturedStoreCardComposer {
                 salesAvailable ? sellable(monthlySold == null ? 0L : monthlySold) : null,
                 primary == null ? List.of() : List.of(primary.categoryName()),
                 top2.stream().map(service -> serviceLine(service, salesAvailable, soldByService)).toList(),
-                promotion(fact));
+                promotion(fact, campaign));
     }
 
     /** The confirmed top-2 selection: soldCount DESC (absent counts as zero), then serviceId ASC. */
@@ -381,12 +397,20 @@ public final class FeaturedStoreCardComposer {
     }
 
     /**
-     * Merchant promotion projection (contract 74 §6.3): the merchant promotion fields are the only
-     * V1 source — the marketing public face has no batch campaign read, and looping its
-     * single-store read per card is the forbidden N+1, so the campaign source (and campaignId)
-     * stays null and the gap is disclosed.
+     * Promotion projection (contract 74 §6.3): an active campaign participation wins over the
+     * merchant-owned promotion; campaign copy falls back to the campaign title/subtitle when the
+     * store link has no offer text. Campaign facts are fetched once for the whole candidate set,
+     * never per card.
      */
-    private static Promotion promotion(FeaturedStoreFact fact) {
+    private static Promotion promotion(FeaturedStoreFact fact, ActiveStoreCampaignView campaign) {
+        if (campaign != null) {
+            return new Promotion(
+                    "CAMPAIGN",
+                    campaign.offerTag(),
+                    campaign.offerTitle() != null ? campaign.offerTitle() : campaign.title(),
+                    campaign.offerCopy() != null ? campaign.offerCopy() : campaign.subtitle(),
+                    campaign.campaignId());
+        }
         if (fact.promoLevel() == null && fact.promoTitle() == null && fact.promoText() == null) {
             return null;
         }

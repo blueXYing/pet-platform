@@ -17,6 +17,7 @@ public class MerchantFeaturedStoreFactRowEntity {
     private String cityCode;
     private String intro;
     private String avatarAssetId;
+    private String photoAssetIds;
     private Integer promoLevel;
     private String promoTitle;
     private String promoText;
@@ -41,6 +42,8 @@ public class MerchantFeaturedStoreFactRowEntity {
     public void setIntro(String intro) { this.intro = intro; }
     public String getAvatarAssetId() { return avatarAssetId; }
     public void setAvatarAssetId(String avatarAssetId) { this.avatarAssetId = avatarAssetId; }
+    public String getPhotoAssetIds() { return photoAssetIds; }
+    public void setPhotoAssetIds(String photoAssetIds) { this.photoAssetIds = photoAssetIds; }
     public Integer getPromoLevel() { return promoLevel; }
     public void setPromoLevel(Integer promoLevel) { this.promoLevel = promoLevel; }
     public String getPromoTitle() { return promoTitle; }

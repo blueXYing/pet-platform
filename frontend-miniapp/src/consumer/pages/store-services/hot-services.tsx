@@ -12,7 +12,9 @@ import {
 import {
   PreviewServiceCatalogRepository, ServiceCatalogRepository, type ServiceCategoryView,
 } from '../../service-catalog/model'
-import { pickHotServiceBanner, placementJumpUrl, previewHotServiceBanner } from '../../service-catalog/hot-service'
+import { pickHotServiceBanner, placementJumpTarget, previewHotServiceBanner } from '../../service-catalog/hot-service'
+import { categoryIconFor } from '../services/assets/category-icons'
+import { hotServiceArtFor } from './assets/hot-service-art'
 import { runCatalogRead } from '../../store/repository'
 import { consumerApi } from '../../../shared/consumer-runtime'
 import './page.css'
@@ -78,7 +80,7 @@ export default function HotServicePage() {
   useDidShow(() => {
     // 城市选择持久化于本地存储（与 stores/首页城市芯片共用）：每次展示重读并刷新两路读侧。
     const stored = readSelectedCity().cityCode
-    const next = stored !== undefined ? stored : city
+    const next = stored
     if (next !== city) setCity(next)
     void loadCategories(next)
     void loadBanner(next)
@@ -91,9 +93,13 @@ export default function HotServicePage() {
   }
   function openBanner() {
     if (!banner) return
-    const url = placementJumpUrl(banner)
-    if (!url) return
-    Taro.navigateTo({ url }).catch(() => undefined)
+    const target = placementJumpTarget(banner)
+    if (!target) return
+    if (target.kind === 'switchTab') {
+      void switchConsumerTab(target.tab).catch(() => undefined)
+      return
+    }
+    Taro.navigateTo({ url: target.url }).catch(() => undefined)
   }
 
   const ready = phase === 'ready'
@@ -131,24 +137,31 @@ export default function HotServicePage() {
         <Text>当前城市暂无可展示的服务分类。</Text>
       </View>}
       {ready && <View className='hotsvc-grid'>
-        {categories.map(category => <Button key={category.categoryCode}
-          id={`hotsvc-category-${category.categoryCode}`} className='hotsvc-card' hoverClass='none'
-          onClick={() => openCategory(category.categoryCode)}
-          ariaLabel={`${category.categoryName}${category.description ? `，${category.description}` : ''}`}>
-          {/* 卡面插画槽（97:7738 IMG）：契约无对应字段，D-02 素材待补 → 中性占位块，不伪造图。 */}
-          <View className='hotsvc-card-art' />
-          <View className='hotsvc-card-body'>
-            <View className='hotsvc-card-head'>
-              <View className='hotsvc-card-icon'>
-                {category.iconUrl
-                  ? <Image className='hotsvc-card-icon-img' src={category.iconUrl} mode='aspectFit' />
-                  : <View className='hotsvc-card-icon-block' />}
+        {categories.map(category => {
+          const icon = category.iconUrl ?? categoryIconFor(category.categoryCode)
+          const art = hotServiceArtFor(category.categoryCode)
+          return <Button key={category.categoryCode}
+            id={`hotsvc-category-${category.categoryCode}`} className='hotsvc-card' hoverClass='none'
+            onClick={() => openCategory(category.categoryCode)}
+            ariaLabel={`${category.categoryName}${category.description ? `，${category.description}` : ''}`}>
+            {/* 卡面插画槽（97:7738 IMG）：D-02 真实 Figma 切图按 categoryCode 兜底；
+                没有对应分类插画时保留中性占位块，不伪造图。 */}
+            {art
+              ? <Image className='hotsvc-card-art hotsvc-card-art-img' src={art} mode='aspectFill' />
+              : <View className='hotsvc-card-art' />}
+            <View className='hotsvc-card-body'>
+              <View className='hotsvc-card-head'>
+                <View className='hotsvc-card-icon'>
+                  {icon
+                    ? <Image className='hotsvc-card-icon-img' src={icon} mode='aspectFit' />
+                    : <View className='hotsvc-card-icon-block' />}
+                </View>
+                <Text className='hotsvc-card-name'>{category.categoryName}</Text>
               </View>
-              <Text className='hotsvc-card-name'>{category.categoryName}</Text>
+              {category.description ? <Text className='hotsvc-card-desc'>{category.description}</Text> : null}
             </View>
-            {category.description ? <Text className='hotsvc-card-desc'>{category.description}</Text> : null}
-          </View>
-        </Button>)}
+          </Button>
+        })}
       </View>}
       <View className='hotsvc-tail'>
         <Text>页面数据：{preview ? '契约 Mock（preview=1，不联调）' : '真实接口（服务分类字典/营销投放位匿名可浏览）'}</Text>

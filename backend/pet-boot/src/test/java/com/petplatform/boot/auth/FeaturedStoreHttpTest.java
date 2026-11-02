@@ -411,8 +411,8 @@ class FeaturedStoreHttpTest {
   /**
    * B-CARD-02/03 second scenario: with the review kernel not assembled the rating degrades to
    * {@code available=false} while the sales facts stay available (honest zeros), and a bound
-   * avatar without the private-asset signing pipeline fails the whole page closed (503) — never an
-   * unsigned URL.
+   * avatar without the private-asset signing pipeline degrades only the avatar to null — never an
+   * unsigned URL and never a whole-page failure.
    */
   @Test
   void degradedRatingAndFailClosedAvatarFollowContract74() throws Exception {
@@ -449,14 +449,14 @@ class FeaturedStoreHttpTest {
 
     String path = "/api/v1/c/stores/featured";
 
-    // A bound avatar without the signing pipeline fails the whole page closed.
-    assertUnavailable(send("GET", path, null, Map.of()));
-    db.jdbc.update("UPDATE merchant_store_profile SET avatar_asset_id=NULL WHERE store_id=?", storeId);
-
+    // A bound avatar without the signing pipeline degrades only the avatar to null; the card
+    // still renders every other available fact.
     Reply page = send("GET", path, null, Map.of());
     assertEquals(200, page.status(), page.redacted());
     assertEquals(1L, ((Number) page.data().get("total")).longValue());
     Map<String, Object> card = maps(page.data().get("items")).get(0);
+    assertNull(card.get("avatarUrl"), "unsigned avatar must not leak a URL");
+    assertNull(card.get("avatarUrlExpiresAt"));
     assertEquals(rating(null, 0, false), card.get("rating"),
         "an unassembled review kernel hides the rating, never a fabricated zero");
     // No orders were seeded: the available sales aggregation answers honest zeros.
@@ -502,7 +502,7 @@ class FeaturedStoreHttpTest {
             + "appointment_end_at,paid_at,created_at,updated_at)"
             + " VALUES(?,?,?,?,?,?,?,?, 'COMPLETED','PAID','UNVERIFIED','IN_STORE',"
             + "100.00,0.00,100.00,?,'2030-01-01 09:00:00','2030-01-01 10:00:00',"
-            + "'2026-10-05 00:00:00','2026-10-01 08:00:00',UTC_TIMESTAMP(3))",
+            + "UTC_TIMESTAMP(3),'2026-10-01 08:00:00',UTC_TIMESTAMP(3))",
         id, id, 1L, merchantId, storeId, serviceId, 1L, 9_000_000L + id, refundedAmount);
   }
 

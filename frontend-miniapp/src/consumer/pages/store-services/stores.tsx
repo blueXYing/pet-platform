@@ -64,6 +64,7 @@ export default function StoreDirectoryPage() {
   const [serviceTotal, setServiceTotal] = useState(0)
   const [cityPickerOpen, setCityPickerOpen] = useState(false)
   const sequence = useRef(0)
+  const categorySequence = useRef(0)
   const [platformInfo, setPlatformInfo] = useState(() => Taro.getWindowInfo())
   const unit = platformInfo.windowWidth / 402
   const style = { '--svc-status-top': `${platformInfo.statusBarHeight || 0}px`, '--svc-unit': `${unit}px` } as CSSProperties
@@ -109,18 +110,23 @@ export default function StoreDirectoryPage() {
   const loadCategories = useCallback(async (nextCity: string | undefined) => {
     // 分类字典失败只降级 chips 行（可重试），不拖垮门店目录（74 §3.1：503 整块隐藏）。
     setCategoriesPhase('loading')
+    const current = ++categorySequence.current
+    const currentRevision = scope.revision
     try {
       const rows = await runCatalogRead(scope, () => catalog.current!.serviceCategories(nextCity))
+      if (current !== categorySequence.current || currentRevision !== scope.revision) return
       setCategories(rows); setCategoriesPhase('ready')
-    } catch { setCategoriesPhase('error') }
+    } catch {
+      if (current === categorySequence.current) setCategoriesPhase('error')
+    }
   }, [catalog, scope])
   useDidShow(() => {
     // 城市选择持久化于本地存储（首页城市芯片与面板共用）：每次展示重读，切换即时生效。
     const stored = readSelectedCity().cityCode
-    const next = stored !== undefined ? stored : city
+    const next = stored
     if (next !== city) setCity(next)
-    void load(next !== undefined ? next : city, keyword, categoryCode)
-    void loadCategories(next !== undefined ? next : city)
+    void load(next, keyword, categoryCode)
+    void loadCategories(next)
     // The open-city catalog (server-side §3.3.4 anonymous directory; 入驻目录作回退注入已移除).
     void repository.cities().then(catalog2 => { if (catalog2.length) setCities(catalog2) }).catch(() => setNotice(''))
   })

@@ -35,10 +35,10 @@ public interface MerchantFeaturedStoreFactsApi {
     }
 
     /**
-     * One store's display facts. {@code intro}/{@code avatarAssetId} are null when the merchant
-     * never set them (the wire renders null, never an empty facade); {@code promoLevel} is 1..9 or
-     * null; the avatar id is an opaque private-asset reference that only the signing face may
-     * dereference.
+     * One store's display facts. {@code intro}/{@code avatarAssetId}/{@code photoAssetId} are
+     * null when the merchant never set them (the wire renders null, never an empty facade);
+     * {@code promoLevel} is 1..9 or null; the avatar/photo ids are opaque private-asset
+     * references that only the signing face may dereference.
      */
     record FeaturedStoreFact(
             String storeId,
@@ -49,6 +49,7 @@ public interface MerchantFeaturedStoreFactsApi {
             String cityCode,
             String intro,
             String avatarAssetId,
+            String photoAssetId,
             Integer promoLevel,
             String promoTitle,
             String promoText) {}

@@ -1,5 +1,7 @@
 package com.petplatform.merchant.biz.application;
 
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.petplatform.common.ApiException;
 import com.petplatform.common.CommonApiCodes;
 import com.petplatform.common.DecimalPublicIdCodec;
@@ -34,6 +36,7 @@ import org.mybatis.spring.SqlSessionTemplate;
  */
 public final class MerchantFeaturedStoreFactsService {
     private static final DecimalPublicIdCodec IDS = new DecimalPublicIdCodec();
+    private static final ObjectMapper JSON = new ObjectMapper();
     /** Same lexical shape as the open-city catalog entries (STR-D3 integrity rule). */
     private static final Pattern CITY_CODE = Pattern.compile("[a-z][a-z0-9_-]{0,31}");
 
@@ -107,6 +110,7 @@ public final class MerchantFeaturedStoreFactsService {
                 city,
                 optionalText(row.getIntro(), 500, "store intro"),
                 optionalAvatarId(row.getAvatarAssetId()),
+                optionalPhotoId(row.getPhotoAssetIds()),
                 promoLevel(row.getPromoLevel()),
                 optionalText(row.getPromoTitle(), 100, "promoTitle"),
                 optionalText(row.getPromoText(), 100, "promoText"));
@@ -129,6 +133,24 @@ public final class MerchantFeaturedStoreFactsService {
             return IDS.toApi(id);
         } catch (NumberFormatException malformed) {
             unavailable("store avatar fact is invalid");
+            return null;
+        }
+    }
+
+    /** First stored photo (canonical JSON array of decimal asset ids); null when unset/empty. */
+    private static String optionalPhotoId(String value) {
+        if (value == null || value.isBlank()) return null;
+        try {
+            JsonNode array = JSON.readTree(value);
+            if (!array.isArray()) unavailable("store photo facts are invalid");
+            if (array.isEmpty()) return null;
+            JsonNode first = array.get(0);
+            if (first == null || !first.isTextual()) unavailable("store photo facts are invalid");
+            long id = Long.parseLong(first.asText().trim());
+            if (id <= 0) unavailable("store photo facts are invalid");
+            return IDS.toApi(id);
+        } catch (Exception malformed) {
+            unavailable("store photo facts are invalid");
             return null;
         }
     }

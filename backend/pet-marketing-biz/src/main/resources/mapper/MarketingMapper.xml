@@ -253,6 +253,22 @@
         ORDER BY c.sort_weight ASC, c.id ASC
     </select>
 
+    <select id="selectActiveStoreCampaignsForStores"
+            resultType="com.petplatform.marketing.biz.infrastructure.persistence.entity.MarketingEntities$ActiveStoreCampaignRow">
+        SELECT cs.store_id, c.id AS campaign_id, c.title, c.subtitle, c.tag_name,
+               cs.offer_tag, cs.offer_title, cs.offer_copy, c.sort_weight, c.start_at
+        FROM marketing_campaign_store cs
+        INNER JOIN marketing_campaign c ON c.id=cs.campaign_id
+        WHERE cs.store_id IN
+        <foreach collection="storeIds" item="storeId" open="(" separator="," close=")">
+            #{storeId}
+        </foreach>
+          AND cs.status='ACTIVE'
+          AND c.status IN ('SCHEDULED','ONLINE')
+          AND c.start_at &lt;= #{now} AND c.end_at &gt; #{now}
+        ORDER BY cs.store_id ASC, c.sort_weight ASC, c.start_at ASC, c.id ASC
+    </select>
+
     <select id="selectPlacements"
             resultType="com.petplatform.marketing.biz.infrastructure.persistence.entity.MarketingEntities$PlacementRow">
         SELECT <include refid="placementColumns"/>

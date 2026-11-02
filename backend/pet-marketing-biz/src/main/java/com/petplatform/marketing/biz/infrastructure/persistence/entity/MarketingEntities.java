@@ -64,6 +64,19 @@ public final class MarketingEntities {
         public LocalDateTime updatedAt;
     }
 
+    public static final class ActiveStoreCampaignRow {
+        public Long storeId;
+        public Long campaignId;
+        public String title;
+        public String subtitle;
+        public String tagName;
+        public String offerTag;
+        public String offerTitle;
+        public String offerCopy;
+        public Integer sortWeight;
+        public LocalDateTime startAt;
+    }
+
     public static final class PlacementRow {
         public Long id;
         public String positionCode;

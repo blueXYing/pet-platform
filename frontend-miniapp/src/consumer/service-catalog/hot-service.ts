@@ -31,32 +31,66 @@ function categoryParam(payload: string): string | null {
   return typeof field === 'string' && categoryCodePattern.test(field) ? field : null
 }
 
+function miniappPathParam(payload: string): string | null {
+  const field = objectParam(payload)?.path
+  if (typeof field !== 'string') return null
+  return (field.startsWith('/consumer/pages/') || field.startsWith('/merchant/pages/'))
+    && !field.includes('..') ? field : null
+}
+
+export type PlacementJumpTarget =
+  | Readonly<{ kind: 'navigate'; url: string }>
+  | Readonly<{ kind: 'switchTab'; tab: 'community' }>
+
 /**
- * 74 §3.7 banner 点击跳转——投放位既有跳转规则的 C 端承接子集：
- * CAMPAIGN/STORE/SERVICE/SERVICE_CATEGORY 四类落既有路由；COMMUNITY/MINIAPP_PATH 等在 C 端
- * 无既有承接路由的类型 V1 不跳转（不新增承接面、不自行扩展白名单）。jumpParams 解析失败、
- * 键缺失或词法非法一律返回 null（点击不跳转，fail-closed，不猜参）。
+ * 74 §3.7 banner 点击跳转：投放位既有跳转规则的 C 端承接子集。
+ * - 活动（后端实际发送 CAMPAIGN_PAGE，兼容旧 CAMPAIGN）/门店/服务/分类落既有页面；
+ * - COMMUNITY 走 tab 切换，MINIAPP_PATH 仅接受已审批的小程序页面前缀；
+ * - jumpParams 解析失败、键缺失、词法非法或路径越界一律 null（fail-closed，不猜参）。
  */
-export function placementJumpUrl(placement: Readonly<{ jumpType: string; jumpParams: string }>): string | null {
+export function placementJumpTarget(
+  placement: Readonly<{ jumpType: string; jumpParams: string }>,
+): PlacementJumpTarget | null {
   switch (placement.jumpType) {
-    case 'CAMPAIGN': {
+    case 'CAMPAIGN':
+    case 'CAMPAIGN_PAGE': {
       const campaignId = idParam(placement.jumpParams, 'campaignId')
-      return campaignId && `/consumer/pages/marketing/campaign?campaignId=${encodeURIComponent(campaignId)}`
+      return campaignId
+        ? { kind: 'navigate', url: `/consumer/pages/marketing/campaign?campaignId=${encodeURIComponent(campaignId)}` }
+        : null
     }
     case 'STORE': {
       const storeId = idParam(placement.jumpParams, 'storeId')
-      return storeId && `/consumer/pages/store-services/index?preview=0&storeId=${encodeURIComponent(storeId)}`
+      return storeId
+        ? { kind: 'navigate', url: `/consumer/pages/store-services/index?preview=0&storeId=${encodeURIComponent(storeId)}` }
+        : null
     }
     case 'SERVICE': {
       const serviceId = idParam(placement.jumpParams, 'serviceId')
-      return serviceId && `/consumer/pages/store-services/service-detail?preview=0&serviceId=${encodeURIComponent(serviceId)}`
+      return serviceId
+        ? { kind: 'navigate', url: `/consumer/pages/store-services/service-detail?preview=0&serviceId=${encodeURIComponent(serviceId)}` }
+        : null
     }
     case 'SERVICE_CATEGORY': {
       const categoryCode = categoryParam(placement.jumpParams)
-      return categoryCode && `/consumer/pages/store-services/stores?preview=0&categoryCode=${encodeURIComponent(categoryCode)}`
+      return categoryCode
+        ? { kind: 'navigate', url: `/consumer/pages/store-services/stores?preview=0&categoryCode=${encodeURIComponent(categoryCode)}` }
+        : null
+    }
+    case 'COMMUNITY':
+      return { kind: 'switchTab', tab: 'community' }
+    case 'MINIAPP_PATH': {
+      const path = miniappPathParam(placement.jumpParams)
+      return path ? { kind: 'navigate', url: path } : null
     }
     default: return null
   }
+}
+
+/** Backward-compatible URL helper; tab-switch targets intentionally have no URL. */
+export function placementJumpUrl(placement: Readonly<{ jumpType: string; jumpParams: string }>): string | null {
+  const target = placementJumpTarget(placement)
+  return target?.kind === 'navigate' ? target.url : null
 }
 
 // CONTRACT MOCK（preview=1 设计验收通道，74 §3.7 版式）：文案取 97:7825 设计稿样板，

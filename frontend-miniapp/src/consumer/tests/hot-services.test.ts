@@ -4,7 +4,7 @@ import { existsSync, readFileSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
 import path from 'node:path'
 import {
-  pickHotServiceBanner, placementJumpUrl, previewHotServiceBanner,
+  pickHotServiceBanner, placementJumpTarget, placementJumpUrl, previewHotServiceBanner,
 } from '../service-catalog/hot-service'
 import { PLACEMENT_POSITION_HOT_SERVICE_TOP, decodePlacements } from '../marketing/model'
 
@@ -31,9 +31,13 @@ test('banner picker takes the first placement and hides the block without one', 
 
 // ── 74 §3.7 banner 点击：投放位既有跳转规则的 C 端承接子集（fail-closed）──
 
-test('placement jump maps the four routed landing types to existing pages', () => {
+test('placement jump maps the routed landing types to existing pages', () => {
   assert.equal(
     placementJumpUrl({ jumpType: 'CAMPAIGN', jumpParams: '{"campaignId":"880000"}' }),
+    '/consumer/pages/marketing/campaign?campaignId=880000')
+  // Backend placement cards emit CAMPAIGN_PAGE; keep CAMPAIGN for older payloads.
+  assert.equal(
+    placementJumpUrl({ jumpType: 'CAMPAIGN_PAGE', jumpParams: '{"campaignId":"880000"}' }),
     '/consumer/pages/marketing/campaign?campaignId=880000')
   assert.equal(
     placementJumpUrl({ jumpType: 'STORE', jumpParams: '{"storeId":"710302"}' }),
@@ -44,6 +48,12 @@ test('placement jump maps the four routed landing types to existing pages', () =
   assert.equal(
     placementJumpUrl({ jumpType: 'SERVICE_CATEGORY', jumpParams: '{"categoryCode":"PET_GROOMING"}' }),
     '/consumer/pages/store-services/stores?preview=0&categoryCode=PET_GROOMING')
+  assert.equal(
+    placementJumpUrl({ jumpType: 'MINIAPP_PATH', jumpParams: '{"path":"/consumer/pages/mine/index"}' }),
+    '/consumer/pages/mine/index')
+  assert.deepEqual(
+    placementJumpTarget({ jumpType: 'COMMUNITY', jumpParams: '{}' }),
+    { kind: 'switchTab', tab: 'community' })
   // 解码风格与全仓一致：未知附加字段忽略，不视为破坏。
   assert.equal(
     placementJumpUrl({ jumpType: 'SERVICE', jumpParams: '{"serviceId":"710401","extra":true}' }),
@@ -58,14 +68,17 @@ test('placement jump fails closed on broken params, bad lexicon and unrouted typ
     { jumpType: 'CAMPAIGN', jumpParams: '{}' },
     { jumpType: 'CAMPAIGN', jumpParams: '{"campaignId":"0"}' },
     { jumpType: 'CAMPAIGN', jumpParams: '{"campaignId":"abc"}' },
+    { jumpType: 'CAMPAIGN_PAGE', jumpParams: 'not-json' },
     { jumpType: 'STORE', jumpParams: '{"storeId":710302}' },
     { jumpType: 'SERVICE_CATEGORY', jumpParams: '{"categoryCode":"pet_grooming"}' },
     { jumpType: 'SERVICE_CATEGORY', jumpParams: '{"categoryCode":""}' },
     { jumpType: 'SERVICE', jumpParams: '{"serviceId":null}' },
     { jumpType: 'SERVICE', jumpParams: '{"otherKey":"710401"}' },
+    { jumpType: 'MINIAPP_PATH', jumpParams: '{"path":"/consumer/pages/../admin"}' },
+    { jumpType: 'MINIAPP_PATH', jumpParams: '{"path":"/admin/pages/x"}' },
   ]) assert.equal(placementJumpUrl(jump), null)
-  // C 端无既有承接路由的类型（含未知类型/空串）V1 不跳转，不自行扩展白名单。
-  for (const jumpType of ['NONE', 'COMMUNITY', 'MINIAPP_PATH', 'HOT_SERVICE', '', 'SHOP']) {
+  // 未知类型/空串不跳转，不自行扩展白名单。
+  for (const jumpType of ['NONE', 'HOT_SERVICE', '', 'SHOP']) {
     assert.equal(placementJumpUrl({ jumpType, jumpParams: '{"storeId":"710302"}' }), null)
   }
 })

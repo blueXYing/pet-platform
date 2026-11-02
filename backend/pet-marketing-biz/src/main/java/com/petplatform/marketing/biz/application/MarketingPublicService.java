@@ -1,10 +1,12 @@
 package com.petplatform.marketing.biz.application;
 
 import com.petplatform.marketing.api.MarketingPublicApi;
+import com.petplatform.marketing.api.MarketingPublicApi.ActiveStoreCampaignView;
 import com.petplatform.marketing.api.dto.MarketingViews;
 import com.petplatform.marketing.biz.application.port.MarketingAssetObjectStore;
 import com.petplatform.marketing.biz.infrastructure.persistence.MarketingStore;
 import com.petplatform.marketing.biz.infrastructure.persistence.entity.MarketingEntities;
+import com.petplatform.marketing.biz.infrastructure.persistence.entity.MarketingEntities.ActiveStoreCampaignRow;
 import com.petplatform.marketing.biz.infrastructure.persistence.entity.MarketingEntities.CampaignRow;
 import com.petplatform.marketing.biz.infrastructure.persistence.entity.MarketingEntities.PlacementRow;
 import java.time.Clock;
@@ -166,6 +168,33 @@ public final class MarketingPublicService extends MarketingSupport implements Ma
                         campaign.tagName, link.offerTag, link.offerTitle, link.offerCopy);
             }
             return null;
+        });
+    }
+
+    @Override
+    public List<ActiveStoreCampaignView> activeCampaignsForStores(List<String> storeIds) {
+        if (storeIds == null || storeIds.isEmpty()) return List.of();
+        if (storeIds.size() > 200) invalid("storeIds is invalid");
+        List<Long> ids = new ArrayList<>();
+        for (String storeId : new java.util.LinkedHashSet<>(storeIds)) {
+            ids.add(id(storeId));
+        }
+        if (ids.isEmpty()) return List.of();
+        return store.read(mapper -> {
+            List<ActiveStoreCampaignRow> rows =
+                    mapper.selectActiveStoreCampaignsForStores(ids, nowUtc());
+            Map<Long, ActiveStoreCampaignView> byStore = new LinkedHashMap<>();
+            for (ActiveStoreCampaignRow row : rows) {
+                if (row.storeId == null || row.campaignId == null) {
+                    unavailable("active campaign facts are invalid");
+                }
+                byStore.putIfAbsent(row.storeId, new ActiveStoreCampaignView(
+                        Long.toUnsignedString(row.storeId),
+                        Long.toUnsignedString(row.campaignId),
+                        row.title, row.subtitle, row.tagName,
+                        row.offerTag, row.offerTitle, row.offerCopy));
+            }
+            return List.copyOf(byStore.values());
         });
     }
 
