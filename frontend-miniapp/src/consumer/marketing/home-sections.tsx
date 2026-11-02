@@ -37,6 +37,9 @@ function groups(items: readonly HomeBlock[]): BlockMap {
 function categoryTarget(block: HomeBlock): string {
   const value = (block.targetValue || '').trim()
   if (block.targetType === 'SERVICE_DIRECTORY') return '/consumer/pages/store-services/stores?preview=0'
+  if (block.targetType === 'HOT_SERVICE') {
+    return '/consumer/pages/store-services/hot-services?preview=0'
+  }
   if (block.targetType === 'SERVICE_CATEGORY') {
     return `/consumer/pages/store-services/stores?preview=0&keyword=${encodeURIComponent(value)}`
   }
