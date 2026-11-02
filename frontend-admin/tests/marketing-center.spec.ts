@@ -132,7 +132,7 @@ test('F-A-02 创建活动：分类多选取自字典（启用项）并随表单�
   expect(posts[0].requestId).toMatch(UUID);
   expect(posts[0].body?.serviceCategoryCodes).toEqual(['BEAUTY', 'FOOD']);
   // No hand-typed category field anymore.
-  expect(form.locator('input[name="serviceCategoryCodes"]')).toHaveCount(0);
+  expect(await form.locator('input[name="serviceCategoryCodes"]').count()).toBe(0);
 });
 
 test('F-A-02 空数组=全部：不勾选任何分类提交空列表', async ({ page }) => {
