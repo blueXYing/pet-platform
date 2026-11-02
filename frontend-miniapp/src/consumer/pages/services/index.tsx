@@ -1,8 +1,8 @@
 import { Button, Image, ScrollView, Text, View } from '@tarojs/components'
 import Taro, { useDidShow } from '@tarojs/taro'
 import { useState, type CSSProperties } from 'react'
-import { syncCustomTabBar } from '../../components/navigation/custom-tab-bar'
 import { RootTabBarSpacer } from '../../components/navigation/root-tab-bar-spacer'
+import { TabBar } from '../../components/navigation/tab-bar'
 import { readSelectedCity } from '../../city/model'
 import { MerchantDealsRail } from '../../marketing/components'
 import brandLogo from '../../assets/home/brand-logo@2x.png'
@@ -27,7 +27,7 @@ export default function ServicesPage() {
   const [cityCode, setCityCode] = useState<string | undefined>(() => readSelectedCity().cityCode)
   const unit = info.windowWidth / 402
   const style = { '--svc2-unit': `${unit}px`, '--svc2-top': `${info.statusBarHeight || 0}px` } as CSSProperties
-  useDidShow(() => { syncCustomTabBar(1); setCityCode(readSelectedCity().cityCode) })
+  useDidShow(() => { setCityCode(readSelectedCity().cityCode) })
   function openStores() {
     Taro.navigateTo({ url: '/consumer/pages/store-services/stores' }).catch(() => Taro.showToast({ title: '页面打开失败，请重试', icon: 'none' }))
   }
@@ -53,5 +53,6 @@ export default function ServicesPage() {
       <View className='svc2-tail'><Text>页面数据：入口聚合页（门店目录匿名可浏览；预约须登录）</Text></View>
       <RootTabBarSpacer />
     </ScrollView>
+    <TabBar active={1} />
   </View>
 }

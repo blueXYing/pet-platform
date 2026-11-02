@@ -1,0 +1,6 @@
+/* 内联底栏：与原 custom-tab-bar 视觉一致（50px 内容行 + iPhone 安全区）。 */
+.tab-bar { position: fixed; left: 0; bottom: 0; z-index: 1000; display: flex; width: 100%; height: calc(50px + env(safe-area-inset-bottom)); padding-bottom: env(safe-area-inset-bottom); background: #ffffff; border-top: 1px solid rgba(0, 0, 0, 0.15); box-sizing: border-box; }
+.tab-bar-item { display: flex; flex: 1; height: 50px; flex-direction: column; align-items: center; padding-top: 4px; box-sizing: border-box; }
+.tab-bar-icon { width: 24px; height: 24px; }
+.tab-bar-label { margin-top: 1px; font-size: 10px; line-height: 14px; color: #3c3c3c; }
+.tab-bar-label.is-selected { color: #53bfee; }
