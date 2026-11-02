@@ -246,7 +246,7 @@ test('F-A-03 投放位编辑：PUT 携带 expectedVersion 与 requestId', async 
   await page.getByRole('button', { name: '编辑', exact: true }).click();
   const form = section(page, `编辑投放位：${placement.placementId}`);
   await expect(form.getByLabel('活动 ID')).toHaveValue(placement.campaignId);
-  await form.getByLabel('标题覆盖').fill('新标题');
+  await form.getByLabel('标题覆盖', { exact: true }).fill('新标题');
   await form.getByRole('button', { name: '保存修改' }).click();
   await expect(navStatus(page)).toContainText('投放位已保存');
   const puts = writes.filter(w => w.method === 'PUT' && w.path === `${MARKETING}/placements/${placement.placementId}`);
