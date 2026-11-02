@@ -1,4 +1,4 @@
-import type { Page } from '@playwright/test';
+import type { Locator, Page } from '@playwright/test';
 
 /**
  * antd Select 没有原生 <select>，验收脚本改为：点 antd 选择器本体开下拉 → 在弹层里按可见文本点选项。
@@ -16,4 +16,10 @@ export async function chooseOption(page: Page, selectLabel: string, optionName: 
   const dropdown = page.locator('.ant-select-dropdown:not(.ant-select-dropdown-hidden)');
   if (typeof optionName === 'string') await dropdown.getByText(optionName, { exact: true }).click();
   else await dropdown.getByText(optionName).click();
+}
+
+/** 区域内第 n 个 antd 下拉（没有可见 label 时按序号）：点开后在当前可见弹层里按文本点选。 */
+export async function chooseNthOption(page: Page, scope: Locator, index: number, optionName: string) {
+  await scope.locator('.ant-select').nth(index).click();
+  await page.locator('.ant-select-dropdown').filter({ visible: true }).getByText(optionName, { exact: true }).click();
 }

@@ -1,4 +1,5 @@
 import { expect, test, type Page } from '@playwright/test';
+import { chooseNthOption } from './helpers/antd';
 
 // Contract-74 §4 service category dictionary page (F-A-01) — real production UI/transport
 // with intercepted HTTP (same discipline as ops.spec.ts). Covers: list rendering with icon
@@ -70,7 +71,7 @@ async function signIn(page: Page, actions = ['service.category.read', 'service.c
 }
 
 async function openEditor(page: Page) {
-  await page.locator('tbody tr').first().getByRole('button', { name: '编辑' }).click();
+  await page.locator('tbody tr.ant-table-row').first().getByRole('button', { name: '编辑' }).click();
   const editor = page.locator('section[aria-label="编辑分类"]');
   await expect(editor).toBeVisible();
   return editor;
@@ -79,16 +80,16 @@ async function openEditor(page: Page) {
 test('F-A-01 列表：全状态字典、图标预览、版本与空态文案', async ({ page }) => {
   await page.route(`**${ROOT}?*`, route => route.fulfill(envelope(pageEnvelope(rows))));
   await signIn(page);
-  const first = page.locator('tbody tr').first();
+  const first = page.locator('tbody tr.ant-table-row').first();
   await expect(first).toContainText('GROOMING');
   await expect(first).toContainText('洗护美容');
   await expect(first).toContainText('洗澡、造型、护理');
   await expect(first).toContainText('启用');
   await expect(first.getByRole('img', { name: 'GROOMING 图标' })).toBeVisible();
-  const second = page.locator('tbody tr').nth(1);
+  const second = page.locator('tbody tr.ant-table-row').nth(1);
   await expect(second).toContainText('停用');
   await expect(second).toContainText('无图标');
-  await expect(page.locator('tbody tr')).toHaveCount(2);
+  await expect(page.locator('tbody tr.ant-table-row')).toHaveCount(2);
   await expect(page.getByText('共 2 条')).toBeVisible();
 });
 
@@ -155,9 +156,9 @@ test('F-A-01 编辑三态：缺省不发送（保持）、显式 null（清空�
   expect(puts[0].path).toBe(`${ROOT}/GROOMING`);
 
   // (2) explicit clear: iconUrl mode 清空 sends null; others stay absent.
-  await page.locator('tbody tr').first().getByRole('button', { name: '编辑' }).click();
+  await page.locator('tbody tr.ant-table-row').first().getByRole('button', { name: '编辑' }).click();
   const editor2 = page.locator('section[aria-label="编辑分类"]');
-  await editor2.locator('select').nth(1).selectOption({ label: '清空（移除图标）' });
+  await chooseNthOption(page, editor2, 1, '清空（移除图标）');
   await editor2.getByRole('button', { name: '保存' }).click();
   await expect(page.getByText('已保存：GROOMING（版本 4）')).toBeVisible();
   puts = writes.filter(w => w.method === 'PUT');
@@ -165,9 +166,9 @@ test('F-A-01 编辑三态：缺省不发送（保持）、显式 null（清空�
   expect(puts[1].body).toEqual({ categoryName: '洗护美容', sortNo: 1, iconUrl: null, expectedVersion: 3 });
 
   // (3) set-new-value: description 设为新值 sends the entered string.
-  await page.locator('tbody tr').first().getByRole('button', { name: '编辑' }).click();
+  await page.locator('tbody tr.ant-table-row').first().getByRole('button', { name: '编辑' }).click();
   const editor3 = page.locator('section[aria-label="编辑分类"]');
-  await editor3.locator('select').nth(2).selectOption({ label: '设为新值' });
+  await chooseNthOption(page, editor3, 2, '设为新值');
   await editor3.locator('input[name="description"]').fill('全犬种洗护美容');
   await editor3.getByRole('button', { name: '保存' }).click();
   await expect(page.getByText('已保存：GROOMING（版本 4）')).toBeVisible();
@@ -181,7 +182,7 @@ test('F-A-01 启停：expectedVersion 随行携带，成功后行状态刷新', 
   await page.route(`**${ROOT}?*`, route => route.fulfill(envelope(pageEnvelope(rows))));
   await page.route(`**${ROOT}/GROOMING/disable`, route => route.fulfill(envelope({ categoryCode: 'GROOMING', status: 'DISABLED', version: 4 })));
   await signIn(page);
-  await page.locator('tbody tr').first().getByRole('button', { name: '停用' }).click();
+  await page.locator('tbody tr.ant-table-row').first().getByRole('button', { name: '停用' }).click();
   await expect(page.getByText('停用（版本 4）')).toBeVisible();
   const posts = writes.filter(w => w.path === `${ROOT}/GROOMING/disable`);
   expect(posts).toHaveLength(1);
@@ -198,10 +199,10 @@ test('F-A-01 版本冲突 409：可读提示并自动刷新列表', async ({ pag
     return route.fulfill(envelope({ categoryCode: 'GROOMING', status: 'DISABLED', version: 4 }));
   });
   await signIn(page);
-  await page.locator('tbody tr').first().getByRole('button', { name: '停用' }).click();
+  await page.locator('tbody tr.ant-table-row').first().getByRole('button', { name: '停用' }).click();
   await expect(page.getByRole('alert')).toContainText('版本冲突：该分类刚被其他人修改过，已为你刷新列表，请重试');
   // The readable-text promise is kept: the list was re-fetched after the conflict.
-  await page.locator('tbody tr').first().getByRole('button', { name: '停用' }).click();
+  await page.locator('tbody tr.ant-table-row').first().getByRole('button', { name: '停用' }).click();
   await expect(page.getByText('停用（版本 4）')).toBeVisible();
   expect(writes.filter(w => w.method === 'POST')).toHaveLength(2);
 });
@@ -223,7 +224,7 @@ test('F-A-01 权限：仅授予 read 时写操作被拦截且不发请求', asyn
   const writes = captureWrites(page);
   await page.route(`**${ROOT}?*`, route => route.fulfill(envelope(pageEnvelope(rows))));
   await signIn(page, ['service.category.read']);
-  await page.locator('tbody tr').first().getByRole('button', { name: '停用' }).click();
+  await page.locator('tbody tr.ant-table-row').first().getByRole('button', { name: '停用' }).click();
   await expect(page.getByRole('alert')).toContainText('当前账号未授予 service.category.manage');
   expect(writes).toHaveLength(0);
 });

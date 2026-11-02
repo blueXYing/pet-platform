@@ -54,9 +54,9 @@ export default function ServiceReviewListPage({ client, onAuthLost }: { client: 
   return <PageContainer
     title="服务审核"
     hint="服务上/下架审核与强制下架。运营不代商家新增/编辑服务；审核与下架分别鉴权。">
-    <form className="filters" onSubmit={event => { event.preventDefault(); if (valid) void query(1); }}>
+    <form className="filter-bar" onSubmit={event => { event.preventDefault(); if (valid) void query(1); }}>
       <label className="filter-item">状态
-        <Select style={{ width: 160 }} value={status} onChange={value => { const next = value as ServiceStatus | ''; setStatus(next); void query(1, next); }}
+        <Select style={{ width: 160 }} aria-label="状态" value={status} onChange={value => { const next = value as ServiceStatus | ''; setStatus(next); void query(1, next); }}
           options={[{ value: '', label: '全部' }, ...SERVICE_STATUSES.map(value => ({ value, label: serviceStatusLabel(value) }))]} />
       </label>
       <label className="filter-item">商家编号<Input style={{ width: 160 }} inputMode="numeric" value={merchantId} onChange={event => setMerchantId(event.target.value)} /></label>

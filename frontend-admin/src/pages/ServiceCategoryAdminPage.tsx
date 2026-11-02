@@ -1,10 +1,15 @@
 import { useEffect, useRef, useState } from 'react';
+import { Button, Input, Select } from 'antd';
+import type { TableColumnsType } from 'antd';
 import { RequestFailure } from '../request';
 import {
   CATEGORY_STATUSES, describeCategoryFailure, isCategoryConflict,
   type CategoryPatch, type CategoryStatus, type ServiceCategoryAdminClient,
   type ServiceCategoryReceipt, type ServiceCategoryRow,
 } from '../api/serviceCategoryAdmin';
+import { DataTable } from '../ui/DataTable';
+import { ErrorAlert, InlineStatus, Section, StatusTag } from '../ui/bits';
+import { PageContainer } from '../ui/PageContainer';
 
 const STATUS_TEXT: Record<CategoryStatus, string> = { ENABLED: '启用', DISABLED: '停用' };
 const CODE_LEXICON = /^[A-Z][A-Z0-9_]{1,31}$/;
@@ -134,87 +139,82 @@ export default function ServiceCategoryAdminPage({ client, canWrite, onAuthLost 
       receipt => `已保存：${receipt.categoryCode}（版本 ${receipt.version}）`);
   }
 
-  return <main className="page">
-    <h2>服务分类字典</h2>
-    <p className="hint">服务分类是 C 端服务 Tab 与活动分类的统一字典：编码创建后不可修改，名称全局唯一；每次保存版本号 +1。图标采用方案 A：粘贴既有后台上传的 https:// 图片地址，本页不做上传。</p>
-    {notice && <output role="status">{notice}</output>}
-    {error && <p role="alert">{error}</p>}
-    <form className="filters" onSubmit={event => {
+  const columns: TableColumnsType<ServiceCategoryRow> = [
+    { title: '编码', dataIndex: 'categoryCode' },
+    { title: '名称', dataIndex: 'categoryName' },
+    { title: '图标', render: (_, row) => <IconCell code={row.categoryCode} url={row.iconUrl} /> },
+    { title: '描述', render: (_, row) => row.description ?? '' },
+    { title: '排序', dataIndex: 'sortNo' },
+    { title: '状态', render: (_, row) => <StatusTag label={STATUS_TEXT[row.status]} status={row.status} /> },
+    { title: '版本', dataIndex: 'version' },
+    { title: '操作', render: (_, row) => <>
+      <Button danger disabled={busy} onClick={guard(() => void act(
+        () => client.setEnabled(row.categoryCode, row.version, row.status !== 'ENABLED', crypto.randomUUID()),
+        receipt => `${STATUS_TEXT[receipt.status]}（版本 ${receipt.version}）`))}>
+        {row.status === 'ENABLED' ? '停用' : '启用'}
+      </Button>
+      <Button disabled={busy} onClick={guard(() => setEditing(row))}>编辑</Button>
+    </> },
+  ];
+
+  return <PageContainer
+    title="服务分类字典"
+    hint="服务分类是 C 端服务 Tab 与活动分类的统一字典：编码创建后不可修改，名称全局唯一；每次保存版本号 +1。图标采用方案 A：粘贴既有后台上传的 https:// 图片地址，本页不做上传。">
+    {notice && <InlineStatus>{notice}</InlineStatus>}
+    {error && <ErrorAlert>{error}</ErrorAlert>}
+    <form className="filter-bar" onSubmit={event => {
       event.preventDefault();
       const nextKeyword = keywordInput.trim();
       setKeyword(nextKeyword);
       setError('');
       void load(1, statusFilter, nextKeyword);
     }}>
-      <label>状态
-        <select value={statusFilter} onChange={event => {
-          const next = event.target.value as CategoryStatus | '';
+      <label className="filter-item">状态
+        <Select style={{ width: 160 }} aria-label="状态" value={statusFilter} onChange={value => {
+          const next = value as CategoryStatus | '';
           setStatusFilter(next);
           setError('');
           void load(1, next, keyword);
-        }}>
-          <option value="">全部</option>
-          {CATEGORY_STATUSES.map(value => <option key={value} value={value}>{STATUS_TEXT[value]}</option>)}
-        </select>
+        }} options={[{ value: '', label: '全部' }, ...CATEGORY_STATUSES.map(status => ({ value: status, label: STATUS_TEXT[status] }))]} />
       </label>
-      <label>关键词（编码或名称）<input value={keywordInput} onChange={event => setKeywordInput(event.target.value)} maxLength={50} /></label>
-      <button type="submit">查询</button>
-      <button type="button" onClick={() => { setKeywordInput(''); setKeyword(''); setStatusFilter(''); setError(''); void load(1, '', ''); }}>重置</button>
-      <button type="button" disabled={busy} onClick={guard(() => setCreating(true))}>新增分类</button>
+      <label className="filter-item">关键词（编码或名称）<Input style={{ width: 200 }} value={keywordInput} onChange={event => setKeywordInput(event.target.value)} maxLength={50} /></label>
+      <Button type="primary" htmlType="submit">查询</Button>
+      <Button htmlType="button" onClick={() => { setKeywordInput(''); setKeyword(''); setStatusFilter(''); setError(''); void load(1, '', ''); }}>重置</Button>
+      <Button htmlType="button" disabled={busy} onClick={guard(() => setCreating(true))}>新增分类</Button>
     </form>
 
     {rows === undefined
-      ? <>
-        <p role="status">加载中</p>
-        <button onClick={() => { setError(''); void load(); }}>重新加载</button>
-      </>
-      : <table>
-        <thead><tr>
-          <th>编码</th><th>名称</th><th>图标</th><th>描述</th><th>排序</th><th>状态</th><th>版本</th><th>操作</th>
-        </tr></thead>
-        <tbody>
-          {rows.map(row => <tr key={row.categoryCode}>
-            <td>{row.categoryCode}</td>
-            <td>{row.categoryName}</td>
-            <td><IconCell code={row.categoryCode} url={row.iconUrl} /></td>
-            <td>{row.description ?? ''}</td>
-            <td>{row.sortNo}</td>
-            <td>{STATUS_TEXT[row.status]}</td>
-            <td>{row.version}</td>
-            <td>
-              <button disabled={busy} onClick={guard(() => void act(
-                () => client.setEnabled(row.categoryCode, row.version, row.status !== 'ENABLED', crypto.randomUUID()),
-                receipt => `${STATUS_TEXT[receipt.status]}（版本 ${receipt.version}）`))}>
-                {row.status === 'ENABLED' ? '停用' : '启用'}
-              </button>
-              <button disabled={busy} onClick={guard(() => setEditing(row))}>编辑</button>
-            </td>
-          </tr>)}
-          {rows.length === 0 && <tr><td colSpan={8}>暂无分类</td></tr>}
-        </tbody>
-      </table>}
-    {rows !== undefined && <p className="hint">
-      第 {page} 页 · 共 {total} 条 · 每页 {PAGE_SIZE} 条
-      <button disabled={page <= 1} onClick={() => { setError(''); void load(page - 1); }}>上一页</button>
-      <button disabled={page * PAGE_SIZE >= total} onClick={() => { setError(''); void load(page + 1); }}>下一页</button>
-    </p>}
+      ? <><InlineStatus>加载中</InlineStatus><Button onClick={() => { setError(''); void load(); }}>重新加载</Button></>
+      : <DataTable
+        columns={columns}
+        rows={rows}
+        rowKey={row => row.categoryCode}
+        page={page}
+        pageSize={PAGE_SIZE}
+        total={total}
+        onPageChange={next => { setError(''); void load(next); }}
+      />}
+    {rows !== undefined && rows.length === 0 && <p className="hint">暂无分类</p>}
 
-    {creating && <section className="detail-card" aria-label="新增分类">
-      <h3>新增分类</h3>
-      <form onSubmit={event => { event.preventDefault(); submitCreate(event.currentTarget); }}>
-        <label>分类编码（大写字母开头，仅大写字母/数字/下划线，2-32 位，创建后不可修改）<input name="categoryCode" required pattern="[A-Z][A-Z0-9_]{1,31}" placeholder="如 GROOMING" /></label>
-        <label>分类名称（1-20 字，全局唯一）<input name="categoryName" required maxLength={20} /></label>
-        <label>父分类编码（可选；须为已存在的分类编码，留空为无父分类）<input name="parentCode" pattern="[A-Z][A-Z0-9_]{1,31}" /></label>
-        <label>图标 URL（可选；方案 A：粘贴既有后台上传的 https:// 地址，≤512 字）<input name="iconUrl" type="url" placeholder="https://…" /></label>
-        <label>描述（可选，≤200 字）<input name="description" maxLength={200} /></label>
-        <label>排序（0-9999，越小越靠前，留空默认 0）<input name="sortNo" type="number" min={0} max={9999} /></label>
-        <button type="submit" disabled={busy}>创建</button>
-        <button type="button" onClick={() => setCreating(false)}>关闭</button>
-      </form>
+    {creating && <section aria-label="新增分类">
+      <Section title="新增分类">
+        <form onSubmit={event => { event.preventDefault(); submitCreate(event.currentTarget); }}>
+          <label className="filter-item">分类编码（大写字母开头，仅大写字母/数字/下划线，2-32 位，创建后不可修改）<Input name="categoryCode" required pattern="[A-Z][A-Z0-9_]{1,31}" placeholder="如 GROOMING" /></label>
+          <label className="filter-item">分类名称（1-20 字，全局唯一）<Input name="categoryName" required maxLength={20} /></label>
+          <label className="filter-item">父分类编码（可选；须为已存在的分类编码，留空为无父分类）<Input name="parentCode" pattern="[A-Z][A-Z0-9_]{1,31}" /></label>
+          <label className="filter-item">图标 URL（可选；方案 A：粘贴既有后台上传的 https:// 地址，≤512 字）<Input name="iconUrl" type="url" placeholder="https://…" /></label>
+          <label className="filter-item">描述（可选，≤200 字）<Input name="description" maxLength={200} /></label>
+          <label className="filter-item">排序（0-9999，越小越靠前，留空默认 0）<Input name="sortNo" type="number" min={0} max={9999} /></label>
+          <div className="decision-actions">
+            <Button type="primary" htmlType="submit" disabled={busy}>创建</Button>
+            <Button htmlType="button" onClick={() => setCreating(false)}>关闭</Button>
+          </div>
+        </form>
+      </Section>
     </section>}
 
     {editing && <EditCategoryForm key={editing.categoryCode} row={editing} busy={busy} onSubmit={submitEdit} onClose={() => setEditing(undefined)} />}
-  </main>;
+  </PageContainer>;
 }
 
 /**
@@ -266,34 +266,34 @@ function EditCategoryForm({ row, busy, onSubmit, onClose }: {
   }
 
   const fieldInput = (name: string) => {
-    if (name === 'parentCode') return <input name="parentCode" pattern="[A-Z][A-Z0-9_]{1,31}" placeholder="如 GROOMING（须为已存在的分类编码）" />;
-    if (name === 'iconUrl') return <input name="iconUrl" type="url" placeholder="https://…（方案 A：粘贴既有后台上传的 URL）" />;
-    return <input name="description" maxLength={200} />;
+    if (name === 'parentCode') return <Input name="parentCode" pattern="[A-Z][A-Z0-9_]{1,31}" placeholder="如 GROOMING（须为已存在的分类编码）" />;
+    if (name === 'iconUrl') return <Input name="iconUrl" type="url" placeholder="https://…（方案 A：粘贴既有后台上传的 URL）" />;
+    return <Input name="description" maxLength={200} />;
   };
 
   const modeSelect = (name: string, label: string, current: string | null, mode: FieldMode, onMode: (m: FieldMode) => void, clearText: string) => <>
-    <label>{label}（当前：{current === null ? '空' : current}）
-      <select value={mode} onChange={event => onMode(event.target.value as FieldMode)}>
-        <option value="keep">保持现值（本次不修改）</option>
-        <option value="clear">{clearText}</option>
-        <option value="set">设为新值</option>
-      </select>
+    <label className="filter-item">{label}（当前：{current === null ? '空' : current}）
+      <Select<FieldMode> style={{ width: 240 }} aria-label={label} value={mode} onChange={onMode}
+        options={[{ value: 'keep', label: '保持现值（本次不修改）' }, { value: 'clear', label: clearText }, { value: 'set', label: '设为新值' }]} />
     </label>
     {mode === 'set' && fieldInput(name)}
   </>;
 
-  return <section className="detail-card" aria-label="编辑分类">
-    <h3>编辑：{row.categoryName}（{row.categoryCode} · 当前版本 {row.version}）</h3>
-    <p className="hint">下方三个可选字段按「保持现值 / 清空 / 设为新值」提交：保持现值的字段不会随本次保存发送；「清空」会显式把该字段置为空。保存后版本号 +1。</p>
-    {formError && <p role="alert">{formError}</p>}
-    <form onSubmit={event => { event.preventDefault(); submit(event.currentTarget); }}>
-      <label>分类名称（1-20 字，全局唯一）<input name="categoryName" defaultValue={row.categoryName} required maxLength={20} /></label>
-      <label>排序（0-9999，越小越靠前）<input name="sortNo" type="number" min={0} max={9999} defaultValue={row.sortNo} required /></label>
-      {modeSelect('parentCode', '父分类编码', row.parentCode, parentMode, setParentMode, '清空（设为无父分类）')}
-      {modeSelect('iconUrl', '图标 URL', row.iconUrl, iconMode, setIconMode, '清空（移除图标）')}
-      {modeSelect('description', '描述', row.description, descMode, setDescMode, '清空（移除描述）')}
-      <button type="submit" disabled={busy}>保存</button>
-      <button type="button" onClick={onClose}>关闭</button>
-    </form>
+  return <section aria-label="编辑分类">
+    <Section title={`编辑：${row.categoryName}（${row.categoryCode} · 当前版本 ${row.version}）`}>
+      <p className="hint">下方三个可选字段按「保持现值 / 清空 / 设为新值」提交：保持现值的字段不会随本次保存发送；「清空」会显式把该字段置为空。保存后版本号 +1。</p>
+      {formError && <ErrorAlert>{formError}</ErrorAlert>}
+      <form onSubmit={event => { event.preventDefault(); submit(event.currentTarget); }}>
+        <label className="filter-item">分类名称（1-20 字，全局唯一）<Input name="categoryName" defaultValue={row.categoryName} required maxLength={20} /></label>
+        <label className="filter-item">排序（0-9999，越小越靠前）<Input name="sortNo" type="number" min={0} max={9999} defaultValue={row.sortNo} required /></label>
+        {modeSelect('parentCode', '父分类编码', row.parentCode, parentMode, setParentMode, '清空（设为无父分类）')}
+        {modeSelect('iconUrl', '图标 URL', row.iconUrl, iconMode, setIconMode, '清空（移除图标）')}
+        {modeSelect('description', '描述', row.description, descMode, setDescMode, '清空（移除描述）')}
+        <div className="decision-actions">
+          <Button type="primary" htmlType="submit" disabled={busy}>保存</Button>
+          <Button htmlType="button" onClick={onClose}>关闭</Button>
+        </div>
+      </form>
+    </Section>
   </section>;
 }

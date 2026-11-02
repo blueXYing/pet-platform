@@ -42,6 +42,12 @@ import TradeRefundListPage from './pages/TradeRefundListPage';
 import TradeRefundDetailPage from './pages/TradeRefundDetailPage';
 import TradeVerificationListPage from './pages/TradeVerificationListPage';
 import TradeVerificationDetailPage from './pages/TradeVerificationDetailPage';
+import { createMarketingAdminClient } from './api/marketingAdmin';
+import { createCommunityAdminClient } from './api/communityAdmin';
+import { createServiceCategoryAdminClient } from './api/serviceCategoryAdmin';
+import ServiceCategoryAdminPage from './pages/ServiceCategoryAdminPage';
+import MarketingCenterPage from './pages/MarketingCenterPage';
+import CommunityModerationPage from './pages/CommunityModerationPage';
 
 const READ_ACTION = 'merchant.application.read';
 const auth = createAuthClient();
@@ -58,6 +64,9 @@ const staffGovernance = createStaffGovernanceClient();
 const encyclopedia = createEncyclopediaAdminClient();
 const couponAdmin = createCouponAdminClient();
 const ledgerAdmin = createLedgerAdminClient();
+const marketingAdmin = createMarketingAdminClient();
+const communityAdmin = createCommunityAdminClient();
+const serviceCategories = createServiceCategoryAdminClient();
 
 /** 403 文案与旧版逐字一致；缺省兜底是积分任务配置。 */
 const FORBIDDEN_TITLES: Record<string, string> = {
@@ -77,6 +86,9 @@ const FORBIDDEN_TITLES: Record<string, string> = {
   'coupon.instance.read': '403 · 无券实例台账权限',
   'points.ledger.read': '403 · 无积分台账权限',
   'system.parameter.read': '403 · 无系统参数权限',
+  'service.category.read': '403 · 无服务分类权限',
+  'community.post.read': '403 · 无社区审核权限',
+  'marketing.campaign.read': '403 · 无营销活动权限',
 };
 
 export function App() {
@@ -105,6 +117,9 @@ export function App() {
     encyclopedia.resetContext(nextToken);
     couponAdmin.resetContext(nextToken);
     ledgerAdmin.resetContext(nextToken);
+    marketingAdmin.resetContext(nextToken);
+    communityAdmin.resetContext(nextToken);
+    serviceCategories.resetContext(nextToken);
     try {
       const nextSession = await sessions.session(nextToken);
       const nextPermissions = await sessions.permissions(nextToken);
@@ -141,6 +156,9 @@ export function App() {
     encyclopedia.resetContext();
     couponAdmin.resetContext();
     ledgerAdmin.resetContext();
+    marketingAdmin.resetContext();
+    communityAdmin.resetContext();
+    serviceCategories.resetContext();
   }, [token]);
 
   if (location.pathname !== '/login' && !token) return <Navigate to="/login" replace />;
@@ -161,6 +179,17 @@ export function App() {
   const canReadInstances = permissions?.actionCodes.includes('coupon.instance.read') === true;
   const canReadPointsLedger = permissions?.actionCodes.includes('points.ledger.read') === true;
   const canReadSettings = permissions?.actionCodes.includes('system.parameter.read') === true;
+  const canReadMarketing = permissions?.actionCodes.includes('marketing.campaign.read') === true;
+  const canManageMarketing = permissions?.actionCodes.includes('marketing.campaign.manage') === true;
+  const canPublishMarketing = permissions?.actionCodes.includes('marketing.campaign.publish') === true;
+  const canReviewMarketing = permissions?.actionCodes.includes('marketing.enrollment.review') === true;
+  const canManageCouponCampaigns = permissions?.actionCodes.includes('coupon.campaign.manage') === true;
+  const canPublishCouponCampaigns = permissions?.actionCodes.includes('coupon.campaign.publish') === true;
+  const canReadCommunity = permissions?.actionCodes.includes('community.post.read') === true;
+  const canModerateCommunity = permissions?.actionCodes.includes('community.post.moderate') === true;
+  const canHandleCommunityReports = permissions?.actionCodes.includes('community.report.handle') === true;
+  const canReadServiceCategories = permissions?.actionCodes.includes('service.category.read') === true;
+  const canManageServiceCategories = permissions?.actionCodes.includes('service.category.manage') === true;
   const guard = (element: ReactNode, action = READ_ACTION) => {
     if (!token) return <Navigate to="/login" replace />;
     if (bootstrap === 'loading') return <div className="page"><p role="status">会话加载中</p></div>;
@@ -176,6 +205,7 @@ export function App() {
       menuItem('/services', '服务审核', canReadServices),
       menuItem('/aftersales', '售后工单', canReadAftersale),
       menuItem('/review-appeals', '评价申诉', canReadAppeals),
+      menuItem('/ops/community', '社区审核', canReadCommunity),
     ].filter(Boolean) as NonNullable<MenuProps['items']> },
     { type: 'group', label: '交易', children: [
       menuItem('/trade/orders', '订单总览', canReadOrders),
@@ -188,10 +218,12 @@ export function App() {
       menuItem('/governance/staff', '员工治理', canReadStaff),
     ].filter(Boolean) as NonNullable<MenuProps['items']> },
     { type: 'group', label: '运营', children: [
+      menuItem('/ops/marketing', '营销活动', canReadMarketing),
       menuItem('/ops/coupons/templates', '券模板', canReadCoupons),
       menuItem('/ops/coupons/instances', '券实例台账', canReadInstances),
       menuItem('/ops/ledger/points', '积分台账', canReadPointsLedger),
       menuItem('/points-task-config', '积分任务配置', canReadPointsConfig),
+      menuItem('/ops/service-categories', '服务分类', canReadServiceCategories),
       menuItem('/ops/baike/categories', '百科分类', canReadEncyclopedia),
       menuItem('/ops/baike/breeds', '品种库', canReadBreeds),
     ].filter(Boolean) as NonNullable<MenuProps['items']> },
@@ -227,6 +259,9 @@ export function App() {
     <Route path="/ops/coupons/instances" element={guard(<CouponInstanceLedgerPage client={couponAdmin} canVoid={permissions?.actionCodes.includes('coupon.instance.void') === true} onAuthLost={signOut} />, 'coupon.instance.read')} />
     <Route path="/ops/ledger/points" element={guard(<PointsLedgerPage client={ledgerAdmin} onAuthLost={signOut} />, 'points.ledger.read')} />
     <Route path="/ops/settings/runtime" element={guard(<SettingsRuntimePage client={ledgerAdmin} onAuthLost={signOut} />, 'system.parameter.read')} />
+    <Route path="/ops/service-categories" element={guard(<ServiceCategoryAdminPage client={serviceCategories} canWrite={canManageServiceCategories} onAuthLost={signOut} />, 'service.category.read')} />
+    <Route path="/ops/community" element={guard(<CommunityModerationPage client={communityAdmin} canModerate={canModerateCommunity} canHandleReports={canHandleCommunityReports} onAuthLost={signOut} />, 'community.post.read')} />
+    <Route path="/ops/marketing" element={guard(<MarketingCenterPage client={marketingAdmin} couponClient={couponAdmin} categoryClient={serviceCategories} canManage={canManageMarketing} canPublish={canPublishMarketing} canReview={canReviewMarketing} canCouponManage={canManageCouponCampaigns} canCouponPublish={canPublishCouponCampaigns} onAuthLost={signOut} />, 'marketing.campaign.read')} />
     <Route path="*" element={<main style={{ padding: 32 }}><h1>404 · 页面不存在</h1><p><Link to="/">返回工作台</Link></p></main>} />
   </Routes>;
   if (location.pathname === '/login') return routes;

@@ -23,6 +23,28 @@ code { background: #f4f6fa; padding: 2px 6px; border-radius: 4px; font-size: 13p
 .filter-item { display: flex; flex-direction: column; gap: 4px; font-size: 14px; color: rgba(0, 0, 0, 0.72); }
 .field-label { display: block; margin: 12px 0 4px; font-size: 14px; }
 .decision-actions { display: flex; gap: 12px; margin-top: 12px; }
+/* 卡片内的编辑/动作表单：竖排、留间距、限宽（筛选条 .filter-bar 不受影响） */
+.ant-card .filter-item, form:not(.filter-bar) > .filter-item { margin-bottom: 12px; max-width: 720px; }
+
+/* 原生控件皮肤：少数因表单提交或验收脚本约束保留的原生控件，外观对齐 antd */
+.page select, .page input[type="datetime-local"], .page input[type="date"], .page input[type="file"] {
+  min-height: 32px; padding: 4px 11px; border: 1px solid #d9d9d9; border-radius: 6px; background: #fff;
+  font: inherit; font-size: 14px; color: rgba(0, 0, 0, 0.88); box-sizing: border-box; transition: border-color .2s, box-shadow .2s;
+}
+.page select { min-width: 160px; }
+.page select:hover, .page input[type="datetime-local"]:hover, .page input[type="date"]:hover { border-color: #4a78bd; }
+.page select:focus, .page input[type="datetime-local"]:focus, .page input[type="date"]:focus { border-color: #2459a8; outline: none; box-shadow: 0 0 0 2px rgba(36, 89, 168, 0.12); }
+.page select:disabled, .page input[type="datetime-local"]:disabled { background: #f5f5f5; color: rgba(0, 0, 0, 0.25); cursor: not-allowed; }
+.detail-card { background: #fff; border: 1px solid #f0f0f0; border-radius: 8px; padding: 16px 20px; margin-top: 16px; }
+.detail-card h2, .detail-card h3, .detail-card h4 { margin: 0 0 12px; font-size: 16px; font-weight: 600; }
+.detail-card label:not([class]) { display: flex; flex-direction: column; gap: 4px; font-size: 14px; margin-bottom: 12px; max-width: 720px; }
+.page fieldset { border: 1px solid #f0f0f0; border-radius: 8px; padding: 12px 16px; margin: 12px 0; }
+.page legend { color: #566379; padding: 0 6px; font-size: 14px; }
+.page details > summary { cursor: pointer; color: #2459a8; margin: 6px 0; }
+.page table:not(.ant-table-container table) { width: 100%; border-collapse: collapse; background: #fff; margin-top: 12px; font-size: 14px; }
+.page table:not(.ant-table-container table) th { background: #fafafa; font-weight: 600; text-align: left; padding: 12px 16px; border-bottom: 1px solid #f0f0f0; }
+.page table:not(.ant-table-container table) td { padding: 12px 16px; border-bottom: 1px solid #f0f0f0; }
+.page table:not(.ant-table-container table) tbody tr:hover td { background: #fafafa; }
 
 /* 登录页 */
 .login-page { min-height: 100vh; display: grid; place-items: center; }

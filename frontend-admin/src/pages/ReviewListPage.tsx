@@ -64,12 +64,12 @@ export default function ReviewListPage({ client, canDecide, onAuthLost }: { clie
     { title: '', render: (_, item) => <Link to={`/merchant-applications/${item.applicationId}`}>打开</Link> },
   ];
   return <PageContainer title="商家申请审核">
-    <form className="filters" onSubmit={event => { event.preventDefault(); void goto(1); }}>
+    <form className="filter-bar" onSubmit={event => { event.preventDefault(); void goto(1); }}>
       <label className="filter-item">状态
-        <Select style={{ width: 160 }} value={filters.status} onChange={value => setFilters({ ...filters, status: value })} options={STATUS_OPTIONS} />
+        <Select style={{ width: 160 }} aria-label="状态" value={filters.status} onChange={value => setFilters({ ...filters, status: value })} options={STATUS_OPTIONS} />
       </label>
       <label className="filter-item">商家类型
-        <Select style={{ width: 160 }} value={filters.merchantTypeCode ?? ''} onChange={value => setFilters({ ...filters, merchantTypeCode: value })}
+        <Select style={{ width: 160 }} aria-label="商家类型" value={filters.merchantTypeCode ?? ''} onChange={value => setFilters({ ...filters, merchantTypeCode: value })}
           options={[{ value: '', label: '全部' }, ...MERCHANT_TYPES.map(type => ({ value: type.code, label: type.label }))]} />
       </label>
       <label className="filter-item">城市编码<Input style={{ width: 160 }} value={filters.cityCode ?? ''} placeholder="如 CHENGDU" onChange={event => setFilters({ ...filters, cityCode: event.target.value })} /></label>

@@ -18,7 +18,8 @@ export function AdminLayout({ menuItems, identity, signOut, pathname, children }
   const navigate = useNavigate();
   const [collapsed, setCollapsed] = useState(false);
   return <Layout style={{ minHeight: '100vh' }}>
-    <Sider collapsible collapsed={collapsed} onCollapse={setCollapsed} theme="light" width={216}>
+    <Sider collapsible collapsed={collapsed} onCollapse={setCollapsed} theme="light" width={216}
+      style={{ position: 'sticky', top: 0, height: '100vh', overflowY: 'auto' }}>
       <div className="brand"><strong>宠物平台 · 运营工作台</strong></div>
       <Menu
         mode="inline"
