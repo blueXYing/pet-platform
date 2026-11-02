@@ -115,7 +115,7 @@ test('the services page is dictionary-driven and routes categories by categoryCo
   assert.equal(index.includes("'全部服务', '宠物美容'"), false)
   assert.match(index, /ServiceCatalogRepository/)
   assert.match(index, /storesCategoryUrl/)
-  assert.match(index, /syncCustomTabBar\(1\)/) // 服务 tab 桥接保持
+  assert.match(index, /<TabBar active=\{1\} \/>/) // 服务 tab 内联底栏（框架 custom-tab-bar 挂载失效后的替代）
   assert.match(index, /useFeaturedStores/)
   // 优质商家列表走 74 §3.4 聚合读，分页以服务端 total 为准。
   const featured = source('featured-stores.tsx')
