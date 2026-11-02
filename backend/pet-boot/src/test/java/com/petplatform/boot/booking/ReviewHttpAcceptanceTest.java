@@ -58,16 +58,15 @@ class ReviewHttpAcceptanceTest {
             assertEquals(wire, ok.value("reviewDeadline"));
 
             // 30-day window expired (SSOT §11: the window anchors at the verification time).
-            // The order read slice runs on the real system clock (its #123 wiring), so the
-            // expired seed uses the real-now frame like OrderQueryHttpTest; the fixture's
-            // parked 2030 verification stays inside the window for the checks above.
-            f.sql("UPDATE pet_order SET verified_at='2026-09-01 09:00:20.000' WHERE id=" + order);
+            // Use the real-now frame so this acceptance does not expire when the wall clock
+            // advances past a hard-coded fixture date.
+            f.sql("UPDATE pet_order SET verified_at=DATE_SUB(UTC_TIMESTAMP(3), INTERVAL 31 DAY) WHERE id=" + order);
             var expired = f.send("GET", eligibilityPath(order), null, f.buyerToken);
             assertEquals(200, expired.status());
             assertEquals(Boolean.FALSE, expired.data().get("eligible"));
             assertEquals("REVIEW_WINDOW_EXPIRED", expired.value("rejectCode"));
             assertNotNull(expired.value("reviewDeadline"));
-            f.sql("UPDATE pet_order SET verified_at=DATE_ADD(verified_at,INTERVAL 31 DAY) WHERE id=" + order);
+            f.sql("UPDATE pet_order SET verified_at=UTC_TIMESTAMP(3) WHERE id=" + order);
 
             // 2026-10-07 user ruling regression: full refund success (REFUNDED) is not reviewable.
             f.sql("UPDATE pet_order SET refund_order_id=910501, refunded_amount=pay_amount WHERE id=" + order);
