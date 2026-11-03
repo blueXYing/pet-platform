@@ -1,6 +1,8 @@
 /* 「我的」tab 视觉重做（设计源：我的 126:675 新版，2026-10-10 稿；素材缓存
    planning/progress/2026-10-12/figma-mine/）。结构/文案/坐标/fills 取自
    nodes-all.json + node-126-675.json 精确树；图标/波浪为 REST SVG 原矢量 base64。
+   2026-10-30 对齐 690:10474（REST nodes JSON 精确值）：木夹贴纸、签到横向渐变、
+   头像/昵称/手机号规格、订单角标、区块间距 24/14 与标题-内容间距两档（12/4）。
    功能/契约零改动：状态机、模型（model.ts）、跳转 URL、requestId 幂等全部不变；
    签到/拉新/收藏/足迹/地址管理/成为服务者/帮助与客服/意见反馈/设置等
    无工程页面的原稿入口仅做视觉占位（无交互），登记表 §4.6 记偏差；
@@ -26,21 +28,30 @@
 .mine-body { flex: 1; height: 0; }
 .mine-scroll { position: relative; min-height: 100%; padding-bottom: calc(var(--mine-unit) * 48); }
 
-/* ===== 顶部装饰层（原稿 y0..~250：huaban 纸纹 402x175 STRETCH（<Image> 组件）+ 蓝白波浪）===== */
+/* ===== 顶部装饰层（原稿 y0..~250：huaban 纸纹 402x175 STRETCH（<Image> 组件）+ 蓝白波浪 + 木夹贴纸 52.4）===== */
 .mine-strip { position: absolute; left: 0; top: 0; width: 100%; height: calc(var(--mine-unit) * 175); pointer-events: none; }
 .mine-wave-blue { position: absolute; left: calc(var(--mine-unit) * 8); top: calc(var(--mine-unit) * 12); pointer-events: none; }
-.mine-wave-white { position: absolute; left: calc(var(--mine-unit) * -6); top: calc(var(--mine-unit) * 4); pointer-events: none; }
+/* 白便签（Vector 3 690:10581）：SVG 导出即 absoluteRenderBounds 烘焙后形状（345.9x216.8），
+   直接按画板 (27.67,18.37) 摆放，勿再加节点矩阵——底边落统计卡下缘，顶上 0~18 露竖条纹。 */
+.mine-wave-white {
+  position: absolute;
+  left: calc(var(--mine-unit) * 27.67); top: calc(var(--mine-unit) * 18.37);
+  width: calc(var(--mine-unit) * 345.9); height: calc(var(--mine-unit) * 216.8);
+  pointer-events: none;
+}
+/* huaban-6727256158（690:10582 @3x 导出）：Group 28 最上层（蓝白纸之上）。 */
+.mine-clip { position: absolute; left: calc(var(--mine-unit) * 12.6); top: calc(var(--mine-unit) * 4); width: calc(var(--mine-unit) * 52.4); height: calc(var(--mine-unit) * 52.4); pointer-events: none; }
 
-/* ===== 用户卡（IMG-5 头像 64 环 #c5e9f9 + 昵称 18/700 + 手机号 12）===== */
-.mine-user { position: relative; display: flex; align-items: center; padding: calc(var(--mine-unit) * 54) calc(var(--mine-unit) * 30) 0; }
+/* ===== 用户卡（IMG-5 头像 68.6 环 #c5e9f9 + 昵称 19.3/30/700 + 手机号 12.86）===== */
+.mine-user { position: relative; display: flex; align-items: center; padding: calc(var(--mine-unit) * 54) calc(var(--mine-unit) * 34) 0; }
 .mine-avatar {
-  width: calc(var(--mine-unit) * 64); height: calc(var(--mine-unit) * 64);
+  width: calc(var(--mine-unit) * 68.6); height: calc(var(--mine-unit) * 68.6);
   border-radius: 50%; border: calc(var(--mine-unit) * 2) solid #c5e9f9;
   background: #c0ecff; flex-shrink: 0;
 }
-.mine-user-main { flex: 1; display: flex; flex-direction: column; min-width: 0; margin-left: calc(var(--mine-unit) * 21); }
-.mine-nickname { font-size: calc(var(--mine-unit) * 18); line-height: calc(var(--mine-unit) * 28); font-weight: 700; color: #1d0d07; }
-.mine-phone { margin-top: calc(var(--mine-unit) * 4); font-size: calc(var(--mine-unit) * 12); line-height: calc(var(--mine-unit) * 17); color: #3c3c3c; }
+.mine-user-main { flex: 1; display: flex; flex-direction: column; min-width: 0; margin-left: calc(var(--mine-unit) * 16.4); }
+.mine-nickname { font-size: calc(var(--mine-unit) * 19.3); line-height: calc(var(--mine-unit) * 30); font-weight: 700; color: #1d0d07; }
+.mine-phone { margin-top: calc(var(--mine-unit) * 4); font-size: calc(var(--mine-unit) * 12.86); line-height: calc(var(--mine-unit) * 17.15); color: #3c3c3c; }
 .mine-user-go { width: calc(var(--mine-unit) * 34); height: calc(var(--mine-unit) * 34); display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
 
 /* ===== 统计条（Group 27：#f0fbff r11.2 + #577683 阴影；四项 图标/值/文案）===== */
@@ -76,13 +87,13 @@
 }
 .mine-guide-primary::after { border: none; }
 .mine-guide-primary[disabled] { background: #a7dcfa; color: #f0fbff; }
-.mine-guide-secondary {
+.mine-page .mine-guide-secondary {
   margin-top: calc(var(--mine-unit) * 8); background: transparent; color: #577683;
   font-size: calc(var(--mine-unit) * 12); line-height: calc(var(--mine-unit) * 18);
   padding: calc(var(--mine-unit) * 8) 0; text-align: center; border: none;
 }
 .mine-guide-secondary::after { border: none; }
-.mine-guide-collapsed { padding: calc(var(--mine-unit) * 6) 0; background: transparent; border: none; text-align: left; }
+.mine-page .mine-guide-collapsed { padding: calc(var(--mine-unit) * 6) 0; background: transparent; border: none; text-align: left; }
 .mine-guide-collapsed::after { border: none; }
 .mine-guide-collapsed-text { font-size: calc(var(--mine-unit) * 12); line-height: calc(var(--mine-unit) * 18); color: #5baae8; }
 .mine-notice {
@@ -93,12 +104,13 @@
   font-size: calc(var(--mine-unit) * 11); line-height: calc(var(--mine-unit) * 17); color: #7b5b4a;
 }
 
-/* ===== 每日签到卡（DIV-61：#c0ecff→#e4f6f3 渐变 r12 pad16；纯视觉占位无交互）===== */
-.mine-signin {
+/* ===== 每日签到卡（DIV-61：#c0ecff→#e4f6f3 横向渐变 r12 pad16；整卡入口进签到日历页）
+   （宿主是 <Button>：必须 .mine-page 前缀压过 .mine-page button 重置，下同）===== */
+.mine-page .mine-signin {
   position: relative;
-  margin: calc(var(--mine-unit) * 12) calc(var(--mine-unit) * 30) 0;
+  margin: calc(var(--mine-unit) * 24) calc(var(--mine-unit) * 30) 0;
   padding: calc(var(--mine-unit) * 16);
-  background: linear-gradient(180deg, #c0ecff 0%, #e4f6f3 100%);
+  background: linear-gradient(90deg, #c0ecff 0%, #e4f6f3 100%);
   border-radius: calc(var(--mine-unit) * 12);
 }
 .mine-signin-head { display: flex; align-items: center; justify-content: space-between; }
@@ -122,7 +134,7 @@
 
 /* ===== 快捷入口（DIV-130：拉新/奖励占位 + 积分明细真入口；白卡 109x85 描边 #c0ecff）===== */
 .mine-quick { position: relative; display: flex; gap: calc(var(--mine-unit) * 8); margin: calc(var(--mine-unit) * 12) calc(var(--mine-unit) * 30) 0; }
-.mine-quick-cell {
+.mine-page .mine-quick-cell {
   flex: 1; height: calc(var(--mine-unit) * 85);
   background: #ffffff; border: calc(var(--mine-unit) * 1) solid #c0ecff; border-radius: calc(var(--mine-unit) * 12);
   display: flex; flex-direction: column; align-items: center; justify-content: center; gap: calc(var(--mine-unit) * 6);
@@ -134,17 +146,28 @@
 .mine-quick-chip.is-accent { background: rgba(255, 207, 186, .68); }
 .mine-quick-label { font-size: calc(var(--mine-unit) * 11); line-height: calc(var(--mine-unit) * 13.2); color: #3c3c3c; }
 
-/* ===== 卡片家族（我的订单/我的服务/更多服务：白卡 r12 描边 #c0ecff）===== */
+/* ===== 卡片家族（我的订单/我的服务/更多服务：白卡 r12 描边 #c0ecff）=====
+   标题-内容间距原稿分两档：订单卡 12（margin-wrap padB 12）、服务/更多卡 4（H2 padB 4）。 */
 .mine-section { position: relative; margin: calc(var(--mine-unit) * 16) calc(var(--mine-unit) * 30) 0; padding: calc(var(--mine-unit) * 13); background: #ffffff; border: calc(var(--mine-unit) * 1) solid #c0ecff; border-radius: calc(var(--mine-unit) * 12); }
-.mine-section-head { display: flex; align-items: center; justify-content: space-between; padding: 0 calc(var(--mine-unit) * 12) calc(var(--mine-unit) * 10); }
+.mine-section-orders { margin-top: calc(var(--mine-unit) * 14); }
+.mine-section-head { display: flex; align-items: center; justify-content: space-between; padding: 0 calc(var(--mine-unit) * 12) calc(var(--mine-unit) * 4); }
+.mine-section-orders .mine-section-head { padding-bottom: calc(var(--mine-unit) * 12); }
 .mine-section-title { font-size: calc(var(--mine-unit) * 14); line-height: calc(var(--mine-unit) * 20); font-weight: 700; color: #3c3c3c; }
 
 /* 我的订单：全部订单链接 + 五状态入口（全部指向既有订单列表，行为与现状一致）*/
-.mine-orders-all { display: flex; align-items: center; gap: calc(var(--mine-unit) * 4); }
+.mine-orders-all { display: flex; align-items: center; gap: calc(var(--mine-unit) * 2); }
 .mine-orders-all-text { font-size: calc(var(--mine-unit) * 11); line-height: calc(var(--mine-unit) * 16.5); color: #3c3c3c; }
 .mine-orders-row { display: flex; padding-bottom: calc(var(--mine-unit) * 4); }
 .mine-order-item { flex: 1; display: flex; flex-direction: column; align-items: center; gap: calc(var(--mine-unit) * 6); }
-.mine-order-ico { width: calc(var(--mine-unit) * 36); height: calc(var(--mine-unit) * 36); display: flex; align-items: center; justify-content: center; }
+.mine-order-ico { position: relative; width: calc(var(--mine-unit) * 36); height: calc(var(--mine-unit) * 36); display: flex; align-items: center; justify-content: center; }
+/* 角标（SPAN-168 族：16 圆 #5baae8 白字 9/13.5；右上 -2 悬出；双位数右锚横向扩展）*/
+.mi-ord-badge {
+  position: absolute; top: calc(var(--mine-unit) * -2); right: calc(var(--mine-unit) * -2);
+  min-width: calc(var(--mine-unit) * 16); height: calc(var(--mine-unit) * 16); padding: 0 calc(var(--mine-unit) * 4);
+  border-radius: calc(var(--mine-unit) * 9999); background: #5baae8;
+  display: flex; align-items: center; justify-content: center;
+  font-size: calc(var(--mine-unit) * 9); line-height: calc(var(--mine-unit) * 13.5); color: #ffffff;
+}
 .mine-order-label { font-size: calc(var(--mine-unit) * 11); line-height: calc(var(--mine-unit) * 16.5); color: #577683; }
 
 /* 服务网格（我的服务/更多服务：44 圆角 chip #c0ecff + 图标 #577683 + 文案 11）*/
@@ -177,7 +200,7 @@
 
 /* ===== 页脚（退出登录 + 开发者工具：工程功能保留，原稿无对应区块）===== */
 .mine-footer { position: relative; margin-top: calc(var(--mine-unit) * 16); display: flex; flex-direction: column; align-items: stretch; gap: calc(var(--mine-unit) * 8); padding: 0 calc(var(--mine-unit) * 30); }
-.mine-logout {
+.mine-page .mine-logout {
   background: #ffffff; color: #e06c5a;
   font-size: calc(var(--mine-unit) * 14); line-height: calc(var(--mine-unit) * 20);
   padding: calc(var(--mine-unit) * 13) 0; text-align: center;
@@ -185,7 +208,7 @@
 }
 .mine-logout::after { border: none; }
 .mine-logout-hidden { display: none; }
-.mine-developer { padding: calc(var(--mine-unit) * 6) 0; background: transparent; border: none; text-align: center; }
+.mine-page .mine-developer { padding: calc(var(--mine-unit) * 6) 0; background: transparent; border: none; text-align: center; }
 .mine-developer::after { border: none; }
 .mine-developer-text { font-size: calc(var(--mine-unit) * 11); line-height: calc(var(--mine-unit) * 16); color: #9db6c2; }
 
@@ -211,8 +234,10 @@
 .pts-time { margin-top: calc(var(--mine-unit) * 2); font-size: calc(var(--mine-unit) * 10); line-height: calc(var(--mine-unit) * 16); color: #3c3c3c; }
 
 /* ===== 原稿矢量图标/波浪（REST SVG base64，planning/progress/2026-10-12/figma-mine/icons/ 清单）===== */
-.mi-wave-blue { width: calc(var(--mine-unit) * 356); height: calc(var(--mine-unit) * 242); background-image: url("data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMzU2IiBoZWlnaHQ9IjI0MiIgdmlld0JveD0iMCAwIDM1NiAyNDIiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+DQo8cGF0aCBkPSJNMCAxNS4yOTg4TDMyMS4zNjggMEwzNTUuODgzIDIyNS4zMUMzMzguOTM2IDIyNS41ODggMzAxLjMxMSAyMjcuMDkgMjg2LjM4NiAyMzAuODczQzI2Ny43MjkgMjM1LjYwMiAyMjAuNjIgMjI5LjQ4MyAxNTguNTg1IDIzNS42MDJDOTYuNTUwMiAyNDEuNzIyIDM0LjUxNTUgMjQyIDM0LjUxNTUgMjQyTDAgMTUuMjk4OFoiIGZpbGw9IiM1QkFBRTgiLz4NCjwvc3ZnPg0K"); background-repeat: no-repeat; background-size: 100% 100%; }
-.mi-wave-white { width: calc(var(--mine-unit) * 413); height: calc(var(--mine-unit) * 244); background-image: url("data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMzQ2IiBoZWlnaHQ9IjIxNyIgdmlld0JveD0iMCAwIDM0NiAyMTciIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+DQo8cGF0aCBkPSJNMC4wMDAxMzIxNjEgMC4wMDAxODE2NjFMMzQyLjg5NSAwLjY4MDQ0MkwzNDYgMjEzLjk2NkMzMjcuOTk2IDIxMy40MzMgMjg3Ljg5NCAyMTMuMDgyIDI3MS41MTIgMjE1LjkzN0MyNTEuMDM0IDIxOS41MDUgMjAyLjAxMiAyMTEuNTUgMTM1LjM1MiAyMTQuMzkzQzY4LjY5MTEgMjE3LjIzNiAyLjg5ODQ4IDIxNC41OTIgMi44OTg0OCAyMTQuNTkyTDAuMDAwMTMyMTYxIDAuMDAwMTgxNjYxWiIgZmlsbD0iI0Y5RkZGQyIvPg0KPC9zdmc+DQo="); background-repeat: no-repeat; background-size: 100% 100%; }
+/* 蓝便签（Vector 2 690:10580，用户 10-30 裁决）：底边由原稿波浪改为直线
+   （右 225.3 → 左 233，整体上收），与「每日签到」卡保持 ≥21 设计像素间距。 */
+.mi-wave-blue { width: calc(var(--mine-unit) * 356); height: calc(var(--mine-unit) * 242); background-image: url("data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMzU2IiBoZWlnaHQ9IjI0MiIgdmlld0JveD0iMCAwIDM1NiAyNDIiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+CjxwYXRoIGQ9Ik0wIDE1LjI5ODhMMzIxLjM2OCAwTDM1NS44ODMgMjI1LjMxTDM0LjUxNTUgMjMzTDAgMTUuMjk4OFoiIGZpbGw9IiM1QkFBRTgiLz4KPC9zdmc+Cg=="); background-repeat: no-repeat; background-size: 100% 100%; }
+.mi-wave-white { width: calc(var(--mine-unit) * 346); height: calc(var(--mine-unit) * 217); background-image: url("data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMzQ2IiBoZWlnaHQ9IjIxNyIgdmlld0JveD0iMCAwIDM0NiAyMTciIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+DQo8cGF0aCBkPSJNMC4wMDAxMzIxNjEgMC4wMDAxODE2NjFMMzQyLjg5NSAwLjY4MDQ0MkwzNDYgMjEzLjk2NkMzMjcuOTk2IDIxMy40MzMgMjg3Ljg5NCAyMTMuMDgyIDI3MS41MTIgMjE1LjkzN0MyNTEuMDM0IDIxOS41MDUgMjAyLjAxMiAyMTEuNTUgMTM1LjM1MiAyMTQuMzkzQzY4LjY5MTEgMjE3LjIzNiAyLjg5ODQ4IDIxNC41OTIgMi44OTg0OCAyMTQuNTkyTDAuMDAwMTMyMTYxIDAuMDAwMTgxNjYxWiIgZmlsbD0iI0Y5RkZGQyIvPg0KPC9zdmc+DQo="); background-repeat: no-repeat; background-size: 100% 100%; }
 .mi-stat-coupon { width: calc(var(--mine-unit) * 15); height: calc(var(--mine-unit) * 13); background-image: url("data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTUiIGhlaWdodD0iMTQiIHZpZXdCb3g9IjAgMCAxNSAxNCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4NCjxwYXRoIGQ9Ik0wIDAuNzUwMTFDMCAwLjU0MDExIDAuMDcyNDk5OSAwLjM2MjYxIDAuMjE3NSAwLjIxNzYxQzAuMzYyNSAwLjA3MjYwOTkgMC41NCAwLjAwMDEwOTg0NCAwLjc0OTk5OSAwLjAwMDEwOTg0NEgxNC4yNUMxNC40NiAwLjAwMDEwOTg0NCAxNC42Mzc1IDAuMDcyNjA5OSAxNC43ODI1IDAuMjE3NjFDMTQuOTI3NSAwLjM2MjYxIDE1IDAuNTQwMTEgMTUgMC43NTAxMVY0Ljg3NTExQzE0LjY2IDQuODc1MTEgMTQuMzQ3NSA0Ljk2MDExIDE0LjA2MjUgNS4xMzAxMUMxMy43Nzc1IDUuMzAwMSAxMy41NSA1LjUyNzYgMTMuMzggNS44MTI2QzEzLjIxIDYuMDk3NiAxMy4xMjUgNi40MTAxIDEzLjEyNSA2Ljc1MDFDMTMuMTI1IDcuMDkwMSAxMy4yMSA3LjQwMjYgMTMuMzggNy42ODc2QzEzLjU1IDcuOTcyNiAxMy43Nzc1IDguMjAwMSAxNC4wNjI1IDguMzcwMUMxNC4zNDc1IDguNTQwMSAxNC42NiA4LjYyNTEgMTUgOC42MjUxVjEyLjc1MDFDMTUgMTIuOTYwMSAxNC45Mjc1IDEzLjEzNzYgMTQuNzgyNSAxMy4yODI2QzE0LjYzNzUgMTMuNDI3NiAxNC40NiAxMy41MDAxIDE0LjI1IDEzLjUwMDFIMC43NDk5OTlDMC41NCAxMy41MDAxIDAuMzYyNSAxMy40Mjc2IDAuMjE3NSAxMy4yODI2QzAuMDcyNDk5OSAxMy4xMzc2IDAgMTIuOTYwMSAwIDEyLjc1MDFWMC43NTAxMVpNNC41NiAxMi4wMDAxQzQuNjQgMTEuNzgwMSA0Ljc3NzUgMTEuNjAwMSA0Ljk3MjUgMTEuNDYwMUM1LjE2NzUgMTEuMzIwMSA1LjM4NSAxMS4yNTAxIDUuNjI1IDExLjI1MDFDNS44NjUgMTEuMjUwMSA2LjA4MjUgMTEuMzIwMSA2LjI3NzQ5IDExLjQ2MDFDNi40NzI1IDExLjYwMDEgNi42MDk5OSAxMS43ODAxIDYuNjg5OTkgMTIuMDAwMUgxMy41VjkuNzgwMUMxMi45NCA5LjUwMDEgMTIuNDg3NSA5LjA4NzYgMTIuMTQyNSA4LjU0MjZDMTEuNzk3NSA3Ljk5NzYgMTEuNjI1IDcuNDAwMSAxMS42MjUgNi43NTAxQzExLjYyNSA2LjEwMDEgMTEuNzk3NSA1LjUwMjYgMTIuMTQyNSA0Ljk1NzYxQzEyLjQ4NzUgNC40MTI2MSAxMi45NCA0LjAwMDExIDEzLjUgMy43MjAxMVYxLjUwMDExSDYuNjg5OTlDNi42MDk5OSAxLjcyMDExIDYuNDcyNSAxLjkwMDExIDYuMjc3NDkgMi4wNDAxMUM2LjA4MjUgMi4xODAxMSA1Ljg2NSAyLjI1MDExIDUuNjI1IDIuMjUwMTFDNS4zODUgMi4yNTAxMSA1LjE2NzUgMi4xODAxMSA0Ljk3MjUgMi4wNDAxMUM0Ljc3NzUgMS45MDAxMSA0LjY0IDEuNzIwMTEgNC41NiAxLjUwMDExSDEuNVYxMi4wMDAxSDQuNTZaTTUuNjI1IDYuMDAwMUM1LjMxNSA2LjAwMDEgNS4wNSA1Ljg5MDEgNC44MyA1LjY3MDFDNC42MSA1LjQ1MDExIDQuNSA1LjE4NTExIDQuNSA0Ljg3NTExQzQuNSA0LjU2NTExIDQuNjEgNC4zMDAxMSA0LjgzIDQuMDgwMTFDNS4wNSAzLjg2MDExIDUuMzE1IDMuNzUwMTEgNS42MjUgMy43NTAxMUM1LjkzNSAzLjc1MDExIDYuMiAzLjg2MDExIDYuNDE5OTkgNC4wODAxMUM2LjYzOTk5IDQuMzAwMTEgNi43NDk5OSA0LjU2NTExIDYuNzQ5OTkgNC44NzUxMUM2Ljc0OTk5IDUuMTg1MTEgNi42Mzk5OSA1LjQ1MDExIDYuNDE5OTkgNS42NzAxQzYuMiA1Ljg5MDEgNS45MzUgNi4wMDAxIDUuNjI1IDYuMDAwMVpNNS42MjUgOS43NTAxQzUuMzE1IDkuNzUwMSA1LjA1IDkuNjQwMSA0LjgzIDkuNDIwMUM0LjYxIDkuMjAwMSA0LjUgOC45MzUxIDQuNSA4LjYyNTFDNC41IDguMzE1MSA0LjYxIDguMDUwMSA0LjgzIDcuODMwMUM1LjA1IDcuNjEwMSA1LjMxNSA3LjUwMDEgNS42MjUgNy41MDAxQzUuOTM1IDcuNTAwMSA2LjIgNy42MTAxIDYuNDE5OTkgNy44MzAxQzYuNjM5OTkgOC4wNTAxIDYuNzQ5OTkgOC4zMTUxIDYuNzQ5OTkgOC42MjUxQzYuNzQ5OTkgOC45MzUxIDYuNjM5OTkgOS4yMDAxIDYuNDE5OTkgOS40MjAxQzYuMiA5LjY0MDEgNS45MzUgOS43NTAxIDUuNjI1IDkuNzUwMVoiIGZpbGw9IiM1QkFBRTgiLz4NCjwvc3ZnPg0K"); background-repeat: no-repeat; background-size: 100% 100%; }
 .mi-stat-points { width: calc(var(--mine-unit) * 17); height: calc(var(--mine-unit) * 12); background-image: url("data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTciIGhlaWdodD0iMTIiIHZpZXdCb3g9IjAgMCAxNyAxMiIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4NCjxwYXRoIGQ9Ik04LjI0OTg2IDAuMDAwMjA2MzEzQzkuMzY5ODQgMC4wMDAyMDYzMTMgMTAuNDM5OCAwLjEyMDIwNSAxMS40NTk4IDAuMzYwMkMxMi40NDk4IDAuNTgwMTk2IDEzLjMyNDggMC44OTc2OTEgMTQuMDg0OCAxLjMxMjY4QzE0Ljg0NDcgMS43Mjc2OCAxNS40MzQ3IDIuMjA1MTcgMTUuODU0NyAyLjc0NTE2QzE2LjI4NDcgMy4zMDUxNSAxNi40OTk3IDMuODkwMTQgMTYuNDk5NyA0LjUwMDEzVjcuNTAwMDhDMTYuNDk5NyA4LjExMDA3IDE2LjI4NDcgOC42OTUwNiAxNS44NTQ3IDkuMjU1MDVDMTUuNDM0NyA5Ljc5NTA0IDE0Ljg0NDcgMTAuMjcyNSAxNC4wODQ4IDEwLjY4NzVDMTMuMzI0OCAxMS4xMDI1IDEyLjQ0OTggMTEuNDIgMTEuNDU5OCAxMS42NEMxMC40Mzk4IDExLjg4IDkuMzY5ODQgMTIgOC4yNDk4NiAxMkM2Ljc3OTg4IDEyIDUuNDE0OTEgMTEuOCA0LjE1NDkzIDExLjRDMi45MjQ5NSAxMS4wMiAxLjkzOTk3IDEwLjUgMS4xOTk5OCA5Ljg0MDA0QzAuNDM5OTkyIDkuMTYwMDUgMC4wMzk5OTkzIDguNDI1MDYgMCA3LjYzNTA4VjQuNTAwMTNDMCAzLjg5MDE0IDAuMjE0OTk2IDMuMzA1MTUgMC42NDQ5ODkgMi43NDUxNkMxLjA2NDk4IDIuMjA1MTcgMS42NTQ5NyAxLjcyNzY4IDIuNDE0OTYgMS4zMTI2OEMzLjE3NDk1IDAuODk3NjkxIDQuMDQ5OTMgMC41ODAxOTYgNS4wMzk5MSAwLjM2MDJDNi4wNTk5IDAuMTIwMjA1IDcuMTI5ODggMC4wMDAyMDYzMTMgOC4yNDk4NiAwLjAwMDIwNjMxM1pNOC4yNDk4NiA5LjAwMDA1QzYuODc5ODggOS4wMDAwNSA1LjU5NDkgOC44MjUwNSA0LjM5NDkyIDguNDc1MDZDMy4yMjQ5NCA4LjEzNTA3IDIuMjU5OTYgNy42NzUwNyAxLjQ5OTk3IDcuMDk1MDhWNy41MDAwOEMxLjQ5OTk3IDcuODUwMDcgMS42Njk5NyA4LjIwMjU3IDIuMDA5OTcgOC41NTc1NkMyLjM0OTk2IDguOTEyNTUgMi44MjQ5NSA5LjIzNTA1IDMuNDM0OTQgOS41MjUwNEM0LjA2NDkzIDkuODI1MDQgNC43Nzk5MiAxMC4wNiA1LjU3OTkgMTAuMjNDNi40Mjk4OSAxMC40MSA3LjMxOTg3IDEwLjUgOC4yNDk4NiAxMC41QzkuNDQ5ODQgMTAuNSAxMC41Nzk4IDEwLjM1IDExLjYzOTggMTAuMDVDMTIuNjE5OCA5Ljc4MDA0IDEzLjQxNDggOS40MjAwNCAxNC4wMjQ4IDguOTcwMDVDMTQuNjM0NyA4LjUyMDA2IDE0Ljk1OTcgOC4wNjAwNyAxNC45OTk3IDcuNTkwMDhWNy4wODAwOEMxNC4yMzk4IDcuNjcwMDcgMTMuMjc0OCA4LjEzNTA3IDEyLjEwNDggOC40NzUwNkMxMC45MDQ4IDguODI1MDUgOS42MTk4MyA5LjAwMDA1IDguMjQ5ODYgOS4wMDAwNVpNOC4yNDk4NiAxLjUwMDE4QzcuMzE5ODcgMS41MDAxOCA2LjQyOTg5IDEuNTkwMTggNS41Nzk5IDEuNzcwMThDNC43Nzk5MiAxLjk0MDE3IDQuMDY0OTMgMi4xNzUxNyAzLjQzNDk0IDIuNDc1MTZDMi44MjQ5NSAyLjc2NTE2IDIuMzQ5OTYgMy4wODc2NSAyLjAwOTk3IDMuNDQyNjVDMS42Njk5NyAzLjc5NzY0IDEuNDk5OTcgNC4xNTAxNCAxLjQ5OTk3IDQuNTAwMTNDMS40OTk5NyA0Ljg1MDEyIDEuNjY5OTcgNS4yMDI2MiAyLjAwOTk3IDUuNTU3NjFDMi4zNDk5NiA1LjkxMjYgMi44MjQ5NSA2LjIzNTEgMy40MzQ5NCA2LjUyNTA5QzQuMDY0OTMgNi44MjUwOSA0Ljc3OTkyIDcuMDYwMDkgNS41Nzk5IDcuMjMwMDhDNi40Mjk4OSA3LjQxMDA4IDcuMzE5ODcgNy41MDAwOCA4LjI0OTg2IDcuNTAwMDhDOS4xNzk4NCA3LjUwMDA4IDEwLjA2OTggNy40MTAwOCAxMC45MTk4IDcuMjMwMDhDMTEuNzE5OCA3LjA2MDA5IDEyLjQzNDggNi44MjUwOSAxMy4wNjQ4IDYuNTI1MDlDMTMuNjc0OCA2LjIzNTEgMTQuMTQ5OCA1LjkxMjYgMTQuNDg5OCA1LjU1NzYxQzE0LjgyOTcgNS4yMDI2MiAxNC45OTk3IDQuODUwMTIgMTQuOTk5NyA0LjUwMDEzQzE0Ljk5OTcgNC4xNTAxNCAxNC44Mjk3IDMuNzk3NjQgMTQuNDg5OCAzLjQ0MjY1QzE0LjE0OTggMy4wODc2NSAxMy42NzQ4IDIuNzY1MTYgMTMuMDY0OCAyLjQ3NTE2QzEyLjQzNDggMi4xNzUxNyAxMS43MTk4IDEuOTQwMTcgMTAuOTE5OCAxLjc3MDE4QzEwLjA2OTggMS41OTAxOCA5LjE3OTg0IDEuNTAwMTggOC4yNDk4NiAxLjUwMDE4WiIgZmlsbD0iIzVCQUFFOCIvPg0KPC9zdmc+DQo="); background-repeat: no-repeat; background-size: 100% 100%; }
 .mi-stat-collect { width: calc(var(--mine-unit) * 15); height: calc(var(--mine-unit) * 14); background-image: url("data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTUiIGhlaWdodD0iMTQiIHZpZXdCb3g9IjAgMCAxNSAxNCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4NCjxwYXRoIGQ9Ik0xMC44NzUgMC4wMDAyMDcyNzFDMTEuNjI1IDAuMDAwMjA3MjcxIDEyLjMxNSAwLjE5NTIwNyAxMi45NDUgMC41ODUyMDdDMTMuNTc1IDAuOTc1MjA2IDE0LjA3IDEuNTA1MjEgMTQuNDMgMi4xNzUyMUMxNC44MSAyLjg3NTIgMTUgMy42NTAyIDE1IDQuNTAwMkMxNSA1LjY2MDIgMTQuNzMgNi43NzUyIDE0LjE5IDcuODQ1MkMxMy43MyA4Ljc1NTIgMTMuMDc1IDkuNjMwMiAxMi4yMjUgMTAuNDcwMkMxMS41NjUgMTEuMTMwMiAxMC43OCAxMS43NzUyIDkuODY5OTkgMTIuNDA1MkM5LjM1OTk5IDEyLjc1NTIgOC42ODk5OSAxMy4xNzUyIDcuODU5OTkgMTMuNjY1Mkw3LjQ5OTk5IDEzLjg3NTJMNy4xMzk5OSAxMy42NjUyQzYuMzA5OTkgMTMuMTc1MiA1LjY0IDEyLjc1NTIgNS4xMyAxMi40MDUyQzQuMjIgMTEuNzc1MiAzLjQzNSAxMS4xMzAyIDIuNzc1IDEwLjQ3MDJDMS45MjUgOS42MzAyIDEuMjcgOC43NTUyIDAuODA5OTk5IDcuODQ1MkMwLjI3IDYuNzc1MiAwIDUuNjYwMiAwIDQuNTAwMkMwIDMuNjUwMiAwLjE5IDIuODc1MiAwLjU3IDIuMTc1MjFDMC45Mjk5OTkgMS41MDUyMSAxLjQyNSAwLjk3NTIwNiAyLjA1NSAwLjU4NTIwN0MyLjY4NSAwLjE5NTIwNyAzLjM3NSAwLjAwMDIwNzI3MSA0LjEyNSAwLjAwMDIwNzI3MUM0Ljc3NSAwLjAxMDIwNjkgNS40MiAwLjE3MDIwNyA2LjA2IDAuNDgwMjA3QzYuNiAwLjc0MDIwNiA3LjA3OTk5IDEuMDgwMjEgNy40OTk5OSAxLjUwMDIxQzcuOTE5OTkgMS4wODAyMSA4LjM5OTk5IDAuNzQwMjA2IDguOTM5OTkgMC40ODAyMDdDOS41Nzk5OSAwLjE2MDIwNyAxMC4yMjUgMC4wMDAyMDcyNzEgMTAuODc1IDAuMDAwMjA3MjcxWk04LjIwNDk5IDExLjcxNTJDOC44ODQ5OSAxMS4yODUyIDkuNDg5OTkgMTAuODYwMiAxMC4wMiAxMC40NDAyQzExLjE2IDkuNTMwMiAxMi4wMiA4LjU5NTIgMTIuNiA3LjYzNTJDMTMuMiA2LjYzNTIgMTMuNSA1LjU5NTIgMTMuNSA0LjUxNTJDMTMuNSAzLjkzNTIgMTMuMzg1IDMuNDE1MiAxMy4xNTUgMi45NTUyQzEyLjkyNSAyLjQ5NTIxIDEyLjYxIDIuMTQwMjEgMTIuMjEgMS44OTAyMUMxMS44MSAxLjY0MDIxIDExLjM2NSAxLjUxMDIxIDEwLjg3NSAxLjUwMDIxQzEwLjQ3NSAxLjUwMDIxIDEwLjA3IDEuNTk3NzEgOS42NTk5OSAxLjc5MjcxQzkuMjQ5OTkgMS45ODc3MSA4Ljg4NDk5IDIuMjQ1MjEgOC41NjQ5OSAyLjU2NTIxTDcuNDk5OTkgMy42MzAyTDYuNDM0OTkgMi41NjUyMUM2LjExNSAyLjI0NTIxIDUuNzUgMS45ODc3MSA1LjM0IDEuNzkyNzFDNC45MyAxLjU5NzcxIDQuNTI1IDEuNTAwMjEgNC4xMjUgMS41MDAyMUMzLjY0NSAxLjUwMDIxIDMuMjA1IDEuNjMwMjEgMi44MDUgMS44OTAyMUMyLjQwNSAyLjE1MDIxIDIuMDg3NSAyLjUwNzcxIDEuODUyNSAyLjk2MjdDMS42MTc1IDMuNDE3NyAxLjUgMy45MzUyIDEuNSA0LjUxNTJDMS41IDUuNTk1MiAxLjggNi42MzUyIDIuNCA3LjYzNTJDMi45OCA4LjU5NTIgMy44NCA5LjUzMDIgNC45OCAxMC40NDAyQzUuNTEgMTAuODYwMiA2LjExNSAxMS4yODUyIDYuNzk0OTkgMTEuNzE1MkM3LjAwNDk5IDExLjg0NTIgNy4yMzk5OSAxMS45ODUyIDcuNDk5OTkgMTIuMTM1MkM3Ljc1OTk5IDExLjk4NTIgNy45OTQ5OSAxMS44NDUyIDguMjA0OTkgMTEuNzE1MloiIGZpbGw9IiM1QkFBRTgiLz4NCjwvc3ZnPg0K"); background-repeat: no-repeat; background-size: 100% 100%; }
