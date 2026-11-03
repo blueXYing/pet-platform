@@ -1,7 +1,7 @@
 import { Button, Image, Input, Text, Textarea, View } from '@tarojs/components'
 import type { DraftInput, ApplicationResult } from '../../../shared/merchant-repositories'
 import { merchantTypeOptions, editableApplication, type City, type FieldErrors, type MaterialKind } from '../../merchant-application/model'
-import back from './assets/back.png'
+import { SubpageHeader, SubpageHeaderSpacer } from '../../components/navigation/subpage-header'
 import select from './assets/select.png'
 import location from './assets/location.png'
 import photo from './assets/photo.png'
@@ -32,7 +32,8 @@ export function MerchantApplicationView(p: ApplicationViewProps) {
     </View>
   }
   return <View className='application-design' data-state={p.loading ? 'loading' : p.result?.status || 'empty'}>
-    <View className='application-header'><Button id='application-back' ariaLabel='返回' disabled={p.busy} onClick={p.onBack}><Image src={back} mode='scaleToFill' /></Button><Text>成为商家</Text></View>
+    <SubpageHeader title='成为商家' backId='application-back' height={48} backDisabled={p.busy} onBack={p.onBack} />
+    <SubpageHeaderSpacer height={48} statusBar={false} />
     <View className='application-content'>
       <Text className='application-intro'>加入宠灵工，让你的店铺被更多宠友看见，获取海量服务订单。填写以下信息即可提交入驻申请。</Text>
       {p.loading && <View className='application-state' role='status'>正在读取申请…</View>}

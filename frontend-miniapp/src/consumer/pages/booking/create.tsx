@@ -4,6 +4,7 @@ import { useState, type CSSProperties } from 'react'
 import { useWorkspace } from '../../../shared/workspace-react'
 import { switchConsumerTab } from '../../components/navigation/switch'
 import { ConsumerPageLayout } from '../../components/page-layout'
+import { SubpageHeader, SubpageHeaderSpacer } from '../../components/navigation/subpage-header'
 import { BookingSheet } from '../../components/booking-sheet/booking-sheet'
 import { isBookingScenario } from '../../booking/model'
 import './booking.css'
@@ -38,11 +39,8 @@ export default function BookingCreatePage() {
     <ConsumerPageLayout page='bookingCreate' unit={unit} className='bkg-page bks-lock' style={style}
       navigation={preview ? { idPrefix: 'bkg', onSelect: key => { void switchConsumerTab(key) } } : undefined}>
       <View className='bkg-design'>
-        <View className='bkg-status-area' />
-        <View className='bkg-nav'>
-          <Button id='bkg-back' ariaLabel='返回' className='bkg-nav-back' onClick={() => void goBack()}><Text className='bkg-nav-back-icon'>‹</Text></Button>
-          <Text className='bkg-nav-title'>立即预约</Text>
-        </View>
+        <SubpageHeader title='立即预约' backId='bkg-back' height={44} onBack={() => void goBack()} />
+        <SubpageHeaderSpacer height={44} />
       </View>
     </ConsumerPageLayout>
     <BookingSheet key={revision} idPrefix='bkg' preview={preview} scenario={scenario}

@@ -1,16 +1,16 @@
-import { Button, Image, Text, View } from '@tarojs/components'
+import { Button, Text, View } from '@tarojs/components'
 import Taro, { useRouter } from '@tarojs/taro'
 import { useCallback, useEffect, useRef, useState, type CSSProperties } from 'react'
 import { useWorkspace } from '../../../shared/workspace-react'
 import { consumerApi } from '../../../shared/consumer-runtime'
 import { switchConsumerTab } from '../../components/navigation/switch'
 import { ConsumerPageLayout } from '../../components/page-layout'
+import { SubpageHeader, SubpageHeaderSpacer } from '../../components/navigation/subpage-header'
 import {
   deltaLabel, formatLedgerTime, isCouponPointsScenario, pointsBizTypeLabels,
   PreviewCouponPointsRepository, type PointsLedgerView,
 } from '../../coupon-points/model'
 import { RealCouponPointsRepository, isCouponPointsUnauthorized } from '../../coupon-points/repository'
-import back from '../../assets/profile/back.png'
 import './coupon-points.css'
 
 // C-006 切片：我的积分（只读）。设计源 129:8174 的"积分明细"区块（余额样例 1280、
@@ -106,13 +106,8 @@ export default function PointsPage() {
     navigation={preview ? { idPrefix: 'cpt', disabled: !ready, onSelect: key => void switchConsumerTab(key) } : undefined}
     style={style}>
     <View className='cpn-design'>
-      <View className='cpn-status-area' />
-      <View className='cpn-nav'>
-        <Button id='cpt-back' ariaLabel='返回' className='cpn-nav-back' onClick={() => void goBack()}>
-          <Image src={back} className='cpn-nav-back-icon' />
-        </Button>
-        <Text className='cpn-nav-title'>我的积分</Text>
-      </View>
+      <SubpageHeader title='我的积分' backId='cpt-back' height={44} onBack={() => void goBack()} />
+      <SubpageHeaderSpacer height={44} />
       <View className='cpn-body'>
       {phase === 'loading' && <View className='cpn-state' role='status'><Text>正在读取积分…</Text></View>}
       {phase === 'expired' && <View className='cpn-state' role='status'>

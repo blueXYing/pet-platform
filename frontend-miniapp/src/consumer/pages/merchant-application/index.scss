@@ -3,9 +3,6 @@
 .application-design button { margin: 0; padding: 0; border: 0; line-height: normal; font-weight: normal; }
 .application-design button::after { border: 0; }
 .application-design button[disabled] { opacity: .55; }
-.application-header { height: calc(var(--application-unit) * 48); background: #fff6e5; border-bottom: calc(var(--application-unit) * 1) solid #c0ecff; display: flex; align-items: center; gap: calc(var(--application-unit) * 8); font-size: calc(var(--application-unit) * 16); font-weight: 700; }
-.application-header button { margin-left: calc(var(--application-unit) * 19); width: calc(var(--application-unit) * 32); height: calc(var(--application-unit) * 32); background: transparent; display: flex; align-items: center; justify-content: center; }
-.application-header image { width: calc(var(--application-unit) * 6.5); height: calc(var(--application-unit) * 10.6); transform: scaleY(-1); }
 .application-content { padding: calc(var(--application-unit) * 12) calc(var(--application-unit) * 16.36) calc(var(--application-unit) * 18); }
 .application-intro { display: block; max-width: calc(var(--application-unit) * 343); font-size: calc(var(--application-unit) * 13.192); line-height: calc(var(--application-unit) * 21.438); color: #577683; margin-bottom: calc(var(--application-unit) * 17.59); }
 .application-form { display: flex; flex-direction: column; gap: calc(var(--application-unit) * 13.192); }

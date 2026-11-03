@@ -2,6 +2,7 @@ import { Button, Switch, Text, View } from '@tarojs/components'
 import Taro, { useDidShow, useRouter } from '@tarojs/taro'
 import { useEffect, useState, useSyncExternalStore, type CSSProperties } from 'react'
 import { ConsumerPageLayout } from '../../components/page-layout'
+import { SubpageHeader, SubpageHeaderSpacer } from '../../components/navigation/subpage-header'
 import {
   NotificationPreferencesController, PreviewPreferenceDeps, isPreferenceScenario,
   mandatoryNotice, preferenceKeys, preferenceMeta,
@@ -33,10 +34,8 @@ export default function NotificationPreferencesPage() {
   const style = { '--ntf-pref-top': `${windowInfo.statusBarHeight || 0}px` } as CSSProperties
   return <ConsumerPageLayout page='profileEdit' unit={1} className='ntf-pref-page ntf-pref-subpage' style={style}>
     <View className='ntf-pref-design' data-state={state.status}>
-      <View className='ntf-pref-header'>
-        <Button id='ntf-pref-back' ariaLabel='返回' onClick={() => void back()}>返回</Button>
-        <Text>通知偏好</Text>
-      </View>
+      <SubpageHeader title='通知偏好' backId='ntf-pref-back' height={46} onBack={() => void back()} />
+      <SubpageHeaderSpacer height={46} />
       <View className='ntf-pref-body'>
         {state.status === 'loading' && <View className='ntf-pref-line' role='status'>正在读取通知偏好…</View>}
         {(state.status === 'error' || state.status === 'unauthorized') && <View className='ntf-pref-card'>

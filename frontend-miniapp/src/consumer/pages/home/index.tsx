@@ -10,6 +10,8 @@ import type { StoreCity } from '../../store/model'
 import { consumerApi } from '../../../shared/consumer-runtime'
 import { decodeCityList } from '../../store/model'
 import { useWorkspace } from '../../../shared/workspace-react'
+import { HomeActivitySlot } from '../../marketing/components'
+import { HomeContentSections } from '../../marketing/home-sections'
 import { realPetRepository } from '../../api/page-repository'
 import { breedAgeLine, sexLabel, type PetView } from '../../pet/model'
 import searchIcon from '../../assets/home/home-search.png'
@@ -32,8 +34,9 @@ import './home.css'
 // 设计源：登记表 §3「首页」——61:599（首页1，2026-10-10 新版）。新版头部（奶油纸纹带 + 品牌
 // logo + 搜索/铃铛）与平台保障体系（白卡 + #c0ecff 图标芯片）逐块落地；宠物档案分区以入口卡
 // 呈现（首页无读侧拉取——功能/契约零改动，不虚构宠物/疫苗数据，占位头像用平台既有 avatar）。
-// 原稿营销位（热门活动）、热门服务与宠友圈热门板块无 V1 后端与社区域（COM-001 未启动），
-// 维持 §4.4 裁决不实现；原稿「宠物百科」链接属品种百科（V1 范围外）不实现。
+// 营销位（活动钜惠）已由契约 71 的 HOME_ACTIVITY 投放位驱动（后台新增活动不改小程序代码）；
+// 热门服务/宠友圈热门/植物&异宠由 CCR-MKT-003 运营内容位 + CCR-COM-001 真实社区驱动；
+// 原稿「宠物百科」链接已接既有 baike 页面。
 // 2026-10-19 城市选择裁决回补头部城市芯片（61:599 头部本有：定位 pin #5baae8 + 城市名 #383838
 // + 下拉箭头 #3c3c3c；§4.11 偏差2 的「定位城市不实现」随裁决修订为「手动选择城市」）：目录来自
 // §3.3.4 /c/cities（匿名），选择持久化本地存储、门店目录页展示时读取并按城市刷新；V1 无定位能力
@@ -148,8 +151,9 @@ export default function HomePage() {
   const petListHeight = visiblePetRows > 0 ? visiblePetRows * 85 - 16 : 0
   return <View className='home-page' style={style}>
     {/* 分层背景（设计 z 序）：网格纸纹（61:31，状态栏起 787 高）→ 奶油头带（0..86）→ 手绘涂鸦带（62:49，86..331）→ #f0fbff 主体 */}
-    {/* 网格纸纹只铺到宠物分区底部（高度按行数计算），不延伸到找门店等后续模块；裁剪不缩放 */}
-    <View className='home-bg-grid-clip' style={{ height: `${(420.41 + 85 * Math.max(1, visiblePetRows)) * unit}px` }}>
+    {/* 网格纸纹铺到宠物分区底部，并继续覆盖活动钜惠的 22px 上间距（+2px 防亚像素缝），
+        让纸卡与活动面板之间露出竖条纹纸底而不是页面蓝底；不延伸到后续模块。 */}
+    <View className='home-bg-grid-clip' style={{ height: `${(444.41 + 85 * Math.max(1, visiblePetRows)) * unit}px` }}>
       <Image className='home-bg-grid' src={textureGrid} mode='scaleToFill' />
     </View>
     <View className='home-bg-cream' />
@@ -246,26 +250,10 @@ export default function HomePage() {
           )}
         </View>
       </View>
-      {/* 功能入口（§4.4 功能版子集；原稿该区域为营销位/热门服务——无 V1 后端维持裁剪，入口卡沿白卡家族呈现） */}
-      <Button id='home-stores' className='home-hero' hoverClass='none' onClick={openStores}>
-        <Text className='home-hero-title'>找门店 · 找服务</Text>
-        <Text className='home-hero-sub'>浏览门店目录与服务，单次服务须预约（分钟级排期）</Text>
-        <Text className='home-hero-go'>进入目录 ›</Text>
-      </Button>
-      <View className='home-grid'>
-        <Button id='home-orders' className='home-cell' hoverClass='none' onClick={() => open('/consumer/pages/orders/list')}>
-          <Text className='home-cell-title'>我的订单</Text>
-          <Text className='home-cell-sub'>预约/服务/售后</Text>
-        </Button>
-        <Button id='home-coupons' className='home-cell' hoverClass='none' onClick={() => open('/consumer/pages/coupon-points/coupons')}>
-          <Text className='home-cell-title'>优惠券</Text>
-          <Text className='home-cell-sub'>可用券与明细</Text>
-        </Button>
-        <Button id='home-merchant' className='home-cell' hoverClass='none' onClick={() => open('/consumer/pages/merchant-application/index')}>
-          <Text className='home-cell-title'>成为商家</Text>
-          <Text className='home-cell-sub'>入驻开店</Text>
-        </Button>
-      </View>
+      {/* 活动钜惠：后台 HOME_ACTIVITY 资源位驱动；空/失败整块隐藏（契约 71）。 */}
+      <HomeActivitySlot cityCode={selectedCity} />
+      {/* 运营内容位：热门服务 / 宠友圈热门 / 植物&异宠（CCR-MKT-003；空/失败整块隐藏）。 */}
+      <HomeContentSections cityCode={selectedCity} />
       <View className='home-section'>
         <Text className='home-section-title'>平台保障体系</Text>
         <View className='home-guarantee'>
@@ -278,7 +266,6 @@ export default function HomePage() {
           </View>)}
         </View>
       </View>
-      <View className='home-tail'><Text>页面数据：入口聚合页（门店目录匿名可浏览；其余页面自带真实/预览通道）</Text></View>
       <RootTabBarSpacer />
     </ScrollView>
   </View>

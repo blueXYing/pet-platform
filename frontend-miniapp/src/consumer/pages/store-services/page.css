@@ -20,11 +20,6 @@ button { padding: 0; margin: 0; border: 0; border-radius: 0; background: transpa
 .svc-bg-cream { left: 0; top: 0; width: calc(var(--svc-unit) * 402); height: calc(var(--svc-unit) * 74); background: #fff6e5; }
 .svc-bg-flower { left: 0; top: calc(var(--svc-unit) * 13); width: calc(var(--svc-unit) * 402); height: calc(var(--svc-unit) * 787); }
 .svc-bg-base { left: 0; top: calc(var(--svc-unit) * 75); width: calc(var(--svc-unit) * 402); height: calc(var(--svc-unit) * 1231); background: #f8f5ee; }
-.svc-nav-back { left: calc(var(--svc-unit) * 10); top: calc(var(--svc-unit) * 18); width: calc(var(--svc-unit) * 25); height: calc(var(--svc-unit) * 42); display: flex; align-items: center; justify-content: center; z-index: 4; }
-.svc-nav-back image { width: calc(var(--svc-unit) * 9); height: calc(var(--svc-unit) * 15); }
-.svc-nav-title { left: calc(var(--svc-unit) * 50); top: calc(var(--svc-unit) * 22); font-size: calc(var(--svc-unit) * 16); line-height: calc(var(--svc-unit) * 24); font-weight: 700; color: #3c3c3c; z-index: 2; }
-/* Contract 58 favorite entry (128:3200 BUTTON-25 30x30 形态，官方色 chip 变体，无原切图). */
-.svc-nav-favorite { right: calc(var(--svc-unit) * 15); top: calc(var(--svc-unit) * 28); z-index: 4; }
 .svc-page .svc-fav-toggle { display: flex; align-items: center; justify-content: center; width: calc(var(--svc-unit) * 62); height: calc(var(--svc-unit) * 28); border-radius: calc(var(--svc-unit) * 14); background: #f0fbff; border: calc(var(--svc-unit) * 1) solid #5baae8; }
 .svc-fav-toggle text { font-size: calc(var(--svc-unit) * 11); line-height: calc(var(--svc-unit) * 16); color: #2f7fb8; }
 .svc-page .svc-fav-toggle.is-on { background: #5baae8; border-color: #5baae8; }
@@ -64,16 +59,16 @@ button { padding: 0; margin: 0; border: 0; border-radius: 0; background: transpa
 .svc-promo-title { position: absolute; left: calc(var(--svc-unit) * 51.6); top: calc(var(--svc-unit) * 16); font-size: calc(var(--svc-unit) * 14); line-height: calc(var(--svc-unit) * 20); font-weight: 500; color: #577683; }
 .svc-promo-sub { position: absolute; left: calc(var(--svc-unit) * 16); top: calc(var(--svc-unit) * 42); font-size: calc(var(--svc-unit) * 11); line-height: calc(var(--svc-unit) * 17); color: #577683; }
 
-/* 团购套餐（服务项目列表）— contract-bound region. Card height grows with row count. */
+/* 服务项目列表 — contract-bound region. Card height grows with row count. */
 .svc-list-card { left: calc(var(--svc-unit) * 29); top: calc(var(--svc-unit) * 711.5); width: calc(var(--svc-unit) * 343); background: #f8f5ee; border: calc(var(--svc-unit) * 1) solid #c0ecff; border-radius: calc(var(--svc-unit) * 12); }
 .svc-list-title { position: absolute; left: calc(var(--svc-unit) * 18); top: calc(var(--svc-unit) * 18); font-size: calc(var(--svc-unit) * 14); line-height: calc(var(--svc-unit) * 20); font-weight: 700; color: #1d0d07; }
 .svc-list-rows { position: absolute; left: calc(var(--svc-unit) * 18); top: calc(var(--svc-unit) * 50); width: calc(var(--svc-unit) * 309); }
-.svc-service-row { position: relative; display: block; width: calc(var(--svc-unit) * 309); min-height: calc(var(--svc-unit) * 82); background: #f0fbff; border-radius: calc(var(--svc-unit) * 8); padding: calc(var(--svc-unit) * 12); margin-bottom: calc(var(--svc-unit) * 11.5); text-align: left; }
+.svc-service-row { position: relative; display: block; width: calc(var(--svc-unit) * 309); min-height: calc(var(--svc-unit) * 81.5); background: #f0fbff; border-radius: calc(var(--svc-unit) * 8); padding: calc(var(--svc-unit) * 12); margin-bottom: calc(var(--svc-unit) * 12); text-align: left; }
 .svc-service-row:last-child { margin-bottom: calc(var(--svc-unit) * 12); }
 .svc-service-main { position: absolute; left: calc(var(--svc-unit) * 12); top: calc(var(--svc-unit) * 12); width: calc(var(--svc-unit) * 225); }
-.svc-service-name { font-size: calc(var(--svc-unit) * 14); line-height: calc(var(--svc-unit) * 20); color: #1d0d07; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.svc-service-desc { margin-top: calc(var(--svc-unit) * 2); font-size: calc(var(--svc-unit) * 11); line-height: calc(var(--svc-unit) * 17); color: #577683; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; word-break: break-all; }
-.svc-service-sold { margin-top: calc(var(--svc-unit) * 4); font-size: calc(var(--svc-unit) * 10); line-height: calc(var(--svc-unit) * 15); color: #5baae8; }
+.svc-service-name { display: block; width: 100%; font-size: calc(var(--svc-unit) * 14); line-height: calc(var(--svc-unit) * 20); color: #1d0d07; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.svc-service-desc { display: block; width: 100%; margin-top: calc(var(--svc-unit) * 2); font-size: calc(var(--svc-unit) * 11); line-height: calc(var(--svc-unit) * 16.5); color: #577683; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.svc-service-sold { display: block; width: 100%; margin-top: calc(var(--svc-unit) * 4); font-size: calc(var(--svc-unit) * 10); line-height: calc(var(--svc-unit) * 15); color: #5baae8; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .svc-service-side { position: absolute; left: calc(var(--svc-unit) * 249); top: calc(var(--svc-unit) * 12); width: calc(var(--svc-unit) * 48); display: flex; flex-direction: column; align-items: flex-end; gap: calc(var(--svc-unit) * 8); }
 .svc-service-price { font-size: calc(var(--svc-unit) * 16); line-height: calc(var(--svc-unit) * 24); font-weight: 700; color: #5baae8; }
 .svc-service-book { width: calc(var(--svc-unit) * 48); height: calc(var(--svc-unit) * 24); padding: calc(var(--svc-unit) * 4) calc(var(--svc-unit) * 12); border-radius: calc(var(--svc-unit) * 9999); background: #5baae8; display: flex; align-items: center; justify-content: center; }

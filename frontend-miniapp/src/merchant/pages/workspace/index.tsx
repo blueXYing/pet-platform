@@ -140,6 +140,11 @@ export default function MerchantWorkbenchPage() {
     controller.handoffToChild()
     Taro.navigateTo({ url: '/merchant/pages/stats/index' }).catch(() => controller.handoffCancelled())
   }
+  // Contract-71 marketing center: platform enrollment + merchant-initiated campaigns.
+  function openMarketing() {
+    controller.handoffToChild()
+    Taro.navigateTo({ url: '/merchant/pages/marketing/index' }).catch(() => controller.handoffCancelled())
+  }
   const view = state.view
   const heroTitle = state.status === 'idle' ? '正在进入工作台…'
     : state.status === 'checking' ? '正在校验工作台准入…'
@@ -255,6 +260,9 @@ export default function MerchantWorkbenchPage() {
           {view.membershipKind === 'OWNER' && state.status === 'allowed' && <>
             <Button id='workbench-shop-info' className='mwb-cell' onClick={openShopInfo}>
               <View className='mwb-cell-icon mwb-icon-services' /><Text className='mwb-cell-label'>店铺信息</Text>
+            </Button>
+            <Button id='workbench-marketing' className='mwb-cell' onClick={openMarketing}>
+              <View className='mwb-cell-icon mwb-icon-staff' /><Text className='mwb-cell-label'>营销活动</Text>
             </Button>
           </>}
         </View>

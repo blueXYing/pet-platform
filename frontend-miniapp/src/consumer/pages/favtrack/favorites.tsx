@@ -1,4 +1,4 @@
-import { Button, Image, ScrollView, Text, View } from '@tarojs/components'
+import { Button, ScrollView, Text, View } from '@tarojs/components'
 import Taro, { useRouter, useDidShow } from '@tarojs/taro'
 import { useCallback, useEffect, useRef, useState, type CSSProperties } from 'react'
 import { useWorkspace } from '../../../shared/workspace-react'
@@ -6,11 +6,11 @@ import { consumerApi } from '../../../shared/consumer-runtime'
 import { integrationMessage } from '../../../shared/consumer-api'
 import { switchConsumerTab } from '../../components/navigation/switch'
 import { ConsumerPageLayout } from '../../components/page-layout'
+import { SubpageHeader, SubpageHeaderSpacer } from '../../components/navigation/subpage-header'
 import { BookingSheet } from '../../components/booking-sheet/booking-sheet'
 import { RealFavoriteFootprintRepository, isFavoriteFootprintUnauthorized } from '../../favtrack/repository'
 import { rowSubtitle, rowTitle, targetTypeLabels, type FavoriteRow, type TrackTargetType } from '../../favtrack/model'
 import { detailActionGate } from '../store-services/browse-gate'
-import back from '../../assets/profile/back.png'
 import './favtrack.css'
 
 // 收藏列表（Contract 58 / 32号裁决第二节批次）。设计源 128:3200（我的-我的收藏）：顶部
@@ -152,13 +152,8 @@ export default function FavoritesPage() {
   return <View>
     <ConsumerPageLayout page='favoriteList' unit={unit} className={`fvt-page${booking ? ' bks-lock' : ''}`}
       navigation={preview ? { idPrefix: 'fvt', disabled: !ready, onSelect: key => void switchConsumerTab(key) } : undefined} style={style}>
-      <View className='fvt-status-area' />
-      <View className='fvt-nav'>
-        <Button id='fav-back' ariaLabel='返回' className='fvt-nav-back' onClick={() => void goBack()}>
-          <Image src={back} className='fvt-nav-back-icon' />
-        </Button>
-        <Text className='fvt-nav-title'>我的收藏</Text>
-      </View>
+      <SubpageHeader title='我的收藏' backId='fav-back' height={47} onBack={() => void goBack()} />
+      <SubpageHeaderSpacer height={47} />
       <View className='fvt-body'>
         <View className='fvt-tabs'>
           {filterTabs.map(tab => <Button key={tab.key} id={`fav-tab-${tab.key.toLowerCase()}`}

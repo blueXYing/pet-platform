@@ -1,0 +1,29 @@
+.mmk-page { min-height: 100vh; background: #f0fbff; padding-bottom: 48rpx; }
+.mmk-status { height: env(safe-area-inset-top); }
+.mmk-header { display: flex; align-items: center; height: 96rpx; padding: 0 28rpx; background: #fff6e5; }
+.mmk-back { width: 64rpx; height: 64rpx; line-height: 64rpx; text-align: center; font-size: 40rpx; color: #1d0d07; background: transparent; border: none; padding: 0; }
+.mmk-title { flex: 1; text-align: center; font-size: 32rpx; font-weight: 700; color: #1d0d07; margin-right: 64rpx; }
+.mmk-tabs { display: flex; padding: 20rpx 24rpx; }
+.mmk-tab { flex: 1; text-align: center; padding: 14rpx 0; border-radius: 999rpx; background: #daf4ff; margin-right: 12rpx; }
+.mmk-tab:last-child { margin-right: 0; }
+.mmk-tab text { font-size: 24rpx; color: #3c3c3c; }
+.mmk-tab-active { background: #5baae8; }
+.mmk-tab-active text { color: #ffffff; }
+.mmk-list { padding: 0 24rpx; }
+.mmk-card { padding: 24rpx; margin-bottom: 18rpx; border-radius: 20rpx; background: #ffffff; border: 2rpx solid #c0ecff; }
+.mmk-card-title { display: block; font-size: 30rpx; font-weight: 700; color: #1d0d07; }
+.mmk-card-sub { display: block; margin-top: 6rpx; font-size: 24rpx; color: #577683; }
+.mmk-meta { display: block; margin-top: 8rpx; font-size: 20rpx; color: #b89682; }
+.mmk-status-text { display: block; margin-top: 8rpx; font-size: 22rpx; color: #5baae8; }
+.mmk-reject { display: block; margin-top: 8rpx; font-size: 22rpx; color: #c0392b; }
+.mmk-notice { margin: 12rpx 24rpx; padding: 14rpx 20rpx; border-radius: 12rpx; background: #fff6e5; font-size: 22rpx; color: #7b5b4a; }
+.mmk-empty { padding: 80rpx 24rpx; text-align: center; font-size: 24rpx; color: #7b5b4a; }
+.mmk-primary { margin-top: 14rpx; height: 68rpx; line-height: 68rpx; border-radius: 999rpx; background: #5baae8; color: #ffffff; font-size: 24rpx; border: none; }
+.mmk-ghost { margin-top: 14rpx; height: 68rpx; line-height: 68rpx; border-radius: 999rpx; background: #ffffff; color: #5baae8; border: 2rpx solid #c0ecff; font-size: 24rpx; }
+.mmk-form { margin-top: 14rpx; }
+.mmk-input, .mmk-textarea { width: 100%; box-sizing: border-box; margin-top: 12rpx; padding: 14rpx 18rpx; border-radius: 12rpx; background: #f9fffe; border: 2rpx solid #c0ecff; font-size: 24rpx; }
+.mmk-textarea { height: 120rpx; }
+.mmk-row { display: flex; gap: 14rpx; }
+.mmk-row .mmk-primary, .mmk-row .mmk-ghost { flex: 1; }
+.mmk-date-row { display: flex; gap: 14rpx; margin-top: 12rpx; }
+.mmk-date { flex: 1; padding: 14rpx 18rpx; border-radius: 12rpx; background: #f9fffe; border: 2rpx solid #c0ecff; font-size: 24rpx; color: #577683; text-align: center; }

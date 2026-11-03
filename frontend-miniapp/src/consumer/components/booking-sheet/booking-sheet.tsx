@@ -425,13 +425,15 @@ export function BookingSheet({ serviceId, storeId: storeIdParam, preview, scenar
               </View>}
             </View>
             {!preview && couponChoices.length > 0 && <View className='bks-section'>
-              <Text className='bks-label'>优惠券</Text>
-              <View className='bks-coupons'>
+              <View className='bks-coupon-head'>
+                <Text className='bks-label'>优惠券</Text>
                 <Button id={`${idPrefix}-coupon-none`} ariaLabel='不使用优惠'
-                  className={`bks-coupon-chip${couponId === null ? ' is-selected' : ''}`}
+                  className={`bks-coupon-none${couponId === null ? ' is-selected' : ''}`}
                   disabled={busy} hoverClass='none' onClick={() => setCouponId(null)}>
-                  <Text className='bks-coupon-name'>不使用优惠</Text>
+                  <Text className='bks-coupon-none-text'>不使用优惠</Text>
                 </Button>
+              </View>
+              <View className='bks-coupons'>
                 {couponChoices.map(coupon => <Button key={coupon.couponId}
                   id={`${idPrefix}-coupon-${coupon.couponId}`}
                   ariaLabel={`选择优惠券 ${coupon.name} 抵扣${coupon.amountOff}元 ${thresholdLabel(coupon)}`}

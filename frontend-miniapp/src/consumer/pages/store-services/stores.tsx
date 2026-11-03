@@ -33,6 +33,7 @@ export default function StoreDirectoryPage() {
   const route = useRouter()
   const preview = route.params.preview === '1'
   const scenario = preview && isStoreScenario(route.params.scenario) ? route.params.scenario : 'normal'
+  const initialKeyword = route.params.keyword ?? ''
   const { scope, revision } = useWorkspace(preview ? 'preview' : 'real')
   const [repository] = useState<StoreDirectoryDeps>(() => preview
     ? new PreviewStoreRepository(undefined, scenario)
@@ -47,8 +48,8 @@ export default function StoreDirectoryPage() {
   const [loadingMore, setLoadingMore] = useState(false)
   const [notice, setNotice] = useState('')
   // 搜索态：draft 为输入框内容，keyword 为已提交关键词（空串=非搜索态，恢复普通目录）。
-  const [draft, setDraft] = useState('')
-  const [keyword, setKeyword] = useState('')
+  const [draft, setDraft] = useState(initialKeyword)
+  const [keyword, setKeyword] = useState(initialKeyword)
   const [serviceHits, setServiceHits] = useState<ServiceItemView[] | null>(null)
   const [serviceTotal, setServiceTotal] = useState(0)
   const [cityPickerOpen, setCityPickerOpen] = useState(false)
@@ -143,8 +144,12 @@ export default function StoreDirectoryPage() {
     Taro.navigateTo({ url: `/consumer/pages/store-services/service-detail?preview=${preview ? '1' : '0'}&serviceId=${encodeURIComponent(service.serviceId)}` })
       .catch(() => setNotice('页面跳转失败，请重试'))
   }
-  function categoryNotWired(name: string) {
-    setNotice(preview ? `“${name}”分类筛选未接入本次预览（依赖服务分类筛选契约）` : `“${name}”分类筛选将在后续版本提供`)
+  function pickCategory(name: string) {
+    // 服务搜索按 serviceName/categoryName 匹配，分类 chip 直接作为关键词提交，
+    // 与首页运营内容位的 SERVICE_CATEGORY 落地目标共用同一条读路径。
+    setDraft(name)
+    setKeyword(name)
+    void load(city, name)
   }
 
   const ready = phase === 'ready'
@@ -183,7 +188,7 @@ export default function StoreDirectoryPage() {
         {searching && <Button id='sdir-search-clear' className='sdir-search-clear' onClick={() => clearSearch()}>清空条件</Button>}
       </View>
       {!searching && <View className='sdir-categories'>
-        {directoryCategories.map(name => <Button key={name} className='sdir-category' onClick={() => categoryNotWired(name)}><Text>{name}</Text></Button>)}
+        {directoryCategories.map(name => <Button key={name} className='sdir-category' onClick={() => pickCategory(name)}><Text>{name}</Text></Button>)}
       </View>}
       {searching && serviceHits !== null && <View className='sdir-services'>
         <Text className='sdir-heading'>服务{serviceTotal > 0 ? `（${serviceTotal}）` : ''}</Text>

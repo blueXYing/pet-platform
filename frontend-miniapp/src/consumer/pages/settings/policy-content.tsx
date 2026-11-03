@@ -1,8 +1,8 @@
-import { Button, Image, ScrollView, Text, View } from '@tarojs/components'
+import { Button, ScrollView, Text, View } from '@tarojs/components'
 import Taro from '@tarojs/taro'
 import { useState, type CSSProperties, type ReactNode } from 'react'
 import { privacyPolicyDoc, userAgreementDoc, type PolicyDoc } from '../../settings/model'
-import backIcon from '../../assets/profile/back.png'
+import { SubpageHeader, SubpageHeaderSpacer } from '../../components/navigation/subpage-header'
 import './policy.css'
 
 // 静态协议内容页骨架（隐私政策/用户协议共用；微信审核硬门槛——隐私政策入口必须可到达可读）。
@@ -21,13 +21,8 @@ export function PolicyContentPage({ doc }: { doc: PolicyDoc }): ReactNode {
     else await Taro.switchTab({ url: MINE_TAB_URL })
   }
   return <View className='cpn-page st-page st-subpage' style={style}>
-    <View className='st-status-area' />
-    <View className='st-header'>
-      <Button id='plc-back' className='st-back' hoverClass='none' ariaLabel='返回' onClick={() => void back()}>
-        <Image src={backIcon} className='st-back-icon' />
-      </Button>
-      <Text className='st-title'>{doc.title}</Text>
-    </View>
+    <SubpageHeader title={doc.title} backId='plc-back' height={46} onBack={() => void back()} />
+    <SubpageHeaderSpacer height={46} />
     <ScrollView className='plc-body' scrollY enhanced showScrollbar={false}>
       <View className='plc-meta'>
         <Text className='plc-version'>{doc.title} · {doc.version}</Text>

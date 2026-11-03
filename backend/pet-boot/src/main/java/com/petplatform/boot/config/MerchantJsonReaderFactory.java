@@ -18,4 +18,9 @@ public final class MerchantJsonReaderFactory {
         .disable(MapperFeature.ALLOW_COERCION_OF_SCALARS)
         .build().reader();
   }
+
+  /** Default tree reader; preserves endpoints that did not opt into strict duplicate/trailing rejection. */
+  public static ObjectReader objectReader() {
+    return JsonMapper.builder().build().reader();
+  }
 }

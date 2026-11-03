@@ -22,8 +22,13 @@ public class StoreQueryConfiguration {
 
     @Bean
     MerchantStoreDisplayApiImpl merchantStoreDisplayApi(
-            DataSource source, ApplicationReviewFactsReader applications) {
+            DataSource source, ApplicationReviewFactsReader applications,
+            @org.springframework.beans.factory.annotation.Value(
+                    "${pet.marketing.enabled:false}") boolean marketingEnabled,
+            @org.springframework.beans.factory.annotation.Value(
+                    "${pet.merchant.store-profile.enabled:false}") boolean storeProfileEnabled) {
         return new MerchantStoreDisplayApiImpl(
-                source, new MerchantAgreementEligibilityFactsAdapter(source, applications));
+                source, new MerchantAgreementEligibilityFactsAdapter(source, applications),
+                marketingEnabled || storeProfileEnabled);
     }
 }

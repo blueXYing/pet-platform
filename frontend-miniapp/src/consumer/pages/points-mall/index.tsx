@@ -5,6 +5,7 @@ import { useWorkspace } from '../../../shared/workspace-react'
 import { consumerApi } from '../../../shared/consumer-runtime'
 import { switchConsumerTab } from '../../components/navigation/switch'
 import { ConsumerPageLayout } from '../../components/page-layout'
+import { SubpageHeader, SubpageHeaderSpacer } from '../../components/navigation/subpage-header'
 import { isCouponPointsScenario, PreviewCouponPointsRepository } from '../../coupon-points/model'
 import { RealCouponPointsRepository } from '../../coupon-points/repository'
 import { mallActionLabel, mallGoods, mallPageCopy } from './model'
@@ -85,13 +86,8 @@ export default function PointsMallPage() {
   return <ConsumerPageLayout page='mallPage' unit={unit} className='pml-page'
     navigation={preview ? { idPrefix: 'pml', onSelect: key => void switchConsumerTab(key) } : undefined}
     style={style}>
-    <View className='pml-status-area' />
-    <View className='pml-nav'>
-      <Button id='pml-back' ariaLabel='返回' className='pml-nav-back' hoverClass='none' onClick={() => void goBack()}>
-        <View className='pml-nav-back-icon' />
-      </Button>
-      <Text className='pml-nav-title'>{mallPageCopy.title}</Text>
-    </View>
+    <SubpageHeader title={mallPageCopy.title} backId='pml-back' height={44} onBack={() => void goBack()} />
+    <SubpageHeaderSpacer height={44} />
     <View className='pml-body'>
       <View className='pml-balance' id='pml-balance'>
         <Text className='pml-balance-label'>{mallPageCopy.balanceLabel}</Text>

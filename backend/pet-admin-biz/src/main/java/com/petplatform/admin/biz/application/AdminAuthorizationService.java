@@ -86,7 +86,16 @@ public final class AdminAuthorizationService implements AdminAuthorizationQueryA
             || "encyclopedia.read".equals(query.actionCode())
             || "coupon.template.read".equals(query.actionCode())
             || "coupon.instance.read".equals(query.actionCode())
-            || "points.ledger.read".equals(query.actionCode()))
+            || "points.ledger.read".equals(query.actionCode())
+            // Contract-71/72 marketing center collection reads (campaign/placement/enrollment/
+            // coupon campaign): session re-proved before any row is scanned.
+            || "marketing.campaign.read".equals(query.actionCode())
+            || "marketing.placement.read".equals(query.actionCode())
+            || "marketing.enrollment.read".equals(query.actionCode())
+            // CCR-COM-001 community moderation collection reads.
+            || "community.post.read".equals(query.actionCode())
+            || "community.report.read".equals(query.actionCode())
+            || "coupon.campaign.read".equals(query.actionCode()))
         || query.phase() != AdminActionCheckQuery.CheckPhase.READ_RESULT)
       throw AdminAuthFailure.invalid();
     return checkCurrent(

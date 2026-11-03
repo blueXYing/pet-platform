@@ -19,6 +19,9 @@ public final class MerchantStoreDisplayRowEntity {
     private String phone;
     private String storeStatus;
     private String cityCode;
+    private Integer promoLevel;
+    private String promoTitle;
+    private String promoText;
 
     public Long getMerchantId() { return merchantId; }
     public void setMerchantId(Long merchantId) { this.merchantId = merchantId; }
@@ -42,4 +45,10 @@ public final class MerchantStoreDisplayRowEntity {
     public void setStoreStatus(String storeStatus) { this.storeStatus = storeStatus; }
     public String getCityCode() { return cityCode; }
     public void setCityCode(String cityCode) { this.cityCode = cityCode; }
+    public Integer getPromoLevel() { return promoLevel; }
+    public void setPromoLevel(Integer promoLevel) { this.promoLevel = promoLevel; }
+    public String getPromoTitle() { return promoTitle; }
+    public void setPromoTitle(String promoTitle) { this.promoTitle = promoTitle; }
+    public String getPromoText() { return promoText; }
+    public void setPromoText(String promoText) { this.promoText = promoText; }
 }

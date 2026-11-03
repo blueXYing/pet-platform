@@ -4,6 +4,7 @@ import { useEffect, useRef, useState, useSyncExternalStore, type CSSProperties }
 import { useWorkspace } from '../../../shared/workspace-react'
 import { consumerApi } from '../../../shared/consumer-runtime'
 import { switchConsumerTab } from '../../components/navigation/switch'
+import { SubpageHeader, SubpageHeaderSpacer } from '../../components/navigation/subpage-header'
 import { ConsumerPageLayout } from '../../components/page-layout'
 // ARCH-005 分工：本页不触碰订单原始事实字段，事实→展示的推导（入口门控/就绪度/时段槽位/回执口径
 // 文案/错误面映射）全部委托 src/consumer/orders/reschedule.ts（rescheduleReadiness/originalDurationMinutes/
@@ -187,13 +188,8 @@ function RescheduleScreen({ preview, scenario, orderId }: { preview: boolean; sc
         日期条+槽位+确认卡承载，不虚构假输入行）；门店名/费用不在改期契约内不渲染（PR 登记）。
         .rsc 作用域同节修复 bkg-* 依赖 --bkg-unit 的存量退化。功能/契约/ID/aria 零改动。 */}
     <View className='ord-design rsc'>
-      <View className='ord-status-area' />
-      <View className='ord-nav'>
-        <Button id='rsc-back' ariaLabel='返回' className='ord-nav-back' onClick={() => void goBack()}>
-          <Text className='ord-nav-back-icon'>‹</Text>
-        </Button>
-        <Text className='ord-nav-title'>订单改期</Text>
-      </View>
+      <SubpageHeader title='订单改期' backId='rsc-back' height={44} onBack={() => void goBack()} />
+      <SubpageHeaderSpacer height={44} />
       {state.phase === 'loading' && <View className='ord-state' role='status'><Text id='rsc-loading'>正在读取订单…</Text></View>}
       {state.phase === 'unauthorized' && <View className='ord-state' role='status'>
         <Text id='rsc-login-hint'>登录后可改期。</Text>

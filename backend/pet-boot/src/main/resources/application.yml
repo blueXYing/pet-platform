@@ -81,3 +81,48 @@ pet:
   feedback:
     http:
       enabled: false
+  # CCR-COM-001 community domain: public feed/detail/interactions + admin moderation.
+  # Default OFF; migration only accepts an explicitly named com001_* database.
+  community:
+    enabled: ${COMMUNITY_ENABLED:false}
+    c:
+      http:
+        enabled: ${COMMUNITY_C_HTTP_ENABLED:false}
+    admin:
+      http:
+        enabled: ${COMMUNITY_ADMIN_HTTP_ENABLED:false}
+    migration-enabled: ${COMMUNITY_MIGRATION_ENABLED:false}
+    migration-database: ${COMMUNITY_MIGRATION_DATABASE:}
+    media:
+      public-base-url: ${COMMUNITY_MEDIA_PUBLIC_BASE_URL:}
+  # Contract-71 marketing center (CCR-MKT-001): kernel + three HTTP faces, default OFF.
+  # The kernel composes admin authorization, merchant store facts, coupon campaign facts and
+  # the open-city catalog; missing owners fail closed 503 at call time, never open writes.
+  marketing:
+    enabled: ${MARKETING_ENABLED:false}
+    admin:
+      http:
+        enabled: ${MARKETING_ADMIN_HTTP_ENABLED:false}
+    merchant:
+      http:
+        enabled: ${MARKETING_MERCHANT_HTTP_ENABLED:false}
+    c:
+      http:
+        enabled: ${MARKETING_C_HTTP_ENABLED:false}
+    migration-enabled: ${MARKETING_MIGRATION_ENABLED:false}
+    migration-database: ${MARKETING_MIGRATION_DATABASE:}
+    asset:
+      # Public base for uploaded artwork URLs; production must be HTTPS/CDN.
+      public-base-url: ${MARKETING_ASSET_PUBLIC_BASE_URL:}
+      # Local E2E only: permit http:// asset URLs (production stays HTTPS-only).
+      allow-http: ${MARKETING_ASSET_ALLOW_HTTP:false}
+  # Contract-72 coupon campaign/batch + active claim (CCR-MKT-001): default OFF.
+  coupon:
+    campaign:
+      enabled: ${COUPON_CAMPAIGN_ENABLED:false}
+      admin:
+        http:
+          enabled: ${COUPON_CAMPAIGN_ADMIN_HTTP_ENABLED:false}
+      c:
+        http:
+          enabled: ${COUPON_CAMPAIGN_C_HTTP_ENABLED:false}

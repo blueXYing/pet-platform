@@ -8,7 +8,7 @@ import {
   highlightParts, normalizeKeyword,
   type BreedCard, type CategoryCode, type EncyclopediaCategory,
 } from '../../baike/model'
-import backIcon from '../../assets/profile/back.png'
+import { SubpageHeader } from '../../components/navigation/subpage-header'
 import './index.css'
 
 // 品种百科列表页（设计稿 245:5375，登记表 §4.16）。契约 62 读侧：分类字典 + 分页列表
@@ -127,13 +127,7 @@ export default function BaikeListPage() {
 
   return (
     <View className='cpn-page bk-page' style={style}>
-      <View className='bk-status-area' />
-      <View className='bk-header'>
-        <Button className='bk-back' hoverClass='none' ariaLabel='返回' onClick={goBack}>
-          <Image className='bk-back-icon' src={backIcon} mode='aspectFit' />
-        </Button>
-        <Text className='bk-title'>品种百科</Text>
-      </View>
+      <SubpageHeader title='品种百科' fixed={false} height={46} onBack={goBack} />
       <ScrollView
         className='bk-body' scrollY enhanced showScrollbar={false}
         refresherEnabled refresherTriggered={refreshing} onRefresherRefresh={() => { void refresh() }}

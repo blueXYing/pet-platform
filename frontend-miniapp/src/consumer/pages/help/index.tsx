@@ -1,8 +1,8 @@
-import { Button, Image, ScrollView, Text, View } from '@tarojs/components'
+import { Button, ScrollView, Text, View } from '@tarojs/components'
 import Taro from '@tarojs/taro'
 import { useState, type CSSProperties } from 'react'
 import { faqGroups, SERVICE_HOTLINE, SERVICE_HOTLINE_NOTE } from '../../settings/model'
-import backIcon from '../../assets/profile/back.png'
+import { SubpageHeader } from '../../components/navigation/subpage-header'
 import './index.css'
 
 // 帮助与客服页（67号 / PRD 5.1.25；设计稿 130:16491/130:16704，登记表偏差小节）。
@@ -42,13 +42,7 @@ export default function HelpPage() {
   }
 
   return <View className='cpn-page hp-page' style={style}>
-    <View className='hp-status-area' />
-    <View className='hp-header'>
-      <Button id='hp-back' className='hp-back' hoverClass='none' ariaLabel='返回' onClick={() => void back()}>
-        <Image src={backIcon} className='hp-back-icon' />
-      </Button>
-      <Text className='hp-title'>帮助与客服</Text>
-    </View>
+    <SubpageHeader title='帮助与客服' backId='hp-back' fixed={false} height={46} onBack={() => void back()} />
     <ScrollView className='hp-body' scrollY enhanced showScrollbar={false}>
       <View className='hp-service-card'>
         <Text className='hp-service-title'>人工客服热线</Text>

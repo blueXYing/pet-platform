@@ -4,6 +4,7 @@ import { useEffect, useRef, useState, useSyncExternalStore, type CSSProperties }
 import { useWorkspace } from '../../../shared/workspace-react'
 import { consumerApi } from '../../../shared/consumer-runtime'
 import { switchConsumerTab } from '../../components/navigation/switch'
+import { SubpageHeader, SubpageHeaderSpacer } from '../../components/navigation/subpage-header'
 import { ConsumerPageLayout } from '../../components/page-layout'
 // ARCH-005 分工：本页不触碰订单原始事实字段（orderStage/paymentStatus/verificationStatus/
 // refund*/afterSaleStatus），事实→展示的推导（文案映射/空值占位/按钮可见性/缺核销码说明）
@@ -104,15 +105,8 @@ function DetailScreen({ preview, scenario, orderId }: { preview: boolean; scenar
         奶油头带 #fff6e5 + #f0fbff 内容区、白卡 #c0ecff 描边 r16.7、居中导航标题。功能/契约/ID 与
         aria 不变；详情样式一律走 .ordd 作用域（orders.css），不触碰退款/改期/评价共享词汇。 */}
     <View className='ord-design ordd'>
-      <View className='ordd-hero'>
-        <View className='ord-status-area' />
-        <View className='ord-nav'>
-          <Button id='ord-back' ariaLabel='返回' className='ord-nav-back' onClick={() => void goBack()}>
-            <Text className='ord-nav-back-icon'>‹</Text>
-          </Button>
-          <Text className='ord-nav-title'>订单详情</Text>
-        </View>
-      </View>
+      <SubpageHeader title='订单详情' backId='ord-back' height={44} onBack={() => void goBack()} />
+      <SubpageHeaderSpacer height={44} />
       {phase === 'loading' && <View className='ord-state' role='status'><Text id='ord-loading'>正在读取订单…</Text></View>}
       {phase === 'invalid' && <View className='ord-state' role='status'>
         <Text id='ord-invalid'>订单链接无效，请从我的订单重新进入。</Text>

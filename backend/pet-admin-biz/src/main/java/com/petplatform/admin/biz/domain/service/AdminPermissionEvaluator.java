@@ -69,7 +69,13 @@ public final class AdminPermissionEvaluator {
           "coupon.template.read", "coupon.template.manage", "coupon.instance.read",
           "coupon.instance.grant", "coupon.instance.void",
           "points.ledger.read", "system.parameter.read",
-          "complaint.read", "complaint.handle", "complaint.decide");
+          "complaint.read", "complaint.handle", "complaint.decide",
+          "marketing.campaign.read", "marketing.campaign.manage", "marketing.campaign.publish",
+          "marketing.placement.read", "marketing.placement.manage",
+          "marketing.enrollment.read", "marketing.enrollment.review",
+          "coupon.campaign.read", "coupon.campaign.manage", "coupon.campaign.publish",
+          "community.post.read", "community.post.moderate",
+          "community.report.read", "community.report.handle");
 
   public static List<String> evaluate(
       boolean superAdmin, Collection<String> grants, Set<String> deployed) {

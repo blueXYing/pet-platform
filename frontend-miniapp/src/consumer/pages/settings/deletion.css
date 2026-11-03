@@ -1,3 +1,4 @@
+.cpn-page.st-page { position: fixed; inset: 0; display: flex; flex-direction: column; background: #f0fbff; }
 /* 注销账号页（契约 66；沿设置枢纽家族语言 st-* 前缀复用 + del-* 页内前缀）。
    WXSS 铁律同 index.css：button 全重置、无嵌套、状态仅 className、禁 data-*。 */
 .st-subpage { background: #f0fbff; }

@@ -5,6 +5,11 @@
 // fixed merchantId,storeId numeric-ascending order, no sort/keyword/categoryId parameters).
 // Backend by role B; shapes here follow the proposal §2 and are the swap point if the frozen
 // authoritative contract differs when B-side lands.
+export type StorePromotion = Readonly<{ level: number | null; title: string | null; text: string | null }>
+export type StoreCampaign = Readonly<{
+  campaignId: string; title: string; subtitle: string | null; tagName: string | null
+  offerTag: string | null; offerTitle: string | null; offerCopy: string | null
+}>
 export type StoreView = Readonly<{
   storeId: string; merchantId: string
   storeName: string; merchantName: string
@@ -12,6 +17,8 @@ export type StoreView = Readonly<{
   longitude: string | null; latitude: string | null
   phoneMasked: string | null
   cityCode: string
+  promotion?: StorePromotion | null
+  campaign?: StoreCampaign | null
 }>
 /** Detail carries the same field set as the list item in this slice (proposal §2). */
 export type StoreDetailView = StoreView
@@ -43,7 +50,7 @@ const cityCode = (value: any): string => {
   return value
 }
 
-const storeKeys = ['storeId', 'merchantId', 'storeName', 'merchantName', 'address', 'longitude', 'latitude', 'phoneMasked', 'cityCode'] as const
+const storeKeys = ['storeId', 'merchantId', 'storeName', 'merchantName', 'address', 'longitude', 'latitude', 'phoneMasked', 'cityCode', 'promotion', 'campaign'] as const
 export function decodeStore(value: unknown): StoreView {
   const v = exact(value, storeKeys)
   return {
@@ -56,6 +63,31 @@ export function decodeStore(value: unknown): StoreView {
     latitude: coordinate(v.latitude, 90),
     phoneMasked: textOrNull(v.phoneMasked, 32),
     cityCode: cityCode(v.cityCode),
+    promotion: promotionOf(v.promotion),
+    campaign: campaignOf(v.campaign),
+  }
+}
+
+function promotionOf(value: unknown): StorePromotion | null {
+  if (value === null || value === undefined) return null
+  if (typeof value !== 'object' || Array.isArray(value)) invalid()
+  const v = value as Record<string, unknown>
+  if (v.level !== null && (!Number.isInteger(v.level) || (v.level as number) < 1 || (v.level as number) > 9)) invalid()
+  return { level: v.level as number | null, title: textOrNull(v.title, 100), text: textOrNull(v.text, 100) }
+}
+
+function campaignOf(value: unknown): StoreCampaign | null {
+  if (value === null || value === undefined) return null
+  if (typeof value !== 'object' || Array.isArray(value)) invalid()
+  const v = value as Record<string, unknown>
+  return {
+    campaignId: isId(v.campaignId) ? v.campaignId : invalid(),
+    title: text(v.title, 100),
+    subtitle: textOrNull(v.subtitle, 200),
+    tagName: textOrNull(v.tagName, 32),
+    offerTag: textOrNull(v.offerTag, 32),
+    offerTitle: textOrNull(v.offerTitle, 100),
+    offerCopy: textOrNull(v.offerCopy, 100),
   }
 }
 export function decodeStorePage(value: unknown): StorePage {

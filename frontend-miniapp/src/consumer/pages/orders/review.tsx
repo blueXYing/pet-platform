@@ -4,6 +4,7 @@ import { useEffect, useRef, useState, useSyncExternalStore, type CSSProperties }
 import { useWorkspace } from '../../../shared/workspace-react'
 import { consumerApi } from '../../../shared/consumer-runtime'
 import { switchConsumerTab } from '../../components/navigation/switch'
+import { SubpageHeader, SubpageHeaderSpacer } from '../../components/navigation/subpage-header'
 import { ConsumerPageLayout } from '../../components/page-layout'
 // ARCH-005 分工：本页不触碰订单原始事实字段，事实→展示的推导（资格文案/综合分预览/权重口径/
 // 错误面映射/入口门控）全部委托 src/consumer/orders/review.ts（eligibilityHeadline/
@@ -141,13 +142,8 @@ function ReviewScreen({ preview, scenario, orderId }: { preview: boolean; scenar
         开关不在 §3.14 契约内——三维沿 40/40/20 契约口径按原稿星形呈现，其余不渲染（PR 登记）。
         功能/契约/ID/aria 零改动。 */}
     <View className='ord-design rvw'>
-      <View className='ord-status-area' />
-      <View className='ord-nav'>
-        <Button id='rvw-back' ariaLabel='返回' className='ord-nav-back' onClick={() => void goBack()}>
-          <Text className='ord-nav-back-icon'>‹</Text>
-        </Button>
-        <Text className='ord-nav-title'>评价服务</Text>
-      </View>
+      <SubpageHeader title='评价服务' backId='rvw-back' height={44} onBack={() => void goBack()} />
+      <SubpageHeaderSpacer height={44} />
       {invalidOrderId && <View className='ord-state' role='status'><Text id='rvw-invalid'>订单链接无效，请从订单详情重新进入。</Text></View>}
       {state.phase === 'loading' && <View className='ord-state' role='status'><Text id='rvw-loading'>正在读取订单…</Text></View>}
       {state.phase === 'unauthorized' && <View className='ord-state' role='status'>

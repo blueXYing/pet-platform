@@ -7,6 +7,8 @@ type Grant = Session & { accessToken: string; tokenType: 'Bearer' }
 type Attempt = { attemptId: string; attemptToken: string; nextStep: string }
 export type Command = RequestSpec & { requestId: string }
 export type PrivateUploadTransport = (input: { filePath: string; requestId: string; authorization: string; purpose?: 'MERCHANT_APPLICATION_MATERIAL' | 'SERVICE_COVER' | 'STORE_PHOTO' | 'FEEDBACK_ATTACHMENT' | 'PET_AVATAR' }) => Promise<{ statusCode: number; data: unknown }>
+export type CommunityMediaTransport = (input: { filePath: string; requestId: string; authorization: string }) => Promise<{ statusCode: number; data: unknown }>
+export type CommunityMediaReceipt = { mediaId: string; url: string; contentType: 'image/jpeg' | 'image/png'; bytes: number; width: number; height: number; sha256: string }
 export type PrivateAssetReceipt = { assetId: string; status: 'READY'; objectSha256: string; mediaType: 'image/jpeg' | 'image/png'; bytes: number }
 export type AfterSaleAssetTransport = {
   upload(input: { filePath: string; requestId: string; authorization: string }): Promise<{ statusCode: number; data: unknown }>
@@ -119,6 +121,13 @@ export function isMerchantStatsPath(spec: RequestSpec): boolean {
 export function isMerchantStoreProfilePath(spec: RequestSpec): boolean {
   return (spec.method === 'GET' || spec.method === 'PUT') && spec.path === '/api/v1/merchant/store-profile'
 }
+// Contract-71 marketing center M face (pet.marketing.merchant.http.enabled default OFF):
+// enrollment / my campaigns carry the caller's merchant coordinates and are re-proved
+// server-side; the response uses the historical merchant {success,...} envelope.
+export function isMerchantMarketingPath(spec: RequestSpec): boolean {
+  return ['GET', 'POST', 'PUT'].includes(spec.method)
+    && /^\/api\/v1\/merchant\/marketing\/[a-z0-9/-]+$/.test(spec.path)
+}
 export function decodePrivateAsset(value: unknown): PrivateAssetReceipt {
   const v = object(value)
   if (Object.keys(v).sort().join(',') !== 'assetId,bytes,mediaType,objectSha256,status' || v.status !== 'READY' || typeof v.objectSha256 !== 'string' || !/^[a-f0-9]{64}(?![\s\S])/.test(v.objectSha256) || !['image/jpeg', 'image/png'].includes(v.mediaType) || !Number.isSafeInteger(v.bytes) || v.bytes < 1 || v.bytes > 10485760) throw new Error('INVALID_RESPONSE')
@@ -168,7 +177,7 @@ export class ConsumerApi {
   private autoLogin?: () => Promise<unknown>
   private loggedOutByUser = false
   private recoveryFlight: Promise<boolean> | null = null
-  constructor(private transport: Transport, private store: LocalStore, readonly uuid: () => Promise<string>, private uploadTransport?: PrivateUploadTransport, private afterSaleAssets?: AfterSaleAssetTransport, autoLogin?: () => Promise<unknown>) {
+  constructor(private transport: Transport, private store: LocalStore, readonly uuid: () => Promise<string>, private uploadTransport?: PrivateUploadTransport, private afterSaleAssets?: AfterSaleAssetTransport, autoLogin?: () => Promise<unknown>, private communityMedia?: CommunityMediaTransport) {
     this.autoLogin = autoLogin
     try { const saved = store.get(SESSION_KEY); if (saved) this.credential = grant(saved) } catch { store.remove(SESSION_KEY) }
     // Persistent pending commands never authorize a user. They are selected only after GET session.
@@ -213,18 +222,19 @@ export class ConsumerApi {
     const merchantCustomerPath = isMerchantCustomerPath(spec)
     const merchantStatsPath = isMerchantStatsPath(spec)
     const merchantStoreProfilePath = isMerchantStoreProfilePath(spec)
+    const merchantMarketingPath = isMerchantMarketingPath(spec)
     const favoriteFootprintPath = isFavoriteFootprintPath(spec)
     if (/^\/api\/v1\/(c|merchant)\/aftersale/.test(spec.path) && !afterSalePath) throw new Error('INVALID_PATH')
     if (/^\/api\/v1\/merchant\/reviews(\/|$)/.test(spec.path) && !merchantReviewPath) throw new Error('INVALID_PATH')
     if (/^\/api\/v1\/c\/(favorites|footprints)(\/|$)/.test(spec.path) && !favoriteFootprintPath) throw new Error('INVALID_PATH')
-    if (!/^\/api\/v1\/c\/[a-z0-9/-]+$/.test(spec.path) && !agreementPath && !admissionPath && !categoryPath && !serviceCommandPath && !afterSalePath && !schedulePath && !verificationPath && !merchantOrderAction && !merchantOrderList && !merchantReviewPath && !merchantRefundPath && !merchantCustomerPath && !merchantStatsPath && !merchantStoreProfilePath && !favoriteFootprintPath) throw new Error('INVALID_PATH')
+    if (!/^\/api\/v1\/c\/[a-z0-9/-]+$/.test(spec.path) && !agreementPath && !admissionPath && !categoryPath && !serviceCommandPath && !afterSalePath && !schedulePath && !verificationPath && !merchantOrderAction && !merchantOrderList && !merchantReviewPath && !merchantRefundPath && !merchantCustomerPath && !merchantStatsPath && !merchantStoreProfilePath && !merchantMarketingPath && !favoriteFootprintPath) throw new Error('INVALID_PATH')
     if (spec.method !== 'GET' && !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}(?![\s\S])/i.test(spec.requestId || '')) throw new Error('REQUEST_ID_REQUIRED')
     const response = await this.transport({ ...spec, headers: { 'Content-Type': 'application/json', ...(spec.requestId ? { 'X-Request-Id': spec.requestId } : {}), ...headers } })
     if (afterSalePath) return afterSaleEnvelope(response)
     const body = object(response.data)
     if (response.statusCode < 200 || response.statusCode >= 300 || body.code !== 'SUCCESS') throw new ApiError(typeof body.code === 'string' ? body.code : 'INVALID_RESPONSE', response.statusCode)
     const applicationPath = /^\/api\/v1\/c\/merchant-applications(?:\/|$)/.test(spec.path) || spec.path === '/api/v1/c/merchant-application-cities'
-    if ((agreementPath || applicationPath || admissionPath || categoryPath || serviceCommandPath || schedulePath || verificationPath || merchantOrderAction || merchantOrderList || merchantRefundPath || merchantCustomerPath || merchantStatsPath || merchantStoreProfilePath) && body.success !== true) throw new Error('INVALID_RESPONSE')
+    if ((agreementPath || applicationPath || admissionPath || categoryPath || serviceCommandPath || schedulePath || verificationPath || merchantOrderAction || merchantOrderList || merchantRefundPath || merchantCustomerPath || merchantStatsPath || merchantStoreProfilePath || merchantMarketingPath) && body.success !== true) throw new Error('INVALID_RESPONSE')
     return body.data
   }
   private clear() {
@@ -467,11 +477,40 @@ export class ConsumerApi {
    *  search (/c/services, exact path) and the §3.3.4 open-city directory (/c/cities). */
   async anonymousRequest<T>(spec: RequestSpec, decode: (data: unknown) => T): Promise<T> {
     if (spec.method !== 'GET'
-      || !/^\/api\/v1\/c\/(stores(\/[1-9][0-9]{0,18}(\/services)?)?|services(\/[1-9][0-9]{0,18})?|encyclopedia\/categories|encyclopedia\/breeds(\/[1-9][0-9]{0,18})?|cities)$/.test(spec.path)) throw new Error('INVALID_PATH')
+      || !/^\/api\/v1\/c\/(stores(\/[1-9][0-9]{0,18}(\/services)?)?|services(\/[1-9][0-9]{0,18})?|encyclopedia\/categories|encyclopedia\/breeds(\/[1-9][0-9]{0,18})?|cities|marketing\/placements|marketing\/campaigns(\/[1-9][0-9]{0,18})?|marketing\/tags|marketing\/merchant-deals|marketing\/home-blocks|coupon-campaigns\/[1-9][0-9]{0,18}|community\/posts(\/[1-9][0-9]{0,18}(\/comments)?)?|community\/hot|community\/topics|community\/users\/[1-9][0-9]{0,18}|community\/media\/[1-9][0-9]{0,18})$/.test(spec.path)) throw new Error('INVALID_PATH')
     const ticket = this.scope.current ? this.scope.capture() : null
     const value = await this.send(spec)
     if (ticket) ticket.assertCurrent()
     return decode(value)
+  }
+  /** CCR-COM-001 community image upload; the credential never becomes a page prop or URL. */
+  async uploadCommunityMedia(filePath: string): Promise<CommunityMediaReceipt> {
+    const ticket = this.scope.capture()
+    const credential = this.credential
+    if (!credential || !this.currentSession || credential.userId !== this.currentSession.userId
+      || credential.sessionId !== this.currentSession.sessionId || ticket.context.workspace !== 'consumer') throw new ApiError('COMMON_UNAUTHORIZED', 401)
+    if (!this.communityMedia) throw new Error('UPLOAD_NOT_CONNECTED')
+    const requestId = await this.uuid()
+    ticket.assertCurrent()
+    try {
+      const response = await this.communityMedia({ filePath, requestId, authorization: `Bearer ${credential.accessToken}` })
+      ticket.assertCurrent()
+      if (this.credential !== credential || this.currentSession?.sessionId !== credential.sessionId) throw new StaleContextError()
+      const body = object(typeof response.data === 'string' ? JSON.parse(response.data) : response.data)
+      if (![200, 201].includes(response.statusCode) || body.code !== 'SUCCESS') throw new ApiError(typeof body.code === 'string' ? body.code : 'INVALID_RESPONSE', response.statusCode)
+      const data = object(body.data)
+      if (typeof data.mediaId !== 'string' || !/^[1-9][0-9]{0,18}$/.test(data.mediaId)
+        || typeof data.url !== 'string' || !/^https?:\/\/|^\/api\/v1\/c\/community\/media\//.test(data.url)
+        || !['image/jpeg', 'image/png'].includes(data.contentType)
+        || !Number.isSafeInteger(data.bytes) || data.bytes < 1 || data.bytes > 2097152
+        || !Number.isSafeInteger(data.width) || !Number.isSafeInteger(data.height)
+        || typeof data.sha256 !== 'string' || !/^[a-f0-9]{64}$/.test(data.sha256)) throw new Error('INVALID_RESPONSE')
+      return { mediaId: data.mediaId, url: data.url, contentType: data.contentType, bytes: data.bytes, width: data.width, height: data.height, sha256: data.sha256 }
+    } catch (error) {
+      ticket.assertCurrent()
+      if (error instanceof ApiError && error.statusCode === 401) this.clear()
+      throw error
+    }
   }
   /** Only this typed operation can use the MINIAPP credential for multipart upload. */
   async uploadPrivateAsset(input: { filePath: string; requestId: string; ownerUserId: string; purpose?: 'MERCHANT_APPLICATION_MATERIAL' | 'SERVICE_COVER' | 'STORE_PHOTO' | 'FEEDBACK_ATTACHMENT' | 'PET_AVATAR' }): Promise<PrivateAssetReceipt> {

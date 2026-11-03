@@ -15,5 +15,8 @@ public record MerchantStoreDisplayDTO(
         String longitude,
         String latitude,
         String phoneMasked,
-        String cityCode
+        String cityCode,
+        Integer promoLevel,
+        String promoTitle,
+        String promoText
 ) {}

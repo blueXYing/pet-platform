@@ -1,0 +1,64 @@
+/* 二级/三级页统一头部。所有尺寸按 402 设计宽换算，状态栏高度由组件注入。 */
+.sph-root {
+  position: fixed;
+  left: 0;
+  top: 0;
+  width: 100%;
+  z-index: 30;
+  height: calc(var(--sph-top) + var(--sph-unit) * var(--sph-height));
+  box-sizing: border-box;
+}
+.sph-root button { margin: 0 !important; padding: 0; background: transparent; line-height: 1; }
+.sph-root button::after { border: none; }
+.sph-reference { position: absolute; }
+.sph-static { position: relative; }
+.sph-cream { background: #fff6e5; }
+.sph-transparent { background: transparent; }
+
+.sph-back[disabled] { opacity: 0.6; }
+.sph-back {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: calc(var(--sph-unit) * 40);
+  height: 100%;
+  border: none;
+  border-radius: 0;
+  background: transparent;
+}
+.sph-back-icon {
+  position: absolute;
+  left: calc(var(--sph-unit) * 18);
+  /* 与标题 24px 行盒的中心（22 + 12 = 34）对齐。 */
+  top: calc(var(--sph-top) + var(--sph-unit) * 26.74);
+  width: calc(var(--sph-unit) * 8.86);
+  height: calc(var(--sph-unit) * 14.52);
+}
+.sph-title {
+  position: absolute;
+  left: calc(var(--sph-unit) * 50);
+  top: calc(var(--sph-top) + var(--sph-unit) * 22);
+  font-size: calc(var(--sph-unit) * 16);
+  line-height: calc(var(--sph-unit) * 24);
+  font-weight: 700;
+  color: #3c3c3c;
+  white-space: nowrap;
+}
+.sph-right {
+  position: absolute;
+  right: var(--sph-right, calc(var(--sph-unit) * 18));
+  top: calc(var(--sph-top) + var(--sph-unit) * 22);
+  height: calc(var(--sph-unit) * 24);
+  display: flex;
+  align-items: center;
+  z-index: 2;
+}
+.sph-bottom {
+  position: absolute;
+  left: calc(var(--sph-unit) * 17);
+  right: calc(var(--sph-unit) * 17);
+  top: calc(var(--sph-top) + var(--sph-unit) * 66);
+  height: calc(var(--sph-unit) * 28);
+  z-index: 2;
+}
+.sph-spacer { width: 100%; flex-shrink: 0; }

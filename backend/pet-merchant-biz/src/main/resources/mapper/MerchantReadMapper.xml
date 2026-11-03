@@ -133,6 +133,55 @@
                s.latitude,
                s.phone,
                s.status AS store_status,
+               p.city_code AS city_code,
+               sp.promo_level AS promo_level,
+               sp.promo_title AS promo_title,
+               sp.promo_text AS promo_text
+        FROM merchant_store s
+        INNER JOIN merchant m ON m.id = s.merchant_id
+        LEFT JOIN merchant_profile_compat p ON p.merchant_id = m.id
+        LEFT JOIN merchant_store_profile sp ON sp.store_id = s.id
+        ORDER BY m.id ASC, s.id ASC
+    </select>
+
+    <select id="selectDisplayStore"
+            resultType="com.petplatform.merchant.biz.infrastructure.persistence.entity.MerchantStoreDisplayRowEntity">
+        SELECT m.id AS merchant_id,
+               m.merchant_name,
+               m.status AS merchant_status,
+               s.id AS store_id,
+               s.store_name,
+               s.address,
+               s.longitude,
+               s.latitude,
+               s.phone,
+               s.status AS store_status,
+               p.city_code AS city_code,
+               sp.promo_level AS promo_level,
+               sp.promo_title AS promo_title,
+               sp.promo_text AS promo_text
+        FROM merchant_store s
+        INNER JOIN merchant m ON m.id = s.merchant_id
+        LEFT JOIN merchant_profile_compat p ON p.merchant_id = m.id
+        LEFT JOIN merchant_store_profile sp ON sp.store_id = s.id
+        WHERE s.id = #{storeId}
+    </select>
+
+    <!-- Marketing projection disabled (or SQL27 not installed): same visibility columns without
+         the merchant_store_profile join. Promo fields stay NULL so the core store catalog never
+         depends on the optional marketing/profile schema. -->
+    <select id="selectDisplayStoreCandidatesPlain"
+            resultType="com.petplatform.merchant.biz.infrastructure.persistence.entity.MerchantStoreDisplayRowEntity">
+        SELECT m.id AS merchant_id,
+               m.merchant_name,
+               m.status AS merchant_status,
+               s.id AS store_id,
+               s.store_name,
+               s.address,
+               s.longitude,
+               s.latitude,
+               s.phone,
+               s.status AS store_status,
                p.city_code AS city_code
         FROM merchant_store s
         INNER JOIN merchant m ON m.id = s.merchant_id
@@ -140,7 +189,7 @@
         ORDER BY m.id ASC, s.id ASC
     </select>
 
-    <select id="selectDisplayStore"
+    <select id="selectDisplayStorePlain"
             resultType="com.petplatform.merchant.biz.infrastructure.persistence.entity.MerchantStoreDisplayRowEntity">
         SELECT m.id AS merchant_id,
                m.merchant_name,

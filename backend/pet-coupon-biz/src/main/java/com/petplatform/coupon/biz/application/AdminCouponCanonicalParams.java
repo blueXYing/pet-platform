@@ -14,7 +14,7 @@ import java.util.TreeMap;
  * in-module-sharing rule (biz never depends on biz).
  */
 public final class AdminCouponCanonicalParams {
-    private static final ObjectMapper JSON = new ObjectMapper();
+    private static final ObjectMapper JSON = new ObjectMapper().findAndRegisterModules();
 
     private AdminCouponCanonicalParams() {}
 

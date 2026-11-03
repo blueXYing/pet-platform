@@ -1,13 +1,13 @@
-import { Button, Image, ScrollView, Text, View } from '@tarojs/components'
+import { Button, ScrollView, Text, View } from '@tarojs/components'
 import Taro, { useDidShow, useRouter } from '@tarojs/taro'
 import { useEffect, useRef, useState, type CSSProperties } from 'react'
 import { consumerApi } from '../../../shared/consumer-runtime'
 import { RealSettingsRepository } from '../../settings/repository'
+import { SubpageHeader } from '../../components/navigation/subpage-header'
 import {
   blockerFallbackLabels,
   type CancelReceipt, type DeletionPrecheck, type DeletionReceipt, type DeletionStatusView,
 } from '../../settings/model'
-import backIcon from '../../assets/profile/back.png'
 import './deletion.css'
 
 // 注销账号页（契约 66 §3/§4 v0.2 冷静期 / PRD 5.1.29；CCR-USR-DELETION-001 v0.2：
@@ -141,13 +141,7 @@ export default function AccountDeletionPage() {
   }
 
   return <View className='cpn-page st-page st-subpage' style={style}>
-    <View className='st-status-area' />
-    <View className='st-header'>
-      <Button id='del-back' className='st-back' hoverClass='none' ariaLabel='返回' onClick={() => void back()}>
-        <Image src={backIcon} className='st-back-icon' />
-      </Button>
-      <Text className='st-title'>注销账号</Text>
-    </View>
+    <SubpageHeader title='注销账号' backId='del-back' fixed={false} height={46} onBack={() => void back()} />
     <ScrollView className='del-body' scrollY enhanced showScrollbar={false}>
       {phase === 'loading' && <View className='del-state' role='status'><Text>正在检查注销条件…</Text></View>}
       {phase === 'load-error' && <View className='del-state'>

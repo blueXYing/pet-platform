@@ -1,6 +1,7 @@
 import { ConsumerPageLayout } from '../../components/page-layout'
 import { type ConsumerNavigationKey } from '../../components/navigation/model'
 import { switchConsumerTab } from '../../components/navigation/switch'
+import { SubpageHeader, SubpageHeaderSpacer } from '../../components/navigation/subpage-header'
 import { Button, Image, Input, Text, Textarea, View } from '@tarojs/components'
 import Taro, { useRouter } from '@tarojs/taro'
 import { useCallback, useEffect, useRef, useState, type CSSProperties } from 'react'
@@ -9,7 +10,6 @@ import { consumerApi } from '../../../shared/consumer-runtime'
 import { integrationMessage } from '../../../shared/consumer-api'
 import { RealProfileRepository } from '../../api/repositories'
 import { isPreviewScenario, PreviewProfileRepository, sameDraft, validateDraft, codePointLength, type Gender, type ProfileDraft, type ProfilePhase } from '../../profile/model'
-import back from '../../assets/profile/back.png'
 import chevron from '../../assets/profile/chevron.png'
 import avatar from '../../assets/profile/avatar.png'
 import './fonts.css'
@@ -130,12 +130,10 @@ export default function ProfileEdit() {
   }
   const editable = ['ready', 'saving', 'save-error'].includes(phase)
   return <ConsumerPageLayout page='profileEdit' unit={referenceCanvas ? 1 : platformInfo.windowWidth / 402} navigation={preview ? { idPrefix: 'profile', disabled: phase === 'saving', onSelect: key => leave(key), referencePlacement: referenceCanvas ? { bottom: 0 } : undefined } : undefined} className={`profile-page${referenceCanvas ? ' profile-reference-canvas' : ''}`} style={style}>
-    <View className='profile-status-area' />
     <View className='profile-design' data-phase={phase}>
-      <View className='profile-header'>
-        <Button id='profile-back' className='profile-back' ariaLabel='返回' disabled={phase === 'saving'} onClick={() => void leave()}><Image src={back} mode='scaleToFill' /></Button>
-        <Text className='profile-title'>编辑资料</Text>
-      </View>
+      <SubpageHeader title='编辑资料' backId='profile-back' height={49} reference={referenceCanvas}
+        backDisabled={phase === 'saving'} onBack={() => void leave()} />
+      <SubpageHeaderSpacer height={49} reference={referenceCanvas} />
       {!editable && <View className='profile-state' role='status'>
         <Text>{phase === 'loading' ? '正在加载资料…' : phase === 'expired' ? '登录已失效，请重新登录' : phase === 'load-error' ? '加载失败，请重试' : '资料服务暂不可用，请稍后再试'}</Text>
         {phase === 'load-error' && <Button id='profile-retry-load' className='profile-state-action' onClick={() => void load()}>重新加载</Button>}

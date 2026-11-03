@@ -4,6 +4,7 @@ import { useCallback, useEffect, useRef, useState, type CSSProperties } from 're
 import { useWorkspace } from '../../../shared/workspace-react'
 import { consumerApi } from '../../../shared/consumer-runtime'
 import { switchConsumerTab } from '../../components/navigation/switch'
+import { SubpageHeader, SubpageHeaderSpacer } from '../../components/navigation/subpage-header'
 import { ConsumerPageLayout } from '../../components/page-layout'
 import {
   appointmentWindow, displayOrderStatuses, displayStatusLabels, isOrdersScenario, orderReadMessage,
@@ -106,14 +107,9 @@ function ListScreen({ preview, scenario }: { preview: boolean; scenario: 'normal
         #f0fbff 内容区、#eaf6f3 药丸 tab 容器、白卡 #c0ecff 描边 r13。功能/契约/ID 与 aria 不变；
         列表样式一律走 .ordl 作用域（orders.css），不触碰详情/退款/改期/评价共享词汇。 */}
     <View className='ord-design ordl'>
+      <SubpageHeader title='我的订单' backId='ord-back' height={44} onBack={() => void goBack()} />
+      <SubpageHeaderSpacer height={44} />
       <View className='ordl-hero'>
-        <View className='ord-status-area' />
-        <View className='ord-nav'>
-          <Button id='ord-back' ariaLabel='返回' className='ord-nav-back' onClick={() => void goBack()}>
-            <Text className='ord-nav-back-icon'>‹</Text>
-          </Button>
-          <Text className='ord-nav-title'>我的订单</Text>
-        </View>
         {/* 契约桶=displayStatus 单值查询（§3.7）+“全部”（不发送参数）。原稿 5 桶（全部/待服务/进行中/
             已完成/已取消，#eaf6f3 容器 + 64x28 子胶囊、激活 #5baae8 白字）中的“进行中”无法用单一
             displayStatus 表达，不并入任何桶（PR 登记差异）；十状态桶沿原稿胶囊形态横向滚动承载。 */}

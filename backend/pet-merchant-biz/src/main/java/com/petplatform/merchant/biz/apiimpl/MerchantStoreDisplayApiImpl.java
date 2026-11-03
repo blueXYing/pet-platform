@@ -22,8 +22,13 @@ public final class MerchantStoreDisplayApiImpl implements MerchantStoreDisplayAp
 
     public MerchantStoreDisplayApiImpl(
             DataSource dataSource, MerchantEligibilityFactsReader eligibilityFacts) {
+        this(dataSource, eligibilityFacts, false);
+    }
+
+    public MerchantStoreDisplayApiImpl(DataSource dataSource,
+            MerchantEligibilityFactsReader eligibilityFacts, boolean promotionProjection) {
         this.service = new MerchantStoreDisplayService(
-                new MerchantReadStore(dataSource), eligibilityFacts);
+                new MerchantReadStore(dataSource), eligibilityFacts, promotionProjection);
     }
 
     @Override

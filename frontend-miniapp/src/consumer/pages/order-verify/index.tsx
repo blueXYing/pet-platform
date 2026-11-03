@@ -4,6 +4,7 @@ import { useEffect, useRef, useState, useSyncExternalStore, type CSSProperties }
 import { useWorkspace } from '../../../shared/workspace-react'
 import { consumerApi } from '../../../shared/consumer-runtime'
 import { switchConsumerTab } from '../../components/navigation/switch'
+import { SubpageHeader, SubpageHeaderSpacer } from '../../components/navigation/subpage-header'
 import { ConsumerPageLayout } from '../../components/page-layout'
 import {
   OrderVerifyController, actionFor, formatCode, formatInstant, isOrderVerifyScenario, isOrderId,
@@ -79,13 +80,8 @@ function VerifyScreen({ preview, scenario, initialOrderId }: { preview: boolean;
   return <ConsumerPageLayout page='orderVerify' unit={unit} className='ovv-page' style={style}
     navigation={preview ? { idPrefix: 'ovv', disabled: state.phase === 'loading', onSelect: key => { void switchConsumerTab(key) } } : undefined}>
     <View className='ovv-design'>
-      <View className='ovv-status-area' />
-      <View className='ovv-nav'>
-        <Button id='ovv-back' ariaLabel='返回' className='ovv-nav-back' onClick={() => void goBack()}>
-          <Text className='ovv-nav-back-icon'>‹</Text>
-        </Button>
-        <Text className='ovv-nav-title'>订单核销码</Text>
-      </View>
+      <SubpageHeader title='订单核销码' backId='ovv-back' height={74} onBack={() => void goBack()} />
+      <SubpageHeaderSpacer height={74} />
       <View className='ovv-body'>
         <View className='ovv-card'>
           <Text className='ovv-heading'>查看核销码</Text>

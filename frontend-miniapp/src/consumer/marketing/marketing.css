@@ -1,0 +1,256 @@
+/* Marketing center shared styles (contract 71). Cream/blue family mirrors the Figma
+   home/service/campaign frames; absolute measurements stay in rpx so the blocks scale. */
+/* Figma 61:599 活动钜惠（62:176 奶油底板 / 64:460、64:472 手绘卡 / 73:64 纸边）。
+   402 设计宽按 --home-unit 缩放；卡片 222x107、起点 11、间距 15，右侧第二张自然露出。
+   62:176 顶部 614 与宠物蓝纸底边约 594 之间保留 20px 间隙（蓝纸旋转外扩约 2px 后）。 */
+.mkt-home-slot {
+  position: relative; width: 100%; height: calc(var(--home-unit) * 175);
+  margin: calc(var(--home-unit) * 22) 0 0; background: #fcf5e8;
+  border-radius: calc(var(--home-unit) * 7); overflow: hidden;
+}
+.mkt-home-heading {
+  position: absolute; left: calc(var(--home-unit) * 16); top: calc(var(--home-unit) * 8);
+  z-index: 3; font-size: calc(var(--home-unit) * 18); line-height: calc(var(--home-unit) * 28);
+  font-weight: 700; color: #1d0d07; white-space: nowrap;
+}
+.mkt-home-heading-sub {
+  position: absolute; left: calc(var(--home-unit) * 266); top: calc(var(--home-unit) * 14);
+  width: calc(var(--home-unit) * 105.375); z-index: 3;
+  font-size: calc(var(--home-unit) * 12); line-height: calc(var(--home-unit) * 16);
+  color: #b89682; white-space: nowrap;
+}
+.mkt-home-scroll {
+  position: absolute; left: 0; top: calc(var(--home-unit) * 48); z-index: 2;
+  width: 100%; height: calc(var(--home-unit) * 107);
+  padding-left: calc(var(--home-unit) * 11); box-sizing: border-box; white-space: nowrap;
+}
+.mkt-home-card {
+  position: relative; display: inline-block; width: calc(var(--home-unit) * 222);
+  height: calc(var(--home-unit) * 107); margin-right: calc(var(--home-unit) * 15);
+  vertical-align: top; overflow: visible;
+}
+.mkt-home-card-paper-left,
+.mkt-home-card-paper-right {
+  position: absolute; z-index: 0; overflow: hidden; pointer-events: none;
+}
+.mkt-home-card-paper-img { position: absolute; left: 0; top: 0; width: 100%; height: 100%; }
+/* Figma 64:454/64:455：同一张 620×830 手绘纸框旋转成 143.3×107 与 124.4×107 两片叠放，
+   右片按原稿裁掉上下 15.21% 后镜像覆盖接缝，不做整图拉伸。 */
+.mkt-home-card-paper-left {
+  width: calc(var(--home-unit) * 107.045); height: calc(var(--home-unit) * 143.302);
+  left: calc(var(--home-unit) * 18.1285); top: calc(var(--home-unit) * -18.1285);
+  transform: rotate(90deg); transform-origin: center;
+}
+.mkt-home-card-paper-right {
+  width: calc(var(--home-unit) * 107.064); height: calc(var(--home-unit) * 124.383);
+  left: calc(var(--home-unit) * 106.2795); top: calc(var(--home-unit) * -8.6595);
+  transform: rotate(90deg) scaleY(-1); transform-origin: center;
+}
+.mkt-home-card-paper-right-img { height: 115.23%; top: -15.21%; }
+.mkt-home-card-art { position: absolute; z-index: 1; pointer-events: none; }
+.mkt-home-card-new_user .mkt-home-card-art {
+  left: calc(var(--home-unit) * 98); top: 0;
+  width: calc(var(--home-unit) * 120); height: calc(var(--home-unit) * 107);
+}
+.mkt-home-card-beauty .mkt-home-card-art {
+  left: calc(var(--home-unit) * 105); top: 0;
+  width: calc(var(--home-unit) * 115); height: calc(var(--home-unit) * 107);
+}
+.mkt-home-card-art-generic {
+  right: calc(var(--home-unit) * 8); bottom: calc(var(--home-unit) * 8);
+  width: calc(var(--home-unit) * 76); height: calc(var(--home-unit) * 64);
+  border-radius: calc(var(--home-unit) * 6);
+}
+.mkt-home-badge {
+  position: absolute; left: calc(var(--home-unit) * 13); top: calc(var(--home-unit) * 11); z-index: 3;
+  display: flex; align-items: center; justify-content: center; gap: calc(var(--home-unit) * 3);
+  width: calc(var(--home-unit) * 76); height: calc(var(--home-unit) * 19); box-sizing: border-box;
+  padding: 0 calc(var(--home-unit) * 6); border-radius: calc(var(--home-unit) * 999); background: #5baae8;
+}
+.mkt-home-badge-icon { width: calc(var(--home-unit) * 8); height: calc(var(--home-unit) * 9); flex: 0 0 auto; }
+.mkt-home-badge-text {
+  font-size: calc(var(--home-unit) * 10); line-height: calc(var(--home-unit) * 11.809);
+  color: #ffffff; font-weight: 500; white-space: nowrap;
+}
+.mkt-home-card-title {
+  position: absolute; left: calc(var(--home-unit) * 13); top: calc(var(--home-unit) * 39); z-index: 3;
+  width: calc(var(--home-unit) * 116.5); font-size: calc(var(--home-unit) * 12.596);
+  line-height: calc(var(--home-unit) * 15.745); font-weight: 700; color: #1d0d07;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.mkt-home-card-sub {
+  position: absolute; left: calc(var(--home-unit) * 13); top: calc(var(--home-unit) * 56.7); z-index: 3;
+  width: calc(var(--home-unit) * 111.787); font-size: calc(var(--home-unit) * 10);
+  line-height: calc(var(--home-unit) * 12.989); color: rgba(0, 0, 0, 0.85);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.mkt-home-card-no-badge .mkt-home-card-title { top: calc(var(--home-unit) * 24); }
+.mkt-home-card-no-badge .mkt-home-card-sub { top: calc(var(--home-unit) * 42); }
+.mkt-section-head { display: flex; align-items: baseline; justify-content: space-between; padding: 0 32rpx 16rpx; }
+.mkt-section-title { font-size: 34rpx; font-weight: 700; color: #1d0d07; }
+.mkt-section-sub { font-size: 22rpx; color: #b89682; }
+.mkt-section-link { font-size: 22rpx; color: #5baae8; }
+.mkt-pill { display: inline-flex; padding: 4rpx 12rpx; border-radius: 999rpx; background: #5baae8; margin-bottom: 10rpx; }
+.mkt-pill text { font-size: 20rpx; color: #ffffff; }
+
+.mkt-deals { margin: 20rpx 0 8rpx; }
+.mkt-deals-scroll { white-space: nowrap; padding-left: 32rpx; }
+.mkt-deal-card { position: relative; display: inline-flex; flex-direction: column; width: 320rpx; min-height: 230rpx; margin-right: 20rpx; padding: 22rpx; border-radius: 20rpx; background: #f0fbff; border: 2rpx solid #c0ecff; vertical-align: top; box-sizing: border-box; }
+.mkt-deal-badge { display: inline-flex; align-self: flex-start; padding: 4rpx 12rpx; border-radius: 8rpx; background: #5baae8; margin-bottom: 14rpx; }
+.mkt-deal-badge text { font-size: 20rpx; color: #ffffff; }
+.mkt-deal-name { display: block; font-size: 28rpx; font-weight: 600; color: #1d0d07; }
+.mkt-deal-offer { display: block; margin-top: 8rpx; font-size: 24rpx; color: #5baae8; }
+.mkt-deal-sub { display: block; margin-top: 4rpx; font-size: 20rpx; color: #577683; }
+.mkt-deal-go { margin-top: 16rpx; font-size: 20rpx; color: #5baae8; }
+
+.mkt-page { min-height: 100vh; background: #f0fbff; padding-bottom: 48rpx; }
+.mkt-tags { display: flex; padding: 20rpx 24rpx; white-space: nowrap; }
+.mkt-tag { display: inline-flex; padding: 10rpx 22rpx; margin-right: 14rpx; border-radius: 999rpx; background: #daf4ff; }
+.mkt-tag text { font-size: 24rpx; color: #3c3c3c; }
+.mkt-tag-active { background: #5baae8; }
+.mkt-tag-active text { color: #ffffff; }
+.mkt-campaign-list { padding: 0 24rpx; }
+.mkt-campaign-card { display: flex; flex-direction: column; margin-bottom: 22rpx; border-radius: 20rpx; background: #ffffff; border: 2rpx solid #c0ecff; overflow: hidden; }
+.mkt-campaign-cover { width: 100%; height: 260rpx; }
+.mkt-campaign-body { padding: 20rpx; }
+.mkt-campaign-title { display: block; font-size: 30rpx; font-weight: 700; color: #1d0d07; }
+.mkt-campaign-sub { display: block; margin-top: 6rpx; font-size: 24rpx; color: #577683; }
+.mkt-campaign-meta { display: flex; justify-content: space-between; margin-top: 14rpx; font-size: 20rpx; color: #b89682; }
+.mkt-empty, .mkt-error { padding: 80rpx 32rpx; text-align: center; font-size: 26rpx; color: #7b5b4a; }
+.mkt-retry { margin-top: 24rpx; padding: 14rpx 32rpx; border-radius: 999rpx; background: #5baae8; color: #ffffff; font-size: 24rpx; border: none; }
+
+.mkt-detail-footer { padding: 28rpx 24rpx 0; font-size: 20rpx; color: #b89682; text-align: center; }
+
+/* CCR-MKT-003 首页运营内容位（690:1550 / 690:3222 / 690:3601 内容区）。纸底与三张卡
+   的壳、字体、标签为设计系统模板；标题/文案/图片/落地目标由后台内容位提供，空则整块隐藏。 */
+.home-content-section {
+  position: relative;
+  /* 689:1312 starts at y=776 while the activity panel ends at 789: the content paper
+     deliberately underlaps the activity panel by 13 design px, exactly as Figma. */
+  margin: calc(var(--home-unit) * -13) 0 0;
+  padding: calc(var(--home-unit) * 40) calc(var(--home-unit) * 18) calc(var(--home-unit) * 42);
+  overflow: hidden;
+}
+.home-content-paper {
+  position: absolute;
+  left: calc(var(--home-unit) * -46);
+  top: 0;
+  width: calc(var(--home-unit) * 600);
+  height: calc(var(--home-unit) * 248);
+  pointer-events: none;
+}
+.home-content-grid {
+  position: relative;
+  display: flex;
+  align-items: flex-start;
+  gap: calc(var(--home-unit) * 16);
+}
+.home-content-hot {
+  position: relative;
+  width: calc(var(--home-unit) * 168);
+  height: calc(var(--home-unit) * 166);
+  flex: 0 0 calc(var(--home-unit) * 168);
+  background: #c0ecff;
+  border-radius: calc(var(--home-unit) * 9);
+  overflow: hidden;
+  padding: calc(var(--home-unit) * 31) calc(var(--home-unit) * 6) 0;
+  box-sizing: border-box;
+}
+.home-content-side {
+  display: flex;
+  flex-direction: column;
+  gap: calc(var(--home-unit) * 12);
+  width: calc(var(--home-unit) * 180);
+  flex: 0 0 calc(var(--home-unit) * 180);
+}
+.home-content-small {
+  position: relative;
+  width: 100%;
+  height: calc(var(--home-unit) * 77);
+  border-radius: calc(var(--home-unit) * 9);
+  overflow: hidden;
+  padding: calc(var(--home-unit) * 31) calc(var(--home-unit) * 7) 0;
+  box-sizing: border-box;
+}
+.home-content-community { background: #f0fbff; }
+.home-content-exotic { background: #ffefc0; }
+.home-content-tag {
+  position: absolute;
+  top: calc(var(--home-unit) * 6);
+  left: calc(var(--home-unit) * 6);
+  height: calc(var(--home-unit) * 15);
+  min-width: calc(var(--home-unit) * 56);
+  border-radius: calc(var(--home-unit) * 7.5);
+  background: #ffffff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: calc(var(--home-unit) * 2);
+  padding: 0 calc(var(--home-unit) * 4);
+  box-sizing: border-box;
+}
+.home-content-tag-icon { width: calc(var(--home-unit) * 7); height: calc(var(--home-unit) * 6); flex: 0 0 auto; }
+.home-content-tag-text { font-size: calc(var(--home-unit) * 7.872); font-weight: 500; line-height: calc(var(--home-unit) * 11.809); }
+.home-content-tag-green .home-content-tag-text,
+.home-content-tag-blue .home-content-tag-text,
+.home-content-tag-yellow .home-content-tag-text { color: #42403b; }
+.home-content-hot-title {
+  display: block;
+  max-width: calc(var(--home-unit) * 150);
+  font-size: calc(var(--home-unit) * 10);
+  font-weight: 700;
+  line-height: calc(var(--home-unit) * 13);
+  color: #3c3c3c;
+}
+.home-content-hot-sub {
+  display: block;
+  margin-top: 0;
+  max-width: calc(var(--home-unit) * 150);
+  font-size: calc(var(--home-unit) * 10);
+  line-height: calc(var(--home-unit) * 13);
+  color: #5a6a72;
+}
+.home-content-hot-art {
+  position: absolute;
+  left: calc(var(--home-unit) * 3);
+  top: calc(var(--home-unit) * 68);
+  width: calc(var(--home-unit) * 162);
+  height: calc(var(--home-unit) * 76);
+}
+.home-content-small-title {
+  display: block;
+  max-width: calc(var(--home-unit) * 111.787);
+  font-size: calc(var(--home-unit) * 10);
+  font-weight: 400;
+  line-height: calc(var(--home-unit) * 12.989);
+  color: #3c3c3c;
+}
+.home-content-small-sub {
+  display: block;
+  margin-top: 0;
+  max-width: calc(var(--home-unit) * 111.787);
+  font-size: calc(var(--home-unit) * 10);
+  line-height: calc(var(--home-unit) * 12.989);
+  color: #5a6a72;
+}
+.home-content-community-art {
+  position: absolute;
+  right: calc(var(--home-unit) * 2);
+  top: calc(var(--home-unit) * 20);
+  width: calc(var(--home-unit) * 96);
+  height: calc(var(--home-unit) * 46);
+}
+.home-content-exotic-tree {
+  position: absolute;
+  right: calc(var(--home-unit) * 2);
+  bottom: calc(var(--home-unit) * -1);
+  width: calc(var(--home-unit) * 64);
+  height: calc(var(--home-unit) * 70);
+}
+.home-content-exotic-flower {
+  position: absolute;
+  right: calc(var(--home-unit) * 52);
+  bottom: calc(var(--home-unit) * 2);
+  width: calc(var(--home-unit) * 24);
+  height: calc(var(--home-unit) * 31);
+}

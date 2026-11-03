@@ -1,4 +1,4 @@
-import { Button, Image, ScrollView, Text, View } from '@tarojs/components'
+import { Button, ScrollView, Text, View } from '@tarojs/components'
 import Taro, { useDidShow, useRouter } from '@tarojs/taro'
 import { useCallback, useEffect, useRef, useState, type CSSProperties } from 'react'
 import { useWorkspace } from '../../../shared/workspace-react'
@@ -6,7 +6,7 @@ import { consumerApi, consumerSession } from '../../../shared/consumer-runtime'
 import { integrationMessage } from '../../../shared/consumer-api'
 import { RealAddressRepository } from '../../address/repository'
 import { isAddressScenario, maskPhone, previewRepository, type AddressPhase, type AddressScenario, type AddressView } from '../../address/model'
-import backIcon from '../../assets/profile/back.png'
+import { SubpageHeader } from '../../components/navigation/subpage-header'
 import './index.css'
 
 // 地址管理列表页（设计稿 129:13141，登记表 §4.14）。契约 59 六路由中的读侧 + 行内
@@ -111,13 +111,7 @@ export default function AddressListPage() {
 
   const ready = phase === 'ready'
   return <View className='addr-page' style={style}>
-    <View className='addr-status-area' />
-    <View className='addr-header'>
-      <Button id='addr-back' className='addr-back' ariaLabel='返回' hoverClass='none' onClick={() => void back()}>
-        <Image className='addr-back-icon' src={backIcon} mode='scaleToFill' />
-      </Button>
-      <Text className='addr-title'>地址管理</Text>
-    </View>
+    <SubpageHeader title='地址管理' backId='addr-back' fixed={false} height={47} onBack={() => void back()} />
     <ScrollView className='addr-body' scrollY enhanced showScrollbar={false}>
       <View className='addr-scroll'>
         {phase === 'loading' && <View className='addr-state' role='status'><Text>正在加载地址…</Text></View>}

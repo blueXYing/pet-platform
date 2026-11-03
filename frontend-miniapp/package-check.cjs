@@ -4,7 +4,7 @@ const path = require('node:path')
 const assert = require('node:assert/strict')
 const root = path.join(__dirname, 'dist')
 const app = JSON.parse(fs.readFileSync(path.join(root, 'app.json'), 'utf8'))
-assert.deepEqual(app.pages, ['consumer/pages/splash/index', 'consumer/pages/home/index', 'consumer/pages/services/index', 'consumer/pages/community/index', 'consumer/pages/messages/index', 'consumer/pages/mine/index', 'consumer/pages/shell/index', 'consumer/pages/diagnostics/index', 'consumer/pages/profile-edit/index'])
+assert.deepEqual(app.pages, ['consumer/pages/splash/index', 'consumer/pages/home/index', 'consumer/pages/services/index', 'consumer/pages/community/index', 'consumer/pages/community/detail', 'consumer/pages/community/publish', 'consumer/pages/messages/index', 'consumer/pages/mine/index', 'consumer/pages/shell/index', 'consumer/pages/diagnostics/index', 'consumer/pages/profile-edit/index'])
 // Custom tabBar (2026-10-26 user ruling): five equal root tabs, main-package pages only, icons
 // are the registry-extracted original cuts (no selected-state variant — registered deviation).
 assert.deepEqual(app.tabBar, {
@@ -28,14 +28,25 @@ for (const extension of ['js', 'json', 'wxml', 'wxss']) {
 }
 // Tab page artifacts (tabbar+login slice): home/services/community/mine are new main-package pages.
 for (const page of ['home/index', 'services/index', 'community/index', 'mine/index']) {
-  for (const extension of ['js', 'json', 'wxml', 'wxss']) {
+  const extensions = page === 'community/index' ? ['js', 'json', 'wxml'] : ['js', 'json', 'wxml', 'wxss']
+  for (const extension of extensions) {
     assert.ok(fs.existsSync(path.join(root, `consumer/pages/${page}.` + extension)),
       `Tab page artifact missing: ${page}.${extension}`)
   }
 }
+// 宠友圈 index/detail/publish share one extracted style sheet (common.wxss); the three pages
+// intentionally do not each emit a duplicate wxss.
+assert.ok(fs.existsSync(path.join(root, 'common.wxss')), 'Community shared style sheet missing from dist')
 for (const extension of ['js', 'json', 'wxml', 'wxss']) {
   assert.ok(fs.existsSync(path.join(root, 'consumer/pages/profile-edit/index.' + extension)),
     'C-002 profile page artifact missing: ' + extension)
+}
+// CCR-COM-001 community detail/publish pages share the extracted common.wxss.
+for (const page of ['detail', 'publish']) {
+  for (const extension of ['js', 'json', 'wxml']) {
+    assert.ok(fs.existsSync(path.join(root, `consumer/pages/community/${page}.${extension}`)),
+      `Community page artifact missing: ${page}.${extension}`)
+  }
 }
 for (const extension of ['js', 'json', 'wxml', 'wxss']) {
   assert.ok(fs.existsSync(path.join(root, 'consumer/pages/messages/index.' + extension)),
@@ -61,7 +72,9 @@ assert.deepEqual(packages.map(p => ({ root: p.root, pages: p.pages })), [
     // M-side finish slice (27 §6.4 / 69 / 70): shop info, customers list + detail, stats.
     'pages/shop-info/index', 'pages/customers/index', 'pages/customers/detail', 'pages/stats/index',
     // 2026-10-19 CCR expansion: 70号 service drill-down page.
-    'pages/stats/service-orders'] },
+    'pages/stats/service-orders',
+    // Contract 71 merchant marketing center (2026-10-27 CCR-MKT-001).
+    'pages/marketing/index'] },
   { root: 'consumer/pages/pet-archive', pages: ['index', 'detail', 'form', 'vaccine-form', 'deworm-form'] },
   { root: 'consumer/pages/merchant-application', pages: ['index', 'signing'] },
   { root: 'consumer/pages/store-services', pages: ['index', 'service-detail', 'stores'] },
@@ -94,6 +107,8 @@ assert.deepEqual(packages.map(p => ({ root: p.root, pages: p.pages })), [
   { root: 'consumer/pages/feedback', pages: ['index', 'list'] },
   // Onboarding guide (37号裁决, 2026-10-21): first-launch-only three-screen subpackage.
   { root: 'consumer/pages/onboarding', pages: ['index'] },
+  // Contract 71 C-side campaign center + campaign detail (2026-10-27 CCR-MKT-001).
+  { root: 'consumer/pages/marketing', pages: ['campaigns', 'campaign'] },
 ], 'Merchant workspace, pet archive, merchant application, store services, coupon/points, aftersale, settings hub, help and feedback pages must be registered in the single app')
 for (const [folder, pages] of [['consumer/pages/aftersale', ['index', 'detail', 'apply']], ['merchant/pages/aftersale', ['index', 'detail']], ['merchant/pages/reviews', ['index']]]) {
   for (const page of pages) for (const extension of ['js', 'json', 'wxml', 'wxss']) {

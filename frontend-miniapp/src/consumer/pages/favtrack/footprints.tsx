@@ -1,4 +1,4 @@
-import { Button, Image, ScrollView, Text, View } from '@tarojs/components'
+import { Button, ScrollView, Text, View } from '@tarojs/components'
 import Taro, { useRouter, useDidShow } from '@tarojs/taro'
 import { useCallback, useEffect, useRef, useState, type CSSProperties } from 'react'
 import { useWorkspace } from '../../../shared/workspace-react'
@@ -6,9 +6,9 @@ import { consumerApi } from '../../../shared/consumer-runtime'
 import { integrationMessage } from '../../../shared/consumer-api'
 import { switchConsumerTab } from '../../components/navigation/switch'
 import { ConsumerPageLayout } from '../../components/page-layout'
+import { SubpageHeader, SubpageHeaderSpacer } from '../../components/navigation/subpage-header'
 import { RealFavoriteFootprintRepository, isFavoriteFootprintUnauthorized } from '../../favtrack/repository'
 import { formatTrackClock, groupFootprints, rowSubtitle, rowTitle, targetTypeLabels, type FootprintRow } from '../../favtrack/model'
-import back from '../../assets/profile/back.png'
 import './favtrack.css'
 
 // 浏览足迹列表（Contract 58 / 32号裁决第二节批次）。设计源 129:3484（我的-浏览足迹）：
@@ -128,13 +128,8 @@ export default function FootprintsPage() {
   const groups = ready ? groupFootprints(now, rows) : []
   return <ConsumerPageLayout page='footprintList' unit={unit} className='fvt-page'
     navigation={preview ? { idPrefix: 'trk', disabled: !ready, onSelect: key => void switchConsumerTab(key) } : undefined} style={style}>
-    <View className='fvt-status-area' />
-    <View className='fvt-nav'>
-      <Button id='trk-back' ariaLabel='返回' className='fvt-nav-back' onClick={() => void goBack()}>
-        <Image src={back} className='fvt-nav-back-icon' />
-      </Button>
-      <Text className='fvt-nav-title'>浏览足迹</Text>
-    </View>
+    <SubpageHeader title='浏览足迹' backId='trk-back' height={47} onBack={() => void goBack()} />
+    <SubpageHeaderSpacer height={47} />
     <View className='fvt-body'>
       {phase === 'loading' && <View className='fvt-state' role='status'><Text>正在读取足迹…</Text></View>}
       {phase === 'expired' && <View className='fvt-state' role='status'>

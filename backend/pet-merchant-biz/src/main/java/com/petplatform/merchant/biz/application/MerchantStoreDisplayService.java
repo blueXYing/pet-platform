@@ -44,11 +44,18 @@ public final class MerchantStoreDisplayService {
 
     private final MerchantReadStore store;
     private final MerchantEligibilityFactsReader eligibilityFacts;
+    private final boolean promotionProjection;
 
     public MerchantStoreDisplayService(
             MerchantReadStore store, MerchantEligibilityFactsReader eligibilityFacts) {
+        this(store, eligibilityFacts, false);
+    }
+
+    public MerchantStoreDisplayService(MerchantReadStore store,
+            MerchantEligibilityFactsReader eligibilityFacts, boolean promotionProjection) {
         this.store = Objects.requireNonNull(store, "store is required");
         this.eligibilityFacts = Objects.requireNonNull(eligibilityFacts, "eligibilityFacts is required");
+        this.promotionProjection = promotionProjection;
     }
 
     /** C store list: one snapshot, one facts read per distinct merchant, honest visible total. */
@@ -65,7 +72,9 @@ public final class MerchantStoreDisplayService {
         if (keyword != null && (keyword.isEmpty()
                 || keyword.codePointCount(0, keyword.length()) > 30)) invalid("keyword is invalid");
         return store.read(mapper -> {
-            List<MerchantStoreDisplayRowEntity> rows = mapper.selectDisplayStoreCandidates();
+            List<MerchantStoreDisplayRowEntity> rows = promotionProjection
+                    ? mapper.selectDisplayStoreCandidates()
+                    : mapper.selectDisplayStoreCandidatesPlain();
             Map<Long, MerchantEligibilityFactsReader.Facts> factsByMerchant = new HashMap<>();
             List<MerchantStoreDisplayRowEntity> visible = new ArrayList<>();
             for (MerchantStoreDisplayRowEntity row : rows) {
@@ -89,7 +98,17 @@ public final class MerchantStoreDisplayService {
                         && !containsIgnoreCase(row.getMerchantName(), keyword)) {
                     continue;
                 }
+                boolean promoted = row.getPromoLevel() != null
+                        || (row.getPromoTitle() != null && !row.getPromoTitle().isBlank())
+                        || (row.getPromoText() != null && !row.getPromoText().isBlank());
+                if (query.promotedOnly() && !promoted) continue;
                 visible.add(row);
+            }
+            if (query.promotedOnly()) {
+                visible.sort(java.util.Comparator
+                        .comparingInt((MerchantStoreDisplayRowEntity row) ->
+                                row.getPromoLevel() == null ? 99 : row.getPromoLevel())
+                        .thenComparing(MerchantStoreDisplayRowEntity::getStoreId));
             }
             long total = visible.size();
             List<MerchantStoreDisplayDTO> items = new ArrayList<>(Math.min(pageSize, visible.size()));
@@ -111,7 +130,9 @@ public final class MerchantStoreDisplayService {
         if (query.context() == null) invalid("query context is required");
         long storeId = targetId(query.storeId());
         return store.read(mapper -> {
-            MerchantStoreDisplayRowEntity row = mapper.selectDisplayStore(storeId);
+            MerchantStoreDisplayRowEntity row = promotionProjection
+                    ? mapper.selectDisplayStore(storeId)
+                    : mapper.selectDisplayStorePlain(storeId);
             if (row == null) notFound();
             requirePositive(row.getMerchantId(), "merchant id");
             requirePositive(row.getStoreId(), "store id");
@@ -166,7 +187,25 @@ public final class MerchantStoreDisplayService {
                 MerchantQueryService.coordinate(row.getLongitude(), MIN_LONGITUDE, MAX_LONGITUDE, "longitude"),
                 MerchantQueryService.coordinate(row.getLatitude(), MIN_LATITUDE, MAX_LATITUDE, "latitude"),
                 MerchantQueryService.maskPhone(row.getPhone()),
-                cityFact(row));
+                cityFact(row),
+                promoLevel(row.getPromoLevel()),
+                promoText(row.getPromoTitle(), "promoTitle"),
+                promoText(row.getPromoText(), "promoText"));
+    }
+
+    private static Integer promoLevel(Integer value) {
+        if (value == null) return null;
+        if (value < 1 || value > 9) unavailable("store promotion level is invalid");
+        return value;
+    }
+
+    private static String promoText(String value, String field) {
+        if (value == null) return null;
+        if (value.isBlank()) return null;
+        if (value.codePointCount(0, value.length()) > 100) {
+            unavailable("store " + field + " is invalid");
+        }
+        return value;
     }
 
     private static long targetId(String value) {

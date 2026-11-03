@@ -16,7 +16,7 @@ import { DetailFavoriteEntry, useFootprintRecord } from '../../favtrack/detail-t
 import { ServiceRow, StoreServicesDesign, serviceListCardHeight } from './view'
 
 // Node 690:2025 / 690:4205 (热门服务-宠物美容-详情页) — byte-identical copies of the
-// 690:6660 layout, so the service detail reuses that design one-to-one. The 团购套餐 region
+// 690:6660 layout, so the service detail reuses that design one-to-one. The 服务项目 region
 // renders the ONE service returned by the frozen GET /api/v1/c/services/{serviceId} contract
 // (description included); the store header stays design-sample copy here (this page targets a
 // service, and the 商家详情页 remains the store-bound view). Viewing is anonymous (STR-D8,
@@ -114,10 +114,9 @@ export default function ServiceDetailPage() {
       {phase === 'load-error' && <Button id='svcd-retry-load' className='svc-state-action' onClick={() => void load()}>重新加载</Button>}
       {phase === 'missing' && <Button id='svcd-back-list' className='svc-state-action' onClick={() => Taro.navigateBack().catch(() => setNotice('返回失败'))}>返回上一页</Button>}
     </View>}
-    {ready && detail && <StoreServicesDesign store={null} listTop={listTop} reviewTop={reviewTop} onBack={() => Taro.navigateBack().catch(() => setNotice('返回失败'))}
+    {ready && detail && <StoreServicesDesign store={null} listTop={listTop} serviceCount={1} reviewTop={reviewTop} onBack={() => Taro.navigateBack().catch(() => setNotice('返回失败'))}
       favoriteNode={<DetailFavoriteEntry targetType='SERVICE' targetId={serviceId} preview={preview} idPrefix='svcd' onNotice={setNotice} />}
       serviceCover={preview ? undefined : detail.cover} onRefreshCover={() => void load()}
-      footer={<Text>页面数据：{preview ? '契约 Mock（preview=1，不联调）' : '真实接口（后端交付前失败关闭，可匿名浏览）'}</Text>}
       notice={notice ? <Text id='svcd-notice' className='svc-notice' style={{ left: `calc(var(--svc-unit) * 29)`, right: `calc(var(--svc-unit) * 29)`, top: `calc(var(--svc-unit) * ${reviewTop + 246 + 24})` }}>{notice}</Text> : undefined}
       servicesNode={<ServiceRow idPrefix='svcd-row' line={{ service: detail, description: detail.description }} onBook={goBooking} />} />}
     </ConsumerPageLayout>

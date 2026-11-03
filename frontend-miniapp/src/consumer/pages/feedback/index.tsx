@@ -8,7 +8,7 @@ import {
   feedbackContentMax, feedbackContentPlaceholder, feedbackTypeOptions,
   validateFeedback, type FeedbackType,
 } from '../../feedback/model'
-import backIcon from '../../assets/profile/back.png'
+import { SubpageHeader } from '../../components/navigation/subpage-header'
 import './index.css'
 
 // 意见反馈提交页（67号 v0.2 / PRD 5.1.28 投诉类；设计稿 130:17185）。
@@ -126,14 +126,8 @@ export default function FeedbackPage() {
   }
 
   return <View className='cpn-page fb-page' style={style}>
-    <View className='fb-status-area' />
-    <View className='fb-header'>
-      <Button id='fb-back' className='fb-back' hoverClass='none' ariaLabel='返回' onClick={() => void back()}>
-        <Image src={backIcon} className='fb-back-icon' />
-      </Button>
-      <Text className='fb-title'>意见反馈</Text>
-      <Button id='fb-list' className='fb-list-entry' hoverClass='none' onClick={openList}>我的反馈</Button>
-    </View>
+    <SubpageHeader title='意见反馈' backId='fb-back' fixed={false} height={46} onBack={() => void back()}
+      right={<Button id='fb-list' className='fb-list-entry' hoverClass='none' onClick={openList}>我的反馈</Button>} />
     <ScrollView className='fb-body' scrollY enhanced showScrollbar={false}>
       <Text className='fb-label'>反馈类型</Text>
       <View className='fb-types'>

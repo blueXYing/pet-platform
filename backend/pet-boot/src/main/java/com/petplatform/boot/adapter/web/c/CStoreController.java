@@ -9,6 +9,7 @@ import com.petplatform.common.ApiResponse;
 import com.petplatform.common.CommonApiCodes;
 import com.petplatform.common.OperatorType;
 import com.petplatform.common.QueryContext;
+import com.petplatform.marketing.api.MarketingPublicApi;
 import com.petplatform.merchant.api.dto.MerchantStoreDisplayDTO;
 import com.petplatform.merchant.api.dto.MerchantStoreDisplayPageDTO;
 import com.petplatform.merchant.api.query.MerchantStoreDisplayPageQuery;
@@ -47,12 +48,15 @@ public class CStoreController {
 
     private final MerchantStoreDisplayApiImpl stores;
     private final ObjectProvider<MerchantApplicationCityCatalog> catalogs;
+    private final ObjectProvider<MarketingPublicApi> marketing;
 
     public CStoreController(
             MerchantStoreDisplayApiImpl stores,
-            ObjectProvider<MerchantApplicationCityCatalog> catalogs) {
+            ObjectProvider<MerchantApplicationCityCatalog> catalogs,
+            ObjectProvider<MarketingPublicApi> marketing) {
         this.stores = Objects.requireNonNull(stores, "stores is required");
         this.catalogs = catalogs;
+        this.marketing = marketing;
     }
 
     @ModelAttribute
@@ -64,6 +68,7 @@ public class CStoreController {
     public ApiResponse<Map<String, Object>> list(
             @RequestParam(required = false) String city,
             @RequestParam(required = false) String keyword,
+            @RequestParam(required = false) String promoted,
             @RequestParam(required = false) String page,
             @RequestParam(required = false) String pageSize,
             HttpServletRequest req) {
@@ -76,7 +81,8 @@ public class CStoreController {
                                 keyword(keyword),
                                 parse(page, 1, 10_000, "page"),
                                 parse(pageSize, 20, 50, "pageSize"),
-                                context(req)));
+                                context(req),
+                                promoted(promoted)));
         Map<String, Object> data = new LinkedHashMap<>();
         data.put("items", value.items().stream().map(CStoreController::view).toList());
         data.put("page", value.page());
@@ -101,7 +107,31 @@ public class CStoreController {
             }
             throw missing;
         }
-        return ApiResponse.success(view(value), trace(req));
+        Map<String, Object> data = view(value);
+        MarketingPublicApi api = marketing.getIfAvailable();
+        if (api != null) {
+            try {
+                MarketingPublicApi.ActiveCampaignView campaign = api.activeCampaignForStore(storeId);
+                if (campaign == null) {
+                    data.put("campaign", null);
+                } else {
+                    Map<String, Object> wire = new LinkedHashMap<>();
+                    wire.put("campaignId", campaign.campaignId());
+                    wire.put("title", campaign.title());
+                    wire.put("subtitle", campaign.subtitle());
+                    wire.put("tagName", campaign.tagName());
+                    wire.put("offerTag", campaign.offerTag());
+                    wire.put("offerTitle", campaign.offerTitle());
+                    wire.put("offerCopy", campaign.offerCopy());
+                    data.put("campaign", wire);
+                }
+            } catch (RuntimeException ignored) {
+                data.put("campaign", null);
+            }
+        } else {
+            data.put("campaign", null);
+        }
+        return ApiResponse.success(data, trace(req));
     }
 
     /**
@@ -161,7 +191,23 @@ public class CStoreController {
         row.put("latitude", item.latitude());
         row.put("phoneMasked", item.phoneMasked());
         row.put("cityCode", item.cityCode());
+        if (item.promoLevel() != null || item.promoTitle() != null || item.promoText() != null) {
+            Map<String, Object> promotion = new LinkedHashMap<>();
+            promotion.put("level", item.promoLevel());
+            promotion.put("title", item.promoTitle());
+            promotion.put("text", item.promoText());
+            row.put("promotion", promotion);
+        } else {
+            row.put("promotion", null);
+        }
         return row;
+    }
+
+    /** C-side rail filter: absent/false = ordinary directory; only an explicit true enables it. */
+    private static boolean promoted(String raw) {
+        if (raw == null || raw.isEmpty() || "false".equals(raw)) return false;
+        if ("true".equals(raw)) return true;
+        throw invalid("promoted");
     }
 
     private static int parse(String raw, int fallback, int max, String field) {
@@ -173,12 +219,12 @@ public class CStoreController {
     }
 
     private static void rejectUnknownParameters(HttpServletRequest req) {
-        for (String name : new String[] {"city", "keyword", "page", "pageSize"}) {
+        for (String name : new String[] {"city", "keyword", "promoted", "page", "pageSize"}) {
             String[] values = req.getParameterValues(name);
             if (values != null && values.length > 1) throw invalid(name);
         }
         for (String name : req.getParameterMap().keySet()) {
-            if (!"city".equals(name) && !"keyword".equals(name)
+            if (!"city".equals(name) && !"keyword".equals(name) && !"promoted".equals(name)
                     && !"page".equals(name) && !"pageSize".equals(name)) {
                 throw invalid(name);
             }

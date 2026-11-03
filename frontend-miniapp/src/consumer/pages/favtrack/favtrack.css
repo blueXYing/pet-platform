@@ -9,15 +9,10 @@
 .fvt-page button { padding: 0; margin: 0; border: 0; border-radius: 0; background: transparent; font: inherit; line-height: normal; text-align: left; }
 .fvt-page button::after { border: 0; }
 .fvt-page button[disabled] { opacity: .65; color: inherit; }
-.fvt-status-area { height: var(--fvt-status-top); }
 .fvt-body { min-height: 85vh; padding-bottom: calc(var(--fvt-unit) * 24); }
 .fvt-scroll { height: calc(100vh - var(--fvt-status-top) - var(--fvt-unit) * 44); }
 
 /* 顶部导航（128:3200/129:3484：返回 32x32 + 标题左对齐，47 高）。 */
-.fvt-nav { position: relative; height: calc(var(--fvt-unit) * 47); display: flex; align-items: center; }
-.fvt-nav-back { position: absolute; left: calc(var(--fvt-unit) * 19); top: calc(var(--fvt-unit) * 8); width: calc(var(--fvt-unit) * 32); height: calc(var(--fvt-unit) * 32); display: flex; align-items: center; justify-content: center; }
-.fvt-nav-back-icon { width: calc(var(--fvt-unit) * 11); height: calc(var(--fvt-unit) * 18); }
-.fvt-nav-title { margin-left: calc(var(--fvt-unit) * 62); font-size: calc(var(--fvt-unit) * 16); line-height: calc(var(--fvt-unit) * 24); font-weight: 700; color: #1d0d07; }
 
 /* 状态与空态（沿 cpn-state 惯例）。 */
 .fvt-state { padding: calc(var(--fvt-unit) * 42) calc(var(--fvt-unit) * 29); font-size: calc(var(--fvt-unit) * 14); line-height: calc(var(--fvt-unit) * 24); color: #577683; }

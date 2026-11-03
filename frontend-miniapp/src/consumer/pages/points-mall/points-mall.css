@@ -13,12 +13,7 @@
 .pml-page button[disabled] { opacity: .65; color: inherit; }
 
 /* 顶部导航（128:2614 Rectangle 36/10 奶油底 + A-6 返回 32x32@19,8 + H1-9 标题 16/700，标题按工程语义「积分商城」）。 */
-.pml-status-area { height: var(--pml-status-top); background: #fff6e5; }
-.pml-nav { position: relative; height: calc(var(--pml-unit) * 44); background: #fff6e5; }
-.pml-nav-back { position: absolute; left: calc(var(--pml-unit) * 19); top: calc(var(--pml-unit) * 8); width: calc(var(--pml-unit) * 32); height: calc(var(--pml-unit) * 32); display: flex; align-items: center; justify-content: center; }
 /* 128:2682 原矢量（21x20 折返箭头 #7B5B4A，REST SVG 导出，base64 内嵌）。 */
-.pml-nav-back-icon { width: calc(var(--pml-unit) * 20.828125); height: calc(var(--pml-unit) * 20); background-image: url("data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjEiIGhlaWdodD0iMjAiIHZpZXdCb3g9IjAgMCAyMSAyMCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cGF0aCBkPSJNOS41MzEwNSA5Ljk5OThMMTMuNjQ2NyAxNC4xMTY1TDEyLjQ4MDMgMTUuMjk5OEw3LjE4MTY0IDkuOTk5OEwxMi40ODAzIDQuNjk5OEwxMy42NDY3IDUuODgzMTRMOS41MzEwNSA5Ljk5OThaIiBmaWxsPSIjN0I1QjRBIi8+PC9zdmc+"); background-repeat: no-repeat; background-size: 100% 100%; }
-.pml-nav-title { position: absolute; left: calc(var(--pml-unit) * 59); top: calc(var(--pml-unit) * 12); font-size: calc(var(--pml-unit) * 16); line-height: calc(var(--pml-unit) * 24); font-weight: 700; color: #1d0d07; }
 
 .pml-body { background: #f0fbff; min-height: 85vh; padding-bottom: calc(var(--pml-unit) * 24); }
 

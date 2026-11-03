@@ -48,6 +48,18 @@ public final class CouponRule {
         return thresholdAmount;
     }
 
+    /** Display-only label from the frozen rule_json; never gates eligibility. */
+    public static String typeLabel(String ruleJson) {
+        if (ruleJson == null || ruleJson.isBlank()) return null;
+        try {
+            JsonNode root = JSON.readTree(ruleJson);
+            JsonNode value = root == null ? null : root.path("typeLabel");
+            return value == null || !value.isTextual() ? null : value.asText();
+        } catch (Exception unreadable) {
+            return null;
+        }
+    }
+
     /**
      * Two-decimal plain string or absent. Numbers with more than two decimals, negatives and
      * out-of-range magnitudes are absent (defensive, mirroring the C-end read projection).

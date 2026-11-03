@@ -121,7 +121,7 @@ class CFavoriteFootprintHttpTest {
         public MerchantStoreDisplayDTO getDisplayStore(MerchantStoreDisplayQuery query) {
             return new MerchantStoreDisplayDTO("9400000000000931", query.storeId(),
                     "萌宠之家", "萌宠之家宠物店", "上海市浦东新区世纪大道100号", "121.5", "31.2",
-                    "021****1234", "shanghai");
+                    "021****1234", "shanghai", null, null, null);
         }
 
         @Override

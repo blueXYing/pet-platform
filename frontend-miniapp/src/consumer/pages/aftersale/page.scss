@@ -7,10 +7,7 @@
 .afs-page { min-height: 100vh; background: #f0fbff; color: #1d0d07; font-family: AftersaleRoboto, AftersaleCjk, sans-serif; font-size: calc(var(--afs-unit) * 13.154); }
 .afs-page button { box-sizing: border-box; margin: 0; font-family: inherit; border: 0; }
 .afs-page button::after { border: 0; }
-.afs-header { display: flex; align-items: center; gap: calc(var(--afs-unit) * 21); min-height: calc(var(--afs-unit) * 74); padding: var(--afs-top) calc(var(--afs-unit) * 18) 0; background: #fff6e5; box-sizing: content-box; font-weight: 700; font-size: calc(var(--afs-unit) * 16); color: #3c3c3c; }
-.afs-page .afs-back { display: flex; align-items: center; justify-content: flex-start; width: calc(var(--afs-unit) * 11); height: calc(var(--afs-unit) * 40); padding: 0; background: transparent; }
 /* Figma SVG root dimensions are preserved. The original mirrored layer is applied at its callsite. */
-.afs-back-icon { width: calc(var(--afs-unit) * 8.85754); height: calc(var(--afs-unit) * 14.5227); transform: scaleY(-1); }
 .afs-body { display: flex; flex-direction: column; gap: calc(var(--afs-unit) * 17.539); padding: calc(var(--afs-unit) * 17) calc(var(--afs-unit) * 13.506) calc(var(--afs-unit) * 30) calc(var(--afs-unit) * 12.506); }
 .afs-card { display: flex; flex-direction: column; padding: calc(var(--afs-unit) * 18.635); border: calc(var(--afs-unit) * 1.096) solid #c0ecff; border-radius: calc(var(--afs-unit) * 13.154); background: #fff; overflow: hidden; }
 .afs-heading { display: block; padding-bottom: calc(var(--afs-unit) * 13.154); font-size: calc(var(--afs-unit) * 15.346); font-weight: 500; line-height: calc(var(--afs-unit) * 21.923); }

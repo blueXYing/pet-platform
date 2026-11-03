@@ -6,6 +6,7 @@ import { consumerApi } from '../../../shared/consumer-runtime'
 import { ApiError } from '../../../shared/request'
 import { switchConsumerTab } from '../../components/navigation/switch'
 import { ConsumerPageLayout } from '../../components/page-layout'
+import { SubpageHeader, SubpageHeaderSpacer } from '../../components/navigation/subpage-header'
 import { appointmentWindow, orderReadMessage, orderStatusBadge, PreviewOrderReadRepository, type OrderDetailView } from '../../orders/model'
 import { RealOrderReadRepository } from '../../orders/repository'
 import {
@@ -125,11 +126,8 @@ function PayScreen({ preview, scenario, orderId }: { preview: boolean; scenario:
   return <ConsumerPageLayout page='bookingPay' unit={unit} className='bkg-page' style={style}
     navigation={preview ? { idPrefix: 'bkp', disabled: phase === 'loading', onSelect: key => { void switchConsumerTab(key) } } : undefined}>
     <View className='bkg-design'>
-      <View className='bkg-status-area' />
-      <View className='bkg-nav'>
-        <Button id='bkp-back' ariaLabel='返回' className='bkg-nav-back' onClick={() => void goBack()}><Text className='bkg-nav-back-icon'>‹</Text></Button>
-        <Text className='bkg-nav-title'>确认支付</Text>
-      </View>
+      <SubpageHeader title='确认支付' backId='bkp-back' height={44} onBack={() => void goBack()} />
+      <SubpageHeaderSpacer height={44} />
       {phase === 'loading' && <View className='bkg-state' role='status'><Text id='bkp-loading'>正在读取订单…</Text></View>}
       {phase === 'invalid' && <View className='bkg-state' role='status'>
         <Text id='bkp-invalid'>订单链接无效，请从我的订单重新进入。</Text>

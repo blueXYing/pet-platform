@@ -7,6 +7,7 @@ import { assertApiOrigin } from './api-origin'
 
 declare const C_API_ORIGIN: string
 declare const ALLOW_LOCAL_HTTP: boolean
+export const apiOrigin = C_API_ORIGIN
 export const consumerStorage: LocalStore = {
   get: key => Taro.getStorageSync(`${C_API_ORIGIN}:${key}`),
   set: (key, value) => Taro.setStorageSync(`${C_API_ORIGIN}:${key}`, value),
@@ -37,7 +38,17 @@ export const consumerApi = new ConsumerApi(transport, consumerStorage, requestUu
   },
 } : undefined,
 // 401 自动恢复的静默重登通道（用户 2026-10-08 裁决）：闭包引用自身实例，模块初始化期无环。
-() => consumerSession.ensure())
+() => consumerSession.ensure(),
+C_API_ORIGIN ? async input => {
+  assertApiOrigin(C_API_ORIGIN, ALLOW_LOCAL_HTTP)
+  const result = await Taro.uploadFile({
+    url: `${C_API_ORIGIN}/api/v1/c/community/media`,
+    filePath: input.filePath, name: 'file',
+    header: { Authorization: input.authorization, 'X-Request-Id': input.requestId },
+    timeout: 30000,
+  })
+  return { statusCode: result.statusCode, data: result.data }
+} : undefined)
 
 // 登录体验层单例：app 启动静默登录（workspace-react 的 launch()）与「我的」页手机号引导共用。
 export const consumerSession: SilentLogin = createSilentLogin(consumerApi, platform.login)
