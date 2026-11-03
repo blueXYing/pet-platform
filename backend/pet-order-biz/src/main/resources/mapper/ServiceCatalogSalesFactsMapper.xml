@@ -1,0 +1,47 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.petplatform.order.biz.infrastructure.persistence.mapper.ServiceCatalogSalesFactsMapper">
+    <!--
+      Public service-catalog sales facts (74号 §6.2 / CCR-SVC-CARD-001 §3.1). Effective order
+      (confirmed 2026-10-30): paid_at IS NOT NULL, not canceled, refunded_amount = 0 — partial
+      and full refunds both do not count, and the order does not need to be completed or
+      verified. Only id + grouped count are projected; no order/user/amount column leaves this
+      statement (no enumeration or PII face).
+    -->
+    <sql id="effectiveOrder">
+        paid_at IS NOT NULL
+        AND order_stage &lt;&gt; 'CANCELED'
+        AND refunded_amount = 0
+    </sql>
+
+    <!--
+      Monthly sold: effective orders whose paid_at falls in the current natural month of
+      Asia/Shanghai, expressed as the half-open UTC instant window [from, to). store_id leads
+      idx_order_store_stage_created, so the batch stays on the store-prefix index (EXPLAIN
+      acceptance in ServiceCatalogSalesFactsMySqlTest).
+    -->
+    <select id="storeMonthlySold" resultType="com.petplatform.order.biz.infrastructure.persistence.entity.ServiceCatalogSalesCountEntity">
+        SELECT store_id AS id, COUNT(*) AS order_count
+        FROM pet_order
+        WHERE store_id IN
+        <foreach collection="storeIds" item="storeId" open="(" separator="," close=")">#{storeId}</foreach>
+          AND paid_at &gt;= #{from} AND paid_at &lt; #{to}
+          AND <include refid="effectiveOrder"/>
+        GROUP BY store_id
+        ORDER BY store_id ASC
+    </select>
+
+    <!--
+      Service sold: all-time effective orders (PRD 5.1.13 does not bound this by time).
+      service_id leads idx_order_service_time, so the batch stays on the service-prefix index.
+    -->
+    <select id="serviceSold" resultType="com.petplatform.order.biz.infrastructure.persistence.entity.ServiceCatalogSalesCountEntity">
+        SELECT service_id AS id, COUNT(*) AS order_count
+        FROM pet_order
+        WHERE service_id IN
+        <foreach collection="serviceIds" item="serviceId" open="(" separator="," close=")">#{serviceId}</foreach>
+          AND <include refid="effectiveOrder"/>
+        GROUP BY service_id
+        ORDER BY service_id ASC
+    </select>
+</mapper>

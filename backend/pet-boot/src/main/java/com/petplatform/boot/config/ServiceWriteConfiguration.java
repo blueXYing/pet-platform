@@ -5,8 +5,11 @@ import com.petplatform.common.SnowflakeIdGenerator;
 import com.petplatform.event.api.IntegrationEventPublisher;
 import com.petplatform.merchant.api.query.MerchantAdmissionQueryApi;
 import com.petplatform.service.biz.apiimpl.ServiceCommandApiImpl;
+import com.petplatform.service.biz.apiimpl.ServiceCategoryAdminQueryApiImpl;
+import com.petplatform.service.biz.apiimpl.ServiceCategoryCommandApiImpl;
 import com.petplatform.service.biz.apiimpl.ServiceManagementQueryApiImpl;
 import com.petplatform.service.biz.apiimpl.ServiceReviewQueryApiImpl;
+import com.petplatform.service.biz.application.ServiceCategoryAuthorizationPort;
 import com.petplatform.service.biz.application.ServiceWriteDependencies;
 import com.petplatform.service.biz.application.ServiceWriteDependencies.ServiceCoverAssetPort;
 import com.petplatform.service.biz.application.ServiceWriteDependencies.ServiceCoverUrlPort;
@@ -46,6 +49,13 @@ public class ServiceWriteConfiguration {
     ServiceReviewAuthorizationPort serviceReviewAuthorization(
             AdminAuthorizationQueryApi authorization) {
         return new ServiceReviewAuthorizationAdapter(authorization);
+    }
+
+    @Bean
+    @ConditionalOnMissingBean(ServiceCategoryAuthorizationPort.class)
+    ServiceCategoryAuthorizationPort serviceCategoryAuthorization(
+            AdminAuthorizationQueryApi authorization) {
+        return new ServiceCategoryAuthorizationAdapter(authorization);
     }
 
     @Bean
@@ -98,6 +108,30 @@ public class ServiceWriteConfiguration {
             ObjectProvider<Clock> clock) {
         return new ServiceManagementQueryApiImpl(
                 source, ids, admissions, clock.getIfAvailable(Clock::systemUTC));
+    }
+
+    @Bean
+    ServiceCategoryCommandApiImpl serviceCategoryCommandApi(
+            DataSource source,
+            SnowflakeIdGenerator ids,
+            ObjectProvider<Clock> clock,
+            @Value("${pet.service.category.icon-url-allow-http:false}")
+                    boolean allowHttpIconUrl,
+            ServiceCategoryAuthorizationPort authorization) {
+        return new ServiceCategoryCommandApiImpl(
+                source,
+                ids,
+                clock.getIfAvailable(Clock::systemUTC),
+                allowHttpIconUrl,
+                authorization);
+    }
+
+    @Bean
+    ServiceCategoryAdminQueryApiImpl serviceCategoryAdminQueryApi(
+            DataSource source,
+            SnowflakeIdGenerator ids,
+            ServiceCategoryAuthorizationPort authorization) {
+        return new ServiceCategoryAdminQueryApiImpl(source, ids, authorization);
     }
 
     /**

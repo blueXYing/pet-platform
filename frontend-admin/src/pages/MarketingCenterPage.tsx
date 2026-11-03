@@ -1,15 +1,13 @@
 import { useEffect, useRef, useState } from 'react';
 import type { AdminTemplateSummary, CouponAdminClient } from '../api/couponAdmin';
+import { RequestFailure } from '../request';
+import type { ServiceCategoryAdminClient } from '../api/serviceCategoryAdmin';
 import {
+  describeMarketingFailure, HOME_BLOCK_TARGET_TYPES, isMarketingStale, PLACEMENT_POSITIONS,
+  targetNeedsValue,
   type Campaign, type CampaignDetail, type CampaignInput, type CouponCampaign, type CouponClaim,
   type Enrollment, type HomeBlock, type MarketingAdminClient, type Placement, type StoreLink, type StoreOption,
 } from '../api/marketingAdmin';
-
-const POSITIONS = [
-  ['HOME_ACTIVITY', '首页活动位（活动钜惠）'],
-  ['HOME_BANNER', '首页 Banner'],
-  ['STORE_LIST_TOP', '商家列表置顶（商家钜惠）'],
-] as const;
 const STATUS_TEXT: Record<string, string> = {
   DRAFT: '草稿', PENDING_REVIEW: '待审核', SCHEDULED: '待生效', ONLINE: '进行中',
   PAUSED: '已暂停', ENDED: '已结束', CANCELED: '已取消', REJECTED: '已驳回',
@@ -24,6 +22,35 @@ const localInput = (value: string | null) => {
   return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
 };
 const csv = (value: string) => value.split(',').map(item => item.trim()).filter(Boolean);
+
+// F-A-02: campaign service categories are picked from the service-category dictionary face
+// (contract 71 v0.3 §4.1) instead of being typed by hand. `foreign` marks an existing
+// campaign code that the dictionary no longer lists (deleted or disabled since) — it stays
+// rendered and checked so an untouched save preserves stored data instead of silently
+// narrowing the campaign to "all categories".
+type CategoryOption = { code: string; name: string; foreign?: boolean };
+type CategoryLoadState = 'loading' | 'ready' | 'failed';
+
+function CategoryField({ state, options, defaultCodes, failureText, onRetry }: {
+  state: CategoryLoadState;
+  options: CategoryOption[];
+  defaultCodes: string[];
+  failureText: string;
+  onRetry: () => void;
+}) {
+  const selected = new Set(defaultCodes);
+  return <fieldset>
+    <legend>服务分类（可多选，来自服务分类字典）</legend>
+    {state === 'loading' && <p role="status">分类加载中…</p>}
+    {state === 'failed' && <p role="alert">{failureText}<button type="button" onClick={onRetry}>重试</button></p>}
+    {state === 'ready' && options.length === 0 && <p className="hint">字典中暂无启用中的分类。</p>}
+    {options.map(option => <label key={option.code} style={{ display: 'block' }}>
+      <input type="checkbox" name="serviceCategoryCode" value={option.code} defaultChecked={selected.has(option.code)} />
+      {option.foreign ? `${option.code}（字典外或已停用）` : `${option.name}（${option.code}）`}
+    </label>)}
+    <p className="hint">不勾选任何分类 = 活动面向全部分类（提交空列表）；勾选的编码按服务分类字典校验，不存在或未启用的分类会被后端拒绝。</p>
+  </fieldset>;
+}
 
 function AssetPicker({ name, label, defaultValue, client, canManage, onFailure }: {
   name: string; label: string; defaultValue?: string | null;
@@ -46,10 +73,57 @@ function AssetPicker({ name, label, defaultValue, client, canManage, onFailure }
   </div>;
 }
 
+function PlacementForm({ placement, client, canManage, busy, onSubmit, onFailure, onCancel }: {
+  placement?: Placement; client: MarketingAdminClient; canManage: boolean; busy: boolean;
+  onSubmit: (input: Record<string, unknown>) => void;
+  onFailure: (caught: unknown) => void;
+  onCancel?: () => void;
+}) {
+  return <form onSubmit={event => {
+    event.preventDefault();
+    const form = new FormData(event.currentTarget);
+    onSubmit({
+      positionCode: String(form.get('positionCode') ?? 'HOME_ACTIVITY'),
+      campaignId: String(form.get('campaignId') ?? '').trim(),
+      cityCode: String(form.get('cityCode') ?? '').trim() || undefined,
+      titleOverride: String(form.get('titleOverride') ?? '').trim() || undefined,
+      subtitleOverride: String(form.get('subtitleOverride') ?? '').trim() || undefined,
+      imageUrlOverride: String(form.get('imageUrlOverride') ?? '').trim() || undefined,
+      templateCode: String(form.get('templateCode') ?? '').trim() || undefined,
+      sortWeight: Number(form.get('sortWeight') ?? 0),
+      startAt: iso(String(form.get('startAt') ?? '')),
+      endAt: iso(String(form.get('endAt') ?? '')),
+    });
+  }}>
+    <p className="hint">热门服务顶部 Banner 全平台最多同时启用 1 个（启用时校验，超限返回 409）；创建后为草稿，需在活动生效后启用。</p>
+    <label>位置<select name="positionCode" defaultValue={placement?.positionCode ?? 'HOME_ACTIVITY'}>
+      {PLACEMENT_POSITIONS.map(([value, label]) => <option key={value} value={value}>{label}</option>)}
+    </select></label>
+    <label>活动 ID<input name="campaignId" defaultValue={placement?.campaignId ?? ''} required /></label>
+    <label>城市编码（空=全部）<input name="cityCode" defaultValue={placement?.cityCode ?? ''} /></label>
+    <label>标题覆盖<input name="titleOverride" defaultValue={placement?.titleOverride ?? ''} maxLength={100} /></label>
+    <label>副标题覆盖<input name="subtitleOverride" defaultValue={placement?.subtitleOverride ?? ''} maxLength={200} /></label>
+    <AssetPicker name="imageUrlOverride" label="投放插画" defaultValue={placement?.imageUrlOverride}
+      client={client} canManage={canManage} onFailure={onFailure} />
+    <label>卡片模板<select name="templateCode" defaultValue={placement?.templateCode ?? ''}>
+      <option value="">通用模板</option><option value="new_user">新客活动卡</option><option value="beauty">美容活动卡</option>
+    </select></label>
+    <label>排序<input name="sortWeight" type="number" min={0} max={9999} defaultValue={placement?.sortWeight ?? 0} /></label>
+    <label>开始时间<input name="startAt" type="datetime-local" defaultValue={localInput(placement?.startAt ?? null)} required /></label>
+    <label>结束时间<input name="endAt" type="datetime-local" defaultValue={localInput(placement?.endAt ?? null)} required /></label>
+    <button type="submit" disabled={busy}>{placement ? '保存修改' : '创建投放位'}</button>
+    {placement && onCancel && <button type="button" disabled={busy} onClick={onCancel}>取消</button>}
+  </form>;
+}
+
 function HomeBlockForm({ block, client, canManage, busy, onSubmit, onFailure }: {
   block?: HomeBlock; client: MarketingAdminClient; canManage: boolean; busy: boolean;
   onSubmit: (input: Record<string, unknown>) => void; onFailure: (caught: unknown) => void;
 }) {
+  // F-A-03: targetType=HOT_SERVICE routes the C-side on the type alone (contract 71 v0.3 §10);
+  // the server nulls targetValue for it exactly like NONE, so the input stays blank/disabled.
+  const [targetType, setTargetType] = useState(block?.targetType ?? 'SERVICE_DIRECTORY');
+  const needsValue = targetNeedsValue(targetType);
   return <form onSubmit={event => {
     event.preventDefault();
     const form = new FormData(event.currentTarget);
@@ -86,17 +160,13 @@ function HomeBlockForm({ block, client, canManage, busy, onSubmit, onFailure }: 
     <label>标题<input name="title" defaultValue={block?.title ?? ''} maxLength={100} required /></label>
     <label>副标题<input name="subtitle" defaultValue={block?.subtitle ?? ''} maxLength={200} /></label>
     <AssetPicker name="imageUrl" label="内容位图片" defaultValue={block?.imageUrl} client={client} canManage={canManage} onFailure={onFailure} />
-    <label>落地类型<select name="targetType" defaultValue={block?.targetType ?? 'SERVICE_DIRECTORY'}>
-      <option value="SERVICE_DIRECTORY">服务目录</option>
-      <option value="SERVICE_CATEGORY">服务分类关键词</option>
-      <option value="STORE">门店</option>
-      <option value="SERVICE">单次服务</option>
-      <option value="CAMPAIGN">活动</option>
-      <option value="COMMUNITY">宠友圈</option>
-      <option value="MINIAPP_PATH">小程序路径</option>
-      <option value="NONE">无跳转</option>
+    <label>落地类型<select name="targetType" defaultValue={block?.targetType ?? 'SERVICE_DIRECTORY'} onChange={event => setTargetType(event.target.value)}>
+      {HOME_BLOCK_TARGET_TYPES.map(([value, label]) => <option key={value} value={value}>{label}</option>)}
     </select></label>
-    <label>目标值<input name="targetValue" defaultValue={block?.targetValue ?? ''} maxLength={255} placeholder="如 宠物美容 / 门店ID / /consumer/pages/..." /></label>
+    <label>{needsValue ? '目标值' : '目标值（此类型留空即可，后端不保存目标值）'}
+      <input name="targetValue" defaultValue={block?.targetValue ?? ''} maxLength={255} disabled={!needsValue}
+        placeholder={needsValue ? '如 宠物美容 / 门店ID / /consumer/pages/...' : '留空'} />
+    </label>
     <label>城市编码（空=全部）<input name="cityCode" defaultValue={block?.cityCode ?? ''} maxLength={32} /></label>
     <label>赞助商家 ID（预留竞价，可空）<input name="sponsorMerchantId" defaultValue={block?.sponsorMerchantId ?? ''} /></label>
     <label>赞助门店 ID（预留竞价，可空）<input name="sponsorStoreId" defaultValue={block?.sponsorStoreId ?? ''} /></label>
@@ -107,9 +177,10 @@ function HomeBlockForm({ block, client, canManage, busy, onSubmit, onFailure }: 
   </form>;
 }
 
-export default function MarketingCenterPage({ client, couponClient, canManage, canPublish, canReview, canCouponManage, canCouponPublish, onAuthLost }: {
+export default function MarketingCenterPage({ client, couponClient, categoryClient, canManage, canPublish, canReview, canCouponManage, canCouponPublish, onAuthLost }: {
   client: MarketingAdminClient;
   couponClient: CouponAdminClient;
+  categoryClient: ServiceCategoryAdminClient;
   canManage: boolean;
   canPublish: boolean;
   canReview: boolean;
@@ -120,6 +191,7 @@ export default function MarketingCenterPage({ client, couponClient, canManage, c
   const [tab, setTab] = useState<'campaigns' | 'placements' | 'home' | 'enrollments' | 'coupons'>('campaigns');
   const [campaigns, setCampaigns] = useState<Campaign[]>();
   const [placements, setPlacements] = useState<Placement[]>();
+  const [editingPlacement, setEditingPlacement] = useState<Placement>();
   const [enrollments, setEnrollments] = useState<Enrollment[]>();
   const [coupons, setCoupons] = useState<CouponCampaign[]>();
   const [homeBlocks, setHomeBlocks] = useState<HomeBlock[]>();
@@ -136,6 +208,45 @@ export default function MarketingCenterPage({ client, couponClient, canManage, c
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
   const sequence = useRef(0);
+  // F-A-02: enabled dictionary categories feeding the campaign forms' multi-select.
+  const [categoryOptions, setCategoryOptions] = useState<CategoryOption[]>([]);
+  const [categoryState, setCategoryState] = useState<CategoryLoadState>('loading');
+  const [categoryFailure, setCategoryFailure] = useState('分类列表读取失败，请重试');
+
+  async function loadCategoryOptions() {
+    setCategoryState('loading');
+    try {
+      // The dictionary face caps pageSize at 50 (contract 74 §4); page through ENABLED rows.
+      const options: CategoryOption[] = [];
+      for (let page = 1; page <= 20; page++) {
+        const result = await categoryClient.list({ status: 'ENABLED' }, page, 50);
+        for (const row of result.items) {
+          if (!options.some(option => option.code === row.categoryCode)) {
+            options.push({ code: row.categoryCode, name: row.categoryName });
+          }
+        }
+        if (options.length >= result.total || result.items.length === 0) break;
+      }
+      setCategoryOptions(options);
+      setCategoryState('ready');
+    } catch (caught) {
+      if (caught instanceof RequestFailure && caught.code === 'UNAUTHENTICATED') { onAuthLost(); return; }
+      setCategoryFailure(caught instanceof RequestFailure && (caught.code === 'FORBIDDEN' || caught.code === 'COMMON_FORBIDDEN')
+        ? '当前账号未授予 service.category.read，无法读取分类列表；不勾选任何分类 = 面向全部分类'
+        : '分类列表读取失败，请重试；不勾选任何分类 = 面向全部分类');
+      setCategoryState('failed');
+    }
+  }
+
+  // Existing campaign codes the dictionary no longer lists stay rendered (checked) so an
+  // untouched edit does not silently rewrite the stored category scope.
+  function campaignCategoryOptions(existing: string[]): CategoryOption[] {
+    const merged = categoryOptions.map(option => ({ ...option }));
+    for (const code of existing) {
+      if (!merged.some(option => option.code === code)) merged.push({ code, name: '', foreign: true });
+    }
+    return merged;
+  }
 
   async function loadCampaigns() {
     const call = ++sequence.current;
@@ -158,16 +269,27 @@ export default function MarketingCenterPage({ client, couponClient, canManage, c
   }
   function authOrError(caught: unknown, fallback: string) {
     if (caught instanceof Error && caught.message === 'UNAUTHENTICATED') { onAuthLost(); return; }
-    setError(caught instanceof Error ? `${fallback}（${caught.message}）` : fallback);
+    setError(describeMarketingFailure(caught, fallback));
+  }
+  async function refreshAll() {
+    await Promise.allSettled([loadCampaigns(), loadPlacements(), loadHomeBlocks(), loadEnrollments(), loadCoupons()]);
+    if (detail) {
+      try { setDetail(await client.getCampaign(detail.campaign.campaignId)); } catch { /* keep the previous detail on a transient read failure */ }
+    }
   }
   async function run(action: () => Promise<unknown>, ok: string) {
     setBusy(true); setError(''); setNotice('');
-    try { await action(); setNotice(ok); await Promise.allSettled([loadCampaigns(), loadPlacements(), loadHomeBlocks(), loadEnrollments(), loadCoupons()]); if (detail) { try { setDetail(await client.getCampaign(detail.campaign.campaignId)); } catch { /* keep the previous detail on a transient read failure */ } } }
-    catch (caught) { authOrError(caught, '操作失败'); }
+    try { await action(); setNotice(ok); await refreshAll(); }
+    catch (caught) {
+      authOrError(caught, '操作失败');
+      // Keep the readable text's promise: conflict/not-found texts say the data was refreshed.
+      if (isMarketingStale(caught)) void refreshAll();
+    }
     finally { setBusy(false); }
   }
 
   useEffect(() => { void Promise.all([loadCampaigns(), loadPlacements(), loadHomeBlocks(), loadEnrollments(), loadCoupons()]); return () => { sequence.current++; }; }, [client]); // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => { void loadCategoryOptions(); }, [categoryClient]); // eslint-disable-line react-hooks/exhaustive-deps
   useEffect(() => { couponClient.listTemplates({ status: 'ACTIVE' }).then(page => setTemplates(page.items)).catch(() => setTemplates([])); }, [couponClient]);
 
   async function openDetail(campaign: Campaign) {
@@ -225,7 +347,7 @@ export default function MarketingCenterPage({ client, couponClient, canManage, c
             tagName: String(form.get('tagName') ?? '').trim() || undefined,
             coverUrl: String(form.get('coverUrl') ?? '').trim() || undefined,
             cityCodes: csv(String(form.get('cityCodes') ?? '')),
-            serviceCategoryCodes: csv(String(form.get('serviceCategoryCodes') ?? '')),
+            serviceCategoryCodes: form.getAll('serviceCategoryCode').map(String),
             startAt: iso(String(form.get('startAt') ?? '')),
             endAt: iso(String(form.get('endAt') ?? '')),
             enrollStartAt: iso(String(form.get('enrollStartAt') ?? '')) || undefined,
@@ -245,7 +367,8 @@ export default function MarketingCenterPage({ client, couponClient, canManage, c
           <label>标签名称<input name="tagName" placeholder="新客专享 / 美容优惠" maxLength={32} /></label>
           <AssetPicker name="coverUrl" label="活动封面" client={client} canManage={canManage} onFailure={caught => authOrError(caught, '素材上传失败')} />
           <label>城市编码（逗号分隔，空=全部）<input name="cityCodes" placeholder="shanghai,chengdu" /></label>
-          <label>服务分类（逗号分隔，空=全部）<input name="serviceCategoryCodes" placeholder="BEAUTY,BOARDING" /></label>
+          <CategoryField state={categoryState} options={categoryOptions} defaultCodes={[]}
+            failureText={categoryFailure} onRetry={() => void loadCategoryOptions()} />
           <label>开始时间<input name="startAt" type="datetime-local" required /></label>
           <label>结束时间<input name="endAt" type="datetime-local" required /></label>
           <label>报名开始<input name="enrollStartAt" type="datetime-local" /></label>
@@ -302,7 +425,7 @@ export default function MarketingCenterPage({ client, couponClient, canManage, c
               tagName: String(form.get('tagName') ?? '').trim() || undefined,
               coverUrl: String(form.get('coverUrl') ?? '').trim() || undefined,
               cityCodes: csv(String(form.get('cityCodes') ?? '')),
-              serviceCategoryCodes: csv(String(form.get('serviceCategoryCodes') ?? '')),
+              serviceCategoryCodes: form.getAll('serviceCategoryCode').map(String),
               startAt: iso(String(form.get('startAt') ?? '')),
               endAt: iso(String(form.get('endAt') ?? '')),
               enrollStartAt: iso(String(form.get('enrollStartAt') ?? '')) || undefined,
@@ -322,7 +445,9 @@ export default function MarketingCenterPage({ client, couponClient, canManage, c
             <label>标签名称<input name="tagName" defaultValue={detail.campaign.tagName ?? ''} maxLength={32} /></label>
             <AssetPicker name="coverUrl" label="活动封面" defaultValue={detail.campaign.coverUrl} client={client} canManage={canManage} onFailure={caught => authOrError(caught, '素材上传失败')} />
             <label>城市编码（逗号分隔，空=全部）<input name="cityCodes" defaultValue={detail.campaign.cityCodes.join(',')} /></label>
-            <label>服务分类（逗号分隔，空=全部）<input name="serviceCategoryCodes" defaultValue={detail.campaign.serviceCategoryCodes.join(',')} /></label>
+            <CategoryField state={categoryState} options={campaignCategoryOptions(detail.campaign.serviceCategoryCodes)}
+              defaultCodes={detail.campaign.serviceCategoryCodes} failureText={categoryFailure}
+              onRetry={() => void loadCategoryOptions()} />
             <label>开始时间<input name="startAt" type="datetime-local" defaultValue={localInput(detail.campaign.startAt)} required /></label>
             <label>结束时间<input name="endAt" type="datetime-local" defaultValue={localInput(detail.campaign.endAt)} required /></label>
             <label>报名开始<input name="enrollStartAt" type="datetime-local" defaultValue={localInput(detail.campaign.enrollStartAt)} /></label>
@@ -378,34 +503,19 @@ export default function MarketingCenterPage({ client, couponClient, canManage, c
     {tab === 'placements' && <>
       {canManage && <section className="detail-card">
         <h3>新建投放位</h3>
-        <form onSubmit={event => {
-          event.preventDefault();
-          const form = new FormData(event.currentTarget);
-          void run(() => client.createPlacement({
-            positionCode: String(form.get('positionCode') ?? 'HOME_ACTIVITY'),
-            campaignId: String(form.get('campaignId') ?? '').trim(),
-            cityCode: String(form.get('cityCode') ?? '').trim() || undefined,
-            titleOverride: String(form.get('titleOverride') ?? '').trim() || undefined,
-            subtitleOverride: String(form.get('subtitleOverride') ?? '').trim() || undefined,
-            imageUrlOverride: String(form.get('imageUrlOverride') ?? '').trim() || undefined,
-            templateCode: String(form.get('templateCode') ?? '').trim() || undefined,
-            sortWeight: Number(form.get('sortWeight') ?? 0),
-            startAt: iso(String(form.get('startAt') ?? '')),
-            endAt: iso(String(form.get('endAt') ?? '')),
-          }), '投放位已创建');
-        }}>
-          <label>位置<select name="positionCode">{POSITIONS.map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select></label>
-          <label>活动 ID<input name="campaignId" required /></label>
-          <label>城市编码（空=全部）<input name="cityCode" /></label>
-          <label>标题覆盖<input name="titleOverride" maxLength={100} /></label>
-          <label>副标题覆盖<input name="subtitleOverride" maxLength={200} /></label>
-          <AssetPicker name="imageUrlOverride" label="投放插画" client={client} canManage={canManage} onFailure={caught => authOrError(caught, '素材上传失败')} />
-          <label>卡片模板<select name="templateCode" defaultValue=""><option value="">通用模板</option><option value="new_user">新客活动卡</option><option value="beauty">美容活动卡</option></select></label>
-          <label>排序<input name="sortWeight" type="number" min={0} max={9999} defaultValue={0} /></label>
-          <label>开始时间<input name="startAt" type="datetime-local" required /></label>
-          <label>结束时间<input name="endAt" type="datetime-local" required /></label>
-          <button type="submit" disabled={busy}>创建投放位</button>
-        </form>
+        <PlacementForm client={client} canManage={canManage} busy={busy}
+          onSubmit={input => void run(() => client.createPlacement(input), '投放位已创建')}
+          onFailure={caught => authOrError(caught, '素材上传失败')} />
+      </section>}
+      {canManage && editingPlacement && <section className="detail-card">
+        <h3>编辑投放位：{editingPlacement.placementId}</h3>
+        <PlacementForm placement={editingPlacement} client={client} canManage={canManage} busy={busy}
+          onSubmit={input => void run(async () => {
+            await client.updatePlacement(editingPlacement.placementId, input, editingPlacement.version);
+            setEditingPlacement(undefined);
+          }, '投放位已保存')}
+          onFailure={caught => authOrError(caught, '素材上传失败')}
+          onCancel={() => setEditingPlacement(undefined)} />
       </section>}
       {placements === undefined ? <p role="status">加载中</p> : <table>
         <thead><tr><th>ID</th><th>位置</th><th>活动</th><th>模板</th><th>城市</th><th>时间</th><th>状态</th><th>操作</th></tr></thead>
@@ -415,6 +525,7 @@ export default function MarketingCenterPage({ client, couponClient, canManage, c
           <td>{placement.startAt.slice(0, 16)} ~ {placement.endAt.slice(0, 16)}</td>
           <td>{STATUS_TEXT[placement.status] ?? placement.status}</td>
           <td>{canManage && <>
+            {placement.status !== 'ENABLED' && <button type="button" disabled={busy} onClick={() => setEditingPlacement(placement)}>编辑</button>}
             {placement.status !== 'ENABLED' && <button type="button" disabled={busy} onClick={() => void run(() => client.placementAction(placement.placementId, 'enable', placement.version), '投放位已启用')}>启用</button>}
             {placement.status === 'ENABLED' && <button type="button" disabled={busy} onClick={() => void run(() => client.placementAction(placement.placementId, 'disable', placement.version), '投放位已停用')}>停用</button>}
           </>}</td>
@@ -423,7 +534,7 @@ export default function MarketingCenterPage({ client, couponClient, canManage, c
     </>}
 
     {tab === 'home' && <>
-      <p className="hint">首页「热门服务 / 宠友圈热门 / 植物&amp;异宠」由运营手动配置；图片走后台上传，改文案/换图/排序/上下线不需要小程序发版。预留赞助商家/门店字段，V1 不做竞价结算。</p>
+      <p className="hint">首页「热门服务 / 宠友圈热门 / 植物&amp;异宠」由运营手动配置；图片走后台上传，改文案/换图/排序/上下线不需要小程序发版。落地类型「热门服务」无需目标值，C 端按类型直接路由（目标值留空）。预留赞助商家/门店字段，V1 不做竞价结算。</p>
       {canManage && <section className="detail-card">
         <h3>新建首页内容位</h3>
         <HomeBlockForm client={client} canManage={canManage} busy={busy}
@@ -443,7 +554,7 @@ export default function MarketingCenterPage({ client, couponClient, canManage, c
           <td>
             {canManage && <details>
               <summary>编辑</summary>
-              <HomeBlockForm block={block} client={client} canManage={canManage} busy={busy}
+              <HomeBlockForm key={block.version} block={block} client={client} canManage={canManage} busy={busy}
                 onSubmit={input => void run(() => client.updateHomeBlock(block.blockId, input, block.version), '首页内容位已保存')}
                 onFailure={caught => authOrError(caught, '素材上传失败')} />
             </details>}

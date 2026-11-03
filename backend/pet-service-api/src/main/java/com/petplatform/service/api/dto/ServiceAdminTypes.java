@@ -120,7 +120,14 @@ public final class ServiceAdminTypes {
 
     public record ServiceCategoryQuery(QueryContext context) {}
 
-    public record ServiceCategoryItem(String categoryId, String categoryName, int sortNo) {}
+    /** Merchant dictionary projection: ENABLED rows only, stable code plus optional icon/copy. */
+    public record ServiceCategoryItem(
+            String categoryId,
+            String categoryCode,
+            String categoryName,
+            String iconUrl,
+            String description,
+            int sortNo) {}
 
     public record ServiceCategoryPage(List<ServiceCategoryItem> items) {}
 }

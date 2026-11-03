@@ -4,12 +4,14 @@ import com.petplatform.common.SnowflakeIdGenerator;
 import com.petplatform.order.api.dto.ReviewEligibilityDTO;
 import com.petplatform.order.api.query.OrderQueryApi;
 import com.petplatform.review.api.command.ReviewCommandApi;
+import com.petplatform.review.api.query.ReviewPublicFactsApi;
 import com.petplatform.review.api.query.ReviewQueryApi;
 import com.petplatform.review.biz.application.ReviewAppealPorts;
 import com.petplatform.review.biz.application.ReviewService;
 import com.petplatform.review.biz.infrastructure.persistence.ReviewStore;
 import com.petplatform.schedule.api.protection.ScheduleCapacityGuardApi;
 import java.time.Clock;
+import java.util.List;
 import java.util.Objects;
 import javax.sql.DataSource;
 
@@ -21,7 +23,7 @@ import javax.sql.DataSource;
  * port-side authority; without them (pet.review.appeal.enabled off) every appeal call fails
  * closed instead of degrading.
  */
-public final class ReviewApiImpl implements ReviewQueryApi, ReviewCommandApi {
+public final class ReviewApiImpl implements ReviewQueryApi, ReviewCommandApi, ReviewPublicFactsApi {
     private final ReviewService service;
 
     public ReviewApiImpl(DataSource dataSource, SnowflakeIdGenerator ids, OrderQueryApi orders) {
@@ -100,5 +102,12 @@ public final class ReviewApiImpl implements ReviewQueryApi, ReviewCommandApi {
     @Override
     public AppealDetail getAppeal(AppealGetQuery query) {
         return service.getAppeal(query);
+    }
+
+    // ------------------------------ B-STAT-01 public rating facts (74号 §6.1)
+
+    @Override
+    public List<StoreRatingFact> getStoreRatings(StoreRatingQuery query) {
+        return service.getStoreRatings(query);
     }
 }

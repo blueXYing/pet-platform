@@ -14,9 +14,12 @@ import com.petplatform.marketing.api.MarketingPublicApi;
 import com.petplatform.marketing.api.dto.MarketingViews;
 import com.petplatform.merchant.api.dto.MerchantStoreDisplayDTO;
 import com.petplatform.merchant.api.dto.MerchantStoreDisplayPageDTO;
+import com.petplatform.merchant.api.query.MerchantFeaturedStoreFactsApi;
+import com.petplatform.merchant.api.query.MerchantFeaturedStoreFactsApi.FeaturedStoreFact;
 import com.petplatform.merchant.api.query.MerchantStoreDisplayApi;
 import com.petplatform.merchant.api.query.MerchantStoreDisplayPageQuery;
 import com.petplatform.merchant.api.query.MerchantStoreDisplayQuery;
+import com.petplatform.thirdparty.api.StorePhotoSigningApi;
 import com.petplatform.user.biz.application.UserAuthService.MiniSessionView;
 import jakarta.servlet.http.HttpServletRequest;
 import java.util.ArrayList;
@@ -46,15 +49,21 @@ public class MarketingCController {
 
     private final MarketingPublicApi marketing;
     private final MerchantStoreDisplayApi stores;
+    private final MerchantFeaturedStoreFactsApi storeFacts;
+    private final StorePhotoSigningApi photoSigning;
     private final CouponCampaignQueryApi coupons;
     private final ObjectProvider<MerchantApplicationCityCatalog> cities;
 
     public MarketingCController(MarketingPublicApi marketing,
             ObjectProvider<MerchantStoreDisplayApi> stores,
+            ObjectProvider<MerchantFeaturedStoreFactsApi> storeFacts,
+            ObjectProvider<StorePhotoSigningApi> photoSigning,
             ObjectProvider<CouponCampaignQueryApi> coupons,
             ObjectProvider<MerchantApplicationCityCatalog> cities) {
         this.marketing = marketing;
         this.stores = stores.getIfAvailable();
+        this.storeFacts = storeFacts.getIfAvailable();
+        this.photoSigning = photoSigning.getIfAvailable();
         this.coupons = coupons.getIfAvailable();
         this.cities = cities;
     }
@@ -191,7 +200,8 @@ public class MarketingCController {
                         .sorted(Comparator.comparingInt((MerchantStoreDisplayDTO dto) ->
                                 dto.promoLevel() == null ? 99 : dto.promoLevel())
                                 .thenComparing(MerchantStoreDisplayDTO::storeId))
-                        .forEach(dto -> byStore.put(dto.storeId(), merchantDeal(dto, null)));
+                        .forEach(dto -> byStore.put(dto.storeId(),
+                                dealCard(merchantDeal(dto, null), null)));
             } catch (RuntimeException ignored) {
                 // A facts failure hides the rail; it never blocks the services page.
             }
@@ -206,7 +216,8 @@ public class MarketingCController {
                     if (card == null) continue;
                     card.put("source", "CAMPAIGN");
                     card.put("campaignId", placement.campaignId());
-                    byStore.put((String) card.get("storeId"), card);
+                    byStore.put((String) card.get("storeId"),
+                            dealCard(card, placement.coverUrl()));
                 }
             }
         } catch (RuntimeException ignored) {
@@ -214,12 +225,78 @@ public class MarketingCController {
         }
         merged.addAll(byStore.values());
         merged = merged.stream().limit(size).toList();
+        attachDealImages(merged);
         Map<String, Object> data = new LinkedHashMap<>();
         data.put("items", merged);
         return ok(data, req);
     }
 
     // ---------------------------------------------------------------- composition
+
+    /**
+     * Contract 71 v0.3 §3.4 / 74 §3.5 deal image ({@code imageUrl/imageUrlExpiresAt}): store
+     * avatar → first store photo → campaign cover → null. The initial card carries the campaign
+     * cover as a fallback; {@link #attachDealImages} replaces it with a signed store avatar/photo
+     * when the private-asset signing face is assembled. Any media/signing failure keeps the
+     * fallback (or null) and never fails the whole rail.
+     */
+    private static Map<String, Object> dealCard(Map<String, Object> card, String campaignCoverUrl) {
+        card.put("imageUrl", campaignCoverUrl == null || campaignCoverUrl.isBlank()
+                ? null : campaignCoverUrl);
+        card.put("imageUrlExpiresAt", null);
+        return card;
+    }
+
+    private void attachDealImages(List<Map<String, Object>> cards) {
+        if (cards.isEmpty() || storeFacts == null || photoSigning == null) return;
+        List<String> storeIds = cards.stream()
+                .map(card -> (String) card.get("storeId"))
+                .filter(id -> id != null && !id.isBlank())
+                .distinct()
+                .toList();
+        if (storeIds.isEmpty()) return;
+        Map<String, FeaturedStoreFact> facts = new LinkedHashMap<>();
+        try {
+            for (FeaturedStoreFact fact : storeFacts.listFeaturedStoreFacts(
+                    new MerchantFeaturedStoreFactsApi.FeaturedStoreFactsQuery(
+                            storeIds, new QueryContext(traceOnly(), OperatorType.SYSTEM,
+                                    "marketing-deal-image")))) {
+                facts.put(fact.storeId(), fact);
+            }
+        } catch (RuntimeException unavailable) {
+            // Media is a best-effort enrichment: keep campaign covers/placeholders.
+            return;
+        }
+        for (Map<String, Object> card : cards) {
+            FeaturedStoreFact fact = facts.get((String) card.get("storeId"));
+            String imageUrl = null;
+            String expiresAt = null;
+            if (fact != null) {
+                String assetId = fact.avatarAssetId() != null
+                        ? fact.avatarAssetId() : fact.photoAssetId();
+                if (assetId != null) {
+                    try {
+                        StorePhotoSigningApi.SignedStorePhoto signed = photoSigning.signStorePhoto(
+                                assetId, new QueryContext(traceOnly(), OperatorType.SYSTEM,
+                                        "marketing-deal-image"));
+                        if (signed != null && signed.signedUrl() != null
+                                && !signed.signedUrl().isBlank() && signed.expiresAt() != null) {
+                            imageUrl = signed.signedUrl();
+                            expiresAt = signed.expiresAt().toString();
+                        }
+                    } catch (RuntimeException ignored) {
+                        // Fall through to the campaign cover/placeholder; never fail the rail.
+                    }
+                }
+            }
+            if (imageUrl == null && card.get("imageUrl") instanceof String cover
+                    && !cover.isBlank()) {
+                imageUrl = cover;
+            }
+            card.put("imageUrl", imageUrl);
+            card.put("imageUrlExpiresAt", expiresAt);
+        }
+    }
 
     private Map<String, Object> storeCard(MarketingViews.CampaignStoreLink link, String userId) {
         if (stores == null) return null;

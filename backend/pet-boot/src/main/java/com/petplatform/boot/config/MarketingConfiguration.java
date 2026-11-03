@@ -20,6 +20,7 @@ import com.petplatform.marketing.biz.apiimpl.MarketingPublicApiImpl;
 import com.petplatform.marketing.biz.application.MarketingAdminAuthorizationPort;
 import com.petplatform.marketing.biz.application.MarketingCityCatalogPort;
 import com.petplatform.marketing.biz.application.MarketingCouponFactsPort;
+import com.petplatform.marketing.biz.application.MarketingServiceCategoryPort;
 import com.petplatform.marketing.biz.application.MarketingStoreFactsPort;
 import com.petplatform.marketing.biz.application.port.MarketingAssetObjectStore;
 import com.petplatform.merchant.api.dto.MerchantStoreDisplayDTO;
@@ -27,6 +28,9 @@ import com.petplatform.merchant.api.query.MerchantStoreDisplayApi;
 import com.petplatform.merchant.api.query.MerchantStoreDisplayQuery;
 import com.petplatform.merchant.api.query.MerchantQueryApi;
 import com.petplatform.merchant.api.query.StoreIdQuery;
+import com.petplatform.service.api.dto.CatalogServiceCategoryTypes.CatalogServiceCategoryStores;
+import com.petplatform.service.api.query.CatalogServiceCategoryStoresQuery;
+import com.petplatform.service.api.query.ServiceCatalogCategoryApi;
 import javax.sql.DataSource;
 import java.time.Clock;
 import java.util.Locale;
@@ -74,6 +78,12 @@ public class MarketingConfiguration {
     }
 
     @Bean
+    MarketingServiceCategoryPort marketingServiceCategoryPort(
+            ObjectProvider<ServiceCatalogCategoryApi> categories) {
+        return new MarketingServiceCategoryAdapter(categories);
+    }
+
+    @Bean
     MarketingAssetObjectStore marketingAssetObjectStore() {
         return new MarketingOssAssetStore();
     }
@@ -86,12 +96,15 @@ public class MarketingConfiguration {
             MarketingStoreFactsPort storeFacts,
             MarketingCouponFactsPort couponFacts,
             MarketingCityCatalogPort cityCatalog,
+            MarketingServiceCategoryPort serviceCategories,
             ObjectProvider<Clock> clock,
             @Value("${pet.marketing.asset.allow-http:false}") boolean allowHttpAssets,
+            @Value("${pet.marketing.campaign.category-validation.enabled:false}")
+            boolean categoryValidationEnabled,
             MarketingAssetObjectStore assetObjectStore) {
         return new MarketingAdminApiImpl(source, requireIds(ids), authorization, storeFacts,
                 couponFacts, cityCatalog, clock.getIfAvailable(Clock::systemUTC), allowHttpAssets,
-                assetObjectStore);
+                assetObjectStore, serviceCategories, categoryValidationEnabled);
     }
 
     @Bean
@@ -298,6 +311,39 @@ public class MarketingConfiguration {
                 return catalog.list().stream().anyMatch(city -> city.code().equals(cityCode));
             } catch (RuntimeException failure) {
                 throw unavailable("open-city catalog is unavailable");
+            }
+        }
+    }
+
+    /**
+     * Contract 71 v0.3 §4.1: campaign {@code serviceCategoryCodes} ride the service owner's
+     * catalog-category read face (74号 §3.2 resolution). Its error contract already encodes the
+     * dictionary ruling — lexical-invalid/unknown/disabled codes are INVALID_ARGUMENT while an
+     * enabled category without visible supply answers normally — so the adapter maps that split
+     * onto the port: false for a rejected code, 503 for read failures (fail closed, never
+     * silently accept).
+     */
+    static final class MarketingServiceCategoryAdapter implements MarketingServiceCategoryPort {
+        private final ObjectProvider<ServiceCatalogCategoryApi> categories;
+
+        MarketingServiceCategoryAdapter(ObjectProvider<ServiceCatalogCategoryApi> categories) {
+            this.categories = Objects.requireNonNull(categories);
+        }
+
+        @Override
+        public boolean usable(String categoryCode) {
+            ServiceCatalogCategoryApi api = categories.getIfAvailable();
+            if (api == null) throw unavailable("service category dictionary owner is not assembled");
+            try {
+                CatalogServiceCategoryStores resolved = api.listCatalogCategoryStores(
+                        new CatalogServiceCategoryStoresQuery(categoryCode,
+                                new QueryContext("marketing", OperatorType.PLATFORM_OPERATOR, "0")));
+                return resolved != null;
+            } catch (ApiException rejected) {
+                if (CommonApiCodes.INVALID_ARGUMENT.equals(rejected.code())) return false;
+                throw unavailable("service category dictionary is unavailable");
+            } catch (RuntimeException failure) {
+                throw unavailable("service category dictionary is unavailable");
             }
         }
     }

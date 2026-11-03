@@ -1,6 +1,7 @@
 package com.petplatform.boot.config;
 
 import com.petplatform.merchant.api.query.MerchantDisplayEligibilityApi;
+import com.petplatform.merchant.api.query.MerchantDisplayStoreIdsApi;
 import com.petplatform.service.biz.apiimpl.ServiceQueryApiImpl;
 import com.petplatform.service.biz.application.ServiceWriteDependencies.ServiceCoverUrlPort;
 import javax.sql.DataSource;
@@ -14,7 +15,9 @@ import org.springframework.context.annotation.Configuration;
  * and the SVC-D5 display eligibility query; enabling requires every real dependency bean to exist.
  * The cover presigner (2026-09-22 ruling #3) is injected when a real signer bean exists; without
  * one, visible rows that carry a cover fail closed (503) instead of returning an unsigned URL —
- * rows without a cover binding keep working.
+ * rows without a cover binding keep working. The contract-74 category read (B-SVC-03) additionally
+ * needs the display-scope store-id supplement of the same merchant bean; without it the category
+ * reads fail closed rather than degrade.
  */
 @Configuration(proxyBeanMethods = false)
 @ConditionalOnProperty(prefix = "pet.service.query", name = "enabled", havingValue = "true")
@@ -24,7 +27,9 @@ public class ServiceQueryConfiguration {
     ServiceQueryApiImpl serviceQueryApi(
             DataSource source,
             MerchantDisplayEligibilityApi merchantFacts,
+            MerchantDisplayStoreIdsApi displayStoreIds,
             ObjectProvider<ServiceCoverUrlPort> coverUrls) {
-        return new ServiceQueryApiImpl(source, merchantFacts, coverUrls.getIfAvailable());
+        return new ServiceQueryApiImpl(
+                source, merchantFacts, displayStoreIds, coverUrls.getIfAvailable());
     }
 }

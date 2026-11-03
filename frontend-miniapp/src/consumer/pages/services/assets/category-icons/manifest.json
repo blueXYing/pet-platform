@@ -1,0 +1,94 @@
+{
+  "sourceVersion": "2408620332145508244",
+  "note": "D-01 11 category glyphs from Figma 110:480 (contentsOnly screenshots). Backend iconUrl still wins; these are bundled fallbacks.",
+  "assets": [
+    {
+      "categoryCode": "PET_GROOMING",
+      "nodeId": "110:1023",
+      "file": "frontend-miniapp/src/consumer/pages/services/assets/category-icons/PET_GROOMING.png",
+      "status": "DOWNLOADED_PNG",
+      "sha256": "a519204a5e96d4a4879d83e26414ac4ea4165a57a93cb335d1dd6a40cad2fdb2",
+      "bytes": 552
+    },
+    {
+      "categoryCode": "DOG_WALKING",
+      "nodeId": "110:1031",
+      "file": "frontend-miniapp/src/consumer/pages/services/assets/category-icons/DOG_WALKING.png",
+      "status": "DOWNLOADED_PNG",
+      "sha256": "16632948f223e096edefc60521116e0975c844dfecc1ab426d6ea81d5e9c0948",
+      "bytes": 509
+    },
+    {
+      "categoryCode": "PET_BOARDING",
+      "nodeId": "110:1039",
+      "file": "frontend-miniapp/src/consumer/pages/services/assets/category-icons/PET_BOARDING.png",
+      "status": "DOWNLOADED_PNG",
+      "sha256": "4663d26d530330b00fa398b838df28112b8a044205aaa5d9e8ace553667e73e9",
+      "bytes": 434
+    },
+    {
+      "categoryCode": "PET_TRAINING",
+      "nodeId": "110:1047",
+      "file": "frontend-miniapp/src/consumer/pages/services/assets/category-icons/PET_TRAINING.png",
+      "status": "DOWNLOADED_PNG",
+      "sha256": "bc8f8bb3a692ca2fcc89377afc443566cfc4fd2d8115a829b9e7032922c2c87e",
+      "bytes": 704
+    },
+    {
+      "categoryCode": "HOME_FEEDING",
+      "nodeId": "110:1055",
+      "file": "frontend-miniapp/src/consumer/pages/services/assets/category-icons/HOME_FEEDING.png",
+      "status": "DOWNLOADED_PNG",
+      "sha256": "8280d2ab19ac60e68a01bed5200f3933fbcde2f9a19a2b391f6b41dba5dc346d",
+      "bytes": 488
+    },
+    {
+      "categoryCode": "VET_ASSISTANT",
+      "nodeId": "110:1063",
+      "file": "frontend-miniapp/src/consumer/pages/services/assets/category-icons/VET_ASSISTANT.png",
+      "status": "DOWNLOADED_PNG",
+      "sha256": "9b346791e6780242cde1047b038e86b21108f5de8a7e615b65b14f1a0785dcd0",
+      "bytes": 647
+    },
+    {
+      "categoryCode": "SMALL_PET_BOARDING",
+      "nodeId": "110:1071",
+      "file": "frontend-miniapp/src/consumer/pages/services/assets/category-icons/SMALL_PET_BOARDING.png",
+      "status": "DOWNLOADED_PNG",
+      "sha256": "13b8fac5dbf38bee057087dee9e48090cc92f758fc683e09aed27b5214fa98cb",
+      "bytes": 563
+    },
+    {
+      "categoryCode": "EXOTIC_HOME_FEEDING",
+      "nodeId": "110:1079",
+      "file": "frontend-miniapp/src/consumer/pages/services/assets/category-icons/EXOTIC_HOME_FEEDING.png",
+      "status": "DOWNLOADED_PNG",
+      "sha256": "fd88c68c6d80be47c8a978b11dac5ec2d7112a6d20cc94006df8aaa0be9c25bf",
+      "bytes": 499
+    },
+    {
+      "categoryCode": "EXOTIC_HEALTH_CHECK",
+      "nodeId": "110:1087",
+      "file": "frontend-miniapp/src/consumer/pages/services/assets/category-icons/EXOTIC_HEALTH_CHECK.png",
+      "status": "DOWNLOADED_PNG",
+      "sha256": "9b346791e6780242cde1047b038e86b21108f5de8a7e615b65b14f1a0785dcd0",
+      "bytes": 647
+    },
+    {
+      "categoryCode": "PLANT_CARE",
+      "nodeId": "110:1095",
+      "file": "frontend-miniapp/src/consumer/pages/services/assets/category-icons/PLANT_CARE.png",
+      "status": "DOWNLOADED_PNG",
+      "sha256": "3d13bb84da7d9b97bb9081b81875ed82ef8aa8be32cf7c6f053b8326be935776",
+      "bytes": 656
+    },
+    {
+      "categoryCode": "PLANT_BOARDING",
+      "nodeId": "110:1103",
+      "file": "frontend-miniapp/src/consumer/pages/services/assets/category-icons/PLANT_BOARDING.png",
+      "status": "DOWNLOADED_PNG",
+      "sha256": "8515a20d14064084e7ca463a46c8015d28a3bf3b609b2cdc3c7d5d824e4fc273",
+      "bytes": 597
+    }
+  ]
+}

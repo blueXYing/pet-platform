@@ -115,7 +115,59 @@ public interface ServiceWriteMapper {
 
     ServiceCategoryEntity selectCategoryById(@Param("categoryId") long categoryId);
 
+    ServiceCategoryEntity selectCategoryByCode(@Param("categoryCode") String categoryCode);
+
+    ServiceCategoryEntity selectCategoryByName(@Param("categoryName") String categoryName);
+
     List<ServiceCategoryEntity> selectEnabledCategories();
+
+    List<Map<String, Object>> listCategories(
+            @Param("status") String status,
+            @Param("keyword") String keyword,
+            @Param("limit") int limit,
+            @Param("offset") int offset);
+
+    long countCategories(
+            @Param("status") String status, @Param("keyword") String keyword);
+
+    int insertCategory(
+            @Param("id") long id,
+            @Param("categoryCode") String categoryCode,
+            @Param("categoryName") String categoryName,
+            @Param("parentId") Long parentId,
+            @Param("iconUrl") String iconUrl,
+            @Param("description") String description,
+            @Param("sortNo") int sortNo,
+            @Param("now") LocalDateTime now);
+
+    int updateCategory(
+            @Param("id") long id,
+            @Param("categoryName") String categoryName,
+            @Param("parentId") Long parentId,
+            @Param("iconUrl") String iconUrl,
+            @Param("description") String description,
+            @Param("sortNo") int sortNo,
+            @Param("expectedVersion") long expectedVersion,
+            @Param("now") LocalDateTime now);
+
+    int updateCategoryStatus(
+            @Param("id") long id,
+            @Param("status") String status,
+            @Param("expectedVersion") long expectedVersion,
+            @Param("now") LocalDateTime now);
+
+    int insertCategoryAudit(
+            @Param("id") long id,
+            @Param("categoryId") long categoryId,
+            @Param("categoryCode") String categoryCode,
+            @Param("actionType") String actionType,
+            @Param("fromStatus") String fromStatus,
+            @Param("toStatus") String toStatus,
+            @Param("operatorId") long operatorId,
+            @Param("requestId") String requestId,
+            @Param("traceId") String traceId,
+            @Param("detailJson") String detailJson,
+            @Param("now") LocalDateTime now);
 
     // ---- review decisions / governance ----
 

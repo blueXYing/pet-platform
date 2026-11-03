@@ -104,19 +104,29 @@ button { padding: 0; margin: 0; border: 0; border-radius: 0; background: transpa
 .svc-tail { position: absolute; z-index: 5; font-size: calc(var(--svc-unit) * 10); line-height: calc(var(--svc-unit) * 15); color: #9bb3bd; text-align: center; }
 
 /* ── 门店列表页（frame 110:480 服务tab 的九字段裁剪版）──
-   Top band + 全部服务 title follow the original measures; the category grid keeps the
-   4-column layout with text cards (icon cutouts pending); the provider feed / promo strip /
-   rating-sold-distance blocks have no contract facts and are not rendered (VIS-004). */
+   2026-10-30 F-C-04（契约 74 §3.1/§3.2）：sdir-top 旧画布头部退役，二级页统一 SubpageHeader
+   （标题行 + 底部工具行=城市芯片+搜索件）。分类 chips 数据来自 /c/service-categories，图标
+   缺失渲染占位块（素材未到位是已知状态，不伪造）。WXSS 铁律：button 复合选择器压原生重置、
+   状态仅 className 变体（is-active），不用动态 data-* 属性选择器。 */
 .sdir-page { background: #f8f5ee; }
-.sdir-top { position: relative; height: calc(var(--svc-unit) * 132); }
-.sdir-top .svc-bg-blue { height: calc(var(--svc-unit) * 75); }
-.sdir-top .svc-bg-cream { height: calc(var(--svc-unit) * 74); }
-.sdir-city { position: absolute; left: 50%; transform: translateX(-50%); top: calc(var(--svc-unit) * 42); z-index: 3; font-size: calc(var(--svc-unit) * 12); line-height: calc(var(--svc-unit) * 18); color: #383838; display: flex; align-items: center; gap: calc(var(--svc-unit) * 3); }
-.sdir-title { position: absolute; left: calc(var(--svc-unit) * 29); top: calc(var(--svc-unit) * 103); font-family: Outfit, Roboto, 'Noto Sans SC', sans-serif; font-size: calc(var(--svc-unit) * 16); line-height: calc(var(--svc-unit) * 24); font-weight: 700; color: #1d0d07; z-index: 3; }
-.sdir-body { position: relative; z-index: 2; background: #f8f5ee; padding: calc(var(--svc-unit) * 24) calc(var(--svc-unit) * 29) calc(var(--svc-unit) * 30); }
-.sdir-categories { display: flex; flex-wrap: wrap; gap: calc(var(--svc-unit) * 10) calc(var(--svc-unit) * 8.7); }
-.sdir-category { width: calc(var(--svc-unit) * 79); height: calc(var(--svc-unit) * 34); background: #fff; border: calc(var(--svc-unit) * 1) solid #c0ecff; border-radius: calc(var(--svc-unit) * 12); display: flex; align-items: center; justify-content: center; }
+.sdir-toolbar { display: flex; align-items: center; gap: calc(var(--svc-unit) * 8); height: 100%; }
+.sdir-city-anchor { position: relative; flex: none; height: 100%; display: flex; align-items: center; }
+.sdir-city { display: flex; align-items: center; max-width: calc(var(--svc-unit) * 88); height: calc(var(--svc-unit) * 28); padding: 0 calc(var(--svc-unit) * 10); background: #fff; border: calc(var(--svc-unit) * 1) solid #c0ecff; border-radius: calc(var(--svc-unit) * 14); font-size: calc(var(--svc-unit) * 12); line-height: calc(var(--svc-unit) * 16); color: #383838; white-space: nowrap; overflow: hidden; }
+.sdir-city-anchor .city-picker { top: calc(100% + calc(var(--svc-unit) * 6)); left: 0; }
+.sdir-toolbar .sdir-search-input { flex: 1; min-width: 0; height: calc(var(--svc-unit) * 28); padding: 0 calc(var(--svc-unit) * 12); background: #fff; border: calc(var(--svc-unit) * 1) solid #c0ecff; border-radius: calc(var(--svc-unit) * 14); font-size: calc(var(--svc-unit) * 12); color: #1d0d07; }
+.sdir-toolbar .sdir-search-placeholder { color: #9bb3bd; }
+.sdir-toolbar .sdir-search-button { flex: none; width: calc(var(--svc-unit) * 54); height: calc(var(--svc-unit) * 28); border-radius: calc(var(--svc-unit) * 14); background: #5baae8; color: #ffffff; font-size: calc(var(--svc-unit) * 12); font-weight: 600; line-height: calc(var(--svc-unit) * 28); text-align: center; padding: 0; }
+.sdir-toolbar .sdir-search-clear { flex: none; color: #3185ba; font-size: calc(var(--svc-unit) * 12); padding: 0 calc(var(--svc-unit) * 4); background: transparent; border: none; line-height: calc(var(--svc-unit) * 28); }
+.sdir-body { position: relative; z-index: 2; background: #f8f5ee; padding: calc(var(--svc-unit) * 20) calc(var(--svc-unit) * 29) calc(var(--svc-unit) * 30); }
+.sdir-categories { display: flex; flex-wrap: wrap; gap: calc(var(--svc-unit) * 10) calc(var(--svc-unit) * 8.7); margin-bottom: calc(var(--svc-unit) * 4); }
+.sdir-category { display: flex; align-items: center; justify-content: center; gap: calc(var(--svc-unit) * 5); min-width: calc(var(--svc-unit) * 79); height: calc(var(--svc-unit) * 34); padding: 0 calc(var(--svc-unit) * 10); background: #fff; border: calc(var(--svc-unit) * 1) solid #c0ecff; border-radius: calc(var(--svc-unit) * 12); }
 .sdir-category text { font-size: calc(var(--svc-unit) * 11); line-height: calc(var(--svc-unit) * 14); color: #3c3c3c; white-space: nowrap; }
+.sdir-category.is-active { background: #dff3fc; border-color: #5baae8; }
+.sdir-category.is-active text { color: #2f7fb8; font-weight: 600; }
+.sdir-category-icon { width: calc(var(--svc-unit) * 18); height: calc(var(--svc-unit) * 18); flex: none; }
+/* 图标缺失占位（G-03/D-01 素材未到位的已知状态）：中性浅蓝块，不绘制任何假图标。 */
+.sdir-category-icon-placeholder { background: #e8f4fb; border-radius: calc(var(--svc-unit) * 4); }
+.sdir-categories-state { margin-bottom: calc(var(--svc-unit) * 12); }
 .sdir-heading { display: block; margin: calc(var(--svc-unit) * 24) 0 calc(var(--svc-unit) * 12); font-family: Outfit, Roboto, 'Noto Sans SC', sans-serif; font-size: calc(var(--svc-unit) * 16); line-height: calc(var(--svc-unit) * 24); font-weight: 700; color: #1d0d07; }
 .sdir-state { padding: calc(var(--svc-unit) * 24) calc(var(--svc-unit) * 12); background: #fff; border: calc(var(--svc-unit) * 1) solid #c0ecff; border-radius: calc(var(--svc-unit) * 12); font-size: calc(var(--svc-unit) * 12); line-height: calc(var(--svc-unit) * 19); color: #577683; display: flex; flex-direction: column; gap: calc(var(--svc-unit) * 10); }
 .sdir-state-action { align-self: flex-start; color: #167fab; font-size: calc(var(--svc-unit) * 12); }
@@ -128,13 +138,4 @@ button { padding: 0; margin: 0; border: 0; border-radius: 0; background: transpa
 .sdir-store-line text { font-size: calc(var(--svc-unit) * 11); line-height: calc(var(--svc-unit) * 16); color: #577683; }
 .sdir-more { display: block; margin: calc(var(--svc-unit) * 8) auto 0; width: max-content; padding: calc(var(--svc-unit) * 8) calc(var(--svc-unit) * 22); border: calc(var(--svc-unit) * 1) solid #c0ecff; border-radius: calc(var(--svc-unit) * 100); color: #3185ba; font-size: calc(var(--svc-unit) * 12); }
 .sdir-notice { display: block; margin-top: calc(var(--svc-unit) * 12); font-size: calc(var(--svc-unit) * 12); line-height: calc(var(--svc-unit) * 18); color: #402e26; }
-/* 搜索件 + 城市锚点（2026-10-19 C 端接线；77:1267 词汇 + 76:761 面板）。WXSS 铁律：
-   button 复合选择器压原生重置，状态仅 className 变体。 */
-.sdir-city-anchor { position: absolute; left: 50%; transform: translateX(-50%); top: calc(var(--svc-unit) * 42); z-index: 30; }
-.sdir-city-anchor .sdir-city { position: static; transform: none; }
-.sdir-search { display: flex; align-items: center; gap: calc(var(--svc-unit) * 8); margin-bottom: calc(var(--svc-unit) * 16); }
-.sdir-search .sdir-search-input { flex: 1; height: calc(var(--svc-unit) * 38); padding: 0 calc(var(--svc-unit) * 14); background: #fff; border: calc(var(--svc-unit) * 1) solid #c0ecff; border-radius: calc(var(--svc-unit) * 19); font-size: calc(var(--svc-unit) * 13); color: #1d0d07; }
-.sdir-search .sdir-search-placeholder { color: #9bb3bd; }
-.sdir-search .sdir-search-button { flex: none; width: calc(var(--svc-unit) * 64); height: calc(var(--svc-unit) * 38); border-radius: calc(var(--svc-unit) * 19); background: #5baae8; color: #ffffff; font-size: calc(var(--svc-unit) * 13); font-weight: 600; line-height: calc(var(--svc-unit) * 38); text-align: center; padding: 0; }
-.sdir-search .sdir-search-clear { flex: none; color: #3185ba; font-size: calc(var(--svc-unit) * 12); padding: 0 calc(var(--svc-unit) * 4); background: transparent; border: none; line-height: calc(var(--svc-unit) * 38); }
 .sdir-tail { margin-top: calc(var(--svc-unit) * 18); font-size: calc(var(--svc-unit) * 10); line-height: calc(var(--svc-unit) * 15); color: #9bb3bd; text-align: center; }

@@ -704,7 +704,8 @@ CCR-AFS-PAGE-OPTIONS-001 已批准目录读取：目录不完整/代码名称不
 | CAMPAIGN_STATE_NOT_ALLOWED | 当前活动状态不允许该动作 | 409 |
 | CAMPAIGN_LANDING_INVALID | 活动/投放落地页无效 | 409 |
 | CAMPAIGN_PAGE_INVALID | 页面 Schema 不合法 | 400 |
-| PLACEMENT_LIMIT_EXCEEDED | 首页 Banner 同时启用超过 3 个 | 409 |
+| SERVICE_CATEGORY_INVALID | 活动创建/编辑时 `serviceCategoryCodes` 含未知/停用/词法非法的分类 code | 400 |
+| PLACEMENT_LIMIT_EXCEEDED | 复用码：首页 Banner 同时启用超过 3 个，或 `HOT_SERVICE_TOP` 全平台启用超过 1 个 | 409 |
 | ENROLLMENT_NOT_OPEN | 不在报名窗口 | 409 |
 | ENROLLMENT_ALREADY_EXISTS | 同门店同活动已有有效报名 | 409 |
 | ENROLLMENT_QUOTA_EXCEEDED | 活动报名名额已满 | 409 |
@@ -721,6 +722,13 @@ CCR-AFS-PAGE-OPTIONS-001 已批准目录读取：目录不完整/代码名称不
 通用复用：400 `COMMON_INVALID_ARGUMENT`、401 `COMMON_UNAUTHORIZED`、403 `COMMON_FORBIDDEN`、
 404 `COMMON_NOT_FOUND`、409 `COMMON_CONFLICT`/`IDEMPOTENCY_KEY_CONFLICT`、
 503 `COMMON_DEPENDENCY_UNAVAILABLE`。C 端活动读失败隐藏模块；后台写失败不落业务行。
+
+`SERVICE_CATEGORY_INVALID` 与 `COMMON_INVALID_ARGUMENT` 的区别：前者是营销活动创建/编辑的
+业务语义校验失败——`serviceCategoryCodes` 数组结构本身合法，但元素在服务分类字典中不存在、
+已停用，或不符合 `categoryCode` 词法 `^[A-Z][A-Z0-9_]{1,31}$`；后者仅用于请求体/JSON/字段类型/
+必填组合等通用参数非法。严格校验受 `pet.marketing.campaign.category-validation.enabled`
+（默认 false）控制，开启后存量不一致 code 在编辑时返回 `SERVICE_CATEGORY_INVALID`；空数组仍表示“全部”。
+C 端分类筛选的未知/停用 `categoryCode` 按 74 号契约 §8 的通用参数错误处理，不使用本码。
 
 ## 社区 HTTP 状态映射（2026-10-28 73 号，CCR-COM-001）
 

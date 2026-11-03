@@ -2,6 +2,7 @@ package com.petplatform.marketing.biz.apiimpl;
 
 import com.petplatform.common.SnowflakeIdGenerator;
 import com.petplatform.marketing.api.MarketingPublicApi;
+import com.petplatform.marketing.api.MarketingPublicApi.ActiveStoreCampaignView;
 import com.petplatform.marketing.api.dto.MarketingViews;
 import com.petplatform.marketing.biz.application.MarketingPublicService;
 import com.petplatform.marketing.biz.application.port.MarketingAssetObjectStore;
@@ -57,5 +58,10 @@ public final class MarketingPublicApiImpl implements MarketingPublicApi {
     @Override
     public ActiveCampaignView activeCampaignForStore(String storeId) {
         return service.activeCampaignForStore(storeId);
+    }
+
+    @Override
+    public List<ActiveStoreCampaignView> activeCampaignsForStores(List<String> storeIds) {
+        return service.activeCampaignsForStores(storeIds);
     }
 }

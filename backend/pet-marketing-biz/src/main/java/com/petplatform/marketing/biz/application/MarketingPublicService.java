@@ -1,10 +1,12 @@
 package com.petplatform.marketing.biz.application;
 
 import com.petplatform.marketing.api.MarketingPublicApi;
+import com.petplatform.marketing.api.MarketingPublicApi.ActiveStoreCampaignView;
 import com.petplatform.marketing.api.dto.MarketingViews;
 import com.petplatform.marketing.biz.application.port.MarketingAssetObjectStore;
 import com.petplatform.marketing.biz.infrastructure.persistence.MarketingStore;
 import com.petplatform.marketing.biz.infrastructure.persistence.entity.MarketingEntities;
+import com.petplatform.marketing.biz.infrastructure.persistence.entity.MarketingEntities.ActiveStoreCampaignRow;
 import com.petplatform.marketing.biz.infrastructure.persistence.entity.MarketingEntities.CampaignRow;
 import com.petplatform.marketing.biz.infrastructure.persistence.entity.MarketingEntities.PlacementRow;
 import java.time.Clock;
@@ -19,7 +21,7 @@ import java.util.Objects;
 public final class MarketingPublicService extends MarketingSupport implements MarketingPublicApi {
 
     private static final java.util.Set<String> POSITIONS =
-            java.util.Set.of("HOME_BANNER", "HOME_ACTIVITY", "STORE_LIST_TOP");
+            java.util.Set.of("HOME_BANNER", "HOME_ACTIVITY", "STORE_LIST_TOP", "HOT_SERVICE_TOP");
 
     private final MarketingAssetObjectStore assetObjectStore;
 
@@ -39,13 +41,18 @@ public final class MarketingPublicService extends MarketingSupport implements Ma
         if (city != null && !city.matches("[a-z][a-z0-9_-]{0,31}")) invalid("cityCode is invalid");
         return store.read(mapper -> {
             List<PlacementRow> rows = mapper.selectActivePlacements(query.positionCode(), nowUtc());
+            // Contract 71 v0.3 §3.1: HOME_BANNER at most 3 items; the platform-wide single
+            // HOT_SERVICE_TOP banner answers 0 or 1 item after the city-scope filter
+            // (placement cityCode null = every open city, a concrete city = that city only).
+            int cap = "HOME_BANNER".equals(query.positionCode()) ? 3
+                    : "HOT_SERVICE_TOP".equals(query.positionCode()) ? 1 : Integer.MAX_VALUE;
             List<MarketingViews.PlacementCard> items = new ArrayList<>();
             for (PlacementRow row : rows) {
                 if (city != null && row.cityCode != null && !city.equals(row.cityCode)) continue;
                 CampaignRow campaign = mapper.selectCampaignById(row.campaignId);
                 if (campaign == null) continue;
                 items.add(placementCard(row, campaign));
-                if ("HOME_BANNER".equals(query.positionCode()) && items.size() >= 3) break;
+                if (items.size() >= cap) break;
             }
             return List.copyOf(items);
         });
@@ -161,6 +168,33 @@ public final class MarketingPublicService extends MarketingSupport implements Ma
                         campaign.tagName, link.offerTag, link.offerTitle, link.offerCopy);
             }
             return null;
+        });
+    }
+
+    @Override
+    public List<ActiveStoreCampaignView> activeCampaignsForStores(List<String> storeIds) {
+        if (storeIds == null || storeIds.isEmpty()) return List.of();
+        if (storeIds.size() > 200) invalid("storeIds is invalid");
+        List<Long> ids = new ArrayList<>();
+        for (String storeId : new java.util.LinkedHashSet<>(storeIds)) {
+            ids.add(id(storeId));
+        }
+        if (ids.isEmpty()) return List.of();
+        return store.read(mapper -> {
+            List<ActiveStoreCampaignRow> rows =
+                    mapper.selectActiveStoreCampaignsForStores(ids, nowUtc());
+            Map<Long, ActiveStoreCampaignView> byStore = new LinkedHashMap<>();
+            for (ActiveStoreCampaignRow row : rows) {
+                if (row.storeId == null || row.campaignId == null) {
+                    unavailable("active campaign facts are invalid");
+                }
+                byStore.putIfAbsent(row.storeId, new ActiveStoreCampaignView(
+                        Long.toUnsignedString(row.storeId),
+                        Long.toUnsignedString(row.campaignId),
+                        row.title, row.subtitle, row.tagName,
+                        row.offerTag, row.offerTitle, row.offerCopy));
+            }
+            return List.copyOf(byStore.values());
         });
     }
 

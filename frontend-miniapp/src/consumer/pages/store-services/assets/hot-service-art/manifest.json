@@ -1,0 +1,54 @@
+{
+  "sourceVersion": "2408620332145508244",
+  "note": "D-02 six hot-service card illustrations from Figma 97:7825 (contentsOnly screenshots). Categories without an illustration keep the neutral placeholder.",
+  "assets": [
+    {
+      "categoryCode": "PET_GROOMING",
+      "nodeId": "97:7738",
+      "file": "frontend-miniapp/src/consumer/pages/store-services/assets/hot-service-art/PET_GROOMING.png",
+      "status": "DOWNLOADED_PNG",
+      "sha256": "25c111b843ed99f5a4d24174842131cb48aa5012672d6582edc515cfec335e38",
+      "bytes": 29731
+    },
+    {
+      "categoryCode": "PET_BOARDING",
+      "nodeId": "99:8128",
+      "file": "frontend-miniapp/src/consumer/pages/store-services/assets/hot-service-art/PET_BOARDING.png",
+      "status": "DOWNLOADED_PNG",
+      "sha256": "ef73513e087635c1d48c01294fb45d073245542468cec7a481150508058eca6d",
+      "bytes": 25414
+    },
+    {
+      "categoryCode": "HOME_FEEDING",
+      "nodeId": "99:8195",
+      "file": "frontend-miniapp/src/consumer/pages/store-services/assets/hot-service-art/HOME_FEEDING.png",
+      "status": "DOWNLOADED_PNG",
+      "sha256": "0f2790a546ab486ccecbea42e15854df8125a0bd16729c168f0f8a0ae8ae8127",
+      "bytes": 27774
+    },
+    {
+      "categoryCode": "DOG_WALKING",
+      "nodeId": "97:7753",
+      "file": "frontend-miniapp/src/consumer/pages/store-services/assets/hot-service-art/DOG_WALKING.png",
+      "status": "DOWNLOADED_PNG",
+      "sha256": "3a5c33459ea80423936bd944b5e6021aefd192893f76dd0dc2a829828be69528",
+      "bytes": 33175
+    },
+    {
+      "categoryCode": "PET_TRAINING",
+      "nodeId": "99:8132",
+      "file": "frontend-miniapp/src/consumer/pages/store-services/assets/hot-service-art/PET_TRAINING.png",
+      "status": "DOWNLOADED_PNG",
+      "sha256": "4a3425ac4f6001723e3bf9693a811f2edfb836bbda5c4be4cdf3db8a1a641fd8",
+      "bytes": 27958
+    },
+    {
+      "categoryCode": "VET_ASSISTANT",
+      "nodeId": "99:8197",
+      "file": "frontend-miniapp/src/consumer/pages/store-services/assets/hot-service-art/VET_ASSISTANT.png",
+      "status": "DOWNLOADED_PNG",
+      "sha256": "b0e866390706ac2079ae34f5db00b711498559c90d6f452e565d3a6eaa8c2ad1",
+      "bytes": 27682
+    }
+  ]
+}

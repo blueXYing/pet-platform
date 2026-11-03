@@ -1,5 +1,6 @@
 package com.petplatform.marketing.biz.infrastructure.persistence.mapper;
 
+import com.petplatform.marketing.biz.infrastructure.persistence.entity.MarketingEntities;
 import com.petplatform.marketing.biz.infrastructure.persistence.entity.MarketingEntities.AssetRow;
 import com.petplatform.marketing.biz.infrastructure.persistence.entity.MarketingEntities.BindingRow;
 import com.petplatform.marketing.biz.infrastructure.persistence.entity.MarketingEntities.CampaignRow;
@@ -91,6 +92,9 @@ public interface MarketingMapper {
     List<CampaignStoreRow> selectActiveStoreCampaigns(@Param("storeId") long storeId,
             @Param("now") LocalDateTime now);
 
+    List<MarketingEntities.ActiveStoreCampaignRow> selectActiveStoreCampaignsForStores(
+            @Param("storeIds") List<Long> storeIds, @Param("now") LocalDateTime now);
+
     // ---------------------------------------------------------------- placements
 
     List<PlacementRow> selectPlacements(@Param("positionCode") String positionCode,
@@ -107,6 +111,9 @@ public interface MarketingMapper {
 
     long countEnabledPlacements(@Param("positionCode") String positionCode,
             @Param("cityCode") String cityCode, @Param("now") LocalDateTime now);
+
+    /** Status-only ENABLED count for position-wide limits (HOT_SERVICE_TOP: at most 1). */
+    long countEnabledPlacementRows(@Param("positionCode") String positionCode);
 
     int insertPlacement(PlacementRow row);
 

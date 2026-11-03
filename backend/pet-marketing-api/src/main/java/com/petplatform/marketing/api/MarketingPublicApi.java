@@ -25,6 +25,12 @@ public interface MarketingPublicApi {
     /** First active campaign participation of one store, for the store-detail banner. */
     ActiveCampaignView activeCampaignForStore(String storeId);
 
+    /**
+     * First active campaign participation per store, batched for the service-catalog featured
+     * cards. Implementations must not issue a query per store; at most 200 ids per call.
+     */
+    List<ActiveStoreCampaignView> activeCampaignsForStores(List<String> storeIds);
+
     record PublicHomeBlockQuery(String cityCode) {}
 
     /** CCR-MKT-002 public artwork bytes; missing/retired ids are not enumerable (404). */
@@ -43,6 +49,11 @@ public interface MarketingPublicApi {
 
     record ActiveCampaignView(
             String campaignId, String title, String subtitle, String tagName,
+            String offerTag, String offerTitle, String offerCopy) {}
+
+    /** Per-store campaign promotion for the featured-card batch composition. */
+    record ActiveStoreCampaignView(
+            String storeId, String campaignId, String title, String subtitle, String tagName,
             String offerTag, String offerTitle, String offerCopy) {}
 
     record PublicPlacementQuery(String positionCode, String cityCode) {}

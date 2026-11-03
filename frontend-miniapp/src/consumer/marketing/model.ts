@@ -23,12 +23,20 @@ export type CampaignCard = Readonly<{
 
 export type Promotion = Readonly<{ level: number | null; title: string | null; text: string | null }>
 
+// 71 v0.3 §3.7：热门服务二级页顶部投放位（全平台最多 1 条启用；C 端按城市匹配后最多返回 1 条）。
+export const PLACEMENT_POSITION_HOT_SERVICE_TOP = 'HOT_SERVICE_TOP'
+// 71 v0.3 §10：首页内容位落地热门服务二级页的目标类型（targetValue 允许 null）。
+export const HOME_BLOCK_TARGET_HOT_SERVICE = 'HOT_SERVICE'
+
 export type StoreCard = Readonly<{
   storeId: string; storeName: string; merchantName: string | null
   cityCode: string | null; address: string | null
   offerTag: string | null; offerTitle: string | null; offerCopy: string | null
   source: 'MERCHANT_PROMOTION' | 'CAMPAIGN'
   campaignId: string | null; promotion: Promotion | null
+  // 74 §3.5 / 71 v0.3 §3.4 商家钜惠图片增量：门店头像/照片优先、活动封面兜底；无图 null。
+  // 签名素材带过期时间，公开素材 URL 允许 imageUrlExpiresAt=null（71 §3.4），不做跨字段绑定。
+  imageUrl: string | null; imageUrlExpiresAt: string | null
 }>
 
 export type CouponCampaignView = Readonly<{
@@ -91,6 +99,7 @@ function storeOf(value: unknown): StoreCard {
     offerCopy: nullableText(v.offerCopy, 100),
     source: v.source === 'CAMPAIGN' ? 'CAMPAIGN' : 'MERCHANT_PROMOTION',
     campaignId: nullableId(v.campaignId), promotion: promotionOf(v.promotion),
+    imageUrl: nullableText(v.imageUrl, 512), imageUrlExpiresAt: nullableInstant(v.imageUrlExpiresAt),
   }
 }
 

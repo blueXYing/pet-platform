@@ -2301,3 +2301,20 @@ applicationId等主键使用Snowflake String；applicationNo按原PRD为SQ+YYYYM
   归 71 号契约 v0.2（CCR-MKT-003）。
 
 公开读匿名；写操作 MINIAPP Bearer + `X-Request-Id`；运营写 ADMIN_WEB + 动作码。错误码与状态见 12 号注册表社区映射。
+
+## 服务目录页路由同步（2026-10-30，74 号）
+
+新增路由以 [74 号服务目录页契约](74-Service-Catalog-Page-Contract-v0.1.md) 为准：
+
+- C 端新增 `GET /api/v1/c/service-categories`；
+- 既有 `/api/v1/c/stores` 增加可选 `categoryCode`；
+- 既有 `/api/v1/c/services` 增加可选 `categoryCode`（`keyword` 与 `categoryCode` 至少一个）；
+- C 端新增 `GET /api/v1/c/stores/featured`；
+- 运营端新增 `/api/v1/admin/service-categories` 列表/创建/编辑/启停；
+- 既有 `/api/v1/c/marketing/merchant-deals` 增加 `imageUrl/imageUrlExpiresAt`；
+- 既有 `/api/v1/c/marketing/home-blocks` 的 `targetType` 增加 `HOT_SERVICE`；
+- 投放位 `HOT_SERVICE_TOP` 归 71 号 v0.3。
+
+C 端读匿名可浏览；运营写 ADMIN_WEB + `service.category.read/manage`；错误码与状态见 12 号注册表。
+OpenAPI 11 Core 不扩展（按 73 号先例，74 号独立维护）；本同步不改变既有订单/支付/退款/售后/
+券生命周期路由语义。

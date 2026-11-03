@@ -138,6 +138,14 @@
 
     <sql id="categoryColumns">id, category_name, status, sort_no</sql>
 
+    <!-- Contract 74 §2.1 dictionary projection. Only reads behind the V29 opt-in migration may
+         reference these columns; the legacy selectCategoryById stays on SQL06 columns so service
+         submission validation remains compatible with databases that have not run V29 yet. -->
+    <sql id="categoryDictionaryColumns">
+        id, category_code, category_name, parent_id, icon_url, description, sort_no, status,
+        version, created_at, updated_at
+    </sql>
+
     <select id="selectCategoryById"
             resultType="com.petplatform.service.biz.infrastructure.persistence.entity.ServiceCategoryEntity">
         SELECT <include refid="categoryColumns"/>
@@ -145,13 +153,99 @@
         WHERE id = #{categoryId}
     </select>
 
+    <select id="selectCategoryByCode"
+            resultType="com.petplatform.service.biz.infrastructure.persistence.entity.ServiceCategoryEntity">
+        SELECT <include refid="categoryDictionaryColumns"/>
+        FROM service_category
+        WHERE category_code = #{categoryCode}
+    </select>
+
+    <select id="selectCategoryByName"
+            resultType="com.petplatform.service.biz.infrastructure.persistence.entity.ServiceCategoryEntity">
+        SELECT id, category_name, status, sort_no
+        FROM service_category
+        WHERE category_name = #{categoryName}
+    </select>
+
     <select id="selectEnabledCategories"
             resultType="com.petplatform.service.biz.infrastructure.persistence.entity.ServiceCategoryEntity">
-        SELECT <include refid="categoryColumns"/>
+        SELECT <include refid="categoryDictionaryColumns"/>
         FROM service_category
         WHERE status = 'ENABLED'
         ORDER BY sort_no ASC, id ASC
     </select>
+
+    <select id="listCategories" resultType="java.util.Map">
+        SELECT c.id             AS categoryId,
+               c.category_code  AS categoryCode,
+               c.category_name  AS categoryName,
+               p.category_code  AS parentCode,
+               c.icon_url       AS iconUrl,
+               c.description    AS description,
+               c.sort_no        AS sortNo,
+               c.status         AS status,
+               c.version        AS version,
+               c.created_at     AS createdAt,
+               c.updated_at     AS updatedAt
+        FROM service_category c
+        LEFT JOIN service_category p ON p.id = c.parent_id
+        WHERE 1 = 1
+        <if test="status != null">AND c.status = #{status}</if>
+        <if test="keyword != null">
+            AND (c.category_name LIKE CONCAT('%', #{keyword}, '%') ESCAPE '!'
+                 OR c.category_code LIKE CONCAT('%', #{keyword}, '%') ESCAPE '!')
+        </if>
+        ORDER BY c.sort_no ASC, c.id ASC
+        LIMIT #{limit} OFFSET #{offset}
+    </select>
+
+    <select id="countCategories" resultType="long">
+        SELECT COUNT(*)
+        FROM service_category c
+        WHERE 1 = 1
+        <if test="status != null">AND c.status = #{status}</if>
+        <if test="keyword != null">
+            AND (c.category_name LIKE CONCAT('%', #{keyword}, '%') ESCAPE '!'
+                 OR c.category_code LIKE CONCAT('%', #{keyword}, '%') ESCAPE '!')
+        </if>
+    </select>
+
+    <insert id="insertCategory">
+        INSERT INTO service_category(id, category_code, category_name, parent_id, status, version,
+                                     sort_no, icon_url, description, created_at, updated_at)
+        VALUES (#{id}, #{categoryCode}, #{categoryName}, #{parentId}, 'ENABLED', 0, #{sortNo},
+                #{iconUrl}, #{description}, #{now}, #{now})
+    </insert>
+
+    <update id="updateCategory">
+        UPDATE service_category
+        SET category_name = #{categoryName},
+            parent_id     = #{parentId},
+            icon_url      = #{iconUrl},
+            description   = #{description},
+            sort_no       = #{sortNo},
+            version       = version + 1,
+            updated_at    = #{now}
+        WHERE id = #{id}
+          AND version = #{expectedVersion}
+    </update>
+
+    <update id="updateCategoryStatus">
+        UPDATE service_category
+        SET status     = #{status},
+            version    = version + 1,
+            updated_at = #{now}
+        WHERE id = #{id}
+          AND version = #{expectedVersion}
+    </update>
+
+    <insert id="insertCategoryAudit">
+        INSERT INTO service_category_audit(id, category_id, category_code, action_type,
+                                           from_status, to_status, operator_id, request_id,
+                                           trace_id, detail_json, created_at)
+        VALUES (#{id}, #{categoryId}, #{categoryCode}, #{actionType}, #{fromStatus}, #{toStatus},
+                #{operatorId}, #{requestId}, #{traceId}, #{detailJson}, #{now})
+    </insert>
 
     <insert id="insertDecision">
         INSERT INTO service_review_decision(id, service_id, submission_no, decision_type, opinion,

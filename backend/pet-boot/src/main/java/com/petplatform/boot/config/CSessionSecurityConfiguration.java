@@ -35,6 +35,7 @@ public class CSessionSecurityConfiguration {
       @Value("${pet.merchant.application.enabled:false}") boolean merchantApplicationEnabled,
       @Value("${pet.private-assets.enabled:false}") boolean privateAssetsEnabled,
       @Value("${pet.service.command.enabled:false}") boolean serviceCommandEnabled,
+      @Value("${pet.service.query.enabled:false}") boolean serviceQueryEnabled,
       @Value("${pet.store.query.enabled:false}") boolean storeQueryEnabled,
       @Value("${pet.merchant.staff.enabled:false}") boolean merchantStaffEnabled,
       @Value("${pet.schedule.query.enabled:false}") boolean scheduleQueryEnabled,
@@ -140,8 +141,18 @@ public class CSessionSecurityConfiguration {
                     "/api/v1/c/points/ledger").permitAll();
             // Service catalog (CCR-W2-API-001 service domain): anonymous GET per the store-read
             // STR-D8 ruling (PRD "all users browse"); the filter validates a carried bearer.
+            // Contract 74 §3.1 joins the same anonymous browse family.
             a.requestMatchers("/api/v1/c/stores/*/services").permitAll();
-            a.requestMatchers("/api/v1/c/services", "/api/v1/c/services/*").permitAll();
+            a.requestMatchers(
+                    "/api/v1/c/services", "/api/v1/c/services/*", "/api/v1/c/service-categories")
+                .permitAll();
+            if (serviceQueryEnabled) {
+              // Featured store cards (contract 74 §3.4, B-CARD-01..03): GET-only anonymous browse
+              // per the same STR-D8 discipline as the catalog family; the service slice owns the
+              // assembly (composer + composition beans), the switch keeps the route unreachable
+              // when that slice is not assembled, and the filter still 401s a carried bad bearer.
+              a.requestMatchers(HttpMethod.GET, "/api/v1/c/stores/featured").permitAll();
+            }
             if (storeQueryEnabled) {
               // Store catalog (CCR-W2-API-001 store read, STR-D8): GET-only registration behind
               // the assembly switch; non-GET stays denied and the switch keeps it unreachable

@@ -199,7 +199,27 @@ for f in 25 06 14 26 28 29 13 31 33 35 52 54 37 38 39 40 41 42 43 44 45 46 47 48
 done
 ```
 
-**opt-in Flyway 迁移（默认全关，生产共享库不执行）**：`db/admin-auth-migration/V26`、`db/service-migration/V27+V28`、`db/schedule-migration/V29`、`db/staff-member-migration/V30+V31`、`db/admin-trade-migration/V32`。这些仅面向"隔离库"（库名前缀硬校验，如 `auth001_*`/`schw001_*`），由 `pet.*.migration-enabled` + `pet.*.migration-database` 显式指定才执行；误配 = 启动失败保护（35号 §五：误开 = 对共享库执行迁移，绝不默认开）。**生产按 §3.2 的 SQL 顺序建库即可，无需触发任何 opt-in 迁移。**
+**opt-in Flyway 迁移（默认全关，生产共享库不执行）**：`db/admin-auth-migration/V26`、`db/service-migration/V27+V28+V29+V30`、`db/schedule-migration/V29`、`db/staff-member-migration/V30+V31`、`db/admin-trade-migration/V32`、`db/marketing-migration/V33~V36`。这些仅面向"隔离库"（库名前缀硬校验，如 `auth001_*`/`schw001_*`），由 `pet.*.migration-enabled` + `pet.*.migration-database` 显式指定才执行；误配 = 启动失败保护（35号 §五：误开 = 对共享库执行迁移，绝不默认开）。**生产按 §3.2 的 SQL 顺序建库即可，无需触发任何 opt-in 迁移。**
+
+**营销/社区/服务目录增量（2026-10-30 起，生产共享库按顺序执行）**：
+
+```bash
+cd <PLACEHOLDER:仓库检出目录>
+for f in \
+  63-Marketing-Storage-v0.1.sql \
+  64-Community-Storage-v0.1.sql \
+  70-Service-Category-Dictionary-Schema-v0.1.sql \
+  72-Service-Category-Seed-v0.1.sql \
+  71-Marketing-Hot-Service-Placement-Schema-v0.1.sql; do
+  mysql -h <PLACEHOLDER:DB_HOST> -u <PLACEHOLDER:业务账号> -p pet_platform < "docs/03-database/$f"
+done
+```
+
+- `63` 依赖 SQL27 的 `merchant_store_profile`；`64` 依赖用户/素材基础表。
+- `70` 给 `service_category` 加字典列并回填 11 个 code；`72` 是同一套 11 类初始字典种子（生产/测试共用，幂等；生产已有行时跳过）。
+- `71` 给营销投放位/首页内容位补 `HOT_SERVICE_TOP`/`HOT_SERVICE` CHECK；`V36` 是同一变更的存量库 Flyway 版本。
+- 关闭营销时不执行 `63/71`；先执行 `70/72` 再开 `pet.service.query/command`；`pet.marketing.campaign.category-validation.enabled` 保持 false，待存量活动分类码清理完成后再开启。
+- 回滚：先关营销开关，保留新表/新列（旧代码忽略）；`71` 的 CHECK 回滚需先停用并删除 `HOT_SERVICE_TOP`/`HOT_SERVICE` 行，再恢复旧 CHECK；执行前全量备份。
 
 ### 3.3 后端构建
 
@@ -365,6 +385,7 @@ PET_C_API_ORIGIN=https://<PLACEHOLDER:生产域名> npm run build:weapp   # 产�
 | 17 | 评价 | `pet.review.enabled`(+`http`) / `pet.review.appeal.enabled`(+`http`) | guard 硬要求 #1 | [ ] |
 | 18 | 员工邀请 | `pet.merchant.staff-member.enabled` | §2.7 UserPhoneVerificationApi bean + #7 | [ ] |
 | 19 | 真实通知 | `pet.notification.delivery.enabled` | §2.7 自备微信适配器 | [ ] |
+| 20 | 营销中心 | `pet.marketing.enabled` + `.admin.http.enabled` + `.c.http.enabled`（商家端另加 `.merchant.http.enabled`） | 依赖 #1/#2/#6 + SQL27/63/71/64；`pet.marketing.campaign.category-validation.enabled` 默认 false，存量分类码清理后再开 | [ ] |
 
 ### 5.4 C 类（保持不动，勿改）
 
