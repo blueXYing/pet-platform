@@ -1,8 +1,8 @@
 import { Button, Image, Text, View } from '@tarojs/components'
 import Taro, { useDidShow } from '@tarojs/taro'
 import { useCallback, useRef, useState, type CSSProperties } from 'react'
-import { syncCustomTabBar } from '../../components/navigation/custom-tab-bar'
 import { RootTabBarSpacer } from '../../components/navigation/root-tab-bar-spacer'
+import { TabBar } from '../../components/navigation/tab-bar'
 import { consumerApi } from '../../../shared/consumer-runtime'
 import defaultAvatar from '../../assets/profile/avatar.png'
 import { CommunityRepository, type CommunityPost } from '../../community/model'
@@ -55,7 +55,6 @@ export default function CommunityPage() {
   }, [])
 
   useDidShow(() => {
-    syncCustomTabBar(2)
     void load(scope)
   })
 
@@ -142,5 +141,6 @@ export default function CommunityPage() {
     </View>}
     {notice && phase === 'ready' && posts.length > 0 && <Text className='cmy-notice'>{notice}</Text>}
     <RootTabBarSpacer />
+      <TabBar active={2} />
   </View>
 }

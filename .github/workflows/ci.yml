@@ -1,7 +1,9 @@
 name: CI
 on:
   pull_request:
-    branches: [develop, main, 'chore/GOV-001-repository-baseline']
+    # Covers stacked PRs whose base is another feature branch (e.g. tab-bar split #208 and
+    # service catalog #205); they need the same full CI evidence as develop/main PRs.
+    branches: [develop, main, 'chore/GOV-001-repository-baseline', 'codex/**']
   push:
     branches: [develop]
 

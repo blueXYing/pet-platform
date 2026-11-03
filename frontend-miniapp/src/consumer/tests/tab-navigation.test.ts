@@ -85,11 +85,13 @@ test('mine hub routes only to delivered real pages', () => {
   ])
 })
 
-test('root tab pages publish the selected index and reserve custom tabBar height', () => {
+test('root tab pages render the inline tab bar and reserve its height', () => {
   const roots = [['home', 0], ['services', 1], ['community', 2], ['messages', 3], ['mine', 4]] as const
   for (const [page, index] of roots) {
     const source = readFileSync(new URL(`../pages/${page}/index.tsx`, import.meta.url), 'utf8')
-    assert.match(source, new RegExp(`syncCustomTabBar\\(${index}\\)`), `${page} must sync custom tabBar`)
+    // Taro 4.1.5 框架 custom-tab-bar React 挂载失效（React #130，$taroInstances 恒空）：
+    // 根页内联渲染 <TabBar/>，点击直连 Taro.switchTab（2026-11-02）。
+    assert.match(source, new RegExp(`<TabBar active=\\{${index}\\} />`), `${page} must render the inline tab bar`)
     assert.match(source, /<RootTabBarSpacer \/>/, `${page} must reserve custom tabBar height`)
   }
 })

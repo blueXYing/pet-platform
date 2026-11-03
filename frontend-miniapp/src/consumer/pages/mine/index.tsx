@@ -7,8 +7,8 @@ import { integrationMessage } from '../../../shared/consumer-api'
 import { RealProfileRepository } from '../../api/repositories'
 import { RealCouponPointsRepository } from '../../coupon-points/repository'
 import { RealPointsTaskRepository } from '../../points-tasks/repository'
-import { syncCustomTabBar } from '../../components/navigation/custom-tab-bar'
 import { RootTabBarSpacer } from '../../components/navigation/root-tab-bar-spacer'
+import { TabBar } from '../../components/navigation/tab-bar'
 import { deltaLabel, formatLedgerTime, pointsBizTypeLabels, type PointsLedgerView } from '../../coupon-points/model'
 import avatar from '../../assets/profile/avatar.png'
 import stripTop from './assets/strip-top.jpg'
@@ -105,7 +105,7 @@ export default function MinePage() {
       runningRef.current = false
     }
   }
-  useDidShow(() => { syncCustomTabBar(4); void refresh() })
+  useDidShow(() => { void refresh() })
   useEffect(() => { mounted.current = true; return () => { mounted.current = false } }, [])
   // 会话坐标变化（登录完成/退出）时同步投影。
   useEffect(() => { void refresh() }, [revision])
@@ -405,6 +405,7 @@ export default function MinePage() {
         </ScrollView>
       </View>
     </View>}
+      <TabBar active={4} />
   </View>
 }
 
