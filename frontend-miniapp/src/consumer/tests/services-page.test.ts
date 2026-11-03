@@ -99,11 +99,18 @@ test('featured pagination keeps loading until the server total is reached', () =
 // ── 登记偏差门禁：距离/资质标签不做（74 §10），排序四键不做 ──
 
 test('the page family never fabricates distance or qualification labels', () => {
-  for (const file of ['index.tsx', 'view-model.ts', 'deals-rail.tsx', 'featured-stores.tsx', 'services.css']) {
+  for (const file of ['index.tsx', 'view-model.ts', 'deals-rail.tsx', 'featured-stores.tsx', 'featured-stores.css', 'services.css']) {
     const text = source(file)
     for (const banned of ['1.2km', '持证上岗', '5年经验', '综合排序', '距离最近', '评分最高', '销量优先']) {
       assert.equal(text.includes(banned), false, `${file} must not contain ${banned}`)
     }
+  }
+  const stores = readFileSync(path.join(pageDir, '..', 'store-services', 'stores.tsx'), 'utf8')
+  const localFeatured = readFileSync(path.join(pageDir, '..', 'store-services', 'featured-stores.tsx'), 'utf8')
+  // 2026-11-03 CCR-SVC-SORT-001：stores 页实现综合/评分/销量三键；距离最近仍不做。
+  for (const banned of ['1.2km', '持证上岗', '5年经验', '距离最近']) {
+    assert.equal(stores.includes(banned), false, `stores.tsx must not contain ${banned}`)
+    assert.equal(localFeatured.includes(banned), false, `store-services/featured-stores.tsx must not contain ${banned}`)
   }
 })
 
@@ -131,25 +138,50 @@ test('the services page is dictionary-driven and routes categories by categoryCo
 
 // ── WXSS 铁律与素材登记门禁 ──
 
-test('city switches pass the target city to the featured reload and guard stale category reads', () => {
+test('city switches pass the target city to the featured reload and the stores page keeps its route category fixed', () => {
   const index = source('index.tsx')
-  assert.match(index, /featured\.reload\(stored\)/)
+  // 返回本页复用已有数据：useDidShow 仅在城市变化或未 ready 时重读，不重置为 loading。
+  assert.match(index, /categoryPhaseRef\.current !== 'ready'/)
+  assert.match(index, /featuredRef\.current\.phase !== 'ready'/)
+  assert.match(index, /featuredRef\.current\.reload\(stored\)/)
   assert.match(index, /featured\.reload\(next\)/)
   const featured = source('featured-stores.tsx')
-  assert.match(featured, /reload\(cityCode\?: string\)/)
-  assert.match(featured, /const load = useCallback\(async \(nextCity/)
+  assert.match(featured, /reload\(cityCode\?: string, categoryCode\?: string, sort\?: FeaturedSort\)/)
+  assert.match(featured, /const load = useCallback\(async \(/)
 
   const hot = readFileSync(path.join(pageDir, '..', 'store-services', 'hot-services.tsx'), 'utf8')
   assert.match(hot, /const next = stored/)
+  // 2026-11-03 视觉验收：二级门店页不渲染分类 chips、不再读分类字典；分类由路由固定，
+  // 默认视图复用 74 §3.4 优质商家聚合卡（关键词搜索保留九字段目录回退）。
   const stores = readFileSync(path.join(pageDir, '..', 'store-services', 'stores.tsx'), 'utf8')
-  assert.match(stores, /categorySequence/)
-  assert.match(stores, /current !== categorySequence\.current/)
+  assert.match(stores, /const categoryCode = initialCategoryCode/)
+  assert.match(stores, /useFeaturedStores\(city, categoryCode, sort, !preview\)/)
+  assert.match(stores, /from '\.\/featured-stores'/)
+  assert.match(stores, /SORT_OPTIONS/)
+  assert.match(stores, /sdir-sortbar/)
+  assert.match(stores, /featured\.reload\(city, categoryCode, next\)/)
+  // 返回门店页（如从门店详情）也复用已加载的 featured/目录，避免 loading 闪白。
+  assert.match(stores, /const keepFeatured = !cityChanged && featuredRef\.current\.phase === 'ready'/)
+  assert.match(stores, /const keepDirectory = !cityChanged && phaseRef\.current === 'ready'/)
+  assert.equal(stores.includes("from '../services/featured-stores'"), false)
+  assert.equal(stores.includes('sdir-categories'), false)
+  assert.equal(stores.includes('serviceCategories('), false)
+  assert.equal(stores.includes('pickCategory'), false)
+  // Figma 690:6370 二级页没有城市选择/搜索输入；城市沿用全局已选，关键词只从路由深链带入。
+  assert.equal(stores.includes('sdir-search-input'), false)
+  assert.equal(stores.includes('sdir-city'), false)
+  assert.equal(stores.includes('CityPicker'), false)
+  assert.match(stores, /<SubpageHeader title=\{searching \? '搜索结果' : '全部服务'\} backId='sdir-back' height=\{44\}/)
+  assert.match(stores, /const keyword = initialKeyword/)
 })
 
 test('services css obeys the WXSS iron rules and icon assets match the manifest', () => {
   const css = source('services.css')
-  assert.equal(/\[data-/.test(css), false) // 禁动态 data-* 属性选择器
-  assert.equal(css.includes('@keyframes'), false) // 本页无 keyframes
+  const featuredCss = source('featured-stores.css')
+  for (const [name, text] of [['services.css', css], ['featured-stores.css', featuredCss]] as const) {
+    assert.equal(/\[data-/.test(text), false, `${name} must not use dynamic data-* selectors`) // 禁动态 data-* 属性选择器
+    assert.equal(text.includes('@keyframes'), false, `${name} must not declare keyframes`) // 本页无 keyframes
+  }
   assert.match(css, /button::after/) // button 原生重置
   const manifest = JSON.parse(source(path.join('assets', 'manifest.json'))) as {
     assets: { nodeId: string; file: string; sha256: string; bytes: number }[]

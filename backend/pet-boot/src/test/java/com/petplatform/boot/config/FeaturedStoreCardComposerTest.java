@@ -4,6 +4,7 @@ import static org.junit.jupiter.api.Assertions.*;
 
 import com.petplatform.boot.config.FeaturedStoreCardComposer.Card;
 import com.petplatform.boot.config.FeaturedStoreCardComposer.Page;
+import com.petplatform.boot.config.FeaturedStoreCardComposer.Sort;
 import com.petplatform.boot.config.MerchantApplicationCityCatalog.City;
 import com.petplatform.common.ApiException;
 import com.petplatform.common.CommonApiCodes;
@@ -37,11 +38,12 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.ObjectProvider;
 
 /**
- * B-CARD-01/02/03 composition acceptance over faked domain ports: the confirmed card order
- * (rating DESC NULLS LAST, monthlySold DESC NULLS LAST, storeId ASC), the &lt;5 display rule, both
- * degradation families (rating {@code available=false}, sales null — never fabricated zeros), the
- * sold-ranked top-2 selection, the primary-category rule, honest paging, the fail-closed avatar
- * signer discipline and the no-PII surface shape.
+ * B-CARD-01/02/03 composition acceptance over faked domain ports: the confirmed default card order
+ * (rating DESC NULLS LAST, monthlySold DESC NULLS LAST, storeId ASC) plus the explicit RATING and
+ * SALES keys (CCR-SVC-SORT-001), the &lt;5 display rule, both degradation families (rating
+ * {@code available=false}, sales null — never fabricated zeros), the sold-ranked top-2 selection,
+ * the primary-category rule, honest paging, the fail-closed avatar signer discipline and the
+ * no-PII surface shape.
  */
 class FeaturedStoreCardComposerTest {
     private static final QueryContext CTX = new QueryContext("composer-test", null, null);
@@ -74,6 +76,51 @@ class FeaturedStoreCardComposerTest {
         Page page = h.compose();
         assertEquals(List.of("100", "300"), page.items().stream().map(Card::storeId).toList(),
                 "equal (null) ratings and equal (0) sales order by storeId ASC");
+    }
+
+    @Test
+    void ratingSortIgnoresMonthlyAndTieBreaksOnStoreId() {
+        long highSalesLowRating = 300, lowSalesHighRating = 100, topRating = 200;
+        Harness h = new Harness()
+                .candidates(highSalesLowRating, lowSalesHighRating, topRating)
+                .rating(highSalesLowRating, 20, "4.9").monthly(highSalesLowRating, 99L)
+                .rating(lowSalesHighRating, 20, "4.9").monthly(lowSalesHighRating, 1L)
+                .rating(topRating, 20, "5.0").monthly(topRating, 0L);
+        assertEquals(List.of("200", "100", "300"),
+                h.compose(Sort.RATING).items().stream().map(Card::storeId).toList(),
+                "RATING: score DESC, storeId ASC; monthly sold does not participate");
+    }
+
+    @Test
+    void salesSortIgnoresRatingAndTieBreaksOnStoreId() {
+        long highSalesLowRating = 300, lowSalesHighRating = 100, topSales = 200;
+        Harness h = new Harness()
+                .candidates(highSalesLowRating, lowSalesHighRating, topSales)
+                .rating(highSalesLowRating, 20, "4.9").monthly(highSalesLowRating, 99L)
+                .rating(lowSalesHighRating, 20, "5.0").monthly(lowSalesHighRating, 1L)
+                .rating(topSales, 20, "1.0").monthly(topSales, 99L);
+        assertEquals(List.of("200", "300", "100"),
+                h.compose(Sort.SALES).items().stream().map(Card::storeId).toList(),
+                "SALES: monthlySold DESC, storeId ASC; rating does not participate");
+    }
+
+    @Test
+    void ratingSortWithUnavailableRatingsFallsBackToStoreId() {
+        long a = 300, b = 100;
+        Harness h = new Harness().candidates(a, b).monthly(a, 1L).monthly(b, 99L).withoutReviews();
+        assertEquals(List.of("100", "300"),
+                h.compose(Sort.RATING).items().stream().map(Card::storeId).toList(),
+                "RATING degrades to storeId ASC when the rating face is unavailable");
+    }
+
+    @Test
+    void salesSortWithUnavailableSalesFallsBackToStoreId() {
+        long a = 300, b = 100;
+        Harness h = new Harness().candidates(a, b)
+                .rating(a, 20, "5.0").rating(b, 20, "4.0").salesFailure();
+        assertEquals(List.of("100", "300"),
+                h.compose(Sort.SALES).items().stream().map(Card::storeId).toList(),
+                "SALES degrades to storeId ASC when the sales face is unavailable");
     }
 
     // ---------------------------------------------------------------- rating degradation
@@ -387,13 +434,15 @@ class FeaturedStoreCardComposerTest {
         Harness signingFailure() { this.signingFailure = true; return this; }
         Harness withoutCityCatalog() { this.withCityCatalog = false; return this; }
 
-        Page compose() { return compose(1, 10); }
+        Page compose() { return compose(Sort.COMPREHENSIVE, null, 1, 10); }
 
-        Page compose(int page, int pageSize) { return compose(null, page, pageSize); }
+        Page compose(int page, int pageSize) { return compose(Sort.COMPREHENSIVE, null, page, pageSize); }
 
-        Page compose(String cityCode) { return compose(cityCode, 1, 10); }
+        Page compose(String cityCode) { return compose(Sort.COMPREHENSIVE, cityCode, 1, 10); }
 
-        Page compose(String cityCode, int page, int pageSize) {
+        Page compose(Sort sort) { return compose(sort, null, 1, 10); }
+
+        Page compose(Sort sort, String cityCode, int page, int pageSize) {
             org.springframework.transaction.support.TransactionTemplate merchantReads =
                     new org.springframework.transaction.support.TransactionTemplate() {
                         @Override
@@ -421,7 +470,7 @@ class FeaturedStoreCardComposerTest {
                     withPhotoSigning ? provider(new FakeSigning()) : provider(null),
                     provider(marketing),
                     merchantReads);
-            return composer.compose(cityCode, null, page, pageSize, CTX);
+            return composer.compose(sort, cityCode, null, page, pageSize, CTX);
         }
 
         private final class FakeCatalog implements FeaturedStoreCatalogApi {

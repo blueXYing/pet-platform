@@ -56,6 +56,7 @@ public class CFeaturedStoreController {
 
     @GetMapping("/api/v1/c/stores/featured")
     public ApiResponse<Map<String, Object>> featured(
+            @RequestParam(required = false) String sort,
             @RequestParam(required = false) String cityCode,
             @RequestParam(required = false) String categoryCode,
             @RequestParam(required = false) String page,
@@ -68,6 +69,7 @@ public class CFeaturedStoreController {
         }
         FeaturedStoreCardComposer.Page value =
                 composer.compose(
+                        parseSort(sort),
                         cityCode,
                         categoryCode,
                         parse(page, 1, 10_000, "page"),
@@ -140,19 +142,33 @@ public class CFeaturedStoreController {
         return new QueryContext(trace(req), null, null);
     }
 
-    /** Contract 74 §3.4: only cityCode/categoryCode/page/pageSize; everything else is 400. */
+    /** Contract 74 §3.4: only sort/cityCode/categoryCode/page/pageSize; everything else is 400. */
     private static void rejectUnknownParameters(HttpServletRequest req) {
         for (String name :
-                new String[] {"cityCode", "categoryCode", "page", "pageSize"}) {
+                new String[] {"sort", "cityCode", "categoryCode", "page", "pageSize"}) {
             String[] values = req.getParameterValues(name);
             if (values != null && values.length > 1) throw invalid(name);
         }
         for (String name : req.getParameterMap().keySet()) {
-            if (!"cityCode".equals(name) && !"categoryCode".equals(name)
+            if (!"sort".equals(name) && !"cityCode".equals(name) && !"categoryCode".equals(name)
                     && !"page".equals(name) && !"pageSize".equals(name)) {
                 throw invalid(name);
             }
         }
+    }
+
+    /**
+     * Contract 74 §3.4 sort keys. Omission is COMPREHENSIVE; empty/unknown/mismatched case is 400.
+     * Distance is not a value: V1 has no location capability.
+     */
+    private static FeaturedStoreCardComposer.Sort parseSort(String raw) {
+        if (raw == null) return FeaturedStoreCardComposer.Sort.COMPREHENSIVE;
+        return switch (raw) {
+            case "COMPREHENSIVE" -> FeaturedStoreCardComposer.Sort.COMPREHENSIVE;
+            case "RATING" -> FeaturedStoreCardComposer.Sort.RATING;
+            case "SALES" -> FeaturedStoreCardComposer.Sort.SALES;
+            default -> throw invalid("sort");
+        };
     }
 
     private static int parse(String raw, int fallback, int max, String field) {

@@ -66,6 +66,14 @@ export default function ServicesPage() {
   const [categoryPhase, setCategoryPhase] = useState<'loading' | 'ready' | 'load-error'>('loading')
   const [categories, setCategories] = useState<readonly ServiceCategoryView[]>([])
   const featured = useFeaturedStores(city)
+  // 返回本页（如从分类门店列表/门店详情返回）时复用已加载的数据：useDidShow 只负责在
+  // 城市变化或上一轮未成功时重读，避免把 phase 重置为 loading 导致分类/优质商家短时空白。
+  const cityRef = useRef(city)
+  cityRef.current = city
+  const categoryPhaseRef = useRef(categoryPhase)
+  categoryPhaseRef.current = categoryPhase
+  const featuredRef = useRef(featured)
+  featuredRef.current = featured
   const loadCategories = useCallback(async (nextCity: string | undefined) => {
     setCategoryPhase('loading')
     const current = ++categorySequence.current
@@ -85,9 +93,14 @@ export default function ServicesPage() {
   }, [])
   useDidShow(() => {
     const stored = readSelectedCity().cityCode
-    if (stored !== city) setCity(stored)
-    void loadCategories(stored)
-    featured.reload(stored)
+    const cityChanged = stored !== cityRef.current
+    if (cityChanged) setCity(stored)
+    if (cityChanged || categoryPhaseRef.current !== 'ready') {
+      void loadCategories(stored)
+    }
+    if (cityChanged || featuredRef.current.phase !== 'ready') {
+      featuredRef.current.reload(stored)
+    }
     loadCities()
   })
   function pickCity(next: string | undefined) {

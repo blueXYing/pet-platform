@@ -1,0 +1,28 @@
+/* 74 §3.4 优质商家卡（110:480 A-101 族）。服务 tab 与分类门店页共用同一套卡面；
+   --svc2-unit 由页面根节点提供。距离/资质标签不做（74 §10 登记偏差）。 */
+.svc2-fs-card { display: flex; flex-direction: column; padding: calc(var(--svc2-unit) * 14) calc(var(--svc2-unit) * 34) calc(var(--svc2-unit) * 10) calc(var(--svc2-unit) * 26); background: #ffffff; border: calc(var(--svc2-unit) * 1) solid #c0ecff; border-radius: calc(var(--svc2-unit) * 12); }
+.svc2-fs-top { display: flex; align-items: flex-start; }
+.svc2-fs-avatar { width: calc(var(--svc2-unit) * 100); height: calc(var(--svc2-unit) * 100); border-radius: calc(var(--svc2-unit) * 8); flex: none; }
+/* 无头像降级（74 §3.4 avatarUrl=null）：中性底版，不伪造门店图。 */
+.svc2-fs-avatar-placeholder { background: #e8f4fb; }
+.svc2-fs-info { flex: 1; min-width: 0; margin-left: calc(var(--svc2-unit) * 12); }
+.svc2-fs-name-row { display: flex; align-items: flex-start; justify-content: space-between; gap: calc(var(--svc2-unit) * 8); }
+.svc2-fs-name { flex: 1; min-width: 0; font-size: calc(var(--svc2-unit) * 14); line-height: calc(var(--svc2-unit) * 19); font-weight: 500; color: #1d0d07; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.svc2-fs-tag { flex: none; display: flex; align-items: center; height: calc(var(--svc2-unit) * 19); padding: 0 calc(var(--svc2-unit) * 6); border-radius: calc(var(--svc2-unit) * 4); background: #c0ecff; }
+.svc2-fs-tag-text { font-size: calc(var(--svc2-unit) * 10); line-height: calc(var(--svc2-unit) * 15); color: #3c3c3c; white-space: nowrap; }
+.svc2-fs-facts { display: flex; align-items: center; gap: calc(var(--svc2-unit) * 7); margin-top: calc(var(--svc2-unit) * 3); }
+.svc2-fs-rating { display: flex; align-items: center; gap: calc(var(--svc2-unit) * 2); }
+.svc2-fs-star { width: calc(var(--svc2-unit) * 10); height: calc(var(--svc2-unit) * 10); }
+.svc2-fs-score { font-size: calc(var(--svc2-unit) * 16); line-height: calc(var(--svc2-unit) * 24); font-weight: 700; color: #ff9500; }
+.svc2-fs-monthly { font-size: calc(var(--svc2-unit) * 10); line-height: calc(var(--svc2-unit) * 15); color: #3c3c3c; }
+.svc2-fs-intro { margin-top: calc(var(--svc2-unit) * 5); font-size: calc(var(--svc2-unit) * 11); line-height: calc(var(--svc2-unit) * 15.125); color: #3c3c3c; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; }
+.svc2-fs-services { display: flex; gap: calc(var(--svc2-unit) * 8); margin-top: calc(var(--svc2-unit) * 10); padding: calc(var(--svc2-unit) * 8) calc(var(--svc2-unit) * 10); background: #f0fbff; border-radius: calc(var(--svc2-unit) * 8); }
+.svc2-fs-col { flex: 1; min-width: 0; display: flex; flex-direction: column; align-items: flex-start; padding: 0; background: transparent; border: none; text-align: left; }
+.svc2-fs-service-name { max-width: 100%; font-size: calc(var(--svc2-unit) * 12); line-height: calc(var(--svc2-unit) * 16); color: #3c3c3c; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.svc2-fs-price-row { display: flex; align-items: baseline; justify-content: space-between; width: 100%; margin-top: calc(var(--svc2-unit) * 4); }
+.svc2-fs-price { font-size: calc(var(--svc2-unit) * 14); line-height: calc(var(--svc2-unit) * 20); font-weight: 700; color: #ff9500; }
+.svc2-fs-sold { font-size: calc(var(--svc2-unit) * 10); line-height: calc(var(--svc2-unit) * 15); color: #ff9500; }
+.svc2-fs-promo { display: flex; align-items: center; gap: calc(var(--svc2-unit) * 8); margin-top: calc(var(--svc2-unit) * 9); min-height: calc(var(--svc2-unit) * 19); }
+.svc2-fs-promo-badge { flex: none; display: flex; align-items: center; height: calc(var(--svc2-unit) * 19); padding: 0 calc(var(--svc2-unit) * 6); border-radius: calc(var(--svc2-unit) * 4); background: #5baae8; }
+.svc2-fs-promo-badge-text { font-size: calc(var(--svc2-unit) * 10); line-height: calc(var(--svc2-unit) * 15); color: #ffffff; white-space: nowrap; }
+.svc2-fs-promo-text { flex: 1; min-width: 0; font-size: calc(var(--svc2-unit) * 10); line-height: calc(var(--svc2-unit) * 15); color: #3c3c3c; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }

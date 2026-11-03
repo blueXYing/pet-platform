@@ -1,12 +1,13 @@
 # 74-服务目录页契约 v0.1
 
-状态：**ACCEPTED_CONTRACT / IMPLEMENTED_INTERNAL_DEFAULT_OFF**（2026-10-30 用户确认；2026-11-02 实现 PR；F-C-05 视觉验收待补）。
-本契约定义接口与字段；实现状态以本 PR 的 CI 与验收记录为准，Schema/迁移见 CCR-SVC-CAT-001/CCR-SVC-CARD-001。
+状态：**ACCEPTED_CONTRACT / IMPLEMENTED_INTERNAL_DEFAULT_OFF**（2026-10-30 用户确认；2026-11-02 实现 PR；2026-11-03 v0.2 排序三键增量，见 CCR-SVC-SORT-001；F-C-05 视觉验收待补）。
+本契约定义接口与字段；实现状态以本 PR 的 CI 与验收记录为准，Schema/迁移见 CCR-SVC-CAT-001/CCR-SVC-CARD-001/CCR-SVC-SORT-001。
 
 来源：C 端 PRD 5.1.13/5.1.14/5.1.27；运营端 PRD 6.2.4/6.11.2；商家端 PRD 5.5；
-SSOT §24；Figma `97:7825`（热门服务）、`110:480`（服务 tab）；
+SSOT §24；Figma `97:7825`（热门服务）、`110:480`（服务 tab）、`690:6370`（分类门店列表）；
 [CCR-SVC-CAT-001](../../planning/ccr/CCR-SVC-CAT-001.md)、
 [CCR-SVC-CARD-001](../../planning/ccr/CCR-SVC-CARD-001.md)、
+[CCR-SVC-SORT-001](../../planning/ccr/CCR-SVC-SORT-001.md)、
 [71 号营销活动中心契约 v0.3](71-Marketing-Center-Contract-v0.1.md)、
 70 号商家统计契约、56 号评价契约。
 
@@ -15,6 +16,7 @@ SSOT §24；Figma `97:7825`（热门服务）、`110:480`（服务 tab）；
 | 版本 | 日期 | 变更 |
 |---|---|---|
 | v0.1 | 2026-10-30 | 初版：服务分类字典、分类筛选、优质商家聚合读、营销投影增量 |
+| v0.2 | 2026-11-03 | `/c/stores/featured` 增加 `sort=COMPREHENSIVE|RATING|SALES`；综合/评分/销量三键，距离不做（CCR-SVC-SORT-001） |
 
 ## 1. 范围与开关
 
@@ -135,14 +137,29 @@ DDL 见 [CCR-SVC-CAT-001 §3](../../planning/ccr/CCR-SVC-CAT-001.md)。
 
 ### 3.4 优质商家聚合卡片
 
-`GET /api/v1/c/stores/featured?cityCode=&categoryCode=&page=&pageSize=`
+`GET /api/v1/c/stores/featured?sort=&cityCode=&categoryCode=&page=&pageSize=`
 
 - 鉴权：匿名/可选 Bearer。
 - `page` 1..10000，默认 1；`pageSize` 1..20，默认 10；未知参数 400。
 - `cityCode` 可选；`categoryCode` 可选。本接口使用 `cityCode`（与营销读一致）；
   既有 `/c/stores` 的 `city` 参数保持兼容，不在本接口复用 `city` 名称。
+- `sort` 可选，区分大小写：`COMPREHENSIVE`（默认）/ `RATING` / `SALES`；
+  空串、未知值、大小写不匹配 → 400 `COMMON_INVALID_ARGUMENT`。
 - 资格：C 端可见门店 + 至少一个 `ACTIVE` 服务；带 `categoryCode` 时该分类下至少一个 `ACTIVE` 服务。
-- 排序（已确认 2026-10-30）：`rating.score DESC NULLS LAST, monthlySold DESC NULLS LAST, storeId ASC`。
+- 排序（CCR-SVC-SORT-001，2026-11-03）：
+
+| sort | 排序键 |
+|---|---|
+| `COMPREHENSIVE`（默认） | `rating.score DESC NULLS LAST, monthlySold DESC NULLS LAST, storeId ASC` |
+| `RATING` | `rating.score DESC NULLS LAST, storeId ASC` |
+| `SALES` | `monthlySold DESC NULLS LAST, storeId ASC` |
+
+  所有排序最后一键固定 `storeId ASC`，保证跨页不重不漏；`rating.score` 的 `<5` 条评价
+  和 `monthlySold` 的聚合不可用均按 NULL 置后，沿用 §6 降级，不伪造 0。
+- 分类门店页 `consumer/pages/store-services/stores` 默认视图（无关键词）复用本接口：
+  携带 `cityCode` + 路由固定的 `categoryCode` + `sort`，渲染同一优质商家卡；关键词搜索时回退既有
+  `/c/stores` + `/c/services` 结果（2026-11-03 用户视觉验收确认；分类筛选不在二级页提供控件，
+  关键词搜索视图不承载排序）。
 - data：
 
 ```json
@@ -456,13 +473,17 @@ DDL 见 [CCR-SVC-CAT-001 §3](../../planning/ccr/CCR-SVC-CAT-001.md)。
 2. 资质标签不做；只展示真实分类标签。
 3. `97:7825` 的首页式头部 + 底部 tab 栏不照搬；二级页统一 `SubpageHeader`。
 4. 不做分类父子层级 UI；不做分类图标上传管线（方案 A：复用既有后台素材上传 + HTTPS URL）。
-5. 不做优质商家排序控件、商家自选热门、竞价/结算、评价内容展示。
+5. 排序控件：只做综合/评分/销量三键（CCR-SVC-SORT-001）；距离最近不做；商家自选热门、竞价/结算、评价内容展示不做。
 6. 不改变订单/支付/退款/核销/售后状态机与 `DisplayOrderStatus`。
 
 ## 11. 验收要点
 
 - 分类接口只返回启用且有可用商家的分类；顺序稳定；停用/无供给消失。
 - 分类点击后门店列表按 `categoryCode` 精确过滤；关键词可组合；未知分类 400。
+- `sort` 省略或 `COMPREHENSIVE` 与现有顺序逐项一致；`RATING` 按评分降序、
+  `SALES` 按月售降序，同值按 `storeId ASC`；三种排序跨页不重不漏；非法 `sort` 400。
+- 分类门店页默认视图显示“综合排序 / 评分最高 / 销量优先”三个 pill，默认综合；
+  切换后从第 1 页重载；关键词搜索态隐藏排序条；不出现“距离最近”。
 - 优质商家卡显示真实门店/服务/评分/月售/已售；评分 <5 显示“暂无评分”；
   不出现距离和资质标签；每家店最多 2 个服务项目。
 - 商家钜惠横排有真实图片；无图用占位图。

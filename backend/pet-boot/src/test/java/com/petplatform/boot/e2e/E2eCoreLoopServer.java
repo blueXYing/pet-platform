@@ -125,7 +125,7 @@ public final class E2eCoreLoopServer {
   private static final long MERCHANT = 710301L;
   private static final long STORE = 710302L;
   private static final long STAFF = 710303L;
-  private static final long CATEGORY = 710400L;
+  private static final long CATEGORY = 910001L;      // 72-Service-Category-Seed PET_GROOMING
   private static final long SERVICE = 710401L;       // IN_STORE, 60 minutes
   private static final long COVER_ASSET = 710402L;
   private static final String WECHAT_APP = "e2e-wx-app";
@@ -1142,8 +1142,8 @@ public final class E2eCoreLoopServer {
     jdbc.update("INSERT INTO merchant_staff(id,merchant_id,store_id,staff_name,employment_status,"
         + "service_enabled,created_at,updated_at) VALUES(?,?,?,?,'ACTIVE',1,UTC_TIMESTAMP(3),"
         + "UTC_TIMESTAMP(3))", STAFF, MERCHANT, STORE, "E2E服务师");
-    jdbc.update("INSERT INTO service_category(id,category_name,status,created_at,updated_at)"
-        + " VALUES(?,'E2E洗护陪伴','ENABLED',UTC_TIMESTAMP(3),UTC_TIMESTAMP(3))", CATEGORY);
+    // 服务分类由 72-Service-Category-Seed 统一提供（PET_GROOMING=910001）；E2E 不再自建分类行，
+    // 避免与字典 NOT NULL category_code 冲突，也让服务 tab 的分类字典与生产同源。
     // IN_STORE, 60 minutes, DOG: one minute-level window == one selectable slot whose bounds
     // the order kernel accepts as the appointment (duration must match exactly).
     jdbc.update("INSERT INTO service_item(id,merchant_id,store_id,category_id,service_name,"
@@ -1354,9 +1354,14 @@ public final class E2eCoreLoopServer {
         "26-Admin-Auth-Schema-v0.1.sql",
         "28-Merchant-Agreement-Schema-v0.1.sql",
         "29-Merchant-Application-Schema-v0.1.sql",
+        // Contract 74 featured-card facts join merchant_store_profile (intro/avatar/photo ids).
+        "27-Merchant-Store-Profile-Schema-v0.1.sql",
         "13-Async-Infra-Schema-v0.1.sql",
         "31-Private-Asset-Schema-v0.1.sql",
         "33-Service-Write-Schema-v0.1.sql",
+        // Contract 74 dictionary + shared 11-category seed (same SQL as production V29/V30).
+        "70-Service-Category-Dictionary-Schema-v0.1.sql",
+        "72-Service-Category-Seed-v0.1.sql",
         "35-Merchant-Staff-Audit-Schema-v0.1.sql",
         // Round 4: the contract-52/54 staff identity + binding tables back the 64号 governance
         // staff-members/invitations read face (without them those routes 500 on a missing
