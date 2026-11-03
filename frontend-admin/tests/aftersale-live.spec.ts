@@ -1,4 +1,5 @@
 import { expect, test, type APIRequestContext, type Page } from '@playwright/test';
+import { chooseOption } from './helpers/antd';
 import { existsSync, mkdirSync, readFileSync, renameSync, writeFileSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
 
@@ -102,7 +103,7 @@ test('live production A page: scoped list, complete P4 review, accept, real buye
   }
   await page.getByRole('button', { name: '受理工单', exact: true }).click();
   await expect(snapshot(page, '状态')).toHaveText('处理中');
-  await page.getByLabel('补证方', { exact: true }).selectOption('USER');
+  await chooseOption(page, '补证方', '用户');
   await page.getByLabel('补证原因', { exact: true }).fill('隔离联调要求用户补充本次服务问题的具体经过与新事实。');
   await page.getByLabel('补证截止（UTC 毫秒）', { exact: true }).fill(new Date(Date.parse(f.clockInstant) + 3_600_000).toISOString());
   await page.getByRole('button', { name: '提交补证要求', exact: true }).click();
@@ -113,7 +114,7 @@ test('live production A page: scoped list, complete P4 review, accept, real buye
   await expect(snapshot(page, '状态')).toHaveText('处理中');
   await expect(page.getByRole('heading', { name: '当前补证要求' })).toHaveCount(0);
   expect(await page.getByLabel('终局类型', { exact: true }).locator('option').evaluateAll(options => options.map(option => (option as HTMLOptionElement).value))).toEqual(['REJECT', 'RESERVICE', 'OTHER']);
-  await page.getByLabel('终局类型', { exact: true }).selectOption('OTHER');
+  await chooseOption(page, '终局类型', '其他非退款处理');
   await page.getByLabel('终局原因', { exact: true }).fill('隔离联调已结合双方卷宗及本轮补充事实，记录独立的非退款最终处理。');
   await page.getByLabel('确认基于双方证据作出最终处理').check();
   await page.getByRole('button', { name: '提交最终决定', exact: true }).click();
@@ -231,7 +232,7 @@ test('live same-case C/M/A pages: C creation, A accept and supplement, C evidenc
     await page.getByLabel('确认问题符合受理条件，已有终局时确属新问题').check();
     await page.getByRole('button', { name: '受理工单', exact: true }).click();
     await expect(snapshot(page, '状态')).toHaveText('处理中');
-    await page.getByLabel('补证方', { exact: true }).selectOption('USER');
+    await chooseOption(page, '补证方', '用户');
     await page.getByLabel('补证原因', { exact: true }).fill('同单三端联调：请用户从实际售后页面补充本次问题发生经过。');
     await page.getByLabel('补证截止（UTC 毫秒）', { exact: true }).fill(new Date(Date.parse(f.clockInstant) + 3_600_000).toISOString());
     await page.getByRole('button', { name: '提交补证要求', exact: true }).click();
@@ -250,7 +251,7 @@ test('live same-case C/M/A pages: C creation, A accept and supplement, C evidenc
     expect(afterParties.counts.evidenceBatches).toBe(initial.counts.evidenceBatches + 2);
     await expect(page.locator('article.aftersale-card h3').filter({ hasText: '用户证据' })).toHaveCount(2);
     await expect(page.locator('article.aftersale-card h3').filter({ hasText: '商家证据' })).toHaveCount(1);
-    await page.getByLabel('终局类型', { exact: true }).selectOption('OTHER');
+    await chooseOption(page, '终局类型', '其他非退款处理');
     await page.getByLabel('终局原因', { exact: true }).fill('同单三端联调：已逐项核对用户实际补证及商家实际意见，记录非退款终局。');
     await page.getByLabel('确认基于双方证据作出最终处理').check();
     await page.getByRole('button', { name: '提交最终决定', exact: true }).click();

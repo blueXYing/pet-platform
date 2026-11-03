@@ -1,15 +1,22 @@
 import { useEffect, useRef, useState } from 'react';
+import { Button, DatePicker, Input } from 'antd';
+import dayjs from 'dayjs';
+import type { TableColumnsType } from 'antd';
 import {
   reservationStatusLabel, windowKindLabel, windowStatusLabel,
   type ReservationRow, type SchedulePage, type ScheduleViewClient,
   type StaffWindowRow, type ScheduleWindowRow,
 } from '../api/scheduleView';
 import { GovernanceFailure, governanceFailureText } from '../api/governanceHttp';
+import { DataTable } from '../ui/DataTable';
+import { ErrorAlert, InlineStatus, StatusTag } from '../ui/bits';
+import { PageContainer } from '../ui/PageContainer';
 
 const ID = /^[1-9][0-9]{0,18}$/;
 type Tab = 'windows' | 'staff' | 'reservations';
 type Range = { startFrom: string; startTo: string };
 const EMPTY: Range = { startFrom: '', startTo: '' };
+const LOCAL = 'YYYY-MM-DDTHH:mm';
 const UTC_LOCAL = (value: string) => (value ? new Date(value).toISOString() : undefined);
 
 /** 运营 PRD 6.2.5 门店排期监管（只读）：时段分布/占用、员工排班、预约与临时锁定记录。
@@ -66,83 +73,82 @@ export default function ScheduleViewPage({ client, onAuthLost }: { client: Sched
     || (range.startFrom && range.startTo && range.startFrom <= range.startTo);
   const idOk = (value: string) => value === '' || ID.test(value);
   const valid = rangeOk && idOk(merchantId) && idOk(storeId);
-  const current = tab === 'windows' ? windows : tab === 'staff' ? staff : reservations;
-  const pages = current ? Math.min(10000, Math.max(1, Math.ceil(current.total / current.pageSize))) : 1;
-  return <main className="aftersale-page">
-    <h1>排期查看</h1>
-    <p className="hint">运营 PRD 6.2.5：排期只读监管（SSOT §29）。商家自主维护排期（53 号）；占用口径与 SOLD_OUT 同源；返程约束由原始事实人工核对，服务端不派生。</p>
-    <nav className="workbench-nav" aria-label="排期视图切换">
-      <button onClick={() => switchTab('windows')} disabled={tab === 'windows'}>服务时段分布</button>
-      <button onClick={() => switchTab('staff')} disabled={tab === 'staff'}>员工排班</button>
-      <button onClick={() => switchTab('reservations')} disabled={tab === 'reservations'}>预约占用/锁定</button>
+  const windowColumns: TableColumnsType<ScheduleWindowRow> = [
+    { title: '窗口', dataIndex: 'windowId' },
+    { title: '商家/门店', render: (_, row) => `${row.merchantId} / ${row.storeId}` },
+    { title: '服务', dataIndex: 'serviceId' },
+    { title: '类型', render: (_, row) => windowKindLabel(row.windowKind) },
+    { title: '开始（UTC）', dataIndex: 'startAt' },
+    { title: '结束（UTC）', dataIndex: 'endAt' },
+    { title: '配置容量', dataIndex: 'configuredCapacity' },
+    { title: '已确认', dataIndex: 'confirmedCount' },
+    { title: '临时锁定', dataIndex: 'tempLockedCount' },
+    { title: '利用率', render: (_, row) => row.configuredCapacity > 0 ? `${row.confirmedCount}/${row.configuredCapacity}` : '—' },
+    { title: '状态', render: (_, row) => <StatusTag label={windowStatusLabel(row.status)} status={row.status} /> },
+  ];
+  const staffColumns: TableColumnsType<StaffWindowRow> = [
+    { title: '排班窗口', dataIndex: 'windowId' },
+    { title: '门店', dataIndex: 'storeId' },
+    { title: '员工', dataIndex: 'staffId' },
+    { title: '开始（UTC）', dataIndex: 'startAt' },
+    { title: '结束（UTC）', dataIndex: 'endAt' },
+    { title: '状态', render: (_, row) => row.status === 'AVAILABLE' ? '可用' : '已关闭' },
+  ];
+  const reservationColumns: TableColumnsType<ReservationRow> = [
+    { title: '预约', dataIndex: 'reservationId' },
+    { title: '订单', dataIndex: 'orderId' },
+    { title: '门店/服务', render: (_, row) => `${row.storeId} / ${row.serviceId}` },
+    { title: '履约', render: (_, row) => row.fulfillmentType === 'PICKUP_DELIVERY' ? '上门接送' : '到店' },
+    { title: '开始（UTC）', dataIndex: 'startAt' },
+    { title: '结束（UTC）', dataIndex: 'endAt' },
+    { title: '上门', render: (_, row) => row.pickupStartAt ?? '—' },
+    { title: '送回', render: (_, row) => row.returnStartAt ?? '—' },
+    { title: '状态', render: (_, row) => <StatusTag label={reservationStatusLabel(row.status)} status={row.status} /> },
+    { title: '锁定到期', render: (_, row) => row.lockExpireAt ?? '—' },
+  ];
+  return <PageContainer
+    title="排期查看"
+    hint="运营 PRD 6.2.5：排期只读监管（SSOT §29）。商家自主维护排期（53 号）；占用口径与 SOLD_OUT 同源；返程约束由原始事实人工核对，服务端不派生。">
+    <nav className="filter-bar" aria-label="排期视图切换">
+      <Button onClick={() => switchTab('windows')} disabled={tab === 'windows'}>服务时段分布</Button>
+      <Button onClick={() => switchTab('staff')} disabled={tab === 'staff'}>员工排班</Button>
+      <Button onClick={() => switchTab('reservations')} disabled={tab === 'reservations'}>预约占用/锁定</Button>
     </nav>
-    <form className="filters" onSubmit={event => { event.preventDefault(); if (valid) void load(tab, range, merchantId, storeId, 1); }}>
-      <label>商家编号<input inputMode="numeric" value={merchantId} onChange={event => setMerchantId(event.target.value)} /></label>
-      <label>门店编号<input inputMode="numeric" value={storeId} onChange={event => setStoreId(event.target.value)} /></label>
-      <label>时段起<input type="datetime-local" value={range.startFrom} onChange={event => setRange({ ...range, startFrom: event.target.value })} /></label>
-      <label>时段止<input type="datetime-local" value={range.startTo} onChange={event => setRange({ ...range, startTo: event.target.value })} /></label>
-      <button disabled={loading || !valid}>查询</button>
+    <form className="filter-bar" onSubmit={event => { event.preventDefault(); if (valid) void load(tab, range, merchantId, storeId, 1); }}>
+      <label className="filter-item">商家编号<Input style={{ width: 160 }} inputMode="numeric" value={merchantId} onChange={event => setMerchantId(event.target.value)} /></label>
+      <label className="filter-item">门店编号<Input style={{ width: 160 }} inputMode="numeric" value={storeId} onChange={event => setStoreId(event.target.value)} /></label>
+      <label className="filter-item">时段起<DatePicker showTime format="YYYY-MM-DD HH:mm" value={range.startFrom ? dayjs(range.startFrom) : null} onChange={value => setRange({ ...range, startFrom: value ? value.format(LOCAL) : '' })} /></label>
+      <label className="filter-item">时段止<DatePicker showTime format="YYYY-MM-DD HH:mm" value={range.startTo ? dayjs(range.startTo) : null} onChange={value => setRange({ ...range, startTo: value ? value.format(LOCAL) : '' })} /></label>
+      <Button type="primary" htmlType="submit" disabled={loading || !valid}>查询</Button>
     </form>
-    {error && <p role="alert">{error}</p>}
-    {loading && <p role="status">正在查询排期事实</p>}
-    {tab === 'windows' && windows && <>
-      <div className="table-scroll"><table>
-        <thead><tr><th>窗口</th><th>商家/门店</th><th>服务</th><th>类型</th><th>开始（UTC）</th><th>结束（UTC）</th><th>配置容量</th><th>已确认</th><th>临时锁定</th><th>利用率</th><th>状态</th></tr></thead>
-        <tbody>{windows.items.map(row => <tr key={row.windowId}>
-          <td>{row.windowId}</td>
-          <td>{row.merchantId} / {row.storeId}</td>
-          <td>{row.serviceId}</td>
-          <td>{windowKindLabel(row.windowKind)}</td>
-          <td>{row.startAt}</td>
-          <td>{row.endAt}</td>
-          <td>{row.configuredCapacity}</td>
-          <td>{row.confirmedCount}</td>
-          <td>{row.tempLockedCount}</td>
-          <td>{row.configuredCapacity > 0 ? `${row.confirmedCount}/${row.configuredCapacity}` : '—'}</td>
-          <td>{windowStatusLabel(row.status)}</td>
-        </tr>)}</tbody>
-      </table></div>
-      <Pagination page={windows} disabled={loading} onPage={next => void load(tab, range, merchantId, storeId, next)} label="时段分布分页" pages={pages} />
-    </>}
-    {tab === 'staff' && staff && <>
-      <div className="table-scroll"><table>
-        <thead><tr><th>排班窗口</th><th>门店</th><th>员工</th><th>开始（UTC）</th><th>结束（UTC）</th><th>状态</th></tr></thead>
-        <tbody>{staff.items.map(row => <tr key={row.windowId}>
-          <td>{row.windowId}</td><td>{row.storeId}</td><td>{row.staffId}</td>
-          <td>{row.startAt}</td><td>{row.endAt}</td>
-          <td>{row.status === 'AVAILABLE' ? '可用' : '已关闭'}</td>
-        </tr>)}</tbody>
-      </table></div>
-      <Pagination page={staff} disabled={loading} onPage={next => void load(tab, range, merchantId, storeId, next)} label="员工排班分页" pages={pages} />
-    </>}
-    {tab === 'reservations' && reservations && <>
-      <div className="table-scroll"><table>
-        <thead><tr><th>预约</th><th>订单</th><th>门店/服务</th><th>履约</th><th>开始（UTC）</th><th>结束（UTC）</th><th>上门</th><th>送回</th><th>状态</th><th>锁定到期</th></tr></thead>
-        <tbody>{reservations.items.map(row => <tr key={row.reservationId}>
-          <td>{row.reservationId}</td>
-          <td>{row.orderId}</td>
-          <td>{row.storeId} / {row.serviceId}</td>
-          <td>{row.fulfillmentType === 'PICKUP_DELIVERY' ? '上门接送' : '到店'}</td>
-          <td>{row.startAt}</td>
-          <td>{row.endAt}</td>
-          <td>{row.pickupStartAt ?? '—'}</td>
-          <td>{row.returnStartAt ?? '—'}</td>
-          <td>{reservationStatusLabel(row.status)}</td>
-          <td>{row.lockExpireAt ?? '—'}</td>
-        </tr>)}</tbody>
-      </table></div>
-      <Pagination page={reservations} disabled={loading} onPage={next => void load(tab, range, merchantId, storeId, next)} label="占用记录分页" pages={pages} />
-    </>}
-  </main>;
-}
-
-function Pagination({ page, pages, disabled, onPage, label }: {
-  page: SchedulePage<ScheduleWindowRow | StaffWindowRow | ReservationRow>;
-  pages: number; disabled: boolean; onPage: (next: number) => void; label: string;
-}) {
-  return <nav className="pager" aria-label={label}>
-    <button disabled={disabled || page.page <= 1} onClick={() => onPage(page.page - 1)}>上一页</button>
-    <span>第 {page.page} / {pages} 页 · 共 {page.total} 条</span>
-    <button disabled={disabled || page.page >= pages} onClick={() => onPage(page.page + 1)}>下一页</button>
-  </nav>;
+    {error && <ErrorAlert>{error}</ErrorAlert>}
+    {loading && <InlineStatus>正在查询排期事实</InlineStatus>}
+    {tab === 'windows' && windows && <DataTable
+      columns={windowColumns}
+      rows={windows.items}
+      rowKey={row => row.windowId}
+      page={windows.page}
+      pageSize={windows.pageSize}
+      total={windows.total}
+      onPageChange={next => void load(tab, range, merchantId, storeId, next)}
+    />}
+    {tab === 'staff' && staff && <DataTable
+      columns={staffColumns}
+      rows={staff.items}
+      rowKey={row => row.windowId}
+      page={staff.page}
+      pageSize={staff.pageSize}
+      total={staff.total}
+      onPageChange={next => void load(tab, range, merchantId, storeId, next)}
+    />}
+    {tab === 'reservations' && reservations && <DataTable
+      columns={reservationColumns}
+      rows={reservations.items}
+      rowKey={row => row.reservationId}
+      page={reservations.page}
+      pageSize={reservations.pageSize}
+      total={reservations.total}
+      onPageChange={next => void load(tab, range, merchantId, storeId, next)}
+    />}
+  </PageContainer>;
 }

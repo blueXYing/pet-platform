@@ -1,6 +1,9 @@
 import { useEffect, useRef, useState } from 'react';
 import { Link, useParams, useSearchParams } from 'react-router-dom';
+import { Button, Checkbox, Input, Select } from 'antd';
 import { AfterSaleFailure, caseStatusLabel, decisionLabel, validUtc, REFUND_DECISIONS, type Action, type ActionBody, type AfterSaleClient, type CaseDetail, type DecisionType, type PendingIntent, type ReadGrant, type Receipt } from '../api/aftersales';
+import { BackLink, PageContainer } from '../ui/PageContainer';
+import { ErrorAlert, FactList, InlineStatus, PreserveText, Section, StatusTag } from '../ui/bits';
 
 function errorText(caught: unknown, fallback: string) {
   if (!(caught instanceof AfterSaleFailure)) return fallback;
@@ -154,39 +157,127 @@ export default function AfterSaleDetailPage({ client, canHandle, canDecide, onAu
   const validDeadline = validUtc(deadline) && Date.parse(deadline) > Date.now();
   const retryAllowed = retry?.action === 'grant' || (retry?.action === 'decisions' ? canDecide : canHandle) && client.canWriteCase(afterSaleId);
   const retryBody = retry?.body as Record<string, unknown> | undefined;
-  return <main className="aftersale-page">
-    <div className="aftersale-title"><h1>售后工单详情</h1><Link to={back}>返回售后列表</Link><button disabled={busy} onClick={() => { setError(''); void load(); }}>刷新工单</button></div>
-    {error && <p role="alert">{error}</p>}{notice && <p role="status">{notice}</p>}
+  return <PageContainer
+    title="售后工单详情"
+    back={<BackLink to={back}>返回售后列表</BackLink>}
+    extra={<Button disabled={busy} onClick={() => { setError(''); void load(); }}>刷新工单</Button>}>
+    {error && <ErrorAlert>{error}</ErrorAlert>}{notice && <InlineStatus>{notice}</InlineStatus>}
     {retry && <div className="aftersale-callout"><p>待确认操作：{retry.label}。保留原请求标识和原始内容，新的处理操作暂停。</p>
-      {retryBody && <details><summary>查看原处理内容</summary>{typeof retryBody.expectedVersion === 'string' && <p>原工单版本：{retryBody.expectedVersion}</p>}{typeof retryBody.decisionType === 'string' && <p>原处理类型：{decisionLabel(retryBody.decisionType)}</p>}{typeof retryBody.refundAmount === 'string' && <p>原退款金额：{retryBody.refundAmount}</p>}{typeof retryBody.reason === 'string' && <p className="preserve-text">原处理原因：{retryBody.reason}</p>}{typeof retryBody.newProblemAssessment === 'string' && <p className="preserve-text">原新问题评估：{retryBody.newProblemAssessment}</p>}{typeof retryBody.targetParty === 'string' && <p>原补证方：{retryBody.targetParty === 'USER' ? '用户' : '商家'}</p>}{typeof retryBody.deadline === 'string' && <p>原补证截止（UTC）：{retryBody.deadline}</p>}{typeof retryBody.priorFinalCaseId === 'string' && <p>引用原终局：{retryBody.priorFinalCaseId}</p>}</details>}
-      <button disabled={busy || !retryAllowed} onClick={() => void execute(retry)}>重试原操作</button></div>}
-    {busy && <p role="status">正在读取或提交</p>}
+      {retryBody && <details><summary>查看原处理内容</summary>{typeof retryBody.expectedVersion === 'string' && <p>原工单版本：{retryBody.expectedVersion}</p>}{typeof retryBody.decisionType === 'string' && <p>原处理类型：{decisionLabel(retryBody.decisionType)}</p>}{typeof retryBody.refundAmount === 'string' && <p>原退款金额：{retryBody.refundAmount}</p>}{typeof retryBody.reason === 'string' && <PreserveText>原处理原因：{retryBody.reason}</PreserveText>}{typeof retryBody.newProblemAssessment === 'string' && <PreserveText>原新问题评估：{retryBody.newProblemAssessment}</PreserveText>}{typeof retryBody.targetParty === 'string' && <p>原补证方：{retryBody.targetParty === 'USER' ? '用户' : '商家'}</p>}{typeof retryBody.deadline === 'string' && <p>原补证截止（UTC）：{retryBody.deadline}</p>}{typeof retryBody.priorFinalCaseId === 'string' && <p>引用原终局：{retryBody.priorFinalCaseId}</p>}</details>}
+      <Button type="primary" disabled={busy || !retryAllowed} onClick={() => void execute(retry)}>重试原操作</Button></div>}
+    {busy && <InlineStatus>正在读取或提交</InlineStatus>}
     {detail && <>
-      <dl className="snapshot">
-        <div><dt>工单编号</dt><dd>{detail.afterSaleId}</dd></div><div><dt>订单编号</dt><dd>{detail.orderId}</dd></div><div><dt>状态</dt><dd>{caseStatusLabel(detail.status)}</dd></div><div><dt>版本</dt><dd>{detail.version}</dd></div>
-        <div><dt>来源阶段</dt><dd>{detail.sourceStage === 'VERIFIED' ? '已核销' : '未核销 · 服务已开始'}</dd></div><div><dt>问题 / 诉求代码</dt><dd>{detail.typeCode} / {detail.demandCode}</dd></div><div><dt>诉求金额</dt><dd>{detail.requestedAmount ?? '未指定'}</dd></div><div><dt>创建（UTC）</dt><dd>{detail.createdAt}</dd></div><div><dt>申请截止（UTC）</dt><dd>{detail.deadline}</dd></div>
-      </dl>
-      <section><h2>用户问题说明</h2><p className="preserve-text">{detail.description}</p>{detail.newProblemStatement && <><h3>终局后新问题说明</h3><p className="preserve-text">{detail.newProblemStatement}</p></>}</section>
-      {detail.supplementRequestId && <section className="aftersale-callout"><h2>当前补证要求</h2><p>轮次 {detail.supplementRequestId} · 指定 {detail.supplementTarget === 'USER' ? '用户' : '商家'}</p><p className="preserve-text">{detail.supplementReason}</p><p>截止（UTC）：{detail.supplementDeadline}</p><p className="hint">达到截止后不能满足该轮补证，后台超时任务恢复处理中；页面不会自动裁决。</p></section>}
-      <section><h2>双方入卷证据</h2><label>证据查看用途<textarea maxLength={500} value={viewReason} onChange={event => setViewReason(event.target.value)} /></label>
+      <FactList items={[
+        { label: '工单编号', value: detail.afterSaleId },
+        { label: '订单编号', value: detail.orderId },
+        { label: '状态', value: <StatusTag label={caseStatusLabel(detail.status)} status={detail.status} /> },
+        { label: '版本', value: detail.version },
+        { label: '来源阶段', value: detail.sourceStage === 'VERIFIED' ? '已核销' : '未核销 · 服务已开始' },
+        { label: '问题 / 诉求代码', value: `${detail.typeCode} / ${detail.demandCode}` },
+        { label: '诉求金额', value: detail.requestedAmount ?? '未指定' },
+        { label: '创建（UTC）', value: detail.createdAt },
+        { label: '申请截止（UTC）', value: detail.deadline },
+      ]} />
+      <Section title="用户问题说明">
+        <PreserveText>{detail.description}</PreserveText>
+        {detail.newProblemStatement && <><h3>终局后新问题说明</h3><PreserveText>{detail.newProblemStatement}</PreserveText></>}
+      </Section>
+      {detail.supplementRequestId && <Section title="当前补证要求">
+        <p>轮次 {detail.supplementRequestId} · 指定 {detail.supplementTarget === 'USER' ? '用户' : '商家'}</p>
+        <PreserveText>{detail.supplementReason}</PreserveText>
+        <p>截止（UTC）：{detail.supplementDeadline}</p>
+        <p className="hint">达到截止后不能满足该轮补证，后台超时任务恢复处理中；页面不会自动裁决。</p>
+      </Section>}
+      <Section title="双方入卷证据">
+        <label className="filter-item">证据查看用途
+          <Input.TextArea style={{ width: 'min(100%, 720px)' }} rows={4} maxLength={500} value={viewReason} onChange={event => setViewReason(event.target.value)} />
+        </label>
         {!detail.evidence.length && <p>尚无证据批次。</p>}
-        {detail.evidence.map(batch => <article className="aftersale-card" key={batch.batchId}><h3>{batch.submitterType === 'USER' ? '用户' : '商家'}证据 · {batch.batchId}</h3><p>提交（UTC）：{batch.submittedAt}{batch.opinionCode && ` · 商家意见：${({ AGREE: '同意', PARTLY_AGREE: '部分同意', DISAGREE: '不同意', NEED_USER_SUPPLEMENT: '请求用户补充' } as Record<string, string>)[batch.opinionCode] ?? batch.opinionCode}`}</p>{batch.text && <p className="preserve-text">{batch.text}</p>}
-          <ul className="materials">{batch.assetIds.map(assetId => { const key = `${batch.batchId}/${assetId}`; return <li key={assetId}><span>图片 {assetId}</span><button disabled={busy || retry !== undefined || !hasText(viewReason)} onClick={() => view(batch.batchId, assetId)}>申请查看证据</button>{previews[key] && <><img src={previews[key]} alt={`售后证据 ${assetId}`} /><button onClick={() => { URL.revokeObjectURL(urls.current[key]); delete urls.current[key]; setPreviews({ ...urls.current }); }}>隐藏图片</button></>}</li>; })}</ul>
+        {detail.evidence.map(batch => <article className="aftersale-card" key={batch.batchId}><h3>{batch.submitterType === 'USER' ? '用户' : '商家'}证据 · {batch.batchId}</h3><p>提交（UTC）：{batch.submittedAt}{batch.opinionCode && ` · 商家意见：${({ AGREE: '同意', PARTLY_AGREE: '部分同意', DISAGREE: '不同意', NEED_USER_SUPPLEMENT: '请求用户补充' } as Record<string, string>)[batch.opinionCode] ?? batch.opinionCode}`}</p>{batch.text && <PreserveText>{batch.text}</PreserveText>}
+          <ul className="materials">{batch.assetIds.map(assetId => { const key = `${batch.batchId}/${assetId}`; return <li key={assetId}><span>图片 {assetId}</span><Button type="primary" disabled={busy || retry !== undefined || !hasText(viewReason)} onClick={() => view(batch.batchId, assetId)}>申请查看证据</Button>{previews[key] && <><img src={previews[key]} alt={`售后证据 ${assetId}`} /><Button onClick={() => { URL.revokeObjectURL(urls.current[key]); delete urls.current[key]; setPreviews({ ...urls.current }); }}>隐藏图片</Button></>}</li>; })}</ul>
         </article>)}
-      </section>
-      {p4 && <section><h2>同订单历史终局核对</h2><p>必须逐笔核对当前完整历史后受理新问题。历史工单共 {detail.priorFinalCaseIds.length} 笔。</p><button disabled={busy} onClick={() => void loadHistory()}>读取历史终局</button>
-        {histories.map(old => <article className="aftersale-card" key={old.afterSaleId}><h3>历史工单 {old.afterSaleId} · {decisionLabel(old.decisionType ?? '')}</h3><p className="preserve-text">原问题：{old.description}</p><p className="preserve-text">原结论：{old.decisionReason}</p><Link to={`/aftersales/${old.afterSaleId}${params.size ? `?${params}` : ''}`}>查看历史卷宗与证据</Link><label><input type="checkbox" disabled={blocked} checked={reviewed.includes(old.afterSaleId)} onChange={event => setReviewed(current => event.target.checked ? [...current, old.afterSaleId] : current.filter(id => id !== old.afterSaleId))} />已核对这笔终局及当前新问题说明</label></article>)}
-      </section>}
-      {detail.status === 'PENDING' && canHandle && <section><h2>受理或重复问题关闭</h2>
-        <fieldset disabled={blocked}><legend>受理</legend>{p4 && <label>新问题核对意见<textarea value={assessment} maxLength={500} onChange={event => setAssessment(event.target.value)} /></label>}<label><input type="checkbox" checked={acceptConfirmed} onChange={event => setAcceptConfirmed(event.target.checked)} />确认问题符合受理条件，已有终局时确属新问题</label><button disabled={!acceptConfirmed || !historyChecked || p4 && !hasText(assessment)} onClick={() => command('accept', { expectedVersion: detail.version, ...(p4 ? { newProblemAssessment: assessment, expectedFinalSetVersion: detail.finalSetVersion } : {}) }, '工单受理')}>受理工单</button></fieldset>
-        {p4 && <fieldset disabled={blocked}><legend>重复问题关闭</legend><label>引用历史终局<select aria-label="引用历史终局" value={priorFinalCaseId} onChange={event => setPriorFinalCaseId(event.target.value)}><option value="">请选择已核对的历史结论</option>{histories.filter(old => reviewed.includes(old.afterSaleId)).map(old => <option key={old.afterSaleId} value={old.afterSaleId}>{old.afterSaleId} · {decisionLabel(old.decisionType ?? '')}</option>)}</select></label><label>重复问题关闭原因<textarea maxLength={500} value={duplicateReason} onChange={event => setDuplicateReason(event.target.value)} /></label><label><input type="checkbox" checked={duplicateConfirmed} onChange={event => setDuplicateConfirmed(event.target.checked)} />确认本次为重复问题并引用原结论</label><button disabled={!historyChecked || !priorFinalCaseId || !hasText(duplicateReason) || !duplicateConfirmed} onClick={() => command('close-duplicate', { expectedVersion: detail.version, priorFinalCaseId, reason: duplicateReason }, '重复问题关闭')}>关闭重复问题</button></fieldset>}
-      </section>}
-      {detail.status === 'PROCESSING' && canHandle && <section><h2>要求补证</h2><fieldset disabled={blocked}><label>补证方<select aria-label="补证方" value={targetParty} onChange={event => setTargetParty(event.target.value as 'USER' | 'MERCHANT')}><option value="USER">用户</option><option value="MERCHANT">商家</option></select></label><label>补证原因<textarea maxLength={500} value={supplementReason} onChange={event => setSupplementReason(event.target.value)} /></label><label>补证截止（UTC 毫秒）<input value={deadline} placeholder="2026-10-02T12:00:00.000Z" onChange={event => setDeadline(event.target.value)} /></label><p className="hint">请输入未来的 UTC 时间，格式 YYYY-MM-DDTHH:mm:ss.SSSZ。仅严格早于截止的补证可满足本轮。</p><button disabled={!hasText(supplementReason) || !validDeadline} onClick={() => command('supplement-requests', { expectedVersion: detail.version, targetParty, reason: supplementReason, deadline }, '补证要求')}>提交补证要求</button></fieldset></section>}
-      {detail.status === 'PROCESSING' && canDecide && <section><h2>最终裁决</h2><fieldset disabled={blocked}><label>终局类型<select aria-label="终局类型" value={decisionType} onChange={event => setDecisionType(event.target.value as DecisionType)}>{(['REJECT', 'RESERVICE', 'OTHER', 'FULL_REFUND', 'PARTIAL_REFUND'] as const).map(value => <option value={value} key={value}>{decisionLabel(value)}</option>)}</select></label>{isRefundDecision(decisionType) && <><label>退款金额（元）<input inputMode="decimal" value={refundAmountDraft} placeholder="例如 32.00" onChange={event => setRefundAmountDraft(event.target.value.trim())} /></label><p className="hint">精确两位小数。全额退款必须等于订单真实实付金额，部分退款必须大于 0 且小于实付金额；以系统核算为准，不符将被拒绝。裁决成功后自动创建退款单，按微信支付原路退回异步执行。</p></>}<label>终局原因<textarea maxLength={500} value={reason} onChange={event => setReason(event.target.value)} /></label>{decisionType === 'RESERVICE' && <p className="hint">说明人工重新服务安排。该决定不会自动创建订单、预约或再次核销。</p>}<label><input type="checkbox" checked={decisionConfirmed} onChange={event => setDecisionConfirmed(event.target.checked)} />确认基于双方证据作出最终处理</label><button disabled={!hasText(reason) || !decisionConfirmed || isRefundDecision(decisionType) && !isAmountDraft(refundAmountDraft)} onClick={() => command('decisions', { expectedVersion: detail.version, decisionType, reason, refundAmount: isRefundDecision(decisionType) ? refundAmountDraft : null }, '最终裁决')}>提交最终决定</button><p className="hint">裁决一次终局，不支持复审；提交前请核对双方证据与金额。</p></fieldset></section>}
-      {detail.decisionType && <section><h2>已记录的最终决定</h2><p>{decisionLabel(detail.decisionType)}{detail.refundAmount && ` · 记录金额 ${detail.refundAmount}`}</p><p className="preserve-text">{detail.decisionReason}</p>{detail.decisionType && isRefundDecision(detail.decisionType) && <p className="hint">退款单已创建，按微信支付原路退回执行；执行进度以退款渠道回执为准，工单状态不再变化。</p>}</section>}
+      </Section>
+      {p4 && <Section title="同订单历史终局核对">
+        <p>必须逐笔核对当前完整历史后受理新问题。历史工单共 {detail.priorFinalCaseIds.length} 笔。</p>
+        <Button disabled={busy} onClick={() => void loadHistory()}>读取历史终局</Button>
+        {histories.map(old => <article className="aftersale-card" key={old.afterSaleId}><h3>历史工单 {old.afterSaleId} · {decisionLabel(old.decisionType ?? '')}</h3><PreserveText>原问题：{old.description}</PreserveText><PreserveText>原结论：{old.decisionReason}</PreserveText><Link to={`/aftersales/${old.afterSaleId}${params.size ? `?${params}` : ''}`}>查看历史卷宗与证据</Link><div><Checkbox disabled={blocked} checked={reviewed.includes(old.afterSaleId)} onChange={event => setReviewed(current => event.target.checked ? [...current, old.afterSaleId] : current.filter(id => id !== old.afterSaleId))}>已核对这笔终局及当前新问题说明</Checkbox></div></article>)}
+      </Section>}
+      {detail.status === 'PENDING' && canHandle && <Section title="受理或重复问题关闭">
+        <Section title="受理">
+          {p4 && <label className="filter-item">新问题核对意见
+            <Input.TextArea style={{ width: 'min(100%, 720px)' }} rows={4} value={assessment} maxLength={500} disabled={blocked} onChange={event => setAssessment(event.target.value)} />
+          </label>}
+          <div><Checkbox checked={acceptConfirmed} disabled={blocked} onChange={event => setAcceptConfirmed(event.target.checked)}>确认问题符合受理条件，已有终局时确属新问题</Checkbox></div>
+          <div className="decision-actions">
+            <Button type="primary" disabled={blocked || !acceptConfirmed || !historyChecked || p4 && !hasText(assessment)}
+              onClick={() => command('accept', { expectedVersion: detail.version, ...(p4 ? { newProblemAssessment: assessment, expectedFinalSetVersion: detail.finalSetVersion } : {}) }, '工单受理')}>受理工单</Button>
+          </div>
+        </Section>
+        {p4 && <Section title="重复问题关闭">
+          <label className="filter-item">引用历史终局
+            <Select style={{ width: 320 }} aria-label="引用历史终局" value={priorFinalCaseId} disabled={blocked} onChange={value => setPriorFinalCaseId(value)}
+              options={[{ value: '', label: '请选择已核对的历史结论' }, ...histories.filter(old => reviewed.includes(old.afterSaleId)).map(old => ({ value: old.afterSaleId, label: `${old.afterSaleId} · ${decisionLabel(old.decisionType ?? '')}` }))]} />
+          </label>
+          <label className="filter-item">重复问题关闭原因
+            <Input.TextArea style={{ width: 'min(100%, 720px)' }} rows={4} maxLength={500} value={duplicateReason} disabled={blocked} onChange={event => setDuplicateReason(event.target.value)} />
+          </label>
+          <div><Checkbox checked={duplicateConfirmed} disabled={blocked} onChange={event => setDuplicateConfirmed(event.target.checked)}>确认本次为重复问题并引用原结论</Checkbox></div>
+          <div className="decision-actions">
+            <Button danger type="primary" disabled={blocked || !historyChecked || !priorFinalCaseId || !hasText(duplicateReason) || !duplicateConfirmed}
+              onClick={() => command('close-duplicate', { expectedVersion: detail.version, priorFinalCaseId, reason: duplicateReason }, '重复问题关闭')}>关闭重复问题</Button>
+          </div>
+        </Section>}
+      </Section>}
+      {detail.status === 'PROCESSING' && canHandle && <Section title="要求补证">
+        <label className="filter-item">补证方
+          <Select style={{ width: 320 }} aria-label="补证方" value={targetParty} disabled={blocked} onChange={value => setTargetParty(value as 'USER' | 'MERCHANT')}
+            options={[{ value: 'USER', label: '用户' }, { value: 'MERCHANT', label: '商家' }]} />
+        </label>
+        <label className="filter-item">补证原因
+          <Input.TextArea style={{ width: 'min(100%, 720px)' }} rows={4} maxLength={500} value={supplementReason} disabled={blocked} onChange={event => setSupplementReason(event.target.value)} />
+        </label>
+        <label className="filter-item">补证截止（UTC 毫秒）
+          <Input value={deadline} placeholder="2026-10-02T12:00:00.000Z" disabled={blocked} onChange={event => setDeadline(event.target.value)} />
+        </label>
+        <p className="hint">请输入未来的 UTC 时间，格式 YYYY-MM-DDTHH:mm:ss.SSSZ。仅严格早于截止的补证可满足本轮。</p>
+        <div className="decision-actions">
+          <Button type="primary" disabled={blocked || !hasText(supplementReason) || !validDeadline}
+            onClick={() => command('supplement-requests', { expectedVersion: detail.version, targetParty, reason: supplementReason, deadline }, '补证要求')}>提交补证要求</Button>
+        </div>
+      </Section>}
+      {detail.status === 'PROCESSING' && canDecide && <Section title="最终裁决">
+        <label className="filter-item">终局类型
+          <Select style={{ width: 320 }} aria-label="终局类型" value={decisionType} disabled={blocked} onChange={value => setDecisionType(value as DecisionType)}
+            options={(['REJECT', 'RESERVICE', 'OTHER', 'FULL_REFUND', 'PARTIAL_REFUND'] as const).map(value => ({ value, label: decisionLabel(value) }))} />
+        </label>
+        {isRefundDecision(decisionType) && <>
+          <label className="filter-item">退款金额（元）
+            <Input inputMode="decimal" value={refundAmountDraft} placeholder="例如 32.00" disabled={blocked} onChange={event => setRefundAmountDraft(event.target.value.trim())} />
+          </label>
+          <p className="hint">精确两位小数。全额退款必须等于订单真实实付金额，部分退款必须大于 0 且小于实付金额；以系统核算为准，不符将被拒绝。裁决成功后自动创建退款单，按微信支付原路退回异步执行。</p>
+        </>}
+        <label className="filter-item">终局原因
+          <Input.TextArea style={{ width: 'min(100%, 720px)' }} rows={4} maxLength={500} value={reason} disabled={blocked} onChange={event => setReason(event.target.value)} />
+        </label>
+        {decisionType === 'RESERVICE' && <p className="hint">说明人工重新服务安排。该决定不会自动创建订单、预约或再次核销。</p>}
+        <div><Checkbox checked={decisionConfirmed} disabled={blocked} onChange={event => setDecisionConfirmed(event.target.checked)}>确认基于双方证据作出最终处理</Checkbox></div>
+        <div className="decision-actions">
+          <Button type="primary" disabled={blocked || !hasText(reason) || !decisionConfirmed || isRefundDecision(decisionType) && !isAmountDraft(refundAmountDraft)}
+            onClick={() => command('decisions', { expectedVersion: detail.version, decisionType, reason, refundAmount: isRefundDecision(decisionType) ? refundAmountDraft : null }, '最终裁决')}>提交最终决定</Button>
+        </div>
+        <p className="hint">裁决一次终局，不支持复审；提交前请核对双方证据与金额。</p>
+      </Section>}
+      {detail.decisionType && <Section title="已记录的最终决定">
+        <p>{decisionLabel(detail.decisionType)}{detail.refundAmount && ` · 记录金额 ${detail.refundAmount}`}</p>
+        <PreserveText>{detail.decisionReason}</PreserveText>
+        {detail.decisionType && isRefundDecision(detail.decisionType) && <p className="hint">退款单已创建，按微信支付原路退回执行；执行进度以退款渠道回执为准，工单状态不再变化。</p>}
+      </Section>}
       {!canHandle && !canDecide && <p className="hint">当前账号仅可查看售后工单与获权证据。</p>}
       {!client.canWriteCase(afterSaleId) && <p className="hint">当前页面未验证所选门店，请从指定商家与门店的售后列表进入后处理。</p>}
-      {lastReceipt && <section className="aftersale-callout"><h2>提交回执</h2><p>命令 {lastReceipt.commandId} · 工单 {lastReceipt.afterSaleId} · {caseStatusLabel(lastReceipt.status)} · 版本 {lastReceipt.version}</p><p>提交（UTC）：{lastReceipt.occurredAt}{lastReceipt.decisionId && ` · 决定 ${lastReceipt.decisionId}`}{lastReceipt.supplementRequestId && ` · 补证轮次 ${lastReceipt.supplementRequestId}`}{lastReceipt.refundOrderId && ` · 退款单 ${lastReceipt.refundOrderId}（原路退回执行中）`}</p></section>}
+      {lastReceipt && <Section title="提交回执">
+        <p>命令 {lastReceipt.commandId} · 工单 {lastReceipt.afterSaleId} · {caseStatusLabel(lastReceipt.status)} · 版本 {lastReceipt.version}</p>
+        <p>提交（UTC）：{lastReceipt.occurredAt}{lastReceipt.decisionId && ` · 决定 ${lastReceipt.decisionId}`}{lastReceipt.supplementRequestId && ` · 补证轮次 ${lastReceipt.supplementRequestId}`}{lastReceipt.refundOrderId && ` · 退款单 ${lastReceipt.refundOrderId}（原路退回执行中）`}</p>
+      </Section>}
     </>}
-  </main>;
+  </PageContainer>;
 }

@@ -1,4 +1,5 @@
 import { expect, test, type Page, type Route } from '@playwright/test';
+import { chooseOption, openDropdown } from './helpers/antd';
 
 // Contract mocks against the production build (preview server): W2-FE-001/W2-FE-002 for A-002.
 // Every payload mirrors the approved application/private-asset projections; no fixture chunk is involved.
@@ -122,7 +123,7 @@ test('review list renders contract summaries and paginates server-side', async (
   await expect(page.getByRole('cell', { name: 'MA202609200001' })).toBeVisible();
   await expect(page.getByRole('cell', { name: '星河宠物医院' })).toBeVisible();
   await expect(page.getByText('第 1 / 2 页 · 共 21 条')).toBeVisible();
-  await page.getByRole('button', { name: '下一页' }).click();
+  await page.locator('.ant-pagination-next').click();
   await expect(page.getByText('没有符合条件的申请。')).toBeVisible();
   expect(requestedPage).toBe(2);
 });
@@ -178,7 +179,7 @@ test('claim, single-use reads, manual verification quotes authoritative referenc
   await page.getByLabel('营业执照 证号').fill('91310101TEST0001X');
   await page.getByLabel('营业执照 生效日').fill('2020-01-01');
   await page.getByLabel('营业执照 到期日').fill('2030-01-01');
-  await page.getByLabel('营业执照 有效期类型').selectOption('LONG_TERM');
+  await chooseOption(page, '营业执照 有效期类型', '长期');
   await expect(page.getByLabel('营业执照 到期日')).toHaveCount(0);
   await page.getByLabel('身份证（正反面合并核验） 证件主体').fill('张三');
   await page.getByLabel('身份证（正反面合并核验） 证号').fill('310101199001010010');
@@ -203,8 +204,10 @@ test('claim, single-use reads, manual verification quotes authoritative referenc
 
   // VERIFIED unlocks APPROVE only then; REQUEST_CORRECTION is checked afterwards.
   await expect(page.getByText('已核验').first()).toBeVisible();
-  await expect(page.getByRole('option', { name: /通过（建立商家档案）/ })).not.toHaveAttribute('disabled');
-  await page.getByLabel('决定类型').selectOption('REQUEST_CORRECTION');
+  const decisionDropdown = await openDropdown(page, '决定类型');
+  await expect(decisionDropdown.locator('.ant-select-item-option', { hasText: '通过（建立商家档案）' })).not.toHaveClass(/ant-select-item-option-disabled/);
+  await page.keyboard.press('Escape');
+  await chooseOption(page, '决定类型', '要求补正（申请人修改后重新提交）');
   await expect(page.getByRole('button', { name: '提交审核决定' })).toBeDisabled();
   await page.getByLabel(/审核意见/).fill('请补充三个月内水电费单据作为经营地址证明');
   await page.getByLabel('我确认本决定基于已查看的材料与核验结果').check();
@@ -230,8 +233,10 @@ test('absent materialReferences (older backend) keeps verification closed, corre
   await expect(page.getByRole('button', { name: '提交人工核验（材料引用不可用）' })).toBeDisabled();
   expect(calls.some(call => call.path.endsWith('/manual-verification'))).toBe(false);
   // Approve stays gated; correction path remains usable without verification.
-  await expect(page.getByRole('option', { name: /通过（建立商家档案）/ })).toHaveAttribute('disabled');
-  await page.getByLabel('决定类型').selectOption('REQUEST_CORRECTION');
+  const decisionDropdown2 = await openDropdown(page, '决定类型');
+  await expect(decisionDropdown2.locator('.ant-select-item-option', { hasText: '通过（建立商家档案）' })).toHaveClass(/ant-select-item-option-disabled/);
+  await page.keyboard.press('Escape');
+  await chooseOption(page, '决定类型', '要求补正（申请人修改后重新提交）');
   await page.getByLabel(/审核意见/).fill('材料投影缺失，先要求补正');
   await page.getByLabel('我确认本决定基于已查看的材料与核验结果').check();
   await expect(page.getByRole('button', { name: '提交审核决定' })).toBeEnabled();
@@ -399,13 +404,14 @@ test('LONG_TERM evidence follows backend date rules: validFrom required, validTo
   await page.getByLabel('营业执照 证件主体').fill('星河宠物医院有限公司');
   await page.getByLabel('营业执照 证号').fill('91310101TEST0001X');
   await page.getByLabel('营业执照 到期日').fill('2030-01-01');
-  await page.getByLabel('营业执照 有效期类型').selectOption('LONG_TERM');
+  await chooseOption(page, '营业执照 有效期类型', '长期');
   await expect(page.getByLabel('营业执照 到期日')).toHaveCount(0);
   await page.getByPlaceholder('如：已核对证件原件与主体一致，编号与有效期无误').fill('已逐项核对证件原件、主体、编号与有效期一致');
   await page.getByLabel('我已逐项核对上述证件信息与所见材料一致').check();
   // validFrom missing → backend rule blocks submission.
   await expect(page.getByRole('button', { name: '提交人工核验' })).toBeDisabled();
   await page.getByLabel('营业执照 生效日').fill('2020-01-01');
+  await page.getByLabel('营业执照 生效日').press('Enter');
   await page.getByRole('button', { name: '提交人工核验' }).click();
   const verificationCall = calls.find(call => call.path.endsWith('/manual-verification'));
   const items = (verificationCall?.body as { evidenceItems: Record<string, unknown>[] }).evidenceItems;
@@ -457,7 +463,7 @@ test('stale auth (401 on business query) fails closed and returns to login', asy
   });
   await login(page);
   await expect(page.getByRole('cell', { name: 'MA202609200001' })).toBeVisible();
-  await page.getByRole('button', { name: '下一页' }).click();
+  await page.locator('.ant-pagination-next').click();
   await expect(page).toHaveURL(/\/login$/);
   await expect(page.getByRole('heading', { name: '运营登录' })).toBeVisible();
 });

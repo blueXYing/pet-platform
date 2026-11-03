@@ -1,7 +1,12 @@
 import { useEffect, useRef, useState } from 'react';
+import { Button, Input } from 'antd';
+import type { TableColumnsType } from 'antd';
 import {
   CATEGORY_NAMES, isConflict, type AdminCategoryRow, type EncyclopediaAdminClient,
 } from '../api/encyclopediaAdmin';
+import { DataTable } from '../ui/DataTable';
+import { ErrorAlert, InlineStatus, Section, StatusTag } from '../ui/bits';
+import { PageContainer } from '../ui/PageContainer';
 
 const STATUS_TEXT: Record<string, string> = { ENABLED: '启用', DISABLED: '停用' };
 
@@ -59,49 +64,49 @@ export default function BaikeAdminCategoriesPage({ client, canWrite }: {
     action();
   };
 
-  return <main className="page">
-    <h2>宠物百科 · 分类管理</h2>
-    <p className="hint">五分类枚举（狗狗/猫咪/爬宠/鸟类/昆虫）与 C 端严格一致，不可新增；停用后 C 端分类 Tab 与搜索立即不可见，重新启用立即恢复。</p>
-    {notice && <output role="status">{notice}</output>}
-    {error && <p role="alert">{error}</p>}
-    {rows === undefined ? <p role="status">加载中</p> : <table>
-      <thead><tr>
-        <th>枚举</th><th>名称</th><th>状态</th><th>排序</th><th>品种数</th><th>已发布品种</th><th>版本</th><th>操作</th>
-      </tr></thead>
-      <tbody>
-        {rows.map(row => <tr key={row.categoryCode}>
-          <td>{row.categoryCode}</td>
-          <td>{CATEGORY_NAMES[row.categoryCode]}</td>
-          <td>{STATUS_TEXT[row.status]}</td>
-          <td>{row.sortOrder}</td>
-          <td>{row.breedCount}</td>
-          <td>{row.publishedBreedCount}</td>
-          <td>{row.version}</td>
-          <td>
-            <button disabled={busy} onClick={guard(() => void act(
-              () => client.setCategoryEnabled(row.categoryCode, row.version, row.status !== 'ENABLED', crypto.randomUUID()),
-              row.status === 'ENABLED' ? '已停用' : '已启用'))}>
-              {row.status === 'ENABLED' ? '停用' : '启用'}
-            </button>
-            <button disabled={busy} onClick={guard(() => setEditing(row))}>维护</button>
-          </td>
-        </tr>)}
-      </tbody>
-    </table>}
-    {editing && <section className="detail-card" aria-label="分类维护">
-      <h3>维护：{CATEGORY_NAMES[editing.categoryCode]}（当前版本 {editing.version}）</h3>
-      <form onSubmit={event => {
-        event.preventDefault();
-        const form = new FormData(event.currentTarget);
-        const categoryName = String(form.get('categoryName') ?? '').trim();
-        const sortOrder = Number(form.get('sortOrder') ?? '0');
-        void act(() => client.updateCategory(editing.categoryCode, categoryName, sortOrder, editing.version, crypto.randomUUID()), '已保存');
-      }}>
-        <label>分类名称（2..10 字）<input name="categoryName" defaultValue={editing.categoryName} minLength={2} maxLength={10} required /></label>
-        <label>排序值（0..999，越小越靠前）<input name="sortOrder" type="number" min={0} max={999} defaultValue={editing.sortOrder} /></label>
-        <button type="submit" disabled={busy}>保存</button>
-        <button type="button" onClick={() => setEditing(undefined)}>关闭</button>
-      </form>
+  const columns: TableColumnsType<AdminCategoryRow> = [
+    { title: '枚举', dataIndex: 'categoryCode' },
+    { title: '名称', render: (_, row) => CATEGORY_NAMES[row.categoryCode] },
+    { title: '状态', render: (_, row) => <StatusTag label={STATUS_TEXT[row.status]} status={row.status} /> },
+    { title: '排序', dataIndex: 'sortOrder' },
+    { title: '品种数', dataIndex: 'breedCount' },
+    { title: '已发布品种', dataIndex: 'publishedBreedCount' },
+    { title: '版本', dataIndex: 'version' },
+    { title: '操作', render: (_, row) => <>
+      <Button danger disabled={busy} onClick={guard(() => void act(
+        () => client.setCategoryEnabled(row.categoryCode, row.version, row.status !== 'ENABLED', crypto.randomUUID()),
+        row.status === 'ENABLED' ? '已停用' : '已启用'))}>
+        {row.status === 'ENABLED' ? '停用' : '启用'}
+      </Button>
+      <Button disabled={busy} onClick={guard(() => setEditing(row))}>维护</Button>
+    </> },
+  ];
+
+  return <PageContainer
+    title="宠物百科 · 分类管理"
+    hint="五分类枚举（狗狗/猫咪/爬宠/鸟类/昆虫）与 C 端严格一致，不可新增；停用后 C 端分类 Tab 与搜索立即不可见，重新启用立即恢复。">
+    {notice && <InlineStatus>{notice}</InlineStatus>}
+    {error && <ErrorAlert>{error}</ErrorAlert>}
+    {rows === undefined
+      ? <InlineStatus>加载中</InlineStatus>
+      : <DataTable columns={columns} rows={rows} rowKey={row => row.categoryCode} />}
+    {editing && <section aria-label="分类维护">
+      <Section title={`维护：${CATEGORY_NAMES[editing.categoryCode]}（当前版本 ${editing.version}）`}>
+        <form onSubmit={event => {
+          event.preventDefault();
+          const form = new FormData(event.currentTarget);
+          const categoryName = String(form.get('categoryName') ?? '').trim();
+          const sortOrder = Number(form.get('sortOrder') ?? '0');
+          void act(() => client.updateCategory(editing.categoryCode, categoryName, sortOrder, editing.version, crypto.randomUUID()), '已保存');
+        }}>
+          <label className="filter-item">分类名称（2..10 字）<Input name="categoryName" defaultValue={editing.categoryName} minLength={2} maxLength={10} required /></label>
+          <label className="filter-item">排序值（0..999，越小越靠前）<Input name="sortOrder" type="number" min={0} max={999} defaultValue={editing.sortOrder} /></label>
+          <div className="decision-actions">
+            <Button type="primary" htmlType="submit" disabled={busy}>保存</Button>
+            <Button onClick={() => setEditing(undefined)}>关闭</Button>
+          </div>
+        </form>
+      </Section>
     </section>}
-  </main>;
+  </PageContainer>;
 }

@@ -1,12 +1,17 @@
 import { useEffect, useRef, useState } from 'react';
-import { Link, useParams } from 'react-router-dom';
+import { useParams } from 'react-router-dom';
+import { Button, Checkbox, Input } from 'antd';
+import type { TableColumnsType } from 'antd';
 import {
   merchantStatusLabel, signingLabel, type MerchantLedgerDetail,
-  type MerchantGovernanceClient,
+  type MerchantGovernanceClient, type MerchantStoreRow,
 } from '../api/merchantGovernance';
 import { type TradeQueryClient } from '../api/tradeQuery';
 import { RequestFailure } from '../request';
 import { GovernanceFailure, governanceFailureText } from '../api/governanceHttp';
+import { DataTable } from '../ui/DataTable';
+import { BackLink, PageContainer } from '../ui/PageContainer';
+import { ErrorAlert, FactList, InlineStatus, Section, StatusTag } from '../ui/bits';
 
 const ID = /^[1-9][0-9]{0,18}$/;
 
@@ -75,78 +80,72 @@ export default function MerchantLedgerDetailPage({ client, trade, canDisable, on
     const n = [...disableReason.trim()].length;
     return n >= 10 && n <= 500;
   })();
-  return <main className="aftersale-page">
-    <p><Link to="/governance/merchants">返回商家台账</Link></p>
-    <h1>商家详情</h1>
-    {error && <p role="alert">{error}</p>}
-    {loading && <p role="status">正在查询商家详情</p>}
+  const storeColumns: TableColumnsType<MerchantStoreRow> = [
+    { title: '门店 ID', dataIndex: 'storeId' },
+    { title: '名称', dataIndex: 'storeName' },
+    { title: '地址', dataIndex: 'address' },
+    { title: '状态', render: (_, store) => <StatusTag label={merchantStatusLabel(store.status)} status={store.status} /> },
+  ];
+  return <PageContainer
+    title="商家详情"
+    back={<BackLink to="/governance/merchants">返回商家台账</BackLink>}>
+    {error && <ErrorAlert>{error}</ErrorAlert>}
+    {loading && <InlineStatus>正在查询商家详情</InlineStatus>}
     {detail && <>
-      <section aria-label="基础档案">
-        <h2>基础档案</h2>
-        <dl className="facts">
-          <dt>商家 ID</dt><dd>{detail.merchantId}</dd>
-          <dt>名称</dt><dd>{detail.merchantName}</dd>
-          <dt>状态</dt><dd>{merchantStatusLabel(detail.status)}</dd>
-          <dt>类型 / 城市</dt><dd>{detail.merchantTypeCode ?? '—'} / {detail.cityCode ?? '—'}</dd>
-          <dt>门店（经营/总数）</dt><dd>{detail.activeStoreCount} / {detail.storeCount}</dd>
-          <dt>子商户号（脱敏）</dt><dd>{detail.providerMerchantNoMasked ?? '—'}</dd>
-          <dt>入驻（UTC）</dt><dd>{detail.createdAt}</dd>
-        </dl>
-      </section>
-      <section aria-label="门店">
-        <h2>门店</h2>
-        <div className="table-scroll"><table>
-          <thead><tr><th>门店 ID</th><th>名称</th><th>地址</th><th>状态</th></tr></thead>
-          <tbody>{detail.stores.map(store => <tr key={store.storeId}>
-            <td>{store.storeId}</td><td>{store.storeName}</td><td>{store.address}</td>
-            <td>{merchantStatusLabel(store.status)}</td>
-          </tr>)}</tbody>
-        </table></div>
-      </section>
-      <section aria-label="申请事实">
-        <h2>入驻申请</h2>
+      <Section title="基础档案">
+        <FactList items={[
+          { label: '商家 ID', value: detail.merchantId },
+          { label: '名称', value: detail.merchantName },
+          { label: '状态', value: merchantStatusLabel(detail.status) },
+          { label: '类型 / 城市', value: `${detail.merchantTypeCode ?? '—'} / ${detail.cityCode ?? '—'}` },
+          { label: '门店（经营/总数）', value: `${detail.activeStoreCount} / ${detail.storeCount}` },
+          { label: '子商户号（脱敏）', value: detail.providerMerchantNoMasked ?? '—' },
+          { label: '入驻（UTC）', value: detail.createdAt },
+        ]} />
+      </Section>
+      <Section title="门店">
+        <DataTable columns={storeColumns} rows={detail.stores} rowKey={store => store.storeId} />
+      </Section>
+      <Section title="入驻申请">
         {detail.application
-          ? <dl className="facts">
-              <dt>申请编号</dt><dd>{detail.application.applicationId}</dd>
-              <dt>申请单号</dt><dd>{detail.application.applicationNo ?? '—'}</dd>
-              <dt>状态</dt><dd>{({ DRAFT: '草稿', REVIEWING: '审核中', APPROVED: '已通过', REJECTED: '已驳回' } as Record<string, string>)[detail.application.status] ?? detail.application.status}</dd>
-              <dt>提交（UTC）</dt><dd>{detail.application.submittedAt ?? '—'}</dd>
-              <dt>审结（UTC）</dt><dd>{detail.application.reviewedAt ?? '—'}</dd>
-            </dl>
+          ? <FactList items={[
+              { label: '申请编号', value: detail.application.applicationId },
+              { label: '申请单号', value: detail.application.applicationNo ?? '—' },
+              { label: '状态', value: ({ DRAFT: '草稿', REVIEWING: '审核中', APPROVED: '已通过', REJECTED: '已驳回' } as Record<string, string>)[detail.application.status] ?? detail.application.status },
+              { label: '提交（UTC）', value: detail.application.submittedAt ?? '—' },
+              { label: '审结（UTC）', value: detail.application.reviewedAt ?? '—' },
+            ]} />
           : <p>无申请事实（存量商家）。</p>}
-      </section>
-      <section aria-label="签约事实">
-        <h2>签约（SSOT §26 电子协议）</h2>
+      </Section>
+      <Section title="签约（SSOT §26 电子协议）">
         {detail.signing
-          ? <dl className="facts">
-              <dt>状态</dt><dd>{signingLabel(detail.signing.signingStatus)}</dd>
-              <dt>协议版本</dt><dd>{detail.signing.agreementVersion}</dd>
-              <dt>签署（UTC）</dt><dd>{detail.signing.acceptedAt ?? '—'}</dd>
-            </dl>
+          ? <FactList items={[
+              { label: '状态', value: signingLabel(detail.signing.signingStatus) },
+              { label: '协议版本', value: detail.signing.agreementVersion },
+              { label: '签署（UTC）', value: detail.signing.acceptedAt ?? '—' },
+            ]} />
           : <p>无当前协议版本。</p>}
-      </section>
+      </Section>
       <section aria-label="商家停用">
-        <h2>商家停用（merchant.disable）</h2>
+      <Section title="商家停用（merchant.disable）">
         <p className="hint">对该商家执行立即下线：停止新订单，存量订单继续履约、存量退款/售后继续处理；
           有在途订单不拒绝本动作；下线后 C 端不再展示（SSOT §15，63 号 v0.2 内核）。仅"经营中"状态可下线。</p>
         {!canDisable && <p className="hint">当前账号未授予 merchant.disable，入口 fail-closed 不渲染提交。</p>}
         {canDisable && detail.status !== 'ACTIVE' && <p className="hint">当前状态为{merchantStatusLabel(detail.status)}，不满足下线条件；按钮停用不代表后端放行。</p>}
-        {disableNotice && <output role="status">{disableNotice}</output>}
+        {disableNotice && <InlineStatus>{disableNotice}</InlineStatus>}
         {canDisable && <>
-          <label>下线原因（必填，10–500 字）
-            <textarea value={disableReason} onChange={event => setDisableReason(event.target.value)} disabled={disableBusy || detail.status !== 'ACTIVE'} />
+          <label className="filter-item">下线原因（必填，10–500 字）
+            <Input.TextArea style={{ width: 'min(100%, 720px)' }} rows={3} value={disableReason} onChange={event => setDisableReason(event.target.value)} disabled={disableBusy || detail.status !== 'ACTIVE'} />
           </label>
-          <label>
-            <input type="checkbox" checked={disableConfirmed} disabled={disableBusy || detail.status !== 'ACTIVE'}
-              onChange={event => setDisableConfirmed(event.target.checked)} />
-            我确认对该商家执行下线（同一人二次确认，非第二人审批）
-          </label>
+          <div><Checkbox checked={disableConfirmed} disabled={disableBusy || detail.status !== 'ACTIVE'}
+            onChange={event => setDisableConfirmed(event.target.checked)}>我确认对该商家执行下线（同一人二次确认，非第二人审批）</Checkbox></div>
           <div className="decision-actions">
-            <button disabled={disableBusy || detail.status !== 'ACTIVE' || !reasonOk || !disableConfirmed}
-              onClick={() => void submitDisable()}>下线该商家</button>
+            <Button danger type="primary" disabled={disableBusy || detail.status !== 'ACTIVE' || !reasonOk || !disableConfirmed}
+              onClick={() => void submitDisable()}>下线该商家</Button>
           </div>
         </>}
+      </Section>
       </section>
     </>}
-  </main>;
+  </PageContainer>;
 }

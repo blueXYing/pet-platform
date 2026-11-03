@@ -1,10 +1,15 @@
 import { useEffect, useRef, useState } from 'react';
+import { Button, Input } from 'antd';
+import type { TableColumnsType } from 'antd';
 import {
   employmentLabel, invitationStatusLabel, memberStatusLabel,
   type StaffGovernanceClient, type StaffInvitationRow, type StaffMemberRow,
   type StaffPage, type StaffProfileRow,
 } from '../api/staffGovernance';
 import { GovernanceFailure, governanceFailureText } from '../api/governanceHttp';
+import { DataTable } from '../ui/DataTable';
+import { ErrorAlert, InlineStatus, StatusTag } from '../ui/bits';
+import { PageContainer } from '../ui/PageContainer';
 
 const ID = /^[1-9][0-9]{0,18}$/;
 type Tab = 'staff' | 'members' | 'invitations';
@@ -51,68 +56,75 @@ export default function StaffGovernancePage({ client, onAuthLost }: { client: St
     setTab(next);
     if (queried) void load(next, queried, 1);
   }
-  const current = tab === 'staff' ? staff : tab === 'members' ? members : invitations;
-  const pages = current ? Math.min(10000, Math.max(1, Math.ceil(current.total / current.pageSize))) : 1;
-  return <main className="aftersale-page">
-    <h1>员工治理</h1>
-    <p className="hint">运营 PRD 6.2.6：员工档案、子账号授权与邀请记录只读监管；手机号仅掩码；核销操作人溯源经 63 号核销记录面按订单关联查询。</p>
-    <form className="filters" onSubmit={event => { event.preventDefault(); if (ID.test(merchantId)) void load(tab, merchantId, 1); }}>
-      <label>商家编号<input inputMode="numeric" value={merchantId} onChange={event => setMerchantId(event.target.value)} /></label>
-      <button disabled={loading || !ID.test(merchantId)}>查询员工</button>
+  const staffColumns: TableColumnsType<StaffProfileRow> = [
+    { title: '员工', dataIndex: 'staffId' },
+    { title: '门店', dataIndex: 'storeId' },
+    { title: '姓名', dataIndex: 'staffName' },
+    { title: '手机号（脱敏）', render: (_, row) => row.phoneMasked ?? '—' },
+    { title: '在职状态', render: (_, row) => employmentLabel(row.employmentStatus) },
+    { title: '可服务', render: (_, row) => row.serviceEnabled ? '是' : '否' },
+    { title: '版本', dataIndex: 'version' },
+  ];
+  const memberColumns: TableColumnsType<StaffMemberRow> = [
+    { title: '成员', dataIndex: 'memberId' },
+    { title: '门店', dataIndex: 'storeId' },
+    { title: '状态', render: (_, row) => <StatusTag label={memberStatusLabel(row.status)} status={row.status} /> },
+    { title: '姓名', render: (_, row) => row.memberName ?? '—' },
+    { title: '手机号（脱敏）', render: (_, row) => row.phoneMasked ?? '—' },
+    { title: '已授动作', render: (_, row) => row.grantedActions.join('、') || '—' },
+    { title: '整店撤权', render: (_, row) => row.grantRevoked ? '是（终局）' : '否' },
+    { title: '成员/授予版本', render: (_, row) => `${row.memberVersion} / ${row.grantVersion ?? '—'}` },
+  ];
+  const invitationColumns: TableColumnsType<StaffInvitationRow> = [
+    { title: '邀请', dataIndex: 'invitationId' },
+    { title: '门店', dataIndex: 'storeId' },
+    { title: '被邀姓名', dataIndex: 'memberName' },
+    { title: '手机号（脱敏）', dataIndex: 'phoneMasked' },
+    { title: '状态', render: (_, row) => <StatusTag label={invitationStatusLabel(row.status)} status={row.status} /> },
+    { title: '动作集', render: (_, row) => row.grantedActions.join('、') },
+    { title: '邀请人', dataIndex: 'invitedBy' },
+    { title: '邀请（UTC）', dataIndex: 'invitedAt' },
+  ];
+  return <PageContainer
+    title="员工治理"
+    hint="运营 PRD 6.2.6：员工档案、子账号授权与邀请记录只读监管；手机号仅掩码；核销操作人溯源经 63 号核销记录面按订单关联查询。">
+    <form className="filter-bar" onSubmit={event => { event.preventDefault(); if (ID.test(merchantId)) void load(tab, merchantId, 1); }}>
+      <label className="filter-item">商家编号<Input inputMode="numeric" value={merchantId} onChange={event => setMerchantId(event.target.value)} /></label>
+      <Button type="primary" htmlType="submit" disabled={loading || !ID.test(merchantId)}>查询员工</Button>
     </form>
     {queried && <nav className="workbench-nav" aria-label="员工治理切换">
-      <button onClick={() => switchTab('staff')} disabled={tab === 'staff'}>员工档案</button>
-      <button onClick={() => switchTab('members')} disabled={tab === 'members'}>成员绑定</button>
-      <button onClick={() => switchTab('invitations')} disabled={tab === 'invitations'}>邀请记录</button>
+      <Button onClick={() => switchTab('staff')} disabled={tab === 'staff'}>员工档案</Button>
+      <Button onClick={() => switchTab('members')} disabled={tab === 'members'}>成员绑定</Button>
+      <Button onClick={() => switchTab('invitations')} disabled={tab === 'invitations'}>邀请记录</Button>
     </nav>}
-    {error && <p role="alert">{error}</p>}
-    {loading && <p role="status">正在查询员工治理事实</p>}
-    {tab === 'staff' && staff && <>
-      <div className="table-scroll"><table>
-        <thead><tr><th>员工</th><th>门店</th><th>姓名</th><th>手机号（脱敏）</th><th>在职状态</th><th>可服务</th><th>版本</th></tr></thead>
-        <tbody>{staff.items.map(row => <tr key={row.staffId}>
-          <td>{row.staffId}</td><td>{row.storeId}</td><td>{row.staffName}</td>
-          <td>{row.phoneMasked ?? '—'}</td><td>{employmentLabel(row.employmentStatus)}</td>
-          <td>{row.serviceEnabled ? '是' : '否'}</td><td>{row.version}</td>
-        </tr>)}</tbody>
-      </table></div>
-      <nav className="pager" aria-label="员工档案分页">
-        <button disabled={loading || staff.page <= 1} onClick={() => void load(tab, queried, staff.page - 1)}>上一页</button>
-        <span>第 {staff.page} / {pages} 页 · 共 {staff.total} 条</span>
-        <button disabled={loading || staff.page >= pages} onClick={() => void load(tab, queried, staff.page + 1)}>下一页</button>
-      </nav>
-    </>}
-    {tab === 'members' && members && <>
-      <div className="table-scroll"><table>
-        <thead><tr><th>成员</th><th>门店</th><th>状态</th><th>姓名</th><th>手机号（脱敏）</th><th>已授动作</th><th>整店撤权</th><th>成员/授予版本</th></tr></thead>
-        <tbody>{members.items.map(row => <tr key={row.memberId}>
-          <td>{row.memberId}</td><td>{row.storeId}</td><td>{memberStatusLabel(row.status)}</td>
-          <td>{row.memberName ?? '—'}</td><td>{row.phoneMasked ?? '—'}</td>
-          <td>{row.grantedActions.join('、') || '—'}</td>
-          <td>{row.grantRevoked ? '是（终局）' : '否'}</td>
-          <td>{row.memberVersion} / {row.grantVersion ?? '—'}</td>
-        </tr>)}</tbody>
-      </table></div>
-      <nav className="pager" aria-label="成员绑定分页">
-        <button disabled={loading || members.page <= 1} onClick={() => void load(tab, queried, members.page - 1)}>上一页</button>
-        <span>第 {members.page} / {pages} 页 · 共 {members.total} 条</span>
-        <button disabled={loading || members.page >= pages} onClick={() => void load(tab, queried, members.page + 1)}>下一页</button>
-      </nav>
-    </>}
-    {tab === 'invitations' && invitations && <>
-      <div className="table-scroll"><table>
-        <thead><tr><th>邀请</th><th>门店</th><th>被邀姓名</th><th>手机号（脱敏）</th><th>状态</th><th>动作集</th><th>邀请人</th><th>邀请（UTC）</th></tr></thead>
-        <tbody>{invitations.items.map(row => <tr key={row.invitationId}>
-          <td>{row.invitationId}</td><td>{row.storeId}</td><td>{row.memberName}</td>
-          <td>{row.phoneMasked}</td><td>{invitationStatusLabel(row.status)}</td>
-          <td>{row.grantedActions.join('、')}</td><td>{row.invitedBy}</td><td>{row.invitedAt}</td>
-        </tr>)}</tbody>
-      </table></div>
-      <nav className="pager" aria-label="邀请记录分页">
-        <button disabled={loading || invitations.page <= 1} onClick={() => void load(tab, queried, invitations.page - 1)}>上一页</button>
-        <span>第 {invitations.page} / {pages} 页 · 共 {invitations.total} 条</span>
-        <button disabled={loading || invitations.page >= pages} onClick={() => void load(tab, queried, invitations.page + 1)}>下一页</button>
-      </nav>
-    </>}
-  </main>;
+    {error && <ErrorAlert>{error}</ErrorAlert>}
+    {loading && <InlineStatus>正在查询员工治理事实</InlineStatus>}
+    {tab === 'staff' && staff && <DataTable
+      columns={staffColumns}
+      rows={staff.items}
+      rowKey={row => row.staffId}
+      page={staff.page}
+      pageSize={staff.pageSize}
+      total={staff.total}
+      onPageChange={page => void load('staff', queried, page)}
+    />}
+    {tab === 'members' && members && <DataTable
+      columns={memberColumns}
+      rows={members.items}
+      rowKey={row => row.memberId}
+      page={members.page}
+      pageSize={members.pageSize}
+      total={members.total}
+      onPageChange={page => void load('members', queried, page)}
+    />}
+    {tab === 'invitations' && invitations && <DataTable
+      columns={invitationColumns}
+      rows={invitations.items}
+      rowKey={row => row.invitationId}
+      page={invitations.page}
+      pageSize={invitations.pageSize}
+      total={invitations.total}
+      onPageChange={page => void load('invitations', queried, page)}
+    />}
+  </PageContainer>;
 }

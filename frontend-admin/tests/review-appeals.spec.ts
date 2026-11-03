@@ -1,4 +1,5 @@
 import { expect, test, type Page } from '@playwright/test';
+import { chooseOption } from './helpers/antd';
 import type { AppealDetail, AppealStatus } from '../src/api/reviewAppeals';
 
 // Contract56 fixtures run the real production UI/transport with intercepted HTTP (same
@@ -90,7 +91,7 @@ test('REV-002 reader lists and filters appeals without a decide button', async (
   await expect(page.getByRole('cell', { name: APPEAL, exact: true })).toBeVisible();
   await expect(page.getByText('当前账号仅可查看，无 review.appeal.decide 权限。')).toHaveCount(0);
   // The status filter re-queries with the exact filter value.
-  await page.getByLabel('状态').selectOption('APPROVED');
+  await chooseOption(page, '状态', '申诉成立');
   await expect(page.getByText('没有符合条件的申诉。')).toBeVisible();
   const listCalls = calls.filter(call => call.method === 'GET' && call.path.split('?')[0] === '/api/v1/admin/review-appeals');
   expect(listCalls.length).toBeGreaterThanOrEqual(2);

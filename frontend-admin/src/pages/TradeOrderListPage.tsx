@@ -1,6 +1,12 @@
 import { useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
+import { Button, Checkbox, DatePicker, Input, Select } from 'antd';
+import dayjs from 'dayjs';
+import type { TableColumnsType } from 'antd';
 import { DISPLAY_STATUSES, PAYMENT_STATUSES, TradeQueryFailure, displayStatusLabel, field, type DisplayStatus, type OrderSummary, type Page, type PaymentStatus, type TradeQueryClient } from '../api/tradeQuery';
+import { DataTable } from '../ui/DataTable';
+import { ErrorAlert, InlineStatus, StatusTag } from '../ui/bits';
+import { PageContainer } from '../ui/PageContainer';
 
 type Filters = {
   displayStatus: string; paymentStatus: string; merchantId: string; storeId: string;
@@ -9,6 +15,7 @@ type Filters = {
 const EMPTY: Filters = { displayStatus: '', paymentStatus: '', merchantId: '', storeId: '', orderNo: '', keyword: '', createdFrom: '', createdTo: '', rescheduledOnly: false };
 const ID = /^[1-9][0-9]{0,18}$/;
 const ISO = (value: string) => (value ? new Date(value).toISOString() : undefined);
+const LOCAL = 'YYYY-MM-DDTHH:mm';
 
 /** 运营 PRD 6.3.1 订单总览：平台统一查询视图；金额/状态只读，服务端投影展示态。 */
 export default function TradeOrderListPage({ client, onAuthLost }: { client: TradeQueryClient; onAuthLost: () => void }) {
@@ -55,57 +62,51 @@ export default function TradeOrderListPage({ client, onAuthLost }: { client: Tra
   const keywordOk = filters.keyword === '' || (filters.keyword.length >= 2 && filters.keyword.length <= 64 && !/[%_\\]/.test(filters.keyword));
   const valid = idOk(filters.merchantId) && idOk(filters.storeId) && idOk(filters.orderNo) && keywordOk
     && (!filters.createdFrom || !filters.createdTo || filters.createdFrom <= filters.createdTo);
-  const pages = result ? Math.min(10000, Math.max(1, Math.ceil(result.total / result.pageSize))) : 1;
   const { displayStatus: selectedDisplay, paymentStatus: selectedPayment } = filters;
-  return <main className="aftersale-page">
-    <h1>订单总览</h1>
-    <p className="hint">平台订单统一查询。展示状态由服务端统一计算；金额只读；不回传用户手机号等敏感明文。</p>
-    <form className="filters" onSubmit={event => { event.preventDefault(); if (valid) void query(filters, 1); }}>
-      <label>展示状态
-        <select value={selectedDisplay} onChange={event => patch('displayStatus', event.target.value)}>
-          <option value="">全部</option>
-          {DISPLAY_STATUSES.map(value => <option key={value} value={value}>{displayStatusLabel(value)}</option>)}
-        </select>
+  const columns: TableColumnsType<OrderSummary> = [
+    { title: '订单号', dataIndex: 'orderNo' },
+    { title: '商家', render: (_, item) => item.merchantName ?? item.merchantId },
+    { title: '服务', render: (_, item) => item.serviceName ?? item.serviceId },
+    { title: '展示状态', render: (_, item) => <StatusTag label={displayStatusLabel(field(item, 'displayStatus'))} status={field(item, 'displayStatus')} /> },
+    { title: '支付', render: (_, item) => field(item, 'paymentStatus') === 'PAID' ? '已支付' : '未支付' },
+    { title: '实付', dataIndex: 'payAmount' },
+    { title: '已退', dataIndex: 'refundedAmount' },
+    { title: '预约开始（UTC）', dataIndex: 'appointmentStart' },
+    { title: '创建（UTC）', dataIndex: 'createdAt' },
+    { title: '改期', dataIndex: 'rescheduleCount' },
+    { title: '操作', render: (_, item) => <Link to={`/trade/orders/${item.orderId}`}>详情</Link> },
+  ];
+  return <PageContainer
+    title="订单总览"
+    hint="平台订单统一查询。展示状态由服务端统一计算；金额只读；不回传用户手机号等敏感明文。">
+    <form className="filter-bar" onSubmit={event => { event.preventDefault(); if (valid) void query(filters, 1); }}>
+      <label className="filter-item">展示状态
+        <Select style={{ width: 160 }} value={selectedDisplay} onChange={value => patch('displayStatus', value)}
+          options={[{ value: '', label: '全部' }, ...DISPLAY_STATUSES.map(value => ({ value, label: displayStatusLabel(value) }))]} />
       </label>
-      <label>支付状态
-        <select value={selectedPayment} onChange={event => patch('paymentStatus', event.target.value)}>
-          <option value="">全部</option>
-          {PAYMENT_STATUSES.map(value => <option key={value} value={value}>{value === 'INIT' ? '未支付' : '已支付'}</option>)}
-        </select>
+      <label className="filter-item">支付状态
+        <Select style={{ width: 160 }} value={selectedPayment} onChange={value => patch('paymentStatus', value)}
+          options={[{ value: '', label: '全部' }, ...PAYMENT_STATUSES.map(value => ({ value, label: value === 'INIT' ? '未支付' : '已支付' }))]} />
       </label>
-      <label>商家编号<input inputMode="numeric" value={filters.merchantId} onChange={event => patch('merchantId', event.target.value)} /></label>
-      <label>门店编号<input inputMode="numeric" value={filters.storeId} onChange={event => patch('storeId', event.target.value)} /></label>
-      <label>订单号<input inputMode="numeric" value={filters.orderNo} onChange={event => patch('orderNo', event.target.value)} /></label>
-      <label>关键词（商家名）<input value={filters.keyword} onChange={event => patch('keyword', event.target.value)} /></label>
-      <label>创建起<input type="datetime-local" value={filters.createdFrom} onChange={event => patch('createdFrom', event.target.value)} /></label>
-      <label>创建止<input type="datetime-local" value={filters.createdTo} onChange={event => patch('createdTo', event.target.value)} /></label>
-      <label>仅看已改期<input type="checkbox" checked={filters.rescheduledOnly} onChange={event => patch('rescheduledOnly', event.target.checked)} /></label>
-      <button disabled={loading || !valid}>查询订单</button>
+      <label className="filter-item">商家编号<Input style={{ width: 160 }} inputMode="numeric" value={filters.merchantId} onChange={event => patch('merchantId', event.target.value)} /></label>
+      <label className="filter-item">门店编号<Input style={{ width: 160 }} inputMode="numeric" value={filters.storeId} onChange={event => patch('storeId', event.target.value)} /></label>
+      <label className="filter-item">订单号<Input style={{ width: 200 }} inputMode="numeric" value={filters.orderNo} onChange={event => patch('orderNo', event.target.value)} /></label>
+      <label className="filter-item">关键词（商家名）<Input style={{ width: 200 }} value={filters.keyword} onChange={event => patch('keyword', event.target.value)} /></label>
+      <label className="filter-item">创建起<DatePicker showTime format="YYYY-MM-DD HH:mm" value={filters.createdFrom ? dayjs(filters.createdFrom) : null} onChange={value => patch('createdFrom', value ? value.format(LOCAL) : '')} /></label>
+      <label className="filter-item">创建止<DatePicker showTime format="YYYY-MM-DD HH:mm" value={filters.createdTo ? dayjs(filters.createdTo) : null} onChange={value => patch('createdTo', value ? value.format(LOCAL) : '')} /></label>
+      <div className="filter-item"><Checkbox checked={filters.rescheduledOnly} onChange={event => patch('rescheduledOnly', event.target.checked)}>仅看已改期</Checkbox></div>
+      <Button type="primary" htmlType="submit" disabled={loading || !valid}>查询订单</Button>
     </form>
-    {error && <p role="alert">{error}</p>}
-    {loading && <p role="status">正在查询订单</p>}
-    {result && <>
-      <div className="table-scroll"><table>
-        <thead><tr><th>订单号</th><th>商家</th><th>服务</th><th>展示状态</th><th>支付</th><th>实付</th><th>已退</th><th>预约开始（UTC）</th><th>创建（UTC）</th><th>改期</th><th>操作</th></tr></thead>
-        <tbody>{result.items.map(item => <tr key={item.orderId}>
-          <td>{item.orderNo}</td>
-          <td>{item.merchantName ?? item.merchantId}</td>
-          <td>{item.serviceName ?? item.serviceId}</td>
-          <td>{displayStatusLabel(field(item, 'displayStatus'))}</td>
-          <td>{field(item, 'paymentStatus') === 'PAID' ? '已支付' : '未支付'}</td>
-          <td>{item.payAmount}</td>
-          <td>{item.refundedAmount}</td>
-          <td>{item.appointmentStart}</td>
-          <td>{item.createdAt}</td>
-          <td>{item.rescheduleCount}</td>
-          <td><Link to={`/trade/orders/${item.orderId}`}>详情</Link></td>
-        </tr>)}</tbody>
-      </table></div>
-      <nav className="pager" aria-label="订单分页">
-        <button disabled={loading || result.page <= 1} onClick={() => void query(filters, result.page - 1)}>上一页</button>
-        <span>第 {result.page} / {pages} 页 · 共 {result.total} 条</span>
-        <button disabled={loading || result.page >= pages} onClick={() => void query(filters, result.page + 1)}>下一页</button>
-      </nav>
-    </>}
-  </main>;
+    {error && <ErrorAlert>{error}</ErrorAlert>}
+    {loading && <InlineStatus>正在查询订单</InlineStatus>}
+    {result && <DataTable
+      columns={columns}
+      rows={result.items}
+      rowKey={item => item.orderId}
+      page={result.page}
+      pageSize={result.pageSize}
+      total={result.total}
+      onPageChange={page => void query(filters, page)}
+    />}
+  </PageContainer>;
 }

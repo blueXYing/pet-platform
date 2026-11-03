@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { Button, Card, Input } from 'antd';
 import { RequestFailure } from '../request';
 import type { createAuthClient, Attempt, CaptchaChallenge } from '../api/adminAuth';
 
@@ -48,23 +49,25 @@ export default function LoginPage({ auth, onAuthenticated }: { auth: AuthClient;
     onAuthenticated(result.accessToken);
   });
 
-  return <main className="login">
-    <h1>运营登录</h1>
-    <p>仅平台运营账号。无双人审批、无额外 MFA；失败次数过多将触发验证码。</p>
-    <form onSubmit={event => { event.preventDefault(); if (!busy) void (captcha ? finishCaptcha() : beginLogin()); }}>
-      <label htmlFor="account">账号</label>
-      <input id="account" value={account} onChange={event => setAccount(event.target.value)} autoComplete="username" required />
-      <label htmlFor="password">密码</label>
-      <input id="password" type="password" value={password} onChange={event => setPassword(event.target.value)} autoComplete="current-password" required />
-      {captcha && <>
-        <label htmlFor="captcha">验证码</label>
-        <img src={captcha.imageDataUrl} alt="验证码图片" width={160} height={48} />
-        <input id="captcha" value={answer} onChange={event => setAnswer(event.target.value)} required />
-        <button type="submit" disabled={busy || !answer}>{busy ? '校验中…' : '继续登录'}</button>
-      </>}
-      {!captcha && <button type="submit" disabled={busy || !account || !password}>{busy ? '处理中…' : '登录'}</button>}
-      {error && <p role="alert">{error}</p>}
-    </form>
-    {captcha && <p>请输入图中字符后点击“继续登录”完成验证码校验。</p>}
+  return <main className="login-page">
+    <Card className="login-card">
+      <h1>运营登录</h1>
+      <p className="hint">仅平台运营账号。无双人审批、无额外 MFA；失败次数过多将触发验证码。</p>
+      <form onSubmit={event => { event.preventDefault(); if (!busy) void (captcha ? finishCaptcha() : beginLogin()); }}>
+        <label htmlFor="account" className="field-label">账号</label>
+        <Input id="account" value={account} onChange={event => setAccount(event.target.value)} autoComplete="username" required />
+        <label htmlFor="password" className="field-label">密码</label>
+        <Input id="password" type="password" value={password} onChange={event => setPassword(event.target.value)} autoComplete="current-password" required />
+        {captcha && <>
+          <label htmlFor="captcha" className="field-label">验证码</label>
+          <img src={captcha.imageDataUrl} alt="验证码图片" width={160} height={48} />
+          <Input id="captcha" value={answer} onChange={event => setAnswer(event.target.value)} required />
+          <Button type="primary" htmlType="submit" block disabled={busy || !answer}>{busy ? '校验中…' : '继续登录'}</Button>
+        </>}
+        {!captcha && <Button type="primary" htmlType="submit" block disabled={busy || !account || !password}>{busy ? '处理中…' : '登录'}</Button>}
+        {error && <p role="alert">{error}</p>}
+      </form>
+      {captcha && <p className="hint">请输入图中字符后点击“继续登录”完成验证码校验。</p>}
+    </Card>
   </main>;
 }

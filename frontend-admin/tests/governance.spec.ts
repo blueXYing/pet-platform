@@ -103,7 +103,7 @@ test('A-002 商家治理详情：停用入口（36 号）带二次确认，走 6
   await page.route(`**/api/v1/admin/merchants/${MERCHANT}/disable`, route =>
     route.fulfill({ status: 200, json: { code: 'SUCCESS', message: 'ok', data: { merchantId: MERCHANT, status: 'OFFLINE', occurredAt: '2026-10-16T03:00:00.000Z' }, traceId: 'fixture-governance' } }));
   await page.getByRole('link', { name: '商家台账' }).click();
-  await page.locator('tbody tr').first().getByRole('link', { name: '详情' }).click();
+  await page.locator('tbody tr.ant-table-row').first().getByRole('link', { name: '详情' }).click();
   const section = page.locator('section[aria-label="商家停用"]');
   await expect(section).toBeVisible();
   // Double confirm: submit stays disabled until reason + checkbox are present.
@@ -124,7 +124,7 @@ test('A-002 商家治理详情：未授予 merchant.disable 时停用提交 fail
   await page.route('**/api/v1/admin/governance/merchants?*', route => route.fulfill(envelope(pageEnvelope([ledgerRow]))));
   await page.route(`**/api/v1/admin/governance/merchants/${MERCHANT}`, route => route.fulfill(envelope(detail)));
   await page.getByRole('link', { name: '商家台账' }).click();
-  await page.locator('tbody tr').first().getByRole('link', { name: '详情' }).click();
+  await page.locator('tbody tr.ant-table-row').first().getByRole('link', { name: '详情' }).click();
   const section = page.locator('section[aria-label="商家停用"]');
   await expect(section).toBeVisible();
   await expect(section.getByText('未授予 merchant.disable')).toBeVisible();
