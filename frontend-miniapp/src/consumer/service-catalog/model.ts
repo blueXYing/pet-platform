@@ -146,8 +146,11 @@ export function decodeFeaturedStores(value: unknown): FeaturedStorePage {
   }
 }
 
+/** 74 §3.4 排序键（CCR-SVC-SORT-001）：距离不在 V1 枚举内。 */
+export type FeaturedSort = 'COMPREHENSIVE' | 'RATING' | 'SALES'
+
 export type FeaturedStoresQuery = Readonly<{
-  cityCode?: string; categoryCode?: string; page?: number; pageSize?: number
+  cityCode?: string; categoryCode?: string; sort?: FeaturedSort; page?: number; pageSize?: number
 }>
 
 /** 服务目录页两条匿名读侧（74 §3.1/§3.4）；读取失败由页面整块降级，不阻塞门店目录。 */
@@ -165,6 +168,7 @@ export class ServiceCatalogRepository {
     const data: Record<string, unknown> = { page: query.page ?? 1, pageSize: query.pageSize ?? 10 }
     if (query.cityCode) data.cityCode = query.cityCode
     if (query.categoryCode) data.categoryCode = query.categoryCode
+    if (query.sort) data.sort = query.sort
     return this.api.anonymousRequest({ path: '/api/v1/c/stores/featured', method: 'GET', data }, decodeFeaturedStores)
   }
 }

@@ -151,9 +151,17 @@ public final class FeaturedStoreCardComposer {
         }
     }
 
+    /**
+     * Contract 74 §3.4 sort keys (CCR-SVC-SORT-001, 2026-11-03). {@code COMPREHENSIVE} preserves
+     * the original rating-then-monthly order; {@code RATING} and {@code SALES} use exactly one
+     * ranking fact. Distance is deliberately absent: V1 has no location capability.
+     */
+    public enum Sort { COMPREHENSIVE, RATING, SALES }
+
     // ---------------------------------------------------------------- composition
 
     public Page compose(
+            Sort sort,
             String cityCode,
             String categoryCode,
             int page,
@@ -219,7 +227,8 @@ public final class FeaturedStoreCardComposer {
             }
         }
         candidates.sort((a, b) -> compareCandidates(
-                a, b, ratings, monthlyByStore, ratingRanked, salesRanked));
+                a, b, ratings, monthlyByStore, ratingRanked, salesRanked,
+                sort == null ? Sort.COMPREHENSIVE : sort));
         long total = candidates.size();
         List<String> candidateIds = apiIds(candidates);
 
@@ -443,9 +452,16 @@ public final class FeaturedStoreCardComposer {
     }
 
     /**
-     * The confirmed card order: rating.score DESC (null last), monthlySold DESC (null last),
-     * storeId ASC. A malformed score inside an available fact set is damaged data and fails the
-     * page closed rather than silently reordering.
+     * Contract 74 §3.4 sort keys:
+     * <ul>
+     *   <li>{@code COMPREHENSIVE}: rating DESC NULLS LAST, monthlySold DESC NULLS LAST, storeId
+     *       ASC (the original order);</li>
+     *   <li>{@code RATING}: rating DESC NULLS LAST, storeId ASC;</li>
+     *   <li>{@code SALES}: monthlySold DESC NULLS LAST, storeId ASC.</li>
+     * </ul>
+     * Every key ends with {@code storeId ASC}, so the order is total and paging is stable. A
+     * malformed score inside an available fact set is damaged data and fails the page closed
+     * rather than silently reordering.
      */
     private static int compareCandidates(
             long a,
@@ -453,15 +469,29 @@ public final class FeaturedStoreCardComposer {
             Map<String, ReviewPublicFactsApi.StoreRatingFact> ratings,
             Map<String, Long> monthlyByStore,
             boolean ratingAvailable,
-            boolean salesAvailable) {
+            boolean salesAvailable,
+            Sort sort) {
         BigDecimal scoreA = score(a, ratings, ratingAvailable);
         BigDecimal scoreB = score(b, ratings, ratingAvailable);
-        int comparison = compareNullsLastDesc(scoreA, scoreB);
-        if (comparison != 0) return comparison;
         Long soldA = salesAvailable ? monthlyByStore.get(IDS.toApi(a)) : null;
         Long soldB = salesAvailable ? monthlyByStore.get(IDS.toApi(b)) : null;
-        comparison = compareNullsLastDesc(soldA, soldB);
-        if (comparison != 0) return comparison;
+        int comparison;
+        switch (sort) {
+            case RATING -> {
+                comparison = compareNullsLastDesc(scoreA, scoreB);
+                if (comparison != 0) return comparison;
+            }
+            case SALES -> {
+                comparison = compareNullsLastDesc(soldA, soldB);
+                if (comparison != 0) return comparison;
+            }
+            case COMPREHENSIVE -> {
+                comparison = compareNullsLastDesc(scoreA, scoreB);
+                if (comparison != 0) return comparison;
+                comparison = compareNullsLastDesc(soldA, soldB);
+                if (comparison != 0) return comparison;
+            }
+        }
         return Long.compare(a, b);
     }
 

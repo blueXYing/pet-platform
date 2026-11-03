@@ -244,14 +244,23 @@ test('real service-catalog repository reads the two anonymous routes with the co
   assert.equal(categories[0]!.categoryCode, 'PET_GROOMING')
   await repository.serviceCategories()
   assert.equal(seen[1]!.data?.cityCode, undefined)
-  const page = await repository.featuredStores({ cityCode: 'chengdu', categoryCode: 'PET_GROOMING', page: 2, pageSize: 10 })
+  const page = await repository.featuredStores({
+    cityCode: 'chengdu', categoryCode: 'PET_GROOMING', sort: 'RATING', page: 2, pageSize: 10,
+  })
   const featuredCall = seen[2]!
   assert.equal(featuredCall.path, '/api/v1/c/stores/featured')
   assert.equal(featuredCall.data?.cityCode, 'chengdu')
   assert.equal(featuredCall.data?.categoryCode, 'PET_GROOMING')
+  assert.equal(featuredCall.data?.sort, 'RATING')
   assert.equal(featuredCall.data?.page, 2)
   assert.equal(featuredCall.data?.pageSize, 10)
   assert.equal(page.items[0]!.storeName, '萌宠之家宠物店')
+  // CCR-SVC-SORT-001：三个排序键都要原样进入请求。
+  for (const sort of ['COMPREHENSIVE', 'RATING', 'SALES'] as const) {
+    const before = seen.length
+    await repository.featuredStores({ sort })
+    assert.equal(seen[before]!.data?.sort, sort)
+  }
 })
 
 test('preview catalog ships the 11 contract dictionary rows without fabricated icons', async () => {

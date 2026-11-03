@@ -397,6 +397,22 @@ class FeaturedStoreHttpTest {
     assertEquals(400, send("GET", path + "?cityCode=beijing", null, Map.of()).status());
     assertEquals(400, send("GET", path + "?cityCode=CHENGDU", null, Map.of()).status());
 
+    // ---- sort keys (CCR-SVC-SORT-001): valid values 200, invalid 400 ----
+    Reply comprehensive = send("GET", path + "?sort=COMPREHENSIVE", null, Map.of());
+    assertEquals(200, comprehensive.status(), comprehensive.redacted());
+    assertEquals(storeIds(items), storeIds(maps(comprehensive.data().get("items"))),
+        "COMPREHENSIVE is the explicit form of the default order");
+    assertEquals(200, send("GET", path + "?sort=RATING", null, Map.of()).status());
+    assertEquals(200, send("GET", path + "?sort=SALES", null, Map.of()).status());
+    assertEquals(400, send("GET", path + "?sort=rating", null, Map.of()).status(),
+        "sort keys are case-sensitive");
+    assertEquals(400, send("GET", path + "?sort=", null, Map.of()).status(),
+        "an empty sort is invalid, not silently defaulted");
+    assertEquals(400, send("GET", path + "?sort=DISTANCE", null, Map.of()).status(),
+        "distance is not a V1 sort key");
+    assertEquals(400, send("GET", path + "?sort=RATING&sort=SALES", null, Map.of()).status(),
+        "duplicate sort parameters are rejected");
+
     // ---- STR-D8: anonymous passes, a carried invalid bearer still 401s ----
     assertEquals(200, send("GET", path, null, Map.of()).status());
     assertEquals(401, send("GET", path, null, bearer("invalid-token")).status());
