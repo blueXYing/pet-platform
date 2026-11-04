@@ -5,12 +5,27 @@ import { MerchantRefundClient } from '../../../shared/merchant-refund-api'
 import { consumerApi } from '../../../shared/consumer-runtime'
 import { MerchantRefundController } from '../../refund/controller'
 import { merchantRefundDeps } from '../../refund/repository'
+import { previewRefundDeps } from '../../workbench/preview'
+import { MerchantTabBar } from '../../components/tab-bar'
 import navBack from '../aftersale/assets/nav-back@3x.png'
 import './page.css'
 
-export function useMerchantRefund(applicationId?: string, enabled = true) {
+export function useMerchantRefund(applicationId?: string, enabled = true, preview = false) {
+  // ?preview=1 视觉验收：先注入商户坐标，再用本地 deps；真实路径不变。
+  useState(() => {
+    if (!preview) return false
+    const current = consumerApi.scope.current
+    if (!current || current.workspace !== 'merchant' || !current.merchantId || !current.storeId) {
+      consumerApi.scope.replace({
+        userId: '9007199254740993', workspace: 'merchant',
+        merchantId: '9007199254740995', storeId: '9007199254740996',
+      })
+    }
+    return true
+  })
   const [client] = useState(() => new MerchantRefundClient(consumerApi))
-  const [controller] = useState(() => new MerchantRefundController(merchantRefundDeps(client), consumerApi.scope, applicationId))
+  const [controller] = useState(() => new MerchantRefundController(
+    preview ? previewRefundDeps() : merchantRefundDeps(client), consumerApi.scope, applicationId))
   const state = useSyncExternalStore(controller.subscribe, controller.getSnapshot)
   useDidShow(() => { if (enabled) void controller.load(consumerApi.scope.current) })
   useDidHide(() => controller.hide())
@@ -20,6 +35,8 @@ export function useMerchantRefund(applicationId?: string, enabled = true) {
   return { controller, state, style }
 }
 export function MerchantRefundShell({ children, title, style, onBack }: PropsWithChildren<{ title: string; style: CSSProperties; onBack?: () => void }>) {
+  const [info] = useState(() => Taro.getWindowInfo())
+  const unit = info.windowWidth / 402
   async function back() {
     if (onBack) { onBack(); return }
     try {
@@ -34,6 +51,7 @@ export function MerchantRefundShell({ children, title, style, onBack }: PropsWit
       <Text className='mrf-title'>{title}</Text>
     </View>
     {children}
+    <MerchantTabBar active='orders' unit={unit} />
   </View>
 }
 export function MerchantRefundState({ controller, text, status }: { controller: MerchantRefundController; text: string; status: string }) {

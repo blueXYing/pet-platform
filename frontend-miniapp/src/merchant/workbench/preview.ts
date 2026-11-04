@@ -4,7 +4,11 @@
 import type { WorkbenchDashboardDeps } from './dashboard'
 import type { StatsOverview, StoreProfileView } from '../../shared/merchant-storefront-api'
 import type { MerchantOrderPage, MerchantOrderSummary } from '../order/model'
-import type { RefundApplicationPage } from '../../shared/merchant-refund-api'
+import type { MerchantOrderListDeps } from '../order/repository'
+import type { WorkspaceScope } from '../../shared/workspace'
+import type { RefundApplicationDetail, RefundApplicationPage } from '../../shared/merchant-refund-api'
+import type { MerchantRefundDeps } from '../refund/repository'
+import { fixtureDeps } from '../admission'
 
 const iso = (offsetMinutes: number) => new Date(Date.now() + offsetMinutes * 60_000).toISOString()
 const summary = (id: string, orderNo: string, amount: string, minutes: number): MerchantOrderSummary => ({
@@ -54,5 +58,71 @@ export function previewDashboardDeps(): WorkbenchDashboardDeps {
     stats: async () => stats,
     orders: async status => status === 'PENDING_CONFIRM' ? pending : service,
     refunds: async () => refunds,
+  }
+}
+
+// 订单列表视觉验收样本（?preview=1）：覆盖待接单/待服务/已完成/已取消/退款中五个状态。
+const previewOrders: readonly MerchantOrderSummary[] = [
+  { ...summary('9201', '202611040011', '268.00', 15), displayStatus: 'PENDING_CONFIRM' },
+  { ...summary('9202', '202611040012', '450.00', 30), displayStatus: 'PENDING_CONFIRM' },
+  { ...summary('9203', '202611040013', '120.00', 50), displayStatus: 'PENDING_CONFIRM' },
+  { ...summary('9204', '202611040014', '380.00', 90), displayStatus: 'PENDING_SERVICE' },
+  { ...summary('9205', '202611040015', '98.00', 180), displayStatus: 'PENDING_SERVICE' },
+  { ...summary('9206', '202611040016', '1280.00', -120), displayStatus: 'COMPLETED' },
+  { ...summary('9207', '202611040017', '200.00', -240), displayStatus: 'CANCELED' },
+  { ...summary('9208', '202611040018', '88.00', -60), displayStatus: 'REFUND_PENDING_CONFIRM' },
+]
+
+export function previewOrderPage(displayStatus?: string): MerchantOrderPage {
+  const items = displayStatus
+    ? previewOrders.filter(item => item.displayStatus === displayStatus)
+    : previewOrders
+  return { items: [...items], page: 1, pageSize: 20, total: items.length }
+}
+
+export function previewOrderListDeps(scope: WorkspaceScope): MerchantOrderListDeps & { scope: WorkspaceScope } {
+  return {
+    scope,
+    list: async query => previewOrderPage(query.displayStatus),
+  }
+}
+
+// 退款列表/详情视觉验收样本（?preview=1）：57号商家读侧字段，无买家身份/申诉/服务时间线。
+const refundNow = new Date().toISOString()
+const previewRefundSummary = {
+  applicationId: '9301',
+  applicationNo: '202611040001',
+  orderId: '9201',
+  status: 'PENDING_MERCHANT',
+  applicationVersion: '1',
+  reasonCode: 'SERVICE_ISSUE',
+  refundAmount: '268.00',
+  createdAt: refundNow,
+  merchantDeadline: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
+}
+const previewRefundDetail = {
+  ...previewRefundSummary,
+  decidedAt: null,
+  decisionId: null,
+  refundOrderId: null,
+} as RefundApplicationDetail
+
+export function previewRefundDeps(): MerchantRefundDeps {
+  const admissionContext = {
+    userId: '9007199254740993', workspace: 'merchant' as const,
+    merchantId: '9007199254740995', storeId: '9007199254740996',
+  }
+  return {
+    admission: () => fixtureDeps('allowed').admission(
+      admissionContext, admissionContext.merchantId, admissionContext.storeId),
+    list: async () => ({
+      page: 1, pageSize: 20, total: 1, items: [previewRefundSummary],
+    } as unknown as RefundApplicationPage),
+    detail: async () => previewRefundDetail,
+    approve: async () => { throw new Error('PREVIEW_ONLY') },
+    reject: async () => { throw new Error('PREVIEW_ONLY') },
+    pending: () => null,
+    loadDraft: () => null,
+    saveDraft: () => {},
   }
 }

@@ -45,3 +45,5 @@
 .msv-receipt-hint { font-size: calc(var(--msv-unit) * 11.5); line-height: calc(var(--msv-unit) * 17); color: #577683; }
 .msv-notice { display: block; margin: calc(var(--msv-unit) * 8) 0 0; font-size: calc(var(--msv-unit) * 12); line-height: calc(var(--msv-unit) * 18); color: #7a4a1d; }
 .msv-tail { padding: calc(var(--msv-unit) * 18) 0; text-align: center; font-size: calc(var(--msv-unit) * 11); color: #9ca3af; }
+
+.msv-tab-space { height: calc(var(--msv-unit) * 96); flex: none; }

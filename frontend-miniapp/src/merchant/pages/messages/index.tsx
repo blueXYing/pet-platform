@@ -4,6 +4,7 @@ import { useEffect, useState, useSyncExternalStore, type CSSProperties } from 'r
 import { MessagesController, jumpLabelFor, routeForNotification } from '../../../shared/notifications/messages'
 import { previewNotificationDeps } from '../../notifications/preview'
 import { realNotificationDeps } from '../../notifications/messages-runtime'
+import { MerchantTabBar } from '../../components/tab-bar'
 import navBack from '../aftersale/assets/nav-back@3x.png'
 import './page.css'
 
@@ -33,6 +34,7 @@ export default function MerchantMessagesPage() {
   // Custom navigation: reserve the real status-bar height (env(safe-area-inset-top) is 0 in
   // WeChat), the same mechanism as the services and application pages.
   const [windowInfo] = useState(() => Taro.getWindowInfo())
+  const unit = windowInfo.windowWidth / 402
   const style = {
     '--mmsg-top': `${windowInfo.statusBarHeight || 0}px`,
     '--mmsg-unit': `${windowInfo.windowWidth / 402}px`,
@@ -72,6 +74,8 @@ export default function MerchantMessagesPage() {
         {jumpLabelFor(state.detail) && <Button id='mmsg-jump' className='mmsg-jump' onClick={jump}>{jumpLabelFor(state.detail)}</Button>}
         <Button id='mmsg-back-list' className='mmsg-plain' onClick={() => controller.closeDetail()}>返回列表</Button>
       </View>}
+      <View className='mmsg-tab-space' />
     </View>
+    <MerchantTabBar active='messages' unit={unit} />
   </View>
 }

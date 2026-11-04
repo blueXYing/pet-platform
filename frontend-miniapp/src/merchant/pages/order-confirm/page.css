@@ -52,3 +52,5 @@
 .moc-receipt-hint { font-size: calc(var(--moc-unit) * 11.5); line-height: calc(var(--moc-unit) * 17); color: #577683; }
 .moc-notice { display: block; margin: calc(var(--moc-unit) * 8) 0 0; font-size: calc(var(--moc-unit) * 12); line-height: calc(var(--moc-unit) * 18); color: #7a4a1d; }
 .moc-tail { padding: calc(var(--moc-unit) * 18) 0; text-align: center; font-size: calc(var(--moc-unit) * 11); color: #9ca3af; }
+
+.moc-tab-space { height: calc(var(--moc-unit) * 96); flex: none; }

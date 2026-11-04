@@ -35,3 +35,5 @@
 .mmsg-detail > .mmsg-jump { color: #5baae8; }
 .mmsg-detail .mmsg-plain { color: #3185ba; }
 .mmsg-tail { margin-top: calc(var(--mmsg-unit) * 10); font-size: calc(var(--mmsg-unit) * 10); line-height: calc(var(--mmsg-unit) * 15); color: #9bb3bd; text-align: center; }
+
+.mmsg-tab-space { height: calc(var(--mmsg-unit) * 96); flex: none; }

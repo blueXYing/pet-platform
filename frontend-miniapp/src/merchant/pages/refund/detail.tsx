@@ -7,9 +7,10 @@ import { MerchantRefundShell, MerchantRefundState, useMerchantRefund } from './p
 /** 商家退款申请详情（57号/HTTP10 §4.5/§4.6）：同意全额或拒绝（必填理由），回执按 49号七字段呈现。 */
 export default function MerchantRefundDetail() {
   const route = useRouter()
+  const preview = route.params.preview === '1'
   const applicationId = typeof route.params.applicationId === 'string' && /^[1-9][0-9]{0,18}$/.test(route.params.applicationId)
     && BigInt(route.params.applicationId) <= 9223372036854775807n ? route.params.applicationId : undefined
-  const { controller, state, style } = useMerchantRefund(applicationId, !!applicationId)
+  const { controller, state, style } = useMerchantRefund(applicationId, !!applicationId, preview)
   const [sheet, setSheet] = useState<'reject' | null>(null)
   // A remounted unknown-outcome write reopens its original action with the immutable payload.
   useEffect(() => { if (state.pending) setSheet(state.pending.action === 'reject' ? 'reject' : null) }, [state.pending])
