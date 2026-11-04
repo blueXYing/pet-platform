@@ -10,6 +10,7 @@ import {
   memberStatusClass, memberStatusText,
   type InvitationRow, type MemberRow,
 } from '../../members/model'
+import { MerchantTabBar } from '../../components/tab-bar'
 import navBack from './assets/nav-back@2x.png'
 import './page.css'
 
@@ -178,6 +179,8 @@ export default function MerchantMembersPage() {
         </View>)}
       </View>}
       <View className='mmb-tail'><Text>页面数据：真实接口（contract 54，默认关闭时接口失败关闭）</Text></View>
+      <View className='mmb-tab-space' />
     </ScrollView>}
+    <MerchantTabBar active='home' unit={unit} />
   </View>
 }

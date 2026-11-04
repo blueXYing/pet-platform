@@ -77,3 +77,7 @@
 .medit-actions { display: flex; flex-direction: column; gap: calc(var(--msvc-unit) * 12); margin-top: calc(var(--msvc-unit) * 6); }
 .medit-action { height: calc(var(--msvc-unit) * 46.5); border-radius: calc(var(--msvc-unit) * 11.6); background: #5baae8; color: #fff; font-size: calc(var(--msvc-unit) * 15); font-weight: 600; display: flex; align-items: center; justify-content: center; }
 .medit-action-secondary { background: #fff; border: calc(var(--msvc-unit) * 1.16) solid #5baae8; color: #5baae8; }
+
+.msvc-tab-space { height: calc(var(--msvc-unit) * 96); flex: none; }
+
+.medit-tab-space { height: calc(var(--msvc-unit) * 96); flex: none; }

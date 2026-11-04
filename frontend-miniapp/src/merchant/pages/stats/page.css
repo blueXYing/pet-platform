@@ -46,3 +46,5 @@
 /* 2026-10-19 扩展：自定义区间卡（CUSTOM from/to ≤92 天，70号扩展面）。 */
 .mst-page .mst-custom .mst-primary { margin-top: calc(var(--mst-unit) * 8); }
 .mst-page .mst-top-row { display: flex; width: 100%; text-align: left; align-items: center; gap: calc(var(--mst-unit) * 10); padding: calc(var(--mst-unit) * 8) 0; }
+
+.mst-tab-space { height: calc(var(--mst-unit) * 96); flex: none; }

@@ -1,23 +1,37 @@
 import { Button, Image, Picker, ScrollView, Text, View } from '@tarojs/components'
-import Taro, { useDidHide, useDidShow } from '@tarojs/taro'
+import Taro, { useDidHide, useDidShow, useRouter } from '@tarojs/taro'
 import { useEffect, useState, useSyncExternalStore, type CSSProperties } from 'react'
 import { consumerApi, consumerStorage } from '../../../shared/consumer-runtime'
 import { merchantStorefrontDeps } from '../../storefront/repository'
 import { MerchantStatsController } from '../../storefront/read-controllers'
 import { deltaLabel, rangeLabel, validCustomWindow, windowLabel } from '../../storefront/model'
+import { previewStatsDeps } from '../../workbench/preview'
+import { MerchantTabBar } from '../../components/tab-bar'
 import navBack from '../aftersale/assets/nav-back@3x.png'
 import './page.css'
 
 const RANGES = ['TODAY', 'LAST_7D', 'LAST_30D', 'CUSTOM'] as const
 
-function useStats() {
+function useStats(preview = false) {
+  // ?preview=1 视觉验收：先注入商户坐标，再用本地聚合 deps；真实路径不变。
+  useState(() => {
+    if (!preview) return false
+    const current = consumerApi.scope.current
+    if (!current || current.workspace !== 'merchant' || !current.merchantId || !current.storeId) {
+      consumerApi.scope.replace({
+        userId: '9007199254740993', workspace: 'merchant',
+        merchantId: '9007199254740995', storeId: '9007199254740996',
+      })
+    }
+    return true
+  })
   const [controller] = useState(() => {
-    const context = consumerApi.scope.capture().context
-    if (context.workspace !== 'merchant' || !context.merchantId || !context.storeId) {
+    const context = consumerApi.scope.current
+    if (!context || context.workspace !== 'merchant' || !context.merchantId || !context.storeId) {
       throw new Error('MERCHANT_ENTRY_REQUIRED')
     }
     return new MerchantStatsController(
-      merchantStorefrontDeps(consumerApi, consumerStorage),
+      preview ? previewStatsDeps() : merchantStorefrontDeps(consumerApi, consumerStorage),
       { merchantId: context.merchantId, storeId: context.storeId })
   })
   const state = useSyncExternalStore(controller.subscribe, controller.getSnapshot)
@@ -48,7 +62,11 @@ function MetricCard(props: { label: string; value: string; delta: string | null;
 // 快捷区间 + 自定义区间（from/to ≤92 个 UTC 日）、概览指标（净营收/订单量/新增客户/客单价 +
 // 环比；核销率/退款率/复购率/评价均分/拒单率）、热门服务 Top5（可下钻）、营收趋势、排期利用率。
 export default function MerchantStatsPage() {
-  const { controller, state, style } = useStats()
+  const route = useRouter()
+  const preview = route.params.preview === '1'
+  const { controller, state, style } = useStats(preview)
+  const [info] = useState(() => Taro.getWindowInfo())
+  const unit = info.windowWidth / 402
   const overview = state.overview
   const maxRevenue = Math.max(1, ...state.trend.map(bucket => Number(bucket.revenue)))
   const customValid = validCustomWindow(state.custom.from, state.custom.to)
@@ -140,7 +158,9 @@ export default function MerchantStatsPage() {
       {state.notice && <View className='mst-notice' role='alert'><Text>{state.notice}</Text></View>}
       <Text className='mst-tail'>本店经营数据 · 实时读侧聚合（70号）</Text>
       <View className='mst-bottom-space' />
+      <View className='mst-tab-space' />
     </ScrollView>}
+    <MerchantTabBar active='home' unit={unit} />
   </View>
 }
 

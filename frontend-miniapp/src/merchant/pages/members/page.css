@@ -52,3 +52,5 @@
 .mmb-action { position: absolute; right: calc(var(--mmb-unit) * 12); top: calc(var(--mmb-unit) * 25); min-width: calc(var(--mmb-unit) * 60); height: calc(var(--mmb-unit) * 30); padding: 0 calc(var(--mmb-unit) * 12); border-radius: calc(var(--mmb-unit) * 15); border: calc(var(--mmb-unit) * 1.5) solid #5baae8; font-size: calc(var(--mmb-unit) * 13); font-weight: 600; color: #167fab; display: flex; align-items: center; justify-content: center; }
 .mmb-page .mmb-action-danger { border-color: #fbd9d9; background: #fdf3f3; color: #a83232; }
 .mmb-tail { padding: calc(var(--mmb-unit) * 18) 0; text-align: center; font-size: calc(var(--mmb-unit) * 11); color: #9ca3af; }
+
+.mmb-tab-space { height: calc(var(--mmb-unit) * 96); flex: none; }

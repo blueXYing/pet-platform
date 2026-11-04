@@ -4,6 +4,7 @@ import { useEffect, useState, useSyncExternalStore, type CSSProperties } from 'r
 import { consumerApi, consumerStorage } from '../../../shared/consumer-runtime'
 import { merchantReviewDeps } from '../../review-appeal/repository'
 import { MerchantReviewController } from '../../review-appeal/controller'
+import { MerchantTabBar } from '../../components/tab-bar'
 import navBack from '../aftersale/assets/nav-back@3x.png'
 import './page.css'
 
@@ -51,6 +52,8 @@ function starCount(score: string): number {
 export default function MerchantReviewsPage() {
   const { controller, state, style } = useMerchantReviews()
   const [draft, setDraft] = useState('')
+  const [info] = useState(() => Taro.getWindowInfo())
+  const unit = info.windowWidth / 402
   const sheetReview = state.sheetReviewId === null ? null
     : state.items.find(item => item.reviewId === state.sheetReviewId) ?? null
   return <View className='mrv-page' style={style}>
@@ -96,6 +99,7 @@ export default function MerchantReviewsPage() {
         </View>}
         {state.notice && state.sheetReviewId === null && <View className='mrv-notice' role='status'>{state.notice}</View>}
         <View className='mrv-bottom-space' />
+        <View className='mrv-tab-space' />
       </ScrollView>
     </>}
     {sheetReview !== null && state.sheetReviewId !== null && <View className='mrv-overlay'>
@@ -119,5 +123,6 @@ export default function MerchantReviewsPage() {
         <Button className='mrv-close-sheet' disabled={state.busy} onClick={() => controller.closeSheet()}>取消</Button>
       </View>
     </View>}
+    {sheetReview === null && <MerchantTabBar active='home' unit={unit} />}
   </View>
 }

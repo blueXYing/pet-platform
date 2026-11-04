@@ -12,6 +12,7 @@ import {
   petTypeText, petTypes, selectedPillClass, type ApplicablePetType, type ManagedServiceDetail,
   type ServiceCategoryView, type ServiceDraftInput, type ServiceManageDeps,
 } from '../../services/model'
+import { MerchantTabBar } from '../../components/tab-bar'
 import navBack from './assets/nav-back@2x.png'
 import iconCamera from './assets/icon-camera@2x.png'
 import './page.css'
@@ -326,7 +327,9 @@ export default function MerchantServiceEditPage() {
         <Button id='medit-submit' className='medit-action' disabled={busy} onClick={() => void submitForReview()}>提交审核</Button>
       </View>}
       <View className='msvc-tail'><Text>页面数据：{preview ? '契约 Mock（preview=1，不联调）' : '真实接口（后端交付前失败关闭）'}</Text></View>
+      <View className='medit-tab-space' />
     </View>}
+    <MerchantTabBar active='home' unit={unit} />
   </View>
 }
 

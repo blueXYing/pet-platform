@@ -137,3 +137,39 @@
 - 退款列表标题为「退款处理」（契约语义），非原稿「售后单」；售后与退款在 SSOT 是两条链路。
 - 退款详情无买家身份/电话/申请正文/图片/时间线/申诉入口（57号读侧与 V1 规则冲突）。
 - 消息/核销/订单处理/退款子页保留返回键；底部 tab 已接入，子页返回栈不变。
+
+## 9. 第三/四批已落地（2026-11-04）
+
+### 评价/消息/服务/员工
+
+- `reviews`、`services/index`、`services/edit`、`members` 全部接入底部五 tab（active 首页）；
+  `messages` 已在前批接入（active 消息）。
+- 评价页申诉半屏打开时隐藏底部 tab，避免模态层被固定 tab 穿透。
+- 服务管理 `?preview=1` 实拍：店招头/服务卡/状态标签/价格/开关与 Figma 10:5255 家族一致；
+  标题按契约读「服务管理」，非原稿「商品管理」。
+- 成员/评价页无后端时显示错误态，tab 与 86 头带布局正常；两页视觉度量沿登记表 §4.10
+  复核结论（零改动）。
+
+### 店铺/客户/统计/营销
+
+- `shop-info`（active 我的）、`customers/index`、`customers/detail`、`stats/index`、
+  `stats/service-orders`（active 首页）、`marketing`（active 首页）接入底部五 tab。
+- 营销页头部从 rpx 96 高改为家族 86 + statusBarHeight，返回键换原稿箭头；
+  修复直开无会话时 `consumerApi.scope.capture()` 抛 `NO_CONTEXT` 导致白屏（改用 `scope.current` 守卫）。
+- 统计页新增 `?preview=1` 聚合夹具（70号指标/Top5/趋势/利用率），实拍看板可读。
+- 店铺/客户页无后端时显示错误态；tab 与头带布局正常。营销页直开显示「请从商家工作台进入」。
+
+### 验证与证据
+
+- `tsc --noEmit` 通过；商家端 195 测试全过；`build:weapp` 成功。
+- 证据：`evidence/impl-services.png`、`impl-members.png`、`impl-reviews.png`、`impl-shop-info.png`、
+  `impl-customers.png`、`impl-stats.png`、`impl-marketing.png`；原稿 `figma-services-10-5255.png`、
+  `figma-reviews-23-14160.png`、`figma-members-12-6591.png`。
+
+### 仍未做/限制
+
+- 店铺/客户/评价/统计的完整真实数据视觉验收需要后端或进一步 preview 夹具；当前只验证了
+  头带/卡片壳/tab 布局，未声称逐像素通过。
+- 排期四页、核销记录、员工工作台/邀请、售后两页仍按登记表 B 类/无原稿的家族语言实现，
+  不在一比一还原范围。
+- 营销工具 12 子页、我的资金/安全/通知设置、第三方聚合核销仍为 C2 不实现。

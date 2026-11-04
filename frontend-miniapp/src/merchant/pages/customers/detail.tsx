@@ -5,6 +5,7 @@ import { consumerApi, consumerStorage } from '../../../shared/consumer-runtime'
 import { merchantStorefrontDeps } from '../../storefront/repository'
 import { CustomerDetailController } from '../../storefront/read-controllers'
 import { lastVisitLabel } from '../../storefront/model'
+import { MerchantTabBar } from '../../components/tab-bar'
 import navBack from '../aftersale/assets/nav-back@3x.png'
 import './page.css'
 
@@ -47,6 +48,8 @@ async function jumpTo(page: string) {
 // 隐私红线不变：体重/疫苗/驱虫/健康备注等健康字段不外显，无明文手机号。
 export default function MerchantCustomerDetailPage() {
   const { controller, state, style } = useCustomerDetail()
+  const [info] = useState(() => Taro.getWindowInfo())
+  const unit = info.windowWidth / 402
   const detail = state.detail
   const customer = detail?.customer
   return <View className='mcu-page' style={style}>
@@ -100,6 +103,8 @@ export default function MerchantCustomerDetailPage() {
       </View>
       <Text className='mcu-tail'>仅展示本店订单派生数据 · 手机号默认脱敏（69号）</Text>
       <View className='mcu-bottom-space' />
+      <View className='mcu-tab-space' />
     </ScrollView>}
+    <MerchantTabBar active='home' unit={unit} />
   </View>
 }

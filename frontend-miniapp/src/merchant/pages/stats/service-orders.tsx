@@ -6,6 +6,7 @@ import { merchantStorefrontDeps } from '../../storefront/repository'
 import { ServiceOrdersController } from '../../storefront/read-controllers'
 import { merchantDisplayStatusLabels } from '../../order/model'
 import { windowLabel } from '../../storefront/model'
+import { MerchantTabBar } from '../../components/tab-bar'
 import navBack from '../aftersale/assets/nav-back@3x.png'
 import './page.css'
 
@@ -53,6 +54,8 @@ function serviceOrderTime(iso: string | null): string {
 
 export default function MerchantServiceOrdersPage() {
   const { controller, state, style } = useServiceOrders()
+  const [info] = useState(() => Taro.getWindowInfo())
+  const unit = info.windowWidth / 402
   const page = state.page
   return <View className='mst-page' style={style}>
     <View className='mst-status-area' />
@@ -79,6 +82,8 @@ export default function MerchantServiceOrdersPage() {
       {state.notice && <View className='mst-notice' role='alert'><Text>{state.notice}</Text></View>}
       <Text className='mst-tail'>{(page.page * page.pageSize) >= page.total ? '已加载全部' : '上拉加载更多'}</Text>
       <View className='mst-bottom-space' />
+      <View className='mst-tab-space' />
     </ScrollView>}
+    <MerchantTabBar active='home' unit={unit} />
   </View>
 }

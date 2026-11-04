@@ -5,6 +5,7 @@ import { consumerApi, consumerStorage } from '../../../shared/consumer-runtime'
 import { merchantStorefrontDeps } from '../../storefront/repository'
 import { MerchantCustomersController } from '../../storefront/read-controllers'
 import { lastVisitLabel } from '../../storefront/model'
+import { MerchantTabBar } from '../../components/tab-bar'
 import navBack from '../aftersale/assets/nav-back@3x.png'
 import './page.css'
 
@@ -40,6 +41,8 @@ async function backToWorkbench() {
 // 隐私红线不变：不导出、不营销触达、不含健康字段、无明文手机号/完整手机号搜索。
 export default function MerchantCustomersPage() {
   const { controller, state, style } = useCustomers()
+  const [info] = useState(() => Taro.getWindowInfo())
+  const unit = info.windowWidth / 402
   return <View className='mcu-page' style={style}>
     <View className='mcu-status-area' />
     <View className='mcu-header'>
@@ -90,6 +93,8 @@ export default function MerchantCustomersPage() {
       </View>
       <Text className='mcu-tail'>仅展示本店订单派生数据 · 手机号默认脱敏（69号）</Text>
       <View className='mcu-bottom-space' />
+      <View className='mcu-tab-space' />
     </>}
+    <MerchantTabBar active='home' unit={unit} />
   </View>
 }

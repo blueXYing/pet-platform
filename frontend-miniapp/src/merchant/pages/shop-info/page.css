@@ -40,3 +40,5 @@
 .msi-photo-item { display: flex; align-items: center; gap: calc(var(--msi-unit) * 6); padding: calc(var(--msi-unit) * 6) calc(var(--msi-unit) * 10); border: calc(var(--msi-unit) * 1.5) solid #c0ecff; border-radius: calc(var(--msi-unit) * 12); background: #f9fbfe; }
 .msi-photo-id { font-size: calc(var(--msi-unit) * 11.5); line-height: calc(var(--msi-unit) * 16); color: #374151; }
 .msi-page .msi-photo-remove { padding: calc(var(--msi-unit) * 2) calc(var(--msi-unit) * 8); border-radius: calc(var(--msi-unit) * 8); color: #a83232; font-size: calc(var(--msi-unit) * 11.5); }
+
+.msi-tab-space { height: calc(var(--msi-unit) * 96); flex: none; }

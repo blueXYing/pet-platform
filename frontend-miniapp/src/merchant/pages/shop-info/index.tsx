@@ -5,6 +5,7 @@ import { consumerApi, consumerStorage } from '../../../shared/consumer-runtime'
 import { merchantStorefrontDeps } from '../../storefront/repository'
 import { ShopInfoController } from '../../storefront/shop-info-controller'
 import { businessStatusLabel, operatingLabel } from '../../storefront/model'
+import { MerchantTabBar } from '../../components/tab-bar'
 import navBack from '../aftersale/assets/nav-back@3x.png'
 import './page.css'
 
@@ -51,6 +52,8 @@ async function chooseImage(controller: ShopInfoController, mode: 'photo' | 'avat
 // 资质类字段（营业执照/身份证件/商家类型/城市/定位）不开放变更（CCR 口径）。
 export default function MerchantShopInfoPage() {
   const { controller, state, style } = useShopInfo()
+  const [info] = useState(() => Taro.getWindowInfo())
+  const unit = info.windowWidth / 402
   const view = state.view
   const facts = view?.readonlyFacts
   const profile = view?.profile
@@ -178,6 +181,8 @@ export default function MerchantShopInfoPage() {
       <Button id='msi-save' className='msi-primary msi-save' disabled={state.saving || state.frozen}
         onClick={() => void controller.save()}>{state.saving ? '保存中…' : '保存修改'}</Button>
       <View className='msi-bottom-space' />
+      <View className='msi-tab-space' />
     </>}
+    <MerchantTabBar active='mine' unit={unit} />
   </View>
 }

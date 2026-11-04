@@ -1,8 +1,10 @@
-import { Button, Input, Picker, Text, Textarea, View } from '@tarojs/components'
+import { Button, Image, Input, Picker, Text, Textarea, View } from '@tarojs/components'
 import Taro, { useDidShow } from '@tarojs/taro'
 import { useCallback, useState, type CSSProperties } from 'react'
 import { consumerApi } from '../../../shared/consumer-runtime'
 import { MerchantMarketingApi, type MerchantCampaign, type MerchantEnrollment, type MyCampaign } from '../../marketing/api'
+import { MerchantTabBar } from '../../components/tab-bar'
+import navBack from '../aftersale/assets/nav-back@3x.png'
 import './index.css'
 
 const api = new MerchantMarketingApi(consumerApi)
@@ -10,14 +12,18 @@ type Tab = 'open' | 'mine' | 'campaigns'
 const moneyDate = (date: string, end = false) => `${date}T${end ? '23:59:59' : '00:00:00'}.000Z`
 
 function useMerchant() {
-  const context = consumerApi.scope.capture().context
-  if (context.workspace !== 'merchant' || !context.merchantId || !context.storeId) return null
+  const context = consumerApi.scope.current
+  if (!context || context.workspace !== 'merchant' || !context.merchantId || !context.storeId) return null
   return { merchantId: context.merchantId, storeId: context.storeId }
 }
 
 export default function MerchantMarketingPage() {
   const [info] = useState(() => Taro.getWindowInfo())
-  const style = { '--mmk-unit': `${info.windowWidth / 402}px` } as CSSProperties
+  const unit = info.windowWidth / 402
+  const style = {
+    '--mmk-unit': `${info.windowWidth / 402}px`,
+    '--mmk-status-top': `${info.statusBarHeight || 0}px`,
+  } as CSSProperties
   const merchant = useState(() => useMerchant())[0]
   const [tab, setTab] = useState<Tab>('open')
   const [phase, setPhase] = useState<'loading' | 'ready' | 'error'>('loading')
@@ -120,7 +126,7 @@ export default function MerchantMarketingPage() {
   return <View className='mmk-page' style={style}>
     <View className='mmk-status' />
     <View className='mmk-header'>
-      <Button className='mmk-back' ariaLabel='返回' onClick={back}>‹</Button>
+      <Button className='mmk-back' ariaLabel='返回' onClick={back}><Image src={navBack} mode='scaleToFill' /></Button>
       <Text className='mmk-title'>营销活动</Text>
     </View>
     <View className='mmk-tabs'>
@@ -193,5 +199,7 @@ export default function MerchantMarketingPage() {
         </View>
       </View>)}
     </View>}
+    <View className='mmk-tab-space' />
+    <MerchantTabBar active='home' unit={unit} />
   </View>
 }

@@ -44,3 +44,5 @@
 .mcu-page .mcu-search-mode-on { border-color: #5baae8; background: #e8f4fd; color: #2b7cc0; font-weight: 600; }
 .mcu-note-input { width: 100%; min-height: calc(var(--mcu-unit) * 64); background: #f9fafb; border: calc(var(--mcu-unit) * 1.16) solid #e5e7eb; border-radius: calc(var(--mcu-unit) * 11.6); padding: calc(var(--mcu-unit) * 12) calc(var(--mcu-unit) * 14); font-size: calc(var(--mcu-unit) * 13.555); line-height: calc(var(--mcu-unit) * 21); color: #111827; }
 .mcu-page .mcu-note-save { align-self: flex-end; }
+
+.mcu-tab-space { height: calc(var(--mcu-unit) * 96); flex: none; }

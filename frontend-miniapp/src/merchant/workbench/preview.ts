@@ -2,13 +2,17 @@
 // 不暴露为公共 DTO、不参与真实鉴权、不写任何业务数据。数字对齐 Figma 95:1899 主稿。
 
 import type { WorkbenchDashboardDeps } from './dashboard'
-import type { StatsOverview, StoreProfileView } from '../../shared/merchant-storefront-api'
+import type {
+  StatsOverview, StatsServiceRow, StatsUtilization, StoreProfileView, TrendBucket,
+} from '../../shared/merchant-storefront-api'
 import type { MerchantOrderPage, MerchantOrderSummary } from '../order/model'
 import type { MerchantOrderListDeps } from '../order/repository'
 import type { WorkspaceScope } from '../../shared/workspace'
 import type { RefundApplicationDetail, RefundApplicationPage } from '../../shared/merchant-refund-api'
 import type { MerchantRefundDeps } from '../refund/repository'
+import type { MerchantStorefrontDeps } from '../storefront/repository'
 import { fixtureDeps } from '../admission'
+import { consumerApi } from '../../shared/consumer-runtime'
 
 const iso = (offsetMinutes: number) => new Date(Date.now() + offsetMinutes * 60_000).toISOString()
 const summary = (id: string, orderNo: string, amount: string, minutes: number): MerchantOrderSummary => ({
@@ -124,5 +128,53 @@ export function previewRefundDeps(): MerchantRefundDeps {
     pending: () => null,
     loadDraft: () => null,
     saveDraft: () => {},
+  }
+}
+
+// 数据统计视觉验收样本（70号 M 面，?preview=1）：只读聚合，不接真实接口。
+const previewStatsTop: readonly StatsServiceRow[] = [
+  { serviceId: '9401', serviceName: '猫咪洗澡+美容', orderCount: 12, revenue: '1680.00' },
+  { serviceId: '9402', serviceName: '狗狗美容造型', orderCount: 8, revenue: '1584.00' },
+  { serviceId: '9403', serviceName: '宠物疫苗接种', orderCount: 5, revenue: '600.00' },
+  { serviceId: '9404', serviceName: '狗狗寄养（每日）', orderCount: 3, revenue: '450.00' },
+  { serviceId: '9405', serviceName: '宠物体检基础套餐', orderCount: 2, revenue: '760.00' },
+]
+const previewTrend: readonly TrendBucket[] = [
+  { date: '2026-10-29', revenue: '320.00', orderCount: 4 },
+  { date: '2026-10-30', revenue: '480.00', orderCount: 6 },
+  { date: '2026-10-31', revenue: '260.00', orderCount: 3 },
+  { date: '2026-11-01', revenue: '720.00', orderCount: 9 },
+  { date: '2026-11-02', revenue: '540.00', orderCount: 7 },
+  { date: '2026-11-03', revenue: '860.00', orderCount: 11 },
+  { date: '2026-11-04', revenue: '666.00', orderCount: 8 },
+]
+const previewUtilization: StatsUtilization = {
+  range: 'LAST_7D', from: '2026-10-29', to: '2026-11-04',
+  availableMinutes: 2400, bookedMinutes: 1680, utilizationRate: '70.0',
+}
+
+export function previewStatsDeps(): MerchantStorefrontDeps {
+  const admissionContext = {
+    userId: '9007199254740993', workspace: 'merchant' as const,
+    merchantId: '9007199254740995', storeId: '9007199254740996',
+  }
+  const impossible = async () => { throw new Error('PREVIEW_ONLY') }
+  return {
+    scope: consumerApi.scope,
+    admission: () => fixtureDeps('allowed').admission(
+      admissionContext, admissionContext.merchantId, admissionContext.storeId),
+    storeProfile: async () => profile,
+    saveStoreProfile: impossible,
+    retireProfileConflict: () => {},
+    uploadStorePhoto: impossible,
+    customers: impossible,
+    customerDetail: impossible,
+    saveCustomerNote: impossible,
+    retireNoteConflict: () => {},
+    statsOverview: async range => ({ ...stats, range }),
+    statsServiceTop: async range => ({ range, items: previewStatsTop }),
+    statsTrend: async range => ({ range, buckets: previewTrend }),
+    statsServiceOrders: impossible,
+    statsUtilization: async range => ({ ...previewUtilization, range }),
   }
 }
