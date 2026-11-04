@@ -69,6 +69,7 @@ export default function MerchantStatsPage() {
   const unit = info.windowWidth / 402
   const overview = state.overview
   const maxRevenue = Math.max(1, ...state.trend.map(bucket => Number(bucket.revenue)))
+  const maxTopCount = Math.max(1, ...state.topItems.map(item => item.orderCount))
   const customValid = validCustomWindow(state.custom.from, state.custom.to)
   return <View className='mst-page' style={style}>
     <View className='mst-status-area' />
@@ -128,9 +129,14 @@ export default function MerchantStatsPage() {
         {state.topItems.length === 0 && <Text className='mst-empty'>该周期暂无服务订单</Text>}
         {state.topItems.map((item, index) => <Button key={item.serviceId} id={`mst-top-${item.serviceId}`}
           className='mst-top-row' onClick={() => { void openDrillDown(item.serviceId, state) }}>
-          <Text className='mst-top-rank'>{index + 1}</Text>
-          <Text className='mst-top-name'>{item.serviceName ?? '已下架服务'}</Text>
-          <Text className='mst-top-count'>{item.orderCount} 单 · ¥{item.revenue}</Text>
+          <View className='mst-top-head'>
+            <View className='mst-top-rank'><Text>{index + 1}</Text></View>
+            <Text className='mst-top-name'>{item.serviceName ?? '已下架服务'}</Text>
+            <Text className='mst-top-count'>{item.orderCount} 单 · ¥{item.revenue}</Text>
+          </View>
+          <View className='mst-top-track'>
+            <View className='mst-top-fill' style={{ width: `${Math.max(4, Math.round(item.orderCount / maxTopCount * 100))}%` }} />
+          </View>
         </Button>)}
         {state.topItems.length > 0 && <Text className='mst-hint'>点击服务行查看该周期订单明细（只读）。</Text>}
       </View>

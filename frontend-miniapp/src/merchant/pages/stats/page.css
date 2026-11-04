@@ -31,8 +31,7 @@
 .mst-kv-value { font-size: calc(var(--mst-unit) * 14); line-height: calc(var(--mst-unit) * 20); font-weight: 600; color: #111827; }
 .mst-hint { font-size: calc(var(--mst-unit) * 10.5); line-height: calc(var(--mst-unit) * 16); color: #9ca3af; }
 .mst-empty { font-size: calc(var(--mst-unit) * 12.5); line-height: calc(var(--mst-unit) * 19); color: #577683; }
-.mst-top-row { display: flex; align-items: center; gap: calc(var(--mst-unit) * 10); }
-.mst-top-rank { flex: none; width: calc(var(--mst-unit) * 20); height: calc(var(--mst-unit) * 20); border-radius: calc(var(--mst-unit) * 100); background: #c0ecff; color: #3185ba; font-size: calc(var(--mst-unit) * 11); line-height: calc(var(--mst-unit) * 20); text-align: center; }
+.mst-top-rank { flex: none; width: calc(var(--mst-unit) * 22); height: calc(var(--mst-unit) * 22); border-radius: calc(var(--mst-unit) * 100); background: #c0ecff; color: #3185ba; font-size: calc(var(--mst-unit) * 11.5); line-height: calc(var(--mst-unit) * 22); text-align: center; }
 .mst-top-name { flex: 1; font-size: calc(var(--mst-unit) * 13); line-height: calc(var(--mst-unit) * 20); color: #111827; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .mst-top-count { flex: none; font-size: calc(var(--mst-unit) * 12); line-height: calc(var(--mst-unit) * 18); color: #6b7280; }
 .mst-trend { display: flex; align-items: flex-end; justify-content: space-between; gap: calc(var(--mst-unit) * 4); }
@@ -45,6 +44,9 @@
 .mst-bottom-space { height: calc(var(--mst-unit) * 28); flex: none; }
 /* 2026-10-19 扩展：自定义区间卡（CUSTOM from/to ≤92 天，70号扩展面）。 */
 .mst-page .mst-custom .mst-primary { margin-top: calc(var(--mst-unit) * 8); }
-.mst-page .mst-top-row { display: flex; width: 100%; text-align: left; align-items: center; gap: calc(var(--mst-unit) * 10); padding: calc(var(--mst-unit) * 8) 0; }
+.mst-page .mst-top-row { display: flex; flex-direction: column; width: 100%; text-align: left; align-items: stretch; gap: calc(var(--mst-unit) * 6); padding: calc(var(--mst-unit) * 8) 0; }
+.mst-top-head { display: flex; align-items: center; gap: calc(var(--mst-unit) * 10); }
+.mst-top-track { height: calc(var(--mst-unit) * 6); border-radius: calc(var(--mst-unit) * 3); background: #f3f4f6; overflow: hidden; }
+.mst-top-fill { height: 100%; border-radius: calc(var(--mst-unit) * 3); background: #ff9500; }
 
 .mst-tab-space { height: calc(var(--mst-unit) * 96); flex: none; }
