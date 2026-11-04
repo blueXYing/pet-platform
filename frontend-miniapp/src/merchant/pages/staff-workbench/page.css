@@ -46,3 +46,5 @@
 .msw-page .msw-inv-tag-confirmed { background: #d7f0d0; color: #2f6b2f; }
 .msw-page .msw-inv-tag-canceled { background: #e5e7eb; color: #4b5563; }
 .msw-inv-preview-note { font-size: calc(var(--msw-unit) * 10.5); line-height: calc(var(--msw-unit) * 15); color: #9ca3af; }
+
+.msw-tab-space { height: calc(var(--msw-unit) * 96); flex: none; }

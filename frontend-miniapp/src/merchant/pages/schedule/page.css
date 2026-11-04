@@ -5,14 +5,15 @@
    status pill language (#C0ECFF base r4)，tag variants follow the services tag palette.
    State variants are class names, not [data-*] selectors: Taro 4.1.5 drops dynamic data-*
    from the native wxml (PR#99 VIS evidence); variant rules sit after their base rule. */
-.sch-page { --sch-status-top: 0px; min-height: 100vh; background: #f0fbff; color: #1d0d07; font-family: Roboto, 'Noto Sans SC', sans-serif; display: flex; flex-direction: column; }
+.sch-page { --sch-status-top: 0px; min-height: 100vh; box-sizing: border-box; padding-bottom: calc(var(--sch-unit) * 61 + env(safe-area-inset-bottom)); background: #f0fbff; color: #1d0d07; font-family: Roboto, 'Noto Sans SC', sans-serif; display: flex; flex-direction: column; }
 .sch-page view, .sch-page button, .sch-page text, .sch-page input, .sch-page textarea { box-sizing: border-box; }
 .sch-page button { margin: 0; padding: 0; border: 0; border-radius: 0; background: transparent; font: inherit; line-height: normal; }
 .sch-page button::after { border: 0; }
 .sch-page button[disabled] { opacity: .65; color: inherit; }
 .sch-status-area { height: var(--sch-status-top); flex: none; }
 .sch-header { position: relative; flex: none; height: calc(var(--sch-unit) * 86); background: #fff6e5; display: flex; align-items: center; }
-.sch-back { margin-left: calc(var(--sch-unit) * 14); padding: calc(var(--sch-unit) * 8) calc(var(--sch-unit) * 14); border-radius: calc(var(--sch-unit) * 100); border: calc(var(--sch-unit) * 1.5) solid #c0ecff; color: #3185ba; font-size: calc(var(--sch-unit) * 13); }
+.sch-page .sch-back { margin-left: calc(var(--sch-unit) * 8); width: calc(var(--sch-unit) * 25); height: calc(var(--sch-unit) * 42); display: flex; align-items: center; justify-content: center; border: 0; background: transparent; }
+.sch-back image { width: calc(var(--sch-unit) * 8.9); height: calc(var(--sch-unit) * 14.5); }
 .sch-title { position: absolute; left: 0; right: 0; text-align: center; font-size: calc(var(--sch-unit) * 16); line-height: calc(var(--sch-unit) * 24); font-weight: 700; color: #3c3c3c; font-family: Outfit, Roboto, 'Noto Sans SC', sans-serif; pointer-events: none; }
 .sch-state { padding: calc(var(--sch-unit) * 48) calc(var(--sch-unit) * 29); font-size: calc(var(--sch-unit) * 14); line-height: calc(var(--sch-unit) * 24); color: #577683; display: flex; flex-direction: column; gap: calc(var(--sch-unit) * 14); }
 .sch-state-action { align-self: flex-start; color: #167fab; font-size: calc(var(--sch-unit) * 14); }

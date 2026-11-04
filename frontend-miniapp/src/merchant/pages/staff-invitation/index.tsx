@@ -9,6 +9,7 @@ import {
   invitationStatusText, invitationTagClass, isInvitationId, memberStateClass, memberStatusText,
   staffActionText,
 } from '../../staff/model'
+import { MerchantTabBar } from '../../components/tab-bar'
 import navBack from '../members/assets/nav-back@2x.png'
 import './page.css'
 
@@ -138,6 +139,8 @@ export default function StaffInvitationPage() {
       </Button>}
       {detail.status === 'CONFIRMED' && !state.receipt && <Button id='msi-go-workbench-confirmed' className='msi-primary' onClick={goWorkbench}>去员工工作台</Button>}
       <View className='msi-tail'><Text>页面数据：真实接口（contract 54 员工侧，默认关闭时接口失败关闭）</Text></View>
+      <View className='msi-tab-space' />
     </ScrollView>}
+    <MerchantTabBar active='verify' unit={unit} />
   </View>
 }

@@ -46,7 +46,7 @@
 .mrf-page .mrf-primary, .mrf-page .mrf-secondary { flex: 1; height: calc(49.239 * var(--mrf-unit)); line-height: calc(49.239 * var(--mrf-unit)); border-radius: calc(12.845 * var(--mrf-unit)); font-size: calc(14.986 * var(--mrf-unit)); font-weight: 600; text-align: center; }
 .mrf-page .mrf-primary { background: #5baae8; color: white; }
 .mrf-page .mrf-secondary { border: 1px solid #5baae8; background: white; color: #3c3c3c; }
-.mrf-overlay { position: fixed; inset: 0; z-index: 20; background: rgba(0,0,0,.3); display: flex; flex-direction: column; justify-content: flex-end; }
+.mrf-overlay { position: fixed; inset: 0; z-index: 40; background: rgba(0,0,0,.3); display: flex; flex-direction: column; justify-content: flex-end; }
 .mrf-page .mrf-sheet-dismiss { position: absolute; inset: 0; width: 100%; height: 100%; }
 .mrf-sheet { position: relative; background: white; border-radius: calc(25.728 * var(--mrf-unit)) calc(25.728 * var(--mrf-unit)) 0 0; padding: calc(25.728 * var(--mrf-unit)); padding-bottom: max(calc(25.728 * var(--mrf-unit)), env(safe-area-inset-bottom)); max-height: 85vh; overflow-y: auto; box-sizing: border-box; }
 .mrf-sheet-handle { width: calc(42.88 * var(--mrf-unit)); height: calc(4.288 * var(--mrf-unit)); background: #e5e7eb; border-radius: calc(999 * var(--mrf-unit)); margin: 0 auto calc(8.576 * var(--mrf-unit)); }

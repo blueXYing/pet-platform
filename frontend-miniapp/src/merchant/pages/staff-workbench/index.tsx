@@ -10,6 +10,7 @@ import { StaffInvitationListController } from '../../staff/controller'
 import { previewStaffInvitationListDeps } from '../../staff/preview'
 import { RealStaffInvitationRepository } from '../../staff/repository'
 import { invitationStatusText, staffActionText, type InvitationStatus } from '../../staff/model'
+import { MerchantTabBar } from '../../components/tab-bar'
 import navBack from '../members/assets/nav-back@2x.png'
 import './page.css'
 
@@ -198,6 +199,8 @@ export default function StaffWorkbenchPage() {
       </View>}
       {notice && <Text id='msw-notice' className='msw-notice'>{notice}</Text>}
       <View className='msw-tail'><Text>当前工作区：{context?.workspace ?? '未登录'}{context?.storeId ? ` · ${context.storeId}` : ''}；页面数据：真实接口（contract 52/54）</Text></View>
+      <View className='msw-tab-space' />
     </ScrollView>
+    <MerchantTabBar active='verify' unit={unit} />
   </View>
 }

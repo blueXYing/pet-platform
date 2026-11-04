@@ -6,6 +6,7 @@ import { consumerStorage } from '../../../shared/consumer-runtime'
 import { privateUploadFiles } from '../../../shared/private-upload-platform'
 import { merchantAfterSaleDeps } from '../../aftersale/repository'
 import { MerchantAfterSaleController } from '../../aftersale/controller'
+import { MerchantTabBar } from '../../components/tab-bar'
 import navBack from './assets/nav-back@3x.png'
 import './page.css'
 
@@ -21,6 +22,8 @@ export function useMerchantAfterSale(caseId?: string, enabled = true) {
   return { controller, state, style }
 }
 export function MerchantAfterSaleShell({ children, title, style, onBack }: PropsWithChildren<{ title: string; style: CSSProperties; onBack?: () => void }>) {
+  const [info] = useState(() => Taro.getWindowInfo())
+  const unit = info.windowWidth / 402
   async function back() {
     if (onBack) { onBack(); return }
     try {
@@ -35,6 +38,7 @@ export function MerchantAfterSaleShell({ children, title, style, onBack }: Props
       <Text className='mas-title'>{title}</Text>
     </View>
     {children}
+    <MerchantTabBar active='orders' unit={unit} />
   </View>
 }
 export function MerchantAfterSaleState({ controller, text, status }: { controller: MerchantAfterSaleController; text: string; status: string }) {

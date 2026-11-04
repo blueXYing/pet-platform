@@ -217,3 +217,17 @@
   保留契约字段。
 - 证据：`evidence/figma-stats-5-3759.png`、`impl-stats2.png`。
 - 完整 658 测试、`tsc --noEmit`、`build:weapp` 通过。
+
+## 12. 排期/员工/售后子页底部 tab（2026-11-04）
+
+- 排期四页共用 `ScheduleShell`：接入底部五 tab（active 首页），页面 `padding-bottom`
+  预留 61u + 安全区；同时把「返回」文字换成家族箭头并修掉全局 button 重置压掉边距的问题。
+- 员工工作台、员工邀请确认：接入底部五 tab（active 核销），ScrollView 尾部留 96u spacer。
+- 售后列表/详情共用 `MerchantAfterSaleShell`：接入底部五 tab（active 订单）；
+  `mas-page` 预留底部 61u + 安全区，详情固定操作栏落在 tab 之上。
+- 售后补证/意见半屏与图片预览的 z-index 抬到 40，避免固定 tab 穿透模态层；
+  退款拒绝半屏同样抬到 40。
+- 至此 M 端 25 个路由全部接入底部五 tab（工作台/订单/核销/消息/我的 五类 active）。
+- 证据：`impl-schedule.png`、`impl-staff-workbench.png`、`impl-staff-invitation.png`、
+  `impl-aftersale.png`。
+- 完整 658 测试、`tsc --noEmit`、`build:weapp` 通过。
