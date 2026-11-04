@@ -19,6 +19,9 @@
 .mwb-store-main { flex: 1; min-width: 0; height: calc(var(--mwb-unit) * 42); display: flex; flex-direction: column; justify-content: center; gap: calc(var(--mwb-unit) * 2); }
 .mwb-store-name { font-size: calc(var(--mwb-unit) * 16); line-height: calc(var(--mwb-unit) * 24); font-weight: 700; color: #111827; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .mwb-store-meta { font-size: calc(var(--mwb-unit) * 12); line-height: calc(var(--mwb-unit) * 16); color: #6b7280; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.mwb-store-meta-row { height: calc(var(--mwb-unit) * 16); display: flex; align-items: center; gap: calc(var(--mwb-unit) * 4); }
+.mwb-rating-star { font-size: calc(var(--mwb-unit) * 12); line-height: calc(var(--mwb-unit) * 16); font-weight: 600; color: #f59e0b; white-space: nowrap; }
+.mwb-rating-label { font-size: calc(var(--mwb-unit) * 12); line-height: calc(var(--mwb-unit) * 16); color: #6b7280; }
 .mwb-header-right { margin-left: auto; display: flex; align-items: center; gap: calc(var(--mwb-unit) * 10); flex: none; }
 .mwb-pill { width: calc(var(--mwb-unit) * 70); height: calc(var(--mwb-unit) * 28); border-radius: calc(var(--mwb-unit) * 999); background: #5baae8; display: flex; align-items: center; justify-content: center; gap: calc(var(--mwb-unit) * 6); flex: none; }
 .mwb-pill text { font-size: calc(var(--mwb-unit) * 12); line-height: calc(var(--mwb-unit) * 16); font-weight: 600; color: #fff; white-space: nowrap; }

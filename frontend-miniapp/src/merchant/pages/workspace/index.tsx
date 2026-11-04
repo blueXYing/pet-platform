@@ -388,7 +388,12 @@ export default function MerchantWorkbenchPage() {
         <View className='mwb-avatar'><Text>{initial}</Text></View>
         <View className='mwb-store-main'>
           <Text className='mwb-store-name'>{storeName}</Text>
-          <Text className='mwb-store-meta'>{owner ? '商家主账号' : staff ? '员工账号' : '商家工作台'}</Text>
+          {owner
+            ? <View className='mwb-store-meta-row'>
+                <Text className='mwb-rating-star'>★ {dash.reviewAvg ?? '--'}</Text>
+                <Text className='mwb-rating-label'>评分</Text>
+              </View>
+            : <Text className='mwb-store-meta'>{staff ? '员工账号' : '商家工作台'}</Text>}
         </View>
       </View>
       {ready && <View className='mwb-header-right'>

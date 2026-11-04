@@ -58,6 +58,7 @@ test('dashboard aggregates the five read routes into the workbench state', async
   assert.equal(state.pendingConfirm, 8)
   assert.equal(state.pendingService, 5)
   assert.equal(state.refunds, 1)
+  assert.equal(state.reviewAvg, '4.8')
   assert.equal(state.pending.length, 1)
   assert.equal(state.pending[0]?.orderId, '9001')
   assert.equal(state.profileReady, true)

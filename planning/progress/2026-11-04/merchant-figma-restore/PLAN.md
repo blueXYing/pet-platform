@@ -231,3 +231,22 @@
 - 证据：`impl-schedule.png`、`impl-staff-workbench.png`、`impl-staff-invitation.png`、
   `impl-aftersale.png`。
 - 完整 658 测试、`tsc --noEmit`、`build:weapp` 通过。
+
+## 13. 工作台 95:1899 逐块复核（2026-11-04）
+
+- 头部评分：接入 70号 `StatsOverview.reviewAvg`，显示「★ 4.8 评分」（无数据时「★ -- 评分」）；
+  移除原「商家主账号」文案，接近原稿「★ 5 评分」结构。
+- 纸张纹理确认：`paper-grid.jpg` 即原稿 `huaban-5913185224 1`（竖条+圆点），
+  非网格；Figma 画布上的网格是透明底预览，不是设计素材。
+- 当前仍无法在真实页显示完整首页的原因（非前端渲染缺陷）：
+  1. 未登录：`consumerApi.scope.current` 为空，工作台直接进入「请先登录后进入工作台」分支；
+  2. 当前 dist 是默认构建：`PET_MERCHANT_APPLICATION_ENABLED` 未开启、`PET_C_API_ORIGIN` 为空，
+     即使登录，商家准入客户端也会失败关闭；
+  3. 本机 18082 只是 Python 文件服务器，Java 后端未启动（Redis 6379 在，MySQL/18081 未见）。
+- 真实数据启动配方（沿用既有文档）：
+  `NODE_ENV=development PET_C_API_ORIGIN=http://127.0.0.1:18081 PET_ALLOW_LOCAL_HTTP=true PET_MERCHANT_APPLICATION_ENABLED=true PET_PRIVATE_MATERIAL_UPLOAD_ENABLED=true npm run build:weapp`
+  并先启动 MySQL/Redis + `mvn -pl pet-boot -am spring-boot:run`，再用真实测试账号完成 C 端登录。
+- 视觉验收仍可用 `merchant/pages/workspace/index?preview=1`，不依赖后端。
+- 仍属契约缺口的 Figma 视觉块：门店头像照片（只有 `avatarAssetId`，无展示 URL）、
+  待办卡的客户姓名/服务名（10号 §4.1 商家订单读侧无字段）。需要 CCR/后端扩展才能真实显示。
+- 证据：`evidence/impl-workspace-rating.png`。

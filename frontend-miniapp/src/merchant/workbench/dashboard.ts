@@ -31,6 +31,7 @@ export type WorkbenchDashboardState = Readonly<{
   pendingConfirm: number | null
   pendingService: number | null
   refunds: number | null
+  reviewAvg: string | null
   pending: readonly MerchantOrderSummary[]
   profileReady: boolean
   statsReady: boolean
@@ -42,7 +43,7 @@ const INITIAL: WorkbenchDashboardState = Object.freeze({
   phase: 'idle', notice: '',
   storeName: null, storeInitial: '商', businessStatus: null,
   revenue: null, revenueDelta: null, todayOrders: null,
-  pendingConfirm: null, pendingService: null, refunds: null, pending: [],
+  pendingConfirm: null, pendingService: null, refunds: null, reviewAvg: null, pending: [],
   profileReady: false, statsReady: false, ordersReady: false, refundsReady: false,
 })
 
@@ -122,6 +123,7 @@ export class MerchantWorkbenchDashboard {
       pendingConfirm: confirmPage?.total ?? null,
       pendingService: servicePage?.total ?? null,
       refunds: refundsPage?.total ?? null,
+      reviewAvg: statsView?.reviewAvg ?? null,
       pending: confirmPage?.items ?? [],
       profileReady: profileView !== null,
       statsReady: statsView !== null,
