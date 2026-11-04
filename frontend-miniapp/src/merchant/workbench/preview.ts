@@ -3,14 +3,22 @@
 
 import type { WorkbenchDashboardDeps } from './dashboard'
 import type {
-  StatsOverview, StatsServiceRow, StatsUtilization, StoreProfileView, TrendBucket,
+  CustomerDetail, CustomerPage, CustomerRow, PetView, StatsOverview, StatsServiceRow,
+  StatsUtilization, StoreProfileView, TrendBucket,
 } from '../../shared/merchant-storefront-api'
 import type { MerchantOrderPage, MerchantOrderSummary } from '../order/model'
 import type { MerchantOrderListDeps } from '../order/repository'
 import type { WorkspaceScope } from '../../shared/workspace'
+import type {
+  AppealReceipt, ReviewDetail, ReviewPage, ReviewSummary,
+} from '../../shared/review-appeal-api'
 import type { RefundApplicationDetail, RefundApplicationPage } from '../../shared/merchant-refund-api'
 import type { MerchantRefundDeps } from '../refund/repository'
 import type { MerchantStorefrontDeps } from '../storefront/repository'
+import type { MerchantReviewDeps } from '../review-appeal/repository'
+import type {
+  InvitationRow, InvitationsPage, MemberRow, MembersDeps, MembersPage,
+} from '../members/model'
 import { fixtureDeps } from '../admission'
 import { consumerApi } from '../../shared/consumer-runtime'
 
@@ -153,6 +161,28 @@ const previewUtilization: StatsUtilization = {
   availableMinutes: 2400, bookedMinutes: 1680, utilizationRate: '70.0',
 }
 
+const previewCustomers: readonly CustomerRow[] = [
+  {
+    userId: '9601', nickname: '李小姐', phoneMasked: '138****0000', orderCount: 6,
+    totalSpend: '1280.00', avgTicket: '213.33', lastVisitAt: iso(-2 * 24 * 60),
+    topPet: { petName: '豆豆', petType: 'CAT', breedName: '英短' },
+  },
+  {
+    userId: '9602', nickname: '王先生', phoneMasked: '139****0001', orderCount: 3,
+    totalSpend: '760.00', avgTicket: '253.33', lastVisitAt: iso(-5 * 24 * 60),
+    topPet: { petName: '球球', petType: 'DOG', breedName: '柯基' },
+  },
+]
+const previewPets: readonly PetView[] = [
+  { petName: '豆豆', petType: 'CAT', breedName: '英短' },
+  { petName: '年糕', petType: 'CAT', breedName: '布偶' },
+]
+const previewCustomerDetail: CustomerDetail = {
+  customer: previewCustomers[0]!,
+  pets: previewPets,
+  note: { content: '偏好下午到店；猫咪怕吹风机。', version: '1', updatedAt: iso(-24 * 60) },
+}
+
 export function previewStatsDeps(): MerchantStorefrontDeps {
   const admissionContext = {
     userId: '9007199254740993', workspace: 'merchant' as const,
@@ -167,8 +197,10 @@ export function previewStatsDeps(): MerchantStorefrontDeps {
     saveStoreProfile: impossible,
     retireProfileConflict: () => {},
     uploadStorePhoto: impossible,
-    customers: impossible,
-    customerDetail: impossible,
+    customers: async () => ({
+      page: 1, pageSize: 20, total: previewCustomers.length, items: previewCustomers,
+    } as CustomerPage),
+    customerDetail: async () => previewCustomerDetail,
     saveCustomerNote: impossible,
     retireNoteConflict: () => {},
     statsOverview: async range => ({ ...stats, range }),
@@ -176,5 +208,91 @@ export function previewStatsDeps(): MerchantStorefrontDeps {
     statsTrend: async range => ({ range, buckets: previewTrend }),
     statsServiceOrders: impossible,
     statsUtilization: async range => ({ ...previewUtilization, range }),
+  }
+}
+
+// 成员管理视觉验收样本（54号）：3 名成员 + 1 个待确认邀请，覆盖启用/停用。
+const previewMembers: readonly MemberRow[] = [
+  { merchantId: '9007199254740995', storeId: '9007199254740996', memberId: '9501',
+    memberName: '王小美', phoneMasked: '138****0001', memberStatus: 'ENABLED', grantStatus: 'ENABLED',
+    grantedActions: ['merchant.order.verify'], memberVersion: '1', grantVersion: '1' },
+  { merchantId: '9007199254740995', storeId: '9007199254740996', memberId: '9502',
+    memberName: '王往', phoneMasked: '138****0002', memberStatus: 'ENABLED', grantStatus: 'ENABLED',
+    grantedActions: ['merchant.order.verify'], memberVersion: '1', grantVersion: '1' },
+  { merchantId: '9007199254740995', storeId: '9007199254740996', memberId: '9503',
+    memberName: '李想', phoneMasked: '138****0003', memberStatus: 'DISABLED', grantStatus: 'ENABLED',
+    grantedActions: ['merchant.order.verify'], memberVersion: '1', grantVersion: '1' },
+]
+const previewInvitations: readonly InvitationRow[] = [
+  { merchantId: '9007199254740995', storeId: '9007199254740996', invitationId: '9551',
+    memberName: '赵敏', phoneMasked: '138****0004', status: 'INVITED', version: '1' },
+]
+
+export function previewMembersDeps(): MembersDeps {
+  return {
+    listMembers: async () => ({
+      items: previewMembers, page: 1, pageSize: 50, total: previewMembers.length,
+    } as MembersPage),
+    listInvitations: async () => ({
+      items: previewInvitations, page: 1, pageSize: 50, total: previewInvitations.length,
+    } as InvitationsPage),
+    invite: async (_slot, phone, memberName) => ({
+      merchantId: '9007199254740995', storeId: '9007199254740996', invitationId: '9552',
+      memberName, phoneMasked: phone.replace(/^(\d{3})\d{4}(\d{4})$/, '$1****$2'),
+      status: 'INVITED', version: '1',
+    }),
+    cancelInvitation: async (_slot, invitationId) => ({
+      ...previewInvitations[0]!, invitationId, status: 'CANCELED', version: '2',
+    }),
+    disableMember: async (_slot, memberId) => ({
+      ...previewMembers[0]!, memberId, memberStatus: 'DISABLED', memberVersion: '2',
+    }),
+    enableMember: async (_slot, memberId) => ({
+      ...previewMembers[0]!, memberId, memberStatus: 'ENABLED', memberVersion: '2',
+    }),
+  }
+}
+
+// 店铺评价视觉验收样本（56号）：三条评价覆盖未申诉/申诉中/低分。
+const previewReviews: readonly ReviewSummary[] = [
+  { reviewId: '9701', orderId: '9201', storeScore: '5.0', serviceScore: '5.0', staffScore: '4.0',
+    compositeScore: '4.8', scoreIncluded: true, visibilityStatus: 'PUBLISHED',
+    content: '服务很细致，猫咪洗完很蓬松，店员还提醒了下次驱虫时间。', createdAt: iso(-24 * 60),
+    appealStatus: null, appealId: null },
+  { reviewId: '9702', orderId: '9202', storeScore: '4.0', serviceScore: '4.0', staffScore: '4.0',
+    compositeScore: '4.0', scoreIncluded: true, visibilityStatus: 'PUBLISHED',
+    content: '预约准时，环境干净，狗狗剪完造型很可爱。', createdAt: iso(-3 * 24 * 60),
+    appealStatus: 'PROCESSING', appealId: '9802' },
+  { reviewId: '9703', orderId: '9203', storeScore: '2.0', serviceScore: '3.0', staffScore: '2.0',
+    compositeScore: '2.4', scoreIncluded: true, visibilityStatus: 'PUBLISHED',
+    content: '等待时间有点久，希望下次能更准时。', createdAt: iso(-7 * 24 * 60),
+    appealStatus: null, appealId: null },
+]
+const previewReviewDetail: ReviewDetail = {
+  ...previewReviews[0]!, appealReason: null, appealCreatedAt: null,
+  decisionReason: null, decidedAt: null,
+}
+
+export function previewReviewDeps(): MerchantReviewDeps {
+  const admissionContext = {
+    userId: '9007199254740993', workspace: 'merchant' as const,
+    merchantId: '9007199254740995', storeId: '9007199254740996',
+  }
+  return {
+    scope: consumerApi.scope,
+    admission: () => fixtureDeps('allowed').admission(
+      admissionContext, admissionContext.merchantId, admissionContext.storeId),
+    list: async () => ({
+      page: 1, pageSize: 20, total: previewReviews.length, items: previewReviews,
+    } as ReviewPage),
+    detail: async () => previewReviewDetail,
+    appeal: async (reviewId): Promise<AppealReceipt> => ({
+      appealId: '9801', reviewId, status: 'SUBMITTED', createdAt: iso(0),
+    }),
+    pendingAppeal: () => null,
+    retireConflict: () => {},
+    saveDraft: () => {},
+    loadDraft: () => '',
+    clearDraft: () => {},
   }
 }

@@ -1,5 +1,5 @@
 import { Button, Image, Input, ScrollView, Text, View } from '@tarojs/components'
-import Taro, { useDidShow } from '@tarojs/taro'
+import Taro, { useDidShow, useRouter } from '@tarojs/taro'
 import { useCallback, useEffect, useRef, useState, useSyncExternalStore, type CSSProperties } from 'react'
 import { useWorkspace } from '../../../shared/workspace-react'
 import { consumerApi } from '../../../shared/consumer-runtime'
@@ -10,6 +10,7 @@ import {
   memberStatusClass, memberStatusText,
   type InvitationRow, type MemberRow,
 } from '../../members/model'
+import { previewMembersDeps } from '../../workbench/preview'
 import { MerchantTabBar } from '../../components/tab-bar'
 import navBack from './assets/nav-back@2x.png'
 import './page.css'
@@ -22,10 +23,26 @@ import './page.css'
 // invite form exposes no action picker (D2: server-pinned catalog).
 
 export default function MerchantMembersPage() {
+  const route = useRouter()
+  const preview = route.params.preview === '1'
   const { scope, revision } = useWorkspace('real')
-  const [repository] = useState(() => new RealMembersRepository(consumerApi,
-    () => consumerApi.scope.current?.merchantId || '',
-    () => consumerApi.scope.current?.storeId || ''))
+  // ?preview=1：先注入商户坐标，再挂本地成员样本；真实路径不变。
+  useState(() => {
+    if (!preview) return false
+    const current = scope.current
+    if (!current || current.workspace !== 'merchant' || !current.merchantId || !current.storeId) {
+      scope.replace({
+        userId: '9007199254740993', workspace: 'merchant',
+        merchantId: '9007199254740995', storeId: '9007199254740996',
+      })
+    }
+    return true
+  })
+  const [repository] = useState(() => preview
+    ? previewMembersDeps()
+    : new RealMembersRepository(consumerApi,
+      () => consumerApi.scope.current?.merchantId || '',
+      () => consumerApi.scope.current?.storeId || ''))
   const [controller] = useState(() => new MembersController(repository))
   const state = useSyncExternalStore(controller.subscribe, controller.getSnapshot)
   const [notice, setNotice] = useState('')

@@ -1,23 +1,36 @@
 import { Button, Image, Input, Text, Textarea, View } from '@tarojs/components'
-import Taro, { useDidHide, useDidShow } from '@tarojs/taro'
+import Taro, { useDidHide, useDidShow, useRouter } from '@tarojs/taro'
 import { useEffect, useState, useSyncExternalStore, type CSSProperties } from 'react'
 import { consumerApi, consumerStorage } from '../../../shared/consumer-runtime'
 import { merchantStorefrontDeps } from '../../storefront/repository'
 import { ShopInfoController } from '../../storefront/shop-info-controller'
 import { businessStatusLabel, operatingLabel } from '../../storefront/model'
+import { previewStatsDeps } from '../../workbench/preview'
 import { MerchantTabBar } from '../../components/tab-bar'
 import navBack from '../aftersale/assets/nav-back@3x.png'
 import './page.css'
 
 /** Contract 27 §6.4 M face: the store coordinates come from the merchant workspace handoff. */
-function useShopInfo() {
+function useShopInfo(preview = false) {
+  // ?preview=1：先注入商户坐标，再用本地店铺资料样本；真实路径不变。
+  useState(() => {
+    if (!preview) return false
+    const current = consumerApi.scope.current
+    if (!current || current.workspace !== 'merchant' || !current.merchantId || !current.storeId) {
+      consumerApi.scope.replace({
+        userId: '9007199254740993', workspace: 'merchant',
+        merchantId: '9007199254740995', storeId: '9007199254740996',
+      })
+    }
+    return true
+  })
   const [controller] = useState(() => {
-    const context = consumerApi.scope.capture().context
-    if (context.workspace !== 'merchant' || !context.merchantId || !context.storeId) {
+    const context = consumerApi.scope.current
+    if (!context || context.workspace !== 'merchant' || !context.merchantId || !context.storeId) {
       throw new Error('MERCHANT_ENTRY_REQUIRED')
     }
     return new ShopInfoController(
-      merchantStorefrontDeps(consumerApi, consumerStorage),
+      preview ? previewStatsDeps() : merchantStorefrontDeps(consumerApi, consumerStorage),
       { merchantId: context.merchantId, storeId: context.storeId })
   })
   const state = useSyncExternalStore(controller.subscribe, controller.getSnapshot)
@@ -51,7 +64,9 @@ async function chooseImage(controller: ShopInfoController, mode: 'photo' | 'avat
 // 营业状态开关（营业中/休息中）+ 店铺照片/头像页内上传（STORE_PHOTO 私有资产管线）。
 // 资质类字段（营业执照/身份证件/商家类型/城市/定位）不开放变更（CCR 口径）。
 export default function MerchantShopInfoPage() {
-  const { controller, state, style } = useShopInfo()
+  const route = useRouter()
+  const preview = route.params.preview === '1'
+  const { controller, state, style } = useShopInfo(preview)
   const [info] = useState(() => Taro.getWindowInfo())
   const unit = info.windowWidth / 402
   const view = state.view

@@ -1,25 +1,38 @@
 import { Button, Image, ScrollView, Text, Textarea, View } from '@tarojs/components'
-import Taro, { useDidHide, useDidShow } from '@tarojs/taro'
+import Taro, { useDidHide, useDidShow, useRouter } from '@tarojs/taro'
 import { useEffect, useState, useSyncExternalStore, type CSSProperties } from 'react'
 import { consumerApi, consumerStorage } from '../../../shared/consumer-runtime'
 import { merchantStorefrontDeps } from '../../storefront/repository'
 import { CustomerDetailController } from '../../storefront/read-controllers'
 import { lastVisitLabel } from '../../storefront/model'
+import { previewStatsDeps } from '../../workbench/preview'
 import { MerchantTabBar } from '../../components/tab-bar'
 import navBack from '../aftersale/assets/nav-back@3x.png'
 import './page.css'
 
 /** Contract 69 detail face: the route carries the derived customer's userId only. */
-function useCustomerDetail() {
+function useCustomerDetail(preview = false) {
+  // ?preview=1：先注入商户坐标，再用本地客户详情样本；真实路径不变。
+  useState(() => {
+    if (!preview) return false
+    const current = consumerApi.scope.current
+    if (!current || current.workspace !== 'merchant' || !current.merchantId || !current.storeId) {
+      consumerApi.scope.replace({
+        userId: '9007199254740993', workspace: 'merchant',
+        merchantId: '9007199254740995', storeId: '9007199254740996',
+      })
+    }
+    return true
+  })
   const [controller] = useState(() => {
-    const context = consumerApi.scope.capture().context
-    if (context.workspace !== 'merchant' || !context.merchantId || !context.storeId) {
+    const context = consumerApi.scope.current
+    if (!context || context.workspace !== 'merchant' || !context.merchantId || !context.storeId) {
       throw new Error('MERCHANT_ENTRY_REQUIRED')
     }
     const userId = Taro.getCurrentInstance().router?.params?.userId ?? ''
     if (!/^[1-9][0-9]{0,18}$/.test(userId)) throw new Error('INVALID_CUSTOMER_ID')
     return new CustomerDetailController(
-      merchantStorefrontDeps(consumerApi, consumerStorage),
+      preview ? previewStatsDeps() : merchantStorefrontDeps(consumerApi, consumerStorage),
       { merchantId: context.merchantId, storeId: context.storeId }, userId)
   })
   const state = useSyncExternalStore(controller.subscribe, controller.getSnapshot)
@@ -47,7 +60,9 @@ async function jumpTo(page: string) {
 // 品种级列表 + 商家内部备注（单客户一条 ≤200 字，OWNER 写、幂等、版本）+ 订单/评价只读跳转入口。
 // 隐私红线不变：体重/疫苗/驱虫/健康备注等健康字段不外显，无明文手机号。
 export default function MerchantCustomerDetailPage() {
-  const { controller, state, style } = useCustomerDetail()
+  const route = useRouter()
+  const preview = route.params.preview === '1'
+  const { controller, state, style } = useCustomerDetail(preview)
   const [info] = useState(() => Taro.getWindowInfo())
   const unit = info.windowWidth / 402
   const detail = state.detail
@@ -65,8 +80,11 @@ export default function MerchantCustomerDetailPage() {
     </View> : <ScrollView className='mcu-list' scrollY enhanced showScrollbar={false}>
       <View className='mcu-card'>
         <View className='mcu-line mcu-card-head'>
-          <Text className='mcu-name'>{customer.nickname ?? '未命名用户'}</Text>
-          <Text className='mcu-phone'>{customer.phoneMasked ?? '未绑定手机号'}</Text>
+          <View className='mcu-avatar'><Text>{Array.from(customer.nickname ?? '客')[0] ?? '客'}</Text></View>
+          <View className='mcu-identity'>
+            <Text className='mcu-name'>{customer.nickname ?? '未命名用户'}</Text>
+            <Text className='mcu-phone'>{customer.phoneMasked ?? '未绑定手机号'}</Text>
+          </View>
           <Text className='mcu-visit'>{lastVisitLabel(customer.lastVisitAt, new Date())}到店</Text>
         </View>
         <View className='mcu-metrics mcu-metrics-row'>
