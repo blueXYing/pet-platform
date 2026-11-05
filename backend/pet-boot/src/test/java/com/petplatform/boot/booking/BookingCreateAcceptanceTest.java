@@ -884,7 +884,9 @@ class BookingCreateAcceptanceTest {
                 "49-Refund-Application-Schema-v0.1.sql",
                 // Contract-63 v0.2 disposal audit tables (33号 ruling); production runs the
                 // same DDL as the opt-in V32 admin-trade migration, never on startup.
-                "63-Admin-Trade-Disposition-Schema-v0.1.sql");
+                "63-Admin-Trade-Disposition-Schema-v0.1.sql",
+                // CCR-PAY-CENTER-001 stage 1: payment_order biz/settle/log columns (requires 40/41).
+                "75-Payment-Center-Schema-v0.1.sql");
         private final String name = "qa_booking_" + UUID.randomUUID().toString().replace("-", "");
         private final JdbcTemplate admin;
         final DataSource source;

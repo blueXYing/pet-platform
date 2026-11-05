@@ -126,3 +126,42 @@ pet:
       c:
         http:
           enabled: ${COUPON_CAMPAIGN_C_HTTP_ENABLED:false}
+  # CCR-PAY-CENTER-001 stage 1 payment foundation + Lakala channel. Every switch is OFF by default and
+  # every credential is a path/placeholder read from the environment (see ops/payment-center.env.example).
+  # Never commit real credentials, test keys or SM4 keys. Empty platform.* means "not configured".
+  payment:
+    foundation:
+      enabled: ${PAYMENT_FOUNDATION_ENABLED:false}
+    dispatch:
+      enabled: ${PAYMENT_DISPATCH_ENABLED:false}
+      # SIT or PRODUCTION (enum names; "PROD" is not accepted). No default: empty fails dispatch startup.
+      environment: ${LAKALA_ENV:}
+      app-id: ${LAKALA_APP_ID:}
+      merchant-serial: ${LAKALA_MERCHANT_SERIAL_NO:}
+      merchant-private-key-path: ${LAKALA_MERCHANT_PRIVATE_KEY_PATH:}
+      platform-serial: ${LAKALA_PLATFORM_CERT_SERIAL:}
+      platform-certificate-path: ${LAKALA_PLATFORM_CERT_PATH:}
+      parameter-key-path: ${PAYMENT_PARAM_AES_KEY_PATH:}
+      out-org-code: ${LAKALA_OUT_ORG_CODE:}
+      subject: ${LAKALA_SUBJECT:}
+      request-ip: ${LAKALA_REQUEST_IP:}
+      notify-url: ${LAKALA_PAY_NOTIFY_URL:}
+    lakala:
+      notification-certificate-path: ${LAKALA_NOTIFY_CERT_PATH:}
+      channel-time-zone: ${LAKALA_CHANNEL_TIMEZONE:}
+      # preorder settle_type persisted per payment row: 1 = split-ledger, 0 = ordinary settlement.
+      # Default 0 until stage 2 split-ledger ships (PLAN Q2 unanswered); SIT sets LAKALA_SETTLE_TYPE=1 explicitly.
+      settle-type: ${LAKALA_SETTLE_TYPE:0}
+      platform:
+        merchant-no: ${LAKALA_MERCHANT_NO:}
+        term-no: ${LAKALA_TERM_NO:}
+        sub-app-id: ${WECHAT_MINI_APP_ID:}
+    # Contract 75 §8 payment center (PaymentCenterConfiguration). All OFF; no HTTP is registered.
+    # DEMO is test-only and fails startup unless pet.payment.dispatch.environment is SIT.
+    center:
+      enabled: ${PAYMENT_CENTER_ENABLED:false}
+      worker:
+        enabled: ${PAYMENT_CENTER_WORKER_ENABLED:false}
+      demo:
+        enabled: ${PAYMENT_CENTER_DEMO_ENABLED:false}
+        max-amount: ${PAYMENT_CENTER_DEMO_MAX_AMOUNT:0.01}

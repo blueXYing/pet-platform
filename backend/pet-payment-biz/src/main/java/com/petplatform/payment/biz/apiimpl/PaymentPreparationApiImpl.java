@@ -18,8 +18,17 @@ public final class PaymentPreparationApiImpl implements PaymentPreparationApi {
     private final DataSource source; private final SnowflakeIdGenerator ids; private final ScheduleCapacityGuardApi guard;
     private final OrderPaymentFactsApi orders; private final BookingUserFactsApi users; private final PaymentMerchantBindings bindings;
     private final PaymentFoundationStore store; private final TransactionTemplate tx;
+    private final String settleType;
+    /** Legacy constructor: ordinary settlement ("0"), identical to the behaviour before settle_type existed. */
     public PaymentPreparationApiImpl(DataSource source,SnowflakeIdGenerator ids,ScheduleCapacityGuardApi guard,
             OrderPaymentFactsApi orders,BookingUserFactsApi users,PaymentMerchantBindings bindings){
+        this(source,ids,guard,orders,users,bindings,"0");
+    }
+    /** @param settleType "0" ordinary settlement (not sent to the channel) or "1" split-ledger; anything else fails construction. */
+    public PaymentPreparationApiImpl(DataSource source,SnowflakeIdGenerator ids,ScheduleCapacityGuardApi guard,
+            OrderPaymentFactsApi orders,BookingUserFactsApi users,PaymentMerchantBindings bindings,String settleType){
+        if(!"0".equals(settleType)&&!"1".equals(settleType))throw new IllegalArgumentException("settleType must be 0 or 1");
+        this.settleType=settleType;
         this.source=source;this.ids=ids;this.guard=guard;this.orders=orders;this.users=users;this.bindings=bindings;
         store=new PaymentFoundationStore(source);tx=new TransactionTemplate(new DataSourceTransactionManager(source));
         tx.setIsolationLevel(TransactionDefinition.ISOLATION_READ_COMMITTED);tx.setTimeout(15);
@@ -63,7 +72,7 @@ public final class PaymentPreparationApiImpl implements PaymentPreparationApi {
                 var binding=bindings.require(order.merchantId(),storeId);
                 if(binding==null || !valid(binding.merchantNo(),32) || !valid(binding.termNo(),32) || !valid(binding.subAppId(),64))throw unavailable();
                 long paymentId=nextId(),paymentNo=nextId();
-                store.mapper.insertPayment(PaymentFoundationStore.values("id",paymentId,"paymentNo",paymentNo,"orderId",id(c.orderId()),"amount",order.payAmount(),"expires",PaymentFoundationStore.utc(order.paymentExpireAt()),"storeId",id(storeId),"merchantId",id(order.merchantId()),"userId",id(order.userId()),"merchantNo",binding.merchantNo(),"termNo",binding.termNo(),"subAppId",binding.subAppId()));
+                store.mapper.insertPayment(PaymentFoundationStore.values("id",paymentId,"paymentNo",paymentNo,"orderId",id(c.orderId()),"amount",order.payAmount(),"expires",PaymentFoundationStore.utc(order.paymentExpireAt()),"storeId",id(storeId),"merchantId",id(order.merchantId()),"userId",id(order.userId()),"merchantNo",binding.merchantNo(),"termNo",binding.termNo(),"subAppId",binding.subAppId(),"settleType",settleType));
                 store.mapper.insertPreparedDispatch(paymentId);
                 store.mapper.bindIntent(paymentId,key);
                 return result(store.byId(paymentId,true),false);

@@ -136,8 +136,8 @@ public final class PaymentDispatchService implements PaymentInitiationApi, Payme
             verified = channel.submitPreorder(new LakalaProtocol.PreorderInput(settings.outOrgCode(),
                     plan.requestTime(), plan.merchantNo(), plan.termNo(), plan.paymentNo(),
                     plan.amount(), settings.subject(), plan.subAppId(), plan.openId(),
-                    settings.requestIp(), settings.notifyUrl(), plan.timeoutMinutes()),
-                    nonce());
+                    settings.requestIp(), settings.notifyUrl(), plan.timeoutMinutes(),
+                    plan.settleType()), nonce());
         } catch (RuntimeException uncertain) {
             markUnknown(plan.paymentId(), storeId, actor);
             throw unavailable();
@@ -228,7 +228,8 @@ public final class PaymentDispatchService implements PaymentInitiationApi, Payme
             LakalaProtocol.preparePreorder(new LakalaProtocol.PreorderInput(settings.outOrgCode(),
                     requestTime, payment.merchantNo(), payment.termNo(), Long.toString(payment.no()),
                     payment.amount(), settings.subject(), payment.subAppId(), identity.openId(),
-                    settings.requestIp(), settings.notifyUrl(), timeoutMinutes));
+                    settings.requestIp(), settings.notifyUrl(), timeoutMinutes,
+                    channelSettleType(payment)));
         } catch (RuntimeException malformed) { throw unavailable(); }
         int changed = payments.mapper.markMayHaveSent(PaymentFoundationStore.values(
                 "requestTime",requestTime,"tradeDate",tradeDate,"timeoutMinutes",timeoutMinutes,
@@ -236,7 +237,12 @@ public final class PaymentDispatchService implements PaymentInitiationApi, Payme
         if (changed != 1) throw unavailable();
         return new Plan(paymentId, Long.toString(payment.no()), payment.merchantNo(),
                 payment.termNo(), payment.subAppId(), payment.amount(), identity.openId(),
-                requestTime, timeoutMinutes);
+                requestTime, timeoutMinutes, channelSettleType(payment));
+    }
+
+    /** The persisted row value is the only source: "1" is sent, "0"/NULL (historical rows) keep the legacy request bytes. */
+    private static String channelSettleType(PaymentFoundationStore.Row payment) {
+        return "1".equals(payment.settleType()) ? "1" : null;
     }
 
     private void queryForRecovery(Recovery p) {
@@ -614,7 +620,7 @@ public final class PaymentDispatchService implements PaymentInitiationApi, Payme
     private record Replay(InitiatedPayment payment) implements Start {}
     private record Plan(String paymentId,String paymentNo,String merchantNo,String termNo,
             String subAppId,BigDecimal amount,String openId,LocalDateTime requestTime,
-            int timeoutMinutes) implements Start {
+            int timeoutMinutes,String settleType) implements Start {
         @Override public String toString() { return "Plan[redacted]"; }
     }
     private record Recovery(long paymentId,long paymentNo,String merchantNo,String termNo,

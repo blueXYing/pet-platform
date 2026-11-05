@@ -46,6 +46,17 @@ public final class LakalaProtocol {
     private static final DateTimeFormatter REQUEST_TIME = DateTimeFormatter
             .ofPattern("uuuuMMddHHmmss").withResolverStyle(ResolverStyle.STRICT);
     private static final DateTimeFormatter REQUEST_DATE = DateTimeFormatter.BASIC_ISO_DATE;
+    private static final DateTimeFormatter LOG_DATE = DateTimeFormatter
+            .ofPattern("uuuuMMdd").withResolverStyle(ResolverStyle.STRICT);
+    private static final Pattern LOG_NO = Pattern.compile("[0-9A-Za-z]{1,32}");
+    /**
+     * Reconciliation trace field names for the 1111 query and 1112 trade-notice responses.
+     * PENDING SIT VERIFICATION: the 1111/1112 documents are not available locally. The names
+     * are taken from the identically named fields in 1293/1296/2396 (log_no String(14),
+     * log_date yyyyMMdd). They are parsed as optional values only and never gate payment state.
+     */
+    private static final String LOG_NO_FIELD = "log_no";
+    private static final String LOG_DATE_FIELD = "log_date";
     private static final String SUCCESS_CODE = "BBS00000";
     private static final Set<String> NOTICE_STATES = Set.of("INIT", "CREATE", "SUCCESS", "FAIL",
             "DEAL", "UNKNOWN", "CLOSE", "PART_REFUND", "REFUND", "REVOKED");
@@ -69,13 +80,26 @@ public final class LakalaProtocol {
     /** A local wall-clock value: the channel document does not specify a timezone. */
     public record NotificationReceipt(String merchantNo, String outTradeNo,
             String channelTradeNo, TradeState tradeStatus, long totalAmountCents,
-            Long payerAmountCents, LocalDateTime channelTradeTime, String accountType) {
+            Long payerAmountCents, LocalDateTime channelTradeTime, String accountType,
+            String logNo, LocalDate logDate) {
+        public NotificationReceipt(String merchantNo, String outTradeNo, String channelTradeNo,
+                TradeState tradeStatus, long totalAmountCents, Long payerAmountCents,
+                LocalDateTime channelTradeTime, String accountType) {
+            this(merchantNo, outTradeNo, channelTradeNo, tradeStatus, totalAmountCents,
+                    payerAmountCents, channelTradeTime, accountType, null, null);
+        }
         public boolean isSuccess() { return TradeState.SUCCESS == tradeStatus; }
     }
 
     public record QueryResult(String merchantNo, String outTradeNo, String channelTradeNo,
             TradeState tradeState, long totalAmountCents, Long payerAmountCents,
-            LocalDateTime channelTradeTime, String accountType) {
+            LocalDateTime channelTradeTime, String accountType, String logNo, LocalDate logDate) {
+        public QueryResult(String merchantNo, String outTradeNo, String channelTradeNo,
+                TradeState tradeState, long totalAmountCents, Long payerAmountCents,
+                LocalDateTime channelTradeTime, String accountType) {
+            this(merchantNo, outTradeNo, channelTradeNo, tradeState, totalAmountCents,
+                    payerAmountCents, channelTradeTime, accountType, null, null);
+        }
         public boolean isSuccess() { return TradeState.SUCCESS == tradeState; }
     }
 
@@ -97,13 +121,20 @@ public final class LakalaProtocol {
     public record PreorderInput(String outOrgCode, LocalDateTime requestTime,
             String merchantNo, String termNo, String outTradeNo, BigDecimal amount,
             String subject, String subAppId, String userId, String requestIp, String notifyUrl,
-            Integer timeoutExpressMinutes) {
+            Integer timeoutExpressMinutes, String settleType) {
         public PreorderInput(String outOrgCode, LocalDateTime requestTime,
                 String merchantNo, String termNo, String outTradeNo, BigDecimal amount,
                 String subject, String subAppId, String userId, String requestIp,
                 String notifyUrl) {
             this(outOrgCode, requestTime, merchantNo, termNo, outTradeNo, amount, subject,
-                    subAppId, userId, requestIp, notifyUrl, null);
+                    subAppId, userId, requestIp, notifyUrl, null, null);
+        }
+        public PreorderInput(String outOrgCode, LocalDateTime requestTime,
+                String merchantNo, String termNo, String outTradeNo, BigDecimal amount,
+                String subject, String subAppId, String userId, String requestIp,
+                String notifyUrl, Integer timeoutExpressMinutes) {
+            this(outOrgCode, requestTime, merchantNo, termNo, outTradeNo, amount, subject,
+                    subAppId, userId, requestIp, notifyUrl, timeoutExpressMinutes, null);
         }
         @Override public String toString() { return "PreorderInput[redacted]"; }
     }
@@ -130,6 +161,13 @@ public final class LakalaProtocol {
         data.put("location_info", Map.of("request_ip", ip(input.requestIp())));
         data.put("subject", required(input.subject(), 42, "subject"));
         data.put("notify_url", required(input.notifyUrl(), 128, "notify_url"));
+        // 1075: absent or "0" = ordinary settlement; "1" = settlement with profit sharing.
+        // Absent and "0" are both omitted so legacy request bytes stay unchanged.
+        String settle = input.settleType();
+        if (settle != null && !"0".equals(settle)) {
+            if (!"1".equals(settle)) invalid();
+            data.put("settle_type", "1");
+        }
         data.put("acc_busi_fields", Map.of(
                 "sub_appid", required(input.subAppId(), 32, "sub_appid"),
                 "user_id", required(input.userId(), 64, "user_id")));
@@ -218,9 +256,10 @@ public final class LakalaProtocol {
         if (total != expected.expectedTotalCents()) invalid();
         Long payer = amountOptional(data, "payer_amount", TradeState.SUCCESS == state);
         if (payer != null && payer > total) invalid();
+        Trace trace = collectTrace(data);
         return new NotificationReceipt(merchant, out, field(data, "trade_no", 32), state,
                 total, payer, tradeTime(data, "trade_time", TradeState.SUCCESS == state),
-                wallet(data, "account_type"));
+                wallet(data, "account_type"), trace.logNo(), trace.logDate());
     }
 
     /** A BBS00000 query means found; only resp_data.trade_state is the payment outcome. */
@@ -237,9 +276,10 @@ public final class LakalaProtocol {
         if (total != expected.expectedTotalCents()) invalid();
         Long payer = amountOptional(data, "payer_amount", TradeState.SUCCESS == state);
         if (payer != null && payer > total) invalid();
+        Trace trace = collectTrace(data);
         return new QueryResult(merchant, out, field(data, "trade_no", 32), state, total,
                 payer, tradeTime(data, "trade_time", TradeState.SUCCESS == state),
-                wallet(data, "account_type"));
+                wallet(data, "account_type"), trace.logNo(), trace.logDate());
     }
 
     public static PreorderResult verifyPreorderResponse(Map<String, String> headers, byte[] rawBody,
@@ -275,6 +315,30 @@ public final class LakalaProtocol {
         if (!out.equals(required(expectedOutTradeNo, 32, "origin_out_trade_no"))) invalid();
         return new CloseAcknowledgement(out, field(data, "origin_trade_no", 32),
                 tradeTime(data, "trade_time", true));
+    }
+
+    private record Trace(String logNo, LocalDate logDate) {}
+
+    /**
+     * Optional reconciliation trace. Both values must be present and well formed, otherwise both
+     * are null. Never throws: a missing or malformed trace must not change the payment outcome.
+     */
+    private static Trace collectTrace(JsonNode data) {
+        JsonNode no = data.get(LOG_NO_FIELD);
+        JsonNode date = data.get(LOG_DATE_FIELD);
+        if (no == null || date == null || !no.isTextual() || !date.isTextual()) {
+            return new Trace(null, null);
+        }
+        String logNo = no.textValue();
+        String logDate = date.textValue();
+        if (!LOG_NO.matcher(logNo).matches() || !logDate.matches("[0-9]{8}")) {
+            return new Trace(null, null);
+        }
+        try {
+            return new Trace(logNo, LocalDate.parse(logDate, LOG_DATE));
+        } catch (DateTimeParseException failure) {
+            return new Trace(null, null);
+        }
     }
 
     private static JsonNode successData(byte[] rawBody) {

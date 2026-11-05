@@ -388,7 +388,8 @@ class PaymentRefundServiceMySqlTest {
                 if (root == null) throw new IllegalStateException("schema root absent");
                 for (String file : List.of("06-核心数据库Schema-v0.1.sql",
                         "40-Payment-Foundation-Schema-v0.1.sql",
-                        "43-Payment-Refund-Dispatch-Schema-v0.1.sql")) {
+                        "43-Payment-Refund-Dispatch-Schema-v0.1.sql",
+                        "75-Payment-Center-Schema-v0.1.sql")) {
                     ScriptUtils.executeSqlScript(connection, new EncodedResource(new FileSystemResource(
                             root.resolve("docs/03-database").resolve(file)), StandardCharsets.UTF_8));
                 }
