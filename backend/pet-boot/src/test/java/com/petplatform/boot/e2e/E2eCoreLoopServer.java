@@ -1399,7 +1399,9 @@ public final class E2eCoreLoopServer {
         "68-Pet-Health-Record-Schema-v0.1.sql",
         // CCR-MKT-001/002/003 marketing center + home blocks and CCR-COM-001 community.
         "63-Marketing-Storage-v0.1.sql",
-        "64-Community-Storage-v0.1.sql"));
+        "64-Community-Storage-v0.1.sql",
+        // CCR-PAY-CENTER-001 stage 1: payment_order biz/settle/log columns (requires 40/41).
+        "75-Payment-Center-Schema-v0.1.sql"));
     try (var connection = source.getConnection()) {
       for (String file : scripts) {
         ScriptUtils.executeSqlScript(connection, new EncodedResource(

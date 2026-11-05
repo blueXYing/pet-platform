@@ -38,7 +38,8 @@ public final class PaymentFoundationStore {
             BigDecimal amount, String status, LocalDateTime expires, String merchantNo,
             String termNo, String subAppId, String currency, String dispatchState,
             String tradeNo, BigDecimal paidAmount, LocalDateTime paidAt, Long successEventId,
-            String channel) {}
+            String channel, String bizType, String bizNo, String settleType, String logNo,
+            LocalDate logDate) {}
 
     public record IntentBinding(long orderId, long userId) {}
 

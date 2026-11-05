@@ -31,6 +31,7 @@ public interface PaymentFoundationMapper {
     int insertReceipt(Map<String, Object> p);
     int markReconciliation(Map<String, Object> p);
     int markPaid(Map<String, Object> p);
+    int fillCollectTrace(Map<String, Object> p);
     int markObserved(Map<String, Object> p);
 
     Dispatch selectDispatchForUpdate(@Param("paymentId") long paymentId);

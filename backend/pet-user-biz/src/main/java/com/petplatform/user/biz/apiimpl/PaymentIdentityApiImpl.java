@@ -37,22 +37,7 @@ public final class PaymentIdentityApiImpl implements PaymentIdentityApi {
                     || !userId.equals(context.operatorId())) throw forbidden();
             if (!valid(appId)) throw invalid();
             guard.requireHeld(storeId, source);
-
-            List<String> accounts = auth.bookingAccountStatus(id, true);
-            if (accounts.size() != 1) throw unavailable();
-            if (!"ACTIVE".equals(accounts.getFirst())) {
-                if ("FROZEN".equals(accounts.getFirst()) || "CANCELED".equals(accounts.getFirst()))
-                    throw forbidden();
-                throw unavailable();
-            }
-
-            // Read all types for this exact appId so a conflicting type cannot be ignored.
-            List<UserAuthStore.PaymentIdentityRow> identities = auth.lockPaymentIdentities(id, appId);
-            if (identities.size() != 1) throw unavailable();
-            UserAuthStore.PaymentIdentityRow identity = identities.getFirst();
-            if (!"WECHAT_MINI".equals(identity.type()) || !appId.equals(identity.appId())
-                    || !valid(identity.openId())) throw unavailable();
-            return new PaymentIdentity(identity.appId(), identity.openId());
+            return lockedIdentity(id, appId);
         } catch (ApiException known) {
             rollback();
             throw known;
@@ -63,6 +48,48 @@ public final class PaymentIdentityApiImpl implements PaymentIdentityApi {
             rollback();
             throw unavailable();
         }
+    }
+
+    /** Contract 75 §4.1 store-less variant for the payment center: same USER checks, no store guard. */
+    @Override public PaymentIdentity requireCurrentPaymentIdentity(String userId, String appId,
+            QueryContext context) {
+        try {
+            long id = IDS.fromApi(userId);
+            if (context == null || context.operatorType() != OperatorType.USER
+                    || !userId.equals(context.operatorId())) throw forbidden();
+            if (!valid(appId)) throw invalid();
+            // The USER rows below are locked; that only serializes inside the caller's transaction.
+            if (!(TransactionSynchronizationManager.getResource(source) instanceof ConnectionHolder holder)
+                    || !holder.isSynchronizedWithTransaction()) throw unavailable();
+            return lockedIdentity(id, appId);
+        } catch (ApiException known) {
+            rollback();
+            throw known;
+        } catch (IllegalArgumentException malformed) {
+            rollback();
+            throw invalid();
+        } catch (RuntimeException failure) {
+            rollback();
+            throw unavailable();
+        }
+    }
+
+    private PaymentIdentity lockedIdentity(long id, String appId) {
+        List<String> accounts = auth.bookingAccountStatus(id, true);
+        if (accounts.size() != 1) throw unavailable();
+        if (!"ACTIVE".equals(accounts.getFirst())) {
+            if ("FROZEN".equals(accounts.getFirst()) || "CANCELED".equals(accounts.getFirst()))
+                throw forbidden();
+            throw unavailable();
+        }
+
+        // Read all types for this exact appId so a conflicting type cannot be ignored.
+        List<UserAuthStore.PaymentIdentityRow> identities = auth.lockPaymentIdentities(id, appId);
+        if (identities.size() != 1) throw unavailable();
+        UserAuthStore.PaymentIdentityRow identity = identities.getFirst();
+        if (!"WECHAT_MINI".equals(identity.type()) || !appId.equals(identity.appId())
+                || !valid(identity.openId())) throw unavailable();
+        return new PaymentIdentity(identity.appId(), identity.openId());
     }
 
     private static boolean valid(String value) {

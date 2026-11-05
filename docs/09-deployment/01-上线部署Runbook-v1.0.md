@@ -215,6 +215,16 @@ for f in \
 done
 ```
 
+**支付中心增量（2026-11-05 起，CCR-PAY-CENTER-001 阶段 1，生产共享库执行）**：
+
+必须在 40/41 号支付 Schema 之后、**部署包含 PR #210 的代码之前**执行。代码会读取 `payment_order` 的新列，未执行时订单支付查询报未知列。
+只执行 `75-Payment-Center-Schema-v0.1.sql`；`75-Payment-Center-Demo-Schema-v0.1.sql` 是 DEMO 测试表，**生产不执行**（不要用 `ls docs/03-database/75-*.sql` 通配）。
+
+```bash
+cd <PLACEHOLDER:仓库检出目录>
+mysql -h <PLACEHOLDER:DB_HOST> -u <PLACEHOLDER:业务账号> -p pet_platform < "docs/03-database/75-Payment-Center-Schema-v0.1.sql"
+```
+
 - `63` 依赖 SQL27 的 `merchant_store_profile`；`64` 依赖用户/素材基础表。
 - `70` 给 `service_category` 加字典列并回填 11 个 code；`72` 是同一套 11 类初始字典种子（生产/测试共用，幂等；生产已有行时跳过）。
 - `71` 给营销投放位/首页内容位补 `HOT_SERVICE_TOP`/`HOT_SERVICE` CHECK；`V36` 是同一变更的存量库 Flyway 版本。

@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<!-- Test-only DEMO business owner (Contract 75 §7, SQL75-Demo). -->
+<mapper namespace="com.petplatform.payment.biz.infrastructure.persistence.mapper.PaymentDemoMapper">
+  <!-- Order must match PaymentDemoStore.DemoRow. -->
+  <sql id="demoColumns">id,demo_no,user_id,amount,status,payment_id,paid_amount,paid_at,source_event_id,created_at</sql>
+
+  <insert id="insertDemo">
+    INSERT INTO payment_demo_order(id,demo_no,request_key,user_id,amount,status,created_at,updated_at)
+    VALUES(#{id},#{demoNo},#{key},#{userId},#{amount},'CREATED',UTC_TIMESTAMP(3),UTC_TIMESTAMP(3))
+    ON DUPLICATE KEY UPDATE id=id
+  </insert>
+  <select id="selectDemoByRequestForUpdate" resultType="com.petplatform.payment.biz.infrastructure.persistence.PaymentDemoStore$DemoRow">
+    SELECT <include refid="demoColumns"/> FROM payment_demo_order WHERE request_key=#{key} FOR UPDATE
+  </select>
+  <select id="selectDemoByNoForUpdate" resultType="com.petplatform.payment.biz.infrastructure.persistence.PaymentDemoStore$DemoRow">
+    SELECT <include refid="demoColumns"/> FROM payment_demo_order WHERE demo_no=#{demoNo} FOR UPDATE
+  </select>
+  <!-- One-way CAS from CREATED; a replayed or second event never rewrites the confirmation. -->
+  <update id="markDemoResult">
+    UPDATE payment_demo_order SET status=#{status},payment_id=#{paymentId},paid_amount=#{paidAmount},
+      paid_at=#{paidAt},source_event_id=#{eventId},version=version+1,updated_at=UTC_TIMESTAMP(3)
+    WHERE id=#{id} AND status='CREATED' AND source_event_id IS NULL
+  </update>
+</mapper>

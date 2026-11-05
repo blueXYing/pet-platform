@@ -64,7 +64,7 @@ public final class PaymentNotificationService {
             var notice=new PaymentReceiptVerifier.VerifiedNotice(result.merchantNo(),result.outTradeNo(),
                     result.channelTradeNo(),result.tradeState().name(),java.math.BigDecimal.valueOf(result.totalAmountCents(),2),
                     result.payerAmountCents()==null?null:java.math.BigDecimal.valueOf(result.payerAmountCents(),2),
-                    result.channelTradeTime(),result.accountType());
+                    result.channelTradeTime(),result.accountType(),result.logNo(),result.logDate());
             validateNotice(notice,hint);
             String digest=HexFormat.of().formatHex(MessageDigest.getInstance("SHA-256").digest(
                     ("QUERY\0"+query.responseSha256()).getBytes(StandardCharsets.US_ASCII)));
@@ -82,6 +82,9 @@ public final class PaymentNotificationService {
                         || !row.termNo().equals(hint.termNo()) || !row.subAppId().equals(hint.subAppId()))throw unavailable();
                 validateNotice(notice,row);
                 OffsetDateTime now=store.now();
+                // The two trace columns are a DB-checked pair; a half-present trace is treated as absent.
+                boolean trace=notice.logNo()!=null&&notice.logDate()!=null;
+                String logNo=trace?notice.logNo():null;LocalDate logDate=trace?notice.logDate():null;
                 OffsetDateTime paidAt=channelTime(notice.channelTradeTime());
                 if("SUCCESS".equals(notice.status())&&(paidAt==null||paidAt.isAfter(now)))throw unavailable();
                 boolean duplicate=store.mapper.countReceiptByDigest(row.id(),digest)>0;
@@ -105,12 +108,19 @@ public final class PaymentNotificationService {
                         PaymentFoundationStore.values("now",PaymentFoundationStore.utc(now),"paymentId",row.id()));
                     return new ReceiptResult(Long.toString(row.id()),duplicate,"PAID".equals(row.status()));
                 }
-                if("PAID".equals(row.status()))return new ReceiptResult(Long.toString(row.id()),true,true);
+                if("PAID".equals(row.status())){
+                    // Late collect trace for a payment already marked PAID without it: fill once, never overwrite.
+                    if("SUCCESS".equals(notice.status())&&trace
+                            &&row.logNo()==null&&row.logDate()==null)store.mapper.fillCollectTrace(PaymentFoundationStore.values(
+                        "logNo",logNo,"logDate",logDate,"now",PaymentFoundationStore.utc(now),"paymentId",row.id()));
+                    return new ReceiptResult(Long.toString(row.id()),true,true);
+                }
                 if("SUCCESS".equals(notice.status())){
                     long eventId=nextId();
                     store.mapper.markPaid(PaymentFoundationStore.values("tradeNo",notice.channelTradeNo(),
                         "paidAmount",notice.paidAmount(),"paidAt",PaymentFoundationStore.utc(paidAt),
-                        "eventId",eventId,"now",PaymentFoundationStore.utc(now),"paymentId",row.id()));
+                        "eventId",eventId,"now",PaymentFoundationStore.utc(now),"paymentId",row.id(),
+                        "logNo",logNo,"logDate",logDate));
                     publisher.publish(new IntegrationEvent<>(Long.toString(eventId),"PaymentSucceededEvent.v1",1,now,"PAYMENT",Long.toString(row.id()),null,
                         Map.of("paymentOrderId",Long.toString(row.id()),"orderId",Long.toString(row.orderId()),"channelTradeNo",notice.channelTradeNo(),"paidAmount",notice.paidAmount(),"paidAt",paidAt.toString())));
                     return new ReceiptResult(Long.toString(row.id()),false,true);
