@@ -83,7 +83,7 @@ Eligibility 固定 eligible/sourceStage/deadline/blockingReason/activeAfterSaleI
 
 CaseView 字段由 OpenAPI 的 AfterSaleCaseDetail 完整定义：允许当前参与方查看已入卷 description、新问题说明、当前补证要求、终裁原因、双方不可变证据批次；不含用户电话、内部敏感备注、渠道事实。EvidenceBatch 只 batchId/submitterType/text/opinionCode/submittedAt/assetIds；图片须下节真实私有读取，不提供对象裸 URL。列表和详情均不自行派生 DisplayOrderStatus。
 
-**2026-11-06 客户/服务/宠物投影补充**（用户批准 [CCR-M-AFTERSALE-VIEW-001](../../planning/ccr/CCR-M-AFTERSALE-VIEW-001.md)）：CaseView（列表 Summary/详情 Detail 同形）追加可空键 `customerNickname`、`serviceName`、`petName`、`petType`、`petBreed`。昵称经 user 域批量端口（合同 69 同一通道）投影；服务/宠物为订单不可变快照经 order 域既有端口投影（无快照 → null）。空值显式 null，前端降级占位不伪造；**不返回 userId、手机号（含脱敏）、地址、健康字段——51 号既有隐私红线不变**；跨店/非本人工单维持同一防枚举，新字段不改变可见性语义。证据、补证、意见、决定、状态机、版本零变化；旧客户端忽略未知键，M 端严格解码器同步放宽。
+**2026-11-06 客户/服务/宠物投影补充**（用户批准 [CCR-M-AFTERSALE-VIEW-001](../../planning/ccr/CCR-M-AFTERSALE-VIEW-001.md)）：CaseView（列表 Summary/详情 Detail 同形）追加可空键 `customerNickname`、`serviceName`、`petName`、`petType`、`petBreed`；**仅 MERCHANT 面返回（C/admin 面 JSON 键集保持不变，OpenAPI 中相应不入 required）**。昵称经 user 域批量端口（合同 69 同一通道）投影；服务/宠物为订单不可变快照经 order 域既有端口投影（无快照 → null）。空值显式 null，前端降级占位不伪造；**不返回 userId、手机号（含脱敏）、地址、健康字段——51 号既有隐私红线不变**；跨店/非本人工单维持同一防枚举，新字段不改变可见性语义。证据、补证、意见、决定、状态机、版本零变化；旧客户端忽略未知键，M 端严格解码器按"旧形状或旧形状+5 键"放宽。
 
 ## 5. 私有图片
 

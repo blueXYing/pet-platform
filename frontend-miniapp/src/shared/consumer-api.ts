@@ -410,7 +410,7 @@ export class ConsumerApi {
       // the detail/appeal target the review id only and the server re-proves the OWNER link.
       const merchantReviewPath = isMerchantReviewPath(spec)
       if (merchantReviewPath && !ticket.context.storeId) throw new Error('WORKSPACE_PATH_MISMATCH')
-      if (merchantReviewPath && spec.path === '/api/v1/merchant/reviews'
+      if (merchantReviewPath && (spec.path === '/api/v1/merchant/reviews' || spec.path === '/api/v1/merchant/reviews/summary')
         && (spec.data?.merchantId !== ticket.context.merchantId
           || spec.data?.storeId !== ticket.context.storeId)) throw new Error('WORKSPACE_PATH_MISMATCH')
       // Merchant refund surfaces (57号): the reads carry the caller's merchant coordinate

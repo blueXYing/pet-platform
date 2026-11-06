@@ -26317,11 +26317,6 @@ components:
       - requestedAmount
       - createdAt
       - deadline
-      - customerNickname
-      - serviceName
-      - petName
-      - petType
-      - petBreed
       properties:
         afterSaleId:
           type: string
@@ -26390,11 +26385,12 @@ components:
         customerNickname:
           type: string
           nullable: true
-          description: 客户昵称（user 域批量端口投影，CCR-M-AFTERSALE-VIEW-001 2026-11-06）；null 降级占位。
+          description: 客户昵称（user 域批量端口投影，CCR-M-AFTERSALE-VIEW-001 2026-11-06）；
+            仅 MERCHANT 面返回（C/admin 面键集不变，故不入 required）；null 降级占位。
         serviceName:
           type: string
           nullable: true
-          description: 订单服务快照名称（order 域端口投影，不可变事实）。
+          description: 订单服务快照名称（order 域端口投影，不可变事实）；仅 MERCHANT 面。
         petName:
           type: string
           nullable: true
@@ -26506,11 +26502,6 @@ components:
       - refundAmount
       - decisionReason
       - evidence
-      - customerNickname
-      - serviceName
-      - petName
-      - petType
-      - petBreed
       properties:
         afterSaleId:
           type: string
