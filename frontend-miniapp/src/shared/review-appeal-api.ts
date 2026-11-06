@@ -11,6 +11,10 @@
 // - 每条评价最多申诉一次（SSOT §11.3）：重复申诉 409 REVIEW_APPEAL_ALREADY_USED；
 //   评价不存在与非本店统一 404 REVIEW_NOT_FOUND（防枚举）；申诉理由随幂等键受保护。
 // - PROCESSING 为 06号 保留状态值，解码器接受但本切片服务端不产生。
+// - 2026-11-06 CCR-M-REVIEW-VIEW-001（56号 §7）：列表/详情条目增量可空键 reviewerNickname（买家
+//   昵称原样，不脱敏）/reviewerAvatarUrl（https 头像外链）；键存在即严格校验，缺省按 null（旧形状
+//   仍可解码），未知键仍失败关闭。新增只读 GET /api/v1/merchant/reviews/summary（merchantId+storeId
+//   同列表坐标纪律）：恰四键 totalReviews/scoredCount/averageScore/scoreCounts（"1".."5" 五桶）。
 
 import { ApiError, type RequestSpec } from './request'
 import { id, object, type Command, type ConsumerApi } from './consumer-api'
@@ -31,6 +35,10 @@ export type ReviewSummary = Readonly<{
   createdAt: string
   appealStatus: ReviewAppealStatus | null
   appealId: string | null
+  /** 买家昵称原样（56号 §7）；null（未设置/账号缺失/旧服务端）时页面显示「匿名用户」。 */
+  reviewerNickname: string | null
+  /** 微信头像 https 外链（不可信外部内容）；null 或加载失败时页面显示首字占位。 */
+  reviewerAvatarUrl: string | null
 }>
 
 export type ReviewDetail = Readonly<ReviewSummary & {
@@ -42,6 +50,20 @@ export type ReviewDetail = Readonly<ReviewSummary & {
 
 export type ReviewPage = Readonly<{ page: number; pageSize: number; total: number; items: readonly ReviewSummary[] }>
 export type AppealReceipt = Readonly<{ appealId: string; reviewId: string; status: ReviewAppealStatus; createdAt: string }>
+
+/** 56号 §7 星级桶键（按 ROUND(composite_score) 落桶，服务端计算）。 */
+export type ReviewStarKey = '1' | '2' | '3' | '4' | '5'
+export const reviewStarKeys: readonly ReviewStarKey[] = ['1', '2', '3', '4', '5']
+/**
+ * 门店评价聚合（只读事实，前端只展示不重算均分）：totalReviews 含不计分历史评价；
+ * scoredCount/averageScore/scoreCounts 仅统计计分评价；averageScore 一位小数，scoredCount=0 时 null。
+ */
+export type ReviewAggregate = Readonly<{
+  totalReviews: number
+  scoredCount: number
+  averageScore: string | null
+  scoreCounts: Readonly<Record<ReviewStarKey, number>>
+}>
 
 const appealStatuses: readonly ReviewAppealStatus[] = ['SUBMITTED', 'PROCESSING', 'APPROVED', 'REJECTED']
 
@@ -55,6 +77,21 @@ const text = (v: unknown, max: number): string => typeof v === 'string' && v.len
 const exact = (value: unknown, fields: string) => { const v = object(value); if (Object.keys(v).sort().join(',') !== fields.split(',').sort().join(',')) fail(); return v }
 
 const summaryFields = 'reviewId,orderId,storeScore,serviceScore,staffScore,compositeScore,scoreIncluded,visibilityStatus,content,createdAt,appealStatus,appealId'
+/** 56号 §7 增量可空键：仅 OWNER 本店读侧返回；旧服务端不带这两键时按 null 解码。 */
+const identityFields: readonly string[] = ['reviewerNickname', 'reviewerAvatarUrl']
+const has = (v: Record<string, unknown>, key: string) => Object.prototype.hasOwnProperty.call(v, key)
+/** 必备键须全部出现，额外只允许两枚身份增量键；其余未知键一律失败关闭。 */
+const exactWithIdentity = (value: unknown, fields: string) => {
+  const v = object(value), required = fields.split(',')
+  if (required.some(key => !has(v, key)) || Object.keys(v).some(key => !required.includes(key) && !identityFields.includes(key))) fail()
+  return v
+}
+/** user_account.nickname VARCHAR(64)：1..64 码点，原样（不脱敏）。 */
+const nickname = (v: unknown): string => typeof v === 'string' && Array.from(v).length >= 1 && Array.from(v).length <= 64 ? v : fail()
+/** 服务端只投影 https 外链（≤512，asset: 内部形式永不出域）。 */
+const avatarUrl = (v: unknown): string => typeof v === 'string' && v.length <= 512 && /^https:\/\/\S+$/.test(v) ? v : fail()
+const optional = <T>(v: Record<string, unknown>, key: string, decode: (x: unknown) => T): T | null => has(v, key) ? nullable(v[key], decode) : null
+
 function summary(v: Record<string, unknown>): ReviewSummary {
   return {
     reviewId: id(v.reviewId), orderId: id(v.orderId),
@@ -65,11 +102,13 @@ function summary(v: Record<string, unknown>): ReviewSummary {
     createdAt: instant(v.createdAt),
     appealStatus: nullable(v.appealStatus, x => one(x, appealStatuses)),
     appealId: nullable(v.appealId, id),
+    reviewerNickname: optional(v, 'reviewerNickname', nickname),
+    reviewerAvatarUrl: optional(v, 'reviewerAvatarUrl', avatarUrl),
   }
 }
 
-/** 列表/详情条目同样 exact-key：未知键失败关闭（沿 refund/aftersale 惯例）。 */
-function checkedSummary(value: unknown): ReviewSummary { return summary(exact(value, summaryFields)) }
+/** 列表/详情条目同样 exact-key（仅放宽两枚身份增量键）：未知键失败关闭（沿 refund/aftersale 惯例）。 */
+function checkedSummary(value: unknown): ReviewSummary { return summary(exactWithIdentity(value, summaryFields)) }
 
 export function decodeReviewPage(value: unknown): ReviewPage {
   const v = exact(value, 'page,pageSize,total,items')
@@ -79,8 +118,27 @@ export function decodeReviewPage(value: unknown): ReviewPage {
 }
 
 export function decodeReviewDetail(value: unknown): ReviewDetail {
-  const v = exact(value, `${summaryFields},appealReason,appealCreatedAt,decisionReason,decidedAt`)
+  const v = exactWithIdentity(value, `${summaryFields},appealReason,appealCreatedAt,decisionReason,decidedAt`)
   return { ...summary(v), appealReason: nullable(v.appealReason, x => text(x, 1000)), appealCreatedAt: nullable(v.appealCreatedAt, instant), decisionReason: nullable(v.decisionReason, x => text(x, 1000)), decidedAt: nullable(v.decidedAt, instant) }
+}
+
+const count = (v: unknown): number => typeof v === 'number' && Number.isSafeInteger(v) && v >= 0 ? v : fail()
+/** 一位小数 0.0..5.0（服务端 HALF_UP，前端只展示不重算）。 */
+const average = (v: unknown): string => typeof v === 'string' && /^(?:[0-4]\.[0-9]|5\.0)$/.test(v) ? v : fail()
+
+/**
+ * 56号 §7 门店评价聚合：恰四键 + 恰五桶；桶和须等于 scoredCount（每条计分评价恰落一桶），
+ * scoredCount ≤ totalReviews，averageScore 为 null 当且仅当 scoredCount=0（空店 0/0/null/全 0）。
+ */
+export function decodeReviewAggregate(value: unknown): ReviewAggregate {
+  const v = exact(value, 'totalReviews,scoredCount,averageScore,scoreCounts')
+  const totalReviews = count(v.totalReviews), scoredCount = count(v.scoredCount)
+  const buckets = exact(v.scoreCounts, reviewStarKeys.join(','))
+  const scoreCounts = { '1': count(buckets['1']), '2': count(buckets['2']), '3': count(buckets['3']), '4': count(buckets['4']), '5': count(buckets['5']) }
+  const averageScore = nullable(v.averageScore, average)
+  const bucketed = reviewStarKeys.reduce((sum, key) => sum + scoreCounts[key], 0)
+  if (scoredCount > totalReviews || bucketed !== scoredCount || (averageScore === null) !== (scoredCount === 0)) fail()
+  return { totalReviews, scoredCount, averageScore, scoreCounts }
 }
 
 export function decodeAppealReceipt(value: unknown): AppealReceipt {
@@ -130,6 +188,12 @@ export class ReviewAppealClient {
       if (detail.reviewId !== target) fail()
       return detail
     })
+  }
+
+  /** 56号 §7 门店评价聚合（只读）：merchantId+storeId 须等于当前商家工作区（同列表纪律）。 */
+  summary(merchantId: string, storeId: string): Promise<ReviewAggregate> {
+    const data: Record<string, unknown> = { merchantId: id(merchantId), storeId: id(storeId) }
+    return this.api.request({ path: '/api/v1/merchant/reviews/summary', method: 'GET', data }, decodeReviewAggregate)
   }
 
   appeal(reviewId: string, reason: string): Promise<AppealReceipt> {

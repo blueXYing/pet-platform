@@ -1,5 +1,5 @@
 import type { MerchantAdmission } from '../../shared/merchant-repositories'
-import type { ReviewAppealStatus, ReviewSummary, ReviewVisibility } from '../../shared/review-appeal-api'
+import { reviewStarKeys, type ReviewAggregate, type ReviewAppealStatus, type ReviewStarKey, type ReviewSummary, type ReviewVisibility } from '../../shared/review-appeal-api'
 
 /** 申诉状态文案（06号 review_appeal.status；PROCESSING 为保留值，服务端不产生）。 */
 export const appealStatusText: Record<ReviewAppealStatus, string> = {
@@ -30,6 +30,64 @@ export function compositeText(review: Pick<ReviewSummary, 'compositeScore'>): st
 }
 export function dimensionText(review: Pick<ReviewSummary, 'storeScore' | 'serviceScore' | 'staffScore'>): string {
   return `门店 ${review.storeScore} · 服务 ${review.serviceScore} · 人员 ${review.staffScore}`
+}
+
+// ---- CCR-M-REVIEW-VIEW-001（56号 §7）：买家身份与门店评分聚合的纯展示推导 ----
+
+/** 买家昵称原样展示（不脱敏）；null/空白时显示「匿名用户」。 */
+export function reviewerName(review: Pick<ReviewSummary, 'reviewerNickname'>): string {
+  const name = review.reviewerNickname
+  return name !== null && name.trim().length > 0 ? name : '匿名用户'
+}
+
+/** 头像占位首字：取展示名首个码点（「匿名用户」→「匿」），不截断代理对。 */
+export function reviewerInitial(review: Pick<ReviewSummary, 'reviewerNickname'>): string {
+  return Array.from(reviewerName(review).trim())[0] ?? '匿'
+}
+
+/** 千分位整数（「1,790」）：不依赖运行时 locale。 */
+export function groupedCount(value: number): string {
+  return String(value).replace(/\B(?=(\d{3})+(?!\d))/g, ',')
+}
+
+/** 综合评分星行：服务端一位小数均分的四舍五入展示推导（同卡片 compositeScore 口径）；无均分时 0。 */
+export function averageStars(aggregate: Pick<ReviewAggregate, 'averageScore'>): number {
+  if (aggregate.averageScore === null) return 0
+  const value = Math.round(Number(aggregate.averageScore))
+  return Number.isFinite(value) ? Math.min(5, Math.max(0, value)) : 0
+}
+
+export type StarBar = Readonly<{ star: ReviewStarKey; count: number; widthPercent: number }>
+
+/** 星级直方图（5 星在上）：比例条以最多一档为满格（原稿 23:14160 实测口径）；全 0 时空条，不伪造。 */
+export function starBars(aggregate: Pick<ReviewAggregate, 'scoreCounts'>): readonly StarBar[] {
+  const max = Math.max(0, ...reviewStarKeys.map(key => aggregate.scoreCounts[key]))
+  return [...reviewStarKeys].reverse().map(star => {
+    const count = aggregate.scoreCounts[star]
+    return { star, count, widthPercent: max === 0 ? 0 : Math.round(count * 1000 / max) / 10 }
+  })
+}
+
+/**
+ * 好评率 =（4 星 + 5 星）/ scoredCount（用户 2026-11-06 批准的展示推导）。无计分评价时返回 null
+ * （不显示，不伪造 0%）；整数百分比四舍五入，但「非全部好评」不显示 100%、「有好评」不显示 0%。
+ */
+export function goodRatePercent(aggregate: Pick<ReviewAggregate, 'scoredCount' | 'scoreCounts'>): number | null {
+  const scored = aggregate.scoredCount
+  if (scored <= 0) return null
+  const good = aggregate.scoreCounts['4'] + aggregate.scoreCounts['5']
+  if (good <= 0) return 0
+  if (good >= scored) return 100
+  const rounded = Math.floor((good * 200 + scored) / (scored * 2))
+  return Math.min(99, Math.max(1, rounded))
+}
+
+/** 综合评分大卡文案：均分原样（服务端四舍五入）；无计分评价显示「暂无评分」。 */
+export function averageText(aggregate: Pick<ReviewAggregate, 'averageScore'>): string {
+  return aggregate.averageScore ?? '暂无评分'
+}
+export function scoredCountText(aggregate: Pick<ReviewAggregate, 'scoredCount'>): string {
+  return `共 ${groupedCount(aggregate.scoredCount)} 条计分评价`
 }
 
 export function dateText(value: string | null): string {

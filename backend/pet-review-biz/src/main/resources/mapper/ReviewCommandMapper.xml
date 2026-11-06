@@ -56,7 +56,7 @@
     </select>
     <select id="selectReviewById"
             resultType="com.petplatform.review.biz.infrastructure.persistence.entity.ReviewRowEntity">
-        SELECT id, order_id, merchant_id, store_id, store_score, service_score, staff_score,
+        SELECT id, order_id, user_id, merchant_id, store_id, store_score, service_score, staff_score,
                composite_score, score_included, visibility_status, content, created_at
         FROM review
         WHERE id = #{reviewId}
@@ -118,7 +118,7 @@
     </select>
     <select id="pageStoreReviews"
             resultType="com.petplatform.review.biz.infrastructure.persistence.entity.ReviewListRowEntity">
-        SELECT r.id, r.order_id, r.store_score, r.service_score, r.staff_score,
+        SELECT r.id, r.order_id, r.user_id, r.store_score, r.service_score, r.staff_score,
                r.composite_score, r.score_included, r.visibility_status, r.content,
                r.created_at, a.status AS appeal_status, a.id AS appeal_id
         FROM review r
@@ -126,6 +126,30 @@
         WHERE r.merchant_id = #{merchantId} AND r.store_id = #{storeId}
         ORDER BY r.created_at DESC, r.id DESC
         LIMIT #{offset}, #{limit}
+    </select>
+
+    <!-- CCR-M-REVIEW-VIEW-001 (contract 56 §7) OWNER store aggregate: ONE read over the list's
+         double key (store_id leads idx_review_store_score). COUNT(*) keeps the score_included=0
+         history in totalReviews; the scored count, the composite average and the five
+         ROUND(composite_score) buckets only see score_included=1 rows (SSOT §11.2). SUM over an
+         empty store is NULL, so every count is COALESCEd to 0 and the average stays NULL. -->
+    <select id="storeReviewAggregate"
+            resultType="com.petplatform.review.biz.infrastructure.persistence.entity.ReviewStoreAggregateEntity">
+        SELECT COUNT(*) AS total_reviews,
+               COALESCE(SUM(CASE WHEN r.score_included = 1 THEN 1 ELSE 0 END), 0) AS scored_count,
+               AVG(CASE WHEN r.score_included = 1 THEN r.composite_score END) AS avg_score,
+               COALESCE(SUM(CASE WHEN r.score_included = 1 AND ROUND(r.composite_score) = 1
+                                 THEN 1 ELSE 0 END), 0) AS score1,
+               COALESCE(SUM(CASE WHEN r.score_included = 1 AND ROUND(r.composite_score) = 2
+                                 THEN 1 ELSE 0 END), 0) AS score2,
+               COALESCE(SUM(CASE WHEN r.score_included = 1 AND ROUND(r.composite_score) = 3
+                                 THEN 1 ELSE 0 END), 0) AS score3,
+               COALESCE(SUM(CASE WHEN r.score_included = 1 AND ROUND(r.composite_score) = 4
+                                 THEN 1 ELSE 0 END), 0) AS score4,
+               COALESCE(SUM(CASE WHEN r.score_included = 1 AND ROUND(r.composite_score) = 5
+                                 THEN 1 ELSE 0 END), 0) AS score5
+        FROM review r
+        WHERE r.store_id = #{storeId} AND r.merchant_id = #{merchantId}
     </select>
 
     <!-- Contract-70 stats aggregate: one indexed store read over (store_id, score_included,

@@ -10,7 +10,7 @@ import type { MerchantOrderPage, MerchantOrderSummary } from '../order/model'
 import type { MerchantOrderListDeps } from '../order/repository'
 import type { WorkspaceScope } from '../../shared/workspace'
 import type {
-  AppealReceipt, ReviewDetail, ReviewPage, ReviewSummary,
+  AppealReceipt, ReviewAggregate, ReviewDetail, ReviewPage, ReviewSummary,
 } from '../../shared/review-appeal-api'
 import type { RefundApplicationDetail, RefundApplicationPage } from '../../shared/merchant-refund-api'
 import type { MerchantRefundDeps } from '../refund/repository'
@@ -294,21 +294,29 @@ export function previewMembersDeps(): MembersDeps {
   }
 }
 
-// 店铺评价视觉验收样本（56号）：三条评价覆盖未申诉/申诉中/低分。
+// 店铺评价视觉验收样本（56号）：三条评价覆盖未申诉/申诉中/低分；56号 §7 买家身份覆盖
+// 昵称+头像外链 / 仅昵称（首字占位）/ 无昵称（匿名用户）三态。
 const previewReviews: readonly ReviewSummary[] = [
   { reviewId: '9701', orderId: '9201', storeScore: '5.0', serviceScore: '5.0', staffScore: '4.0',
     compositeScore: '4.8', scoreIncluded: true, visibilityStatus: 'PUBLISHED',
     content: '服务很细致，猫咪洗完很蓬松，店员还提醒了下次驱虫时间。', createdAt: iso(-24 * 60),
-    appealStatus: null, appealId: null },
+    appealStatus: null, appealId: null,
+    reviewerNickname: '林晓雨', reviewerAvatarUrl: 'https://thirdwx.qlogo.cn/mmopen/preview-avatar/132' },
   { reviewId: '9702', orderId: '9202', storeScore: '4.0', serviceScore: '4.0', staffScore: '4.0',
     compositeScore: '4.0', scoreIncluded: true, visibilityStatus: 'PUBLISHED',
     content: '预约准时，环境干净，狗狗剪完造型很可爱。', createdAt: iso(-3 * 24 * 60),
-    appealStatus: 'PROCESSING', appealId: '9802' },
+    appealStatus: 'PROCESSING', appealId: '9802',
+    reviewerNickname: '张伟', reviewerAvatarUrl: null },
   { reviewId: '9703', orderId: '9203', storeScore: '2.0', serviceScore: '3.0', staffScore: '2.0',
     compositeScore: '2.4', scoreIncluded: true, visibilityStatus: 'PUBLISHED',
     content: '等待时间有点久，希望下次能更准时。', createdAt: iso(-7 * 24 * 60),
-    appealStatus: null, appealId: null },
+    appealStatus: null, appealId: null,
+    reviewerNickname: null, reviewerAvatarUrl: null },
 ]
+const previewReviewAggregate: ReviewAggregate = {
+  totalReviews: 3, scoredCount: 3, averageScore: '3.7',
+  scoreCounts: { '1': 0, '2': 1, '3': 0, '4': 1, '5': 1 },
+}
 const previewReviewDetail: ReviewDetail = {
   ...previewReviews[0]!, appealReason: null, appealCreatedAt: null,
   decisionReason: null, decidedAt: null,
@@ -326,6 +334,7 @@ export function previewReviewDeps(): MerchantReviewDeps {
     list: async () => ({
       page: 1, pageSize: 20, total: previewReviews.length, items: previewReviews,
     } as ReviewPage),
+    summary: async () => previewReviewAggregate,
     detail: async () => previewReviewDetail,
     appeal: async (reviewId): Promise<AppealReceipt> => ({
       appealId: '9801', reviewId, status: 'SUBMITTED', createdAt: iso(0),

@@ -35,6 +35,12 @@
             <groupId>com.petplatform</groupId>
             <artifactId>pet-schedule-api</artifactId>
         </dependency>
+        <!-- CCR-M-REVIEW-VIEW-001: buyer nickname/avatar on the OWNER store read side come from
+             the user domain's batched basics read (api-only, contract-69 precedent; never biz). -->
+        <dependency>
+            <groupId>com.petplatform</groupId>
+            <artifactId>pet-user-api</artifactId>
+        </dependency>
         <dependency>
             <groupId>com.fasterxml.jackson.core</groupId>
             <artifactId>jackson-databind</artifactId>
