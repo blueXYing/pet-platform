@@ -442,7 +442,8 @@ class AdminFacesFixRegressionHttpTest {
                             "51-AfterSale-Http-Schema-v0.1.sql",
                             "63-Admin-Trade-Disposition-Schema-v0.1.sql",
                             "60-Points-Task-Schema-v0.1.sql",
-                            "62-Baike-Content-Schema-v0.1.sql")) {
+                            "62-Baike-Content-Schema-v0.1.sql",
+                            "75-Payment-Center-Schema-v0.1.sql")) {
                         ScriptUtils.executeSqlScript(connection, new FileSystemResource(
                                 root.resolve("docs/03-database/" + schema)));
                     }

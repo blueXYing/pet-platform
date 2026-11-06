@@ -113,6 +113,28 @@ class PaymentIdentityApiMySqlTest {
         }
     }
 
+    /** Contract 75 §4.1 store-less variant (payment center): same USER checks, caller transaction required. */
+    @Test void storelessVariantRequiresTheCallerTransactionAndTheSameUserChecks() throws Exception {
+        try (var db = new MySqlUserDomainTestDatabase()) {
+            db.seedUser(600001, null, "ACTIVE");
+            identity(db, 700001, USER, "WECHAT_MINI", APP, "open-current");
+            PaymentIdentityApiImpl api = new PaymentIdentityApiImpl(db.dataSource(), new Guard(db.dataSource()));
+            assertEquals("open-current", transaction(db, () ->
+                    api.requireCurrentPaymentIdentity(USER, APP, user(USER))).openId());
+            assertCode(CommonApiCodes.DEPENDENCY_UNAVAILABLE, () ->
+                    api.requireCurrentPaymentIdentity(USER, APP, user(USER)));
+            assertCode(CommonApiCodes.FORBIDDEN, () -> transaction(db, () ->
+                    api.requireCurrentPaymentIdentity(USER, APP, user("600002"))));
+            assertCode(CommonApiCodes.INVALID_ARGUMENT, () -> transaction(db, () ->
+                    api.requireCurrentPaymentIdentity(USER, " ", user(USER))));
+            assertCode(CommonApiCodes.DEPENDENCY_UNAVAILABLE, () -> transaction(db, () ->
+                    api.requireCurrentPaymentIdentity(USER, "WX-MINI-PAY", user(USER))));
+            db.jdbc().update("UPDATE user_account SET status='FROZEN' WHERE id=600001");
+            assertCode(CommonApiCodes.FORBIDDEN, () -> transaction(db, () ->
+                    api.requireCurrentPaymentIdentity(USER, APP, user(USER))));
+        }
+    }
+
     private static QueryContext user(String userId) {
         return new QueryContext("trace", OperatorType.USER, userId);
     }

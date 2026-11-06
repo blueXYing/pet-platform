@@ -458,7 +458,8 @@ class OrderQueryHttpTest {
                 "46-Order-Reschedule-Schema-v0.1.sql",
                 "47-Verification-Credential-Schema-v0.1.sql",
                 "48-Verification-Completion-Schema-v0.1.sql",
-                "49-Refund-Application-Schema-v0.1.sql");
+                "49-Refund-Application-Schema-v0.1.sql",
+                "75-Payment-Center-Schema-v0.1.sql");
 
         private final String name = PREFIX + UUID.randomUUID().toString().replace("-", "");
         private final JdbcTemplate admin;

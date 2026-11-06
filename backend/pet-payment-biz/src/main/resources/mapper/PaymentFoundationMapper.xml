@@ -5,7 +5,7 @@
   <update id="setLockWaitTimeout">SET SESSION innodb_lock_wait_timeout=2</update>
   <select id="utcNow" resultType="java.time.LocalDateTime">SELECT UTC_TIMESTAMP(3)</select>
 
-  <sql id="paymentColumns">id,payment_no,order_id,store_id,merchant_id,user_id,amount,status,expire_at,merchant_no,term_no,sub_appid,currency,dispatch_state,channel_trade_no,channel_paid_amount,paid_at,success_event_id,channel</sql>
+  <sql id="paymentColumns">id,payment_no,order_id,store_id,merchant_id,user_id,amount,status,expire_at,merchant_no,term_no,sub_appid,currency,dispatch_state,channel_trade_no,channel_paid_amount,paid_at,success_event_id,channel,biz_type,biz_no,settle_type,log_no,log_date</sql>
   <select id="selectByNo" resultType="com.petplatform.payment.biz.infrastructure.persistence.PaymentFoundationStore$Row">
     SELECT <include refid="paymentColumns"/> FROM payment_order WHERE payment_no=#{value}
   </select>
@@ -32,9 +32,9 @@
   </update>
   <insert id="insertPayment">
     INSERT INTO payment_order(id,payment_no,order_id,amount,status,channel,expire_at,created_at,updated_at,
-      store_id,merchant_id,user_id,merchant_no,term_no,sub_appid,currency,dispatch_state)
+      store_id,merchant_id,user_id,merchant_no,term_no,sub_appid,currency,dispatch_state,settle_type)
     VALUES(#{id},#{paymentNo},#{orderId},#{amount},'INIT','LAKALA_WECHAT',#{expires},
-      UTC_TIMESTAMP(3),UTC_TIMESTAMP(3),#{storeId},#{merchantId},#{userId},#{merchantNo},#{termNo},#{subAppId},'CNY','PREPARED')
+      UTC_TIMESTAMP(3),UTC_TIMESTAMP(3),#{storeId},#{merchantId},#{userId},#{merchantNo},#{termNo},#{subAppId},'CNY','PREPARED',#{settleType})
   </insert>
   <insert id="insertPreparedDispatch">
     INSERT INTO payment_dispatch(payment_id,state,created_at,updated_at)
@@ -62,7 +62,13 @@
   <update id="markPaid">
     UPDATE payment_order SET status='PAID',dispatch_state='OBSERVED',channel_trade_no=#{tradeNo},
       channel_paid_amount=#{paidAmount},paid_at=#{paidAt},success_event_id=#{eventId},
+      log_no=#{logNo},log_date=#{logDate},
       version=version+1,updated_at=#{now} WHERE id=#{paymentId}
+  </update>
+  <!-- Fills the collect trace once, only after PAID and only while both columns are still NULL. -->
+  <update id="fillCollectTrace">
+    UPDATE payment_order SET log_no=#{logNo},log_date=#{logDate},version=version+1,
+      updated_at=#{now} WHERE id=#{paymentId} AND status='PAID' AND log_no IS NULL AND log_date IS NULL
   </update>
   <update id="markObserved">
     UPDATE payment_order SET status=#{status},dispatch_state='OBSERVED',

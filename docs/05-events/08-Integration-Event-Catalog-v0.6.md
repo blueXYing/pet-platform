@@ -32,6 +32,7 @@ UNIQUE(event_id, consumer_name)
 | Event | Aggregate | 主要生产者 | 主要消费者 |
 |---|---|---|---|
 | PaymentSucceededEvent.v1 | PAYMENT | payment | order |
+| PaymentCenterSucceededEvent.v1（75号，2026-11-05 批准） | PAYMENT | payment（支付中心行） | 按 bizType 的业务 Owner（阶段1仅 DEMO） |
 | LatePaymentSucceededAfterTimeoutEvent.v1 | ORDER/PAYMENT | order | refund/notification |
 | PaymentFailedEvent.v1 | PAYMENT | payment | order/notification |
 | OrderPaidEvent.v1 | ORDER | order | schedule/coupon/notification |
@@ -543,3 +544,25 @@ payload 字段（9 字段，与角色E消费侧对齐定稿 2026-09-22，中途�
 | `MerchantStaffGrantLifecycleEvent.v1` | 1 / `MERCHANT_MEMBER`，aggregateId=memberId | memberId、merchantId、storeId、memberUserId、changeType(GRANTED\|REVOKED)、actions（动作码数组，GRANTED 为变更后集合且非空，REVOKED 为被收回集合）、occurredAt | OWNER grant-actions（首次授予与整体替换，均 GRANTED）与 revoke-store（整店撤权，REVOKED，终局 D3）各自在命令事务内与授权行、动作行、审计、23号幂等回执原子提交；回滚无事件，成功重放不产生新事件；授权/撤权业务语义零变化，纯增通知。 |
 
 通知域消费（NTF 授权增补）：消费者 `notification.merchant-staff-grant.v1` 沿用 (eventId, consumerName) 去重与本域同事务写站内行（message_type=MER_STAFF_GRANT、biz_type=MERCHANT_MEMBER、bizId=memberId）；开关沿用 `pet.merchant.staff.notifications-enabled`（默认关闭，关闭时零行为、事件滞留 outbox）。**可达性（2026-10-07 裁决）**：GRANTED/REVOKED 均只通知被授权/被撤权的成员账号（memberUserId，已绑定、可达性成立），OWNER 为命令本人不另发；动作码经严格形状校验后才进入站内文案（ARCH-002），不读 merchant 表。
+
+## PaymentCenterSucceededEvent.v1（CCR-PAY-CENTER-001 阶段1，75号契约 §6，2026-11-05 批准）
+
+状态：随 WP-C 实现登记，2026-11-05 技术契约审核人 @blueXYing 批准新增事件类型（PLAN §9 Q7）。不复用 `PaymentSucceededEvent.v1`：其必要消费者 `OrderPaymentResultApiImpl` 需要 orderId，收到支付中心行事件会持续失败重试。
+
+```java
+public record PaymentCenterSucceededPayload(
+    String paymentOrderId,   // = aggregateId
+    String paymentNo,
+    String bizType,          // 阶段1仅 DEMO
+    String bizNo,
+    String channelTradeNo,
+    BigDecimal paidAmount,   // 渠道真实实付
+    OffsetDateTime paidAt    // UTC 毫秒字符串
+) {}
+```
+
+- envelope：eventVersion=1、aggregateType=PAYMENT、aggregateId=paymentId、eventId=`payment_order.success_event_id`、occurredAt=DB 当前 UTC 时间。
+- 生产者：`PaymentCenterReceiptWriter`（支付中心行的已验签通知或查单），与 PAID 状态、回执、`success_event_id` 同事务经 Transactional Outbox 写入；通知与查单竞争只产生一次；迟到 SUCCESS（行已 FAILED/CLOSED）仍记 PAID 并产生一次；进入 `RECONCILIATION_REQUIRED` 后任何回执都不产生事件。
+- payload 不含 openid、商户号、`log_no`/`log_date`、原始报文或签名。
+- 消费者按 `bizType` 过滤，只处理自己的类型；必须在消费日志同一事务内调用 `PaymentCenterFactsApi.requireSucceeded` 读取权威事实，事件本身不是成功证明。
+- 阶段1消费者：`payment-demo-confirm`（`DemoPaymentConfirmConsumer`，开关 `pet.payment.center.demo.enabled`，默认关闭）。非 DEMO 类型仅记录消费（NOOP）。DEMO 关闭时无消费者，事件滞留 outbox（OutboxDispatcher 对无消费者事件只释放不丢弃）。

@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<!-- Contract 75 / SQL75 payment center statements. Shared PAYMENT transitions stay in PaymentFoundationMapper.xml. -->
+<mapper namespace="com.petplatform.payment.biz.infrastructure.persistence.mapper.PaymentCenterMapper">
+  <!-- Order must match PaymentCenterStore.CenterRow (constructor mapping by position). -->
+  <sql id="centerColumns">id,payment_no,order_id,store_id,merchant_id,user_id,amount,status,expire_at,merchant_no,term_no,sub_appid,currency,dispatch_state,channel_trade_no,channel_paid_amount,paid_at,success_event_id,channel,biz_type,biz_no,settle_type,log_no,log_date</sql>
+
+  <select id="selectCenterById" resultType="com.petplatform.payment.biz.infrastructure.persistence.PaymentCenterStore$CenterRow">
+    SELECT <include refid="centerColumns"/> FROM payment_order WHERE id=#{paymentId}
+  </select>
+  <select id="selectCenterByIdForUpdate" resultType="com.petplatform.payment.biz.infrastructure.persistence.PaymentCenterStore$CenterRow">
+    SELECT <include refid="centerColumns"/> FROM payment_order WHERE id=#{paymentId} FOR UPDATE
+  </select>
+  <select id="selectCenterByNo" resultType="com.petplatform.payment.biz.infrastructure.persistence.PaymentCenterStore$CenterRow">
+    SELECT <include refid="centerColumns"/> FROM payment_order WHERE payment_no=#{paymentNo}
+  </select>
+  <select id="selectCenterByBiz" resultType="com.petplatform.payment.biz.infrastructure.persistence.PaymentCenterStore$CenterRow">
+    SELECT <include refid="centerColumns"/> FROM payment_order WHERE biz_type=#{bizType} AND biz_no=#{bizNo}
+  </select>
+  <select id="selectCenterByBizForUpdate" resultType="com.petplatform.payment.biz.infrastructure.persistence.PaymentCenterStore$CenterRow">
+    SELECT <include refid="centerColumns"/> FROM payment_order WHERE biz_type=#{bizType} AND biz_no=#{bizNo} FOR UPDATE
+  </select>
+  <!-- Callback routing hint only: no amount/state is taken from here. -->
+  <select id="selectRouteByNo" resultType="com.petplatform.payment.biz.infrastructure.persistence.PaymentCenterStore$Route">
+    SELECT id,biz_type,order_id FROM payment_order WHERE payment_no=#{paymentNo}
+  </select>
+  <insert id="insertCenterPayment">
+    INSERT INTO payment_order(id,payment_no,order_id,biz_type,biz_no,amount,status,channel,expire_at,
+      created_at,updated_at,store_id,merchant_id,user_id,merchant_no,term_no,sub_appid,currency,dispatch_state,settle_type)
+    VALUES(#{id},#{paymentNo},NULL,#{bizType},#{bizNo},#{amount},'INIT','LAKALA_WECHAT',#{expires},
+      UTC_TIMESTAMP(3),UTC_TIMESTAMP(3),NULL,NULL,#{userId},#{merchantNo},#{termNo},#{subAppId},'CNY','PREPARED',#{settleType})
+  </insert>
+
+  <insert id="insertRequest">
+    INSERT INTO payment_center_request(id,request_key,biz_type,biz_no,user_id,amount,expire_at,created_at)
+    VALUES(#{id},#{key},#{bizType},#{bizNo},#{userId},#{amount},#{expireAt},UTC_TIMESTAMP(3))
+    ON DUPLICATE KEY UPDATE id=id
+  </insert>
+  <select id="selectRequestForUpdate" resultType="com.petplatform.payment.biz.infrastructure.persistence.PaymentCenterStore$RequestBinding">
+    SELECT biz_type,biz_no,user_id,amount,expire_at,payment_id FROM payment_center_request
+    WHERE request_key=#{key} FOR UPDATE
+  </select>
+  <update id="bindRequest">
+    UPDATE payment_center_request SET payment_id=#{paymentId} WHERE request_key=#{key} AND (payment_id IS NULL OR payment_id=#{paymentId})
+  </update>
+</mapper>

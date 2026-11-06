@@ -21,6 +21,7 @@ import javax.sql.DataSource;
 import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.boot.autoconfigure.condition.*;
 import org.springframework.boot.context.properties.*;
+import org.springframework.boot.context.properties.bind.ConstructorBinding;
 import org.springframework.context.annotation.*;
 
 /** Offline/internal payment foundation. No payment-initiation HTTP or callback HTTP is registered. */
@@ -28,16 +29,46 @@ import org.springframework.context.annotation.*;
 @ConditionalOnProperty(prefix="pet.payment.foundation",name="enabled",havingValue="true")
 @EnableConfigurationProperties(PaymentFoundationConfiguration.LakalaSettings.class)
 public class PaymentFoundationConfiguration {
+    /** @param platform single platform collection merchant for the business-agnostic payment center; mutually exclusive with {@code stores}
+     *  @param settleType preorder settle_type persisted on new ORDER payment rows: "0" ordinary settlement, "1" split-ledger */
     @ConfigurationProperties(prefix="pet.payment.lakala")
-    public record LakalaSettings(Map<String,MerchantSettings> stores,String notificationCertificatePath,String channelTimeZone){
-        public LakalaSettings{stores=stores==null?Map.of():Map.copyOf(stores);}
+    public record LakalaSettings(Map<String,MerchantSettings> stores,String notificationCertificatePath,String channelTimeZone,
+            PlatformMerchant platform,String settleType){
+        @ConstructorBinding public LakalaSettings{
+            stores=stores==null?Map.of():Map.copyOf(stores);
+            settleType=settleType==null||settleType.isEmpty()?"0":settleType;
+        }
+        /** Pre-existing shape: store-keyed bindings only, ordinary settlement. */
+        public LakalaSettings(Map<String,MerchantSettings> stores,String notificationCertificatePath,String channelTimeZone){
+            this(stores,notificationCertificatePath,channelTimeZone,null,"0");
+        }
     }
     public record MerchantSettings(String merchantId,String merchantNo,String termNo,String subAppId){}
+    public record PlatformMerchant(String merchantNo,String termNo,String subAppId){
+        boolean blank(){return isBlank(merchantNo)&&isBlank(termNo)&&isBlank(subAppId);}
+        private static boolean isBlank(String v){return v==null||v.isBlank();}
+        private boolean complete(){return !isBlank(merchantNo)&&!isBlank(termNo)&&!isBlank(subAppId);}
+    }
     @Bean OrderPaymentFactsApi orderPaymentFactsApi(DataSource source,ScheduleCapacityGuardApi guard){
         return new OrderPaymentFactsApiImpl(source,guard);
     }
     @Bean @ConditionalOnMissingBean(PaymentMerchantBindings.class)
     PaymentMerchantBindings paymentMerchantBindings(LakalaSettings settings){
+        PlatformMerchant platform=settings.platform();
+        boolean platformConfigured=platform!=null&&!platform.blank();
+        if(platformConfigured&&!settings.stores().isEmpty())
+            throw new IllegalStateException("Payment merchant bindings are ambiguous: configure either pet.payment.lakala.stores or pet.payment.lakala.platform");
+        if(platformConfigured){
+            if(!platform.complete())throw new IllegalStateException("Payment platform merchant configuration is incomplete");
+            var binding=new PaymentMerchantBindings.Binding(platform.merchantNo(),platform.termNo(),platform.subAppId());
+            return new PaymentMerchantBindings(){
+                @Override public Binding require(String merchantId,String storeId){
+                    if(merchantId==null||merchantId.isBlank()||storeId==null||storeId.isBlank())throw unavailable();
+                    return binding;
+                }
+                @Override public Binding requirePlatform(){return binding;}
+            };
+        }
         return (merchantId,storeId)->{
             MerchantSettings value=settings.stores().get(storeId);
             if(value==null||!merchantId.equals(value.merchantId()))throw unavailable();
@@ -57,12 +88,17 @@ public class PaymentFoundationConfiguration {
                     expected.merchantNo(),expected.paymentNo(),expected.expectedAmount().movePointRight(2).longValueExact()));
             return new PaymentReceiptVerifier.VerifiedNotice(notice.merchantNo(),notice.outTradeNo(),notice.channelTradeNo(),
                     notice.tradeStatus().name(),BigDecimal.valueOf(notice.totalAmountCents(),2),
-                    notice.payerAmountCents()==null?null:BigDecimal.valueOf(notice.payerAmountCents(),2),notice.channelTradeTime(),notice.accountType());
+                    notice.payerAmountCents()==null?null:BigDecimal.valueOf(notice.payerAmountCents(),2),notice.channelTradeTime(),notice.accountType(),
+                    notice.logNo(),notice.logDate());
         };
     }
     @Bean PaymentPreparationApi paymentPreparationApi(DataSource source,SnowflakeIdGenerator ids,
-            ScheduleCapacityGuardApi guard,OrderPaymentFactsApi orders,BookingUserFactsApi users,PaymentMerchantBindings bindings){
-        return new PaymentPreparationApiImpl(source,ids,guard,orders,users,bindings);
+            ScheduleCapacityGuardApi guard,OrderPaymentFactsApi orders,BookingUserFactsApi users,PaymentMerchantBindings bindings,
+            LakalaSettings settings){
+        String settleType=settings.settleType();
+        if(!"0".equals(settleType)&&!"1".equals(settleType))
+            throw new IllegalStateException("pet.payment.lakala.settle-type must be 0 or 1");
+        return new PaymentPreparationApiImpl(source,ids,guard,orders,users,bindings,settleType);
     }
     @Bean PaymentNotificationService paymentNotificationService(DataSource source,SnowflakeIdGenerator ids,
             ScheduleCapacityGuardApi guard,PaymentReceiptVerifier verifier,IntegrationEventPublisher publisher,LakalaSettings settings){
