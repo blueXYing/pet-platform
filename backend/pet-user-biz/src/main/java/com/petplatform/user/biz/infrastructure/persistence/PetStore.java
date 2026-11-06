@@ -11,7 +11,7 @@ import org.mybatis.spring.SqlSessionTemplate;
 
 /** Only this Owner's tables (user_account, user_pet). SQL errors never escape with bound values. */
 public final class PetStore {
-    public record UserRow(long id, String phone, String nickname, String status) {}
+    public record UserRow(long id, String phone, String nickname, String status, String avatarUrl) {}
 
     public record PetRow(long id, long userId, String name, String petType, String breedName,
                          LocalDate birthDate, String sex, BigDecimal weightKg,
@@ -27,13 +27,15 @@ public final class PetStore {
     public UserRow findUser(long userId) {
         UserAccountEntity row = pets().selectUserById(userId);
         return row == null ? null
-                : new UserRow(row.getId(), row.getPhone(), row.getNickname(), row.getStatus());
+                : new UserRow(row.getId(), row.getPhone(), row.getNickname(), row.getStatus(),
+                        row.getAvatarUrl());
     }
 
     /** Contract 69 batch read; absent ids are missing from the result (caller decides). */
     public List<UserRow> findUsers(List<Long> userIds) {
         return pets().selectUsersByIds(userIds).stream()
-                .map(row -> new UserRow(row.getId(), row.getPhone(), row.getNickname(), row.getStatus()))
+                .map(row -> new UserRow(row.getId(), row.getPhone(), row.getNickname(), row.getStatus(),
+                        row.getAvatarUrl()))
                 .toList();
     }
 
