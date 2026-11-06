@@ -117,6 +117,9 @@ public interface UserQueryApi {
     PetSnapshotDTO getPetSnapshot(PetSnapshotQuery query);
 
     boolean existsEnabledUser(UserIdQuery query);
+
+    // 2026-10 合同 69 批量投影；2026-11-06 CCR 批准后 DTO 补 avatarUrl（见下）
+    default List<UserBasicDTO> listUsers(UserBasicsQuery query);
 }
 ```
 
@@ -127,7 +130,9 @@ public record UserBasicDTO(
     String userId,
     String mobileMasked,
     String nickname,
-    UserStatus status
+    UserStatus status,
+    String avatarUrl // 2026-11-06 CCR-M-ORDER-CARD-001/REVIEW-VIEW-001：可空微信头像外链，
+                     // 仅 https 且 ≤512 才允许出域投影；asset: 等内部形式留在 user 域
 ) {}
 
 public record PetSnapshotDTO(
