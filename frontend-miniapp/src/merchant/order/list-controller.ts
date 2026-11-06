@@ -6,7 +6,7 @@ import {
 } from './model'
 import type { MerchantOrderListDeps } from './repository'
 
-export type MerchantOrderListTab = 'PENDING_CONFIRM' | null
+export type MerchantOrderListTab = 'PENDING_CONFIRM' | 'PENDING_SERVICE' | 'COMPLETED' | 'CANCELED' | null
 
 export type MerchantOrderListState = Readonly<{
   /** entry = 无商家工作台坐标；closed = 403（开关关/无权/非本店）或 503 —— 整页失败关闭。 */

@@ -2,7 +2,7 @@ import { Button, Image, ScrollView, Text, View } from '@tarojs/components'
 import Taro, { useDidShow, useRouter } from '@tarojs/taro'
 import { useCallback, useEffect, useRef, useState, useSyncExternalStore, type CSSProperties } from 'react'
 import { useWorkspace } from '../../../shared/workspace-react'
-import { consumerApi } from '../../../shared/consumer-runtime'
+import { consumerApi, consumerSession } from '../../../shared/consumer-runtime'
 import { phoneGuard } from '../../../shared/phone-guard-runtime'
 import { MerchantAdmissionRepository } from '../../../shared/merchant-repositories'
 import { StaffWorkbenchController } from '../../staff/workbench'
@@ -10,6 +10,7 @@ import { StaffInvitationListController } from '../../staff/controller'
 import { previewStaffInvitationListDeps } from '../../staff/preview'
 import { RealStaffInvitationRepository } from '../../staff/repository'
 import { invitationStatusText, staffActionText, type InvitationStatus } from '../../staff/model'
+import { MerchantTabBar } from '../../components/tab-bar'
 import navBack from '../members/assets/nav-back@2x.png'
 import './page.css'
 
@@ -52,11 +53,16 @@ export default function StaffWorkbenchPage() {
   const previousRevision = useRef(revision)
 
   const load = useCallback(() => {
-    setNotice('')
-    controller.load(scope.current)
-    // 54 §7 list is session-scoped, not admission-scoped: pre-binding employees (unbound)
-    // need it most — the list is how they find their pending invitation without a number.
-    if (scope.current) void invitations.load()
+    void (async () => {
+      setNotice('')
+      // The employee side of contracts 52/54 needs a C session before the admission and
+      // phone-scoped invitation reads: a deep link can land here before the session exists.
+      try { await consumerSession.launch() } catch { /* the controllers render the error state */ }
+      controller.load(scope.current)
+      // 54 §7 list is session-scoped, not admission-scoped: pre-binding employees (unbound)
+      // need it most — the list is how they find their pending invitation without a number.
+      if (scope.current) void invitations.load()
+    })()
   }, [controller, invitations, scope])
   useDidShow(load)
   useEffect(() => () => { controller.dispose(); invitations.dispose() }, [controller, invitations])
@@ -197,7 +203,9 @@ export default function StaffWorkbenchPage() {
         {invitationListCard()}
       </View>}
       {notice && <Text id='msw-notice' className='msw-notice'>{notice}</Text>}
-      <View className='msw-tail'><Text>当前工作区：{context?.workspace ?? '未登录'}{context?.storeId ? ` · ${context.storeId}` : ''}；页面数据：真实接口（contract 52/54）</Text></View>
+      {preview && <View className='msw-tail'><Text>页面数据：契约 Mock（preview=1，不联调）</Text></View>}
+      <View className='msw-tab-space' />
     </ScrollView>
+    <MerchantTabBar active='verify' unit={unit} />
   </View>
 }

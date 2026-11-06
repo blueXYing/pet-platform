@@ -57,3 +57,5 @@
 .mrv-state .mrv-primary { padding: calc(10 * var(--mrv-unit)) calc(16 * var(--mrv-unit)); align-self: flex-start; }
 .mrv-page .mrv-submit { width: 100%; margin-top: calc(17.152 * var(--mrv-unit)); height: calc(47.168 * var(--mrv-unit)); line-height: calc(47.168 * var(--mrv-unit)); }
 .mrv-page .mrv-close-sheet { width: 100%; color: #6b7280; font-size: calc(13 * var(--mrv-unit)); line-height: calc(32 * var(--mrv-unit)); margin-top: calc(8 * var(--mrv-unit)); }
+
+.mrv-tab-space { height: calc(var(--mrv-unit) * 96); flex: none; }

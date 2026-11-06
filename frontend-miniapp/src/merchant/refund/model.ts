@@ -45,5 +45,19 @@ export function dateText(value: string | null): string {
   const local = new Date(date.getTime() + 8 * 60 * 60 * 1000)
   return `${local.toISOString().slice(0, 10)} ${local.toISOString().slice(11, 16)}`
 }
+
+/** 列表卡面用的紧凑时间：今天/明天 18:00；其他日期 11-04 18:00。 */
+export function dateLabel(value: string | null): string {
+  if (!value) return '—'
+  const date = new Date(value)
+  if (!Number.isFinite(date.getTime())) return '—'
+  const local = new Date(date.getTime() + 8 * 60 * 60 * 1000)
+  const now = new Date(Date.now() + 8 * 60 * 60 * 1000)
+  const day = local.toISOString().slice(0, 10)
+  const today = now.toISOString().slice(0, 10)
+  const tomorrow = new Date(now.getTime() + 24 * 60 * 60 * 1000).toISOString().slice(0, 10)
+  const prefix = day === today ? '今天' : day === tomorrow ? '明天' : day.slice(5)
+  return `${prefix} ${local.toISOString().slice(11, 16)}`
+}
 /** 服务端未配置生产原因字典标签时不臆造文案：未知编码原样呈现（aftersale 同裁决）。 */
 export function reasonCodeText(code: string): string { return code }

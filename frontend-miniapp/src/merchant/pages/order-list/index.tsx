@@ -1,74 +1,192 @@
 import { Button, Image, ScrollView, Text, View } from '@tarojs/components'
-import Taro, { useDidHide, useDidShow } from '@tarojs/taro'
-import { useEffect, useState, useSyncExternalStore, type CSSProperties } from 'react'
+import Taro, { useDidShow, useRouter } from '@tarojs/taro'
+import { useCallback, useEffect, useState, useSyncExternalStore, type CSSProperties } from 'react'
 import { useWorkspace } from '../../../shared/workspace-react'
-import { consumerApi } from '../../../shared/consumer-runtime'
+import { consumerApi, consumerSession } from '../../../shared/consumer-runtime'
+import { MerchantStatsClient, StoreProfileClient, type StoreProfileView } from '../../../shared/merchant-storefront-api'
+import { MerchantRefundClient } from '../../../shared/merchant-refund-api'
 import { RealMerchantOrderListRepository } from '../../order/repository'
 import { MerchantOrderListController, type MerchantOrderListTab } from '../../order/list-controller'
-import { merchantAppointmentWindow, merchantDisplayStatusLabels, merchantOrderTimeText } from '../../order/model'
-import navBack from '../members/assets/nav-back@2x.png'
+import {
+  merchantAppointmentLabel, merchantAppointmentWindow, merchantDisplayStatusLabels,
+} from '../../order/model'
+import { businessStatusLabel } from '../../storefront/model'
+import { previewOrderListDeps, previewStoreProfile } from '../../workbench/preview'
+import { MerchantTabBar } from '../../components/tab-bar'
+import bell from '../workspace/assets/bell.svg'
 import './page.css'
 
-// 商家订单列表页（10号 §4.1 增补，#129 后续切片）：把 #129 的“按单号处理”升级为真列表。
-// OWNER 主账号按工作台商家坐标读取本店订单（服务端在门店 guard 事务内重验归属，跨店隔离
-// 与防枚举 403 均在服务端）；「待接单」tab = displayStatus=PENDING_CONFIRM（重点面板，30 分钟
-// 确认窗口）、「全部」tab 不发送过滤参数；分页沿固定排序 created_at DESC, id DESC 稳定加载。
-// displayStatus 由服务端统一计算，页面不按底层字段推导；卡面仅契约最小字段集（订单号/状态/
-// 预约时间窗/支付金额/支付时间——paidAt 是 30 分钟规则的锚点事实，只呈现不推导截止）。
-// 点单进入 #129 处理页（orderId 透传，处理页身份每次服务端复验）；从处理页返回后 did-show
-// 重读当前桶。403（开关未开/无权限/非本店）与 503 依赖故障整页失败关闭；无商家工作台坐标
-// 引导回工作台。沿 M 端现行规范（order-confirm/aftersale 列表页）实现，非设计稿一比一还原
-// （登记表无 M 端订单列表原稿帧）；状态样式只用 className 变体，不用 data-*。
+// 商家订单列表页（10号 §4.1 增补）。视觉按 Figma 23:14926 外壳还原：店招头带 86
+// #fff6e5 + 营业状态 + 铃铛、奶油底筛选 tab、白卡 #c0ecff 描边、金额右置、状态胶囊、
+// 底部五 tab（订单 active）。功能仍按 45号/10号契约：displayStatus 服务端投影、
+// PENDING_CONFIRM 30 分钟确认窗口、点卡进入 order-confirm 接单/拒单。
+// 原稿的客户姓名/手机号/服务名/商家取消按钮不在商家读侧或与 45号冲突，不渲染。
+// `?preview=1` 为开发者工具视觉验收夹具，使用 workbench/preview 样本，不接真实接口。
+
+type TabKey = MerchantOrderListTab | 'REFUND'
+type CountKey = Exclude<TabKey, null>
+const TABS: readonly { key: TabKey; label: string }[] = [
+  { key: 'PENDING_CONFIRM', label: '待接单' },
+  { key: null, label: '全部' },
+  { key: 'PENDING_SERVICE', label: '待服务' },
+  { key: 'COMPLETED', label: '已完成' },
+  { key: 'REFUND', label: '退款' },
+]
 
 export default function MerchantOrderListPage() {
+  const route = useRouter()
+  const preview = route.params.preview === '1'
   const { scope } = useWorkspace('real')
-  const [controller] = useState(() => {
-    const repository = new RealMerchantOrderListRepository(consumerApi)
-    return new MerchantOrderListController({ list: query => repository.list(query), scope })
+  // 预览夹具先给 scope 一个商户坐标，控制器才能通过 ticket()；真实路径不变。
+  const [previewStore] = useState<StoreProfileView | null>(() => {
+    if (!preview) return null
+    const current = scope.current
+    if (!current || current.workspace !== 'merchant' || !current.merchantId || !current.storeId) {
+      scope.replace({
+        userId: '9007199254740993', workspace: 'merchant',
+        merchantId: '9007199254740995', storeId: '9007199254740996',
+      })
+    }
+    return previewStoreProfile()
   })
+  const [controller] = useState(() => preview
+    ? new MerchantOrderListController(previewOrderListDeps(scope))
+    : new MerchantOrderListController({
+      scope,
+      list: query => new RealMerchantOrderListRepository(consumerApi).list(query),
+    }))
   const state = useSyncExternalStore(controller.subscribe, controller.getSnapshot)
+  const [store, setStore] = useState<StoreProfileView | null>(previewStore)
+  const [reviewAvg, setReviewAvg] = useState<string | null>(null)
+  const [counts, setCounts] = useState<Partial<Record<CountKey, number>>>({})
   const [notice, setNotice] = useState('')
   const [platformInfo] = useState(() => Taro.getWindowInfo())
   const unit = platformInfo.windowWidth / 402
-  const style = { '--mol-status-top': `${platformInfo.statusBarHeight || 0}px`, '--mol-unit': `${unit}px` } as CSSProperties
+  const style = {
+    '--mol-status-top': `${platformInfo.statusBarHeight || 0}px`,
+    '--mol-unit': `${unit}px`,
+  } as CSSProperties
 
-  useDidShow(() => { setNotice(''); void controller.load() })
-  useDidHide(() => { /* the controller keeps its page state; did-show reloads the tab */ })
+  const loadStore = useCallback(() => {
+    if (preview) return
+    new StoreProfileClient(consumerApi).get().then(setStore).catch(() => setStore(null))
+  }, [preview])
+  const loadRating = useCallback(() => {
+    if (preview) { setReviewAvg('4.9'); return }
+    new MerchantStatsClient(consumerApi).overview('TODAY')
+      .then(view => setReviewAvg(view.reviewAvg))
+      .catch(() => setReviewAvg(null))
+  }, [preview])
+  const loadCounts = useCallback(() => {
+    if (preview) return
+    const current = scope.current
+    if (!current || current.workspace !== 'merchant' || !current.merchantId || !current.storeId) return
+    const coordinates = { merchantId: current.merchantId, storeId: current.storeId, page: 1, pageSize: 20 }
+    const repository = new RealMerchantOrderListRepository(consumerApi)
+    const statuses = ['PENDING_CONFIRM', 'PENDING_SERVICE', 'COMPLETED'] as const
+    void Promise.all(statuses.map(status => repository.list({ ...coordinates, displayStatus: status })
+      .then(page => [status, page.total] as const)
+      .catch(() => [status, 0] as const)))
+      .then(entries => setCounts(previous => ({ ...previous, ...Object.fromEntries(entries) })))
+      .catch(() => {})
+    new MerchantRefundClient(consumerApi).list(coordinates)
+      .then(page => setCounts(previous => ({ ...previous, REFUND: page.total })))
+      .catch(() => {})
+  }, [preview, scope])
+  const load = useCallback(() => {
+    setNotice('')
+    if (preview) { void controller.load(null); return }
+    const current = scope.current
+    if (!current) { controller.load(); setNotice('请先登录后从商家工作台进入。'); return }
+    if (current.workspace !== 'merchant' || !current.merchantId || !current.storeId) {
+      controller.load(); setNotice('请从商家工作台进入订单处理。'); return
+    }
+    void controller.load()
+  }, [controller, scope, preview])
+  useDidShow(() => {
+    // The app provider's session restore and this page's did-show can race; resolve the
+    // session first, then read the store profile and the list with a live credential.
+    void (async () => {
+      try { await consumerSession.launch() } catch { /* page error paths handle it */ }
+      loadStore()
+      loadRating()
+      loadCounts()
+      load()
+    })()
+  })
   useEffect(() => () => controller.dispose(), [controller])
 
-  async function back() {
-    if (Taro.getCurrentPages().length > 1) await Taro.navigateBack().catch(() => setNotice('返回失败，请重试'))
-    else await Taro.redirectTo({ url: '/merchant/pages/workspace/index' }).catch(() => setNotice('返回失败，请重试'))
-  }
   function goWorkspace() {
     Taro.redirectTo({ url: '/merchant/pages/workspace/index' }).catch(() => setNotice('页面跳转失败，请重试'))
   }
   function openProcess(orderId: string) {
-    // 点单进入 #129 处理页：orderId 透传（处理页仍按单服务端复验 OWNER 归属）。
     Taro.navigateTo({ url: `/merchant/pages/order-confirm/index?orderId=${encodeURIComponent(orderId)}` })
       .catch(() => setNotice('页面跳转失败，请重试'))
   }
+  function openRefund() {
+    Taro.navigateTo({ url: '/merchant/pages/refund/index' }).catch(() => setNotice('页面跳转失败，请重试'))
+  }
+  function openMessages() {
+    const pages = Taro.getCurrentPages()
+    const index = pages.findIndex(page => page.route === 'merchant/pages/messages/index')
+    if (index >= 0) {
+      const delta = pages.length - 1 - index
+      if (delta > 0) Taro.navigateBack({ delta }).catch(() => setNotice('返回失败，请重试'))
+      return
+    }
+    Taro.navigateTo({ url: '/merchant/pages/messages/index' }).catch(() => setNotice('页面跳转失败，请重试'))
+  }
+  function choose(tab: TabKey) {
+    if (tab === 'REFUND') { openRefund(); return }
+    controller.chooseTab(tab)
+  }
 
-  const tabs: readonly { key: MerchantOrderListTab; label: string }[] = [
-    { key: 'PENDING_CONFIRM', label: '待接单' },
-    { key: null, label: '全部' },
-  ]
+  const storeName = store?.readonlyFacts.storeName ?? '商家订单'
+  const initial = Array.from(storeName)[0] ?? '商'
+  const statusLabel = store ? businessStatusLabel[store.profile.businessStatus] ?? '' : ''
+  const statusResting = store?.profile.businessStatus === 'RESTING'
   return <View className='mol-page' style={style}>
     <View className='mol-status-area' />
     <View className='mol-header'>
-      <Button id='mol-back' ariaLabel='返回' className='mol-back' onClick={() => void back()}><Image src={navBack} mode='scaleToFill' /></Button>
-      <Text className='mol-title'>订单处理</Text>
+      <View className='mol-store'>
+        <View className='mol-avatar'><Text>{initial}</Text></View>
+        <View className='mol-store-main'>
+          <Text className='mol-store-name'>{storeName}</Text>
+          <View className='mol-rating'>
+            <Text className='mol-rating-star'>★ {reviewAvg ?? '--'}</Text>
+            <Text className='mol-rating-label'>评分</Text>
+          </View>
+        </View>
+      </View>
+      <View className='mol-header-right'>
+        {statusLabel ? <View className={statusResting ? 'mol-pill mol-pill-resting' : 'mol-pill'}>
+          <View className='mol-pill-dot' /><Text>{statusLabel}</Text>
+        </View> : null}
+        <Button className='mol-bell' ariaLabel='消息通知' onClick={openMessages}><Image src={bell} mode='aspectFit' /></Button>
+      </View>
     </View>
-    {state.status !== 'entry' && state.status !== 'closed' && <View className='mol-tabs'>
-      {tabs.map(tab => <Button key={tab.label} id={`mol-tab-${tab.key ?? 'all'}`}
-        className={state.tab === tab.key ? 'mol-tab mol-tab-active' : 'mol-tab'}
-        disabled={state.status === 'loading'}
-        onClick={() => controller.chooseTab(tab.key)}><Text>{tab.label}</Text></Button>)}
-    </View>}
+    <View className='mol-tabs'>
+      {TABS.map(tab => tab.key === 'REFUND'
+        ? <Button key={tab.label} id='mol-tab-refund' className='mol-tab' onClick={() => choose(tab.key)}>
+          <View className='mol-tab-inner'>
+            <Text>{tab.label}</Text>
+            {counts.REFUND ? <View className='mol-tab-badge'><Text>{counts.REFUND > 99 ? '99+' : counts.REFUND}</Text></View> : null}
+          </View>
+        </Button>
+        : <Button key={tab.label} id={`mol-tab-${tab.key ?? 'all'}`}
+          className={state.tab === tab.key ? 'mol-tab mol-tab-active' : 'mol-tab'}
+          disabled={state.status === 'loading'}
+          onClick={() => choose(tab.key)}>
+          <View className='mol-tab-inner'>
+            <Text>{tab.label}</Text>
+            {tab.key && counts[tab.key] ? <View className='mol-tab-badge'><Text>{counts[tab.key]! > 99 ? '99+' : counts[tab.key]}</Text></View> : null}
+          </View>
+        </Button>)}
+    </View>
     <ScrollView className='mol-body' scrollY enhanced showScrollbar={false}>
       {(state.status === 'idle' || state.status === 'loading') && <View className='mol-state' role='status'><Text id='mol-loading'>正在读取订单…</Text></View>}
       {state.status === 'entry' && <View className='mol-state' role='status'>
-        <Text id='mol-entry-hint'>{state.notice || '请从商家工作台进入订单处理。'}</Text>
+        <Text id='mol-entry-hint'>{state.notice || notice || '请从商家工作台进入订单处理。'}</Text>
         <Button id='mol-go-workspace' className='mol-state-action' onClick={goWorkspace}>去商家工作台</Button>
       </View>}
       {state.status === 'closed' && <View className='mol-panel mol-panel-closed' role='alert'>
@@ -81,32 +199,36 @@ export default function MerchantOrderListPage() {
         <Button id='mol-retry' className='mol-state-action' onClick={() => void controller.load()}>重新加载</Button>
       </View>}
       {state.status === 'ready' && state.items.length === 0 && <View className='mol-state'>
-        <Text id='mol-empty'>{state.tab === null ? '本店暂无订单。' : '暂无待接单订单；顾客支付后 30 分钟内未处理将由系统自动接单。'}</Text>
+        <Text id='mol-empty'>{state.tab === null ? '本店暂无订单。' : state.tab === 'PENDING_CONFIRM' ? '暂无待接单订单；顾客支付后 30 分钟内未处理将由系统自动接单。' : '该状态暂无订单。'}</Text>
       </View>}
       {state.status === 'ready' && state.items.map(item => <Button key={item.orderId} id={`mol-card-${item.orderId}`}
         className='mol-card'
         ariaLabel={`订单 ${item.orderNo}，${merchantDisplayStatusLabels[item.displayStatus]}，${merchantAppointmentWindow(item)}，${item.payAmount} 元`}
         onClick={() => openProcess(item.orderId)}>
         <View className='mol-card-head'>
-          <Text className='mol-card-no'>订单号 {item.orderNo}</Text>
-          <Text className={`mol-badge mol-badge-${item.displayStatus}`}>{merchantDisplayStatusLabels[item.displayStatus]}</Text>
-        </View>
-        <Text className='mol-card-time'>服务时间 {merchantAppointmentWindow(item)}</Text>
-        <Text className='mol-card-time'>支付时间 {item.paidAt ? merchantOrderTimeText(item.paidAt) : '—'}</Text>
-        <View className='mol-card-foot'>
-          <Text className='mol-card-id'>ID {item.orderId}</Text>
+          <View className='mol-card-avatar'><Text>单</Text></View>
+          <View className='mol-card-who'>
+            <Text className='mol-card-no'>订单 {item.orderNo.slice(-8)}</Text>
+            <Text className='mol-card-service'>{merchantAppointmentLabel(item)}</Text>
+          </View>
           <Text className='mol-card-amount'>¥{item.payAmount}</Text>
         </View>
-        {item.displayStatus === 'PENDING_CONFIRM' && <Text className='mol-card-action-hint'>点按进入接单 / 拒单</Text>}
+        <View className='mol-card-meta'>
+          <Text className={`mol-badge mol-badge-${item.displayStatus}`}>{merchantDisplayStatusLabels[item.displayStatus]}</Text>
+          {item.displayStatus === 'PENDING_CONFIRM' && <View className='mol-card-actions'>
+            <View className='mol-action-pill mol-action-reject'><Text>拒绝</Text></View>
+            <View className='mol-action-pill mol-action-accept'><Text>接单</Text></View>
+          </View>}
+        </View>
       </Button>)}
       {state.status === 'ready' && state.items.length < state.total
         && <Button id='mol-load-more' className='mol-more' disabled={state.loadingMore} onClick={() => void controller.loadMore()}>
           {state.loadingMore ? '正在加载…' : '加载更多'}
         </Button>}
-      {state.status === 'ready' && <Text className='mol-count'>本店 · 共 {state.total} 笔订单</Text>}
       {state.notice && state.status !== 'load-error' && <Text id='mol-notice' className='mol-notice'>{state.notice}</Text>}
       {notice && <Text className='mol-notice'>{notice}</Text>}
-      <View className='mol-tail'><Text>页面数据：真实接口（contract 10 §4.1 商家订单列表读侧，平台开关默认关闭时接口失败关闭）</Text></View>
+      <View className='mol-tab-space' />
     </ScrollView>
+    <MerchantTabBar active='orders' unit={unit} />
   </View>
 }

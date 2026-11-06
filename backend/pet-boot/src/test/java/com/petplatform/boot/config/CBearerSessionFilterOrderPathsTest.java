@@ -30,4 +30,30 @@ class CBearerSessionFilterOrderPathsTest {
         assertFalse(CBearerSessionFilter.protectedPath("/api/v1/c/orders//"));
         assertFalse(CBearerSessionFilter.protectedPath("/api/v1/c/order"));
     }
+
+    /**
+     * Contracts 27 §6.4 / 69 / 70: the merchant storefront reads are session-scoped even though
+     * their HTTP switches default off; the security chain decides whether the route is assembled.
+     */
+    @Test
+    void merchantStorefrontRoutesRequireTheSession() {
+        assertTrue(CBearerSessionFilter.protectedPath("/api/v1/merchant/store-profile"));
+        assertTrue(CBearerSessionFilter.protectedPath("/api/v1/merchant/stats/overview"));
+        assertTrue(CBearerSessionFilter.protectedPath("/api/v1/merchant/stats/services/top"));
+        assertTrue(CBearerSessionFilter.protectedPath("/api/v1/merchant/customers"));
+        assertTrue(CBearerSessionFilter.protectedPath("/api/v1/merchant/customers/710100"));
+        assertTrue(CBearerSessionFilter.protectedPath("/api/v1/merchant/customers/710100/note"));
+        assertTrue(CBearerSessionFilter.protectedPath("/api/v1/merchant/staff-members"));
+        assertTrue(CBearerSessionFilter.protectedPath("/api/v1/merchant/staff-members/invitations"));
+        assertTrue(CBearerSessionFilter.protectedPath(
+            "/api/v1/merchant/staff-members/710303/disable"));
+        assertTrue(CBearerSessionFilter.protectedPath("/api/v1/c/staff/invitations"));
+        assertTrue(CBearerSessionFilter.protectedPath(
+            "/api/v1/c/staff/invitations/710304/confirm"));
+
+        // Unrelated lookalikes stay out of the merchant session family.
+        assertFalse(CBearerSessionFilter.protectedPath("/api/v1/merchant/stats"));
+        assertFalse(CBearerSessionFilter.protectedPath("/api/v1/merchant/customer"));
+        assertFalse(CBearerSessionFilter.protectedPath("/api/v1/merchant/staff-member"));
+    }
 }

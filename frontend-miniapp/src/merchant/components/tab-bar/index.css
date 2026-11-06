@@ -1,0 +1,87 @@
+/* 商家端底部五 tab（Figma 95:1899 / 153:3434 / 149:926，402 设计宽）。
+   61 高 #f0fbff + 1px #c0ecff 顶线；五等分；中间 53x53 #5baae8 凸起核销键，顶部 -14。
+   图标使用原稿 SVG（inactive 为同形状 #3C3C3C 派生变体）；标签 10/15。 */
+.mtb-bar {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 30;
+  background: #f0fbff;
+  border-top: calc(var(--mtb-unit) * 1) solid #c0ecff;
+  padding-bottom: constant(safe-area-inset-bottom);
+  padding-bottom: env(safe-area-inset-bottom);
+}
+.mtb-items {
+  position: relative;
+  display: flex;
+  height: calc(var(--mtb-unit) * 61);
+}
+.mtb-item {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-start;
+  padding-top: calc(var(--mtb-unit) * 10);
+  gap: calc(var(--mtb-unit) * 3);
+}
+.mtb-item-center {
+  position: relative;
+  padding-top: 0;
+}
+.mtb-center-button {
+  position: absolute;
+  top: calc(var(--mtb-unit) * -14);
+  left: 50%;
+  transform: translateX(-50%);
+  width: calc(var(--mtb-unit) * 53);
+  height: calc(var(--mtb-unit) * 53);
+  border-radius: calc(var(--mtb-unit) * 16);
+  background: #5baae8;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.mtb-center-icon {
+  width: calc(var(--mtb-unit) * 27);
+  height: calc(var(--mtb-unit) * 23.6);
+}
+.mtb-center-label {
+  position: absolute;
+  top: calc(var(--mtb-unit) * 41);
+  left: 0;
+  right: 0;
+  text-align: center;
+}
+.mtb-icon {
+  width: calc(var(--mtb-unit) * 22);
+  height: calc(var(--mtb-unit) * 19);
+}
+.mtb-icon-home {
+  width: calc(var(--mtb-unit) * 21.5);
+  height: calc(var(--mtb-unit) * 18.48);
+}
+.mtb-icon-order {
+  width: calc(var(--mtb-unit) * 22.07);
+  height: calc(var(--mtb-unit) * 18.83);
+}
+.mtb-icon-messages {
+  width: calc(var(--mtb-unit) * 17.31);
+  height: calc(var(--mtb-unit) * 17.31);
+}
+.mtb-icon-mine {
+  width: calc(var(--mtb-unit) * 17.32);
+  height: calc(var(--mtb-unit) * 17.32);
+}
+.mtb-label {
+  font-size: calc(var(--mtb-unit) * 10);
+  line-height: calc(var(--mtb-unit) * 15);
+  color: #3c3c3c;
+  font-weight: 500;
+  font-family: Roboto, 'Noto Sans SC', sans-serif;
+  white-space: nowrap;
+}
+.mtb-active .mtb-label {
+  color: #5baae8;
+}

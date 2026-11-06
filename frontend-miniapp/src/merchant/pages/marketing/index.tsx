@@ -1,23 +1,39 @@
-import { Button, Input, Picker, Text, Textarea, View } from '@tarojs/components'
+import { Button, Image, Input, Picker, Text, Textarea, View } from '@tarojs/components'
 import Taro, { useDidShow } from '@tarojs/taro'
 import { useCallback, useState, type CSSProperties } from 'react'
-import { consumerApi } from '../../../shared/consumer-runtime'
+import { consumerApi, consumerSession } from '../../../shared/consumer-runtime'
 import { MerchantMarketingApi, type MerchantCampaign, type MerchantEnrollment, type MyCampaign } from '../../marketing/api'
+import { MerchantTabBar } from '../../components/tab-bar'
+import { merchantOrderTimeText } from '../../order/model'
+import navBack from '../aftersale/assets/nav-back@3x.png'
 import './index.css'
 
 const api = new MerchantMarketingApi(consumerApi)
 type Tab = 'open' | 'mine' | 'campaigns'
 const moneyDate = (date: string, end = false) => `${date}T${end ? '23:59:59' : '00:00:00'}.000Z`
+// Contract enums were rendered raw (报名状态：APPROVED / 状态：DRAFT); map to the product copy.
+const enrollmentStatusText: Record<string, string> = {
+  SUBMITTED: '已提交', UNDER_REVIEW: '审核中', APPROVED: '已通过', REJECTED: '已驳回', WITHDRAWN: '已撤回',
+}
+const campaignStatusText: Record<string, string> = {
+  DRAFT: '草稿', PENDING_REVIEW: '待审核', SCHEDULED: '待开始', ONLINE: '进行中',
+  PAUSED: '已暂停', ENDED: '已结束', CANCELED: '已取消', REJECTED: '已驳回',
+}
+const beijingDate = (iso: string | null): string => merchantOrderTimeText(iso).slice(0, 10) || '--'
 
 function useMerchant() {
-  const context = consumerApi.scope.capture().context
-  if (context.workspace !== 'merchant' || !context.merchantId || !context.storeId) return null
+  const context = consumerApi.scope.current
+  if (!context || context.workspace !== 'merchant' || !context.merchantId || !context.storeId) return null
   return { merchantId: context.merchantId, storeId: context.storeId }
 }
 
 export default function MerchantMarketingPage() {
   const [info] = useState(() => Taro.getWindowInfo())
-  const style = { '--mmk-unit': `${info.windowWidth / 402}px` } as CSSProperties
+  const unit = info.windowWidth / 402
+  const style = {
+    '--mmk-unit': `${info.windowWidth / 402}px`,
+    '--mmk-status-top': `${info.statusBarHeight || 0}px`,
+  } as CSSProperties
   const merchant = useState(() => useMerchant())[0]
   const [tab, setTab] = useState<Tab>('open')
   const [phase, setPhase] = useState<'loading' | 'ready' | 'error'>('loading')
@@ -47,7 +63,12 @@ export default function MerchantMarketingPage() {
       setOpen(nextOpen); setMine(nextMine); setCampaigns(nextCampaigns); setPhase('ready')
     }).catch(() => setPhase('error'))
   }, [merchant])
-  useDidShow(load)
+  useDidShow(() => {
+    void (async () => {
+      try { await consumerSession.launch() } catch { /* load() renders the error state */ }
+      load()
+    })()
+  })
 
   async function submitEnroll(campaign: MerchantCampaign) {
     if (!merchant || enrolling) return
@@ -114,18 +135,19 @@ export default function MerchantMarketingPage() {
   }
 
   function back() {
-    Taro.navigateBack().catch(() => Taro.redirectTo({ url: '/merchant/pages/workspace/index' }))
+    // navigateBack returns to a disposed workbench tree (stale placeholder dashboard).
+    Taro.reLaunch({ url: '/merchant/pages/workspace/index' }).catch(() => {})
   }
 
   return <View className='mmk-page' style={style}>
     <View className='mmk-status' />
     <View className='mmk-header'>
-      <Button className='mmk-back' ariaLabel='返回' onClick={back}>‹</Button>
+      <Button className='mmk-back' ariaLabel='返回' onClick={back}><Image src={navBack} mode='scaleToFill' /></Button>
       <Text className='mmk-title'>营销活动</Text>
     </View>
     <View className='mmk-tabs'>
       {([['open', '可报名活动'], ['mine', '我的报名'], ['campaigns', '我的活动']] as const).map(([key, label]) =>
-        <View key={key} className={tab === key ? 'mmk-tab mmk-tab-active' : 'mmk-tab'} onClick={() => setTab(key)}><Text>{label}</Text></View>)}
+        <View key={key} id={`mmk-tab-${key}`} className={tab === key ? 'mmk-tab mmk-tab-active' : 'mmk-tab'} onClick={() => setTab(key)}><Text>{label}</Text></View>)}
     </View>
     {notice ? <View className='mmk-notice'><Text>{notice}</Text></View> : null}
     {!merchant && <View className='mmk-empty'><Text>请从商家工作台进入营销活动</Text></View>}
@@ -138,9 +160,9 @@ export default function MerchantMarketingPage() {
       {open.map(campaign => <View key={campaign.campaignId} className='mmk-card'>
         <Text className='mmk-card-title'>{campaign.title}</Text>
         {campaign.subtitle ? <Text className='mmk-card-sub'>{campaign.subtitle}</Text> : null}
-        <Text className='mmk-meta'>报名 {campaign.enrollStartAt?.slice(0, 10) ?? '--'} 至 {campaign.enrollEndAt?.slice(0, 10) ?? '--'}</Text>
+        <Text className='mmk-meta'>报名 {beijingDate(campaign.enrollStartAt)} 至 {beijingDate(campaign.enrollEndAt)}</Text>
         {campaign.enrollmentStatus && ['SUBMITTED', 'UNDER_REVIEW', 'APPROVED'].includes(campaign.enrollmentStatus)
-          ? <Text className='mmk-status-text'>报名状态：{campaign.enrollmentStatus}</Text>
+          ? <Text className='mmk-status-text'>报名状态：{enrollmentStatusText[campaign.enrollmentStatus] ?? campaign.enrollmentStatus}</Text>
           : enrolling === campaign.campaignId
             ? <View className='mmk-form'>
               <Input className='mmk-input' placeholder='优惠角标（如 5折）' value={offerTag} maxlength={32} onInput={event => setOfferTag(String(event.detail.value))} />
@@ -158,7 +180,7 @@ export default function MerchantMarketingPage() {
       {mine.length === 0 && <View className='mmk-empty'><Text>还没有报名记录</Text></View>}
       {mine.map(enrollment => <View key={enrollment.enrollmentId} className='mmk-card'>
         <Text className='mmk-card-title'>{enrollment.campaignTitle}</Text>
-        <Text className='mmk-status-text'>状态：{enrollment.status}</Text>
+        <Text className='mmk-status-text'>状态：{enrollmentStatusText[enrollment.status] ?? enrollment.status}</Text>
         {enrollment.offerTitle ? <Text className='mmk-card-sub'>{enrollment.offerTitle}</Text> : null}
         {enrollment.rejectReason ? <Text className='mmk-reject'>驳回原因：{enrollment.rejectReason}</Text> : null}
         {(enrollment.status === 'SUBMITTED' || enrollment.status === 'UNDER_REVIEW') &&
@@ -181,8 +203,8 @@ export default function MerchantMarketingPage() {
       {campaigns.length === 0 && <View className='mmk-empty'><Text>还没有发起活动</Text></View>}
       {campaigns.map(campaign => <View key={campaign.campaignId} className='mmk-card'>
         <Text className='mmk-card-title'>{campaign.title}</Text>
-        <Text className='mmk-status-text'>状态：{campaign.status}</Text>
-        <Text className='mmk-meta'>{campaign.startAt.slice(0, 10)} 至 {campaign.endAt.slice(0, 10)}</Text>
+        <Text className='mmk-status-text'>状态：{campaignStatusText[campaign.status] ?? campaign.status}</Text>
+        <Text className='mmk-meta'>{beijingDate(campaign.startAt)} 至 {beijingDate(campaign.endAt)}</Text>
         <View className='mmk-row'>
           {(campaign.status === 'DRAFT' || campaign.status === 'REJECTED') &&
             <Button className='mmk-ghost' onClick={() => editCampaign(campaign)}>编辑</Button>}
@@ -193,5 +215,7 @@ export default function MerchantMarketingPage() {
         </View>
       </View>)}
     </View>}
+    <View className='mmk-tab-space' />
+    <MerchantTabBar active='home' unit={unit} />
   </View>
 }

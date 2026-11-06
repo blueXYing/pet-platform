@@ -1,25 +1,44 @@
 import { Button, Image, ScrollView, Text, Textarea, View } from '@tarojs/components'
-import Taro, { useDidHide, useDidShow } from '@tarojs/taro'
+import Taro, { useDidHide, useDidShow, useRouter } from '@tarojs/taro'
 import { useEffect, useState, useSyncExternalStore, type CSSProperties } from 'react'
-import { consumerApi, consumerStorage } from '../../../shared/consumer-runtime'
+import { consumerApi, consumerSession, consumerStorage } from '../../../shared/consumer-runtime'
 import { merchantReviewDeps } from '../../review-appeal/repository'
 import { MerchantReviewController } from '../../review-appeal/controller'
+import { previewReviewDeps } from '../../workbench/preview'
+import { MerchantTabBar } from '../../components/tab-bar'
 import navBack from '../aftersale/assets/nav-back@3x.png'
 import './page.css'
 
 /** Contract56 M face: the store coordinates come from the merchant workspace handoff. */
-function useMerchantReviews() {
+function useMerchantReviews(preview = false) {
+  // ?preview=1：先注入商户坐标，再用本地评价样本；真实路径不变。
+  useState(() => {
+    if (!preview) return false
+    const current = consumerApi.scope.current
+    if (!current || current.workspace !== 'merchant' || !current.merchantId || !current.storeId) {
+      consumerApi.scope.replace({
+        userId: '9007199254740993', workspace: 'merchant',
+        merchantId: '9007199254740995', storeId: '9007199254740996',
+      })
+    }
+    return true
+  })
   const [controller] = useState(() => {
-    const context = consumerApi.scope.capture().context
-    if (context.workspace !== 'merchant' || !context.merchantId || !context.storeId) {
+    const context = consumerApi.scope.current
+    if (!context || context.workspace !== 'merchant' || !context.merchantId || !context.storeId) {
       throw new Error('MERCHANT_ENTRY_REQUIRED')
     }
     return new MerchantReviewController(
-      merchantReviewDeps(consumerApi, consumerStorage), consumerApi.scope,
+      preview ? previewReviewDeps() : merchantReviewDeps(consumerApi, consumerStorage), consumerApi.scope,
       { merchantId: context.merchantId, storeId: context.storeId })
   })
   const state = useSyncExternalStore(controller.subscribe, controller.getSnapshot)
-  useDidShow(() => { void controller.load() })
+  useDidShow(() => {
+    void (async () => {
+      try { await consumerSession.launch() } catch { /* controller.load() renders the error state */ }
+      await controller.load()
+    })()
+  })
   useDidHide(() => controller.hide())
   useEffect(() => () => controller.dispose(), [controller])
   const [info] = useState(() => Taro.getWindowInfo())
@@ -49,8 +68,12 @@ function starCount(score: string): number {
 // and are not rendered — registry §4.10 deviations. Zero functional change: every id, mount
 // condition, handler and the one-appeal sheet stay byte-identical.
 export default function MerchantReviewsPage() {
-  const { controller, state, style } = useMerchantReviews()
+  const route = useRouter()
+  const preview = route.params.preview === '1'
+  const { controller, state, style } = useMerchantReviews(preview)
   const [draft, setDraft] = useState('')
+  const [info] = useState(() => Taro.getWindowInfo())
+  const unit = info.windowWidth / 402
   const sheetReview = state.sheetReviewId === null ? null
     : state.items.find(item => item.reviewId === state.sheetReviewId) ?? null
   return <View className='mrv-page' style={style}>
@@ -96,6 +119,7 @@ export default function MerchantReviewsPage() {
         </View>}
         {state.notice && state.sheetReviewId === null && <View className='mrv-notice' role='status'>{state.notice}</View>}
         <View className='mrv-bottom-space' />
+        <View className='mrv-tab-space' />
       </ScrollView>
     </>}
     {sheetReview !== null && state.sheetReviewId !== null && <View className='mrv-overlay'>
@@ -119,5 +143,6 @@ export default function MerchantReviewsPage() {
         <Button className='mrv-close-sheet' disabled={state.busy} onClick={() => controller.closeSheet()}>取消</Button>
       </View>
     </View>}
+    {sheetReview === null && <MerchantTabBar active='home' unit={unit} />}
   </View>
 }

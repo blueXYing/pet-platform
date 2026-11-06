@@ -38,13 +38,21 @@ public class CSessionSecurityConfiguration {
       @Value("${pet.service.query.enabled:false}") boolean serviceQueryEnabled,
       @Value("${pet.store.query.enabled:false}") boolean storeQueryEnabled,
       @Value("${pet.merchant.staff.enabled:false}") boolean merchantStaffEnabled,
+      @Value("${pet.merchant.staff-member.enabled:false}") boolean merchantStaffMemberEnabled,
       @Value("${pet.schedule.query.enabled:false}") boolean scheduleQueryEnabled,
+      @Value("${pet.schedule.command.http.enabled:false}") boolean merchantScheduleHttpEnabled,
       @Value("${pet.aftersale.http.enabled:false}") boolean afterSaleHttpEnabled,
       @Value("${pet.verification.credential.http.enabled:false}") boolean verificationHttpEnabled,
       @Value("${pet.verification.completion.http.enabled:false}")
           boolean verificationCompletionHttpEnabled,
       @Value("${pet.order.merchant.http.enabled:false}")
           boolean merchantOrderHttpEnabled,
+      @Value("${pet.merchant.store-profile.http.enabled:false}")
+          boolean merchantStoreProfileHttpEnabled,
+      @Value("${pet.order.stats.http.enabled:false}")
+          boolean merchantStatsHttpEnabled,
+      @Value("${pet.order.customer.http.enabled:false}")
+          boolean merchantCustomerHttpEnabled,
       @Value("${pet.refund.application.http.enabled:false}")
           boolean refundApplicationHttpEnabled,
       @Value("${pet.refund.merchant.http.enabled:false}")
@@ -199,6 +207,19 @@ public class CSessionSecurityConfiguration {
                   .permitAll();
               a.requestMatchers(HttpMethod.PUT, "/api/v1/merchant/staff/*").permitAll();
             }
+            if (merchantStaffMemberEnabled) {
+              // Contract 54 D1-a member management (default OFF): list/invitations and the
+              // owner's invite/cancel/enable/disable decisions. The MINIAPP Bearer is resolved
+              // by the filter; OWNER + coordinate checks stay inside each service call.
+              a.requestMatchers("/api/v1/merchant/staff-members",
+                      "/api/v1/merchant/staff-members/**")
+                  .permitAll();
+              // Employee-side invitation read/confirm (same switch): identity-scoped C routes;
+              // the phone match is enforced by the invitation kernel, not by a coordinate.
+              a.requestMatchers("/api/v1/c/staff/invitations",
+                      "/api/v1/c/staff/invitations/**")
+                  .permitAll();
+            }
             if (scheduleQueryEnabled) {
               // Schedule availability (CCR-W2-API-001 SCH-001, SCH-D1 login ruling): GET-only
               // registration behind the assembly switch. Unlike the STR-D8 browse family this
@@ -206,6 +227,29 @@ public class CSessionSecurityConfiguration {
               // already covers it, so anonymous requests answer 401 there, non-GET stays denied,
               // and the switch keeps it unreachable when the slice is not assembled.
               a.requestMatchers(HttpMethod.GET, "/api/v1/c/services/*/availability").permitAll();
+            }
+            if (merchantScheduleHttpEnabled) {
+              // Contract 53 §3/§4 merchant schedule maintenance (default OFF): the MINIAPP
+              // Bearer and OWNER store guard stay inside the controller/service; this chain
+              // only opens the transport, like the other merchant write families.
+              a.requestMatchers(HttpMethod.GET,
+                      "/api/v1/merchant/stores/*/availability-windows",
+                      "/api/v1/merchant/stores/*/availability-windows/*",
+                      "/api/v1/merchant/staff/*/availability-windows",
+                      "/api/v1/merchant/staff/*/availability-windows/*",
+                      "/api/v1/merchant/staff/*/service-capabilities")
+                  .permitAll();
+              a.requestMatchers(HttpMethod.POST,
+                      "/api/v1/merchant/stores/*/availability-windows",
+                      "/api/v1/merchant/stores/*/availability-windows/*",
+                      "/api/v1/merchant/staff/*/availability-windows",
+                      "/api/v1/merchant/staff/*/availability-windows/*")
+                  .permitAll();
+              a.requestMatchers(HttpMethod.PUT,
+                      "/api/v1/merchant/stores/*/availability-windows/*",
+                      "/api/v1/merchant/staff/*/availability-windows/*",
+                      "/api/v1/merchant/staff/*/service-capabilities")
+                  .permitAll();
             }
             if (verificationHttpEnabled) {
               // Verification credential C routes (contract 47 §4, this slice): MINIAPP Bearer is
@@ -234,6 +278,27 @@ public class CSessionSecurityConfiguration {
                       "/api/v1/merchant/orders/*/confirm",
                       "/api/v1/merchant/orders/*/reject")
               .permitAll();
+            }
+            if (merchantStoreProfileHttpEnabled) {
+              // Store profile (contract 27 §6.4, IMPLEMENTED_DEFAULT_OFF): the MINIAPP Bearer and
+              // OWNER gate stay in the store-profile service's store-guard transaction.
+              a.requestMatchers(HttpMethod.GET, "/api/v1/merchant/store-profile").permitAll();
+              a.requestMatchers(HttpMethod.PUT, "/api/v1/merchant/store-profile").permitAll();
+            }
+            if (merchantStatsHttpEnabled) {
+              // Business stats (contract 70, IMPLEMENTED_DEFAULT_OFF): OWNER read family; the
+              // store guard re-proves the coordinate relation on every call.
+              a.requestMatchers(HttpMethod.GET, "/api/v1/merchant/stats/**").permitAll();
+            }
+            if (merchantCustomerHttpEnabled) {
+              // Customer profile reads and the single internal note write (contract 69,
+              // IMPLEMENTED_DEFAULT_OFF): OWNER boundary stays in the order store guard.
+              a.requestMatchers(
+                      HttpMethod.GET,
+                      "/api/v1/merchant/customers",
+                      "/api/v1/merchant/customers/*")
+                  .permitAll();
+              a.requestMatchers(HttpMethod.PUT, "/api/v1/merchant/customers/*/note").permitAll();
             }
             if (refundApplicationHttpEnabled) {
               // C refund application (contract 10 §3.9 / 49号 slice): MINIAPP Bearer is enforced

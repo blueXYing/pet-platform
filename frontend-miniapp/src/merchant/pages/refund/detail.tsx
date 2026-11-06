@@ -1,15 +1,16 @@
 import { Button, ScrollView, Text, Textarea, View } from '@tarojs/components'
 import { useRouter } from '@tarojs/taro'
 import { useEffect, useState } from 'react'
-import { dateText, deadlinePassed, refundStatusTagClass, refundStatusText } from '../../refund/model'
+import { dateLabel, dateText, deadlinePassed, refundStatusTagClass, refundStatusText } from '../../refund/model'
 import { MerchantRefundShell, MerchantRefundState, useMerchantRefund } from './page'
 
 /** 商家退款申请详情（57号/HTTP10 §4.5/§4.6）：同意全额或拒绝（必填理由），回执按 49号七字段呈现。 */
 export default function MerchantRefundDetail() {
   const route = useRouter()
+  const preview = route.params.preview === '1'
   const applicationId = typeof route.params.applicationId === 'string' && /^[1-9][0-9]{0,18}$/.test(route.params.applicationId)
     && BigInt(route.params.applicationId) <= 9223372036854775807n ? route.params.applicationId : undefined
-  const { controller, state, style } = useMerchantRefund(applicationId, !!applicationId)
+  const { controller, state, style } = useMerchantRefund(applicationId, !!applicationId, preview)
   const [sheet, setSheet] = useState<'reject' | null>(null)
   // A remounted unknown-outcome write reopens its original action with the immutable payload.
   useEffect(() => { if (state.pending) setSheet(state.pending.action === 'reject' ? 'reject' : null) }, [state.pending])
@@ -25,9 +26,9 @@ export default function MerchantRefundDetail() {
       <ScrollView className='mrf-detail' scrollY enhanced showScrollbar={false}>
         {state.frozen && <View className='mrf-alert'>商家或门店已冻结，当前只能查看退款申请。</View>}
         <View className='mrf-detail-card'>
-          <View className='mrf-line'><Text className={refundStatusTagClass(detail.status)}>{refundStatusText[detail.status]}</Text><Text className='mrf-date'>申请 {detail.applicationId}</Text></View>
-          <Text className='mrf-heading'>订单 {detail.orderId}</Text>
-          <Text className='mrf-type'>申请于 {dateText(detail.createdAt)}</Text>
+          <View className='mrf-line'><Text className={refundStatusTagClass(detail.status)}>{refundStatusText[detail.status]}</Text><Text className='mrf-date'>申请 …{detail.applicationId.slice(-6)}</Text></View>
+          <Text className='mrf-heading'>订单 {detail.orderId.slice(-8)}</Text>
+          <Text className='mrf-type'>申请于 {dateLabel(detail.createdAt)}</Text>
           <View className='mrf-amount-row'><Text>退款金额（全额）</Text><Text className='mrf-amount'>¥{detail.refundAmount}</Text></View>
         </View>
         <View className='mrf-detail-card'>
@@ -48,9 +49,6 @@ export default function MerchantRefundDetail() {
         </View>}
         {!decideAllowed && !state.pending && detail.status === 'PENDING_MERCHANT' && <Text className='mrf-help mrf-readonly'>当前申请只读：冻结状态或处理期限已到。</Text>}
         {state.notice && <View className='mrf-notice' role='status'>{state.notice}</View>}
-        <View className='mrf-refresh-row'>
-          <Button id='mrf-refresh' className='mrf-more' disabled={state.busy} onClick={() => void controller.reloadFromScope()}>刷新详情</Button>
-        </View>
         <View className='mrf-bottom-space' />
       </ScrollView>
       {detail.status === 'PENDING_MERCHANT' && <View className='mrf-detail-footer'>

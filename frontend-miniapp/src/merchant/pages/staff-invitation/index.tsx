@@ -2,13 +2,14 @@ import { Button, Image, Input, ScrollView, Text, View } from '@tarojs/components
 import Taro, { useDidShow, useRouter } from '@tarojs/taro'
 import { useCallback, useEffect, useRef, useState, useSyncExternalStore, type CSSProperties } from 'react'
 import { useWorkspace } from '../../../shared/workspace-react'
-import { consumerApi } from '../../../shared/consumer-runtime'
+import { consumerApi, consumerSession } from '../../../shared/consumer-runtime'
 import { RealStaffInvitationRepository } from '../../staff/repository'
 import { StaffInvitationController } from '../../staff/controller'
 import {
   invitationStatusText, invitationTagClass, isInvitationId, memberStateClass, memberStatusText,
   staffActionText,
 } from '../../staff/model'
+import { MerchantTabBar } from '../../components/tab-bar'
 import navBack from '../members/assets/nav-back@2x.png'
 import './page.css'
 
@@ -32,11 +33,16 @@ export default function StaffInvitationPage() {
   const previousRevision = useRef(revision)
 
   const load = useCallback((invitationId: string) => {
-    setNotice('')
-    const current = scope.current
-    if (!current) { controller.entry('请先登录后查看邀请。'); return }
-    if (!isInvitationId(invitationId)) { controller.entry('请输入商家提供的邀请编号（数字）。'); return }
-    void controller.load(invitationId.trim())
+    void (async () => {
+      setNotice('')
+      // Phone comparison is session-bound: a deep link must restore the C session first, or
+      // the invitation would fail closed as "not logged in" even for the invited phone.
+      try { await consumerSession.launch() } catch { /* the controller renders the error state */ }
+      const current = scope.current
+      if (!current) { controller.entry('请先登录后查看邀请。'); return }
+      if (!isInvitationId(invitationId)) { controller.entry('请输入商家提供的邀请编号（数字）。'); return }
+      await controller.load(invitationId.trim())
+    })()
   }, [controller, scope])
   useDidShow(() => { load(queryId) })
   useEffect(() => () => controller.dispose(), [controller])
@@ -137,7 +143,8 @@ export default function StaffInvitationPage() {
         {state.busy ? '确认中…' : '确认绑定'}
       </Button>}
       {detail.status === 'CONFIRMED' && !state.receipt && <Button id='msi-go-workbench-confirmed' className='msi-primary' onClick={goWorkbench}>去员工工作台</Button>}
-      <View className='msi-tail'><Text>页面数据：真实接口（contract 54 员工侧，默认关闭时接口失败关闭）</Text></View>
+      <View className='msi-tab-space' />
     </ScrollView>}
+    <MerchantTabBar active='verify' unit={unit} />
   </View>
 }

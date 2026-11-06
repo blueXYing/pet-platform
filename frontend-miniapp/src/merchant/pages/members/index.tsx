@@ -1,8 +1,8 @@
 import { Button, Image, Input, ScrollView, Text, View } from '@tarojs/components'
-import Taro, { useDidShow } from '@tarojs/taro'
+import Taro, { useDidShow, useRouter } from '@tarojs/taro'
 import { useCallback, useEffect, useRef, useState, useSyncExternalStore, type CSSProperties } from 'react'
 import { useWorkspace } from '../../../shared/workspace-react'
-import { consumerApi } from '../../../shared/consumer-runtime'
+import { consumerApi, consumerSession } from '../../../shared/consumer-runtime'
 import { RealMembersRepository } from '../../members/repository'
 import { MembersController, type MembersTab } from '../../members/controller'
 import {
@@ -10,6 +10,8 @@ import {
   memberStatusClass, memberStatusText,
   type InvitationRow, type MemberRow,
 } from '../../members/model'
+import { previewMembersDeps } from '../../workbench/preview'
+import { MerchantTabBar } from '../../components/tab-bar'
 import navBack from './assets/nav-back@2x.png'
 import './page.css'
 
@@ -21,10 +23,26 @@ import './page.css'
 // invite form exposes no action picker (D2: server-pinned catalog).
 
 export default function MerchantMembersPage() {
+  const route = useRouter()
+  const preview = route.params.preview === '1'
   const { scope, revision } = useWorkspace('real')
-  const [repository] = useState(() => new RealMembersRepository(consumerApi,
-    () => consumerApi.scope.current?.merchantId || '',
-    () => consumerApi.scope.current?.storeId || ''))
+  // ?preview=1：先注入商户坐标，再挂本地成员样本；真实路径不变。
+  useState(() => {
+    if (!preview) return false
+    const current = scope.current
+    if (!current || current.workspace !== 'merchant' || !current.merchantId || !current.storeId) {
+      scope.replace({
+        userId: '9007199254740993', workspace: 'merchant',
+        merchantId: '9007199254740995', storeId: '9007199254740996',
+      })
+    }
+    return true
+  })
+  const [repository] = useState(() => preview
+    ? previewMembersDeps()
+    : new RealMembersRepository(consumerApi,
+      () => consumerApi.scope.current?.merchantId || '',
+      () => consumerApi.scope.current?.storeId || ''))
   const [controller] = useState(() => new MembersController(repository))
   const state = useSyncExternalStore(controller.subscribe, controller.getSnapshot)
   const [notice, setNotice] = useState('')
@@ -47,7 +65,13 @@ export default function MerchantMembersPage() {
     }
     void controller.load()
   }, [controller, scope])
-  useDidShow(load)
+  useDidShow(() => {
+    // The provider's session restore and this page's did-show can race on a fresh tab.
+    void (async () => {
+      try { await consumerSession.launch() } catch { /* load() renders the error state */ }
+      load()
+    })()
+  })
   useEffect(() => () => controller.dispose(), [controller])
   // Coordinates switched away (workbench leave / account switch) invalidate the listing.
   useEffect(() => {
@@ -59,8 +83,9 @@ export default function MerchantMembersPage() {
   }, [revision, scope, controller])
 
   async function back() {
-    if (Taro.getCurrentPages().length > 1) await Taro.navigateBack().catch(() => setNotice('返回失败，请重试'))
-    else await Taro.redirectTo({ url: '/merchant/pages/workspace/index' }).catch(() => setNotice('返回失败，请重试'))
+    // Taro may dispose the hidden workbench React tree on navigateTo and reuse a stale page
+    // object on navigateBack; reLaunch gives the workbench a fresh controller and did-show.
+    await Taro.reLaunch({ url: '/merchant/pages/workspace/index' }).catch(() => setNotice('返回失败，请重试'))
   }
 
   async function submitInvite() {
@@ -100,9 +125,6 @@ export default function MerchantMembersPage() {
     <View className='mmb-header'>
       <Button id='mmb-back' ariaLabel='返回' className='mmb-back' onClick={() => void back()}><Image src={navBack} mode='scaleToFill' /></Button>
       <Text className='mmb-title'>成员管理</Text>
-      <Button id='mmb-invite' ariaLabel='邀请成员' className='mmb-invite' onClick={() => setFormOpen(open => !open)}>
-        {formOpen ? '收起' : '邀请成员'}
-      </Button>
     </View>
     {formOpen && <View className='mmb-form'>
       <Text className='mmb-form-title'>邀请店员（核销）</Text>
@@ -127,6 +149,12 @@ export default function MerchantMembersPage() {
       {state.status === 'entry' && <Button className='mmb-state-action' onClick={() => Taro.redirectTo({ url: '/merchant/pages/workspace/index' })}>去商家工作台</Button>}
     </View>}
     {ready && <ScrollView className='mmb-body' scrollY enhanced showScrollbar={false}>
+      <View className='mmb-count-row'>
+        <Text className='mmb-count'>共 {state.memberTotal} 名员工</Text>
+        <Button id='mmb-invite' ariaLabel='邀请成员' className='mmb-invite' onClick={() => setFormOpen(open => !open)}>
+          {formOpen ? '收起' : '+ 邀请成员'}
+        </Button>
+      </View>
       <View className='mmb-tabs' role='tablist'>
         <Button id='mmb-tab-members' className={state.tab === 'members' ? 'mmb-tab mmb-tab-active' : 'mmb-tab'}
           onClick={() => controller.switchTab('members' as MembersTab)}>成员（{state.memberTotal}）</Button>
@@ -177,7 +205,9 @@ export default function MerchantMembersPage() {
             onClick={() => void cancelInvitation(row)}>撤销</Button>}
         </View>)}
       </View>}
-      <View className='mmb-tail'><Text>页面数据：真实接口（contract 54，默认关闭时接口失败关闭）</Text></View>
+      {preview && <View className='mmb-tail'><Text>页面数据：契约 Mock（preview=1，不联调）</Text></View>}
+      <View className='mmb-tab-space' />
     </ScrollView>}
+    <MerchantTabBar active='home' unit={unit} />
   </View>
 }

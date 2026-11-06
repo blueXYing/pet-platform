@@ -1,11 +1,19 @@
 import { Button, Image, Text, View } from '@tarojs/components'
 import Taro, { useDidShow, useRouter } from '@tarojs/taro'
 import { useEffect, useState, useSyncExternalStore, type CSSProperties } from 'react'
+import { consumerSession } from '../../../shared/consumer-runtime'
 import { MessagesController, jumpLabelFor, routeForNotification } from '../../../shared/notifications/messages'
 import { previewNotificationDeps } from '../../notifications/preview'
 import { realNotificationDeps } from '../../notifications/messages-runtime'
+import { merchantOrderTimeText } from '../../order/model'
+import { MerchantTabBar } from '../../components/tab-bar'
 import navBack from '../aftersale/assets/nav-back@3x.png'
 import './page.css'
+
+/** Merchant inbox times render in Beijing wall-clock like every other merchant page. */
+function messageTime(iso: string): string {
+  return merchantOrderTimeText(iso) || iso
+}
 
 // M-002 消息通知页 (design source: merchant frame 23:19357「消息通知」, 402x898). The merchant
 // owner reads the unified owner-scoped inbox (CCR-W2-NOTIFICATION-001): same endpoints as the
@@ -17,11 +25,19 @@ export default function MerchantMessagesPage() {
   const preview = route.params.preview === '1'
   const [controller] = useState(() => new MessagesController(preview ? previewNotificationDeps() : realNotificationDeps()))
   const state = useSyncExternalStore(controller.subscribe, controller.getSnapshot)
-  useDidShow(() => { void controller.load() })
+  useDidShow(() => {
+    void (async () => {
+      try { await consumerSession.launch() } catch { /* controller.load() renders the error state */ }
+      await controller.load()
+    })()
+  })
   useEffect(() => () => controller.dispose(), [controller])
   async function back() {
+    // Tab pages live in a single-page redirect stack: the fallback must return to the
+    // merchant workbench (same as services/members/schedule), not drop the user into the
+    // consumer shell.
     if (Taro.getCurrentPages().length > 1) await Taro.navigateBack()
-    else await Taro.switchTab({ url: '/consumer/pages/mine/index' })
+    else await Taro.reLaunch({ url: '/merchant/pages/workspace/index' }).catch(() => {})
   }
   function jump() {
     const detail = state.detail
@@ -33,6 +49,7 @@ export default function MerchantMessagesPage() {
   // Custom navigation: reserve the real status-bar height (env(safe-area-inset-top) is 0 in
   // WeChat), the same mechanism as the services and application pages.
   const [windowInfo] = useState(() => Taro.getWindowInfo())
+  const unit = windowInfo.windowWidth / 402
   const style = {
     '--mmsg-top': `${windowInfo.statusBarHeight || 0}px`,
     '--mmsg-unit': `${windowInfo.windowWidth / 402}px`,
@@ -59,19 +76,21 @@ export default function MerchantMessagesPage() {
               {item.readAt === null && <View className='mmsg-dot' aria-label='未读' />}
             </View>
             <Text className='mmsg-item-content'>{item.content}</Text>
-            <Text className='mmsg-item-time'>{item.createdAt}</Text>
+            <Text className='mmsg-item-time'>{messageTime(item.createdAt)}</Text>
           </View>
           {jumpLabelFor(item) && <View className='mmsg-jump' ariaLabel={jumpLabelFor(item) || undefined}>{jumpLabelFor(item)}</View>}
         </Button>)}
-        <Text className='mmsg-tail'>{preview ? '页面数据：视觉预览（preview=1，本地数据，不联调）' : '页面数据：真实接口（消息随会话可用）'}</Text>
+        {preview && <Text className='mmsg-tail'>页面数据：视觉预览（preview=1，本地数据，不联调）</Text>}
       </View>}
       {state.status === 'ready' && state.detail !== null && <View className='mmsg-detail'>
         <Text className='mmsg-detail-title'>{state.detail.title}</Text>
-        <Text className='mmsg-detail-meta'>{state.detail.createdAt} · {state.detail.readAt ? `已读于 ${state.detail.readAt}` : '未读'}</Text>
+        <Text className='mmsg-detail-meta'>{messageTime(state.detail.createdAt)} · {state.detail.readAt ? `已读于 ${messageTime(state.detail.readAt)}` : '未读'}</Text>
         <Text className='mmsg-detail-content'>{state.detail.content}</Text>
         {jumpLabelFor(state.detail) && <Button id='mmsg-jump' className='mmsg-jump' onClick={jump}>{jumpLabelFor(state.detail)}</Button>}
         <Button id='mmsg-back-list' className='mmsg-plain' onClick={() => controller.closeDetail()}>返回列表</Button>
       </View>}
+      <View className='mmsg-tab-space' />
     </View>
+    <MerchantTabBar active='messages' unit={unit} />
   </View>
 }

@@ -262,7 +262,15 @@ export function decodeCustomerDetail(value: unknown): CustomerDetail {
     if (n.content !== null && (typeof n.content !== 'string' || Array.from(n.content).length > 200)) fail()
     return { content: n.content, version: n.version, updatedAt: instant(n.updatedAt) }
   })()
-  return { customer: customerRow(v), pets: Object.freeze(v.pets.map(petView)), note }
+  // customerRow's exact() only accepts the 8 customer keys, while the detail envelope also
+  // carries pets/note — passing the whole envelope made every real detail read fail with
+  // INVALID_RESPONSE. Rebuild the strict subset; the outer exact() already proved the shape.
+  const customer = customerRow({
+    userId: v.userId, nickname: v.nickname, phoneMasked: v.phoneMasked,
+    orderCount: v.orderCount, totalSpend: v.totalSpend, avgTicket: v.avgTicket,
+    lastVisitAt: v.lastVisitAt, topPet: v.topPet,
+  })
+  return { customer, pets: Object.freeze(v.pets.map(petView)), note }
 }
 
 export function decodeCustomerNote(value: unknown): { userId: string; note: CustomerNote } {

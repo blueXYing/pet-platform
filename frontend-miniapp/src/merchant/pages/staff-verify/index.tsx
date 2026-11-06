@@ -2,10 +2,11 @@ import { Button, Image, Input, ScrollView, Text, View } from '@tarojs/components
 import Taro, { useDidShow, useRouter } from '@tarojs/taro'
 import { useCallback, useEffect, useState, useSyncExternalStore, type CSSProperties } from 'react'
 import { useWorkspace } from '../../../shared/workspace-react'
-import { consumerApi } from '../../../shared/consumer-runtime'
+import { consumerApi, consumerSession } from '../../../shared/consumer-runtime'
 import { RealVerificationRepository } from '../../verify/repository'
 import { VerificationController } from '../../verify/controller'
 import { isOrderId, verifyResultHint, verifyResultText, verifyTimeText } from '../../verify/model'
+import { MerchantTabBar } from '../../components/tab-bar'
 import navBack from '../members/assets/nav-back@2x.png'
 import './page.css'
 
@@ -37,12 +38,18 @@ export default function StaffVerifyPage() {
     if (presetOrderId && !controller.getSnapshot().orderId) controller.setOrderId(presetOrderId)
     controller.load(scope.current)
   }, [controller, scope, presetOrderId])
-  useDidShow(load)
+  useDidShow(() => {
+    void (async () => {
+      try { await consumerSession.launch() } catch { /* load() renders the error state */ }
+      load()
+    })()
+  })
   useEffect(() => () => controller.dispose(), [controller])
 
   async function back() {
-    if (Taro.getCurrentPages().length > 1) await Taro.navigateBack().catch(() => setNotice('返回失败，请重试'))
-    else await Taro.redirectTo({ url: '/merchant/pages/staff-workbench/index' }).catch(() => setNotice('返回失败，请重试'))
+    // Same disposed-workbench issue as order-confirm: rebuild the merchant workbench so the
+    // dashboard re-enters admission instead of showing stale placeholders.
+    await Taro.reLaunch({ url: '/merchant/pages/workspace/index' }).catch(() => setNotice('返回失败，请重试'))
   }
   function goStaffWorkbench() {
     Taro.redirectTo({ url: '/merchant/pages/staff-workbench/index' }).catch(() => setNotice('页面跳转失败，请重试'))
@@ -131,7 +138,8 @@ export default function StaffVerifyPage() {
       </View>}
       {(state.status === 'form' || state.status === 'idle') && state.notice && <Text id='msv-notice' className='msv-notice'>{state.notice}</Text>}
       {notice && <Text className='msv-notice'>{notice}</Text>}
-      <View className='msv-tail'><Text>页面数据：真实接口（contract 48 K2 核销 HTTP 面，平台开关默认关闭时接口失败关闭）</Text></View>
+      <View className='msv-tab-space' />
     </ScrollView>
+    <MerchantTabBar active='verify' unit={unit} />
   </View>
 }
