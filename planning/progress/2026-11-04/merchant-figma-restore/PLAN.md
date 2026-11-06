@@ -250,3 +250,338 @@
 - 仍属契约缺口的 Figma 视觉块：门店头像照片（只有 `avatarAssetId`，无展示 URL）、
   待办卡的客户姓名/服务名（10号 §4.1 商家订单读侧无字段）。需要 CCR/后端扩展才能真实显示。
 - 证据：`evidence/impl-workspace-rating.png`。
+
+## 14. 本地真实数据闭环（2026-11-04，无 Docker）
+
+- 本地链路：Windows MySQL 8.4（WSL 经 13306 转发）+ 本机 Redis 6379 +
+  独立易失 auth Redis 16379 + `E2eCoreLoopServer`（Spring Boot 测试域启动器，18081，
+  mock 微信/OSS/支付）。使用该分支自行建库、灌 schema 与种子，再由 C 端静默登录进入。
+- 前端真实构建（已验证静默登录 `wx.login → /c/auth/attempts → /c/auth/wechat-login` 成功）：
+  `NODE_ENV=development PET_C_API_ORIGIN=http://127.0.0.1:18081 PET_ALLOW_LOCAL_HTTP=true PET_MERCHANT_APPLICATION_ENABLED=true PET_PRIVATE_MATERIAL_UPLOAD_ENABLED=true npm run build:weapp`
+- 工作台实测（`merchant/pages/workspace/index`）：E2E体验门店、今日营收 480.00、
+  待确认 2、待服务 5、今日订单 8、退款 0；待办卡显示订单号/金额/时间/倒计时/拒绝-接单。
+- 为打通读侧修的后端装配缺口（工作树未提交）：
+  1. `CSessionSecurityConfiguration`：27 §6.4 / 69 / 70 的商家店招、统计、客户路由
+     按各自 `*.http.enabled` 开关放行；默认仍关闭。
+  2. `CBearerSessionFilter`：上述路由加入 MINIAPP Bearer 保护路径，服务层 store guard
+     才能拿到会话主体；否则表现 401。
+  3. `MerchantStoreProfileApiImpl`：申请状态 facts 的二次读取放入只读事务，
+     修复严格 reader 的 503「application facts require the caller's merchant transaction」。
+  4. `E2eCoreLoopServer`：夹具加载 69-Merchant-Customer-Note schema。
+  5. 工作台 `enter()`：会话尚未恢复时先等单飞 `consumerSession.launch()`，消除启动竞态。
+- 底部 tab handoff（2026-11-04 修）：tab 改为 `redirectTo` 单栈切换；tab bar 在切换前写
+  3 秒一次性交接标记，工作台 `onHide` 消费后走 `handoffToTab()`，其 `dispose()` 对 tab
+  交接豁免坐标重置。验证 `首页 → 订单 → 我的 → 首页` 四跳后订单/我的/工作台都读真实数据，
+  不再出现「请从商家工作台进入」或「工作区已切换」。
+- 8 宫格几何：`.mwb-grid-card` top margin 6→11（design unit），渲染 top 645.55px
+  （390 宽、statusBar 47）与 Figma 617 design 坐标换算值 645.58px 对齐。
+- 证据：`evidence/impl-workspace-real.png`。
+
+## 15. 订单/退款页真实数据复核（2026-11-04）
+
+### 真实数据准备
+
+- 订单：沿用本地 C 端真实下单→沙箱支付→商家接单→核销链路，新增一笔已完成订单
+  `111404301120794624`（昨天 12:00 时段）；另建两笔待接单订单（明天 15:00/16:00）。
+- 退款：在已完成订单上以 C 端真实 `POST /c/orders/{id}/refund-applications` 创建
+  `PENDING_MERCHANT` / `MERCHANT_CONFIRM_AFTER_SERVICE` 申请
+  `111404315901521920`，金额 60.00，期限 24 小时；未用前端 mock/preview。
+- 备注：已过服务单不能再走服务前自动全额，必须真实服务后申请；本次按 49号窗口验证。
+
+### 订单列表（23:14926）
+
+- 修复会话竞态：`useDidShow` 先 `await consumerSession.launch()`，再读门店资料、评分和列表；
+  解决新 tab 首次打开时 header 回落“商家订单/商家主账号”、列表 401/失败。
+- 头部：门店名取 27号 store-profile；评分取 70号 `reviewAvg`（无评价显示 `★ -- 评分`）；
+  状态胶囊、铃铛保留。
+- 卡面：订单号显示后 8 位；预约时间压成“今天/明天 14:00”；金额右置；状态改为纯色文本；
+  删除支付时间；待接单的拒绝/接单放进状态行；卡片固定视口宽度并收紧溢出，消除金额被裁切。
+- tab：新增四个状态的计数徽标（列表 `total`）；退款计数取 57号待处理 `total`；
+  退款 tab 补 `id=mol-tab-refund`。tab 语义仍按 10号，保留“待接单”，未复制 Figma 的
+  “待服务仍可接单” B 类冲突。
+- 证据：`evidence/impl-orders-real.png`。
+
+### 退款列表/详情（9:779 / 9:891）
+
+- 修复会话竞态：`useMerchantRefund` 的 `useDidShow` 先等 `consumerSession.launch()`。
+- 列表卡：订单号后 8 位、今天/明天时间、状态纯色文本；删除顶部“共 N 笔”和卡片底部的
+  申请编号/期限长文案（期限保留在详情）；金额/处理按钮/底部 tab 保留。
+- 详情：申请编号/订单号只显示尾号，申请时间压成今天/明天；移除独立“刷新详情”按钮
+  （did-show 与操作回执已刷新）；拒绝/同意全额操作区保留。
+- 证据：`evidence/impl-refund-list-real.png`、`evidence/impl-refund-detail-real.png`。
+- 契约缺口（不渲染）：57号 Summary/Detail 不含客户姓名、服务名、申请说明、凭证图片、
+  订单服务流程；Figma 的客户信息/退款申请/时间线块需 CCR 扩展，当前仅呈现申请编号、
+  原因编码、金额、状态和期限。
+
+### 验证
+
+- `tsc --noEmit`、`build:weapp` 通过；前端 658 测试全过。
+- 订单/退款均从本地 18081 真实接口读取；待接单两笔、退款一笔为真实数据库行。
+- 未执行同意/拒绝退款决定，保留该申请给后续人工验收（避免消耗唯一退款夹具）。
+
+## 16. 服务页/成员页真实数据复核（2026-11-05）
+
+### 服务管理（10:5255）
+
+- 真实数据：本地服务表已有 1 个 ACTIVE 服务（E2E 到店精细洗护，¥60，on）；页面从
+  `/api/v1/merchant/services` 真实读取，未用 preview。
+- 修复：`useDidShow` 先等 `consumerSession.launch()`；卡片/计数行固定为视口减两侧 17u，
+  解决“+ 添加服务”和右侧开关被裁切；删除非 preview 的“真实接口（后端交付前失败关闭）”
+  开发态尾注（列表和编辑页均改为仅 preview 显示）。
+- 对齐：头带/返回/标题、共 N 个服务 + 添加服务、88 高白卡/#c0ecff 描边/17 圆角、
+  价格橙色、右侧开关与 10:5255 一致；契约状态标签（已上架等）保留，原稿无此标签。
+- 证据：`evidence/impl-services-real.png`。
+
+### 成员管理（12:6591）
+
+- 打通真实读侧：启用 `pet.merchant.staff-member.enabled`，并在 `CSessionSecurityConfiguration`
+  放行 `/merchant/staff-members/**` 与 `/c/staff/invitations/**`；`CBearerSessionFilter`
+  增加对应 Bearer 保护路径；前端 `ConsumerApi` 增加 staff-member 路径白名单与坐标校验。
+- 修复：成员页 `useDidShow` 先等会话；把“邀请成员”从被微信胶囊遮挡的 header 移到
+  “共 N 名员工”右侧（原稿的计数/添加行），并修掉 ScrollView 内容宽度导致的右侧裁切；
+  非 preview 不再显示“真实接口（contract 54…）”尾注；返回工作台改 `reLaunch`，避免 Taro
+  复用已 dispose 的工作台 React 树导致占位页。
+- 真实数据：通过真实 merchant 邀请 API 创建 1 条 INVITED 邀请；为展示成员卡片，向本地
+  fixture DB 插入 1 个 CONFIRMED 邀请 + merchant_member/grant/action（用户 710101，
+  138****0101，核销员，ENABLED）。C 端邀请列表/确认路由已打通并验证：同一 owner 确认
+  返回 409“owner cannot be bound as staff member”，符合产品规则；非 owner 确认因夹具
+  只有一个登录身份未走通。
+- 对齐：头带/返回/标题、共 N 名员工 + 邀请成员、头像首字/姓名/角色标签/脱敏手机/
+  状态点/停用按钮与 12:6591 结构一致；原稿的星级评分、店长/前台/美容师多角色、
+  “在线”文案不在 54号读侧，保留契约字段（核销员/启用中）。
+- 证据：`evidence/impl-members-real2.png`、`evidence/impl-members-invitations.png`。
+
+### 工作台复用修复
+
+- 工作台 `enter()` 改为始终先 `consumerSession.launch()`；子页/底部 tab 交接统一走
+  `handoffToMerchantPage()`（dispose 豁免坐标重置）；新增 `MerchantWorkspace.reopen()`，
+  `useDidShow` 时重新挂回 scope 订阅并 `dashboard.show()`；服务/成员页返回工作台改
+  `reLaunch`，确保重新挂载而不是复用已 dispose 的占位页。
+- 验证：服务页返回后工作台显示当日真实数据（今日营收/订单/退款），成员页可正常返回。
+
+### 验证
+
+- `tsc --noEmit`、`build:weapp` 通过；前端 658 测试全过；后端
+  `CBearerSessionFilterOrderPathsTest` 通过。
+- 服务 1 条、成员 1 条、邀请 2 条均为本地真实数据库行；成员卡片为夹具补种（见上）。
+
+## 17. 排期/员工/售后页真实数据复核（2026-11-05）
+
+本轮重启本地 E2E 时发现上一轮复用的数据库只剩空 schema（0 张表），后端从启动起
+全部 DB 调用 BadSqlGrammar（后台 task/outbox 轮询刷屏，C 登录 500）。改为不带
+`E2E_DATABASE_NAME` 重新建库+灌 schema+种子后恢复正常；启动脚本已留注释说明复用空库的风险。
+
+### 排期工作台/时段/排班/能力（12:6214，B 类）
+
+- 真实数据：`schedule_availability_window` 33 条（昨天/今天/明天 09:00-20:00）、
+  `staff_availability_window` 1 条（员工 710303）、能力集合版本 1 + 1 项授权。
+- 修复：
+  1. 四个排期页 `useDidShow` 先等 `consumerSession.launch()`（深链/复用页先恢复会话）；
+     排期首页返回工作台改 `reLaunch`。
+  2. ScrollView 宽高：`.sch-body` 作为 native `scroll-view` 没有命中 `view` 的
+     `box-sizing` 重置，水平 padding 叠加在 flex 拉伸宽度上（390 视口实测 422.97），
+     计数行/卡片/提示文字整体右溢出。`.sch-page` 重置加入 `scroll-view`，
+     `.sch-body` 设 `width:100%; box-sizing:border-box`；同类问题一并修
+     `.msw-body`、`.msi-body`。
+  3. 夹具缺口：`E2eCoreLoopServer` 未加载 53-Schedule-Write-Schema，能力读侧因
+     `staff_capability_set` 不存在返回 503；补加载该 schema，并为种子员工写入
+     version=1 的 SCHC-2 头（version 0 + 明细会被内核判为 disagree）。
+- 对齐：三入口（服务时段管理/员工排班/员工能力）、三态摘要、类型/状态服务端筛选 chips、
+  时段卡（服务名/类型/时间/容量/版本/状态）与既有 M 端家族语言一致；原稿的周模板/
+  固定 60 分钟槽与 53号分钟级契约冲突，按登记表 B 类不做一比一。
+- 证据：`evidence/impl-schedule-real.png`、`impl-schedule-windows-real.png`、
+  `impl-schedule-staff-real.png`、`impl-schedule-capabilities-real.png`。
+
+### 员工工作台/邀请确认（无原稿，B 类）
+
+- 修复：
+  1. 两页 `useDidShow` 先等会话（员工侧 52/54 读侧按登录手机号匹配，深链必须先恢复）。
+  2. 按钮选择器优先级：`.msi-page button` / `.msw-page button` 重置（0,1,1）压过
+     `.msi-primary` / `.msi-query-submit` / `.msw-secondary` / `.msw-entry-button`
+     等裸类（0,1,0），确认绑定按钮渲染成白底白字、次按钮丢边框。统一改成
+     `.msi-page .msi-*` / `.msw-page .msw-*` 复合选择器。
+- 真实数据：owner 账号进入员工工作台显示未绑定视图（符合“owner 不是员工”的产品规则），
+  “我的邀请记录”显示为当前登录手机号补种的 INVITED 邀请（E2E体验门店/订单核销/去确认）；
+  邀请详情显示门店/商家/被邀姓名/权限/待确认。未执行确认：owner 确认会被服务端 409 拒绝，
+  属产品规则，保留邀请给人工验收。
+- 对齐：头带/标题/返回、邀请卡（门店/商家·姓名·邀请日期/权限/去确认）、未绑定核销入口与
+  54号读侧字段一致；原稿无员工工作台帧，按登记表缺稿处理。
+- 证据：`evidence/impl-staff-workbench-real.png`、`impl-staff-invitation-real.png`。
+
+### 售后工单/详情（40:1061 / 40:1345 / 40:1500）
+
+- 修复：`useMerchantAfterSale` 的 `useDidShow` 先等 `consumerSession.launch()`，
+  深链/复用页不再落到“登录已失效式”失败态。
+- 真实数据：E2E 管理链种子创建 1 笔 PENDING 售后（工单 111740192217460736，订单
+  111740156763009024，SERVICE_QUALITY，诉求 ¥60.00）；列表 1 笔、详情（问题类型/诉求/
+  发起窗口截止/申请说明/双方证据批次）与商家意见面板均从真实接口渲染。
+- 契约缺口（不渲染）：51号列表/详情无客户姓名、服务名、宠物信息；原稿的客户/订单
+  信息块需 CCR 扩展，当前显示工单号/订单号/金额/类型/状态。
+- 证据：`evidence/impl-aftersale-list-real.png`、`impl-aftersale-detail-real.png`、
+  `impl-aftersale-sheet-real.png`。
+
+### 验证
+
+- `tsc --noEmit`、`build:weapp` 通过；前端 658 测试全过；后端
+  `CBearerSessionFilterOrderPathsTest` 通过；`backend/tools/check-persistence-style.py` PASS。
+- 排期 33+1 条、能力集合 1 项、邀请 1 条、售后 1 笔均为本地真实数据库行；
+  能力集合头与邀请为夹具补种（见上）。
+
+## 18. 店铺信息/客户/统计页真实数据复核（2026-11-05）
+
+### 店铺信息（25:20684）
+
+- 真实数据：`GET /merchant/store-profile` 返回 E2E体验门店 / chengdu / 营业中；表单从
+  真实投影回填（电话按契约不回显明文）。
+- 对齐 25:20684：新增顶部身份卡（首字头像 + 店名 + “更换头像”链接；头像仍无展示 URL，
+  用登记的店招首字占位），把原表单里的“店铺头像”字段并入身份卡；“保存修改”改为
+  通栏主按钮；长标签（促销等级…）不再被 76u 行标签宽度挤成三行。
+- 保留契约扩展字段（营业状态/店铺照片/公告/营业时间/促销），原稿的资质证照上传、
+  地图定位仍按 CCR 口径只读/不提供；标题沿用产品名“店铺信息”（原稿“门店设置”，登记偏差）。
+- 修复会话：`useDidShow` 先等 `consumerSession.launch()`。
+
+### 客户管理/详情（23:12738 / 23:13478）
+
+- 修复真实详情读侧缺陷：`decodeCustomerDetail` 把带 `pets/note` 的详情信封直接交给
+  只接受 8 个客户键的严格 `customerRow()`，任何真实详情都判 `INVALID_RESPONSE`；
+  改为先重建客户子集再校验（新增回归测试）。详情页现已显示客户统计/宠物/备注。
+- 列表卡片改为 `.mcu-page .mcu-card` 复合选择器：`.mcu-page button` 重置曾把按钮卡片的
+  白底/描边/圆角/内边距全部剥掉。
+- 宠物块按 23:13478 的“头像 + 名字/品种”结构重排（只用 69号 PetView 字段；性别/年龄/
+  体重/疫苗/健康按 CCR 隐私口径不显示）；备注仍为可编辑契约扩展。
+- 保留当前“昵称/订单尾号”二选一搜索 + 搜索按钮（69号能力），原稿为单一搜索框，登记偏差。
+- 修复会话：列表/详情 `useDidShow` 先等会话。
+
+### 数据统计/服务下钻（5:3759 / 143:5192）
+
+- 修复整页失败根因：`isMerchantStatsPath` 白名单缺 `schedule-utilization` 与
+  `services/{id}/orders`，客户端在发请求前抛 `INVALID_PATH`，`Promise.all` 使整页进入
+  “经营数据读取失败”；补齐两条 GET 路径（新增回归测试）。
+- 修复 ScrollView 宽度：`.mst-body` 补 `width:100%; box-sizing:border-box`（同 schedule/
+  staff 家族问题），核销率/拒单率/复购率等右侧数值不再被屏幕边缘裁切。
+- 修复营收趋势柱高：模板字符串多写了一个 `}`，编译成 `height: 2}px`，所有柱子只剩
+  2px min-height；修正后 11-05 的 240.00 显示满高，其余 0 值保持基线。
+- 服务下钻：真实 4 笔订单（待服务/售后中）可读；时间从原始 `…Z` 改为北京时间的
+  `merchantOrderTimeText`（与订单列表一致）。
+- 对齐：2×2 指标卡、履约与质量、热门服务 Top5（排名圆点 + 橙色进度条）、排期利用率、
+  营收趋势均为真实 70号数据；区间仍按契约“今日/近7天/近30天/自定义”（原稿本周/本月/本年，
+  登记偏差），评价均分为 `--`（本店暂无评价）。
+
+### 验证
+
+- `tsc --noEmit`、`build:weapp` 通过；前端 660 测试全过（新增 2 条回归）；
+  后端本轮无改动。
+- 店铺资料/客户列表/客户详情/统计概览/Top5/趋势/排期利用率/服务下钻全部来自本地
+  18081 真实接口；未执行店铺保存与客户备注保存（保留夹具给人工验收）。
+- 证据：`evidence/impl-shop-info-real.png`、`impl-shop-info-real-bottom.png`、
+  `impl-customers-real.png`、`impl-customer-detail-real.png`、`impl-stats-real.png`、
+  `impl-stats-trend-real.png`、`impl-stats-service-orders-real.png`。
+
+## 19. 评价/消息/服务编辑页真实数据复核（2026-11-06）
+
+### 店铺评价（23:14160 族）
+
+- 夹具：本地 `review`/`review_appeal` 补 3 条真实投影（5.0 无申诉、2.2 申诉处理中、
+  4.0 不计分 + 申诉未成立），经真实 `GET /merchant/reviews` 读取。
+- 页面：星级/公开展示/日期/三维分/正文/申诉标签与「申诉」按钮全部渲染；申诉半屏
+  （1~1000 字、提交申诉/取消、遮罩隐藏底部 tab）正常。未提交申诉。
+- 修复会话：`useDidShow` 先等 `consumerSession.launch()`。
+- 契约缺口（不渲染）：原稿的评分聚合大卡/星级直方图/总评价·待回复·好评率·申诉中统计/
+  筛选 chips/买家身份/图片/有帮助·回复均无 56号读侧字段（登记偏差）。
+
+### 消息通知（23:19357）
+
+- 夹具：本地 `notification` 补 3 条 USER 收件箱消息（订单已确认未读、服务已完成已读、
+  平台服务时间调整未读），经真实 `GET /c/notifications` 读取。
+- 修复根因：消息页在工作区坐标仍为 merchant 时调用 `/api/v1/c/notifications*`，
+  `ConsumerApi.request` 的 consumer-only 守卫在发请求前抛 `WORKSPACE_PATH_MISMATCH`
+  （页面只显示“消息读取失败”）。按员工邀请先例增加 `isNotificationInboxPath`
+  豁免（收件箱按会话用户定位，不携带商户坐标），列表/详情/已读三条路径生效。
+- 修复样式：列表行是 Button，`.mmsg-card` 被 `.mmsg-page button` 重置剥掉白底/圆角/内边距；
+  详情页的“查看/返回”按钮同样补复合选择器。
+- 修复时间：`createdAt/readAt` 原样显示 ISO+Z；改为北京时间 `merchantOrderTimeText`，
+  列表与详情「已读于」一致。打开消息会真实调用已读接口，返回列表未读点消失。
+- 标签页（交易通知/系统消息）仍按 CCR §2 合并为单列表（登记偏差）。
+
+### 服务编辑/新增（11:5768）
+
+- 修复根因：真实 `GET /merchant/service-categories` 返回 70号字典行（含
+  `categoryCode/iconUrl/description`），`decodeCategory` 的严格三键校验把整个编辑页
+  判为 `INVALID_RESPONSE`（页面显示“操作未确认成功…”且不发详情请求）。改为接受
+  文档化扩展键并新增回归断言。
+- 修复按钮优先级：`.medit-action` / `.medit-action-secondary` / `.medit-banner-action`
+  / `.medit-cover` 被 `.msvc-page button` 重置压掉背景/描边/圆角——“提交审核”白底白字
+  不可见，“保存草稿”“下架服务”退化成纯文本、封面框丢失描边。统一改为 `.msvc-page .medit-*`
+  复合选择器。
+- 真实数据：编辑页读取 ACTIVE 服务 710401（名称/¥60/60 分钟/到店型/需核销/分类/宠物类型/
+  说明），按产品规则显示“上架中的服务为只读展示 + 下架服务”；新增页展示完整表单与
+  「保存草稿 / 提交审核」双操作。
+- 契约缺口：封面只有 `coverAssetId`、无展示 URL，头图显示占位文案（登记偏差）；
+  本轮未实际创建/提交服务（需真实封面资产），保留夹具给人工验收。
+- 修复会话：编辑页 `useDidShow` 先等 `consumerSession.launch()`。
+
+### 验证
+
+- `tsc --noEmit`、`build:weapp` 通过；前端 660 测试全过（新增评价字典/消息路径断言）；
+  后端本轮无改动。
+- 证据：`evidence/impl-reviews-real.png`、`impl-reviews-appeal-sheet-real.png`、
+  `impl-messages-real.png`、`impl-message-detail-real.png`、`impl-service-edit-real.png`、
+  `impl-service-edit-form-real.png`、`impl-service-add-real.png`。
+
+## 20. 订单处理/核销/营销/我的收尾复核（2026-11-06）
+
+### 订单处理（23:14926 族 B 类外壳）
+
+- 真实数据：C 端真实下单+沙箱支付一笔 PENDING_CONFIRM 订单 `112003538795720704`
+  （明天 14:00，¥60），工作台待办卡出现「订单 720705 / 4小时后 / 拒绝·接单」。
+- 修复：`.moc-action` / `.moc-reason` / `.moc-submit` / `.moc-back-workbench` 被
+  `.moc-page button` 重置剥掉背景/描边/圆角（确认接单白底白字不可见、接单/拒单单选退化成
+  纯文本）；改复合选择器。`.moc-body` 补 `width:100%; box-sizing:border-box` 并加入
+  `scroll-view` 重置；删除真实模式下的开发态尾注。
+- 补 `useDidShow` 会话恢复与返回工作台 `reLaunch`（见下）。
+- 页面验证：接单态（接单高亮、店内备注、确认接单）/拒单态（五类原因、必填说明、确认拒单）
+  均正常；未提交决定，保留该待接单订单给人工验收。
+
+### 订单核销（48 K2 v0.3）
+
+- 真实闭环：C 端为 PENDING_SERVICE 订单 `111740181568122880` 申请核销码，商家端页面
+  输入订单号+核销码提交，真实返回核销成功（尝试/核销编号、北京时间 09:56:12、订单版本 3），
+  订单转为 COMPLETED，工作台待服务数由 3 降为 2。
+- 修复：`.msv-submit` / `.msv-back-workbench` 被按钮重置压掉样式；`.msv-body` 宽度；
+  删除真实模式尾注；补会话恢复与返回工作台 `reLaunch`。
+- 原稿 23:18830/23:19210 的第三方平台聚合/手机号查询仍按登记表 B 类不还原。
+
+### 营销活动（12:7982 外壳，Contract 71）
+
+- 本地运行态启用营销面：重启 `E2eCoreLoopServer`（kill -9 保留 DB，`E2E_DATABASE_NAME`
+  复用）并加 `pet.marketing.enabled/admin/merchant/c.http`、asset base 与
+  `pet.coupon.campaign.enabled`；`GET /merchant/marketing/*` 由 404 转为 200。
+- 夹具：3 个平台/商家活动（秋季洗护节已通过、冬季寄养招募可报名、双十一洗护套餐草稿）
+  + 1 条 APPROVED 报名；随后通过真实 `POST .../enrollments` 为冬季活动提交报名
+  （SUBMITTED），页面即时显示「报名状态：已提交」与我的报名「撤回报名」。
+- 修复：枚举状态原样显示英文（报名状态：APPROVED / 状态：DRAFT）改为中文映射；活动日期
+  改为北京时间日期；tab 补 `mmk-tab-open/mine/campaigns` id；补会话恢复与返回 `reLaunch`。
+- 对齐：三 tab（可报名/我的报名/我的活动）、活动卡（标题/副标题/报名期/状态）、报名表单
+  （角标/标题/说明）、商家活动草稿表单与操作按钮；原稿其余 12 个营销子页仍为 C2 不做。
+
+### 我的（用户批准的最小枢纽）
+
+- 真实数据：店铺卡（首字/店名/商家主账号/营业中）+ 店铺管理（店铺信息/营销活动/成员管理）
+  + 经营处理（订单/退款/售后）+ 更多（评价/客户/统计/员工工作台）+ 返回用户端；
+  无新增改动，作为本轮收尾证据留档。原稿的我的 hub/资金/设置帧仍为 C2 不做。
+
+### 返回导航修复（跨页）
+
+- 实测 `navigateBack` 返回工作台会命中 Taro 已 dispose 的 React 树，工作台停留在
+  占位（店名回落“商家工作台”、KPI/待办为 —）且不再发请求。订单处理/核销/营销以及
+  退款/售后列表壳的返回统一改为 `reLaunch` 工作台（详情→列表保留 `navigateBack`），
+  返回后工作台重新准入并显示真实数据。
+
+### 验证
+
+- `tsc --noEmit`、`build:weapp` 通过；前端 660 测试全过。
+- 本轮后端仅本地运行态开关变化（营销面），未改后端源码；数据库复用上一轮夹具。
+- 证据：`evidence/impl-order-confirm-real.png`、`impl-order-confirm-reject-real.png`、
+  `impl-staff-verify-real.png`、`impl-staff-verify-receipt-real.png`、
+  `impl-marketing-open-real.png`、`impl-marketing-mine-real.png`、
+  `impl-marketing-campaigns-real.png`、`impl-mine-real.png`、`impl-mine-real-bottom.png`。
