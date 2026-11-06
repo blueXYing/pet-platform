@@ -1,7 +1,7 @@
 /* 数据统计（mst，70号 M 面）— M 端家族 tokens，同 schedule/page.css 先例。
    WXSS 铁律：按钮重置 .mst-page button（0,1,1）、动作按钮复合类（0,2,0）、状态仅 className。 */
 .mst-page { --mst-status-top: 0px; min-height: 100vh; background: #f0fbff; color: #1d0d07; font-family: Roboto, 'Noto Sans SC', sans-serif; display: flex; flex-direction: column; }
-.mst-page view, .mst-page button, .mst-page text { box-sizing: border-box; }
+.mst-page view, .mst-page scroll-view, .mst-page button, .mst-page text { box-sizing: border-box; }
 .mst-page button { margin: 0; padding: 0; border: 0; border-radius: 0; background: transparent; font: inherit; line-height: normal; }
 .mst-page button::after { border: 0; }
 .mst-page button[disabled] { opacity: .65; color: inherit; }
@@ -12,7 +12,9 @@
 .mst-title { position: absolute; left: 0; right: 0; text-align: center; font-size: calc(var(--mst-unit) * 16); line-height: calc(var(--mst-unit) * 24); font-weight: 700; color: #3c3c3c; font-family: Outfit, Roboto, 'Noto Sans SC', sans-serif; pointer-events: none; }
 .mst-state { padding: calc(var(--mst-unit) * 48) calc(var(--mst-unit) * 29); font-size: calc(var(--mst-unit) * 14); line-height: calc(var(--mst-unit) * 24); color: #577683; display: flex; flex-direction: column; gap: calc(var(--mst-unit) * 14); }
 .mst-page .mst-primary { align-self: flex-start; padding: calc(var(--mst-unit) * 10) calc(var(--mst-unit) * 24); border-radius: calc(var(--mst-unit) * 12); background: #5baae8; color: #fff; font-size: calc(var(--mst-unit) * 13.5); font-weight: 600; }
-.mst-body { flex: 1; padding: 0 calc(var(--mst-unit) * 17); }
+/* Native scroll-view padding otherwise adds to the stretched flex width (same family bug
+   fixed on schedule/staff), clipping the right-hand metric values on a 390-wide screen. */
+.mst-body { flex: 1; width: 100%; box-sizing: border-box; padding: 0 calc(var(--mst-unit) * 17); }
 .mst-alert { margin-top: calc(var(--mst-unit) * 12); padding: calc(var(--mst-unit) * 10) calc(var(--mst-unit) * 14); border-radius: calc(var(--mst-unit) * 12); background: #fdeec8; color: #7a4a1d; font-size: calc(var(--mst-unit) * 12); line-height: calc(var(--mst-unit) * 18); }
 .mst-range-row { display: flex; gap: calc(var(--mst-unit) * 10); margin-top: calc(var(--mst-unit) * 12); }
 /* Pills outrank the reset like sch-chip (0,2,0 after the 0,1,1 reset); selected variant after base. */

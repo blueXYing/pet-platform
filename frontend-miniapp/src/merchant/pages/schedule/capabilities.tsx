@@ -2,7 +2,7 @@ import { Button, Input, ScrollView, Text, Textarea, View } from '@tarojs/compone
 import Taro, { useDidShow, useRouter } from '@tarojs/taro'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { useWorkspace } from '../../../shared/workspace-react'
-import { consumerApi } from '../../../shared/consumer-runtime'
+import { consumerApi, consumerSession } from '../../../shared/consumer-runtime'
 import { loadServiceOptions, RealScheduleRepository, type ScheduleServiceOption } from '../../schedule/repository'
 import { fixtureManagedServices } from '../../services/model'
 import {
@@ -62,7 +62,12 @@ export default function ScheduleCapabilitiesPage() {
       setNotice(scheduleMessage(error)); setPhase('load-error')
     }
   }, [preview, repository, scope])
-  useDidShow(() => { if (staffId) void load(staffId); else setPhase('ready') })
+  useDidShow(() => {
+    void (async () => {
+      try { await consumerSession.launch() } catch { /* load() renders the error state */ }
+      if (staffId) await load(staffId); else setPhase('ready')
+    })()
+  })
   useEffect(() => { mounted.current = true; return () => { mounted.current = false; loadSequence.current++ } }, [])
   useEffect(() => { if (!preview && (!context || context.workspace !== 'merchant')) setPhase('entry') }, [context, preview])
   const previousRevision = useRef(revision)
@@ -128,7 +133,7 @@ export default function ScheduleCapabilitiesPage() {
       </View>}
       {phase === 'ready' && !view && <View className='sch-empty'><Text>输入员工编号并读取能力集合后可编辑。</Text></View>}
       {notice && <Text id='sch-cap-notice' className='sch-notice'>{notice}</Text>}
-      <View className='sch-tail'><Text>页面数据：{preview ? '契约 Mock（preview=1，不联调）' : '真实接口（开关未开放时失败关闭）'}</Text></View>
+      {preview && <View className='sch-tail'><Text>页面数据：契约 Mock（preview=1，不联调）</Text></View>}
     </ScrollView>
   </ScheduleShell>
 }

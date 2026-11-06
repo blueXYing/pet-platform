@@ -1,7 +1,7 @@
 import { Button, Image, Input, Text, Textarea, View } from '@tarojs/components'
 import Taro, { useDidHide, useDidShow, useRouter } from '@tarojs/taro'
 import { useEffect, useState, useSyncExternalStore, type CSSProperties } from 'react'
-import { consumerApi, consumerStorage } from '../../../shared/consumer-runtime'
+import { consumerApi, consumerSession, consumerStorage } from '../../../shared/consumer-runtime'
 import { merchantStorefrontDeps } from '../../storefront/repository'
 import { ShopInfoController } from '../../storefront/shop-info-controller'
 import { businessStatusLabel, operatingLabel } from '../../storefront/model'
@@ -34,7 +34,14 @@ function useShopInfo(preview = false) {
       { merchantId: context.merchantId, storeId: context.storeId })
   })
   const state = useSyncExternalStore(controller.subscribe, controller.getSnapshot)
-  useDidShow(() => { void controller.load() })
+  useDidShow(() => {
+    void (async () => {
+      // A restored page can reach did-show with an expired grant while the merchant
+      // coordinates are still in scope; restore the C session before the profile read.
+      try { await consumerSession.launch() } catch { /* controller.load() renders the error state */ }
+      await controller.load()
+    })()
+  })
   useDidHide(() => controller.hide())
   useEffect(() => () => controller.dispose(), [controller])
   const [info] = useState(() => Taro.getWindowInfo())
@@ -84,6 +91,19 @@ export default function MerchantShopInfoPage() {
       {state.phase === 'entry' && <Button className='msi-primary' onClick={() => void Taro.redirectTo({ url: '/merchant/pages/workspace/index' })}>去商家工作台</Button>}
     </View> : <>
       {state.frozen && <View className='msi-alert'>商家或门店受限，当前仅可查看店铺资料。</View>}
+      <View className='msi-card msi-identity'>
+        <View className='msi-avatar'><Text>{Array.from(state.draft.storeName || facts?.storeName || '店')[0] ?? '店'}</Text></View>
+        <View className='msi-identity-body'>
+          <Text className='msi-identity-name'>{state.draft.storeName || facts?.storeName || '门店名称'}</Text>
+          <View className='msi-identity-actions'>
+            {state.draft.avatarAssetId
+              ? <Button className='msi-avatar-link' onClick={() => controller.clearAvatar()}>移除头像（保存后生效）</Button>
+              : <Button id='msi-avatar-add' className='msi-avatar-link' disabled={state.uploadingPhoto || state.frozen}
+                onClick={() => void chooseImage(controller, 'avatar')}>{state.uploadingPhoto ? '上传中…' : '更换头像'}</Button>}
+            <Text className='msi-hint'>JPEG/PNG，随保存一并提交</Text>
+          </View>
+        </View>
+      </View>
       {facts && <View className='msi-card'>
         <Text className='msi-card-title'>资质信息（入驻审核通过后自动回填，不可在此修改）</Text>
         <View className='msi-line'><Text className='msi-label'>城市</Text><Text className='msi-value'>{facts.cityCode ?? '--'}</Text></View>
@@ -105,16 +125,6 @@ export default function MerchantShopInfoPage() {
               onClick={() => controller.toggleBusinessStatus(true)}>{businessStatusLabel.RESTING}</Button>
           </View>
           <Text className='msi-hint'>休息中仅作展示态（C 端展示属后续切片）；平台下线/冻结状态仍优先生效。</Text>
-        </View>
-        <View className='msi-field'>
-          <Text className='msi-label'>店铺头像</Text>
-          <View className='msi-avatar-row'>
-            {state.draft.avatarAssetId
-              ? <Button className='msi-avatar-clear' onClick={() => controller.clearAvatar()}>移除头像（保存后生效）</Button>
-              : <Button id='msi-avatar-add' className='msi-photo-add' disabled={state.uploadingPhoto || state.frozen}
-                onClick={() => void chooseImage(controller, 'avatar')}>{state.uploadingPhoto ? '上传中…' : '上传头像'}</Button>}
-          </View>
-          <Text className='msi-hint'>JPEG/PNG，随保存一并提交；与店铺照片同一私有素材管线（STORE_PHOTO）。</Text>
         </View>
         <View className='msi-field'>
           <Text className='msi-label'>店铺名称</Text>

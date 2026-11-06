@@ -1,6 +1,7 @@
 import { Image, Text, View } from '@tarojs/components'
 import Taro from '@tarojs/taro'
 import type { CSSProperties } from 'react'
+import { markTabHandoff } from '../../tab-handoff'
 import tabHome from './assets/tab-home.svg'
 import tabHomeInactive from './assets/tab-home-inactive.svg'
 import tabOrder from './assets/tab-order.svg'
@@ -40,22 +41,14 @@ export function MerchantTabBar(props: {
   const style = { '--mtb-unit': `${props.unit}px` } as CSSProperties
   function switchTo(key: MerchantTabKey) {
     if (key === props.active) return
+    // The tab bar owns the handoff marker: even when the page-level onBeforeSwitch prop is
+    // unavailable, the workspace's onHide must not clear the merchant coordinates for a tab
+    // sibling. The marker is one-shot and short-lived.
+    markTabHandoff()
     props.onBeforeSwitch?.(key)
-    const url = ROUTES[key]
-    const route = url.replace(/^\//, '')
-    const pages = Taro.getCurrentPages()
-    const index = pages.findIndex(page => page.route === route)
-    if (index >= 0) {
-      const delta = pages.length - 1 - index
-      if (delta > 0) {
-        Taro.navigateBack({ delta }).catch(() => {
-          props.onError?.()
-          void Taro.showToast({ title: '页面跳转失败，请重试', icon: 'none' })
-        })
-      }
-      return
-    }
-    Taro.navigateTo({ url }).catch(() => {
+    // Tabs are siblings, not a back stack. redirectTo keeps exactly one tab page alive, so a
+    // disposed workbench controller can never be resurrected into a stale placeholder state.
+    Taro.redirectTo({ url: ROUTES[key] }).catch(() => {
       props.onError?.()
       void Taro.showToast({ title: '页面跳转失败，请重试', icon: 'none' })
     })

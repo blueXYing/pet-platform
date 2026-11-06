@@ -23,9 +23,9 @@
 .mrf-date { color: #9ca3af; font-size: calc(11.541 * var(--mrf-unit)); line-height: calc(16 * var(--mrf-unit)); text-align: right; overflow-wrap: anywhere; }
 .mrf-list-actions { margin-top: calc(11.4 * var(--mrf-unit)); }
 .mrf-help { display: block; font-size: calc(12 * var(--mrf-unit)); color: #9ca3af; line-height: calc(18 * var(--mrf-unit)); margin-top: calc(6 * var(--mrf-unit)); overflow-wrap: anywhere; }
-.mrf-tag { font-size: calc(12.603 * var(--mrf-unit)); line-height: calc(16.804 * var(--mrf-unit)); padding: calc(2.1 * var(--mrf-unit)) calc(10.502 * var(--mrf-unit)); border-radius: calc(999 * var(--mrf-unit)); background: #fffbeb; color: #de8722; flex-shrink: 0; }
-.mrf-tag-approved { background: #c0ecff; color: #15803d; }
-.mrf-tag-closed { background: #f3f4f6; color: #6b7280; }
+.mrf-tag { font-size: calc(12.603 * var(--mrf-unit)); line-height: calc(16.804 * var(--mrf-unit)); padding: 0; border-radius: 0; background: transparent; color: #de8722; flex-shrink: 0; }
+.mrf-tag-approved { background: transparent; color: #15803d; }
+.mrf-tag-closed { background: transparent; color: #6b7280; }
 .mrf-page .mrf-card-action { background: #5baae8; color: white; width: calc(88 * var(--mrf-unit)); height: calc(32 * var(--mrf-unit)); border-radius: calc(999 * var(--mrf-unit)); font-size: calc(12.603 * var(--mrf-unit)); font-weight: 600; line-height: calc(32 * var(--mrf-unit)); }
 .mrf-empty, .mrf-alert { margin: calc(13 * var(--mrf-unit)) calc(15.388 * var(--mrf-unit)); padding: calc(16 * var(--mrf-unit)); background: white; border: calc(1.5 * var(--mrf-unit)) solid #c0ecff; border-radius: calc(12 * var(--mrf-unit)); color: #6b7280; line-height: 1.6; }
 .mrf-alert { color: #9a6700; background: #fffbeb; border-color: #f3e0af; font-size: calc(13 * var(--mrf-unit)); }

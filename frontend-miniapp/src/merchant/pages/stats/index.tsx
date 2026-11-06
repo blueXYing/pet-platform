@@ -1,7 +1,7 @@
 import { Button, Image, Picker, ScrollView, Text, View } from '@tarojs/components'
 import Taro, { useDidHide, useDidShow, useRouter } from '@tarojs/taro'
 import { useEffect, useState, useSyncExternalStore, type CSSProperties } from 'react'
-import { consumerApi, consumerStorage } from '../../../shared/consumer-runtime'
+import { consumerApi, consumerSession, consumerStorage } from '../../../shared/consumer-runtime'
 import { merchantStorefrontDeps } from '../../storefront/repository'
 import { MerchantStatsController } from '../../storefront/read-controllers'
 import { deltaLabel, rangeLabel, validCustomWindow, windowLabel } from '../../storefront/model'
@@ -35,7 +35,12 @@ function useStats(preview = false) {
       { merchantId: context.merchantId, storeId: context.storeId })
   })
   const state = useSyncExternalStore(controller.subscribe, controller.getSnapshot)
-  useDidShow(() => { void controller.load() })
+  useDidShow(() => {
+    void (async () => {
+      try { await consumerSession.launch() } catch { /* controller.load() renders the error state */ }
+      await controller.load()
+    })()
+  })
   useDidHide(() => controller.hide())
   useEffect(() => () => controller.dispose(), [controller])
   const [info] = useState(() => Taro.getWindowInfo())
@@ -155,7 +160,7 @@ export default function MerchantStatsPage() {
         <View className='mst-trend'>
           {state.trend.map(bucket => <View key={bucket.date} className='mst-trend-col'>
             <View className='mst-trend-bar-zone'>
-              <View className='mst-trend-bar' style={{ height: `${Math.max(2, Math.round(Number(bucket.revenue) / maxRevenue * 96)) }}px` }} />
+              <View className='mst-trend-bar' style={{ height: `${Math.max(2, Math.round(Number(bucket.revenue) / maxRevenue * 96))}px` }} />
             </View>
             <Text className='mst-trend-day'>{bucket.date.slice(5)}</Text>
           </View>)}

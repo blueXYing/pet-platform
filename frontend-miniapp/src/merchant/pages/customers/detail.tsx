@@ -1,7 +1,7 @@
 import { Button, Image, ScrollView, Text, Textarea, View } from '@tarojs/components'
 import Taro, { useDidHide, useDidShow, useRouter } from '@tarojs/taro'
 import { useEffect, useState, useSyncExternalStore, type CSSProperties } from 'react'
-import { consumerApi, consumerStorage } from '../../../shared/consumer-runtime'
+import { consumerApi, consumerSession, consumerStorage } from '../../../shared/consumer-runtime'
 import { merchantStorefrontDeps } from '../../storefront/repository'
 import { CustomerDetailController } from '../../storefront/read-controllers'
 import { lastVisitLabel } from '../../storefront/model'
@@ -36,7 +36,12 @@ function useCustomerDetail(preview = false) {
       { merchantId: context.merchantId, storeId: context.storeId }, userId)
   })
   const state = useSyncExternalStore(controller.subscribe, controller.getSnapshot)
-  useDidShow(() => { void controller.load() })
+  useDidShow(() => {
+    void (async () => {
+      try { await consumerSession.launch() } catch { /* controller.load() renders the error state */ }
+      await controller.load()
+    })()
+  })
   useDidHide(() => controller.hide())
   useEffect(() => () => controller.dispose(), [controller])
   const [info] = useState(() => Taro.getWindowInfo())
@@ -96,8 +101,12 @@ export default function MerchantCustomerDetailPage() {
       <View className='mcu-card'>
         <Text className='mcu-card-title'>宠物信息（名字/品种级，69号隐私口径）</Text>
         {detail.pets.length === 0 && <Text className='mcu-value'>本店订单暂无宠物快照</Text>}
-        {detail.pets.map((pet, index) => <View key={index} className='mcu-line'>
-          <Text className='mcu-value'>{pet.petName}（{pet.breedName ?? pet.petType}）</Text>
+        {detail.pets.map((pet, index) => <View key={index} className='mcu-pet-row'>
+          <View className='mcu-pet-avatar'><Text>{Array.from(pet.petName)[0] ?? '宠'}</Text></View>
+          <View className='mcu-pet-info'>
+            <Text className='mcu-name'>{pet.petName}</Text>
+            <Text className='mcu-phone'>{pet.breedName ?? pet.petType}</Text>
+          </View>
         </View>)}
         <Text className='mcu-hint'>体重/疫苗/驱虫/健康备注等健康字段不在商家端展示（CCR 口径）。</Text>
       </View>

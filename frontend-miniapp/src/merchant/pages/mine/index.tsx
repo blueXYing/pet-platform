@@ -66,6 +66,12 @@ export default function MerchantMinePage() {
     Taro.navigateTo({ url }).catch(() => { void Taro.showToast({ title: '页面跳转失败，请重试', icon: 'none' }) })
   }
   function backToConsumer() {
+    // The tab handoff keeps merchant coordinates for the merchant tabs; returning to the
+    // consumer shell is an explicit exit and must hand the consumer pages consumer coordinates.
+    const current = consumerApi.scope.current
+    if (current) consumerApi.scope.replace({
+      userId: current.userId, workspace: 'consumer', merchantId: null, storeId: null,
+    })
     Taro.switchTab({ url: '/consumer/pages/mine/index' }).catch(() => {
       void Taro.showToast({ title: '切换失败，请重试', icon: 'none' })
     })

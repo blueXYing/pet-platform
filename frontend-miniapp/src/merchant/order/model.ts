@@ -254,6 +254,21 @@ export function merchantAppointmentWindow(item: MerchantOrderSummary): string {
   return start && end ? `${start} ~ ${end}` : '时间待定'
 }
 
+/** 列表卡面用的紧凑预约时间：今天/明天 14:00；其他日期 11-05 14:00。 */
+export function merchantAppointmentLabel(item: MerchantOrderSummary): string {
+  const value = item.appointmentStart
+  if (!value) return '时间待定'
+  const date = new Date(value)
+  if (!Number.isFinite(date.getTime())) return '时间待定'
+  const local = new Date(date.getTime() + 8 * 60 * 60 * 1000)
+  const now = new Date(Date.now() + 8 * 60 * 60 * 1000)
+  const day = local.toISOString().slice(0, 10)
+  const today = now.toISOString().slice(0, 10)
+  const tomorrow = new Date(now.getTime() + 24 * 60 * 60 * 1000).toISOString().slice(0, 10)
+  const prefix = day === today ? '今天' : day === tomorrow ? '明天' : day.slice(5)
+  return `${prefix} ${local.toISOString().slice(11, 16)}`
+}
+
 /** 产品时钟 UTC+8；设备设置不得移动订单时间（与 decisionTimeText 同口径）。 */
 export function merchantOrderTimeText(value: string | null): string {
   if (!value) return ''

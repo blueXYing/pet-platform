@@ -2,7 +2,7 @@ import { Button, Input, ScrollView, Text, Textarea, View } from '@tarojs/compone
 import Taro, { useDidShow, useRouter } from '@tarojs/taro'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { useWorkspace } from '../../../shared/workspace-react'
-import { consumerApi } from '../../../shared/consumer-runtime'
+import { consumerApi, consumerSession } from '../../../shared/consumer-runtime'
 import { loadServiceOptions, RealScheduleRepository, type ScheduleServiceOption } from '../../schedule/repository'
 import { fixtureManagedServices } from '../../services/model'
 import {
@@ -75,7 +75,12 @@ export default function ScheduleWindowsPage() {
       setNotice(scheduleMessage(error)); setPhase('load-error')
     }
   }, [preview, repository, scope])
-  useDidShow(() => { void load() })
+  useDidShow(() => {
+    void (async () => {
+      try { await consumerSession.launch() } catch { /* load() renders the error state */ }
+      await load()
+    })()
+  })
   useEffect(() => { mounted.current = true; return () => { mounted.current = false; loadSequence.current++ } }, [])
   useEffect(() => { if (!preview && (!context || context.workspace !== 'merchant')) setPhase('entry') }, [context, preview])
   const previousRevision = useRef(revision)
@@ -278,7 +283,7 @@ export default function ScheduleWindowsPage() {
       {windows.length < listTotal && <Button id='sch-windows-more' className='sch-load-more' disabled={loadingMore}
         onClick={() => void loadMore()}>{loadingMore ? '正在加载…' : `加载更多（已显示 ${windows.length}/${listTotal}）`}</Button>}
       {notice && <Text id='sch-notice' className='sch-notice'>{notice}</Text>}
-      <View className='sch-tail'><Text>页面数据：{preview ? '契约 Mock（preview=1，不联调）' : '真实接口（开关未开放时失败关闭）'}</Text></View>
+      {preview && <View className='sch-tail'><Text>页面数据：契约 Mock（preview=1，不联调）</Text></View>}
     </ScrollView>
   </ScheduleShell>
 }

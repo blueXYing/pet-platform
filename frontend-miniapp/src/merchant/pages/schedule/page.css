@@ -6,7 +6,7 @@
    State variants are class names, not [data-*] selectors: Taro 4.1.5 drops dynamic data-*
    from the native wxml (PR#99 VIS evidence); variant rules sit after their base rule. */
 .sch-page { --sch-status-top: 0px; min-height: 100vh; box-sizing: border-box; padding-bottom: calc(var(--sch-unit) * 61 + env(safe-area-inset-bottom)); background: #f0fbff; color: #1d0d07; font-family: Roboto, 'Noto Sans SC', sans-serif; display: flex; flex-direction: column; }
-.sch-page view, .sch-page button, .sch-page text, .sch-page input, .sch-page textarea { box-sizing: border-box; }
+.sch-page view, .sch-page scroll-view, .sch-page button, .sch-page text, .sch-page input, .sch-page textarea { box-sizing: border-box; }
 .sch-page button { margin: 0; padding: 0; border: 0; border-radius: 0; background: transparent; font: inherit; line-height: normal; }
 .sch-page button::after { border: 0; }
 .sch-page button[disabled] { opacity: .65; color: inherit; }
@@ -20,7 +20,10 @@
 .sch-closed { display: flex; flex-direction: column; gap: calc(var(--sch-unit) * 8); }
 .sch-closed-title { font-size: calc(var(--sch-unit) * 16); font-weight: 700; color: #3c3c3c; }
 .sch-closed-text { font-size: calc(var(--sch-unit) * 13); line-height: calc(var(--sch-unit) * 21); color: #577683; }
-.sch-body { flex: 1; height: auto; padding: 0 calc(var(--sch-unit) * 17) calc(var(--sch-unit) * 24); }
+/* ScrollView renders as native scroll-view, not view: without border-box its horizontal
+   padding is added on top of the stretched flex width (422.97 on a 390-wide screen), so the
+   right edge of every row/card clipped. width:100% + border-box keeps content inside. */
+.sch-body { flex: 1; height: auto; width: 100%; box-sizing: border-box; padding: 0 calc(var(--sch-unit) * 17) calc(var(--sch-unit) * 24); }
 .sch-entry-row { display: flex; gap: calc(var(--sch-unit) * 10); margin-top: calc(var(--sch-unit) * 12); }
 .sch-page .sch-entry { flex: 1; padding: calc(var(--sch-unit) * 12) 0; border-radius: calc(var(--sch-unit) * 12); background: #5baae8; color: #fff; font-size: calc(var(--sch-unit) * 13.5); font-weight: 600; text-align: center; }
 .sch-summary { margin-top: calc(var(--sch-unit) * 14); display: flex; flex-direction: column; gap: calc(var(--sch-unit) * 4); font-size: calc(var(--sch-unit) * 14); line-height: calc(var(--sch-unit) * 21); color: #111827; }

@@ -2,11 +2,12 @@ import { Button, Image, ScrollView, Text, View } from '@tarojs/components'
 import Taro, { useDidHide, useDidShow, useRouter } from '@tarojs/taro'
 import { useEffect, useRef, useState, useSyncExternalStore, type CSSProperties } from 'react'
 import { useWorkspace } from '../../../shared/workspace-react'
-import { consumerApi } from '../../../shared/consumer-runtime'
+import { consumerApi, consumerSession } from '../../../shared/consumer-runtime'
 import { consumerFixture } from '../../../shared/fixture'
 import { MerchantStatsClient, StoreProfileClient } from '../../../shared/merchant-storefront-api'
 import { MerchantRefundClient } from '../../../shared/merchant-refund-api'
 import { MerchantWorkspace } from '../../workspace'
+import { clearTabHandoff, consumeTabHandoff } from '../../tab-handoff'
 import { realDeps } from '../../admission-runtime'
 import { fixtureDeps } from '../../admission'
 import { MerchantWorkbenchDashboard } from '../../workbench/dashboard'
@@ -139,13 +140,34 @@ export default function MerchantWorkbenchPage() {
   })
   const dash = useSyncExternalStore(dashboard.subscribe, dashboard.getSnapshot)
   const enter = () => {
+    clearTabHandoff()
     // ?preview=1 是开发者工具视觉验收夹具：先注入消费者样本上下文，再由 fixtureDeps 放行；
     // 真实路径仍要求已登录会话，0 改动。
     if (preview && !scope.current) scope.replace(consumerFixture)
+    if (!preview) {
+      // The provider launch and did-show race on first mount, and a reused page may return
+      // with an expired grant while the merchant scope is still in memory. Always restore the
+      // session before the admission read; launch() is single-flight at the auth layer.
+      void consumerSession.launch()
+        .then(() => controller.enter(admissionDeps))
+        .catch(() => controller.enter(admissionDeps))
+      return
+    }
     void controller.enter(admissionDeps)
   }
-  useDidShow(enter)
-  useDidHide(() => { controller.leave(); dashboard.hide() })
+  useDidShow(() => {
+    // A disposed-but-reused page object must re-arm before enter() can publish again.
+    controller.reopen()
+    dashboard.show()
+    enter()
+  })
+  useDidHide(() => {
+    // Tab siblings are not workbench children, but they still need the merchant coordinates;
+    // the tab bar leaves a one-shot marker so this hide is a handoff, not a leave-to-consumer.
+    if (consumeTabHandoff()) controller.handoffToMerchantPage()
+    controller.leave()
+    dashboard.hide()
+  })
   useEffect(() => () => { controller.dispose(); dashboard.dispose() }, [controller, dashboard])
   const [windowInfo] = useState(() => Taro.getWindowInfo())
   const unit = windowInfo.windowWidth / 402
@@ -183,7 +205,10 @@ export default function MerchantWorkbenchPage() {
     else void Taro.showToast({ title: '该入口将在后续切片提供', icon: 'none' })
   }
   function handoff(url: string) {
-    controller.handoffToChild()
+    // Taro disposes the hidden workbench React tree for merchant child pages too; their
+    // controllers must keep the merchant coordinates, so this is the same handoff contract
+    // as a bottom-tab switch (survives dispose), not the consumer-leave path.
+    controller.handoffToMerchantPage()
     Taro.navigateTo({ url }).catch(() => controller.handoffCancelled())
   }
   function openServices() { handoff('/merchant/pages/services/index') }
@@ -201,7 +226,7 @@ export default function MerchantWorkbenchPage() {
     handoff(`/merchant/pages/order-confirm/index?orderId=${encodeURIComponent(order.orderId)}`)
   }
   function openMessages() {
-    controller.handoffToChild()
+    controller.handoffToMerchantPage()
     const pages = Taro.getCurrentPages()
     const index = pages.findIndex(page => page.route === 'merchant/pages/messages/index')
     if (index >= 0) {
@@ -409,7 +434,7 @@ export default function MerchantWorkbenchPage() {
       {ready && staff && renderStaff()}
     </View>
     <MerchantTabBar active='home' unit={unit}
-      onBeforeSwitch={() => controller.handoffToChild()}
+      onBeforeSwitch={() => controller.handoffToMerchantPage()}
       onError={() => controller.handoffCancelled()} />
   </View>
 }

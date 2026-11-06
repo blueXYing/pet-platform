@@ -87,7 +87,7 @@
 .mwb-todo-empty { flex: none; width: calc(var(--mwb-unit) * 370); height: calc(var(--mwb-unit) * 168); border: calc(var(--mwb-unit) * 1.5) dashed #c0ecff; border-radius: calc(var(--mwb-unit) * 14.798); display: flex; align-items: center; justify-content: center; color: #577683; font-size: calc(var(--mwb-unit) * 13); }
 
 /* Quick-entry grid 601..806. */
-.mwb-grid-card { margin: calc(var(--mwb-unit) * 6) calc(var(--mwb-unit) * 8) 0; background: #d7f1fd; border-radius: calc(var(--mwb-unit) * 16); padding: calc(var(--mwb-unit) * 16); flex: none; }
+.mwb-grid-card { margin: calc(var(--mwb-unit) * 11) calc(var(--mwb-unit) * 8) 0; background: #d7f1fd; border-radius: calc(var(--mwb-unit) * 16); padding: calc(var(--mwb-unit) * 16); flex: none; }
 .mwb-grid { display: flex; flex-wrap: wrap; gap: calc(var(--mwb-unit) * 16) calc(var(--mwb-unit) * 8); width: 100%; }
 .mwb-grid-cell { width: calc(var(--mwb-unit) * 82.5); height: calc(var(--mwb-unit) * 70.5); display: flex; flex-direction: column; align-items: center; gap: calc(var(--mwb-unit) * 6); flex: none; }
 .mwb-grid-tile { width: calc(var(--mwb-unit) * 48); height: calc(var(--mwb-unit) * 48); border-radius: calc(var(--mwb-unit) * 12); background: #fff; display: flex; align-items: center; justify-content: center; }

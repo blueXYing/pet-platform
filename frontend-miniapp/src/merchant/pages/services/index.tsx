@@ -2,7 +2,7 @@ import { Button, Image, ScrollView, Text, View } from '@tarojs/components'
 import Taro, { useDidShow, useRouter } from '@tarojs/taro'
 import { useCallback, useEffect, useRef, useState, useSyncExternalStore, type CSSProperties } from 'react'
 import { useWorkspace } from '../../../shared/workspace-react'
-import { consumerApi } from '../../../shared/consumer-runtime'
+import { consumerApi, consumerSession } from '../../../shared/consumer-runtime'
 import { RealServiceManageRepository, serviceManageMessage } from '../../services/repository'
 import { ServiceListController } from '../../services/controller'
 import {
@@ -50,7 +50,13 @@ export default function MerchantServicesPage() {
     }
     void controller.load()
   }, [controller, preview, scenario, scope])
-  useDidShow(load)
+  useDidShow(() => {
+    // The provider's session restore and this page's did-show can race on a fresh tab.
+    void (async () => {
+      try { await consumerSession.launch() } catch { /* load() renders the error state */ }
+      load()
+    })()
+  })
   useEffect(() => () => controller.dispose(), [controller])
   // Coordinates switched away (workbench leave / account switch) invalidates the listing.
   useEffect(() => {
@@ -62,8 +68,9 @@ export default function MerchantServicesPage() {
   }, [revision, scope, preview, controller])
 
   async function back() {
-    if (Taro.getCurrentPages().length > 1) await Taro.navigateBack().catch(() => setNotice('返回失败，请重试'))
-    else await Taro.redirectTo({ url: '/merchant/pages/workspace/index' }).catch(() => setNotice('返回失败，请重试'))
+    // Taro may dispose the hidden workbench React tree on navigateTo and reuse a stale page
+    // object on navigateBack; reLaunch gives the workbench a fresh controller and did-show.
+    await Taro.reLaunch({ url: '/merchant/pages/workspace/index' }).catch(() => setNotice('返回失败，请重试'))
   }
   function openEditor(item?: ManagedServiceItem) {
     const query = `preview=${preview ? '1' : '0'}${item ? `&serviceId=${encodeURIComponent(item.serviceId)}` : ''}`
@@ -132,7 +139,7 @@ export default function MerchantServicesPage() {
         {state.loadingMore ? '正在加载…' : '加载更多'}
       </Button>}
       {notice && <Text id='msvc-notice' className='msvc-notice'>{notice}</Text>}
-      <View className='msvc-tail'><Text>页面数据：{preview ? '契约 Mock（preview=1，不联调）' : '真实接口（后端交付前失败关闭）'}</Text></View>
+      {preview && <View className='msvc-tail'><Text>页面数据：契约 Mock（preview=1，不联调）</Text></View>}
       <View className='msvc-tab-space' />
     </ScrollView>}
     <MerchantTabBar active='home' unit={unit} />

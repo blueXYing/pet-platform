@@ -2,12 +2,13 @@ import { Button, Image, ScrollView, Text, View } from '@tarojs/components'
 import Taro, { useDidShow, useRouter } from '@tarojs/taro'
 import { useCallback, useEffect, useState, useSyncExternalStore, type CSSProperties } from 'react'
 import { useWorkspace } from '../../../shared/workspace-react'
-import { consumerApi } from '../../../shared/consumer-runtime'
-import { StoreProfileClient, type StoreProfileView } from '../../../shared/merchant-storefront-api'
+import { consumerApi, consumerSession } from '../../../shared/consumer-runtime'
+import { MerchantStatsClient, StoreProfileClient, type StoreProfileView } from '../../../shared/merchant-storefront-api'
+import { MerchantRefundClient } from '../../../shared/merchant-refund-api'
 import { RealMerchantOrderListRepository } from '../../order/repository'
 import { MerchantOrderListController, type MerchantOrderListTab } from '../../order/list-controller'
 import {
-  merchantAppointmentWindow, merchantDisplayStatusLabels, merchantOrderTimeText,
+  merchantAppointmentLabel, merchantAppointmentWindow, merchantDisplayStatusLabels,
 } from '../../order/model'
 import { businessStatusLabel } from '../../storefront/model'
 import { previewOrderListDeps, previewStoreProfile } from '../../workbench/preview'
@@ -23,6 +24,7 @@ import './page.css'
 // `?preview=1` 为开发者工具视觉验收夹具，使用 workbench/preview 样本，不接真实接口。
 
 type TabKey = MerchantOrderListTab | 'REFUND'
+type CountKey = Exclude<TabKey, null>
 const TABS: readonly { key: TabKey; label: string }[] = [
   { key: 'PENDING_CONFIRM', label: '待接单' },
   { key: null, label: '全部' },
@@ -55,6 +57,8 @@ export default function MerchantOrderListPage() {
     }))
   const state = useSyncExternalStore(controller.subscribe, controller.getSnapshot)
   const [store, setStore] = useState<StoreProfileView | null>(previewStore)
+  const [reviewAvg, setReviewAvg] = useState<string | null>(null)
+  const [counts, setCounts] = useState<Partial<Record<CountKey, number>>>({})
   const [notice, setNotice] = useState('')
   const [platformInfo] = useState(() => Taro.getWindowInfo())
   const unit = platformInfo.windowWidth / 402
@@ -67,6 +71,28 @@ export default function MerchantOrderListPage() {
     if (preview) return
     new StoreProfileClient(consumerApi).get().then(setStore).catch(() => setStore(null))
   }, [preview])
+  const loadRating = useCallback(() => {
+    if (preview) { setReviewAvg('4.9'); return }
+    new MerchantStatsClient(consumerApi).overview('TODAY')
+      .then(view => setReviewAvg(view.reviewAvg))
+      .catch(() => setReviewAvg(null))
+  }, [preview])
+  const loadCounts = useCallback(() => {
+    if (preview) return
+    const current = scope.current
+    if (!current || current.workspace !== 'merchant' || !current.merchantId || !current.storeId) return
+    const coordinates = { merchantId: current.merchantId, storeId: current.storeId, page: 1, pageSize: 20 }
+    const repository = new RealMerchantOrderListRepository(consumerApi)
+    const statuses = ['PENDING_CONFIRM', 'PENDING_SERVICE', 'COMPLETED'] as const
+    void Promise.all(statuses.map(status => repository.list({ ...coordinates, displayStatus: status })
+      .then(page => [status, page.total] as const)
+      .catch(() => [status, 0] as const)))
+      .then(entries => setCounts(previous => ({ ...previous, ...Object.fromEntries(entries) })))
+      .catch(() => {})
+    new MerchantRefundClient(consumerApi).list(coordinates)
+      .then(page => setCounts(previous => ({ ...previous, REFUND: page.total })))
+      .catch(() => {})
+  }, [preview, scope])
   const load = useCallback(() => {
     setNotice('')
     if (preview) { void controller.load(null); return }
@@ -77,7 +103,17 @@ export default function MerchantOrderListPage() {
     }
     void controller.load()
   }, [controller, scope, preview])
-  useDidShow(() => { loadStore(); load() })
+  useDidShow(() => {
+    // The app provider's session restore and this page's did-show can race; resolve the
+    // session first, then read the store profile and the list with a live credential.
+    void (async () => {
+      try { await consumerSession.launch() } catch { /* page error paths handle it */ }
+      loadStore()
+      loadRating()
+      loadCounts()
+      load()
+    })()
+  })
   useEffect(() => () => controller.dispose(), [controller])
 
   function goWorkspace() {
@@ -116,7 +152,10 @@ export default function MerchantOrderListPage() {
         <View className='mol-avatar'><Text>{initial}</Text></View>
         <View className='mol-store-main'>
           <Text className='mol-store-name'>{storeName}</Text>
-          <Text className='mol-store-meta'>商家主账号</Text>
+          <View className='mol-rating'>
+            <Text className='mol-rating-star'>★ {reviewAvg ?? '--'}</Text>
+            <Text className='mol-rating-label'>评分</Text>
+          </View>
         </View>
       </View>
       <View className='mol-header-right'>
@@ -128,11 +167,21 @@ export default function MerchantOrderListPage() {
     </View>
     <View className='mol-tabs'>
       {TABS.map(tab => tab.key === 'REFUND'
-        ? <Button key={tab.label} className='mol-tab' onClick={() => choose(tab.key)}><Text>{tab.label}</Text></Button>
+        ? <Button key={tab.label} id='mol-tab-refund' className='mol-tab' onClick={() => choose(tab.key)}>
+          <View className='mol-tab-inner'>
+            <Text>{tab.label}</Text>
+            {counts.REFUND ? <View className='mol-tab-badge'><Text>{counts.REFUND > 99 ? '99+' : counts.REFUND}</Text></View> : null}
+          </View>
+        </Button>
         : <Button key={tab.label} id={`mol-tab-${tab.key ?? 'all'}`}
           className={state.tab === tab.key ? 'mol-tab mol-tab-active' : 'mol-tab'}
           disabled={state.status === 'loading'}
-          onClick={() => choose(tab.key)}><Text>{tab.label}</Text></Button>)}
+          onClick={() => choose(tab.key)}>
+          <View className='mol-tab-inner'>
+            <Text>{tab.label}</Text>
+            {tab.key && counts[tab.key] ? <View className='mol-tab-badge'><Text>{counts[tab.key]! > 99 ? '99+' : counts[tab.key]}</Text></View> : null}
+          </View>
+        </Button>)}
     </View>
     <ScrollView className='mol-body' scrollY enhanced showScrollbar={false}>
       {(state.status === 'idle' || state.status === 'loading') && <View className='mol-state' role='status'><Text id='mol-loading'>正在读取订单…</Text></View>}
@@ -159,25 +208,23 @@ export default function MerchantOrderListPage() {
         <View className='mol-card-head'>
           <View className='mol-card-avatar'><Text>单</Text></View>
           <View className='mol-card-who'>
-            <Text className='mol-card-no'>订单 {item.orderNo}</Text>
-            <Text className='mol-card-service'>{merchantAppointmentWindow(item)}</Text>
+            <Text className='mol-card-no'>订单 {item.orderNo.slice(-8)}</Text>
+            <Text className='mol-card-service'>{merchantAppointmentLabel(item)}</Text>
           </View>
           <Text className='mol-card-amount'>¥{item.payAmount}</Text>
         </View>
         <View className='mol-card-meta'>
           <Text className={`mol-badge mol-badge-${item.displayStatus}`}>{merchantDisplayStatusLabels[item.displayStatus]}</Text>
-          <Text className='mol-card-paid'>支付 {item.paidAt ? merchantOrderTimeText(item.paidAt) : '—'}</Text>
+          {item.displayStatus === 'PENDING_CONFIRM' && <View className='mol-card-actions'>
+            <View className='mol-action-pill mol-action-reject'><Text>拒绝</Text></View>
+            <View className='mol-action-pill mol-action-accept'><Text>接单</Text></View>
+          </View>}
         </View>
-        {item.displayStatus === 'PENDING_CONFIRM' && <View className='mol-card-actions'>
-          <View className='mol-action-pill mol-action-reject'><Text>拒绝</Text></View>
-          <View className='mol-action-pill mol-action-accept'><Text>接单</Text></View>
-        </View>}
       </Button>)}
       {state.status === 'ready' && state.items.length < state.total
         && <Button id='mol-load-more' className='mol-more' disabled={state.loadingMore} onClick={() => void controller.loadMore()}>
           {state.loadingMore ? '正在加载…' : '加载更多'}
         </Button>}
-      {state.status === 'ready' && <Text className='mol-count'>本店 · 共 {state.total} 笔订单</Text>}
       {state.notice && state.status !== 'load-error' && <Text id='mol-notice' className='mol-notice'>{state.notice}</Text>}
       {notice && <Text className='mol-notice'>{notice}</Text>}
       <View className='mol-tab-space' />

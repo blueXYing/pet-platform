@@ -1,10 +1,10 @@
 import { Button, Image, ScrollView, Text, View } from '@tarojs/components'
 import Taro, { useDidHide, useDidShow } from '@tarojs/taro'
 import { useEffect, useState, useSyncExternalStore, type CSSProperties } from 'react'
-import { consumerApi, consumerStorage } from '../../../shared/consumer-runtime'
+import { consumerApi, consumerSession, consumerStorage } from '../../../shared/consumer-runtime'
 import { merchantStorefrontDeps } from '../../storefront/repository'
 import { ServiceOrdersController } from '../../storefront/read-controllers'
-import { merchantDisplayStatusLabels } from '../../order/model'
+import { merchantDisplayStatusLabels, merchantOrderTimeText } from '../../order/model'
 import { windowLabel } from '../../storefront/model'
 import { MerchantTabBar } from '../../components/tab-bar'
 import navBack from '../aftersale/assets/nav-back@3x.png'
@@ -32,7 +32,12 @@ function useServiceOrders() {
       { merchantId: context.merchantId, storeId: context.storeId }, serviceId, range, custom)
   })
   const state = useSyncExternalStore(controller.subscribe, controller.getSnapshot)
-  useDidShow(() => { void controller.load() })
+  useDidShow(() => {
+    void (async () => {
+      try { await consumerSession.launch() } catch { /* controller.load() renders the error state */ }
+      await controller.load()
+    })()
+  })
   useDidHide(() => controller.hide())
   useEffect(() => () => controller.dispose(), [controller])
   const [info] = useState(() => Taro.getWindowInfo())
@@ -48,8 +53,9 @@ async function backToStats() {
 }
 
 function serviceOrderTime(iso: string | null): string {
-  if (!iso) return '--'
-  return iso.slice(0, 16).replace('T', ' ') + 'Z'
+  // Merchant-facing times are Beijing wall-clock (same formatter as the order list);
+  // raw ISO+Z made the drilldown read 8 hours behind every other merchant page.
+  return merchantOrderTimeText(iso) || '--'
 }
 
 export default function MerchantServiceOrdersPage() {
