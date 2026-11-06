@@ -8,7 +8,9 @@ import { MerchantRefundClient } from '../../../shared/merchant-refund-api'
 import { RealMerchantOrderListRepository } from '../../order/repository'
 import { MerchantOrderListController, type MerchantOrderListTab } from '../../order/list-controller'
 import {
-  merchantAppointmentLabel, merchantAppointmentWindow, merchantDisplayStatusLabels,
+  merchantAppointmentLabel, merchantAppointmentWindow, merchantCardSubtitle,
+  merchantCustomerInitial, merchantCustomerName, merchantDisplayStatusLabels,
+  type MerchantOrderSummary,
 } from '../../order/model'
 import { businessStatusLabel } from '../../storefront/model'
 import { previewOrderListDeps, previewStoreProfile } from '../../workbench/preview'
@@ -20,7 +22,8 @@ import './page.css'
 // #fff6e5 + 营业状态 + 铃铛、奶油底筛选 tab、白卡 #c0ecff 描边、金额右置、状态胶囊、
 // 底部五 tab（订单 active）。功能仍按 45号/10号契约：displayStatus 服务端投影、
 // PENDING_CONFIRM 30 分钟确认窗口、点卡进入 order-confirm 接单/拒单。
-// 原稿的客户姓名/手机号/服务名/商家取消按钮不在商家读侧或与 45号冲突，不渲染。
+// CCR-M-ORDER-CARD-001（2026-11-06 批准）后卡面补客户昵称/头像、服务名、宠物名·品种
+// （下单快照，空值降级不伪造）；手机号与商家取消按钮仍不在商家读侧/与 45号冲突，不渲染。
 // `?preview=1` 为开发者工具视觉验收夹具，使用 workbench/preview 样本，不接真实接口。
 
 type TabKey = MerchantOrderListTab | 'REFUND'
@@ -32,6 +35,22 @@ const TABS: readonly { key: TabKey; label: string }[] = [
   { key: 'COMPLETED', label: '已完成' },
   { key: 'REFUND', label: '退款' },
 ]
+
+/** CCR-M-ORDER-CARD-001 客户头像：URL 为空或加载失败降级为首字占位圆，不伪造图片。 */
+function CustomerAvatar({ url, initial }: { url: string | null; initial: string }) {
+  const [failed, setFailed] = useState(false)
+  if (url !== null && !failed) {
+    return <Image className='mol-card-avatar mol-card-avatar-image' src={url} mode='aspectFill' onError={() => setFailed(true)} />
+  }
+  return <View className='mol-card-avatar'><Text>{initial}</Text></View>
+}
+
+/** 卡片第二行：服务名·宠物（CCR-M-ORDER-CARD-001，可空跳过）+ 预约时间；空值不伪造。 */
+function cardLine(item: MerchantOrderSummary): string {
+  const parts = [merchantCardSubtitle(item), merchantAppointmentLabel(item)]
+    .filter((part): part is string => part !== null)
+  return parts.join(' · ')
+}
 
 export default function MerchantOrderListPage() {
   const route = useRouter()
@@ -206,10 +225,11 @@ export default function MerchantOrderListPage() {
         ariaLabel={`订单 ${item.orderNo}，${merchantDisplayStatusLabels[item.displayStatus]}，${merchantAppointmentWindow(item)}，${item.payAmount} 元`}
         onClick={() => openProcess(item.orderId)}>
         <View className='mol-card-head'>
-          <View className='mol-card-avatar'><Text>单</Text></View>
+          <CustomerAvatar url={item.customerAvatarUrl} initial={merchantCustomerInitial(item)} />
           <View className='mol-card-who'>
-            <Text className='mol-card-no'>订单 {item.orderNo.slice(-8)}</Text>
-            <Text className='mol-card-service'>{merchantAppointmentLabel(item)}</Text>
+            <Text className='mol-card-no'>{merchantCustomerName(item)}</Text>
+            <Text className='mol-card-service'>{cardLine(item)}</Text>
+            <Text className='mol-card-order'>订单 {item.orderNo.slice(-8)}</Text>
           </View>
           <Text className='mol-card-amount'>¥{item.payAmount}</Text>
         </View>

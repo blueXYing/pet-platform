@@ -39,6 +39,12 @@ public final class MerchantOrderController {
         row.put("orderId",item.orderId());row.put("orderNo",item.orderNo());row.put("displayStatus",item.displayStatus());
         row.put("payAmount",amount(item.payAmount()));row.put("appointmentStart",time(item.appointmentStart()));
         row.put("appointmentEnd",time(item.appointmentEnd()));row.put("paidAt",time(item.paidAt()));
+        // CCR-M-ORDER-CARD-001 (approved 2026-11-06): six additive nullable card keys after the
+        // seven original ones; nickname/avatar degrade to null, snapshots carry the creation
+        // fact, and no phone — masked or raw — is ever placed on the wire.
+        row.put("customerNickname",item.customerNickname());row.put("customerAvatarUrl",item.customerAvatarUrl());
+        row.put("serviceName",item.serviceName());row.put("petName",item.petName());
+        row.put("petType",item.petType());row.put("petBreed",item.petBreed());
         return row;
     }
     /** 11号 DecimalAmountOutput：恒两位小数（与 C 端 OrderSnapshotWire 同渲染）。 */

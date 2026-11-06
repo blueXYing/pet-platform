@@ -54,6 +54,41 @@ public final class MerchantReadProjectionEntities {
         public void setBreedName(String breedName) { this.breedName = breedName; }
     }
 
+    /**
+     * CCR-M-ORDER-CARD-001: the creation-time service name of one store order (immutable
+     * snapshot fact; only the name column is projected, no description/address payloads).
+     */
+    public static final class OrderServiceSnapshotName {
+        private Long orderId;
+        private String serviceName;
+
+        public Long getOrderId() { return orderId; }
+        public void setOrderId(Long orderId) { this.orderId = orderId; }
+        public String getServiceName() { return serviceName; }
+        public void setServiceName(String serviceName) { this.serviceName = serviceName; }
+    }
+
+    /**
+     * CCR-M-ORDER-CARD-001: the creation-time pet name/type/breed of one store order. The
+     * snapshot's weight/sex/health columns are deliberately not projected (same privacy
+     * ruling as the contract-69 pet face).
+     */
+    public static final class OrderPetSnapshotName {
+        private Long orderId;
+        private String petName;
+        private String petType;
+        private String breedName;
+
+        public Long getOrderId() { return orderId; }
+        public void setOrderId(Long orderId) { this.orderId = orderId; }
+        public String getPetName() { return petName; }
+        public void setPetName(String petName) { this.petName = petName; }
+        public String getPetType() { return petType; }
+        public void setPetType(String petType) { this.petType = petType; }
+        public String getBreedName() { return breedName; }
+        public void setBreedName(String breedName) { this.breedName = breedName; }
+    }
+
     /** One-window order aggregate for the stats overview. */
     public static final class StatsTotals {
         private Long orderCount;

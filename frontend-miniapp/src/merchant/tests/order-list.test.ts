@@ -101,6 +101,9 @@ function paged(total: number, size = 20): Map<number, MerchantOrderPage> {
     const items = Array.from({ length: Math.min(size, total - (index - 1) * size) }, (_, offset) => ({
       ...summary, orderId: String(777000 + (index - 1) * size + offset + 1), orderNo: String(2000 + (index - 1) * size + offset + 1),
       displayStatus: 'PENDING_CONFIRM' as const,
+      // CCR-M-ORDER-CARD-001：控制器侧夹具补 6 个可空卡片键（类型层恒存在）。
+      customerNickname: null, customerAvatarUrl: null, serviceName: null,
+      petName: null, petType: null, petBreed: null,
     }))
     pages.set(index, { items, page: index, pageSize: size, total })
   }

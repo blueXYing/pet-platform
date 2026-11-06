@@ -46,10 +46,12 @@ public class MerchantOrderConfiguration {
         @Bean OrderMerchantRejectFactsApi merchantRejectFacts(DataSource s,ScheduleCapacityGuardApi g,ReservationConfirmApi reservation){return new OrderMerchantRejectFactsApiImpl(s,g,reservation);}
         @Bean MerchantOrderAuthorityApi merchantOrderAuthority(DataSource s,ScheduleCapacityGuardApi g){return new MerchantOrderAuthorityApiImpl(s,g);}
         /** Read-only store order list (contract 10 §4.1 supplement): same Runtime assembly as
-         *  the contract-45 commands; the http switch keeps the route itself default off. */
+         *  the contract-45 commands; the http switch keeps the route itself default off. The
+         *  CCR-M-ORDER-CARD-001 card fields borrow the same masked user-basics port as 69. */
         @Bean com.petplatform.order.api.query.MerchantOrderQueryApi merchantOrderQueryApi(DataSource s,
             ScheduleCapacityGuardApi guard,MerchantOrderAuthorityApi authority){
-            return new com.petplatform.order.biz.apiimpl.MerchantOrderQueryApiImpl(s,guard,authority);
+            return new com.petplatform.order.biz.apiimpl.MerchantOrderQueryApiImpl(s,guard,authority,
+                new com.petplatform.user.biz.apiimpl.UserQueryApiImpl(s));
         }
         /** Contract 69 derived customers (read-only; masked user basics via the user module). */
         @Bean com.petplatform.order.api.query.MerchantCustomerQueryApi merchantCustomerQueryApi(DataSource s,

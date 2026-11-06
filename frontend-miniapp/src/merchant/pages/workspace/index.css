@@ -76,6 +76,11 @@
 .mwb-todo-name { font-size: calc(var(--mwb-unit) * 12.948); line-height: calc(var(--mwb-unit) * 18.497); font-weight: 600; color: #111827; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .mwb-todo-time { margin-left: auto; font-size: calc(var(--mwb-unit) * 11.098); line-height: calc(var(--mwb-unit) * 14.798); color: #3c3c3c; flex: none; }
 .mwb-todo-service { font-size: calc(var(--mwb-unit) * 12.948); line-height: calc(var(--mwb-unit) * 18.497); color: #5baae8; margin-bottom: calc(var(--mwb-unit) * 3.699); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+/* CCR-M-ORDER-CARD-001（2026-11-06 批准）：服务·宠物行 + 金额右置、头像外链加载态。 */
+.mwb-page .mwb-todo-line { display: flex; align-items: center; gap: calc(var(--mwb-unit) * 5.55); margin-bottom: calc(var(--mwb-unit) * 3.699); min-width: 0; }
+.mwb-page .mwb-todo-line .mwb-todo-service { flex: 1; min-width: 0; margin-bottom: 0; }
+.mwb-page .mwb-todo-amount { flex: none; font-size: calc(var(--mwb-unit) * 12.948); line-height: calc(var(--mwb-unit) * 18.497); font-weight: 700; color: #ff7a00; }
+.mwb-page .mwb-todo-avatar-image { display: block; overflow: hidden; }
 .mwb-todo-count { font-size: calc(var(--mwb-unit) * 14.798); line-height: calc(var(--mwb-unit) * 22.197); font-weight: 700; margin-bottom: calc(var(--mwb-unit) * 16.8); }
 .mwb-todo-count-soon { color: #ff9500; }
 .mwb-todo-count-later { color: #ef4444; }

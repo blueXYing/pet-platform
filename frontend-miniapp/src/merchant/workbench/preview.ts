@@ -23,7 +23,11 @@ import { fixtureDeps } from '../admission'
 import { consumerApi } from '../../shared/consumer-runtime'
 
 const iso = (offsetMinutes: number) => new Date(Date.now() + offsetMinutes * 60_000).toISOString()
-const summary = (id: string, orderNo: string, amount: string, minutes: number): MerchantOrderSummary => ({
+// CCR-M-ORDER-CARD-001 卡片样本：昵称/头像/服务名/宠物快照可空，覆盖空值降级形态。
+const summary = (id: string, orderNo: string, amount: string, minutes: number,
+  card: Pick<MerchantOrderSummary, 'customerNickname' | 'customerAvatarUrl' | 'serviceName' | 'petName' | 'petType' | 'petBreed'> = {
+    customerNickname: null, customerAvatarUrl: null, serviceName: null, petName: null, petType: null, petBreed: null,
+  }): MerchantOrderSummary => ({
   orderId: id,
   orderNo,
   displayStatus: 'PENDING_CONFIRM',
@@ -31,6 +35,7 @@ const summary = (id: string, orderNo: string, amount: string, minutes: number): 
   appointmentStart: iso(minutes),
   appointmentEnd: iso(minutes + 60),
   paidAt: iso(-5),
+  ...card,
 })
 
 const profile: StoreProfileView = {
@@ -54,7 +59,16 @@ const stats: StatsOverview = {
   generatedAt: new Date().toISOString(),
 }
 const pending: MerchantOrderPage = {
-  items: [summary('9101', '202611040001', '268.00', 15), summary('9102', '202611040002', '450.00', 30)],
+  items: [
+    summary('9101', '202611040001', '268.00', 15, {
+      customerNickname: '李小姐', customerAvatarUrl: null, serviceName: '猫咪洗澡+美容',
+      petName: '豆豆', petType: 'CAT', petBreed: '英短',
+    }),
+    summary('9102', '202611040002', '450.00', 30, {
+      customerNickname: null, customerAvatarUrl: null, serviceName: '狗狗美容造型',
+      petName: '球球', petType: 'DOG', petBreed: null,
+    }),
+  ],
   page: 1, pageSize: 20, total: 8,
 }
 const service: MerchantOrderPage = { items: [], page: 1, pageSize: 20, total: 5 }
@@ -73,16 +87,41 @@ export function previewDashboardDeps(): WorkbenchDashboardDeps {
   }
 }
 
-// 订单列表视觉验收样本（?preview=1）：覆盖待接单/待服务/已完成/已取消/退款中五个状态。
+// 订单列表视觉验收样本（?preview=1）：覆盖待接单/待服务/已完成/已取消/退款中五个状态；
+// 卡片字段按 CCR-M-ORDER-CARD-001 覆盖 有昵称+头像 / 无昵称 / 无宠物 快照 三种降级形态。
 const previewOrders: readonly MerchantOrderSummary[] = [
-  { ...summary('9201', '202611040011', '268.00', 15), displayStatus: 'PENDING_CONFIRM' },
-  { ...summary('9202', '202611040012', '450.00', 30), displayStatus: 'PENDING_CONFIRM' },
-  { ...summary('9203', '202611040013', '120.00', 50), displayStatus: 'PENDING_CONFIRM' },
-  { ...summary('9204', '202611040014', '380.00', 90), displayStatus: 'PENDING_SERVICE' },
-  { ...summary('9205', '202611040015', '98.00', 180), displayStatus: 'PENDING_SERVICE' },
-  { ...summary('9206', '202611040016', '1280.00', -120), displayStatus: 'COMPLETED' },
-  { ...summary('9207', '202611040017', '200.00', -240), displayStatus: 'CANCELED' },
-  { ...summary('9208', '202611040018', '88.00', -60), displayStatus: 'REFUND_PENDING_CONFIRM' },
+  { ...summary('9201', '202611040011', '268.00', 15, {
+    customerNickname: '李小姐', customerAvatarUrl: 'https://wx.qlogo.cn/sample-alice.png',
+    serviceName: '猫咪洗澡+美容', petName: '豆豆', petType: 'CAT', petBreed: '英短',
+  }), displayStatus: 'PENDING_CONFIRM' },
+  { ...summary('9202', '202611040012', '450.00', 30, {
+    customerNickname: null, customerAvatarUrl: null, serviceName: '狗狗美容造型',
+    petName: '球球', petType: 'DOG', petBreed: null,
+  }), displayStatus: 'PENDING_CONFIRM' },
+  { ...summary('9203', '202611040013', '120.00', 50, {
+    customerNickname: '王先生', customerAvatarUrl: null, serviceName: '宠物疫苗接种',
+    petName: null, petType: null, petBreed: null,
+  }), displayStatus: 'PENDING_CONFIRM' },
+  { ...summary('9204', '202611040014', '380.00', 90, {
+    customerNickname: '李小姐', customerAvatarUrl: null, serviceName: '狗狗寄养（每日）',
+    petName: '年糕', petType: 'CAT', petBreed: '布偶',
+  }), displayStatus: 'PENDING_SERVICE' },
+  { ...summary('9205', '202611040015', '98.00', 180, {
+    customerNickname: null, customerAvatarUrl: null, serviceName: null,
+    petName: null, petType: null, petBreed: null,
+  }), displayStatus: 'PENDING_SERVICE' },
+  { ...summary('9206', '202611040016', '1280.00', -120, {
+    customerNickname: '李小姐', customerAvatarUrl: null, serviceName: '宠物体检基础套餐',
+    petName: '豆豆', petType: 'CAT', petBreed: '英短',
+  }), displayStatus: 'COMPLETED' },
+  { ...summary('9207', '202611040017', '200.00', -240, {
+    customerNickname: '王先生', customerAvatarUrl: null, serviceName: '猫咪洗澡',
+    petName: '小橘', petType: 'CAT', petBreed: '橘猫',
+  }), displayStatus: 'CANCELED' },
+  { ...summary('9208', '202611040018', '88.00', -60, {
+    customerNickname: null, customerAvatarUrl: null, serviceName: '宠物疫苗接种',
+    petName: '球球', petType: 'DOG', petBreed: '柯基',
+  }), displayStatus: 'REFUND_PENDING_CONFIRM' },
 ]
 
 export function previewOrderPage(displayStatus?: string): MerchantOrderPage {
@@ -197,6 +236,8 @@ export function previewStatsDeps(): MerchantStorefrontDeps {
     saveStoreProfile: impossible,
     retireProfileConflict: () => {},
     uploadStorePhoto: impossible,
+    // CCR-M-STORE-AVATAR-001：预览样本无头像（三 null → 首字占位，与真实降级路径一致）。
+    storeAvatarUrl: async () => ({ assetId: null, url: null, expiresAt: null }),
     customers: async () => ({
       page: 1, pageSize: 20, total: previewCustomers.length, items: previewCustomers,
     } as CustomerPage),

@@ -13,7 +13,10 @@ import { fixtureDeps } from '../../admission'
 import { MerchantWorkbenchDashboard } from '../../workbench/dashboard'
 import { previewDashboardDeps } from '../../workbench/preview'
 import { RealMerchantOrderListRepository } from '../../order/repository'
-import { merchantOrderTimeText, type MerchantOrderSummary } from '../../order/model'
+import {
+  merchantCardSubtitle, merchantCustomerInitial, merchantCustomerName, merchantOrderTimeText,
+  type MerchantOrderSummary,
+} from '../../order/model'
 import { businessStatusLabel, deltaLabel } from '../../storefront/model'
 import { MerchantTabBar } from '../../components/tab-bar'
 import navBack from '../aftersale/assets/nav-back@3x.png'
@@ -97,11 +100,26 @@ function deltaClass(value: string | null): string {
   return number > 0 ? 'mwb-delta-value mwb-delta-up' : 'mwb-delta-value mwb-delta-down'
 }
 
+/** CCR-M-ORDER-CARD-001 客户头像：URL 为空或加载失败降级为首字占位圆，不伪造图片。 */
+function CustomerAvatar({ url, initial }: { url: string | null; initial: string }) {
+  const [failed, setFailed] = useState(false)
+  if (url !== null && !failed) {
+    return <Image className='mwb-todo-avatar mwb-todo-avatar-image' src={url} mode='aspectFill' onError={() => setFailed(true)} />
+  }
+  return <View className='mwb-todo-avatar'><Text>{initial}</Text></View>
+}
+
+/** 待办卡服务行：服务名·宠物（可空）；快照全缺时回落到既有订单尾号事实，不伪造。 */
+function todoLine(order: MerchantOrderSummary): string {
+  return merchantCardSubtitle(order) ?? `订单 ${order.orderNo.slice(-6)}`
+}
+
 // 商家工作台首页，按 Figma 95:1899（402x898）还原：
 // - 头带 86 #fff6e5：店招 40 圆、店名/账号、营业中/休息中胶囊、铃铛（店铺资料 27号 §6.4）
 // - 营收票券：paper-grid 纸纹 + hero-ticket/hero-panel 原稿矢量 + tape；今日营收/较昨日（70号 TODAY）
 // - 四 KPI：待确认/待服务（10号 §4.1 列表 total）、今日订单（70号）、退款（57号待处理 total）
-// - 待办预约：PENDING_CONFIRM 订单横滑卡（客户姓名/服务名/评分不在读侧，按登记偏差用订单号/金额/时间）
+// - 待办预约：PENDING_CONFIRM 订单横滑卡（CCR-M-ORDER-CARD-001 批准后补客户昵称/头像、
+//   服务名、宠物名·品种；空值降级首字/订单尾号，评分仍不在读侧不渲染）
 // - 8 格入口：完全按原稿 商品管理/排期管理/员工管理/核销记录/营销工具/数据统计/客户管理/店铺评价
 // - 底部五 tab：首页/订单/核销/消息/我的（2026-11-04 用户批准）
 // 所有既有入口 Button id、挂载条件、准入 handoff、请求语义保持；视觉块均为新增只读展示。
@@ -353,13 +371,16 @@ export default function MerchantWorkbenchPage() {
             ? <View className='mwb-todo-empty'><Text>{dash.ordersReady ? '暂无待办预约' : '待办预约暂不可用'}</Text></View>
             : dash.pending.map(order => <View className='mwb-todo-card' key={order.orderId}>
               <View className='mwb-todo-head'>
-                <View className='mwb-todo-avatar'><Text>单</Text></View>
+                <CustomerAvatar url={order.customerAvatarUrl} initial={merchantCustomerInitial(order)} />
                 <View className='mwb-todo-who'>
-                  <Text className='mwb-todo-name'>订单 {order.orderNo.slice(-6)}</Text>
+                  <Text className='mwb-todo-name'>{merchantCustomerName(order)}</Text>
                   <Text className='mwb-todo-time'>{orderClock(order)}</Text>
                 </View>
               </View>
-              <Text className='mwb-todo-service'>金额 ¥{order.payAmount}</Text>
+              <View className='mwb-todo-line'>
+                <Text className='mwb-todo-service'>{todoLine(order)}</Text>
+                <Text className='mwb-todo-amount'>¥{order.payAmount}</Text>
+              </View>
               <Text className={countdownClass(order)}>{countdownText(order)}</Text>
               <View className='mwb-todo-actions'>
                 <Button className='mwb-todo-reject' onClick={() => openOrder(order)}>拒绝</Button>

@@ -9,6 +9,9 @@ const order: MerchantOrderSummary = {
   orderId: '9001', orderNo: '202611040001', displayStatus: 'PENDING_CONFIRM',
   payAmount: '128.00', appointmentStart: '2026-11-04T02:30:00.000Z',
   appointmentEnd: '2026-11-04T03:30:00.000Z', paidAt: '2026-11-04T01:00:00.000Z',
+  // CCR-M-ORDER-CARD-001 卡片键（解码层保证恒存在；此处样本全空验证空值链路）。
+  customerNickname: null, customerAvatarUrl: null, serviceName: null,
+  petName: null, petType: null, petBreed: null,
 }
 const profile = {
   merchantId: '1', storeId: '2',

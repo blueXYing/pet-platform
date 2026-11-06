@@ -4,6 +4,8 @@ import com.petplatform.order.biz.infrastructure.persistence.entity.MerchantReadP
 import com.petplatform.order.biz.infrastructure.persistence.entity.MerchantReadProjectionEntities.CustomerNoteRow;
 import com.petplatform.order.biz.infrastructure.persistence.entity.MerchantReadProjectionEntities.CustomerPet;
 import com.petplatform.order.biz.infrastructure.persistence.entity.MerchantReadProjectionEntities.CustomerWindowCount;
+import com.petplatform.order.biz.infrastructure.persistence.entity.MerchantReadProjectionEntities.OrderPetSnapshotName;
+import com.petplatform.order.biz.infrastructure.persistence.entity.MerchantReadProjectionEntities.OrderServiceSnapshotName;
 import com.petplatform.order.biz.infrastructure.persistence.entity.MerchantReadProjectionEntities.ServiceOrderRowEntity;
 import com.petplatform.order.biz.infrastructure.persistence.entity.MerchantReadProjectionEntities.ServiceTopRow;
 import com.petplatform.order.biz.infrastructure.persistence.entity.MerchantReadProjectionEntities.StatsTotals;
@@ -73,4 +75,18 @@ public interface OrderQueryMerchantReadMapper {
     List<CustomerAggregate> pageStoreCustomersByOrderSuffix(@Param("merchantId") long merchantId,
             @Param("storeId") long storeId, @Param("suffix") String suffix,
             @Param("limit") int limit, @Param("offset") long offset);
+
+    /**
+     * CCR-M-ORDER-CARD-001: the creation-time service names of one page of the store's own
+     * orders (immutable snapshot facts only; order_no tails never enter the path).
+     */
+    List<OrderServiceSnapshotName> pageServiceSnapshotNames(@Param("merchantId") long merchantId,
+            @Param("storeId") long storeId, @Param("orderIds") List<Long> orderIds);
+
+    /**
+     * CCR-M-ORDER-CARD-001: the creation-time pet name/type/breed of one page of the store's
+     * own orders; weight/sex/health columns are never selected (privacy ruling).
+     */
+    List<OrderPetSnapshotName> pagePetSnapshotNames(@Param("merchantId") long merchantId,
+            @Param("storeId") long storeId, @Param("orderIds") List<Long> orderIds);
 }

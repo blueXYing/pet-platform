@@ -59,6 +59,9 @@
 .mol-badge-PARTIAL_REFUND { color: #a3541e; background: transparent; }
 .mol-badge-AFTERSALE { color: #a3541e; background: transparent; }
 .mol-card-actions { flex: none; display: flex; justify-content: flex-end; gap: calc(var(--mol-unit) * 8); }
+/* CCR-M-ORDER-CARD-001（2026-11-06 批准）：客户头像外链加载态与单号降级行。 */
+.mol-page .mol-card-avatar-image { display: block; overflow: hidden; }
+.mol-page .mol-card-order { display: block; max-width: 100%; font-size: calc(var(--mol-unit) * 11); line-height: calc(var(--mol-unit) * 15); color: #9ca3af; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .mol-action-pill { width: calc(var(--mol-unit) * 74); height: calc(var(--mol-unit) * 33.3); border-radius: calc(var(--mol-unit) * 11.1); display: flex; align-items: center; justify-content: center; font-size: calc(var(--mol-unit) * 12.9); line-height: calc(var(--mol-unit) * 18.5); font-weight: 600; }
 .mol-action-reject { background: #fff; border: calc(var(--mol-unit) * 1.5) solid #c0ecff; color: #5baae8; }
 .mol-action-accept { background: #5baae8; color: #fff; }

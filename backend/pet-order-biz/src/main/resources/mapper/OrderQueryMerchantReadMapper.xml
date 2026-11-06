@@ -251,4 +251,32 @@
         ) p ON p.user_id = t.user_id
         ORDER BY t.total_spend DESC, t.user_id ASC
     </select>
+
+    <!-- CCR-M-ORDER-CARD-001 (approved 2026-11-06): card projections for the §4.1 list page.
+         Both statements stay double-key scoped (merchant_id + store_id) exactly like every
+         other statement here, so cross-store snapshot rows can never enter a page even though
+         the caller already proved the coordinate. They read only the order domain's own
+         immutable creation snapshots: the display caliber never drifts when the live service
+         catalog or pet profile is edited later, and no weight/sex/health column is selected
+         (contract 69 privacy ruling). The IN list is the page's own order ids (page size is
+         capped at 100). -->
+    <select id="pageServiceSnapshotNames" resultType="com.petplatform.order.biz.infrastructure.persistence.entity.MerchantReadProjectionEntities$OrderServiceSnapshotName">
+        SELECT s.order_id, s.service_name
+        FROM order_service_snapshot s
+        JOIN pet_order o ON o.id = s.order_id
+        WHERE o.merchant_id = #{merchantId} AND o.store_id = #{storeId}
+          AND s.order_id IN
+        <foreach collection="orderIds" item="orderId" open="(" separator="," close=")">#{orderId}</foreach>
+        ORDER BY s.order_id ASC
+    </select>
+
+    <select id="pagePetSnapshotNames" resultType="com.petplatform.order.biz.infrastructure.persistence.entity.MerchantReadProjectionEntities$OrderPetSnapshotName">
+        SELECT s.order_id, s.pet_name, s.pet_type, s.breed_name
+        FROM order_pet_snapshot s
+        JOIN pet_order o ON o.id = s.order_id
+        WHERE o.merchant_id = #{merchantId} AND o.store_id = #{storeId}
+          AND s.order_id IN
+        <foreach collection="orderIds" item="orderId" open="(" separator="," close=")">#{orderId}</foreach>
+        ORDER BY s.order_id ASC
+    </select>
 </mapper>
