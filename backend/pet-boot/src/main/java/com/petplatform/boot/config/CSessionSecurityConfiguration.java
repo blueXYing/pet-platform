@@ -281,8 +281,11 @@ public class CSessionSecurityConfiguration {
             }
             if (merchantStoreProfileHttpEnabled) {
               // Store profile (contract 27 §6.4, IMPLEMENTED_DEFAULT_OFF): the MINIAPP Bearer and
-              // OWNER gate stay in the store-profile service's store-guard transaction.
+              // OWNER gate stay in the store-profile service's store-guard transaction. The
+              // avatar-url read (27 §6.4 2026-11-06 supplement, CCR-M-STORE-AVATAR-001) rides the
+              // same switch and re-proves the OWNER + asset ownership when signing.
               a.requestMatchers(HttpMethod.GET, "/api/v1/merchant/store-profile").permitAll();
+              a.requestMatchers(HttpMethod.GET, "/api/v1/merchant/store-profile/avatar-url").permitAll();
               a.requestMatchers(HttpMethod.PUT, "/api/v1/merchant/store-profile").permitAll();
             }
             if (merchantStatsHttpEnabled) {

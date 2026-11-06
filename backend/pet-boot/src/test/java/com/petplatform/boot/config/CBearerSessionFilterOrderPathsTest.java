@@ -38,6 +38,13 @@ class CBearerSessionFilterOrderPathsTest {
     @Test
     void merchantStorefrontRoutesRequireTheSession() {
         assertTrue(CBearerSessionFilter.protectedPath("/api/v1/merchant/store-profile"));
+        // 27 §6.4 2026-11-06 supplement (CCR-M-STORE-AVATAR-001): the avatar signing read
+        // joins the session family; lookalike deeper subpaths stay out.
+        assertTrue(CBearerSessionFilter.protectedPath("/api/v1/merchant/store-profile/avatar-url"));
+        assertFalse(CBearerSessionFilter.protectedPath("/api/v1/merchant/store-profile/avatar"));
+        // 56 §7 2026-11-06 supplement (CCR-M-REVIEW-VIEW-001): the aggregate read rides the
+        // existing reviews prefix family.
+        assertTrue(CBearerSessionFilter.protectedPath("/api/v1/merchant/reviews/summary"));
         assertTrue(CBearerSessionFilter.protectedPath("/api/v1/merchant/stats/overview"));
         assertTrue(CBearerSessionFilter.protectedPath("/api/v1/merchant/stats/services/top"));
         assertTrue(CBearerSessionFilter.protectedPath("/api/v1/merchant/customers"));

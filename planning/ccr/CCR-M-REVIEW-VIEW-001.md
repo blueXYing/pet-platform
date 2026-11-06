@@ -1,6 +1,6 @@
 # CCR-M-REVIEW-VIEW-001 商家评价读侧补买家昵称与评分聚合
 
-- 状态：PROPOSED（待产品裁决；媒体/回复不做）
+- 状态：APPROVED（2026-11-06 用户批准；裁决记录见 §9）
 - 日期：2026-11-06
 - 提出方：商家端 Figma 还原（Claude Code）
 - 关联：Figma `23:14160`（店铺评价-全部）、`68:2106/68:3178/68:4048`；
@@ -115,3 +115,12 @@ data: {
 2. 聚合分桶采用 `ROUND(composite_score)`（推荐）还是其他规则？
 3. 聚合路由独立（推荐）还是塞进列表响应？
 4. 评价图片/回复确认不做（推荐），还是另立 CCR？
+
+## 9. 裁决记录（2026-11-06，用户）
+
+1. 展示买家昵称**原样**（不脱敏；null 时前端显示「匿名用户」）+ 头像可空。
+2. 分桶采用 `ROUND(composite_score)`。
+3. 聚合路由独立（`GET /merchant/reviews/summary`）。
+4. 评价图片/回复确认不做。
+
+契约同步：56号 §7 补充 + OpenAPI11 MerchantReviewSummaryData//merchant/reviews/summary；实施随 PR #211。

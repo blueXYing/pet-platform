@@ -871,6 +871,8 @@ GET /api/v1/merchant/orders/{orderId}
 
 商家列表中的状态同样使用服务端 `displayStatus`。
 
+**2026-11-06 读侧增量**（用户批准 [CCR-M-ORDER-CARD-001](../../planning/ccr/CCR-M-ORDER-CARD-001.md)）：`GET /api/v1/merchant/orders` 列表项在既有 7 键之外追加可空键 `customerNickname`、`customerAvatarUrl`（微信头像外链，不可控内容，前端失败降级占位）、`serviceName`、`petName`、`petType`、`petBreed`（服务/宠物为下单时不可变快照投影）。空值显式 null，不伪造占位；昵称/头像经 user 域批量端口（合同 69 同一通道）投影。**不返回手机号（含脱敏）、地址、健康字段**；客户信息仅在本店订单上下文经 OWNER+门店 guard 后可见，跨店行不可见。既有 7 键、分页、排序、displayStatus 过滤、错误映射、防枚举全部不变；旧客户端忽略未知键，M 端严格解码器同步放宽。
+
 ---
 
 ## 4.2 接单

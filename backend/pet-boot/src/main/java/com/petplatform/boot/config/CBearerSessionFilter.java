@@ -107,8 +107,10 @@ public final class CBearerSessionFilter extends OncePerRequestFilter {
         || path.startsWith("/api/v1/merchant/refund-applications/")
         // Storefront read/write slices (contracts 27 §6.4/69/70, IMPLEMENTED_DEFAULT_OFF):
         // the filter must resolve the MINIAPP session so the service's OWNER guard can see it;
-        // the HTTP switch still gates assembly and the security chain's permit rules.
+        // the HTTP switch still gates assembly and the security chain's permit rules. The
+        // avatar-url signing read (27 §6.4 2026-11-06 supplement) rides the same family.
         || path.equals("/api/v1/merchant/store-profile")
+        || path.equals("/api/v1/merchant/store-profile/avatar-url")
         || path.startsWith("/api/v1/merchant/stats/")
         || path.equals("/api/v1/merchant/customers")
         || path.startsWith("/api/v1/merchant/customers/")
@@ -221,6 +223,7 @@ public final class CBearerSessionFilter extends OncePerRequestFilter {
         || path.equals("/api/v1/merchant/orders")
         || path.startsWith("/api/v1/merchant/orders/")
         || path.equals("/api/v1/merchant/store-profile")
+        || path.equals("/api/v1/merchant/store-profile/avatar-url")
         || path.startsWith("/api/v1/merchant/stats/")
         || path.equals("/api/v1/merchant/customers")
         || path.startsWith("/api/v1/merchant/customers/")

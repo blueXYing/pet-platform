@@ -94,6 +94,10 @@ export function isMerchantOrderListPath(spec: RequestSpec): boolean {
 // its merchant/store and re-proves the OWNER authority server-side per call and replay.
 export function isMerchantReviewPath(spec: RequestSpec): boolean {
   if (/^\/api\/v1\/merchant\/reviews$/.test(spec.path)) return spec.method === 'GET'
+  // Contract 56 §7 2026-11-06 supplement (CCR-M-REVIEW-VIEW-001): store-level score
+  // aggregate read (totalReviews/scoredCount/averageScore/scoreCounts); same OWNER +
+  // store-guard family as the list read.
+  if (spec.path === '/api/v1/merchant/reviews/summary') return spec.method === 'GET'
   if (spec.method === 'GET') return /^\/api\/v1\/merchant\/reviews\/[1-9][0-9]{0,18}$/.test(spec.path)
   return spec.method === 'POST' && /^\/api\/v1\/merchant\/reviews\/[1-9][0-9]{0,18}\/appeal$/.test(spec.path)
 }
@@ -146,7 +150,11 @@ export function isMerchantStatsPath(spec: RequestSpec): boolean {
     && /^\/api\/v1\/merchant\/stats\/(overview|services\/top|revenue-trend|schedule-utilization|services\/[1-9][0-9]{0,18}\/orders)$/.test(spec.path)
 }
 export function isMerchantStoreProfilePath(spec: RequestSpec): boolean {
-  return (spec.method === 'GET' || spec.method === 'PUT') && spec.path === '/api/v1/merchant/store-profile'
+  if (spec.path === '/api/v1/merchant/store-profile') return spec.method === 'GET' || spec.method === 'PUT'
+  // Contract 27 §6.4 2026-11-06 supplement (CCR-M-STORE-AVATAR-001): OWNER-only avatar
+  // signing read; the merchant/store coordinates are re-proven under the store guard and
+  // the signed URL is short-lived (never cached to storage).
+  return spec.method === 'GET' && spec.path === '/api/v1/merchant/store-profile/avatar-url'
 }
 // Contract-71 marketing center M face (pet.marketing.merchant.http.enabled default OFF):
 // enrollment / my campaigns carry the caller's merchant coordinates and are re-proved

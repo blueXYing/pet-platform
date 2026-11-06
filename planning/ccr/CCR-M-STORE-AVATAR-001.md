@@ -1,6 +1,6 @@
 # CCR-M-STORE-AVATAR-001 店铺资料头像展示 URL（STORE_PHOTO 签名读）
 
-- 状态：PROPOSED（技术契约遗漏；待 Contract Owner/架构审批；不涉及新产品行为）
+- 状态：APPROVED（2026-11-06 用户批准；裁决记录见 §8）
 - 日期：2026-11-06
 - 提出方：商家端 Figma 还原（Claude Code）
 - 关联：Figma `25:20684`（门店设置/店铺信息）；
@@ -88,3 +88,12 @@ data: { "assetId": "710402", "url": "https://…", "expiresAt": "2026-11-06T02:0
 1. 采用独立 `avatar-url` 路由（推荐）还是嵌入店铺资料响应？
 2. 签名 purpose 扩展复用现有端口，还是新增独立 `StorePhotoSigningApi`？
 3. 无头像返回 `null` 字段（推荐）还是 404？
+
+## 8. 裁决记录（2026-11-06，用户）
+
+1. 独立 `avatar-url` 只读路由。
+2. 复用既有签名端口模式（扩展 purpose 或等价新端口，取最小侵入实现）。
+3. 无头像返回 `{assetId:null,url:null,expiresAt:null}`（非 404），前端降级首字占位。
+4. 范围仅 avatar；门店照片墙展示不在本 CCR。
+
+契约同步：27号 §6.4 后 2026-11-06 补充 + OpenAPI11 /merchant/store-profile/avatar-url；实施随 PR #211。

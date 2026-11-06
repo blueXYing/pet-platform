@@ -3530,6 +3530,51 @@ paths:
           $ref: '#/components/responses/Conflict'
         '503':
           $ref: '#/components/responses/DependencyUnavailable'
+  /merchant/store-profile/avatar-url:
+    get:
+      tags:
+      - Merchant-Profile
+      summary: merchantStoreProfileAvatarUrl
+      operationId: merchantStoreProfileAvatarUrl
+      x-contract-status: IMPLEMENTED_DEFAULT_OFF
+      x-default-enabled: false
+      x-contract: 27-Merchant-Domain-Contract-v0.1.md
+      x-assembly-switch: pet.merchant.store-profile.http.enabled
+      x-route-party: MERCHANT
+      x-audience: MINIAPP
+      description: 店铺头像展示签名 URL（27号 §6.4 2026-11-06 补充，CCR-M-STORE-AVATAR-001）：
+                OWNER 本人在门店 guard + requireOwnerRead 之后读取本店 avatarAssetId，仅当
+                素材为当前 OWNER 以 STORE_PHOTO 用途上传、READY、JPEG/PNG、版本化对象时经
+                内部签名端口（CCR-W2-API-001 模式）签发短期 GET URL。不暴露对象 key/版本，
+                不接受客户端 assetId，无任意 assetId 签名入口；无头像/素材不满足返回三键全
+                null（非 404），前端降级首字占位；签名配置缺失 503 失败关闭；跨店/非 OWNER
+                同一 403。URL 短 TTL（≥600s），expiresAt 与实际签名一致，临期重取、不缓存。
+                C 端门店头像展示不在本切片。
+      security:
+      - bearerAuth: []
+      parameters:
+      - $ref: '#/components/parameters/MerchantIdQuery'
+      - $ref: '#/components/parameters/StoreIdQuery'
+      responses:
+        '200':
+          description: '{assetId,url,expiresAt} 三键均可 null。Cache-Control: no-store。'
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                enum: [no-store]
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MerchantStoreAvatarUrlEnvelope'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '503':
+          $ref: '#/components/responses/DependencyUnavailable'
   /merchant/customers:
     get:
       tags:
@@ -4066,6 +4111,52 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/MerchantReviewPageEnvelope'
+  /merchant/reviews/summary:
+    get:
+      tags:
+      - Merchant-Review
+      summary: 商家本店评分聚合（只读）
+      operationId: merchantReviewSummaryAggregate
+      x-implementation-status: IMPLEMENTED_DEFAULT_OFF
+      x-default-enabled: false
+      x-contract: 56-Review-Appeal-Contract-v0.1.md
+      x-assembly-switch: pet.review.appeal.http.enabled
+      x-route-party: MERCHANT
+      x-audience: MINIAPP
+      description: 门店评分聚合（56号 2026-11-06 补充，CCR-M-REVIEW-VIEW-001）：OWNER+门店
+                guard、no-store、单条聚合查询。scoredCount/averageScore/scoreCounts 仅统计
+                score_included=1（SSOT §11.2 核销后部分退款不计入），scoreCounts 按
+                ROUND(composite_score) 落 1..5 星桶；totalReviews 含不计分历史评价；
+                averageScore 一位小数字符串、服务端四舍五入、scoredCount=0 时 null；空店
+                0/0/null/全 0。不返回任何个体评价内容；前端只展示不重算（ARCH-005）。
+      security:
+      - bearerAuth: []
+      parameters:
+      - name: merchantId
+        in: query
+        required: true
+        schema:
+          type: string
+          pattern: ^[1-9][0-9]{0,18}(?![\s\S])
+          maxLength: 19
+      - name: storeId
+        in: query
+        required: true
+        schema:
+          type: string
+          pattern: ^[1-9][0-9]{0,18}(?![\s\S])
+          maxLength: 19
+      responses:
+        '400': {$ref: '#/components/responses/BadRequest'}
+        '401': {$ref: '#/components/responses/Unauthorized'}
+        '403': {$ref: '#/components/responses/Forbidden'}
+        '503': {$ref: '#/components/responses/DependencyUnavailable'}
+        '200':
+          description: 成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MerchantReviewAggregateEnvelope'
   /merchant/reviews/{reviewId}:
     get:
       tags:
@@ -4354,7 +4445,9 @@ paths:
         '200':
           description: '商家订单列表页（本切片装配）：PageResult 信封 items/page/pageSize/total，
             列表项为商家运营最小字段集（orderId/orderNo/displayStatus/payAmount/
-            appointmentStart/appointmentEnd/paidAt）。Cache-Control: no-store。'
+            appointmentStart/appointmentEnd/paidAt）。2026-11-06 CCR-M-ORDER-CARD-001 起
+            另含可空 customerNickname/customerAvatarUrl/serviceName/petName/petType/petBreed；
+            不返回手机号（含脱敏）。Cache-Control: no-store。'
           headers:
             Cache-Control:
               schema:
@@ -19572,7 +19665,8 @@ components:
     MerchantOrderSummary:
       type: object
       additionalProperties: false
-      required: [orderId, orderNo, displayStatus, payAmount, appointmentStart, appointmentEnd, paidAt]
+      required: [orderId, orderNo, displayStatus, payAmount, appointmentStart, appointmentEnd, paidAt,
+        customerNickname, customerAvatarUrl, serviceName, petName, petType, petBreed]
       properties:
         orderId:
           $ref: '#/components/schemas/PublicId'
@@ -19594,6 +19688,29 @@ components:
           type: string
           nullable: true
           description: 待接单 30 分钟规则的锚点事实；页面只呈现不推导截止。
+        customerNickname:
+          type: string
+          nullable: true
+          description: 客户昵称（user 域批量端口投影，CCR-M-ORDER-CARD-001 2026-11-06）；
+            无昵称/账号不可见为 null，前端降级首字占位。
+        customerAvatarUrl:
+          type: string
+          nullable: true
+          description: 客户微信头像外链（不可控内容，加载失败降级占位）；不返回手机号/地址/健康字段。
+        serviceName:
+          type: string
+          nullable: true
+          description: 下单时服务快照名称（不可变事实投影）。
+        petName:
+          type: string
+          nullable: true
+        petType:
+          type: string
+          nullable: true
+        petBreed:
+          type: string
+          nullable: true
+          description: 宠物快照品种级字段；无体重/疫苗/健康备注。
     MerchantOrderPageData:
       type: object
       additionalProperties: false
@@ -19613,6 +19730,34 @@ components:
         total:
           type: integer
           minimum: 0
+    MerchantStoreAvatarUrlData:
+      type: object
+      additionalProperties: false
+      required: [assetId, url, expiresAt]
+      properties:
+        assetId:
+          type: string
+          nullable: true
+          minLength: 1
+          maxLength: 19
+          pattern: '^[1-9][0-9]{0,18}(?![\s\S])'
+          description: 本店 READY STORE_PHOTO 头像素材 ID；无头像 null。
+        url:
+          type: string
+          nullable: true
+          description: 短期签名 GET URL（TTL≥600s，CCR-OSS-001 窗口）；仅本店 OWNER 可取。
+        expiresAt:
+          type: string
+          nullable: true
+          format: date-time
+          x-precision: milliseconds
+    MerchantStoreAvatarUrlEnvelope:
+      allOf:
+      - $ref: '#/components/schemas/BaseEnvelope'
+      - type: object
+        properties:
+          data:
+            $ref: '#/components/schemas/MerchantStoreAvatarUrlData'
     MerchantStoreProfileReadonlyFacts:
       type: object
       additionalProperties: false
@@ -20348,11 +20493,26 @@ components:
           type: string
           minLength: 1
           maxLength: 500
+    RefundTimelineEntry:
+      type: object
+      additionalProperties: false
+      required: [stage, occurredAt]
+      description: 只读时间线条目（57号 2026-11-06 补充，CCR-M-REFUND-VIEW-001 3.3）；
+        仅由既有时间戳派生、按 occurredAt 升序，出现即有事实，不得伪造或推导 DisplayOrderStatus。
+      properties:
+        stage:
+          type: string
+          enum: [APPLIED, MERCHANT_DEADLINE, DECIDED, REFUND_ORDER_CREATED]
+        occurredAt:
+          type: string
+          format: date-time
+          x-precision: milliseconds
     MerchantRefundApplicationSummary:
       type: object
       additionalProperties: false
       required: [applicationId, applicationNo, orderId, status, applicationVersion,
-        reasonCode, refundAmount, createdAt, merchantDeadline]
+        reasonCode, refundAmount, createdAt, merchantDeadline, customerNickname,
+        customerPhoneMasked, serviceName]
       properties:
         applicationId:
           $ref: '#/components/schemas/PublicId'
@@ -20381,12 +20541,25 @@ components:
         merchantDeadline:
           type: string
           description: 本轮 24 小时商家处理期限（createdAt+24h）。
+        customerNickname:
+          type: string
+          nullable: true
+          description: 客户昵称（user 域批量端口投影，CCR-M-REFUND-VIEW-001 3.1 2026-11-06）；null 降级占位。
+        customerPhoneMasked:
+          type: string
+          nullable: true
+          pattern: '^1[0-9]{2}\*{4}[0-9]{4}$'
+          description: 服务端脱敏手机号（永不回明文）；仅用于 24 小时处理窗口内的身份识别。
+        serviceName:
+          type: string
+          nullable: true
+          description: 订单服务快照名称（不可变事实投影）。
     MerchantRefundApplicationDetail:
       type: object
       additionalProperties: false
       required: [applicationId, applicationNo, orderId, status, applicationVersion,
         reasonCode, refundAmount, createdAt, merchantDeadline, decidedAt, decisionId,
-        refundOrderId]
+        refundOrderId, customerNickname, customerPhoneMasked, serviceName, timeline]
       properties:
         applicationId:
           $ref: '#/components/schemas/PublicId'
@@ -20427,6 +20600,24 @@ components:
           maxLength: 19
           pattern: '^[1-9][0-9]{0,18}(?![\s\S])'
           description: durable REFUND_APPLICATION_CREATE 任务建单后非空。
+        customerNickname:
+          type: string
+          nullable: true
+          description: 客户昵称（user 域批量端口投影，CCR-M-REFUND-VIEW-001 3.1 2026-11-06）；null 降级占位。
+        customerPhoneMasked:
+          type: string
+          nullable: true
+          pattern: '^1[0-9]{2}\*{4}[0-9]{4}$'
+          description: 服务端脱敏手机号（永不回明文）。
+        serviceName:
+          type: string
+          nullable: true
+          description: 订单服务快照名称（不可变事实投影）。
+        timeline:
+          type: array
+          description: 只读时间线（CCR-M-REFUND-VIEW-001 3.3）；仅由既有时间戳派生、升序。
+          items:
+            $ref: '#/components/schemas/RefundTimelineEntry'
     MerchantRefundDecisionReceipt:
       type: object
       additionalProperties: false
@@ -21030,6 +21221,8 @@ components:
       - createdAt
       - appealStatus
       - appealId
+      - reviewerNickname
+      - reviewerAvatarUrl
       properties:
         reviewId: {$ref: '#/components/schemas/PublicId'}
         orderId: {$ref: '#/components/schemas/PublicId'}
@@ -21043,6 +21236,14 @@ components:
         createdAt: {type: string, format: date-time, x-precision: milliseconds}
         appealStatus: {allOf: [{$ref: '#/components/schemas/ReviewAppealStatus'}], nullable: true}
         appealId: {type: string, nullable: true, minLength: 1, maxLength: 19, pattern: '^[1-9][0-9]{0,18}(?![\s\S])'}
+        reviewerNickname:
+          type: string
+          nullable: true
+          description: 买家昵称原样投影（不脱敏，CCR-M-REVIEW-VIEW-001 2026-11-06）；null 时前端显示「匿名用户」。
+        reviewerAvatarUrl:
+          type: string
+          nullable: true
+          description: 买家微信头像外链（可空）；不返回 userId/手机号。
     MerchantReviewDetailData:
       allOf:
       - $ref: '#/components/schemas/MerchantReviewSummaryData'
@@ -21070,6 +21271,42 @@ components:
                 type: array
                 items:
                   $ref: '#/components/schemas/MerchantReviewSummaryData'
+    MerchantReviewAggregateData:
+      type: object
+      additionalProperties: false
+      required: [totalReviews, scoredCount, averageScore, scoreCounts]
+      properties:
+        totalReviews:
+          type: integer
+          minimum: 0
+          description: 本店全部评价行数（含 score_included=0）。
+        scoredCount:
+          type: integer
+          minimum: 0
+          description: score_included=1 的评价数（SSOT §11.2 口径）。
+        averageScore:
+          type: string
+          nullable: true
+          pattern: '^[1-5]\.[0-9]$'
+          description: 计入评分评价的综合分均值（一位小数、服务端四舍五入）；scoredCount=0 时 null。
+        scoreCounts:
+          type: object
+          additionalProperties: false
+          required: ['1', '2', '3', '4', '5']
+          description: 按 ROUND(composite_score) 落桶的 1..5 星直方图（仅 score_included=1）。
+          properties:
+            '1': {type: integer, minimum: 0}
+            '2': {type: integer, minimum: 0}
+            '3': {type: integer, minimum: 0}
+            '4': {type: integer, minimum: 0}
+            '5': {type: integer, minimum: 0}
+    MerchantReviewAggregateEnvelope:
+      allOf:
+      - $ref: '#/components/schemas/BaseEnvelope'
+      - type: object
+        properties:
+          data:
+            $ref: '#/components/schemas/MerchantReviewAggregateData'
     MerchantReviewDetailEnvelope:
       allOf:
       - $ref: '#/components/schemas/BaseEnvelope'
@@ -26080,6 +26317,11 @@ components:
       - requestedAmount
       - createdAt
       - deadline
+      - customerNickname
+      - serviceName
+      - petName
+      - petType
+      - petBreed
       properties:
         afterSaleId:
           type: string
@@ -26145,6 +26387,24 @@ components:
           format: date-time
           pattern: ^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}\.[0-9]{3}Z(?![\s\S])
           x-precision: milliseconds
+        customerNickname:
+          type: string
+          nullable: true
+          description: 客户昵称（user 域批量端口投影，CCR-M-AFTERSALE-VIEW-001 2026-11-06）；null 降级占位。
+        serviceName:
+          type: string
+          nullable: true
+          description: 订单服务快照名称（order 域端口投影，不可变事实）。
+        petName:
+          type: string
+          nullable: true
+        petType:
+          type: string
+          nullable: true
+        petBreed:
+          type: string
+          nullable: true
+          description: 宠物快照品种级字段；不返回 userId/手机号（51号红线）/健康字段。
     AfterSaleCasePage:
       type: object
       additionalProperties: false
@@ -26246,6 +26506,11 @@ components:
       - refundAmount
       - decisionReason
       - evidence
+      - customerNickname
+      - serviceName
+      - petName
+      - petType
+      - petBreed
       properties:
         afterSaleId:
           type: string
@@ -26369,6 +26634,24 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/AfterSaleEvidenceBatch'
+        customerNickname:
+          type: string
+          nullable: true
+          description: 客户昵称（user 域批量端口投影，CCR-M-AFTERSALE-VIEW-001 2026-11-06）；null 降级占位。
+        serviceName:
+          type: string
+          nullable: true
+          description: 订单服务快照名称（order 域端口投影，不可变事实）。
+        petName:
+          type: string
+          nullable: true
+        petType:
+          type: string
+          nullable: true
+        petBreed:
+          type: string
+          nullable: true
+          description: 宠物快照品种级字段；不返回 userId/手机号（51号红线）/健康字段。
     AfterSaleAssetUpload:
       type: object
       additionalProperties: false
