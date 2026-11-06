@@ -128,13 +128,25 @@ public final class MerchantOrderQueryService {
                     instant(row.getAppointmentStartAt()), instant(row.getAppointmentEndAt()),
                     instant(row.getPaidAt()),
                     basic == null ? null : basic.nickname(),
-                    basic == null ? null : basic.avatarUrl(),
+                    basic == null ? null : externalAvatar(basic.avatarUrl()),
                     serviceNames.get(row.getId()),
                     pet == null ? null : pet.getPetName(),
                     pet == null ? null : pet.getPetType(),
                     pet == null ? null : pet.getBreedName()));
         }
         return List.copyOf(items);
+    }
+
+    /**
+     * Only https external links (WeChat avatar CDN, ≤512 chars) are projected to the merchant
+     * face; internal {@code asset:} forms stay inside the user domain. Mirrors the review-side
+     * hardening agreed for CCR-M-REVIEW-VIEW-001 so both faces share one discipline.
+     */
+    private static String externalAvatar(String avatarUrl) {
+        if (avatarUrl == null || avatarUrl.length() > 512 || !avatarUrl.startsWith("https://")) {
+            return null;
+        }
+        return avatarUrl;
     }
 
     /** Contract-69 loadBasics discipline, keyed by the page's own user ids. */
