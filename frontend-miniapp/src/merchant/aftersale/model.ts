@@ -1,5 +1,5 @@
 import type { MerchantAdmission } from '../../shared/merchant-repositories'
-import type { AfterSaleStatus, CaseDetail, EvidenceInput, OpinionInput } from '../../shared/aftersale-api'
+import type { AfterSaleStatus, CaseDetail, CaseLabels, EvidenceInput, OpinionInput } from '../../shared/aftersale-api'
 
 export const statusText: Record<AfterSaleStatus, string> = {
   PENDING: '待受理', PROCESSING: '处理中', WAITING_SUPPLEMENT: '待补证',
@@ -67,3 +67,27 @@ const demandLabels: Record<string, string> = {
 }
 export function typeLabel(code: string): string { return typeLabels[code] ?? code }
 export function demandLabel(code: string): string { return demandLabels[code] ?? code }
+
+/** CCR-M-AFTERSALE-VIEW-001（2026-11-06 批准）展示键视图：列表 Summary 与详情 Detail 同形；
+ *  旧形状/非商家面缺键读作 null。只有昵称与下单服务/宠物快照，无头像、无手机号。 */
+export type CaseLabelView = Partial<CaseLabels>
+/** 客户显示名：昵称可空，空值降级为「顾客」占位（与商家订单卡同口径），不伪造昵称。 */
+export function caseCustomerName(view: CaseLabelView): string {
+  return view.customerNickname ?? '顾客'
+}
+/** 首字圆：昵称首码点；无昵称用「客」占位（本 CCR 无头像字段，不渲染任何图片）。 */
+export function caseCustomerInitial(view: CaseLabelView): string {
+  const nickname = view.customerNickname
+  if (!nickname) return '客'
+  return Array.from(nickname)[0] ?? '客'
+}
+/** 宠物：宠物名 · 品种（两者均可空，缺什么就不显示什么；全空返回 null，由调用方降级）。 */
+export function casePetLabel(view: CaseLabelView): string | null {
+  const parts = [view.petName, view.petBreed].filter((part): part is string => typeof part === 'string' && part.length > 0)
+  return parts.length > 0 ? parts.join(' · ') : null
+}
+/** 列表卡副行：服务名 · 宠物名 · 品种，空值跳过；全空返回 null（不渲染该行，不伪造）。 */
+export function caseServiceLine(view: CaseLabelView): string | null {
+  const parts = [view.serviceName, casePetLabel(view)].filter((part): part is string => typeof part === 'string' && part.length > 0)
+  return parts.length > 0 ? parts.join(' · ') : null
+}

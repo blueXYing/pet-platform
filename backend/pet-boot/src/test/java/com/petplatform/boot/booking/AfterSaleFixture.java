@@ -138,7 +138,9 @@ final class AfterSaleFixture implements AutoCloseable {
                     if(!moderationAvailable.get())throw new ApiException(CommonApiCodes.DEPENDENCY_UNAVAILABLE,"QA moderation provider unavailable");
                     return new AfterSalePorts.Approval(sha(value),"QA_ONLY_MODERATION",true);},
                 new AfterSaleAesProtection(AfterSaleIdentityFixture.key(61)),AfterSaleAssetAdapters.assets(privateAssets),
-                new AfterSaleTaskAdapter(ordinary.source,IDS::incrementAndGet));
+                new AfterSaleTaskAdapter(ordinary.source,IDS::incrementAndGet),
+                // CCR-M-AFTERSALE-VIEW-001: the real masked user-basics port, as BOOT wires it.
+                new com.petplatform.user.biz.apiimpl.UserQueryApiImpl(ordinary.source));
         services.set(aftersales);
         var orderCredentials=new OrderVerificationCredentialFactsApiImpl(ordinary.source,ordinary.guard,
                 ordinary.payments,new RefundOrderFactsApiImpl(ordinary.source,ordinary.guard),ordinary.reservations,ordinary.schedule,owner);

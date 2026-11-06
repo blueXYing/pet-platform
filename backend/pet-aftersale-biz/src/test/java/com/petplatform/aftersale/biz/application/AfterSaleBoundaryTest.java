@@ -12,6 +12,7 @@ import com.petplatform.payment.api.query.RefundFundingEligibilityFactsApi;
 import com.petplatform.refund.api.command.RefundAfterSaleCommandApi;
 import com.petplatform.refund.api.query.RefundApplicationHistoryFactsApi;
 import com.petplatform.schedule.api.protection.ScheduleCapacityGuardApi;
+import com.petplatform.user.api.query.UserQueryApi;
 import java.math.BigDecimal;
 import java.nio.charset.StandardCharsets;
 import java.util.List;
@@ -28,7 +29,7 @@ class AfterSaleBoundaryTest {
             mock(OrderAfterSaleCommitApi.class),mock(RefundApplicationHistoryFactsApi.class),refunds,
             mock(RefundFundingEligibilityFactsApi.class),authority,mock(AfterSalePorts.ReasonPolicy.class),
             mock(AfterSalePorts.Moderation.class),new AfterSaleAesProtection(new byte[32]),
-            mock(AfterSalePorts.Assets.class),mock(AfterSalePorts.Tasks.class));
+            mock(AfterSalePorts.Assets.class),mock(AfterSalePorts.Tasks.class),mock(UserQueryApi.class));
     private static final CommandContext USER=new CommandContext("request-001","trace",OperatorType.USER,"123","MINIAPP");
     private static final CommandContext ADMIN=new CommandContext("request-002","trace",OperatorType.PLATFORM_OPERATOR,"456","ADMIN");
 

@@ -24,9 +24,26 @@ public interface AfterSaleQueryApi {
     record CasePage(int page, int pageSize, long total, List<CaseSummary> items) {
         public CasePage { items=List.copyOf(items); }
     }
+    /**
+     * CCR-M-AFTERSALE-VIEW-001 (approved 2026-11-06): merchant-read display labels — the customer
+     * nickname (user domain masked basics, nickname only) and the order-time service/pet snapshot
+     * (ORDER domain, breed level). Every value is nullable and never fabricated. The record itself
+     * is null unless the verified reader is the current store OWNER (MERCHANT party); it never
+     * carries a phone, user id, avatar, address or health field.
+     */
+    record CaseLabels(String customerNickname, String serviceName, String petName, String petType,
+            String petBreed) {}
     record CaseSummary(String afterSaleId, String orderId, String merchantId, String storeId,
             String status, String version, String sourceStage, String typeCode, String demandCode,
-            BigDecimal requestedAmount, String createdAt, String deadline) {}
+            BigDecimal requestedAmount, String createdAt, String deadline, CaseLabels labels) {
+        /** Pre-CCR-M-AFTERSALE-VIEW-001 shape: no merchant display labels. */
+        public CaseSummary(String afterSaleId, String orderId, String merchantId, String storeId,
+                String status, String version, String sourceStage, String typeCode, String demandCode,
+                BigDecimal requestedAmount, String createdAt, String deadline) {
+            this(afterSaleId, orderId, merchantId, storeId, status, version, sourceStage, typeCode,
+                    demandCode, requestedAmount, createdAt, deadline, null);
+        }
+    }
     record Eligibility(boolean eligible, String sourceStage, String deadline, String blockingReason,
             String activeAfterSaleId) {}
     record CaseView(String afterSaleId, String orderId, String status, String version, String sourceStage,
@@ -34,8 +51,20 @@ public interface AfterSaleQueryApi {
             String createdAt, String deadline, String supplementRequestId, String supplementTarget,
             String supplementDeadline, String supplementReason, String finalSetVersion, List<String> priorFinalCaseIds,
             String newProblemStatement, String decisionType, BigDecimal refundAmount, String decisionReason,
-            List<EvidenceBatch> evidence) {
+            List<EvidenceBatch> evidence, CaseLabels labels) {
         public CaseView { priorFinalCaseIds=List.copyOf(priorFinalCaseIds); evidence=List.copyOf(evidence); }
+        /** Pre-CCR-M-AFTERSALE-VIEW-001 shape: no merchant display labels. */
+        public CaseView(String afterSaleId, String orderId, String status, String version, String sourceStage,
+                String typeCode, String demandCode, String description, BigDecimal requestedAmount,
+                String createdAt, String deadline, String supplementRequestId, String supplementTarget,
+                String supplementDeadline, String supplementReason, String finalSetVersion, List<String> priorFinalCaseIds,
+                String newProblemStatement, String decisionType, BigDecimal refundAmount, String decisionReason,
+                List<EvidenceBatch> evidence) {
+            this(afterSaleId, orderId, status, version, sourceStage, typeCode, demandCode, description,
+                    requestedAmount, createdAt, deadline, supplementRequestId, supplementTarget,
+                    supplementDeadline, supplementReason, finalSetVersion, priorFinalCaseIds,
+                    newProblemStatement, decisionType, refundAmount, decisionReason, evidence, null);
+        }
     }
     record EvidenceBatch(String batchId, String submitterType, String text, String opinionCode,
             String submittedAt, List<String> assetIds) {

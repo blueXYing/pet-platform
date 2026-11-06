@@ -89,7 +89,10 @@ public class AfterSaleWorkflowConfiguration {
             // The off switch cannot be bypassed by merely installing a provider bean.
             var authorityFacts=on(env,"pet.aftersale.refund.enabled")?funding.getObject():disabledFunding();
             return new AfterSaleService(source,guard,ids,outbox,orders,orders,ordinary,refunds,authorityFacts,
-                    authority,reasons,moderation,protection,AfterSaleAssetAdapters.assets(assets),tasks);
+                    authority,reasons,moderation,protection,AfterSaleAssetAdapters.assets(assets),tasks,
+                    // CCR-M-AFTERSALE-VIEW-001: merchant-read nickname via the user domain's masked
+                    // basics batch — the same inline port as contract 69 / CCR-M-ORDER-CARD-001.
+                    new com.petplatform.user.biz.apiimpl.UserQueryApiImpl(source));
         }
         @Bean(initMethod="start",destroyMethod="close")
         @ConditionalOnProperty(name="pet.aftersale.worker.enabled",havingValue="true")

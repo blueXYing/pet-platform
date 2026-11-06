@@ -6,6 +6,7 @@ import { consumerSession, consumerStorage } from '../../../shared/consumer-runti
 import { privateUploadFiles } from '../../../shared/private-upload-platform'
 import { merchantAfterSaleDeps } from '../../aftersale/repository'
 import { MerchantAfterSaleController } from '../../aftersale/controller'
+import { caseCustomerInitial, caseCustomerName, type CaseLabelView } from '../../aftersale/model'
 import { MerchantTabBar } from '../../components/tab-bar'
 import navBack from './assets/nav-back@3x.png'
 import './page.css'
@@ -56,5 +57,16 @@ export function MerchantAfterSaleState({ controller, text, status }: { controlle
     <Text>{status === 'loading' || status === 'idle' ? '正在读取售后工单…' : text}</Text>
     {status === 'error' && <Button id='mas-reload' className='mas-primary' onClick={() => void controller.load()}>重新加载</Button>}
     {(status === 'entry' || status === 'denied') && <Button className='mas-primary' onClick={() => Taro.redirectTo({ url: '/merchant/pages/workspace/index' })}>去商家工作台</Button>}
+  </View>
+}
+/** CCR-M-AFTERSALE-VIEW-001 客户块（列表卡/详情首卡共用）：首字圆 + 昵称（null→「顾客」占位）+ 可选副行。
+ *  本 CCR 无头像字段，恒为首字圆不渲染图片；不显示手机号。售后无专属稿（登记表 §4.6），沿商家订单卡家族语言。 */
+export function MerchantAfterSaleCustomer({ view, line, className }: { view: CaseLabelView; line?: string | null; className?: string }) {
+  return <View className={className ? `mas-customer ${className}` : 'mas-customer'}>
+    <View className='mas-customer-avatar'><Text>{caseCustomerInitial(view)}</Text></View>
+    <View className='mas-customer-who'>
+      <Text className='mas-customer-name'>{caseCustomerName(view)}</Text>
+      {line ? <Text className='mas-customer-service'>{line}</Text> : null}
+    </View>
   </View>
 }

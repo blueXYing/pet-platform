@@ -52,10 +52,14 @@ public final class AfterSaleController {
         else onlyParameters(r,"page","pageSize","status","orderId","merchantId","storeId");
         var q=new ListQuery(number(r.getParameter("page"),1,10000),number(r.getParameter("pageSize"),20,50),r.getParameter("status"),optionalId(r.getParameter("orderId")));
         var result=p==RouteParty.USER?queries.listMine(c,q):queries.listForStore(c,p,id(r.getParameter("merchantId")),id(r.getParameter("storeId")),q);
-        return ok(page(result),200,r);
+        return ok(page(result,p),200,r);
     }
     @GetMapping({"/api/v1/c/aftersales/{caseId}","/api/v1/merchant/aftersales/{caseId}","/api/v1/admin/aftersales/{caseId}"})
-    public ResponseEntity<Map<String,Object>> get(@PathVariable String caseId,HttpServletRequest r){onlyParameters(r);return ok(detail(queries.getCase(context(r,false,"aftersale.read"),id(caseId),party(r))),200,r);}
+    public ResponseEntity<Map<String,Object>> get(@PathVariable String caseId,HttpServletRequest r){
+        onlyParameters(r);var c=context(r,false,"aftersale.read");var target=id(caseId);var p=party(r);
+        // CCR-M-AFTERSALE-VIEW-001: the five display keys are rendered for merchant routes only.
+        return ok(detail(queries.getCase(c,target,p),p),200,r);
+    }
 
     @PostMapping({"/api/v1/c/aftersales/{caseId}/evidence","/api/v1/merchant/aftersales/{caseId}/evidence"})
     public ResponseEntity<Map<String,Object>> evidence(@PathVariable String caseId,HttpServletRequest r) {

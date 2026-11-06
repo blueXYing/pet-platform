@@ -1,9 +1,12 @@
 package com.petplatform.order.biz.infrastructure.persistence.mapper;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
+import java.util.List;
 import java.util.Map;
 import org.apache.ibatis.annotations.Param;
 public interface OrderAfterSaleMapper {
+ /** CCR-M-AFTERSALE-VIEW-001: creation-time service/pet display labels of one store's orders. */
+ List<Label> displayLabels(@Param("store") long store,@Param("orders") List<Long> orders);
  Source source(@Param("caseId") long caseId);
  Commit committed(@Param("order") long order);
  int committedGuard(@Param("order")long order,@Param("token")String token);
@@ -14,4 +17,5 @@ public interface OrderAfterSaleMapper {
  int projectSuccess(Map<String,Object> values); int success(Map<String,Object> values); int log(Map<String,Object> values);
  class Source {public Long caseId,orderId,storeId,caseVersion,orderVersion;public String status,sourceStage,sourceJson;public LocalDateTime createdAt;}
  class Commit {public Long orderId,storeId,caseId,decisionId,refundOrderId,orderVersion,successEventId;public String refundType,sourceStage,fundingEvidenceId,token;public BigDecimal refundAmount;public LocalDateTime createdAt,succeededAt;}
+ class Label {public Long orderId;public String serviceName,petName,petType,breedName;}
 }

@@ -1,8 +1,8 @@
 import { Button, Image, ScrollView, Text, Textarea, View } from '@tarojs/components'
 import Taro, { useRouter } from '@tarojs/taro'
 import { useEffect, useState } from 'react'
-import { dateText, decisionText, demandLabel, opinionOptions, statusTagClass, statusText, typeLabel } from '../../aftersale/model'
-import { MerchantAfterSaleShell, MerchantAfterSaleState, useMerchantAfterSale } from './page'
+import { casePetLabel, dateText, decisionText, demandLabel, opinionOptions, statusTagClass, statusText, typeLabel } from '../../aftersale/model'
+import { MerchantAfterSaleCustomer, MerchantAfterSaleShell, MerchantAfterSaleState, useMerchantAfterSale } from './page'
 
 /** Figma detail 40:1345 and reply sheet 40:1500; no merchant decision/refund command. */
 export default function MerchantAfterSaleDetail() {
@@ -37,8 +37,14 @@ export default function MerchantAfterSaleDetail() {
         {state.frozen && <View className='mas-alert'>商家或门店已冻结，当前只能查看工单和证据。</View>}
         <View className='mas-detail-card'>
           <View className='mas-line'><Text className={statusTagClass(detail.status)}>{statusText[detail.status]}</Text><Text className='mas-date'>工单 {detail.afterSaleId}</Text></View>
+          <MerchantAfterSaleCustomer view={detail} className='mas-detail-customer' />
           <Text className='mas-heading'>订单 {detail.orderId}</Text>
           <Text className='mas-type'>申请于 {dateText(detail.createdAt)}</Text>
+          {/* CCR-M-AFTERSALE-VIEW-001：下单时服务/宠物快照；无快照显示「—」，不伪造。 */}
+          <View className='mas-detail-facts'>
+            <View className='mas-field'><Text>服务项目</Text><Text>{detail.serviceName ?? '—'}</Text></View>
+            <View className='mas-field'><Text>宠物</Text><Text>{casePetLabel(detail) ?? '—'}</Text></View>
+          </View>
           <View className='mas-amount-row'><Text>用户诉求金额</Text><Text className='mas-amount'>{detail.requestedAmount === null ? '未填写' : `¥${detail.requestedAmount}`}</Text></View>
         </View>
         <View className='mas-detail-card'>

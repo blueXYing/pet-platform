@@ -11,6 +11,7 @@ import com.petplatform.payment.api.query.RefundFundingEligibilityFactsApi;
 import com.petplatform.refund.api.command.RefundAfterSaleCommandApi;
 import com.petplatform.refund.api.query.RefundApplicationHistoryFactsApi;
 import com.petplatform.schedule.api.protection.ScheduleCapacityGuardApi;
+import com.petplatform.user.api.query.UserQueryApi;
 import java.util.*;
 import javax.sql.DataSource;
 import org.junit.jupiter.api.Test;
@@ -37,7 +38,7 @@ class AfterSaleCatalogTest {
         var service=new AfterSaleService(source,mock(ScheduleCapacityGuardApi.class),mock(SnowflakeIdGenerator.class),
                 mock(IntegrationEventPublisher.class),mock(OrderAfterSaleFactsApi.class),mock(OrderAfterSaleCommitApi.class),
                 mock(RefundApplicationHistoryFactsApi.class),mock(RefundAfterSaleCommandApi.class),mock(RefundFundingEligibilityFactsApi.class),
-                authority,reasons,mock(AfterSalePorts.Moderation.class),new AfterSaleAesProtection(new byte[32]),mock(AfterSalePorts.Assets.class),mock(AfterSalePorts.Tasks.class));
+                authority,reasons,mock(AfterSalePorts.Moderation.class),new AfterSaleAesProtection(new byte[32]),mock(AfterSalePorts.Assets.class),mock(AfterSalePorts.Tasks.class),mock(UserQueryApi.class));
         var buyer=new CommandContext(null,"trace",OperatorType.USER,"123","MINIAPP");
         var catalog=options(List.of(new Option("TYPE","Service issue")));when(reasons.options()).thenReturn(catalog);
         when(authority.requireBuyerRead(buyer)).thenReturn("revision-a","revision-a");assertSame(catalog,service.options(buyer));

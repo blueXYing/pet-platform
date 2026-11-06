@@ -1,6 +1,11 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
 <mapper namespace="com.petplatform.order.biz.infrastructure.persistence.mapper.OrderAfterSaleMapper">
+ <!-- CCR-M-AFTERSALE-VIEW-001 (approved 2026-11-06): merchant aftersale display labels. Store-scoped
+      (store_id leads; the caller already holds the store guard inside its own transaction), bounded
+      to the caller's 1..50 order ids, and reads only the order domain's immutable creation snapshots.
+      Breed level only: sex/weight_kg/health_note and every user/phone column stay unselected. -->
+ <select id="displayLabels" resultType="com.petplatform.order.biz.infrastructure.persistence.mapper.OrderAfterSaleMapper$Label">SELECT o.id AS order_id,s.service_name,p.pet_name,p.pet_type,p.breed_name FROM pet_order o LEFT JOIN order_service_snapshot s ON s.order_id=o.id LEFT JOIN order_pet_snapshot p ON p.order_id=o.id WHERE o.store_id=#{store} AND o.id IN <foreach collection="orders" item="id" open="(" separator="," close=")">#{id}</foreach> ORDER BY o.id</select>
  <select id="source" resultType="com.petplatform.order.biz.infrastructure.persistence.mapper.OrderAfterSaleMapper$Source">SELECT case_id,order_id,store_id,case_version,order_version,status,source_stage,source_json,created_at FROM order_aftersale_source_proof WHERE case_id=#{caseId} FOR UPDATE</select>
  <select id="committed" resultType="com.petplatform.order.biz.infrastructure.persistence.mapper.OrderAfterSaleMapper$Commit">SELECT order_id,store_id,case_id,decision_id,refund_order_id,order_version,refund_type,refund_amount,source_stage,funding_evidence_id,token,created_at,success_event_id,succeeded_at FROM order_aftersale_refund_commit WHERE order_id=#{order} FOR UPDATE</select>
  <select id="committedGuard" resultType="int">SELECT COUNT(*) FROM order_operation_guard WHERE order_id=#{order} AND BINARY token=BINARY #{token} AND operation_type='CREATE_REFUND' AND status='COMMITTED'</select>
