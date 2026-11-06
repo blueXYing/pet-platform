@@ -32,6 +32,8 @@ import com.petplatform.refund.biz.application.RefundApplicationPorts;
 import com.petplatform.service.biz.application.ServiceWriteDependencies.ServiceCoverAssetPort;
 import com.petplatform.service.biz.application.ServiceWriteDependencies.ServiceCoverUrlPort;
 import com.petplatform.user.biz.application.WechatSessionProvider;
+import com.petplatform.user.api.query.UserIdQuery;
+import com.petplatform.user.api.query.UserPhoneVerificationApi;
 import com.zaxxer.hikari.HikariConfig;
 import com.zaxxer.hikari.HikariDataSource;
 import java.io.ByteArrayOutputStream;
@@ -285,6 +287,18 @@ public final class E2eCoreLoopServer {
                           return code.substring(6);
                         }
                         throw new ProofRejected();
+                      }
+                    });
+                // Contract 54 phone-equality channel: the seeded account's verified phone is
+                // the fixture's single purpose-bound fact (test-domain only).
+                beans.registerBean("e2eUserPhones", UserPhoneVerificationApi.class, () ->
+                    new UserPhoneVerificationApi() {
+                      private final String phone = "13800000100";
+                      @Override public boolean hasVerifiedPhone(UserIdQuery query, String candidate) {
+                        return query != null && Long.toString(USER).equals(query.userId()) && phone.equals(candidate);
+                      }
+                      @Override public String verifiedPhone(UserIdQuery query) {
+                        return query != null && Long.toString(USER).equals(query.userId()) ? phone : null;
                       }
                     });
                 beans.registerBean("e2ePaymentBindings", PaymentMerchantBindings.class, () ->
@@ -1160,6 +1174,11 @@ public final class E2eCoreLoopServer {
     jdbc.update("INSERT INTO staff_service_capability(id,staff_id,service_id,status,created_at,"
         + "updated_at) VALUES(?,?,?,'ENABLED',UTC_TIMESTAMP(3),UTC_TIMESTAMP(3))",
         ids.nextId(), STAFF, SERVICE);
+    // SCHC-2 header (SQL53 §3): details without a header read as LEGACY_UNVERSIONED and the
+    // contract-53 §5 capability face fails closed with 503. The kernel also rejects version 0
+    // plus non-empty details, so the seeded imported set starts at version 1.
+    jdbc.update("INSERT INTO staff_capability_set(staff_id,store_id,version,updated_at)"
+        + " VALUES(?,?,1,UTC_TIMESTAMP(3))", STAFF, STORE);
     // Wide staff availability covering all seeded service windows (whole-minute bounds: the
     // schedule kernel rejects seconds/millis in availability intervals). Round 4: widened to
     // start two days back so the past-appointment completed target stays staff-covered.
@@ -1369,6 +1388,10 @@ public final class E2eCoreLoopServer {
         // tables exist).
         "52-Merchant-Staff-Identity-Schema-v0.1.sql",
         "54-Merchant-Staff-Binding-Schema-v0.1.sql",
+        // Contract 53 §5 staff service-capability set (staff_capability_set + write action):
+        // without it the capabilities read answers 503 "schedule persistence is unavailable"
+        // (fixture gap, not a product defect — windows/staff windows live in SQL34).
+        "53-Schedule-Write-Schema-v0.1.sql",
         "37-Reservation-Protection-Foundation-Schema-v0.1.sql",
         "38-Booking-Create-Schema-v0.1.sql",
         "39-Booking-Expiry-Schema-v0.1.sql",
@@ -1397,6 +1420,8 @@ public final class E2eCoreLoopServer {
         "62-Baike-Content-Schema-v0.1.sql",
         // Contract 68 health-record tables (vaccine/deworm add+list).
         "68-Pet-Health-Record-Schema-v0.1.sql",
+        // Contract 69 merchant internal customer note (per store+customer row + audit).
+        "69-Merchant-Customer-Note-Schema-v0.1.sql",
         // CCR-MKT-001/002/003 marketing center + home blocks and CCR-COM-001 community.
         "63-Marketing-Storage-v0.1.sql",
         "64-Community-Storage-v0.1.sql"));
