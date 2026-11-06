@@ -147,6 +147,48 @@ export function isDefiniteProfileConflict(error: unknown): boolean {
     && ['COMMON_CONFLICT', 'IDEMPOTENCY_KEY_CONFLICT'].includes(error.code)
 }
 
+// ------------------------------------------------- store avatar display URL (CCR-M-STORE-AVATAR-001)
+
+/** CCR-M-STORE-AVATAR-001：M 端店铺头像展示签名（GET /api/v1/merchant/store-profile/avatar-url）。
+ *  三键同现或同为 null：无头像/素材不可签（非 READY、非 STORE_PHOTO、非本人）时三 null，
+ *  页面回落首字占位；有值时 url 为短期 HTTPS 签名、expiresAt 毫秒 ISO-8601（UTC Z），
+ *  临期/onShow/图片 onError 重新调路由换新，签名 URL 一律不落本地存储。 */
+export type StoreAvatarUrl = Readonly<{
+  assetId: string | null
+  url: string | null
+  expiresAt: string | null
+}>
+
+export function decodeStoreAvatarUrl(value: unknown): StoreAvatarUrl {
+  const v = exact(value, 'assetId,url,expiresAt')
+  const assetId = v.assetId === null ? null : id(v.assetId)
+  const url = v.url === null
+    ? null
+    : typeof v.url === 'string' && v.url.startsWith('https://') && v.url.length <= 2048 && !/\s/.test(v.url)
+      ? v.url
+      : fail()
+  const expiresAt = v.expiresAt === null
+    ? null
+    : typeof v.expiresAt === 'string' && /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/.test(v.expiresAt)
+      ? v.expiresAt
+      : fail()
+  // 三键必须同现或同空：混排（如有 url 无 assetId/过期时间）视为非法响应。
+  if ((assetId === null) !== (url === null) || (assetId === null) !== (expiresAt === null)) fail()
+  return { assetId, url, expiresAt }
+}
+
+export class StoreAvatarUrlClient {
+  constructor(private api: ConsumerApi) {}
+
+  get(): Promise<StoreAvatarUrl> {
+    const c = this.api.scope.capture().context
+    if (c.workspace !== 'merchant' || !c.merchantId || !c.storeId) throw new Error('MERCHANT_ENTRY_REQUIRED')
+    return this.api.request(
+      { path: '/api/v1/merchant/store-profile/avatar-url', method: 'GET', data: { merchantId: c.merchantId, storeId: c.storeId } },
+      decodeStoreAvatarUrl)
+  }
+}
+
 export class StoreProfileClient {
   private rejectionProofs = new WeakMap<object, { slot: string; command: Command }>()
   constructor(private api: ConsumerApi) {}

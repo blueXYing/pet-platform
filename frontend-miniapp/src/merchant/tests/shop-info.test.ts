@@ -34,13 +34,15 @@ function fixture() {
   const scope = new WorkspaceScope(); scope.replace({ userId: '1', workspace: 'merchant', merchantId: '101', storeId: '102' })
   let admission = copy(owner), current = copy(view)
   let savedImpl: ((input: unknown) => Promise<StoreProfileView>) | null = null
-  let saves = 0, retires = 0, uploads = 0, lastInput: unknown = null
+  let avatarImpl: (() => Promise<{ assetId: string | null; url: string | null; expiresAt: string | null }>) | null = null
+  let saves = 0, retires = 0, uploads = 0, avatarReads = 0, lastInput: unknown = null
   const deps: MerchantStorefrontDeps = {
     scope, admission: async () => copy(admission),
     storeProfile: async () => copy(current),
     saveStoreProfile: input => { saves++; lastInput = input; return savedImpl ? savedImpl(input) : Promise.resolve(copy(saved)) },
     retireProfileConflict: () => { retires++ },
     uploadStorePhoto: filePath => { void filePath; uploads++; return Promise.resolve({ assetId: '88001' }) },
+    storeAvatarUrl: () => { avatarReads++; return avatarImpl ? avatarImpl() : Promise.resolve({ assetId: null, url: null, expiresAt: null }) },
     customers: async () => { throw new Error('unused') },
     customerDetail: async () => { throw new Error('unused') },
     saveCustomerNote: async () => { throw new Error('unused') },
@@ -55,7 +57,8 @@ function fixture() {
     deps, get admission() { return admission }, set admission(v: MerchantAdmission) { admission = v },
     get current() { return current }, set current(v: StoreProfileView) { current = v },
     set saved(impl: ((input: unknown) => Promise<StoreProfileView>) | null) { savedImpl = impl },
-    get counts() { return { saves, retires, uploads } }, get input() { return lastInput },
+    set avatar(impl: (() => Promise<{ assetId: string | null; url: string | null; expiresAt: string | null }>) | null) { avatarImpl = impl },
+    get counts() { return { saves, retires, uploads, avatarReads } }, get input() { return lastInput },
   }
 }
 

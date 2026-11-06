@@ -25,6 +25,8 @@ export type ShopInfoState = Readonly<{
     avatarAssetId: string
     businessStatus: string
   }
+  /** CCR-M-STORE-AVATAR-001：已保存头像的短期展示签名（仅内存态；不落本地存储）。 */
+  avatar: { assetId: string; url: string; expiresAt: string } | null
   saving: boolean
   uploadingPhoto: boolean
   savedVersion: string | null
@@ -38,7 +40,7 @@ const initialDraft = () => ({
 
 const initialState = (): ShopInfoState => ({
   phase: 'idle', notice: '', frozen: false, busy: false, view: null,
-  draft: initialDraft(), saving: false, uploadingPhoto: false, savedVersion: null,
+  draft: initialDraft(), avatar: null, saving: false, uploadingPhoto: false, savedVersion: null,
 })
 
 export class ShopInfoController {
@@ -91,6 +93,7 @@ export class ShopInfoController {
       const view = await this.deps.storeProfile()
       if (!this.live(epoch) || run !== this.reads) return
       this.publish({ ...this.state, phase: 'ready', view, draft: this.adoptDraft(view), frozen: access.frozen })
+      void this.refreshAvatar()
     } catch (error) {
       if (!this.live(epoch) || run !== this.reads) return
       this.publish({ ...this.state, phase: 'error', notice: profileMessage[(error as Error)?.message] ?? '店铺资料读取失败，请稍后重试' })
@@ -160,6 +163,41 @@ export class ShopInfoController {
 
   clearAvatar() { this.editDraft({ avatarAssetId: '' }) }
 
+  /**
+   * CCR-M-STORE-AVATAR-001：店铺头像展示签名（GET /merchant/store-profile/avatar-url）。
+   *  - 无头像/素材不可签/读失败：三 null → 页面回落首字占位，绝不让资料页失败；
+   *  - 签名短期有效：临期（<60s）或资产变化时重新请求；onShow 重入 load() 自然续签；
+   *  - 签名 URL 只保存在内存 state，不写任何本地存储。
+   */
+  async refreshAvatar(force = false): Promise<void> {
+    if (!this.active) return
+    const epoch = this.epoch
+    const savedAssetId = this.state.view?.profile.avatarAssetId ?? null
+    const current = this.state.avatar
+    if (savedAssetId === null) {
+      // 已保存资料本就无头像：不发请求，直接回落占位（服务端同样会回三 null）。
+      if (current !== null) this.publish({ ...this.state, avatar: null })
+      return
+    }
+    if (!force && current && current.assetId === savedAssetId
+      && Date.parse(current.expiresAt) - Date.now() > 60_000) return
+    let avatar: ShopInfoState['avatar'] = null
+    try {
+      const signed = await this.deps.storeAvatarUrl()
+      if (signed.assetId !== null && signed.url !== null && signed.expiresAt !== null
+        && signed.assetId === savedAssetId)
+        avatar = { assetId: signed.assetId, url: signed.url, expiresAt: signed.expiresAt }
+    } catch { /* 无签名/服务不可用均降级为首字占位 */ }
+    if (!this.live(epoch)) return
+    this.publish({ ...this.state, avatar })
+  }
+
+  /** 图片加载失败：立即回落首字占位；新签名等下一次 onShow 重入（load→refreshAvatar）再取。 */
+  avatarImageError() {
+    if (!this.state.avatar) return
+    this.publish({ ...this.state, avatar: null })
+  }
+
   /** 表单边界（PRD 5.7 字段表 + 2026-10-19 扩展）：名称 1-128、地址 1-255、电话 5-32 位数字、
    *  0-500/0-200/0-100 码点、促销等级 1-9 折。 */
   save(): Promise<void> {
@@ -197,6 +235,7 @@ export class ShopInfoController {
     return this.deps.saveStoreProfile(input).then(saved => {
       if (!this.live(epoch)) return
       this.publish({ ...this.state, saving: false, view: saved, draft: this.adoptDraft(saved), savedVersion: saved.profile.version })
+      void this.refreshAvatar(true)
     }).catch(error => {
       if (!this.live(epoch)) return
       // 409（版本冲突/幂等键冲突）对该 payload 终局：退役槽位让用户刷新后重提。

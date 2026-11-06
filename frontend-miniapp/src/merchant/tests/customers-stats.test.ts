@@ -58,6 +58,7 @@ function fixture() {
     saveStoreProfile: async () => { throw new Error('unused') },
     retireProfileConflict: () => { throw new Error('unused') },
     uploadStorePhoto: async () => ({ assetId: '88001' }),
+    storeAvatarUrl: async () => ({ assetId: null, url: null, expiresAt: null }),
     customers: (filter, page2, pageSize) => { searches.push({ ...filter }); return Promise.resolve({ page: page2, pageSize, total: page.total, items: copy(page.items) }) },
     customerDetail: userId => { detailIds.push(userId); return Promise.resolve(copy(detail)) },
     saveCustomerNote: (userId, value, version) => {

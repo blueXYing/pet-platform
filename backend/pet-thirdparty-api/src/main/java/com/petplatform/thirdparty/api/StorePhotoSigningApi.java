@@ -14,6 +14,13 @@ public interface StorePhotoSigningApi {
 
     SignedStorePhoto signStorePhoto(String assetId, QueryContext context);
 
+    /**
+     * CCR-M-STORE-AVATAR-001 M-side owner display: the same STORE_PHOTO facts re-proof plus the
+     * requesting OWNER's identity — the asset must be owned by that account itself (ownerUserId
+     * is the session user's decimal id). Never an arbitrary assetId signing surface.
+     */
+    SignedStorePhoto signOwnedStorePhoto(String ownerUserId, String assetId, QueryContext context);
+
     /** Object storage pointers and credentials never leave the owning module. */
     record SignedStorePhoto(String assetId, String signedUrl, Instant expiresAt) {}
 }

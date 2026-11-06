@@ -92,7 +92,14 @@ export default function MerchantShopInfoPage() {
     </View> : <>
       {state.frozen && <View className='msi-alert'>商家或门店受限，当前仅可查看店铺资料。</View>}
       <View className='msi-card msi-identity'>
-        <View className='msi-avatar'><Text>{Array.from(state.draft.storeName || facts?.storeName || '店')[0] ?? '店'}</Text></View>
+        <View className='msi-avatar'>
+          {/* CCR-M-STORE-AVATAR-001：已保存头像显示短期签名图（仅内存态，不落存储）；
+              草稿未保存/清空/签名缺失或加载失败时保持首字占位，onError 回落后等 onShow 续签。 */}
+          {state.avatar && state.draft.avatarAssetId === state.avatar.assetId
+            ? <Image className='msi-avatar-img' src={state.avatar.url} mode='aspectFill'
+                onError={() => controller.avatarImageError()} />
+            : <Text>{Array.from(state.draft.storeName || facts?.storeName || '店')[0] ?? '店'}</Text>}
+        </View>
         <View className='msi-identity-body'>
           <Text className='msi-identity-name'>{state.draft.storeName || facts?.storeName || '门店名称'}</Text>
           <View className='msi-identity-actions'>
