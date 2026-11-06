@@ -61,3 +61,19 @@
 .mrf-list-avatar { width: calc(34 * var(--mrf-unit)); height: calc(34 * var(--mrf-unit)); border-radius: 50%; background: #e5f6fd; display: flex; align-items: center; justify-content: center; flex: none; }
 .mrf-list-avatar text { font-size: calc(12 * var(--mrf-unit)); line-height: calc(16 * var(--mrf-unit)); font-weight: 600; color: #5baae8; }
 .mrf-list-card .mrf-type { color: #5baae8; }
+
+/* CCR-M-REFUND-VIEW-001（2026-11-06 批准 §3.1/§3.3）客户/服务/时间线：沿 M 端订单卡与售后家族度量
+   （首字圆复用 .mrf-list-avatar；昵称 13.464-14/600 #111827、服务端脱敏手机号 12/18 #6b7280；时间线
+   圆点 8 #5baae8 + 文案 13/20）。无头像图片、无申请说明正文（§3.2 不批）、无凭证图片（49号无存储）。
+   新增规则一律 .mrf-page 复合选择器。 */
+.mrf-page .mrf-list-who-text { display: flex; flex-wrap: wrap; align-items: baseline; gap: calc(2 * var(--mrf-unit)) calc(8 * var(--mrf-unit)); min-width: 0; }
+.mrf-page .mrf-customer-phone { font-size: calc(12 * var(--mrf-unit)); line-height: calc(18 * var(--mrf-unit)); color: #6b7280; white-space: nowrap; }
+.mrf-page .mrf-detail-customer { display: flex; align-items: center; gap: calc(10 * var(--mrf-unit)); margin-top: calc(12 * var(--mrf-unit)); min-width: 0; }
+.mrf-page .mrf-customer-who { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: calc(2 * var(--mrf-unit)); }
+.mrf-page .mrf-customer-name { display: block; font-size: calc(14 * var(--mrf-unit)); line-height: calc(20 * var(--mrf-unit)); font-weight: 600; color: #111827; overflow-wrap: anywhere; }
+.mrf-page .mrf-timeline-item { display: flex; align-items: flex-start; gap: calc(10 * var(--mrf-unit)); padding-bottom: calc(10 * var(--mrf-unit)); }
+.mrf-page .mrf-timeline-item:last-child { padding-bottom: 0; }
+.mrf-page .mrf-timeline-dot { flex: none; width: calc(8 * var(--mrf-unit)); height: calc(8 * var(--mrf-unit)); margin-top: calc(6 * var(--mrf-unit)); border-radius: 50%; background: #5baae8; }
+.mrf-page .mrf-timeline-text { flex: 1; min-width: 0; display: flex; justify-content: space-between; gap: calc(12 * var(--mrf-unit)); font-size: calc(13 * var(--mrf-unit)); line-height: calc(20 * var(--mrf-unit)); }
+.mrf-page .mrf-timeline-stage { color: #4b5563; overflow-wrap: anywhere; }
+.mrf-page .mrf-timeline-time { flex: none; color: #6b7280; white-space: nowrap; }

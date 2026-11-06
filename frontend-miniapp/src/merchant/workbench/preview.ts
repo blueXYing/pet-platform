@@ -12,7 +12,7 @@ import type { WorkspaceScope } from '../../shared/workspace'
 import type {
   AppealReceipt, ReviewAggregate, ReviewDetail, ReviewPage, ReviewSummary,
 } from '../../shared/review-appeal-api'
-import type { RefundApplicationDetail, RefundApplicationPage } from '../../shared/merchant-refund-api'
+import type { RefundApplicationDetail, RefundApplicationPage, RefundTimelineEntry } from '../../shared/merchant-refund-api'
 import type { MerchantRefundDeps } from '../refund/repository'
 import type { MerchantStorefrontDeps } from '../storefront/repository'
 import type { MerchantReviewDeps } from '../review-appeal/repository'
@@ -138,8 +138,10 @@ export function previewOrderListDeps(scope: WorkspaceScope): MerchantOrderListDe
   }
 }
 
-// 退款列表/详情视觉验收样本（?preview=1）：57号商家读侧字段，无买家身份/申诉/服务时间线。
+// 退款列表/详情视觉验收样本（?preview=1）：57号商家读侧字段 + CCR-M-REFUND-VIEW-001 §3.1/§3.3
+// （客户昵称、服务端脱敏手机号、服务快照名、只读时间线）；无申请说明正文（§3.2 不批）/申诉/凭证图片。
 const refundNow = new Date().toISOString()
+const refundDeadline = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString()
 const previewRefundSummary = {
   applicationId: '9301',
   applicationNo: '202611040001',
@@ -149,13 +151,20 @@ const previewRefundSummary = {
   reasonCode: 'SERVICE_ISSUE',
   refundAmount: '268.00',
   createdAt: refundNow,
-  merchantDeadline: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
+  merchantDeadline: refundDeadline,
+  customerNickname: '小橘妈妈',
+  customerPhoneMasked: '138****0100',
+  serviceName: '猫咪洗澡+美容',
 }
+const previewRefundTimeline: readonly RefundTimelineEntry[] = [
+  { stage: 'APPLIED', occurredAt: refundNow }, { stage: 'MERCHANT_DEADLINE', occurredAt: refundDeadline },
+]
 const previewRefundDetail = {
   ...previewRefundSummary,
   decidedAt: null,
   decisionId: null,
   refundOrderId: null,
+  timeline: previewRefundTimeline,
 } as RefundApplicationDetail
 
 export function previewRefundDeps(): MerchantRefundDeps {

@@ -2,10 +2,16 @@
 <!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
 <mapper namespace="com.petplatform.refund.biz.infrastructure.persistence.mapper.RefundApplicationQueryMapper">
  <!-- Contract 57 merchant read side: PENDING_MERCHANT backlog only, fixed sort created_at DESC, id DESC. -->
- <sql id="storeFilter">merchant_id=#{merchant} AND store_id=#{store}</sql>
- <select id="countPending" resultType="long">SELECT COUNT(*) FROM refund_application WHERE <include refid="storeFilter"/> AND status='PENDING_MERCHANT'</select>
- <select id="selectPendingPage" resultType="com.petplatform.refund.biz.infrastructure.persistence.mapper.RefundApplicationQueryMapper$Row">SELECT id,application_no,order_id,status,version,reason_code,requested_amount,merchant_deadline,decision_id,refund_order_id,created_at,decided_at
-  FROM refund_application WHERE <include refid="storeFilter"/> AND status='PENDING_MERCHANT' ORDER BY created_at DESC,id DESC LIMIT #{limit} OFFSET #{offset}</select>
- <select id="selectStoreApplication" resultType="com.petplatform.refund.biz.infrastructure.persistence.mapper.RefundApplicationQueryMapper$Row">SELECT id,application_no,order_id,status,version,reason_code,requested_amount,merchant_deadline,decision_id,refund_order_id,created_at,decided_at
-  FROM refund_application WHERE <include refid="storeFilter"/> AND id=#{application}</select>
+ <!-- CCR-M-REFUND-VIEW-001 (approved 2026-11-06 §3.1/§3.3): the projection adds the applicant id (internal
+      join key for the user-domain basics read, never rendered) and the bound refund_order row's own
+      created_at (REFUND_ORDER_CREATED timeline stage, same module). Plain lock-free reads; the sealed
+      reason_text_cipher is never selected (§3.2 not approved). -->
+ <sql id="storeFilter">a.merchant_id=#{merchant} AND a.store_id=#{store}</sql>
+ <sql id="projection">SELECT a.id,a.application_no,a.order_id,a.status,a.version,a.reason_code,a.requested_amount,a.merchant_deadline,a.decision_id,a.refund_order_id,a.created_at,a.decided_at,a.applicant_user_id,r.created_at AS refund_created_at
+  FROM refund_application a LEFT JOIN refund_order r ON r.id=a.refund_order_id AND r.refund_application_id=a.id AND r.order_id=a.order_id</sql>
+ <select id="countPending" resultType="long">SELECT COUNT(*) FROM refund_application a WHERE <include refid="storeFilter"/> AND a.status='PENDING_MERCHANT'</select>
+ <select id="selectPendingPage" resultType="com.petplatform.refund.biz.infrastructure.persistence.mapper.RefundApplicationQueryMapper$Row"><include refid="projection"/>
+  WHERE <include refid="storeFilter"/> AND a.status='PENDING_MERCHANT' ORDER BY a.created_at DESC,a.id DESC LIMIT #{limit} OFFSET #{offset}</select>
+ <select id="selectStoreApplication" resultType="com.petplatform.refund.biz.infrastructure.persistence.mapper.RefundApplicationQueryMapper$Row"><include refid="projection"/>
+  WHERE <include refid="storeFilter"/> AND a.id=#{application}</select>
 </mapper>

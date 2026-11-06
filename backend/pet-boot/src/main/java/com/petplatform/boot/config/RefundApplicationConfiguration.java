@@ -79,10 +79,17 @@ public class RefundApplicationConfiguration {
         @Bean RefundApplicationPorts.OwnerReadAuthority refundApplicationOwnerReads(MerchantOrderAuthorityApi authority) {
             return (context,merchant,store)->authority.requireOwnerRead(merchant,store,context);
         }
-        /** Contract 57 merchant refund-application read surfaces (list/detail), default behind pet.refund.merchant.http.enabled. */
+        /** Contract 57 merchant refund-application read surfaces (list/detail), default behind pet.refund.merchant.http.enabled.
+         *  CCR-M-REFUND-VIEW-001 (approved 2026-11-06 §3.1/§3.3): the nickname and the server-masked
+         *  phone come from the user basics read assembled locally over the same DataSource (contract-69 /
+         *  CCR-M-ORDER-CARD-001 inline precedent); the service name reuses the existing ORDER display-label
+         *  port, resolved lazily because it is assembled with the aftersale runtime — absent, the name is
+         *  simply not projected (null), never faked. No route, filter or allow-list changes. */
         @Bean MerchantRefundApplicationQueryApiImpl merchantRefundApplicationQueries(DataSource source,
-                ScheduleCapacityGuardApi guard,RefundApplicationPorts.OwnerReadAuthority ownerRead) {
-            return new MerchantRefundApplicationQueryApiImpl(source,guard,ownerRead);
+                ScheduleCapacityGuardApi guard,RefundApplicationPorts.OwnerReadAuthority ownerRead,
+                ObjectProvider<com.petplatform.order.api.query.OrderAfterSaleFactsApi> orderSnapshots) {
+            return new MerchantRefundApplicationQueryApiImpl(source,guard,ownerRead,
+                    new com.petplatform.user.biz.apiimpl.UserQueryApiImpl(source),orderSnapshots::getIfAvailable);
         }
         @Bean @ConditionalOnMissingBean(RefundApplicationPorts.Protection.class)
         RefundApplicationPorts.Protection refundApplicationProtection(@Value("${pet.refund.application.protection-key}") String key) {

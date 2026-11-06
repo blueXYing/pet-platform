@@ -1,7 +1,7 @@
 import { Button, ScrollView, Text, Textarea, View } from '@tarojs/components'
 import { useRouter } from '@tarojs/taro'
 import { useEffect, useState } from 'react'
-import { dateLabel, dateText, deadlinePassed, refundStatusTagClass, refundStatusText } from '../../refund/model'
+import { dateLabel, dateText, deadlinePassed, refundCustomerInitial, refundCustomerName, refundStatusTagClass, refundStatusText, refundTimelineLabel } from '../../refund/model'
 import { MerchantRefundShell, MerchantRefundState, useMerchantRefund } from './page'
 
 /** 商家退款申请详情（57号/HTTP10 §4.5/§4.6）：同意全额或拒绝（必填理由），回执按 49号七字段呈现。 */
@@ -27,18 +27,36 @@ export default function MerchantRefundDetail() {
         {state.frozen && <View className='mrf-alert'>商家或门店已冻结，当前只能查看退款申请。</View>}
         <View className='mrf-detail-card'>
           <View className='mrf-line'><Text className={refundStatusTagClass(detail.status)}>{refundStatusText[detail.status]}</Text><Text className='mrf-date'>申请 …{detail.applicationId.slice(-6)}</Text></View>
+          {/* CCR-M-REFUND-VIEW-001 §3.1 客户块：昵称（空值降级「顾客」）+ 脱敏手机号，永不回明文。 */}
+          <View className='mrf-detail-customer'>
+            <View className='mrf-list-avatar'><Text>{refundCustomerInitial(detail)}</Text></View>
+            <View className='mrf-customer-who'>
+              <Text className='mrf-customer-name'>{refundCustomerName(detail)}</Text>
+              {detail.customerPhoneMasked && <Text className='mrf-customer-phone'>{detail.customerPhoneMasked}</Text>}
+            </View>
+          </View>
           <Text className='mrf-heading'>订单 {detail.orderId.slice(-8)}</Text>
           <Text className='mrf-type'>申请于 {dateLabel(detail.createdAt)}</Text>
           <View className='mrf-amount-row'><Text>退款金额（全额）</Text><Text className='mrf-amount'>¥{detail.refundAmount}</Text></View>
         </View>
         <View className='mrf-detail-card'>
           <Text className='mrf-section-title'>申请信息</Text>
+          <View className='mrf-field'><Text>服务项目</Text><Text>{detail.serviceName ?? '—'}</Text></View>
           <View className='mrf-field'><Text>申请编号</Text><Text>{detail.applicationNo}</Text></View>
           <View className='mrf-field'><Text>申请原因编码</Text><Text>{detail.reasonCode}</Text></View>
           <View className='mrf-field'><Text>商家处理期限</Text><Text>{dateText(detail.merchantDeadline)}</Text></View>
           <Text className='mrf-help'>同一订单被拒绝后买家可再次申请，每轮重新计算24小时处理期限。</Text>
           {expired && <Text className='mrf-help mrf-readonly'>已过24小时处理期限，系统将自动全额退款，商家不再处理。</Text>}
         </View>
+        {/* CCR-M-REFUND-VIEW-001 §3.3 只读时间线：仅呈现服务端既有时间戳事实，客户端不推导。 */}
+        {detail.timeline.length > 0 && <View className='mrf-detail-card'>
+          <Text className='mrf-section-title'>处理时间线</Text>
+          {detail.timeline.map(entry => <View key={entry.stage} className='mrf-timeline-item'>
+            <View className='mrf-timeline-dot' />
+            <View className='mrf-timeline-text'><Text className='mrf-timeline-stage'>{refundTimelineLabel(entry.stage, detail.status)}</Text>
+              <Text className='mrf-timeline-time'>{dateText(entry.occurredAt)}</Text></View>
+          </View>)}
+        </View>}
         {detail.status !== 'PENDING_MERCHANT' && <View className='mrf-detail-card'>
           <Text className='mrf-section-title'>处理结果</Text>
           <View className='mrf-field'><Text>结果</Text><Text>{refundStatusText[detail.status]}</Text></View>

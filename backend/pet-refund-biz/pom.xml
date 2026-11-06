@@ -38,6 +38,13 @@
             <groupId>com.petplatform</groupId>
             <artifactId>pet-payment-api</artifactId>
         </dependency>
+        <!-- CCR-M-REFUND-VIEW-001: the contract-57 OWNER read side projects the buyer nickname and
+             the user domain's server-masked phone through the batched basics read (api-only,
+             contract-69 precedent; never biz). -->
+        <dependency>
+            <groupId>com.petplatform</groupId>
+            <artifactId>pet-user-api</artifactId>
+        </dependency>
         <dependency>
             <groupId>org.springframework</groupId>
             <artifactId>spring-context</artifactId>
