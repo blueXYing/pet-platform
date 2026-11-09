@@ -2,7 +2,7 @@ import { Button, Image, Input, Text, Textarea, View } from '@tarojs/components'
 import Taro, { useDidShow, useRouter } from '@tarojs/taro'
 import { useCallback, useEffect, useRef, useState, type CSSProperties } from 'react'
 import { useWorkspace } from '../../../shared/workspace-react'
-import { consumerApi, consumerStorage } from '../../../shared/consumer-runtime'
+import { consumerApi, consumerSession, consumerStorage } from '../../../shared/consumer-runtime'
 import { privateUploadFiles } from '../../../shared/private-upload-platform'
 import { ServiceCoverUpload } from '../../services/cover-upload'
 import { RealServiceManageRepository, serviceManageMessage } from '../../services/repository'
@@ -12,6 +12,7 @@ import {
   petTypeText, petTypes, selectedPillClass, type ApplicablePetType, type ManagedServiceDetail,
   type ServiceCategoryView, type ServiceDraftInput, type ServiceManageDeps,
 } from '../../services/model'
+import { MerchantTabBar } from '../../components/tab-bar'
 import navBack from './assets/nav-back@2x.png'
 import iconCamera from './assets/icon-camera@2x.png'
 import './page.css'
@@ -90,7 +91,13 @@ export default function MerchantServiceEditPage() {
       else { setNotice(serviceManageMessage(error)); setPhase('load-error') }
     }
   }, [repository, preview, scenario, scope, serviceIdParam, coverUpload])
-  useDidShow(() => { if (!picking.current) void load() })
+  useDidShow(() => {
+    if (picking.current) return
+    void (async () => {
+      try { await consumerSession.launch() } catch { /* load() renders the error state */ }
+      await load()
+    })()
+  })
   useEffect(() => { mounted.current = true; return () => { mounted.current = false; loadSequence.current++ } }, [])
   useEffect(() => { if (!preview && (!context || context.workspace !== 'merchant')) { setPhase('entry'); setCoverPreview(''); setDraft(emptyDraft()) } }, [context, preview])
 
@@ -325,8 +332,10 @@ export default function MerchantServiceEditPage() {
         <Button id='medit-save-draft' className='medit-action medit-action-secondary' disabled={busy} onClick={() => void saveDraft()}>保存草稿</Button>
         <Button id='medit-submit' className='medit-action' disabled={busy} onClick={() => void submitForReview()}>提交审核</Button>
       </View>}
-      <View className='msvc-tail'><Text>页面数据：{preview ? '契约 Mock（preview=1，不联调）' : '真实接口（后端交付前失败关闭）'}</Text></View>
+      {preview && <View className='msvc-tail'><Text>页面数据：契约 Mock（preview=1，不联调）</Text></View>}
+      <View className='medit-tab-space' />
     </View>}
+    <MerchantTabBar active='home' unit={unit} />
   </View>
 }
 

@@ -3,10 +3,14 @@ package com.petplatform.review.biz.infrastructure.persistence.entity;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
-/** Merchant list join row: the 06号 review columns plus the one-appeal overlay (56号 §3). */
+/**
+ * Merchant list join row: the 06号 review columns plus the one-appeal overlay (56号 §3).
+ * userId (CCR-M-REVIEW-VIEW-001) only keys the buyer basics lookup; it never leaves the kernel.
+ */
 public final class ReviewListRowEntity {
     private Long id;
     private Long orderId;
+    private Long userId;
     private BigDecimal storeScore;
     private BigDecimal serviceScore;
     private BigDecimal staffScore;
@@ -22,6 +26,8 @@ public final class ReviewListRowEntity {
     public void setId(Long value) { id = value; }
     public Long getOrderId() { return orderId; }
     public void setOrderId(Long value) { orderId = value; }
+    public Long getUserId() { return userId; }
+    public void setUserId(Long value) { userId = value; }
     public BigDecimal getStoreScore() { return storeScore; }
     public void setStoreScore(BigDecimal value) { storeScore = value; }
     public BigDecimal getServiceScore() { return serviceScore; }

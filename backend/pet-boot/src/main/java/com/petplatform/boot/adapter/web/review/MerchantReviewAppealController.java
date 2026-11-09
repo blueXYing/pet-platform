@@ -9,8 +9,10 @@ import com.petplatform.review.api.query.ReviewQueryApi.AppealListQuery;
 import com.petplatform.review.api.query.ReviewQueryApi.AppealSummary;
 import com.petplatform.review.api.query.ReviewQueryApi.ReviewDetail;
 import com.petplatform.review.api.query.ReviewQueryApi.ReviewSummary;
+import com.petplatform.review.api.query.ReviewQueryApi.StoreReviewAggregate;
 import jakarta.servlet.http.HttpServletRequest;
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
@@ -29,6 +31,9 @@ import org.springframework.web.bind.annotation.RestController;
  * (unknown fields 400), terminal X-Request-Id UUID idempotency on writes (201 first submit /
  * 200 protected replay on the appeal), decimal-string IDs and no-store on every reply; every
  * authority fact is re-proven inside the kernel's store-guarded transaction.
+ * CCR-M-REVIEW-VIEW-001 (contract 56 §7): the OWNER list/detail add the nullable buyer
+ * identity keys and GET /api/v1/merchant/reviews/summary serves the read-only store rating
+ * aggregate; the admin face keeps its twelve-key review facts unchanged.
  */
 @RestController
 @ConditionalOnProperty(name = "pet.review.appeal.http.enabled", havingValue = "true")
@@ -38,6 +43,8 @@ public final class MerchantReviewAppealController {
     private static final Set<String> DECISION_BODY = Set.of("decisionType", "reason");
     private static final Set<String> APPEAL_STATUSES = Set.of(
             "SUBMITTED", "PROCESSING", "APPROVED", "REJECTED");
+    /** Contract 56 §7 scoreCounts: exactly the five integer star keys, in wire order. */
+    private static final List<String> STAR_BUCKETS = List.of("1", "2", "3", "4", "5");
 
     private final ReviewCommandApi commands;
     private final ReviewQueryApi queries;
@@ -62,7 +69,33 @@ public final class MerchantReviewAppealController {
         data.put("page", page.page());
         data.put("pageSize", page.pageSize());
         data.put("total", page.total());
-        data.put("items", page.items().stream().map(MerchantReviewAppealController::summary).toList());
+        data.put("items", page.items().stream().map(MerchantReviewAppealController::ownerSummary).toList());
+        return ok(data, 200, r);
+    }
+
+    /**
+     * CCR-M-REVIEW-VIEW-001 (contract 56 §7): the OWNER store rating aggregate. Same MINIAPP
+     * family and coordinate discipline as the list (exactly merchantId+storeId, re-proven
+     * under the store guard); the literal path outranks the /{reviewId} pattern.
+     */
+    @GetMapping("/api/v1/merchant/reviews/summary")
+    public ResponseEntity<Map<String, Object>> storeAggregate(HttpServletRequest r) {
+        onlyParameters(r, "merchantId", "storeId");
+        noBody(r);
+        StoreReviewAggregate aggregate = queries.storeReviewAggregate(
+                new ReviewQueryApi.StoreReviewAggregateQuery(context(r, false, null),
+                        id(r.getParameter("merchantId")), id(r.getParameter("storeId"))));
+        Map<String, Object> counts = new LinkedHashMap<>();
+        for (String star : STAR_BUCKETS) {
+            Long count = aggregate.scoreCounts().get(star);
+            if (count == null) throw new IllegalStateException("aggregate bucket missing");
+            counts.put(star, count);
+        }
+        Map<String, Object> data = new LinkedHashMap<>();
+        data.put("totalReviews", aggregate.totalReviews());
+        data.put("scoredCount", aggregate.scoredCount());
+        data.put("averageScore", aggregate.averageScore());
+        data.put("scoreCounts", counts);
         return ok(data, 200, r);
     }
 
@@ -73,7 +106,7 @@ public final class MerchantReviewAppealController {
         noBody(r);
         ReviewDetail detail = queries.getStoreReview(
                 new ReviewQueryApi.StoreReviewGetQuery(context(r, false, null), id(reviewId)));
-        Map<String, Object> data = summary(detail.review());
+        Map<String, Object> data = ownerSummary(detail.review());
         data.put("appealReason", detail.appealReason());
         data.put("appealCreatedAt", detail.appealCreatedAt());
         data.put("decisionReason", detail.decisionReason());
@@ -150,6 +183,7 @@ public final class MerchantReviewAppealController {
 
     // -------------------------------------------------------------- shapes / errors
 
+    /** Admin-face review facts: the contract-56 twelve keys only (no buyer identity). */
     private static Map<String, Object> summary(ReviewSummary s) {
         Map<String, Object> data = new LinkedHashMap<>();
         data.put("reviewId", s.reviewId());
@@ -164,6 +198,17 @@ public final class MerchantReviewAppealController {
         data.put("createdAt", s.createdAt());
         data.put("appealStatus", s.appealStatus());
         data.put("appealId", s.appealId());
+        return data;
+    }
+
+    /**
+     * OWNER store face (MerchantReviewSummary/Detail): the twelve keys plus the contract 56 §7
+     * nullable buyer identity — raw nickname and the https avatar link, never userId/phone.
+     */
+    private static Map<String, Object> ownerSummary(ReviewSummary s) {
+        Map<String, Object> data = summary(s);
+        data.put("reviewerNickname", s.reviewerNickname());
+        data.put("reviewerAvatarUrl", s.reviewerAvatarUrl());
         return data;
     }
 

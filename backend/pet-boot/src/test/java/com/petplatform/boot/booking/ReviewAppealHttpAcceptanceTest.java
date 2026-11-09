@@ -265,6 +265,120 @@ class ReviewAppealHttpAcceptanceTest {
         }
     }
 
+    /**
+     * CCR-M-REVIEW-VIEW-001 (contract 56 §7): the OWNER list/detail carry the raw buyer nickname
+     * and the https avatar link (null until the buyer sets them; internal asset forms never
+     * cross), the admin face keeps its twelve-key review facts, and GET
+     * /merchant/reviews/summary serves the store aggregate under the list's OWNER/coordinate
+     * discipline (empty 0/0/null, foreign coordinates 403, buyer 403, anonymous 401, strict
+     * params 400, no-store) with HIDDEN included reviews still scored.
+     */
+    @Test void ownerIdentityProjectionAndStoreAggregate() throws Exception {
+        try (var f = new AfterSaleHttpFixture(reviewToggles())) {
+            f.ordinary.t.r.f.f.db.script("14-Command-Idempotency-Schema-v0.1.sql");
+            String summary = "/merchant/reviews/summary?merchantId=" + MERCHANT + "&storeId=" + STORE;
+
+            // Empty store: explicit zeros and a null average, never a fabricated score.
+            var empty = f.send("GET", summary, null, f.ownerToken);
+            assertEquals(200, empty.status(), empty.toString());
+            assertEquals(Set.of("totalReviews", "scoredCount", "averageScore", "scoreCounts"),
+                    empty.data().keySet());
+            assertEquals(0L, ((Number) empty.data().get("totalReviews")).longValue());
+            assertEquals(0L, ((Number) empty.data().get("scoredCount")).longValue());
+            assertNull(empty.data().get("averageScore"));
+            assertEquals(Map.of("1", 0L, "2", 0L, "3", 0L, "4", 0L, "5", 0L), counts(empty));
+            assertEquals("no-store, private", empty.headers().firstValue("Cache-Control").orElseThrow());
+
+            // One published review (5/4/3 -> composite 4.2 -> ROUND bucket 4).
+            String reviewId = publishedReview(f);
+            var one = f.send("GET", summary, null, f.ownerToken);
+            assertEquals(200, one.status(), one.toString());
+            assertEquals(1L, ((Number) one.data().get("totalReviews")).longValue());
+            assertEquals(1L, ((Number) one.data().get("scoredCount")).longValue());
+            assertEquals("4.2", one.value("averageScore"));
+            assertEquals(Map.of("1", 0L, "2", 0L, "3", 0L, "4", 1L, "5", 0L), counts(one));
+
+            // Identity: a WeChat-registered buyer starts without nickname/avatar -> both null.
+            // (The deep booking fixture seeds the buyer as "Booking QA"; clear it first so the
+            // null-degradation path actually runs — the raw projection is asserted below.)
+            f.sql("UPDATE user_account SET nickname=NULL, avatar_url=NULL WHERE id="
+                    + AfterSaleHttpFixture.BUYER);
+            Map<String, Object> bare = firstItem(f);
+            assertTrue(bare.containsKey("reviewerNickname"));
+            assertTrue(bare.containsKey("reviewerAvatarUrl"));
+            assertNull(bare.get("reviewerNickname"));
+            assertNull(bare.get("reviewerAvatarUrl"));
+            assertFalse(bare.containsKey("userId"));
+
+            // The raw nickname (never masked) and the https avatar link are projected as-is.
+            f.sql("UPDATE user_account SET nickname='林晓雨', "
+                    + "avatar_url='https://thirdwx.qlogo.cn/mmopen/qa-avatar.png' WHERE id="
+                    + AfterSaleHttpFixture.BUYER);
+            Map<String, Object> named = firstItem(f);
+            assertEquals("林晓雨", named.get("reviewerNickname"));
+            assertEquals("https://thirdwx.qlogo.cn/mmopen/qa-avatar.png", named.get("reviewerAvatarUrl"));
+            var detail = f.send("GET", "/merchant/reviews/" + reviewId, null, f.ownerToken);
+            assertEquals(200, detail.status(), detail.toString());
+            assertEquals("林晓雨", detail.value("reviewerNickname"));
+            assertEquals("https://thirdwx.qlogo.cn/mmopen/qa-avatar.png", detail.value("reviewerAvatarUrl"));
+            assertFalse(detail.data().toString().contains("13800000100"), "no buyer phone on the M face");
+            // An internal avatar reference form never crosses the user domain.
+            f.sql("UPDATE user_account SET avatar_url='asset:900199900001' WHERE id="
+                    + AfterSaleHttpFixture.BUYER);
+            assertNull(firstItem(f).get("reviewerAvatarUrl"));
+
+            // Admin face: the appealed review facts keep the contract-56 twelve keys only.
+            var appealed = f.send("POST", appealPath(reviewId),
+                    Map.of("reason", "评价包含不实描述，申请核查"), f.ownerToken);
+            assertEquals(201, appealed.status(), appealed.toString());
+            String appealId = appealed.value("appealId");
+            var adminDetail = f.send("GET", "/admin/review-appeals/" + appealId, null, f.adminToken);
+            assertEquals(200, adminDetail.status(), adminDetail.toString());
+            @SuppressWarnings("unchecked")
+            Map<String, Object> adminReview = (Map<String, Object>) adminDetail.data().get("review");
+            assertFalse(adminReview.containsKey("reviewerNickname"));
+            assertFalse(adminReview.containsKey("reviewerAvatarUrl"));
+
+            // APPROVED hides the review; the OWNER keeps identity and the score stays included.
+            var decision = f.send("POST", "/admin/review-appeals/" + appealId + "/decision",
+                    Map.of("decisionType", "APPROVED", "reason", "核查属实，隐藏处理"), f.adminToken);
+            assertEquals(200, decision.status(), decision.toString());
+            Map<String, Object> hidden = firstItem(f);
+            assertEquals("HIDDEN", hidden.get("visibilityStatus"));
+            assertEquals("林晓雨", hidden.get("reviewerNickname"));
+            var afterHide = f.send("GET", summary, null, f.ownerToken);
+            assertEquals(1L, ((Number) afterHide.data().get("scoredCount")).longValue());
+            assertEquals("4.2", afterHide.value("averageScore"));
+
+            // Authority + strict transport on the summary route.
+            assertError(f.send("GET", "/merchant/reviews/summary?merchantId=900199999999&storeId="
+                    + STORE, null, f.ownerToken), 403, "COMMON_FORBIDDEN");
+            assertError(f.send("GET", summary, null, f.buyerToken), 403, "COMMON_FORBIDDEN");
+            assertError(f.send("GET", summary, null, f.otherToken), 403, "COMMON_FORBIDDEN");
+            assertEquals(401, f.send("GET", summary, null, (String) null).status());
+            assertError(f.send("GET", summary + "&page=1", null, f.ownerToken),
+                    400, "COMMON_INVALID_ARGUMENT");
+            assertError(f.send("GET", "/merchant/reviews/summary?merchantId=" + MERCHANT, null,
+                    f.ownerToken), 400, "COMMON_INVALID_ARGUMENT");
+        }
+    }
+
+    @SuppressWarnings("unchecked")
+    private static Map<String, Object> firstItem(AfterSaleHttpFixture f) throws Exception {
+        var list = f.send("GET", "/merchant/reviews?merchantId=" + MERCHANT + "&storeId=" + STORE,
+                null, f.ownerToken);
+        assertEquals(200, list.status(), list.toString());
+        return ((List<Map<String, Object>>) list.data().get("items")).get(0);
+    }
+
+    @SuppressWarnings("unchecked")
+    private static Map<String, Long> counts(AfterSaleHttpFixture.Reply reply) {
+        Map<String, Long> counts = new LinkedHashMap<>();
+        ((Map<String, Object>) reply.data().get("scoreCounts"))
+                .forEach((star, count) -> counts.put(star, ((Number) count).longValue()));
+        return counts;
+    }
+
     /** Default-off: without pet.review.appeal.http.enabled every new route stays unreachable. */
     @Test void appealFaceStaysOffWithoutItsSwitch() throws Exception {
         try (var f = new AfterSaleHttpFixture(Map.of(
@@ -274,6 +388,8 @@ class ReviewAppealHttpAcceptanceTest {
             assertEquals(403, f.send("GET", "/merchant/reviews?merchantId=" + MERCHANT
                     + "&storeId=" + STORE, null, f.ownerToken).status());
             assertEquals(403, f.send("GET", "/merchant/reviews/" + reviewId, null, f.ownerToken).status());
+            assertEquals(403, f.send("GET", "/merchant/reviews/summary?merchantId=" + MERCHANT
+                    + "&storeId=" + STORE, null, f.ownerToken).status());
             assertEquals(403, f.send("POST", appealPath(reviewId),
                     Map.of("reason", "未开放的申诉面"), f.ownerToken).status());
             assertEquals(403, f.send("GET", "/admin/review-appeals", null, f.adminToken).status());

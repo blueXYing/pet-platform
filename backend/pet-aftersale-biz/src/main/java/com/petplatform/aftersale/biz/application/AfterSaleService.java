@@ -15,6 +15,8 @@ import com.petplatform.payment.api.query.RefundFundingEvidenceChecks;
 import com.petplatform.refund.api.command.RefundAfterSaleCommandApi;
 import com.petplatform.refund.api.query.RefundApplicationHistoryFactsApi;
 import com.petplatform.schedule.api.protection.ScheduleCapacityGuardApi;
+import com.petplatform.user.api.dto.UserBasicDTO;
+import com.petplatform.user.api.query.UserQueryApi;
 import java.math.BigDecimal;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
@@ -46,18 +48,21 @@ public final class AfterSaleService implements AfterSaleCommandApi, AfterSaleQue
     private final RefundApplicationHistoryFactsApi history; private final RefundAfterSaleCommandApi refunds;
     private final RefundFundingEligibilityFactsApi funding; private final Authority authority; private final ReasonPolicy reasons;
     private final Moderation moderation; private final Protection protection; private final Assets assets; private final Tasks tasks;
+    /** CCR-M-AFTERSALE-VIEW-001: merchant-read customer nickname only (masked basics; phone/avatar never projected). */
+    private final UserQueryApi users;
     private final Map<Object,Map<Long,String>> liveCommands=new ConcurrentHashMap<>(); private long scanAfter;
 
     public AfterSaleService(DataSource source, ScheduleCapacityGuardApi guard, SnowflakeIdGenerator ids,
             IntegrationEventPublisher events, OrderAfterSaleFactsApi orders, OrderAfterSaleCommitApi commits,
             RefundApplicationHistoryFactsApi history, RefundAfterSaleCommandApi refunds,
             RefundFundingEligibilityFactsApi funding, Authority authority, ReasonPolicy reasons,
-            Moderation moderation, Protection protection, Assets assets, Tasks tasks) {
+            Moderation moderation, Protection protection, Assets assets, Tasks tasks, UserQueryApi users) {
         this.source=Objects.requireNonNull(source);this.guard=Objects.requireNonNull(guard);this.ids=Objects.requireNonNull(ids);
         this.events=Objects.requireNonNull(events);this.orders=Objects.requireNonNull(orders);this.commits=Objects.requireNonNull(commits);
         this.history=Objects.requireNonNull(history);this.refunds=Objects.requireNonNull(refunds);this.funding=Objects.requireNonNull(funding);
         this.authority=Objects.requireNonNull(authority);this.reasons=Objects.requireNonNull(reasons);this.moderation=Objects.requireNonNull(moderation);
         this.protection=Objects.requireNonNull(protection);this.assets=Objects.requireNonNull(assets);this.tasks=Objects.requireNonNull(tasks);
+        this.users=Objects.requireNonNull(users);
         db=AfterSaleWorkflowStore.mapper(source);tx=new TransactionTemplate(new DataSourceTransactionManager(source));
         tx.setIsolationLevel(TransactionDefinition.ISOLATION_READ_COMMITTED);tx.setPropagationBehavior(TransactionDefinition.PROPAGATION_REQUIRES_NEW);
     }
@@ -262,8 +267,10 @@ public final class AfterSaleService implements AfterSaleCommandApi, AfterSaleQue
             var round=row.currentSupplementId==null?null:round(row,row.currentSupplementId);var prior=finalCases(row.orderId);var batches=new ArrayList<EvidenceBatch>();
             for(var b:db.batches(row.id)){var body=batchBody(b);batches.add(new EvidenceBatch(str(b.id),b.submitterType,body.text(),body.opinionCode(),time(offset(b.createdAt)),db.assets(b.id).stream().map(a->str(a.assetId)).toList()));}
             var decision=row.decisionId==null?null:decisionProof(row.decisionId);String reason=row.decisionId==null?null:decode("DECISION_REASON:"+row.decisionId,db.decision(row.decisionId).reasonCipher,String.class);
+            // CCR-M-AFTERSALE-VIEW-001: labels only after the current OWNER read was proven for this exact case.
+            var labels="MERCHANT".equals(access.party())?merchantLabels(List.of(row),str(row.storeId),context).get(row.id):null;
             before(()->{if(!access.equals(selectedRead(context,row,routeParty)))throw forbidden();});
-            return new CaseView(str(row.id),str(row.orderId),row.status,str(row.version),row.sourceStage,row.typeCode,row.demandCode,content.description(),row.requestedAmount,time(offset(row.createdAt)),time(offset(row.eligibilityDeadline)),nullable(row.currentSupplementId),round==null?null:round.targetParty,round==null?null:time(offset(round.deadline)),round==null?null:decode("SUPPLEMENT:"+round.id,round.reasonCipher,String.class),finalVersion(prior),prior,content.newProblemStatement(),decision==null?null:decision.decisionType(),decision==null?null:decision.refundAmount(),reason,batches);
+            return new CaseView(str(row.id),str(row.orderId),row.status,str(row.version),row.sourceStage,row.typeCode,row.demandCode,content.description(),row.requestedAmount,time(offset(row.createdAt)),time(offset(row.eligibilityDeadline)),nullable(row.currentSupplementId),round==null?null:round.targetParty,round==null?null:time(offset(round.deadline)),round==null?null:decode("SUPPLEMENT:"+round.id,round.reasonCipher,String.class),finalVersion(prior),prior,content.newProblemStatement(),decision==null?null:decision.decisionType(),decision==null?null:decision.refundAmount(),reason,batches,labels);
         });
     });}
     @Override public CasePage listMine(CommandContext context,ListQuery query){return safe(()->{
@@ -279,7 +286,7 @@ public final class AfterSaleService implements AfterSaleCommandApi, AfterSaleQue
         return tx.execute(s->{defaults();guard.acquire(List.of(storeId),system(context));
             String access=authorityVersion(authority.requireStoreRead(context,routeParty,merchantId,storeId));
             var filters=listFilters(query);filters.put("merchant",id(merchantId));filters.put("store",id(storeId));
-            var result=casePage(query,filters);
+            var result=casePage(query,filters,routeParty==RouteParty.MERCHANT?storeId:null,context);
             before(()->{if(!access.equals(authorityVersion(authority.requireStoreRead(context,routeParty,merchantId,storeId))))throw forbidden();});return result;
         });
     });}
@@ -288,14 +295,45 @@ public final class AfterSaleService implements AfterSaleCommandApi, AfterSaleQue
         if(q.status()!=null&&!LIVE.contains(q.status())&&!ENDED.contains(q.status()))throw invalid();if(q.orderId()!=null)id(q.orderId());
     }
     private static Map<String,Object> listFilters(ListQuery q){return values("user",null,"merchant",null,"store",null,"status",q.status(),"order",optionalId(q.orderId()),"limit",q.pageSize(),"offset",(q.page()-1)*q.pageSize());}
-    private CasePage casePage(ListQuery q,Map<String,Object> filters){
-        long total=db.countCases(filters);var items=new ArrayList<CaseSummary>();
-        for(var row:db.listCases(filters)){
-            validCaseRow(row);origin(row);
-            items.add(new CaseSummary(str(row.id),str(row.orderId),str(row.merchantId),str(row.storeId),row.status,str(row.version),row.sourceStage,row.typeCode,row.demandCode,row.requestedAmount,time(offset(row.createdAt)),time(offset(row.eligibilityDeadline))));
-        }
+    private CasePage casePage(ListQuery q,Map<String,Object> filters){return casePage(q,filters,null,null);}
+    /** labelStore is non-null only for a proven MERCHANT store read (CCR-M-AFTERSALE-VIEW-001). */
+    private CasePage casePage(ListQuery q,Map<String,Object> filters,String labelStore,CommandContext context){
+        long total=db.countCases(filters);var rows=new ArrayList<AfterSaleWorkflowMapper.CaseRow>();
+        for(var row:db.listCases(filters)){validCaseRow(row);origin(row);rows.add(row);}
+        var labels=labelStore==null?Map.<Long,CaseLabels>of():merchantLabels(rows,labelStore,context);
+        var items=new ArrayList<CaseSummary>();
+        for(var row:rows)items.add(new CaseSummary(str(row.id),str(row.orderId),str(row.merchantId),str(row.storeId),row.status,str(row.version),row.sourceStage,row.typeCode,row.demandCode,row.requestedAmount,time(offset(row.createdAt)),time(offset(row.eligibilityDeadline)),labelStore==null?null:labels.get(row.id)));
         return new CasePage(q.page(),q.pageSize(),total,items);
     }
+    /**
+     * CCR-M-AFTERSALE-VIEW-001 (approved 2026-11-06): display labels for rows whose current OWNER
+     * read has already been proven, inside the same READ_COMMITTED transaction and held store guard.
+     * One batched ORDER snapshot read plus one batched user-basics read per page (never per row,
+     * never across stores). Only the nickname is taken from the basics: the masked phone and the
+     * avatar never enter this projection. Absent or blank facts read null; foreign answers fail closed.
+     * Package-private for the boundary unit test only.
+     */
+    Map<Long,CaseLabels> merchantLabels(List<AfterSaleWorkflowMapper.CaseRow> rows,String storeId,CommandContext context){
+        var result=new LinkedHashMap<Long,CaseLabels>();if(rows.isEmpty())return result;
+        var orderIds=new ArrayList<String>();var userIds=new ArrayList<String>();
+        for(var row:rows){
+            if(!storeId.equals(str(row.storeId)))throw bad();
+            String order=str(row.orderId),user=str(row.userId);if(!orderIds.contains(order))orderIds.add(order);if(!userIds.contains(user))userIds.add(user);
+        }
+        var snapshots=new HashMap<String,OrderAfterSaleFactsApi.DisplayLabel>();
+        var answered=orders.displayLabels(List.copyOf(orderIds),storeId,system(context),source);if(answered==null)throw bad();
+        for(var label:answered)if(label==null||!orderIds.contains(label.orderId())||snapshots.put(label.orderId(),label)!=null)throw bad();
+        var nicknames=new HashMap<String,String>();
+        List<UserBasicDTO> basics=users.listUsers(new UserQueryApi.UserBasicsQuery(List.copyOf(userIds)));if(basics==null)throw bad();
+        for(var basic:basics){if(basic==null||!userIds.contains(basic.userId())||nicknames.containsKey(basic.userId()))throw bad();nicknames.put(basic.userId(),present(basic.nickname()));}
+        for(var row:rows){
+            var snapshot=snapshots.get(str(row.orderId));
+            result.put(row.id,new CaseLabels(nicknames.get(str(row.userId)),snapshot==null?null:present(snapshot.serviceName()),
+                    snapshot==null?null:present(snapshot.petName()),snapshot==null?null:present(snapshot.petType()),snapshot==null?null:present(snapshot.petBreed())));
+        }
+        return result;
+    }
+    private static String present(String value){return value==null||value.isBlank()?null:value;}
     private ReadAuthority selectedRead(CommandContext context,AfterSaleWorkflowMapper.CaseRow row,RouteParty routeParty){
         queryActor(context,routeParty);if(routeParty==RouteParty.USER&&!context.operatorId().equals(str(row.userId)))throw forbidden();
         var result=routeParty==null?authority.requireRead(context,resource(row)):authority.requireRead(context,resource(row),routeParty);

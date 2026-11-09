@@ -182,7 +182,7 @@ public final class MerchantCustomerQueryService {
             if (basic == null) {
                 // The order exists but the account is gone/canceled: keep the derived row with
                 // the least disclosure (no nickname, no phone), counts stay factual.
-                basic = new UserBasicDTO(IDS.toApi(row.getUserId()), null, null, null);
+                basic = new UserBasicDTO(IDS.toApi(row.getUserId()), null, null, null, null);
             }
             BigDecimal spend = money(row.getTotalSpend());
             BigDecimal avg = row.getOrderCount() == null || row.getOrderCount() == 0 ? null

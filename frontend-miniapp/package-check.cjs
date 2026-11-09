@@ -74,7 +74,9 @@ assert.deepEqual(packages.map(p => ({ root: p.root, pages: p.pages })), [
     // 2026-10-19 CCR expansion: 70号 service drill-down page.
     'pages/stats/service-orders',
     // Contract 71 merchant marketing center (2026-10-27 CCR-MKT-001).
-    'pages/marketing/index'] },
+    'pages/marketing/index',
+    // 2026-11-04 Figma restore PR #211 batch 1: user-approved minimal "我的" hub above the tab bar.
+    'pages/mine/index'] },
   { root: 'consumer/pages/pet-archive', pages: ['index', 'detail', 'form', 'vaccine-form', 'deworm-form'] },
   { root: 'consumer/pages/merchant-application', pages: ['index', 'signing'] },
   { root: 'consumer/pages/store-services', pages: ['index', 'service-detail', 'stores', 'hot-services'] },

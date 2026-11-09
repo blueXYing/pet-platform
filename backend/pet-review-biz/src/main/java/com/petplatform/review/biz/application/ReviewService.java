@@ -21,8 +21,11 @@ import com.petplatform.review.biz.infrastructure.persistence.entity.AppealListRo
 import com.petplatform.review.biz.infrastructure.persistence.entity.ReviewAppealRowEntity;
 import com.petplatform.review.biz.infrastructure.persistence.entity.ReviewListRowEntity;
 import com.petplatform.review.biz.infrastructure.persistence.entity.ReviewScoreSummaryEntity;
+import com.petplatform.review.biz.infrastructure.persistence.entity.ReviewStoreAggregateEntity;
 import com.petplatform.review.biz.infrastructure.persistence.entity.ReviewStoreRatingRowEntity;
 import com.petplatform.review.biz.infrastructure.persistence.entity.ReviewRowEntity;
+import com.petplatform.user.api.dto.UserBasicDTO;
+import com.petplatform.user.api.query.UserQueryApi;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.Clock;
@@ -49,7 +52,9 @@ import java.util.Set;
  * from the eligibility verdict. The REV-002 appeal flow (CCR-REVIEW-APPEAL-001 / contract 56,
  * 2026-10-10) rides the same kernel: one appeal per review (SSOT §11.3 + uk_review_appeal_once),
  * operator decisions are Schema06's terminal APPROVED/REJECTED only, APPROVED hides the review,
- * and no aftersale re-review exists anywhere in this surface.
+ * and no aftersale re-review exists anywhere in this surface. CCR-M-REVIEW-VIEW-001 (contract
+ * 56 §7, 2026-11-06) adds the OWNER-only buyer nickname/avatar projection (user api basics,
+ * never userId/phone) and the read-only full-history store rating aggregate.
  */
 public final class ReviewService implements ReviewQueryApi, ReviewCommandApi, ReviewPublicFactsApi {
     private static final DecimalPublicIdCodec IDS = new DecimalPublicIdCodec();
@@ -62,6 +67,8 @@ public final class ReviewService implements ReviewQueryApi, ReviewCommandApi, Re
     private final Clock clock;
     private final ScheduleCapacityGuardApi guard;
     private final ReviewAppealPorts appealAuthority;
+    /** CCR-M-REVIEW-VIEW-001 buyer basics port (user api only; never the user biz). */
+    private final UserQueryApi users;
 
     public ReviewService(ReviewStore store, OrderQueryApi orders) {
         this(store, orders, Clock.systemUTC());
@@ -75,11 +82,20 @@ public final class ReviewService implements ReviewQueryApi, ReviewCommandApi, Re
      *  OWNER/admin authority (boot assembles them under pet.review.appeal.enabled). */
     public ReviewService(ReviewStore store, OrderQueryApi orders, Clock clock,
             ScheduleCapacityGuardApi guard, ReviewAppealPorts appealAuthority) {
+        this(store, orders, clock, guard, appealAuthority, null);
+    }
+
+    /** CCR-M-REVIEW-VIEW-001 assembly: the OWNER store reads additionally project the buyer
+     *  nickname/avatar through the user basics port; without it those reads fail closed. */
+    public ReviewService(ReviewStore store, OrderQueryApi orders, Clock clock,
+            ScheduleCapacityGuardApi guard, ReviewAppealPorts appealAuthority,
+            UserQueryApi users) {
         this.store = Objects.requireNonNull(store, "store is required");
         this.orders = Objects.requireNonNull(orders, "orders is required");
         this.clock = Objects.requireNonNull(clock, "clock is required");
         this.guard = guard;
         this.appealAuthority = appealAuthority;
+        this.users = users;
     }
 
     // ------------------------------------------------------------------ §14.1 read
@@ -459,6 +475,7 @@ public final class ReviewService implements ReviewQueryApi, ReviewCommandApi, Re
         Objects.requireNonNull(query, "query is required");
         CommandContext context = userAppealContext(query.context());
         requireAppealAssembled();
+        requireReviewerFacts();
         long merchantId = IDS.fromApi(idString(query.merchantId()));
         long storeId = IDS.fromApi(idString(query.storeId()));
         int page = page(query.page(), 1, 10_000);
@@ -468,11 +485,72 @@ public final class ReviewService implements ReviewQueryApi, ReviewCommandApi, Re
             acquireGuard(query.storeId(), context);
             appealAuthority.requireReviewOwnerRead(context, query.merchantId(), query.storeId());
             long total = m.countStoreReviews(merchantId, storeId);
-            List<ReviewSummary> items = m.pageStoreReviews(merchantId, storeId,
-                    (long) (page - 1) * pageSize, pageSize).stream().map(ReviewService::summary)
-                    .toList();
+            List<ReviewListRowEntity> rows = m.pageStoreReviews(merchantId, storeId,
+                    (long) (page - 1) * pageSize, pageSize);
+            // CCR-M-REVIEW-VIEW-001: one batched buyer basics read for the page, after the
+            // OWNER proof; HIDDEN rows keep the same field range for the OWNER.
+            Map<Long, UserBasicDTO> reviewers = reviewers(
+                    rows.stream().map(ReviewListRowEntity::getUserId).toList());
+            List<ReviewSummary> items = rows.stream()
+                    .map(row -> summary(row, reviewers.get(row.getUserId()))).toList();
             return new ReviewPage(page, pageSize, total, items);
         });
+    }
+
+    /**
+     * CCR-M-REVIEW-VIEW-001 (contract 56 §7) OWNER store rating aggregate: the claimed
+     * coordinates are proven under the store guard (existing-store read family) before the
+     * single aggregate read; no individual review content leaves this method.
+     */
+    @Override
+    public StoreReviewAggregate storeReviewAggregate(StoreReviewAggregateQuery query) {
+        Objects.requireNonNull(query, "query is required");
+        CommandContext context = userAppealContext(query.context());
+        requireAppealAssembled();
+        String merchantIdApi = idString(query.merchantId());
+        String storeIdApi = idString(query.storeId());
+        long merchantId = IDS.fromApi(merchantIdApi);
+        long storeId = IDS.fromApi(storeIdApi);
+        return store.execute(m -> {
+            acquireGuard(storeIdApi, context);
+            appealAuthority.requireReviewOwnerRead(context, merchantIdApi, storeIdApi);
+            ReviewStoreAggregateEntity row = m.storeReviewAggregate(merchantId, storeId);
+            return aggregate(row);
+        });
+    }
+
+    /** Damaged aggregate reads fail closed (503), never a fake 0/null fact. */
+    static StoreReviewAggregate aggregate(ReviewStoreAggregateEntity row) {
+        if (row == null || row.getTotalReviews() == null || row.getScoredCount() == null
+                || row.getScore1() == null || row.getScore2() == null || row.getScore3() == null
+                || row.getScore4() == null || row.getScore5() == null) {
+            throw new ApiException(CommonApiCodes.DEPENDENCY_UNAVAILABLE,
+                    "store review aggregate is unavailable");
+        }
+        long total = row.getTotalReviews();
+        long scored = row.getScoredCount();
+        long[] buckets = {row.getScore1(), row.getScore2(), row.getScore3(), row.getScore4(),
+                row.getScore5()};
+        long bucketed = 0;
+        boolean negative = false;
+        for (long bucket : buckets) {
+            negative |= bucket < 0;
+            bucketed += bucket;
+        }
+        // Every included composite lies in 1.0..5.0, so the five ROUND buckets partition the
+        // scored rows exactly; an included average exists iff at least one row is scored.
+        if (negative || total < 0 || scored < 0 || scored > total || bucketed != scored
+                || (scored == 0) != (row.getAvgScore() == null)) {
+            throw new ApiException(CommonApiCodes.DEPENDENCY_UNAVAILABLE,
+                    "store review aggregate is inconsistent");
+        }
+        Map<String, Long> counts = new LinkedHashMap<>();
+        for (int star = 1; star <= 5; star++) {
+            counts.put(Integer.toString(star), buckets[star - 1]);
+        }
+        String average = scored == 0 ? null
+                : row.getAvgScore().setScale(1, RoundingMode.HALF_UP).toPlainString();
+        return new StoreReviewAggregate(total, scored, average, counts);
     }
 
     @Override
@@ -480,6 +558,7 @@ public final class ReviewService implements ReviewQueryApi, ReviewCommandApi, Re
         Objects.requireNonNull(query, "query is required");
         CommandContext context = userAppealContext(query.context());
         requireAppealAssembled();
+        requireReviewerFacts();
         String reviewIdApi = idString(query.reviewId());
         return store.execute(m -> {
             ReviewRowEntity review = m.selectReviewById(IDS.fromApi(reviewIdApi));
@@ -495,7 +574,10 @@ public final class ReviewService implements ReviewQueryApi, ReviewCommandApi, Re
                 throw new ApiException("REVIEW_NOT_FOUND", "评价不存在");
             }
             ReviewAppealRowEntity appeal = m.selectAppealByReviewId(review.getId());
-            return detail(summaryOf(review), appeal);
+            // CCR-M-REVIEW-VIEW-001: the single buyer's basics, read only after the OWNER proof.
+            Long buyer = review.getUserId();
+            UserBasicDTO reviewer = buyer == null ? null : reviewers(List.of(buyer)).get(buyer);
+            return detail(summaryOf(review, reviewer), appeal);
         });
     }
 
@@ -568,6 +650,77 @@ public final class ReviewService implements ReviewQueryApi, ReviewCommandApi, Re
         if (guard == null || appealAuthority == null) {
             throw new ApiException(CommonApiCodes.DEPENDENCY_UNAVAILABLE, "评价申诉能力未装配");
         }
+    }
+
+    /** OWNER store reads project the buyer identity; without the port they fail closed rather
+     *  than silently rendering every buyer as anonymous (CCR-M-REVIEW-VIEW-001). */
+    private void requireReviewerFacts() {
+        if (users == null) {
+            throw new ApiException(CommonApiCodes.DEPENDENCY_UNAVAILABLE, "评价买家信息能力未装配");
+        }
+    }
+
+    /** UserQueryApi.listUsers admits 1..200 canonical ids per call (contract 69). */
+    private static final int REVIEWER_BATCH = 200;
+
+    /**
+     * CCR-M-REVIEW-VIEW-001 batched buyer basics keyed by user id. Absent accounts simply stay
+     * unprojected (null identity, the page shows 匿名用户); an unreadable user fact fails the
+     * read closed (503), never a fake anonymous row (contract-69 precedent).
+     */
+    private Map<Long, UserBasicDTO> reviewers(List<Long> userIds) {
+        Set<Long> distinct = new LinkedHashSet<>();
+        for (Long userId : userIds) {
+            if (userId != null) distinct.add(userId);
+        }
+        Map<Long, UserBasicDTO> basics = new LinkedHashMap<>();
+        List<String> batch = new ArrayList<>();
+        for (long userId : distinct) {
+            batch.add(IDS.toApi(userId));
+            if (batch.size() == REVIEWER_BATCH) {
+                consumeReviewers(basics, batch);
+                batch = new ArrayList<>();
+            }
+        }
+        consumeReviewers(basics, batch);
+        return basics;
+    }
+
+    private void consumeReviewers(Map<Long, UserBasicDTO> basics, List<String> ids) {
+        if (ids.isEmpty()) return;
+        List<UserBasicDTO> batch;
+        try {
+            batch = users.listUsers(new UserQueryApi.UserBasicsQuery(List.copyOf(ids)));
+        } catch (RuntimeException failure) {
+            throw new ApiException(CommonApiCodes.DEPENDENCY_UNAVAILABLE, "评价买家信息不可用");
+        }
+        if (batch == null) {
+            throw new ApiException(CommonApiCodes.DEPENDENCY_UNAVAILABLE, "评价买家信息不可用");
+        }
+        for (UserBasicDTO basic : batch) {
+            long userId;
+            try {
+                userId = IDS.fromApi(basic.userId());
+            } catch (RuntimeException damaged) {
+                throw new ApiException(CommonApiCodes.DEPENDENCY_UNAVAILABLE, "评价买家信息不可用");
+            }
+            basics.put(userId, basic);
+        }
+    }
+
+    /** Raw nickname (contract 56 §7: never masked); null when the account is absent. */
+    private static String reviewerNickname(UserBasicDTO reviewer) {
+        return reviewer == null ? null : reviewer.nickname();
+    }
+
+    /**
+     * Only the external https avatar link (UserBasicDTO: WeChat avatar, untrusted content)
+     * crosses to the merchant; anything else (absent, oversized, an internal reference form)
+     * degrades to null so the page renders the initial placeholder.
+     */
+    private static String reviewerAvatarUrl(UserBasicDTO reviewer) {
+        String url = reviewer == null ? null : reviewer.avatarUrl();
+        return url != null && url.startsWith("https://") && url.length() <= 512 ? url : null;
     }
 
     /** Guard + OWNER write authority inside the caller's execution transaction. */
@@ -659,21 +812,28 @@ public final class ReviewService implements ReviewQueryApi, ReviewCommandApi, Re
         return value == null ? null : value.toPlainString();
     }
 
+    /** Admin/appeal-side projection: no buyer identity outside the OWNER store reads. */
     private static ReviewSummary summaryOf(ReviewRowEntity review) {
+        return summaryOf(review, null);
+    }
+
+    private static ReviewSummary summaryOf(ReviewRowEntity review, UserBasicDTO reviewer) {
         return new ReviewSummary(IDS.toApi(review.getId()), IDS.toApi(review.getOrderId()),
                 score(review.getStoreScore()), score(review.getServiceScore()),
                 score(review.getStaffScore()), score(review.getCompositeScore()),
                 Boolean.TRUE.equals(review.getScoreIncluded()), review.getVisibilityStatus(),
-                review.getContent(), instant(review.getCreatedAt()), null, null);
+                review.getContent(), instant(review.getCreatedAt()), null, null,
+                reviewerNickname(reviewer), reviewerAvatarUrl(reviewer));
     }
 
-    private static ReviewSummary summary(ReviewListRowEntity row) {
+    private static ReviewSummary summary(ReviewListRowEntity row, UserBasicDTO reviewer) {
         return new ReviewSummary(IDS.toApi(row.getId()), IDS.toApi(row.getOrderId()),
                 score(row.getStoreScore()), score(row.getServiceScore()),
                 score(row.getStaffScore()), score(row.getCompositeScore()),
                 Boolean.TRUE.equals(row.getScoreIncluded()), row.getVisibilityStatus(),
                 row.getContent(), instant(row.getCreatedAt()), row.getAppealStatus(),
-                row.getAppealId() == null ? null : IDS.toApi(row.getAppealId()));
+                row.getAppealId() == null ? null : IDS.toApi(row.getAppealId()),
+                reviewerNickname(reviewer), reviewerAvatarUrl(reviewer));
     }
 
     private static ReviewDetail detail(ReviewSummary review, ReviewAppealRowEntity appeal) {
@@ -682,7 +842,8 @@ public final class ReviewService implements ReviewQueryApi, ReviewCommandApi, Re
                 new ReviewSummary(review.reviewId(), review.orderId(), review.storeScore(),
                         review.serviceScore(), review.staffScore(), review.compositeScore(),
                         review.scoreIncluded(), review.visibilityStatus(), review.content(),
-                        review.createdAt(), appeal.getStatus(), IDS.toApi(appeal.getId())),
+                        review.createdAt(), appeal.getStatus(), IDS.toApi(appeal.getId()),
+                        review.reviewerNickname(), review.reviewerAvatarUrl()),
                 appeal.getReason(), instant(appeal.getCreatedAt()),
                 appeal.getDecisionReason(), instant(appeal.getDecidedAt()));
     }

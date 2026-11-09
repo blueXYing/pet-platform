@@ -22,6 +22,8 @@ import org.springframework.transaction.support.TransactionTemplate;
  * STORE_PHOTO images with a versioned normalized object sign; application/identity materials,
  * covers, scanning or retired assets never reach the signer, and pointers/credentials never leave
  * this module. Failures surface as COMMON_DEPENDENCY_UNAVAILABLE without provider details.
+ * The CCR-M-STORE-AVATAR-001 M face (signOwnedStorePhoto) additionally re-proves the requesting
+ * OWNER's ownership of the asset inside the same signing transaction.
  */
 public final class StorePhotoSigningApiImpl implements StorePhotoSigningApi {
   private final PrivateAssetRepository repository;
@@ -44,16 +46,32 @@ public final class StorePhotoSigningApiImpl implements StorePhotoSigningApi {
   @Override
   public SignedStorePhoto signStorePhoto(String assetId, QueryContext context) {
     if (context == null) throw unavailable();
+    return sign(assetId, null);
+  }
+
+  /** CCR-M-STORE-AVATAR-001: the M face additionally re-proves the asset's owner in the same
+   *  signing transaction — a profile row referencing another account's asset never signs. */
+  @Override
+  public SignedStorePhoto signOwnedStorePhoto(String ownerUserId, String assetId, QueryContext context) {
+    if (context == null || ownerUserId == null || ownerUserId.isBlank()) throw unavailable();
+    return sign(assetId, ownerUserId);
+  }
+
+  private SignedStorePhoto sign(String assetId, String ownerUserId) {
     if (signer == null) throw unavailable();
     try {
-      long value = new DecimalPublicIdCodec().fromApi(assetId);
-      // Card visibility has already passed in its read-only snapshot. Suspend that transaction
-      // so the final asset current-read lock is writable and cannot reuse stale READY facts.
-      // Only local presigning occurs under this lock; no provider network request is made.
+      DecimalPublicIdCodec ids = new DecimalPublicIdCodec();
+      long value = ids.fromApi(assetId);
+      Long owner = ownerUserId == null ? null : ids.fromApi(ownerUserId);
+      // Card visibility (or the store guard) has already passed in its read-only snapshot.
+      // Suspend that transaction so the final asset current-read lock is writable and cannot
+      // reuse stale READY facts. Only local presigning occurs under this lock; no provider
+      // network request is made.
       return signingTransaction.execute(status -> repository.transaction(mapper -> {
         var asset = mapper.selectAssetForUpdate(value);
         if (asset == null || !"STORE_PHOTO".equals(asset.getPurpose())
             || !"READY".equals(asset.getStatus()) || asset.getOwnerUserId() <= 0
+            || (owner != null && asset.getOwnerUserId() != owner)
             || !("image/jpeg".equals(asset.getMediaType()) || "image/png".equals(asset.getMediaType()))
             || asset.getBytes() == null || asset.getBytes() < 1 || asset.getBytes() > 10 * 1024 * 1024
             || asset.getObjectSha256() == null || !asset.getObjectSha256().matches("[a-f0-9]{64}")

@@ -24,15 +24,30 @@ export class MerchantWorkspace {
   // F1 (window E2E 2026-09-24): revision of a workbench-initiated child navigation whose
   // hide-leave donated the coordinates, and the pending handoff itself. See handoffToChild.
   private childHandoff: number | undefined
+  private merchantPageHandoff = false
   private donatedRevision: number | undefined
+  private donatedForMerchantPage = false
   constructor(readonly scope: WorkspaceScope) {
     this.state = { status: 'idle', revision: scope.revision }
     // Our own coordinate switches also pass through here; stale guards rely on ticket
     // revision checks instead of a counter so self-driven selection is not cancelled.
-    this.unsubscribe = scope.subscribe(() => {
+    this.unsubscribe = this.bindScope()
+  }
+  private bindScope() {
+    return this.scope.subscribe(() => {
       this.ownedRevision = undefined
-      this.publish({ status: 'idle', revision: scope.revision })
+      this.publish({ status: 'idle', revision: this.scope.revision })
     })
+  }
+  /**
+   * Taro can reuse a hidden workbench page object after a merchant child/tab navigation even
+   * though the previous React tree was disposed. Re-arm the controller on the next did-show;
+   * without this, enter() sees active=false and the page stays on stale placeholders.
+   */
+  reopen() {
+    if (this.active) return
+    this.active = true
+    this.unsubscribe = this.bindScope()
   }
   getSnapshot = () => this.state
   subscribe = (listener: () => void) => {
@@ -119,11 +134,22 @@ export class MerchantWorkspace {
     this.childHandoff = this.scope.revision
   }
   /**
+   * Merchant child/tab navigation: Taro may dispose this page's React tree while the target
+   * merchant page stays in the stack (bottom tab redirectTo or a child navigateTo). The
+   * donation must therefore survive dispose(); the target page re-enters its own admission
+   * check on every show.
+   */
+  handoffToMerchantPage() {
+    this.merchantPageHandoff = true
+    this.handoffToChild()
+  }
+  /**
    * The handed-off navigation failed without hiding this page (navigateTo reject): reclaim
    * ownership so a later leave() (back to shell, account switch) still resets the coordinates.
    * No-op once the handoff actually fired (leave consumed it).
    */
   handoffCancelled() {
+    this.merchantPageHandoff = false
     if (this.childHandoff === undefined) return
     const revision = this.childHandoff
     this.childHandoff = undefined
@@ -138,12 +164,15 @@ export class MerchantWorkspace {
     // (ownedRevision check); F1 donation is the one deliberate exception — the workbench's
     // own child navigation keeps the coordinates its target page gates on.
     const donated = this.childHandoff !== undefined
+    const merchantPageDonation = donated && this.merchantPageHandoff
     const revision = this.childHandoff
     this.childHandoff = undefined
+    this.merchantPageHandoff = false
     if (donated) {
       // F1: the child page keeps the admission coordinates; remember the donated revision so
       // dispose() can still reset them if the whole workbench stack goes away (reLaunch).
       this.donatedRevision = revision
+      this.donatedForMerchantPage = merchantPageDonation
     } else if (this.ownedRevision === this.scope.revision && this.scope.current) {
       const current = this.scope.current
       this.scope.replace({ userId: current.userId, workspace: 'consumer', merchantId: null, storeId: null })
@@ -157,12 +186,17 @@ export class MerchantWorkspace {
     // the coordinates, e.g. reLaunch home from a service page) — the merchant context is over
     // and consumer personal pages gate on consumer coordinates, so reset them. A newer owner
     // (re-entered workbench, account switch) has bumped the revision and is left untouched.
-    if (this.donatedRevision !== undefined && this.donatedRevision === this.scope.revision
+    // A tab donation is deliberately exempt: Taro disposes the hidden workbench tree while the
+    // sibling tab page takes over, and that sibling still needs the merchant coordinates.
+    if (!this.donatedForMerchantPage
+      && this.donatedRevision !== undefined && this.donatedRevision === this.scope.revision
       && this.scope.current && this.scope.current.workspace === 'merchant') {
       const current = this.scope.current
       this.scope.replace({ userId: current.userId, workspace: 'consumer', merchantId: null, storeId: null })
     }
     this.donatedRevision = undefined
+    this.donatedForMerchantPage = false
+    this.merchantPageHandoff = false
     this.leave()
     this.unsubscribe()
     this.listeners.clear()

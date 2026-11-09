@@ -24,8 +24,11 @@ const summary: RefundApplicationSummary = {
   applicationId: '881001', applicationNo: '881002', orderId: '777001', status: 'PENDING_MERCHANT',
   applicationVersion: '0', reasonCode: 'QA_REASON', refundAmount: '128.00',
   createdAt: '2026-10-10T02:00:00.000Z', merchantDeadline: '2099-12-31T00:00:00.000Z',
+  // CCR-M-REFUND-VIEW-001 §3.1 keys (legacy-shape decoding is covered by refund-view-fields.test.ts).
+  customerNickname: null, customerPhoneMasked: null, serviceName: null,
 }
-const detail: RefundApplicationDetail = { ...summary, decidedAt: null, decisionId: null, refundOrderId: null }
+const detail: RefundApplicationDetail = { ...summary, decidedAt: null, decisionId: null, refundOrderId: null,
+  timeline: [{ stage: 'APPLIED', occurredAt: summary.createdAt }, { stage: 'MERCHANT_DEADLINE', occurredAt: summary.merchantDeadline }] }
 const receipt: RefundDecisionReceipt = {
   orderId: '777001', applicationId: '881001', applicationStatus: 'APPROVED',
   applicationVersion: '1', merchantDeadline: '2099-12-31T00:00:00.000Z',

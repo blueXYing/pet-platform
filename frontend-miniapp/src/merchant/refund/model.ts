@@ -1,5 +1,5 @@
 import type { MerchantAdmission } from '../../shared/merchant-repositories'
-import type { RefundApplicationDetail, RefundApplicationStatus } from '../../shared/merchant-refund-api'
+import type { CustomerView, RefundApplicationDetail, RefundApplicationStatus, RefundTimelineStage } from '../../shared/merchant-refund-api'
 
 export const refundStatusText: Record<RefundApplicationStatus, string> = {
   PENDING_MERCHANT: '待商家处理', APPROVED: '已同意退款', AUTO_APPROVED: '系统自动退款', REJECTED: '已拒绝',
@@ -45,5 +45,52 @@ export function dateText(value: string | null): string {
   const local = new Date(date.getTime() + 8 * 60 * 60 * 1000)
   return `${local.toISOString().slice(0, 10)} ${local.toISOString().slice(11, 16)}`
 }
+
+/** 列表卡面用的紧凑时间：今天/明天 18:00；其他日期 11-04 18:00。 */
+export function dateLabel(value: string | null): string {
+  if (!value) return '—'
+  const date = new Date(value)
+  if (!Number.isFinite(date.getTime())) return '—'
+  const local = new Date(date.getTime() + 8 * 60 * 60 * 1000)
+  const now = new Date(Date.now() + 8 * 60 * 60 * 1000)
+  const day = local.toISOString().slice(0, 10)
+  const today = now.toISOString().slice(0, 10)
+  const tomorrow = new Date(now.getTime() + 24 * 60 * 60 * 1000).toISOString().slice(0, 10)
+  const prefix = day === today ? '今天' : day === tomorrow ? '明天' : day.slice(5)
+  return `${prefix} ${local.toISOString().slice(11, 16)}`
+}
 /** 服务端未配置生产原因字典标签时不臆造文案：未知编码原样呈现（aftersale 同裁决）。 */
 export function reasonCodeText(code: string): string { return code }
+
+// ---------------------------------------------------------------------------
+// CCR-M-REFUND-VIEW-001（2026-11-06 批准 §3.1/§3.3）：客户/服务展示键与只读时间线的页面降级。
+// 空值降级为占位，不伪造；时间线只呈现服务端事实，客户端不推导任何阶段。
+// ---------------------------------------------------------------------------
+
+/** 卡/详情客户显示名：昵称可空，空值降级为「顾客」占位（order-card 同口径）。 */
+export function refundCustomerName(view: Partial<CustomerView>): string {
+  return view.customerNickname ?? '顾客'
+}
+/** 列表卡服务行：订单服务快照名（可空，空则不渲染）+ 订单短号，只呈现事实。 */
+export function refundServiceLine(item: Partial<CustomerView> & { orderId: string }): string {
+  const order = `订单 ${item.orderId.slice(-8)}`
+  return item.serviceName ? `${item.serviceName} · ${order}` : order
+}
+/** 详情客户块用的首字：昵称首码点；昵称为空用「客」占位。 */
+export function refundCustomerInitial(view: Partial<CustomerView>): string {
+  const nickname = view.customerNickname
+  if (!nickname) return '客'
+  return Array.from(nickname)[0] ?? '客'
+}
+/** §3.3 stage 中文文案（时间线仅呈现既有时间戳事实，文案不携带状态推导）。 */
+export const refundTimelineText: Record<RefundTimelineStage, string> = {
+  APPLIED: '申请提交', MERCHANT_DEADLINE: '商家处理期限', DECIDED: '商家已决定', REFUND_ORDER_CREATED: '退款单已创建',
+}
+/**
+ * 时间线条目文案：系统自动同意（AUTO_APPROVED：超时接管或服务前自动全额）的决定不是商家作出的，
+ * 不冒称「商家已决定」，按事实呈现为「系统已自动同意」；其余档沿上表。
+ */
+export function refundTimelineLabel(stage: RefundTimelineStage, status: RefundApplicationStatus): string {
+  if (stage === 'DECIDED' && status === 'AUTO_APPROVED') return '系统已自动同意'
+  return refundTimelineText[stage]
+}

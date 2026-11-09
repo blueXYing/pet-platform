@@ -23,9 +23,18 @@ public interface MerchantOrderQueryApi {
      */
     PageResult<Summary> listStoreOrders(StoreOrderListQuery query);
 
-    /** Minimal merchant-operations summary; ids/amounts/instants render as wire strings per contract. */
+    /**
+     * Minimal merchant-operations summary; ids/amounts/instants render as wire strings per
+     * contract. The six trailing card fields (CCR-M-ORDER-CARD-001, approved 2026-11-06) are
+     * additive and nullable: nickname/avatar come from the user domain's masked batch read
+     * (absent accounts read null, never fabricated), service/pet facts come from the order
+     * domain's own immutable creation snapshots (no live catalog join, no weight/health
+     * columns). No phone — masked or raw — ever crosses this surface.
+     */
     record Summary(String orderId, String orderNo, String displayStatus, BigDecimal payAmount,
-            OffsetDateTime appointmentStart, OffsetDateTime appointmentEnd, OffsetDateTime paidAt) {}
+            OffsetDateTime appointmentStart, OffsetDateTime appointmentEnd, OffsetDateTime paidAt,
+            String customerNickname, String customerAvatarUrl, String serviceName,
+            String petName, String petType, String petBreed) {}
 
     /** merchantId/storeId are canonical decimal strings; the subject is the session user. */
     record StoreOrderListQuery(String merchantId, String storeId, String displayStatus,

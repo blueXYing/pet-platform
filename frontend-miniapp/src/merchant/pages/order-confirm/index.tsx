@@ -2,10 +2,11 @@ import { Button, Image, Input, ScrollView, Text, View } from '@tarojs/components
 import Taro, { useDidShow, useRouter } from '@tarojs/taro'
 import { useCallback, useEffect, useState, useSyncExternalStore, type CSSProperties } from 'react'
 import { useWorkspace } from '../../../shared/workspace-react'
-import { consumerApi } from '../../../shared/consumer-runtime'
+import { consumerApi, consumerSession } from '../../../shared/consumer-runtime'
 import { RealMerchantOrderRepository } from '../../order/repository'
 import { OrderDecisionController } from '../../order/controller'
 import { REJECT_REASON_CODES, decisionTimeText, isOrderId, rejectReasonText } from '../../order/model'
+import { MerchantTabBar } from '../../components/tab-bar'
 import navBack from '../members/assets/nav-back@2x.png'
 import './page.css'
 
@@ -41,12 +42,18 @@ export default function MerchantOrderConfirmPage() {
     if (presetOrderId && !controller.getSnapshot().orderId) controller.setOrderId(presetOrderId)
     controller.load(scope.current)
   }, [controller, scope, presetOrderId])
-  useDidShow(load)
+  useDidShow(() => {
+    void (async () => {
+      try { await consumerSession.launch() } catch { /* load() renders the error state */ }
+      load()
+    })()
+  })
   useEffect(() => () => controller.dispose(), [controller])
 
   async function back() {
-    if (Taro.getCurrentPages().length > 1) await Taro.navigateBack().catch(() => setNotice('返回失败，请重试'))
-    else await Taro.redirectTo({ url: '/merchant/pages/workspace/index' }).catch(() => setNotice('返回失败，请重试'))
+    // Taro disposes the hidden workbench React tree on navigateTo; navigateBack leaves the
+    // stale placeholder dashboard. Rebuild the workbench instead (same as services/members).
+    await Taro.reLaunch({ url: '/merchant/pages/workspace/index' }).catch(() => setNotice('返回失败，请重试'))
   }
   function goWorkspace() {
     Taro.redirectTo({ url: '/merchant/pages/workspace/index' }).catch(() => setNotice('页面跳转失败，请重试'))
@@ -151,7 +158,8 @@ export default function MerchantOrderConfirmPage() {
       </View>}
       {(state.status === 'form' || state.status === 'idle') && state.notice && <Text id='moc-notice' className='moc-notice'>{state.notice}</Text>}
       {notice && <Text className='moc-notice'>{notice}</Text>}
-      <View className='moc-tail'><Text>页面数据：真实接口（contract 45 手动接单/拒单 HTTP 面，平台开关默认关闭时接口失败关闭）</Text></View>
+      <View className='moc-tab-space' />
     </ScrollView>
+    <MerchantTabBar active='orders' unit={unit} />
   </View>
 }

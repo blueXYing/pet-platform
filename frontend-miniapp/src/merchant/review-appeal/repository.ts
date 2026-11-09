@@ -1,4 +1,4 @@
-import { ReviewAppealClient, appealReasonInput, isDefiniteAppealConflict, type AppealReceipt, type ReviewDetail, type ReviewPage } from '../../shared/review-appeal-api'
+import { ReviewAppealClient, appealReasonInput, isDefiniteAppealConflict, type AppealReceipt, type ReviewAggregate, type ReviewDetail, type ReviewPage } from '../../shared/review-appeal-api'
 import type { ConsumerApi, LocalStore } from '../../shared/consumer-api'
 import { MerchantAdmissionRepository, type MerchantAdmission } from '../../shared/merchant-repositories'
 
@@ -7,6 +7,8 @@ export type MerchantReviewDeps = {
   scope: ConsumerApi['scope']
   admission(merchantId: string, storeId: string): Promise<MerchantAdmission>
   list(merchantId: string, storeId: string, page: number, pageSize: number): Promise<ReviewPage>
+  /** 56号 §7 门店评价聚合（只读，GET /api/v1/merchant/reviews/summary）。 */
+  summary(merchantId: string, storeId: string): Promise<ReviewAggregate>
   detail(reviewId: string): Promise<ReviewDetail>
   appeal(reviewId: string, reason: string): Promise<AppealReceipt>
   pendingAppeal(reviewId: string): { reason: string } | null
@@ -29,6 +31,7 @@ export function merchantReviewDeps(api: ConsumerApi, _store: LocalStore): Mercha
     scope: api.scope,
     admission: (merchantId, storeId) => admission.admission(merchantId, storeId),
     list: (merchantId, storeId, page, pageSize) => client.list(merchantId, storeId, page, pageSize),
+    summary: (merchantId, storeId) => client.summary(merchantId, storeId),
     detail: reviewId => client.detail(reviewId),
     appeal: (reviewId, reason) => client.appeal(reviewId, appealReasonInput(reason)),
     pendingAppeal: reviewId => client.pendingAppeal(reviewId),

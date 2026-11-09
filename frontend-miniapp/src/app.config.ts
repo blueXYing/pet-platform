@@ -48,7 +48,10 @@ export default defineAppConfig({
       'pages/stats/service-orders',
       // Contract-71 marketing center (CCR-MKT-001): enrollment + merchant-initiated
       // campaigns. One page keeps the new surface compact; no C-side page is duplicated.
-      'pages/marketing/index'] },
+      'pages/marketing/index',
+      // 2026-11-04 user-approved merchant bottom tab (Figma 149:926): the "mine" hub
+      // aggregates only already-approved M entries; funds/settings stay out of scope.
+      'pages/mine/index'] },
     // Contract 68 (2026-10-19 ruling): vaccine/deworming record add forms ride the pet-archive
     // subpackage (the two design frames 96:2580/96:3006), one compact line per the convention.
     { root: 'consumer/pages/pet-archive', pages: ['index', 'detail', 'form', 'vaccine-form', 'deworm-form'] },

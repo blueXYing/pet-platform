@@ -27,7 +27,7 @@ public final class UserQueryApiImpl implements UserQueryApi {
         PetStore.UserRow user = store.findUser(PetService.numericId(query.userId(), "userId"));
         if (user == null) return null;
         return new UserBasicDTO(Long.toUnsignedString(user.id()), mask(user.phone()), user.nickname(),
-                UserStatus.valueOf(user.status()));
+                UserStatus.valueOf(user.status()), user.avatarUrl());
     }
 
     @Override
@@ -53,7 +53,7 @@ public final class UserQueryApiImpl implements UserQueryApi {
         List<UserBasicDTO> out = new java.util.ArrayList<>(ids.size());
         for (PetStore.UserRow user : store.findUsers(ids)) {
             out.add(new UserBasicDTO(Long.toUnsignedString(user.id()), mask(user.phone()),
-                    user.nickname(), UserStatus.valueOf(user.status())));
+                    user.nickname(), UserStatus.valueOf(user.status()), user.avatarUrl()));
         }
         return List.copyOf(out);
     }

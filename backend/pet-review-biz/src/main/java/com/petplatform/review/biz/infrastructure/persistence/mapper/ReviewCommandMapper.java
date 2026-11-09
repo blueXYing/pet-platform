@@ -68,6 +68,14 @@ public interface ReviewCommandMapper {
 
     long countStoreReviews(@Param("merchantId") long merchantId, @Param("storeId") long storeId);
 
+    /**
+     * CCR-M-REVIEW-VIEW-001 (contract 56 §7): one full-history aggregate over the store's own
+     * reviews (same double key as the list, so totalReviews equals the list total). Always
+     * returns exactly one row; an empty store yields 0 counts and a null average.
+     */
+    com.petplatform.review.biz.infrastructure.persistence.entity.ReviewStoreAggregateEntity
+            storeReviewAggregate(@Param("merchantId") long merchantId, @Param("storeId") long storeId);
+
     /** Contract-70 aggregate: score_included=1 reviews of the store in the created window. */
     com.petplatform.review.biz.infrastructure.persistence.entity.ReviewScoreSummaryEntity storeScoreSummary(
             @Param("storeId") long storeId, @Param("from") java.time.LocalDateTime from,

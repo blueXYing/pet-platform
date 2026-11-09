@@ -22,12 +22,17 @@
 .msi-value { flex: 1; font-size: calc(var(--msi-unit) * 13); line-height: calc(var(--msi-unit) * 20); color: #111827; word-break: break-all; }
 .msi-hint { margin-top: calc(var(--msi-unit) * 2); font-size: calc(var(--msi-unit) * 10.5); line-height: calc(var(--msi-unit) * 16); color: #9ca3af; }
 .msi-field { display: flex; flex-direction: column; gap: calc(var(--msi-unit) * 6); }
+/* Field labels sit above their input (column layout), so the 76u row-label width only
+   made long labels wrap into 3 cramped lines (促销等级…). Qualification rows keep 76u. */
+.msi-field .msi-label { width: auto; }
 .msi-textarea { width: 100%; min-height: calc(var(--msi-unit) * 72); background: #f9fafb; border: calc(var(--msi-unit) * 1.16) solid #e5e7eb; border-radius: calc(var(--msi-unit) * 11.6); padding: calc(var(--msi-unit) * 12) calc(var(--msi-unit) * 14); font-size: calc(var(--msi-unit) * 13.555); line-height: calc(var(--msi-unit) * 21); color: #111827; }
 .msi-input { height: calc(var(--msi-unit) * 44); background: #f9fafb; border: calc(var(--msi-unit) * 1.16) solid #e5e7eb; border-radius: calc(var(--msi-unit) * 11.6); padding: 0 calc(var(--msi-unit) * 14); font-size: calc(var(--msi-unit) * 13.555); color: #111827; }
 .msi-count { align-self: flex-end; font-size: calc(var(--msi-unit) * 10.5); color: #9ca3af; }
 .msi-notice { margin: calc(var(--msi-unit) * 12) calc(var(--msi-unit) * 17) 0; font-size: calc(var(--msi-unit) * 12); line-height: calc(var(--msi-unit) * 18); color: #a83232; }
 .msi-receipt { margin: calc(var(--msi-unit) * 12) calc(var(--msi-unit) * 17) 0; padding: calc(var(--msi-unit) * 10) calc(var(--msi-unit) * 14); border-radius: calc(var(--msi-unit) * 12); background: #d7f0d0; color: #2f6b2f; font-size: calc(var(--msi-unit) * 12); line-height: calc(var(--msi-unit) * 18); }
-.msi-page .msi-save { display: flex; align-items: center; justify-content: center; margin: calc(var(--msi-unit) * 18) calc(var(--msi-unit) * 17) 0; height: calc(var(--msi-unit) * 46.5); border-radius: calc(var(--msi-unit) * 11.6); background: #5baae8; color: #fff; font-size: calc(var(--msi-unit) * 15); font-weight: 600; }
+/* Full-width primary action like frame 25:20684; .msi-primary's flex-start would otherwise
+   shrink the button to its content width. */
+.msi-page .msi-save { display: flex; align-items: center; justify-content: center; align-self: stretch; margin: calc(var(--msi-unit) * 18) calc(var(--msi-unit) * 17) 0; height: calc(var(--msi-unit) * 46.5); padding: 0; border-radius: calc(var(--msi-unit) * 11.6); background: #5baae8; color: #fff; font-size: calc(var(--msi-unit) * 15); font-weight: 600; }
 .msi-bottom-space { height: calc(var(--msi-unit) * 28); flex: none; }
 /* 2026-10-19 扩展：营业状态开关 / 头像 / 店铺照片页内上传（27号 §6.4 扩展面）。 */
 .msi-switch-row { display: flex; gap: calc(var(--msi-unit) * 10); }
@@ -36,7 +41,20 @@
 .msi-avatar-row { display: flex; align-items: center; gap: calc(var(--msi-unit) * 10); }
 .msi-page .msi-photo-add { align-self: flex-start; padding: calc(var(--msi-unit) * 8) calc(var(--msi-unit) * 20); border: calc(var(--msi-unit) * 1.5) dashed #9cc8e4; border-radius: calc(var(--msi-unit) * 12); color: #3185ba; font-size: calc(var(--msi-unit) * 13); }
 .msi-page .msi-avatar-clear { align-self: flex-start; padding: calc(var(--msi-unit) * 8) calc(var(--msi-unit) * 20); border: calc(var(--msi-unit) * 1.5) solid #e5b7b7; border-radius: calc(var(--msi-unit) * 12); color: #a83232; font-size: calc(var(--msi-unit) * 13); }
+/* Frame 25:20684 top identity card: avatar + store name + 更换头像. Without a display URL
+   the avatar keeps the registered store-initial placeholder (same as the workbench). */
+.msi-identity { flex-direction: row; align-items: center; gap: calc(var(--msi-unit) * 12); }
+.msi-avatar { flex: none; width: calc(var(--msi-unit) * 52); height: calc(var(--msi-unit) * 52); border-radius: 50%; background: #e8f4fd; display: flex; align-items: center; justify-content: center; overflow: hidden; }
+.msi-avatar text { font-size: calc(var(--msi-unit) * 20); line-height: calc(var(--msi-unit) * 28); font-weight: 600; color: #5baae8; }
+/* CCR-M-STORE-AVATAR-001：短期签名头像原图铺满圆形框（CSS 裁圆，无多尺寸变体）。 */
+.msi-avatar .msi-avatar-img { width: 100%; height: 100%; border-radius: 50%; display: block; }
+.msi-identity-body { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: calc(var(--msi-unit) * 4); }
+.msi-identity-name { font-size: calc(var(--msi-unit) * 16); line-height: calc(var(--msi-unit) * 23); font-weight: 600; color: #111827; overflow-wrap: anywhere; }
+.msi-identity-actions { display: flex; align-items: center; gap: calc(var(--msi-unit) * 10); flex-wrap: wrap; }
+.msi-page .msi-avatar-link { color: #3185ba; font-size: calc(var(--msi-unit) * 12.5); line-height: calc(var(--msi-unit) * 18); }
 .msi-photo-row { display: flex; flex-wrap: wrap; gap: calc(var(--msi-unit) * 8); }
 .msi-photo-item { display: flex; align-items: center; gap: calc(var(--msi-unit) * 6); padding: calc(var(--msi-unit) * 6) calc(var(--msi-unit) * 10); border: calc(var(--msi-unit) * 1.5) solid #c0ecff; border-radius: calc(var(--msi-unit) * 12); background: #f9fbfe; }
 .msi-photo-id { font-size: calc(var(--msi-unit) * 11.5); line-height: calc(var(--msi-unit) * 16); color: #374151; }
 .msi-page .msi-photo-remove { padding: calc(var(--msi-unit) * 2) calc(var(--msi-unit) * 8); border-radius: calc(var(--msi-unit) * 8); color: #a83232; font-size: calc(var(--msi-unit) * 11.5); }
+
+.msi-tab-space { height: calc(var(--msi-unit) * 96); flex: none; }

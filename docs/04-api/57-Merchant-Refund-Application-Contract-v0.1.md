@@ -32,6 +32,12 @@ REFUND 拥有申请/决定/读侧查询与全部准入、幂等、期限、来�
 
 读侧 Summary（列表项与详情同形，详情另含终态字段）：applicationId/applicationNo/orderId/status（PENDING_MERCHANT|APPROVED|AUTO_APPROVED|REJECTED）/applicationVersion/reasonCode/refundAmount（真实实付全额，JSON 两位小数字符串）/createdAt/merchantDeadline/decidedAt/decisionId/refundOrderId（可空）。买家申请说明明文与买家身份字段（userId/手机号）不回传商家（49 号密文留存，仅内核证明可解密）。
 
+**2026-11-06 读侧增量**（用户批准 [CCR-M-REFUND-VIEW-001](../../planning/ccr/CCR-M-REFUND-VIEW-001.md) 3.1+3.3；**3.2 申请说明解密不批，维持上一段密文口径不变**）：
+
+- Summary/Detail 追加可空键 `customerNickname`（user 域批量端口投影，合同 69 同一通道）、`customerPhoneMasked`（服务端脱敏 `138****0100`，**永不回明文**；userId 仍不回传）、`serviceName`（订单不可变快照投影）。
+- Detail 另含 `timeline[]`：`{stage, occurredAt}` 升序，stage ∈ APPLIED/MERCHANT_DEADLINE/DECIDED/REFUND_ORDER_CREATED，仅由既有时间戳派生（申请创建、商家期限、决定时间、退款单创建），出现即有事实，不推导 DisplayOrderStatus（order 域统一计算）。
+- 凭证图片不做（49 号无存储）。既有 12 键、决定语义、24 小时期限、幂等、防枚举全部不变；旧客户端忽略未知键，M 端严格解码器同步放宽。
+
 ## 错误映射
 
 控制器本地映射，未识别一律 500 不泄内核：400 `COMMON_INVALID_ARGUMENT`/`REFUND_MERCHANT_REASON_REQUIRED`（拒绝缺/空白理由）；401 `COMMON_UNAUTHORIZED`；403 `COMMON_FORBIDDEN`（含读侧防枚举与决定命令跨店）；404 `REFUND_APPLICATION_NOT_FOUND`（决定命令未知 applicationId）；409 `REFUND_APPLICATION_ALREADY_PROCESSED`/`REFUND_MERCHANT_DEADLINE_PASSED`/`IDEMPOTENCY_KEY_CONFLICT`/`COMMON_CONFLICT`/`ORDER_OPERATION_BUSY`/`REFUND_NOT_ELIGIBLE`/`REFUND_ORDER_ALREADY_EXISTS`/`REFUND_ALREADY_EXISTS`；503 `COMMON_DEPENDENCY_UNAVAILABLE`。

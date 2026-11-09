@@ -2,7 +2,7 @@ import test from 'node:test'
 import assert from 'node:assert/strict'
 import { randomUUID } from 'node:crypto'
 import { ApiError } from '../../shared/request'
-import { ConsumerApi, isStaffInvitationPath, type LocalStore } from '../../shared/consumer-api'
+import { ConsumerApi, isNotificationInboxPath, isStaffInvitationPath, type LocalStore } from '../../shared/consumer-api'
 import {
   StaffInvitationController, StaffInvitationListController, type StaffInvitationListState,
   type StaffInvitationState,
@@ -375,4 +375,11 @@ test('staff invitation routes are identity-scoped and callable from merchant coo
   assert.equal(isStaffInvitationPath('/api/v1/c/staff/invitations/930000000000301/cancel'), false)
   assert.equal(isStaffInvitationPath('/api/v1/c/staff/invitations/930000000000301/confirm/x'), false)
   assert.equal(isStaffInvitationPath('/api/v1/c/profile'), false)
+  // Merchant message page reads the owner-scoped USER inbox while coordinates stay merchant.
+  assert.equal(isNotificationInboxPath('/api/v1/c/notifications'), true)
+  assert.equal(isNotificationInboxPath('/api/v1/c/notifications/710970'), true)
+  assert.equal(isNotificationInboxPath('/api/v1/c/notifications/710970/read'), true)
+  assert.equal(isNotificationInboxPath('/api/v1/c/notifications/abc'), false)
+  assert.equal(isNotificationInboxPath('/api/v1/c/notifications/710970/read/x'), false)
+  assert.equal(isNotificationInboxPath('/api/v1/c/notification-preferences'), false)
 })

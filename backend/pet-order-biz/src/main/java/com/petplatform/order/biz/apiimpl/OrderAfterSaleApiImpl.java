@@ -58,6 +58,14 @@ public final class OrderAfterSaleApiImpl implements OrderAfterSaleFactsApi,Order
    ||c.afterSaleId()==null&&row.aftersaleStatus!=null&&!"NONE".equals(row.aftersaleStatus))throw bad();
   return new Current(order,store,c.afterSaleId(),c.status(),str(row.version));
  });}
+ /** CCR-M-AFTERSALE-VIEW-001: creation-time display labels only — same caller transaction, held store guard and SYSTEM context as {@link #current}; a foreign or malformed answer fails closed. */
+ public List<DisplayLabel> displayLabels(List<String> orderIds,String store,QueryContext q,DataSource txSource){return safe(()->{
+  scope(store,txSource);system(q);if(orderIds==null||orderIds.isEmpty()||orderIds.size()>50)throw bad();
+  var wanted=new LinkedHashSet<Long>();for(String order:orderIds)if(order==null||!wanted.add(id(order)))throw bad();
+  var labels=new ArrayList<DisplayLabel>();var seen=new HashSet<Long>();
+  for(var r:db.displayLabels(id(store),List.copyOf(wanted))){if(r==null||r.orderId==null||!wanted.contains(r.orderId)||!seen.add(r.orderId))throw bad();labels.add(new DisplayLabel(str(r.orderId),r.serviceName,r.petName,r.petType,r.breedName));}
+  return List.copyOf(labels);
+ });}
  public void bindCreated(String order,String store,String caseId,String expected,CommandContext context,DataSource txSource){safe(()->{
   scope(store,txSource);command(context);var q=q(context);var f=fact(order,store,q);var c=cases.get().requireCurrent(order,store,caseId,q,source);
   if(context.operatorType()!=OperatorType.USER||!context.operatorId().equals(f.location().userId())||!expected.equals(f.orderVersion())||c==null||!caseId.equals(c.afterSaleId())||!"PENDING".equals(c.status())||!c.active()||!"0".equals(c.version())||db.source(id(caseId))!=null)throw bad();

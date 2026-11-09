@@ -603,6 +603,13 @@ class FeaturedStoreCardComposerTest {
                         assetId, "https://cdn.example.invalid/signed/" + assetId,
                         Instant.parse("2026-11-30T12:00:00Z"));
             }
+
+            /** The card slice never takes the CCR-M-STORE-AVATAR-001 owner-checked face. */
+            @Override
+            public SignedStorePhoto signOwnedStorePhoto(
+                    String ownerUserId, String assetId, QueryContext context) {
+                throw new UnsupportedOperationException("owner-checked signing is not used here");
+            }
         }
     }
 

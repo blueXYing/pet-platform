@@ -25,7 +25,7 @@ public final class AddressStore {
                         .selectUserById(userId);
         return row == null ? null
                 : new com.petplatform.user.biz.infrastructure.persistence.PetStore.UserRow(
-                        row.getId(), row.getPhone(), row.getNickname(), row.getStatus());
+                        row.getId(), row.getPhone(), row.getNickname(), row.getStatus(), row.getAvatarUrl());
     }
 
     public AddressRow findAddress(long addressId, boolean forUpdate) {

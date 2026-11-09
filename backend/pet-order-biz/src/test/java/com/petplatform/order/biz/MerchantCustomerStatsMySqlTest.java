@@ -484,7 +484,7 @@ class MerchantCustomerStatsMySqlTest {
                             "SELECT id, phone, nickname FROM user_account WHERE id IN ("
                                     + String.join(",", query.userIds()) + ")").stream()
                             .map(row -> new UserBasicDTO(Long.toString(((Number) row.get("id")).longValue()),
-                                    masked((String) row.get("phone")), (String) row.get("nickname"), null))
+                                    masked((String) row.get("phone")), (String) row.get("nickname"), null, null))
                             .toList();
                 }
             };

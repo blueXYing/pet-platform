@@ -1,7 +1,9 @@
-import { Button, Picker, Text, View } from '@tarojs/components'
+import { Button, Image, Picker, Text, View } from '@tarojs/components'
 import Taro from '@tarojs/taro'
 import { useState, type CSSProperties, type ReactNode } from 'react'
 import { chipClass, splitBeijingParts } from '../../schedule/model'
+import { MerchantTabBar } from '../../components/tab-bar'
+import navBack from '../members/assets/nav-back@2x.png'
 
 /**
  * Shared chrome for the four schedule-maintenance pages. There is no Figma original for the
@@ -27,10 +29,12 @@ export function ScheduleShell(props: {
   preview: boolean
   children: ReactNode
 }) {
+  const [info] = useState(() => Taro.getWindowInfo())
+  const unit = info.windowWidth / 402
   return <View className='sch-page' style={props.style}>
     <View className='sch-status-area' />
     <View className='sch-header'>
-      <Button ariaLabel='返回' className='sch-back' onClick={props.onBack}>返回</Button>
+      <Button ariaLabel='返回' className='sch-back' onClick={props.onBack}><Image src={navBack} mode='scaleToFill' /></Button>
       <Text className='sch-title'>{props.title}</Text>
     </View>
     {props.phase !== 'ready' && <View className='sch-state' role='status'>
@@ -46,6 +50,7 @@ export function ScheduleShell(props: {
       {props.phase === 'entry' && !props.preview && <Button className='sch-state-action' onClick={() => Taro.redirectTo({ url: '/merchant/pages/workspace/index' })}>去商家工作台</Button>}
     </View>}
     {props.phase === 'ready' && props.children}
+    <MerchantTabBar active='home' unit={unit} />
   </View>
 }
 export function Field(props: { label: string; required?: boolean; hint?: string; children: ReactNode }) {

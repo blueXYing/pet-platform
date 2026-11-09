@@ -176,7 +176,10 @@ function rejectionOf(value: any): ManagedServiceRejection | null {
 }
 
 export function decodeCategory(value: unknown): ServiceCategoryView {
-  const v = exact(value, ['categoryId', 'categoryName', 'sortNo'])
+  // The contract-70 dictionary row also carries categoryCode/iconUrl/description; the page
+  // only consumes the three M-002 fields. Rejecting the documented extras made every real
+  // category read fail INVALID_RESPONSE (the add/edit page could not load at all).
+  const v = exact(value, ['categoryId', 'categoryName', 'sortNo', 'categoryCode', 'iconUrl', 'description'])
   if (!isId(v.categoryId)) invalid()
   if (typeof v.categoryName !== 'string' || [...v.categoryName].length < 1 || [...v.categoryName].length > 50) invalid()
   if (!Number.isSafeInteger(v.sortNo) || v.sortNo < 0 || v.sortNo > 10000) invalid()

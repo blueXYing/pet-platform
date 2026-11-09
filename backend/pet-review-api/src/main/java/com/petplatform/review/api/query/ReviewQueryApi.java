@@ -4,6 +4,7 @@ import com.petplatform.common.CommandContext;
 import com.petplatform.common.QueryContext;
 import com.petplatform.order.api.dto.ReviewEligibilityDTO;
 import java.util.List;
+import java.util.Map;
 
 /**
  * Internal contract 07 §14.1 review read surface. REV-001 (2026-10-07) delivered the
@@ -16,6 +17,8 @@ import java.util.List;
  * <p>REV-002 (2026-10-10, CCR-REVIEW-APPEAL-001 / contract 56) adds the appeal read faces:
  * the OWNER store projection (list/detail with the appeal state overlay) and the operator
  * appeal list/detail. Reading re-proves current authority exactly like the write side.
+ * CCR-M-REVIEW-VIEW-001 (2026-11-06, contract 56 §7) adds the buyer identity projection on
+ * the OWNER store reads and the read-only store rating aggregate.
  */
 public interface ReviewQueryApi {
 
@@ -68,6 +71,31 @@ public interface ReviewQueryApi {
     /** avgScore is one decimal 0.0..5.0 as wire string; null when the window has no reviews. */
     record ScoreSummary(long reviewCount, String avgScore) {}
 
+    /**
+     * CCR-M-REVIEW-VIEW-001 (contract 56 §7): the OWNER store read-side rating aggregate.
+     * Read-only over one indexed store query; the kernel re-proves the OWNER coordinate under
+     * the store guard before any row is read and no individual review content is returned.
+     */
+    default StoreReviewAggregate storeReviewAggregate(StoreReviewAggregateQuery query) {
+        throw new UnsupportedOperationException("store review aggregate unavailable");
+    }
+
+    /** merchantId/storeId are canonical decimal strings; coordinates are re-proven. */
+    record StoreReviewAggregateQuery(CommandContext context, String merchantId, String storeId) {}
+
+    /**
+     * Full-history store aggregate: {@code totalReviews} counts every store review including
+     * score_included=0 history; {@code scoredCount}/{@code averageScore}/{@code scoreCounts}
+     * only score_included=1 rows, buckets keyed "1".."5" by ROUND(composite_score);
+     * averageScore is the one-decimal HALF_UP wire string, null when scoredCount is 0.
+     */
+    record StoreReviewAggregate(long totalReviews, long scoredCount, String averageScore,
+            Map<String, Long> scoreCounts) {
+        public StoreReviewAggregate {
+            scoreCounts = Map.copyOf(scoreCounts);
+        }
+    }
+
     record StoreReviewListQuery(CommandContext context, String merchantId, String storeId,
             Integer page, Integer pageSize) {
         public StoreReviewListQuery {
@@ -91,11 +119,17 @@ public interface ReviewQueryApi {
         public ReviewPage { items = List.copyOf(items); }
     }
 
-    /** Scores are one-decimal strings ("4.0"); composite is the kernel 40/40/20 fact. */
+    /**
+     * Scores are one-decimal strings ("4.0"); composite is the kernel 40/40/20 fact.
+     * CCR-M-REVIEW-VIEW-001: reviewerNickname/reviewerAvatarUrl are the nullable buyer
+     * identity facts on the OWNER store read side only (raw nickname, never userId/phone);
+     * every other face (admin appeal detail, receipts) keeps them null.
+     */
     record ReviewSummary(String reviewId, String orderId, String storeScore, String serviceScore,
             String staffScore, String compositeScore, boolean scoreIncluded,
             String visibilityStatus, String content, String createdAt,
-            String appealStatus, String appealId) {}
+            String appealStatus, String appealId,
+            String reviewerNickname, String reviewerAvatarUrl) {}
 
     record ReviewDetail(ReviewSummary review, String appealReason, String appealCreatedAt,
             String decisionReason, String decidedAt) {}

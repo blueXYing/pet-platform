@@ -44,6 +44,11 @@
             <groupId>com.petplatform</groupId>
             <artifactId>pet-refund-api</artifactId>
         </dependency>
+        <!-- CCR-M-AFTERSALE-VIEW-001: merchant-read customer nickname via UserQueryApi.listUsers (api only, never user-biz). -->
+        <dependency>
+            <groupId>com.petplatform</groupId>
+            <artifactId>pet-user-api</artifactId>
+        </dependency>
         <dependency>
             <groupId>org.springframework</groupId>
             <artifactId>spring-context</artifactId>

@@ -177,3 +177,16 @@ PUT 全字段替换语义（同 27号 §6.1 PUT staff）：请求体必须携带
 读侧为存量资料读取家族：OWNER 复验后，OFFLINE/FROZEN 门店仍可读（写侧维持 ACTIVE 门禁， LIMITED 时入口隐藏、服务端 fail-closed）。**operatingStatus 投影（2026-10-19 扩展）**：merchant+store 均 ACTIVE 时按 profile.businessStatus 投影——OPEN→OPERATING、RESTING→RESTING（休息中，商家自设展示态，C 端外显属后续切片）；平台态 OFFLINE/FROZEN 恒优先于 RESTING。响应 `Cache-Control: no-store`。错误映射：400 字段/版本/资产非法、401 会话、403 非 OWNER、404 门店不存在或越权（同形防枚举）、409 版本冲突/IDEMPOTENCY_KEY_CONFLICT、503 事实不可读。无新增错误码。
 
 HTTP 路由 `pet.merchant.store-profile.http.enabled` 装配（默认 false，OpenAPI11 `IMPLEMENTED_DEFAULT_OFF`）；审核状态事实复用既有 ApplicationReviewFactsReader 链。本补充不改变 30号申请链路任何语义；C 端门店外显（MerchantStoreDisplayDTO 投影）不在本切片范围，店铺资料 C 端展示属后续切片。
+
+## 2026-11-06 店铺头像展示 URL 补充（M 端只读签名，CCR-M-STORE-AVATAR-001）
+
+用户 2026-11-06 批准 [CCR-M-STORE-AVATAR-001](../../planning/ccr/CCR-M-STORE-AVATAR-001.md)：补 `avatarAssetId` 的 M 端展示读面（技术缺口，无新产品行为；裁决：独立路由、无头像返回 null 字段非 404、复用签名端口模式）。
+
+| 方法/路径 | 请求 | data |
+|---|---|---|
+| GET `/merchant/store-profile/avatar-url` | query merchantId、storeId；OWNER 本人主账号 | `{assetId, url, expiresAt}` 三键均可 null |
+
+- 服务端在既有门店 guard + requireOwnerRead 之后读取本店 `avatarAssetId`，仅当素材为当前 OWNER 以 STORE_PHOTO 用途上传、READY、JPEG/PNG、版本化对象时经内部签名端口（CCR-W2-API-001 服务封面同族模式）签发短期 GET URL；素材归属与 purpose 在签发事务内重证。不暴露对象 key/版本，不接受客户端传入 assetId，无任意 assetId 签名入口。
+- 无头像/素材不满足 → 三键全 null（非 404），前端降级首字占位；URL 短 TTL（沿 CCR-OSS-001 窗口，最小 600 秒），`expiresAt` 与实际签名一致，客户端临期/过期/加载失败重取本路由，不缓存签名 URL。响应 `no-store`。
+- 签名配置缺失失败关闭 503，不返回裸 URL；跨店/非 OWNER 与既有读侧同一 403 防枚举。路由随 `pet.merchant.store-profile.http.enabled` 装配（默认 false）。日志/证据不落完整签名 URL 或对象 key。
+- 门店照片墙（photoAssetIds 展示）与 C 端门店头像展示均不在本补充范围（另行处理）。

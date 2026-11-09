@@ -1,7 +1,7 @@
 /* 商家售后处理（49号 M 面）——无契约语义兼容的 Figma 原稿（退款单帧族 §4.6 裁决覆盖），
    沿 M 端现行家族语言实现（2026-10-13 对齐：header band 86 #FFF6E5 + 居中标题 + 家族返回键
    坐标、卡片 #C0ECFF 1.5 描边；卡片度量沿本页 15.388 系）。状态样式只用 className 变体。 */
-.mas-page { --mas-unit: 1px; min-height: 100vh; height: 100vh; display: flex; flex-direction: column; background: #f0fbff; color: #111827; font-family: Roboto, Outfit, sans-serif; font-size: calc(14 * var(--mas-unit)); }
+.mas-page { --mas-unit: 1px; min-height: 100vh; height: 100vh; box-sizing: border-box; padding-bottom: calc(61 * var(--mas-unit) + env(safe-area-inset-bottom)); display: flex; flex-direction: column; background: #f0fbff; color: #111827; font-family: Roboto, Outfit, sans-serif; font-size: calc(14 * var(--mas-unit)); }
 .mas-page button { margin: 0; padding: 0; border: 0; line-height: inherit; font-family: inherit; box-sizing: border-box; background: transparent; }
 .mas-page button::after { border: none; }
 .mas-page button[disabled] { opacity: .45; }
@@ -56,7 +56,7 @@
 .mas-page .mas-primary { background: #5baae8; color: white; }
 .mas-page .mas-secondary { border: 1px solid #5baae8; background: white; color: #3c3c3c; }
 .mas-bottom-space { height: calc(20 * var(--mas-unit)); }
-.mas-overlay { position: fixed; inset: 0; z-index: 20; background: rgba(0,0,0,.3); display: flex; flex-direction: column; justify-content: flex-end; }
+.mas-overlay { position: fixed; inset: 0; z-index: 40; background: rgba(0,0,0,.3); display: flex; flex-direction: column; justify-content: flex-end; }
 .mas-page .mas-sheet-dismiss { position: absolute; inset: 0; width: 100%; height: 100%; }
 .mas-sheet { position: relative; background: white; border-radius: calc(25.728 * var(--mas-unit)) calc(25.728 * var(--mas-unit)) 0 0; padding: calc(25.728 * var(--mas-unit)); padding-bottom: max(calc(25.728 * var(--mas-unit)), env(safe-area-inset-bottom)); max-height: 85vh; overflow-y: auto; box-sizing: border-box; }
 .mas-sheet-handle { width: calc(42.88 * var(--mas-unit)); height: calc(4.288 * var(--mas-unit)); background: #e5e7eb; border-radius: calc(999 * var(--mas-unit)); margin: 0 auto calc(8.576 * var(--mas-unit)); }
@@ -73,6 +73,18 @@
 .mas-upload-item button { color: #5baae8; margin-top: calc(6 * var(--mas-unit)); }
 .mas-page .mas-submit { width: 100%; margin-top: calc(17.152 * var(--mas-unit)); height: calc(47.168 * var(--mas-unit)); line-height: calc(47.168 * var(--mas-unit)); }
 .mas-page .mas-close-sheet { width: 100%; color: #6b7280; font-size: calc(13 * var(--mas-unit)); line-height: calc(32 * var(--mas-unit)); margin-top: calc(8 * var(--mas-unit)); }
-.mas-image-overlay { position: fixed; inset: 0; z-index: 30; background: #111827; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: calc(20 * var(--mas-unit)); }
+.mas-image-overlay { position: fixed; inset: 0; z-index: 40; background: #111827; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: calc(20 * var(--mas-unit)); }
 .mas-evidence-image { width: 100%; height: 75vh; }
 .mas-image-overlay .mas-primary { flex: 0 0 auto; width: 60%; }
+/* CCR-M-AFTERSALE-VIEW-001（2026-11-06 批准）客户/服务/宠物块：售后无专属稿（登记表 §4.6 视同缺稿），
+   沿 M 端订单卡家族度量（首字圆 38 #e5f6fd/#5baae8 13/600、昵称 14/20 600 #111827、服务·宠物行 12.5/18 #5baae8）；
+   无头像图片字段、无手机号。新增规则一律 .mas-page 复合选择器。 */
+.mas-page .mas-customer { display: flex; align-items: center; gap: calc(10 * var(--mas-unit)); min-width: 0; }
+.mas-page .mas-list-card .mas-customer { margin-bottom: calc(12 * var(--mas-unit)); }
+.mas-page .mas-detail-customer { margin-top: calc(12 * var(--mas-unit)); }
+.mas-page .mas-customer-avatar { flex: none; width: calc(38 * var(--mas-unit)); height: calc(38 * var(--mas-unit)); border-radius: 50%; background: #e5f6fd; display: flex; align-items: center; justify-content: center; }
+.mas-page .mas-customer-avatar text { font-size: calc(13 * var(--mas-unit)); line-height: calc(18 * var(--mas-unit)); font-weight: 600; color: #5baae8; }
+.mas-page .mas-customer-who { flex: 1; min-width: 0; overflow: hidden; display: flex; flex-direction: column; gap: calc(3 * var(--mas-unit)); }
+.mas-page .mas-customer-name { display: block; max-width: 100%; font-size: calc(14 * var(--mas-unit)); line-height: calc(20 * var(--mas-unit)); font-weight: 600; color: #111827; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.mas-page .mas-customer-service { display: block; max-width: 100%; font-size: calc(12.5 * var(--mas-unit)); line-height: calc(18 * var(--mas-unit)); color: #5baae8; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.mas-page .mas-detail-facts { margin-top: calc(12 * var(--mas-unit)); }

@@ -2,7 +2,7 @@ import { Button, Input, ScrollView, Text, View } from '@tarojs/components'
 import Taro, { useDidShow, useRouter } from '@tarojs/taro'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { useWorkspace } from '../../../shared/workspace-react'
-import { consumerApi } from '../../../shared/consumer-runtime'
+import { consumerApi, consumerSession } from '../../../shared/consumer-runtime'
 import {
   loadServiceOptions, RealScheduleRepository,
 } from '../../schedule/repository'
@@ -95,7 +95,12 @@ export default function ScheduleWorkbenchPage() {
       setNotice(scheduleMessage(error)); setPhase('load-error')
     }
   }, [preview, repository, scope])
-  useDidShow(() => { void load() })
+  useDidShow(() => {
+    void (async () => {
+      try { await consumerSession.launch() } catch { /* load() renders the error state */ }
+      await load()
+    })()
+  })
   useEffect(() => { mounted.current = true; return () => { mounted.current = false; loadSequence.current++ } }, [])
   useEffect(() => {
     if (!preview && (!context || context.workspace !== 'merchant')) setPhase('entry')
@@ -111,8 +116,7 @@ export default function ScheduleWorkbenchPage() {
   }, [revision, scope, preview])
 
   async function back() {
-    if (Taro.getCurrentPages().length > 1) await Taro.navigateBack().catch(() => setNotice('返回失败，请重试'))
-    else await Taro.redirectTo({ url: '/merchant/pages/workspace/index' }).catch(() => setNotice('返回失败，请重试'))
+    await Taro.reLaunch({ url: '/merchant/pages/workspace/index' }).catch(() => setNotice('返回失败，请重试'))
   }
   function open(sub: string) {
     Taro.navigateTo({ url: `/merchant/pages/schedule/${sub}?preview=${preview ? '1' : '0'}${preview ? `&scenario=${scenario}` : ''}` })
@@ -216,7 +220,7 @@ export default function ScheduleWorkbenchPage() {
         {staffPhase === 'ready' && staffWindows.length > 0 && <Text className='sch-hint'>完整增改请进「员工排班」。</Text>}
       </View>
       {notice && <Text className='sch-notice'>{notice}</Text>}
-      <View className='sch-tail'><Text>页面数据：{preview ? '契约 Mock（preview=1，不联调）' : '真实接口（开关未开放时失败关闭）'}</Text></View>
+      {preview && <View className='sch-tail'><Text>页面数据：契约 Mock（preview=1，不联调）</Text></View>}
     </ScrollView>
   </ScheduleShell>
 }

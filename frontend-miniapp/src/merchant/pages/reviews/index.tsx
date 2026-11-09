@@ -1,25 +1,46 @@
 import { Button, Image, ScrollView, Text, Textarea, View } from '@tarojs/components'
-import Taro, { useDidHide, useDidShow } from '@tarojs/taro'
+import Taro, { useDidHide, useDidShow, useRouter } from '@tarojs/taro'
 import { useEffect, useState, useSyncExternalStore, type CSSProperties } from 'react'
-import { consumerApi, consumerStorage } from '../../../shared/consumer-runtime'
+import { consumerApi, consumerSession, consumerStorage } from '../../../shared/consumer-runtime'
+import type { ReviewAggregate, ReviewSummary } from '../../../shared/review-appeal-api'
 import { merchantReviewDeps } from '../../review-appeal/repository'
 import { MerchantReviewController } from '../../review-appeal/controller'
+import { averageStars, averageText, goodRatePercent, groupedCount, reviewerInitial, reviewerName, scoredCountText, starBars } from '../../review-appeal/model'
+import { previewReviewDeps } from '../../workbench/preview'
+import { MerchantTabBar } from '../../components/tab-bar'
 import navBack from '../aftersale/assets/nav-back@3x.png'
 import './page.css'
 
 /** Contract56 M face: the store coordinates come from the merchant workspace handoff. */
-function useMerchantReviews() {
+function useMerchantReviews(preview = false) {
+  // ?preview=1：先注入商户坐标，再用本地评价样本；真实路径不变。
+  useState(() => {
+    if (!preview) return false
+    const current = consumerApi.scope.current
+    if (!current || current.workspace !== 'merchant' || !current.merchantId || !current.storeId) {
+      consumerApi.scope.replace({
+        userId: '9007199254740993', workspace: 'merchant',
+        merchantId: '9007199254740995', storeId: '9007199254740996',
+      })
+    }
+    return true
+  })
   const [controller] = useState(() => {
-    const context = consumerApi.scope.capture().context
-    if (context.workspace !== 'merchant' || !context.merchantId || !context.storeId) {
+    const context = consumerApi.scope.current
+    if (!context || context.workspace !== 'merchant' || !context.merchantId || !context.storeId) {
       throw new Error('MERCHANT_ENTRY_REQUIRED')
     }
     return new MerchantReviewController(
-      merchantReviewDeps(consumerApi, consumerStorage), consumerApi.scope,
+      preview ? previewReviewDeps() : merchantReviewDeps(consumerApi, consumerStorage), consumerApi.scope,
       { merchantId: context.merchantId, storeId: context.storeId })
   })
   const state = useSyncExternalStore(controller.subscribe, controller.getSnapshot)
-  useDidShow(() => { void controller.load() })
+  useDidShow(() => {
+    void (async () => {
+      try { await consumerSession.launch() } catch { /* controller.load() renders the error state */ }
+      await controller.load()
+    })()
+  })
   useDidHide(() => controller.hide())
   useEffect(() => () => controller.dispose(), [controller])
   const [info] = useState(() => Taro.getWindowInfo())
@@ -40,17 +61,73 @@ function starCount(score: string): number {
   return Number.isFinite(value) ? Math.min(5, Math.max(0, value)) : 0
 }
 
+/** 56号 §7 买家头像：https 外链（不可信外部内容）；null 或加载失败 → 首字占位，不留空白。 */
+function ReviewerAvatar({ review }: { review: ReviewSummary }) {
+  const [failed, setFailed] = useState(false)
+  const url = review.reviewerAvatarUrl
+  return <View className='mrv-reviewer-avatar'>
+    {url !== null && !failed
+      ? <Image className='mrv-reviewer-avatar-image' src={url} mode='aspectFill' onError={() => setFailed(true)} />
+      : <Text className='mrv-reviewer-initial'>{reviewerInitial(review)}</Text>}
+  </View>
+}
+
+/**
+ * 56号 §7 门店评分聚合（23:14160 聚合大卡 + 星级直方图 + 统计卡）：均分/桶计数为服务端事实，
+ * 只展示不重算；好评率为用户批准的展示推导，无计分评价时不显示；「待回复/申诉中」无对应
+ * 聚合事实，不渲染。
+ */
+function ReviewAggregateSection({ aggregate }: { aggregate: ReviewAggregate }) {
+  const stars = averageStars(aggregate)
+  const goodRate = goodRatePercent(aggregate)
+  return <>
+    <View className='mrv-agg' ariaLabel='门店评分统计'>
+      <View className='mrv-agg-score'>
+        <Text className={aggregate.averageScore === null ? 'mrv-agg-average mrv-agg-average-none' : 'mrv-agg-average'}>{averageText(aggregate)}</Text>
+        <View className='mrv-agg-stars'>
+          {[1, 2, 3, 4, 5].map(star => <Text key={star} className={stars >= star ? 'mrv-agg-star mrv-agg-star-on' : 'mrv-agg-star'}>★</Text>)}
+        </View>
+        <Text className='mrv-agg-caption'>{scoredCountText(aggregate)}</Text>
+      </View>
+      <View className='mrv-agg-bars'>
+        {starBars(aggregate).map(bar => <View key={bar.star} className='mrv-agg-bar-row' ariaLabel={`${bar.star}星 ${bar.count} 条`}>
+          <Text className='mrv-agg-bar-label'>{bar.star}星</Text>
+          <View className='mrv-agg-bar-track'><View className='mrv-agg-bar-fill' style={{ width: `${bar.widthPercent}%` }} /></View>
+          <Text className='mrv-agg-bar-count'>{groupedCount(bar.count)}</Text>
+        </View>)}
+      </View>
+    </View>
+    <View className='mrv-stats'>
+      <View className='mrv-stat'>
+        <Text className='mrv-stat-value'>{groupedCount(aggregate.totalReviews)}</Text>
+        <Text className='mrv-stat-label'>总评价</Text>
+      </View>
+      {goodRate !== null && <View className='mrv-stat mrv-stat-divided'>
+        <Text className='mrv-stat-value mrv-stat-good'>{goodRate}%</Text>
+        <Text className='mrv-stat-label'>好评率</Text>
+      </View>}
+    </View>
+  </>
+}
+
 // REV-002 评价管理 M face — 2026-10-13 visual pass on merchant frame 23:14160「首页-店铺评价-全部」
 // (family: 68:2106 待回复 / 68:3178 差评 / 68:4048 申诉中): header band 86 #FFF6E5 + centered
 // 店铺评价 title + back arrow; review cards white with the #FF7A00 star row and #9CA3AF date,
-// #1A1A2E 13.47 content, appeal tag pills and the #5BAAE8 appeal button. The frame's aggregate
-// blocks (score summary card / star histogram / 总评价·待回复·好评率·申诉中 stat card / filter
-// chips / reviewer identity / image grid / 有帮助·回复 actions) have no contract-56 read side
-// and are not rendered — registry §4.10 deviations. Zero functional change: every id, mount
-// condition, handler and the one-appeal sheet stay byte-identical.
+// #1A1A2E 13.47 content, appeal tag pills and the #5BAAE8 appeal button. 2026-11-06
+// CCR-M-REVIEW-VIEW-001 (56号 §7) now renders the frame's score summary card (average + star
+// row + scored count), the star histogram (max bucket = full bar, #FFB266→#F59E0B) and the
+// 总评价/好评率 stat card from the summary read, plus the reviewer avatar/nickname row (avatar
+// circle 36.55, initial placeholder, 匿名用户 fallback). Still not rendered (no contract fact):
+// 待回复/申诉中 stats, filter chips, member badges/service name, image grid, 有帮助·回复.
+// Zero functional change: every id, mount condition, handler and the one-appeal sheet stay
+// byte-identical.
 export default function MerchantReviewsPage() {
-  const { controller, state, style } = useMerchantReviews()
+  const route = useRouter()
+  const preview = route.params.preview === '1'
+  const { controller, state, style } = useMerchantReviews(preview)
   const [draft, setDraft] = useState('')
+  const [info] = useState(() => Taro.getWindowInfo())
+  const unit = info.windowWidth / 402
   const sheetReview = state.sheetReviewId === null ? null
     : state.items.find(item => item.reviewId === state.sheetReviewId) ?? null
   return <View className='mrv-page' style={style}>
@@ -66,9 +143,14 @@ export default function MerchantReviewsPage() {
     </View> : <>
       {state.frozen && <View className='mrv-alert'>商家或门店已冻结，当前仅可查看评价与申诉状态。</View>}
       <ScrollView className='mrv-list' scrollY enhanced showScrollbar={false}>
+        {state.aggregate !== null && <ReviewAggregateSection aggregate={state.aggregate} />}
         <Text className='mrv-count'>当前门店 · 共 {state.total} 条评价</Text>
         {state.items.length === 0 && <View className='mrv-empty'>本店暂无评价</View>}
         {state.items.map(item => <View key={item.reviewId} className='mrv-card'>
+          <View className='mrv-line mrv-reviewer'>
+            <ReviewerAvatar key={item.reviewerAvatarUrl ?? 'placeholder'} review={item} />
+            <Text className='mrv-reviewer-name'>{reviewerName(item)}</Text>
+          </View>
           <View className='mrv-line mrv-card-head'>
             <View className='mrv-stars' ariaLabel={`${item.compositeScore} 分`}>
               {[1, 2, 3, 4, 5].map(star => <Text key={star} className={starCount(item.compositeScore) >= star ? 'mrv-star mrv-star-on' : 'mrv-star'}>★</Text>)}
@@ -96,6 +178,7 @@ export default function MerchantReviewsPage() {
         </View>}
         {state.notice && state.sheetReviewId === null && <View className='mrv-notice' role='status'>{state.notice}</View>}
         <View className='mrv-bottom-space' />
+        <View className='mrv-tab-space' />
       </ScrollView>
     </>}
     {sheetReview !== null && state.sheetReviewId !== null && <View className='mrv-overlay'>
@@ -119,5 +202,6 @@ export default function MerchantReviewsPage() {
         <Button className='mrv-close-sheet' disabled={state.busy} onClick={() => controller.closeSheet()}>取消</Button>
       </View>
     </View>}
+    {sheetReview === null && <MerchantTabBar active='home' unit={unit} />}
   </View>
 }

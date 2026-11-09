@@ -6,6 +6,8 @@ import type {
   CustomerDetail, CustomerNote, CustomerPage, StatsOverview, StatsRange,
   StatsServiceOrdersPage, StatsServiceRow, StatsUtilization, TrendBucket,
 } from '../../shared/merchant-storefront-api'
+import { decodeCustomerDetail } from '../../shared/merchant-storefront-api'
+import { isMerchantStatsPath } from '../../shared/consumer-api'
 import {
   CustomerDetailController, MerchantCustomersController, MerchantStatsController,
   ServiceOrdersController, type CustomersState, type StatsState,
@@ -56,6 +58,7 @@ function fixture() {
     saveStoreProfile: async () => { throw new Error('unused') },
     retireProfileConflict: () => { throw new Error('unused') },
     uploadStorePhoto: async () => ({ assetId: '88001' }),
+    storeAvatarUrl: async () => ({ assetId: null, url: null, expiresAt: null }),
     customers: (filter, page2, pageSize) => { searches.push({ ...filter }); return Promise.resolve({ page: page2, pageSize, total: page.total, items: copy(page.items) }) },
     customerDetail: userId => { detailIds.push(userId); return Promise.resolve(copy(detail)) },
     saveCustomerNote: (userId, value, version) => {
@@ -223,4 +226,26 @@ test('服务下钻（2026-10-19 扩展）：分页只读行，首次载入即就
   assert.equal(controller.getSnapshot().page?.items[0].refundedAmount, '0.00')
   void fx
   controller.dispose()
+})
+
+test('客户详情解码：详情信封带 pets/note 时仍按客户行严格校验', () => {
+  const detail = decodeCustomerDetail({
+    userId: '710100', nickname: 'E2E体验用户', phoneMasked: '138****0100',
+    orderCount: 4, totalSpend: '240.00', avgTicket: '60.00',
+    lastVisitAt: '2026-11-05T08:15:32.649Z',
+    topPet: { petName: '豆豆', petType: 'DOG', breedName: '柯基' },
+    pets: [{ petName: '豆豆', petType: 'DOG', breedName: '柯基' }],
+    note: null,
+  })
+  assert.equal(detail.customer.userId, '710100')
+  assert.equal(detail.customer.totalSpend, '240.00')
+  assert.equal(detail.pets.length, 1)
+  assert.equal(detail.note, null)
+})
+
+test('统计路径白名单：排期利用率与服务下钻不被前端拒绝', () => {
+  assert.equal(isMerchantStatsPath({ method: 'GET', path: '/api/v1/merchant/stats/schedule-utilization' }), true)
+  assert.equal(isMerchantStatsPath({ method: 'GET', path: '/api/v1/merchant/stats/services/710401/orders' }), true)
+  assert.equal(isMerchantStatsPath({ method: 'GET', path: '/api/v1/merchant/stats/overview' }), true)
+  assert.equal(isMerchantStatsPath({ method: 'GET', path: '/api/v1/merchant/stats/unknown' }), false)
 })

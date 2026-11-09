@@ -1,25 +1,44 @@
 import { Button, Image, Input, Text, View } from '@tarojs/components'
-import Taro, { useDidHide, useDidShow } from '@tarojs/taro'
+import Taro, { useDidHide, useDidShow, useRouter } from '@tarojs/taro'
 import { useEffect, useState, useSyncExternalStore, type CSSProperties } from 'react'
-import { consumerApi, consumerStorage } from '../../../shared/consumer-runtime'
+import { consumerApi, consumerSession, consumerStorage } from '../../../shared/consumer-runtime'
 import { merchantStorefrontDeps } from '../../storefront/repository'
 import { MerchantCustomersController } from '../../storefront/read-controllers'
 import { lastVisitLabel } from '../../storefront/model'
+import { previewStatsDeps } from '../../workbench/preview'
+import { MerchantTabBar } from '../../components/tab-bar'
 import navBack from '../aftersale/assets/nav-back@3x.png'
 import './page.css'
 
-function useCustomers() {
+function useCustomers(preview = false) {
+  // ?preview=1：先注入商户坐标，再用本地客户样本；真实路径不变。
+  useState(() => {
+    if (!preview) return false
+    const current = consumerApi.scope.current
+    if (!current || current.workspace !== 'merchant' || !current.merchantId || !current.storeId) {
+      consumerApi.scope.replace({
+        userId: '9007199254740993', workspace: 'merchant',
+        merchantId: '9007199254740995', storeId: '9007199254740996',
+      })
+    }
+    return true
+  })
   const [controller] = useState(() => {
-    const context = consumerApi.scope.capture().context
-    if (context.workspace !== 'merchant' || !context.merchantId || !context.storeId) {
+    const context = consumerApi.scope.current
+    if (!context || context.workspace !== 'merchant' || !context.merchantId || !context.storeId) {
       throw new Error('MERCHANT_ENTRY_REQUIRED')
     }
     return new MerchantCustomersController(
-      merchantStorefrontDeps(consumerApi, consumerStorage),
+      preview ? previewStatsDeps() : merchantStorefrontDeps(consumerApi, consumerStorage),
       { merchantId: context.merchantId, storeId: context.storeId })
   })
   const state = useSyncExternalStore(controller.subscribe, controller.getSnapshot)
-  useDidShow(() => { void controller.load() })
+  useDidShow(() => {
+    void (async () => {
+      try { await consumerSession.launch() } catch { /* controller.load() renders the error state */ }
+      await controller.load()
+    })()
+  })
   useDidHide(() => controller.hide())
   useEffect(() => () => controller.dispose(), [controller])
   const [info] = useState(() => Taro.getWindowInfo())
@@ -39,7 +58,11 @@ async function backToWorkbench() {
 // 搜索（扩展）：昵称包含匹配 / 订单号尾号（仅命中本店订单尾号，2-10 位数字，非隐私面）。
 // 隐私红线不变：不导出、不营销触达、不含健康字段、无明文手机号/完整手机号搜索。
 export default function MerchantCustomersPage() {
-  const { controller, state, style } = useCustomers()
+  const route = useRouter()
+  const preview = route.params.preview === '1'
+  const { controller, state, style } = useCustomers(preview)
+  const [info] = useState(() => Taro.getWindowInfo())
+  const unit = info.windowWidth / 402
   return <View className='mcu-page' style={style}>
     <View className='mcu-status-area' />
     <View className='mcu-header'>
@@ -69,10 +92,13 @@ export default function MerchantCustomersPage() {
       <View className='mcu-list'>
         {state.items.length === 0 && <View className='mcu-empty'>本店暂无客户</View>}
         {state.items.map(item => <Button key={item.userId} id={`mcu-customer-${item.userId}`}
-          className='mcu-card' onClick={() => void Taro.navigateTo({ url: `/merchant/pages/customers/detail?userId=${item.userId}` })}>
+          className='mcu-card' onClick={() => void Taro.navigateTo({ url: `/merchant/pages/customers/detail?userId=${item.userId}${preview ? '&preview=1' : ''}` })}>
           <View className='mcu-line mcu-card-head'>
-            <Text className='mcu-name'>{item.nickname ?? '未命名用户'}</Text>
-            <Text className='mcu-phone'>{item.phoneMasked ?? '未绑定手机号'}</Text>
+            <View className='mcu-avatar'><Text>{Array.from(item.nickname ?? '客')[0] ?? '客'}</Text></View>
+            <View className='mcu-identity'>
+              <Text className='mcu-name'>{item.nickname ?? '未命名用户'}</Text>
+              <Text className='mcu-phone'>{item.phoneMasked ?? '未绑定手机号'}</Text>
+            </View>
             <Text className='mcu-visit'>{lastVisitLabel(item.lastVisitAt, new Date())}到店</Text>
           </View>
           <View className='mcu-line mcu-card-body'>
@@ -90,6 +116,8 @@ export default function MerchantCustomersPage() {
       </View>
       <Text className='mcu-tail'>仅展示本店订单派生数据 · 手机号默认脱敏（69号）</Text>
       <View className='mcu-bottom-space' />
+      <View className='mcu-tab-space' />
     </>}
+    <MerchantTabBar active='home' unit={unit} />
   </View>
 }

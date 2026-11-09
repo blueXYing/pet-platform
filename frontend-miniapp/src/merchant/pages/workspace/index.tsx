@@ -1,10 +1,39 @@
-import { Button, Image, Text, View } from '@tarojs/components'
-import Taro, { useDidHide, useDidShow } from '@tarojs/taro'
-import { useEffect, useState, useSyncExternalStore, type CSSProperties } from 'react'
+import { Button, Image, ScrollView, Text, View } from '@tarojs/components'
+import Taro, { useDidHide, useDidShow, useRouter } from '@tarojs/taro'
+import { useEffect, useRef, useState, useSyncExternalStore, type CSSProperties } from 'react'
 import { useWorkspace } from '../../../shared/workspace-react'
+import { consumerApi, consumerSession } from '../../../shared/consumer-runtime'
+import { consumerFixture } from '../../../shared/fixture'
+import { MerchantStatsClient, StoreProfileClient } from '../../../shared/merchant-storefront-api'
+import { MerchantRefundClient } from '../../../shared/merchant-refund-api'
 import { MerchantWorkspace } from '../../workspace'
+import { clearTabHandoff, consumeTabHandoff } from '../../tab-handoff'
 import { realDeps } from '../../admission-runtime'
+import { fixtureDeps } from '../../admission'
+import { MerchantWorkbenchDashboard } from '../../workbench/dashboard'
+import { previewDashboardDeps } from '../../workbench/preview'
+import { RealMerchantOrderListRepository } from '../../order/repository'
+import {
+  merchantCardSubtitle, merchantCustomerInitial, merchantCustomerName, merchantOrderTimeText,
+  type MerchantOrderSummary,
+} from '../../order/model'
+import { businessStatusLabel, deltaLabel } from '../../storefront/model'
+import { MerchantTabBar } from '../../components/tab-bar'
 import navBack from '../aftersale/assets/nav-back@3x.png'
+import bell from './assets/bell.svg'
+import paper from './assets/paper-grid.jpg'
+import tape from './assets/tape.png'
+import heroTicket from './assets/hero-ticket.svg'
+import heroPanel from './assets/hero-panel.svg'
+import chevron from './assets/chevron.svg'
+import gridServices from './assets/grid-services.svg'
+import gridSchedule from './assets/grid-schedule.svg'
+import gridMembers from './assets/grid-members.svg'
+import gridVerify from './assets/grid-verify.svg'
+import gridMarketing from './assets/grid-marketing.svg'
+import gridStats from './assets/grid-stats.svg'
+import gridCustomers from './assets/grid-customers.svg'
+import gridReviews from './assets/grid-reviews.svg'
 import './index.css'
 
 const reasonText: Record<string, string> = {
@@ -34,27 +63,155 @@ function routeForStep(step: string, merchantId: string): string | null {
   return null
 }
 
-// M-002 workbench visual pass (2026-10-13): merchant frame 95:1899「首页」family measures —
-// header band #FFF6E5 + centered title + back arrow, blue hero card #5BAAE8 with the light
-// wave zone, quick-entry grid on #D7F1FD r16 with white r12 icon tiles. Visual only: every
-// button id / mount condition / route / admission gate below is byte-identical to the prior
-// implementation. Design blocks with no admission-view fields (今日营收/较昨日/营业中状态/
-// 待办预约/统计卡/底部tab) are not rendered — registry §4.10 deviations.
+/** 金额千分位（契约金额是两位小数字符串；null 显示 —）。 */
+function moneyText(value: string | null): string {
+  if (value === null) return '—'
+  const [whole, fraction] = value.split('.')
+  return `${whole.replace(/\B(?=(\d{3})+(?!\d))/g, ',')}${fraction ? `.${fraction}` : ''}`
+}
+/** 订单卡时间：只取 UTC+8 的 HH:mm；无窗口显示「待定」。 */
+function orderClock(order: MerchantOrderSummary): string {
+  const text = merchantOrderTimeText(order.appointmentStart)
+  return text ? text.slice(11, 16) : '待定'
+}
+/** 待办倒计时（设计稿语言）；只做展示，不改变 30 分钟确认窗口的服务端权威。 */
+function countdownText(order: MerchantOrderSummary): string {
+  if (!order.appointmentStart) return '时间待定'
+  const start = new Date(order.appointmentStart).getTime()
+  if (!Number.isFinite(start)) return '时间待定'
+  const minutes = Math.round((start - Date.now()) / 60_000)
+  if (minutes <= 0) return '已到时间'
+  if (minutes < 60) return `${minutes}分钟后`
+  const hours = Math.round(minutes / 60)
+  if (hours < 24) return `${hours}小时后`
+  return `${Math.round(hours / 24)}天后`
+}
+function countdownClass(order: MerchantOrderSummary): string {
+  if (!order.appointmentStart) return 'mwb-todo-count mwb-todo-count-muted'
+  const start = new Date(order.appointmentStart).getTime()
+  if (!Number.isFinite(start)) return 'mwb-todo-count mwb-todo-count-muted'
+  const minutes = Math.round((start - Date.now()) / 60_000)
+  if (minutes <= 0) return 'mwb-todo-count mwb-todo-count-muted'
+  return minutes < 60 ? 'mwb-todo-count mwb-todo-count-soon' : 'mwb-todo-count mwb-todo-count-later'
+}
+function deltaClass(value: string | null): string {
+  const number = value === null ? 0 : Number(value)
+  if (!Number.isFinite(number) || number === 0) return 'mwb-delta-value mwb-delta-flat'
+  return number > 0 ? 'mwb-delta-value mwb-delta-up' : 'mwb-delta-value mwb-delta-down'
+}
+
+/** CCR-M-ORDER-CARD-001 客户头像：URL 为空或加载失败降级为首字占位圆，不伪造图片。 */
+function CustomerAvatar({ url, initial }: { url: string | null; initial: string }) {
+  const [failed, setFailed] = useState(false)
+  if (url !== null && !failed) {
+    return <Image className='mwb-todo-avatar mwb-todo-avatar-image' src={url} mode='aspectFill' onError={() => setFailed(true)} />
+  }
+  return <View className='mwb-todo-avatar'><Text>{initial}</Text></View>
+}
+
+/** 待办卡服务行：服务名·宠物（可空）；快照全缺时回落到既有订单尾号事实，不伪造。 */
+function todoLine(order: MerchantOrderSummary): string {
+  return merchantCardSubtitle(order) ?? `订单 ${order.orderNo.slice(-6)}`
+}
+
+// 商家工作台首页，按 Figma 95:1899（402x898）还原：
+// - 头带 86 #fff6e5：店招 40 圆、店名/账号、营业中/休息中胶囊、铃铛（店铺资料 27号 §6.4）
+// - 营收票券：paper-grid 纸纹 + hero-ticket/hero-panel 原稿矢量 + tape；今日营收/较昨日（70号 TODAY）
+// - 四 KPI：待确认/待服务（10号 §4.1 列表 total）、今日订单（70号）、退款（57号待处理 total）
+// - 待办预约：PENDING_CONFIRM 订单横滑卡（CCR-M-ORDER-CARD-001 批准后补客户昵称/头像、
+//   服务名、宠物名·品种；空值降级首字/订单尾号，评分仍不在读侧不渲染）
+// - 8 格入口：完全按原稿 商品管理/排期管理/员工管理/核销记录/营销工具/数据统计/客户管理/店铺评价
+// - 底部五 tab：首页/订单/核销/消息/我的（2026-11-04 用户批准）
+// 所有既有入口 Button id、挂载条件、准入 handoff、请求语义保持；视觉块均为新增只读展示。
 export default function MerchantWorkbenchPage() {
-  const { scope, context } = useWorkspace('real')
+  const route = useRouter()
+  const preview = route.params.preview === '1'
+  const { scope, context, revision } = useWorkspace('real')
   const [controller] = useState(() => new MerchantWorkspace(scope))
   const state = useSyncExternalStore(controller.subscribe, controller.getSnapshot)
-  const enter = () => { void controller.enter(realDeps()) }
-  useDidShow(enter)
-  useDidHide(() => controller.leave())
-  useEffect(() => () => controller.dispose(), [controller])
-  // Custom navigation reserves the real status-bar height, same mechanism as the services and
-  // application pages; the unit scale follows the 402-wide design frame.
+  const [admissionDeps] = useState(() => preview ? fixtureDeps('allowed') : realDeps())
+  const caps = useRef({ profile: false, stats: false, orders: false, refunds: false })
+  const [dashboard] = useState(() => {
+    if (preview) return new MerchantWorkbenchDashboard(previewDashboardDeps())
+    const profileClient = new StoreProfileClient(consumerApi)
+    const statsClient = new MerchantStatsClient(consumerApi)
+    const orderRepository = new RealMerchantOrderListRepository(consumerApi)
+    const refundClient = new MerchantRefundClient(consumerApi)
+    const coordinates = () => {
+      const current = consumerApi.scope.capture().context
+      if (!current || current.workspace !== 'merchant' || !current.merchantId || !current.storeId) {
+        throw new Error('MERCHANT_ENTRY_REQUIRED')
+      }
+      return { merchantId: current.merchantId, storeId: current.storeId }
+    }
+    const skipped = () => Promise.reject(new Error('DASHBOARD_SKIPPED'))
+    return new MerchantWorkbenchDashboard({
+      profile: () => caps.current.profile ? profileClient.get() : skipped(),
+      stats: () => caps.current.stats ? statsClient.overview('TODAY') : skipped(),
+      orders: displayStatus => caps.current.orders
+        ? orderRepository.list({ ...coordinates(), displayStatus, page: 1, pageSize: 20 })
+        : skipped(),
+      refunds: () => caps.current.refunds
+        ? refundClient.list({ ...coordinates(), page: 1, pageSize: 20 })
+        : skipped(),
+    })
+  })
+  const dash = useSyncExternalStore(dashboard.subscribe, dashboard.getSnapshot)
+  const enter = () => {
+    clearTabHandoff()
+    // ?preview=1 是开发者工具视觉验收夹具：先注入消费者样本上下文，再由 fixtureDeps 放行；
+    // 真实路径仍要求已登录会话，0 改动。
+    if (preview && !scope.current) scope.replace(consumerFixture)
+    if (!preview) {
+      // The provider launch and did-show race on first mount, and a reused page may return
+      // with an expired grant while the merchant scope is still in memory. Always restore the
+      // session before the admission read; launch() is single-flight at the auth layer.
+      void consumerSession.launch()
+        .then(() => controller.enter(admissionDeps))
+        .catch(() => controller.enter(admissionDeps))
+      return
+    }
+    void controller.enter(admissionDeps)
+  }
+  useDidShow(() => {
+    // A disposed-but-reused page object must re-arm before enter() can publish again.
+    controller.reopen()
+    dashboard.show()
+    enter()
+  })
+  useDidHide(() => {
+    // Tab siblings are not workbench children, but they still need the merchant coordinates;
+    // the tab bar leaves a one-shot marker so this hide is a handoff, not a leave-to-consumer.
+    if (consumeTabHandoff()) controller.handoffToMerchantPage()
+    controller.leave()
+    dashboard.hide()
+  })
+  useEffect(() => () => { controller.dispose(); dashboard.dispose() }, [controller, dashboard])
   const [windowInfo] = useState(() => Taro.getWindowInfo())
+  const unit = windowInfo.windowWidth / 402
   const style = {
     '--mwb-status-top': `${windowInfo.statusBarHeight || 0}px`,
-    '--mwb-unit': `${windowInfo.windowWidth / 402}px`,
+    '--mwb-unit': `${unit}px`,
   } as CSSProperties
+
+  const view = state.view
+  const ready = state.status === 'allowed' || state.status === 'limited'
+  const owner = view?.membershipKind === 'OWNER'
+  const staff = view?.membershipKind === 'STAFF'
+  const canOrders = Boolean(ready && owner && view?.allowedActions.includes('merchant.order.read'))
+  const canRefunds = Boolean(canOrders && view?.allowedActions.includes('merchant.refund.read'))
+  const canProfile = Boolean(ready && owner)
+  const dashboardKey = `${revision}|${state.revision}|${state.status}|${view?.merchantId ?? ''}|${view?.storeId ?? ''}|${canProfile}|${canOrders}|${canRefunds}`
+  const lastDashboardKey = useRef('')
+  useEffect(() => {
+    if (!ready || !owner) return
+    if (lastDashboardKey.current === dashboardKey) return
+    lastDashboardKey.current = dashboardKey
+    caps.current = { profile: canProfile, stats: canOrders, orders: canOrders, refunds: canRefunds }
+    dashboard.show()
+    void dashboard.load()
+  }, [dashboardKey, ready, owner, canProfile, canOrders, canRefunds, dashboard])
+
   async function back() {
     controller.leave()
     await Taro.switchTab({ url: '/consumer/pages/home/index' })
@@ -65,212 +222,240 @@ export default function MerchantWorkbenchPage() {
     if (url) void Taro.navigateTo({ url })
     else void Taro.showToast({ title: '该入口将在后续切片提供', icon: 'none' })
   }
-  // F1 fix: navigateTo hides this page first, and the service pages gate on the merchant
-  // coordinates this workbench holds — hand them to the child instead of revoking on hide
-  // (leave() used to reset them, deadlocking the child at its entry state in real mode).
-  function openServices() {
-    controller.handoffToChild()
-    Taro.navigateTo({ url: '/merchant/pages/services/index' }).catch(() => controller.handoffCancelled())
+  function handoff(url: string) {
+    // Taro disposes the hidden workbench React tree for merchant child pages too; their
+    // controllers must keep the merchant coordinates, so this is the same handoff contract
+    // as a bottom-tab switch (survives dispose), not the consumer-leave path.
+    controller.handoffToMerchantPage()
+    Taro.navigateTo({ url }).catch(() => controller.handoffCancelled())
   }
-  function openAftersales() {
-    controller.handoffToChild()
-    Taro.navigateTo({ url: '/merchant/pages/aftersale/index' }).catch(() => controller.handoffCancelled())
+  function openServices() { handoff('/merchant/pages/services/index') }
+  function openAftersales() { handoff('/merchant/pages/aftersale/index') }
+  function openReviews() { handoff('/merchant/pages/reviews/index') }
+  function openSchedule() { handoff('/merchant/pages/schedule/index') }
+  function openMembers() { handoff('/merchant/pages/members/index') }
+  function openStaffWorkbench() { handoff('/merchant/pages/staff-workbench/index') }
+  function openVerify() { handoff('/merchant/pages/staff-verify/index') }
+  function openOrders() { handoff('/merchant/pages/order-list/index') }
+  function openCustomers() { handoff('/merchant/pages/customers/index') }
+  function openStats() { handoff('/merchant/pages/stats/index') }
+  function openMarketing() { handoff('/merchant/pages/marketing/index') }
+  function openOrder(order: MerchantOrderSummary) {
+    handoff(`/merchant/pages/order-confirm/index?orderId=${encodeURIComponent(order.orderId)}`)
+  }
+  function openMessages() {
+    controller.handoffToMerchantPage()
+    const pages = Taro.getCurrentPages()
+    const index = pages.findIndex(page => page.route === 'merchant/pages/messages/index')
+    if (index >= 0) {
+      const delta = pages.length - 1 - index
+      if (delta > 0) Taro.navigateBack({ delta }).catch(() => controller.handoffCancelled())
+      return
+    }
+    Taro.navigateTo({ url: '/merchant/pages/messages/index' }).catch(() => controller.handoffCancelled())
   }
 
-  // Review management (56号 / REV-002): same handoff discipline as aftersale — the child page
-  // gates on the merchant coordinates this workbench holds.
-  function openReviews() {
-    controller.handoffToChild()
-    Taro.navigateTo({ url: '/merchant/pages/reviews/index' }).catch(() => controller.handoffCancelled())
-  }
+  const storeName = dash.storeName ?? (owner ? '商家工作台' : staff ? '员工工作台' : '商家工作台')
+  const initial = dash.storeInitial
+  const statusLabel = dash.businessStatus ? businessStatusLabel[dash.businessStatus] ?? '' : ''
+  const statusResting = dash.businessStatus === 'RESTING'
+  const cells = [
+    { id: 'workbench-services', label: '商品管理', icon: gridServices, open: openServices,
+      enabled: Boolean(owner && state.status === 'allowed') },
+    { id: 'workbench-schedule', label: '排期管理', icon: gridSchedule, open: openSchedule,
+      enabled: Boolean(owner && state.status === 'allowed' && view?.allowedActions.includes('merchant.schedule.manage')) },
+    { id: 'workbench-members', label: '员工管理', icon: gridMembers, open: openMembers,
+      enabled: Boolean(owner && state.status === 'allowed') },
+    { id: 'workbench-verify', label: '核销记录', icon: gridVerify, open: openVerify,
+      enabled: Boolean(owner && ready) },
+    { id: 'workbench-marketing', label: '营销工具', icon: gridMarketing, open: openMarketing,
+      enabled: Boolean(owner && state.status === 'allowed') },
+    { id: 'workbench-stats', label: '数据统计', icon: gridStats, open: openStats,
+      enabled: Boolean(owner && ready && view?.allowedActions.includes('merchant.order.read')) },
+    { id: 'workbench-customers', label: '客户管理', icon: gridCustomers, open: openCustomers,
+      enabled: Boolean(owner && ready && view?.allowedActions.includes('merchant.order.read')) },
+    { id: 'workbench-reviews', label: '店铺评价', icon: gridReviews, open: openReviews,
+      enabled: Boolean(owner && ready && view?.allowedActions.includes('merchant.review.read')) },
+  ]
 
-  function openSchedule() {
-    controller.handoffToChild()
-    Taro.navigateTo({ url: '/merchant/pages/schedule/index' }).catch(() => controller.handoffCancelled())
-  }
-
-  // Contract 54 staff binding entry (member management: list/invite/cancel/disable). Same
-  // handoff discipline as the service pages: the child gates on the coordinates this page holds.
-  function openMembers() {
-    controller.handoffToChild()
-    Taro.navigateTo({ url: '/merchant/pages/members/index' }).catch(() => controller.handoffCancelled())
-  }
-  // Staff landing (52/54): the staff workbench re-checks admission itself and organizes the
-  // verify entry + invitation records for the STAFF projection.
-  function openStaffWorkbench() {
-    controller.handoffToChild()
-    Taro.navigateTo({ url: '/merchant/pages/staff-workbench/index' }).catch(() => controller.handoffCancelled())
-  }
-  // Order verification (48 K2 v0.3 HTTP face): OWNER and STAFF share the same submit page —
-  // the operator identity is resolved server-side by the K1 chain. The OWNER path keeps
-  // ACTIVE/OFFLINE existing-order fulfillment, so a LIMITED store keeps the entry too
-  // (FROZEN fails closed server-side).
-  function openVerify() {
-    controller.handoffToChild()
-    Taro.navigateTo({ url: '/merchant/pages/staff-verify/index' }).catch(() => controller.handoffCancelled())
-  }
-  // Merchant order processing (45号 via 10号 §4.2/§4.3 + §4.1 list read): the entry now lands
-  // on the store order list (待接单/全部 tabs); the #129 confirm/reject page is entered from a
-  // list card. Existing-order family like verify — OFFLINE/LIMITED keeps handling paid orders,
-  // FROZEN fails closed server-side.
-  function openOrderConfirm() {
-    controller.handoffToChild()
-    Taro.navigateTo({ url: '/merchant/pages/order-list/index' }).catch(() => controller.handoffCancelled())
-  }
-  // Merchant refund processing (57号 via 10号 §4.4-§4.6): pending refund list + OWNER
-  // decisions. Existing-material family — OFFLINE keeps handling pending refunds (49号),
-  // FROZEN stays read-only and new decisions fail closed server-side.
-  function openRefunds() {
-    controller.handoffToChild()
-    Taro.navigateTo({ url: '/merchant/pages/refund/index' }).catch(() => controller.handoffCancelled())
-  }
-  // Store profile maintenance (27 §6.4): the write gate is the staff-write family —
-  // OWNER + ACTIVE + APPROVED + SIGNED server-side, so the entry stays ALLOWED-only.
-  function openShopInfo() {
-    controller.handoffToChild()
-    Taro.navigateTo({ url: '/merchant/pages/shop-info/index' }).catch(() => controller.handoffCancelled())
-  }
-  // Derived customers (69) + business stats (70): read-only existing-material family, same
-  // gate as the order list — readable for LIMITED, gated on merchant.order.read.
-  function openCustomers() {
-    controller.handoffToChild()
-    Taro.navigateTo({ url: '/merchant/pages/customers/index' }).catch(() => controller.handoffCancelled())
-  }
-  function openStats() {
-    controller.handoffToChild()
-    Taro.navigateTo({ url: '/merchant/pages/stats/index' }).catch(() => controller.handoffCancelled())
-  }
-  // Contract-71 marketing center: platform enrollment + merchant-initiated campaigns.
-  function openMarketing() {
-    controller.handoffToChild()
-    Taro.navigateTo({ url: '/merchant/pages/marketing/index' }).catch(() => controller.handoffCancelled())
-  }
-  const view = state.view
-  const heroTitle = state.status === 'idle' ? '正在进入工作台…'
-    : state.status === 'checking' ? '正在校验工作台准入…'
-    : state.status === 'error' ? (state.notice || '准入查询失败，未放行。')
-    : state.status === 'no-stores' ? '还没有可进入的商家门店'
-    : state.status === 'choose-store' ? '请选择要进入的门店'
-    : state.status === 'allowed' ? '工作台已就绪'
-    : state.status === 'limited' ? '门店受限访问'
-    : '暂不能进入工作台'
-  return <View className='mwb-page' style={style}>
-    <View className='mwb-status-area' />
-    <View className='mwb-header'>
-      <Button className='mwb-back' ariaLabel='返回' onClick={() => void back()}><Image src={navBack} mode='scaleToFill' /></Button>
-      <Text className='mwb-title'>商家工作台</Text>
-    </View>
-    <View className='mwb-body'>
-      <View className='mwb-hero'>
-        <View className='mwb-hero-wave' />
-        <View className='mwb-hero-pill'><Text>商家工作台</Text></View>
-        <Text className='mwb-hero-title'>{heroTitle}</Text>
-        {view && <Text className='mwb-hero-sub'>校验时间 {view.checkedAt} · authzVersion {view.authzVersion}</Text>}
-      </View>
-      {state.status === 'checking' && <View className='mwb-line' role='status'>正在校验工作台准入…</View>}
-      {state.status === 'error' && <View className='mwb-card mwb-error' role='alert'>
+  function renderAdmission() {
+    if (state.status === 'checking' || state.status === 'idle') {
+      return <View className='mwb-card' role='status'><Text>正在校验工作台准入…</Text></View>
+    }
+    if (state.status === 'error') {
+      return <View className='mwb-card mwb-error' role='alert'>
         <Text>{state.notice || '准入查询失败，未放行。'}</Text>
-        <Button className='mwb-primary' onClick={enter}>重试</Button>
-      </View>}
-      {state.status === 'no-stores' && <View className='mwb-card'>
+        <View className='mwb-row'>
+          <Button className='mwb-primary' onClick={enter}>重试</Button>
+          <Button className='mwb-secondary' onClick={() => void back()}>返回用户端</Button>
+        </View>
+      </View>
+    }
+    if (state.status === 'no-stores') {
+      return <View className='mwb-card'>
         <Text>当前账号还没有可进入的商家门店。</Text>
         <Text className='mwb-hint'>完成入驻申请并审核通过、签署商家协议后即可进入。</Text>
         <Button className='mwb-primary' onClick={() => void Taro.navigateTo({ url: '/consumer/pages/merchant-application/index' })}>去申请入驻</Button>
-        {/* Staff binding (contract 54): the pre-binding employee has no membership yet, so the
-            staff workbench is the discoverable confirm entry (2026-10-06 user adjudication). */}
-        <Button id='workbench-staff-entry' className='mwb-hint' onClick={() => void Taro.navigateTo({ url: '/merchant/pages/staff-workbench/index' })}>收到店员邀请？去员工工作台确认</Button>
-      </View>}
-      {state.status === 'choose-store' && <View className='mwb-card'>
+        {/* Staff binding (contract 54): pre-binding employees have no membership yet. */}
+        <Button id='workbench-staff-entry' className='mwb-secondary' onClick={() => void Taro.navigateTo({ url: '/merchant/pages/staff-workbench/index' })}>收到店员邀请？去员工工作台确认</Button>
+        <Button className='mwb-link' onClick={() => void back()}>返回用户端</Button>
+      </View>
+    }
+    if (state.status === 'choose-store') {
+      return <View className='mwb-card'>
         <Text>请选择要进入的门店</Text>
         {state.stores?.map(store => <Button key={store.storeId} className='mwb-store'
-          onClick={() => void controller.select(store.merchantId, store.storeId, realDeps())}>
+          onClick={() => void controller.select(store.merchantId, store.storeId, admissionDeps)}>
           {store.storeName}<Text className='mwb-hint'>{store.merchantName}</Text>
         </Button>)}
-      </View>}
-      {view && (state.status === 'allowed' || state.status === 'limited' || state.status === 'denied') && <View className='mwb-card'>
+        <Button className='mwb-link' onClick={() => void back()}>返回用户端</Button>
+      </View>
+    }
+    if (state.status === 'denied' && view) {
+      return <View className='mwb-card'>
         {view.reasonCodes.length > 0 && <View className='mwb-reasons' role='status'>
           {view.reasonCodes.map(code => <Text key={code}>· {reasonText[code] || code}</Text>)}
         </View>}
-        {state.status === 'limited' && <Text className='mwb-hint'>存量订单与售后读取不受影响；新经营业务暂停。处理中的订单请继续履约。</Text>}
-        {state.status === 'allowed' && view.allowedActions.length > 0 && <View className='mwb-actions'>
-          {view.allowedActions.map(action => <Text key={action} className='mwb-chip'>{action}</Text>)}
-          <Text className='mwb-hint'>以上为入口提示；完整工作台功能（订单）在后续切片交付。</Text>
-        </View>}
-        <View className='mwb-grid'>
-          {view.membershipKind === 'STAFF' && (state.status === 'allowed' || state.status === 'limited') && <>
-            {/* Staff landing is the staff workbench (2026-10-06 adjudication), distinct from the
-                OWNER entries below: a STAFF projection never shows owner management entries. */}
-            <Button id='workbench-staff-workspace' className='mwb-cell' onClick={openStaffWorkbench}>
-              <View className='mwb-cell-icon mwb-icon-staff' /><Text className='mwb-cell-label'>员工工作台</Text>
-            </Button>
-          </>}
-          {view.membershipKind === 'OWNER' && state.status === 'allowed' && <>
-            {/* M-002 service management entry (NAVIGATION-BASIS: workbench is the approved hub;
-                the entry stays hidden for LIMITED stores — new-business writes are suspended). */}
-            <Button id='workbench-services' className='mwb-cell' onClick={openServices}>
-              <View className='mwb-cell-icon mwb-icon-services' /><Text className='mwb-cell-label'>服务管理</Text>
-            </Button>
-            {/* Schedule maintenance entry gates on the approved action (53号 写侧消费切片). */}
-            {view.allowedActions.includes('merchant.schedule.manage') && <Button id='workbench-schedule' className='mwb-cell' onClick={openSchedule}>
-              <View className='mwb-cell-icon mwb-icon-schedule' /><Text className='mwb-cell-label'>排期管理</Text>
-            </Button>}
-            <Button id='workbench-members' className='mwb-cell' onClick={openMembers}>
-              <View className='mwb-cell-icon mwb-icon-staff' /><Text className='mwb-cell-label'>成员管理</Text>
-            </Button>
-          </>}
-          {view.membershipKind === 'OWNER' && (state.status === 'allowed' || state.status === 'limited') && <>
-            {/* Order verification entry (48 K2 v0.3): 存量履约 family — ACTIVE/OFFLINE keeps
-                verifying existing orders, so the entry stays for LIMITED like aftersale. */}
-            <Button id='workbench-verify' className='mwb-cell' onClick={openVerify}>
-              <View className='mwb-cell-icon mwb-icon-verify' /><Text className='mwb-cell-label'>订单核销</Text>
-            </Button>
-            {/* Merchant order processing (45号 + §4.1 list read): 本店订单列表(重点待接单),同样属存量履约 family。 */}
-            <Button id='workbench-order-confirm' className='mwb-cell' onClick={openOrderConfirm}>
-              <View className='mwb-cell-icon mwb-icon-orders' /><Text className='mwb-cell-label'>订单处理</Text>
-            </Button>
-            {/* Merchant refund processing (57号): 待处理退款列表入口，同存量履约 family（OFFLINE 可处理）。 */}
-            <Button id='workbench-refunds' className='mwb-cell' onClick={openRefunds}>
-              <View className='mwb-cell-icon mwb-icon-refunds' /><Text className='mwb-cell-label'>退款处理</Text>
-            </Button>
-          </>}
-          {view.membershipKind === 'OWNER' && (state.status === 'allowed' || state.status === 'limited') && view.allowedActions.includes('merchant.aftersale.read') && <>
-            <Button id='workbench-aftersales' className='mwb-cell' onClick={openAftersales}>
-              <View className='mwb-cell-icon mwb-icon-aftersales' /><Text className='mwb-cell-label'>售后管理</Text>
-            </Button>
-          </>}
-          {/* Review management entry (56号 / REV-002): 存量读取 family — the review list stays
-              readable for LIMITED/FROZEN stores; the one-appeal write fails closed server-side. */}
-          {view.membershipKind === 'OWNER' && (state.status === 'allowed' || state.status === 'limited') && view.allowedActions.includes('merchant.review.read') && <>
-            <Button id='workbench-reviews' className='mwb-cell' onClick={openReviews}>
-              <View className='mwb-cell-icon mwb-icon-reviews' /><Text className='mwb-cell-label'>评价管理</Text>
-            </Button>
-          </>}
-          {/* M-side finish slice: derived customer list (69) and stats dashboard (70) are
-              read-only existing-material entries, gated on the merchant.order.read action. */}
-          {view.membershipKind === 'OWNER' && (state.status === 'allowed' || state.status === 'limited') && view.allowedActions.includes('merchant.order.read') && <>
-            <Button id='workbench-customers' className='mwb-cell' onClick={openCustomers}>
-              <View className='mwb-cell-icon mwb-icon-aftersales' /><Text className='mwb-cell-label'>客户管理</Text>
-            </Button>
-            <Button id='workbench-stats' className='mwb-cell' onClick={openStats}>
-              <View className='mwb-cell-icon mwb-icon-orders' /><Text className='mwb-cell-label'>数据统计</Text>
-            </Button>
-          </>}
-          {/* Store profile (27 §6.4): owner self-maintenance — ALLOWED only, mirroring the
-              services/members write-family gating (LIMITED suspends new business writes). */}
-          {view.membershipKind === 'OWNER' && state.status === 'allowed' && <>
-            <Button id='workbench-shop-info' className='mwb-cell' onClick={openShopInfo}>
-              <View className='mwb-cell-icon mwb-icon-services' /><Text className='mwb-cell-label'>店铺信息</Text>
-            </Button>
-            <Button id='workbench-marketing' className='mwb-cell' onClick={openMarketing}>
-              <View className='mwb-cell-icon mwb-icon-staff' /><Text className='mwb-cell-label'>营销活动</Text>
-            </Button>
-          </>}
-        </View>
         {view.nextSteps.length > 0 && <View className='mwb-steps'>
           {view.nextSteps.map(step => <Button key={step.type} onClick={() => takeStep(step.type, view.merchantId)}>{stepText[step.type] || step.type}</Button>)}
         </View>}
+        <Button className='mwb-link' onClick={() => void back()}>返回用户端</Button>
+      </View>
+    }
+    return null
+  }
+
+  function renderDashboard() {
+    return <>
+      {state.status === 'limited' && <View className='mwb-limited'>门店受限：存量订单与售后可查看，新经营业务暂停。</View>}
+      <View className='mwb-hero-zone'>
+        <View className='mwb-paper'><Image className='mwb-paper-image' src={paper} mode='widthFix' /></View>
+        <Image className='mwb-ticket' src={heroTicket} mode='scaleToFill' />
+        <View className='mwb-panel'><Image className='mwb-panel-image' src={heroPanel} mode='scaleToFill' /></View>
+        <Image className='mwb-tape' src={tape} mode='scaleToFill' />
+        <View className='mwb-hero-pill'><Text>今日营收</Text></View>
+        <View className='mwb-amount'>
+          <Text className='mwb-currency'>¥</Text>
+          <Text className='mwb-number'>{moneyText(dash.revenue)}</Text>
+        </View>
+        <View className='mwb-delta'>
+          <Text className='mwb-delta-label'>较昨日</Text>
+          <Text className={deltaClass(dash.revenueDelta)}>{deltaLabel(dash.revenueDelta)}</Text>
+        </View>
+      </View>
+      <View className='mwb-kpis'>
+        <View className='mwb-kpi'>
+          <View className='mwb-kpi-value'><Text>{dash.pendingConfirm ?? '—'}</Text>{dash.pendingConfirm ? <View className='mwb-kpi-dot' /> : null}</View>
+          <Text className='mwb-kpi-label'>待确认</Text>
+        </View>
+        <View className='mwb-kpi'>
+          <View className='mwb-kpi-value'><Text>{dash.pendingService ?? '—'}</Text></View>
+          <Text className='mwb-kpi-label'>待服务</Text>
+        </View>
+        <View className='mwb-kpi'>
+          <View className='mwb-kpi-value'><Text>{dash.todayOrders ?? '—'}</Text></View>
+          <Text className='mwb-kpi-label'>今日订单</Text>
+        </View>
+        <View className='mwb-kpi'>
+          <View className='mwb-kpi-value'><Text>{dash.refunds ?? '—'}</Text></View>
+          <Text className='mwb-kpi-label'>退款</Text>
+        </View>
+      </View>
+      <View className='mwb-section-head'>
+        <Text className='mwb-section-title'>待办预约</Text>
+        <Button className='mwb-all' onClick={openOrders}><Text>全部</Text><Image className='mwb-chevron' src={chevron} mode='aspectFit' /></Button>
+      </View>
+      <ScrollView className='mwb-todo' scrollX enhanced showScrollbar={false}>
+        <View className='mwb-todo-row'>
+          {dash.pending.length === 0
+            ? <View className='mwb-todo-empty'><Text>{dash.ordersReady ? '暂无待办预约' : '待办预约暂不可用'}</Text></View>
+            : dash.pending.map(order => <View className='mwb-todo-card' key={order.orderId}>
+              <View className='mwb-todo-head'>
+                <CustomerAvatar url={order.customerAvatarUrl} initial={merchantCustomerInitial(order)} />
+                <View className='mwb-todo-who'>
+                  <Text className='mwb-todo-name'>{merchantCustomerName(order)}</Text>
+                  <Text className='mwb-todo-time'>{orderClock(order)}</Text>
+                </View>
+              </View>
+              <View className='mwb-todo-line'>
+                <Text className='mwb-todo-service'>{todoLine(order)}</Text>
+                <Text className='mwb-todo-amount'>¥{order.payAmount}</Text>
+              </View>
+              <Text className={countdownClass(order)}>{countdownText(order)}</Text>
+              <View className='mwb-todo-actions'>
+                <Button className='mwb-todo-reject' onClick={() => openOrder(order)}>拒绝</Button>
+                <Button className='mwb-todo-accept' onClick={() => openOrder(order)}>接单</Button>
+              </View>
+            </View>)}
+        </View>
+      </ScrollView>
+      <View className='mwb-grid-card'>
+        <View className='mwb-grid'>
+          {cells.map(cell => cell.enabled
+            ? <Button key={cell.id} id={cell.id} className='mwb-grid-cell' onClick={cell.open}>
+              <View className='mwb-grid-tile'><Image className='mwb-grid-icon' src={cell.icon} mode='aspectFit' /></View>
+              <Text className='mwb-grid-label'>{cell.label}</Text>
+            </Button>
+            : <View key={cell.id} id={cell.id} className='mwb-grid-cell mwb-grid-disabled'
+              onClick={() => { void Taro.showToast({ title: '当前状态不可用', icon: 'none' }) }}>
+              <View className='mwb-grid-tile'><Image className='mwb-grid-icon' src={cell.icon} mode='aspectFit' /></View>
+              <Text className='mwb-grid-label'>{cell.label}</Text>
+            </View>)}
+        </View>
+      </View>
+      {dash.notice && <Text className='mwb-dash-notice'>{dash.notice}</Text>}
+      <View className='mwb-tab-space' />
+    </>
+  }
+
+  function renderStaff() {
+    return <>
+      <View className='mwb-card'>
+        <Text className='mwb-card-title'>员工账号</Text>
+        <Text className='mwb-hint'>当前为员工身份；员工工作台与订单核销按服务端权限放行。</Text>
+        <Button id='workbench-staff-workspace' className='mwb-primary' onClick={openStaffWorkbench}>进入员工工作台</Button>
+        <Button id='workbench-verify' className='mwb-secondary' onClick={openVerify}>订单核销</Button>
+      </View>
+      {view && view.reasonCodes.length > 0 && <View className='mwb-card'>
+        {view.reasonCodes.map(code => <Text key={code}>· {reasonText[code] || code}</Text>)}
       </View>}
-      <Text className='mwb-meta'>当前工作区：{context?.workspace ?? '未登录'}{context?.merchantId ? ` · ${context.merchantId}` : ''}</Text>
+      {view && view.nextSteps.length > 0 && <View className='mwb-card mwb-steps'>
+        {view.nextSteps.map(step => <Button key={step.type} onClick={() => takeStep(step.type, view.merchantId)}>{stepText[step.type] || step.type}</Button>)}
+      </View>}
+      <View className='mwb-tab-space' />
+    </>
+  }
+
+  return <View className='mwb-page' style={style}>
+    <View className='mwb-status-area' />
+    <View className={ready ? 'mwb-header mwb-header-ready' : 'mwb-header'}>
+      {!ready && <Button className='mwb-back' ariaLabel='返回' onClick={() => void back()}><Image src={navBack} mode='scaleToFill' /></Button>}
+      <View className='mwb-store-head'>
+        <View className='mwb-avatar'><Text>{initial}</Text></View>
+        <View className='mwb-store-main'>
+          <Text className='mwb-store-name'>{storeName}</Text>
+          {owner
+            ? <View className='mwb-store-meta-row'>
+                <Text className='mwb-rating-star'>★ {dash.reviewAvg ?? '--'}</Text>
+                <Text className='mwb-rating-label'>评分</Text>
+              </View>
+            : <Text className='mwb-store-meta'>{staff ? '员工账号' : '商家工作台'}</Text>}
+        </View>
+      </View>
+      {ready && <View className='mwb-header-right'>
+        {statusLabel ? <View className={statusResting ? 'mwb-pill mwb-pill-resting' : 'mwb-pill'}>
+          <View className='mwb-pill-dot' /><Text>{statusLabel}</Text>
+        </View> : null}
+        <Button className='mwb-bell' ariaLabel='消息通知' onClick={openMessages}><Image src={bell} mode='aspectFit' /></Button>
+      </View>}
     </View>
+    <View className='mwb-body'>
+      {!ready && renderAdmission()}
+      {ready && owner && renderDashboard()}
+      {ready && staff && renderStaff()}
+    </View>
+    <MerchantTabBar active='home' unit={unit}
+      onBeforeSwitch={() => controller.handoffToMerchantPage()}
+      onError={() => controller.handoffCancelled()} />
   </View>
 }

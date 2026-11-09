@@ -105,12 +105,25 @@ public final class CBearerSessionFilter extends OncePerRequestFilter {
         // enforced for the pending list, the detail read and both OWNER decisions.
         || path.equals("/api/v1/merchant/refund-applications")
         || path.startsWith("/api/v1/merchant/refund-applications/")
+        // Storefront read/write slices (contracts 27 §6.4/69/70, IMPLEMENTED_DEFAULT_OFF):
+        // the filter must resolve the MINIAPP session so the service's OWNER guard can see it;
+        // the HTTP switch still gates assembly and the security chain's permit rules. The
+        // avatar-url signing read (27 §6.4 2026-11-06 supplement) rides the same family.
+        || path.equals("/api/v1/merchant/store-profile")
+        || path.equals("/api/v1/merchant/store-profile/avatar-url")
+        || path.startsWith("/api/v1/merchant/stats/")
+        || path.equals("/api/v1/merchant/customers")
+        || path.startsWith("/api/v1/merchant/customers/")
         // Review appeal M face (contract 56 / REV-002): MINIAPP Bearer enforced; the OWNER
         // admission over the review's merchant/store is re-proven by the review kernel.
         || path.equals("/api/v1/merchant/reviews")
         || path.startsWith("/api/v1/merchant/reviews/")
         || path.equals("/api/v1/merchant/staff")
         || path.startsWith("/api/v1/merchant/staff/")
+        || path.equals("/api/v1/merchant/staff-members")
+        || path.startsWith("/api/v1/merchant/staff-members/")
+        || path.equals("/api/v1/c/staff/invitations")
+        || path.startsWith("/api/v1/c/staff/invitations/")
         || path.matches("/api/v1/c/stores/[^/]+/services")
         || path.startsWith("/api/v1/c/services/")
         // Contract-71 marketing center M face and C coupon claim: the MINIAPP session is
@@ -209,8 +222,15 @@ public final class CBearerSessionFilter extends OncePerRequestFilter {
         || path.startsWith("/api/v1/merchant/agreement")
         || path.equals("/api/v1/merchant/orders")
         || path.startsWith("/api/v1/merchant/orders/")
+        || path.equals("/api/v1/merchant/store-profile")
+        || path.equals("/api/v1/merchant/store-profile/avatar-url")
+        || path.startsWith("/api/v1/merchant/stats/")
+        || path.equals("/api/v1/merchant/customers")
+        || path.startsWith("/api/v1/merchant/customers/")
         || path.equals("/api/v1/merchant/staff")
         || path.startsWith("/api/v1/merchant/staff/")
+        || path.equals("/api/v1/merchant/staff-members")
+        || path.startsWith("/api/v1/merchant/staff-members/")
         || path.startsWith("/api/v1/merchant/marketing/");
   }
 

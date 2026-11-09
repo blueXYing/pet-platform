@@ -6,11 +6,14 @@ import java.time.LocalDateTime;
 /**
  * 06号 review projection. REV-001 used the existence/score columns only; REV-002 extends the
  * same row with the read-face columns (authority coordinates, dimension scores, visibility,
- * content, timestamps) — one entity, one table, no schema change.
+ * content, timestamps) — one entity, one table, no schema change. userId
+ * (CCR-M-REVIEW-VIEW-001) is projected by the non-locking read only and keys the buyer basics
+ * lookup of the OWNER detail; it never leaves the kernel.
  */
 public final class ReviewRowEntity {
     private Long id;
     private Long orderId;
+    private Long userId;
     private Long merchantId;
     private Long storeId;
     private Boolean scoreIncluded;
@@ -26,6 +29,8 @@ public final class ReviewRowEntity {
     public void setId(Long value) { id = value; }
     public Long getOrderId() { return orderId; }
     public void setOrderId(Long value) { orderId = value; }
+    public Long getUserId() { return userId; }
+    public void setUserId(Long value) { userId = value; }
     public Long getMerchantId() { return merchantId; }
     public void setMerchantId(Long value) { merchantId = value; }
     public Long getStoreId() { return storeId; }

@@ -1,27 +1,46 @@
 import { Button, Image, Picker, ScrollView, Text, View } from '@tarojs/components'
-import Taro, { useDidHide, useDidShow } from '@tarojs/taro'
+import Taro, { useDidHide, useDidShow, useRouter } from '@tarojs/taro'
 import { useEffect, useState, useSyncExternalStore, type CSSProperties } from 'react'
-import { consumerApi, consumerStorage } from '../../../shared/consumer-runtime'
+import { consumerApi, consumerSession, consumerStorage } from '../../../shared/consumer-runtime'
 import { merchantStorefrontDeps } from '../../storefront/repository'
 import { MerchantStatsController } from '../../storefront/read-controllers'
 import { deltaLabel, rangeLabel, validCustomWindow, windowLabel } from '../../storefront/model'
+import { previewStatsDeps } from '../../workbench/preview'
+import { MerchantTabBar } from '../../components/tab-bar'
 import navBack from '../aftersale/assets/nav-back@3x.png'
 import './page.css'
 
 const RANGES = ['TODAY', 'LAST_7D', 'LAST_30D', 'CUSTOM'] as const
 
-function useStats() {
+function useStats(preview = false) {
+  // ?preview=1 视觉验收：先注入商户坐标，再用本地聚合 deps；真实路径不变。
+  useState(() => {
+    if (!preview) return false
+    const current = consumerApi.scope.current
+    if (!current || current.workspace !== 'merchant' || !current.merchantId || !current.storeId) {
+      consumerApi.scope.replace({
+        userId: '9007199254740993', workspace: 'merchant',
+        merchantId: '9007199254740995', storeId: '9007199254740996',
+      })
+    }
+    return true
+  })
   const [controller] = useState(() => {
-    const context = consumerApi.scope.capture().context
-    if (context.workspace !== 'merchant' || !context.merchantId || !context.storeId) {
+    const context = consumerApi.scope.current
+    if (!context || context.workspace !== 'merchant' || !context.merchantId || !context.storeId) {
       throw new Error('MERCHANT_ENTRY_REQUIRED')
     }
     return new MerchantStatsController(
-      merchantStorefrontDeps(consumerApi, consumerStorage),
+      preview ? previewStatsDeps() : merchantStorefrontDeps(consumerApi, consumerStorage),
       { merchantId: context.merchantId, storeId: context.storeId })
   })
   const state = useSyncExternalStore(controller.subscribe, controller.getSnapshot)
-  useDidShow(() => { void controller.load() })
+  useDidShow(() => {
+    void (async () => {
+      try { await consumerSession.launch() } catch { /* controller.load() renders the error state */ }
+      await controller.load()
+    })()
+  })
   useDidHide(() => controller.hide())
   useEffect(() => () => controller.dispose(), [controller])
   const [info] = useState(() => Taro.getWindowInfo())
@@ -48,9 +67,14 @@ function MetricCard(props: { label: string; value: string; delta: string | null;
 // 快捷区间 + 自定义区间（from/to ≤92 个 UTC 日）、概览指标（净营收/订单量/新增客户/客单价 +
 // 环比；核销率/退款率/复购率/评价均分/拒单率）、热门服务 Top5（可下钻）、营收趋势、排期利用率。
 export default function MerchantStatsPage() {
-  const { controller, state, style } = useStats()
+  const route = useRouter()
+  const preview = route.params.preview === '1'
+  const { controller, state, style } = useStats(preview)
+  const [info] = useState(() => Taro.getWindowInfo())
+  const unit = info.windowWidth / 402
   const overview = state.overview
   const maxRevenue = Math.max(1, ...state.trend.map(bucket => Number(bucket.revenue)))
+  const maxTopCount = Math.max(1, ...state.topItems.map(item => item.orderCount))
   const customValid = validCustomWindow(state.custom.from, state.custom.to)
   return <View className='mst-page' style={style}>
     <View className='mst-status-area' />
@@ -110,9 +134,14 @@ export default function MerchantStatsPage() {
         {state.topItems.length === 0 && <Text className='mst-empty'>该周期暂无服务订单</Text>}
         {state.topItems.map((item, index) => <Button key={item.serviceId} id={`mst-top-${item.serviceId}`}
           className='mst-top-row' onClick={() => { void openDrillDown(item.serviceId, state) }}>
-          <Text className='mst-top-rank'>{index + 1}</Text>
-          <Text className='mst-top-name'>{item.serviceName ?? '已下架服务'}</Text>
-          <Text className='mst-top-count'>{item.orderCount} 单 · ¥{item.revenue}</Text>
+          <View className='mst-top-head'>
+            <View className='mst-top-rank'><Text>{index + 1}</Text></View>
+            <Text className='mst-top-name'>{item.serviceName ?? '已下架服务'}</Text>
+            <Text className='mst-top-count'>{item.orderCount} 单 · ¥{item.revenue}</Text>
+          </View>
+          <View className='mst-top-track'>
+            <View className='mst-top-fill' style={{ width: `${Math.max(4, Math.round(item.orderCount / maxTopCount * 100))}%` }} />
+          </View>
         </Button>)}
         {state.topItems.length > 0 && <Text className='mst-hint'>点击服务行查看该周期订单明细（只读）。</Text>}
       </View>
@@ -131,7 +160,7 @@ export default function MerchantStatsPage() {
         <View className='mst-trend'>
           {state.trend.map(bucket => <View key={bucket.date} className='mst-trend-col'>
             <View className='mst-trend-bar-zone'>
-              <View className='mst-trend-bar' style={{ height: `${Math.max(2, Math.round(Number(bucket.revenue) / maxRevenue * 96)) }}px` }} />
+              <View className='mst-trend-bar' style={{ height: `${Math.max(2, Math.round(Number(bucket.revenue) / maxRevenue * 96))}px` }} />
             </View>
             <Text className='mst-trend-day'>{bucket.date.slice(5)}</Text>
           </View>)}
@@ -140,7 +169,9 @@ export default function MerchantStatsPage() {
       {state.notice && <View className='mst-notice' role='alert'><Text>{state.notice}</Text></View>}
       <Text className='mst-tail'>本店经营数据 · 实时读侧聚合（70号）</Text>
       <View className='mst-bottom-space' />
+      <View className='mst-tab-space' />
     </ScrollView>}
+    <MerchantTabBar active='home' unit={unit} />
   </View>
 }
 

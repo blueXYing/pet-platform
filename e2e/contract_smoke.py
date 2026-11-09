@@ -836,6 +836,10 @@ REVIEW_APPEAL_HTTP_OPERATIONS = {
     'merchantListReviews': (
         'get', '/merchant/reviews',
         ('200', '400', '401', '403', '503')),
+    # CCR-M-REVIEW-VIEW-001 (2026-11-06): store-level score aggregate read, same switch family.
+    'merchantReviewSummaryAggregate': (
+        'get', '/merchant/reviews/summary',
+        ('200', '400', '401', '403', '503')),
     'merchantGetReview': (
         'get', '/merchant/reviews/{reviewId}',
         ('200', '400', '401', '403', '404', '503')),
@@ -1356,6 +1360,8 @@ GOVERNANCE_ENVELOPES = {
 MERCHANT_CONSOLE_OPERATIONS = {
     'merchantGetCustomer': ('get', '/merchant/customers/{userId}', ('200', '400', '401', '403', '404', '503')),
     'merchantGetStoreProfile': ('get', '/merchant/store-profile', ('200', '400', '401', '404', '503')),
+    # CCR-M-STORE-AVATAR-001 (2026-11-06): OWNER-only avatar signing read on the same switch.
+    'merchantStoreProfileAvatarUrl': ('get', '/merchant/store-profile/avatar-url', ('200', '400', '401', '403', '503')),
     'merchantListCustomers': ('get', '/merchant/customers', ('200', '400', '401', '403', '503')),
     'merchantStatsOverview': ('get', '/merchant/stats/overview', ('200', '400', '401', '403', '503')),
     'merchantStatsRevenueTrend': ('get', '/merchant/stats/revenue-trend', ('200', '400', '401', '403', '503')),
@@ -1777,9 +1783,13 @@ def check_merchant_order_list(spec, operation, method, path):
     assert set(data['required']) == {'items', 'page', 'pageSize', 'total'}, 'Merchant order page fields changed'
     summary = dereference(spec, data['properties']['items']['items'])
     assert summary.get('additionalProperties') is False, 'Merchant order summary opened'
+    # CCR-M-ORDER-CARD-001 (2026-11-06): six nullable card projection fields (customer/service/
+    # pet) are always present as properties; phone is deliberately absent.
+    ORDER_CARD_FIELDS = {'customerNickname', 'customerAvatarUrl', 'serviceName', 'petName', 'petType', 'petBreed'}
     assert set(summary['required']) == {
-        'orderId', 'orderNo', 'displayStatus', 'payAmount', 'appointmentStart', 'appointmentEnd', 'paidAt'},         'Merchant order summary fields changed'
-    for field in ('appointmentStart', 'appointmentEnd', 'paidAt'):
+        'orderId', 'orderNo', 'displayStatus', 'payAmount', 'appointmentStart', 'appointmentEnd', 'paidAt'} | ORDER_CARD_FIELDS,         'Merchant order summary fields changed'
+    assert not any('phone' in field.lower() for field in summary['properties']), 'Merchant order summary must stay phone-free'
+    for field in {'appointmentStart', 'appointmentEnd', 'paidAt'} | ORDER_CARD_FIELDS:
         assert summary['properties'][field].get('nullable') is True, f'Merchant summary tail must stay nullable: {field}'
     assert summary['properties']['payAmount']['pattern'] == r'^(0|[1-9][0-9]{0,15})\.[0-9]{2}$',         'Merchant summary amount format changed'
 
@@ -2067,7 +2077,11 @@ def check_aftersale_schemas(spec):
     assert schemas['AfterSaleSupplementRequest']['properties']['deadline']['pattern'] == r'^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}\.[0-9]{3}Z(?![\s\S])', 'AFS deadline precision changed'
     assert set(schemas['AfterSaleDecisionRequest']['properties']['decisionType']['enum']) == {'REJECT', 'RESERVICE', 'OTHER', 'FULL_REFUND', 'PARTIAL_REFUND'}, 'AFS decision type changed'
     summary = schemas['AfterSaleCaseSummary']
-    assert set(summary['properties']) == {'afterSaleId', 'orderId', 'merchantId', 'storeId', 'status', 'version', 'sourceStage', 'typeCode', 'demandCode', 'requestedAmount', 'createdAt', 'deadline'}, 'AFS summary scope changed'
+    # CCR-M-AFTERSALE-VIEW-001 (2026-11-06): the five M-face-only nullable label fields are
+    # always present as properties but never required (C/OPS faces keep the legacy key set).
+    AFS_LABEL_FIELDS = {'customerNickname', 'serviceName', 'petName', 'petType', 'petBreed'}
+    assert set(summary['properties']) == {'afterSaleId', 'orderId', 'merchantId', 'storeId', 'status', 'version', 'sourceStage', 'typeCode', 'demandCode', 'requestedAmount', 'createdAt', 'deadline'} | AFS_LABEL_FIELDS, 'AFS summary scope changed'
+    assert not (AFS_LABEL_FIELDS & set(summary.get('required', []))), 'AFS summary labels must stay M-face optional'
     assert schemas['AfterSaleCasePage']['properties']['items']['maxItems'] == 50, 'AFS page bound changed'
     options = schemas['AfterSaleOptions']
     assert options.get('additionalProperties') is False and set(options.get('required', [])) == {'typeOptions', 'demandOptions'} and set(options['properties']) == {'typeOptions', 'demandOptions'}, 'AFS catalog fields changed'
@@ -2083,7 +2097,13 @@ def check_aftersale_schemas(spec):
     assert label.get('x-length-unit') == 'UNICODE_CODE_POINTS' and label.get('x-surrogate-policy') == 'REJECT_UNPAIRED' and label.get('x-edge-whitespace-policy') == 'ECMASCRIPT_STRING_TRIM', 'AFS catalog Unicode label policy changed'
     for name in ('AfterSaleOptions', 'AfterSaleReceipt', 'AfterSaleEligibility', 'AfterSaleCasePage', 'AfterSaleCaseDetail', 'AfterSaleAssetUpload', 'AfterSaleAssetGrant'):
         payload = schemas[name]
-        assert payload.get('additionalProperties') is False and set(payload['required']) == set(payload['properties']), f'AFS response incomplete: {name}'
+        # CCR-M-AFTERSALE-VIEW-001: AfterSaleCaseDetail additionally carries the five M-face
+        # optional label properties (never required); every other payload stays strictly
+        # required == properties.
+        optional_labels = AFS_LABEL_FIELDS if name == 'AfterSaleCaseDetail' else set()
+        assert payload.get('additionalProperties') is False and set(payload['required']) | optional_labels == set(payload['properties']), f'AFS response incomplete: {name}'
+        for label in optional_labels:
+            assert payload['properties'][label].get('nullable') is True, f'AFS label must stay nullable: {name}.{label}'
         envelope = schemas[name + 'Envelope']
         assert envelope.get('additionalProperties') is False and set(envelope['required']) == {'code', 'message', 'data', 'traceId'}, f'AFS envelope changed: {name}'
         assert set(envelope['properties']) == {'code', 'message', 'data', 'traceId'} and envelope['properties']['data'] == {'$ref': '#/components/schemas/' + name}, f'AFS envelope payload changed: {name}'

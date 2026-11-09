@@ -18,17 +18,28 @@
 .mcu-page .mcu-search-action { flex: none; padding: calc(var(--mcu-unit) * 9) calc(var(--mcu-unit) * 22); border-radius: calc(var(--mcu-unit) * 100); background: #5baae8; color: #fff; font-size: calc(var(--mcu-unit) * 13); font-weight: 600; }
 .mcu-count { display: block; margin: calc(var(--mcu-unit) * 12) calc(var(--mcu-unit) * 17) 0; font-size: calc(var(--mcu-unit) * 12); line-height: calc(var(--mcu-unit) * 18); color: #6b7280; }
 .mcu-list { flex: 1; padding: 0 calc(var(--mcu-unit) * 17); }
-.mcu-card { display: block; width: 100%; text-align: left; margin-top: calc(var(--mcu-unit) * 12); padding: calc(var(--mcu-unit) * 14) calc(var(--mcu-unit) * 16); background: #fff; border: calc(var(--mcu-unit) * 1.5) solid #c0ecff; border-radius: calc(var(--mcu-unit) * 17); }
+/* The customer row is a Button: compound with .mcu-page or the (0,1,1) button reset
+   strips the white card background/border/padding/radius entirely. */
+.mcu-page .mcu-card { display: block; width: 100%; text-align: left; margin-top: calc(var(--mcu-unit) * 12); padding: calc(var(--mcu-unit) * 14) calc(var(--mcu-unit) * 16); background: #fff; border: calc(var(--mcu-unit) * 1.5) solid #c0ecff; border-radius: calc(var(--mcu-unit) * 17); }
+/* Pet rows mirror frame 23:13478's avatar + name/breed block using the contract-safe
+   PetView fields only (no gender/age/weight/health rows — CCR privacy口径). */
+.mcu-pet-row { display: flex; align-items: center; gap: calc(var(--mcu-unit) * 10); padding: calc(var(--mcu-unit) * 4) 0; }
+.mcu-pet-avatar { flex: none; width: calc(var(--mcu-unit) * 38); height: calc(var(--mcu-unit) * 38); border-radius: 50%; background: #e8f7fd; display: flex; align-items: center; justify-content: center; }
+.mcu-pet-avatar text { font-size: calc(var(--mcu-unit) * 14); line-height: calc(var(--mcu-unit) * 20); font-weight: 600; color: #5baae8; }
+.mcu-pet-info { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: calc(var(--mcu-unit) * 2); }
 .mcu-line { display: flex; align-items: baseline; gap: calc(var(--mcu-unit) * 8); }
-.mcu-card-head { justify-content: space-between; }
+.mcu-card-head { justify-content: space-between; align-items: center; }
+.mcu-avatar { width: calc(var(--mcu-unit) * 44); height: calc(var(--mcu-unit) * 44); border-radius: 50%; background: #e5f6fd; display: flex; align-items: center; justify-content: center; flex: none; }
+.mcu-avatar text { font-size: calc(var(--mcu-unit) * 15); line-height: calc(var(--mcu-unit) * 20); font-weight: 600; color: #5baae8; }
+.mcu-identity { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: calc(var(--mcu-unit) * 2); }
 .mcu-name { font-size: calc(var(--mcu-unit) * 15); line-height: calc(var(--mcu-unit) * 22); font-weight: 600; color: #111827; }
 .mcu-phone { font-size: calc(var(--mcu-unit) * 12); line-height: calc(var(--mcu-unit) * 18); color: #6b7280; }
 .mcu-visit { flex: none; font-size: calc(var(--mcu-unit) * 10.5); line-height: calc(var(--mcu-unit) * 16); color: #3185ba; }
-.mcu-card-body { margin-top: calc(var(--mcu-unit) * 8); align-items: center; justify-content: space-between; }
+.mcu-card-body { margin-top: calc(var(--mcu-unit) * 10); display: flex; flex-direction: column; align-items: stretch; gap: calc(var(--mcu-unit) * 10); }
 .mcu-pet { flex: 1; font-size: calc(var(--mcu-unit) * 12.5); line-height: calc(var(--mcu-unit) * 18); color: #374151; }
-.mcu-metrics { display: flex; gap: calc(var(--mcu-unit) * 18); }
+.mcu-metrics { display: flex; gap: calc(var(--mcu-unit) * 8); }
 .mcu-metrics-row { margin-top: calc(var(--mcu-unit) * 12); justify-content: space-between; }
-.mcu-metric { display: flex; flex-direction: column; align-items: center; gap: calc(var(--mcu-unit) * 2); }
+.mcu-metric { flex: 1; min-width: 0; padding: calc(var(--mcu-unit) * 10) calc(var(--mcu-unit) * 4); border-radius: calc(var(--mcu-unit) * 12); background: #e8f7fd; display: flex; flex-direction: column; align-items: center; gap: calc(var(--mcu-unit) * 2); }
 .mcu-metric-value { font-size: calc(var(--mcu-unit) * 14); line-height: calc(var(--mcu-unit) * 20); font-weight: 600; color: #111827; }
 .mcu-metric-label { font-size: calc(var(--mcu-unit) * 10); line-height: calc(var(--mcu-unit) * 14); color: #9ca3af; }
 .mcu-card-title { display: block; margin-bottom: calc(var(--mcu-unit) * 8); font-size: calc(var(--mcu-unit) * 14); line-height: calc(var(--mcu-unit) * 20); font-weight: 600; color: #1d0d07; }
@@ -44,3 +55,5 @@
 .mcu-page .mcu-search-mode-on { border-color: #5baae8; background: #e8f4fd; color: #2b7cc0; font-weight: 600; }
 .mcu-note-input { width: 100%; min-height: calc(var(--mcu-unit) * 64); background: #f9fafb; border: calc(var(--mcu-unit) * 1.16) solid #e5e7eb; border-radius: calc(var(--mcu-unit) * 11.6); padding: calc(var(--mcu-unit) * 12) calc(var(--mcu-unit) * 14); font-size: calc(var(--mcu-unit) * 13.555); line-height: calc(var(--mcu-unit) * 21); color: #111827; }
 .mcu-page .mcu-note-save { align-self: flex-end; }
+
+.mcu-tab-space { height: calc(var(--mcu-unit) * 96); flex: none; }

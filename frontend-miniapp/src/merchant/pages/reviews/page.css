@@ -57,3 +57,39 @@
 .mrv-state .mrv-primary { padding: calc(10 * var(--mrv-unit)) calc(16 * var(--mrv-unit)); align-self: flex-start; }
 .mrv-page .mrv-submit { width: 100%; margin-top: calc(17.152 * var(--mrv-unit)); height: calc(47.168 * var(--mrv-unit)); line-height: calc(47.168 * var(--mrv-unit)); }
 .mrv-page .mrv-close-sheet { width: 100%; color: #6b7280; font-size: calc(13 * var(--mrv-unit)); line-height: calc(32 * var(--mrv-unit)); margin-top: calc(8 * var(--mrv-unit)); }
+
+.mrv-tab-space { height: calc(var(--mrv-unit) * 96); flex: none; }
+
+/* 2026-11-06 CCR-M-REVIEW-VIEW-001（56号 §7）聚合区与买家身份行，量值取自 23:14160 结构树
+   （planning/progress/2026-10-13/figma-merchant/tree-23-14160.txt）：评分大卡 371.37 宽、内距
+   17.23/15.31、列间距 17.23；均分 #ff7a00 42.11/800；星 #f59e0b 12.92 格；说明 #9ca3af 10.53；
+   直方图行高 17.71 行距 4.79、列距 6.70，标签 #6b7280 / 计数 #9ca3af 10.53，轨道 #f0f2f5 5.74
+   全圆角，填充 #ffb266→#f59e0b；统计卡内距 13.4/5.74，值 19.14/700（总评价 #1a1a2e、好评率
+   #22c55e），格间 #f0f2f5 分隔；头像 36.55 圆 #ffe0c7→#ffd1b0，昵称 #1a1a2e 13.47/600，行距 9.62。
+   卡底按页面家族语言统一为白底 + #c0ecff 1.5 描边（原稿评分卡 #fff8f2→#fff 渐变、⭐ 装饰水印未
+   采用）。全部规则带 .mrv-page 前缀（WXSS 复合选择器纪律），状态变体只用类名。 */
+.mrv-page .mrv-agg { margin: calc(11.5 * var(--mrv-unit)) calc(15.3 * var(--mrv-unit)) 0; padding: calc(17.23 * var(--mrv-unit)) calc(15.31 * var(--mrv-unit)); box-sizing: border-box; display: flex; align-items: center; gap: calc(17.23 * var(--mrv-unit)); background: white; border: calc(1.5 * var(--mrv-unit)) solid #c0ecff; border-radius: calc(15.4 * var(--mrv-unit)); }
+.mrv-page .mrv-agg-score { flex: 0 0 calc(74.24 * var(--mrv-unit)); min-width: 0; display: flex; flex-direction: column; align-items: center; }
+.mrv-page .mrv-agg-average { color: #ff7a00; font-family: Inter, Roboto, sans-serif; font-size: calc(42.11 * var(--mrv-unit)); font-weight: 800; line-height: calc(42.11 * var(--mrv-unit)); }
+.mrv-page .mrv-agg-average-none { color: #9ca3af; font-size: calc(15 * var(--mrv-unit)); font-weight: 600; white-space: nowrap; }
+.mrv-page .mrv-agg-stars { display: flex; align-items: center; margin-top: calc(4.79 * var(--mrv-unit)); }
+.mrv-page .mrv-agg-star { width: calc(12.92 * var(--mrv-unit)); text-align: center; color: #f0f2f5; font-size: calc(12 * var(--mrv-unit)); line-height: calc(15.31 * var(--mrv-unit)); }
+.mrv-page .mrv-agg-star-on { color: #f59e0b; }
+.mrv-page .mrv-agg-caption { margin-top: calc(2.87 * var(--mrv-unit)); color: #9ca3af; font-size: calc(10.53 * var(--mrv-unit)); line-height: calc(15.79 * var(--mrv-unit)); white-space: nowrap; }
+.mrv-page .mrv-agg-bars { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: calc(4.79 * var(--mrv-unit)); }
+.mrv-page .mrv-agg-bar-row { display: flex; align-items: center; gap: calc(6.7 * var(--mrv-unit)); height: calc(17.71 * var(--mrv-unit)); }
+.mrv-page .mrv-agg-bar-label { flex: 0 0 calc(22.97 * var(--mrv-unit)); text-align: center; color: #6b7280; font-size: calc(10.53 * var(--mrv-unit)); line-height: calc(15.79 * var(--mrv-unit)); }
+.mrv-page .mrv-agg-bar-track { flex: 1; min-width: 0; height: calc(5.74 * var(--mrv-unit)); border-radius: calc(999 * var(--mrv-unit)); background: #f0f2f5; overflow: hidden; }
+.mrv-page .mrv-agg-bar-fill { height: 100%; border-radius: calc(999 * var(--mrv-unit)); background: linear-gradient(90deg, #ffb266 0%, #f59e0b 100%); }
+.mrv-page .mrv-agg-bar-count { flex: 0 0 calc(28.71 * var(--mrv-unit)); text-align: right; color: #9ca3af; font-size: calc(10.53 * var(--mrv-unit)); line-height: calc(15.79 * var(--mrv-unit)); }
+.mrv-page .mrv-stats { margin: calc(11.5 * var(--mrv-unit)) calc(15.3 * var(--mrv-unit)) 0; padding: calc(13.4 * var(--mrv-unit)) calc(5.74 * var(--mrv-unit)); box-sizing: border-box; display: flex; background: white; border: calc(1.5 * var(--mrv-unit)) solid #c0ecff; border-radius: calc(15.4 * var(--mrv-unit)); }
+.mrv-page .mrv-stat { flex: 1; min-width: 0; display: flex; flex-direction: column; align-items: center; padding: calc(1.91 * var(--mrv-unit)) 0; }
+.mrv-page .mrv-stat-divided { border-left: 1px solid #f0f2f5; }
+.mrv-page .mrv-stat-value { color: #1a1a2e; font-family: Inter, Roboto, sans-serif; font-size: calc(19.14 * var(--mrv-unit)); font-weight: 700; line-height: calc(23.93 * var(--mrv-unit)); }
+.mrv-page .mrv-stat-good { color: #22c55e; }
+.mrv-page .mrv-stat-label { margin-top: calc(2.87 * var(--mrv-unit)); color: #6b7280; font-size: calc(10.53 * var(--mrv-unit)); line-height: calc(15.79 * var(--mrv-unit)); }
+.mrv-page .mrv-reviewer { justify-content: flex-start; gap: calc(9.62 * var(--mrv-unit)); margin-bottom: calc(9.62 * var(--mrv-unit)); }
+.mrv-page .mrv-reviewer-avatar { flex: 0 0 calc(36.55 * var(--mrv-unit)); width: calc(36.55 * var(--mrv-unit)); height: calc(36.55 * var(--mrv-unit)); border-radius: 50%; overflow: hidden; display: flex; align-items: center; justify-content: center; background: linear-gradient(135deg, #ffe0c7 0%, #ffd1b0 100%); }
+.mrv-page .mrv-reviewer-avatar-image { display: block; width: 100%; height: 100%; }
+.mrv-page .mrv-reviewer-initial { color: #7a4a00; font-size: calc(15 * var(--mrv-unit)); font-weight: 600; line-height: calc(36.55 * var(--mrv-unit)); }
+.mrv-page .mrv-reviewer-name { flex: 1; min-width: 0; color: #1a1a2e; font-size: calc(13.47 * var(--mrv-unit)); font-weight: 600; line-height: calc(19.24 * var(--mrv-unit)); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }

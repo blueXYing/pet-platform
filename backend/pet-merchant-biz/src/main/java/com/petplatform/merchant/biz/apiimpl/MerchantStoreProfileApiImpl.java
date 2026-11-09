@@ -16,6 +16,8 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 import javax.sql.DataSource;
+import org.springframework.jdbc.datasource.DataSourceTransactionManager;
+import org.springframework.transaction.support.TransactionTemplate;
 
 /**
  * Local facade for the store profile read/write face (contract 27 §6.4 supplement). The
@@ -27,6 +29,7 @@ public final class MerchantStoreProfileApiImpl implements MerchantStoreProfileQu
         MerchantStoreProfileCommandApi {
     private final MerchantStoreProfileService service;
     private final ApplicationReviewFactsReader applicationFacts;
+    private final TransactionTemplate applicationFactsReads;
 
     public MerchantStoreProfileApiImpl(DataSource source, SnowflakeIdGenerator ids,
                                        ApplicationReviewFactsReader applicationFacts,
@@ -35,6 +38,9 @@ public final class MerchantStoreProfileApiImpl implements MerchantStoreProfileQu
                 applicationFacts == null ? unavailableReader() : applicationFacts, photos,
                 clock == null ? Clock.systemUTC() : clock);
         this.applicationFacts = applicationFacts;
+        this.applicationFactsReads =
+                new TransactionTemplate(new DataSourceTransactionManager(source));
+        this.applicationFactsReads.setReadOnly(true);
     }
 
     @Override
@@ -52,17 +58,22 @@ public final class MerchantStoreProfileApiImpl implements MerchantStoreProfileQu
 
     private String applicationStatus(StoreProfileQuery query) {
         if (applicationFacts == null || query == null || query.merchantId() == null) return null;
-        try {
-            long merchantId = Long.parseLong(query.merchantId());
-            ApplicationReviewFactsReader.Facts facts = applicationFacts.read(merchantId);
-            return facts == null ? null : facts.applicationStatus();
-        } catch (NumberFormatException malformed) {
-            return null;
-        } catch (ApiException known) {
-            throw known;
-        } catch (RuntimeException failure) {
-            throw new ApiException(CommonApiCodes.DEPENDENCY_UNAVAILABLE, "application review facts unavailable");
-        }
+        // The persistent review-facts reader joins the caller's merchant transaction. Reading
+        // after the profile projection (which has already committed its own read) therefore
+        // needs its own read transaction; otherwise the strict seam answers 503.
+        return applicationFactsReads.execute(status -> {
+            try {
+                long merchantId = Long.parseLong(query.merchantId());
+                ApplicationReviewFactsReader.Facts facts = applicationFacts.read(merchantId);
+                return facts == null ? null : facts.applicationStatus();
+            } catch (NumberFormatException malformed) {
+                return null;
+            } catch (ApiException known) {
+                throw known;
+            } catch (RuntimeException failure) {
+                throw new ApiException(CommonApiCodes.DEPENDENCY_UNAVAILABLE, "application review facts unavailable");
+            }
+        });
     }
 
     private static ApplicationReviewFactsReader unavailableReader() {

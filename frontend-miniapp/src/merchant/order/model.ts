@@ -188,7 +188,10 @@ export const merchantDisplayStatusLabels: Record<MerchantDisplayStatus, string> 
   REFUND_PENDING_CONFIRM: '退款待确认', REFUNDING: '退款中', REFUNDED: '已退款', PARTIAL_REFUND: '部分退款', AFTERSALE: '售后中',
 }
 
-/** 列表项 = 契约商家运营最小字段集（orderId/orderNo/displayStatus/payAmount/时间窗/paidAt）。 */
+/** 列表项 = 契约商家运营最小字段集（orderId/orderNo/displayStatus/payAmount/时间窗/paidAt）
+ *  + CCR-M-ORDER-CARD-001（2026-11-06 批准）追加的 6 个可空卡片键：客户昵称/头像、服务名、
+ *  宠物名/类型/品种（下单快照事实）。解码后的对象恒带全部 13 键；旧 7 键响应按回归兼容
+ *  仍可解码，缺失的 6 键读作 null（空值降级不伪造）。任何 phone 字段都不在契约面。 */
 export type MerchantOrderSummary = Readonly<{
   orderId: string
   orderNo: string
@@ -197,6 +200,12 @@ export type MerchantOrderSummary = Readonly<{
   appointmentStart: string | null
   appointmentEnd: string | null
   paidAt: string | null
+  customerNickname: string | null
+  customerAvatarUrl: string | null
+  serviceName: string | null
+  petName: string | null
+  petType: string | null
+  petBreed: string | null
 }>
 
 export type MerchantOrderPage = Readonly<{
@@ -206,12 +215,26 @@ export type MerchantOrderPage = Readonly<{
   total: number
 }>
 
+/** CCR-M-ORDER-CARD-001 追加的 6 个可空键（13 键新形状）；7 键旧形状按回归兼容仍接受。 */
+const CARD_KEYS = ['customerNickname', 'customerAvatarUrl', 'serviceName', 'petName', 'petType', 'petBreed'] as const
+const BASE_KEYS = ['orderId', 'orderNo', 'displayStatus', 'payAmount', 'appointmentStart', 'appointmentEnd', 'paidAt'] as const
+
 function listExact(value: unknown): Record<string, unknown> {
   if (typeof value !== 'object' || value === null) invalid()
   const record = value as Record<string, unknown>
-  if (Object.keys(record).length !== 7
-    || !['orderId', 'orderNo', 'displayStatus', 'payAmount', 'appointmentStart', 'appointmentEnd', 'paidAt'].every(key => key in record)) invalid()
+  const keys = Object.keys(record)
+  const legacy = keys.length === BASE_KEYS.length && BASE_KEYS.every(key => key in record)
+  const card = keys.length === BASE_KEYS.length + CARD_KEYS.length
+    && [...BASE_KEYS, ...CARD_KEYS].every(key => key in record)
+  if (!legacy && !card) invalid()
   return record
+}
+
+/** 卡片键：null 或非空字符串（昵称/头像/快照名均为可空投影，空值降级不伪造）。 */
+function cardText(value: unknown): string | null {
+  if (value === null) return null
+  if (typeof value !== 'string' || value.length === 0) invalid()
+  return value
 }
 
 /** 毫秒精度 ISO-8601（服务端固定三位小数 + Z）；空值读作 null。 */
@@ -232,6 +255,13 @@ export function decodeMerchantOrderSummary(value: unknown): MerchantOrderSummary
     orderId: v.orderId, orderNo: v.orderNo, displayStatus: display, payAmount: v.payAmount,
     appointmentStart: listInstant(v.appointmentStart), appointmentEnd: listInstant(v.appointmentEnd),
     paidAt: listInstant(v.paidAt),
+    // 旧 7 键响应（回归兼容）缺这 6 键时读作 null；13 键新形状严格校验 string|null。
+    customerNickname: 'customerNickname' in v ? cardText(v.customerNickname) : null,
+    customerAvatarUrl: 'customerAvatarUrl' in v ? cardText(v.customerAvatarUrl) : null,
+    serviceName: 'serviceName' in v ? cardText(v.serviceName) : null,
+    petName: 'petName' in v ? cardText(v.petName) : null,
+    petType: 'petType' in v ? cardText(v.petType) : null,
+    petBreed: 'petBreed' in v ? cardText(v.petBreed) : null,
   }
 }
 
@@ -254,6 +284,21 @@ export function merchantAppointmentWindow(item: MerchantOrderSummary): string {
   return start && end ? `${start} ~ ${end}` : '时间待定'
 }
 
+/** 列表卡面用的紧凑预约时间：今天/明天 14:00；其他日期 11-05 14:00。 */
+export function merchantAppointmentLabel(item: MerchantOrderSummary): string {
+  const value = item.appointmentStart
+  if (!value) return '时间待定'
+  const date = new Date(value)
+  if (!Number.isFinite(date.getTime())) return '时间待定'
+  const local = new Date(date.getTime() + 8 * 60 * 60 * 1000)
+  const now = new Date(Date.now() + 8 * 60 * 60 * 1000)
+  const day = local.toISOString().slice(0, 10)
+  const today = now.toISOString().slice(0, 10)
+  const tomorrow = new Date(now.getTime() + 24 * 60 * 60 * 1000).toISOString().slice(0, 10)
+  const prefix = day === today ? '今天' : day === tomorrow ? '明天' : day.slice(5)
+  return `${prefix} ${local.toISOString().slice(11, 16)}`
+}
+
 /** 产品时钟 UTC+8；设备设置不得移动订单时间（与 decisionTimeText 同口径）。 */
 export function merchantOrderTimeText(value: string | null): string {
   if (!value) return ''
@@ -261,6 +306,30 @@ export function merchantOrderTimeText(value: string | null): string {
   if (!Number.isFinite(date.getTime())) return ''
   const local = new Date(date.getTime() + 8 * 60 * 60 * 1000)
   return `${local.toISOString().slice(0, 10)} ${local.toISOString().slice(11, 16)}`
+}
+
+/** 卡客户显示名（CCR-M-ORDER-CARD-001）：昵称可空，空值降级为「顾客」占位，不伪造。 */
+export function merchantCustomerName(item: MerchantOrderSummary): string {
+  return item.customerNickname ?? '顾客'
+}
+
+/** 头像圆的首字：昵称首码点；昵称为空用「客」占位（头像 URL 为空/加载失败时用）。 */
+export function merchantCustomerInitial(item: MerchantOrderSummary): string {
+  const nickname = item.customerNickname
+  if (!nickname) return '客'
+  return Array.from(nickname)[0] ?? '客'
+}
+
+/** 宠物行：宠物名 + 品种（两者均可空，缺什么就不渲染什么；全空返回 null）。 */
+export function merchantPetLabel(item: MerchantOrderSummary): string | null {
+  const parts = [item.petName, item.petBreed].filter((part): part is string => part !== null)
+  return parts.length > 0 ? parts.join(' · ') : null
+}
+
+/** 卡片副标题：服务名 + 宠物名·品种，空值跳过；全空返回 null 由调用方降级（不伪造）。 */
+export function merchantCardSubtitle(item: MerchantOrderSummary): string | null {
+  const parts = [item.serviceName, merchantPetLabel(item)].filter((part): part is string => part !== null)
+  return parts.length > 0 ? parts.join(' · ') : null
 }
 
 /** 商家订单列表错误面中文映射（12号 COMMON_*；防枚举：403 不区分“他店/无权/不存在”）。 */

@@ -32,7 +32,8 @@ class MerchantOrderHttpTest {
             return new MerchantOrderCommandApi.Receipt(c.orderId(),"9007199254740993",0,c.action(),"PENDING_SERVICE","2026-09-29T00:00:00Z",null);};
         MerchantOrderQueryApi queries=q->{listed.set(q);
             return new PageResult<>(List.of(new MerchantOrderQueryApi.Summary("9007199254740994","2001","PENDING_CONFIRM",
-                new BigDecimal("128.00"),OffsetDateTime.parse("2030-01-01T02:00:00Z"),OffsetDateTime.parse("2030-01-01T03:30:00Z"),OffsetDateTime.parse("2030-01-01T01:00:00Z"))),1,q.page(),q.pageSize());};
+                new BigDecimal("128.00"),OffsetDateTime.parse("2030-01-01T02:00:00Z"),OffsetDateTime.parse("2030-01-01T03:30:00Z"),OffsetDateTime.parse("2030-01-01T01:00:00Z"),
+                "E2E体验用户",null,"E2E到店精细洗护","豆豆","DOG","柯基")),1,q.page(),q.pageSize());};
         return MockMvcBuilders.standaloneSetup(new MerchantOrderController(api,queries)).setControllerAdvice(new MerchantStaffExceptionHandler())
             .addFilters(new CBearerSessionFilter(provider)).build();
     }
@@ -70,7 +71,7 @@ class MerchantOrderHttpTest {
                 .param("merchantId","710301").param("storeId","710302").header("Authorization",token.isEmpty()?"":"Bearer "+token))
             .andExpect(status().isUnauthorized());
         assertNull(listed.get());
-        mvc.perform(get("/api/v1/merchant/orders").param("merchantId","710301").param("storeId","710302")
+        var listedOk=mvc.perform(get("/api/v1/merchant/orders").param("merchantId","710301").param("storeId","710302")
                 .param("displayStatus","PENDING_CONFIRM").param("page","2").param("pageSize","10")
                 .header("Authorization","Bearer valid"))
             .andExpect(status().isOk()).andExpect(header().string("Cache-Control","no-store"))
@@ -82,7 +83,19 @@ class MerchantOrderHttpTest {
             .andExpect(jsonPath("$.data.items[0].displayStatus").value("PENDING_CONFIRM"))
             .andExpect(jsonPath("$.data.items[0].payAmount").value("128.00"))
             .andExpect(jsonPath("$.data.items[0].appointmentStart").value("2030-01-01T02:00:00.000Z"))
-            .andExpect(jsonPath("$.data.items[0].paidAt").value("2030-01-01T01:00:00.000Z"));
+            .andExpect(jsonPath("$.data.items[0].paidAt").value("2030-01-01T01:00:00.000Z"))
+            // CCR-M-ORDER-CARD-001: the six additive card keys ride after the original seven;
+            // nullable avatar renders as a JSON null, never a fabricated placeholder.
+            .andExpect(jsonPath("$.data.items[0].customerNickname").value("E2E体验用户"))
+            .andExpect(jsonPath("$.data.items[0].customerAvatarUrl").value(org.hamcrest.Matchers.nullValue()))
+            .andExpect(jsonPath("$.data.items[0].serviceName").value("E2E到店精细洗护"))
+            .andExpect(jsonPath("$.data.items[0].petName").value("豆豆"))
+            .andExpect(jsonPath("$.data.items[0].petType").value("DOG"))
+            .andExpect(jsonPath("$.data.items[0].petBreed").value("柯基"));
+        // CCR-M-ORDER-CARD-001 privacy ruling: no phone — masked, raw or partial — may ever
+        // appear anywhere on the list wire, not even as a null key.
+        String wire=listedOk.andReturn().getResponse().getContentAsString();
+        assertFalse(wire.toLowerCase().contains("phone"),"merchant order list wire must never carry any phone field: "+wire);
         assertEquals("710301",listed.get().merchantId());assertEquals("710302",listed.get().storeId());
         assertEquals("PENDING_CONFIRM",listed.get().displayStatus());
         assertEquals("710300",listed.get().context().operatorId());

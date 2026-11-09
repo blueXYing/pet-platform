@@ -55,3 +55,11 @@ JSON envelope 固定 `code/message/data/traceId`；成功 `SUCCESS/ok`，失败 
 ## 6. 验收要点
 
 真实隔离 MySQL/Redis + 真实三端会话：一次性申诉（重复 409）、owner 校验与防枚举（买家/他人评价 404）、开关默认关（装配缺席测试）、幂等重放（201/200 同回执、异参 409）、裁决后终局（改判 409、APPROVED→visibility HIDDEN、REJECTED→维持）、M 列表/详情申诉状态投影、admin 列表 status 过滤与详情事实、动作码缺失 403。
+
+## 7. 2026-11-06 买家身份与评分聚合补充（CCR-M-REVIEW-VIEW-001）
+
+用户 2026-11-06 批准 [CCR-M-REVIEW-VIEW-001](../../planning/ccr/CCR-M-REVIEW-VIEW-001.md)（裁决：昵称原样不脱敏、分桶取整、聚合路由独立）：
+
+1. MerchantReviewSummary/Detail 追加可空键 `reviewerNickname`（买家昵称**原样**投影，不脱敏；null 时前端显示「匿名用户」）与 `reviewerAvatarUrl`（微信头像外链，可空）。仅 OWNER 本店读侧返回；HIDDEN 评价对 OWNER 可见性与字段范围不变；不返回 userId/手机号。旧客户端忽略未知键，M 端严格解码器同步放宽。
+2. 新增只读路由 `GET /api/v1/merchant/reviews/summary?merchantId&storeId`（§1 同族 MINIAPP Bearer + OWNER/门店 guard，`no-store`）：data `{totalReviews, scoredCount, averageScore, scoreCounts}`。`scoreCounts` 为 `"1".."5"` 五键整数直方图，按 `ROUND(composite_score)` 落桶；`scoredCount/averageScore/scoreCounts` 仅统计 `score_included=1`（SSOT §11.2 核销后部分退款不计入）；`totalReviews` 含不计分历史评价；`averageScore` 一位小数字符串、服务端四舍五入、`scoredCount=0` 时 null；空店返回 0/0/null/全 0。单条聚合查询（既有 `store_id, score_included, created_at` 索引），无新表/事件。前端只展示不重算（ARCH-005）；随 `pet.review.appeal.http.enabled` 同族装配（默认 false）。
+3. 明确不做：评价图片展示（REV-001 C 端媒体上传未开放，V1 无数据）、商家回复/有帮助（SSOT §11.3 未批）、筛选 chips 服务端过滤、C 端公开评价列表/评分展示（另行切片）。

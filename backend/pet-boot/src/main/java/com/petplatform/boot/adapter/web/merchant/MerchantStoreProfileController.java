@@ -2,18 +2,25 @@ package com.petplatform.boot.adapter.web.merchant;
 
 import static com.petplatform.boot.adapter.web.merchant.MerchantHttpSupport.*;
 
+import com.petplatform.common.ApiException;
+import com.petplatform.common.CommonApiCodes;
+import com.petplatform.common.QueryContext;
 import com.petplatform.merchant.api.command.MerchantStoreProfileCommandApi;
 import com.petplatform.merchant.api.command.UpdateStoreProfileCommand;
 import com.petplatform.merchant.api.dto.MerchantStoreProfileDTO;
 import com.petplatform.merchant.api.query.MerchantStoreProfileQueryApi;
 import com.petplatform.merchant.api.query.MerchantStoreProfileQueryApi.StoreProfileQuery;
+import com.petplatform.thirdparty.api.StorePhotoSigningApi;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
+import java.time.OffsetDateTime;
+import java.time.ZoneOffset;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.http.MediaType;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -38,11 +45,14 @@ public final class MerchantStoreProfileController {
 
     private final MerchantStoreProfileQueryApi queries;
     private final MerchantStoreProfileCommandApi commands;
+    private final ObjectProvider<StorePhotoSigningApi> storePhotoSigning;
 
     public MerchantStoreProfileController(MerchantStoreProfileQueryApi queries,
-            MerchantStoreProfileCommandApi commands) {
+            MerchantStoreProfileCommandApi commands,
+            ObjectProvider<StorePhotoSigningApi> storePhotoSigning) {
         this.queries = queries;
         this.commands = commands;
+        this.storePhotoSigning = storePhotoSigning;
     }
 
     @ModelAttribute
@@ -75,6 +85,50 @@ public final class MerchantStoreProfileController {
                 text(body, "expectedVersion"),
                 userCommand(request)));
         return envelope(wire(dto), request);
+    }
+
+    /**
+     * CCR-M-STORE-AVATAR-001: OWNER-only short-TTL display signing for this store's avatar asset.
+     * The store guard + requireOwnerRead reuse the §6.4 read exactly (foreign/absent stores stay
+     * the same COMMON_NOT_FOUND); no assetId is accepted from the client. No avatar or an
+     * un-signable asset (non-READY, non-STORE_PHOTO, other owner, unversioned object) degrades to
+     * the three-null shape; a missing signing assembly fails closed with 503 and never a bare URL.
+     * The signed URL is short-lived and never logged.
+     */
+    @GetMapping("/avatar-url")
+    Map<String, Object> avatarUrl(@RequestParam(required = false) String merchantId,
+            @RequestParam(required = false) String storeId, HttpServletRequest request) {
+        onlyParameters(request, "merchantId", "storeId");
+        mini(request);
+        QueryContext context = userQuery(request);
+        MerchantStoreProfileDTO dto = queries.getStoreProfile(
+                new StoreProfileQuery(id(merchantId), id(storeId), context));
+        String avatarAssetId = dto.profile() == null ? null : dto.profile().avatarAssetId();
+        Map<String, Object> data = new LinkedHashMap<>();
+        if (avatarAssetId == null || avatarAssetId.isEmpty()) {
+            data.put("assetId", null);
+            data.put("url", null);
+            data.put("expiresAt", null);
+            return envelope(data, request);
+        }
+        StorePhotoSigningApi signing = storePhotoSigning.getIfAvailable();
+        if (signing == null)
+            throw new ApiException(CommonApiCodes.DEPENDENCY_UNAVAILABLE, "店铺头像签名服务未配置");
+        try {
+            StorePhotoSigningApi.SignedStorePhoto signed =
+                    signing.signOwnedStorePhoto(context.operatorId(), avatarAssetId, context);
+            data.put("assetId", signed.assetId());
+            data.put("url", signed.signedUrl());
+            data.put("expiresAt", time(OffsetDateTime.ofInstant(signed.expiresAt(), ZoneOffset.UTC)));
+        } catch (RuntimeException notSignable) {
+            // The asset is currently un-signable (e.g. no longer READY/STORE_PHOTO, ownership
+            // drift, missing versioned object): degrade to the null shape without distinguishing
+            // the cause or leaking any object fact.
+            data.put("assetId", null);
+            data.put("url", null);
+            data.put("expiresAt", null);
+        }
+        return envelope(data, request);
     }
 
     private static Map<String, Object> wire(MerchantStoreProfileDTO dto) {

@@ -10,6 +10,7 @@ import com.petplatform.review.biz.application.ReviewAppealPorts;
 import com.petplatform.review.biz.application.ReviewService;
 import com.petplatform.review.biz.infrastructure.persistence.ReviewStore;
 import com.petplatform.schedule.api.protection.ScheduleCapacityGuardApi;
+import com.petplatform.user.api.query.UserQueryApi;
 import java.time.Clock;
 import java.util.List;
 import java.util.Objects;
@@ -38,12 +39,22 @@ public final class ReviewApiImpl implements ReviewQueryApi, ReviewCommandApi, Re
     /** REV-002 assembly: guard + appeal authority are supplied by the boot appeal slice. */
     public ReviewApiImpl(DataSource dataSource, SnowflakeIdGenerator ids, OrderQueryApi orders,
             Clock clock, ScheduleCapacityGuardApi guard, ReviewAppealPorts appealAuthority) {
+        this(dataSource, ids, orders, clock, guard, appealAuthority, null);
+    }
+
+    /**
+     * CCR-M-REVIEW-VIEW-001 assembly: the OWNER store reads also take the user basics port
+     * (pet-user-api only, never the user biz); without it those reads fail closed.
+     */
+    public ReviewApiImpl(DataSource dataSource, SnowflakeIdGenerator ids, OrderQueryApi orders,
+            Clock clock, ScheduleCapacityGuardApi guard, ReviewAppealPorts appealAuthority,
+            UserQueryApi users) {
         this.service = new ReviewService(
                 new ReviewStore(Objects.requireNonNull(dataSource, "dataSource is required"),
                         Objects.requireNonNull(ids, "ids is required")),
                 Objects.requireNonNull(orders, "orders is required"),
                 Objects.requireNonNull(clock, "clock is required"),
-                guard, appealAuthority);
+                guard, appealAuthority, users);
     }
 
     @Override
@@ -81,6 +92,11 @@ public final class ReviewApiImpl implements ReviewQueryApi, ReviewCommandApi, Re
     @Override
     public ReviewPage listStoreReviews(StoreReviewListQuery query) {
         return service.listStoreReviews(query);
+    }
+
+    @Override
+    public StoreReviewAggregate storeReviewAggregate(StoreReviewAggregateQuery query) {
+        return service.storeReviewAggregate(query);
     }
 
     @Override

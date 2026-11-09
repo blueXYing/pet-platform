@@ -1,0 +1,167 @@
+{
+  "source": "Figma Usvn3d6UCVCAlDxou5KAK8",
+  "frame": "95:1899 / 149:926",
+  "files": [
+    {
+      "file": "pages/workspace/assets/paper-grid.jpg",
+      "node": "95:1921",
+      "note": "huaban-5913185224 1 纸纹",
+      "bytes": 213451,
+      "sha256": "11ed72e1b23977a41f2b4d848459eb24aaa859aecc23a259fae3abecda0e0855"
+    },
+    {
+      "file": "pages/workspace/assets/tape.png",
+      "node": "95:1924",
+      "note": "huaban-6727256158 1 胶带",
+      "bytes": 44281,
+      "sha256": "2ab808f7ac8e20e4fd9e9fa108c3574c09aaca03f05f5bef8a3166bfaabe5a0a"
+    },
+    {
+      "file": "pages/workspace/assets/hero-ticket.svg",
+      "node": "95:1922",
+      "note": "Vector 2 蓝色票券",
+      "bytes": 395,
+      "sha256": "6a299f05fbf64c2d256e3c6c6b8452eff0ce8ab4d8b5eacdcaefd9fef233b54a"
+    },
+    {
+      "file": "pages/workspace/assets/hero-panel.svg",
+      "node": "95:1923",
+      "note": "Vector 3 浅色面板",
+      "bytes": 424,
+      "sha256": "8542874e74e3ef6a79941277711bbcf949a7afa390e5955f76e57c9cbeeae9e7"
+    },
+    {
+      "file": "pages/workspace/assets/bell.svg",
+      "node": "95:1901",
+      "note": "铃铛",
+      "bytes": 1878,
+      "sha256": "48c822ca4412fbdf321aa460b588c1dcd756a232692c4689c647f81a515466a0"
+    },
+    {
+      "file": "pages/workspace/assets/chevron.svg",
+      "node": "95:1946",
+      "note": "全部 > 箭头",
+      "bytes": 333,
+      "sha256": "aafd09e623d75217a4ae010323ca5f19db964b1ad9862dc117c8be997ac5550b"
+    },
+    {
+      "file": "pages/workspace/assets/grid-services.svg",
+      "node": "95:2037",
+      "note": "商品管理图标",
+      "bytes": 1356,
+      "sha256": "4e98c02757eb4a3504d5e4d9b6e05f389c559e384697a85b07bdc100ec58a57e"
+    },
+    {
+      "file": "pages/workspace/assets/grid-schedule.svg",
+      "node": "95:2045",
+      "note": "排期管理图标",
+      "bytes": 1887,
+      "sha256": "d009f34724e559f69b4f1d52cb05fc09416e5851d32542b5bd5bd9f856bcf1a0"
+    },
+    {
+      "file": "pages/workspace/assets/grid-members.svg",
+      "node": "95:2053",
+      "note": "员工管理图标",
+      "bytes": 4652,
+      "sha256": "6a5aacc3ea30f1a3a9b0d32f73ed63aa92862905b08df39d77e68b2f116101fb"
+    },
+    {
+      "file": "pages/workspace/assets/grid-verify.svg",
+      "node": "95:2061",
+      "note": "核销记录图标",
+      "bytes": 1237,
+      "sha256": "0ff3a09c57d209e86683e4649c7ed90cf8415a5542e8758da60550d8e8797b57"
+    },
+    {
+      "file": "pages/workspace/assets/grid-marketing.svg",
+      "node": "95:2069",
+      "note": "营销工具图标",
+      "bytes": 1681,
+      "sha256": "fd4590dd9de1902a77954ff478d66dc3d062a6f6689a68875622fdce41175532"
+    },
+    {
+      "file": "pages/workspace/assets/grid-stats.svg",
+      "node": "95:2077",
+      "note": "数据统计图标",
+      "bytes": 821,
+      "sha256": "0e0e2b590ef88ab5aca344288a0876d565b346561f7aef758ab562df0b03440c"
+    },
+    {
+      "file": "pages/workspace/assets/grid-customers.svg",
+      "node": "95:2085",
+      "note": "客户管理图标",
+      "bytes": 2118,
+      "sha256": "47cb9c9614d18cbe1ac3461f06a65ee3ab3171756d097b8b7f8849b04670d5ce"
+    },
+    {
+      "file": "pages/workspace/assets/grid-reviews.svg",
+      "node": "95:2093",
+      "note": "店铺评价图标",
+      "bytes": 726,
+      "sha256": "38b41cd46afa0a996e9746dac5af260b769dce31f8e9fcb331c9c1d3fc8cd48e"
+    },
+    {
+      "file": "components/tab-bar/assets/tab-home.svg",
+      "node": "153:3472",
+      "note": "首页 tab",
+      "bytes": 4493,
+      "sha256": "55562b45b5a16ae286b153aed3544b551f54f95cb6444d08478e7c1a58774877"
+    },
+    {
+      "file": "components/tab-bar/assets/tab-order.svg",
+      "node": "153:3447",
+      "note": "订单 tab",
+      "bytes": 3935,
+      "sha256": "f77274412658fce447b28f0b5abc111258edce0a961d0804fa1240f3da710c60"
+    },
+    {
+      "file": "components/tab-bar/assets/tab-verify.svg",
+      "node": "153:3440",
+      "note": "核销中心凸起",
+      "bytes": 2598,
+      "sha256": "65f47eb9e20e41dd8e6e895a91a6f0754efa9c08a8df1d2d7d1bef2d7c63e4f7"
+    },
+    {
+      "file": "components/tab-bar/assets/tab-messages.svg",
+      "node": "153:3459",
+      "note": "消息 tab",
+      "bytes": 2097,
+      "sha256": "3c05ef87f46f3c7a69bef074afcb70ab0f1081d1bbea4ca8bb2cf3ddf16a2a67"
+    },
+    {
+      "file": "components/tab-bar/assets/tab-mine.svg",
+      "node": "153:3464",
+      "note": "我的 tab",
+      "bytes": 2865,
+      "sha256": "9c8a4815053872d216d39507178d63a26651520c99686f6ced837b9291b739fd"
+    },
+    {
+      "file": "components/tab-bar/assets/tab-home-inactive.svg",
+      "node": "derived",
+      "note": "tab-home.svg #5BAAE8→#3C3C3C",
+      "bytes": 4493,
+      "sha256": "effc6a236aa5835f8bd1ec8c2b5e30942a3ad2091fdd7e5745a5fdbfac97abb3"
+    },
+    {
+      "file": "components/tab-bar/assets/tab-order-inactive.svg",
+      "node": "derived",
+      "note": "tab-order.svg #5BAAE8→#3C3C3C",
+      "bytes": 3935,
+      "sha256": "43a0b1f6fc30edd0be1150226b58705232d04d801874635006354eb369aaea6c"
+    },
+    {
+      "file": "components/tab-bar/assets/tab-messages-inactive.svg",
+      "node": "derived",
+      "note": "tab-messages.svg #5BAAE8→#3C3C3C",
+      "bytes": 2097,
+      "sha256": "153ade87b06f13876d4b2ddbda66be3e8b738b6b69df58f0513efe8852e27ca6"
+    },
+    {
+      "file": "components/tab-bar/assets/tab-mine-inactive.svg",
+      "node": "derived",
+      "note": "tab-mine.svg #5BAAE8→#3C3C3C",
+      "bytes": 2865,
+      "sha256": "0358f191b1e69761662fdfbafabece08aac871422ce4963baa56ab8756d81798"
+    }
+  ]
+}

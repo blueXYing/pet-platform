@@ -12,14 +12,17 @@ import com.petplatform.refund.api.query.MerchantRefundApplicationQueryApi;
 import com.petplatform.refund.api.query.MerchantRefundApplicationQueryApi.StoreApplicationListQuery;
 import com.petplatform.refund.api.query.MerchantRefundApplicationQueryApi.StoreApplicationQuery;
 import com.petplatform.refund.api.query.MerchantRefundApplicationQueryApi.Summary;
+import com.petplatform.refund.api.query.MerchantRefundApplicationQueryApi.TimelineEntry;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import java.math.BigDecimal;
 import java.time.OffsetDateTime;
 import java.time.format.DateTimeFormatterBuilder;
+import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.regex.Pattern;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
@@ -46,6 +49,10 @@ import tools.jackson.databind.ObjectReader;
  * and trailing tokens are 400), no query parameters on the commands, fixed
  * expectedApplicationVersion "0" per the contract-49 invariant (PENDING_MERCHANT rows are
  * version 0 and replays answer before the version check), and Cache-Control: no-store.
+ * CCR-M-REFUND-VIEW-001 (approved 2026-11-06 §3.1/§3.3): list items and the detail add the
+ * nullable customerNickname / customerPhoneMasked (server mask only) / serviceName keys and the
+ * detail adds the read-only timeline; the buyer reason text (§3.2 not approved) and the buyer id
+ * are never rendered, and refusals keep the bare error envelope.
  */
 @RestController
 @RequestMapping(value = "/api/v1/merchant/refund-applications", produces = MediaType.APPLICATION_JSON_VALUE)
@@ -54,6 +61,8 @@ public final class MerchantRefundApplicationController {
 
     private static final ObjectReader JSON =
         com.petplatform.boot.config.MerchantJsonReaderFactory.strictReader();
+    /** OpenAPI 11 customerPhoneMasked pattern: only the server mask may ever reach the wire. */
+    private static final Pattern MASKED_PHONE = Pattern.compile("1[0-9]{2}\\*{4}[0-9]{4}");
 
     private final RefundApplicationCommandApi applications;
     private final MerchantRefundApplicationQueryApi queries;
@@ -104,10 +113,12 @@ public final class MerchantRefundApplicationController {
             id(storeId), id(applicationId),
             new com.petplatform.common.QueryContext(trace(request),
                 com.petplatform.common.OperatorType.USER, session.userId())));
-        Map<String, Object> data = summary(value);
+        Map<String, Object> data = base(value);
         data.put("decidedAt", time(value.decidedAt()));
         data.put("decisionId", value.decisionId());
         data.put("refundOrderId", value.refundOrderId());
+        customer(data, value);
+        data.put("timeline", timeline(value.timeline()));
         return envelope(data, request);
     }
 
@@ -139,7 +150,14 @@ public final class MerchantRefundApplicationController {
         return envelope(receipt(receipt), request);
     }
 
+    /** List item: the nine contract-57 keys plus the three CCR-M-REFUND-VIEW-001 §3.1 keys. */
     private static Map<String, Object> summary(Summary item) {
+        Map<String, Object> row = base(item);
+        customer(row, item);
+        return row;
+    }
+
+    private static Map<String, Object> base(Summary item) {
         Map<String, Object> row = new LinkedHashMap<>();
         row.put("applicationId", item.applicationId());
         row.put("applicationNo", item.applicationNo());
@@ -151,6 +169,29 @@ public final class MerchantRefundApplicationController {
         row.put("createdAt", time(item.createdAt()));
         row.put("merchantDeadline", time(item.merchantDeadline()));
         return row;
+    }
+
+    /**
+     * CCR-M-REFUND-VIEW-001 §3.1: always present, explicit null when absent. The phone is the
+     * user domain's server mask; anything not exactly {@code 1xx****xxxx} renders null.
+     */
+    private static void customer(Map<String, Object> row, Summary item) {
+        String phone = item.customerPhoneMasked();
+        row.put("customerNickname", item.customerNickname());
+        row.put("customerPhoneMasked", phone != null && MASKED_PHONE.matcher(phone).matches() ? phone : null);
+        row.put("serviceName", item.serviceName());
+    }
+
+    /** CCR-M-REFUND-VIEW-001 §3.3 detail-only timeline: {stage, occurredAt} in the service order. */
+    private static List<Map<String, Object>> timeline(List<TimelineEntry> entries) {
+        List<Map<String, Object>> out = new ArrayList<>(entries.size());
+        for (TimelineEntry entry : entries) {
+            Map<String, Object> item = new LinkedHashMap<>();
+            item.put("stage", entry.stage());
+            item.put("occurredAt", time(entry.occurredAt()));
+            out.add(item);
+        }
+        return out;
     }
 
     /** The fixed contract-49 receipt fields, wire-rendered (ids/versions/times as strings). */

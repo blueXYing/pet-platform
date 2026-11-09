@@ -46,6 +46,13 @@ export function isStaffInvitationPath(path: string): boolean {
   return path === '/api/v1/c/staff/invitations'
     || /^\/api\/v1\/c\/staff\/invitations\/[1-9][0-9]{0,18}(\/confirm)?$/.test(path)
 }
+// The merchant message page (frame 23:19357) reads the unified owner-scoped USER inbox while
+// its workspace coordinates are still merchant — the list/detail/read routes carry no
+// merchant/store ids and are scoped by the session user, so they get the same exemption as
+// the staff invitation reads above instead of failing WORKSPACE_PATH_MISMATCH client-side.
+export function isNotificationInboxPath(path: string): boolean {
+  return /^\/api\/v1\/c\/notifications(\/[1-9][0-9]{0,18}(\/read)?)?$/.test(path)
+}
 // Contract 58 favorite/footprint routes (10号 §3.16; 32号裁决第二节批次): identity-scoped
 // like coupons/points — the owner is the MINIAPP session, requests carry no merchant/store
 // coordinates. The targetType path segment is the uppercase SERVICE|STORE enum, which the
@@ -87,6 +94,10 @@ export function isMerchantOrderListPath(spec: RequestSpec): boolean {
 // its merchant/store and re-proves the OWNER authority server-side per call and replay.
 export function isMerchantReviewPath(spec: RequestSpec): boolean {
   if (/^\/api\/v1\/merchant\/reviews$/.test(spec.path)) return spec.method === 'GET'
+  // Contract 56 §7 2026-11-06 supplement (CCR-M-REVIEW-VIEW-001): store-level score
+  // aggregate read (totalReviews/scoredCount/averageScore/scoreCounts); same OWNER +
+  // store-guard family as the list read.
+  if (spec.path === '/api/v1/merchant/reviews/summary') return spec.method === 'GET'
   if (spec.method === 'GET') return /^\/api\/v1\/merchant\/reviews\/[1-9][0-9]{0,18}$/.test(spec.path)
   return spec.method === 'POST' && /^\/api\/v1\/merchant\/reviews\/[1-9][0-9]{0,18}\/appeal$/.test(spec.path)
 }
@@ -106,6 +117,22 @@ export function isMerchantRefundTargetPath(spec: RequestSpec): boolean {
     || isMerchantRefundDecisionPath(spec)
 }
 
+// Contract 54 M-side member management (switch pet.merchant.staff-member.enabled, default
+// OFF): every route carries the caller's merchant+store coordinates; the server re-proves the
+// OWNER relation per call. The employee confirmation channel lives on the C-side invitation
+// routes and is not part of this family.
+export function isMerchantStaffMemberPath(spec: RequestSpec): boolean {
+  const path = spec.path
+  if (spec.method === 'GET') {
+    return path === '/api/v1/merchant/staff-members'
+      || path === '/api/v1/merchant/staff-members/invitations'
+  }
+  if (spec.method !== 'POST') return false
+  return path === '/api/v1/merchant/staff-members/invitations'
+    || /^\/api\/v1\/merchant\/staff-members\/invitations\/[1-9][0-9]{0,18}\/cancel$/.test(path)
+    || /^\/api\/v1\/merchant\/staff-members\/[1-9][0-9]{0,18}\/(disable|enable|revoke-store|grant-actions)$/.test(path)
+}
+
 // Contracts 69/70/27 M faces (switches pet.order.customer.http.enabled /
 // pet.order.stats.http.enabled / pet.merchant.store-profile.http.enabled, default OFF):
 // the customer reads and the store-profile read/update carry the caller's merchant
@@ -115,11 +142,19 @@ export function isMerchantCustomerPath(spec: RequestSpec): boolean {
   return spec.method === 'GET' && /^\/api\/v1\/merchant\/customers\/[1-9][0-9]{0,18}$/.test(spec.path)
 }
 export function isMerchantStatsPath(spec: RequestSpec): boolean {
+  // Contract 70 also exposes the schedule-utilization aggregate and the per-service
+  // order drilldown; both are GET reads with the caller's merchant/store coordinates.
+  // Missing them from this allowlist rejected the request client-side (INVALID_PATH),
+  // which made the whole stats page fail even though overview/top/trend succeeded.
   return spec.method === 'GET'
-    && /^\/api\/v1\/merchant\/stats\/(overview|services\/top|revenue-trend)$/.test(spec.path)
+    && /^\/api\/v1\/merchant\/stats\/(overview|services\/top|revenue-trend|schedule-utilization|services\/[1-9][0-9]{0,18}\/orders)$/.test(spec.path)
 }
 export function isMerchantStoreProfilePath(spec: RequestSpec): boolean {
-  return (spec.method === 'GET' || spec.method === 'PUT') && spec.path === '/api/v1/merchant/store-profile'
+  if (spec.path === '/api/v1/merchant/store-profile') return spec.method === 'GET' || spec.method === 'PUT'
+  // Contract 27 §6.4 2026-11-06 supplement (CCR-M-STORE-AVATAR-001): OWNER-only avatar
+  // signing read; the merchant/store coordinates are re-proven under the store guard and
+  // the signed URL is short-lived (never cached to storage).
+  return spec.method === 'GET' && spec.path === '/api/v1/merchant/store-profile/avatar-url'
 }
 // Contract-71 marketing center M face (pet.marketing.merchant.http.enabled default OFF):
 // enrollment / my campaigns carry the caller's merchant coordinates and are re-proved
@@ -223,18 +258,19 @@ export class ConsumerApi {
     const merchantStatsPath = isMerchantStatsPath(spec)
     const merchantStoreProfilePath = isMerchantStoreProfilePath(spec)
     const merchantMarketingPath = isMerchantMarketingPath(spec)
+    const merchantStaffMemberPath = isMerchantStaffMemberPath(spec)
     const favoriteFootprintPath = isFavoriteFootprintPath(spec)
     if (/^\/api\/v1\/(c|merchant)\/aftersale/.test(spec.path) && !afterSalePath) throw new Error('INVALID_PATH')
     if (/^\/api\/v1\/merchant\/reviews(\/|$)/.test(spec.path) && !merchantReviewPath) throw new Error('INVALID_PATH')
     if (/^\/api\/v1\/c\/(favorites|footprints)(\/|$)/.test(spec.path) && !favoriteFootprintPath) throw new Error('INVALID_PATH')
-    if (!/^\/api\/v1\/c\/[a-z0-9/-]+$/.test(spec.path) && !agreementPath && !admissionPath && !categoryPath && !serviceCommandPath && !afterSalePath && !schedulePath && !verificationPath && !merchantOrderAction && !merchantOrderList && !merchantReviewPath && !merchantRefundPath && !merchantCustomerPath && !merchantStatsPath && !merchantStoreProfilePath && !merchantMarketingPath && !favoriteFootprintPath) throw new Error('INVALID_PATH')
+    if (!/^\/api\/v1\/c\/[a-z0-9/-]+$/.test(spec.path) && !agreementPath && !admissionPath && !categoryPath && !serviceCommandPath && !afterSalePath && !schedulePath && !verificationPath && !merchantOrderAction && !merchantOrderList && !merchantReviewPath && !merchantRefundPath && !merchantCustomerPath && !merchantStatsPath && !merchantStoreProfilePath && !merchantMarketingPath && !merchantStaffMemberPath && !favoriteFootprintPath) throw new Error('INVALID_PATH')
     if (spec.method !== 'GET' && !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}(?![\s\S])/i.test(spec.requestId || '')) throw new Error('REQUEST_ID_REQUIRED')
     const response = await this.transport({ ...spec, headers: { 'Content-Type': 'application/json', ...(spec.requestId ? { 'X-Request-Id': spec.requestId } : {}), ...headers } })
     if (afterSalePath) return afterSaleEnvelope(response)
     const body = object(response.data)
     if (response.statusCode < 200 || response.statusCode >= 300 || body.code !== 'SUCCESS') throw new ApiError(typeof body.code === 'string' ? body.code : 'INVALID_RESPONSE', response.statusCode)
     const applicationPath = /^\/api\/v1\/c\/merchant-applications(?:\/|$)/.test(spec.path) || spec.path === '/api/v1/c/merchant-application-cities'
-    if ((agreementPath || applicationPath || admissionPath || categoryPath || serviceCommandPath || schedulePath || verificationPath || merchantOrderAction || merchantOrderList || merchantRefundPath || merchantCustomerPath || merchantStatsPath || merchantStoreProfilePath || merchantMarketingPath) && body.success !== true) throw new Error('INVALID_RESPONSE')
+    if ((agreementPath || applicationPath || admissionPath || categoryPath || serviceCommandPath || schedulePath || verificationPath || merchantOrderAction || merchantOrderList || merchantRefundPath || merchantCustomerPath || merchantStatsPath || merchantStoreProfilePath || merchantMarketingPath || merchantStaffMemberPath) && body.success !== true) throw new Error('INVALID_RESPONSE')
     return body.data
   }
   private clear() {
@@ -359,6 +395,7 @@ export class ConsumerApi {
       // merchant coordinates (48 K2 v0.3 locates them server-side).
       const verificationPath = isMerchantVerificationPath(spec)
       if (verificationPath && !ticket.context.storeId) throw new Error('WORKSPACE_PATH_MISMATCH')
+      const merchantStaffMemberPath = isMerchantStaffMemberPath(spec)
       // Merchant order decisions (45号) equally target the order only; the OWNER authority is
       // re-proven server-side per call, so a wrong-workspace request fails closed there.
       const merchantOrderAction = isMerchantOrderActionPath(spec)
@@ -373,7 +410,7 @@ export class ConsumerApi {
       // the detail/appeal target the review id only and the server re-proves the OWNER link.
       const merchantReviewPath = isMerchantReviewPath(spec)
       if (merchantReviewPath && !ticket.context.storeId) throw new Error('WORKSPACE_PATH_MISMATCH')
-      if (merchantReviewPath && spec.path === '/api/v1/merchant/reviews'
+      if (merchantReviewPath && (spec.path === '/api/v1/merchant/reviews' || spec.path === '/api/v1/merchant/reviews/summary')
         && (spec.data?.merchantId !== ticket.context.merchantId
           || spec.data?.storeId !== ticket.context.storeId)) throw new Error('WORKSPACE_PATH_MISMATCH')
       // Merchant refund surfaces (57号): the reads carry the caller's merchant coordinate
@@ -398,9 +435,13 @@ export class ConsumerApi {
       if (isMerchantStoreProfilePath(spec) && spec.data
         && (spec.data.merchantId !== ticket.context.merchantId
           || spec.data.storeId !== ticket.context.storeId)) throw new Error('WORKSPACE_PATH_MISMATCH')
+      if (merchantStaffMemberPath && (!ticket.context.storeId
+        || spec.data?.merchantId !== ticket.context.merchantId
+        || spec.data?.storeId !== ticket.context.storeId)) throw new Error('WORKSPACE_PATH_MISMATCH')
       const targetFree = spec.path === '/api/v1/merchant/service-categories' || afterSalePath && spec.path !== '/api/v1/merchant/aftersales' || verificationPath || merchantOrderAction || merchantRefundDecision
       if (!targetFree && spec.data?.merchantId !== ticket.context.merchantId) throw new Error('WORKSPACE_PATH_MISMATCH')
-    } else if (ticket.context.workspace !== 'consumer' && !isStaffInvitationPath(spec.path)) throw new Error('WORKSPACE_PATH_MISMATCH')
+    } else if (ticket.context.workspace !== 'consumer'
+      && !isStaffInvitationPath(spec.path) && !isNotificationInboxPath(spec.path)) throw new Error('WORKSPACE_PATH_MISMATCH')
     try {
       const value = await this.send(spec, { Authorization: `Bearer ${this.credential.accessToken}` })
       ticket.assertCurrent()

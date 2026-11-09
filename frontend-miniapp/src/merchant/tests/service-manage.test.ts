@@ -79,6 +79,10 @@ test('decoders enforce the exact finalized shapes (IDs/prices/status/rejection/c
   assert.throws(() => decodeCategoryList({ items: [{ categoryId: '1', categoryName: 'a', sortNo: 2 }, { categoryId: '2', categoryName: 'b', sortNo: 1 }] }), /INVALID_RESPONSE/)
   // sortNo 0 is legitimate dictionary data (DB default), only negatives fail.
   assert.equal(decodeCategoryList({ items: [{ categoryId: '957003', categoryName: '宠物美容', sortNo: 0 }] }).length, 1)
+  // Contract-70 rows also carry categoryCode/iconUrl/description; the M-002 decoder must
+  // accept the documented extras or every real add/edit load fails INVALID_RESPONSE.
+  assert.equal(decodeCategoryList({ items: [{ categoryId: '910001', categoryName: '宠物美容', sortNo: 10,
+    categoryCode: 'PET_GROOMING', iconUrl: null, description: null }] }).length, 1)
   assert.throws(() => decodeCategoryList({ items: [{ categoryId: '957003', categoryName: '宠物美容', sortNo: -1 }] }), /INVALID_RESPONSE/)
 })
 

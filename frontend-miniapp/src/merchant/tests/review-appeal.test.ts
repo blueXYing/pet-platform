@@ -13,7 +13,7 @@ const owner: MerchantAdmission = {
   facts: { application: { status: 'APPROVED' }, signing: { status: 'SIGNED' }, merchantStatus: 'ACTIVE', storeStatus: 'ACTIVE', staffEnabled: null },
   allowedActions: ['merchant.review.read'], reasonCodes: [], nextSteps: [],
 }
-const review: ReviewSummary = { reviewId: '201', orderId: '301', storeScore: '5.0', serviceScore: '4.0', staffScore: '3.0', compositeScore: '4.2', scoreIncluded: true, visibilityStatus: 'PUBLISHED', content: '上门迟到了二十分钟', createdAt: '2026-10-01T00:00:00.000Z', appealStatus: null, appealId: null }
+const review: ReviewSummary = { reviewId: '201', orderId: '301', storeScore: '5.0', serviceScore: '4.0', staffScore: '3.0', compositeScore: '4.2', scoreIncluded: true, visibilityStatus: 'PUBLISHED', content: '上门迟到了二十分钟', createdAt: '2026-10-01T00:00:00.000Z', appealStatus: null, appealId: null, reviewerNickname: null, reviewerAvatarUrl: null }
 const receipt: AppealReceipt = { appealId: '401', reviewId: '201', status: 'SUBMITTED', createdAt: '2026-10-02T00:00:00.000Z' }
 const copy = <T>(value: T): T => JSON.parse(JSON.stringify(value))
 const defer = <T>() => { let resolve!: (value: T) => void; const promise = new Promise<T>(r => { resolve = r }); return { promise, resolve } }
@@ -26,6 +26,7 @@ function fixture() {
   const deps: MerchantReviewDeps = {
     scope, admission: async () => copy(view),
     list: async (_m, _s, page, pageSize) => { listCalls++; return { page, pageSize, total: current.total, items: copy(current.items) } },
+    summary: async () => ({ totalReviews: 1, scoredCount: 1, averageScore: '4.2', scoreCounts: { '1': 0, '2': 0, '3': 0, '4': 1, '5': 0 } }),
     detail: async () => { throw new Error('unused in this slice test') },
     appeal: async () => { writes++; return appealImpl() },
     pendingAppeal: () => pending,

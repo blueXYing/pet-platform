@@ -59,8 +59,12 @@ public class ReviewConfiguration {
             // Same UTC-clock discipline as the sibling kernels; system UTC when no shared
             // clock bean is assembled. The appeal guard/authority beans exist only under
             // pet.review.appeal.enabled — without them the appeal faces fail closed (503).
+            // CCR-M-REVIEW-VIEW-001: the OWNER store reads project the buyer nickname/avatar
+            // through the user basics read, assembled locally over the same DataSource exactly
+            // like the contract-69 customer slice (boot owns biz apiimpl assembly, ARCH-002).
             return new ReviewApiImpl(source, ids, orders, clocks.getIfAvailable(Clock::systemUTC),
-                    guards.getIfAvailable(), appealAuthority.getIfAvailable());
+                    guards.getIfAvailable(), appealAuthority.getIfAvailable(),
+                    new com.petplatform.user.biz.apiimpl.UserQueryApiImpl(source));
         }
     }
 

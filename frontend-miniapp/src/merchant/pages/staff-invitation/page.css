@@ -3,7 +3,7 @@
    cards white with #C0ECFF accents, primary #5BAAE8, status dot #22C55E/#D1D5DB。状态样式一律
    className 模板字符串变体，不用 data-* 属性选择器（Taro 4.1.5 前科）。 */
 .msi-page { --msi-status-top: 0px; min-height: 100vh; background: #f0fbff; color: #1d0d07; font-family: Roboto, 'Noto Sans SC', sans-serif; display: flex; flex-direction: column; }
-.msi-page view, .msi-page button, .msi-page image, .msi-page text, .msi-page input { box-sizing: border-box; }
+.msi-page view, .msi-page scroll-view, .msi-page button, .msi-page image, .msi-page text, .msi-page input { box-sizing: border-box; }
 .msi-page button { margin: 0; padding: 0; border: 0; border-radius: 0; background: transparent; font: inherit; line-height: normal; }
 .msi-page button::after { border: 0; }
 .msi-page button[disabled] { opacity: .65; color: inherit; }
@@ -13,11 +13,12 @@
 .msi-back image { width: calc(var(--msi-unit) * 8.9); height: calc(var(--msi-unit) * 14.5); }
 .msi-title { position: absolute; left: 0; right: 0; text-align: center; font-size: calc(var(--msi-unit) * 16); line-height: calc(var(--msi-unit) * 24); font-weight: 700; color: #3c3c3c; font-family: Outfit, Roboto, 'Noto Sans SC', sans-serif; pointer-events: none; }
 .msi-state { padding: calc(var(--msi-unit) * 48) calc(var(--msi-unit) * 29); font-size: calc(var(--msi-unit) * 14); line-height: calc(var(--msi-unit) * 24); color: #577683; display: flex; flex-direction: column; gap: calc(var(--msi-unit) * 14); }
-.msi-state-action { align-self: flex-start; color: #167fab; font-size: calc(var(--msi-unit) * 14); }
+.msi-page .msi-state-action { align-self: flex-start; color: #167fab; font-size: calc(var(--msi-unit) * 14); }
 .msi-query { display: flex; align-items: center; gap: calc(var(--msi-unit) * 8); }
 .msi-query-input { flex: 1; height: calc(var(--msi-unit) * 38); padding: 0 calc(var(--msi-unit) * 10); border: calc(var(--msi-unit) * 1) solid #c0ecff; border-radius: calc(var(--msi-unit) * 8); font-size: calc(var(--msi-unit) * 14); color: #111827; background: #fff; }
-.msi-query-submit { flex: none; padding: 0 calc(var(--msi-unit) * 14); height: calc(var(--msi-unit) * 38); border-radius: calc(var(--msi-unit) * 10); background: #5baae8; font-size: calc(var(--msi-unit) * 14); font-weight: 600; color: #fff; display: flex; align-items: center; justify-content: center; }
-.msi-body { flex: 1; height: auto; padding: calc(var(--msi-unit) * 12) calc(var(--msi-unit) * 17) calc(var(--msi-unit) * 24); }
+.msi-page .msi-query-submit { flex: none; padding: 0 calc(var(--msi-unit) * 14); height: calc(var(--msi-unit) * 38); border-radius: calc(var(--msi-unit) * 10); background: #5baae8; font-size: calc(var(--msi-unit) * 14); font-weight: 600; color: #fff; display: flex; align-items: center; justify-content: center; }
+/* scroll-view padding must be inside the stretched width (same fix as schedule/members). */
+.msi-body { flex: 1; height: auto; width: 100%; box-sizing: border-box; padding: calc(var(--msi-unit) * 12) calc(var(--msi-unit) * 17) calc(var(--msi-unit) * 24); }
 .msi-notice { display: block; margin: calc(var(--msi-unit) * 6) 0; font-size: calc(var(--msi-unit) * 12); line-height: calc(var(--msi-unit) * 18); color: #7a4a1d; }
 .msi-card { padding: calc(var(--msi-unit) * 14) calc(var(--msi-unit) * 16); background: #fff; border: calc(var(--msi-unit) * 1.5) solid #c0ecff; border-radius: calc(var(--msi-unit) * 17); display: flex; flex-direction: column; gap: calc(var(--msi-unit) * 8); }
 .msi-card-line { display: flex; align-items: center; justify-content: space-between; gap: calc(var(--msi-unit) * 8); }
@@ -40,5 +41,9 @@
 .msi-page .msi-member-state-enabled .msi-state-text { color: #16a34a; }
 .msi-success { margin-top: calc(var(--msi-unit) * 12); padding: calc(var(--msi-unit) * 14) calc(var(--msi-unit) * 16); background: #fff; border: calc(var(--msi-unit) * 1.5) solid #d7f0d0; border-radius: calc(var(--msi-unit) * 17); display: flex; flex-direction: column; gap: calc(var(--msi-unit) * 8); }
 .msi-success-title { font-size: calc(var(--msi-unit) * 16); line-height: calc(var(--msi-unit) * 24); font-weight: 700; color: #2f6b2f; }
-.msi-primary { margin-top: calc(var(--msi-unit) * 14); height: calc(var(--msi-unit) * 42); border-radius: calc(var(--msi-unit) * 12); background: #5baae8; font-size: calc(var(--msi-unit) * 15); font-weight: 600; color: #fff; display: flex; align-items: center; justify-content: center; }
+/* Compound with .msi-page: the .msi-page button reset (0,1,1) would otherwise win over a
+   bare class (0,1,0) and strip the pill background/border-radius/font, leaving white-on-white. */
+.msi-page .msi-primary { margin-top: calc(var(--msi-unit) * 14); height: calc(var(--msi-unit) * 42); border-radius: calc(var(--msi-unit) * 12); background: #5baae8; font-size: calc(var(--msi-unit) * 15); font-weight: 600; color: #fff; display: flex; align-items: center; justify-content: center; }
 .msi-tail { padding: calc(var(--msi-unit) * 18) 0; text-align: center; font-size: calc(var(--msi-unit) * 11); color: #9ca3af; }
+
+.msi-tab-space { height: calc(var(--msi-unit) * 96); flex: none; }

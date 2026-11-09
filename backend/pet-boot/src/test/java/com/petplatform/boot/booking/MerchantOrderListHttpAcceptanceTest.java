@@ -98,10 +98,25 @@ class MerchantOrderListHttpAcceptanceTest {
     }
 
     private static void assertSummaryShape(Map<String, Object> item) {
+        // CCR-M-ORDER-CARD-001: the six additive card keys ride after the original seven —
+        // exactly thirteen, no phone-shaped key among them (privacy ruling: no phone surface).
         assertEquals(Set.of("orderId", "orderNo", "displayStatus", "payAmount",
-                "appointmentStart", "appointmentEnd", "paidAt"), item.keySet(), item.toString());
+                "appointmentStart", "appointmentEnd", "paidAt",
+                "customerNickname", "customerAvatarUrl", "serviceName",
+                "petName", "petType", "petBreed"), item.keySet(), item.toString());
+        assertTrue(item.keySet().stream().noneMatch(key -> key.toLowerCase().contains("phone")),
+                item.toString());
         assertTrue(((String) item.get("payAmount")).matches("^(0|[1-9][0-9]{0,15})\\.[0-9]{2}$"),
                 item.get("payAmount").toString());
+        // Every fixture order is created with a required pet and service, so both immutable
+        // snapshots exist; nickname/avatar stay nullable per the CCR (never fabricated).
+        for (String key : new String[] {"customerNickname", "customerAvatarUrl", "petBreed"}) {
+            assertTrue(item.get(key) == null || item.get(key) instanceof String,
+                    key + " must be a string or null: " + item);
+        }
+        assertTrue(item.get("serviceName") instanceof String, item.toString());
+        assertTrue(item.get("petName") instanceof String, item.toString());
+        assertTrue(item.get("petType") instanceof String, item.toString());
     }
 
     @Test

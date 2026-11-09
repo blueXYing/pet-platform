@@ -1,12 +1,12 @@
 import { Button, ScrollView, Text, View } from '@tarojs/components'
 import Taro from '@tarojs/taro'
 import type { AfterSaleStatus } from '../../../shared/aftersale-api'
-import { dateText, statusTagClass, statusText, typeLabel } from '../../aftersale/model'
-import { MerchantAfterSaleShell, MerchantAfterSaleState, useMerchantAfterSale } from './page'
+import { caseServiceLine, dateText, statusTagClass, statusText, typeLabel } from '../../aftersale/model'
+import { MerchantAfterSaleCustomer, MerchantAfterSaleShell, MerchantAfterSaleState, useMerchantAfterSale } from './page'
 
 const filters: readonly (AfterSaleStatus | undefined)[] = [undefined, 'PENDING', 'PROCESSING', 'WAITING_SUPPLEMENT', 'RESOLVED', 'INVALIDATED', 'WITHDRAWN', 'CLOSED']
 
-/** Figma 40:1061 card geometry; Contract51 case data replaces unavailable order/customer data. */
+/** Figma 40:1061 card geometry; Contract51 case data + CCR-M-AFTERSALE-VIEW-001 customer/service/pet labels. */
 export default function MerchantAfterSaleList() {
   const { controller, state, style } = useMerchantAfterSale()
   return <MerchantAfterSaleShell title='售后工单' style={style}>
@@ -20,6 +20,7 @@ export default function MerchantAfterSaleList() {
         <Text className='mas-count'>当前门店 · 共 {state.total} 笔售后工单</Text>
         {state.items.length === 0 && <View className='mas-empty'>暂无符合条件的售后工单</View>}
         {state.items.map(item => <View key={item.afterSaleId} className='mas-list-card'>
+          <MerchantAfterSaleCustomer view={item} line={caseServiceLine(item)} />
           <View className='mas-line'><Text className='mas-case-number'>工单 {item.afterSaleId}</Text>
             <Text className='mas-requested'>{item.requestedAmount === null ? '未填写金额' : `诉求 ¥${item.requestedAmount}`}</Text></View>
           <View className='mas-line mas-subline'><Text className='mas-type'>问题类型 {typeLabel(item.typeCode)}</Text><Text className='mas-date'>{dateText(item.createdAt)}</Text></View>

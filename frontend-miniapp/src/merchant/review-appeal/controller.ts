@@ -1,6 +1,6 @@
 import { ApiError } from '../../shared/request'
 import type { WorkspaceScope } from '../../shared/workspace'
-import type { ReviewSummary } from '../../shared/review-appeal-api'
+import type { ReviewAggregate, ReviewSummary } from '../../shared/review-appeal-api'
 import { appealMessage, canAppealEntry, ownerAccess, reasonDraftError } from './model'
 import type { MerchantReviewDeps } from './repository'
 
@@ -14,6 +14,8 @@ export type MerchantReviewState = Readonly<{
   pageSize: number
   total: number
   items: readonly ReviewSummary[]
+  /** 56号 §7 门店评价聚合；读取失败时为 null（聚合区不渲染，不用假数据补位，列表不受影响）。 */
+  aggregate: ReviewAggregate | null
   loadingMore: boolean
   /** 申诉弹层：目标评价与其未确认命令（仅提示 + 重试，不自动发送）。 */
   sheetReviewId: string | null
@@ -23,7 +25,7 @@ export type MerchantReviewState = Readonly<{
 
 const initialState = (): MerchantReviewState => ({
   phase: 'idle', notice: '', busy: false, frozen: false, writable: false,
-  page: 1, pageSize: 20, total: 0, items: [], loadingMore: false,
+  page: 1, pageSize: 20, total: 0, items: [], aggregate: null, loadingMore: false,
   sheetReviewId: null, sheetPending: null, receiptReviewId: null,
 })
 
@@ -44,7 +46,7 @@ export class MerchantReviewController {
   private publish(state: MerchantReviewState) { if (!this.active) return; this.state = Object.freeze(state); this.listeners.forEach(listener => listener()) }
   private live(epoch: number) { return this.active && epoch === this.epoch }
 
-  /** 首屏：OWNER 准入 → 本店评价分页（含申诉状态投影）。 */
+  /** 首屏：OWNER 准入 → 本店评价分页（含申诉状态投影）+ 门店评价聚合（并行，聚合失败只隐藏聚合区）。 */
   async load() {
     if (!this.active || this.state.busy) return
     const epoch = this.epoch, run = ++this.reads
@@ -54,17 +56,29 @@ export class MerchantReviewController {
       if (!this.live(epoch) || run !== this.reads) return
       const access = ownerAccess(view, this.coordinates.merchantId, this.coordinates.storeId)
       if (!access.readable) {
-        this.publish({ ...this.state, phase: 'entry', notice: '', frozen: access.frozen })
+        this.publish({ ...this.state, phase: 'entry', notice: '', frozen: access.frozen, aggregate: null })
         return
       }
-      const page = await this.deps.list(this.coordinates.merchantId, this.coordinates.storeId, 1, this.state.pageSize)
+      const [page, aggregate] = await Promise.all([
+        this.deps.list(this.coordinates.merchantId, this.coordinates.storeId, 1, this.state.pageSize),
+        this.readAggregate(),
+      ])
       if (!this.live(epoch) || run !== this.reads) return
       this.publish({ ...this.state, phase: 'ready', notice: '', writable: access.writable, frozen: access.frozen,
-        page: page.page, total: page.total, items: page.items })
+        page: page.page, total: page.total, items: page.items, aggregate })
     } catch (error) {
       if (!this.live(epoch) || run !== this.reads) return
       const unauthorized = error instanceof ApiError && error.statusCode === 401
-      this.publish({ ...this.state, phase: unauthorized ? 'unauthorized' : 'error', notice: appealMessage(error), items: [] })
+      this.publish({ ...this.state, phase: unauthorized ? 'unauthorized' : 'error', notice: appealMessage(error), items: [], aggregate: null })
+    }
+  }
+
+  /** 聚合读取失败（含同步抛出）只隐藏聚合区：列表是本页主体，聚合不可用时不伪造 0/空均分。 */
+  private async readAggregate(): Promise<ReviewAggregate | null> {
+    try {
+      return await this.deps.summary(this.coordinates.merchantId, this.coordinates.storeId)
+    } catch {
+      return null
     }
   }
 
