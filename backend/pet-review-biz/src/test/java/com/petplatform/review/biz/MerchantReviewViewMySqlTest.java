@@ -287,7 +287,10 @@ class MerchantReviewViewMySqlTest {
             source = source(url + name, user, password);
             jdbc = new JdbcTemplate(source);
             when(users.listUsers(any())).thenAnswer(invocation -> {
-                List<String> requested = invocation.getArgument(0, List.class);
+                // The port takes the UserBasicsQuery record, not a raw list — getArgument with
+                // List.class would ClassCastException (surfaced as the 503 fail-closed path).
+                UserQueryApi.UserBasicsQuery query = invocation.getArgument(0, UserQueryApi.UserBasicsQuery.class);
+                List<String> requested = query.userIds();
                 List<UserBasicDTO> out = new ArrayList<>();
                 for (String id : requested) {
                     UserBasicDTO basic = basics.get(id);
