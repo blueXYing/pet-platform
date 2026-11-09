@@ -299,6 +299,10 @@ class ReviewAppealHttpAcceptanceTest {
             assertEquals(Map.of("1", 0L, "2", 0L, "3", 0L, "4", 1L, "5", 0L), counts(one));
 
             // Identity: a WeChat-registered buyer starts without nickname/avatar -> both null.
+            // (The deep booking fixture seeds the buyer as "Booking QA"; clear it first so the
+            // null-degradation path actually runs — the raw projection is asserted below.)
+            f.sql("UPDATE user_account SET nickname=NULL, avatar_url=NULL WHERE id="
+                    + AfterSaleHttpFixture.BUYER);
             Map<String, Object> bare = firstItem(f);
             assertTrue(bare.containsKey("reviewerNickname"));
             assertTrue(bare.containsKey("reviewerAvatarUrl"));
