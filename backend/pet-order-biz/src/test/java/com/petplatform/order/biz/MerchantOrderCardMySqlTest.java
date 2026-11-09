@@ -235,6 +235,11 @@ class MerchantOrderCardMySqlTest {
                 ScriptUtils.executeSqlScript(connection, new EncodedResource(
                         new FileSystemResource(root().resolve("docs/03-database/49-Refund-Application-Schema-v0.1.sql")),
                         StandardCharsets.UTF_8));
+                // 38号 adds pet_order.payment_expire_at, which the production page query in
+                // OrderQueryMapper.xml selects (the 69/70 suite never reads that column).
+                ScriptUtils.executeSqlScript(connection, new EncodedResource(
+                        new FileSystemResource(root().resolve("docs/03-database/38-Booking-Create-Schema-v0.1.sql")),
+                        StandardCharsets.UTF_8));
             } catch (Exception failure) {
                 try { close(); } catch (Exception cleanup) { failure.addSuppressed(cleanup); }
                 throw failure;
