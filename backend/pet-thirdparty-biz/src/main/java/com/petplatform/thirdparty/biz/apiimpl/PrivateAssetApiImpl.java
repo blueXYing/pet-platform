@@ -40,9 +40,11 @@ public final class PrivateAssetApiImpl implements PrivateAssetApi {
   public static final String FEEDBACK_ATTACHMENT = "FEEDBACK_ATTACHMENT";
   /** CCR-C-PET-AVATAR-001: consumer pet avatars share the immutable private-asset pipeline. */
   public static final String PET_AVATAR = "PET_AVATAR";
+  /** 27号 §6.4 expansion (2026-10-19): store photos/avatar ride the same immutable pipeline. */
+  public static final String STORE_PHOTO = "STORE_PHOTO";
   private static final java.util.Set<String> UPLOAD_PURPOSES =
       java.util.Set.of(MERCHANT_APPLICATION_MATERIAL, SERVICE_COVER, "AFTERSALE_EVIDENCE",
-          FEEDBACK_ATTACHMENT, PET_AVATAR);
+          FEEDBACK_ATTACHMENT, PET_AVATAR, STORE_PHOTO);
   static final int MAX_BYTES = 10 * 1024 * 1024;
   private static final DecimalPublicIdCodec IDS = new DecimalPublicIdCodec();
 

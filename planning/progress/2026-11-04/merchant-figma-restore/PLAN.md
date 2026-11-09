@@ -651,3 +651,29 @@
 - 小程序直达子包页缺工作台交接会停在加载态；必须走底部 tab/宫格正规 handoff 入口。
 - E2E mock 登录配方：POST /c/auth/attempts{purpose:WECHAT_LOGIN} →
   POST /c/auth/wechat-login{wechatCode:e2e-round2-real-login-code}+X-Auth-Attempt/X-Request-Id。
+
+## 22. 种子库重建与三个验证尾巴补全（2026-11-09）
+
+### 重建与补验结果
+
+- 全新种子库 `auth001czq5efbf_...`（不复用腐化库），ADMIN_SEEDS 自带 completed/
+  disposition/refundTarget 订单与 PENDING 售后工单（真实链创建）。
+- **售后 ✅**：M 列表返回五标签全齐（E2E体验用户/E2E到店精细洗护/豆豆·柯基）——
+  证实 §21 的受阻纯属旧夹具密文腐化，代码无回归。
+- **退款 ✅**：完成单先经 C 端真实撤回挂着的 PENDING 售后（51号 withdraw），再申请退款
+  得 PENDING_MERCHANT；M 列表/详情返回 昵称+138****0100+服务名+timeline（APPLIED →
+  MERCHANT_DEADLINE 恰为 +24h）。附带发现：完成单挂活动售后时退款申请返回 500（未映射
+  业务码），已登记待查；种子 refundTarget 单为服务前申请会 AUTO_APPROVED（规则正确）。
+- **头像 ✅（含一个真 bug 修复）**：发现 27号承诺的 STORE_PHOTO 上传在 31号管线
+  UPLOAD_PURPOSES 白名单缺失（2026-10-19 起真实链路从未通过）——本 PR 修复；修复后
+  上传→READY→PUT 绑定（v1）→avatar-url 全通。E2E 无 OSS 签名器时三键 null 为设计内
+  失败关闭（正路径由 6/6+3/3 测试钉住）。
+- PUT 调用坑：merchantId/storeId 是 **body** 字段且 PUT 不许 query 参数；promoLevel 0
+  的文档口径与实现（null=未设置）不一致——按实现传 null。
+
+### 口径裁决（用户，2026-11-09）
+
+- 已注销用户昵称：商家端保持原样显示（不统一"已注销用户"）。
+- 评分大卡：保持全量口径（页面已标注"共 N 条计分评价"）。
+
+真机验收清单见 `acceptance-checklist-ccr.md`（五个验收点+口径记录）。
