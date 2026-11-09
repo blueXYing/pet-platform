@@ -585,3 +585,69 @@
   `impl-staff-verify-real.png`、`impl-staff-verify-receipt-real.png`、
   `impl-marketing-open-real.png`、`impl-marketing-mine-real.png`、
   `impl-marketing-campaigns-real.png`、`impl-mine-real.png`、`impl-mine-real-bottom.png`。
+
+## 21. 五份商家读侧 CCR 批准与实施（2026-11-06）
+
+### 裁决记录（用户，2026-11-06）
+
+- CCR-M-ORDER-CARD-001 批准：客户昵称+头像(可空)+服务名+宠物名/品种；**不加手机号**。
+- CCR-M-AFTERSALE-VIEW-001 批准：客户昵称+服务+宠物；保持 51 号无手机号红线。
+- CCR-M-REVIEW-VIEW-001 批准：昵称原样(null→匿名用户)+头像可空+独立聚合路由(ROUND 分桶)。
+- CCR-M-REFUND-VIEW-001 **部分批准**：3.1(昵称+脱敏手机号+服务名)+3.3(只读时间线)；
+  **3.2 申请说明解密不批**（维持 49 号密文口径，零解密端口）；凭证图片不做。
+- CCR-M-STORE-AVATAR-001 批准：独立 avatar-url 只读路由+三键 null 降级。
+- 全部裁决记录已写入各 CCR §8/§9；契约同步 10/27/51/56/57 号+OpenAPI11+07号内部API。
+
+### 实施提交（分支 codex/dev-20261104，随 PR #211）
+
+- `006418e2` user-api UserBasicDTO 补可空 avatarUrl（订单/评价共用投影通道）。
+- `75e3fe9b` 契约同步大提交（5 份契约正文+OpenAPI11+CCR 状态+白名单/放行+钉子断言）。
+- `ed344c5a` A 头像签名 URL（StorePhotoSigningApi 扩展 signOwnedStorePhoto 行锁重证归属）。
+- `52c1326d`+`8bd3533e` B 订单卡六字段（UserQueryApi.listUsers 批量+快照双键 IN 查询+https 硬化）。
+- `69ca1454` C 售后五字段（仅 MERCHANT 面；order 域新 displayLabels 端口 1..50/持锁/SYSTEM）。
+- `0ca00eb4` D 评价买家身份+聚合（merchant+store 双键口径，totalReviews=列表 total）。
+- `d61a67c3` 集成修正：PetMapper 用户 SELECT 补 avatar_url（修复头像恒 null，评价 worker 交叉
+  复核发现）；reviews/summary 精确坐标校验；守卫钉子测试；售后 5 键移出 required（仅 M 面）。
+- `e58e152a` 07号内部API同步（listUsers+avatarUrl 出域纪律）。
+- `d6206386` E 退款 3.1+3.3（复用 displayLabels；refund_order 本域 JOIN 派生时间线；
+  AUTO_APPROVED 文案「系统已自动同意」）。
+
+### 验证矩阵
+
+- 本地 mock/单元：头像 HTTP 6/6+钉子 2/2；订单 HTTP 5/5；售后 labels 5/5+HTTP 4/4；
+  评价归一化 2/2；退款投影 10/10+HTTP 5/5；C 端售后解码回归 20/20。
+- 前端：tsc 0 错；全量 **700/700**（+40 新测试）；build:weapp（全 env）EXIT=0。
+- 后端：全触点模块 test-compile 绿；check-persistence-style.py PASS。
+- MySQL 隔离测试（ordcard/privateasset/aftersale-snapshot/review-aggregate/refund-view 等）
+  本地受阻：13306 转发的 pet 账号仅有 `auth001c%/mer001%/pet_platform` 前缀建库授权，
+  本机 MySQL84 root 密码未知——**交 CI（自带 MySQL8.4 root）执行**，已在提交信息披露。
+
+### E2E 真实数据复核（18081 复用种子库重启换新码）
+
+- 订单卡（B）✅：13 键 API 实测（昵称 E2E体验用户/头像 null 降级/服务·宠物·品种行）；
+  UI 三张待服务卡全渲染客户块（头像首字 E 圆）；证据 `impl-orders-card-ccr-real.jpg`。
+- 评价聚合（D）✅：API total=3/scored=2/avg=3.6/桶{2:1,5:1} 与种子完全吻合；UI 聚合大卡
+  3.6·好评率 50%·直方图·买家昵称/首字头像；证据 `impl-reviews-aggregate-ccr-real.jpg`。
+- 头像（A）✅（降级路径）：avatar-url 三键 null 实测（未上传头像）；签发路径经 6/6 HTTP
+  测试（假 signer 透传）；会话失效时 shop-info 页降级为「店铺资料读取失败+重新加载」兜底
+  （证据 `impl-shop-info-avatar-degrade-ccr.jpg`，页面壳正常不崩溃）；真实 STORE_PHOTO
+  上传→签发→展示留待人工验收（mock OSS 链路）。
+- 售后（C）⛔ 环境受阻（非代码回归）：种子工单 111740192217460736 的 origin_cipher 用现行
+  唯一密钥（base64(29)，10-13 起未变）解密 AEADBadTagException——该行由 11-05 某次手工实例
+  种下，密钥不可复原；列表在读到 labels 前即于既有 origin() 解密处 503。经临时 stderr 探针
+  证实 displayLabels 的全部事务约束（同源/活跃/隔离2/holder）在真实链路全过，labels 代码
+  无回归；探针已撤销，工作树干净。
+- 退款（E）⛔ 环境受阻（夹具腐化）：§15 那笔 PENDING_MERCHANT 已被 24h 超时任务消费（符合
+  产品规则）；在老订单上新建退款申请时「authoritative payment success unavailable」（老支付
+  事实链腐化）；重新铸链（下单→支付）亦在支付意图事实处 503——均为既有夹具问题，不在本
+  CCR 改动路径。E 的字段/时间线由 10/10+5/5 测试与 57 号契约钉住，待 CI/新夹具复核。
+
+### 经验与坑（本轮新增）
+
+- 后台任务输出过 `tr` 管道会整段卡在缓冲区——服务器直写文件（`> /tmp/e2e-live.log 2>&1`）。
+- `VAR=x cmd1; cmd2` 的环境前缀只作用于 cmd1；WSL Maven 必须 export。
+- 离线 `-pl pet-boot` 用 .m2 旧构件会报"构造器不存在"类假错——先 install 被依赖的 api/biz。
+- `wsl.exe` 默认发行版是 docker-desktop（无 bash/blueXYing），必须 `-d Ubuntu`。
+- 小程序直达子包页缺工作台交接会停在加载态；必须走底部 tab/宫格正规 handoff 入口。
+- E2E mock 登录配方：POST /c/auth/attempts{purpose:WECHAT_LOGIN} →
+  POST /c/auth/wechat-login{wechatCode:e2e-round2-real-login-code}+X-Auth-Attempt/X-Request-Id。
