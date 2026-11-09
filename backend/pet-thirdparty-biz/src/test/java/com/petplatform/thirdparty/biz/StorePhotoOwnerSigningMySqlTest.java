@@ -56,7 +56,8 @@ class StorePhotoOwnerSigningMySqlTest {
     try (var db = new PrivateAssetMySqlTestDatabase()) {
       var repository = new PrivateAssetRepository(db.dataSource());
       repository.transaction(m -> {
-        for (long id = 301; id <= 304; id++) {
+        // Seed 301..303 only: 304 must stay a genuinely missing asset for the negative loop.
+        for (long id = 301; id <= 303; id++) {
           m.insertAsset(id, 77, id == 302 ? "SERVICE_COVER" : "STORE_PHOTO",
               "merchant-materials/77/" + id + "/source",
               "merchant-materials/77/" + id + "/normalized-v1", "a".repeat(64));
@@ -79,8 +80,12 @@ class StorePhotoOwnerSigningMySqlTest {
         assertEquals(CommonApiCodes.DEPENDENCY_UNAVAILABLE, failure.code());
       }
       assertEquals(1, calls.get());
-      // An unversioned (ETag-only) object can never be signed as the store avatar.
-      db.jdbc().update("UPDATE private_asset SET object_version_ref=NULL WHERE id=301");
+      // An unversioned (ETag-only) object can never be signed as the store avatar. A READY row
+      // can never carry a NULL object_version_ref (schema CHECK private_asset_chk_3), so this
+      // negative uses the versioned-object rule's other half: point the key back at the source
+      // key so the /normalized-v1 suffix guard rejects signing.
+      db.jdbc().update(
+          "UPDATE private_asset SET object_key='merchant-materials/77/301/source' WHERE id=301");
       assertThrows(ApiException.class, () -> api.signOwnedStorePhoto("77", "301", context));
       assertEquals(1, calls.get());
     }
