@@ -56,7 +56,7 @@ export function MerchantAfterSaleState({ controller, text, status }: { controlle
   return <View className='mas-state' role='status'>
     <Text>{status === 'loading' || status === 'idle' ? '正在读取售后工单…' : text}</Text>
     {status === 'error' && <Button id='mas-reload' className='mas-primary' onClick={() => void controller.load()}>重新加载</Button>}
-    {(status === 'entry' || status === 'denied') && <Button className='mas-primary' onClick={() => Taro.redirectTo({ url: '/merchant/pages/workspace/index' })}>去商家工作台</Button>}
+    {(status === 'entry' || status === 'denied') && <Button className='mas-primary' onClick={() => Taro.reLaunch({ url: '/merchant/pages/workspace/index' })}>去商家工作台</Button>}
   </View>
 }
 /** CCR-M-AFTERSALE-VIEW-001 客户块（列表卡/详情首卡共用）：首字圆 + 昵称（null→「顾客」占位）+ 可选副行。

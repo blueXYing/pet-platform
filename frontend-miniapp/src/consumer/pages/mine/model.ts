@@ -53,6 +53,12 @@ export type MineHubKey = typeof mineHubEntries[number]['key']
 
 // 商家侧入口沿现有工作台路径（不新造导航层级）。
 export const MINE_MERCHANT_WORKSPACE_URL = '/merchant/pages/workspace/index'
+// P-03（2026-11-11）：目标为商家工作台的「我的」页入口必须 reLaunch——Taro 在 navigateTo 时会
+// dispose 隐藏的工作台 React 树，返回/复访 resurrect stale 页对象白屏（11-11 环境恢复轮实测）；
+// 其余枢纽入口保持 navigateTo 子页栈语义。
+export function mineEntryNavMethod(url: string): 'reLaunch' | 'navigateTo' {
+  return url === MINE_MERCHANT_WORKSPACE_URL ? 'reLaunch' : 'navigateTo'
+}
 // 成为服务者入口（32号 §2 七页批次）：落地页半屏面板，接既有商家入驻申请流程。
 export const MINE_BECOME_PROVIDER_URL = '/consumer/pages/become-provider/index'
 // 「工程验证」壳降级为调试入口（direct path 保留，preview 夹具通道原样保留）。

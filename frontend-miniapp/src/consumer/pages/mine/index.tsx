@@ -15,7 +15,7 @@ import avatar from '../../assets/profile/avatar.png'
 import stripTop from './assets/strip-top.jpg'
 import clipTop from './assets/clip-top.png'
 import {
-  MINE_ADDRESS_BOOK_URL, MINE_BAIKE_URL, MINE_BECOME_PROVIDER_URL, MINE_DEVELOPER_SHELL_URL, MINE_FEEDBACK_URL, MINE_HELP_URL, MINE_MERCHANT_WORKSPACE_URL, MINE_POINTS_MALL_URL, MINE_SETTINGS_URL, mineCard, mineHubEntries, phoneGuideCopy,
+  MINE_ADDRESS_BOOK_URL, MINE_BAIKE_URL, MINE_BECOME_PROVIDER_URL, MINE_DEVELOPER_SHELL_URL, MINE_FEEDBACK_URL, MINE_HELP_URL, MINE_MERCHANT_WORKSPACE_URL, MINE_POINTS_MALL_URL, MINE_SETTINGS_URL, mineCard, mineEntryNavMethod, mineHubEntries, phoneGuideCopy,
   type MineCard, type MineStats,
 } from './model'
 import './mine.css'
@@ -192,6 +192,12 @@ export default function MinePage() {
     }
   }
   function open(url: string) {
+    // P-03（2026-11-11）：商家工作台入口 reLaunch 清栈重建工作台根页（navigateTo 会 dispose
+    // 隐藏的工作台 React 树，复访白屏）；其余「我的」枢纽入口保持 navigateTo 子页栈。
+    if (mineEntryNavMethod(url) === 'reLaunch') {
+      Taro.reLaunch({ url }).catch(() => setNotice('页面打开失败，请重试'))
+      return
+    }
     Taro.navigateTo({ url }).catch(() => setNotice('页面打开失败，请重试'))
   }
   function openPointsSheet() {
