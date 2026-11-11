@@ -63,6 +63,8 @@ assert.deepEqual(packages.map(p => ({ root: p.root, pages: p.pages })), [
   { root: 'merchant', pages: ['pages/workspace/index', 'pages/services/index', 'pages/services/edit', 'pages/messages/index',
     'pages/schedule/index', 'pages/schedule/windows', 'pages/schedule/staff', 'pages/schedule/capabilities', 'pages/members/index',
     'pages/aftersale/index', 'pages/aftersale/detail',
+    // P-12 member detail (54号): list-derived single member view + lifecycle actions.
+    'pages/members/detail',
     // Contract 57 merchant refund face: pending list + detail with the two OWNER decisions.
     'pages/refund/index', 'pages/refund/detail',
     'pages/staff-workbench/index', 'pages/staff-invitation/index', 'pages/staff-verify/index',
@@ -176,6 +178,11 @@ for (const page of ['index', 'service-type']) {
 for (const extension of ['js', 'json', 'wxml', 'wxss']) {
   assert.ok(fs.existsSync(path.join(root, `merchant/pages/members/index.` + extension)),
     'Staff member management page artifact missing: ' + extension)
+}
+// P-12 member detail page (54号 lifecycle actions) rides the members directory.
+for (const extension of ['js', 'json', 'wxml', 'wxss']) {
+  assert.ok(fs.existsSync(path.join(root, `merchant/pages/members/detail.` + extension)),
+    'Staff member detail page artifact missing: ' + extension)
 }
 // Staff workbench slice (52/54/48 K1): staff landing, invitation confirm, verify entry panel.
 for (const page of ['staff-workbench', 'staff-invitation', 'staff-verify']) {
