@@ -1,4 +1,4 @@
-import { Button, Input, ScrollView, Text, View } from '@tarojs/components'
+import { Button, Image, Input, ScrollView, Text, View } from '@tarojs/components'
 import Taro, { useDidShow, useRouter } from '@tarojs/taro'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { useWorkspace } from '../../../shared/workspace-react'
@@ -7,12 +7,19 @@ import {
   loadServiceOptions, RealScheduleRepository,
 } from '../../schedule/repository'
 import {
-  formatWindowInterval, isScheduleScenario, PreviewScheduleRepository, scheduleAvailability,
+  isScheduleScenario, PreviewScheduleRepository, scheduleAvailability,
   scheduleClosedReason, scheduleMessage, windowCountPageSize, windowKindText, windowListPageSize,
   windowStatusTagClass, windowStatusText, windowStatuses, type ScheduleDeps,
   type ScheduleWindowItem, type StaffWindowItem, type WindowKind, type WindowStatus,
 } from '../../schedule/model'
-import { Chip, intervalText, ScheduleShell, useScheduleStyle, type PagePhase } from './parts'
+import {
+  capsuleTimeText, dayGroupLabel, durationMinutesText, groupWindowsByDate,
+  statNumberClass, windowCapsuleClass, windowDurationMinutes,
+} from '../../schedule/view'
+import { Chip, ScheduleShell, useScheduleStyle, type PagePhase } from './parts'
+import gridSchedule from '../workspace/assets/grid-schedule.svg'
+import gridMembers from '../workspace/assets/grid-members.svg'
+import gridVerify from '../workspace/assets/grid-verify.svg'
 import './page.css'
 
 // M-002 排期工作台（读） — 商家工作台读（Contract 53号 §3 GET availability-windows +
@@ -20,6 +27,10 @@ import './page.css'
 // 沿 M 端现行页面规范实现；SOLD_OUT 为系统派生态，只读呈现为「已约满」。
 // #122/§3.3 后列表切服务端分页：类型/状态 chips 走服务端过滤（每次选择重拉第 1 页），
 // 摘要三态计数用三个单行 status 过滤请求的信封 total（过滤后匹配总数），不再全量拉取。
+// P-11a（2026-11-11）视觉层对齐 Figma 12:6214：只取呈现 token（时段胶囊/日期分组/三态数字
+// 卡/入口宫格，schedule/view.ts），分组维度是窗口 startAt 的北京历日——数据仍是分钟级窗口
+// （SSOT §12.1 无固定 60 分钟槽），帧内「一键生成/周模板编辑/1 小时间隔」属 P-11b CCR 红线，
+// 一律不做。页面结构、导航与数据链路不变。
 type StaffQuery = 'idle' | 'loading' | 'ready' | 'error'
 type WindowListQuery = { page: number; pageSize: number; kind?: WindowKind; status?: WindowStatus }
 
@@ -167,18 +178,39 @@ export default function ScheduleWorkbenchPage() {
   }
 
   const serviceName = (serviceId: string) => names.get(serviceId) || `服务 ${serviceId}`
+  const dayGroups = groupWindowsByDate(windows)
   return <ScheduleShell title='排期工作台' style={style} phase={phase} notice={notice} closedReason={closedReason}
     onRetry={() => void load()} onBack={() => void back()} preview={preview}>
     <ScrollView className='sch-body' scrollY enhanced showScrollbar={false}>
-      <View className='sch-entry-row'>
-        <Button id='sch-go-windows' className='sch-entry' onClick={() => open('windows')}><Text>服务时段管理</Text></Button>
-        <Button id='sch-go-staff' className='sch-entry' onClick={() => open('staff')}><Text>员工排班</Text></Button>
-        <Button id='sch-go-capabilities' className='sch-entry' onClick={() => open('capabilities')}><Text>员工能力</Text></Button>
+      <View className='sch-v-grid-card'>
+        <View className='sch-v-grid'>
+          <Button id='sch-go-windows' className='sch-v-grid-cell' onClick={() => open('windows')}>
+            <View className='sch-v-grid-tile'><Image className='sch-v-grid-icon' src={gridSchedule} mode='aspectFit' /></View>
+            <Text className='sch-v-grid-label'>服务时段管理</Text>
+            <Text className='sch-v-grid-sub'>分钟级时段增改</Text>
+          </Button>
+          <Button id='sch-go-staff' className='sch-v-grid-cell' onClick={() => open('staff')}>
+            <View className='sch-v-grid-tile'><Image className='sch-v-grid-icon' src={gridMembers} mode='aspectFit' /></View>
+            <Text className='sch-v-grid-label'>员工排班</Text>
+            <Text className='sch-v-grid-sub'>员工可用时间</Text>
+          </Button>
+          <Button id='sch-go-capabilities' className='sch-v-grid-cell' onClick={() => open('capabilities')}>
+            <View className='sch-v-grid-tile'><Image className='sch-v-grid-icon' src={gridVerify} mode='aspectFit' /></View>
+            <Text className='sch-v-grid-label'>员工能力</Text>
+            <Text className='sch-v-grid-sub'>服务能力配置</Text>
+          </Button>
+        </View>
       </View>
-      <View className='sch-summary' role='status'>
-        <Text>开放 {summary.OPEN} · 已约满 {summary.SOLD_OUT} · 已关闭 {summary.CLOSED}</Text>
-        <Text className='sch-summary-hint'>「已约满」由系统按占用自动置位，释放后自动回位；商家不可手工置满或强制可约。</Text>
+      <View className='sch-v-stats' role='status'>
+        {windowStatuses.map(target => <Button key={target}
+          className={status === target ? 'sch-v-stat sch-v-stat-active' : 'sch-v-stat'}
+          ariaLabel={`${windowStatusText[target]} ${summary[target]} 个，点击按该状态筛选`}
+          onClick={() => selectStatus(status === target ? '' : target)}>
+          <Text className={statNumberClass(target)}>{summary[target]}</Text>
+          <Text className='sch-v-stat-label'>{windowStatusText[target]}</Text>
+        </Button>)}
       </View>
+      <Text className='sch-v-stats-hint'>「已约满」由系统按占用自动置位，释放后自动回位；商家不可手工置满或强制可约。</Text>
       <View className='sch-chip-row'>
         <Chip selected={kind === ''} onClick={() => selectKind('')}>全部类型</Chip>
         {(['GENERAL', 'PICKUP', 'RETURN'] as const).map(target =>
@@ -189,20 +221,42 @@ export default function ScheduleWorkbenchPage() {
         {windowStatuses.map(target =>
           <Chip key={target} selected={status === target} onClick={() => selectStatus(target)}>{windowStatusText[target]}</Chip>)}
       </View>
-      {windows.length === 0 && <View className='sch-empty'><Text>当前筛选下没有服务时段；可到「服务时段管理」新建。</Text></View>}
-      {windows.map(item => <View key={item.windowId} className='sch-card'>
-        <View className='sch-card-head'>
-          <Text className='sch-card-name'>{serviceName(item.serviceId)}</Text>
-          <Text className={windowStatusTagClass(item.status)}>{windowStatusText[item.status]}</Text>
+      <View className='sch-v-section'>
+        <View className='sch-v-head'>
+          <Text className='sch-v-h2'>服务时段</Text>
+          <Text className='sch-v-head-hint'>分钟级窗口 · 按日期分组</Text>
         </View>
-        <Text className='sch-card-line'>{windowKindText[item.windowKind]} · {intervalText(item.startAt, item.endAt)}</Text>
-        <Text className='sch-card-line'>容量 {item.configuredCapacity} · 版本 {item.version}</Text>
-        {item.status === 'SOLD_OUT' && <Text className='sch-card-hint'>已约满：占用达容量自动置位，释放或提高容量后自动回位。</Text>}
-      </View>)}
-      {windows.length < listTotal && <Button id='sch-more' className='sch-load-more' disabled={loadingMore}
-        onClick={() => void loadMore()}>{loadingMore ? '正在加载…' : `加载更多（已显示 ${windows.length}/${listTotal}）`}</Button>}
-      <View className='sch-section'>
-        <Text className='sch-label'>员工排班查询</Text>
+        {windows.length === 0 && <View className='sch-empty'><Text>当前筛选下没有服务时段；可到「服务时段管理」新建。</Text></View>}
+        {dayGroups.map((group, index) => <View key={group.date} className={index === 0 ? 'sch-v-day' : 'sch-v-day sch-v-day-sep'}>
+          <View className='sch-v-day-head'>
+            <Text className='sch-v-day-date'>{dayGroupLabel(group.date)}</Text>
+            <Text className='sch-v-day-count'>本页 {group.items.length} 个</Text>
+          </View>
+          {group.items.map(item => {
+            const minutes = windowDurationMinutes(item.startAt, item.endAt)
+            const duration = durationMinutesText(minutes)
+            return <View key={item.windowId} className='sch-v-win'>
+              <View className='sch-v-win-top'>
+                <View className={windowCapsuleClass(item.status)}>
+                  <Text className='sch-cap-time'>{capsuleTimeText(item.startAt, item.endAt)}</Text>
+                  {duration && <Text className='sch-cap-dur'>· {duration}</Text>}
+                </View>
+                <Text className={windowStatusTagClass(item.status)}>{windowStatusText[item.status]}</Text>
+              </View>
+              <Text className='sch-v-win-name'>{serviceName(item.serviceId)} · {windowKindText[item.windowKind]}</Text>
+              <Text className='sch-v-win-meta'>容量 {item.configuredCapacity} · 版本 {item.version}</Text>
+              {item.status === 'SOLD_OUT' && <Text className='sch-card-hint'>已约满：占用达容量自动置位，释放或提高容量后自动回位。</Text>}
+            </View>
+          })}
+        </View>)}
+        {windows.length < listTotal && <Button id='sch-more' className='sch-load-more' disabled={loadingMore}
+          onClick={() => void loadMore()}>{loadingMore ? '正在加载…' : `加载更多（已显示 ${windows.length}/${listTotal}）`}</Button>}
+      </View>
+      <View className='sch-v-section'>
+        <View className='sch-v-head'>
+          <Text className='sch-v-h2'>员工排班查询</Text>
+          <Text className='sch-v-head-hint'>按员工编号读取</Text>
+        </View>
         <View className='sch-inline'>
           <Input className='sch-input sch-input-grow' value={staffId} placeholder='员工编号（如 958003）' type='number'
             onInput={event => setStaffId(event.detail.value)} />
@@ -211,12 +265,18 @@ export default function ScheduleWorkbenchPage() {
           </Button>
         </View>
         {staffPhase === 'ready' && staffWindows.length === 0 && <Text className='sch-hint'>该员工暂无排班记录。</Text>}
-        {staffPhase === 'ready' && staffWindows.map(item => <View key={item.windowId} className='sch-mini-card'>
-          <Text className='sch-card-line'>{formatWindowInterval(item.startAt, item.endAt)}</Text>
-          <Text className={item.status === 'AVAILABLE' ? 'sch-tag sch-tag-open' : 'sch-tag sch-tag-closed'}>
-            {item.status === 'AVAILABLE' ? '可约' : '已关闭'}
-          </Text>
-        </View>)}
+        {staffPhase === 'ready' && staffWindows.map(item => {
+          const duration = durationMinutesText(windowDurationMinutes(item.startAt, item.endAt))
+          return <View key={item.windowId} className='sch-v-staff-row'>
+            <View className={item.status === 'AVAILABLE' ? 'sch-cap sch-cap-open' : 'sch-cap sch-cap-closed'}>
+              <Text className='sch-cap-time'>{capsuleTimeText(item.startAt, item.endAt)}</Text>
+              {duration && <Text className='sch-cap-dur'>· {duration}</Text>}
+            </View>
+            <Text className={item.status === 'AVAILABLE' ? 'sch-tag sch-tag-open' : 'sch-tag sch-tag-closed'}>
+              {item.status === 'AVAILABLE' ? '可约' : '已关闭'}
+            </Text>
+          </View>
+        })}
         {staffPhase === 'ready' && staffWindows.length > 0 && <Text className='sch-hint'>完整增改请进「员工排班」。</Text>}
       </View>
       {notice && <Text className='sch-notice'>{notice}</Text>}
