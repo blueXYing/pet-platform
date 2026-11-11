@@ -28,6 +28,8 @@ export default defineAppConfig({
       // Contract 54 staff binding (D1-a): member management workbench child page, one compact
       // line so parallel M-side page PRs rebase cleanly.
       'pages/members/index', 'pages/aftersale/index', 'pages/aftersale/detail',
+      // P-12 member detail (54号): list-derived single member view + lifecycle actions.
+      'pages/members/detail',
       // Merchant refund processing (57号 via 10号 §4.4-§4.6): pending list + detail with the
       // two OWNER decisions (reject reason mandatory); one compact line per the convention.
       'pages/refund/index', 'pages/refund/detail',

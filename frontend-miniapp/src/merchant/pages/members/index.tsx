@@ -88,6 +88,14 @@ export default function MerchantMembersPage() {
     await Taro.reLaunch({ url: '/merchant/pages/workspace/index' }).catch(() => setNotice('返回失败，请重试'))
   }
 
+  async function openDetail(row: MemberRow) {
+    // 子页方向安全：navigateTo 压栈（54号无单成员读端点，详情页凭 memberId 重拉列表定位）；
+    // 返回时本页 useDidShow 重拉，操作结果自动反映回列表。
+    try {
+      await Taro.navigateTo({ url: `/merchant/pages/members/detail?memberId=${encodeURIComponent(row.memberId)}` })
+    } catch { setNotice('打开成员详情失败，请重试') }
+  }
+
   async function submitInvite() {
     const trimmedPhone = phone.trim()
     const trimmedName = memberName.trim()
@@ -146,7 +154,7 @@ export default function MerchantMembersPage() {
     {!ready && <View className='mmb-state' role='status'>
       <Text>{state.status === 'loading' || state.status === 'idle' ? '正在加载成员列表…' : state.notice || notice || '加载失败，请重试。'}</Text>
       {state.status === 'load-error' && <Button id='mmb-retry' className='mmb-state-action' onClick={load}>重新加载</Button>}
-      {state.status === 'entry' && <Button className='mmb-state-action' onClick={() => Taro.redirectTo({ url: '/merchant/pages/workspace/index' })}>去商家工作台</Button>}
+      {state.status === 'entry' && <Button className='mmb-state-action' onClick={() => Taro.reLaunch({ url: '/merchant/pages/workspace/index' })}>去商家工作台</Button>}
     </View>}
     {ready && <ScrollView className='mmb-body' scrollY enhanced showScrollbar={false}>
       <View className='mmb-count-row'>
@@ -165,7 +173,7 @@ export default function MerchantMembersPage() {
       {state.notice && <Text id='mmb-controller-notice' className='mmb-notice'>{state.notice}</Text>}
       {state.tab === 'members' && <View>
         {state.members.length === 0 && <View className='mmb-empty'><Text>还没有已绑定的店员。点击右上角「邀请成员」，员工本人微信确认后即可核销。</Text></View>}
-        {state.members.map(row => <View key={row.memberId} className='mmb-card'>
+        {state.members.map(row => <View key={row.memberId} className='mmb-card' onClick={() => void openDetail(row)}>
           <View className='mmb-avatar'><Text className='mmb-avatar-text'>{row.memberName.slice(0, 1)}</Text></View>
           <View className='mmb-card-main'>
             <View className='mmb-card-line'>
@@ -182,7 +190,7 @@ export default function MerchantMembersPage() {
             id={`mmb-toggle-${row.memberId}`}
             ariaLabel={row.memberStatus === 'ENABLED' ? `停用${row.memberName}` : `恢复${row.memberName}`}
             className={row.memberStatus === 'ENABLED' ? 'mmb-action mmb-action-danger' : 'mmb-action'}
-            disabled={state.busy} onClick={() => void toggleMember(row)}>
+            disabled={state.busy} onClick={event => { event.stopPropagation(); void toggleMember(row) }}>
             {row.memberStatus === 'ENABLED' ? '停用' : '恢复'}
           </Button>}
         </View>)}

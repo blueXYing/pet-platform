@@ -153,6 +153,27 @@ class RefundApplyHttpAcceptanceTest {
         }
     }
 
+    /**
+     * P-02 (2026-11-11): contract 50 §2 P3 双向互斥 — a live (PENDING) after-sale case on a
+     * COMPLETED order refuses a new ordinary application with the registered 49号 admission
+     * code (12号 §6 409 bucket), never an unmapped 500. Eligibility switches back only after
+     * the after-sale case ends (withdraw/final), which this slice does not drive.
+     */
+    @Test void activeAfterSaleBlocksNewApplicationWithBusinessConflict() throws Exception {
+        try (var f = new AfterSaleHttpFixture(Map.of("pet.refund.application.http.enabled", true))) {
+            String order = f.verifiedOrder();
+            // Given: the buyer opens a live after-sale case (NONE→PENDING) over the real C face.
+            var created = f.send("POST", "/c/orders/" + order + "/aftersales", createBody(), f.buyerToken);
+            assertEquals(201, created.status(), created.toString());
+            assertEquals("PENDING", created.value("status"));
+            assertEquals(1, f.count("SELECT COUNT(*) FROM aftersale_case"));
+            // When/Then: the ordinary application is refused 409 with the wire-registered
+            // admission code and no application row is written.
+            assertError(f.send("POST", PATH(order), body(), f.buyerToken), 409, "REFUND_NOT_ELIGIBLE");
+            assertEquals(0, f.count("SELECT COUNT(*) FROM refund_application"));
+        }
+    }
+
     /** Fail-closed admission: outside both windows is 409; the unflagged pre-service route is 503. */
     @Test void outOfWindowAdmissionAndSwitchOffPreServiceStayFailClosed() throws Exception {
         try (var f = new AfterSaleHttpFixture(Map.of("pet.refund.application.http.enabled", true,

@@ -56,3 +56,37 @@
 .mmb-tail { padding: calc(var(--mmb-unit) * 18) 0; text-align: center; font-size: calc(var(--mmb-unit) * 11); color: #9ca3af; }
 
 .mmb-tab-space { height: calc(var(--mmb-unit) * 96); flex: none; }
+
+/* ===== 成员详情（P-12, design frame 12:7842「首页-员工管理」详情态, 402x1673）=====
+   identity card 371x85 white r15.39 (family #C0ECFF accent border carried over from the
+   restored 12:6591 list cards); avatar circle 54 #C0ECFF with #5BAAE8 19.2/700 initial;
+   name 15.39/700 #111827; info rows: label 13.46/500 #374751, value box 44 #F9FAFB with
+   0.96 #E5E7EB stroke r11.54, value #111827 (design INPUT rows, read-only here); permission
+   chips #F0FBFF bg full-radius #5BAAE8 11.54/500 (design 擅长项目 SPAN chips); action
+   buttons 46 tall r11.54: filled #5BAAE8 white 600 / outline stroke #FECACA #EF4444
+   (design BUTTON-176 保存修改 / BUTTON-181 办理离职 styling reused for the approved
+   54号 operations; 年龄/性别/资质/工作数据 blocks carry no contract-54 data and are not
+   rendered). */
+.mmd-body { flex: 1; height: auto; width: 100%; box-sizing: border-box; padding: 0 calc(var(--mmb-unit) * 17) calc(var(--mmb-unit) * 12); }
+.mmd-identity { margin-top: calc(var(--mmb-unit) * 12.7); padding: calc(var(--mmb-unit) * 15.5); background: #fff; border: calc(var(--mmb-unit) * 1.5) solid #c0ecff; border-radius: calc(var(--mmb-unit) * 15.39); display: flex; align-items: center; gap: calc(var(--mmb-unit) * 12); }
+.mmd-avatar { flex: none; width: calc(var(--mmb-unit) * 54); height: calc(var(--mmb-unit) * 54); border-radius: calc(var(--mmb-unit) * 27); background: #c0ecff; display: flex; align-items: center; justify-content: center; }
+.mmd-avatar-text { font-size: calc(var(--mmb-unit) * 19.2); line-height: calc(var(--mmb-unit) * 27); font-weight: 700; color: #5baae8; }
+.mmd-identity-main { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: calc(var(--mmb-unit) * 4); }
+.mmd-identity-name { font-size: calc(var(--mmb-unit) * 15.39); line-height: calc(var(--mmb-unit) * 23); font-weight: 700; color: #111827; }
+.mmd-identity-phone { font-size: calc(var(--mmb-unit) * 12); line-height: calc(var(--mmb-unit) * 17); color: #6b7280; }
+.mmd-card { margin-top: calc(var(--mmb-unit) * 12.7); padding: calc(var(--mmb-unit) * 15.39); background: #fff; border: calc(var(--mmb-unit) * 1.5) solid #c0ecff; border-radius: calc(var(--mmb-unit) * 15.39); display: flex; flex-direction: column; gap: calc(var(--mmb-unit) * 8); }
+.mmd-card-title { font-size: calc(var(--mmb-unit) * 13.46); line-height: calc(var(--mmb-unit) * 19); font-weight: 700; color: #111827; }
+.mmd-field { display: flex; flex-direction: column; gap: calc(var(--mmb-unit) * 5.77); }
+.mmd-field-label { font-size: calc(var(--mmb-unit) * 13.46); line-height: calc(var(--mmb-unit) * 19); font-weight: 500; color: #374751; }
+.mmd-field-value { height: calc(var(--mmb-unit) * 44); padding: 0 calc(var(--mmb-unit) * 16.35); box-sizing: border-box; background: #f9fafb; border: calc(var(--mmb-unit) * 0.96) solid #e5e7eb; border-radius: calc(var(--mmb-unit) * 11.54); font-size: calc(var(--mmb-unit) * 13.46); line-height: calc(var(--mmb-unit) * 42); color: #111827; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.mmd-chips { display: flex; flex-wrap: wrap; gap: calc(var(--mmb-unit) * 7.69); }
+.mmd-chip { padding: calc(var(--mmb-unit) * 5.77) calc(var(--mmb-unit) * 11.54); border-radius: calc(var(--mmb-unit) * 14); background: #f0fbff; font-size: calc(var(--mmb-unit) * 11.54); line-height: calc(var(--mmb-unit) * 15.39); font-weight: 500; color: #5baae8; }
+.mmd-hint { font-size: calc(var(--mmb-unit) * 11.54); line-height: calc(var(--mmb-unit) * 17); color: #9ca3af; }
+.mmd-terminal { font-size: calc(var(--mmb-unit) * 11.54); line-height: calc(var(--mmb-unit) * 17); color: #a83232; }
+.mmd-ops { margin-top: calc(var(--mmb-unit) * 12.7); padding: calc(var(--mmb-unit) * 15.39); background: #fff; border: calc(var(--mmb-unit) * 1.5) solid #c0ecff; border-radius: calc(var(--mmb-unit) * 15.39); display: flex; flex-direction: column; }
+.mmd-op { width: 100%; height: calc(var(--mmb-unit) * 46); margin-top: calc(var(--mmb-unit) * 7.69); border-radius: calc(var(--mmb-unit) * 11.54); font-size: calc(var(--mmb-unit) * 13.46); font-weight: 600; display: flex; align-items: center; justify-content: center; }
+.mmd-op-primary { background: #5baae8; color: #fff; }
+.mmd-op-outline { background: #fff; border: calc(var(--mmb-unit) * 1.5) solid #5baae8; color: #167fab; }
+.mmd-op-danger { background: #fff; border: calc(var(--mmb-unit) * 0.96) solid #fecaca; color: #ef4444; }
+.mmd-tail { padding: calc(var(--mmb-unit) * 14) 0 calc(var(--mmb-unit) * 6); text-align: center; font-size: calc(var(--mmb-unit) * 11); color: #9ca3af; }
+.mmd-bottom-space { height: calc(var(--mmb-unit) * 24); flex: none; }

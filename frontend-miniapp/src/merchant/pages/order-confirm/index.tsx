@@ -56,7 +56,9 @@ export default function MerchantOrderConfirmPage() {
     await Taro.reLaunch({ url: '/merchant/pages/workspace/index' }).catch(() => setNotice('返回失败，请重试'))
   }
   function goWorkspace() {
-    Taro.redirectTo({ url: '/merchant/pages/workspace/index' }).catch(() => setNotice('页面跳转失败，请重试'))
+    // P-03: entering the workbench must reLaunch (same family as back() above — redirectTo
+    // reuses the disposed workbench tree and leaves a blank page).
+    Taro.reLaunch({ url: '/merchant/pages/workspace/index' }).catch(() => setNotice('页面跳转失败，请重试'))
   }
   function submit() {
     void controller.submit()

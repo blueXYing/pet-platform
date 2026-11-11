@@ -219,6 +219,12 @@ export default function MerchantServiceEditPage() {
       await repository.submitOnline(`merchant-service:${createdId.current}:online`, createdId.current, version.current)
       setDetail(await repository.detail(createdId.current))
       setNotice('已提交审核，等待平台审核结果。')
+      // P-09: after a successful submit the page returns to the service list once the notice is
+      // readable; if navigateBack fails (e.g. shallow stack), fall back to reLaunching the list.
+      setTimeout(() => {
+        if (!mounted.current) return
+        void Taro.navigateBack().catch(() => Taro.reLaunch({ url: '/merchant/pages/services/index' }))
+      }, 1500)
     } catch (error) { setNotice(serviceManageMessage(error)) } finally { setBusy(false) }
   }
   async function takeOffline() {
@@ -243,7 +249,7 @@ export default function MerchantServiceEditPage() {
     {phase !== 'ready' && <View className='msvc-state' role='status'>
       <Text>{phase === 'loading' || phase === 'idle' ? '正在加载…' : phase === 'missing' ? '服务不存在或已删除。' : phase === 'entry' ? '请从商家工作台进入服务管理。' : notice || '加载失败，请重试。'}</Text>
       {phase === 'load-error' && <Button id='medit-retry' className='msvc-state-action' onClick={() => void load()}>重新加载</Button>}
-      {phase === 'entry' && !preview && <Button className='msvc-state-action' onClick={() => Taro.redirectTo({ url: '/merchant/pages/workspace/index' })}>去商家工作台</Button>}
+      {phase === 'entry' && !preview && <Button className='msvc-state-action' onClick={() => Taro.reLaunch({ url: '/merchant/pages/workspace/index' }).catch(() => setNotice('页面跳转失败，请重试'))}>去商家工作台</Button>}
       {(phase === 'missing' || phase === 'entry') && <Button className='msvc-state-action' onClick={() => Taro.redirectTo({ url: '/merchant/pages/services/index' })}>返回服务管理</Button>}
     </View>}
     {phase === 'ready' && <View className='medit-body'>

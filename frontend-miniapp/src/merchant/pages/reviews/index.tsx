@@ -50,8 +50,10 @@ function useMerchantReviews(preview = false) {
 
 async function backToWorkbench() {
   try {
+    // 栈上有上一页时优先返回；否则 reLaunch 重建工作台（P-03：redirectTo 进工作台会残留
+    // 已被 dispose 的旧工作台实例，返回即 stale placeholder 白屏）。
     if (Taro.getCurrentPages().length > 1) await Taro.navigateBack()
-    else await Taro.redirectTo({ url: '/merchant/pages/workspace/index' })
+    else await Taro.reLaunch({ url: '/merchant/pages/workspace/index' })
   } catch { await Taro.showToast({ title: '返回失败，请重试', icon: 'none' }) }
 }
 
@@ -139,7 +141,7 @@ export default function MerchantReviewsPage() {
     {state.phase !== 'ready' ? <View className='mrv-state' role='status'>
       <Text>{state.phase === 'loading' || state.phase === 'idle' ? '正在读取本店评价…' : state.notice || (state.phase === 'entry' || state.phase === 'denied' ? '仅商家 OWNER 可查看本店评价' : '页面暂时不可用')}</Text>
       {state.phase === 'error' && <Button className='mrv-primary' onClick={() => void controller.load()}>重新加载</Button>}
-      {(state.phase === 'entry' || state.phase === 'denied' || state.phase === 'unauthorized') && <Button className='mrv-primary' onClick={() => void Taro.redirectTo({ url: '/merchant/pages/workspace/index' })}>去商家工作台</Button>}
+      {(state.phase === 'entry' || state.phase === 'denied' || state.phase === 'unauthorized') && <Button className='mrv-primary' onClick={() => void Taro.reLaunch({ url: '/merchant/pages/workspace/index' })}>去商家工作台</Button>}
     </View> : <>
       {state.frozen && <View className='mrv-alert'>商家或门店已冻结，当前仅可查看评价与申诉状态。</View>}
       <ScrollView className='mrv-list' scrollY enhanced showScrollbar={false}>

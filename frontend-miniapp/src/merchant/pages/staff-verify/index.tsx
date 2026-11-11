@@ -55,7 +55,8 @@ export default function StaffVerifyPage() {
     Taro.redirectTo({ url: '/merchant/pages/staff-workbench/index' }).catch(() => setNotice('页面跳转失败，请重试'))
   }
   function goWorkspace() {
-    Taro.redirectTo({ url: '/merchant/pages/workspace/index' }).catch(() => setNotice('页面跳转失败，请重试'))
+    // P-03：进工作台一律 reLaunch 重建（redirectTo 会残留已 dispose 的旧工作台实例，白屏）。
+    Taro.reLaunch({ url: '/merchant/pages/workspace/index' }).catch(() => setNotice('页面跳转失败，请重试'))
   }
   function submit() {
     void controller.submit()

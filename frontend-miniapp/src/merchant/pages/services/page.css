@@ -48,7 +48,7 @@
 /* ── 编辑/新增页（frame 11:5768 measures: label 13.55/500 #374151; inputs 373.7x46.5
    #F9FAFB r11.6 border #E5E7EB; selected pill #5BAAE8/white, unselected #4B5563;
    primary button #5BAAE8 r11.6 white 15/600). ── */
-.medit-page { background: #fff; }
+.medit-page { background: #f0fbff; }
 .medit-body { padding: calc(var(--msvc-unit) * 12.7) calc(var(--msvc-unit) * 14.1) calc(var(--msvc-unit) * 30); display: flex; flex-direction: column; }
 .medit-banner { margin-bottom: calc(var(--msvc-unit) * 12); padding: calc(var(--msvc-unit) * 12); background: #f0fbff; border: calc(var(--msvc-unit) * 1.5) solid #c0ecff; border-radius: calc(var(--msvc-unit) * 11.6); display: flex; flex-direction: column; gap: calc(var(--msvc-unit) * 6); }
 .medit-reject { background: #fdf1f1; border-color: #f0b9b9; }

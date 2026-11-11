@@ -110,7 +110,7 @@ export default function MerchantServicesPage() {
     {!ready && <View className='msvc-state' role='status'>
       <Text>{state.status === 'loading' || state.status === 'idle' ? '正在加载服务列表…' : state.notice || '加载失败，请重试。'}</Text>
       {state.status === 'load-error' && <Button id='msvc-retry' className='msvc-state-action' onClick={load}>重新加载</Button>}
-      {state.status === 'entry' && !preview && <Button className='msvc-state-action' onClick={() => Taro.redirectTo({ url: '/merchant/pages/workspace/index' })}>去商家工作台</Button>}
+      {state.status === 'entry' && !preview && <Button className='msvc-state-action' onClick={() => Taro.reLaunch({ url: '/merchant/pages/workspace/index' }).catch(() => setNotice('页面跳转失败，请重试'))}>去商家工作台</Button>}
     </View>}
     {ready && <ScrollView className='msvc-body' scrollY enhanced showScrollbar={false}>
       <View className='msvc-count-row'>

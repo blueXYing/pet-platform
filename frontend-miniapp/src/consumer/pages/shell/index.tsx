@@ -47,7 +47,8 @@ export default function Shell() {
     <Button id='c-store-services-preview' onClick={() => platform.navigate('/consumer/pages/store-services/index?preview=1')}>商家服务列表视觉预览（契约 Mock，不联调）</Button>
     <Button id='c-store-services' disabled={!context || busy} onClick={() => platform.navigate('/consumer/pages/store-services/index?storeId=957002')}>商家服务列表（真实契约接口）</Button>
     <Button id='c-merchant-services-preview' onClick={() => platform.navigate('/merchant/pages/services/index?preview=1')}>商家服务管理视觉预览（契约 Mock，不联调）</Button>
-    <Button onClick={() => platform.navigate('/merchant/pages/workspace/index')}>进入商家工作区</Button>
+    {/* P-03（2026-11-11）：进商家工作台必须 reLaunch——navigateTo 会 dispose 隐藏的工作台 React 树，复访白屏。 */}
+    <Button onClick={() => Taro.reLaunch({ url: '/merchant/pages/workspace/index' }).catch(() => setNotice('页面打开失败，请重试'))}>进入商家工作区</Button>
       <Button id='c-messages' onClick={() => Taro.switchTab({ url: '/consumer/pages/messages/index' })}>消息中心</Button>
     <Button id='c-notification-preferences' disabled={!context || busy} onClick={() => platform.navigate('/consumer/pages/notification-preferences/index')}>通知偏好设置（真实契约接口）</Button>
     <Button id='c-notification-preferences-preview' onClick={() => platform.navigate('/consumer/pages/notification-preferences/index?preview=1')}>通知偏好设置预览（本地夹具，不联调）</Button>

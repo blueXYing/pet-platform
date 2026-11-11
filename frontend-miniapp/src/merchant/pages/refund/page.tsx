@@ -68,6 +68,6 @@ export function MerchantRefundState({ controller, text, status }: { controller: 
   return <View className='mrf-state' role='status'>
     <Text>{status === 'loading' || status === 'idle' ? '正在读取退款申请…' : text}</Text>
     {status === 'error' && <Button id='mrf-reload' className='mrf-primary' onClick={() => void controller.load(consumerApi.scope.current)}>重新加载</Button>}
-    {(status === 'entry' || status === 'denied') && <Button className='mrf-primary' onClick={() => Taro.redirectTo({ url: '/merchant/pages/workspace/index' })}>去商家工作台</Button>}
+    {(status === 'entry' || status === 'denied') && <Button className='mrf-primary' onClick={() => Taro.reLaunch({ url: '/merchant/pages/workspace/index' })}>去商家工作台</Button>}
   </View>
 }

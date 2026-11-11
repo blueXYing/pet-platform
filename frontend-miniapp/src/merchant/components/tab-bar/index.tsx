@@ -2,6 +2,7 @@ import { Image, Text, View } from '@tarojs/components'
 import Taro from '@tarojs/taro'
 import type { CSSProperties } from 'react'
 import { markTabHandoff } from '../../tab-handoff'
+import { merchantTabNavMethod, merchantTabRoute, type MerchantTabKey } from './nav'
 import tabHome from './assets/tab-home.svg'
 import tabHomeInactive from './assets/tab-home-inactive.svg'
 import tabOrder from './assets/tab-order.svg'
@@ -15,22 +16,12 @@ import './index.css'
 
 // 商家端底部五 tab（Figma 95:1899 153:3434 / 149:926）：首页/订单/核销/消息/我的。
 // 视觉与 402 设计稿一致：61 高 #f0fbff + 1px #c0ecff 顶线，中间 53x53 #5baae8 凸起核销键。
-// M 端不是原生 tabBar（子包页面不能注册为 tab 页）：切换用 navigateTo；目标页已在返回栈时
-// 用 navigateBack 回收，避免无限堆栈。工作台在离开前通过 onBeforeSwitch 调 handoffToChild，
-// 保留准入坐标供子页复验（MINI-003 每次进入仍重查准入）。
-export type MerchantTabKey = 'home' | 'orders' | 'verify' | 'messages' | 'mine'
-
-const ROUTES: Record<MerchantTabKey, string> = {
-  home: '/merchant/pages/workspace/index',
-  orders: '/merchant/pages/order-list/index',
-  verify: '/merchant/pages/staff-verify/index',
-  messages: '/merchant/pages/messages/index',
-  mine: '/merchant/pages/mine/index',
-}
-
-export function merchantTabRoute(key: MerchantTabKey): string {
-  return ROUTES[key]
-}
+// M 端不是原生 tabBar（子包页面不能注册为 tab 页）：切到工作台（home）一律 reLaunch 清栈重建
+// ——Taro 会 dispose 隐藏的工作台 React 树，navigateTo/redirectTo 进工作台会复用 stale 页对象
+// 白屏（P-03，2026-11-11 实测）；其余 tab 互为 sibling，redirectTo 保持单页存活。工作台在离开
+// 前通过 onBeforeSwitch 调 handoffToChild，保留准入坐标供子页复验（MINI-003 每次进入仍重查准入）。
+export type { MerchantTabKey } from './nav'
+export { merchantTabRoute } from './nav'
 
 export function MerchantTabBar(props: {
   active: MerchantTabKey
@@ -46,12 +37,15 @@ export function MerchantTabBar(props: {
     // sibling. The marker is one-shot and short-lived.
     markTabHandoff()
     props.onBeforeSwitch?.(key)
-    // Tabs are siblings, not a back stack. redirectTo keeps exactly one tab page alive, so a
-    // disposed workbench controller can never be resurrected into a stale placeholder state.
-    Taro.redirectTo({ url: ROUTES[key] }).catch(() => {
+    function fail() {
       props.onError?.()
       void Taro.showToast({ title: '页面跳转失败，请重试', icon: 'none' })
-    })
+    }
+    // P-03（2026-11-11）：进工作台（home）必须 reLaunch 清栈重建——Taro 会 dispose 隐藏的工作台
+    // React 树，navigateTo/redirectTo 会让旧实例残留返回栈，复访 resurrect stale placeholder 白屏。
+    // 其余 tab 是 sibling 关系，redirectTo 保持恰好一个 tab 页存活。
+    if (merchantTabNavMethod(key) === 'reLaunch') Taro.reLaunch({ url: merchantTabRoute(key) }).catch(fail)
+    else Taro.redirectTo({ url: merchantTabRoute(key) }).catch(fail)
   }
   return <View className='mtb-bar' style={style}>
     <View className='mtb-items'>

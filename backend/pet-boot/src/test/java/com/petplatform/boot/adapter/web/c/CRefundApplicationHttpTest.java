@@ -178,6 +178,23 @@ class CRefundApplicationHttpTest {
             .andExpect(content().string(org.hamcrest.Matchers.not(org.hamcrest.Matchers.containsString("unrecognized"))));
     }
 
+    /**
+     * P-02 (2026-11-11): the kernel's contract-50 §2 P3 admission (an active after-sale case
+     * blocks a new ordinary application, COMPLETED+PENDING 售后) answers the registered
+     * REFUND_NOT_ELIGIBLE conflict on the wire — never an unregistered code nor a 500.
+     */
+    @Test void activeAfterSaleAdmissionAnswersTheRegisteredConflictCode() throws Exception {
+        doThrow(new ApiException("REFUND_APPLICATION_BLOCKED_BY_AFTERSALE", "kernel")).when(applications).applyWithOutcome(any());
+        mvc.perform(post(PATH).contentType(MediaType.APPLICATION_JSON)
+                .header("X-Request-Id", REQUEST_ID).requestAttr(CBearerSessionFilter.VIEW, session("ACTIVE"))
+                .content("{\"reasonCode\":\"USER_REQUEST\"}"))
+            .andExpect(status().isConflict())
+            .andExpect(jsonPath("$.code").value("REFUND_NOT_ELIGIBLE"))
+            .andExpect(jsonPath("$.message").value("当前订单状态或请求参数冲突，请刷新后核对"))
+            .andExpect(jsonPath("$.data").value((Object) null))
+            .andExpect(header().string("Cache-Control", "no-store, private"));
+    }
+
     /** Default off: without pet.refund.application.http.enabled the controller never assembles. */
     @Test void defaultOffRegistersNoControllerBean() {
         new ApplicationContextRunner().withUserConfiguration(CRefundApplicationController.class)

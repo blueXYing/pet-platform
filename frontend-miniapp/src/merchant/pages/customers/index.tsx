@@ -48,8 +48,10 @@ function useCustomers(preview = false) {
 
 async function backToWorkbench() {
   try {
+    // 栈上有上一页时优先返回；否则 reLaunch 重建工作台（P-03：redirectTo 进工作台会残留
+    // 已被 dispose 的旧工作台实例，返回即 stale placeholder 白屏）。
     if (Taro.getCurrentPages().length > 1) await Taro.navigateBack()
-    else await Taro.redirectTo({ url: '/merchant/pages/workspace/index' })
+    else await Taro.reLaunch({ url: '/merchant/pages/workspace/index' })
   } catch { await Taro.showToast({ title: '返回失败，请重试', icon: 'none' }) }
 }
 
@@ -72,7 +74,7 @@ export default function MerchantCustomersPage() {
     {state.phase !== 'ready' ? <View className='mcu-state' role='status'>
       <Text>{state.phase === 'loading' || state.phase === 'idle' ? '正在读取本店客户…' : state.notice || (state.phase === 'entry' ? '仅商家 OWNER 可查看本店客户档案' : '页面暂时不可用')}</Text>
       {state.phase === 'error' && <Button className='mcu-primary' onClick={() => void controller.load()}>重新加载</Button>}
-      {state.phase === 'entry' && <Button className='mcu-primary' onClick={() => void Taro.redirectTo({ url: '/merchant/pages/workspace/index' })}>去商家工作台</Button>}
+      {state.phase === 'entry' && <Button className='mcu-primary' onClick={() => void Taro.reLaunch({ url: '/merchant/pages/workspace/index' })}>去商家工作台</Button>}
     </View> : <>
       {state.frozen && <View className='mcu-alert'>门店受限，客户档案只读。</View>}
       <View className='mcu-search-row' role='tablist'>

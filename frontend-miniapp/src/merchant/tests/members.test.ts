@@ -1,7 +1,13 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
 import { ApiError } from '../../shared/request'
+import { ConsumerApi, type LocalStore } from '../../shared/consumer-api'
 import { MembersController, type MembersState } from '../members/controller'
+import {
+  MemberDetailController, availableMemberActions,
+  type MemberDetailDeps, type MemberDetailState,
+} from '../members/detail-controller'
+import { RealMembersRepository } from '../members/repository'
 import {
   decodeInvitationRow, decodeInvitationsPage, decodeMemberRow, decodeMembersPage,
   invitationTagClass, isValidInviteName, isValidInvitePhone, memberStatusClass,
@@ -23,6 +29,10 @@ const invitationRow: InvitationRow = {
 
 class FakeMembersRepository implements MembersDeps {
   invited: Array<[string, string, string]> = []
+  disabled: Array<[string, string, string]> = []
+  enabled: Array<[string, string, string]> = []
+  revoked: Array<[string, string, string]> = []
+  granted: Array<[string, string, string[], string]> = []
   failNextWith: Error | null = null
   listMembers(page: number, pageSize: number) { return this.answer({ items: [memberRow], page, pageSize, total: 1 }) }
   listInvitations(page: number, pageSize: number) { return this.answer({ items: [invitationRow], page, pageSize, total: 1 }) }
@@ -37,11 +47,23 @@ class FakeMembersRepository implements MembersDeps {
   }
   async disableMember(slot: string, memberId: string, expectedVersion: string) {
     if (this.failNextWith) { const e = this.failNextWith; this.failNextWith = null; throw e }
+    this.disabled.push([slot, memberId, expectedVersion])
     return { ...memberRow, memberId, memberStatus: 'DISABLED' as const, memberVersion: '1' }
   }
   async enableMember(slot: string, memberId: string, expectedVersion: string) {
     if (this.failNextWith) { const e = this.failNextWith; this.failNextWith = null; throw e }
+    this.enabled.push([slot, memberId, expectedVersion])
     return { ...memberRow, memberId, memberStatus: 'ENABLED' as const, memberVersion: '2' }
+  }
+  async revokeStoreGrant(slot: string, memberId: string, expectedVersion: string) {
+    if (this.failNextWith) { const e = this.failNextWith; this.failNextWith = null; throw e }
+    this.revoked.push([slot, memberId, expectedVersion])
+    return { ...memberRow, memberId, grantStatus: 'REVOKED' as const, grantedActions: [], grantVersion: '1' }
+  }
+  async grantActions(slot: string, memberId: string, actions: readonly string[], expectedVersion: string) {
+    if (this.failNextWith) { const e = this.failNextWith; this.failNextWith = null; throw e }
+    this.granted.push([slot, memberId, [...actions], expectedVersion])
+    return { ...memberRow, memberId, grantedActions: [...actions], grantVersion: '2' }
   }
   private answer<T>(value: T): Promise<T> {
     if (this.failNextWith) { const e = this.failNextWith; this.failNextWith = null; return Promise.reject(e) }
@@ -161,4 +183,156 @@ test('server conflicts and failures surface as refresh-suggestion notices, never
   assert.match(state.notice, /登录已失效/)
   assert.equal(membersMessage(new Error('WORKSPACE_PATH_MISMATCH')), '工作区已切换，请重新从商家工作台进入。')
   controller.dispose()
+})
+
+// ---------------------------------------------------------------------------
+// P-12 member detail: 54号 has no single-member read — the detail controller walks the owner
+// member list for the row (fresh member/grant versions) and drives the four owner lifecycle
+// commands with the version each command pins (§3: member version for disable/enable, grant
+// version for revoke-store/grant-actions).
+// ---------------------------------------------------------------------------
+async function detailSettled(controller: MemberDetailController): Promise<MemberDetailState> {
+  await new Promise(resolve => setTimeout(resolve, 0))
+  return controller.getSnapshot()
+}
+
+test('availableMemberActions keeps 停用/启用 mutually exclusive and D3-locks revoked grants', () => {
+  assert.deepEqual(availableMemberActions(null), [])
+  // Revoked store grant is terminal until ruling D3: no owner command may be offered.
+  assert.deepEqual(availableMemberActions({ ...memberRow, grantStatus: 'REVOKED', grantedActions: [] }), [])
+  assert.deepEqual(availableMemberActions({ ...memberRow, memberStatus: 'ENABLED' }),
+    ['disable', 'revoke-store', 'grant-actions'])
+  assert.deepEqual(availableMemberActions({ ...memberRow, memberStatus: 'DISABLED' }),
+    ['enable', 'revoke-store', 'grant-actions'])
+  // A REVOKED member row (decoder keeps it forward-safe) still allows grant-scoped commands.
+  assert.deepEqual(availableMemberActions({ ...memberRow, memberStatus: 'REVOKED' }),
+    ['revoke-store', 'grant-actions'])
+})
+
+test('detail controller walks the member list pages to resolve the id, else reports not-found', async () => {
+  const other = { ...memberRow, memberId: '930000000000211' }
+  let calls: Array<[number, number]> = []
+  const deps: MemberDetailDeps = {
+    async listMembers(page, pageSize) {
+      calls.push([page, pageSize])
+      if (page === 1) return { items: [other], page, pageSize, total: 60 }
+      return { items: [memberRow], page, pageSize, total: 60 }
+    },
+    async disableMember() { throw new Error('unused') },
+    async enableMember() { throw new Error('unused') },
+    async revokeStoreGrant() { throw new Error('unused') },
+    async grantActions() { throw new Error('unused') },
+  }
+  const controller = new MemberDetailController(deps)
+  await controller.load(memberRow.memberId)
+  let state = await detailSettled(controller)
+  assert.equal(state.status, 'ready')
+  assert.equal(state.member?.memberId, memberRow.memberId)
+  // Page 1 (50 rows, total 60) does not cover the id: the walk continues to page 2.
+  assert.deepEqual(calls, [[1, 50], [2, 50]])
+  calls = []
+  await controller.load('930000000000999')
+  state = await detailSettled(controller)
+  assert.equal(state.status, 'not-found')
+  assert.match(state.notice, /不存在或已不在本店成员列表/)
+  controller.dispose()
+})
+
+test('detail lifecycle actions pin the correct version per command and refresh the row in place', async () => {
+  const deps = new FakeMembersRepository()
+  const controller = new MemberDetailController(deps)
+  await controller.load(memberRow.memberId)
+  let state = await detailSettled(controller)
+  assert.equal(state.status, 'ready')
+
+  // Disable/enable pin memberVersion and use the row refreshed by the previous receipt.
+  assert.ok(await controller.toggle('staff-member:930000000000201:disable'))
+  state = await detailSettled(controller)
+  assert.deepEqual(deps.disabled, [['staff-member:930000000000201:disable', '930000000000201', '0']])
+  assert.equal(state.member?.memberStatus, 'DISABLED')
+  assert.ok(await controller.toggle('staff-member:930000000000201:enable'))
+  assert.deepEqual(deps.enabled, [['staff-member:930000000000201:enable', '930000000000201', '1']])
+  state = await detailSettled(controller)
+  assert.equal(state.member?.memberStatus, 'ENABLED')
+
+  // Grant-actions pins grantVersion and sends the frozen D2 catalog only.
+  assert.ok(await controller.grantVerify('staff-member:930000000000201:grant-actions'))
+  assert.deepEqual(deps.granted,
+    [['staff-member:930000000000201:grant-actions', '930000000000201', ['merchant.order.verify'], '0']])
+  state = await detailSettled(controller)
+  assert.match(state.notice, /已授予核销操作权限/)
+
+  // Revoke-store pins grantVersion (refreshed to '2' by the grant receipt above); the
+  // terminal REVOKED grant then locks all further commands.
+  assert.ok(await controller.revokeStore('staff-member:930000000000201:revoke-store'))
+  state = await detailSettled(controller)
+  assert.deepEqual(deps.revoked, [['staff-member:930000000000201:revoke-store', '930000000000201', '2']])
+  assert.equal(state.member?.grantStatus, 'REVOKED')
+  assert.equal(await controller.toggle('x-disable'), false)
+  assert.equal(await controller.grantVerify('x-grant'), false)
+  assert.equal(deps.disabled.length, 1)
+  assert.equal(deps.granted.length, 1)
+  controller.dispose()
+})
+
+test('detail conflicts surface as refresh suggestions, never fake success', async () => {
+  const deps = new FakeMembersRepository()
+  const controller = new MemberDetailController(deps)
+  await controller.load(memberRow.memberId)
+  deps.failNextWith = new ApiError('CONFLICT', 409)
+  assert.equal(await controller.revokeStore('slot-r'), false)
+  let state = await detailSettled(controller)
+  assert.match(state.notice, /状态已变化，请刷新后重试/)
+  assert.equal(state.busy, false)
+  assert.equal(state.member?.grantStatus, 'ENABLED')
+  deps.failNextWith = new ApiError('COMMON_UNAUTHORIZED', 401)
+  assert.equal(await controller.toggle('slot-d'), false)
+  state = await detailSettled(controller)
+  assert.match(state.notice, /登录已失效/)
+  controller.dispose()
+})
+
+test('real repository wires the 54号 revoke-store/grant-actions routes with grant versions', async () => {
+  const ok = (data: unknown) => ({ statusCode: 200, data: { code: 'SUCCESS', success: true, data } })
+  const failure = (code: string, statusCode: number) => ({ statusCode, data: { code, data: null } })
+  type Call = { method: string; path: string; requestId?: string; data?: Record<string, unknown> }
+  const seen: Call[] = []
+  const values = new Map<string, unknown>()
+  const store: LocalStore = { get: key => values.get(key), set: (key, value) => values.set(key, value), remove: key => { values.delete(key) } }
+  const session = { userId: '101', sessionId: '201', audience: 'MINIAPP', expiresAt: '2099-01-01T00:00:00.000Z' }
+  const grant = { ...session, tokenType: 'Bearer', accessToken: 'unusable-test-token' }
+  let uuidCall = 0
+  const api = new ConsumerApi(async request => {
+    if (request.path.endsWith('/attempts')) return ok({ attemptId: '301', attemptToken: 't', nextStep: 'PROVE_IDENTITY' })
+    if (request.path.endsWith('/wechat-login')) return ok(grant)
+    if (request.path.endsWith('/session')) return ok(session)
+    const call: Call = { method: request.method, path: request.path, requestId: (request as { requestId?: string }).requestId, data: request.data as Record<string, unknown> }
+    seen.push(call)
+    if (call.method === 'POST' && call.path === '/api/v1/merchant/staff-members/930000000000201/revoke-store') {
+      return ok(wire({ ...memberRow, grantStatus: 'REVOKED', grantedActions: [], grantVersion: '1' }))
+    }
+    if (call.method === 'POST' && call.path === '/api/v1/merchant/staff-members/930000000000201/grant-actions') {
+      return ok(wire({ ...memberRow, grantedActions: ['merchant.order.verify'], grantVersion: '1' }))
+    }
+    return failure('COMMON_DEPENDENCY_UNAVAILABLE', 503)
+  }, store, async () => `00000000-0000-4000-8000-${String(++uuidCall).padStart(12, '0')}`)
+  await api.startLogin(async () => ({ code: 'test-code' }))
+  api.scope.replace({ userId: '101', workspace: 'merchant', merchantId: '910000000000101', storeId: '910000000000102' })
+  const repository = new RealMembersRepository(api, () => '910000000000101', () => '910000000000102')
+
+  const revoked = await repository.revokeStoreGrant('slot-r', '930000000000201', '3')
+  assert.equal(revoked.grantStatus, 'REVOKED')
+  const revokeCall = seen.find(call => call.path.endsWith('/revoke-store'))!
+  assert.equal(revokeCall.method, 'POST')
+  assert.deepEqual(revokeCall.data,
+    { merchantId: '910000000000101', storeId: '910000000000102', expectedVersion: '3' })
+
+  const granted = await repository.grantActions('slot-g', '930000000000201', ['merchant.order.verify'], '4')
+  assert.deepEqual(granted.grantedActions, ['merchant.order.verify'])
+  const grantCall = seen.find(call => call.path.endsWith('/grant-actions'))!
+  assert.equal(grantCall.method, 'POST')
+  assert.deepEqual(grantCall.data,
+    { merchantId: '910000000000101', storeId: '910000000000102', actions: ['merchant.order.verify'], expectedVersion: '4' })
+  // Writes journal a per-slot X-Request-Id (23号 idempotency) visible on the wire call.
+  assert.match(String(grantCall.requestId), /^[0-9a-f-]{36}$/)
 })

@@ -47,7 +47,7 @@ export function ScheduleShell(props: {
             : props.phase === 'entry' ? '请从商家工作台进入排期维护。'
             : props.notice || '加载失败，请重试。'}</Text>}
       {props.phase === 'load-error' && <Button className='sch-state-action' onClick={props.onRetry}>重新加载</Button>}
-      {props.phase === 'entry' && !props.preview && <Button className='sch-state-action' onClick={() => Taro.redirectTo({ url: '/merchant/pages/workspace/index' })}>去商家工作台</Button>}
+      {props.phase === 'entry' && !props.preview && <Button className='sch-state-action' onClick={() => Taro.reLaunch({ url: '/merchant/pages/workspace/index' })}>去商家工作台</Button>}
     </View>}
     {props.phase === 'ready' && props.children}
     <MerchantTabBar active='home' unit={unit} />

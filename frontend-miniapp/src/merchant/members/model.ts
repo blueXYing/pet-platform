@@ -110,7 +110,12 @@ function statusOf<T extends string>(value: unknown, allowed: readonly T[]): T {
 }
 // The D2 approved minimal catalog is frozen by contract 54 §3; the decoder rejects anything
 // outside it so a future server catalog change cannot silently reach this UI.
-const APPROVED_ACTIONS: readonly string[] = ['merchant.order.verify']
+export const APPROVED_ACTIONS: readonly string[] = ['merchant.order.verify']
+
+/** Display label for a catalog action code; unknown codes fall back to the raw code. */
+export function actionText(code: string): string {
+  return code === 'merchant.order.verify' ? '订单核销' : code
+}
 
 function actionsOf(value: unknown): readonly string[] {
   if (!Array.isArray(value)) invalid()

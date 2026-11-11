@@ -6,7 +6,7 @@ import { consumerApi, consumerSession } from '../../../shared/consumer-runtime'
 import { MerchantStatsClient, StoreProfileClient, type StoreProfileView } from '../../../shared/merchant-storefront-api'
 import { MerchantRefundClient } from '../../../shared/merchant-refund-api'
 import { RealMerchantOrderListRepository } from '../../order/repository'
-import { MerchantOrderListController, type MerchantOrderListTab } from '../../order/list-controller'
+import { MerchantOrderListController, merchantOrderListTabFromRoute, type MerchantOrderListTab } from '../../order/list-controller'
 import {
   merchantAppointmentLabel, merchantAppointmentWindow, merchantCardSubtitle,
   merchantCustomerInitial, merchantCustomerName, merchantDisplayStatusLabels,
@@ -25,6 +25,9 @@ import './page.css'
 // CCR-M-ORDER-CARD-001（2026-11-06 批准）后卡面补客户昵称/头像、服务名、宠物名·品种
 // （下单快照，空值降级不伪造）；手机号与商家取消按钮仍不在商家读侧/与 45号冲突，不渲染。
 // `?preview=1` 为开发者工具视觉验收夹具，使用 workbench/preview 样本，不接真实接口。
+// `?tab=`（P-07 深链）经 merchantOrderListTabFromRoute 白名单校验后作为初始 tab：
+// 仅 PENDING_CONFIRM/PENDING_SERVICE/COMPLETED/CANCELED 合法，非法/缺失回落待接单；
+// 页面每次进入重建，已挂载后的路由参数变化不处理，tab 栏交互仍走既有 chooseTab。
 
 type TabKey = MerchantOrderListTab | 'REFUND'
 type CountKey = Exclude<TabKey, null>
@@ -55,6 +58,7 @@ function cardLine(item: MerchantOrderSummary): string {
 export default function MerchantOrderListPage() {
   const route = useRouter()
   const preview = route.params.preview === '1'
+  const initialTab = merchantOrderListTabFromRoute(route.params.tab)
   const { scope } = useWorkspace('real')
   // 预览夹具先给 scope 一个商户坐标，控制器才能通过 ticket()；真实路径不变。
   const [previewStore] = useState<StoreProfileView | null>(() => {
@@ -69,11 +73,11 @@ export default function MerchantOrderListPage() {
     return previewStoreProfile()
   })
   const [controller] = useState(() => preview
-    ? new MerchantOrderListController(previewOrderListDeps(scope))
+    ? new MerchantOrderListController(previewOrderListDeps(scope), initialTab)
     : new MerchantOrderListController({
       scope,
       list: query => new RealMerchantOrderListRepository(consumerApi).list(query),
-    }))
+    }, initialTab))
   const state = useSyncExternalStore(controller.subscribe, controller.getSnapshot)
   const [store, setStore] = useState<StoreProfileView | null>(previewStore)
   const [reviewAvg, setReviewAvg] = useState<string | null>(null)
@@ -136,7 +140,9 @@ export default function MerchantOrderListPage() {
   useEffect(() => () => controller.dispose(), [controller])
 
   function goWorkspace() {
-    Taro.redirectTo({ url: '/merchant/pages/workspace/index' }).catch(() => setNotice('页面跳转失败，请重试'))
+    // P-03: entering the workbench must reLaunch (navigateTo/redirectTo reuse the disposed
+    // workbench tree and leave a blank page).
+    Taro.reLaunch({ url: '/merchant/pages/workspace/index' }).catch(() => setNotice('页面跳转失败，请重试'))
   }
   function openProcess(orderId: string) {
     Taro.navigateTo({ url: `/merchant/pages/order-confirm/index?orderId=${encodeURIComponent(orderId)}` })
