@@ -4,6 +4,7 @@ import { WorkspaceScope } from '../../shared/workspace'
 import { consumerFixture } from '../../shared/fixture'
 import { fixtureDeps, type AdmissionDeps, type AdmissionFixture } from '../admission'
 import { MerchantWorkspace } from '../workspace'
+import { createWorkbenchCardOpeners, workbenchCardLinks } from '../workbench/links'
 import type { MerchantAdmission, MerchantMembership } from '../../shared/merchant-repositories'
 
 function setup() {
@@ -202,4 +203,33 @@ test('F1 returning from a child page re-runs admission; leaving afterwards reset
   assert.equal(scope.current?.workspace, 'merchant')
   page.leave()
   assert.deepEqual(scope.current, consumerFixture)
+})
+
+// ---------------------------------------------------------------------------
+// P-01/P-07: workbench revenue ticket + KPI card navigation (fixed whitelist).
+// The page funnels every card click through its handoff wrapper
+// (controller.handoffToMerchantPage + Taro.navigateTo); a spy on that funnel is the
+// navigation seam the unit tests can assert without the WeChat runtime.
+// ---------------------------------------------------------------------------
+
+test('P-01 revenue ticket click funnels the stats page url through the handoff wrapper', () => {
+  const urls: string[] = []
+  createWorkbenchCardOpeners(url => urls.push(url)).heroStats()
+  assert.deepEqual(urls, ['/merchant/pages/stats/index'])
+  assert.equal(workbenchCardLinks.heroStats, '/merchant/pages/stats/index')
+})
+
+test('P-07 KPI cards funnel their fixed second-level urls; today-orders stays unlinked (P-07d)', () => {
+  const urls: string[] = []
+  const openers = createWorkbenchCardOpeners(url => urls.push(url))
+  openers.pendingConfirm()
+  openers.pendingService()
+  openers.refunds()
+  assert.deepEqual(urls, [
+    '/merchant/pages/order-list/index?tab=PENDING_CONFIRM',
+    '/merchant/pages/order-list/index?tab=PENDING_SERVICE',
+    '/merchant/pages/refund/index',
+  ])
+  // P-07d: the today-orders card has no approved destination yet — it must not be registered.
+  assert.equal('todayOrders' in workbenchCardLinks, false)
 })

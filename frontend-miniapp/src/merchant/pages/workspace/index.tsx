@@ -12,6 +12,7 @@ import { realDeps } from '../../admission-runtime'
 import { fixtureDeps } from '../../admission'
 import { MerchantWorkbenchDashboard } from '../../workbench/dashboard'
 import { previewDashboardDeps } from '../../workbench/preview'
+import { createWorkbenchCardOpeners } from '../../workbench/links'
 import { RealMerchantOrderListRepository } from '../../order/repository'
 import {
   merchantCardSubtitle, merchantCustomerInitial, merchantCustomerName, merchantOrderTimeText,
@@ -116,8 +117,10 @@ function todoLine(order: MerchantOrderSummary): string {
 
 // 商家工作台首页，按 Figma 95:1899（402x898）还原：
 // - 头带 86 #fff6e5：店招 40 圆、店名/账号、营业中/休息中胶囊、铃铛（店铺资料 27号 §6.4）
-// - 营收票券：paper-grid 纸纹 + hero-ticket/hero-panel 原稿矢量 + tape；今日营收/较昨日（70号 TODAY）
-// - 四 KPI：待确认/待服务（10号 §4.1 列表 total）、今日订单（70号）、退款（57号待处理 total）
+// - 营收票券：paper-grid 纸纹 + hero-ticket/hero-panel 原稿矢量 + tape；今日营收/较昨日（70号 TODAY）；
+//   票券可点（P-01，#workbench-hero-stats → openStats，与八宫格数据统计同目标）
+// - 四 KPI：待确认/待服务（10号 §4.1 列表 total）、今日订单（70号）、退款（57号待处理 total）；
+//   待确认/待服务深链 order-list 对应 tab、退款跳售后列表（P-07a-c）；今日订单本轮不跳转（P-07d 待口径）
 // - 待办预约：PENDING_CONFIRM 订单横滑卡（CCR-M-ORDER-CARD-001 批准后补客户昵称/头像、
 //   服务名、宠物名·品种；空值降级首字/订单尾号，评分仍不在读侧不渲染）
 // - 8 格入口：完全按原稿 商品管理/排期管理/员工管理/核销记录/营销工具/数据统计/客户管理/店铺评价
@@ -229,6 +232,8 @@ export default function MerchantWorkbenchPage() {
     controller.handoffToMerchantPage()
     Taro.navigateTo({ url }).catch(() => controller.handoffCancelled())
   }
+  // P-01/P-07a-c：营收票券与 KPI 卡的可点出口全部收口在上面的 handoff 单点。
+  const cardOpeners = createWorkbenchCardOpeners(handoff)
   function openServices() { handoff('/merchant/pages/services/index') }
   function openAftersales() { handoff('/merchant/pages/aftersale/index') }
   function openReviews() { handoff('/merchant/pages/reviews/index') }
@@ -238,7 +243,7 @@ export default function MerchantWorkbenchPage() {
   function openVerify() { handoff('/merchant/pages/staff-verify/index') }
   function openOrders() { handoff('/merchant/pages/order-list/index') }
   function openCustomers() { handoff('/merchant/pages/customers/index') }
-  function openStats() { handoff('/merchant/pages/stats/index') }
+  function openStats() { cardOpeners.heroStats() }
   function openMarketing() { handoff('/merchant/pages/marketing/index') }
   function openOrder(order: MerchantOrderSummary) {
     handoff(`/merchant/pages/order-confirm/index?orderId=${encodeURIComponent(order.orderId)}`)
@@ -328,7 +333,8 @@ export default function MerchantWorkbenchPage() {
   function renderDashboard() {
     return <>
       {state.status === 'limited' && <View className='mwb-limited'>门店受限：存量订单与售后可查看，新经营业务暂停。</View>}
-      <View className='mwb-hero-zone'>
+      {/* P-01：营收票券可点（同八宫格「数据统计」目标）；仅绑事件，视觉零改动。 */}
+      <View id='workbench-hero-stats' className='mwb-hero-zone' onClick={openStats}>
         <View className='mwb-paper'><Image className='mwb-paper-image' src={paper} mode='widthFix' /></View>
         <Image className='mwb-ticket' src={heroTicket} mode='scaleToFill' />
         <View className='mwb-panel'><Image className='mwb-panel-image' src={heroPanel} mode='scaleToFill' /></View>
@@ -344,19 +350,20 @@ export default function MerchantWorkbenchPage() {
         </View>
       </View>
       <View className='mwb-kpis'>
-        <View className='mwb-kpi'>
+        <View id='workbench-kpi-pending-confirm' className='mwb-kpi' onClick={cardOpeners.pendingConfirm}>
           <View className='mwb-kpi-value'><Text>{dash.pendingConfirm ?? '—'}</Text>{dash.pendingConfirm ? <View className='mwb-kpi-dot' /> : null}</View>
           <Text className='mwb-kpi-label'>待确认</Text>
         </View>
-        <View className='mwb-kpi'>
+        <View id='workbench-kpi-pending-service' className='mwb-kpi' onClick={cardOpeners.pendingService}>
           <View className='mwb-kpi-value'><Text>{dash.pendingService ?? '—'}</Text></View>
           <Text className='mwb-kpi-label'>待服务</Text>
         </View>
-        <View className='mwb-kpi'>
+        {/* P-07d（待定）：今日订单二级页口径待产品确认，本轮保持不可跳转。 */}
+        <View id='workbench-kpi-today-orders' className='mwb-kpi'>
           <View className='mwb-kpi-value'><Text>{dash.todayOrders ?? '—'}</Text></View>
           <Text className='mwb-kpi-label'>今日订单</Text>
         </View>
-        <View className='mwb-kpi'>
+        <View id='workbench-kpi-refund' className='mwb-kpi' onClick={cardOpeners.refunds}>
           <View className='mwb-kpi-value'><Text>{dash.refunds ?? '—'}</Text></View>
           <Text className='mwb-kpi-label'>退款</Text>
         </View>

@@ -9,7 +9,7 @@ import {
   merchantOrderTimeText, type MerchantOrderPage,
 } from '../order/model'
 import { RealMerchantOrderListRepository } from '../order/repository'
-import { MerchantOrderListController } from '../order/list-controller'
+import { MerchantOrderListController, merchantOrderListTabFromRoute } from '../order/list-controller'
 
 async function rejects(call: () => Promise<unknown> | unknown): Promise<unknown> {
   try { await call(); return new Error('NO_THROW') } catch (error) { return error }
@@ -132,6 +132,33 @@ test('controller: default tab is 待接单 (displayStatus=PENDING_CONFIRM); 全�
   await new Promise(resolve => setTimeout(resolve, 0))
   assert.deepEqual(deps.queries.at(-1), { merchantId: '958001', storeId: '958002', page: 1, pageSize: 20 })
   controller.dispose()
+})
+
+test('controller: constructor initial tab seeds the first load (P-07 ?tab= deep link)', async () => {
+  const scope = scopeWith()
+  const deps = new FakeDeps(scope)
+  deps.pages = paged(1)
+  const controller = new MerchantOrderListController(deps, 'PENDING_SERVICE')
+  assert.equal(controller.getSnapshot().tab, 'PENDING_SERVICE')
+  await controller.load()
+  assert.deepEqual(deps.queries, [{
+    merchantId: '958001', storeId: '958002', displayStatus: 'PENDING_SERVICE', page: 1, pageSize: 20,
+  }])
+  controller.dispose()
+})
+
+test('deep link tab: whitelist values pass through; anything else falls back to 待接单', () => {
+  // The page parses ?tab= solely through merchantOrderListTabFromRoute before seeding the
+  // controller; only the four contract displayStatus values are linkable (REFUND is an
+  // in-page jump and 全部/null is not a displayStatus — neither may deep-link).
+  assert.equal(merchantOrderListTabFromRoute('PENDING_CONFIRM'), 'PENDING_CONFIRM')
+  assert.equal(merchantOrderListTabFromRoute('PENDING_SERVICE'), 'PENDING_SERVICE')
+  assert.equal(merchantOrderListTabFromRoute('COMPLETED'), 'COMPLETED')
+  assert.equal(merchantOrderListTabFromRoute('CANCELED'), 'CANCELED')
+  assert.equal(merchantOrderListTabFromRoute(undefined), 'PENDING_CONFIRM')
+  for (const bad of ['', 'pending_confirm', 'REFUND', 'ALL', 'null', '0', '../../refund']) {
+    assert.equal(merchantOrderListTabFromRoute(bad), 'PENDING_CONFIRM', JSON.stringify(bad))
+  }
 })
 
 test('controller: loadMore pages with dedupe and stops at the total', async () => {

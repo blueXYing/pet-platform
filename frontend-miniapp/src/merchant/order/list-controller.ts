@@ -21,9 +21,24 @@ export type MerchantOrderListState = Readonly<{
 
 const PAGE_SIZE = 20
 
-const initial = (): MerchantOrderListState => ({
-  status: 'idle', items: [], total: 0, page: 1, tab: 'PENDING_CONFIRM', loadingMore: false, notice: '',
+const initial = (tab: Exclude<MerchantOrderListTab, null>): MerchantOrderListState => ({
+  status: 'idle', items: [], total: 0, page: 1, tab, loadingMore: false, notice: '',
 })
+
+/**
+ * P-07a/b 深链白名单：order-list 路由 `?tab=` 仅认四个非空 displayStatus；「全部」
+ * （null）与「退款」（REFUND 是页内二级跳转，不是 displayStatus）不可深链。
+ */
+const DEEP_LINK_TABS: readonly Exclude<MerchantOrderListTab, null>[] = [
+  'PENDING_CONFIRM', 'PENDING_SERVICE', 'COMPLETED', 'CANCELED',
+]
+
+/** `?tab=` 的唯一解析口：白名单内原样通过，非法/缺失回落默认待接单。 */
+export function merchantOrderListTabFromRoute(value: string | undefined): Exclude<MerchantOrderListTab, null> {
+  return DEEP_LINK_TABS.includes(value as Exclude<MerchantOrderListTab, null>)
+    ? value as Exclude<MerchantOrderListTab, null>
+    : 'PENDING_CONFIRM'
+}
 
 /**
  * One controller per mounted merchant order list page (contract 10 §4.1 supplement). The
@@ -32,18 +47,21 @@ const initial = (): MerchantOrderListState => ({
  * never re-derives it. 待接单 tab = displayStatus=PENDING_CONFIRM（30 分钟确认窗口的重点
  * 面板），全部 tab 不发送该参数；分页沿用固定排序 created_at DESC, id DESC 的稳定页。
  * did-show 重读当前桶第一页（从处理页返回后刷新）；403/503 整页失败关闭不可交互。
+ * P-07 深链：构造时可传入初始 tab（页面用 merchantOrderListTabFromRoute 白名单校验
+ * `?tab=` 后传入）；缺省仍为待接单，tab 栏点击切换走既有 chooseTab 逻辑不变。
  */
 export class MerchantOrderListController {
-  private state: MerchantOrderListState = initial()
+  private state: MerchantOrderListState
   private listeners = new Set<() => void>()
   private active = true
   private run = 0
   private unsubscribe: () => void
-  constructor(private deps: MerchantOrderListDeps & { scope: WorkspaceScope }) {
+  constructor(private deps: MerchantOrderListDeps & { scope: WorkspaceScope }, initialTab: Exclude<MerchantOrderListTab, null> = 'PENDING_CONFIRM') {
+    this.state = initial(initialTab)
     // A workspace switch (store change / logout) invalidates the whole list immediately.
     this.unsubscribe = deps.scope.subscribe(() => {
       this.run++
-      this.state = { ...initial(), status: 'entry', notice: '工作区已切换，请重新进入商家工作台。' }
+      this.state = { ...initial(initialTab), status: 'entry', notice: '工作区已切换，请重新进入商家工作台。' }
       this.emit()
     })
   }
