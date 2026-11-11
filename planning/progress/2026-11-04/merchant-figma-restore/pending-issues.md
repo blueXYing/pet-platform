@@ -12,6 +12,7 @@
 | P-05 | 环境项 | **头像签名 URL 正路径需 OSS 环境验收**：本地无 OSS 签名器，avatar-url 按设计返回三键 null（失败关闭）；"上传→绑定→签名→展示"的正路径仅测试层覆盖（6/6+3/3） | 11-09 实测；StorePhotoSigningApiImpl 注释明确"无 OSS 连接时 bean 可装配、签发失败关闭" | 非代码问题：生产部署（或接真 OSS 的预发）后人工验收正路径；本地 E2E 如需可加 mock 签名器 bean（测试基建，可选） | OPEN（等生产环境） |
 | P-06 | 低 | **退款 timeline 的 REFUND_ORDER_CREATED 档未真机验证**：本地验收申请均为 PENDING_MERCHANT（无已建退款单的可回看样本） | 11-09 补验轮；CI 的 MerchantRefundViewHttpAcceptanceTest 已覆盖该档（createApproved 用例，CI 绿） | 已有 CI 覆盖；真机侧如需复验，用商家同意全额后回看详情即可 | COVERED-BY-CI |
 | P-07 | 高 | **工作台 KPI 四卡不可点击跳转二级页**（用户 2026-11-11 提出，经核实属实：`workspace/index.tsx:346-364` 四卡纯 View 无 onClick）；且 order-list 初始 tab 硬编码 PENDING_CONFIRM、不支持 `?tab=` 深链（`list-controller.ts:25`，路由仅认 `?preview=1`） | Figma 11 帧取证 `evidence/kpi-links/`；代码实证见左 | 见下方 P-07 对照表 | OPEN（用户拍板） |
+| P-09 | 中 | **服务编辑提交成功后不返回上一级**：提交审核成功只显示提示文案"已提交审核，等待平台审核结果。"，页面停留在编辑页（截图实拍）；用户期望成功后返回服务管理列表 | 11-11 真机验收实测截图；`edit.tsx:210` `setNotice('已提交审核…')` 后无导航 | 提交成功后延迟 1~2 秒 `Taro.navigateBack()`（或直接 reLaunch 服务管理列表）；草稿保存成功可留在当前页（合理），仅提交审核成功后返回 | OPEN（用户 2026-11-11 报障） |
 
 ### P-07 对照表：Figma 原型 vs 当前实现（2026-11-11 逐帧核实）
 
