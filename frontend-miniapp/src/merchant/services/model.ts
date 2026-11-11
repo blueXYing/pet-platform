@@ -136,6 +136,24 @@ const money = (value: any): string => {
   return value
 }
 const moneyOrNull = (value: unknown): string | null => value === null ? null : money(value)
+
+/**
+ * Normalize a free-typed money input to the contract's exact two-decimal string form before
+ * validation runs: "128" -> "128.00", "128.5" -> "128.50". Anything that is not plain digits
+ * with at most two fractional digits (empty, "12.345", "1.2.3") is returned null so the
+ * strict checks report it as missing/invalid instead of silently rewriting garbage.
+ * P-08 fix (2026-11-11): the price placeholder suggested integers while the submit check
+ * required exactly two decimals, so honest input like "128" was reported as "销售价格未填写".
+ */
+export function normalizeMoneyInput(raw: string | null): string | null {
+  if (raw === null) return null
+  const trimmed = raw.trim()
+  if (trimmed === '') return null
+  if (!/^\d+(\.\d{1,2})?$/.test(trimmed)) return null
+  const [whole, fraction = ''] = trimmed.split('.')
+  return `${whole}.${fraction.padEnd(2, '0')}`
+}
+
 /** Two-decimal money strings compare numerically via integer cents (string compare would
  *  order "9.00" > "10.00"). */
 const cents = (value: string): bigint => BigInt(value.replace('.', ''))

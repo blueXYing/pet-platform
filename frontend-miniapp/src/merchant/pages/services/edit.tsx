@@ -9,8 +9,8 @@ import { RealServiceManageRepository, serviceManageMessage } from '../../service
 import {
   PreviewServiceManageRepository, draftFromDetail, draftInputProblems, editableStatuses, emptyDraft,
   fulfillmentText, fulfillments, isServiceManageScenario, manageStatusText, missingSubmitFields,
-  petTypeText, petTypes, selectedPillClass, type ApplicablePetType, type ManagedServiceDetail,
-  type ServiceCategoryView, type ServiceDraftInput, type ServiceManageDeps,
+  normalizeMoneyInput, petTypeText, petTypes, selectedPillClass, type ApplicablePetType,
+  type ManagedServiceDetail, type ServiceCategoryView, type ServiceDraftInput, type ServiceManageDeps,
 } from '../../services/model'
 import { MerchantTabBar } from '../../components/tab-bar'
 import navBack from './assets/nav-back@2x.png'
@@ -267,12 +267,14 @@ export default function MerchantServiceEditPage() {
       </Field>
       <View className='medit-row'>
         <Field label='价格（元）' required={!readonly}>
-          <Input id='medit-price' className='medit-input' disabled={readonly} type='digit' value={draft.price ?? ''} placeholder='例如：128'
-            onInput={event => patch({ price: event.detail.value === '' ? null : event.detail.value })} />
+          <Input id='medit-price' className='medit-input' disabled={readonly} type='digit' value={draft.price ?? ''} placeholder='例如：128.00'
+            onInput={event => patch({ price: event.detail.value === '' ? null : event.detail.value })}
+            onBlur={() => patch({ price: normalizeMoneyInput(draft.price) ?? draft.price })} />
         </Field>
         <Field label='划线价（可选）'>
           <Input id='medit-list-price' className='medit-input' disabled={readonly} type='digit' value={draft.listPrice ?? ''} placeholder='原价'
-            onInput={event => patch({ listPrice: event.detail.value === '' ? null : event.detail.value })} />
+            onInput={event => patch({ listPrice: event.detail.value === '' ? null : event.detail.value })}
+            onBlur={() => patch({ listPrice: normalizeMoneyInput(draft.listPrice) ?? draft.listPrice })} />
         </Field>
       </View>
       <View className='medit-section'>
