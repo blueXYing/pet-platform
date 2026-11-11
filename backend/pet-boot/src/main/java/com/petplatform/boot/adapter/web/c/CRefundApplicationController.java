@@ -178,14 +178,21 @@ public class CRefundApplicationController {
     /**
      * Error12 §6 refund-application C surface mapping: COMMON_* keep the global semantics; the
      * 49号 admission rejections (window, live application, existing refund_order) are 409, and
-     * the pre-service route staying behind its kernel switch is a 503 fail-closed state. Anything
-     * unrecognized is wrapped as a safe 500, never leaking kernel internals.
+     * the pre-service route staying behind its kernel switch is a 503 fail-closed state. The
+     * 50号 §2 P3 active-after-sale admission is normalized onto the registered 409 admission
+     * code (see below). Anything unrecognized is wrapped as a safe 500, never leaking kernel
+     * internals.
      */
     @ExceptionHandler(RuntimeException.class)
     public ResponseEntity<Map<String, Object>> failure(RuntimeException failure, HttpServletRequest req) {
         String code = failure instanceof ApiException api ? api.code()
             : failure instanceof IllegalArgumentException ? CommonApiCodes.INVALID_ARGUMENT
             : CommonApiCodes.INTERNAL_ERROR;
+        // Contract 50 §2 P3: an active after-sale case blocks a new ordinary application (双向互斥).
+        // The kernel's admission code REFUND_APPLICATION_BLOCKED_BY_AFTERSALE has no 12号 registry
+        // entry, so the wire keeps the registered REFUND_NOT_ELIGIBLE admission semantics (409)
+        // instead of leaking an unregistered code or a 500; a CCR should register the dedicated code.
+        if ("REFUND_APPLICATION_BLOCKED_BY_AFTERSALE".equals(code)) code = "REFUND_NOT_ELIGIBLE";
         int status = switch (code) {
             case "COMMON_INVALID_ARGUMENT" -> 400;
             case "COMMON_UNAUTHORIZED" -> 401;
