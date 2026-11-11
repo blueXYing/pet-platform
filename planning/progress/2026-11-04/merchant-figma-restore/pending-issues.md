@@ -13,6 +13,7 @@
 | P-06 | 低 | **退款 timeline 的 REFUND_ORDER_CREATED 档未真机验证**：本地验收申请均为 PENDING_MERCHANT（无已建退款单的可回看样本） | 11-09 补验轮；CI 的 MerchantRefundViewHttpAcceptanceTest 已覆盖该档（createApproved 用例，CI 绿） | 已有 CI 覆盖；真机侧如需复验，用商家同意全额后回看详情即可 | COVERED-BY-CI |
 | P-07 | 高 | **工作台 KPI 四卡不可点击跳转二级页**（用户 2026-11-11 提出，经核实属实：`workspace/index.tsx:346-364` 四卡纯 View 无 onClick）；且 order-list 初始 tab 硬编码 PENDING_CONFIRM、不支持 `?tab=` 深链（`list-controller.ts:25`，路由仅认 `?preview=1`） | Figma 11 帧取证 `evidence/kpi-links/`；代码实证见左 | 见下方 P-07 对照表 | OPEN（用户拍板） |
 | P-09 | 中 | **服务编辑提交成功后不返回上一级**：提交审核成功只显示提示文案"已提交审核，等待平台审核结果。"，页面停留在编辑页（截图实拍）；用户期望成功后返回服务管理列表 | 11-11 真机验收实测截图；`edit.tsx:210` `setNotice('已提交审核…')` 后无导航 | 提交成功后延迟 1~2 秒 `Taro.navigateBack()`（或直接 reLaunch 服务管理列表）；草稿保存成功可留在当前页（合理），仅提交审核成功后返回 | OPEN（用户 2026-11-11 报障） |
+| P-10 | 低 | **服务编辑页背景色与 Figma 不符**：Figma `11:5768` 背景为 `#C0ECFF`（浅蓝），实现为 `#FFFFFF`（纯白）。根因：`page.css:51` `.medit-page { background: #fff; }` 覆盖了父类 `.msvc-page` 的 `#f0fbff`。同页其他商家页多数用 `#f0fbff`（奶油蓝）做底色 | 11-11 真机验收实测（取色对比）；`services/page.css:51` | 改 `.medit-page` 背景为 `#c0ecff`（或与设计师确认是否用家族底色 `#f0fbff`，因 `#c0ecff` 是边框/描边色、做整页底色饱和度偏高，需确认） | OPEN（用户 2026-11-11 报障） |
 
 ### P-07 对照表：Figma 原型 vs 当前实现（2026-11-11 逐帧核实）
 
