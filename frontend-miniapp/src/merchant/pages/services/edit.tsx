@@ -168,8 +168,17 @@ export default function MerchantServiceEditPage() {
   const coverChosen = coverPreview !== '' || (detail?.coverAssetId ?? draft.coverAssetId) != null
   const coverSrc = coverPreview
 
+  /** Normalize free-typed money before any validation or persistence sees it (P-08: onBlur
+   * alone is too late in WeChat miniapp — tapping the submit button may skip the blur event,
+   * so the draft still carries "60" when the two-decimal check runs). */
+  function normalizedDraft(): ServiceDraftInput {
+    return { ...draft, price: normalizeMoneyInput(draft.price) ?? draft.price, listPrice: normalizeMoneyInput(draft.listPrice) ?? draft.listPrice }
+  }
+
   async function persistDraft(): Promise<boolean> {
     if (coverPending) { setNotice('请先确认封面上传结果。'); return false }
+    const draft = normalizedDraft()
+    setDraft(draft)
     const problems = draftInputProblems(draft, categories)
     if (problems.length) { setNotice(`请检查：${problems.join('；')}`); return false }
     const receipt = editing || createdId.current
@@ -198,6 +207,8 @@ export default function MerchantServiceEditPage() {
   async function submitForReview() {
     if (readonly || busy) return
     setNotice('')
+    const draft = normalizedDraft()
+    setDraft(draft)
     const missing = missingSubmitFields(draft, categories)
     if (missing.length) { setNotice(`提交审核前需补齐：${missing.join('、')}。`); return }
     const problems = draftInputProblems(draft, categories)
