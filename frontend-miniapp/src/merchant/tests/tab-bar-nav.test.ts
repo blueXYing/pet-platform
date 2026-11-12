@@ -1,6 +1,6 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
-import { readFileSync } from 'node:fs'
+import { readFileSync, readdirSync } from 'node:fs'
 import { MERCHANT_TAB_ROUTES, merchantTabNavMethod, merchantTabRoute } from '../components/tab-bar/nav'
 import { MINE_MERCHANT_WORKSPACE_URL, mineEntryNavMethod } from '../../consumer/pages/mine/model'
 
@@ -66,6 +66,27 @@ test('no navigateTo/redirectTo to the workbench remains in the C-scope entry fil
     }
   }
   assert.deepEqual(offenders, [], `workspace must only be entered via reLaunch:\n${offenders.join('\n')}`)
+})
+
+test('merchant pages never navigateBack (P-03 follow-up 2026-11-12: dead disposed-tree landings)', () => {
+  // 用户实测卡死：子页 navigateBack 落到被 dispose 旧树的工作台/列表页=界面在、事件全无。
+  // 商家域一律 reLaunch 到明确目标页；唯一豁免=staff-workbench 回 consumer 页（树安全）。
+  const offenders: string[] = []
+  const walk = (dir: string): string[] => {
+    const entries = readdirSync(new URL(dir, import.meta.url), { withFileTypes: true })
+    return entries.flatMap(entry => {
+      const full = `${dir}/${entry.name}`
+      return entry.isDirectory() ? walk(full) : (/\.(tsx|ts)$/.test(entry.name) ? [full] : [])
+    })
+  }
+  for (const file of walk('../pages')) {
+    const source = readFileSync(new URL(file, import.meta.url), 'utf8')
+    if (file.endsWith('staff-workbench/index.tsx')) continue // guarded consumer-only navigateBack
+    for (const match of source.matchAll(/Taro\.navigateBack/g)) {
+      offenders.push(`${file}: ${match[0]}`)
+    }
+  }
+  assert.deepEqual(offenders, [], `merchant pages must reLaunch instead of navigateBack:\n${offenders.join('\n')}`)
 })
 
 test('consumer entries route the workbench through reLaunch (not platform.navigate / bare navigateTo)', () => {

@@ -93,8 +93,8 @@ export default function ScheduleWindowsPage() {
   }, [revision, scope, preview])
 
   async function back() {
-    if (Taro.getCurrentPages().length > 1) await Taro.navigateBack().catch(() => setNotice('返回失败，请重试'))
-    else await Taro.redirectTo({ url: '/merchant/pages/schedule/index' }).catch(() => setNotice('返回失败，请重试'))
+    // P-03 追缉（2026-11-12）：商家域返回不用 navigateBack（隐藏页树可能已被 dispose）。
+    await Taro.reLaunch({ url: '/merchant/pages/schedule/index' }).catch(() => setNotice('返回失败，请重试'))
   }
   /** Append the next server page while some of the total is still unloaded (§3.3). */
   async function loadMore() {

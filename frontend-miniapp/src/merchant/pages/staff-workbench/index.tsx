@@ -87,8 +87,11 @@ export default function StaffWorkbenchPage() {
   }, [revision, scope, controller, invitations, verification])
 
   async function back() {
-    // P-03：回主工作台一律 reLaunch 重建（redirectTo 会残留已 dispose 的旧工作台实例，白屏）。
-    if (Taro.getCurrentPages().length > 1) await Taro.navigateBack().catch(() => setNotice('返回失败，请重试'))
+    // P-03 追缉（2026-11-12）：仅当正下方是 consumer 页时才 navigateBack（consumer 树安全）；
+    // 落到工作台一律 reLaunch 重建（navigateBack 会落在被 dispose 的旧工作台死页上）。
+    const pages = Taro.getCurrentPages()
+    const below = pages.length > 1 ? pages[pages.length - 2].route : null
+    if (below && !below.startsWith('merchant/')) await Taro.navigateBack().catch(() => setNotice('返回失败，请重试'))
     else if (scope.current?.workspace === 'merchant') await Taro.reLaunch({ url: '/merchant/pages/workspace/index' }).catch(() => setNotice('返回失败，请重试'))
     else await Taro.reLaunch({ url: '/consumer/pages/shell/index' }).catch(() => setNotice('返回失败，请重试'))
   }

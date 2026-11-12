@@ -105,8 +105,8 @@ export default function MerchantServiceEditPage() {
   const editing = detail !== null
 
   async function back() {
-    if (Taro.getCurrentPages().length > 1) await Taro.navigateBack().catch(() => setNotice('返回失败，请重试'))
-    else await Taro.redirectTo({ url: '/merchant/pages/services/index' }).catch(() => setNotice('返回失败，请重试'))
+    // P-03 追缉（2026-11-12）：商家域返回不用 navigateBack（隐藏页树可能已被 dispose）。
+    await Taro.reLaunch({ url: '/merchant/pages/services/index' }).catch(() => setNotice('返回失败，请重试'))
   }
   function patch(next: Partial<ServiceDraftInput>) { setDraft(current => ({ ...current, ...next })) }
   function togglePetType(type: ApplicablePetType) {
@@ -220,10 +220,11 @@ export default function MerchantServiceEditPage() {
       setDetail(await repository.detail(createdId.current))
       setNotice('已提交审核，等待平台审核结果。')
       // P-09: after a successful submit the page returns to the service list once the notice is
-      // readable; if navigateBack fails (e.g. shallow stack), fall back to reLaunching the list.
+      // readable. P-03 追缉（2026-11-12）: reLaunch directly — navigateBack can land on a
+      // disposed-tree list page (dead UI).
       setTimeout(() => {
         if (!mounted.current) return
-        void Taro.navigateBack().catch(() => Taro.reLaunch({ url: '/merchant/pages/services/index' }))
+        void Taro.reLaunch({ url: '/merchant/pages/services/index' })
       }, 1500)
     } catch (error) { setNotice(serviceManageMessage(error)) } finally { setBusy(false) }
   }

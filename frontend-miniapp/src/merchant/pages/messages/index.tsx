@@ -33,11 +33,9 @@ export default function MerchantMessagesPage() {
   })
   useEffect(() => () => controller.dispose(), [controller])
   async function back() {
-    // Tab pages live in a single-page redirect stack: the fallback must return to the
-    // merchant workbench (same as services/members/schedule), not drop the user into the
-    // consumer shell.
-    if (Taro.getCurrentPages().length > 1) await Taro.navigateBack()
-    else await Taro.reLaunch({ url: '/merchant/pages/workspace/index' }).catch(() => {})
+    // P-03 追缉（2026-11-12）：navigateBack 落到被 dispose 旧树的工作台=死页（界面在、
+    // 事件全无），一律 reLaunch 重建；回退目标恒为商家工作台（与 services/members 同族）。
+    await Taro.reLaunch({ url: '/merchant/pages/workspace/index' }).catch(() => {})
   }
   function jump() {
     const detail = state.detail

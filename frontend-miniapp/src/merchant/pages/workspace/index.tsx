@@ -250,14 +250,9 @@ export default function MerchantWorkbenchPage() {
   }
   function openMessages() {
     controller.handoffToMerchantPage()
-    const pages = Taro.getCurrentPages()
-    const index = pages.findIndex(page => page.route === 'merchant/pages/messages/index')
-    if (index >= 0) {
-      const delta = pages.length - 1 - index
-      if (delta > 0) Taro.navigateBack({ delta }).catch(() => controller.handoffCancelled())
-      return
-    }
-    Taro.navigateTo({ url: '/merchant/pages/messages/index' }).catch(() => controller.handoffCancelled())
+    // P-03 追缉（2026-11-12）：放弃「栈上已有消息页则 navigateBack 回跳露出」的优化——被
+    // 隐藏过的页面树可能已被 dispose，露出的是死页；统一 reLaunch 取新实例。
+    Taro.reLaunch({ url: '/merchant/pages/messages/index' }).catch(() => controller.handoffCancelled())
   }
 
   const storeName = dash.storeName ?? (owner ? '商家工作台' : staff ? '员工工作台' : '商家工作台')

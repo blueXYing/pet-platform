@@ -48,10 +48,9 @@ export function MerchantRefundShell({ children, title, style, onBack }: PropsWit
   async function back() {
     if (onBack) { onBack(); return }
     try {
-      // Detail → list keeps the stack; returning to the workbench rebuilds it (Taro disposes
-      // the hidden workbench tree, so navigateBack leaves stale placeholders).
-      if (Taro.getCurrentPages().length > 2) await Taro.navigateBack()
-      else await Taro.reLaunch({ url: '/merchant/pages/workspace/index' })
+      // P-03 追缉（2026-11-12）：商家域返回不用 navigateBack（隐藏页树可能已被 dispose，
+      // 回落是死页）；统一 reLaunch 到退款列表（列表 back 再 reLaunch 工作台）。
+      await Taro.reLaunch({ url: '/merchant/pages/refund/index' })
     } catch { await Taro.showToast({ title: '返回失败，请重试', icon: 'none' }) }
   }
   return <View className='mrf-page' style={style}>

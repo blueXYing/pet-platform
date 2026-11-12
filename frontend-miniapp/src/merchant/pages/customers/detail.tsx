@@ -51,8 +51,8 @@ function useCustomerDetail(preview = false) {
 
 async function backToList() {
   try {
-    if (Taro.getCurrentPages().length > 1) await Taro.navigateBack()
-    else await Taro.redirectTo({ url: '/merchant/pages/customers/index' })
+    // P-03 追缉：商家域返回不用 navigateBack（隐藏页树可能已被 dispose，回来是死页）。
+    await Taro.reLaunch({ url: '/merchant/pages/customers/index' })
   } catch { await Taro.showToast({ title: '返回失败，请重试', icon: 'none' }) }
 }
 

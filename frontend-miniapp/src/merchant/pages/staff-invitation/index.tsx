@@ -55,8 +55,8 @@ export default function StaffInvitationPage() {
   }, [revision, scope, controller])
 
   async function back() {
-    if (Taro.getCurrentPages().length > 1) await Taro.navigateBack().catch(() => setNotice('返回失败，请重试'))
-    else await Taro.redirectTo({ url: '/merchant/pages/staff-workbench/index' }).catch(() => setNotice('返回失败，请重试'))
+    // P-03 追缉（2026-11-12）：商家域返回不用 navigateBack（隐藏页树可能已被 dispose）。
+    await Taro.reLaunch({ url: '/merchant/pages/staff-workbench/index' }).catch(() => setNotice('返回失败，请重试'))
   }
 
   async function confirmBinding() {
