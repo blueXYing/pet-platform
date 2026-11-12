@@ -24,7 +24,8 @@ import org.springframework.web.multipart.MaxUploadSizeExceededException;
       MerchantServiceController.class,
       ServiceWriteAdminController.class,
       MerchantScheduleController.class,
-      MerchantOrderVerificationController.class
+      MerchantOrderVerificationController.class,
+      MerchantVerificationReadController.class
     })
 @Order(Ordered.HIGHEST_PRECEDENCE + 20)
 public final class MerchantHttpExceptionHandler {

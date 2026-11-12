@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.petplatform.verification.biz.infrastructure.persistence.mapper.MerchantVerificationReadMapper">
+    <!--
+      CCR-M-VERIFY-RECORD-001 merchant verification-record list (approved 2026-11-12):
+      read-only over the module-owned verification_record table (schema 06 + 48). Every
+      statement is scoped to the caller's store_id, which the service has already re-proved
+      through the OWNER store guard; the raw operator_id is deliberately not selected (CCR §4)
+      and no credential cipher column is touched (contract 48/63 red lines). Filters bind with
+      #{}, never string substitution; the fixed sort is verified_at DESC, id DESC.
+    -->
+    <sql id="storeVerificationFilter">
+        <if test="orderId != null">AND v.order_id = #{orderId}</if>
+        <if test="verifiedFrom != null">AND v.verified_at &gt;= #{verifiedFrom}</if>
+        <if test="verifiedTo != null">AND v.verified_at &lt;= #{verifiedTo}</if>
+    </sql>
+    <select id="countStoreVerifications" resultType="long">
+        SELECT COUNT(*)
+        FROM verification_record v
+        WHERE v.store_id = #{storeId}
+        <include refid="storeVerificationFilter"/>
+    </select>
+    <select id="selectStoreVerificationPage" resultType="com.petplatform.verification.biz.infrastructure.persistence.mapper.MerchantVerificationReadMapper$VerificationRow">
+        SELECT v.id, v.order_id, v.store_id, v.operator_type, v.membership_kind,
+               v.operator_staff_id, v.verify_method, v.verified_at
+        FROM verification_record v
+        WHERE v.store_id = #{storeId}
+        <include refid="storeVerificationFilter"/>
+        ORDER BY v.verified_at DESC, v.id DESC
+        LIMIT #{limit} OFFSET #{offset}
+    </select>
+</mapper>

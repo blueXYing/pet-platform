@@ -35,4 +35,12 @@ public interface OrderQueryMapper {
     List<OrderQueryViewEntity> selectForStorePage(@Param("merchantId") long merchantId,
             @Param("storeId") long storeId, @Param("displayStatus") String displayStatus,
             @Param("limit") int limit, @Param("offset") long offset);
+
+    /**
+     * CCR-M-VERIFY-RECORD-001 batch card read: the page's own order ids, still double-key
+     * scoped to merchant_id+store_id so cross-store ids never resolve; id ASC keeps the batch
+     * answer deterministic. The caller's page size (≤100) caps the IN list.
+     */
+    List<OrderQueryViewEntity> selectForStoreByIds(@Param("merchantId") long merchantId,
+            @Param("storeId") long storeId, @Param("orderIds") List<Long> orderIds);
 }

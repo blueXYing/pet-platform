@@ -101,4 +101,18 @@
         ORDER BY created_at DESC, id DESC
         LIMIT #{limit} OFFSET #{offset}
     </select>
+    <!--
+      CCR-M-VERIFY-RECORD-001 (approved 2026-11-12): batch card summaries for the merchant
+      verification-record list page. Same projection as the §4.1 list; the store scope stays
+      the double key merchant_id+store_id on the caller's own id IN list, so a cross-store or
+      absent order id simply does not resolve (anti-enumeration). id ASC is the deterministic
+      batch order; all parameters bind with #{}.
+    -->
+    <select id="selectForStoreByIds" resultType="com.petplatform.order.biz.infrastructure.persistence.entity.OrderQueryViewEntity">
+        <include refid="mineProjection"/>
+        WHERE merchant_id = #{merchantId} AND store_id = #{storeId}
+          AND id IN
+        <foreach collection="orderIds" item="orderId" open="(" separator="," close=")">#{orderId}</foreach>
+        ORDER BY id ASC
+    </select>
 </mapper>

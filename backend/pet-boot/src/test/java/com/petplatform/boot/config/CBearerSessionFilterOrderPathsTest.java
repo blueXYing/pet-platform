@@ -57,6 +57,12 @@ class CBearerSessionFilterOrderPathsTest {
         assertTrue(CBearerSessionFilter.protectedPath("/api/v1/c/staff/invitations"));
         assertTrue(CBearerSessionFilter.protectedPath(
             "/api/v1/c/staff/invitations/710304/confirm"));
+        // CCR-M-VERIFY-RECORD-001 (approved 2026-11-12): the merchant verification-record list
+        // joins the mandatory MINIAPP session family (exact path, no subpaths); lookalikes stay out.
+        assertTrue(CBearerSessionFilter.protectedPath("/api/v1/merchant/verifications"));
+        assertFalse(CBearerSessionFilter.protectedPath("/api/v1/merchant/verifications/9501"));
+        assertFalse(CBearerSessionFilter.protectedPath("/api/v1/merchant/verification"));
+        assertFalse(CBearerSessionFilter.protectedPath("/api/v1/merchant/verificationsx"));
 
         // Unrelated lookalikes stay out of the merchant session family.
         assertFalse(CBearerSessionFilter.protectedPath("/api/v1/merchant/stats"));

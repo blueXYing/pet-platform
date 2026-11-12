@@ -20,6 +20,7 @@ import com.petplatform.user.api.query.UserQueryApi;
 import java.math.BigDecimal;
 import java.time.ZoneOffset;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -87,6 +88,37 @@ public final class MerchantOrderQueryService {
                 items = project(merchantReads, rows, merchant, storeKey);
             }
             return new PageResult<>(items, total, page, pageSize);
+        });
+    }
+
+    /**
+     * CCR-M-VERIFY-RECORD-001 batch card read: identical guard chain as {@link #listStoreOrders}
+     * (schedule store guard + OWNER re-proof under the same read transaction), then the id IN
+     * statement stays double-key scoped so a cross-store or absent order id simply misses
+     * (anti-enumeration). An empty id collection answers an empty map after the guard — the
+     * coordinate is still re-proven, so the face can never be probed without OWNER standing.
+     */
+    public Map<String, Summary> storeOrderSummariesByIds(String merchantId, String storeId,
+            Collection<String> orderIds, QueryContext context) {
+        if (context == null || context.operatorType() != OperatorType.USER
+                || context.operatorId() == null) {
+            throw new ApiException(CommonApiCodes.INVALID_ARGUMENT, "query subject is required");
+        }
+        long merchant = coordinate(merchantId);
+        long storeKey = coordinate(storeId);
+        List<Long> ids = orderIds == null ? List.of()
+                : orderIds.stream().distinct().map(id -> coordinate(id)).toList();
+        return store.read((mapper, merchantReads) -> {
+            guard.acquire(List.of(storeId),
+                    new QueryContext(context.traceId(), OperatorType.SYSTEM, null));
+            authority.requireOwnerRead(merchantId, storeId, context);
+            if (ids.isEmpty()) return Map.of();
+            List<OrderQueryViewEntity> rows = mapper.selectForStoreByIds(merchant, storeKey, ids);
+            Map<String, Summary> byId = new LinkedHashMap<>();
+            for (Summary summary : project(merchantReads, rows, merchant, storeKey)) {
+                byId.put(summary.orderId(), summary);
+            }
+            return Map.copyOf(byId);
         });
     }
 
