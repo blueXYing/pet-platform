@@ -1,4 +1,4 @@
-import { Button, Image, ScrollView, Text, View } from '@tarojs/components'
+import { Button, Image, Input, ScrollView, Text, View } from '@tarojs/components'
 import Taro, { useDidShow, useRouter } from '@tarojs/taro'
 import { useCallback, useEffect, useRef, useState, useSyncExternalStore, type CSSProperties } from 'react'
 import { useWorkspace } from '../../../shared/workspace-react'
@@ -10,6 +10,9 @@ import { StaffInvitationListController } from '../../staff/controller'
 import { previewStaffInvitationListDeps } from '../../staff/preview'
 import { RealStaffInvitationRepository } from '../../staff/repository'
 import { invitationStatusText, staffActionText, type InvitationStatus } from '../../staff/model'
+import { RealVerificationRepository } from '../../verify/repository'
+import { VerificationController } from '../../verify/controller'
+import { verifyResultHint, verifyResultText, verifyTimeText } from '../../verify/model'
 import { MerchantTabBar } from '../../components/tab-bar'
 import navBack from '../members/assets/nav-back@2x.png'
 import './page.css'
@@ -17,9 +20,11 @@ import './page.css'
 // 员工工作台（2026-10-06 用户裁决：员工确认入口定在商家端小程序的员工工作台；区别于 OWNER
 // 工作台）。设计源：登记表 §3/§4 复核无「员工工作台」原稿帧，按登记表规范登记缺稿，沿 M 端
 // 现行规范（members 页 12:6591 的 measures/tokens）实现。按 54/48 号契约里员工可见的能力组织：
-// 核销入口（48 K2 v0.3 核销 HTTP 面已交付，目标页为 OWNER/STAFF 共用真交互提交页，身份由服务
-// 端按 K1 链解析）与我的邀请记录（54 §7 员工侧列表：登录手机号服务端匹配，待确认邀请高亮进
-// 确认页，终局态只读；此前 #111 的编号查询入口已被该真列表替换）。
+// 订单核销执行面板（P-13 方案 B：原 staff-verify 页的核销执行表单迁入本页常显卡区，48 号 K2
+// v0.3 核销 HTTP 面不变，OWNER/STAFF 共用同一提交界面、身份由服务端按 K1 链解析；staff-verify
+// 页已改为 OWNER 专属核销记录列表，CCR-M-VERIFY-RECORD-001）与我的邀请记录（54 §7 员工侧
+// 列表：登录手机号服务端匹配，待确认邀请高亮进确认页，终局态只读；此前 #111 的编号查询入口
+// 已被该真列表替换）。
 
 const admissionText: Record<string, string> = {
   ALLOWED: '可正常使用',
@@ -44,8 +49,11 @@ export default function StaffWorkbenchPage() {
   const preview = route.params.preview === '1'
   const [invitations] = useState(() => new StaffInvitationListController(
     preview ? previewStaffInvitationListDeps() : new RealStaffInvitationRepository(consumerApi)))
+  // 48号 K2 核销执行（P-13 方案 B 迁入）：常驻面板控制器，load 随工作台 did-show 重读。
+  const [verification] = useState(() => new VerificationController(new RealVerificationRepository(consumerApi)))
   const state = useSyncExternalStore(controller.subscribe, controller.getSnapshot)
   const listState = useSyncExternalStore(invitations.subscribe, invitations.getSnapshot)
+  const verifyState = useSyncExternalStore(verification.subscribe, verification.getSnapshot)
   const [notice, setNotice] = useState('')
   const [platformInfo] = useState(() => Taro.getWindowInfo())
   const unit = platformInfo.windowWidth / 402
@@ -59,21 +67,24 @@ export default function StaffWorkbenchPage() {
       // phone-scoped invitation reads: a deep link can land here before the session exists.
       try { await consumerSession.launch() } catch { /* the controllers render the error state */ }
       controller.load(scope.current)
+      // 48号 K2 核销面板：did-show 重读工作区坐标与未知结果日志（核销完成后返回即复位表单）。
+      verification.load(scope.current)
       // 54 §7 list is session-scoped, not admission-scoped: pre-binding employees (unbound)
       // need it most — the list is how they find their pending invitation without a number.
       if (scope.current) void invitations.load()
     })()
-  }, [controller, invitations, scope])
+  }, [controller, invitations, verification, scope])
   useDidShow(load)
-  useEffect(() => () => { controller.dispose(); invitations.dispose() }, [controller, invitations])
+  useEffect(() => () => { controller.dispose(); invitations.dispose(); verification.dispose() }, [controller, invitations, verification])
   // Coordinate/account switches invalidate the admission projection and the phone-scoped list.
   useEffect(() => {
     if (previousRevision.current !== revision) {
       previousRevision.current = revision
       controller.load(scope.current)
+      verification.load(scope.current)
       if (scope.current) void invitations.load()
     }
-  }, [revision, scope, controller, invitations])
+  }, [revision, scope, controller, invitations, verification])
 
   async function back() {
     // P-03：回主工作台一律 reLaunch 重建（redirectTo 会残留已 dispose 的旧工作台实例，白屏）。
@@ -99,10 +110,6 @@ export default function StaffWorkbenchPage() {
       Taro.navigateTo({ url: `/merchant/pages/staff-invitation/index?invitationId=${invitationId}` })
         .catch(() => setNotice('页面跳转失败，请重试'))
     })
-  }
-
-  function openVerify() {
-    Taro.navigateTo({ url: '/merchant/pages/staff-verify/index' }).catch(() => setNotice('页面跳转失败，请重试'))
   }
 
   function goWorkspace() {
@@ -151,6 +158,85 @@ export default function StaffWorkbenchPage() {
     </View>
   }
 
+  // 48号 K2 v0.3 订单核销执行面板（P-13 方案 B：自 staff-verify 页原样迁入的提交表单与回执，
+  // CCR-M-VERIFY-RECORD-001；常显卡片区，随页面节奏不再跳页）：OWNER 与 STAFF 共用同一提交
+  // 界面，身份由服务端按 K1 v0.2 链在 guard 事务内解析；提交经 ConsumerApi.write 按订单槽位记
+  // X-Request-Id（23号 §5 幂等重放）；200 回执六字段展示，VERIFICATION_ALREADY_DONE 走已核销
+  // 面板，403（动作未授予/开关未开）与 503 依赖故障整块失败关闭。
+  function verifyPanelCard() {
+    const receipt = verifyState.receipt
+    const verified = receipt?.resultCode === 'VERIFIED'
+    return <View className='msw-card' id='msw-verify-panel'>
+      <Text className='msw-card-title'>订单核销</Text>
+      <Text className='msw-card-hint'>为到店顾客核销服务订单；核销人所属门店须与订单门店一致。</Text>
+      {verifyState.status === 'entry' && <View className='mswv-state' role='status'>
+        <Text>{verifyState.notice || '请经商家工作区进入员工工作台后核销。'}</Text>
+      </View>}
+      {verifyState.status === 'closed' && <View className='mswv-panel mswv-panel-closed' role='alert'>
+        <Text className='mswv-panel-title'>核销暂不可用</Text>
+        <Text className='mswv-panel-line'>{verifyState.notice}</Text>
+        <Text className='mswv-panel-line'>开关默认关闭，由平台开启核销通道；依赖故障与未获授权同样失败关闭，不提供可编辑表单。</Text>
+        <Button id='mswv-closed-back-form' className='mswv-back-form' onClick={() => verification.reset()}>返回表单</Button>
+      </View>}
+      {verifyState.status === 'already' && <View className='mswv-panel mswv-panel-info' role='status'>
+        <Text className='mswv-panel-title'>订单已核销</Text>
+        <Text className='mswv-panel-line'>订单 {verifyState.orderId.trim()} 已完成核销，不可重复核销；重复提交不会产生新的核销记录。</Text>
+        <Text className='mswv-panel-line'>如对核销结果有疑问，请联系平台核对核销记录（含核销人与门店归属）。</Text>
+        <Button id='mswv-already-back-form' className='mswv-back-form' onClick={() => verification.reset()}>返回继续核销其他订单</Button>
+      </View>}
+      {verifyState.status === 'receipt' && receipt && (verified
+        ? <View className='mswv-receipt mswv-receipt-verified' role='status'>
+            <Text className='mswv-receipt-title'>核销成功</Text>
+            <View className='mswv-row'><Text className='mswv-row-label'>订单编号</Text><Text className='mswv-row-value'>{receipt.orderId}</Text></View>
+            <View className='mswv-row'><Text className='mswv-row-label'>尝试编号</Text><Text className='mswv-row-value'>{receipt.attemptId}</Text></View>
+            <View className='mswv-row'><Text className='mswv-row-label'>核销编号</Text><Text className='mswv-row-value'>{receipt.verificationId}</Text></View>
+            <View className='mswv-row'><Text className='mswv-row-label'>核销时间</Text><Text className='mswv-row-value'>{verifyTimeText(receipt.verifiedAt)}</Text></View>
+            <View className='mswv-row'><Text className='mswv-row-label'>订单版本</Text><Text className='mswv-row-value'>{receipt.orderVersion}</Text></View>
+            <Text className='mswv-receipt-hint'>
+              {verifyState.replayed
+                ? '本次为同一请求编号的重试回执：以上为首次成功回执的原始核销时间与订单版本（23 号幂等重放语义），不会产生第二次核销。'
+                : '核销完成；核销记录含操作身份与门店归属，由平台留痕可追溯。同一订单不可重复核销。'}
+            </Text>
+            <Button id='mswv-verify-next' className='mswv-back-form' onClick={() => verification.reset()}>继续核销下一单</Button>
+          </View>
+        : <View className='mswv-receipt mswv-receipt-rejected' role='status'>
+            <Text className='mswv-receipt-title'>{verifyResultText[receipt.resultCode]}</Text>
+            <View className='mswv-row'><Text className='mswv-row-label'>订单编号</Text><Text className='mswv-row-value'>{receipt.orderId}</Text></View>
+            <View className='mswv-row'><Text className='mswv-row-label'>尝试编号</Text><Text className='mswv-row-value'>{receipt.attemptId}</Text></View>
+            <Text className='mswv-receipt-hint'>{verifyResultHint[receipt.resultCode]}</Text>
+            <Text className='mswv-receipt-hint'>本次结果已作为已提交业务结果记录（回执后三字段为空）；订单未核销，请顾客重新出示有效核销码后再提交。</Text>
+            <Button id='mswv-rejected-back-form' className='mswv-back-form' onClick={() => verification.reset()}>返回重新输入核销码</Button>
+          </View>)}
+      {(verifyState.status === 'form' || verifyState.status === 'idle') && <View>
+        {verifyState.pending && <View className='mswv-pending' role='status'>
+          <Text className='mswv-pending-title'>有未确认的核销提交</Text>
+          <Text className='mswv-panel-line'>订单 {verifyState.pending.orderId} 的上次提交结果尚未确认。请保持原订单与核销码（{verifyState.pending.verificationCode}）重新提交：将按原请求编号重试并返回首次回执，不会重复核销。</Text>
+        </View>}
+        <View className='mswv-form'>
+          <Text className='mswv-form-title'>输入核销信息</Text>
+          <View className='mswv-field'>
+            <Text className='mswv-field-label'>订单编号</Text>
+            <Input id='mswv-order-id' className='mswv-field-input' type='number' maxlength={19}
+              placeholder='顾客订单编号（数字）' value={verifyState.orderId}
+              onInput={event => verification.setOrderId(event.detail.value)} />
+          </View>
+          <View className='mswv-field'>
+            <Text className='mswv-field-label'>核销码</Text>
+            <Input id='mswv-code' className='mswv-field-input' type='text' maxlength={128}
+              placeholder='顾客订单详情页出示的核销码' value={verifyState.code}
+              onInput={event => verification.setCode(event.detail.value)} />
+            <Text className='mswv-field-hint'>1至128位大写字母或数字；输入自动按大写提交。</Text>
+          </View>
+          <Button id='mswv-submit' className='mswv-submit' disabled={verifyState.busy} onClick={() => void verification.submit()}>
+            {verifyState.busy ? '核销中…' : '提交核销'}
+          </Button>
+          <Text className='mswv-form-note'>核销前请与顾客当面确认服务已完成；核销完成后可在商家端「核销」tab 的核销记录中查看。</Text>
+        </View>
+      </View>}
+      {(verifyState.status === 'form' || verifyState.status === 'idle') && verifyState.notice && <Text id='mswv-notice' className='mswv-notice'>{verifyState.notice}</Text>}
+    </View>
+  }
+
   const view = state.view
   const admitted = state.status === 'ready'
   return <View className='msw-page' style={style}>
@@ -196,12 +282,10 @@ export default function StaffWorkbenchPage() {
           </View>}
           <Text className='msw-card-meta'>校验时间 {view.checkedAt} · authzVersion {view.authzVersion}</Text>
         </View>
-        {/* 核销入口（48 K2 v0.3）：准入判定在此，命令通道在目标页（真交互提交，默认开关关时
-            目标页按 403/503 整页失败关闭）。 */}
-        <Button id='msw-open-verify' className='msw-entry-button' onClick={openVerify}>
-          <Text className='msw-entry-title'>订单核销</Text>
-          <Text className='msw-entry-hint'>为到店顾客核销服务订单；核销人所属门店须与订单门店一致。</Text>
-        </Button>
+        {/* 订单核销执行面板（48号 K2 v0.3，P-13 方案 B 迁入页内常显，不再跳转 staff-verify——
+            该页已改为 OWNER 核销记录列表，CCR-M-VERIFY-RECORD-001）：准入判定在此，命令通道
+            在本面板（真交互提交，默认开关关时按 403/503 整块失败关闭）。 */}
+        {verifyPanelCard()}
         {invitationListCard()}
       </View>}
       {notice && <Text id='msw-notice' className='msw-notice'>{notice}</Text>}

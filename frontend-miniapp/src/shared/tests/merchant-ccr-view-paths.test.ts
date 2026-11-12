@@ -1,6 +1,6 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
-import { isMerchantStoreProfilePath, isMerchantReviewPath } from '../consumer-api'
+import { isMerchantStoreProfilePath, isMerchantReviewPath, isMerchantVerificationRecordsPath } from '../consumer-api'
 
 // CCR-M-STORE-AVATAR-001 (contract 27 §6.4 2026-11-06 supplement): the avatar signing read
 // is the only extra path in the store-profile family — GET on the exact avatar-url path.
@@ -26,4 +26,14 @@ test('reviews/summary is a literal GET before the numeric detail rule', () => {
   assert.equal(isMerchantReviewPath({ method: 'POST', path: '/api/v1/merchant/reviews/summary' }), false)
   assert.equal(isMerchantReviewPath({ method: 'GET', path: '/api/v1/merchant/reviews/summaryx' }), false)
   assert.equal(isMerchantReviewPath({ method: 'GET', path: '/api/v1/merchant/reviews/summary/1' }), false)
+})
+
+// CCR-M-VERIFY-RECORD-001 (contract 48 K3, 2026-11-12): the merchant verification-record
+// list is the only GET on the exact /merchant/verifications path; lookalikes and other
+// verbs stay outside the allowlist.
+test('merchant/verifications joins the allowlist as an exact GET only', () => {
+  assert.equal(isMerchantVerificationRecordsPath({ method: 'GET', path: '/api/v1/merchant/verifications' }), true)
+  assert.equal(isMerchantVerificationRecordsPath({ method: 'POST', path: '/api/v1/merchant/verifications' }), false)
+  assert.equal(isMerchantVerificationRecordsPath({ method: 'GET', path: '/api/v1/merchant/verifications/x' }), false)
+  assert.equal(isMerchantVerificationRecordsPath({ method: 'GET', path: '/api/v1/merchant/verification' }), false)
 })

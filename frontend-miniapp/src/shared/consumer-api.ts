@@ -88,6 +88,13 @@ export function isMerchantOrderActionPath(spec: RequestSpec): boolean {
 export function isMerchantOrderListPath(spec: RequestSpec): boolean {
   return spec.method === 'GET' && spec.path === '/api/v1/merchant/orders'
 }
+// Contract 48 K3 merchant verification-record list read (CCR-M-VERIFY-RECORD-001, switch
+// pet.verification.merchant-read.http.enabled default OFF): the only GET on the exact
+// /merchant/verifications path. OWNER-only — the query carries the caller's merchant
+// coordinates (merchantId+storeId), which the server re-proves under the store guard per read.
+export function isMerchantVerificationRecordsPath(spec: RequestSpec): boolean {
+  return spec.method === 'GET' && spec.path === '/api/v1/merchant/verifications'
+}
 // Contract 56 review appeal M face (REV-002, switch pet.review.appeal.http.enabled default
 // OFF): the list query carries the caller's merchant coordinates (server re-proves them under
 // the store guard); the detail/appeal target the review in the path only — the kernel locates
@@ -249,6 +256,7 @@ export class ConsumerApi {
     // Merchant order list read (contract 10 §4.1 supplement): GET with the merchant
     // coordinate query; not target-free — both ids must equal the workspace coordinates.
     const merchantOrderList = isMerchantOrderListPath(spec)
+    const merchantVerificationRecords = isMerchantVerificationRecordsPath(spec)
     const merchantReviewPath = isMerchantReviewPath(spec)
     // Merchant refund surfaces (contract 57): same coordinate discipline — the list, the
     // detail GET and the approve/reject commands all carry merchantId+storeId equal to the
@@ -263,14 +271,14 @@ export class ConsumerApi {
     if (/^\/api\/v1\/(c|merchant)\/aftersale/.test(spec.path) && !afterSalePath) throw new Error('INVALID_PATH')
     if (/^\/api\/v1\/merchant\/reviews(\/|$)/.test(spec.path) && !merchantReviewPath) throw new Error('INVALID_PATH')
     if (/^\/api\/v1\/c\/(favorites|footprints)(\/|$)/.test(spec.path) && !favoriteFootprintPath) throw new Error('INVALID_PATH')
-    if (!/^\/api\/v1\/c\/[a-z0-9/-]+$/.test(spec.path) && !agreementPath && !admissionPath && !categoryPath && !serviceCommandPath && !afterSalePath && !schedulePath && !verificationPath && !merchantOrderAction && !merchantOrderList && !merchantReviewPath && !merchantRefundPath && !merchantCustomerPath && !merchantStatsPath && !merchantStoreProfilePath && !merchantMarketingPath && !merchantStaffMemberPath && !favoriteFootprintPath) throw new Error('INVALID_PATH')
+    if (!/^\/api\/v1\/c\/[a-z0-9/-]+$/.test(spec.path) && !agreementPath && !admissionPath && !categoryPath && !serviceCommandPath && !afterSalePath && !schedulePath && !verificationPath && !merchantOrderAction && !merchantOrderList && !merchantVerificationRecords && !merchantReviewPath && !merchantRefundPath && !merchantCustomerPath && !merchantStatsPath && !merchantStoreProfilePath && !merchantMarketingPath && !merchantStaffMemberPath && !favoriteFootprintPath) throw new Error('INVALID_PATH')
     if (spec.method !== 'GET' && !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}(?![\s\S])/i.test(spec.requestId || '')) throw new Error('REQUEST_ID_REQUIRED')
     const response = await this.transport({ ...spec, headers: { 'Content-Type': 'application/json', ...(spec.requestId ? { 'X-Request-Id': spec.requestId } : {}), ...headers } })
     if (afterSalePath) return afterSaleEnvelope(response)
     const body = object(response.data)
     if (response.statusCode < 200 || response.statusCode >= 300 || body.code !== 'SUCCESS') throw new ApiError(typeof body.code === 'string' ? body.code : 'INVALID_RESPONSE', response.statusCode)
     const applicationPath = /^\/api\/v1\/c\/merchant-applications(?:\/|$)/.test(spec.path) || spec.path === '/api/v1/c/merchant-application-cities'
-    if ((agreementPath || applicationPath || admissionPath || categoryPath || serviceCommandPath || schedulePath || verificationPath || merchantOrderAction || merchantOrderList || merchantRefundPath || merchantCustomerPath || merchantStatsPath || merchantStoreProfilePath || merchantMarketingPath || merchantStaffMemberPath) && body.success !== true) throw new Error('INVALID_RESPONSE')
+    if ((agreementPath || applicationPath || admissionPath || categoryPath || serviceCommandPath || schedulePath || verificationPath || merchantOrderAction || merchantOrderList || merchantVerificationRecords || merchantRefundPath || merchantCustomerPath || merchantStatsPath || merchantStoreProfilePath || merchantMarketingPath || merchantStaffMemberPath) && body.success !== true) throw new Error('INVALID_RESPONSE')
     return body.data
   }
   private clear() {
@@ -404,6 +412,13 @@ export class ConsumerApi {
       // of the current merchant workspace exactly (aftersale-list discipline).
       const merchantOrderList = isMerchantOrderListPath(spec)
       if (merchantOrderList && (!ticket.context.storeId
+        || spec.data?.merchantId !== ticket.context.merchantId
+        || spec.data?.storeId !== ticket.context.storeId)) throw new Error('WORKSPACE_PATH_MISMATCH')
+      // Merchant verification-record list (48号 K3 / CCR-M-VERIFY-RECORD-001): the query must
+      // address the selected store of the current merchant workspace exactly (order-list
+      // discipline); the server re-proves the OWNER relation per call anyway.
+      const merchantVerificationRecords = isMerchantVerificationRecordsPath(spec)
+      if (merchantVerificationRecords && (!ticket.context.storeId
         || spec.data?.merchantId !== ticket.context.merchantId
         || spec.data?.storeId !== ticket.context.storeId)) throw new Error('WORKSPACE_PATH_MISMATCH')
       // Review appeal M face (56号): the list carries the same exact coordinate discipline;
